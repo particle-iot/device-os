@@ -12,7 +12,6 @@
 #include "hw_config.h" 
 
 /* Private typedef -----------------------------------------------------------*/
-typedef void (*pFunction)(void);
 
 /* Private define ------------------------------------------------------------*/
 
