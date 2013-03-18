@@ -21,3 +21,7 @@ Debug/
 
 # Release folder
 Release/
+
+# Platform-specific settings
+.settings/org.eclipse.cdt.core.prefs
+.cproject
