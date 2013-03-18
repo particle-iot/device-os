@@ -130,6 +130,7 @@ void PendSV_Handler(void) {
  * Return         : None
  *******************************************************************************/
 void SysTick_Handler(void) {
+	TimingDelay_Decrement();
 }
 
 /******************************************************************************/
@@ -138,6 +139,20 @@ void SysTick_Handler(void) {
 /*  available peripheral interrupt handler's name please refer to the startup */
 /*  file (startup_stm32xxx.S).                                            */
 /******************************************************************************/
+
+/**
+ * @brief  This function handles External lines 15 to 10 interrupt request.
+ * @param  None
+ * @retval None
+ */
+void EXTI15_10_IRQHandler(void) {
+	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET) {
+		/* Process WIFI INT here */
+		//To Do
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(CC3000_WIFI_INT_EXTI_LINE );
+	}
+}
 
 /*******************************************************************************
  * Function Name  : PPP_IRQHandler

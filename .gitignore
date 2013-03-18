@@ -23,5 +23,6 @@ Debug/
 Release/
 
 # Platform-specific settings
-.settings/org.eclipse.cdt.core.prefs
+.settings/
 .cproject
+.project

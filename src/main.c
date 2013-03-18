@@ -4,12 +4,12 @@
  * @author  Spark Application Team
  * @version V1.0.0
  * @date    13-March-2013
- * @brief   main file
+ * @brief   Main program body.
  ******************************************************************************
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include "hw_config.h" 
+#include "main.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -41,6 +41,26 @@ int main(void) {
 	while (1) {
 
 	}
+}
+
+/* Wifi Application related callbacks passed to wlan_init */
+void CC3000_Async_Callback(long lEventType, char *data, unsigned char length) {
+	//To Do
+}
+
+char *Send_Firmware_Patch(unsigned long *length) {
+	*length = 0;
+	return NULL;
+}
+
+char *Send_Driver_Patch(unsigned long *length) {
+	*length = 0;
+	return NULL;
+}
+
+char *Send_BootLoader_Patch(unsigned long *length) {
+	*length = 0;
+	return NULL;
 }
 
 #ifdef USE_FULL_ASSERT

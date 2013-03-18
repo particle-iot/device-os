@@ -16,13 +16,41 @@
 #include "platform_config.h"
 
 /* Exported types ------------------------------------------------------------*/
+/**
+ * @brief  CC3000 DMA Direction
+ */
+typedef enum {
+	CC3000_DMA_TX = 0, CC3000_DMA_RX = 1
+} CC3000_DMADirection_TypeDef;
 
 /* Exported constants --------------------------------------------------------*/
 
-/* Exported macro ------------------------------------------------------------*/
+/* Exported macros ------------------------------------------------------------*/
+/**
+ * @brief  Select CC3000: ChipSelect pin low
+ */
+#define CC3000_CS_LOW()     GPIO_ResetBits(CC3000_SPI_CS_GPIO_PORT, CC3000_SPI_CS_PIN)
+/**
+ * @brief  Deselect CC3000: ChipSelect pin high
+ */
+#define CC3000_CS_HIGH()    GPIO_SetBits(CC3000_SPI_CS_GPIO_PORT, CC3000_SPI_CS_PIN)
 
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
+void NVIC_Configuration(void);
+void Delay(__IO uint32_t nTime);
+void TimingDelay_Decrement(void);
+
+void CC3000_DeInit(void);
+void CC3000_Init(void);
+void CC3000_DMA_Config(CC3000_DMADirection_TypeDef Direction, uint8_t* buffer,
+		uint16_t NumData);
+
+/* CC3000 Hardware related callbacks passed to wlan_init */
+long CC3000_Read_Interrupt_Pin(void);
+void CC3000_Interrupt_Enable(void);
+void CC3000_Interrupt_Disable(void);
+void CC3000_Write_Enable_Pin(unsigned char val);
 
 /* External variables --------------------------------------------------------*/
 
