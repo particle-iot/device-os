@@ -14,6 +14,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "platform_config.h"
+#include "cc3000_common.h"
 
 /* Exported types ------------------------------------------------------------*/
 /**
@@ -41,8 +42,8 @@ void NVIC_Configuration(void);
 void Delay(__IO uint32_t nTime);
 void TimingDelay_Decrement(void);
 
-void CC3000_DeInit(void);
-void CC3000_Init(void);
+void CC3000_SPI_DeInit(void);
+void CC3000_SPI_Init(void);
 void CC3000_DMA_Config(CC3000_DMADirection_TypeDef Direction, uint8_t* buffer,
 		uint16_t NumData);
 

@@ -147,10 +147,10 @@ void SysTick_Handler(void) {
  */
 void EXTI15_10_IRQHandler(void) {
 	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET) {
-		/* Process WIFI INT here */
-		//To Do
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(CC3000_WIFI_INT_EXTI_LINE );
+
+		SPIIntHandler();
 	}
 }
 

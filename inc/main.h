@@ -15,7 +15,8 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "hw_config.h"
-#include "cc3000_common.h"
+#include "hci.h"
+#include "wlan.h"
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -25,10 +26,10 @@
 
 /* Exported functions ------------------------------------------------------- */
 
-/* Wifi Application related callbacks passed to wlan_init */
-void CC3000_Async_Callback(long lEventType, char *data, unsigned char length);
-char *Send_Firmware_Patch(unsigned long *length);
-char *Send_Driver_Patch(unsigned long *length);
-char *Send_BootLoader_Patch(unsigned long *length);
+/* WLAN Application related callbacks passed to wlan_init */
+void WLAN_Async_Callback(long lEventType, char *data, unsigned char length);
+char *WLAN_Firmware_Patch(unsigned long *length);
+char *WLAN_Driver_Patch(unsigned long *length);
+char *WLAN_BootLoader_Patch(unsigned long *length);
 
 #endif /* __MAIN_H */

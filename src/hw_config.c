@@ -44,7 +44,8 @@ void Set_System(void) {
 	/* Setup SysTick Timer for 1 msec interrupts  */
 	if (SysTick_Config(SystemCoreClock / 1000)) {
 		/* Capture error */
-		while (1);
+		while (1)
+			;
 	}
 }
 
@@ -70,7 +71,8 @@ void NVIC_Configuration(void) {
 void Delay(uint32_t nTime) {
 	TimingDelay = nTime;
 
-	while (TimingDelay != 0);
+	while (TimingDelay != 0)
+		;
 }
 
 /*******************************************************************************
@@ -91,11 +93,14 @@ void TimingDelay_Decrement(void) {
  * @param  None
  * @retval None
  */
-void CC3000_DeInit(void) {
+void CC3000_SPI_DeInit(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	SPI_Cmd(CC3000_SPI, DISABLE); /*!< CC3000_SPI disable */
-	SPI_I2S_DeInit(CC3000_SPI ); /*!< DeInitializes the CC3000_SPI */
+	/* CC3000_SPI disable */
+	SPI_Cmd(CC3000_SPI, DISABLE);
+
+	/* DeInitializes the CC3000_SPI */
+	SPI_I2S_DeInit(CC3000_SPI );
 
 	/* CC3000_SPI Peripheral clock disable */
 	RCC_APB2PeriphClockCmd(CC3000_SPI_CLK, DISABLE);
@@ -116,14 +121,6 @@ void CC3000_DeInit(void) {
 	/* Configure CC3000_SPI pins: CS */
 	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_CS_PIN;
 	GPIO_Init(CC3000_SPI_CS_GPIO_PORT, &GPIO_InitStructure);
-
-	/* Configure CC3000_WIFI pins: Enable */
-	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_EN_PIN;
-	GPIO_Init(CC3000_WIFI_EN_GPIO_PORT, &GPIO_InitStructure);
-
-	/* Configure CC3000_WIFI pins: Interrupt */
-	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_INT_PIN;
-	GPIO_Init(CC3000_WIFI_INT_GPIO_PORT, &GPIO_InitStructure);
 }
 
 /**
@@ -131,21 +128,14 @@ void CC3000_DeInit(void) {
  * @param  None
  * @retval None
  */
-void CC3000_Init(void) {
+void CC3000_SPI_Init(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	SPI_InitTypeDef SPI_InitStructure;
-	EXTI_InitTypeDef EXTI_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
 
-	/* Enable AFIO clock */
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-
-	/* CC3000_SPI_SCK_GPIO, CC3000_SPI_MOSI_GPIO, CC3000_SPI_MISO_GPIO,
-	 CC3000_SPI_CS_GPIO, CC3000_WIFI_EN_GPIO and CC3000_WIFI_INT_GPIO Peripheral clock enable */
+	/* CC3000_SPI_SCK_GPIO, CC3000_SPI_MOSI_GPIO, CC3000_SPI_MISO_GPIO and CC3000_SPI_CS_GPIO Peripheral clock enable */
 	RCC_APB2PeriphClockCmd(
 			CC3000_SPI_SCK_GPIO_CLK | CC3000_SPI_MOSI_GPIO_CLK
-			| CC3000_SPI_MISO_GPIO_CLK | CC3000_SPI_CS_GPIO_CLK
-			| CC3000_WIFI_EN_GPIO_CLK | CC3000_WIFI_INT_GPIO_CLK,
+					| CC3000_SPI_MISO_GPIO_CLK | CC3000_SPI_CS_GPIO_CLK,
 			ENABLE);
 
 	/* CC3000_SPI Peripheral clock enable */
@@ -171,33 +161,6 @@ void CC3000_Init(void) {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(CC3000_SPI_CS_GPIO_PORT, &GPIO_InitStructure);
 
-	/* Configure CC3000_WIFI pins: Enable */
-	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_EN_PIN;
-	GPIO_Init(CC3000_WIFI_EN_GPIO_PORT, &GPIO_InitStructure);
-
-	/* Configure CC3000_WIFI pins: Interrupt */
-	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_INT_PIN;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	GPIO_Init(CC3000_WIFI_INT_GPIO_PORT, &GPIO_InitStructure);
-
-	/* Select the CC3000_WIFI_INT GPIO pin used as EXTI Line */
-	GPIO_EXTILineConfig(CC3000_WIFI_INT_EXTI_PORT_SOURCE,
-			CC3000_WIFI_INT_EXTI_PIN_SOURCE );
-
-	/* Configure CC3000_WIFI_INT EXTI line */
-	EXTI_InitStructure.EXTI_Line = CC3000_WIFI_INT_EXTI_LINE;
-	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
-	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-	EXTI_Init(&EXTI_InitStructure);
-
-	/* Enable and set CC3000_WIFI_INT EXTI Interrupt to the lowest priority */
-	NVIC_InitStructure.NVIC_IRQChannel = CC3000_WIFI_INT_EXTI_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-
 	/* CC3000_SPI Config */
 	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
 	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
@@ -210,7 +173,13 @@ void CC3000_Init(void) {
 	SPI_InitStructure.SPI_CRCPolynomial = 7;
 	SPI_Init(CC3000_SPI, &SPI_InitStructure);
 
-	SPI_Cmd(CC3000_SPI, ENABLE); /*!< CC3000_SPI enable */
+	/* Enable CC3000_SPI DMA Tx request */
+	SPI_I2S_DMACmd(CC3000_SPI, SPI_I2S_DMAReq_Tx, ENABLE);
+	/* Enable CC3000_SPI DMA Rx request */
+	SPI_I2S_DMACmd(CC3000_SPI, SPI_I2S_DMAReq_Rx, ENABLE);
+
+	/* Enable CC3000_SPI */
+	SPI_Cmd(CC3000_SPI, ENABLE);
 }
 
 /**
@@ -252,17 +221,74 @@ void CC3000_DMA_Config(CC3000_DMADirection_TypeDef Direction, uint8_t* buffer,
 
 /* CC3000 Hardware related callbacks passed to wlan_init */
 long CC3000_Read_Interrupt_Pin(void) {
-	//To Do
+	return GPIO_ReadInputDataBit(CC3000_WIFI_INT_GPIO_PORT,
+			CC3000_WIFI_INT_PIN );
 }
 
 void CC3000_Interrupt_Enable(void) {
-	//To Do
+	GPIO_InitTypeDef GPIO_InitStructure;
+	EXTI_InitTypeDef EXTI_InitStructure;
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	/* CC3000_WIFI_INT_GPIO and AFIO Peripheral clock enable */
+	RCC_APB2PeriphClockCmd(CC3000_WIFI_INT_GPIO_CLK | RCC_APB2Periph_AFIO,
+			ENABLE);
+
+	/* Configure CC3000_WIFI pins: Interrupt */
+	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_INT_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	GPIO_Init(CC3000_WIFI_INT_GPIO_PORT, &GPIO_InitStructure);
+
+	/* Select the CC3000_WIFI_INT GPIO pin used as EXTI Line */
+	GPIO_EXTILineConfig(CC3000_WIFI_INT_EXTI_PORT_SOURCE,
+			CC3000_WIFI_INT_EXTI_PIN_SOURCE );
+
+	/* Configure and Enable CC3000_WIFI_INT EXTI line */
+	EXTI_InitStructure.EXTI_Line = CC3000_WIFI_INT_EXTI_LINE;
+	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&EXTI_InitStructure);
+
+	/* Enable and set CC3000_WIFI_INT EXTI Interrupt to the lowest priority */
+	NVIC_InitStructure.NVIC_IRQChannel = CC3000_WIFI_INT_EXTI_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
 }
 
 void CC3000_Interrupt_Disable(void) {
-	//To Do
+	EXTI_InitTypeDef EXTI_InitStructure;
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	/* Disable CC3000_WIFI_INT EXTI Interrupt */
+	NVIC_InitStructure.NVIC_IRQChannel = CC3000_WIFI_INT_EXTI_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
+	/* Disable CC3000_WIFI_INT EXTI line */
+	EXTI_InitStructure.EXTI_Line = CC3000_WIFI_INT_EXTI_LINE;
+	EXTI_InitStructure.EXTI_LineCmd = DISABLE;
+	EXTI_Init(&EXTI_InitStructure);
 }
 
 void CC3000_Write_Enable_Pin(unsigned char val) {
-	//To Do
+	GPIO_InitTypeDef GPIO_InitStructure;
+
+	/* CC3000_WIFI_EN_GPIO Peripheral clock enable */
+	RCC_APB2PeriphClockCmd(CC3000_WIFI_EN_GPIO_CLK, ENABLE);
+
+	/* Configure CC3000_WIFI pins: Enable */
+	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_EN_PIN;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_Init(CC3000_WIFI_EN_GPIO_PORT, &GPIO_InitStructure);
+
+	/* Set WLAN Enable/Disable */
+	if (val != WLAN_DISABLE) {
+		GPIO_SetBits(CC3000_WIFI_EN_GPIO_PORT, CC3000_WIFI_EN_PIN );
+	} else {
+		GPIO_ResetBits(CC3000_WIFI_EN_GPIO_PORT, CC3000_WIFI_EN_PIN );
+	}
 }
