@@ -23,6 +23,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
+extern void hci_unsolicited_event_handler(void);
+extern void SPI_DMA_IntHandler(void);
+extern void SPI_EXTI_IntHandler(void);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -37,7 +40,8 @@
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void NMI_Handler(void) {
+void NMI_Handler(void)
+{
 }
 
 /*******************************************************************************
@@ -47,9 +51,11 @@ void NMI_Handler(void) {
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void HardFault_Handler(void) {
+void HardFault_Handler(void)
+{
 	/* Go to infinite loop when Hard Fault exception occurs */
-	while (1) {
+	while (1)
+	{
 	}
 }
 
@@ -60,9 +66,11 @@ void HardFault_Handler(void) {
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void MemManage_Handler(void) {
+void MemManage_Handler(void)
+{
 	/* Go to infinite loop when Memory Manage exception occurs */
-	while (1) {
+	while (1)
+	{
 	}
 }
 
@@ -73,9 +81,11 @@ void MemManage_Handler(void) {
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void BusFault_Handler(void) {
+void BusFault_Handler(void)
+{
 	/* Go to infinite loop when Bus Fault exception occurs */
-	while (1) {
+	while (1)
+	{
 	}
 }
 
@@ -86,9 +96,11 @@ void BusFault_Handler(void) {
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void UsageFault_Handler(void) {
+void UsageFault_Handler(void)
+{
 	/* Go to infinite loop when Usage Fault exception occurs */
-	while (1) {
+	while (1)
+	{
 	}
 }
 
@@ -99,7 +111,8 @@ void UsageFault_Handler(void) {
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void SVC_Handler(void) {
+void SVC_Handler(void)
+{
 }
 
 /*******************************************************************************
@@ -109,7 +122,8 @@ void SVC_Handler(void) {
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void DebugMon_Handler(void) {
+void DebugMon_Handler(void)
+{
 }
 
 /*******************************************************************************
@@ -119,7 +133,8 @@ void DebugMon_Handler(void) {
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void PendSV_Handler(void) {
+void PendSV_Handler(void)
+{
 }
 
 /*******************************************************************************
@@ -129,8 +144,9 @@ void PendSV_Handler(void) {
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void SysTick_Handler(void) {
-	TimingDelay_Decrement();
+void SysTick_Handler(void)
+{
+	hci_unsolicited_event_handler();
 }
 
 /******************************************************************************/
@@ -140,17 +156,37 @@ void SysTick_Handler(void) {
 /*  file (startup_stm32xxx.S).                                            */
 /******************************************************************************/
 
+/*******************************************************************************
+ * Function Name  : DMA1_Channel3_IRQHandler
+ * Description    : This function handles DMA1 Channel 3 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void DMA1_Channel3_IRQHandler(void)
+{
+	if (DMA_GetFlagStatus(CC3000_SPI_TX_DMA_TCFLAG ))
+	{
+		/* Clear DMA TX Channel Transfer complete flag */
+		DMA_ClearFlag(CC3000_SPI_TX_DMA_TCFLAG );
+
+		SPI_DMA_IntHandler();
+	}
+}
+
 /**
  * @brief  This function handles External lines 15 to 10 interrupt request.
  * @param  None
  * @retval None
  */
-void EXTI15_10_IRQHandler(void) {
-	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET) {
+void EXTI15_10_IRQHandler(void)
+{
+	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
+	{
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(CC3000_WIFI_INT_EXTI_LINE );
 
-		SPIIntHandler();
+		SPI_EXTI_IntHandler();
 	}
 }
 

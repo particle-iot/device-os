@@ -46,8 +46,8 @@
 //
 #elif defined (USE_SPARK_TV2)
 /**
-  * @brief  CC3000 Interface pins
-  */
+ * @brief  CC3000 Interface pins
+ */
 #define CC3000_SPI							SPI1
 #define CC3000_SPI_CLK						RCC_APB2Periph_SPI1
 #define CC3000_SPI_SCK_PIN					GPIO_Pin_5                  /* PA.05 */
@@ -79,6 +79,8 @@
 #define CC3000_SPI_TX_DMA_CHANNEL           DMA1_Channel3
 #define CC3000_SPI_RX_DMA_TCFLAG            DMA1_FLAG_TC2
 #define CC3000_SPI_TX_DMA_TCFLAG            DMA1_FLAG_TC3
+#define CC3000_SPI_RX_DMA_IRQn           	DMA1_Channel2_IRQn
+#define CC3000_SPI_TX_DMA_IRQn           	DMA1_Channel3_IRQn
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 

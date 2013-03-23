@@ -20,7 +20,8 @@
 /**
  * @brief  CC3000 DMA Direction
  */
-typedef enum {
+typedef enum
+{
 	CC3000_DMA_TX = 0, CC3000_DMA_RX = 1
 } CC3000_DMADirection_TypeDef;
 
@@ -39,13 +40,13 @@ typedef enum {
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
-void Delay(__IO uint32_t nTime);
-void TimingDelay_Decrement(void);
 
+/* CC3000 Hardware related methods */
 void CC3000_SPI_DeInit(void);
 void CC3000_SPI_Init(void);
-void CC3000_DMA_Config(CC3000_DMADirection_TypeDef Direction, uint8_t* buffer,
-		uint16_t NumData);
+void CC3000_DMA_Config(CC3000_DMADirection_TypeDef Direction, uint8_t* buffer, uint16_t NumData);
+void CC3000_SPI_DMA_Init(void);
+void CC3000_SPI_DMA_Channels(FunctionalState NewState);
 
 /* CC3000 Hardware related callbacks passed to wlan_init */
 long CC3000_Read_Interrupt_Pin(void);
@@ -54,5 +55,7 @@ void CC3000_Interrupt_Disable(void);
 void CC3000_Write_Enable_Pin(unsigned char val);
 
 /* External variables --------------------------------------------------------*/
+extern unsigned char wlan_rx_buffer[];
+extern unsigned char wlan_tx_buffer[];
 
 #endif  /*__HW_CONFIG_H*/

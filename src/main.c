@@ -30,64 +30,85 @@ __IO uint8_t WLAN_CAN_SHUTDOWN;
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-int main(void) {
+int main(void)
+{
 	Set_System();
 
-	//WLAN Test Code
-	CC3000_SPI_Init();
+	/******************** WLAN Test Code *********************/
+	//
+	// Configure & initialize CC3000 SPI_DMA Interface
+	//
+	CC3000_SPI_DMA_Init();
 
-	wlan_init(WLAN_Async_Callback, WLAN_Firmware_Patch, WLAN_Driver_Patch,
-			WLAN_BootLoader_Patch, CC3000_Read_Interrupt_Pin,
-			CC3000_Interrupt_Enable, CC3000_Interrupt_Disable,
-			CC3000_Write_Enable_Pin);
+	//
+	// WLAN On API Implementation
+	//
+	wlan_init(WLAN_Async_Callback, WLAN_Firmware_Patch, WLAN_Driver_Patch, WLAN_BootLoader_Patch,
+				CC3000_Read_Interrupt_Pin, CC3000_Interrupt_Enable, CC3000_Interrupt_Disable, CC3000_Write_Enable_Pin);
 
+	//
+	// Trigger a WLAN device
+	//
 	wlan_start(0);
 
+	//
+	// Mask out all non-required events from CC3000
+	//
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_UNSOL_DHCP | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+
+	//
+	// Start the Smart Config process
+	//
 	wlan_smart_config_start(1);
 
 	/* Main loop */
-	while (1) {
-
+	while (1)
+	{
 	}
 }
 
 /* WLAN Application related callbacks passed to wlan_init */
-void WLAN_Async_Callback(long lEventType, char *data, unsigned char length) {
-	switch (lEventType) {
-	case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
-		WLAN_SMART_CONFIG_DONE = 1;
-		break;
+void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
+{
+	switch (lEventType)
+	{
+		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
+			WLAN_SMART_CONFIG_DONE = 1;
+			break;
 
-	case HCI_EVNT_WLAN_UNSOL_CONNECT:
-		WLAN_CONNECTED = 1;
-		break;
+		case HCI_EVNT_WLAN_UNSOL_CONNECT:
+			WLAN_CONNECTED = 1;
+			break;
 
-	case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
-		WLAN_CONNECTED = 0;
-		WLAN_DHCP = 0;
-		break;
+		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
+			WLAN_CONNECTED = 0;
+			WLAN_DHCP = 0;
+			break;
 
-	case HCI_EVNT_WLAN_UNSOL_DHCP:
-		WLAN_DHCP = 1;
-		break;
+		case HCI_EVNT_WLAN_UNSOL_DHCP:
+			WLAN_DHCP = 1;
+			break;
 
-	case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
-		WLAN_CAN_SHUTDOWN = 1;
-		break;
+		case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
+			WLAN_CAN_SHUTDOWN = 1;
+			break;
 	}
 }
 
-char *WLAN_Firmware_Patch(unsigned long *length) {
+char *WLAN_Firmware_Patch(unsigned long *length)
+{
 	*length = 0;
 	return NULL;
 }
 
-char *WLAN_Driver_Patch(unsigned long *length) {
+char *WLAN_Driver_Patch(unsigned long *length)
+{
 	*length = 0;
 	return NULL;
 }
 
-char *WLAN_BootLoader_Patch(unsigned long *length) {
+char *WLAN_BootLoader_Patch(unsigned long *length)
+{
 	*length = 0;
 	return NULL;
 }
@@ -109,6 +130,7 @@ void assert_failed(uint8_t* file, uint32_t line)
 
 	/* Infinite loop */
 	while (1)
-	{}
+	{
+	}
 }
 #endif

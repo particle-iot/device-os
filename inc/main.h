@@ -1,12 +1,12 @@
 /**
-  ******************************************************************************
-  * @file    main.h
-  * @author  Spark Application Team
-  * @version V1.0.0
-  * @date    13-March-2013
-  * @brief   Header for main.c module
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    main.h
+ * @author  Spark Application Team
+ * @version V1.0.0
+ * @date    13-March-2013
+ * @brief   Header for main.c module
+ ******************************************************************************
+ */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __MAIN_H
