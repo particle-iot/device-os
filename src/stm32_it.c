@@ -157,13 +157,13 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /*******************************************************************************
- * Function Name  : DMA1_Channel3_IRQHandler
- * Description    : This function handles DMA1 Channel 3 interrupt request.
+ * Function Name  : CC3000_SPI_TX_DMA_IRQHandler
+ * Description    : This function handles SPI_TX_DMA interrupt request.
  * Input          : None
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void DMA1_Channel3_IRQHandler(void)
+void CC3000_SPI_TX_DMA_IRQHandler(void)
 {
 	if (DMA_GetFlagStatus(CC3000_SPI_TX_DMA_TCFLAG ))
 	{
@@ -175,11 +175,11 @@ void DMA1_Channel3_IRQHandler(void)
 }
 
 /**
- * @brief  This function handles External lines 15 to 10 interrupt request.
+ * @brief  This function handles WIFI_INT_EXTI interrupt request.
  * @param  None
  * @retval None
  */
-void EXTI15_10_IRQHandler(void)
+void CC3000_WIFI_INT_EXTI_IRQHandler(void)
 {
 	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
 	{
