@@ -17,7 +17,7 @@
 #define DEASSERT_CS()			CC3000_CS_HIGH()
 
 /*It takes roughly 4 instruction to perform a delay*/
-#define FIFTY_US_DELAY			((72*50)/4) // (72*50)/4 for 72 MHz clk
+#define FIFTY_US_DELAY			(((SystemCoreClock/1000000)*50)/4) // (24*50)/4 for 24 MHz clk
 #define DMA_WINDOW_SIZE         1024
 #define SPI_WINDOW_SIZE         DMA_WINDOW_SIZE
 

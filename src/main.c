@@ -12,7 +12,8 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/__IO uint8_t WLAN_SMART_CONFIG_DONE;
+/* Private variables ---------------------------------------------------------*/
+__IO uint8_t WLAN_SMART_CONFIG_DONE;
 __IO uint8_t WLAN_CONNECTED;
 __IO uint8_t WLAN_DHCP;
 __IO uint8_t WLAN_CAN_SHUTDOWN;
@@ -34,7 +35,7 @@ int main(void)
 {
 	Set_System();
 
-	/******************** WLAN Test Code *********************/
+	/******************* WLAN Test Code ********************/
 	//
 	// Configure & initialize CC3000 SPI_DMA Interface
 	//
@@ -50,6 +51,9 @@ int main(void)
 	// Trigger a WLAN device
 	//
 	wlan_start(0);
+
+	//WLAN device started
+	LED_On(LED2);
 
 	//
 	// Mask out all non-required events from CC3000

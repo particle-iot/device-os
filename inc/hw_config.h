@@ -17,9 +17,21 @@
 #include "cc3000_common.h"
 
 /* Exported types ------------------------------------------------------------*/
-/**
- * @brief  CC3000 DMA Direction
- */
+typedef enum
+{
+	LED1 = 0, LED2 = 1
+} Led_TypeDef;
+
+typedef enum
+{
+	BUTTON1 = 0, BUTTON2 = 1
+} Button_TypeDef;
+
+typedef enum
+{
+	BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1
+} ButtonMode_TypeDef;
+
 typedef enum
 {
 	CC3000_DMA_TX = 0, CC3000_DMA_RX = 1
@@ -40,6 +52,15 @@ typedef enum
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
+void Delay(__IO uint32_t nTime);
+void TimingDelay_Decrement(void);
+
+void LED_Init(Led_TypeDef Led);
+void LED_On(Led_TypeDef Led);
+void LED_Off(Led_TypeDef Led);
+void LED_Toggle(Led_TypeDef Led);
+void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
+uint32_t BUTTON_GetState(Button_TypeDef Button);
 
 /* CC3000 Hardware related methods */
 void CC3000_SPI_DeInit(void);

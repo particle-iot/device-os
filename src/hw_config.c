@@ -18,6 +18,20 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+static __IO uint32_t TimingDelay;
+
+GPIO_TypeDef* GPIO_PORT[LEDn] = {LED1_GPIO_PORT, LED2_GPIO_PORT};
+const uint16_t GPIO_PIN[LEDn] = {LED1_PIN, LED2_PIN};
+const uint32_t GPIO_CLK[LEDn] = {LED1_GPIO_CLK, LED2_GPIO_CLK};
+
+GPIO_TypeDef* BUTTON_PORT[BUTTONn] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
+const uint16_t BUTTON_PIN[BUTTONn] = {BUTTON1_PIN, BUTTON2_PIN};
+const uint32_t BUTTON_CLK[BUTTONn] = {BUTTON1_GPIO_CLK, BUTTON2_GPIO_CLK};
+
+const uint16_t BUTTON_EXTI_LINE[BUTTONn] = {BUTTON1_EXTI_LINE, BUTTON2_EXTI_LINE};
+const uint16_t BUTTON_PORT_SOURCE[BUTTONn] = {BUTTON1_EXTI_PORT_SOURCE, BUTTON2_EXTI_PORT_SOURCE};
+const uint16_t BUTTON_PIN_SOURCE[BUTTONn] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EXTI_PIN_SOURCE};
+const uint16_t BUTTON_IRQn[BUTTONn] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -38,6 +52,16 @@ void Set_System(void)
 
 	/* NVIC configuration */
 	NVIC_Configuration();
+
+	/* Configure the LEDs and set the default states */
+    LED_Init(LED1);
+    LED_Off(LED1);
+    LED_Init(LED2);
+    LED_Off(LED2);
+
+    /* Configure the Buttons */
+    //PB_Init(BUTTON1, BUTTON_MODE_GPIO);
+    //PB_Init(BUTTON2, BUTTON_MODE_GPIO);
 
 	/* Setup SysTick Timer for 500 msec interrupts  */
 	if (SysTick_Config(SystemCoreClock / 2))
@@ -60,6 +84,157 @@ void NVIC_Configuration(void)
 {
 	/* Set the Vector Table base location at 0x0000 */
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0000);
+}
+
+/*******************************************************************************
+ * Function Name  : Delay
+ * Description    : Inserts a delay time.
+ * Input          : nTime: specifies the delay time length, in seconds.
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void Delay(uint32_t nTime) {
+	TimingDelay = nTime;
+
+	while (TimingDelay != 0)
+		;
+}
+
+/*******************************************************************************
+ * Function Name  : TimingDelay_Decrement
+ * Description    : Decrements the TimingDelay variable.
+ * Input          : None
+ * Output         : TimingDelay
+ * Return         : None
+ *******************************************************************************/
+void TimingDelay_Decrement(void) {
+	if (TimingDelay != 0x00) {
+		TimingDelay--;
+	}
+}
+
+/**
+  * @brief  Configures LED GPIO.
+  * @param  Led: Specifies the Led to be configured.
+  *   This parameter can be one of following parameters:
+  *     @arg LED1
+  *     @arg LED2
+  * @retval None
+  */
+void LED_Init(Led_TypeDef Led)
+{
+    GPIO_InitTypeDef  GPIO_InitStructure;
+
+    /* Enable the GPIO_LED Clock */
+    RCC_APB2PeriphClockCmd(GPIO_CLK[Led], ENABLE);
+
+    /* Configure the GPIO_LED pin */
+    GPIO_InitStructure.GPIO_Pin = GPIO_PIN[Led];
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+
+    GPIO_Init(GPIO_PORT[Led], &GPIO_InitStructure);
+}
+
+/**
+  * @brief  Turns selected LED On.
+  * @param  Led: Specifies the Led to be set on.
+  *   This parameter can be one of following parameters:
+  *     @arg LED1
+  *     @arg LED2
+  * @retval None
+  */
+void LED_On(Led_TypeDef Led)
+{
+    GPIO_PORT[Led]->BRR = GPIO_PIN[Led];
+}
+
+/**
+  * @brief  Turns selected LED Off.
+  * @param  Led: Specifies the Led to be set off.
+  *   This parameter can be one of following parameters:
+  *     @arg LED1
+  *     @arg LED2
+  * @retval None
+  */
+void LED_Off(Led_TypeDef Led)
+{
+    GPIO_PORT[Led]->BSRR = GPIO_PIN[Led];
+}
+
+/**
+  * @brief  Toggles the selected LED.
+  * @param  Led: Specifies the Led to be toggled.
+  *   This parameter can be one of following parameters:
+  *     @arg LED1
+  *     @arg LED2
+  * @retval None
+  */
+void LED_Toggle(Led_TypeDef Led)
+{
+    GPIO_PORT[Led]->ODR ^= GPIO_PIN[Led];
+}
+
+/**
+  * @brief  Configures Button GPIO and EXTI Line.
+  * @param  Button: Specifies the Button to be configured.
+  *   This parameter can be one of following parameters:
+  *     @arg BUTTON1: Button1
+  *     @arg BUTTON2: Button2
+  * @param  Button_Mode: Specifies Button mode.
+  *   This parameter can be one of following parameters:
+  *     @arg BUTTON_MODE_GPIO: Button will be used as simple IO
+  *     @arg BUTTON_MODE_EXTI: Button will be connected to EXTI line with interrupt
+  *                     generation capability
+  * @retval None
+  */
+void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    EXTI_InitTypeDef EXTI_InitStructure;
+    NVIC_InitTypeDef NVIC_InitStructure;
+
+    /* Enable the BUTTON Clock */
+    RCC_APB2PeriphClockCmd(BUTTON_CLK[Button] | RCC_APB2Periph_AFIO, ENABLE);
+
+    /* Configure Button pin as input floating */
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_InitStructure.GPIO_Pin = BUTTON_PIN[Button];
+    GPIO_Init(BUTTON_PORT[Button], &GPIO_InitStructure);
+
+    if (Button_Mode == BUTTON_MODE_EXTI)
+    {
+        /* Connect Button EXTI Line to Button GPIO Pin */
+        GPIO_EXTILineConfig(BUTTON_PORT_SOURCE[Button], BUTTON_PIN_SOURCE[Button]);
+
+        /* Configure Button EXTI line */
+        EXTI_InitStructure.EXTI_Line = BUTTON_EXTI_LINE[Button];
+        EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+		EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;	//EXTI_Trigger_Rising;
+        EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+        EXTI_Init(&EXTI_InitStructure);
+
+        /* Enable and set Button EXTI Interrupt to the lowest priority */
+        NVIC_InitStructure.NVIC_IRQChannel = BUTTON_IRQn[Button];
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+        NVIC_Init(&NVIC_InitStructure);
+    }
+}
+
+/**
+  * @brief  Returns the selected Button state.
+  * @param  Button: Specifies the Button to be checked.
+  *   This parameter can be one of following parameters:
+  *     @arg BUTTON1: Button1
+  *     @arg BUTTON2: Button2
+  * @retval The Button GPIO pin value.
+  */
+uint32_t BUTTON_GetState(Button_TypeDef Button)
+{
+    return GPIO_ReadInputDataBit(BUTTON_PORT[Button], BUTTON_PIN[Button]);
 }
 
 /**
@@ -141,7 +316,7 @@ void CC3000_SPI_Init(void)
 	SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
 	SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
 	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;
+	SPI_InitStructure.SPI_BaudRatePrescaler = CC3000_SPI_BAUDRATE_PRESCALER;
 	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
 	SPI_InitStructure.SPI_CRCPolynomial = 7;
 	SPI_Init(CC3000_SPI, &SPI_InitStructure);
