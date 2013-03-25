@@ -26,14 +26,15 @@ Development Environment Setup:
 6. Follow the screenshots in the folder "eclipse_marvin_setup"(Steps: 1 to 30)
    PS: The screenshots are not available within the GIT project(probably need to be put in Dropbox).
    
-Important Project Settings when building for various boards:
-In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Compiler -> Preprocessor -> Within Defined symbols(-D) :
-* Add "STM32F10X_MD_VL" when building for STM32F100C8 based TV-1 board or STM32VLDiscovery board.
-* Add "STM32F10X_MD" when building for STM32F103C8 based Core board or STM32-H103 board.
+7. Important Project Settings when building for various platforms/boards:
 
-In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Scripy file (-T), Browse & select :
-* linker file "linker_stm32f10x_md_vl.ld" when building for STM32F100C8 based TV-1 board or STM32VLDiscovery board.
-* linker file "linker_stm32f10x_md.ld" when building for STM32F103C8 based Core board or STM32-H103 board.
+In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Compiler -> Preprocessor -> Defined symbols(-D), Add the following :
+* "STM32F10X_MD_VL" when building for STM32F100C8 based TV-1 board or STM32VLDiscovery board.
+* "STM32F10X_MD" when building for STM32F103C8 based Core board or STM32-H103 board.
+
+In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T), Browse & select linker file :
+* "linker_stm32f10x_md_vl.ld" when building for STM32F100C8 based TV-1 board or STM32VLDiscovery board.
+* "linker_stm32f10x_md.ld" when building for STM32F103C8 based Core board or STM32-H103 board.
 
 
 
