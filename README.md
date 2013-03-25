@@ -28,6 +28,14 @@ Development Environment Setup:
    
 7. Important Project Settings when building for various platforms/boards:
 
+In platforn_config.h, Uncomment the line corresponding to the platform/board used,
+eg. when building for TV-1 board, except "#define USE_SPARK_TV1" all other #defines should be commented:
+#define USE_SPARK_TV1
+//#define USE_SPARK_TV2
+//#define USE_SPARK_CORE
+//#define USE_SPARKFUN_H103
+//#define USE_ST_VLDISCOVERY
+
 In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Compiler -> Preprocessor -> Defined symbols(-D), Add the following :
 * "STM32F10X_MD_VL" when building for STM32F100C8 based TV-1 board or STM32VLDiscovery board.
 * "STM32F10X_MD" when building for STM32F103C8 based Core board or STM32-H103 board.
