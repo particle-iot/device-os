@@ -148,7 +148,7 @@ void SysTick_Handler(void)
 {
 	//TimingDelay_Decrement();
 
-	/* Toggle the LED1 every 500ms */
+	/* Toggle the LED1 every 100ms */
 	LED_Toggle(LED1);
 
 	hci_unsolicited_event_handler();
