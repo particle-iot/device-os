@@ -303,7 +303,7 @@
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 
-#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
+#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 #elif defined (USE_ST_VLDISCOVERY)
 //LEDs

@@ -35,6 +35,8 @@ int main(void)
 {
 	Set_System();
 
+	CC3000_Write_Enable_Pin(WLAN_DISABLE);
+
 	/******************* WLAN Test Code ********************/
 	//
 	// Configure & initialize CC3000 SPI_DMA Interface
