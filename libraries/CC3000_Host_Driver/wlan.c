@@ -42,7 +42,7 @@
 #include <string.h>
 #include "wlan.h"
 #include "hci.h"
-#include "spi.h"
+#include "cc3000_spi.h"
 #include "socket.h"
 #include "nvmem.h"
 #include "security.h"

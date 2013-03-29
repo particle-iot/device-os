@@ -40,14 +40,16 @@ typedef enum
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros ------------------------------------------------------------*/
-/**
- * @brief  Select CC3000: ChipSelect pin low
- */
-#define CC3000_CS_LOW()     GPIO_ResetBits(CC3000_SPI_CS_GPIO_PORT, CC3000_SPI_CS_PIN)
-/**
- * @brief  Deselect CC3000: ChipSelect pin high
- */
-#define CC3000_CS_HIGH()    GPIO_SetBits(CC3000_SPI_CS_GPIO_PORT, CC3000_SPI_CS_PIN)
+
+/* Select CC3000: ChipSelect pin low */
+#define CC3000_CS_LOW()		GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN)
+/* Deselect CC3000: ChipSelect pin high */
+#define CC3000_CS_HIGH()	GPIO_SetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN)
+
+/* Select sFLASH: Chip Select pin low */
+#define sFLASH_CS_LOW()		GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
+/* Deselect sFLASH: Chip Select pin high */
+#define sFLASH_CS_HIGH()	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
 
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
@@ -74,6 +76,10 @@ long CC3000_Read_Interrupt_Pin(void);
 void CC3000_Interrupt_Enable(void);
 void CC3000_Interrupt_Disable(void);
 void CC3000_Write_Enable_Pin(unsigned char val);
+
+/* Serial Flash Hardware related methods */
+void sFLASH_SPI_DeInit(void);
+void sFLASH_SPI_Init(void);
 
 /* External variables --------------------------------------------------------*/
 extern unsigned char wlan_rx_buffer[];
