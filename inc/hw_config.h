@@ -65,7 +65,7 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 uint32_t BUTTON_GetState(Button_TypeDef Button);
 
 /* CC3000 Hardware related methods */
-void CC3000_SPI_DeInit(void);
+void CC3000_WIFI_Init(void);
 void CC3000_SPI_Init(void);
 void CC3000_DMA_Config(CC3000_DMADirection_TypeDef Direction, uint8_t* buffer, uint16_t NumData);
 void CC3000_SPI_DMA_Init(void);

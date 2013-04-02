@@ -170,13 +170,7 @@ void SysTick_Handler(void)
  *******************************************************************************/
 void CC3000_SPI_TX_DMA_IRQHandler(void)
 {
-	if (DMA_GetFlagStatus(CC3000_SPI_TX_DMA_TCFLAG ))
-	{
-		/* Clear DMA TX Channel Transfer complete flag */
-		DMA_ClearFlag(CC3000_SPI_TX_DMA_TCFLAG );
-
-		SPI_DMA_IntHandler();
-	}
+	SPI_DMA_IntHandler();
 }
 
 /**
@@ -188,8 +182,8 @@ void CC3000_WIFI_INT_EXTI_IRQHandler(void)
 {
 	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
 	{
-		/* Clear the EXTI line pending bit */
-		EXTI_ClearITPendingBit(CC3000_WIFI_INT_EXTI_LINE );
+		/* Clear the EXTI line pending flag */
+		EXTI_ClearFlag(CC3000_WIFI_INT_EXTI_LINE );
 
 		SPI_EXTI_IntHandler();
 	}

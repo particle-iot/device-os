@@ -11,8 +11,8 @@
 
 #include "cc3000_spi.h"
 
-unsigned char wlan_rx_buffer[CC3000_RX_BUFFER_SIZE];
-unsigned char wlan_tx_buffer[CC3000_TX_BUFFER_SIZE];
+unsigned char wlan_rx_buffer[SPI_BUFFER_SIZE];	//CC3000_RX_BUFFER_SIZE
+unsigned char wlan_tx_buffer[SPI_BUFFER_SIZE];	//CC3000_TX_BUFFER_SIZE
 
 #define eSPI_STATE_POWERUP				(0)
 #define eSPI_STATE_INITIALIZED			(1)
@@ -177,17 +177,12 @@ static void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, 
 	/* Enable DMA Channels */
 	CC3000_SPI_DMA_Channels(ENABLE);
 
-	//	/* Wait until DMA Transfer Completes */
-	//	while(DMA_GetCurrDataCounter(CC3000_SPI_TX_DMA_CHANNEL));
-	//	while(DMA_GetCurrDataCounter(CC3000_SPI_RX_DMA_CHANNEL));
-
-	/* Wait for DMA TX Channel Transfer Complete */
-	while (!DMA_GetFlagStatus(CC3000_SPI_TX_DMA_TCFLAG ))
+	/* Wait until DMA Transfer Completes */
+	while(DMA_GetCurrDataCounter(CC3000_SPI_TX_DMA_CHANNEL))
 	{
 	}
 
-	/* Wait for DMA RX Channel Transfer Complete */
-	while (!DMA_GetFlagStatus(CC3000_SPI_RX_DMA_TCFLAG ))
+	while(DMA_GetCurrDataCounter(CC3000_SPI_RX_DMA_CHANNEL))
 	{
 	}
 
@@ -226,17 +221,12 @@ static void SpiReadWriteString(uint32_t ulTrueFalse, const uint8_t *ptrData, uin
 	/* Enable DMA Channels */
 	CC3000_SPI_DMA_Channels(ENABLE);
 
-	//	/* Wait until DMA Transfer Completes */
-	//	while(DMA_GetCurrDataCounter(CC3000_SPI_TX_DMA_CHANNEL));
-	//	while(DMA_GetCurrDataCounter(CC3000_SPI_RX_DMA_CHANNEL));
-
-	/* Wait for DMA TX Channel Transfer Complete */
-	while (!DMA_GetFlagStatus(CC3000_SPI_TX_DMA_TCFLAG ))
+	/* Wait until DMA Transfer Completes */
+	while(DMA_GetCurrDataCounter(CC3000_SPI_TX_DMA_CHANNEL))
 	{
 	}
 
-	/* Wait for DMA RX Channel Transfer Complete */
-	while (!DMA_GetFlagStatus(CC3000_SPI_RX_DMA_TCFLAG ))
+	while(DMA_GetCurrDataCounter(CC3000_SPI_RX_DMA_CHANNEL))
 	{
 	}
 
@@ -308,6 +298,7 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		// This is time for first TX/RX transactions over SPI: the IRQ is down - so need to send read buffer size command
 		//
 		SpiFirstWrite(pUserBuffer, usLength);
+
 		//
 		// Due to the fact that we are currently implementing a blocking situation
 		// here we will wait till end of transaction
@@ -332,7 +323,7 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		{
 		}
 
-		SysCtlDelay(9000000);
+		//SysCtlDelay(9000000);
 
 		while (!tSLInformation.ReadWlanInterruptPin())
 		{
@@ -341,12 +332,13 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		sSpiInformation.ulSpiState = eSPI_STATE_WRITE_IRQ;
 		sSpiInformation.pTxPacket = pUserBuffer;
 		sSpiInformation.usTxPacketLength = usLength;
+
 		//
-		// Assert the CS line and wait till SSI IRQ line is active and then initialize write operation
+		// Assert the CS line and wait till IRQ line is active and then initialize write operation
 		//
 		ASSERT_CS();
 
-		SysCtlDelay(90000);
+		//SysCtlDelay(90000);
 
 		while (!tSLInformation.ReadWlanInterruptPin())
 		{
@@ -502,6 +494,9 @@ void SPI_DMA_IntHandler(void)
 		//
 		if (ucTxFinished && ucRxFinished)
 		{
+			/* Clear SPI_DMA Interrupt Pending Flags */
+			DMA_ClearFlag(CC3000_SPI_TX_DMA_TCFLAG | CC3000_SPI_RX_DMA_TCFLAG);
+
 			SpiContReadOperation();
 		}
 	}
@@ -509,6 +504,9 @@ void SPI_DMA_IntHandler(void)
 	{
 		if (ucRxFinished)
 		{
+			/* Clear SPI_DMA Interrupt Pending Flags */
+			DMA_ClearFlag(CC3000_SPI_TX_DMA_TCFLAG | CC3000_SPI_RX_DMA_TCFLAG);
+
 			STREAM_TO_UINT16((char *)(evnt_buff + SPI_HEADER_SIZE), HCI_DATA_LENGTH_OFFSET, data_to_recv);
 
 			//
@@ -537,6 +535,9 @@ void SPI_DMA_IntHandler(void)
 		//
 		if (ucRxFinished)
 		{
+			/* Clear SPI_DMA Interrupt Pending Flags */
+			DMA_ClearFlag(CC3000_SPI_TX_DMA_TCFLAG | CC3000_SPI_RX_DMA_TCFLAG);
+
 			SpiTriggerRxProcessing();
 		}
 	}
@@ -548,6 +549,9 @@ void SPI_DMA_IntHandler(void)
 			while (SPI_I2S_GetFlagStatus(CC3000_SPI, SPI_I2S_FLAG_BSY ) != RESET)
 			{
 			}
+
+			/* Clear SPI_DMA Interrupt Pending Flags */
+			DMA_ClearFlag(CC3000_SPI_TX_DMA_TCFLAG | CC3000_SPI_RX_DMA_TCFLAG);
 
 			DEASSERT_CS();
 
@@ -611,6 +615,7 @@ void SPI_EXTI_IntHandler(void)
 				// Send the data over SPI and wait for complete interrupt to transfer the rest
 				//
 				sSpiInformation.ulSpiState = eSPI_STATE_WRITE_FIRST_PORTION;
+
 				//
 				// Start the DMA and change state
 				//

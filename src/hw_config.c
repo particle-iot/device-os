@@ -238,43 +238,36 @@ uint32_t BUTTON_GetState(Button_TypeDef Button)
 }
 
 /**
- * @brief  DeInitializes the peripherals used by the CC3000_SPI driver.
+ * @brief  Initialize the CC3000 - CS and ENABLE lines.
  * @param  None
  * @retval None
  */
-void CC3000_SPI_DeInit(void)
+void CC3000_WIFI_Init(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	/* CC3000_SPI disable */
-	SPI_Cmd(CC3000_SPI, DISABLE);
-
-	/* DeInitializes the CC3000_SPI */
-	SPI_I2S_DeInit(CC3000_SPI );
-
-	/* CC3000_SPI Peripheral clock disable */
-	RCC_APB2PeriphClockCmd(CC3000_SPI_CLK, DISABLE);
-
-	/* Configure CC3000_SPI pins: SCK */
-	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_SCK_PIN;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(CC3000_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
-
-	/* Configure CC3000_SPI pins: MISO */
-	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_MISO_PIN;
-	GPIO_Init(CC3000_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
-
-	/* Configure CC3000_SPI pins: MOSI */
-	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_MOSI_PIN;
-	GPIO_Init(CC3000_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
+	/* CC3000_WIFI_CS_GPIO and CC3000_WIFI_EN_GPIO Peripheral clock enable */
+	RCC_APB2PeriphClockCmd(CC3000_WIFI_CS_GPIO_CLK | CC3000_WIFI_EN_GPIO_CLK, ENABLE);
 
 	/* Configure CC3000_WIFI pins: CS */
 	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_CS_PIN;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(CC3000_WIFI_CS_GPIO_PORT, &GPIO_InitStructure);
+
+	/* Deselect CC3000 */
+	CC3000_CS_HIGH();
+
+	/* Configure CC3000_WIFI pins: Enable */
+	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_EN_PIN;
+	GPIO_Init(CC3000_WIFI_EN_GPIO_PORT, &GPIO_InitStructure);
+
+	/* Disable CC3000 */
+	CC3000_Write_Enable_Pin(WLAN_DISABLE);
 }
 
 /**
- * @brief  Initializes the peripherals used by the CC3000_SPI driver.
+ * @brief  Initialize and configure the SPI peripheral used by CC3000.
  * @param  None
  * @retval None
  */
@@ -283,8 +276,8 @@ void CC3000_SPI_Init(void)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	SPI_InitTypeDef SPI_InitStructure;
 
-	/* CC3000_SPI_SCK_GPIO, CC3000_SPI_MOSI_GPIO, CC3000_SPI_MISO_GPIO and CC3000_WIFI_CS_GPIO Peripheral clock enable */
-	RCC_APB2PeriphClockCmd(CC3000_SPI_SCK_GPIO_CLK | CC3000_SPI_MOSI_GPIO_CLK | CC3000_SPI_MISO_GPIO_CLK | CC3000_WIFI_CS_GPIO_CLK, ENABLE);
+	/* CC3000_SPI_SCK_GPIO, CC3000_SPI_MOSI_GPIO and CC3000_SPI_MISO_GPIO Peripheral clock enable */
+	RCC_APB2PeriphClockCmd(CC3000_SPI_SCK_GPIO_CLK | CC3000_SPI_MOSI_GPIO_CLK | CC3000_SPI_MISO_GPIO_CLK, ENABLE);
 
 	/* CC3000_SPI Peripheral clock enable */
 	RCC_APB2PeriphClockCmd(CC3000_SPI_CLK, ENABLE);
@@ -303,11 +296,6 @@ void CC3000_SPI_Init(void)
 	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_MISO_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(CC3000_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
-
-	/* Configure CC3000_WIFI pins: CS */
-	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_CS_PIN;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_Init(CC3000_WIFI_CS_GPIO_PORT, &GPIO_InitStructure);
 
 	/* CC3000_SPI Config */
 	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
@@ -378,9 +366,8 @@ void CC3000_SPI_DMA_Init(void)
 	CC3000_DMA_Config(CC3000_DMA_RX, (uint8_t*) wlan_rx_buffer, 0);
 	CC3000_DMA_Config(CC3000_DMA_TX, (uint8_t*) wlan_tx_buffer, 0);
 
-	/* Enable the DMA Channels Interrupts */
+	/* Enable SPI DMA TX Channel Transfer Complete Interrupt */
 	DMA_ITConfig(CC3000_SPI_TX_DMA_CHANNEL, DMA_IT_TC, ENABLE);
-	//  DMA_ITConfig(CC3000_SPI_RX_DMA_CHANNEL, DMA_IT_TC, ENABLE);
 
 	/* Enable SPI DMA request */
 	SPI_I2S_DMACmd(CC3000_SPI, SPI_I2S_DMAReq_Rx, ENABLE);
@@ -459,17 +446,6 @@ void CC3000_Interrupt_Disable(void)
 
 void CC3000_Write_Enable_Pin(unsigned char val)
 {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	/* CC3000_WIFI_EN_GPIO Peripheral clock enable */
-	RCC_APB2PeriphClockCmd(CC3000_WIFI_EN_GPIO_CLK, ENABLE);
-
-	/* Configure CC3000_WIFI pins: Enable */
-	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_EN_PIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_Init(CC3000_WIFI_EN_GPIO_PORT, &GPIO_InitStructure);
-
 	/* Set WLAN Enable/Disable */
 	if (val != WLAN_DISABLE)
 	{

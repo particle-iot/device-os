@@ -35,9 +35,12 @@ int main(void)
 {
 	Set_System();
 
-	CC3000_Write_Enable_Pin(WLAN_DISABLE);
-
 	/******************* WLAN Test Code ********************/
+	//
+	//Initialize CC3000's CS, EN and INT pins to their default states
+	//
+	CC3000_WIFI_Init();
+
 	//
 	// Configure & initialize CC3000 SPI_DMA Interface
 	//
@@ -54,7 +57,7 @@ int main(void)
 	//
 	wlan_start(0);
 
-	//WLAN device started
+	//WLAN device initalization completed
 	LED_On(LED2);
 
 	//

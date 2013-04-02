@@ -13,12 +13,12 @@
 #define __PLATFORM_CONFIG_H
 
 /* Uncomment the line corresponding to the STM32 board used */
-#if !defined (USE_SPARK_TV1) &&  !defined (USE_SPARK_TV2) &&  !defined (USE_SPARK_CORE) &&  !defined (USE_SPARKFUN_H103) &&  !defined (USE_ST_VLDISCOVERY)
+#if !defined (USE_SPARK_TV1) &&  !defined (USE_SPARK_TV2) &&  !defined (USE_SPARK_CORE) &&  !defined (USE_OLIMEX_H103) &&  !defined (USE_ST_VLDISCOVERY)
 //#define USE_SPARK_TV1
 //#define USE_SPARK_TV2
 //#define USE_SPARK_CORE
-#define USE_SPARKFUN_H103
-//#define USE_ST_VLDISCOVERY
+//#define USE_OLIMEX_H103
+#define USE_ST_VLDISCOVERY
 #endif
 
 /* Includes ------------------------------------------------------------------*/
@@ -290,7 +290,7 @@
 
 #define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
 
-#elif defined (USE_SPARKFUN_H103)
+#elif defined (USE_OLIMEX_H103)
 //LEDs
 #define LEDn                           		2
 #define LED1_PIN                         	GPIO_Pin_12
@@ -357,7 +357,7 @@
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 
-#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
+#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
@@ -419,18 +419,18 @@
 #define CC3000_WIFI_CS_PIN					GPIO_Pin_4					/* PA.04 */
 #define CC3000_WIFI_CS_GPIO_PORT			GPIOA						/* GPIOA */
 #define CC3000_WIFI_CS_GPIO_CLK				RCC_APB2Periph_GPIOA
-#define CC3000_WIFI_EN_PIN					GPIO_Pin_0					/* PA.00 */
-#define CC3000_WIFI_EN_GPIO_PORT			GPIOA						/* GPIOA */
-#define CC3000_WIFI_EN_GPIO_CLK				RCC_APB2Periph_GPIOA
-#define CC3000_WIFI_INT_PIN					GPIO_Pin_15					/* PC.15 */
-#define CC3000_WIFI_INT_GPIO_PORT			GPIOC						/* GPIOC */
-#define CC3000_WIFI_INT_GPIO_CLK			RCC_APB2Periph_GPIOC
+#define CC3000_WIFI_EN_PIN					GPIO_Pin_1	              	/* PB.01 */
+#define CC3000_WIFI_EN_GPIO_PORT			GPIOB                       /* GPIOB */
+#define CC3000_WIFI_EN_GPIO_CLK				RCC_APB2Periph_GPIOB
+#define CC3000_WIFI_INT_PIN					GPIO_Pin_0	             	/* PB.00 */
+#define CC3000_WIFI_INT_GPIO_PORT			GPIOB                       /* GPIOB */
+#define CC3000_WIFI_INT_GPIO_CLK			RCC_APB2Periph_GPIOB
 
-#define CC3000_WIFI_INT_EXTI_LINE           EXTI_Line15
-#define CC3000_WIFI_INT_EXTI_PORT_SOURCE    GPIO_PortSourceGPIOC
-#define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource15
-#define CC3000_WIFI_INT_EXTI_IRQn           EXTI15_10_IRQn
-#define CC3000_WIFI_INT_EXTI_IRQHandler     EXTI15_10_IRQHandler
+#define CC3000_WIFI_INT_EXTI_LINE           EXTI_Line0
+#define CC3000_WIFI_INT_EXTI_PORT_SOURCE    GPIO_PortSourceGPIOB
+#define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource0
+#define CC3000_WIFI_INT_EXTI_IRQn           EXTI0_IRQn
+#define CC3000_WIFI_INT_EXTI_IRQHandler     EXTI0_IRQHandler
 
 #define CC3000_SPI_DMA_CLK                  RCC_AHBPeriph_DMA1
 #define CC3000_SPI_RX_DMA_CHANNEL           DMA1_Channel2
@@ -444,7 +444,7 @@
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 
-#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_2
+#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_8
 
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
