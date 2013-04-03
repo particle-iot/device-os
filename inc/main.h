@@ -17,6 +17,7 @@
 #include "hw_config.h"
 #include "hci.h"
 #include "wlan.h"
+#include "nvmem.h"
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -25,6 +26,7 @@
 /* Exported macro ------------------------------------------------------------*/
 
 /* Exported functions ------------------------------------------------------- */
+void Start_Smart_Config(void);
 
 /* WLAN Application related callbacks passed to wlan_init */
 void WLAN_Async_Callback(long lEventType, char *data, unsigned char length);
