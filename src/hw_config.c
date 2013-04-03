@@ -280,7 +280,7 @@ void CC3000_SPI_Init(void)
 	RCC_APB2PeriphClockCmd(CC3000_SPI_SCK_GPIO_CLK | CC3000_SPI_MOSI_GPIO_CLK | CC3000_SPI_MISO_GPIO_CLK, ENABLE);
 
 	/* CC3000_SPI Peripheral clock enable */
-	RCC_APB2PeriphClockCmd(CC3000_SPI_CLK, ENABLE);
+	CC3000_SPI_CLK_CMD(CC3000_SPI_CLK, ENABLE);
 
 	/* Configure CC3000_SPI pins: SCK */
 	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_SCK_PIN;
@@ -473,7 +473,7 @@ void sFLASH_SPI_DeInit(void)
   SPI_I2S_DeInit(sFLASH_SPI);
 
   /* sFLASH_SPI Peripheral clock disable */
-  RCC_APB2PeriphClockCmd(sFLASH_SPI_CLK, DISABLE);
+  sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, DISABLE);
 
   /* Configure sFLASH_SPI pins: SCK */
   GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
@@ -509,7 +509,7 @@ void sFLASH_SPI_Init(void)
                          sFLASH_SPI_SCK_GPIO_CLK, ENABLE);
 
   /* sFLASH_SPI Periph clock enable */
-  RCC_APB2PeriphClockCmd(sFLASH_SPI_CLK, ENABLE);
+  sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, ENABLE);
 
   /* Configure sFLASH_SPI pins: SCK */
   GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;

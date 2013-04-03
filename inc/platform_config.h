@@ -59,6 +59,7 @@
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
 #define CC3000_SPI_CLK						RCC_APB2Periph_SPI1
+#define CC3000_SPI_CLK_CMD					RCC_APB2PeriphClockCmd
 #define CC3000_SPI_SCK_PIN					GPIO_Pin_5					/* PA.05 */
 #define CC3000_SPI_SCK_GPIO_PORT			GPIOA						/* GPIOA */
 #define CC3000_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOA
@@ -101,6 +102,7 @@
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
 #define sFLASH_SPI_CLK						RCC_APB1Periph_SPI2
+#define sFLASH_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
 #define sFLASH_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
 #define sFLASH_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
@@ -146,6 +148,7 @@
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
 #define CC3000_SPI_CLK						RCC_APB2Periph_SPI1
+#define CC3000_SPI_CLK_CMD					RCC_APB2PeriphClockCmd
 #define CC3000_SPI_SCK_PIN					GPIO_Pin_5                  /* PA.05 */
 #define CC3000_SPI_SCK_GPIO_PORT			GPIOA                       /* GPIOA */
 #define CC3000_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOA
@@ -188,6 +191,7 @@
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
 #define sFLASH_SPI_CLK						RCC_APB1Periph_SPI2
+#define sFLASH_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
 #define sFLASH_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
 #define sFLASH_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
@@ -233,6 +237,7 @@
 //CC3000 Interface pins
 #define CC3000_SPI							SPI2
 #define CC3000_SPI_CLK						RCC_APB1Periph_SPI2
+#define CC3000_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
 #define CC3000_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
 #define CC3000_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
 #define CC3000_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
@@ -275,6 +280,7 @@
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
 #define sFLASH_SPI_CLK						RCC_APB1Periph_SPI2
+#define sFLASH_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
 #define sFLASH_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
 #define sFLASH_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
@@ -320,6 +326,7 @@
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
 #define CC3000_SPI_CLK						RCC_APB2Periph_SPI1
+#define CC3000_SPI_CLK_CMD					RCC_APB2PeriphClockCmd
 #define CC3000_SPI_SCK_PIN					GPIO_Pin_5                  /* PA.05 */
 #define CC3000_SPI_SCK_GPIO_PORT			GPIOA                       /* GPIOA */
 #define CC3000_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOA
@@ -362,6 +369,7 @@
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
 #define sFLASH_SPI_CLK						RCC_APB1Periph_SPI2
+#define sFLASH_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
 #define sFLASH_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
 #define sFLASH_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
@@ -407,6 +415,7 @@
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
 #define CC3000_SPI_CLK						RCC_APB2Periph_SPI1
+#define CC3000_SPI_CLK_CMD					RCC_APB2PeriphClockCmd
 #define CC3000_SPI_SCK_PIN					GPIO_Pin_5					/* PA.05 */
 #define CC3000_SPI_SCK_GPIO_PORT			GPIOA						/* GPIOA */
 #define CC3000_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOA
@@ -449,6 +458,7 @@
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
 #define sFLASH_SPI_CLK						RCC_APB1Periph_SPI2
+#define sFLASH_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
 #define sFLASH_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
 #define sFLASH_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
