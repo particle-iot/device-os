@@ -251,7 +251,7 @@ void CC3000_WIFI_Init(void)
 
 	/* Configure CC3000_WIFI pins: CS */
 	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_CS_PIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(CC3000_WIFI_CS_GPIO_PORT, &GPIO_InitStructure);
 
@@ -284,7 +284,7 @@ void CC3000_SPI_Init(void)
 
 	/* Configure CC3000_SPI pins: SCK */
 	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_SCK_PIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_Init(CC3000_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 

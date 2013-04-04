@@ -97,7 +97,7 @@
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 
-#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_2
+#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_8
 
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
@@ -112,9 +112,9 @@
 #define sFLASH_SPI_MOSI_PIN					GPIO_Pin_15					/* PB.15 */
 #define sFLASH_SPI_MOSI_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_MOSI_GPIO_CLK			RCC_APB2Periph_GPIOB
-#define sFLASH_MEM_CS_PIN					0//GPIO_Pin_9					/* PB.09 */
-#define sFLASH_MEM_CS_GPIO_PORT				0//GPIOB						/* GPIOB */
-#define sFLASH_MEM_CS_GPIO_CLK				0//RCC_APB2Periph_GPIOB
+#define sFLASH_MEM_CS_PIN					GPIO_Pin_9					/* PB.09 */
+#define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
+#define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
 #define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_2
 
@@ -186,7 +186,7 @@
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 
-#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
+#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
@@ -250,16 +250,16 @@
 #define CC3000_WIFI_CS_PIN					GPIO_Pin_12					/* PB.12 */
 #define CC3000_WIFI_CS_GPIO_PORT			GPIOB						/* GPIOB */
 #define CC3000_WIFI_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
-#define CC3000_WIFI_EN_PIN					GPIO_Pin_13					/* PC.13 */
-#define CC3000_WIFI_EN_GPIO_PORT			GPIOC						/* GPIOC */
-#define CC3000_WIFI_EN_GPIO_CLK				RCC_APB2Periph_GPIOC
-#define CC3000_WIFI_INT_PIN					GPIO_Pin_14					/* PC.14 */
-#define CC3000_WIFI_INT_GPIO_PORT			GPIOC						/* GPIOC */
-#define CC3000_WIFI_INT_GPIO_CLK			RCC_APB2Periph_GPIOC
+#define CC3000_WIFI_EN_PIN					GPIO_Pin_8					/* PB.08 */
+#define CC3000_WIFI_EN_GPIO_PORT			GPIOB						/* GPIOB */
+#define CC3000_WIFI_EN_GPIO_CLK				RCC_APB2Periph_GPIOB
+#define CC3000_WIFI_INT_PIN					GPIO_Pin_11					/* PB.11 */
+#define CC3000_WIFI_INT_GPIO_PORT			GPIOB						/* GPIOB */
+#define CC3000_WIFI_INT_GPIO_CLK			RCC_APB2Periph_GPIOB
 
-#define CC3000_WIFI_INT_EXTI_LINE           EXTI_Line14
-#define CC3000_WIFI_INT_EXTI_PORT_SOURCE    GPIO_PortSourceGPIOC
-#define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource14
+#define CC3000_WIFI_INT_EXTI_LINE           EXTI_Line11
+#define CC3000_WIFI_INT_EXTI_PORT_SOURCE    GPIO_PortSourceGPIOB
+#define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource11
 #define CC3000_WIFI_INT_EXTI_IRQn           EXTI15_10_IRQn
 #define CC3000_WIFI_INT_EXTI_IRQHandler     EXTI15_10_IRQHandler
 
@@ -275,7 +275,7 @@
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4000380C)	/* SPI2_BASE | 0x0C */
 
-#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
+#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
@@ -379,9 +379,9 @@
 #define sFLASH_SPI_MOSI_PIN					GPIO_Pin_15					/* PB.15 */
 #define sFLASH_SPI_MOSI_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_MOSI_GPIO_CLK			RCC_APB2Periph_GPIOB
-#define sFLASH_MEM_CS_PIN					0//GPIO_Pin_9					/* PB.09 */
-#define sFLASH_MEM_CS_GPIO_PORT				0//GPIOB						/* GPIOB */
-#define sFLASH_MEM_CS_GPIO_CLK				0//RCC_APB2Periph_GPIOB
+#define sFLASH_MEM_CS_PIN					GPIO_Pin_9					/* PB.09 */
+#define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
+#define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
 #define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
 
@@ -413,45 +413,45 @@
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
 
 //CC3000 Interface pins
-#define CC3000_SPI							SPI1
-#define CC3000_SPI_CLK						RCC_APB2Periph_SPI1
-#define CC3000_SPI_CLK_CMD					RCC_APB2PeriphClockCmd
-#define CC3000_SPI_SCK_PIN					GPIO_Pin_5					/* PA.05 */
-#define CC3000_SPI_SCK_GPIO_PORT			GPIOA						/* GPIOA */
-#define CC3000_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOA
-#define CC3000_SPI_MISO_PIN					GPIO_Pin_6					/* PA.06 */
-#define CC3000_SPI_MISO_GPIO_PORT			GPIOA						/* GPIOA */
-#define CC3000_SPI_MISO_GPIO_CLK			RCC_APB2Periph_GPIOA
-#define CC3000_SPI_MOSI_PIN					GPIO_Pin_7					/* PA.07 */
-#define CC3000_SPI_MOSI_GPIO_PORT			GPIOA						/* GPIOA */
-#define CC3000_SPI_MOSI_GPIO_CLK			RCC_APB2Periph_GPIOA
-#define CC3000_WIFI_CS_PIN					GPIO_Pin_4					/* PA.04 */
-#define CC3000_WIFI_CS_GPIO_PORT			GPIOA						/* GPIOA */
-#define CC3000_WIFI_CS_GPIO_CLK				RCC_APB2Periph_GPIOA
-#define CC3000_WIFI_EN_PIN					GPIO_Pin_1	              	/* PB.01 */
-#define CC3000_WIFI_EN_GPIO_PORT			GPIOB                       /* GPIOB */
+#define CC3000_SPI							SPI2
+#define CC3000_SPI_CLK						RCC_APB1Periph_SPI2
+#define CC3000_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
+#define CC3000_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
+#define CC3000_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
+#define CC3000_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
+#define CC3000_SPI_MISO_PIN					GPIO_Pin_14					/* PB.14 */
+#define CC3000_SPI_MISO_GPIO_PORT			GPIOB						/* GPIOB */
+#define CC3000_SPI_MISO_GPIO_CLK			RCC_APB2Periph_GPIOB
+#define CC3000_SPI_MOSI_PIN					GPIO_Pin_15					/* PB.15 */
+#define CC3000_SPI_MOSI_GPIO_PORT			GPIOB						/* GPIOB */
+#define CC3000_SPI_MOSI_GPIO_CLK			RCC_APB2Periph_GPIOB
+#define CC3000_WIFI_CS_PIN					GPIO_Pin_12					/* PB.12 */
+#define CC3000_WIFI_CS_GPIO_PORT			GPIOB						/* GPIOB */
+#define CC3000_WIFI_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
+#define CC3000_WIFI_EN_PIN					GPIO_Pin_8					/* PB.08 */
+#define CC3000_WIFI_EN_GPIO_PORT			GPIOB						/* GPIOB */
 #define CC3000_WIFI_EN_GPIO_CLK				RCC_APB2Periph_GPIOB
-#define CC3000_WIFI_INT_PIN					GPIO_Pin_0	             	/* PB.00 */
-#define CC3000_WIFI_INT_GPIO_PORT			GPIOB                       /* GPIOB */
+#define CC3000_WIFI_INT_PIN					GPIO_Pin_11					/* PB.11 */
+#define CC3000_WIFI_INT_GPIO_PORT			GPIOB						/* GPIOB */
 #define CC3000_WIFI_INT_GPIO_CLK			RCC_APB2Periph_GPIOB
 
-#define CC3000_WIFI_INT_EXTI_LINE           EXTI_Line0
+#define CC3000_WIFI_INT_EXTI_LINE           EXTI_Line11
 #define CC3000_WIFI_INT_EXTI_PORT_SOURCE    GPIO_PortSourceGPIOB
-#define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource0
-#define CC3000_WIFI_INT_EXTI_IRQn           EXTI0_IRQn
-#define CC3000_WIFI_INT_EXTI_IRQHandler     EXTI0_IRQHandler
+#define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource11
+#define CC3000_WIFI_INT_EXTI_IRQn           EXTI15_10_IRQn
+#define CC3000_WIFI_INT_EXTI_IRQHandler     EXTI15_10_IRQHandler
 
 #define CC3000_SPI_DMA_CLK                  RCC_AHBPeriph_DMA1
-#define CC3000_SPI_RX_DMA_CHANNEL           DMA1_Channel2
-#define CC3000_SPI_TX_DMA_CHANNEL           DMA1_Channel3
-#define CC3000_SPI_RX_DMA_TCFLAG            DMA1_FLAG_TC2
-#define CC3000_SPI_TX_DMA_TCFLAG            DMA1_FLAG_TC3
-#define CC3000_SPI_RX_DMA_IRQn           	DMA1_Channel2_IRQn
-#define CC3000_SPI_TX_DMA_IRQn           	DMA1_Channel3_IRQn
-#define CC3000_SPI_RX_DMA_IRQHandler		DMA1_Channel2_IRQHandler
-#define CC3000_SPI_TX_DMA_IRQHandler		DMA1_Channel3_IRQHandler
+#define CC3000_SPI_RX_DMA_CHANNEL           DMA1_Channel4
+#define CC3000_SPI_TX_DMA_CHANNEL           DMA1_Channel5
+#define CC3000_SPI_RX_DMA_TCFLAG            DMA1_FLAG_TC4
+#define CC3000_SPI_TX_DMA_TCFLAG            DMA1_FLAG_TC5
+#define CC3000_SPI_RX_DMA_IRQn           	DMA1_Channel4_IRQn
+#define CC3000_SPI_TX_DMA_IRQn           	DMA1_Channel5_IRQn
+#define CC3000_SPI_RX_DMA_IRQHandler		DMA1_Channel4_IRQHandler
+#define CC3000_SPI_TX_DMA_IRQHandler		DMA1_Channel5_IRQHandler
 
-#define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
+#define CC3000_SPI_DR_BASE                  ((uint32_t)0x4000380C)	/* SPI2_BASE | 0x0C */
 
 #define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_8
 
@@ -468,9 +468,9 @@
 #define sFLASH_SPI_MOSI_PIN					GPIO_Pin_15					/* PB.15 */
 #define sFLASH_SPI_MOSI_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_MOSI_GPIO_CLK			RCC_APB2Periph_GPIOB
-#define sFLASH_MEM_CS_PIN					0//GPIO_Pin_9					/* PB.09 */
-#define sFLASH_MEM_CS_GPIO_PORT				0//GPIOB						/* GPIOB */
-#define sFLASH_MEM_CS_GPIO_CLK				0//RCC_APB2Periph_GPIOB
+#define sFLASH_MEM_CS_PIN					GPIO_Pin_9					/* PB.09 */
+#define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
+#define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
 #define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_2
 
