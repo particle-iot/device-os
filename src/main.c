@@ -56,9 +56,6 @@ int main(void)
 	//
 	wlan_start(0);
 
-	//WLAN device initialization completed
-	LED_On(LED2);
-
 	//
 	// Mask out all non-required events from CC3000
 	//
@@ -121,7 +118,7 @@ void Start_Smart_Config(void)
 		Delay(1);
 	}
 
-	LED_On(LED2);
+	LED_Off(LED2);
 
 	//
 	// Configure to connect automatically to the AP retrieved in the
@@ -155,11 +152,13 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 
 		case HCI_EVNT_WLAN_UNSOL_CONNECT:
 			WLAN_CONNECTED = 1;
+			LED_On(LED2);
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
+			LED_Off(LED2);
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
