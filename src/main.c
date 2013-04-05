@@ -18,14 +18,6 @@ __IO uint8_t WLAN_CONNECTED;
 __IO uint8_t WLAN_DHCP;
 __IO uint8_t WLAN_CAN_SHUTDOWN;
 
-/*
-// WIP! Not tested
-// Simple Config Prefix
-const char aucCC3000_prefix[] = {'T', 'T', 'T'};
-//AES key "smartconfigAES16"
-const unsigned char smartconfigkey[] = {0x73,0x6d,0x61,0x72,0x74,0x63,0x6f,0x6e,0x66,0x69,0x67,0x41,0x45,0x53,0x31,0x36};
-*/
-
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -43,7 +35,6 @@ int main(void)
 {
 	Set_System();
 
-	/******************* WLAN Test Code ********************/
 	//
 	//Initialize CC3000's CS, EN and INT pins to their default states
 	//
@@ -71,16 +62,12 @@ int main(void)
 	//
 	// Mask out all non-required events from CC3000
 	//
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_UNSOL_DHCP | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
 	//
-	// Start the Smart Config process
+	// Start CC3000 first time configuration
 	//
-	//wlan_smart_config_start(1);
-
-	// Turn on Auto Connect option
-	// C3000 device tries to connect to any AP it detects during scanning
-	wlan_ioctl_set_connection_policy(1, 0, 0);	//WIP! - This only worked the first time
+	Start_Smart_Config();
 
 	/* Main loop */
 	while (1)
@@ -97,8 +84,6 @@ int main(void)
  *******************************************************************************/
 void Start_Smart_Config(void)
 {
-// WIP! Not tested
-/*
 	WLAN_SMART_CONFIG_DONE = 0;
 	WLAN_CONNECTED = 0;
 	WLAN_DHCP = 0;
@@ -113,46 +98,26 @@ void Start_Smart_Config(void)
 	//Wait until CC3000 is disconnected
 	while (WLAN_CONNECTED == 1)
 	{
-		SysCtlDelay(100);
+		Delay(1);
 		hci_unsolicited_event_handler();
 	}
-
-	//
-	// Trigger the Smart Config process
-	//
-	// Start blinking LED during Smart Configuration process
-	LED_On(LED2);
-
-	wlan_smart_config_set_prefix((char*)aucCC3000_prefix);
-	LED_Off(LED2);
 
 	//
 	// Start the SmartConfig start process
 	//
 	wlan_smart_config_start(1);
-	LED_On(LED2);
 
 	//
 	// Wait for First Time config finished
 	//
 	while (WLAN_SMART_CONFIG_DONE == 0)
 	{
-		LED_Off(LED2);
-		SysCtlDelay(16500000);
-		LED_On(LED2);
-		SysCtlDelay(16500000);
+		/* Toggle the LED2 every 100ms */
+		LED_Toggle(LED2);
+		Delay(1);
 	}
 
 	LED_On(LED2);
-
-	// create new entry for AES encryption key
-	nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
-
-	// write AES key to NVMEM
-	aes_write_key((unsigned char *)(&smartconfigkey[0]));
-
-	// Decrypt configuration information and add profile
-	wlan_smart_config_process();
 
 	//
 	// Configure to connect automatically to the AP retrieved in the
@@ -165,15 +130,14 @@ void Start_Smart_Config(void)
 	//
 	wlan_stop();
 
-	SysCtlDelay(100000);
+	Delay(1);
 
 	wlan_start(0);
 
 	//
 	// Mask out all non-required events
 	//
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_UNSOL_DHCP | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
-*/
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 }
 
 /* WLAN Application related callbacks passed to wlan_init */

@@ -146,12 +146,12 @@ void PendSV_Handler(void)
  *******************************************************************************/
 void SysTick_Handler(void)
 {
-	//TimingDelay_Decrement();
+	TimingDelay_Decrement();
 
 	/* Toggle the LED1 every 100ms */
 	LED_Toggle(LED1);
 
-	hci_unsolicited_event_handler();
+	//hci_unsolicited_event_handler();
 }
 
 /******************************************************************************/

@@ -15,6 +15,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "hw_config.h"
+#include "evnt_handler.h"
 #include "hci.h"
 #include "wlan.h"
 #include "nvmem.h"

@@ -146,7 +146,7 @@ void LED_Init(Led_TypeDef Led)
   */
 void LED_On(Led_TypeDef Led)
 {
-    GPIO_PORT[Led]->BRR = GPIO_PIN[Led];
+    GPIO_PORT[Led]->BSRR = GPIO_PIN[Led];
 }
 
 /**
@@ -159,7 +159,7 @@ void LED_On(Led_TypeDef Led)
   */
 void LED_Off(Led_TypeDef Led)
 {
-    GPIO_PORT[Led]->BSRR = GPIO_PIN[Led];
+    GPIO_PORT[Led]->BRR = GPIO_PIN[Led];
 }
 
 /**
