@@ -62,7 +62,8 @@ void LED_On(Led_TypeDef Led);
 void LED_Off(Led_TypeDef Led);
 void LED_Toggle(Led_TypeDef Led);
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
-uint32_t BUTTON_GetState(Button_TypeDef Button);
+uint8_t BUTTON_GetState(Button_TypeDef Button);
+uint8_t BUTTON_Pressed(Button_TypeDef Button, uint32_t Delay100ms);
 
 /* CC3000 Hardware related methods */
 void CC3000_WIFI_Init(void);

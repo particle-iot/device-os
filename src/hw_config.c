@@ -27,11 +27,14 @@ const uint32_t GPIO_CLK[LEDn] = {LED1_GPIO_CLK, LED2_GPIO_CLK};
 GPIO_TypeDef* BUTTON_PORT[BUTTONn] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
 const uint16_t BUTTON_PIN[BUTTONn] = {BUTTON1_PIN, BUTTON2_PIN};
 const uint32_t BUTTON_CLK[BUTTONn] = {BUTTON1_GPIO_CLK, BUTTON2_GPIO_CLK};
+GPIOMode_TypeDef BUTTON_GPIO_MODE[BUTTONn] = {BUTTON1_GPIO_MODE, BUTTON2_GPIO_MODE};
+const uint8_t BUTTON_PRESSED[BUTTONn] = {BUTTON1_PRESSED, BUTTON2_PRESSED};
 
 const uint16_t BUTTON_EXTI_LINE[BUTTONn] = {BUTTON1_EXTI_LINE, BUTTON2_EXTI_LINE};
 const uint16_t BUTTON_PORT_SOURCE[BUTTONn] = {BUTTON1_EXTI_PORT_SOURCE, BUTTON2_EXTI_PORT_SOURCE};
 const uint16_t BUTTON_PIN_SOURCE[BUTTONn] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EXTI_PIN_SOURCE};
 const uint16_t BUTTON_IRQn[BUTTONn] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
+EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[BUTTONn] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -60,8 +63,8 @@ void Set_System(void)
     LED_Off(LED2);
 
     /* Configure the Buttons */
-    //PB_Init(BUTTON1, BUTTON_MODE_GPIO);
-    //PB_Init(BUTTON2, BUTTON_MODE_GPIO);
+    BUTTON_Init(BUTTON1, BUTTON_MODE_GPIO);
+    //BUTTON_Init(BUTTON2, BUTTON_MODE_GPIO);
 
 	/* Setup SysTick Timer for 100 msec interrupts  */
 	if (SysTick_Config(SystemCoreClock / 10))
@@ -89,15 +92,14 @@ void NVIC_Configuration(void)
 /*******************************************************************************
  * Function Name  : Delay
  * Description    : Inserts a delay time.
- * Input          : nTime: specifies the delay time length, in seconds.
+ * Input          : nTime: specifies the delay time length, in 100 ms.
  * Output         : None
  * Return         : None
  *******************************************************************************/
 void Delay(uint32_t nTime) {
 	TimingDelay = nTime;
 
-	while (TimingDelay != 0)
-		;
+	while (TimingDelay != 0);
 }
 
 /*******************************************************************************
@@ -198,7 +200,7 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
     RCC_APB2PeriphClockCmd(BUTTON_CLK[Button] | RCC_APB2Periph_AFIO, ENABLE);
 
     /* Configure Button pin as input floating */
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_InitStructure.GPIO_Mode = BUTTON_GPIO_MODE[Button];
     GPIO_InitStructure.GPIO_Pin = BUTTON_PIN[Button];
     GPIO_Init(BUTTON_PORT[Button], &GPIO_InitStructure);
 
@@ -210,7 +212,7 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
         /* Configure Button EXTI line */
         EXTI_InitStructure.EXTI_Line = BUTTON_EXTI_LINE[Button];
         EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-		EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;	//EXTI_Trigger_Rising;
+		EXTI_InitStructure.EXTI_Trigger = BUTTON_EXTI_TRIGGER[Button];
         EXTI_InitStructure.EXTI_LineCmd = ENABLE;
         EXTI_Init(&EXTI_InitStructure);
 
@@ -230,11 +232,40 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
   *   This parameter can be one of following parameters:
   *     @arg BUTTON1: Button1
   *     @arg BUTTON2: Button2
-  * @retval The Button GPIO pin value.
+  * @retval Hardcoded Button Pressed state.
   */
-uint32_t BUTTON_GetState(Button_TypeDef Button)
+uint8_t BUTTON_GetState(Button_TypeDef Button)
 {
     return GPIO_ReadInputDataBit(BUTTON_PORT[Button], BUTTON_PIN[Button]);
+}
+
+/**
+  * @brief  Check if Button pressed for specified msDelay.
+  * @param  Button: Specifies the Button to be checked.
+  *   This parameter can be one of following parameters:
+  *     @arg BUTTON1: Button1
+  *     @arg BUTTON2: Button2
+  * @param  Delay100ms: Specifies 100ms Delay interval.
+  * @retval The Button GPIO pin value.
+  */
+uint8_t BUTTON_Pressed(Button_TypeDef Button, uint32_t Delay100ms)
+{
+	uint8_t Button_Pressed = 0x00;
+
+    /* Check if the Button is pressed for msDelay */
+    if (BUTTON_GetState(Button) == BUTTON_PRESSED[Button])
+    {
+        TimingDelay = Delay100ms;
+        while (BUTTON_GetState(Button) == BUTTON_PRESSED[Button])
+        {
+            if (TimingDelay == 0x00)
+            {
+            	Button_Pressed = 0x01;
+            }
+        }
+    }
+
+    return Button_Pressed;
 }
 
 /**

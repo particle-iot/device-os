@@ -40,21 +40,27 @@
 #define LED2_GPIO_CLK                    	RCC_APB2Periph_GPIOA
 
 //Push Buttons
-#define BUTTONn                           	0//2
-#define BUTTON1_PIN                      	0//GPIO_Pin_x
-#define BUTTON1_GPIO_PORT                	0//GPIOX
-#define BUTTON1_GPIO_CLK                 	0//RCC_APB2Periph_GPIOX
-#define BUTTON1_EXTI_LINE                	0//EXTI_Linex
-#define BUTTON1_EXTI_PORT_SOURCE         	0//GPIO_PortSourceGPIOX
-#define BUTTON1_EXTI_PIN_SOURCE          	0//GPIO_PinSourcex
-#define BUTTON1_EXTI_IRQn                	0//EXTIx_IRQn
+#define BUTTONn                           	2
+#define BUTTON1_PIN                      	GPIO_Pin_5
+#define BUTTON1_GPIO_PORT                	GPIOB
+#define BUTTON1_GPIO_CLK                 	RCC_APB2Periph_GPIOB
+#define BUTTON1_GPIO_MODE					GPIO_Mode_IPU
+#define BUTTON1_PRESSED						0x00
+#define BUTTON1_EXTI_LINE                	EXTI_Line5
+#define BUTTON1_EXTI_PORT_SOURCE         	GPIO_PortSourceGPIOB
+#define BUTTON1_EXTI_PIN_SOURCE          	GPIO_PinSource5
+#define BUTTON1_EXTI_IRQn                	EXTI9_5_IRQn
+#define	BUTTON1_EXTI_TRIGGER				EXTI_Trigger_Falling
 #define BUTTON2_PIN                     	0//GPIO_Pin_y
 #define BUTTON2_GPIO_PORT               	0//GPIOY
 #define BUTTON2_GPIO_CLK                	0//RCC_APB2Periph_GPIOY
+#define BUTTON2_GPIO_MODE					0//GPIO_Mode_IN_FLOATING
+#define BUTTON2_PRESSED						0//0x00
 #define BUTTON2_EXTI_LINE               	0//EXTI_Liney
 #define BUTTON2_EXTI_PORT_SOURCE        	0//GPIO_PortSourceGPIOY
 #define BUTTON2_EXTI_PIN_SOURCE         	0//GPIO_PinSourcey
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
+#define	BUTTON2_EXTI_TRIGGER				0//EXTI_Trigger_Falling
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
@@ -120,7 +126,7 @@
 
 #elif defined (USE_SPARK_TV2)
 //LEDs
-#define LEDn                           		0//2
+#define LEDn                           		2
 #define LED1_PIN                         	0//GPIO_Pin_x
 #define LED1_GPIO_PORT                   	0//GPIOX
 #define LED1_GPIO_CLK                    	0//RCC_APB2Periph_GPIOX
@@ -129,21 +135,27 @@
 #define LED2_GPIO_CLK                    	0//RCC_APB2Periph_GPIOY
 
 //Push Buttons
-#define BUTTONn                           	0//2
+#define BUTTONn                           	2
 #define BUTTON1_PIN                      	0//GPIO_Pin_x
 #define BUTTON1_GPIO_PORT                	0//GPIOX
 #define BUTTON1_GPIO_CLK                 	0//RCC_APB2Periph_GPIOX
+#define BUTTON1_GPIO_MODE					0//GPIO_Mode_IN_FLOATING
+#define BUTTON1_PRESSED						0//0x01
 #define BUTTON1_EXTI_LINE                	0//EXTI_Linex
 #define BUTTON1_EXTI_PORT_SOURCE         	0//GPIO_PortSourceGPIOX
 #define BUTTON1_EXTI_PIN_SOURCE          	0//GPIO_PinSourcex
 #define BUTTON1_EXTI_IRQn                	0//EXTIx_IRQn
+#define	BUTTON1_EXTI_TRIGGER				0//EXTI_Trigger_Rising
 #define BUTTON2_PIN                     	0//GPIO_Pin_y
 #define BUTTON2_GPIO_PORT               	0//GPIOY
 #define BUTTON2_GPIO_CLK                	0//RCC_APB2Periph_GPIOY
+#define BUTTON2_GPIO_MODE					0//GPIO_Mode_IN_FLOATING
+#define BUTTON2_PRESSED						0//0x00
 #define BUTTON2_EXTI_LINE               	0//EXTI_Liney
 #define BUTTON2_EXTI_PORT_SOURCE        	0//GPIO_PortSourceGPIOY
 #define BUTTON2_EXTI_PIN_SOURCE         	0//GPIO_PinSourcey
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
+#define	BUTTON2_EXTI_TRIGGER				0//EXTI_Trigger_Falling
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
@@ -218,21 +230,27 @@
 #define LED2_GPIO_CLK                    	RCC_APB2Periph_GPIOA
 
 //Push Buttons
-#define BUTTONn                           	0//2
-#define BUTTON1_PIN                      	0//GPIO_Pin_x
-#define BUTTON1_GPIO_PORT                	0//GPIOX
-#define BUTTON1_GPIO_CLK                 	0//RCC_APB2Periph_GPIOX
-#define BUTTON1_EXTI_LINE                	0//EXTI_Linex
-#define BUTTON1_EXTI_PORT_SOURCE         	0//GPIO_PortSourceGPIOX
-#define BUTTON1_EXTI_PIN_SOURCE          	0//GPIO_PinSourcex
-#define BUTTON1_EXTI_IRQn                	0//EXTIx_IRQn
+#define BUTTONn                           	2
+#define BUTTON1_PIN                      	GPIO_Pin_10
+#define BUTTON1_GPIO_PORT                	GPIOA
+#define BUTTON1_GPIO_CLK                 	RCC_APB2Periph_GPIOA
+#define BUTTON1_GPIO_MODE					GPIO_Mode_IPU
+#define BUTTON1_PRESSED						0x00
+#define BUTTON1_EXTI_LINE                	EXTI_Line10
+#define BUTTON1_EXTI_PORT_SOURCE         	GPIO_PortSourceGPIOA
+#define BUTTON1_EXTI_PIN_SOURCE          	GPIO_PinSource10
+#define BUTTON1_EXTI_IRQn                	EXTI15_10_IRQn
+#define	BUTTON1_EXTI_TRIGGER				EXTI_Trigger_Falling
 #define BUTTON2_PIN                     	0//GPIO_Pin_y
 #define BUTTON2_GPIO_PORT               	0//GPIOY
 #define BUTTON2_GPIO_CLK                	0//RCC_APB2Periph_GPIOY
+#define BUTTON2_GPIO_MODE					0//GPIO_Mode_IN_FLOATING
+#define BUTTON2_PRESSED						0//0x00
 #define BUTTON2_EXTI_LINE               	0//EXTI_Liney
 #define BUTTON2_EXTI_PORT_SOURCE        	0//GPIO_PortSourceGPIOY
 #define BUTTON2_EXTI_PIN_SOURCE         	0//GPIO_PinSourcey
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
+#define	BUTTON2_EXTI_TRIGGER				0//EXTI_Trigger_Falling
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI2
@@ -307,21 +325,27 @@
 #define LED2_GPIO_CLK                    	RCC_APB2Periph_GPIOB
 
 //Push Buttons
-#define BUTTONn                           	0//2
-#define BUTTON1_PIN                      	0//GPIO_Pin_x
-#define BUTTON1_GPIO_PORT                	0//GPIOX
-#define BUTTON1_GPIO_CLK                 	0//RCC_APB2Periph_GPIOX
-#define BUTTON1_EXTI_LINE                	0//EXTI_Linex
-#define BUTTON1_EXTI_PORT_SOURCE         	0//GPIO_PortSourceGPIOX
-#define BUTTON1_EXTI_PIN_SOURCE          	0//GPIO_PinSourcex
-#define BUTTON1_EXTI_IRQn                	0//EXTIx_IRQn
+#define BUTTONn                           	2
+#define BUTTON1_PIN                      	GPIO_Pin_0
+#define BUTTON1_GPIO_PORT                	GPIOA
+#define BUTTON1_GPIO_CLK                 	RCC_APB2Periph_GPIOA
+#define BUTTON1_GPIO_MODE					GPIO_Mode_IN_FLOATING
+#define BUTTON1_PRESSED						0x00
+#define BUTTON1_EXTI_LINE                	EXTI_Line0
+#define BUTTON1_EXTI_PORT_SOURCE         	GPIO_PortSourceGPIOA
+#define BUTTON1_EXTI_PIN_SOURCE          	GPIO_PinSource0
+#define BUTTON1_EXTI_IRQn                	EXTI0_IRQn
+#define	BUTTON1_EXTI_TRIGGER				EXTI_Trigger_Falling
 #define BUTTON2_PIN                     	0//GPIO_Pin_y
 #define BUTTON2_GPIO_PORT               	0//GPIOY
 #define BUTTON2_GPIO_CLK                	0//RCC_APB2Periph_GPIOY
+#define BUTTON2_GPIO_MODE					0//GPIO_Mode_IN_FLOATING
+#define BUTTON2_PRESSED						0//0x00
 #define BUTTON2_EXTI_LINE               	0//EXTI_Liney
 #define BUTTON2_EXTI_PORT_SOURCE        	0//GPIO_PortSourceGPIOY
 #define BUTTON2_EXTI_PIN_SOURCE         	0//GPIO_PinSourcey
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
+#define	BUTTON2_EXTI_TRIGGER				0//EXTI_Trigger_Falling
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
@@ -396,21 +420,27 @@
 #define LED2_GPIO_CLK                    	RCC_APB2Periph_GPIOC
 
 //Push Buttons
-#define BUTTONn                           	0//2
-#define BUTTON1_PIN                      	0//GPIO_Pin_x
-#define BUTTON1_GPIO_PORT                	0//GPIOX
-#define BUTTON1_GPIO_CLK                 	0//RCC_APB2Periph_GPIOX
-#define BUTTON1_EXTI_LINE                	0//EXTI_Linex
-#define BUTTON1_EXTI_PORT_SOURCE         	0//GPIO_PortSourceGPIOX
-#define BUTTON1_EXTI_PIN_SOURCE          	0//GPIO_PinSourcex
-#define BUTTON1_EXTI_IRQn                	0//EXTIx_IRQn
+#define BUTTONn                           	2
+#define BUTTON1_PIN                      	GPIO_Pin_0
+#define BUTTON1_GPIO_PORT                	GPIOA
+#define BUTTON1_GPIO_CLK                 	RCC_APB2Periph_GPIOA
+#define BUTTON1_GPIO_MODE					GPIO_Mode_IN_FLOATING
+#define BUTTON1_PRESSED						0x01
+#define BUTTON1_EXTI_LINE                	EXTI_Line0
+#define BUTTON1_EXTI_PORT_SOURCE         	GPIO_PortSourceGPIOA
+#define BUTTON1_EXTI_PIN_SOURCE          	GPIO_PinSource0
+#define BUTTON1_EXTI_IRQn                	EXTI0_IRQn
+#define	BUTTON1_EXTI_TRIGGER				EXTI_Trigger_Rising
 #define BUTTON2_PIN                     	0//GPIO_Pin_y
 #define BUTTON2_GPIO_PORT               	0//GPIOY
 #define BUTTON2_GPIO_CLK                	0//RCC_APB2Periph_GPIOY
+#define BUTTON2_GPIO_MODE					0//GPIO_Mode_IN_FLOATING
+#define BUTTON2_PRESSED						0//0x00
 #define BUTTON2_EXTI_LINE               	0//EXTI_Liney
 #define BUTTON2_EXTI_PORT_SOURCE        	0//GPIO_PortSourceGPIOY
 #define BUTTON2_EXTI_PIN_SOURCE         	0//GPIO_PinSourcey
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
+#define	BUTTON2_EXTI_TRIGGER				0//EXTI_Trigger_Falling
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI2
