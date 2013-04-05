@@ -64,14 +64,17 @@ int main(void)
 	//
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
-	//
-	// Start CC3000 first time configuration
-	//
-	Start_Smart_Config();
-
 	/* Main loop */
 	while (1)
 	{
+		//if BUTTON1 pressed for 2 sec (20 * 100 ms)
+		if(BUTTON_Pressed(BUTTON1, 20))
+		{
+			//
+			// Start CC3000 first time configuration
+			//
+			Start_Smart_Config();
+		}
 	}
 }
 
@@ -98,6 +101,7 @@ void Start_Smart_Config(void)
 	//Wait until CC3000 is disconnected
 	while (WLAN_CONNECTED == 1)
 	{
+		//Delay 100ms
 		Delay(1);
 		hci_unsolicited_event_handler();
 	}
