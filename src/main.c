@@ -18,6 +18,8 @@ __IO uint8_t WLAN_CONNECTED;
 __IO uint8_t WLAN_DHCP;
 __IO uint8_t WLAN_CAN_SHUTDOWN;
 
+__IO uint8_t SPARK_SERVER_CONNECTED;
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,6 +73,15 @@ int main(void)
 			// Start CC3000 first time configuration
 			//
 			Start_Smart_Config();
+		}
+
+		if(WLAN_DHCP && !SPARK_SERVER_CONNECTED)
+		{
+			if(Spark_Connect(SPARK_SERVER_NAME, SPARK_SERVER_PORT) == 0x00)
+			{
+				SPARK_SERVER_CONNECTED = 1;
+				LED_On(LED1);
+			}
 		}
 	}
 }
@@ -158,6 +169,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
+			SPARK_SERVER_CONNECTED = 0;
 			LED_Off(LED2);
 			break;
 
