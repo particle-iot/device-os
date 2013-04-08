@@ -26,8 +26,6 @@
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define SPARK_SERVER_NAME "spark.com" //Since DNS is not configured, gethostbyname will fail
-#define SPARK_SERVER_PORT 8989
 
 /* Exported functions ------------------------------------------------------- */
 void Start_Smart_Config(void);

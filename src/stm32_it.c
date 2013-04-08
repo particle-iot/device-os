@@ -21,7 +21,9 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-extern __IO uint8_t SPARK_SERVER_CONNECTED;
+
+/* Extern variables ----------------------------------------------------------*/
+extern __IO uint8_t SPARK_SERVER_FLAG;
 
 /* Private function prototypes -----------------------------------------------*/
 extern void hci_unsolicited_event_handler(void);
@@ -149,7 +151,7 @@ void SysTick_Handler(void)
 {
 	TimingDelay_Decrement();
 
-	if(!SPARK_SERVER_CONNECTED)
+	if(!SPARK_SERVER_FLAG)
 	{
 		/* Toggle the LED1 every 100ms */
 		LED_Toggle(LED1);
