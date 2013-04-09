@@ -19,6 +19,16 @@
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {
+	LOW = 0, HIGH = 1
+} DIO_State_TypeDef;
+
+typedef enum
+{
+	D0 = 0, D1 = 1, D2 = 2, D3 = 3, D4 = 4, D5 = 5, D6 = 6, D7 = 7
+} DIO_TypeDef;
+
+typedef enum
+{
 	LED1 = 0, LED2 = 1
 } Led_TypeDef;
 
@@ -56,6 +66,9 @@ void Set_System(void);
 void NVIC_Configuration(void);
 void Delay(__IO uint32_t nTime);
 void TimingDelay_Decrement(void);
+
+void DIO_Init(DIO_TypeDef Dx);
+void DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State);
 
 void LED_Init(Led_TypeDef Led);
 void LED_On(Led_TypeDef Led);

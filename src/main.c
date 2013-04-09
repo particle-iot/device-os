@@ -78,6 +78,11 @@ int main(void)
 		{
 			Spark_Connect();
 		}
+
+		if(SPARK_SERVER_FLAG)
+		{
+			Spark_Process_API_Response();
+		}
 	}
 }
 

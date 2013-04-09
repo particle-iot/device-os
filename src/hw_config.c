@@ -20,9 +20,16 @@
 /* Private variables ---------------------------------------------------------*/
 static __IO uint32_t TimingDelay;
 
-GPIO_TypeDef* GPIO_PORT[LEDn] = {LED1_GPIO_PORT, LED2_GPIO_PORT};
-const uint16_t GPIO_PIN[LEDn] = {LED1_PIN, LED2_PIN};
-const uint32_t GPIO_CLK[LEDn] = {LED1_GPIO_CLK, LED2_GPIO_CLK};
+GPIO_TypeDef* DIO_PORT[Dn] = {D0_GPIO_PORT, D1_GPIO_PORT, D2_GPIO_PORT, D3_GPIO_PORT,
+								D4_GPIO_PORT, D5_GPIO_PORT, D6_GPIO_PORT, D7_GPIO_PORT};
+const uint16_t DIO_PIN[Dn] = {D0_PIN, D1_PIN, D2_PIN, D3_PIN,
+								D4_PIN, D5_PIN, D6_PIN, D7_PIN};
+const uint32_t DIO_CLK[Dn] = {D0_GPIO_CLK, D1_GPIO_CLK, D2_GPIO_CLK, D3_GPIO_CLK,
+								D4_GPIO_CLK, D5_GPIO_CLK, D6_GPIO_CLK, D7_GPIO_CLK};
+
+GPIO_TypeDef* LED_PORT[LEDn] = {LED1_GPIO_PORT, LED2_GPIO_PORT};
+const uint16_t LED_PIN[LEDn] = {LED1_PIN, LED2_PIN};
+const uint32_t LED_CLK[LEDn] = {LED1_GPIO_CLK, LED2_GPIO_CLK};
 
 GPIO_TypeDef* BUTTON_PORT[BUTTONn] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
 const uint16_t BUTTON_PIN[BUTTONn] = {BUTTON1_PIN, BUTTON2_PIN};
@@ -56,15 +63,23 @@ void Set_System(void)
 	/* NVIC configuration */
 	NVIC_Configuration();
 
-	/* Configure the LEDs and set the default states */
-    LED_Init(LED1);
-    LED_Off(LED1);
-    LED_Init(LED2);
-    LED_Off(LED2);
+	/* Configure DIOs */
+	int Dx;
+	for(Dx = 0; Dx < Dn; ++Dx)
+	{
+		DIO_Init(Dx);
+	}
 
-    /* Configure the Buttons */
+	/* Configure the LEDs and set the default states */
+	int LEDx;
+	for(LEDx = 0; LEDx < LEDn; ++LEDx)
+	{
+	    LED_Init(LEDx);
+	    LED_Off(LEDx);
+	}
+
+    /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_GPIO);
-    //BUTTON_Init(BUTTON2, BUTTON_MODE_GPIO);
 
 	/* Setup SysTick Timer for 100 msec interrupts  */
 	if (SysTick_Config(SystemCoreClock / 10))
@@ -116,6 +131,42 @@ void TimingDelay_Decrement(void) {
 }
 
 /**
+  * @brief  Configures Dx GPIO.
+  * @param  Dx: Specifies the Dx to be configured.
+  * @retval None
+  */
+void DIO_Init(DIO_TypeDef Dx)
+{
+    GPIO_InitTypeDef  GPIO_InitStructure;
+
+    /* Enable the GPIO_Dx Clock */
+    RCC_APB2PeriphClockCmd(DIO_CLK[Dx], ENABLE);
+
+    /* Configure the GPIO_Dx pin */
+    GPIO_InitStructure.GPIO_Pin = DIO_PIN[Dx];
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+
+    GPIO_Init(DIO_PORT[Dx], &GPIO_InitStructure);
+}
+
+/**
+  * @brief  Turns selected Dx On/Off.
+  * @param  Dx: Specifies the Dx.
+  * @param  State: Set On or Off.
+  * @retval None
+  */
+void DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State)
+{
+	if(Dx < 0 && Dx > Dn)
+		return;
+	else if(State == HIGH)
+		DIO_PORT[Dx]->BSRR = DIO_PIN[Dx];
+	else if(State == LOW)
+		DIO_PORT[Dx]->BRR = DIO_PIN[Dx];
+}
+
+/**
   * @brief  Configures LED GPIO.
   * @param  Led: Specifies the Led to be configured.
   *   This parameter can be one of following parameters:
@@ -128,14 +179,14 @@ void LED_Init(Led_TypeDef Led)
     GPIO_InitTypeDef  GPIO_InitStructure;
 
     /* Enable the GPIO_LED Clock */
-    RCC_APB2PeriphClockCmd(GPIO_CLK[Led], ENABLE);
+    RCC_APB2PeriphClockCmd(LED_CLK[Led], ENABLE);
 
     /* Configure the GPIO_LED pin */
-    GPIO_InitStructure.GPIO_Pin = GPIO_PIN[Led];
+    GPIO_InitStructure.GPIO_Pin = LED_PIN[Led];
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-    GPIO_Init(GPIO_PORT[Led], &GPIO_InitStructure);
+    GPIO_Init(LED_PORT[Led], &GPIO_InitStructure);
 }
 
 /**
@@ -148,7 +199,7 @@ void LED_Init(Led_TypeDef Led)
   */
 void LED_On(Led_TypeDef Led)
 {
-    GPIO_PORT[Led]->BSRR = GPIO_PIN[Led];
+    LED_PORT[Led]->BSRR = LED_PIN[Led];
 }
 
 /**
@@ -161,7 +212,7 @@ void LED_On(Led_TypeDef Led)
   */
 void LED_Off(Led_TypeDef Led)
 {
-    GPIO_PORT[Led]->BRR = GPIO_PIN[Led];
+    LED_PORT[Led]->BRR = LED_PIN[Led];
 }
 
 /**
@@ -174,7 +225,7 @@ void LED_Off(Led_TypeDef Led)
   */
 void LED_Toggle(Led_TypeDef Led)
 {
-    GPIO_PORT[Led]->ODR ^= GPIO_PIN[Led];
+    LED_PORT[Led]->ODR ^= LED_PIN[Led];
 }
 
 /**

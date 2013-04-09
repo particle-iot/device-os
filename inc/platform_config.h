@@ -30,6 +30,33 @@
 
 /* Define the STM32F10x hardware depending on the used board */
 #if defined (USE_SPARK_TV1)
+//Header IOs
+#define Dn                           		8
+#define D0_PIN                         		0//GPIO_Pin_7
+#define D0_GPIO_PORT                   		0//GPIOB
+#define D0_GPIO_CLK                    		0//RCC_APB2Periph_GPIOB
+#define D1_PIN                         		0//GPIO_Pin_6
+#define D1_GPIO_PORT                   		0//GPIOB
+#define D1_GPIO_CLK                    		0//RCC_APB2Periph_GPIOB
+#define D2_PIN                         		0//GPIO_Pin_5
+#define D2_GPIO_PORT                   		0//GPIOB
+#define D2_GPIO_CLK                    		0//RCC_APB2Periph_GPIOB
+#define D3_PIN                         		0//GPIO_Pin_4
+#define D3_GPIO_PORT                   		0//GPIOB
+#define D3_GPIO_CLK                    		0//RCC_APB2Periph_GPIOB
+#define D4_PIN                         		0//GPIO_Pin_3
+#define D4_GPIO_PORT                   		0//GPIOB
+#define D4_GPIO_CLK                    		0//RCC_APB2Periph_GPIOB
+#define D5_PIN                         		0//GPIO_Pin_15
+#define D5_GPIO_PORT                   		0//GPIOA
+#define D5_GPIO_CLK                    		0//RCC_APB2Periph_GPIOA
+#define D6_PIN                         		0//GPIO_Pin_14
+#define D6_GPIO_PORT                   		0//GPIOA
+#define D6_GPIO_CLK                    		0//RCC_APB2Periph_GPIOA
+#define D7_PIN                         		0//GPIO_Pin_13
+#define D7_GPIO_PORT                   		0//GPIOA
+#define D7_GPIO_CLK                    		0//RCC_APB2Periph_GPIOA
+
 //LEDs
 #define LEDn                           		2
 #define LED1_PIN                         	GPIO_Pin_1
@@ -125,6 +152,33 @@
 #define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_2
 
 #elif defined (USE_SPARK_TV2)
+//Header IOs
+#define Dn                           		8
+#define D0_PIN                         		0//GPIO_Pin_7
+#define D0_GPIO_PORT                   		0//GPIOB
+#define D0_GPIO_CLK                    		0//RCC_APB2Periph_GPIOB
+#define D1_PIN                         		0//GPIO_Pin_6
+#define D1_GPIO_PORT                   		0//GPIOB
+#define D1_GPIO_CLK                    		0//RCC_APB2Periph_GPIOB
+#define D2_PIN                         		0//GPIO_Pin_5
+#define D2_GPIO_PORT                   		0//GPIOB
+#define D2_GPIO_CLK                    		0//RCC_APB2Periph_GPIOB
+#define D3_PIN                         		0//GPIO_Pin_4
+#define D3_GPIO_PORT                   		0//GPIOB
+#define D3_GPIO_CLK                    		0//RCC_APB2Periph_GPIOB
+#define D4_PIN                         		0//GPIO_Pin_3
+#define D4_GPIO_PORT                   		0//GPIOB
+#define D4_GPIO_CLK                    		0//RCC_APB2Periph_GPIOB
+#define D5_PIN                         		0//GPIO_Pin_15
+#define D5_GPIO_PORT                   		0//GPIOA
+#define D5_GPIO_CLK                    		0//RCC_APB2Periph_GPIOA
+#define D6_PIN                         		0//GPIO_Pin_14
+#define D6_GPIO_PORT                   		0//GPIOA
+#define D6_GPIO_CLK                    		0//RCC_APB2Periph_GPIOA
+#define D7_PIN                         		0//GPIO_Pin_13
+#define D7_GPIO_PORT                   		0//GPIOA
+#define D7_GPIO_CLK                    		0//RCC_APB2Periph_GPIOA
+
 //LEDs
 #define LEDn                           		2
 #define LED1_PIN                         	0//GPIO_Pin_x
@@ -220,6 +274,33 @@
 #define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
 
 #elif defined (USE_SPARK_CORE)
+//Header IOs
+#define Dn                           		8
+#define D0_PIN                         		GPIO_Pin_7
+#define D0_GPIO_PORT                   		GPIOB
+#define D0_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D1_PIN                         		GPIO_Pin_6
+#define D1_GPIO_PORT                   		GPIOB
+#define D1_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D2_PIN                         		GPIO_Pin_5
+#define D2_GPIO_PORT                   		GPIOB
+#define D2_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D3_PIN                         		GPIO_Pin_4
+#define D3_GPIO_PORT                   		GPIOB
+#define D3_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D4_PIN                         		GPIO_Pin_3
+#define D4_GPIO_PORT                   		GPIOB
+#define D4_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D5_PIN                         		GPIO_Pin_15
+#define D5_GPIO_PORT                   		GPIOA
+#define D5_GPIO_CLK                    		RCC_APB2Periph_GPIOA
+#define D6_PIN                         		GPIO_Pin_14
+#define D6_GPIO_PORT                   		GPIOA
+#define D6_GPIO_CLK                    		RCC_APB2Periph_GPIOA
+#define D7_PIN                         		GPIO_Pin_13
+#define D7_GPIO_PORT                   		GPIOA
+#define D7_GPIO_CLK                    		RCC_APB2Periph_GPIOA
+
 //LEDs
 #define LEDn                           		2
 #define LED1_PIN                         	GPIO_Pin_8
@@ -315,6 +396,33 @@
 #define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
 
 #elif defined (USE_OLIMEX_H103)
+//Header IOs
+#define Dn                           		8
+#define D0_PIN                         		GPIO_Pin_7
+#define D0_GPIO_PORT                   		GPIOB
+#define D0_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D1_PIN                         		GPIO_Pin_6
+#define D1_GPIO_PORT                   		GPIOB
+#define D1_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D2_PIN                         		GPIO_Pin_5
+#define D2_GPIO_PORT                   		GPIOB
+#define D2_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D3_PIN                         		GPIO_Pin_4
+#define D3_GPIO_PORT                   		GPIOB
+#define D3_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D4_PIN                         		GPIO_Pin_3
+#define D4_GPIO_PORT                   		GPIOB
+#define D4_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D5_PIN                         		GPIO_Pin_15
+#define D5_GPIO_PORT                   		GPIOA
+#define D5_GPIO_CLK                    		RCC_APB2Periph_GPIOA
+#define D6_PIN                         		GPIO_Pin_14
+#define D6_GPIO_PORT                   		GPIOA
+#define D6_GPIO_CLK                    		RCC_APB2Periph_GPIOA
+#define D7_PIN                         		GPIO_Pin_13
+#define D7_GPIO_PORT                   		GPIOA
+#define D7_GPIO_CLK                    		RCC_APB2Periph_GPIOA
+
 //LEDs
 #define LEDn                           		2
 #define LED1_PIN                         	GPIO_Pin_12
@@ -410,6 +518,33 @@
 #define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
 
 #elif defined (USE_ST_VLDISCOVERY)
+//Header IOs
+#define Dn                           		8
+#define D0_PIN                         		GPIO_Pin_7
+#define D0_GPIO_PORT                   		GPIOB
+#define D0_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D1_PIN                         		GPIO_Pin_6
+#define D1_GPIO_PORT                   		GPIOB
+#define D1_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D2_PIN                         		GPIO_Pin_5
+#define D2_GPIO_PORT                   		GPIOB
+#define D2_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D3_PIN                         		GPIO_Pin_4
+#define D3_GPIO_PORT                   		GPIOB
+#define D3_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D4_PIN                         		GPIO_Pin_3
+#define D4_GPIO_PORT                   		GPIOB
+#define D4_GPIO_CLK                    		RCC_APB2Periph_GPIOB
+#define D5_PIN                         		GPIO_Pin_15
+#define D5_GPIO_PORT                   		GPIOA
+#define D5_GPIO_CLK                    		RCC_APB2Periph_GPIOA
+#define D6_PIN                         		GPIO_Pin_14
+#define D6_GPIO_PORT                   		GPIOA
+#define D6_GPIO_CLK                    		RCC_APB2Periph_GPIOA
+#define D7_PIN                         		GPIO_Pin_13
+#define D7_GPIO_PORT                   		GPIOA
+#define D7_GPIO_CLK                    		RCC_APB2Periph_GPIOA
+
 //LEDs
 #define LEDn                           		2
 #define LED1_PIN                         	GPIO_Pin_8

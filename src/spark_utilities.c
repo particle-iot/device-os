@@ -42,11 +42,12 @@ char Spark_Connect(void)
 	}
 	else
 	{
-		Spark_Send_Command(sparkSocket, (char *)core_secret, NULL, buf);
+		Spark_Send_Device_Message(sparkSocket, (char *)core_secret, NULL, buf);
 		if(buf[0] == server_ready[0] && buf[1] == server_ready[1] && buf[2] == server_ready[2])
 		{
-			Spark_Send_Command(sparkSocket, (char *)core_id, NULL, buf);
-		    //if(buf[0] == core_id[0] && buf[1] == core_id[1] && buf[2] == core_id[2] && buf[3] == core_id[3])
+			Spark_Send_Device_Message(sparkSocket, (char *)core_id, NULL, buf);
+			if(buf[0] == core_id[0] && buf[1] == core_id[1] && buf[2] == core_id[2]
+			   && buf[3] == core_id[3] && buf[4] == core_id[4] && buf[5] == core_id[5])
 		    {
 		    	SPARK_SERVER_FLAG = 1;
 		    	LED_On(LED1);
@@ -65,9 +66,9 @@ void Spark_Disconnect(void)
     SPARK_SERVER_FLAG = 0;
 }
 
-void Spark_Send_Command(long socket, char * cmd, char * cmdparam, char * respBuf)
+void Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * respBuf)
 {
-    char cmdBuf[SPARK_BUF_LEN];
+    char cmdBuf[SPARK_BUF_LEN], tmp;
     int sendLen = 0;
 
     memset(cmdBuf, 0, SPARK_BUF_LEN);
@@ -84,8 +85,8 @@ void Spark_Send_Command(long socket, char * cmd, char * cmdparam, char * respBuf
         sendLen += strlen(cmdparam);
     }
 
-    memcpy(&cmdBuf[sendLen], spark_lf, strlen(spark_lf));
-    sendLen += strlen(spark_lf);
+    //memcpy(&cmdBuf[sendLen], spark_crlf, strlen(spark_crlf));
+    //sendLen += strlen(spark_crlf);
 
     send(socket, cmdBuf, sendLen, 0);
 
@@ -93,7 +94,44 @@ void Spark_Send_Command(long socket, char * cmd, char * cmdparam, char * respBuf
     {
         memset(respBuf, 0, SPARK_BUF_LEN);
         recv(socket, respBuf, SPARK_BUF_LEN, 0);
+        recv(sparkSocket, &tmp, 1, 0); //Receive and Discard '\n'
     }
+}
+
+void Spark_Process_API_Response()
+{
+    char recvBuff[SPARK_BUF_LEN], tmp;
+    int recvError = 0;
+
+    memset(recvBuff, 0, SPARK_BUF_LEN);
+
+    recvError = recv(sparkSocket, recvBuff, SPARK_BUF_LEN, 0);
+
+    if(recvError <= 1)
+    	return;
+
+	if(recvBuff[0] == spark_high[0] && recvBuff[1] == spark_high[1] && recvBuff[2] == spark_high[2] && recvBuff[3] == spark_high[3])
+	{
+		if(recvBuff[5] == spark_dx[0])
+		{
+			spark_dx[1] = recvBuff[6];
+			DIO_SetState(atoc(spark_dx[1]), HIGH);
+			//To Do - Send Success Response back to Server
+		}
+	}
+	else if(recvBuff[0] == spark_low[0] && recvBuff[1] == spark_low[1] && recvBuff[2] == spark_low[2])
+	{
+		if(recvBuff[4] == spark_dx[0])
+		{
+			spark_dx[1] = recvBuff[5];
+			DIO_SetState(atoc(spark_dx[1]), LOW);
+			//To Do - Send Success Response back to Server
+		}
+	}
+	else
+	{
+		//To Do - Send Failure Response back to Server
+	}
 }
 
 /**
