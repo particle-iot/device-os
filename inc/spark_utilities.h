@@ -7,22 +7,17 @@
 //#define SPARK_SERVER_IP	"54.235.79.249"
 #define SPARK_SERVER_PORT	8989
 
-// Spark end-of-line character
-//const char spark_crlf[] = "\r\n";
+// end-of-line character
+//const char Device_CRLF[] = "\r\n";
 
-// Spark Server/Core common messages
-const char spark_high[] = {'H','I','G','H',' '};			//"HIGH "
-const char spark_low[] = {'L','O','W',' '};					//"LOW "
-char spark_dx[] = {'D',' ','\n'};							//"D "
-
-// Spark Core specific messages
-const char core_secret[] = {'s','e','c','r','e','t','\n'};	//"secret"
-const char core_id[] = {'s','a','t','i','s','h','\n'};		//"satish"
-const char core_ok[] = {'O','K',' '};						//"OK "
-const char core_fail[] = {'F','A','I','L',' '};				//"FAIL "
-
-// Spark Server specific messages
-const char server_ready[] = {'w','h','o'};					//"who"
+// Spark Messages
+const char Device_Secret[] = {'s','e','c','r','e','t','\n'};	//"secret"
+const char Device_Name[] = {'s','a','t','i','s','h','\n'};		//"satish"
+const char Device_Ok[] = {'O','K',' '};							//"OK "
+const char Device_Fail[] = {'F','A','I','L',' '};				//"FAIL "
+const char API_Who[] = {'w','h','o'};							//"who"
+char High_Dx[] = {'H','I','G','H',' ','D',' ','\n'};			//"HIGH D "
+char Low_Dx[] = {'L','O','W',' ','D',' ','\n'};					//"LOW D "
 
 char Spark_Connect(void);
 void Spark_Disconnect(void);

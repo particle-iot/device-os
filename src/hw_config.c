@@ -156,14 +156,16 @@ void DIO_Init(DIO_TypeDef Dx)
   * @param  State: Set On or Off.
   * @retval None
   */
-void DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State)
+DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State)
 {
 	if(Dx < 0 || Dx > Dn)
-		return;
+		return FAIL;
 	else if(State == HIGH)
 		DIO_PORT[Dx]->BSRR = DIO_PIN[Dx];
 	else if(State == LOW)
 		DIO_PORT[Dx]->BRR = DIO_PIN[Dx];
+
+	return OK;
 }
 
 /**

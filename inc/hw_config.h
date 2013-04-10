@@ -24,6 +24,11 @@ typedef enum
 
 typedef enum
 {
+	FAIL = -1, OK = 0
+} DIO_Error_TypeDef;
+
+typedef enum
+{
 	D0 = 0, D1 = 1, D2 = 2, D3 = 3, D4 = 4, D5 = 5, D6 = 6, D7 = 7
 } DIO_TypeDef;
 
@@ -68,7 +73,7 @@ void Delay(__IO uint32_t nTime);
 void TimingDelay_Decrement(void);
 
 void DIO_Init(DIO_TypeDef Dx);
-void DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State);
+DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State);
 
 void LED_Init(Led_TypeDef Led);
 void LED_On(Led_TypeDef Led);
