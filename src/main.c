@@ -62,6 +62,8 @@ int main(void)
 	//
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
+	netapp_timeout_values(0,0,0,0);
+
 	/* Main loop */
 	while (1)
 	{

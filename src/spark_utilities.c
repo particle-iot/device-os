@@ -1,9 +1,13 @@
 #include "spark_utilities.h"
 #include "socket.h"
+#include "netapp.h"
 #include "string.h"
 
 long sparkSocket;
 sockaddr tSocketAddr;
+
+timeval timeout;
+fd_set readSet;
 
 __IO uint8_t SPARK_SERVER_FLAG;
 
@@ -43,9 +47,11 @@ char Spark_Connect(void)
 	else
 	{
 		Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, buf);
+
 		if(buf[0] == API_Who[0] && buf[1] == API_Who[1] && buf[2] == API_Who[2])
 		{
 			Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, buf);
+
 			//if(buf[0] == Device_Name[0] && buf[1] == Device_Name[1] && buf[2] == Device_Name[2]
 			//   && buf[3] == Device_Name[3] && buf[4] == Device_Name[4] && buf[5] == Device_Name[5])
 		    {
@@ -105,7 +111,22 @@ void Spark_Process_API_Response()
 
     memset(recvBuff, 0, SPARK_BUF_LEN);
 
-    recvError = recv(sparkSocket, recvBuff, SPARK_BUF_LEN, 0);
+    //select will block for 500 microseconds
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 500;
+
+    //reset the fd_set structure
+    FD_ZERO(&readSet);
+    FD_SET(sparkSocket, &readSet);
+
+    //poll the client for receive events
+    select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
+
+    //if data is available then receive
+    if(FD_ISSET(sparkSocket, &readSet))
+    {
+    	recvError = recv(sparkSocket, recvBuff, SPARK_BUF_LEN, 0);
+    }
 
     if(recvError <= 1)
     	return;
@@ -115,6 +136,7 @@ void Spark_Process_API_Response()
 		if(recvBuff[5] == High_Dx[5])
 		{
 			High_Dx[6] = recvBuff[6];
+
 			if(DIO_SetState(atoc(High_Dx[6]), HIGH) == OK)
 				Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)High_Dx, NULL);
 			else
@@ -126,6 +148,7 @@ void Spark_Process_API_Response()
 		if(recvBuff[4] == Low_Dx[4])
 		{
 			Low_Dx[5] = recvBuff[5];
+
 			if(DIO_SetState(atoc(Low_Dx[5]), LOW) == OK)
 				Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)Low_Dx, NULL);
 			else

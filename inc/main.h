@@ -20,6 +20,7 @@
 #include "wlan.h"
 #include "nvmem.h"
 #include "socket.h"
+#include "netapp.h"
 
 /* Exported types ------------------------------------------------------------*/
 
