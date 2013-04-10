@@ -46,8 +46,8 @@ char Spark_Connect(void)
 		if(buf[0] == server_ready[0] && buf[1] == server_ready[1] && buf[2] == server_ready[2])
 		{
 			Spark_Send_Device_Message(sparkSocket, (char *)core_id, NULL, buf);
-			if(buf[0] == core_id[0] && buf[1] == core_id[1] && buf[2] == core_id[2]
-			   && buf[3] == core_id[3] && buf[4] == core_id[4] && buf[5] == core_id[5])
+			//if(buf[0] == core_id[0] && buf[1] == core_id[1] && buf[2] == core_id[2]
+			//   && buf[3] == core_id[3] && buf[4] == core_id[4] && buf[5] == core_id[5])
 		    {
 		    	SPARK_SERVER_FLAG = 1;
 		    	LED_On(LED1);
@@ -100,7 +100,7 @@ void Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * 
 
 void Spark_Process_API_Response()
 {
-    char recvBuff[SPARK_BUF_LEN], tmp;
+    char recvBuff[SPARK_BUF_LEN];
     int recvError = 0;
 
     memset(recvBuff, 0, SPARK_BUF_LEN);

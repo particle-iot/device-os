@@ -158,7 +158,7 @@ void DIO_Init(DIO_TypeDef Dx)
   */
 void DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State)
 {
-	if(Dx < 0 && Dx > Dn)
+	if(Dx < 0 || Dx > Dn)
 		return;
 	else if(State == HIGH)
 		DIO_PORT[Dx]->BSRR = DIO_PIN[Dx];
