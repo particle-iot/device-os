@@ -116,7 +116,6 @@
 #define CC3000_WIFI_INT_EXTI_PORT_SOURCE    GPIO_PortSourceGPIOC
 #define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource15
 #define CC3000_WIFI_INT_EXTI_IRQn           EXTI15_10_IRQn
-#define CC3000_WIFI_INT_EXTI_IRQHandler     EXTI15_10_IRQHandler
 
 #define CC3000_SPI_DMA_CLK                  RCC_AHBPeriph_DMA1
 #define CC3000_SPI_RX_DMA_CHANNEL           DMA1_Channel2
@@ -125,8 +124,6 @@
 #define CC3000_SPI_TX_DMA_TCFLAG            DMA1_FLAG_TC3
 #define CC3000_SPI_RX_DMA_IRQn           	DMA1_Channel2_IRQn
 #define CC3000_SPI_TX_DMA_IRQn           	DMA1_Channel3_IRQn
-#define CC3000_SPI_RX_DMA_IRQHandler		DMA1_Channel2_IRQHandler
-#define CC3000_SPI_TX_DMA_IRQHandler		DMA1_Channel3_IRQHandler
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 
@@ -238,7 +235,6 @@
 #define CC3000_WIFI_INT_EXTI_PORT_SOURCE    GPIO_PortSourceGPIOC
 #define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource15
 #define CC3000_WIFI_INT_EXTI_IRQn           EXTI15_10_IRQn
-#define CC3000_WIFI_INT_EXTI_IRQHandler     EXTI15_10_IRQHandler
 
 #define CC3000_SPI_DMA_CLK                  RCC_AHBPeriph_DMA1
 #define CC3000_SPI_RX_DMA_CHANNEL           DMA1_Channel2
@@ -247,8 +243,6 @@
 #define CC3000_SPI_TX_DMA_TCFLAG            DMA1_FLAG_TC3
 #define CC3000_SPI_RX_DMA_IRQn           	DMA1_Channel2_IRQn
 #define CC3000_SPI_TX_DMA_IRQn           	DMA1_Channel3_IRQn
-#define CC3000_SPI_RX_DMA_IRQHandler		DMA1_Channel2_IRQHandler
-#define CC3000_SPI_TX_DMA_IRQHandler		DMA1_Channel3_IRQHandler
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 
@@ -360,7 +354,6 @@
 #define CC3000_WIFI_INT_EXTI_PORT_SOURCE    GPIO_PortSourceGPIOB
 #define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource11
 #define CC3000_WIFI_INT_EXTI_IRQn           EXTI15_10_IRQn
-#define CC3000_WIFI_INT_EXTI_IRQHandler     EXTI15_10_IRQHandler
 
 #define CC3000_SPI_DMA_CLK                  RCC_AHBPeriph_DMA1
 #define CC3000_SPI_RX_DMA_CHANNEL           DMA1_Channel4
@@ -369,8 +362,6 @@
 #define CC3000_SPI_TX_DMA_TCFLAG            DMA1_FLAG_TC5
 #define CC3000_SPI_RX_DMA_IRQn           	DMA1_Channel4_IRQn
 #define CC3000_SPI_TX_DMA_IRQn           	DMA1_Channel5_IRQn
-#define CC3000_SPI_RX_DMA_IRQHandler		DMA1_Channel4_IRQHandler
-#define CC3000_SPI_TX_DMA_IRQHandler		DMA1_Channel5_IRQHandler
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4000380C)	/* SPI2_BASE | 0x0C */
 
@@ -482,7 +473,6 @@
 #define CC3000_WIFI_INT_EXTI_PORT_SOURCE    GPIO_PortSourceGPIOB
 #define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource0
 #define CC3000_WIFI_INT_EXTI_IRQn           EXTI0_IRQn
-#define CC3000_WIFI_INT_EXTI_IRQHandler     EXTI0_IRQHandler
 
 #define CC3000_SPI_DMA_CLK                  RCC_AHBPeriph_DMA1
 #define CC3000_SPI_RX_DMA_CHANNEL           DMA1_Channel2
@@ -491,8 +481,6 @@
 #define CC3000_SPI_TX_DMA_TCFLAG            DMA1_FLAG_TC3
 #define CC3000_SPI_RX_DMA_IRQn           	DMA1_Channel2_IRQn
 #define CC3000_SPI_TX_DMA_IRQn           	DMA1_Channel3_IRQn
-#define CC3000_SPI_RX_DMA_IRQHandler		DMA1_Channel2_IRQHandler
-#define CC3000_SPI_TX_DMA_IRQHandler		DMA1_Channel3_IRQHandler
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 
@@ -604,7 +592,6 @@
 #define CC3000_WIFI_INT_EXTI_PORT_SOURCE    GPIO_PortSourceGPIOB
 #define CC3000_WIFI_INT_EXTI_PIN_SOURCE     GPIO_PinSource11
 #define CC3000_WIFI_INT_EXTI_IRQn           EXTI15_10_IRQn
-#define CC3000_WIFI_INT_EXTI_IRQHandler     EXTI15_10_IRQHandler
 
 #define CC3000_SPI_DMA_CLK                  RCC_AHBPeriph_DMA1
 #define CC3000_SPI_RX_DMA_CHANNEL           DMA1_Channel4
@@ -613,8 +600,6 @@
 #define CC3000_SPI_TX_DMA_TCFLAG            DMA1_FLAG_TC5
 #define CC3000_SPI_RX_DMA_IRQn           	DMA1_Channel4_IRQn
 #define CC3000_SPI_TX_DMA_IRQn           	DMA1_Channel5_IRQn
-#define CC3000_SPI_RX_DMA_IRQHandler		DMA1_Channel4_IRQHandler
-#define CC3000_SPI_TX_DMA_IRQHandler		DMA1_Channel5_IRQHandler
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4000380C)	/* SPI2_BASE | 0x0C */
 

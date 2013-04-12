@@ -9,7 +9,12 @@ sockaddr tSocketAddr;
 timeval timeout;
 fd_set readSet;
 
-__IO uint8_t SPARK_SERVER_FLAG;
+extern uint8_t SPARK_SERVER_CONNECTED;
+
+static void Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * respBuf);
+static uint8_t atoc(char data);
+static uint16_t atoshort(char b1, char b2);
+static unsigned char ascii_to_char(char b1, char b2);
 
 char Spark_Connect(void)
 {
@@ -55,7 +60,7 @@ char Spark_Connect(void)
 			//if(buf[0] == Device_Name[0] && buf[1] == Device_Name[1] && buf[2] == Device_Name[2]
 			//   && buf[3] == Device_Name[3] && buf[4] == Device_Name[4] && buf[5] == Device_Name[5])
 		    {
-		    	SPARK_SERVER_FLAG = 1;
+		    	SPARK_SERVER_CONNECTED = 1;
 		    	LED_On(LED1);
 		    }
 		}
@@ -69,39 +74,7 @@ void Spark_Disconnect(void)
 {
     closesocket(sparkSocket);
     sparkSocket = 0xFFFFFFFF;
-    SPARK_SERVER_FLAG = 0;
-}
-
-void Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * respBuf)
-{
-    char cmdBuf[SPARK_BUF_LEN], tmp;
-    int sendLen = 0;
-
-    memset(cmdBuf, 0, SPARK_BUF_LEN);
-
-    if(cmd != NULL)
-    {
-        sendLen = strlen(cmd);
-        memcpy(cmdBuf, cmd, strlen(cmd));
-    }
-
-    if(cmdparam != NULL)
-    {
-        memcpy(&cmdBuf[sendLen], cmdparam, strlen(cmdparam));
-        sendLen += strlen(cmdparam);
-    }
-
-    //memcpy(&cmdBuf[sendLen], Device_CRLF, strlen(Device_CRLF));
-    //sendLen += strlen(Device_CRLF);
-
-    send(socket, cmdBuf, sendLen, 0);
-
-    if(respBuf != NULL)
-    {
-        memset(respBuf, 0, SPARK_BUF_LEN);
-        recv(socket, respBuf, SPARK_BUF_LEN, 0);
-        recv(sparkSocket, &tmp, 1, 0); //Receive and Discard '\n'
-    }
+    SPARK_SERVER_CONNECTED = 0;
 }
 
 void Spark_Process_API_Response()
@@ -161,12 +134,44 @@ void Spark_Process_API_Response()
 	}
 }
 
+static void Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * respBuf)
+{
+    char cmdBuf[SPARK_BUF_LEN], tmp;
+    int sendLen = 0;
+
+    memset(cmdBuf, 0, SPARK_BUF_LEN);
+
+    if(cmd != NULL)
+    {
+        sendLen = strlen(cmd);
+        memcpy(cmdBuf, cmd, strlen(cmd));
+    }
+
+    if(cmdparam != NULL)
+    {
+        memcpy(&cmdBuf[sendLen], cmdparam, strlen(cmdparam));
+        sendLen += strlen(cmdparam);
+    }
+
+    //memcpy(&cmdBuf[sendLen], Device_CRLF, strlen(Device_CRLF));
+    //sendLen += strlen(Device_CRLF);
+
+    send(socket, cmdBuf, sendLen, 0);
+
+    if(respBuf != NULL)
+    {
+        memset(respBuf, 0, SPARK_BUF_LEN);
+        recv(socket, respBuf, SPARK_BUF_LEN, 0);
+        recv(sparkSocket, &tmp, 1, 0); //Receive and Discard '\n'
+    }
+}
+
 /**
   * @brief  Convert nibble to hexdecimal from ASCII.
   * @param  None
   * @retval None
   */
-uint8_t atoc(char data)
+static uint8_t atoc(char data)
 {
 	unsigned char ucRes;
 
@@ -210,7 +215,7 @@ uint8_t atoc(char data)
   * @param  char2
   * @retval number
   */
-uint16_t atoshort(char b1, char b2)
+static uint16_t atoshort(char b1, char b2)
 {
 	uint16_t usRes;
 	usRes = (atoc(b1)) * 16 | atoc(b2);
@@ -222,7 +227,7 @@ uint16_t atoshort(char b1, char b2)
   * @param  None
   * @retval None
   */
-unsigned char ascii_to_char(char b1, char b2)
+static unsigned char ascii_to_char(char b1, char b2)
 {
 	unsigned char ucRes;
 

@@ -11,8 +11,8 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include "hw_config.h" 
 #include "stm32_it.h"
+#include "main.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -23,10 +23,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* Extern variables ----------------------------------------------------------*/
-extern __IO uint8_t SPARK_SERVER_FLAG;
 
 /* Private function prototypes -----------------------------------------------*/
-extern void hci_unsolicited_event_handler(void);
 extern void SPI_DMA_IntHandler(void);
 extern void SPI_EXTI_IntHandler(void);
 
@@ -149,15 +147,7 @@ void PendSV_Handler(void)
  *******************************************************************************/
 void SysTick_Handler(void)
 {
-	TimingDelay_Decrement();
-
-	if(!SPARK_SERVER_FLAG)
-	{
-		/* Toggle the LED1 every 100ms */
-		LED_Toggle(LED1);
-	}
-
-	hci_unsolicited_event_handler();
+	Timing_Decrement();
 }
 
 /******************************************************************************/
@@ -168,23 +158,55 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /*******************************************************************************
- * Function Name  : CC3000_SPI_TX_DMA_IRQHandler
- * Description    : This function handles SPI_TX_DMA interrupt request.
+ * Function Name  : DMA1_Channel3_IRQHandler
+ * Description    : This function handles SPI1_TX_DMA interrupt request.
  * Input          : None
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void CC3000_SPI_TX_DMA_IRQHandler(void)
+void DMA1_Channel3_IRQHandler(void)
 {
 	SPI_DMA_IntHandler();
 }
 
-/**
- * @brief  This function handles WIFI_INT_EXTI interrupt request.
- * @param  None
- * @retval None
- */
-void CC3000_WIFI_INT_EXTI_IRQHandler(void)
+/*******************************************************************************
+ * Function Name  : DMA1_Channel5_IRQHandler
+ * Description    : This function handles SPI2_TX_DMA interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void DMA1_Channel5_IRQHandler(void)
+{
+	SPI_DMA_IntHandler();
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI0_IRQHandler
+ * Description    : This function handles EXTI0 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI0_IRQHandler(void)
+{
+	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
+	{
+		/* Clear the EXTI line pending flag */
+		EXTI_ClearFlag(CC3000_WIFI_INT_EXTI_LINE );
+
+		SPI_EXTI_IntHandler();
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI15_10_IRQHandler
+ * Description    : This function handles EXTI15_10 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI15_10_IRQHandler(void)
 {
 	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
 	{

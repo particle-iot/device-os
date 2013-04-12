@@ -69,8 +69,6 @@ typedef enum
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
-void Delay(__IO uint32_t nTime);
-void TimingDelay_Decrement(void);
 
 void DIO_Init(DIO_TypeDef Dx);
 DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State);
@@ -81,7 +79,7 @@ void LED_Off(Led_TypeDef Led);
 void LED_Toggle(Led_TypeDef Led);
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
-uint8_t BUTTON_Pressed(Button_TypeDef Button, uint32_t Delay100ms);
+uint8_t BUTTON_Pressed(Button_TypeDef Button);
 
 /* CC3000 Hardware related methods */
 void CC3000_WIFI_Init(void);

@@ -29,6 +29,9 @@
 /* Exported macro ------------------------------------------------------------*/
 
 /* Exported functions ------------------------------------------------------- */
+void Timing_Decrement(void);
+void Delay(__IO uint32_t nTime);
+
 void Start_Smart_Config(void);
 
 /* WLAN Application related callbacks passed to wlan_init */

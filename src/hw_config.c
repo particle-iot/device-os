@@ -18,8 +18,6 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-static __IO uint32_t TimingDelay;
-
 GPIO_TypeDef* DIO_PORT[Dn] = {D0_GPIO_PORT, D1_GPIO_PORT, D2_GPIO_PORT, D3_GPIO_PORT,
 								D4_GPIO_PORT, D5_GPIO_PORT, D6_GPIO_PORT, D7_GPIO_PORT};
 const uint16_t DIO_PIN[Dn] = {D0_PIN, D1_PIN, D2_PIN, D3_PIN,
@@ -81,8 +79,8 @@ void Set_System(void)
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_GPIO);
 
-	/* Setup SysTick Timer for 100 msec interrupts  */
-	if (SysTick_Config(SystemCoreClock / 10))
+	/* Setup SysTick Timer for 1 msec interrupts  */
+	if (SysTick_Config(SystemCoreClock / 1000))
 	{
 		/* Capture error */
 		while (1)
@@ -102,32 +100,6 @@ void NVIC_Configuration(void)
 {
 	/* Set the Vector Table base location at 0x0000 */
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0000);
-}
-
-/*******************************************************************************
- * Function Name  : Delay
- * Description    : Inserts a delay time.
- * Input          : nTime: specifies the delay time length, in 100 ms.
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void Delay(uint32_t nTime) {
-	TimingDelay = nTime;
-
-	while (TimingDelay != 0);
-}
-
-/*******************************************************************************
- * Function Name  : TimingDelay_Decrement
- * Description    : Decrements the TimingDelay variable.
- * Input          : None
- * Output         : TimingDelay
- * Return         : None
- *******************************************************************************/
-void TimingDelay_Decrement(void) {
-	if (TimingDelay != 0x00) {
-		TimingDelay--;
-	}
 }
 
 /**
@@ -285,7 +257,7 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
   *   This parameter can be one of following parameters:
   *     @arg BUTTON1: Button1
   *     @arg BUTTON2: Button2
-  * @retval Hardcoded Button Pressed state.
+  * @retval Actual Button Pressed state.
   */
 uint8_t BUTTON_GetState(Button_TypeDef Button)
 {
@@ -293,32 +265,16 @@ uint8_t BUTTON_GetState(Button_TypeDef Button)
 }
 
 /**
-  * @brief  Check if Button pressed for specified msDelay.
+  * @brief  Returns the Pressed state according to platform_config.
   * @param  Button: Specifies the Button to be checked.
   *   This parameter can be one of following parameters:
   *     @arg BUTTON1: Button1
   *     @arg BUTTON2: Button2
-  * @param  Delay100ms: Specifies 100ms Delay interval.
-  * @retval The Button GPIO pin value.
+  * @retval Hardcoded Button Pressed state.
   */
-uint8_t BUTTON_Pressed(Button_TypeDef Button, uint32_t Delay100ms)
+uint8_t BUTTON_Pressed(Button_TypeDef Button)
 {
-	uint8_t Button_Pressed = 0x00;
-
-    /* Check if the Button is pressed for msDelay */
-    if (BUTTON_GetState(Button) == BUTTON_PRESSED[Button])
-    {
-        TimingDelay = Delay100ms;
-        while (BUTTON_GetState(Button) == BUTTON_PRESSED[Button])
-        {
-            if (TimingDelay == 0x00)
-            {
-            	Button_Pressed = 0x01;
-            }
-        }
-    }
-
-    return Button_Pressed;
+    return BUTTON_PRESSED[Button];
 }
 
 /**

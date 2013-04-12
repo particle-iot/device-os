@@ -9,17 +9,29 @@
  */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+
 /* Private typedef -----------------------------------------------------------*/
+
 /* Private define ------------------------------------------------------------*/
+
 /* Private macro -------------------------------------------------------------*/
+
 /* Private variables ---------------------------------------------------------*/
-__IO uint8_t WLAN_SMART_CONFIG_DONE;
-__IO uint8_t WLAN_CONNECTED;
-__IO uint8_t WLAN_DHCP;
-__IO uint8_t WLAN_CAN_SHUTDOWN;
+__IO uint32_t TimingDelay;
+__IO uint32_t TimingLED1, TimingLED2;
+__IO uint32_t TimingBUTTON1;
+__IO uint32_t TimingSparkConnect;
+__IO uint8_t TIMING_BUTTON1_PRESSED;
+
+uint8_t WLAN_SMART_CONFIG_DONE;
+uint8_t WLAN_CONNECTED;
+uint8_t WLAN_DHCP;
+uint8_t WLAN_CAN_SHUTDOWN;
+
+uint8_t FIRST_TIME_CONFIG;
+uint8_t SPARK_SERVER_CONNECTED;
 
 /* Extern variables ----------------------------------------------------------*/
-extern __IO uint8_t SPARK_SERVER_FLAG;
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -62,13 +74,45 @@ int main(void)
 	//
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
-	netapp_timeout_values(0,0,0,0);
+	/* Enable PWR and BKP clock */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+
+	/* Enable write access to Backup domain */
+	PWR_BackupAccessCmd(ENABLE);
+
+	/* This will be replaced with SPI-Flash based backup */
+    if(BKP_ReadBackupRegister(BKP_DR10) != 0xABCD)
+    {
+    	netapp_timeout_values(0,0,0,0);
+    	FIRST_TIME_CONFIG = 0x01;
+    }
 
 	/* Main loop */
 	while (1)
 	{
-		//if BUTTON1 pressed for 2 sec (20 * 100 ms)
-		if(BUTTON_Pressed(BUTTON1, 20))
+		if (BUTTON_GetState(BUTTON1) == BUTTON_Pressed(BUTTON1))
+        {
+            if(!TIMING_BUTTON1_PRESSED)
+            {
+            	TimingBUTTON1 = 1000; //1 sec
+            }
+
+            if(TIMING_BUTTON1_PRESSED && !TimingBUTTON1)
+            {
+            	TIMING_BUTTON1_PRESSED = 0x00;
+            	FIRST_TIME_CONFIG = 0x01;
+            }
+            else
+            {
+            	TIMING_BUTTON1_PRESSED = 0x01;
+            }
+        }
+        else
+        {
+        	TIMING_BUTTON1_PRESSED = 0x00;
+        }
+
+		if(FIRST_TIME_CONFIG)
 		{
 			//
 			// Start CC3000 first time configuration
@@ -76,16 +120,79 @@ int main(void)
 			Start_Smart_Config();
 		}
 
-		if(WLAN_DHCP && !SPARK_SERVER_FLAG)
+		if(WLAN_DHCP && !SPARK_SERVER_CONNECTED && !TimingSparkConnect)
 		{
 			Spark_Connect();
 		}
 
-		if(SPARK_SERVER_FLAG)
+		if(SPARK_SERVER_CONNECTED)
 		{
 			Spark_Process_API_Response();
 		}
 	}
+}
+
+/*******************************************************************************
+* Function Name  : Delay
+* Description    : Inserts a delay time.
+* Input          : nTime: specifies the delay time length, in milliseconds.
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void Delay(uint32_t nTime)
+{
+    TimingDelay = nTime;
+
+    // /* Enable the SysTick Counter */
+    // SysTick->CTRL |= SysTick_CTRL_ENABLE;
+
+    while(TimingDelay != 0);
+
+    // /* Disable the SysTick Counter */
+    // SysTick->CTRL &= ~SysTick_CTRL_ENABLE;
+
+    // /* Clear the SysTick Counter */
+    // SysTick->VAL = (uint32_t)0x00;
+}
+
+/*******************************************************************************
+* Function Name  : Timing_Decrement
+* Description    : Decrements the various Timing variables related to SysTick.
+* Input          : None
+* Output         : Timing
+* Return         : None
+*******************************************************************************/
+void Timing_Decrement(void)
+{
+    if (TimingDelay != 0x00)
+    {
+        TimingDelay--;
+    }
+
+    if (TimingLED1 != 0x00)
+    {
+        TimingLED1--;
+    }
+    else if(!SPARK_SERVER_CONNECTED)
+    {
+    	LED_Toggle(LED1);
+    	TimingLED1 = 100;	//100ms
+    }
+
+    if (TimingLED2 != 0x00)
+    {
+        TimingLED2--;
+    }
+
+    if (TimingBUTTON1 != 0x00)
+    {
+    	TimingBUTTON1--;
+    }
+
+    if (TimingSparkConnect != 0x00)
+    {
+    	TimingSparkConnect--;
+    }
 }
 
 /*******************************************************************************
@@ -102,17 +209,19 @@ void Start_Smart_Config(void)
 	WLAN_DHCP = 0;
 	WLAN_CAN_SHUTDOWN = 0;
 
+	BKP_WriteBackupRegister(BKP_DR10, 0xFFFF);
+
 	//
 	// Reset all the previous configuration
 	//
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
-	wlan_ioctl_del_profile(255);
+	//wlan_ioctl_del_profile(255);
 
 	//Wait until CC3000 is disconnected
 	while (WLAN_CONNECTED == 1)
 	{
 		//Delay 100ms
-		Delay(1);
+		Delay(100);
 		hci_unsolicited_event_handler();
 	}
 
@@ -128,7 +237,7 @@ void Start_Smart_Config(void)
 	{
 		/* Toggle the LED2 every 100ms */
 		LED_Toggle(LED2);
-		Delay(1);
+		Delay(100);
 	}
 
 	LED_Off(LED2);
@@ -139,12 +248,18 @@ void Start_Smart_Config(void)
 	//
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
 
+	BKP_WriteBackupRegister(BKP_DR10, 0xABCD);
+
+	NVIC_SystemReset();
+
+/*
 	//
 	// reset the CC3000
 	//
 	wlan_stop();
 
-	Delay(1);
+	// Delay 1 sec
+	Delay(1000);
 
 	wlan_start(0);
 
@@ -152,6 +267,7 @@ void Start_Smart_Config(void)
 	// Mask out all non-required events
 	//
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+*/
 }
 
 /* WLAN Application related callbacks passed to wlan_init */
@@ -165,18 +281,19 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 
 		case HCI_EVNT_WLAN_UNSOL_CONNECT:
 			WLAN_CONNECTED = 1;
-			LED_On(LED2);
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
-			SPARK_SERVER_FLAG = 0;
+			SPARK_SERVER_CONNECTED = 0;
 			LED_Off(LED2);
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
 			WLAN_DHCP = 1;
+			TimingSparkConnect = 3000; //Delay 3 sec before connecting to server
+			LED_On(LED2);
 			break;
 
 		case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
