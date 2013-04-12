@@ -1,3 +1,7 @@
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __SPARK_UTILITIES_H
+#define __SPARK_UTILITIES_H
+
 #include "hw_config.h"
 
 #define SPARK_BUF_LEN	32
@@ -19,7 +23,8 @@ const char API_Who[] = {'w','h','o'};							//"who"
 char High_Dx[] = {'H','I','G','H',' ','D',' ','\n'};			//"HIGH D "
 char Low_Dx[] = {'L','O','W',' ','D',' ','\n'};					//"LOW D "
 
-extern char Spark_Connect(void);
-extern void Spark_Disconnect(void);
-extern void Spark_Process_API_Response();
+char Spark_Connect(void);
+void Spark_Disconnect(void);
+void Spark_Process_API_Response();
 
+#endif  /* __SPARK_UTILITIES_H */

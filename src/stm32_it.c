@@ -27,6 +27,7 @@
 /* Private function prototypes -----------------------------------------------*/
 extern void SPI_DMA_IntHandler(void);
 extern void SPI_EXTI_IntHandler(void);
+extern void BUTTON1_IntHandler(void);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -197,6 +198,14 @@ void EXTI0_IRQHandler(void)
 
 		SPI_EXTI_IntHandler();
 	}
+
+	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
+	{
+		BUTTON1_IntHandler();
+
+		/* Clear the EXTI line pending flag */
+		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
+	}
 }
 
 /*******************************************************************************
@@ -214,6 +223,14 @@ void EXTI15_10_IRQHandler(void)
 		EXTI_ClearFlag(CC3000_WIFI_INT_EXTI_LINE );
 
 		SPI_EXTI_IntHandler();
+	}
+
+	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
+	{
+		BUTTON1_IntHandler();
+
+		/* Clear the EXTI line pending flag */
+		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
 	}
 }
 

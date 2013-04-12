@@ -32,6 +32,9 @@
 void Timing_Decrement(void);
 void Delay(__IO uint32_t nTime);
 
+void BUTTON1_IntHandler(void);
+
+void Set_NetApp_Timeout(void);
 void Start_Smart_Config(void);
 
 /* WLAN Application related callbacks passed to wlan_init */

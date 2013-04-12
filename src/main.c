@@ -20,7 +20,6 @@
 __IO uint32_t TimingDelay;
 __IO uint32_t TimingLED1, TimingLED2;
 __IO uint32_t TimingBUTTON1;
-__IO uint32_t TimingSparkConnect;
 __IO uint8_t TIMING_BUTTON1_PRESSED;
 
 uint8_t WLAN_SMART_CONFIG_DONE;
@@ -81,37 +80,20 @@ int main(void)
 	PWR_BackupAccessCmd(ENABLE);
 
 	/* This will be replaced with SPI-Flash based backup */
-    if(BKP_ReadBackupRegister(BKP_DR10) != 0xABCD)
+    if(BKP_ReadBackupRegister(BKP_DR1) != 0xAAAA)
     {
-    	netapp_timeout_values(0,0,0,0);
+    	Set_NetApp_Timeout();
+    }
+
+	/* This will be replaced with SPI-Flash based backup */
+    if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
+    {
     	FIRST_TIME_CONFIG = 0x01;
     }
 
 	/* Main loop */
 	while (1)
 	{
-		if (BUTTON_GetState(BUTTON1) == BUTTON_Pressed(BUTTON1))
-        {
-            if(!TIMING_BUTTON1_PRESSED)
-            {
-            	TimingBUTTON1 = 1000; //1 sec
-            }
-
-            if(TIMING_BUTTON1_PRESSED && !TimingBUTTON1)
-            {
-            	TIMING_BUTTON1_PRESSED = 0x00;
-            	FIRST_TIME_CONFIG = 0x01;
-            }
-            else
-            {
-            	TIMING_BUTTON1_PRESSED = 0x01;
-            }
-        }
-        else
-        {
-        	TIMING_BUTTON1_PRESSED = 0x00;
-        }
-
 		if(FIRST_TIME_CONFIG)
 		{
 			//
@@ -120,7 +102,7 @@ int main(void)
 			Start_Smart_Config();
 		}
 
-		if(WLAN_DHCP && !SPARK_SERVER_CONNECTED && !TimingSparkConnect)
+		if(WLAN_DHCP && !SPARK_SERVER_CONNECTED)
 		{
 			Spark_Connect();
 		}
@@ -188,11 +170,49 @@ void Timing_Decrement(void)
     {
     	TimingBUTTON1--;
     }
+}
 
-    if (TimingSparkConnect != 0x00)
+void BUTTON1_IntHandler(void)
+{
+	if (BUTTON_GetState(BUTTON1) == BUTTON_Pressed(BUTTON1))
     {
-    	TimingSparkConnect--;
+        if(!TIMING_BUTTON1_PRESSED)
+        {
+        	TimingBUTTON1 = 1000; //1 sec
+        }
+
+        if(TIMING_BUTTON1_PRESSED && !TimingBUTTON1)
+        {
+        	TIMING_BUTTON1_PRESSED = 0x00;
+
+        	//Enter First Time Config On Next System Reset
+        	//Since socket connect() is currently blocking
+        	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
+        	NVIC_SystemReset();
+        }
+        else
+        {
+        	TIMING_BUTTON1_PRESSED = 0x01;
+        }
     }
+    else
+    {
+    	TIMING_BUTTON1_PRESSED = 0x00;
+    }
+}
+
+void Set_NetApp_Timeout(void)
+{
+	unsigned long aucDHCP = 14400;
+	unsigned long aucARP = 3600;
+	unsigned long aucKeepalive = 10;
+	unsigned long aucInactivity = 60;
+
+	BKP_WriteBackupRegister(BKP_DR1, 0xFFFF);
+
+	netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
+
+	BKP_WriteBackupRegister(BKP_DR1, 0xAAAA);
 }
 
 /*******************************************************************************
@@ -209,7 +229,7 @@ void Start_Smart_Config(void)
 	WLAN_DHCP = 0;
 	WLAN_CAN_SHUTDOWN = 0;
 
-	BKP_WriteBackupRegister(BKP_DR10, 0xFFFF);
+	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
 
 	//
 	// Reset all the previous configuration
@@ -248,7 +268,7 @@ void Start_Smart_Config(void)
 	//
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
 
-	BKP_WriteBackupRegister(BKP_DR10, 0xABCD);
+	BKP_WriteBackupRegister(BKP_DR2, 0xBBBB);
 
 	NVIC_SystemReset();
 
@@ -292,7 +312,6 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
 			WLAN_DHCP = 1;
-			TimingSparkConnect = 3000; //Delay 3 sec before connecting to server
 			LED_On(LED2);
 			break;
 

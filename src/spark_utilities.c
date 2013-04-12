@@ -25,7 +25,7 @@ char Spark_Connect(void)
 
     if (sparkSocket == -1)
     {
-        //wlan_stop();
+        wlan_stop();
         return -1;
     }
 

@@ -77,7 +77,7 @@ void Set_System(void)
 	}
 
     /* Configure the Button */
-    BUTTON_Init(BUTTON1, BUTTON_MODE_GPIO);
+    BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
 
 	/* Setup SysTick Timer for 1 msec interrupts  */
 	if (SysTick_Config(SystemCoreClock / 1000))
