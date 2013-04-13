@@ -36,6 +36,7 @@ void DMA1_Channel3_IRQHandler(void);
 void DMA1_Channel5_IRQHandler(void);
 void EXTI0_IRQHandler(void);
 void EXTI15_10_IRQHandler(void);
+void TIM4_IRQHandler(void);
 
 #endif /* __STM32_IT_H */
 

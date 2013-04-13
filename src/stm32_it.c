@@ -27,7 +27,8 @@
 /* Private function prototypes -----------------------------------------------*/
 extern void SPI_DMA_IntHandler(void);
 extern void SPI_EXTI_IntHandler(void);
-extern void BUTTON1_IntHandler(void);
+
+extern __IO uint8_t BUTTON_DEBOUNCED[BUTTONn];
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -201,10 +202,14 @@ void EXTI0_IRQHandler(void)
 
 	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
 	{
-		BUTTON1_IntHandler();
-
 		/* Clear the EXTI line pending flag */
 		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
+
+		/* Disable BUTTON1 Interrupts */
+		BUTTON_EXTI_Config(BUTTON1, DISABLE);
+
+	    /* DEBOUNCE_TIMER Enable Counter */
+	    TIM_Cmd(DEBOUNCE_TIMER, ENABLE);
 	}
 }
 
@@ -227,10 +232,37 @@ void EXTI15_10_IRQHandler(void)
 
 	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
 	{
-		BUTTON1_IntHandler();
-
 		/* Clear the EXTI line pending flag */
 		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
+
+		/* Disable BUTTON1 Interrupts */
+		BUTTON_EXTI_Config(BUTTON1, DISABLE);
+
+	    /* DEBOUNCE_TIMER Enable Counter */
+	    TIM_Cmd(DEBOUNCE_TIMER, ENABLE);
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : TIM4_IRQHandler
+ * Description    : This function handles TIM4 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void TIM4_IRQHandler(void)
+{
+	if (TIM_GetITStatus(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG) != RESET)
+	{
+		TIM_ClearITPendingBit(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG);
+
+		if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+			BUTTON_DEBOUNCED[BUTTON1] = 0x01;
+		else
+			BUTTON_DEBOUNCED[BUTTON1] = 0x00;
+
+		/* Enable BUTTON1 Interrupts */
+		BUTTON_EXTI_Config(BUTTON1, ENABLE);
 	}
 }
 

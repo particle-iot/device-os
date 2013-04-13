@@ -33,7 +33,7 @@ GPIO_TypeDef* BUTTON_PORT[BUTTONn] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
 const uint16_t BUTTON_PIN[BUTTONn] = {BUTTON1_PIN, BUTTON2_PIN};
 const uint32_t BUTTON_CLK[BUTTONn] = {BUTTON1_GPIO_CLK, BUTTON2_GPIO_CLK};
 GPIOMode_TypeDef BUTTON_GPIO_MODE[BUTTONn] = {BUTTON1_GPIO_MODE, BUTTON2_GPIO_MODE};
-const uint8_t BUTTON_PRESSED[BUTTONn] = {BUTTON1_PRESSED, BUTTON2_PRESSED};
+__IO uint8_t BUTTON_DEBOUNCED[BUTTONn] = {0x00, 0x00};
 
 const uint16_t BUTTON_EXTI_LINE[BUTTONn] = {BUTTON1_EXTI_LINE, BUTTON2_EXTI_LINE};
 const uint16_t BUTTON_PORT_SOURCE[BUTTONn] = {BUTTON1_EXTI_PORT_SOURCE, BUTTON2_EXTI_PORT_SOURCE};
@@ -203,7 +203,7 @@ void LED_Toggle(Led_TypeDef Led)
 }
 
 /**
-  * @brief  Configures Button GPIO and EXTI Line.
+  * @brief  Configures Button GPIO, EXTI Line and DEBOUNCE Timer.
   * @param  Button: Specifies the Button to be configured.
   *   This parameter can be one of following parameters:
   *     @arg BUTTON1: Button1
@@ -218,8 +218,8 @@ void LED_Toggle(Led_TypeDef Led)
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
-    EXTI_InitTypeDef EXTI_InitStructure;
     NVIC_InitTypeDef NVIC_InitStructure;
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 
     /* Enable the BUTTON Clock */
     RCC_APB2PeriphClockCmd(BUTTON_CLK[Button] | RCC_APB2Periph_AFIO, ENABLE);
@@ -231,28 +231,77 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
-        /* Connect Button EXTI Line to Button GPIO Pin */
-        GPIO_EXTILineConfig(BUTTON_PORT_SOURCE[Button], BUTTON_PIN_SOURCE[Button]);
+        /* Enable TIM4 clock */
+        RCC_APB1PeriphClockCmd(DEBOUNCE_TIMER_CLK, ENABLE);
 
-        /* Configure Button EXTI line */
-        EXTI_InitStructure.EXTI_Line = BUTTON_EXTI_LINE[Button];
-        EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-		EXTI_InitStructure.EXTI_Trigger = BUTTON_EXTI_TRIGGER[Button];
-        EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-        EXTI_Init(&EXTI_InitStructure);
+        /* TIM Update Frequency = 72000000/7200/100 = 100Hz = 10ms */
+        /* TIM_Prescaler: 7199 */
+        /* TIM_Autoreload: 99 -> 100Hz = 10ms */
+        uint16_t TIM_Prescaler = (SystemCoreClock / 10000) - 1;
+        uint16_t TIM_Autoreload = (10000 / DEBOUNCE_FREQ) - 1;
 
-        /* Enable and set Button EXTI Interrupt to the lowest priority */
+        /* Time Base Configuration */
+    	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
+    	TIM_TimeBaseStructure.TIM_Prescaler = TIM_Prescaler;
+    	TIM_TimeBaseStructure.TIM_Period = TIM_Autoreload;
+    	TIM_TimeBaseStructure.TIM_ClockDivision = 0x0;
+    	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    	TIM_TimeBaseInit(DEBOUNCE_TIMER, &TIM_TimeBaseStructure);
+
+        /* TIM Configuration */
+        //TIM_PrescalerConfig(DEBOUNCE_TIMER, TIM_Prescaler, TIM_PSCReloadMode_Update);
+        //TIM_SetAutoreload(DEBOUNCE_TIMER, TIM_Autoreload);
+
+        /* One Pulse Mode selection */
+        TIM_SelectOnePulseMode(DEBOUNCE_TIMER, TIM_OPMode_Single);
+
+        TIM_ClearITPendingBit(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG);
+
+        /* TIM IT Enable */
+        TIM_ITConfig(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG, ENABLE);
+
+        /* Enable the TIM Interrupt */
+        NVIC_InitStructure.NVIC_IRQChannel = DEBOUNCE_TIMER_IRQn;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+        NVIC_Init(&NVIC_InitStructure);
+
+        /* Enable the Button EXTI Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = BUTTON_IRQn[Button];
         NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
         NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
         NVIC_Init(&NVIC_InitStructure);
+
+        BUTTON_DEBOUNCED[Button] = 0x00;
+
+        BUTTON_EXTI_Config(Button, ENABLE);
     }
 }
 
+void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState)
+{
+    EXTI_InitTypeDef EXTI_InitStructure;
+
+	/* Connect Button EXTI Line to Button GPIO Pin */
+    GPIO_EXTILineConfig(BUTTON_PORT_SOURCE[Button], BUTTON_PIN_SOURCE[Button]);
+
+	/* Clear the EXTI line pending flag */
+	EXTI_ClearFlag(BUTTON_EXTI_LINE[Button]);
+
+    /* Configure Button EXTI line */
+    EXTI_InitStructure.EXTI_Line = BUTTON_EXTI_LINE[Button];
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+	EXTI_InitStructure.EXTI_Trigger = BUTTON_EXTI_TRIGGER[Button];
+    EXTI_InitStructure.EXTI_LineCmd = NewState;
+    EXTI_Init(&EXTI_InitStructure);
+}
+
 /**
-  * @brief  Returns the selected Button state.
+  * @brief  Returns the selected Button non-filtered state.
   * @param  Button: Specifies the Button to be checked.
   *   This parameter can be one of following parameters:
   *     @arg BUTTON1: Button1
@@ -265,16 +314,21 @@ uint8_t BUTTON_GetState(Button_TypeDef Button)
 }
 
 /**
-  * @brief  Returns the Pressed state according to platform_config.
+  * @brief  Returns the selected Button filtered state.
   * @param  Button: Specifies the Button to be checked.
   *   This parameter can be one of following parameters:
   *     @arg BUTTON1: Button1
   *     @arg BUTTON2: Button2
-  * @retval Hardcoded Button Pressed state.
+  * @retval Button Debounced state.
   */
-uint8_t BUTTON_Pressed(Button_TypeDef Button)
+uint8_t BUTTON_GetDebouncedState(Button_TypeDef Button)
 {
-    return BUTTON_PRESSED[Button];
+	if(BUTTON_DEBOUNCED[BUTTON1] != 0x00)
+	{
+		BUTTON_DEBOUNCED[BUTTON1] = 0x00;
+		return 0x01;
+	}
+	return 0x00;
 }
 
 /**
@@ -452,6 +506,9 @@ void CC3000_Interrupt_Enable(void)
 
 	/* Select the CC3000_WIFI_INT GPIO pin used as EXTI Line */
 	GPIO_EXTILineConfig(CC3000_WIFI_INT_EXTI_PORT_SOURCE, CC3000_WIFI_INT_EXTI_PIN_SOURCE );
+
+	/* Clear the EXTI line pending flag */
+	EXTI_ClearFlag(CC3000_WIFI_INT_EXTI_LINE );
 
 	/* Configure and Enable CC3000_WIFI_INT EXTI line */
 	EXTI_InitStructure.EXTI_Line = CC3000_WIFI_INT_EXTI_LINE;

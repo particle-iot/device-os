@@ -89,6 +89,13 @@
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
 #define	BUTTON2_EXTI_TRIGGER				0//EXTI_Trigger_Falling
 
+//Button Debounce Timer
+#define DEBOUNCE_FREQ						100	//100 Hz => 10ms
+#define DEBOUNCE_TIMER						TIM4
+#define DEBOUNCE_TIMER_CLK					RCC_APB1Periph_TIM4
+#define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
+#define DEBOUNCE_TIMER_IRQn           		TIM4_IRQn
+
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
 #define CC3000_SPI_CLK						RCC_APB2Periph_SPI1
@@ -207,6 +214,13 @@
 #define BUTTON2_EXTI_PIN_SOURCE         	0//GPIO_PinSourcey
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
 #define	BUTTON2_EXTI_TRIGGER				0//EXTI_Trigger_Falling
+
+//Button Debounce Timer
+#define DEBOUNCE_FREQ						100	//100 Hz => 10ms
+#define DEBOUNCE_TIMER						TIM4
+#define DEBOUNCE_TIMER_CLK					RCC_APB1Periph_TIM4
+#define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
+#define DEBOUNCE_TIMER_IRQn           		TIM4_IRQn
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
@@ -327,6 +341,13 @@
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
 #define	BUTTON2_EXTI_TRIGGER				0//EXTI_Trigger_Falling
 
+//Button Debounce Timer
+#define DEBOUNCE_FREQ						100	//100 Hz => 10ms
+#define DEBOUNCE_TIMER						TIM4
+#define DEBOUNCE_TIMER_CLK					RCC_APB1Periph_TIM4
+#define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
+#define DEBOUNCE_TIMER_IRQn           		TIM4_IRQn
+
 //CC3000 Interface pins
 #define CC3000_SPI							SPI2
 #define CC3000_SPI_CLK						RCC_APB1Periph_SPI2
@@ -446,6 +467,13 @@
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
 #define	BUTTON2_EXTI_TRIGGER				0//EXTI_Trigger_Falling
 
+//Button Debounce Timer
+#define DEBOUNCE_FREQ						100	//100 Hz => 10ms
+#define DEBOUNCE_TIMER						TIM4
+#define DEBOUNCE_TIMER_CLK					RCC_APB1Periph_TIM4
+#define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
+#define DEBOUNCE_TIMER_IRQn           		TIM4_IRQn
+
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
 #define CC3000_SPI_CLK						RCC_APB2Periph_SPI1
@@ -564,6 +592,13 @@
 #define BUTTON2_EXTI_PIN_SOURCE         	0//GPIO_PinSourcey
 #define BUTTON2_EXTI_IRQn               	0//EXTIy_IRQn
 #define	BUTTON2_EXTI_TRIGGER				0//EXTI_Trigger_Falling
+
+//Button Debounce Timer
+#define DEBOUNCE_FREQ						100	//100 Hz => 10ms
+#define DEBOUNCE_TIMER						TIM4
+#define DEBOUNCE_TIMER_CLK					RCC_APB1Periph_TIM4
+#define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
+#define DEBOUNCE_TIMER_IRQn           		TIM4_IRQn
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI2

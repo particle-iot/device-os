@@ -71,7 +71,7 @@ int main(void)
 	//
 	// Mask out all non-required events from CC3000
 	//
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+	//wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
 	/* Enable PWR and BKP clock */
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
@@ -79,13 +79,15 @@ int main(void)
 	/* Enable write access to Backup domain */
 	PWR_BackupAccessCmd(ENABLE);
 
-	/* This will be replaced with SPI-Flash based backup */
+/*
+	// This will be replaced with SPI-Flash based backup
     if(BKP_ReadBackupRegister(BKP_DR1) != 0xAAAA)
     {
     	Set_NetApp_Timeout();
     }
+*/
 
-	/* This will be replaced with SPI-Flash based backup */
+	// This will be replaced with SPI-Flash based backup
     if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
     {
     	FIRST_TIME_CONFIG = 0x01;
@@ -170,15 +172,24 @@ void Timing_Decrement(void)
     {
     	TimingBUTTON1--;
     }
+
+    if(BUTTON_GetDebouncedState(BUTTON1) != 0x00)
+    {
+    	//Enter First Time Config On Next System Reset
+    	//Since socket connect() is currently blocking
+    	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
+    	NVIC_SystemReset();
+    }
 }
 
+/*
 void BUTTON1_IntHandler(void)
 {
-	if (BUTTON_GetState(BUTTON1) == BUTTON_Pressed(BUTTON1))
+	if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
     {
         if(!TIMING_BUTTON1_PRESSED)
         {
-        	TimingBUTTON1 = 1000; //1 sec
+        	TimingBUTTON1 = 2000; //2 sec
         }
 
         if(TIMING_BUTTON1_PRESSED && !TimingBUTTON1)
@@ -200,6 +211,7 @@ void BUTTON1_IntHandler(void)
     	TIMING_BUTTON1_PRESSED = 0x00;
     }
 }
+*/
 
 void Set_NetApp_Timeout(void)
 {
