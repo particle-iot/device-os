@@ -9,6 +9,7 @@
  */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "spark_utilities.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -71,7 +72,7 @@ int main(void)
 	//
 	// Mask out all non-required events from CC3000
 	//
-	//wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
 	/* Enable PWR and BKP clock */
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
