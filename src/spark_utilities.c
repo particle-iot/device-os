@@ -110,7 +110,8 @@ int Spark_Process_API_Response(void)
     //if data is available then receive
     if(FD_ISSET(sparkSocket, &readSet))
     {
-    	retVal = recv(sparkSocket, recvBuff, SPARK_BUF_LEN, 0);
+      // leave the final null byte so we can safely use strlen and strchr
+    	retVal = recv(sparkSocket, recvBuff, SPARK_BUF_LEN - 1, 0);
     }
 
     if(retVal < 0)
@@ -150,26 +151,27 @@ int Spark_Process_API_Response(void)
 		else
 			retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)Low_Dx, NULL);
 	}
-	else if(strncmp(recvBuff, API_UserFunc, 9) == 0)
-	{
-		if(userFunction != NULL)
-		{
-			char *user_arg = strchr(&recvBuff[9], '\n');
+  else if(strncmp(recvBuff, API_UserFunc, strlen(API_UserFunc)) == 0)
+  {
+    if(NULL != userFunction)
+    {
+      size_t API_UserFunc_Len = strlen(API_UserFunc);
+      char *user_arg = &recvBuff[API_UserFunc_Len];
+      char *newline = strchr(user_arg, '\n');
+      if (NULL != newline)
+      {
+        if ('\r' == *(newline - 1))
+          newline--;
+        *newline = '\0';
+      }
 
-			if(strlen(user_arg) > 22)
-			{
-				retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, NULL, NULL);
-			}
-			else
-			{
-				char retCh, retLen, retStr[11];
-				retCh = userFunction(user_arg);
-				retLen = itoa(retCh, &retStr[0]);
-				retStr[retLen] = '\0';
-				retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_UserFunc, (char *)retStr);
-			}
-		}
-	}
+      char retStr[11];
+      int userResult = userFunction(user_arg);
+      int retLen = itoa(userResult, retStr);
+      retStr[retLen] = '\0';
+      retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_UserFunc, (char *)retStr);
+    }
+  }
 	else if((strncmp(recvBuff, Device_Ok, 3) == 0) && (strncmp(&recvBuff[3], API_Callback, 9) == 0))
 	{
 		char *status_code = strchr(&recvBuff[12], '\n');
