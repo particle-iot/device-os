@@ -9,8 +9,6 @@ sockaddr tSocketAddr;
 timeval timeout;
 fd_set readSet;
 
-extern uint8_t SPARK_SERVER_CONNECTED;
-
 // Spark Messages
 const char Device_Secret[] = "secret";
 const char Device_Name[] = "satish";
@@ -25,7 +23,7 @@ char Low_Dx[] = "LOW D ";
 
 char digits[] = "0123456789";
 
-static void Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
+static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
 static unsigned char itoa(int cNum, char *cString);
 static uint8_t atoc(char data);
 
@@ -39,9 +37,9 @@ static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
 */
 
-char Spark_Connect(void)
+int Spark_Connect(void)
 {
-	int serverFlag = 0;
+	int retVal = 0;
 
     sparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -64,33 +62,37 @@ char Spark_Connect(void)
 	tSocketAddr.sa_data[4] = 79;	// Third Octet of destination IP
 	tSocketAddr.sa_data[5] = 249;	// Fourth Octet of destination IP
 
-	serverFlag = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
+	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 
-	if (serverFlag < 0)
+	if (retVal < 0)
 	{
 		// Unable to connect
 		return -1;
 	}
 	else
 	{
-		Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, NULL);
+		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, NULL);
 	}
 
-    // Success
-    return 0;
+    return retVal;
 }
 
-void Spark_Disconnect(void)
+int Spark_Disconnect(void)
 {
-    closesocket(sparkSocket);
-    sparkSocket = 0xFFFFFFFF;
-    SPARK_SERVER_CONNECTED = 0;
+    int retVal = 0;
+
+    retVal = closesocket(sparkSocket);
+
+    if(retVal == 0)
+    	sparkSocket = 0xFFFFFFFF;
+
+    return retVal;
 }
 
-void Spark_Process_API_Response(void)
+int Spark_Process_API_Response(void)
 {
     char recvBuff[SPARK_BUF_LEN];
-    int recvError = 0;
+    int retVal = 0;
 
     memset(recvBuff, 0, SPARK_BUF_LEN);
 
@@ -103,27 +105,28 @@ void Spark_Process_API_Response(void)
     FD_SET(sparkSocket, &readSet);
 
     //poll the client for receive events
-    select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
+    retVal = select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
 
     //if data is available then receive
     if(FD_ISSET(sparkSocket, &readSet))
     {
-    	recvError = recv(sparkSocket, recvBuff, SPARK_BUF_LEN, 0);
-        if(recvError < 0)
-        	return;
+    	retVal = recv(sparkSocket, recvBuff, SPARK_BUF_LEN, 0);
     }
+
+    if(retVal < 0)
+    	return retVal;
 
 	//if(recvBuff[0] == API_Who[0] && recvBuff[1] == API_Who[1] && recvBuff[2] == API_Who[2])
 	if(strncmp(recvBuff, API_Who, strlen(API_Who)) == 0)
 	{
-		Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL);
+		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL);
 	}
 	//else if(recvBuff[0] == Device_Name[0] && recvBuff[1] == Device_Name[1] && recvBuff[2] == Device_Name[2]
 	//   && recvBuff[3] == Device_Name[3] && recvBuff[4] == Device_Name[4] && recvBuff[5] == Device_Name[5])
 	else if(strncmp(recvBuff, Device_Name, strlen(Device_Name)) == 0)
     {
-    	SPARK_SERVER_CONNECTED = 1;
     	LED_On(LED1);
+    	return 0;
     }
 	//else if(recvBuff[0] == High_Dx[0] && recvBuff[1] == High_Dx[1] && recvBuff[2] == High_Dx[2]
 	//	&& recvBuff[3] == High_Dx[3] && recvBuff[4] == High_Dx[4] && recvBuff[5] == High_Dx[5])
@@ -132,9 +135,9 @@ void Spark_Process_API_Response(void)
 		High_Dx[6] = recvBuff[6];
 
 		if(DIO_SetState(atoc(High_Dx[6]), HIGH) == OK)
-			Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)High_Dx, NULL);
+			retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)High_Dx, NULL);
 		else
-			Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)High_Dx, NULL);
+			retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)High_Dx, NULL);
 	}
 	//else if(recvBuff[0] == Low_Dx[0] && recvBuff[1] == Low_Dx[1] && recvBuff[2] == Low_Dx[2]
 	//	&& recvBuff[3] == Low_Dx[3] && recvBuff[4] == Low_Dx[4])
@@ -143,9 +146,9 @@ void Spark_Process_API_Response(void)
 		Low_Dx[5] = recvBuff[5];
 
 		if(DIO_SetState(atoc(Low_Dx[5]), LOW) == OK)
-			Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)Low_Dx, NULL);
+			retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)Low_Dx, NULL);
 		else
-			Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)Low_Dx, NULL);
+			retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)Low_Dx, NULL);
 	}
 	else if(strncmp(recvBuff, API_UserFunc, 9) == 0)
 	{
@@ -155,7 +158,7 @@ void Spark_Process_API_Response(void)
 
 			if(strlen(user_arg) > 22)
 			{
-				Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, NULL, NULL);
+				retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, NULL, NULL);
 			}
 			else
 			{
@@ -163,7 +166,7 @@ void Spark_Process_API_Response(void)
 				retCh = userFunction(user_arg);
 				retLen = itoa(retCh, &retStr[0]);
 				retStr[retLen] = '\0';
-				Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_UserFunc, (char *)retStr);
+				retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_UserFunc, (char *)retStr);
 			}
 		}
 	}
@@ -182,12 +185,14 @@ void Spark_Process_API_Response(void)
 	}
 	else if(strcmp(recvBuff, Device_CRLF) == 0)
 	{
-		return; //Do nothing for new line returned
+		return 0; //Do nothing for new line returned
 	}
 	else
 	{
-		Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
+		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
 	}
+
+	return retVal;
 }
 
 void userCallback(char *callback_name)
@@ -203,10 +208,11 @@ void userCallbackWithData(char *callback_name, char *callback_data, long data_le
 	Spark_Send_Device_Message(sparkSocket, (char *)API_Callback, (char *)callback_name, (char *)lenStr);
 }
 
-static void Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue)
+static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue)
 {
     char cmdBuf[SPARK_BUF_LEN];
     int sendLen = 0;
+    int retVal = 0;
 
     memset(cmdBuf, 0, SPARK_BUF_LEN);
 
@@ -231,7 +237,9 @@ static void Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, 
     memcpy(&cmdBuf[sendLen], Device_CRLF, strlen(Device_CRLF));
     sendLen += strlen(Device_CRLF);
 
-    send(socket, cmdBuf, sendLen, 0);
+    retVal = send(socket, cmdBuf, sendLen, 0);
+
+    return retVal;
 }
 
 // brief  Convert integer to ASCII in decimal base

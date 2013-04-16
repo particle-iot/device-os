@@ -29,7 +29,8 @@ uint8_t WLAN_DHCP;
 uint8_t WLAN_CAN_SHUTDOWN;
 
 uint8_t FIRST_TIME_CONFIG;
-uint8_t SPARK_SERVER_CONNECTED;
+uint8_t SERVER_SOCKET_CONNECTED;
+uint8_t DEVICE_HANDSHAKE_FINISHED;
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -80,13 +81,11 @@ int main(void)
 	/* Enable write access to Backup domain */
 	PWR_BackupAccessCmd(ENABLE);
 
-/*
 	// This will be replaced with SPI-Flash based backup
     if(BKP_ReadBackupRegister(BKP_DR1) != 0xAAAA)
     {
     	Set_NetApp_Timeout();
     }
-*/
 
 	// This will be replaced with SPI-Flash based backup
     if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
@@ -105,14 +104,20 @@ int main(void)
 			Start_Smart_Config();
 		}
 
-		if(WLAN_DHCP && !SPARK_SERVER_CONNECTED)
+		if(WLAN_DHCP && !SERVER_SOCKET_CONNECTED)
 		{
-			Spark_Connect();
+			if(Spark_Connect() < 0)
+				SERVER_SOCKET_CONNECTED = 0;
+			else
+				SERVER_SOCKET_CONNECTED = 1;
 		}
 
-		if(SPARK_SERVER_CONNECTED)
+		if(SERVER_SOCKET_CONNECTED)
 		{
-			Spark_Process_API_Response();
+			if(Spark_Process_API_Response() < 0)
+				SERVER_SOCKET_CONNECTED = 0;
+			else
+				DEVICE_HANDSHAKE_FINISHED = 1;
 		}
 	}
 }
@@ -158,7 +163,7 @@ void Timing_Decrement(void)
     {
         TimingLED1--;
     }
-    else if(!SPARK_SERVER_CONNECTED)
+    else if(!SERVER_SOCKET_CONNECTED)
     {
     	LED_Toggle(LED1);
     	TimingLED1 = 100;	//100ms
@@ -319,7 +324,8 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
-			SPARK_SERVER_CONNECTED = 0;
+			SERVER_SOCKET_CONNECTED = 0;
+			DEVICE_HANDSHAKE_FINISHED = 0;
 			LED_Off(LED2);
 			break;
 

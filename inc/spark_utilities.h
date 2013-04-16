@@ -11,9 +11,9 @@
 //#define SPARK_SERVER_IP	"54.235.79.249"
 #define SPARK_SERVER_PORT	8989
 
-char Spark_Connect(void);
-void Spark_Disconnect(void);
-void Spark_Process_API_Response(void);
+int Spark_Connect(void);
+int Spark_Disconnect(void);
+int Spark_Process_API_Response(void);
 
 void userCallback(char *callback_name);
 void userCallbackWithData(char *callback_name, char *callback_data, long data_length);
