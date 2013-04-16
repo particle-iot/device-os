@@ -155,8 +155,7 @@ int Spark_Process_API_Response(void)
   {
     if(NULL != userFunction)
     {
-      size_t API_UserFunc_Len = strlen(API_UserFunc);
-      char *user_arg = &recvBuff[API_UserFunc_Len];
+      char *user_arg = &recvBuff[strlen(API_UserFunc)];
       char *newline = strchr(user_arg, '\n');
       if (NULL != newline)
       {
