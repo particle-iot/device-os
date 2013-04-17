@@ -51,6 +51,11 @@ int main(void)
 {
 	Set_System();
 
+	if(NULL != setup)
+	{
+		setup();
+	}
+
 	//
 	//Initialize CC3000's CS, EN and INT pins to their default states
 	//
@@ -98,6 +103,15 @@ int main(void)
 	/* Main loop */
 	while (1)
 	{
+		if(NULL != loop)
+		{
+			//Work in Progress
+			//Since many of the WLAN APIs are blocking in nature
+			//the following call will have to wait.
+			//Need to put this thing within an interrupt to be processed correctly
+			loop();
+		}
+
 		if(FIRST_TIME_CONFIG)
 		{
 			//

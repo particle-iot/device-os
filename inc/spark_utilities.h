@@ -20,5 +20,7 @@ void userCallbackWithData(char *callback_name, char *callback_data, long data_le
 
 //void userFunction(void) __attribute__ ((weak, alias ("Default_Handler")));
 char userFunction(char *user_arg) __attribute__ ((weak));
+void setup() __attribute__ ((weak));
+void loop() __attribute__ ((weak));
 
 #endif  /* __SPARK_UTILITIES_H */
