@@ -32,6 +32,8 @@ uint8_t FIRST_TIME_CONFIG;
 uint8_t SERVER_SOCKET_CONNECTED;
 uint8_t DEVICE_HANDSHAKE_FINISHED;
 
+tNetappIpconfigRetArgs ipconfig;
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,6 +108,11 @@ int main(void)
 
 		if(WLAN_DHCP && !SERVER_SOCKET_CONNECTED)
 		{
+			netapp_ipconfig(&ipconfig);
+
+			if(ipconfig.aucIP[0] == 0x00)
+				continue;
+
 			if(Spark_Connect() < 0)
 				SERVER_SOCKET_CONNECTED = 0;
 			else
