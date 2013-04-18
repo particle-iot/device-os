@@ -32,7 +32,7 @@ uint8_t FIRST_TIME_CONFIG;
 uint8_t SERVER_SOCKET_CONNECTED;
 uint8_t DEVICE_HANDSHAKE_FINISHED;
 
-tNetappIpconfigRetArgs ipconfig;
+//tNetappIpconfigRetArgs ipconfig;
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -108,10 +108,10 @@ int main(void)
 
 		if(WLAN_DHCP && !SERVER_SOCKET_CONNECTED)
 		{
-			netapp_ipconfig(&ipconfig);
-
-			if(ipconfig.aucIP[0] == 0x00)
-				continue;
+//			netapp_ipconfig(&ipconfig);
+//
+//			if(ipconfig.aucIP[0] == 0x00)
+//				continue;
 
 			if(Spark_Connect() < 0)
 				SERVER_SOCKET_CONNECTED = 0;
@@ -231,7 +231,7 @@ void Set_NetApp_Timeout(void)
 	unsigned long aucDHCP = 14400;
 	unsigned long aucARP = 3600;
 	unsigned long aucKeepalive = 10;
-	unsigned long aucInactivity = 60;
+	unsigned long aucInactivity = 20;
 
 	BKP_WriteBackupRegister(BKP_DR1, 0xFFFF);
 

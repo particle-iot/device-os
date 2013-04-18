@@ -4,7 +4,7 @@
 
 #include "hw_config.h"
 
-#define SPARK_BUF_LEN	256
+#define SPARK_BUF_LEN	32
 
 //#define BYTE_N(x,n) (((x) >> n*8) & 0x000000FF)
 

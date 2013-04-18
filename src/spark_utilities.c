@@ -27,6 +27,9 @@ static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, c
 static unsigned char itoa(int cNum, char *cString);
 static uint8_t atoc(char data);
 
+char recvBuff[SPARK_BUF_LEN];
+
+
 /*
 static uint16_t atoshort(char b1, char b2);
 static unsigned char ascii_to_char(char b1, char b2);
@@ -57,10 +60,10 @@ int Spark_Connect(void)
     tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
 
 	// the destination IP address
-	tSocketAddr.sa_data[2] = 54;	// First Octet of destination IP
-	tSocketAddr.sa_data[3] = 235;	// Second Octet of destination IP
-	tSocketAddr.sa_data[4] = 79;	// Third Octet of destination IP
-	tSocketAddr.sa_data[5] = 249;	// Fourth Octet of destination IP
+	tSocketAddr.sa_data[2] = 192;	// First Octet of destination IP
+	tSocketAddr.sa_data[3] = 168;	// Second Octet of destination IP
+	tSocketAddr.sa_data[4] = 0; 	// Third Octet of destination IP
+	tSocketAddr.sa_data[5] = 47;	// Fourth Octet of destination IP
 
 	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 
@@ -89,109 +92,131 @@ int Spark_Disconnect(void)
     return retVal;
 }
 
-int Spark_Process_API_Response(void)
+// receive from socket until we either find a newline or fill the buffer
+// return the number of bytes received
+int receive_line()
 {
-    char recvBuff[SPARK_BUF_LEN];
-    int retVal = 0;
-
     memset(recvBuff, 0, SPARK_BUF_LEN);
 
-    //select will block for 500 microseconds
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 500;
+    // tell select to timeout after 5 seconds
+    timeout.tv_sec = 5;
+    timeout.tv_usec = 0;
 
-    //reset the fd_set structure
+    // reset the fd_set structure
     FD_ZERO(&readSet);
     FD_SET(sparkSocket, &readSet);
 
-    //poll the client for receive events
-    retVal = select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
+    int num_fds_ready;
+    int bytes_received_once;
+    int total_bytes_received = 0;
+    int buffer_bytes_available = SPARK_BUF_LEN - 1;
+    char *buffer_ptr;
+    char *newline = NULL;
 
-    //if data is available then receive
-    if(FD_ISSET(sparkSocket, &readSet))
+    while (NULL == newline && 0 < buffer_bytes_available)
     {
-      // leave the final null byte so we can safely use strlen and strchr
-    	retVal = recv(sparkSocket, recvBuff, SPARK_BUF_LEN - 1, 0);
+    	num_fds_ready = select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
+    	if (0 < num_fds_ready)
+    	{
+			if (FD_ISSET(sparkSocket, &readSet))
+			{
+				buffer_ptr = recvBuff + total_bytes_received;
+				buffer_bytes_available = SPARK_BUF_LEN - 1 - total_bytes_received;
+				bytes_received_once = recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
+				if (-1 == bytes_received_once)
+					return -1;
+
+				total_bytes_received += bytes_received_once;
+				newline = strchr(recvBuff, '\n');
+			}
+    	}
     }
 
-    if(retVal < 0)
-    	return retVal;
+    return total_bytes_received;
+}
 
-	//if(recvBuff[0] == API_Who[0] && recvBuff[1] == API_Who[1] && recvBuff[2] == API_Who[2])
-	if(strncmp(recvBuff, API_Who, strlen(API_Who)) == 0)
+// process the contents of recvBuff
+// returns number of bytes transmitted or -1 on error
+int process_command()
+{
+	int bytes_sent;
+
+	// who
+	if (0 == strncmp(recvBuff, API_Who, strlen(API_Who)))
 	{
-		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL);
+		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL);
 	}
-	//else if(recvBuff[0] == Device_Name[0] && recvBuff[1] == Device_Name[1] && recvBuff[2] == Device_Name[2]
-	//   && recvBuff[3] == Device_Name[3] && recvBuff[4] == Device_Name[4] && recvBuff[5] == Device_Name[5])
-	else if(strncmp(recvBuff, Device_Name, strlen(Device_Name)) == 0)
+
+	// device id echoed by server
+	else if (0 == strncmp(recvBuff, Device_Name, strlen(Device_Name)))
     {
     	LED_On(LED1);
-    	return 0;
+    	bytes_sent = 0;
     }
-	//else if(recvBuff[0] == High_Dx[0] && recvBuff[1] == High_Dx[1] && recvBuff[2] == High_Dx[2]
-	//	&& recvBuff[3] == High_Dx[3] && recvBuff[4] == High_Dx[4] && recvBuff[5] == High_Dx[5])
-	else if(strncmp(recvBuff, High_Dx, 6) == 0)
+
+	// command to set a pin high
+	else if (0 == strncmp(recvBuff, High_Dx, strlen(High_Dx)))
 	{
 		High_Dx[6] = recvBuff[6];
 
-		if(DIO_SetState(atoc(High_Dx[6]), HIGH) == OK)
-			retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)High_Dx, NULL);
+		if (OK == DIO_SetState(atoc(High_Dx[6]), HIGH))
+			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)High_Dx, NULL);
 		else
-			retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)High_Dx, NULL);
+			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)High_Dx, NULL);
 	}
-	//else if(recvBuff[0] == Low_Dx[0] && recvBuff[1] == Low_Dx[1] && recvBuff[2] == Low_Dx[2]
-	//	&& recvBuff[3] == Low_Dx[3] && recvBuff[4] == Low_Dx[4])
-	else if(strncmp(recvBuff, Low_Dx, 5) == 0)
+
+	// command to set a pin low
+	else if (0 == strncmp(recvBuff, Low_Dx, strlen(Low_Dx)))
 	{
 		Low_Dx[5] = recvBuff[5];
 
-		if(DIO_SetState(atoc(Low_Dx[5]), LOW) == OK)
-			retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)Low_Dx, NULL);
+		if (OK == DIO_SetState(atoc(Low_Dx[5]), LOW))
+			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)Low_Dx, NULL);
 		else
-			retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)Low_Dx, NULL);
+			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)Low_Dx, NULL);
 	}
-  else if(strncmp(recvBuff, API_UserFunc, strlen(API_UserFunc)) == 0)
-  {
-    if(NULL != userFunction)
-    {
-      char *user_arg = &recvBuff[strlen(API_UserFunc)];
-      char *newline = strchr(user_arg, '\n');
-      if (NULL != newline)
-      {
-        if ('\r' == *(newline - 1))
-          newline--;
-        *newline = '\0';
-      }
 
-      char retStr[11];
-      int userResult = userFunction(user_arg);
-      int retLen = itoa(userResult, retStr);
-      retStr[retLen] = '\0';
-      retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_UserFunc, (char *)retStr);
-    }
-  }
-	else if((strncmp(recvBuff, Device_Ok, 3) == 0) && (strncmp(&recvBuff[3], API_Callback, 9) == 0))
+	// command to call the user-defined function
+	else if (0 == strncmp(recvBuff, API_UserFunc, strlen(API_UserFunc)))
 	{
-		char *status_code = strchr(&recvBuff[12], '\n');
+		if (NULL != userFunction)
+		{
+			char *user_arg = &recvBuff[strlen(API_UserFunc)];
+			char *newline = strchr(user_arg, '\n');
+			if (NULL != newline)
+			{
+				if ('\r' == *(newline - 1))
+					newline--;
+				*newline = '\0';
+			}
 
-		if(strcmp(status_code, "200") == 0)
-		{
-			//To Do
-		}
-		else if(strcmp(status_code, "404") == 0)
-		{
-			//To Do
+			char retStr[11];
+			int userResult = userFunction(user_arg);
+			int retLen = itoa(userResult, retStr);
+			retStr[retLen] = '\0';
+			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_UserFunc, (char *)retStr);
 		}
 	}
+
+	// Do nothing for new line returned
 	else if(strcmp(recvBuff, Device_CRLF) == 0)
 	{
-		return 0; //Do nothing for new line returned
+		bytes_sent = 0;
 	}
 	else
 	{
-		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
+		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
 	}
+
+	return bytes_sent;
+}
+
+int Spark_Process_API_Response(void)
+{
+	int retVal = receive_line();
+
+	if (0 == retVal)
+		retVal = process_command();
 
 	return retVal;
 }
@@ -209,6 +234,7 @@ void userCallbackWithData(char *callback_name, char *callback_data, long data_le
 	Spark_Send_Device_Message(sparkSocket, (char *)API_Callback, (char *)callback_name, (char *)lenStr);
 }
 
+// returns number of bytes transmitted or -1 on error
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue)
 {
     char cmdBuf[SPARK_BUF_LEN];
