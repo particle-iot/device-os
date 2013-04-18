@@ -82,6 +82,7 @@
 #define MOSI 4
 
 #define ADC_SAMPLING_TIME	ADC_SampleTime_1Cycles5	//ADC_SampleTime_239Cycles5
+#define TIM_PWM_FREQ		500 //500Hz
 #define NONE ((uint8_t)0xFF)
 
 typedef enum PinMode {

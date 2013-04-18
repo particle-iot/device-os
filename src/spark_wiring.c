@@ -3,6 +3,7 @@
  *
  *  Created on: Apr 15, 2013
  *      Author: zsupalla
+ *      Updated: satishgn
  */
 
 #include "spark_wiring.h"
@@ -11,7 +12,9 @@
  * Globals
  */
 
-uint8_t adcFirstTime = true;
+uint8_t adcInitFirstTime = true;
+uint8_t adcChannelConfigured = NONE;
+extern __IO uint32_t TimingMillis;
 
 /*
  * Pin mapping
@@ -22,7 +25,7 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] = {
  * gpio_peripheral (GPIOA or GPIOB; not using GPIOC)
  * gpio_pin (0-15)
  * adc_channel (0-9 or NONE. Note we don't define the peripheral because our chip only has one)
- * timer_peripheral (TIM1 - TIM4, or NONE)
+ * timer_peripheral (TIM2 - TIM4, or NONE)
  * timer_ch (1-4, or NONE)
  * pin_mode (NONE by default, can be set to OUTPUT, INPUT, or other types)
  */
@@ -58,8 +61,9 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] = {
  */
 void pinMode(uint16_t pin, PinMode setMode) {
 
-	if (setMode == NONE )
+	if (pin >= TOTAL_PINS || setMode == NONE ) {
 		return;
+	}
 
 	GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
 	uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
@@ -105,72 +109,6 @@ void pinMode(uint16_t pin, PinMode setMode) {
 }
 
 /*
- * @brief Initialize the ADC peripheral.
- */
-void Adc_Init() {
-	GPIO_InitTypeDef GPIO_InitStructure;
-	ADC_InitTypeDef ADC_InitStructure;
-
-	// ADCCLK = PCLK2/4
-	RCC_ADCCLKConfig(RCC_PCLK2_Div4);
-
-	// Enable ADC1 clock
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
-
-	//Work in Progress
-	//To Do
-/*
-	// Enable GPIO clock
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-
-	uint8_t pin = FIRST_ANALOG_PIN;
-	uint8_t rank = 1;	//FIRST_ANALOG_PIN's rank
-
-	// Configure ADC Channels as analog input
-	for(pin = FIRST_ANALOG_PIN; pin < (FIRST_ANALOG_PIN + TOTAL_ANALOG_PINS); pin++)
-	{
-		GPIO_InitStructure.GPIO_Pin = PIN_MAP[pin].gpio_pin;
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
-		GPIO_Init(PIN_MAP[pin].gpio_peripheral, &GPIO_InitStructure);
-	}
-*/
-
-	ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
-	ADC_InitStructure.ADC_ScanConvMode = ENABLE;
-	ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
-	ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
-	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
-	ADC_InitStructure.ADC_NbrOfChannel = TOTAL_ANALOG_PINS;
-
-	ADC_Init(ADC1, &ADC_InitStructure);
-
-	//Work in Progress
-	//To Do
-/*
-	// ADC1 regular channels configurations
-	for(pin = FIRST_ANALOG_PIN; pin < (FIRST_ANALOG_PIN + TOTAL_ANALOG_PINS); pin++, rank++)
-	{
-		ADC_RegularChannelConfig(ADC1, PIN_MAP[pin].adc_channel, rank, ADC_SAMPLING_TIME);
-	}
-
-	// Enable ADC1
-	ADC_Cmd(ADC1, ENABLE);
-
-	// Enable ADC1 reset calibaration register
-	ADC_ResetCalibration(ADC1);
-
-	// Check the end of ADC1 reset calibration register
-	while(ADC_GetResetCalibrationStatus(ADC1));
-
-	// Start ADC1 calibaration
-	ADC_StartCalibration(ADC1);
-
-	// Check the end of ADC1 calibration
-	while(ADC_GetCalibrationStatus(ADC1));
-*/
-}
-
-/*
  * @brief Sets a GPIO pin to HIGH or LOW.
  */
 void digitalWrite(uint16_t pin, uint8_t value) {
@@ -198,7 +136,59 @@ int32_t digitalRead(uint16_t pin) {
 }
 
 /*
- * @brief Read the analog value of a pin. Should return a 16-bit value, 0-65536 (0 = LOW, 65536 = HIGH)
+ * @brief Initialize the ADC peripheral.
+ */
+void ADCInit() {
+
+	ADC_InitTypeDef ADC_InitStructure;
+
+	// ADCCLK = PCLK2/4
+	// RCC_ADCCLKConfig(RCC_PCLK2_Div4);
+	// ADCCLK = PCLK2/6 = 72/6 = 12MHz
+	RCC_ADCCLKConfig(RCC_PCLK2_Div6);
+
+	// Enable ADC1 clock
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+
+	// Put everything back to power-on defaults
+	ADC_DeInit(ADC1);
+
+	// ADC1 Configuration
+	// ADC1 operate independently
+	ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
+	// Disable the scan conversion so we do one at a time
+	ADC_InitStructure.ADC_ScanConvMode = DISABLE;
+	// Don't do continuous conversions - do them on demand
+	ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+	// Start conversion by software, not an external trigger
+	ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
+	// Conversions are 12 bit - put them in the lower 12 bits of the result
+	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+	// Say how many channels would be used by the sequencer
+	ADC_InitStructure.ADC_NbrOfChannel = 1;
+	// Now do the setup
+	ADC_Init(ADC1, &ADC_InitStructure);
+
+	// Enable ADC1
+	ADC_Cmd(ADC1, ENABLE);
+
+	// Enable ADC1 reset calibration register
+	ADC_ResetCalibration(ADC1);
+
+	// Check the end of ADC1 reset calibration register
+	while(ADC_GetResetCalibrationStatus(ADC1));
+
+	// Start ADC1 calibration
+	ADC_StartCalibration(ADC1);
+
+	// Check the end of ADC1 calibration
+	while(ADC_GetCalibrationStatus(ADC1));
+}
+
+/*
+ * @brief Read the analog value of a pin.
+ * Should return a 16-bit value, 0-65536 (0 = LOW, 65536 = HIGH)
+ * Note: ADC is 12-bit. Currently it returns 0-4096
  */
 int32_t analogRead(uint16_t pin) {
 	// Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
@@ -210,24 +200,44 @@ int32_t analogRead(uint16_t pin) {
 		return -1;
 	}
 
-	if (adcFirstTime == true) {
-		Adc_Init();
-		adcFirstTime = false;
+	if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
+	{
+		GPIO_InitTypeDef GPIO_InitStructure;
+
+		// Enable GPIO clock
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+
+		GPIO_InitStructure.GPIO_Pin = PIN_MAP[pin].gpio_pin;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+		GPIO_Init(PIN_MAP[pin].gpio_peripheral, &GPIO_InitStructure);
 	}
 
-	//Work in Progress
-	//To Do
-/*
+	if (adcInitFirstTime == true) {
+		ADCInit();
+		adcInitFirstTime = false;
+	}
+
+	if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
+	{
+		ADC_RegularChannelConfig(ADC1, PIN_MAP[pin].adc_channel, 1, ADC_SAMPLING_TIME);
+
+		adcChannelConfigured = PIN_MAP[pin].adc_channel;
+	}
+
 	//Start ADC1 Software Conversion
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 
+	// Wait until conversion completion
+	// while(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
+	while(!ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC));
+
+	// Get the conversion value
 	return ADC_GetConversionValue(ADC1);
-*/
-	return -1;
 }
 
 /*
  * @brief Should take an integer 0-255 and create a PWM signal with a duty cycle from 0-100%.
+ * TIM_PWM_FREQ is set at 500 Hz
  */
 void analogWrite(uint16_t pin, uint8_t value) {
 
@@ -235,7 +245,80 @@ void analogWrite(uint16_t pin, uint8_t value) {
 		return;
 	}
 
-	// TODO: Implement
+	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+
+	//PWM Frequency : 500 Hz
+	uint16_t TIM_Prescaler = (uint16_t)(SystemCoreClock / 10000) - 1;
+	uint16_t TIM_ARR = (uint16_t)(10000 / TIM_PWM_FREQ) - 1;
+
+	uint16_t Duty_Cycle = (uint16_t)((value * 100) / 255);
+	// TIM Channel Duty Cycle(%) = (TIM_CCR / TIM_ARR + 1) * 100
+	uint16_t TIM_CCR = (uint16_t)((Duty_Cycle * (TIM_ARR + 1)) / 100);
+
+	// GPIOA and GPIOB clock enable
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+
+	// GPIO Configuration
+	GPIO_InitTypeDef GPIO_InitStructure;
+
+	// TIM Channel as alternate function push-pull
+	GPIO_InitStructure.GPIO_Pin = PIN_MAP[pin].gpio_pin;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(PIN_MAP[pin].gpio_peripheral, &GPIO_InitStructure);
+
+	// TIM clock enable
+	if(PIN_MAP[pin].timer_peripheral == TIM2)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+	else if(PIN_MAP[pin].timer_peripheral == TIM3)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	else if(PIN_MAP[pin].timer_peripheral == TIM4)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+
+	/* Time base configuration */
+	TIM_TimeBaseStructure.TIM_Period = TIM_ARR;
+	TIM_TimeBaseStructure.TIM_Prescaler = TIM_Prescaler;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+
+	TIM_TimeBaseInit(PIN_MAP[pin].timer_peripheral, &TIM_TimeBaseStructure);
+
+	/* PWM1 Mode configuration: Channel1 */
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	TIM_OCInitStructure.TIM_Pulse = TIM_CCR;
+
+	if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
+	{
+		/* PWM1 Mode configuration: Channel1 */
+		TIM_OC1Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
+		TIM_OC1PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+	}
+	else if(PIN_MAP[pin].timer_ch == TIM_Channel_2)
+	{
+		/* PWM1 Mode configuration: Channel2 */
+		TIM_OC2Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
+		TIM_OC2PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+	}
+	else if(PIN_MAP[pin].timer_ch == TIM_Channel_3)
+	{
+		/* PWM1 Mode configuration: Channel3 */
+		TIM_OC3Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
+		TIM_OC3PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+	}
+	else if(PIN_MAP[pin].timer_ch == TIM_Channel_4)
+	{
+		/* PWM1 Mode configuration: Channel4 */
+		TIM_OC4Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
+		TIM_OC4PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+	}
+
+	TIM_ARRPreloadConfig(PIN_MAP[pin].timer_peripheral, ENABLE);
+
+	/* TIM enable counter */
+	TIM_Cmd(PIN_MAP[pin].timer_peripheral, ENABLE);
 }
 
 /*
@@ -249,8 +332,7 @@ void analogWrite(uint16_t pin, uint8_t value) {
  * 		  At some point we'll have to figure that out, though.
  */
 uint32_t millis() {
-	// TODO: Implement this.
-	return -1;
+	return TimingMillis;
 }
 
 /*
@@ -261,6 +343,8 @@ uint32_t millis() {
 void delay(uint32_t ms) {
 	//uint32_t start = millis();
 	//while(millis() - start < ms);
+	//OR
+	//Use the Delay() from main.c
 	Delay(ms);
 }
 

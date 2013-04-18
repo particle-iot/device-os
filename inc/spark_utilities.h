@@ -11,6 +11,8 @@
 //#define SPARK_SERVER_IP	"54.235.79.249"
 #define SPARK_SERVER_PORT	8989
 
+#define TIMING_SPARK_PROCESS_API	100	//100ms
+
 int Spark_Connect(void);
 int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);

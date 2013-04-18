@@ -21,6 +21,9 @@
 __IO uint32_t TimingDelay;
 __IO uint32_t TimingLED1, TimingLED2;
 __IO uint32_t TimingBUTTON1;
+__IO uint32_t TimingMillis;
+__IO uint32_t TimingSparkProcessAPI;
+
 __IO uint8_t TIMING_BUTTON1_PRESSED;
 
 uint8_t WLAN_SMART_CONFIG_DONE;
@@ -103,15 +106,6 @@ int main(void)
 	/* Main loop */
 	while (1)
 	{
-		if(NULL != loop)
-		{
-			//Work in Progress
-			//Since many of the WLAN APIs are blocking in nature
-			//the following call will have to wait.
-			//Need to put this thing within an interrupt to be processed correctly
-			loop();
-		}
-
 		if(FIRST_TIME_CONFIG)
 		{
 			//
@@ -133,12 +127,20 @@ int main(void)
 				SERVER_SOCKET_CONNECTED = 1;
 		}
 
-		if(SERVER_SOCKET_CONNECTED)
+		/********* Moved this section inside the Timing_Decrement method *********/
+		/*************************************************************************/
+		//if(SERVER_SOCKET_CONNECTED)
+		//{
+		//	if(Spark_Process_API_Response() < 0)
+		//		SERVER_SOCKET_CONNECTED = 0;
+		//	else
+		//		DEVICE_HANDSHAKE_FINISHED = 1;
+		//}
+		/*************************************************************************/
+
+		if(SERVER_SOCKET_CONNECTED /*&& DEVICE_HANDSHAKE_FINISHED*/ && NULL != loop)
 		{
-			if(Spark_Process_API_Response() < 0)
-				SERVER_SOCKET_CONNECTED = 0;
-			else
-				DEVICE_HANDSHAKE_FINISHED = 1;
+			loop();
 		}
 	}
 }
@@ -175,6 +177,8 @@ void Delay(uint32_t nTime)
 *******************************************************************************/
 void Timing_Decrement(void)
 {
+	TimingMillis++;
+
     if (TimingDelay != 0x00)
     {
         TimingDelay--;
@@ -207,6 +211,25 @@ void Timing_Decrement(void)
     	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
     	NVIC_SystemReset();
     }
+
+	if (TimingSparkProcessAPI >= TIMING_SPARK_PROCESS_API)
+	{
+		TimingSparkProcessAPI = 0x00;
+
+		//Should be careful with the below code
+		//as it could block with old CC3000 Firmware
+		if (SERVER_SOCKET_CONNECTED)
+		{
+			if(Spark_Process_API_Response() < 0)
+				SERVER_SOCKET_CONNECTED = 0;
+			else
+				DEVICE_HANDSHAKE_FINISHED = 1;
+		}
+	}
+	else
+	{
+		TimingSparkProcessAPI++;
+	}
 }
 
 /*
