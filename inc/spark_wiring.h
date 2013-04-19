@@ -83,13 +83,15 @@
 
 #define ADC_SAMPLING_TIME	ADC_SampleTime_1Cycles5	//ADC_SampleTime_239Cycles5
 #define TIM_PWM_FREQ		500 //500Hz
-#define NONE ((uint8_t)0xFF)
+#define NONE				((uint8_t)0xFF)
 
 typedef enum PinMode {
   OUTPUT,
   INPUT,
   INPUT_PULLUP,
-  INPUT_PULLDOWN
+  INPUT_PULLDOWN,
+  AF_OUTPUT,	//Used internally for Alternate Function Output(TIM, UART, SPI etc)
+  AN_INPUT		//Used internally for ADC Input
 } PinMode;
 
 typedef struct STM32_Pin_Info {

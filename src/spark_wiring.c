@@ -14,13 +14,17 @@
 
 uint8_t adcInitFirstTime = true;
 uint8_t adcChannelConfigured = NONE;
+
+PinMode digitalPinModeSaved = NONE;
+
 extern __IO uint32_t TimingMillis;
 
 /*
  * Pin mapping
  */
 
-STM32_Pin_Info PIN_MAP[TOTAL_PINS] = {
+STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
+{
 /*
  * gpio_peripheral (GPIOA or GPIOB; not using GPIOC)
  * gpio_pin (0-15)
@@ -59,9 +63,11 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] = {
 /*
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, or INPUT_PULLDOWN
  */
-void pinMode(uint16_t pin, PinMode setMode) {
+void pinMode(uint16_t pin, PinMode setMode)
+{
 
-	if (pin >= TOTAL_PINS || setMode == NONE ) {
+	if (pin >= TOTAL_PINS || setMode == NONE )
+	{
 		return;
 	}
 
@@ -70,15 +76,19 @@ void pinMode(uint16_t pin, PinMode setMode) {
 
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	if (gpio_port == GPIOA ) {
+	if (gpio_port == GPIOA )
+	{
 		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-	} else if (gpio_port == GPIOB ) {
+	}
+	else if (gpio_port == GPIOB )
+	{
 		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 	}
 
 	GPIO_InitStructure.GPIO_Pin = gpio_pin;
 
-	switch (setMode) {
+	switch (setMode)
+	{
 
 	case OUTPUT:
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -101,6 +111,17 @@ void pinMode(uint16_t pin, PinMode setMode) {
 		PIN_MAP[pin].pin_mode = INPUT_PULLDOWN;
 		break;
 
+	case AF_OUTPUT:	//Used internally for Alternate Function Output(TIM, UART, SPI etc)
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		PIN_MAP[pin].pin_mode = AF_OUTPUT;
+		break;
+
+	case AN_INPUT:	//Used internally for ADC Input
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+		PIN_MAP[pin].pin_mode = AN_INPUT;
+		break;
+
 	default:
 		break;
 	}
@@ -111,14 +132,27 @@ void pinMode(uint16_t pin, PinMode setMode) {
 /*
  * @brief Sets a GPIO pin to HIGH or LOW.
  */
-void digitalWrite(uint16_t pin, uint8_t value) {
-	if (pin >= TOTAL_PINS || PIN_MAP[pin].pin_mode != OUTPUT) {
+void digitalWrite(uint16_t pin, uint8_t value)
+{
+	if (pin >= TOTAL_PINS || PIN_MAP[pin].pin_mode == INPUT
+	|| PIN_MAP[pin].pin_mode == INPUT_PULLUP|| PIN_MAP[pin].pin_mode == INPUT_PULLDOWN
+	|| PIN_MAP[pin].pin_mode == AN_INPUT || PIN_MAP[pin].pin_mode == NONE)
+	{
 		return;
 	}
 
-	if (value == HIGH) {
+	//If the pin is used by analogWrite, we need to change the mode
+	if(PIN_MAP[pin].pin_mode == AF_OUTPUT)
+	{
+		pinMode(pin, OUTPUT);
+	}
+
+	if (value == HIGH)
+	{
 		PIN_MAP[pin].gpio_peripheral->BSRR = PIN_MAP[pin].gpio_pin;
-	} else if (value == LOW) {
+	}
+	else if (value == LOW)
+	{
 		PIN_MAP[pin].gpio_peripheral->BRR = PIN_MAP[pin].gpio_pin;
 	}
 }
@@ -126,10 +160,24 @@ void digitalWrite(uint16_t pin, uint8_t value) {
 /*
  * @brief Reads the value of a GPIO pin. Should return either 1 (HIGH) or 0 (LOW).
  */
-int32_t digitalRead(uint16_t pin) {
+int32_t digitalRead(uint16_t pin)
+{
 	if (pin >= TOTAL_PINS || PIN_MAP[pin].pin_mode == OUTPUT || PIN_MAP[pin].pin_mode == NONE)
 	{
 		return -1;
+	}
+
+	if(PIN_MAP[pin].pin_mode == AN_INPUT)
+	{
+		if(digitalPinModeSaved == OUTPUT || digitalPinModeSaved == NONE)
+		{
+			return -1;
+		}
+		else
+		{
+			//Restore the PinMode after calling analogRead on same pin earlier
+			pinMode(pin, digitalPinModeSaved);
+		}
 	}
 
 	return GPIO_ReadInputDataBit(PIN_MAP[pin].gpio_peripheral, PIN_MAP[pin].gpio_pin);
@@ -138,7 +186,8 @@ int32_t digitalRead(uint16_t pin) {
 /*
  * @brief Initialize the ADC peripheral.
  */
-void ADCInit() {
+void ADCInit()
+{
 
 	ADC_InitTypeDef ADC_InitStructure;
 
@@ -190,29 +239,27 @@ void ADCInit() {
  * Should return a 16-bit value, 0-65536 (0 = LOW, 65536 = HIGH)
  * Note: ADC is 12-bit. Currently it returns 0-4096
  */
-int32_t analogRead(uint16_t pin) {
+int32_t analogRead(uint16_t pin)
+{
 	// Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
-	if (pin < FIRST_ANALOG_PIN) {
+	if (pin < FIRST_ANALOG_PIN)
+	{
 		pin = pin + FIRST_ANALOG_PIN;
 	}
 
-	if (pin >= TOTAL_PINS || PIN_MAP[pin].adc_channel == NONE ) {
+	if (pin >= TOTAL_PINS || PIN_MAP[pin].adc_channel == NONE )
+	{
 		return -1;
 	}
 
 	if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
 	{
-		GPIO_InitTypeDef GPIO_InitStructure;
-
-		// Enable GPIO clock
-		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-
-		GPIO_InitStructure.GPIO_Pin = PIN_MAP[pin].gpio_pin;
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
-		GPIO_Init(PIN_MAP[pin].gpio_peripheral, &GPIO_InitStructure);
+		digitalPinModeSaved = PIN_MAP[pin].pin_mode;
+		pinMode(pin, AN_INPUT);
 	}
 
-	if (adcInitFirstTime == true) {
+	if (adcInitFirstTime == true)
+	{
 		ADCInit();
 		adcInitFirstTime = false;
 	}
@@ -239,9 +286,16 @@ int32_t analogRead(uint16_t pin) {
  * @brief Should take an integer 0-255 and create a PWM signal with a duty cycle from 0-100%.
  * TIM_PWM_FREQ is set at 500 Hz
  */
-void analogWrite(uint16_t pin, uint8_t value) {
+void analogWrite(uint16_t pin, uint8_t value)
+{
 
-	if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL ) {
+	if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
+	{
+		return;
+	}
+
+	if(PIN_MAP[pin].pin_mode != OUTPUT)
+	{
 		return;
 	}
 
@@ -256,17 +310,10 @@ void analogWrite(uint16_t pin, uint8_t value) {
 	// TIM Channel Duty Cycle(%) = (TIM_CCR / TIM_ARR + 1) * 100
 	uint16_t TIM_CCR = (uint16_t)((Duty_Cycle * (TIM_ARR + 1)) / 100);
 
-	// GPIOA and GPIOB clock enable
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+	// AFIO clock enable
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
-	// GPIO Configuration
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	// TIM Channel as alternate function push-pull
-	GPIO_InitStructure.GPIO_Pin = PIN_MAP[pin].gpio_pin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(PIN_MAP[pin].gpio_peripheral, &GPIO_InitStructure);
+	pinMode(pin, AF_OUTPUT);
 
 	// TIM clock enable
 	if(PIN_MAP[pin].timer_peripheral == TIM2)
@@ -331,7 +378,8 @@ void analogWrite(uint16_t pin, uint8_t value) {
  * 		  For now, let's not worry about what happens when this overflows (which should happen after 49 days).
  * 		  At some point we'll have to figure that out, though.
  */
-uint32_t millis() {
+uint32_t millis()
+{
 	return TimingMillis;
 }
 
@@ -340,7 +388,8 @@ uint32_t millis() {
  *        There are a number of ways to implement this, but I borrowed the one that Wiring/Arduino uses;
  *        Using the millis() function to check if a certain amount of time has passed.
  */
-void delay(uint32_t ms) {
+void delay(uint32_t ms)
+{
 	//uint32_t start = millis();
 	//while(millis() - start < ms);
 	//OR
@@ -359,7 +408,8 @@ void delay(uint32_t ms) {
  *
  *        This function is lower priority than the others.
  */
-void delayMicroseconds(uint32_t us) {
+void delayMicroseconds(uint32_t us)
+{
 	// We have to multiply this by something, but I'm not sure what.
 	// Depends on how many clock cycles the below assembly code takes, I suppose.
 	//
