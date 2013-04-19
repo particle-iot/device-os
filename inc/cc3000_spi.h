@@ -40,7 +40,7 @@
 #define HEADERS_SIZE_EVNT       (SPI_HEADER_SIZE + 5)
 
 // See cc3000_common.h starting around line 73
-//#define CC3000_RX_BUFFER_SIZE	CC3000_MAXIMAL_RX_SIZE
+#define CC3000_RX_BUFFER_SIZE	CC3000_MAXIMAL_RX_SIZE
 #define SPI_BUFFER_SIZE        	1024
 
 typedef void (*gcSpiHandleRx)(void *p);
