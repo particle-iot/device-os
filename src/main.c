@@ -94,6 +94,7 @@ int main(void)
 	/* Enable write access to Backup domain */
 	PWR_BackupAccessCmd(ENABLE);
 
+/*
 	// This will be replaced with SPI-Flash based backup
     if(BKP_ReadBackupRegister(BKP_DR1) != 0xAAAA)
     {
@@ -105,6 +106,10 @@ int main(void)
     {
     	FIRST_TIME_CONFIG = 0x01;
     }
+*/
+    wlan_ioctl_set_connection_policy(0, 0, 0);
+    unsigned char key[] = {105, 103, 111, 116, 121, 111, 117, 114, 119, 105, 102, 105};
+    wlan_connect(WLAN_SEC_WPA2, "spark", 5, NULL, key, 12);
 #endif
 
 	/* Main loop */
