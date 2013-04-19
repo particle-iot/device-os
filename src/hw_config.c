@@ -231,8 +231,8 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
-        /* Enable TIM4 clock */
-        RCC_APB1PeriphClockCmd(DEBOUNCE_TIMER_CLK, ENABLE);
+        /* Enable TIM clock */
+    	DEBOUNCE_TIMER_CLK_CMD(DEBOUNCE_TIMER_CLK, ENABLE);
 
         /* TIM Update Frequency = 72000000/7200/100 = 100Hz = 10ms */
         /* TIM_Prescaler: 7199 */

@@ -21,6 +21,10 @@
 //#define USE_ST_VLDISCOVERY
 #endif
 
+/* Uncomment the line below to enable WLAN and WIRING functionality */
+#define	SPARK_WLAN_ENABLE
+//#define	SPARK_WIRING_ENABLE
+
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x.h"
 
@@ -91,10 +95,11 @@
 
 //Button Debounce Timer
 #define DEBOUNCE_FREQ						100	//100 Hz => 10ms
-#define DEBOUNCE_TIMER						TIM4
-#define DEBOUNCE_TIMER_CLK					RCC_APB1Periph_TIM4
+#define DEBOUNCE_TIMER						TIM1
+#define DEBOUNCE_TIMER_CLK					RCC_APB2Periph_TIM1
+#define DEBOUNCE_TIMER_CLK_CMD				RCC_APB2PeriphClockCmd
 #define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
-#define DEBOUNCE_TIMER_IRQn           		TIM4_IRQn
+#define DEBOUNCE_TIMER_IRQn           		TIM1_UP_IRQn
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
@@ -217,10 +222,11 @@
 
 //Button Debounce Timer
 #define DEBOUNCE_FREQ						100	//100 Hz => 10ms
-#define DEBOUNCE_TIMER						TIM4
-#define DEBOUNCE_TIMER_CLK					RCC_APB1Periph_TIM4
+#define DEBOUNCE_TIMER						TIM1
+#define DEBOUNCE_TIMER_CLK					RCC_APB2Periph_TIM1
+#define DEBOUNCE_TIMER_CLK_CMD				RCC_APB2PeriphClockCmd
 #define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
-#define DEBOUNCE_TIMER_IRQn           		TIM4_IRQn
+#define DEBOUNCE_TIMER_IRQn           		TIM1_UP_IRQn
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
@@ -343,10 +349,11 @@
 
 //Button Debounce Timer
 #define DEBOUNCE_FREQ						100	//100 Hz => 10ms
-#define DEBOUNCE_TIMER						TIM4
-#define DEBOUNCE_TIMER_CLK					RCC_APB1Periph_TIM4
+#define DEBOUNCE_TIMER						TIM1
+#define DEBOUNCE_TIMER_CLK					RCC_APB2Periph_TIM1
+#define DEBOUNCE_TIMER_CLK_CMD				RCC_APB2PeriphClockCmd
 #define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
-#define DEBOUNCE_TIMER_IRQn           		TIM4_IRQn
+#define DEBOUNCE_TIMER_IRQn           		TIM1_UP_IRQn
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI2
@@ -469,10 +476,11 @@
 
 //Button Debounce Timer
 #define DEBOUNCE_FREQ						100	//100 Hz => 10ms
-#define DEBOUNCE_TIMER						TIM4
-#define DEBOUNCE_TIMER_CLK					RCC_APB1Periph_TIM4
+#define DEBOUNCE_TIMER						TIM1
+#define DEBOUNCE_TIMER_CLK					RCC_APB2Periph_TIM1
+#define DEBOUNCE_TIMER_CLK_CMD				RCC_APB2PeriphClockCmd
 #define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
-#define DEBOUNCE_TIMER_IRQn           		TIM4_IRQn
+#define DEBOUNCE_TIMER_IRQn           		TIM1_UP_IRQn
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI1
@@ -595,10 +603,11 @@
 
 //Button Debounce Timer
 #define DEBOUNCE_FREQ						100	//100 Hz => 10ms
-#define DEBOUNCE_TIMER						TIM4
-#define DEBOUNCE_TIMER_CLK					RCC_APB1Periph_TIM4
+#define DEBOUNCE_TIMER						TIM1
+#define DEBOUNCE_TIMER_CLK					RCC_APB2Periph_TIM1
+#define DEBOUNCE_TIMER_CLK_CMD				RCC_APB2PeriphClockCmd
 #define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
-#define DEBOUNCE_TIMER_IRQn           		TIM4_IRQn
+#define DEBOUNCE_TIMER_IRQn           		TIM1_UP_TIM16_IRQn
 
 //CC3000 Interface pins
 #define CC3000_SPI							SPI2

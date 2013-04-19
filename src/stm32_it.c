@@ -244,13 +244,13 @@ void EXTI15_10_IRQHandler(void)
 }
 
 /*******************************************************************************
- * Function Name  : TIM4_IRQHandler
- * Description    : This function handles TIM4 interrupt request.
+ * Function Name  : TIM1_UP_IRQHandler
+ * Description    : This function handles TIM1 Update interrupt request.
  * Input          : None
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void TIM4_IRQHandler(void)
+void TIM1_UP_IRQHandler(void)
 {
 	if (TIM_GetITStatus(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG) != RESET)
 	{

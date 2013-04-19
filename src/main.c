@@ -54,11 +54,14 @@ int main(void)
 {
 	Set_System();
 
+#ifdef SPARK_WIRING_ENABLE
 	if(NULL != setup)
 	{
 		setup();
 	}
+#endif
 
+#ifdef SPARK_WLAN_ENABLE
 	//
 	//Initialize CC3000's CS, EN and INT pins to their default states
 	//
@@ -102,10 +105,12 @@ int main(void)
     {
     	FIRST_TIME_CONFIG = 0x01;
     }
+#endif
 
 	/* Main loop */
 	while (1)
 	{
+#ifdef SPARK_WLAN_ENABLE
 		if(FIRST_TIME_CONFIG)
 		{
 			//
@@ -137,11 +142,21 @@ int main(void)
 		//		DEVICE_HANDSHAKE_FINISHED = 1;
 		//}
 		/*************************************************************************/
+#endif
 
-		if(SERVER_SOCKET_CONNECTED /*&& DEVICE_HANDSHAKE_FINISHED*/ && NULL != loop)
+#ifdef SPARK_WIRING_ENABLE
+#ifdef SPARK_WLAN_ENABLE
+		if(SERVER_SOCKET_CONNECTED && DEVICE_HANDSHAKE_FINISHED)
 		{
-			loop();
+#endif
+			if(NULL != loop)
+			{
+				loop();
+			}
+#ifdef SPARK_WLAN_ENABLE
 		}
+#endif
+#endif
 	}
 }
 
@@ -212,6 +227,7 @@ void Timing_Decrement(void)
     	NVIC_SystemReset();
     }
 
+#ifdef SPARK_WLAN_ENABLE
 	if (TimingSparkProcessAPI >= TIMING_SPARK_PROCESS_API)
 	{
 		TimingSparkProcessAPI = 0x00;
@@ -230,6 +246,8 @@ void Timing_Decrement(void)
 	{
 		TimingSparkProcessAPI++;
 	}
+#endif
+
 }
 
 /*
