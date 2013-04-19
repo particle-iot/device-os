@@ -28,7 +28,7 @@ static unsigned char itoa(int cNum, char *cString);
 static uint8_t atoc(char data);
 
 char recvBuff[SPARK_BUF_LEN];
-
+int total_bytes_received = 0;
 
 /*
 static uint16_t atoshort(char b1, char b2);
@@ -60,10 +60,10 @@ int Spark_Connect(void)
     tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
 
 	// the destination IP address
-	tSocketAddr.sa_data[2] = 192;	// First Octet of destination IP
-	tSocketAddr.sa_data[3] = 168;	// Second Octet of destination IP
-	tSocketAddr.sa_data[4] = 0; 	// Third Octet of destination IP
-	tSocketAddr.sa_data[5] = 47;	// Fourth Octet of destination IP
+	tSocketAddr.sa_data[2] = 54;	// First Octet of destination IP
+	tSocketAddr.sa_data[3] = 235;	// Second Octet of destination IP
+	tSocketAddr.sa_data[4] = 79; 	// Third Octet of destination IP
+	tSocketAddr.sa_data[5] = 249;	// Fourth Octet of destination IP
 
 	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 
@@ -93,46 +93,53 @@ int Spark_Disconnect(void)
 }
 
 // receive from socket until we either find a newline or fill the buffer
-// return the number of bytes received
+// called repeatedly from an interrupt handler, so DO NOT BLOCK
+// returns: -1 on error, signifying socket disconnected
+//          0 if we have not yet received a full line
+//          the number of bytes received when we have received a full line
 int receive_line()
 {
-    memset(recvBuff, 0, SPARK_BUF_LEN);
+	if (0 == total_bytes_received)
+	{
+		memset(recvBuff, 0, SPARK_BUF_LEN);
+
+	    // reset the fd_set structure
+	    FD_ZERO(&readSet);
+	    FD_SET(sparkSocket, &readSet);
+	}
+
+    int buffer_bytes_available = SPARK_BUF_LEN - 1 - total_bytes_received;
+    char *newline = NULL;
 
     // tell select to timeout after 5 seconds
     timeout.tv_sec = 5;
     timeout.tv_usec = 0;
 
-    // reset the fd_set structure
-    FD_ZERO(&readSet);
-    FD_SET(sparkSocket, &readSet);
+	int num_fds_ready = select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
+	if (0 < num_fds_ready)
+	{
+		if (FD_ISSET(sparkSocket, &readSet))
+		{
+			char *buffer_ptr = recvBuff + total_bytes_received;
+			int bytes_received_once = recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
+			if (-1 == bytes_received_once)
+				return -1;
 
-    int num_fds_ready;
-    int bytes_received_once;
-    int total_bytes_received = 0;
-    int buffer_bytes_available = SPARK_BUF_LEN - 1;
-    char *buffer_ptr;
-    char *newline = NULL;
+			total_bytes_received += bytes_received_once;
+			newline = strchr(recvBuff, '\n');
+		}
+	}
 
-    while (NULL == newline && 0 < buffer_bytes_available)
+    if (NULL == newline && 0 < buffer_bytes_available)
     {
-    	num_fds_ready = select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
-    	if (0 < num_fds_ready)
-    	{
-			if (FD_ISSET(sparkSocket, &readSet))
-			{
-				buffer_ptr = recvBuff + total_bytes_received;
-				buffer_bytes_available = SPARK_BUF_LEN - 1 - total_bytes_received;
-				bytes_received_once = recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
-				if (-1 == bytes_received_once)
-					return -1;
-
-				total_bytes_received += bytes_received_once;
-				newline = strchr(recvBuff, '\n');
-			}
-    	}
+    	return 0;
     }
-
-    return total_bytes_received;
+    else
+    {
+    	int retVal = total_bytes_received;
+    	total_bytes_received = 0;
+    	return retVal;
+    }
 }
 
 // process the contents of recvBuff
@@ -215,7 +222,7 @@ int Spark_Process_API_Response(void)
 {
 	int retVal = receive_line();
 
-	if (0 == retVal)
+	if (0 < retVal)
 		retVal = process_command();
 
 	return retVal;
