@@ -111,9 +111,9 @@ int receive_line()
     int buffer_bytes_available = SPARK_BUF_LEN - 1 - total_bytes_received;
     char *newline = NULL;
 
-    // tell select to timeout after 5 seconds
-    timeout.tv_sec = 5;
-    timeout.tv_usec = 0;
+    // tell select to timeout after 500 microseconds
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 500;
 
 	int num_fds_ready = select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
 	if (0 < num_fds_ready)
