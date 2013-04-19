@@ -21,6 +21,9 @@
 __IO uint32_t TimingDelay;
 __IO uint32_t TimingLED1, TimingLED2;
 __IO uint32_t TimingBUTTON1;
+__IO uint32_t TimingMillis;
+__IO uint32_t TimingSparkProcessAPI;
+
 __IO uint8_t TIMING_BUTTON1_PRESSED;
 
 uint8_t WLAN_SMART_CONFIG_DONE;
@@ -51,6 +54,14 @@ int main(void)
 {
 	Set_System();
 
+#ifdef SPARK_WIRING_ENABLE
+	if(NULL != setup)
+	{
+		setup();
+	}
+#endif
+
+#ifdef SPARK_WLAN_ENABLE
 	//
 	//Initialize CC3000's CS, EN and INT pins to their default states
 	//
@@ -83,6 +94,7 @@ int main(void)
 	/* Enable write access to Backup domain */
 	PWR_BackupAccessCmd(ENABLE);
 
+/*
 	// This will be replaced with SPI-Flash based backup
     if(BKP_ReadBackupRegister(BKP_DR1) != 0xAAAA)
     {
@@ -94,10 +106,16 @@ int main(void)
     {
     	FIRST_TIME_CONFIG = 0x01;
     }
+*/
+    wlan_ioctl_set_connection_policy(0, 0, 0);
+    unsigned char key[] = {105, 103, 111, 116, 121, 111, 117, 114, 119, 105, 102, 105};
+    wlan_connect(WLAN_SEC_WPA2, "spark", 5, NULL, key, 12);
+#endif
 
 	/* Main loop */
 	while (1)
 	{
+#ifdef SPARK_WLAN_ENABLE
 		if(FIRST_TIME_CONFIG)
 		{
 			//
@@ -119,13 +137,31 @@ int main(void)
 				SERVER_SOCKET_CONNECTED = 1;
 		}
 
-		if(SERVER_SOCKET_CONNECTED)
+		/********* Moved this section inside the Timing_Decrement method *********/
+		/*************************************************************************/
+		//if(SERVER_SOCKET_CONNECTED)
+		//{
+		//	if(Spark_Process_API_Response() < 0)
+		//		SERVER_SOCKET_CONNECTED = 0;
+		//	else
+		//		DEVICE_HANDSHAKE_FINISHED = 1;
+		//}
+		/*************************************************************************/
+#endif
+
+#ifdef SPARK_WIRING_ENABLE
+#ifdef SPARK_WLAN_ENABLE
+		if(SERVER_SOCKET_CONNECTED && DEVICE_HANDSHAKE_FINISHED)
 		{
-			if(Spark_Process_API_Response() < 0)
-				SERVER_SOCKET_CONNECTED = 0;
-			else
-				DEVICE_HANDSHAKE_FINISHED = 1;
+#endif
+			if(NULL != loop)
+			{
+				loop();
+			}
+#ifdef SPARK_WLAN_ENABLE
 		}
+#endif
+#endif
 	}
 }
 
@@ -161,6 +197,8 @@ void Delay(uint32_t nTime)
 *******************************************************************************/
 void Timing_Decrement(void)
 {
+	TimingMillis++;
+
     if (TimingDelay != 0x00)
     {
         TimingDelay--;
@@ -193,6 +231,28 @@ void Timing_Decrement(void)
     	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
     	NVIC_SystemReset();
     }
+
+#ifdef SPARK_WLAN_ENABLE
+	if (TimingSparkProcessAPI >= TIMING_SPARK_PROCESS_API)
+	{
+		TimingSparkProcessAPI = 0x00;
+
+		//Should be careful with the below code
+		//as it could block with old CC3000 Firmware
+		if (SERVER_SOCKET_CONNECTED)
+		{
+			if(Spark_Process_API_Response() < 0)
+				SERVER_SOCKET_CONNECTED = 0;
+			else
+				DEVICE_HANDSHAKE_FINISHED = 1;
+		}
+	}
+	else
+	{
+		TimingSparkProcessAPI++;
+	}
+#endif
+
 }
 
 /*

@@ -11,6 +11,8 @@
 //#define SPARK_SERVER_IP	"54.235.79.249"
 #define SPARK_SERVER_PORT	8989
 
+#define TIMING_SPARK_PROCESS_API	100	//100ms
+
 int Spark_Connect(void);
 int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);
@@ -20,5 +22,7 @@ void userCallbackWithData(char *callback_name, char *callback_data, long data_le
 
 //void userFunction(void) __attribute__ ((weak, alias ("Default_Handler")));
 char userFunction(char *user_arg) __attribute__ ((weak));
+void setup() __attribute__ ((weak));
+void loop() __attribute__ ((weak));
 
 #endif  /* __SPARK_UTILITIES_H */
