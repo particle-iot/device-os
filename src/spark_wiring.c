@@ -294,7 +294,7 @@ void analogWrite(uint16_t pin, uint8_t value)
 		return;
 	}
 
-	if(PIN_MAP[pin].pin_mode != OUTPUT)
+	if(PIN_MAP[pin].pin_mode != OUTPUT && PIN_MAP[pin].pin_mode != AF_OUTPUT)
 	{
 		return;
 	}
