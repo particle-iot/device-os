@@ -94,7 +94,6 @@ int main(void)
 	/* Enable write access to Backup domain */
 	PWR_BackupAccessCmd(ENABLE);
 
-/*
 	// This will be replaced with SPI-Flash based backup
     if(BKP_ReadBackupRegister(BKP_DR1) != 0xAAAA)
     {
@@ -106,11 +105,12 @@ int main(void)
     {
     	FIRST_TIME_CONFIG = 0x01;
     }
-*/
-    wlan_ioctl_set_connection_policy(0, 0, 0);
-    unsigned char key[] = {105, 103, 111, 116, 121, 111, 117, 114, 119, 105, 102, 105};
-    wlan_connect(WLAN_SEC_WPA2, "spark", 5, NULL, key, 12);
 #endif
+
+//	unsigned char patchVer[2];
+//	nvmem_read_sp_version(patchVer);
+//	if (patchVer[1] == 14)
+//		Delay(14);
 
 	/* Main loop */
 	while (1)
@@ -123,6 +123,11 @@ int main(void)
 			//
 			Start_Smart_Config();
 		}
+//		else if (!WLAN_DHCP)
+//		{
+//		    wlan_ioctl_set_connection_policy(0, 0, 0);
+//		    wlan_connect(WLAN_SEC_WPA2, "Haxlr8r-upstairs", 16, NULL, "wittycheese551", 14);
+//		}
 
 		if(WLAN_DHCP && !SERVER_SOCKET_CONNECTED)
 		{

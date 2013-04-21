@@ -11,7 +11,7 @@ fd_set readSet;
 
 // Spark Messages
 const char Device_Secret[] = "secret";
-const char Device_Name[] = "satish";
+const char Device_Name[] = "willisawesome";
 const char Device_Ok[] = "OK ";
 const char Device_Fail[] = "FAIL ";
 const char Device_CRLF[] = "\n";
@@ -162,7 +162,7 @@ int process_command()
     }
 
 	// command to set a pin high
-	else if (0 == strncmp(recvBuff, High_Dx, strlen(High_Dx)))
+	else if (0 == strncmp(recvBuff, High_Dx, 6))
 	{
 		High_Dx[6] = recvBuff[6];
 
@@ -173,7 +173,7 @@ int process_command()
 	}
 
 	// command to set a pin low
-	else if (0 == strncmp(recvBuff, Low_Dx, strlen(Low_Dx)))
+	else if (0 == strncmp(recvBuff, Low_Dx, 5))
 	{
 		Low_Dx[5] = recvBuff[5];
 
@@ -224,6 +224,8 @@ int Spark_Process_API_Response(void)
 
 	if (0 < retVal)
 		retVal = process_command();
+	else
+		Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL); // keepalive
 
 	return retVal;
 }
