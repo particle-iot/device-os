@@ -83,7 +83,6 @@
 
 #define ADC_SAMPLING_TIME	ADC_SampleTime_1Cycles5	//ADC_SampleTime_239Cycles5
 #define TIM_PWM_FREQ		500 //500Hz
-#define NONE				((uint8_t)0xFF)
 
 typedef enum PinMode {
   OUTPUT,
@@ -106,20 +105,14 @@ typedef struct STM32_Pin_Info {
 /*
  * GPIO
  */
-
-
 void pinMode(uint16_t pin, PinMode mode);
-
 void digitalWrite(uint16_t pin, uint8_t value);
-
 int32_t digitalRead(uint16_t pin);
-
+int32_t analogRead(uint16_t pin);
 void analogWrite(uint16_t pin, uint8_t value);
 
-int32_t analogRead(uint16_t pin);
-
 /*
- * TIMING
+ * Timing
  */
 
 uint32_t millis();
@@ -127,5 +120,14 @@ void delay(uint32_t ms);
 void delayMicroseconds(uint32_t us);
 
 extern void Delay(__IO uint32_t nTime);
+
+/*
+ * Serial1
+ */
+void Serial1_begin(uint32_t baudRate);
+void Serial1_end(void);
+uint8_t Serial1_available(void);
+uint8_t Serial1_read(void);
+void Serial1_write(uint8_t Data);
 
 #endif /* SPARK_WIRING_H_ */
