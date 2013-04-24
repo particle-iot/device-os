@@ -122,12 +122,21 @@ void delayMicroseconds(uint32_t us);
 extern void Delay(__IO uint32_t nTime);
 
 /*
+ * Serial_Interface
+ */
+typedef struct Serial_Interface {
+  void (*begin)(uint32_t);
+  void (*end)(void);
+  uint8_t (*available)(void);
+  uint8_t (*read)(void);
+  void (*write)(uint8_t);
+  void (*print)(const char *);
+  void (*println)(const char *);
+} Serial_Interface;
+
+/*
  * Serial1
  */
-void Serial1_begin(uint32_t baudRate);
-void Serial1_end(void);
-uint8_t Serial1_available(void);
-uint8_t Serial1_read(void);
-void Serial1_write(uint8_t Data);
+extern Serial_Interface Serial1;
 
 #endif /* SPARK_WIRING_H_ */

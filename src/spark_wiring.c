@@ -17,6 +17,8 @@ uint8_t adcChannelConfigured = NONE;
 
 PinMode digitalPinModeSaved = NONE;
 
+uint8_t serial1_enabled = false;
+
 extern __IO uint32_t TimingMillis;
 
 /*
@@ -56,9 +58,28 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
 	{ GPIOA, GPIO_Pin_10, NONE, NULL, NONE, NONE }
 };
 
+void serial1_begin(uint32_t baudRate);
+void serial1_end(void);
+uint8_t serial1_available(void);
+uint8_t serial1_read(void);
+void serial1_write(uint8_t Data);
+void serial1_print(const char * str);
+void serial1_println(const char * str);
+
 /*
- * Basic variables
+ * Serial Interfaces
  */
+
+Serial_Interface Serial1 =
+{
+	serial1_begin,
+	serial1_end,
+	serial1_available,
+	serial1_read,
+	serial1_write,
+	serial1_print,
+	serial1_println
+};
 
 /*
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, or INPUT_PULLDOWN
@@ -67,6 +88,12 @@ void pinMode(uint16_t pin, PinMode setMode)
 {
 
 	if (pin >= TOTAL_PINS || setMode == NONE )
+	{
+		return;
+	}
+
+	// Serial1 safety check
+	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
 		return;
 	}
@@ -141,6 +168,12 @@ void digitalWrite(uint16_t pin, uint8_t value)
 		return;
 	}
 
+	// Serial1 safety check
+	if (serial1_enabled == true && (pin == RX || pin == TX))
+	{
+		return;
+	}
+
 	//If the pin is used by analogWrite, we need to change the mode
 	if(PIN_MAP[pin].pin_mode == AF_OUTPUT)
 	{
@@ -163,6 +196,12 @@ void digitalWrite(uint16_t pin, uint8_t value)
 int32_t digitalRead(uint16_t pin)
 {
 	if (pin >= TOTAL_PINS || PIN_MAP[pin].pin_mode == OUTPUT || PIN_MAP[pin].pin_mode == NONE)
+	{
+		return -1;
+	}
+
+	// Serial1 safety check
+	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
 		return -1;
 	}
@@ -247,6 +286,12 @@ int32_t analogRead(uint16_t pin)
 		pin = pin + FIRST_ANALOG_PIN;
 	}
 
+	// Serial1 safety check
+	if (serial1_enabled == true && (pin == RX || pin == TX))
+	{
+		return -1;
+	}
+
 	if (pin >= TOTAL_PINS || PIN_MAP[pin].adc_channel == NONE )
 	{
 		return -1;
@@ -290,6 +335,12 @@ void analogWrite(uint16_t pin, uint8_t value)
 {
 
 	if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
+	{
+		return;
+	}
+
+	// Serial1 safety check
+	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
 		return;
 	}
@@ -427,7 +478,7 @@ void delayMicroseconds(uint32_t us)
 	 */
 }
 
-void Serial1_begin(uint32_t baudRate)
+void serial1_begin(uint32_t baudRate)
 {
 	USART_InitTypeDef USART_InitStructure;
 
@@ -463,15 +514,19 @@ void Serial1_begin(uint32_t baudRate)
 
 	// Enable the USART
 	USART_Cmd(USART2, ENABLE);
+
+	serial1_enabled = true;
 }
 
-void Serial1_end(void)
+void serial1_end(void)
 {
 	// Disable the USART
 	USART_Cmd(USART2, DISABLE);
+
+	serial1_enabled = false;
 }
 
-uint8_t Serial1_available(void)
+uint8_t serial1_available(void)
 {
 	// Check if the USART Receive Data Register is not empty
 	if(USART_GetFlagStatus(USART2, USART_FLAG_RXNE) != RESET)
@@ -480,13 +535,13 @@ uint8_t Serial1_available(void)
 		return 0x00;
 }
 
-uint8_t Serial1_read(void)
+uint8_t serial1_read(void)
 {
 	// Return the received byte
 	return USART_ReceiveData(USART2);
 }
 
-void Serial1_write(uint8_t Data)
+void serial1_write(uint8_t Data)
 {
 	// Send one byte from USART
 	USART_SendData(USART2, Data);
@@ -496,3 +551,18 @@ void Serial1_write(uint8_t Data)
 	{
 	}
 }
+
+void serial1_print(const char * str)
+{
+	while (*str)
+	{
+		serial1_write(*str++);
+	}
+}
+
+void serial1_println(const char * str)
+{
+	serial1_print(str);
+	serial1_print("\r\n");
+}
+
