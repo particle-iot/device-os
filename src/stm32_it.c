@@ -13,6 +13,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32_it.h"
 #include "main.h"
+#include "usb_lib.h"
+#include "usb_istr.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -264,6 +266,31 @@ void TIM1_UP_IRQHandler(void)
 		/* Enable BUTTON1 Interrupts */
 		BUTTON_EXTI_Config(BUTTON1, ENABLE);
 	}
+}
+
+/*******************************************************************************
+* Function Name  : USB_LP_CAN1_RX0_IRQHandler
+* Description    : This function handles USB Low Priority interrupts
+*                  requests.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void USB_LP_CAN1_RX0_IRQHandler(void)
+{
+	USB_Istr();
+}
+
+/*******************************************************************************
+* Function Name  : USBWakeUp_IRQHandler
+* Description    : This function handles USB WakeUp interrupt request.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void USBWakeUp_IRQHandler(void)
+{
+	EXTI_ClearITPendingBit(EXTI_Line18);
 }
 
 /*******************************************************************************

@@ -9,6 +9,7 @@
 #define SPARK_WIRING_H_
 
 #include "stm32f10x.h"
+//#include "usb_pwr.h"
 
 /*
  * Basic variables
@@ -121,6 +122,10 @@ void delayMicroseconds(uint32_t us);
 
 extern void Delay(__IO uint32_t nTime);
 
+extern void USB_CDC_Init(void);
+extern uint32_t CDC_Send_DATA (uint8_t *ptrBuffer, uint8_t Send_length);
+extern uint32_t CDC_Receive_DATA(void);
+
 /*
  * Serial_Interface
  */
@@ -133,6 +138,11 @@ typedef struct Serial_Interface {
   void (*print)(const char *);
   void (*println)(const char *);
 } Serial_Interface;
+
+/*
+ * Serial
+ */
+extern Serial_Interface Serial;
 
 /*
  * Serial1

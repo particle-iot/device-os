@@ -10,6 +10,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "hw_config.h"
+#include "usb_lib.h"
+#include "usb_prop.h"
+#include "usb_desc.h"
+#include "usb_pwr.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -41,7 +45,15 @@ const uint16_t BUTTON_PIN_SOURCE[BUTTONn] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EX
 const uint16_t BUTTON_IRQn[BUTTONn] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[BUTTONn] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
 
+__IO uint8_t Send_Buffer[VIRTUAL_COM_PORT_DATA_SIZE] ;
+__IO uint8_t Receive_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
+__IO uint32_t Send_length;
+__IO uint32_t Receive_length;
+__IO uint32_t packet_sent = 1;
+__IO uint32_t packet_receive = 1;
+
 /* Private function prototypes -----------------------------------------------*/
+static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 
 /* Private functions ---------------------------------------------------------*/
 /**
@@ -79,7 +91,7 @@ void Set_System(void)
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
 
-	/* Setup SysTick Timer for 1 msec interrupts  */
+	/* Setup SysTick Timer for 1 msec interrupts */
 	if (SysTick_Config(SystemCoreClock / 1000))
 	{
 		/* Capture error */
@@ -100,6 +112,14 @@ void NVIC_Configuration(void)
 {
 	/* Set the Vector Table base location at 0x0000 */
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0000);
+
+	/* Configure the NVIC Preemption Priority Bits */
+	/* 4 bits for pre-emption priority(0-15 PreemptionPriority) and 0 bits for subpriority(0 SubPriority) */
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+
+	/* Configure the Priority Group to 2 bits */
+	/* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
+	//NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 }
 
 /**
@@ -519,8 +539,8 @@ void CC3000_Interrupt_Enable(void)
 
 	/* Enable and set CC3000_WIFI_INT EXTI Interrupt to the lowest priority */
 	NVIC_InitStructure.NVIC_IRQChannel = CC3000_WIFI_INT_EXTI_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
@@ -561,33 +581,33 @@ void CC3000_Write_Enable_Pin(unsigned char val)
   */
 void sFLASH_SPI_DeInit(void)
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitTypeDef GPIO_InitStructure;
 
-  /* Disable the sFLASH_SPI  */
-  SPI_Cmd(sFLASH_SPI, DISABLE);
+	/* Disable the sFLASH_SPI  */
+	SPI_Cmd(sFLASH_SPI, DISABLE);
 
-  /* DeInitializes the sFLASH_SPI */
-  SPI_I2S_DeInit(sFLASH_SPI);
+	/* DeInitializes the sFLASH_SPI */
+	SPI_I2S_DeInit(sFLASH_SPI);
 
-  /* sFLASH_SPI Peripheral clock disable */
-  sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, DISABLE);
+	/* sFLASH_SPI Peripheral clock disable */
+	sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, DISABLE);
 
-  /* Configure sFLASH_SPI pins: SCK */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: SCK */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_SPI pins: MISO */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_PIN;
-  GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: MISO */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_PIN;
+	GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_SPI pins: MOSI */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_PIN;
-  GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: MOSI */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_PIN;
+	GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_MEM_CS_PIN pin: sFLASH CS pin */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_PIN;
-  GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_MEM_CS_PIN pin: sFLASH CS pin */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_PIN;
+	GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
 }
 
 /**
@@ -597,53 +617,277 @@ void sFLASH_SPI_DeInit(void)
   */
 void sFLASH_SPI_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
-  SPI_InitTypeDef  SPI_InitStructure;
+	GPIO_InitTypeDef GPIO_InitStructure;
+	SPI_InitTypeDef  SPI_InitStructure;
 
-  /* sFLASH_MEM_CS_GPIO, sFLASH_SPI_MOSI_GPIO, sFLASH_SPI_MISO_GPIO
-       and sFLASH_SPI_SCK_GPIO Periph clock enable */
-  RCC_APB2PeriphClockCmd(sFLASH_MEM_CS_GPIO_CLK | sFLASH_SPI_MOSI_GPIO_CLK | sFLASH_SPI_MISO_GPIO_CLK |
-                         sFLASH_SPI_SCK_GPIO_CLK, ENABLE);
+	/* sFLASH_MEM_CS_GPIO, sFLASH_SPI_MOSI_GPIO, sFLASH_SPI_MISO_GPIO
+	   and sFLASH_SPI_SCK_GPIO Periph clock enable */
+	RCC_APB2PeriphClockCmd(sFLASH_MEM_CS_GPIO_CLK | sFLASH_SPI_MOSI_GPIO_CLK | sFLASH_SPI_MISO_GPIO_CLK |
+						 sFLASH_SPI_SCK_GPIO_CLK, ENABLE);
 
-  /* sFLASH_SPI Periph clock enable */
-  sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, ENABLE);
+	/* sFLASH_SPI Periph clock enable */
+	sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, ENABLE);
 
-  /* Configure sFLASH_SPI pins: SCK */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: SCK */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_SPI pins: MOSI */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_PIN;
-  GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: MOSI */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_PIN;
+	GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_SPI pins: MISO */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: MISO */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_MEM_CS_PIN pin: sFLASH CS pin */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_MEM_CS_PIN pin: sFLASH CS pin */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
 
-  /*!< Deselect the FLASH: Chip Select high */
-  sFLASH_CS_HIGH();
+	/*!< Deselect the FLASH: Chip Select high */
+	sFLASH_CS_HIGH();
 
-  /*!< SPI configuration */
-  SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
-  SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
-  SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
-  SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-  SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
-  SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-  SPI_InitStructure.SPI_BaudRatePrescaler = sFLASH_SPI_BAUDRATE_PRESCALER;
-  SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
-  SPI_InitStructure.SPI_CRCPolynomial = 7;
-  SPI_Init(sFLASH_SPI, &SPI_InitStructure);
+	/*!< SPI configuration */
+	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+	SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+	SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+	SPI_InitStructure.SPI_BaudRatePrescaler = sFLASH_SPI_BAUDRATE_PRESCALER;
+	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+	SPI_InitStructure.SPI_CRCPolynomial = 7;
+	SPI_Init(sFLASH_SPI, &SPI_InitStructure);
 
-  /*!< Enable the sFLASH_SPI  */
-  SPI_Cmd(sFLASH_SPI, ENABLE);
+	/*!< Enable the sFLASH_SPI  */
+	SPI_Cmd(sFLASH_SPI, ENABLE);
 }
 
+/*******************************************************************************
+* Function Name  : USB_CDC_Init
+* Description    : Start USB-CDC protocol.
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void USB_CDC_Init(void)
+{
+	USB_Disconnect_Config();
+	Set_USBClock();
+	USB_Interrupts_Config();
+	USB_Init();
+}
+
+/*******************************************************************************
+* Function Name  : USB_Disconnect_Config
+* Description    : Disconnect pin configuration
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void USB_Disconnect_Config(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+
+	/* Enable USB_DISCONNECT GPIO clock */
+	RCC_APB2PeriphClockCmd(USB_DISCONNECT_GPIO_CLK, ENABLE);
+
+	/* USB_DISCONNECT_PIN used as USB pull-up */
+	GPIO_InitStructure.GPIO_Pin = USB_DISCONNECT_PIN;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+	GPIO_Init(USB_DISCONNECT_GPIO_PORT, &GPIO_InitStructure);
+}
+
+/*******************************************************************************
+* Function Name  : Set_USBClock
+* Description    : Configures USB Clock input (48MHz)
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void Set_USBClock(void)
+{
+	/* Select USBCLK source */
+	RCC_USBCLKConfig(RCC_USBCLKSource_PLLCLK_1Div5);
+
+	/* Enable the USB clock */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USB, ENABLE);
+}
+
+/*******************************************************************************
+* Function Name  : Enter_LowPowerMode
+* Description    : Power-off system clocks and power while entering suspend mode
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void Enter_LowPowerMode(void)
+{
+	/* Set the device state to suspend */
+	bDeviceState = SUSPENDED;
+}
+
+/*******************************************************************************
+* Function Name  : Leave_LowPowerMode
+* Description    : Restores system clocks and power while exiting suspend mode
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void Leave_LowPowerMode(void)
+{
+	DEVICE_INFO *pInfo = &Device_Info;
+
+	/* Set the device state to the correct state */
+	if (pInfo->Current_Configuration != 0)
+	{
+		/* Device configured */
+		bDeviceState = CONFIGURED;
+	}
+	else
+	{
+		bDeviceState = ATTACHED;
+	}
+
+	/*Enable SystemCoreClock*/
+	SystemInit();
+}
+
+/*******************************************************************************
+* Function Name  : USB_Interrupts_Config
+* Description    : Configures the USB interrupts
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void USB_Interrupts_Config(void)
+{
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	/* 2 bit for pre-emption priority, 2 bits for subpriority */
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+
+	/* Enable the USB interrupt */
+	NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
+	/* Enable the USB Wake-up interrupt */
+	NVIC_InitStructure.NVIC_IRQChannel = USBWakeUp_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+}
+
+/*******************************************************************************
+* Function Name  : USB_Cable_Config
+* Description    : Software Connection/Disconnection of USB Cable
+* Input          : None.
+* Return         : Status
+*******************************************************************************/
+void USB_Cable_Config (FunctionalState NewState)
+{
+	if (NewState != DISABLE)
+	{
+		GPIO_ResetBits(USB_DISCONNECT_GPIO_PORT, USB_DISCONNECT_PIN);
+	}
+	else
+	{
+		GPIO_SetBits(USB_DISCONNECT_GPIO_PORT, USB_DISCONNECT_PIN);
+	}
+}
+
+/*******************************************************************************
+* Function Name  : Get_SerialNum.
+* Description    : Create the serial number string descriptor.
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+void Get_SerialNum(void)
+{
+	uint32_t Device_Serial0, Device_Serial1, Device_Serial2;
+
+	Device_Serial0 = *(uint32_t*)ID1;
+	Device_Serial1 = *(uint32_t*)ID2;
+	Device_Serial2 = *(uint32_t*)ID3;
+
+	Device_Serial0 += Device_Serial2;
+
+	if (Device_Serial0 != 0)
+	{
+		IntToUnicode (Device_Serial0, &Virtual_Com_Port_StringSerial[2] , 8);
+		IntToUnicode (Device_Serial1, &Virtual_Com_Port_StringSerial[18], 4);
+	}
+}
+
+/*******************************************************************************
+* Function Name  : HexToChar.
+* Description    : Convert Hex 32Bits value into char.
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
+{
+	uint8_t idx = 0;
+
+	for( idx = 0 ; idx < len ; idx ++)
+	{
+		if( ((value >> 28)) < 0xA )
+		{
+			pbuf[ 2* idx] = (value >> 28) + '0';
+		}
+		else
+		{
+			pbuf[2* idx] = (value >> 28) + 'A' - 10;
+		}
+
+		value = value << 4;
+
+		pbuf[ 2* idx + 1] = 0;
+	}
+}
+
+/*******************************************************************************
+* Function Name  : Send DATA .
+* Description    : send the data received from the STM32 to the PC through USB
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+uint32_t CDC_Send_DATA (uint8_t *ptrBuffer, uint8_t Send_length)
+{
+	/*if max buffer is Not reached*/
+	if(Send_length < VIRTUAL_COM_PORT_DATA_SIZE)
+	{
+		/*Sent flag*/
+		packet_sent = 0;
+		/* send  packet to PMA*/
+		UserToPMABufferCopy((unsigned char*)ptrBuffer, ENDP1_TXADDR, Send_length);
+		SetEPTxCount(ENDP1, Send_length);
+		SetEPTxValid(ENDP1);
+	}
+	else
+	{
+		return 0;
+	}
+	return 1;
+}
+
+/*******************************************************************************
+* Function Name  : Receive DATA .
+* Description    : receive the data from the PC to STM32 and send it through USB
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+uint32_t CDC_Receive_DATA(void)
+{
+	/*Receive flag*/
+	packet_receive = 0;
+	SetEPRxValid(ENDP3);
+	return 1 ;
+}

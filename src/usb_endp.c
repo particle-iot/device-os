@@ -39,12 +39,14 @@
 
 /* Interval between sending IN packets in frame number (1 frame = 1ms) */
 #define VCOMPORT_IN_FRAME_INTERVAL             5
+
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-__IO uint32_t packet_sent;
-__IO uint32_t packet_receive;
-__IO uint8_t Receive_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
-__IO uint32_t Receive_length;
+extern __IO uint32_t packet_sent;
+extern __IO uint32_t packet_receive;
+extern __IO uint8_t Receive_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
+extern __IO uint32_t Receive_length;
+
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 

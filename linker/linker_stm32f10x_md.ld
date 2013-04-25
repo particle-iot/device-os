@@ -39,14 +39,14 @@ _Minimum_Stack_Size = 0x100 ;
 
 /* include the memory spaces definitions sub-script */
 /*
-Linker subscript for STM32F10x definitions with 64K Flash and 20K RAM */
+Linker subscript for STM32F10x definitions with 128K Flash and 20K RAM */
 
 /* Memory Spaces Definitions */
 
 MEMORY
 {
   RAM (xrw)     : ORIGIN = 0x20000000, LENGTH = 20K
-  FLASH (rx)    : ORIGIN = 0x08000000, LENGTH = 64K
+  FLASH (rx)    : ORIGIN = 0x08000000, LENGTH = 128K
   FLASHB1 (rx)  : ORIGIN = 0x00000000, LENGTH = 0
   EXTMEMB0 (rx) : ORIGIN = 0x00000000, LENGTH = 0
   EXTMEMB1 (rx) : ORIGIN = 0x00000000, LENGTH = 0

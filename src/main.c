@@ -10,6 +10,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "spark_utilities.h"
+#include "usb_lib.h"
+#include "usb_desc.h"
+#include "usb_pwr.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -38,6 +41,9 @@ uint8_t DEVICE_HANDSHAKE_FINISHED;
 //tNetappIpconfigRetArgs ipconfig;
 
 /* Extern variables ----------------------------------------------------------*/
+extern __IO uint8_t Receive_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
+extern __IO uint32_t Receive_length;
+extern __IO uint32_t packet_sent;
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -53,6 +59,8 @@ uint8_t DEVICE_HANDSHAKE_FINISHED;
 int main(void)
 {
 	Set_System();
+
+//	USB_CDC_Init();
 
 #ifdef SPARK_WIRING_ENABLE
 	if(NULL != setup)
@@ -144,13 +152,13 @@ int main(void)
 
 		/********* Moved this section inside the Timing_Decrement method *********/
 		/*************************************************************************/
-		//if(SERVER_SOCKET_CONNECTED)
-		//{
-		//	if(Spark_Process_API_Response() < 0)
-		//		SERVER_SOCKET_CONNECTED = 0;
-		//	else
-		//		DEVICE_HANDSHAKE_FINISHED = 1;
-		//}
+//		if(SERVER_SOCKET_CONNECTED)
+//		{
+//			if(Spark_Process_API_Response() < 0)
+//				SERVER_SOCKET_CONNECTED = 0;
+//			else
+//				DEVICE_HANDSHAKE_FINISHED = 1;
+//		}
 		/*************************************************************************/
 #endif
 
@@ -167,6 +175,20 @@ int main(void)
 		}
 #endif
 #endif
+
+		/************************** USB-CDC Loopback Test ************************/
+//		if (bDeviceState == CONFIGURED)
+//		{
+//			CDC_Receive_DATA();
+//			/*Check to see if we have data yet */
+//			if (Receive_length != 0)
+//			{
+//				if (packet_sent == 1)
+//					CDC_Send_DATA ((unsigned char*)Receive_Buffer, Receive_length);
+//				Receive_length = 0;
+//			}
+//		}
+		/************************************************************************/
 	}
 }
 

@@ -21,6 +21,13 @@ uint8_t serial1_enabled = false;
 
 extern __IO uint32_t TimingMillis;
 
+//extern LINE_CODING linecoding;
+
+extern __IO uint32_t packet_sent;
+extern __IO uint32_t packet_receive;
+extern __IO uint8_t Receive_Buffer[64];
+extern __IO uint32_t Receive_length;
+
 /*
  * Pin mapping
  */
@@ -58,6 +65,14 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
 	{ GPIOA, GPIO_Pin_10, NONE, NULL, NONE, NONE }
 };
 
+void serial_begin(uint32_t baudRate);
+void serial_end(void);
+uint8_t serial_available(void);
+uint8_t serial_read(void);
+void serial_write(uint8_t Data);
+void serial_print(const char * str);
+void serial_println(const char * str);
+
 void serial1_begin(uint32_t baudRate);
 void serial1_end(void);
 uint8_t serial1_available(void);
@@ -69,6 +84,17 @@ void serial1_println(const char * str);
 /*
  * Serial Interfaces
  */
+
+Serial_Interface Serial =
+{
+	serial_begin,
+	serial_end,
+	serial_available,
+	serial_read,
+	serial_write,
+	serial_print,
+	serial_println
+};
 
 Serial_Interface Serial1 =
 {
@@ -476,6 +502,60 @@ void delayMicroseconds(uint32_t us)
 	 : [us] "r" (us)
 	 : "r0");
 	 */
+}
+
+void serial_begin(uint32_t baudRate)
+{
+	//linecoding.bitrate = baudRate;
+	USB_CDC_Init();
+}
+
+void serial_end(void)
+{
+	//To Do
+}
+
+uint8_t serial_available(void)
+{
+	//if (bDeviceState == CONFIGURED)
+	{
+		CDC_Receive_DATA();
+
+		/*Check to see if we have data yet */
+		if (Receive_length != 0)
+		{
+			Receive_length = 0;
+			return 0x01;
+		}
+	}
+
+	return 0x00;
+}
+
+uint8_t serial_read(void)
+{
+	return Receive_Buffer[0];
+}
+
+void serial_write(uint8_t Data)
+{
+	uint8_t data = Data;
+	if (packet_sent == 1)
+		CDC_Send_DATA((unsigned char*)&data, 1);
+}
+
+void serial_print(const char * str)
+{
+	while (*str)
+	{
+		serial_write(*str++);
+	}
+}
+
+void serial_println(const char * str)
+{
+	serial_print(str);
+	serial_print("\r\n");
 }
 
 void serial1_begin(uint32_t baudRate)

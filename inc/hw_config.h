@@ -15,6 +15,7 @@
 
 #include "platform_config.h"
 #include "cc3000_common.h"
+#include "usb_type.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -98,6 +99,18 @@ void CC3000_Write_Enable_Pin(unsigned char val);
 /* Serial Flash Hardware related methods */
 void sFLASH_SPI_DeInit(void);
 void sFLASH_SPI_Init(void);
+
+/* USB hardware peripheral related methods */
+void USB_CDC_Init(void);
+void USB_Disconnect_Config(void);
+void Set_USBClock(void);
+void Enter_LowPowerMode(void);
+void Leave_LowPowerMode(void);
+void USB_Interrupts_Config(void);
+void USB_Cable_Config(FunctionalState NewState);
+void Get_SerialNum(void);
+uint32_t CDC_Send_DATA (uint8_t *ptrBuffer, uint8_t Send_length);
+uint32_t CDC_Receive_DATA(void);
 
 /* External variables --------------------------------------------------------*/
 extern unsigned char wlan_rx_buffer[];
