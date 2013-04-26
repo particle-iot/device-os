@@ -122,7 +122,7 @@ const uint8_t Virtual_Com_Port_ConfigDescriptor[] =
     USB_ENDPOINT_DESCRIPTOR_TYPE,   /* bDescriptorType: Endpoint */
     0x03,   /* bEndpointAddress: (OUT3) */
     0x02,   /* bmAttributes: Bulk */
-    VIRTUAL_COM_PORT_DATA_SIZE,             /* wMaxPacketSize: */
+    0x01,	//VIRTUAL_COM_PORT_DATA_SIZE    /* wMaxPacketSize: */
     0x00,
     0x00,   /* bInterval: ignore for Bulk transfer */
     /*Endpoint 1 Descriptor*/

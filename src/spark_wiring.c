@@ -7,6 +7,7 @@
  */
 
 #include "spark_wiring.h"
+#include "string.h"
 
 /*
  * Globals
@@ -21,12 +22,9 @@ uint8_t serial1_enabled = false;
 
 extern __IO uint32_t TimingMillis;
 
-//extern LINE_CODING linecoding;
-
-extern __IO uint32_t packet_sent;
-extern __IO uint32_t packet_receive;
-extern __IO uint8_t Receive_Buffer[64];
-extern __IO uint32_t Receive_length;
+extern uint8_t USB_USART_Received_Data[1];//VIRTUAL_COM_PORT_DATA_SIZE
+extern uint8_t USB_USART_Received_Flag;
+extern uint32_t USB_USART_BaudRate;
 
 /*
  * Pin mapping
@@ -506,8 +504,8 @@ void delayMicroseconds(uint32_t us)
 
 void serial_begin(uint32_t baudRate)
 {
-	//linecoding.bitrate = baudRate;
-	USB_CDC_Init();
+	USB_USART_BaudRate = baudRate;
+	USB_USART_Init();
 }
 
 void serial_end(void)
@@ -517,31 +515,22 @@ void serial_end(void)
 
 uint8_t serial_available(void)
 {
-	//if (bDeviceState == CONFIGURED)
-	{
-		CDC_Receive_DATA();
-
-		/*Check to see if we have data yet */
-		if (Receive_length != 0)
-		{
-			Receive_length = 0;
-			return 0x01;
-		}
-	}
-
-	return 0x00;
+	// Check if the USB_USART_Received_Flag is set
+	if(USB_USART_Received_Flag != 0)
+		return 0x01;
+	else
+		return 0x00;
 }
 
 uint8_t serial_read(void)
 {
-	return Receive_Buffer[0];
+	USB_USART_Received_Flag = 0;
+	return *USB_USART_Received_Data;
 }
 
 void serial_write(uint8_t Data)
 {
-	uint8_t data = Data;
-	if (packet_sent == 1)
-		CDC_Send_DATA((unsigned char*)&data, 1);
+	USART_To_USB_Send_Data(Data);
 }
 
 void serial_print(const char * str)

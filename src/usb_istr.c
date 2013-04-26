@@ -203,6 +203,7 @@ void USB_Istr(void)
       
         /*poll for RESET flag in ISTR*/
         while((_GetISTR()&ISTR_RESET) == 0);
+  
         /* clear RESET flag in ISTR */
         _SetISTR((uint16_t)CLR_RESET);
    

@@ -37,7 +37,7 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 __IO uint32_t bDeviceState = UNCONNECTED; /* USB device status */
-__IO bool fSuspendEnabled = TRUE;  /* true when suspend is possible */
+__IO bool fSuspendEnabled = FALSE;//TRUE  /* true when suspend is possible */
 __IO uint32_t EP[8];
 
 struct
@@ -178,6 +178,7 @@ void Suspend(void)
 #else
         SCB->SCR |= SCB_SCR_SLEEPDEEP;       
 #endif
+	
 	/* enter system in STOP mode, only when wakeup flag in not set */
 	if((_GetISTR()&ISTR_WKUP)==0)
 	{
@@ -208,7 +209,6 @@ void Suspend(void)
 #else
                 SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP);
 #endif
-              
     }
 }
 

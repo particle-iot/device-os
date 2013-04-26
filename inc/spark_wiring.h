@@ -122,9 +122,8 @@ void delayMicroseconds(uint32_t us);
 
 extern void Delay(__IO uint32_t nTime);
 
-extern void USB_CDC_Init(void);
-extern uint32_t CDC_Send_DATA (uint8_t *ptrBuffer, uint8_t Send_length);
-extern uint32_t CDC_Receive_DATA(void);
+extern void USB_USART_Init(void);
+extern void USART_To_USB_Send_Data(uint8_t Data);
 
 /*
  * Serial_Interface

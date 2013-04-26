@@ -16,8 +16,8 @@
 #if !defined (USE_SPARK_TV1) &&  !defined (USE_SPARK_TV2) &&  !defined (USE_SPARK_CORE) &&  !defined (USE_OLIMEX_H103) &&  !defined (USE_ST_VLDISCOVERY)
 //#define USE_SPARK_TV1
 //#define USE_SPARK_TV2
-//#define USE_SPARK_CORE
-#define USE_OLIMEX_H103
+#define USE_SPARK_CORE
+//#define USE_OLIMEX_H103
 //#define USE_ST_VLDISCOVERY
 #endif
 

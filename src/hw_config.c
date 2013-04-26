@@ -45,12 +45,21 @@ const uint16_t BUTTON_PIN_SOURCE[BUTTONn] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EX
 const uint16_t BUTTON_IRQn[BUTTONn] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[BUTTONn] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
 
-__IO uint8_t Send_Buffer[VIRTUAL_COM_PORT_DATA_SIZE] ;
-__IO uint8_t Receive_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
-__IO uint32_t Send_length;
-__IO uint32_t Receive_length;
-__IO uint32_t packet_sent = 1;
-__IO uint32_t packet_receive = 1;
+uint8_t  USART_Rx_Buffer [USART_RX_DATA_SIZE];
+uint32_t USART_Rx_ptr_in = 0;
+uint32_t USART_Rx_ptr_out = 0;
+uint32_t USART_Rx_length  = 0;
+uint8_t  USB_Tx_State = 0;
+
+uint8_t  USB_USART_Received_Data[1];//VIRTUAL_COM_PORT_DATA_SIZE
+uint8_t  USB_USART_Received_Flag = 0;
+uint32_t USB_USART_BaudRate = 9600;
+
+static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
+
+/* Extern variables ----------------------------------------------------------*/
+extern LINE_CODING linecoding;
+
 
 /* Private function prototypes -----------------------------------------------*/
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
@@ -99,6 +108,8 @@ void Set_System(void)
 		{
 		}
 	}
+	/* Configure the SysTick Handler Priority: Preemption priority and subpriority */
+	NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00));
 }
 
 /*******************************************************************************
@@ -115,11 +126,11 @@ void NVIC_Configuration(void)
 
 	/* Configure the NVIC Preemption Priority Bits */
 	/* 4 bits for pre-emption priority(0-15 PreemptionPriority) and 0 bits for subpriority(0 SubPriority) */
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+	//NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 
 	/* Configure the Priority Group to 2 bits */
 	/* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
-	//NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 }
 
 /**
@@ -282,16 +293,16 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
         /* Enable the TIM Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = DEBOUNCE_TIMER_IRQn;
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
         NVIC_Init(&NVIC_InitStructure);
 
         /* Enable the Button EXTI Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = BUTTON_IRQn[Button];
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
         NVIC_Init(&NVIC_InitStructure);
@@ -668,20 +679,6 @@ void sFLASH_SPI_Init(void)
 }
 
 /*******************************************************************************
-* Function Name  : USB_CDC_Init
-* Description    : Start USB-CDC protocol.
-* Input          : None.
-* Return         : None.
-*******************************************************************************/
-void USB_CDC_Init(void)
-{
-	USB_Disconnect_Config();
-	Set_USBClock();
-	USB_Interrupts_Config();
-	USB_Init();
-}
-
-/*******************************************************************************
 * Function Name  : USB_Disconnect_Config
 * Description    : Disconnect pin configuration
 * Input          : None.
@@ -762,14 +759,12 @@ void Leave_LowPowerMode(void)
 void USB_Interrupts_Config(void)
 {
 	NVIC_InitTypeDef NVIC_InitStructure;
-
-	/* 2 bit for pre-emption priority, 2 bits for subpriority */
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+	EXTI_InitTypeDef EXTI_InitStructure;
 
 	/* Enable the USB interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
@@ -779,6 +774,13 @@ void USB_Interrupts_Config(void)
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
+
+	/* Configure the EXTI line 18 connected internally to the USB IP */
+	EXTI_ClearITPendingBit(EXTI_Line18);
+	EXTI_InitStructure.EXTI_Line = EXTI_Line18;
+	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&EXTI_InitStructure);
 }
 
 /*******************************************************************************
@@ -800,6 +802,129 @@ void USB_Cable_Config (FunctionalState NewState)
 }
 
 /*******************************************************************************
+* Function Name  : USB_USART_Init
+* Description    : Start USB-USART protocol.
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void USB_USART_Init(void)
+{
+	USB_Disconnect_Config();
+	Set_USBClock();
+	USB_Interrupts_Config();
+	USB_Init();
+}
+
+/*******************************************************************************
+* Function Name  : USB_USART_BaudRate
+* Description    : Set the BaudRate received from LineCoding information
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void USB_USART_Set_BaudRate(void)
+{
+	USB_USART_BaudRate = linecoding.bitrate;
+}
+
+/*******************************************************************************
+* Function Name  : USB_To_USART_Send_Data.
+* Description    : send the received data from USB to the UART.
+* Input          : data_buffer: data address.
+                   Nb_bytes: number of bytes to send.
+* Return         : none.
+*******************************************************************************/
+void USB_To_USART_Send_Data(uint8_t* data_buffer, uint8_t Nb_bytes)
+{
+//  uint32_t i;
+//
+//  for (i = 0; i < Nb_bytes; i++)
+//  {
+//    *(USB_USART_Received_Data + i) = *(data_buffer + i);
+//  }
+
+  *USB_USART_Received_Data = *data_buffer;
+
+  USB_USART_Received_Flag = 1;
+}
+
+/*******************************************************************************
+* Function Name  : USART_To_USB_Send_Data.
+* Description    : send the received data from UART to USB.
+* Input          : None.
+* Return         : none.
+*******************************************************************************/
+void USART_To_USB_Send_Data(uint8_t Data)
+{
+  USART_Rx_Buffer[USART_Rx_ptr_in] = Data;
+
+  USART_Rx_ptr_in++;
+
+  /* To avoid buffer overflow */
+  if(USART_Rx_ptr_in == USART_RX_DATA_SIZE)
+  {
+    USART_Rx_ptr_in = 0;
+  }
+}
+
+/*******************************************************************************
+* Function Name  : Handle_USBAsynchXfer.
+* Description    : send data to USB.
+* Input          : None.
+* Return         : none.
+*******************************************************************************/
+void Handle_USBAsynchXfer (void)
+{
+
+  uint16_t USB_Tx_ptr;
+  uint16_t USB_Tx_length;
+
+  if(USB_Tx_State != 1)
+  {
+    if (USART_Rx_ptr_out == USART_RX_DATA_SIZE)
+    {
+      USART_Rx_ptr_out = 0;
+    }
+
+    if(USART_Rx_ptr_out == USART_Rx_ptr_in)
+    {
+      USB_Tx_State = 0;
+      return;
+    }
+
+    if(USART_Rx_ptr_out > USART_Rx_ptr_in) /* rollback */
+    {
+      USART_Rx_length = USART_RX_DATA_SIZE - USART_Rx_ptr_out;
+    }
+    else
+    {
+      USART_Rx_length = USART_Rx_ptr_in - USART_Rx_ptr_out;
+    }
+
+    if (USART_Rx_length > VIRTUAL_COM_PORT_DATA_SIZE)
+    {
+      USB_Tx_ptr = USART_Rx_ptr_out;
+      USB_Tx_length = VIRTUAL_COM_PORT_DATA_SIZE;
+
+      USART_Rx_ptr_out += VIRTUAL_COM_PORT_DATA_SIZE;
+      USART_Rx_length -= VIRTUAL_COM_PORT_DATA_SIZE;
+    }
+    else
+    {
+      USB_Tx_ptr = USART_Rx_ptr_out;
+      USB_Tx_length = USART_Rx_length;
+
+      USART_Rx_ptr_out += USART_Rx_length;
+      USART_Rx_length = 0;
+    }
+    USB_Tx_State = 1;
+    UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
+    SetEPTxCount(ENDP1, USB_Tx_length);
+    SetEPTxValid(ENDP1);
+  }
+
+}
+
+/*******************************************************************************
 * Function Name  : Get_SerialNum.
 * Description    : Create the serial number string descriptor.
 * Input          : None.
@@ -808,19 +933,19 @@ void USB_Cable_Config (FunctionalState NewState)
 *******************************************************************************/
 void Get_SerialNum(void)
 {
-	uint32_t Device_Serial0, Device_Serial1, Device_Serial2;
+  uint32_t Device_Serial0, Device_Serial1, Device_Serial2;
 
-	Device_Serial0 = *(uint32_t*)ID1;
-	Device_Serial1 = *(uint32_t*)ID2;
-	Device_Serial2 = *(uint32_t*)ID3;
+  Device_Serial0 = *(uint32_t*)ID1;
+  Device_Serial1 = *(uint32_t*)ID2;
+  Device_Serial2 = *(uint32_t*)ID3;
 
-	Device_Serial0 += Device_Serial2;
+  Device_Serial0 += Device_Serial2;
 
-	if (Device_Serial0 != 0)
-	{
-		IntToUnicode (Device_Serial0, &Virtual_Com_Port_StringSerial[2] , 8);
-		IntToUnicode (Device_Serial1, &Virtual_Com_Port_StringSerial[18], 4);
-	}
+  if (Device_Serial0 != 0)
+  {
+    IntToUnicode (Device_Serial0, &Virtual_Com_Port_StringSerial[2] , 8);
+    IntToUnicode (Device_Serial1, &Virtual_Com_Port_StringSerial[18], 4);
+  }
 }
 
 /*******************************************************************************
@@ -832,62 +957,21 @@ void Get_SerialNum(void)
 *******************************************************************************/
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
 {
-	uint8_t idx = 0;
+  uint8_t idx = 0;
 
-	for( idx = 0 ; idx < len ; idx ++)
-	{
-		if( ((value >> 28)) < 0xA )
-		{
-			pbuf[ 2* idx] = (value >> 28) + '0';
-		}
-		else
-		{
-			pbuf[2* idx] = (value >> 28) + 'A' - 10;
-		}
+  for( idx = 0 ; idx < len ; idx ++)
+  {
+    if( ((value >> 28)) < 0xA )
+    {
+      pbuf[ 2* idx] = (value >> 28) + '0';
+    }
+    else
+    {
+      pbuf[2* idx] = (value >> 28) + 'A' - 10;
+    }
 
-		value = value << 4;
+    value = value << 4;
 
-		pbuf[ 2* idx + 1] = 0;
-	}
-}
-
-/*******************************************************************************
-* Function Name  : Send DATA .
-* Description    : send the data received from the STM32 to the PC through USB
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
-uint32_t CDC_Send_DATA (uint8_t *ptrBuffer, uint8_t Send_length)
-{
-	/*if max buffer is Not reached*/
-	if(Send_length < VIRTUAL_COM_PORT_DATA_SIZE)
-	{
-		/*Sent flag*/
-		packet_sent = 0;
-		/* send  packet to PMA*/
-		UserToPMABufferCopy((unsigned char*)ptrBuffer, ENDP1_TXADDR, Send_length);
-		SetEPTxCount(ENDP1, Send_length);
-		SetEPTxValid(ENDP1);
-	}
-	else
-	{
-		return 0;
-	}
-	return 1;
-}
-
-/*******************************************************************************
-* Function Name  : Receive DATA .
-* Description    : receive the data from the PC to STM32 and send it through USB
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
-uint32_t CDC_Receive_DATA(void)
-{
-	/*Receive flag*/
-	packet_receive = 0;
-	SetEPRxValid(ENDP3);
-	return 1 ;
+    pbuf[ 2* idx + 1] = 0;
+  }
 }

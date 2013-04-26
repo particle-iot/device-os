@@ -67,6 +67,8 @@ typedef enum
 /* Deselect sFLASH: Chip Select pin high */
 #define sFLASH_CS_HIGH()	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
 
+#define USART_RX_DATA_SIZE   2048
+
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
@@ -101,16 +103,18 @@ void sFLASH_SPI_DeInit(void);
 void sFLASH_SPI_Init(void);
 
 /* USB hardware peripheral related methods */
-void USB_CDC_Init(void);
 void USB_Disconnect_Config(void);
 void Set_USBClock(void);
 void Enter_LowPowerMode(void);
 void Leave_LowPowerMode(void);
 void USB_Interrupts_Config(void);
 void USB_Cable_Config(FunctionalState NewState);
+void USB_USART_Init(void);
+void USB_USART_Set_BaudRate(void);
+void USB_To_USART_Send_Data(uint8_t* data_buffer, uint8_t Nb_bytes);
+void USART_To_USB_Send_Data(uint8_t Data);
+void Handle_USBAsynchXfer (void);
 void Get_SerialNum(void);
-uint32_t CDC_Send_DATA (uint8_t *ptrBuffer, uint8_t Send_length);
-uint32_t CDC_Receive_DATA(void);
 
 /* External variables --------------------------------------------------------*/
 extern unsigned char wlan_rx_buffer[];

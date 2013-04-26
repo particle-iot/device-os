@@ -231,6 +231,7 @@ void Virtual_Com_Port_Status_In(void)
 {
   if (Request == SET_LINE_CODING)
   {
+    USB_USART_Set_BaudRate();
     Request = 0;
   }
 }
