@@ -41,9 +41,6 @@ uint8_t DEVICE_HANDSHAKE_FINISHED;
 //tNetappIpconfigRetArgs ipconfig;
 
 /* Extern variables ----------------------------------------------------------*/
-//extern __IO uint8_t Receive_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
-//extern __IO uint32_t Receive_length;
-//extern __IO uint32_t packet_sent;
 
 /* Private function prototypes -----------------------------------------------*/
 

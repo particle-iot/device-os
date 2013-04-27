@@ -7,7 +7,6 @@
  */
 
 #include "spark_wiring.h"
-#include "string.h"
 
 /*
  * Globals
@@ -21,10 +20,6 @@ PinMode digitalPinModeSaved = NONE;
 uint8_t serial1_enabled = false;
 
 extern __IO uint32_t TimingMillis;
-
-extern uint8_t USB_USART_Received_Data[1];//VIRTUAL_COM_PORT_DATA_SIZE
-extern uint8_t USB_USART_Received_Flag;
-extern uint32_t USB_USART_BaudRate;
 
 /*
  * Pin mapping
@@ -66,7 +61,7 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
 void serial_begin(uint32_t baudRate);
 void serial_end(void);
 uint8_t serial_available(void);
-uint8_t serial_read(void);
+int32_t serial_read(void);
 void serial_write(uint8_t Data);
 void serial_print(const char * str);
 void serial_println(const char * str);
@@ -74,7 +69,7 @@ void serial_println(const char * str);
 void serial1_begin(uint32_t baudRate);
 void serial1_end(void);
 uint8_t serial1_available(void);
-uint8_t serial1_read(void);
+int32_t serial1_read(void);
 void serial1_write(uint8_t Data);
 void serial1_print(const char * str);
 void serial1_println(const char * str);
@@ -504,8 +499,7 @@ void delayMicroseconds(uint32_t us)
 
 void serial_begin(uint32_t baudRate)
 {
-	USB_USART_BaudRate = baudRate;
-	USB_USART_Init();
+	USB_USART_Init(baudRate);
 }
 
 void serial_end(void)
@@ -515,22 +509,17 @@ void serial_end(void)
 
 uint8_t serial_available(void)
 {
-	// Check if the USB_USART_Received_Flag is set
-	if(USB_USART_Received_Flag != 0)
-		return 0x01;
-	else
-		return 0x00;
+	return USB_USART_Available_Data();
 }
 
-uint8_t serial_read(void)
+int32_t serial_read(void)
 {
-	USB_USART_Received_Flag = 0;
-	return *USB_USART_Received_Data;
+	return USB_USART_Receive_Data();
 }
 
 void serial_write(uint8_t Data)
 {
-	USART_To_USB_Send_Data(Data);
+	USB_USART_Send_Data(Data);
 }
 
 void serial_print(const char * str)
@@ -599,12 +588,12 @@ uint8_t serial1_available(void)
 {
 	// Check if the USART Receive Data Register is not empty
 	if(USART_GetFlagStatus(USART2, USART_FLAG_RXNE) != RESET)
-		return 0x01;
+		return 1;
 	else
-		return 0x00;
+		return 0;
 }
 
-uint8_t serial1_read(void)
+int32_t serial1_read(void)
 {
 	// Return the received byte
 	return USART_ReceiveData(USART2);

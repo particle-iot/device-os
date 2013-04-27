@@ -5,7 +5,7 @@ void setup()
 	// runs once
 
 /*
-	// Serial1 Test
+	// Serial Test
 	Serial.begin(9600);
 */
 }

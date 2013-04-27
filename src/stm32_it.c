@@ -282,18 +282,6 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
 }
 
 /*******************************************************************************
-* Function Name  : USBWakeUp_IRQHandler
-* Description    : This function handles USB WakeUp interrupt request.
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
-void USBWakeUp_IRQHandler(void)
-{
-	EXTI_ClearITPendingBit(EXTI_Line18);
-}
-
-/*******************************************************************************
  * Function Name  : PPP_IRQHandler
  * Description    : This function handles PPP interrupt request.
  * Input          : None

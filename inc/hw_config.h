@@ -67,7 +67,7 @@ typedef enum
 /* Deselect sFLASH: Chip Select pin high */
 #define sFLASH_CS_HIGH()	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
 
-#define USART_RX_DATA_SIZE   2048
+#define USART_RX_DATA_SIZE	128	//2048
 
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
@@ -109,11 +109,11 @@ void Enter_LowPowerMode(void);
 void Leave_LowPowerMode(void);
 void USB_Interrupts_Config(void);
 void USB_Cable_Config(FunctionalState NewState);
-void USB_USART_Init(void);
-void USB_USART_Set_BaudRate(void);
-void USB_To_USART_Send_Data(uint8_t* data_buffer, uint8_t Nb_bytes);
-void USART_To_USB_Send_Data(uint8_t Data);
-void Handle_USBAsynchXfer (void);
+void USB_USART_Init(uint32_t baudRate);
+uint8_t USB_USART_Available_Data(void);
+int32_t USB_USART_Receive_Data(void);
+void USB_USART_Send_Data(uint8_t Data);
+void Handle_USBAsynchXfer(void);
 void Get_SerialNum(void);
 
 /* External variables --------------------------------------------------------*/

@@ -1,53 +1,33 @@
 /**
   ******************************************************************************
   * @file    usb_pwr.c
-  * @author  MCD Application Team
-  * @version V4.0.0
-  * @date    21-January-2013
+  * @author  Spark Application Team
+  * @version V1.0.0
+  * @date    24-April-2013
   * @brief   Connection/disconnection & power management
   ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT 2013 STMicroelectronics</center></h2>
-  *
-  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
-  * You may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at:
-  *
-  *        http://www.st.com/software_license_agreement_liberty_v2
-  *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  *
-  ******************************************************************************
-  */
-
+*/
 
 /* Includes ------------------------------------------------------------------*/
+
+#include "hw_config.h" 
 #include "usb_lib.h"
 #include "usb_conf.h"
 #include "usb_pwr.h"
-#include "hw_config.h"
+
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 __IO uint32_t bDeviceState = UNCONNECTED; /* USB device status */
-__IO bool fSuspendEnabled = FALSE;//TRUE  /* true when suspend is possible */
-__IO uint32_t EP[8];
+__IO bool fSuspendEnabled = TRUE;  /* true when suspend is possible */
 
 struct
 {
   __IO RESUME_STATE eState;
   __IO uint8_t bESOFcnt;
-}
-ResumeS;
-
-__IO uint32_t remotewakeupon=0;
+}ResumeS;
 
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
@@ -80,7 +60,7 @@ RESULT PowerOn(void)
   /*** Set interrupt mask ***/
   wInterrupt_Mask = CNTR_RESETM | CNTR_SUSPM | CNTR_WKUPM;
   _SetCNTR(wInterrupt_Mask);
-  
+
   return USB_SUCCESS;
 }
 
@@ -101,6 +81,7 @@ RESULT PowerOff()
   USB_Cable_Config(DISABLE);
   /* switch-off device */
   _SetCNTR(CNTR_FRES + CNTR_PDWN);
+
   /* sw variables reset */
   /* ... */
 
@@ -116,100 +97,28 @@ RESULT PowerOff()
 *******************************************************************************/
 void Suspend(void)
 {
-	uint32_t i =0;
-	uint16_t wCNTR;
-	uint32_t tmpreg = 0;
-  __IO uint32_t savePWR_CR=0;
-	/* suspend preparation */
-	/* ... */
-	
-	/*Store CNTR value */
-	wCNTR = _GetCNTR();  
+  uint16_t wCNTR;
+  /* suspend preparation */
+  /* ... */
 
-    /* This a sequence to apply a force RESET to handle a robustness case */
-    
-	/*Store endpoints registers status */
-    for (i=0;i<8;i++) EP[i] = _GetENDPOINT(i);
-	
-	/* unmask RESET flag */
-	wCNTR|=CNTR_RESETM;
-	_SetCNTR(wCNTR);
-	
-	/*apply FRES */
-	wCNTR|=CNTR_FRES;
-	_SetCNTR(wCNTR);
-	
-	/*clear FRES*/
-	wCNTR&=~CNTR_FRES;
-	_SetCNTR(wCNTR);
-	
-	/*poll for RESET flag in ISTR*/
-	while((_GetISTR()&ISTR_RESET) == 0);
-	
-	/* clear RESET flag in ISTR */
-	_SetISTR((uint16_t)CLR_RESET);
-	
-	/*restore Enpoints*/
-	for (i=0;i<8;i++)
-	_SetENDPOINT(i, EP[i]);
-	
-	/* Now it is safe to enter macrocell in suspend mode */
-	wCNTR |= CNTR_FSUSP;
-	_SetCNTR(wCNTR);
-	
-	/* force low-power mode in the macrocell */
-	wCNTR = _GetCNTR();
-	wCNTR |= CNTR_LPMODE;
-	_SetCNTR(wCNTR);
-	
-	/*prepare entry in low power mode (STOP mode)*/
-	/* Select the regulator state in STOP mode*/
-	savePWR_CR = PWR->CR;
-	tmpreg = PWR->CR;
-	/* Clear PDDS and LPDS bits */
-	tmpreg &= ((uint32_t)0xFFFFFFFC);
-	/* Set LPDS bit according to PWR_Regulator value */
-	tmpreg |= PWR_Regulator_LowPower;
-	/* Store the new value */
-	PWR->CR = tmpreg;
-	/* Set SLEEPDEEP bit of Cortex System Control Register */
-#if defined (STM32F30X) || defined (STM32F37X)
-        SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-#else
-        SCB->SCR |= SCB_SCR_SLEEPDEEP;       
-#endif
-	
-	/* enter system in STOP mode, only when wakeup flag in not set */
-	if((_GetISTR()&ISTR_WKUP)==0)
-	{
-		__WFI();
-		/* Reset SLEEPDEEP bit of Cortex System Control Register */
-#if defined (STM32F30X) || defined (STM32F37X)
-                SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP_Msk); 
-#else
-                SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP); 
-#endif
-	}
-	else
-	{
-		/* Clear Wakeup flag */
-		_SetISTR(CLR_WKUP);
-		/* clear FSUSP to abort entry in suspend mode  */
-        wCNTR = _GetCNTR();
-        wCNTR&=~CNTR_FSUSP;
-        _SetCNTR(wCNTR);
-		
-		/*restore sleep mode configuration */ 
-		/* restore Power regulator config in sleep mode*/
-		PWR->CR = savePWR_CR;
-		
-		/* Reset SLEEPDEEP bit of Cortex System Control Register */
-#if defined (STM32F30X) || defined (STM32F37X)		
-                SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP_Msk);
-#else
-                SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP);
-#endif
-    }
+  /* macrocell enters suspend mode */
+  wCNTR = _GetCNTR();
+  wCNTR |= CNTR_FSUSP;
+  _SetCNTR(wCNTR);
+
+  /* ------------------ ONLY WITH BUS-POWERED DEVICES ---------------------- */
+  /* power reduction */
+  /* ... on connected devices */
+
+  /* force low-power mode in the macrocell */
+  wCNTR = _GetCNTR();
+  wCNTR |= CNTR_LPMODE;
+  _SetCNTR(wCNTR);
+
+  /* switch-off the clocks */
+  /* ... */
+  Enter_LowPowerMode();
+
 }
 
 /*******************************************************************************
@@ -222,7 +131,7 @@ void Suspend(void)
 void Resume_Init(void)
 {
   uint16_t wCNTR;
-  
+
   /* ------------------ ONLY WITH BUS-POWERED DEVICES ---------------------- */
   /* restart the clocks */
   /* ...  */
@@ -230,8 +139,8 @@ void Resume_Init(void)
   /* CNTR_LPMODE = 0 */
   wCNTR = _GetCNTR();
   wCNTR &= (~CNTR_LPMODE);
-  _SetCNTR(wCNTR);    
-  
+  _SetCNTR(wCNTR);
+
   /* restore full power */
   /* ... on connected devices */
   Leave_LowPowerMode();
@@ -240,7 +149,7 @@ void Resume_Init(void)
   _SetCNTR(IMR_MSK);
 
   /* reverse suspend preparation */
-  /* ... */ 
+  /* ... */
 
 }
 
@@ -262,23 +171,16 @@ void Resume(RESUME_STATE eResumeSetVal)
 
   if (eResumeSetVal != RESUME_ESOF)
     ResumeS.eState = eResumeSetVal;
+
   switch (ResumeS.eState)
   {
     case RESUME_EXTERNAL:
-      if (remotewakeupon ==0)
-      {
-        Resume_Init();
-        ResumeS.eState = RESUME_OFF;
-      }
-      else /* RESUME detected during the RemoteWAkeup signalling => keep RemoteWakeup handling*/
-      {
-        ResumeS.eState = RESUME_ON;
-      }
+      Resume_Init();
+      ResumeS.eState = RESUME_OFF;
       break;
     case RESUME_INTERNAL:
       Resume_Init();
       ResumeS.eState = RESUME_START;
-      remotewakeupon = 1;
       break;
     case RESUME_LATER:
       ResumeS.bESOFcnt = 2;
@@ -296,7 +198,7 @@ void Resume(RESUME_STATE eResumeSetVal)
       ResumeS.eState = RESUME_ON;
       ResumeS.bESOFcnt = 10;
       break;
-    case RESUME_ON:    
+    case RESUME_ON:
       ResumeS.bESOFcnt--;
       if (ResumeS.bESOFcnt == 0)
       {
@@ -304,7 +206,6 @@ void Resume(RESUME_STATE eResumeSetVal)
         wCNTR &= (~CNTR_RESUME);
         _SetCNTR(wCNTR);
         ResumeS.eState = RESUME_OFF;
-        remotewakeupon = 0;
       }
       break;
     case RESUME_OFF:
@@ -315,4 +216,4 @@ void Resume(RESUME_STATE eResumeSetVal)
   }
 }
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+/*********************** (C) COPYRIGHT STMicroelectronics *********************/

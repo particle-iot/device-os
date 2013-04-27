@@ -45,14 +45,18 @@ const uint16_t BUTTON_PIN_SOURCE[BUTTONn] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EX
 const uint16_t BUTTON_IRQn[BUTTONn] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[BUTTONn] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
 
-uint8_t  USART_Rx_Buffer [USART_RX_DATA_SIZE];
+uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
 uint32_t USART_Rx_ptr_in = 0;
 uint32_t USART_Rx_ptr_out = 0;
 uint32_t USART_Rx_length  = 0;
-uint8_t  USB_Tx_State = 0;
 
-uint8_t  USB_USART_Received_Data[1];//VIRTUAL_COM_PORT_DATA_SIZE
-uint8_t  USB_USART_Received_Flag = 0;
+uint8_t USB_Rx_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
+uint16_t USB_Rx_length = 0;
+uint16_t USB_Rx_ptr = 0;
+
+uint8_t  USB_Tx_State = 0;
+uint8_t  USB_Rx_State = 0;
+
 uint32_t USB_USART_BaudRate = 9600;
 
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
@@ -60,9 +64,7 @@ static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 /* Extern variables ----------------------------------------------------------*/
 extern LINE_CODING linecoding;
 
-
 /* Private function prototypes -----------------------------------------------*/
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 
 /* Private functions ---------------------------------------------------------*/
 /**
@@ -745,9 +747,6 @@ void Leave_LowPowerMode(void)
 	{
 		bDeviceState = ATTACHED;
 	}
-
-	/*Enable SystemCoreClock*/
-	SystemInit();
 }
 
 /*******************************************************************************
@@ -759,28 +758,13 @@ void Leave_LowPowerMode(void)
 void USB_Interrupts_Config(void)
 {
 	NVIC_InitTypeDef NVIC_InitStructure;
-	EXTI_InitTypeDef EXTI_InitStructure;
 
 	/* Enable the USB interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-
-	/* Enable the USB Wake-up interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel = USBWakeUp_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
-
-	/* Configure the EXTI line 18 connected internally to the USB IP */
-	EXTI_ClearITPendingBit(EXTI_Line18);
-	EXTI_InitStructure.EXTI_Line = EXTI_Line18;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-	EXTI_Init(&EXTI_InitStructure);
 }
 
 /*******************************************************************************
@@ -804,11 +788,12 @@ void USB_Cable_Config (FunctionalState NewState)
 /*******************************************************************************
 * Function Name  : USB_USART_Init
 * Description    : Start USB-USART protocol.
-* Input          : None.
+* Input          : baudRate.
 * Return         : None.
 *******************************************************************************/
-void USB_USART_Init(void)
+void USB_USART_Init(uint32_t baudRate)
 {
+	linecoding.bitrate = baudRate;
 	USB_Disconnect_Config();
 	Set_USBClock();
 	USB_Interrupts_Config();
@@ -816,61 +801,78 @@ void USB_USART_Init(void)
 }
 
 /*******************************************************************************
-* Function Name  : USB_USART_BaudRate
-* Description    : Set the BaudRate received from LineCoding information
+* Function Name  : USB_USART_Available_Data.
+* Description    : Return the length of available data received from USB.
 * Input          : None.
+* Return         : Length.
+*******************************************************************************/
+uint8_t USB_USART_Available_Data(void)
+{
+	if(bDeviceState == CONFIGURED)
+	{
+		if(USB_Rx_State == 1)
+		{
+			return (USB_Rx_length - USB_Rx_ptr);
+		}
+	}
+
+	return 0;
+}
+
+/*******************************************************************************
+* Function Name  : USB_USART_Receive_Data.
+* Description    : Return data sent by USB Host.
+* Input          : None
+* Return         : Data.
+*******************************************************************************/
+int32_t USB_USART_Receive_Data(void)
+{
+	if(bDeviceState == CONFIGURED)
+	{
+		if(USB_Rx_State == 1)
+		{
+			if((USB_Rx_length - USB_Rx_ptr) == 1)
+			{
+				USB_Rx_State = 0;
+
+				/* Enable the receive of data on EP3 */
+				SetEPRxValid(ENDP3);
+			}
+
+			return USB_Rx_Buffer[USB_Rx_ptr++];
+		}
+	}
+
+	return -1;
+}
+
+/*******************************************************************************
+* Function Name  : USB_USART_Send_Data.
+* Description    : Send Data from USB_USART to USB Host.
+* Input          : Data.
 * Return         : None.
 *******************************************************************************/
-void USB_USART_Set_BaudRate(void)
+void USB_USART_Send_Data(uint8_t Data)
 {
-	USB_USART_BaudRate = linecoding.bitrate;
-}
+	if(bDeviceState == CONFIGURED)
+	{
+		USART_Rx_Buffer[USART_Rx_ptr_in] = Data;
 
-/*******************************************************************************
-* Function Name  : USB_To_USART_Send_Data.
-* Description    : send the received data from USB to the UART.
-* Input          : data_buffer: data address.
-                   Nb_bytes: number of bytes to send.
-* Return         : none.
-*******************************************************************************/
-void USB_To_USART_Send_Data(uint8_t* data_buffer, uint8_t Nb_bytes)
-{
-//  uint32_t i;
-//
-//  for (i = 0; i < Nb_bytes; i++)
-//  {
-//    *(USB_USART_Received_Data + i) = *(data_buffer + i);
-//  }
+		USART_Rx_ptr_in++;
 
-  *USB_USART_Received_Data = *data_buffer;
-
-  USB_USART_Received_Flag = 1;
-}
-
-/*******************************************************************************
-* Function Name  : USART_To_USB_Send_Data.
-* Description    : send the received data from UART to USB.
-* Input          : None.
-* Return         : none.
-*******************************************************************************/
-void USART_To_USB_Send_Data(uint8_t Data)
-{
-  USART_Rx_Buffer[USART_Rx_ptr_in] = Data;
-
-  USART_Rx_ptr_in++;
-
-  /* To avoid buffer overflow */
-  if(USART_Rx_ptr_in == USART_RX_DATA_SIZE)
-  {
-    USART_Rx_ptr_in = 0;
-  }
+		/* To avoid buffer overflow */
+		if(USART_Rx_ptr_in == USART_RX_DATA_SIZE)
+		{
+			USART_Rx_ptr_in = 0;
+		}
+	}
 }
 
 /*******************************************************************************
 * Function Name  : Handle_USBAsynchXfer.
 * Description    : send data to USB.
 * Input          : None.
-* Return         : none.
+* Return         : None.
 *******************************************************************************/
 void Handle_USBAsynchXfer (void)
 {

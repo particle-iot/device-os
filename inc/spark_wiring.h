@@ -122,8 +122,10 @@ void delayMicroseconds(uint32_t us);
 
 extern void Delay(__IO uint32_t nTime);
 
-extern void USB_USART_Init(void);
-extern void USART_To_USB_Send_Data(uint8_t Data);
+extern void USB_USART_Init(uint32_t baudRate);
+extern uint8_t USB_USART_Available_Data(void);
+extern int32_t USB_USART_Receive_Data(void);
+extern void USB_USART_Send_Data(uint8_t Data);
 
 /*
  * Serial_Interface
@@ -132,7 +134,7 @@ typedef struct Serial_Interface {
   void (*begin)(uint32_t);
   void (*end)(void);
   uint8_t (*available)(void);
-  uint8_t (*read)(void);
+  int32_t (*read)(void);
   void (*write)(uint8_t);
   void (*print)(const char *);
   void (*println)(const char *);
