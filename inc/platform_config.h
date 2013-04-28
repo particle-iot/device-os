@@ -22,8 +22,8 @@
 #endif
 
 /* Uncomment the line below to enable WLAN and WIRING functionality */
-//#define SPARK_WLAN_ENABLE
-#define	SPARK_WIRING_ENABLE
+#define SPARK_WLAN_ENABLE
+//#define	SPARK_WIRING_ENABLE
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x.h"

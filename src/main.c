@@ -103,7 +103,7 @@ int main(void)
 	// This will be replaced with SPI-Flash based backup
     if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
     {
-    	FIRST_TIME_CONFIG = 0x01;
+//    	FIRST_TIME_CONFIG = 0x01;
     }
 #endif
 
@@ -111,6 +111,8 @@ int main(void)
 //	nvmem_read_sp_version(patchVer);
 //	if (patchVer[1] == 14)
 //		Delay(14);
+
+    int DID_CONNECT = 0;
 
 	/* Main loop */
 	while (1)
@@ -123,11 +125,12 @@ int main(void)
 			//
 			Start_Smart_Config();
 		}
-//		else if (!WLAN_DHCP)
-//		{
-//		    wlan_ioctl_set_connection_policy(0, 0, 0);
-//		    wlan_connect(WLAN_SEC_WPA2, "Haxlr8r-upstairs", 16, NULL, "wittycheese551", 14);
-//		}
+		else if (!WLAN_DHCP && !DID_CONNECT)
+		{
+		    wlan_ioctl_set_connection_policy(0, 0, 0);
+		    wlan_connect(WLAN_SEC_WPA2, "spark", 5, NULL, "igotyourwifi", 12);
+		    DID_CONNECT = 1;
+		}
 
 		if(WLAN_DHCP && !SERVER_SOCKET_CONNECTED)
 		{
