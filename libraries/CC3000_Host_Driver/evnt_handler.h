@@ -52,8 +52,49 @@ extern "C" {
 // Prototypes for the APIs.
 //
 //*****************************************************************************
+
+//*****************************************************************************
+//
+//!  hci_event_handler
+//!
+//!  @param  pRetParams     incoming data buffer
+//!  @param  from           from information (in case of data received)
+//!  @param  fromlen        from information length (in case of data received)
+//!
+//!  @return         none
+//!
+//!  @brief          Parse the incoming events packets and issues corresponding
+//!                  event handler from global array of handlers pointers
+//
+//*****************************************************************************
 extern unsigned char *hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen);
+
+//*****************************************************************************
+//
+//!  hci_unsol_event_handler
+//!
+//!  @param  event_hdr   event header
+//!
+//!  @return             1 if event supported and handled
+//!                      0 if event is not supported
+//!
+//!  @brief              Handle unsolicited events
+//
+//*****************************************************************************
 extern long hci_unsol_event_handler(char *event_hdr);
+
+//*****************************************************************************
+//
+//!  hci_unsolicited_event_handler
+//!
+//!  @param None
+//!
+//!  @return         ESUCCESS if successful, EFAIL if an error occurred
+//!
+//!  @brief          Parse the incoming unsolicited event packets and issues 
+//!                  corresponding event handler.
+//
+//*****************************************************************************
 extern long hci_unsolicited_event_handler(void);
 
 #define M_BSD_RESP_PARAMS_OFFSET(hci_event_hdr)((char *)(hci_event_hdr) + HCI_EVENT_HEADER_SIZE)
@@ -122,3 +163,4 @@ typedef struct _bsd_gethostbyname_return_t
 #endif // __cplusplus
 
 #endif // __EVENT_HANDLER_H__
+

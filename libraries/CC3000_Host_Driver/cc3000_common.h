@@ -35,6 +35,9 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+//******************************************************************************
+// Include files
+//******************************************************************************
 #include <stdlib.h>
 #include <errno.h>
 #include <stdint.h>
@@ -56,77 +59,101 @@ extern "C" {
 #define EFAIL          -1
 #define EERROR          EFAIL
 
+//*****************************************************************************
+//                  COMMON DEFINES
+//*****************************************************************************
 #define ERROR_SOCKET_INACTIVE   -57 
-
-#define HCI_CC_PAYLOAD_LEN      5
 
 #define WLAN_ENABLE      (1)   
 #define WLAN_DISABLE     (0)
-
 
 #define	MAC_ADDR_LEN	(6)
 
 #define	SP_PORTION_SIZE	(32)
   
+/*Defines for minimal and maximal RX buffer size. This size includes the spi 
+  header and hci header.
+  The maximal buffer size derives from:
+    MTU + HCI header + SPI header + sendto() agrs size
+  The minimum buffer size derives from:
+    HCI header + SPI header + max args size
 
-//TX and RX buffer sizes - allow to receive and transmit maximum data at lengh 8.
+  This buffer is used for receiving events and data.
+  The packet can not be longer than MTU size and CC3000 does not support 
+  fragmentation. Note that the same buffer is used for reception of the data 
+  and events from CC3000. That is why the minimum is defined. 
+  The calculation for the actual size of buffer for reception is:
+  Given the maximal data size MAX_DATA that is expected to be received by
+  application, the required buffer is:
+  Using recv() or recvfrom():
+ 
+    max(CC3000_MINIMAL_RX_SIZE, MAX_DATA + HEADERS_SIZE_DATA + fromlen
+    + ucArgsize + 1)
+ 
+  Using gethostbyname() with minimal buffer size will limit the host name
+  returned to 99 bytes only.
+  The 1 is used for the overrun detection 
+
+  Buffer size increased to 130 following the add_profile() with WEP security
+  which requires TX buffer size of 130 bytes: 
+  HEADERS_SIZE_EVNT + WLAN_ADD_PROFILE_WEP_PARAM_LEN + MAX SSID LEN + 4 * MAX KEY LEN = 130
+  MAX SSID LEN = 32 
+  MAX SSID LEN = 13 (with add_profile only ascii key setting is supported, 
+  therfore maximum key size is 13)
+*/
+
+#define CC3000_MINIMAL_RX_SIZE      (130 + 1)
+#define CC3000_MAXIMAL_RX_SIZE      (1519 + 1)
+
+/*Defines for minimal and maximal TX buffer size.
+  This buffer is used for sending events and data.
+  The packet can not be longer than MTU size and CC3000 does not support 
+  fragmentation. Note that the same buffer is used for transmission of the data
+  and commands. That is why the minimum is defined.
+  The calculation for the actual size of buffer for transmission is:
+  Given the maximal data size MAX_DATA, the required buffer is:
+  Using Sendto():
+ 
+   max(CC3000_MINIMAL_TX_SIZE, MAX_DATA + SPI_HEADER_SIZE
+   + SOCKET_SENDTO_PARAMS_LEN + SIMPLE_LINK_HCI_DATA_HEADER_SIZE + 1)
+ 
+  Using Send():
+ 
+   max(CC3000_MINIMAL_TX_SIZE, MAX_DATA + SPI_HEADER_SIZE
+   + HCI_CMND_SEND_ARG_LENGTH + SIMPLE_LINK_HCI_DATA_HEADER_SIZE + 1)
+ 
+  The 1 is used for the overrun detection */ 
+
+#define	CC3000_MINIMAL_TX_SIZE      (130 + 1)  
+#define	CC3000_MAXIMAL_TX_SIZE      (1519 + 1)
+
+//TX and RX buffer sizes, allow to receive and transmit maximum data at length 8.
 #ifdef CC3000_TINY_DRIVER
 #define TINY_CC3000_MAXIMAL_RX_SIZE 44
 #define TINY_CC3000_MAXIMAL_TX_SIZE 59
 #endif
-//Defines for minimal and maximal RX buffer size. This size includes the spi header and hci header.
-//The maximal buffer size derives from:
-// MTU + HCI header + SPI header + sendto() agrs size
-//The minimum buffer size derives from:
-// HCI header + SPI header + max args size
-//
-// This buffer is used for receiving events and data.
-// Note that the maximal buffer size as defined here is a maximal at all 
-// The packet can not be longer than MTU size and CC3000 does not support 
-// fragmentation.Note that the same buffer is used for reception of the data and
-// events from CC3000. That is why the minium is defined. 
-// The calculation for the actual size of buffer for reception is:
-// Given the maximal data size MAX_DATA that is expected to be received by application, the required buffer is:
-// Using recv() or recvfrom():
-// max(CC3000_MINIMAL_RX_SIZE, MAX_DATA + HEADERS_SIZE_DATA + fromlen + ucArgsize + 1)
-// Using gethostbyname() with minimal buffer size will limit the host name returned to 99 bytes only.  
-// The 1 is used for the overrun detection
-#define CC3000_MINIMAL_RX_SIZE      (118+1)
-#define CC3000_MAXIMAL_RX_SIZE      (1519 + 1)
 
-//Defines for minimal and maximal TX buffer size.
-// This buffer is used for sending events and data.
-// Note that the maximal buffer size as defined here is a maximal at all 
-// The packet can not be longer than MTU size and CC3000 does not support 
-// fragmentation.Note that the same buffer is used for tranmission of the data and
-// commnads. That is why the minium is defined. 
-// The calculation for the actual size of buffer for transmission is:
-// Given the maximal data size MAX_DATA, the required buffer is:
-// Using Sendto:
-// max(CC3000_MINIMAL_TX_SIZE, MAX_DATA + SPI_HEADER_SIZE + SOCKET_SENDTO_PARAMS_LEN + SIMPLE_LINK_HCI_DATA_HEADER_SIZE + 1)
-// Using Send():
-// max(CC3000_MINIMAL_TX_SIZE, MAX_DATA + SPI_HEADER_SIZE + HCI_CMND_SEND_ARG_LENGTH + SIMPLE_LINK_HCI_DATA_HEADER_SIZE + 1)
-// The 1 is used for the overrun detection
-#define	CC3000_MINIMAL_TX_SIZE      (118 + 1)  
-#define	CC3000_MAXIMAL_TX_SIZE      (1519 + 1)
-
-//In order to determine your preferred buffer size, change CC3000_MAXIMAL_RX_SIZE and CC3000_MAXIMAL_TX_SIZE 
-//to a value between the minimal and maximal specified above. 
-// Note that the buyffers are allocated by SPI. In case you change the size of those buffers, you might need also
-// to change the linker file, since for example on MSP430 FRAM devices the buffers are allocated in the FRAM section
-// that is allocated manually and not by IDE. Thus its size changes...
+/*In order to determine your preferred buffer size, 
+  change CC3000_MAXIMAL_RX_SIZE and CC3000_MAXIMAL_TX_SIZE to a value between
+  the minimal and maximal specified above. 
+  Note that the buffers are allocated by SPI.
+  In case you change the size of those buffers, you might need also to change
+  the linker file, since for example on MSP430 FRAM devices the buffers are
+  allocated in the FRAM section that is allocated manually and not by IDE.
+*/
   
 #ifndef CC3000_TINY_DRIVER
   
 	#define CC3000_RX_BUFFER_SIZE   (CC3000_MINIMAL_RX_SIZE)
 	#define CC3000_TX_BUFFER_SIZE   (CC3000_MINIMAL_TX_SIZE)
   
-//if defined TINY DRIVER we use smaller rx and tx buffer in order to minimize RAM consumption
+//if defined TINY DRIVER we use smaller RX and TX buffer in order to minimize RAM consumption
 #else
 	#define CC3000_RX_BUFFER_SIZE   (TINY_CC3000_MAXIMAL_RX_SIZE)
 	#define CC3000_TX_BUFFER_SIZE   (TINY_CC3000_MAXIMAL_TX_SIZE)
 
 #endif  
+
 //*****************************************************************************
 //                  Compound Types
 //*****************************************************************************
@@ -186,56 +213,118 @@ typedef struct
 	unsigned char	 InformHostOnTxComplete;
 }sSimplLinkInformation;
 
-
-
 extern volatile sSimplLinkInformation tSLInformation;
 
 
 //*****************************************************************************
-//
 // Prototypes for the APIs.
-//
 //*****************************************************************************
 
 
 
-/**
- *  \brief Wait event
- *
- *
- * \param[in] usOpcode 
- * \param[out] pRetParams   
- * \return						
- *                              
- * \note
- * \warning
- */
+//*****************************************************************************
+//
+//!  SimpleLinkWaitEvent
+//!
+//!  @param  usOpcode      command operation code
+//!  @param  pRetParams    command return parameters
+//!
+//!  @return               none
+//!
+//!  @brief                Wait for event, pass it to the hci_event_handler and
+//!                        update the event opcode in a global variable.
+//
+//*****************************************************************************
 
 extern void SimpleLinkWaitEvent(unsigned short usOpcode, void *pRetParams);
 
-/**
- *  \brief Wait data
- *
- *
- * \param[out] pBuf 
- * \param[out] from   
- * \param[out] fromlen
- * \return						
- *                              
- * \note
- * \warning
- */
+//*****************************************************************************
+//
+//!  SimpleLinkWaitData
+//!
+//!  @param  pBuf       data buffer
+//!  @param  from       from information
+//!  @param  fromlen	  from information length
+//!
+//!  @return               none
+//!
+//!  @brief                Wait for data, pass it to the hci_event_handler
+//! 					   and update in a global variable that there is 
+//!						   data to read.
+//
+//*****************************************************************************
 
 extern void SimpleLinkWaitData(unsigned char *pBuf, unsigned char *from, unsigned char *fromlen);
 
+//*****************************************************************************
+//
+//!  UINT32_TO_STREAM_f
+//!
+//!  \param  p       pointer to the new stream
+//!  \param  u32     pointer to the 32 bit
+//!
+//!  \return               pointer to the new stream
+//!
+//!  \brief                This function is used for copying 32 bit to stream
+//!						   while converting to little endian format.
+//
+//*****************************************************************************
 
 extern unsigned char* UINT32_TO_STREAM_f (unsigned char *p, unsigned long u32);
 
+//*****************************************************************************
+//
+//!  UINT16_TO_STREAM_f
+//!
+//!  \param  p       pointer to the new stream
+//!  \param  u32     pointer to the 16 bit
+//!
+//!  \return               pointer to the new stream
+//!
+//!  \brief               This function is used for copying 16 bit to stream 
+//!                       while converting to little endian format.
+//
+//*****************************************************************************
+
 extern unsigned char* UINT16_TO_STREAM_f (unsigned char *p, unsigned short u16);
+
+//*****************************************************************************
+//
+//!  STREAM_TO_UINT16_f
+//!
+//!  \param  p          pointer to the stream
+//!  \param  offset     offset in the stream
+//!
+//!  \return               pointer to the new 16 bit
+//!
+//!  \brief               This function is used for copying received stream to 
+//!                       16 bit in little endian format.
+//
+//*****************************************************************************
 
 extern unsigned short STREAM_TO_UINT16_f(char* p, unsigned short offset);
 
+//*****************************************************************************
+//
+//!  STREAM_TO_UINT32_f
+//!
+//!  \param  p          pointer to the stream
+//!  \param  offset     offset in the stream
+//!
+//!  \return               pointer to the new 32 bit
+//!
+//!  \brief               This function is used for copying received stream to
+//!                       32 bit in little endian format.
+//
+//*****************************************************************************
+
 extern unsigned long STREAM_TO_UINT32_f(char* p, unsigned short offset);
+
+
+//*****************************************************************************
+//                    COMMON MACROs
+//*****************************************************************************
+
 
 //This macro is used for copying 8 bit to stream while converting to little endian format.
 #define UINT8_TO_STREAM(_p, _val)	{*(_p)++ = (_val);}

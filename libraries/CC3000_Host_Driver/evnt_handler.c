@@ -37,7 +37,11 @@
 //! \addtogroup evnt_handler_api
 //! @{
 //
-//*****************************************************************************
+//******************************************************************************
+
+//******************************************************************************
+//                  INCLUDE FILES
+//******************************************************************************
 
 #include "cc3000_common.h"
 #include "string.h"
@@ -46,10 +50,13 @@
 #include "wlan.h"
 #include "socket.h"
 #include "netapp.h"
-#include "cc3000_spi.h"
+#include "spi.h"
 
+ 
 
-unsigned long socket_active_status = SOCKET_STATUS_INIT_VAL;  
+//*****************************************************************************
+//                  COMMON DEFINES
+//*****************************************************************************
 
 #define FLOW_CONTROL_EVENT_HANDLE_OFFSET		(0)
 #define FLOW_CONTROL_EVENT_BLOCK_MODE_OFFSET	(1)
@@ -104,27 +111,31 @@ unsigned long socket_active_status = SOCKET_STATUS_INIT_VAL;
 
 
 
+//*****************************************************************************
+//                  GLOBAL VARAIABLES
+//*****************************************************************************
+
+unsigned long socket_active_status = SOCKET_STATUS_INIT_VAL; 
 
 
 //*****************************************************************************
-//
-// Prototypes for the static functions
-//
+//            Prototypes for the static functions
 //*****************************************************************************
+
 static long hci_event_unsol_flowcontrol_handler(char *pEvent);
-
 
 static void update_socket_active_status(char *resp_params);
 
+
 //*****************************************************************************
 //
-//!  ...
+//!  hci_unsol_handle_patch_request
 //!
-//!  \param  string  pointer to the string contains parameters for IPERF
+//!  @param  event_hdr  event header
 //!
-//!  \return none    count of arguments in string
+//!  @return none
 //!
-//!  \brief
+//!  @brief   Handle unsolicited event from type patch request
 //
 //*****************************************************************************
 void hci_unsol_handle_patch_request(char *event_hdr)
@@ -135,60 +146,63 @@ void hci_unsol_handle_patch_request(char *event_hdr)
 	
 	switch (*params)
 	{
-		case HCI_EVENT_PATCHES_DRV_REQ:
-
-			if (tSLInformation.sDriverPatches)
-			{
-				patch = tSLInformation.sDriverPatches(&ucLength);
-				
-				if (patch)
-				{
-					hci_patch_send(HCI_EVENT_PATCHES_DRV_REQ, tSLInformation.pucTxCommandBuffer, 
-						patch, ucLength);
-					return;
-				}
-			}
-
- 			// Send 0 length Patches responce event
- 			hci_patch_send(HCI_EVENT_PATCHES_DRV_REQ, tSLInformation.pucTxCommandBuffer, 0, 0);
-			break;
+	case HCI_EVENT_PATCHES_DRV_REQ:
+		
+		if (tSLInformation.sDriverPatches)
+		{
+			patch = tSLInformation.sDriverPatches(&ucLength);
 			
-		case HCI_EVENT_PATCHES_FW_REQ:
-			if (tSLInformation.sFWPatches)
+			if (patch)
 			{
-				patch = tSLInformation.sFWPatches(&ucLength);
-
-				//
-				// Build and send a patch
-				//
-				if (patch)
-				{
-					hci_patch_send(HCI_EVENT_PATCHES_FW_REQ, tSLInformation.pucTxCommandBuffer, 
-						patch, ucLength);
-					return;
-				}
+				hci_patch_send(HCI_EVENT_PATCHES_DRV_REQ, 
+											 tSLInformation.pucTxCommandBuffer, patch, ucLength);
+				return;
 			}
-
-			// Send 0 length Patches responce event
- 			hci_patch_send(HCI_EVENT_PATCHES_FW_REQ, tSLInformation.pucTxCommandBuffer, 0, 0);
-			break;
+		}
+		
+		// Send 0 length Patches response event
+		hci_patch_send(HCI_EVENT_PATCHES_DRV_REQ, 
+									 tSLInformation.pucTxCommandBuffer, 0, 0);
+		break;
+		
+	case HCI_EVENT_PATCHES_FW_REQ:
+		
+		if (tSLInformation.sFWPatches)
+		{
+			patch = tSLInformation.sFWPatches(&ucLength);
 			
-		case HCI_EVENT_PATCHES_BOOTLOAD_REQ:
-			if (tSLInformation.sBootLoaderPatches)
+			// Build and send a patch
+			if (patch)
 			{
-				patch = tSLInformation.sBootLoaderPatches(&ucLength);
-
-				if (patch)
-				{
-					hci_patch_send(HCI_EVENT_PATCHES_BOOTLOAD_REQ, tSLInformation.pucTxCommandBuffer, 
-						patch, ucLength);
-					return;
-				}
+				hci_patch_send(HCI_EVENT_PATCHES_FW_REQ, 
+											 tSLInformation.pucTxCommandBuffer, patch, ucLength);
+				return;
 			}
-
-			// Send 0 length Patches responce event
-			hci_patch_send(HCI_EVENT_PATCHES_BOOTLOAD_REQ, tSLInformation.pucTxCommandBuffer, 0, 0);
-			break;
+		}
+		
+		// Send 0 length Patches response event
+		hci_patch_send(HCI_EVENT_PATCHES_FW_REQ, 
+									 tSLInformation.pucTxCommandBuffer, 0, 0);
+		break;
+		
+	case HCI_EVENT_PATCHES_BOOTLOAD_REQ:
+		
+		if (tSLInformation.sBootLoaderPatches)
+		{
+			patch = tSLInformation.sBootLoaderPatches(&ucLength);
+			
+			if (patch)
+			{
+				hci_patch_send(HCI_EVENT_PATCHES_BOOTLOAD_REQ,  
+											 tSLInformation.pucTxCommandBuffer, patch, ucLength);
+				return;
+			}
+		}
+		
+		// Send 0 length Patches response event
+		hci_patch_send(HCI_EVENT_PATCHES_BOOTLOAD_REQ, 
+									 tSLInformation.pucTxCommandBuffer, 0, 0);
+		break;
 	}
 }
 
@@ -196,15 +210,16 @@ void hci_unsol_handle_patch_request(char *event_hdr)
 
 //*****************************************************************************
 //
-//!  Event Handler
+//!  hci_event_handler
 //!
-//!  @param  buf     incoming data buffer
-//!  @param  len     size of data buffer
+//!  @param  pRetParams     incoming data buffer
+//!  @param  from           from information (in case of data received)
+//!  @param  fromlen        from information length (in case of data received)
 //!
-//!  @return         ESUCCESS if successful, EFAIL if an error occured
+//!  @return         none
 //!
-//!  @brief          Parse the incoming events packets and issues correponding
-//!                  event handler from gloabal array of handlers pointers
+//!  @brief          Parse the incoming events packets and issues corresponding
+//!                  event handler from global array of handlers pointers
 //
 //*****************************************************************************
 
@@ -213,257 +228,243 @@ unsigned char *
 hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 {
 	unsigned char *pucReceivedData, ucArgsize;
-        unsigned short usLength;
+	unsigned short usLength;
 	unsigned char *pucReceivedParams;
 	unsigned short usReceivedEventOpcode = 0;
 	unsigned long retValue32;
   unsigned char * RecvParams;
   unsigned char *RetParams;
-
+	
 	
 	while (1)
 	{
 		if (tSLInformation.usEventOrDataReceived != 0)
 		{				
 			pucReceivedData = (tSLInformation.pucReceivedData);
-			
 
-			
 			if (*pucReceivedData == HCI_TYPE_EVNT)
 			{
-				//
 				// Event Received
-				//
-				STREAM_TO_UINT16((char *)pucReceivedData, HCI_EVENT_OPCODE_OFFSET,usReceivedEventOpcode);
-				pucReceivedParams = pucReceivedData + HCI_EVENT_HEADER_SIZE;
+				STREAM_TO_UINT16((char *)pucReceivedData, HCI_EVENT_OPCODE_OFFSET,
+												 usReceivedEventOpcode);
+				pucReceivedParams = pucReceivedData + HCI_EVENT_HEADER_SIZE;		
+				RecvParams = pucReceivedParams;
+				RetParams = pRetParams;
 				
-			RecvParams = pucReceivedParams;
-			RetParams = pRetParams;
-				//
 				// In case unsolicited event received - here the handling finished
-				//
 				if (hci_unsol_event_handler((char *)pucReceivedData) == 0)
 				{
 					STREAM_TO_UINT8(pucReceivedData, HCI_DATA_LENGTH_OFFSET, usLength);
+					
 					switch(usReceivedEventOpcode)
-				    {		
-				    	case HCI_CMND_READ_BUFFER_SIZE:
+					{		
+					case HCI_CMND_READ_BUFFER_SIZE:
 						{
-							STREAM_TO_UINT8((char *)pucReceivedParams, 0, tSLInformation.usNumberOfFreeBuffers);
-							STREAM_TO_UINT16((char *)pucReceivedParams, 1, tSLInformation.usSlBufferLength);
-				    	}
+							STREAM_TO_UINT8((char *)pucReceivedParams, 0, 
+															tSLInformation.usNumberOfFreeBuffers);
+							STREAM_TO_UINT16((char *)pucReceivedParams, 1, 
+															 tSLInformation.usSlBufferLength);
+						}
 						break;
-
-						case HCI_CMND_WLAN_CONFIGURE_PATCH:
-						case HCI_NETAPP_DHCP:
-                        case HCI_NETAPP_PING_SEND:
-                        case HCI_NETAPP_PING_STOP:
-						case HCI_NETAPP_ARP_FLUSH:
-						case HCI_NETAPP_SET_DEBUG_LEVEL:
-						case HCI_NETAPP_SET_TIMERS:
-						case HCI_EVNT_NVMEM_READ:
-				        case HCI_EVNT_NVMEM_CREATE_ENTRY:
-						case HCI_CMND_NVMEM_WRITE_PATCH:
-						 case HCI_NETAPP_PING_REPORT:
-							STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET,*(unsigned char *)pRetParams);
-							break;
-							
-						case HCI_CMND_SETSOCKOPT:
-						case HCI_CMND_WLAN_CONNECT:
-						case HCI_CMND_WLAN_IOCTL_STATUSGET:
-						case HCI_EVNT_WLAN_IOCTL_ADD_PROFILE:
-						case HCI_CMND_WLAN_IOCTL_DEL_PROFILE:
-						case HCI_CMND_WLAN_IOCTL_SET_CONNECTION_POLICY:
-						case HCI_CMND_WLAN_IOCTL_SET_SCANPARAM:
-                        case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_START:
-                        case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_STOP:
-                        case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_SET_PREFIX:
-						case HCI_CMND_EVENT_MASK:
-						case HCI_EVNT_WLAN_DISCONNECT:
-						case HCI_EVNT_SOCKET:
-						case HCI_EVNT_BIND:
-						case HCI_CMND_LISTEN:
-			  			case HCI_EVNT_CLOSE_SOCKET:
-						case HCI_EVNT_MDNS_ADVERTISE:
-                                                case HCI_EVNT_CONNECT:
-												case HCI_EVNT_NVMEM_WRITE:
-
-							STREAM_TO_UINT32((char *)pucReceivedParams,0,*(unsigned long *)pRetParams);
-							break;
-						case HCI_EVNT_READ_SP_VERSION:
-							STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET,*(unsigned char *)pRetParams);
-							pRetParams = ((char *)pRetParams) + 1;
-							STREAM_TO_UINT32((char *)pucReceivedParams, 0, retValue32);
-							UINT32_TO_STREAM((unsigned char *)pRetParams, retValue32);
-							
-							break;
-				        
-                        case HCI_EVNT_BSD_GETHOSTBYNAME:
-							STREAM_TO_UINT32((char *)pucReceivedParams,GET_HOST_BY_NAME_RETVAL_OFFSET,*(unsigned long *)pRetParams);
-							pRetParams = ((char *)pRetParams) + 4;
-							STREAM_TO_UINT32((char *)pucReceivedParams,GET_HOST_BY_NAME_ADDR_OFFSET,*(unsigned long *)pRetParams);
-                           
-                            break;
-				        
-				        case HCI_EVNT_ACCEPT:
-				        {
-							STREAM_TO_UINT32((char *)pucReceivedParams,ACCEPT_SD_OFFSET,*(unsigned long *)pRetParams);
-							pRetParams = ((char *)pRetParams) + 4;
-							STREAM_TO_UINT32((char *)pucReceivedParams,ACCEPT_RETURN_STATUS_OFFSET,*(unsigned long *)pRetParams);
-              pRetParams = ((char *)pRetParams) + 4; 
-							//This argurment returns in network order, therefore the use of memcpy.                                                      
-							memcpy((unsigned char *)pRetParams, pucReceivedParams + ACCEPT_ADDRESS__OFFSET, sizeof(sockaddr));
-
-
-
-				            break;
-				        }
 						
-				        case HCI_EVNT_RECV:
-				        case HCI_EVNT_RECVFROM:
-				        {
-							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE_SD_OFFSET,*(unsigned long *)pRetParams);
+					case HCI_CMND_WLAN_CONFIGURE_PATCH:
+					case HCI_NETAPP_DHCP:
+					case HCI_NETAPP_PING_SEND:
+					case HCI_NETAPP_PING_STOP:
+					case HCI_NETAPP_ARP_FLUSH:
+					case HCI_NETAPP_SET_DEBUG_LEVEL:
+					case HCI_NETAPP_SET_TIMERS:
+					case HCI_EVNT_NVMEM_READ:
+					case HCI_EVNT_NVMEM_CREATE_ENTRY:
+					case HCI_CMND_NVMEM_WRITE_PATCH:
+					case HCI_NETAPP_PING_REPORT:
+						
+						STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET
+														,*(unsigned char *)pRetParams);
+						break;
+						
+					case HCI_CMND_SETSOCKOPT:
+					case HCI_CMND_WLAN_CONNECT:
+					case HCI_CMND_WLAN_IOCTL_STATUSGET:
+					case HCI_EVNT_WLAN_IOCTL_ADD_PROFILE:
+					case HCI_CMND_WLAN_IOCTL_DEL_PROFILE:
+					case HCI_CMND_WLAN_IOCTL_SET_CONNECTION_POLICY:
+					case HCI_CMND_WLAN_IOCTL_SET_SCANPARAM:
+					case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_START:
+					case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_STOP:
+					case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_SET_PREFIX:
+					case HCI_CMND_EVENT_MASK:
+					case HCI_EVNT_WLAN_DISCONNECT:
+					case HCI_EVNT_SOCKET:
+					case HCI_EVNT_BIND:
+					case HCI_CMND_LISTEN:
+					case HCI_EVNT_CLOSE_SOCKET:
+					case HCI_EVNT_MDNS_ADVERTISE:
+					case HCI_EVNT_CONNECT:
+					case HCI_EVNT_NVMEM_WRITE:
+						
+						STREAM_TO_UINT32((char *)pucReceivedParams,0
+														 ,*(unsigned long *)pRetParams);
+						break;
+						
+					case HCI_EVNT_READ_SP_VERSION:
+						
+						STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET
+														,*(unsigned char *)pRetParams);
+						pRetParams = ((char *)pRetParams) + 1;
+						STREAM_TO_UINT32((char *)pucReceivedParams, 0, retValue32);
+						UINT32_TO_STREAM((unsigned char *)pRetParams, retValue32);				
+						break;
+						
+					case HCI_EVNT_BSD_GETHOSTBYNAME:
+						
+						STREAM_TO_UINT32((char *)pucReceivedParams
+						      ,GET_HOST_BY_NAME_RETVAL_OFFSET,*(unsigned long *)pRetParams);
+						pRetParams = ((char *)pRetParams) + 4;
+						STREAM_TO_UINT32((char *)pucReceivedParams
+									,GET_HOST_BY_NAME_ADDR_OFFSET,*(unsigned long *)pRetParams);					
+						break;
+						
+					case HCI_EVNT_ACCEPT:
+						{
+							STREAM_TO_UINT32((char *)pucReceivedParams,ACCEPT_SD_OFFSET
+															 ,*(unsigned long *)pRetParams);
+							pRetParams = ((char *)pRetParams) + 4;
+							STREAM_TO_UINT32((char *)pucReceivedParams
+										,ACCEPT_RETURN_STATUS_OFFSET,*(unsigned long *)pRetParams);
+              pRetParams = ((char *)pRetParams) + 4; 
+							
+							//This argument returns in network order
+							memcpy((unsigned char *)pRetParams, 
+								  pucReceivedParams + ACCEPT_ADDRESS__OFFSET, sizeof(sockaddr));	
+							break;
+						}
+						
+					case HCI_EVNT_RECV:
+					case HCI_EVNT_RECVFROM:
+						{
+							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE_SD_OFFSET ,*(unsigned long *)pRetParams);
 							pRetParams = ((char *)pRetParams) + 4;
 							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE_NUM_BYTES_OFFSET,*(unsigned long *)pRetParams);
 							pRetParams = ((char *)pRetParams) + 4;
 							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE__FLAGS__OFFSET,*(unsigned long *)pRetParams);
 							
-                            if(((tBsdReadReturnParams *)pRetParams)->iNumberOfBytes == ERROR_SOCKET_INACTIVE)
-                            {
-                                set_socket_active_status(((tBsdReadReturnParams *)pRetParams)->iSocketDescriptor,
-                                                         SOCKET_STATUS_INACTIVE);
-                            }
- 				            break;
-				        }
-				        
-				        case HCI_EVNT_SELECT:
-				        { 
+							if(((tBsdReadReturnParams *)pRetParams)->iNumberOfBytes == ERROR_SOCKET_INACTIVE)
+							{
+								set_socket_active_status(((tBsdReadReturnParams *)pRetParams)->iSocketDescriptor,SOCKET_STATUS_INACTIVE);
+							}
+							break;
+						}
+						
+					case HCI_EVNT_SELECT:
+						{ 
 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_STATUS_OFFSET,*(unsigned long *)pRetParams);
 							pRetParams = ((char *)pRetParams) + 4;
 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_READFD_OFFSET,*(unsigned long *)pRetParams);
 							pRetParams = ((char *)pRetParams) + 4;
 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_WRITEFD_OFFSET,*(unsigned long *)pRetParams);
 							pRetParams = ((char *)pRetParams) + 4;
-							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_EXFD_OFFSET,*(unsigned long *)pRetParams);
-
-				            break;
-				        }
-
-						case HCI_CMND_GETSOCKOPT:
-							STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET,((tBsdGetSockOptReturnParams *)pRetParams)->iStatus);
-							//This argurment returns in network order, therefore the use of memcpy.  
-							memcpy((unsigned char *)pRetParams, pucReceivedParams, 4);
+							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_EXFD_OFFSET,*(unsigned long *)pRetParams);			
 							break;
-
-                    case HCI_CMND_WLAN_IOCTL_GET_SCAN_RESULTS:
-
-				STREAM_TO_UINT32((char *)pucReceivedParams,GET_SCAN_RESULTS_TABlE_COUNT_OFFSET,*(unsigned long *)pRetParams);
-							pRetParams = ((char *)pRetParams) + 4;                                                        
-							STREAM_TO_UINT32((char *)pucReceivedParams,GET_SCAN_RESULTS_SCANRESULT_STATUS_OFFSET,*(unsigned long *)pRetParams);
-							pRetParams = ((char *)pRetParams) + 4;                                                        
-
-                            STREAM_TO_UINT16((char *)pucReceivedParams,GET_SCAN_RESULTS_ISVALID_TO_SSIDLEN_OFFSET,*(unsigned long *)pRetParams);
-                            pRetParams = ((char *)pRetParams) + 2;   
-
-                            STREAM_TO_UINT16((char *)pucReceivedParams,GET_SCAN_RESULTS_FRAME_TIME_OFFSET,*(unsigned long *)pRetParams);
-                            pRetParams = ((char *)pRetParams) + 2;  
- 
-                            memcpy((unsigned char *)pRetParams, (char *)(pucReceivedParams + GET_SCAN_RESULTS_FRAME_TIME_OFFSET + 2), GET_SCAN_RESULTS_SSID_MAC_LENGTH);
-
-                     
-
-
-
-
-					
-							break;
-
-						case HCI_CMND_SIMPLE_LINK_START:
-							break;
-
-						case HCI_NETAPP_IPCONFIG:
-							
-							//Read IP address
-							STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
-							RecvParams += 4;
-							
-							//Read Subnet
-							STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
-							RecvParams += 4;
-							
-							//Read default GW
-							STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
-							RecvParams += 4;
-							
-              //Read DHCP server                                          	
-							STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
-							RecvParams += 4;
-							
-              //Read DNS server                                           
-							STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
-              RecvParams += 4;
-							
-              //Read Mac address                            	
-							STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_MAC_LENGTH);
-							RecvParams += 6;
-							
-							//Read SSID
-							 STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_SSID_LENGTH);
-							
-                                                        
-														
+						}
+						
+					case HCI_CMND_GETSOCKOPT:
+						
+						STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET,((tBsdGetSockOptReturnParams *)pRetParams)->iStatus);
+						//This argument returns in network order
+						memcpy((unsigned char *)pRetParams, pucReceivedParams, 4);
+						break;
+						
+					case HCI_CMND_WLAN_IOCTL_GET_SCAN_RESULTS:
+						
+						STREAM_TO_UINT32((char *)pucReceivedParams,GET_SCAN_RESULTS_TABlE_COUNT_OFFSET,*(unsigned long *)pRetParams);
+						pRetParams = ((char *)pRetParams) + 4;   					
+						STREAM_TO_UINT32((char *)pucReceivedParams,GET_SCAN_RESULTS_SCANRESULT_STATUS_OFFSET,*(unsigned long *)pRetParams);
+						pRetParams = ((char *)pRetParams) + 4;                                                        					
+						STREAM_TO_UINT16((char *)pucReceivedParams,GET_SCAN_RESULTS_ISVALID_TO_SSIDLEN_OFFSET,*(unsigned long *)pRetParams);
+						pRetParams = ((char *)pRetParams) + 2;   					
+						STREAM_TO_UINT16((char *)pucReceivedParams,GET_SCAN_RESULTS_FRAME_TIME_OFFSET,*(unsigned long *)pRetParams);
+						pRetParams = ((char *)pRetParams) + 2;  
+						memcpy((unsigned char *)pRetParams, (char *)(pucReceivedParams + GET_SCAN_RESULTS_FRAME_TIME_OFFSET + 2), GET_SCAN_RESULTS_SSID_MAC_LENGTH);	
+						break;
+						
+					case HCI_CMND_SIMPLE_LINK_START:
+						break;
+						
+					case HCI_NETAPP_IPCONFIG:
+						
+						//Read IP address
+						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+						RecvParams += 4;
+						
+						//Read subnet
+						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+						RecvParams += 4;
+						
+						//Read default GW
+						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+						RecvParams += 4;
+						
+						//Read DHCP server                                          	
+						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+						RecvParams += 4;
+						
+						//Read DNS server                                           
+						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+						RecvParams += 4;
+						
+						//Read Mac address                            	
+						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_MAC_LENGTH);
+						RecvParams += 6;
+						
+						//Read SSID
+						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_SSID_LENGTH);
+	
 					}
 				}
-
+				
 				if (usReceivedEventOpcode == tSLInformation.usRxEventOpcode)
 				{
 					tSLInformation.usRxEventOpcode = 0;
 				}
 			}
 			else
-			{
-                        
-                                pucReceivedParams = pucReceivedData;
-                                STREAM_TO_UINT8((char *)pucReceivedData, HCI_PACKET_ARGSIZE_OFFSET, ucArgsize);
-                                
-				STREAM_TO_UINT16((char *)pucReceivedData, HCI_PACKET_LENGTH_OFFSET, usLength);
+			{				
+				pucReceivedParams = pucReceivedData;
+				STREAM_TO_UINT8((char *)pucReceivedData, HCI_PACKET_ARGSIZE_OFFSET, ucArgsize);
 				
-				//
-				// Data received: note that the only case where from and from length are not null is in 
-				// recv from, so fill the args accordingly
-				//
+				STREAM_TO_UINT16((char *)pucReceivedData, HCI_PACKET_LENGTH_OFFSET, usLength);
+
+				// Data received: note that the only case where from and from length 
+				// are not null is in recv from, so fill the args accordingly
 				if (from)
 				{
 					STREAM_TO_UINT32((char *)(pucReceivedData + HCI_DATA_HEADER_SIZE), BSD_RECV_FROM_FROMLEN_OFFSET, *(unsigned long *)fromlen);
 					memcpy(from, (pucReceivedData + HCI_DATA_HEADER_SIZE + BSD_RECV_FROM_FROM_OFFSET) ,*fromlen);
 				}
-
+				
 				memcpy(pRetParams, pucReceivedParams + HCI_DATA_HEADER_SIZE + ucArgsize,
-							usLength - ucArgsize);
+							 usLength - ucArgsize);
 				
 				tSLInformation.usRxDataPending = 0;
 			}
-
-			
+		
 			tSLInformation.usEventOrDataReceived = 0;
-                        
-                        
+			
 			SpiResumeSpi();
-
-			//
-			// Since we are going to TX - we need to handle this event after the ResumeSPi since we need interupts
-			// 
-			if ((*pucReceivedData == HCI_TYPE_EVNT) && (usReceivedEventOpcode == HCI_EVNT_PATCHES_REQ))
+			
+			// Since we are going to TX - we need to handle this event after the 
+			// ResumeSPi since we need interrupts
+			if ((*pucReceivedData == HCI_TYPE_EVNT) &&
+					(usReceivedEventOpcode == HCI_EVNT_PATCHES_REQ))
 			{
 				hci_unsol_handle_patch_request((char *)pucReceivedData);
 			}
-
+			
 			if ((tSLInformation.usRxEventOpcode == 0) && (tSLInformation.usRxDataPending == 0))
 			{
 				return NULL;
-			}
-                        
-                   
+			}	
 		}
 	}
 
@@ -471,77 +472,73 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 
 //*****************************************************************************
 //
-//!  Unsolicited events handler.
+//!  hci_unsol_event_handler
 //!
-//!  @param  event       event type
+//!  @param  event_hdr   event header
 //!
-//!  @param  arg         pointer to the buffer of probable arguments
+//!  @return             1 if event supported and handled
+//!                      0 if event is not supported
 //!
-//!  @param  len         buffer length
-//!
-//!  @return             ESUCCESS if successful EAGAIN if in progress
-//!                      EERROR if an error occured
-//!
-//!  @brief              This function is Network Application events handler.
+//!  @brief              Handle unsolicited events
 //
 //*****************************************************************************
 long
 hci_unsol_event_handler(char *event_hdr)
 {
-    char * data = NULL;
-    long event_type;
-		unsigned long NumberOfReleasedPackets;
-		unsigned long NumberOfSentPackets;
-
+	char * data = NULL;
+	long event_type;
+	unsigned long NumberOfReleasedPackets;
+	unsigned long NumberOfSentPackets;
+	
 	STREAM_TO_UINT16(event_hdr, HCI_EVENT_OPCODE_OFFSET,event_type);
 	
-    if (event_type & HCI_EVNT_UNSOL_BASE)
-    {
-        switch(event_type)
-        {
-            case HCI_EVNT_DATA_UNSOL_FREE_BUFF:
-            {
-                hci_event_unsol_flowcontrol_handler(event_hdr);
-								
-								NumberOfReleasedPackets = tSLInformation.NumberOfReleasedPackets;
-								NumberOfSentPackets = tSLInformation.NumberOfSentPackets;
-								
-
-                if (NumberOfReleasedPackets == NumberOfSentPackets)
-                	    {
-							if (tSLInformation.InformHostOnTxComplete)
-							{
-                		 	 	tSLInformation.sWlanCB(HCI_EVENT_CC3000_CAN_SHUT_DOWN, NULL, 0);
-							}
-                        }
-
-                return 1;
-            }
-        }
-    }
-
-    if(event_type & HCI_EVNT_WLAN_UNSOL_BASE)
-    {           
-        switch(event_type)
-        {
-           case HCI_EVNT_WLAN_KEEPALIVE:
-           case HCI_EVNT_WLAN_UNSOL_CONNECT:
-           case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
-           case HCI_EVNT_WLAN_UNSOL_INIT:
-           case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
-                if( tSLInformation.sWlanCB )
-                {
-                  tSLInformation.sWlanCB(event_type, 0, 0);
-                }
-                break;
+	if (event_type & HCI_EVNT_UNSOL_BASE)
+	{
+		switch(event_type)
+		{
+	
+		case HCI_EVNT_DATA_UNSOL_FREE_BUFF:
+			{
+				hci_event_unsol_flowcontrol_handler(event_hdr);
 				
-			case HCI_EVNT_WLAN_UNSOL_DHCP:
+				NumberOfReleasedPackets = tSLInformation.NumberOfReleasedPackets;
+				NumberOfSentPackets = tSLInformation.NumberOfSentPackets;
+								
+				if (NumberOfReleasedPackets == NumberOfSentPackets)
+				{
+					if (tSLInformation.InformHostOnTxComplete)
+					{
+						tSLInformation.sWlanCB(HCI_EVENT_CC3000_CAN_SHUT_DOWN, NULL, 0);
+					}
+				}				
+				return 1;
+				
+			}
+		}
+	}
+	
+	if(event_type & HCI_EVNT_WLAN_UNSOL_BASE)
+	{           
+		switch(event_type)
+		{
+		case HCI_EVNT_WLAN_KEEPALIVE:
+		case HCI_EVNT_WLAN_UNSOL_CONNECT:
+		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
+		case HCI_EVNT_WLAN_UNSOL_INIT:
+		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
+			
+			if( tSLInformation.sWlanCB )
+			{
+				tSLInformation.sWlanCB(event_type, 0, 0);
+			}
+			break;
+			
+		case HCI_EVNT_WLAN_UNSOL_DHCP:
 			{
 				tNetappDhcpParams params;
-				unsigned char *recParams = (unsigned char *)&params;
-				
+				unsigned char *recParams = (unsigned char *)&params;			
 				data = (char*)(event_hdr) + HCI_EVENT_HEADER_SIZE;
-
+				
 				//Read IP address
 				STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH);
 				data += 4;
@@ -552,74 +549,75 @@ hci_unsol_event_handler(char *event_hdr)
 				STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH); 
 				data += 4;
 				//Read DHCP server  
-        STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH);     
+				STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH);     
 				data += 4;
 				//Read DNS server  
-		  	STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH); 
-
-
-
-
+				STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH); 
+					
 				if( tSLInformation.sWlanCB )
 				{
 					tSLInformation.sWlanCB(event_type, (char *)&params, sizeof(params));
 				}
 			}
 			break;
-				
-			case HCI_EVNT_WLAN_ASYNC_PING_REPORT:
+			
+		case HCI_EVNT_WLAN_ASYNC_PING_REPORT:
 			{
-				netapp_pingreport_args_t params;
-				
-				data = (char*)(event_hdr) + HCI_EVENT_HEADER_SIZE;
-
-				STREAM_TO_UINT32(data, NETAPP_PING_PACKETS_SENT_OFFSET, params.packets_sent);
-				
-				STREAM_TO_UINT32(data, NETAPP_PING_PACKETS_RCVD_OFFSET, params.packets_received);
-				
-				STREAM_TO_UINT32(data, NETAPP_PING_MIN_RTT_OFFSET, params.min_round_time);
-				
-				STREAM_TO_UINT32(data, NETAPP_PING_MAX_RTT_OFFSET, params.max_round_time);
-				
+				netapp_pingreport_args_t params;			
+				data = (char*)(event_hdr) + HCI_EVENT_HEADER_SIZE;			
+				STREAM_TO_UINT32(data, NETAPP_PING_PACKETS_SENT_OFFSET, params.packets_sent);			
+				STREAM_TO_UINT32(data, NETAPP_PING_PACKETS_RCVD_OFFSET, params.packets_received);			
+				STREAM_TO_UINT32(data, NETAPP_PING_MIN_RTT_OFFSET, params.min_round_time);		
+				STREAM_TO_UINT32(data, NETAPP_PING_MAX_RTT_OFFSET, params.max_round_time);	
 				STREAM_TO_UINT32(data, NETAPP_PING_AVG_RTT_OFFSET, params.avg_round_time);
-
+				
 				if( tSLInformation.sWlanCB )
 				{
 					tSLInformation.sWlanCB(event_type, (char *)&params, sizeof(params));
 				}
 			}
 			break;
-		    default: /* 'default' case which means "event not supported" */
-				return (0);
-        }
-        return(1);
-    }
-
-	if ((event_type == HCI_EVNT_SEND) || (event_type == HCI_EVNT_SENDTO)|| (event_type == HCI_EVNT_WRITE))
+		case HCI_EVNT_BSD_TCP_CLOSE_WAIT:
+			{
+				if( tSLInformation.sWlanCB )
+				{
+					tSLInformation.sWlanCB(event_type, NULL, 0);
+				}
+			}
+			break;
+			
+		//'default' case which means "event not supported" 	
+		default: 
+			return (0);
+		}
+		return(1);
+	}
+	
+	if ((event_type == HCI_EVNT_SEND) || (event_type == HCI_EVNT_SENDTO)
+			|| (event_type == HCI_EVNT_WRITE))
 	{
-		//
-		// The only synchronous event that can come from SL device in form of command complete is
-		// "Command Complete" on data sent, in case SL device was unable to transmit
-		//
+		// The only synchronous event that can come from SL device in form of 
+		// command complete is "Command Complete" on data sent, in case SL device 
+		// was unable to transmit
 		STREAM_TO_UINT8(event_hdr, HCI_EVENT_STATUS_OFFSET, tSLInformation.slTransmitDataError);
-        update_socket_active_status(M_BSD_RESP_PARAMS_OFFSET(event_hdr));
-
+		update_socket_active_status(M_BSD_RESP_PARAMS_OFFSET(event_hdr));
+		
 		return (1);
 	}
 	
-    return(0);
+	return(0);
 }
 
 //*****************************************************************************
 //
-//!  Event Handler for Unsolicited Events
+//!  hci_unsolicited_event_handler
 //!
 //!  @param None
 //!
-//!  @return         ESUCCESS if successful, EFAIL if an error occured
+//!  @return         ESUCCESS if successful, EFAIL if an error occurred
 //!
-//!  @brief          Parse the incoming events packets and issues correponding
-//!                  event handler from gloabal array of handlers pointers
+//!  @brief          Parse the incoming unsolicited event packets and issues 
+//!                  corresponding event handler.
 //
 //*****************************************************************************
 long
@@ -631,107 +629,182 @@ hci_unsolicited_event_handler(void)
 	if (tSLInformation.usEventOrDataReceived != 0)
 	{
 		pucReceivedData = (tSLInformation.pucReceivedData);
-			
+		
 		if (*pucReceivedData == HCI_TYPE_EVNT)
 		{			
-			//
+			
 			// In case unsolicited event received - here the handling finished
-			//
 			if (hci_unsol_event_handler((char *)pucReceivedData) == 1)
 			{
-				//
-				// There was an un-solicited event received - we can release the buffer and clean the
-				// event received 
-				//
+				
+				// There was an unsolicited event received - we can release the buffer
+				// and clean the event received 
 				tSLInformation.usEventOrDataReceived = 0;
-							
+				
 				res = 1;
-
 				SpiResumeSpi();
 			}
 		}
 	}
-
+	
 	return res;
 }
 
+//*****************************************************************************
+//
+//!  set_socket_active_status
+//!
+//!  @param Sd
+//!	 @param Status
+//!  @return         none
+//!
+//!  @brief          Check if the socket ID and status are valid and set 
+//!                  accordingly  the global socket status
+//
+//*****************************************************************************
 void set_socket_active_status(long Sd, long Status)
 {
-    if(M_IS_VALID_SD(Sd) && M_IS_VALID_STATUS(Status))
-    {
-        socket_active_status &= ~(1 << Sd);      /* clean socket's mask */
-        socket_active_status |= (Status << Sd); /* set new socket's mask */
-    }
+	if(M_IS_VALID_SD(Sd) && M_IS_VALID_STATUS(Status))
+	{
+		socket_active_status &= ~(1 << Sd);      /* clean socket's mask */
+		socket_active_status |= (Status << Sd); /* set new socket's mask */
+	}
 }
 
 
 //*****************************************************************************
 //
-//!  ...
+//!  hci_event_unsol_flowcontrol_handler
 //!
-//!  \param  string  pointer to the string contains parameters for IPERF
+//!  @param  pEvent  pointer to the string contains parameters for IPERF
+//!  @return         ESUCCESS if successful, EFAIL if an error occurred
 //!
-//!  \return none    count of arguments in string
-//!
-//!  \brief
+//!  @brief  Called in case unsolicited event from type
+//!          HCI_EVNT_DATA_UNSOL_FREE_BUFF has received.
+//!				   Keep track on the number of packets transmitted and update the
+//!					 number of free buffer in the SL device.
 //
 //*****************************************************************************
 long
 hci_event_unsol_flowcontrol_handler(char *pEvent)
 {
-    
-    long temp, value;
-     unsigned short i;
-     unsigned short  pusNumberOfHandles=0;
-    char *pReadPayload;
-    
-  
-
-    STREAM_TO_UINT16((char *)pEvent,HCI_EVENT_HEADER_SIZE,pusNumberOfHandles);
-
-  
-    pReadPayload = ((char *)pEvent +
-                   HCI_EVENT_HEADER_SIZE + sizeof(pusNumberOfHandles));
-   
-    temp = 0;
-    
-    for(i = 0; i < pusNumberOfHandles ; i++)
-    {
-        STREAM_TO_UINT16(pReadPayload, FLOW_CONTROL_EVENT_FREE_BUFFS_OFFSET, value);
+	
+	long temp, value;
+	unsigned short i;
+	unsigned short  pusNumberOfHandles=0;
+	char *pReadPayload;
+	
+	STREAM_TO_UINT16((char *)pEvent,HCI_EVENT_HEADER_SIZE,pusNumberOfHandles);
+	pReadPayload = ((char *)pEvent +
+									HCI_EVENT_HEADER_SIZE + sizeof(pusNumberOfHandles));	
+	temp = 0;
+	
+	for(i = 0; i < pusNumberOfHandles ; i++)
+	{
+		STREAM_TO_UINT16(pReadPayload, FLOW_CONTROL_EVENT_FREE_BUFFS_OFFSET, value);
 		temp += value;
-        pReadPayload += FLOW_CONTROL_EVENT_SIZE;  
-    }
-        
-    tSLInformation.usNumberOfFreeBuffers += temp;
-    tSLInformation.NumberOfReleasedPackets += temp;
-
-    return(ESUCCESS);
+		pReadPayload += FLOW_CONTROL_EVENT_SIZE;  
+	}
+	
+	tSLInformation.usNumberOfFreeBuffers += temp;
+	tSLInformation.NumberOfReleasedPackets += temp;
+	
+	return(ESUCCESS);
 }
 
-
+//*****************************************************************************
+//
+//!  get_socket_active_status
+//!
+//!  @param  Sd  Socket IS
+//!  @return     Current status of the socket.   
+//!
+//!  @brief  Retrieve socket status
+//
+//*****************************************************************************
 
 long
 get_socket_active_status(long Sd)
 {
-    if(M_IS_VALID_SD(Sd))
-    {
-        return (socket_active_status & (1 << Sd)) ? SOCKET_STATUS_INACTIVE : SOCKET_STATUS_ACTIVE;
-    }
-    return SOCKET_STATUS_INACTIVE;
+	if(M_IS_VALID_SD(Sd))
+	{
+		return (socket_active_status & (1 << Sd)) ? SOCKET_STATUS_INACTIVE : SOCKET_STATUS_ACTIVE;
+	}
+	return SOCKET_STATUS_INACTIVE;
 }
 
+//*****************************************************************************
+//
+//!  update_socket_active_status
+//!
+//!  @param  resp_params  Socket IS
+//!  @return     Current status of the socket.   
+//!
+//!  @brief  Retrieve socket status
+//
+//*****************************************************************************
 void
 update_socket_active_status(char *resp_params)
 {
 	long status, sd;
-
+	
 	STREAM_TO_UINT32(resp_params, BSD_RSP_PARAMS_SOCKET_OFFSET,sd);
 	STREAM_TO_UINT32(resp_params, BSD_RSP_PARAMS_STATUS_OFFSET,status);
 	
-    if(ERROR_SOCKET_INACTIVE == status)
-    {
-        set_socket_active_status(sd, SOCKET_STATUS_INACTIVE);
-    }
+	if(ERROR_SOCKET_INACTIVE == status)
+	{
+		set_socket_active_status(sd, SOCKET_STATUS_INACTIVE);
+	}
+}
+
+
+//*****************************************************************************
+//
+//!  SimpleLinkWaitEvent
+//!
+//!  @param  usOpcode      command operation code
+//!  @param  pRetParams    command return parameters
+//!
+//!  @return               none
+//!
+//!  @brief                Wait for event, pass it to the hci_event_handler and
+//!                        update the event opcode in a global variable.
+//
+//*****************************************************************************
+
+void 
+SimpleLinkWaitEvent(unsigned short usOpcode, void *pRetParams)
+{
+	// In the blocking implementation the control to caller will be returned only 
+	// after the end of current transaction
+	tSLInformation.usRxEventOpcode = usOpcode;
+	hci_event_handler(pRetParams, 0, 0);
+}
+
+//*****************************************************************************
+//
+//!  SimpleLinkWaitData
+//!
+//!  @param  pBuf       data buffer
+//!  @param  from       from information
+//!  @param  fromlen	from information length
+//!
+//!  @return               none
+//!
+//!  @brief                Wait for data, pass it to the hci_event_handler
+//! 					   and update in a global variable that there is 
+//!						   data to read.
+//
+//*****************************************************************************
+
+void 
+SimpleLinkWaitData(unsigned char *pBuf, unsigned char *from, 
+									 unsigned char *fromlen)
+{
+	// In the blocking implementation the control to caller will be returned only 
+	// after the end of current transaction, i.e. only after data will be received
+	tSLInformation.usRxDataPending = 1;
+	hci_event_handler(pBuf, from, fromlen);
 }
 
 //*****************************************************************************

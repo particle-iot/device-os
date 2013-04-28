@@ -87,20 +87,19 @@ const unsigned char Rcon[11] = {
 
 unsigned char expandedKey[176];
 
+//*****************************************************************************
+//
+//!  expandKey
+//!
+//!  @param  key          AES128 key - 16 bytes
+//!  @param  expandedKey  expanded AES128 key
+//!
+//!  @return  none
+//!
+//!  @brief  expend a 16 bytes key for AES128 implementation
+//!
+//*****************************************************************************
 
-/*****************************************************************************
- * \brief expend a 16 bytes key for AES128 implementation
- *
- * \param[in] key AES128 key - 16 bytes
- * \param[out] expandedKey expanded AES128 key
- *
- * \return	    void
- *
- * \sa
- * \note
- * \warning
- *
- *****************************************************************************/
 void expandKey(unsigned char *expandedKey,
                unsigned char *key)
 {
@@ -126,23 +125,21 @@ void expandKey(unsigned char *expandedKey,
     expandedKey[ii*16 +14] = expandedKey[(ii-1)*16 +14]^expandedKey[ii*16 +10];
     expandedKey[ii*16 +15] = expandedKey[(ii-1)*16 +15]^expandedKey[ii*16 +11];
   }
-  
-  
+	
 }
 
+//*****************************************************************************
+//
+//!  galois_mul2
+//!
+//!  @param  value    argument to multiply
+//!
+//!  @return  multiplied argument
+//!
+//!  @brief  multiply by 2 in the galois field
+//!
+//*****************************************************************************
 
-/*****************************************************************************
- * \brief multiply by 2 in the galois field
- *
- * \param[in] value argument to multiply
- *
- * \return	    multiplied argument
- *
- * \sa
- * \note
- * \warning
- *
- *****************************************************************************/
 unsigned char galois_mul2(unsigned char value)
 {
 	if (value>>7)
@@ -153,36 +150,34 @@ unsigned char galois_mul2(unsigned char value)
 		return value<<1;
 }
 
+//*****************************************************************************
+//
+//!  aes_encr
+//!
+//!  @param[in]  expandedKey expanded AES128 key
+//!  @param[in/out] state 16 bytes of plain text and cipher text
+//!
+//!  @return  none
+//!
+//!  @brief   internal implementation of AES128 encryption.
+//!           straight forward aes encryption implementation
+//!           first the group of operations
+//!          - addRoundKey
+//!          - subbytes
+//!          - shiftrows
+//!          - mixcolums
+//!          is executed 9 times, after this addroundkey to finish the 9th 
+//!          round, after that the 10th round without mixcolums
+//!          no further subfunctions to save cycles for function calls
+//!          no structuring with "for (....)" to save cycles.
+//!	 
+//!
+//*****************************************************************************
 
-/*****************************************************************************
- * \brief internal implementation of AES128 encryption
- *
- * straight foreward aes encryption implementation
- * first the group of operations
- *      - addRoundKey
- *      - subbytes
- *      - shiftrows
- *      - mixcolums
- * is executed 9 times, after this addroundkey to finish the 9th round, 
- * after that the 10th round without mixcolums
- * no further subfunctions to save cycles for function calls
- * no structuring with "for (....)" to save cycles
- *
- * \param[in] expandedKey expanded AES128 key
- * \param[in/out] state 16 bytes of plain text and cipher text
- *
- * \return	    void
- *
- * \sa
- * \note
- * \warning
- *
- *****************************************************************************/
 void aes_encr(unsigned char *state, unsigned char *expandedKey)
 {
   unsigned char buf1, buf2, buf3, round;
-
-    
+		
   for (round = 0; round < 9; round ++){
     // addroundkey, sbox and shiftrows
     // row 0
@@ -239,7 +234,7 @@ void aes_encr(unsigned char *state, unsigned char *expandedKey)
     buf3 = state[13]^state[14]; buf3=galois_mul2(buf3); state[13] = state[13] ^ buf3 ^ buf1;
     buf3 = state[14]^state[15]; buf3=galois_mul2(buf3); state[14] = state[14] ^ buf3 ^ buf1;
     buf3 = state[15]^buf2;      buf3=galois_mul2(buf3); state[15] = state[15] ^ buf3 ^ buf1;    
-
+		
   }
   // 10th round without mixcols
   state[ 0]  = sbox[(state[ 0] ^ expandedKey[(round*16)     ])];
@@ -284,36 +279,34 @@ void aes_encr(unsigned char *state, unsigned char *expandedKey)
   state[15]^=expandedKey[175];
 } 
 
+//*****************************************************************************
+//
+//!  aes_decr
+//!
+//!  @param[in]  expandedKey expanded AES128 key
+//!  @param[in\out] state 16 bytes of cipher text and plain text
+//!
+//!  @return  none
+//!
+//!  @brief   internal implementation of AES128 decryption.
+//!           straight forward aes decryption implementation
+//!           the order of substeps is the exact reverse of decryption
+//!           inverse functions:
+//!            - addRoundKey is its own inverse
+//!            - rsbox is inverse of sbox
+//!            - rightshift instead of leftshift
+//!            - invMixColumns = barreto + mixColumns
+//!           no further subfunctions to save cycles for function calls
+//!           no structuring with "for (....)" to save cycles
+//!
+//*****************************************************************************
 
-/*****************************************************************************
- * \brief internal implementation of AES128 decryption
- *
- * straight foreward aes decryption implementation
- * the order of substeps is the exact reverse of decryption
- * inverse functions:
- *      - addRoundKey is its own inverse
- *      - rsbox is inverse of sbox
- *      - rightshift instead of leftshift
- *      - invMixColumns = barreto + mixColumns
- *  no further subfunctions to save cycles for function calls
- *  no structuring with "for (....)" to save cycles
- *
- * \param[in] expandedKey expanded AES128 key
- * \param[in/out] state 16 bytes of cipher text and plain text
- *
- * \return	    void
- *
- * \sa
- * \note
- * \warning
- *
- *****************************************************************************/
 void aes_decr(unsigned char *state, unsigned char *expandedKey)
 {
   unsigned char buf1, buf2, buf3;
   signed char round;
   round = 9;
-   
+	
   // initial addroundkey
   state[ 0]^=expandedKey[160];
   state[ 1]^=expandedKey[161];
@@ -331,7 +324,7 @@ void aes_decr(unsigned char *state, unsigned char *expandedKey)
   state[13]^=expandedKey[173];
   state[14]^=expandedKey[174]; 
   state[15]^=expandedKey[175];
-
+	
   // 10th round without mixcols
   state[ 0]  = rsbox[state[ 0]] ^ expandedKey[(round*16)     ];
   state[ 4]  = rsbox[state[ 4]] ^ expandedKey[(round*16) +  4];
@@ -356,7 +349,7 @@ void aes_decr(unsigned char *state, unsigned char *expandedKey)
   state[ 7]  = rsbox[state[11]] ^ expandedKey[(round*16) +  7];
   state[11]  = rsbox[state[15]] ^ expandedKey[(round*16) + 11];
   state[15]  = buf1;
-
+	
   for (round = 8; round >= 0; round--){
     // barreto
     //col1
@@ -404,7 +397,7 @@ void aes_decr(unsigned char *state, unsigned char *expandedKey)
     buf3 = state[13]^state[14]; buf3=galois_mul2(buf3); state[13] = state[13] ^ buf3 ^ buf1;
     buf3 = state[14]^state[15]; buf3=galois_mul2(buf3); state[14] = state[14] ^ buf3 ^ buf1;
     buf3 = state[15]^buf2;      buf3=galois_mul2(buf3); state[15] = state[15] ^ buf3 ^ buf1;    
-
+		
     // addroundkey, rsbox and shiftrows
     // row 0
     state[ 0]  = rsbox[state[ 0]] ^ expandedKey[(round*16)     ];
@@ -431,50 +424,51 @@ void aes_decr(unsigned char *state, unsigned char *expandedKey)
     state[11]  = rsbox[state[15]] ^ expandedKey[(round*16) + 11];
     state[15]  = buf1;
   }
-
-
+	
 } 
 
-/*****************************************************************************
- * \brief AES128 encryption
- *
- * Given AES128 key and  16 bytes plain text, cipher text of 16 bytes is computed
- * The AES implementation is in mode ECB (Electronic Code Book) 
- *
- * \param[in] key AES128 key of size 16 bytes
- * \param[in/out] state 16 bytes of plain text and cipher text
- *
- * \return	    void
- *
- * \sa
- * \note
- * \warning
- *
- *****************************************************************************/
+//*****************************************************************************
+//
+//!  aes_encrypt
+//!
+//!  @param[in]  key   AES128 key of size 16 bytes
+//!  @param[in\out] state   16 bytes of plain text and cipher text
+//!
+//!  @return  none
+//!
+//!  @brief   AES128 encryption:
+//!           Given AES128 key and  16 bytes plain text, cipher text of 16 bytes
+//!           is computed. The AES implementation is in mode ECB (Electronic 
+//!           Code Book). 
+//!	 
+//!
+//*****************************************************************************
+
 void aes_encrypt(unsigned char *state,
                  unsigned char *key)
 {
-    expandKey(expandedKey, key);       // expand the key into 176 bytes
-    aes_encr(state, expandedKey);
+	// expand the key into 176 bytes
+	expandKey(expandedKey, key);       
+	aes_encr(state, expandedKey);
 }
 
+//*****************************************************************************
+//
+//!  aes_decrypt
+//!
+//!  @param[in]  key   AES128 key of size 16 bytes
+//!  @param[in\out] state   16 bytes of cipher text and plain text
+//!
+//!  @return  none
+//!
+//!  @brief   AES128 decryption:
+//!           Given AES128 key and  16 bytes cipher text, plain text of 16 bytes
+//!           is computed The AES implementation is in mode ECB 
+//!           (Electronic Code Book).
+//!	 
+//!
+//*****************************************************************************
 
-/*****************************************************************************
- * \brief AES128 decryption
- *
- * Given AES128 key and  16 bytes cipher text, plain text of 16 bytes is computed
- * The AES implementation is in mode ECB (Electronic Code Book) 
- *
- * \param[in] key AES128 key of size 16 bytes
- * \param[in/out] state 16 bytes of cipher text and plain text
- *
- * \return	    void
- *
- * \sa
- * \note
- * \warning
- *
- *****************************************************************************/
 void aes_decrypt(unsigned char *state,
                  unsigned char *key)
 {
@@ -482,22 +476,21 @@ void aes_decrypt(unsigned char *state,
     aes_decr(state, expandedKey);
 }
 
+//*****************************************************************************
+//
+//!  aes_read_key
+//!
+//!  @param[out]  key   AES128 key of size 16 bytes
+//!
+//!  @return  on success 0, error otherwise.
+//!
+//!  @brief   Reads AES128 key from EEPROM
+//!           Reads the AES128 key from fileID #12 in EEPROM
+//!           returns an error if the key does not exist. 
+//!	 
+//!
+//*****************************************************************************
 
-/*****************************************************************************
- * \brief reads AES128 key from EEPROM
- *
- * Reads the AES128 key from fileID #12 in EEPROM
- * returns an error if the key does not exist 
- *
- * \param[out] key AES128 key of size 16 bytes
- *
- * \return	  on succes 0, error otherwise.
- *
- * \sa
- * \note
- * \warning
- *
- *****************************************************************************/
 signed long aes_read_key(unsigned char *key)
 {
 	signed long	returnValue;
@@ -507,20 +500,20 @@ signed long aes_read_key(unsigned char *key)
 	return returnValue;
 }
 
-/*****************************************************************************
- * \brief writes AES128 key from EEPROM
- *
- * Writes the AES128 key to fileID #12 in EEPROM
- *
- * \param[out] key AES128 key of size 16 bytes
- *
- * \return	  on succes 0, error otherwise.
- *
- * \sa
- * \note
- * \warning
- *
- *****************************************************************************/
+//*****************************************************************************
+//
+//!  aes_write_key
+//!
+//!  @param[out]  key   AES128 key of size 16 bytes
+//!
+//!  @return  on success 0, error otherwise.
+//!
+//!  @brief   writes AES128 key from EEPROM
+//!           Writes the AES128 key to fileID #12 in EEPROM
+//!	 
+//!
+//*****************************************************************************
+
 signed long aes_write_key(unsigned char *key)
 {
 	signed long	returnValue;
