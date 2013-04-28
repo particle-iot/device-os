@@ -9,7 +9,6 @@
 #define SPARK_WIRING_H_
 
 #include "stm32f10x.h"
-//#include "usb_pwr.h"
 
 /*
  * Basic variables
