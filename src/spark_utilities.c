@@ -62,8 +62,8 @@ int Spark_Connect(void)
 	// the destination IP address
 	tSocketAddr.sa_data[2] = 192;	// First Octet of destination IP
 	tSocketAddr.sa_data[3] = 168;	// Second Octet of destination IP
-	tSocketAddr.sa_data[4] = 10; 	// Third Octet of destination IP
-	tSocketAddr.sa_data[5] = 106;	// Fourth Octet of destination IP
+	tSocketAddr.sa_data[4] = 0; 	// Third Octet of destination IP
+	tSocketAddr.sa_data[5] = 47;	// Fourth Octet of destination IP
 
 	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 
@@ -123,8 +123,8 @@ int receive_line()
 		{
 			char *buffer_ptr = recvBuff + total_bytes_received;
 			int bytes_received_once = recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
-			if (-1 == bytes_received_once)
-				return -1;
+			if (0 > bytes_received_once)
+				return bytes_received_once;
 
 			total_bytes_received += bytes_received_once;
 			newline = strchr(recvBuff, '\n');
