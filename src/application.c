@@ -4,29 +4,29 @@ void setup()
 {
 	// runs once
 
-	/*
-	// Serial1 Test
-	Serial1.begin(9600);
-	*/
+/*
+	// Serial Test
+	Serial.begin(9600);
+*/
 }
 
 void loop()
 {
 	// runs repeatedly
 
-	/*
-	// Serial1 loopback test: what is typed on serial console
+/*
+	// Serial loopback test: what is typed on serial console
 	// using Hyperterminal/Putty should echo back on the console
-	if(Serial1.available())
+	if(Serial.available())
 	{
-		Serial1.write(Serial1.read());
+		Serial.write(Serial.read());
 	}
-	*/
+*/
 
-	/*
-	// Serial1 print test
-	Serial1.print("Hello ");
-	Serial1.println("Spark");
+/*
+	// Serial print test
+	Serial.print("Hello ");
+	Serial.println("Spark");
 	delay(500);
-	*/
+*/
 }

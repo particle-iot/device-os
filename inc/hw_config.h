@@ -15,6 +15,7 @@
 
 #include "platform_config.h"
 #include "cc3000_common.h"
+#include "usb_type.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -66,6 +67,8 @@ typedef enum
 /* Deselect sFLASH: Chip Select pin high */
 #define sFLASH_CS_HIGH()	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
 
+#define USART_RX_DATA_SIZE	128	//2048
+
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
@@ -98,6 +101,20 @@ void CC3000_Write_Enable_Pin(unsigned char val);
 /* Serial Flash Hardware related methods */
 void sFLASH_SPI_DeInit(void);
 void sFLASH_SPI_Init(void);
+
+/* USB hardware peripheral related methods */
+void USB_Disconnect_Config(void);
+void Set_USBClock(void);
+void Enter_LowPowerMode(void);
+void Leave_LowPowerMode(void);
+void USB_Interrupts_Config(void);
+void USB_Cable_Config(FunctionalState NewState);
+void USB_USART_Init(uint32_t baudRate);
+uint8_t USB_USART_Available_Data(void);
+int32_t USB_USART_Receive_Data(void);
+void USB_USART_Send_Data(uint8_t Data);
+void Handle_USBAsynchXfer(void);
+void Get_SerialNum(void);
 
 /* External variables --------------------------------------------------------*/
 extern unsigned char wlan_rx_buffer[];

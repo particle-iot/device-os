@@ -58,10 +58,18 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
 	{ GPIOA, GPIO_Pin_10, NONE, NULL, NONE, NONE }
 };
 
+void serial_begin(uint32_t baudRate);
+void serial_end(void);
+uint8_t serial_available(void);
+int32_t serial_read(void);
+void serial_write(uint8_t Data);
+void serial_print(const char * str);
+void serial_println(const char * str);
+
 void serial1_begin(uint32_t baudRate);
 void serial1_end(void);
 uint8_t serial1_available(void);
-uint8_t serial1_read(void);
+int32_t serial1_read(void);
 void serial1_write(uint8_t Data);
 void serial1_print(const char * str);
 void serial1_println(const char * str);
@@ -69,6 +77,17 @@ void serial1_println(const char * str);
 /*
  * Serial Interfaces
  */
+
+Serial_Interface Serial =
+{
+	serial_begin,
+	serial_end,
+	serial_available,
+	serial_read,
+	serial_write,
+	serial_print,
+	serial_println
+};
 
 Serial_Interface Serial1 =
 {
@@ -478,6 +497,45 @@ void delayMicroseconds(uint32_t us)
 	 */
 }
 
+void serial_begin(uint32_t baudRate)
+{
+	USB_USART_Init(baudRate);
+}
+
+void serial_end(void)
+{
+	//To Do
+}
+
+uint8_t serial_available(void)
+{
+	return USB_USART_Available_Data();
+}
+
+int32_t serial_read(void)
+{
+	return USB_USART_Receive_Data();
+}
+
+void serial_write(uint8_t Data)
+{
+	USB_USART_Send_Data(Data);
+}
+
+void serial_print(const char * str)
+{
+	while (*str)
+	{
+		serial_write(*str++);
+	}
+}
+
+void serial_println(const char * str)
+{
+	serial_print(str);
+	serial_print("\r\n");
+}
+
 void serial1_begin(uint32_t baudRate)
 {
 	USART_InitTypeDef USART_InitStructure;
@@ -530,12 +588,12 @@ uint8_t serial1_available(void)
 {
 	// Check if the USART Receive Data Register is not empty
 	if(USART_GetFlagStatus(USART2, USART_FLAG_RXNE) != RESET)
-		return 0x01;
+		return 1;
 	else
-		return 0x00;
+		return 0;
 }
 
-uint8_t serial1_read(void)
+int32_t serial1_read(void)
 {
 	// Return the received byte
 	return USART_ReceiveData(USART2);

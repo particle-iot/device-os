@@ -10,6 +10,11 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "hw_config.h"
+#include "usb_conf.h"
+#include "usb_lib.h"
+#include "usb_prop.h"
+#include "usb_desc.h"
+#include "usb_pwr.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -40,6 +45,25 @@ const uint16_t BUTTON_PORT_SOURCE[BUTTONn] = {BUTTON1_EXTI_PORT_SOURCE, BUTTON2_
 const uint16_t BUTTON_PIN_SOURCE[BUTTONn] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EXTI_PIN_SOURCE};
 const uint16_t BUTTON_IRQn[BUTTONn] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[BUTTONn] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
+
+uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
+uint32_t USART_Rx_ptr_in = 0;
+uint32_t USART_Rx_ptr_out = 0;
+uint32_t USART_Rx_length  = 0;
+
+uint8_t USB_Rx_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
+uint16_t USB_Rx_length = 0;
+uint16_t USB_Rx_ptr = 0;
+
+uint8_t  USB_Tx_State = 0;
+uint8_t  USB_Rx_State = 0;
+
+uint32_t USB_USART_BaudRate = 9600;
+
+static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
+
+/* Extern variables ----------------------------------------------------------*/
+extern LINE_CODING linecoding;
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -79,7 +103,7 @@ void Set_System(void)
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
 
-	/* Setup SysTick Timer for 1 msec interrupts  */
+	/* Setup SysTick Timer for 1 msec interrupts */
 	if (SysTick_Config(SystemCoreClock / 1000))
 	{
 		/* Capture error */
@@ -87,6 +111,8 @@ void Set_System(void)
 		{
 		}
 	}
+	/* Configure the SysTick Handler Priority: Preemption priority and subpriority */
+	NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00));
 }
 
 /*******************************************************************************
@@ -100,6 +126,14 @@ void NVIC_Configuration(void)
 {
 	/* Set the Vector Table base location at 0x0000 */
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0000);
+
+	/* Configure the NVIC Preemption Priority Bits */
+	/* 4 bits for pre-emption priority(0-15 PreemptionPriority) and 0 bits for subpriority(0 SubPriority) */
+	//NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+
+	/* Configure the Priority Group to 2 bits */
+	/* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 }
 
 /**
@@ -262,16 +296,16 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
         /* Enable the TIM Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = DEBOUNCE_TIMER_IRQn;
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
         NVIC_Init(&NVIC_InitStructure);
 
         /* Enable the Button EXTI Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = BUTTON_IRQn[Button];
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
         NVIC_Init(&NVIC_InitStructure);
@@ -519,8 +553,8 @@ void CC3000_Interrupt_Enable(void)
 
 	/* Enable and set CC3000_WIFI_INT EXTI Interrupt to the lowest priority */
 	NVIC_InitStructure.NVIC_IRQChannel = CC3000_WIFI_INT_EXTI_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
@@ -561,33 +595,33 @@ void CC3000_Write_Enable_Pin(unsigned char val)
   */
 void sFLASH_SPI_DeInit(void)
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitTypeDef GPIO_InitStructure;
 
-  /* Disable the sFLASH_SPI  */
-  SPI_Cmd(sFLASH_SPI, DISABLE);
+	/* Disable the sFLASH_SPI  */
+	SPI_Cmd(sFLASH_SPI, DISABLE);
 
-  /* DeInitializes the sFLASH_SPI */
-  SPI_I2S_DeInit(sFLASH_SPI);
+	/* DeInitializes the sFLASH_SPI */
+	SPI_I2S_DeInit(sFLASH_SPI);
 
-  /* sFLASH_SPI Peripheral clock disable */
-  sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, DISABLE);
+	/* sFLASH_SPI Peripheral clock disable */
+	sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, DISABLE);
 
-  /* Configure sFLASH_SPI pins: SCK */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: SCK */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_SPI pins: MISO */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_PIN;
-  GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: MISO */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_PIN;
+	GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_SPI pins: MOSI */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_PIN;
-  GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: MOSI */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_PIN;
+	GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_MEM_CS_PIN pin: sFLASH CS pin */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_PIN;
-  GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_MEM_CS_PIN pin: sFLASH CS pin */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_PIN;
+	GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
 }
 
 /**
@@ -597,53 +631,350 @@ void sFLASH_SPI_DeInit(void)
   */
 void sFLASH_SPI_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
-  SPI_InitTypeDef  SPI_InitStructure;
+	GPIO_InitTypeDef GPIO_InitStructure;
+	SPI_InitTypeDef  SPI_InitStructure;
 
-  /* sFLASH_MEM_CS_GPIO, sFLASH_SPI_MOSI_GPIO, sFLASH_SPI_MISO_GPIO
-       and sFLASH_SPI_SCK_GPIO Periph clock enable */
-  RCC_APB2PeriphClockCmd(sFLASH_MEM_CS_GPIO_CLK | sFLASH_SPI_MOSI_GPIO_CLK | sFLASH_SPI_MISO_GPIO_CLK |
-                         sFLASH_SPI_SCK_GPIO_CLK, ENABLE);
+	/* sFLASH_MEM_CS_GPIO, sFLASH_SPI_MOSI_GPIO, sFLASH_SPI_MISO_GPIO
+	   and sFLASH_SPI_SCK_GPIO Periph clock enable */
+	RCC_APB2PeriphClockCmd(sFLASH_MEM_CS_GPIO_CLK | sFLASH_SPI_MOSI_GPIO_CLK | sFLASH_SPI_MISO_GPIO_CLK |
+						 sFLASH_SPI_SCK_GPIO_CLK, ENABLE);
 
-  /* sFLASH_SPI Periph clock enable */
-  sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, ENABLE);
+	/* sFLASH_SPI Periph clock enable */
+	sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, ENABLE);
 
-  /* Configure sFLASH_SPI pins: SCK */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: SCK */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_SPI pins: MOSI */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_PIN;
-  GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: MOSI */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_PIN;
+	GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_SPI pins: MISO */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_SPI pins: MISO */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
 
-  /* Configure sFLASH_MEM_CS_PIN pin: sFLASH CS pin */
-  GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
+	/* Configure sFLASH_MEM_CS_PIN pin: sFLASH CS pin */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
 
-  /*!< Deselect the FLASH: Chip Select high */
-  sFLASH_CS_HIGH();
+	/*!< Deselect the FLASH: Chip Select high */
+	sFLASH_CS_HIGH();
 
-  /*!< SPI configuration */
-  SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
-  SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
-  SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
-  SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-  SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
-  SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-  SPI_InitStructure.SPI_BaudRatePrescaler = sFLASH_SPI_BAUDRATE_PRESCALER;
-  SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
-  SPI_InitStructure.SPI_CRCPolynomial = 7;
-  SPI_Init(sFLASH_SPI, &SPI_InitStructure);
+	/*!< SPI configuration */
+	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+	SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+	SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+	SPI_InitStructure.SPI_BaudRatePrescaler = sFLASH_SPI_BAUDRATE_PRESCALER;
+	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+	SPI_InitStructure.SPI_CRCPolynomial = 7;
+	SPI_Init(sFLASH_SPI, &SPI_InitStructure);
 
-  /*!< Enable the sFLASH_SPI  */
-  SPI_Cmd(sFLASH_SPI, ENABLE);
+	/*!< Enable the sFLASH_SPI  */
+	SPI_Cmd(sFLASH_SPI, ENABLE);
 }
 
+/*******************************************************************************
+* Function Name  : USB_Disconnect_Config
+* Description    : Disconnect pin configuration
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void USB_Disconnect_Config(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+
+	/* Enable USB_DISCONNECT GPIO clock */
+	RCC_APB2PeriphClockCmd(USB_DISCONNECT_GPIO_CLK, ENABLE);
+
+	/* USB_DISCONNECT_PIN used as USB pull-up */
+	GPIO_InitStructure.GPIO_Pin = USB_DISCONNECT_PIN;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+	GPIO_Init(USB_DISCONNECT_GPIO_PORT, &GPIO_InitStructure);
+}
+
+/*******************************************************************************
+* Function Name  : Set_USBClock
+* Description    : Configures USB Clock input (48MHz)
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void Set_USBClock(void)
+{
+	/* Select USBCLK source */
+	RCC_USBCLKConfig(RCC_USBCLKSource_PLLCLK_1Div5);
+
+	/* Enable the USB clock */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USB, ENABLE);
+}
+
+/*******************************************************************************
+* Function Name  : Enter_LowPowerMode
+* Description    : Power-off system clocks and power while entering suspend mode
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void Enter_LowPowerMode(void)
+{
+	/* Set the device state to suspend */
+	bDeviceState = SUSPENDED;
+}
+
+/*******************************************************************************
+* Function Name  : Leave_LowPowerMode
+* Description    : Restores system clocks and power while exiting suspend mode
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void Leave_LowPowerMode(void)
+{
+	DEVICE_INFO *pInfo = &Device_Info;
+
+	/* Set the device state to the correct state */
+	if (pInfo->Current_Configuration != 0)
+	{
+		/* Device configured */
+		bDeviceState = CONFIGURED;
+	}
+	else
+	{
+		bDeviceState = ATTACHED;
+	}
+}
+
+/*******************************************************************************
+* Function Name  : USB_Interrupts_Config
+* Description    : Configures the USB interrupts
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void USB_Interrupts_Config(void)
+{
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	/* Enable the USB interrupt */
+	NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+}
+
+/*******************************************************************************
+* Function Name  : USB_Cable_Config
+* Description    : Software Connection/Disconnection of USB Cable
+* Input          : None.
+* Return         : Status
+*******************************************************************************/
+void USB_Cable_Config (FunctionalState NewState)
+{
+	if (NewState != DISABLE)
+	{
+		GPIO_ResetBits(USB_DISCONNECT_GPIO_PORT, USB_DISCONNECT_PIN);
+	}
+	else
+	{
+		GPIO_SetBits(USB_DISCONNECT_GPIO_PORT, USB_DISCONNECT_PIN);
+	}
+}
+
+/*******************************************************************************
+* Function Name  : USB_USART_Init
+* Description    : Start USB-USART protocol.
+* Input          : baudRate.
+* Return         : None.
+*******************************************************************************/
+void USB_USART_Init(uint32_t baudRate)
+{
+	linecoding.bitrate = baudRate;
+	USB_Disconnect_Config();
+	Set_USBClock();
+	USB_Interrupts_Config();
+	USB_Init();
+}
+
+/*******************************************************************************
+* Function Name  : USB_USART_Available_Data.
+* Description    : Return the length of available data received from USB.
+* Input          : None.
+* Return         : Length.
+*******************************************************************************/
+uint8_t USB_USART_Available_Data(void)
+{
+	if(bDeviceState == CONFIGURED)
+	{
+		if(USB_Rx_State == 1)
+		{
+			return (USB_Rx_length - USB_Rx_ptr);
+		}
+	}
+
+	return 0;
+}
+
+/*******************************************************************************
+* Function Name  : USB_USART_Receive_Data.
+* Description    : Return data sent by USB Host.
+* Input          : None
+* Return         : Data.
+*******************************************************************************/
+int32_t USB_USART_Receive_Data(void)
+{
+	if(bDeviceState == CONFIGURED)
+	{
+		if(USB_Rx_State == 1)
+		{
+			if((USB_Rx_length - USB_Rx_ptr) == 1)
+			{
+				USB_Rx_State = 0;
+
+				/* Enable the receive of data on EP3 */
+				SetEPRxValid(ENDP3);
+			}
+
+			return USB_Rx_Buffer[USB_Rx_ptr++];
+		}
+	}
+
+	return -1;
+}
+
+/*******************************************************************************
+* Function Name  : USB_USART_Send_Data.
+* Description    : Send Data from USB_USART to USB Host.
+* Input          : Data.
+* Return         : None.
+*******************************************************************************/
+void USB_USART_Send_Data(uint8_t Data)
+{
+	if(bDeviceState == CONFIGURED)
+	{
+		USART_Rx_Buffer[USART_Rx_ptr_in] = Data;
+
+		USART_Rx_ptr_in++;
+
+		/* To avoid buffer overflow */
+		if(USART_Rx_ptr_in == USART_RX_DATA_SIZE)
+		{
+			USART_Rx_ptr_in = 0;
+		}
+	}
+}
+
+/*******************************************************************************
+* Function Name  : Handle_USBAsynchXfer.
+* Description    : send data to USB.
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void Handle_USBAsynchXfer (void)
+{
+
+  uint16_t USB_Tx_ptr;
+  uint16_t USB_Tx_length;
+
+  if(USB_Tx_State != 1)
+  {
+    if (USART_Rx_ptr_out == USART_RX_DATA_SIZE)
+    {
+      USART_Rx_ptr_out = 0;
+    }
+
+    if(USART_Rx_ptr_out == USART_Rx_ptr_in)
+    {
+      USB_Tx_State = 0;
+      return;
+    }
+
+    if(USART_Rx_ptr_out > USART_Rx_ptr_in) /* rollback */
+    {
+      USART_Rx_length = USART_RX_DATA_SIZE - USART_Rx_ptr_out;
+    }
+    else
+    {
+      USART_Rx_length = USART_Rx_ptr_in - USART_Rx_ptr_out;
+    }
+
+    if (USART_Rx_length > VIRTUAL_COM_PORT_DATA_SIZE)
+    {
+      USB_Tx_ptr = USART_Rx_ptr_out;
+      USB_Tx_length = VIRTUAL_COM_PORT_DATA_SIZE;
+
+      USART_Rx_ptr_out += VIRTUAL_COM_PORT_DATA_SIZE;
+      USART_Rx_length -= VIRTUAL_COM_PORT_DATA_SIZE;
+    }
+    else
+    {
+      USB_Tx_ptr = USART_Rx_ptr_out;
+      USB_Tx_length = USART_Rx_length;
+
+      USART_Rx_ptr_out += USART_Rx_length;
+      USART_Rx_length = 0;
+    }
+    USB_Tx_State = 1;
+    UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
+    SetEPTxCount(ENDP1, USB_Tx_length);
+    SetEPTxValid(ENDP1);
+  }
+
+}
+
+/*******************************************************************************
+* Function Name  : Get_SerialNum.
+* Description    : Create the serial number string descriptor.
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+void Get_SerialNum(void)
+{
+  uint32_t Device_Serial0, Device_Serial1, Device_Serial2;
+
+  Device_Serial0 = *(uint32_t*)ID1;
+  Device_Serial1 = *(uint32_t*)ID2;
+  Device_Serial2 = *(uint32_t*)ID3;
+
+  Device_Serial0 += Device_Serial2;
+
+  if (Device_Serial0 != 0)
+  {
+    IntToUnicode (Device_Serial0, &Virtual_Com_Port_StringSerial[2] , 8);
+    IntToUnicode (Device_Serial1, &Virtual_Com_Port_StringSerial[18], 4);
+  }
+}
+
+/*******************************************************************************
+* Function Name  : HexToChar.
+* Description    : Convert Hex 32Bits value into char.
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
+{
+  uint8_t idx = 0;
+
+  for( idx = 0 ; idx < len ; idx ++)
+  {
+    if( ((value >> 28)) < 0xA )
+    {
+      pbuf[ 2* idx] = (value >> 28) + '0';
+    }
+    else
+    {
+      pbuf[2* idx] = (value >> 28) + 'A' - 10;
+    }
+
+    value = value << 4;
+
+    pbuf[ 2* idx + 1] = 0;
+  }
+}

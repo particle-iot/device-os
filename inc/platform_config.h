@@ -23,7 +23,11 @@
 
 /* Uncomment the line below to enable WLAN and WIRING functionality */
 #define SPARK_WLAN_ENABLE
-#define	SPARK_WIRING_ENABLE
+#define SPARK_WIRING_ENABLE
+
+#define         ID1          (0x1FFFF7E8)
+#define         ID2          (0x1FFFF7EC)
+#define         ID3          (0x1FFFF7F0)
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x.h"
@@ -414,6 +418,10 @@
 
 #define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
 
+#define USB_DISCONNECT_PIN               	GPIO_Pin_10
+#define USB_DISCONNECT_GPIO_PORT       		GPIOB
+#define USB_DISCONNECT_GPIO_CLK		  		RCC_APB2Periph_GPIOB
+
 #elif defined (USE_OLIMEX_H103)
 //Header IOs
 #define Dn                           		8
@@ -521,6 +529,10 @@
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 
 #define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
+
+#define USB_DISCONNECT_PIN              	GPIO_Pin_11
+#define USB_DISCONNECT_GPIO_PORT        	GPIOC
+#define USB_DISCONNECT_GPIO_CLK  			RCC_APB2Periph_GPIOC
 
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2

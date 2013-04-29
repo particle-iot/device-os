@@ -39,5 +39,8 @@ In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcer
 * "linker_stm32f10x_md_vl.ld" when building for STM32F100C8 based TV-1 board or STM32VLDiscovery board.
 * "linker_stm32f10x_md.ld" when building for STM32F103C8 based Core board or STM32-H103 board.
 
+In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Compiler -> Optimization,
+* "CHECK" the "Function sections".
+* "UNCHECK" the "Data sections".
 
 

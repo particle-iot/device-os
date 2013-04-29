@@ -10,6 +10,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "spark_utilities.h"
+#include "usb_lib.h"
+#include "usb_desc.h"
+#include "usb_pwr.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -145,16 +148,16 @@ int main(void)
 				SERVER_SOCKET_CONNECTED = 1;
 		}
 
-		/********* Moved this section inside the Timing_Decrement method *********/
-		/*************************************************************************/
-		//if(SERVER_SOCKET_CONNECTED)
-		//{
-		//	if(Spark_Process_API_Response() < 0)
-		//		SERVER_SOCKET_CONNECTED = 0;
-		//	else
-		//		DEVICE_HANDSHAKE_FINISHED = 1;
-		//}
-		/*************************************************************************/
+//		/********* Moved this section inside the Timing_Decrement method *********/
+//		/*************************************************************************/
+//		if(SERVER_SOCKET_CONNECTED)
+//		{
+//			if(Spark_Process_API_Response() < 0)
+//				SERVER_SOCKET_CONNECTED = 0;
+//			else
+//				DEVICE_HANDSHAKE_FINISHED = 1;
+//		}
+//		/*************************************************************************/
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
