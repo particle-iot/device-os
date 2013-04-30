@@ -39,15 +39,16 @@ tSpiInformation sSpiInformation;
 // Static buffer for 5 bytes of SPI HEADER
 unsigned char tSpiReadHeader[] = { READ, 0, 0, 0, 0 };
 
-static void SpiReadData(unsigned char *data, unsigned short size);
-static void SpiTriggerRxProcessing(void);
-static void SpiWriteAsync(const unsigned char *data, unsigned short size);
-static void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize);
-static void SpiReadWriteString(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize);
-static long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength);
-static long SpiReadDataCont(void);
-static void SpiReadHeader(void);
-static void SpiContReadOperation(void);
+void SpiPauseSpi(void);
+void SpiReadData(unsigned char *data, unsigned short size);
+void SpiTriggerRxProcessing(void);
+void SpiWriteAsync(const unsigned char *data, unsigned short size);
+void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize);
+void SpiReadWriteString(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize);
+long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength);
+long SpiReadDataCont(void);
+void SpiReadHeader(void);
+void SpiContReadOperation(void);
 
 /**
  * @brief  The functions delay for a number of MCU clk period
@@ -91,28 +92,20 @@ void SpiClose(void)
 	tSLInformation.WlanInterruptDisable();
 }
 
-/**
- * @brief  Sends data on SPI to generate interrupt on reception
- * @param  The pointer to data buffer
- * @param  This size of data
- * @retval None
- */
-static void SpiReadData(unsigned char *data, unsigned short size)
-{
-	SpiReadWriteStringInt(TRUE, data, size);
-}
-
-/**
- * @brief  A wrapper to enable interrupt on IRQ line
- * @param  None
- * @retval None
- */
 void SpiResumeSpi(void)
 {
 	//
-	//	Enable Interrupt on WLAN IRQ Pin
+	//Enable IRQ Interrupts
 	//
-	tSLInformation.WlanInterruptEnable();
+	__enable_irq();
+}
+
+void SpiPauseSpi(void)
+{
+	//
+	//Disable IRQ Interrupts
+	//
+	__disable_irq();
 }
 
 /**
@@ -121,8 +114,10 @@ void SpiResumeSpi(void)
  * @param  None
  * @retval None
  */
-static void SpiTriggerRxProcessing(void)
+void SpiTriggerRxProcessing(void)
 {
+	SpiPauseSpi();
+
 	//
 	// Trigger Rx processing
 	//
@@ -132,11 +127,22 @@ static void SpiTriggerRxProcessing(void)
 }
 
 /**
+ * @brief  Sends data on SPI to generate interrupt on reception
+ * @param  The pointer to data buffer
+ * @param  This size of data
+ * @retval None
+ */
+void SpiReadData(unsigned char *data, unsigned short size)
+{
+	SpiReadWriteStringInt(TRUE, data, size);
+}
+
+/**
  * @brief  This sends data over the SPI transport layer with
  * @param  None
  * @retval None
  */
-static void SpiWriteAsync(const unsigned char *data, unsigned short size)
+void SpiWriteAsync(const unsigned char *data, unsigned short size)
 {
 	//
 	// The DMA TX/RX channel must be disabled.
@@ -152,7 +158,7 @@ static void SpiWriteAsync(const unsigned char *data, unsigned short size)
  * @param  ulDataSize The size of the data to be written or read
  * @retval None
  */
-static void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize)
+void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize)
 {
 	/* Delay for at lest 50 us at the start of every transfer */
 	SysCtlDelay(FIFTY_US_DELAY);
@@ -199,7 +205,7 @@ static void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, 
  * @param  ulDataSize The size of the data to be written or read
  * @retval None
  */
-static void SpiReadWriteString(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize)
+void SpiReadWriteString(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize)
 {
 	SysCtlDelay(FIFTY_US_DELAY);
 
@@ -241,7 +247,7 @@ static void SpiReadWriteString(uint32_t ulTrueFalse, const uint8_t *ptrData, uin
  * @param  None
  * @retval None
  */
-static long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
+long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 {
 	//
 	// workaround for first transaction
@@ -362,7 +368,7 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
  * @param  None
  * @retval None
  */
-static long SpiReadDataCont(void)
+long SpiReadDataCont(void)
 {
 	long data_to_recv;
 
@@ -443,7 +449,7 @@ static long SpiReadDataCont(void)
  * @param  None
  * @retval None
  */
-static void SpiReadHeader(void)
+void SpiReadHeader(void)
 {
 	SpiReadWriteStringInt(TRUE, sSpiInformation.pRxPacket, 10);
 }
@@ -453,7 +459,7 @@ static void SpiReadHeader(void)
  * @param  None
  * @retval None
  */
-static void SpiContReadOperation(void)
+void SpiContReadOperation(void)
 {
 	//
 	// The header was read - continue with  the payload read
