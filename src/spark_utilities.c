@@ -60,10 +60,10 @@ int Spark_Connect(void)
     tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
 
 	// the destination IP address
-	tSocketAddr.sa_data[2] = 192;	// First Octet of destination IP
-	tSocketAddr.sa_data[3] = 168;	// Second Octet of destination IP
-	tSocketAddr.sa_data[4] = 0; 	// Third Octet of destination IP
-	tSocketAddr.sa_data[5] = 47;	// Fourth Octet of destination IP
+	tSocketAddr.sa_data[2] = 54;	// First Octet of destination IP
+	tSocketAddr.sa_data[3] = 235;	// Second Octet of destination IP
+	tSocketAddr.sa_data[4] = 79; 	// Third Octet of destination IP
+	tSocketAddr.sa_data[5] = 249;	// Fourth Octet of destination IP
 
 	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 
@@ -74,8 +74,7 @@ int Spark_Connect(void)
 	}
 	else
 	{
-//		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, NULL);
-		retVal = send(sparkSocket, "A", 1, 0);
+		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, NULL);
 	}
 
     return retVal;
@@ -131,16 +130,16 @@ int receive_line()
 		}
 	}
 
-//    if (NULL == newline && 0 < buffer_bytes_available)
-//    {
-//    	return 0;
-//    }
-//    else
-//    {
+    if (NULL == newline && 0 < buffer_bytes_available)
+    {
+    	return 0;
+    }
+    else
+    {
     	int retVal = total_bytes_received;
     	total_bytes_received = 0;
     	return retVal;
-//    }
+    }
 }
 
 // process the contents of recvBuff
@@ -213,10 +212,7 @@ int process_command()
 	}
 	else
 	{
-//		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
-		char one_char[2] = {0, 0};
-		one_char[0] = recvBuff[0] + 1;
-		bytes_sent = send(sparkSocket, one_char, 1, 0);
+		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
 	}
 
 	return bytes_sent;
@@ -228,8 +224,8 @@ int Spark_Process_API_Response(void)
 
 	if (0 < retVal)
 		retVal = process_command();
-//	else
-//		Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL); // keepalive
+	else
+		Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL); // keepalive
 
 	return retVal;
 }

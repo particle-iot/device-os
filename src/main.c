@@ -106,7 +106,7 @@ int main(void)
 	// This will be replaced with SPI-Flash based backup
     if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
     {
-//    	FIRST_TIME_CONFIG = 0x01;
+    	FIRST_TIME_CONFIG = 0x01;
     }
 #endif
 
