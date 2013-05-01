@@ -1,0 +1,32 @@
+# Object files
+*.o
+
+# Libraries
+*.lib
+*.a
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Debug folder
+Debug/
+
+# Release folder
+Release/
+
+# Platform-specific settings
+.settings/
+.cproject
+.project
+
+# Raisonance RIDE Project
+RIDE/
+
