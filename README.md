@@ -37,7 +37,7 @@ Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0
 * In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
 Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
 * Uncomment the following line in platform_config.h to enable DFU based marvin build
-#define DFU_BUILD_ENABLE
+"#define DFU_BUILD_ENABLE"
 
 12. Build the marvin project for DFU usage.
 
