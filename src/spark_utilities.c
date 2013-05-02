@@ -205,6 +205,12 @@ int process_command()
 		}
 	}
 
+	// echo keepalive signal
+	else if (0 == strncmp(recvBuff, "alive", 5))
+	{
+		bytes_sent = Spark_Send_Device_Message(sparkSocket, "alive", NULL, NULL);
+	}
+
 	// Do nothing for new line returned
 	else if(strcmp(recvBuff, Device_CRLF) == 0)
 	{
@@ -224,8 +230,6 @@ int Spark_Process_API_Response(void)
 
 	if (0 < retVal)
 		retVal = process_command();
-	else
-		Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL); // keepalive
 
 	return retVal;
 }
