@@ -49,7 +49,7 @@ In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM
 * Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
 
 Uncomment the following line in platform_config.h to enable DFU based marvin build
-#define DFU_BUILD_ENABLE
+"#define DFU_BUILD_ENABLE"
 
 Build marvin project
 
