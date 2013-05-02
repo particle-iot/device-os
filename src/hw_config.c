@@ -66,7 +66,7 @@ void Set_System(void)
 	}
 
     /* Configure the Button */
-    BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
+    BUTTON_Init(BUTTON1, BUTTON_MODE_GPIO);
 
 	/* Setup SysTick Timer for 1 msec interrupts */
 	if (SysTick_Config(SystemCoreClock / 1000))
@@ -89,9 +89,6 @@ void Set_System(void)
  *******************************************************************************/
 void NVIC_Configuration(void)
 {
-	/* Set the Vector Table base location at 0x0000 */
-	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0000);
-
 	/* Configure the NVIC Preemption Priority Bits */
 	/* 4 bits for pre-emption priority(0-15 PreemptionPriority) and 0 bits for subpriority(0 SubPriority) */
 	//NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);

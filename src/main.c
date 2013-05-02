@@ -23,7 +23,7 @@ typedef  void (*pFunction)(void);
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-static __IO uint32_t TimingDelay;
+static __IO uint32_t TimingDelay, TimingBUTTON, TimingLED;
 uint8_t DFUDeviceMode = 0x00;
 
 /* Extern variables ----------------------------------------------------------*/
@@ -60,11 +60,20 @@ int main(void)
 	 * TO DO...
 	 */
 
-	/* Check if BUTTON1 is pressed at startup to enter DFU Mode */
-	if(BUTTON_GetDebouncedState(BUTTON1) != 0x00)
-	{
-		DFUDeviceMode = 0x01;
-	}
+     /* Check if BUTTON1 is pressed for 1 sec to enter DFU Mode */
+     if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+     {
+         TimingDelay = 1000;
+         while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+         {
+             if(TimingDelay == 0x00)
+             {
+                 DFUDeviceMode = 0x01;
+                 TimingBUTTON = 5000;	//To prevent immediate exit from DFU
+                 break;
+             }
+         }
+     }
 
     if (DFUDeviceMode != 0x01)
     {
@@ -85,6 +94,9 @@ int main(void)
     DeviceState = STATE_dfuERROR;
     DeviceStatus[0] = STATUS_ERRFIRMWARE;
     DeviceStatus[4] = DeviceState;
+
+    /* Reconfigure the Button using EXTI */
+    BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
 
     /* Unlock the internal flash */
     FLASH_Unlock();
@@ -110,17 +122,17 @@ int main(void)
     /* Main loop */
     while (1)
     {
-    	if(BUTTON_GetDebouncedState(BUTTON1) != 0x00)
+    	if(TimingBUTTON == 0x00 && BUTTON_GetDebouncedState(BUTTON1) != 0x00)
     	{
 			if (DeviceState == STATE_dfuIDLE || DeviceState == STATE_dfuERROR)
 			{
-				Reset_Device();
+				Reset_Device();	//Reset Device to enter User Application
 			}
     	}
 
-        if (TimingDelay == 0x00)
+        if (TimingLED == 0x00)
         {
-            TimingDelay = 250;
+            TimingLED = 250;
             LED_Toggle(LED1);
             LED_Toggle(LED2);   
         }
@@ -162,6 +174,16 @@ void Timing_Decrement(void)
     if (TimingDelay != 0x00)
     { 
         TimingDelay--;
+    }
+
+    if (TimingBUTTON != 0x00)
+    {
+    	TimingBUTTON--;
+    }
+
+    if (TimingLED != 0x00)
+    {
+        TimingLED--;
     }
 }
 

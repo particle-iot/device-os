@@ -34,7 +34,7 @@ typedef enum
 
 /* Exported constants --------------------------------------------------------*/
 /* Flash memory address from where user application will be loaded */
-#define ApplicationAddress 0x08003000
+#define ApplicationAddress 0x08007000
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
