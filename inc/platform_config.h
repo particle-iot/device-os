@@ -21,6 +21,13 @@
 //#define USE_ST_VLDISCOVERY
 #endif
 
+/* Uncomment the line below to enable DFU based build and follow the below step*/
+/* In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings
+ * -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
+ * Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
+ */
+#define DFU_BUILD_ENABLE
+
 /* Uncomment the line below to enable WLAN and WIRING functionality */
 #define SPARK_WLAN_ENABLE
 #define SPARK_WIRING_ENABLE

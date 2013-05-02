@@ -124,8 +124,10 @@ void Set_System(void)
  *******************************************************************************/
 void NVIC_Configuration(void)
 {
-	/* Set the Vector Table base location at 0x0000 */
-	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0000);
+#ifdef DFU_BUILD_ENABLE
+	/* Set the Vector Table(VT) base location at 0x7000 */
+	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x7000);
+#endif
 
 	/* Configure the NVIC Preemption Priority Bits */
 	/* 4 bits for pre-emption priority(0-15 PreemptionPriority) and 0 bits for subpriority(0 SubPriority) */

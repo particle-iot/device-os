@@ -43,4 +43,30 @@ In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcer
 * "CHECK" the "Function sections".
 * "UNCHECK" the "Data sections".
 
+For Flashing marvin.bin via DFU, follow the steps below:
 
+In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
+* Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
+
+Uncomment the following line in platform_config.h to enable DFU based marvin build
+#define DFU_BUILD_ENABLE
+
+Build marvin project
+
+Make sure the board is first flashed with the dfu.hex file in the "dfu" project using JTAG
+
+Enter DFU mode by keeping the BUTTON pressed for > 1sec
+
+Install open-source "dfu-util" on Windows, MAC or Linux by following the link below:
+http://dfu-util.gnumonks.org/index.html
+
+Add "dfu-util" related bin files to PATH environment variable
+
+List the currently attached DFU capable USB devices by running the following command on host:
+dfu-util -l
+
+The Core, Debug or H103 boards in DFU mode should be listed as follows:
+Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/12*001Ka,116*001Kg"
+
+cd to the marvin/Debug folder and type the below command to program the marvin application via DFU:
+dfu-util -d 0483:df11 -a 0 -s 0x08007000:leave -D marvin.bin
