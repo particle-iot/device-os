@@ -26,6 +26,7 @@ __IO uint32_t TimingLED1, TimingLED2;
 __IO uint32_t TimingBUTTON1;
 __IO uint32_t TimingMillis;
 __IO uint32_t TimingSparkProcessAPI;
+__IO uint32_t TimingSparkAliveTimeout;
 
 __IO uint8_t TIMING_BUTTON1_PRESSED;
 
@@ -262,8 +263,22 @@ void Timing_Decrement(void)
 	{
 		TimingSparkProcessAPI++;
 	}
-#endif
 
+	if (SERVER_SOCKET_CONNECTED)
+	{
+		if (TimingSparkAliveTimeout >= TIMING_SPARK_ALIVE_TIMEOUT)
+		{
+			Spark_Disconnect();
+			TimingSparkAliveTimeout = 0;
+			SERVER_SOCKET_CONNECTED = 0;
+			DEVICE_HANDSHAKE_FINISHED = 0;
+		}
+		else
+		{
+			TimingSparkAliveTimeout++;
+		}
+	}
+#endif
 }
 
 /*

@@ -24,12 +24,14 @@ char Low_Dx[] = "LOW D ";
 
 char digits[] = "0123456789";
 
+char recvBuff[SPARK_BUF_LEN];
+int total_bytes_received = 0;
+
+extern __IO uint32_t TimingSparkAliveTimeout;
+
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
 static unsigned char itoa(int cNum, char *cString);
 static uint8_t atoc(char data);
-
-char recvBuff[SPARK_BUF_LEN];
-int total_bytes_received = 0;
 
 /*
 static uint16_t atoshort(char b1, char b2);
@@ -151,6 +153,7 @@ int receive_line()
 	    	else if (0 == strncmp(recvBuff, API_Alive, strlen(API_Alive)))
 	    	{
 	    		Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
+	    		TimingSparkAliveTimeout = 0;
 	    		total_bytes_received = 0;
 	    		return 0;
 	    	}
