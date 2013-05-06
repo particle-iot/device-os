@@ -85,6 +85,14 @@ void Set_System(void)
 	/* NVIC configuration */
 	NVIC_Configuration();
 
+    /* Enable AFIO clock */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+
+#ifdef SWD_JTAG_DISABLE
+    /* Disable the Serial Wire JTAG Debug Port SWJ-DP */
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
+#endif
+
 	/* Configure DIOs */
 	int Dx;
 	for(Dx = 0; Dx < Dn; ++Dx)
@@ -154,8 +162,10 @@ void DIO_Init(DIO_TypeDef Dx)
     GPIO_InitStructure.GPIO_Pin = DIO_PIN[Dx];
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-
     GPIO_Init(DIO_PORT[Dx], &GPIO_InitStructure);
+
+    /* Set to Off State */
+    DIO_SetState(Dx, LOW);
 }
 
 /**

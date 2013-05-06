@@ -28,6 +28,13 @@
  */
 //#define DFU_BUILD_ENABLE
 
+/*
+ * Use the JTAG IOs as standard GPIOs (D3 to D7)
+ * Note that once the JTAG IOs are disabled, the connection with the host debugger
+ * is lost and cannot be re-established as long as the JTAG IOs remain disabled.
+ */
+#define SWD_JTAG_DISABLE
+
 /* Uncomment the line below to enable WLAN and WIRING functionality */
 #define SPARK_WLAN_ENABLE
 #define SPARK_WIRING_ENABLE
