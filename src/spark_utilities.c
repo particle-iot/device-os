@@ -11,12 +11,13 @@ fd_set readSet;
 
 // Spark Messages
 const char Device_Secret[] = "secret";
-const char Device_Name[] = "willisawesome";
+const char Device_Name[] = "satish";
 const char Device_Ok[] = "OK ";
 const char Device_Fail[] = "FAIL ";
 const char Device_CRLF[] = "\n";
-const char API_Who[] = "who";
+const char Device_Alive[] = "alive";
 const char API_Alive[] = "alive";
+const char API_Who[] = "who";
 const char API_UserFunc[] = "USERFUNC ";
 const char API_Callback[] = "CALLBACK ";
 char High_Dx[] = "HIGH D ";
@@ -27,6 +28,7 @@ char digits[] = "0123456789";
 char recvBuff[SPARK_BUF_LEN];
 int total_bytes_received = 0;
 
+extern uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint32_t TimingSparkAliveTimeout;
 
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
@@ -131,33 +133,6 @@ int receive_line()
 			if (0 > bytes_received_once)
 				return bytes_received_once;
 
-	    	// process core API commands immediately: (who, device_name & alive)
-
-	    	// who
-	    	if (0 == strncmp(recvBuff, API_Who, strlen(API_Who)))
-	    	{
-	    		Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL);
-	    		total_bytes_received = 0;
-	    		return 0;
-	    	}
-
-	    	// device id echoed by server
-	    	else if (0 == strncmp(recvBuff, Device_Name, strlen(Device_Name)))
-	        {
-	        	LED_On(LED1);
-	        	total_bytes_received = 0;
-	    		return 0;
-	        }
-
-	    	// echo keepalive signal
-	    	else if (0 == strncmp(recvBuff, API_Alive, strlen(API_Alive)))
-	    	{
-	    		Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
-	    		TimingSparkAliveTimeout = 0;
-	    		total_bytes_received = 0;
-	    		return 0;
-	    	}
-
 			total_bytes_received += bytes_received_once;
 			newline = strchr(recvBuff, '\n');
 		}
@@ -181,8 +156,27 @@ int process_command()
 {
 	int bytes_sent = 0;
 
+	// who
+	if (0 == strncmp(recvBuff, API_Who, strlen(API_Who)))
+	{
+		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL);
+	}
+
+	// device id echoed by server
+	else if (0 == strncmp(recvBuff, Device_Name, strlen(Device_Name)))
+    {
+		SPARK_DEVICE_ACKED = 1;
+		LED_On(LED1);
+    }
+
+	// API alive signal received, reset alive timeout
+	else if (0 == strncmp(recvBuff, API_Alive, strlen(API_Alive)))
+	{
+		TimingSparkAliveTimeout = 0;
+	}
+
 	// command to set a pin high
-	if (0 == strncmp(recvBuff, High_Dx, 6))
+	else if (0 == strncmp(recvBuff, High_Dx, 6))
 	{
 		High_Dx[6] = recvBuff[6];
 
@@ -247,6 +241,15 @@ int Spark_Process_API_Response(void)
 		retVal = process_command();
 
 	return retVal;
+}
+
+int Spark_Device_Alive(void)
+{
+	int bytes_sent = 0;
+
+	bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Alive, NULL, NULL);
+
+	return bytes_sent;
 }
 
 void userCallback(char *callback_name)

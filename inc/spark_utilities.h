@@ -12,11 +12,13 @@
 #define SPARK_SERVER_PORT	8989
 
 #define TIMING_SPARK_PROCESS_API		200		//200ms
+#define TIMING_SPARK_DEVICE_ALIVE		5000	//5sec
 #define TIMING_SPARK_ALIVE_TIMEOUT		15000	//15sec
 
 int Spark_Connect(void);
 int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);
+int Spark_Device_Alive(void);
 
 void userCallback(char *callback_name);
 void userCallbackWithData(char *callback_name, char *callback_data, long data_length);

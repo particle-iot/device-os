@@ -26,7 +26,7 @@
  * -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
  * Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
  */
-//#define DFU_BUILD_ENABLE
+#define DFU_BUILD_ENABLE
 
 /*
  * Use the JTAG IOs as standard GPIOs (D3 to D7)
