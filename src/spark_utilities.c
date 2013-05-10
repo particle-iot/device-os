@@ -15,7 +15,6 @@ const char Device_Name[] = "satish";
 const char Device_Ok[] = "OK ";
 const char Device_Fail[] = "FAIL ";
 const char Device_CRLF[] = "\n";
-const char Device_Alive[] = "alive";
 const char API_Alive[] = "alive";
 const char API_Who[] = "who";
 const char API_UserFunc[] = "USERFUNC ";
@@ -28,7 +27,7 @@ char digits[] = "0123456789";
 char recvBuff[SPARK_BUF_LEN];
 int total_bytes_received = 0;
 
-extern uint8_t SPARK_DEVICE_ACKED;
+extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint32_t TimingSparkAliveTimeout;
 
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
@@ -107,11 +106,11 @@ int receive_line()
 	if (0 == total_bytes_received)
 	{
 		memset(recvBuff, 0, SPARK_BUF_LEN);
-
-	    // reset the fd_set structure
-	    FD_ZERO(&readSet);
-	    FD_SET(sparkSocket, &readSet);
 	}
+
+    // reset the fd_set structure
+    FD_ZERO(&readSet);
+    FD_SET(sparkSocket, &readSet);
 
     int buffer_bytes_available = SPARK_BUF_LEN - 1 - total_bytes_received;
     char *newline = NULL;
@@ -162,17 +161,15 @@ int process_command()
 		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL);
 	}
 
-	// device id echoed by server
-	else if (0 == strncmp(recvBuff, Device_Name, strlen(Device_Name)))
-    {
-		SPARK_DEVICE_ACKED = 1;
-		LED_On(LED1);
-    }
-
-	// API alive signal received, reset alive timeout
+	// API alive signal received and acknowledged by core, reset alive timeout
 	else if (0 == strncmp(recvBuff, API_Alive, strlen(API_Alive)))
 	{
+		if(!SPARK_DEVICE_ACKED)
+		{
+			SPARK_DEVICE_ACKED = 1;//First alive received by Core means Server received Device ID
+		}
 		TimingSparkAliveTimeout = 0;
+		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
 	}
 
 	// command to set a pin high
@@ -241,15 +238,6 @@ int Spark_Process_API_Response(void)
 		retVal = process_command();
 
 	return retVal;
-}
-
-int Spark_Device_Alive(void)
-{
-	int bytes_sent = 0;
-
-	bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Alive, NULL, NULL);
-
-	return bytes_sent;
 }
 
 void userCallback(char *callback_name)

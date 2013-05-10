@@ -27,20 +27,19 @@ __IO uint32_t TimingBUTTON1;
 __IO uint32_t TimingMillis;
 
 __IO uint32_t TimingSparkProcessAPI;
-__IO uint32_t TimingSparkDeviceAlive;
 __IO uint32_t TimingSparkAliveTimeout;
 
 __IO uint8_t TIMING_BUTTON1_PRESSED;
 
+uint8_t WLAN_SMART_CONFIG_START;
 uint8_t WLAN_SMART_CONFIG_DONE;
 uint8_t WLAN_CONNECTED;
 uint8_t WLAN_DHCP;
 uint8_t WLAN_CAN_SHUTDOWN;
 
-uint8_t FIRST_TIME_CONFIG;
-uint8_t SPARK_SOCKET_CONNECTED;
-uint8_t SPARK_SOCKET_ALIVE;
-uint8_t SPARK_DEVICE_ACKED;
+__IO uint8_t SPARK_SOCKET_CONNECTED;
+__IO uint8_t SPARK_SOCKET_ALIVE;
+__IO uint8_t SPARK_DEVICE_ACKED;
 
 //tNetappIpconfigRetArgs ipconfig;
 
@@ -110,7 +109,7 @@ int main(void)
 	// This will be replaced with SPI-Flash based backup
     if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
     {
-//    	FIRST_TIME_CONFIG = 0x01;
+//    	WLAN_SMART_CONFIG_START = 0x01;
     }
 #endif
 
@@ -125,7 +124,7 @@ int main(void)
 	while (1)
 	{
 #ifdef SPARK_WLAN_ENABLE
-		if(FIRST_TIME_CONFIG)
+		if(WLAN_SMART_CONFIG_START)
 		{
 			//
 			// Start CC3000 first time configuration
@@ -135,7 +134,8 @@ int main(void)
 		else if (!WLAN_DHCP && !DID_CONNECT)
 		{
 		    wlan_ioctl_set_connection_policy(0, 0, 0);
-		    wlan_connect(WLAN_SEC_WPA2, "Haxlr8r-upstairs", 16, NULL, "wittycheese551", 14);
+		    //wlan_connect(WLAN_SEC_WPA2, "Haxlr8r-upstairs", 16, NULL, "wittycheese551", 14);
+		    wlan_connect(WLAN_SEC_WPA2, "VED", 3, NULL, "BD180408", 8);
 		    DID_CONNECT = 1;
 		}
 
@@ -212,10 +212,19 @@ void Timing_Decrement(void)
     {
         TimingLED1--;
     }
-    else if(!SPARK_SOCKET_CONNECTED)
+    else if(!SPARK_DEVICE_ACKED)
     {
     	LED_Toggle(LED1);
     	TimingLED1 = 100;	//100ms
+    }
+    else
+    {
+    	static __IO uint8_t SparkDeviceAckedLedOn = 0;
+    	if(!SparkDeviceAckedLedOn)
+    	{
+    		LED_On(LED1);//SPARK_DEVICE_ACKED
+    		SparkDeviceAckedLedOn = 1;
+    	}
     }
 
     if (TimingLED2 != 0x00)
@@ -255,18 +264,6 @@ void Timing_Decrement(void)
 
 		if (SPARK_DEVICE_ACKED)
 		{
-			if (TimingSparkDeviceAlive >= TIMING_SPARK_DEVICE_ALIVE)
-			{
-				TimingSparkDeviceAlive = 0;
-
-				if(Spark_Device_Alive() < 0)
-					SPARK_SOCKET_ALIVE = 0;
-			}
-			else
-			{
-				TimingSparkDeviceAlive++;
-			}
-
 			if (TimingSparkAliveTimeout >= TIMING_SPARK_ALIVE_TIMEOUT)
 			{
 				TimingSparkAliveTimeout = 0;

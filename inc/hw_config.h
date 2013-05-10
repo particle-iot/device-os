@@ -67,7 +67,7 @@ typedef enum
 /* Deselect sFLASH: Chip Select pin high */
 #define sFLASH_CS_HIGH()	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
 
-#define USART_RX_DATA_SIZE	128	//2048
+#define USART_RX_DATA_SIZE	256	//2048
 
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
