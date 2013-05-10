@@ -134,8 +134,7 @@ int main(void)
 		else if (!WLAN_DHCP && !DID_CONNECT)
 		{
 		    wlan_ioctl_set_connection_policy(0, 0, 0);
-		    //wlan_connect(WLAN_SEC_WPA2, "Haxlr8r-upstairs", 16, NULL, "wittycheese551", 14);
-		    wlan_connect(WLAN_SEC_WPA2, "VED", 3, NULL, "BD180408", 8);
+		    wlan_connect(WLAN_SEC_WPA2, "Haxlr8r-upstairs", 16, NULL, "wittycheese551", 14);
 		    DID_CONNECT = 1;
 		}
 
