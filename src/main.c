@@ -31,6 +31,7 @@ __IO uint32_t TimingSparkAliveTimeout;
 
 __IO uint8_t TIMING_BUTTON1_PRESSED;
 
+uint8_t WLAN_MANUAL_CONNECT = 0;//For Manual connection, set this to 1
 uint8_t WLAN_SMART_CONFIG_START;
 uint8_t WLAN_SMART_CONFIG_DONE;
 uint8_t WLAN_CONNECTED;
@@ -106,19 +107,22 @@ int main(void)
     	Set_NetApp_Timeout();
     }
 
-	// This will be replaced with SPI-Flash based backup
-    if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
-    {
-//    	WLAN_SMART_CONFIG_START = 0x01;
-    }
+	if(!WLAN_MANUAL_CONNECT)
+	{
+		// This will be replaced with SPI-Flash based backup
+		if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
+		{
+			WLAN_SMART_CONFIG_START = 1;
+		}
+	}
 #endif
 
 //	unsigned char patchVer[2];
 //	nvmem_read_sp_version(patchVer);
 //	if (patchVer[1] == 14)
-//		Delay(14);
-
-    int DID_CONNECT = 0;
+//	{
+//	/* Latest Patch Available */
+//	}
 
 	/* Main loop */
 	while (1)
@@ -131,11 +135,11 @@ int main(void)
 			//
 			Start_Smart_Config();
 		}
-		else if (!WLAN_DHCP && !DID_CONNECT)
+		else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
 		{
-		    wlan_ioctl_set_connection_policy(0, 0, 0);
+		    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
 		    wlan_connect(WLAN_SEC_WPA2, "Haxlr8r-upstairs", 16, NULL, "wittycheese551", 14);
-		    DID_CONNECT = 1;
+		    WLAN_MANUAL_CONNECT = 0;
 		}
 
 		if(WLAN_DHCP && !SPARK_SOCKET_CONNECTED)
@@ -351,7 +355,7 @@ void Start_Smart_Config(void)
 	// Reset all the previous configuration
 	//
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
-	//wlan_ioctl_del_profile(255);
+	wlan_ioctl_del_profile(255);
 
 	//Wait until CC3000 is disconnected
 	while (WLAN_CONNECTED == 1)
@@ -413,6 +417,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 	{
 		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
 			WLAN_SMART_CONFIG_DONE = 1;
+			WLAN_MANUAL_CONNECT = 0;
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_CONNECT:
