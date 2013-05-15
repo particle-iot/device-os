@@ -9,10 +9,11 @@
  */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "spark_utilities.h"
 #include "usb_lib.h"
 #include "usb_desc.h"
 #include "usb_pwr.h"
+#include "sst25vf_spi.h"
+#include "spark_utilities.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -73,6 +74,13 @@ int main(void)
 	//Initialize CC3000's CS, EN and INT pins to their default states
 	//
 	CC3000_WIFI_Init();
+
+#ifdef SPARK_SFLASH_ENABLE
+	//
+	//Initialize SPI Flash
+	//
+	sFLASH_Init();
+#endif
 
 	//
 	// Configure & initialize CC3000 SPI_DMA Interface

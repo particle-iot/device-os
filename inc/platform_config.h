@@ -38,6 +38,7 @@
 /* Uncomment the line below to enable WLAN and WIRING functionality */
 #define SPARK_WLAN_ENABLE
 #define SPARK_WIRING_ENABLE
+//#define SPARK_SFLASH_ENABLE		/* Work in Progress */
 
 #define         ID1          (0x1FFFF7E8)
 #define         ID2          (0x1FFFF7EC)
@@ -157,7 +158,7 @@
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4001300C)	/* SPI1_BASE | 0x0C */
 
-#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_8
+#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
@@ -176,7 +177,7 @@
 #define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
 #define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
-#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_2
+#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 #elif defined (USE_SPARK_TV2)
 //Header IOs
@@ -303,7 +304,7 @@
 #define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
 #define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
-#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
+#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 #elif defined (USE_SPARK_CORE)
 //Header IOs
@@ -430,7 +431,7 @@
 #define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
 #define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
-#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
+#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 #define USB_DISCONNECT_PIN               	GPIO_Pin_10
 #define USB_DISCONNECT_GPIO_PORT       		GPIOB
@@ -565,7 +566,7 @@
 #define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
 #define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
-#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
+#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 #elif defined (USE_ST_VLDISCOVERY)
 //Header IOs
@@ -673,7 +674,7 @@
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4000380C)	/* SPI2_BASE | 0x0C */
 
-#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_8
+#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
@@ -692,7 +693,7 @@
 #define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
 #define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
-#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_2
+#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 #endif
 

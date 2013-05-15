@@ -23,14 +23,14 @@ static uint32_t Device_ID = 0;
 static uint8_t sFLASH_SendByte(uint8_t data)
 {
     //Wait until the transmit buffer is empty
-    while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET);
+    while (SPI_I2S_GetFlagStatus(sFLASH_SPI, SPI_I2S_FLAG_TXE) == RESET);
     // Send the byte
-    SPI_I2S_SendData(SPI1, data);
+    SPI_I2S_SendData(sFLASH_SPI, data);
 
     //Wait until a data is received
-    while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);
+    while (SPI_I2S_GetFlagStatus(sFLASH_SPI, SPI_I2S_FLAG_RXNE) == RESET);
     // Get the received data
-    data = SPI_I2S_ReceiveData(SPI1);
+    data = SPI_I2S_ReceiveData(sFLASH_SPI);
 
     // Return the shifted data
     return data;
