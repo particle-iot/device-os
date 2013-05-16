@@ -70,16 +70,16 @@ int main(void)
 #endif
 
 #ifdef SPARK_WLAN_ENABLE
-	//
-	//Initialize CC3000's CS, EN and INT pins to their default states
-	//
+
+	/* Initialize CC3000's CS, EN and INT pins to their default states */
 	CC3000_WIFI_Init();
 
 #ifdef SPARK_SFLASH_ENABLE
-	//
-	//Initialize SPI Flash
-	//
+	/* Initialize SPI Flash */
 	sFLASH_Init();
+
+	/* Run SPI Flash Self Test (Uncomment for Debugging) */
+	//sFLASH_SelfTest();
 #endif
 
 	//
