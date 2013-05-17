@@ -43,6 +43,7 @@
 void sFLASH_Init(void);
 void sFLASH_EraseSector(uint32_t SectorAddr);
 void sFLASH_EraseBulk(void);
+void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte);
 void sFLASH_WritePage(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite);
 void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite);
 void sFLASH_ReadBuffer(uint8_t* pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead);
@@ -56,5 +57,7 @@ void sFLASH_WaitForWriteEnd(void);
 
 /* Flash Self Test Routine */
 void sFLASH_SelfTest(void);
+
+extern void Delay(__IO uint32_t nTime);
 
 #endif /* __SST25VF_SPI_H */

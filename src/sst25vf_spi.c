@@ -107,6 +107,35 @@ void sFLASH_EraseBulk(void)
 }
 
 /**
+  * @brief  Write one byte to the FLASH.
+  * @param  WriteAddr: FLASH's internal address to write to.
+  * @param  byte: the data to be written.
+  * @retval None
+  */
+void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte)
+{
+  /* Enable the write access to the FLASH */
+  sFLASH_WriteEnable();
+
+  /* Select the FLASH: Chip Select low */
+  sFLASH_CS_LOW();
+  /* Send "Byte Program" instruction */
+  sFLASH_SendByte(sFLASH_CMD_WRITE);
+  /* Send WriteAddr high nibble address byte to write to */
+  sFLASH_SendByte((WriteAddr & 0xFF0000) >> 16);
+  /* Send WriteAddr medium nibble address byte to write to */
+  sFLASH_SendByte((WriteAddr & 0xFF00) >> 8);
+  /* Send WriteAddr low nibble address byte to write to */
+  sFLASH_SendByte(WriteAddr & 0xFF);
+  /* Send the byte */
+  sFLASH_SendByte(byte);
+  /* Deselect the FLASH: Chip Select high */
+  sFLASH_CS_HIGH();
+  /* Wait till the end of Flash writing */
+  sFLASH_WaitForWriteEnd();
+}
+
+/**
   * @brief  Writes more than one byte to the FLASH.
   * @note   The number of bytes can't exceed the FLASH page size.
   * @param  pBuffer: pointer to the buffer containing the data to be written
@@ -414,7 +443,7 @@ void sFLASH_SelfTest(void)
   FlashID = sFLASH_ReadID();
 
   /* Check the SPI Flash ID */
-  if (FlashID == sFLASH_SST25VF016_ID)
+  if(FlashID == sFLASH_SST25VF040_ID || FlashID == sFLASH_SST25VF016_ID)
   {
     /* Perform a write in the Flash followed by a read of the written data */
     /* Erase SPI FLASH Sector to write on */
