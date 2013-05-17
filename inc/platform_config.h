@@ -4,7 +4,7 @@
   * @author  Spark Application Team
   * @version V1.0.0
   * @date    30-April-2013
-  * @brief   SnoreScan board specific configuration file.
+  * @brief   Board specific configuration file.
   ******************************************************************************
   */
 
@@ -17,6 +17,9 @@
 #define USE_SPARK_CORE
 //#define USE_OLIMEX_H103
 #endif
+
+/* Uncomment the line below to enable SFLASH functionality */
+//#define SPARK_SFLASH_ENABLE
 
 #define         ID1          (0x1FFFF7E8)
 #define         ID2          (0x1FFFF7EC)
@@ -72,6 +75,25 @@
 #define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
 #define DEBOUNCE_TIMER_IRQn           		TIM1_UP_IRQn
 
+//SST25 FLASH Interface pins
+#define sFLASH_SPI							SPI2
+#define sFLASH_SPI_CLK						RCC_APB1Periph_SPI2
+#define sFLASH_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
+#define sFLASH_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
+#define sFLASH_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
+#define sFLASH_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
+#define sFLASH_SPI_MISO_PIN					GPIO_Pin_14					/* PB.14 */
+#define sFLASH_SPI_MISO_GPIO_PORT			GPIOB						/* GPIOB */
+#define sFLASH_SPI_MISO_GPIO_CLK			RCC_APB2Periph_GPIOB
+#define sFLASH_SPI_MOSI_PIN					GPIO_Pin_15					/* PB.15 */
+#define sFLASH_SPI_MOSI_GPIO_PORT			GPIOB						/* GPIOB */
+#define sFLASH_SPI_MOSI_GPIO_CLK			RCC_APB2Periph_GPIOB
+#define sFLASH_MEM_CS_PIN					GPIO_Pin_9					/* PB.09 */
+#define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
+#define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
+
+#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
+
 #define USB_DISCONNECT_PIN               	GPIO_Pin_10
 #define USB_DISCONNECT_GPIO_PORT       		GPIOB
 #define USB_DISCONNECT_GPIO_CLK		  		RCC_APB2Periph_GPIOB
@@ -117,6 +139,25 @@
 #define DEBOUNCE_TIMER_CLK_CMD				RCC_APB2PeriphClockCmd
 #define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
 #define DEBOUNCE_TIMER_IRQn           		TIM1_UP_IRQn
+
+//SST25 FLASH Interface pins
+#define sFLASH_SPI							SPI2
+#define sFLASH_SPI_CLK						RCC_APB1Periph_SPI2
+#define sFLASH_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
+#define sFLASH_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
+#define sFLASH_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
+#define sFLASH_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
+#define sFLASH_SPI_MISO_PIN					GPIO_Pin_14					/* PB.14 */
+#define sFLASH_SPI_MISO_GPIO_PORT			GPIOB						/* GPIOB */
+#define sFLASH_SPI_MISO_GPIO_CLK			RCC_APB2Periph_GPIOB
+#define sFLASH_SPI_MOSI_PIN					GPIO_Pin_15					/* PB.15 */
+#define sFLASH_SPI_MOSI_GPIO_PORT			GPIOB						/* GPIOB */
+#define sFLASH_SPI_MOSI_GPIO_CLK			RCC_APB2Periph_GPIOB
+#define sFLASH_MEM_CS_PIN					GPIO_Pin_9					/* PB.09 */
+#define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
+#define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
+
+#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
 
 #define USB_DISCONNECT_PIN              	GPIO_Pin_11
 #define USB_DISCONNECT_GPIO_PORT        	GPIOC

@@ -16,6 +16,7 @@
 #include "usb_prop.h"
 #include "usb_pwr.h"
 #include "dfu_mal.h"
+#include "sst25vf_spi.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);
@@ -77,7 +78,7 @@ int main(void)
 
     if (DFUDeviceMode != 0x01)
     {
-        /* Test if user code is programmed starting from address 0x8003000 */  
+        /* Test if user code is programmed starting from ApplicationAddress */
         if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
         {
             /* Jump to user application */    
@@ -100,6 +101,14 @@ int main(void)
 
     /* Unlock the internal flash */
     FLASH_Unlock();
+
+#ifdef SPARK_SFLASH_ENABLE
+	/* Initialize SPI Flash */
+	sFLASH_Init();
+
+	/* Run SPI Flash Self Test (Uncomment for Debugging) */
+	//sFLASH_SelfTest();
+#endif
 
     /* USB Disconnect configuration */
     USB_Disconnect_Config();
@@ -134,7 +143,7 @@ int main(void)
         {
             TimingLED = 250;
             LED_Toggle(LED1);
-            LED_Toggle(LED2);   
+            LED_Toggle(LED2);
         }
     }
 }

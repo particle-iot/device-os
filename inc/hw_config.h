@@ -33,11 +33,19 @@ typedef enum
 } ButtonMode_TypeDef;
 
 /* Exported constants --------------------------------------------------------*/
+
 /* Flash memory address from where user application will be loaded */
 #define ApplicationAddress 0x08007000
 
 /* Exported macro ------------------------------------------------------------*/
+
+/* Select sFLASH: Chip Select pin low */
+#define sFLASH_CS_LOW()		GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
+/* Deselect sFLASH: Chip Select pin high */
+#define sFLASH_CS_HIGH()	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
+
 /* Exported functions ------------------------------------------------------- */
+
 void Set_System(void);
 void NVIC_Configuration(void);
 
@@ -49,6 +57,10 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint8_t BUTTON_GetDebouncedState(Button_TypeDef Button);
+
+/* Serial Flash Hardware related methods */
+void sFLASH_SPI_DeInit(void);
+void sFLASH_SPI_Init(void);
 
 /* USB hardware peripheral related methods */
 void USB_Disconnect_Config(void);
