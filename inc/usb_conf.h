@@ -27,8 +27,11 @@
    operations. It could be a sector, a page, a block, a word ...
    If the erase operation is not supported, it is advised to set the erase
    timing to 1 (which means 1ms: one USB frame). */
-#define INTERN_FLASH_SECTOR_ERASE_TIME 50
-#define INTERN_FLASH_SECTOR_WRITE_TIME 50
+#define INTERN_FLASH_SECTOR_ERASE_TIME	50
+#define INTERN_FLASH_SECTOR_WRITE_TIME	50
+
+#define SPI_FLASH_SECTOR_ERASE_TIME		3000
+#define SPI_FLASH_SECTOR_WRITE_TIME		20
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */

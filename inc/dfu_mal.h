@@ -21,10 +21,11 @@
 /* Exported constants --------------------------------------------------------*/
 #define MAL_OK   0
 #define MAL_FAIL 1
-#define MAX_USED_MEDIA 3
+#define MAX_USED_MEDIA 2
 #define MAL_MASK 0xFC000000
 
 #define INTERNAL_FLASH_BASE 0x08000000
+#define SPI_FLASH_BASE      0x00000000
 
 /* utils macro ---------------------------------------------------------------*/
 #define _1st_BYTE(x)  (uint8_t)((x)&0xFF)             /* 1st addressing cycle */

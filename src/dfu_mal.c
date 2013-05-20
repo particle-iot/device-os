@@ -15,6 +15,7 @@
 #include "usb_type.h"
 #include "usb_desc.h"
 #include "flash_if.h"
+#include "spi_if.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -38,9 +39,10 @@ uint8_t  MAL_Buffer[wTransferSize]; /* RAM Buffer for Downloaded Data */
    operations. It could be a sector, a page, a block, a word ...
    If the erase operation is not supported, it is advised to set the erase
    timing to 1 (which means 1ms: one USB frame). */
-static const uint16_t  TimingTable[1][2] =
-  { /*       Sector Erase time,            Sector Program time*/    
-    { INTERN_FLASH_SECTOR_ERASE_TIME, INTERN_FLASH_SECTOR_WRITE_TIME }, /* Internal Flash */
+static const uint16_t  TimingTable[2][2] =
+  { /*       Sector Erase time,            Sector Program time*/
+    { INTERN_FLASH_SECTOR_ERASE_TIME, INTERN_FLASH_SECTOR_WRITE_TIME },	/* Internal Flash */
+    { SPI_FLASH_SECTOR_ERASE_TIME,    SPI_FLASH_SECTOR_WRITE_TIME    }	/* SPI Flash */
   };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -56,6 +58,10 @@ static const uint16_t  TimingTable[1][2] =
 uint16_t MAL_Init(void)
 {
   FLASH_If_Init(); /* Internal Flash */
+
+#ifdef SPARK_SFLASH_ENABLE
+  SPI_If_Init();   /* SPI Flash */
+#endif
 
   return MAL_OK;
 }
@@ -75,6 +81,12 @@ uint16_t MAL_Erase(uint32_t SectorAddress)
       pMAL_Erase = FLASH_If_Erase;
       break;
       
+#ifdef SPARK_SFLASH_ENABLE
+    case SPI_FLASH_BASE:
+      pMAL_Erase = SPI_If_Erase;
+      break;
+#endif
+
     default:
       return MAL_FAIL;
   }
@@ -95,6 +107,12 @@ uint16_t MAL_Write (uint32_t SectorAddress, uint32_t DataLength)
     case INTERNAL_FLASH_BASE:
       pMAL_Write = FLASH_If_Write;
       break;
+
+#ifdef SPARK_SFLASH_ENABLE
+    case SPI_FLASH_BASE:
+      pMAL_Write = SPI_If_Write;
+      break;
+#endif
 
     default:
       return MAL_FAIL;
@@ -117,6 +135,12 @@ uint8_t *MAL_Read (uint32_t SectorAddress, uint32_t DataLength)
       pMAL_Read = FLASH_If_Read;
       break;
       
+#ifdef SPARK_SFLASH_ENABLE
+    case SPI_FLASH_BASE:
+      pMAL_Read = SPI_If_Read;
+      break;
+#endif
+
     default:
       return 0;
   }
@@ -133,6 +157,20 @@ uint8_t *MAL_Read (uint32_t SectorAddress, uint32_t DataLength)
 uint16_t MAL_GetStatus(uint32_t SectorAddress , uint8_t Cmd, uint8_t *buffer)
 {
   uint8_t x = 0;
+
+  switch (SectorAddress & MAL_MASK)
+  {
+    case INTERNAL_FLASH_BASE:
+      x = 0;
+      break;
+      
+#ifdef SPARK_SFLASH_ENABLE
+    case SPI_FLASH_BASE:
+      x = 1;
+      break;
+#endif
+  }
+
   uint8_t y = Cmd & 0x01;
   
   SET_POLLING_TIMING(TimingTable[x][y]);  /* Media Erase/Write Timing */
