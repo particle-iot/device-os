@@ -55,24 +55,7 @@ uint16_t SPI_If_Erase(uint32_t SectorAddress)
 *******************************************************************************/
 uint16_t SPI_If_Write(uint32_t SectorAddress, uint32_t DataLength)
 {
-  uint32_t idx, pages;
-
-  pages = (((DataLength & 0xFF00)) >> 8);
-
-  if  (DataLength & 0xFFF) /* Not a 4096 aligned data */
-  {
-    for ( idx = DataLength; idx < ((DataLength & 0xFF00) + 0x1000) ; idx++)
-    {
-      MAL_Buffer[idx] = 0xFF;
-    }
-    pages = (((DataLength & 0xFF00)) >> 8 ) + 1;
-  }
-
-  for (idx = 0; idx < pages; idx++)
-  {
-    sFLASH_WritePage(&MAL_Buffer[idx*4096], SectorAddress, 4096);
-    SectorAddress += 0x1000;
-  }
+  sFLASH_WriteBuffer(MAL_Buffer, SectorAddress, (uint16_t)DataLength);
   return MAL_OK;
 }
 

@@ -30,8 +30,8 @@
 #define INTERN_FLASH_SECTOR_ERASE_TIME	50
 #define INTERN_FLASH_SECTOR_WRITE_TIME	50
 
-#define SPI_FLASH_SECTOR_ERASE_TIME		3000
-#define SPI_FLASH_SECTOR_WRITE_TIME		20
+#define SPI_FLASH_SECTOR_ERASE_TIME		20
+#define SPI_FLASH_SECTOR_WRITE_TIME		30
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */

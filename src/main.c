@@ -102,13 +102,13 @@ int main(void)
     /* Unlock the internal flash */
     FLASH_Unlock();
 
-#ifdef SPARK_SFLASH_ENABLE
-	/* Initialize SPI Flash */
-	sFLASH_Init();
-
-	/* Run SPI Flash Self Test (Uncomment for Debugging) */
-	//sFLASH_SelfTest();
-#endif
+//#ifdef SPARK_SFLASH_ENABLE
+//	/* Initialize SPI Flash */
+//	sFLASH_Init();
+//
+//	/* Run SPI Flash Self Test (Uncomment for Debugging) */
+//	sFLASH_SelfTest();
+//#endif
 
     /* USB Disconnect configuration */
     USB_Disconnect_Config();

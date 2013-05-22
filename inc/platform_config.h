@@ -19,7 +19,7 @@
 #endif
 
 /* Uncomment the line below to enable SFLASH functionality */
-//#define SPARK_SFLASH_ENABLE
+#define SPARK_SFLASH_ENABLE
 
 #define         ID1          (0x1FFFF7E8)
 #define         ID2          (0x1FFFF7EC)

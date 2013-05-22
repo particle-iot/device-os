@@ -273,8 +273,8 @@ RESULT DFU_Data_Setup(uint8_t RequestNo)
     if (RequestNo == DFU_UPLOAD && (DeviceState == STATE_dfuIDLE
                                     || DeviceState == STATE_dfuUPLOAD_IDLE ))
     {
-      // CopyRoutine = UPLOAD;
-      CopyRoutine = NULL;   //Disable UPLOAD process
+      CopyRoutine = UPLOAD;
+      //CopyRoutine = NULL;   //Disable UPLOAD process
     }
     else if (RequestNo == DFU_DNLOAD && (DeviceState == STATE_dfuIDLE
                                          || DeviceState == STATE_dfuDNLOAD_IDLE))

@@ -32,6 +32,9 @@ dfu-util -l
 The Core, Debug or H103 boards in DFU mode should be listed as follows:
 Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/12*001Ka,116*001Kg"
 
+If the macro SPARK_SFLASH_ENABLE is uncommented in platform_config.h, then the External Serial Flash should also be listed as follows:
+Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
+
 11. For Flashing marvin.bin using DFU, follow the steps below in Eclipse - marvin project:
 * Get the latest marvin code from Github
 * In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
@@ -41,5 +44,8 @@ Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
 
 12. Build the marvin project for DFU usage.
 
-13. cd to the marvin/Debug folder and type the below command to program the marvin application via DFU:
+13. cd to the marvin/Debug folder and type the below command to program the marvin application to Internal Flash starting from address 0x08007000:
 dfu-util -d 0483:df11 -a 0 -s 0x08007000:leave -D marvin.bin
+
+14. For flashing to External Flash starting from address 0x00007000, run the following command:
+dfu-util -d 0483:df11 -a 1 -s 0x00007000 -D test.bin
