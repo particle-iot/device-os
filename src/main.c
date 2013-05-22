@@ -10,7 +10,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "hw_config.h" 
 #include "usb_lib.h"
 #include "usb_conf.h"
 #include "usb_prop.h"
@@ -27,12 +26,19 @@ typedef  void (*pFunction)(void);
 static __IO uint32_t TimingDelay, TimingBUTTON, TimingLED;
 uint8_t DFUDeviceMode = 0x00;
 
-/* Extern variables ----------------------------------------------------------*/
+uint8_t WLAN_MANUAL_CONNECT = 0;//For Manual connection, set this to 1
+uint8_t WLAN_SMART_CONFIG_START;
+uint8_t WLAN_SMART_CONFIG_DONE;
+uint8_t WLAN_CONNECTED;
+uint8_t WLAN_DHCP;
+uint8_t WLAN_CAN_SHUTDOWN;
+
 uint8_t DeviceState;
 uint8_t DeviceStatus[6];
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
 
+/* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -89,12 +95,13 @@ int main(void)
             Jump_To_Application();
         }
     } 
-    /* Otherwise enters DFU mode to allow user to program his application */
+    /* Otherwise enters USB/WLAN DFU mode to allow user to program his application */
 
-    /* Enter DFU mode */
-    DeviceState = STATE_dfuERROR;
-    DeviceStatus[0] = STATUS_ERRFIRMWARE;
-    DeviceStatus[4] = DeviceState;
+	/* Enable PWR and BKP clock */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+
+	/* Enable write access to Backup domain */
+	PWR_BackupAccessCmd(ENABLE);
 
     /* Reconfigure the Button using EXTI */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
@@ -102,49 +109,121 @@ int main(void)
     /* Unlock the internal flash */
     FLASH_Unlock();
 
-//#ifdef SPARK_SFLASH_ENABLE
-//	/* Initialize SPI Flash */
-//	sFLASH_Init();
-//
-//	/* Run SPI Flash Self Test (Uncomment for Debugging) */
-//	sFLASH_SelfTest();
-//#endif
+    if(BKP_ReadBackupRegister(BKP_DR3) != 0xCCCC)
+    {
+		/* Enter USB DFU mode */
 
-    /* USB Disconnect configuration */
-    USB_Disconnect_Config();
+		DeviceState = STATE_dfuERROR;
+		DeviceStatus[0] = STATUS_ERRFIRMWARE;
+		DeviceStatus[4] = DeviceState;
 
-    /* Disable the USB connection till initialization phase end */  
-    USB_Cable_Config(DISABLE);
+		/* USB Disconnect configuration */
+		USB_Disconnect_Config();
 
-    /* Init the media interface */
-    MAL_Init();
+		/* Disable the USB connection till initialization phase end */
+		USB_Cable_Config(DISABLE);
 
-    /* Enable the USB connection */
-    USB_Cable_Config(ENABLE);
+		/* Init the media interface */
+		MAL_Init();
 
-    /* USB Clock configuration */
-    Set_USBClock();
+		/* Enable the USB connection */
+		USB_Cable_Config(ENABLE);
 
-    /* USB System initialization */
-    USB_Init();
+		/* USB Clock configuration */
+		Set_USBClock();
+
+		/* USB System initialization */
+		USB_Init();
+    }
+    else
+    {
+		/* Enter WLAN DFU mode */
+
+		/* Initialize CC3000's CS, EN and INT pins to their default states */
+		CC3000_WIFI_Init();
+
+#ifdef SPARK_SFLASH_ENABLE
+		/* Initialize SPI Flash */
+		sFLASH_Init();
+
+		/* Run SPI Flash Self Test (Uncomment for Debugging) */
+		sFLASH_SelfTest();
+#endif
+
+		//
+		// Configure & initialize CC3000 SPI_DMA Interface
+		//
+		CC3000_SPI_DMA_Init();
+
+		//
+		// WLAN On API Implementation
+		//
+		wlan_init(WLAN_Async_Callback, WLAN_Firmware_Patch, WLAN_Driver_Patch, WLAN_BootLoader_Patch,
+					CC3000_Read_Interrupt_Pin, CC3000_Interrupt_Enable, CC3000_Interrupt_Disable, CC3000_Write_Enable_Pin);
+
+		//
+		// Trigger a WLAN device
+		//
+		wlan_start(0);
+
+		//
+		// Mask out all non-required events from CC3000
+		//
+		wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+
+		// This will be replaced with SPI-Flash based backup
+		if(BKP_ReadBackupRegister(BKP_DR1) != 0xAAAA)
+		{
+			Set_NetApp_Timeout();
+		}
+
+		if(!WLAN_MANUAL_CONNECT)
+		{
+			// This will be replaced with SPI-Flash based backup
+			if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
+			{
+				WLAN_SMART_CONFIG_START = 1;
+			}
+		}
+    }
 
     /* Main loop */
     while (1)
     {
-    	if(TimingBUTTON == 0x00 && BUTTON_GetDebouncedState(BUTTON1) != 0x00)
-    	{
-			if (DeviceState == STATE_dfuIDLE || DeviceState == STATE_dfuERROR)
+	    if(BKP_ReadBackupRegister(BKP_DR3) != 0xCCCC)
+	    {
+			if(TimingBUTTON == 0x00 && BUTTON_GetDebouncedState(BUTTON1) != 0x00)
 			{
-				Reset_Device();	//Reset Device to enter User Application
+				if (DeviceState == STATE_dfuIDLE || DeviceState == STATE_dfuERROR)
+				{
+					Reset_Device();	//Reset Device to enter User Application
+				}
 			}
-    	}
 
-        if (TimingLED == 0x00)
-        {
-            TimingLED = 250;
-            LED_Toggle(LED1);
-            LED_Toggle(LED2);
-        }
+	        if (TimingLED == 0x00)
+	        {
+	            TimingLED = 250;
+	            LED_Toggle(LED1);
+	            LED_Toggle(LED2);
+	        }
+	    }
+	    else
+	    {
+			if(WLAN_SMART_CONFIG_START)
+			{
+				//
+				// Start CC3000 first time configuration
+				//
+				Start_Smart_Config();
+			}
+			else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
+			{
+			    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
+			    //wlan_connect(WLAN_SEC_WPA2, "Haxlr8r-upstairs", 16, NULL, "wittycheese551", 14);
+			    wlan_connect(WLAN_SEC_WPA2, "VED", 3, NULL, "BD180408", 8);
+			    WLAN_MANUAL_CONNECT = 0;
+			}
+	    }
     }
 }
 
@@ -194,6 +273,144 @@ void Timing_Decrement(void)
     {
         TimingLED--;
     }
+}
+
+void Set_NetApp_Timeout(void)
+{
+	unsigned long aucDHCP = 14400;
+	unsigned long aucARP = 3600;
+	unsigned long aucKeepalive = 10;
+	unsigned long aucInactivity = 60;
+
+	BKP_WriteBackupRegister(BKP_DR1, 0xFFFF);
+
+	netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
+
+	BKP_WriteBackupRegister(BKP_DR1, 0xAAAA);
+}
+
+/*******************************************************************************
+ * Function Name  : Start_Smart_Config.
+ * Description    : The function triggers a smart configuration process on CC3000.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+void Start_Smart_Config(void)
+{
+	WLAN_SMART_CONFIG_DONE = 0;
+	WLAN_CONNECTED = 0;
+	WLAN_DHCP = 0;
+	WLAN_CAN_SHUTDOWN = 0;
+
+	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
+
+	//
+	// Reset all the previous configuration
+	//
+	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
+	wlan_ioctl_del_profile(255);
+
+	//Wait until CC3000 is disconnected
+	while (WLAN_CONNECTED == 1)
+	{
+		//Delay 100ms
+		Delay(100);
+		hci_unsolicited_event_handler();
+	}
+
+	//
+	// Start the SmartConfig start process
+	//
+	wlan_smart_config_start(1);
+
+	//
+	// Wait for First Time config finished
+	//
+	while (WLAN_SMART_CONFIG_DONE == 0)
+	{
+		/* Toggle the LED2 every 100ms */
+		LED_Toggle(LED2);
+		Delay(100);
+	}
+
+	LED_Off(LED2);
+
+	//
+	// Configure to connect automatically to the AP retrieved in the
+	// First Time config process
+	//
+	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
+
+	BKP_WriteBackupRegister(BKP_DR2, 0xBBBB);
+
+	NVIC_SystemReset();
+
+/*
+	//
+	// reset the CC3000
+	//
+	wlan_stop();
+
+	// Delay 1 sec
+	Delay(1000);
+
+	wlan_start(0);
+
+	//
+	// Mask out all non-required events
+	//
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+*/
+}
+
+/* WLAN Application related callbacks passed to wlan_init */
+void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
+{
+	switch (lEventType)
+	{
+		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
+			WLAN_SMART_CONFIG_DONE = 1;
+			WLAN_MANUAL_CONNECT = 0;
+			break;
+
+		case HCI_EVNT_WLAN_UNSOL_CONNECT:
+			WLAN_CONNECTED = 1;
+			break;
+
+		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
+			WLAN_CONNECTED = 0;
+			WLAN_DHCP = 0;
+			LED_Off(LED2);
+			break;
+
+		case HCI_EVNT_WLAN_UNSOL_DHCP:
+			WLAN_DHCP = 1;
+			LED_On(LED2);
+			break;
+
+		case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
+			WLAN_CAN_SHUTDOWN = 1;
+			break;
+	}
+}
+
+char *WLAN_Firmware_Patch(unsigned long *length)
+{
+	*length = 0;
+	return NULL;
+}
+
+char *WLAN_Driver_Patch(unsigned long *length)
+{
+	*length = 0;
+	return NULL;
+}
+
+char *WLAN_BootLoader_Patch(unsigned long *length)
+{
+	*length = 0;
+	return NULL;
 }
 
 #ifdef USE_FULL_ASSERT

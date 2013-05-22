@@ -29,6 +29,8 @@
 extern __IO uint8_t BUTTON_DEBOUNCED[];
 
 /* Private function prototypes -----------------------------------------------*/
+extern void SPI_DMA_IntHandler(void);
+extern void SPI_EXTI_IntHandler(void);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -160,6 +162,30 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /*******************************************************************************
+ * Function Name  : DMA1_Channel3_IRQHandler
+ * Description    : This function handles SPI1_TX_DMA interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void DMA1_Channel3_IRQHandler(void)
+{
+	SPI_DMA_IntHandler();
+}
+
+/*******************************************************************************
+ * Function Name  : DMA1_Channel5_IRQHandler
+ * Description    : This function handles SPI2_TX_DMA interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void DMA1_Channel5_IRQHandler(void)
+{
+	SPI_DMA_IntHandler();
+}
+
+/*******************************************************************************
  * Function Name  : EXTI0_IRQHandler
  * Description    : This function handles EXTI0 interrupt request.
  * Input          : None
@@ -168,6 +194,14 @@ void SysTick_Handler(void)
  *******************************************************************************/
 void EXTI0_IRQHandler(void)
 {
+	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
+	{
+		/* Clear the EXTI line pending flag */
+		EXTI_ClearFlag(CC3000_WIFI_INT_EXTI_LINE );
+
+		SPI_EXTI_IntHandler();
+	}
+
 	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
 	{
 		/* Clear the EXTI line pending flag */
@@ -190,6 +224,14 @@ void EXTI0_IRQHandler(void)
  *******************************************************************************/
 void EXTI15_10_IRQHandler(void)
 {
+	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
+	{
+		/* Clear the EXTI line pending flag */
+		EXTI_ClearFlag(CC3000_WIFI_INT_EXTI_LINE );
+
+		SPI_EXTI_IntHandler();
+	}
+
 	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
 	{
 		/* Clear the EXTI line pending flag */
