@@ -21,7 +21,7 @@
 /* Exported constants --------------------------------------------------------*/
 #define MAL_OK   0
 #define MAL_FAIL 1
-#define MAX_USED_MEDIA 2
+#define MAX_USED_MEDIA 3
 #define MAL_MASK 0xFC000000
 
 #define INTERNAL_FLASH_BASE 0x08000000

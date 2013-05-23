@@ -15,6 +15,7 @@
 
 #include "platform_config.h"
 #include "cc3000_common.h"
+#include "sst25vf_spi.h"
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -40,10 +41,15 @@ typedef enum
 
 /* Exported constants --------------------------------------------------------*/
 
-/* Flash memory address from where user application will be loaded */
-#define ApplicationAddress 0x08007000
-
 /* Exported macro ------------------------------------------------------------*/
+/* Internal Flash memory address from where user application will be loaded */
+#define APPLICATION_START_ADDRESS	((uint32_t)0x08007000)
+/* Internal Flash last memory address */
+#define INTERNAL_FLASH_END_ADDRESS	((uint32_t)0x0801FFFF)	//For 128KB Internal Flash
+/* Internal Flash page size */
+#define INTERNAL_FLASH_PAGE_SIZE	((uint16_t)0x400)
+/* External Flash memory address where user application will be saved for backup/restore */
+#define EXTERNAL_FLASH_APP_ADDRESS	((uint32_t)0x00007000)
 
 /* Select CC3000: ChipSelect pin low */
 #define CC3000_CS_LOW()		GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN)

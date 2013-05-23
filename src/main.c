@@ -15,7 +15,6 @@
 #include "usb_prop.h"
 #include "usb_pwr.h"
 #include "dfu_mal.h"
-#include "sst25vf_spi.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);
@@ -26,7 +25,15 @@ typedef  void (*pFunction)(void);
 static __IO uint32_t TimingDelay, TimingBUTTON, TimingLED;
 uint8_t DFUDeviceMode = 0x00;
 
-uint8_t WLAN_MANUAL_CONNECT = 0;//For Manual connection, set this to 1
+uint32_t Internal_Flash_Address = 0;
+uint32_t External_Flash_Address = 0;
+uint32_t Internal_Flash_Data = 0;
+uint8_t External_Flash_Data[4];
+uint32_t EraseCounter = 0;
+uint32_t NbrOfPage = 0;
+volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
+
+uint8_t WLAN_MANUAL_CONNECT = 1;//For Manual connection, set this to 1
 uint8_t WLAN_SMART_CONFIG_START;
 uint8_t WLAN_SMART_CONFIG_DONE;
 uint8_t WLAN_CONNECTED;
@@ -84,14 +91,14 @@ int main(void)
 
     if (DFUDeviceMode != 0x01)
     {
-        /* Test if user code is programmed starting from ApplicationAddress */
-        if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
+        /* Test if user code is programmed starting from APPLICATION_START_ADDRESS */
+        if (((*(__IO uint32_t*)APPLICATION_START_ADDRESS) & 0x2FFE0000 ) == 0x20000000)
         {
             /* Jump to user application */    
-            JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
+            JumpAddress = *(__IO uint32_t*) (APPLICATION_START_ADDRESS + 4);
             Jump_To_Application = (pFunction) JumpAddress;
             /* Initialize user application's Stack Pointer */
-            __set_MSP(*(__IO uint32_t*) ApplicationAddress);
+            __set_MSP(*(__IO uint32_t*) APPLICATION_START_ADDRESS);
             Jump_To_Application();
         }
     } 
@@ -411,6 +418,84 @@ char *WLAN_BootLoader_Patch(unsigned long *length)
 {
 	*length = 0;
 	return NULL;
+}
+
+void Backup_Application(void)
+{
+	/* Initialize SPI Flash */
+	sFLASH_Init();
+
+	/* Define the number of External Flash pages to be erased */
+	NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - APPLICATION_START_ADDRESS) / sFLASH_PAGESIZE;
+	NbrOfPage += 1;	//Incase NbrOfPage is not sFLASH_PAGESIZE aligned
+
+	/* Erase the SPI Flash pages */
+	for(EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
+	{
+		sFLASH_EraseSector(EXTERNAL_FLASH_APP_ADDRESS + (sFLASH_PAGESIZE * EraseCounter));
+	}
+
+	/* Program External Flash */
+	Internal_Flash_Address = APPLICATION_START_ADDRESS;
+	External_Flash_Address = EXTERNAL_FLASH_APP_ADDRESS;
+
+	while(Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS)
+	{
+	    /* Read data from Internal Flash memory */
+		Internal_Flash_Data = (*(__IO uint32_t*) Internal_Flash_Address);
+		Internal_Flash_Address += 4;
+
+	    /* Program Word to SPI Flash memory */
+		External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
+		External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
+		External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
+		External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);;
+		sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
+		External_Flash_Address += 4;
+	}
+}
+
+void Restore_Application(void)
+{
+	FLASHStatus = FLASH_COMPLETE;
+
+	/* Unlock the Internal Flash Bank1 Program Erase controller */
+	FLASH_UnlockBank1();
+
+	/* Initialize SPI Flash */
+	sFLASH_Init();
+
+	/* Define the number of Internal Flash pages to be erased */
+	NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - APPLICATION_START_ADDRESS) / INTERNAL_FLASH_PAGE_SIZE;
+
+	/* Clear All pending flags */
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+	/* Erase the Internal Flash pages */
+	for(EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
+	{
+		FLASHStatus = FLASH_ErasePage(APPLICATION_START_ADDRESS + (INTERNAL_FLASH_PAGE_SIZE * EraseCounter));
+	}
+
+	/* Program Internal Flash Bank1 */
+	Internal_Flash_Address = APPLICATION_START_ADDRESS;
+	External_Flash_Address = EXTERNAL_FLASH_APP_ADDRESS;
+
+	while((Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS) && (FLASHStatus == FLASH_COMPLETE))
+	{
+	    /* Read data from SPI Flash memory */
+	    sFLASH_ReadBuffer(External_Flash_Data, External_Flash_Address, 4);
+	    External_Flash_Address += 4;
+
+	    /* Program Word to Internal Flash memory */
+	    Internal_Flash_Data = (uint32_t)(External_Flash_Data[0] | (External_Flash_Data[1] << 8) | (External_Flash_Data[2] << 16) | (External_Flash_Data[3] << 24));
+		FLASHStatus = FLASH_ProgramWord(Internal_Flash_Address, Internal_Flash_Data);
+		Internal_Flash_Address += 4;
+	}
+
+	FLASH_LockBank1();
+
+	NVIC_SystemReset();
 }
 
 #ifdef USE_FULL_ASSERT
