@@ -43,6 +43,9 @@ __IO uint8_t SPARK_SOCKET_CONNECTED;
 __IO uint8_t SPARK_SOCKET_ALIVE;
 __IO uint8_t SPARK_DEVICE_ACKED;
 
+uint16_t NetApp_Timeout_SysFlag = 0xFFFF;
+uint16_t Smart_Config_SysFlag = 0xFFFF;
+
 //tNetappIpconfigRetArgs ipconfig;
 
 /* Extern variables ----------------------------------------------------------*/
@@ -103,22 +106,26 @@ int main(void)
 	//
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
-	/* Enable PWR and BKP clock */
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+#ifdef DFU_BUILD_ENABLE
+	Load_SystemFlags();
+#endif
 
-	/* Enable write access to Backup domain */
-	PWR_BackupAccessCmd(ENABLE);
-
-	// This will be replaced with SPI-Flash based backup
+#ifdef DFU_BUILD_ENABLE
+    if(NetApp_Timeout_SysFlag != 0xAAAA)
+#else
     if(BKP_ReadBackupRegister(BKP_DR1) != 0xAAAA)
+#endif
     {
     	Set_NetApp_Timeout();
     }
 
 	if(!WLAN_MANUAL_CONNECT)
 	{
-		// This will be replaced with SPI-Flash based backup
+#ifdef DFU_BUILD_ENABLE
+		if(Smart_Config_SysFlag != 0xBBBB)
+#else
 		if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
+#endif
 		{
 			WLAN_SMART_CONFIG_START = 1;
 		}
@@ -252,7 +259,12 @@ void Timing_Decrement(void)
     {
     	//Enter First Time Config On Next System Reset
     	//Since socket connect() is currently blocking
-    	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
+#ifdef DFU_BUILD_ENABLE
+		Smart_Config_SysFlag = 0xFFFF;
+		Save_SystemFlags();
+#else
+		BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
+#endif
     	NVIC_SystemReset();
     }
 
@@ -329,6 +341,50 @@ void BUTTON1_IntHandler(void)
 }
 */
 
+void Load_SystemFlags(void)
+{
+#ifdef DFU_BUILD_ENABLE
+	uint32_t Address = SYSTEM_FLAGS_ADDRESS;
+
+	NetApp_Timeout_SysFlag = (*(__IO uint16_t*) Address);
+	Address += 2;
+
+	Smart_Config_SysFlag = (*(__IO uint16_t*) Address);
+	Address += 2;
+#endif
+}
+
+void Save_SystemFlags(void)
+{
+#ifdef DFU_BUILD_ENABLE
+	uint32_t Address = SYSTEM_FLAGS_ADDRESS;
+	FLASH_Status FLASHStatus = FLASH_COMPLETE;
+
+	/* Unlock the Flash Program Erase Controller */
+	FLASH_Unlock();
+
+	/* Clear All pending flags */
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+	/* Erase the Internal Flash pages */
+	FLASHStatus = FLASH_ErasePage(SYSTEM_FLAGS_ADDRESS);
+	while(FLASHStatus != FLASH_COMPLETE);
+
+	/* Program NetApp_Timeout_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, NetApp_Timeout_SysFlag);
+	while(FLASHStatus != FLASH_COMPLETE);
+	Address += 2;
+
+	/* Program Smart_Config_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, Smart_Config_SysFlag);
+	while(FLASHStatus != FLASH_COMPLETE);
+	Address += 2;
+
+	/* Locks the FLASH Program Erase Controller */
+	FLASH_Lock();
+#endif
+}
+
 void Set_NetApp_Timeout(void)
 {
 	unsigned long aucDHCP = 14400;
@@ -336,11 +392,21 @@ void Set_NetApp_Timeout(void)
 	unsigned long aucKeepalive = 10;
 	unsigned long aucInactivity = 60;
 
+#ifdef DFU_BUILD_ENABLE
+	NetApp_Timeout_SysFlag = 0xFFFF;
+	Save_SystemFlags();
+#else
 	BKP_WriteBackupRegister(BKP_DR1, 0xFFFF);
+#endif
 
 	netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
 
+#ifdef DFU_BUILD_ENABLE
+	NetApp_Timeout_SysFlag = 0xAAAA;
+	Save_SystemFlags();
+#else
 	BKP_WriteBackupRegister(BKP_DR1, 0xAAAA);
+#endif
 }
 
 /*******************************************************************************
@@ -357,7 +423,12 @@ void Start_Smart_Config(void)
 	WLAN_DHCP = 0;
 	WLAN_CAN_SHUTDOWN = 0;
 
+#ifdef DFU_BUILD_ENABLE
+	Smart_Config_SysFlag = 0xFFFF;
+	Save_SystemFlags();
+#else
 	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
+#endif
 
 	//
 	// Reset all the previous configuration
@@ -396,7 +467,12 @@ void Start_Smart_Config(void)
 	//
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
 
+#ifdef DFU_BUILD_ENABLE
+	Smart_Config_SysFlag = 0xBBBB;
+	Save_SystemFlags();
+#else
 	BKP_WriteBackupRegister(BKP_DR2, 0xBBBB);
+#endif
 
 	NVIC_SystemReset();
 

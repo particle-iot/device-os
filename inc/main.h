@@ -27,12 +27,17 @@
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
+/* Flash Memory address where the System Flags will be saved and loaded from  */
+#define SYSTEM_FLAGS_ADDRESS	((uint32_t)0x08004C00)
 
 /* Exported functions ------------------------------------------------------- */
 void Timing_Decrement(void);
 void Delay(__IO uint32_t nTime);
 
 void BUTTON1_IntHandler(void);
+
+void Load_SystemFlags(void);
+void Save_SystemFlags(void);
 
 void Set_NetApp_Timeout(void);
 void Start_Smart_Config(void);
