@@ -14,7 +14,6 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "platform_config.h"
-#include "cc3000_common.h"
 #include "sst25vf_spi.h"
 
 /* Exported types ------------------------------------------------------------*/
@@ -34,27 +33,12 @@ typedef enum
 	BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1
 } ButtonMode_TypeDef;
 
-typedef enum
-{
-	CC3000_DMA_TX = 0, CC3000_DMA_RX = 1
-} CC3000_DMADirection_TypeDef;
-
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-/* Internal Flash memory address from where user application will be loaded */
-#define APPLICATION_START_ADDRESS	((uint32_t)0x08007000)
-/* Internal Flash last memory address */
-#define INTERNAL_FLASH_END_ADDRESS	((uint32_t)0x0801FFFF)	//For 128KB Internal Flash
-/* Internal Flash page size */
-#define INTERNAL_FLASH_PAGE_SIZE	((uint16_t)0x400)
-/* External Flash memory address where user application will be saved for backup/restore */
-#define EXTERNAL_FLASH_APP_ADDRESS	((uint32_t)0x00007000)
 
-/* Select CC3000: ChipSelect pin low */
-#define CC3000_CS_LOW()		GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN)
-/* Deselect CC3000: ChipSelect pin high */
-#define CC3000_CS_HIGH()	GPIO_SetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN)
+/* Internal Flash memory address from where user application will be loaded */
+#define ApplicationAddress	0x0800A000
 
 /* Select sFLASH: Chip Select pin low */
 #define sFLASH_CS_LOW()		GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
@@ -75,19 +59,6 @@ void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint8_t BUTTON_GetDebouncedState(Button_TypeDef Button);
 
-/* CC3000 Hardware related methods */
-void CC3000_WIFI_Init(void);
-void CC3000_SPI_Init(void);
-void CC3000_DMA_Config(CC3000_DMADirection_TypeDef Direction, uint8_t* buffer, uint16_t NumData);
-void CC3000_SPI_DMA_Init(void);
-void CC3000_SPI_DMA_Channels(FunctionalState NewState);
-
-/* CC3000 Hardware related callbacks passed to wlan_init */
-long CC3000_Read_Interrupt_Pin(void);
-void CC3000_Interrupt_Enable(void);
-void CC3000_Interrupt_Disable(void);
-void CC3000_Write_Enable_Pin(unsigned char val);
-
 /* Serial Flash Hardware related methods */
 void sFLASH_SPI_DeInit(void);
 void sFLASH_SPI_Init(void);
@@ -103,7 +74,5 @@ void Reset_Device(void);
 void Get_SerialNum(void);
 
 /* External variables --------------------------------------------------------*/
-extern unsigned char wlan_rx_buffer[];
-extern unsigned char wlan_tx_buffer[];
 
 #endif  /*__HW_CONFIG_H*/
