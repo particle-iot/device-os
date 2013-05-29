@@ -26,4 +26,6 @@ char userFunction(char *user_arg) __attribute__ ((weak));
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 
+extern void (*pUserFunction)(void);
+
 #endif  /* __SPARK_UTILITIES_H */

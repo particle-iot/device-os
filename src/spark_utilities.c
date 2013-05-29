@@ -30,6 +30,10 @@ int total_bytes_received = 0;
 extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint32_t TimingSparkAliveTimeout;
 
+void (*pUserFunction)(void);
+char userBuff[SPARK_BUF_LEN];
+
+static void user_function(void);
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
 static unsigned char itoa(int cNum, char *cString);
 static uint8_t atoc(char data);
@@ -197,23 +201,21 @@ int process_command()
 	// command to call the user-defined function
 	else if (0 == strncmp(recvBuff, API_UserFunc, strlen(API_UserFunc)))
 	{
-		if (NULL != userFunction)
+		char *user_arg = &recvBuff[strlen(API_UserFunc)];
+		char *newline = strchr(user_arg, '\n');
+		if (NULL != newline)
 		{
-			char *user_arg = &recvBuff[strlen(API_UserFunc)];
-			char *newline = strchr(user_arg, '\n');
-			if (NULL != newline)
-			{
-				if ('\r' == *(newline - 1))
-					newline--;
-				*newline = '\0';
-			}
-
-			char retStr[11];
-			int userResult = userFunction(user_arg);
-			int retLen = itoa(userResult, retStr);
-			retStr[retLen] = '\0';
-			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_UserFunc, (char *)retStr);
+			if ('\r' == *(newline - 1))
+				newline--;
+			*newline = '\0';
 		}
+
+	    memset(userBuff, 0, SPARK_BUF_LEN);
+	    if(NULL != user_arg)
+	    {
+	    	memcpy(userBuff, user_arg, strlen(user_arg));
+	    }
+		pUserFunction = user_function;
 	}
 
 	// Do nothing for new line returned
@@ -247,10 +249,23 @@ void userCallback(char *callback_name)
 
 void userCallbackWithData(char *callback_name, char *callback_data, long data_length)
 {
-	char len, lenStr[11];
-	len = itoa(data_length, &lenStr[0]);
+	char lenStr[11];
+	int len = itoa(data_length, &lenStr[0]);
 	lenStr[len] = '\0';
 	Spark_Send_Device_Message(sparkSocket, (char *)API_Callback, (char *)callback_name, (char *)lenStr);
+}
+
+static void user_function(void)
+{
+	if (NULL != userFunction)
+	{
+		pUserFunction = NULL;
+		char retStr[11];
+		int userResult = userFunction(userBuff);
+		int retLen = itoa(userResult, retStr);
+		retStr[retLen] = '\0';
+		Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_UserFunc, (char *)retStr);
+	}
 }
 
 // returns number of bytes transmitted or -1 on error
