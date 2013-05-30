@@ -153,7 +153,6 @@ int main(void)
 		else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
 		{
 		    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
-		    //wlan_connect(WLAN_SEC_WPA2, "Haxlr8r-upstairs", 16, NULL, "wittycheese551", 14);
 		    wlan_connect(WLAN_SEC_WPA2, "VED", 3, NULL, "BD180408", 8);
 		    WLAN_MANUAL_CONNECT = 0;
 		}
