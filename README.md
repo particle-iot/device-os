@@ -53,7 +53,7 @@ Uncomment the following line in platform_config.h to enable DFU based marvin bui
 
 Build marvin project
 
-Make sure the board is first flashed with the dfu.hex file in the "dfu" project using JTAG
+Make sure the board is first flashed with the usb-dfu.hex file in the "usb-dfu" project using JTAG
 
 Enter DFU mode by keeping the BUTTON pressed for > 1sec
 
@@ -65,8 +65,9 @@ Add "dfu-util" related bin files to PATH environment variable
 List the currently attached DFU capable USB devices by running the following command on host:
 dfu-util -l
 
-The Core, Debug or H103 boards in DFU mode should be listed as follows:
+The STM32 boards in usb-dfu mode should be listed as follows:
 Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/12*001Ka,116*001Kg"
+Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
 
-cd to the marvin/Debug folder and type the below command to program the marvin application via DFU:
-dfu-util -d 0483:df11 -a 0 -s 0x08007000:leave -D marvin.bin
+cd to the marvin/Debug folder and type the below command to program the marvin application using dfu-util:
+dfu-util -d 0483:df11 -a 0 -s 0x0800A000:leave -D marvin.bin
