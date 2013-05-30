@@ -54,6 +54,12 @@ void Set_System(void)
 	 system_stm32f10x.c file
 	 */
 
+	/* Enable PWR and BKP clock */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+
+	/* Enable write access to Backup domain */
+	PWR_BackupAccessCmd(ENABLE);
+
 	/* NVIC configuration */
 	NVIC_Configuration();
 
@@ -495,6 +501,7 @@ void USB_Cable_Config (FunctionalState NewState)
 *******************************************************************************/
 void Reset_Device(void)
 {
+	BKP_WriteBackupRegister(BKP_DR10, 0xA000);
     USB_Cable_Config(DISABLE);
     NVIC_SystemReset();
 }

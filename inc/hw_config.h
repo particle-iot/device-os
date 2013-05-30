@@ -37,8 +37,10 @@ typedef enum
 
 /* Exported macro ------------------------------------------------------------*/
 
-/* Internal Flash memory address from where user application will be loaded */
-#define ApplicationAddress	0x0800A000
+/* Flash memory address where various firmwares are located */
+#define USB_DFU_ADDRESS	0x08000000
+#define OTA_DFU_ADDRESS	0x08005000
+#define MARVIN_ADDRESS	0x0800A000
 
 /* Select sFLASH: Chip Select pin low */
 #define sFLASH_CS_LOW()		GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)

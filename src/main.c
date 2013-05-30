@@ -30,6 +30,8 @@ uint8_t DeviceState;
 uint8_t DeviceStatus[6];
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
+uint32_t ApplicationAddress;
+extern uint32_t Pointer;
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -52,6 +54,24 @@ int main(void)
     */
 
 	Set_System();
+
+	switch(BKP_ReadBackupRegister(BKP_DR10))
+	{
+		case 0xFFFF:
+			ApplicationAddress = USB_DFU_ADDRESS;
+			break;
+		case 0x5000:
+			ApplicationAddress = OTA_DFU_ADDRESS;
+			break;
+		case 0xA000:
+			ApplicationAddress = MARVIN_ADDRESS;
+			break;
+		default:
+			ApplicationAddress = MARVIN_ADDRESS;
+			break;
+	}
+
+	Pointer = ApplicationAddress;
 
 	/* Check if Enter DFU Mode command is received from marvin's USB Serial Console
 	 * This will be stored as a flag in the Backup register which needs to be checked
