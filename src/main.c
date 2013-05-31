@@ -31,7 +31,6 @@ uint8_t DeviceStatus[6];
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
 uint32_t ApplicationAddress;
-extern uint32_t Pointer;
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -57,21 +56,16 @@ int main(void)
 
 	switch(BKP_ReadBackupRegister(BKP_DR10))
 	{
-		case 0xFFFF:
-			ApplicationAddress = USB_DFU_ADDRESS;
-			break;
 		case 0x5000:
 			ApplicationAddress = OTA_DFU_ADDRESS;
 			break;
 		case 0xA000:
-			ApplicationAddress = MARVIN_ADDRESS;
+			ApplicationAddress = DEFAULT_ADDRESS;
 			break;
 		default:
-			ApplicationAddress = MARVIN_ADDRESS;
+			ApplicationAddress = DEFAULT_ADDRESS;
 			break;
 	}
-
-	Pointer = ApplicationAddress;
 
 	/* Check if Enter DFU Mode command is received from marvin's USB Serial Console
 	 * This will be stored as a flag in the Backup register which needs to be checked
@@ -79,34 +73,34 @@ int main(void)
 	 * TO DO...
 	 */
 
-     /* Check if BUTTON1 is pressed for 1 sec to enter DFU Mode */
-     if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
-     {
-         TimingDelay = 1000;
-         while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
-         {
-             if(TimingDelay == 0x00)
-             {
-                 DFUDeviceMode = 0x01;
-                 TimingBUTTON = 5000;	//To prevent immediate exit from DFU
-                 break;
-             }
-         }
-     }
+	/* Check if BUTTON1 is pressed for 1 sec to enter DFU Mode */
+	if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+	{
+		TimingDelay = 1000;
+		while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+		{
+			if(TimingDelay == 0x00)
+			{
+				DFUDeviceMode = 0x01;
+				TimingBUTTON = 5000;	//To prevent immediate exit from DFU
+				break;
+			}
+		}
+	}
 
-    if (DFUDeviceMode != 0x01)
-    {
-        /* Test if user code is programmed starting from ApplicationAddress */
-        if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
-        {
-            /* Jump to user application */    
-            JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
-            Jump_To_Application = (pFunction) JumpAddress;
-            /* Initialize user application's Stack Pointer */
-            __set_MSP(*(__IO uint32_t*) ApplicationAddress);
-            Jump_To_Application();
-        }
-    } 
+	if (DFUDeviceMode != 0x01)
+	{
+		/* Test if user code is programmed starting from ApplicationAddress */
+		if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
+		{
+			/* Jump to user application */
+			JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
+			Jump_To_Application = (pFunction) JumpAddress;
+			/* Initialize user application's Stack Pointer */
+			__set_MSP(*(__IO uint32_t*) ApplicationAddress);
+			Jump_To_Application();
+		}
+	}
     /* Otherwise enters DFU mode to allow user to program his application */
 
     /* Enter DFU mode */

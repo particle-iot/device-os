@@ -23,7 +23,7 @@
 /* Private variables ---------------------------------------------------------*/
 uint32_t wBlockNum = 0, wlength = 0;
 uint32_t Manifest_State = Manifest_complete;
-uint32_t Pointer;  /* Base Address to Erase, Program or Read */
+uint32_t Pointer = DEFAULT_ADDRESS;  /* Base Address to Erase, Program or Read */
 
 DEVICE Device_Table =
   {
