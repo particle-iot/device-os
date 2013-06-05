@@ -30,9 +30,7 @@ __IO uint32_t TimingMillis;
 __IO uint32_t TimingSparkProcessAPI;
 __IO uint32_t TimingSparkAliveTimeout;
 
-__IO uint8_t TIMING_BUTTON1_PRESSED;
-
-uint8_t WLAN_MANUAL_CONNECT = 0;//For Manual connection, set this to 1
+uint8_t WLAN_MANUAL_CONNECT = 1;//For Manual connection, set this to 1
 uint8_t WLAN_SMART_CONFIG_START;
 uint8_t WLAN_SMART_CONFIG_DONE;
 uint8_t WLAN_CONNECTED;
@@ -45,6 +43,8 @@ __IO uint8_t SPARK_DEVICE_ACKED;
 
 uint16_t NetApp_Timeout_SysFlag = 0xFFFF;
 uint16_t Smart_Config_SysFlag = 0xFFFF;
+
+unsigned char patchVer[2];
 
 //tNetappIpconfigRetArgs ipconfig;
 
@@ -132,12 +132,12 @@ int main(void)
 	}
 #endif
 
-//	unsigned char patchVer[2];
-//	nvmem_read_sp_version(patchVer);
-//	if (patchVer[1] == 14)
-//	{
-//	/* Latest Patch Available */
-//	}
+	nvmem_read_sp_version(patchVer);
+	if (patchVer[1] == 19)
+	{
+		/* patchVer = "\001\023" */
+		/* Latest Patch Available after flashing "cc3000-patch-programmer.bin" */
+	}
 
 	/* Main loop */
 	while (1)
@@ -314,37 +314,6 @@ void Timing_Decrement(void)
 	}
 #endif
 }
-
-/*
-void BUTTON1_IntHandler(void)
-{
-	if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
-    {
-        if(!TIMING_BUTTON1_PRESSED)
-        {
-        	TimingBUTTON1 = 2000; //2 sec
-        }
-
-        if(TIMING_BUTTON1_PRESSED && !TimingBUTTON1)
-        {
-        	TIMING_BUTTON1_PRESSED = 0x00;
-
-        	//Enter First Time Config On Next System Reset
-        	//Since socket connect() is currently blocking
-        	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
-        	NVIC_SystemReset();
-        }
-        else
-        {
-        	TIMING_BUTTON1_PRESSED = 0x01;
-        }
-    }
-    else
-    {
-    	TIMING_BUTTON1_PRESSED = 0x00;
-    }
-}
-*/
 
 void Load_SystemFlags(void)
 {
