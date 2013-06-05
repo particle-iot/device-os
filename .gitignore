@@ -16,12 +16,6 @@
 *.out
 *.app
 
-# Debug folder
-Debug/
-
-# Release folder
-Release/
-
 # Platform-specific settings
 .settings/
 .cproject

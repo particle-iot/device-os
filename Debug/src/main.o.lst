@@ -1,0 +1,1053 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 4
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"main.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.startup.main,"ax",%progbits
+  19              		.align	1
+  20              		.global	main
+  21              		.thumb
+  22              		.thumb_func
+  24              	main:
+  25              	.LFB56:
+  26              		.file 1 "../src/main.c"
+   1:../src/main.c **** /**
+   2:../src/main.c ****   ******************************************************************************
+   3:../src/main.c ****   * @file    main.c
+   4:../src/main.c ****   * @author  Spark Application Team
+   5:../src/main.c ****   * @version V1.0.0
+   6:../src/main.c ****   * @date    30-April-2013
+   7:../src/main.c ****   * @brief   main file
+   8:../src/main.c ****   ******************************************************************************
+   9:../src/main.c ****   */
+  10:../src/main.c **** 
+  11:../src/main.c **** /* Includes ------------------------------------------------------------------*/
+  12:../src/main.c **** #include "main.h"
+  13:../src/main.c **** #include "usb_lib.h"
+  14:../src/main.c **** #include "usb_conf.h"
+  15:../src/main.c **** #include "usb_prop.h"
+  16:../src/main.c **** #include "usb_pwr.h"
+  17:../src/main.c **** #include "dfu_mal.h"
+  18:../src/main.c **** 
+  19:../src/main.c **** /* Private typedef -----------------------------------------------------------*/
+  20:../src/main.c **** typedef  void (*pFunction)(void);
+  21:../src/main.c **** 
+  22:../src/main.c **** /* Private define ------------------------------------------------------------*/
+  23:../src/main.c **** /* Private macro -------------------------------------------------------------*/
+  24:../src/main.c **** /* Private variables ---------------------------------------------------------*/
+  25:../src/main.c **** static __IO uint32_t TimingDelay, TimingBUTTON, TimingLED;
+  26:../src/main.c **** uint8_t DFUDeviceMode = 0x00;
+  27:../src/main.c **** 
+  28:../src/main.c **** /* Extern variables ----------------------------------------------------------*/
+  29:../src/main.c **** uint8_t DeviceState;
+  30:../src/main.c **** uint8_t DeviceStatus[6];
+  31:../src/main.c **** pFunction Jump_To_Application;
+  32:../src/main.c **** uint32_t JumpAddress;
+  33:../src/main.c **** uint32_t ApplicationAddress;
+  34:../src/main.c **** 
+  35:../src/main.c **** /* Private function prototypes -----------------------------------------------*/
+  36:../src/main.c **** /* Private functions ---------------------------------------------------------*/
+  37:../src/main.c **** 
+  38:../src/main.c **** /*******************************************************************************
+  39:../src/main.c **** * Function Name  : main.
+  40:../src/main.c **** * Description    : main routine.
+  41:../src/main.c **** * Input          : None.
+  42:../src/main.c **** * Output         : None.
+  43:../src/main.c **** * Return         : None.
+  44:../src/main.c **** *******************************************************************************/
+  45:../src/main.c **** int main(void)
+  46:../src/main.c **** {
+  27              		.loc 1 46 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31 0000 08B5     		push	{r3, lr}
+  32              	.LCFI0:
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 3, -8
+  35              		.cfi_offset 14, -4
+  47:../src/main.c ****     /*
+  48:../src/main.c ****         At this stage the microcontroller clock setting is already configured, 
+  49:../src/main.c ****         this is done through SystemInit() function which is called from startup
+  50:../src/main.c ****         file (startup_stm32f10x_md.s) before to branch to application main.
+  51:../src/main.c ****         To reconfigure the default setting of SystemInit() function, refer to
+  52:../src/main.c ****         system_stm32f10x.c file
+  53:../src/main.c ****     */
+  54:../src/main.c **** 
+  55:../src/main.c **** 	Set_System();
+  36              		.loc 1 55 0
+  37 0002 FFF7FEFF 		bl	Set_System
+  38              	.LVL0:
+  56:../src/main.c **** 
+  57:../src/main.c **** 	switch(BKP_ReadBackupRegister(BKP_DR10))
+  39              		.loc 1 57 0
+  40 0006 2820     		movs	r0, #40
+  41 0008 FFF7FEFF 		bl	BKP_ReadBackupRegister
+  42              	.LVL1:
+  43 000c B0F5A04F 		cmp	r0, #20480
+  44 0010 14BF     		ite	ne
+  45 0012 314A     		ldrne	r2, .L33
+  58:../src/main.c **** 	{
+  59:../src/main.c **** 		case 0x5000:
+  60:../src/main.c **** 			ApplicationAddress = OTA_DFU_ADDRESS;
+  46              		.loc 1 60 0
+  47 0014 314A     		ldreq	r2, .L33+4
+  48 0016 324B     		ldr	r3, .L33+8
+  61:../src/main.c **** 			break;
+  62:../src/main.c **** 		case 0xA000:
+  63:../src/main.c **** 			ApplicationAddress = DEFAULT_ADDRESS;
+  64:../src/main.c **** 			break;
+  65:../src/main.c **** 		default:
+  66:../src/main.c **** 			ApplicationAddress = DEFAULT_ADDRESS;
+  67:../src/main.c **** 			break;
+  68:../src/main.c **** 	}
+  69:../src/main.c **** 
+  70:../src/main.c **** 	/* Check if Enter DFU Mode command is received from marvin's USB Serial Console
+  71:../src/main.c **** 	 * This will be stored as a flag in the Backup register which needs to be checked
+  72:../src/main.c **** 	 * If true, set DFUDeviceMode = 0x01
+  73:../src/main.c **** 	 * TO DO...
+  74:../src/main.c **** 	 */
+  75:../src/main.c **** 
+  76:../src/main.c **** 	/* Check if BUTTON1 is pressed for 1 sec to enter DFU Mode */
+  77:../src/main.c **** 	if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+  49              		.loc 1 77 0
+  50 0018 0020     		movs	r0, #0
+  60:../src/main.c **** 			ApplicationAddress = OTA_DFU_ADDRESS;
+  51              		.loc 1 60 0
+  52 001a 1A60     		str	r2, [r3, #0]
+  53              		.loc 1 77 0
+  54 001c FFF7FEFF 		bl	BUTTON_GetState
+  55              	.LVL2:
+  56 0020 80B9     		cbnz	r0, .L7
+  78:../src/main.c **** 	{
+  79:../src/main.c **** 		TimingDelay = 1000;
+  57              		.loc 1 79 0
+  58 0022 3049     		ldr	r1, .L33+12
+  59 0024 4FF47A70 		mov	r0, #1000
+  60 0028 0860     		str	r0, [r1, #0]
+  61              	.L8:
+  80:../src/main.c **** 		while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+  62              		.loc 1 80 0 discriminator 1
+  63 002a 0020     		movs	r0, #0
+  64 002c FFF7FEFF 		bl	BUTTON_GetState
+  65              	.LVL3:
+  66 0030 40B9     		cbnz	r0, .L7
+  67              	.L9:
+  81:../src/main.c **** 		{
+  82:../src/main.c **** 			if(TimingDelay == 0x00)
+  68              		.loc 1 82 0
+  69 0032 2C4B     		ldr	r3, .L33+12
+  70 0034 1A68     		ldr	r2, [r3, #0]
+  71 0036 002A     		cmp	r2, #0
+  72 0038 F7D1     		bne	.L8
+  83:../src/main.c **** 			{
+  84:../src/main.c **** 				DFUDeviceMode = 0x01;
+  73              		.loc 1 84 0
+  74 003a 0120     		movs	r0, #1
+  85:../src/main.c **** 				TimingBUTTON = 5000;	//To prevent immediate exit from DFU
+  75              		.loc 1 85 0
+  76 003c 41F28831 		movw	r1, #5000
+  84:../src/main.c **** 				DFUDeviceMode = 0x01;
+  77              		.loc 1 84 0
+  78 0040 1871     		strb	r0, [r3, #4]
+  79              		.loc 1 85 0
+  80 0042 9960     		str	r1, [r3, #8]
+  81              	.L7:
+  86:../src/main.c **** 				break;
+  87:../src/main.c **** 			}
+  88:../src/main.c **** 		}
+  89:../src/main.c **** 	}
+  90:../src/main.c **** 
+  91:../src/main.c **** 	if (DFUDeviceMode != 0x01)
+  82              		.loc 1 91 0
+  83 0044 274B     		ldr	r3, .L33+12
+  84 0046 1A79     		ldrb	r2, [r3, #4]	@ zero_extendqisi2
+  85 0048 012A     		cmp	r2, #1
+  86 004a 10D0     		beq	.L11
+  92:../src/main.c **** 	{
+  93:../src/main.c **** 		/* Test if user code is programmed starting from ApplicationAddress */
+  94:../src/main.c **** 		if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
+  87              		.loc 1 94 0
+  88 004c 2448     		ldr	r0, .L33+8
+  89 004e 264A     		ldr	r2, .L33+16
+  90 0050 0368     		ldr	r3, [r0, #0]
+  91 0052 1968     		ldr	r1, [r3, #0]
+  92 0054 0A40     		ands	r2, r2, r1
+  93 0056 B2F1005F 		cmp	r2, #536870912
+  94 005a 08D1     		bne	.L11
+  95:../src/main.c **** 		{
+  96:../src/main.c **** 			/* Jump to user application */
+  97:../src/main.c **** 			JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
+  95              		.loc 1 97 0
+  96 005c 5868     		ldr	r0, [r3, #4]
+  97 005e 2349     		ldr	r1, .L33+20
+  98:../src/main.c **** 			Jump_To_Application = (pFunction) JumpAddress;
+  98              		.loc 1 98 0
+  99 0060 234A     		ldr	r2, .L33+24
+  97:../src/main.c **** 			JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
+ 100              		.loc 1 97 0
+ 101 0062 0860     		str	r0, [r1, #0]
+ 102              		.loc 1 98 0
+ 103 0064 1060     		str	r0, [r2, #0]
+  99:../src/main.c **** 			/* Initialize user application's Stack Pointer */
+ 100:../src/main.c **** 			__set_MSP(*(__IO uint32_t*) ApplicationAddress);
+ 104              		.loc 1 100 0
+ 105 0066 1B68     		ldr	r3, [r3, #0]
+ 106              	.LVL4:
+ 107              	.LBB4:
+ 108              	.LBB5:
+ 109              		.file 2 "/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h"
+   1:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /**************************************************************************//**
+   2:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * @file     core_cmFunc.h
+   3:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * @brief    CMSIS Cortex-M Core Function Access Header File
+   4:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * @version  V3.01
+   5:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * @date     06. March 2012
+   6:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  *
+   7:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * @note
+   8:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * Copyright (C) 2009-2012 ARM Limited. All rights reserved.
+   9:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  *
+  10:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * @par
+  11:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * ARM Limited (ARM) is supplying this software for use with Cortex-M
+  12:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * processor based microcontrollers.  This file can be freely distributed
+  13:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * within development tools that are supporting such ARM based processors.
+  14:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  *
+  15:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * @par
+  16:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * THIS SOFTWARE IS PROVIDED "AS IS".  NO WARRANTIES, WHETHER EXPRESS, IMPLIED
+  17:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF
+  18:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE APPLY TO THIS SOFTWARE.
+  19:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * ARM SHALL NOT, IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR
+  20:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
+  21:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  *
+  22:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  ******************************************************************************/
+  23:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  24:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #ifndef __CORE_CMFUNC_H
+  25:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #define __CORE_CMFUNC_H
+  26:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  27:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  28:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /* ###########################  Core Function Access  ########################### */
+  29:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \ingroup  CMSIS_Core_FunctionInterface
+  30:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \defgroup CMSIS_Core_RegAccFunctions CMSIS Core Register Access Functions
+  31:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   @{
+  32:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+  33:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  34:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #if   defined ( __CC_ARM ) /*------------------RealView Compiler -----------------*/
+  35:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /* ARM armcc specific functions */
+  36:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  37:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #if (__ARMCC_VERSION < 400677)
+  38:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   #error "Please use ARM Compiler Toolchain V4.0.677 or later!"
+  39:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #endif
+  40:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  41:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /* intrinsic void __enable_irq();     */
+  42:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /* intrinsic void __disable_irq();    */
+  43:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  44:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get Control Register
+  45:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  46:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the content of the Control Register.
+  47:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  48:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               Control Register value
+  49:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+  50:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE uint32_t __get_CONTROL(void)
+  51:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+  52:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regControl         __ASM("control");
+  53:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(__regControl);
+  54:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+  55:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  56:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  57:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Set Control Register
+  58:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  59:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function writes the given value to the Control Register.
+  60:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  61:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \param [in]    control  Control Register value to set
+  62:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+  63:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE void __set_CONTROL(uint32_t control)
+  64:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+  65:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regControl         __ASM("control");
+  66:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __regControl = control;
+  67:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+  68:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  69:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  70:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get IPSR Register
+  71:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  72:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the content of the IPSR Register.
+  73:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  74:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               IPSR Register value
+  75:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+  76:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE uint32_t __get_IPSR(void)
+  77:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+  78:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regIPSR          __ASM("ipsr");
+  79:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(__regIPSR);
+  80:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+  81:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  82:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  83:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get APSR Register
+  84:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  85:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the content of the APSR Register.
+  86:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  87:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               APSR Register value
+  88:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+  89:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE uint32_t __get_APSR(void)
+  90:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+  91:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regAPSR          __ASM("apsr");
+  92:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(__regAPSR);
+  93:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+  94:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  95:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  96:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get xPSR Register
+  97:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+  98:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the content of the xPSR Register.
+  99:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 100:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               xPSR Register value
+ 101:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 102:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE uint32_t __get_xPSR(void)
+ 103:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 104:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regXPSR          __ASM("xpsr");
+ 105:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(__regXPSR);
+ 106:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 107:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 108:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 109:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get Process Stack Pointer
+ 110:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 111:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the current value of the Process Stack Pointer (PSP).
+ 112:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 113:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               PSP Register value
+ 114:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 115:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE uint32_t __get_PSP(void)
+ 116:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 117:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regProcessStackPointer  __ASM("psp");
+ 118:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(__regProcessStackPointer);
+ 119:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 120:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 121:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 122:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Set Process Stack Pointer
+ 123:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 124:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function assigns the given value to the Process Stack Pointer (PSP).
+ 125:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 126:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \param [in]    topOfProcStack  Process Stack Pointer value to set
+ 127:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 128:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE void __set_PSP(uint32_t topOfProcStack)
+ 129:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 130:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regProcessStackPointer  __ASM("psp");
+ 131:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __regProcessStackPointer = topOfProcStack;
+ 132:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 133:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 134:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 135:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get Main Stack Pointer
+ 136:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 137:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the current value of the Main Stack Pointer (MSP).
+ 138:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 139:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               MSP Register value
+ 140:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 141:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE uint32_t __get_MSP(void)
+ 142:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 143:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regMainStackPointer     __ASM("msp");
+ 144:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(__regMainStackPointer);
+ 145:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 146:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 147:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 148:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Set Main Stack Pointer
+ 149:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 150:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function assigns the given value to the Main Stack Pointer (MSP).
+ 151:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 152:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \param [in]    topOfMainStack  Main Stack Pointer value to set
+ 153:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 154:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE void __set_MSP(uint32_t topOfMainStack)
+ 155:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 156:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regMainStackPointer     __ASM("msp");
+ 157:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __regMainStackPointer = topOfMainStack;
+ 158:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 159:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 160:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 161:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get Priority Mask
+ 162:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 163:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the current state of the priority mask bit from the Priority Mask Registe
+ 164:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 165:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               Priority Mask value
+ 166:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 167:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE uint32_t __get_PRIMASK(void)
+ 168:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 169:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regPriMask         __ASM("primask");
+ 170:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(__regPriMask);
+ 171:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 172:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 173:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 174:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Set Priority Mask
+ 175:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 176:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function assigns the given value to the Priority Mask Register.
+ 177:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 178:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \param [in]    priMask  Priority Mask
+ 179:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 180:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE void __set_PRIMASK(uint32_t priMask)
+ 181:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 182:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regPriMask         __ASM("primask");
+ 183:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __regPriMask = (priMask);
+ 184:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 185:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 186:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 187:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #if       (__CORTEX_M >= 0x03)
+ 188:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 189:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Enable FIQ
+ 190:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 191:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function enables FIQ interrupts by clearing the F-bit in the CPSR.
+ 192:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     Can only be executed in Privileged modes.
+ 193:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 194:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #define __enable_fault_irq                __enable_fiq
+ 195:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 196:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 197:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Disable FIQ
+ 198:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 199:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function disables FIQ interrupts by setting the F-bit in the CPSR.
+ 200:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     Can only be executed in Privileged modes.
+ 201:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 202:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #define __disable_fault_irq               __disable_fiq
+ 203:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 204:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 205:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get Base Priority
+ 206:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 207:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the current value of the Base Priority register.
+ 208:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 209:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               Base Priority register value
+ 210:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 211:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE uint32_t  __get_BASEPRI(void)
+ 212:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 213:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regBasePri         __ASM("basepri");
+ 214:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(__regBasePri);
+ 215:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 216:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 217:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 218:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Set Base Priority
+ 219:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 220:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function assigns the given value to the Base Priority register.
+ 221:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 222:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \param [in]    basePri  Base Priority value to set
+ 223:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 224:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE void __set_BASEPRI(uint32_t basePri)
+ 225:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 226:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regBasePri         __ASM("basepri");
+ 227:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __regBasePri = (basePri & 0xff);
+ 228:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 229:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 230:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 231:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get Fault Mask
+ 232:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 233:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the current value of the Fault Mask register.
+ 234:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 235:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               Fault Mask register value
+ 236:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 237:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE uint32_t __get_FAULTMASK(void)
+ 238:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 239:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regFaultMask       __ASM("faultmask");
+ 240:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(__regFaultMask);
+ 241:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 242:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 243:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 244:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Set Fault Mask
+ 245:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 246:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function assigns the given value to the Fault Mask register.
+ 247:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 248:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \param [in]    faultMask  Fault Mask value to set
+ 249:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 250:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE void __set_FAULTMASK(uint32_t faultMask)
+ 251:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 252:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regFaultMask       __ASM("faultmask");
+ 253:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __regFaultMask = (faultMask & (uint32_t)1);
+ 254:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 255:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 256:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #endif /* (__CORTEX_M >= 0x03) */
+ 257:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 258:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 259:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #if       (__CORTEX_M == 0x04)
+ 260:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 261:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get FPSCR
+ 262:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 263:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the current value of the Floating Point Status/Control register.
+ 264:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 265:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               Floating Point Status/Control register value
+ 266:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 267:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE uint32_t __get_FPSCR(void)
+ 268:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 269:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
+ 270:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regfpscr         __ASM("fpscr");
+ 271:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(__regfpscr);
+ 272:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #else
+ 273:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****    return(0);
+ 274:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #endif
+ 275:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 276:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 277:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 278:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Set FPSCR
+ 279:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 280:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function assigns the given value to the Floating Point Status/Control register.
+ 281:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 282:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \param [in]    fpscr  Floating Point Status/Control value to set
+ 283:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 284:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __STATIC_INLINE void __set_FPSCR(uint32_t fpscr)
+ 285:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 286:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
+ 287:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t __regfpscr         __ASM("fpscr");
+ 288:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __regfpscr = (fpscr);
+ 289:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #endif
+ 290:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 291:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 292:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #endif /* (__CORTEX_M == 0x04) */
+ 293:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 294:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 295:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #elif defined ( __ICCARM__ ) /*------------------ ICC Compiler -------------------*/
+ 296:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /* IAR iccarm specific functions */
+ 297:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 298:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #include <cmsis_iar.h>
+ 299:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 300:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 301:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #elif defined ( __TMS470__ ) /*---------------- TI CCS Compiler ------------------*/
+ 302:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /* TI CCS specific functions */
+ 303:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 304:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #include <cmsis_ccs.h>
+ 305:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 306:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 307:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** #elif defined ( __GNUC__ ) /*------------------ GNU Compiler ---------------------*/
+ 308:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /* GNU gcc specific functions */
+ 309:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 310:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Enable IRQ Interrupts
+ 311:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 312:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   This function enables IRQ interrupts by clearing the I-bit in the CPSR.
+ 313:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   Can only be executed in Privileged modes.
+ 314:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 315:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __enable_irq(void)
+ 316:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 317:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("cpsie i");
+ 318:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 319:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 320:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 321:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Disable IRQ Interrupts
+ 322:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 323:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   This function disables IRQ interrupts by setting the I-bit in the CPSR.
+ 324:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   Can only be executed in Privileged modes.
+ 325:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 326:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __disable_irq(void)
+ 327:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 328:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("cpsid i");
+ 329:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 330:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 331:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 332:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get Control Register
+ 333:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 334:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the content of the Control Register.
+ 335:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 336:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               Control Register value
+ 337:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 338:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_CONTROL(void)
+ 339:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 340:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   uint32_t result;
+ 341:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 342:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("MRS %0, control" : "=r" (result) );
+ 343:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(result);
+ 344:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 345:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 346:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 347:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Set Control Register
+ 348:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 349:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function writes the given value to the Control Register.
+ 350:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 351:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \param [in]    control  Control Register value to set
+ 352:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 353:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_CONTROL(uint32_t control)
+ 354:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 355:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("MSR control, %0" : : "r" (control) );
+ 356:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 357:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 358:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 359:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get IPSR Register
+ 360:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 361:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the content of the IPSR Register.
+ 362:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 363:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               IPSR Register value
+ 364:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 365:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_IPSR(void)
+ 366:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 367:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   uint32_t result;
+ 368:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 369:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("MRS %0, ipsr" : "=r" (result) );
+ 370:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(result);
+ 371:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 372:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 373:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 374:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get APSR Register
+ 375:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 376:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the content of the APSR Register.
+ 377:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 378:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               APSR Register value
+ 379:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 380:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_APSR(void)
+ 381:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 382:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   uint32_t result;
+ 383:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 384:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("MRS %0, apsr" : "=r" (result) );
+ 385:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(result);
+ 386:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 387:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 388:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 389:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get xPSR Register
+ 390:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 391:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the content of the xPSR Register.
+ 392:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 393:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               xPSR Register value
+ 394:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 395:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_xPSR(void)
+ 396:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 397:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   uint32_t result;
+ 398:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 399:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("MRS %0, xpsr" : "=r" (result) );
+ 400:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(result);
+ 401:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 402:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 403:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 404:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get Process Stack Pointer
+ 405:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 406:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the current value of the Process Stack Pointer (PSP).
+ 407:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 408:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               PSP Register value
+ 409:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 410:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_PSP(void)
+ 411:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 412:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t result;
+ 413:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 414:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("MRS %0, psp\n"  : "=r" (result) );
+ 415:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(result);
+ 416:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 417:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 418:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 419:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Set Process Stack Pointer
+ 420:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 421:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function assigns the given value to the Process Stack Pointer (PSP).
+ 422:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 423:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \param [in]    topOfProcStack  Process Stack Pointer value to set
+ 424:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 425:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_PSP(uint32_t topOfProcStack)
+ 426:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 427:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("MSR psp, %0\n" : : "r" (topOfProcStack) );
+ 428:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 429:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 430:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 431:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Get Main Stack Pointer
+ 432:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 433:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function returns the current value of the Main Stack Pointer (MSP).
+ 434:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 435:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \return               MSP Register value
+ 436:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 437:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_MSP(void)
+ 438:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 439:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   register uint32_t result;
+ 440:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 441:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("MRS %0, msp\n" : "=r" (result) );
+ 442:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   return(result);
+ 443:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** }
+ 444:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 445:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 446:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** /** \brief  Set Main Stack Pointer
+ 447:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 448:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     This function assigns the given value to the Main Stack Pointer (MSP).
+ 449:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** 
+ 450:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****     \param [in]    topOfMainStack  Main Stack Pointer value to set
+ 451:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****  */
+ 452:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_MSP(uint32_t topOfMainStack)
+ 453:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h **** {
+ 454:/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h ****   __ASM volatile ("MSR msp, %0\n" : : "r" (topOfMainStack) );
+ 110              		.loc 2 454 0
+ 111              	@ 454 "/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cmFunc.h" 1
+ 112 0068 83F30888 		MSR msp, r3
+ 113              	
+ 114              	@ 0 "" 2
+ 115              		.thumb
+ 116              	.LBE5:
+ 117              	.LBE4:
+ 101:../src/main.c **** 			Jump_To_Application();
+ 118              		.loc 1 101 0
+ 119 006c 8047     		blx	r0
+ 120              	.LVL5:
+ 121              	.L11:
+ 102:../src/main.c **** 		}
+ 103:../src/main.c **** 	}
+ 104:../src/main.c ****     /* Otherwise enters DFU mode to allow user to program his application */
+ 105:../src/main.c **** 
+ 106:../src/main.c ****     /* Enter DFU mode */
+ 107:../src/main.c ****     DeviceState = STATE_dfuERROR;
+ 108:../src/main.c ****     DeviceStatus[0] = STATUS_ERRFIRMWARE;
+ 122              		.loc 1 108 0
+ 123 006e 214A     		ldr	r2, .L33+28
+ 107:../src/main.c ****     DeviceState = STATE_dfuERROR;
+ 124              		.loc 1 107 0
+ 125 0070 2149     		ldr	r1, .L33+32
+ 126 0072 0A20     		movs	r0, #10
+ 127              		.loc 1 108 0
+ 128 0074 1070     		strb	r0, [r2, #0]
+ 109:../src/main.c ****     DeviceStatus[4] = DeviceState;
+ 129              		.loc 1 109 0
+ 130 0076 1071     		strb	r0, [r2, #4]
+ 107:../src/main.c ****     DeviceState = STATE_dfuERROR;
+ 131              		.loc 1 107 0
+ 132 0078 0870     		strb	r0, [r1, #0]
+ 110:../src/main.c **** 
+ 111:../src/main.c ****     /* Reconfigure the Button using EXTI */
+ 112:../src/main.c ****     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
+ 133              		.loc 1 112 0
+ 134 007a 0121     		movs	r1, #1
+ 135 007c 0020     		movs	r0, #0
+ 136 007e FFF7FEFF 		bl	BUTTON_Init
+ 137              	.LVL6:
+ 113:../src/main.c **** 
+ 114:../src/main.c ****     /* Unlock the internal flash */
+ 115:../src/main.c ****     FLASH_Unlock();
+ 138              		.loc 1 115 0
+ 139 0082 FFF7FEFF 		bl	FLASH_Unlock
+ 140              	.LVL7:
+ 116:../src/main.c **** 
+ 117:../src/main.c ****     /* USB Disconnect configuration */
+ 118:../src/main.c ****     USB_Disconnect_Config();
+ 141              		.loc 1 118 0
+ 142 0086 FFF7FEFF 		bl	USB_Disconnect_Config
+ 143              	.LVL8:
+ 119:../src/main.c **** 
+ 120:../src/main.c ****     /* Disable the USB connection till initialization phase end */
+ 121:../src/main.c ****     USB_Cable_Config(DISABLE);
+ 144              		.loc 1 121 0
+ 145 008a 0020     		movs	r0, #0
+ 146 008c FFF7FEFF 		bl	USB_Cable_Config
+ 147              	.LVL9:
+ 122:../src/main.c **** 
+ 123:../src/main.c ****     /* Init the media interface */
+ 124:../src/main.c ****     MAL_Init();
+ 148              		.loc 1 124 0
+ 149 0090 FFF7FEFF 		bl	MAL_Init
+ 150              	.LVL10:
+ 125:../src/main.c **** 
+ 126:../src/main.c ****     /* Enable the USB connection */
+ 127:../src/main.c ****     USB_Cable_Config(ENABLE);
+ 151              		.loc 1 127 0
+ 152 0094 0120     		movs	r0, #1
+ 153 0096 FFF7FEFF 		bl	USB_Cable_Config
+ 154              	.LVL11:
+ 128:../src/main.c **** 
+ 129:../src/main.c ****     /* USB Clock configuration */
+ 130:../src/main.c ****     Set_USBClock();
+ 155              		.loc 1 130 0
+ 156 009a FFF7FEFF 		bl	Set_USBClock
+ 157              	.LVL12:
+ 131:../src/main.c **** 
+ 132:../src/main.c ****     /* USB System initialization */
+ 133:../src/main.c ****     USB_Init();
+ 158              		.loc 1 133 0
+ 159 009e FFF7FEFF 		bl	USB_Init
+ 160              	.LVL13:
+ 161              	.L30:
+ 134:../src/main.c **** 
+ 135:../src/main.c ****     /* Main loop */
+ 136:../src/main.c ****     while (1)
+ 137:../src/main.c ****     {
+ 138:../src/main.c ****     	if(TimingBUTTON == 0x00 && BUTTON_GetDebouncedState(BUTTON1) != 0x00)
+ 162              		.loc 1 138 0
+ 163 00a2 104B     		ldr	r3, .L33+12
+ 164 00a4 9868     		ldr	r0, [r3, #8]
+ 165 00a6 50B9     		cbnz	r0, .L13
+ 166              		.loc 1 138 0 is_stmt 0 discriminator 1
+ 167 00a8 FFF7FEFF 		bl	BUTTON_GetDebouncedState
+ 168              	.LVL14:
+ 169 00ac 38B1     		cbz	r0, .L13
+ 139:../src/main.c ****     	{
+ 140:../src/main.c **** 			if (DeviceState == STATE_dfuIDLE || DeviceState == STATE_dfuERROR)
+ 170              		.loc 1 140 0 is_stmt 1
+ 171 00ae 1248     		ldr	r0, .L33+32
+ 172 00b0 0178     		ldrb	r1, [r0, #0]	@ zero_extendqisi2
+ 173 00b2 0229     		cmp	r1, #2
+ 174 00b4 01D0     		beq	.L15
+ 175              		.loc 1 140 0 is_stmt 0 discriminator 1
+ 176 00b6 0A29     		cmp	r1, #10
+ 177 00b8 01D1     		bne	.L13
+ 178              	.L15:
+ 141:../src/main.c **** 			{
+ 142:../src/main.c **** 				Reset_Device();	//Reset Device to enter User Application
+ 179              		.loc 1 142 0 is_stmt 1
+ 180 00ba FFF7FEFF 		bl	Reset_Device
+ 181              	.LVL15:
+ 182              	.L13:
+ 143:../src/main.c **** 			}
+ 144:../src/main.c ****     	}
+ 145:../src/main.c **** 
+ 146:../src/main.c ****         if (TimingLED == 0x00)
+ 183              		.loc 1 146 0
+ 184 00be 094B     		ldr	r3, .L33+12
+ 185 00c0 D868     		ldr	r0, [r3, #12]
+ 186 00c2 0028     		cmp	r0, #0
+ 187 00c4 EDD1     		bne	.L30
+ 147:../src/main.c ****         {
+ 148:../src/main.c ****             TimingLED = 250;
+ 188              		.loc 1 148 0
+ 189 00c6 FA22     		movs	r2, #250
+ 190 00c8 DA60     		str	r2, [r3, #12]
+ 149:../src/main.c ****             LED_Toggle(LED1);
+ 191              		.loc 1 149 0
+ 192 00ca FFF7FEFF 		bl	LED_Toggle
+ 193              	.LVL16:
+ 150:../src/main.c ****             LED_Toggle(LED2);
+ 194              		.loc 1 150 0
+ 195 00ce 0120     		movs	r0, #1
+ 196 00d0 FFF7FEFF 		bl	LED_Toggle
+ 197              	.LVL17:
+ 198 00d4 E5E7     		b	.L30
+ 199              	.L34:
+ 200 00d6 00BF     		.align	2
+ 201              	.L33:
+ 202 00d8 00A00008 		.word	134258688
+ 203 00dc 00500008 		.word	134238208
+ 204 00e0 00000000 		.word	ApplicationAddress
+ 205 00e4 00000000 		.word	.LANCHOR0
+ 206 00e8 0000FE2F 		.word	805175296
+ 207 00ec 00000000 		.word	JumpAddress
+ 208 00f0 00000000 		.word	Jump_To_Application
+ 209 00f4 00000000 		.word	DeviceStatus
+ 210 00f8 00000000 		.word	DeviceState
+ 211              		.cfi_endproc
+ 212              	.LFE56:
+ 214              		.section	.text.Delay,"ax",%progbits
+ 215              		.align	1
+ 216              		.global	Delay
+ 217              		.thumb
+ 218              		.thumb_func
+ 220              	Delay:
+ 221              	.LFB57:
+ 151:../src/main.c ****         }
+ 152:../src/main.c ****     }
+ 153:../src/main.c **** }
+ 154:../src/main.c **** 
+ 155:../src/main.c **** /*******************************************************************************
+ 156:../src/main.c **** * Function Name  : Delay
+ 157:../src/main.c **** * Description    : Inserts a delay time.
+ 158:../src/main.c **** * Input          : nTime: specifies the delay time length, in milliseconds.
+ 159:../src/main.c **** * Output         : None
+ 160:../src/main.c **** * Return         : None
+ 161:../src/main.c **** *******************************************************************************/
+ 162:../src/main.c **** void Delay(uint32_t nTime)
+ 163:../src/main.c **** {
+ 222              		.loc 1 163 0
+ 223              		.cfi_startproc
+ 224              		@ args = 0, pretend = 0, frame = 0
+ 225              		@ frame_needed = 0, uses_anonymous_args = 0
+ 226              		@ link register save eliminated.
+ 227              	.LVL18:
+ 164:../src/main.c ****     TimingDelay = nTime;
+ 228              		.loc 1 164 0
+ 229 0000 024B     		ldr	r3, .L38
+ 230 0002 1860     		str	r0, [r3, #0]
+ 231              	.L36:
+ 165:../src/main.c **** 
+ 166:../src/main.c ****     // /* Enable the SysTick Counter */
+ 167:../src/main.c ****     // SysTick->CTRL |= SysTick_CTRL_ENABLE;
+ 168:../src/main.c **** 
+ 169:../src/main.c ****     while (TimingDelay != 0x00);
+ 232              		.loc 1 169 0 discriminator 1
+ 233 0004 1A68     		ldr	r2, [r3, #0]
+ 234 0006 002A     		cmp	r2, #0
+ 235 0008 FCD1     		bne	.L36
+ 170:../src/main.c **** 
+ 171:../src/main.c ****     // /* Disable the SysTick Counter */
+ 172:../src/main.c ****     // SysTick->CTRL &= ~SysTick_CTRL_ENABLE;
+ 173:../src/main.c **** 
+ 174:../src/main.c ****     // /* Clear the SysTick Counter */
+ 175:../src/main.c ****     // SysTick->VAL = (uint32_t)0x00;
+ 176:../src/main.c **** }
+ 236              		.loc 1 176 0
+ 237 000a 7047     		bx	lr
+ 238              	.L39:
+ 239              		.align	2
+ 240              	.L38:
+ 241 000c 00000000 		.word	.LANCHOR0
+ 242              		.cfi_endproc
+ 243              	.LFE57:
+ 245              		.section	.text.Timing_Decrement,"ax",%progbits
+ 246              		.align	1
+ 247              		.global	Timing_Decrement
+ 248              		.thumb
+ 249              		.thumb_func
+ 251              	Timing_Decrement:
+ 252              	.LFB58:
+ 177:../src/main.c **** 
+ 178:../src/main.c **** /*******************************************************************************
+ 179:../src/main.c **** * Function Name  : Timing_Decrement
+ 180:../src/main.c **** * Description    : Decrements the various Timing variables related to SysTick.
+ 181:../src/main.c **** * Input          : None
+ 182:../src/main.c **** * Output         : Timing
+ 183:../src/main.c **** * Return         : None
+ 184:../src/main.c **** *******************************************************************************/
+ 185:../src/main.c **** void Timing_Decrement(void)
+ 186:../src/main.c **** {
+ 253              		.loc 1 186 0
+ 254              		.cfi_startproc
+ 255              		@ args = 0, pretend = 0, frame = 0
+ 256              		@ frame_needed = 0, uses_anonymous_args = 0
+ 257              		@ link register save eliminated.
+ 187:../src/main.c ****     if (TimingDelay != 0x00)
+ 258              		.loc 1 187 0
+ 259 0000 094B     		ldr	r3, .L53
+ 260 0002 1A68     		ldr	r2, [r3, #0]
+ 261 0004 12B1     		cbz	r2, .L41
+ 188:../src/main.c ****     { 
+ 189:../src/main.c ****         TimingDelay--;
+ 262              		.loc 1 189 0
+ 263 0006 1868     		ldr	r0, [r3, #0]
+ 264 0008 411E     		subs	r1, r0, #1
+ 265 000a 1960     		str	r1, [r3, #0]
+ 266              	.L41:
+ 190:../src/main.c ****     }
+ 191:../src/main.c **** 
+ 192:../src/main.c ****     if (TimingBUTTON != 0x00)
+ 267              		.loc 1 192 0
+ 268 000c 9868     		ldr	r0, [r3, #8]
+ 269 000e 064A     		ldr	r2, .L53
+ 270 0010 10B1     		cbz	r0, .L42
+ 193:../src/main.c ****     {
+ 194:../src/main.c ****     	TimingBUTTON--;
+ 271              		.loc 1 194 0
+ 272 0012 9168     		ldr	r1, [r2, #8]
+ 273 0014 481E     		subs	r0, r1, #1
+ 274 0016 9060     		str	r0, [r2, #8]
+ 275              	.L42:
+ 195:../src/main.c ****     }
+ 196:../src/main.c **** 
+ 197:../src/main.c ****     if (TimingLED != 0x00)
+ 276              		.loc 1 197 0
+ 277 0018 DB68     		ldr	r3, [r3, #12]
+ 278 001a 034A     		ldr	r2, .L53
+ 279 001c 13B1     		cbz	r3, .L40
+ 198:../src/main.c ****     {
+ 199:../src/main.c ****         TimingLED--;
+ 280              		.loc 1 199 0
+ 281 001e D168     		ldr	r1, [r2, #12]
+ 282 0020 481E     		subs	r0, r1, #1
+ 283 0022 D060     		str	r0, [r2, #12]
+ 284              	.L40:
+ 285 0024 7047     		bx	lr
+ 286              	.L54:
+ 287 0026 00BF     		.align	2
+ 288              	.L53:
+ 289 0028 00000000 		.word	.LANCHOR0
+ 290              		.cfi_endproc
+ 291              	.LFE58:
+ 293              		.comm	ApplicationAddress,4,4
+ 294              		.comm	JumpAddress,4,4
+ 295              		.comm	Jump_To_Application,4,4
+ 296              		.comm	DeviceStatus,6,1
+ 297              		.comm	DeviceState,1,1
+ 298              		.global	DFUDeviceMode
+ 299              		.bss
+ 300              		.align	2
+ 301              		.set	.LANCHOR0,. + 0
+ 304              	TimingDelay:
+ 305 0000 00000000 		.space	4
+ 308              	DFUDeviceMode:
+ 309 0004 00       		.space	1
+ 310 0005 000000   		.space	3
+ 313              	TimingBUTTON:
+ 314 0008 00000000 		.space	4
+ 317              	TimingLED:
+ 318 000c 00000000 		.space	4
+ 319              		.text
+ 320              	.Letext0:
+ 321              		.file 3 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 322              		.file 4 "/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Device/ST/STM32F10x/Include/stm32f10x.h"
+ 323              		.file 5 "/Users/zac/code/spark/usb-dfu/inc/hw_config.h"
+ 324              		.file 6 "/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cm3.h"
+ 325              		.file 7 "/Users/zac/code/spark/usb-dfu/libraries/STM32F10x_StdPeriph_Driver/inc/stm32f10x_bkp.h"
+ 326              		.file 8 "/Users/zac/code/spark/usb-dfu/libraries/STM32F10x_StdPeriph_Driver/inc/stm32f10x_flash.h"
+ 327              		.file 9 "/Users/zac/code/spark/usb-dfu/libraries/STM32_USB-FS-Device_Driver/inc/usb_init.h"
+ 328              		.file 10 "/Users/zac/code/spark/usb-dfu/inc/dfu_mal.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 main.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:19     .text.startup.main:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:24     .text.startup.main:0000000000000000 main
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:202    .text.startup.main:00000000000000d8 $d
+                            *COM*:0000000000000004 ApplicationAddress
+                            *COM*:0000000000000004 JumpAddress
+                            *COM*:0000000000000004 Jump_To_Application
+                            *COM*:0000000000000006 DeviceStatus
+                            *COM*:0000000000000001 DeviceState
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:215    .text.Delay:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:220    .text.Delay:0000000000000000 Delay
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:241    .text.Delay:000000000000000c $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:246    .text.Timing_Decrement:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:251    .text.Timing_Decrement:0000000000000000 Timing_Decrement
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:289    .text.Timing_Decrement:0000000000000028 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:308    .bss:0000000000000004 DFUDeviceMode
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:300    .bss:0000000000000000 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:304    .bss:0000000000000000 TimingDelay
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:313    .bss:0000000000000008 TimingBUTTON
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccIdnF88.s:317    .bss:000000000000000c TimingLED
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.94ea818a60f77b04fe5add16507b1dca
+                           .group:0000000000000000 wm4.platform_config.h.13.8c69bc765aea669af9d5d2fdc1149177
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_can.h.31.b14273b95de79d8fbb020ba042473fb1
+                           .group:0000000000000000 wm4.stm32f10x_dac.h.31.116c27cadc3b4ee8aa44ed11b14b64ae
+                           .group:0000000000000000 wm4.stm32f10x_dbgmcu.h.31.45f176e9b7a15051b8c69cb2700c78b8
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_fsmc.h.31.a761d459aa046c2769a99b93e8763ba0
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_iwdg.h.31.959ae9b7e1d603f1e5ae6468c0fc1624
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_sdio.h.31.37dab89d08b2364a3dfaace444dec7c3
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.stm32f10x_wwdg.h.31.4504f930b88ade4f56d1e3f2a11c098b
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.39.39a4b3112cd0eabe7f19b3ecab0f4d96
+                           .group:0000000000000000 wm4.sst25vf_spi.h.20.51b3171b29f6f7af7f6cc75ed7f465bf
+                           .group:0000000000000000 wm4.hw_config.h.41.83f4dd94a29b2227d9beb55b68615b4b
+                           .group:0000000000000000 wm4.usb_conf.h.13.2fc8b739597ce501ebf3c1632025270a
+                           .group:0000000000000000 wm4.usb_regs.h.31.d9533108f8ac5724467880baa9cb0f26
+                           .group:0000000000000000 wm4.usb_def.h.30.73e1a84be93039018a594bacb815cb88
+                           .group:0000000000000000 wm4.usb_core.h.31.114a1d0e1de4beb01afdcd243bde9471
+                           .group:0000000000000000 wm4.usb_prop.h.13.4963e441120feece4b54ad77bc413c2e
+                           .group:0000000000000000 wm4.usb_desc.h.13.f4564814ac51230da7429e2f3b1463ed
+                           .group:0000000000000000 wm4.dfu_mal.h.22.8960227c42ae735d4e74722cbac11c6c
+
+UNDEFINED SYMBOLS
+Set_System
+BKP_ReadBackupRegister
+BUTTON_GetState
+BUTTON_Init
+FLASH_Unlock
+USB_Disconnect_Config
+USB_Cable_Config
+MAL_Init
+Set_USBClock
+USB_Init
+BUTTON_GetDebouncedState
+Reset_Device
+LED_Toggle

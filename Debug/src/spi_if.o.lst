@@ -1,0 +1,280 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 4
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"spi_if.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.SPI_If_Init,"ax",%progbits
+  19              		.align	1
+  20              		.global	SPI_If_Init
+  21              		.thumb
+  22              		.thumb_func
+  24              	SPI_If_Init:
+  25              	.LFB56:
+  26              		.file 1 "../src/spi_if.c"
+   1:../src/spi_if.c **** /**
+   2:../src/spi_if.c ****   ******************************************************************************
+   3:../src/spi_if.c ****   * @file    spi_if.c
+   4:../src/spi_if.c ****   * @author  Spark Application Team
+   5:../src/spi_if.c ****   * @version V1.0.0
+   6:../src/spi_if.c ****   * @date    20-May-2013
+   7:../src/spi_if.c ****   * @brief   specific media access Layer for SPI flash
+   8:../src/spi_if.c ****   ******************************************************************************
+   9:../src/spi_if.c ****   */
+  10:../src/spi_if.c **** 
+  11:../src/spi_if.c **** /* Includes ------------------------------------------------------------------*/
+  12:../src/spi_if.c **** #include "hw_config.h"
+  13:../src/spi_if.c **** #include "spi_if.h"
+  14:../src/spi_if.c **** #include "dfu_mal.h"
+  15:../src/spi_if.c **** 
+  16:../src/spi_if.c **** /* Private typedef -----------------------------------------------------------*/
+  17:../src/spi_if.c **** /* Private define ------------------------------------------------------------*/
+  18:../src/spi_if.c **** /* Private macro -------------------------------------------------------------*/
+  19:../src/spi_if.c **** /* Private variables ---------------------------------------------------------*/
+  20:../src/spi_if.c **** /* Private function prototypes -----------------------------------------------*/
+  21:../src/spi_if.c **** /* Private functions ---------------------------------------------------------*/
+  22:../src/spi_if.c **** 
+  23:../src/spi_if.c **** /*******************************************************************************
+  24:../src/spi_if.c **** * Function Name  : SPI_If_Init
+  25:../src/spi_if.c **** * Description    : Initializes the Media on the STM32
+  26:../src/spi_if.c **** * Input          : None
+  27:../src/spi_if.c **** * Output         : None
+  28:../src/spi_if.c **** * Return         : None
+  29:../src/spi_if.c **** *******************************************************************************/
+  30:../src/spi_if.c **** uint16_t SPI_If_Init(void)
+  31:../src/spi_if.c **** {
+  27              		.loc 1 31 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31 0000 08B5     		push	{r3, lr}
+  32              	.LCFI0:
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 3, -8
+  35              		.cfi_offset 14, -4
+  32:../src/spi_if.c ****   sFLASH_Init();
+  36              		.loc 1 32 0
+  37 0002 FFF7FEFF 		bl	sFLASH_Init
+  38              	.LVL0:
+  33:../src/spi_if.c ****   return MAL_OK;
+  34:../src/spi_if.c **** }
+  39              		.loc 1 34 0
+  40 0006 0020     		movs	r0, #0
+  41 0008 08BD     		pop	{r3, pc}
+  42              		.cfi_endproc
+  43              	.LFE56:
+  45              		.section	.text.SPI_If_Erase,"ax",%progbits
+  46              		.align	1
+  47              		.global	SPI_If_Erase
+  48              		.thumb
+  49              		.thumb_func
+  51              	SPI_If_Erase:
+  52              	.LFB57:
+  35:../src/spi_if.c **** 
+  36:../src/spi_if.c **** /*******************************************************************************
+  37:../src/spi_if.c **** * Function Name  : SPI_If_Erase
+  38:../src/spi_if.c **** * Description    : Erase sector
+  39:../src/spi_if.c **** * Input          : None
+  40:../src/spi_if.c **** * Output         : None
+  41:../src/spi_if.c **** * Return         : None
+  42:../src/spi_if.c **** *******************************************************************************/
+  43:../src/spi_if.c **** uint16_t SPI_If_Erase(uint32_t SectorAddress)
+  44:../src/spi_if.c **** {
+  53              		.loc 1 44 0
+  54              		.cfi_startproc
+  55              		@ args = 0, pretend = 0, frame = 0
+  56              		@ frame_needed = 0, uses_anonymous_args = 0
+  57              	.LVL1:
+  58 0000 08B5     		push	{r3, lr}
+  59              	.LCFI1:
+  60              		.cfi_def_cfa_offset 8
+  61              		.cfi_offset 3, -8
+  62              		.cfi_offset 14, -4
+  45:../src/spi_if.c ****   sFLASH_EraseSector(SectorAddress);
+  63              		.loc 1 45 0
+  64 0002 FFF7FEFF 		bl	sFLASH_EraseSector
+  65              	.LVL2:
+  46:../src/spi_if.c ****   return MAL_OK;
+  47:../src/spi_if.c **** }
+  66              		.loc 1 47 0
+  67 0006 0020     		movs	r0, #0
+  68 0008 08BD     		pop	{r3, pc}
+  69              		.cfi_endproc
+  70              	.LFE57:
+  72              		.section	.text.SPI_If_Write,"ax",%progbits
+  73              		.align	1
+  74              		.global	SPI_If_Write
+  75              		.thumb
+  76              		.thumb_func
+  78              	SPI_If_Write:
+  79              	.LFB58:
+  48:../src/spi_if.c **** 
+  49:../src/spi_if.c **** /*******************************************************************************
+  50:../src/spi_if.c **** * Function Name  : SPI_If_Write
+  51:../src/spi_if.c **** * Description    : Write sectors
+  52:../src/spi_if.c **** * Input          : None
+  53:../src/spi_if.c **** * Output         : None
+  54:../src/spi_if.c **** * Return         : None
+  55:../src/spi_if.c **** *******************************************************************************/
+  56:../src/spi_if.c **** uint16_t SPI_If_Write(uint32_t SectorAddress, uint32_t DataLength)
+  57:../src/spi_if.c **** {
+  80              		.loc 1 57 0
+  81              		.cfi_startproc
+  82              		@ args = 0, pretend = 0, frame = 0
+  83              		@ frame_needed = 0, uses_anonymous_args = 0
+  84              	.LVL3:
+  85 0000 08B5     		push	{r3, lr}
+  86              	.LCFI2:
+  87              		.cfi_def_cfa_offset 8
+  88              		.cfi_offset 3, -8
+  89              		.cfi_offset 14, -4
+  90              		.loc 1 57 0
+  91 0002 0346     		mov	r3, r0
+  58:../src/spi_if.c ****   sFLASH_WriteBuffer(MAL_Buffer, SectorAddress, (uint16_t)DataLength);
+  92              		.loc 1 58 0
+  93 0004 8AB2     		uxth	r2, r1
+  94 0006 0348     		ldr	r0, .L4
+  95              	.LVL4:
+  96 0008 1946     		mov	r1, r3
+  97              	.LVL5:
+  98 000a FFF7FEFF 		bl	sFLASH_WriteBuffer
+  99              	.LVL6:
+  59:../src/spi_if.c ****   return MAL_OK;
+  60:../src/spi_if.c **** }
+ 100              		.loc 1 60 0
+ 101 000e 0020     		movs	r0, #0
+ 102 0010 08BD     		pop	{r3, pc}
+ 103              	.L5:
+ 104 0012 00BF     		.align	2
+ 105              	.L4:
+ 106 0014 00000000 		.word	MAL_Buffer
+ 107              		.cfi_endproc
+ 108              	.LFE58:
+ 110              		.section	.text.SPI_If_Read,"ax",%progbits
+ 111              		.align	1
+ 112              		.global	SPI_If_Read
+ 113              		.thumb
+ 114              		.thumb_func
+ 116              	SPI_If_Read:
+ 117              	.LFB59:
+  61:../src/spi_if.c **** 
+  62:../src/spi_if.c **** /*******************************************************************************
+  63:../src/spi_if.c **** * Function Name  : SPI_If_Read
+  64:../src/spi_if.c **** * Description    : Read sectors
+  65:../src/spi_if.c **** * Input          : None
+  66:../src/spi_if.c **** * Output         : None
+  67:../src/spi_if.c **** * Return         : buffer address pointer
+  68:../src/spi_if.c **** *******************************************************************************/
+  69:../src/spi_if.c **** uint8_t *SPI_If_Read(uint32_t SectorAddress, uint32_t DataLength)
+  70:../src/spi_if.c **** {
+ 118              		.loc 1 70 0
+ 119              		.cfi_startproc
+ 120              		@ args = 0, pretend = 0, frame = 0
+ 121              		@ frame_needed = 0, uses_anonymous_args = 0
+ 122              	.LVL7:
+ 123 0000 10B5     		push	{r4, lr}
+ 124              	.LCFI3:
+ 125              		.cfi_def_cfa_offset 8
+ 126              		.cfi_offset 4, -8
+ 127              		.cfi_offset 14, -4
+  71:../src/spi_if.c ****   sFLASH_ReadBuffer(MAL_Buffer, SectorAddress, (uint16_t)DataLength);
+ 128              		.loc 1 71 0
+ 129 0002 044C     		ldr	r4, .L7
+  70:../src/spi_if.c **** {
+ 130              		.loc 1 70 0
+ 131 0004 0346     		mov	r3, r0
+ 132              		.loc 1 71 0
+ 133 0006 8AB2     		uxth	r2, r1
+ 134 0008 2046     		mov	r0, r4
+ 135              	.LVL8:
+ 136 000a 1946     		mov	r1, r3
+ 137              	.LVL9:
+ 138 000c FFF7FEFF 		bl	sFLASH_ReadBuffer
+ 139              	.LVL10:
+  72:../src/spi_if.c ****   return MAL_Buffer;
+  73:../src/spi_if.c **** }
+ 140              		.loc 1 73 0
+ 141 0010 2046     		mov	r0, r4
+ 142 0012 10BD     		pop	{r4, pc}
+ 143              	.L8:
+ 144              		.align	2
+ 145              	.L7:
+ 146 0014 00000000 		.word	MAL_Buffer
+ 147              		.cfi_endproc
+ 148              	.LFE59:
+ 150              		.text
+ 151              	.Letext0:
+ 152              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 153              		.file 3 "/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cm3.h"
+ 154              		.file 4 "/Users/zac/code/spark/usb-dfu/inc/dfu_mal.h"
+ 155              		.file 5 "/Users/zac/code/spark/usb-dfu/inc/sst25vf_spi.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 spi_if.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccAHula5.s:19     .text.SPI_If_Init:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccAHula5.s:24     .text.SPI_If_Init:0000000000000000 SPI_If_Init
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccAHula5.s:46     .text.SPI_If_Erase:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccAHula5.s:51     .text.SPI_If_Erase:0000000000000000 SPI_If_Erase
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccAHula5.s:73     .text.SPI_If_Write:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccAHula5.s:78     .text.SPI_If_Write:0000000000000000 SPI_If_Write
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccAHula5.s:106    .text.SPI_If_Write:0000000000000014 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccAHula5.s:111    .text.SPI_If_Read:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccAHula5.s:116    .text.SPI_If_Read:0000000000000000 SPI_If_Read
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccAHula5.s:146    .text.SPI_If_Read:0000000000000014 $d
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.94ea818a60f77b04fe5add16507b1dca
+                           .group:0000000000000000 wm4.platform_config.h.13.8c69bc765aea669af9d5d2fdc1149177
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_can.h.31.b14273b95de79d8fbb020ba042473fb1
+                           .group:0000000000000000 wm4.stm32f10x_dac.h.31.116c27cadc3b4ee8aa44ed11b14b64ae
+                           .group:0000000000000000 wm4.stm32f10x_dbgmcu.h.31.45f176e9b7a15051b8c69cb2700c78b8
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_fsmc.h.31.a761d459aa046c2769a99b93e8763ba0
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_iwdg.h.31.959ae9b7e1d603f1e5ae6468c0fc1624
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_sdio.h.31.37dab89d08b2364a3dfaace444dec7c3
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.stm32f10x_wwdg.h.31.4504f930b88ade4f56d1e3f2a11c098b
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.39.39a4b3112cd0eabe7f19b3ecab0f4d96
+                           .group:0000000000000000 wm4.sst25vf_spi.h.20.51b3171b29f6f7af7f6cc75ed7f465bf
+                           .group:0000000000000000 wm4.hw_config.h.41.83f4dd94a29b2227d9beb55b68615b4b
+                           .group:0000000000000000 wm4.usb_desc.h.13.f4564814ac51230da7429e2f3b1463ed
+                           .group:0000000000000000 wm4.dfu_mal.h.22.8960227c42ae735d4e74722cbac11c6c
+
+UNDEFINED SYMBOLS
+sFLASH_Init
+sFLASH_EraseSector
+sFLASH_WriteBuffer
+MAL_Buffer
+sFLASH_ReadBuffer

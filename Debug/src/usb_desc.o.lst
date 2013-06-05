@@ -1,0 +1,405 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 4
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"usb_desc.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.global	DFU_StringInterface1
+  19              		.global	DFU_StringInterface0
+  20              		.global	DFU_StringSerial
+  21              		.global	DFU_StringProduct
+  22              		.global	DFU_StringVendor
+  23              		.global	DFU_StringLangId
+  24              		.global	DFU_ConfigDescriptor
+  25              		.global	DFU_DeviceDescriptor
+  26              		.data
+  29              	DFU_StringInterface1:
+  30 0000 62       		.byte	98
+  31 0001 03       		.byte	3
+  32 0002 40       		.byte	64
+  33 0003 00       		.byte	0
+  34 0004 53       		.byte	83
+  35 0005 00       		.byte	0
+  36 0006 50       		.byte	80
+  37 0007 00       		.byte	0
+  38 0008 49       		.byte	73
+  39 0009 00       		.byte	0
+  40 000a 20       		.byte	32
+  41 000b 00       		.byte	0
+  42 000c 46       		.byte	70
+  43 000d 00       		.byte	0
+  44 000e 6C       		.byte	108
+  45 000f 00       		.byte	0
+  46 0010 61       		.byte	97
+  47 0011 00       		.byte	0
+  48 0012 73       		.byte	115
+  49 0013 00       		.byte	0
+  50 0014 68       		.byte	104
+  51 0015 00       		.byte	0
+  52 0016 20       		.byte	32
+  53 0017 00       		.byte	0
+  54 0018 3A       		.byte	58
+  55 0019 00       		.byte	0
+  56 001a 20       		.byte	32
+  57 001b 00       		.byte	0
+  58 001c 53       		.byte	83
+  59 001d 00       		.byte	0
+  60 001e 53       		.byte	83
+  61 001f 00       		.byte	0
+  62 0020 54       		.byte	84
+  63 0021 00       		.byte	0
+  64 0022 32       		.byte	50
+  65 0023 00       		.byte	0
+  66 0024 35       		.byte	53
+  67 0025 00       		.byte	0
+  68 0026 78       		.byte	120
+  69 0027 00       		.byte	0
+  70 0028 2F       		.byte	47
+  71 0029 00       		.byte	0
+  72 002a 30       		.byte	48
+  73 002b 00       		.byte	0
+  74 002c 78       		.byte	120
+  75 002d 00       		.byte	0
+  76 002e 30       		.byte	48
+  77 002f 00       		.byte	0
+  78 0030 30       		.byte	48
+  79 0031 00       		.byte	0
+  80 0032 30       		.byte	48
+  81 0033 00       		.byte	0
+  82 0034 30       		.byte	48
+  83 0035 00       		.byte	0
+  84 0036 30       		.byte	48
+  85 0037 00       		.byte	0
+  86 0038 30       		.byte	48
+  87 0039 00       		.byte	0
+  88 003a 30       		.byte	48
+  89 003b 00       		.byte	0
+  90 003c 30       		.byte	48
+  91 003d 00       		.byte	0
+  92 003e 2F       		.byte	47
+  93 003f 00       		.byte	0
+  94 0040 35       		.byte	53
+  95 0041 00       		.byte	0
+  96 0042 31       		.byte	49
+  97 0043 00       		.byte	0
+  98 0044 32       		.byte	50
+  99 0045 00       		.byte	0
+ 100 0046 2A       		.byte	42
+ 101 0047 00       		.byte	0
+ 102 0048 30       		.byte	48
+ 103 0049 00       		.byte	0
+ 104 004a 34       		.byte	52
+ 105 004b 00       		.byte	0
+ 106 004c 4B       		.byte	75
+ 107 004d 00       		.byte	0
+ 108 004e 67       		.byte	103
+ 109 004f 00       		.byte	0
+ 110 0050 00000000 		.space	18
+ 110      00000000 
+ 110      00000000 
+ 110      00000000 
+ 110      0000
+ 113              	DFU_StringInterface0:
+ 114 0062 62       		.byte	98
+ 115 0063 03       		.byte	3
+ 116 0064 40       		.byte	64
+ 117 0065 00       		.byte	0
+ 118 0066 49       		.byte	73
+ 119 0067 00       		.byte	0
+ 120 0068 6E       		.byte	110
+ 121 0069 00       		.byte	0
+ 122 006a 74       		.byte	116
+ 123 006b 00       		.byte	0
+ 124 006c 65       		.byte	101
+ 125 006d 00       		.byte	0
+ 126 006e 72       		.byte	114
+ 127 006f 00       		.byte	0
+ 128 0070 6E       		.byte	110
+ 129 0071 00       		.byte	0
+ 130 0072 61       		.byte	97
+ 131 0073 00       		.byte	0
+ 132 0074 6C       		.byte	108
+ 133 0075 00       		.byte	0
+ 134 0076 20       		.byte	32
+ 135 0077 00       		.byte	0
+ 136 0078 46       		.byte	70
+ 137 0079 00       		.byte	0
+ 138 007a 6C       		.byte	108
+ 139 007b 00       		.byte	0
+ 140 007c 61       		.byte	97
+ 141 007d 00       		.byte	0
+ 142 007e 73       		.byte	115
+ 143 007f 00       		.byte	0
+ 144 0080 68       		.byte	104
+ 145 0081 00       		.byte	0
+ 146 0082 20       		.byte	32
+ 147 0083 00       		.byte	0
+ 148 0084 20       		.byte	32
+ 149 0085 00       		.byte	0
+ 150 0086 2F       		.byte	47
+ 151 0087 00       		.byte	0
+ 152 0088 30       		.byte	48
+ 153 0089 00       		.byte	0
+ 154 008a 78       		.byte	120
+ 155 008b 00       		.byte	0
+ 156 008c 30       		.byte	48
+ 157 008d 00       		.byte	0
+ 158 008e 38       		.byte	56
+ 159 008f 00       		.byte	0
+ 160 0090 30       		.byte	48
+ 161 0091 00       		.byte	0
+ 162 0092 30       		.byte	48
+ 163 0093 00       		.byte	0
+ 164 0094 30       		.byte	48
+ 165 0095 00       		.byte	0
+ 166 0096 30       		.byte	48
+ 167 0097 00       		.byte	0
+ 168 0098 30       		.byte	48
+ 169 0099 00       		.byte	0
+ 170 009a 30       		.byte	48
+ 171 009b 00       		.byte	0
+ 172 009c 2F       		.byte	47
+ 173 009d 00       		.byte	0
+ 174 009e 31       		.byte	49
+ 175 009f 00       		.byte	0
+ 176 00a0 32       		.byte	50
+ 177 00a1 00       		.byte	0
+ 178 00a2 2A       		.byte	42
+ 179 00a3 00       		.byte	0
+ 180 00a4 30       		.byte	48
+ 181 00a5 00       		.byte	0
+ 182 00a6 30       		.byte	48
+ 183 00a7 00       		.byte	0
+ 184 00a8 31       		.byte	49
+ 185 00a9 00       		.byte	0
+ 186 00aa 4B       		.byte	75
+ 187 00ab 00       		.byte	0
+ 188 00ac 61       		.byte	97
+ 189 00ad 00       		.byte	0
+ 190 00ae 2C       		.byte	44
+ 191 00af 00       		.byte	0
+ 192 00b0 31       		.byte	49
+ 193 00b1 00       		.byte	0
+ 194 00b2 31       		.byte	49
+ 195 00b3 00       		.byte	0
+ 196 00b4 36       		.byte	54
+ 197 00b5 00       		.byte	0
+ 198 00b6 2A       		.byte	42
+ 199 00b7 00       		.byte	0
+ 200 00b8 30       		.byte	48
+ 201 00b9 00       		.byte	0
+ 202 00ba 30       		.byte	48
+ 203 00bb 00       		.byte	0
+ 204 00bc 31       		.byte	49
+ 205 00bd 00       		.byte	0
+ 206 00be 4B       		.byte	75
+ 207 00bf 00       		.byte	0
+ 208 00c0 67       		.byte	103
+ 209 00c1 00       		.byte	0
+ 210 00c2 0000     		.space	2
+ 213              	DFU_StringSerial:
+ 214 00c4 1A       		.byte	26
+ 215 00c5 03       		.byte	3
+ 216 00c6 53       		.byte	83
+ 217 00c7 00       		.byte	0
+ 218 00c8 54       		.byte	84
+ 219 00c9 00       		.byte	0
+ 220 00ca 4D       		.byte	77
+ 221 00cb 00       		.byte	0
+ 222 00cc 33       		.byte	51
+ 223 00cd 00       		.byte	0
+ 224 00ce 32       		.byte	50
+ 225 00cf 00       		.byte	0
+ 226 00d0 31       		.byte	49
+ 227 00d1 00       		.byte	0
+ 228 00d2 30       		.byte	48
+ 229 00d3 00       		.byte	0
+ 230 00d4 00000000 		.space	10
+ 230      00000000 
+ 230      0000
+ 233              	DFU_StringProduct:
+ 234 00de 14       		.byte	20
+ 235 00df 03       		.byte	3
+ 236 00e0 53       		.byte	83
+ 237 00e1 00       		.byte	0
+ 238 00e2 54       		.byte	84
+ 239 00e3 00       		.byte	0
+ 240 00e4 4D       		.byte	77
+ 241 00e5 00       		.byte	0
+ 242 00e6 33       		.byte	51
+ 243 00e7 00       		.byte	0
+ 244 00e8 32       		.byte	50
+ 245 00e9 00       		.byte	0
+ 246 00ea 20       		.byte	32
+ 247 00eb 00       		.byte	0
+ 248 00ec 44       		.byte	68
+ 249 00ed 00       		.byte	0
+ 250 00ee 46       		.byte	70
+ 251 00ef 00       		.byte	0
+ 252 00f0 55       		.byte	85
+ 253 00f1 00       		.byte	0
+ 256              	DFU_StringVendor:
+ 257 00f2 26       		.byte	38
+ 258 00f3 03       		.byte	3
+ 259 00f4 53       		.byte	83
+ 260 00f5 00       		.byte	0
+ 261 00f6 54       		.byte	84
+ 262 00f7 00       		.byte	0
+ 263 00f8 4D       		.byte	77
+ 264 00f9 00       		.byte	0
+ 265 00fa 69       		.byte	105
+ 266 00fb 00       		.byte	0
+ 267 00fc 63       		.byte	99
+ 268 00fd 00       		.byte	0
+ 269 00fe 72       		.byte	114
+ 270 00ff 00       		.byte	0
+ 271 0100 6F       		.byte	111
+ 272 0101 00       		.byte	0
+ 273 0102 65       		.byte	101
+ 274 0103 00       		.byte	0
+ 275 0104 6C       		.byte	108
+ 276 0105 00       		.byte	0
+ 277 0106 65       		.byte	101
+ 278 0107 00       		.byte	0
+ 279 0108 63       		.byte	99
+ 280 0109 00       		.byte	0
+ 281 010a 74       		.byte	116
+ 282 010b 00       		.byte	0
+ 283 010c 72       		.byte	114
+ 284 010d 00       		.byte	0
+ 285 010e 6F       		.byte	111
+ 286 010f 00       		.byte	0
+ 287 0110 6E       		.byte	110
+ 288 0111 00       		.byte	0
+ 289 0112 69       		.byte	105
+ 290 0113 00       		.byte	0
+ 291 0114 63       		.byte	99
+ 292 0115 00       		.byte	0
+ 293 0116 73       		.byte	115
+ 294 0117 00       		.byte	0
+ 297              	DFU_StringLangId:
+ 298 0118 04       		.byte	4
+ 299 0119 03       		.byte	3
+ 300 011a 09       		.byte	9
+ 301 011b 04       		.byte	4
+ 304              	DFU_ConfigDescriptor:
+ 305 011c 09       		.byte	9
+ 306 011d 02       		.byte	2
+ 307 011e 24       		.byte	36
+ 308 011f 00       		.byte	0
+ 309 0120 01       		.byte	1
+ 310 0121 01       		.byte	1
+ 311 0122 00       		.byte	0
+ 312 0123 C0       		.byte	-64
+ 313 0124 32       		.byte	50
+ 314 0125 09       		.byte	9
+ 315 0126 04       		.byte	4
+ 316 0127 00       		.byte	0
+ 317 0128 00       		.byte	0
+ 318 0129 00       		.byte	0
+ 319 012a FE       		.byte	-2
+ 320 012b 01       		.byte	1
+ 321 012c 02       		.byte	2
+ 322 012d 04       		.byte	4
+ 323 012e 09       		.byte	9
+ 324 012f 04       		.byte	4
+ 325 0130 00       		.byte	0
+ 326 0131 01       		.byte	1
+ 327 0132 00       		.byte	0
+ 328 0133 FE       		.byte	-2
+ 329 0134 01       		.byte	1
+ 330 0135 02       		.byte	2
+ 331 0136 05       		.byte	5
+ 332 0137 09       		.byte	9
+ 333 0138 21       		.byte	33
+ 334 0139 0B       		.byte	11
+ 335 013a FF       		.byte	-1
+ 336 013b 00       		.byte	0
+ 337 013c 00       		.byte	0
+ 338 013d 04       		.byte	4
+ 339 013e 1A       		.byte	26
+ 340 013f 01       		.byte	1
+ 343              	DFU_DeviceDescriptor:
+ 344 0140 12       		.byte	18
+ 345 0141 01       		.byte	1
+ 346 0142 00       		.byte	0
+ 347 0143 01       		.byte	1
+ 348 0144 00       		.byte	0
+ 349 0145 00       		.byte	0
+ 350 0146 00       		.byte	0
+ 351 0147 40       		.byte	64
+ 352 0148 83       		.byte	-125
+ 353 0149 04       		.byte	4
+ 354 014a 11       		.byte	17
+ 355 014b DF       		.byte	-33
+ 356 014c 00       		.byte	0
+ 357 014d 02       		.byte	2
+ 358 014e 01       		.byte	1
+ 359 014f 02       		.byte	2
+ 360 0150 03       		.byte	3
+ 361 0151 01       		.byte	1
+ 362              		.text
+ 363              	.Letext0:
+ 364              		.file 1 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 365              		.file 2 "/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cm3.h"
+ 366              		.file 3 "../src/usb_desc.c"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 usb_desc.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccjIYws9.s:29     .data:0000000000000000 DFU_StringInterface1
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccjIYws9.s:113    .data:0000000000000062 DFU_StringInterface0
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccjIYws9.s:213    .data:00000000000000c4 DFU_StringSerial
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccjIYws9.s:233    .data:00000000000000de DFU_StringProduct
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccjIYws9.s:256    .data:00000000000000f2 DFU_StringVendor
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccjIYws9.s:297    .data:0000000000000118 DFU_StringLangId
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccjIYws9.s:304    .data:000000000000011c DFU_ConfigDescriptor
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccjIYws9.s:343    .data:0000000000000140 DFU_DeviceDescriptor
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccjIYws9.s:110    .data:0000000000000050 $d
+                           .group:0000000000000000 wm4.1.94ea818a60f77b04fe5add16507b1dca
+                           .group:0000000000000000 wm4.platform_config.h.13.8c69bc765aea669af9d5d2fdc1149177
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_can.h.31.b14273b95de79d8fbb020ba042473fb1
+                           .group:0000000000000000 wm4.stm32f10x_dac.h.31.116c27cadc3b4ee8aa44ed11b14b64ae
+                           .group:0000000000000000 wm4.stm32f10x_dbgmcu.h.31.45f176e9b7a15051b8c69cb2700c78b8
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_fsmc.h.31.a761d459aa046c2769a99b93e8763ba0
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_iwdg.h.31.959ae9b7e1d603f1e5ae6468c0fc1624
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_sdio.h.31.37dab89d08b2364a3dfaace444dec7c3
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.stm32f10x_wwdg.h.31.4504f930b88ade4f56d1e3f2a11c098b
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.39.39a4b3112cd0eabe7f19b3ecab0f4d96
+                           .group:0000000000000000 wm4.usb_desc.h.19.9d6783fc832de19e5f25087e37d91785
+
+NO UNDEFINED SYMBOLS

@@ -1,0 +1,309 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 4
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"flash_if.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.FLASH_If_Init,"ax",%progbits
+  19              		.align	1
+  20              		.global	FLASH_If_Init
+  21              		.thumb
+  22              		.thumb_func
+  24              	FLASH_If_Init:
+  25              	.LFB56:
+  26              		.file 1 "../src/flash_if.c"
+   1:../src/flash_if.c **** /**
+   2:../src/flash_if.c ****   ******************************************************************************
+   3:../src/flash_if.c ****   * @file    flash_if.c
+   4:../src/flash_if.c ****   * @author  Spark Application Team
+   5:../src/flash_if.c ****   * @version V1.0.0
+   6:../src/flash_if.c ****   * @date    30-April-2013
+   7:../src/flash_if.c ****   * @brief   specific media access Layer for internal flash
+   8:../src/flash_if.c ****   ******************************************************************************
+   9:../src/flash_if.c ****   */
+  10:../src/flash_if.c **** 
+  11:../src/flash_if.c **** /* Includes ------------------------------------------------------------------*/
+  12:../src/flash_if.c **** #include "flash_if.h"
+  13:../src/flash_if.c **** #include "dfu_mal.h"
+  14:../src/flash_if.c **** 
+  15:../src/flash_if.c **** /* Private typedef -----------------------------------------------------------*/
+  16:../src/flash_if.c **** /* Private define ------------------------------------------------------------*/
+  17:../src/flash_if.c **** /* Private macro -------------------------------------------------------------*/
+  18:../src/flash_if.c **** /* Private variables ---------------------------------------------------------*/
+  19:../src/flash_if.c **** /* Private function prototypes -----------------------------------------------*/
+  20:../src/flash_if.c **** /* Private functions ---------------------------------------------------------*/
+  21:../src/flash_if.c **** 
+  22:../src/flash_if.c **** /*******************************************************************************
+  23:../src/flash_if.c **** * Function Name  : FLASH_If_Init
+  24:../src/flash_if.c **** * Description    : Initializes the Media on the STM32
+  25:../src/flash_if.c **** * Input          : None
+  26:../src/flash_if.c **** * Output         : None
+  27:../src/flash_if.c **** * Return         : None
+  28:../src/flash_if.c **** *******************************************************************************/
+  29:../src/flash_if.c **** uint16_t FLASH_If_Init(void)
+  30:../src/flash_if.c **** {
+  27              		.loc 1 30 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  31:../src/flash_if.c ****   return MAL_OK;
+  32:../src/flash_if.c **** }
+  32              		.loc 1 32 0
+  33 0000 0020     		movs	r0, #0
+  34 0002 7047     		bx	lr
+  35              		.cfi_endproc
+  36              	.LFE56:
+  38              		.section	.text.FLASH_If_Erase,"ax",%progbits
+  39              		.align	1
+  40              		.global	FLASH_If_Erase
+  41              		.thumb
+  42              		.thumb_func
+  44              	FLASH_If_Erase:
+  45              	.LFB57:
+  33:../src/flash_if.c **** 
+  34:../src/flash_if.c **** /*******************************************************************************
+  35:../src/flash_if.c **** * Function Name  : FLASH_If_Erase
+  36:../src/flash_if.c **** * Description    : Erase sector
+  37:../src/flash_if.c **** * Input          : None
+  38:../src/flash_if.c **** * Output         : None
+  39:../src/flash_if.c **** * Return         : None
+  40:../src/flash_if.c **** *******************************************************************************/
+  41:../src/flash_if.c **** uint16_t FLASH_If_Erase(uint32_t SectorAddress)
+  42:../src/flash_if.c **** {
+  46              		.loc 1 42 0
+  47              		.cfi_startproc
+  48              		@ args = 0, pretend = 0, frame = 0
+  49              		@ frame_needed = 0, uses_anonymous_args = 0
+  50              	.LVL0:
+  51 0000 08B5     		push	{r3, lr}
+  52              	.LCFI0:
+  53              		.cfi_def_cfa_offset 8
+  54              		.cfi_offset 3, -8
+  55              		.cfi_offset 14, -4
+  43:../src/flash_if.c ****   FLASH_ErasePage(SectorAddress);
+  56              		.loc 1 43 0
+  57 0002 FFF7FEFF 		bl	FLASH_ErasePage
+  58              	.LVL1:
+  44:../src/flash_if.c ****   
+  45:../src/flash_if.c ****   return MAL_OK;
+  46:../src/flash_if.c **** }
+  59              		.loc 1 46 0
+  60 0006 0020     		movs	r0, #0
+  61 0008 08BD     		pop	{r3, pc}
+  62              		.cfi_endproc
+  63              	.LFE57:
+  65              		.section	.text.FLASH_If_Write,"ax",%progbits
+  66              		.align	1
+  67              		.global	FLASH_If_Write
+  68              		.thumb
+  69              		.thumb_func
+  71              	FLASH_If_Write:
+  72              	.LFB58:
+  47:../src/flash_if.c **** 
+  48:../src/flash_if.c **** /*******************************************************************************
+  49:../src/flash_if.c **** * Function Name  : FLASH_If_Write
+  50:../src/flash_if.c **** * Description    : Write sectors
+  51:../src/flash_if.c **** * Input          : None
+  52:../src/flash_if.c **** * Output         : None
+  53:../src/flash_if.c **** * Return         : None
+  54:../src/flash_if.c **** *******************************************************************************/
+  55:../src/flash_if.c **** uint16_t FLASH_If_Write(uint32_t SectorAddress, uint32_t DataLength)
+  56:../src/flash_if.c **** {
+  73              		.loc 1 56 0
+  74              		.cfi_startproc
+  75              		@ args = 0, pretend = 0, frame = 0
+  76              		@ frame_needed = 0, uses_anonymous_args = 0
+  77              	.LVL2:
+  57:../src/flash_if.c ****   uint32_t idx = 0;
+  58:../src/flash_if.c ****   
+  59:../src/flash_if.c ****   if  (DataLength & 0x3) /* Not an aligned data */
+  78              		.loc 1 59 0
+  79 0000 8B07     		lsls	r3, r1, #30
+  56:../src/flash_if.c **** {
+  80              		.loc 1 56 0
+  81 0002 70B5     		push	{r4, r5, r6, lr}
+  82              	.LCFI1:
+  83              		.cfi_def_cfa_offset 16
+  84              		.cfi_offset 4, -16
+  85              		.cfi_offset 5, -12
+  86              		.cfi_offset 6, -8
+  87              		.cfi_offset 14, -4
+  56:../src/flash_if.c **** {
+  88              		.loc 1 56 0
+  89 0004 0646     		mov	r6, r0
+  90 0006 0D46     		mov	r5, r1
+  91              		.loc 1 59 0
+  92 0008 01D0     		beq	.L4
+  93              		.loc 1 59 0 is_stmt 0 discriminator 1
+  94 000a 0B46     		mov	r3, r1
+  95 000c 01E0     		b	.L5
+  96              	.LVL3:
+  97              	.L4:
+  98              		.loc 1 59 0
+  99 000e 0024     		movs	r4, #0
+ 100 0010 0AE0     		b	.L6
+ 101              	.L5:
+ 102              	.LVL4:
+  60:../src/flash_if.c ****   {
+  61:../src/flash_if.c ****     for (idx = DataLength; idx < ((DataLength & 0xFFFC) + 4); idx++)
+ 103              		.loc 1 61 0 is_stmt 1 discriminator 1
+ 104 0012 4FF6FC72 		movw	r2, #65532
+ 105 0016 2A40     		ands	r2, r2, r5
+ 106 0018 101D     		adds	r0, r2, #4
+ 107 001a 8342     		cmp	r3, r0
+ 108 001c F7D2     		bcs	.L4
+ 109              	.L7:
+  62:../src/flash_if.c ****     {
+  63:../src/flash_if.c ****       MAL_Buffer[idx] = 0xFF;
+ 110              		.loc 1 63 0 discriminator 2
+ 111 001e 084C     		ldr	r4, .L14
+ 112 0020 FF21     		movs	r1, #255
+ 113 0022 1955     		strb	r1, [r3, r4]
+  61:../src/flash_if.c ****     for (idx = DataLength; idx < ((DataLength & 0xFFFC) + 4); idx++)
+ 114              		.loc 1 61 0 discriminator 2
+ 115 0024 0133     		adds	r3, r3, #1
+ 116              	.LVL5:
+ 117 0026 F4E7     		b	.L5
+ 118              	.LVL6:
+ 119              	.L6:
+  64:../src/flash_if.c ****     }
+  65:../src/flash_if.c ****   } 
+  66:../src/flash_if.c ****   
+  67:../src/flash_if.c ****   /* Data received are Word multiple */    
+  68:../src/flash_if.c ****   for (idx = 0; idx <  DataLength; idx = idx + 4)
+ 120              		.loc 1 68 0 discriminator 1
+ 121 0028 AC42     		cmp	r4, r5
+ 122 002a 04EB0600 		add	r0, r4, r6
+ 123              	.LVL7:
+ 124 002e 05D2     		bcs	.L13
+ 125              	.L8:
+  69:../src/flash_if.c ****   {
+  70:../src/flash_if.c ****     FLASH_ProgramWord(SectorAddress, *(uint32_t *)(MAL_Buffer + idx));  
+ 126              		.loc 1 70 0 discriminator 2
+ 127 0030 034B     		ldr	r3, .L14
+ 128 0032 E158     		ldr	r1, [r4, r3]
+ 129 0034 FFF7FEFF 		bl	FLASH_ProgramWord
+ 130              	.LVL8:
+  68:../src/flash_if.c ****   for (idx = 0; idx <  DataLength; idx = idx + 4)
+ 131              		.loc 1 68 0 discriminator 2
+ 132 0038 0434     		adds	r4, r4, #4
+ 133              	.LVL9:
+ 134 003a F5E7     		b	.L6
+ 135              	.LVL10:
+ 136              	.L13:
+  71:../src/flash_if.c ****     SectorAddress += 4;
+  72:../src/flash_if.c ****   } 
+  73:../src/flash_if.c ****  
+  74:../src/flash_if.c ****   return MAL_OK;
+  75:../src/flash_if.c **** }
+ 137              		.loc 1 75 0
+ 138 003c 0020     		movs	r0, #0
+ 139              	.LVL11:
+ 140 003e 70BD     		pop	{r4, r5, r6, pc}
+ 141              	.L15:
+ 142              		.align	2
+ 143              	.L14:
+ 144 0040 00000000 		.word	MAL_Buffer
+ 145              		.cfi_endproc
+ 146              	.LFE58:
+ 148              		.section	.text.FLASH_If_Read,"ax",%progbits
+ 149              		.align	1
+ 150              		.global	FLASH_If_Read
+ 151              		.thumb
+ 152              		.thumb_func
+ 154              	FLASH_If_Read:
+ 155              	.LFB59:
+  76:../src/flash_if.c **** 
+  77:../src/flash_if.c **** /*******************************************************************************
+  78:../src/flash_if.c **** * Function Name  : FLASH_If_Read
+  79:../src/flash_if.c **** * Description    : Read sectors
+  80:../src/flash_if.c **** * Input          : None
+  81:../src/flash_if.c **** * Output         : None
+  82:../src/flash_if.c **** * Return         : buffer address pointer
+  83:../src/flash_if.c **** *******************************************************************************/
+  84:../src/flash_if.c **** uint8_t *FLASH_If_Read (uint32_t SectorAddress, uint32_t DataLength)
+  85:../src/flash_if.c **** {
+ 156              		.loc 1 85 0
+ 157              		.cfi_startproc
+ 158              		@ args = 0, pretend = 0, frame = 0
+ 159              		@ frame_needed = 0, uses_anonymous_args = 0
+ 160              		@ link register save eliminated.
+ 161              	.LVL12:
+  86:../src/flash_if.c ****   return  (uint8_t*)(SectorAddress);
+  87:../src/flash_if.c **** }
+ 162              		.loc 1 87 0
+ 163 0000 7047     		bx	lr
+ 164              		.cfi_endproc
+ 165              	.LFE59:
+ 167              		.text
+ 168              	.Letext0:
+ 169              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 170              		.file 3 "/Users/zac/code/spark/usb-dfu/libraries/STM32F10x_StdPeriph_Driver/inc/stm32f10x_flash.h"
+ 171              		.file 4 "/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cm3.h"
+ 172              		.file 5 "/Users/zac/code/spark/usb-dfu/inc/dfu_mal.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 flash_if.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccq2wwVw.s:19     .text.FLASH_If_Init:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccq2wwVw.s:24     .text.FLASH_If_Init:0000000000000000 FLASH_If_Init
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccq2wwVw.s:39     .text.FLASH_If_Erase:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccq2wwVw.s:44     .text.FLASH_If_Erase:0000000000000000 FLASH_If_Erase
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccq2wwVw.s:66     .text.FLASH_If_Write:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccq2wwVw.s:71     .text.FLASH_If_Write:0000000000000000 FLASH_If_Write
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccq2wwVw.s:144    .text.FLASH_If_Write:0000000000000040 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccq2wwVw.s:149    .text.FLASH_If_Read:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccq2wwVw.s:154    .text.FLASH_If_Read:0000000000000000 FLASH_If_Read
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.94ea818a60f77b04fe5add16507b1dca
+                           .group:0000000000000000 wm4.platform_config.h.13.8c69bc765aea669af9d5d2fdc1149177
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_can.h.31.b14273b95de79d8fbb020ba042473fb1
+                           .group:0000000000000000 wm4.stm32f10x_dac.h.31.116c27cadc3b4ee8aa44ed11b14b64ae
+                           .group:0000000000000000 wm4.stm32f10x_dbgmcu.h.31.45f176e9b7a15051b8c69cb2700c78b8
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_fsmc.h.31.a761d459aa046c2769a99b93e8763ba0
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_iwdg.h.31.959ae9b7e1d603f1e5ae6468c0fc1624
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_sdio.h.31.37dab89d08b2364a3dfaace444dec7c3
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.stm32f10x_wwdg.h.31.4504f930b88ade4f56d1e3f2a11c098b
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.39.39a4b3112cd0eabe7f19b3ecab0f4d96
+                           .group:0000000000000000 wm4.usb_desc.h.13.f4564814ac51230da7429e2f3b1463ed
+                           .group:0000000000000000 wm4.dfu_mal.h.22.8960227c42ae735d4e74722cbac11c6c
+
+UNDEFINED SYMBOLS
+FLASH_ErasePage
+FLASH_ProgramWord
+MAL_Buffer

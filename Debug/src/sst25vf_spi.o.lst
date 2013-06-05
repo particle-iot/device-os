@@ -1,0 +1,1919 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 4
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"sst25vf_spi.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.sFLASH_SendByte,"ax",%progbits
+  19              		.align	1
+  20              		.global	sFLASH_SendByte
+  21              		.thumb
+  22              		.thumb_func
+  24              	sFLASH_SendByte:
+  25              	.LFB64:
+  26              		.file 1 "../src/sst25vf_spi.c"
+   1:../src/sst25vf_spi.c **** /**
+   2:../src/sst25vf_spi.c ****   ******************************************************************************
+   3:../src/sst25vf_spi.c ****   * @file    sst25vf_spi.c
+   4:../src/sst25vf_spi.c ****   * @author  Spark Application Team
+   5:../src/sst25vf_spi.c ****   * @version V1.0.0
+   6:../src/sst25vf_spi.c ****   * @date    15-May-2013
+   7:../src/sst25vf_spi.c ****   * @brief   This file provides a set of functions needed to manage the
+   8:../src/sst25vf_spi.c ****   *          SPI SST25xxxFLASH memory mounted on Spark boards
+   9:../src/sst25vf_spi.c ****   ******************************************************************************
+  10:../src/sst25vf_spi.c ****   */
+  11:../src/sst25vf_spi.c **** 
+  12:../src/sst25vf_spi.c **** /* Includes ------------------------------------------------------------------*/
+  13:../src/sst25vf_spi.c **** #include "sst25vf_spi.h"
+  14:../src/sst25vf_spi.c **** 
+  15:../src/sst25vf_spi.c **** /**
+  16:../src/sst25vf_spi.c ****   * @brief Initializes SPI Flash
+  17:../src/sst25vf_spi.c ****   * @param void
+  18:../src/sst25vf_spi.c ****   * @return void
+  19:../src/sst25vf_spi.c ****   */
+  20:../src/sst25vf_spi.c **** void sFLASH_Init(void)
+  21:../src/sst25vf_spi.c **** {
+  22:../src/sst25vf_spi.c ****   uint32_t Device_ID = 0;
+  23:../src/sst25vf_spi.c **** 
+  24:../src/sst25vf_spi.c ****   /* Initializes the peripherals used by the SPI FLASH driver */
+  25:../src/sst25vf_spi.c ****   sFLASH_SPI_Init();
+  26:../src/sst25vf_spi.c **** 
+  27:../src/sst25vf_spi.c ****   /* Disable the write access to the FLASH */
+  28:../src/sst25vf_spi.c ****   sFLASH_WriteDisable();
+  29:../src/sst25vf_spi.c **** 
+  30:../src/sst25vf_spi.c ****   /* Read FLASH identification */
+  31:../src/sst25vf_spi.c ****   Device_ID = sFLASH_ReadID();
+  32:../src/sst25vf_spi.c **** 
+  33:../src/sst25vf_spi.c ****   if(Device_ID == sFLASH_SST25VF040_ID || Device_ID == sFLASH_SST25VF016_ID)
+  34:../src/sst25vf_spi.c ****   {
+  35:../src/sst25vf_spi.c ****     /* Select the FLASH: Chip Select low */
+  36:../src/sst25vf_spi.c ****     sFLASH_CS_LOW();
+  37:../src/sst25vf_spi.c ****     /* Send "Disable SO RY/BY# Status" instruction */
+  38:../src/sst25vf_spi.c ****     sFLASH_SendByte(sFLASH_CMD_DBSY);
+  39:../src/sst25vf_spi.c ****     /* Deselect the FLASH: Chip Select high */
+  40:../src/sst25vf_spi.c ****     sFLASH_CS_HIGH();
+  41:../src/sst25vf_spi.c **** 
+  42:../src/sst25vf_spi.c ****     /* Select the FLASH: Chip Select low */
+  43:../src/sst25vf_spi.c ****     sFLASH_CS_LOW();
+  44:../src/sst25vf_spi.c ****     /* Send "Write Enable Status" instruction */
+  45:../src/sst25vf_spi.c ****     sFLASH_SendByte(sFLASH_CMD_EWSR);
+  46:../src/sst25vf_spi.c ****     /* Deselect the FLASH: Chip Select high */
+  47:../src/sst25vf_spi.c ****     sFLASH_CS_HIGH();
+  48:../src/sst25vf_spi.c **** 
+  49:../src/sst25vf_spi.c ****     /* Select the FLASH: Chip Select low */
+  50:../src/sst25vf_spi.c ****     sFLASH_CS_LOW();
+  51:../src/sst25vf_spi.c ****     /* Send "Write Status Register" instruction */
+  52:../src/sst25vf_spi.c ****     sFLASH_SendByte(sFLASH_CMD_WRSR);
+  53:../src/sst25vf_spi.c ****     sFLASH_SendByte(0);
+  54:../src/sst25vf_spi.c ****     /* Deselect the FLASH: Chip Select high */
+  55:../src/sst25vf_spi.c ****     sFLASH_CS_HIGH();
+  56:../src/sst25vf_spi.c ****   }
+  57:../src/sst25vf_spi.c **** }
+  58:../src/sst25vf_spi.c **** 
+  59:../src/sst25vf_spi.c **** /**
+  60:../src/sst25vf_spi.c ****   * @brief  Erases the specified FLASH sector.
+  61:../src/sst25vf_spi.c ****   * @param  SectorAddr: address of the sector to erase.
+  62:../src/sst25vf_spi.c ****   * @retval None
+  63:../src/sst25vf_spi.c ****   */
+  64:../src/sst25vf_spi.c **** void sFLASH_EraseSector(uint32_t SectorAddr)
+  65:../src/sst25vf_spi.c **** {
+  66:../src/sst25vf_spi.c ****   /* Enable the write access to the FLASH */
+  67:../src/sst25vf_spi.c ****   sFLASH_WriteEnable();
+  68:../src/sst25vf_spi.c **** 
+  69:../src/sst25vf_spi.c ****   /* Sector Erase */
+  70:../src/sst25vf_spi.c ****   /* Select the FLASH: Chip Select low */
+  71:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+  72:../src/sst25vf_spi.c ****   /* Send Sector Erase instruction */
+  73:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_SE);
+  74:../src/sst25vf_spi.c ****   /* Send SectorAddr high nibble address byte */
+  75:../src/sst25vf_spi.c ****   sFLASH_SendByte((SectorAddr & 0xFF0000) >> 16);
+  76:../src/sst25vf_spi.c ****   /* Send SectorAddr medium nibble address byte */
+  77:../src/sst25vf_spi.c ****   sFLASH_SendByte((SectorAddr & 0xFF00) >> 8);
+  78:../src/sst25vf_spi.c ****   /* Send SectorAddr low nibble address byte */
+  79:../src/sst25vf_spi.c ****   sFLASH_SendByte(SectorAddr & 0xFF);
+  80:../src/sst25vf_spi.c ****   /* Deselect the FLASH: Chip Select high */
+  81:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+  82:../src/sst25vf_spi.c **** 
+  83:../src/sst25vf_spi.c ****   /* Wait till the end of Flash writing */
+  84:../src/sst25vf_spi.c ****   sFLASH_WaitForWriteEnd();
+  85:../src/sst25vf_spi.c **** }
+  86:../src/sst25vf_spi.c **** 
+  87:../src/sst25vf_spi.c **** /**
+  88:../src/sst25vf_spi.c ****   * @brief  Erases the entire FLASH.
+  89:../src/sst25vf_spi.c ****   * @param  None
+  90:../src/sst25vf_spi.c ****   * @retval None
+  91:../src/sst25vf_spi.c ****   */
+  92:../src/sst25vf_spi.c **** void sFLASH_EraseBulk(void)
+  93:../src/sst25vf_spi.c **** {
+  94:../src/sst25vf_spi.c ****   /* Enable the write access to the FLASH */
+  95:../src/sst25vf_spi.c ****   sFLASH_WriteEnable();
+  96:../src/sst25vf_spi.c **** 
+  97:../src/sst25vf_spi.c ****   /* Bulk Erase */
+  98:../src/sst25vf_spi.c ****   /* Select the FLASH: Chip Select low */
+  99:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 100:../src/sst25vf_spi.c ****   /* Send Bulk Erase instruction  */
+ 101:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_BE);
+ 102:../src/sst25vf_spi.c ****   /* Deselect the FLASH: Chip Select high */
+ 103:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 104:../src/sst25vf_spi.c **** 
+ 105:../src/sst25vf_spi.c ****   /* Wait till the end of Flash writing */
+ 106:../src/sst25vf_spi.c ****   sFLASH_WaitForWriteEnd();
+ 107:../src/sst25vf_spi.c **** }
+ 108:../src/sst25vf_spi.c **** 
+ 109:../src/sst25vf_spi.c **** /**
+ 110:../src/sst25vf_spi.c ****   * @brief  Write one byte to the FLASH.
+ 111:../src/sst25vf_spi.c ****   * @param  WriteAddr: FLASH's internal address to write to.
+ 112:../src/sst25vf_spi.c ****   * @param  byte: the data to be written.
+ 113:../src/sst25vf_spi.c ****   * @retval None
+ 114:../src/sst25vf_spi.c ****   */
+ 115:../src/sst25vf_spi.c **** void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte)
+ 116:../src/sst25vf_spi.c **** {
+ 117:../src/sst25vf_spi.c ****   /* Enable the write access to the FLASH */
+ 118:../src/sst25vf_spi.c ****   sFLASH_WriteEnable();
+ 119:../src/sst25vf_spi.c **** 
+ 120:../src/sst25vf_spi.c ****   /* Select the FLASH: Chip Select low */
+ 121:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 122:../src/sst25vf_spi.c ****   /* Send "Byte Program" instruction */
+ 123:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_WRITE);
+ 124:../src/sst25vf_spi.c ****   /* Send WriteAddr high nibble address byte to write to */
+ 125:../src/sst25vf_spi.c ****   sFLASH_SendByte((WriteAddr & 0xFF0000) >> 16);
+ 126:../src/sst25vf_spi.c ****   /* Send WriteAddr medium nibble address byte to write to */
+ 127:../src/sst25vf_spi.c ****   sFLASH_SendByte((WriteAddr & 0xFF00) >> 8);
+ 128:../src/sst25vf_spi.c ****   /* Send WriteAddr low nibble address byte to write to */
+ 129:../src/sst25vf_spi.c ****   sFLASH_SendByte(WriteAddr & 0xFF);
+ 130:../src/sst25vf_spi.c ****   /* Send the byte */
+ 131:../src/sst25vf_spi.c ****   sFLASH_SendByte(byte);
+ 132:../src/sst25vf_spi.c ****   /* Deselect the FLASH: Chip Select high */
+ 133:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 134:../src/sst25vf_spi.c ****   /* Wait till the end of Flash writing */
+ 135:../src/sst25vf_spi.c ****   sFLASH_WaitForWriteEnd();
+ 136:../src/sst25vf_spi.c **** }
+ 137:../src/sst25vf_spi.c **** 
+ 138:../src/sst25vf_spi.c **** /**
+ 139:../src/sst25vf_spi.c ****   * @brief  Writes more than one byte to the FLASH.
+ 140:../src/sst25vf_spi.c ****   * @note   The number of bytes can't exceed the FLASH page size.
+ 141:../src/sst25vf_spi.c ****   * @param  pBuffer: pointer to the buffer containing the data to be written
+ 142:../src/sst25vf_spi.c ****   *         to the FLASH.
+ 143:../src/sst25vf_spi.c ****   * @param  WriteAddr: FLASH's internal address to write to.
+ 144:../src/sst25vf_spi.c ****   * @param  NumByteToWrite: number of bytes to write to the FLASH, must be even,
+ 145:../src/sst25vf_spi.c ****   *         equal or less than "sFLASH_PAGESIZE" value.
+ 146:../src/sst25vf_spi.c ****   * @retval None
+ 147:../src/sst25vf_spi.c ****   */
+ 148:../src/sst25vf_spi.c **** void sFLASH_WritePage(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+ 149:../src/sst25vf_spi.c **** {
+ 150:../src/sst25vf_spi.c ****   /* Enable the write access to the FLASH */
+ 151:../src/sst25vf_spi.c ****   sFLASH_WriteEnable();
+ 152:../src/sst25vf_spi.c **** 
+ 153:../src/sst25vf_spi.c ****   /* Select the FLASH: Chip Select low */
+ 154:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 155:../src/sst25vf_spi.c ****   /* Send "Auto Address Increment Word-Program" instruction */
+ 156:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_AAIP);
+ 157:../src/sst25vf_spi.c ****   /* Send WriteAddr high nibble address byte to write to */
+ 158:../src/sst25vf_spi.c ****   sFLASH_SendByte((WriteAddr & 0xFF0000) >> 16);
+ 159:../src/sst25vf_spi.c ****   /* Send WriteAddr medium nibble address byte to write to */
+ 160:../src/sst25vf_spi.c ****   sFLASH_SendByte((WriteAddr & 0xFF00) >> 8);
+ 161:../src/sst25vf_spi.c ****   /* Send WriteAddr low nibble address byte to write to */
+ 162:../src/sst25vf_spi.c ****   sFLASH_SendByte(WriteAddr & 0xFF);
+ 163:../src/sst25vf_spi.c ****   /* Send the first byte */
+ 164:../src/sst25vf_spi.c ****   sFLASH_SendByte(*pBuffer++);
+ 165:../src/sst25vf_spi.c ****   /* Send the second byte */
+ 166:../src/sst25vf_spi.c ****   sFLASH_SendByte(*pBuffer++);
+ 167:../src/sst25vf_spi.c ****   /* Update NumByteToWrite */
+ 168:../src/sst25vf_spi.c ****   NumByteToWrite -= 2;
+ 169:../src/sst25vf_spi.c ****   /* Deselect the FLASH: Chip Select high */
+ 170:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 171:../src/sst25vf_spi.c ****   /* Wait till the end of Flash writing */
+ 172:../src/sst25vf_spi.c ****   sFLASH_WaitForWriteEnd();
+ 173:../src/sst25vf_spi.c **** 
+ 174:../src/sst25vf_spi.c ****   /* while there is data to be written on the FLASH */
+ 175:../src/sst25vf_spi.c ****   while (NumByteToWrite)
+ 176:../src/sst25vf_spi.c ****   {
+ 177:../src/sst25vf_spi.c **** 	/* Select the FLASH: Chip Select low */
+ 178:../src/sst25vf_spi.c **** 	sFLASH_CS_LOW();
+ 179:../src/sst25vf_spi.c **** 	/* Send "Auto Address Increment Word-Program" instruction */
+ 180:../src/sst25vf_spi.c **** 	sFLASH_SendByte(sFLASH_CMD_AAIP);
+ 181:../src/sst25vf_spi.c ****     /* Send the next byte and point on the next byte */
+ 182:../src/sst25vf_spi.c ****     sFLASH_SendByte(*pBuffer++);
+ 183:../src/sst25vf_spi.c ****     /* Send the next byte and point on the next byte */
+ 184:../src/sst25vf_spi.c ****     sFLASH_SendByte(*pBuffer++);
+ 185:../src/sst25vf_spi.c ****     /* Update NumByteToWrite */
+ 186:../src/sst25vf_spi.c ****     NumByteToWrite -= 2;
+ 187:../src/sst25vf_spi.c ****     /* Deselect the FLASH: Chip Select high */
+ 188:../src/sst25vf_spi.c ****     sFLASH_CS_HIGH();
+ 189:../src/sst25vf_spi.c ****     /* Wait till the end of Flash writing */
+ 190:../src/sst25vf_spi.c ****     sFLASH_WaitForWriteEnd();
+ 191:../src/sst25vf_spi.c ****   }
+ 192:../src/sst25vf_spi.c **** 
+ 193:../src/sst25vf_spi.c ****   /* Deselect the FLASH: Chip Select high */
+ 194:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 195:../src/sst25vf_spi.c **** 
+ 196:../src/sst25vf_spi.c ****   /* Disable the write access to the FLASH */
+ 197:../src/sst25vf_spi.c ****   sFLASH_WriteDisable();
+ 198:../src/sst25vf_spi.c **** }
+ 199:../src/sst25vf_spi.c **** 
+ 200:../src/sst25vf_spi.c **** /**
+ 201:../src/sst25vf_spi.c ****   * @brief  Writes block of data to the FLASH.
+ 202:../src/sst25vf_spi.c ****   * @param  pBuffer: pointer to the buffer  containing the data to be written
+ 203:../src/sst25vf_spi.c ****   *         to the FLASH.
+ 204:../src/sst25vf_spi.c ****   * @param  WriteAddr: FLASH's internal address to write to.
+ 205:../src/sst25vf_spi.c ****   * @param  NumByteToWrite: number of bytes to write to the FLASH.
+ 206:../src/sst25vf_spi.c ****   * @retval None
+ 207:../src/sst25vf_spi.c ****   */
+ 208:../src/sst25vf_spi.c **** void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+ 209:../src/sst25vf_spi.c **** {
+ 210:../src/sst25vf_spi.c ****   uint8_t NumOfPage = 0, NumOfSingle = 0, Addr = 0, count = 0, temp = 0;
+ 211:../src/sst25vf_spi.c **** 
+ 212:../src/sst25vf_spi.c ****   Addr = WriteAddr % sFLASH_PAGESIZE;
+ 213:../src/sst25vf_spi.c ****   count = sFLASH_PAGESIZE - Addr;
+ 214:../src/sst25vf_spi.c ****   NumOfPage =  NumByteToWrite / sFLASH_PAGESIZE;
+ 215:../src/sst25vf_spi.c ****   NumOfSingle = NumByteToWrite % sFLASH_PAGESIZE;
+ 216:../src/sst25vf_spi.c **** 
+ 217:../src/sst25vf_spi.c ****   if (Addr == 0) /* WriteAddr is sFLASH_PAGESIZE aligned  */
+ 218:../src/sst25vf_spi.c ****   {
+ 219:../src/sst25vf_spi.c ****     if (NumOfPage == 0) /* NumByteToWrite < sFLASH_PAGESIZE */
+ 220:../src/sst25vf_spi.c ****     {
+ 221:../src/sst25vf_spi.c ****       sFLASH_WritePage(pBuffer, WriteAddr, NumByteToWrite);
+ 222:../src/sst25vf_spi.c ****     }
+ 223:../src/sst25vf_spi.c ****     else /* NumByteToWrite > sFLASH_PAGESIZE */
+ 224:../src/sst25vf_spi.c ****     {
+ 225:../src/sst25vf_spi.c ****       while (NumOfPage--)
+ 226:../src/sst25vf_spi.c ****       {
+ 227:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, sFLASH_PAGESIZE);
+ 228:../src/sst25vf_spi.c ****         WriteAddr +=  sFLASH_PAGESIZE;
+ 229:../src/sst25vf_spi.c ****         pBuffer += sFLASH_PAGESIZE;
+ 230:../src/sst25vf_spi.c ****       }
+ 231:../src/sst25vf_spi.c **** 
+ 232:../src/sst25vf_spi.c ****       sFLASH_WritePage(pBuffer, WriteAddr, NumOfSingle);
+ 233:../src/sst25vf_spi.c ****     }
+ 234:../src/sst25vf_spi.c ****   }
+ 235:../src/sst25vf_spi.c ****   else /* WriteAddr is not sFLASH_PAGESIZE aligned  */
+ 236:../src/sst25vf_spi.c ****   {
+ 237:../src/sst25vf_spi.c ****     if (NumOfPage == 0) /* NumByteToWrite < sFLASH_PAGESIZE */
+ 238:../src/sst25vf_spi.c ****     {
+ 239:../src/sst25vf_spi.c ****       if (NumOfSingle > count) /* (NumByteToWrite + WriteAddr) > sFLASH_PAGESIZE */
+ 240:../src/sst25vf_spi.c ****       {
+ 241:../src/sst25vf_spi.c ****         temp = NumOfSingle - count;
+ 242:../src/sst25vf_spi.c **** 
+ 243:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, count);
+ 244:../src/sst25vf_spi.c ****         WriteAddr +=  count;
+ 245:../src/sst25vf_spi.c ****         pBuffer += count;
+ 246:../src/sst25vf_spi.c **** 
+ 247:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, temp);
+ 248:../src/sst25vf_spi.c ****       }
+ 249:../src/sst25vf_spi.c ****       else
+ 250:../src/sst25vf_spi.c ****       {
+ 251:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, NumByteToWrite);
+ 252:../src/sst25vf_spi.c ****       }
+ 253:../src/sst25vf_spi.c ****     }
+ 254:../src/sst25vf_spi.c ****     else /* NumByteToWrite > sFLASH_PAGESIZE */
+ 255:../src/sst25vf_spi.c ****     {
+ 256:../src/sst25vf_spi.c ****       NumByteToWrite -= count;
+ 257:../src/sst25vf_spi.c ****       NumOfPage =  NumByteToWrite / sFLASH_PAGESIZE;
+ 258:../src/sst25vf_spi.c ****       NumOfSingle = NumByteToWrite % sFLASH_PAGESIZE;
+ 259:../src/sst25vf_spi.c **** 
+ 260:../src/sst25vf_spi.c ****       sFLASH_WritePage(pBuffer, WriteAddr, count);
+ 261:../src/sst25vf_spi.c ****       WriteAddr +=  count;
+ 262:../src/sst25vf_spi.c ****       pBuffer += count;
+ 263:../src/sst25vf_spi.c **** 
+ 264:../src/sst25vf_spi.c ****       while (NumOfPage--)
+ 265:../src/sst25vf_spi.c ****       {
+ 266:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, sFLASH_PAGESIZE);
+ 267:../src/sst25vf_spi.c ****         WriteAddr +=  sFLASH_PAGESIZE;
+ 268:../src/sst25vf_spi.c ****         pBuffer += sFLASH_PAGESIZE;
+ 269:../src/sst25vf_spi.c ****       }
+ 270:../src/sst25vf_spi.c **** 
+ 271:../src/sst25vf_spi.c ****       if (NumOfSingle != 0)
+ 272:../src/sst25vf_spi.c ****       {
+ 273:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, NumOfSingle);
+ 274:../src/sst25vf_spi.c ****       }
+ 275:../src/sst25vf_spi.c ****     }
+ 276:../src/sst25vf_spi.c ****   }
+ 277:../src/sst25vf_spi.c **** }
+ 278:../src/sst25vf_spi.c **** 
+ 279:../src/sst25vf_spi.c **** /**
+ 280:../src/sst25vf_spi.c ****   * @brief  Reads a block of data from the FLASH.
+ 281:../src/sst25vf_spi.c ****   * @param  pBuffer: pointer to the buffer that receives the data read from the FLASH.
+ 282:../src/sst25vf_spi.c ****   * @param  ReadAddr: FLASH's internal address to read from.
+ 283:../src/sst25vf_spi.c ****   * @param  NumByteToRead: number of bytes to read from the FLASH.
+ 284:../src/sst25vf_spi.c ****   * @retval None
+ 285:../src/sst25vf_spi.c ****   */
+ 286:../src/sst25vf_spi.c **** void sFLASH_ReadBuffer(uint8_t* pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
+ 287:../src/sst25vf_spi.c **** {
+ 288:../src/sst25vf_spi.c ****   /* Select the FLASH: Chip Select low */
+ 289:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 290:../src/sst25vf_spi.c **** 
+ 291:../src/sst25vf_spi.c ****   /* Send "Read from Memory " instruction */
+ 292:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_READ);
+ 293:../src/sst25vf_spi.c **** 
+ 294:../src/sst25vf_spi.c ****   /* Send ReadAddr high nibble address byte to read from */
+ 295:../src/sst25vf_spi.c ****   sFLASH_SendByte((ReadAddr & 0xFF0000) >> 16);
+ 296:../src/sst25vf_spi.c ****   /* Send ReadAddr medium nibble address byte to read from */
+ 297:../src/sst25vf_spi.c ****   sFLASH_SendByte((ReadAddr& 0xFF00) >> 8);
+ 298:../src/sst25vf_spi.c ****   /* Send ReadAddr low nibble address byte to read from */
+ 299:../src/sst25vf_spi.c ****   sFLASH_SendByte(ReadAddr & 0xFF);
+ 300:../src/sst25vf_spi.c **** 
+ 301:../src/sst25vf_spi.c ****   while (NumByteToRead) /* while there is data to be read */
+ 302:../src/sst25vf_spi.c ****   {
+ 303:../src/sst25vf_spi.c ****     /* Read a byte from the FLASH and point to the next location */
+ 304:../src/sst25vf_spi.c ****     *pBuffer++ = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 305:../src/sst25vf_spi.c ****     /* Decrement NumByteToRead */
+ 306:../src/sst25vf_spi.c ****     NumByteToRead--;
+ 307:../src/sst25vf_spi.c ****   }
+ 308:../src/sst25vf_spi.c **** 
+ 309:../src/sst25vf_spi.c ****   /* Deselect the FLASH: Chip Select high */
+ 310:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 311:../src/sst25vf_spi.c **** }
+ 312:../src/sst25vf_spi.c **** 
+ 313:../src/sst25vf_spi.c **** /**
+ 314:../src/sst25vf_spi.c ****   * @brief  Reads FLASH identification.
+ 315:../src/sst25vf_spi.c ****   * @param  None
+ 316:../src/sst25vf_spi.c ****   * @retval FLASH identification
+ 317:../src/sst25vf_spi.c ****   */
+ 318:../src/sst25vf_spi.c **** uint32_t sFLASH_ReadID(void)
+ 319:../src/sst25vf_spi.c **** {
+ 320:../src/sst25vf_spi.c ****   uint32_t Temp = 0, Temp0 = 0, Temp1 = 0, Temp2 = 0;
+ 321:../src/sst25vf_spi.c **** 
+ 322:../src/sst25vf_spi.c ****   /* Select the FLASH: Chip Select low */
+ 323:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 324:../src/sst25vf_spi.c **** 
+ 325:../src/sst25vf_spi.c ****   /* Send "JEDEC ID Read" instruction */
+ 326:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_RDID);
+ 327:../src/sst25vf_spi.c **** 
+ 328:../src/sst25vf_spi.c ****   /* Read a byte from the FLASH */
+ 329:../src/sst25vf_spi.c ****   Temp0 = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 330:../src/sst25vf_spi.c **** 
+ 331:../src/sst25vf_spi.c ****   /* Read a byte from the FLASH */
+ 332:../src/sst25vf_spi.c ****   Temp1 = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 333:../src/sst25vf_spi.c **** 
+ 334:../src/sst25vf_spi.c ****   /* Read a byte from the FLASH */
+ 335:../src/sst25vf_spi.c ****   Temp2 = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 336:../src/sst25vf_spi.c **** 
+ 337:../src/sst25vf_spi.c ****   /* Deselect the FLASH: Chip Select high */
+ 338:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 339:../src/sst25vf_spi.c **** 
+ 340:../src/sst25vf_spi.c ****   Temp = (Temp0 << 16) | (Temp1 << 8) | Temp2;
+ 341:../src/sst25vf_spi.c **** 
+ 342:../src/sst25vf_spi.c ****   return Temp;
+ 343:../src/sst25vf_spi.c **** }
+ 344:../src/sst25vf_spi.c **** 
+ 345:../src/sst25vf_spi.c **** 
+ 346:../src/sst25vf_spi.c **** /**
+ 347:../src/sst25vf_spi.c ****   * @brief  Sends a byte through the SPI interface and return the byte received
+ 348:../src/sst25vf_spi.c ****   *         from the SPI bus.
+ 349:../src/sst25vf_spi.c ****   * @param  byte: byte to send.
+ 350:../src/sst25vf_spi.c ****   * @retval The value of the received byte.
+ 351:../src/sst25vf_spi.c ****   */
+ 352:../src/sst25vf_spi.c **** uint8_t sFLASH_SendByte(uint8_t byte)
+ 353:../src/sst25vf_spi.c **** {
+  27              		.loc 1 353 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  32 0000 10B5     		push	{r4, lr}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 8
+  35              		.cfi_offset 4, -8
+  36              		.cfi_offset 14, -4
+  37 0002 0446     		mov	r4, r0
+  38              	.LVL1:
+  39              	.L2:
+ 354:../src/sst25vf_spi.c ****   /* Loop while DR register in not empty */
+ 355:../src/sst25vf_spi.c ****   while (SPI_I2S_GetFlagStatus(sFLASH_SPI, SPI_I2S_FLAG_TXE) == RESET);
+  40              		.loc 1 355 0 discriminator 1
+  41 0004 0A48     		ldr	r0, .L13
+  42 0006 0221     		movs	r1, #2
+  43 0008 FFF7FEFF 		bl	SPI_I2S_GetFlagStatus
+  44              	.LVL2:
+  45 000c 0028     		cmp	r0, #0
+  46 000e F9D0     		beq	.L2
+ 356:../src/sst25vf_spi.c **** 
+ 357:../src/sst25vf_spi.c ****   /* Send byte through the SPI peripheral */
+ 358:../src/sst25vf_spi.c ****   SPI_I2S_SendData(sFLASH_SPI, byte);
+  47              		.loc 1 358 0
+  48 0010 0748     		ldr	r0, .L13
+  49 0012 2146     		mov	r1, r4
+  50 0014 FFF7FEFF 		bl	SPI_I2S_SendData
+  51              	.LVL3:
+  52              	.L3:
+ 359:../src/sst25vf_spi.c **** 
+ 360:../src/sst25vf_spi.c ****   /* Wait to receive a byte */
+ 361:../src/sst25vf_spi.c ****   while (SPI_I2S_GetFlagStatus(sFLASH_SPI, SPI_I2S_FLAG_RXNE) == RESET);
+  53              		.loc 1 361 0 discriminator 1
+  54 0018 0548     		ldr	r0, .L13
+  55 001a 0121     		movs	r1, #1
+  56 001c FFF7FEFF 		bl	SPI_I2S_GetFlagStatus
+  57              	.LVL4:
+  58 0020 0028     		cmp	r0, #0
+  59 0022 F9D0     		beq	.L3
+ 362:../src/sst25vf_spi.c **** 
+ 363:../src/sst25vf_spi.c ****   /* Return the byte read from the SPI bus */
+ 364:../src/sst25vf_spi.c ****   return SPI_I2S_ReceiveData(sFLASH_SPI);
+  60              		.loc 1 364 0
+  61 0024 0248     		ldr	r0, .L13
+  62 0026 FFF7FEFF 		bl	SPI_I2S_ReceiveData
+  63              	.LVL5:
+ 365:../src/sst25vf_spi.c **** }
+  64              		.loc 1 365 0
+  65 002a C0B2     		uxtb	r0, r0
+  66 002c 10BD     		pop	{r4, pc}
+  67              	.L14:
+  68 002e 00BF     		.align	2
+  69              	.L13:
+  70 0030 00380040 		.word	1073756160
+  71              		.cfi_endproc
+  72              	.LFE64:
+  74              		.section	.text.sFLASH_ReadID,"ax",%progbits
+  75              		.align	1
+  76              		.global	sFLASH_ReadID
+  77              		.thumb
+  78              		.thumb_func
+  80              	sFLASH_ReadID:
+  81              	.LFB63:
+ 319:../src/sst25vf_spi.c **** {
+  82              		.loc 1 319 0
+  83              		.cfi_startproc
+  84              		@ args = 0, pretend = 0, frame = 0
+  85              		@ frame_needed = 0, uses_anonymous_args = 0
+  86              	.LVL6:
+  87 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+  88              	.LCFI1:
+  89              		.cfi_def_cfa_offset 24
+  90              		.cfi_offset 3, -24
+  91              		.cfi_offset 4, -20
+  92              		.cfi_offset 5, -16
+  93              		.cfi_offset 6, -12
+  94              		.cfi_offset 7, -8
+  95              		.cfi_offset 14, -4
+ 323:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+  96              		.loc 1 323 0
+  97 0002 0F4C     		ldr	r4, .L16
+  98 0004 4FF40071 		mov	r1, #512
+  99 0008 2046     		mov	r0, r4
+ 100 000a FFF7FEFF 		bl	GPIO_ResetBits
+ 101              	.LVL7:
+ 326:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_RDID);
+ 102              		.loc 1 326 0
+ 103 000e 9F20     		movs	r0, #159
+ 104 0010 FFF7FEFF 		bl	sFLASH_SendByte
+ 105              	.LVL8:
+ 329:../src/sst25vf_spi.c ****   Temp0 = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 106              		.loc 1 329 0
+ 107 0014 FF20     		movs	r0, #255
+ 108 0016 FFF7FEFF 		bl	sFLASH_SendByte
+ 109              	.LVL9:
+ 110 001a 0646     		mov	r6, r0
+ 111              	.LVL10:
+ 332:../src/sst25vf_spi.c ****   Temp1 = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 112              		.loc 1 332 0
+ 113 001c FF20     		movs	r0, #255
+ 114              	.LVL11:
+ 115 001e FFF7FEFF 		bl	sFLASH_SendByte
+ 116              	.LVL12:
+ 117 0022 0746     		mov	r7, r0
+ 118              	.LVL13:
+ 335:../src/sst25vf_spi.c ****   Temp2 = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 119              		.loc 1 335 0
+ 120 0024 FF20     		movs	r0, #255
+ 121              	.LVL14:
+ 122 0026 FFF7FEFF 		bl	sFLASH_SendByte
+ 123              	.LVL15:
+ 340:../src/sst25vf_spi.c ****   Temp = (Temp0 << 16) | (Temp1 << 8) | Temp2;
+ 124              		.loc 1 340 0
+ 125 002a 3F02     		lsls	r7, r7, #8
+ 126              	.LVL16:
+ 335:../src/sst25vf_spi.c ****   Temp2 = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 127              		.loc 1 335 0
+ 128 002c 0546     		mov	r5, r0
+ 129              	.LVL17:
+ 338:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 130              		.loc 1 338 0
+ 131 002e 4FF40071 		mov	r1, #512
+ 132 0032 2046     		mov	r0, r4
+ 133              	.LVL18:
+ 134 0034 FFF7FEFF 		bl	GPIO_SetBits
+ 135              	.LVL19:
+ 340:../src/sst25vf_spi.c ****   Temp = (Temp0 << 16) | (Temp1 << 8) | Temp2;
+ 136              		.loc 1 340 0
+ 137 0038 47EA0640 		orr	r0, r7, r6, lsl #16
+ 343:../src/sst25vf_spi.c **** }
+ 138              		.loc 1 343 0
+ 139 003c 2843     		orrs	r0, r0, r5
+ 140 003e F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 141              	.L17:
+ 142              		.align	2
+ 143              	.L16:
+ 144 0040 000C0140 		.word	1073810432
+ 145              		.cfi_endproc
+ 146              	.LFE63:
+ 148              		.section	.text.sFLASH_ReadBuffer,"ax",%progbits
+ 149              		.align	1
+ 150              		.global	sFLASH_ReadBuffer
+ 151              		.thumb
+ 152              		.thumb_func
+ 154              	sFLASH_ReadBuffer:
+ 155              	.LFB62:
+ 287:../src/sst25vf_spi.c **** {
+ 156              		.loc 1 287 0
+ 157              		.cfi_startproc
+ 158              		@ args = 0, pretend = 0, frame = 0
+ 159              		@ frame_needed = 0, uses_anonymous_args = 0
+ 160              	.LVL20:
+ 161 0000 70B5     		push	{r4, r5, r6, lr}
+ 162              	.LCFI2:
+ 163              		.cfi_def_cfa_offset 16
+ 164              		.cfi_offset 4, -16
+ 165              		.cfi_offset 5, -12
+ 166              		.cfi_offset 6, -8
+ 167              		.cfi_offset 14, -4
+ 287:../src/sst25vf_spi.c **** {
+ 168              		.loc 1 287 0
+ 169 0002 0C46     		mov	r4, r1
+ 170 0004 0646     		mov	r6, r0
+ 289:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 171              		.loc 1 289 0
+ 172 0006 4FF40071 		mov	r1, #512
+ 173              	.LVL21:
+ 174 000a 1148     		ldr	r0, .L22
+ 175              	.LVL22:
+ 287:../src/sst25vf_spi.c **** {
+ 176              		.loc 1 287 0
+ 177 000c 1546     		mov	r5, r2
+ 289:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 178              		.loc 1 289 0
+ 179 000e FFF7FEFF 		bl	GPIO_ResetBits
+ 180              	.LVL23:
+ 292:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_READ);
+ 181              		.loc 1 292 0
+ 182 0012 0320     		movs	r0, #3
+ 183 0014 FFF7FEFF 		bl	sFLASH_SendByte
+ 184              	.LVL24:
+ 295:../src/sst25vf_spi.c ****   sFLASH_SendByte((ReadAddr & 0xFF0000) >> 16);
+ 185              		.loc 1 295 0
+ 186 0018 C4F30740 		ubfx	r0, r4, #16, #8
+ 187 001c FFF7FEFF 		bl	sFLASH_SendByte
+ 188              	.LVL25:
+ 297:../src/sst25vf_spi.c ****   sFLASH_SendByte((ReadAddr& 0xFF00) >> 8);
+ 189              		.loc 1 297 0
+ 190 0020 C4F30720 		ubfx	r0, r4, #8, #8
+ 191 0024 FFF7FEFF 		bl	sFLASH_SendByte
+ 192              	.LVL26:
+ 299:../src/sst25vf_spi.c ****   sFLASH_SendByte(ReadAddr & 0xFF);
+ 193              		.loc 1 299 0
+ 194 0028 E0B2     		uxtb	r0, r4
+ 195 002a FFF7FEFF 		bl	sFLASH_SendByte
+ 196              	.LVL27:
+ 197              	.L19:
+ 301:../src/sst25vf_spi.c ****   while (NumByteToRead) /* while there is data to be read */
+ 198              		.loc 1 301 0 discriminator 1
+ 199 002e 3DB1     		cbz	r5, .L21
+ 200              	.L20:
+ 304:../src/sst25vf_spi.c ****     *pBuffer++ = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 201              		.loc 1 304 0
+ 202 0030 FF20     		movs	r0, #255
+ 203 0032 FFF7FEFF 		bl	sFLASH_SendByte
+ 204              	.LVL28:
+ 306:../src/sst25vf_spi.c ****     NumByteToRead--;
+ 205              		.loc 1 306 0
+ 206 0036 013D     		subs	r5, r5, #1
+ 207              	.LVL29:
+ 304:../src/sst25vf_spi.c ****     *pBuffer++ = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 208              		.loc 1 304 0
+ 209 0038 06F8010B 		strb	r0, [r6], #1
+ 210              	.LVL30:
+ 306:../src/sst25vf_spi.c ****     NumByteToRead--;
+ 211              		.loc 1 306 0
+ 212 003c ADB2     		uxth	r5, r5
+ 213              	.LVL31:
+ 214 003e F6E7     		b	.L19
+ 215              	.L21:
+ 310:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 216              		.loc 1 310 0
+ 217 0040 0348     		ldr	r0, .L22
+ 218 0042 4FF40071 		mov	r1, #512
+ 311:../src/sst25vf_spi.c **** }
+ 219              		.loc 1 311 0
+ 220 0046 BDE87040 		pop	{r4, r5, r6, lr}
+ 310:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 221              		.loc 1 310 0
+ 222 004a FFF7FEBF 		b	GPIO_SetBits
+ 223              	.LVL32:
+ 224              	.L23:
+ 225 004e 00BF     		.align	2
+ 226              	.L22:
+ 227 0050 000C0140 		.word	1073810432
+ 228              		.cfi_endproc
+ 229              	.LFE62:
+ 231              		.section	.text.sFLASH_WriteEnable,"ax",%progbits
+ 232              		.align	1
+ 233              		.global	sFLASH_WriteEnable
+ 234              		.thumb
+ 235              		.thumb_func
+ 237              	sFLASH_WriteEnable:
+ 238              	.LFB65:
+ 366:../src/sst25vf_spi.c **** 
+ 367:../src/sst25vf_spi.c **** /**
+ 368:../src/sst25vf_spi.c ****   * @brief  Enables the write access to the FLASH.
+ 369:../src/sst25vf_spi.c ****   * @param  None
+ 370:../src/sst25vf_spi.c ****   * @retval None
+ 371:../src/sst25vf_spi.c ****   */
+ 372:../src/sst25vf_spi.c **** void sFLASH_WriteEnable(void)
+ 373:../src/sst25vf_spi.c **** {
+ 239              		.loc 1 373 0
+ 240              		.cfi_startproc
+ 241              		@ args = 0, pretend = 0, frame = 0
+ 242              		@ frame_needed = 0, uses_anonymous_args = 0
+ 243 0000 10B5     		push	{r4, lr}
+ 244              	.LCFI3:
+ 245              		.cfi_def_cfa_offset 8
+ 246              		.cfi_offset 4, -8
+ 247              		.cfi_offset 14, -4
+ 374:../src/sst25vf_spi.c ****   /* Select the FLASH: Chip Select low */
+ 375:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 248              		.loc 1 375 0
+ 249 0002 084C     		ldr	r4, .L25
+ 250 0004 4FF40071 		mov	r1, #512
+ 251 0008 2046     		mov	r0, r4
+ 252 000a FFF7FEFF 		bl	GPIO_ResetBits
+ 253              	.LVL33:
+ 376:../src/sst25vf_spi.c **** 
+ 377:../src/sst25vf_spi.c ****   /* Send "Write Enable" instruction */
+ 378:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_WREN);
+ 254              		.loc 1 378 0
+ 255 000e 0620     		movs	r0, #6
+ 256 0010 FFF7FEFF 		bl	sFLASH_SendByte
+ 257              	.LVL34:
+ 379:../src/sst25vf_spi.c **** 
+ 380:../src/sst25vf_spi.c ****   /* Deselect the FLASH: Chip Select high */
+ 381:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 258              		.loc 1 381 0
+ 259 0014 2046     		mov	r0, r4
+ 260 0016 4FF40071 		mov	r1, #512
+ 382:../src/sst25vf_spi.c **** }
+ 261              		.loc 1 382 0
+ 262 001a BDE81040 		pop	{r4, lr}
+ 381:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 263              		.loc 1 381 0
+ 264 001e FFF7FEBF 		b	GPIO_SetBits
+ 265              	.LVL35:
+ 266              	.L26:
+ 267 0022 00BF     		.align	2
+ 268              	.L25:
+ 269 0024 000C0140 		.word	1073810432
+ 270              		.cfi_endproc
+ 271              	.LFE65:
+ 273              		.section	.text.sFLASH_WriteDisable,"ax",%progbits
+ 274              		.align	1
+ 275              		.global	sFLASH_WriteDisable
+ 276              		.thumb
+ 277              		.thumb_func
+ 279              	sFLASH_WriteDisable:
+ 280              	.LFB66:
+ 383:../src/sst25vf_spi.c **** 
+ 384:../src/sst25vf_spi.c **** /**
+ 385:../src/sst25vf_spi.c ****   * @brief  Disables the write access to the FLASH.
+ 386:../src/sst25vf_spi.c ****   * @param  None
+ 387:../src/sst25vf_spi.c ****   * @retval None
+ 388:../src/sst25vf_spi.c ****   */
+ 389:../src/sst25vf_spi.c **** void sFLASH_WriteDisable(void)
+ 390:../src/sst25vf_spi.c **** {
+ 281              		.loc 1 390 0
+ 282              		.cfi_startproc
+ 283              		@ args = 0, pretend = 0, frame = 0
+ 284              		@ frame_needed = 0, uses_anonymous_args = 0
+ 285 0000 10B5     		push	{r4, lr}
+ 286              	.LCFI4:
+ 287              		.cfi_def_cfa_offset 8
+ 288              		.cfi_offset 4, -8
+ 289              		.cfi_offset 14, -4
+ 391:../src/sst25vf_spi.c ****   /* Select the FLASH: Chip Select low */
+ 392:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 290              		.loc 1 392 0
+ 291 0002 084C     		ldr	r4, .L28
+ 292 0004 4FF40071 		mov	r1, #512
+ 293 0008 2046     		mov	r0, r4
+ 294 000a FFF7FEFF 		bl	GPIO_ResetBits
+ 295              	.LVL36:
+ 393:../src/sst25vf_spi.c **** 
+ 394:../src/sst25vf_spi.c ****   /* Send "Write Disable" instruction */
+ 395:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_WRDI);
+ 296              		.loc 1 395 0
+ 297 000e 0420     		movs	r0, #4
+ 298 0010 FFF7FEFF 		bl	sFLASH_SendByte
+ 299              	.LVL37:
+ 396:../src/sst25vf_spi.c **** 
+ 397:../src/sst25vf_spi.c ****   /* Deselect the FLASH: Chip Select high */
+ 398:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 300              		.loc 1 398 0
+ 301 0014 2046     		mov	r0, r4
+ 302 0016 4FF40071 		mov	r1, #512
+ 399:../src/sst25vf_spi.c **** }
+ 303              		.loc 1 399 0
+ 304 001a BDE81040 		pop	{r4, lr}
+ 398:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 305              		.loc 1 398 0
+ 306 001e FFF7FEBF 		b	GPIO_SetBits
+ 307              	.LVL38:
+ 308              	.L29:
+ 309 0022 00BF     		.align	2
+ 310              	.L28:
+ 311 0024 000C0140 		.word	1073810432
+ 312              		.cfi_endproc
+ 313              	.LFE66:
+ 315              		.section	.text.sFLASH_Init,"ax",%progbits
+ 316              		.align	1
+ 317              		.global	sFLASH_Init
+ 318              		.thumb
+ 319              		.thumb_func
+ 321              	sFLASH_Init:
+ 322              	.LFB56:
+  21:../src/sst25vf_spi.c **** {
+ 323              		.loc 1 21 0
+ 324              		.cfi_startproc
+ 325              		@ args = 0, pretend = 0, frame = 0
+ 326              		@ frame_needed = 0, uses_anonymous_args = 0
+ 327              	.LVL39:
+ 328 0000 08B5     		push	{r3, lr}
+ 329              	.LCFI5:
+ 330              		.cfi_def_cfa_offset 8
+ 331              		.cfi_offset 3, -8
+ 332              		.cfi_offset 14, -4
+  25:../src/sst25vf_spi.c ****   sFLASH_SPI_Init();
+ 333              		.loc 1 25 0
+ 334 0002 FFF7FEFF 		bl	sFLASH_SPI_Init
+ 335              	.LVL40:
+  28:../src/sst25vf_spi.c ****   sFLASH_WriteDisable();
+ 336              		.loc 1 28 0
+ 337 0006 FFF7FEFF 		bl	sFLASH_WriteDisable
+ 338              	.LVL41:
+  31:../src/sst25vf_spi.c ****   Device_ID = sFLASH_ReadID();
+ 339              		.loc 1 31 0
+ 340 000a FFF7FEFF 		bl	sFLASH_ReadID
+ 341              	.LVL42:
+  33:../src/sst25vf_spi.c ****   if(Device_ID == sFLASH_SST25VF040_ID || Device_ID == sFLASH_SST25VF016_ID)
+ 342              		.loc 1 33 0
+ 343 000e 194B     		ldr	r3, .L33
+ 344 0010 9842     		cmp	r0, r3
+ 345 0012 02D0     		beq	.L31
+  33:../src/sst25vf_spi.c ****   if(Device_ID == sFLASH_SST25VF040_ID || Device_ID == sFLASH_SST25VF016_ID)
+ 346              		.loc 1 33 0 is_stmt 0 discriminator 1
+ 347 0014 4C3B     		subs	r3, r3, #76
+ 348 0016 9842     		cmp	r0, r3
+ 349 0018 2BD1     		bne	.L30
+ 350              	.L31:
+  36:../src/sst25vf_spi.c ****     sFLASH_CS_LOW();
+ 351              		.loc 1 36 0 is_stmt 1
+ 352 001a 4FF40071 		mov	r1, #512
+ 353 001e 1648     		ldr	r0, .L33+4
+ 354              	.LVL43:
+ 355 0020 FFF7FEFF 		bl	GPIO_ResetBits
+ 356              	.LVL44:
+  38:../src/sst25vf_spi.c ****     sFLASH_SendByte(sFLASH_CMD_DBSY);
+ 357              		.loc 1 38 0
+ 358 0024 8020     		movs	r0, #128
+ 359 0026 FFF7FEFF 		bl	sFLASH_SendByte
+ 360              	.LVL45:
+  40:../src/sst25vf_spi.c ****     sFLASH_CS_HIGH();
+ 361              		.loc 1 40 0
+ 362 002a 1348     		ldr	r0, .L33+4
+ 363 002c 4FF40071 		mov	r1, #512
+ 364 0030 FFF7FEFF 		bl	GPIO_SetBits
+ 365              	.LVL46:
+  43:../src/sst25vf_spi.c ****     sFLASH_CS_LOW();
+ 366              		.loc 1 43 0
+ 367 0034 4FF40071 		mov	r1, #512
+ 368 0038 0F48     		ldr	r0, .L33+4
+ 369 003a FFF7FEFF 		bl	GPIO_ResetBits
+ 370              	.LVL47:
+  45:../src/sst25vf_spi.c ****     sFLASH_SendByte(sFLASH_CMD_EWSR);
+ 371              		.loc 1 45 0
+ 372 003e 5020     		movs	r0, #80
+ 373 0040 FFF7FEFF 		bl	sFLASH_SendByte
+ 374              	.LVL48:
+  47:../src/sst25vf_spi.c ****     sFLASH_CS_HIGH();
+ 375              		.loc 1 47 0
+ 376 0044 0C48     		ldr	r0, .L33+4
+ 377 0046 4FF40071 		mov	r1, #512
+ 378 004a FFF7FEFF 		bl	GPIO_SetBits
+ 379              	.LVL49:
+  50:../src/sst25vf_spi.c ****     sFLASH_CS_LOW();
+ 380              		.loc 1 50 0
+ 381 004e 4FF40071 		mov	r1, #512
+ 382 0052 0948     		ldr	r0, .L33+4
+ 383 0054 FFF7FEFF 		bl	GPIO_ResetBits
+ 384              	.LVL50:
+  52:../src/sst25vf_spi.c ****     sFLASH_SendByte(sFLASH_CMD_WRSR);
+ 385              		.loc 1 52 0
+ 386 0058 0120     		movs	r0, #1
+ 387 005a FFF7FEFF 		bl	sFLASH_SendByte
+ 388              	.LVL51:
+  53:../src/sst25vf_spi.c ****     sFLASH_SendByte(0);
+ 389              		.loc 1 53 0
+ 390 005e 0020     		movs	r0, #0
+ 391 0060 FFF7FEFF 		bl	sFLASH_SendByte
+ 392              	.LVL52:
+  55:../src/sst25vf_spi.c ****     sFLASH_CS_HIGH();
+ 393              		.loc 1 55 0
+ 394 0064 0448     		ldr	r0, .L33+4
+ 395 0066 4FF40071 		mov	r1, #512
+  57:../src/sst25vf_spi.c **** }
+ 396              		.loc 1 57 0
+ 397 006a BDE80840 		pop	{r3, lr}
+  55:../src/sst25vf_spi.c ****     sFLASH_CS_HIGH();
+ 398              		.loc 1 55 0
+ 399 006e FFF7FEBF 		b	GPIO_SetBits
+ 400              	.LVL53:
+ 401              	.L30:
+ 402 0072 08BD     		pop	{r3, pc}
+ 403              	.L34:
+ 404              		.align	2
+ 405              	.L33:
+ 406 0074 8D25BF00 		.word	12526989
+ 407 0078 000C0140 		.word	1073810432
+ 408              		.cfi_endproc
+ 409              	.LFE56:
+ 411              		.section	.text.sFLASH_WaitForWriteEnd,"ax",%progbits
+ 412              		.align	1
+ 413              		.global	sFLASH_WaitForWriteEnd
+ 414              		.thumb
+ 415              		.thumb_func
+ 417              	sFLASH_WaitForWriteEnd:
+ 418              	.LFB67:
+ 400:../src/sst25vf_spi.c **** 
+ 401:../src/sst25vf_spi.c **** /**
+ 402:../src/sst25vf_spi.c ****   * @brief  Polls the status of the Write In Progress (WIP) flag in the FLASH's
+ 403:../src/sst25vf_spi.c ****   *         status register and loop until write operation has completed.
+ 404:../src/sst25vf_spi.c ****   * @param  None
+ 405:../src/sst25vf_spi.c ****   * @retval None
+ 406:../src/sst25vf_spi.c ****   */
+ 407:../src/sst25vf_spi.c **** void sFLASH_WaitForWriteEnd(void)
+ 408:../src/sst25vf_spi.c **** {
+ 419              		.loc 1 408 0
+ 420              		.cfi_startproc
+ 421              		@ args = 0, pretend = 0, frame = 0
+ 422              		@ frame_needed = 0, uses_anonymous_args = 0
+ 423              	.LVL54:
+ 409:../src/sst25vf_spi.c ****   uint8_t flashstatus = 0;
+ 410:../src/sst25vf_spi.c **** 
+ 411:../src/sst25vf_spi.c ****   /* Select the FLASH: Chip Select low */
+ 412:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 424              		.loc 1 412 0
+ 425 0000 0A48     		ldr	r0, .L38
+ 408:../src/sst25vf_spi.c **** {
+ 426              		.loc 1 408 0
+ 427 0002 08B5     		push	{r3, lr}
+ 428              	.LCFI6:
+ 429              		.cfi_def_cfa_offset 8
+ 430              		.cfi_offset 3, -8
+ 431              		.cfi_offset 14, -4
+ 432              		.loc 1 412 0
+ 433 0004 4FF40071 		mov	r1, #512
+ 434 0008 FFF7FEFF 		bl	GPIO_ResetBits
+ 435              	.LVL55:
+ 413:../src/sst25vf_spi.c **** 
+ 414:../src/sst25vf_spi.c ****   /* Send "Read Status Register" instruction */
+ 415:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_RDSR);
+ 436              		.loc 1 415 0
+ 437 000c 0520     		movs	r0, #5
+ 438 000e FFF7FEFF 		bl	sFLASH_SendByte
+ 439              	.LVL56:
+ 440              	.L36:
+ 416:../src/sst25vf_spi.c **** 
+ 417:../src/sst25vf_spi.c ****   /* Loop as long as the memory is busy with a write cycle */
+ 418:../src/sst25vf_spi.c ****   do
+ 419:../src/sst25vf_spi.c ****   {
+ 420:../src/sst25vf_spi.c ****     /* Send a dummy byte to generate the clock needed by the FLASH
+ 421:../src/sst25vf_spi.c ****     and put the value of the status register in FLASH_Status variable */
+ 422:../src/sst25vf_spi.c ****     flashstatus = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+ 441              		.loc 1 422 0 discriminator 1
+ 442 0012 FF20     		movs	r0, #255
+ 443 0014 FFF7FEFF 		bl	sFLASH_SendByte
+ 444              	.LVL57:
+ 423:../src/sst25vf_spi.c ****   }
+ 424:../src/sst25vf_spi.c ****   while ((flashstatus & sFLASH_WIP_FLAG) == SET); /* Write in progress */
+ 445              		.loc 1 424 0 discriminator 1
+ 446 0018 C307     		lsls	r3, r0, #31
+ 447 001a FAD4     		bmi	.L36
+ 425:../src/sst25vf_spi.c **** 
+ 426:../src/sst25vf_spi.c ****   /* Deselect the FLASH: Chip Select high */
+ 427:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 448              		.loc 1 427 0
+ 449 001c 0348     		ldr	r0, .L38
+ 450              	.LVL58:
+ 451 001e 4FF40071 		mov	r1, #512
+ 428:../src/sst25vf_spi.c **** }
+ 452              		.loc 1 428 0
+ 453 0022 BDE80840 		pop	{r3, lr}
+ 427:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 454              		.loc 1 427 0
+ 455 0026 FFF7FEBF 		b	GPIO_SetBits
+ 456              	.LVL59:
+ 457              	.L39:
+ 458 002a 00BF     		.align	2
+ 459              	.L38:
+ 460 002c 000C0140 		.word	1073810432
+ 461              		.cfi_endproc
+ 462              	.LFE67:
+ 464              		.section	.text.sFLASH_WritePage,"ax",%progbits
+ 465              		.align	1
+ 466              		.global	sFLASH_WritePage
+ 467              		.thumb
+ 468              		.thumb_func
+ 470              	sFLASH_WritePage:
+ 471              	.LFB60:
+ 149:../src/sst25vf_spi.c **** {
+ 472              		.loc 1 149 0
+ 473              		.cfi_startproc
+ 474              		@ args = 0, pretend = 0, frame = 0
+ 475              		@ frame_needed = 0, uses_anonymous_args = 0
+ 476              	.LVL60:
+ 477 0000 70B5     		push	{r4, r5, r6, lr}
+ 478              	.LCFI7:
+ 479              		.cfi_def_cfa_offset 16
+ 480              		.cfi_offset 4, -16
+ 481              		.cfi_offset 5, -12
+ 482              		.cfi_offset 6, -8
+ 483              		.cfi_offset 14, -4
+ 149:../src/sst25vf_spi.c **** {
+ 484              		.loc 1 149 0
+ 485 0002 1646     		mov	r6, r2
+ 486 0004 0446     		mov	r4, r0
+ 487 0006 0D46     		mov	r5, r1
+ 151:../src/sst25vf_spi.c ****   sFLASH_WriteEnable();
+ 488              		.loc 1 151 0
+ 489 0008 FFF7FEFF 		bl	sFLASH_WriteEnable
+ 490              	.LVL61:
+ 154:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 491              		.loc 1 154 0
+ 492 000c 4FF40071 		mov	r1, #512
+ 493 0010 2148     		ldr	r0, .L44
+ 494 0012 FFF7FEFF 		bl	GPIO_ResetBits
+ 495              	.LVL62:
+ 156:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_AAIP);
+ 496              		.loc 1 156 0
+ 497 0016 AD20     		movs	r0, #173
+ 498 0018 FFF7FEFF 		bl	sFLASH_SendByte
+ 499              	.LVL63:
+ 158:../src/sst25vf_spi.c ****   sFLASH_SendByte((WriteAddr & 0xFF0000) >> 16);
+ 500              		.loc 1 158 0
+ 501 001c C5F30740 		ubfx	r0, r5, #16, #8
+ 502 0020 FFF7FEFF 		bl	sFLASH_SendByte
+ 503              	.LVL64:
+ 160:../src/sst25vf_spi.c ****   sFLASH_SendByte((WriteAddr & 0xFF00) >> 8);
+ 504              		.loc 1 160 0
+ 505 0024 C5F30720 		ubfx	r0, r5, #8, #8
+ 506 0028 FFF7FEFF 		bl	sFLASH_SendByte
+ 507              	.LVL65:
+ 162:../src/sst25vf_spi.c ****   sFLASH_SendByte(WriteAddr & 0xFF);
+ 508              		.loc 1 162 0
+ 509 002c E8B2     		uxtb	r0, r5
+ 510 002e FFF7FEFF 		bl	sFLASH_SendByte
+ 511              	.LVL66:
+ 164:../src/sst25vf_spi.c ****   sFLASH_SendByte(*pBuffer++);
+ 512              		.loc 1 164 0
+ 513 0032 2078     		ldrb	r0, [r4, #0]	@ zero_extendqisi2
+ 514 0034 FFF7FEFF 		bl	sFLASH_SendByte
+ 515              	.LVL67:
+ 166:../src/sst25vf_spi.c ****   sFLASH_SendByte(*pBuffer++);
+ 516              		.loc 1 166 0
+ 517 0038 6078     		ldrb	r0, [r4, #1]	@ zero_extendqisi2
+ 518 003a FFF7FEFF 		bl	sFLASH_SendByte
+ 519              	.LVL68:
+ 170:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 520              		.loc 1 170 0
+ 521 003e 1648     		ldr	r0, .L44
+ 522 0040 4FF40071 		mov	r1, #512
+ 523 0044 FFF7FEFF 		bl	GPIO_SetBits
+ 524              	.LVL69:
+ 172:../src/sst25vf_spi.c ****   sFLASH_WaitForWriteEnd();
+ 525              		.loc 1 172 0
+ 526 0048 FFF7FEFF 		bl	sFLASH_WaitForWriteEnd
+ 527              	.LVL70:
+ 166:../src/sst25vf_spi.c ****   sFLASH_SendByte(*pBuffer++);
+ 528              		.loc 1 166 0
+ 529 004c A51C     		adds	r5, r4, #2
+ 530              	.LVL71:
+ 175:../src/sst25vf_spi.c ****   while (NumByteToWrite)
+ 531              		.loc 1 175 0
+ 532 004e 2C46     		mov	r4, r5
+ 533              	.LVL72:
+ 534              	.L41:
+ 535 0050 0234     		adds	r4, r4, #2
+ 148:../src/sst25vf_spi.c **** void sFLASH_WritePage(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+ 536              		.loc 1 148 0 discriminator 1
+ 537 0052 2B1B     		subs	r3, r5, r4
+ 175:../src/sst25vf_spi.c ****   while (NumByteToWrite)
+ 538              		.loc 1 175 0 discriminator 1
+ 539 0054 F018     		adds	r0, r6, r3
+ 540 0056 82B2     		uxth	r2, r0
+ 178:../src/sst25vf_spi.c **** 	sFLASH_CS_LOW();
+ 541              		.loc 1 178 0 discriminator 1
+ 542 0058 4FF40071 		mov	r1, #512
+ 543 005c 0E48     		ldr	r0, .L44
+ 175:../src/sst25vf_spi.c ****   while (NumByteToWrite)
+ 544              		.loc 1 175 0 discriminator 1
+ 545 005e A2B1     		cbz	r2, .L43
+ 546              	.L42:
+ 178:../src/sst25vf_spi.c **** 	sFLASH_CS_LOW();
+ 547              		.loc 1 178 0
+ 548 0060 FFF7FEFF 		bl	GPIO_ResetBits
+ 549              	.LVL73:
+ 180:../src/sst25vf_spi.c **** 	sFLASH_SendByte(sFLASH_CMD_AAIP);
+ 550              		.loc 1 180 0
+ 551 0064 AD20     		movs	r0, #173
+ 552 0066 FFF7FEFF 		bl	sFLASH_SendByte
+ 553              	.LVL74:
+ 182:../src/sst25vf_spi.c ****     sFLASH_SendByte(*pBuffer++);
+ 554              		.loc 1 182 0
+ 555 006a 14F8020C 		ldrb	r0, [r4, #-2]	@ zero_extendqisi2
+ 556 006e FFF7FEFF 		bl	sFLASH_SendByte
+ 557              	.LVL75:
+ 184:../src/sst25vf_spi.c ****     sFLASH_SendByte(*pBuffer++);
+ 558              		.loc 1 184 0
+ 559 0072 14F8010C 		ldrb	r0, [r4, #-1]	@ zero_extendqisi2
+ 560 0076 FFF7FEFF 		bl	sFLASH_SendByte
+ 561              	.LVL76:
+ 188:../src/sst25vf_spi.c ****     sFLASH_CS_HIGH();
+ 562              		.loc 1 188 0
+ 563 007a 0748     		ldr	r0, .L44
+ 564 007c 4FF40071 		mov	r1, #512
+ 565 0080 FFF7FEFF 		bl	GPIO_SetBits
+ 566              	.LVL77:
+ 190:../src/sst25vf_spi.c ****     sFLASH_WaitForWriteEnd();
+ 567              		.loc 1 190 0
+ 568 0084 FFF7FEFF 		bl	sFLASH_WaitForWriteEnd
+ 569              	.LVL78:
+ 570 0088 E2E7     		b	.L41
+ 571              	.L43:
+ 194:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 572              		.loc 1 194 0
+ 573 008a FFF7FEFF 		bl	GPIO_SetBits
+ 574              	.LVL79:
+ 198:../src/sst25vf_spi.c **** }
+ 575              		.loc 1 198 0
+ 576 008e BDE87040 		pop	{r4, r5, r6, lr}
+ 197:../src/sst25vf_spi.c ****   sFLASH_WriteDisable();
+ 577              		.loc 1 197 0
+ 578 0092 FFF7FEBF 		b	sFLASH_WriteDisable
+ 579              	.LVL80:
+ 580              	.L45:
+ 581 0096 00BF     		.align	2
+ 582              	.L44:
+ 583 0098 000C0140 		.word	1073810432
+ 584              		.cfi_endproc
+ 585              	.LFE60:
+ 587              		.section	.text.sFLASH_WriteBuffer,"ax",%progbits
+ 588              		.align	1
+ 589              		.global	sFLASH_WriteBuffer
+ 590              		.thumb
+ 591              		.thumb_func
+ 593              	sFLASH_WriteBuffer:
+ 594              	.LFB61:
+ 209:../src/sst25vf_spi.c **** {
+ 595              		.loc 1 209 0
+ 596              		.cfi_startproc
+ 597              		@ args = 0, pretend = 0, frame = 0
+ 598              		@ frame_needed = 0, uses_anonymous_args = 0
+ 599              	.LVL81:
+ 600 0000 2DE9F84F 		push	{r3, r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 601              	.LCFI8:
+ 602              		.cfi_def_cfa_offset 40
+ 603              		.cfi_offset 3, -40
+ 604              		.cfi_offset 4, -36
+ 605              		.cfi_offset 5, -32
+ 606              		.cfi_offset 6, -28
+ 607              		.cfi_offset 7, -24
+ 608              		.cfi_offset 8, -20
+ 609              		.cfi_offset 9, -16
+ 610              		.cfi_offset 10, -12
+ 611              		.cfi_offset 11, -8
+ 612              		.cfi_offset 14, -4
+ 217:../src/sst25vf_spi.c ****   if (Addr == 0) /* WriteAddr is sFLASH_PAGESIZE aligned  */
+ 613              		.loc 1 217 0
+ 614 0004 11F0FF09 		ands	r9, r1, #255
+ 209:../src/sst25vf_spi.c **** {
+ 615              		.loc 1 209 0
+ 616 0008 0646     		mov	r6, r0
+ 617 000a 0D46     		mov	r5, r1
+ 618 000c 1746     		mov	r7, r2
+ 214:../src/sst25vf_spi.c ****   NumOfPage =  NumByteToWrite / sFLASH_PAGESIZE;
+ 619              		.loc 1 214 0
+ 620 000e 4FEA1238 		lsr	r8, r2, #12
+ 621              	.LVL82:
+ 217:../src/sst25vf_spi.c ****   if (Addr == 0) /* WriteAddr is sFLASH_PAGESIZE aligned  */
+ 622              		.loc 1 217 0
+ 623 0012 1DD1     		bne	.L47
+ 219:../src/sst25vf_spi.c ****     if (NumOfPage == 0) /* NumByteToWrite < sFLASH_PAGESIZE */
+ 624              		.loc 1 219 0
+ 625 0014 B8F1000F 		cmp	r8, #0
+ 626 0018 03D1     		bne	.L55
+ 627              	.LVL83:
+ 628              	.L51:
+ 221:../src/sst25vf_spi.c ****       sFLASH_WritePage(pBuffer, WriteAddr, NumByteToWrite);
+ 629              		.loc 1 221 0
+ 630 001a 3046     		mov	r0, r6
+ 631              	.LVL84:
+ 632 001c 2946     		mov	r1, r5
+ 633              	.LVL85:
+ 634 001e 3A46     		mov	r2, r7
+ 635 0020 51E0     		b	.L56
+ 636              	.LVL86:
+ 637              	.L55:
+ 219:../src/sst25vf_spi.c ****     if (NumOfPage == 0) /* NumByteToWrite < sFLASH_PAGESIZE */
+ 638              		.loc 1 219 0
+ 639 0022 0446     		mov	r4, r0
+ 640              	.LVL87:
+ 641              	.L48:
+ 225:../src/sst25vf_spi.c ****       while (NumOfPage--)
+ 642              		.loc 1 225 0 discriminator 1
+ 643 0024 5FFA89F2 		uxtb	r2, r9
+ 208:../src/sst25vf_spi.c **** void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+ 644              		.loc 1 208 0 discriminator 1
+ 645 0028 A81B     		subs	r0, r5, r6
+ 225:../src/sst25vf_spi.c ****       while (NumOfPage--)
+ 646              		.loc 1 225 0 discriminator 1
+ 647 002a 9045     		cmp	r8, r2
+ 208:../src/sst25vf_spi.c **** void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+ 648              		.loc 1 208 0 discriminator 1
+ 649 002c 04EB0001 		add	r1, r4, r0
+ 650              	.LVL88:
+ 225:../src/sst25vf_spi.c ****       while (NumOfPage--)
+ 651              		.loc 1 225 0 discriminator 1
+ 652 0030 09D0     		beq	.L58
+ 653              	.L49:
+ 227:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, sFLASH_PAGESIZE);
+ 654              		.loc 1 227 0
+ 655 0032 2046     		mov	r0, r4
+ 656 0034 4FF48052 		mov	r2, #4096
+ 657 0038 FFF7FEFF 		bl	sFLASH_WritePage
+ 658              	.LVL89:
+ 229:../src/sst25vf_spi.c ****         pBuffer += sFLASH_PAGESIZE;
+ 659              		.loc 1 229 0
+ 660 003c 04F58054 		add	r4, r4, #4096
+ 661              	.LVL90:
+ 662 0040 09F10109 		add	r9, r9, #1
+ 663 0044 EEE7     		b	.L48
+ 664              	.LVL91:
+ 665              	.L58:
+ 208:../src/sst25vf_spi.c **** void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+ 666              		.loc 1 208 0
+ 667 0046 4FEA0831 		lsl	r1, r8, #12
+ 668              	.LVL92:
+ 232:../src/sst25vf_spi.c ****       sFLASH_WritePage(pBuffer, WriteAddr, NumOfSingle);
+ 669              		.loc 1 232 0
+ 670 004a 7018     		adds	r0, r6, r1
+ 671              	.LVL93:
+ 672 004c 4919     		adds	r1, r1, r5
+ 673 004e 39E0     		b	.L57
+ 674              	.LVL94:
+ 675              	.L47:
+ 213:../src/sst25vf_spi.c ****   count = sFLASH_PAGESIZE - Addr;
+ 676              		.loc 1 213 0
+ 677 0050 C9F10004 		rsb	r4, r9, #0
+ 678 0054 E4B2     		uxtb	r4, r4
+ 237:../src/sst25vf_spi.c ****     if (NumOfPage == 0) /* NumByteToWrite < sFLASH_PAGESIZE */
+ 679              		.loc 1 237 0
+ 680 0056 B8F1000F 		cmp	r8, #0
+ 681 005a 0DD1     		bne	.L50
+ 215:../src/sst25vf_spi.c ****   NumOfSingle = NumByteToWrite % sFLASH_PAGESIZE;
+ 682              		.loc 1 215 0
+ 683 005c D2B2     		uxtb	r2, r2
+ 684              	.LVL95:
+ 239:../src/sst25vf_spi.c ****       if (NumOfSingle > count) /* (NumByteToWrite + WriteAddr) > sFLASH_PAGESIZE */
+ 685              		.loc 1 239 0
+ 686 005e A242     		cmp	r2, r4
+ 687 0060 DBD9     		bls	.L51
+ 241:../src/sst25vf_spi.c ****         temp = NumOfSingle - count;
+ 688              		.loc 1 241 0
+ 689 0062 02EB0903 		add	r3, r2, r9
+ 690 0066 5FFA83F9 		uxtb	r9, r3
+ 691              	.LVL96:
+ 243:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, count);
+ 692              		.loc 1 243 0
+ 693 006a 2246     		mov	r2, r4
+ 694 006c FFF7FEFF 		bl	sFLASH_WritePage
+ 695              	.LVL97:
+ 247:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, temp);
+ 696              		.loc 1 247 0
+ 697 0070 3019     		adds	r0, r6, r4
+ 698              	.LVL98:
+ 699 0072 6119     		adds	r1, r4, r5
+ 700              	.LVL99:
+ 701 0074 4A46     		mov	r2, r9
+ 702 0076 26E0     		b	.L56
+ 703              	.LVL100:
+ 704              	.L50:
+ 256:../src/sst25vf_spi.c ****       NumByteToWrite -= count;
+ 705              		.loc 1 256 0
+ 706 0078 171B     		subs	r7, r2, r4
+ 260:../src/sst25vf_spi.c ****       sFLASH_WritePage(pBuffer, WriteAddr, count);
+ 707              		.loc 1 260 0
+ 708 007a 2246     		mov	r2, r4
+ 709              	.LVL101:
+ 710 007c FFF7FEFF 		bl	sFLASH_WritePage
+ 711              	.LVL102:
+ 256:../src/sst25vf_spi.c ****       NumByteToWrite -= count;
+ 712              		.loc 1 256 0
+ 713 0080 BFB2     		uxth	r7, r7
+ 714              	.LVL103:
+ 257:../src/sst25vf_spi.c ****       NumOfPage =  NumByteToWrite / sFLASH_PAGESIZE;
+ 715              		.loc 1 257 0
+ 716 0082 4FEA1739 		lsr	r9, r7, #12
+ 261:../src/sst25vf_spi.c ****       WriteAddr +=  count;
+ 717              		.loc 1 261 0
+ 718 0086 6519     		adds	r5, r4, r5
+ 719              	.LVL104:
+ 262:../src/sst25vf_spi.c ****       pBuffer += count;
+ 720              		.loc 1 262 0
+ 721 0088 3419     		adds	r4, r6, r4
+ 257:../src/sst25vf_spi.c ****       NumOfPage =  NumByteToWrite / sFLASH_PAGESIZE;
+ 722              		.loc 1 257 0
+ 723 008a 5FFA89FB 		uxtb	fp, r9
+ 724              	.LVL105:
+ 258:../src/sst25vf_spi.c ****       NumOfSingle = NumByteToWrite % sFLASH_PAGESIZE;
+ 725              		.loc 1 258 0
+ 726 008e 5FFA87FA 		uxtb	sl, r7
+ 727              	.LVL106:
+ 262:../src/sst25vf_spi.c ****       pBuffer += count;
+ 728              		.loc 1 262 0
+ 729 0092 A046     		mov	r8, r4
+ 264:../src/sst25vf_spi.c ****       while (NumOfPage--)
+ 730              		.loc 1 264 0
+ 731 0094 0026     		movs	r6, #0
+ 732              	.LVL107:
+ 733              	.L52:
+ 264:../src/sst25vf_spi.c ****       while (NumOfPage--)
+ 734              		.loc 1 264 0 is_stmt 0 discriminator 1
+ 735 0096 F3B2     		uxtb	r3, r6
+ 208:../src/sst25vf_spi.c **** void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+ 736              		.loc 1 208 0 is_stmt 1 discriminator 1
+ 737 0098 291B     		subs	r1, r5, r4
+ 264:../src/sst25vf_spi.c ****       while (NumOfPage--)
+ 738              		.loc 1 264 0 discriminator 1
+ 739 009a 9B45     		cmp	fp, r3
+ 208:../src/sst25vf_spi.c **** void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+ 740              		.loc 1 208 0 discriminator 1
+ 741 009c 4144     		add	r1, r8, r1
+ 742              	.LVL108:
+ 264:../src/sst25vf_spi.c ****       while (NumOfPage--)
+ 743              		.loc 1 264 0 discriminator 1
+ 744 009e 08D0     		beq	.L59
+ 745              	.L53:
+ 266:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, sFLASH_PAGESIZE);
+ 746              		.loc 1 266 0
+ 747 00a0 4046     		mov	r0, r8
+ 748 00a2 4FF48052 		mov	r2, #4096
+ 749 00a6 FFF7FEFF 		bl	sFLASH_WritePage
+ 750              	.LVL109:
+ 268:../src/sst25vf_spi.c ****         pBuffer += sFLASH_PAGESIZE;
+ 751              		.loc 1 268 0
+ 752 00aa 08F58058 		add	r8, r8, #4096
+ 753              	.LVL110:
+ 754 00ae 0136     		adds	r6, r6, #1
+ 755 00b0 F1E7     		b	.L52
+ 756              	.LVL111:
+ 757              	.L59:
+ 208:../src/sst25vf_spi.c **** void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+ 758              		.loc 1 208 0
+ 759 00b2 4FEA0939 		lsl	r9, r9, #12
+ 760 00b6 04EB0900 		add	r0, r4, r9
+ 761 00ba 09EB0501 		add	r1, r9, r5
+ 762              	.LVL112:
+ 271:../src/sst25vf_spi.c ****       if (NumOfSingle != 0)
+ 763              		.loc 1 271 0
+ 764 00be BAF1000F 		cmp	sl, #0
+ 765 00c2 04D0     		beq	.L46
+ 766              	.LVL113:
+ 767              	.L57:
+ 273:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, NumOfSingle);
+ 768              		.loc 1 273 0
+ 769 00c4 FAB2     		uxtb	r2, r7
+ 770              	.LVL114:
+ 771              	.L56:
+ 277:../src/sst25vf_spi.c **** }
+ 772              		.loc 1 277 0
+ 773 00c6 BDE8F84F 		pop	{r3, r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 273:../src/sst25vf_spi.c ****         sFLASH_WritePage(pBuffer, WriteAddr, NumOfSingle);
+ 774              		.loc 1 273 0
+ 775 00ca FFF7FEBF 		b	sFLASH_WritePage
+ 776              	.LVL115:
+ 777              	.L46:
+ 778 00ce BDE8F88F 		pop	{r3, r4, r5, r6, r7, r8, r9, sl, fp, pc}
+ 779              		.cfi_endproc
+ 780              	.LFE61:
+ 782              		.section	.text.sFLASH_WriteByte,"ax",%progbits
+ 783              		.align	1
+ 784              		.global	sFLASH_WriteByte
+ 785              		.thumb
+ 786              		.thumb_func
+ 788              	sFLASH_WriteByte:
+ 789              	.LFB59:
+ 116:../src/sst25vf_spi.c **** {
+ 790              		.loc 1 116 0
+ 791              		.cfi_startproc
+ 792              		@ args = 0, pretend = 0, frame = 0
+ 793              		@ frame_needed = 0, uses_anonymous_args = 0
+ 794              	.LVL116:
+ 795 0000 70B5     		push	{r4, r5, r6, lr}
+ 796              	.LCFI9:
+ 797              		.cfi_def_cfa_offset 16
+ 798              		.cfi_offset 4, -16
+ 799              		.cfi_offset 5, -12
+ 800              		.cfi_offset 6, -8
+ 801              		.cfi_offset 14, -4
+ 121:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 802              		.loc 1 121 0
+ 803 0002 124D     		ldr	r5, .L61
+ 116:../src/sst25vf_spi.c **** {
+ 804              		.loc 1 116 0
+ 805 0004 0446     		mov	r4, r0
+ 806 0006 0E46     		mov	r6, r1
+ 118:../src/sst25vf_spi.c ****   sFLASH_WriteEnable();
+ 807              		.loc 1 118 0
+ 808 0008 FFF7FEFF 		bl	sFLASH_WriteEnable
+ 809              	.LVL117:
+ 121:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 810              		.loc 1 121 0
+ 811 000c 4FF40071 		mov	r1, #512
+ 812 0010 2846     		mov	r0, r5
+ 813 0012 FFF7FEFF 		bl	GPIO_ResetBits
+ 814              	.LVL118:
+ 123:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_WRITE);
+ 815              		.loc 1 123 0
+ 816 0016 0220     		movs	r0, #2
+ 817 0018 FFF7FEFF 		bl	sFLASH_SendByte
+ 818              	.LVL119:
+ 125:../src/sst25vf_spi.c ****   sFLASH_SendByte((WriteAddr & 0xFF0000) >> 16);
+ 819              		.loc 1 125 0
+ 820 001c C4F30740 		ubfx	r0, r4, #16, #8
+ 821 0020 FFF7FEFF 		bl	sFLASH_SendByte
+ 822              	.LVL120:
+ 127:../src/sst25vf_spi.c ****   sFLASH_SendByte((WriteAddr & 0xFF00) >> 8);
+ 823              		.loc 1 127 0
+ 824 0024 C4F30720 		ubfx	r0, r4, #8, #8
+ 825 0028 FFF7FEFF 		bl	sFLASH_SendByte
+ 826              	.LVL121:
+ 129:../src/sst25vf_spi.c ****   sFLASH_SendByte(WriteAddr & 0xFF);
+ 827              		.loc 1 129 0
+ 828 002c E0B2     		uxtb	r0, r4
+ 829 002e FFF7FEFF 		bl	sFLASH_SendByte
+ 830              	.LVL122:
+ 131:../src/sst25vf_spi.c ****   sFLASH_SendByte(byte);
+ 831              		.loc 1 131 0
+ 832 0032 3046     		mov	r0, r6
+ 833 0034 FFF7FEFF 		bl	sFLASH_SendByte
+ 834              	.LVL123:
+ 133:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 835              		.loc 1 133 0
+ 836 0038 2846     		mov	r0, r5
+ 837 003a 4FF40071 		mov	r1, #512
+ 838 003e FFF7FEFF 		bl	GPIO_SetBits
+ 839              	.LVL124:
+ 136:../src/sst25vf_spi.c **** }
+ 840              		.loc 1 136 0
+ 841 0042 BDE87040 		pop	{r4, r5, r6, lr}
+ 135:../src/sst25vf_spi.c ****   sFLASH_WaitForWriteEnd();
+ 842              		.loc 1 135 0
+ 843 0046 FFF7FEBF 		b	sFLASH_WaitForWriteEnd
+ 844              	.LVL125:
+ 845              	.L62:
+ 846 004a 00BF     		.align	2
+ 847              	.L61:
+ 848 004c 000C0140 		.word	1073810432
+ 849              		.cfi_endproc
+ 850              	.LFE59:
+ 852              		.section	.text.sFLASH_EraseBulk,"ax",%progbits
+ 853              		.align	1
+ 854              		.global	sFLASH_EraseBulk
+ 855              		.thumb
+ 856              		.thumb_func
+ 858              	sFLASH_EraseBulk:
+ 859              	.LFB58:
+  93:../src/sst25vf_spi.c **** {
+ 860              		.loc 1 93 0
+ 861              		.cfi_startproc
+ 862              		@ args = 0, pretend = 0, frame = 0
+ 863              		@ frame_needed = 0, uses_anonymous_args = 0
+ 864 0000 10B5     		push	{r4, lr}
+ 865              	.LCFI10:
+ 866              		.cfi_def_cfa_offset 8
+ 867              		.cfi_offset 4, -8
+ 868              		.cfi_offset 14, -4
+  99:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 869              		.loc 1 99 0
+ 870 0002 0A4C     		ldr	r4, .L64
+  95:../src/sst25vf_spi.c ****   sFLASH_WriteEnable();
+ 871              		.loc 1 95 0
+ 872 0004 FFF7FEFF 		bl	sFLASH_WriteEnable
+ 873              	.LVL126:
+  99:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 874              		.loc 1 99 0
+ 875 0008 2046     		mov	r0, r4
+ 876 000a 4FF40071 		mov	r1, #512
+ 877 000e FFF7FEFF 		bl	GPIO_ResetBits
+ 878              	.LVL127:
+ 101:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_BE);
+ 879              		.loc 1 101 0
+ 880 0012 C720     		movs	r0, #199
+ 881 0014 FFF7FEFF 		bl	sFLASH_SendByte
+ 882              	.LVL128:
+ 103:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 883              		.loc 1 103 0
+ 884 0018 2046     		mov	r0, r4
+ 885 001a 4FF40071 		mov	r1, #512
+ 886 001e FFF7FEFF 		bl	GPIO_SetBits
+ 887              	.LVL129:
+ 107:../src/sst25vf_spi.c **** }
+ 888              		.loc 1 107 0
+ 889 0022 BDE81040 		pop	{r4, lr}
+ 106:../src/sst25vf_spi.c ****   sFLASH_WaitForWriteEnd();
+ 890              		.loc 1 106 0
+ 891 0026 FFF7FEBF 		b	sFLASH_WaitForWriteEnd
+ 892              	.LVL130:
+ 893              	.L65:
+ 894 002a 00BF     		.align	2
+ 895              	.L64:
+ 896 002c 000C0140 		.word	1073810432
+ 897              		.cfi_endproc
+ 898              	.LFE58:
+ 900              		.section	.text.sFLASH_EraseSector,"ax",%progbits
+ 901              		.align	1
+ 902              		.global	sFLASH_EraseSector
+ 903              		.thumb
+ 904              		.thumb_func
+ 906              	sFLASH_EraseSector:
+ 907              	.LFB57:
+  65:../src/sst25vf_spi.c **** {
+ 908              		.loc 1 65 0
+ 909              		.cfi_startproc
+ 910              		@ args = 0, pretend = 0, frame = 0
+ 911              		@ frame_needed = 0, uses_anonymous_args = 0
+ 912              	.LVL131:
+ 913 0000 38B5     		push	{r3, r4, r5, lr}
+ 914              	.LCFI11:
+ 915              		.cfi_def_cfa_offset 16
+ 916              		.cfi_offset 3, -16
+ 917              		.cfi_offset 4, -12
+ 918              		.cfi_offset 5, -8
+ 919              		.cfi_offset 14, -4
+  71:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 920              		.loc 1 71 0
+ 921 0002 104D     		ldr	r5, .L67
+  65:../src/sst25vf_spi.c **** {
+ 922              		.loc 1 65 0
+ 923 0004 0446     		mov	r4, r0
+  67:../src/sst25vf_spi.c ****   sFLASH_WriteEnable();
+ 924              		.loc 1 67 0
+ 925 0006 FFF7FEFF 		bl	sFLASH_WriteEnable
+ 926              	.LVL132:
+  71:../src/sst25vf_spi.c ****   sFLASH_CS_LOW();
+ 927              		.loc 1 71 0
+ 928 000a 4FF40071 		mov	r1, #512
+ 929 000e 2846     		mov	r0, r5
+ 930 0010 FFF7FEFF 		bl	GPIO_ResetBits
+ 931              	.LVL133:
+  73:../src/sst25vf_spi.c ****   sFLASH_SendByte(sFLASH_CMD_SE);
+ 932              		.loc 1 73 0
+ 933 0014 2020     		movs	r0, #32
+ 934 0016 FFF7FEFF 		bl	sFLASH_SendByte
+ 935              	.LVL134:
+  75:../src/sst25vf_spi.c ****   sFLASH_SendByte((SectorAddr & 0xFF0000) >> 16);
+ 936              		.loc 1 75 0
+ 937 001a C4F30740 		ubfx	r0, r4, #16, #8
+ 938 001e FFF7FEFF 		bl	sFLASH_SendByte
+ 939              	.LVL135:
+  77:../src/sst25vf_spi.c ****   sFLASH_SendByte((SectorAddr & 0xFF00) >> 8);
+ 940              		.loc 1 77 0
+ 941 0022 C4F30720 		ubfx	r0, r4, #8, #8
+ 942 0026 FFF7FEFF 		bl	sFLASH_SendByte
+ 943              	.LVL136:
+  79:../src/sst25vf_spi.c ****   sFLASH_SendByte(SectorAddr & 0xFF);
+ 944              		.loc 1 79 0
+ 945 002a E0B2     		uxtb	r0, r4
+ 946 002c FFF7FEFF 		bl	sFLASH_SendByte
+ 947              	.LVL137:
+  81:../src/sst25vf_spi.c ****   sFLASH_CS_HIGH();
+ 948              		.loc 1 81 0
+ 949 0030 2846     		mov	r0, r5
+ 950 0032 4FF40071 		mov	r1, #512
+ 951 0036 FFF7FEFF 		bl	GPIO_SetBits
+ 952              	.LVL138:
+  85:../src/sst25vf_spi.c **** }
+ 953              		.loc 1 85 0
+ 954 003a BDE83840 		pop	{r3, r4, r5, lr}
+  84:../src/sst25vf_spi.c ****   sFLASH_WaitForWriteEnd();
+ 955              		.loc 1 84 0
+ 956 003e FFF7FEBF 		b	sFLASH_WaitForWriteEnd
+ 957              	.LVL139:
+ 958              	.L68:
+ 959 0042 00BF     		.align	2
+ 960              	.L67:
+ 961 0044 000C0140 		.word	1073810432
+ 962              		.cfi_endproc
+ 963              	.LFE57:
+ 965              		.section	.text.sFLASH_SelfTest,"ax",%progbits
+ 966              		.align	1
+ 967              		.global	sFLASH_SelfTest
+ 968              		.thumb
+ 969              		.thumb_func
+ 971              	sFLASH_SelfTest:
+ 972              	.LFB68:
+ 429:../src/sst25vf_spi.c **** 
+ 430:../src/sst25vf_spi.c **** void sFLASH_SelfTest(void)
+ 431:../src/sst25vf_spi.c **** {
+ 973              		.loc 1 431 0
+ 974              		.cfi_startproc
+ 975              		@ args = 0, pretend = 0, frame = 72
+ 976              		@ frame_needed = 0, uses_anonymous_args = 0
+ 977              	.LVL140:
+ 978 0000 30B5     		push	{r4, r5, lr}
+ 979              	.LCFI12:
+ 980              		.cfi_def_cfa_offset 12
+ 981              		.cfi_offset 4, -12
+ 982              		.cfi_offset 5, -8
+ 983              		.cfi_offset 14, -4
+ 432:../src/sst25vf_spi.c ****   uint32_t FLASH_TestAddress = 0x000000;
+ 433:../src/sst25vf_spi.c ****   //Note: Make sure BufferSize should be Even and not Zero
+ 434:../src/sst25vf_spi.c ****   uint8_t Tx_Buffer[] = "Test communication with SPI FLASH!";//BufferSize = 34
+ 984              		.loc 1 434 0
+ 985 0002 334B     		ldr	r3, .L91
+ 431:../src/sst25vf_spi.c **** {
+ 986              		.loc 1 431 0
+ 987 0004 93B0     		sub	sp, sp, #76
+ 988              	.LCFI13:
+ 989              		.cfi_def_cfa_offset 88
+ 990              		.loc 1 434 0
+ 991 0006 09AA     		add	r2, sp, #36
+ 992 0008 03F12005 		add	r5, r3, #32
+ 993              	.L70:
+ 994 000c 1868     		ldr	r0, [r3, #0]	@ unaligned
+ 995 000e 5968     		ldr	r1, [r3, #4]	@ unaligned
+ 996 0010 1446     		mov	r4, r2
+ 997 0012 03C4     		stmia	r4!, {r0, r1}
+ 998 0014 0833     		adds	r3, r3, #8
+ 999 0016 AB42     		cmp	r3, r5
+ 1000 0018 2246     		mov	r2, r4
+ 1001 001a F7D1     		bne	.L70
+ 1002 001c 1988     		ldrh	r1, [r3, #0]	@ unaligned
+ 1003 001e 9878     		ldrb	r0, [r3, #2]	@ zero_extendqisi2
+ 1004 0020 2180     		strh	r1, [r4, #0]	@ unaligned
+ 1005 0022 A070     		strb	r0, [r4, #2]
+ 1006              	.LVL141:
+ 435:../src/sst25vf_spi.c ****   uint32_t BufferSize = (sizeof(Tx_Buffer) / sizeof(*(Tx_Buffer))) - 1;
+ 436:../src/sst25vf_spi.c ****   uint8_t Rx_Buffer[BufferSize];
+ 437:../src/sst25vf_spi.c ****   uint8_t Index = 0;
+ 438:../src/sst25vf_spi.c ****   uint32_t FlashID = 0;
+ 439:../src/sst25vf_spi.c ****   uint8_t TestStatus = 0;
+ 440:../src/sst25vf_spi.c ****   uint8_t LEDToggle = 0;
+ 441:../src/sst25vf_spi.c **** 
+ 442:../src/sst25vf_spi.c ****   /* Get SPI Flash ID */
+ 443:../src/sst25vf_spi.c ****   FlashID = sFLASH_ReadID();
+ 1007              		.loc 1 443 0
+ 1008 0024 FFF7FEFF 		bl	sFLASH_ReadID
+ 1009              	.LVL142:
+ 444:../src/sst25vf_spi.c **** 
+ 445:../src/sst25vf_spi.c ****   /* Check the SPI Flash ID */
+ 446:../src/sst25vf_spi.c ****   if(FlashID == sFLASH_SST25VF040_ID || FlashID == sFLASH_SST25VF016_ID)
+ 1010              		.loc 1 446 0
+ 1011 0028 2A4B     		ldr	r3, .L91+4
+ 1012 002a 9842     		cmp	r0, r3
+ 1013 002c 02D0     		beq	.L71
+ 1014              		.loc 1 446 0 is_stmt 0 discriminator 1
+ 1015 002e 4C3B     		subs	r3, r3, #76
+ 1016 0030 9842     		cmp	r0, r3
+ 1017 0032 4BD1     		bne	.L69
+ 1018              	.L71:
+ 447:../src/sst25vf_spi.c ****   {
+ 448:../src/sst25vf_spi.c ****     /* Perform a write in the Flash followed by a read of the written data */
+ 449:../src/sst25vf_spi.c ****     /* Erase SPI FLASH Sector to write on */
+ 450:../src/sst25vf_spi.c ****     sFLASH_EraseSector(FLASH_TestAddress);
+ 1019              		.loc 1 450 0 is_stmt 1
+ 1020 0034 0020     		movs	r0, #0
+ 1021              	.LVL143:
+ 451:../src/sst25vf_spi.c **** 
+ 452:../src/sst25vf_spi.c ****     /* Write Tx_Buffer data to SPI FLASH memory */
+ 453:../src/sst25vf_spi.c ****     sFLASH_WriteBuffer(Tx_Buffer, FLASH_TestAddress, BufferSize);
+ 1022              		.loc 1 453 0
+ 1023 0036 09AC     		add	r4, sp, #36
+ 450:../src/sst25vf_spi.c ****     sFLASH_EraseSector(FLASH_TestAddress);
+ 1024              		.loc 1 450 0
+ 1025 0038 FFF7FEFF 		bl	sFLASH_EraseSector
+ 1026              	.LVL144:
+ 1027              		.loc 1 453 0
+ 1028 003c 2046     		mov	r0, r4
+ 1029 003e 0021     		movs	r1, #0
+ 1030 0040 2222     		movs	r2, #34
+ 1031 0042 FFF7FEFF 		bl	sFLASH_WriteBuffer
+ 1032              	.LVL145:
+ 454:../src/sst25vf_spi.c **** 
+ 455:../src/sst25vf_spi.c ****     /* Read data from SPI FLASH memory */
+ 456:../src/sst25vf_spi.c ****     sFLASH_ReadBuffer(Rx_Buffer, FLASH_TestAddress, BufferSize);
+ 1033              		.loc 1 456 0
+ 1034 0046 6846     		mov	r0, sp
+ 1035 0048 0021     		movs	r1, #0
+ 1036 004a 2222     		movs	r2, #34
+ 1037 004c FFF7FEFF 		bl	sFLASH_ReadBuffer
+ 1038              	.LVL146:
+ 1039 0050 0020     		movs	r0, #0
+ 1040              	.LVL147:
+ 1041              	.L72:
+ 457:../src/sst25vf_spi.c **** 
+ 458:../src/sst25vf_spi.c ****     /* Check the correctness of written data */
+ 459:../src/sst25vf_spi.c ****     for (Index = 0; Index < BufferSize; Index++)
+ 460:../src/sst25vf_spi.c ****     {
+ 461:../src/sst25vf_spi.c ****       if (Tx_Buffer[Index] != Rx_Buffer[Index])
+ 1042              		.loc 1 461 0
+ 1043 0052 215C     		ldrb	r1, [r4, r0]	@ zero_extendqisi2
+ 1044 0054 1DF80020 		ldrb	r2, [sp, r0]	@ zero_extendqisi2
+ 1045 0058 0130     		adds	r0, r0, #1
+ 459:../src/sst25vf_spi.c ****     for (Index = 0; Index < BufferSize; Index++)
+ 1046              		.loc 1 459 0
+ 1047 005a 2228     		cmp	r0, #34
+ 1048 005c F9D1     		bne	.L72
+ 462:../src/sst25vf_spi.c ****       {
+ 463:../src/sst25vf_spi.c ****         //FAILED : Transmitted and Received data by SPI are different
+ 464:../src/sst25vf_spi.c ****         TestStatus = 0;
+ 465:../src/sst25vf_spi.c ****       }
+ 466:../src/sst25vf_spi.c ****       else
+ 467:../src/sst25vf_spi.c ****       {
+ 468:../src/sst25vf_spi.c ****         //PASSED : Transmitted and Received data by SPI are same
+ 469:../src/sst25vf_spi.c ****         TestStatus = 1;
+ 470:../src/sst25vf_spi.c ****       }
+ 471:../src/sst25vf_spi.c ****     }
+ 472:../src/sst25vf_spi.c **** 
+ 473:../src/sst25vf_spi.c ****     /* Display Test Status */
+ 474:../src/sst25vf_spi.c ****     if (TestStatus != 0)
+ 1049              		.loc 1 474 0
+ 1050 005e 9142     		cmp	r1, r2
+ 1051 0060 03D1     		bne	.L82
+ 475:../src/sst25vf_spi.c ****     {
+ 476:../src/sst25vf_spi.c ****       LED_On(LED2);
+ 1052              		.loc 1 476 0
+ 1053 0062 0120     		movs	r0, #1
+ 1054 0064 FFF7FEFF 		bl	LED_On
+ 1055              	.LVL148:
+ 1056 0068 0DE0     		b	.L74
+ 1057              	.L82:
+ 474:../src/sst25vf_spi.c ****     if (TestStatus != 0)
+ 1058              		.loc 1 474 0
+ 1059 006a 0B24     		movs	r4, #11
+ 1060              	.LVL149:
+ 1061              	.L73:
+ 1062 006c 631E     		subs	r3, r4, #1
+ 477:../src/sst25vf_spi.c ****     }
+ 478:../src/sst25vf_spi.c ****     else
+ 479:../src/sst25vf_spi.c ****     {
+ 480:../src/sst25vf_spi.c ****       LEDToggle = 10;
+ 481:../src/sst25vf_spi.c ****       while (LEDToggle--)
+ 482:../src/sst25vf_spi.c ****       {
+ 483:../src/sst25vf_spi.c ****         /* Toggle the LED2 every 250ms */
+ 484:../src/sst25vf_spi.c ****         LED_Toggle(LED2);
+ 1063              		.loc 1 484 0 discriminator 1
+ 1064 006e 0120     		movs	r0, #1
+ 481:../src/sst25vf_spi.c ****       while (LEDToggle--)
+ 1065              		.loc 1 481 0 discriminator 1
+ 1066 0070 13F0FF04 		ands	r4, r3, #255
+ 1067 0074 05D0     		beq	.L88
+ 1068              	.L75:
+ 1069              		.loc 1 484 0
+ 1070 0076 FFF7FEFF 		bl	LED_Toggle
+ 1071              	.LVL150:
+ 485:../src/sst25vf_spi.c ****         Delay(250);
+ 1072              		.loc 1 485 0
+ 1073 007a FA20     		movs	r0, #250
+ 1074 007c FFF7FEFF 		bl	Delay
+ 1075              	.LVL151:
+ 1076 0080 F4E7     		b	.L73
+ 1077              	.L88:
+ 486:../src/sst25vf_spi.c ****       }
+ 487:../src/sst25vf_spi.c ****       LED_Off(LED2);
+ 1078              		.loc 1 487 0
+ 1079 0082 FFF7FEFF 		bl	LED_Off
+ 1080              	.LVL152:
+ 1081              	.L74:
+ 488:../src/sst25vf_spi.c ****     }
+ 489:../src/sst25vf_spi.c **** 
+ 490:../src/sst25vf_spi.c ****     /* Perform an erase in the Flash followed by a read of the written data */
+ 491:../src/sst25vf_spi.c ****     /* Erase SPI FLASH Sector to write on */
+ 492:../src/sst25vf_spi.c ****     sFLASH_EraseSector(FLASH_TestAddress);
+ 1082              		.loc 1 492 0
+ 1083 0086 0020     		movs	r0, #0
+ 1084 0088 FFF7FEFF 		bl	sFLASH_EraseSector
+ 1085              	.LVL153:
+ 493:../src/sst25vf_spi.c **** 
+ 494:../src/sst25vf_spi.c ****     /* Read data from SPI FLASH memory */
+ 495:../src/sst25vf_spi.c ****     sFLASH_ReadBuffer(Rx_Buffer, FLASH_TestAddress, BufferSize);
+ 1086              		.loc 1 495 0
+ 1087 008c 6846     		mov	r0, sp
+ 1088 008e 0021     		movs	r1, #0
+ 1089 0090 2222     		movs	r2, #34
+ 1090 0092 FFF7FEFF 		bl	sFLASH_ReadBuffer
+ 1091              	.LVL154:
+ 1092 0096 0024     		movs	r4, #0
+ 1093              	.LVL155:
+ 1094              	.L79:
+ 496:../src/sst25vf_spi.c **** 
+ 497:../src/sst25vf_spi.c ****     /* Check the correctness of erasing operation data */
+ 498:../src/sst25vf_spi.c ****     for (Index = 0; Index < BufferSize; Index++)
+ 499:../src/sst25vf_spi.c ****     {
+ 500:../src/sst25vf_spi.c ****       if (Rx_Buffer[Index] != 0xFF)
+ 1095              		.loc 1 500 0
+ 1096 0098 1DF80410 		ldrb	r1, [sp, r4]	@ zero_extendqisi2
+ 1097 009c FF29     		cmp	r1, #255
+ 1098 009e 11D0     		beq	.L89
+ 1099              	.L83:
+ 1100 00a0 0B25     		movs	r5, #11
+ 1101              	.L76:
+ 1102 00a2 013D     		subs	r5, r5, #1
+ 501:../src/sst25vf_spi.c ****       {
+ 502:../src/sst25vf_spi.c ****         //FAILED : Specified sector part is not well erased
+ 503:../src/sst25vf_spi.c ****         TestStatus = 0;
+ 504:../src/sst25vf_spi.c ****       }
+ 505:../src/sst25vf_spi.c ****       else
+ 506:../src/sst25vf_spi.c ****       {
+ 507:../src/sst25vf_spi.c ****         //PASSED : Specified sector part is erased
+ 508:../src/sst25vf_spi.c ****     	TestStatus = 1;
+ 509:../src/sst25vf_spi.c ****       }
+ 510:../src/sst25vf_spi.c **** 
+ 511:../src/sst25vf_spi.c ****       /* Display Test Status */
+ 512:../src/sst25vf_spi.c ****       if (TestStatus != 0)
+ 513:../src/sst25vf_spi.c ****       {
+ 514:../src/sst25vf_spi.c ****         LED_On(LED2);
+ 515:../src/sst25vf_spi.c ****       }
+ 516:../src/sst25vf_spi.c ****       else
+ 517:../src/sst25vf_spi.c ****       {
+ 518:../src/sst25vf_spi.c ****         LEDToggle = 10;
+ 519:../src/sst25vf_spi.c ****         while (LEDToggle--)
+ 520:../src/sst25vf_spi.c ****         {
+ 521:../src/sst25vf_spi.c ****           /* Toggle the LED2 every 250ms */
+ 522:../src/sst25vf_spi.c ****           LED_Toggle(LED2);
+ 1103              		.loc 1 522 0 discriminator 1
+ 1104 00a4 0120     		movs	r0, #1
+ 519:../src/sst25vf_spi.c ****         while (LEDToggle--)
+ 1105              		.loc 1 519 0 discriminator 1
+ 1106 00a6 15F0FF05 		ands	r5, r5, #255
+ 1107 00aa 05D0     		beq	.L90
+ 1108              	.L78:
+ 1109              		.loc 1 522 0
+ 1110 00ac FFF7FEFF 		bl	LED_Toggle
+ 1111              	.LVL156:
+ 523:../src/sst25vf_spi.c ****           Delay(250);
+ 1112              		.loc 1 523 0
+ 1113 00b0 FA20     		movs	r0, #250
+ 1114 00b2 FFF7FEFF 		bl	Delay
+ 1115              	.LVL157:
+ 1116 00b6 F4E7     		b	.L76
+ 1117              	.L90:
+ 524:../src/sst25vf_spi.c ****         }
+ 525:../src/sst25vf_spi.c ****         LED_Off(LED2);
+ 1118              		.loc 1 525 0
+ 1119 00b8 FFF7FEFF 		bl	LED_Off
+ 1120              	.LVL158:
+ 1121              	.L81:
+ 1122 00bc 0134     		adds	r4, r4, #1
+ 498:../src/sst25vf_spi.c ****     for (Index = 0; Index < BufferSize; Index++)
+ 1123              		.loc 1 498 0
+ 1124 00be 222C     		cmp	r4, #34
+ 1125 00c0 EAD1     		bne	.L79
+ 1126 00c2 03E0     		b	.L69
+ 1127              	.L89:
+ 1128              	.LVL159:
+ 514:../src/sst25vf_spi.c ****         LED_On(LED2);
+ 1129              		.loc 1 514 0
+ 1130 00c4 0120     		movs	r0, #1
+ 1131 00c6 FFF7FEFF 		bl	LED_On
+ 1132              	.LVL160:
+ 1133 00ca F7E7     		b	.L81
+ 1134              	.LVL161:
+ 1135              	.L69:
+ 526:../src/sst25vf_spi.c ****       }
+ 527:../src/sst25vf_spi.c ****     }
+ 528:../src/sst25vf_spi.c ****   }
+ 529:../src/sst25vf_spi.c **** }
+ 1136              		.loc 1 529 0
+ 1137 00cc 13B0     		add	sp, sp, #76
+ 1138 00ce 30BD     		pop	{r4, r5, pc}
+ 1139              	.L92:
+ 1140              		.align	2
+ 1141              	.L91:
+ 1142 00d0 00000000 		.word	.LC0
+ 1143 00d4 8D25BF00 		.word	12526989
+ 1144              		.cfi_endproc
+ 1145              	.LFE68:
+ 1147              		.section	.rodata.str1.1,"aMS",%progbits,1
+ 1148              	.LC0:
+ 1149 0000 54657374 		.ascii	"Test communication with SPI FLASH!\000"
+ 1149      20636F6D 
+ 1149      6D756E69 
+ 1149      63617469 
+ 1149      6F6E2077 
+ 1150              		.text
+ 1151              	.Letext0:
+ 1152              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 1153              		.file 3 "/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Device/ST/STM32F10x/Include/stm32f10x.h"
+ 1154              		.file 4 "/Users/zac/code/spark/usb-dfu/inc/hw_config.h"
+ 1155              		.file 5 "/Users/zac/code/spark/usb-dfu/libraries/STM32F10x_StdPeriph_Driver/inc/stm32f10x_spi.h"
+ 1156              		.file 6 "/Users/zac/code/spark/usb-dfu/libraries/STM32F10x_StdPeriph_Driver/inc/stm32f10x_gpio.h"
+ 1157              		.file 7 "/Users/zac/code/spark/usb-dfu/inc/sst25vf_spi.h"
+ 1158              		.file 8 "/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cm3.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 sst25vf_spi.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:19     .text.sFLASH_SendByte:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:24     .text.sFLASH_SendByte:0000000000000000 sFLASH_SendByte
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:70     .text.sFLASH_SendByte:0000000000000030 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:75     .text.sFLASH_ReadID:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:80     .text.sFLASH_ReadID:0000000000000000 sFLASH_ReadID
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:144    .text.sFLASH_ReadID:0000000000000040 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:149    .text.sFLASH_ReadBuffer:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:154    .text.sFLASH_ReadBuffer:0000000000000000 sFLASH_ReadBuffer
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:227    .text.sFLASH_ReadBuffer:0000000000000050 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:232    .text.sFLASH_WriteEnable:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:237    .text.sFLASH_WriteEnable:0000000000000000 sFLASH_WriteEnable
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:269    .text.sFLASH_WriteEnable:0000000000000024 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:274    .text.sFLASH_WriteDisable:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:279    .text.sFLASH_WriteDisable:0000000000000000 sFLASH_WriteDisable
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:311    .text.sFLASH_WriteDisable:0000000000000024 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:316    .text.sFLASH_Init:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:321    .text.sFLASH_Init:0000000000000000 sFLASH_Init
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:406    .text.sFLASH_Init:0000000000000074 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:412    .text.sFLASH_WaitForWriteEnd:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:417    .text.sFLASH_WaitForWriteEnd:0000000000000000 sFLASH_WaitForWriteEnd
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:460    .text.sFLASH_WaitForWriteEnd:000000000000002c $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:465    .text.sFLASH_WritePage:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:470    .text.sFLASH_WritePage:0000000000000000 sFLASH_WritePage
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:583    .text.sFLASH_WritePage:0000000000000098 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:588    .text.sFLASH_WriteBuffer:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:593    .text.sFLASH_WriteBuffer:0000000000000000 sFLASH_WriteBuffer
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:783    .text.sFLASH_WriteByte:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:788    .text.sFLASH_WriteByte:0000000000000000 sFLASH_WriteByte
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:848    .text.sFLASH_WriteByte:000000000000004c $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:853    .text.sFLASH_EraseBulk:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:858    .text.sFLASH_EraseBulk:0000000000000000 sFLASH_EraseBulk
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:896    .text.sFLASH_EraseBulk:000000000000002c $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:901    .text.sFLASH_EraseSector:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:906    .text.sFLASH_EraseSector:0000000000000000 sFLASH_EraseSector
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:961    .text.sFLASH_EraseSector:0000000000000044 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:966    .text.sFLASH_SelfTest:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:971    .text.sFLASH_SelfTest:0000000000000000 sFLASH_SelfTest
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc7dLNcX.s:1142   .text.sFLASH_SelfTest:00000000000000d0 $d
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.94ea818a60f77b04fe5add16507b1dca
+                           .group:0000000000000000 wm4.platform_config.h.13.8c69bc765aea669af9d5d2fdc1149177
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_can.h.31.b14273b95de79d8fbb020ba042473fb1
+                           .group:0000000000000000 wm4.stm32f10x_dac.h.31.116c27cadc3b4ee8aa44ed11b14b64ae
+                           .group:0000000000000000 wm4.stm32f10x_dbgmcu.h.31.45f176e9b7a15051b8c69cb2700c78b8
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_fsmc.h.31.a761d459aa046c2769a99b93e8763ba0
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_iwdg.h.31.959ae9b7e1d603f1e5ae6468c0fc1624
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_sdio.h.31.37dab89d08b2364a3dfaace444dec7c3
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.stm32f10x_wwdg.h.31.4504f930b88ade4f56d1e3f2a11c098b
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.39.39a4b3112cd0eabe7f19b3ecab0f4d96
+                           .group:0000000000000000 wm4.hw_config.h.41.83f4dd94a29b2227d9beb55b68615b4b
+                           .group:0000000000000000 wm4.sst25vf_spi.h.20.51b3171b29f6f7af7f6cc75ed7f465bf
+
+UNDEFINED SYMBOLS
+SPI_I2S_GetFlagStatus
+SPI_I2S_SendData
+SPI_I2S_ReceiveData
+GPIO_ResetBits
+GPIO_SetBits
+sFLASH_SPI_Init
+LED_On
+LED_Toggle
+Delay
+LED_Off

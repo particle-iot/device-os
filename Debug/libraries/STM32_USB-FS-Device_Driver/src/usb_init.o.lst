@@ -1,0 +1,214 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 4
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"usb_init.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.USB_Init,"ax",%progbits
+  19              		.align	1
+  20              		.global	USB_Init
+  21              		.thumb
+  22              		.thumb_func
+  24              	USB_Init:
+  25              	.LFB56:
+  26              		.file 1 "../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c"
+   1:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /**
+   2:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   ******************************************************************************
+   3:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * @file    usb_init.c
+   4:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * @author  MCD Application Team
+   5:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * @version V4.0.0
+   6:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * @date    28-August-2012
+   7:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * @brief   Initialization routines & global variables
+   8:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   ******************************************************************************
+   9:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * @attention
+  10:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   *
+  11:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
+  12:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   *
+  13:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  14:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * You may not use this file except in compliance with the License.
+  15:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * You may obtain a copy of the License at:
+  16:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   *
+  17:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   *        http://www.st.com/software_license_agreement_liberty_v2
+  18:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   *
+  19:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * Unless required by applicable law or agreed to in writing, software 
+  20:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * distributed under the License is distributed on an "AS IS" BASIS, 
+  21:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  22:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * See the License for the specific language governing permissions and
+  23:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   * limitations under the License.
+  24:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   *
+  25:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   ******************************************************************************
+  26:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   */
+  27:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** 
+  28:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** 
+  29:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /* Includes ------------------------------------------------------------------*/
+  30:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** #include "usb_lib.h"
+  31:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** 
+  32:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /* Private typedef -----------------------------------------------------------*/
+  33:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /* Private define ------------------------------------------------------------*/
+  34:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /* Private macro -------------------------------------------------------------*/
+  35:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /* Private variables ---------------------------------------------------------*/
+  36:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*  The number of current endpoint, it will be used to specify an endpoint */
+  37:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****  uint8_t	EPindex;
+  38:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*  The number of current device, it is an index to the Device_Table */
+  39:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /* uint8_t	Device_no; */
+  40:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*  Points to the DEVICE_INFO structure of current device */
+  41:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*  The purpose of this register is to speed up the execution */
+  42:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** DEVICE_INFO *pInformation;
+  43:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*  Points to the DEVICE_PROP structure of current device */
+  44:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*  The purpose of this register is to speed up the execution */
+  45:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** DEVICE_PROP *pProperty;
+  46:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*  Temporary save the state of Rx & Tx status. */
+  47:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*  Whenever the Rx or Tx state is changed, its value is saved */
+  48:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*  in this variable first and will be set to the EPRB or EPRA */
+  49:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*  at the end of interrupt process */
+  50:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** uint16_t	SaveState ;
+  51:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** uint16_t  wInterrupt_Mask;
+  52:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** DEVICE_INFO	Device_Info;
+  53:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** USER_STANDARD_REQUESTS  *pUser_Standard_Requests;
+  54:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** 
+  55:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /* Extern variables ----------------------------------------------------------*/
+  56:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /* Private function prototypes -----------------------------------------------*/
+  57:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /* Private functions ---------------------------------------------------------*/
+  58:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** 
+  59:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** /*******************************************************************************
+  60:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** * Function Name  : USB_Init
+  61:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** * Description    : USB system initialization
+  62:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** * Input          : None.
+  63:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** * Output         : None.
+  64:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** * Return         : None.
+  65:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** *******************************************************************************/
+  66:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** void USB_Init(void)
+  67:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c **** {
+  27              		.loc 1 67 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31 0000 08B5     		push	{r3, lr}
+  32              	.LCFI0:
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 3, -8
+  35              		.cfi_offset 14, -4
+  68:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   pInformation = &Device_Info;
+  36              		.loc 1 68 0
+  37 0002 074A     		ldr	r2, .L2
+  38 0004 074B     		ldr	r3, .L2+4
+  69:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   pInformation->ControlState = 2;
+  39              		.loc 1 69 0
+  40 0006 0220     		movs	r0, #2
+  68:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   pInformation = &Device_Info;
+  41              		.loc 1 68 0
+  42 0008 1360     		str	r3, [r2, #0]
+  43              		.loc 1 69 0
+  44 000a 1872     		strb	r0, [r3, #8]
+  70:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   pProperty = &Device_Property;
+  45              		.loc 1 70 0
+  46 000c 0649     		ldr	r1, .L2+8
+  47 000e 074B     		ldr	r3, .L2+12
+  71:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   pUser_Standard_Requests = &User_Standard_Requests;
+  48              		.loc 1 71 0
+  49 0010 0748     		ldr	r0, .L2+16
+  50 0012 084A     		ldr	r2, .L2+20
+  70:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   pProperty = &Device_Property;
+  51              		.loc 1 70 0
+  52 0014 0B60     		str	r3, [r1, #0]
+  53              		.loc 1 71 0
+  54 0016 1060     		str	r0, [r2, #0]
+  72:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   /* Initialize devices one by one */
+  73:../libraries/STM32_USB-FS-Device_Driver/src/usb_init.c ****   pProperty->Init();
+  55              		.loc 1 73 0
+  56 0018 1B68     		ldr	r3, [r3, #0]
+  57 001a 9847     		blx	r3
+  58              	.LVL0:
+  59 001c 08BD     		pop	{r3, pc}
+  60              	.L3:
+  61 001e 00BF     		.align	2
+  62              	.L2:
+  63 0020 00000000 		.word	pInformation
+  64 0024 00000000 		.word	Device_Info
+  65 0028 00000000 		.word	pProperty
+  66 002c 00000000 		.word	Device_Property
+  67 0030 00000000 		.word	User_Standard_Requests
+  68 0034 00000000 		.word	pUser_Standard_Requests
+  69              		.cfi_endproc
+  70              	.LFE56:
+  72              		.comm	pUser_Standard_Requests,4,4
+  73              		.comm	Device_Info,28,4
+  74              		.comm	wInterrupt_Mask,2,2
+  75              		.comm	SaveState,2,2
+  76              		.comm	pProperty,4,4
+  77              		.comm	pInformation,4,4
+  78              		.comm	EPindex,1,1
+  79              		.text
+  80              	.Letext0:
+  81              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+  82              		.file 3 "/Users/zac/code/spark/usb-dfu/libraries/STM32_USB-FS-Device_Driver/inc/usb_core.h"
+  83              		.file 4 "/Users/zac/code/spark/usb-dfu/libraries/CMSIS/Include/core_cm3.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 usb_init.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccVyK5AC.s:19     .text.USB_Init:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccVyK5AC.s:24     .text.USB_Init:0000000000000000 USB_Init
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccVyK5AC.s:63     .text.USB_Init:0000000000000020 $d
+                            *COM*:0000000000000004 pInformation
+                            *COM*:000000000000001c Device_Info
+                            *COM*:0000000000000004 pProperty
+                            *COM*:0000000000000004 pUser_Standard_Requests
+                            *COM*:0000000000000002 wInterrupt_Mask
+                            *COM*:0000000000000002 SaveState
+                            *COM*:0000000000000001 EPindex
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.94ea818a60f77b04fe5add16507b1dca
+                           .group:0000000000000000 wm4.platform_config.h.13.8c69bc765aea669af9d5d2fdc1149177
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_can.h.31.b14273b95de79d8fbb020ba042473fb1
+                           .group:0000000000000000 wm4.stm32f10x_dac.h.31.116c27cadc3b4ee8aa44ed11b14b64ae
+                           .group:0000000000000000 wm4.stm32f10x_dbgmcu.h.31.45f176e9b7a15051b8c69cb2700c78b8
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_fsmc.h.31.a761d459aa046c2769a99b93e8763ba0
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_iwdg.h.31.959ae9b7e1d603f1e5ae6468c0fc1624
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_sdio.h.31.37dab89d08b2364a3dfaace444dec7c3
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.stm32f10x_wwdg.h.31.4504f930b88ade4f56d1e3f2a11c098b
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.39.39a4b3112cd0eabe7f19b3ecab0f4d96
+                           .group:0000000000000000 wm4.sst25vf_spi.h.20.51b3171b29f6f7af7f6cc75ed7f465bf
+                           .group:0000000000000000 wm4.hw_config.h.41.83f4dd94a29b2227d9beb55b68615b4b
+                           .group:0000000000000000 wm4.usb_conf.h.13.2fc8b739597ce501ebf3c1632025270a
+                           .group:0000000000000000 wm4.usb_regs.h.31.d9533108f8ac5724467880baa9cb0f26
+                           .group:0000000000000000 wm4.usb_def.h.30.73e1a84be93039018a594bacb815cb88
+                           .group:0000000000000000 wm4.usb_core.h.31.114a1d0e1de4beb01afdcd243bde9471
+
+UNDEFINED SYMBOLS
+Device_Property
+User_Standard_Requests
