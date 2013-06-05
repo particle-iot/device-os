@@ -1,0 +1,745 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"usb_pwr.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.global	bDeviceState
+  19              		.bss
+  20              		.align	2
+  23              	bDeviceState:
+  24 0000 00000000 		.space	4
+  25              		.global	fSuspendEnabled
+  26              		.data
+  29              	fSuspendEnabled:
+  30 0000 01       		.byte	1
+  31              		.comm	ResumeS,2,4
+  32              		.section	.text.PowerOn,"ax",%progbits
+  33              		.align	2
+  34              		.global	PowerOn
+  35              		.thumb
+  36              		.thumb_func
+  38              	PowerOn:
+  39              	.LFB56:
+  40              		.file 1 "../src/usb_pwr.c"
+   1:../src/usb_pwr.c **** /**
+   2:../src/usb_pwr.c ****   ******************************************************************************
+   3:../src/usb_pwr.c ****   * @file    usb_pwr.c
+   4:../src/usb_pwr.c ****   * @author  Spark Application Team
+   5:../src/usb_pwr.c ****   * @version V1.0.0
+   6:../src/usb_pwr.c ****   * @date    24-April-2013
+   7:../src/usb_pwr.c ****   * @brief   Connection/disconnection & power management
+   8:../src/usb_pwr.c ****   ******************************************************************************
+   9:../src/usb_pwr.c **** */
+  10:../src/usb_pwr.c **** 
+  11:../src/usb_pwr.c **** /* Includes ------------------------------------------------------------------*/
+  12:../src/usb_pwr.c **** 
+  13:../src/usb_pwr.c **** #include "hw_config.h" 
+  14:../src/usb_pwr.c **** #include "usb_lib.h"
+  15:../src/usb_pwr.c **** #include "usb_conf.h"
+  16:../src/usb_pwr.c **** #include "usb_pwr.h"
+  17:../src/usb_pwr.c **** 
+  18:../src/usb_pwr.c **** 
+  19:../src/usb_pwr.c **** /* Private typedef -----------------------------------------------------------*/
+  20:../src/usb_pwr.c **** /* Private define ------------------------------------------------------------*/
+  21:../src/usb_pwr.c **** /* Private macro -------------------------------------------------------------*/
+  22:../src/usb_pwr.c **** /* Private variables ---------------------------------------------------------*/
+  23:../src/usb_pwr.c **** __IO uint32_t bDeviceState = UNCONNECTED; /* USB device status */
+  24:../src/usb_pwr.c **** __IO bool fSuspendEnabled = TRUE;  /* true when suspend is possible */
+  25:../src/usb_pwr.c **** 
+  26:../src/usb_pwr.c **** struct
+  27:../src/usb_pwr.c **** {
+  28:../src/usb_pwr.c ****   __IO RESUME_STATE eState;
+  29:../src/usb_pwr.c ****   __IO uint8_t bESOFcnt;
+  30:../src/usb_pwr.c **** }ResumeS;
+  31:../src/usb_pwr.c **** 
+  32:../src/usb_pwr.c **** /* Extern variables ----------------------------------------------------------*/
+  33:../src/usb_pwr.c **** /* Private function prototypes -----------------------------------------------*/
+  34:../src/usb_pwr.c **** /* Extern function prototypes ------------------------------------------------*/
+  35:../src/usb_pwr.c **** /* Private functions ---------------------------------------------------------*/
+  36:../src/usb_pwr.c **** 
+  37:../src/usb_pwr.c **** /*******************************************************************************
+  38:../src/usb_pwr.c **** * Function Name  : PowerOn
+  39:../src/usb_pwr.c **** * Description    :
+  40:../src/usb_pwr.c **** * Input          : None.
+  41:../src/usb_pwr.c **** * Output         : None.
+  42:../src/usb_pwr.c **** * Return         : USB_SUCCESS.
+  43:../src/usb_pwr.c **** *******************************************************************************/
+  44:../src/usb_pwr.c **** RESULT PowerOn(void)
+  45:../src/usb_pwr.c **** {
+  41              		.loc 1 45 0
+  42              		.cfi_startproc
+  43              		@ args = 0, pretend = 0, frame = 8
+  44              		@ frame_needed = 1, uses_anonymous_args = 0
+  45 0000 80B5     		push	{r7, lr}
+  46              	.LCFI0:
+  47              		.cfi_def_cfa_offset 8
+  48              		.cfi_offset 7, -8
+  49              		.cfi_offset 14, -4
+  50 0002 82B0     		sub	sp, sp, #8
+  51              	.LCFI1:
+  52              		.cfi_def_cfa_offset 16
+  53 0004 00AF     		add	r7, sp, #0
+  54              	.LCFI2:
+  55              		.cfi_def_cfa_register 7
+  46:../src/usb_pwr.c ****   uint16_t wRegVal;
+  47:../src/usb_pwr.c **** 
+  48:../src/usb_pwr.c ****   /*** cable plugged-in ? ***/
+  49:../src/usb_pwr.c ****   USB_Cable_Config(ENABLE);
+  56              		.loc 1 49 0
+  57 0006 4FF00100 		mov	r0, #1
+  58 000a FFF7FEFF 		bl	USB_Cable_Config
+  50:../src/usb_pwr.c **** 
+  51:../src/usb_pwr.c ****   /*** CNTR_PWDN = 0 ***/
+  52:../src/usb_pwr.c ****   wRegVal = CNTR_FRES;
+  59              		.loc 1 52 0
+  60 000e 4FF00103 		mov	r3, #1
+  61 0012 FB80     		strh	r3, [r7, #6]	@ movhi
+  53:../src/usb_pwr.c ****   _SetCNTR(wRegVal);
+  62              		.loc 1 53 0
+  63 0014 45F64043 		movw	r3, #23616
+  64 0018 C4F20003 		movt	r3, 16384
+  65 001c FA88     		ldrh	r2, [r7, #6]
+  66 001e 1A60     		str	r2, [r3, #0]
+  54:../src/usb_pwr.c **** 
+  55:../src/usb_pwr.c ****   /*** CNTR_FRES = 0 ***/
+  56:../src/usb_pwr.c ****   wInterrupt_Mask = 0;
+  67              		.loc 1 56 0
+  68 0020 40F20003 		movw	r3, #:lower16:wInterrupt_Mask
+  69 0024 C0F20003 		movt	r3, #:upper16:wInterrupt_Mask
+  70 0028 4FF00002 		mov	r2, #0
+  71 002c 1A80     		strh	r2, [r3, #0]	@ movhi
+  57:../src/usb_pwr.c ****   _SetCNTR(wInterrupt_Mask);
+  72              		.loc 1 57 0
+  73 002e 45F64043 		movw	r3, #23616
+  74 0032 C4F20003 		movt	r3, 16384
+  75 0036 40F20002 		movw	r2, #:lower16:wInterrupt_Mask
+  76 003a C0F20002 		movt	r2, #:upper16:wInterrupt_Mask
+  77 003e 1288     		ldrh	r2, [r2, #0]
+  78 0040 1A60     		str	r2, [r3, #0]
+  58:../src/usb_pwr.c ****   /*** Clear pending interrupts ***/
+  59:../src/usb_pwr.c ****   _SetISTR(0);
+  79              		.loc 1 59 0
+  80 0042 45F64443 		movw	r3, #23620
+  81 0046 C4F20003 		movt	r3, 16384
+  82 004a 4FF00002 		mov	r2, #0
+  83 004e 1A60     		str	r2, [r3, #0]
+  60:../src/usb_pwr.c ****   /*** Set interrupt mask ***/
+  61:../src/usb_pwr.c ****   wInterrupt_Mask = CNTR_RESETM | CNTR_SUSPM | CNTR_WKUPM;
+  84              		.loc 1 61 0
+  85 0050 40F20003 		movw	r3, #:lower16:wInterrupt_Mask
+  86 0054 C0F20003 		movt	r3, #:upper16:wInterrupt_Mask
+  87 0058 4FF4E052 		mov	r2, #7168
+  88 005c 1A80     		strh	r2, [r3, #0]	@ movhi
+  62:../src/usb_pwr.c ****   _SetCNTR(wInterrupt_Mask);
+  89              		.loc 1 62 0
+  90 005e 45F64043 		movw	r3, #23616
+  91 0062 C4F20003 		movt	r3, 16384
+  92 0066 40F20002 		movw	r2, #:lower16:wInterrupt_Mask
+  93 006a C0F20002 		movt	r2, #:upper16:wInterrupt_Mask
+  94 006e 1288     		ldrh	r2, [r2, #0]
+  95 0070 1A60     		str	r2, [r3, #0]
+  63:../src/usb_pwr.c **** 
+  64:../src/usb_pwr.c ****   return USB_SUCCESS;
+  96              		.loc 1 64 0
+  97 0072 4FF00003 		mov	r3, #0
+  65:../src/usb_pwr.c **** }
+  98              		.loc 1 65 0
+  99 0076 1846     		mov	r0, r3
+ 100 0078 07F10807 		add	r7, r7, #8
+ 101 007c BD46     		mov	sp, r7
+ 102 007e 80BD     		pop	{r7, pc}
+ 103              		.cfi_endproc
+ 104              	.LFE56:
+ 106              		.section	.text.PowerOff,"ax",%progbits
+ 107              		.align	2
+ 108              		.global	PowerOff
+ 109              		.thumb
+ 110              		.thumb_func
+ 112              	PowerOff:
+ 113              	.LFB57:
+  66:../src/usb_pwr.c **** 
+  67:../src/usb_pwr.c **** /*******************************************************************************
+  68:../src/usb_pwr.c **** * Function Name  : PowerOff
+  69:../src/usb_pwr.c **** * Description    : handles switch-off conditions
+  70:../src/usb_pwr.c **** * Input          : None.
+  71:../src/usb_pwr.c **** * Output         : None.
+  72:../src/usb_pwr.c **** * Return         : USB_SUCCESS.
+  73:../src/usb_pwr.c **** *******************************************************************************/
+  74:../src/usb_pwr.c **** RESULT PowerOff()
+  75:../src/usb_pwr.c **** {
+ 114              		.loc 1 75 0
+ 115              		.cfi_startproc
+ 116              		@ args = 0, pretend = 0, frame = 0
+ 117              		@ frame_needed = 1, uses_anonymous_args = 0
+ 118 0000 80B5     		push	{r7, lr}
+ 119              	.LCFI3:
+ 120              		.cfi_def_cfa_offset 8
+ 121              		.cfi_offset 7, -8
+ 122              		.cfi_offset 14, -4
+ 123 0002 00AF     		add	r7, sp, #0
+ 124              	.LCFI4:
+ 125              		.cfi_def_cfa_register 7
+  76:../src/usb_pwr.c ****   /* disable all interrupts and force USB reset */
+  77:../src/usb_pwr.c ****   _SetCNTR(CNTR_FRES);
+ 126              		.loc 1 77 0
+ 127 0004 45F64043 		movw	r3, #23616
+ 128 0008 C4F20003 		movt	r3, 16384
+ 129 000c 4FF00102 		mov	r2, #1
+ 130 0010 1A60     		str	r2, [r3, #0]
+  78:../src/usb_pwr.c ****   /* clear interrupt status register */
+  79:../src/usb_pwr.c ****   _SetISTR(0);
+ 131              		.loc 1 79 0
+ 132 0012 45F64443 		movw	r3, #23620
+ 133 0016 C4F20003 		movt	r3, 16384
+ 134 001a 4FF00002 		mov	r2, #0
+ 135 001e 1A60     		str	r2, [r3, #0]
+  80:../src/usb_pwr.c ****   /* Disable the Pull-Up*/
+  81:../src/usb_pwr.c ****   USB_Cable_Config(DISABLE);
+ 136              		.loc 1 81 0
+ 137 0020 4FF00000 		mov	r0, #0
+ 138 0024 FFF7FEFF 		bl	USB_Cable_Config
+  82:../src/usb_pwr.c ****   /* switch-off device */
+  83:../src/usb_pwr.c ****   _SetCNTR(CNTR_FRES + CNTR_PDWN);
+ 139              		.loc 1 83 0
+ 140 0028 45F64043 		movw	r3, #23616
+ 141 002c C4F20003 		movt	r3, 16384
+ 142 0030 4FF00302 		mov	r2, #3
+ 143 0034 1A60     		str	r2, [r3, #0]
+  84:../src/usb_pwr.c **** 
+  85:../src/usb_pwr.c ****   /* sw variables reset */
+  86:../src/usb_pwr.c ****   /* ... */
+  87:../src/usb_pwr.c **** 
+  88:../src/usb_pwr.c ****   return USB_SUCCESS;
+ 144              		.loc 1 88 0
+ 145 0036 4FF00003 		mov	r3, #0
+  89:../src/usb_pwr.c **** }
+ 146              		.loc 1 89 0
+ 147 003a 1846     		mov	r0, r3
+ 148 003c 80BD     		pop	{r7, pc}
+ 149              		.cfi_endproc
+ 150              	.LFE57:
+ 152 003e 00BF     		.section	.text.Suspend,"ax",%progbits
+ 153              		.align	2
+ 154              		.global	Suspend
+ 155              		.thumb
+ 156              		.thumb_func
+ 158              	Suspend:
+ 159              	.LFB58:
+  90:../src/usb_pwr.c **** 
+  91:../src/usb_pwr.c **** /*******************************************************************************
+  92:../src/usb_pwr.c **** * Function Name  : Suspend
+  93:../src/usb_pwr.c **** * Description    : sets suspend mode operating conditions
+  94:../src/usb_pwr.c **** * Input          : None.
+  95:../src/usb_pwr.c **** * Output         : None.
+  96:../src/usb_pwr.c **** * Return         : USB_SUCCESS.
+  97:../src/usb_pwr.c **** *******************************************************************************/
+  98:../src/usb_pwr.c **** void Suspend(void)
+  99:../src/usb_pwr.c **** {
+ 160              		.loc 1 99 0
+ 161              		.cfi_startproc
+ 162              		@ args = 0, pretend = 0, frame = 8
+ 163              		@ frame_needed = 1, uses_anonymous_args = 0
+ 164 0000 80B5     		push	{r7, lr}
+ 165              	.LCFI5:
+ 166              		.cfi_def_cfa_offset 8
+ 167              		.cfi_offset 7, -8
+ 168              		.cfi_offset 14, -4
+ 169 0002 82B0     		sub	sp, sp, #8
+ 170              	.LCFI6:
+ 171              		.cfi_def_cfa_offset 16
+ 172 0004 00AF     		add	r7, sp, #0
+ 173              	.LCFI7:
+ 174              		.cfi_def_cfa_register 7
+ 100:../src/usb_pwr.c ****   uint16_t wCNTR;
+ 101:../src/usb_pwr.c ****   /* suspend preparation */
+ 102:../src/usb_pwr.c ****   /* ... */
+ 103:../src/usb_pwr.c **** 
+ 104:../src/usb_pwr.c ****   /* macrocell enters suspend mode */
+ 105:../src/usb_pwr.c ****   wCNTR = _GetCNTR();
+ 175              		.loc 1 105 0
+ 176 0006 45F64043 		movw	r3, #23616
+ 177 000a C4F20003 		movt	r3, 16384
+ 178 000e 1B68     		ldr	r3, [r3, #0]
+ 179 0010 FB80     		strh	r3, [r7, #6]	@ movhi
+ 106:../src/usb_pwr.c ****   wCNTR |= CNTR_FSUSP;
+ 180              		.loc 1 106 0
+ 181 0012 FB88     		ldrh	r3, [r7, #6]	@ movhi
+ 182 0014 43F00803 		orr	r3, r3, #8
+ 183 0018 FB80     		strh	r3, [r7, #6]	@ movhi
+ 107:../src/usb_pwr.c ****   _SetCNTR(wCNTR);
+ 184              		.loc 1 107 0
+ 185 001a 45F64043 		movw	r3, #23616
+ 186 001e C4F20003 		movt	r3, 16384
+ 187 0022 FA88     		ldrh	r2, [r7, #6]
+ 188 0024 1A60     		str	r2, [r3, #0]
+ 108:../src/usb_pwr.c **** 
+ 109:../src/usb_pwr.c ****   /* ------------------ ONLY WITH BUS-POWERED DEVICES ---------------------- */
+ 110:../src/usb_pwr.c ****   /* power reduction */
+ 111:../src/usb_pwr.c ****   /* ... on connected devices */
+ 112:../src/usb_pwr.c **** 
+ 113:../src/usb_pwr.c ****   /* force low-power mode in the macrocell */
+ 114:../src/usb_pwr.c ****   wCNTR = _GetCNTR();
+ 189              		.loc 1 114 0
+ 190 0026 45F64043 		movw	r3, #23616
+ 191 002a C4F20003 		movt	r3, 16384
+ 192 002e 1B68     		ldr	r3, [r3, #0]
+ 193 0030 FB80     		strh	r3, [r7, #6]	@ movhi
+ 115:../src/usb_pwr.c ****   wCNTR |= CNTR_LPMODE;
+ 194              		.loc 1 115 0
+ 195 0032 FB88     		ldrh	r3, [r7, #6]	@ movhi
+ 196 0034 43F00403 		orr	r3, r3, #4
+ 197 0038 FB80     		strh	r3, [r7, #6]	@ movhi
+ 116:../src/usb_pwr.c ****   _SetCNTR(wCNTR);
+ 198              		.loc 1 116 0
+ 199 003a 45F64043 		movw	r3, #23616
+ 200 003e C4F20003 		movt	r3, 16384
+ 201 0042 FA88     		ldrh	r2, [r7, #6]
+ 202 0044 1A60     		str	r2, [r3, #0]
+ 117:../src/usb_pwr.c **** 
+ 118:../src/usb_pwr.c ****   /* switch-off the clocks */
+ 119:../src/usb_pwr.c ****   /* ... */
+ 120:../src/usb_pwr.c ****   Enter_LowPowerMode();
+ 203              		.loc 1 120 0
+ 204 0046 FFF7FEFF 		bl	Enter_LowPowerMode
+ 121:../src/usb_pwr.c **** 
+ 122:../src/usb_pwr.c **** }
+ 205              		.loc 1 122 0
+ 206 004a 07F10807 		add	r7, r7, #8
+ 207 004e BD46     		mov	sp, r7
+ 208 0050 80BD     		pop	{r7, pc}
+ 209              		.cfi_endproc
+ 210              	.LFE58:
+ 212 0052 00BF     		.section	.text.Resume_Init,"ax",%progbits
+ 213              		.align	2
+ 214              		.global	Resume_Init
+ 215              		.thumb
+ 216              		.thumb_func
+ 218              	Resume_Init:
+ 219              	.LFB59:
+ 123:../src/usb_pwr.c **** 
+ 124:../src/usb_pwr.c **** /*******************************************************************************
+ 125:../src/usb_pwr.c **** * Function Name  : Resume_Init
+ 126:../src/usb_pwr.c **** * Description    : Handles wake-up restoring normal operations
+ 127:../src/usb_pwr.c **** * Input          : None.
+ 128:../src/usb_pwr.c **** * Output         : None.
+ 129:../src/usb_pwr.c **** * Return         : USB_SUCCESS.
+ 130:../src/usb_pwr.c **** *******************************************************************************/
+ 131:../src/usb_pwr.c **** void Resume_Init(void)
+ 132:../src/usb_pwr.c **** {
+ 220              		.loc 1 132 0
+ 221              		.cfi_startproc
+ 222              		@ args = 0, pretend = 0, frame = 8
+ 223              		@ frame_needed = 1, uses_anonymous_args = 0
+ 224 0000 80B5     		push	{r7, lr}
+ 225              	.LCFI8:
+ 226              		.cfi_def_cfa_offset 8
+ 227              		.cfi_offset 7, -8
+ 228              		.cfi_offset 14, -4
+ 229 0002 82B0     		sub	sp, sp, #8
+ 230              	.LCFI9:
+ 231              		.cfi_def_cfa_offset 16
+ 232 0004 00AF     		add	r7, sp, #0
+ 233              	.LCFI10:
+ 234              		.cfi_def_cfa_register 7
+ 133:../src/usb_pwr.c ****   uint16_t wCNTR;
+ 134:../src/usb_pwr.c **** 
+ 135:../src/usb_pwr.c ****   /* ------------------ ONLY WITH BUS-POWERED DEVICES ---------------------- */
+ 136:../src/usb_pwr.c ****   /* restart the clocks */
+ 137:../src/usb_pwr.c ****   /* ...  */
+ 138:../src/usb_pwr.c **** 
+ 139:../src/usb_pwr.c ****   /* CNTR_LPMODE = 0 */
+ 140:../src/usb_pwr.c ****   wCNTR = _GetCNTR();
+ 235              		.loc 1 140 0
+ 236 0006 45F64043 		movw	r3, #23616
+ 237 000a C4F20003 		movt	r3, 16384
+ 238 000e 1B68     		ldr	r3, [r3, #0]
+ 239 0010 FB80     		strh	r3, [r7, #6]	@ movhi
+ 141:../src/usb_pwr.c ****   wCNTR &= (~CNTR_LPMODE);
+ 240              		.loc 1 141 0
+ 241 0012 FB88     		ldrh	r3, [r7, #6]	@ movhi
+ 242 0014 23F00403 		bic	r3, r3, #4
+ 243 0018 FB80     		strh	r3, [r7, #6]	@ movhi
+ 142:../src/usb_pwr.c ****   _SetCNTR(wCNTR);
+ 244              		.loc 1 142 0
+ 245 001a 45F64043 		movw	r3, #23616
+ 246 001e C4F20003 		movt	r3, 16384
+ 247 0022 FA88     		ldrh	r2, [r7, #6]
+ 248 0024 1A60     		str	r2, [r3, #0]
+ 143:../src/usb_pwr.c **** 
+ 144:../src/usb_pwr.c ****   /* restore full power */
+ 145:../src/usb_pwr.c ****   /* ... on connected devices */
+ 146:../src/usb_pwr.c ****   Leave_LowPowerMode();
+ 249              		.loc 1 146 0
+ 250 0026 FFF7FEFF 		bl	Leave_LowPowerMode
+ 147:../src/usb_pwr.c **** 
+ 148:../src/usb_pwr.c ****   /* reset FSUSP bit */
+ 149:../src/usb_pwr.c ****   _SetCNTR(IMR_MSK);
+ 251              		.loc 1 149 0
+ 252 002a 45F64043 		movw	r3, #23616
+ 253 002e C4F20003 		movt	r3, 16384
+ 254 0032 4FF40642 		mov	r2, #34304
+ 255 0036 1A60     		str	r2, [r3, #0]
+ 150:../src/usb_pwr.c **** 
+ 151:../src/usb_pwr.c ****   /* reverse suspend preparation */
+ 152:../src/usb_pwr.c ****   /* ... */
+ 153:../src/usb_pwr.c **** 
+ 154:../src/usb_pwr.c **** }
+ 256              		.loc 1 154 0
+ 257 0038 07F10807 		add	r7, r7, #8
+ 258 003c BD46     		mov	sp, r7
+ 259 003e 80BD     		pop	{r7, pc}
+ 260              		.cfi_endproc
+ 261              	.LFE59:
+ 263              		.section	.text.Resume,"ax",%progbits
+ 264              		.align	2
+ 265              		.global	Resume
+ 266              		.thumb
+ 267              		.thumb_func
+ 269              	Resume:
+ 270              	.LFB60:
+ 155:../src/usb_pwr.c **** 
+ 156:../src/usb_pwr.c **** /*******************************************************************************
+ 157:../src/usb_pwr.c **** * Function Name  : Resume
+ 158:../src/usb_pwr.c **** * Description    : This is the state machine handling resume operations and
+ 159:../src/usb_pwr.c **** *                 timing sequence. The control is based on the Resume structure
+ 160:../src/usb_pwr.c **** *                 variables and on the ESOF interrupt calling this subroutine
+ 161:../src/usb_pwr.c **** *                 without changing machine state.
+ 162:../src/usb_pwr.c **** * Input          : a state machine value (RESUME_STATE)
+ 163:../src/usb_pwr.c **** *                  RESUME_ESOF doesn't change ResumeS.eState allowing
+ 164:../src/usb_pwr.c **** *                  decrementing of the ESOF counter in different states.
+ 165:../src/usb_pwr.c **** * Output         : None.
+ 166:../src/usb_pwr.c **** * Return         : None.
+ 167:../src/usb_pwr.c **** *******************************************************************************/
+ 168:../src/usb_pwr.c **** void Resume(RESUME_STATE eResumeSetVal)
+ 169:../src/usb_pwr.c **** {
+ 271              		.loc 1 169 0
+ 272              		.cfi_startproc
+ 273              		@ args = 0, pretend = 0, frame = 16
+ 274              		@ frame_needed = 1, uses_anonymous_args = 0
+ 275 0000 80B5     		push	{r7, lr}
+ 276              	.LCFI11:
+ 277              		.cfi_def_cfa_offset 8
+ 278              		.cfi_offset 7, -8
+ 279              		.cfi_offset 14, -4
+ 280 0002 84B0     		sub	sp, sp, #16
+ 281              	.LCFI12:
+ 282              		.cfi_def_cfa_offset 24
+ 283 0004 00AF     		add	r7, sp, #0
+ 284              	.LCFI13:
+ 285              		.cfi_def_cfa_register 7
+ 286 0006 0346     		mov	r3, r0
+ 287 0008 FB71     		strb	r3, [r7, #7]
+ 170:../src/usb_pwr.c ****   uint16_t wCNTR;
+ 171:../src/usb_pwr.c **** 
+ 172:../src/usb_pwr.c ****   if (eResumeSetVal != RESUME_ESOF)
+ 288              		.loc 1 172 0
+ 289 000a FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 290 000c 072B     		cmp	r3, #7
+ 291 000e 05D0     		beq	.L8
+ 173:../src/usb_pwr.c ****     ResumeS.eState = eResumeSetVal;
+ 292              		.loc 1 173 0
+ 293 0010 40F20003 		movw	r3, #:lower16:ResumeS
+ 294 0014 C0F20003 		movt	r3, #:upper16:ResumeS
+ 295 0018 FA79     		ldrb	r2, [r7, #7]
+ 296 001a 1A70     		strb	r2, [r3, #0]
+ 297              	.L8:
+ 174:../src/usb_pwr.c **** 
+ 175:../src/usb_pwr.c ****   switch (ResumeS.eState)
+ 298              		.loc 1 175 0
+ 299 001c 40F20003 		movw	r3, #:lower16:ResumeS
+ 300 0020 C0F20003 		movt	r3, #:upper16:ResumeS
+ 301 0024 1B78     		ldrb	r3, [r3, #0]
+ 302 0026 DBB2     		uxtb	r3, r3
+ 303 0028 052B     		cmp	r3, #5
+ 304 002a 00F29D80 		bhi	.L9
+ 305 002e 01A2     		adr	r2, .L16
+ 306 0030 52F823F0 		ldr	pc, [r2, r3, lsl #2]
+ 307              		.align	2
+ 308              	.L16:
+ 309 0034 4D000000 		.word	.L10+1
+ 310 0038 61000000 		.word	.L11+1
+ 311 003c 75000000 		.word	.L12+1
+ 312 0040 93000000 		.word	.L13+1
+ 313 0044 CF000000 		.word	.L14+1
+ 314 0048 0D010000 		.word	.L15+1
+ 315              	.L10:
+ 176:../src/usb_pwr.c ****   {
+ 177:../src/usb_pwr.c ****     case RESUME_EXTERNAL:
+ 178:../src/usb_pwr.c ****       Resume_Init();
+ 316              		.loc 1 178 0
+ 317 004c FFF7FEFF 		bl	Resume_Init
+ 179:../src/usb_pwr.c ****       ResumeS.eState = RESUME_OFF;
+ 318              		.loc 1 179 0
+ 319 0050 40F20003 		movw	r3, #:lower16:ResumeS
+ 320 0054 C0F20003 		movt	r3, #:upper16:ResumeS
+ 321 0058 4FF00602 		mov	r2, #6
+ 322 005c 1A70     		strb	r2, [r3, #0]
+ 180:../src/usb_pwr.c ****       break;
+ 323              		.loc 1 180 0
+ 324 005e 8FE0     		b	.L7
+ 325              	.L11:
+ 181:../src/usb_pwr.c ****     case RESUME_INTERNAL:
+ 182:../src/usb_pwr.c ****       Resume_Init();
+ 326              		.loc 1 182 0
+ 327 0060 FFF7FEFF 		bl	Resume_Init
+ 183:../src/usb_pwr.c ****       ResumeS.eState = RESUME_START;
+ 328              		.loc 1 183 0
+ 329 0064 40F20003 		movw	r3, #:lower16:ResumeS
+ 330 0068 C0F20003 		movt	r3, #:upper16:ResumeS
+ 331 006c 4FF00402 		mov	r2, #4
+ 332 0070 1A70     		strb	r2, [r3, #0]
+ 184:../src/usb_pwr.c ****       break;
+ 333              		.loc 1 184 0
+ 334 0072 85E0     		b	.L7
+ 335              	.L12:
+ 185:../src/usb_pwr.c ****     case RESUME_LATER:
+ 186:../src/usb_pwr.c ****       ResumeS.bESOFcnt = 2;
+ 336              		.loc 1 186 0
+ 337 0074 40F20003 		movw	r3, #:lower16:ResumeS
+ 338 0078 C0F20003 		movt	r3, #:upper16:ResumeS
+ 339 007c 4FF00202 		mov	r2, #2
+ 340 0080 5A70     		strb	r2, [r3, #1]
+ 187:../src/usb_pwr.c ****       ResumeS.eState = RESUME_WAIT;
+ 341              		.loc 1 187 0
+ 342 0082 40F20003 		movw	r3, #:lower16:ResumeS
+ 343 0086 C0F20003 		movt	r3, #:upper16:ResumeS
+ 344 008a 4FF00302 		mov	r2, #3
+ 345 008e 1A70     		strb	r2, [r3, #0]
+ 188:../src/usb_pwr.c ****       break;
+ 346              		.loc 1 188 0
+ 347 0090 76E0     		b	.L7
+ 348              	.L13:
+ 189:../src/usb_pwr.c ****     case RESUME_WAIT:
+ 190:../src/usb_pwr.c ****       ResumeS.bESOFcnt--;
+ 349              		.loc 1 190 0
+ 350 0092 40F20003 		movw	r3, #:lower16:ResumeS
+ 351 0096 C0F20003 		movt	r3, #:upper16:ResumeS
+ 352 009a 5B78     		ldrb	r3, [r3, #1]
+ 353 009c DBB2     		uxtb	r3, r3
+ 354 009e 03F1FF33 		add	r3, r3, #-1
+ 355 00a2 DAB2     		uxtb	r2, r3
+ 356 00a4 40F20003 		movw	r3, #:lower16:ResumeS
+ 357 00a8 C0F20003 		movt	r3, #:upper16:ResumeS
+ 358 00ac 5A70     		strb	r2, [r3, #1]
+ 191:../src/usb_pwr.c ****       if (ResumeS.bESOFcnt == 0)
+ 359              		.loc 1 191 0
+ 360 00ae 40F20003 		movw	r3, #:lower16:ResumeS
+ 361 00b2 C0F20003 		movt	r3, #:upper16:ResumeS
+ 362 00b6 5B78     		ldrb	r3, [r3, #1]
+ 363 00b8 DBB2     		uxtb	r3, r3
+ 364 00ba 002B     		cmp	r3, #0
+ 365 00bc 5DD1     		bne	.L20
+ 192:../src/usb_pwr.c ****         ResumeS.eState = RESUME_START;
+ 366              		.loc 1 192 0
+ 367 00be 40F20003 		movw	r3, #:lower16:ResumeS
+ 368 00c2 C0F20003 		movt	r3, #:upper16:ResumeS
+ 369 00c6 4FF00402 		mov	r2, #4
+ 370 00ca 1A70     		strb	r2, [r3, #0]
+ 193:../src/usb_pwr.c ****       break;
+ 371              		.loc 1 193 0
+ 372 00cc 55E0     		b	.L20
+ 373              	.L14:
+ 194:../src/usb_pwr.c ****     case RESUME_START:
+ 195:../src/usb_pwr.c ****       wCNTR = _GetCNTR();
+ 374              		.loc 1 195 0
+ 375 00ce 45F64043 		movw	r3, #23616
+ 376 00d2 C4F20003 		movt	r3, 16384
+ 377 00d6 1B68     		ldr	r3, [r3, #0]
+ 378 00d8 FB81     		strh	r3, [r7, #14]	@ movhi
+ 196:../src/usb_pwr.c ****       wCNTR |= CNTR_RESUME;
+ 379              		.loc 1 196 0
+ 380 00da FB89     		ldrh	r3, [r7, #14]	@ movhi
+ 381 00dc 43F01003 		orr	r3, r3, #16
+ 382 00e0 FB81     		strh	r3, [r7, #14]	@ movhi
+ 197:../src/usb_pwr.c ****       _SetCNTR(wCNTR);
+ 383              		.loc 1 197 0
+ 384 00e2 45F64043 		movw	r3, #23616
+ 385 00e6 C4F20003 		movt	r3, 16384
+ 386 00ea FA89     		ldrh	r2, [r7, #14]
+ 387 00ec 1A60     		str	r2, [r3, #0]
+ 198:../src/usb_pwr.c ****       ResumeS.eState = RESUME_ON;
+ 388              		.loc 1 198 0
+ 389 00ee 40F20003 		movw	r3, #:lower16:ResumeS
+ 390 00f2 C0F20003 		movt	r3, #:upper16:ResumeS
+ 391 00f6 4FF00502 		mov	r2, #5
+ 392 00fa 1A70     		strb	r2, [r3, #0]
+ 199:../src/usb_pwr.c ****       ResumeS.bESOFcnt = 10;
+ 393              		.loc 1 199 0
+ 394 00fc 40F20003 		movw	r3, #:lower16:ResumeS
+ 395 0100 C0F20003 		movt	r3, #:upper16:ResumeS
+ 396 0104 4FF00A02 		mov	r2, #10
+ 397 0108 5A70     		strb	r2, [r3, #1]
+ 200:../src/usb_pwr.c ****       break;
+ 398              		.loc 1 200 0
+ 399 010a 39E0     		b	.L7
+ 400              	.L15:
+ 201:../src/usb_pwr.c ****     case RESUME_ON:
+ 202:../src/usb_pwr.c ****       ResumeS.bESOFcnt--;
+ 401              		.loc 1 202 0
+ 402 010c 40F20003 		movw	r3, #:lower16:ResumeS
+ 403 0110 C0F20003 		movt	r3, #:upper16:ResumeS
+ 404 0114 5B78     		ldrb	r3, [r3, #1]
+ 405 0116 DBB2     		uxtb	r3, r3
+ 406 0118 03F1FF33 		add	r3, r3, #-1
+ 407 011c DAB2     		uxtb	r2, r3
+ 408 011e 40F20003 		movw	r3, #:lower16:ResumeS
+ 409 0122 C0F20003 		movt	r3, #:upper16:ResumeS
+ 410 0126 5A70     		strb	r2, [r3, #1]
+ 203:../src/usb_pwr.c ****       if (ResumeS.bESOFcnt == 0)
+ 411              		.loc 1 203 0
+ 412 0128 40F20003 		movw	r3, #:lower16:ResumeS
+ 413 012c C0F20003 		movt	r3, #:upper16:ResumeS
+ 414 0130 5B78     		ldrb	r3, [r3, #1]
+ 415 0132 DBB2     		uxtb	r3, r3
+ 416 0134 002B     		cmp	r3, #0
+ 417 0136 22D1     		bne	.L21
+ 204:../src/usb_pwr.c ****       {
+ 205:../src/usb_pwr.c ****         wCNTR = _GetCNTR();
+ 418              		.loc 1 205 0
+ 419 0138 45F64043 		movw	r3, #23616
+ 420 013c C4F20003 		movt	r3, 16384
+ 421 0140 1B68     		ldr	r3, [r3, #0]
+ 422 0142 FB81     		strh	r3, [r7, #14]	@ movhi
+ 206:../src/usb_pwr.c ****         wCNTR &= (~CNTR_RESUME);
+ 423              		.loc 1 206 0
+ 424 0144 FB89     		ldrh	r3, [r7, #14]	@ movhi
+ 425 0146 23F01003 		bic	r3, r3, #16
+ 426 014a FB81     		strh	r3, [r7, #14]	@ movhi
+ 207:../src/usb_pwr.c ****         _SetCNTR(wCNTR);
+ 427              		.loc 1 207 0
+ 428 014c 45F64043 		movw	r3, #23616
+ 429 0150 C4F20003 		movt	r3, 16384
+ 430 0154 FA89     		ldrh	r2, [r7, #14]
+ 431 0156 1A60     		str	r2, [r3, #0]
+ 208:../src/usb_pwr.c ****         ResumeS.eState = RESUME_OFF;
+ 432              		.loc 1 208 0
+ 433 0158 40F20003 		movw	r3, #:lower16:ResumeS
+ 434 015c C0F20003 		movt	r3, #:upper16:ResumeS
+ 435 0160 4FF00602 		mov	r2, #6
+ 436 0164 1A70     		strb	r2, [r3, #0]
+ 209:../src/usb_pwr.c ****       }
+ 210:../src/usb_pwr.c ****       break;
+ 437              		.loc 1 210 0
+ 438 0166 0AE0     		b	.L21
+ 439              	.L9:
+ 211:../src/usb_pwr.c ****     case RESUME_OFF:
+ 212:../src/usb_pwr.c ****     case RESUME_ESOF:
+ 213:../src/usb_pwr.c ****     default:
+ 214:../src/usb_pwr.c ****       ResumeS.eState = RESUME_OFF;
+ 440              		.loc 1 214 0
+ 441 0168 40F20003 		movw	r3, #:lower16:ResumeS
+ 442 016c C0F20003 		movt	r3, #:upper16:ResumeS
+ 443 0170 4FF00602 		mov	r2, #6
+ 444 0174 1A70     		strb	r2, [r3, #0]
+ 215:../src/usb_pwr.c ****       break;
+ 445              		.loc 1 215 0
+ 446 0176 00BF     		nop
+ 447 0178 02E0     		b	.L7
+ 448              	.L20:
+ 193:../src/usb_pwr.c ****       break;
+ 449              		.loc 1 193 0
+ 450 017a 00BF     		nop
+ 451 017c 00E0     		b	.L7
+ 452              	.L21:
+ 210:../src/usb_pwr.c ****       break;
+ 453              		.loc 1 210 0
+ 454 017e 00BF     		nop
+ 455              	.L7:
+ 216:../src/usb_pwr.c ****   }
+ 217:../src/usb_pwr.c **** }
+ 456              		.loc 1 217 0
+ 457 0180 07F11007 		add	r7, r7, #16
+ 458 0184 BD46     		mov	sp, r7
+ 459 0186 80BD     		pop	{r7, pc}
+ 460              		.cfi_endproc
+ 461              	.LFE60:
+ 463              		.text
+ 464              	.Letext0:
+ 465              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 466              		.file 3 "/Users/zac/code/spark/marvin/libraries/CMSIS/Device/ST/STM32F10x/Include/stm32f10x.h"
+ 467              		.file 4 "/Users/zac/code/spark/marvin/libraries/STM32_USB-FS-Device_Driver/inc/usb_type.h"
+ 468              		.file 5 "/Users/zac/code/spark/marvin/libraries/STM32_USB-FS-Device_Driver/inc/usb_core.h"
+ 469              		.file 6 "/Users/zac/code/spark/marvin/inc/usb_pwr.h"
+ 470              		.file 7 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cm3.h"
+ 471              		.file 8 "/Users/zac/code/spark/marvin/libraries/STM32_USB-FS-Device_Driver/inc/usb_init.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 usb_pwr.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:23     .bss:0000000000000000 bDeviceState
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:20     .bss:0000000000000000 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:29     .data:0000000000000000 fSuspendEnabled
+                            *COM*:0000000000000002 ResumeS
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:33     .text.PowerOn:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:38     .text.PowerOn:0000000000000000 PowerOn
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:107    .text.PowerOff:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:112    .text.PowerOff:0000000000000000 PowerOff
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:153    .text.Suspend:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:158    .text.Suspend:0000000000000000 Suspend
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:213    .text.Resume_Init:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:218    .text.Resume_Init:0000000000000000 Resume_Init
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:264    .text.Resume:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:269    .text.Resume:0000000000000000 Resume
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:309    .text.Resume:0000000000000034 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cce4KkaI.s:317    .text.Resume:000000000000004c $t
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.platform_config.h.13.23e06e06852a155ef1a4458870bf98fa
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.55.c9956ee2c5ec010802c11a3a06087af4
+                           .group:0000000000000000 wm4.stdlib.h.13.603ed7eb09a1561ab06840b7c0fcff58
+                           .group:0000000000000000 wm4.stddef.h.187.40b3a084f9bc2c020a9e00b9eabe9c14
+                           .group:0000000000000000 wm4._default_types.h.6.5e12cd604db8ce00b62bb2f02708eaf3
+                           .group:0000000000000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:0000000000000000 wm4.stddef.h.349.31f4c5baff3fa2689010b32028da9c47
+                           .group:0000000000000000 wm4.reent.h.16.9e42f0e588b85e70b2bf6572af57ce64
+                           .group:0000000000000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:0000000000000000 wm4.stdlib.h.50.f5923f1950ced340a337f4676566f65a
+                           .group:0000000000000000 wm4.errno.h.2.ba016d646105af6cad23be83630b6a3f
+                           .group:0000000000000000 wm4.errno.h.9.65044c2b5d8494e43f5986ab0a1d770f
+                           .group:0000000000000000 wm4.cc3000_common.h.58.2af7f8f8921b8cb4b89883c25878e207
+                           .group:0000000000000000 wm4.usb_conf.h.13.ae0ffce2e8d0e4c6b2724f8ae0ada8cf
+                           .group:0000000000000000 wm4.hw_config.h.61.9aaf7ecb821816183829c116d76d82b5
+                           .group:0000000000000000 wm4.usb_regs.h.31.d9533108f8ac5724467880baa9cb0f26
+                           .group:0000000000000000 wm4.usb_def.h.30.73e1a84be93039018a594bacb815cb88
+                           .group:0000000000000000 wm4.usb_core.h.31.114a1d0e1de4beb01afdcd243bde9471
+
+UNDEFINED SYMBOLS
+USB_Cable_Config
+wInterrupt_Mask
+Enter_LowPowerMode
+Leave_LowPowerMode

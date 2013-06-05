@@ -1,0 +1,457 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"usb_endp.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.EP1_IN_Callback,"ax",%progbits
+  19              		.align	2
+  20              		.global	EP1_IN_Callback
+  21              		.thumb
+  22              		.thumb_func
+  24              	EP1_IN_Callback:
+  25              	.LFB56:
+  26              		.file 1 "../src/usb_endp.c"
+   1:../src/usb_endp.c **** /**
+   2:../src/usb_endp.c ****   ******************************************************************************
+   3:../src/usb_endp.c ****   * @file    usb_endp.c
+   4:../src/usb_endp.c ****   * @author  Spark Application Team
+   5:../src/usb_endp.c ****   * @version V1.0.0
+   6:../src/usb_endp.c ****   * @date    24-April-2013
+   7:../src/usb_endp.c ****   * @brief   Endpoint routines
+   8:../src/usb_endp.c ****   ******************************************************************************
+   9:../src/usb_endp.c **** */
+  10:../src/usb_endp.c **** 
+  11:../src/usb_endp.c **** /* Includes ------------------------------------------------------------------*/
+  12:../src/usb_endp.c **** #include "usb_lib.h"
+  13:../src/usb_endp.c **** #include "usb_desc.h"
+  14:../src/usb_endp.c **** #include "usb_mem.h"
+  15:../src/usb_endp.c **** #include "hw_config.h"
+  16:../src/usb_endp.c **** #include "usb_istr.h"
+  17:../src/usb_endp.c **** #include "usb_pwr.h"
+  18:../src/usb_endp.c **** 
+  19:../src/usb_endp.c **** /* Private typedef -----------------------------------------------------------*/
+  20:../src/usb_endp.c **** /* Private define ------------------------------------------------------------*/
+  21:../src/usb_endp.c **** 
+  22:../src/usb_endp.c **** /* Interval between sending IN packets in frame number (1 frame = 1ms) */
+  23:../src/usb_endp.c **** #define VCOMPORT_IN_FRAME_INTERVAL             5
+  24:../src/usb_endp.c **** 
+  25:../src/usb_endp.c **** /* Private macro -------------------------------------------------------------*/
+  26:../src/usb_endp.c **** /* Private variables ---------------------------------------------------------*/
+  27:../src/usb_endp.c **** 
+  28:../src/usb_endp.c **** extern  uint8_t USART_Rx_Buffer[];
+  29:../src/usb_endp.c **** extern uint32_t USART_Rx_ptr_out;
+  30:../src/usb_endp.c **** extern uint32_t USART_Rx_length;
+  31:../src/usb_endp.c **** 
+  32:../src/usb_endp.c **** extern uint8_t USB_Rx_Buffer[];
+  33:../src/usb_endp.c **** extern uint16_t USB_Rx_length;
+  34:../src/usb_endp.c **** extern uint16_t USB_Rx_ptr;
+  35:../src/usb_endp.c **** 
+  36:../src/usb_endp.c **** extern uint8_t  USB_Tx_State;
+  37:../src/usb_endp.c **** extern uint8_t  USB_Rx_State;
+  38:../src/usb_endp.c **** 
+  39:../src/usb_endp.c **** /* Private function prototypes -----------------------------------------------*/
+  40:../src/usb_endp.c **** /* Private functions ---------------------------------------------------------*/
+  41:../src/usb_endp.c **** 
+  42:../src/usb_endp.c **** /*******************************************************************************
+  43:../src/usb_endp.c **** * Function Name  : EP1_IN_Callback
+  44:../src/usb_endp.c **** * Description    :
+  45:../src/usb_endp.c **** * Input          : None.
+  46:../src/usb_endp.c **** * Output         : None.
+  47:../src/usb_endp.c **** * Return         : None.
+  48:../src/usb_endp.c **** *******************************************************************************/
+  49:../src/usb_endp.c **** void EP1_IN_Callback (void)
+  50:../src/usb_endp.c **** {
+  27              		.loc 1 50 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 8
+  30              		@ frame_needed = 1, uses_anonymous_args = 0
+  31 0000 80B5     		push	{r7, lr}
+  32              	.LCFI0:
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 7, -8
+  35              		.cfi_offset 14, -4
+  36 0002 82B0     		sub	sp, sp, #8
+  37              	.LCFI1:
+  38              		.cfi_def_cfa_offset 16
+  39 0004 00AF     		add	r7, sp, #0
+  40              	.LCFI2:
+  41              		.cfi_def_cfa_register 7
+  51:../src/usb_endp.c ****   uint16_t USB_Tx_ptr;
+  52:../src/usb_endp.c ****   uint16_t USB_Tx_length;
+  53:../src/usb_endp.c ****   
+  54:../src/usb_endp.c ****   if (USB_Tx_State == 1)
+  42              		.loc 1 54 0
+  43 0006 40F20003 		movw	r3, #:lower16:USB_Tx_State
+  44 000a C0F20003 		movt	r3, #:upper16:USB_Tx_State
+  45 000e 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+  46 0010 012B     		cmp	r3, #1
+  47 0012 71D1     		bne	.L1
+  55:../src/usb_endp.c ****   {
+  56:../src/usb_endp.c ****     if (USART_Rx_length == 0) 
+  48              		.loc 1 56 0
+  49 0014 40F20003 		movw	r3, #:lower16:USART_Rx_length
+  50 0018 C0F20003 		movt	r3, #:upper16:USART_Rx_length
+  51 001c 1B68     		ldr	r3, [r3, #0]
+  52 001e 002B     		cmp	r3, #0
+  53 0020 07D1     		bne	.L3
+  57:../src/usb_endp.c ****     {
+  58:../src/usb_endp.c ****       USB_Tx_State = 0;
+  54              		.loc 1 58 0
+  55 0022 40F20003 		movw	r3, #:lower16:USB_Tx_State
+  56 0026 C0F20003 		movt	r3, #:upper16:USB_Tx_State
+  57 002a 4FF00002 		mov	r2, #0
+  58 002e 1A70     		strb	r2, [r3, #0]
+  59 0030 62E0     		b	.L1
+  60              	.L3:
+  59:../src/usb_endp.c ****     }
+  60:../src/usb_endp.c ****     else 
+  61:../src/usb_endp.c ****     {
+  62:../src/usb_endp.c ****       if (USART_Rx_length > VIRTUAL_COM_PORT_DATA_SIZE){
+  61              		.loc 1 62 0
+  62 0032 40F20003 		movw	r3, #:lower16:USART_Rx_length
+  63 0036 C0F20003 		movt	r3, #:upper16:USART_Rx_length
+  64 003a 1B68     		ldr	r3, [r3, #0]
+  65 003c 402B     		cmp	r3, #64
+  66 003e 21D9     		bls	.L4
+  63:../src/usb_endp.c ****         USB_Tx_ptr = USART_Rx_ptr_out;
+  67              		.loc 1 63 0
+  68 0040 40F20003 		movw	r3, #:lower16:USART_Rx_ptr_out
+  69 0044 C0F20003 		movt	r3, #:upper16:USART_Rx_ptr_out
+  70 0048 1B68     		ldr	r3, [r3, #0]
+  71 004a FB80     		strh	r3, [r7, #6]	@ movhi
+  64:../src/usb_endp.c ****         USB_Tx_length = VIRTUAL_COM_PORT_DATA_SIZE;
+  72              		.loc 1 64 0
+  73 004c 4FF04003 		mov	r3, #64
+  74 0050 BB80     		strh	r3, [r7, #4]	@ movhi
+  65:../src/usb_endp.c ****         
+  66:../src/usb_endp.c ****         USART_Rx_ptr_out += VIRTUAL_COM_PORT_DATA_SIZE;
+  75              		.loc 1 66 0
+  76 0052 40F20003 		movw	r3, #:lower16:USART_Rx_ptr_out
+  77 0056 C0F20003 		movt	r3, #:upper16:USART_Rx_ptr_out
+  78 005a 1B68     		ldr	r3, [r3, #0]
+  79 005c 03F14002 		add	r2, r3, #64
+  80 0060 40F20003 		movw	r3, #:lower16:USART_Rx_ptr_out
+  81 0064 C0F20003 		movt	r3, #:upper16:USART_Rx_ptr_out
+  82 0068 1A60     		str	r2, [r3, #0]
+  67:../src/usb_endp.c ****         USART_Rx_length -= VIRTUAL_COM_PORT_DATA_SIZE;    
+  83              		.loc 1 67 0
+  84 006a 40F20003 		movw	r3, #:lower16:USART_Rx_length
+  85 006e C0F20003 		movt	r3, #:upper16:USART_Rx_length
+  86 0072 1B68     		ldr	r3, [r3, #0]
+  87 0074 A3F14002 		sub	r2, r3, #64
+  88 0078 40F20003 		movw	r3, #:lower16:USART_Rx_length
+  89 007c C0F20003 		movt	r3, #:upper16:USART_Rx_length
+  90 0080 1A60     		str	r2, [r3, #0]
+  91 0082 22E0     		b	.L5
+  92              	.L4:
+  68:../src/usb_endp.c ****       }
+  69:../src/usb_endp.c ****       else 
+  70:../src/usb_endp.c ****       {
+  71:../src/usb_endp.c ****         USB_Tx_ptr = USART_Rx_ptr_out;
+  93              		.loc 1 71 0
+  94 0084 40F20003 		movw	r3, #:lower16:USART_Rx_ptr_out
+  95 0088 C0F20003 		movt	r3, #:upper16:USART_Rx_ptr_out
+  96 008c 1B68     		ldr	r3, [r3, #0]
+  97 008e FB80     		strh	r3, [r7, #6]	@ movhi
+  72:../src/usb_endp.c ****         USB_Tx_length = USART_Rx_length;
+  98              		.loc 1 72 0
+  99 0090 40F20003 		movw	r3, #:lower16:USART_Rx_length
+ 100 0094 C0F20003 		movt	r3, #:upper16:USART_Rx_length
+ 101 0098 1B68     		ldr	r3, [r3, #0]
+ 102 009a BB80     		strh	r3, [r7, #4]	@ movhi
+  73:../src/usb_endp.c ****         
+  74:../src/usb_endp.c ****         USART_Rx_ptr_out += USART_Rx_length;
+ 103              		.loc 1 74 0
+ 104 009c 40F20003 		movw	r3, #:lower16:USART_Rx_ptr_out
+ 105 00a0 C0F20003 		movt	r3, #:upper16:USART_Rx_ptr_out
+ 106 00a4 1A68     		ldr	r2, [r3, #0]
+ 107 00a6 40F20003 		movw	r3, #:lower16:USART_Rx_length
+ 108 00aa C0F20003 		movt	r3, #:upper16:USART_Rx_length
+ 109 00ae 1B68     		ldr	r3, [r3, #0]
+ 110 00b0 D218     		adds	r2, r2, r3
+ 111 00b2 40F20003 		movw	r3, #:lower16:USART_Rx_ptr_out
+ 112 00b6 C0F20003 		movt	r3, #:upper16:USART_Rx_ptr_out
+ 113 00ba 1A60     		str	r2, [r3, #0]
+  75:../src/usb_endp.c ****         USART_Rx_length = 0;
+ 114              		.loc 1 75 0
+ 115 00bc 40F20003 		movw	r3, #:lower16:USART_Rx_length
+ 116 00c0 C0F20003 		movt	r3, #:upper16:USART_Rx_length
+ 117 00c4 4FF00002 		mov	r2, #0
+ 118 00c8 1A60     		str	r2, [r3, #0]
+ 119              	.L5:
+  76:../src/usb_endp.c ****       }
+  77:../src/usb_endp.c ****       UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
+ 120              		.loc 1 77 0
+ 121 00ca FA88     		ldrh	r2, [r7, #6]
+ 122 00cc 40F20003 		movw	r3, #:lower16:USART_Rx_Buffer
+ 123 00d0 C0F20003 		movt	r3, #:upper16:USART_Rx_Buffer
+ 124 00d4 D218     		adds	r2, r2, r3
+ 125 00d6 BB88     		ldrh	r3, [r7, #4]
+ 126 00d8 1046     		mov	r0, r2
+ 127 00da 4FF0C001 		mov	r1, #192
+ 128 00de 1A46     		mov	r2, r3
+ 129 00e0 FFF7FEFF 		bl	UserToPMABufferCopy
+  78:../src/usb_endp.c ****       SetEPTxCount(ENDP1, USB_Tx_length);
+ 130              		.loc 1 78 0
+ 131 00e4 BB88     		ldrh	r3, [r7, #4]
+ 132 00e6 4FF00100 		mov	r0, #1
+ 133 00ea 1946     		mov	r1, r3
+ 134 00ec FFF7FEFF 		bl	SetEPTxCount
+  79:../src/usb_endp.c ****       SetEPTxValid(ENDP1); 
+ 135              		.loc 1 79 0
+ 136 00f0 4FF00100 		mov	r0, #1
+ 137 00f4 FFF7FEFF 		bl	SetEPTxValid
+ 138              	.L1:
+  80:../src/usb_endp.c ****     }
+  81:../src/usb_endp.c ****   }
+  82:../src/usb_endp.c **** }
+ 139              		.loc 1 82 0
+ 140 00f8 07F10807 		add	r7, r7, #8
+ 141 00fc BD46     		mov	sp, r7
+ 142 00fe 80BD     		pop	{r7, pc}
+ 143              		.cfi_endproc
+ 144              	.LFE56:
+ 146              		.section	.text.EP3_OUT_Callback,"ax",%progbits
+ 147              		.align	2
+ 148              		.global	EP3_OUT_Callback
+ 149              		.thumb
+ 150              		.thumb_func
+ 152              	EP3_OUT_Callback:
+ 153              	.LFB57:
+  83:../src/usb_endp.c **** 
+  84:../src/usb_endp.c **** /*******************************************************************************
+  85:../src/usb_endp.c **** * Function Name  : EP3_OUT_Callback
+  86:../src/usb_endp.c **** * Description    :
+  87:../src/usb_endp.c **** * Input          : None.
+  88:../src/usb_endp.c **** * Output         : None.
+  89:../src/usb_endp.c **** * Return         : None.
+  90:../src/usb_endp.c **** *******************************************************************************/
+  91:../src/usb_endp.c **** void EP3_OUT_Callback(void)
+  92:../src/usb_endp.c **** {
+ 154              		.loc 1 92 0
+ 155              		.cfi_startproc
+ 156              		@ args = 0, pretend = 0, frame = 0
+ 157              		@ frame_needed = 1, uses_anonymous_args = 0
+ 158 0000 80B5     		push	{r7, lr}
+ 159              	.LCFI3:
+ 160              		.cfi_def_cfa_offset 8
+ 161              		.cfi_offset 7, -8
+ 162              		.cfi_offset 14, -4
+ 163 0002 00AF     		add	r7, sp, #0
+ 164              	.LCFI4:
+ 165              		.cfi_def_cfa_register 7
+  93:../src/usb_endp.c ****   USB_Rx_State = 1;
+ 166              		.loc 1 93 0
+ 167 0004 40F20003 		movw	r3, #:lower16:USB_Rx_State
+ 168 0008 C0F20003 		movt	r3, #:upper16:USB_Rx_State
+ 169 000c 4FF00102 		mov	r2, #1
+ 170 0010 1A70     		strb	r2, [r3, #0]
+  94:../src/usb_endp.c **** 
+  95:../src/usb_endp.c ****   USB_Rx_ptr = 0;
+ 171              		.loc 1 95 0
+ 172 0012 40F20003 		movw	r3, #:lower16:USB_Rx_ptr
+ 173 0016 C0F20003 		movt	r3, #:upper16:USB_Rx_ptr
+ 174 001a 4FF00002 		mov	r2, #0
+ 175 001e 1A80     		strh	r2, [r3, #0]	@ movhi
+  96:../src/usb_endp.c **** 
+  97:../src/usb_endp.c ****   /* Get the number of received data on the selected Endpoint */
+  98:../src/usb_endp.c ****   USB_Rx_length = GetEPRxCount(ENDP3);
+ 176              		.loc 1 98 0
+ 177 0020 4FF00300 		mov	r0, #3
+ 178 0024 FFF7FEFF 		bl	GetEPRxCount
+ 179 0028 0346     		mov	r3, r0
+ 180 002a 1A46     		mov	r2, r3
+ 181 002c 40F20003 		movw	r3, #:lower16:USB_Rx_length
+ 182 0030 C0F20003 		movt	r3, #:upper16:USB_Rx_length
+ 183 0034 1A80     		strh	r2, [r3, #0]	@ movhi
+  99:../src/usb_endp.c **** 
+ 100:../src/usb_endp.c ****   /* Use the memory interface function to write to the selected endpoint */
+ 101:../src/usb_endp.c ****   PMAToUserBufferCopy(USB_Rx_Buffer, ENDP3_RXADDR, USB_Rx_length);
+ 184              		.loc 1 101 0
+ 185 0036 40F20003 		movw	r3, #:lower16:USB_Rx_length
+ 186 003a C0F20003 		movt	r3, #:upper16:USB_Rx_length
+ 187 003e 1B88     		ldrh	r3, [r3, #0]
+ 188 0040 40F20000 		movw	r0, #:lower16:USB_Rx_Buffer
+ 189 0044 C0F20000 		movt	r0, #:upper16:USB_Rx_Buffer
+ 190 0048 4FF48871 		mov	r1, #272
+ 191 004c 1A46     		mov	r2, r3
+ 192 004e FFF7FEFF 		bl	PMAToUserBufferCopy
+ 102:../src/usb_endp.c **** 
+ 103:../src/usb_endp.c ****   /* USB data should be immediately processed, this allow next USB traffic being
+ 104:../src/usb_endp.c ****   NAKed till the end of the processing */
+ 105:../src/usb_endp.c **** }
+ 193              		.loc 1 105 0
+ 194 0052 80BD     		pop	{r7, pc}
+ 195              		.cfi_endproc
+ 196              	.LFE57:
+ 198              		.section	.text.SOF_Callback,"ax",%progbits
+ 199              		.align	2
+ 200              		.global	SOF_Callback
+ 201              		.thumb
+ 202              		.thumb_func
+ 204              	SOF_Callback:
+ 205              	.LFB58:
+ 106:../src/usb_endp.c **** 
+ 107:../src/usb_endp.c **** 
+ 108:../src/usb_endp.c **** /*******************************************************************************
+ 109:../src/usb_endp.c **** * Function Name  : SOF_Callback / INTR_SOFINTR_Callback
+ 110:../src/usb_endp.c **** * Description    :
+ 111:../src/usb_endp.c **** * Input          : None.
+ 112:../src/usb_endp.c **** * Output         : None.
+ 113:../src/usb_endp.c **** * Return         : None.
+ 114:../src/usb_endp.c **** *******************************************************************************/
+ 115:../src/usb_endp.c **** void SOF_Callback(void)
+ 116:../src/usb_endp.c **** {
+ 206              		.loc 1 116 0
+ 207              		.cfi_startproc
+ 208              		@ args = 0, pretend = 0, frame = 0
+ 209              		@ frame_needed = 1, uses_anonymous_args = 0
+ 210 0000 80B5     		push	{r7, lr}
+ 211              	.LCFI5:
+ 212              		.cfi_def_cfa_offset 8
+ 213              		.cfi_offset 7, -8
+ 214              		.cfi_offset 14, -4
+ 215 0002 00AF     		add	r7, sp, #0
+ 216              	.LCFI6:
+ 217              		.cfi_def_cfa_register 7
+ 117:../src/usb_endp.c ****   static uint32_t FrameCount = 0;
+ 118:../src/usb_endp.c ****   
+ 119:../src/usb_endp.c ****   if(bDeviceState == CONFIGURED)
+ 218              		.loc 1 119 0
+ 219 0004 40F20003 		movw	r3, #:lower16:bDeviceState
+ 220 0008 C0F20003 		movt	r3, #:upper16:bDeviceState
+ 221 000c 1B68     		ldr	r3, [r3, #0]
+ 222 000e 052B     		cmp	r3, #5
+ 223 0010 1BD1     		bne	.L7
+ 120:../src/usb_endp.c ****   {
+ 121:../src/usb_endp.c ****     if (FrameCount++ == VCOMPORT_IN_FRAME_INTERVAL)
+ 224              		.loc 1 121 0
+ 225 0012 40F20003 		movw	r3, #:lower16:FrameCount.7357
+ 226 0016 C0F20003 		movt	r3, #:upper16:FrameCount.7357
+ 227 001a 1B68     		ldr	r3, [r3, #0]
+ 228 001c 052B     		cmp	r3, #5
+ 229 001e 14BF     		ite	ne
+ 230 0020 0022     		movne	r2, #0
+ 231 0022 0122     		moveq	r2, #1
+ 232 0024 D2B2     		uxtb	r2, r2
+ 233 0026 03F10101 		add	r1, r3, #1
+ 234 002a 40F20003 		movw	r3, #:lower16:FrameCount.7357
+ 235 002e C0F20003 		movt	r3, #:upper16:FrameCount.7357
+ 236 0032 1960     		str	r1, [r3, #0]
+ 237 0034 002A     		cmp	r2, #0
+ 238 0036 08D0     		beq	.L7
+ 122:../src/usb_endp.c ****     {
+ 123:../src/usb_endp.c ****       /* Reset the frame counter */
+ 124:../src/usb_endp.c ****       FrameCount = 0;
+ 239              		.loc 1 124 0
+ 240 0038 40F20003 		movw	r3, #:lower16:FrameCount.7357
+ 241 003c C0F20003 		movt	r3, #:upper16:FrameCount.7357
+ 242 0040 4FF00002 		mov	r2, #0
+ 243 0044 1A60     		str	r2, [r3, #0]
+ 125:../src/usb_endp.c ****       
+ 126:../src/usb_endp.c ****       /* Check the data to be sent through IN pipe */
+ 127:../src/usb_endp.c ****       Handle_USBAsynchXfer();
+ 244              		.loc 1 127 0
+ 245 0046 FFF7FEFF 		bl	Handle_USBAsynchXfer
+ 246              	.L7:
+ 128:../src/usb_endp.c ****     }
+ 129:../src/usb_endp.c ****   }  
+ 130:../src/usb_endp.c **** }
+ 247              		.loc 1 130 0
+ 248 004a 80BD     		pop	{r7, pc}
+ 249              		.cfi_endproc
+ 250              	.LFE58:
+ 252              		.bss
+ 253              		.align	2
+ 254              	FrameCount.7357:
+ 255 0000 00000000 		.space	4
+ 256              		.text
+ 257              	.Letext0:
+ 258              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 259              		.file 3 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cm3.h"
+ 260              		.file 4 "/Users/zac/code/spark/marvin/inc/usb_pwr.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 usb_endp.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWI2ESO.s:19     .text.EP1_IN_Callback:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWI2ESO.s:24     .text.EP1_IN_Callback:0000000000000000 EP1_IN_Callback
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWI2ESO.s:147    .text.EP3_OUT_Callback:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWI2ESO.s:152    .text.EP3_OUT_Callback:0000000000000000 EP3_OUT_Callback
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWI2ESO.s:199    .text.SOF_Callback:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWI2ESO.s:204    .text.SOF_Callback:0000000000000000 SOF_Callback
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWI2ESO.s:254    .bss:0000000000000000 FrameCount.7357
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWI2ESO.s:253    .bss:0000000000000000 $d
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.platform_config.h.13.23e06e06852a155ef1a4458870bf98fa
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.55.c9956ee2c5ec010802c11a3a06087af4
+                           .group:0000000000000000 wm4.stdlib.h.13.603ed7eb09a1561ab06840b7c0fcff58
+                           .group:0000000000000000 wm4.stddef.h.187.40b3a084f9bc2c020a9e00b9eabe9c14
+                           .group:0000000000000000 wm4._default_types.h.6.5e12cd604db8ce00b62bb2f02708eaf3
+                           .group:0000000000000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:0000000000000000 wm4.stddef.h.349.31f4c5baff3fa2689010b32028da9c47
+                           .group:0000000000000000 wm4.reent.h.16.9e42f0e588b85e70b2bf6572af57ce64
+                           .group:0000000000000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:0000000000000000 wm4.stdlib.h.50.f5923f1950ced340a337f4676566f65a
+                           .group:0000000000000000 wm4.errno.h.2.ba016d646105af6cad23be83630b6a3f
+                           .group:0000000000000000 wm4.errno.h.9.65044c2b5d8494e43f5986ab0a1d770f
+                           .group:0000000000000000 wm4.cc3000_common.h.58.2af7f8f8921b8cb4b89883c25878e207
+                           .group:0000000000000000 wm4.usb_conf.h.13.ae0ffce2e8d0e4c6b2724f8ae0ada8cf
+                           .group:0000000000000000 wm4.hw_config.h.61.9aaf7ecb821816183829c116d76d82b5
+                           .group:0000000000000000 wm4.usb_regs.h.31.d9533108f8ac5724467880baa9cb0f26
+                           .group:0000000000000000 wm4.usb_def.h.30.73e1a84be93039018a594bacb815cb88
+                           .group:0000000000000000 wm4.usb_core.h.31.114a1d0e1de4beb01afdcd243bde9471
+                           .group:0000000000000000 wm4.usb_desc.h.13.0ce14e111065b34ccf24e1260dbb5a3b
+
+UNDEFINED SYMBOLS
+USB_Tx_State
+USART_Rx_length
+USART_Rx_ptr_out
+USART_Rx_Buffer
+UserToPMABufferCopy
+SetEPTxCount
+SetEPTxValid
+USB_Rx_State
+USB_Rx_ptr
+GetEPRxCount
+USB_Rx_length
+USB_Rx_Buffer
+PMAToUserBufferCopy
+bDeviceState
+Handle_USBAsynchXfer

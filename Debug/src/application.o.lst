@@ -1,0 +1,140 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"application.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.setup,"ax",%progbits
+  19              		.align	2
+  20              		.global	setup
+  21              		.thumb
+  22              		.thumb_func
+  24              	setup:
+  25              	.LFB56:
+  26              		.file 1 "../src/application.c"
+   1:../src/application.c **** #include "application.h"
+   2:../src/application.c **** 
+   3:../src/application.c **** void setup()
+   4:../src/application.c **** {
+  27              		.loc 1 4 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 1, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32 0000 80B4     		push	{r7}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 4
+  35              		.cfi_offset 7, -4
+  36 0002 00AF     		add	r7, sp, #0
+  37              	.LCFI1:
+  38              		.cfi_def_cfa_register 7
+   5:../src/application.c **** 	// runs once
+   6:../src/application.c **** 
+   7:../src/application.c **** /*
+   8:../src/application.c **** 	// Serial Test
+   9:../src/application.c **** 	Serial.begin(9600);
+  10:../src/application.c **** */
+  11:../src/application.c **** }
+  39              		.loc 1 11 0
+  40 0004 BD46     		mov	sp, r7
+  41 0006 80BC     		pop	{r7}
+  42 0008 7047     		bx	lr
+  43              		.cfi_endproc
+  44              	.LFE56:
+  46 000a 00BF     		.section	.text.loop,"ax",%progbits
+  47              		.align	2
+  48              		.global	loop
+  49              		.thumb
+  50              		.thumb_func
+  52              	loop:
+  53              	.LFB57:
+  12:../src/application.c **** 
+  13:../src/application.c **** void loop()
+  14:../src/application.c **** {
+  54              		.loc 1 14 0
+  55              		.cfi_startproc
+  56              		@ args = 0, pretend = 0, frame = 0
+  57              		@ frame_needed = 1, uses_anonymous_args = 0
+  58              		@ link register save eliminated.
+  59 0000 80B4     		push	{r7}
+  60              	.LCFI2:
+  61              		.cfi_def_cfa_offset 4
+  62              		.cfi_offset 7, -4
+  63 0002 00AF     		add	r7, sp, #0
+  64              	.LCFI3:
+  65              		.cfi_def_cfa_register 7
+  15:../src/application.c **** 	// runs repeatedly
+  16:../src/application.c **** 
+  17:../src/application.c **** /*
+  18:../src/application.c **** 	// Serial loopback test: what is typed on serial console
+  19:../src/application.c **** 	// using Hyperterminal/Putty should echo back on the console
+  20:../src/application.c **** 	if(Serial.available())
+  21:../src/application.c **** 	{
+  22:../src/application.c **** 		Serial.write(Serial.read());
+  23:../src/application.c **** 	}
+  24:../src/application.c **** */
+  25:../src/application.c **** 
+  26:../src/application.c **** /*
+  27:../src/application.c **** 	// Serial print test
+  28:../src/application.c **** 	Serial.print("Hello ");
+  29:../src/application.c **** 	Serial.println("Spark");
+  30:../src/application.c **** 	delay(500);
+  31:../src/application.c **** */
+  32:../src/application.c **** }
+  66              		.loc 1 32 0
+  67 0004 BD46     		mov	sp, r7
+  68 0006 80BC     		pop	{r7}
+  69 0008 7047     		bx	lr
+  70              		.cfi_endproc
+  71              	.LFE57:
+  73 000a 00BF     		.text
+  74              	.Letext0:
+  75              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+  76              		.file 3 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cm3.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 application.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccFI5Qfp.s:19     .text.setup:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccFI5Qfp.s:24     .text.setup:0000000000000000 setup
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccFI5Qfp.s:47     .text.loop:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccFI5Qfp.s:52     .text.loop:0000000000000000 loop
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.spark_wiring.h.17.0130f458304c74456341a971e255779e
+
+NO UNDEFINED SYMBOLS

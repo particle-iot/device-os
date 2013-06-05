@@ -1,0 +1,486 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"cc3000_common.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.__error__,"ax",%progbits
+  19              		.align	2
+  20              		.global	__error__
+  21              		.thumb
+  22              		.thumb_func
+  24              	__error__:
+  25              	.LFB0:
+  26              		.file 1 "../libraries/CC3000_Host_Driver/cc3000_common.c"
+   1:../libraries/CC3000_Host_Driver/cc3000_common.c **** /*****************************************************************************
+   2:../libraries/CC3000_Host_Driver/cc3000_common.c **** *
+   3:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  cc3000_common.c.c  - CC3000 Host Driver Implementation.
+   4:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
+   5:../libraries/CC3000_Host_Driver/cc3000_common.c **** *
+   6:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  Redistribution and use in source and binary forms, with or without
+   7:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  modification, are permitted provided that the following conditions
+   8:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  are met:
+   9:../libraries/CC3000_Host_Driver/cc3000_common.c **** *
+  10:../libraries/CC3000_Host_Driver/cc3000_common.c **** *    Redistributions of source code must retain the above copyright
+  11:../libraries/CC3000_Host_Driver/cc3000_common.c **** *    notice, this list of conditions and the following disclaimer.
+  12:../libraries/CC3000_Host_Driver/cc3000_common.c **** *
+  13:../libraries/CC3000_Host_Driver/cc3000_common.c **** *    Redistributions in binary form must reproduce the above copyright
+  14:../libraries/CC3000_Host_Driver/cc3000_common.c **** *    notice, this list of conditions and the following disclaimer in the
+  15:../libraries/CC3000_Host_Driver/cc3000_common.c **** *    documentation and/or other materials provided with the   
+  16:../libraries/CC3000_Host_Driver/cc3000_common.c **** *    distribution.
+  17:../libraries/CC3000_Host_Driver/cc3000_common.c **** *
+  18:../libraries/CC3000_Host_Driver/cc3000_common.c **** *    Neither the name of Texas Instruments Incorporated nor the names of
+  19:../libraries/CC3000_Host_Driver/cc3000_common.c **** *    its contributors may be used to endorse or promote products derived
+  20:../libraries/CC3000_Host_Driver/cc3000_common.c **** *    from this software without specific prior written permission.
+  21:../libraries/CC3000_Host_Driver/cc3000_common.c **** *
+  22:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+  23:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+  24:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+  25:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+  26:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+  27:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+  28:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  29:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  30:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+  31:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+  32:../libraries/CC3000_Host_Driver/cc3000_common.c **** *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  33:../libraries/CC3000_Host_Driver/cc3000_common.c **** *
+  34:../libraries/CC3000_Host_Driver/cc3000_common.c **** *****************************************************************************/
+  35:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+  36:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+  37:../libraries/CC3000_Host_Driver/cc3000_common.c **** //! \addtogroup common_api
+  38:../libraries/CC3000_Host_Driver/cc3000_common.c **** //! @{
+  39:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+  40:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+  41:../libraries/CC3000_Host_Driver/cc3000_common.c **** /******************************************************************************
+  42:../libraries/CC3000_Host_Driver/cc3000_common.c ****  *
+  43:../libraries/CC3000_Host_Driver/cc3000_common.c ****  * Include files
+  44:../libraries/CC3000_Host_Driver/cc3000_common.c ****  *
+  45:../libraries/CC3000_Host_Driver/cc3000_common.c ****  *****************************************************************************/
+  46:../libraries/CC3000_Host_Driver/cc3000_common.c **** #include "cc3000_common.h"
+  47:../libraries/CC3000_Host_Driver/cc3000_common.c **** #include "socket.h"
+  48:../libraries/CC3000_Host_Driver/cc3000_common.c **** #include "wlan.h"
+  49:../libraries/CC3000_Host_Driver/cc3000_common.c **** #include "evnt_handler.h"
+  50:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+  51:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+  52:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+  53:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  __error__
+  54:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+  55:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @param  pcFilename - file name, where error occurred
+  56:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @param  ulLine     - line number, where error occurred
+  57:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+  58:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @return none
+  59:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+  60:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @brief stub function for ASSERT macro
+  61:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+  62:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+  63:../libraries/CC3000_Host_Driver/cc3000_common.c **** void
+  64:../libraries/CC3000_Host_Driver/cc3000_common.c **** __error__(char *pcFilename, unsigned long ulLine)
+  65:../libraries/CC3000_Host_Driver/cc3000_common.c **** {
+  27              		.loc 1 65 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 8
+  30              		@ frame_needed = 1, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32 0000 80B4     		push	{r7}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 4
+  35              		.cfi_offset 7, -4
+  36 0002 83B0     		sub	sp, sp, #12
+  37              	.LCFI1:
+  38              		.cfi_def_cfa_offset 16
+  39 0004 00AF     		add	r7, sp, #0
+  40              	.LCFI2:
+  41              		.cfi_def_cfa_register 7
+  42 0006 7860     		str	r0, [r7, #4]
+  43 0008 3960     		str	r1, [r7, #0]
+  66:../libraries/CC3000_Host_Driver/cc3000_common.c ****     //TODO full up function
+  67:../libraries/CC3000_Host_Driver/cc3000_common.c **** }
+  44              		.loc 1 67 0
+  45 000a 07F10C07 		add	r7, r7, #12
+  46 000e BD46     		mov	sp, r7
+  47 0010 80BC     		pop	{r7}
+  48 0012 7047     		bx	lr
+  49              		.cfi_endproc
+  50              	.LFE0:
+  52              		.section	.text.UINT32_TO_STREAM_f,"ax",%progbits
+  53              		.align	2
+  54              		.global	UINT32_TO_STREAM_f
+  55              		.thumb
+  56              		.thumb_func
+  58              	UINT32_TO_STREAM_f:
+  59              	.LFB1:
+  68:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+  69:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+  70:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+  71:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+  72:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+  73:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  UINT32_TO_STREAM_f
+  74:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+  75:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @param  p       pointer to the new stream
+  76:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @param  u32     pointer to the 32 bit
+  77:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+  78:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @return               pointer to the new stream
+  79:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+  80:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @brief                This function is used for copying 32 bit to stream
+  81:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!						   while converting to little endian format.
+  82:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+  83:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+  84:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+  85:../libraries/CC3000_Host_Driver/cc3000_common.c **** unsigned char* UINT32_TO_STREAM_f (unsigned char *p, unsigned long u32)
+  86:../libraries/CC3000_Host_Driver/cc3000_common.c **** {
+  60              		.loc 1 86 0
+  61              		.cfi_startproc
+  62              		@ args = 0, pretend = 0, frame = 8
+  63              		@ frame_needed = 1, uses_anonymous_args = 0
+  64              		@ link register save eliminated.
+  65 0000 80B4     		push	{r7}
+  66              	.LCFI3:
+  67              		.cfi_def_cfa_offset 4
+  68              		.cfi_offset 7, -4
+  69 0002 83B0     		sub	sp, sp, #12
+  70              	.LCFI4:
+  71              		.cfi_def_cfa_offset 16
+  72 0004 00AF     		add	r7, sp, #0
+  73              	.LCFI5:
+  74              		.cfi_def_cfa_register 7
+  75 0006 7860     		str	r0, [r7, #4]
+  76 0008 3960     		str	r1, [r7, #0]
+  87:../libraries/CC3000_Host_Driver/cc3000_common.c **** 	*(p)++ = (unsigned char)(u32);
+  77              		.loc 1 87 0
+  78 000a 3B68     		ldr	r3, [r7, #0]
+  79 000c DAB2     		uxtb	r2, r3
+  80 000e 7B68     		ldr	r3, [r7, #4]
+  81 0010 1A70     		strb	r2, [r3, #0]
+  82 0012 7B68     		ldr	r3, [r7, #4]
+  83 0014 03F10103 		add	r3, r3, #1
+  84 0018 7B60     		str	r3, [r7, #4]
+  88:../libraries/CC3000_Host_Driver/cc3000_common.c **** 	*(p)++ = (unsigned char)((u32) >> 8);
+  85              		.loc 1 88 0
+  86 001a 3B68     		ldr	r3, [r7, #0]
+  87 001c 4FEA1323 		lsr	r3, r3, #8
+  88 0020 DAB2     		uxtb	r2, r3
+  89 0022 7B68     		ldr	r3, [r7, #4]
+  90 0024 1A70     		strb	r2, [r3, #0]
+  91 0026 7B68     		ldr	r3, [r7, #4]
+  92 0028 03F10103 		add	r3, r3, #1
+  93 002c 7B60     		str	r3, [r7, #4]
+  89:../libraries/CC3000_Host_Driver/cc3000_common.c **** 	*(p)++ = (unsigned char)((u32) >> 16);
+  94              		.loc 1 89 0
+  95 002e 3B68     		ldr	r3, [r7, #0]
+  96 0030 4FEA1343 		lsr	r3, r3, #16
+  97 0034 DAB2     		uxtb	r2, r3
+  98 0036 7B68     		ldr	r3, [r7, #4]
+  99 0038 1A70     		strb	r2, [r3, #0]
+ 100 003a 7B68     		ldr	r3, [r7, #4]
+ 101 003c 03F10103 		add	r3, r3, #1
+ 102 0040 7B60     		str	r3, [r7, #4]
+  90:../libraries/CC3000_Host_Driver/cc3000_common.c **** 	*(p)++ = (unsigned char)((u32) >> 24);
+ 103              		.loc 1 90 0
+ 104 0042 3B68     		ldr	r3, [r7, #0]
+ 105 0044 4FEA1363 		lsr	r3, r3, #24
+ 106 0048 DAB2     		uxtb	r2, r3
+ 107 004a 7B68     		ldr	r3, [r7, #4]
+ 108 004c 1A70     		strb	r2, [r3, #0]
+ 109 004e 7B68     		ldr	r3, [r7, #4]
+ 110 0050 03F10103 		add	r3, r3, #1
+ 111 0054 7B60     		str	r3, [r7, #4]
+  91:../libraries/CC3000_Host_Driver/cc3000_common.c **** 	return p;
+ 112              		.loc 1 91 0
+ 113 0056 7B68     		ldr	r3, [r7, #4]
+  92:../libraries/CC3000_Host_Driver/cc3000_common.c **** }
+ 114              		.loc 1 92 0
+ 115 0058 1846     		mov	r0, r3
+ 116 005a 07F10C07 		add	r7, r7, #12
+ 117 005e BD46     		mov	sp, r7
+ 118 0060 80BC     		pop	{r7}
+ 119 0062 7047     		bx	lr
+ 120              		.cfi_endproc
+ 121              	.LFE1:
+ 123              		.section	.text.UINT16_TO_STREAM_f,"ax",%progbits
+ 124              		.align	2
+ 125              		.global	UINT16_TO_STREAM_f
+ 126              		.thumb
+ 127              		.thumb_func
+ 129              	UINT16_TO_STREAM_f:
+ 130              	.LFB2:
+  93:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+  94:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+  95:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+  96:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  UINT16_TO_STREAM_f
+  97:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+  98:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @param  p       pointer to the new stream
+  99:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @param  u32     pointer to the 16 bit
+ 100:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+ 101:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @return               pointer to the new stream
+ 102:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+ 103:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @brief               This function is used for copying 16 bit to stream
+ 104:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!                       while converting to little endian format.
+ 105:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+ 106:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+ 107:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+ 108:../libraries/CC3000_Host_Driver/cc3000_common.c **** unsigned char* UINT16_TO_STREAM_f (unsigned char *p, unsigned short u16)
+ 109:../libraries/CC3000_Host_Driver/cc3000_common.c **** {
+ 131              		.loc 1 109 0
+ 132              		.cfi_startproc
+ 133              		@ args = 0, pretend = 0, frame = 8
+ 134              		@ frame_needed = 1, uses_anonymous_args = 0
+ 135              		@ link register save eliminated.
+ 136 0000 80B4     		push	{r7}
+ 137              	.LCFI6:
+ 138              		.cfi_def_cfa_offset 4
+ 139              		.cfi_offset 7, -4
+ 140 0002 83B0     		sub	sp, sp, #12
+ 141              	.LCFI7:
+ 142              		.cfi_def_cfa_offset 16
+ 143 0004 00AF     		add	r7, sp, #0
+ 144              	.LCFI8:
+ 145              		.cfi_def_cfa_register 7
+ 146 0006 7860     		str	r0, [r7, #4]
+ 147 0008 0B46     		mov	r3, r1
+ 148 000a 7B80     		strh	r3, [r7, #2]	@ movhi
+ 110:../libraries/CC3000_Host_Driver/cc3000_common.c **** 	*(p)++ = (unsigned char)(u16);
+ 149              		.loc 1 110 0
+ 150 000c 7B88     		ldrh	r3, [r7, #2]	@ movhi
+ 151 000e DAB2     		uxtb	r2, r3
+ 152 0010 7B68     		ldr	r3, [r7, #4]
+ 153 0012 1A70     		strb	r2, [r3, #0]
+ 154 0014 7B68     		ldr	r3, [r7, #4]
+ 155 0016 03F10103 		add	r3, r3, #1
+ 156 001a 7B60     		str	r3, [r7, #4]
+ 111:../libraries/CC3000_Host_Driver/cc3000_common.c **** 	*(p)++ = (unsigned char)((u16) >> 8);
+ 157              		.loc 1 111 0
+ 158 001c 7B88     		ldrh	r3, [r7, #2]
+ 159 001e 4FEA1323 		lsr	r3, r3, #8
+ 160 0022 9BB2     		uxth	r3, r3
+ 161 0024 DAB2     		uxtb	r2, r3
+ 162 0026 7B68     		ldr	r3, [r7, #4]
+ 163 0028 1A70     		strb	r2, [r3, #0]
+ 164 002a 7B68     		ldr	r3, [r7, #4]
+ 165 002c 03F10103 		add	r3, r3, #1
+ 166 0030 7B60     		str	r3, [r7, #4]
+ 112:../libraries/CC3000_Host_Driver/cc3000_common.c **** 	return p;
+ 167              		.loc 1 112 0
+ 168 0032 7B68     		ldr	r3, [r7, #4]
+ 113:../libraries/CC3000_Host_Driver/cc3000_common.c **** }
+ 169              		.loc 1 113 0
+ 170 0034 1846     		mov	r0, r3
+ 171 0036 07F10C07 		add	r7, r7, #12
+ 172 003a BD46     		mov	sp, r7
+ 173 003c 80BC     		pop	{r7}
+ 174 003e 7047     		bx	lr
+ 175              		.cfi_endproc
+ 176              	.LFE2:
+ 178              		.section	.text.STREAM_TO_UINT16_f,"ax",%progbits
+ 179              		.align	2
+ 180              		.global	STREAM_TO_UINT16_f
+ 181              		.thumb
+ 182              		.thumb_func
+ 184              	STREAM_TO_UINT16_f:
+ 185              	.LFB3:
+ 114:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+ 115:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+ 116:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+ 117:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  STREAM_TO_UINT16_f
+ 118:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+ 119:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @param  p          pointer to the stream
+ 120:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @param  offset     offset in the stream
+ 121:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+ 122:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @return               pointer to the new 16 bit
+ 123:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+ 124:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @brief               This function is used for copying received stream to
+ 125:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!                       16 bit in little endian format.
+ 126:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+ 127:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+ 128:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+ 129:../libraries/CC3000_Host_Driver/cc3000_common.c **** unsigned short STREAM_TO_UINT16_f(char* p, unsigned short offset)
+ 130:../libraries/CC3000_Host_Driver/cc3000_common.c **** {
+ 186              		.loc 1 130 0
+ 187              		.cfi_startproc
+ 188              		@ args = 0, pretend = 0, frame = 8
+ 189              		@ frame_needed = 1, uses_anonymous_args = 0
+ 190              		@ link register save eliminated.
+ 191 0000 80B4     		push	{r7}
+ 192              	.LCFI9:
+ 193              		.cfi_def_cfa_offset 4
+ 194              		.cfi_offset 7, -4
+ 195 0002 83B0     		sub	sp, sp, #12
+ 196              	.LCFI10:
+ 197              		.cfi_def_cfa_offset 16
+ 198 0004 00AF     		add	r7, sp, #0
+ 199              	.LCFI11:
+ 200              		.cfi_def_cfa_register 7
+ 201 0006 7860     		str	r0, [r7, #4]
+ 202 0008 0B46     		mov	r3, r1
+ 203 000a 7B80     		strh	r3, [r7, #2]	@ movhi
+ 131:../libraries/CC3000_Host_Driver/cc3000_common.c ****         return (unsigned short)((unsigned short)((unsigned short)
+ 132:../libraries/CC3000_Host_Driver/cc3000_common.c **** 								(*(p + offset + 1)) << 8) + (unsigned short)(*(p + offset)));
+ 204              		.loc 1 132 0
+ 205 000c 7B88     		ldrh	r3, [r7, #2]
+ 206 000e 03F10103 		add	r3, r3, #1
+ 207 0012 7A68     		ldr	r2, [r7, #4]
+ 208 0014 D318     		adds	r3, r2, r3
+ 209 0016 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 131:../libraries/CC3000_Host_Driver/cc3000_common.c ****         return (unsigned short)((unsigned short)((unsigned short)
+ 210              		.loc 1 131 0
+ 211 0018 4FEA0323 		lsl	r3, r3, #8
+ 212 001c 9AB2     		uxth	r2, r3
+ 213              		.loc 1 132 0
+ 214 001e 7B88     		ldrh	r3, [r7, #2]
+ 215 0020 7968     		ldr	r1, [r7, #4]
+ 216 0022 CB18     		adds	r3, r1, r3
+ 217 0024 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 131:../libraries/CC3000_Host_Driver/cc3000_common.c ****         return (unsigned short)((unsigned short)((unsigned short)
+ 218              		.loc 1 131 0
+ 219 0026 D318     		adds	r3, r2, r3
+ 220 0028 9BB2     		uxth	r3, r3
+ 133:../libraries/CC3000_Host_Driver/cc3000_common.c **** }
+ 221              		.loc 1 133 0
+ 222 002a 1846     		mov	r0, r3
+ 223 002c 07F10C07 		add	r7, r7, #12
+ 224 0030 BD46     		mov	sp, r7
+ 225 0032 80BC     		pop	{r7}
+ 226 0034 7047     		bx	lr
+ 227              		.cfi_endproc
+ 228              	.LFE3:
+ 230 0036 00BF     		.section	.text.STREAM_TO_UINT32_f,"ax",%progbits
+ 231              		.align	2
+ 232              		.global	STREAM_TO_UINT32_f
+ 233              		.thumb
+ 234              		.thumb_func
+ 236              	STREAM_TO_UINT32_f:
+ 237              	.LFB4:
+ 134:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+ 135:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+ 136:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+ 137:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  STREAM_TO_UINT32_f
+ 138:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+ 139:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @param  p          pointer to the stream
+ 140:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @param  offset     offset in the stream
+ 141:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+ 142:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @return               pointer to the new 32 bit
+ 143:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!
+ 144:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!  @brief               This function is used for copying received stream to
+ 145:../libraries/CC3000_Host_Driver/cc3000_common.c **** //!                       32 bit in little endian format.
+ 146:../libraries/CC3000_Host_Driver/cc3000_common.c **** //
+ 147:../libraries/CC3000_Host_Driver/cc3000_common.c **** //*****************************************************************************
+ 148:../libraries/CC3000_Host_Driver/cc3000_common.c **** 
+ 149:../libraries/CC3000_Host_Driver/cc3000_common.c **** unsigned long STREAM_TO_UINT32_f(char* p, unsigned short offset)
+ 150:../libraries/CC3000_Host_Driver/cc3000_common.c **** {
+ 238              		.loc 1 150 0
+ 239              		.cfi_startproc
+ 240              		@ args = 0, pretend = 0, frame = 8
+ 241              		@ frame_needed = 1, uses_anonymous_args = 0
+ 242              		@ link register save eliminated.
+ 243 0000 80B4     		push	{r7}
+ 244              	.LCFI12:
+ 245              		.cfi_def_cfa_offset 4
+ 246              		.cfi_offset 7, -4
+ 247 0002 83B0     		sub	sp, sp, #12
+ 248              	.LCFI13:
+ 249              		.cfi_def_cfa_offset 16
+ 250 0004 00AF     		add	r7, sp, #0
+ 251              	.LCFI14:
+ 252              		.cfi_def_cfa_register 7
+ 253 0006 7860     		str	r0, [r7, #4]
+ 254 0008 0B46     		mov	r3, r1
+ 255 000a 7B80     		strh	r3, [r7, #2]	@ movhi
+ 151:../libraries/CC3000_Host_Driver/cc3000_common.c ****         return (unsigned long)((unsigned long)((unsigned long)
+ 152:../libraries/CC3000_Host_Driver/cc3000_common.c **** 							 (*(p + offset + 3)) << 24) + (unsigned long)((unsigned long)
+ 256              		.loc 1 152 0
+ 257 000c 7B88     		ldrh	r3, [r7, #2]
+ 258 000e 03F10303 		add	r3, r3, #3
+ 259 0012 7A68     		ldr	r2, [r7, #4]
+ 260 0014 D318     		adds	r3, r2, r3
+ 261 0016 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 151:../libraries/CC3000_Host_Driver/cc3000_common.c ****         return (unsigned long)((unsigned long)((unsigned long)
+ 262              		.loc 1 151 0
+ 263 0018 4FEA0362 		lsl	r2, r3, #24
+ 153:../libraries/CC3000_Host_Driver/cc3000_common.c **** 							 (*(p + offset + 2)) << 16) + (unsigned long)((unsigned long)
+ 264              		.loc 1 153 0
+ 265 001c 7B88     		ldrh	r3, [r7, #2]
+ 266 001e 03F10203 		add	r3, r3, #2
+ 267 0022 7968     		ldr	r1, [r7, #4]
+ 268 0024 CB18     		adds	r3, r1, r3
+ 269 0026 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 152:../libraries/CC3000_Host_Driver/cc3000_common.c **** 							 (*(p + offset + 3)) << 24) + (unsigned long)((unsigned long)
+ 270              		.loc 1 152 0
+ 271 0028 4FEA0343 		lsl	r3, r3, #16
+ 272 002c D218     		adds	r2, r2, r3
+ 154:../libraries/CC3000_Host_Driver/cc3000_common.c **** 							 (*(p + offset + 1)) << 8) + (unsigned long)(*(p + offset)));
+ 273              		.loc 1 154 0
+ 274 002e 7B88     		ldrh	r3, [r7, #2]
+ 275 0030 03F10103 		add	r3, r3, #1
+ 276 0034 7968     		ldr	r1, [r7, #4]
+ 277 0036 CB18     		adds	r3, r1, r3
+ 278 0038 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 153:../libraries/CC3000_Host_Driver/cc3000_common.c **** 							 (*(p + offset + 2)) << 16) + (unsigned long)((unsigned long)
+ 279              		.loc 1 153 0
+ 280 003a 4FEA0323 		lsl	r3, r3, #8
+ 281 003e D218     		adds	r2, r2, r3
+ 282              		.loc 1 154 0
+ 283 0040 7B88     		ldrh	r3, [r7, #2]
+ 284 0042 7968     		ldr	r1, [r7, #4]
+ 285 0044 CB18     		adds	r3, r1, r3
+ 286 0046 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 151:../libraries/CC3000_Host_Driver/cc3000_common.c ****         return (unsigned long)((unsigned long)((unsigned long)
+ 287              		.loc 1 151 0
+ 288 0048 D318     		adds	r3, r2, r3
+ 155:../libraries/CC3000_Host_Driver/cc3000_common.c **** }
+ 289              		.loc 1 155 0
+ 290 004a 1846     		mov	r0, r3
+ 291 004c 07F10C07 		add	r7, r7, #12
+ 292 0050 BD46     		mov	sp, r7
+ 293 0052 80BC     		pop	{r7}
+ 294 0054 7047     		bx	lr
+ 295              		.cfi_endproc
+ 296              	.LFE4:
+ 298 0056 00BF     		.text
+ 299              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 cc3000_common.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccbT443x.s:19     .text.__error__:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccbT443x.s:24     .text.__error__:0000000000000000 __error__
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccbT443x.s:53     .text.UINT32_TO_STREAM_f:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccbT443x.s:58     .text.UINT32_TO_STREAM_f:0000000000000000 UINT32_TO_STREAM_f
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccbT443x.s:124    .text.UINT16_TO_STREAM_f:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccbT443x.s:129    .text.UINT16_TO_STREAM_f:0000000000000000 UINT16_TO_STREAM_f
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccbT443x.s:179    .text.STREAM_TO_UINT16_f:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccbT443x.s:184    .text.STREAM_TO_UINT16_f:0000000000000000 STREAM_TO_UINT16_f
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccbT443x.s:231    .text.STREAM_TO_UINT32_f:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccbT443x.s:236    .text.STREAM_TO_UINT32_f:0000000000000000 STREAM_TO_UINT32_f
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdlib.h.13.603ed7eb09a1561ab06840b7c0fcff58
+                           .group:0000000000000000 wm4.stddef.h.187.40b3a084f9bc2c020a9e00b9eabe9c14
+                           .group:0000000000000000 wm4._default_types.h.6.5e12cd604db8ce00b62bb2f02708eaf3
+                           .group:0000000000000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:0000000000000000 wm4.stddef.h.349.31f4c5baff3fa2689010b32028da9c47
+                           .group:0000000000000000 wm4.reent.h.16.9e42f0e588b85e70b2bf6572af57ce64
+                           .group:0000000000000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:0000000000000000 wm4.stdlib.h.50.f5923f1950ced340a337f4676566f65a
+                           .group:0000000000000000 wm4.errno.h.2.ba016d646105af6cad23be83630b6a3f
+                           .group:0000000000000000 wm4.errno.h.9.65044c2b5d8494e43f5986ab0a1d770f
+                           .group:0000000000000000 wm4.stdint.h.10.90b695f550ca6cc3fb08fa83baf01e05
+                           .group:0000000000000000 wm4.cc3000_common.h.58.2af7f8f8921b8cb4b89883c25878e207
+                           .group:0000000000000000 wm4.socket.h.36.a8c628533ac074dc9bf38f87e586f707
+                           .group:0000000000000000 wm4.wlan.h.36.4c6fda3ef88238c289a06e4d08269130
+                           .group:0000000000000000 wm4.hci.h.36.c53403a55b478473c6d08326a2c2336c
+                           .group:0000000000000000 wm4.evnt_handler.h.100.8706e0ac06647083db596956f9de025d
+
+NO UNDEFINED SYMBOLS

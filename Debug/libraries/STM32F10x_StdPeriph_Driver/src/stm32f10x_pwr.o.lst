@@ -1,0 +1,1121 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"stm32f10x_pwr.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.PWR_DeInit,"ax",%progbits
+  19              		.align	2
+  20              		.global	PWR_DeInit
+  21              		.thumb
+  22              		.thumb_func
+  24              	PWR_DeInit:
+  25              	.LFB56:
+  26              		.file 1 "../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c"
+   1:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+   2:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   ******************************************************************************
+   3:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @file    stm32f10x_pwr.c
+   4:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @author  MCD Application Team
+   5:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @version V3.6.1
+   6:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @date    05-March-2012
+   7:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief   This file provides all the PWR firmware functions.
+   8:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   ******************************************************************************
+   9:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @attention
+  10:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *
+  11:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
+  12:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *
+  13:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  14:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * You may not use this file except in compliance with the License.
+  15:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * You may obtain a copy of the License at:
+  16:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *
+  17:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *        http://www.st.com/software_license_agreement_liberty_v2
+  18:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *
+  19:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * Unless required by applicable law or agreed to in writing, software 
+  20:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * distributed under the License is distributed on an "AS IS" BASIS, 
+  21:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  22:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * See the License for the specific language governing permissions and
+  23:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * limitations under the License.
+  24:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *
+  25:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   ******************************************************************************
+  26:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+  27:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  28:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /* Includes ------------------------------------------------------------------*/
+  29:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #include "stm32f10x_pwr.h"
+  30:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #include "stm32f10x_rcc.h"
+  31:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  32:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /** @addtogroup STM32F10x_StdPeriph_Driver
+  33:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @{
+  34:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+  35:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  36:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /** @defgroup PWR 
+  37:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief PWR driver modules
+  38:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @{
+  39:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */ 
+  40:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  41:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /** @defgroup PWR_Private_TypesDefinitions
+  42:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @{
+  43:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+  44:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  45:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+  46:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @}
+  47:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+  48:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  49:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /** @defgroup PWR_Private_Defines
+  50:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @{
+  51:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+  52:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  53:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /* --------- PWR registers bit address in the alias region ---------- */
+  54:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define PWR_OFFSET               (PWR_BASE - PERIPH_BASE)
+  55:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  56:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /* --- CR Register ---*/
+  57:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  58:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /* Alias word address of DBP bit */
+  59:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define CR_OFFSET                (PWR_OFFSET + 0x00)
+  60:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define DBP_BitNumber            0x08
+  61:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define CR_DBP_BB                (PERIPH_BB_BASE + (CR_OFFSET * 32) + (DBP_BitNumber * 4))
+  62:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  63:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /* Alias word address of PVDE bit */
+  64:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define PVDE_BitNumber           0x04
+  65:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define CR_PVDE_BB               (PERIPH_BB_BASE + (CR_OFFSET * 32) + (PVDE_BitNumber * 4))
+  66:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  67:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /* --- CSR Register ---*/
+  68:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  69:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /* Alias word address of EWUP bit */
+  70:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define CSR_OFFSET               (PWR_OFFSET + 0x04)
+  71:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define EWUP_BitNumber           0x08
+  72:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define CSR_EWUP_BB              (PERIPH_BB_BASE + (CSR_OFFSET * 32) + (EWUP_BitNumber * 4))
+  73:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  74:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /* ------------------ PWR registers bit mask ------------------------ */
+  75:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  76:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /* CR register bit mask */
+  77:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define CR_DS_MASK               ((uint32_t)0xFFFFFFFC)
+  78:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #define CR_PLS_MASK              ((uint32_t)0xFFFFFF1F)
+  79:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  80:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  81:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+  82:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @}
+  83:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+  84:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  85:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /** @defgroup PWR_Private_Macros
+  86:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @{
+  87:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+  88:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  89:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+  90:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @}
+  91:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+  92:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  93:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /** @defgroup PWR_Private_Variables
+  94:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @{
+  95:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+  96:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+  97:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+  98:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @}
+  99:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 100:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 101:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /** @defgroup PWR_Private_FunctionPrototypes
+ 102:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @{
+ 103:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 104:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 105:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+ 106:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @}
+ 107:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 108:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 109:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /** @defgroup PWR_Private_Functions
+ 110:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @{
+ 111:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 112:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 113:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+ 114:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief  Deinitializes the PWR peripheral registers to their default reset values.
+ 115:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @param  None
+ 116:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @retval None
+ 117:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 118:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** void PWR_DeInit(void)
+ 119:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** {
+  27              		.loc 1 119 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 1, uses_anonymous_args = 0
+  31 0000 80B5     		push	{r7, lr}
+  32              	.LCFI0:
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 7, -8
+  35              		.cfi_offset 14, -4
+  36 0002 00AF     		add	r7, sp, #0
+  37              	.LCFI1:
+  38              		.cfi_def_cfa_register 7
+ 120:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   RCC_APB1PeriphResetCmd(RCC_APB1Periph_PWR, ENABLE);
+  39              		.loc 1 120 0
+  40 0004 4FF08050 		mov	r0, #268435456
+  41 0008 4FF00101 		mov	r1, #1
+  42 000c FFF7FEFF 		bl	RCC_APB1PeriphResetCmd
+ 121:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   RCC_APB1PeriphResetCmd(RCC_APB1Periph_PWR, DISABLE);
+  43              		.loc 1 121 0
+  44 0010 4FF08050 		mov	r0, #268435456
+  45 0014 4FF00001 		mov	r1, #0
+  46 0018 FFF7FEFF 		bl	RCC_APB1PeriphResetCmd
+ 122:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** }
+  47              		.loc 1 122 0
+  48 001c 80BD     		pop	{r7, pc}
+  49              		.cfi_endproc
+  50              	.LFE56:
+  52 001e 00BF     		.section	.text.PWR_BackupAccessCmd,"ax",%progbits
+  53              		.align	2
+  54              		.global	PWR_BackupAccessCmd
+  55              		.thumb
+  56              		.thumb_func
+  58              	PWR_BackupAccessCmd:
+  59              	.LFB57:
+ 123:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 124:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+ 125:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief  Enables or disables access to the RTC and backup registers.
+ 126:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @param  NewState: new state of the access to the RTC and backup registers.
+ 127:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *   This parameter can be: ENABLE or DISABLE.
+ 128:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @retval None
+ 129:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 130:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** void PWR_BackupAccessCmd(FunctionalState NewState)
+ 131:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** {
+  60              		.loc 1 131 0
+  61              		.cfi_startproc
+  62              		@ args = 0, pretend = 0, frame = 8
+  63              		@ frame_needed = 1, uses_anonymous_args = 0
+  64              		@ link register save eliminated.
+  65 0000 80B4     		push	{r7}
+  66              	.LCFI2:
+  67              		.cfi_def_cfa_offset 4
+  68              		.cfi_offset 7, -4
+  69 0002 83B0     		sub	sp, sp, #12
+  70              	.LCFI3:
+  71              		.cfi_def_cfa_offset 16
+  72 0004 00AF     		add	r7, sp, #0
+  73              	.LCFI4:
+  74              		.cfi_def_cfa_register 7
+  75 0006 0346     		mov	r3, r0
+  76 0008 FB71     		strb	r3, [r7, #7]
+ 132:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Check the parameters */
+ 133:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   assert_param(IS_FUNCTIONAL_STATE(NewState));
+ 134:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *(__IO uint32_t *) CR_DBP_BB = (uint32_t)NewState;
+  77              		.loc 1 134 0
+  78 000a 4FF02003 		mov	r3, #32
+  79 000e C4F20E23 		movt	r3, 16910
+  80 0012 FA79     		ldrb	r2, [r7, #7]	@ zero_extendqisi2
+  81 0014 1A60     		str	r2, [r3, #0]
+ 135:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** }
+  82              		.loc 1 135 0
+  83 0016 07F10C07 		add	r7, r7, #12
+  84 001a BD46     		mov	sp, r7
+  85 001c 80BC     		pop	{r7}
+  86 001e 7047     		bx	lr
+  87              		.cfi_endproc
+  88              	.LFE57:
+  90              		.section	.text.PWR_PVDCmd,"ax",%progbits
+  91              		.align	2
+  92              		.global	PWR_PVDCmd
+  93              		.thumb
+  94              		.thumb_func
+  96              	PWR_PVDCmd:
+  97              	.LFB58:
+ 136:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 137:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+ 138:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief  Enables or disables the Power Voltage Detector(PVD).
+ 139:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @param  NewState: new state of the PVD.
+ 140:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *   This parameter can be: ENABLE or DISABLE.
+ 141:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @retval None
+ 142:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 143:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** void PWR_PVDCmd(FunctionalState NewState)
+ 144:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** {
+  98              		.loc 1 144 0
+  99              		.cfi_startproc
+ 100              		@ args = 0, pretend = 0, frame = 8
+ 101              		@ frame_needed = 1, uses_anonymous_args = 0
+ 102              		@ link register save eliminated.
+ 103 0000 80B4     		push	{r7}
+ 104              	.LCFI5:
+ 105              		.cfi_def_cfa_offset 4
+ 106              		.cfi_offset 7, -4
+ 107 0002 83B0     		sub	sp, sp, #12
+ 108              	.LCFI6:
+ 109              		.cfi_def_cfa_offset 16
+ 110 0004 00AF     		add	r7, sp, #0
+ 111              	.LCFI7:
+ 112              		.cfi_def_cfa_register 7
+ 113 0006 0346     		mov	r3, r0
+ 114 0008 FB71     		strb	r3, [r7, #7]
+ 145:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Check the parameters */
+ 146:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   assert_param(IS_FUNCTIONAL_STATE(NewState));
+ 147:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *(__IO uint32_t *) CR_PVDE_BB = (uint32_t)NewState;
+ 115              		.loc 1 147 0
+ 116 000a 4FF01003 		mov	r3, #16
+ 117 000e C4F20E23 		movt	r3, 16910
+ 118 0012 FA79     		ldrb	r2, [r7, #7]	@ zero_extendqisi2
+ 119 0014 1A60     		str	r2, [r3, #0]
+ 148:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** }
+ 120              		.loc 1 148 0
+ 121 0016 07F10C07 		add	r7, r7, #12
+ 122 001a BD46     		mov	sp, r7
+ 123 001c 80BC     		pop	{r7}
+ 124 001e 7047     		bx	lr
+ 125              		.cfi_endproc
+ 126              	.LFE58:
+ 128              		.section	.text.PWR_PVDLevelConfig,"ax",%progbits
+ 129              		.align	2
+ 130              		.global	PWR_PVDLevelConfig
+ 131              		.thumb
+ 132              		.thumb_func
+ 134              	PWR_PVDLevelConfig:
+ 135              	.LFB59:
+ 149:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 150:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+ 151:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief  Configures the voltage threshold detected by the Power Voltage Detector(PVD).
+ 152:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @param  PWR_PVDLevel: specifies the PVD detection level
+ 153:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *   This parameter can be one of the following values:
+ 154:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_PVDLevel_2V2: PVD detection level set to 2.2V
+ 155:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_PVDLevel_2V3: PVD detection level set to 2.3V
+ 156:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_PVDLevel_2V4: PVD detection level set to 2.4V
+ 157:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_PVDLevel_2V5: PVD detection level set to 2.5V
+ 158:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_PVDLevel_2V6: PVD detection level set to 2.6V
+ 159:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_PVDLevel_2V7: PVD detection level set to 2.7V
+ 160:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_PVDLevel_2V8: PVD detection level set to 2.8V
+ 161:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_PVDLevel_2V9: PVD detection level set to 2.9V
+ 162:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @retval None
+ 163:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 164:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** void PWR_PVDLevelConfig(uint32_t PWR_PVDLevel)
+ 165:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** {
+ 136              		.loc 1 165 0
+ 137              		.cfi_startproc
+ 138              		@ args = 0, pretend = 0, frame = 16
+ 139              		@ frame_needed = 1, uses_anonymous_args = 0
+ 140              		@ link register save eliminated.
+ 141 0000 80B4     		push	{r7}
+ 142              	.LCFI8:
+ 143              		.cfi_def_cfa_offset 4
+ 144              		.cfi_offset 7, -4
+ 145 0002 85B0     		sub	sp, sp, #20
+ 146              	.LCFI9:
+ 147              		.cfi_def_cfa_offset 24
+ 148 0004 00AF     		add	r7, sp, #0
+ 149              	.LCFI10:
+ 150              		.cfi_def_cfa_register 7
+ 151 0006 7860     		str	r0, [r7, #4]
+ 166:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   uint32_t tmpreg = 0;
+ 152              		.loc 1 166 0
+ 153 0008 4FF00003 		mov	r3, #0
+ 154 000c FB60     		str	r3, [r7, #12]
+ 167:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Check the parameters */
+ 168:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   assert_param(IS_PWR_PVD_LEVEL(PWR_PVDLevel));
+ 169:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   tmpreg = PWR->CR;
+ 155              		.loc 1 169 0
+ 156 000e 4FF4E043 		mov	r3, #28672
+ 157 0012 C4F20003 		movt	r3, 16384
+ 158 0016 1B68     		ldr	r3, [r3, #0]
+ 159 0018 FB60     		str	r3, [r7, #12]
+ 170:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Clear PLS[7:5] bits */
+ 171:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   tmpreg &= CR_PLS_MASK;
+ 160              		.loc 1 171 0
+ 161 001a FB68     		ldr	r3, [r7, #12]
+ 162 001c 23F0E003 		bic	r3, r3, #224
+ 163 0020 FB60     		str	r3, [r7, #12]
+ 172:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Set PLS[7:5] bits according to PWR_PVDLevel value */
+ 173:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   tmpreg |= PWR_PVDLevel;
+ 164              		.loc 1 173 0
+ 165 0022 FA68     		ldr	r2, [r7, #12]
+ 166 0024 7B68     		ldr	r3, [r7, #4]
+ 167 0026 1343     		orrs	r3, r3, r2
+ 168 0028 FB60     		str	r3, [r7, #12]
+ 174:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Store the new value */
+ 175:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   PWR->CR = tmpreg;
+ 169              		.loc 1 175 0
+ 170 002a 4FF4E043 		mov	r3, #28672
+ 171 002e C4F20003 		movt	r3, 16384
+ 172 0032 FA68     		ldr	r2, [r7, #12]
+ 173 0034 1A60     		str	r2, [r3, #0]
+ 176:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** }
+ 174              		.loc 1 176 0
+ 175 0036 07F11407 		add	r7, r7, #20
+ 176 003a BD46     		mov	sp, r7
+ 177 003c 80BC     		pop	{r7}
+ 178 003e 7047     		bx	lr
+ 179              		.cfi_endproc
+ 180              	.LFE59:
+ 182              		.section	.text.PWR_WakeUpPinCmd,"ax",%progbits
+ 183              		.align	2
+ 184              		.global	PWR_WakeUpPinCmd
+ 185              		.thumb
+ 186              		.thumb_func
+ 188              	PWR_WakeUpPinCmd:
+ 189              	.LFB60:
+ 177:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 178:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+ 179:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief  Enables or disables the WakeUp Pin functionality.
+ 180:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @param  NewState: new state of the WakeUp Pin functionality.
+ 181:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *   This parameter can be: ENABLE or DISABLE.
+ 182:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @retval None
+ 183:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 184:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** void PWR_WakeUpPinCmd(FunctionalState NewState)
+ 185:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** {
+ 190              		.loc 1 185 0
+ 191              		.cfi_startproc
+ 192              		@ args = 0, pretend = 0, frame = 8
+ 193              		@ frame_needed = 1, uses_anonymous_args = 0
+ 194              		@ link register save eliminated.
+ 195 0000 80B4     		push	{r7}
+ 196              	.LCFI11:
+ 197              		.cfi_def_cfa_offset 4
+ 198              		.cfi_offset 7, -4
+ 199 0002 83B0     		sub	sp, sp, #12
+ 200              	.LCFI12:
+ 201              		.cfi_def_cfa_offset 16
+ 202 0004 00AF     		add	r7, sp, #0
+ 203              	.LCFI13:
+ 204              		.cfi_def_cfa_register 7
+ 205 0006 0346     		mov	r3, r0
+ 206 0008 FB71     		strb	r3, [r7, #7]
+ 186:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Check the parameters */
+ 187:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   assert_param(IS_FUNCTIONAL_STATE(NewState));
+ 188:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *(__IO uint32_t *) CSR_EWUP_BB = (uint32_t)NewState;
+ 207              		.loc 1 188 0
+ 208 000a 4FF0A003 		mov	r3, #160
+ 209 000e C4F20E23 		movt	r3, 16910
+ 210 0012 FA79     		ldrb	r2, [r7, #7]	@ zero_extendqisi2
+ 211 0014 1A60     		str	r2, [r3, #0]
+ 189:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** }
+ 212              		.loc 1 189 0
+ 213 0016 07F10C07 		add	r7, r7, #12
+ 214 001a BD46     		mov	sp, r7
+ 215 001c 80BC     		pop	{r7}
+ 216 001e 7047     		bx	lr
+ 217              		.cfi_endproc
+ 218              	.LFE60:
+ 220              		.section	.text.PWR_EnterSTOPMode,"ax",%progbits
+ 221              		.align	2
+ 222              		.global	PWR_EnterSTOPMode
+ 223              		.thumb
+ 224              		.thumb_func
+ 226              	PWR_EnterSTOPMode:
+ 227              	.LFB61:
+ 190:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 191:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+ 192:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief  Enters STOP mode.
+ 193:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @param  PWR_Regulator: specifies the regulator state in STOP mode.
+ 194:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *   This parameter can be one of the following values:
+ 195:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_Regulator_ON: STOP mode with regulator ON
+ 196:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_Regulator_LowPower: STOP mode with regulator in low power mode
+ 197:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @param  PWR_STOPEntry: specifies if STOP mode in entered with WFI or WFE instruction.
+ 198:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *   This parameter can be one of the following values:
+ 199:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_STOPEntry_WFI: enter STOP mode with WFI instruction
+ 200:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_STOPEntry_WFE: enter STOP mode with WFE instruction
+ 201:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @retval None
+ 202:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 203:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** void PWR_EnterSTOPMode(uint32_t PWR_Regulator, uint8_t PWR_STOPEntry)
+ 204:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** {
+ 228              		.loc 1 204 0
+ 229              		.cfi_startproc
+ 230              		@ args = 0, pretend = 0, frame = 16
+ 231              		@ frame_needed = 1, uses_anonymous_args = 0
+ 232              		@ link register save eliminated.
+ 233 0000 80B4     		push	{r7}
+ 234              	.LCFI14:
+ 235              		.cfi_def_cfa_offset 4
+ 236              		.cfi_offset 7, -4
+ 237 0002 85B0     		sub	sp, sp, #20
+ 238              	.LCFI15:
+ 239              		.cfi_def_cfa_offset 24
+ 240 0004 00AF     		add	r7, sp, #0
+ 241              	.LCFI16:
+ 242              		.cfi_def_cfa_register 7
+ 243 0006 7860     		str	r0, [r7, #4]
+ 244 0008 0B46     		mov	r3, r1
+ 245 000a FB70     		strb	r3, [r7, #3]
+ 205:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   uint32_t tmpreg = 0;
+ 246              		.loc 1 205 0
+ 247 000c 4FF00003 		mov	r3, #0
+ 248 0010 FB60     		str	r3, [r7, #12]
+ 206:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Check the parameters */
+ 207:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   assert_param(IS_PWR_REGULATOR(PWR_Regulator));
+ 208:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   assert_param(IS_PWR_STOP_ENTRY(PWR_STOPEntry));
+ 209:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   
+ 210:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Select the regulator state in STOP mode ---------------------------------*/
+ 211:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   tmpreg = PWR->CR;
+ 249              		.loc 1 211 0
+ 250 0012 4FF4E043 		mov	r3, #28672
+ 251 0016 C4F20003 		movt	r3, 16384
+ 252 001a 1B68     		ldr	r3, [r3, #0]
+ 253 001c FB60     		str	r3, [r7, #12]
+ 212:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Clear PDDS and LPDS bits */
+ 213:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   tmpreg &= CR_DS_MASK;
+ 254              		.loc 1 213 0
+ 255 001e FB68     		ldr	r3, [r7, #12]
+ 256 0020 23F00303 		bic	r3, r3, #3
+ 257 0024 FB60     		str	r3, [r7, #12]
+ 214:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Set LPDS bit according to PWR_Regulator value */
+ 215:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   tmpreg |= PWR_Regulator;
+ 258              		.loc 1 215 0
+ 259 0026 FA68     		ldr	r2, [r7, #12]
+ 260 0028 7B68     		ldr	r3, [r7, #4]
+ 261 002a 1343     		orrs	r3, r3, r2
+ 262 002c FB60     		str	r3, [r7, #12]
+ 216:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Store the new value */
+ 217:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   PWR->CR = tmpreg;
+ 263              		.loc 1 217 0
+ 264 002e 4FF4E043 		mov	r3, #28672
+ 265 0032 C4F20003 		movt	r3, 16384
+ 266 0036 FA68     		ldr	r2, [r7, #12]
+ 267 0038 1A60     		str	r2, [r3, #0]
+ 218:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Set SLEEPDEEP bit of Cortex System Control Register */
+ 219:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   SCB->SCR |= SCB_SCR_SLEEPDEEP;
+ 268              		.loc 1 219 0
+ 269 003a 4FF46D43 		mov	r3, #60672
+ 270 003e CEF20003 		movt	r3, 57344
+ 271 0042 4FF46D42 		mov	r2, #60672
+ 272 0046 CEF20002 		movt	r2, 57344
+ 273 004a 1269     		ldr	r2, [r2, #16]
+ 274 004c 42F00402 		orr	r2, r2, #4
+ 275 0050 1A61     		str	r2, [r3, #16]
+ 220:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   
+ 221:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Select STOP mode entry --------------------------------------------------*/
+ 222:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   if(PWR_STOPEntry == PWR_STOPEntry_WFI)
+ 276              		.loc 1 222 0
+ 277 0052 FB78     		ldrb	r3, [r7, #3]	@ zero_extendqisi2
+ 278 0054 012B     		cmp	r3, #1
+ 279 0056 01D1     		bne	.L7
+ 280              	.LBB8:
+ 281              	.LBB9:
+ 282              		.file 2 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h"
+   1:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /**************************************************************************//**
+   2:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * @file     core_cmInstr.h
+   3:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * @brief    CMSIS Cortex-M Core Instruction Access Header File
+   4:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * @version  V3.01
+   5:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * @date     06. March 2012
+   6:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  *
+   7:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * @note
+   8:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * Copyright (C) 2009-2012 ARM Limited. All rights reserved.
+   9:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  *
+  10:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * @par
+  11:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * ARM Limited (ARM) is supplying this software for use with Cortex-M
+  12:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * processor based microcontrollers.  This file can be freely distributed
+  13:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * within development tools that are supporting such ARM based processors.
+  14:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  *
+  15:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * @par
+  16:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * THIS SOFTWARE IS PROVIDED "AS IS".  NO WARRANTIES, WHETHER EXPRESS, IMPLIED
+  17:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF
+  18:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE APPLY TO THIS SOFTWARE.
+  19:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * ARM SHALL NOT, IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR
+  20:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
+  21:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  *
+  22:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  ******************************************************************************/
+  23:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  24:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #ifndef __CORE_CMINSTR_H
+  25:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __CORE_CMINSTR_H
+  26:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  27:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  28:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /* ##########################  Core Instruction Access  ######################### */
+  29:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \defgroup CMSIS_Core_InstructionInterface CMSIS Core Instruction Interface
+  30:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   Access to dedicated instructions
+  31:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   @{
+  32:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** */
+  33:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  34:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #if   defined ( __CC_ARM ) /*------------------RealView Compiler -----------------*/
+  35:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /* ARM armcc specific functions */
+  36:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  37:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #if (__ARMCC_VERSION < 400677)
+  38:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   #error "Please use ARM Compiler Toolchain V4.0.677 or later!"
+  39:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #endif
+  40:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  41:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  42:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  No Operation
+  43:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  44:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     No Operation does nothing. This instruction can be used for code alignment purposes.
+  45:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+  46:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __NOP                             __nop
+  47:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  48:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  49:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Wait For Interrupt
+  50:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  51:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     Wait For Interrupt is a hint instruction that suspends execution
+  52:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     until one of a number of events occurs.
+  53:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+  54:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __WFI                             __wfi
+  55:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  56:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  57:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Wait For Event
+  58:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  59:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     Wait For Event is a hint instruction that permits the processor to enter
+  60:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     a low-power state until one of a number of events occurs.
+  61:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+  62:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __WFE                             __wfe
+  63:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  64:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  65:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Send Event
+  66:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  67:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     Send Event is a hint instruction. It causes an event to be signaled to the CPU.
+  68:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+  69:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __SEV                             __sev
+  70:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  71:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  72:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Instruction Synchronization Barrier
+  73:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  74:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     Instruction Synchronization Barrier flushes the pipeline in the processor,
+  75:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     so that all instructions following the ISB are fetched from cache or
+  76:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     memory, after the instruction has been completed.
+  77:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+  78:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __ISB()                           __isb(0xF)
+  79:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  80:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  81:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Data Synchronization Barrier
+  82:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  83:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function acts as a special kind of Data Memory Barrier.
+  84:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     It completes when all explicit memory accesses before this instruction complete.
+  85:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+  86:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __DSB()                           __dsb(0xF)
+  87:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  88:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  89:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Data Memory Barrier
+  90:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  91:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function ensures the apparent order of the explicit memory operations before
+  92:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     and after the instruction, without ensuring their completion.
+  93:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+  94:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __DMB()                           __dmb(0xF)
+  95:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  96:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  97:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Reverse byte order (32 bit)
+  98:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+  99:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function reverses the byte order in integer value.
+ 100:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 101:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    value  Value to reverse
+ 102:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return               Reversed value
+ 103:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 104:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __REV                             __rev
+ 105:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 106:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 107:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Reverse byte order (16 bit)
+ 108:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 109:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function reverses the byte order in two unsigned short values.
+ 110:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 111:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    value  Value to reverse
+ 112:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return               Reversed value
+ 113:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 114:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** __attribute__((section(".rev16_text"))) __STATIC_INLINE __ASM uint32_t __REV16(uint32_t value)
+ 115:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** {
+ 116:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   rev16 r0, r0
+ 117:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   bx lr
+ 118:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** }
+ 119:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 120:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 121:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Reverse byte order in signed short value
+ 122:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 123:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function reverses the byte order in a signed short value with sign extension to integer.
+ 124:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 125:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    value  Value to reverse
+ 126:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return               Reversed value
+ 127:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 128:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** __attribute__((section(".revsh_text"))) __STATIC_INLINE __ASM int32_t __REVSH(int32_t value)
+ 129:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** {
+ 130:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   revsh r0, r0
+ 131:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   bx lr
+ 132:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** }
+ 133:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 134:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 135:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Rotate Right in unsigned value (32 bit)
+ 136:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 137:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function Rotate Right (immediate) provides the value of the contents of a register rotated
+ 138:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 139:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    value  Value to rotate
+ 140:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    value  Number of Bits to rotate
+ 141:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return               Rotated value
+ 142:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 143:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __ROR                             __ror
+ 144:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 145:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 146:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #if       (__CORTEX_M >= 0x03)
+ 147:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 148:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Reverse bit order of value
+ 149:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 150:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function reverses the bit order of the given value.
+ 151:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 152:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    value  Value to reverse
+ 153:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return               Reversed value
+ 154:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 155:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __RBIT                            __rbit
+ 156:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 157:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 158:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  LDR Exclusive (8 bit)
+ 159:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 160:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function performs a exclusive LDR command for 8 bit value.
+ 161:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 162:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    ptr  Pointer to data
+ 163:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return             value of type uint8_t at (*ptr)
+ 164:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 165:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __LDREXB(ptr)                     ((uint8_t ) __ldrex(ptr))
+ 166:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 167:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 168:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  LDR Exclusive (16 bit)
+ 169:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 170:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function performs a exclusive LDR command for 16 bit values.
+ 171:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 172:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    ptr  Pointer to data
+ 173:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return        value of type uint16_t at (*ptr)
+ 174:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 175:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __LDREXH(ptr)                     ((uint16_t) __ldrex(ptr))
+ 176:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 177:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 178:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  LDR Exclusive (32 bit)
+ 179:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 180:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function performs a exclusive LDR command for 32 bit values.
+ 181:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 182:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    ptr  Pointer to data
+ 183:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return        value of type uint32_t at (*ptr)
+ 184:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 185:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __LDREXW(ptr)                     ((uint32_t ) __ldrex(ptr))
+ 186:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 187:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 188:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  STR Exclusive (8 bit)
+ 189:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 190:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function performs a exclusive STR command for 8 bit values.
+ 191:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 192:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]  value  Value to store
+ 193:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    ptr  Pointer to location
+ 194:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return          0  Function succeeded
+ 195:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return          1  Function failed
+ 196:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 197:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __STREXB(value, ptr)              __strex(value, ptr)
+ 198:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 199:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 200:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  STR Exclusive (16 bit)
+ 201:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 202:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function performs a exclusive STR command for 16 bit values.
+ 203:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 204:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]  value  Value to store
+ 205:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    ptr  Pointer to location
+ 206:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return          0  Function succeeded
+ 207:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return          1  Function failed
+ 208:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 209:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __STREXH(value, ptr)              __strex(value, ptr)
+ 210:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 211:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 212:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  STR Exclusive (32 bit)
+ 213:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 214:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function performs a exclusive STR command for 32 bit values.
+ 215:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 216:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]  value  Value to store
+ 217:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    ptr  Pointer to location
+ 218:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return          0  Function succeeded
+ 219:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return          1  Function failed
+ 220:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 221:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __STREXW(value, ptr)              __strex(value, ptr)
+ 222:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 223:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 224:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Remove the exclusive lock
+ 225:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 226:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function removes the exclusive lock which is created by LDREX.
+ 227:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 228:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 229:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __CLREX                           __clrex
+ 230:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 231:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 232:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Signed Saturate
+ 233:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 234:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function saturates a signed value.
+ 235:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 236:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]  value  Value to be saturated
+ 237:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    sat  Bit position to saturate to (1..32)
+ 238:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return             Saturated value
+ 239:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 240:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __SSAT                            __ssat
+ 241:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 242:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 243:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Unsigned Saturate
+ 244:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 245:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function saturates an unsigned value.
+ 246:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 247:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]  value  Value to be saturated
+ 248:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]    sat  Bit position to saturate to (0..31)
+ 249:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return             Saturated value
+ 250:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 251:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __USAT                            __usat
+ 252:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 253:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 254:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Count leading zeros
+ 255:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 256:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     This function counts the number of leading zeros of a data value.
+ 257:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 258:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \param [in]  value  Value to count the leading zeros
+ 259:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     \return             number of leading zeros in value
+ 260:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 261:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #define __CLZ                             __clz
+ 262:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 263:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #endif /* (__CORTEX_M >= 0x03) */
+ 264:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 265:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 266:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 267:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #elif defined ( __ICCARM__ ) /*------------------ ICC Compiler -------------------*/
+ 268:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /* IAR iccarm specific functions */
+ 269:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 270:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #include <cmsis_iar.h>
+ 271:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 272:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 273:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #elif defined ( __TMS470__ ) /*---------------- TI CCS Compiler ------------------*/
+ 274:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /* TI CCS specific functions */
+ 275:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 276:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #include <cmsis_ccs.h>
+ 277:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 278:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 279:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** #elif defined ( __GNUC__ ) /*------------------ GNU Compiler ---------------------*/
+ 280:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /* GNU gcc specific functions */
+ 281:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 282:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  No Operation
+ 283:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 284:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     No Operation does nothing. This instruction can be used for code alignment purposes.
+ 285:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 286:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __NOP(void)
+ 287:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** {
+ 288:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   __ASM volatile ("nop");
+ 289:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** }
+ 290:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 291:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 292:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Wait For Interrupt
+ 293:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 294:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     Wait For Interrupt is a hint instruction that suspends execution
+ 295:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     until one of a number of events occurs.
+ 296:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 297:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __WFI(void)
+ 298:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** {
+ 299:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   __ASM volatile ("wfi");
+ 283              		.loc 2 299 0
+ 284              	@ 299 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h" 1
+ 285 0058 30BF     		wfi
+ 286              	@ 0 "" 2
+ 287              		.thumb
+ 288 005a 00E0     		b	.L8
+ 289              	.L7:
+ 290              	.LBE9:
+ 291              	.LBE8:
+ 292              	.LBB10:
+ 293              	.LBB11:
+ 300:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** }
+ 301:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 302:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 303:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** /** \brief  Wait For Event
+ 304:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** 
+ 305:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     Wait For Event is a hint instruction that permits the processor to enter
+ 306:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****     a low-power state until one of a number of events occurs.
+ 307:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****  */
+ 308:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __WFE(void)
+ 309:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h **** {
+ 310:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   __ASM volatile ("wfe");
+ 294              		.loc 2 310 0
+ 295              	@ 310 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h" 1
+ 296 005c 20BF     		wfe
+ 297              	@ 0 "" 2
+ 298              		.thumb
+ 299              	.L8:
+ 300              	.LBE11:
+ 301              	.LBE10:
+ 223:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   {   
+ 224:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****     /* Request Wait For Interrupt */
+ 225:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****     __WFI();
+ 226:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   }
+ 227:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   else
+ 228:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   {
+ 229:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****     /* Request Wait For Event */
+ 230:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****     __WFE();
+ 231:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   }
+ 232:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   
+ 233:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Reset SLEEPDEEP bit of Cortex System Control Register */
+ 234:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP);  
+ 302              		.loc 1 234 0
+ 303 005e 4FF46D43 		mov	r3, #60672
+ 304 0062 CEF20003 		movt	r3, 57344
+ 305 0066 4FF46D42 		mov	r2, #60672
+ 306 006a CEF20002 		movt	r2, 57344
+ 307 006e 1269     		ldr	r2, [r2, #16]
+ 308 0070 22F00402 		bic	r2, r2, #4
+ 309 0074 1A61     		str	r2, [r3, #16]
+ 235:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** }
+ 310              		.loc 1 235 0
+ 311 0076 07F11407 		add	r7, r7, #20
+ 312 007a BD46     		mov	sp, r7
+ 313 007c 80BC     		pop	{r7}
+ 314 007e 7047     		bx	lr
+ 315              		.cfi_endproc
+ 316              	.LFE61:
+ 318              		.section	.text.PWR_EnterSTANDBYMode,"ax",%progbits
+ 319              		.align	2
+ 320              		.global	PWR_EnterSTANDBYMode
+ 321              		.thumb
+ 322              		.thumb_func
+ 324              	PWR_EnterSTANDBYMode:
+ 325              	.LFB62:
+ 236:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 237:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+ 238:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief  Enters STANDBY mode.
+ 239:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @param  None
+ 240:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @retval None
+ 241:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 242:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** void PWR_EnterSTANDBYMode(void)
+ 243:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** {
+ 326              		.loc 1 243 0
+ 327              		.cfi_startproc
+ 328              		@ args = 0, pretend = 0, frame = 0
+ 329              		@ frame_needed = 1, uses_anonymous_args = 0
+ 330              		@ link register save eliminated.
+ 331 0000 80B4     		push	{r7}
+ 332              	.LCFI17:
+ 333              		.cfi_def_cfa_offset 4
+ 334              		.cfi_offset 7, -4
+ 335 0002 00AF     		add	r7, sp, #0
+ 336              	.LCFI18:
+ 337              		.cfi_def_cfa_register 7
+ 244:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Clear Wake-up flag */
+ 245:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   PWR->CR |= PWR_CR_CWUF;
+ 338              		.loc 1 245 0
+ 339 0004 4FF4E043 		mov	r3, #28672
+ 340 0008 C4F20003 		movt	r3, 16384
+ 341 000c 4FF4E042 		mov	r2, #28672
+ 342 0010 C4F20002 		movt	r2, 16384
+ 343 0014 1268     		ldr	r2, [r2, #0]
+ 344 0016 42F00402 		orr	r2, r2, #4
+ 345 001a 1A60     		str	r2, [r3, #0]
+ 246:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Select STANDBY mode */
+ 247:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   PWR->CR |= PWR_CR_PDDS;
+ 346              		.loc 1 247 0
+ 347 001c 4FF4E043 		mov	r3, #28672
+ 348 0020 C4F20003 		movt	r3, 16384
+ 349 0024 4FF4E042 		mov	r2, #28672
+ 350 0028 C4F20002 		movt	r2, 16384
+ 351 002c 1268     		ldr	r2, [r2, #0]
+ 352 002e 42F00202 		orr	r2, r2, #2
+ 353 0032 1A60     		str	r2, [r3, #0]
+ 248:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Set SLEEPDEEP bit of Cortex System Control Register */
+ 249:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   SCB->SCR |= SCB_SCR_SLEEPDEEP;
+ 354              		.loc 1 249 0
+ 355 0034 4FF46D43 		mov	r3, #60672
+ 356 0038 CEF20003 		movt	r3, 57344
+ 357 003c 4FF46D42 		mov	r2, #60672
+ 358 0040 CEF20002 		movt	r2, 57344
+ 359 0044 1269     		ldr	r2, [r2, #16]
+ 360 0046 42F00402 		orr	r2, r2, #4
+ 361 004a 1A61     		str	r2, [r3, #16]
+ 362              	.LBB12:
+ 363              	.LBB13:
+ 299:/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h ****   __ASM volatile ("wfi");
+ 364              		.loc 2 299 0
+ 365              	@ 299 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cmInstr.h" 1
+ 366 004c 30BF     		wfi
+ 367              	@ 0 "" 2
+ 368              		.thumb
+ 369              	.LBE13:
+ 370              	.LBE12:
+ 250:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /* This option is used to ensure that store operations are completed */
+ 251:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #if defined ( __CC_ARM   )
+ 252:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   __force_stores();
+ 253:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** #endif
+ 254:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Request Wait For Interrupt */
+ 255:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   __WFI();
+ 256:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** }
+ 371              		.loc 1 256 0
+ 372 004e BD46     		mov	sp, r7
+ 373 0050 80BC     		pop	{r7}
+ 374 0052 7047     		bx	lr
+ 375              		.cfi_endproc
+ 376              	.LFE62:
+ 378              		.section	.text.PWR_GetFlagStatus,"ax",%progbits
+ 379              		.align	2
+ 380              		.global	PWR_GetFlagStatus
+ 381              		.thumb
+ 382              		.thumb_func
+ 384              	PWR_GetFlagStatus:
+ 385              	.LFB63:
+ 257:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 258:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+ 259:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief  Checks whether the specified PWR flag is set or not.
+ 260:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @param  PWR_FLAG: specifies the flag to check.
+ 261:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *   This parameter can be one of the following values:
+ 262:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_FLAG_WU: Wake Up flag
+ 263:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_FLAG_SB: StandBy flag
+ 264:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_FLAG_PVDO: PVD Output
+ 265:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @retval The new state of PWR_FLAG (SET or RESET).
+ 266:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 267:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** FlagStatus PWR_GetFlagStatus(uint32_t PWR_FLAG)
+ 268:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** {
+ 386              		.loc 1 268 0
+ 387              		.cfi_startproc
+ 388              		@ args = 0, pretend = 0, frame = 16
+ 389              		@ frame_needed = 1, uses_anonymous_args = 0
+ 390              		@ link register save eliminated.
+ 391 0000 80B4     		push	{r7}
+ 392              	.LCFI19:
+ 393              		.cfi_def_cfa_offset 4
+ 394              		.cfi_offset 7, -4
+ 395 0002 85B0     		sub	sp, sp, #20
+ 396              	.LCFI20:
+ 397              		.cfi_def_cfa_offset 24
+ 398 0004 00AF     		add	r7, sp, #0
+ 399              	.LCFI21:
+ 400              		.cfi_def_cfa_register 7
+ 401 0006 7860     		str	r0, [r7, #4]
+ 269:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   FlagStatus bitstatus = RESET;
+ 402              		.loc 1 269 0
+ 403 0008 4FF00003 		mov	r3, #0
+ 404 000c FB73     		strb	r3, [r7, #15]
+ 270:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Check the parameters */
+ 271:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   assert_param(IS_PWR_GET_FLAG(PWR_FLAG));
+ 272:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   
+ 273:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   if ((PWR->CSR & PWR_FLAG) != (uint32_t)RESET)
+ 405              		.loc 1 273 0
+ 406 000e 4FF4E043 		mov	r3, #28672
+ 407 0012 C4F20003 		movt	r3, 16384
+ 408 0016 5A68     		ldr	r2, [r3, #4]
+ 409 0018 7B68     		ldr	r3, [r7, #4]
+ 410 001a 1340     		ands	r3, r3, r2
+ 411 001c 002B     		cmp	r3, #0
+ 412 001e 03D0     		beq	.L11
+ 274:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   {
+ 275:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****     bitstatus = SET;
+ 413              		.loc 1 275 0
+ 414 0020 4FF00103 		mov	r3, #1
+ 415 0024 FB73     		strb	r3, [r7, #15]
+ 416 0026 02E0     		b	.L12
+ 417              	.L11:
+ 276:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   }
+ 277:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   else
+ 278:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   {
+ 279:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****     bitstatus = RESET;
+ 418              		.loc 1 279 0
+ 419 0028 4FF00003 		mov	r3, #0
+ 420 002c FB73     		strb	r3, [r7, #15]
+ 421              	.L12:
+ 280:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   }
+ 281:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Return the flag status */
+ 282:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   return bitstatus;
+ 422              		.loc 1 282 0
+ 423 002e FB7B     		ldrb	r3, [r7, #15]	@ zero_extendqisi2
+ 283:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** }
+ 424              		.loc 1 283 0
+ 425 0030 1846     		mov	r0, r3
+ 426 0032 07F11407 		add	r7, r7, #20
+ 427 0036 BD46     		mov	sp, r7
+ 428 0038 80BC     		pop	{r7}
+ 429 003a 7047     		bx	lr
+ 430              		.cfi_endproc
+ 431              	.LFE63:
+ 433              		.section	.text.PWR_ClearFlag,"ax",%progbits
+ 434              		.align	2
+ 435              		.global	PWR_ClearFlag
+ 436              		.thumb
+ 437              		.thumb_func
+ 439              	PWR_ClearFlag:
+ 440              	.LFB64:
+ 284:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** 
+ 285:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** /**
+ 286:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @brief  Clears the PWR's pending flags.
+ 287:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @param  PWR_FLAG: specifies the flag to clear.
+ 288:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *   This parameter can be one of the following values:
+ 289:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_FLAG_WU: Wake Up flag
+ 290:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   *     @arg PWR_FLAG_SB: StandBy flag
+ 291:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   * @retval None
+ 292:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   */
+ 293:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** void PWR_ClearFlag(uint32_t PWR_FLAG)
+ 294:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** {
+ 441              		.loc 1 294 0
+ 442              		.cfi_startproc
+ 443              		@ args = 0, pretend = 0, frame = 8
+ 444              		@ frame_needed = 1, uses_anonymous_args = 0
+ 445              		@ link register save eliminated.
+ 446 0000 80B4     		push	{r7}
+ 447              	.LCFI22:
+ 448              		.cfi_def_cfa_offset 4
+ 449              		.cfi_offset 7, -4
+ 450 0002 83B0     		sub	sp, sp, #12
+ 451              	.LCFI23:
+ 452              		.cfi_def_cfa_offset 16
+ 453 0004 00AF     		add	r7, sp, #0
+ 454              	.LCFI24:
+ 455              		.cfi_def_cfa_register 7
+ 456 0006 7860     		str	r0, [r7, #4]
+ 295:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   /* Check the parameters */
+ 296:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   assert_param(IS_PWR_CLEAR_FLAG(PWR_FLAG));
+ 297:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****          
+ 298:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c ****   PWR->CR |=  PWR_FLAG << 2;
+ 457              		.loc 1 298 0
+ 458 0008 4FF4E043 		mov	r3, #28672
+ 459 000c C4F20003 		movt	r3, 16384
+ 460 0010 4FF4E042 		mov	r2, #28672
+ 461 0014 C4F20002 		movt	r2, 16384
+ 462 0018 1168     		ldr	r1, [r2, #0]
+ 463 001a 7A68     		ldr	r2, [r7, #4]
+ 464 001c 4FEA8202 		lsl	r2, r2, #2
+ 465 0020 0A43     		orrs	r2, r2, r1
+ 466 0022 1A60     		str	r2, [r3, #0]
+ 299:../libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c **** }
+ 467              		.loc 1 299 0
+ 468 0024 07F10C07 		add	r7, r7, #12
+ 469 0028 BD46     		mov	sp, r7
+ 470 002a 80BC     		pop	{r7}
+ 471 002c 7047     		bx	lr
+ 472              		.cfi_endproc
+ 473              	.LFE64:
+ 475 002e 00BF     		.text
+ 476              	.Letext0:
+ 477              		.file 3 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 478              		.file 4 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cm3.h"
+ 479              		.file 5 "/Users/zac/code/spark/marvin/libraries/CMSIS/Device/ST/STM32F10x/Include/stm32f10x.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 stm32f10x_pwr.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:19     .text.PWR_DeInit:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:24     .text.PWR_DeInit:0000000000000000 PWR_DeInit
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:53     .text.PWR_BackupAccessCmd:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:58     .text.PWR_BackupAccessCmd:0000000000000000 PWR_BackupAccessCmd
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:91     .text.PWR_PVDCmd:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:96     .text.PWR_PVDCmd:0000000000000000 PWR_PVDCmd
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:129    .text.PWR_PVDLevelConfig:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:134    .text.PWR_PVDLevelConfig:0000000000000000 PWR_PVDLevelConfig
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:183    .text.PWR_WakeUpPinCmd:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:188    .text.PWR_WakeUpPinCmd:0000000000000000 PWR_WakeUpPinCmd
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:221    .text.PWR_EnterSTOPMode:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:226    .text.PWR_EnterSTOPMode:0000000000000000 PWR_EnterSTOPMode
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:319    .text.PWR_EnterSTANDBYMode:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:324    .text.PWR_EnterSTANDBYMode:0000000000000000 PWR_EnterSTANDBYMode
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:379    .text.PWR_GetFlagStatus:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:384    .text.PWR_GetFlagStatus:0000000000000000 PWR_GetFlagStatus
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:434    .text.PWR_ClearFlag:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cco8YOxw.s:439    .text.PWR_ClearFlag:0000000000000000 PWR_ClearFlag
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.64.50606dd35742cd9bf661b95d122418e5
+
+UNDEFINED SYMBOLS
+RCC_APB1PeriphResetCmd

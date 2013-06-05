@@ -1,0 +1,1366 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"usb_prop.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.global	Request
+  19              		.bss
+  22              	Request:
+  23 0000 00       		.space	1
+  24              		.global	linecoding
+  25              		.data
+  26              		.align	2
+  29              	linecoding:
+  30 0000 00C20100 		.word	115200
+  31 0004 00       		.byte	0
+  32 0005 00       		.byte	0
+  33 0006 08       		.byte	8
+  34 0007 00       		.space	1
+  35              		.global	Device_Table
+  36              		.align	2
+  39              	Device_Table:
+  40 0008 04       		.byte	4
+  41 0009 01       		.byte	1
+  42              		.global	Device_Property
+  43 000a 0000     		.align	2
+  46              	Device_Property:
+  47 000c 00000000 		.word	Virtual_Com_Port_init
+  48 0010 00000000 		.word	Virtual_Com_Port_Reset
+  49 0014 00000000 		.word	Virtual_Com_Port_Status_In
+  50 0018 00000000 		.word	Virtual_Com_Port_Status_Out
+  51 001c 00000000 		.word	Virtual_Com_Port_Data_Setup
+  52 0020 00000000 		.word	Virtual_Com_Port_NoData_Setup
+  53 0024 00000000 		.word	Virtual_Com_Port_Get_Interface_Setting
+  54 0028 00000000 		.word	Virtual_Com_Port_GetDeviceDescriptor
+  55 002c 00000000 		.word	Virtual_Com_Port_GetConfigDescriptor
+  56 0030 00000000 		.word	Virtual_Com_Port_GetStringDescriptor
+  57 0034 00000000 		.word	0
+  58 0038 40       		.byte	64
+  59 0039 000000   		.space	3
+  60              		.global	User_Standard_Requests
+  61              		.align	2
+  64              	User_Standard_Requests:
+  65 003c 00000000 		.word	NOP_Process
+  66 0040 00000000 		.word	Virtual_Com_Port_SetConfiguration
+  67 0044 00000000 		.word	NOP_Process
+  68 0048 00000000 		.word	NOP_Process
+  69 004c 00000000 		.word	NOP_Process
+  70 0050 00000000 		.word	NOP_Process
+  71 0054 00000000 		.word	NOP_Process
+  72 0058 00000000 		.word	NOP_Process
+  73 005c 00000000 		.word	Virtual_Com_Port_SetDeviceAddress
+  74              		.global	Device_Descriptor
+  75              		.align	2
+  78              	Device_Descriptor:
+  79 0060 00000000 		.word	Virtual_Com_Port_DeviceDescriptor
+  80 0064 1200     		.short	18
+  81 0066 0000     		.space	2
+  82              		.global	Config_Descriptor
+  83              		.align	2
+  86              	Config_Descriptor:
+  87 0068 00000000 		.word	Virtual_Com_Port_ConfigDescriptor
+  88 006c 4300     		.short	67
+  89 006e 0000     		.space	2
+  90              		.global	String_Descriptor
+  91              		.align	2
+  94              	String_Descriptor:
+  95 0070 00000000 		.word	Virtual_Com_Port_StringLangID
+  96 0074 0400     		.short	4
+  97 0076 0000     		.space	2
+  98 0078 00000000 		.word	Virtual_Com_Port_StringVendor
+  99 007c 2600     		.short	38
+ 100 007e 0000     		.space	2
+ 101 0080 00000000 		.word	Virtual_Com_Port_StringProduct
+ 102 0084 3200     		.short	50
+ 103 0086 0000     		.space	2
+ 104 0088 00000000 		.word	Virtual_Com_Port_StringSerial
+ 105 008c 1A00     		.short	26
+ 106 008e 0000     		.space	2
+ 107              		.section	.text.Virtual_Com_Port_init,"ax",%progbits
+ 108              		.align	2
+ 109              		.global	Virtual_Com_Port_init
+ 110              		.thumb
+ 111              		.thumb_func
+ 113              	Virtual_Com_Port_init:
+ 114              	.LFB56:
+ 115              		.file 1 "../src/usb_prop.c"
+   1:../src/usb_prop.c **** /**
+   2:../src/usb_prop.c ****   ******************************************************************************
+   3:../src/usb_prop.c ****   * @file    usb_prop.c
+   4:../src/usb_prop.c ****   * @author  Spark Application Team
+   5:../src/usb_prop.c ****   * @version V1.0.0
+   6:../src/usb_prop.c ****   * @date    24-April-2013
+   7:../src/usb_prop.c ****   * @brief   All processing related to Virtual Com Port
+   8:../src/usb_prop.c ****   ******************************************************************************
+   9:../src/usb_prop.c **** */
+  10:../src/usb_prop.c **** 
+  11:../src/usb_prop.c **** /* Includes ------------------------------------------------------------------*/
+  12:../src/usb_prop.c **** #include "usb_lib.h"
+  13:../src/usb_prop.c **** #include "usb_conf.h"
+  14:../src/usb_prop.c **** #include "usb_prop.h"
+  15:../src/usb_prop.c **** #include "usb_desc.h"
+  16:../src/usb_prop.c **** #include "usb_pwr.h"
+  17:../src/usb_prop.c **** #include "hw_config.h"
+  18:../src/usb_prop.c **** 
+  19:../src/usb_prop.c **** /* Private typedef -----------------------------------------------------------*/
+  20:../src/usb_prop.c **** /* Private define ------------------------------------------------------------*/
+  21:../src/usb_prop.c **** /* Private macro -------------------------------------------------------------*/
+  22:../src/usb_prop.c **** /* Private variables ---------------------------------------------------------*/
+  23:../src/usb_prop.c **** uint8_t Request = 0;
+  24:../src/usb_prop.c **** 
+  25:../src/usb_prop.c **** LINE_CODING linecoding =
+  26:../src/usb_prop.c ****   {
+  27:../src/usb_prop.c ****     115200, /* baud rate*/
+  28:../src/usb_prop.c ****     0x00,   /* stop bits-1*/
+  29:../src/usb_prop.c ****     0x00,   /* parity - none*/
+  30:../src/usb_prop.c ****     0x08    /* no. of bits 8*/
+  31:../src/usb_prop.c ****   };
+  32:../src/usb_prop.c **** 
+  33:../src/usb_prop.c **** /* -------------------------------------------------------------------------- */
+  34:../src/usb_prop.c **** /*  Structures initializations */
+  35:../src/usb_prop.c **** /* -------------------------------------------------------------------------- */
+  36:../src/usb_prop.c **** 
+  37:../src/usb_prop.c **** DEVICE Device_Table =
+  38:../src/usb_prop.c ****   {
+  39:../src/usb_prop.c ****     EP_NUM,
+  40:../src/usb_prop.c ****     1
+  41:../src/usb_prop.c ****   };
+  42:../src/usb_prop.c **** 
+  43:../src/usb_prop.c **** DEVICE_PROP Device_Property =
+  44:../src/usb_prop.c ****   {
+  45:../src/usb_prop.c ****     Virtual_Com_Port_init,
+  46:../src/usb_prop.c ****     Virtual_Com_Port_Reset,
+  47:../src/usb_prop.c ****     Virtual_Com_Port_Status_In,
+  48:../src/usb_prop.c ****     Virtual_Com_Port_Status_Out,
+  49:../src/usb_prop.c ****     Virtual_Com_Port_Data_Setup,
+  50:../src/usb_prop.c ****     Virtual_Com_Port_NoData_Setup,
+  51:../src/usb_prop.c ****     Virtual_Com_Port_Get_Interface_Setting,
+  52:../src/usb_prop.c ****     Virtual_Com_Port_GetDeviceDescriptor,
+  53:../src/usb_prop.c ****     Virtual_Com_Port_GetConfigDescriptor,
+  54:../src/usb_prop.c ****     Virtual_Com_Port_GetStringDescriptor,
+  55:../src/usb_prop.c ****     0,
+  56:../src/usb_prop.c ****     0x40 /*MAX PACKET SIZE*/
+  57:../src/usb_prop.c ****   };
+  58:../src/usb_prop.c **** 
+  59:../src/usb_prop.c **** USER_STANDARD_REQUESTS User_Standard_Requests =
+  60:../src/usb_prop.c ****   {
+  61:../src/usb_prop.c ****     Virtual_Com_Port_GetConfiguration,
+  62:../src/usb_prop.c ****     Virtual_Com_Port_SetConfiguration,
+  63:../src/usb_prop.c ****     Virtual_Com_Port_GetInterface,
+  64:../src/usb_prop.c ****     Virtual_Com_Port_SetInterface,
+  65:../src/usb_prop.c ****     Virtual_Com_Port_GetStatus,
+  66:../src/usb_prop.c ****     Virtual_Com_Port_ClearFeature,
+  67:../src/usb_prop.c ****     Virtual_Com_Port_SetEndPointFeature,
+  68:../src/usb_prop.c ****     Virtual_Com_Port_SetDeviceFeature,
+  69:../src/usb_prop.c ****     Virtual_Com_Port_SetDeviceAddress
+  70:../src/usb_prop.c ****   };
+  71:../src/usb_prop.c **** 
+  72:../src/usb_prop.c **** ONE_DESCRIPTOR Device_Descriptor =
+  73:../src/usb_prop.c ****   {
+  74:../src/usb_prop.c ****     (uint8_t*)Virtual_Com_Port_DeviceDescriptor,
+  75:../src/usb_prop.c ****     VIRTUAL_COM_PORT_SIZ_DEVICE_DESC
+  76:../src/usb_prop.c ****   };
+  77:../src/usb_prop.c **** 
+  78:../src/usb_prop.c **** ONE_DESCRIPTOR Config_Descriptor =
+  79:../src/usb_prop.c ****   {
+  80:../src/usb_prop.c ****     (uint8_t*)Virtual_Com_Port_ConfigDescriptor,
+  81:../src/usb_prop.c ****     VIRTUAL_COM_PORT_SIZ_CONFIG_DESC
+  82:../src/usb_prop.c ****   };
+  83:../src/usb_prop.c **** 
+  84:../src/usb_prop.c **** ONE_DESCRIPTOR String_Descriptor[4] =
+  85:../src/usb_prop.c ****   {
+  86:../src/usb_prop.c ****     {(uint8_t*)Virtual_Com_Port_StringLangID, VIRTUAL_COM_PORT_SIZ_STRING_LANGID},
+  87:../src/usb_prop.c ****     {(uint8_t*)Virtual_Com_Port_StringVendor, VIRTUAL_COM_PORT_SIZ_STRING_VENDOR},
+  88:../src/usb_prop.c ****     {(uint8_t*)Virtual_Com_Port_StringProduct, VIRTUAL_COM_PORT_SIZ_STRING_PRODUCT},
+  89:../src/usb_prop.c ****     {(uint8_t*)Virtual_Com_Port_StringSerial, VIRTUAL_COM_PORT_SIZ_STRING_SERIAL}
+  90:../src/usb_prop.c ****   };
+  91:../src/usb_prop.c **** 
+  92:../src/usb_prop.c **** /* Extern variables ----------------------------------------------------------*/
+  93:../src/usb_prop.c **** /* Private function prototypes -----------------------------------------------*/
+  94:../src/usb_prop.c **** /* Extern function prototypes ------------------------------------------------*/
+  95:../src/usb_prop.c **** /* Private functions ---------------------------------------------------------*/
+  96:../src/usb_prop.c **** /*******************************************************************************
+  97:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_init.
+  98:../src/usb_prop.c **** * Description    : Virtual COM Port Mouse init routine.
+  99:../src/usb_prop.c **** * Input          : None.
+ 100:../src/usb_prop.c **** * Output         : None.
+ 101:../src/usb_prop.c **** * Return         : None.
+ 102:../src/usb_prop.c **** *******************************************************************************/
+ 103:../src/usb_prop.c **** void Virtual_Com_Port_init(void)
+ 104:../src/usb_prop.c **** {
+ 116              		.loc 1 104 0
+ 117              		.cfi_startproc
+ 118              		@ args = 0, pretend = 0, frame = 0
+ 119              		@ frame_needed = 1, uses_anonymous_args = 0
+ 120 0000 80B5     		push	{r7, lr}
+ 121              	.LCFI0:
+ 122              		.cfi_def_cfa_offset 8
+ 123              		.cfi_offset 7, -8
+ 124              		.cfi_offset 14, -4
+ 125 0002 00AF     		add	r7, sp, #0
+ 126              	.LCFI1:
+ 127              		.cfi_def_cfa_register 7
+ 105:../src/usb_prop.c **** 
+ 106:../src/usb_prop.c ****   /* Update the serial number string descriptor with the data from the unique
+ 107:../src/usb_prop.c ****   ID*/
+ 108:../src/usb_prop.c ****   Get_SerialNum();
+ 128              		.loc 1 108 0
+ 129 0004 FFF7FEFF 		bl	Get_SerialNum
+ 109:../src/usb_prop.c **** 
+ 110:../src/usb_prop.c ****   pInformation->Current_Configuration = 0;
+ 130              		.loc 1 110 0
+ 131 0008 40F20003 		movw	r3, #:lower16:pInformation
+ 132 000c C0F20003 		movt	r3, #:upper16:pInformation
+ 133 0010 1B68     		ldr	r3, [r3, #0]
+ 134 0012 4FF00002 		mov	r2, #0
+ 135 0016 9A72     		strb	r2, [r3, #10]
+ 111:../src/usb_prop.c **** 
+ 112:../src/usb_prop.c ****   /* Connect the device */
+ 113:../src/usb_prop.c ****   PowerOn();
+ 136              		.loc 1 113 0
+ 137 0018 FFF7FEFF 		bl	PowerOn
+ 114:../src/usb_prop.c **** 
+ 115:../src/usb_prop.c ****   /* Perform basic device initialization operations */
+ 116:../src/usb_prop.c ****   USB_SIL_Init();
+ 138              		.loc 1 116 0
+ 139 001c FFF7FEFF 		bl	USB_SIL_Init
+ 117:../src/usb_prop.c **** 
+ 118:../src/usb_prop.c ****   bDeviceState = UNCONNECTED;
+ 140              		.loc 1 118 0
+ 141 0020 40F20003 		movw	r3, #:lower16:bDeviceState
+ 142 0024 C0F20003 		movt	r3, #:upper16:bDeviceState
+ 143 0028 4FF00002 		mov	r2, #0
+ 144 002c 1A60     		str	r2, [r3, #0]
+ 119:../src/usb_prop.c **** }
+ 145              		.loc 1 119 0
+ 146 002e 80BD     		pop	{r7, pc}
+ 147              		.cfi_endproc
+ 148              	.LFE56:
+ 150              		.section	.text.Virtual_Com_Port_Reset,"ax",%progbits
+ 151              		.align	2
+ 152              		.global	Virtual_Com_Port_Reset
+ 153              		.thumb
+ 154              		.thumb_func
+ 156              	Virtual_Com_Port_Reset:
+ 157              	.LFB57:
+ 120:../src/usb_prop.c **** 
+ 121:../src/usb_prop.c **** /*******************************************************************************
+ 122:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_Reset
+ 123:../src/usb_prop.c **** * Description    : Virtual_Com_Port Mouse reset routine
+ 124:../src/usb_prop.c **** * Input          : None.
+ 125:../src/usb_prop.c **** * Output         : None.
+ 126:../src/usb_prop.c **** * Return         : None.
+ 127:../src/usb_prop.c **** *******************************************************************************/
+ 128:../src/usb_prop.c **** void Virtual_Com_Port_Reset(void)
+ 129:../src/usb_prop.c **** {
+ 158              		.loc 1 129 0
+ 159              		.cfi_startproc
+ 160              		@ args = 0, pretend = 0, frame = 0
+ 161              		@ frame_needed = 1, uses_anonymous_args = 0
+ 162 0000 80B5     		push	{r7, lr}
+ 163              	.LCFI2:
+ 164              		.cfi_def_cfa_offset 8
+ 165              		.cfi_offset 7, -8
+ 166              		.cfi_offset 14, -4
+ 167 0002 00AF     		add	r7, sp, #0
+ 168              	.LCFI3:
+ 169              		.cfi_def_cfa_register 7
+ 130:../src/usb_prop.c ****   /* Set Virtual_Com_Port DEVICE as not configured */
+ 131:../src/usb_prop.c ****   pInformation->Current_Configuration = 0;
+ 170              		.loc 1 131 0
+ 171 0004 40F20003 		movw	r3, #:lower16:pInformation
+ 172 0008 C0F20003 		movt	r3, #:upper16:pInformation
+ 173 000c 1B68     		ldr	r3, [r3, #0]
+ 174 000e 4FF00002 		mov	r2, #0
+ 175 0012 9A72     		strb	r2, [r3, #10]
+ 132:../src/usb_prop.c **** 
+ 133:../src/usb_prop.c ****   /* Current Feature initialization */
+ 134:../src/usb_prop.c ****   pInformation->Current_Feature = Virtual_Com_Port_ConfigDescriptor[7];
+ 176              		.loc 1 134 0
+ 177 0014 40F20003 		movw	r3, #:lower16:pInformation
+ 178 0018 C0F20003 		movt	r3, #:upper16:pInformation
+ 179 001c 1A68     		ldr	r2, [r3, #0]
+ 180 001e 40F20003 		movw	r3, #:lower16:Virtual_Com_Port_ConfigDescriptor
+ 181 0022 C0F20003 		movt	r3, #:upper16:Virtual_Com_Port_ConfigDescriptor
+ 182 0026 DB79     		ldrb	r3, [r3, #7]	@ zero_extendqisi2
+ 183 0028 5372     		strb	r3, [r2, #9]
+ 135:../src/usb_prop.c **** 
+ 136:../src/usb_prop.c ****   /* Set Virtual_Com_Port DEVICE with the default Interface*/
+ 137:../src/usb_prop.c ****   pInformation->Current_Interface = 0;
+ 184              		.loc 1 137 0
+ 185 002a 40F20003 		movw	r3, #:lower16:pInformation
+ 186 002e C0F20003 		movt	r3, #:upper16:pInformation
+ 187 0032 1B68     		ldr	r3, [r3, #0]
+ 188 0034 4FF00002 		mov	r2, #0
+ 189 0038 DA72     		strb	r2, [r3, #11]
+ 138:../src/usb_prop.c **** 
+ 139:../src/usb_prop.c ****   SetBTABLE(BTABLE_ADDRESS);
+ 190              		.loc 1 139 0
+ 191 003a 4FF00000 		mov	r0, #0
+ 192 003e FFF7FEFF 		bl	SetBTABLE
+ 140:../src/usb_prop.c **** 
+ 141:../src/usb_prop.c ****   /* Initialize Endpoint 0 */
+ 142:../src/usb_prop.c ****   SetEPType(ENDP0, EP_CONTROL);
+ 193              		.loc 1 142 0
+ 194 0042 4FF00000 		mov	r0, #0
+ 195 0046 4FF40071 		mov	r1, #512
+ 196 004a FFF7FEFF 		bl	SetEPType
+ 143:../src/usb_prop.c ****   SetEPTxStatus(ENDP0, EP_TX_STALL);
+ 197              		.loc 1 143 0
+ 198 004e 4FF00000 		mov	r0, #0
+ 199 0052 4FF01001 		mov	r1, #16
+ 200 0056 FFF7FEFF 		bl	SetEPTxStatus
+ 144:../src/usb_prop.c ****   SetEPRxAddr(ENDP0, ENDP0_RXADDR);
+ 201              		.loc 1 144 0
+ 202 005a 4FF00000 		mov	r0, #0
+ 203 005e 4FF04001 		mov	r1, #64
+ 204 0062 FFF7FEFF 		bl	SetEPRxAddr
+ 145:../src/usb_prop.c ****   SetEPTxAddr(ENDP0, ENDP0_TXADDR);
+ 205              		.loc 1 145 0
+ 206 0066 4FF00000 		mov	r0, #0
+ 207 006a 4FF08001 		mov	r1, #128
+ 208 006e FFF7FEFF 		bl	SetEPTxAddr
+ 146:../src/usb_prop.c ****   Clear_Status_Out(ENDP0);
+ 209              		.loc 1 146 0
+ 210 0072 4FF00000 		mov	r0, #0
+ 211 0076 FFF7FEFF 		bl	Clear_Status_Out
+ 147:../src/usb_prop.c ****   SetEPRxCount(ENDP0, Device_Property.MaxPacketSize);
+ 212              		.loc 1 147 0
+ 213 007a 40F20003 		movw	r3, #:lower16:Device_Property
+ 214 007e C0F20003 		movt	r3, #:upper16:Device_Property
+ 215 0082 93F82C30 		ldrb	r3, [r3, #44]	@ zero_extendqisi2
+ 216 0086 4FF00000 		mov	r0, #0
+ 217 008a 1946     		mov	r1, r3
+ 218 008c FFF7FEFF 		bl	SetEPRxCount
+ 148:../src/usb_prop.c ****   SetEPRxValid(ENDP0);
+ 219              		.loc 1 148 0
+ 220 0090 4FF00000 		mov	r0, #0
+ 221 0094 FFF7FEFF 		bl	SetEPRxValid
+ 149:../src/usb_prop.c **** 
+ 150:../src/usb_prop.c ****   /* Initialize Endpoint 1 */
+ 151:../src/usb_prop.c ****   SetEPType(ENDP1, EP_BULK);
+ 222              		.loc 1 151 0
+ 223 0098 4FF00100 		mov	r0, #1
+ 224 009c 4FF00001 		mov	r1, #0
+ 225 00a0 FFF7FEFF 		bl	SetEPType
+ 152:../src/usb_prop.c ****   SetEPTxAddr(ENDP1, ENDP1_TXADDR);
+ 226              		.loc 1 152 0
+ 227 00a4 4FF00100 		mov	r0, #1
+ 228 00a8 4FF0C001 		mov	r1, #192
+ 229 00ac FFF7FEFF 		bl	SetEPTxAddr
+ 153:../src/usb_prop.c ****   SetEPTxStatus(ENDP1, EP_TX_NAK);
+ 230              		.loc 1 153 0
+ 231 00b0 4FF00100 		mov	r0, #1
+ 232 00b4 4FF02001 		mov	r1, #32
+ 233 00b8 FFF7FEFF 		bl	SetEPTxStatus
+ 154:../src/usb_prop.c ****   SetEPRxStatus(ENDP1, EP_RX_DIS);
+ 234              		.loc 1 154 0
+ 235 00bc 4FF00100 		mov	r0, #1
+ 236 00c0 4FF00001 		mov	r1, #0
+ 237 00c4 FFF7FEFF 		bl	SetEPRxStatus
+ 155:../src/usb_prop.c **** 
+ 156:../src/usb_prop.c ****   /* Initialize Endpoint 2 */
+ 157:../src/usb_prop.c ****   SetEPType(ENDP2, EP_INTERRUPT);
+ 238              		.loc 1 157 0
+ 239 00c8 4FF00200 		mov	r0, #2
+ 240 00cc 4FF4C061 		mov	r1, #1536
+ 241 00d0 FFF7FEFF 		bl	SetEPType
+ 158:../src/usb_prop.c ****   SetEPTxAddr(ENDP2, ENDP2_TXADDR);
+ 242              		.loc 1 158 0
+ 243 00d4 4FF00200 		mov	r0, #2
+ 244 00d8 4FF48071 		mov	r1, #256
+ 245 00dc FFF7FEFF 		bl	SetEPTxAddr
+ 159:../src/usb_prop.c ****   SetEPRxStatus(ENDP2, EP_RX_DIS);
+ 246              		.loc 1 159 0
+ 247 00e0 4FF00200 		mov	r0, #2
+ 248 00e4 4FF00001 		mov	r1, #0
+ 249 00e8 FFF7FEFF 		bl	SetEPRxStatus
+ 160:../src/usb_prop.c ****   SetEPTxStatus(ENDP2, EP_TX_NAK);
+ 250              		.loc 1 160 0
+ 251 00ec 4FF00200 		mov	r0, #2
+ 252 00f0 4FF02001 		mov	r1, #32
+ 253 00f4 FFF7FEFF 		bl	SetEPTxStatus
+ 161:../src/usb_prop.c **** 
+ 162:../src/usb_prop.c ****   /* Initialize Endpoint 3 */
+ 163:../src/usb_prop.c ****   SetEPType(ENDP3, EP_BULK);
+ 254              		.loc 1 163 0
+ 255 00f8 4FF00300 		mov	r0, #3
+ 256 00fc 4FF00001 		mov	r1, #0
+ 257 0100 FFF7FEFF 		bl	SetEPType
+ 164:../src/usb_prop.c ****   SetEPRxAddr(ENDP3, ENDP3_RXADDR);
+ 258              		.loc 1 164 0
+ 259 0104 4FF00300 		mov	r0, #3
+ 260 0108 4FF48871 		mov	r1, #272
+ 261 010c FFF7FEFF 		bl	SetEPRxAddr
+ 165:../src/usb_prop.c ****   SetEPRxCount(ENDP3, VIRTUAL_COM_PORT_DATA_SIZE);
+ 262              		.loc 1 165 0
+ 263 0110 4FF00300 		mov	r0, #3
+ 264 0114 4FF04001 		mov	r1, #64
+ 265 0118 FFF7FEFF 		bl	SetEPRxCount
+ 166:../src/usb_prop.c ****   SetEPRxStatus(ENDP3, EP_RX_VALID);
+ 266              		.loc 1 166 0
+ 267 011c 4FF00300 		mov	r0, #3
+ 268 0120 4FF44051 		mov	r1, #12288
+ 269 0124 FFF7FEFF 		bl	SetEPRxStatus
+ 167:../src/usb_prop.c ****   SetEPTxStatus(ENDP3, EP_TX_DIS);
+ 270              		.loc 1 167 0
+ 271 0128 4FF00300 		mov	r0, #3
+ 272 012c 4FF00001 		mov	r1, #0
+ 273 0130 FFF7FEFF 		bl	SetEPTxStatus
+ 168:../src/usb_prop.c **** 
+ 169:../src/usb_prop.c ****   /* Set this device to response on default address */
+ 170:../src/usb_prop.c ****   SetDeviceAddress(0);
+ 274              		.loc 1 170 0
+ 275 0134 4FF00000 		mov	r0, #0
+ 276 0138 FFF7FEFF 		bl	SetDeviceAddress
+ 171:../src/usb_prop.c ****   
+ 172:../src/usb_prop.c ****   bDeviceState = ATTACHED;
+ 277              		.loc 1 172 0
+ 278 013c 40F20003 		movw	r3, #:lower16:bDeviceState
+ 279 0140 C0F20003 		movt	r3, #:upper16:bDeviceState
+ 280 0144 4FF00102 		mov	r2, #1
+ 281 0148 1A60     		str	r2, [r3, #0]
+ 173:../src/usb_prop.c **** }
+ 282              		.loc 1 173 0
+ 283 014a 80BD     		pop	{r7, pc}
+ 284              		.cfi_endproc
+ 285              	.LFE57:
+ 287              		.section	.text.Virtual_Com_Port_SetConfiguration,"ax",%progbits
+ 288              		.align	2
+ 289              		.global	Virtual_Com_Port_SetConfiguration
+ 290              		.thumb
+ 291              		.thumb_func
+ 293              	Virtual_Com_Port_SetConfiguration:
+ 294              	.LFB58:
+ 174:../src/usb_prop.c **** 
+ 175:../src/usb_prop.c **** /*******************************************************************************
+ 176:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_SetConfiguration.
+ 177:../src/usb_prop.c **** * Description    : Update the device state to configured.
+ 178:../src/usb_prop.c **** * Input          : None.
+ 179:../src/usb_prop.c **** * Output         : None.
+ 180:../src/usb_prop.c **** * Return         : None.
+ 181:../src/usb_prop.c **** *******************************************************************************/
+ 182:../src/usb_prop.c **** void Virtual_Com_Port_SetConfiguration(void)
+ 183:../src/usb_prop.c **** {
+ 295              		.loc 1 183 0
+ 296              		.cfi_startproc
+ 297              		@ args = 0, pretend = 0, frame = 8
+ 298              		@ frame_needed = 1, uses_anonymous_args = 0
+ 299              		@ link register save eliminated.
+ 300 0000 80B4     		push	{r7}
+ 301              	.LCFI4:
+ 302              		.cfi_def_cfa_offset 4
+ 303              		.cfi_offset 7, -4
+ 304 0002 83B0     		sub	sp, sp, #12
+ 305              	.LCFI5:
+ 306              		.cfi_def_cfa_offset 16
+ 307 0004 00AF     		add	r7, sp, #0
+ 308              	.LCFI6:
+ 309              		.cfi_def_cfa_register 7
+ 184:../src/usb_prop.c ****   DEVICE_INFO *pInfo = &Device_Info;
+ 310              		.loc 1 184 0
+ 311 0006 40F20003 		movw	r3, #:lower16:Device_Info
+ 312 000a C0F20003 		movt	r3, #:upper16:Device_Info
+ 313 000e 7B60     		str	r3, [r7, #4]
+ 185:../src/usb_prop.c **** 
+ 186:../src/usb_prop.c ****   if (pInfo->Current_Configuration != 0)
+ 314              		.loc 1 186 0
+ 315 0010 7B68     		ldr	r3, [r7, #4]
+ 316 0012 9B7A     		ldrb	r3, [r3, #10]	@ zero_extendqisi2
+ 317 0014 002B     		cmp	r3, #0
+ 318 0016 06D0     		beq	.L3
+ 187:../src/usb_prop.c ****   {
+ 188:../src/usb_prop.c ****     /* Device configured */
+ 189:../src/usb_prop.c ****     bDeviceState = CONFIGURED;
+ 319              		.loc 1 189 0
+ 320 0018 40F20003 		movw	r3, #:lower16:bDeviceState
+ 321 001c C0F20003 		movt	r3, #:upper16:bDeviceState
+ 322 0020 4FF00502 		mov	r2, #5
+ 323 0024 1A60     		str	r2, [r3, #0]
+ 324              	.L3:
+ 190:../src/usb_prop.c ****   }
+ 191:../src/usb_prop.c **** }
+ 325              		.loc 1 191 0
+ 326 0026 07F10C07 		add	r7, r7, #12
+ 327 002a BD46     		mov	sp, r7
+ 328 002c 80BC     		pop	{r7}
+ 329 002e 7047     		bx	lr
+ 330              		.cfi_endproc
+ 331              	.LFE58:
+ 333              		.section	.text.Virtual_Com_Port_SetDeviceAddress,"ax",%progbits
+ 334              		.align	2
+ 335              		.global	Virtual_Com_Port_SetDeviceAddress
+ 336              		.thumb
+ 337              		.thumb_func
+ 339              	Virtual_Com_Port_SetDeviceAddress:
+ 340              	.LFB59:
+ 192:../src/usb_prop.c **** 
+ 193:../src/usb_prop.c **** /*******************************************************************************
+ 194:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_SetConfiguration.
+ 195:../src/usb_prop.c **** * Description    : Update the device state to addressed.
+ 196:../src/usb_prop.c **** * Input          : None.
+ 197:../src/usb_prop.c **** * Output         : None.
+ 198:../src/usb_prop.c **** * Return         : None.
+ 199:../src/usb_prop.c **** *******************************************************************************/
+ 200:../src/usb_prop.c **** void Virtual_Com_Port_SetDeviceAddress (void)
+ 201:../src/usb_prop.c **** {
+ 341              		.loc 1 201 0
+ 342              		.cfi_startproc
+ 343              		@ args = 0, pretend = 0, frame = 0
+ 344              		@ frame_needed = 1, uses_anonymous_args = 0
+ 345              		@ link register save eliminated.
+ 346 0000 80B4     		push	{r7}
+ 347              	.LCFI7:
+ 348              		.cfi_def_cfa_offset 4
+ 349              		.cfi_offset 7, -4
+ 350 0002 00AF     		add	r7, sp, #0
+ 351              	.LCFI8:
+ 352              		.cfi_def_cfa_register 7
+ 202:../src/usb_prop.c ****   bDeviceState = ADDRESSED;
+ 353              		.loc 1 202 0
+ 354 0004 40F20003 		movw	r3, #:lower16:bDeviceState
+ 355 0008 C0F20003 		movt	r3, #:upper16:bDeviceState
+ 356 000c 4FF00402 		mov	r2, #4
+ 357 0010 1A60     		str	r2, [r3, #0]
+ 203:../src/usb_prop.c **** }
+ 358              		.loc 1 203 0
+ 359 0012 BD46     		mov	sp, r7
+ 360 0014 80BC     		pop	{r7}
+ 361 0016 7047     		bx	lr
+ 362              		.cfi_endproc
+ 363              	.LFE59:
+ 365              		.section	.text.Virtual_Com_Port_Status_In,"ax",%progbits
+ 366              		.align	2
+ 367              		.global	Virtual_Com_Port_Status_In
+ 368              		.thumb
+ 369              		.thumb_func
+ 371              	Virtual_Com_Port_Status_In:
+ 372              	.LFB60:
+ 204:../src/usb_prop.c **** 
+ 205:../src/usb_prop.c **** /*******************************************************************************
+ 206:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_Status_In.
+ 207:../src/usb_prop.c **** * Description    : Virtual COM Port Status In Routine.
+ 208:../src/usb_prop.c **** * Input          : None.
+ 209:../src/usb_prop.c **** * Output         : None.
+ 210:../src/usb_prop.c **** * Return         : None.
+ 211:../src/usb_prop.c **** *******************************************************************************/
+ 212:../src/usb_prop.c **** void Virtual_Com_Port_Status_In(void)
+ 213:../src/usb_prop.c **** {
+ 373              		.loc 1 213 0
+ 374              		.cfi_startproc
+ 375              		@ args = 0, pretend = 0, frame = 0
+ 376              		@ frame_needed = 1, uses_anonymous_args = 0
+ 377              		@ link register save eliminated.
+ 378 0000 80B4     		push	{r7}
+ 379              	.LCFI9:
+ 380              		.cfi_def_cfa_offset 4
+ 381              		.cfi_offset 7, -4
+ 382 0002 00AF     		add	r7, sp, #0
+ 383              	.LCFI10:
+ 384              		.cfi_def_cfa_register 7
+ 214:../src/usb_prop.c ****   if (Request == SET_LINE_CODING)
+ 385              		.loc 1 214 0
+ 386 0004 40F20003 		movw	r3, #:lower16:Request
+ 387 0008 C0F20003 		movt	r3, #:upper16:Request
+ 388 000c 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 389 000e 202B     		cmp	r3, #32
+ 390 0010 06D1     		bne	.L6
+ 215:../src/usb_prop.c ****   {
+ 216:../src/usb_prop.c ****     //Set Usart BaudRate here
+ 217:../src/usb_prop.c ****     Request = 0;
+ 391              		.loc 1 217 0
+ 392 0012 40F20003 		movw	r3, #:lower16:Request
+ 393 0016 C0F20003 		movt	r3, #:upper16:Request
+ 394 001a 4FF00002 		mov	r2, #0
+ 395 001e 1A70     		strb	r2, [r3, #0]
+ 396              	.L6:
+ 218:../src/usb_prop.c ****   }
+ 219:../src/usb_prop.c **** }
+ 397              		.loc 1 219 0
+ 398 0020 BD46     		mov	sp, r7
+ 399 0022 80BC     		pop	{r7}
+ 400 0024 7047     		bx	lr
+ 401              		.cfi_endproc
+ 402              	.LFE60:
+ 404              		.section	.text.Virtual_Com_Port_Status_Out,"ax",%progbits
+ 405              		.align	2
+ 406              		.global	Virtual_Com_Port_Status_Out
+ 407              		.thumb
+ 408              		.thumb_func
+ 410              	Virtual_Com_Port_Status_Out:
+ 411              	.LFB61:
+ 220:../src/usb_prop.c **** 
+ 221:../src/usb_prop.c **** /*******************************************************************************
+ 222:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_Status_Out
+ 223:../src/usb_prop.c **** * Description    : Virtual COM Port Status OUT Routine.
+ 224:../src/usb_prop.c **** * Input          : None.
+ 225:../src/usb_prop.c **** * Output         : None.
+ 226:../src/usb_prop.c **** * Return         : None.
+ 227:../src/usb_prop.c **** *******************************************************************************/
+ 228:../src/usb_prop.c **** void Virtual_Com_Port_Status_Out(void)
+ 229:../src/usb_prop.c **** {}
+ 412              		.loc 1 229 0
+ 413              		.cfi_startproc
+ 414              		@ args = 0, pretend = 0, frame = 0
+ 415              		@ frame_needed = 1, uses_anonymous_args = 0
+ 416              		@ link register save eliminated.
+ 417 0000 80B4     		push	{r7}
+ 418              	.LCFI11:
+ 419              		.cfi_def_cfa_offset 4
+ 420              		.cfi_offset 7, -4
+ 421 0002 00AF     		add	r7, sp, #0
+ 422              	.LCFI12:
+ 423              		.cfi_def_cfa_register 7
+ 424              		.loc 1 229 0
+ 425 0004 BD46     		mov	sp, r7
+ 426 0006 80BC     		pop	{r7}
+ 427 0008 7047     		bx	lr
+ 428              		.cfi_endproc
+ 429              	.LFE61:
+ 431 000a 00BF     		.section	.text.Virtual_Com_Port_Data_Setup,"ax",%progbits
+ 432              		.align	2
+ 433              		.global	Virtual_Com_Port_Data_Setup
+ 434              		.thumb
+ 435              		.thumb_func
+ 437              	Virtual_Com_Port_Data_Setup:
+ 438              	.LFB62:
+ 230:../src/usb_prop.c **** 
+ 231:../src/usb_prop.c **** /*******************************************************************************
+ 232:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_Data_Setup
+ 233:../src/usb_prop.c **** * Description    : handle the data class specific requests
+ 234:../src/usb_prop.c **** * Input          : Request Nb.
+ 235:../src/usb_prop.c **** * Output         : None.
+ 236:../src/usb_prop.c **** * Return         : USB_UNSUPPORT or USB_SUCCESS.
+ 237:../src/usb_prop.c **** *******************************************************************************/
+ 238:../src/usb_prop.c **** RESULT Virtual_Com_Port_Data_Setup(uint8_t RequestNo)
+ 239:../src/usb_prop.c **** {
+ 439              		.loc 1 239 0
+ 440              		.cfi_startproc
+ 441              		@ args = 0, pretend = 0, frame = 16
+ 442              		@ frame_needed = 1, uses_anonymous_args = 0
+ 443 0000 80B5     		push	{r7, lr}
+ 444              	.LCFI13:
+ 445              		.cfi_def_cfa_offset 8
+ 446              		.cfi_offset 7, -8
+ 447              		.cfi_offset 14, -4
+ 448 0002 84B0     		sub	sp, sp, #16
+ 449              	.LCFI14:
+ 450              		.cfi_def_cfa_offset 24
+ 451 0004 00AF     		add	r7, sp, #0
+ 452              	.LCFI15:
+ 453              		.cfi_def_cfa_register 7
+ 454 0006 0346     		mov	r3, r0
+ 455 0008 FB71     		strb	r3, [r7, #7]
+ 240:../src/usb_prop.c ****   uint8_t    *(*CopyRoutine)(uint16_t);
+ 241:../src/usb_prop.c **** 
+ 242:../src/usb_prop.c ****   CopyRoutine = NULL;
+ 456              		.loc 1 242 0
+ 457 000a 4FF00003 		mov	r3, #0
+ 458 000e FB60     		str	r3, [r7, #12]
+ 243:../src/usb_prop.c **** 
+ 244:../src/usb_prop.c ****   if (RequestNo == GET_LINE_CODING)
+ 459              		.loc 1 244 0
+ 460 0010 FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 461 0012 212B     		cmp	r3, #33
+ 462 0014 0FD1     		bne	.L10
+ 245:../src/usb_prop.c ****   {
+ 246:../src/usb_prop.c ****     if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
+ 463              		.loc 1 246 0
+ 464 0016 40F20003 		movw	r3, #:lower16:pInformation
+ 465 001a C0F20003 		movt	r3, #:upper16:pInformation
+ 466 001e 1B68     		ldr	r3, [r3, #0]
+ 467 0020 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 468 0022 03F07F03 		and	r3, r3, #127
+ 469 0026 212B     		cmp	r3, #33
+ 470 0028 1ED1     		bne	.L11
+ 247:../src/usb_prop.c ****     {
+ 248:../src/usb_prop.c ****       CopyRoutine = Virtual_Com_Port_GetLineCoding;
+ 471              		.loc 1 248 0
+ 472 002a 40F20003 		movw	r3, #:lower16:Virtual_Com_Port_GetLineCoding
+ 473 002e C0F20003 		movt	r3, #:upper16:Virtual_Com_Port_GetLineCoding
+ 474 0032 FB60     		str	r3, [r7, #12]
+ 475 0034 18E0     		b	.L11
+ 476              	.L10:
+ 249:../src/usb_prop.c ****     }
+ 250:../src/usb_prop.c ****   }
+ 251:../src/usb_prop.c ****   else if (RequestNo == SET_LINE_CODING)
+ 477              		.loc 1 251 0
+ 478 0036 FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 479 0038 202B     		cmp	r3, #32
+ 480 003a 15D1     		bne	.L11
+ 252:../src/usb_prop.c ****   {
+ 253:../src/usb_prop.c ****     if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
+ 481              		.loc 1 253 0
+ 482 003c 40F20003 		movw	r3, #:lower16:pInformation
+ 483 0040 C0F20003 		movt	r3, #:upper16:pInformation
+ 484 0044 1B68     		ldr	r3, [r3, #0]
+ 485 0046 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 486 0048 03F07F03 		and	r3, r3, #127
+ 487 004c 212B     		cmp	r3, #33
+ 488 004e 04D1     		bne	.L12
+ 254:../src/usb_prop.c ****     {
+ 255:../src/usb_prop.c ****       CopyRoutine = Virtual_Com_Port_SetLineCoding;
+ 489              		.loc 1 255 0
+ 490 0050 40F20003 		movw	r3, #:lower16:Virtual_Com_Port_SetLineCoding
+ 491 0054 C0F20003 		movt	r3, #:upper16:Virtual_Com_Port_SetLineCoding
+ 492 0058 FB60     		str	r3, [r7, #12]
+ 493              	.L12:
+ 256:../src/usb_prop.c ****     }
+ 257:../src/usb_prop.c ****     Request = SET_LINE_CODING;
+ 494              		.loc 1 257 0
+ 495 005a 40F20003 		movw	r3, #:lower16:Request
+ 496 005e C0F20003 		movt	r3, #:upper16:Request
+ 497 0062 4FF02002 		mov	r2, #32
+ 498 0066 1A70     		strb	r2, [r3, #0]
+ 499              	.L11:
+ 258:../src/usb_prop.c ****   }
+ 259:../src/usb_prop.c **** 
+ 260:../src/usb_prop.c ****   if (CopyRoutine == NULL)
+ 500              		.loc 1 260 0
+ 501 0068 FB68     		ldr	r3, [r7, #12]
+ 502 006a 002B     		cmp	r3, #0
+ 503 006c 02D1     		bne	.L13
+ 261:../src/usb_prop.c ****   {
+ 262:../src/usb_prop.c ****     return USB_UNSUPPORT;
+ 504              		.loc 1 262 0
+ 505 006e 4FF00203 		mov	r3, #2
+ 506 0072 14E0     		b	.L14
+ 507              	.L13:
+ 263:../src/usb_prop.c ****   }
+ 264:../src/usb_prop.c **** 
+ 265:../src/usb_prop.c ****   pInformation->Ctrl_Info.CopyData = CopyRoutine;
+ 508              		.loc 1 265 0
+ 509 0074 40F20003 		movw	r3, #:lower16:pInformation
+ 510 0078 C0F20003 		movt	r3, #:upper16:pInformation
+ 511 007c 1B68     		ldr	r3, [r3, #0]
+ 512 007e FA68     		ldr	r2, [r7, #12]
+ 513 0080 9A61     		str	r2, [r3, #24]
+ 266:../src/usb_prop.c ****   pInformation->Ctrl_Info.Usb_wOffset = 0;
+ 514              		.loc 1 266 0
+ 515 0082 40F20003 		movw	r3, #:lower16:pInformation
+ 516 0086 C0F20003 		movt	r3, #:upper16:pInformation
+ 517 008a 1B68     		ldr	r3, [r3, #0]
+ 518 008c 4FF00002 		mov	r2, #0
+ 519 0090 5A82     		strh	r2, [r3, #18]	@ movhi
+ 267:../src/usb_prop.c ****   (*CopyRoutine)(0);
+ 520              		.loc 1 267 0
+ 521 0092 FB68     		ldr	r3, [r7, #12]
+ 522 0094 4FF00000 		mov	r0, #0
+ 523 0098 9847     		blx	r3
+ 268:../src/usb_prop.c ****   return USB_SUCCESS;
+ 524              		.loc 1 268 0
+ 525 009a 4FF00003 		mov	r3, #0
+ 526              	.L14:
+ 269:../src/usb_prop.c **** }
+ 527              		.loc 1 269 0
+ 528 009e 1846     		mov	r0, r3
+ 529 00a0 07F11007 		add	r7, r7, #16
+ 530 00a4 BD46     		mov	sp, r7
+ 531 00a6 80BD     		pop	{r7, pc}
+ 532              		.cfi_endproc
+ 533              	.LFE62:
+ 535              		.section	.text.Virtual_Com_Port_NoData_Setup,"ax",%progbits
+ 536              		.align	2
+ 537              		.global	Virtual_Com_Port_NoData_Setup
+ 538              		.thumb
+ 539              		.thumb_func
+ 541              	Virtual_Com_Port_NoData_Setup:
+ 542              	.LFB63:
+ 270:../src/usb_prop.c **** 
+ 271:../src/usb_prop.c **** /*******************************************************************************
+ 272:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_NoData_Setup.
+ 273:../src/usb_prop.c **** * Description    : handle the no data class specific requests.
+ 274:../src/usb_prop.c **** * Input          : Request Nb.
+ 275:../src/usb_prop.c **** * Output         : None.
+ 276:../src/usb_prop.c **** * Return         : USB_UNSUPPORT or USB_SUCCESS.
+ 277:../src/usb_prop.c **** *******************************************************************************/
+ 278:../src/usb_prop.c **** RESULT Virtual_Com_Port_NoData_Setup(uint8_t RequestNo)
+ 279:../src/usb_prop.c **** {
+ 543              		.loc 1 279 0
+ 544              		.cfi_startproc
+ 545              		@ args = 0, pretend = 0, frame = 8
+ 546              		@ frame_needed = 1, uses_anonymous_args = 0
+ 547              		@ link register save eliminated.
+ 548 0000 80B4     		push	{r7}
+ 549              	.LCFI16:
+ 550              		.cfi_def_cfa_offset 4
+ 551              		.cfi_offset 7, -4
+ 552 0002 83B0     		sub	sp, sp, #12
+ 553              	.LCFI17:
+ 554              		.cfi_def_cfa_offset 16
+ 555 0004 00AF     		add	r7, sp, #0
+ 556              	.LCFI18:
+ 557              		.cfi_def_cfa_register 7
+ 558 0006 0346     		mov	r3, r0
+ 559 0008 FB71     		strb	r3, [r7, #7]
+ 280:../src/usb_prop.c **** 
+ 281:../src/usb_prop.c ****   if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
+ 560              		.loc 1 281 0
+ 561 000a 40F20003 		movw	r3, #:lower16:pInformation
+ 562 000e C0F20003 		movt	r3, #:upper16:pInformation
+ 563 0012 1B68     		ldr	r3, [r3, #0]
+ 564 0014 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 565 0016 03F07F03 		and	r3, r3, #127
+ 566 001a 212B     		cmp	r3, #33
+ 567 001c 0BD1     		bne	.L16
+ 282:../src/usb_prop.c ****   {
+ 283:../src/usb_prop.c ****     if (RequestNo == SET_COMM_FEATURE)
+ 568              		.loc 1 283 0
+ 569 001e FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 570 0020 022B     		cmp	r3, #2
+ 571 0022 02D1     		bne	.L17
+ 284:../src/usb_prop.c ****     {
+ 285:../src/usb_prop.c ****       return USB_SUCCESS;
+ 572              		.loc 1 285 0
+ 573 0024 4FF00003 		mov	r3, #0
+ 574 0028 07E0     		b	.L18
+ 575              	.L17:
+ 286:../src/usb_prop.c ****     }
+ 287:../src/usb_prop.c ****     else if (RequestNo == SET_CONTROL_LINE_STATE)
+ 576              		.loc 1 287 0
+ 577 002a FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 578 002c 222B     		cmp	r3, #34
+ 579 002e 02D1     		bne	.L16
+ 288:../src/usb_prop.c ****     {
+ 289:../src/usb_prop.c ****       return USB_SUCCESS;
+ 580              		.loc 1 289 0
+ 581 0030 4FF00003 		mov	r3, #0
+ 582 0034 01E0     		b	.L18
+ 583              	.L16:
+ 290:../src/usb_prop.c ****     }
+ 291:../src/usb_prop.c ****   }
+ 292:../src/usb_prop.c **** 
+ 293:../src/usb_prop.c ****   return USB_UNSUPPORT;
+ 584              		.loc 1 293 0
+ 585 0036 4FF00203 		mov	r3, #2
+ 586              	.L18:
+ 294:../src/usb_prop.c **** }
+ 587              		.loc 1 294 0
+ 588 003a 1846     		mov	r0, r3
+ 589 003c 07F10C07 		add	r7, r7, #12
+ 590 0040 BD46     		mov	sp, r7
+ 591 0042 80BC     		pop	{r7}
+ 592 0044 7047     		bx	lr
+ 593              		.cfi_endproc
+ 594              	.LFE63:
+ 596              		.section	.text.Virtual_Com_Port_GetDeviceDescriptor,"ax",%progbits
+ 597              		.align	2
+ 598              		.global	Virtual_Com_Port_GetDeviceDescriptor
+ 599              		.thumb
+ 600              		.thumb_func
+ 602              	Virtual_Com_Port_GetDeviceDescriptor:
+ 603              	.LFB64:
+ 295:../src/usb_prop.c **** 
+ 296:../src/usb_prop.c **** /*******************************************************************************
+ 297:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_GetDeviceDescriptor.
+ 298:../src/usb_prop.c **** * Description    : Gets the device descriptor.
+ 299:../src/usb_prop.c **** * Input          : Length.
+ 300:../src/usb_prop.c **** * Output         : None.
+ 301:../src/usb_prop.c **** * Return         : The address of the device descriptor.
+ 302:../src/usb_prop.c **** *******************************************************************************/
+ 303:../src/usb_prop.c **** uint8_t *Virtual_Com_Port_GetDeviceDescriptor(uint16_t Length)
+ 304:../src/usb_prop.c **** {
+ 604              		.loc 1 304 0
+ 605              		.cfi_startproc
+ 606              		@ args = 0, pretend = 0, frame = 8
+ 607              		@ frame_needed = 1, uses_anonymous_args = 0
+ 608 0000 80B5     		push	{r7, lr}
+ 609              	.LCFI19:
+ 610              		.cfi_def_cfa_offset 8
+ 611              		.cfi_offset 7, -8
+ 612              		.cfi_offset 14, -4
+ 613 0002 82B0     		sub	sp, sp, #8
+ 614              	.LCFI20:
+ 615              		.cfi_def_cfa_offset 16
+ 616 0004 00AF     		add	r7, sp, #0
+ 617              	.LCFI21:
+ 618              		.cfi_def_cfa_register 7
+ 619 0006 0346     		mov	r3, r0
+ 620 0008 FB80     		strh	r3, [r7, #6]	@ movhi
+ 305:../src/usb_prop.c ****   return Standard_GetDescriptorData(Length, &Device_Descriptor);
+ 621              		.loc 1 305 0
+ 622 000a FB88     		ldrh	r3, [r7, #6]
+ 623 000c 1846     		mov	r0, r3
+ 624 000e 40F20001 		movw	r1, #:lower16:Device_Descriptor
+ 625 0012 C0F20001 		movt	r1, #:upper16:Device_Descriptor
+ 626 0016 FFF7FEFF 		bl	Standard_GetDescriptorData
+ 627 001a 0346     		mov	r3, r0
+ 306:../src/usb_prop.c **** }
+ 628              		.loc 1 306 0
+ 629 001c 1846     		mov	r0, r3
+ 630 001e 07F10807 		add	r7, r7, #8
+ 631 0022 BD46     		mov	sp, r7
+ 632 0024 80BD     		pop	{r7, pc}
+ 633              		.cfi_endproc
+ 634              	.LFE64:
+ 636 0026 00BF     		.section	.text.Virtual_Com_Port_GetConfigDescriptor,"ax",%progbits
+ 637              		.align	2
+ 638              		.global	Virtual_Com_Port_GetConfigDescriptor
+ 639              		.thumb
+ 640              		.thumb_func
+ 642              	Virtual_Com_Port_GetConfigDescriptor:
+ 643              	.LFB65:
+ 307:../src/usb_prop.c **** 
+ 308:../src/usb_prop.c **** /*******************************************************************************
+ 309:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_GetConfigDescriptor.
+ 310:../src/usb_prop.c **** * Description    : get the configuration descriptor.
+ 311:../src/usb_prop.c **** * Input          : Length.
+ 312:../src/usb_prop.c **** * Output         : None.
+ 313:../src/usb_prop.c **** * Return         : The address of the configuration descriptor.
+ 314:../src/usb_prop.c **** *******************************************************************************/
+ 315:../src/usb_prop.c **** uint8_t *Virtual_Com_Port_GetConfigDescriptor(uint16_t Length)
+ 316:../src/usb_prop.c **** {
+ 644              		.loc 1 316 0
+ 645              		.cfi_startproc
+ 646              		@ args = 0, pretend = 0, frame = 8
+ 647              		@ frame_needed = 1, uses_anonymous_args = 0
+ 648 0000 80B5     		push	{r7, lr}
+ 649              	.LCFI22:
+ 650              		.cfi_def_cfa_offset 8
+ 651              		.cfi_offset 7, -8
+ 652              		.cfi_offset 14, -4
+ 653 0002 82B0     		sub	sp, sp, #8
+ 654              	.LCFI23:
+ 655              		.cfi_def_cfa_offset 16
+ 656 0004 00AF     		add	r7, sp, #0
+ 657              	.LCFI24:
+ 658              		.cfi_def_cfa_register 7
+ 659 0006 0346     		mov	r3, r0
+ 660 0008 FB80     		strh	r3, [r7, #6]	@ movhi
+ 317:../src/usb_prop.c ****   return Standard_GetDescriptorData(Length, &Config_Descriptor);
+ 661              		.loc 1 317 0
+ 662 000a FB88     		ldrh	r3, [r7, #6]
+ 663 000c 1846     		mov	r0, r3
+ 664 000e 40F20001 		movw	r1, #:lower16:Config_Descriptor
+ 665 0012 C0F20001 		movt	r1, #:upper16:Config_Descriptor
+ 666 0016 FFF7FEFF 		bl	Standard_GetDescriptorData
+ 667 001a 0346     		mov	r3, r0
+ 318:../src/usb_prop.c **** }
+ 668              		.loc 1 318 0
+ 669 001c 1846     		mov	r0, r3
+ 670 001e 07F10807 		add	r7, r7, #8
+ 671 0022 BD46     		mov	sp, r7
+ 672 0024 80BD     		pop	{r7, pc}
+ 673              		.cfi_endproc
+ 674              	.LFE65:
+ 676 0026 00BF     		.section	.text.Virtual_Com_Port_GetStringDescriptor,"ax",%progbits
+ 677              		.align	2
+ 678              		.global	Virtual_Com_Port_GetStringDescriptor
+ 679              		.thumb
+ 680              		.thumb_func
+ 682              	Virtual_Com_Port_GetStringDescriptor:
+ 683              	.LFB66:
+ 319:../src/usb_prop.c **** 
+ 320:../src/usb_prop.c **** /*******************************************************************************
+ 321:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_GetStringDescriptor
+ 322:../src/usb_prop.c **** * Description    : Gets the string descriptors according to the needed index
+ 323:../src/usb_prop.c **** * Input          : Length.
+ 324:../src/usb_prop.c **** * Output         : None.
+ 325:../src/usb_prop.c **** * Return         : The address of the string descriptors.
+ 326:../src/usb_prop.c **** *******************************************************************************/
+ 327:../src/usb_prop.c **** uint8_t *Virtual_Com_Port_GetStringDescriptor(uint16_t Length)
+ 328:../src/usb_prop.c **** {
+ 684              		.loc 1 328 0
+ 685              		.cfi_startproc
+ 686              		@ args = 0, pretend = 0, frame = 16
+ 687              		@ frame_needed = 1, uses_anonymous_args = 0
+ 688 0000 80B5     		push	{r7, lr}
+ 689              	.LCFI25:
+ 690              		.cfi_def_cfa_offset 8
+ 691              		.cfi_offset 7, -8
+ 692              		.cfi_offset 14, -4
+ 693 0002 84B0     		sub	sp, sp, #16
+ 694              	.LCFI26:
+ 695              		.cfi_def_cfa_offset 24
+ 696 0004 00AF     		add	r7, sp, #0
+ 697              	.LCFI27:
+ 698              		.cfi_def_cfa_register 7
+ 699 0006 0346     		mov	r3, r0
+ 700 0008 FB80     		strh	r3, [r7, #6]	@ movhi
+ 329:../src/usb_prop.c ****   uint8_t wValue0 = pInformation->USBwValue0;
+ 701              		.loc 1 329 0
+ 702 000a 40F20003 		movw	r3, #:lower16:pInformation
+ 703 000e C0F20003 		movt	r3, #:upper16:pInformation
+ 704 0012 1B68     		ldr	r3, [r3, #0]
+ 705 0014 DB78     		ldrb	r3, [r3, #3]
+ 706 0016 FB73     		strb	r3, [r7, #15]
+ 330:../src/usb_prop.c ****   if (wValue0 > 4)
+ 707              		.loc 1 330 0
+ 708 0018 FB7B     		ldrb	r3, [r7, #15]	@ zero_extendqisi2
+ 709 001a 042B     		cmp	r3, #4
+ 710 001c 02D9     		bls	.L24
+ 331:../src/usb_prop.c ****   {
+ 332:../src/usb_prop.c ****     return NULL;
+ 711              		.loc 1 332 0
+ 712 001e 4FF00003 		mov	r3, #0
+ 713 0022 0DE0     		b	.L25
+ 714              	.L24:
+ 333:../src/usb_prop.c ****   }
+ 334:../src/usb_prop.c ****   else
+ 335:../src/usb_prop.c ****   {
+ 336:../src/usb_prop.c ****     return Standard_GetDescriptorData(Length, &String_Descriptor[wValue0]);
+ 715              		.loc 1 336 0
+ 716 0024 FB7B     		ldrb	r3, [r7, #15]	@ zero_extendqisi2
+ 717 0026 4FEAC302 		lsl	r2, r3, #3
+ 718 002a 40F20003 		movw	r3, #:lower16:String_Descriptor
+ 719 002e C0F20003 		movt	r3, #:upper16:String_Descriptor
+ 720 0032 D318     		adds	r3, r2, r3
+ 721 0034 FA88     		ldrh	r2, [r7, #6]
+ 722 0036 1046     		mov	r0, r2
+ 723 0038 1946     		mov	r1, r3
+ 724 003a FFF7FEFF 		bl	Standard_GetDescriptorData
+ 725 003e 0346     		mov	r3, r0
+ 726              	.L25:
+ 337:../src/usb_prop.c ****   }
+ 338:../src/usb_prop.c **** }
+ 727              		.loc 1 338 0
+ 728 0040 1846     		mov	r0, r3
+ 729 0042 07F11007 		add	r7, r7, #16
+ 730 0046 BD46     		mov	sp, r7
+ 731 0048 80BD     		pop	{r7, pc}
+ 732              		.cfi_endproc
+ 733              	.LFE66:
+ 735 004a 00BF     		.section	.text.Virtual_Com_Port_Get_Interface_Setting,"ax",%progbits
+ 736              		.align	2
+ 737              		.global	Virtual_Com_Port_Get_Interface_Setting
+ 738              		.thumb
+ 739              		.thumb_func
+ 741              	Virtual_Com_Port_Get_Interface_Setting:
+ 742              	.LFB67:
+ 339:../src/usb_prop.c **** 
+ 340:../src/usb_prop.c **** /*******************************************************************************
+ 341:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_Get_Interface_Setting.
+ 342:../src/usb_prop.c **** * Description    : test the interface and the alternate setting according to the
+ 343:../src/usb_prop.c **** *                  supported one.
+ 344:../src/usb_prop.c **** * Input1         : uint8_t: Interface : interface number.
+ 345:../src/usb_prop.c **** * Input2         : uint8_t: AlternateSetting : Alternate Setting number.
+ 346:../src/usb_prop.c **** * Output         : None.
+ 347:../src/usb_prop.c **** * Return         : The address of the string descriptors.
+ 348:../src/usb_prop.c **** *******************************************************************************/
+ 349:../src/usb_prop.c **** RESULT Virtual_Com_Port_Get_Interface_Setting(uint8_t Interface, uint8_t AlternateSetting)
+ 350:../src/usb_prop.c **** {
+ 743              		.loc 1 350 0
+ 744              		.cfi_startproc
+ 745              		@ args = 0, pretend = 0, frame = 8
+ 746              		@ frame_needed = 1, uses_anonymous_args = 0
+ 747              		@ link register save eliminated.
+ 748 0000 80B4     		push	{r7}
+ 749              	.LCFI28:
+ 750              		.cfi_def_cfa_offset 4
+ 751              		.cfi_offset 7, -4
+ 752 0002 83B0     		sub	sp, sp, #12
+ 753              	.LCFI29:
+ 754              		.cfi_def_cfa_offset 16
+ 755 0004 00AF     		add	r7, sp, #0
+ 756              	.LCFI30:
+ 757              		.cfi_def_cfa_register 7
+ 758 0006 0246     		mov	r2, r0
+ 759 0008 0B46     		mov	r3, r1
+ 760 000a FA71     		strb	r2, [r7, #7]
+ 761 000c BB71     		strb	r3, [r7, #6]
+ 351:../src/usb_prop.c ****   if (AlternateSetting > 0)
+ 762              		.loc 1 351 0
+ 763 000e BB79     		ldrb	r3, [r7, #6]	@ zero_extendqisi2
+ 764 0010 002B     		cmp	r3, #0
+ 765 0012 02D0     		beq	.L27
+ 352:../src/usb_prop.c ****   {
+ 353:../src/usb_prop.c ****     return USB_UNSUPPORT;
+ 766              		.loc 1 353 0
+ 767 0014 4FF00203 		mov	r3, #2
+ 768 0018 07E0     		b	.L28
+ 769              	.L27:
+ 354:../src/usb_prop.c ****   }
+ 355:../src/usb_prop.c ****   else if (Interface > 1)
+ 770              		.loc 1 355 0
+ 771 001a FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 772 001c 012B     		cmp	r3, #1
+ 773 001e 02D9     		bls	.L29
+ 356:../src/usb_prop.c ****   {
+ 357:../src/usb_prop.c ****     return USB_UNSUPPORT;
+ 774              		.loc 1 357 0
+ 775 0020 4FF00203 		mov	r3, #2
+ 776 0024 01E0     		b	.L28
+ 777              	.L29:
+ 358:../src/usb_prop.c ****   }
+ 359:../src/usb_prop.c ****   return USB_SUCCESS;
+ 778              		.loc 1 359 0
+ 779 0026 4FF00003 		mov	r3, #0
+ 780              	.L28:
+ 360:../src/usb_prop.c **** }
+ 781              		.loc 1 360 0
+ 782 002a 1846     		mov	r0, r3
+ 783 002c 07F10C07 		add	r7, r7, #12
+ 784 0030 BD46     		mov	sp, r7
+ 785 0032 80BC     		pop	{r7}
+ 786 0034 7047     		bx	lr
+ 787              		.cfi_endproc
+ 788              	.LFE67:
+ 790 0036 00BF     		.section	.text.Virtual_Com_Port_GetLineCoding,"ax",%progbits
+ 791              		.align	2
+ 792              		.global	Virtual_Com_Port_GetLineCoding
+ 793              		.thumb
+ 794              		.thumb_func
+ 796              	Virtual_Com_Port_GetLineCoding:
+ 797              	.LFB68:
+ 361:../src/usb_prop.c **** 
+ 362:../src/usb_prop.c **** /*******************************************************************************
+ 363:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_GetLineCoding.
+ 364:../src/usb_prop.c **** * Description    : send the linecoding structure to the PC host.
+ 365:../src/usb_prop.c **** * Input          : Length.
+ 366:../src/usb_prop.c **** * Output         : None.
+ 367:../src/usb_prop.c **** * Return         : Linecoding structure base address.
+ 368:../src/usb_prop.c **** *******************************************************************************/
+ 369:../src/usb_prop.c **** uint8_t *Virtual_Com_Port_GetLineCoding(uint16_t Length)
+ 370:../src/usb_prop.c **** {
+ 798              		.loc 1 370 0
+ 799              		.cfi_startproc
+ 800              		@ args = 0, pretend = 0, frame = 8
+ 801              		@ frame_needed = 1, uses_anonymous_args = 0
+ 802              		@ link register save eliminated.
+ 803 0000 80B4     		push	{r7}
+ 804              	.LCFI31:
+ 805              		.cfi_def_cfa_offset 4
+ 806              		.cfi_offset 7, -4
+ 807 0002 83B0     		sub	sp, sp, #12
+ 808              	.LCFI32:
+ 809              		.cfi_def_cfa_offset 16
+ 810 0004 00AF     		add	r7, sp, #0
+ 811              	.LCFI33:
+ 812              		.cfi_def_cfa_register 7
+ 813 0006 0346     		mov	r3, r0
+ 814 0008 FB80     		strh	r3, [r7, #6]	@ movhi
+ 371:../src/usb_prop.c ****   if (Length == 0)
+ 815              		.loc 1 371 0
+ 816 000a FB88     		ldrh	r3, [r7, #6]
+ 817 000c 002B     		cmp	r3, #0
+ 818 000e 0AD1     		bne	.L31
+ 372:../src/usb_prop.c ****   {
+ 373:../src/usb_prop.c ****     pInformation->Ctrl_Info.Usb_wLength = sizeof(linecoding);
+ 819              		.loc 1 373 0
+ 820 0010 40F20003 		movw	r3, #:lower16:pInformation
+ 821 0014 C0F20003 		movt	r3, #:upper16:pInformation
+ 822 0018 1B68     		ldr	r3, [r3, #0]
+ 823 001a 4FF00802 		mov	r2, #8
+ 824 001e 1A82     		strh	r2, [r3, #16]	@ movhi
+ 374:../src/usb_prop.c ****     return NULL;
+ 825              		.loc 1 374 0
+ 826 0020 4FF00003 		mov	r3, #0
+ 827 0024 03E0     		b	.L32
+ 828              	.L31:
+ 375:../src/usb_prop.c ****   }
+ 376:../src/usb_prop.c ****   return(uint8_t *)&linecoding;
+ 829              		.loc 1 376 0
+ 830 0026 40F20003 		movw	r3, #:lower16:linecoding
+ 831 002a C0F20003 		movt	r3, #:upper16:linecoding
+ 832              	.L32:
+ 377:../src/usb_prop.c **** }
+ 833              		.loc 1 377 0
+ 834 002e 1846     		mov	r0, r3
+ 835 0030 07F10C07 		add	r7, r7, #12
+ 836 0034 BD46     		mov	sp, r7
+ 837 0036 80BC     		pop	{r7}
+ 838 0038 7047     		bx	lr
+ 839              		.cfi_endproc
+ 840              	.LFE68:
+ 842 003a 00BF     		.section	.text.Virtual_Com_Port_SetLineCoding,"ax",%progbits
+ 843              		.align	2
+ 844              		.global	Virtual_Com_Port_SetLineCoding
+ 845              		.thumb
+ 846              		.thumb_func
+ 848              	Virtual_Com_Port_SetLineCoding:
+ 849              	.LFB69:
+ 378:../src/usb_prop.c **** 
+ 379:../src/usb_prop.c **** /*******************************************************************************
+ 380:../src/usb_prop.c **** * Function Name  : Virtual_Com_Port_SetLineCoding.
+ 381:../src/usb_prop.c **** * Description    : Set the linecoding structure fields.
+ 382:../src/usb_prop.c **** * Input          : Length.
+ 383:../src/usb_prop.c **** * Output         : None.
+ 384:../src/usb_prop.c **** * Return         : Linecoding structure base address.
+ 385:../src/usb_prop.c **** *******************************************************************************/
+ 386:../src/usb_prop.c **** uint8_t *Virtual_Com_Port_SetLineCoding(uint16_t Length)
+ 387:../src/usb_prop.c **** {
+ 850              		.loc 1 387 0
+ 851              		.cfi_startproc
+ 852              		@ args = 0, pretend = 0, frame = 8
+ 853              		@ frame_needed = 1, uses_anonymous_args = 0
+ 854              		@ link register save eliminated.
+ 855 0000 80B4     		push	{r7}
+ 856              	.LCFI34:
+ 857              		.cfi_def_cfa_offset 4
+ 858              		.cfi_offset 7, -4
+ 859 0002 83B0     		sub	sp, sp, #12
+ 860              	.LCFI35:
+ 861              		.cfi_def_cfa_offset 16
+ 862 0004 00AF     		add	r7, sp, #0
+ 863              	.LCFI36:
+ 864              		.cfi_def_cfa_register 7
+ 865 0006 0346     		mov	r3, r0
+ 866 0008 FB80     		strh	r3, [r7, #6]	@ movhi
+ 388:../src/usb_prop.c ****   if (Length == 0)
+ 867              		.loc 1 388 0
+ 868 000a FB88     		ldrh	r3, [r7, #6]
+ 869 000c 002B     		cmp	r3, #0
+ 870 000e 0AD1     		bne	.L34
+ 389:../src/usb_prop.c ****   {
+ 390:../src/usb_prop.c ****     pInformation->Ctrl_Info.Usb_wLength = sizeof(linecoding);
+ 871              		.loc 1 390 0
+ 872 0010 40F20003 		movw	r3, #:lower16:pInformation
+ 873 0014 C0F20003 		movt	r3, #:upper16:pInformation
+ 874 0018 1B68     		ldr	r3, [r3, #0]
+ 875 001a 4FF00802 		mov	r2, #8
+ 876 001e 1A82     		strh	r2, [r3, #16]	@ movhi
+ 391:../src/usb_prop.c ****     return NULL;
+ 877              		.loc 1 391 0
+ 878 0020 4FF00003 		mov	r3, #0
+ 879 0024 03E0     		b	.L35
+ 880              	.L34:
+ 392:../src/usb_prop.c ****   }
+ 393:../src/usb_prop.c ****   return(uint8_t *)&linecoding;
+ 881              		.loc 1 393 0
+ 882 0026 40F20003 		movw	r3, #:lower16:linecoding
+ 883 002a C0F20003 		movt	r3, #:upper16:linecoding
+ 884              	.L35:
+ 394:../src/usb_prop.c **** }
+ 885              		.loc 1 394 0
+ 886 002e 1846     		mov	r0, r3
+ 887 0030 07F10C07 		add	r7, r7, #12
+ 888 0034 BD46     		mov	sp, r7
+ 889 0036 80BC     		pop	{r7}
+ 890 0038 7047     		bx	lr
+ 891              		.cfi_endproc
+ 892              	.LFE69:
+ 894 003a 00BF     		.text
+ 895              	.Letext0:
+ 896              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 897              		.file 3 "/Users/zac/code/spark/marvin/libraries/STM32_USB-FS-Device_Driver/inc/usb_core.h"
+ 898              		.file 4 "/Users/zac/code/spark/marvin/libraries/STM32_USB-FS-Device_Driver/inc/usb_def.h"
+ 899              		.file 5 "/Users/zac/code/spark/marvin/inc/usb_prop.h"
+ 900              		.file 6 "/Users/zac/code/spark/marvin/inc/usb_pwr.h"
+ 901              		.file 7 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cm3.h"
+ 902              		.file 8 "/Users/zac/code/spark/marvin/libraries/STM32_USB-FS-Device_Driver/inc/usb_init.h"
+ 903              		.file 9 "/Users/zac/code/spark/marvin/inc/usb_desc.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 usb_prop.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:22     .bss:0000000000000000 Request
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:23     .bss:0000000000000000 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:29     .data:0000000000000000 linecoding
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:26     .data:0000000000000000 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:39     .data:0000000000000008 Device_Table
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:46     .data:000000000000000c Device_Property
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:113    .text.Virtual_Com_Port_init:0000000000000000 Virtual_Com_Port_init
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:156    .text.Virtual_Com_Port_Reset:0000000000000000 Virtual_Com_Port_Reset
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:371    .text.Virtual_Com_Port_Status_In:0000000000000000 Virtual_Com_Port_Status_In
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:410    .text.Virtual_Com_Port_Status_Out:0000000000000000 Virtual_Com_Port_Status_Out
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:437    .text.Virtual_Com_Port_Data_Setup:0000000000000000 Virtual_Com_Port_Data_Setup
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:541    .text.Virtual_Com_Port_NoData_Setup:0000000000000000 Virtual_Com_Port_NoData_Setup
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:741    .text.Virtual_Com_Port_Get_Interface_Setting:0000000000000000 Virtual_Com_Port_Get_Interface_Setting
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:602    .text.Virtual_Com_Port_GetDeviceDescriptor:0000000000000000 Virtual_Com_Port_GetDeviceDescriptor
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:642    .text.Virtual_Com_Port_GetConfigDescriptor:0000000000000000 Virtual_Com_Port_GetConfigDescriptor
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:682    .text.Virtual_Com_Port_GetStringDescriptor:0000000000000000 Virtual_Com_Port_GetStringDescriptor
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:64     .data:000000000000003c User_Standard_Requests
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:293    .text.Virtual_Com_Port_SetConfiguration:0000000000000000 Virtual_Com_Port_SetConfiguration
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:339    .text.Virtual_Com_Port_SetDeviceAddress:0000000000000000 Virtual_Com_Port_SetDeviceAddress
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:78     .data:0000000000000060 Device_Descriptor
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:86     .data:0000000000000068 Config_Descriptor
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:94     .data:0000000000000070 String_Descriptor
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:108    .text.Virtual_Com_Port_init:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:151    .text.Virtual_Com_Port_Reset:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:288    .text.Virtual_Com_Port_SetConfiguration:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:334    .text.Virtual_Com_Port_SetDeviceAddress:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:366    .text.Virtual_Com_Port_Status_In:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:405    .text.Virtual_Com_Port_Status_Out:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:432    .text.Virtual_Com_Port_Data_Setup:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:796    .text.Virtual_Com_Port_GetLineCoding:0000000000000000 Virtual_Com_Port_GetLineCoding
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:848    .text.Virtual_Com_Port_SetLineCoding:0000000000000000 Virtual_Com_Port_SetLineCoding
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:536    .text.Virtual_Com_Port_NoData_Setup:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:597    .text.Virtual_Com_Port_GetDeviceDescriptor:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:637    .text.Virtual_Com_Port_GetConfigDescriptor:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:677    .text.Virtual_Com_Port_GetStringDescriptor:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:736    .text.Virtual_Com_Port_Get_Interface_Setting:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:791    .text.Virtual_Com_Port_GetLineCoding:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccMAZEBM.s:843    .text.Virtual_Com_Port_SetLineCoding:0000000000000000 $t
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.platform_config.h.13.23e06e06852a155ef1a4458870bf98fa
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.55.c9956ee2c5ec010802c11a3a06087af4
+                           .group:0000000000000000 wm4.stdlib.h.13.603ed7eb09a1561ab06840b7c0fcff58
+                           .group:0000000000000000 wm4.stddef.h.187.40b3a084f9bc2c020a9e00b9eabe9c14
+                           .group:0000000000000000 wm4._default_types.h.6.5e12cd604db8ce00b62bb2f02708eaf3
+                           .group:0000000000000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:0000000000000000 wm4.stddef.h.349.31f4c5baff3fa2689010b32028da9c47
+                           .group:0000000000000000 wm4.reent.h.16.9e42f0e588b85e70b2bf6572af57ce64
+                           .group:0000000000000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:0000000000000000 wm4.stdlib.h.50.f5923f1950ced340a337f4676566f65a
+                           .group:0000000000000000 wm4.errno.h.2.ba016d646105af6cad23be83630b6a3f
+                           .group:0000000000000000 wm4.errno.h.9.65044c2b5d8494e43f5986ab0a1d770f
+                           .group:0000000000000000 wm4.cc3000_common.h.58.2af7f8f8921b8cb4b89883c25878e207
+                           .group:0000000000000000 wm4.usb_conf.h.13.ae0ffce2e8d0e4c6b2724f8ae0ada8cf
+                           .group:0000000000000000 wm4.hw_config.h.61.9aaf7ecb821816183829c116d76d82b5
+                           .group:0000000000000000 wm4.usb_regs.h.31.d9533108f8ac5724467880baa9cb0f26
+                           .group:0000000000000000 wm4.usb_def.h.30.73e1a84be93039018a594bacb815cb88
+                           .group:0000000000000000 wm4.usb_core.h.31.114a1d0e1de4beb01afdcd243bde9471
+                           .group:0000000000000000 wm4.usb_prop.h.13.9412152d3d6af56e415ce219d0fca2ea
+                           .group:0000000000000000 wm4.usb_desc.h.13.0ce14e111065b34ccf24e1260dbb5a3b
+
+UNDEFINED SYMBOLS
+NOP_Process
+Virtual_Com_Port_DeviceDescriptor
+Virtual_Com_Port_ConfigDescriptor
+Virtual_Com_Port_StringLangID
+Virtual_Com_Port_StringVendor
+Virtual_Com_Port_StringProduct
+Virtual_Com_Port_StringSerial
+Get_SerialNum
+pInformation
+PowerOn
+USB_SIL_Init
+bDeviceState
+SetBTABLE
+SetEPType
+SetEPTxStatus
+SetEPRxAddr
+SetEPTxAddr
+Clear_Status_Out
+SetEPRxCount
+SetEPRxValid
+SetEPRxStatus
+SetDeviceAddress
+Device_Info
+Standard_GetDescriptorData

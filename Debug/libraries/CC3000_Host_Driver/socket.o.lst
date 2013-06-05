@@ -1,0 +1,3078 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"socket.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.HostFlowControlConsumeBuff,"ax",%progbits
+  19              		.align	2
+  20              		.global	HostFlowControlConsumeBuff
+  21              		.thumb
+  22              		.thumb_func
+  24              	HostFlowControlConsumeBuff:
+  25              	.LFB0:
+  26              		.file 1 "../libraries/CC3000_Host_Driver/socket.c"
+   1:../libraries/CC3000_Host_Driver/socket.c **** /*****************************************************************************
+   2:../libraries/CC3000_Host_Driver/socket.c **** *
+   3:../libraries/CC3000_Host_Driver/socket.c **** *  socket.c  - CC3000 Host Driver Implementation.
+   4:../libraries/CC3000_Host_Driver/socket.c **** *  Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
+   5:../libraries/CC3000_Host_Driver/socket.c **** *
+   6:../libraries/CC3000_Host_Driver/socket.c **** *  Redistribution and use in source and binary forms, with or without
+   7:../libraries/CC3000_Host_Driver/socket.c **** *  modification, are permitted provided that the following conditions
+   8:../libraries/CC3000_Host_Driver/socket.c **** *  are met:
+   9:../libraries/CC3000_Host_Driver/socket.c **** *
+  10:../libraries/CC3000_Host_Driver/socket.c **** *    Redistributions of source code must retain the above copyright
+  11:../libraries/CC3000_Host_Driver/socket.c **** *    notice, this list of conditions and the following disclaimer.
+  12:../libraries/CC3000_Host_Driver/socket.c **** *
+  13:../libraries/CC3000_Host_Driver/socket.c **** *    Redistributions in binary form must reproduce the above copyright
+  14:../libraries/CC3000_Host_Driver/socket.c **** *    notice, this list of conditions and the following disclaimer in the
+  15:../libraries/CC3000_Host_Driver/socket.c **** *    documentation and/or other materials provided with the   
+  16:../libraries/CC3000_Host_Driver/socket.c **** *    distribution.
+  17:../libraries/CC3000_Host_Driver/socket.c **** *
+  18:../libraries/CC3000_Host_Driver/socket.c **** *    Neither the name of Texas Instruments Incorporated nor the names of
+  19:../libraries/CC3000_Host_Driver/socket.c **** *    its contributors may be used to endorse or promote products derived
+  20:../libraries/CC3000_Host_Driver/socket.c **** *    from this software without specific prior written permission.
+  21:../libraries/CC3000_Host_Driver/socket.c **** *
+  22:../libraries/CC3000_Host_Driver/socket.c **** *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+  23:../libraries/CC3000_Host_Driver/socket.c **** *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+  24:../libraries/CC3000_Host_Driver/socket.c **** *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+  25:../libraries/CC3000_Host_Driver/socket.c **** *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+  26:../libraries/CC3000_Host_Driver/socket.c **** *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+  27:../libraries/CC3000_Host_Driver/socket.c **** *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+  28:../libraries/CC3000_Host_Driver/socket.c **** *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  29:../libraries/CC3000_Host_Driver/socket.c **** *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  30:../libraries/CC3000_Host_Driver/socket.c **** *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+  31:../libraries/CC3000_Host_Driver/socket.c **** *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+  32:../libraries/CC3000_Host_Driver/socket.c **** *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  33:../libraries/CC3000_Host_Driver/socket.c **** *
+  34:../libraries/CC3000_Host_Driver/socket.c **** *****************************************************************************/
+  35:../libraries/CC3000_Host_Driver/socket.c **** 
+  36:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+  37:../libraries/CC3000_Host_Driver/socket.c **** //
+  38:../libraries/CC3000_Host_Driver/socket.c **** //! \addtogroup socket_api
+  39:../libraries/CC3000_Host_Driver/socket.c **** //! @{
+  40:../libraries/CC3000_Host_Driver/socket.c **** //
+  41:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+  42:../libraries/CC3000_Host_Driver/socket.c **** 
+  43:../libraries/CC3000_Host_Driver/socket.c **** #include <stdio.h>
+  44:../libraries/CC3000_Host_Driver/socket.c **** #include <string.h>
+  45:../libraries/CC3000_Host_Driver/socket.c **** #include <stdlib.h>
+  46:../libraries/CC3000_Host_Driver/socket.c **** #include "hci.h"
+  47:../libraries/CC3000_Host_Driver/socket.c **** #include "socket.h"
+  48:../libraries/CC3000_Host_Driver/socket.c **** #include "evnt_handler.h"
+  49:../libraries/CC3000_Host_Driver/socket.c **** #include "netapp.h"
+  50:../libraries/CC3000_Host_Driver/socket.c **** 
+  51:../libraries/CC3000_Host_Driver/socket.c **** 
+  52:../libraries/CC3000_Host_Driver/socket.c **** 
+  53:../libraries/CC3000_Host_Driver/socket.c **** //Enable this flag if and only if you must comply with BSD socket 
+  54:../libraries/CC3000_Host_Driver/socket.c **** //close() function
+  55:../libraries/CC3000_Host_Driver/socket.c **** #ifdef _API_USE_BSD_CLOSE
+  56:../libraries/CC3000_Host_Driver/socket.c ****    #define close(sd) closesocket(sd)
+  57:../libraries/CC3000_Host_Driver/socket.c **** #endif
+  58:../libraries/CC3000_Host_Driver/socket.c **** 
+  59:../libraries/CC3000_Host_Driver/socket.c **** //Enable this flag if and only if you must comply with BSD socket read() and 
+  60:../libraries/CC3000_Host_Driver/socket.c **** //write() functions
+  61:../libraries/CC3000_Host_Driver/socket.c **** #ifdef _API_USE_BSD_READ_WRITE
+  62:../libraries/CC3000_Host_Driver/socket.c ****               #define read(sd, buf, len, flags) recv(sd, buf, len, flags)
+  63:../libraries/CC3000_Host_Driver/socket.c ****               #define write(sd, buf, len, flags) send(sd, buf, len, flags)
+  64:../libraries/CC3000_Host_Driver/socket.c **** #endif
+  65:../libraries/CC3000_Host_Driver/socket.c **** 
+  66:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_OPEN_PARAMS_LEN				(12)
+  67:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_CLOSE_PARAMS_LEN				(4)
+  68:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_ACCEPT_PARAMS_LEN			(4)
+  69:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_BIND_PARAMS_LEN				(20)
+  70:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_LISTEN_PARAMS_LEN			(8)
+  71:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_GET_HOST_BY_NAME_PARAMS_LEN	(9)
+  72:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_CONNECT_PARAMS_LEN			(20)
+  73:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_SELECT_PARAMS_LEN			(44)
+  74:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_SET_SOCK_OPT_PARAMS_LEN		(20)
+  75:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_GET_SOCK_OPT_PARAMS_LEN		(12)
+  76:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_RECV_FROM_PARAMS_LEN			(12)
+  77:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_SENDTO_PARAMS_LEN			(24)
+  78:../libraries/CC3000_Host_Driver/socket.c **** #define SOCKET_MDNS_ADVERTISE_PARAMS_LEN	(12)
+  79:../libraries/CC3000_Host_Driver/socket.c **** 
+  80:../libraries/CC3000_Host_Driver/socket.c **** 
+  81:../libraries/CC3000_Host_Driver/socket.c **** // The legnth of arguments for the SEND command: sd + buff_offset + len + flags, 
+  82:../libraries/CC3000_Host_Driver/socket.c **** // while size of each parameter is 32 bit - so the total length is 16 bytes;
+  83:../libraries/CC3000_Host_Driver/socket.c **** 
+  84:../libraries/CC3000_Host_Driver/socket.c **** #define HCI_CMND_SEND_ARG_LENGTH	(16)
+  85:../libraries/CC3000_Host_Driver/socket.c **** 
+  86:../libraries/CC3000_Host_Driver/socket.c **** 
+  87:../libraries/CC3000_Host_Driver/socket.c **** #define SELECT_TIMEOUT_MIN_MICRO_SECONDS  5000
+  88:../libraries/CC3000_Host_Driver/socket.c **** 
+  89:../libraries/CC3000_Host_Driver/socket.c **** #define HEADERS_SIZE_DATA       (SPI_HEADER_SIZE + 5)
+  90:../libraries/CC3000_Host_Driver/socket.c **** 
+  91:../libraries/CC3000_Host_Driver/socket.c **** #define SIMPLE_LINK_HCI_CMND_TRANSPORT_HEADER_SIZE  (SPI_HEADER_SIZE + SIMPLE_LINK_HCI_CMND_HEADER_
+  92:../libraries/CC3000_Host_Driver/socket.c **** 
+  93:../libraries/CC3000_Host_Driver/socket.c **** #define MDNS_DEVICE_SERVICE_MAX_LENGTH 	(32)
+  94:../libraries/CC3000_Host_Driver/socket.c **** 
+  95:../libraries/CC3000_Host_Driver/socket.c **** 
+  96:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+  97:../libraries/CC3000_Host_Driver/socket.c **** //
+  98:../libraries/CC3000_Host_Driver/socket.c **** //! HostFlowControlConsumeBuff
+  99:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 100:../libraries/CC3000_Host_Driver/socket.c **** //!  @param  sd  socket descriptor
+ 101:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 102:../libraries/CC3000_Host_Driver/socket.c **** //!  @return 0 in case there are buffers available, 
+ 103:../libraries/CC3000_Host_Driver/socket.c **** //!          -1 in case of bad socket
+ 104:../libraries/CC3000_Host_Driver/socket.c **** //!          -2 if there are no free buffers present (only when 
+ 105:../libraries/CC3000_Host_Driver/socket.c **** //!          SEND_NON_BLOCKING is enabled)
+ 106:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 107:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  if SEND_NON_BLOCKING not define - block until have free buffer 
+ 108:../libraries/CC3000_Host_Driver/socket.c **** //!          becomes available, else return immediately  with correct status 
+ 109:../libraries/CC3000_Host_Driver/socket.c **** //!          regarding the buffers available.
+ 110:../libraries/CC3000_Host_Driver/socket.c **** //
+ 111:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 112:../libraries/CC3000_Host_Driver/socket.c **** int
+ 113:../libraries/CC3000_Host_Driver/socket.c **** HostFlowControlConsumeBuff(int sd)
+ 114:../libraries/CC3000_Host_Driver/socket.c **** {
+  27              		.loc 1 114 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 8
+  30              		@ frame_needed = 1, uses_anonymous_args = 0
+  31 0000 80B5     		push	{r7, lr}
+  32              	.LCFI0:
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 7, -8
+  35              		.cfi_offset 14, -4
+  36 0002 82B0     		sub	sp, sp, #8
+  37              	.LCFI1:
+  38              		.cfi_def_cfa_offset 16
+  39 0004 00AF     		add	r7, sp, #0
+  40              	.LCFI2:
+  41              		.cfi_def_cfa_register 7
+  42 0006 7860     		str	r0, [r7, #4]
+  43              	.L5:
+ 115:../libraries/CC3000_Host_Driver/socket.c **** #ifndef SEND_NON_BLOCKING
+ 116:../libraries/CC3000_Host_Driver/socket.c **** 	/* wait in busy loop */
+ 117:../libraries/CC3000_Host_Driver/socket.c **** 	do
+ 118:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 119:../libraries/CC3000_Host_Driver/socket.c **** 		// In case last transmission failed then we will return the last failure 
+ 120:../libraries/CC3000_Host_Driver/socket.c **** 		// reason here.
+ 121:../libraries/CC3000_Host_Driver/socket.c **** 		// Note that the buffer will not be allocated in this case
+ 122:../libraries/CC3000_Host_Driver/socket.c **** 		if (tSLInformation.slTransmitDataError != 0)
+  44              		.loc 1 122 0
+  45 0008 40F20003 		movw	r3, #:lower16:tSLInformation
+  46 000c C0F20003 		movt	r3, #:upper16:tSLInformation
+  47 0010 DB6A     		ldr	r3, [r3, #44]
+  48 0012 002B     		cmp	r3, #0
+  49 0014 14D0     		beq	.L2
+ 123:../libraries/CC3000_Host_Driver/socket.c **** 		{
+ 124:../libraries/CC3000_Host_Driver/socket.c **** 			errno = tSLInformation.slTransmitDataError;
+  50              		.loc 1 124 0
+  51 0016 FFF7FEFF 		bl	__errno
+  52 001a 0246     		mov	r2, r0
+  53 001c 40F20003 		movw	r3, #:lower16:tSLInformation
+  54 0020 C0F20003 		movt	r3, #:upper16:tSLInformation
+  55 0024 DB6A     		ldr	r3, [r3, #44]
+  56 0026 1360     		str	r3, [r2, #0]
+ 125:../libraries/CC3000_Host_Driver/socket.c **** 			tSLInformation.slTransmitDataError = 0;
+  57              		.loc 1 125 0
+  58 0028 40F20003 		movw	r3, #:lower16:tSLInformation
+  59 002c C0F20003 		movt	r3, #:upper16:tSLInformation
+  60 0030 4FF00002 		mov	r2, #0
+  61 0034 DA62     		str	r2, [r3, #44]
+ 126:../libraries/CC3000_Host_Driver/socket.c **** 			return errno;
+  62              		.loc 1 126 0
+  63 0036 FFF7FEFF 		bl	__errno
+  64 003a 0346     		mov	r3, r0
+  65 003c 1B68     		ldr	r3, [r3, #0]
+  66 003e 20E0     		b	.L3
+  67              	.L2:
+ 127:../libraries/CC3000_Host_Driver/socket.c **** 		}
+ 128:../libraries/CC3000_Host_Driver/socket.c **** 		
+ 129:../libraries/CC3000_Host_Driver/socket.c **** 		if(SOCKET_STATUS_ACTIVE != get_socket_active_status(sd))
+  68              		.loc 1 129 0
+  69 0040 7868     		ldr	r0, [r7, #4]
+  70 0042 FFF7FEFF 		bl	get_socket_active_status
+  71 0046 0346     		mov	r3, r0
+  72 0048 002B     		cmp	r3, #0
+  73 004a 02D0     		beq	.L4
+ 130:../libraries/CC3000_Host_Driver/socket.c **** 			return -1;
+  74              		.loc 1 130 0
+  75 004c 4FF0FF33 		mov	r3, #-1
+  76 0050 17E0     		b	.L3
+  77              	.L4:
+ 131:../libraries/CC3000_Host_Driver/socket.c **** 	} while(0 == tSLInformation.usNumberOfFreeBuffers);
+  78              		.loc 1 131 0
+  79 0052 40F20003 		movw	r3, #:lower16:tSLInformation
+  80 0056 C0F20003 		movt	r3, #:upper16:tSLInformation
+  81 005a 1B8E     		ldrh	r3, [r3, #48]	@ movhi
+  82 005c 9BB2     		uxth	r3, r3
+  83 005e 002B     		cmp	r3, #0
+  84 0060 D2D0     		beq	.L5
+ 132:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 133:../libraries/CC3000_Host_Driver/socket.c **** 	tSLInformation.usNumberOfFreeBuffers--;
+  85              		.loc 1 133 0
+  86 0062 40F20003 		movw	r3, #:lower16:tSLInformation
+  87 0066 C0F20003 		movt	r3, #:upper16:tSLInformation
+  88 006a 1B8E     		ldrh	r3, [r3, #48]	@ movhi
+  89 006c 9BB2     		uxth	r3, r3
+  90 006e 03F1FF33 		add	r3, r3, #-1
+  91 0072 9AB2     		uxth	r2, r3
+  92 0074 40F20003 		movw	r3, #:lower16:tSLInformation
+  93 0078 C0F20003 		movt	r3, #:upper16:tSLInformation
+  94 007c 1A86     		strh	r2, [r3, #48]	@ movhi
+ 134:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 135:../libraries/CC3000_Host_Driver/socket.c **** 	return 0;
+  95              		.loc 1 135 0
+  96 007e 4FF00003 		mov	r3, #0
+  97              	.L3:
+ 136:../libraries/CC3000_Host_Driver/socket.c **** #else
+ 137:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 138:../libraries/CC3000_Host_Driver/socket.c **** 	// In case last transmission failed then we will return the last failure 
+ 139:../libraries/CC3000_Host_Driver/socket.c **** 	// reason here.
+ 140:../libraries/CC3000_Host_Driver/socket.c **** 	// Note that the buffer will not be allocated in this case
+ 141:../libraries/CC3000_Host_Driver/socket.c **** 	if (tSLInformation.slTransmitDataError != 0)
+ 142:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 143:../libraries/CC3000_Host_Driver/socket.c **** 		errno = tSLInformation.slTransmitDataError;
+ 144:../libraries/CC3000_Host_Driver/socket.c **** 		tSLInformation.slTransmitDataError = 0;
+ 145:../libraries/CC3000_Host_Driver/socket.c **** 		return errno;
+ 146:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 147:../libraries/CC3000_Host_Driver/socket.c **** 	if(SOCKET_STATUS_ACTIVE != get_socket_active_status(sd))
+ 148:../libraries/CC3000_Host_Driver/socket.c **** 		return -1;
+ 149:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 150:../libraries/CC3000_Host_Driver/socket.c **** 	//If there are no available buffers, return -2. It is recommended to use  
+ 151:../libraries/CC3000_Host_Driver/socket.c **** 	// select or receive to see if there is any buffer occupied with received data
+ 152:../libraries/CC3000_Host_Driver/socket.c **** 	// If so, call receive() to release the buffer.
+ 153:../libraries/CC3000_Host_Driver/socket.c **** 	if(0 == tSLInformation.usNumberOfFreeBuffers)
+ 154:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 155:../libraries/CC3000_Host_Driver/socket.c **** 		return -2;
+ 156:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 157:../libraries/CC3000_Host_Driver/socket.c **** 	else
+ 158:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 159:../libraries/CC3000_Host_Driver/socket.c **** 		tSLInformation.usNumberOfFreeBuffers--;
+ 160:../libraries/CC3000_Host_Driver/socket.c **** 		return 0;
+ 161:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 162:../libraries/CC3000_Host_Driver/socket.c **** #endif
+ 163:../libraries/CC3000_Host_Driver/socket.c **** }
+  98              		.loc 1 163 0
+  99 0082 1846     		mov	r0, r3
+ 100 0084 07F10807 		add	r7, r7, #8
+ 101 0088 BD46     		mov	sp, r7
+ 102 008a 80BD     		pop	{r7, pc}
+ 103              		.cfi_endproc
+ 104              	.LFE0:
+ 106              		.section	.text.socket,"ax",%progbits
+ 107              		.align	2
+ 108              		.global	socket
+ 109              		.thumb
+ 110              		.thumb_func
+ 112              	socket:
+ 113              	.LFB1:
+ 164:../libraries/CC3000_Host_Driver/socket.c **** 
+ 165:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 166:../libraries/CC3000_Host_Driver/socket.c **** //
+ 167:../libraries/CC3000_Host_Driver/socket.c **** //! socket
+ 168:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 169:../libraries/CC3000_Host_Driver/socket.c **** //!  @param  domain    selects the protocol family which will be used for 
+ 170:../libraries/CC3000_Host_Driver/socket.c **** //!                    communication. On this version only AF_INET is supported
+ 171:../libraries/CC3000_Host_Driver/socket.c **** //!  @param  type      specifies the communication semantics. On this version 
+ 172:../libraries/CC3000_Host_Driver/socket.c **** //!                    only SOCK_STREAM, SOCK_DGRAM, SOCK_RAW are supported
+ 173:../libraries/CC3000_Host_Driver/socket.c **** //!  @param  protocol  specifies a particular protocol to be used with the 
+ 174:../libraries/CC3000_Host_Driver/socket.c **** //!                    socket IPPROTO_TCP, IPPROTO_UDP or IPPROTO_RAW are 
+ 175:../libraries/CC3000_Host_Driver/socket.c **** //!                    supported.
+ 176:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 177:../libraries/CC3000_Host_Driver/socket.c **** //!  @return  On success, socket handle that is used for consequent socket 
+ 178:../libraries/CC3000_Host_Driver/socket.c **** //!           operations. On error, -1 is returned.
+ 179:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 180:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  create an endpoint for communication
+ 181:../libraries/CC3000_Host_Driver/socket.c **** //!          The socket function creates a socket that is bound to a specific 
+ 182:../libraries/CC3000_Host_Driver/socket.c **** //!          transport service provider. This function is called by the 
+ 183:../libraries/CC3000_Host_Driver/socket.c **** //!          application layer to obtain a socket handle.
+ 184:../libraries/CC3000_Host_Driver/socket.c **** //
+ 185:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 186:../libraries/CC3000_Host_Driver/socket.c **** 
+ 187:../libraries/CC3000_Host_Driver/socket.c **** int
+ 188:../libraries/CC3000_Host_Driver/socket.c **** socket(long domain, long type, long protocol)
+ 189:../libraries/CC3000_Host_Driver/socket.c **** {
+ 114              		.loc 1 189 0
+ 115              		.cfi_startproc
+ 116              		@ args = 0, pretend = 0, frame = 32
+ 117              		@ frame_needed = 1, uses_anonymous_args = 0
+ 118 0000 80B5     		push	{r7, lr}
+ 119              	.LCFI3:
+ 120              		.cfi_def_cfa_offset 8
+ 121              		.cfi_offset 7, -8
+ 122              		.cfi_offset 14, -4
+ 123 0002 88B0     		sub	sp, sp, #32
+ 124              	.LCFI4:
+ 125              		.cfi_def_cfa_offset 40
+ 126 0004 00AF     		add	r7, sp, #0
+ 127              	.LCFI5:
+ 128              		.cfi_def_cfa_register 7
+ 129 0006 F860     		str	r0, [r7, #12]
+ 130 0008 B960     		str	r1, [r7, #8]
+ 131 000a 7A60     		str	r2, [r7, #4]
+ 190:../libraries/CC3000_Host_Driver/socket.c **** 	long ret;
+ 191:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 192:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 193:../libraries/CC3000_Host_Driver/socket.c **** 	ret = EFAIL;
+ 132              		.loc 1 193 0
+ 133 000c 4FF0FF33 		mov	r3, #-1
+ 134 0010 7B61     		str	r3, [r7, #20]
+ 194:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 135              		.loc 1 194 0
+ 136 0012 40F20003 		movw	r3, #:lower16:tSLInformation
+ 137 0016 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 138 001a 9B68     		ldr	r3, [r3, #8]
+ 139 001c FB61     		str	r3, [r7, #28]
+ 195:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + HEADERS_SIZE_CMD);
+ 140              		.loc 1 195 0
+ 141 001e FB69     		ldr	r3, [r7, #28]
+ 142 0020 03F10903 		add	r3, r3, #9
+ 143 0024 BB61     		str	r3, [r7, #24]
+ 196:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 197:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in HCI packet structure
+ 198:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, domain);
+ 144              		.loc 1 198 0
+ 145 0026 FB68     		ldr	r3, [r7, #12]
+ 146 0028 B869     		ldr	r0, [r7, #24]
+ 147 002a 1946     		mov	r1, r3
+ 148 002c FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 149 0030 B861     		str	r0, [r7, #24]
+ 199:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, type);
+ 150              		.loc 1 199 0
+ 151 0032 BB68     		ldr	r3, [r7, #8]
+ 152 0034 B869     		ldr	r0, [r7, #24]
+ 153 0036 1946     		mov	r1, r3
+ 154 0038 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 155 003c B861     		str	r0, [r7, #24]
+ 200:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, protocol);
+ 156              		.loc 1 200 0
+ 157 003e 7B68     		ldr	r3, [r7, #4]
+ 158 0040 B869     		ldr	r0, [r7, #24]
+ 159 0042 1946     		mov	r1, r3
+ 160 0044 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 161 0048 B861     		str	r0, [r7, #24]
+ 201:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 202:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+ 203:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_SOCKET, ptr, SOCKET_OPEN_PARAMS_LEN);
+ 162              		.loc 1 203 0
+ 163 004a 41F20100 		movw	r0, #4097
+ 164 004e F969     		ldr	r1, [r7, #28]
+ 165 0050 4FF00C02 		mov	r2, #12
+ 166 0054 FFF7FEFF 		bl	hci_command_send
+ 204:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 205:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 206:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_CMND_SOCKET, &ret);
+ 167              		.loc 1 206 0
+ 168 0058 07F11403 		add	r3, r7, #20
+ 169 005c 41F20100 		movw	r0, #4097
+ 170 0060 1946     		mov	r1, r3
+ 171 0062 FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 207:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 208:../libraries/CC3000_Host_Driver/socket.c **** 	// Process the event 
+ 209:../libraries/CC3000_Host_Driver/socket.c **** 	errno = ret;
+ 172              		.loc 1 209 0
+ 173 0066 FFF7FEFF 		bl	__errno
+ 174 006a 0346     		mov	r3, r0
+ 175 006c 7A69     		ldr	r2, [r7, #20]
+ 176 006e 1A60     		str	r2, [r3, #0]
+ 210:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 211:../libraries/CC3000_Host_Driver/socket.c **** 	set_socket_active_status(ret, SOCKET_STATUS_ACTIVE);
+ 177              		.loc 1 211 0
+ 178 0070 7B69     		ldr	r3, [r7, #20]
+ 179 0072 1846     		mov	r0, r3
+ 180 0074 4FF00001 		mov	r1, #0
+ 181 0078 FFF7FEFF 		bl	set_socket_active_status
+ 212:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 213:../libraries/CC3000_Host_Driver/socket.c **** 	return(ret);
+ 182              		.loc 1 213 0
+ 183 007c 7B69     		ldr	r3, [r7, #20]
+ 214:../libraries/CC3000_Host_Driver/socket.c **** }
+ 184              		.loc 1 214 0
+ 185 007e 1846     		mov	r0, r3
+ 186 0080 07F12007 		add	r7, r7, #32
+ 187 0084 BD46     		mov	sp, r7
+ 188 0086 80BD     		pop	{r7, pc}
+ 189              		.cfi_endproc
+ 190              	.LFE1:
+ 192              		.section	.text.closesocket,"ax",%progbits
+ 193              		.align	2
+ 194              		.global	closesocket
+ 195              		.thumb
+ 196              		.thumb_func
+ 198              	closesocket:
+ 199              	.LFB2:
+ 215:../libraries/CC3000_Host_Driver/socket.c **** 
+ 216:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 217:../libraries/CC3000_Host_Driver/socket.c **** //
+ 218:../libraries/CC3000_Host_Driver/socket.c **** //! closesocket
+ 219:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 220:../libraries/CC3000_Host_Driver/socket.c **** //!  @param  sd    socket handle.
+ 221:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 222:../libraries/CC3000_Host_Driver/socket.c **** //!  @return  On success, zero is returned. On error, -1 is returned.
+ 223:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 224:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  The socket function closes a created socket.
+ 225:../libraries/CC3000_Host_Driver/socket.c **** //
+ 226:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 227:../libraries/CC3000_Host_Driver/socket.c **** 
+ 228:../libraries/CC3000_Host_Driver/socket.c **** long
+ 229:../libraries/CC3000_Host_Driver/socket.c **** closesocket(long sd)
+ 230:../libraries/CC3000_Host_Driver/socket.c **** {
+ 200              		.loc 1 230 0
+ 201              		.cfi_startproc
+ 202              		@ args = 0, pretend = 0, frame = 24
+ 203              		@ frame_needed = 1, uses_anonymous_args = 0
+ 204 0000 80B5     		push	{r7, lr}
+ 205              	.LCFI6:
+ 206              		.cfi_def_cfa_offset 8
+ 207              		.cfi_offset 7, -8
+ 208              		.cfi_offset 14, -4
+ 209 0002 86B0     		sub	sp, sp, #24
+ 210              	.LCFI7:
+ 211              		.cfi_def_cfa_offset 32
+ 212 0004 00AF     		add	r7, sp, #0
+ 213              	.LCFI8:
+ 214              		.cfi_def_cfa_register 7
+ 215 0006 7860     		str	r0, [r7, #4]
+ 231:../libraries/CC3000_Host_Driver/socket.c **** 	long ret;
+ 232:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 233:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 234:../libraries/CC3000_Host_Driver/socket.c **** 	ret = EFAIL;
+ 216              		.loc 1 234 0
+ 217 0008 4FF0FF33 		mov	r3, #-1
+ 218 000c FB60     		str	r3, [r7, #12]
+ 235:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 219              		.loc 1 235 0
+ 220 000e 40F20003 		movw	r3, #:lower16:tSLInformation
+ 221 0012 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 222 0016 9B68     		ldr	r3, [r3, #8]
+ 223 0018 7B61     		str	r3, [r7, #20]
+ 236:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + HEADERS_SIZE_CMD);
+ 224              		.loc 1 236 0
+ 225 001a 7B69     		ldr	r3, [r7, #20]
+ 226 001c 03F10903 		add	r3, r3, #9
+ 227 0020 3B61     		str	r3, [r7, #16]
+ 237:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 238:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in HCI packet structure
+ 239:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, sd);
+ 228              		.loc 1 239 0
+ 229 0022 7B68     		ldr	r3, [r7, #4]
+ 230 0024 3869     		ldr	r0, [r7, #16]
+ 231 0026 1946     		mov	r1, r3
+ 232 0028 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 233 002c 3861     		str	r0, [r7, #16]
+ 240:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 241:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+ 242:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_CLOSE_SOCKET,
+ 234              		.loc 1 242 0
+ 235 002e 41F20B00 		movw	r0, #4107
+ 236 0032 7969     		ldr	r1, [r7, #20]
+ 237 0034 4FF00402 		mov	r2, #4
+ 238 0038 FFF7FEFF 		bl	hci_command_send
+ 243:../libraries/CC3000_Host_Driver/socket.c **** 									 ptr, SOCKET_CLOSE_PARAMS_LEN);
+ 244:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 245:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 246:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_CMND_CLOSE_SOCKET, &ret);
+ 239              		.loc 1 246 0
+ 240 003c 07F10C03 		add	r3, r7, #12
+ 241 0040 41F20B00 		movw	r0, #4107
+ 242 0044 1946     		mov	r1, r3
+ 243 0046 FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 247:../libraries/CC3000_Host_Driver/socket.c **** 	errno = ret;
+ 244              		.loc 1 247 0
+ 245 004a FFF7FEFF 		bl	__errno
+ 246 004e 0346     		mov	r3, r0
+ 247 0050 FA68     		ldr	r2, [r7, #12]
+ 248 0052 1A60     		str	r2, [r3, #0]
+ 248:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 249:../libraries/CC3000_Host_Driver/socket.c **** 	// since 'close' call may result in either OK (and then it closed) or error 
+ 250:../libraries/CC3000_Host_Driver/socket.c **** 	// mark this socket as invalid 
+ 251:../libraries/CC3000_Host_Driver/socket.c **** 	set_socket_active_status(sd, SOCKET_STATUS_INACTIVE);
+ 249              		.loc 1 251 0
+ 250 0054 7868     		ldr	r0, [r7, #4]
+ 251 0056 4FF00101 		mov	r1, #1
+ 252 005a FFF7FEFF 		bl	set_socket_active_status
+ 252:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 253:../libraries/CC3000_Host_Driver/socket.c **** 	return(ret);
+ 253              		.loc 1 253 0
+ 254 005e FB68     		ldr	r3, [r7, #12]
+ 254:../libraries/CC3000_Host_Driver/socket.c **** }
+ 255              		.loc 1 254 0
+ 256 0060 1846     		mov	r0, r3
+ 257 0062 07F11807 		add	r7, r7, #24
+ 258 0066 BD46     		mov	sp, r7
+ 259 0068 80BD     		pop	{r7, pc}
+ 260              		.cfi_endproc
+ 261              	.LFE2:
+ 263 006a 00BF     		.section	.text.accept,"ax",%progbits
+ 264              		.align	2
+ 265              		.global	accept
+ 266              		.thumb
+ 267              		.thumb_func
+ 269              	accept:
+ 270              	.LFB3:
+ 255:../libraries/CC3000_Host_Driver/socket.c **** 
+ 256:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 257:../libraries/CC3000_Host_Driver/socket.c **** //
+ 258:../libraries/CC3000_Host_Driver/socket.c **** //! accept
+ 259:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 260:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   sd      socket descriptor (handle)              
+ 261:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out]  addr    the argument addr is a pointer to a sockaddr structure
+ 262:../libraries/CC3000_Host_Driver/socket.c **** //!                       This structure is filled in with the address of the  
+ 263:../libraries/CC3000_Host_Driver/socket.c **** //!                       peer socket, as known to the communications layer.        
+ 264:../libraries/CC3000_Host_Driver/socket.c **** //!                       determined. The exact format of the address returned             
+ 265:../libraries/CC3000_Host_Driver/socket.c **** //!                       addr is by the socket's address sockaddr. 
+ 266:../libraries/CC3000_Host_Driver/socket.c **** //!                       On this version only AF_INET is supported.
+ 267:../libraries/CC3000_Host_Driver/socket.c **** //!                       This argument returns in network order.
+ 268:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out] addrlen  the addrlen argument is a value-result argument: 
+ 269:../libraries/CC3000_Host_Driver/socket.c **** //!                       it should initially contain the size of the structure
+ 270:../libraries/CC3000_Host_Driver/socket.c **** //!                       pointed to by addr.
+ 271:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 272:../libraries/CC3000_Host_Driver/socket.c **** //!  @return  For socket in blocking mode:
+ 273:../libraries/CC3000_Host_Driver/socket.c **** //!				      On success, socket handle. on failure negative
+ 274:../libraries/CC3000_Host_Driver/socket.c **** //!			      For socket in non-blocking mode:
+ 275:../libraries/CC3000_Host_Driver/socket.c **** //!				     - On connection establishment, socket handle
+ 276:../libraries/CC3000_Host_Driver/socket.c **** //!				     - On connection pending, SOC_IN_PROGRESS (-2)
+ 277:../libraries/CC3000_Host_Driver/socket.c **** //!			       - On failure, SOC_ERROR	(-1)
+ 278:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 279:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  accept a connection on a socket:
+ 280:../libraries/CC3000_Host_Driver/socket.c **** //!          This function is used with connection-based socket types 
+ 281:../libraries/CC3000_Host_Driver/socket.c **** //!          (SOCK_STREAM). It extracts the first connection request on the 
+ 282:../libraries/CC3000_Host_Driver/socket.c **** //!          queue of pending connections, creates a new connected socket, and
+ 283:../libraries/CC3000_Host_Driver/socket.c **** //!          returns a new file descriptor referring to that socket.
+ 284:../libraries/CC3000_Host_Driver/socket.c **** //!          The newly created socket is not in the listening state. 
+ 285:../libraries/CC3000_Host_Driver/socket.c **** //!          The original socket sd is unaffected by this call. 
+ 286:../libraries/CC3000_Host_Driver/socket.c **** //!          The argument sd is a socket that has been created with socket(),
+ 287:../libraries/CC3000_Host_Driver/socket.c **** //!          bound to a local address with bind(), and is  listening for 
+ 288:../libraries/CC3000_Host_Driver/socket.c **** //!          connections after a listen(). The argument addr is a pointer 
+ 289:../libraries/CC3000_Host_Driver/socket.c **** //!          to a sockaddr structure. This structure is filled in with the 
+ 290:../libraries/CC3000_Host_Driver/socket.c **** //!          address of the peer socket, as known to the communications layer.
+ 291:../libraries/CC3000_Host_Driver/socket.c **** //!          The exact format of the address returned addr is determined by the 
+ 292:../libraries/CC3000_Host_Driver/socket.c **** //!          socket's address family. The addrlen argument is a value-result
+ 293:../libraries/CC3000_Host_Driver/socket.c **** //!          argument: it should initially contain the size of the structure
+ 294:../libraries/CC3000_Host_Driver/socket.c **** //!          pointed to by addr, on return it will contain the actual 
+ 295:../libraries/CC3000_Host_Driver/socket.c **** //!          length (in bytes) of the address returned.
+ 296:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 297:../libraries/CC3000_Host_Driver/socket.c **** //! @sa     socket ; bind ; listen
+ 298:../libraries/CC3000_Host_Driver/socket.c **** //
+ 299:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 300:../libraries/CC3000_Host_Driver/socket.c **** 
+ 301:../libraries/CC3000_Host_Driver/socket.c **** long
+ 302:../libraries/CC3000_Host_Driver/socket.c **** accept(long sd, sockaddr *addr, socklen_t *addrlen)
+ 303:../libraries/CC3000_Host_Driver/socket.c **** {
+ 271              		.loc 1 303 0
+ 272              		.cfi_startproc
+ 273              		@ args = 0, pretend = 0, frame = 56
+ 274              		@ frame_needed = 1, uses_anonymous_args = 0
+ 275 0000 80B5     		push	{r7, lr}
+ 276              	.LCFI9:
+ 277              		.cfi_def_cfa_offset 8
+ 278              		.cfi_offset 7, -8
+ 279              		.cfi_offset 14, -4
+ 280 0002 8EB0     		sub	sp, sp, #56
+ 281              	.LCFI10:
+ 282              		.cfi_def_cfa_offset 64
+ 283 0004 00AF     		add	r7, sp, #0
+ 284              	.LCFI11:
+ 285              		.cfi_def_cfa_register 7
+ 286 0006 F860     		str	r0, [r7, #12]
+ 287 0008 B960     		str	r1, [r7, #8]
+ 288 000a 7A60     		str	r2, [r7, #4]
+ 304:../libraries/CC3000_Host_Driver/socket.c **** 	long ret;
+ 305:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 306:../libraries/CC3000_Host_Driver/socket.c **** 	tBsdReturnParams tAcceptReturnArguments;
+ 307:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 308:../libraries/CC3000_Host_Driver/socket.c **** 	ret = EFAIL;
+ 289              		.loc 1 308 0
+ 290 000c 4FF0FF33 		mov	r3, #-1
+ 291 0010 7B63     		str	r3, [r7, #52]
+ 309:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 292              		.loc 1 309 0
+ 293 0012 40F20003 		movw	r3, #:lower16:tSLInformation
+ 294 0016 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 295 001a 9B68     		ldr	r3, [r3, #8]
+ 296 001c 3B63     		str	r3, [r7, #48]
+ 310:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + HEADERS_SIZE_CMD);
+ 297              		.loc 1 310 0
+ 298 001e 3B6B     		ldr	r3, [r7, #48]
+ 299 0020 03F10903 		add	r3, r3, #9
+ 300 0024 FB62     		str	r3, [r7, #44]
+ 311:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 312:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in temporary command buffer
+ 313:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, sd);
+ 301              		.loc 1 313 0
+ 302 0026 FB68     		ldr	r3, [r7, #12]
+ 303 0028 F86A     		ldr	r0, [r7, #44]
+ 304 002a 1946     		mov	r1, r3
+ 305 002c FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 306 0030 F862     		str	r0, [r7, #44]
+ 314:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 315:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+ 316:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_ACCEPT,
+ 307              		.loc 1 316 0
+ 308 0032 41F20500 		movw	r0, #4101
+ 309 0036 396B     		ldr	r1, [r7, #48]
+ 310 0038 4FF00402 		mov	r2, #4
+ 311 003c FFF7FEFF 		bl	hci_command_send
+ 317:../libraries/CC3000_Host_Driver/socket.c **** 									 ptr, SOCKET_ACCEPT_PARAMS_LEN);
+ 318:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 319:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 320:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_CMND_ACCEPT, &tAcceptReturnArguments);
+ 312              		.loc 1 320 0
+ 313 0040 07F11403 		add	r3, r7, #20
+ 314 0044 41F20500 		movw	r0, #4101
+ 315 0048 1946     		mov	r1, r3
+ 316 004a FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 321:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 322:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 323:../libraries/CC3000_Host_Driver/socket.c **** 	// need specify return parameters!!!
+ 324:../libraries/CC3000_Host_Driver/socket.c **** 	memcpy(addr, &tAcceptReturnArguments.tSocketAddress, ASIC_ADDR_LEN);
+ 317              		.loc 1 324 0
+ 318 004e 07F11403 		add	r3, r7, #20
+ 319 0052 03F10803 		add	r3, r3, #8
+ 320 0056 B868     		ldr	r0, [r7, #8]
+ 321 0058 1946     		mov	r1, r3
+ 322 005a 4FF00802 		mov	r2, #8
+ 323 005e FFF7FEFF 		bl	memcpy
+ 325:../libraries/CC3000_Host_Driver/socket.c **** 	*addrlen = ASIC_ADDR_LEN;
+ 324              		.loc 1 325 0
+ 325 0062 7B68     		ldr	r3, [r7, #4]
+ 326 0064 4FF00802 		mov	r2, #8
+ 327 0068 1A60     		str	r2, [r3, #0]
+ 326:../libraries/CC3000_Host_Driver/socket.c **** 	errno = tAcceptReturnArguments.iStatus; 
+ 328              		.loc 1 326 0
+ 329 006a FFF7FEFF 		bl	__errno
+ 330 006e 0346     		mov	r3, r0
+ 331 0070 BA69     		ldr	r2, [r7, #24]
+ 332 0072 1A60     		str	r2, [r3, #0]
+ 327:../libraries/CC3000_Host_Driver/socket.c **** 	ret = errno;
+ 333              		.loc 1 327 0
+ 334 0074 FFF7FEFF 		bl	__errno
+ 335 0078 0346     		mov	r3, r0
+ 336 007a 1B68     		ldr	r3, [r3, #0]
+ 337 007c 7B63     		str	r3, [r7, #52]
+ 328:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 329:../libraries/CC3000_Host_Driver/socket.c **** 	// if succeeded, iStatus = new socket descriptor. otherwise - error number 
+ 330:../libraries/CC3000_Host_Driver/socket.c **** 	if(M_IS_VALID_SD(ret))
+ 338              		.loc 1 330 0
+ 339 007e 7B6B     		ldr	r3, [r7, #52]
+ 340 0080 002B     		cmp	r3, #0
+ 341 0082 08DB     		blt	.L11
+ 342              		.loc 1 330 0 is_stmt 0 discriminator 1
+ 343 0084 7B6B     		ldr	r3, [r7, #52]
+ 344 0086 072B     		cmp	r3, #7
+ 345 0088 05DC     		bgt	.L11
+ 331:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 332:../libraries/CC3000_Host_Driver/socket.c **** 		set_socket_active_status(ret, SOCKET_STATUS_ACTIVE);
+ 346              		.loc 1 332 0 is_stmt 1
+ 347 008a 786B     		ldr	r0, [r7, #52]
+ 348 008c 4FF00001 		mov	r1, #0
+ 349 0090 FFF7FEFF 		bl	set_socket_active_status
+ 350 0094 04E0     		b	.L12
+ 351              	.L11:
+ 333:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 334:../libraries/CC3000_Host_Driver/socket.c **** 	else
+ 335:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 336:../libraries/CC3000_Host_Driver/socket.c **** 		set_socket_active_status(sd, SOCKET_STATUS_INACTIVE);
+ 352              		.loc 1 336 0
+ 353 0096 F868     		ldr	r0, [r7, #12]
+ 354 0098 4FF00101 		mov	r1, #1
+ 355 009c FFF7FEFF 		bl	set_socket_active_status
+ 356              	.L12:
+ 337:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 338:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 339:../libraries/CC3000_Host_Driver/socket.c **** 	return(ret);
+ 357              		.loc 1 339 0
+ 358 00a0 7B6B     		ldr	r3, [r7, #52]
+ 340:../libraries/CC3000_Host_Driver/socket.c **** }
+ 359              		.loc 1 340 0
+ 360 00a2 1846     		mov	r0, r3
+ 361 00a4 07F13807 		add	r7, r7, #56
+ 362 00a8 BD46     		mov	sp, r7
+ 363 00aa 80BD     		pop	{r7, pc}
+ 364              		.cfi_endproc
+ 365              	.LFE3:
+ 367              		.section	.text.bind,"ax",%progbits
+ 368              		.align	2
+ 369              		.global	bind
+ 370              		.thumb
+ 371              		.thumb_func
+ 373              	bind:
+ 374              	.LFB4:
+ 341:../libraries/CC3000_Host_Driver/socket.c **** 
+ 342:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 343:../libraries/CC3000_Host_Driver/socket.c **** //
+ 344:../libraries/CC3000_Host_Driver/socket.c **** //! bind
+ 345:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 346:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   sd      socket descriptor (handle)              
+ 347:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out]  addr    specifies the destination address. On this version 
+ 348:../libraries/CC3000_Host_Driver/socket.c **** //!                       only AF_INET is supported.
+ 349:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out] addrlen  contains the size of the structure pointed to by addr.
+ 350:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 351:../libraries/CC3000_Host_Driver/socket.c **** //!  @return  	On success, zero is returned. On error, -1 is returned.
+ 352:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 353:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  assign a name to a socket
+ 354:../libraries/CC3000_Host_Driver/socket.c **** //!          This function gives the socket the local address addr.
+ 355:../libraries/CC3000_Host_Driver/socket.c **** //!          addr is addrlen bytes long. Traditionally, this is called when a 
+ 356:../libraries/CC3000_Host_Driver/socket.c **** //!          socket is created with socket, it exists in a name space (address 
+ 357:../libraries/CC3000_Host_Driver/socket.c **** //!          family) but has no name assigned.
+ 358:../libraries/CC3000_Host_Driver/socket.c **** //!          It is necessary to assign a local address before a SOCK_STREAM
+ 359:../libraries/CC3000_Host_Driver/socket.c **** //!          socket may receive connections.
+ 360:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 361:../libraries/CC3000_Host_Driver/socket.c **** //! @sa     socket ; accept ; listen
+ 362:../libraries/CC3000_Host_Driver/socket.c **** //
+ 363:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 364:../libraries/CC3000_Host_Driver/socket.c **** 
+ 365:../libraries/CC3000_Host_Driver/socket.c **** long
+ 366:../libraries/CC3000_Host_Driver/socket.c **** bind(long sd, const sockaddr *addr, long addrlen)
+ 367:../libraries/CC3000_Host_Driver/socket.c **** {
+ 375              		.loc 1 367 0
+ 376              		.cfi_startproc
+ 377              		@ args = 0, pretend = 0, frame = 32
+ 378              		@ frame_needed = 1, uses_anonymous_args = 0
+ 379 0000 90B5     		push	{r4, r7, lr}
+ 380              	.LCFI12:
+ 381              		.cfi_def_cfa_offset 12
+ 382              		.cfi_offset 4, -12
+ 383              		.cfi_offset 7, -8
+ 384              		.cfi_offset 14, -4
+ 385 0002 89B0     		sub	sp, sp, #36
+ 386              	.LCFI13:
+ 387              		.cfi_def_cfa_offset 48
+ 388 0004 00AF     		add	r7, sp, #0
+ 389              	.LCFI14:
+ 390              		.cfi_def_cfa_register 7
+ 391 0006 F860     		str	r0, [r7, #12]
+ 392 0008 B960     		str	r1, [r7, #8]
+ 393 000a 7A60     		str	r2, [r7, #4]
+ 368:../libraries/CC3000_Host_Driver/socket.c **** 	long ret;
+ 369:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 370:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 371:../libraries/CC3000_Host_Driver/socket.c **** 	ret = EFAIL;
+ 394              		.loc 1 371 0
+ 395 000c 4FF0FF33 		mov	r3, #-1
+ 396 0010 3B61     		str	r3, [r7, #16]
+ 372:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 397              		.loc 1 372 0
+ 398 0012 40F20003 		movw	r3, #:lower16:tSLInformation
+ 399 0016 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 400 001a 9B68     		ldr	r3, [r3, #8]
+ 401 001c BB61     		str	r3, [r7, #24]
+ 373:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + HEADERS_SIZE_CMD);
+ 402              		.loc 1 373 0
+ 403 001e BB69     		ldr	r3, [r7, #24]
+ 404 0020 03F10903 		add	r3, r3, #9
+ 405 0024 FB61     		str	r3, [r7, #28]
+ 374:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 375:../libraries/CC3000_Host_Driver/socket.c **** 	addrlen = ASIC_ADDR_LEN;
+ 406              		.loc 1 375 0
+ 407 0026 4FF00803 		mov	r3, #8
+ 408 002a 7B61     		str	r3, [r7, #20]
+ 376:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 377:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in temporary command buffer
+ 378:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, sd);
+ 409              		.loc 1 378 0
+ 410 002c FB68     		ldr	r3, [r7, #12]
+ 411 002e F869     		ldr	r0, [r7, #28]
+ 412 0030 1946     		mov	r1, r3
+ 413 0032 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 414 0036 F861     		str	r0, [r7, #28]
+ 379:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, 0x00000008);
+ 415              		.loc 1 379 0
+ 416 0038 F869     		ldr	r0, [r7, #28]
+ 417 003a 4FF00801 		mov	r1, #8
+ 418 003e FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 419 0042 F861     		str	r0, [r7, #28]
+ 380:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, addrlen);
+ 420              		.loc 1 380 0
+ 421 0044 7B69     		ldr	r3, [r7, #20]
+ 422 0046 F869     		ldr	r0, [r7, #28]
+ 423 0048 1946     		mov	r1, r3
+ 424 004a FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 425 004e F861     		str	r0, [r7, #28]
+ 426              	.LBB2:
+ 381:../libraries/CC3000_Host_Driver/socket.c **** 	ARRAY_TO_STREAM(args, ((unsigned char *)addr), addrlen);
+ 427              		.loc 1 381 0
+ 428 0050 4FF00004 		mov	r4, #0
+ 429 0054 0DE0     		b	.L15
+ 430              	.L16:
+ 431              		.loc 1 381 0 is_stmt 0 discriminator 2
+ 432 0056 23B2     		sxth	r3, r4
+ 433 0058 BA68     		ldr	r2, [r7, #8]
+ 434 005a D318     		adds	r3, r2, r3
+ 435 005c 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 436 005e FB69     		ldr	r3, [r7, #28]
+ 437 0060 1A70     		strb	r2, [r3, #0]
+ 438 0062 FB69     		ldr	r3, [r7, #28]
+ 439 0064 03F10103 		add	r3, r3, #1
+ 440 0068 FB61     		str	r3, [r7, #28]
+ 441 006a 2346     		mov	r3, r4	@ movhi
+ 442 006c 03F10103 		add	r3, r3, #1
+ 443 0070 9CB2     		uxth	r4, r3
+ 444              	.L15:
+ 445              		.loc 1 381 0 discriminator 1
+ 446 0072 22B2     		sxth	r2, r4
+ 447 0074 7B69     		ldr	r3, [r7, #20]
+ 448 0076 9A42     		cmp	r2, r3
+ 449 0078 EDDB     		blt	.L16
+ 450              	.LBE2:
+ 382:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 383:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+ 384:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_BIND,
+ 451              		.loc 1 384 0 is_stmt 1
+ 452 007a 41F20200 		movw	r0, #4098
+ 453 007e B969     		ldr	r1, [r7, #24]
+ 454 0080 4FF01402 		mov	r2, #20
+ 455 0084 FFF7FEFF 		bl	hci_command_send
+ 385:../libraries/CC3000_Host_Driver/socket.c **** 									 ptr, SOCKET_BIND_PARAMS_LEN);
+ 386:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 387:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 388:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_CMND_BIND, &ret);
+ 456              		.loc 1 388 0
+ 457 0088 07F11003 		add	r3, r7, #16
+ 458 008c 41F20200 		movw	r0, #4098
+ 459 0090 1946     		mov	r1, r3
+ 460 0092 FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 389:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 390:../libraries/CC3000_Host_Driver/socket.c **** 	errno = ret;
+ 461              		.loc 1 390 0
+ 462 0096 FFF7FEFF 		bl	__errno
+ 463 009a 0346     		mov	r3, r0
+ 464 009c 3A69     		ldr	r2, [r7, #16]
+ 465 009e 1A60     		str	r2, [r3, #0]
+ 391:../libraries/CC3000_Host_Driver/socket.c ****   
+ 392:../libraries/CC3000_Host_Driver/socket.c **** 	return(ret);
+ 466              		.loc 1 392 0
+ 467 00a0 3B69     		ldr	r3, [r7, #16]
+ 393:../libraries/CC3000_Host_Driver/socket.c **** }
+ 468              		.loc 1 393 0
+ 469 00a2 1846     		mov	r0, r3
+ 470 00a4 07F12407 		add	r7, r7, #36
+ 471 00a8 BD46     		mov	sp, r7
+ 472 00aa 90BD     		pop	{r4, r7, pc}
+ 473              		.cfi_endproc
+ 474              	.LFE4:
+ 476              		.section	.text.listen,"ax",%progbits
+ 477              		.align	2
+ 478              		.global	listen
+ 479              		.thumb
+ 480              		.thumb_func
+ 482              	listen:
+ 483              	.LFB5:
+ 394:../libraries/CC3000_Host_Driver/socket.c **** 
+ 395:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 396:../libraries/CC3000_Host_Driver/socket.c **** //
+ 397:../libraries/CC3000_Host_Driver/socket.c **** //! listen
+ 398:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 399:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   sd      socket descriptor (handle)              
+ 400:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]  backlog  specifies the listen queue depth. On this version
+ 401:../libraries/CC3000_Host_Driver/socket.c **** //!                       backlog is not supported.
+ 402:../libraries/CC3000_Host_Driver/socket.c **** //!  @return  	On success, zero is returned. On error, -1 is returned.
+ 403:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 404:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  listen for connections on a socket
+ 405:../libraries/CC3000_Host_Driver/socket.c **** //!          The willingness to accept incoming connections and a queue
+ 406:../libraries/CC3000_Host_Driver/socket.c **** //!          limit for incoming connections are specified with listen(),
+ 407:../libraries/CC3000_Host_Driver/socket.c **** //!          and then the connections are accepted with accept.
+ 408:../libraries/CC3000_Host_Driver/socket.c **** //!          The listen() call applies only to sockets of type SOCK_STREAM
+ 409:../libraries/CC3000_Host_Driver/socket.c **** //!          The backlog parameter defines the maximum length the queue of
+ 410:../libraries/CC3000_Host_Driver/socket.c **** //!          pending connections may grow to. 
+ 411:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 412:../libraries/CC3000_Host_Driver/socket.c **** //! @sa     socket ; accept ; bind
+ 413:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 414:../libraries/CC3000_Host_Driver/socket.c **** //! @note   On this version, backlog is not supported
+ 415:../libraries/CC3000_Host_Driver/socket.c **** //
+ 416:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 417:../libraries/CC3000_Host_Driver/socket.c **** 
+ 418:../libraries/CC3000_Host_Driver/socket.c **** long
+ 419:../libraries/CC3000_Host_Driver/socket.c **** listen(long sd, long backlog)
+ 420:../libraries/CC3000_Host_Driver/socket.c **** {
+ 484              		.loc 1 420 0
+ 485              		.cfi_startproc
+ 486              		@ args = 0, pretend = 0, frame = 24
+ 487              		@ frame_needed = 1, uses_anonymous_args = 0
+ 488 0000 80B5     		push	{r7, lr}
+ 489              	.LCFI15:
+ 490              		.cfi_def_cfa_offset 8
+ 491              		.cfi_offset 7, -8
+ 492              		.cfi_offset 14, -4
+ 493 0002 86B0     		sub	sp, sp, #24
+ 494              	.LCFI16:
+ 495              		.cfi_def_cfa_offset 32
+ 496 0004 00AF     		add	r7, sp, #0
+ 497              	.LCFI17:
+ 498              		.cfi_def_cfa_register 7
+ 499 0006 7860     		str	r0, [r7, #4]
+ 500 0008 3960     		str	r1, [r7, #0]
+ 421:../libraries/CC3000_Host_Driver/socket.c **** 	long ret;
+ 422:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 423:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 424:../libraries/CC3000_Host_Driver/socket.c **** 	ret = EFAIL;
+ 501              		.loc 1 424 0
+ 502 000a 4FF0FF33 		mov	r3, #-1
+ 503 000e FB60     		str	r3, [r7, #12]
+ 425:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 504              		.loc 1 425 0
+ 505 0010 40F20003 		movw	r3, #:lower16:tSLInformation
+ 506 0014 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 507 0018 9B68     		ldr	r3, [r3, #8]
+ 508 001a 7B61     		str	r3, [r7, #20]
+ 426:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + HEADERS_SIZE_CMD);
+ 509              		.loc 1 426 0
+ 510 001c 7B69     		ldr	r3, [r7, #20]
+ 511 001e 03F10903 		add	r3, r3, #9
+ 512 0022 3B61     		str	r3, [r7, #16]
+ 427:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 428:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in temporary command buffer
+ 429:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, sd);
+ 513              		.loc 1 429 0
+ 514 0024 7B68     		ldr	r3, [r7, #4]
+ 515 0026 3869     		ldr	r0, [r7, #16]
+ 516 0028 1946     		mov	r1, r3
+ 517 002a FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 518 002e 3861     		str	r0, [r7, #16]
+ 430:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, backlog);
+ 519              		.loc 1 430 0
+ 520 0030 3B68     		ldr	r3, [r7, #0]
+ 521 0032 3869     		ldr	r0, [r7, #16]
+ 522 0034 1946     		mov	r1, r3
+ 523 0036 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 524 003a 3861     		str	r0, [r7, #16]
+ 431:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 432:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+ 433:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_LISTEN,
+ 525              		.loc 1 433 0
+ 526 003c 41F20600 		movw	r0, #4102
+ 527 0040 7969     		ldr	r1, [r7, #20]
+ 528 0042 4FF00802 		mov	r2, #8
+ 529 0046 FFF7FEFF 		bl	hci_command_send
+ 434:../libraries/CC3000_Host_Driver/socket.c **** 									 ptr, SOCKET_LISTEN_PARAMS_LEN);
+ 435:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 436:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 437:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_CMND_LISTEN, &ret);
+ 530              		.loc 1 437 0
+ 531 004a 07F10C03 		add	r3, r7, #12
+ 532 004e 41F20600 		movw	r0, #4102
+ 533 0052 1946     		mov	r1, r3
+ 534 0054 FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 438:../libraries/CC3000_Host_Driver/socket.c **** 	errno = ret;
+ 535              		.loc 1 438 0
+ 536 0058 FFF7FEFF 		bl	__errno
+ 537 005c 0346     		mov	r3, r0
+ 538 005e FA68     		ldr	r2, [r7, #12]
+ 539 0060 1A60     		str	r2, [r3, #0]
+ 439:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 440:../libraries/CC3000_Host_Driver/socket.c **** 	return(ret);
+ 540              		.loc 1 440 0
+ 541 0062 FB68     		ldr	r3, [r7, #12]
+ 441:../libraries/CC3000_Host_Driver/socket.c **** }
+ 542              		.loc 1 441 0
+ 543 0064 1846     		mov	r0, r3
+ 544 0066 07F11807 		add	r7, r7, #24
+ 545 006a BD46     		mov	sp, r7
+ 546 006c 80BD     		pop	{r7, pc}
+ 547              		.cfi_endproc
+ 548              	.LFE5:
+ 550 006e 00BF     		.section	.text.gethostbyname,"ax",%progbits
+ 551              		.align	2
+ 552              		.global	gethostbyname
+ 553              		.thumb
+ 554              		.thumb_func
+ 556              	gethostbyname:
+ 557              	.LFB6:
+ 442:../libraries/CC3000_Host_Driver/socket.c **** 
+ 443:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 444:../libraries/CC3000_Host_Driver/socket.c **** //
+ 445:../libraries/CC3000_Host_Driver/socket.c **** //! gethostbyname
+ 446:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 447:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   hostname     host name              
+ 448:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   usNameLen    name length 
+ 449:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out]  out_ip_addr  This parameter is filled in with host IP address. 
+ 450:../libraries/CC3000_Host_Driver/socket.c **** //!                            In case that host name is not resolved, 
+ 451:../libraries/CC3000_Host_Driver/socket.c **** //!                            out_ip_addr is zero.                  
+ 452:../libraries/CC3000_Host_Driver/socket.c **** //!  @return  	On success, positive is returned. On error, negative is returned
+ 453:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 454:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  Get host IP by name. Obtain the IP Address of machine on network, 
+ 455:../libraries/CC3000_Host_Driver/socket.c **** //!          by its name.
+ 456:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 457:../libraries/CC3000_Host_Driver/socket.c **** //!  @note  On this version, only blocking mode is supported. Also note that
+ 458:../libraries/CC3000_Host_Driver/socket.c **** //!		     the function requires DNS server to be configured prior to its usage.
+ 459:../libraries/CC3000_Host_Driver/socket.c **** //
+ 460:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 461:../libraries/CC3000_Host_Driver/socket.c **** 
+ 462:../libraries/CC3000_Host_Driver/socket.c **** #ifndef CC3000_TINY_DRIVER
+ 463:../libraries/CC3000_Host_Driver/socket.c **** int 
+ 464:../libraries/CC3000_Host_Driver/socket.c **** gethostbyname(char * hostname, unsigned short usNameLen, 
+ 465:../libraries/CC3000_Host_Driver/socket.c **** 							unsigned long* out_ip_addr)
+ 466:../libraries/CC3000_Host_Driver/socket.c **** {
+ 558              		.loc 1 466 0
+ 559              		.cfi_startproc
+ 560              		@ args = 0, pretend = 0, frame = 32
+ 561              		@ frame_needed = 1, uses_anonymous_args = 0
+ 562 0000 90B5     		push	{r4, r7, lr}
+ 563              	.LCFI18:
+ 564              		.cfi_def_cfa_offset 12
+ 565              		.cfi_offset 4, -12
+ 566              		.cfi_offset 7, -8
+ 567              		.cfi_offset 14, -4
+ 568 0002 89B0     		sub	sp, sp, #36
+ 569              	.LCFI19:
+ 570              		.cfi_def_cfa_offset 48
+ 571 0004 00AF     		add	r7, sp, #0
+ 572              	.LCFI20:
+ 573              		.cfi_def_cfa_register 7
+ 574 0006 F860     		str	r0, [r7, #12]
+ 575 0008 0B46     		mov	r3, r1
+ 576 000a 7A60     		str	r2, [r7, #4]
+ 577 000c 7B81     		strh	r3, [r7, #10]	@ movhi
+ 467:../libraries/CC3000_Host_Driver/socket.c **** 	tBsdGethostbynameParams ret;
+ 468:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 469:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 470:../libraries/CC3000_Host_Driver/socket.c **** 	errno = EFAIL;
+ 578              		.loc 1 470 0
+ 579 000e FFF7FEFF 		bl	__errno
+ 580 0012 0346     		mov	r3, r0
+ 581 0014 4FF0FF32 		mov	r2, #-1
+ 582 0018 1A60     		str	r2, [r3, #0]
+ 471:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 472:../libraries/CC3000_Host_Driver/socket.c **** 	if (usNameLen > HOSTNAME_MAX_LENGTH)
+ 583              		.loc 1 472 0
+ 584 001a 7B89     		ldrh	r3, [r7, #10]
+ 585 001c E62B     		cmp	r3, #230
+ 586 001e 04D9     		bls	.L21
+ 473:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 474:../libraries/CC3000_Host_Driver/socket.c **** 		return errno;
+ 587              		.loc 1 474 0
+ 588 0020 FFF7FEFF 		bl	__errno
+ 589 0024 0346     		mov	r3, r0
+ 590 0026 1B68     		ldr	r3, [r3, #0]
+ 591 0028 48E0     		b	.L25
+ 592              	.L21:
+ 475:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 476:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 477:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 593              		.loc 1 477 0
+ 594 002a 40F20003 		movw	r3, #:lower16:tSLInformation
+ 595 002e C0F20003 		movt	r3, #:upper16:tSLInformation
+ 596 0032 9B68     		ldr	r3, [r3, #8]
+ 597 0034 BB61     		str	r3, [r7, #24]
+ 478:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + SIMPLE_LINK_HCI_CMND_TRANSPORT_HEADER_SIZE);
+ 598              		.loc 1 478 0
+ 599 0036 BB69     		ldr	r3, [r7, #24]
+ 600 0038 03F10903 		add	r3, r3, #9
+ 601 003c FB61     		str	r3, [r7, #28]
+ 479:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 480:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in HCI packet structure
+ 481:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, 8);
+ 602              		.loc 1 481 0
+ 603 003e F869     		ldr	r0, [r7, #28]
+ 604 0040 4FF00801 		mov	r1, #8
+ 605 0044 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 606 0048 F861     		str	r0, [r7, #28]
+ 482:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, usNameLen);
+ 607              		.loc 1 482 0
+ 608 004a 7B89     		ldrh	r3, [r7, #10]
+ 609 004c F869     		ldr	r0, [r7, #28]
+ 610 004e 1946     		mov	r1, r3
+ 611 0050 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 612 0054 F861     		str	r0, [r7, #28]
+ 613              	.LBB3:
+ 483:../libraries/CC3000_Host_Driver/socket.c **** 	ARRAY_TO_STREAM(args, hostname, usNameLen);
+ 614              		.loc 1 483 0
+ 615 0056 4FF00004 		mov	r4, #0
+ 616 005a 0DE0     		b	.L23
+ 617              	.L24:
+ 618              		.loc 1 483 0 is_stmt 0 discriminator 2
+ 619 005c 23B2     		sxth	r3, r4
+ 620 005e FA68     		ldr	r2, [r7, #12]
+ 621 0060 D318     		adds	r3, r2, r3
+ 622 0062 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 623 0064 FB69     		ldr	r3, [r7, #28]
+ 624 0066 1A70     		strb	r2, [r3, #0]
+ 625 0068 FB69     		ldr	r3, [r7, #28]
+ 626 006a 03F10103 		add	r3, r3, #1
+ 627 006e FB61     		str	r3, [r7, #28]
+ 628 0070 2346     		mov	r3, r4	@ movhi
+ 629 0072 03F10103 		add	r3, r3, #1
+ 630 0076 9CB2     		uxth	r4, r3
+ 631              	.L23:
+ 632              		.loc 1 483 0 discriminator 1
+ 633 0078 22B2     		sxth	r2, r4
+ 634 007a 7B89     		ldrh	r3, [r7, #10]
+ 635 007c 9A42     		cmp	r2, r3
+ 636 007e EDDB     		blt	.L24
+ 637              	.LBE3:
+ 484:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 485:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+ 486:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_GETHOSTNAME, ptr, SOCKET_GET_HOST_BY_NAME_PARAMS_LEN
+ 638              		.loc 1 486 0 is_stmt 1
+ 639 0080 7B89     		ldrh	r3, [r7, #10]	@ movhi
+ 640 0082 DBB2     		uxtb	r3, r3
+ 641 0084 03F10803 		add	r3, r3, #8
+ 642 0088 DBB2     		uxtb	r3, r3
+ 643 008a 41F21000 		movw	r0, #4112
+ 644 008e B969     		ldr	r1, [r7, #24]
+ 645 0090 1A46     		mov	r2, r3
+ 646 0092 FFF7FEFF 		bl	hci_command_send
+ 487:../libraries/CC3000_Host_Driver/socket.c **** 									 + usNameLen - 1);
+ 488:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 489:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 490:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_EVNT_BSD_GETHOSTBYNAME, &ret);
+ 647              		.loc 1 490 0
+ 648 0096 07F11003 		add	r3, r7, #16
+ 649 009a 41F21000 		movw	r0, #4112
+ 650 009e 1946     		mov	r1, r3
+ 651 00a0 FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 491:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 492:../libraries/CC3000_Host_Driver/socket.c **** 	errno = ret.retVal;
+ 652              		.loc 1 492 0
+ 653 00a4 FFF7FEFF 		bl	__errno
+ 654 00a8 0346     		mov	r3, r0
+ 655 00aa 3A69     		ldr	r2, [r7, #16]
+ 656 00ac 1A60     		str	r2, [r3, #0]
+ 493:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 494:../libraries/CC3000_Host_Driver/socket.c **** 	(*((long*)out_ip_addr)) = ret.outputAddress;
+ 657              		.loc 1 494 0
+ 658 00ae 7A69     		ldr	r2, [r7, #20]
+ 659 00b0 7B68     		ldr	r3, [r7, #4]
+ 660 00b2 1A60     		str	r2, [r3, #0]
+ 495:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 496:../libraries/CC3000_Host_Driver/socket.c **** 	return (errno);
+ 661              		.loc 1 496 0
+ 662 00b4 FFF7FEFF 		bl	__errno
+ 663 00b8 0346     		mov	r3, r0
+ 664 00ba 1B68     		ldr	r3, [r3, #0]
+ 665              	.L25:
+ 497:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 498:../libraries/CC3000_Host_Driver/socket.c **** }
+ 666              		.loc 1 498 0
+ 667 00bc 1846     		mov	r0, r3
+ 668 00be 07F12407 		add	r7, r7, #36
+ 669 00c2 BD46     		mov	sp, r7
+ 670 00c4 90BD     		pop	{r4, r7, pc}
+ 671              		.cfi_endproc
+ 672              	.LFE6:
+ 674 00c6 00BF     		.section	.text.connect,"ax",%progbits
+ 675              		.align	2
+ 676              		.global	connect
+ 677              		.thumb
+ 678              		.thumb_func
+ 680              	connect:
+ 681              	.LFB7:
+ 499:../libraries/CC3000_Host_Driver/socket.c **** #endif
+ 500:../libraries/CC3000_Host_Driver/socket.c **** 
+ 501:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 502:../libraries/CC3000_Host_Driver/socket.c **** //
+ 503:../libraries/CC3000_Host_Driver/socket.c **** //! connect
+ 504:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 505:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   sd       socket descriptor (handle)         
+ 506:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   addr     specifies the destination addr. On this version
+ 507:../libraries/CC3000_Host_Driver/socket.c **** //!                        only AF_INET is supported.
+ 508:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out]  addrlen  contains the size of the structure pointed to by addr    
+ 509:../libraries/CC3000_Host_Driver/socket.c **** //!  @return  	On success, zero is returned. On error, -1 is returned
+ 510:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 511:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  initiate a connection on a socket 
+ 512:../libraries/CC3000_Host_Driver/socket.c **** //!          Function connects the socket referred to by the socket descriptor 
+ 513:../libraries/CC3000_Host_Driver/socket.c **** //!          sd, to the address specified by addr. The addrlen argument 
+ 514:../libraries/CC3000_Host_Driver/socket.c **** //!          specifies the size of addr. The format of the address in addr is 
+ 515:../libraries/CC3000_Host_Driver/socket.c **** //!          determined by the address space of the socket. If it is of type 
+ 516:../libraries/CC3000_Host_Driver/socket.c **** //!          SOCK_DGRAM, this call specifies the peer with which the socket is 
+ 517:../libraries/CC3000_Host_Driver/socket.c **** //!          to be associated; this address is that to which datagrams are to be
+ 518:../libraries/CC3000_Host_Driver/socket.c **** //!          sent, and the only address from which datagrams are to be received.  
+ 519:../libraries/CC3000_Host_Driver/socket.c **** //!          If the socket is of type SOCK_STREAM, this call attempts to make a 
+ 520:../libraries/CC3000_Host_Driver/socket.c **** //!          connection to another socket. The other socket is specified  by 
+ 521:../libraries/CC3000_Host_Driver/socket.c **** //!          address, which is an address in the communications space of the
+ 522:../libraries/CC3000_Host_Driver/socket.c **** //!          socket. Note that the function implements only blocking behavior 
+ 523:../libraries/CC3000_Host_Driver/socket.c **** //!          thus the caller will be waiting either for the connection 
+ 524:../libraries/CC3000_Host_Driver/socket.c **** //!          establishment or for the connection establishment failure.
+ 525:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 526:../libraries/CC3000_Host_Driver/socket.c **** //!  @sa socket
+ 527:../libraries/CC3000_Host_Driver/socket.c **** //
+ 528:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 529:../libraries/CC3000_Host_Driver/socket.c **** 
+ 530:../libraries/CC3000_Host_Driver/socket.c **** long
+ 531:../libraries/CC3000_Host_Driver/socket.c **** connect(long sd, const sockaddr *addr, long addrlen)
+ 532:../libraries/CC3000_Host_Driver/socket.c **** {
+ 682              		.loc 1 532 0
+ 683              		.cfi_startproc
+ 684              		@ args = 0, pretend = 0, frame = 32
+ 685              		@ frame_needed = 1, uses_anonymous_args = 0
+ 686 0000 90B5     		push	{r4, r7, lr}
+ 687              	.LCFI21:
+ 688              		.cfi_def_cfa_offset 12
+ 689              		.cfi_offset 4, -12
+ 690              		.cfi_offset 7, -8
+ 691              		.cfi_offset 14, -4
+ 692 0002 89B0     		sub	sp, sp, #36
+ 693              	.LCFI22:
+ 694              		.cfi_def_cfa_offset 48
+ 695 0004 00AF     		add	r7, sp, #0
+ 696              	.LCFI23:
+ 697              		.cfi_def_cfa_register 7
+ 698 0006 F860     		str	r0, [r7, #12]
+ 699 0008 B960     		str	r1, [r7, #8]
+ 700 000a 7A60     		str	r2, [r7, #4]
+ 533:../libraries/CC3000_Host_Driver/socket.c **** 	long int ret;
+ 534:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 535:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 536:../libraries/CC3000_Host_Driver/socket.c **** 	ret = EFAIL;
+ 701              		.loc 1 536 0
+ 702 000c 4FF0FF33 		mov	r3, #-1
+ 703 0010 3B61     		str	r3, [r7, #16]
+ 537:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 704              		.loc 1 537 0
+ 705 0012 40F20003 		movw	r3, #:lower16:tSLInformation
+ 706 0016 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 707 001a 9B68     		ldr	r3, [r3, #8]
+ 708 001c BB61     		str	r3, [r7, #24]
+ 538:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + SIMPLE_LINK_HCI_CMND_TRANSPORT_HEADER_SIZE);
+ 709              		.loc 1 538 0
+ 710 001e BB69     		ldr	r3, [r7, #24]
+ 711 0020 03F10903 		add	r3, r3, #9
+ 712 0024 FB61     		str	r3, [r7, #28]
+ 539:../libraries/CC3000_Host_Driver/socket.c **** 	addrlen = 8;
+ 713              		.loc 1 539 0
+ 714 0026 4FF00803 		mov	r3, #8
+ 715 002a 7B61     		str	r3, [r7, #20]
+ 540:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 541:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in temporary command buffer
+ 542:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, sd);
+ 716              		.loc 1 542 0
+ 717 002c FB68     		ldr	r3, [r7, #12]
+ 718 002e F869     		ldr	r0, [r7, #28]
+ 719 0030 1946     		mov	r1, r3
+ 720 0032 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 721 0036 F861     		str	r0, [r7, #28]
+ 543:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, 0x00000008);
+ 722              		.loc 1 543 0
+ 723 0038 F869     		ldr	r0, [r7, #28]
+ 724 003a 4FF00801 		mov	r1, #8
+ 725 003e FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 726 0042 F861     		str	r0, [r7, #28]
+ 544:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, addrlen);
+ 727              		.loc 1 544 0
+ 728 0044 7B69     		ldr	r3, [r7, #20]
+ 729 0046 F869     		ldr	r0, [r7, #28]
+ 730 0048 1946     		mov	r1, r3
+ 731 004a FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 732 004e F861     		str	r0, [r7, #28]
+ 733              	.LBB4:
+ 545:../libraries/CC3000_Host_Driver/socket.c **** 	ARRAY_TO_STREAM(args, ((unsigned char *)addr), addrlen);
+ 734              		.loc 1 545 0
+ 735 0050 4FF00004 		mov	r4, #0
+ 736 0054 0DE0     		b	.L27
+ 737              	.L28:
+ 738              		.loc 1 545 0 is_stmt 0 discriminator 2
+ 739 0056 23B2     		sxth	r3, r4
+ 740 0058 BA68     		ldr	r2, [r7, #8]
+ 741 005a D318     		adds	r3, r2, r3
+ 742 005c 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 743 005e FB69     		ldr	r3, [r7, #28]
+ 744 0060 1A70     		strb	r2, [r3, #0]
+ 745 0062 FB69     		ldr	r3, [r7, #28]
+ 746 0064 03F10103 		add	r3, r3, #1
+ 747 0068 FB61     		str	r3, [r7, #28]
+ 748 006a 2346     		mov	r3, r4	@ movhi
+ 749 006c 03F10103 		add	r3, r3, #1
+ 750 0070 9CB2     		uxth	r4, r3
+ 751              	.L27:
+ 752              		.loc 1 545 0 discriminator 1
+ 753 0072 22B2     		sxth	r2, r4
+ 754 0074 7B69     		ldr	r3, [r7, #20]
+ 755 0076 9A42     		cmp	r2, r3
+ 756 0078 EDDB     		blt	.L28
+ 757              	.LBE4:
+ 546:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 547:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+ 548:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_CONNECT,
+ 758              		.loc 1 548 0 is_stmt 1
+ 759 007a 41F20700 		movw	r0, #4103
+ 760 007e B969     		ldr	r1, [r7, #24]
+ 761 0080 4FF01402 		mov	r2, #20
+ 762 0084 FFF7FEFF 		bl	hci_command_send
+ 549:../libraries/CC3000_Host_Driver/socket.c **** 									 ptr, SOCKET_CONNECT_PARAMS_LEN);
+ 550:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 551:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 552:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_CMND_CONNECT, &ret);
+ 763              		.loc 1 552 0
+ 764 0088 07F11003 		add	r3, r7, #16
+ 765 008c 41F20700 		movw	r0, #4103
+ 766 0090 1946     		mov	r1, r3
+ 767 0092 FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 553:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 554:../libraries/CC3000_Host_Driver/socket.c **** 	errno = ret;
+ 768              		.loc 1 554 0
+ 769 0096 FFF7FEFF 		bl	__errno
+ 770 009a 0346     		mov	r3, r0
+ 771 009c 3A69     		ldr	r2, [r7, #16]
+ 772 009e 1A60     		str	r2, [r3, #0]
+ 555:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 556:../libraries/CC3000_Host_Driver/socket.c **** 	return((long)ret);
+ 773              		.loc 1 556 0
+ 774 00a0 3B69     		ldr	r3, [r7, #16]
+ 557:../libraries/CC3000_Host_Driver/socket.c **** }
+ 775              		.loc 1 557 0
+ 776 00a2 1846     		mov	r0, r3
+ 777 00a4 07F12407 		add	r7, r7, #36
+ 778 00a8 BD46     		mov	sp, r7
+ 779 00aa 90BD     		pop	{r4, r7, pc}
+ 780              		.cfi_endproc
+ 781              	.LFE7:
+ 783              		.section	.text.select,"ax",%progbits
+ 784              		.align	2
+ 785              		.global	select
+ 786              		.thumb
+ 787              		.thumb_func
+ 789              	select:
+ 790              	.LFB8:
+ 558:../libraries/CC3000_Host_Driver/socket.c **** 
+ 559:../libraries/CC3000_Host_Driver/socket.c **** 
+ 560:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 561:../libraries/CC3000_Host_Driver/socket.c **** //
+ 562:../libraries/CC3000_Host_Driver/socket.c **** //! select
+ 563:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 564:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   nfds       the highest-numbered file descriptor in any of the
+ 565:../libraries/CC3000_Host_Driver/socket.c **** //!                           three sets, plus 1.     
+ 566:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out]   writesds   socket descriptors list for write monitoring
+ 567:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out]   readsds    socket descriptors list for read monitoring  
+ 568:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out]   exceptsds  socket descriptors list for exception monitoring
+ 569:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   timeout     is an upper bound on the amount of time elapsed
+ 570:../libraries/CC3000_Host_Driver/socket.c **** //!                           before select() returns. Null means infinity 
+ 571:../libraries/CC3000_Host_Driver/socket.c **** //!                           timeout. The minimum timeout is 5 milliseconds,
+ 572:../libraries/CC3000_Host_Driver/socket.c **** //!                          less than 5 milliseconds will be set
+ 573:../libraries/CC3000_Host_Driver/socket.c **** //!                           automatically to 5 milliseconds.
+ 574:../libraries/CC3000_Host_Driver/socket.c **** //!  @return  	On success, select() returns the number of file descriptors
+ 575:../libraries/CC3000_Host_Driver/socket.c **** //!             contained in the three returned descriptor sets (that is, the
+ 576:../libraries/CC3000_Host_Driver/socket.c **** //!             total number of bits that are set in readfds, writefds,
+ 577:../libraries/CC3000_Host_Driver/socket.c **** //!             exceptfds) which may be zero if the timeout expires before
+ 578:../libraries/CC3000_Host_Driver/socket.c **** //!             anything interesting  happens.
+ 579:../libraries/CC3000_Host_Driver/socket.c **** //!             On error, -1 is returned.
+ 580:../libraries/CC3000_Host_Driver/socket.c **** //!                   *readsds - return the sockets on which Read request will
+ 581:../libraries/CC3000_Host_Driver/socket.c **** //!                              return without delay with valid data.
+ 582:../libraries/CC3000_Host_Driver/socket.c **** //!                   *writesds - return the sockets on which Write request 
+ 583:../libraries/CC3000_Host_Driver/socket.c **** //!                                 will return without delay.
+ 584:../libraries/CC3000_Host_Driver/socket.c **** //!                   *exceptsds - return the sockets which closed recently.
+ 585:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 586:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  Monitor socket activity  
+ 587:../libraries/CC3000_Host_Driver/socket.c **** //!          Select allow a program to monitor multiple file descriptors,
+ 588:../libraries/CC3000_Host_Driver/socket.c **** //!          waiting until one or more of the file descriptors become 
+ 589:../libraries/CC3000_Host_Driver/socket.c **** //!         "ready" for some class of I/O operation 
+ 590:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 591:../libraries/CC3000_Host_Driver/socket.c **** //!  @Note   If the timeout value set to less than 5ms it will automatically set
+ 592:../libraries/CC3000_Host_Driver/socket.c **** //!          to 5ms to prevent overload of the system
+ 593:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 594:../libraries/CC3000_Host_Driver/socket.c **** //!  @sa socket
+ 595:../libraries/CC3000_Host_Driver/socket.c **** //
+ 596:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 597:../libraries/CC3000_Host_Driver/socket.c **** 
+ 598:../libraries/CC3000_Host_Driver/socket.c **** int
+ 599:../libraries/CC3000_Host_Driver/socket.c **** select(long nfds, fd_set *readsds, fd_set *writesds, fd_set *exceptsds, 
+ 600:../libraries/CC3000_Host_Driver/socket.c ****        struct timeval *timeout)
+ 601:../libraries/CC3000_Host_Driver/socket.c **** {
+ 791              		.loc 1 601 0
+ 792              		.cfi_startproc
+ 793              		@ args = 4, pretend = 0, frame = 48
+ 794              		@ frame_needed = 1, uses_anonymous_args = 0
+ 795 0000 80B5     		push	{r7, lr}
+ 796              	.LCFI24:
+ 797              		.cfi_def_cfa_offset 8
+ 798              		.cfi_offset 7, -8
+ 799              		.cfi_offset 14, -4
+ 800 0002 8CB0     		sub	sp, sp, #48
+ 801              	.LCFI25:
+ 802              		.cfi_def_cfa_offset 56
+ 803 0004 00AF     		add	r7, sp, #0
+ 804              	.LCFI26:
+ 805              		.cfi_def_cfa_register 7
+ 806 0006 F860     		str	r0, [r7, #12]
+ 807 0008 B960     		str	r1, [r7, #8]
+ 808 000a 7A60     		str	r2, [r7, #4]
+ 809 000c 3B60     		str	r3, [r7, #0]
+ 602:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 603:../libraries/CC3000_Host_Driver/socket.c **** 	tBsdSelectRecvParams tParams;
+ 604:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned long is_blocking;
+ 605:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 606:../libraries/CC3000_Host_Driver/socket.c **** 	if( timeout == NULL)
+ 810              		.loc 1 606 0
+ 811 000e BB6B     		ldr	r3, [r7, #56]
+ 812 0010 002B     		cmp	r3, #0
+ 813 0012 03D1     		bne	.L31
+ 607:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 608:../libraries/CC3000_Host_Driver/socket.c **** 		is_blocking = 1; /* blocking , infinity timeout */
+ 814              		.loc 1 608 0
+ 815 0014 4FF00103 		mov	r3, #1
+ 816 0018 FB62     		str	r3, [r7, #44]
+ 817 001a 02E0     		b	.L32
+ 818              	.L31:
+ 609:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 610:../libraries/CC3000_Host_Driver/socket.c **** 	else
+ 611:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 612:../libraries/CC3000_Host_Driver/socket.c **** 		is_blocking = 0; /* no blocking, timeout */
+ 819              		.loc 1 612 0
+ 820 001c 4FF00003 		mov	r3, #0
+ 821 0020 FB62     		str	r3, [r7, #44]
+ 822              	.L32:
+ 613:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 614:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 615:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in HCI packet structure
+ 616:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 823              		.loc 1 616 0
+ 824 0022 40F20003 		movw	r3, #:lower16:tSLInformation
+ 825 0026 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 826 002a 9B68     		ldr	r3, [r3, #8]
+ 827 002c BB62     		str	r3, [r7, #40]
+ 617:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + HEADERS_SIZE_CMD);
+ 828              		.loc 1 617 0
+ 829 002e BB6A     		ldr	r3, [r7, #40]
+ 830 0030 03F10903 		add	r3, r3, #9
+ 831 0034 7B62     		str	r3, [r7, #36]
+ 618:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 619:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in temporary command buffer
+ 620:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, nfds);
+ 832              		.loc 1 620 0
+ 833 0036 FB68     		ldr	r3, [r7, #12]
+ 834 0038 786A     		ldr	r0, [r7, #36]
+ 835 003a 1946     		mov	r1, r3
+ 836 003c FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 837 0040 7862     		str	r0, [r7, #36]
+ 621:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, 0x00000014);
+ 838              		.loc 1 621 0
+ 839 0042 786A     		ldr	r0, [r7, #36]
+ 840 0044 4FF01401 		mov	r1, #20
+ 841 0048 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 842 004c 7862     		str	r0, [r7, #36]
+ 622:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, 0x00000014);
+ 843              		.loc 1 622 0
+ 844 004e 786A     		ldr	r0, [r7, #36]
+ 845 0050 4FF01401 		mov	r1, #20
+ 846 0054 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 847 0058 7862     		str	r0, [r7, #36]
+ 623:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, 0x00000014);
+ 848              		.loc 1 623 0
+ 849 005a 786A     		ldr	r0, [r7, #36]
+ 850 005c 4FF01401 		mov	r1, #20
+ 851 0060 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 852 0064 7862     		str	r0, [r7, #36]
+ 624:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, 0x00000014);
+ 853              		.loc 1 624 0
+ 854 0066 786A     		ldr	r0, [r7, #36]
+ 855 0068 4FF01401 		mov	r1, #20
+ 856 006c FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 857 0070 7862     		str	r0, [r7, #36]
+ 625:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, is_blocking);
+ 858              		.loc 1 625 0
+ 859 0072 786A     		ldr	r0, [r7, #36]
+ 860 0074 F96A     		ldr	r1, [r7, #44]
+ 861 0076 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 862 007a 7862     		str	r0, [r7, #36]
+ 626:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, ((readsds) ? *(unsigned long*)readsds : 0));
+ 863              		.loc 1 626 0
+ 864 007c BB68     		ldr	r3, [r7, #8]
+ 865 007e 002B     		cmp	r3, #0
+ 866 0080 02D0     		beq	.L33
+ 867              		.loc 1 626 0 is_stmt 0 discriminator 1
+ 868 0082 BB68     		ldr	r3, [r7, #8]
+ 869 0084 1B68     		ldr	r3, [r3, #0]
+ 870 0086 01E0     		b	.L34
+ 871              	.L33:
+ 872              		.loc 1 626 0 discriminator 2
+ 873 0088 4FF00003 		mov	r3, #0
+ 874              	.L34:
+ 875              		.loc 1 626 0 discriminator 3
+ 876 008c 786A     		ldr	r0, [r7, #36]
+ 877 008e 1946     		mov	r1, r3
+ 878 0090 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 879 0094 7862     		str	r0, [r7, #36]
+ 627:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, ((writesds) ? *(unsigned long*)writesds : 0));
+ 880              		.loc 1 627 0 is_stmt 1 discriminator 3
+ 881 0096 7B68     		ldr	r3, [r7, #4]
+ 882 0098 002B     		cmp	r3, #0
+ 883 009a 02D0     		beq	.L35
+ 884              		.loc 1 627 0 is_stmt 0 discriminator 1
+ 885 009c 7B68     		ldr	r3, [r7, #4]
+ 886 009e 1B68     		ldr	r3, [r3, #0]
+ 887 00a0 01E0     		b	.L36
+ 888              	.L35:
+ 889              		.loc 1 627 0 discriminator 2
+ 890 00a2 4FF00003 		mov	r3, #0
+ 891              	.L36:
+ 892              		.loc 1 627 0 discriminator 3
+ 893 00a6 786A     		ldr	r0, [r7, #36]
+ 894 00a8 1946     		mov	r1, r3
+ 895 00aa FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 896 00ae 7862     		str	r0, [r7, #36]
+ 628:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, ((exceptsds) ? *(unsigned long*)exceptsds : 0));
+ 897              		.loc 1 628 0 is_stmt 1 discriminator 3
+ 898 00b0 3B68     		ldr	r3, [r7, #0]
+ 899 00b2 002B     		cmp	r3, #0
+ 900 00b4 02D0     		beq	.L37
+ 901              		.loc 1 628 0 is_stmt 0 discriminator 1
+ 902 00b6 3B68     		ldr	r3, [r7, #0]
+ 903 00b8 1B68     		ldr	r3, [r3, #0]
+ 904 00ba 01E0     		b	.L38
+ 905              	.L37:
+ 906              		.loc 1 628 0 discriminator 2
+ 907 00bc 4FF00003 		mov	r3, #0
+ 908              	.L38:
+ 909              		.loc 1 628 0 discriminator 3
+ 910 00c0 786A     		ldr	r0, [r7, #36]
+ 911 00c2 1946     		mov	r1, r3
+ 912 00c4 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 913 00c8 7862     		str	r0, [r7, #36]
+ 629:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 630:../libraries/CC3000_Host_Driver/socket.c **** 	if (timeout)
+ 914              		.loc 1 630 0 is_stmt 1 discriminator 3
+ 915 00ca BB6B     		ldr	r3, [r7, #56]
+ 916 00cc 002B     		cmp	r3, #0
+ 917 00ce 1BD0     		beq	.L39
+ 631:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 632:../libraries/CC3000_Host_Driver/socket.c **** 		if ( 0 == timeout->tv_sec && timeout->tv_usec < 
+ 918              		.loc 1 632 0
+ 919 00d0 BB6B     		ldr	r3, [r7, #56]
+ 920 00d2 1B68     		ldr	r3, [r3, #0]
+ 921 00d4 002B     		cmp	r3, #0
+ 922 00d6 09D1     		bne	.L40
+ 923              		.loc 1 632 0 is_stmt 0 discriminator 1
+ 924 00d8 BB6B     		ldr	r3, [r7, #56]
+ 925 00da 5A68     		ldr	r2, [r3, #4]
+ 926 00dc 41F28733 		movw	r3, #4999
+ 927 00e0 9A42     		cmp	r2, r3
+ 928 00e2 03DC     		bgt	.L40
+ 633:../libraries/CC3000_Host_Driver/socket.c **** 				SELECT_TIMEOUT_MIN_MICRO_SECONDS)
+ 634:../libraries/CC3000_Host_Driver/socket.c **** 		{
+ 635:../libraries/CC3000_Host_Driver/socket.c **** 			timeout->tv_usec = SELECT_TIMEOUT_MIN_MICRO_SECONDS;
+ 929              		.loc 1 635 0 is_stmt 1
+ 930 00e4 BB6B     		ldr	r3, [r7, #56]
+ 931 00e6 41F28832 		movw	r2, #5000
+ 932 00ea 5A60     		str	r2, [r3, #4]
+ 933              	.L40:
+ 636:../libraries/CC3000_Host_Driver/socket.c **** 		}
+ 637:../libraries/CC3000_Host_Driver/socket.c **** 		args = UINT32_TO_STREAM(args, timeout->tv_sec);
+ 934              		.loc 1 637 0
+ 935 00ec BB6B     		ldr	r3, [r7, #56]
+ 936 00ee 1B68     		ldr	r3, [r3, #0]
+ 937 00f0 786A     		ldr	r0, [r7, #36]
+ 938 00f2 1946     		mov	r1, r3
+ 939 00f4 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 940 00f8 7862     		str	r0, [r7, #36]
+ 638:../libraries/CC3000_Host_Driver/socket.c **** 		args = UINT32_TO_STREAM(args, timeout->tv_usec);
+ 941              		.loc 1 638 0
+ 942 00fa BB6B     		ldr	r3, [r7, #56]
+ 943 00fc 5B68     		ldr	r3, [r3, #4]
+ 944 00fe 786A     		ldr	r0, [r7, #36]
+ 945 0100 1946     		mov	r1, r3
+ 946 0102 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 947 0106 7862     		str	r0, [r7, #36]
+ 948              	.L39:
+ 639:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 640:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 641:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+ 642:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_BSD_SELECT, ptr, SOCKET_SELECT_PARAMS_LEN);
+ 949              		.loc 1 642 0
+ 950 0108 41F20800 		movw	r0, #4104
+ 951 010c B96A     		ldr	r1, [r7, #40]
+ 952 010e 4FF02C02 		mov	r2, #44
+ 953 0112 FFF7FEFF 		bl	hci_command_send
+ 643:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 644:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 645:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_EVNT_SELECT, &tParams);
+ 954              		.loc 1 645 0
+ 955 0116 07F11403 		add	r3, r7, #20
+ 956 011a 41F20800 		movw	r0, #4104
+ 957 011e 1946     		mov	r1, r3
+ 958 0120 FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 646:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 647:../libraries/CC3000_Host_Driver/socket.c **** 	// Update actually read FD
+ 648:../libraries/CC3000_Host_Driver/socket.c **** 	if (tParams.iStatus >= 0)
+ 959              		.loc 1 648 0
+ 960 0124 7B69     		ldr	r3, [r7, #20]
+ 961 0126 002B     		cmp	r3, #0
+ 962 0128 28DB     		blt	.L41
+ 649:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 650:../libraries/CC3000_Host_Driver/socket.c **** 		if (readsds)
+ 963              		.loc 1 650 0
+ 964 012a BB68     		ldr	r3, [r7, #8]
+ 965 012c 002B     		cmp	r3, #0
+ 966 012e 09D0     		beq	.L42
+ 651:../libraries/CC3000_Host_Driver/socket.c **** 		{
+ 652:../libraries/CC3000_Host_Driver/socket.c **** 			memcpy(readsds, &tParams.uiRdfd, sizeof(tParams.uiRdfd));
+ 967              		.loc 1 652 0
+ 968 0130 07F11403 		add	r3, r7, #20
+ 969 0134 03F10403 		add	r3, r3, #4
+ 970 0138 B868     		ldr	r0, [r7, #8]
+ 971 013a 1946     		mov	r1, r3
+ 972 013c 4FF00402 		mov	r2, #4
+ 973 0140 FFF7FEFF 		bl	memcpy
+ 974              	.L42:
+ 653:../libraries/CC3000_Host_Driver/socket.c **** 		}
+ 654:../libraries/CC3000_Host_Driver/socket.c **** 		
+ 655:../libraries/CC3000_Host_Driver/socket.c **** 		if (writesds)
+ 975              		.loc 1 655 0
+ 976 0144 7B68     		ldr	r3, [r7, #4]
+ 977 0146 002B     		cmp	r3, #0
+ 978 0148 09D0     		beq	.L43
+ 656:../libraries/CC3000_Host_Driver/socket.c **** 		{
+ 657:../libraries/CC3000_Host_Driver/socket.c **** 			memcpy(writesds, &tParams.uiWrfd, sizeof(tParams.uiWrfd)); 
+ 979              		.loc 1 657 0
+ 980 014a 07F11403 		add	r3, r7, #20
+ 981 014e 03F10803 		add	r3, r3, #8
+ 982 0152 7868     		ldr	r0, [r7, #4]
+ 983 0154 1946     		mov	r1, r3
+ 984 0156 4FF00402 		mov	r2, #4
+ 985 015a FFF7FEFF 		bl	memcpy
+ 986              	.L43:
+ 658:../libraries/CC3000_Host_Driver/socket.c **** 		}
+ 659:../libraries/CC3000_Host_Driver/socket.c **** 		
+ 660:../libraries/CC3000_Host_Driver/socket.c **** 		if (exceptsds)
+ 987              		.loc 1 660 0
+ 988 015e 3B68     		ldr	r3, [r7, #0]
+ 989 0160 002B     		cmp	r3, #0
+ 990 0162 09D0     		beq	.L44
+ 661:../libraries/CC3000_Host_Driver/socket.c **** 		{
+ 662:../libraries/CC3000_Host_Driver/socket.c **** 			memcpy(exceptsds, &tParams.uiExfd, sizeof(tParams.uiExfd)); 
+ 991              		.loc 1 662 0
+ 992 0164 07F11403 		add	r3, r7, #20
+ 993 0168 03F10C03 		add	r3, r3, #12
+ 994 016c 3868     		ldr	r0, [r7, #0]
+ 995 016e 1946     		mov	r1, r3
+ 996 0170 4FF00402 		mov	r2, #4
+ 997 0174 FFF7FEFF 		bl	memcpy
+ 998              	.L44:
+ 663:../libraries/CC3000_Host_Driver/socket.c **** 		}
+ 664:../libraries/CC3000_Host_Driver/socket.c **** 		
+ 665:../libraries/CC3000_Host_Driver/socket.c **** 		return(tParams.iStatus);
+ 999              		.loc 1 665 0
+ 1000 0178 7B69     		ldr	r3, [r7, #20]
+ 1001 017a 06E0     		b	.L46
+ 1002              	.L41:
+ 666:../libraries/CC3000_Host_Driver/socket.c **** 		
+ 667:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 668:../libraries/CC3000_Host_Driver/socket.c **** 	else
+ 669:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 670:../libraries/CC3000_Host_Driver/socket.c **** 		errno = tParams.iStatus;
+ 1003              		.loc 1 670 0
+ 1004 017c FFF7FEFF 		bl	__errno
+ 1005 0180 0346     		mov	r3, r0
+ 1006 0182 7A69     		ldr	r2, [r7, #20]
+ 1007 0184 1A60     		str	r2, [r3, #0]
+ 671:../libraries/CC3000_Host_Driver/socket.c **** 		return(-1);
+ 1008              		.loc 1 671 0
+ 1009 0186 4FF0FF33 		mov	r3, #-1
+ 1010              	.L46:
+ 672:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 673:../libraries/CC3000_Host_Driver/socket.c **** }
+ 1011              		.loc 1 673 0
+ 1012 018a 1846     		mov	r0, r3
+ 1013 018c 07F13007 		add	r7, r7, #48
+ 1014 0190 BD46     		mov	sp, r7
+ 1015 0192 80BD     		pop	{r7, pc}
+ 1016              		.cfi_endproc
+ 1017              	.LFE8:
+ 1019              		.section	.text.setsockopt,"ax",%progbits
+ 1020              		.align	2
+ 1021              		.global	setsockopt
+ 1022              		.thumb
+ 1023              		.thumb_func
+ 1025              	setsockopt:
+ 1026              	.LFB9:
+ 674:../libraries/CC3000_Host_Driver/socket.c **** 
+ 675:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 676:../libraries/CC3000_Host_Driver/socket.c **** //
+ 677:../libraries/CC3000_Host_Driver/socket.c **** //! setsockopt
+ 678:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 679:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   sd          socket handle
+ 680:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   level       defines the protocol level for this option
+ 681:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   optname     defines the option name to Interrogate
+ 682:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   optval      specifies a value for the option
+ 683:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   optlen      specifies the length of the option value
+ 684:../libraries/CC3000_Host_Driver/socket.c **** //!  @return  	On success, zero is returned. On error, -1 is returned
+ 685:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 686:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  set socket options
+ 687:../libraries/CC3000_Host_Driver/socket.c **** //!          This function manipulate the options associated with a socket.
+ 688:../libraries/CC3000_Host_Driver/socket.c **** //!          Options may exist at multiple protocol levels; they are always
+ 689:../libraries/CC3000_Host_Driver/socket.c **** //!          present at the uppermost socket level.
+ 690:../libraries/CC3000_Host_Driver/socket.c **** //!          When manipulating socket options the level at which the option 
+ 691:../libraries/CC3000_Host_Driver/socket.c **** //!          resides and the name of the option must be specified.  
+ 692:../libraries/CC3000_Host_Driver/socket.c **** //!          To manipulate options at the socket level, level is specified as 
+ 693:../libraries/CC3000_Host_Driver/socket.c **** //!          SOL_SOCKET. To manipulate options at any other level the protocol 
+ 694:../libraries/CC3000_Host_Driver/socket.c **** //!          number of the appropriate protocol controlling the option is 
+ 695:../libraries/CC3000_Host_Driver/socket.c **** //!          supplied. For example, to indicate that an option is to be 
+ 696:../libraries/CC3000_Host_Driver/socket.c **** //!          interpreted by the TCP protocol, level should be set to the 
+ 697:../libraries/CC3000_Host_Driver/socket.c **** //!          protocol number of TCP; 
+ 698:../libraries/CC3000_Host_Driver/socket.c **** //!          The parameters optval and optlen are used to access optval - 
+ 699:../libraries/CC3000_Host_Driver/socket.c **** //!          use for setsockopt(). For getsockopt() they identify a buffer
+ 700:../libraries/CC3000_Host_Driver/socket.c **** //!          in which the value for the requested option(s) are to 
+ 701:../libraries/CC3000_Host_Driver/socket.c **** //!          be returned. For getsockopt(), optlen is a value-result 
+ 702:../libraries/CC3000_Host_Driver/socket.c **** //!          parameter, initially containing the size of the buffer 
+ 703:../libraries/CC3000_Host_Driver/socket.c **** //!          pointed to by option_value, and modified on return to 
+ 704:../libraries/CC3000_Host_Driver/socket.c **** //!          indicate the actual size of the value returned. If no option 
+ 705:../libraries/CC3000_Host_Driver/socket.c **** //!          value is to be supplied or returned, option_value may be NULL.
+ 706:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 707:../libraries/CC3000_Host_Driver/socket.c **** //!  @Note   On this version the following two socket options are enabled:
+ 708:../libraries/CC3000_Host_Driver/socket.c **** //!    			 The only protocol level supported in this version
+ 709:../libraries/CC3000_Host_Driver/socket.c **** //!          is SOL_SOCKET (level).
+ 710:../libraries/CC3000_Host_Driver/socket.c **** //!		       1. SOCKOPT_RECV_TIMEOUT (optname)
+ 711:../libraries/CC3000_Host_Driver/socket.c **** //!			      SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout 
+ 712:../libraries/CC3000_Host_Driver/socket.c **** //!           in milliseconds.
+ 713:../libraries/CC3000_Host_Driver/socket.c **** //!		        In that case optval should be pointer to unsigned long.
+ 714:../libraries/CC3000_Host_Driver/socket.c **** //!		       2. SOCKOPT_NONBLOCK (optname). sets the socket non-blocking mode on 
+ 715:../libraries/CC3000_Host_Driver/socket.c **** //!           or off.
+ 716:../libraries/CC3000_Host_Driver/socket.c **** //!		        In that case optval should be SOCK_ON or SOCK_OFF (optval).
+ 717:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 718:../libraries/CC3000_Host_Driver/socket.c **** //!  @sa getsockopt
+ 719:../libraries/CC3000_Host_Driver/socket.c **** //
+ 720:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 721:../libraries/CC3000_Host_Driver/socket.c **** 
+ 722:../libraries/CC3000_Host_Driver/socket.c **** #ifndef CC3000_TINY_DRIVER
+ 723:../libraries/CC3000_Host_Driver/socket.c **** int
+ 724:../libraries/CC3000_Host_Driver/socket.c **** setsockopt(long sd, long level, long optname, const void *optval,
+ 725:../libraries/CC3000_Host_Driver/socket.c **** 					 socklen_t optlen)
+ 726:../libraries/CC3000_Host_Driver/socket.c **** {
+ 1027              		.loc 1 726 0
+ 1028              		.cfi_startproc
+ 1029              		@ args = 4, pretend = 0, frame = 32
+ 1030              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1031 0000 90B5     		push	{r4, r7, lr}
+ 1032              	.LCFI27:
+ 1033              		.cfi_def_cfa_offset 12
+ 1034              		.cfi_offset 4, -12
+ 1035              		.cfi_offset 7, -8
+ 1036              		.cfi_offset 14, -4
+ 1037 0002 89B0     		sub	sp, sp, #36
+ 1038              	.LCFI28:
+ 1039              		.cfi_def_cfa_offset 48
+ 1040 0004 00AF     		add	r7, sp, #0
+ 1041              	.LCFI29:
+ 1042              		.cfi_def_cfa_register 7
+ 1043 0006 F860     		str	r0, [r7, #12]
+ 1044 0008 B960     		str	r1, [r7, #8]
+ 1045 000a 7A60     		str	r2, [r7, #4]
+ 1046 000c 3B60     		str	r3, [r7, #0]
+ 727:../libraries/CC3000_Host_Driver/socket.c **** 	int ret;
+ 728:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 729:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 730:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 1047              		.loc 1 730 0
+ 1048 000e 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1049 0012 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1050 0016 9B68     		ldr	r3, [r3, #8]
+ 1051 0018 BB61     		str	r3, [r7, #24]
+ 731:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + HEADERS_SIZE_CMD);
+ 1052              		.loc 1 731 0
+ 1053 001a BB69     		ldr	r3, [r7, #24]
+ 1054 001c 03F10903 		add	r3, r3, #9
+ 1055 0020 FB61     		str	r3, [r7, #28]
+ 732:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 733:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in temporary command buffer
+ 734:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, sd);
+ 1056              		.loc 1 734 0
+ 1057 0022 FB68     		ldr	r3, [r7, #12]
+ 1058 0024 F869     		ldr	r0, [r7, #28]
+ 1059 0026 1946     		mov	r1, r3
+ 1060 0028 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1061 002c F861     		str	r0, [r7, #28]
+ 735:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, level);
+ 1062              		.loc 1 735 0
+ 1063 002e BB68     		ldr	r3, [r7, #8]
+ 1064 0030 F869     		ldr	r0, [r7, #28]
+ 1065 0032 1946     		mov	r1, r3
+ 1066 0034 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1067 0038 F861     		str	r0, [r7, #28]
+ 736:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, optname);
+ 1068              		.loc 1 736 0
+ 1069 003a 7B68     		ldr	r3, [r7, #4]
+ 1070 003c F869     		ldr	r0, [r7, #28]
+ 1071 003e 1946     		mov	r1, r3
+ 1072 0040 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1073 0044 F861     		str	r0, [r7, #28]
+ 737:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, 0x00000008);
+ 1074              		.loc 1 737 0
+ 1075 0046 F869     		ldr	r0, [r7, #28]
+ 1076 0048 4FF00801 		mov	r1, #8
+ 1077 004c FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1078 0050 F861     		str	r0, [r7, #28]
+ 738:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, optlen);
+ 1079              		.loc 1 738 0
+ 1080 0052 F869     		ldr	r0, [r7, #28]
+ 1081 0054 396B     		ldr	r1, [r7, #48]
+ 1082 0056 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1083 005a F861     		str	r0, [r7, #28]
+ 1084              	.LBB5:
+ 739:../libraries/CC3000_Host_Driver/socket.c **** 	ARRAY_TO_STREAM(args, ((unsigned char *)optval), optlen);
+ 1085              		.loc 1 739 0
+ 1086 005c 4FF00004 		mov	r4, #0
+ 1087 0060 0DE0     		b	.L48
+ 1088              	.L49:
+ 1089              		.loc 1 739 0 is_stmt 0 discriminator 2
+ 1090 0062 23B2     		sxth	r3, r4
+ 1091 0064 3A68     		ldr	r2, [r7, #0]
+ 1092 0066 D318     		adds	r3, r2, r3
+ 1093 0068 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 1094 006a FB69     		ldr	r3, [r7, #28]
+ 1095 006c 1A70     		strb	r2, [r3, #0]
+ 1096 006e FB69     		ldr	r3, [r7, #28]
+ 1097 0070 03F10103 		add	r3, r3, #1
+ 1098 0074 FB61     		str	r3, [r7, #28]
+ 1099 0076 2346     		mov	r3, r4	@ movhi
+ 1100 0078 03F10103 		add	r3, r3, #1
+ 1101 007c 9CB2     		uxth	r4, r3
+ 1102              	.L48:
+ 1103              		.loc 1 739 0 discriminator 1
+ 1104 007e 22B2     		sxth	r2, r4
+ 1105 0080 3B6B     		ldr	r3, [r7, #48]
+ 1106 0082 9A42     		cmp	r2, r3
+ 1107 0084 EDD3     		bcc	.L49
+ 1108              	.LBE5:
+ 740:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 741:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+ 742:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_SETSOCKOPT,
+ 1109              		.loc 1 742 0 is_stmt 1
+ 1110 0086 3B6B     		ldr	r3, [r7, #48]
+ 1111 0088 DBB2     		uxtb	r3, r3
+ 1112 008a 03F11403 		add	r3, r3, #20
+ 1113 008e DBB2     		uxtb	r3, r3
+ 1114 0090 41F20900 		movw	r0, #4105
+ 1115 0094 B969     		ldr	r1, [r7, #24]
+ 1116 0096 1A46     		mov	r2, r3
+ 1117 0098 FFF7FEFF 		bl	hci_command_send
+ 743:../libraries/CC3000_Host_Driver/socket.c **** 									 ptr, SOCKET_SET_SOCK_OPT_PARAMS_LEN  + optlen);
+ 744:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 745:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 746:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_CMND_SETSOCKOPT, &ret);
+ 1118              		.loc 1 746 0
+ 1119 009c 07F11403 		add	r3, r7, #20
+ 1120 00a0 41F20900 		movw	r0, #4105
+ 1121 00a4 1946     		mov	r1, r3
+ 1122 00a6 FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 747:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 748:../libraries/CC3000_Host_Driver/socket.c **** 	if (ret >= 0)
+ 1123              		.loc 1 748 0
+ 1124 00aa 7B69     		ldr	r3, [r7, #20]
+ 1125 00ac 002B     		cmp	r3, #0
+ 1126 00ae 02DB     		blt	.L50
+ 749:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 750:../libraries/CC3000_Host_Driver/socket.c **** 		return (0);
+ 1127              		.loc 1 750 0
+ 1128 00b0 4FF00003 		mov	r3, #0
+ 1129 00b4 06E0     		b	.L52
+ 1130              	.L50:
+ 751:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 752:../libraries/CC3000_Host_Driver/socket.c **** 	else
+ 753:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 754:../libraries/CC3000_Host_Driver/socket.c **** 		errno = ret;
+ 1131              		.loc 1 754 0
+ 1132 00b6 FFF7FEFF 		bl	__errno
+ 1133 00ba 0346     		mov	r3, r0
+ 1134 00bc 7A69     		ldr	r2, [r7, #20]
+ 1135 00be 1A60     		str	r2, [r3, #0]
+ 755:../libraries/CC3000_Host_Driver/socket.c **** 		return (-1);
+ 1136              		.loc 1 755 0
+ 1137 00c0 4FF0FF33 		mov	r3, #-1
+ 1138              	.L52:
+ 756:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 757:../libraries/CC3000_Host_Driver/socket.c **** }
+ 1139              		.loc 1 757 0
+ 1140 00c4 1846     		mov	r0, r3
+ 1141 00c6 07F12407 		add	r7, r7, #36
+ 1142 00ca BD46     		mov	sp, r7
+ 1143 00cc 90BD     		pop	{r4, r7, pc}
+ 1144              		.cfi_endproc
+ 1145              	.LFE9:
+ 1147 00ce 00BF     		.section	.text.getsockopt,"ax",%progbits
+ 1148              		.align	2
+ 1149              		.global	getsockopt
+ 1150              		.thumb
+ 1151              		.thumb_func
+ 1153              	getsockopt:
+ 1154              	.LFB10:
+ 758:../libraries/CC3000_Host_Driver/socket.c **** #endif
+ 759:../libraries/CC3000_Host_Driver/socket.c **** 
+ 760:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 761:../libraries/CC3000_Host_Driver/socket.c **** //
+ 762:../libraries/CC3000_Host_Driver/socket.c **** //! getsockopt
+ 763:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 764:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   sd          socket handle
+ 765:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   level       defines the protocol level for this option
+ 766:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]   optname     defines the option name to Interrogate
+ 767:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out]   optval      specifies a value for the option
+ 768:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out]   optlen      specifies the length of the option value
+ 769:../libraries/CC3000_Host_Driver/socket.c **** //!  @return  	On success, zero is returned. On error, -1 is returned
+ 770:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 771:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief  set socket options
+ 772:../libraries/CC3000_Host_Driver/socket.c **** //!          This function manipulate the options associated with a socket.
+ 773:../libraries/CC3000_Host_Driver/socket.c **** //!          Options may exist at multiple protocol levels; they are always
+ 774:../libraries/CC3000_Host_Driver/socket.c **** //!          present at the uppermost socket level.
+ 775:../libraries/CC3000_Host_Driver/socket.c **** //!          When manipulating socket options the level at which the option 
+ 776:../libraries/CC3000_Host_Driver/socket.c **** //!          resides and the name of the option must be specified.  
+ 777:../libraries/CC3000_Host_Driver/socket.c **** //!          To manipulate options at the socket level, level is specified as 
+ 778:../libraries/CC3000_Host_Driver/socket.c **** //!          SOL_SOCKET. To manipulate options at any other level the protocol 
+ 779:../libraries/CC3000_Host_Driver/socket.c **** //!          number of the appropriate protocol controlling the option is 
+ 780:../libraries/CC3000_Host_Driver/socket.c **** //!          supplied. For example, to indicate that an option is to be 
+ 781:../libraries/CC3000_Host_Driver/socket.c **** //!          interpreted by the TCP protocol, level should be set to the 
+ 782:../libraries/CC3000_Host_Driver/socket.c **** //!          protocol number of TCP; 
+ 783:../libraries/CC3000_Host_Driver/socket.c **** //!          The parameters optval and optlen are used to access optval - 
+ 784:../libraries/CC3000_Host_Driver/socket.c **** //!          use for setsockopt(). For getsockopt() they identify a buffer
+ 785:../libraries/CC3000_Host_Driver/socket.c **** //!          in which the value for the requested option(s) are to 
+ 786:../libraries/CC3000_Host_Driver/socket.c **** //!          be returned. For getsockopt(), optlen is a value-result 
+ 787:../libraries/CC3000_Host_Driver/socket.c **** //!          parameter, initially containing the size of the buffer 
+ 788:../libraries/CC3000_Host_Driver/socket.c **** //!          pointed to by option_value, and modified on return to 
+ 789:../libraries/CC3000_Host_Driver/socket.c **** //!          indicate the actual size of the value returned. If no option 
+ 790:../libraries/CC3000_Host_Driver/socket.c **** //!          value is to be supplied or returned, option_value may be NULL.
+ 791:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 792:../libraries/CC3000_Host_Driver/socket.c **** //!  @Note   On this version the following two socket options are enabled:
+ 793:../libraries/CC3000_Host_Driver/socket.c **** //!    			 The only protocol level supported in this version
+ 794:../libraries/CC3000_Host_Driver/socket.c **** //!          is SOL_SOCKET (level).
+ 795:../libraries/CC3000_Host_Driver/socket.c **** //!		       1. SOCKOPT_RECV_TIMEOUT (optname)
+ 796:../libraries/CC3000_Host_Driver/socket.c **** //!			      SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout 
+ 797:../libraries/CC3000_Host_Driver/socket.c **** //!           in milliseconds.
+ 798:../libraries/CC3000_Host_Driver/socket.c **** //!		        In that case optval should be pointer to unsigned long.
+ 799:../libraries/CC3000_Host_Driver/socket.c **** //!		       2. SOCKOPT_NONBLOCK (optname). sets the socket non-blocking mode on 
+ 800:../libraries/CC3000_Host_Driver/socket.c **** //!           or off.
+ 801:../libraries/CC3000_Host_Driver/socket.c **** //!		        In that case optval should be SOCK_ON or SOCK_OFF (optval).
+ 802:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 803:../libraries/CC3000_Host_Driver/socket.c **** //!  @sa setsockopt
+ 804:../libraries/CC3000_Host_Driver/socket.c **** //
+ 805:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 806:../libraries/CC3000_Host_Driver/socket.c **** 
+ 807:../libraries/CC3000_Host_Driver/socket.c **** int
+ 808:../libraries/CC3000_Host_Driver/socket.c **** getsockopt (long sd, long level, long optname, void *optval, socklen_t *optlen)
+ 809:../libraries/CC3000_Host_Driver/socket.c **** {
+ 1155              		.loc 1 809 0
+ 1156              		.cfi_startproc
+ 1157              		@ args = 4, pretend = 0, frame = 32
+ 1158              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1159 0000 80B5     		push	{r7, lr}
+ 1160              	.LCFI30:
+ 1161              		.cfi_def_cfa_offset 8
+ 1162              		.cfi_offset 7, -8
+ 1163              		.cfi_offset 14, -4
+ 1164 0002 88B0     		sub	sp, sp, #32
+ 1165              	.LCFI31:
+ 1166              		.cfi_def_cfa_offset 40
+ 1167 0004 00AF     		add	r7, sp, #0
+ 1168              	.LCFI32:
+ 1169              		.cfi_def_cfa_register 7
+ 1170 0006 F860     		str	r0, [r7, #12]
+ 1171 0008 B960     		str	r1, [r7, #8]
+ 1172 000a 7A60     		str	r2, [r7, #4]
+ 1173 000c 3B60     		str	r3, [r7, #0]
+ 810:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 811:../libraries/CC3000_Host_Driver/socket.c **** 	tBsdGetSockOptReturnParams  tRetParams;
+ 812:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 813:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 1174              		.loc 1 813 0
+ 1175 000e 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1176 0012 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1177 0016 9B68     		ldr	r3, [r3, #8]
+ 1178 0018 FB61     		str	r3, [r7, #28]
+ 814:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + HEADERS_SIZE_CMD);
+ 1179              		.loc 1 814 0
+ 1180 001a FB69     		ldr	r3, [r7, #28]
+ 1181 001c 03F10903 		add	r3, r3, #9
+ 1182 0020 BB61     		str	r3, [r7, #24]
+ 815:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 816:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in temporary command buffer
+ 817:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, sd);
+ 1183              		.loc 1 817 0
+ 1184 0022 FB68     		ldr	r3, [r7, #12]
+ 1185 0024 B869     		ldr	r0, [r7, #24]
+ 1186 0026 1946     		mov	r1, r3
+ 1187 0028 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1188 002c B861     		str	r0, [r7, #24]
+ 818:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, level);
+ 1189              		.loc 1 818 0
+ 1190 002e BB68     		ldr	r3, [r7, #8]
+ 1191 0030 B869     		ldr	r0, [r7, #24]
+ 1192 0032 1946     		mov	r1, r3
+ 1193 0034 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1194 0038 B861     		str	r0, [r7, #24]
+ 819:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, optname);
+ 1195              		.loc 1 819 0
+ 1196 003a 7B68     		ldr	r3, [r7, #4]
+ 1197 003c B869     		ldr	r0, [r7, #24]
+ 1198 003e 1946     		mov	r1, r3
+ 1199 0040 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1200 0044 B861     		str	r0, [r7, #24]
+ 820:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 821:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+ 822:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_GETSOCKOPT,
+ 1201              		.loc 1 822 0
+ 1202 0046 41F20A00 		movw	r0, #4106
+ 1203 004a F969     		ldr	r1, [r7, #28]
+ 1204 004c 4FF00C02 		mov	r2, #12
+ 1205 0050 FFF7FEFF 		bl	hci_command_send
+ 823:../libraries/CC3000_Host_Driver/socket.c **** 									 ptr, SOCKET_GET_SOCK_OPT_PARAMS_LEN);
+ 824:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 825:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 826:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_CMND_GETSOCKOPT, &tRetParams);
+ 1206              		.loc 1 826 0
+ 1207 0054 07F11003 		add	r3, r7, #16
+ 1208 0058 41F20A00 		movw	r0, #4106
+ 1209 005c 1946     		mov	r1, r3
+ 1210 005e FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 827:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 828:../libraries/CC3000_Host_Driver/socket.c **** 	if (((signed char)tRetParams.iStatus) >= 0)
+ 1211              		.loc 1 828 0
+ 1212 0062 3B7D     		ldrb	r3, [r7, #20]	@ zero_extendqisi2
+ 1213 0064 DBB2     		uxtb	r3, r3
+ 1214 0066 5BB2     		sxtb	r3, r3
+ 1215 0068 002B     		cmp	r3, #0
+ 1216 006a 0BDB     		blt	.L54
+ 829:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 830:../libraries/CC3000_Host_Driver/socket.c **** 		*optlen = 4;
+ 1217              		.loc 1 830 0
+ 1218 006c BB6A     		ldr	r3, [r7, #40]
+ 1219 006e 4FF00402 		mov	r2, #4
+ 1220 0072 1A60     		str	r2, [r3, #0]
+ 831:../libraries/CC3000_Host_Driver/socket.c **** 		memcpy(optval, tRetParams.ucOptValue, 4);
+ 1221              		.loc 1 831 0
+ 1222 0074 3B68     		ldr	r3, [r7, #0]
+ 1223 0076 07F11002 		add	r2, r7, #16
+ 1224 007a 1068     		ldr	r0, [r2, #0]	@ unaligned
+ 1225 007c 1860     		str	r0, [r3, #0]	@ unaligned
+ 832:../libraries/CC3000_Host_Driver/socket.c **** 		return (0);
+ 1226              		.loc 1 832 0
+ 1227 007e 4FF00003 		mov	r3, #0
+ 1228 0082 06E0     		b	.L56
+ 1229              	.L54:
+ 833:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 834:../libraries/CC3000_Host_Driver/socket.c **** 	else
+ 835:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 836:../libraries/CC3000_Host_Driver/socket.c **** 		errno = tRetParams.iStatus;
+ 1230              		.loc 1 836 0
+ 1231 0084 FFF7FEFF 		bl	__errno
+ 1232 0088 0346     		mov	r3, r0
+ 1233 008a 3A7D     		ldrb	r2, [r7, #20]	@ zero_extendqisi2
+ 1234 008c 1A60     		str	r2, [r3, #0]
+ 837:../libraries/CC3000_Host_Driver/socket.c **** 		return (-1);
+ 1235              		.loc 1 837 0
+ 1236 008e 4FF0FF33 		mov	r3, #-1
+ 1237              	.L56:
+ 838:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 839:../libraries/CC3000_Host_Driver/socket.c **** }
+ 1238              		.loc 1 839 0
+ 1239 0092 1846     		mov	r0, r3
+ 1240 0094 07F12007 		add	r7, r7, #32
+ 1241 0098 BD46     		mov	sp, r7
+ 1242 009a 80BD     		pop	{r7, pc}
+ 1243              		.cfi_endproc
+ 1244              	.LFE10:
+ 1246              		.section	.text.simple_link_recv,"ax",%progbits
+ 1247              		.align	2
+ 1248              		.global	simple_link_recv
+ 1249              		.thumb
+ 1250              		.thumb_func
+ 1252              	simple_link_recv:
+ 1253              	.LFB11:
+ 840:../libraries/CC3000_Host_Driver/socket.c **** 
+ 841:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 842:../libraries/CC3000_Host_Driver/socket.c **** //
+ 843:../libraries/CC3000_Host_Driver/socket.c **** //!  simple_link_recv
+ 844:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 845:../libraries/CC3000_Host_Driver/socket.c **** //!  @param sd       socket handle
+ 846:../libraries/CC3000_Host_Driver/socket.c **** //!  @param buf      read buffer
+ 847:../libraries/CC3000_Host_Driver/socket.c **** //!  @param len      buffer length
+ 848:../libraries/CC3000_Host_Driver/socket.c **** //!  @param flags    indicates blocking or non-blocking operation
+ 849:../libraries/CC3000_Host_Driver/socket.c **** //!  @param from     pointer to an address structure indicating source address
+ 850:../libraries/CC3000_Host_Driver/socket.c **** //!  @param fromlen  source address structure size
+ 851:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 852:../libraries/CC3000_Host_Driver/socket.c **** //!  @return         Return the number of bytes received, or -1 if an error
+ 853:../libraries/CC3000_Host_Driver/socket.c **** //!                  occurred
+ 854:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 855:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief          Read data from socket
+ 856:../libraries/CC3000_Host_Driver/socket.c **** //!                  Return the length of the message on successful completion.
+ 857:../libraries/CC3000_Host_Driver/socket.c **** //!                  If a message is too long to fit in the supplied buffer,
+ 858:../libraries/CC3000_Host_Driver/socket.c **** //!                  excess bytes may be discarded depending on the type of
+ 859:../libraries/CC3000_Host_Driver/socket.c **** //!                  socket the message is received from
+ 860:../libraries/CC3000_Host_Driver/socket.c **** //
+ 861:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 862:../libraries/CC3000_Host_Driver/socket.c **** int
+ 863:../libraries/CC3000_Host_Driver/socket.c **** simple_link_recv(long sd, void *buf, long len, long flags, sockaddr *from,
+ 864:../libraries/CC3000_Host_Driver/socket.c ****                 socklen_t *fromlen, long opcode)
+ 865:../libraries/CC3000_Host_Driver/socket.c **** {
+ 1254              		.loc 1 865 0
+ 1255              		.cfi_startproc
+ 1256              		@ args = 12, pretend = 0, frame = 40
+ 1257              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1258 0000 80B5     		push	{r7, lr}
+ 1259              	.LCFI33:
+ 1260              		.cfi_def_cfa_offset 8
+ 1261              		.cfi_offset 7, -8
+ 1262              		.cfi_offset 14, -4
+ 1263 0002 8AB0     		sub	sp, sp, #40
+ 1264              	.LCFI34:
+ 1265              		.cfi_def_cfa_offset 48
+ 1266 0004 00AF     		add	r7, sp, #0
+ 1267              	.LCFI35:
+ 1268              		.cfi_def_cfa_register 7
+ 1269 0006 F860     		str	r0, [r7, #12]
+ 1270 0008 B960     		str	r1, [r7, #8]
+ 1271 000a 7A60     		str	r2, [r7, #4]
+ 1272 000c 3B60     		str	r3, [r7, #0]
+ 866:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *args;
+ 867:../libraries/CC3000_Host_Driver/socket.c **** 	tBsdReadReturnParams tSocketReadEvent;
+ 868:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 869:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 1273              		.loc 1 869 0
+ 1274 000e 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1275 0012 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1276 0016 9B68     		ldr	r3, [r3, #8]
+ 1277 0018 7B62     		str	r3, [r7, #36]
+ 870:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + HEADERS_SIZE_CMD);
+ 1278              		.loc 1 870 0
+ 1279 001a 7B6A     		ldr	r3, [r7, #36]
+ 1280 001c 03F10903 		add	r3, r3, #9
+ 1281 0020 3B62     		str	r3, [r7, #32]
+ 871:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 872:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in HCI packet structure
+ 873:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, sd);
+ 1282              		.loc 1 873 0
+ 1283 0022 FB68     		ldr	r3, [r7, #12]
+ 1284 0024 386A     		ldr	r0, [r7, #32]
+ 1285 0026 1946     		mov	r1, r3
+ 1286 0028 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1287 002c 3862     		str	r0, [r7, #32]
+ 874:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, len);
+ 1288              		.loc 1 874 0
+ 1289 002e 7B68     		ldr	r3, [r7, #4]
+ 1290 0030 386A     		ldr	r0, [r7, #32]
+ 1291 0032 1946     		mov	r1, r3
+ 1292 0034 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1293 0038 3862     		str	r0, [r7, #32]
+ 875:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, flags);
+ 1294              		.loc 1 875 0
+ 1295 003a 3B68     		ldr	r3, [r7, #0]
+ 1296 003c 386A     		ldr	r0, [r7, #32]
+ 1297 003e 1946     		mov	r1, r3
+ 1298 0040 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1299 0044 3862     		str	r0, [r7, #32]
+ 876:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 877:../libraries/CC3000_Host_Driver/socket.c **** 	// Generate the read command, and wait for the 
+ 878:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(opcode,  ptr, SOCKET_RECV_FROM_PARAMS_LEN);
+ 1300              		.loc 1 878 0
+ 1301 0046 BB6B     		ldr	r3, [r7, #56]
+ 1302 0048 9BB2     		uxth	r3, r3
+ 1303 004a 1846     		mov	r0, r3
+ 1304 004c 796A     		ldr	r1, [r7, #36]
+ 1305 004e 4FF00C02 		mov	r2, #12
+ 1306 0052 FFF7FEFF 		bl	hci_command_send
+ 879:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 880:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+ 881:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(opcode, &tSocketReadEvent);
+ 1307              		.loc 1 881 0
+ 1308 0056 BB6B     		ldr	r3, [r7, #56]
+ 1309 0058 9AB2     		uxth	r2, r3
+ 1310 005a 07F11403 		add	r3, r7, #20
+ 1311 005e 1046     		mov	r0, r2
+ 1312 0060 1946     		mov	r1, r3
+ 1313 0062 FFF7FEFF 		bl	SimpleLinkWaitEvent
+ 882:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 883:../libraries/CC3000_Host_Driver/socket.c **** 	// In case the number of bytes is more then zero - read data
+ 884:../libraries/CC3000_Host_Driver/socket.c **** 	if (tSocketReadEvent.iNumberOfBytes > 0)
+ 1314              		.loc 1 884 0
+ 1315 0066 BB69     		ldr	r3, [r7, #24]
+ 1316 0068 002B     		cmp	r3, #0
+ 1317 006a 04DD     		ble	.L58
+ 885:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 886:../libraries/CC3000_Host_Driver/socket.c **** 		// Wait for the data in a synchronous way. Here we assume that the bug is 
+ 887:../libraries/CC3000_Host_Driver/socket.c **** 		// big enough to store also parameters of receive from too....
+ 888:../libraries/CC3000_Host_Driver/socket.c **** 		SimpleLinkWaitData(buf, (unsigned char *)from, (unsigned char *)fromlen);
+ 1318              		.loc 1 888 0
+ 1319 006c B868     		ldr	r0, [r7, #8]
+ 1320 006e 396B     		ldr	r1, [r7, #48]
+ 1321 0070 7A6B     		ldr	r2, [r7, #52]
+ 1322 0072 FFF7FEFF 		bl	SimpleLinkWaitData
+ 1323              	.L58:
+ 889:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 890:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 891:../libraries/CC3000_Host_Driver/socket.c **** 	errno = tSocketReadEvent.iNumberOfBytes;
+ 1324              		.loc 1 891 0
+ 1325 0076 FFF7FEFF 		bl	__errno
+ 1326 007a 0346     		mov	r3, r0
+ 1327 007c BA69     		ldr	r2, [r7, #24]
+ 1328 007e 1A60     		str	r2, [r3, #0]
+ 892:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 893:../libraries/CC3000_Host_Driver/socket.c **** 	return(tSocketReadEvent.iNumberOfBytes);
+ 1329              		.loc 1 893 0
+ 1330 0080 BB69     		ldr	r3, [r7, #24]
+ 894:../libraries/CC3000_Host_Driver/socket.c **** }
+ 1331              		.loc 1 894 0
+ 1332 0082 1846     		mov	r0, r3
+ 1333 0084 07F12807 		add	r7, r7, #40
+ 1334 0088 BD46     		mov	sp, r7
+ 1335 008a 80BD     		pop	{r7, pc}
+ 1336              		.cfi_endproc
+ 1337              	.LFE11:
+ 1339              		.section	.text.recv,"ax",%progbits
+ 1340              		.align	2
+ 1341              		.global	recv
+ 1342              		.thumb
+ 1343              		.thumb_func
+ 1345              	recv:
+ 1346              	.LFB12:
+ 895:../libraries/CC3000_Host_Driver/socket.c **** 
+ 896:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 897:../libraries/CC3000_Host_Driver/socket.c **** //
+ 898:../libraries/CC3000_Host_Driver/socket.c **** //!  recv
+ 899:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 900:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]  sd     socket handle
+ 901:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out] buf    Points to the buffer where the message should be stored
+ 902:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]  len    Specifies the length in bytes of the buffer pointed to 
+ 903:../libraries/CC3000_Host_Driver/socket.c **** //!                     by the buffer argument.
+ 904:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in] flags   Specifies the type of message reception. 
+ 905:../libraries/CC3000_Host_Driver/socket.c **** //!                     On this version, this parameter is not supported.
+ 906:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 907:../libraries/CC3000_Host_Driver/socket.c **** //!  @return         Return the number of bytes received, or -1 if an error
+ 908:../libraries/CC3000_Host_Driver/socket.c **** //!                  occurred
+ 909:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 910:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief          function receives a message from a connection-mode socket
+ 911:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 912:../libraries/CC3000_Host_Driver/socket.c **** //!  @sa recvfrom
+ 913:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 914:../libraries/CC3000_Host_Driver/socket.c **** //!  @Note On this version, only blocking mode is supported.
+ 915:../libraries/CC3000_Host_Driver/socket.c **** //
+ 916:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 917:../libraries/CC3000_Host_Driver/socket.c **** 
+ 918:../libraries/CC3000_Host_Driver/socket.c **** int
+ 919:../libraries/CC3000_Host_Driver/socket.c **** recv(long sd, void *buf, long len, long flags)
+ 920:../libraries/CC3000_Host_Driver/socket.c **** {
+ 1347              		.loc 1 920 0
+ 1348              		.cfi_startproc
+ 1349              		@ args = 0, pretend = 0, frame = 16
+ 1350              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1351 0000 80B5     		push	{r7, lr}
+ 1352              	.LCFI36:
+ 1353              		.cfi_def_cfa_offset 8
+ 1354              		.cfi_offset 7, -8
+ 1355              		.cfi_offset 14, -4
+ 1356 0002 88B0     		sub	sp, sp, #32
+ 1357              	.LCFI37:
+ 1358              		.cfi_def_cfa_offset 40
+ 1359 0004 04AF     		add	r7, sp, #16
+ 1360              	.LCFI38:
+ 1361              		.cfi_def_cfa 7, 24
+ 1362 0006 F860     		str	r0, [r7, #12]
+ 1363 0008 B960     		str	r1, [r7, #8]
+ 1364 000a 7A60     		str	r2, [r7, #4]
+ 1365 000c 3B60     		str	r3, [r7, #0]
+ 921:../libraries/CC3000_Host_Driver/socket.c **** 	return(simple_link_recv(sd, buf, len, flags, NULL, NULL, HCI_CMND_RECV));
+ 1366              		.loc 1 921 0
+ 1367 000e 4FF00003 		mov	r3, #0
+ 1368 0012 0093     		str	r3, [sp, #0]
+ 1369 0014 4FF00003 		mov	r3, #0
+ 1370 0018 0193     		str	r3, [sp, #4]
+ 1371 001a 41F20403 		movw	r3, #4100
+ 1372 001e 0293     		str	r3, [sp, #8]
+ 1373 0020 F868     		ldr	r0, [r7, #12]
+ 1374 0022 B968     		ldr	r1, [r7, #8]
+ 1375 0024 7A68     		ldr	r2, [r7, #4]
+ 1376 0026 3B68     		ldr	r3, [r7, #0]
+ 1377 0028 FFF7FEFF 		bl	simple_link_recv
+ 1378 002c 0346     		mov	r3, r0
+ 922:../libraries/CC3000_Host_Driver/socket.c **** }
+ 1379              		.loc 1 922 0
+ 1380 002e 1846     		mov	r0, r3
+ 1381 0030 07F11007 		add	r7, r7, #16
+ 1382 0034 BD46     		mov	sp, r7
+ 1383 0036 80BD     		pop	{r7, pc}
+ 1384              		.cfi_endproc
+ 1385              	.LFE12:
+ 1387              		.section	.text.recvfrom,"ax",%progbits
+ 1388              		.align	2
+ 1389              		.global	recvfrom
+ 1390              		.thumb
+ 1391              		.thumb_func
+ 1393              	recvfrom:
+ 1394              	.LFB13:
+ 923:../libraries/CC3000_Host_Driver/socket.c **** 
+ 924:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 925:../libraries/CC3000_Host_Driver/socket.c **** //
+ 926:../libraries/CC3000_Host_Driver/socket.c **** //!  recvfrom
+ 927:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 928:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]  sd     socket handle
+ 929:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[out] buf    Points to the buffer where the message should be stored
+ 930:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in]  len    Specifies the length in bytes of the buffer pointed to 
+ 931:../libraries/CC3000_Host_Driver/socket.c **** //!                     by the buffer argument.
+ 932:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in] flags   Specifies the type of message reception. 
+ 933:../libraries/CC3000_Host_Driver/socket.c **** //!                     On this version, this parameter is not supported.
+ 934:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in] from   pointer to an address structure indicating the source
+ 935:../libraries/CC3000_Host_Driver/socket.c **** //!                    address: sockaddr. On this version only AF_INET is
+ 936:../libraries/CC3000_Host_Driver/socket.c **** //!                    supported.
+ 937:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in] fromlen   source address tructure size
+ 938:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 939:../libraries/CC3000_Host_Driver/socket.c **** //!  @return         Return the number of bytes received, or -1 if an error
+ 940:../libraries/CC3000_Host_Driver/socket.c **** //!                  occurred
+ 941:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 942:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief         read data from socket
+ 943:../libraries/CC3000_Host_Driver/socket.c **** //!                 function receives a message from a connection-mode or
+ 944:../libraries/CC3000_Host_Driver/socket.c **** //!                 connectionless-mode socket. Note that raw sockets are not
+ 945:../libraries/CC3000_Host_Driver/socket.c **** //!                 supported.
+ 946:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 947:../libraries/CC3000_Host_Driver/socket.c **** //!  @sa recv
+ 948:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 949:../libraries/CC3000_Host_Driver/socket.c **** //!  @Note On this version, only blocking mode is supported.
+ 950:../libraries/CC3000_Host_Driver/socket.c **** //
+ 951:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 952:../libraries/CC3000_Host_Driver/socket.c **** int
+ 953:../libraries/CC3000_Host_Driver/socket.c **** recvfrom(long sd, void *buf, long len, long flags, sockaddr *from,
+ 954:../libraries/CC3000_Host_Driver/socket.c ****          socklen_t *fromlen)
+ 955:../libraries/CC3000_Host_Driver/socket.c **** {
+ 1395              		.loc 1 955 0
+ 1396              		.cfi_startproc
+ 1397              		@ args = 8, pretend = 0, frame = 16
+ 1398              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1399 0000 80B5     		push	{r7, lr}
+ 1400              	.LCFI39:
+ 1401              		.cfi_def_cfa_offset 8
+ 1402              		.cfi_offset 7, -8
+ 1403              		.cfi_offset 14, -4
+ 1404 0002 88B0     		sub	sp, sp, #32
+ 1405              	.LCFI40:
+ 1406              		.cfi_def_cfa_offset 40
+ 1407 0004 04AF     		add	r7, sp, #16
+ 1408              	.LCFI41:
+ 1409              		.cfi_def_cfa 7, 24
+ 1410 0006 F860     		str	r0, [r7, #12]
+ 1411 0008 B960     		str	r1, [r7, #8]
+ 1412 000a 7A60     		str	r2, [r7, #4]
+ 1413 000c 3B60     		str	r3, [r7, #0]
+ 956:../libraries/CC3000_Host_Driver/socket.c **** 	return(simple_link_recv(sd, buf, len, flags, from, fromlen,
+ 1414              		.loc 1 956 0
+ 1415 000e BB69     		ldr	r3, [r7, #24]
+ 1416 0010 0093     		str	r3, [sp, #0]
+ 1417 0012 FB69     		ldr	r3, [r7, #28]
+ 1418 0014 0193     		str	r3, [sp, #4]
+ 1419 0016 41F20D03 		movw	r3, #4109
+ 1420 001a 0293     		str	r3, [sp, #8]
+ 1421 001c F868     		ldr	r0, [r7, #12]
+ 1422 001e B968     		ldr	r1, [r7, #8]
+ 1423 0020 7A68     		ldr	r2, [r7, #4]
+ 1424 0022 3B68     		ldr	r3, [r7, #0]
+ 1425 0024 FFF7FEFF 		bl	simple_link_recv
+ 1426 0028 0346     		mov	r3, r0
+ 957:../libraries/CC3000_Host_Driver/socket.c **** 													HCI_CMND_RECVFROM));
+ 958:../libraries/CC3000_Host_Driver/socket.c **** }
+ 1427              		.loc 1 958 0
+ 1428 002a 1846     		mov	r0, r3
+ 1429 002c 07F11007 		add	r7, r7, #16
+ 1430 0030 BD46     		mov	sp, r7
+ 1431 0032 80BD     		pop	{r7, pc}
+ 1432              		.cfi_endproc
+ 1433              	.LFE13:
+ 1435              		.section	.text.simple_link_send,"ax",%progbits
+ 1436              		.align	2
+ 1437              		.global	simple_link_send
+ 1438              		.thumb
+ 1439              		.thumb_func
+ 1441              	simple_link_send:
+ 1442              	.LFB14:
+ 959:../libraries/CC3000_Host_Driver/socket.c **** 
+ 960:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 961:../libraries/CC3000_Host_Driver/socket.c **** //
+ 962:../libraries/CC3000_Host_Driver/socket.c **** //!  simple_link_send
+ 963:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 964:../libraries/CC3000_Host_Driver/socket.c **** //!  @param sd       socket handle
+ 965:../libraries/CC3000_Host_Driver/socket.c **** //!  @param buf      write buffer
+ 966:../libraries/CC3000_Host_Driver/socket.c **** //!  @param len      buffer length
+ 967:../libraries/CC3000_Host_Driver/socket.c **** //!  @param flags    On this version, this parameter is not supported
+ 968:../libraries/CC3000_Host_Driver/socket.c **** //!  @param to       pointer to an address structure indicating destination
+ 969:../libraries/CC3000_Host_Driver/socket.c **** //!                  address
+ 970:../libraries/CC3000_Host_Driver/socket.c **** //!  @param tolen    destination address structure size
+ 971:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 972:../libraries/CC3000_Host_Driver/socket.c **** //!  @return         Return the number of bytes transmitted, or -1 if an error
+ 973:../libraries/CC3000_Host_Driver/socket.c **** //!                  occurred, or -2 in case there are no free buffers available
+ 974:../libraries/CC3000_Host_Driver/socket.c **** //!                 (only when SEND_NON_BLOCKING is enabled)
+ 975:../libraries/CC3000_Host_Driver/socket.c **** //!
+ 976:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief          This function is used to transmit a message to another
+ 977:../libraries/CC3000_Host_Driver/socket.c **** //!                  socket
+ 978:../libraries/CC3000_Host_Driver/socket.c **** //
+ 979:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+ 980:../libraries/CC3000_Host_Driver/socket.c **** int
+ 981:../libraries/CC3000_Host_Driver/socket.c **** simple_link_send(long sd, const void *buf, long len, long flags,
+ 982:../libraries/CC3000_Host_Driver/socket.c ****               const sockaddr *to, long tolen, long opcode)
+ 983:../libraries/CC3000_Host_Driver/socket.c **** {    
+ 1443              		.loc 1 983 0
+ 1444              		.cfi_startproc
+ 1445              		@ args = 12, pretend = 0, frame = 40
+ 1446              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1447 0000 90B5     		push	{r4, r7, lr}
+ 1448              	.LCFI42:
+ 1449              		.cfi_def_cfa_offset 12
+ 1450              		.cfi_offset 4, -12
+ 1451              		.cfi_offset 7, -8
+ 1452              		.cfi_offset 14, -4
+ 1453 0002 8DB0     		sub	sp, sp, #52
+ 1454              	.LCFI43:
+ 1455              		.cfi_def_cfa_offset 64
+ 1456 0004 02AF     		add	r7, sp, #8
+ 1457              	.LCFI44:
+ 1458              		.cfi_def_cfa 7, 56
+ 1459 0006 F860     		str	r0, [r7, #12]
+ 1460 0008 B960     		str	r1, [r7, #8]
+ 1461 000a 7A60     		str	r2, [r7, #4]
+ 1462 000c 3B60     		str	r3, [r7, #0]
+ 984:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char uArgSize,  addrlen;
+ 985:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned char *ptr, *pDataPtr, *args;
+ 986:../libraries/CC3000_Host_Driver/socket.c **** 	unsigned long addr_offset;
+ 987:../libraries/CC3000_Host_Driver/socket.c **** 	int res;
+ 988:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 989:../libraries/CC3000_Host_Driver/socket.c **** 	// Check the bsd_arguments
+ 990:../libraries/CC3000_Host_Driver/socket.c **** 	if (0 != (res = HostFlowControlConsumeBuff(sd)))
+ 1463              		.loc 1 990 0
+ 1464 000e F868     		ldr	r0, [r7, #12]
+ 1465 0010 FFF7FEFF 		bl	HostFlowControlConsumeBuff
+ 1466 0014 B861     		str	r0, [r7, #24]
+ 1467 0016 BB69     		ldr	r3, [r7, #24]
+ 1468 0018 002B     		cmp	r3, #0
+ 1469 001a 01D0     		beq	.L65
+ 991:../libraries/CC3000_Host_Driver/socket.c **** 	{
+ 992:../libraries/CC3000_Host_Driver/socket.c **** 		return res;
+ 1470              		.loc 1 992 0
+ 1471 001c BB69     		ldr	r3, [r7, #24]
+ 1472 001e A3E0     		b	.L66
+ 1473              	.L65:
+ 993:../libraries/CC3000_Host_Driver/socket.c **** 	}
+ 994:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 995:../libraries/CC3000_Host_Driver/socket.c **** 	//Update the number of sent packets
+ 996:../libraries/CC3000_Host_Driver/socket.c **** 	tSLInformation.NumberOfSentPackets++;
+ 1474              		.loc 1 996 0
+ 1475 0020 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1476 0024 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1477 0028 9B6B     		ldr	r3, [r3, #56]
+ 1478 002a 03F10102 		add	r2, r3, #1
+ 1479 002e 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1480 0032 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1481 0036 9A63     		str	r2, [r3, #56]
+ 997:../libraries/CC3000_Host_Driver/socket.c **** 	
+ 998:../libraries/CC3000_Host_Driver/socket.c **** 	// Allocate a buffer and construct a packet and send it over spi
+ 999:../libraries/CC3000_Host_Driver/socket.c **** 	ptr = tSLInformation.pucTxCommandBuffer;
+ 1482              		.loc 1 999 0
+ 1483 0038 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1484 003c C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1485 0040 9B68     		ldr	r3, [r3, #8]
+ 1486 0042 7B61     		str	r3, [r7, #20]
+1000:../libraries/CC3000_Host_Driver/socket.c **** 	args = (ptr + HEADERS_SIZE_DATA);
+ 1487              		.loc 1 1000 0
+ 1488 0044 7B69     		ldr	r3, [r7, #20]
+ 1489 0046 03F10A03 		add	r3, r3, #10
+ 1490 004a 3B61     		str	r3, [r7, #16]
+1001:../libraries/CC3000_Host_Driver/socket.c **** 	
+1002:../libraries/CC3000_Host_Driver/socket.c **** 	// Update the offset of data and parameters according to the command
+1003:../libraries/CC3000_Host_Driver/socket.c **** 	switch(opcode)
+ 1491              		.loc 1 1003 0
+ 1492 004c 3B6C     		ldr	r3, [r7, #64]
+ 1493 004e 812B     		cmp	r3, #129
+ 1494 0050 12D0     		beq	.L68
+ 1495 0052 832B     		cmp	r3, #131
+ 1496 0054 1FD1     		bne	.L77
+ 1497              	.L69:
+1004:../libraries/CC3000_Host_Driver/socket.c **** 	{ 
+1005:../libraries/CC3000_Host_Driver/socket.c **** 	case HCI_CMND_SENDTO:
+1006:../libraries/CC3000_Host_Driver/socket.c **** 		{
+1007:../libraries/CC3000_Host_Driver/socket.c **** 			addr_offset = len + sizeof(len) + sizeof(len);
+ 1498              		.loc 1 1007 0
+ 1499 0056 7B68     		ldr	r3, [r7, #4]
+ 1500 0058 03F10803 		add	r3, r3, #8
+ 1501 005c FB61     		str	r3, [r7, #28]
+1008:../libraries/CC3000_Host_Driver/socket.c **** 			addrlen = 8;
+ 1502              		.loc 1 1008 0
+ 1503 005e 4FF00803 		mov	r3, #8
+ 1504 0062 87F82630 		strb	r3, [r7, #38]
+1009:../libraries/CC3000_Host_Driver/socket.c **** 			uArgSize = SOCKET_SENDTO_PARAMS_LEN;
+ 1505              		.loc 1 1009 0
+ 1506 0066 4FF01803 		mov	r3, #24
+ 1507 006a 87F82730 		strb	r3, [r7, #39]
+1010:../libraries/CC3000_Host_Driver/socket.c **** 			pDataPtr = ptr + HEADERS_SIZE_DATA + SOCKET_SENDTO_PARAMS_LEN;
+ 1508              		.loc 1 1010 0
+ 1509 006e 7B69     		ldr	r3, [r7, #20]
+ 1510 0070 03F12203 		add	r3, r3, #34
+ 1511 0074 3B62     		str	r3, [r7, #32]
+1011:../libraries/CC3000_Host_Driver/socket.c **** 			break;
+ 1512              		.loc 1 1011 0
+ 1513 0076 0FE0     		b	.L70
+ 1514              	.L68:
+1012:../libraries/CC3000_Host_Driver/socket.c **** 		}
+1013:../libraries/CC3000_Host_Driver/socket.c **** 		
+1014:../libraries/CC3000_Host_Driver/socket.c **** 	case HCI_CMND_SEND:
+1015:../libraries/CC3000_Host_Driver/socket.c **** 		{
+1016:../libraries/CC3000_Host_Driver/socket.c **** 			tolen = 0;
+ 1515              		.loc 1 1016 0
+ 1516 0078 4FF00003 		mov	r3, #0
+ 1517 007c FB63     		str	r3, [r7, #60]
+1017:../libraries/CC3000_Host_Driver/socket.c **** 			to = NULL;
+ 1518              		.loc 1 1017 0
+ 1519 007e 4FF00003 		mov	r3, #0
+ 1520 0082 BB63     		str	r3, [r7, #56]
+1018:../libraries/CC3000_Host_Driver/socket.c **** 			uArgSize = HCI_CMND_SEND_ARG_LENGTH;
+ 1521              		.loc 1 1018 0
+ 1522 0084 4FF01003 		mov	r3, #16
+ 1523 0088 87F82730 		strb	r3, [r7, #39]
+1019:../libraries/CC3000_Host_Driver/socket.c **** 			pDataPtr = ptr + HEADERS_SIZE_DATA + HCI_CMND_SEND_ARG_LENGTH;
+ 1524              		.loc 1 1019 0
+ 1525 008c 7B69     		ldr	r3, [r7, #20]
+ 1526 008e 03F11A03 		add	r3, r3, #26
+ 1527 0092 3B62     		str	r3, [r7, #32]
+1020:../libraries/CC3000_Host_Driver/socket.c **** 			break;
+ 1528              		.loc 1 1020 0
+ 1529 0094 00E0     		b	.L70
+ 1530              	.L77:
+1021:../libraries/CC3000_Host_Driver/socket.c **** 		}
+1022:../libraries/CC3000_Host_Driver/socket.c **** 		
+1023:../libraries/CC3000_Host_Driver/socket.c **** 	default:
+1024:../libraries/CC3000_Host_Driver/socket.c **** 		{
+1025:../libraries/CC3000_Host_Driver/socket.c **** 			break;
+ 1531              		.loc 1 1025 0
+ 1532 0096 00BF     		nop
+ 1533              	.L70:
+1026:../libraries/CC3000_Host_Driver/socket.c **** 		}
+1027:../libraries/CC3000_Host_Driver/socket.c **** 	}
+1028:../libraries/CC3000_Host_Driver/socket.c **** 	
+1029:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in temporary command buffer
+1030:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, sd);
+ 1534              		.loc 1 1030 0
+ 1535 0098 FB68     		ldr	r3, [r7, #12]
+ 1536 009a 3869     		ldr	r0, [r7, #16]
+ 1537 009c 1946     		mov	r1, r3
+ 1538 009e FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1539 00a2 3861     		str	r0, [r7, #16]
+1031:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, uArgSize - sizeof(sd));
+ 1540              		.loc 1 1031 0
+ 1541 00a4 97F82730 		ldrb	r3, [r7, #39]	@ zero_extendqisi2
+ 1542 00a8 A3F10403 		sub	r3, r3, #4
+ 1543 00ac 3869     		ldr	r0, [r7, #16]
+ 1544 00ae 1946     		mov	r1, r3
+ 1545 00b0 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1546 00b4 3861     		str	r0, [r7, #16]
+1032:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, len);
+ 1547              		.loc 1 1032 0
+ 1548 00b6 7B68     		ldr	r3, [r7, #4]
+ 1549 00b8 3869     		ldr	r0, [r7, #16]
+ 1550 00ba 1946     		mov	r1, r3
+ 1551 00bc FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1552 00c0 3861     		str	r0, [r7, #16]
+1033:../libraries/CC3000_Host_Driver/socket.c **** 	args = UINT32_TO_STREAM(args, flags);
+ 1553              		.loc 1 1033 0
+ 1554 00c2 3B68     		ldr	r3, [r7, #0]
+ 1555 00c4 3869     		ldr	r0, [r7, #16]
+ 1556 00c6 1946     		mov	r1, r3
+ 1557 00c8 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1558 00cc 3861     		str	r0, [r7, #16]
+1034:../libraries/CC3000_Host_Driver/socket.c **** 	
+1035:../libraries/CC3000_Host_Driver/socket.c **** 	if (opcode == HCI_CMND_SENDTO)
+ 1559              		.loc 1 1035 0
+ 1560 00ce 3B6C     		ldr	r3, [r7, #64]
+ 1561 00d0 832B     		cmp	r3, #131
+ 1562 00d2 0BD1     		bne	.L71
+1036:../libraries/CC3000_Host_Driver/socket.c **** 	{
+1037:../libraries/CC3000_Host_Driver/socket.c **** 		args = UINT32_TO_STREAM(args, addr_offset);
+ 1563              		.loc 1 1037 0
+ 1564 00d4 3869     		ldr	r0, [r7, #16]
+ 1565 00d6 F969     		ldr	r1, [r7, #28]
+ 1566 00d8 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1567 00dc 3861     		str	r0, [r7, #16]
+1038:../libraries/CC3000_Host_Driver/socket.c **** 		args = UINT32_TO_STREAM(args, addrlen);
+ 1568              		.loc 1 1038 0
+ 1569 00de 97F82630 		ldrb	r3, [r7, #38]	@ zero_extendqisi2
+ 1570 00e2 3869     		ldr	r0, [r7, #16]
+ 1571 00e4 1946     		mov	r1, r3
+ 1572 00e6 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1573 00ea 3861     		str	r0, [r7, #16]
+ 1574              	.L71:
+ 1575              	.LBB6:
+1039:../libraries/CC3000_Host_Driver/socket.c **** 	}
+1040:../libraries/CC3000_Host_Driver/socket.c **** 	
+1041:../libraries/CC3000_Host_Driver/socket.c **** 	// Copy the data received from user into the TX Buffer
+1042:../libraries/CC3000_Host_Driver/socket.c **** 	ARRAY_TO_STREAM(pDataPtr, ((unsigned char *)buf), len);
+ 1576              		.loc 1 1042 0
+ 1577 00ec 4FF00004 		mov	r4, #0
+ 1578 00f0 0DE0     		b	.L72
+ 1579              	.L73:
+ 1580              		.loc 1 1042 0 is_stmt 0 discriminator 2
+ 1581 00f2 23B2     		sxth	r3, r4
+ 1582 00f4 BA68     		ldr	r2, [r7, #8]
+ 1583 00f6 D318     		adds	r3, r2, r3
+ 1584 00f8 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 1585 00fa 3B6A     		ldr	r3, [r7, #32]
+ 1586 00fc 1A70     		strb	r2, [r3, #0]
+ 1587 00fe 3B6A     		ldr	r3, [r7, #32]
+ 1588 0100 03F10103 		add	r3, r3, #1
+ 1589 0104 3B62     		str	r3, [r7, #32]
+ 1590 0106 2346     		mov	r3, r4	@ movhi
+ 1591 0108 03F10103 		add	r3, r3, #1
+ 1592 010c 9CB2     		uxth	r4, r3
+ 1593              	.L72:
+ 1594              		.loc 1 1042 0 discriminator 1
+ 1595 010e 22B2     		sxth	r2, r4
+ 1596 0110 7B68     		ldr	r3, [r7, #4]
+ 1597 0112 9A42     		cmp	r2, r3
+ 1598 0114 EDDB     		blt	.L73
+ 1599              	.LBE6:
+1043:../libraries/CC3000_Host_Driver/socket.c **** 	
+1044:../libraries/CC3000_Host_Driver/socket.c **** 	// In case we are using SendTo, copy the to parameters
+1045:../libraries/CC3000_Host_Driver/socket.c **** 	if (opcode == HCI_CMND_SENDTO)
+ 1600              		.loc 1 1045 0 is_stmt 1
+ 1601 0116 3B6C     		ldr	r3, [r7, #64]
+ 1602 0118 832B     		cmp	r3, #131
+ 1603 011a 14D1     		bne	.L74
+ 1604              	.LBB7:
+1046:../libraries/CC3000_Host_Driver/socket.c **** 	{	
+1047:../libraries/CC3000_Host_Driver/socket.c **** 		ARRAY_TO_STREAM(pDataPtr, ((unsigned char *)to), tolen);
+ 1605              		.loc 1 1047 0
+ 1606 011c 4FF00004 		mov	r4, #0
+ 1607 0120 0DE0     		b	.L75
+ 1608              	.L76:
+ 1609              		.loc 1 1047 0 is_stmt 0 discriminator 2
+ 1610 0122 23B2     		sxth	r3, r4
+ 1611 0124 BA6B     		ldr	r2, [r7, #56]
+ 1612 0126 D318     		adds	r3, r2, r3
+ 1613 0128 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 1614 012a 3B6A     		ldr	r3, [r7, #32]
+ 1615 012c 1A70     		strb	r2, [r3, #0]
+ 1616 012e 3B6A     		ldr	r3, [r7, #32]
+ 1617 0130 03F10103 		add	r3, r3, #1
+ 1618 0134 3B62     		str	r3, [r7, #32]
+ 1619 0136 2346     		mov	r3, r4	@ movhi
+ 1620 0138 03F10103 		add	r3, r3, #1
+ 1621 013c 9CB2     		uxth	r4, r3
+ 1622              	.L75:
+ 1623              		.loc 1 1047 0 discriminator 1
+ 1624 013e 22B2     		sxth	r2, r4
+ 1625 0140 FB6B     		ldr	r3, [r7, #60]
+ 1626 0142 9A42     		cmp	r2, r3
+ 1627 0144 EDDB     		blt	.L76
+ 1628              	.L74:
+ 1629              	.LBE7:
+1048:../libraries/CC3000_Host_Driver/socket.c **** 	}
+1049:../libraries/CC3000_Host_Driver/socket.c **** 	
+1050:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+1051:../libraries/CC3000_Host_Driver/socket.c **** 	hci_data_send(opcode, ptr, uArgSize, len,(unsigned char*)to, tolen);
+ 1630              		.loc 1 1051 0 is_stmt 1
+ 1631 0146 3B6C     		ldr	r3, [r7, #64]
+ 1632 0148 D9B2     		uxtb	r1, r3
+ 1633 014a 97F82730 		ldrb	r3, [r7, #39]	@ zero_extendqisi2
+ 1634 014e 9AB2     		uxth	r2, r3
+ 1635 0150 7B68     		ldr	r3, [r7, #4]
+ 1636 0152 9BB2     		uxth	r3, r3
+ 1637 0154 F86B     		ldr	r0, [r7, #60]
+ 1638 0156 80B2     		uxth	r0, r0
+ 1639 0158 BC6B     		ldr	r4, [r7, #56]
+ 1640 015a 0094     		str	r4, [sp, #0]
+ 1641 015c 0190     		str	r0, [sp, #4]
+ 1642 015e 0846     		mov	r0, r1
+ 1643 0160 7969     		ldr	r1, [r7, #20]
+ 1644 0162 FFF7FEFF 		bl	hci_data_send
+1052:../libraries/CC3000_Host_Driver/socket.c **** 	
+1053:../libraries/CC3000_Host_Driver/socket.c **** 	return	(len);
+ 1645              		.loc 1 1053 0
+ 1646 0166 7B68     		ldr	r3, [r7, #4]
+ 1647              	.L66:
+1054:../libraries/CC3000_Host_Driver/socket.c **** }
+ 1648              		.loc 1 1054 0
+ 1649 0168 1846     		mov	r0, r3
+ 1650 016a 07F12C07 		add	r7, r7, #44
+ 1651 016e BD46     		mov	sp, r7
+ 1652 0170 90BD     		pop	{r4, r7, pc}
+ 1653              		.cfi_endproc
+ 1654              	.LFE14:
+ 1656 0172 00BF     		.section	.text.send,"ax",%progbits
+ 1657              		.align	2
+ 1658              		.global	send
+ 1659              		.thumb
+ 1660              		.thumb_func
+ 1662              	send:
+ 1663              	.LFB15:
+1055:../libraries/CC3000_Host_Driver/socket.c **** 
+1056:../libraries/CC3000_Host_Driver/socket.c **** 
+1057:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+1058:../libraries/CC3000_Host_Driver/socket.c **** //
+1059:../libraries/CC3000_Host_Driver/socket.c **** //!  send
+1060:../libraries/CC3000_Host_Driver/socket.c **** //!
+1061:../libraries/CC3000_Host_Driver/socket.c **** //!  @param sd       socket handle
+1062:../libraries/CC3000_Host_Driver/socket.c **** //!  @param buf      Points to a buffer containing the message to be sent
+1063:../libraries/CC3000_Host_Driver/socket.c **** //!  @param len      message size in bytes
+1064:../libraries/CC3000_Host_Driver/socket.c **** //!  @param flags    On this version, this parameter is not supported
+1065:../libraries/CC3000_Host_Driver/socket.c **** //!
+1066:../libraries/CC3000_Host_Driver/socket.c **** //!  @return         Return the number of bytes transmitted, or -1 if an
+1067:../libraries/CC3000_Host_Driver/socket.c **** //!                  error occurred
+1068:../libraries/CC3000_Host_Driver/socket.c **** //!
+1069:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief          Write data to TCP socket
+1070:../libraries/CC3000_Host_Driver/socket.c **** //!                  This function is used to transmit a message to another 
+1071:../libraries/CC3000_Host_Driver/socket.c **** //!                  socket.
+1072:../libraries/CC3000_Host_Driver/socket.c **** //!
+1073:../libraries/CC3000_Host_Driver/socket.c **** //!  @Note           On this version, only blocking mode is supported.
+1074:../libraries/CC3000_Host_Driver/socket.c **** //!
+1075:../libraries/CC3000_Host_Driver/socket.c **** //!  @sa             sendto
+1076:../libraries/CC3000_Host_Driver/socket.c **** //
+1077:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+1078:../libraries/CC3000_Host_Driver/socket.c **** 
+1079:../libraries/CC3000_Host_Driver/socket.c **** int
+1080:../libraries/CC3000_Host_Driver/socket.c **** send(long sd, const void *buf, long len, long flags)
+1081:../libraries/CC3000_Host_Driver/socket.c **** {
+ 1664              		.loc 1 1081 0
+ 1665              		.cfi_startproc
+ 1666              		@ args = 0, pretend = 0, frame = 16
+ 1667              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1668 0000 80B5     		push	{r7, lr}
+ 1669              	.LCFI45:
+ 1670              		.cfi_def_cfa_offset 8
+ 1671              		.cfi_offset 7, -8
+ 1672              		.cfi_offset 14, -4
+ 1673 0002 88B0     		sub	sp, sp, #32
+ 1674              	.LCFI46:
+ 1675              		.cfi_def_cfa_offset 40
+ 1676 0004 04AF     		add	r7, sp, #16
+ 1677              	.LCFI47:
+ 1678              		.cfi_def_cfa 7, 24
+ 1679 0006 F860     		str	r0, [r7, #12]
+ 1680 0008 B960     		str	r1, [r7, #8]
+ 1681 000a 7A60     		str	r2, [r7, #4]
+ 1682 000c 3B60     		str	r3, [r7, #0]
+1082:../libraries/CC3000_Host_Driver/socket.c **** 	return(simple_link_send(sd, buf, len, flags, NULL, 0, HCI_CMND_SEND));
+ 1683              		.loc 1 1082 0
+ 1684 000e 4FF00003 		mov	r3, #0
+ 1685 0012 0093     		str	r3, [sp, #0]
+ 1686 0014 4FF00003 		mov	r3, #0
+ 1687 0018 0193     		str	r3, [sp, #4]
+ 1688 001a 4FF08103 		mov	r3, #129
+ 1689 001e 0293     		str	r3, [sp, #8]
+ 1690 0020 F868     		ldr	r0, [r7, #12]
+ 1691 0022 B968     		ldr	r1, [r7, #8]
+ 1692 0024 7A68     		ldr	r2, [r7, #4]
+ 1693 0026 3B68     		ldr	r3, [r7, #0]
+ 1694 0028 FFF7FEFF 		bl	simple_link_send
+ 1695 002c 0346     		mov	r3, r0
+1083:../libraries/CC3000_Host_Driver/socket.c **** }
+ 1696              		.loc 1 1083 0
+ 1697 002e 1846     		mov	r0, r3
+ 1698 0030 07F11007 		add	r7, r7, #16
+ 1699 0034 BD46     		mov	sp, r7
+ 1700 0036 80BD     		pop	{r7, pc}
+ 1701              		.cfi_endproc
+ 1702              	.LFE15:
+ 1704              		.section	.text.sendto,"ax",%progbits
+ 1705              		.align	2
+ 1706              		.global	sendto
+ 1707              		.thumb
+ 1708              		.thumb_func
+ 1710              	sendto:
+ 1711              	.LFB16:
+1084:../libraries/CC3000_Host_Driver/socket.c **** 
+1085:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+1086:../libraries/CC3000_Host_Driver/socket.c **** //
+1087:../libraries/CC3000_Host_Driver/socket.c **** //!  sendto
+1088:../libraries/CC3000_Host_Driver/socket.c **** //!
+1089:../libraries/CC3000_Host_Driver/socket.c **** //!  @param sd       socket handle
+1090:../libraries/CC3000_Host_Driver/socket.c **** //!  @param buf      Points to a buffer containing the message to be sent
+1091:../libraries/CC3000_Host_Driver/socket.c **** //!  @param len      message size in bytes
+1092:../libraries/CC3000_Host_Driver/socket.c **** //!  @param flags    On this version, this parameter is not supported
+1093:../libraries/CC3000_Host_Driver/socket.c **** //!  @param to       pointer to an address structure indicating the destination
+1094:../libraries/CC3000_Host_Driver/socket.c **** //!                  address: sockaddr. On this version only AF_INET is
+1095:../libraries/CC3000_Host_Driver/socket.c **** //!                  supported.
+1096:../libraries/CC3000_Host_Driver/socket.c **** //!  @param tolen    destination address structure size
+1097:../libraries/CC3000_Host_Driver/socket.c **** //!
+1098:../libraries/CC3000_Host_Driver/socket.c **** //!  @return         Return the number of bytes transmitted, or -1 if an
+1099:../libraries/CC3000_Host_Driver/socket.c **** //!                  error occurred
+1100:../libraries/CC3000_Host_Driver/socket.c **** //!
+1101:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief          Write data to TCP socket
+1102:../libraries/CC3000_Host_Driver/socket.c **** //!                  This function is used to transmit a message to another 
+1103:../libraries/CC3000_Host_Driver/socket.c **** //!                  socket.
+1104:../libraries/CC3000_Host_Driver/socket.c **** //!
+1105:../libraries/CC3000_Host_Driver/socket.c **** //!  @Note           On this version, only blocking mode is supported.
+1106:../libraries/CC3000_Host_Driver/socket.c **** //!
+1107:../libraries/CC3000_Host_Driver/socket.c **** //!  @sa             send
+1108:../libraries/CC3000_Host_Driver/socket.c **** //
+1109:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+1110:../libraries/CC3000_Host_Driver/socket.c **** 
+1111:../libraries/CC3000_Host_Driver/socket.c **** int
+1112:../libraries/CC3000_Host_Driver/socket.c **** sendto(long sd, const void *buf, long len, long flags, const sockaddr *to,
+1113:../libraries/CC3000_Host_Driver/socket.c ****        socklen_t tolen)
+1114:../libraries/CC3000_Host_Driver/socket.c **** {
+ 1712              		.loc 1 1114 0
+ 1713              		.cfi_startproc
+ 1714              		@ args = 8, pretend = 0, frame = 16
+ 1715              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1716 0000 80B5     		push	{r7, lr}
+ 1717              	.LCFI48:
+ 1718              		.cfi_def_cfa_offset 8
+ 1719              		.cfi_offset 7, -8
+ 1720              		.cfi_offset 14, -4
+ 1721 0002 88B0     		sub	sp, sp, #32
+ 1722              	.LCFI49:
+ 1723              		.cfi_def_cfa_offset 40
+ 1724 0004 04AF     		add	r7, sp, #16
+ 1725              	.LCFI50:
+ 1726              		.cfi_def_cfa 7, 24
+ 1727 0006 F860     		str	r0, [r7, #12]
+ 1728 0008 B960     		str	r1, [r7, #8]
+ 1729 000a 7A60     		str	r2, [r7, #4]
+ 1730 000c 3B60     		str	r3, [r7, #0]
+1115:../libraries/CC3000_Host_Driver/socket.c **** 	return(simple_link_send(sd, buf, len, flags, to, tolen, HCI_CMND_SENDTO));
+ 1731              		.loc 1 1115 0
+ 1732 000e FB69     		ldr	r3, [r7, #28]
+ 1733 0010 BA69     		ldr	r2, [r7, #24]
+ 1734 0012 0092     		str	r2, [sp, #0]
+ 1735 0014 0193     		str	r3, [sp, #4]
+ 1736 0016 4FF08303 		mov	r3, #131
+ 1737 001a 0293     		str	r3, [sp, #8]
+ 1738 001c F868     		ldr	r0, [r7, #12]
+ 1739 001e B968     		ldr	r1, [r7, #8]
+ 1740 0020 7A68     		ldr	r2, [r7, #4]
+ 1741 0022 3B68     		ldr	r3, [r7, #0]
+ 1742 0024 FFF7FEFF 		bl	simple_link_send
+ 1743 0028 0346     		mov	r3, r0
+1116:../libraries/CC3000_Host_Driver/socket.c **** }
+ 1744              		.loc 1 1116 0
+ 1745 002a 1846     		mov	r0, r3
+ 1746 002c 07F11007 		add	r7, r7, #16
+ 1747 0030 BD46     		mov	sp, r7
+ 1748 0032 80BD     		pop	{r7, pc}
+ 1749              		.cfi_endproc
+ 1750              	.LFE16:
+ 1752              		.section	.text.mdnsAdvertiser,"ax",%progbits
+ 1753              		.align	2
+ 1754              		.global	mdnsAdvertiser
+ 1755              		.thumb
+ 1756              		.thumb_func
+ 1758              	mdnsAdvertiser:
+ 1759              	.LFB17:
+1117:../libraries/CC3000_Host_Driver/socket.c **** 
+1118:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+1119:../libraries/CC3000_Host_Driver/socket.c **** //
+1120:../libraries/CC3000_Host_Driver/socket.c **** //!  mdnsAdvertiser
+1121:../libraries/CC3000_Host_Driver/socket.c **** //!
+1122:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in] mdnsEnabled         flag to enable/disable the mDNS feature
+1123:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in] deviceServiceName   Service name as part of the published
+1124:../libraries/CC3000_Host_Driver/socket.c **** //!                                 canonical domain name
+1125:../libraries/CC3000_Host_Driver/socket.c **** //!  @param[in] deviceServiceNameLength   Length of the service name
+1126:../libraries/CC3000_Host_Driver/socket.c **** //!  
+1127:../libraries/CC3000_Host_Driver/socket.c **** //!
+1128:../libraries/CC3000_Host_Driver/socket.c **** //!  @return   On success, zero is returned, return SOC_ERROR if socket was not 
+1129:../libraries/CC3000_Host_Driver/socket.c **** //!            opened successfully, or if an error occurred.
+1130:../libraries/CC3000_Host_Driver/socket.c **** //!
+1131:../libraries/CC3000_Host_Driver/socket.c **** //!  @brief    Set CC3000 in mDNS advertiser mode in order to advertise itself.
+1132:../libraries/CC3000_Host_Driver/socket.c **** //
+1133:../libraries/CC3000_Host_Driver/socket.c **** //*****************************************************************************
+1134:../libraries/CC3000_Host_Driver/socket.c **** 
+1135:../libraries/CC3000_Host_Driver/socket.c **** int
+1136:../libraries/CC3000_Host_Driver/socket.c **** mdnsAdvertiser(unsigned short mdnsEnabled, char * deviceServiceName, unsigned short deviceServiceNa
+1137:../libraries/CC3000_Host_Driver/socket.c **** {
+ 1760              		.loc 1 1137 0
+ 1761              		.cfi_startproc
+ 1762              		@ args = 0, pretend = 0, frame = 24
+ 1763              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1764 0000 90B5     		push	{r4, r7, lr}
+ 1765              	.LCFI51:
+ 1766              		.cfi_def_cfa_offset 12
+ 1767              		.cfi_offset 4, -12
+ 1768              		.cfi_offset 7, -8
+ 1769              		.cfi_offset 14, -4
+ 1770 0002 87B0     		sub	sp, sp, #28
+ 1771              	.LCFI52:
+ 1772              		.cfi_def_cfa_offset 40
+ 1773 0004 00AF     		add	r7, sp, #0
+ 1774              	.LCFI53:
+ 1775              		.cfi_def_cfa_register 7
+ 1776 0006 3960     		str	r1, [r7, #0]
+ 1777 0008 1346     		mov	r3, r2
+ 1778 000a 0246     		mov	r2, r0	@ movhi
+ 1779 000c FA80     		strh	r2, [r7, #6]	@ movhi
+ 1780 000e BB80     		strh	r3, [r7, #4]	@ movhi
+1138:../libraries/CC3000_Host_Driver/socket.c **** 	int ret;
+1139:../libraries/CC3000_Host_Driver/socket.c ****  	unsigned char *pTxBuffer, *pArgs;
+1140:../libraries/CC3000_Host_Driver/socket.c **** 	
+1141:../libraries/CC3000_Host_Driver/socket.c **** 	if (deviceServiceNameLength > MDNS_DEVICE_SERVICE_MAX_LENGTH)
+ 1781              		.loc 1 1141 0
+ 1782 0010 BB88     		ldrh	r3, [r7, #4]
+ 1783 0012 202B     		cmp	r3, #32
+ 1784 0014 02D9     		bls	.L83
+1142:../libraries/CC3000_Host_Driver/socket.c **** 	{
+1143:../libraries/CC3000_Host_Driver/socket.c **** 		return EFAIL;
+ 1785              		.loc 1 1143 0
+ 1786 0016 4FF0FF33 		mov	r3, #-1
+ 1787 001a 43E0     		b	.L87
+ 1788              	.L83:
+1144:../libraries/CC3000_Host_Driver/socket.c **** 	}
+1145:../libraries/CC3000_Host_Driver/socket.c **** 	
+1146:../libraries/CC3000_Host_Driver/socket.c **** 	pTxBuffer = tSLInformation.pucTxCommandBuffer;
+ 1789              		.loc 1 1146 0
+ 1790 001c 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1791 0020 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1792 0024 9B68     		ldr	r3, [r3, #8]
+ 1793 0026 3B61     		str	r3, [r7, #16]
+1147:../libraries/CC3000_Host_Driver/socket.c **** 	pArgs = (pTxBuffer + SIMPLE_LINK_HCI_CMND_TRANSPORT_HEADER_SIZE);
+ 1794              		.loc 1 1147 0
+ 1795 0028 3B69     		ldr	r3, [r7, #16]
+ 1796 002a 03F10903 		add	r3, r3, #9
+ 1797 002e 7B61     		str	r3, [r7, #20]
+1148:../libraries/CC3000_Host_Driver/socket.c **** 	
+1149:../libraries/CC3000_Host_Driver/socket.c **** 	// Fill in HCI packet structure
+1150:../libraries/CC3000_Host_Driver/socket.c **** 	pArgs = UINT32_TO_STREAM(pArgs, mdnsEnabled);
+ 1798              		.loc 1 1150 0
+ 1799 0030 FB88     		ldrh	r3, [r7, #6]
+ 1800 0032 7869     		ldr	r0, [r7, #20]
+ 1801 0034 1946     		mov	r1, r3
+ 1802 0036 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1803 003a 7861     		str	r0, [r7, #20]
+1151:../libraries/CC3000_Host_Driver/socket.c **** 	pArgs = UINT32_TO_STREAM(pArgs, 8);
+ 1804              		.loc 1 1151 0
+ 1805 003c 7869     		ldr	r0, [r7, #20]
+ 1806 003e 4FF00801 		mov	r1, #8
+ 1807 0042 FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1808 0046 7861     		str	r0, [r7, #20]
+1152:../libraries/CC3000_Host_Driver/socket.c **** 	pArgs = UINT32_TO_STREAM(pArgs, deviceServiceNameLength);
+ 1809              		.loc 1 1152 0
+ 1810 0048 BB88     		ldrh	r3, [r7, #4]
+ 1811 004a 7869     		ldr	r0, [r7, #20]
+ 1812 004c 1946     		mov	r1, r3
+ 1813 004e FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 1814 0052 7861     		str	r0, [r7, #20]
+ 1815              	.LBB8:
+1153:../libraries/CC3000_Host_Driver/socket.c **** 	ARRAY_TO_STREAM(pArgs, deviceServiceName, deviceServiceNameLength);
+ 1816              		.loc 1 1153 0
+ 1817 0054 4FF00004 		mov	r4, #0
+ 1818 0058 0DE0     		b	.L85
+ 1819              	.L86:
+ 1820              		.loc 1 1153 0 is_stmt 0 discriminator 2
+ 1821 005a 23B2     		sxth	r3, r4
+ 1822 005c 3A68     		ldr	r2, [r7, #0]
+ 1823 005e D318     		adds	r3, r2, r3
+ 1824 0060 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 1825 0062 7B69     		ldr	r3, [r7, #20]
+ 1826 0064 1A70     		strb	r2, [r3, #0]
+ 1827 0066 7B69     		ldr	r3, [r7, #20]
+ 1828 0068 03F10103 		add	r3, r3, #1
+ 1829 006c 7B61     		str	r3, [r7, #20]
+ 1830 006e 2346     		mov	r3, r4	@ movhi
+ 1831 0070 03F10103 		add	r3, r3, #1
+ 1832 0074 9CB2     		uxth	r4, r3
+ 1833              	.L85:
+ 1834              		.loc 1 1153 0 discriminator 1
+ 1835 0076 22B2     		sxth	r2, r4
+ 1836 0078 BB88     		ldrh	r3, [r7, #4]
+ 1837 007a 9A42     		cmp	r2, r3
+ 1838 007c EDDB     		blt	.L86
+ 1839              	.LBE8:
+1154:../libraries/CC3000_Host_Driver/socket.c **** 	
+1155:../libraries/CC3000_Host_Driver/socket.c **** 	// Initiate a HCI command
+1156:../libraries/CC3000_Host_Driver/socket.c **** 	hci_command_send(HCI_CMND_MDNS_ADVERTISE, pTxBuffer, SOCKET_MDNS_ADVERTISE_PARAMS_LEN + deviceServ
+ 1840              		.loc 1 1156 0 is_stmt 1
+ 1841 007e BB88     		ldrh	r3, [r7, #4]	@ movhi
+ 1842 0080 DBB2     		uxtb	r3, r3
+ 1843 0082 03F10C03 		add	r3, r3, #12
+ 1844 0086 DBB2     		uxtb	r3, r3
+ 1845 0088 41F21100 		movw	r0, #4113
+ 1846 008c 3969     		ldr	r1, [r7, #16]
+ 1847 008e 1A46     		mov	r2, r3
+ 1848 0090 FFF7FEFF 		bl	hci_command_send
+1157:../libraries/CC3000_Host_Driver/socket.c **** 	
+1158:../libraries/CC3000_Host_Driver/socket.c **** 	// Since we are in blocking state - wait for event complete
+1159:../libraries/CC3000_Host_Driver/socket.c **** 	SimpleLinkWaitEvent(HCI_EVNT_MDNS_ADVERTISE, &ret);
+ 1849              		.loc 1 1159 0
+ 1850 0094 07F10C03 		add	r3, r7, #12
+ 1851 0098 41F21100 		movw	r0, #4113
+ 1852 009c 1946     		mov	r1, r3
+ 1853 009e FFF7FEFF 		bl	SimpleLinkWaitEvent
+1160:../libraries/CC3000_Host_Driver/socket.c **** 	
+1161:../libraries/CC3000_Host_Driver/socket.c **** 	return ret;
+ 1854              		.loc 1 1161 0
+ 1855 00a2 FB68     		ldr	r3, [r7, #12]
+ 1856              	.L87:
+1162:../libraries/CC3000_Host_Driver/socket.c **** 	
+1163:../libraries/CC3000_Host_Driver/socket.c **** }
+ 1857              		.loc 1 1163 0
+ 1858 00a4 1846     		mov	r0, r3
+ 1859 00a6 07F11C07 		add	r7, r7, #28
+ 1860 00aa BD46     		mov	sp, r7
+ 1861 00ac 90BD     		pop	{r4, r7, pc}
+ 1862              		.cfi_endproc
+ 1863              	.LFE17:
+ 1865 00ae 00BF     		.text
+ 1866              	.Letext0:
+ 1867              		.file 2 "../libraries/CC3000_Host_Driver/cc3000_common.h"
+ 1868              		.file 3 "../libraries/CC3000_Host_Driver/socket.h"
+ 1869              		.file 4 "../libraries/CC3000_Host_Driver/evnt_handler.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 socket.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:19     .text.HostFlowControlConsumeBuff:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:24     .text.HostFlowControlConsumeBuff:0000000000000000 HostFlowControlConsumeBuff
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:107    .text.socket:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:112    .text.socket:0000000000000000 socket
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:193    .text.closesocket:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:198    .text.closesocket:0000000000000000 closesocket
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:264    .text.accept:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:269    .text.accept:0000000000000000 accept
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:368    .text.bind:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:373    .text.bind:0000000000000000 bind
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:477    .text.listen:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:482    .text.listen:0000000000000000 listen
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:551    .text.gethostbyname:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:556    .text.gethostbyname:0000000000000000 gethostbyname
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:675    .text.connect:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:680    .text.connect:0000000000000000 connect
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:784    .text.select:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:789    .text.select:0000000000000000 select
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1020   .text.setsockopt:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1025   .text.setsockopt:0000000000000000 setsockopt
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1148   .text.getsockopt:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1153   .text.getsockopt:0000000000000000 getsockopt
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1247   .text.simple_link_recv:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1252   .text.simple_link_recv:0000000000000000 simple_link_recv
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1340   .text.recv:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1345   .text.recv:0000000000000000 recv
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1388   .text.recvfrom:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1393   .text.recvfrom:0000000000000000 recvfrom
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1436   .text.simple_link_send:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1441   .text.simple_link_send:0000000000000000 simple_link_send
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1657   .text.send:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1662   .text.send:0000000000000000 send
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1705   .text.sendto:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1710   .text.sendto:0000000000000000 sendto
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1753   .text.mdnsAdvertiser:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccN2fJbE.s:1758   .text.mdnsAdvertiser:0000000000000000 mdnsAdvertiser
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdio.h.31.f48311dde756a2aec27351b58a280fb9
+                           .group:0000000000000000 wm4.stddef.h.187.9e651b6b8b16e149c1353259404973ea
+                           .group:0000000000000000 wm4.stdarg.h.34.3a23a216c0c293b3d2ea2e89281481e6
+                           .group:0000000000000000 wm4._default_types.h.6.5e12cd604db8ce00b62bb2f02708eaf3
+                           .group:0000000000000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:0000000000000000 wm4.stddef.h.349.31f4c5baff3fa2689010b32028da9c47
+                           .group:0000000000000000 wm4.reent.h.16.9e42f0e588b85e70b2bf6572af57ce64
+                           .group:0000000000000000 wm4.types.h.23.0d949686bbcadd1621462d4fa1f884f9
+                           .group:0000000000000000 wm4.stddef.h.40.cf962ebbec441b3ac67502735f0765db
+                           .group:0000000000000000 wm4.types.h.2.e9cec8c90ab35f77d9f499e06ae02400
+                           .group:0000000000000000 wm4.types.h.80.1f2c84c0d57dd52dd9936095d9ac218e
+                           .group:0000000000000000 wm4.stdio.h.2.4aa87247282eca6c8f36f9de33d8df1a
+                           .group:0000000000000000 wm4.stdio.h.63.dfdea6580b080784d08faace69b6ed76
+                           .group:0000000000000000 wm4.string.h.8.ef946ad0bc9ad5c970c365dcd1fc4b0a
+                           .group:0000000000000000 wm4.stddef.h.161.e50ff8a9d5d1abbc15641da28ac571bf
+                           .group:0000000000000000 wm4.string.h.86.d5c872ff52e2712c985b588a0ef39f3c
+                           .group:0000000000000000 wm4.stdlib.h.13.603ed7eb09a1561ab06840b7c0fcff58
+                           .group:0000000000000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:0000000000000000 wm4.stdlib.h.53.c69c7609933ff56d59c757cec2d13230
+                           .group:0000000000000000 wm4.errno.h.2.ba016d646105af6cad23be83630b6a3f
+                           .group:0000000000000000 wm4.errno.h.9.65044c2b5d8494e43f5986ab0a1d770f
+                           .group:0000000000000000 wm4.stdint.h.10.90b695f550ca6cc3fb08fa83baf01e05
+                           .group:0000000000000000 wm4.cc3000_common.h.58.2af7f8f8921b8cb4b89883c25878e207
+                           .group:0000000000000000 wm4.hci.h.51.9deb4690145bc08404ecd70e8dadf8e4
+                           .group:0000000000000000 wm4.socket.h.36.a8c628533ac074dc9bf38f87e586f707
+                           .group:0000000000000000 wm4.evnt_handler.h.36.be99e6836a9f57d146a5dafeb0edb1e6
+
+UNDEFINED SYMBOLS
+tSLInformation
+__errno
+get_socket_active_status
+UINT32_TO_STREAM_f
+hci_command_send
+SimpleLinkWaitEvent
+set_socket_active_status
+memcpy
+SimpleLinkWaitData
+hci_data_send

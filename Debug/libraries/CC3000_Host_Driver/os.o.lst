@@ -1,0 +1,211 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"os.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.OS_malloc,"ax",%progbits
+  19              		.align	2
+  20              		.global	OS_malloc
+  21              		.thumb
+  22              		.thumb_func
+  24              	OS_malloc:
+  25              	.LFB0:
+  26              		.file 1 "../libraries/CC3000_Host_Driver/os.c"
+   1:../libraries/CC3000_Host_Driver/os.c **** /*****************************************************************************
+   2:../libraries/CC3000_Host_Driver/os.c **** *
+   3:../libraries/CC3000_Host_Driver/os.c **** *  os.c  - CC3000 Host Driver Implementation.
+   4:../libraries/CC3000_Host_Driver/os.c **** *  Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
+   5:../libraries/CC3000_Host_Driver/os.c **** *
+   6:../libraries/CC3000_Host_Driver/os.c **** *  Redistribution and use in source and binary forms, with or without
+   7:../libraries/CC3000_Host_Driver/os.c **** *  modification, are permitted provided that the following conditions
+   8:../libraries/CC3000_Host_Driver/os.c **** *  are met:
+   9:../libraries/CC3000_Host_Driver/os.c **** *
+  10:../libraries/CC3000_Host_Driver/os.c **** *    Redistributions of source code must retain the above copyright
+  11:../libraries/CC3000_Host_Driver/os.c **** *    notice, this list of conditions and the following disclaimer.
+  12:../libraries/CC3000_Host_Driver/os.c **** *
+  13:../libraries/CC3000_Host_Driver/os.c **** *    Redistributions in binary form must reproduce the above copyright
+  14:../libraries/CC3000_Host_Driver/os.c **** *    notice, this list of conditions and the following disclaimer in the
+  15:../libraries/CC3000_Host_Driver/os.c **** *    documentation and/or other materials provided with the   
+  16:../libraries/CC3000_Host_Driver/os.c **** *    distribution.
+  17:../libraries/CC3000_Host_Driver/os.c **** *
+  18:../libraries/CC3000_Host_Driver/os.c **** *    Neither the name of Texas Instruments Incorporated nor the names of
+  19:../libraries/CC3000_Host_Driver/os.c **** *    its contributors may be used to endorse or promote products derived
+  20:../libraries/CC3000_Host_Driver/os.c **** *    from this software without specific prior written permission.
+  21:../libraries/CC3000_Host_Driver/os.c **** *
+  22:../libraries/CC3000_Host_Driver/os.c **** *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+  23:../libraries/CC3000_Host_Driver/os.c **** *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+  24:../libraries/CC3000_Host_Driver/os.c **** *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+  25:../libraries/CC3000_Host_Driver/os.c **** *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+  26:../libraries/CC3000_Host_Driver/os.c **** *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+  27:../libraries/CC3000_Host_Driver/os.c **** *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+  28:../libraries/CC3000_Host_Driver/os.c **** *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  29:../libraries/CC3000_Host_Driver/os.c **** *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  30:../libraries/CC3000_Host_Driver/os.c **** *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+  31:../libraries/CC3000_Host_Driver/os.c **** *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+  32:../libraries/CC3000_Host_Driver/os.c **** *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  33:../libraries/CC3000_Host_Driver/os.c **** *
+  34:../libraries/CC3000_Host_Driver/os.c **** *****************************************************************************/
+  35:../libraries/CC3000_Host_Driver/os.c **** 
+  36:../libraries/CC3000_Host_Driver/os.c **** 
+  37:../libraries/CC3000_Host_Driver/os.c **** //*****************************************************************************
+  38:../libraries/CC3000_Host_Driver/os.c **** //
+  39:../libraries/CC3000_Host_Driver/os.c **** //! \addtogroup os_api
+  40:../libraries/CC3000_Host_Driver/os.c **** //! @{
+  41:../libraries/CC3000_Host_Driver/os.c **** //
+  42:../libraries/CC3000_Host_Driver/os.c **** //*****************************************************************************
+  43:../libraries/CC3000_Host_Driver/os.c **** 
+  44:../libraries/CC3000_Host_Driver/os.c **** #include <stdio.h>
+  45:../libraries/CC3000_Host_Driver/os.c **** #include <string.h>
+  46:../libraries/CC3000_Host_Driver/os.c **** #include <stdlib.h>
+  47:../libraries/CC3000_Host_Driver/os.c **** #include "os.h"
+  48:../libraries/CC3000_Host_Driver/os.c **** 
+  49:../libraries/CC3000_Host_Driver/os.c **** 
+  50:../libraries/CC3000_Host_Driver/os.c **** /**
+  51:../libraries/CC3000_Host_Driver/os.c ****  * \brief allocate memory
+  52:../libraries/CC3000_Host_Driver/os.c ****  *
+  53:../libraries/CC3000_Host_Driver/os.c ****  * Function allocates size bytes of uninitialized memory, and returns a pointer to the allocated me
+  54:../libraries/CC3000_Host_Driver/os.c ****  * The allocated space is suitably aligned (after possible pointer coercion) for storage of any typ
+  55:../libraries/CC3000_Host_Driver/os.c ****  * 
+  56:../libraries/CC3000_Host_Driver/os.c ****  * \param[in] size    number of memory bytes to allocate
+  57:../libraries/CC3000_Host_Driver/os.c ****  *
+  58:../libraries/CC3000_Host_Driver/os.c ****  * \return   On success return a pointer to the allocated space, on failure return null
+  59:../libraries/CC3000_Host_Driver/os.c ****  * \sa OS_free
+  60:../libraries/CC3000_Host_Driver/os.c ****  * \note
+  61:../libraries/CC3000_Host_Driver/os.c ****  * 
+  62:../libraries/CC3000_Host_Driver/os.c ****  * \warning
+  63:../libraries/CC3000_Host_Driver/os.c ****  */
+  64:../libraries/CC3000_Host_Driver/os.c **** 
+  65:../libraries/CC3000_Host_Driver/os.c **** void * OS_malloc( unsigned long size )
+  66:../libraries/CC3000_Host_Driver/os.c **** {
+  27              		.loc 1 66 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 8
+  30              		@ frame_needed = 1, uses_anonymous_args = 0
+  31 0000 80B5     		push	{r7, lr}
+  32              	.LCFI0:
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 7, -8
+  35              		.cfi_offset 14, -4
+  36 0002 82B0     		sub	sp, sp, #8
+  37              	.LCFI1:
+  38              		.cfi_def_cfa_offset 16
+  39 0004 00AF     		add	r7, sp, #0
+  40              	.LCFI2:
+  41              		.cfi_def_cfa_register 7
+  42 0006 7860     		str	r0, [r7, #4]
+  67:../libraries/CC3000_Host_Driver/os.c ****     return malloc( size );
+  43              		.loc 1 67 0
+  44 0008 7868     		ldr	r0, [r7, #4]
+  45 000a FFF7FEFF 		bl	malloc
+  46 000e 0346     		mov	r3, r0
+  68:../libraries/CC3000_Host_Driver/os.c **** }
+  47              		.loc 1 68 0
+  48 0010 1846     		mov	r0, r3
+  49 0012 07F10807 		add	r7, r7, #8
+  50 0016 BD46     		mov	sp, r7
+  51 0018 80BD     		pop	{r7, pc}
+  52              		.cfi_endproc
+  53              	.LFE0:
+  55 001a 00BF     		.section	.text.OS_free,"ax",%progbits
+  56              		.align	2
+  57              		.global	OS_free
+  58              		.thumb
+  59              		.thumb_func
+  61              	OS_free:
+  62              	.LFB1:
+  69:../libraries/CC3000_Host_Driver/os.c **** 
+  70:../libraries/CC3000_Host_Driver/os.c **** /**
+  71:../libraries/CC3000_Host_Driver/os.c ****  * \brief free allocated memory
+  72:../libraries/CC3000_Host_Driver/os.c ****  *
+  73:../libraries/CC3000_Host_Driver/os.c ****  * Function causes the allocated memory referenced by ptr to
+  74:../libraries/CC3000_Host_Driver/os.c ****  *  be made available for future allocations.\n If ptr is
+  75:../libraries/CC3000_Host_Driver/os.c ****  * NULL, no action occurs.
+  76:../libraries/CC3000_Host_Driver/os.c ****  * 
+  77:../libraries/CC3000_Host_Driver/os.c ****  *  \param[in] ptr   pointer to previously allocated memory
+  78:../libraries/CC3000_Host_Driver/os.c ****  *
+  79:../libraries/CC3000_Host_Driver/os.c ****  * \return   None 
+  80:../libraries/CC3000_Host_Driver/os.c ****  *  
+  81:../libraries/CC3000_Host_Driver/os.c ****  * \sa OS_malloc
+  82:../libraries/CC3000_Host_Driver/os.c ****  * \note
+  83:../libraries/CC3000_Host_Driver/os.c ****  * 
+  84:../libraries/CC3000_Host_Driver/os.c ****  * \warning
+  85:../libraries/CC3000_Host_Driver/os.c ****  */
+  86:../libraries/CC3000_Host_Driver/os.c **** 
+  87:../libraries/CC3000_Host_Driver/os.c **** void   OS_free( void * ptr )
+  88:../libraries/CC3000_Host_Driver/os.c **** {
+  63              		.loc 1 88 0
+  64              		.cfi_startproc
+  65              		@ args = 0, pretend = 0, frame = 8
+  66              		@ frame_needed = 1, uses_anonymous_args = 0
+  67 0000 80B5     		push	{r7, lr}
+  68              	.LCFI3:
+  69              		.cfi_def_cfa_offset 8
+  70              		.cfi_offset 7, -8
+  71              		.cfi_offset 14, -4
+  72 0002 82B0     		sub	sp, sp, #8
+  73              	.LCFI4:
+  74              		.cfi_def_cfa_offset 16
+  75 0004 00AF     		add	r7, sp, #0
+  76              	.LCFI5:
+  77              		.cfi_def_cfa_register 7
+  78 0006 7860     		str	r0, [r7, #4]
+  89:../libraries/CC3000_Host_Driver/os.c ****     free( ptr );
+  79              		.loc 1 89 0
+  80 0008 7868     		ldr	r0, [r7, #4]
+  81 000a FFF7FEFF 		bl	free
+  90:../libraries/CC3000_Host_Driver/os.c **** }
+  82              		.loc 1 90 0
+  83 000e 07F10807 		add	r7, r7, #8
+  84 0012 BD46     		mov	sp, r7
+  85 0014 80BD     		pop	{r7, pc}
+  86              		.cfi_endproc
+  87              	.LFE1:
+  89 0016 00BF     		.text
+  90              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 os.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc77OXAy.s:19     .text.OS_malloc:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc77OXAy.s:24     .text.OS_malloc:0000000000000000 OS_malloc
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc77OXAy.s:56     .text.OS_free:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc77OXAy.s:61     .text.OS_free:0000000000000000 OS_free
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdio.h.31.f48311dde756a2aec27351b58a280fb9
+                           .group:0000000000000000 wm4.stddef.h.187.9e651b6b8b16e149c1353259404973ea
+                           .group:0000000000000000 wm4.stdarg.h.34.3a23a216c0c293b3d2ea2e89281481e6
+                           .group:0000000000000000 wm4._default_types.h.6.5e12cd604db8ce00b62bb2f02708eaf3
+                           .group:0000000000000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:0000000000000000 wm4.stddef.h.349.31f4c5baff3fa2689010b32028da9c47
+                           .group:0000000000000000 wm4.reent.h.16.9e42f0e588b85e70b2bf6572af57ce64
+                           .group:0000000000000000 wm4.types.h.23.0d949686bbcadd1621462d4fa1f884f9
+                           .group:0000000000000000 wm4.stddef.h.40.cf962ebbec441b3ac67502735f0765db
+                           .group:0000000000000000 wm4.types.h.2.e9cec8c90ab35f77d9f499e06ae02400
+                           .group:0000000000000000 wm4.types.h.80.1f2c84c0d57dd52dd9936095d9ac218e
+                           .group:0000000000000000 wm4.stdio.h.2.4aa87247282eca6c8f36f9de33d8df1a
+                           .group:0000000000000000 wm4.stdio.h.63.dfdea6580b080784d08faace69b6ed76
+                           .group:0000000000000000 wm4.string.h.8.ef946ad0bc9ad5c970c365dcd1fc4b0a
+                           .group:0000000000000000 wm4.stddef.h.161.e50ff8a9d5d1abbc15641da28ac571bf
+                           .group:0000000000000000 wm4.string.h.86.d5c872ff52e2712c985b588a0ef39f3c
+                           .group:0000000000000000 wm4.stdlib.h.13.603ed7eb09a1561ab06840b7c0fcff58
+                           .group:0000000000000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:0000000000000000 wm4.stdlib.h.53.c69c7609933ff56d59c757cec2d13230
+
+UNDEFINED SYMBOLS
+malloc
+free

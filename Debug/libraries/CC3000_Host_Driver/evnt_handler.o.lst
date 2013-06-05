@@ -1,0 +1,2839 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"evnt_handler.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.global	socket_active_status
+  19              		.data
+  20              		.align	2
+  23              	socket_active_status:
+  24 0000 FFFF0000 		.word	65535
+  25              		.section	.text.hci_unsol_handle_patch_request,"ax",%progbits
+  26              		.align	2
+  27              		.global	hci_unsol_handle_patch_request
+  28              		.thumb
+  29              		.thumb_func
+  31              	hci_unsol_handle_patch_request:
+  32              	.LFB56:
+  33              		.file 1 "../libraries/CC3000_Host_Driver/evnt_handler.c"
+   1:../libraries/CC3000_Host_Driver/evnt_handler.c **** /*****************************************************************************
+   2:../libraries/CC3000_Host_Driver/evnt_handler.c **** *
+   3:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  evnt_handler.c  - CC3000 Host Driver Implementation.
+   4:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
+   5:../libraries/CC3000_Host_Driver/evnt_handler.c **** *
+   6:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  Redistribution and use in source and binary forms, with or without
+   7:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  modification, are permitted provided that the following conditions
+   8:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  are met:
+   9:../libraries/CC3000_Host_Driver/evnt_handler.c **** *
+  10:../libraries/CC3000_Host_Driver/evnt_handler.c **** *    Redistributions of source code must retain the above copyright
+  11:../libraries/CC3000_Host_Driver/evnt_handler.c **** *    notice, this list of conditions and the following disclaimer.
+  12:../libraries/CC3000_Host_Driver/evnt_handler.c **** *
+  13:../libraries/CC3000_Host_Driver/evnt_handler.c **** *    Redistributions in binary form must reproduce the above copyright
+  14:../libraries/CC3000_Host_Driver/evnt_handler.c **** *    notice, this list of conditions and the following disclaimer in the
+  15:../libraries/CC3000_Host_Driver/evnt_handler.c **** *    documentation and/or other materials provided with the   
+  16:../libraries/CC3000_Host_Driver/evnt_handler.c **** *    distribution.
+  17:../libraries/CC3000_Host_Driver/evnt_handler.c **** *
+  18:../libraries/CC3000_Host_Driver/evnt_handler.c **** *    Neither the name of Texas Instruments Incorporated nor the names of
+  19:../libraries/CC3000_Host_Driver/evnt_handler.c **** *    its contributors may be used to endorse or promote products derived
+  20:../libraries/CC3000_Host_Driver/evnt_handler.c **** *    from this software without specific prior written permission.
+  21:../libraries/CC3000_Host_Driver/evnt_handler.c **** *
+  22:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+  23:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+  24:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+  25:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+  26:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+  27:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+  28:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  29:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  30:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+  31:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+  32:../libraries/CC3000_Host_Driver/evnt_handler.c **** *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  33:../libraries/CC3000_Host_Driver/evnt_handler.c **** *
+  34:../libraries/CC3000_Host_Driver/evnt_handler.c **** *****************************************************************************/
+  35:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+  36:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+  37:../libraries/CC3000_Host_Driver/evnt_handler.c **** //! \addtogroup evnt_handler_api
+  38:../libraries/CC3000_Host_Driver/evnt_handler.c **** //! @{
+  39:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+  40:../libraries/CC3000_Host_Driver/evnt_handler.c **** //******************************************************************************
+  41:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  42:../libraries/CC3000_Host_Driver/evnt_handler.c **** //******************************************************************************
+  43:../libraries/CC3000_Host_Driver/evnt_handler.c **** //                  INCLUDE FILES
+  44:../libraries/CC3000_Host_Driver/evnt_handler.c **** //******************************************************************************
+  45:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  46:../libraries/CC3000_Host_Driver/evnt_handler.c **** #include "cc3000_common.h"
+  47:../libraries/CC3000_Host_Driver/evnt_handler.c **** #include "string.h"
+  48:../libraries/CC3000_Host_Driver/evnt_handler.c **** #include "hci.h"
+  49:../libraries/CC3000_Host_Driver/evnt_handler.c **** #include "evnt_handler.h"
+  50:../libraries/CC3000_Host_Driver/evnt_handler.c **** #include "wlan.h"
+  51:../libraries/CC3000_Host_Driver/evnt_handler.c **** #include "socket.h"
+  52:../libraries/CC3000_Host_Driver/evnt_handler.c **** #include "netapp.h"
+  53:../libraries/CC3000_Host_Driver/evnt_handler.c **** #include "spi.h"
+  54:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  55:../libraries/CC3000_Host_Driver/evnt_handler.c ****  
+  56:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  57:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+  58:../libraries/CC3000_Host_Driver/evnt_handler.c **** //                  COMMON DEFINES
+  59:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+  60:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  61:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define FLOW_CONTROL_EVENT_HANDLE_OFFSET		(0)
+  62:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define FLOW_CONTROL_EVENT_BLOCK_MODE_OFFSET	(1)
+  63:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define FLOW_CONTROL_EVENT_FREE_BUFFS_OFFSET	(2)
+  64:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define FLOW_CONTROL_EVENT_SIZE					(4)
+  65:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  66:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define BSD_RSP_PARAMS_SOCKET_OFFSET		(0)
+  67:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define BSD_RSP_PARAMS_STATUS_OFFSET		(4)
+  68:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  69:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define GET_HOST_BY_NAME_RETVAL_OFFSET	(0)
+  70:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define GET_HOST_BY_NAME_ADDR_OFFSET	(4)
+  71:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  72:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define ACCEPT_SD_OFFSET			(0)
+  73:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define ACCEPT_RETURN_STATUS_OFFSET	(4)
+  74:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define ACCEPT_ADDRESS__OFFSET		(8)
+  75:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  76:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define SL_RECEIVE_SD_OFFSET			(0)
+  77:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define SL_RECEIVE_NUM_BYTES_OFFSET		(4)
+  78:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define SL_RECEIVE__FLAGS__OFFSET		(8)
+  79:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  80:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  81:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define SELECT_STATUS_OFFSET			(0)
+  82:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define SELECT_READFD_OFFSET			(4)
+  83:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define SELECT_WRITEFD_OFFSET			(8)
+  84:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define SELECT_EXFD_OFFSET				(12)
+  85:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  86:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  87:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_IPCONFIG_IP_OFFSET				(0)
+  88:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_IPCONFIG_SUBNET_OFFSET			(4)
+  89:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_IPCONFIG_GW_OFFSET				(8)
+  90:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_IPCONFIG_DHCP_OFFSET				(12)
+  91:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_IPCONFIG_DNS_OFFSET				(16)
+  92:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_IPCONFIG_MAC_OFFSET				(20)
+  93:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_IPCONFIG_SSID_OFFSET				(26)
+  94:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  95:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_IPCONFIG_IP_LENGTH				(4)
+  96:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_IPCONFIG_MAC_LENGTH				(6)
+  97:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_IPCONFIG_SSID_LENGTH				(32)
+  98:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+  99:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 100:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_PING_PACKETS_SENT_OFFSET			(0)
+ 101:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_PING_PACKETS_RCVD_OFFSET			(4)
+ 102:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_PING_MIN_RTT_OFFSET				(8)
+ 103:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_PING_MAX_RTT_OFFSET				(12)
+ 104:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define NETAPP_PING_AVG_RTT_OFFSET				(16)
+ 105:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 106:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define GET_SCAN_RESULTS_TABlE_COUNT_OFFSET				(0)
+ 107:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define GET_SCAN_RESULTS_SCANRESULT_STATUS_OFFSET		(4)
+ 108:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define GET_SCAN_RESULTS_ISVALID_TO_SSIDLEN_OFFSET		(8)
+ 109:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define GET_SCAN_RESULTS_FRAME_TIME_OFFSET				(10)
+ 110:../libraries/CC3000_Host_Driver/evnt_handler.c **** #define GET_SCAN_RESULTS_SSID_MAC_LENGTH				(38)
+ 111:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 112:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 113:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 114:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 115:../libraries/CC3000_Host_Driver/evnt_handler.c **** //                  GLOBAL VARAIABLES
+ 116:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 117:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 118:../libraries/CC3000_Host_Driver/evnt_handler.c **** unsigned long socket_active_status = SOCKET_STATUS_INIT_VAL; 
+ 119:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 120:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 121:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 122:../libraries/CC3000_Host_Driver/evnt_handler.c **** //            Prototypes for the static functions
+ 123:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 124:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 125:../libraries/CC3000_Host_Driver/evnt_handler.c **** static long hci_event_unsol_flowcontrol_handler(char *pEvent);
+ 126:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 127:../libraries/CC3000_Host_Driver/evnt_handler.c **** static void update_socket_active_status(char *resp_params);
+ 128:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 129:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 130:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 131:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 132:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  hci_unsol_handle_patch_request
+ 133:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 134:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  event_hdr  event header
+ 135:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 136:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @return none
+ 137:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 138:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @brief   Handle unsolicited event from type patch request
+ 139:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 140:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 141:../libraries/CC3000_Host_Driver/evnt_handler.c **** void hci_unsol_handle_patch_request(char *event_hdr)
+ 142:../libraries/CC3000_Host_Driver/evnt_handler.c **** {
+  34              		.loc 1 142 0
+  35              		.cfi_startproc
+  36              		@ args = 0, pretend = 0, frame = 24
+  37              		@ frame_needed = 1, uses_anonymous_args = 0
+  38 0000 80B5     		push	{r7, lr}
+  39              	.LCFI0:
+  40              		.cfi_def_cfa_offset 8
+  41              		.cfi_offset 7, -8
+  42              		.cfi_offset 14, -4
+  43 0002 86B0     		sub	sp, sp, #24
+  44              	.LCFI1:
+  45              		.cfi_def_cfa_offset 32
+  46 0004 00AF     		add	r7, sp, #0
+  47              	.LCFI2:
+  48              		.cfi_def_cfa_register 7
+  49 0006 7860     		str	r0, [r7, #4]
+ 143:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	char *params = (char *)(event_hdr) + HCI_EVENT_HEADER_SIZE;
+  50              		.loc 1 143 0
+  51 0008 7B68     		ldr	r3, [r7, #4]
+  52 000a 03F10503 		add	r3, r3, #5
+  53 000e 7B61     		str	r3, [r7, #20]
+ 144:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned long ucLength = 0;
+  54              		.loc 1 144 0
+  55 0010 4FF00003 		mov	r3, #0
+  56 0014 FB60     		str	r3, [r7, #12]
+ 145:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	char *patch;
+ 146:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 147:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	switch (*params)
+  57              		.loc 1 147 0
+  58 0016 7B69     		ldr	r3, [r7, #20]
+  59 0018 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+  60 001a 022B     		cmp	r3, #2
+  61 001c 35D0     		beq	.L4
+  62 001e 032B     		cmp	r3, #3
+  63 0020 64D0     		beq	.L5
+  64 0022 012B     		cmp	r3, #1
+  65 0024 40F09380 		bne	.L1
+  66              	.L3:
+ 148:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	{
+ 149:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	case HCI_EVENT_PATCHES_DRV_REQ:
+ 150:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 151:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		if (tSLInformation.sDriverPatches)
+  67              		.loc 1 151 0
+  68 0028 40F20003 		movw	r3, #:lower16:tSLInformation
+  69 002c C0F20003 		movt	r3, #:upper16:tSLInformation
+  70 0030 1B69     		ldr	r3, [r3, #16]
+  71 0032 002B     		cmp	r3, #0
+  72 0034 1AD0     		beq	.L6
+ 152:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		{
+ 153:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			patch = tSLInformation.sDriverPatches(&ucLength);
+  73              		.loc 1 153 0
+  74 0036 40F20003 		movw	r3, #:lower16:tSLInformation
+  75 003a C0F20003 		movt	r3, #:upper16:tSLInformation
+  76 003e 1B69     		ldr	r3, [r3, #16]
+  77 0040 07F10C02 		add	r2, r7, #12
+  78 0044 1046     		mov	r0, r2
+  79 0046 9847     		blx	r3
+  80 0048 3861     		str	r0, [r7, #16]
+ 154:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 155:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if (patch)
+  81              		.loc 1 155 0
+  82 004a 3B69     		ldr	r3, [r7, #16]
+  83 004c 002B     		cmp	r3, #0
+  84 004e 0DD0     		beq	.L6
+ 156:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 157:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				hci_patch_send(HCI_EVENT_PATCHES_DRV_REQ, 
+  85              		.loc 1 157 0
+  86 0050 40F20003 		movw	r3, #:lower16:tSLInformation
+  87 0054 C0F20003 		movt	r3, #:upper16:tSLInformation
+  88 0058 9A68     		ldr	r2, [r3, #8]
+  89 005a FB68     		ldr	r3, [r7, #12]
+  90 005c 9BB2     		uxth	r3, r3
+  91 005e 4FF00100 		mov	r0, #1
+  92 0062 1146     		mov	r1, r2
+  93 0064 3A69     		ldr	r2, [r7, #16]
+  94 0066 FFF7FEFF 		bl	hci_patch_send
+  95 006a 70E0     		b	.L1
+  96              	.L6:
+ 158:../libraries/CC3000_Host_Driver/evnt_handler.c **** 											 tSLInformation.pucTxCommandBuffer, patch, ucLength);
+ 159:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				return;
+ 160:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 161:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		}
+ 162:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 163:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		// Send 0 length Patches response event
+ 164:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		hci_patch_send(HCI_EVENT_PATCHES_DRV_REQ, 
+  97              		.loc 1 164 0
+  98 006c 40F20003 		movw	r3, #:lower16:tSLInformation
+  99 0070 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 100 0074 9B68     		ldr	r3, [r3, #8]
+ 101 0076 4FF00100 		mov	r0, #1
+ 102 007a 1946     		mov	r1, r3
+ 103 007c 4FF00002 		mov	r2, #0
+ 104 0080 4FF00003 		mov	r3, #0
+ 105 0084 FFF7FEFF 		bl	hci_patch_send
+ 165:../libraries/CC3000_Host_Driver/evnt_handler.c **** 									 tSLInformation.pucTxCommandBuffer, 0, 0);
+ 166:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		break;
+ 106              		.loc 1 166 0
+ 107 0088 61E0     		b	.L1
+ 108              	.L4:
+ 167:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 168:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	case HCI_EVENT_PATCHES_FW_REQ:
+ 169:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 170:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		if (tSLInformation.sFWPatches)
+ 109              		.loc 1 170 0
+ 110 008a 40F20003 		movw	r3, #:lower16:tSLInformation
+ 111 008e C0F20003 		movt	r3, #:upper16:tSLInformation
+ 112 0092 DB68     		ldr	r3, [r3, #12]
+ 113 0094 002B     		cmp	r3, #0
+ 114 0096 1AD0     		beq	.L8
+ 171:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		{
+ 172:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			patch = tSLInformation.sFWPatches(&ucLength);
+ 115              		.loc 1 172 0
+ 116 0098 40F20003 		movw	r3, #:lower16:tSLInformation
+ 117 009c C0F20003 		movt	r3, #:upper16:tSLInformation
+ 118 00a0 DB68     		ldr	r3, [r3, #12]
+ 119 00a2 07F10C02 		add	r2, r7, #12
+ 120 00a6 1046     		mov	r0, r2
+ 121 00a8 9847     		blx	r3
+ 122 00aa 3861     		str	r0, [r7, #16]
+ 173:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 174:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			// Build and send a patch
+ 175:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if (patch)
+ 123              		.loc 1 175 0
+ 124 00ac 3B69     		ldr	r3, [r7, #16]
+ 125 00ae 002B     		cmp	r3, #0
+ 126 00b0 0DD0     		beq	.L8
+ 176:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 177:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				hci_patch_send(HCI_EVENT_PATCHES_FW_REQ, 
+ 127              		.loc 1 177 0
+ 128 00b2 40F20003 		movw	r3, #:lower16:tSLInformation
+ 129 00b6 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 130 00ba 9A68     		ldr	r2, [r3, #8]
+ 131 00bc FB68     		ldr	r3, [r7, #12]
+ 132 00be 9BB2     		uxth	r3, r3
+ 133 00c0 4FF00200 		mov	r0, #2
+ 134 00c4 1146     		mov	r1, r2
+ 135 00c6 3A69     		ldr	r2, [r7, #16]
+ 136 00c8 FFF7FEFF 		bl	hci_patch_send
+ 137 00cc 3FE0     		b	.L1
+ 138              	.L8:
+ 178:../libraries/CC3000_Host_Driver/evnt_handler.c **** 											 tSLInformation.pucTxCommandBuffer, patch, ucLength);
+ 179:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				return;
+ 180:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 181:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		}
+ 182:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 183:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		// Send 0 length Patches response event
+ 184:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		hci_patch_send(HCI_EVENT_PATCHES_FW_REQ, 
+ 139              		.loc 1 184 0
+ 140 00ce 40F20003 		movw	r3, #:lower16:tSLInformation
+ 141 00d2 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 142 00d6 9B68     		ldr	r3, [r3, #8]
+ 143 00d8 4FF00200 		mov	r0, #2
+ 144 00dc 1946     		mov	r1, r3
+ 145 00de 4FF00002 		mov	r2, #0
+ 146 00e2 4FF00003 		mov	r3, #0
+ 147 00e6 FFF7FEFF 		bl	hci_patch_send
+ 185:../libraries/CC3000_Host_Driver/evnt_handler.c **** 									 tSLInformation.pucTxCommandBuffer, 0, 0);
+ 186:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		break;
+ 148              		.loc 1 186 0
+ 149 00ea 30E0     		b	.L1
+ 150              	.L5:
+ 187:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 188:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	case HCI_EVENT_PATCHES_BOOTLOAD_REQ:
+ 189:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 190:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		if (tSLInformation.sBootLoaderPatches)
+ 151              		.loc 1 190 0
+ 152 00ec 40F20003 		movw	r3, #:lower16:tSLInformation
+ 153 00f0 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 154 00f4 5B69     		ldr	r3, [r3, #20]
+ 155 00f6 002B     		cmp	r3, #0
+ 156 00f8 1AD0     		beq	.L9
+ 191:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		{
+ 192:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			patch = tSLInformation.sBootLoaderPatches(&ucLength);
+ 157              		.loc 1 192 0
+ 158 00fa 40F20003 		movw	r3, #:lower16:tSLInformation
+ 159 00fe C0F20003 		movt	r3, #:upper16:tSLInformation
+ 160 0102 5B69     		ldr	r3, [r3, #20]
+ 161 0104 07F10C02 		add	r2, r7, #12
+ 162 0108 1046     		mov	r0, r2
+ 163 010a 9847     		blx	r3
+ 164 010c 3861     		str	r0, [r7, #16]
+ 193:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 194:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if (patch)
+ 165              		.loc 1 194 0
+ 166 010e 3B69     		ldr	r3, [r7, #16]
+ 167 0110 002B     		cmp	r3, #0
+ 168 0112 0DD0     		beq	.L9
+ 195:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 196:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				hci_patch_send(HCI_EVENT_PATCHES_BOOTLOAD_REQ,  
+ 169              		.loc 1 196 0
+ 170 0114 40F20003 		movw	r3, #:lower16:tSLInformation
+ 171 0118 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 172 011c 9A68     		ldr	r2, [r3, #8]
+ 173 011e FB68     		ldr	r3, [r7, #12]
+ 174 0120 9BB2     		uxth	r3, r3
+ 175 0122 4FF00300 		mov	r0, #3
+ 176 0126 1146     		mov	r1, r2
+ 177 0128 3A69     		ldr	r2, [r7, #16]
+ 178 012a FFF7FEFF 		bl	hci_patch_send
+ 179 012e 0EE0     		b	.L1
+ 180              	.L9:
+ 197:../libraries/CC3000_Host_Driver/evnt_handler.c **** 											 tSLInformation.pucTxCommandBuffer, patch, ucLength);
+ 198:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				return;
+ 199:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 200:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		}
+ 201:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 202:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		// Send 0 length Patches response event
+ 203:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		hci_patch_send(HCI_EVENT_PATCHES_BOOTLOAD_REQ, 
+ 181              		.loc 1 203 0
+ 182 0130 40F20003 		movw	r3, #:lower16:tSLInformation
+ 183 0134 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 184 0138 9B68     		ldr	r3, [r3, #8]
+ 185 013a 4FF00300 		mov	r0, #3
+ 186 013e 1946     		mov	r1, r3
+ 187 0140 4FF00002 		mov	r2, #0
+ 188 0144 4FF00003 		mov	r3, #0
+ 189 0148 FFF7FEFF 		bl	hci_patch_send
+ 204:../libraries/CC3000_Host_Driver/evnt_handler.c **** 									 tSLInformation.pucTxCommandBuffer, 0, 0);
+ 205:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		break;
+ 190              		.loc 1 205 0
+ 191 014c 00BF     		nop
+ 192              	.L1:
+ 206:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	}
+ 207:../libraries/CC3000_Host_Driver/evnt_handler.c **** }
+ 193              		.loc 1 207 0
+ 194 014e 07F11807 		add	r7, r7, #24
+ 195 0152 BD46     		mov	sp, r7
+ 196 0154 80BD     		pop	{r7, pc}
+ 197              		.cfi_endproc
+ 198              	.LFE56:
+ 200 0156 00BF     		.section	.text.hci_event_handler,"ax",%progbits
+ 201              		.align	2
+ 202              		.global	hci_event_handler
+ 203              		.thumb
+ 204              		.thumb_func
+ 206              	hci_event_handler:
+ 207              	.LFB57:
+ 208:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 209:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 210:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 211:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 212:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 213:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  hci_event_handler
+ 214:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 215:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  pRetParams     incoming data buffer
+ 216:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  from           from information (in case of data received)
+ 217:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  fromlen        from information length (in case of data received)
+ 218:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 219:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @return         none
+ 220:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 221:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @brief          Parse the incoming events packets and issues corresponding
+ 222:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!                  event handler from global array of handlers pointers
+ 223:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 224:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 225:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 226:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 227:../libraries/CC3000_Host_Driver/evnt_handler.c **** unsigned char *
+ 228:../libraries/CC3000_Host_Driver/evnt_handler.c **** hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
+ 229:../libraries/CC3000_Host_Driver/evnt_handler.c **** {
+ 208              		.loc 1 229 0
+ 209              		.cfi_startproc
+ 210              		@ args = 0, pretend = 0, frame = 48
+ 211              		@ frame_needed = 1, uses_anonymous_args = 0
+ 212 0000 90B5     		push	{r4, r7, lr}
+ 213              	.LCFI3:
+ 214              		.cfi_def_cfa_offset 12
+ 215              		.cfi_offset 4, -12
+ 216              		.cfi_offset 7, -8
+ 217              		.cfi_offset 14, -4
+ 218 0002 8DB0     		sub	sp, sp, #52
+ 219              	.LCFI4:
+ 220              		.cfi_def_cfa_offset 64
+ 221 0004 00AF     		add	r7, sp, #0
+ 222              	.LCFI5:
+ 223              		.cfi_def_cfa_register 7
+ 224 0006 F860     		str	r0, [r7, #12]
+ 225 0008 B960     		str	r1, [r7, #8]
+ 226 000a 7A60     		str	r2, [r7, #4]
+ 230:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned char *pucReceivedData, ucArgsize;
+ 231:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned short usLength;
+ 232:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned char *pucReceivedParams;
+ 233:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned short usReceivedEventOpcode = 0;
+ 227              		.loc 1 233 0
+ 228 000c 4FF00003 		mov	r3, #0
+ 229 0010 FB85     		strh	r3, [r7, #46]	@ movhi
+ 230 0012 00E0     		b	.L53
+ 231              	.L56:
+ 234:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned long retValue32;
+ 235:../libraries/CC3000_Host_Driver/evnt_handler.c ****   unsigned char * RecvParams;
+ 236:../libraries/CC3000_Host_Driver/evnt_handler.c ****   unsigned char *RetParams;
+ 237:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 238:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 239:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	while (1)
+ 240:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	{
+ 241:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		if (tSLInformation.usEventOrDataReceived != 0)
+ 242:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		{				
+ 243:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			pucReceivedData = (tSLInformation.pucReceivedData);
+ 244:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 245:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if (*pucReceivedData == HCI_TYPE_EVNT)
+ 246:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 247:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				// Event Received
+ 248:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT16((char *)pucReceivedData, HCI_EVENT_OPCODE_OFFSET,
+ 249:../libraries/CC3000_Host_Driver/evnt_handler.c **** 												 usReceivedEventOpcode);
+ 250:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				pucReceivedParams = pucReceivedData + HCI_EVENT_HEADER_SIZE;		
+ 251:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				RecvParams = pucReceivedParams;
+ 252:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				RetParams = pRetParams;
+ 253:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 254:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				// In case unsolicited event received - here the handling finished
+ 255:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				if (hci_unsol_event_handler((char *)pucReceivedData) == 0)
+ 256:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				{
+ 257:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					STREAM_TO_UINT8(pucReceivedData, HCI_DATA_LENGTH_OFFSET, usLength);
+ 258:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					
+ 259:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					switch(usReceivedEventOpcode)
+ 260:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					{		
+ 261:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_READ_BUFFER_SIZE:
+ 262:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						{
+ 263:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT8((char *)pucReceivedParams, 0, 
+ 264:../libraries/CC3000_Host_Driver/evnt_handler.c **** 															tSLInformation.usNumberOfFreeBuffers);
+ 265:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT16((char *)pucReceivedParams, 1, 
+ 266:../libraries/CC3000_Host_Driver/evnt_handler.c **** 															 tSLInformation.usSlBufferLength);
+ 267:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						}
+ 268:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 269:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 270:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_WLAN_CONFIGURE_PATCH:
+ 271:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_NETAPP_DHCP:
+ 272:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_NETAPP_PING_SEND:
+ 273:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_NETAPP_PING_STOP:
+ 274:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_NETAPP_ARP_FLUSH:
+ 275:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_NETAPP_SET_DEBUG_LEVEL:
+ 276:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_NETAPP_SET_TIMERS:
+ 277:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_NVMEM_READ:
+ 278:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_NVMEM_CREATE_ENTRY:
+ 279:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_NVMEM_WRITE_PATCH:
+ 280:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_NETAPP_PING_REPORT:
+ 281:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 282:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET
+ 283:../libraries/CC3000_Host_Driver/evnt_handler.c **** 														,*(unsigned char *)pRetParams);
+ 284:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 285:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 286:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_SETSOCKOPT:
+ 287:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_WLAN_CONNECT:
+ 288:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_WLAN_IOCTL_STATUSGET:
+ 289:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_WLAN_IOCTL_ADD_PROFILE:
+ 290:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_WLAN_IOCTL_DEL_PROFILE:
+ 291:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_WLAN_IOCTL_SET_CONNECTION_POLICY:
+ 292:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_WLAN_IOCTL_SET_SCANPARAM:
+ 293:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_START:
+ 294:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_STOP:
+ 295:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_SET_PREFIX:
+ 296:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_EVENT_MASK:
+ 297:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_WLAN_DISCONNECT:
+ 298:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_SOCKET:
+ 299:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_BIND:
+ 300:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_LISTEN:
+ 301:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_CLOSE_SOCKET:
+ 302:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_MDNS_ADVERTISE:
+ 303:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_CONNECT:
+ 304:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_NVMEM_WRITE:
+ 305:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 306:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams,0
+ 307:../libraries/CC3000_Host_Driver/evnt_handler.c **** 														 ,*(unsigned long *)pRetParams);
+ 308:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 309:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 310:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_READ_SP_VERSION:
+ 311:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 312:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET
+ 313:../libraries/CC3000_Host_Driver/evnt_handler.c **** 														,*(unsigned char *)pRetParams);
+ 314:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 1;
+ 315:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams, 0, retValue32);
+ 316:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						UINT32_TO_STREAM((unsigned char *)pRetParams, retValue32);				
+ 317:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 318:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 319:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_BSD_GETHOSTBYNAME:
+ 320:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 321:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams
+ 322:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						      ,GET_HOST_BY_NAME_RETVAL_OFFSET,*(unsigned long *)pRetParams);
+ 323:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 4;
+ 324:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams
+ 325:../libraries/CC3000_Host_Driver/evnt_handler.c **** 									,GET_HOST_BY_NAME_ADDR_OFFSET,*(unsigned long *)pRetParams);					
+ 326:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 327:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 328:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_ACCEPT:
+ 329:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						{
+ 330:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,ACCEPT_SD_OFFSET
+ 331:../libraries/CC3000_Host_Driver/evnt_handler.c **** 															 ,*(unsigned long *)pRetParams);
+ 332:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 333:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams
+ 334:../libraries/CC3000_Host_Driver/evnt_handler.c **** 										,ACCEPT_RETURN_STATUS_OFFSET,*(unsigned long *)pRetParams);
+ 335:../libraries/CC3000_Host_Driver/evnt_handler.c ****               pRetParams = ((char *)pRetParams) + 4; 
+ 336:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							
+ 337:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							//This argument returns in network order
+ 338:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							memcpy((unsigned char *)pRetParams, 
+ 339:../libraries/CC3000_Host_Driver/evnt_handler.c **** 								  pucReceivedParams + ACCEPT_ADDRESS__OFFSET, sizeof(sockaddr));	
+ 340:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							break;
+ 341:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						}
+ 342:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 343:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_RECV:
+ 344:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_RECVFROM:
+ 345:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						{
+ 346:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE_SD_OFFSET ,*(unsigned long *)pRetParam
+ 347:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 348:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE_NUM_BYTES_OFFSET,*(unsigned long *)pRe
+ 349:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 350:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE__FLAGS__OFFSET,*(unsigned long *)pRetP
+ 351:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							
+ 352:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							if(((tBsdReadReturnParams *)pRetParams)->iNumberOfBytes == ERROR_SOCKET_INACTIVE)
+ 353:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							{
+ 354:../libraries/CC3000_Host_Driver/evnt_handler.c **** 								set_socket_active_status(((tBsdReadReturnParams *)pRetParams)->iSocketDescriptor,SOCKET_STA
+ 355:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							}
+ 356:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							break;
+ 357:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						}
+ 358:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 359:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_EVNT_SELECT:
+ 360:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						{ 
+ 361:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_STATUS_OFFSET,*(unsigned long *)pRetParams
+ 362:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 363:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_READFD_OFFSET,*(unsigned long *)pRetParams
+ 364:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 365:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_WRITEFD_OFFSET,*(unsigned long *)pRetParam
+ 366:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 367:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_EXFD_OFFSET,*(unsigned long *)pRetParams);
+ 368:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							break;
+ 369:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						}
+ 370:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 371:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_GETSOCKOPT:
+ 372:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 373:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET,((tBsdGetSockOptReturnParams *)pRetP
+ 374:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						//This argument returns in network order
+ 375:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						memcpy((unsigned char *)pRetParams, pucReceivedParams, 4);
+ 376:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 377:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 378:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_WLAN_IOCTL_GET_SCAN_RESULTS:
+ 379:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 380:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams,GET_SCAN_RESULTS_TABlE_COUNT_OFFSET,*(unsigned lon
+ 381:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 4;   					
+ 382:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams,GET_SCAN_RESULTS_SCANRESULT_STATUS_OFFSET,*(unsign
+ 383:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 4;                                                       
+ 384:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT16((char *)pucReceivedParams,GET_SCAN_RESULTS_ISVALID_TO_SSIDLEN_OFFSET,*(unsig
+ 385:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 2;   					
+ 386:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT16((char *)pucReceivedParams,GET_SCAN_RESULTS_FRAME_TIME_OFFSET,*(unsigned long
+ 387:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 2;  
+ 388:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						memcpy((unsigned char *)pRetParams, (char *)(pucReceivedParams + GET_SCAN_RESULTS_FRAME_TIME_
+ 389:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 390:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 391:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_CMND_SIMPLE_LINK_START:
+ 392:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 393:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 394:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					case HCI_NETAPP_IPCONFIG:
+ 395:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 396:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						//Read IP address
+ 397:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 398:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 4;
+ 399:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 400:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						//Read subnet
+ 401:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 402:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 4;
+ 403:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 404:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						//Read default GW
+ 405:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 406:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 4;
+ 407:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 408:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						//Read DHCP server                                          	
+ 409:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 410:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 4;
+ 411:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 412:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						//Read DNS server                                           
+ 413:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 414:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 4;
+ 415:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 416:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						//Read Mac address                            	
+ 417:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_MAC_LENGTH);
+ 418:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 6;
+ 419:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						
+ 420:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						//Read SSID
+ 421:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_SSID_LENGTH);
+ 422:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 423:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					}
+ 424:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				}
+ 425:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 426:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				if (usReceivedEventOpcode == tSLInformation.usRxEventOpcode)
+ 427:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				{
+ 428:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					tSLInformation.usRxEventOpcode = 0;
+ 429:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				}
+ 430:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 431:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			else
+ 432:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{				
+ 433:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				pucReceivedParams = pucReceivedData;
+ 434:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT8((char *)pucReceivedData, HCI_PACKET_ARGSIZE_OFFSET, ucArgsize);
+ 435:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 436:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT16((char *)pucReceivedData, HCI_PACKET_LENGTH_OFFSET, usLength);
+ 437:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 438:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				// Data received: note that the only case where from and from length 
+ 439:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				// are not null is in recv from, so fill the args accordingly
+ 440:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				if (from)
+ 441:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				{
+ 442:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					STREAM_TO_UINT32((char *)(pucReceivedData + HCI_DATA_HEADER_SIZE), BSD_RECV_FROM_FROMLEN_OFFSE
+ 443:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					memcpy(from, (pucReceivedData + HCI_DATA_HEADER_SIZE + BSD_RECV_FROM_FROM_OFFSET) ,*fromlen);
+ 444:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				}
+ 445:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 446:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				memcpy(pRetParams, pucReceivedParams + HCI_DATA_HEADER_SIZE + ucArgsize,
+ 447:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							 usLength - ucArgsize);
+ 448:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 449:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				tSLInformation.usRxDataPending = 0;
+ 450:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 451:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 452:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			tSLInformation.usEventOrDataReceived = 0;
+ 453:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 454:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			SpiResumeSpi();
+ 455:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 456:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			// Since we are going to TX - we need to handle this event after the 
+ 457:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			// ResumeSPi since we need interrupts
+ 458:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if ((*pucReceivedData == HCI_TYPE_EVNT) &&
+ 459:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					(usReceivedEventOpcode == HCI_EVNT_PATCHES_REQ))
+ 460:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 461:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				hci_unsol_handle_patch_request((char *)pucReceivedData);
+ 462:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 463:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 464:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if ((tSLInformation.usRxEventOpcode == 0) && (tSLInformation.usRxDataPending == 0))
+ 465:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 466:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				return NULL;
+ 467:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}	
+ 468:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		}
+ 469:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	}
+ 232              		.loc 1 469 0
+ 233 0014 00BF     		nop
+ 234              	.L53:
+ 241:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		if (tSLInformation.usEventOrDataReceived != 0)
+ 235              		.loc 1 241 0
+ 236 0016 40F20003 		movw	r3, #:lower16:tSLInformation
+ 237 001a C0F20003 		movt	r3, #:upper16:tSLInformation
+ 238 001e 5B88     		ldrh	r3, [r3, #2]	@ movhi
+ 239 0020 9BB2     		uxth	r3, r3
+ 240 0022 002B     		cmp	r3, #0
+ 241 0024 F6D0     		beq	.L56
+ 243:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			pucReceivedData = (tSLInformation.pucReceivedData);
+ 242              		.loc 1 243 0
+ 243 0026 40F20003 		movw	r3, #:lower16:tSLInformation
+ 244 002a C0F20003 		movt	r3, #:upper16:tSLInformation
+ 245 002e 5B68     		ldr	r3, [r3, #4]
+ 246 0030 7B62     		str	r3, [r7, #36]
+ 245:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if (*pucReceivedData == HCI_TYPE_EVNT)
+ 247              		.loc 1 245 0
+ 248 0032 7B6A     		ldr	r3, [r7, #36]
+ 249 0034 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 250 0036 042B     		cmp	r3, #4
+ 251 0038 40F06882 		bne	.L13
+ 248:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT16((char *)pucReceivedData, HCI_EVENT_OPCODE_OFFSET,
+ 252              		.loc 1 248 0
+ 253 003c 786A     		ldr	r0, [r7, #36]
+ 254 003e 4FF00101 		mov	r1, #1
+ 255 0042 FFF7FEFF 		bl	STREAM_TO_UINT16_f
+ 256 0046 0346     		mov	r3, r0
+ 257 0048 FB85     		strh	r3, [r7, #46]	@ movhi
+ 250:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				pucReceivedParams = pucReceivedData + HCI_EVENT_HEADER_SIZE;		
+ 258              		.loc 1 250 0
+ 259 004a 7B6A     		ldr	r3, [r7, #36]
+ 260 004c 03F10503 		add	r3, r3, #5
+ 261 0050 3B62     		str	r3, [r7, #32]
+ 251:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				RecvParams = pucReceivedParams;
+ 262              		.loc 1 251 0
+ 263 0052 3B6A     		ldr	r3, [r7, #32]
+ 264 0054 FB61     		str	r3, [r7, #28]
+ 252:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				RetParams = pRetParams;
+ 265              		.loc 1 252 0
+ 266 0056 FB68     		ldr	r3, [r7, #12]
+ 267 0058 BB62     		str	r3, [r7, #40]
+ 255:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				if (hci_unsol_event_handler((char *)pucReceivedData) == 0)
+ 268              		.loc 1 255 0
+ 269 005a 786A     		ldr	r0, [r7, #36]
+ 270 005c FFF7FEFF 		bl	hci_unsol_event_handler
+ 271 0060 0346     		mov	r3, r0
+ 272 0062 002B     		cmp	r3, #0
+ 273 0064 40F04182 		bne	.L14
+ 257:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					STREAM_TO_UINT8(pucReceivedData, HCI_DATA_LENGTH_OFFSET, usLength);
+ 274              		.loc 1 257 0
+ 275 0068 7B6A     		ldr	r3, [r7, #36]
+ 276 006a 03F10303 		add	r3, r3, #3
+ 277 006e 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 278 0070 7B83     		strh	r3, [r7, #26]	@ movhi
+ 259:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					switch(usReceivedEventOpcode)
+ 279              		.loc 1 259 0
+ 280 0072 FB8D     		ldrh	r3, [r7, #46]
+ 281 0074 41F20702 		movw	r2, #4103
+ 282 0078 9342     		cmp	r3, r2
+ 283 007a 3ADC     		bgt	.L27
+ 284 007c 41F20602 		movw	r2, #4102
+ 285 0080 9342     		cmp	r3, r2
+ 286 0082 80F29380 		bge	.L15
+ 287 0086 40F20222 		movw	r2, #514
+ 288 008a 9342     		cmp	r3, r2
+ 289 008c 00F08E80 		beq	.L15
+ 290 0090 40F20222 		movw	r2, #514
+ 291 0094 9342     		cmp	r3, r2
+ 292 0096 11DC     		bgt	.L28
+ 293 0098 0C2B     		cmp	r3, #12
+ 294 009a 08DC     		bgt	.L29
+ 295 009c 082B     		cmp	r3, #8
+ 296 009e 80F28580 		bge	.L15
+ 297 00a2 012B     		cmp	r3, #1
+ 298 00a4 C0F22182 		blt	.L14
+ 299 00a8 062B     		cmp	r3, #6
+ 300 00aa 7FDD     		ble	.L15
+ 301 00ac 39E1     		b	.L54
+ 302              	.L29:
+ 303 00ae 0D2B     		cmp	r3, #13
+ 304 00b0 77D0     		beq	.L17
+ 305 00b2 40F20122 		movw	r2, #513
+ 306 00b6 9342     		cmp	r3, r2
+ 307 00b8 73D0     		beq	.L17
+ 308 00ba 16E2     		b	.L14
+ 309              	.L28:
+ 310 00bc 41F20202 		movw	r2, #4098
+ 311 00c0 9342     		cmp	r3, r2
+ 312 00c2 0BDC     		bgt	.L30
+ 313 00c4 41F20102 		movw	r2, #4097
+ 314 00c8 9342     		cmp	r3, r2
+ 315 00ca 6FDA     		bge	.L15
+ 316 00cc B3F5017F 		cmp	r3, #516
+ 317 00d0 67DD     		ble	.L17
+ 318 00d2 40F20722 		movw	r2, #519
+ 319 00d6 9342     		cmp	r3, r2
+ 320 00d8 71D0     		beq	.L18
+ 321 00da 06E2     		b	.L14
+ 322              	.L30:
+ 323 00dc 41F20402 		movw	r2, #4100
+ 324 00e0 9342     		cmp	r3, r2
+ 325 00e2 00F0B680 		beq	.L19
+ 326 00e6 41F20502 		movw	r2, #4101
+ 327 00ea 9342     		cmp	r3, r2
+ 328 00ec 00F08F80 		beq	.L20
+ 329 00f0 FBE1     		b	.L14
+ 330              	.L27:
+ 331 00f2 42F20402 		movw	r2, #8196
+ 332 00f6 9342     		cmp	r3, r2
+ 333 00f8 23DC     		bgt	.L31
+ 334 00fa 42F20102 		movw	r2, #8193
+ 335 00fe 9342     		cmp	r3, r2
+ 336 0100 4FDA     		bge	.L17
+ 337 0102 41F20B02 		movw	r2, #4107
+ 338 0106 9342     		cmp	r3, r2
+ 339 0108 50D0     		beq	.L15
+ 340 010a 41F20B02 		movw	r2, #4107
+ 341 010e 9342     		cmp	r3, r2
+ 342 0110 09DC     		bgt	.L32
+ 343 0112 41F20902 		movw	r2, #4105
+ 344 0116 9342     		cmp	r3, r2
+ 345 0118 48D0     		beq	.L15
+ 346 011a 41F20902 		movw	r2, #4105
+ 347 011e 9342     		cmp	r3, r2
+ 348 0120 00F3F280 		bgt	.L22
+ 349 0124 C3E0     		b	.L55
+ 350              	.L32:
+ 351 0126 41F21002 		movw	r2, #4112
+ 352 012a 9342     		cmp	r3, r2
+ 353 012c 5AD0     		beq	.L23
+ 354 012e 41F21102 		movw	r2, #4113
+ 355 0132 9342     		cmp	r3, r2
+ 356 0134 3AD0     		beq	.L15
+ 357 0136 41F20D02 		movw	r2, #4109
+ 358 013a 9342     		cmp	r3, r2
+ 359 013c 00F08980 		beq	.L19
+ 360 0140 D3E1     		b	.L14
+ 361              	.L31:
+ 362 0142 42F20902 		movw	r2, #8201
+ 363 0146 9342     		cmp	r3, r2
+ 364 0148 0DDC     		bgt	.L33
+ 365 014a 42F20802 		movw	r2, #8200
+ 366 014e 9342     		cmp	r3, r2
+ 367 0150 27DA     		bge	.L17
+ 368 0152 42F20502 		movw	r2, #8197
+ 369 0156 9342     		cmp	r3, r2
+ 370 0158 00F01F81 		beq	.L24
+ 371 015c 42F20602 		movw	r2, #8198
+ 372 0160 9342     		cmp	r3, r2
+ 373 0162 1ED0     		beq	.L17
+ 374 0164 C1E1     		b	.L14
+ 375              	.L33:
+ 376 0166 B3F5804F 		cmp	r3, #16384
+ 377 016a 00F0BB81 		beq	.L57
+ 378 016e 44F20B02 		movw	r2, #16395
+ 379 0172 9342     		cmp	r3, r2
+ 380 0174 40F0B981 		bne	.L14
+ 381              	.L26:
+ 263:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT8((char *)pucReceivedParams, 0, 
+ 382              		.loc 1 263 0
+ 383 0178 3B6A     		ldr	r3, [r7, #32]
+ 384 017a 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 385 017c 1A46     		mov	r2, r3
+ 386 017e 40F20003 		movw	r3, #:lower16:tSLInformation
+ 387 0182 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 388 0186 1A86     		strh	r2, [r3, #48]	@ movhi
+ 265:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT16((char *)pucReceivedParams, 1, 
+ 389              		.loc 1 265 0
+ 390 0188 386A     		ldr	r0, [r7, #32]
+ 391 018a 4FF00101 		mov	r1, #1
+ 392 018e FFF7FEFF 		bl	STREAM_TO_UINT16_f
+ 393 0192 0346     		mov	r3, r0
+ 394 0194 1A46     		mov	r2, r3
+ 395 0196 40F20003 		movw	r3, #:lower16:tSLInformation
+ 396 019a C0F20003 		movt	r3, #:upper16:tSLInformation
+ 397 019e 5A86     		strh	r2, [r3, #50]	@ movhi
+ 268:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 398              		.loc 1 268 0
+ 399 01a0 A3E1     		b	.L14
+ 400              	.L17:
+ 282:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET
+ 401              		.loc 1 282 0
+ 402 01a2 7B6A     		ldr	r3, [r7, #36]
+ 403 01a4 1A79     		ldrb	r2, [r3, #4]	@ zero_extendqisi2
+ 404 01a6 FB68     		ldr	r3, [r7, #12]
+ 405 01a8 1A70     		strb	r2, [r3, #0]
+ 284:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 406              		.loc 1 284 0
+ 407 01aa 9EE1     		b	.L14
+ 408              	.L15:
+ 306:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams,0
+ 409              		.loc 1 306 0
+ 410 01ac 386A     		ldr	r0, [r7, #32]
+ 411 01ae 4FF00001 		mov	r1, #0
+ 412 01b2 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 413 01b6 0246     		mov	r2, r0
+ 414 01b8 FB68     		ldr	r3, [r7, #12]
+ 415 01ba 1A60     		str	r2, [r3, #0]
+ 308:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 416              		.loc 1 308 0
+ 417 01bc 95E1     		b	.L14
+ 418              	.L18:
+ 312:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET
+ 419              		.loc 1 312 0
+ 420 01be 7B6A     		ldr	r3, [r7, #36]
+ 421 01c0 1A79     		ldrb	r2, [r3, #4]	@ zero_extendqisi2
+ 422 01c2 FB68     		ldr	r3, [r7, #12]
+ 423 01c4 1A70     		strb	r2, [r3, #0]
+ 314:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 1;
+ 424              		.loc 1 314 0
+ 425 01c6 FB68     		ldr	r3, [r7, #12]
+ 426 01c8 03F10103 		add	r3, r3, #1
+ 427 01cc FB60     		str	r3, [r7, #12]
+ 315:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams, 0, retValue32);
+ 428              		.loc 1 315 0
+ 429 01ce 386A     		ldr	r0, [r7, #32]
+ 430 01d0 4FF00001 		mov	r1, #0
+ 431 01d4 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 432 01d8 7861     		str	r0, [r7, #20]
+ 316:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						UINT32_TO_STREAM((unsigned char *)pRetParams, retValue32);				
+ 433              		.loc 1 316 0
+ 434 01da F868     		ldr	r0, [r7, #12]
+ 435 01dc 7969     		ldr	r1, [r7, #20]
+ 436 01de FFF7FEFF 		bl	UINT32_TO_STREAM_f
+ 317:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 437              		.loc 1 317 0
+ 438 01e2 82E1     		b	.L14
+ 439              	.L23:
+ 321:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams
+ 440              		.loc 1 321 0
+ 441 01e4 386A     		ldr	r0, [r7, #32]
+ 442 01e6 4FF00001 		mov	r1, #0
+ 443 01ea FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 444 01ee 0246     		mov	r2, r0
+ 445 01f0 FB68     		ldr	r3, [r7, #12]
+ 446 01f2 1A60     		str	r2, [r3, #0]
+ 323:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 4;
+ 447              		.loc 1 323 0
+ 448 01f4 FB68     		ldr	r3, [r7, #12]
+ 449 01f6 03F10403 		add	r3, r3, #4
+ 450 01fa FB60     		str	r3, [r7, #12]
+ 324:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams
+ 451              		.loc 1 324 0
+ 452 01fc 386A     		ldr	r0, [r7, #32]
+ 453 01fe 4FF00401 		mov	r1, #4
+ 454 0202 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 455 0206 0246     		mov	r2, r0
+ 456 0208 FB68     		ldr	r3, [r7, #12]
+ 457 020a 1A60     		str	r2, [r3, #0]
+ 326:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 458              		.loc 1 326 0
+ 459 020c 6DE1     		b	.L14
+ 460              	.L20:
+ 330:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,ACCEPT_SD_OFFSET
+ 461              		.loc 1 330 0
+ 462 020e 386A     		ldr	r0, [r7, #32]
+ 463 0210 4FF00001 		mov	r1, #0
+ 464 0214 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 465 0218 0246     		mov	r2, r0
+ 466 021a FB68     		ldr	r3, [r7, #12]
+ 467 021c 1A60     		str	r2, [r3, #0]
+ 332:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 468              		.loc 1 332 0
+ 469 021e FB68     		ldr	r3, [r7, #12]
+ 470 0220 03F10403 		add	r3, r3, #4
+ 471 0224 FB60     		str	r3, [r7, #12]
+ 333:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams
+ 472              		.loc 1 333 0
+ 473 0226 386A     		ldr	r0, [r7, #32]
+ 474 0228 4FF00401 		mov	r1, #4
+ 475 022c FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 476 0230 0246     		mov	r2, r0
+ 477 0232 FB68     		ldr	r3, [r7, #12]
+ 478 0234 1A60     		str	r2, [r3, #0]
+ 335:../libraries/CC3000_Host_Driver/evnt_handler.c ****               pRetParams = ((char *)pRetParams) + 4; 
+ 479              		.loc 1 335 0
+ 480 0236 FB68     		ldr	r3, [r7, #12]
+ 481 0238 03F10403 		add	r3, r3, #4
+ 482 023c FB60     		str	r3, [r7, #12]
+ 338:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							memcpy((unsigned char *)pRetParams, 
+ 483              		.loc 1 338 0
+ 484 023e 3B6A     		ldr	r3, [r7, #32]
+ 485 0240 03F10803 		add	r3, r3, #8
+ 486 0244 F868     		ldr	r0, [r7, #12]
+ 487 0246 1946     		mov	r1, r3
+ 488 0248 4FF01002 		mov	r2, #16
+ 489 024c FFF7FEFF 		bl	memcpy
+ 340:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							break;
+ 490              		.loc 1 340 0
+ 491 0250 4BE1     		b	.L14
+ 492              	.L19:
+ 346:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE_SD_OFFSET ,*(unsigned long *)pRetParam
+ 493              		.loc 1 346 0
+ 494 0252 386A     		ldr	r0, [r7, #32]
+ 495 0254 4FF00001 		mov	r1, #0
+ 496 0258 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 497 025c 0246     		mov	r2, r0
+ 498 025e FB68     		ldr	r3, [r7, #12]
+ 499 0260 1A60     		str	r2, [r3, #0]
+ 347:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 500              		.loc 1 347 0
+ 501 0262 FB68     		ldr	r3, [r7, #12]
+ 502 0264 03F10403 		add	r3, r3, #4
+ 503 0268 FB60     		str	r3, [r7, #12]
+ 348:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE_NUM_BYTES_OFFSET,*(unsigned long *)pRe
+ 504              		.loc 1 348 0
+ 505 026a 386A     		ldr	r0, [r7, #32]
+ 506 026c 4FF00401 		mov	r1, #4
+ 507 0270 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 508 0274 0246     		mov	r2, r0
+ 509 0276 FB68     		ldr	r3, [r7, #12]
+ 510 0278 1A60     		str	r2, [r3, #0]
+ 349:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 511              		.loc 1 349 0
+ 512 027a FB68     		ldr	r3, [r7, #12]
+ 513 027c 03F10403 		add	r3, r3, #4
+ 514 0280 FB60     		str	r3, [r7, #12]
+ 350:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE__FLAGS__OFFSET,*(unsigned long *)pRetP
+ 515              		.loc 1 350 0
+ 516 0282 386A     		ldr	r0, [r7, #32]
+ 517 0284 4FF00801 		mov	r1, #8
+ 518 0288 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 519 028c 0246     		mov	r2, r0
+ 520 028e FB68     		ldr	r3, [r7, #12]
+ 521 0290 1A60     		str	r2, [r3, #0]
+ 352:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							if(((tBsdReadReturnParams *)pRetParams)->iNumberOfBytes == ERROR_SOCKET_INACTIVE)
+ 522              		.loc 1 352 0
+ 523 0292 FB68     		ldr	r3, [r7, #12]
+ 524 0294 5B68     		ldr	r3, [r3, #4]
+ 525 0296 13F1390F 		cmn	r3, #57
+ 526 029a 40F02581 		bne	.L58
+ 354:../libraries/CC3000_Host_Driver/evnt_handler.c **** 								set_socket_active_status(((tBsdReadReturnParams *)pRetParams)->iSocketDescriptor,SOCKET_STA
+ 527              		.loc 1 354 0
+ 528 029e FB68     		ldr	r3, [r7, #12]
+ 529 02a0 1B68     		ldr	r3, [r3, #0]
+ 530 02a2 1846     		mov	r0, r3
+ 531 02a4 4FF00101 		mov	r1, #1
+ 532 02a8 FFF7FEFF 		bl	set_socket_active_status
+ 356:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							break;
+ 533              		.loc 1 356 0
+ 534 02ac 1CE1     		b	.L58
+ 535              	.L55:
+ 361:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_STATUS_OFFSET,*(unsigned long *)pRetParams
+ 536              		.loc 1 361 0
+ 537 02ae 386A     		ldr	r0, [r7, #32]
+ 538 02b0 4FF00001 		mov	r1, #0
+ 539 02b4 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 540 02b8 0246     		mov	r2, r0
+ 541 02ba FB68     		ldr	r3, [r7, #12]
+ 542 02bc 1A60     		str	r2, [r3, #0]
+ 362:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 543              		.loc 1 362 0
+ 544 02be FB68     		ldr	r3, [r7, #12]
+ 545 02c0 03F10403 		add	r3, r3, #4
+ 546 02c4 FB60     		str	r3, [r7, #12]
+ 363:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_READFD_OFFSET,*(unsigned long *)pRetParams
+ 547              		.loc 1 363 0
+ 548 02c6 386A     		ldr	r0, [r7, #32]
+ 549 02c8 4FF00401 		mov	r1, #4
+ 550 02cc FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 551 02d0 0246     		mov	r2, r0
+ 552 02d2 FB68     		ldr	r3, [r7, #12]
+ 553 02d4 1A60     		str	r2, [r3, #0]
+ 364:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 554              		.loc 1 364 0
+ 555 02d6 FB68     		ldr	r3, [r7, #12]
+ 556 02d8 03F10403 		add	r3, r3, #4
+ 557 02dc FB60     		str	r3, [r7, #12]
+ 365:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_WRITEFD_OFFSET,*(unsigned long *)pRetParam
+ 558              		.loc 1 365 0
+ 559 02de 386A     		ldr	r0, [r7, #32]
+ 560 02e0 4FF00801 		mov	r1, #8
+ 561 02e4 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 562 02e8 0246     		mov	r2, r0
+ 563 02ea FB68     		ldr	r3, [r7, #12]
+ 564 02ec 1A60     		str	r2, [r3, #0]
+ 366:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							pRetParams = ((char *)pRetParams) + 4;
+ 565              		.loc 1 366 0
+ 566 02ee FB68     		ldr	r3, [r7, #12]
+ 567 02f0 03F10403 		add	r3, r3, #4
+ 568 02f4 FB60     		str	r3, [r7, #12]
+ 367:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							STREAM_TO_UINT32((char *)pucReceivedParams,SELECT_EXFD_OFFSET,*(unsigned long *)pRetParams);
+ 569              		.loc 1 367 0
+ 570 02f6 386A     		ldr	r0, [r7, #32]
+ 571 02f8 4FF00C01 		mov	r1, #12
+ 572 02fc FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 573 0300 0246     		mov	r2, r0
+ 574 0302 FB68     		ldr	r3, [r7, #12]
+ 575 0304 1A60     		str	r2, [r3, #0]
+ 368:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							break;
+ 576              		.loc 1 368 0
+ 577 0306 F0E0     		b	.L14
+ 578              	.L22:
+ 373:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET,((tBsdGetSockOptReturnParams *)pRetP
+ 579              		.loc 1 373 0
+ 580 0308 7B6A     		ldr	r3, [r7, #36]
+ 581 030a 03F10403 		add	r3, r3, #4
+ 582 030e 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 583 0310 FB68     		ldr	r3, [r7, #12]
+ 584 0312 1A71     		strb	r2, [r3, #4]
+ 375:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						memcpy((unsigned char *)pRetParams, pucReceivedParams, 4);
+ 585              		.loc 1 375 0
+ 586 0314 F868     		ldr	r0, [r7, #12]
+ 587 0316 396A     		ldr	r1, [r7, #32]
+ 588 0318 4FF00402 		mov	r2, #4
+ 589 031c FFF7FEFF 		bl	memcpy
+ 376:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 590              		.loc 1 376 0
+ 591 0320 E3E0     		b	.L14
+ 592              	.L54:
+ 380:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams,GET_SCAN_RESULTS_TABlE_COUNT_OFFSET,*(unsigned lon
+ 593              		.loc 1 380 0
+ 594 0322 386A     		ldr	r0, [r7, #32]
+ 595 0324 4FF00001 		mov	r1, #0
+ 596 0328 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 597 032c 0246     		mov	r2, r0
+ 598 032e FB68     		ldr	r3, [r7, #12]
+ 599 0330 1A60     		str	r2, [r3, #0]
+ 381:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 4;   					
+ 600              		.loc 1 381 0
+ 601 0332 FB68     		ldr	r3, [r7, #12]
+ 602 0334 03F10403 		add	r3, r3, #4
+ 603 0338 FB60     		str	r3, [r7, #12]
+ 382:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT32((char *)pucReceivedParams,GET_SCAN_RESULTS_SCANRESULT_STATUS_OFFSET,*(unsign
+ 604              		.loc 1 382 0
+ 605 033a 386A     		ldr	r0, [r7, #32]
+ 606 033c 4FF00401 		mov	r1, #4
+ 607 0340 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 608 0344 0246     		mov	r2, r0
+ 609 0346 FB68     		ldr	r3, [r7, #12]
+ 610 0348 1A60     		str	r2, [r3, #0]
+ 383:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 4;                                                       
+ 611              		.loc 1 383 0
+ 612 034a FB68     		ldr	r3, [r7, #12]
+ 613 034c 03F10403 		add	r3, r3, #4
+ 614 0350 FB60     		str	r3, [r7, #12]
+ 384:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT16((char *)pucReceivedParams,GET_SCAN_RESULTS_ISVALID_TO_SSIDLEN_OFFSET,*(unsig
+ 615              		.loc 1 384 0
+ 616 0352 386A     		ldr	r0, [r7, #32]
+ 617 0354 4FF00801 		mov	r1, #8
+ 618 0358 FFF7FEFF 		bl	STREAM_TO_UINT16_f
+ 619 035c 0346     		mov	r3, r0
+ 620 035e 1A46     		mov	r2, r3
+ 621 0360 FB68     		ldr	r3, [r7, #12]
+ 622 0362 1A60     		str	r2, [r3, #0]
+ 385:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 2;   					
+ 623              		.loc 1 385 0
+ 624 0364 FB68     		ldr	r3, [r7, #12]
+ 625 0366 03F10203 		add	r3, r3, #2
+ 626 036a FB60     		str	r3, [r7, #12]
+ 386:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_UINT16((char *)pucReceivedParams,GET_SCAN_RESULTS_FRAME_TIME_OFFSET,*(unsigned long
+ 627              		.loc 1 386 0
+ 628 036c 386A     		ldr	r0, [r7, #32]
+ 629 036e 4FF00A01 		mov	r1, #10
+ 630 0372 FFF7FEFF 		bl	STREAM_TO_UINT16_f
+ 631 0376 0346     		mov	r3, r0
+ 632 0378 1A46     		mov	r2, r3
+ 633 037a FB68     		ldr	r3, [r7, #12]
+ 634 037c 1A60     		str	r2, [r3, #0]
+ 387:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						pRetParams = ((char *)pRetParams) + 2;  
+ 635              		.loc 1 387 0
+ 636 037e FB68     		ldr	r3, [r7, #12]
+ 637 0380 03F10203 		add	r3, r3, #2
+ 638 0384 FB60     		str	r3, [r7, #12]
+ 388:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						memcpy((unsigned char *)pRetParams, (char *)(pucReceivedParams + GET_SCAN_RESULTS_FRAME_TIME_
+ 639              		.loc 1 388 0
+ 640 0386 3B6A     		ldr	r3, [r7, #32]
+ 641 0388 03F10C03 		add	r3, r3, #12
+ 642 038c F868     		ldr	r0, [r7, #12]
+ 643 038e 1946     		mov	r1, r3
+ 644 0390 4FF02602 		mov	r2, #38
+ 645 0394 FFF7FEFF 		bl	memcpy
+ 389:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 646              		.loc 1 389 0
+ 647 0398 A7E0     		b	.L14
+ 648              	.L24:
+ 649              	.LBB2:
+ 397:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 650              		.loc 1 397 0
+ 651 039a 4FF00004 		mov	r4, #0
+ 652 039e 0DE0     		b	.L35
+ 653              	.L36:
+ 397:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 654              		.loc 1 397 0 is_stmt 0 discriminator 2
+ 655 03a0 23B2     		sxth	r3, r4
+ 656 03a2 FA69     		ldr	r2, [r7, #28]
+ 657 03a4 D318     		adds	r3, r2, r3
+ 658 03a6 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 659 03a8 BB6A     		ldr	r3, [r7, #40]
+ 660 03aa 1A70     		strb	r2, [r3, #0]
+ 661 03ac BB6A     		ldr	r3, [r7, #40]
+ 662 03ae 03F10103 		add	r3, r3, #1
+ 663 03b2 BB62     		str	r3, [r7, #40]
+ 664 03b4 2346     		mov	r3, r4	@ movhi
+ 665 03b6 03F10103 		add	r3, r3, #1
+ 666 03ba 9CB2     		uxth	r4, r3
+ 667              	.L35:
+ 397:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 668              		.loc 1 397 0 discriminator 1
+ 669 03bc 23B2     		sxth	r3, r4
+ 670 03be 032B     		cmp	r3, #3
+ 671 03c0 EEDD     		ble	.L36
+ 672              	.LBE2:
+ 398:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 4;
+ 673              		.loc 1 398 0 is_stmt 1
+ 674 03c2 FB69     		ldr	r3, [r7, #28]
+ 675 03c4 03F10403 		add	r3, r3, #4
+ 676 03c8 FB61     		str	r3, [r7, #28]
+ 677              	.LBB3:
+ 401:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 678              		.loc 1 401 0
+ 679 03ca 4FF00004 		mov	r4, #0
+ 680 03ce 0DE0     		b	.L37
+ 681              	.L38:
+ 401:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 682              		.loc 1 401 0 is_stmt 0 discriminator 2
+ 683 03d0 23B2     		sxth	r3, r4
+ 684 03d2 FA69     		ldr	r2, [r7, #28]
+ 685 03d4 D318     		adds	r3, r2, r3
+ 686 03d6 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 687 03d8 BB6A     		ldr	r3, [r7, #40]
+ 688 03da 1A70     		strb	r2, [r3, #0]
+ 689 03dc BB6A     		ldr	r3, [r7, #40]
+ 690 03de 03F10103 		add	r3, r3, #1
+ 691 03e2 BB62     		str	r3, [r7, #40]
+ 692 03e4 2346     		mov	r3, r4	@ movhi
+ 693 03e6 03F10103 		add	r3, r3, #1
+ 694 03ea 9CB2     		uxth	r4, r3
+ 695              	.L37:
+ 401:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 696              		.loc 1 401 0 discriminator 1
+ 697 03ec 23B2     		sxth	r3, r4
+ 698 03ee 032B     		cmp	r3, #3
+ 699 03f0 EEDD     		ble	.L38
+ 700              	.LBE3:
+ 402:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 4;
+ 701              		.loc 1 402 0 is_stmt 1
+ 702 03f2 FB69     		ldr	r3, [r7, #28]
+ 703 03f4 03F10403 		add	r3, r3, #4
+ 704 03f8 FB61     		str	r3, [r7, #28]
+ 705              	.LBB4:
+ 405:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 706              		.loc 1 405 0
+ 707 03fa 4FF00004 		mov	r4, #0
+ 708 03fe 0DE0     		b	.L39
+ 709              	.L40:
+ 405:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 710              		.loc 1 405 0 is_stmt 0 discriminator 2
+ 711 0400 23B2     		sxth	r3, r4
+ 712 0402 FA69     		ldr	r2, [r7, #28]
+ 713 0404 D318     		adds	r3, r2, r3
+ 714 0406 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 715 0408 BB6A     		ldr	r3, [r7, #40]
+ 716 040a 1A70     		strb	r2, [r3, #0]
+ 717 040c BB6A     		ldr	r3, [r7, #40]
+ 718 040e 03F10103 		add	r3, r3, #1
+ 719 0412 BB62     		str	r3, [r7, #40]
+ 720 0414 2346     		mov	r3, r4	@ movhi
+ 721 0416 03F10103 		add	r3, r3, #1
+ 722 041a 9CB2     		uxth	r4, r3
+ 723              	.L39:
+ 405:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 724              		.loc 1 405 0 discriminator 1
+ 725 041c 23B2     		sxth	r3, r4
+ 726 041e 032B     		cmp	r3, #3
+ 727 0420 EEDD     		ble	.L40
+ 728              	.LBE4:
+ 406:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 4;
+ 729              		.loc 1 406 0 is_stmt 1
+ 730 0422 FB69     		ldr	r3, [r7, #28]
+ 731 0424 03F10403 		add	r3, r3, #4
+ 732 0428 FB61     		str	r3, [r7, #28]
+ 733              	.LBB5:
+ 409:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 734              		.loc 1 409 0
+ 735 042a 4FF00004 		mov	r4, #0
+ 736 042e 0DE0     		b	.L41
+ 737              	.L42:
+ 409:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 738              		.loc 1 409 0 is_stmt 0 discriminator 2
+ 739 0430 23B2     		sxth	r3, r4
+ 740 0432 FA69     		ldr	r2, [r7, #28]
+ 741 0434 D318     		adds	r3, r2, r3
+ 742 0436 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 743 0438 BB6A     		ldr	r3, [r7, #40]
+ 744 043a 1A70     		strb	r2, [r3, #0]
+ 745 043c BB6A     		ldr	r3, [r7, #40]
+ 746 043e 03F10103 		add	r3, r3, #1
+ 747 0442 BB62     		str	r3, [r7, #40]
+ 748 0444 2346     		mov	r3, r4	@ movhi
+ 749 0446 03F10103 		add	r3, r3, #1
+ 750 044a 9CB2     		uxth	r4, r3
+ 751              	.L41:
+ 409:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 752              		.loc 1 409 0 discriminator 1
+ 753 044c 23B2     		sxth	r3, r4
+ 754 044e 032B     		cmp	r3, #3
+ 755 0450 EEDD     		ble	.L42
+ 756              	.LBE5:
+ 410:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 4;
+ 757              		.loc 1 410 0 is_stmt 1
+ 758 0452 FB69     		ldr	r3, [r7, #28]
+ 759 0454 03F10403 		add	r3, r3, #4
+ 760 0458 FB61     		str	r3, [r7, #28]
+ 761              	.LBB6:
+ 413:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 762              		.loc 1 413 0
+ 763 045a 4FF00004 		mov	r4, #0
+ 764 045e 0DE0     		b	.L43
+ 765              	.L44:
+ 413:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 766              		.loc 1 413 0 is_stmt 0 discriminator 2
+ 767 0460 23B2     		sxth	r3, r4
+ 768 0462 FA69     		ldr	r2, [r7, #28]
+ 769 0464 D318     		adds	r3, r2, r3
+ 770 0466 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 771 0468 BB6A     		ldr	r3, [r7, #40]
+ 772 046a 1A70     		strb	r2, [r3, #0]
+ 773 046c BB6A     		ldr	r3, [r7, #40]
+ 774 046e 03F10103 		add	r3, r3, #1
+ 775 0472 BB62     		str	r3, [r7, #40]
+ 776 0474 2346     		mov	r3, r4	@ movhi
+ 777 0476 03F10103 		add	r3, r3, #1
+ 778 047a 9CB2     		uxth	r4, r3
+ 779              	.L43:
+ 413:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 780              		.loc 1 413 0 discriminator 1
+ 781 047c 23B2     		sxth	r3, r4
+ 782 047e 032B     		cmp	r3, #3
+ 783 0480 EEDD     		ble	.L44
+ 784              	.LBE6:
+ 414:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 4;
+ 785              		.loc 1 414 0 is_stmt 1
+ 786 0482 FB69     		ldr	r3, [r7, #28]
+ 787 0484 03F10403 		add	r3, r3, #4
+ 788 0488 FB61     		str	r3, [r7, #28]
+ 789              	.LBB7:
+ 417:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_MAC_LENGTH);
+ 790              		.loc 1 417 0
+ 791 048a 4FF00004 		mov	r4, #0
+ 792 048e 0DE0     		b	.L45
+ 793              	.L46:
+ 417:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_MAC_LENGTH);
+ 794              		.loc 1 417 0 is_stmt 0 discriminator 2
+ 795 0490 23B2     		sxth	r3, r4
+ 796 0492 FA69     		ldr	r2, [r7, #28]
+ 797 0494 D318     		adds	r3, r2, r3
+ 798 0496 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 799 0498 BB6A     		ldr	r3, [r7, #40]
+ 800 049a 1A70     		strb	r2, [r3, #0]
+ 801 049c BB6A     		ldr	r3, [r7, #40]
+ 802 049e 03F10103 		add	r3, r3, #1
+ 803 04a2 BB62     		str	r3, [r7, #40]
+ 804 04a4 2346     		mov	r3, r4	@ movhi
+ 805 04a6 03F10103 		add	r3, r3, #1
+ 806 04aa 9CB2     		uxth	r4, r3
+ 807              	.L45:
+ 417:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_MAC_LENGTH);
+ 808              		.loc 1 417 0 discriminator 1
+ 809 04ac 23B2     		sxth	r3, r4
+ 810 04ae 052B     		cmp	r3, #5
+ 811 04b0 EEDD     		ble	.L46
+ 812              	.LBE7:
+ 418:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						RecvParams += 6;
+ 813              		.loc 1 418 0 is_stmt 1
+ 814 04b2 FB69     		ldr	r3, [r7, #28]
+ 815 04b4 03F10603 		add	r3, r3, #6
+ 816 04b8 FB61     		str	r3, [r7, #28]
+ 817              	.LBB8:
+ 421:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_SSID_LENGTH);
+ 818              		.loc 1 421 0
+ 819 04ba 4FF00004 		mov	r4, #0
+ 820 04be 0DE0     		b	.L47
+ 821              	.L48:
+ 421:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_SSID_LENGTH);
+ 822              		.loc 1 421 0 is_stmt 0 discriminator 2
+ 823 04c0 23B2     		sxth	r3, r4
+ 824 04c2 FA69     		ldr	r2, [r7, #28]
+ 825 04c4 D318     		adds	r3, r2, r3
+ 826 04c6 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 827 04c8 BB6A     		ldr	r3, [r7, #40]
+ 828 04ca 1A70     		strb	r2, [r3, #0]
+ 829 04cc BB6A     		ldr	r3, [r7, #40]
+ 830 04ce 03F10103 		add	r3, r3, #1
+ 831 04d2 BB62     		str	r3, [r7, #40]
+ 832 04d4 2346     		mov	r3, r4	@ movhi
+ 833 04d6 03F10103 		add	r3, r3, #1
+ 834 04da 9CB2     		uxth	r4, r3
+ 835              	.L47:
+ 421:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_SSID_LENGTH);
+ 836              		.loc 1 421 0 discriminator 1
+ 837 04dc 23B2     		sxth	r3, r4
+ 838 04de 1F2B     		cmp	r3, #31
+ 839 04e0 EEDD     		ble	.L48
+ 840 04e2 02E0     		b	.L14
+ 841              	.L57:
+ 842              	.LBE8:
+ 392:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						break;
+ 843              		.loc 1 392 0 is_stmt 1
+ 844 04e4 00BF     		nop
+ 845 04e6 00E0     		b	.L14
+ 846              	.L58:
+ 356:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							break;
+ 847              		.loc 1 356 0
+ 848 04e8 00BF     		nop
+ 849              	.L14:
+ 426:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				if (usReceivedEventOpcode == tSLInformation.usRxEventOpcode)
+ 850              		.loc 1 426 0
+ 851 04ea 40F20003 		movw	r3, #:lower16:tSLInformation
+ 852 04ee C0F20003 		movt	r3, #:upper16:tSLInformation
+ 853 04f2 1B88     		ldrh	r3, [r3, #0]	@ movhi
+ 854 04f4 9BB2     		uxth	r3, r3
+ 855 04f6 FA8D     		ldrh	r2, [r7, #46]
+ 856 04f8 9A42     		cmp	r2, r3
+ 857 04fa 41D1     		bne	.L49
+ 428:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					tSLInformation.usRxEventOpcode = 0;
+ 858              		.loc 1 428 0
+ 859 04fc 40F20003 		movw	r3, #:lower16:tSLInformation
+ 860 0500 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 861 0504 4FF00002 		mov	r2, #0
+ 862 0508 1A80     		strh	r2, [r3, #0]	@ movhi
+ 863 050a 39E0     		b	.L49
+ 864              	.L13:
+ 433:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				pucReceivedParams = pucReceivedData;
+ 865              		.loc 1 433 0
+ 866 050c 7B6A     		ldr	r3, [r7, #36]
+ 867 050e 3B62     		str	r3, [r7, #32]
+ 434:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT8((char *)pucReceivedData, HCI_PACKET_ARGSIZE_OFFSET, ucArgsize);
+ 868              		.loc 1 434 0
+ 869 0510 7B6A     		ldr	r3, [r7, #36]
+ 870 0512 03F10203 		add	r3, r3, #2
+ 871 0516 1B78     		ldrb	r3, [r3, #0]
+ 872 0518 FB74     		strb	r3, [r7, #19]
+ 436:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT16((char *)pucReceivedData, HCI_PACKET_LENGTH_OFFSET, usLength);
+ 873              		.loc 1 436 0
+ 874 051a 786A     		ldr	r0, [r7, #36]
+ 875 051c 4FF00301 		mov	r1, #3
+ 876 0520 FFF7FEFF 		bl	STREAM_TO_UINT16_f
+ 877 0524 0346     		mov	r3, r0
+ 878 0526 7B83     		strh	r3, [r7, #26]	@ movhi
+ 440:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				if (from)
+ 879              		.loc 1 440 0
+ 880 0528 BB68     		ldr	r3, [r7, #8]
+ 881 052a 002B     		cmp	r3, #0
+ 882 052c 14D0     		beq	.L50
+ 442:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					STREAM_TO_UINT32((char *)(pucReceivedData + HCI_DATA_HEADER_SIZE), BSD_RECV_FROM_FROMLEN_OFFSE
+ 883              		.loc 1 442 0
+ 884 052e 7B6A     		ldr	r3, [r7, #36]
+ 885 0530 03F10503 		add	r3, r3, #5
+ 886 0534 1846     		mov	r0, r3
+ 887 0536 4FF00401 		mov	r1, #4
+ 888 053a FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 889 053e 0246     		mov	r2, r0
+ 890 0540 7B68     		ldr	r3, [r7, #4]
+ 891 0542 1A60     		str	r2, [r3, #0]
+ 443:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					memcpy(from, (pucReceivedData + HCI_DATA_HEADER_SIZE + BSD_RECV_FROM_FROM_OFFSET) ,*fromlen);
+ 892              		.loc 1 443 0
+ 893 0544 7B6A     		ldr	r3, [r7, #36]
+ 894 0546 03F11502 		add	r2, r3, #21
+ 895 054a 7B68     		ldr	r3, [r7, #4]
+ 896 054c 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 897 054e B868     		ldr	r0, [r7, #8]
+ 898 0550 1146     		mov	r1, r2
+ 899 0552 1A46     		mov	r2, r3
+ 900 0554 FFF7FEFF 		bl	memcpy
+ 901              	.L50:
+ 446:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				memcpy(pRetParams, pucReceivedParams + HCI_DATA_HEADER_SIZE + ucArgsize,
+ 902              		.loc 1 446 0
+ 903 0558 FB7C     		ldrb	r3, [r7, #19]	@ zero_extendqisi2
+ 904 055a 03F10503 		add	r3, r3, #5
+ 905 055e 3A6A     		ldr	r2, [r7, #32]
+ 906 0560 D218     		adds	r2, r2, r3
+ 447:../libraries/CC3000_Host_Driver/evnt_handler.c **** 							 usLength - ucArgsize);
+ 907              		.loc 1 447 0
+ 908 0562 798B     		ldrh	r1, [r7, #26]
+ 909 0564 FB7C     		ldrb	r3, [r7, #19]	@ zero_extendqisi2
+ 910 0566 CB1A     		subs	r3, r1, r3
+ 446:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				memcpy(pRetParams, pucReceivedParams + HCI_DATA_HEADER_SIZE + ucArgsize,
+ 911              		.loc 1 446 0
+ 912 0568 F868     		ldr	r0, [r7, #12]
+ 913 056a 1146     		mov	r1, r2
+ 914 056c 1A46     		mov	r2, r3
+ 915 056e FFF7FEFF 		bl	memcpy
+ 449:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				tSLInformation.usRxDataPending = 0;
+ 916              		.loc 1 449 0
+ 917 0572 40F20003 		movw	r3, #:lower16:tSLInformation
+ 918 0576 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 919 057a 4FF00002 		mov	r2, #0
+ 920 057e DA86     		strh	r2, [r3, #54]	@ movhi
+ 921              	.L49:
+ 452:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			tSLInformation.usEventOrDataReceived = 0;
+ 922              		.loc 1 452 0
+ 923 0580 40F20003 		movw	r3, #:lower16:tSLInformation
+ 924 0584 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 925 0588 4FF00002 		mov	r2, #0
+ 926 058c 5A80     		strh	r2, [r3, #2]	@ movhi
+ 454:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			SpiResumeSpi();
+ 927              		.loc 1 454 0
+ 928 058e FFF7FEFF 		bl	SpiResumeSpi
+ 458:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if ((*pucReceivedData == HCI_TYPE_EVNT) &&
+ 929              		.loc 1 458 0
+ 930 0592 7B6A     		ldr	r3, [r7, #36]
+ 931 0594 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 932 0596 042B     		cmp	r3, #4
+ 933 0598 06D1     		bne	.L51
+ 458:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if ((*pucReceivedData == HCI_TYPE_EVNT) &&
+ 934              		.loc 1 458 0 is_stmt 0 discriminator 1
+ 935 059a FB8D     		ldrh	r3, [r7, #46]
+ 936 059c B3F5805F 		cmp	r3, #4096
+ 937 05a0 02D1     		bne	.L51
+ 461:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				hci_unsol_handle_patch_request((char *)pucReceivedData);
+ 938              		.loc 1 461 0 is_stmt 1
+ 939 05a2 786A     		ldr	r0, [r7, #36]
+ 940 05a4 FFF7FEFF 		bl	hci_unsol_handle_patch_request
+ 941              	.L51:
+ 464:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if ((tSLInformation.usRxEventOpcode == 0) && (tSLInformation.usRxDataPending == 0))
+ 942              		.loc 1 464 0
+ 943 05a8 40F20003 		movw	r3, #:lower16:tSLInformation
+ 944 05ac C0F20003 		movt	r3, #:upper16:tSLInformation
+ 945 05b0 1B88     		ldrh	r3, [r3, #0]	@ movhi
+ 946 05b2 9BB2     		uxth	r3, r3
+ 947 05b4 002B     		cmp	r3, #0
+ 948 05b6 7FF42DAD 		bne	.L56
+ 464:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if ((tSLInformation.usRxEventOpcode == 0) && (tSLInformation.usRxDataPending == 0))
+ 949              		.loc 1 464 0 is_stmt 0 discriminator 1
+ 950 05ba 40F20003 		movw	r3, #:lower16:tSLInformation
+ 951 05be C0F20003 		movt	r3, #:upper16:tSLInformation
+ 952 05c2 DB8E     		ldrh	r3, [r3, #54]	@ movhi
+ 953 05c4 9BB2     		uxth	r3, r3
+ 954 05c6 002B     		cmp	r3, #0
+ 955 05c8 7FF424AD 		bne	.L56
+ 466:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				return NULL;
+ 956              		.loc 1 466 0 is_stmt 1
+ 957 05cc 4FF00003 		mov	r3, #0
+ 470:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 471:../libraries/CC3000_Host_Driver/evnt_handler.c **** }
+ 958              		.loc 1 471 0
+ 959 05d0 1846     		mov	r0, r3
+ 960 05d2 07F13407 		add	r7, r7, #52
+ 961 05d6 BD46     		mov	sp, r7
+ 962 05d8 90BD     		pop	{r4, r7, pc}
+ 963              		.cfi_endproc
+ 964              	.LFE57:
+ 966              		.section	.text.hci_unsol_event_handler,"ax",%progbits
+ 967              		.align	2
+ 968              		.global	hci_unsol_event_handler
+ 969              		.thumb
+ 970              		.thumb_func
+ 972              	hci_unsol_event_handler:
+ 973              	.LFB58:
+ 472:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 473:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 474:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 475:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  hci_unsol_event_handler
+ 476:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 477:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  event_hdr   event header
+ 478:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 479:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @return             1 if event supported and handled
+ 480:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!                      0 if event is not supported
+ 481:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 482:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @brief              Handle unsolicited events
+ 483:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 484:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 485:../libraries/CC3000_Host_Driver/evnt_handler.c **** long
+ 486:../libraries/CC3000_Host_Driver/evnt_handler.c **** hci_unsol_event_handler(char *event_hdr)
+ 487:../libraries/CC3000_Host_Driver/evnt_handler.c **** {
+ 974              		.loc 1 487 0
+ 975              		.cfi_startproc
+ 976              		@ args = 0, pretend = 0, frame = 72
+ 977              		@ frame_needed = 1, uses_anonymous_args = 0
+ 978 0000 90B5     		push	{r4, r7, lr}
+ 979              	.LCFI6:
+ 980              		.cfi_def_cfa_offset 12
+ 981              		.cfi_offset 4, -12
+ 982              		.cfi_offset 7, -8
+ 983              		.cfi_offset 14, -4
+ 984 0002 93B0     		sub	sp, sp, #76
+ 985              	.LCFI7:
+ 986              		.cfi_def_cfa_offset 88
+ 987 0004 00AF     		add	r7, sp, #0
+ 988              	.LCFI8:
+ 989              		.cfi_def_cfa_register 7
+ 990 0006 7860     		str	r0, [r7, #4]
+ 488:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	char * data = NULL;
+ 991              		.loc 1 488 0
+ 992 0008 4FF00003 		mov	r3, #0
+ 993 000c 3B64     		str	r3, [r7, #64]
+ 489:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	long event_type;
+ 490:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned long NumberOfReleasedPackets;
+ 491:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned long NumberOfSentPackets;
+ 492:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 493:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	STREAM_TO_UINT16(event_hdr, HCI_EVENT_OPCODE_OFFSET,event_type);
+ 994              		.loc 1 493 0
+ 995 000e 7868     		ldr	r0, [r7, #4]
+ 996 0010 4FF00101 		mov	r1, #1
+ 997 0014 FFF7FEFF 		bl	STREAM_TO_UINT16_f
+ 998 0018 0346     		mov	r3, r0
+ 999 001a FB63     		str	r3, [r7, #60]
+ 494:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 495:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	if (event_type & HCI_EVNT_UNSOL_BASE)
+ 1000              		.loc 1 495 0
+ 1001 001c FB6B     		ldr	r3, [r7, #60]
+ 1002 001e 03F48043 		and	r3, r3, #16384
+ 1003 0022 002B     		cmp	r3, #0
+ 1004 0024 2ED0     		beq	.L60
+ 496:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	{
+ 497:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		switch(event_type)
+ 1005              		.loc 1 497 0
+ 1006 0026 FB6B     		ldr	r3, [r7, #60]
+ 1007 0028 B3F5824F 		cmp	r3, #16640
+ 1008 002c 2AD1     		bne	.L60
+ 1009              	.L61:
+ 498:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		{
+ 499:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 500:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		case HCI_EVNT_DATA_UNSOL_FREE_BUFF:
+ 501:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 502:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				hci_event_unsol_flowcontrol_handler(event_hdr);
+ 1010              		.loc 1 502 0
+ 1011 002e 7868     		ldr	r0, [r7, #4]
+ 1012 0030 FFF7FEFF 		bl	hci_event_unsol_flowcontrol_handler
+ 503:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 504:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				NumberOfReleasedPackets = tSLInformation.NumberOfReleasedPackets;
+ 1013              		.loc 1 504 0
+ 1014 0034 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1015 0038 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1016 003c DB6B     		ldr	r3, [r3, #60]
+ 1017 003e BB63     		str	r3, [r7, #56]
+ 505:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				NumberOfSentPackets = tSLInformation.NumberOfSentPackets;
+ 1018              		.loc 1 505 0
+ 1019 0040 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1020 0044 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1021 0048 9B6B     		ldr	r3, [r3, #56]
+ 1022 004a 7B63     		str	r3, [r7, #52]
+ 506:../libraries/CC3000_Host_Driver/evnt_handler.c **** 								
+ 507:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				if (NumberOfReleasedPackets == NumberOfSentPackets)
+ 1023              		.loc 1 507 0
+ 1024 004c BA6B     		ldr	r2, [r7, #56]
+ 1025 004e 7B6B     		ldr	r3, [r7, #52]
+ 1026 0050 9A42     		cmp	r2, r3
+ 1027 0052 14D1     		bne	.L62
+ 508:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				{
+ 509:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					if (tSLInformation.InformHostOnTxComplete)
+ 1028              		.loc 1 509 0
+ 1029 0054 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1030 0058 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1031 005c 93F84030 		ldrb	r3, [r3, #64]
+ 1032 0060 DBB2     		uxtb	r3, r3
+ 1033 0062 002B     		cmp	r3, #0
+ 1034 0064 0BD0     		beq	.L62
+ 510:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					{
+ 511:../libraries/CC3000_Host_Driver/evnt_handler.c **** 						tSLInformation.sWlanCB(HCI_EVENT_CC3000_CAN_SHUT_DOWN, NULL, 0);
+ 1035              		.loc 1 511 0
+ 1036 0066 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1037 006a C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1038 006e 9B69     		ldr	r3, [r3, #24]
+ 1039 0070 4FF09900 		mov	r0, #153
+ 1040 0074 4FF00001 		mov	r1, #0
+ 1041 0078 4FF00002 		mov	r2, #0
+ 1042 007c 9847     		blx	r3
+ 1043              	.L62:
+ 512:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					}
+ 513:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				}				
+ 514:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				return 1;
+ 1044              		.loc 1 514 0
+ 1045 007e 4FF00103 		mov	r3, #1
+ 1046 0082 54E1     		b	.L63
+ 1047              	.L60:
+ 515:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 516:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 517:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		}
+ 518:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	}
+ 519:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 520:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	if(event_type & HCI_EVNT_WLAN_UNSOL_BASE)
+ 1048              		.loc 1 520 0
+ 1049 0084 FB6B     		ldr	r3, [r7, #60]
+ 1050 0086 03F40043 		and	r3, r3, #32768
+ 1051 008a 002B     		cmp	r3, #0
+ 1052 008c 00F02B81 		beq	.L64
+ 521:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	{           
+ 522:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		switch(event_type)
+ 1053              		.loc 1 522 0
+ 1054 0090 FB6B     		ldr	r3, [r7, #60]
+ 1055 0092 48F21002 		movw	r2, #32784
+ 1056 0096 9342     		cmp	r3, r2
+ 1057 0098 3BD0     		beq	.L67
+ 1058 009a 48F21002 		movw	r2, #32784
+ 1059 009e 9342     		cmp	r3, r2
+ 1060 00a0 0DDC     		bgt	.L70
+ 1061 00a2 48F20102 		movw	r2, #32769
+ 1062 00a6 9342     		cmp	r3, r2
+ 1063 00a8 C0F21081 		blt	.L65
+ 1064 00ac 48F20202 		movw	r2, #32770
+ 1065 00b0 9342     		cmp	r3, r2
+ 1066 00b2 1ADD     		ble	.L66
+ 1067 00b4 48F20402 		movw	r2, #32772
+ 1068 00b8 9342     		cmp	r3, r2
+ 1069 00ba 16D0     		beq	.L66
+ 1070 00bc 06E1     		b	.L65
+ 1071              	.L70:
+ 1072 00be 48F28002 		movw	r2, #32896
+ 1073 00c2 9342     		cmp	r3, r2
+ 1074 00c4 11D0     		beq	.L66
+ 1075 00c6 48F28002 		movw	r2, #32896
+ 1076 00ca 9342     		cmp	r3, r2
+ 1077 00cc 05DC     		bgt	.L71
+ 1078 00ce 48F24002 		movw	r2, #32832
+ 1079 00d2 9342     		cmp	r3, r2
+ 1080 00d4 00F0AC80 		beq	.L68
+ 1081 00d8 F8E0     		b	.L65
+ 1082              	.L71:
+ 1083 00da B3F5024F 		cmp	r3, #33280
+ 1084 00de 04D0     		beq	.L66
+ 1085 00e0 B3F5084F 		cmp	r3, #34816
+ 1086 00e4 00F0DF80 		beq	.L69
+ 1087 00e8 F0E0     		b	.L65
+ 1088              	.L66:
+ 523:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		{
+ 524:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		case HCI_EVNT_WLAN_KEEPALIVE:
+ 525:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		case HCI_EVNT_WLAN_UNSOL_CONNECT:
+ 526:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
+ 527:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		case HCI_EVNT_WLAN_UNSOL_INIT:
+ 528:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
+ 529:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 530:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if( tSLInformation.sWlanCB )
+ 1089              		.loc 1 530 0
+ 1090 00ea 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1091 00ee C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1092 00f2 9B69     		ldr	r3, [r3, #24]
+ 1093 00f4 002B     		cmp	r3, #0
+ 1094 00f6 00F0EC80 		beq	.L89
+ 531:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 532:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				tSLInformation.sWlanCB(event_type, 0, 0);
+ 1095              		.loc 1 532 0
+ 1096 00fa 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1097 00fe C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1098 0102 9B69     		ldr	r3, [r3, #24]
+ 1099 0104 F86B     		ldr	r0, [r7, #60]
+ 1100 0106 4FF00001 		mov	r1, #0
+ 1101 010a 4FF00002 		mov	r2, #0
+ 1102 010e 9847     		blx	r3
+ 533:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 534:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			break;
+ 1103              		.loc 1 534 0
+ 1104 0110 DFE0     		b	.L89
+ 1105              	.L67:
+ 1106              	.LBB9:
+ 535:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 536:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		case HCI_EVNT_WLAN_UNSOL_DHCP:
+ 537:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 538:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				tNetappDhcpParams params;
+ 539:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				unsigned char *recParams = (unsigned char *)&params;			
+ 1107              		.loc 1 539 0
+ 1108 0112 07F12003 		add	r3, r7, #32
+ 1109 0116 7B64     		str	r3, [r7, #68]
+ 540:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				data = (char*)(event_hdr) + HCI_EVENT_HEADER_SIZE;
+ 1110              		.loc 1 540 0
+ 1111 0118 7B68     		ldr	r3, [r7, #4]
+ 1112 011a 03F10503 		add	r3, r3, #5
+ 1113 011e 3B64     		str	r3, [r7, #64]
+ 1114              	.LBB10:
+ 541:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 542:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				//Read IP address
+ 543:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 1115              		.loc 1 543 0
+ 1116 0120 4FF00004 		mov	r4, #0
+ 1117 0124 0DE0     		b	.L74
+ 1118              	.L75:
+ 1119              		.loc 1 543 0 is_stmt 0 discriminator 2
+ 1120 0126 23B2     		sxth	r3, r4
+ 1121 0128 3A6C     		ldr	r2, [r7, #64]
+ 1122 012a D318     		adds	r3, r2, r3
+ 1123 012c 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 1124 012e 7B6C     		ldr	r3, [r7, #68]
+ 1125 0130 1A70     		strb	r2, [r3, #0]
+ 1126 0132 7B6C     		ldr	r3, [r7, #68]
+ 1127 0134 03F10103 		add	r3, r3, #1
+ 1128 0138 7B64     		str	r3, [r7, #68]
+ 1129 013a 2346     		mov	r3, r4	@ movhi
+ 1130 013c 03F10103 		add	r3, r3, #1
+ 1131 0140 9CB2     		uxth	r4, r3
+ 1132              	.L74:
+ 1133              		.loc 1 543 0 discriminator 1
+ 1134 0142 23B2     		sxth	r3, r4
+ 1135 0144 032B     		cmp	r3, #3
+ 1136 0146 EEDD     		ble	.L75
+ 1137              	.LBE10:
+ 544:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				data += 4;
+ 1138              		.loc 1 544 0 is_stmt 1
+ 1139 0148 3B6C     		ldr	r3, [r7, #64]
+ 1140 014a 03F10403 		add	r3, r3, #4
+ 1141 014e 3B64     		str	r3, [r7, #64]
+ 1142              	.LBB11:
+ 545:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				//Read subnet
+ 546:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH);
+ 1143              		.loc 1 546 0
+ 1144 0150 4FF00004 		mov	r4, #0
+ 1145 0154 0DE0     		b	.L76
+ 1146              	.L77:
+ 1147              		.loc 1 546 0 is_stmt 0 discriminator 2
+ 1148 0156 23B2     		sxth	r3, r4
+ 1149 0158 3A6C     		ldr	r2, [r7, #64]
+ 1150 015a D318     		adds	r3, r2, r3
+ 1151 015c 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 1152 015e 7B6C     		ldr	r3, [r7, #68]
+ 1153 0160 1A70     		strb	r2, [r3, #0]
+ 1154 0162 7B6C     		ldr	r3, [r7, #68]
+ 1155 0164 03F10103 		add	r3, r3, #1
+ 1156 0168 7B64     		str	r3, [r7, #68]
+ 1157 016a 2346     		mov	r3, r4	@ movhi
+ 1158 016c 03F10103 		add	r3, r3, #1
+ 1159 0170 9CB2     		uxth	r4, r3
+ 1160              	.L76:
+ 1161              		.loc 1 546 0 discriminator 1
+ 1162 0172 23B2     		sxth	r3, r4
+ 1163 0174 032B     		cmp	r3, #3
+ 1164 0176 EEDD     		ble	.L77
+ 1165              	.LBE11:
+ 547:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				data += 4;
+ 1166              		.loc 1 547 0 is_stmt 1
+ 1167 0178 3B6C     		ldr	r3, [r7, #64]
+ 1168 017a 03F10403 		add	r3, r3, #4
+ 1169 017e 3B64     		str	r3, [r7, #64]
+ 1170              	.LBB12:
+ 548:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				//Read default GW
+ 549:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH); 
+ 1171              		.loc 1 549 0
+ 1172 0180 4FF00004 		mov	r4, #0
+ 1173 0184 0DE0     		b	.L78
+ 1174              	.L79:
+ 1175              		.loc 1 549 0 is_stmt 0 discriminator 2
+ 1176 0186 23B2     		sxth	r3, r4
+ 1177 0188 3A6C     		ldr	r2, [r7, #64]
+ 1178 018a D318     		adds	r3, r2, r3
+ 1179 018c 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 1180 018e 7B6C     		ldr	r3, [r7, #68]
+ 1181 0190 1A70     		strb	r2, [r3, #0]
+ 1182 0192 7B6C     		ldr	r3, [r7, #68]
+ 1183 0194 03F10103 		add	r3, r3, #1
+ 1184 0198 7B64     		str	r3, [r7, #68]
+ 1185 019a 2346     		mov	r3, r4	@ movhi
+ 1186 019c 03F10103 		add	r3, r3, #1
+ 1187 01a0 9CB2     		uxth	r4, r3
+ 1188              	.L78:
+ 1189              		.loc 1 549 0 discriminator 1
+ 1190 01a2 23B2     		sxth	r3, r4
+ 1191 01a4 032B     		cmp	r3, #3
+ 1192 01a6 EEDD     		ble	.L79
+ 1193              	.LBE12:
+ 550:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				data += 4;
+ 1194              		.loc 1 550 0 is_stmt 1
+ 1195 01a8 3B6C     		ldr	r3, [r7, #64]
+ 1196 01aa 03F10403 		add	r3, r3, #4
+ 1197 01ae 3B64     		str	r3, [r7, #64]
+ 1198              	.LBB13:
+ 551:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				//Read DHCP server  
+ 552:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH);     
+ 1199              		.loc 1 552 0
+ 1200 01b0 4FF00004 		mov	r4, #0
+ 1201 01b4 0DE0     		b	.L80
+ 1202              	.L81:
+ 1203              		.loc 1 552 0 is_stmt 0 discriminator 2
+ 1204 01b6 23B2     		sxth	r3, r4
+ 1205 01b8 3A6C     		ldr	r2, [r7, #64]
+ 1206 01ba D318     		adds	r3, r2, r3
+ 1207 01bc 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 1208 01be 7B6C     		ldr	r3, [r7, #68]
+ 1209 01c0 1A70     		strb	r2, [r3, #0]
+ 1210 01c2 7B6C     		ldr	r3, [r7, #68]
+ 1211 01c4 03F10103 		add	r3, r3, #1
+ 1212 01c8 7B64     		str	r3, [r7, #68]
+ 1213 01ca 2346     		mov	r3, r4	@ movhi
+ 1214 01cc 03F10103 		add	r3, r3, #1
+ 1215 01d0 9CB2     		uxth	r4, r3
+ 1216              	.L80:
+ 1217              		.loc 1 552 0 discriminator 1
+ 1218 01d2 23B2     		sxth	r3, r4
+ 1219 01d4 032B     		cmp	r3, #3
+ 1220 01d6 EEDD     		ble	.L81
+ 1221              	.LBE13:
+ 553:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				data += 4;
+ 1222              		.loc 1 553 0 is_stmt 1
+ 1223 01d8 3B6C     		ldr	r3, [r7, #64]
+ 1224 01da 03F10403 		add	r3, r3, #4
+ 1225 01de 3B64     		str	r3, [r7, #64]
+ 1226              	.LBB14:
+ 554:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				//Read DNS server  
+ 555:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH); 
+ 1227              		.loc 1 555 0
+ 1228 01e0 4FF00004 		mov	r4, #0
+ 1229 01e4 0DE0     		b	.L82
+ 1230              	.L83:
+ 1231              		.loc 1 555 0 is_stmt 0 discriminator 2
+ 1232 01e6 23B2     		sxth	r3, r4
+ 1233 01e8 3A6C     		ldr	r2, [r7, #64]
+ 1234 01ea D318     		adds	r3, r2, r3
+ 1235 01ec 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 1236 01ee 7B6C     		ldr	r3, [r7, #68]
+ 1237 01f0 1A70     		strb	r2, [r3, #0]
+ 1238 01f2 7B6C     		ldr	r3, [r7, #68]
+ 1239 01f4 03F10103 		add	r3, r3, #1
+ 1240 01f8 7B64     		str	r3, [r7, #68]
+ 1241 01fa 2346     		mov	r3, r4	@ movhi
+ 1242 01fc 03F10103 		add	r3, r3, #1
+ 1243 0200 9CB2     		uxth	r4, r3
+ 1244              	.L82:
+ 1245              		.loc 1 555 0 discriminator 1
+ 1246 0202 23B2     		sxth	r3, r4
+ 1247 0204 032B     		cmp	r3, #3
+ 1248 0206 EEDD     		ble	.L83
+ 1249              	.LBE14:
+ 556:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					
+ 557:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				if( tSLInformation.sWlanCB )
+ 1250              		.loc 1 557 0 is_stmt 1
+ 1251 0208 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1252 020c C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1253 0210 9B69     		ldr	r3, [r3, #24]
+ 1254 0212 002B     		cmp	r3, #0
+ 1255 0214 5FD0     		beq	.L90
+ 558:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				{
+ 559:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					tSLInformation.sWlanCB(event_type, (char *)&params, sizeof(params));
+ 1256              		.loc 1 559 0
+ 1257 0216 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1258 021a C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1259 021e 9B69     		ldr	r3, [r3, #24]
+ 1260 0220 07F12002 		add	r2, r7, #32
+ 1261 0224 F86B     		ldr	r0, [r7, #60]
+ 1262 0226 1146     		mov	r1, r2
+ 1263 0228 4FF01402 		mov	r2, #20
+ 1264 022c 9847     		blx	r3
+ 1265              	.LBE9:
+ 560:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				}
+ 561:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 562:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			break;
+ 1266              		.loc 1 562 0
+ 1267 022e 52E0     		b	.L90
+ 1268              	.L68:
+ 1269              	.LBB15:
+ 563:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 564:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		case HCI_EVNT_WLAN_ASYNC_PING_REPORT:
+ 565:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 566:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				netapp_pingreport_args_t params;			
+ 567:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				data = (char*)(event_hdr) + HCI_EVENT_HEADER_SIZE;			
+ 1270              		.loc 1 567 0
+ 1271 0230 7B68     		ldr	r3, [r7, #4]
+ 1272 0232 03F10503 		add	r3, r3, #5
+ 1273 0236 3B64     		str	r3, [r7, #64]
+ 568:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT32(data, NETAPP_PING_PACKETS_SENT_OFFSET, params.packets_sent);			
+ 1274              		.loc 1 568 0
+ 1275 0238 386C     		ldr	r0, [r7, #64]
+ 1276 023a 4FF00001 		mov	r1, #0
+ 1277 023e FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 1278 0242 0346     		mov	r3, r0
+ 1279 0244 FB60     		str	r3, [r7, #12]
+ 569:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT32(data, NETAPP_PING_PACKETS_RCVD_OFFSET, params.packets_received);			
+ 1280              		.loc 1 569 0
+ 1281 0246 386C     		ldr	r0, [r7, #64]
+ 1282 0248 4FF00401 		mov	r1, #4
+ 1283 024c FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 1284 0250 0346     		mov	r3, r0
+ 1285 0252 3B61     		str	r3, [r7, #16]
+ 570:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT32(data, NETAPP_PING_MIN_RTT_OFFSET, params.min_round_time);		
+ 1286              		.loc 1 570 0
+ 1287 0254 386C     		ldr	r0, [r7, #64]
+ 1288 0256 4FF00801 		mov	r1, #8
+ 1289 025a FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 1290 025e 0346     		mov	r3, r0
+ 1291 0260 7B61     		str	r3, [r7, #20]
+ 571:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT32(data, NETAPP_PING_MAX_RTT_OFFSET, params.max_round_time);	
+ 1292              		.loc 1 571 0
+ 1293 0262 386C     		ldr	r0, [r7, #64]
+ 1294 0264 4FF00C01 		mov	r1, #12
+ 1295 0268 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 1296 026c 0346     		mov	r3, r0
+ 1297 026e BB61     		str	r3, [r7, #24]
+ 572:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				STREAM_TO_UINT32(data, NETAPP_PING_AVG_RTT_OFFSET, params.avg_round_time);
+ 1298              		.loc 1 572 0
+ 1299 0270 386C     		ldr	r0, [r7, #64]
+ 1300 0272 4FF01001 		mov	r1, #16
+ 1301 0276 FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 1302 027a 0346     		mov	r3, r0
+ 1303 027c FB61     		str	r3, [r7, #28]
+ 573:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 574:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				if( tSLInformation.sWlanCB )
+ 1304              		.loc 1 574 0
+ 1305 027e 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1306 0282 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1307 0286 9B69     		ldr	r3, [r3, #24]
+ 1308 0288 002B     		cmp	r3, #0
+ 1309 028a 26D0     		beq	.L91
+ 575:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				{
+ 576:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					tSLInformation.sWlanCB(event_type, (char *)&params, sizeof(params));
+ 1310              		.loc 1 576 0
+ 1311 028c 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1312 0290 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1313 0294 9B69     		ldr	r3, [r3, #24]
+ 1314 0296 07F10C02 		add	r2, r7, #12
+ 1315 029a F86B     		ldr	r0, [r7, #60]
+ 1316 029c 1146     		mov	r1, r2
+ 1317 029e 4FF01402 		mov	r2, #20
+ 1318 02a2 9847     		blx	r3
+ 1319              	.LBE15:
+ 577:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				}
+ 578:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 579:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			break;
+ 1320              		.loc 1 579 0
+ 1321 02a4 19E0     		b	.L91
+ 1322              	.L69:
+ 580:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		case HCI_EVNT_BSD_TCP_CLOSE_WAIT:
+ 581:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 582:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				if( tSLInformation.sWlanCB )
+ 1323              		.loc 1 582 0
+ 1324 02a6 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1325 02aa C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1326 02ae 9B69     		ldr	r3, [r3, #24]
+ 1327 02b0 002B     		cmp	r3, #0
+ 1328 02b2 14D0     		beq	.L92
+ 583:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				{
+ 584:../libraries/CC3000_Host_Driver/evnt_handler.c **** 					tSLInformation.sWlanCB(event_type, NULL, 0);
+ 1329              		.loc 1 584 0
+ 1330 02b4 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1331 02b8 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1332 02bc 9B69     		ldr	r3, [r3, #24]
+ 1333 02be F86B     		ldr	r0, [r7, #60]
+ 1334 02c0 4FF00001 		mov	r1, #0
+ 1335 02c4 4FF00002 		mov	r2, #0
+ 1336 02c8 9847     		blx	r3
+ 585:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				}
+ 586:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 587:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			break;
+ 1337              		.loc 1 587 0
+ 1338 02ca 08E0     		b	.L92
+ 1339              	.L65:
+ 588:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 589:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		//'default' case which means "event not supported" 	
+ 590:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		default: 
+ 591:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			return (0);
+ 1340              		.loc 1 591 0
+ 1341 02cc 4FF00003 		mov	r3, #0
+ 1342 02d0 2DE0     		b	.L63
+ 1343              	.L89:
+ 534:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			break;
+ 1344              		.loc 1 534 0
+ 1345 02d2 00BF     		nop
+ 1346 02d4 04E0     		b	.L73
+ 1347              	.L90:
+ 562:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			break;
+ 1348              		.loc 1 562 0
+ 1349 02d6 00BF     		nop
+ 1350 02d8 02E0     		b	.L73
+ 1351              	.L91:
+ 579:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			break;
+ 1352              		.loc 1 579 0
+ 1353 02da 00BF     		nop
+ 1354 02dc 00E0     		b	.L73
+ 1355              	.L92:
+ 587:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			break;
+ 1356              		.loc 1 587 0
+ 1357 02de 00BF     		nop
+ 1358              	.L73:
+ 592:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		}
+ 593:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		return(1);
+ 1359              		.loc 1 593 0
+ 1360 02e0 4FF00103 		mov	r3, #1
+ 1361 02e4 23E0     		b	.L63
+ 1362              	.L64:
+ 594:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	}
+ 595:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 596:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	if ((event_type == HCI_EVNT_SEND) || (event_type == HCI_EVNT_SENDTO)
+ 1363              		.loc 1 596 0
+ 1364 02e6 FA6B     		ldr	r2, [r7, #60]
+ 1365 02e8 41F20303 		movw	r3, #4099
+ 1366 02ec 9A42     		cmp	r2, r3
+ 1367 02ee 09D0     		beq	.L87
+ 1368              		.loc 1 596 0 is_stmt 0 discriminator 1
+ 1369 02f0 FA6B     		ldr	r2, [r7, #60]
+ 1370 02f2 41F20F03 		movw	r3, #4111
+ 1371 02f6 9A42     		cmp	r2, r3
+ 1372 02f8 04D0     		beq	.L87
+ 597:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			|| (event_type == HCI_EVNT_WRITE))
+ 1373              		.loc 1 597 0 is_stmt 1
+ 1374 02fa FA6B     		ldr	r2, [r7, #60]
+ 1375 02fc 41F20E03 		movw	r3, #4110
+ 1376 0300 9A42     		cmp	r2, r3
+ 1377 0302 12D1     		bne	.L88
+ 1378              	.L87:
+ 598:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	{
+ 599:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		// The only synchronous event that can come from SL device in form of 
+ 600:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		// command complete is "Command Complete" on data sent, in case SL device 
+ 601:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		// was unable to transmit
+ 602:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		STREAM_TO_UINT8(event_hdr, HCI_EVENT_STATUS_OFFSET, tSLInformation.slTransmitDataError);
+ 1379              		.loc 1 602 0
+ 1380 0304 7B68     		ldr	r3, [r7, #4]
+ 1381 0306 03F10403 		add	r3, r3, #4
+ 1382 030a 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 1383 030c 1A46     		mov	r2, r3
+ 1384 030e 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1385 0312 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1386 0316 DA62     		str	r2, [r3, #44]
+ 603:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		update_socket_active_status(M_BSD_RESP_PARAMS_OFFSET(event_hdr));
+ 1387              		.loc 1 603 0
+ 1388 0318 7B68     		ldr	r3, [r7, #4]
+ 1389 031a 03F10503 		add	r3, r3, #5
+ 1390 031e 1846     		mov	r0, r3
+ 1391 0320 FFF7FEFF 		bl	update_socket_active_status
+ 604:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 605:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		return (1);
+ 1392              		.loc 1 605 0
+ 1393 0324 4FF00103 		mov	r3, #1
+ 1394 0328 01E0     		b	.L63
+ 1395              	.L88:
+ 606:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	}
+ 607:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 608:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	return(0);
+ 1396              		.loc 1 608 0
+ 1397 032a 4FF00003 		mov	r3, #0
+ 1398              	.L63:
+ 609:../libraries/CC3000_Host_Driver/evnt_handler.c **** }
+ 1399              		.loc 1 609 0
+ 1400 032e 1846     		mov	r0, r3
+ 1401 0330 07F14C07 		add	r7, r7, #76
+ 1402 0334 BD46     		mov	sp, r7
+ 1403 0336 90BD     		pop	{r4, r7, pc}
+ 1404              		.cfi_endproc
+ 1405              	.LFE58:
+ 1407              		.section	.text.hci_unsolicited_event_handler,"ax",%progbits
+ 1408              		.align	2
+ 1409              		.global	hci_unsolicited_event_handler
+ 1410              		.thumb
+ 1411              		.thumb_func
+ 1413              	hci_unsolicited_event_handler:
+ 1414              	.LFB59:
+ 610:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 611:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 612:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 613:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  hci_unsolicited_event_handler
+ 614:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 615:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param None
+ 616:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 617:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @return         ESUCCESS if successful, EFAIL if an error occurred
+ 618:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 619:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @brief          Parse the incoming unsolicited event packets and issues 
+ 620:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!                  corresponding event handler.
+ 621:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 622:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 623:../libraries/CC3000_Host_Driver/evnt_handler.c **** long
+ 624:../libraries/CC3000_Host_Driver/evnt_handler.c **** hci_unsolicited_event_handler(void)
+ 625:../libraries/CC3000_Host_Driver/evnt_handler.c **** {
+ 1415              		.loc 1 625 0
+ 1416              		.cfi_startproc
+ 1417              		@ args = 0, pretend = 0, frame = 8
+ 1418              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1419 0000 80B5     		push	{r7, lr}
+ 1420              	.LCFI9:
+ 1421              		.cfi_def_cfa_offset 8
+ 1422              		.cfi_offset 7, -8
+ 1423              		.cfi_offset 14, -4
+ 1424 0002 82B0     		sub	sp, sp, #8
+ 1425              	.LCFI10:
+ 1426              		.cfi_def_cfa_offset 16
+ 1427 0004 00AF     		add	r7, sp, #0
+ 1428              	.LCFI11:
+ 1429              		.cfi_def_cfa_register 7
+ 626:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned long   res = 0;
+ 1430              		.loc 1 626 0
+ 1431 0006 4FF00003 		mov	r3, #0
+ 1432 000a 7B60     		str	r3, [r7, #4]
+ 627:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned char *pucReceivedData;
+ 628:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 629:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	if (tSLInformation.usEventOrDataReceived != 0)
+ 1433              		.loc 1 629 0
+ 1434 000c 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1435 0010 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1436 0014 5B88     		ldrh	r3, [r3, #2]	@ movhi
+ 1437 0016 9BB2     		uxth	r3, r3
+ 1438 0018 002B     		cmp	r3, #0
+ 1439 001a 1BD0     		beq	.L94
+ 630:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	{
+ 631:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		pucReceivedData = (tSLInformation.pucReceivedData);
+ 1440              		.loc 1 631 0
+ 1441 001c 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1442 0020 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1443 0024 5B68     		ldr	r3, [r3, #4]
+ 1444 0026 3B60     		str	r3, [r7, #0]
+ 632:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		
+ 633:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		if (*pucReceivedData == HCI_TYPE_EVNT)
+ 1445              		.loc 1 633 0
+ 1446 0028 3B68     		ldr	r3, [r7, #0]
+ 1447 002a 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 1448 002c 042B     		cmp	r3, #4
+ 1449 002e 11D1     		bne	.L94
+ 634:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		{			
+ 635:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			
+ 636:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			// In case unsolicited event received - here the handling finished
+ 637:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			if (hci_unsol_event_handler((char *)pucReceivedData) == 1)
+ 1450              		.loc 1 637 0
+ 1451 0030 3868     		ldr	r0, [r7, #0]
+ 1452 0032 FFF7FEFF 		bl	hci_unsol_event_handler
+ 1453 0036 0346     		mov	r3, r0
+ 1454 0038 012B     		cmp	r3, #1
+ 1455 003a 0BD1     		bne	.L94
+ 638:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			{
+ 639:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 640:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				// There was an unsolicited event received - we can release the buffer
+ 641:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				// and clean the event received 
+ 642:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				tSLInformation.usEventOrDataReceived = 0;
+ 1456              		.loc 1 642 0
+ 1457 003c 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1458 0040 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1459 0044 4FF00002 		mov	r2, #0
+ 1460 0048 5A80     		strh	r2, [r3, #2]	@ movhi
+ 643:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				
+ 644:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				res = 1;
+ 1461              		.loc 1 644 0
+ 1462 004a 4FF00103 		mov	r3, #1
+ 1463 004e 7B60     		str	r3, [r7, #4]
+ 645:../libraries/CC3000_Host_Driver/evnt_handler.c **** 				SpiResumeSpi();
+ 1464              		.loc 1 645 0
+ 1465 0050 FFF7FEFF 		bl	SpiResumeSpi
+ 1466              	.L94:
+ 646:../libraries/CC3000_Host_Driver/evnt_handler.c **** 			}
+ 647:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		}
+ 648:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	}
+ 649:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 650:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	return res;
+ 1467              		.loc 1 650 0
+ 1468 0054 7B68     		ldr	r3, [r7, #4]
+ 651:../libraries/CC3000_Host_Driver/evnt_handler.c **** }
+ 1469              		.loc 1 651 0
+ 1470 0056 1846     		mov	r0, r3
+ 1471 0058 07F10807 		add	r7, r7, #8
+ 1472 005c BD46     		mov	sp, r7
+ 1473 005e 80BD     		pop	{r7, pc}
+ 1474              		.cfi_endproc
+ 1475              	.LFE59:
+ 1477              		.section	.text.set_socket_active_status,"ax",%progbits
+ 1478              		.align	2
+ 1479              		.global	set_socket_active_status
+ 1480              		.thumb
+ 1481              		.thumb_func
+ 1483              	set_socket_active_status:
+ 1484              	.LFB60:
+ 652:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 653:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 654:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 655:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  set_socket_active_status
+ 656:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 657:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param Sd
+ 658:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!	 @param Status
+ 659:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @return         none
+ 660:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 661:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @brief          Check if the socket ID and status are valid and set 
+ 662:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!                  accordingly  the global socket status
+ 663:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 664:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 665:../libraries/CC3000_Host_Driver/evnt_handler.c **** void set_socket_active_status(long Sd, long Status)
+ 666:../libraries/CC3000_Host_Driver/evnt_handler.c **** {
+ 1485              		.loc 1 666 0
+ 1486              		.cfi_startproc
+ 1487              		@ args = 0, pretend = 0, frame = 8
+ 1488              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1489              		@ link register save eliminated.
+ 1490 0000 80B4     		push	{r7}
+ 1491              	.LCFI12:
+ 1492              		.cfi_def_cfa_offset 4
+ 1493              		.cfi_offset 7, -4
+ 1494 0002 83B0     		sub	sp, sp, #12
+ 1495              	.LCFI13:
+ 1496              		.cfi_def_cfa_offset 16
+ 1497 0004 00AF     		add	r7, sp, #0
+ 1498              	.LCFI14:
+ 1499              		.cfi_def_cfa_register 7
+ 1500 0006 7860     		str	r0, [r7, #4]
+ 1501 0008 3960     		str	r1, [r7, #0]
+ 667:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	if(M_IS_VALID_SD(Sd) && M_IS_VALID_STATUS(Status))
+ 1502              		.loc 1 667 0
+ 1503 000a 7B68     		ldr	r3, [r7, #4]
+ 1504 000c 002B     		cmp	r3, #0
+ 1505 000e 2BDB     		blt	.L96
+ 1506              		.loc 1 667 0 is_stmt 0 discriminator 1
+ 1507 0010 7B68     		ldr	r3, [r7, #4]
+ 1508 0012 072B     		cmp	r3, #7
+ 1509 0014 28DC     		bgt	.L96
+ 1510 0016 3B68     		ldr	r3, [r7, #0]
+ 1511 0018 002B     		cmp	r3, #0
+ 1512 001a 02D0     		beq	.L98
+ 1513 001c 3B68     		ldr	r3, [r7, #0]
+ 1514 001e 012B     		cmp	r3, #1
+ 1515 0020 22D1     		bne	.L96
+ 1516              	.L98:
+ 668:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	{
+ 669:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		socket_active_status &= ~(1 << Sd);      /* clean socket's mask */
+ 1517              		.loc 1 669 0 is_stmt 1
+ 1518 0022 4FF00102 		mov	r2, #1
+ 1519 0026 7B68     		ldr	r3, [r7, #4]
+ 1520 0028 02FA03F3 		lsl	r3, r2, r3
+ 1521 002c 6FEA0303 		mvn	r3, r3
+ 1522 0030 1A46     		mov	r2, r3
+ 1523 0032 40F20003 		movw	r3, #:lower16:socket_active_status
+ 1524 0036 C0F20003 		movt	r3, #:upper16:socket_active_status
+ 1525 003a 1B68     		ldr	r3, [r3, #0]
+ 1526 003c 1A40     		ands	r2, r2, r3
+ 1527 003e 40F20003 		movw	r3, #:lower16:socket_active_status
+ 1528 0042 C0F20003 		movt	r3, #:upper16:socket_active_status
+ 1529 0046 1A60     		str	r2, [r3, #0]
+ 670:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		socket_active_status |= (Status << Sd); /* set new socket's mask */
+ 1530              		.loc 1 670 0
+ 1531 0048 3A68     		ldr	r2, [r7, #0]
+ 1532 004a 7B68     		ldr	r3, [r7, #4]
+ 1533 004c 02FA03F3 		lsl	r3, r2, r3
+ 1534 0050 1A46     		mov	r2, r3
+ 1535 0052 40F20003 		movw	r3, #:lower16:socket_active_status
+ 1536 0056 C0F20003 		movt	r3, #:upper16:socket_active_status
+ 1537 005a 1B68     		ldr	r3, [r3, #0]
+ 1538 005c 1A43     		orrs	r2, r2, r3
+ 1539 005e 40F20003 		movw	r3, #:lower16:socket_active_status
+ 1540 0062 C0F20003 		movt	r3, #:upper16:socket_active_status
+ 1541 0066 1A60     		str	r2, [r3, #0]
+ 1542              	.L96:
+ 671:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	}
+ 672:../libraries/CC3000_Host_Driver/evnt_handler.c **** }
+ 1543              		.loc 1 672 0
+ 1544 0068 07F10C07 		add	r7, r7, #12
+ 1545 006c BD46     		mov	sp, r7
+ 1546 006e 80BC     		pop	{r7}
+ 1547 0070 7047     		bx	lr
+ 1548              		.cfi_endproc
+ 1549              	.LFE60:
+ 1551 0072 00BF     		.section	.text.hci_event_unsol_flowcontrol_handler,"ax",%progbits
+ 1552              		.align	2
+ 1553              		.thumb
+ 1554              		.thumb_func
+ 1556              	hci_event_unsol_flowcontrol_handler:
+ 1557              	.LFB61:
+ 673:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 674:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 675:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 676:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 677:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  hci_event_unsol_flowcontrol_handler
+ 678:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 679:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  pEvent  pointer to the string contains parameters for IPERF
+ 680:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @return         ESUCCESS if successful, EFAIL if an error occurred
+ 681:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 682:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @brief  Called in case unsolicited event from type
+ 683:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!          HCI_EVNT_DATA_UNSOL_FREE_BUFF has received.
+ 684:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!				   Keep track on the number of packets transmitted and update the
+ 685:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!					 number of free buffer in the SL device.
+ 686:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 687:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 688:../libraries/CC3000_Host_Driver/evnt_handler.c **** long
+ 689:../libraries/CC3000_Host_Driver/evnt_handler.c **** hci_event_unsol_flowcontrol_handler(char *pEvent)
+ 690:../libraries/CC3000_Host_Driver/evnt_handler.c **** {
+ 1558              		.loc 1 690 0
+ 1559              		.cfi_startproc
+ 1560              		@ args = 0, pretend = 0, frame = 32
+ 1561              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1562 0000 80B5     		push	{r7, lr}
+ 1563              	.LCFI15:
+ 1564              		.cfi_def_cfa_offset 8
+ 1565              		.cfi_offset 7, -8
+ 1566              		.cfi_offset 14, -4
+ 1567 0002 88B0     		sub	sp, sp, #32
+ 1568              	.LCFI16:
+ 1569              		.cfi_def_cfa_offset 40
+ 1570 0004 00AF     		add	r7, sp, #0
+ 1571              	.LCFI17:
+ 1572              		.cfi_def_cfa_register 7
+ 1573 0006 7860     		str	r0, [r7, #4]
+ 691:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 692:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	long temp, value;
+ 693:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned short i;
+ 694:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	unsigned short  pusNumberOfHandles=0;
+ 1574              		.loc 1 694 0
+ 1575 0008 4FF00003 		mov	r3, #0
+ 1576 000c 7B82     		strh	r3, [r7, #18]	@ movhi
+ 695:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	char *pReadPayload;
+ 696:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 697:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	STREAM_TO_UINT16((char *)pEvent,HCI_EVENT_HEADER_SIZE,pusNumberOfHandles);
+ 1577              		.loc 1 697 0
+ 1578 000e 7868     		ldr	r0, [r7, #4]
+ 1579 0010 4FF00501 		mov	r1, #5
+ 1580 0014 FFF7FEFF 		bl	STREAM_TO_UINT16_f
+ 1581 0018 0346     		mov	r3, r0
+ 1582 001a 7B82     		strh	r3, [r7, #18]	@ movhi
+ 698:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	pReadPayload = ((char *)pEvent +
+ 1583              		.loc 1 698 0
+ 1584 001c 7B68     		ldr	r3, [r7, #4]
+ 1585 001e 03F10703 		add	r3, r3, #7
+ 1586 0022 7B61     		str	r3, [r7, #20]
+ 699:../libraries/CC3000_Host_Driver/evnt_handler.c **** 									HCI_EVENT_HEADER_SIZE + sizeof(pusNumberOfHandles));	
+ 700:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	temp = 0;
+ 1587              		.loc 1 700 0
+ 1588 0024 4FF00003 		mov	r3, #0
+ 1589 0028 FB61     		str	r3, [r7, #28]
+ 701:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 702:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	for(i = 0; i < pusNumberOfHandles ; i++)
+ 1590              		.loc 1 702 0
+ 1591 002a 4FF00003 		mov	r3, #0
+ 1592 002e 7B83     		strh	r3, [r7, #26]	@ movhi
+ 1593 0030 12E0     		b	.L100
+ 1594              	.L101:
+ 703:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	{
+ 704:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		STREAM_TO_UINT16(pReadPayload, FLOW_CONTROL_EVENT_FREE_BUFFS_OFFSET, value);
+ 1595              		.loc 1 704 0 discriminator 2
+ 1596 0032 7869     		ldr	r0, [r7, #20]
+ 1597 0034 4FF00201 		mov	r1, #2
+ 1598 0038 FFF7FEFF 		bl	STREAM_TO_UINT16_f
+ 1599 003c 0346     		mov	r3, r0
+ 1600 003e FB60     		str	r3, [r7, #12]
+ 705:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		temp += value;
+ 1601              		.loc 1 705 0 discriminator 2
+ 1602 0040 FA69     		ldr	r2, [r7, #28]
+ 1603 0042 FB68     		ldr	r3, [r7, #12]
+ 1604 0044 D318     		adds	r3, r2, r3
+ 1605 0046 FB61     		str	r3, [r7, #28]
+ 706:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		pReadPayload += FLOW_CONTROL_EVENT_SIZE;  
+ 1606              		.loc 1 706 0 discriminator 2
+ 1607 0048 7B69     		ldr	r3, [r7, #20]
+ 1608 004a 03F10403 		add	r3, r3, #4
+ 1609 004e 7B61     		str	r3, [r7, #20]
+ 702:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	for(i = 0; i < pusNumberOfHandles ; i++)
+ 1610              		.loc 1 702 0 discriminator 2
+ 1611 0050 7B8B     		ldrh	r3, [r7, #26]	@ movhi
+ 1612 0052 03F10103 		add	r3, r3, #1
+ 1613 0056 7B83     		strh	r3, [r7, #26]	@ movhi
+ 1614              	.L100:
+ 702:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	for(i = 0; i < pusNumberOfHandles ; i++)
+ 1615              		.loc 1 702 0 is_stmt 0 discriminator 1
+ 1616 0058 7A8B     		ldrh	r2, [r7, #26]
+ 1617 005a 7B8A     		ldrh	r3, [r7, #18]
+ 1618 005c 9A42     		cmp	r2, r3
+ 1619 005e E8D3     		bcc	.L101
+ 707:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	}
+ 708:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 709:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	tSLInformation.usNumberOfFreeBuffers += temp;
+ 1620              		.loc 1 709 0 is_stmt 1
+ 1621 0060 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1622 0064 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1623 0068 1B8E     		ldrh	r3, [r3, #48]	@ movhi
+ 1624 006a 9AB2     		uxth	r2, r3
+ 1625 006c FB69     		ldr	r3, [r7, #28]
+ 1626 006e 9BB2     		uxth	r3, r3
+ 1627 0070 D318     		adds	r3, r2, r3
+ 1628 0072 9AB2     		uxth	r2, r3
+ 1629 0074 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1630 0078 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1631 007c 1A86     		strh	r2, [r3, #48]	@ movhi
+ 710:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	tSLInformation.NumberOfReleasedPackets += temp;
+ 1632              		.loc 1 710 0
+ 1633 007e 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1634 0082 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1635 0086 DA6B     		ldr	r2, [r3, #60]
+ 1636 0088 FB69     		ldr	r3, [r7, #28]
+ 1637 008a D218     		adds	r2, r2, r3
+ 1638 008c 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1639 0090 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1640 0094 DA63     		str	r2, [r3, #60]
+ 711:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 712:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	return(ESUCCESS);
+ 1641              		.loc 1 712 0
+ 1642 0096 4FF00003 		mov	r3, #0
+ 713:../libraries/CC3000_Host_Driver/evnt_handler.c **** }
+ 1643              		.loc 1 713 0
+ 1644 009a 1846     		mov	r0, r3
+ 1645 009c 07F12007 		add	r7, r7, #32
+ 1646 00a0 BD46     		mov	sp, r7
+ 1647 00a2 80BD     		pop	{r7, pc}
+ 1648              		.cfi_endproc
+ 1649              	.LFE61:
+ 1651              		.section	.text.get_socket_active_status,"ax",%progbits
+ 1652              		.align	2
+ 1653              		.global	get_socket_active_status
+ 1654              		.thumb
+ 1655              		.thumb_func
+ 1657              	get_socket_active_status:
+ 1658              	.LFB62:
+ 714:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 715:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 716:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 717:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  get_socket_active_status
+ 718:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 719:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  Sd  Socket IS
+ 720:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @return     Current status of the socket.   
+ 721:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 722:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @brief  Retrieve socket status
+ 723:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 724:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 725:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 726:../libraries/CC3000_Host_Driver/evnt_handler.c **** long
+ 727:../libraries/CC3000_Host_Driver/evnt_handler.c **** get_socket_active_status(long Sd)
+ 728:../libraries/CC3000_Host_Driver/evnt_handler.c **** {
+ 1659              		.loc 1 728 0
+ 1660              		.cfi_startproc
+ 1661              		@ args = 0, pretend = 0, frame = 8
+ 1662              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1663              		@ link register save eliminated.
+ 1664 0000 80B4     		push	{r7}
+ 1665              	.LCFI18:
+ 1666              		.cfi_def_cfa_offset 4
+ 1667              		.cfi_offset 7, -4
+ 1668 0002 83B0     		sub	sp, sp, #12
+ 1669              	.LCFI19:
+ 1670              		.cfi_def_cfa_offset 16
+ 1671 0004 00AF     		add	r7, sp, #0
+ 1672              	.LCFI20:
+ 1673              		.cfi_def_cfa_register 7
+ 1674 0006 7860     		str	r0, [r7, #4]
+ 729:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	if(M_IS_VALID_SD(Sd))
+ 1675              		.loc 1 729 0
+ 1676 0008 7B68     		ldr	r3, [r7, #4]
+ 1677 000a 002B     		cmp	r3, #0
+ 1678 000c 14DB     		blt	.L104
+ 1679              		.loc 1 729 0 is_stmt 0 discriminator 1
+ 1680 000e 7B68     		ldr	r3, [r7, #4]
+ 1681 0010 072B     		cmp	r3, #7
+ 1682 0012 11DC     		bgt	.L104
+ 730:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	{
+ 731:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		return (socket_active_status & (1 << Sd)) ? SOCKET_STATUS_INACTIVE : SOCKET_STATUS_ACTIVE;
+ 1683              		.loc 1 731 0 is_stmt 1
+ 1684 0014 4FF00102 		mov	r2, #1
+ 1685 0018 7B68     		ldr	r3, [r7, #4]
+ 1686 001a 02FA03F3 		lsl	r3, r2, r3
+ 1687 001e 1A46     		mov	r2, r3
+ 1688 0020 40F20003 		movw	r3, #:lower16:socket_active_status
+ 1689 0024 C0F20003 		movt	r3, #:upper16:socket_active_status
+ 1690 0028 1B68     		ldr	r3, [r3, #0]
+ 1691 002a 1340     		ands	r3, r3, r2
+ 1692 002c 002B     		cmp	r3, #0
+ 1693 002e 0CBF     		ite	eq
+ 1694 0030 0023     		moveq	r3, #0
+ 1695 0032 0123     		movne	r3, #1
+ 1696 0034 DBB2     		uxtb	r3, r3
+ 1697 0036 01E0     		b	.L105
+ 1698              	.L104:
+ 732:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	}
+ 733:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	return SOCKET_STATUS_INACTIVE;
+ 1699              		.loc 1 733 0
+ 1700 0038 4FF00103 		mov	r3, #1
+ 1701              	.L105:
+ 734:../libraries/CC3000_Host_Driver/evnt_handler.c **** }
+ 1702              		.loc 1 734 0
+ 1703 003c 1846     		mov	r0, r3
+ 1704 003e 07F10C07 		add	r7, r7, #12
+ 1705 0042 BD46     		mov	sp, r7
+ 1706 0044 80BC     		pop	{r7}
+ 1707 0046 7047     		bx	lr
+ 1708              		.cfi_endproc
+ 1709              	.LFE62:
+ 1711              		.section	.text.update_socket_active_status,"ax",%progbits
+ 1712              		.align	2
+ 1713              		.thumb
+ 1714              		.thumb_func
+ 1716              	update_socket_active_status:
+ 1717              	.LFB63:
+ 735:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 736:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 737:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 738:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  update_socket_active_status
+ 739:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 740:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  resp_params  Socket IS
+ 741:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @return     Current status of the socket.   
+ 742:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 743:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @brief  Retrieve socket status
+ 744:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 745:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 746:../libraries/CC3000_Host_Driver/evnt_handler.c **** void
+ 747:../libraries/CC3000_Host_Driver/evnt_handler.c **** update_socket_active_status(char *resp_params)
+ 748:../libraries/CC3000_Host_Driver/evnt_handler.c **** {
+ 1718              		.loc 1 748 0
+ 1719              		.cfi_startproc
+ 1720              		@ args = 0, pretend = 0, frame = 16
+ 1721              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1722 0000 80B5     		push	{r7, lr}
+ 1723              	.LCFI21:
+ 1724              		.cfi_def_cfa_offset 8
+ 1725              		.cfi_offset 7, -8
+ 1726              		.cfi_offset 14, -4
+ 1727 0002 84B0     		sub	sp, sp, #16
+ 1728              	.LCFI22:
+ 1729              		.cfi_def_cfa_offset 24
+ 1730 0004 00AF     		add	r7, sp, #0
+ 1731              	.LCFI23:
+ 1732              		.cfi_def_cfa_register 7
+ 1733 0006 7860     		str	r0, [r7, #4]
+ 749:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	long status, sd;
+ 750:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 751:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	STREAM_TO_UINT32(resp_params, BSD_RSP_PARAMS_SOCKET_OFFSET,sd);
+ 1734              		.loc 1 751 0
+ 1735 0008 7868     		ldr	r0, [r7, #4]
+ 1736 000a 4FF00001 		mov	r1, #0
+ 1737 000e FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 1738 0012 0346     		mov	r3, r0
+ 1739 0014 FB60     		str	r3, [r7, #12]
+ 752:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	STREAM_TO_UINT32(resp_params, BSD_RSP_PARAMS_STATUS_OFFSET,status);
+ 1740              		.loc 1 752 0
+ 1741 0016 7868     		ldr	r0, [r7, #4]
+ 1742 0018 4FF00401 		mov	r1, #4
+ 1743 001c FFF7FEFF 		bl	STREAM_TO_UINT32_f
+ 1744 0020 0346     		mov	r3, r0
+ 1745 0022 BB60     		str	r3, [r7, #8]
+ 753:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	
+ 754:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	if(ERROR_SOCKET_INACTIVE == status)
+ 1746              		.loc 1 754 0
+ 1747 0024 BB68     		ldr	r3, [r7, #8]
+ 1748 0026 13F1390F 		cmn	r3, #57
+ 1749 002a 04D1     		bne	.L106
+ 755:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	{
+ 756:../libraries/CC3000_Host_Driver/evnt_handler.c **** 		set_socket_active_status(sd, SOCKET_STATUS_INACTIVE);
+ 1750              		.loc 1 756 0
+ 1751 002c F868     		ldr	r0, [r7, #12]
+ 1752 002e 4FF00101 		mov	r1, #1
+ 1753 0032 FFF7FEFF 		bl	set_socket_active_status
+ 1754              	.L106:
+ 757:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	}
+ 758:../libraries/CC3000_Host_Driver/evnt_handler.c **** }
+ 1755              		.loc 1 758 0
+ 1756 0036 07F11007 		add	r7, r7, #16
+ 1757 003a BD46     		mov	sp, r7
+ 1758 003c 80BD     		pop	{r7, pc}
+ 1759              		.cfi_endproc
+ 1760              	.LFE63:
+ 1762 003e 00BF     		.section	.text.SimpleLinkWaitEvent,"ax",%progbits
+ 1763              		.align	2
+ 1764              		.global	SimpleLinkWaitEvent
+ 1765              		.thumb
+ 1766              		.thumb_func
+ 1768              	SimpleLinkWaitEvent:
+ 1769              	.LFB64:
+ 759:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 760:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 761:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 762:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 763:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  SimpleLinkWaitEvent
+ 764:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 765:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  usOpcode      command operation code
+ 766:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  pRetParams    command return parameters
+ 767:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 768:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @return               none
+ 769:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 770:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @brief                Wait for event, pass it to the hci_event_handler and
+ 771:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!                        update the event opcode in a global variable.
+ 772:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 773:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 774:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 775:../libraries/CC3000_Host_Driver/evnt_handler.c **** void 
+ 776:../libraries/CC3000_Host_Driver/evnt_handler.c **** SimpleLinkWaitEvent(unsigned short usOpcode, void *pRetParams)
+ 777:../libraries/CC3000_Host_Driver/evnt_handler.c **** {
+ 1770              		.loc 1 777 0
+ 1771              		.cfi_startproc
+ 1772              		@ args = 0, pretend = 0, frame = 8
+ 1773              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1774 0000 80B5     		push	{r7, lr}
+ 1775              	.LCFI24:
+ 1776              		.cfi_def_cfa_offset 8
+ 1777              		.cfi_offset 7, -8
+ 1778              		.cfi_offset 14, -4
+ 1779 0002 82B0     		sub	sp, sp, #8
+ 1780              	.LCFI25:
+ 1781              		.cfi_def_cfa_offset 16
+ 1782 0004 00AF     		add	r7, sp, #0
+ 1783              	.LCFI26:
+ 1784              		.cfi_def_cfa_register 7
+ 1785 0006 0346     		mov	r3, r0
+ 1786 0008 3960     		str	r1, [r7, #0]
+ 1787 000a FB80     		strh	r3, [r7, #6]	@ movhi
+ 778:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	// In the blocking implementation the control to caller will be returned only 
+ 779:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	// after the end of current transaction
+ 780:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	tSLInformation.usRxEventOpcode = usOpcode;
+ 1788              		.loc 1 780 0
+ 1789 000c 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1790 0010 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1791 0014 FA88     		ldrh	r2, [r7, #6]	@ movhi
+ 1792 0016 1A80     		strh	r2, [r3, #0]	@ movhi
+ 781:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	hci_event_handler(pRetParams, 0, 0);
+ 1793              		.loc 1 781 0
+ 1794 0018 3868     		ldr	r0, [r7, #0]
+ 1795 001a 4FF00001 		mov	r1, #0
+ 1796 001e 4FF00002 		mov	r2, #0
+ 1797 0022 FFF7FEFF 		bl	hci_event_handler
+ 782:../libraries/CC3000_Host_Driver/evnt_handler.c **** }
+ 1798              		.loc 1 782 0
+ 1799 0026 07F10807 		add	r7, r7, #8
+ 1800 002a BD46     		mov	sp, r7
+ 1801 002c 80BD     		pop	{r7, pc}
+ 1802              		.cfi_endproc
+ 1803              	.LFE64:
+ 1805 002e 00BF     		.section	.text.SimpleLinkWaitData,"ax",%progbits
+ 1806              		.align	2
+ 1807              		.global	SimpleLinkWaitData
+ 1808              		.thumb
+ 1809              		.thumb_func
+ 1811              	SimpleLinkWaitData:
+ 1812              	.LFB65:
+ 783:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 784:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 785:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 786:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  SimpleLinkWaitData
+ 787:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 788:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  pBuf       data buffer
+ 789:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  from       from information
+ 790:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @param  fromlen	from information length
+ 791:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 792:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @return               none
+ 793:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!
+ 794:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!  @brief                Wait for data, pass it to the hci_event_handler
+ 795:../libraries/CC3000_Host_Driver/evnt_handler.c **** //! 					   and update in a global variable that there is 
+ 796:../libraries/CC3000_Host_Driver/evnt_handler.c **** //!						   data to read.
+ 797:../libraries/CC3000_Host_Driver/evnt_handler.c **** //
+ 798:../libraries/CC3000_Host_Driver/evnt_handler.c **** //*****************************************************************************
+ 799:../libraries/CC3000_Host_Driver/evnt_handler.c **** 
+ 800:../libraries/CC3000_Host_Driver/evnt_handler.c **** void 
+ 801:../libraries/CC3000_Host_Driver/evnt_handler.c **** SimpleLinkWaitData(unsigned char *pBuf, unsigned char *from, 
+ 802:../libraries/CC3000_Host_Driver/evnt_handler.c **** 									 unsigned char *fromlen)
+ 803:../libraries/CC3000_Host_Driver/evnt_handler.c **** {
+ 1813              		.loc 1 803 0
+ 1814              		.cfi_startproc
+ 1815              		@ args = 0, pretend = 0, frame = 16
+ 1816              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1817 0000 80B5     		push	{r7, lr}
+ 1818              	.LCFI27:
+ 1819              		.cfi_def_cfa_offset 8
+ 1820              		.cfi_offset 7, -8
+ 1821              		.cfi_offset 14, -4
+ 1822 0002 84B0     		sub	sp, sp, #16
+ 1823              	.LCFI28:
+ 1824              		.cfi_def_cfa_offset 24
+ 1825 0004 00AF     		add	r7, sp, #0
+ 1826              	.LCFI29:
+ 1827              		.cfi_def_cfa_register 7
+ 1828 0006 F860     		str	r0, [r7, #12]
+ 1829 0008 B960     		str	r1, [r7, #8]
+ 1830 000a 7A60     		str	r2, [r7, #4]
+ 804:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	// In the blocking implementation the control to caller will be returned only 
+ 805:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	// after the end of current transaction, i.e. only after data will be received
+ 806:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	tSLInformation.usRxDataPending = 1;
+ 1831              		.loc 1 806 0
+ 1832 000c 40F20003 		movw	r3, #:lower16:tSLInformation
+ 1833 0010 C0F20003 		movt	r3, #:upper16:tSLInformation
+ 1834 0014 4FF00102 		mov	r2, #1
+ 1835 0018 DA86     		strh	r2, [r3, #54]	@ movhi
+ 807:../libraries/CC3000_Host_Driver/evnt_handler.c **** 	hci_event_handler(pBuf, from, fromlen);
+ 1836              		.loc 1 807 0
+ 1837 001a F868     		ldr	r0, [r7, #12]
+ 1838 001c B968     		ldr	r1, [r7, #8]
+ 1839 001e 7A68     		ldr	r2, [r7, #4]
+ 1840 0020 FFF7FEFF 		bl	hci_event_handler
+ 808:../libraries/CC3000_Host_Driver/evnt_handler.c **** }
+ 1841              		.loc 1 808 0
+ 1842 0024 07F11007 		add	r7, r7, #16
+ 1843 0028 BD46     		mov	sp, r7
+ 1844 002a 80BD     		pop	{r7, pc}
+ 1845              		.cfi_endproc
+ 1846              	.LFE65:
+ 1848              		.text
+ 1849              	.Letext0:
+ 1850              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 1851              		.file 3 "../libraries/CC3000_Host_Driver/cc3000_common.h"
+ 1852              		.file 4 "../libraries/CC3000_Host_Driver/evnt_handler.h"
+ 1853              		.file 5 "../libraries/CC3000_Host_Driver/netapp.h"
+ 1854              		.file 6 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cm3.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 evnt_handler.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:23     .data:0000000000000000 socket_active_status
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:20     .data:0000000000000000 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:26     .text.hci_unsol_handle_patch_request:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:31     .text.hci_unsol_handle_patch_request:0000000000000000 hci_unsol_handle_patch_request
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:201    .text.hci_event_handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:206    .text.hci_event_handler:0000000000000000 hci_event_handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:972    .text.hci_unsol_event_handler:0000000000000000 hci_unsol_event_handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1483   .text.set_socket_active_status:0000000000000000 set_socket_active_status
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:967    .text.hci_unsol_event_handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1556   .text.hci_event_unsol_flowcontrol_handler:0000000000000000 hci_event_unsol_flowcontrol_handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1716   .text.update_socket_active_status:0000000000000000 update_socket_active_status
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1408   .text.hci_unsolicited_event_handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1413   .text.hci_unsolicited_event_handler:0000000000000000 hci_unsolicited_event_handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1478   .text.set_socket_active_status:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1552   .text.hci_event_unsol_flowcontrol_handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1652   .text.get_socket_active_status:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1657   .text.get_socket_active_status:0000000000000000 get_socket_active_status
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1712   .text.update_socket_active_status:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1763   .text.SimpleLinkWaitEvent:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1768   .text.SimpleLinkWaitEvent:0000000000000000 SimpleLinkWaitEvent
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1806   .text.SimpleLinkWaitData:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc31J9TA.s:1811   .text.SimpleLinkWaitData:0000000000000000 SimpleLinkWaitData
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdlib.h.13.603ed7eb09a1561ab06840b7c0fcff58
+                           .group:0000000000000000 wm4.stddef.h.187.40b3a084f9bc2c020a9e00b9eabe9c14
+                           .group:0000000000000000 wm4._default_types.h.6.5e12cd604db8ce00b62bb2f02708eaf3
+                           .group:0000000000000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:0000000000000000 wm4.stddef.h.349.31f4c5baff3fa2689010b32028da9c47
+                           .group:0000000000000000 wm4.reent.h.16.9e42f0e588b85e70b2bf6572af57ce64
+                           .group:0000000000000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:0000000000000000 wm4.stdlib.h.50.f5923f1950ced340a337f4676566f65a
+                           .group:0000000000000000 wm4.errno.h.2.ba016d646105af6cad23be83630b6a3f
+                           .group:0000000000000000 wm4.errno.h.9.65044c2b5d8494e43f5986ab0a1d770f
+                           .group:0000000000000000 wm4.stdint.h.10.90b695f550ca6cc3fb08fa83baf01e05
+                           .group:0000000000000000 wm4.cc3000_common.h.58.2af7f8f8921b8cb4b89883c25878e207
+                           .group:0000000000000000 wm4.string.h.8.ef946ad0bc9ad5c970c365dcd1fc4b0a
+                           .group:0000000000000000 wm4.stddef.h.235.d9f4f80b8c4429535175712282cda6a6
+                           .group:0000000000000000 wm4.string.h.86.d5c872ff52e2712c985b588a0ef39f3c
+                           .group:0000000000000000 wm4.hci.h.36.c53403a55b478473c6d08326a2c2336c
+                           .group:0000000000000000 wm4.socket.h.36.a8c628533ac074dc9bf38f87e586f707
+                           .group:0000000000000000 wm4.evnt_handler.h.100.8706e0ac06647083db596956f9de025d
+                           .group:0000000000000000 wm4.wlan.h.36.4c6fda3ef88238c289a06e4d08269130
+                           .group:0000000000000000 wm4.platform_config.h.13.23e06e06852a155ef1a4458870bf98fa
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.55.c9956ee2c5ec010802c11a3a06087af4
+                           .group:0000000000000000 wm4.usb_conf.h.13.ae0ffce2e8d0e4c6b2724f8ae0ada8cf
+                           .group:0000000000000000 wm4.hw_config.h.61.9aaf7ecb821816183829c116d76d82b5
+                           .group:0000000000000000 wm4.cc3000_spi.h.23.1c29ffde27bc0db6b69332f529b4950f
+
+UNDEFINED SYMBOLS
+tSLInformation
+hci_patch_send
+STREAM_TO_UINT16_f
+STREAM_TO_UINT32_f
+UINT32_TO_STREAM_f
+memcpy
+SpiResumeSpi

@@ -1,0 +1,866 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"stm32_it.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.NMI_Handler,"ax",%progbits
+  19              		.align	2
+  20              		.global	NMI_Handler
+  21              		.thumb
+  22              		.thumb_func
+  24              	NMI_Handler:
+  25              	.LFB56:
+  26              		.file 1 "../src/stm32_it.c"
+   1:../src/stm32_it.c **** /**
+   2:../src/stm32_it.c ****  ******************************************************************************
+   3:../src/stm32_it.c ****  * @file    stm32_it.c
+   4:../src/stm32_it.c ****  * @author  Spark Application Team
+   5:../src/stm32_it.c ****  * @version V1.0.0
+   6:../src/stm32_it.c ****  * @date    13-March-2013
+   7:../src/stm32_it.c ****  * @brief   Main Interrupt Service Routines.
+   8:../src/stm32_it.c ****  *          This file provides template for all exceptions handler and peripherals
+   9:../src/stm32_it.c ****  *          interrupt service routine.
+  10:../src/stm32_it.c ****  ******************************************************************************
+  11:../src/stm32_it.c ****  */
+  12:../src/stm32_it.c **** 
+  13:../src/stm32_it.c **** /* Includes ------------------------------------------------------------------*/
+  14:../src/stm32_it.c **** #include "stm32_it.h"
+  15:../src/stm32_it.c **** #include "main.h"
+  16:../src/stm32_it.c **** #include "usb_lib.h"
+  17:../src/stm32_it.c **** #include "usb_istr.h"
+  18:../src/stm32_it.c **** 
+  19:../src/stm32_it.c **** /* Private typedef -----------------------------------------------------------*/
+  20:../src/stm32_it.c **** 
+  21:../src/stm32_it.c **** /* Private define ------------------------------------------------------------*/
+  22:../src/stm32_it.c **** 
+  23:../src/stm32_it.c **** /* Private macro -------------------------------------------------------------*/
+  24:../src/stm32_it.c **** 
+  25:../src/stm32_it.c **** /* Private variables ---------------------------------------------------------*/
+  26:../src/stm32_it.c **** 
+  27:../src/stm32_it.c **** /* Extern variables ----------------------------------------------------------*/
+  28:../src/stm32_it.c **** 
+  29:../src/stm32_it.c **** /* Private function prototypes -----------------------------------------------*/
+  30:../src/stm32_it.c **** extern void SPI_DMA_IntHandler(void);
+  31:../src/stm32_it.c **** extern void SPI_EXTI_IntHandler(void);
+  32:../src/stm32_it.c **** 
+  33:../src/stm32_it.c **** extern __IO uint8_t BUTTON_DEBOUNCED[BUTTONn];
+  34:../src/stm32_it.c **** 
+  35:../src/stm32_it.c **** /* Private functions ---------------------------------------------------------*/
+  36:../src/stm32_it.c **** 
+  37:../src/stm32_it.c **** /******************************************************************************/
+  38:../src/stm32_it.c **** /*            Cortex-M Processor Exceptions Handlers                         */
+  39:../src/stm32_it.c **** /******************************************************************************/
+  40:../src/stm32_it.c **** 
+  41:../src/stm32_it.c **** /*******************************************************************************
+  42:../src/stm32_it.c ****  * Function Name  : NMI_Handler
+  43:../src/stm32_it.c ****  * Description    : This function handles NMI exception.
+  44:../src/stm32_it.c ****  * Input          : None
+  45:../src/stm32_it.c ****  * Output         : None
+  46:../src/stm32_it.c ****  * Return         : None
+  47:../src/stm32_it.c ****  *******************************************************************************/
+  48:../src/stm32_it.c **** void NMI_Handler(void)
+  49:../src/stm32_it.c **** {
+  27              		.loc 1 49 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 1, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32 0000 80B4     		push	{r7}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 4
+  35              		.cfi_offset 7, -4
+  36 0002 00AF     		add	r7, sp, #0
+  37              	.LCFI1:
+  38              		.cfi_def_cfa_register 7
+  50:../src/stm32_it.c **** }
+  39              		.loc 1 50 0
+  40 0004 BD46     		mov	sp, r7
+  41 0006 80BC     		pop	{r7}
+  42 0008 7047     		bx	lr
+  43              		.cfi_endproc
+  44              	.LFE56:
+  46 000a 00BF     		.section	.text.HardFault_Handler,"ax",%progbits
+  47              		.align	2
+  48              		.global	HardFault_Handler
+  49              		.thumb
+  50              		.thumb_func
+  52              	HardFault_Handler:
+  53              	.LFB57:
+  51:../src/stm32_it.c **** 
+  52:../src/stm32_it.c **** /*******************************************************************************
+  53:../src/stm32_it.c ****  * Function Name  : HardFault_Handler
+  54:../src/stm32_it.c ****  * Description    : This function handles Hard Fault exception.
+  55:../src/stm32_it.c ****  * Input          : None
+  56:../src/stm32_it.c ****  * Output         : None
+  57:../src/stm32_it.c ****  * Return         : None
+  58:../src/stm32_it.c ****  *******************************************************************************/
+  59:../src/stm32_it.c **** void HardFault_Handler(void)
+  60:../src/stm32_it.c **** {
+  54              		.loc 1 60 0
+  55              		.cfi_startproc
+  56              		@ args = 0, pretend = 0, frame = 0
+  57              		@ frame_needed = 1, uses_anonymous_args = 0
+  58              		@ link register save eliminated.
+  59 0000 80B4     		push	{r7}
+  60              	.LCFI2:
+  61              		.cfi_def_cfa_offset 4
+  62              		.cfi_offset 7, -4
+  63 0002 00AF     		add	r7, sp, #0
+  64              	.LCFI3:
+  65              		.cfi_def_cfa_register 7
+  66              	.L3:
+  61:../src/stm32_it.c **** 	/* Go to infinite loop when Hard Fault exception occurs */
+  62:../src/stm32_it.c **** 	while (1)
+  63:../src/stm32_it.c **** 	{
+  64:../src/stm32_it.c **** 	}
+  67              		.loc 1 64 0 discriminator 1
+  68 0004 FEE7     		b	.L3
+  69              		.cfi_endproc
+  70              	.LFE57:
+  72 0006 00BF     		.section	.text.MemManage_Handler,"ax",%progbits
+  73              		.align	2
+  74              		.global	MemManage_Handler
+  75              		.thumb
+  76              		.thumb_func
+  78              	MemManage_Handler:
+  79              	.LFB58:
+  65:../src/stm32_it.c **** }
+  66:../src/stm32_it.c **** 
+  67:../src/stm32_it.c **** /*******************************************************************************
+  68:../src/stm32_it.c ****  * Function Name  : MemManage_Handler
+  69:../src/stm32_it.c ****  * Description    : This function handles Memory Manage exception.
+  70:../src/stm32_it.c ****  * Input          : None
+  71:../src/stm32_it.c ****  * Output         : None
+  72:../src/stm32_it.c ****  * Return         : None
+  73:../src/stm32_it.c ****  *******************************************************************************/
+  74:../src/stm32_it.c **** void MemManage_Handler(void)
+  75:../src/stm32_it.c **** {
+  80              		.loc 1 75 0
+  81              		.cfi_startproc
+  82              		@ args = 0, pretend = 0, frame = 0
+  83              		@ frame_needed = 1, uses_anonymous_args = 0
+  84              		@ link register save eliminated.
+  85 0000 80B4     		push	{r7}
+  86              	.LCFI4:
+  87              		.cfi_def_cfa_offset 4
+  88              		.cfi_offset 7, -4
+  89 0002 00AF     		add	r7, sp, #0
+  90              	.LCFI5:
+  91              		.cfi_def_cfa_register 7
+  92              	.L5:
+  76:../src/stm32_it.c **** 	/* Go to infinite loop when Memory Manage exception occurs */
+  77:../src/stm32_it.c **** 	while (1)
+  78:../src/stm32_it.c **** 	{
+  79:../src/stm32_it.c **** 	}
+  93              		.loc 1 79 0 discriminator 1
+  94 0004 FEE7     		b	.L5
+  95              		.cfi_endproc
+  96              	.LFE58:
+  98 0006 00BF     		.section	.text.BusFault_Handler,"ax",%progbits
+  99              		.align	2
+ 100              		.global	BusFault_Handler
+ 101              		.thumb
+ 102              		.thumb_func
+ 104              	BusFault_Handler:
+ 105              	.LFB59:
+  80:../src/stm32_it.c **** }
+  81:../src/stm32_it.c **** 
+  82:../src/stm32_it.c **** /*******************************************************************************
+  83:../src/stm32_it.c ****  * Function Name  : BusFault_Handler
+  84:../src/stm32_it.c ****  * Description    : This function handles Bus Fault exception.
+  85:../src/stm32_it.c ****  * Input          : None
+  86:../src/stm32_it.c ****  * Output         : None
+  87:../src/stm32_it.c ****  * Return         : None
+  88:../src/stm32_it.c ****  *******************************************************************************/
+  89:../src/stm32_it.c **** void BusFault_Handler(void)
+  90:../src/stm32_it.c **** {
+ 106              		.loc 1 90 0
+ 107              		.cfi_startproc
+ 108              		@ args = 0, pretend = 0, frame = 0
+ 109              		@ frame_needed = 1, uses_anonymous_args = 0
+ 110              		@ link register save eliminated.
+ 111 0000 80B4     		push	{r7}
+ 112              	.LCFI6:
+ 113              		.cfi_def_cfa_offset 4
+ 114              		.cfi_offset 7, -4
+ 115 0002 00AF     		add	r7, sp, #0
+ 116              	.LCFI7:
+ 117              		.cfi_def_cfa_register 7
+ 118              	.L7:
+  91:../src/stm32_it.c **** 	/* Go to infinite loop when Bus Fault exception occurs */
+  92:../src/stm32_it.c **** 	while (1)
+  93:../src/stm32_it.c **** 	{
+  94:../src/stm32_it.c **** 	}
+ 119              		.loc 1 94 0 discriminator 1
+ 120 0004 FEE7     		b	.L7
+ 121              		.cfi_endproc
+ 122              	.LFE59:
+ 124 0006 00BF     		.section	.text.UsageFault_Handler,"ax",%progbits
+ 125              		.align	2
+ 126              		.global	UsageFault_Handler
+ 127              		.thumb
+ 128              		.thumb_func
+ 130              	UsageFault_Handler:
+ 131              	.LFB60:
+  95:../src/stm32_it.c **** }
+  96:../src/stm32_it.c **** 
+  97:../src/stm32_it.c **** /*******************************************************************************
+  98:../src/stm32_it.c ****  * Function Name  : UsageFault_Handler
+  99:../src/stm32_it.c ****  * Description    : This function handles Usage Fault exception.
+ 100:../src/stm32_it.c ****  * Input          : None
+ 101:../src/stm32_it.c ****  * Output         : None
+ 102:../src/stm32_it.c ****  * Return         : None
+ 103:../src/stm32_it.c ****  *******************************************************************************/
+ 104:../src/stm32_it.c **** void UsageFault_Handler(void)
+ 105:../src/stm32_it.c **** {
+ 132              		.loc 1 105 0
+ 133              		.cfi_startproc
+ 134              		@ args = 0, pretend = 0, frame = 0
+ 135              		@ frame_needed = 1, uses_anonymous_args = 0
+ 136              		@ link register save eliminated.
+ 137 0000 80B4     		push	{r7}
+ 138              	.LCFI8:
+ 139              		.cfi_def_cfa_offset 4
+ 140              		.cfi_offset 7, -4
+ 141 0002 00AF     		add	r7, sp, #0
+ 142              	.LCFI9:
+ 143              		.cfi_def_cfa_register 7
+ 144              	.L9:
+ 106:../src/stm32_it.c **** 	/* Go to infinite loop when Usage Fault exception occurs */
+ 107:../src/stm32_it.c **** 	while (1)
+ 108:../src/stm32_it.c **** 	{
+ 109:../src/stm32_it.c **** 	}
+ 145              		.loc 1 109 0 discriminator 1
+ 146 0004 FEE7     		b	.L9
+ 147              		.cfi_endproc
+ 148              	.LFE60:
+ 150 0006 00BF     		.section	.text.SVC_Handler,"ax",%progbits
+ 151              		.align	2
+ 152              		.global	SVC_Handler
+ 153              		.thumb
+ 154              		.thumb_func
+ 156              	SVC_Handler:
+ 157              	.LFB61:
+ 110:../src/stm32_it.c **** }
+ 111:../src/stm32_it.c **** 
+ 112:../src/stm32_it.c **** /*******************************************************************************
+ 113:../src/stm32_it.c ****  * Function Name  : SVC_Handler
+ 114:../src/stm32_it.c ****  * Description    : This function handles SVCall exception.
+ 115:../src/stm32_it.c ****  * Input          : None
+ 116:../src/stm32_it.c ****  * Output         : None
+ 117:../src/stm32_it.c ****  * Return         : None
+ 118:../src/stm32_it.c ****  *******************************************************************************/
+ 119:../src/stm32_it.c **** void SVC_Handler(void)
+ 120:../src/stm32_it.c **** {
+ 158              		.loc 1 120 0
+ 159              		.cfi_startproc
+ 160              		@ args = 0, pretend = 0, frame = 0
+ 161              		@ frame_needed = 1, uses_anonymous_args = 0
+ 162              		@ link register save eliminated.
+ 163 0000 80B4     		push	{r7}
+ 164              	.LCFI10:
+ 165              		.cfi_def_cfa_offset 4
+ 166              		.cfi_offset 7, -4
+ 167 0002 00AF     		add	r7, sp, #0
+ 168              	.LCFI11:
+ 169              		.cfi_def_cfa_register 7
+ 121:../src/stm32_it.c **** }
+ 170              		.loc 1 121 0
+ 171 0004 BD46     		mov	sp, r7
+ 172 0006 80BC     		pop	{r7}
+ 173 0008 7047     		bx	lr
+ 174              		.cfi_endproc
+ 175              	.LFE61:
+ 177 000a 00BF     		.section	.text.DebugMon_Handler,"ax",%progbits
+ 178              		.align	2
+ 179              		.global	DebugMon_Handler
+ 180              		.thumb
+ 181              		.thumb_func
+ 183              	DebugMon_Handler:
+ 184              	.LFB62:
+ 122:../src/stm32_it.c **** 
+ 123:../src/stm32_it.c **** /*******************************************************************************
+ 124:../src/stm32_it.c ****  * Function Name  : DebugMon_Handler
+ 125:../src/stm32_it.c ****  * Description    : This function handles Debug Monitor exception.
+ 126:../src/stm32_it.c ****  * Input          : None
+ 127:../src/stm32_it.c ****  * Output         : None
+ 128:../src/stm32_it.c ****  * Return         : None
+ 129:../src/stm32_it.c ****  *******************************************************************************/
+ 130:../src/stm32_it.c **** void DebugMon_Handler(void)
+ 131:../src/stm32_it.c **** {
+ 185              		.loc 1 131 0
+ 186              		.cfi_startproc
+ 187              		@ args = 0, pretend = 0, frame = 0
+ 188              		@ frame_needed = 1, uses_anonymous_args = 0
+ 189              		@ link register save eliminated.
+ 190 0000 80B4     		push	{r7}
+ 191              	.LCFI12:
+ 192              		.cfi_def_cfa_offset 4
+ 193              		.cfi_offset 7, -4
+ 194 0002 00AF     		add	r7, sp, #0
+ 195              	.LCFI13:
+ 196              		.cfi_def_cfa_register 7
+ 132:../src/stm32_it.c **** }
+ 197              		.loc 1 132 0
+ 198 0004 BD46     		mov	sp, r7
+ 199 0006 80BC     		pop	{r7}
+ 200 0008 7047     		bx	lr
+ 201              		.cfi_endproc
+ 202              	.LFE62:
+ 204 000a 00BF     		.section	.text.PendSV_Handler,"ax",%progbits
+ 205              		.align	2
+ 206              		.global	PendSV_Handler
+ 207              		.thumb
+ 208              		.thumb_func
+ 210              	PendSV_Handler:
+ 211              	.LFB63:
+ 133:../src/stm32_it.c **** 
+ 134:../src/stm32_it.c **** /*******************************************************************************
+ 135:../src/stm32_it.c ****  * Function Name  : PendSV_Handler
+ 136:../src/stm32_it.c ****  * Description    : This function handles PendSVC exception.
+ 137:../src/stm32_it.c ****  * Input          : None
+ 138:../src/stm32_it.c ****  * Output         : None
+ 139:../src/stm32_it.c ****  * Return         : None
+ 140:../src/stm32_it.c ****  *******************************************************************************/
+ 141:../src/stm32_it.c **** void PendSV_Handler(void)
+ 142:../src/stm32_it.c **** {
+ 212              		.loc 1 142 0
+ 213              		.cfi_startproc
+ 214              		@ args = 0, pretend = 0, frame = 0
+ 215              		@ frame_needed = 1, uses_anonymous_args = 0
+ 216              		@ link register save eliminated.
+ 217 0000 80B4     		push	{r7}
+ 218              	.LCFI14:
+ 219              		.cfi_def_cfa_offset 4
+ 220              		.cfi_offset 7, -4
+ 221 0002 00AF     		add	r7, sp, #0
+ 222              	.LCFI15:
+ 223              		.cfi_def_cfa_register 7
+ 143:../src/stm32_it.c **** }
+ 224              		.loc 1 143 0
+ 225 0004 BD46     		mov	sp, r7
+ 226 0006 80BC     		pop	{r7}
+ 227 0008 7047     		bx	lr
+ 228              		.cfi_endproc
+ 229              	.LFE63:
+ 231 000a 00BF     		.section	.text.SysTick_Handler,"ax",%progbits
+ 232              		.align	2
+ 233              		.global	SysTick_Handler
+ 234              		.thumb
+ 235              		.thumb_func
+ 237              	SysTick_Handler:
+ 238              	.LFB64:
+ 144:../src/stm32_it.c **** 
+ 145:../src/stm32_it.c **** /*******************************************************************************
+ 146:../src/stm32_it.c ****  * Function Name  : SysTick_Handler
+ 147:../src/stm32_it.c ****  * Description    : This function handles SysTick Handler.
+ 148:../src/stm32_it.c ****  * Input          : None
+ 149:../src/stm32_it.c ****  * Output         : None
+ 150:../src/stm32_it.c ****  * Return         : None
+ 151:../src/stm32_it.c ****  *******************************************************************************/
+ 152:../src/stm32_it.c **** void SysTick_Handler(void)
+ 153:../src/stm32_it.c **** {
+ 239              		.loc 1 153 0
+ 240              		.cfi_startproc
+ 241              		@ args = 0, pretend = 0, frame = 0
+ 242              		@ frame_needed = 1, uses_anonymous_args = 0
+ 243 0000 80B5     		push	{r7, lr}
+ 244              	.LCFI16:
+ 245              		.cfi_def_cfa_offset 8
+ 246              		.cfi_offset 7, -8
+ 247              		.cfi_offset 14, -4
+ 248 0002 00AF     		add	r7, sp, #0
+ 249              	.LCFI17:
+ 250              		.cfi_def_cfa_register 7
+ 154:../src/stm32_it.c **** 	Timing_Decrement();
+ 251              		.loc 1 154 0
+ 252 0004 FFF7FEFF 		bl	Timing_Decrement
+ 155:../src/stm32_it.c **** }
+ 253              		.loc 1 155 0
+ 254 0008 80BD     		pop	{r7, pc}
+ 255              		.cfi_endproc
+ 256              	.LFE64:
+ 258 000a 00BF     		.section	.text.DMA1_Channel3_IRQHandler,"ax",%progbits
+ 259              		.align	2
+ 260              		.global	DMA1_Channel3_IRQHandler
+ 261              		.thumb
+ 262              		.thumb_func
+ 264              	DMA1_Channel3_IRQHandler:
+ 265              	.LFB65:
+ 156:../src/stm32_it.c **** 
+ 157:../src/stm32_it.c **** /******************************************************************************/
+ 158:../src/stm32_it.c **** /*                 STM32 Peripherals Interrupt Handlers                   */
+ 159:../src/stm32_it.c **** /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
+ 160:../src/stm32_it.c **** /*  available peripheral interrupt handler's name please refer to the startup */
+ 161:../src/stm32_it.c **** /*  file (startup_stm32xxx.S).                                            */
+ 162:../src/stm32_it.c **** /******************************************************************************/
+ 163:../src/stm32_it.c **** 
+ 164:../src/stm32_it.c **** /*******************************************************************************
+ 165:../src/stm32_it.c ****  * Function Name  : DMA1_Channel3_IRQHandler
+ 166:../src/stm32_it.c ****  * Description    : This function handles SPI1_TX_DMA interrupt request.
+ 167:../src/stm32_it.c ****  * Input          : None
+ 168:../src/stm32_it.c ****  * Output         : None
+ 169:../src/stm32_it.c ****  * Return         : None
+ 170:../src/stm32_it.c ****  *******************************************************************************/
+ 171:../src/stm32_it.c **** void DMA1_Channel3_IRQHandler(void)
+ 172:../src/stm32_it.c **** {
+ 266              		.loc 1 172 0
+ 267              		.cfi_startproc
+ 268              		@ args = 0, pretend = 0, frame = 0
+ 269              		@ frame_needed = 1, uses_anonymous_args = 0
+ 270 0000 80B5     		push	{r7, lr}
+ 271              	.LCFI18:
+ 272              		.cfi_def_cfa_offset 8
+ 273              		.cfi_offset 7, -8
+ 274              		.cfi_offset 14, -4
+ 275 0002 00AF     		add	r7, sp, #0
+ 276              	.LCFI19:
+ 277              		.cfi_def_cfa_register 7
+ 173:../src/stm32_it.c **** 	SPI_DMA_IntHandler();
+ 278              		.loc 1 173 0
+ 279 0004 FFF7FEFF 		bl	SPI_DMA_IntHandler
+ 174:../src/stm32_it.c **** }
+ 280              		.loc 1 174 0
+ 281 0008 80BD     		pop	{r7, pc}
+ 282              		.cfi_endproc
+ 283              	.LFE65:
+ 285 000a 00BF     		.section	.text.DMA1_Channel5_IRQHandler,"ax",%progbits
+ 286              		.align	2
+ 287              		.global	DMA1_Channel5_IRQHandler
+ 288              		.thumb
+ 289              		.thumb_func
+ 291              	DMA1_Channel5_IRQHandler:
+ 292              	.LFB66:
+ 175:../src/stm32_it.c **** 
+ 176:../src/stm32_it.c **** /*******************************************************************************
+ 177:../src/stm32_it.c ****  * Function Name  : DMA1_Channel5_IRQHandler
+ 178:../src/stm32_it.c ****  * Description    : This function handles SPI2_TX_DMA interrupt request.
+ 179:../src/stm32_it.c ****  * Input          : None
+ 180:../src/stm32_it.c ****  * Output         : None
+ 181:../src/stm32_it.c ****  * Return         : None
+ 182:../src/stm32_it.c ****  *******************************************************************************/
+ 183:../src/stm32_it.c **** void DMA1_Channel5_IRQHandler(void)
+ 184:../src/stm32_it.c **** {
+ 293              		.loc 1 184 0
+ 294              		.cfi_startproc
+ 295              		@ args = 0, pretend = 0, frame = 0
+ 296              		@ frame_needed = 1, uses_anonymous_args = 0
+ 297 0000 80B5     		push	{r7, lr}
+ 298              	.LCFI20:
+ 299              		.cfi_def_cfa_offset 8
+ 300              		.cfi_offset 7, -8
+ 301              		.cfi_offset 14, -4
+ 302 0002 00AF     		add	r7, sp, #0
+ 303              	.LCFI21:
+ 304              		.cfi_def_cfa_register 7
+ 185:../src/stm32_it.c **** 	SPI_DMA_IntHandler();
+ 305              		.loc 1 185 0
+ 306 0004 FFF7FEFF 		bl	SPI_DMA_IntHandler
+ 186:../src/stm32_it.c **** }
+ 307              		.loc 1 186 0
+ 308 0008 80BD     		pop	{r7, pc}
+ 309              		.cfi_endproc
+ 310              	.LFE66:
+ 312 000a 00BF     		.section	.text.EXTI0_IRQHandler,"ax",%progbits
+ 313              		.align	2
+ 314              		.global	EXTI0_IRQHandler
+ 315              		.thumb
+ 316              		.thumb_func
+ 318              	EXTI0_IRQHandler:
+ 319              	.LFB67:
+ 187:../src/stm32_it.c **** 
+ 188:../src/stm32_it.c **** /*******************************************************************************
+ 189:../src/stm32_it.c ****  * Function Name  : EXTI0_IRQHandler
+ 190:../src/stm32_it.c ****  * Description    : This function handles EXTI0 interrupt request.
+ 191:../src/stm32_it.c ****  * Input          : None
+ 192:../src/stm32_it.c ****  * Output         : None
+ 193:../src/stm32_it.c ****  * Return         : None
+ 194:../src/stm32_it.c ****  *******************************************************************************/
+ 195:../src/stm32_it.c **** void EXTI0_IRQHandler(void)
+ 196:../src/stm32_it.c **** {
+ 320              		.loc 1 196 0
+ 321              		.cfi_startproc
+ 322              		@ args = 0, pretend = 0, frame = 0
+ 323              		@ frame_needed = 1, uses_anonymous_args = 0
+ 324 0000 80B5     		push	{r7, lr}
+ 325              	.LCFI22:
+ 326              		.cfi_def_cfa_offset 8
+ 327              		.cfi_offset 7, -8
+ 328              		.cfi_offset 14, -4
+ 329 0002 00AF     		add	r7, sp, #0
+ 330              	.LCFI23:
+ 331              		.cfi_def_cfa_register 7
+ 197:../src/stm32_it.c **** 	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
+ 332              		.loc 1 197 0
+ 333 0004 4FF40060 		mov	r0, #2048
+ 334 0008 FFF7FEFF 		bl	EXTI_GetITStatus
+ 335 000c 0346     		mov	r3, r0
+ 336 000e 002B     		cmp	r3, #0
+ 337 0010 05D0     		beq	.L17
+ 198:../src/stm32_it.c **** 	{
+ 199:../src/stm32_it.c **** 		/* Clear the EXTI line pending flag */
+ 200:../src/stm32_it.c **** 		EXTI_ClearFlag(CC3000_WIFI_INT_EXTI_LINE );
+ 338              		.loc 1 200 0
+ 339 0012 4FF40060 		mov	r0, #2048
+ 340 0016 FFF7FEFF 		bl	EXTI_ClearFlag
+ 201:../src/stm32_it.c **** 
+ 202:../src/stm32_it.c **** 		SPI_EXTI_IntHandler();
+ 341              		.loc 1 202 0
+ 342 001a FFF7FEFF 		bl	SPI_EXTI_IntHandler
+ 343              	.L17:
+ 203:../src/stm32_it.c **** 	}
+ 204:../src/stm32_it.c **** 
+ 205:../src/stm32_it.c **** 	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
+ 344              		.loc 1 205 0
+ 345 001e 4FF48060 		mov	r0, #1024
+ 346 0022 FFF7FEFF 		bl	EXTI_GetITStatus
+ 347 0026 0346     		mov	r3, r0
+ 348 0028 002B     		cmp	r3, #0
+ 349 002a 11D0     		beq	.L16
+ 206:../src/stm32_it.c **** 	{
+ 207:../src/stm32_it.c **** 		/* Clear the EXTI line pending flag */
+ 208:../src/stm32_it.c **** 		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
+ 350              		.loc 1 208 0
+ 351 002c 4FF48060 		mov	r0, #1024
+ 352 0030 FFF7FEFF 		bl	EXTI_ClearFlag
+ 209:../src/stm32_it.c **** 
+ 210:../src/stm32_it.c **** 		/* Disable BUTTON1 Interrupts */
+ 211:../src/stm32_it.c **** 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
+ 353              		.loc 1 211 0
+ 354 0034 4FF00000 		mov	r0, #0
+ 355 0038 4FF00001 		mov	r1, #0
+ 356 003c FFF7FEFF 		bl	BUTTON_EXTI_Config
+ 212:../src/stm32_it.c **** 
+ 213:../src/stm32_it.c **** 	    /* DEBOUNCE_TIMER Enable Counter */
+ 214:../src/stm32_it.c **** 	    TIM_Cmd(DEBOUNCE_TIMER, ENABLE);
+ 357              		.loc 1 214 0
+ 358 0040 4FF43050 		mov	r0, #11264
+ 359 0044 C4F20100 		movt	r0, 16385
+ 360 0048 4FF00101 		mov	r1, #1
+ 361 004c FFF7FEFF 		bl	TIM_Cmd
+ 362              	.L16:
+ 215:../src/stm32_it.c **** 	}
+ 216:../src/stm32_it.c **** }
+ 363              		.loc 1 216 0
+ 364 0050 80BD     		pop	{r7, pc}
+ 365              		.cfi_endproc
+ 366              	.LFE67:
+ 368 0052 00BF     		.section	.text.EXTI15_10_IRQHandler,"ax",%progbits
+ 369              		.align	2
+ 370              		.global	EXTI15_10_IRQHandler
+ 371              		.thumb
+ 372              		.thumb_func
+ 374              	EXTI15_10_IRQHandler:
+ 375              	.LFB68:
+ 217:../src/stm32_it.c **** 
+ 218:../src/stm32_it.c **** /*******************************************************************************
+ 219:../src/stm32_it.c ****  * Function Name  : EXTI15_10_IRQHandler
+ 220:../src/stm32_it.c ****  * Description    : This function handles EXTI15_10 interrupt request.
+ 221:../src/stm32_it.c ****  * Input          : None
+ 222:../src/stm32_it.c ****  * Output         : None
+ 223:../src/stm32_it.c ****  * Return         : None
+ 224:../src/stm32_it.c ****  *******************************************************************************/
+ 225:../src/stm32_it.c **** void EXTI15_10_IRQHandler(void)
+ 226:../src/stm32_it.c **** {
+ 376              		.loc 1 226 0
+ 377              		.cfi_startproc
+ 378              		@ args = 0, pretend = 0, frame = 0
+ 379              		@ frame_needed = 1, uses_anonymous_args = 0
+ 380 0000 80B5     		push	{r7, lr}
+ 381              	.LCFI24:
+ 382              		.cfi_def_cfa_offset 8
+ 383              		.cfi_offset 7, -8
+ 384              		.cfi_offset 14, -4
+ 385 0002 00AF     		add	r7, sp, #0
+ 386              	.LCFI25:
+ 387              		.cfi_def_cfa_register 7
+ 227:../src/stm32_it.c **** 	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
+ 388              		.loc 1 227 0
+ 389 0004 4FF40060 		mov	r0, #2048
+ 390 0008 FFF7FEFF 		bl	EXTI_GetITStatus
+ 391 000c 0346     		mov	r3, r0
+ 392 000e 002B     		cmp	r3, #0
+ 393 0010 05D0     		beq	.L20
+ 228:../src/stm32_it.c **** 	{
+ 229:../src/stm32_it.c **** 		/* Clear the EXTI line pending flag */
+ 230:../src/stm32_it.c **** 		EXTI_ClearFlag(CC3000_WIFI_INT_EXTI_LINE );
+ 394              		.loc 1 230 0
+ 395 0012 4FF40060 		mov	r0, #2048
+ 396 0016 FFF7FEFF 		bl	EXTI_ClearFlag
+ 231:../src/stm32_it.c **** 
+ 232:../src/stm32_it.c **** 		SPI_EXTI_IntHandler();
+ 397              		.loc 1 232 0
+ 398 001a FFF7FEFF 		bl	SPI_EXTI_IntHandler
+ 399              	.L20:
+ 233:../src/stm32_it.c **** 	}
+ 234:../src/stm32_it.c **** 
+ 235:../src/stm32_it.c **** 	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
+ 400              		.loc 1 235 0
+ 401 001e 4FF48060 		mov	r0, #1024
+ 402 0022 FFF7FEFF 		bl	EXTI_GetITStatus
+ 403 0026 0346     		mov	r3, r0
+ 404 0028 002B     		cmp	r3, #0
+ 405 002a 11D0     		beq	.L19
+ 236:../src/stm32_it.c **** 	{
+ 237:../src/stm32_it.c **** 		/* Clear the EXTI line pending flag */
+ 238:../src/stm32_it.c **** 		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
+ 406              		.loc 1 238 0
+ 407 002c 4FF48060 		mov	r0, #1024
+ 408 0030 FFF7FEFF 		bl	EXTI_ClearFlag
+ 239:../src/stm32_it.c **** 
+ 240:../src/stm32_it.c **** 		/* Disable BUTTON1 Interrupts */
+ 241:../src/stm32_it.c **** 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
+ 409              		.loc 1 241 0
+ 410 0034 4FF00000 		mov	r0, #0
+ 411 0038 4FF00001 		mov	r1, #0
+ 412 003c FFF7FEFF 		bl	BUTTON_EXTI_Config
+ 242:../src/stm32_it.c **** 
+ 243:../src/stm32_it.c **** 	    /* DEBOUNCE_TIMER Enable Counter */
+ 244:../src/stm32_it.c **** 	    TIM_Cmd(DEBOUNCE_TIMER, ENABLE);
+ 413              		.loc 1 244 0
+ 414 0040 4FF43050 		mov	r0, #11264
+ 415 0044 C4F20100 		movt	r0, 16385
+ 416 0048 4FF00101 		mov	r1, #1
+ 417 004c FFF7FEFF 		bl	TIM_Cmd
+ 418              	.L19:
+ 245:../src/stm32_it.c **** 	}
+ 246:../src/stm32_it.c **** }
+ 419              		.loc 1 246 0
+ 420 0050 80BD     		pop	{r7, pc}
+ 421              		.cfi_endproc
+ 422              	.LFE68:
+ 424 0052 00BF     		.section	.text.TIM1_UP_IRQHandler,"ax",%progbits
+ 425              		.align	2
+ 426              		.global	TIM1_UP_IRQHandler
+ 427              		.thumb
+ 428              		.thumb_func
+ 430              	TIM1_UP_IRQHandler:
+ 431              	.LFB69:
+ 247:../src/stm32_it.c **** 
+ 248:../src/stm32_it.c **** /*******************************************************************************
+ 249:../src/stm32_it.c ****  * Function Name  : TIM1_UP_IRQHandler
+ 250:../src/stm32_it.c ****  * Description    : This function handles TIM1 Update interrupt request.
+ 251:../src/stm32_it.c ****  * Input          : None
+ 252:../src/stm32_it.c ****  * Output         : None
+ 253:../src/stm32_it.c ****  * Return         : None
+ 254:../src/stm32_it.c ****  *******************************************************************************/
+ 255:../src/stm32_it.c **** void TIM1_UP_IRQHandler(void)
+ 256:../src/stm32_it.c **** {
+ 432              		.loc 1 256 0
+ 433              		.cfi_startproc
+ 434              		@ args = 0, pretend = 0, frame = 0
+ 435              		@ frame_needed = 1, uses_anonymous_args = 0
+ 436 0000 80B5     		push	{r7, lr}
+ 437              	.LCFI26:
+ 438              		.cfi_def_cfa_offset 8
+ 439              		.cfi_offset 7, -8
+ 440              		.cfi_offset 14, -4
+ 441 0002 00AF     		add	r7, sp, #0
+ 442              	.LCFI27:
+ 443              		.cfi_def_cfa_register 7
+ 257:../src/stm32_it.c **** 	if (TIM_GetITStatus(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG) != RESET)
+ 444              		.loc 1 257 0
+ 445 0004 4FF43050 		mov	r0, #11264
+ 446 0008 C4F20100 		movt	r0, 16385
+ 447 000c 4FF00101 		mov	r1, #1
+ 448 0010 FFF7FEFF 		bl	TIM_GetITStatus
+ 449 0014 0346     		mov	r3, r0
+ 450 0016 002B     		cmp	r3, #0
+ 451 0018 23D0     		beq	.L22
+ 258:../src/stm32_it.c **** 	{
+ 259:../src/stm32_it.c **** 		TIM_ClearITPendingBit(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG);
+ 452              		.loc 1 259 0
+ 453 001a 4FF43050 		mov	r0, #11264
+ 454 001e C4F20100 		movt	r0, 16385
+ 455 0022 4FF00101 		mov	r1, #1
+ 456 0026 FFF7FEFF 		bl	TIM_ClearITPendingBit
+ 260:../src/stm32_it.c **** 
+ 261:../src/stm32_it.c **** 		if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+ 457              		.loc 1 261 0
+ 458 002a 4FF00000 		mov	r0, #0
+ 459 002e FFF7FEFF 		bl	BUTTON_GetState
+ 460 0032 0346     		mov	r3, r0
+ 461 0034 002B     		cmp	r3, #0
+ 462 0036 07D1     		bne	.L24
+ 262:../src/stm32_it.c **** 			BUTTON_DEBOUNCED[BUTTON1] = 0x01;
+ 463              		.loc 1 262 0
+ 464 0038 40F20003 		movw	r3, #:lower16:BUTTON_DEBOUNCED
+ 465 003c C0F20003 		movt	r3, #:upper16:BUTTON_DEBOUNCED
+ 466 0040 4FF00102 		mov	r2, #1
+ 467 0044 1A70     		strb	r2, [r3, #0]
+ 468 0046 06E0     		b	.L25
+ 469              	.L24:
+ 263:../src/stm32_it.c **** 		else
+ 264:../src/stm32_it.c **** 			BUTTON_DEBOUNCED[BUTTON1] = 0x00;
+ 470              		.loc 1 264 0
+ 471 0048 40F20003 		movw	r3, #:lower16:BUTTON_DEBOUNCED
+ 472 004c C0F20003 		movt	r3, #:upper16:BUTTON_DEBOUNCED
+ 473 0050 4FF00002 		mov	r2, #0
+ 474 0054 1A70     		strb	r2, [r3, #0]
+ 475              	.L25:
+ 265:../src/stm32_it.c **** 
+ 266:../src/stm32_it.c **** 		/* Enable BUTTON1 Interrupts */
+ 267:../src/stm32_it.c **** 		BUTTON_EXTI_Config(BUTTON1, ENABLE);
+ 476              		.loc 1 267 0
+ 477 0056 4FF00000 		mov	r0, #0
+ 478 005a 4FF00101 		mov	r1, #1
+ 479 005e FFF7FEFF 		bl	BUTTON_EXTI_Config
+ 480              	.L22:
+ 268:../src/stm32_it.c **** 	}
+ 269:../src/stm32_it.c **** }
+ 481              		.loc 1 269 0
+ 482 0062 80BD     		pop	{r7, pc}
+ 483              		.cfi_endproc
+ 484              	.LFE69:
+ 486              		.section	.text.USB_LP_CAN1_RX0_IRQHandler,"ax",%progbits
+ 487              		.align	2
+ 488              		.global	USB_LP_CAN1_RX0_IRQHandler
+ 489              		.thumb
+ 490              		.thumb_func
+ 492              	USB_LP_CAN1_RX0_IRQHandler:
+ 493              	.LFB70:
+ 270:../src/stm32_it.c **** 
+ 271:../src/stm32_it.c **** /*******************************************************************************
+ 272:../src/stm32_it.c **** * Function Name  : USB_LP_CAN1_RX0_IRQHandler
+ 273:../src/stm32_it.c **** * Description    : This function handles USB Low Priority interrupts
+ 274:../src/stm32_it.c **** *                  requests.
+ 275:../src/stm32_it.c **** * Input          : None
+ 276:../src/stm32_it.c **** * Output         : None
+ 277:../src/stm32_it.c **** * Return         : None
+ 278:../src/stm32_it.c **** *******************************************************************************/
+ 279:../src/stm32_it.c **** void USB_LP_CAN1_RX0_IRQHandler(void)
+ 280:../src/stm32_it.c **** {
+ 494              		.loc 1 280 0
+ 495              		.cfi_startproc
+ 496              		@ args = 0, pretend = 0, frame = 0
+ 497              		@ frame_needed = 1, uses_anonymous_args = 0
+ 498 0000 80B5     		push	{r7, lr}
+ 499              	.LCFI28:
+ 500              		.cfi_def_cfa_offset 8
+ 501              		.cfi_offset 7, -8
+ 502              		.cfi_offset 14, -4
+ 503 0002 00AF     		add	r7, sp, #0
+ 504              	.LCFI29:
+ 505              		.cfi_def_cfa_register 7
+ 281:../src/stm32_it.c **** 	USB_Istr();
+ 506              		.loc 1 281 0
+ 507 0004 FFF7FEFF 		bl	USB_Istr
+ 282:../src/stm32_it.c **** }
+ 508              		.loc 1 282 0
+ 509 0008 80BD     		pop	{r7, pc}
+ 510              		.cfi_endproc
+ 511              	.LFE70:
+ 513 000a 00BF     		.text
+ 514              	.Letext0:
+ 515              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 516              		.file 3 "/Users/zac/code/spark/marvin/libraries/CMSIS/Device/ST/STM32F10x/Include/stm32f10x.h"
+ 517              		.file 4 "/Users/zac/code/spark/marvin/inc/hw_config.h"
+ 518              		.file 5 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cm3.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 stm32_it.c
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:19     .text.NMI_Handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:24     .text.NMI_Handler:0000000000000000 NMI_Handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:47     .text.HardFault_Handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:52     .text.HardFault_Handler:0000000000000000 HardFault_Handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:73     .text.MemManage_Handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:78     .text.MemManage_Handler:0000000000000000 MemManage_Handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:99     .text.BusFault_Handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:104    .text.BusFault_Handler:0000000000000000 BusFault_Handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:125    .text.UsageFault_Handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:130    .text.UsageFault_Handler:0000000000000000 UsageFault_Handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:151    .text.SVC_Handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:156    .text.SVC_Handler:0000000000000000 SVC_Handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:178    .text.DebugMon_Handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:183    .text.DebugMon_Handler:0000000000000000 DebugMon_Handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:205    .text.PendSV_Handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:210    .text.PendSV_Handler:0000000000000000 PendSV_Handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:232    .text.SysTick_Handler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:237    .text.SysTick_Handler:0000000000000000 SysTick_Handler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:259    .text.DMA1_Channel3_IRQHandler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:264    .text.DMA1_Channel3_IRQHandler:0000000000000000 DMA1_Channel3_IRQHandler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:286    .text.DMA1_Channel5_IRQHandler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:291    .text.DMA1_Channel5_IRQHandler:0000000000000000 DMA1_Channel5_IRQHandler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:313    .text.EXTI0_IRQHandler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:318    .text.EXTI0_IRQHandler:0000000000000000 EXTI0_IRQHandler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:369    .text.EXTI15_10_IRQHandler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:374    .text.EXTI15_10_IRQHandler:0000000000000000 EXTI15_10_IRQHandler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:425    .text.TIM1_UP_IRQHandler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:430    .text.TIM1_UP_IRQHandler:0000000000000000 TIM1_UP_IRQHandler
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:487    .text.USB_LP_CAN1_RX0_IRQHandler:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//ccWEjG3K.s:492    .text.USB_LP_CAN1_RX0_IRQHandler:0000000000000000 USB_LP_CAN1_RX0_IRQHandler
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.platform_config.h.13.23e06e06852a155ef1a4458870bf98fa
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.55.c9956ee2c5ec010802c11a3a06087af4
+                           .group:0000000000000000 wm4.stdlib.h.13.603ed7eb09a1561ab06840b7c0fcff58
+                           .group:0000000000000000 wm4.stddef.h.187.40b3a084f9bc2c020a9e00b9eabe9c14
+                           .group:0000000000000000 wm4._default_types.h.6.5e12cd604db8ce00b62bb2f02708eaf3
+                           .group:0000000000000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:0000000000000000 wm4.stddef.h.349.31f4c5baff3fa2689010b32028da9c47
+                           .group:0000000000000000 wm4.reent.h.16.9e42f0e588b85e70b2bf6572af57ce64
+                           .group:0000000000000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:0000000000000000 wm4.stdlib.h.50.f5923f1950ced340a337f4676566f65a
+                           .group:0000000000000000 wm4.errno.h.2.ba016d646105af6cad23be83630b6a3f
+                           .group:0000000000000000 wm4.errno.h.9.65044c2b5d8494e43f5986ab0a1d770f
+                           .group:0000000000000000 wm4.cc3000_common.h.58.2af7f8f8921b8cb4b89883c25878e207
+                           .group:0000000000000000 wm4.usb_conf.h.13.ae0ffce2e8d0e4c6b2724f8ae0ada8cf
+                           .group:0000000000000000 wm4.hw_config.h.61.9aaf7ecb821816183829c116d76d82b5
+                           .group:0000000000000000 wm4.hci.h.51.9deb4690145bc08404ecd70e8dadf8e4
+                           .group:0000000000000000 wm4.socket.h.36.a8c628533ac074dc9bf38f87e586f707
+                           .group:0000000000000000 wm4.evnt_handler.h.100.8706e0ac06647083db596956f9de025d
+                           .group:0000000000000000 wm4.wlan.h.36.4c6fda3ef88238c289a06e4d08269130
+                           .group:0000000000000000 wm4.nvmem.h.36.ee544af6426a64366cdb46d882de9ae2
+                           .group:0000000000000000 wm4.usb_regs.h.31.d9533108f8ac5724467880baa9cb0f26
+                           .group:0000000000000000 wm4.usb_def.h.30.73e1a84be93039018a594bacb815cb88
+                           .group:0000000000000000 wm4.usb_core.h.31.114a1d0e1de4beb01afdcd243bde9471
+
+UNDEFINED SYMBOLS
+Timing_Decrement
+SPI_DMA_IntHandler
+EXTI_GetITStatus
+EXTI_ClearFlag
+SPI_EXTI_IntHandler
+BUTTON_EXTI_Config
+TIM_Cmd
+TIM_GetITStatus
+TIM_ClearITPendingBit
+BUTTON_GetState
+BUTTON_DEBOUNCED
+USB_Istr

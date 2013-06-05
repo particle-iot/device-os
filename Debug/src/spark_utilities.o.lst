@@ -1,0 +1,1863 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"spark_utilities.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.comm	sparkSocket,4,4
+  19              		.comm	tSocketAddr,16,4
+  20              		.comm	timeout,8,4
+  21              		.comm	readSet,4,4
+  22              		.global	Device_Secret
+  23              		.section	.rodata
+  24              		.align	2
+  27              	Device_Secret:
+  28 0000 73656372 		.ascii	"secret\000"
+  28      657400
+  29              		.global	Device_Name
+  30 0007 00       		.align	2
+  33              	Device_Name:
+  34 0008 73617469 		.ascii	"satish\000"
+  34      736800
+  35              		.global	Device_Ok
+  36 000f 00       		.align	2
+  39              	Device_Ok:
+  40 0010 4F4B2000 		.ascii	"OK \000"
+  41              		.global	Device_Fail
+  42              		.align	2
+  45              	Device_Fail:
+  46 0014 4641494C 		.ascii	"FAIL \000"
+  46      2000
+  47              		.global	Device_CRLF
+  48 001a 0000     		.align	2
+  51              	Device_CRLF:
+  52 001c 0A00     		.ascii	"\012\000"
+  53              		.global	API_Alive
+  54 001e 0000     		.align	2
+  57              	API_Alive:
+  58 0020 616C6976 		.ascii	"alive\000"
+  58      6500
+  59              		.global	API_Who
+  60 0026 0000     		.align	2
+  63              	API_Who:
+  64 0028 77686F00 		.ascii	"who\000"
+  65              		.global	API_UserFunc
+  66              		.align	2
+  69              	API_UserFunc:
+  70 002c 55534552 		.ascii	"USERFUNC \000"
+  70      46554E43 
+  70      2000
+  71              		.global	API_Callback
+  72 0036 0000     		.align	2
+  75              	API_Callback:
+  76 0038 43414C4C 		.ascii	"CALLBACK \000"
+  76      4241434B 
+  76      2000
+  77              		.global	High_Dx
+  78 0042 0000     		.data
+  79              		.align	2
+  82              	High_Dx:
+  83 0000 48494748 		.ascii	"HIGH D \000"
+  83      20442000 
+  84              		.global	Low_Dx
+  85              		.align	2
+  88              	Low_Dx:
+  89 0008 4C4F5720 		.ascii	"LOW D \000"
+  89      442000
+  90              		.global	digits
+  91 000f 00       		.align	2
+  94              	digits:
+  95 0010 30313233 		.ascii	"0123456789\000"
+  95      34353637 
+  95      383900
+  96              		.comm	recvBuff,256,4
+  97              		.global	total_bytes_received
+  98 001b 00       		.bss
+  99              		.align	2
+ 102              	total_bytes_received:
+ 103 0000 00000000 		.space	4
+ 104              		.comm	pUserFunction,4,4
+ 105              		.comm	userBuff,256,4
+ 106              		.section	.text.Spark_Connect,"ax",%progbits
+ 107              		.align	2
+ 108              		.global	Spark_Connect
+ 109              		.thumb
+ 110              		.thumb_func
+ 112              	Spark_Connect:
+ 113              	.LFB56:
+ 114              		.file 1 "../src/spark_utilities.c"
+   1:../src/spark_utilities.c **** #include "spark_utilities.h"
+   2:../src/spark_utilities.c **** #include "socket.h"
+   3:../src/spark_utilities.c **** #include "netapp.h"
+   4:../src/spark_utilities.c **** #include "string.h"
+   5:../src/spark_utilities.c **** 
+   6:../src/spark_utilities.c **** long sparkSocket;
+   7:../src/spark_utilities.c **** sockaddr tSocketAddr;
+   8:../src/spark_utilities.c **** 
+   9:../src/spark_utilities.c **** timeval timeout;
+  10:../src/spark_utilities.c **** fd_set readSet;
+  11:../src/spark_utilities.c **** 
+  12:../src/spark_utilities.c **** // Spark Messages
+  13:../src/spark_utilities.c **** const char Device_Secret[] = "secret";
+  14:../src/spark_utilities.c **** const char Device_Name[] = "satish";
+  15:../src/spark_utilities.c **** const char Device_Ok[] = "OK ";
+  16:../src/spark_utilities.c **** const char Device_Fail[] = "FAIL ";
+  17:../src/spark_utilities.c **** const char Device_CRLF[] = "\n";
+  18:../src/spark_utilities.c **** const char API_Alive[] = "alive";
+  19:../src/spark_utilities.c **** const char API_Who[] = "who";
+  20:../src/spark_utilities.c **** const char API_UserFunc[] = "USERFUNC ";
+  21:../src/spark_utilities.c **** const char API_Callback[] = "CALLBACK ";
+  22:../src/spark_utilities.c **** char High_Dx[] = "HIGH D ";
+  23:../src/spark_utilities.c **** char Low_Dx[] = "LOW D ";
+  24:../src/spark_utilities.c **** 
+  25:../src/spark_utilities.c **** char digits[] = "0123456789";
+  26:../src/spark_utilities.c **** 
+  27:../src/spark_utilities.c **** char recvBuff[SPARK_BUF_LEN];
+  28:../src/spark_utilities.c **** int total_bytes_received = 0;
+  29:../src/spark_utilities.c **** 
+  30:../src/spark_utilities.c **** extern __IO uint8_t SPARK_DEVICE_ACKED;
+  31:../src/spark_utilities.c **** extern __IO uint32_t TimingSparkAliveTimeout;
+  32:../src/spark_utilities.c **** 
+  33:../src/spark_utilities.c **** void (*pUserFunction)(void);
+  34:../src/spark_utilities.c **** char userBuff[SPARK_BUF_LEN];
+  35:../src/spark_utilities.c **** 
+  36:../src/spark_utilities.c **** static void user_function(void);
+  37:../src/spark_utilities.c **** static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
+  38:../src/spark_utilities.c **** static unsigned char itoa(int cNum, char *cString);
+  39:../src/spark_utilities.c **** static uint8_t atoc(char data);
+  40:../src/spark_utilities.c **** 
+  41:../src/spark_utilities.c **** /*
+  42:../src/spark_utilities.c **** static uint16_t atoshort(char b1, char b2);
+  43:../src/spark_utilities.c **** static unsigned char ascii_to_char(char b1, char b2);
+  44:../src/spark_utilities.c **** 
+  45:../src/spark_utilities.c **** static void str_cpy(char dest[], char src[]);
+  46:../src/spark_utilities.c **** static int str_cmp(char str1[], char str2[]);
+  47:../src/spark_utilities.c **** static int str_len(char str[]);
+  48:../src/spark_utilities.c **** static void sub_str(char dest[], char src[], int offset, int len);
+  49:../src/spark_utilities.c **** */
+  50:../src/spark_utilities.c **** 
+  51:../src/spark_utilities.c **** int Spark_Connect(void)
+  52:../src/spark_utilities.c **** {
+ 115              		.loc 1 52 0
+ 116              		.cfi_startproc
+ 117              		@ args = 0, pretend = 0, frame = 8
+ 118              		@ frame_needed = 1, uses_anonymous_args = 0
+ 119 0000 80B5     		push	{r7, lr}
+ 120              	.LCFI0:
+ 121              		.cfi_def_cfa_offset 8
+ 122              		.cfi_offset 7, -8
+ 123              		.cfi_offset 14, -4
+ 124 0002 82B0     		sub	sp, sp, #8
+ 125              	.LCFI1:
+ 126              		.cfi_def_cfa_offset 16
+ 127 0004 00AF     		add	r7, sp, #0
+ 128              	.LCFI2:
+ 129              		.cfi_def_cfa_register 7
+  53:../src/spark_utilities.c **** 	int retVal = 0;
+ 130              		.loc 1 53 0
+ 131 0006 4FF00003 		mov	r3, #0
+ 132 000a 7B60     		str	r3, [r7, #4]
+  54:../src/spark_utilities.c **** 
+  55:../src/spark_utilities.c ****     sparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+ 133              		.loc 1 55 0
+ 134 000c 4FF00200 		mov	r0, #2
+ 135 0010 4FF00101 		mov	r1, #1
+ 136 0014 4FF00602 		mov	r2, #6
+ 137 0018 FFF7FEFF 		bl	socket
+ 138 001c 0246     		mov	r2, r0
+ 139 001e 40F20003 		movw	r3, #:lower16:sparkSocket
+ 140 0022 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 141 0026 1A60     		str	r2, [r3, #0]
+  56:../src/spark_utilities.c **** 
+  57:../src/spark_utilities.c ****     if (sparkSocket < 0)
+ 142              		.loc 1 57 0
+ 143 0028 40F20003 		movw	r3, #:lower16:sparkSocket
+ 144 002c C0F20003 		movt	r3, #:upper16:sparkSocket
+ 145 0030 1B68     		ldr	r3, [r3, #0]
+ 146 0032 002B     		cmp	r3, #0
+ 147 0034 02DA     		bge	.L2
+  58:../src/spark_utilities.c ****     {
+  59:../src/spark_utilities.c ****         //wlan_stop();
+  60:../src/spark_utilities.c ****         return -1;
+ 148              		.loc 1 60 0
+ 149 0036 4FF0FF33 		mov	r3, #-1
+ 150 003a 57E0     		b	.L3
+ 151              	.L2:
+  61:../src/spark_utilities.c ****     }
+  62:../src/spark_utilities.c **** 
+  63:../src/spark_utilities.c **** 	// the family is always AF_INET
+  64:../src/spark_utilities.c ****     tSocketAddr.sa_family = AF_INET;
+ 152              		.loc 1 64 0
+ 153 003c 40F20003 		movw	r3, #:lower16:tSocketAddr
+ 154 0040 C0F20003 		movt	r3, #:upper16:tSocketAddr
+ 155 0044 4FF00202 		mov	r2, #2
+ 156 0048 1A80     		strh	r2, [r3, #0]	@ movhi
+  65:../src/spark_utilities.c **** 
+  66:../src/spark_utilities.c **** 	// the destination port
+  67:../src/spark_utilities.c ****     tSocketAddr.sa_data[0] = (SPARK_SERVER_PORT & 0xFF00) >> 8;
+ 157              		.loc 1 67 0
+ 158 004a 40F20003 		movw	r3, #:lower16:tSocketAddr
+ 159 004e C0F20003 		movt	r3, #:upper16:tSocketAddr
+ 160 0052 4FF02302 		mov	r2, #35
+ 161 0056 9A70     		strb	r2, [r3, #2]
+  68:../src/spark_utilities.c ****     tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
+ 162              		.loc 1 68 0
+ 163 0058 40F20003 		movw	r3, #:lower16:tSocketAddr
+ 164 005c C0F20003 		movt	r3, #:upper16:tSocketAddr
+ 165 0060 4FF01D02 		mov	r2, #29
+ 166 0064 DA70     		strb	r2, [r3, #3]
+  69:../src/spark_utilities.c **** 
+  70:../src/spark_utilities.c **** 	// the destination IP address
+  71:../src/spark_utilities.c **** 	tSocketAddr.sa_data[2] = 54;	// First Octet of destination IP
+ 167              		.loc 1 71 0
+ 168 0066 40F20003 		movw	r3, #:lower16:tSocketAddr
+ 169 006a C0F20003 		movt	r3, #:upper16:tSocketAddr
+ 170 006e 4FF03602 		mov	r2, #54
+ 171 0072 1A71     		strb	r2, [r3, #4]
+  72:../src/spark_utilities.c **** 	tSocketAddr.sa_data[3] = 235;	// Second Octet of destination IP
+ 172              		.loc 1 72 0
+ 173 0074 40F20003 		movw	r3, #:lower16:tSocketAddr
+ 174 0078 C0F20003 		movt	r3, #:upper16:tSocketAddr
+ 175 007c 4FF0EB02 		mov	r2, #235
+ 176 0080 5A71     		strb	r2, [r3, #5]
+  73:../src/spark_utilities.c **** 	tSocketAddr.sa_data[4] = 79; 	// Third Octet of destination IP
+ 177              		.loc 1 73 0
+ 178 0082 40F20003 		movw	r3, #:lower16:tSocketAddr
+ 179 0086 C0F20003 		movt	r3, #:upper16:tSocketAddr
+ 180 008a 4FF04F02 		mov	r2, #79
+ 181 008e 9A71     		strb	r2, [r3, #6]
+  74:../src/spark_utilities.c **** 	tSocketAddr.sa_data[5] = 249;	// Fourth Octet of destination IP
+ 182              		.loc 1 74 0
+ 183 0090 40F20003 		movw	r3, #:lower16:tSocketAddr
+ 184 0094 C0F20003 		movt	r3, #:upper16:tSocketAddr
+ 185 0098 4FF0F902 		mov	r2, #249
+ 186 009c DA71     		strb	r2, [r3, #7]
+  75:../src/spark_utilities.c **** 
+  76:../src/spark_utilities.c **** 	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
+ 187              		.loc 1 76 0
+ 188 009e 40F20003 		movw	r3, #:lower16:sparkSocket
+ 189 00a2 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 190 00a6 1B68     		ldr	r3, [r3, #0]
+ 191 00a8 1846     		mov	r0, r3
+ 192 00aa 40F20001 		movw	r1, #:lower16:tSocketAddr
+ 193 00ae C0F20001 		movt	r1, #:upper16:tSocketAddr
+ 194 00b2 4FF01002 		mov	r2, #16
+ 195 00b6 FFF7FEFF 		bl	connect
+ 196 00ba 7860     		str	r0, [r7, #4]
+  77:../src/spark_utilities.c **** 
+  78:../src/spark_utilities.c **** 	if (retVal < 0)
+ 197              		.loc 1 78 0
+ 198 00bc 7B68     		ldr	r3, [r7, #4]
+ 199 00be 002B     		cmp	r3, #0
+ 200 00c0 02DA     		bge	.L4
+  79:../src/spark_utilities.c **** 	{
+  80:../src/spark_utilities.c **** 		// Unable to connect
+  81:../src/spark_utilities.c **** 		return -1;
+ 201              		.loc 1 81 0
+ 202 00c2 4FF0FF33 		mov	r3, #-1
+ 203 00c6 11E0     		b	.L3
+ 204              	.L4:
+  82:../src/spark_utilities.c **** 	}
+  83:../src/spark_utilities.c **** 	else
+  84:../src/spark_utilities.c **** 	{
+  85:../src/spark_utilities.c **** 		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, NULL);
+ 205              		.loc 1 85 0
+ 206 00c8 40F20003 		movw	r3, #:lower16:sparkSocket
+ 207 00cc C0F20003 		movt	r3, #:upper16:sparkSocket
+ 208 00d0 1B68     		ldr	r3, [r3, #0]
+ 209 00d2 1846     		mov	r0, r3
+ 210 00d4 40F20001 		movw	r1, #:lower16:Device_Secret
+ 211 00d8 C0F20001 		movt	r1, #:upper16:Device_Secret
+ 212 00dc 4FF00002 		mov	r2, #0
+ 213 00e0 4FF00003 		mov	r3, #0
+ 214 00e4 FFF7FEFF 		bl	Spark_Send_Device_Message
+ 215 00e8 7860     		str	r0, [r7, #4]
+  86:../src/spark_utilities.c **** 	}
+  87:../src/spark_utilities.c **** 
+  88:../src/spark_utilities.c ****     return retVal;
+ 216              		.loc 1 88 0
+ 217 00ea 7B68     		ldr	r3, [r7, #4]
+ 218              	.L3:
+  89:../src/spark_utilities.c **** }
+ 219              		.loc 1 89 0
+ 220 00ec 1846     		mov	r0, r3
+ 221 00ee 07F10807 		add	r7, r7, #8
+ 222 00f2 BD46     		mov	sp, r7
+ 223 00f4 80BD     		pop	{r7, pc}
+ 224              		.cfi_endproc
+ 225              	.LFE56:
+ 227 00f6 00BF     		.section	.text.Spark_Disconnect,"ax",%progbits
+ 228              		.align	2
+ 229              		.global	Spark_Disconnect
+ 230              		.thumb
+ 231              		.thumb_func
+ 233              	Spark_Disconnect:
+ 234              	.LFB57:
+  90:../src/spark_utilities.c **** 
+  91:../src/spark_utilities.c **** int Spark_Disconnect(void)
+  92:../src/spark_utilities.c **** {
+ 235              		.loc 1 92 0
+ 236              		.cfi_startproc
+ 237              		@ args = 0, pretend = 0, frame = 8
+ 238              		@ frame_needed = 1, uses_anonymous_args = 0
+ 239 0000 80B5     		push	{r7, lr}
+ 240              	.LCFI3:
+ 241              		.cfi_def_cfa_offset 8
+ 242              		.cfi_offset 7, -8
+ 243              		.cfi_offset 14, -4
+ 244 0002 82B0     		sub	sp, sp, #8
+ 245              	.LCFI4:
+ 246              		.cfi_def_cfa_offset 16
+ 247 0004 00AF     		add	r7, sp, #0
+ 248              	.LCFI5:
+ 249              		.cfi_def_cfa_register 7
+  93:../src/spark_utilities.c ****     int retVal = 0;
+ 250              		.loc 1 93 0
+ 251 0006 4FF00003 		mov	r3, #0
+ 252 000a 7B60     		str	r3, [r7, #4]
+  94:../src/spark_utilities.c **** 
+  95:../src/spark_utilities.c ****     retVal = closesocket(sparkSocket);
+ 253              		.loc 1 95 0
+ 254 000c 40F20003 		movw	r3, #:lower16:sparkSocket
+ 255 0010 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 256 0014 1B68     		ldr	r3, [r3, #0]
+ 257 0016 1846     		mov	r0, r3
+ 258 0018 FFF7FEFF 		bl	closesocket
+ 259 001c 7860     		str	r0, [r7, #4]
+  96:../src/spark_utilities.c **** 
+  97:../src/spark_utilities.c ****     if(retVal == 0)
+ 260              		.loc 1 97 0
+ 261 001e 7B68     		ldr	r3, [r7, #4]
+ 262 0020 002B     		cmp	r3, #0
+ 263 0022 06D1     		bne	.L6
+  98:../src/spark_utilities.c ****     	sparkSocket = 0xFFFFFFFF;
+ 264              		.loc 1 98 0
+ 265 0024 40F20003 		movw	r3, #:lower16:sparkSocket
+ 266 0028 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 267 002c 4FF0FF32 		mov	r2, #-1
+ 268 0030 1A60     		str	r2, [r3, #0]
+ 269              	.L6:
+  99:../src/spark_utilities.c **** 
+ 100:../src/spark_utilities.c ****     return retVal;
+ 270              		.loc 1 100 0
+ 271 0032 7B68     		ldr	r3, [r7, #4]
+ 101:../src/spark_utilities.c **** }
+ 272              		.loc 1 101 0
+ 273 0034 1846     		mov	r0, r3
+ 274 0036 07F10807 		add	r7, r7, #8
+ 275 003a BD46     		mov	sp, r7
+ 276 003c 80BD     		pop	{r7, pc}
+ 277              		.cfi_endproc
+ 278              	.LFE57:
+ 280 003e 00BF     		.section	.text.receive_line,"ax",%progbits
+ 281              		.align	2
+ 282              		.global	receive_line
+ 283              		.thumb
+ 284              		.thumb_func
+ 286              	receive_line:
+ 287              	.LFB58:
+ 102:../src/spark_utilities.c **** 
+ 103:../src/spark_utilities.c **** // receive from socket until we either find a newline or fill the buffer
+ 104:../src/spark_utilities.c **** // called repeatedly from an interrupt handler, so DO NOT BLOCK
+ 105:../src/spark_utilities.c **** // returns: -1 on error, signifying socket disconnected
+ 106:../src/spark_utilities.c **** //          0 if we have not yet received a full line
+ 107:../src/spark_utilities.c **** //          the number of bytes received when we have received a full line
+ 108:../src/spark_utilities.c **** int receive_line()
+ 109:../src/spark_utilities.c **** {
+ 288              		.loc 1 109 0
+ 289              		.cfi_startproc
+ 290              		@ args = 0, pretend = 0, frame = 32
+ 291              		@ frame_needed = 1, uses_anonymous_args = 0
+ 292 0000 80B5     		push	{r7, lr}
+ 293              	.LCFI6:
+ 294              		.cfi_def_cfa_offset 8
+ 295              		.cfi_offset 7, -8
+ 296              		.cfi_offset 14, -4
+ 297 0002 8AB0     		sub	sp, sp, #40
+ 298              	.LCFI7:
+ 299              		.cfi_def_cfa_offset 48
+ 300 0004 02AF     		add	r7, sp, #8
+ 301              	.LCFI8:
+ 302              		.cfi_def_cfa 7, 40
+ 110:../src/spark_utilities.c **** 	if (0 == total_bytes_received)
+ 303              		.loc 1 110 0
+ 304 0006 40F20003 		movw	r3, #:lower16:total_bytes_received
+ 305 000a C0F20003 		movt	r3, #:upper16:total_bytes_received
+ 306 000e 1B68     		ldr	r3, [r3, #0]
+ 307 0010 002B     		cmp	r3, #0
+ 308 0012 09D1     		bne	.L9
+ 111:../src/spark_utilities.c **** 	{
+ 112:../src/spark_utilities.c **** 		memset(recvBuff, 0, SPARK_BUF_LEN);
+ 309              		.loc 1 112 0
+ 310 0014 40F20000 		movw	r0, #:lower16:recvBuff
+ 311 0018 C0F20000 		movt	r0, #:upper16:recvBuff
+ 312 001c 4FF00001 		mov	r1, #0
+ 313 0020 4FF48072 		mov	r2, #256
+ 314 0024 FFF7FEFF 		bl	memset
+ 315              	.L9:
+ 316              	.LBB2:
+ 113:../src/spark_utilities.c **** 	}
+ 114:../src/spark_utilities.c **** 
+ 115:../src/spark_utilities.c ****     // reset the fd_set structure
+ 116:../src/spark_utilities.c ****     FD_ZERO(&readSet);
+ 317              		.loc 1 116 0
+ 318 0028 40F20003 		movw	r3, #:lower16:readSet
+ 319 002c C0F20003 		movt	r3, #:upper16:readSet
+ 320 0030 7B61     		str	r3, [r7, #20]
+ 321 0032 4FF00003 		mov	r3, #0
+ 322 0036 FB61     		str	r3, [r7, #28]
+ 323 0038 09E0     		b	.L10
+ 324              	.L11:
+ 325              		.loc 1 116 0 is_stmt 0 discriminator 2
+ 326 003a 7B69     		ldr	r3, [r7, #20]
+ 327 003c FA69     		ldr	r2, [r7, #28]
+ 328 003e 4FF00001 		mov	r1, #0
+ 329 0042 43F82210 		str	r1, [r3, r2, lsl #2]
+ 330 0046 FB69     		ldr	r3, [r7, #28]
+ 331 0048 03F10103 		add	r3, r3, #1
+ 332 004c FB61     		str	r3, [r7, #28]
+ 333              	.L10:
+ 334              		.loc 1 116 0 discriminator 1
+ 335 004e FB69     		ldr	r3, [r7, #28]
+ 336 0050 002B     		cmp	r3, #0
+ 337 0052 F2D0     		beq	.L11
+ 338              	.LBE2:
+ 117:../src/spark_utilities.c ****     FD_SET(sparkSocket, &readSet);
+ 339              		.loc 1 117 0 is_stmt 1
+ 340 0054 40F20003 		movw	r3, #:lower16:sparkSocket
+ 341 0058 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 342 005c 1B68     		ldr	r3, [r3, #0]
+ 343 005e 4FEA5312 		lsr	r2, r3, #5
+ 344 0062 40F20003 		movw	r3, #:lower16:readSet
+ 345 0066 C0F20003 		movt	r3, #:upper16:readSet
+ 346 006a 53F82210 		ldr	r1, [r3, r2, lsl #2]
+ 347 006e 40F20003 		movw	r3, #:lower16:sparkSocket
+ 348 0072 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 349 0076 1B68     		ldr	r3, [r3, #0]
+ 350 0078 03F01F03 		and	r3, r3, #31
+ 351 007c 4FF00100 		mov	r0, #1
+ 352 0080 00FA03F3 		lsl	r3, r0, r3
+ 353 0084 1943     		orrs	r1, r1, r3
+ 354 0086 40F20003 		movw	r3, #:lower16:readSet
+ 355 008a C0F20003 		movt	r3, #:upper16:readSet
+ 356 008e 43F82210 		str	r1, [r3, r2, lsl #2]
+ 118:../src/spark_utilities.c **** 
+ 119:../src/spark_utilities.c ****     int buffer_bytes_available = SPARK_BUF_LEN - 1 - total_bytes_received;
+ 357              		.loc 1 119 0
+ 358 0092 40F20003 		movw	r3, #:lower16:total_bytes_received
+ 359 0096 C0F20003 		movt	r3, #:upper16:total_bytes_received
+ 360 009a 1B68     		ldr	r3, [r3, #0]
+ 361 009c C3F1FF03 		rsb	r3, r3, #255
+ 362 00a0 3B61     		str	r3, [r7, #16]
+ 120:../src/spark_utilities.c ****     char *newline = NULL;
+ 363              		.loc 1 120 0
+ 364 00a2 4FF00003 		mov	r3, #0
+ 365 00a6 BB61     		str	r3, [r7, #24]
+ 121:../src/spark_utilities.c **** 
+ 122:../src/spark_utilities.c ****     // tell select to timeout after 500 microseconds
+ 123:../src/spark_utilities.c ****     timeout.tv_sec = 0;
+ 366              		.loc 1 123 0
+ 367 00a8 40F20003 		movw	r3, #:lower16:timeout
+ 368 00ac C0F20003 		movt	r3, #:upper16:timeout
+ 369 00b0 4FF00002 		mov	r2, #0
+ 370 00b4 1A60     		str	r2, [r3, #0]
+ 124:../src/spark_utilities.c ****     timeout.tv_usec = 500;
+ 371              		.loc 1 124 0
+ 372 00b6 40F20003 		movw	r3, #:lower16:timeout
+ 373 00ba C0F20003 		movt	r3, #:upper16:timeout
+ 374 00be 4FF4FA72 		mov	r2, #500
+ 375 00c2 5A60     		str	r2, [r3, #4]
+ 125:../src/spark_utilities.c **** 
+ 126:../src/spark_utilities.c **** 	int num_fds_ready = select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
+ 376              		.loc 1 126 0
+ 377 00c4 40F20003 		movw	r3, #:lower16:sparkSocket
+ 378 00c8 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 379 00cc 1B68     		ldr	r3, [r3, #0]
+ 380 00ce 03F10102 		add	r2, r3, #1
+ 381 00d2 40F20003 		movw	r3, #:lower16:timeout
+ 382 00d6 C0F20003 		movt	r3, #:upper16:timeout
+ 383 00da 0093     		str	r3, [sp, #0]
+ 384 00dc 1046     		mov	r0, r2
+ 385 00de 40F20001 		movw	r1, #:lower16:readSet
+ 386 00e2 C0F20001 		movt	r1, #:upper16:readSet
+ 387 00e6 4FF00002 		mov	r2, #0
+ 388 00ea 4FF00003 		mov	r3, #0
+ 389 00ee FFF7FEFF 		bl	select
+ 390 00f2 F860     		str	r0, [r7, #12]
+ 127:../src/spark_utilities.c **** 
+ 128:../src/spark_utilities.c **** 	if (0 < num_fds_ready)
+ 391              		.loc 1 128 0
+ 392 00f4 FB68     		ldr	r3, [r7, #12]
+ 393 00f6 002B     		cmp	r3, #0
+ 394 00f8 4CDD     		ble	.L12
+ 129:../src/spark_utilities.c **** 	{
+ 130:../src/spark_utilities.c **** 		if (FD_ISSET(sparkSocket, &readSet))
+ 395              		.loc 1 130 0
+ 396 00fa 40F20003 		movw	r3, #:lower16:sparkSocket
+ 397 00fe C0F20003 		movt	r3, #:upper16:sparkSocket
+ 398 0102 1B68     		ldr	r3, [r3, #0]
+ 399 0104 4FEA5312 		lsr	r2, r3, #5
+ 400 0108 40F20003 		movw	r3, #:lower16:readSet
+ 401 010c C0F20003 		movt	r3, #:upper16:readSet
+ 402 0110 53F82220 		ldr	r2, [r3, r2, lsl #2]
+ 403 0114 40F20003 		movw	r3, #:lower16:sparkSocket
+ 404 0118 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 405 011c 1B68     		ldr	r3, [r3, #0]
+ 406 011e 03F01F03 		and	r3, r3, #31
+ 407 0122 42FA03F3 		asr	r3, r2, r3
+ 408 0126 03F00103 		and	r3, r3, #1
+ 409 012a 002B     		cmp	r3, #0
+ 410 012c 32D0     		beq	.L12
+ 411              	.LBB3:
+ 131:../src/spark_utilities.c **** 		{
+ 132:../src/spark_utilities.c **** 			char *buffer_ptr = recvBuff + total_bytes_received;
+ 412              		.loc 1 132 0
+ 413 012e 40F20003 		movw	r3, #:lower16:total_bytes_received
+ 414 0132 C0F20003 		movt	r3, #:upper16:total_bytes_received
+ 415 0136 1B68     		ldr	r3, [r3, #0]
+ 416 0138 1A46     		mov	r2, r3
+ 417 013a 40F20003 		movw	r3, #:lower16:recvBuff
+ 418 013e C0F20003 		movt	r3, #:upper16:recvBuff
+ 419 0142 D318     		adds	r3, r2, r3
+ 420 0144 BB60     		str	r3, [r7, #8]
+ 133:../src/spark_utilities.c **** 
+ 134:../src/spark_utilities.c **** 			int bytes_received_once = recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
+ 421              		.loc 1 134 0
+ 422 0146 40F20003 		movw	r3, #:lower16:sparkSocket
+ 423 014a C0F20003 		movt	r3, #:upper16:sparkSocket
+ 424 014e 1B68     		ldr	r3, [r3, #0]
+ 425 0150 1846     		mov	r0, r3
+ 426 0152 B968     		ldr	r1, [r7, #8]
+ 427 0154 3A69     		ldr	r2, [r7, #16]
+ 428 0156 4FF00003 		mov	r3, #0
+ 429 015a FFF7FEFF 		bl	recv
+ 430 015e 7860     		str	r0, [r7, #4]
+ 135:../src/spark_utilities.c **** 
+ 136:../src/spark_utilities.c **** 			if (0 > bytes_received_once)
+ 431              		.loc 1 136 0
+ 432 0160 7B68     		ldr	r3, [r7, #4]
+ 433 0162 002B     		cmp	r3, #0
+ 434 0164 01DA     		bge	.L13
+ 137:../src/spark_utilities.c **** 				return bytes_received_once;
+ 435              		.loc 1 137 0
+ 436 0166 7B68     		ldr	r3, [r7, #4]
+ 437 0168 2BE0     		b	.L14
+ 438              	.L13:
+ 138:../src/spark_utilities.c **** 
+ 139:../src/spark_utilities.c **** 			total_bytes_received += bytes_received_once;
+ 439              		.loc 1 139 0
+ 440 016a 40F20003 		movw	r3, #:lower16:total_bytes_received
+ 441 016e C0F20003 		movt	r3, #:upper16:total_bytes_received
+ 442 0172 1A68     		ldr	r2, [r3, #0]
+ 443 0174 7B68     		ldr	r3, [r7, #4]
+ 444 0176 D218     		adds	r2, r2, r3
+ 445 0178 40F20003 		movw	r3, #:lower16:total_bytes_received
+ 446 017c C0F20003 		movt	r3, #:upper16:total_bytes_received
+ 447 0180 1A60     		str	r2, [r3, #0]
+ 140:../src/spark_utilities.c **** 			newline = strchr(recvBuff, '\n');
+ 448              		.loc 1 140 0
+ 449 0182 40F20000 		movw	r0, #:lower16:recvBuff
+ 450 0186 C0F20000 		movt	r0, #:upper16:recvBuff
+ 451 018a 4FF00A01 		mov	r1, #10
+ 452 018e FFF7FEFF 		bl	strchr
+ 453 0192 B861     		str	r0, [r7, #24]
+ 454              	.L12:
+ 455              	.LBE3:
+ 141:../src/spark_utilities.c **** 		}
+ 142:../src/spark_utilities.c **** 	}
+ 143:../src/spark_utilities.c **** 
+ 144:../src/spark_utilities.c ****     if (NULL == newline && 0 < buffer_bytes_available)
+ 456              		.loc 1 144 0
+ 457 0194 BB69     		ldr	r3, [r7, #24]
+ 458 0196 002B     		cmp	r3, #0
+ 459 0198 05D1     		bne	.L15
+ 460              		.loc 1 144 0 is_stmt 0 discriminator 1
+ 461 019a 3B69     		ldr	r3, [r7, #16]
+ 462 019c 002B     		cmp	r3, #0
+ 463 019e 02DD     		ble	.L15
+ 145:../src/spark_utilities.c ****     {
+ 146:../src/spark_utilities.c ****     	return 0;
+ 464              		.loc 1 146 0 is_stmt 1
+ 465 01a0 4FF00003 		mov	r3, #0
+ 466 01a4 0DE0     		b	.L14
+ 467              	.L15:
+ 468              	.LBB4:
+ 147:../src/spark_utilities.c ****     }
+ 148:../src/spark_utilities.c ****     else
+ 149:../src/spark_utilities.c ****     {
+ 150:../src/spark_utilities.c ****     	int retVal = total_bytes_received;
+ 469              		.loc 1 150 0
+ 470 01a6 40F20003 		movw	r3, #:lower16:total_bytes_received
+ 471 01aa C0F20003 		movt	r3, #:upper16:total_bytes_received
+ 472 01ae 1B68     		ldr	r3, [r3, #0]
+ 473 01b0 3B60     		str	r3, [r7, #0]
+ 151:../src/spark_utilities.c ****     	total_bytes_received = 0;
+ 474              		.loc 1 151 0
+ 475 01b2 40F20003 		movw	r3, #:lower16:total_bytes_received
+ 476 01b6 C0F20003 		movt	r3, #:upper16:total_bytes_received
+ 477 01ba 4FF00002 		mov	r2, #0
+ 478 01be 1A60     		str	r2, [r3, #0]
+ 152:../src/spark_utilities.c ****     	return retVal;
+ 479              		.loc 1 152 0
+ 480 01c0 3B68     		ldr	r3, [r7, #0]
+ 481              	.L14:
+ 482              	.LBE4:
+ 153:../src/spark_utilities.c ****     }
+ 154:../src/spark_utilities.c **** }
+ 483              		.loc 1 154 0
+ 484 01c2 1846     		mov	r0, r3
+ 485 01c4 07F12007 		add	r7, r7, #32
+ 486 01c8 BD46     		mov	sp, r7
+ 487 01ca 80BD     		pop	{r7, pc}
+ 488              		.cfi_endproc
+ 489              	.LFE58:
+ 491              		.section	.text.process_command,"ax",%progbits
+ 492              		.align	2
+ 493              		.global	process_command
+ 494              		.thumb
+ 495              		.thumb_func
+ 497              	process_command:
+ 498              	.LFB59:
+ 155:../src/spark_utilities.c **** 
+ 156:../src/spark_utilities.c **** // process the contents of recvBuff
+ 157:../src/spark_utilities.c **** // returns number of bytes transmitted or -1 on error
+ 158:../src/spark_utilities.c **** int process_command()
+ 159:../src/spark_utilities.c **** {
+ 499              		.loc 1 159 0
+ 500              		.cfi_startproc
+ 501              		@ args = 0, pretend = 0, frame = 16
+ 502              		@ frame_needed = 1, uses_anonymous_args = 0
+ 503 0000 80B5     		push	{r7, lr}
+ 504              	.LCFI9:
+ 505              		.cfi_def_cfa_offset 8
+ 506              		.cfi_offset 7, -8
+ 507              		.cfi_offset 14, -4
+ 508 0002 84B0     		sub	sp, sp, #16
+ 509              	.LCFI10:
+ 510              		.cfi_def_cfa_offset 24
+ 511 0004 00AF     		add	r7, sp, #0
+ 512              	.LCFI11:
+ 513              		.cfi_def_cfa_register 7
+ 160:../src/spark_utilities.c **** 	int bytes_sent = 0;
+ 514              		.loc 1 160 0
+ 515 0006 4FF00003 		mov	r3, #0
+ 516 000a FB60     		str	r3, [r7, #12]
+ 161:../src/spark_utilities.c **** 
+ 162:../src/spark_utilities.c **** 	// who
+ 163:../src/spark_utilities.c **** 	if (0 == strncmp(recvBuff, API_Who, strlen(API_Who)))
+ 517              		.loc 1 163 0
+ 518 000c 40F20000 		movw	r0, #:lower16:recvBuff
+ 519 0010 C0F20000 		movt	r0, #:upper16:recvBuff
+ 520 0014 40F20001 		movw	r1, #:lower16:API_Who
+ 521 0018 C0F20001 		movt	r1, #:upper16:API_Who
+ 522 001c 4FF00302 		mov	r2, #3
+ 523 0020 FFF7FEFF 		bl	strncmp
+ 524 0024 0346     		mov	r3, r0
+ 525 0026 002B     		cmp	r3, #0
+ 526 0028 11D1     		bne	.L17
+ 164:../src/spark_utilities.c **** 	{
+ 165:../src/spark_utilities.c **** 		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL);
+ 527              		.loc 1 165 0
+ 528 002a 40F20003 		movw	r3, #:lower16:sparkSocket
+ 529 002e C0F20003 		movt	r3, #:upper16:sparkSocket
+ 530 0032 1B68     		ldr	r3, [r3, #0]
+ 531 0034 1846     		mov	r0, r3
+ 532 0036 40F20001 		movw	r1, #:lower16:Device_Name
+ 533 003a C0F20001 		movt	r1, #:upper16:Device_Name
+ 534 003e 4FF00002 		mov	r2, #0
+ 535 0042 4FF00003 		mov	r3, #0
+ 536 0046 FFF7FEFF 		bl	Spark_Send_Device_Message
+ 537 004a F860     		str	r0, [r7, #12]
+ 538 004c 49E1     		b	.L18
+ 539              	.L17:
+ 166:../src/spark_utilities.c **** 	}
+ 167:../src/spark_utilities.c **** 
+ 168:../src/spark_utilities.c **** 	// API alive signal received and acknowledged by core, reset alive timeout
+ 169:../src/spark_utilities.c **** 	else if (0 == strncmp(recvBuff, API_Alive, strlen(API_Alive)))
+ 540              		.loc 1 169 0
+ 541 004e 40F20000 		movw	r0, #:lower16:recvBuff
+ 542 0052 C0F20000 		movt	r0, #:upper16:recvBuff
+ 543 0056 40F20001 		movw	r1, #:lower16:API_Alive
+ 544 005a C0F20001 		movt	r1, #:upper16:API_Alive
+ 545 005e 4FF00502 		mov	r2, #5
+ 546 0062 FFF7FEFF 		bl	strncmp
+ 547 0066 0346     		mov	r3, r0
+ 548 0068 002B     		cmp	r3, #0
+ 549 006a 27D1     		bne	.L19
+ 170:../src/spark_utilities.c **** 	{
+ 171:../src/spark_utilities.c **** 		if(!SPARK_DEVICE_ACKED)
+ 550              		.loc 1 171 0
+ 551 006c 40F20003 		movw	r3, #:lower16:SPARK_DEVICE_ACKED
+ 552 0070 C0F20003 		movt	r3, #:upper16:SPARK_DEVICE_ACKED
+ 553 0074 1B78     		ldrb	r3, [r3, #0]
+ 554 0076 DBB2     		uxtb	r3, r3
+ 555 0078 002B     		cmp	r3, #0
+ 556 007a 06D1     		bne	.L20
+ 172:../src/spark_utilities.c **** 		{
+ 173:../src/spark_utilities.c **** 			SPARK_DEVICE_ACKED = 1;//First alive received by Core means Server received Device ID
+ 557              		.loc 1 173 0
+ 558 007c 40F20003 		movw	r3, #:lower16:SPARK_DEVICE_ACKED
+ 559 0080 C0F20003 		movt	r3, #:upper16:SPARK_DEVICE_ACKED
+ 560 0084 4FF00102 		mov	r2, #1
+ 561 0088 1A70     		strb	r2, [r3, #0]
+ 562              	.L20:
+ 174:../src/spark_utilities.c **** 		}
+ 175:../src/spark_utilities.c **** 		TimingSparkAliveTimeout = 0;
+ 563              		.loc 1 175 0
+ 564 008a 40F20003 		movw	r3, #:lower16:TimingSparkAliveTimeout
+ 565 008e C0F20003 		movt	r3, #:upper16:TimingSparkAliveTimeout
+ 566 0092 4FF00002 		mov	r2, #0
+ 567 0096 1A60     		str	r2, [r3, #0]
+ 176:../src/spark_utilities.c **** 		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
+ 568              		.loc 1 176 0
+ 569 0098 40F20003 		movw	r3, #:lower16:sparkSocket
+ 570 009c C0F20003 		movt	r3, #:upper16:sparkSocket
+ 571 00a0 1B68     		ldr	r3, [r3, #0]
+ 572 00a2 1846     		mov	r0, r3
+ 573 00a4 40F20001 		movw	r1, #:lower16:API_Alive
+ 574 00a8 C0F20001 		movt	r1, #:upper16:API_Alive
+ 575 00ac 4FF00002 		mov	r2, #0
+ 576 00b0 4FF00003 		mov	r3, #0
+ 577 00b4 FFF7FEFF 		bl	Spark_Send_Device_Message
+ 578 00b8 F860     		str	r0, [r7, #12]
+ 579 00ba 12E1     		b	.L18
+ 580              	.L19:
+ 177:../src/spark_utilities.c **** 	}
+ 178:../src/spark_utilities.c **** 
+ 179:../src/spark_utilities.c **** 	// command to set a pin high
+ 180:../src/spark_utilities.c **** 	else if (0 == strncmp(recvBuff, High_Dx, 6))
+ 581              		.loc 1 180 0
+ 582 00bc 40F20000 		movw	r0, #:lower16:recvBuff
+ 583 00c0 C0F20000 		movt	r0, #:upper16:recvBuff
+ 584 00c4 40F20001 		movw	r1, #:lower16:High_Dx
+ 585 00c8 C0F20001 		movt	r1, #:upper16:High_Dx
+ 586 00cc 4FF00602 		mov	r2, #6
+ 587 00d0 FFF7FEFF 		bl	strncmp
+ 588 00d4 0346     		mov	r3, r0
+ 589 00d6 002B     		cmp	r3, #0
+ 590 00d8 42D1     		bne	.L21
+ 181:../src/spark_utilities.c **** 	{
+ 182:../src/spark_utilities.c **** 		High_Dx[6] = recvBuff[6];
+ 591              		.loc 1 182 0
+ 592 00da 40F20003 		movw	r3, #:lower16:recvBuff
+ 593 00de C0F20003 		movt	r3, #:upper16:recvBuff
+ 594 00e2 9A79     		ldrb	r2, [r3, #6]	@ zero_extendqisi2
+ 595 00e4 40F20003 		movw	r3, #:lower16:High_Dx
+ 596 00e8 C0F20003 		movt	r3, #:upper16:High_Dx
+ 597 00ec 9A71     		strb	r2, [r3, #6]
+ 183:../src/spark_utilities.c **** 
+ 184:../src/spark_utilities.c **** 		if (OK == DIO_SetState(atoc(High_Dx[6]), HIGH))
+ 598              		.loc 1 184 0
+ 599 00ee 40F20003 		movw	r3, #:lower16:High_Dx
+ 600 00f2 C0F20003 		movt	r3, #:upper16:High_Dx
+ 601 00f6 9B79     		ldrb	r3, [r3, #6]	@ zero_extendqisi2
+ 602 00f8 1846     		mov	r0, r3
+ 603 00fa FFF7FEFF 		bl	atoc
+ 604 00fe 0346     		mov	r3, r0
+ 605 0100 1846     		mov	r0, r3
+ 606 0102 4FF00101 		mov	r1, #1
+ 607 0106 FFF7FEFF 		bl	DIO_SetState
+ 608 010a 0346     		mov	r3, r0
+ 609 010c 002B     		cmp	r3, #0
+ 610 010e 13D1     		bne	.L22
+ 185:../src/spark_utilities.c **** 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)High_Dx, NULL);
+ 611              		.loc 1 185 0
+ 612 0110 40F20003 		movw	r3, #:lower16:sparkSocket
+ 613 0114 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 614 0118 1B68     		ldr	r3, [r3, #0]
+ 615 011a 1846     		mov	r0, r3
+ 616 011c 40F20001 		movw	r1, #:lower16:Device_Ok
+ 617 0120 C0F20001 		movt	r1, #:upper16:Device_Ok
+ 618 0124 40F20002 		movw	r2, #:lower16:High_Dx
+ 619 0128 C0F20002 		movt	r2, #:upper16:High_Dx
+ 620 012c 4FF00003 		mov	r3, #0
+ 621 0130 FFF7FEFF 		bl	Spark_Send_Device_Message
+ 622 0134 F860     		str	r0, [r7, #12]
+ 623 0136 D4E0     		b	.L18
+ 624              	.L22:
+ 186:../src/spark_utilities.c **** 		else
+ 187:../src/spark_utilities.c **** 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)High_Dx, NULL);
+ 625              		.loc 1 187 0
+ 626 0138 40F20003 		movw	r3, #:lower16:sparkSocket
+ 627 013c C0F20003 		movt	r3, #:upper16:sparkSocket
+ 628 0140 1B68     		ldr	r3, [r3, #0]
+ 629 0142 1846     		mov	r0, r3
+ 630 0144 40F20001 		movw	r1, #:lower16:Device_Fail
+ 631 0148 C0F20001 		movt	r1, #:upper16:Device_Fail
+ 632 014c 40F20002 		movw	r2, #:lower16:High_Dx
+ 633 0150 C0F20002 		movt	r2, #:upper16:High_Dx
+ 634 0154 4FF00003 		mov	r3, #0
+ 635 0158 FFF7FEFF 		bl	Spark_Send_Device_Message
+ 636 015c F860     		str	r0, [r7, #12]
+ 637 015e C0E0     		b	.L18
+ 638              	.L21:
+ 188:../src/spark_utilities.c **** 	}
+ 189:../src/spark_utilities.c **** 
+ 190:../src/spark_utilities.c **** 	// command to set a pin low
+ 191:../src/spark_utilities.c **** 	else if (0 == strncmp(recvBuff, Low_Dx, 5))
+ 639              		.loc 1 191 0
+ 640 0160 40F20000 		movw	r0, #:lower16:recvBuff
+ 641 0164 C0F20000 		movt	r0, #:upper16:recvBuff
+ 642 0168 40F20001 		movw	r1, #:lower16:Low_Dx
+ 643 016c C0F20001 		movt	r1, #:upper16:Low_Dx
+ 644 0170 4FF00502 		mov	r2, #5
+ 645 0174 FFF7FEFF 		bl	strncmp
+ 646 0178 0346     		mov	r3, r0
+ 647 017a 002B     		cmp	r3, #0
+ 648 017c 42D1     		bne	.L23
+ 192:../src/spark_utilities.c **** 	{
+ 193:../src/spark_utilities.c **** 		Low_Dx[5] = recvBuff[5];
+ 649              		.loc 1 193 0
+ 650 017e 40F20003 		movw	r3, #:lower16:recvBuff
+ 651 0182 C0F20003 		movt	r3, #:upper16:recvBuff
+ 652 0186 5A79     		ldrb	r2, [r3, #5]	@ zero_extendqisi2
+ 653 0188 40F20003 		movw	r3, #:lower16:Low_Dx
+ 654 018c C0F20003 		movt	r3, #:upper16:Low_Dx
+ 655 0190 5A71     		strb	r2, [r3, #5]
+ 194:../src/spark_utilities.c **** 
+ 195:../src/spark_utilities.c **** 		if (OK == DIO_SetState(atoc(Low_Dx[5]), LOW))
+ 656              		.loc 1 195 0
+ 657 0192 40F20003 		movw	r3, #:lower16:Low_Dx
+ 658 0196 C0F20003 		movt	r3, #:upper16:Low_Dx
+ 659 019a 5B79     		ldrb	r3, [r3, #5]	@ zero_extendqisi2
+ 660 019c 1846     		mov	r0, r3
+ 661 019e FFF7FEFF 		bl	atoc
+ 662 01a2 0346     		mov	r3, r0
+ 663 01a4 1846     		mov	r0, r3
+ 664 01a6 4FF00001 		mov	r1, #0
+ 665 01aa FFF7FEFF 		bl	DIO_SetState
+ 666 01ae 0346     		mov	r3, r0
+ 667 01b0 002B     		cmp	r3, #0
+ 668 01b2 13D1     		bne	.L24
+ 196:../src/spark_utilities.c **** 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)Low_Dx, NULL);
+ 669              		.loc 1 196 0
+ 670 01b4 40F20003 		movw	r3, #:lower16:sparkSocket
+ 671 01b8 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 672 01bc 1B68     		ldr	r3, [r3, #0]
+ 673 01be 1846     		mov	r0, r3
+ 674 01c0 40F20001 		movw	r1, #:lower16:Device_Ok
+ 675 01c4 C0F20001 		movt	r1, #:upper16:Device_Ok
+ 676 01c8 40F20002 		movw	r2, #:lower16:Low_Dx
+ 677 01cc C0F20002 		movt	r2, #:upper16:Low_Dx
+ 678 01d0 4FF00003 		mov	r3, #0
+ 679 01d4 FFF7FEFF 		bl	Spark_Send_Device_Message
+ 680 01d8 F860     		str	r0, [r7, #12]
+ 681 01da 82E0     		b	.L18
+ 682              	.L24:
+ 197:../src/spark_utilities.c **** 		else
+ 198:../src/spark_utilities.c **** 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)Low_Dx, NULL);
+ 683              		.loc 1 198 0
+ 684 01dc 40F20003 		movw	r3, #:lower16:sparkSocket
+ 685 01e0 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 686 01e4 1B68     		ldr	r3, [r3, #0]
+ 687 01e6 1846     		mov	r0, r3
+ 688 01e8 40F20001 		movw	r1, #:lower16:Device_Fail
+ 689 01ec C0F20001 		movt	r1, #:upper16:Device_Fail
+ 690 01f0 40F20002 		movw	r2, #:lower16:Low_Dx
+ 691 01f4 C0F20002 		movt	r2, #:upper16:Low_Dx
+ 692 01f8 4FF00003 		mov	r3, #0
+ 693 01fc FFF7FEFF 		bl	Spark_Send_Device_Message
+ 694 0200 F860     		str	r0, [r7, #12]
+ 695 0202 6EE0     		b	.L18
+ 696              	.L23:
+ 199:../src/spark_utilities.c **** 	}
+ 200:../src/spark_utilities.c **** 
+ 201:../src/spark_utilities.c **** 	// command to call the user-defined function
+ 202:../src/spark_utilities.c **** 	else if (0 == strncmp(recvBuff, API_UserFunc, strlen(API_UserFunc)))
+ 697              		.loc 1 202 0
+ 698 0204 40F20000 		movw	r0, #:lower16:recvBuff
+ 699 0208 C0F20000 		movt	r0, #:upper16:recvBuff
+ 700 020c 40F20001 		movw	r1, #:lower16:API_UserFunc
+ 701 0210 C0F20001 		movt	r1, #:upper16:API_UserFunc
+ 702 0214 4FF00902 		mov	r2, #9
+ 703 0218 FFF7FEFF 		bl	strncmp
+ 704 021c 0346     		mov	r3, r0
+ 705 021e 002B     		cmp	r3, #0
+ 706 0220 3BD1     		bne	.L25
+ 707              	.LBB5:
+ 203:../src/spark_utilities.c **** 	{
+ 204:../src/spark_utilities.c **** 		char *user_arg = &recvBuff[strlen(API_UserFunc)];
+ 708              		.loc 1 204 0
+ 709 0222 334B     		ldr	r3, .L31
+ 710 0224 7B60     		str	r3, [r7, #4]
+ 205:../src/spark_utilities.c **** 		char *newline = strchr(user_arg, '\n');
+ 711              		.loc 1 205 0
+ 712 0226 7868     		ldr	r0, [r7, #4]
+ 713 0228 4FF00A01 		mov	r1, #10
+ 714 022c FFF7FEFF 		bl	strchr
+ 715 0230 B860     		str	r0, [r7, #8]
+ 206:../src/spark_utilities.c **** 		if (NULL != newline)
+ 716              		.loc 1 206 0
+ 717 0232 BB68     		ldr	r3, [r7, #8]
+ 718 0234 002B     		cmp	r3, #0
+ 719 0236 0DD0     		beq	.L26
+ 207:../src/spark_utilities.c **** 		{
+ 208:../src/spark_utilities.c **** 			if ('\r' == *(newline - 1))
+ 720              		.loc 1 208 0
+ 721 0238 BB68     		ldr	r3, [r7, #8]
+ 722 023a 03F1FF33 		add	r3, r3, #-1
+ 723 023e 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 724 0240 0D2B     		cmp	r3, #13
+ 725 0242 03D1     		bne	.L27
+ 209:../src/spark_utilities.c **** 				newline--;
+ 726              		.loc 1 209 0
+ 727 0244 BB68     		ldr	r3, [r7, #8]
+ 728 0246 03F1FF33 		add	r3, r3, #-1
+ 729 024a BB60     		str	r3, [r7, #8]
+ 730              	.L27:
+ 210:../src/spark_utilities.c **** 			*newline = '\0';
+ 731              		.loc 1 210 0
+ 732 024c BB68     		ldr	r3, [r7, #8]
+ 733 024e 4FF00002 		mov	r2, #0
+ 734 0252 1A70     		strb	r2, [r3, #0]
+ 735              	.L26:
+ 211:../src/spark_utilities.c **** 		}
+ 212:../src/spark_utilities.c **** 
+ 213:../src/spark_utilities.c **** 	    memset(userBuff, 0, SPARK_BUF_LEN);
+ 736              		.loc 1 213 0
+ 737 0254 40F20000 		movw	r0, #:lower16:userBuff
+ 738 0258 C0F20000 		movt	r0, #:upper16:userBuff
+ 739 025c 4FF00001 		mov	r1, #0
+ 740 0260 4FF48072 		mov	r2, #256
+ 741 0264 FFF7FEFF 		bl	memset
+ 214:../src/spark_utilities.c **** 	    if(NULL != user_arg)
+ 742              		.loc 1 214 0
+ 743 0268 7B68     		ldr	r3, [r7, #4]
+ 744 026a 002B     		cmp	r3, #0
+ 745 026c 0BD0     		beq	.L28
+ 215:../src/spark_utilities.c **** 	    {
+ 216:../src/spark_utilities.c **** 	    	memcpy(userBuff, user_arg, strlen(user_arg));
+ 746              		.loc 1 216 0
+ 747 026e 7868     		ldr	r0, [r7, #4]
+ 748 0270 FFF7FEFF 		bl	strlen
+ 749 0274 0346     		mov	r3, r0
+ 750 0276 40F20000 		movw	r0, #:lower16:userBuff
+ 751 027a C0F20000 		movt	r0, #:upper16:userBuff
+ 752 027e 7968     		ldr	r1, [r7, #4]
+ 753 0280 1A46     		mov	r2, r3
+ 754 0282 FFF7FEFF 		bl	memcpy
+ 755              	.L28:
+ 217:../src/spark_utilities.c **** 	    }
+ 218:../src/spark_utilities.c **** 		pUserFunction = user_function;
+ 756              		.loc 1 218 0
+ 757 0286 40F20003 		movw	r3, #:lower16:pUserFunction
+ 758 028a C0F20003 		movt	r3, #:upper16:pUserFunction
+ 759 028e 40F20002 		movw	r2, #:lower16:user_function
+ 760 0292 C0F20002 		movt	r2, #:upper16:user_function
+ 761 0296 1A60     		str	r2, [r3, #0]
+ 762 0298 23E0     		b	.L18
+ 763              	.L25:
+ 764              	.LBE5:
+ 219:../src/spark_utilities.c **** 	}
+ 220:../src/spark_utilities.c **** 
+ 221:../src/spark_utilities.c **** 	// Do nothing for new line returned
+ 222:../src/spark_utilities.c **** 	else if(strcmp(recvBuff, Device_CRLF) == 0)
+ 765              		.loc 1 222 0
+ 766 029a 40F20000 		movw	r0, #:lower16:recvBuff
+ 767 029e C0F20000 		movt	r0, #:upper16:recvBuff
+ 768 02a2 40F20001 		movw	r1, #:lower16:Device_CRLF
+ 769 02a6 C0F20001 		movt	r1, #:upper16:Device_CRLF
+ 770 02aa FFF7FEFF 		bl	strcmp
+ 771 02ae 0346     		mov	r3, r0
+ 772 02b0 002B     		cmp	r3, #0
+ 773 02b2 03D1     		bne	.L29
+ 223:../src/spark_utilities.c **** 	{
+ 224:../src/spark_utilities.c **** 		bytes_sent = 0;
+ 774              		.loc 1 224 0
+ 775 02b4 4FF00003 		mov	r3, #0
+ 776 02b8 FB60     		str	r3, [r7, #12]
+ 777 02ba 12E0     		b	.L18
+ 778              	.L29:
+ 225:../src/spark_utilities.c **** 	}
+ 226:../src/spark_utilities.c **** 
+ 227:../src/spark_utilities.c **** 	else
+ 228:../src/spark_utilities.c **** 	{
+ 229:../src/spark_utilities.c **** 		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
+ 779              		.loc 1 229 0
+ 780 02bc 40F20003 		movw	r3, #:lower16:sparkSocket
+ 781 02c0 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 782 02c4 1B68     		ldr	r3, [r3, #0]
+ 783 02c6 1846     		mov	r0, r3
+ 784 02c8 40F20001 		movw	r1, #:lower16:Device_Fail
+ 785 02cc C0F20001 		movt	r1, #:upper16:Device_Fail
+ 786 02d0 40F20002 		movw	r2, #:lower16:recvBuff
+ 787 02d4 C0F20002 		movt	r2, #:upper16:recvBuff
+ 788 02d8 4FF00003 		mov	r3, #0
+ 789 02dc FFF7FEFF 		bl	Spark_Send_Device_Message
+ 790 02e0 F860     		str	r0, [r7, #12]
+ 791              	.L18:
+ 230:../src/spark_utilities.c **** 	}
+ 231:../src/spark_utilities.c **** 
+ 232:../src/spark_utilities.c **** 	return bytes_sent;
+ 792              		.loc 1 232 0
+ 793 02e2 FB68     		ldr	r3, [r7, #12]
+ 233:../src/spark_utilities.c **** }
+ 794              		.loc 1 233 0
+ 795 02e4 1846     		mov	r0, r3
+ 796 02e6 07F11007 		add	r7, r7, #16
+ 797 02ea BD46     		mov	sp, r7
+ 798 02ec 80BD     		pop	{r7, pc}
+ 799              	.L32:
+ 800 02ee 00BF     		.align	2
+ 801              	.L31:
+ 802 02f0 09000000 		.word	recvBuff+9
+ 803              		.cfi_endproc
+ 804              	.LFE59:
+ 806              		.section	.text.Spark_Process_API_Response,"ax",%progbits
+ 807              		.align	2
+ 808              		.global	Spark_Process_API_Response
+ 809              		.thumb
+ 810              		.thumb_func
+ 812              	Spark_Process_API_Response:
+ 813              	.LFB60:
+ 234:../src/spark_utilities.c **** 
+ 235:../src/spark_utilities.c **** int Spark_Process_API_Response(void)
+ 236:../src/spark_utilities.c **** {
+ 814              		.loc 1 236 0
+ 815              		.cfi_startproc
+ 816              		@ args = 0, pretend = 0, frame = 8
+ 817              		@ frame_needed = 1, uses_anonymous_args = 0
+ 818 0000 80B5     		push	{r7, lr}
+ 819              	.LCFI12:
+ 820              		.cfi_def_cfa_offset 8
+ 821              		.cfi_offset 7, -8
+ 822              		.cfi_offset 14, -4
+ 823 0002 82B0     		sub	sp, sp, #8
+ 824              	.LCFI13:
+ 825              		.cfi_def_cfa_offset 16
+ 826 0004 00AF     		add	r7, sp, #0
+ 827              	.LCFI14:
+ 828              		.cfi_def_cfa_register 7
+ 237:../src/spark_utilities.c **** 	int retVal = receive_line();
+ 829              		.loc 1 237 0
+ 830 0006 FFF7FEFF 		bl	receive_line
+ 831 000a 7860     		str	r0, [r7, #4]
+ 238:../src/spark_utilities.c **** 
+ 239:../src/spark_utilities.c **** 	if (0 < retVal)
+ 832              		.loc 1 239 0
+ 833 000c 7B68     		ldr	r3, [r7, #4]
+ 834 000e 002B     		cmp	r3, #0
+ 835 0010 02DD     		ble	.L34
+ 240:../src/spark_utilities.c **** 		retVal = process_command();
+ 836              		.loc 1 240 0
+ 837 0012 FFF7FEFF 		bl	process_command
+ 838 0016 7860     		str	r0, [r7, #4]
+ 839              	.L34:
+ 241:../src/spark_utilities.c **** 
+ 242:../src/spark_utilities.c **** 	return retVal;
+ 840              		.loc 1 242 0
+ 841 0018 7B68     		ldr	r3, [r7, #4]
+ 243:../src/spark_utilities.c **** }
+ 842              		.loc 1 243 0
+ 843 001a 1846     		mov	r0, r3
+ 844 001c 07F10807 		add	r7, r7, #8
+ 845 0020 BD46     		mov	sp, r7
+ 846 0022 80BD     		pop	{r7, pc}
+ 847              		.cfi_endproc
+ 848              	.LFE60:
+ 850              		.section	.text.userCallback,"ax",%progbits
+ 851              		.align	2
+ 852              		.global	userCallback
+ 853              		.thumb
+ 854              		.thumb_func
+ 856              	userCallback:
+ 857              	.LFB61:
+ 244:../src/spark_utilities.c **** 
+ 245:../src/spark_utilities.c **** void userCallback(char *callback_name)
+ 246:../src/spark_utilities.c **** {
+ 858              		.loc 1 246 0
+ 859              		.cfi_startproc
+ 860              		@ args = 0, pretend = 0, frame = 8
+ 861              		@ frame_needed = 1, uses_anonymous_args = 0
+ 862 0000 80B5     		push	{r7, lr}
+ 863              	.LCFI15:
+ 864              		.cfi_def_cfa_offset 8
+ 865              		.cfi_offset 7, -8
+ 866              		.cfi_offset 14, -4
+ 867 0002 82B0     		sub	sp, sp, #8
+ 868              	.LCFI16:
+ 869              		.cfi_def_cfa_offset 16
+ 870 0004 00AF     		add	r7, sp, #0
+ 871              	.LCFI17:
+ 872              		.cfi_def_cfa_register 7
+ 873 0006 7860     		str	r0, [r7, #4]
+ 247:../src/spark_utilities.c **** 	Spark_Send_Device_Message(sparkSocket, (char *)API_Callback, (char *)callback_name, NULL);
+ 874              		.loc 1 247 0
+ 875 0008 40F20003 		movw	r3, #:lower16:sparkSocket
+ 876 000c C0F20003 		movt	r3, #:upper16:sparkSocket
+ 877 0010 1B68     		ldr	r3, [r3, #0]
+ 878 0012 1846     		mov	r0, r3
+ 879 0014 40F20001 		movw	r1, #:lower16:API_Callback
+ 880 0018 C0F20001 		movt	r1, #:upper16:API_Callback
+ 881 001c 7A68     		ldr	r2, [r7, #4]
+ 882 001e 4FF00003 		mov	r3, #0
+ 883 0022 FFF7FEFF 		bl	Spark_Send_Device_Message
+ 248:../src/spark_utilities.c **** }
+ 884              		.loc 1 248 0
+ 885 0026 07F10807 		add	r7, r7, #8
+ 886 002a BD46     		mov	sp, r7
+ 887 002c 80BD     		pop	{r7, pc}
+ 888              		.cfi_endproc
+ 889              	.LFE61:
+ 891 002e 00BF     		.section	.text.userCallbackWithData,"ax",%progbits
+ 892              		.align	2
+ 893              		.global	userCallbackWithData
+ 894              		.thumb
+ 895              		.thumb_func
+ 897              	userCallbackWithData:
+ 898              	.LFB62:
+ 249:../src/spark_utilities.c **** 
+ 250:../src/spark_utilities.c **** void userCallbackWithData(char *callback_name, char *callback_data, long data_length)
+ 251:../src/spark_utilities.c **** {
+ 899              		.loc 1 251 0
+ 900              		.cfi_startproc
+ 901              		@ args = 0, pretend = 0, frame = 32
+ 902              		@ frame_needed = 1, uses_anonymous_args = 0
+ 903 0000 80B5     		push	{r7, lr}
+ 904              	.LCFI18:
+ 905              		.cfi_def_cfa_offset 8
+ 906              		.cfi_offset 7, -8
+ 907              		.cfi_offset 14, -4
+ 908 0002 88B0     		sub	sp, sp, #32
+ 909              	.LCFI19:
+ 910              		.cfi_def_cfa_offset 40
+ 911 0004 00AF     		add	r7, sp, #0
+ 912              	.LCFI20:
+ 913              		.cfi_def_cfa_register 7
+ 914 0006 F860     		str	r0, [r7, #12]
+ 915 0008 B960     		str	r1, [r7, #8]
+ 916 000a 7A60     		str	r2, [r7, #4]
+ 252:../src/spark_utilities.c **** 	char lenStr[11];
+ 253:../src/spark_utilities.c **** 	int len = itoa(data_length, &lenStr[0]);
+ 917              		.loc 1 253 0
+ 918 000c 07F11003 		add	r3, r7, #16
+ 919 0010 7868     		ldr	r0, [r7, #4]
+ 920 0012 1946     		mov	r1, r3
+ 921 0014 FFF7FEFF 		bl	itoa
+ 922 0018 0346     		mov	r3, r0
+ 923 001a FB61     		str	r3, [r7, #28]
+ 254:../src/spark_utilities.c **** 	lenStr[len] = '\0';
+ 924              		.loc 1 254 0
+ 925 001c 07F11002 		add	r2, r7, #16
+ 926 0020 FB69     		ldr	r3, [r7, #28]
+ 927 0022 D318     		adds	r3, r2, r3
+ 928 0024 4FF00002 		mov	r2, #0
+ 929 0028 1A70     		strb	r2, [r3, #0]
+ 255:../src/spark_utilities.c **** 	Spark_Send_Device_Message(sparkSocket, (char *)API_Callback, (char *)callback_name, (char *)lenStr
+ 930              		.loc 1 255 0
+ 931 002a 40F20003 		movw	r3, #:lower16:sparkSocket
+ 932 002e C0F20003 		movt	r3, #:upper16:sparkSocket
+ 933 0032 1A68     		ldr	r2, [r3, #0]
+ 934 0034 07F11003 		add	r3, r7, #16
+ 935 0038 1046     		mov	r0, r2
+ 936 003a 40F20001 		movw	r1, #:lower16:API_Callback
+ 937 003e C0F20001 		movt	r1, #:upper16:API_Callback
+ 938 0042 FA68     		ldr	r2, [r7, #12]
+ 939 0044 FFF7FEFF 		bl	Spark_Send_Device_Message
+ 256:../src/spark_utilities.c **** }
+ 940              		.loc 1 256 0
+ 941 0048 07F12007 		add	r7, r7, #32
+ 942 004c BD46     		mov	sp, r7
+ 943 004e 80BD     		pop	{r7, pc}
+ 944              		.cfi_endproc
+ 945              	.LFE62:
+ 947              		.section	.text.user_function,"ax",%progbits
+ 948              		.align	2
+ 949              		.thumb
+ 950              		.thumb_func
+ 952              	user_function:
+ 953              	.LFB63:
+ 257:../src/spark_utilities.c **** 
+ 258:../src/spark_utilities.c **** static void user_function(void)
+ 259:../src/spark_utilities.c **** {
+ 954              		.loc 1 259 0
+ 955              		.cfi_startproc
+ 956              		@ args = 0, pretend = 0, frame = 24
+ 957              		@ frame_needed = 1, uses_anonymous_args = 0
+ 958 0000 80B5     		push	{r7, lr}
+ 959              	.LCFI21:
+ 960              		.cfi_def_cfa_offset 8
+ 961              		.cfi_offset 7, -8
+ 962              		.cfi_offset 14, -4
+ 963 0002 86B0     		sub	sp, sp, #24
+ 964              	.LCFI22:
+ 965              		.cfi_def_cfa_offset 32
+ 966 0004 00AF     		add	r7, sp, #0
+ 967              	.LCFI23:
+ 968              		.cfi_def_cfa_register 7
+ 260:../src/spark_utilities.c **** 	if (NULL != userFunction)
+ 969              		.loc 1 260 0
+ 970 0006 40F20003 		movw	r3, #:lower16:userFunction
+ 971 000a C0F20003 		movt	r3, #:upper16:userFunction
+ 972 000e 002B     		cmp	r3, #0
+ 973 0010 2FD0     		beq	.L38
+ 974              	.LBB6:
+ 261:../src/spark_utilities.c **** 	{
+ 262:../src/spark_utilities.c **** 		pUserFunction = NULL;
+ 975              		.loc 1 262 0
+ 976 0012 40F20003 		movw	r3, #:lower16:pUserFunction
+ 977 0016 C0F20003 		movt	r3, #:upper16:pUserFunction
+ 978 001a 4FF00002 		mov	r2, #0
+ 979 001e 1A60     		str	r2, [r3, #0]
+ 263:../src/spark_utilities.c **** 		char retStr[11];
+ 264:../src/spark_utilities.c **** 		int userResult = userFunction(userBuff);
+ 980              		.loc 1 264 0
+ 981 0020 40F20000 		movw	r0, #:lower16:userBuff
+ 982 0024 C0F20000 		movt	r0, #:upper16:userBuff
+ 983 0028 FFF7FEFF 		bl	userFunction
+ 984 002c 0346     		mov	r3, r0
+ 985 002e 7B61     		str	r3, [r7, #20]
+ 265:../src/spark_utilities.c **** 		int retLen = itoa(userResult, retStr);
+ 986              		.loc 1 265 0
+ 987 0030 07F10403 		add	r3, r7, #4
+ 988 0034 7869     		ldr	r0, [r7, #20]
+ 989 0036 1946     		mov	r1, r3
+ 990 0038 FFF7FEFF 		bl	itoa
+ 991 003c 0346     		mov	r3, r0
+ 992 003e 3B61     		str	r3, [r7, #16]
+ 266:../src/spark_utilities.c **** 		retStr[retLen] = '\0';
+ 993              		.loc 1 266 0
+ 994 0040 07F10402 		add	r2, r7, #4
+ 995 0044 3B69     		ldr	r3, [r7, #16]
+ 996 0046 D318     		adds	r3, r2, r3
+ 997 0048 4FF00002 		mov	r2, #0
+ 998 004c 1A70     		strb	r2, [r3, #0]
+ 267:../src/spark_utilities.c **** 		Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_UserFunc, (char *)retStr);
+ 999              		.loc 1 267 0
+ 1000 004e 40F20003 		movw	r3, #:lower16:sparkSocket
+ 1001 0052 C0F20003 		movt	r3, #:upper16:sparkSocket
+ 1002 0056 1A68     		ldr	r2, [r3, #0]
+ 1003 0058 07F10403 		add	r3, r7, #4
+ 1004 005c 1046     		mov	r0, r2
+ 1005 005e 40F20001 		movw	r1, #:lower16:Device_Ok
+ 1006 0062 C0F20001 		movt	r1, #:upper16:Device_Ok
+ 1007 0066 40F20002 		movw	r2, #:lower16:API_UserFunc
+ 1008 006a C0F20002 		movt	r2, #:upper16:API_UserFunc
+ 1009 006e FFF7FEFF 		bl	Spark_Send_Device_Message
+ 1010              	.L38:
+ 1011              	.LBE6:
+ 268:../src/spark_utilities.c **** 	}
+ 269:../src/spark_utilities.c **** }
+ 1012              		.loc 1 269 0
+ 1013 0072 07F11807 		add	r7, r7, #24
+ 1014 0076 BD46     		mov	sp, r7
+ 1015 0078 80BD     		pop	{r7, pc}
+ 1016              		.cfi_endproc
+ 1017              	.LFE63:
+ 1019 007a 00BF     		.section	.text.Spark_Send_Device_Message,"ax",%progbits
+ 1020              		.align	2
+ 1021              		.thumb
+ 1022              		.thumb_func
+ 1024              	Spark_Send_Device_Message:
+ 1025              	.LFB64:
+ 270:../src/spark_utilities.c **** 
+ 271:../src/spark_utilities.c **** // returns number of bytes transmitted or -1 on error
+ 272:../src/spark_utilities.c **** static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue)
+ 273:../src/spark_utilities.c **** {
+ 1026              		.loc 1 273 0
+ 1027              		.cfi_startproc
+ 1028              		@ args = 0, pretend = 0, frame = 280
+ 1029              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1030 0000 90B5     		push	{r4, r7, lr}
+ 1031              	.LCFI24:
+ 1032              		.cfi_def_cfa_offset 12
+ 1033              		.cfi_offset 4, -12
+ 1034              		.cfi_offset 7, -8
+ 1035              		.cfi_offset 14, -4
+ 1036 0002 C7B0     		sub	sp, sp, #284
+ 1037              	.LCFI25:
+ 1038              		.cfi_def_cfa_offset 296
+ 1039 0004 00AF     		add	r7, sp, #0
+ 1040              	.LCFI26:
+ 1041              		.cfi_def_cfa_register 7
+ 1042 0006 07F10C04 		add	r4, r7, #12
+ 1043 000a 2060     		str	r0, [r4, #0]
+ 1044 000c 07F10800 		add	r0, r7, #8
+ 1045 0010 0160     		str	r1, [r0, #0]
+ 1046 0012 07F10401 		add	r1, r7, #4
+ 1047 0016 0A60     		str	r2, [r1, #0]
+ 1048 0018 3A46     		mov	r2, r7
+ 1049 001a 1360     		str	r3, [r2, #0]
+ 274:../src/spark_utilities.c ****     char cmdBuf[SPARK_BUF_LEN];
+ 275:../src/spark_utilities.c ****     int sendLen = 0;
+ 1050              		.loc 1 275 0
+ 1051 001c 4FF00003 		mov	r3, #0
+ 1052 0020 C7F81431 		str	r3, [r7, #276]
+ 276:../src/spark_utilities.c ****     int retVal = 0;
+ 1053              		.loc 1 276 0
+ 1054 0024 4FF00003 		mov	r3, #0
+ 1055 0028 C7F81031 		str	r3, [r7, #272]
+ 277:../src/spark_utilities.c **** 
+ 278:../src/spark_utilities.c ****     memset(cmdBuf, 0, SPARK_BUF_LEN);
+ 1056              		.loc 1 278 0
+ 1057 002c 07F11003 		add	r3, r7, #16
+ 1058 0030 1846     		mov	r0, r3
+ 1059 0032 4FF00001 		mov	r1, #0
+ 1060 0036 4FF48072 		mov	r2, #256
+ 1061 003a FFF7FEFF 		bl	memset
+ 279:../src/spark_utilities.c **** 
+ 280:../src/spark_utilities.c ****     if(cmd != NULL)
+ 1062              		.loc 1 280 0
+ 1063 003e 07F10803 		add	r3, r7, #8
+ 1064 0042 1B68     		ldr	r3, [r3, #0]
+ 1065 0044 002B     		cmp	r3, #0
+ 1066 0046 16D0     		beq	.L41
+ 281:../src/spark_utilities.c ****     {
+ 282:../src/spark_utilities.c ****         sendLen = strlen(cmd);
+ 1067              		.loc 1 282 0
+ 1068 0048 07F10803 		add	r3, r7, #8
+ 1069 004c 1868     		ldr	r0, [r3, #0]
+ 1070 004e FFF7FEFF 		bl	strlen
+ 1071 0052 0346     		mov	r3, r0
+ 1072 0054 C7F81431 		str	r3, [r7, #276]
+ 283:../src/spark_utilities.c ****         memcpy(cmdBuf, cmd, strlen(cmd));
+ 1073              		.loc 1 283 0
+ 1074 0058 07F10803 		add	r3, r7, #8
+ 1075 005c 1868     		ldr	r0, [r3, #0]
+ 1076 005e FFF7FEFF 		bl	strlen
+ 1077 0062 0346     		mov	r3, r0
+ 1078 0064 07F11001 		add	r1, r7, #16
+ 1079 0068 07F10802 		add	r2, r7, #8
+ 1080 006c 0846     		mov	r0, r1
+ 1081 006e 1168     		ldr	r1, [r2, #0]
+ 1082 0070 1A46     		mov	r2, r3
+ 1083 0072 FFF7FEFF 		bl	memcpy
+ 1084              	.L41:
+ 284:../src/spark_utilities.c ****     }
+ 285:../src/spark_utilities.c **** 
+ 286:../src/spark_utilities.c ****     if(cmdparam != NULL)
+ 1085              		.loc 1 286 0
+ 1086 0076 07F10403 		add	r3, r7, #4
+ 1087 007a 1B68     		ldr	r3, [r3, #0]
+ 1088 007c 002B     		cmp	r3, #0
+ 1089 007e 1CD0     		beq	.L42
+ 287:../src/spark_utilities.c ****     {
+ 288:../src/spark_utilities.c ****         memcpy(&cmdBuf[sendLen], cmdparam, strlen(cmdparam));
+ 1090              		.loc 1 288 0
+ 1091 0080 07F11002 		add	r2, r7, #16
+ 1092 0084 D7F81431 		ldr	r3, [r7, #276]
+ 1093 0088 D418     		adds	r4, r2, r3
+ 1094 008a 07F10403 		add	r3, r7, #4
+ 1095 008e 1868     		ldr	r0, [r3, #0]
+ 1096 0090 FFF7FEFF 		bl	strlen
+ 1097 0094 0346     		mov	r3, r0
+ 1098 0096 07F10402 		add	r2, r7, #4
+ 1099 009a 2046     		mov	r0, r4
+ 1100 009c 1168     		ldr	r1, [r2, #0]
+ 1101 009e 1A46     		mov	r2, r3
+ 1102 00a0 FFF7FEFF 		bl	memcpy
+ 289:../src/spark_utilities.c ****         sendLen += strlen(cmdparam);
+ 1103              		.loc 1 289 0
+ 1104 00a4 07F10403 		add	r3, r7, #4
+ 1105 00a8 1868     		ldr	r0, [r3, #0]
+ 1106 00aa FFF7FEFF 		bl	strlen
+ 1107 00ae 0246     		mov	r2, r0
+ 1108 00b0 D7F81431 		ldr	r3, [r7, #276]
+ 1109 00b4 D318     		adds	r3, r2, r3
+ 1110 00b6 C7F81431 		str	r3, [r7, #276]
+ 1111              	.L42:
+ 290:../src/spark_utilities.c ****     }
+ 291:../src/spark_utilities.c **** 
+ 292:../src/spark_utilities.c ****     if(cmdvalue != NULL)
+ 1112              		.loc 1 292 0
+ 1113 00ba 3B46     		mov	r3, r7
+ 1114 00bc 1B68     		ldr	r3, [r3, #0]
+ 1115 00be 002B     		cmp	r3, #0
+ 1116 00c0 19D0     		beq	.L43
+ 293:../src/spark_utilities.c ****     {
+ 294:../src/spark_utilities.c ****         memcpy(&cmdBuf[sendLen], cmdvalue, strlen(cmdvalue));
+ 1117              		.loc 1 294 0
+ 1118 00c2 07F11002 		add	r2, r7, #16
+ 1119 00c6 D7F81431 		ldr	r3, [r7, #276]
+ 1120 00ca D418     		adds	r4, r2, r3
+ 1121 00cc 3B46     		mov	r3, r7
+ 1122 00ce 1868     		ldr	r0, [r3, #0]
+ 1123 00d0 FFF7FEFF 		bl	strlen
+ 1124 00d4 0346     		mov	r3, r0
+ 1125 00d6 3A46     		mov	r2, r7
+ 1126 00d8 2046     		mov	r0, r4
+ 1127 00da 1168     		ldr	r1, [r2, #0]
+ 1128 00dc 1A46     		mov	r2, r3
+ 1129 00de FFF7FEFF 		bl	memcpy
+ 295:../src/spark_utilities.c ****         sendLen += strlen(cmdvalue);
+ 1130              		.loc 1 295 0
+ 1131 00e2 3B46     		mov	r3, r7
+ 1132 00e4 1868     		ldr	r0, [r3, #0]
+ 1133 00e6 FFF7FEFF 		bl	strlen
+ 1134 00ea 0246     		mov	r2, r0
+ 1135 00ec D7F81431 		ldr	r3, [r7, #276]
+ 1136 00f0 D318     		adds	r3, r2, r3
+ 1137 00f2 C7F81431 		str	r3, [r7, #276]
+ 1138              	.L43:
+ 296:../src/spark_utilities.c ****     }
+ 297:../src/spark_utilities.c **** 
+ 298:../src/spark_utilities.c ****     memcpy(&cmdBuf[sendLen], Device_CRLF, strlen(Device_CRLF));
+ 1139              		.loc 1 298 0
+ 1140 00f6 07F11002 		add	r2, r7, #16
+ 1141 00fa D7F81431 		ldr	r3, [r7, #276]
+ 1142 00fe D218     		adds	r2, r2, r3
+ 1143 0100 40F20003 		movw	r3, #:lower16:Device_CRLF
+ 1144 0104 C0F20003 		movt	r3, #:upper16:Device_CRLF
+ 1145 0108 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 1146 010a 1370     		strb	r3, [r2, #0]
+ 299:../src/spark_utilities.c ****     sendLen += strlen(Device_CRLF);
+ 1147              		.loc 1 299 0
+ 1148 010c D7F81431 		ldr	r3, [r7, #276]
+ 1149 0110 03F10103 		add	r3, r3, #1
+ 1150 0114 C7F81431 		str	r3, [r7, #276]
+ 300:../src/spark_utilities.c **** 
+ 301:../src/spark_utilities.c ****     retVal = send(socket, cmdBuf, sendLen, 0);
+ 1151              		.loc 1 301 0
+ 1152 0118 07F10C02 		add	r2, r7, #12
+ 1153 011c 07F11003 		add	r3, r7, #16
+ 1154 0120 1068     		ldr	r0, [r2, #0]
+ 1155 0122 1946     		mov	r1, r3
+ 1156 0124 D7F81421 		ldr	r2, [r7, #276]
+ 1157 0128 4FF00003 		mov	r3, #0
+ 1158 012c FFF7FEFF 		bl	send
+ 1159 0130 C7F81001 		str	r0, [r7, #272]
+ 302:../src/spark_utilities.c **** 
+ 303:../src/spark_utilities.c ****     return retVal;
+ 1160              		.loc 1 303 0
+ 1161 0134 D7F81031 		ldr	r3, [r7, #272]
+ 304:../src/spark_utilities.c **** }
+ 1162              		.loc 1 304 0
+ 1163 0138 1846     		mov	r0, r3
+ 1164 013a 07F58E77 		add	r7, r7, #284
+ 1165 013e BD46     		mov	sp, r7
+ 1166 0140 90BD     		pop	{r4, r7, pc}
+ 1167              		.cfi_endproc
+ 1168              	.LFE64:
+ 1170 0142 00BF     		.section	.text.itoa,"ax",%progbits
+ 1171              		.align	2
+ 1172              		.thumb
+ 1173              		.thumb_func
+ 1175              	itoa:
+ 1176              	.LFB65:
+ 305:../src/spark_utilities.c **** 
+ 306:../src/spark_utilities.c **** // brief  Convert integer to ASCII in decimal base
+ 307:../src/spark_utilities.c **** static unsigned char itoa(int cNum, char *cString)
+ 308:../src/spark_utilities.c **** {
+ 1177              		.loc 1 308 0
+ 1178              		.cfi_startproc
+ 1179              		@ args = 0, pretend = 0, frame = 24
+ 1180              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1181              		@ link register save eliminated.
+ 1182 0000 80B4     		push	{r7}
+ 1183              	.LCFI27:
+ 1184              		.cfi_def_cfa_offset 4
+ 1185              		.cfi_offset 7, -4
+ 1186 0002 87B0     		sub	sp, sp, #28
+ 1187              	.LCFI28:
+ 1188              		.cfi_def_cfa_offset 32
+ 1189 0004 00AF     		add	r7, sp, #0
+ 1190              	.LCFI29:
+ 1191              		.cfi_def_cfa_register 7
+ 1192 0006 7860     		str	r0, [r7, #4]
+ 1193 0008 3960     		str	r1, [r7, #0]
+ 309:../src/spark_utilities.c ****     char* ptr;
+ 310:../src/spark_utilities.c ****     int uTemp = cNum;
+ 1194              		.loc 1 310 0
+ 1195 000a 7B68     		ldr	r3, [r7, #4]
+ 1196 000c 3B61     		str	r3, [r7, #16]
+ 311:../src/spark_utilities.c ****     unsigned char length;
+ 312:../src/spark_utilities.c **** 
+ 313:../src/spark_utilities.c ****     // value 0 is a special case
+ 314:../src/spark_utilities.c ****     if (cNum == 0)
+ 1197              		.loc 1 314 0
+ 1198 000e 7B68     		ldr	r3, [r7, #4]
+ 1199 0010 002B     		cmp	r3, #0
+ 1200 0012 08D1     		bne	.L46
+ 315:../src/spark_utilities.c ****     {
+ 316:../src/spark_utilities.c ****         length = 1;
+ 1201              		.loc 1 316 0
+ 1202 0014 4FF00103 		mov	r3, #1
+ 1203 0018 FB73     		strb	r3, [r7, #15]
+ 317:../src/spark_utilities.c ****         *cString = '0';
+ 1204              		.loc 1 317 0
+ 1205 001a 3B68     		ldr	r3, [r7, #0]
+ 1206 001c 4FF03002 		mov	r2, #48
+ 1207 0020 1A70     		strb	r2, [r3, #0]
+ 318:../src/spark_utilities.c **** 
+ 319:../src/spark_utilities.c ****         return length;
+ 1208              		.loc 1 319 0
+ 1209 0022 FB7B     		ldrb	r3, [r7, #15]	@ zero_extendqisi2
+ 1210 0024 4DE0     		b	.L47
+ 1211              	.L46:
+ 320:../src/spark_utilities.c ****     }
+ 321:../src/spark_utilities.c **** 
+ 322:../src/spark_utilities.c ****     // Find out the length of the number, in decimal base
+ 323:../src/spark_utilities.c ****     length = 0;
+ 1212              		.loc 1 323 0
+ 1213 0026 4FF00003 		mov	r3, #0
+ 1214 002a FB73     		strb	r3, [r7, #15]
+ 324:../src/spark_utilities.c ****     while (uTemp > 0)
+ 1215              		.loc 1 324 0
+ 1216 002c 10E0     		b	.L48
+ 1217              	.L49:
+ 325:../src/spark_utilities.c ****     {
+ 326:../src/spark_utilities.c ****         uTemp /= 10;
+ 1218              		.loc 1 326 0
+ 1219 002e 3A69     		ldr	r2, [r7, #16]
+ 1220 0030 46F26763 		movw	r3, #26215
+ 1221 0034 C6F26663 		movt	r3, 26214
+ 1222 0038 83FB0213 		smull	r1, r3, r3, r2
+ 1223 003c 4FEAA301 		asr	r1, r3, #2
+ 1224 0040 4FEAE273 		asr	r3, r2, #31
+ 1225 0044 CB1A     		subs	r3, r1, r3
+ 1226 0046 3B61     		str	r3, [r7, #16]
+ 327:../src/spark_utilities.c ****         length++;
+ 1227              		.loc 1 327 0
+ 1228 0048 FB7B     		ldrb	r3, [r7, #15]
+ 1229 004a 03F10103 		add	r3, r3, #1
+ 1230 004e FB73     		strb	r3, [r7, #15]
+ 1231              	.L48:
+ 324:../src/spark_utilities.c ****     while (uTemp > 0)
+ 1232              		.loc 1 324 0 discriminator 1
+ 1233 0050 3B69     		ldr	r3, [r7, #16]
+ 1234 0052 002B     		cmp	r3, #0
+ 1235 0054 EBDC     		bgt	.L49
+ 328:../src/spark_utilities.c ****     }
+ 329:../src/spark_utilities.c **** 
+ 330:../src/spark_utilities.c ****     // Do the actual formatting, right to left
+ 331:../src/spark_utilities.c ****     uTemp = cNum;
+ 1236              		.loc 1 331 0
+ 1237 0056 7B68     		ldr	r3, [r7, #4]
+ 1238 0058 3B61     		str	r3, [r7, #16]
+ 332:../src/spark_utilities.c ****     ptr = cString + length;
+ 1239              		.loc 1 332 0
+ 1240 005a FB7B     		ldrb	r3, [r7, #15]	@ zero_extendqisi2
+ 1241 005c 3A68     		ldr	r2, [r7, #0]
+ 1242 005e D318     		adds	r3, r2, r3
+ 1243 0060 7B61     		str	r3, [r7, #20]
+ 333:../src/spark_utilities.c ****     while (uTemp > 0)
+ 1244              		.loc 1 333 0
+ 1245 0062 2AE0     		b	.L50
+ 1246              	.L51:
+ 334:../src/spark_utilities.c ****     {
+ 335:../src/spark_utilities.c ****         --ptr;
+ 1247              		.loc 1 335 0
+ 1248 0064 7B69     		ldr	r3, [r7, #20]
+ 1249 0066 03F1FF33 		add	r3, r3, #-1
+ 1250 006a 7B61     		str	r3, [r7, #20]
+ 336:../src/spark_utilities.c ****         *ptr = digits[uTemp % 10];
+ 1251              		.loc 1 336 0
+ 1252 006c 3969     		ldr	r1, [r7, #16]
+ 1253 006e 46F26763 		movw	r3, #26215
+ 1254 0072 C6F26663 		movt	r3, 26214
+ 1255 0076 83FB0123 		smull	r2, r3, r3, r1
+ 1256 007a 4FEAA302 		asr	r2, r3, #2
+ 1257 007e 4FEAE173 		asr	r3, r1, #31
+ 1258 0082 D21A     		subs	r2, r2, r3
+ 1259 0084 1346     		mov	r3, r2
+ 1260 0086 4FEA8303 		lsl	r3, r3, #2
+ 1261 008a 9B18     		adds	r3, r3, r2
+ 1262 008c 4FEA4303 		lsl	r3, r3, #1
+ 1263 0090 CA1A     		subs	r2, r1, r3
+ 1264 0092 40F20003 		movw	r3, #:lower16:digits
+ 1265 0096 C0F20003 		movt	r3, #:upper16:digits
+ 1266 009a 9A5C     		ldrb	r2, [r3, r2]	@ zero_extendqisi2
+ 1267 009c 7B69     		ldr	r3, [r7, #20]
+ 1268 009e 1A70     		strb	r2, [r3, #0]
+ 337:../src/spark_utilities.c ****         uTemp /= 10;
+ 1269              		.loc 1 337 0
+ 1270 00a0 3A69     		ldr	r2, [r7, #16]
+ 1271 00a2 46F26763 		movw	r3, #26215
+ 1272 00a6 C6F26663 		movt	r3, 26214
+ 1273 00aa 83FB0213 		smull	r1, r3, r3, r2
+ 1274 00ae 4FEAA301 		asr	r1, r3, #2
+ 1275 00b2 4FEAE273 		asr	r3, r2, #31
+ 1276 00b6 CB1A     		subs	r3, r1, r3
+ 1277 00b8 3B61     		str	r3, [r7, #16]
+ 1278              	.L50:
+ 333:../src/spark_utilities.c ****     while (uTemp > 0)
+ 1279              		.loc 1 333 0 discriminator 1
+ 1280 00ba 3B69     		ldr	r3, [r7, #16]
+ 1281 00bc 002B     		cmp	r3, #0
+ 1282 00be D1DC     		bgt	.L51
+ 338:../src/spark_utilities.c ****     }
+ 339:../src/spark_utilities.c **** 
+ 340:../src/spark_utilities.c ****     return length;
+ 1283              		.loc 1 340 0
+ 1284 00c0 FB7B     		ldrb	r3, [r7, #15]	@ zero_extendqisi2
+ 1285              	.L47:
+ 341:../src/spark_utilities.c **** }
+ 1286              		.loc 1 341 0
+ 1287 00c2 1846     		mov	r0, r3
+ 1288 00c4 07F11C07 		add	r7, r7, #28
+ 1289 00c8 BD46     		mov	sp, r7
+ 1290 00ca 80BC     		pop	{r7}
+ 1291 00cc 7047     		bx	lr
+ 1292              		.cfi_endproc
+ 1293              	.LFE65:
+ 1295 00ce 00BF     		.section	.text.atoc,"ax",%progbits
+ 1296              		.align	2
+ 1297              		.thumb
+ 1298              		.thumb_func
+ 1300              	atoc:
+ 1301              	.LFB66:
+ 342:../src/spark_utilities.c **** 
+ 343:../src/spark_utilities.c **** //Convert nibble to hexdecimal from ASCII
+ 344:../src/spark_utilities.c **** static uint8_t atoc(char data)
+ 345:../src/spark_utilities.c **** {
+ 1302              		.loc 1 345 0
+ 1303              		.cfi_startproc
+ 1304              		@ args = 0, pretend = 0, frame = 16
+ 1305              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1306              		@ link register save eliminated.
+ 1307 0000 80B4     		push	{r7}
+ 1308              	.LCFI30:
+ 1309              		.cfi_def_cfa_offset 4
+ 1310              		.cfi_offset 7, -4
+ 1311 0002 85B0     		sub	sp, sp, #20
+ 1312              	.LCFI31:
+ 1313              		.cfi_def_cfa_offset 24
+ 1314 0004 00AF     		add	r7, sp, #0
+ 1315              	.LCFI32:
+ 1316              		.cfi_def_cfa_register 7
+ 1317 0006 0346     		mov	r3, r0
+ 1318 0008 FB71     		strb	r3, [r7, #7]
+ 346:../src/spark_utilities.c **** 	unsigned char ucRes;
+ 347:../src/spark_utilities.c **** 
+ 348:../src/spark_utilities.c **** 	if ((data >= 0x30) && (data <= 0x39))
+ 1319              		.loc 1 348 0
+ 1320 000a FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 1321 000c 2F2B     		cmp	r3, #47
+ 1322 000e 07D9     		bls	.L53
+ 1323              		.loc 1 348 0 is_stmt 0 discriminator 1
+ 1324 0010 FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 1325 0012 392B     		cmp	r3, #57
+ 1326 0014 04D8     		bhi	.L53
+ 349:../src/spark_utilities.c **** 	{
+ 350:../src/spark_utilities.c **** 		ucRes = data - 0x30;
+ 1327              		.loc 1 350 0 is_stmt 1
+ 1328 0016 FB79     		ldrb	r3, [r7, #7]
+ 1329 0018 A3F13003 		sub	r3, r3, #48
+ 1330 001c FB73     		strb	r3, [r7, #15]
+ 1331 001e 28E0     		b	.L54
+ 1332              	.L53:
+ 351:../src/spark_utilities.c **** 	}
+ 352:../src/spark_utilities.c **** 	else
+ 353:../src/spark_utilities.c **** 	{
+ 354:../src/spark_utilities.c **** 		if (data == 'a')
+ 1333              		.loc 1 354 0
+ 1334 0020 FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 1335 0022 612B     		cmp	r3, #97
+ 1336 0024 03D1     		bne	.L55
+ 355:../src/spark_utilities.c **** 		{
+ 356:../src/spark_utilities.c **** 			ucRes = 0x0a;;
+ 1337              		.loc 1 356 0
+ 1338 0026 4FF00A03 		mov	r3, #10
+ 1339 002a FB73     		strb	r3, [r7, #15]
+ 1340 002c 21E0     		b	.L54
+ 1341              	.L55:
+ 357:../src/spark_utilities.c **** 		}
+ 358:../src/spark_utilities.c **** 		else if (data == 'b')
+ 1342              		.loc 1 358 0
+ 1343 002e FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 1344 0030 622B     		cmp	r3, #98
+ 1345 0032 03D1     		bne	.L56
+ 359:../src/spark_utilities.c **** 		{
+ 360:../src/spark_utilities.c **** 			ucRes = 0x0b;
+ 1346              		.loc 1 360 0
+ 1347 0034 4FF00B03 		mov	r3, #11
+ 1348 0038 FB73     		strb	r3, [r7, #15]
+ 1349 003a 1AE0     		b	.L54
+ 1350              	.L56:
+ 361:../src/spark_utilities.c **** 		}
+ 362:../src/spark_utilities.c **** 		else if (data == 'c')
+ 1351              		.loc 1 362 0
+ 1352 003c FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 1353 003e 632B     		cmp	r3, #99
+ 1354 0040 03D1     		bne	.L57
+ 363:../src/spark_utilities.c **** 		{
+ 364:../src/spark_utilities.c **** 			ucRes = 0x0c;
+ 1355              		.loc 1 364 0
+ 1356 0042 4FF00C03 		mov	r3, #12
+ 1357 0046 FB73     		strb	r3, [r7, #15]
+ 1358 0048 13E0     		b	.L54
+ 1359              	.L57:
+ 365:../src/spark_utilities.c **** 		}
+ 366:../src/spark_utilities.c **** 		else if (data == 'd')
+ 1360              		.loc 1 366 0
+ 1361 004a FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 1362 004c 642B     		cmp	r3, #100
+ 1363 004e 03D1     		bne	.L58
+ 367:../src/spark_utilities.c **** 		{
+ 368:../src/spark_utilities.c **** 			ucRes = 0x0d;
+ 1364              		.loc 1 368 0
+ 1365 0050 4FF00D03 		mov	r3, #13
+ 1366 0054 FB73     		strb	r3, [r7, #15]
+ 1367 0056 0CE0     		b	.L54
+ 1368              	.L58:
+ 369:../src/spark_utilities.c **** 		}
+ 370:../src/spark_utilities.c **** 		else if (data == 'e')
+ 1369              		.loc 1 370 0
+ 1370 0058 FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 1371 005a 652B     		cmp	r3, #101
+ 1372 005c 03D1     		bne	.L59
+ 371:../src/spark_utilities.c **** 		{
+ 372:../src/spark_utilities.c **** 			ucRes = 0x0e;
+ 1373              		.loc 1 372 0
+ 1374 005e 4FF00E03 		mov	r3, #14
+ 1375 0062 FB73     		strb	r3, [r7, #15]
+ 1376 0064 05E0     		b	.L54
+ 1377              	.L59:
+ 373:../src/spark_utilities.c **** 		}
+ 374:../src/spark_utilities.c **** 		else if (data == 'f')
+ 1378              		.loc 1 374 0
+ 1379 0066 FB79     		ldrb	r3, [r7, #7]	@ zero_extendqisi2
+ 1380 0068 662B     		cmp	r3, #102
+ 1381 006a 02D1     		bne	.L54
+ 375:../src/spark_utilities.c **** 		{
+ 376:../src/spark_utilities.c **** 			ucRes = 0x0f;
+ 1382              		.loc 1 376 0
+ 1383 006c 4FF00F03 		mov	r3, #15
+ 1384 0070 FB73     		strb	r3, [r7, #15]
+ 1385              	.L54:
+ 377:../src/spark_utilities.c **** 		}
+ 378:../src/spark_utilities.c **** 	}
+ 379:../src/spark_utilities.c **** 	return ucRes;
+ 1386              		.loc 1 379 0
+ 1387 0072 FB7B     		ldrb	r3, [r7, #15]	@ zero_extendqisi2
+ 380:../src/spark_utilities.c **** }
+ 1388              		.loc 1 380 0
+ 1389 0074 1846     		mov	r0, r3
+ 1390 0076 07F11407 		add	r7, r7, #20
+ 1391 007a BD46     		mov	sp, r7
+ 1392 007c 80BC     		pop	{r7}
+ 1393 007e 7047     		bx	lr
+ 1394              		.cfi_endproc
+ 1395              	.LFE66:
+ 1397              		.weak	userFunction
+ 1398              		.text
+ 1399              	.Letext0:
+ 1400              		.file 2 "/usr/local/gcc-arm-none-eabi-4_7-2013q1/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../ar
+ 1401              		.file 3 "/Users/zac/code/spark/marvin/libraries/CC3000_Host_Driver/cc3000_common.h"
+ 1402              		.file 4 "/Users/zac/code/spark/marvin/inc/hw_config.h"
+ 1403              		.file 5 "/Users/zac/code/spark/marvin/libraries/CC3000_Host_Driver/socket.h"
+ 1404              		.file 6 "/Users/zac/code/spark/marvin/libraries/CMSIS/Include/core_cm3.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 spark_utilities.c
+                            *COM*:0000000000000004 sparkSocket
+                            *COM*:0000000000000010 tSocketAddr
+                            *COM*:0000000000000008 timeout
+                            *COM*:0000000000000004 readSet
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:27     .rodata:0000000000000000 Device_Secret
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:24     .rodata:0000000000000000 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:33     .rodata:0000000000000008 Device_Name
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:39     .rodata:0000000000000010 Device_Ok
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:45     .rodata:0000000000000014 Device_Fail
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:51     .rodata:000000000000001c Device_CRLF
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:57     .rodata:0000000000000020 API_Alive
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:63     .rodata:0000000000000028 API_Who
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:69     .rodata:000000000000002c API_UserFunc
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:75     .rodata:0000000000000038 API_Callback
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:82     .data:0000000000000000 High_Dx
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:79     .data:0000000000000000 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:88     .data:0000000000000008 Low_Dx
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:94     .data:0000000000000010 digits
+                            *COM*:0000000000000100 recvBuff
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:102    .bss:0000000000000000 total_bytes_received
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:99     .bss:0000000000000000 $d
+                            *COM*:0000000000000004 pUserFunction
+                            *COM*:0000000000000100 userBuff
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:107    .text.Spark_Connect:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:112    .text.Spark_Connect:0000000000000000 Spark_Connect
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:1024   .text.Spark_Send_Device_Message:0000000000000000 Spark_Send_Device_Message
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:228    .text.Spark_Disconnect:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:233    .text.Spark_Disconnect:0000000000000000 Spark_Disconnect
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:281    .text.receive_line:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:286    .text.receive_line:0000000000000000 receive_line
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:492    .text.process_command:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:497    .text.process_command:0000000000000000 process_command
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:1300   .text.atoc:0000000000000000 atoc
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:952    .text.user_function:0000000000000000 user_function
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:802    .text.process_command:00000000000002f0 $d
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:807    .text.Spark_Process_API_Response:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:812    .text.Spark_Process_API_Response:0000000000000000 Spark_Process_API_Response
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:851    .text.userCallback:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:856    .text.userCallback:0000000000000000 userCallback
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:892    .text.userCallbackWithData:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:897    .text.userCallbackWithData:0000000000000000 userCallbackWithData
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:1175   .text.itoa:0000000000000000 itoa
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:948    .text.user_function:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:1020   .text.Spark_Send_Device_Message:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:1171   .text.itoa:0000000000000000 $t
+/var/folders/d1/846xqcps64v4wybnmd7kk8540000gn/T//cc5hgaav.s:1296   .text.atoc:0000000000000000 $t
+                     .debug_frame:0000000000000010 $d
+                           .group:0000000000000000 wm4.1.8991b0b359e9e91a82acb66692cb6642
+                           .group:0000000000000000 wm4.platform_config.h.13.40eb885bb536156af5c03b48263b5da1
+                           .group:0000000000000000 wm4.stm32f10x.h.57.69ab29c83f735418a543aa508b559235
+                           .group:0000000000000000 wm4.core_cm3.h.32.8e21fbd14bb96c2b40e026c4d2c8fe1f
+                           .group:0000000000000000 wm4.newlib.h.8.a9901dc52d1357e3e94003403d43f8b5
+                           .group:0000000000000000 wm4.features.h.22.b72b3baab2bb2eab3661375590100b6b
+                           .group:0000000000000000 wm4.config.h.193.5fb8ef056cdff92dec3dee9552839d8c
+                           .group:0000000000000000 wm4._ansi.h.23.b5bb84d7ba97d82b5b1dc1826a7ae811
+                           .group:0000000000000000 wm4.stdint.h.20.54ad762faa59e3c05491630641c8d8bf
+                           .group:0000000000000000 wm4.core_cmInstr.h.25.d8165482ef3061013a2fc83e2d85f3d9
+                           .group:0000000000000000 wm4.core_cm3.h.129.e08b7204181ea22e6a9fa84cb9ad0924
+                           .group:0000000000000000 wm4.stm32f10x.h.532.91bd57525f6c583f00129a351847d405
+                           .group:0000000000000000 wm4.stm32f10x_adc.h.89.9f2b285fa0070185d48a05b61a05798c
+                           .group:0000000000000000 wm4.stm32f10x_bkp.h.31.74a586c036c8ee5d9205c6728cc8d6ab
+                           .group:0000000000000000 wm4.stm32f10x_dma.h.31.ef16218235edc52b414c0353f44b4bf0
+                           .group:0000000000000000 wm4.stm32f10x_exti.h.31.b25bcb4f1a2daad39d2d7dfa4e901646
+                           .group:0000000000000000 wm4.stm32f10x_flash.h.31.0203bc95b65c5396b67991e07a675efb
+                           .group:0000000000000000 wm4.stm32f10x_gpio.h.31.0a32659dbac1fc1055c7cbdc248963be
+                           .group:0000000000000000 wm4.stm32f10x_i2c.h.31.93d7dc2d477856f119d957730d4c6f1c
+                           .group:0000000000000000 wm4.stm32f10x_pwr.h.31.9168b6921e0cf03b467c7ed90861c701
+                           .group:0000000000000000 wm4.stm32f10x_rcc.h.31.2ee3219a25ef4ced658f2fe9d8cd94aa
+                           .group:0000000000000000 wm4.stm32f10x_rtc.h.31.00ba78fc0dbb06b6e6783a1e7fccf5a0
+                           .group:0000000000000000 wm4.stm32f10x_spi.h.31.d2f6e4626887cabe8c98f3a185590a36
+                           .group:0000000000000000 wm4.stm32f10x_tim.h.31.6c06f7f26e0864f9cd59597f46ca2c7c
+                           .group:0000000000000000 wm4.stm32f10x_usart.h.31.28d75d6af05cefbbfa00cf30a7c8a335
+                           .group:0000000000000000 wm4.misc.h.31.a89fba2040036f6f8c835a78a213e0cd
+                           .group:0000000000000000 wm4.stm32f10x.h.8356.9fd2fa84655112ac7dfc5c88beeb383d
+                           .group:0000000000000000 wm4.platform_config.h.55.c9956ee2c5ec010802c11a3a06087af4
+                           .group:0000000000000000 wm4.stdlib.h.13.603ed7eb09a1561ab06840b7c0fcff58
+                           .group:0000000000000000 wm4.stddef.h.187.40b3a084f9bc2c020a9e00b9eabe9c14
+                           .group:0000000000000000 wm4._default_types.h.6.5e12cd604db8ce00b62bb2f02708eaf3
+                           .group:0000000000000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:0000000000000000 wm4.stddef.h.349.31f4c5baff3fa2689010b32028da9c47
+                           .group:0000000000000000 wm4.reent.h.16.9e42f0e588b85e70b2bf6572af57ce64
+                           .group:0000000000000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:0000000000000000 wm4.stdlib.h.50.f5923f1950ced340a337f4676566f65a
+                           .group:0000000000000000 wm4.errno.h.2.ba016d646105af6cad23be83630b6a3f
+                           .group:0000000000000000 wm4.errno.h.9.65044c2b5d8494e43f5986ab0a1d770f
+                           .group:0000000000000000 wm4.cc3000_common.h.58.2af7f8f8921b8cb4b89883c25878e207
+                           .group:0000000000000000 wm4.usb_conf.h.13.ae0ffce2e8d0e4c6b2724f8ae0ada8cf
+                           .group:0000000000000000 wm4.hw_config.h.61.9aaf7ecb821816183829c116d76d82b5
+                           .group:0000000000000000 wm4.spark_utilities.h.7.00af80f316040ee124a44bc5f105bb09
+                           .group:0000000000000000 wm4.socket.h.36.a8c628533ac074dc9bf38f87e586f707
+                           .group:0000000000000000 wm4.string.h.8.ef946ad0bc9ad5c970c365dcd1fc4b0a
+                           .group:0000000000000000 wm4.stddef.h.235.d9f4f80b8c4429535175712282cda6a6
+                           .group:0000000000000000 wm4.string.h.86.d5c872ff52e2712c985b588a0ef39f3c
+
+UNDEFINED SYMBOLS
+socket
+connect
+closesocket
+memset
+select
+recv
+strchr
+strncmp
+SPARK_DEVICE_ACKED
+TimingSparkAliveTimeout
+DIO_SetState
+strlen
+memcpy
+strcmp
+userFunction
+send
