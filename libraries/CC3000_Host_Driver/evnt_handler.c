@@ -278,6 +278,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 					case HCI_EVNT_NVMEM_CREATE_ENTRY:
 					case HCI_CMND_NVMEM_WRITE_PATCH:
 					case HCI_NETAPP_PING_REPORT:
+					case HCI_EVNT_MDNS_ADVERTISE:
 						
 						STREAM_TO_UINT8(pucReceivedData, HCI_EVENT_STATUS_OFFSET
 														,*(unsigned char *)pRetParams);
@@ -299,7 +300,6 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 					case HCI_EVNT_BIND:
 					case HCI_CMND_LISTEN:
 					case HCI_EVNT_CLOSE_SOCKET:
-					case HCI_EVNT_MDNS_ADVERTISE:
 					case HCI_EVNT_CONNECT:
 					case HCI_EVNT_NVMEM_WRITE:
 						
@@ -353,6 +353,17 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 							{
 								set_socket_active_status(((tBsdReadReturnParams *)pRetParams)->iSocketDescriptor,SOCKET_STATUS_INACTIVE);
 							}
+							break;
+						}
+                                                
+                                        case HCI_EVNT_SEND:
+					case HCI_EVNT_SENDTO:
+						{
+							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE_SD_OFFSET ,*(unsigned long *)pRetParams);
+							pRetParams = ((char *)pRetParams) + 4;
+							STREAM_TO_UINT32((char *)pucReceivedParams,SL_RECEIVE_NUM_BYTES_OFFSET,*(unsigned long *)pRetParams);
+							pRetParams = ((char *)pRetParams) + 4;
+							
 							break;
 						}
 						
@@ -535,8 +546,9 @@ hci_unsol_event_handler(char *event_hdr)
 			
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
 			{
-				tNetappDhcpParams params;
-				unsigned char *recParams = (unsigned char *)&params;			
+				unsigned char	params[NETAPP_IPCONFIG_MAC_OFFSET + 1];	// extra byte is for the status
+				unsigned char *recParams = params;
+				
 				data = (char*)(event_hdr) + HCI_EVENT_HEADER_SIZE;
 				
 				//Read IP address
@@ -553,10 +565,13 @@ hci_unsol_event_handler(char *event_hdr)
 				data += 4;
 				//Read DNS server  
 				STREAM_TO_STREAM(data,recParams,NETAPP_IPCONFIG_IP_LENGTH); 
-					
+				// read the status
+				STREAM_TO_UINT8(event_hdr, HCI_EVENT_STATUS_OFFSET, *recParams);
+
+
 				if( tSLInformation.sWlanCB )
 				{
-					tSLInformation.sWlanCB(event_type, (char *)&params, sizeof(params));
+					tSLInformation.sWlanCB(event_type, (char *)params, sizeof(params));
 				}
 			}
 			break;
@@ -596,13 +611,24 @@ hci_unsol_event_handler(char *event_hdr)
 	if ((event_type == HCI_EVNT_SEND) || (event_type == HCI_EVNT_SENDTO)
 			|| (event_type == HCI_EVNT_WRITE))
 	{
-		// The only synchronous event that can come from SL device in form of 
-		// command complete is "Command Complete" on data sent, in case SL device 
-		// was unable to transmit
-		STREAM_TO_UINT8(event_hdr, HCI_EVENT_STATUS_OFFSET, tSLInformation.slTransmitDataError);
-		update_socket_active_status(M_BSD_RESP_PARAMS_OFFSET(event_hdr));
-		
-		return (1);
+                char *pArg;
+                long status;
+                
+                pArg = M_BSD_RESP_PARAMS_OFFSET(event_hdr);
+                STREAM_TO_UINT32(pArg, BSD_RSP_PARAMS_STATUS_OFFSET,status);
+                
+                if (ERROR_SOCKET_INACTIVE == status)
+                {
+                    // The only synchronous event that can come from SL device in form of 
+                    // command complete is "Command Complete" on data sent, in case SL device 
+                    // was unable to transmit
+                    STREAM_TO_UINT8(event_hdr, HCI_EVENT_STATUS_OFFSET, tSLInformation.slTransmitDataError);
+                    update_socket_active_status(M_BSD_RESP_PARAMS_OFFSET(event_hdr));
+                    
+                    return (1);
+                }
+                else
+                    return (0);
 	}
 	
 	return(0);

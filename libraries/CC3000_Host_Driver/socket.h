@@ -88,8 +88,9 @@ extern "C" {
 
 //----------- Socket Options -----------
 #define  SOL_SOCKET             0xffff		//  socket level
-#define  SOCKOPT_RECV_TIMEOUT	1			//  optname to configure recv and recvfromtimeout
-#define  SOCKOPT_NONBLOCK          2			// accept non block mode set SOCK_ON or SOCK_OFF (default block mode )
+#define  SOCKOPT_RECV_NONBLOCK         	0	// recv non block mode, set SOCK_ON or SOCK_OFF (default block mode)
+#define  SOCKOPT_RECV_TIMEOUT			1	// optname to configure recv and recvfromtimeout
+#define  SOCKOPT_ACCEPT_NONBLOCK		2	// accept non block mode, set SOCK_ON or SOCK_OFF (default block mode)
 #define  SOCK_ON                0			// socket non-blocking mode	is enabled		
 #define  SOCK_OFF               1			// socket blocking mode is enabled
 
@@ -139,7 +140,6 @@ typedef long int __fd_mask;
 #define __FDELT(d)              ((d) / __NFDBITS)
 #define __FDMASK(d)             ((__fd_mask) 1 << ((d) % __NFDBITS))
 
-/* Zac changed fd_set definition on 2013-02-18 to avoid conflicts with sys/types.h */
 // fd_set for select and pselect.
 typedef struct
 {

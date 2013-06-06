@@ -298,7 +298,28 @@ extern long netapp_arp_flush();
 #endif
 
 
+//*****************************************************************************
+//
+//!  netapp_set_debug_level
+//!
+//!  @param[in]      level    debug level. Bitwise [0-8],
+//!                         0(disable)or 1(enable).\n Bitwise map: 0 - Critical
+//!                         message, 1 information message, 2 - core messages, 3 -
+//!                         HCI messages, 4 - Network stack messages, 5 - wlan
+//!                         messages, 6 - wlan driver messages, 7 - epprom messages,
+//!                         8 - general messages. Default: 0x13f. Saved: no
+//!
+//!  @return  On success, zero is returned. On error, -1 is returned
+//!
+//!  @brief   Debug messages sent via the UART debug channel, this function
+//!              enable/disable the debug level
+//!
+//*****************************************************************************
 
+
+#ifndef CC3000_TINY_DRIVER
+long netapp_set_debug_level(unsigned long ulLevel);
+#endif
 //*****************************************************************************
 //
 // Close the Doxygen group.
