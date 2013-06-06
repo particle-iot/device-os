@@ -16,11 +16,21 @@
 *.out
 *.app
 
+# Debug folder
+Debug/*
+!Debug/*.hex
+!Debug/*.bin
+
+# Release folder
+Release/*
+!Release/*.hex
+!Release/*.bin
+
 # Platform-specific settings
-.settings/
+.settings/*
 .cproject
 .project
 
 # Raisonance RIDE Project
-RIDE/
+RIDE/*
 
