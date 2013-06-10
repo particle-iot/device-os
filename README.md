@@ -71,3 +71,15 @@ Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x
 
 cd to the marvin/Debug folder and type the below command to program the marvin application using dfu-util:
 dfu-util -d 0483:df11 -a 0 -s 0x0800A000:leave -D marvin.bin
+
+To Enter Smart Config Mode, press the BUT once.
+Both the LED should start toggling.
+Run the Smart Config App on an iPhone/itouch/Android device.
+Enter the following information:
+SSID: (Probably set automatically)
+Password:
+Gateway IP address: (Probably set automatically)
+Key: sparkdevices2013 (Hardcoded in Spark Hardware)
+Device Name: CC3000 (Hardcoded in Spark Hardware)
+When the device is connected to AP, LED2 should stop toggling and turn ON after few seconds.
+The App on phone should also display a connected successfully message.

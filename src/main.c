@@ -30,9 +30,10 @@ __IO uint32_t TimingMillis;
 __IO uint32_t TimingSparkProcessAPI;
 __IO uint32_t TimingSparkAliveTimeout;
 
-uint8_t WLAN_MANUAL_CONNECT = 1;//For Manual connection, set this to 1
+uint8_t WLAN_MANUAL_CONNECT = 0;//For Manual connection, set this to 1
 uint8_t WLAN_SMART_CONFIG_START;
-uint8_t WLAN_SMART_CONFIG_DONE;
+uint8_t WLAN_SMART_CONFIG_STOP;
+uint8_t WLAN_SMART_CONFIG_FINISHED;
 uint8_t WLAN_CONNECTED;
 uint8_t WLAN_DHCP;
 uint8_t WLAN_CAN_SHUTDOWN;
@@ -45,6 +46,13 @@ uint16_t NetApp_Timeout_SysFlag = 0xFFFF;
 uint16_t Smart_Config_SysFlag = 0xFFFF;
 
 unsigned char patchVer[2];
+
+/* Smart Config Prefix */
+char aucCC3000_prefix[] = {'T', 'T', 'T'};
+/* AES key "sparkdevices2013" */
+const unsigned char smartconfigkey[] = "sparkdevices2013";	//16 bytes
+/* device name used by smart config response */
+char device_name[] = "CC3000";
 
 //tNetappIpconfigRetArgs ipconfig;
 
@@ -85,25 +93,17 @@ int main(void)
 	//sFLASH_SelfTest();
 #endif
 
-	//
-	// Configure & initialize CC3000 SPI_DMA Interface
-	//
+	/* Configure & initialize CC3000 SPI_DMA Interface */
 	CC3000_SPI_DMA_Init();
 
-	//
-	// WLAN On API Implementation
-	//
+	/* WLAN On API Implementation */
 	wlan_init(WLAN_Async_Callback, WLAN_Firmware_Patch, WLAN_Driver_Patch, WLAN_BootLoader_Patch,
 				CC3000_Read_Interrupt_Pin, CC3000_Interrupt_Enable, CC3000_Interrupt_Disable, CC3000_Write_Enable_Pin);
 
-	//
-	// Trigger a WLAN device
-	//
+	/* Trigger a WLAN device */
 	wlan_start(0);
 
-	//
-	// Mask out all non-required events from CC3000
-	//
+	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
 #ifdef DFU_BUILD_ENABLE
@@ -130,7 +130,6 @@ int main(void)
 			WLAN_SMART_CONFIG_START = 1;
 		}
 	}
-#endif
 
 	nvmem_read_sp_version(patchVer);
 	if (patchVer[1] == 19)
@@ -138,6 +137,7 @@ int main(void)
 		/* patchVer = "\001\023" */
 		/* Latest Patch Available after flashing "cc3000-patch-programmer.bin" */
 	}
+#endif
 
 	/* Main loop */
 	while (1)
@@ -145,16 +145,32 @@ int main(void)
 #ifdef SPARK_WLAN_ENABLE
 		if(WLAN_SMART_CONFIG_START)
 		{
-			//
-			// Start CC3000 first time configuration
-			//
+			/* Start CC3000 Smart Config Process */
 			Start_Smart_Config();
 		}
 		else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
 		{
 		    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
-		    wlan_connect(WLAN_SEC_WPA2, "VED", 3, NULL, "BD180408", 8);
+		    wlan_connect(WLAN_SEC_WPA2, "ssid", 4, NULL, "password", 8);
 		    WLAN_MANUAL_CONNECT = 0;
+		}
+
+		// Complete Smart Config Process:
+		// 1. if smart config is done
+		// 2. CC3000 established AP connection
+		// 3. DHCP IP is configured
+		// then send mDNS packet to stop external SmartConfig application
+		if ((WLAN_SMART_CONFIG_STOP == 1) && (WLAN_DHCP == 1) && (WLAN_CONNECTED == 1))
+		{
+			unsigned char loop_index = 0;
+
+			while (loop_index < 3)
+			{
+				mdnsAdvertiser(1,device_name,strlen(device_name));
+				loop_index++;
+			}
+
+			WLAN_SMART_CONFIG_STOP = 0;
 		}
 
 		if(WLAN_DHCP && !SPARK_SOCKET_CONNECTED)
@@ -262,7 +278,7 @@ void Timing_Decrement(void)
 
     if(BUTTON_GetDebouncedState(BUTTON1) != 0x00)
     {
-    	//Enter First Time Config On Next System Reset
+    	//Enter Smart Config Process On Next System Reset
     	//Since socket connect() is currently blocking
 #ifdef DFU_BUILD_ENABLE
 		Smart_Config_SysFlag = 0xFFFF;
@@ -392,7 +408,8 @@ void Set_NetApp_Timeout(void)
  *******************************************************************************/
 void Start_Smart_Config(void)
 {
-	WLAN_SMART_CONFIG_DONE = 0;
+	WLAN_SMART_CONFIG_FINISHED = 0;
+	WLAN_SMART_CONFIG_STOP = 0;
 	WLAN_CONNECTED = 0;
 	WLAN_DHCP = 0;
 	WLAN_CAN_SHUTDOWN = 0;
@@ -404,13 +421,11 @@ void Start_Smart_Config(void)
 	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
 #endif
 
-	//
-	// Reset all the previous configuration
-	//
+	/* Reset all the previous configuration */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
 	wlan_ioctl_del_profile(255);
 
-	//Wait until CC3000 is disconnected
+	/* Wait until CC3000 is disconnected */
 	while (WLAN_CONNECTED == 1)
 	{
 		//Delay 100ms
@@ -418,15 +433,13 @@ void Start_Smart_Config(void)
 		hci_unsolicited_event_handler();
 	}
 
-	//
-	// Start the SmartConfig start process
-	//
+	wlan_smart_config_set_prefix((char*)aucCC3000_prefix);
+
+	/* Start the SmartConfig start process */
 	wlan_smart_config_start(1);
 
-	//
-	// Wait for First Time config finished
-	//
-	while (WLAN_SMART_CONFIG_DONE == 0)
+	/* Wait for SmartConfig to finish */
+	while (WLAN_SMART_CONFIG_FINISHED == 0)
 	{
 		/* Toggle the LED2 every 100ms */
 		LED_Toggle(LED2);
@@ -435,12 +448,22 @@ void Start_Smart_Config(void)
 
 	LED_Off(LED2);
 
-	//
-	// Configure to connect automatically to the AP retrieved in the
-	// First Time config process
-	//
+	/* Create new entry for AES encryption key */
+	nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
+
+	/* Write AES key to NVMEM */
+	aes_write_key((unsigned char *)(&smartconfigkey[0]));
+
+	/* Decrypt configuration information and add profile */
+	wlan_smart_config_process();
+
+	/* Configure to connect automatically to the AP retrieved in the Smart config process */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
 
+	/* Reset the CC3000 */
+	wlan_stop();
+
+	/* Save Smart config done as a system flag */
 #ifdef DFU_BUILD_ENABLE
 	Smart_Config_SysFlag = 0xBBBB;
 	Save_SystemFlags();
@@ -448,24 +471,14 @@ void Start_Smart_Config(void)
 	BKP_WriteBackupRegister(BKP_DR2, 0xBBBB);
 #endif
 
-	NVIC_SystemReset();
+	WLAN_SMART_CONFIG_START = 0;
 
-/*
-	//
-	// reset the CC3000
-	//
-	wlan_stop();
-
-	// Delay 1 sec
 	Delay(1000);
 
 	wlan_start(0);
 
-	//
-	// Mask out all non-required events
-	//
+	/* Mask out all non-required events */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
-*/
 }
 
 /* WLAN Application related callbacks passed to wlan_init */
@@ -474,7 +487,8 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 	switch (lEventType)
 	{
 		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
-			WLAN_SMART_CONFIG_DONE = 1;
+			WLAN_SMART_CONFIG_FINISHED = 1;
+			WLAN_SMART_CONFIG_STOP = 1;
 			WLAN_MANUAL_CONNECT = 0;
 			break;
 
@@ -492,8 +506,15 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
-			WLAN_DHCP = 1;
-			LED_On(LED2);
+			if (*(data + 20) == 0)
+			{
+				WLAN_DHCP = 1;
+				LED_On(LED2);
+			}
+			else
+			{
+				WLAN_DHCP = 0;
+			}
 			break;
 
 		case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
