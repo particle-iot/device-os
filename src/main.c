@@ -197,9 +197,9 @@ int main(void)
 				loop();
 			}
 
-			if(NULL != pUserFunction)
+			if(NULL != pMessageHandler)
 			{
-				pUserFunction();
+				pMessageHandler();
 			}
 #ifdef SPARK_WLAN_ENABLE
 		}

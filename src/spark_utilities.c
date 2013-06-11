@@ -17,8 +17,8 @@ const char Device_Fail[] = "FAIL ";
 const char Device_CRLF[] = "\n";
 const char API_Alive[] = "alive";
 const char API_Who[] = "who";
-const char API_UserFunc[] = "USERFUNC ";
-const char API_Callback[] = "CALLBACK ";
+const char API_MessageHandler[] = "USERFUNC ";
+const char API_SendMessage[] = "CALLBACK ";
 char High_Dx[] = "HIGH D ";
 char Low_Dx[] = "LOW D ";
 
@@ -30,10 +30,10 @@ int total_bytes_received = 0;
 extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint32_t TimingSparkAliveTimeout;
 
-void (*pUserFunction)(void);
-char userBuff[SPARK_BUF_LEN];
+void (*pMessageHandler)(void);
+char msgBuff[SPARK_BUF_LEN];
 
-static void user_function(void);
+static void message_handler(void);
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
 static unsigned char itoa(int cNum, char *cString);
 static uint8_t atoc(char data);
@@ -199,10 +199,10 @@ int process_command()
 	}
 
 	// command to call the user-defined function
-	else if (0 == strncmp(recvBuff, API_UserFunc, strlen(API_UserFunc)))
+	else if (0 == strncmp(recvBuff, API_MessageHandler, strlen(API_MessageHandler)))
 	{
-		char *user_arg = &recvBuff[strlen(API_UserFunc)];
-		char *newline = strchr(user_arg, '\n');
+		char *msg_arg = &recvBuff[strlen(API_MessageHandler)];
+		char *newline = strchr(msg_arg, '\n');
 		if (NULL != newline)
 		{
 			if ('\r' == *(newline - 1))
@@ -210,12 +210,12 @@ int process_command()
 			*newline = '\0';
 		}
 
-	    memset(userBuff, 0, SPARK_BUF_LEN);
-	    if(NULL != user_arg)
+	    memset(msgBuff, 0, SPARK_BUF_LEN);
+	    if(NULL != msg_arg)
 	    {
-	    	memcpy(userBuff, user_arg, strlen(user_arg));
+	    	memcpy(msgBuff, msg_arg, strlen(msg_arg));
 	    }
-		pUserFunction = user_function;
+	    pMessageHandler = message_handler;
 	}
 
 	// Do nothing for new line returned
@@ -242,29 +242,29 @@ int Spark_Process_API_Response(void)
 	return retVal;
 }
 
-void userCallback(char *callback_name)
+void sendMessage(char *message)
 {
-	Spark_Send_Device_Message(sparkSocket, (char *)API_Callback, (char *)callback_name, NULL);
+	Spark_Send_Device_Message(sparkSocket, (char *)API_SendMessage, (char *)message, NULL);
 }
 
-void userCallbackWithData(char *callback_name, char *callback_data, long data_length)
-{
-	char lenStr[11];
-	int len = itoa(data_length, &lenStr[0]);
-	lenStr[len] = '\0';
-	Spark_Send_Device_Message(sparkSocket, (char *)API_Callback, (char *)callback_name, (char *)lenStr);
-}
+//void sendMessageWithData(char *message, char *data, long size)
+//{
+//	char lenStr[11];
+//	int len = itoa(size, &lenStr[0]);
+//	lenStr[len] = '\0';
+//	Spark_Send_Device_Message(sparkSocket, (char *)API_SendMessage, (char *)message, (char *)lenStr);
+//}
 
-static void user_function(void)
+static void message_handler(void)
 {
-	if (NULL != userFunction)
+	if (NULL != messageHandler)
 	{
-		pUserFunction = NULL;
+		pMessageHandler = NULL;
 		char retStr[11];
-		int userResult = userFunction(userBuff);
-		int retLen = itoa(userResult, retStr);
+		int msgResult = messageHandler(msgBuff);
+		int retLen = itoa(msgResult, retStr);
 		retStr[retLen] = '\0';
-		Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_UserFunc, (char *)retStr);
+		Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_MessageHandler, (char *)retStr);
 	}
 }
 

@@ -18,14 +18,14 @@ int Spark_Connect(void);
 int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);
 
-void userCallback(char *callback_name);
-void userCallbackWithData(char *callback_name, char *callback_data, long data_length);
+void sendMessage(char *message);
+//void sendMessageWithData(char *message, char *data, long size);
 
-//void userFunction(void) __attribute__ ((weak, alias ("Default_Handler")));
-char userFunction(char *user_arg) __attribute__ ((weak));
+//void messageHandler(void) __attribute__ ((weak, alias ("Default_Handler")));
+char messageHandler(char *user_arg) __attribute__ ((weak));
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 
-extern void (*pUserFunction)(void);
+extern void (*pMessageHandler)(void);
 
 #endif  /* __SPARK_UTILITIES_H */
