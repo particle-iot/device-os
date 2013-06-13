@@ -17,8 +17,9 @@ const char Device_Fail[] = "FAIL ";
 const char Device_CRLF[] = "\n";
 const char API_Alive[] = "alive";
 const char API_Who[] = "who";
-const char API_MessageHandler[] = "USERFUNC ";
+const char API_HandleMessage[] = "USERFUNC ";
 const char API_SendMessage[] = "CALLBACK ";
+const char API_Update[] = "UPDATE";
 char High_Dx[] = "HIGH D ";
 char Low_Dx[] = "LOW D ";
 
@@ -30,10 +31,10 @@ int total_bytes_received = 0;
 extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint32_t TimingSparkAliveTimeout;
 
-void (*pMessageHandler)(void);
+void (*pHandleMessage)(void);
 char msgBuff[SPARK_BUF_LEN];
 
-static void message_handler(void);
+static void handle_message(void);
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
 static unsigned char itoa(int cNum, char *cString);
 static uint8_t atoc(char data);
@@ -176,6 +177,12 @@ int process_command()
 		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
 	}
 
+	// command to trigger OTA firmware upgrade
+	else if (0 == strncmp(recvBuff, API_Update, strlen(API_Update)))
+	{
+		Start_OTA_Update();
+	}
+
 	// command to set a pin high
 	else if (0 == strncmp(recvBuff, High_Dx, 6))
 	{
@@ -199,9 +206,9 @@ int process_command()
 	}
 
 	// command to call the user-defined function
-	else if (0 == strncmp(recvBuff, API_MessageHandler, strlen(API_MessageHandler)))
+	else if (0 == strncmp(recvBuff, API_HandleMessage, strlen(API_HandleMessage)))
 	{
-		char *msg_arg = &recvBuff[strlen(API_MessageHandler)];
+		char *msg_arg = &recvBuff[strlen(API_HandleMessage)];
 		char *newline = strchr(msg_arg, '\n');
 		if (NULL != newline)
 		{
@@ -215,7 +222,7 @@ int process_command()
 	    {
 	    	memcpy(msgBuff, msg_arg, strlen(msg_arg));
 	    }
-	    pMessageHandler = message_handler;
+	    pHandleMessage = handle_message;
 	}
 
 	// Do nothing for new line returned
@@ -255,16 +262,16 @@ void sendMessage(char *message)
 //	Spark_Send_Device_Message(sparkSocket, (char *)API_SendMessage, (char *)message, (char *)lenStr);
 //}
 
-static void message_handler(void)
+static void handle_message(void)
 {
-	if (NULL != messageHandler)
+	if (NULL != handleMessage)
 	{
-		pMessageHandler = NULL;
+		pHandleMessage = NULL;
 		char retStr[11];
-		int msgResult = messageHandler(msgBuff);
+		int msgResult = handleMessage(msgBuff);
 		int retLen = itoa(msgResult, retStr);
 		retStr[retLen] = '\0';
-		Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_MessageHandler, (char *)retStr);
+		Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_HandleMessage, (char *)retStr);
 	}
 }
 

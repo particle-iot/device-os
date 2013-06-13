@@ -2,7 +2,7 @@
 #ifndef __SPARK_UTILITIES_H
 #define __SPARK_UTILITIES_H
 
-#include "hw_config.h"
+#include "main.h"
 
 #define SPARK_BUF_LEN	256
 
@@ -21,11 +21,11 @@ int Spark_Process_API_Response(void);
 void sendMessage(char *message);
 //void sendMessageWithData(char *message, char *data, long size);
 
-//void messageHandler(void) __attribute__ ((weak, alias ("Default_Handler")));
-char messageHandler(char *user_arg) __attribute__ ((weak));
+//void handleMessage(void) __attribute__ ((weak, alias ("Default_Handler")));
+char handleMessage(char *user_arg) __attribute__ ((weak));
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 
-extern void (*pMessageHandler)(void);
+extern void (*pHandleMessage)(void);
 
 #endif  /* __SPARK_UTILITIES_H */

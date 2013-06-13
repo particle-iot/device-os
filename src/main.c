@@ -197,9 +197,9 @@ int main(void)
 				loop();
 			}
 
-			if(NULL != pMessageHandler)
+			if(NULL != pHandleMessage)
 			{
-				pMessageHandler();
+				pHandleMessage();
 			}
 #ifdef SPARK_WLAN_ENABLE
 		}
@@ -539,6 +539,13 @@ char *WLAN_BootLoader_Patch(unsigned long *length)
 {
 	*length = 0;
 	return NULL;
+}
+
+void Start_OTA_Update(void)
+{
+	BKP_WriteBackupRegister(BKP_DR10, 0x5000);
+
+	NVIC_SystemReset();
 }
 
 #ifdef USE_FULL_ASSERT

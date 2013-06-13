@@ -48,4 +48,6 @@ char *WLAN_Firmware_Patch(unsigned long *length);
 char *WLAN_Driver_Patch(unsigned long *length);
 char *WLAN_BootLoader_Patch(unsigned long *length);
 
+void Start_OTA_Update(void);
+
 #endif /* __MAIN_H */
