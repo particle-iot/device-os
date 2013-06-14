@@ -63,7 +63,10 @@ int main(void)
 			ApplicationAddress = DEFAULT_ADDRESS;
 			break;
 		default:
-			ApplicationAddress = DEFAULT_ADDRESS;
+			if ((*(__IO uint16_t*)0x08004C04) == 0xA000)
+				ApplicationAddress = DEFAULT_ADDRESS;
+			else
+				ApplicationAddress = OTA_DFU_ADDRESS;
 			break;
 	}
 
