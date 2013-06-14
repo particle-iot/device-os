@@ -93,6 +93,9 @@ int main(void)
 
 	if (DFUDeviceMode != 0x01)
 	{
+	    if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) != 0x20000000)
+	        ApplicationAddress = DEFAULT_ADDRESS;
+
 		/* Test if user code is programmed starting from ApplicationAddress */
 		if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
 		{
