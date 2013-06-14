@@ -44,6 +44,7 @@ __IO uint8_t SPARK_DEVICE_ACKED;
 
 uint16_t NetApp_Timeout_SysFlag = 0xFFFF;
 uint16_t Smart_Config_SysFlag = 0xFFFF;
+uint16_t Flash_Update_SysFlag = 0xFFFF;
 
 unsigned char patchVer[2];
 
@@ -72,6 +73,16 @@ char device_name[] = "CC3000";
 int main(void)
 {
 	Set_System();
+
+#ifdef DFU_BUILD_ENABLE
+	Load_SystemFlags();
+
+	if(Flash_Update_SysFlag != 0xA000)
+	{
+		Flash_Update_SysFlag = 0xA000;
+		Save_SystemFlags();
+	}
+#endif
 
 #ifdef SPARK_WIRING_ENABLE
 	if(NULL != setup)
@@ -105,10 +116,6 @@ int main(void)
 
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
-
-#ifdef DFU_BUILD_ENABLE
-	Load_SystemFlags();
-#endif
 
 #ifdef DFU_BUILD_ENABLE
     if(NetApp_Timeout_SysFlag != 0xAAAA)
@@ -286,6 +293,7 @@ void Timing_Decrement(void)
 #else
 		BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
 #endif
+
     	NVIC_SystemReset();
     }
 
@@ -341,6 +349,9 @@ void Load_SystemFlags(void)
 
 	Smart_Config_SysFlag = (*(__IO uint16_t*) Address);
 	Address += 2;
+
+	Flash_Update_SysFlag = (*(__IO uint16_t*) Address);
+	Address += 2;
 #endif
 }
 
@@ -367,6 +378,11 @@ void Save_SystemFlags(void)
 
 	/* Program Smart_Config_SysFlag */
 	FLASHStatus = FLASH_ProgramHalfWord(Address, Smart_Config_SysFlag);
+	while(FLASHStatus != FLASH_COMPLETE);
+	Address += 2;
+
+	/* Program Flash_Update_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, Flash_Update_SysFlag);
 	while(FLASHStatus != FLASH_COMPLETE);
 	Address += 2;
 
@@ -463,7 +479,6 @@ void Start_Smart_Config(void)
 	/* Reset the CC3000 */
 	wlan_stop();
 
-	/* Save Smart config done as a system flag */
 #ifdef DFU_BUILD_ENABLE
 	Smart_Config_SysFlag = 0xBBBB;
 	Save_SystemFlags();
@@ -543,6 +558,10 @@ char *WLAN_BootLoader_Patch(unsigned long *length)
 
 void Start_OTA_Update(void)
 {
+#ifdef DFU_BUILD_ENABLE
+	Flash_Update_SysFlag = 0x5000;
+	Save_SystemFlags();
+#endif
 	BKP_WriteBackupRegister(BKP_DR10, 0x5000);
 
 	NVIC_SystemReset();
