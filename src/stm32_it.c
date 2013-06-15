@@ -160,28 +160,6 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /*******************************************************************************
- * Function Name  : EXTI0_IRQHandler
- * Description    : This function handles EXTI0 interrupt request.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void EXTI0_IRQHandler(void)
-{
-	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
-	{
-		/* Clear the EXTI line pending flag */
-		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
-
-		/* Disable BUTTON1 Interrupts */
-		BUTTON_EXTI_Config(BUTTON1, DISABLE);
-
-	    /* DEBOUNCE_TIMER Enable Counter */
-	    TIM_Cmd(DEBOUNCE_TIMER, ENABLE);
-	}
-}
-
-/*******************************************************************************
  * Function Name  : EXTI15_10_IRQHandler
  * Description    : This function handles EXTI15_10 interrupt request.
  * Input          : None
