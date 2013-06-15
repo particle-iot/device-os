@@ -162,18 +162,6 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /*******************************************************************************
- * Function Name  : DMA1_Channel3_IRQHandler
- * Description    : This function handles SPI1_TX_DMA interrupt request.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void DMA1_Channel3_IRQHandler(void)
-{
-	SPI_DMA_IntHandler();
-}
-
-/*******************************************************************************
  * Function Name  : DMA1_Channel5_IRQHandler
  * Description    : This function handles SPI2_TX_DMA interrupt request.
  * Input          : None
@@ -183,36 +171,6 @@ void DMA1_Channel3_IRQHandler(void)
 void DMA1_Channel5_IRQHandler(void)
 {
 	SPI_DMA_IntHandler();
-}
-
-/*******************************************************************************
- * Function Name  : EXTI0_IRQHandler
- * Description    : This function handles EXTI0 interrupt request.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void EXTI0_IRQHandler(void)
-{
-	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
-	{
-		/* Clear the EXTI line pending flag */
-		EXTI_ClearFlag(CC3000_WIFI_INT_EXTI_LINE );
-
-		SPI_EXTI_IntHandler();
-	}
-
-	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
-	{
-		/* Clear the EXTI line pending flag */
-		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
-
-		/* Disable BUTTON1 Interrupts */
-		BUTTON_EXTI_Config(BUTTON1, DISABLE);
-
-	    /* DEBOUNCE_TIMER Enable Counter */
-	    TIM_Cmd(DEBOUNCE_TIMER, ENABLE);
-	}
 }
 
 /*******************************************************************************
