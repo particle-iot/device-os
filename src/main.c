@@ -29,6 +29,7 @@ __IO uint32_t TimingMillis;
 
 __IO uint32_t TimingSparkProcessAPI;
 __IO uint32_t TimingSparkAliveTimeout;
+__IO uint32_t TimingSparkResetTimeout;
 
 uint8_t WLAN_MANUAL_CONNECT = 0;//For Manual connection, set this to 1
 uint8_t WLAN_SMART_CONFIG_START;
@@ -42,6 +43,8 @@ __IO uint8_t SPARK_SOCKET_CONNECTED;
 __IO uint8_t SPARK_SOCKET_ALIVE;
 __IO uint8_t SPARK_DEVICE_ACKED;
 
+__IO uint8_t Socket_Connect_Count;
+
 uint16_t NetApp_Timeout_SysFlag = 0xFFFF;
 uint16_t Smart_Config_SysFlag = 0xFFFF;
 uint16_t Flash_Update_SysFlag = 0xFFFF;
@@ -54,8 +57,6 @@ char aucCC3000_prefix[] = {'T', 'T', 'T'};
 const unsigned char smartconfigkey[] = "sparkdevices2013";	//16 bytes
 /* device name used by smart config response */
 char device_name[] = "CC3000";
-
-//tNetappIpconfigRetArgs ipconfig;
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -182,10 +183,7 @@ int main(void)
 
 		if(WLAN_DHCP && !SPARK_SOCKET_CONNECTED)
 		{
-//			netapp_ipconfig(&ipconfig);
-//
-//			if(ipconfig.aucIP[0] == 0x00)
-//				continue;
+			Socket_Connect_Count++;
 
 			if(Spark_Connect() < 0)
 				SPARK_SOCKET_CONNECTED = 0;
@@ -298,8 +296,32 @@ void Timing_Decrement(void)
     }
 
 #ifdef SPARK_WLAN_ENABLE
+    if (WLAN_CONNECTED && !SPARK_SOCKET_CONNECTED)
+    {
+		if (!Socket_Connect_Count)
+		{
+			if (TimingSparkResetTimeout >= TIMING_SPARK_RESET_TIMEOUT)
+			{
+				NVIC_SystemReset();
+			}
+			else
+			{
+				TimingSparkResetTimeout++;
+			}
+		}
+		else if (Socket_Connect_Count >= SOCKET_CONNECT_MAX_ATTEMPT)
+		{
+			NVIC_SystemReset();
+		}
+    }
+
 	if (SPARK_SOCKET_CONNECTED)
 	{
+		if(Socket_Connect_Count)
+			Socket_Connect_Count = 0;
+		else
+			TimingSparkResetTimeout = 0;
+
 		SPARK_SOCKET_ALIVE = 1;
 
 		if (TimingSparkProcessAPI >= TIMING_SPARK_PROCESS_API)
@@ -334,6 +356,7 @@ void Timing_Decrement(void)
 
 			SPARK_SOCKET_CONNECTED = 0;
 			SPARK_DEVICE_ACKED = 0;
+			Socket_Connect_Count = 0;
 		}
 	}
 #endif
@@ -517,6 +540,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			SPARK_SOCKET_CONNECTED = 0;
 			SPARK_SOCKET_ALIVE = 0;
 			SPARK_DEVICE_ACKED = 0;
+			Socket_Connect_Count = 0;
 			LED_Off(LED2);
 			break;
 

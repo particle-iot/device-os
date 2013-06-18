@@ -13,6 +13,9 @@
 
 #define TIMING_SPARK_PROCESS_API		200		//200ms
 #define TIMING_SPARK_ALIVE_TIMEOUT		15000	//15sec
+#define TIMING_SPARK_RESET_TIMEOUT		30000	//30sec
+
+#define SOCKET_CONNECT_MAX_ATTEMPT		3		//Max no of connection attempts
 
 int Spark_Connect(void);
 int Spark_Disconnect(void);
