@@ -73,6 +73,8 @@ typedef enum
 void Set_System(void);
 void NVIC_Configuration(void);
 
+void IWDG_Reset_Enable(uint32_t msTimeout);
+
 void DIO_Init(DIO_TypeDef Dx);
 DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State);
 

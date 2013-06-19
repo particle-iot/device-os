@@ -125,6 +125,7 @@ void Set_System(void)
 		{
 		}
 	}
+
 	/* Configure the SysTick Handler Priority: Preemption priority and subpriority */
 	NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00));
 }
@@ -150,6 +151,31 @@ void NVIC_Configuration(void)
 	/* Configure the Priority Group to 2 bits */
 	/* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+}
+
+void IWDG_Reset_Enable(uint32_t msTimeout)
+{
+	uint16_t Reload_Value;
+
+	if(msTimeout > 10000)
+		msTimeout = 10000;	//Max IWDG timeout that can be set is 10 sec
+
+	/* Enable write access to IWDG_PR and IWDG_RLR registers */
+	IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+
+	/* IWDG counter clock: LSI/32 */
+	IWDG_SetPrescaler(IWDG_Prescaler_256);
+
+	/* IWDG timeout may vary due to LSI frequency dispersion */
+	Reload_Value = (uint16_t)((msTimeout * 40) / 256); //Assuming LSI Frequency = 40000
+
+	IWDG_SetReload(Reload_Value);
+
+	/* Reload IWDG counter */
+	IWDG_ReloadCounter();
+
+	/* Enable IWDG (the LSI oscillator will be enabled by hardware) */
+	IWDG_Enable();
 }
 
 /**

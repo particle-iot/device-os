@@ -22,11 +22,11 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-__IO uint32_t TimingDelay;
-__IO uint32_t TimingLED1, TimingLED2;
-__IO uint32_t TimingBUTTON1;
 __IO uint32_t TimingMillis;
+__IO uint32_t TimingDelay;
+__IO uint32_t TimingLED;
 
+__IO uint32_t TimingSparkIWDGReload;
 __IO uint32_t TimingSparkProcessAPI;
 __IO uint32_t TimingSparkAliveTimeout;
 __IO uint32_t TimingSparkResetTimeout;
@@ -42,6 +42,7 @@ uint8_t WLAN_CAN_SHUTDOWN;
 __IO uint8_t SPARK_SOCKET_CONNECTED;
 __IO uint8_t SPARK_SOCKET_ALIVE;
 __IO uint8_t SPARK_DEVICE_ACKED;
+__IO uint8_t SPARK_DEVICE_IWDGRST;
 
 __IO uint8_t Socket_Connect_Count;
 
@@ -75,6 +76,21 @@ int main(void)
 {
 	Set_System();
 
+#ifdef IWDG_RESET_ENABLE
+	/* Check if the system has resumed from IWDG reset */
+	if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
+	{
+		/* IWDGRST flag set */
+		SPARK_DEVICE_IWDGRST = 1;
+
+		/* Clear reset flags */
+		RCC_ClearFlag();
+	}
+
+	//Set IWDG Timeout to 3 secs */
+	IWDG_Reset_Enable(3 * TIMING_SPARK_IWDG_RELOAD);
+#endif
+
 #ifdef DFU_BUILD_ENABLE
 	Load_SystemFlags();
 
@@ -99,7 +115,7 @@ int main(void)
 
 #ifdef SPARK_SFLASH_ENABLE
 	/* Initialize SPI Flash */
-	sFLASH_Init();
+	//sFLASH_Init();
 
 	/* Run SPI Flash Self Test (Uncomment for Debugging) */
 	//sFLASH_SelfTest();
@@ -252,14 +268,14 @@ void Timing_Decrement(void)
         TimingDelay--;
     }
 
-    if (TimingLED1 != 0x00)
+    if (TimingLED != 0x00)
     {
-        TimingLED1--;
+        TimingLED--;
     }
     else if(!SPARK_DEVICE_ACKED)
     {
     	LED_Toggle(LED1);
-    	TimingLED1 = 100;	//100ms
+    	TimingLED = 100;	//100ms
     }
     else
     {
@@ -269,16 +285,6 @@ void Timing_Decrement(void)
     		LED_On(LED1);//SPARK_DEVICE_ACKED
     		SparkDeviceAckedLedOn = 1;
     	}
-    }
-
-    if (TimingLED2 != 0x00)
-    {
-        TimingLED2--;
-    }
-
-    if (TimingBUTTON1 != 0x00)
-    {
-    	TimingBUTTON1--;
     }
 
     if(BUTTON_GetDebouncedState(BUTTON1) != 0x00)
@@ -294,6 +300,20 @@ void Timing_Decrement(void)
 
     	NVIC_SystemReset();
     }
+
+#ifdef IWDG_RESET_ENABLE
+	if (TimingSparkIWDGReload >= TIMING_SPARK_IWDG_RELOAD)
+	{
+		TimingSparkIWDGReload = 0;
+
+	    /* Reload IWDG counter */
+	    IWDG_ReloadCounter();
+	}
+	else
+	{
+		TimingSparkIWDGReload++;
+	}
+#endif
 
 #ifdef SPARK_WLAN_ENABLE
     if (WLAN_CONNECTED && !SPARK_SOCKET_CONNECTED)

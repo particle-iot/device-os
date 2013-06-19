@@ -14,6 +14,7 @@ const char Device_Secret[] = "secret";
 const char Device_Name[] = "satish";
 const char Device_Ok[] = "OK ";
 const char Device_Fail[] = "FAIL ";
+const char Device_IWDGRST[] = "IWDGRST";
 const char Device_CRLF[] = "\n";
 const char API_Alive[] = "alive";
 const char API_Who[] = "who";
@@ -28,8 +29,9 @@ char digits[] = "0123456789";
 char recvBuff[SPARK_BUF_LEN];
 int total_bytes_received = 0;
 
-extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint32_t TimingSparkAliveTimeout;
+extern __IO uint8_t SPARK_DEVICE_ACKED;
+extern __IO uint8_t SPARK_DEVICE_IWDGRST;
 
 void (*pHandleMessage)(void);
 char msgBuff[SPARK_BUF_LEN];
@@ -174,7 +176,16 @@ int process_command()
 			SPARK_DEVICE_ACKED = 1;//First alive received by Core means Server received Device ID
 		}
 		TimingSparkAliveTimeout = 0;
-		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
+
+		if(SPARK_DEVICE_IWDGRST)
+		{
+			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_IWDGRST, NULL, NULL);
+			SPARK_DEVICE_IWDGRST = 0;
+		}
+		else
+		{
+			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
+		}
 	}
 
 	// command to trigger OTA firmware upgrade
