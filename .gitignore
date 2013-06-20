@@ -28,6 +28,12 @@ Release/*
 !Release/*.bin
 !Release/*.elf
 
+# build folder
+*.map
+*.lst
+*.d
+*.o
+
 # Platform-specific settings
 .settings/*
 .cproject
