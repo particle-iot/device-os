@@ -18,15 +18,9 @@
 
 # Debug folder
 Debug/*
-!Debug/*.hex
-!Debug/*.bin
-!Debug/*.elf
 
 # Release folder
 Release/*
-!Release/*.hex
-!Release/*.bin
-!Release/*.elf
 
 # build folder
 *.map

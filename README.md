@@ -28,22 +28,11 @@ Development Environment Setup:
    
 7. Important Project Settings when building for various platforms/boards:
 
-In marvin\inc\platforn_config.h, uncomment the line corresponding to the platform/board used,
-For eg.: When building for TV-1 board, except "#define USE_SPARK_TV1" all other #defines should be commented.
-
-In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Compiler -> Preprocessor -> Defined symbols(-D), Add the following :
-* "STM32F10X_MD_VL" when building for STM32F100C8 based TV-1 board or STM32VLDiscovery board.
-* "STM32F10X_MD" when building for STM32F103C8 based Core board or STM32-H103 board.
-
-In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T), Browse & select linker file :
-* "linker_stm32f10x_md_vl.ld" when building for STM32F100C8 based TV-1 board or STM32VLDiscovery board.
-* "linker_stm32f10x_md.ld" when building for STM32F103C8 based Core board or STM32-H103 board.
-
-In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Compiler -> Optimization,
+8. In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Compiler -> Optimization,
 * "CHECK" the "Function sections".
 * "UNCHECK" the "Data sections".
 
-For Flashing marvin.bin via DFU, follow the steps below:
+9. For Flashing marvin.bin via DFU, follow the steps below:
 
 In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
 * Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
@@ -51,28 +40,30 @@ In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM
 Uncomment the following line in platform_config.h to enable DFU based marvin build
 "#define DFU_BUILD_ENABLE"
 
-Build marvin project
+10. Build marvin project using Eclipse
 
-Make sure the board is first flashed with the usb-dfu.hex file in the "usb-dfu" project using JTAG
+11. To build the project using command line option, cd to the "build" folder and run make.
 
-Enter DFU mode by keeping the BUTTON pressed for > 1sec
+12. Make sure the board is first flashed with the usb-dfu.hex file in the "usb-dfu" project using JTAG
 
-Install open-source "dfu-util" on Windows, MAC or Linux by following the link below:
+13. Enter DFU mode by keeping the BUTTON pressed for > 1sec
+
+14. Install open-source "dfu-util" on Windows, MAC or Linux by following the link below:
 http://dfu-util.gnumonks.org/index.html
 
-Add "dfu-util" related bin files to PATH environment variable
+15. Add "dfu-util" related bin files to PATH environment variable
 
-List the currently attached DFU capable USB devices by running the following command on host:
+16. List the currently attached DFU capable USB devices by running the following command on host:
 dfu-util -l
 
-The STM32 boards in usb-dfu mode should be listed as follows:
+17. The STM32 boards in usb-dfu mode should be listed as follows:
 Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/12*001Ka,116*001Kg"
 Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
 
-cd to the marvin/Debug folder and type the below command to program the marvin application using dfu-util:
+18. cd to the marvin/Debug folder and type the below command to program the marvin application using dfu-util:
 dfu-util -d 0483:df11 -a 0 -s 0x0800A000:leave -D marvin.bin
 
-To Enter Smart Config Mode, press the BUT once.
+19. To Enter Smart Config Mode, press the BUT once.
 Both the LED should start toggling.
 Run the Smart Config App on an iPhone/itouch/Android device.
 Enter the following information:
