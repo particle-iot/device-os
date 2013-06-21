@@ -180,7 +180,6 @@ int process_command()
 		if(SPARK_DEVICE_IWDGRST)
 		{
 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_IWDGRST, NULL, NULL);
-			SPARK_DEVICE_IWDGRST = 0;
 		}
 		else
 		{

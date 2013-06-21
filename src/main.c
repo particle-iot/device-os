@@ -102,7 +102,7 @@ int main(void)
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
-	if(NULL != setup)
+	if((SPARK_DEVICE_IWDGRST != 1) && (NULL != setup))
 	{
 		setup();
 	}
@@ -113,20 +113,14 @@ int main(void)
 	/* Initialize CC3000's CS, EN and INT pins to their default states */
 	CC3000_WIFI_Init();
 
-#ifdef SPARK_SFLASH_ENABLE
-	/* Initialize SPI Flash */
-	//sFLASH_Init();
-
-	/* Run SPI Flash Self Test (Uncomment for Debugging) */
-	//sFLASH_SelfTest();
-#endif
-
 	/* Configure & initialize CC3000 SPI_DMA Interface */
 	CC3000_SPI_DMA_Init();
 
 	/* WLAN On API Implementation */
 	wlan_init(WLAN_Async_Callback, WLAN_Firmware_Patch, WLAN_Driver_Patch, WLAN_BootLoader_Patch,
 				CC3000_Read_Interrupt_Pin, CC3000_Interrupt_Enable, CC3000_Interrupt_Disable, CC3000_Write_Enable_Pin);
+
+	Delay(1000);
 
 	/* Trigger a WLAN device */
 	wlan_start(0);
@@ -213,12 +207,12 @@ int main(void)
 		if(SPARK_SOCKET_CONNECTED && SPARK_DEVICE_ACKED)
 		{
 #endif
-			if(NULL != loop)
+			if((SPARK_DEVICE_IWDGRST != 1) && (NULL != loop))
 			{
 				loop();
 			}
 
-			if(NULL != pHandleMessage)
+			if((SPARK_DEVICE_IWDGRST != 1) && (NULL != pHandleMessage))
 			{
 				pHandleMessage();
 			}
@@ -240,16 +234,7 @@ void Delay(uint32_t nTime)
 {
     TimingDelay = nTime;
 
-    // /* Enable the SysTick Counter */
-    // SysTick->CTRL |= SysTick_CTRL_ENABLE;
-
     while(TimingDelay != 0);
-
-    // /* Disable the SysTick Counter */
-    // SysTick->CTRL &= ~SysTick_CTRL_ENABLE;
-
-    // /* Clear the SysTick Counter */
-    // SysTick->VAL = (uint32_t)0x00;
 }
 
 /*******************************************************************************

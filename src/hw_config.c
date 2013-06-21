@@ -163,7 +163,7 @@ void IWDG_Reset_Enable(uint32_t msTimeout)
 	/* Enable write access to IWDG_PR and IWDG_RLR registers */
 	IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
 
-	/* IWDG counter clock: LSI/32 */
+	/* IWDG counter clock: LSI/256 */
 	IWDG_SetPrescaler(IWDG_Prescaler_256);
 
 	/* IWDG timeout may vary due to LSI frequency dispersion */
