@@ -49,3 +49,5 @@ dfu-util -d 0483:df11 -a 0 -s 0x0800A000:leave -D marvin.bin
 
 14. For flashing marvin application to External Flash starting from address 0x00001000, run the following command:
 dfu-util -d 0483:df11 -a 1 -s 0x00001000 -D marvin.bin
+
+15. To build the project using command line option, cd to the "build" folder and run make.
