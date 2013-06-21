@@ -48,40 +48,24 @@ all: marvin.elf secondary-outputs
 
 # Tool invocations
 marvin.elf: $(OBJS) $(USER_OBJS)
-	@echo 'Building target: $@'
-	@echo 'Invoking: ARM GCC C Linker'
 	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md_dfu.ld" -nostartfiles -Xlinker --gc-sections -Wl,-Map,marvin.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "marvin.elf" $(OBJS) $(USER_OBJS) $(LIBS)
-	@echo 'Finished building target: $@'
-	@echo ' '
 	$(MAKE) --no-print-directory post-build
 
 marvin.hex: marvin.elf
-	@echo 'Invoking: ARM GNU Create Flash Image'
 	arm-none-eabi-objcopy -O ihex marvin.elf  "marvin.hex"
-	@echo 'Finished building: $@'
-	@echo ' '
 
 marvin.lst: marvin.elf
-	@echo 'Invoking: ARM GNU Create Listing'
 	arm-none-eabi-objdump -h -S marvin.elf > "marvin.lst"
-	@echo 'Finished building: $@'
-	@echo ' '
 
 marvin.siz: marvin.elf
-	@echo 'Invoking: ARM GNU Print Size'
 	arm-none-eabi-size  --format=berkeley marvin.elf
-	@echo 'Finished building: $@'
-	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(OBJS)$(C_DEPS)$(ASM_DEPS)$(S_UPPER_DEPS)$(EXECUTABLES)$(SECONDARY_FLASH)$(SECONDARY_LIST)$(SECONDARY_SIZE) marvin.map marvin.elf marvin.bin
-	-@echo ' '
 
 post-build:
-	-@echo 'Create Binary'
 	-arm-none-eabi-objcopy -S -O binary "marvin.elf" "marvin.bin"
-	-@echo ' '
 
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_LIST) $(SECONDARY_SIZE)
 
