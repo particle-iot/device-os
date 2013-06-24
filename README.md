@@ -1,4 +1,4 @@
-##### Spark Core Firmware
+## Spark Core Firmware
 
 This is the Github repository for the firmware for the Spark Core.
 
@@ -49,11 +49,11 @@ Take a look at the Spark Core. There are a few important things to be aware of o
 
 ### Getting started
 
-## Step 1: Set up a simple LED circuit
+#### Step 1: Set up a simple LED circuit
 
 (This section should explain how the user can wire up an LED and a resistor to D0 in order to control it over the Spark API)
 
-## Step 2: Connect your Spark Core to the internet
+#### Step 2: Connect your Spark Core to the internet
 
 The Spark Core comes with software pre-installed that will connect the Core to the internet over your home Wi-Fi network and, once it's connected, let you control the Digital pins using the Spark Cloud API.
 
@@ -72,7 +72,7 @@ To Enter Smart Config Mode, press the BUT once.
     The App on phone should also display a connected successfully message.
 
 
-## Step 3: Make an API call
+#### Step 3: Make an API call
 
 (This section should explain how a user can use the basic D0 to HIGH/LOW API call to turn on and off the LED connected to pin D0).
 
@@ -85,7 +85,7 @@ When using the Spark Core software package, you have access to the following lib
   - *Low level GPIO.* For the daring, you can write low-level code by writing to the various registers included on the STM32 chip. Please see the (STM32 user manual)[http://link-to-stm32-user-manual] for more information.
   - *Messaging functions for Spark Cloud API.* Besides the basic Arduino/Wiring code, we've created our own functions for sending messages around on the internet. These functions are documented below.
 
-## Arduino/Wiring functions
+#### Arduino/Wiring functions
 
 (Each of the following functions should be a link to the appropriate documentation on the Arduino site. Also, I don't think I caught everything here, so let's finish fleshing this out)
 Functions currently implemented:
@@ -106,7 +106,7 @@ Functions not yet implemented:
 
 There are two Serial ports on the Core: one over USB and one over the TX/RX pins on the Core. To communicate over USB, use Serial (i.e. `Serial.print()`); to communicate over the TX/RX pins, use Serial1 (i.e. `Serial1.print()`).
 
-## Spark Cloud API functions
+#### Spark Cloud API functions
 
 We have created two additional functions for sending messages through the Spark Cloud: one for handling messages received by the Spark Core (`handleMessage()`) and one for sending messages up to the Spark Cloud (`sendMessage()`). We plan on creating other functions for common use cases (such as calling functions on the Core remotely, or reading variables off of the Core), but for now, this basic messaging protocol is a simple method to handle most of the things you'll want to do.
 
@@ -119,7 +119,7 @@ We have created two additional functions for sending messages through the Spark 
 
 ### Reprogramming the Spark Core
 
-## Step 1: Install dependencies
+#### Step 1: Install dependencies
 
 (This section should explain how the user should install arm-none-eabi and dfu-util on Mac/Windows/Linux).
 
@@ -129,7 +129,7 @@ We have created two additional functions for sending messages through the Spark 
 - Install open-source "dfu-util" on Windows, MAC or Linux by following the link below:
   http://dfu-util.gnumonks.org/index.html
 
-## Step 2: Compile your code
+#### Step 2: Compile your code
 
 (This section should explain how to compile the Spark Core project using arm-none-eabi and our own compile script. I've included the existing documentation here as a starting point)
 
@@ -191,7 +191,7 @@ We have created two additional functions for sending messages through the Spark 
 18. cd to the marvin/Debug folder and type the below command to program the marvin application using dfu-util:
     dfu-util -d 0483:df11 -a 0 -s 0x0800A000:leave -D marvin.bin
 
-## Step 4: Test your code
+#### Step 4: Test your code
 
 (This section should explain how to use Serial-over-USB for debugging)
 
