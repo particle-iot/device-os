@@ -34,38 +34,38 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 SECONDARY_FLASH += \
-marvin.hex \
+core-firmware.hex \
 
 SECONDARY_LIST += \
-marvin.lst \
+core-firmware.lst \
 
 SECONDARY_SIZE += \
-marvin.siz \
+core-firmware.siz \
 
 
 # All Target
-all: marvin.elf secondary-outputs
+all: core-firmware.elf secondary-outputs
 
 # Tool invocations
-marvin.elf: $(OBJS) $(USER_OBJS)
-	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md_dfu.ld" -nostartfiles -Xlinker --gc-sections -Wl,-Map,marvin.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "marvin.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+core-firmware.elf: $(OBJS) $(USER_OBJS)
+	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md_dfu.ld" -nostartfiles -Xlinker --gc-sections -Wl,-Map,core-firmware.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "core-firmware.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	$(MAKE) --no-print-directory post-build
 
-marvin.hex: marvin.elf
-	arm-none-eabi-objcopy -O ihex marvin.elf  "marvin.hex"
+core-firmware.hex: core-firmware.elf
+	arm-none-eabi-objcopy -O ihex core-firmware.elf  "core-firmware.hex"
 
-marvin.lst: marvin.elf
-	arm-none-eabi-objdump -h -S marvin.elf > "marvin.lst"
+core-firmware.lst: core-firmware.elf
+	arm-none-eabi-objdump -h -S core-firmware.elf > "core-firmware.lst"
 
-marvin.siz: marvin.elf
-	arm-none-eabi-size  --format=berkeley marvin.elf
+core-firmware.siz: core-firmware.elf
+	arm-none-eabi-size  --format=berkeley core-firmware.elf
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(ASM_DEPS)$(S_UPPER_DEPS)$(EXECUTABLES)$(SECONDARY_FLASH)$(SECONDARY_LIST)$(SECONDARY_SIZE) marvin.map marvin.elf marvin.bin
+	-$(RM) $(OBJS)$(C_DEPS)$(ASM_DEPS)$(S_UPPER_DEPS)$(EXECUTABLES)$(SECONDARY_FLASH)$(SECONDARY_LIST)$(SECONDARY_SIZE) core-firmware.map core-firmware.elf core-firmware.bin
 
 post-build:
-	-arm-none-eabi-objcopy -S -O binary "marvin.elf" "marvin.bin"
+	-arm-none-eabi-objcopy -S -O binary "core-firmware.elf" "core-firmware.bin"
 
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_LIST) $(SECONDARY_SIZE)
 
