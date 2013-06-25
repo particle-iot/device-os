@@ -150,7 +150,7 @@ We have created two additional functions for sending messages through the Spark 
    Click OK and a component named "CDT GNU Cross Development Tools" will appear,
    check it, then click the Next button and follow the installation instructions.
 
-6. Follow the screenshots in the folder "eclipse_marvin_setup"(Steps: 1 to 30)
+6. Follow the screenshots in the folder "eclipse_core-firmware_setup"(Steps: 1 to 30)
    PS: The screenshots are not available within the GIT project(probably need to be put in Dropbox).
    
 7. Important Project Settings when building for various platforms/boards:
@@ -159,17 +159,17 @@ We have created two additional functions for sending messages through the Spark 
    "CHECK" the "Function sections".
    "UNCHECK" the "Data sections".
 
-9. For Flashing marvin.bin via DFU, follow the steps below:
+9. For Flashing core-firmware.bin via DFU, follow the steps below:
 
    In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
    Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
 
-   Uncomment the following line in platform_config.h to enable DFU based marvin build
+   Uncomment the following line in platform_config.h to enable DFU based core-firmware build
    "#define DFU_BUILD_ENABLE"
 
-10. Build marvin project using Eclipse
+10. Build core-firmware project using Eclipse
 
-11. To build the project using command line option, cd to the "build" folder and run make.
+11. Alternatively to build the project using command line option, cd to the "build" folder and run "make clean" followed by "make all".
 
 ## Step 3: Flash your code
 
@@ -188,8 +188,8 @@ We have created two additional functions for sending messages through the Spark 
     Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/12*001Ka,116*001Kg"
     Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
 
-18. cd to the marvin/Debug folder and type the below command to program the marvin application using dfu-util:
-    dfu-util -d 0483:df11 -a 0 -s 0x0800A000:leave -D marvin.bin
+18. cd to the core-firmware/Debug folder and type the below command to program the core-firmware application using dfu-util:
+    dfu-util -d 0483:df11 -a 0 -s 0x0800C000:leave -D core-firmware.bin
 
 #### Step 4: Test your code
 

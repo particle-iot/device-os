@@ -48,6 +48,7 @@ all: core-firmware.elf secondary-outputs
 
 # Tool invocations
 core-firmware.elf: $(OBJS) $(USER_OBJS)
+	@echo 'Building target..'
 	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md_dfu.ld" -nostartfiles -Xlinker --gc-sections -Wl,-Map,core-firmware.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "core-firmware.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	$(MAKE) --no-print-directory post-build
 
@@ -59,6 +60,7 @@ core-firmware.lst: core-firmware.elf
 
 core-firmware.siz: core-firmware.elf
 	arm-none-eabi-size  --format=berkeley core-firmware.elf
+	-@echo 'Finished building target'
 
 # Other Targets
 clean:

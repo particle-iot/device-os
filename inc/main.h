@@ -34,8 +34,6 @@
 void Timing_Decrement(void);
 void Delay(__IO uint32_t nTime);
 
-void BUTTON1_IntHandler(void);
-
 void Load_SystemFlags(void);
 void Save_SystemFlags(void);
 

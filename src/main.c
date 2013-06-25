@@ -87,16 +87,16 @@ int main(void)
 		RCC_ClearFlag();
 	}
 
-	//Set IWDG Timeout to 3 secs */
+	/* Set IWDG Timeout to 3 secs */
 	IWDG_Reset_Enable(3 * TIMING_SPARK_IWDG_RELOAD);
 #endif
 
 #ifdef DFU_BUILD_ENABLE
 	Load_SystemFlags();
 
-	if(Flash_Update_SysFlag != 0xA000)
+	if(Flash_Update_SysFlag != 0xC000)
 	{
-		Flash_Update_SysFlag = 0xA000;
+		Flash_Update_SysFlag = 0xC000;
 		Save_SystemFlags();
 	}
 #endif
