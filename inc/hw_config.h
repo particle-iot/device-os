@@ -40,7 +40,7 @@ typedef enum
 /* Flash memory address where various firmwares are located */
 #define USB_DFU_ADDRESS	0x08000000
 #define OTA_DFU_ADDRESS	0x08005000
-#define DEFAULT_ADDRESS	0x0800A000
+#define CORE_FW_ADDRESS	0x0800C000
 
 /* Select sFLASH: Chip Select pin low */
 #define sFLASH_CS_LOW()		GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)

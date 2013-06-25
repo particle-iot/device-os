@@ -501,7 +501,7 @@ void USB_Cable_Config (FunctionalState NewState)
 *******************************************************************************/
 void Reset_Device(void)
 {
-	BKP_WriteBackupRegister(BKP_DR10, 0xA000);
+	BKP_WriteBackupRegister(BKP_DR10, 0xC000);
     USB_Cable_Config(DISABLE);
     NVIC_SystemReset();
 }

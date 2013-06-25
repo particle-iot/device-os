@@ -59,22 +59,16 @@ int main(void)
 		case 0x5000:
 			ApplicationAddress = OTA_DFU_ADDRESS;
 			break;
-		case 0xA000:
-			ApplicationAddress = DEFAULT_ADDRESS;
+		case 0xC000:
+			ApplicationAddress = CORE_FW_ADDRESS;
 			break;
 		default:
-			if ((*(__IO uint16_t*)0x08004C04) == 0xA000)
-				ApplicationAddress = DEFAULT_ADDRESS;
+			if ((*(__IO uint16_t*)0x08004C04) == 0xC000)
+				ApplicationAddress = CORE_FW_ADDRESS;
 			else
 				ApplicationAddress = OTA_DFU_ADDRESS;
 			break;
 	}
-
-	/* Check if Enter DFU Mode command is received from marvin's USB Serial Console
-	 * This will be stored as a flag in the Backup register which needs to be checked
-	 * If true, set DFUDeviceMode = 0x01
-	 * TO DO...
-	 */
 
 	/* Check if BUTTON1 is pressed for 1 sec to enter DFU Mode */
 	if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
@@ -94,7 +88,7 @@ int main(void)
 	if (DFUDeviceMode != 0x01)
 	{
 	    if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) != 0x20000000)
-	        ApplicationAddress = DEFAULT_ADDRESS;
+	        ApplicationAddress = CORE_FW_ADDRESS;
 
 		/* Test if user code is programmed starting from ApplicationAddress */
 		if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
@@ -169,16 +163,7 @@ void Delay(uint32_t nTime)
 {
     TimingDelay = nTime;
 
-    // /* Enable the SysTick Counter */
-    // SysTick->CTRL |= SysTick_CTRL_ENABLE;
-
     while (TimingDelay != 0x00);
-
-    // /* Disable the SysTick Counter */
-    // SysTick->CTRL &= ~SysTick_CTRL_ENABLE;
-
-    // /* Clear the SysTick Counter */
-    // SysTick->VAL = (uint32_t)0x00;
 }
 
 /*******************************************************************************

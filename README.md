@@ -4,9 +4,9 @@ Spark USB-DFU firmware for the STM32
 
 Development Environment Setup:
 
-1. Copy .cproject and .project files from "marvin" into "usb-dfu" folder.
+1. Copy .cproject and .project files from "core-firmware" into "usb-dfu" folder.
 
-2. Search and replace "marvin" with "usb-dfu" in the above 2 files.
+2. Search and replace "core-firmware" with "usb-dfu" in the above 2 files.
 
 3. In Eclipse, select File -> Import -> Existing Projects into Workspace -> Select root directry: -> Browse and select "usb-dfu" folder -> Finish.
 
@@ -35,19 +35,19 @@ Development Environment Setup:
 12. If the macro SPARK_SFLASH_ENABLE is uncommented in platform_config.h, then the External Serial Flash should also be listed as follows:
     Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
 
-13. For Flashing marvin.bin using usb-dfu, follow the steps below in Eclipse - marvin project:
-    Get the latest marvin code from Github
+13. For Flashing core-firmware.bin using usb-dfu, follow the steps below in Eclipse - core-firmware project:
+    Get the latest core-firmware code from Github
     In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
     Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
-    Uncomment the following line in platform_config.h to enable usb-dfu based marvin build
+    Uncomment the following line in platform_config.h to enable usb-dfu based core-firmware build
     "#define DFU_BUILD_ENABLE"
 
-14. Build the marvin project for usb-dfu usage.
+14. Build the core-firmware project for usb-dfu usage.
 
-15. cd to the marvin/Debug folder and type the below command to program the marvin application to Internal Flash starting from address 0x0800A000:
-    dfu-util -d 0483:df11 -a 0 -s 0x0800A000:leave -D marvin.bin
+15. cd to the core-firmware/Debug folder and type the below command to program the core-firmware application to Internal Flash starting from address 0x0800C000:
+    dfu-util -d 0483:df11 -a 0 -s 0x0800C000:leave -D core-firmware.bin
 
-16. For flashing marvin application to External Flash starting from address 0x00001000, run the following command:
-    dfu-util -d 0483:df11 -a 1 -s 0x00001000 -D marvin.bin
+16. For flashing core-firmware application to External Flash starting from address 0x00001000, run the following command:
+    dfu-util -d 0483:df11 -a 1 -s 0x00001000 -D core-firmware.bin
 
-17. To build the project using command line option, cd to the "build" folder and run make.
+17. Alternatively to build the project using command line option, cd to the "build" folder and run "make clean" followed by "make all".
