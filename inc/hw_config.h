@@ -78,6 +78,8 @@ void IWDG_Reset_Enable(uint32_t msTimeout);
 void DIO_Init(DIO_TypeDef Dx);
 DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State);
 
+void UI_Timer_Configure(void);
+
 void LED_Init(Led_TypeDef Led);
 void LED_On(Led_TypeDef Led);
 void LED_Off(Led_TypeDef Led);

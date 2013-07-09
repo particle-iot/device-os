@@ -106,6 +106,9 @@ void Set_System(void)
 		DIO_Init(Dx);
 	}
 
+	/* Configure TIM1 for LED-PWM and BUTTON-DEBOUNCE usage */
+	UI_Timer_Configure();
+
 	/* Configure the LEDs and set the default states */
 	int LEDx;
 	for(LEDx = 0; LEDx < LEDn; ++LEDx)
@@ -218,6 +221,71 @@ DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State)
 	return OK;
 }
 
+void UI_Timer_Configure(void)
+{
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+    TIM_OCInitTypeDef TIM_OCInitStructure;
+    NVIC_InitTypeDef NVIC_InitStructure;
+
+    /* Enable TIM1 clock */
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+
+    /* TIM1 Update Frequency = 72000000/7200/100 = 100Hz = 10ms */
+    /* TIM1_Prescaler: 7199 */
+    /* TIM1_Autoreload: 99 -> 100Hz = 10ms */
+    uint16_t TIM1_Prescaler = (SystemCoreClock / 10000) - 1;
+    uint16_t TIM1_Autoreload = (10000 / UI_TIMER_FREQUENCY) - 1;
+
+    TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
+
+    /* Time Base Configuration */
+	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
+	TIM_TimeBaseStructure.TIM_Period = TIM1_Autoreload;
+	TIM_TimeBaseStructure.TIM_Prescaler = TIM1_Prescaler;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0x0;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+
+	TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
+
+	TIM_OCStructInit(&TIM_OCInitStructure);
+
+	/* PWM1 Mode configuration: Channel 1, 2 and 3 */
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 0;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Reset;
+
+	TIM_OC1Init(TIM1, &TIM_OCInitStructure);
+	TIM_OC2Init(TIM1, &TIM_OCInitStructure);
+	TIM_OC3Init(TIM1, &TIM_OCInitStructure);
+
+	/* Output Compare Timing Mode configuration: Channel 4 */
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 0;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+
+	TIM_OC4Init(TIM1, &TIM_OCInitStructure);
+
+	/* TIM1 IT enable */
+    TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
+
+    /* Enable the TIM1 Interrupt */
+    NVIC_InitStructure.NVIC_IRQChannel = TIM1_CC_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+    NVIC_Init(&NVIC_InitStructure);
+
+	/* TIM1 enable counter */
+	TIM_Cmd(TIM1, ENABLE);
+
+	/* Main Output Enable */
+	TIM_CtrlPWMOutputs(TIM1, ENABLE);
+}
+
 /**
   * @brief  Configures LED GPIO.
   * @param  Led: Specifies the Led to be configured.
@@ -232,9 +300,9 @@ void LED_Init(Led_TypeDef Led)
     /* Enable the GPIO_LED Clock */
     RCC_APB2PeriphClockCmd(LED_CLK[Led], ENABLE);
 
-    /* Configure the GPIO_LED pin */
+    /* Configure the GPIO_LED pin as alternate function push-pull */
     GPIO_InitStructure.GPIO_Pin = LED_PIN[Led];
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
     GPIO_Init(LED_PORT[Led], &GPIO_InitStructure);
@@ -250,12 +318,35 @@ void LED_Init(Led_TypeDef Led)
 void LED_On(Led_TypeDef Led)
 {
 #if defined (USE_SPARK_CORE_V01)
-    LED_PORT[Led]->BSRR = LED_PIN[Led];
+	switch(Led)
+	{
+	case LED1:
+		TIM1->CCR1 = UI_TIMER_FREQUENCY;
+		break;
+
+	case LED2:
+		TIM1->CCR2 = UI_TIMER_FREQUENCY;
+		break;
+	}
 #elif defined (USE_SPARK_CORE_V02)
-    if(Led == LED1)
-        LED_PORT[Led]->BSRR = LED_PIN[Led];
-    else
-    	LED_PORT[Led]->BRR = LED_PIN[Led];
+	switch(Led)
+	{
+	case LED1:
+		LED_PORT[Led]->BSRR = LED_PIN[Led];
+		break;
+
+	case LED2:
+		TIM1->CCR1 = 0;
+		break;
+
+	case LED3:
+		TIM1->CCR2 = 0;
+		break;
+
+	case LED4:
+		TIM1->CCR3 = 0;
+		break;
+	}
 #endif
 }
 
@@ -269,12 +360,35 @@ void LED_On(Led_TypeDef Led)
 void LED_Off(Led_TypeDef Led)
 {
 #if defined (USE_SPARK_CORE_V01)
-    LED_PORT[Led]->BRR = LED_PIN[Led];
+	switch(Led)
+	{
+	case LED1:
+		TIM1->CCR1 = 0;
+		break;
+
+	case LED2:
+		TIM1->CCR2 = 0;
+		break;
+	}
 #elif defined (USE_SPARK_CORE_V02)
-    if(Led == LED1)
-        LED_PORT[Led]->BRR = LED_PIN[Led];
-    else
-    	LED_PORT[Led]->BSRR = LED_PIN[Led];
+	switch(Led)
+	{
+	case LED1:
+		LED_PORT[Led]->BRR = LED_PIN[Led];
+		break;
+
+	case LED2:
+		TIM1->CCR1 = UI_TIMER_FREQUENCY;
+		break;
+
+	case LED3:
+		TIM1->CCR2 = UI_TIMER_FREQUENCY;
+		break;
+
+	case LED4:
+		TIM1->CCR3 = UI_TIMER_FREQUENCY;
+		break;
+	}
 #endif
 }
 
@@ -287,7 +401,37 @@ void LED_Off(Led_TypeDef Led)
   */
 void LED_Toggle(Led_TypeDef Led)
 {
-    LED_PORT[Led]->ODR ^= LED_PIN[Led];
+#if defined (USE_SPARK_CORE_V01)
+	switch(Led)
+	{
+	case LED1:
+		TIM1->CCR1 ^= UI_TIMER_FREQUENCY;
+		break;
+
+	case LED2:
+		TIM1->CCR2 ^= UI_TIMER_FREQUENCY;
+		break;
+	}
+#elif defined (USE_SPARK_CORE_V02)
+	switch(Led)
+	{
+	case LED1:
+		LED_PORT[Led]->ODR ^= LED_PIN[Led];
+		break;
+
+	case LED2:
+		TIM1->CCR1 ^= UI_TIMER_FREQUENCY;
+		break;
+
+	case LED3:
+		TIM1->CCR2 ^= UI_TIMER_FREQUENCY;
+		break;
+
+	case LED4:
+		TIM1->CCR3 ^= UI_TIMER_FREQUENCY;
+		break;
+	}
+#endif
 }
 
 /**
@@ -307,7 +451,6 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
     NVIC_InitTypeDef NVIC_InitStructure;
-    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 
     /* Enable the BUTTON Clock */
     RCC_APB2PeriphClockCmd(BUTTON_CLK[Button] | RCC_APB2Periph_AFIO, ENABLE);
@@ -319,43 +462,6 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
-        /* Enable TIM clock */
-    	DEBOUNCE_TIMER_CLK_CMD(DEBOUNCE_TIMER_CLK, ENABLE);
-
-        /* TIM Update Frequency = 72000000/7200/100 = 100Hz = 10ms */
-        /* TIM_Prescaler: 7199 */
-        /* TIM_Autoreload: 99 -> 100Hz = 10ms */
-        uint16_t TIM_Prescaler = (SystemCoreClock / 10000) - 1;
-        uint16_t TIM_Autoreload = (10000 / DEBOUNCE_FREQ) - 1;
-
-        /* Time Base Configuration */
-    	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
-    	TIM_TimeBaseStructure.TIM_Prescaler = TIM_Prescaler;
-    	TIM_TimeBaseStructure.TIM_Period = TIM_Autoreload;
-    	TIM_TimeBaseStructure.TIM_ClockDivision = 0x0;
-    	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-    	TIM_TimeBaseInit(DEBOUNCE_TIMER, &TIM_TimeBaseStructure);
-
-        /* TIM Configuration */
-        //TIM_PrescalerConfig(DEBOUNCE_TIMER, TIM_Prescaler, TIM_PSCReloadMode_Update);
-        //TIM_SetAutoreload(DEBOUNCE_TIMER, TIM_Autoreload);
-
-        /* One Pulse Mode selection */
-        TIM_SelectOnePulseMode(DEBOUNCE_TIMER, TIM_OPMode_Single);
-
-        TIM_ClearITPendingBit(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG);
-
-        /* TIM IT Enable */
-        TIM_ITConfig(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG, ENABLE);
-
-        /* Enable the TIM Interrupt */
-        NVIC_InitStructure.NVIC_IRQChannel = DEBOUNCE_TIMER_IRQn;
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
-        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-
-        NVIC_Init(&NVIC_InitStructure);
-
         /* Enable the Button EXTI Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = BUTTON_IRQn[Button];
         NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;

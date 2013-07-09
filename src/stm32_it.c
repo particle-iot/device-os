@@ -190,9 +190,6 @@ void EXTI2_IRQHandler(void)
 
 		/* Disable BUTTON1 Interrupts */
 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
-
-	    /* DEBOUNCE_TIMER Enable Counter */
-	    TIM_Cmd(DEBOUNCE_TIMER, ENABLE);
 	}
 #endif
 }
@@ -222,25 +219,22 @@ void EXTI15_10_IRQHandler(void)
 
 		/* Disable BUTTON1 Interrupts */
 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
-
-	    /* DEBOUNCE_TIMER Enable Counter */
-	    TIM_Cmd(DEBOUNCE_TIMER, ENABLE);
 	}
 #endif
 }
 
 /*******************************************************************************
- * Function Name  : TIM1_UP_IRQHandler
- * Description    : This function handles TIM1 Update interrupt request.
+ * Function Name  : TIM1_CC_IRQHandler
+ * Description    : This function handles TIM1 Capture Compare interrupt request.
  * Input          : None
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void TIM1_UP_IRQHandler(void)
+void TIM1_CC_IRQHandler(void)
 {
-	if (TIM_GetITStatus(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG) != RESET)
+	if (TIM_GetITStatus(TIM1, TIM_IT_CC4) != RESET)
 	{
-		TIM_ClearITPendingBit(DEBOUNCE_TIMER, DEBOUNCE_TIMER_FLAG);
+		TIM_ClearITPendingBit(TIM1, TIM_IT_CC4);
 
 		if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
 			BUTTON_DEBOUNCED[BUTTON1] = 0x01;

@@ -14,8 +14,8 @@
 
 /* Uncomment the line corresponding to the STM32 board used */
 #if !defined (USE_SPARK_CORE_V01) && !defined (USE_SPARK_CORE_V02)
-//#define USE_SPARK_CORE_V01
-#define USE_SPARK_CORE_V02
+#define USE_SPARK_CORE_V01
+//#define USE_SPARK_CORE_V02
 #endif
 
 /* Uncomment the line below to enable DFU based build and follow the below step*/
@@ -100,14 +100,6 @@
 #define BUTTON2_EXTI_IRQn               	0
 #define	BUTTON2_EXTI_TRIGGER				0
 
-//Button Debounce Timer
-#define DEBOUNCE_FREQ						100	//100 Hz => 10ms
-#define DEBOUNCE_TIMER						TIM1
-#define DEBOUNCE_TIMER_CLK					RCC_APB2Periph_TIM1
-#define DEBOUNCE_TIMER_CLK_CMD				RCC_APB2PeriphClockCmd
-#define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
-#define DEBOUNCE_TIMER_IRQn           		TIM1_UP_IRQn
-
 #elif defined (USE_SPARK_CORE_V02)
 
 //LEDs
@@ -147,14 +139,6 @@
 #define BUTTON2_EXTI_PIN_SOURCE         	0
 #define BUTTON2_EXTI_IRQn               	0
 #define	BUTTON2_EXTI_TRIGGER				0
-
-//Button Debounce Timer
-#define DEBOUNCE_FREQ						100	//100 Hz => 10ms
-#define DEBOUNCE_TIMER						TIM1
-#define DEBOUNCE_TIMER_CLK					RCC_APB2Periph_TIM1
-#define DEBOUNCE_TIMER_CLK_CMD				RCC_APB2PeriphClockCmd
-#define DEBOUNCE_TIMER_FLAG            		TIM_IT_Update
-#define DEBOUNCE_TIMER_IRQn           		TIM1_UP_IRQn
 
 #endif
 
@@ -247,6 +231,8 @@
 #define USB_DISCONNECT_PIN               	GPIO_Pin_10
 #define USB_DISCONNECT_GPIO_PORT       		GPIOB
 #define USB_DISCONNECT_GPIO_CLK		  		RCC_APB2Periph_GPIOB
+
+#define UI_TIMER_FREQUENCY					100							/* 100Hz -> 10ms */
 
 /* Exported macro ------------------------------------------------------------*/
 
