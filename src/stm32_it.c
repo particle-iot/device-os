@@ -174,6 +174,30 @@ void DMA1_Channel5_IRQHandler(void)
 }
 
 /*******************************************************************************
+ * Function Name  : EXTI2_IRQHandler
+ * Description    : This function handles EXTI2 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI2_IRQHandler(void)
+{
+#if defined (USE_SPARK_CORE_V02)
+	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
+	{
+		/* Clear the EXTI line pending flag */
+		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
+
+		/* Disable BUTTON1 Interrupts */
+		BUTTON_EXTI_Config(BUTTON1, DISABLE);
+
+	    /* DEBOUNCE_TIMER Enable Counter */
+	    TIM_Cmd(DEBOUNCE_TIMER, ENABLE);
+	}
+#endif
+}
+
+/*******************************************************************************
  * Function Name  : EXTI15_10_IRQHandler
  * Description    : This function handles EXTI15_10 interrupt request.
  * Input          : None
@@ -190,6 +214,7 @@ void EXTI15_10_IRQHandler(void)
 		SPI_EXTI_IntHandler();
 	}
 
+#if defined (USE_SPARK_CORE_V01)
 	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
 	{
 		/* Clear the EXTI line pending flag */
@@ -201,6 +226,7 @@ void EXTI15_10_IRQHandler(void)
 	    /* DEBOUNCE_TIMER Enable Counter */
 	    TIM_Cmd(DEBOUNCE_TIMER, ENABLE);
 	}
+#endif
 }
 
 /*******************************************************************************

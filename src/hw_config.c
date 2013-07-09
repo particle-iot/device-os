@@ -23,28 +23,28 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-GPIO_TypeDef* DIO_PORT[Dn] = {D0_GPIO_PORT, D1_GPIO_PORT, D2_GPIO_PORT, D3_GPIO_PORT,
+GPIO_TypeDef* DIO_PORT[] = {D0_GPIO_PORT, D1_GPIO_PORT, D2_GPIO_PORT, D3_GPIO_PORT,
 								D4_GPIO_PORT, D5_GPIO_PORT, D6_GPIO_PORT, D7_GPIO_PORT};
-const uint16_t DIO_PIN[Dn] = {D0_PIN, D1_PIN, D2_PIN, D3_PIN,
+const uint16_t DIO_PIN[] = {D0_PIN, D1_PIN, D2_PIN, D3_PIN,
 								D4_PIN, D5_PIN, D6_PIN, D7_PIN};
-const uint32_t DIO_CLK[Dn] = {D0_GPIO_CLK, D1_GPIO_CLK, D2_GPIO_CLK, D3_GPIO_CLK,
+const uint32_t DIO_CLK[] = {D0_GPIO_CLK, D1_GPIO_CLK, D2_GPIO_CLK, D3_GPIO_CLK,
 								D4_GPIO_CLK, D5_GPIO_CLK, D6_GPIO_CLK, D7_GPIO_CLK};
 
-GPIO_TypeDef* LED_PORT[LEDn] = {LED1_GPIO_PORT, LED2_GPIO_PORT};
-const uint16_t LED_PIN[LEDn] = {LED1_PIN, LED2_PIN};
-const uint32_t LED_CLK[LEDn] = {LED1_GPIO_CLK, LED2_GPIO_CLK};
+GPIO_TypeDef* LED_PORT[] = {LED1_GPIO_PORT, LED2_GPIO_PORT, LED3_GPIO_PORT, LED4_GPIO_PORT};
+const uint16_t LED_PIN[] = {LED1_PIN, LED2_PIN, LED3_PIN, LED4_PIN};
+const uint32_t LED_CLK[] = {LED1_GPIO_CLK, LED2_GPIO_CLK, LED3_GPIO_CLK, LED4_GPIO_CLK};
 
-GPIO_TypeDef* BUTTON_PORT[BUTTONn] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
-const uint16_t BUTTON_PIN[BUTTONn] = {BUTTON1_PIN, BUTTON2_PIN};
-const uint32_t BUTTON_CLK[BUTTONn] = {BUTTON1_GPIO_CLK, BUTTON2_GPIO_CLK};
-GPIOMode_TypeDef BUTTON_GPIO_MODE[BUTTONn] = {BUTTON1_GPIO_MODE, BUTTON2_GPIO_MODE};
-__IO uint8_t BUTTON_DEBOUNCED[BUTTONn] = {0x00, 0x00};
+GPIO_TypeDef* BUTTON_PORT[] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
+const uint16_t BUTTON_PIN[] = {BUTTON1_PIN, BUTTON2_PIN};
+const uint32_t BUTTON_CLK[] = {BUTTON1_GPIO_CLK, BUTTON2_GPIO_CLK};
+GPIOMode_TypeDef BUTTON_GPIO_MODE[] = {BUTTON1_GPIO_MODE, BUTTON2_GPIO_MODE};
+__IO uint8_t BUTTON_DEBOUNCED[] = {0x00, 0x00};
 
-const uint16_t BUTTON_EXTI_LINE[BUTTONn] = {BUTTON1_EXTI_LINE, BUTTON2_EXTI_LINE};
-const uint16_t BUTTON_PORT_SOURCE[BUTTONn] = {BUTTON1_EXTI_PORT_SOURCE, BUTTON2_EXTI_PORT_SOURCE};
-const uint16_t BUTTON_PIN_SOURCE[BUTTONn] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EXTI_PIN_SOURCE};
-const uint16_t BUTTON_IRQn[BUTTONn] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
-EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[BUTTONn] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
+const uint16_t BUTTON_EXTI_LINE[] = {BUTTON1_EXTI_LINE, BUTTON2_EXTI_LINE};
+const uint16_t BUTTON_PORT_SOURCE[] = {BUTTON1_EXTI_PORT_SOURCE, BUTTON2_EXTI_PORT_SOURCE};
+const uint16_t BUTTON_PIN_SOURCE[] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EXTI_PIN_SOURCE};
+const uint16_t BUTTON_IRQn[] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
+EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
 
 uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
 uint32_t USART_Rx_ptr_in = 0;
@@ -222,8 +222,7 @@ DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State)
   * @brief  Configures LED GPIO.
   * @param  Led: Specifies the Led to be configured.
   *   This parameter can be one of following parameters:
-  *     @arg LED1
-  *     @arg LED2
+  *     @arg LED1, LED2, LED3, LED4
   * @retval None
   */
 void LED_Init(Led_TypeDef Led)
@@ -245,34 +244,45 @@ void LED_Init(Led_TypeDef Led)
   * @brief  Turns selected LED On.
   * @param  Led: Specifies the Led to be set on.
   *   This parameter can be one of following parameters:
-  *     @arg LED1
-  *     @arg LED2
+  *     @arg LED1, LED2, LED3, LED4
   * @retval None
   */
 void LED_On(Led_TypeDef Led)
 {
+#if defined (USE_SPARK_CORE_V01)
     LED_PORT[Led]->BSRR = LED_PIN[Led];
+#elif defined (USE_SPARK_CORE_V02)
+    if(Led == LED1)
+        LED_PORT[Led]->BSRR = LED_PIN[Led];
+    else
+    	LED_PORT[Led]->BRR = LED_PIN[Led];
+#endif
 }
 
 /**
   * @brief  Turns selected LED Off.
   * @param  Led: Specifies the Led to be set off.
   *   This parameter can be one of following parameters:
-  *     @arg LED1
-  *     @arg LED2
+  *     @arg LED1, LED2, LED3, LED4
   * @retval None
   */
 void LED_Off(Led_TypeDef Led)
 {
+#if defined (USE_SPARK_CORE_V01)
     LED_PORT[Led]->BRR = LED_PIN[Led];
+#elif defined (USE_SPARK_CORE_V02)
+    if(Led == LED1)
+        LED_PORT[Led]->BRR = LED_PIN[Led];
+    else
+    	LED_PORT[Led]->BSRR = LED_PIN[Led];
+#endif
 }
 
 /**
   * @brief  Toggles the selected LED.
   * @param  Led: Specifies the Led to be toggled.
   *   This parameter can be one of following parameters:
-  *     @arg LED1
-  *     @arg LED2
+  *     @arg LED1, LED2, LED3, LED4
   * @retval None
   */
 void LED_Toggle(Led_TypeDef Led)
