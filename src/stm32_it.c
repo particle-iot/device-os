@@ -25,12 +25,11 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* Extern variables ----------------------------------------------------------*/
+extern __IO uint8_t BUTTON_DEBOUNCED[BUTTONn];
 
 /* Private function prototypes -----------------------------------------------*/
 extern void SPI_DMA_IntHandler(void);
 extern void SPI_EXTI_IntHandler(void);
-
-extern __IO uint8_t BUTTON_DEBOUNCED[BUTTONn];
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -185,11 +184,16 @@ void EXTI2_IRQHandler(void)
 #if defined (USE_SPARK_CORE_V02)
 	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
 	{
-		/* Clear the EXTI line pending flag */
-		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE );
 
-		/* Disable BUTTON1 Interrupts */
+		/* Disable BUTTON1 Interrupt */
 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
+
+		TIM1->CCR4 += UI_TIMER_FREQUENCY;
+
+		/* Enable TIM1 CC4 Interrupt */
+		TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
 	}
 #endif
 }
@@ -205,8 +209,8 @@ void EXTI15_10_IRQHandler(void)
 {
 	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
 	{
-		/* Clear the EXTI line pending flag */
-		EXTI_ClearFlag(CC3000_WIFI_INT_EXTI_LINE );
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(CC3000_WIFI_INT_EXTI_LINE );
 
 		SPI_EXTI_IntHandler();
 	}
@@ -214,11 +218,16 @@ void EXTI15_10_IRQHandler(void)
 #if defined (USE_SPARK_CORE_V01)
 	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
 	{
-		/* Clear the EXTI line pending flag */
-		EXTI_ClearFlag(BUTTON1_EXTI_LINE );
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE );
 
-		/* Disable BUTTON1 Interrupts */
+		/* Disable BUTTON1 Interrupt */
 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
+
+		TIM1->CCR4 += UI_TIMER_FREQUENCY;
+
+		/* Enable TIM1 CC4 Interrupt */
+		TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
 	}
 #endif
 }
@@ -236,12 +245,15 @@ void TIM1_CC_IRQHandler(void)
 	{
 		TIM_ClearITPendingBit(TIM1, TIM_IT_CC4);
 
+		/* Disable TIM1 CC4 Interrupt */
+		TIM_ITConfig(TIM1, TIM_IT_CC4, DISABLE);
+
 		if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
 			BUTTON_DEBOUNCED[BUTTON1] = 0x01;
 		else
 			BUTTON_DEBOUNCED[BUTTON1] = 0x00;
 
-		/* Enable BUTTON1 Interrupts */
+		/* Enable BUTTON1 Interrupt */
 		BUTTON_EXTI_Config(BUTTON1, ENABLE);
 	}
 }

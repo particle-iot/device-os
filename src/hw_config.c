@@ -225,7 +225,6 @@ void UI_Timer_Configure(void)
 {
     TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
     TIM_OCInitTypeDef TIM_OCInitStructure;
-    NVIC_InitTypeDef NVIC_InitStructure;
 
     /* Enable TIM1 clock */
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
@@ -257,8 +256,13 @@ void UI_Timer_Configure(void)
 	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Reset;
 
 	TIM_OC1Init(TIM1, &TIM_OCInitStructure);
+	TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);
+
 	TIM_OC2Init(TIM1, &TIM_OCInitStructure);
+	TIM_OC2PreloadConfig(TIM1, TIM_OCPreload_Enable);
+
 	TIM_OC3Init(TIM1, &TIM_OCInitStructure);
+	TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Enable);
 
 	/* Output Compare Timing Mode configuration: Channel 4 */
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
@@ -267,17 +271,9 @@ void UI_Timer_Configure(void)
 	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
 
 	TIM_OC4Init(TIM1, &TIM_OCInitStructure);
+	TIM_OC4PreloadConfig(TIM1, TIM_OCPreload_Disable);
 
-	/* TIM1 IT enable */
-    TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
-
-    /* Enable the TIM1 Interrupt */
-    NVIC_InitStructure.NVIC_IRQChannel = TIM1_CC_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-
-    NVIC_Init(&NVIC_InitStructure);
+	TIM_ARRPreloadConfig(TIM1, ENABLE);
 
 	/* TIM1 enable counter */
 	TIM_Cmd(TIM1, ENABLE);
@@ -462,6 +458,17 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
+    	/* Disable TIM1 CC4 Interrupt */
+        TIM_ITConfig(TIM1, TIM_IT_CC4, DISABLE);
+
+        /* Enable the TIM1 Interrupt */
+        NVIC_InitStructure.NVIC_IRQChannel = TIM1_CC_IRQn;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+        NVIC_Init(&NVIC_InitStructure);
+
         /* Enable the Button EXTI Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = BUTTON_IRQn[Button];
         NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
