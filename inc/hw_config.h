@@ -52,6 +52,8 @@ typedef enum
 void Set_System(void);
 void NVIC_Configuration(void);
 
+void UI_Timer_Configure(void);
+
 void LED_Init(Led_TypeDef Led);
 void LED_On(Led_TypeDef Led);
 void LED_Off(Led_TypeDef Led);
