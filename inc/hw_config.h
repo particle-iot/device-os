@@ -20,7 +20,7 @@
 
 typedef enum
 {
-	LED1 = 0, LED2 = 1
+	LED1 = 0, LED2 = 1, LED3 = 2, LED4 = 3
 } Led_TypeDef;
 
 typedef enum
