@@ -14,8 +14,8 @@
 
 /* Uncomment the line corresponding to the STM32 board used */
 #if !defined (USE_SPARK_CORE_V01) && !defined (USE_SPARK_CORE_V02)
-#define USE_SPARK_CORE_V01
-//#define USE_SPARK_CORE_V02
+//#define USE_SPARK_CORE_V01
+#define USE_SPARK_CORE_V02
 #endif
 
 /* Uncomment the line below to enable SFLASH functionality */

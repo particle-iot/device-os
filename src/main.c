@@ -132,6 +132,11 @@ int main(void)
     /* USB System initialization */
     USB_Init();
 
+#if defined (USE_SPARK_CORE_V02)
+    /* Set DFU mode RGB Led Flashing color to Yellow */
+    LED_SetRGBColor(RGB_COLOR_YELLOW);
+#endif
+
     /* Main loop */
     while (1)
     {
@@ -146,8 +151,12 @@ int main(void)
         if (TimingLED == 0x00)
         {
             TimingLED = 250;
+#if defined (USE_SPARK_CORE_V01)
             LED_Toggle(LED1);
             LED_Toggle(LED2);
+#elif defined (USE_SPARK_CORE_V02)
+            LED_Toggle(LED_RGB);
+#endif
         }
     }
 }

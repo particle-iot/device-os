@@ -22,6 +22,7 @@
 GPIO_TypeDef* LED_PORT[] = {LED1_GPIO_PORT, LED2_GPIO_PORT, LED3_GPIO_PORT, LED4_GPIO_PORT};
 const uint16_t LED_PIN[] = {LED1_PIN, LED2_PIN, LED3_PIN, LED4_PIN};
 const uint32_t LED_CLK[] = {LED1_GPIO_CLK, LED2_GPIO_CLK, LED3_GPIO_CLK, LED4_GPIO_CLK};
+__IO uint16_t LED_TIM_CCR[] = {0x0000, 0x0000, 0x0000, 0x0000};
 
 GPIO_TypeDef* BUTTON_PORT[] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
 const uint16_t BUTTON_PIN[] = {BUTTON1_PIN, BUTTON2_PIN};
@@ -71,7 +72,6 @@ void Set_System(void)
 	for(LEDx = 0; LEDx < LEDn; ++LEDx)
 	{
 	    LED_Init(LEDx);
-	    LED_Off(LEDx);
 	}
 
     /* Configure the Button */
@@ -128,7 +128,7 @@ void UI_Timer_Configure(void)
 	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 	TIM_TimeBaseStructure.TIM_Period = TIM1_Autoreload;
 	TIM_TimeBaseStructure.TIM_Prescaler = TIM1_Prescaler;
-	TIM_TimeBaseStructure.TIM_ClockDivision = 0x0;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0x0000;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 
 	TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
@@ -138,23 +138,27 @@ void UI_Timer_Configure(void)
 	/* PWM1 Mode configuration: Channel 1, 2 and 3 */
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = 0;
+	TIM_OCInitStructure.TIM_Pulse = 0x0000;
+#if defined (USE_SPARK_CORE_V01)
 	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+#elif defined (USE_SPARK_CORE_V02)
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+#endif
 	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Reset;
 
 	TIM_OC1Init(TIM1, &TIM_OCInitStructure);
-	TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);
+	TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Disable);
 
 	TIM_OC2Init(TIM1, &TIM_OCInitStructure);
-	TIM_OC2PreloadConfig(TIM1, TIM_OCPreload_Enable);
+	TIM_OC2PreloadConfig(TIM1, TIM_OCPreload_Disable);
 
 	TIM_OC3Init(TIM1, &TIM_OCInitStructure);
-	TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Enable);
+	TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Disable);
 
 	/* Output Compare Timing Mode configuration: Channel 4 */
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = 0;
+	TIM_OCInitStructure.TIM_Pulse = 0x0000;
 	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
 
 	TIM_OC4Init(TIM1, &TIM_OCInitStructure);
@@ -168,6 +172,15 @@ void UI_Timer_Configure(void)
 	/* Main Output Enable */
 	TIM_CtrlPWMOutputs(TIM1, ENABLE);
 }
+
+#if defined (USE_SPARK_CORE_V02)
+void LED_SetRGBColor(uint32_t RGB_Color)
+{
+	LED_TIM_CCR[2] = (uint16_t)(((RGB_Color & 0xFF0000) >> 16) * (TIM1->ARR + 1) / 255);	//LED3 -> Red Led
+	LED_TIM_CCR[3] = (uint16_t)(((RGB_Color & 0xFF00) >> 8) * (TIM1->ARR + 1) / 255);		//LED4 -> Green Led
+	LED_TIM_CCR[1] = (uint16_t)((RGB_Color & 0xFF) * (TIM1->ARR + 1) / 255);				//LED2 -> Blue Led
+}
+#endif
 
 /**
   * @brief  Configures LED GPIO.
@@ -185,7 +198,14 @@ void LED_Init(Led_TypeDef Led)
 
     /* Configure the GPIO_LED pin as alternate function push-pull */
     GPIO_InitStructure.GPIO_Pin = LED_PIN[Led];
+#if defined (USE_SPARK_CORE_V01)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+#elif defined (USE_SPARK_CORE_V02)
+    if(Led == LED_USER)
+    	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    else
+    	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+#endif
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
     GPIO_Init(LED_PORT[Led], &GPIO_InitStructure);
@@ -195,7 +215,7 @@ void LED_Init(Led_TypeDef Led)
   * @brief  Turns selected LED On.
   * @param  Led: Specifies the Led to be set on.
   *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED3, LED4
+  *     @arg LED1, LED2, LED_USER, LED_RGB
   * @retval None
   */
 void LED_On(Led_TypeDef Led)
@@ -204,30 +224,24 @@ void LED_On(Led_TypeDef Led)
 	switch(Led)
 	{
 	case LED1:
-		TIM1->CCR1 = UI_TIMER_FREQUENCY;
+		TIM1->CCR1 = TIM1->ARR + 1;
 		break;
 
 	case LED2:
-		TIM1->CCR2 = UI_TIMER_FREQUENCY;
+		TIM1->CCR2 = TIM1->ARR + 1;
 		break;
 	}
 #elif defined (USE_SPARK_CORE_V02)
 	switch(Led)
 	{
-	case LED1:
+	case LED_USER:
 		LED_PORT[Led]->BSRR = LED_PIN[Led];
 		break;
 
-	case LED2:
-		TIM1->CCR1 = 0;
-		break;
-
-	case LED3:
-		TIM1->CCR2 = 0;
-		break;
-
-	case LED4:
-		TIM1->CCR3 = 0;
+	case LED_RGB:	//LED_SetRGBColor() should be called first for this Case
+		TIM1->CCR2 = LED_TIM_CCR[2];
+		TIM1->CCR3 = LED_TIM_CCR[3];
+		TIM1->CCR1 = LED_TIM_CCR[1];
 		break;
 	}
 #endif
@@ -237,7 +251,7 @@ void LED_On(Led_TypeDef Led)
   * @brief  Turns selected LED Off.
   * @param  Led: Specifies the Led to be set off.
   *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED3, LED4
+  *     @arg LED1, LED2, LED_USER, LED_RGB
   * @retval None
   */
 void LED_Off(Led_TypeDef Led)
@@ -256,20 +270,14 @@ void LED_Off(Led_TypeDef Led)
 #elif defined (USE_SPARK_CORE_V02)
 	switch(Led)
 	{
-	case LED1:
+	case LED_USER:
 		LED_PORT[Led]->BRR = LED_PIN[Led];
 		break;
 
-	case LED2:
-		TIM1->CCR1 = UI_TIMER_FREQUENCY;
-		break;
-
-	case LED3:
-		TIM1->CCR2 = UI_TIMER_FREQUENCY;
-		break;
-
-	case LED4:
-		TIM1->CCR3 = UI_TIMER_FREQUENCY;
+	case LED_RGB:
+		TIM1->CCR2 = 0;
+		TIM1->CCR3 = 0;
+		TIM1->CCR1 = 0;
 		break;
 	}
 #endif
@@ -279,7 +287,7 @@ void LED_Off(Led_TypeDef Led)
   * @brief  Toggles the selected LED.
   * @param  Led: Specifies the Led to be toggled.
   *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED3, LED4
+  *     @arg LED1, LED2, LED_USER, LED_RGB
   * @retval None
   */
 void LED_Toggle(Led_TypeDef Led)
@@ -288,30 +296,24 @@ void LED_Toggle(Led_TypeDef Led)
 	switch(Led)
 	{
 	case LED1:
-		TIM1->CCR1 ^= UI_TIMER_FREQUENCY;
+		TIM1->CCR1 ^= TIM1->ARR + 1;
 		break;
 
 	case LED2:
-		TIM1->CCR2 ^= UI_TIMER_FREQUENCY;
+		TIM1->CCR2 ^= TIM1->ARR + 1;
 		break;
 	}
 #elif defined (USE_SPARK_CORE_V02)
 	switch(Led)
 	{
-	case LED1:
+	case LED_USER:
 		LED_PORT[Led]->ODR ^= LED_PIN[Led];
 		break;
 
-	case LED2:
-		TIM1->CCR1 ^= UI_TIMER_FREQUENCY;
-		break;
-
-	case LED3:
-		TIM1->CCR2 ^= UI_TIMER_FREQUENCY;
-		break;
-
-	case LED4:
-		TIM1->CCR3 ^= UI_TIMER_FREQUENCY;
+	case LED_RGB:	//LED_SetRGBColor() should be called first for this Case
+		TIM1->CCR2 ^= LED_TIM_CCR[2];
+		TIM1->CCR3 ^= LED_TIM_CCR[3];
+		TIM1->CCR1 ^= LED_TIM_CCR[1];
 		break;
 	}
 #endif
