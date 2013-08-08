@@ -76,6 +76,11 @@ int main(void)
 {
 	Set_System();
 
+#if defined (USE_SPARK_CORE_V02)
+    LED_SetRGBColor(RGB_COLOR_WHITE);
+    LED_On(LED_RGB);
+#endif
+
 #ifdef IWDG_RESET_ENABLE
 	/* Check if the system has resumed from IWDG reset */
 	if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
@@ -259,7 +264,11 @@ void Timing_Decrement(void)
     }
     else if(!SPARK_DEVICE_ACKED)
     {
+#if defined (USE_SPARK_CORE_V01)
     	LED_Toggle(LED1);
+#elif defined (USE_SPARK_CORE_V02)
+		//Do nothing
+#endif
     	TimingLED = 100;	//100ms
     }
     else
@@ -267,7 +276,12 @@ void Timing_Decrement(void)
     	static __IO uint8_t SparkDeviceAckedLedOn = 0;
     	if(!SparkDeviceAckedLedOn)
     	{
+#if defined (USE_SPARK_CORE_V01)
     		LED_On(LED1);//SPARK_DEVICE_ACKED
+#elif defined (USE_SPARK_CORE_V02)
+    		LED_SetRGBColor(RGB_COLOR_CYAN);
+    		LED_On(LED_RGB);
+#endif
     		SparkDeviceAckedLedOn = 1;
     	}
     }
@@ -482,15 +496,28 @@ void Start_Smart_Config(void)
 	/* Start the SmartConfig start process */
 	wlan_smart_config_start(1);
 
+#if defined (USE_SPARK_CORE_V02)
+    LED_SetRGBColor(RGB_COLOR_BLUE);
+	LED_On(LED_RGB);
+#endif
+
 	/* Wait for SmartConfig to finish */
 	while (WLAN_SMART_CONFIG_FINISHED == 0)
 	{
+#if defined (USE_SPARK_CORE_V01)
 		/* Toggle the LED2 every 100ms */
 		LED_Toggle(LED2);
+#elif defined (USE_SPARK_CORE_V02)
+		LED_Toggle(LED_RGB);
+#endif
 		Delay(100);
 	}
 
+#if defined (USE_SPARK_CORE_V01)
 	LED_Off(LED2);
+#elif defined (USE_SPARK_CORE_V02)
+	LED_On(LED_RGB);
+#endif
 
 	/* Create new entry for AES encryption key */
 	nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
@@ -546,14 +573,24 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			SPARK_SOCKET_ALIVE = 0;
 			SPARK_DEVICE_ACKED = 0;
 			Socket_Connect_Count = 0;
+#if defined (USE_SPARK_CORE_V01)
 			LED_Off(LED2);
+#elif defined (USE_SPARK_CORE_V02)
+			LED_SetRGBColor(RGB_COLOR_RED);
+			LED_On(LED_RGB);
+#endif
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
 			if (*(data + 20) == 0)
 			{
 				WLAN_DHCP = 1;
+#if defined (USE_SPARK_CORE_V01)
 				LED_On(LED2);
+#elif defined (USE_SPARK_CORE_V02)
+				LED_SetRGBColor(RGB_COLOR_GREEN);
+				LED_On(LED_RGB);
+#endif
 			}
 			else
 			{

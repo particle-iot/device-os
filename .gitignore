@@ -38,3 +38,9 @@ RIDE/*
 
 # backup folder
 backup/*
+
+# Arduino libraries
+libraries/Arduino/
+
+# TropicSSL libraries
+libraries/Tropicssl/

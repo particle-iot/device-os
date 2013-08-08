@@ -42,8 +42,12 @@
 #define D6 6
 #define D7 7
 
+#if defined (USE_SPARK_CORE_V01)
 #define LED1 8
 #define LED2 9
+#elif defined (USE_SPARK_CORE_V02)
+#define LED1 LED_USER
+#endif
 
 #define A0 10
 #define A1 11

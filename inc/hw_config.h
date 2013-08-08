@@ -35,7 +35,7 @@ typedef enum
 
 typedef enum
 {
-	LED1 = 0, LED2 = 1, LED3 = 2, LED4 = 3
+	LED1 = 0, LED2 = 1, LED3 = 2, LED4 = 3, LED3_LED4_LED2 = 231
 } Led_TypeDef;
 
 typedef enum
@@ -69,6 +69,24 @@ typedef enum
 
 #define USART_RX_DATA_SIZE	256	//2048
 
+#if defined (USE_SPARK_CORE_V02)
+//Extended LED Types
+#define LED_RED				LED3
+#define LED_GREEN			LED4
+#define LED_BLUE			LED2
+#define LED_RGB				LED3_LED4_LED2
+#define LED_USER			LED1
+
+//RGB Basic Colors
+#define RGB_COLOR_RED		0xFF0000
+#define RGB_COLOR_GREEN		0x00FF00
+#define RGB_COLOR_BLUE		0x0000FF
+#define RGB_COLOR_YELLOW	0xFFFF00
+#define RGB_COLOR_CYAN		0x00FFFF
+#define RGB_COLOR_MAGENTA	0xFF00FF
+#define RGB_COLOR_WHITE		0xFFFFFF
+#endif
+
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
@@ -80,10 +98,15 @@ DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State);
 
 void UI_Timer_Configure(void);
 
+#if defined (USE_SPARK_CORE_V02)
+void LED_SetRGBColor(uint32_t RGB_Color);
+#endif
+
 void LED_Init(Led_TypeDef Led);
 void LED_On(Led_TypeDef Led);
 void LED_Off(Led_TypeDef Led);
 void LED_Toggle(Led_TypeDef Led);
+
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
