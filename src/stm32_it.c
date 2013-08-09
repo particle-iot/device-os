@@ -153,6 +153,32 @@ void SysTick_Handler(void)
 	Timing_Decrement();
 }
 
+#if defined (USE_SPARK_CORE_V02)
+/*******************************************************************************
+ * Function Name  : RTC_IRQHandler
+ * Description    : This function handles RTC global interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void RTC_IRQHandler(void)
+{
+	if (RTC_GetITStatus(RTC_IT_SEC) != RESET)
+	{
+		/* Clear the RTC Second interrupt */
+		RTC_ClearITPendingBit(RTC_IT_SEC);
+
+#if defined (RTC_TEST_ENABLE)
+		/* Toggle LED_USER */
+		LED_Toggle(LED_USER);
+#endif
+
+		/* Wait until last write operation on RTC registers has finished */
+		RTC_WaitForLastTask();
+	}
+}
+#endif
+
 /******************************************************************************/
 /*                 STM32 Peripherals Interrupt Handlers                   */
 /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */

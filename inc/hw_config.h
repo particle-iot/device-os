@@ -91,6 +91,10 @@ typedef enum
 void Set_System(void);
 void NVIC_Configuration(void);
 
+#if defined (USE_SPARK_CORE_V02)
+void RTC_Configuration(void);
+#endif
+
 void IWDG_Reset_Enable(uint32_t msTimeout);
 
 void DIO_Init(DIO_TypeDef Dx);
@@ -106,6 +110,7 @@ void LED_Init(Led_TypeDef Led);
 void LED_On(Led_TypeDef Led);
 void LED_Off(Led_TypeDef Led);
 void LED_Toggle(Led_TypeDef Led);
+void LED_Fade(Led_TypeDef Led);
 
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);

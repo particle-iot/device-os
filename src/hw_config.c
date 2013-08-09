@@ -34,6 +34,7 @@ GPIO_TypeDef* LED_PORT[] = {LED1_GPIO_PORT, LED2_GPIO_PORT, LED3_GPIO_PORT, LED4
 const uint16_t LED_PIN[] = {LED1_PIN, LED2_PIN, LED3_PIN, LED4_PIN};
 const uint32_t LED_CLK[] = {LED1_GPIO_CLK, LED2_GPIO_CLK, LED3_GPIO_CLK, LED4_GPIO_CLK};
 __IO uint16_t LED_TIM_CCR[] = {0x0000, 0x0000, 0x0000, 0x0000};
+int8_t delta1, delta2, delta3;
 
 GPIO_TypeDef* BUTTON_PORT[] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
 const uint16_t BUTTON_PIN[] = {BUTTON1_PIN, BUTTON2_PIN};
@@ -155,6 +156,62 @@ void NVIC_Configuration(void)
 	/* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 }
+
+#if defined (USE_SPARK_CORE_V02)
+void RTC_Configuration(void)
+{
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	/* Enable the RTC Interrupt */
+	NVIC_InitStructure.NVIC_IRQChannel = RTC_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
+	/* Enable PWR and BKP clocks */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+
+	/* Allow access to BKP Domain */
+	PWR_BackupAccessCmd(ENABLE);
+
+	/* Reset Backup Domain */
+	BKP_DeInit();
+
+	/* Enable LSE */
+	RCC_LSEConfig(RCC_LSE_ON);
+
+	/* Wait till LSE is ready */
+	while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET)
+	{
+	//Do nothing
+	}
+
+	/* Select LSE as RTC Clock Source */
+	RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
+
+	/* Enable RTC Clock */
+	RCC_RTCCLKCmd(ENABLE);
+
+	/* Wait for RTC registers synchronization */
+	RTC_WaitForSynchro();
+
+	/* Wait until last write operation on RTC registers has finished */
+	RTC_WaitForLastTask();
+
+	/* Enable the RTC Second */
+	RTC_ITConfig(RTC_IT_SEC, ENABLE);
+
+	/* Wait until last write operation on RTC registers has finished */
+	RTC_WaitForLastTask();
+
+	/* Set RTC prescaler: set RTC period to 1sec */
+	RTC_SetPrescaler(32767); /* RTC period = RTCCLK/RTC_PR = (32.768 KHz)/(32767+1) */
+
+	/* Wait until last write operation on RTC registers has finished */
+	RTC_WaitForLastTask();
+}
+#endif
 
 void IWDG_Reset_Enable(uint32_t msTimeout)
 {
@@ -423,11 +480,76 @@ void LED_Toggle(Led_TypeDef Led)
 		LED_PORT[Led]->ODR ^= LED_PIN[Led];
 		break;
 
-	case LED_RGB:	//LED_SetRGBColor() should be called first for this Case
+	case LED_RGB://LED_SetRGBColor() and LED_On() should be called first for this Case
 		TIM1->CCR2 ^= LED_TIM_CCR[2];
 		TIM1->CCR3 ^= LED_TIM_CCR[3];
 		TIM1->CCR1 ^= LED_TIM_CCR[1];
 		break;
+	}
+#endif
+}
+
+/**
+  * @brief  Fades selected LED.
+  * @param  Led: Specifies the Led to be set on.
+  *   This parameter can be one of following parameters:
+  *     @arg LED1, LED2, LED_RGB
+  * @retval None
+  */
+void LED_Fade(Led_TypeDef Led)
+{
+#if defined (USE_SPARK_CORE_V01)
+	switch(Led)
+	{
+	case LED1:
+		if(TIM1->CCR1 == TIM1->ARR + 1)
+			delta1 = -1;
+		else if(TIM1->CCR1 == 1)
+			delta1 = 1;
+		else if(TIM1->CCR1 == 0)
+			delta1 = 0;
+
+		TIM1->CCR1 += delta1;
+		break;
+
+	case LED2:
+		if(TIM1->CCR2 == TIM1->ARR + 1)
+			delta2 = -1;
+		else if(TIM1->CCR2 == 1)
+			delta2 = 1;
+		else if(TIM1->CCR2 == 0)
+			delta2 = 0;
+
+		TIM1->CCR2 += delta2;
+		break;
+	}
+#elif defined (USE_SPARK_CORE_V02)
+	if(Led == LED_RGB)
+	{
+		if(LED_TIM_CCR[2] == 0)
+			delta2 = 0;
+		else if(TIM1->CCR2 == 0)
+			delta2 = 1;
+		else if(TIM1->CCR2 == TIM1->ARR + 1)
+			delta2 = -1;
+
+		if(LED_TIM_CCR[3] == 0)
+			delta3 = 0;
+		else if(TIM1->CCR3 == 0)
+			delta3 = 1;
+		else if(TIM1->CCR3 == TIM1->ARR + 1)
+			delta3 = -1;
+
+		if(LED_TIM_CCR[1] == 0)
+			delta1 = 0;
+		else if(TIM1->CCR1 == 0)
+			delta1 = 1;
+		else if(TIM1->CCR1 == TIM1->ARR + 1)
+			delta1 = -1;
+
+		TIM1->CCR2 += delta2;
+		TIM1->CCR3 += delta3;
+		TIM1->CCR1 += delta1;
 	}
 #endif
 }

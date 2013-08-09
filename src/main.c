@@ -43,6 +43,7 @@ __IO uint8_t SPARK_SOCKET_CONNECTED;
 __IO uint8_t SPARK_SOCKET_ALIVE;
 __IO uint8_t SPARK_DEVICE_ACKED;
 __IO uint8_t SPARK_DEVICE_IWDGRST;
+__IO uint8_t SPARK_LED_FADE;
 
 __IO uint8_t Socket_Connect_Count;
 
@@ -79,6 +80,10 @@ int main(void)
 #if defined (USE_SPARK_CORE_V02)
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
+
+#if defined (RTC_TEST_ENABLE)
+    RTC_Configuration();
+#endif
 #endif
 
 #ifdef IWDG_RESET_ENABLE
@@ -262,6 +267,13 @@ void Timing_Decrement(void)
     {
         TimingLED--;
     }
+    else if(SPARK_LED_FADE)
+    {
+#if defined (USE_SPARK_CORE_V02)
+    	LED_Fade(LED_RGB);
+    	TimingLED = 25;	//25ms
+#endif
+    }
     else if(!SPARK_DEVICE_ACKED)
     {
 #if defined (USE_SPARK_CORE_V01)
@@ -281,6 +293,7 @@ void Timing_Decrement(void)
 #elif defined (USE_SPARK_CORE_V02)
     		LED_SetRGBColor(RGB_COLOR_CYAN);
     		LED_On(LED_RGB);
+    		SPARK_LED_FADE = 1;
 #endif
     		SparkDeviceAckedLedOn = 1;
     	}
@@ -572,6 +585,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			SPARK_SOCKET_CONNECTED = 0;
 			SPARK_SOCKET_ALIVE = 0;
 			SPARK_DEVICE_ACKED = 0;
+			SPARK_LED_FADE = 0;
 			Socket_Connect_Count = 0;
 #if defined (USE_SPARK_CORE_V01)
 			LED_Off(LED2);
