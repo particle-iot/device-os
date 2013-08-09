@@ -33,40 +33,40 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 SECONDARY_FLASH += \
-usb-dfu.hex \
+usb-bootloader.hex \
 
 SECONDARY_LIST += \
-usb-dfu.lst \
+usb-bootloader.lst \
 
 SECONDARY_SIZE += \
-usb-dfu.siz \
+usb-bootloader.siz \
 
 
 # All Target
-all: usb-dfu.elf secondary-outputs
+all: usb-bootloader.elf secondary-outputs
 
 # Tool invocations
-usb-dfu.elf: $(OBJS) $(USER_OBJS)
+usb-bootloader.elf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target..'
-	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md.ld" -nostartfiles -Xlinker --gc-sections -Wl,-Map,usb-dfu.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "usb-dfu.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md.ld" -nostartfiles -Xlinker --gc-sections -Wl,-Map,usb-bootloader.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "usb-bootloader.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	$(MAKE) --no-print-directory post-build
 
-usb-dfu.hex: usb-dfu.elf
-	arm-none-eabi-objcopy -O ihex usb-dfu.elf  "usb-dfu.hex"
+usb-bootloader.hex: usb-bootloader.elf
+	arm-none-eabi-objcopy -O ihex usb-bootloader.elf  "usb-bootloader.hex"
 
-usb-dfu.lst: usb-dfu.elf
-	arm-none-eabi-objdump -h -S usb-dfu.elf > "usb-dfu.lst"
+usb-bootloader.lst: usb-bootloader.elf
+	arm-none-eabi-objdump -h -S usb-bootloader.elf > "usb-bootloader.lst"
 
-usb-dfu.siz: usb-dfu.elf
-	arm-none-eabi-size  --format=berkeley usb-dfu.elf
+usb-bootloader.siz: usb-bootloader.elf
+	arm-none-eabi-size  --format=berkeley usb-bootloader.elf
 	@echo 'Finished building target'
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(ASM_DEPS)$(S_UPPER_DEPS)$(EXECUTABLES)$(SECONDARY_FLASH)$(SECONDARY_LIST)$(SECONDARY_SIZE) usb-dfu.map usb-dfu.elf usb-dfu.bin
+	-$(RM) $(OBJS)$(C_DEPS)$(ASM_DEPS)$(S_UPPER_DEPS)$(EXECUTABLES)$(SECONDARY_FLASH)$(SECONDARY_LIST)$(SECONDARY_SIZE) usb-bootloader.map usb-bootloader.elf usb-bootloader.bin
 
 post-build:
-	-arm-none-eabi-objcopy -S -O binary "usb-dfu.elf" "usb-dfu.bin"
+	-arm-none-eabi-objcopy -S -O binary "usb-bootloader.elf" "usb-bootloader.bin"
 
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_LIST) $(SECONDARY_SIZE)
 

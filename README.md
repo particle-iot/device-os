@@ -1,53 +1,52 @@
-# usb-dfu
+# usb-bootloader
 
-Spark USB-DFU firmware for the STM32
+Spark USB bootloader for the STM32
 
-Development Environment Setup:
+After building with Eclipse or with `make` in the build folder, use JTAG to flash the .bin or .hex file to address 0x08000000 on the STM32.
+The device should appear as "STM Device in DFU Mode" on the Host platform.
 
-1. Copy .cproject and .project files from "core-firmware" into "usb-dfu" folder.
+**NOTE: following instructions are for Core hardware v0.1 (delivered to beta testers June 2013)
+  and are not necessarily true for later versions of the Core.**
 
-2. Search and replace "core-firmware" with "usb-dfu" in the above 2 files.
+## Use of LEDs and BUTTON
 
-3. In Eclipse, select File -> Import -> Existing Projects into Workspace -> Select root directry: -> Browse and select "usb-dfu" folder -> Finish.
+* Both LED1 and LED2 should toggle simultaneously for 250ms indicating that USB firmware update mode has been entered.
+* Press BUT just once to exit USB firmware update mode and enter User Application mode. If no application project is loaded, USB firmware update mode is entered by default.
+* Press BUT for > 1sec during reset to enter USB firmware update mode.
 
-4. In Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Compiler -> Optimization, select Optimization level as "Optimize size(-Os)"
+## Flash Code via USB
 
-5. Build the project and load the usb-dfu.hex or usb-dfu.bin file via JTAG.
+Install open-source "dfu-util" on Mac (brew install dfu-util), Windows, or Linux, downloadable from:
+http://dfu-util.gnumonks.org/index.html
 
-6. The device should appear as "STM Device in DFU Mode" on the Host platform.
+Add "dfu-util" related bin files to PATH environment variable
 
-7. Use of LEDs and BUTTON:
-   Both LED1 and LED2 should toggle simultaneously for 250ms indicating that usb-dfu mode has been entered.
-   Press BUT just once to exit usb-dfu mode and enter User Application mode. If no application project is loaded, usb-dfu mode is entered by default.
-   Press BUT for > 1sec during reset to enter usb-dfu mode.
+List the currently attached DFU capable USB devices by running the following command on host:
 
-8. Install open-source "dfu-util" on Windows, MAC or Linux by following the link below:
-   http://dfu-util.gnumonks.org/index.html
-
-9. Add "dfu-util" related bin files to PATH environment variable
-
-10. List the currently attached DFU capable USB devices by running the following command on host:
     dfu-util -l
 
-11. The Core, Debug or H103 boards in DFU mode should be listed as follows:
+The Core, Debug or H103 boards in DFU mode should be listed as follows:
+
     Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/12*001Ka,116*001Kg"
 
-12. If the macro SPARK_SFLASH_ENABLE is uncommented in platform_config.h, then the External Serial Flash should also be listed as follows:
+If the macro SPARK\_SFLASH\_ENABLE is uncommented in platform\_config.h, then the External Serial Flash should also be listed as follows:
+
     Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
 
-13. For Flashing core-firmware.bin using usb-dfu, follow the steps below in Eclipse - core-firmware project:
-    Get the latest core-firmware code from Github
-    In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
-    Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
-    Uncomment the following line in platform_config.h to enable usb-dfu based core-firmware build
-    "#define DFU_BUILD_ENABLE"
+For Flashing core-firmware.bin using usb-bootloader, follow the steps below in Eclipse - core-firmware project:
 
-14. Build the core-firmware project for usb-dfu usage.
+* Get the latest core-firmware code from Github
+* In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
+* Browse & select linker file : "linker\_stm32f10x\_md\_dfu.ld"
+* Uncomment the following line in platform\_config.h to enable USB DFU based core-firmware build "#define DFU\_BUILD\_ENABLE"
+* Build the core-firmware project for USB DFU usage.
 
-15. cd to the core-firmware/Debug folder and type the below command to program the core-firmware application to Internal Flash starting from address 0x0800C000:
+cd to the core-firmware/Debug folder and type the below command to program the core-firmware application to Internal Flash starting from address 0x0800C000:
+
     dfu-util -d 0483:df11 -a 0 -s 0x0800C000:leave -D core-firmware.bin
 
-16. For flashing core-firmware application to External Flash starting from address 0x00001000, run the following command:
+For flashing core-firmware application to External Flash starting from address 0x00001000, run the following command:
+
     dfu-util -d 0483:df11 -a 1 -s 0x00001000 -D core-firmware.bin
 
-17. Alternatively to build the project using command line option, cd to the "build" folder and run "make clean" followed by "make all".
+Alternatively to build the project using command line option, cd to the "build" folder and run "make clean" followed by "make all".
