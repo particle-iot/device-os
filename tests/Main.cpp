@@ -1,5 +1,6 @@
 #include "UnitTest++.h"
 #include "handshake.h"
+#include "tropicssl/rsa.h"
 
 struct HandshakeFixture
 {
@@ -99,6 +100,11 @@ TEST_FIXTURE(HandshakeFixture, CiphertextMatchesOpenSSLExample)
     0x91, 0x8b, 0x48, 0x37, 0x9a, 0xc1, 0xc6, 0xca };
   ciphertextFromNonceAndID(nonce, id, pubkey, ciphertext);
   CHECK_ARRAY_EQUAL(ciphertext, expected, 256);
+}
+
+TEST(RSASelfTestSucceeds)
+{
+  CHECK_EQUAL(0, rsa_self_test(1));
 }
 
 int main(int, char const *[])

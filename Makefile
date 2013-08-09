@@ -1,6 +1,7 @@
 CXX = g++
-CXXFLAGS ?= -g -Wall -W -Winline -ansi -Ilib/tropicssl/include
-LDFLAGS ?= -Isrc -Itests/UnitTest++/src
+CXXFLAGS ?= -g -Wall -W -Winline -ansi
+CXXFLAGS += -Ilib/tropicssl/include -Isrc -Itests/UnitTest++/src
+LDFLAGS ?=
 RM = rm
 
 .SUFFIXES: .o .cpp
@@ -31,7 +32,7 @@ $(ssllib):
 	$(MAKE) -C $(ssllibdir)
 
 test: $(lib) $(testlib)
-	@$(CXX) $(LDFLAGS) -o $(test) $(testlib) $(lib) $(ssllib) $(testrunner)
+	@$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(test) $(testlib) $(lib) $(ssllib) $(testrunner)
 	@echo running unit tests...
 	@./$(test)
 
