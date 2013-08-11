@@ -17,14 +17,6 @@ int ciphertextFromNonceAndID(const unsigned char *nonce,
 	rsa.len = 256;
 	mpi_read_binary(&rsa.N, pubkey, 256);
 	mpi_read_string(&rsa.E, 16, "10001");
-  /*
-	mpi_read_string(&rsa.D, 16, RSA_D);
-	mpi_read_string(&rsa.P, 16, RSA_P);
-	mpi_read_string(&rsa.Q, 16, RSA_Q);
-	mpi_read_string(&rsa.DP, 16, RSA_DP);
-	mpi_read_string(&rsa.DQ, 16, RSA_DQ);
-	mpi_read_string(&rsa.QP, 16, RSA_QP);
-  */
 
   return rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, 52, plaintext, ciphertext);
 }

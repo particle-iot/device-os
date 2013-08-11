@@ -107,6 +107,14 @@ TEST(RSASelfTestSucceeds)
   CHECK_EQUAL(0, rsa_self_test(1));
 }
 
+TEST_FIXTURE(HandshakeFixture, FixturePublicKeyIsValid)
+{
+  rsa_context rsa;
+  mpi_read_binary(&rsa.N, pubkey, 256);
+  mpi_read_string(&rsa.E, 16, "10001");
+  CHECK_EQUAL(0, rsa_check_pubkey(&rsa));
+}
+
 int main(int, char const *[])
 {
   return UnitTest::RunAllTests();
