@@ -26,7 +26,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* Extern variables ----------------------------------------------------------*/
-extern __IO uint8_t BUTTON_DEBOUNCED[];
+extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -174,10 +174,10 @@ void EXTI2_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE );
 
+		BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
+
 		/* Disable BUTTON1 Interrupt */
 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
-
-		TIM1->CCR4 += UI_TIMER_FREQUENCY;
 
 		/* Enable TIM1 CC4 Interrupt */
 		TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
@@ -200,10 +200,10 @@ void EXTI15_10_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE );
 
+		BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
+
 		/* Disable BUTTON1 Interrupt */
 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
-
-		TIM1->CCR4 += UI_TIMER_FREQUENCY;
 
 		/* Enable TIM1 CC4 Interrupt */
 		TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
@@ -224,16 +224,18 @@ void TIM1_CC_IRQHandler(void)
 	{
 		TIM_ClearITPendingBit(TIM1, TIM_IT_CC4);
 
-		/* Disable TIM1 CC4 Interrupt */
-		TIM_ITConfig(TIM1, TIM_IT_CC4, DISABLE);
-
 		if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
-			BUTTON_DEBOUNCED[BUTTON1] = 0x01;
+		{
+			BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
+		}
 		else
-			BUTTON_DEBOUNCED[BUTTON1] = 0x00;
+		{
+			/* Disable TIM1 CC4 Interrupt */
+			TIM_ITConfig(TIM1, TIM_IT_CC4, DISABLE);
 
-		/* Enable BUTTON1 Interrupt */
-		BUTTON_EXTI_Config(BUTTON1, ENABLE);
+			/* Enable BUTTON1 Interrupt */
+			BUTTON_EXTI_Config(BUTTON1, ENABLE);
+		}
 	}
 }
 

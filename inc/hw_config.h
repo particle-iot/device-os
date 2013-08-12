@@ -17,8 +17,6 @@
 #include "sst25vf_spi.h"
 
 /* Exported types ------------------------------------------------------------*/
-
-
 typedef enum
 {
 	LED1 = 0, LED2 = 1, LED3 = 2, LED4 = 3, LED3_LED4_LED2 = 231
@@ -85,7 +83,8 @@ void LED_Toggle(Led_TypeDef Led);
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
-uint8_t BUTTON_GetDebouncedState(Button_TypeDef Button);
+uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
+void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
 /* Serial Flash Hardware related methods */
 void sFLASH_SPI_DeInit(void);

@@ -28,7 +28,7 @@ GPIO_TypeDef* BUTTON_PORT[] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
 const uint16_t BUTTON_PIN[] = {BUTTON1_PIN, BUTTON2_PIN};
 const uint32_t BUTTON_CLK[] = {BUTTON1_GPIO_CLK, BUTTON2_GPIO_CLK};
 GPIOMode_TypeDef BUTTON_GPIO_MODE[] = {BUTTON1_GPIO_MODE, BUTTON2_GPIO_MODE};
-__IO uint8_t BUTTON_DEBOUNCED[] = {0x00, 0x00};
+__IO uint16_t BUTTON_DEBOUNCED_TIME[] = {0, 0};
 
 const uint16_t BUTTON_EXTI_LINE[] = {BUTTON1_EXTI_LINE, BUTTON2_EXTI_LINE};
 const uint16_t BUTTON_PORT_SOURCE[] = {BUTTON1_EXTI_PORT_SOURCE, BUTTON2_EXTI_PORT_SOURCE};
@@ -75,7 +75,7 @@ void Set_System(void)
 	}
 
     /* Configure the Button */
-    BUTTON_Init(BUTTON1, BUTTON_MODE_GPIO);
+    BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
 
 	/* Setup SysTick Timer for 1 msec interrupts */
 	if (SysTick_Config(SystemCoreClock / 1000))
@@ -366,8 +366,6 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
         NVIC_Init(&NVIC_InitStructure);
 
-        BUTTON_DEBOUNCED[Button] = 0x00;
-
         BUTTON_EXTI_Config(Button, ENABLE);
     }
 }
@@ -404,21 +402,21 @@ uint8_t BUTTON_GetState(Button_TypeDef Button)
 }
 
 /**
-  * @brief  Returns the selected Button filtered state.
+  * @brief  Returns the selected Button Debounced Time.
   * @param  Button: Specifies the Button to be checked.
   *   This parameter can be one of following parameters:
   *     @arg BUTTON1: Button1
   *     @arg BUTTON2: Button2
-  * @retval Button Debounced state.
+  * @retval Button Debounced time in millisec.
   */
-uint8_t BUTTON_GetDebouncedState(Button_TypeDef Button)
+uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button)
 {
-	if(BUTTON_DEBOUNCED[BUTTON1] != 0x00)
-	{
-		BUTTON_DEBOUNCED[BUTTON1] = 0x00;
-		return 0x01;
-	}
-	return 0x00;
+	return BUTTON_DEBOUNCED_TIME[Button];
+}
+
+void BUTTON_ResetDebouncedState(Button_TypeDef Button)
+{
+	BUTTON_DEBOUNCED_TIME[Button] = 0;
 }
 
 /**
