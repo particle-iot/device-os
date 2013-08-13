@@ -1,0 +1,126 @@
+package spark;
+
+//@max_bytes_length=127
+//@max_string_length=127
+
+enum DataType {
+    STRING = 1;
+    INT32 = 2;
+    DOUBLE = 3;
+    BOOL = 4;
+    BYTES = 5;
+    //INT64 = 6;
+}
+
+message DataValue {
+    optional DataType type = 1;
+
+    optional string vString = 2;
+    optional int32 vInt = 3;
+    optional double vDouble = 4;
+    optional bool vBool = 5;
+    optional bytes vBytes = 6;
+}
+
+message Chunk {
+  optional bytes  crc    = 1;
+  optional uint32 length = 2;
+  optional bytes data   = 3;
+}
+
+message ChunkReceived {
+  optional bytes  crc     = 1;
+}
+
+message Event {
+  optional string name    = 1;
+  optional string data    = 2;
+}
+
+
+
+message Hello { }
+
+message Ignored {  
+  optional uint32 received = 1;
+}
+
+message KeyChange {
+  optional bytes  ciphertext = 1; // 256-byte RSA encrypted message as during handshake
+  optional bytes  signature  = 2; // 256-byte RSA signature as during handshake
+}
+
+message UpdateBegin {
+
+}
+
+message UpdateDone {
+
+}
+
+message UpdateReady {
+
+}
+
+message VariableRequest {
+    optional string name   = 1;
+    optional bool set      = 2;
+    repeated DataValue value = 3;
+}
+message VariableValue {
+    optional string name   = 1;
+    repeated DataValue value = 2;
+}
+
+message FunctionCall {
+  // TODO, describe argument and return value types
+    optional string name   = 1;
+    repeated string argNames = 2;
+    repeated DataValue value = 3;
+}
+message FunctionReturn {
+  // TODO describe return type and value
+    optional string name   = 1;
+    repeated DataValue value = 2;
+}
+
+
+//if we send all messages in an 'Envelope', and set the type appropriately,
+//we should have minimum overhead, and should be able to easily switch to
+//whatever property / message is set.
+
+enum Type {
+	CHUNK = 1;
+	CHUNKRECEIVED = 2;
+	EVENT = 3;
+	FUNCTIONCALL = 4;
+	FUNCTIONRETURN = 5;
+	HELLO = 6;
+	IGNORED = 7;
+	KEYCHANGE = 8;
+	UPDATEBEGIN = 9;
+	UPDATEDONE = 10;
+	UPDATEREADY = 11;
+	VARIABLEREQUEST = 12;
+	VARIABLEVALUE = 13;
+}
+
+message Envelope {
+
+    // Identifies which type of message was sent
+    optional uint32 counter = 1;
+    optional Type type = 2;
+    optional VariableRequest variablerequest = 3;
+    optional VariableValue variablevalue = 4;
+    optional FunctionCall functioncall = 5;
+    optional FunctionReturn functionreturn = 6;
+    optional Event event = 7;
+    optional Ignored ignored = 8;
+    optional UpdateBegin updatebegin = 9;
+    optional UpdateReady updateready = 10;
+    optional Chunk chunk = 11;
+    optional ChunkReceived chunkreceived = 12;
+    optional UpdateDone updatedone = 13;
+    optional Hello hello = 14;
+    optional KeyChange keychange = 15;
+}
