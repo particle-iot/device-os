@@ -30,6 +30,12 @@
 /* Flash Memory address where the System Flags will be saved and loaded from  */
 #define SYSTEM_FLAGS_ADDRESS	((uint32_t)0x08004C00)
 
+/* CC3000 EEPROM - Spark File Data Storage */
+#define NVMEM_SPARK_FILE_ID			14	//Do not change this ID
+#define NVMEM_SPARK_FILE_SIZE		16	//Change according to requirement
+#define WLAN_PROFILE_FILE_OFFSET	0
+#define ERROR_COUNT_FILE_OFFSET		1
+
 /* Exported functions ------------------------------------------------------- */
 void Timing_Decrement(void);
 void Delay(__IO uint32_t nTime);

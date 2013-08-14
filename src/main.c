@@ -60,6 +60,8 @@ const unsigned char smartconfigkey[] = "sparkdevices2013";	//16 bytes
 /* device name used by smart config response */
 char device_name[] = "CC3000";
 
+unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -130,13 +132,23 @@ int main(void)
 	wlan_init(WLAN_Async_Callback, WLAN_Firmware_Patch, WLAN_Driver_Patch, WLAN_BootLoader_Patch,
 				CC3000_Read_Interrupt_Pin, CC3000_Interrupt_Enable, CC3000_Interrupt_Disable, CC3000_Write_Enable_Pin);
 
-	Delay(1000);
+	Delay(100);
 
 	/* Trigger a WLAN device */
 	wlan_start(0);
 
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+
+	if(nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != 0)
+	{
+		/* Delete all previously stored wlan profiles */
+		wlan_ioctl_del_profile(255);
+
+		/* Create new entry for Spark File in CC3000 EEPROM */
+		nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
+		nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
+	}
 
 #ifdef DFU_BUILD_ENABLE
     if(NetApp_Timeout_SysFlag != 0xAAAA)
@@ -150,9 +162,9 @@ int main(void)
 	if(!WLAN_MANUAL_CONNECT)
 	{
 #ifdef DFU_BUILD_ENABLE
-		if(Smart_Config_SysFlag != 0xBBBB)
+		if(Smart_Config_SysFlag != 0xBBBB || NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] == 0)
 #else
-		if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
+		if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB || NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] == 0)
 #endif
 		{
 			WLAN_SMART_CONFIG_START = 1;
@@ -179,6 +191,7 @@ int main(void)
 		else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
 		{
 		    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
+		    /* Edit the below line before use*/
 		    wlan_connect(WLAN_SEC_WPA2, "ssid", 4, NULL, "password", 8);
 		    WLAN_MANUAL_CONNECT = 0;
 		}
@@ -299,8 +312,9 @@ void Timing_Decrement(void)
     	}
     }
 
-    if(BUTTON_GetDebouncedState(BUTTON1) != 0x00)
-    {
+	if(BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
+	{
+		BUTTON_ResetDebouncedState(BUTTON1);
     	//Enter Smart Config Process On Next System Reset
     	//Since socket connect() is currently blocking
 #ifdef DFU_BUILD_ENABLE
@@ -384,6 +398,9 @@ void Timing_Decrement(void)
 
 		if(SPARK_SOCKET_ALIVE != 1)
 		{
+			//NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] += 1;
+			//nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, NVMEM_Spark_File_Data);
+
 			Spark_Disconnect();
 
 			SPARK_SOCKET_CONNECTED = 0;
@@ -485,16 +502,10 @@ void Start_Smart_Config(void)
 	WLAN_DHCP = 0;
 	WLAN_CAN_SHUTDOWN = 0;
 
-#ifdef DFU_BUILD_ENABLE
-	Smart_Config_SysFlag = 0xFFFF;
-	Save_SystemFlags();
-#else
-	BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
-#endif
+	unsigned char wlan_profile_index;
 
 	/* Reset all the previous configuration */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
-	wlan_ioctl_del_profile(255);
 
 	/* Wait until CC3000 is disconnected */
 	while (WLAN_CONNECTED == 1)
@@ -503,6 +514,12 @@ void Start_Smart_Config(void)
 		Delay(100);
 		hci_unsolicited_event_handler();
 	}
+
+	/* Create new entry for AES encryption key */
+	nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
+
+	/* Write AES key to NVMEM */
+	aes_write_key((unsigned char *)(&smartconfigkey[0]));
 
 	wlan_smart_config_set_prefix((char*)aucCC3000_prefix);
 
@@ -532,31 +549,44 @@ void Start_Smart_Config(void)
 	LED_On(LED_RGB);
 #endif
 
-	/* Create new entry for AES encryption key */
-	nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
+	/* read count of wlan profiles stored */
+	nvmem_read(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, NVMEM_Spark_File_Data);
 
-	/* Write AES key to NVMEM */
-	aes_write_key((unsigned char *)(&smartconfigkey[0]));
+//	if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] >= 7)
+//	{
+//		if(wlan_ioctl_del_profile(255) == 0)
+//			NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = 0;
+//	}
 
 	/* Decrypt configuration information and add profile */
-	wlan_smart_config_process();
+	wlan_profile_index = wlan_smart_config_process();
+	if(wlan_profile_index != -1)
+	{
+		NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = wlan_profile_index + 1;
+	}
+
+	/* write count of wlan profiles stored */
+	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, NVMEM_Spark_File_Data);
 
 	/* Configure to connect automatically to the AP retrieved in the Smart config process */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
 
+	if(Smart_Config_SysFlag != 0xBBBB)
+	{
+#ifdef DFU_BUILD_ENABLE
+		Smart_Config_SysFlag = 0xBBBB;
+		Save_SystemFlags();
+#else
+		BKP_WriteBackupRegister(BKP_DR2, 0xBBBB);
+#endif
+	}
+
 	/* Reset the CC3000 */
 	wlan_stop();
 
-#ifdef DFU_BUILD_ENABLE
-	Smart_Config_SysFlag = 0xBBBB;
-	Save_SystemFlags();
-#else
-	BKP_WriteBackupRegister(BKP_DR2, 0xBBBB);
-#endif
-
 	WLAN_SMART_CONFIG_START = 0;
 
-	Delay(1000);
+	Delay(100);
 
 	wlan_start(0);
 
@@ -580,6 +610,26 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
+			if(WLAN_CONNECTED)
+			{
+#if defined (USE_SPARK_CORE_V01)
+				LED_Off(LED2);
+#elif defined (USE_SPARK_CORE_V02)
+				LED_SetRGBColor(RGB_COLOR_RED);
+				LED_On(LED_RGB);
+#endif
+			}
+			else
+			{
+				if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] != 0)
+				{
+					NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] -= 1;
+				}
+				else
+				{
+					WLAN_SMART_CONFIG_START = 1;
+				}
+			}
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_SOCKET_CONNECTED = 0;
@@ -587,12 +637,6 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			SPARK_DEVICE_ACKED = 0;
 			SPARK_LED_FADE = 0;
 			Socket_Connect_Count = 0;
-#if defined (USE_SPARK_CORE_V01)
-			LED_Off(LED2);
-#elif defined (USE_SPARK_CORE_V02)
-			LED_SetRGBColor(RGB_COLOR_RED);
-			LED_On(LED_RGB);
-#endif
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:

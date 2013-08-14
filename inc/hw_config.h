@@ -115,7 +115,8 @@ void LED_Fade(Led_TypeDef Led);
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
-uint8_t BUTTON_GetDebouncedState(Button_TypeDef Button);
+uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
+void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
 /* CC3000 Hardware related methods */
 void CC3000_WIFI_Init(void);

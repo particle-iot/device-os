@@ -236,6 +236,7 @@
 #define USB_DISCONNECT_GPIO_CLK		  		RCC_APB2Periph_GPIOB
 
 #define UI_TIMER_FREQUENCY					100							/* 100Hz -> 10ms */
+#define BUTTON_DEBOUNCE_INTERVAL			1000 / UI_TIMER_FREQUENCY
 
 /* Exported macro ------------------------------------------------------------*/
 
