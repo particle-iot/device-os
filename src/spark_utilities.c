@@ -32,6 +32,7 @@ int total_bytes_received = 0;
 extern __IO uint32_t TimingSparkAliveTimeout;
 extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint8_t SPARK_DEVICE_IWDGRST;
+extern __IO uint8_t Spark_Error_Count;
 
 void (*pHandleMessage)(void);
 char msgBuff[SPARK_BUF_LEN];

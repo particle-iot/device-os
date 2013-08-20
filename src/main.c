@@ -43,9 +43,11 @@ __IO uint8_t SPARK_SOCKET_CONNECTED;
 __IO uint8_t SPARK_SOCKET_ALIVE;
 __IO uint8_t SPARK_DEVICE_ACKED;
 __IO uint8_t SPARK_DEVICE_IWDGRST;
+__IO uint8_t SPARK_LED_TOGGLE;
 __IO uint8_t SPARK_LED_FADE;
 
 __IO uint8_t Socket_Connect_Count;
+__IO uint8_t Spark_Error_Count;
 
 uint16_t NetApp_Timeout_SysFlag = 0xFFFF;
 uint16_t Smart_Config_SysFlag = 0xFFFF;
@@ -150,6 +152,26 @@ int main(void)
 		nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
 	}
 
+	Spark_Error_Count = NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET];
+
+#if defined (USE_SPARK_CORE_V02)
+	if(Spark_Error_Count)
+	{
+		LED_SetRGBColor(RGB_COLOR_RED);
+		LED_On(LED_RGB);
+
+		while(Spark_Error_Count != 0)
+		{
+			LED_Toggle(LED_RGB);
+			Spark_Error_Count--;
+			Delay(250);
+		}
+
+		NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = 0;
+		nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
+	}
+#endif
+
 #ifdef DFU_BUILD_ENABLE
     if(NetApp_Timeout_SysFlag != 0xAAAA)
 #else
@@ -179,6 +201,17 @@ int main(void)
 	}
 #endif
 
+#if defined (USE_SPARK_CORE_V02)
+	if(WLAN_MANUAL_CONNECT || !WLAN_SMART_CONFIG_START)
+		LED_SetRGBColor(RGB_COLOR_GREEN);
+	else
+		LED_SetRGBColor(RGB_COLOR_BLUE);
+
+	LED_On(LED_RGB);
+#endif
+
+	SPARK_LED_TOGGLE = 1;
+
 	/* Main loop */
 	while (1)
 	{
@@ -195,6 +228,26 @@ int main(void)
 		    wlan_connect(WLAN_SEC_WPA2, "ssid", 4, NULL, "password", 8);
 		    WLAN_MANUAL_CONNECT = 0;
 		}
+
+#if defined (USE_SPARK_CORE_V02)
+		if(Spark_Error_Count)
+		{
+			SPARK_LED_TOGGLE = 0;
+			LED_SetRGBColor(RGB_COLOR_RED);
+			LED_On(LED_RGB);
+
+			while(Spark_Error_Count != 0)
+			{
+				LED_Toggle(LED_RGB);
+				Spark_Error_Count--;
+				Delay(250);
+			}
+
+			LED_SetRGBColor(RGB_COLOR_GREEN);
+			LED_On(LED_RGB);
+			SPARK_LED_TOGGLE = 1;
+		}
+#endif
 
 		// Complete Smart Config Process:
 		// 1. if smart config is done
@@ -216,6 +269,12 @@ int main(void)
 
 		if(WLAN_DHCP && !SPARK_SOCKET_CONNECTED)
 		{
+#if defined (USE_SPARK_CORE_V02)
+			LED_SetRGBColor(RGB_COLOR_CYAN);
+			LED_On(LED_RGB);
+			SPARK_LED_TOGGLE = 1;
+#endif
+
 			Socket_Connect_Count++;
 
 			if(Spark_Connect() < 0)
@@ -292,7 +351,8 @@ void Timing_Decrement(void)
 #if defined (USE_SPARK_CORE_V01)
     	LED_Toggle(LED1);
 #elif defined (USE_SPARK_CORE_V02)
-		//Do nothing
+    	if(SPARK_LED_TOGGLE)
+    		LED_Toggle(LED_RGB);
 #endif
     	TimingLED = 100;	//100ms
     }
@@ -348,6 +408,10 @@ void Timing_Decrement(void)
 		{
 			if (TimingSparkResetTimeout >= TIMING_SPARK_RESET_TIMEOUT)
 			{
+				Spark_Error_Count = 2;
+				NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = Spark_Error_Count;
+				nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
+
 				NVIC_SystemReset();
 			}
 			else
@@ -357,6 +421,10 @@ void Timing_Decrement(void)
 		}
 		else if (Socket_Connect_Count >= SOCKET_CONNECT_MAX_ATTEMPT)
 		{
+			Spark_Error_Count = 3;
+			NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = Spark_Error_Count;
+			nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
+
 			NVIC_SystemReset();
 		}
     }
@@ -398,8 +466,9 @@ void Timing_Decrement(void)
 
 		if(SPARK_SOCKET_ALIVE != 1)
 		{
-			//NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] += 1;
-			//nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, NVMEM_Spark_File_Data);
+			Spark_Error_Count = 4;
+			NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = Spark_Error_Count;
+			nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
 
 			Spark_Disconnect();
 
@@ -529,6 +598,7 @@ void Start_Smart_Config(void)
 #if defined (USE_SPARK_CORE_V02)
     LED_SetRGBColor(RGB_COLOR_BLUE);
 	LED_On(LED_RGB);
+	SPARK_LED_TOGGLE = 0;
 #endif
 
 	/* Wait for SmartConfig to finish */
@@ -550,7 +620,7 @@ void Start_Smart_Config(void)
 #endif
 
 	/* read count of wlan profiles stored */
-	nvmem_read(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, NVMEM_Spark_File_Data);
+	nvmem_read(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
 
 //	if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] >= 7)
 //	{
@@ -566,7 +636,7 @@ void Start_Smart_Config(void)
 	}
 
 	/* write count of wlan profiles stored */
-	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, NVMEM_Spark_File_Data);
+	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
 
 	/* Configure to connect automatically to the AP retrieved in the Smart config process */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
@@ -592,6 +662,12 @@ void Start_Smart_Config(void)
 
 	/* Mask out all non-required events */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+
+#if defined (USE_SPARK_CORE_V02)
+    LED_SetRGBColor(RGB_COLOR_GREEN);
+	LED_On(LED_RGB);
+	SPARK_LED_TOGGLE = 1;
+#endif
 }
 
 /* WLAN Application related callbacks passed to wlan_init */
@@ -615,7 +691,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 #if defined (USE_SPARK_CORE_V01)
 				LED_Off(LED2);
 #elif defined (USE_SPARK_CORE_V02)
-				LED_SetRGBColor(RGB_COLOR_RED);
+				LED_SetRGBColor(RGB_COLOR_GREEN);
 				LED_On(LED_RGB);
 #endif
 			}
@@ -635,6 +711,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			SPARK_SOCKET_CONNECTED = 0;
 			SPARK_SOCKET_ALIVE = 0;
 			SPARK_DEVICE_ACKED = 0;
+			SPARK_LED_TOGGLE = 1;
 			SPARK_LED_FADE = 0;
 			Socket_Connect_Count = 0;
 			break;
