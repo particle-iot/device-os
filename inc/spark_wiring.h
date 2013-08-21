@@ -9,6 +9,8 @@
 #define SPARK_WIRING_H_
 
 #include "stm32f10x.h"
+#include "platform_config.h"
+#include "spark_utilities.h"
 
 /*
  * Basic variables
@@ -152,5 +154,7 @@ extern Serial_Interface Serial;
  * Serial1
  */
 extern Serial_Interface Serial1;
+
+extern Spark_Namespace Spark;
 
 #endif /* SPARK_WIRING_H_ */

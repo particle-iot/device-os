@@ -30,12 +30,23 @@ char recvBuff[SPARK_BUF_LEN];
 int total_bytes_received = 0;
 
 extern __IO uint32_t TimingSparkAliveTimeout;
+extern __IO uint8_t Spark_Error_Count;
+
+extern __IO uint8_t SPARK_SOCKET_CONNECTED;
 extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint8_t SPARK_DEVICE_IWDGRST;
-extern __IO uint8_t Spark_Error_Count;
 
 void (*pHandleMessage)(void);
 char msgBuff[SPARK_BUF_LEN];
+
+struct
+{
+	void (*pUserFunc)(void);
+	char userFuncKey[USER_FUNC_KEY_LENGTH];
+	bool userFuncInvoke;
+} User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
+
+int User_Func_Count;
 
 static void handle_message(void);
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
@@ -51,6 +62,91 @@ static int str_cmp(char str1[], char str2[]);
 static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
 */
+
+Spark_Namespace Spark =
+{
+	Spark_Variable,
+	Spark_Function,
+	Spark_Event,
+	Spark_Sleep,
+	Spark_Connected,
+	Spark_Connect,
+	Spark_Disconnect
+};
+
+void Spark_Variable(void *userVar)
+{
+
+}
+
+void Spark_Function(void (*pFunc)(void), const char *funcKey)
+{
+	int i = 0;
+	if(NULL != pFunc && NULL != funcKey)
+	{
+		if(User_Func_Count == USER_FUNC_MAX_COUNT)
+			return;
+
+		for(i = 0; i < User_Func_Count; i++)
+		{
+			if(User_Func_Lookup_Table[i].pUserFunc == pFunc && (0 == strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH)))
+			{
+				return;
+			}
+		}
+
+		User_Func_Lookup_Table[User_Func_Count].pUserFunc = pFunc;
+		memset(User_Func_Lookup_Table[User_Func_Count].userFuncKey, 0, USER_FUNC_KEY_LENGTH);
+		memcpy(User_Func_Lookup_Table[User_Func_Count].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH);
+		User_Func_Lookup_Table[User_Func_Count].userFuncInvoke = FALSE;
+		User_Func_Count++;
+	}
+}
+
+bool Spark_User_Func_Invoke(char *funcKey)
+{
+	int i = 0;
+	for(i = 0; i < User_Func_Count; i++)
+	{
+		if(0 == strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH))
+		{
+			User_Func_Lookup_Table[i].userFuncInvoke = TRUE;
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+void Spark_User_Func_Execute(void)
+{
+	int i = 0;
+	for(i = 0; i < User_Func_Count; i++)
+	{
+		if(TRUE == User_Func_Lookup_Table[i].userFuncInvoke)
+		{
+			User_Func_Lookup_Table[i].userFuncInvoke = FALSE;
+			User_Func_Lookup_Table[i].pUserFunc();
+		}
+	}
+}
+
+void Spark_Event(char *eventName, char *eventResult)
+{
+
+}
+
+void Spark_Sleep(int millis)
+{
+	Delay(millis);
+}
+
+bool Spark_Connected(void)
+{
+	if(SPARK_SOCKET_CONNECTED && SPARK_DEVICE_ACKED)
+		return TRUE;
+	else
+		return FALSE;
+}
 
 int Spark_Connect(void)
 {

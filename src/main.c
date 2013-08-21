@@ -286,18 +286,20 @@ int main(void)
 
 #ifdef SPARK_WIRING_ENABLE
 #ifdef SPARK_WLAN_ENABLE
-		if(SPARK_SOCKET_CONNECTED && SPARK_DEVICE_ACKED)
+		if(SPARK_SOCKET_CONNECTED && SPARK_DEVICE_ACKED && !SPARK_DEVICE_IWDGRST)
 		{
 #endif
-			if((SPARK_DEVICE_IWDGRST != 1) && (NULL != loop))
+			if(NULL != loop)
 			{
 				loop();
 			}
 
-			if((SPARK_DEVICE_IWDGRST != 1) && (NULL != pHandleMessage))
+			if(NULL != pHandleMessage)
 			{
 				pHandleMessage();
 			}
+
+			Spark_User_Func_Execute();
 #ifdef SPARK_WLAN_ENABLE
 		}
 #endif
