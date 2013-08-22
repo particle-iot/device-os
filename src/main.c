@@ -25,13 +25,25 @@ typedef  void (*pFunction)(void);
 static __IO uint32_t TimingDelay, TimingBUTTON, TimingLED;
 uint8_t DFUDeviceMode = 0x00;
 
-/* Extern variables ----------------------------------------------------------*/
 uint8_t DeviceState;
 uint8_t DeviceStatus[6];
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
 uint32_t ApplicationAddress;
 
+uint16_t NetApp_Timeout_SysFlag = 0xFFFF;
+uint16_t Smart_Config_SysFlag = 0xFFFF;
+uint16_t Flash_Update_SysFlag = 0xFFFF;
+
+uint32_t Internal_Flash_Address = 0;
+uint32_t External_Flash_Address = 0;
+uint32_t Internal_Flash_Data = 0;
+uint8_t External_Flash_Data[4];
+uint32_t EraseCounter = 0;
+uint32_t NbrOfPage = 0;
+volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
+
+/* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -54,6 +66,9 @@ int main(void)
 
 	Set_System();
 
+	/* Run SPI Flash Self Test (Uncomment for Debugging) */
+	//sFLASH_SelfTest();
+
 	switch(BKP_ReadBackupRegister(BKP_DR10))
 	{
 		case 0x5000:
@@ -70,10 +85,14 @@ int main(void)
 			break;
 	}
 
-	/* Check if BUTTON1 is pressed for 1 sec to enter DFU Mode */
+	/*
+	 *	Factory Reset Conditional Code will go here
+	 */
+
+	/* Check if BUTTON1 is pressed for 3 sec to enter DFU Mode */
 	if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
 	{
-		TimingBUTTON = 1000;
+		TimingBUTTON = 3000;
 		while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
 		{
 			if(TimingBUTTON == 0x00)
@@ -182,7 +201,7 @@ void Delay(uint32_t nTime)
 void Timing_Decrement(void)
 {
     if (TimingDelay != 0x00)
-    { 
+    {
         TimingDelay--;
     }
 
@@ -195,6 +214,167 @@ void Timing_Decrement(void)
     {
         TimingLED--;
     }
+}
+
+void Load_SystemFlags(void)
+{
+	uint32_t Address = SYSTEM_FLAGS_ADDRESS;
+
+	NetApp_Timeout_SysFlag = (*(__IO uint16_t*) Address);
+	Address += 2;
+
+	Smart_Config_SysFlag = (*(__IO uint16_t*) Address);
+	Address += 2;
+
+	Flash_Update_SysFlag = (*(__IO uint16_t*) Address);
+	Address += 2;
+}
+
+void Save_SystemFlags(void)
+{
+	uint32_t Address = SYSTEM_FLAGS_ADDRESS;
+	FLASH_Status FLASHStatus = FLASH_COMPLETE;
+
+	/* Unlock the Flash Program Erase Controller */
+	FLASH_Unlock();
+
+	/* Clear All pending flags */
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+	/* Erase the Internal Flash pages */
+	FLASHStatus = FLASH_ErasePage(SYSTEM_FLAGS_ADDRESS);
+	while(FLASHStatus != FLASH_COMPLETE);
+
+	/* Program NetApp_Timeout_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, NetApp_Timeout_SysFlag);
+	while(FLASHStatus != FLASH_COMPLETE);
+	Address += 2;
+
+	/* Program Smart_Config_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, Smart_Config_SysFlag);
+	while(FLASHStatus != FLASH_COMPLETE);
+	Address += 2;
+
+	/* Program Flash_Update_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, Flash_Update_SysFlag);
+	while(FLASHStatus != FLASH_COMPLETE);
+	Address += 2;
+
+	/* Locks the FLASH Program Erase Controller */
+	FLASH_Lock();
+}
+
+void FLASH_Begin(void)
+{
+	FLASHStatus = FLASH_COMPLETE;
+
+	Flash_Update_SysFlag = 0xCCCC;
+	Save_SystemFlags();
+	//BKP_WriteBackupRegister(BKP_DR10, 0xCCCC);
+
+	/* Unlock the Flash Program Erase Controller */
+	FLASH_Unlock();
+
+	/* Define the number of Internal Flash pages to be erased */
+	NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS) / INTERNAL_FLASH_PAGE_SIZE;
+
+	/* Clear All pending flags */
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+	/* Erase the Internal Flash pages */
+	for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
+	{
+		FLASHStatus = FLASH_ErasePage(CORE_FW_ADDRESS + (INTERNAL_FLASH_PAGE_SIZE * EraseCounter));
+	}
+
+	Internal_Flash_Address = CORE_FW_ADDRESS;
+}
+
+void FLASH_End(void)
+{
+	/* Locks the FLASH Program Erase Controller */
+	FLASH_Lock();
+
+	Flash_Update_SysFlag = 0xC000;
+	Save_SystemFlags();
+	//BKP_WriteBackupRegister(BKP_DR10, 0xC000);
+
+	NVIC_SystemReset();
+}
+
+void FLASH_Backup(uint32_t sFLASH_Address)
+{
+	/* Initialize SPI Flash */
+	sFLASH_Init();
+
+	/* Define the number of External Flash pages to be erased */
+	NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS) / sFLASH_PAGESIZE;
+	NbrOfPage += 1;	//Incase NbrOfPage is not sFLASH_PAGESIZE aligned
+
+	/* Erase the SPI Flash pages */
+	for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
+	{
+		sFLASH_EraseSector(sFLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
+	}
+
+	Internal_Flash_Address = CORE_FW_ADDRESS;
+	External_Flash_Address = sFLASH_Address;
+
+	/* Program External Flash */
+	while (Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS)
+	{
+	    /* Read data from Internal Flash memory */
+		Internal_Flash_Data = (*(__IO uint32_t*) Internal_Flash_Address);
+		Internal_Flash_Address += 4;
+
+	    /* Program Word to SPI Flash memory */
+		External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
+		External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
+		External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
+		External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);
+		//OR
+		//*((uint32_t *)External_Flash_Data) = Internal_Flash_Data;
+		sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
+		External_Flash_Address += 4;
+	}
+}
+
+void FLASH_Restore(uint32_t sFLASH_Address)
+{
+	/* Initialize SPI Flash */
+	sFLASH_Init();
+
+	FLASH_Begin();
+
+	Internal_Flash_Address = CORE_FW_ADDRESS;
+	External_Flash_Address = sFLASH_Address;
+
+	/* Program Internal Flash Bank1 */
+	while ((Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS) && (FLASHStatus == FLASH_COMPLETE))
+	{
+	    /* Read data from SPI Flash memory */
+	    sFLASH_ReadBuffer(External_Flash_Data, External_Flash_Address, 4);
+	    External_Flash_Address += 4;
+
+	    /* Program Word to Internal Flash memory */
+	    Internal_Flash_Data = (uint32_t)(External_Flash_Data[0] | (External_Flash_Data[1] << 8) | (External_Flash_Data[2] << 16) | (External_Flash_Data[3] << 24));
+	    //OR
+	    //Internal_Flash_Data = *((uint32_t *)External_Flash_Data);
+		FLASHStatus = FLASH_ProgramWord(Internal_Flash_Address, Internal_Flash_Data);
+		Internal_Flash_Address += 4;
+	}
+
+	FLASH_End();
+}
+
+void Factory_Reset(void)
+{
+#if defined (USE_SPARK_CORE_V02)
+    LED_SetRGBColor(RGB_COLOR_WHITE);
+    LED_On(LED_RGB);
+#endif
+
+	FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
 }
 
 #ifdef USE_FULL_ASSERT

@@ -21,10 +21,31 @@
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
+/* Internal Flash memory address where the System Flags will be saved and loaded from  */
+#define SYSTEM_FLAGS_ADDRESS		((uint32_t)0x08004C00)
+/* Internal Flash end memory address */
+#define INTERNAL_FLASH_END_ADDRESS	((uint32_t)0x08020000)	//For 128KB Internal Flash
+/* Internal Flash page size */
+#define INTERNAL_FLASH_PAGE_SIZE	((uint16_t)0x400)
+/* External Flash memory address where core firmware will be saved for backup/restore */
+#define EXTERNAL_FLASH_BKP_ADDRESS	((uint32_t)0x0000C000)
+/* External Flash memory address where Factory programmed core firmware is located */
+#define EXTERNAL_FLASH_FAC_ADDRESS	((uint32_t)0x00001000)
 
 /* Exported functions ------------------------------------------------------- */
 
 void Timing_Decrement(void);
 void Delay(__IO uint32_t nTime);
+
+void Load_SystemFlags(void);
+void Save_SystemFlags(void);
+
+/* Internal and External Flash Operations */
+void FLASH_Begin(void);
+void FLASH_End(void);
+void FLASH_Backup(uint32_t sFLASH_Address);
+void FLASH_Restore(uint32_t sFLASH_Address);
+
+void Factory_Reset(void);
 
 #endif /* __MAIN_H */
