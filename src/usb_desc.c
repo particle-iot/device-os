@@ -23,10 +23,10 @@ const uint8_t Virtual_Com_Port_DeviceDescriptor[] =
     0x00,   /* bDeviceSubClass */
     0x00,   /* bDeviceProtocol */
     0x40,   /* bMaxPacketSize0 */
-    0x83,
-    0x04,   /* idVendor = 0x0483 */
-    0x40,
-    0x57,   /* idProduct = 0x5740 */
+    0x50,
+    0x1D,   /* idVendor = 0x1D50 */
+    0x7D,
+    0x60,   /* idProduct = 0x607D */
     0x00,
     0x02,   /* bcdDevice = 2.00 */
     1,              /* Index of string descriptor describing manufacturer */
@@ -130,10 +130,10 @@ const uint8_t Virtual_Com_Port_StringVendor[VIRTUAL_COM_PORT_SIZ_STRING_VENDOR] 
   {
     VIRTUAL_COM_PORT_SIZ_STRING_VENDOR,     /* Size of Vendor string */
     USB_STRING_DESCRIPTOR_TYPE,             /* bDescriptorType*/
-    /* Manufacturer: "STMicroelectronics" */
-    'S', 0, 'T', 0, 'M', 0, 'i', 0, 'c', 0, 'r', 0, 'o', 0, 'e', 0,
-    'l', 0, 'e', 0, 'c', 0, 't', 0, 'r', 0, 'o', 0, 'n', 0, 'i', 0,
-    'c', 0, 's', 0
+    /* Manufacturer: "Spark Devices     " */
+    'S', 0, 'p', 0, 'a', 0, 'r', 0, 'k', 0, ' ', 0, 'D', 0, 'e', 0,
+    'v', 0, 'i', 0, 'c', 0, 'e', 0, 's', 0, ' ', 0, ' ', 0, ' ', 0,
+    ' ', 0, ' ', 0
   };
 
 const uint8_t Virtual_Com_Port_StringProduct[VIRTUAL_COM_PORT_SIZ_STRING_PRODUCT] =
@@ -141,16 +141,17 @@ const uint8_t Virtual_Com_Port_StringProduct[VIRTUAL_COM_PORT_SIZ_STRING_PRODUCT
     VIRTUAL_COM_PORT_SIZ_STRING_PRODUCT,          /* bLength */
     USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
     /* Product name: "STM32 Virtual COM Port" */
-    'S', 0, 'T', 0, 'M', 0, '3', 0, '2', 0, ' ', 0, 'V', 0, 'i', 0,
-    'r', 0, 't', 0, 'u', 0, 'a', 0, 'l', 0, ' ', 0, 'C', 0, 'O', 0,
-    'M', 0, ' ', 0, 'P', 0, 'o', 0, 'r', 0, 't', 0, ' ', 0, ' ', 0
+    /* Product name: "Spark Core with WiFi  " */
+    'S', 0, 'p', 0, 'a', 0, 'r', 0, 'k', 0, ' ', 0, 'C', 0, 'o', 0,
+    'r', 0, 'e', 0, ' ', 0, 'w', 0, 'i', 0, 't', 0, 'h', 0, ' ', 0,
+    'W', 0, 'i', 0, 'F', 0, 'i', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0
   };
 
 uint8_t Virtual_Com_Port_StringSerial[VIRTUAL_COM_PORT_SIZ_STRING_SERIAL] =
   {
     VIRTUAL_COM_PORT_SIZ_STRING_SERIAL,           /* bLength */
     USB_STRING_DESCRIPTOR_TYPE,                   /* bDescriptorType */
-    'S', 0, 'T', 0, 'M', 0, '3', 0, '2', 0
+    'C', 0, 'O', 0, 'R', 0, 'E', 0, ' ', 0
   };
 
 /*********************** (C) COPYRIGHT STMicroelectronics *********************/
