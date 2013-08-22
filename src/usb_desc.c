@@ -28,10 +28,10 @@ uint8_t DFU_DeviceDescriptor[DFU_SIZ_DEVICE_DESC] =
     0x00,   /* bDeviceSubClass : See interface*/
     0x00,   /* bDeviceProtocol : See interface */
     bMaxPacketSize0, /* bMaxPacketSize0 0x40 = 64 */
-    0x83,   /* idVendor     (0483) */
-    0x04,
-    0x11,   /* idProduct (0xDF11) DFU PiD*/
-    0xDF,
+    0x50,   /* idVendor		(0x1D50) DFU ViD */
+    0x1D,
+    0x7F,   /* idProduct	(0x607F) DFU PiD */
+    0x60,
     0x00,   /* bcdDevice*/
     0x02,
 
@@ -176,18 +176,18 @@ uint8_t DFU_StringVendor[DFU_SIZ_STRING_VENDOR] =
   {
     DFU_SIZ_STRING_VENDOR,
     0x03,
-    /* Manufacturer: "STMicroelectronics" */
-    'S', 0, 'T', 0, 'M', 0, 'i', 0, 'c', 0, 'r', 0, 'o', 0, 'e', 0,
-    'l', 0, 'e', 0, 'c', 0, 't', 0, 'r', 0, 'o', 0, 'n', 0, 'i', 0,
-    'c', 0, 's', 0
+    /* Manufacturer: "Spark Devices     " */
+    'S', 0, 'p', 0, 'a', 0, 'r', 0, 'k', 0, ' ', 0, 'D', 0, 'e', 0,
+    'v', 0, 'i', 0, 'c', 0, 'e', 0, 's', 0, ' ', 0, ' ', 0, ' ', 0,
+    ' ', 0, ' ', 0
   };
 
 uint8_t DFU_StringProduct[DFU_SIZ_STRING_PRODUCT] =
   {
     DFU_SIZ_STRING_PRODUCT,
     0x03,
-    /* Product name: "STM32 DFU" */
-    'S', 0, 'T', 0, 'M', 0, '3', 0, '2', 0, ' ', 0, 'D', 0, 'F', 0, 'U', 0
+    /* Product name: "CORE DFU " */
+    'C', 0, 'O', 0, 'R', 0, 'E', 0, ' ', 0, 'D', 0, 'F', 0, 'U', 0, ' ', 0
   };
 
 uint8_t DFU_StringSerial[DFU_SIZ_STRING_SERIAL] =
@@ -195,7 +195,7 @@ uint8_t DFU_StringSerial[DFU_SIZ_STRING_SERIAL] =
     DFU_SIZ_STRING_SERIAL,
     0x03,
     /* Serial number */
-    'S', 0, 'T', 0, 'M', 0, '3', 0, '2', 0, '1', 0, '0', 0      
+    'C', 0, 'O', 0, 'R', 0, 'E', 0, ' ', 0, '1', 0, '3', 0
   };
 
 uint8_t DFU_StringInterface0[DFU_SIZ_STRING_INTERFACE0] =

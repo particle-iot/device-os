@@ -27,11 +27,11 @@ List the currently attached DFU capable USB devices by running the following com
 
 The Core, Debug or H103 boards in DFU mode should be listed as follows:
 
-    Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/12*001Ka,116*001Kg"
+    Found DFU: [1d50:607f] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/12*001Ka,116*001Kg"
 
 If the macro SPARK\_SFLASH\_ENABLE is uncommented in platform\_config.h, then the External Serial Flash should also be listed as follows:
 
-    Found DFU: [0483:df11] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
+    Found DFU: [1d50:607f] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
 
 For Flashing core-firmware.bin using usb-bootloader, follow the steps below in Eclipse - core-firmware project:
 
@@ -43,10 +43,10 @@ For Flashing core-firmware.bin using usb-bootloader, follow the steps below in E
 
 cd to the core-firmware/Debug folder and type the below command to program the core-firmware application to Internal Flash starting from address 0x0800C000:
 
-    dfu-util -d 0483:df11 -a 0 -s 0x0800C000:leave -D core-firmware.bin
+    dfu-util -d 1d50:607f -a 0 -s 0x0800C000:leave -D core-firmware.bin
 
 For flashing core-firmware application to External Flash starting from address 0x00001000, run the following command:
 
-    dfu-util -d 0483:df11 -a 1 -s 0x00001000 -D core-firmware.bin
+    dfu-util -d 1d50:607f -a 1 -s 0x00001000 -D core-firmware.bin
 
 Alternatively to build the project using command line option, cd to the "build" folder and run "make clean" followed by "make all".
