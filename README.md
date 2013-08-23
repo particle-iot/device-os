@@ -45,7 +45,7 @@ cd to the core-firmware/Debug folder and type the below command to program the c
 
     dfu-util -d 1d50:607f -a 0 -s 0x0800C000:leave -D core-firmware.bin
 
-For flashing core-firmware application to External Flash starting from address 0x00001000, run the following command:
+For flashing factory core-firmware application to External Flash starting from address 0x00001000, run the following command:
 
     dfu-util -d 1d50:607f -a 1 -s 0x00001000 -D core-firmware.bin
 

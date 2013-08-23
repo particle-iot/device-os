@@ -23,7 +23,8 @@ typedef  void (*pFunction)(void);
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 static __IO uint32_t TimingDelay, TimingBUTTON, TimingLED;
-uint8_t DFUDeviceMode = 0x00;
+uint8_t DFUDeviceMode = 0;
+uint8_t FactoryResetMode = 0;
 
 uint8_t DeviceState;
 uint8_t DeviceStatus[6];
@@ -66,6 +67,8 @@ int main(void)
 
 	Set_System();
 
+	Load_SystemFlags();
+
 	/* Run SPI Flash Self Test (Uncomment for Debugging) */
 	//sFLASH_SelfTest();
 
@@ -85,26 +88,40 @@ int main(void)
 			break;
 	}
 
-	/*
-	 *	Factory Reset Conditional Code will go here
-	 */
-
-	/* Check if BUTTON1 is pressed for 3 sec to enter DFU Mode */
+	/* Check if BUTTON1 is pressed */
 	if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
 	{
-		TimingBUTTON = 3000;
+		TimingBUTTON = 10000;
 		while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
 		{
 			if(TimingBUTTON == 0x00)
 			{
-				DFUDeviceMode = 0x01;
+				//if pressed for 10 sec, enter Factory Reset Mode
+				FactoryResetMode = 1;
 				break;
+			}
+			else if(TimingBUTTON <= 7000)
+			{
+				//if pressed for >= 3 sec, enter USB DFU Mode
+				DFUDeviceMode = 1;
 			}
 		}
 	}
 
-	if (DFUDeviceMode != 0x01)
+	if (FactoryResetMode)
 	{
+		Factory_Reset();
+	}
+	else if (!DFUDeviceMode)
+	{
+	    if ((BKP_ReadBackupRegister(BKP_DR10) == 0xCCCC) || (Flash_Update_SysFlag == 0xCCCC))
+	    {
+	    	//If the Factory Reset failed, restore the old working copy
+	    	FLASH_Restore(EXTERNAL_FLASH_BKP1_ADDRESS);
+			/* The Device will reset at this point */
+			//while (1);
+	    }
+
 	    if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) != 0x20000000)
 	        ApplicationAddress = CORE_FW_ADDRESS;
 
@@ -120,6 +137,12 @@ int main(void)
 		}
 	}
     /* Otherwise enters DFU mode to allow user to program his application */
+
+#if defined (USE_SPARK_CORE_V02)
+    /* Set DFU mode RGB Led Flashing color to Yellow */
+    LED_SetRGBColor(RGB_COLOR_YELLOW);
+    LED_On(LED_RGB);
+#endif
 
     /* Enter DFU mode */
     DeviceState = STATE_dfuERROR;
@@ -147,11 +170,6 @@ int main(void)
     /* USB System initialization */
     USB_Init();
 
-#if defined (USE_SPARK_CORE_V02)
-    /* Set DFU mode RGB Led Flashing color to Yellow */
-    LED_SetRGBColor(RGB_COLOR_YELLOW);
-#endif
-
     /* Main loop */
     while (1)
     {
@@ -163,17 +181,6 @@ int main(void)
 				Reset_Device();	//Reset Device to enter User Application
 			}
     	}
-
-        if (TimingLED == 0x00)
-        {
-            TimingLED = 250;
-#if defined (USE_SPARK_CORE_V01)
-            LED_Toggle(LED1);
-            LED_Toggle(LED2);
-#elif defined (USE_SPARK_CORE_V02)
-            LED_Toggle(LED_RGB);
-#endif
-        }
     }
 }
 
@@ -213,6 +220,16 @@ void Timing_Decrement(void)
     if (TimingLED != 0x00)
     {
         TimingLED--;
+    }
+    else if(FactoryResetMode || DFUDeviceMode)
+    {
+#if defined (USE_SPARK_CORE_V01)
+        LED_Toggle(LED1);
+        LED_Toggle(LED2);
+#elif defined (USE_SPARK_CORE_V02)
+        LED_Toggle(LED_RGB);
+#endif
+        TimingLED = 100;
     }
 }
 
@@ -270,7 +287,8 @@ void FLASH_Begin(void)
 
 	Flash_Update_SysFlag = 0xCCCC;
 	Save_SystemFlags();
-	//BKP_WriteBackupRegister(BKP_DR10, 0xCCCC);
+
+	BKP_WriteBackupRegister(BKP_DR10, 0xCCCC);
 
 	/* Unlock the Flash Program Erase Controller */
 	FLASH_Unlock();
@@ -297,7 +315,8 @@ void FLASH_End(void)
 
 	Flash_Update_SysFlag = 0xC000;
 	Save_SystemFlags();
-	//BKP_WriteBackupRegister(BKP_DR10, 0xC000);
+
+	BKP_WriteBackupRegister(BKP_DR10, 0xC000);
 
 	NVIC_SystemReset();
 }
@@ -370,11 +389,16 @@ void FLASH_Restore(uint32_t sFLASH_Address)
 void Factory_Reset(void)
 {
 #if defined (USE_SPARK_CORE_V02)
+	/* Set Factory Reset mode RGB Led Flashing color to White */
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
 #endif
 
-	FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
+    //First take backup of the current application firmware to External Flash
+    FLASH_Backup(EXTERNAL_FLASH_BKP1_ADDRESS);
+
+    //Restore the Factory programmed application firmware from External Flash
+	FLASH_Restore(EXTERNAL_FLASH_FACT_ADDRESS);
 }
 
 #ifdef USE_FULL_ASSERT

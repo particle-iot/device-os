@@ -27,10 +27,10 @@
 #define INTERNAL_FLASH_END_ADDRESS	((uint32_t)0x08020000)	//For 128KB Internal Flash
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE	((uint16_t)0x400)
-/* External Flash memory address where core firmware will be saved for backup/restore */
-#define EXTERNAL_FLASH_BKP_ADDRESS	((uint32_t)0x0000C000)
 /* External Flash memory address where Factory programmed core firmware is located */
-#define EXTERNAL_FLASH_FAC_ADDRESS	((uint32_t)0x00001000)
+#define EXTERNAL_FLASH_FACT_ADDRESS	((uint32_t)0x00001000)
+/* External Flash memory address where core firmware will be saved for backup/restore */
+#define EXTERNAL_FLASH_BKP1_ADDRESS	((uint32_t)0x00010000)
 
 /* Exported functions ------------------------------------------------------- */
 
