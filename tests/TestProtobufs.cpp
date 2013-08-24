@@ -15,8 +15,9 @@ const uint8_t ProtobufsFixture::credentials[40] ={
 
 TEST_FIXTURE(ProtobufsFixture, ExampleHelloSizeIs16Bytes)
 {
-  uint8_t hello[16];
-  int hello_size;
+  uint8_t hello[512];
+  int hello_size = 0;
+  memset(hello, 0, 512);
   hello_from_aes_credentials(credentials, hello, hello_size);
   CHECK_EQUAL(16, hello_size);
 }
@@ -26,8 +27,78 @@ TEST_FIXTURE(ProtobufsFixture, ValidHelloFromAESCredentials)
   uint8_t expected[16] = {
     0x58, 0x4f, 0x96, 0xfc, 0xb3, 0xdf, 0x98, 0x32,
     0xb3, 0x7c, 0x72, 0x43, 0x04, 0xc1, 0xc3, 0xfb };
-  uint8_t hello[16];
-  int hello_size;
+  uint8_t hello[512];
+  int hello_size = 16;
+  memset(hello, 0, 512);
   hello_from_aes_credentials(credentials, hello, hello_size);
   CHECK_ARRAY_EQUAL(expected, hello, hello_size);
+}
+
+TEST_FIXTURE(ProtobufsFixture, SuccessfullyDecryptsOpenSSLExample)
+{
+  unsigned char buf[33] =
+    "\xcf\x05\x07\x47\x67\x64\x15\x8c\x7b\x63\xd0\x4c\x9d\x17\xe0\x12"
+    "\xc2\xc1\x84\x10\x5b\xdd\x5e\x36\xb8\xad\x8f\x61\xdb\x7e\x85\xd1";
+  aes_context ctx;
+  aes_setkey_dec(&ctx, credentials, 128);
+  unsigned char iv[16];
+  memcpy(iv, credentials + 16, 16);
+  aes_crypt_cbc(&ctx, AES_DECRYPT, 16, iv, buf, buf);
+  aes_crypt_cbc(&ctx, AES_DECRYPT, 16, iv, buf + 16, buf + 16);
+
+  uint8_t expected[32] = {
+    0x53, 0x75, 0x70, 0x65, 0x72, 0x20, 0x73, 0x65,
+    0x63, 0x72, 0x65, 0x74, 0x20, 0x6d, 0x65, 0x73,
+    0x73, 0x61, 0x67, 0x65, 0x0a, 0x0b, 0x0b, 0x0b,
+    0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b };
+  CHECK_ARRAY_EQUAL(expected, buf, 32);
+}
+
+TEST_FIXTURE(ProtobufsFixture, EncryptsSameAsOpenSSL)
+{
+  uint8_t buf[32] = {
+    0x53, 0x75, 0x70, 0x65, 0x72, 0x20, 0x73, 0x65,
+    0x63, 0x72, 0x65, 0x74, 0x20, 0x6d, 0x65, 0x73,
+    0x73, 0x61, 0x67, 0x65, 0x0a, 0x0b, 0x0b, 0x0b,
+    0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b };
+
+  unsigned char key[16];
+  unsigned char iv[16];
+  memcpy(key, credentials, 16);
+  memcpy(iv, credentials + 16, 16);
+
+  aes_context ctx;
+  aes_setkey_enc(&ctx, key, 128);
+  aes_crypt_cbc(&ctx, AES_ENCRYPT, 21, iv, buf, buf);
+
+  FILE *f = fopen("z-enc", "wb");
+  fwrite(buf, 1, 32, f);
+  fclose(f);
+
+  uint8_t expected[32] = {
+    0xcf, 0x05, 0x07, 0x47, 0x67, 0x64, 0x15, 0x8c,
+    0x7b, 0x63, 0xd0, 0x4c, 0x9d, 0x17, 0xe0, 0x12,
+    0xc2, 0xc1, 0x84, 0x10, 0x5b, 0xdd, 0x5e, 0x36,
+    0xb8, 0xad, 0x8f, 0x61, 0xdb, 0x7e, 0x85, 0xd1 };
+  CHECK_ARRAY_EQUAL(expected, buf, 32);
+
+  memcpy(iv, credentials + 16, 16);
+  aes_setkey_dec(&ctx, key, 128);
+  aes_crypt_cbc(&ctx, AES_DECRYPT, 21, iv, buf, buf);
+
+  f = fopen("z-dec", "wb");
+  fwrite(buf, 1, 32, f);
+  fclose(f);
+
+  uint8_t expected2[32] = {
+    0x53, 0x75, 0x70, 0x65, 0x72, 0x20, 0x73, 0x65,
+    0x63, 0x72, 0x65, 0x74, 0x20, 0x6d, 0x65, 0x73,
+    0x73, 0x61, 0x67, 0x65, 0x0a, 0x0b, 0x0b, 0x0b,
+    0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b };
+  CHECK_ARRAY_EQUAL(expected2, buf, 32);
+}
+
+TEST(AESSelfTestSucceeds)
+{
+  CHECK_EQUAL(0, aes_self_test(0));
 }

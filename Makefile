@@ -14,7 +14,6 @@ testlib     = $(testlibdir)/libUnitTest++.a
 testrunner  = tests/Main.cpp
 ssllibdir   = lib/tropicssl/library
 ssllib      = $(ssllibdir)/libtropicssl.a
-protobuflib = lib/libprotobuf.a
 
 objects = src/handshake.o \
           src/protobufs.o \
@@ -41,7 +40,7 @@ clean:
 
 test: $(lib) $(testlib) $(testobjects) $(ssllib)
 	@$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(test) $(testlib) \
-    $(lib) $(ssllib) $(protobuflib) $(testobjects) $(testrunner)
+    $(lib) $(ssllib) $(testobjects) $(testrunner)
 	@echo running unit tests...
 	@./$(test)
 
