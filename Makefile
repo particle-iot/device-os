@@ -16,11 +16,10 @@ ssllibdir   = lib/tropicssl/library
 ssllib      = $(ssllibdir)/libtropicssl.a
 
 objects = src/handshake.o \
-          src/protobufs.o \
-          src/spark.pb.o
+          src/coap.o
 
 testobjects = tests/TestHandshake.o \
-              tests/TestProtobufs.o
+              tests/TestCoAP.o
 
 
 all: $(lib)

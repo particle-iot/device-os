@@ -1,19 +1,19 @@
 #include "UnitTest++.h"
-#include "protobufs.h"
+#include "coap.h"
 
-struct ProtobufsFixture
+struct CoAPFixture
 {
   static const uint8_t credentials[40];
 };
 
-const uint8_t ProtobufsFixture::credentials[40] ={
+const uint8_t CoAPFixture::credentials[40] = {
   0x50, 0x8e, 0x8a, 0xfd, 0x78, 0x73, 0x23, 0x38,
   0x67, 0xd6, 0x56, 0xc0, 0xca, 0x46, 0x04, 0x8e,
   0x0a, 0xbb, 0x06, 0xe3, 0x9b, 0xc5, 0x7e, 0x2c,
   0x9b, 0xce, 0x0b, 0xdf, 0xc5, 0x52, 0xc8, 0x2d,
   0xf6, 0x48, 0x0d, 0x23, 0xc5, 0x0e, 0x2d, 0x6d };
 
-TEST_FIXTURE(ProtobufsFixture, ExampleHelloSizeIs16Bytes)
+TEST_FIXTURE(CoAPFixture, ExampleHelloSizeIs16Bytes)
 {
   uint8_t hello[512];
   int hello_size = 0;
@@ -22,7 +22,7 @@ TEST_FIXTURE(ProtobufsFixture, ExampleHelloSizeIs16Bytes)
   CHECK_EQUAL(16, hello_size);
 }
 
-TEST_FIXTURE(ProtobufsFixture, ValidHelloFromAESCredentials)
+TEST_FIXTURE(CoAPFixture, ValidHelloFromAESCredentials)
 {
   uint8_t expected[16] = {
     0x58, 0x4f, 0x96, 0xfc, 0xb3, 0xdf, 0x98, 0x32,
@@ -34,7 +34,7 @@ TEST_FIXTURE(ProtobufsFixture, ValidHelloFromAESCredentials)
   CHECK_ARRAY_EQUAL(expected, hello, hello_size);
 }
 
-TEST_FIXTURE(ProtobufsFixture, SuccessfullyDecryptsOpenSSLExample)
+TEST_FIXTURE(CoAPFixture, SuccessfullyDecryptsOpenSSLExample)
 {
   unsigned char buf[33] =
     "\xcf\x05\x07\x47\x67\x64\x15\x8c\x7b\x63\xd0\x4c\x9d\x17\xe0\x12"
@@ -54,7 +54,7 @@ TEST_FIXTURE(ProtobufsFixture, SuccessfullyDecryptsOpenSSLExample)
   CHECK_ARRAY_EQUAL(expected, buf, 32);
 }
 
-TEST_FIXTURE(ProtobufsFixture, EncryptsSameAsOpenSSL)
+TEST_FIXTURE(CoAPFixture, EncryptsSameAsOpenSSL)
 {
   uint8_t buf[32] = {
     0x53, 0x75, 0x70, 0x65, 0x72, 0x20, 0x73, 0x65,
@@ -71,10 +71,6 @@ TEST_FIXTURE(ProtobufsFixture, EncryptsSameAsOpenSSL)
   aes_setkey_enc(&ctx, key, 128);
   aes_crypt_cbc(&ctx, AES_ENCRYPT, 21, iv, buf, buf);
 
-  FILE *f = fopen("z-enc", "wb");
-  fwrite(buf, 1, 32, f);
-  fclose(f);
-
   uint8_t expected[32] = {
     0xcf, 0x05, 0x07, 0x47, 0x67, 0x64, 0x15, 0x8c,
     0x7b, 0x63, 0xd0, 0x4c, 0x9d, 0x17, 0xe0, 0x12,
@@ -85,10 +81,6 @@ TEST_FIXTURE(ProtobufsFixture, EncryptsSameAsOpenSSL)
   memcpy(iv, credentials + 16, 16);
   aes_setkey_dec(&ctx, key, 128);
   aes_crypt_cbc(&ctx, AES_DECRYPT, 21, iv, buf, buf);
-
-  f = fopen("z-dec", "wb");
-  fwrite(buf, 1, 32, f);
-  fclose(f);
 
   uint8_t expected2[32] = {
     0x53, 0x75, 0x70, 0x65, 0x72, 0x20, 0x73, 0x65,

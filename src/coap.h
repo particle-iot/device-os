@@ -1,4 +1,3 @@
-#include "spark.pb.h"
 #include "tropicssl/aes.h"
 #include <string.h>
 
