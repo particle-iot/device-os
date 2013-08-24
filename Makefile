@@ -19,6 +19,7 @@ objects = src/handshake.o \
           src/coap.o
 
 testobjects = tests/TestHandshake.o \
+              tests/TestAES.o \
               tests/TestCoAP.o
 
 
