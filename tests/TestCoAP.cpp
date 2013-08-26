@@ -171,7 +171,7 @@ SUITE(CoAP)
     CHECK_EQUAL(CoAPMessageType::FUNCTION_CALL, message_type);
   }
 
-  TEST_FIXTURE(CoAPFixture, ReceivedMessageReturnsCoAPMessageType)
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageReturnsCoAPMessageTypeFunction)
   {
     const uint8_t ciphertext[32] = {
       0x43, 0x52, 0x3e, 0x02, 0x6c, 0x86, 0x75, 0xb7,
@@ -181,6 +181,18 @@ SUITE(CoAP)
     CoAPMessageType::Enum message_type;
     message_type = spark_protocol.received_message(ciphertext);
     CHECK_EQUAL(CoAPMessageType::FUNCTION_CALL, message_type);
+  }
+
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageReturnsCoAPMessageTypeVariable)
+  {
+    const uint8_t ciphertext[32] = {
+      0x28, 0x40, 0x39, 0x27, 0x2a, 0x1b, 0x3f, 0xb3,
+      0xfa, 0x1c, 0xb3, 0x83, 0x66, 0x25, 0xc5, 0xba,
+      0xf8, 0x73, 0x98, 0xc3, 0xe6, 0x8e, 0x7c, 0x34,
+      0xea, 0xb8, 0x8c, 0xec, 0x2b, 0xd5, 0x25, 0xb0 };
+    CoAPMessageType::Enum message_type;
+    message_type = spark_protocol.received_message(ciphertext);
+    CHECK_EQUAL(CoAPMessageType::VARIABLE_REQUEST, message_type);
   }
 
   /*
