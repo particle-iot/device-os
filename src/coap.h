@@ -5,12 +5,22 @@ namespace CoAPMessageType {
     CHUNK,
     UPDATE_BEGIN,
     UPDATE_DONE,
-    KEY_CHANGE
+    KEY_CHANGE,
+    ERROR
   };
 }
 
-/*
-void hello_from_aes_credentials(const unsigned char *credentials,
-                                unsigned char *hello,
-                                int &hello_size);
-*/
+namespace CoAPCode {
+  enum Enum {
+    GET,
+    POST,
+    PUT,
+    ERROR
+  };
+}
+
+class CoAP
+{
+  public:
+    static CoAPCode::Enum code(const unsigned char *message);
+};

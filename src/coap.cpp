@@ -1,18 +1,12 @@
 #include "coap.h"
-#include <stdio.h>
 
-/*
-void hello_from_aes_credentials(const unsigned char *credentials,
-                                unsigned char *hello_buf,
-                                int &hello_size)
+CoAPCode::Enum CoAP::code(const unsigned char *message)
 {
-  unsigned char key[16];
-  unsigned char iv[16];
-  memcpy(key, credentials, 16);
-  memcpy(iv, credentials + 16, 16);
-  
-  aes_context ctx;
-  aes_setkey_enc(&ctx, key, 128);
-  aes_crypt_cbc(&ctx, AES_ENCRYPT, hello_size, iv, hello_buf, hello_buf);
+  switch (message[1])
+  {
+    case 0x01: return CoAPCode::GET;
+    case 0x02: return CoAPCode::POST;
+    case 0x03: return CoAPCode::PUT;
+    default: return CoAPCode::ERROR;
+  }
 }
-*/
