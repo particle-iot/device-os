@@ -308,6 +308,16 @@ SUITE(CoAP)
     CHECK_EQUAL(CoAPMessageType::KEY_CHANGE, message_type);
   }
 
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesUpdateBegin)
+  {
+    uint8_t ciphertext[] = {
+      0x32, 0x28, 0x65, 0x77, 0x5B, 0xEE, 0xA8, 0x08,
+      0xA9, 0xC6, 0x2F, 0x76, 0x44, 0x1A, 0xFF, 0x91 };
+    init();
+    message_type = spark_protocol.received_message(ciphertext);
+    CHECK_EQUAL(CoAPMessageType::UPDATE_BEGIN, message_type);
+  }
+
   /*
   TEST_FIXTURE(CoAPFixture, ExampleHelloSizeIs16Bytes)
   {

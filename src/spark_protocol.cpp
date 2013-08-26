@@ -36,7 +36,12 @@ CoAPMessageType::Enum
     case CoAPCode::GET:
       return CoAPMessageType::VARIABLE_REQUEST;
     case CoAPCode::POST:
-      return CoAPMessageType::FUNCTION_CALL;
+      switch (buf[6])
+      {
+        case 'f': return CoAPMessageType::FUNCTION_CALL;
+        case 'u': return CoAPMessageType::UPDATE_BEGIN;
+        default: return CoAPMessageType::ERROR;
+      }
     case CoAPCode::PUT:
       return CoAPMessageType::KEY_CHANGE;
     default:
