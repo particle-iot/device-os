@@ -37,6 +37,8 @@ CoAPMessageType::Enum
       return CoAPMessageType::VARIABLE_REQUEST;
     case CoAPCode::POST:
       return CoAPMessageType::FUNCTION_CALL;
+    case CoAPCode::PUT:
+      return CoAPMessageType::KEY_CHANGE;
     default:
       return CoAPMessageType::ERROR;
   }
