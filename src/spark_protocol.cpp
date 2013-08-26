@@ -40,6 +40,7 @@ CoAPMessageType::Enum
       {
         case 'f': return CoAPMessageType::FUNCTION_CALL;
         case 'u': return CoAPMessageType::UPDATE_BEGIN;
+        case 'c': return CoAPMessageType::CHUNK;
         default: return CoAPMessageType::ERROR;
       }
     case CoAPCode::PUT:
