@@ -67,8 +67,6 @@ typedef enum
 /* Deselect sFLASH: Chip Select pin high */
 #define sFLASH_CS_HIGH()	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
 
-#define USART_RX_DATA_SIZE	256	//2048
-
 #if defined (USE_SPARK_CORE_V02)
 //Extended LED Types
 #define LED_RED				LED3
@@ -86,6 +84,18 @@ typedef enum
 #define RGB_COLOR_MAGENTA	0xFF00FF
 #define RGB_COLOR_WHITE		0xFFFFFF
 #endif
+
+/* USB Config : IMR_MSK */
+/* mask defining which events has to be handled */
+/* by the device application software */
+#define IMR_MSK (CNTR_CTRM  | \
+                 CNTR_WKUPM | \
+                 CNTR_SUSPM | \
+                 CNTR_ERRM  | \
+                 CNTR_SOFM  | \
+                 CNTR_ESOFM | \
+                 CNTR_RESETM  \
+                )
 
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
@@ -142,12 +152,6 @@ void Enter_LowPowerMode(void);
 void Leave_LowPowerMode(void);
 void USB_Interrupts_Config(void);
 void USB_Cable_Config(FunctionalState NewState);
-void USB_USART_Init(uint32_t baudRate);
-uint8_t USB_USART_Available_Data(void);
-int32_t USB_USART_Receive_Data(void);
-void USB_USART_Send_Data(uint8_t Data);
-void Handle_USBAsynchXfer(void);
-void Get_SerialNum(void);
 
 /* External variables --------------------------------------------------------*/
 extern unsigned char wlan_rx_buffer[];

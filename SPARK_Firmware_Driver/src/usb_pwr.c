@@ -3,18 +3,17 @@
   * @file    usb_pwr.c
   * @author  Spark Application Team
   * @version V1.0.0
-  * @date    30-April-2013
+  * @date    24-April-2013
   * @brief   Connection/disconnection & power management
   ******************************************************************************
-  */
-
+*/
 
 /* Includes ------------------------------------------------------------------*/
 
 #include "hw_config.h" 
 #include "usb_lib.h"
-#include "usb_conf.h"
 #include "usb_pwr.h"
+
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/

@@ -15,3 +15,20 @@
 *.exe
 *.out
 *.app
+
+# Debug folder
+Debug/*
+
+# Release folder
+Release/*
+
+# build folder
+*.map
+*.lst
+*.d
+*.o
+
+# Platform-specific settings
+.settings/*
+.cproject
+.project
