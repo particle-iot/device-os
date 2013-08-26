@@ -44,7 +44,12 @@ CoAPMessageType::Enum
         default: return CoAPMessageType::ERROR;
       }
     case CoAPCode::PUT:
-      return CoAPMessageType::KEY_CHANGE;
+      switch (buf[6])
+      {
+        case 'k': return CoAPMessageType::KEY_CHANGE;
+        case 'u': return CoAPMessageType::UPDATE_DONE;
+        default: return CoAPMessageType::ERROR;
+      }
     default:
       return CoAPMessageType::ERROR;
   }
