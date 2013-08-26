@@ -1,6 +1,7 @@
 #include "coap.h"
 #include <stdio.h>
 
+/*
 void hello_from_aes_credentials(const unsigned char *credentials,
                                 unsigned char *hello_buf,
                                 int &hello_size)
@@ -14,3 +15,4 @@ void hello_from_aes_credentials(const unsigned char *credentials,
   aes_setkey_enc(&ctx, key, 128);
   aes_crypt_cbc(&ctx, AES_ENCRYPT, hello_size, iv, hello_buf, hello_buf);
 }
+*/
