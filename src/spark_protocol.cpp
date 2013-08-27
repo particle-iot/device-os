@@ -28,7 +28,7 @@ int SparkProtocol::init(const unsigned char *private_key,
 void SparkProtocol::hello(unsigned char *buf)
 {
   unsigned short message_id = next_message_id();
-  buf[0] = 0x40; // non-confirmable, no token
+  buf[0] = 0x50; // non-confirmable, no token
   buf[1] = 0x02; // POST
   buf[2] = message_id >> 8;
   buf[3] = message_id & 0xff;
