@@ -262,6 +262,34 @@ void SparkProtocol::variable_value(unsigned char *buf,
 
 void SparkProtocol::event(unsigned char *buf,
                           const char *event_name,
+                          int event_name_length)
+{
+  // truncate event names that are too long for 4-bit CoAP option length
+  if (event_name_length > 12)
+    event_name_length = 12;
+
+  unsigned short message_id = next_message_id();
+
+  buf[0] = 0x50; // non-confirmable, no token
+  buf[1] = 0x02; // code 0.02 POST request
+  buf[2] = message_id >> 8;
+  buf[3] = message_id & 0xff;
+  buf[4] = 0xb1; // one-byte Uri-Path option
+  buf[5] = 'e';
+  buf[6] = event_name_length;
+  
+  memcpy(buf + 7, event_name, event_name_length);
+
+  int msglen = 7 + event_name_length;
+  int buflen = (msglen & ~15) + 16;
+  char pad = buflen - msglen;
+  memset(buf + msglen, pad, pad); // PKCS #7 padding
+
+  encrypt(buf, buflen);
+}
+
+void SparkProtocol::event(unsigned char *buf,
+                          const char *event_name,
                           int event_name_length,
                           const char *data,
                           int data_length)
