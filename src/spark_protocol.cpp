@@ -74,17 +74,12 @@ void SparkProtocol::hello(unsigned char *buf)
 
 void SparkProtocol::hello(unsigned char *buf, unsigned char token)
 {
-  unsigned short message_id = next_message_id();
+  separate_response(buf, token, 0x44);
+}
 
-  buf[0] = 0x51; // non-confirmable, one-byte token
-  buf[1] = 0x44; // response code 2.04 CHANGED
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
-  buf[4] = token;
-
-  memset(buf + 5, 11, 11); // PKCS #7 padding
-
-  encrypt(buf, 16);
+void SparkProtocol::function_return(unsigned char *buf, unsigned char token)
+{
+  separate_response(buf, token, 0x44);
 }
 
 void SparkProtocol::function_return(unsigned char *buf,
@@ -117,4 +112,21 @@ void SparkProtocol::encrypt(unsigned char *buf, int length)
 {
   aes_setkey_enc(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv, buf, buf);
+}
+
+void SparkProtocol::separate_response(unsigned char *buf,
+                                      unsigned char token,
+                                      unsigned char code)
+{
+  unsigned short message_id = next_message_id();
+
+  buf[0] = 0x51; // non-confirmable, one-byte token
+  buf[1] = code;
+  buf[2] = message_id >> 8;
+  buf[3] = message_id & 0xff;
+  buf[4] = token;
+
+  memset(buf + 5, 11, 11); // PKCS #7 padding
+
+  encrypt(buf, 16);
 }
