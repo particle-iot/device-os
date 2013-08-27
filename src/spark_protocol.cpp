@@ -20,6 +20,7 @@ int SparkProtocol::init(const unsigned char *private_key,
     memcpy(key,  credentials,      16);
     memcpy(iv,   credentials + 16, 16);
     memcpy(salt, credentials + 32,  8);
+    _message_id = *(credentials + 32) << 8 | *(credentials + 33);
     return 0;
   }
   else return 2;
@@ -37,6 +38,21 @@ void SparkProtocol::hello(unsigned char *buf)
   for (int i = 6; i < 16; ++i)
     buf[i] = 0x0a; // PKCS #7 padding
   
+  aes_setkey_enc(&aes, key, 128);
+  aes_crypt_cbc(&aes, AES_ENCRYPT, 16, iv, buf, buf);
+}
+
+void SparkProtocol::hello(unsigned char *buf, unsigned char token)
+{
+  unsigned short message_id = next_message_id();
+  buf[0] = 0x51; // non-confirmable, one-byte token
+  buf[1] = 0x44; // response code 2.04 CHANGED
+  buf[2] = message_id >> 8;
+  buf[3] = message_id & 0xff;
+  buf[4] = token;
+  for (int i = 5; i < 16; ++i)
+    buf[i] = 0x0b; // PKC #7 padding
+
   aes_setkey_enc(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_ENCRYPT, 16, iv, buf, buf);
 }
@@ -73,5 +89,5 @@ CoAPMessageType::Enum
 
 unsigned short SparkProtocol::next_message_id()
 {
-  return 0xabd3;
+  return ++_message_id;
 }
