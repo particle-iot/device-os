@@ -14,6 +14,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "platform_config.h"
+#include "sst25vf_spi.h"
 #include "cc3000_common.h"
 #include "usb_type.h"
 
@@ -56,6 +57,22 @@ typedef enum
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros ------------------------------------------------------------*/
+
+/* Flash memory address where various firmwares are located */
+#define USB_DFU_ADDRESS				((uint32_t)0x08000000)
+#define OTA_DFU_ADDRESS				((uint32_t)0x08005000)
+#define CORE_FW_ADDRESS				((uint32_t)0x0800C000)
+
+/* Internal Flash memory address where the System Flags will be saved and loaded from  */
+#define SYSTEM_FLAGS_ADDRESS		((uint32_t)0x08004C00)
+/* Internal Flash end memory address */
+#define INTERNAL_FLASH_END_ADDRESS	((uint32_t)0x08020000)	//For 128KB Internal Flash
+/* Internal Flash page size */
+#define INTERNAL_FLASH_PAGE_SIZE	((uint16_t)0x400)
+/* External Flash memory address where Factory programmed core firmware is located */
+#define EXTERNAL_FLASH_FACT_ADDRESS	((uint32_t)0x00001000)
+/* External Flash memory address where core firmware will be saved for backup/restore */
+#define EXTERNAL_FLASH_BKP1_ADDRESS	((uint32_t)0x00010000)
 
 /* Select CC3000: ChipSelect pin low */
 #define CC3000_CS_LOW()		GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN)
@@ -153,7 +170,23 @@ void Leave_LowPowerMode(void);
 void USB_Interrupts_Config(void);
 void USB_Cable_Config(FunctionalState NewState);
 
+void Load_SystemFlags(void);
+void Save_SystemFlags(void);
+
+/* Internal and External Flash Operations */
+void FLASH_Begin(void);
+void FLASH_End(void);
+void FLASH_Backup(uint32_t sFLASH_Address);
+void FLASH_Restore(uint32_t sFLASH_Address);
+
+void Factory_Reset(void);
+void Reset_Device(void);
+
 /* External variables --------------------------------------------------------*/
+extern uint16_t NetApp_Timeout_SysFlag;
+extern uint16_t Smart_Config_SysFlag;
+extern uint16_t Flash_Update_SysFlag;
+
 extern unsigned char wlan_rx_buffer[];
 extern unsigned char wlan_tx_buffer[];
 
