@@ -12,6 +12,7 @@ class SparkProtocol
     void hello(unsigned char *buf);
     void hello(unsigned char *buf, unsigned char token);
     void function_return(unsigned char *buf, unsigned char token);
+    void function_return(unsigned char *buf, unsigned char token, bool return_value);
     void function_return(unsigned char *buf, unsigned char token, double return_value);
 
   private:

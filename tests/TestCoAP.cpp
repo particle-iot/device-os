@@ -384,6 +384,18 @@ SUITE(CoAP)
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
+  TEST_FIXTURE(CoAPFixture, FunctionReturnBoolMatchesOpenSSL)
+  {
+    uint8_t expected[16] = {
+      0x29, 0x3c, 0x5c, 0x0a, 0xfa, 0xad, 0x58, 0xaa,
+      0x84, 0x87, 0x14, 0x1c, 0xd5, 0x8f, 0x37, 0x29 };
+    unsigned char buf[16];
+    memset(buf, 0, 16);
+    init();
+    spark_protocol.function_return(buf, 0xc3, true);
+    CHECK_ARRAY_EQUAL(expected, buf, 16);
+  }
+
   TEST_FIXTURE(CoAPFixture, FunctionReturnDoubleMatchesOpenSSL)
   {
     uint8_t expected[16] = {
