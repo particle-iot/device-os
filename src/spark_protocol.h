@@ -22,6 +22,11 @@ class SparkProtocol
     void variable_value(unsigned char *buf, unsigned char token, double return_value);
     void variable_value(unsigned char *buf, unsigned char token,
                         const void *return_value, int length);
+    void event(unsigned char *buf,
+               const char *event_name,
+               int event_name_length,
+               const char *data,
+               int data_length);
 
   private:
     aes_context aes;
