@@ -104,6 +104,29 @@ void SparkProtocol::function_return(unsigned char *buf,
 
 void SparkProtocol::function_return(unsigned char *buf,
                                     unsigned char token,
+                                    int return_value)
+{
+  unsigned short message_id = next_message_id();
+
+  buf[0] = 0x51; // non-confirmable, one-byte token
+  buf[1] = 0x44; // response code 2.04 CHANGED
+  buf[2] = message_id >> 8;
+  buf[3] = message_id & 0xff;
+  buf[4] = token;
+  buf[5] = 0xff; // payload marker
+  buf[6] = 0x02; // ASN.1 INTEGER type tag
+  buf[7] = return_value >> 24;
+  buf[8] = return_value >> 16 & 0xff;
+  buf[9] = return_value >> 8 & 0xff;
+  buf[10] = return_value & 0xff;
+
+  memset(buf + 11, 5, 5); // PKCS #7 padding
+
+  encrypt(buf, 16);
+}
+
+void SparkProtocol::function_return(unsigned char *buf,
+                                    unsigned char token,
                                     double return_value)
 {
   unsigned short message_id = next_message_id();
