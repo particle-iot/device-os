@@ -23,8 +23,8 @@
 							<targetPlatform id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.platform.debug.2096680385" isAbstract="false" name="Windows Platform" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.platform.debug"/>
 							<builder buildPath="${workspace_loc:/core-common-lib}/Debug" command="make" id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.builder.debug.1526465480" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="ARM Sourcery Windows GNU Make builder" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.builder.debug"/>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.assembler.debug.759496915" name="ARM Sourcery Windows GCC Assembler" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.assembler.debug">
-								<option id="org.eclipse.cdt.cross.arm.gnu.assembler.option.include.paths.1059900707" name="Include paths (-I)" superClass="org.eclipse.cdt.cross.arm.gnu.assembler.option.include.paths" valueType="includePath"/>
-								<option id="org.eclipse.cdt.cross.arm.gnu.assembler.option.preprocessor.def.2013620066" name="Defined symbols (-D)" superClass="org.eclipse.cdt.cross.arm.gnu.assembler.option.preprocessor.def" valueType="definedSymbols"/>
+								<option id="org.eclipse.cdt.cross.arm.gnu.assembler.option.include.paths.1059900707" name="Include paths (-I)" superClass="org.eclipse.cdt.cross.arm.gnu.assembler.option.include.paths"/>
+								<option id="org.eclipse.cdt.cross.arm.gnu.assembler.option.preprocessor.def.2013620066" name="Defined symbols (-D)" superClass="org.eclipse.cdt.cross.arm.gnu.assembler.option.preprocessor.def"/>
 								<option id="org.eclipse.cdt.cross.arm.gnu.assembler.option.misc.lstfilename.1224686897" name="Assembler Listing" superClass="org.eclipse.cdt.cross.arm.gnu.assembler.option.misc.lstfilename" value="" valueType="string"/>
 								<inputType id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.assembler.base.input.1721069416" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.assembler.base.input"/>
 							</tool>
@@ -72,6 +72,9 @@
 							<tool id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.printsize.base.590476185" name="ARM Sourcery Windows GNU Print Size" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.printsize.base"/>
 						</toolChain>
 					</folderInfo>
+					<sourceEntries>
+						<entry excluding="build|STM32F10x_StdPeriph_Driver/src/stm32f10x_wwdg.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_sdio.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_fsmc.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_dbgmcu.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_dac.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_cec.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+					</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
@@ -97,8 +100,8 @@
 							<targetPlatform id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.platform.release.1610177873" isAbstract="false" name="Windows Platform" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.platform.release"/>
 							<builder buildPath="${workspace_loc:/core-common-lib}/Release" id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.builder.release.64521953" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="ARM Sourcery Windows GNU Make builder" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.builder.release"/>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.assembler.release.1798545061" name="ARM Sourcery Windows GCC Assembler" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.assembler.release">
-								<option id="org.eclipse.cdt.cross.arm.gnu.assembler.option.include.paths.701658105" name="Include paths (-I)" superClass="org.eclipse.cdt.cross.arm.gnu.assembler.option.include.paths" valueType="includePath"/>
-								<option id="org.eclipse.cdt.cross.arm.gnu.assembler.option.misc.lstfilename.848122361" superClass="org.eclipse.cdt.cross.arm.gnu.assembler.option.misc.lstfilename" value="" valueType="string"/>
+								<option id="org.eclipse.cdt.cross.arm.gnu.assembler.option.include.paths.701658105" name="Include paths (-I)" superClass="org.eclipse.cdt.cross.arm.gnu.assembler.option.include.paths"/>
+								<option id="org.eclipse.cdt.cross.arm.gnu.assembler.option.misc.lstfilename.848122361" name="Assembler Listing" superClass="org.eclipse.cdt.cross.arm.gnu.assembler.option.misc.lstfilename" value="" valueType="string"/>
 								<inputType id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.assembler.base.input.1760624292" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.assembler.base.input"/>
 							</tool>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.c.compiler.release.1861891842" name="ARM Sourcery Windows GCC C Compiler" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.c.compiler.release">
@@ -111,7 +114,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/core-common-lib/CC3000_Host_Driver}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/core-common-lib/SPARK_Firmware_Driver/inc}&quot;"/>
 								</option>
-								<option id="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.misc.lstfilename.241526816" superClass="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.misc.lstfilename" value="" valueType="string"/>
+								<option id="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.misc.lstfilename.241526816" name="Assembler Listing" superClass="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.misc.lstfilename" value="" valueType="string"/>
 								<inputType id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.c.compiler.base.input.1577718853" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.c.compiler.base.input"/>
 							</tool>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.cpp.compiler.release.677516202" name="ARM Sourcery Windows GCC C++ Compiler" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.lib.cpp.compiler.release">
@@ -124,7 +127,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/core-common-lib/CC3000_Host_Driver}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/core-common-lib/SPARK_Firmware_Driver/inc}&quot;"/>
 								</option>
-								<option id="org.eclipse.cdt.cross.arm.gnu.cpp.compiler.option.misc.lstfilename.1267447603" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.compiler.option.misc.lstfilename" value="" valueType="string"/>
+								<option id="org.eclipse.cdt.cross.arm.gnu.cpp.compiler.option.misc.lstfilename.1267447603" name="Assembler Listing" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.compiler.option.misc.lstfilename" value="" valueType="string"/>
 								<inputType id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.cpp.compiler.base.input.1046608116" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.cpp.compiler.base.input"/>
 							</tool>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.c.linker.base.1893195965" name="ARM Sourcery Windows GCC C Linker" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.c.linker.base"/>
@@ -135,6 +138,9 @@
 							<tool id="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.printsize.base.223608495" name="ARM Sourcery Windows GNU Print Size" superClass="org.eclipse.cdt.cross.arm.gnu.sourcery.windows.printsize.base"/>
 						</toolChain>
 					</folderInfo>
+					<sourceEntries>
+						<entry excluding="build|STM32F10x_StdPeriph_Driver/src/stm32f10x_wwdg.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_sdio.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_fsmc.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_dbgmcu.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_dac.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_cec.c|STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+					</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
