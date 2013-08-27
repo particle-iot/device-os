@@ -38,8 +38,11 @@ usb-bootloader.siz \
 # All Target
 all: usb-bootloader.elf secondary-outputs
 
+dependents:
+	-cd ../../core-common-lib/build && $(MAKE) clean all
+
 # Tool invocations
-usb-bootloader.elf: $(OBJS) $(USER_OBJS)
+usb-bootloader.elf: $(OBJS) $(USER_OBJS) ../../core-common-lib/build/libcore-common-lib.a
 	@echo 'Building target: $@'
 	@echo 'Invoking: ARM Sourcery Windows GCC C Linker'
 	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md.ld" -nostartfiles -Xlinker --gc-sections -L"../../core-common-lib/build" -Wl,-Map,usb-bootloader.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "usb-bootloader.elf" $(OBJS) $(USER_OBJS) $(LIBS)
@@ -79,5 +82,6 @@ secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_LIST) $(SECONDARY_SIZE)
 
 .PHONY: all clean dependents
 .SECONDARY: post-build
+../../core-common-lib/build/libcore-common-lib.a:
 
 -include ../makefile.targets

@@ -33,15 +33,8 @@ If the macro SPARK\_SFLASH\_ENABLE is uncommented in platform\_config.h, then th
 
     Found DFU: [1d50:607f] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
 
-For Flashing core-firmware.bin using usb-bootloader, follow the steps below in Eclipse - core-firmware project:
-
-* Get the latest core-firmware code from Github
-* In Eclipse Project Properties -> C/C++ Build -> Settings -> Tool Settings -> ARM Sourcery Windows GCC C Linker -> General -> Script file (-T),
-* Browse & select linker file : "linker\_stm32f10x\_md\_dfu.ld"
-* Uncomment the following line in platform\_config.h to enable USB DFU based core-firmware build "#define DFU\_BUILD\_ENABLE"
-* Build the core-firmware project for USB DFU usage.
-
-cd to the core-firmware/Debug folder and type the below command to program the core-firmware application to Internal Flash starting from address 0x0800C000:
+For Flashing core-firmware.bin using usb-bootloader, 
+cd to the core-firmware/build folder and type the below command to program the core-firmware application to Internal Flash starting from address 0x0800C000:
 
     dfu-util -d 1d50:607f -a 0 -s 0x0800C000:leave -D core-firmware.bin
 
@@ -49,4 +42,4 @@ For flashing factory core-firmware application to External Flash starting from a
 
     dfu-util -d 1d50:607f -a 1 -s 0x00001000 -D core-firmware.bin
 
-Alternatively to build the project using command line option, cd to the "build" folder and run "make clean" followed by "make all".
+To build the project using command line option, cd to the "build" folder and run "make clean dependents all".
