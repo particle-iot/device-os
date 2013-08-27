@@ -51,10 +51,6 @@ __IO uint8_t SPARK_LED_FADE;
 __IO uint8_t Socket_Connect_Count;
 __IO uint8_t Spark_Error_Count;
 
-uint16_t NetApp_Timeout_SysFlag = 0xFFFF;
-uint16_t Smart_Config_SysFlag = 0xFFFF;
-uint16_t Flash_Update_SysFlag = 0xFFFF;
-
 unsigned char patchVer[2];
 
 /* Smart Config Prefix */
@@ -508,58 +504,6 @@ void Timing_Decrement(void)
 			Socket_Connect_Count = 0;
 		}
 	}
-#endif
-}
-
-void Load_SystemFlags(void)
-{
-#ifdef DFU_BUILD_ENABLE
-	uint32_t Address = SYSTEM_FLAGS_ADDRESS;
-
-	NetApp_Timeout_SysFlag = (*(__IO uint16_t*) Address);
-	Address += 2;
-
-	Smart_Config_SysFlag = (*(__IO uint16_t*) Address);
-	Address += 2;
-
-	Flash_Update_SysFlag = (*(__IO uint16_t*) Address);
-	Address += 2;
-#endif
-}
-
-void Save_SystemFlags(void)
-{
-#ifdef DFU_BUILD_ENABLE
-	uint32_t Address = SYSTEM_FLAGS_ADDRESS;
-	FLASH_Status FLASHStatus = FLASH_COMPLETE;
-
-	/* Unlock the Flash Program Erase Controller */
-	FLASH_Unlock();
-
-	/* Clear All pending flags */
-	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
-
-	/* Erase the Internal Flash pages */
-	FLASHStatus = FLASH_ErasePage(SYSTEM_FLAGS_ADDRESS);
-	while(FLASHStatus != FLASH_COMPLETE);
-
-	/* Program NetApp_Timeout_SysFlag */
-	FLASHStatus = FLASH_ProgramHalfWord(Address, NetApp_Timeout_SysFlag);
-	while(FLASHStatus != FLASH_COMPLETE);
-	Address += 2;
-
-	/* Program Smart_Config_SysFlag */
-	FLASHStatus = FLASH_ProgramHalfWord(Address, Smart_Config_SysFlag);
-	while(FLASHStatus != FLASH_COMPLETE);
-	Address += 2;
-
-	/* Program Flash_Update_SysFlag */
-	FLASHStatus = FLASH_ProgramHalfWord(Address, Flash_Update_SysFlag);
-	while(FLASHStatus != FLASH_COMPLETE);
-	Address += 2;
-
-	/* Locks the FLASH Program Erase Controller */
-	FLASH_Lock();
 #endif
 }
 

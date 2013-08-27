@@ -71,9 +71,6 @@
 void Timing_Decrement(void);
 void Delay(__IO uint32_t nTime);
 
-void Load_SystemFlags(void);
-void Save_SystemFlags(void);
-
 void Set_NetApp_Timeout(void);
 void Start_Smart_Config(void);
 
