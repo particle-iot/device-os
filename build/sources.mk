@@ -1,8 +1,3 @@
-########################################
-#   @author  Spark Application Team    #
-#   @version V1.0.0                    #
-#   @date    20-June-2013              #
-########################################
 
 ELF_SRCS := 
 O_SRCS := 
@@ -23,6 +18,4 @@ S_UPPER_DEPS :=
 SUBDIRS := \
 startup \
 src \
-libraries/STM32_USB-FS-Device_Driver/src \
-libraries/STM32F10x_StdPeriph_Driver/src \
 

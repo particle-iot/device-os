@@ -1,8 +1,3 @@
-########################################
-#   @author  Spark Application Team    #
-#   @version V1.0.0                    #
-#   @date    20-June-2013              #
-########################################
 
 -include ../makefile.init
 
@@ -12,8 +7,6 @@ RM := rm -rf
 -include sources.mk
 -include startup/subdir.mk
 -include src/subdir.mk
--include libraries/STM32_USB-FS-Device_Driver/src/subdir.mk
--include libraries/STM32F10x_StdPeriph_Driver/src/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -47,26 +40,40 @@ all: usb-bootloader.elf secondary-outputs
 
 # Tool invocations
 usb-bootloader.elf: $(OBJS) $(USER_OBJS)
-	@echo 'Building target..'
-	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md.ld" -nostartfiles -Xlinker --gc-sections -Wl,-Map,usb-bootloader.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "usb-bootloader.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	@echo 'Building target: $@'
+	@echo 'Invoking: ARM Sourcery Windows GCC C Linker'
+	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md.ld" -nostartfiles -Xlinker --gc-sections -L"../../core-common-lib/build" -Wl,-Map,usb-bootloader.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "usb-bootloader.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	@echo 'Finished building target: $@'
+	@echo ' '
 	$(MAKE) --no-print-directory post-build
 
 usb-bootloader.hex: usb-bootloader.elf
+	@echo 'Invoking: ARM Sourcery Windows GNU Create Flash Image'
 	arm-none-eabi-objcopy -O ihex usb-bootloader.elf  "usb-bootloader.hex"
+	@echo 'Finished building: $@'
+	@echo ' '
 
 usb-bootloader.lst: usb-bootloader.elf
+	@echo 'Invoking: ARM Sourcery Windows GNU Create Listing'
 	arm-none-eabi-objdump -h -S usb-bootloader.elf > "usb-bootloader.lst"
+	@echo 'Finished building: $@'
+	@echo ' '
 
 usb-bootloader.siz: usb-bootloader.elf
+	@echo 'Invoking: ARM Sourcery Windows GNU Print Size'
 	arm-none-eabi-size  --format=berkeley usb-bootloader.elf
-	@echo 'Finished building target'
+	@echo 'Finished building: $@'
+	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(ASM_DEPS)$(S_UPPER_DEPS)$(EXECUTABLES)$(SECONDARY_FLASH)$(SECONDARY_LIST)$(SECONDARY_SIZE) usb-bootloader.map usb-bootloader.elf usb-bootloader.bin
+	-$(RM) $(SECONDARY_SIZE)$(OBJS)$(C_DEPS)$(ASM_DEPS)$(SECONDARY_FLASH)$(EXECUTABLES)$(SECONDARY_LIST)$(S_UPPER_DEPS) usb-bootloader.elf usb-bootloader.map usb-bootloader.bin
+	-@echo ' '
 
 post-build:
+	-@echo 'Create Binary'
 	-arm-none-eabi-objcopy -S -O binary "usb-bootloader.elf" "usb-bootloader.bin"
+	-@echo ' '
 
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_LIST) $(SECONDARY_SIZE)
 
