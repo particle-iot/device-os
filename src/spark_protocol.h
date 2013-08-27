@@ -8,9 +8,10 @@ class SparkProtocol
              const unsigned char *pubkey,
              const unsigned char *encrypted_credentials,
              const unsigned char *signature);
+    CoAPMessageType::Enum received_message(unsigned char *buf);
     void hello(unsigned char *buf);
     void hello(unsigned char *buf, unsigned char token);
-    CoAPMessageType::Enum received_message(unsigned char *buf);
+    void function_return(unsigned char *buf, unsigned char token, double return_value);
 
   private:
     aes_context aes;
@@ -20,4 +21,5 @@ class SparkProtocol
     unsigned short _message_id;
 
     unsigned short next_message_id();
+    void encrypt(unsigned char *buf, int length);
 };

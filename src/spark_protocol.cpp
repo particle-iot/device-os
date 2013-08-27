@@ -26,37 +26,6 @@ int SparkProtocol::init(const unsigned char *private_key,
   else return 2;
 }
 
-void SparkProtocol::hello(unsigned char *buf)
-{
-  unsigned short message_id = next_message_id();
-  buf[0] = 0x50; // non-confirmable, no token
-  buf[1] = 0x02; // POST
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
-  buf[4] = 0xb1; // Uri-Path option of length 1
-  buf[5] = 'h';
-  for (int i = 6; i < 16; ++i)
-    buf[i] = 0x0a; // PKCS #7 padding
-  
-  aes_setkey_enc(&aes, key, 128);
-  aes_crypt_cbc(&aes, AES_ENCRYPT, 16, iv, buf, buf);
-}
-
-void SparkProtocol::hello(unsigned char *buf, unsigned char token)
-{
-  unsigned short message_id = next_message_id();
-  buf[0] = 0x51; // non-confirmable, one-byte token
-  buf[1] = 0x44; // response code 2.04 CHANGED
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
-  buf[4] = token;
-  for (int i = 5; i < 16; ++i)
-    buf[i] = 0x0b; // PKC #7 padding
-
-  aes_setkey_enc(&aes, key, 128);
-  aes_crypt_cbc(&aes, AES_ENCRYPT, 16, iv, buf, buf);
-}
-
 CoAPMessageType::Enum
   SparkProtocol::received_message(unsigned char *buf)
 {
@@ -87,7 +56,65 @@ CoAPMessageType::Enum
   }
 }
 
+void SparkProtocol::hello(unsigned char *buf)
+{
+  unsigned short message_id = next_message_id();
+
+  buf[0] = 0x50; // non-confirmable, no token
+  buf[1] = 0x02; // POST
+  buf[2] = message_id >> 8;
+  buf[3] = message_id & 0xff;
+  buf[4] = 0xb1; // Uri-Path option of length 1
+  buf[5] = 'h';
+
+  memset(buf + 6, 10, 10); // PKCS #7 padding
+  
+  encrypt(buf, 16);
+}
+
+void SparkProtocol::hello(unsigned char *buf, unsigned char token)
+{
+  unsigned short message_id = next_message_id();
+
+  buf[0] = 0x51; // non-confirmable, one-byte token
+  buf[1] = 0x44; // response code 2.04 CHANGED
+  buf[2] = message_id >> 8;
+  buf[3] = message_id & 0xff;
+  buf[4] = token;
+
+  memset(buf + 5, 11, 11); // PKCS #7 padding
+
+  encrypt(buf, 16);
+}
+
+void SparkProtocol::function_return(unsigned char *buf,
+                                    unsigned char token,
+                                    double return_value)
+{
+  unsigned short message_id = next_message_id();
+
+  buf[0] = 0x51; // non-confirmable, one-byte token
+  buf[1] = 0x44; // response code 2.04 CHANGED
+  buf[2] = message_id >> 8;
+  buf[3] = message_id & 0xff;
+  buf[4] = token;
+  buf[5] = 0xff; // payload marker
+  buf[6] = 0x09; // ASN.1 REAL type tag, here meaning 8-byte double
+
+  memcpy(buf + 7, &return_value, 8);
+
+  buf[15] = 0x01; // PKCS #7 padding
+
+  encrypt(buf, 16);
+}
+
 unsigned short SparkProtocol::next_message_id()
 {
   return ++_message_id;
+}
+
+void SparkProtocol::encrypt(unsigned char *buf, int length)
+{
+  aes_setkey_enc(&aes, key, 128);
+  aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv, buf, buf);
 }
