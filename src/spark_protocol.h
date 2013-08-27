@@ -18,6 +18,7 @@ class SparkProtocol
     void function_return(unsigned char *buf, unsigned char token,
                          const void *return_value, int length);
     void variable_value(unsigned char *buf, unsigned char token, bool return_value);
+    void variable_value(unsigned char *buf, unsigned char token, int return_value);
 
   private:
     aes_context aes;
