@@ -420,6 +420,20 @@ SUITE(CoAP)
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
+  TEST_FIXTURE(CoAPFixture, FunctionReturnStringMatchesOpenSSL)
+  {
+    uint8_t expected[32] = {
+      0x3f, 0xaa, 0xf6, 0x24, 0x3e, 0x36, 0xe1, 0xb9,
+      0x1a, 0xd8, 0x49, 0x88, 0x9f, 0x42, 0x61, 0x53,
+      0xb6, 0x3b, 0xfc, 0x4a, 0x5e, 0x25, 0x93, 0xd0,
+      0x43, 0xdf, 0x57, 0xd7, 0x2d, 0x35, 0xcb, 0x8c };
+    unsigned char buf[32];
+    memset(buf, 0, 32);
+    init();
+    spark_protocol.function_return(buf, 0xc4, "We are the Sparky Ones!", 23);
+    CHECK_ARRAY_EQUAL(expected, buf, 32);
+  }
+
   /*
   TEST_FIXTURE(CoAPFixture, ExampleHelloSizeIs16Bytes)
   {
