@@ -11,6 +11,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "hw_config.h"
 #include "dfu_mal.h"
+#include "usb_conf.h"
 #include "usb_lib.h"
 #include "usb_type.h"
 #include "usb_desc.h"

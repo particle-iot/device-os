@@ -14,7 +14,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "platform_config.h"
-#include "dfu_mal.h"
 #include "usb_desc.h"
 
 /* Exported types ------------------------------------------------------------*/
