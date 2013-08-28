@@ -22,9 +22,6 @@ typedef  void (*pFunction)(void);
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-static __IO uint32_t TimingDelay, TimingBUTTON, TimingLED;
-uint8_t DFUDeviceMode = 0;
-uint8_t FactoryResetMode = 0;
 
 uint8_t DeviceState;
 uint8_t DeviceStatus[6];
@@ -57,6 +54,8 @@ int main(void)
 
 	Set_System();
 
+	USE_SYSTEM_FLAGS = 1;
+
 	Load_SystemFlags();
 
 	/* Run SPI Flash Self Test (Uncomment for Debugging) */
@@ -87,22 +86,22 @@ int main(void)
 			if(TimingBUTTON == 0x00)
 			{
 				//if pressed for 10 sec, enter Factory Reset Mode
-				FactoryResetMode = 1;
+				FACTORY_RESET_MODE = 1;
 				break;
 			}
 			else if(TimingBUTTON <= 7000)
 			{
 				//if pressed for >= 3 sec, enter USB DFU Mode
-				DFUDeviceMode = 1;
+				DFU_DEVICE_MODE = 1;
 			}
 		}
 	}
 
-	if (FactoryResetMode)
+	if (FACTORY_RESET_MODE)
 	{
 		Factory_Reset();
 	}
-	else if (!DFUDeviceMode)
+	else if (!DFU_DEVICE_MODE)
 	{
 	    if ((BKP_ReadBackupRegister(BKP_DR10) == 0xCCCC) || (Flash_Update_SysFlag == 0xCCCC))
 	    {
@@ -175,20 +174,6 @@ int main(void)
 }
 
 /*******************************************************************************
-* Function Name  : Delay
-* Description    : Inserts a delay time.
-* Input          : nTime: specifies the delay time length, in milliseconds.
-* Output         : None
-* Return         : None
-*******************************************************************************/
-void Delay(uint32_t nTime)
-{
-    TimingDelay = nTime;
-
-    while (TimingDelay != 0x00);
-}
-
-/*******************************************************************************
 * Function Name  : Timing_Decrement
 * Description    : Decrements the various Timing variables related to SysTick.
 * Input          : None
@@ -211,7 +196,7 @@ void Timing_Decrement(void)
     {
         TimingLED--;
     }
-    else if(FactoryResetMode || DFUDeviceMode)
+    else if(FACTORY_RESET_MODE || DFU_DEVICE_MODE)
     {
 #if defined (USE_SPARK_CORE_V01)
         LED_Toggle(LED1);
