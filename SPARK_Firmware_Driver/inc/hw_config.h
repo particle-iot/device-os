@@ -74,12 +74,6 @@ typedef enum
 /* External Flash memory address where core firmware will be saved for backup/restore */
 #define EXTERNAL_FLASH_BKP1_ADDRESS	((uint32_t)0x00010000)
 
-/* CC3000 EEPROM - Spark File Data Storage */
-#define NVMEM_SPARK_FILE_ID			14	//Do not change this ID
-#define NVMEM_SPARK_FILE_SIZE		16	//Change according to requirement
-#define WLAN_PROFILE_FILE_OFFSET	0
-#define ERROR_COUNT_FILE_OFFSET		1
-
 /* Select CC3000: ChipSelect pin low */
 #define CC3000_CS_LOW()		GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN)
 /* Deselect CC3000: ChipSelect pin high */
@@ -123,6 +117,8 @@ typedef enum
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
+
+void Delay(__IO uint32_t nTime);
 
 #if defined (USE_SPARK_CORE_V02)
 void RTC_Configuration(void);
@@ -184,11 +180,28 @@ void FLASH_Begin(void);
 void FLASH_End(void);
 void FLASH_Backup(uint32_t sFLASH_Address);
 void FLASH_Restore(uint32_t sFLASH_Address);
+void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
 
 void Factory_Reset(void);
 void Reset_Device(void);
+void Start_OTA_Update(void);
+
+/* Hardware CRC32 calculation */
+uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize);
 
 /* External variables --------------------------------------------------------*/
+extern uint8_t DFU_DEVICE_MODE;
+extern uint8_t FACTORY_RESET_MODE;
+extern uint8_t OTA_UPDATE_MODE;
+extern uint8_t USE_SYSTEM_FLAGS;
+
+extern __IO uint32_t TimingDelay;
+extern __IO uint32_t TimingLED;
+extern __IO uint32_t TimingBUTTON;
+extern __IO uint32_t TimingIWDGReload;
+
+extern __IO uint8_t IWDG_SYSTEM_RESET;
+
 extern uint16_t NetApp_Timeout_SysFlag;
 extern uint16_t Smart_Config_SysFlag;
 extern uint16_t Flash_Update_SysFlag;

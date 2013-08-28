@@ -20,6 +20,18 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+uint8_t DFU_DEVICE_MODE = 0;
+uint8_t FACTORY_RESET_MODE = 0;
+uint8_t OTA_UPDATE_MODE = 0;
+uint8_t USE_SYSTEM_FLAGS = 0;
+
+__IO uint32_t TimingDelay;
+__IO uint32_t TimingLED;
+__IO uint32_t TimingBUTTON;
+__IO uint32_t TimingIWDGReload;
+
+__IO uint8_t IWDG_SYSTEM_RESET;
+
 GPIO_TypeDef* DIO_PORT[] = {D0_GPIO_PORT, D1_GPIO_PORT, D2_GPIO_PORT, D3_GPIO_PORT,
 								D4_GPIO_PORT, D5_GPIO_PORT, D6_GPIO_PORT, D7_GPIO_PORT};
 const uint16_t DIO_PIN[] = {D0_PIN, D1_PIN, D2_PIN, D3_PIN,
@@ -137,6 +149,20 @@ void NVIC_Configuration(void)
 	/* Configure the Priority Group to 2 bits */
 	/* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+}
+
+/*******************************************************************************
+* Function Name  : Delay
+* Description    : Inserts a delay time.
+* Input          : nTime: specifies the delay time length, in milliseconds.
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void Delay(uint32_t nTime)
+{
+    TimingDelay = nTime;
+
+    while (TimingDelay != 0x00);
 }
 
 #if defined (USE_SPARK_CORE_V02)
@@ -1062,6 +1088,9 @@ void Load_SystemFlags(void)
 {
 	uint32_t Address = SYSTEM_FLAGS_ADDRESS;
 
+	if(!USE_SYSTEM_FLAGS)
+		return;
+
 	NetApp_Timeout_SysFlag = (*(__IO uint16_t*) Address);
 	Address += 2;
 
@@ -1076,6 +1105,9 @@ void Save_SystemFlags(void)
 {
 	uint32_t Address = SYSTEM_FLAGS_ADDRESS;
 	FLASH_Status FLASHStatus = FLASH_COMPLETE;
+
+	if(!USE_SYSTEM_FLAGS)
+		return;
 
 	/* Unlock the Flash Program Erase Controller */
 	FLASH_Unlock();
@@ -1109,6 +1141,17 @@ void Save_SystemFlags(void)
 void FLASH_Begin(void)
 {
 	FLASHStatus = FLASH_COMPLETE;
+
+#if defined (USE_SPARK_CORE_V02)
+	if(FACTORY_RESET_MODE)
+		LED_SetRGBColor(RGB_COLOR_WHITE);
+	else if(OTA_UPDATE_MODE)
+		LED_SetRGBColor(RGB_COLOR_MAGENTA);
+	else
+		LED_SetRGBColor(RGB_COLOR_RED);
+
+    LED_On(LED_RGB);
+#endif
 
 	Flash_Update_SysFlag = 0xCCCC;
 	Save_SystemFlags();
@@ -1211,14 +1254,40 @@ void FLASH_Restore(uint32_t sFLASH_Address)
 	FLASH_End();
 }
 
+void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
+{
+	uint32_t i = bufferSize >> 2;
+
+	/* Program Internal Flash Bank1 */
+	while (i-- && (FLASHStatus == FLASH_COMPLETE))
+	{
+	    /* Program Word to Internal Flash memory */
+	    Internal_Flash_Data = *((uint32_t *)pBuffer);
+	    pBuffer += 4;
+
+		FLASHStatus = FLASH_ProgramWord(Internal_Flash_Address, Internal_Flash_Data);
+		Internal_Flash_Address += 4;
+	}
+
+	i = bufferSize & 3;
+
+	/* Not an aligned data */
+	if ((i != 0) && (FLASHStatus == FLASH_COMPLETE))
+	{
+	    /* Program the last word to Internal Flash memory */
+	    Internal_Flash_Data = *((uint32_t *)pBuffer);
+		FLASHStatus = FLASH_ProgramWord(Internal_Flash_Address, Internal_Flash_Data);
+	}
+
+#if defined (USE_SPARK_CORE_V01)
+	LED_Toggle(LED2);
+#elif defined (USE_SPARK_CORE_V02)
+	LED_Toggle(LED_RGB);
+#endif
+}
+
 void Factory_Reset(void)
 {
-#if defined (USE_SPARK_CORE_V02)
-	/* Set Factory Reset mode RGB Led Flashing color to White */
-    LED_SetRGBColor(RGB_COLOR_WHITE);
-    LED_On(LED_RGB);
-#endif
-
     //First take backup of the current application firmware to External Flash
     FLASH_Backup(EXTERNAL_FLASH_BKP1_ADDRESS);
 
@@ -1235,6 +1304,65 @@ void Factory_Reset(void)
 void Reset_Device(void)
 {
 	BKP_WriteBackupRegister(BKP_DR10, 0xC000);
+
     USB_Cable_Config(DISABLE);
+
     NVIC_SystemReset();
+}
+
+void Start_OTA_Update(void)
+{
+	Flash_Update_SysFlag = 0x5000;
+	Save_SystemFlags();
+
+	BKP_WriteBackupRegister(BKP_DR10, 0x5000);
+
+	NVIC_SystemReset();
+}
+
+/**
+  * @brief  Computes the 32-bit CRC of a given buffer of byte data.
+  * @param  pBuffer: pointer to the buffer containing the data to be computed
+  * @param  BufferSize: Size of the buffer to be computed
+  * @retval 32-bit CRC
+  */
+uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
+{
+	uint32_t i, j;
+	uint32_t Data;
+
+	CRC_ResetDR();
+
+	i = bufferSize >> 2;
+
+	while (i--)
+	{
+		Data = *((uint32_t *)pBuffer);
+		pBuffer += 4;
+
+		Data = __RBIT(Data);//reverse the bit order of input Data
+		CRC->DR = Data;
+	}
+
+	Data = CRC->DR;
+	Data = __RBIT(Data);//reverse the bit order of output Data
+
+	i = bufferSize & 3;
+
+	while (i--)
+	{
+		Data ^= (uint32_t)*pBuffer++;
+
+		for (j = 0 ; j < 8 ; j++)
+		{
+			if (Data & 1)
+				Data = (Data >> 1) ^ 0xEDB88320;
+			else
+				Data >>= 1;
+		}
+	}
+
+	Data ^= 0xFFFFFFFF;
+
+	return Data;
 }

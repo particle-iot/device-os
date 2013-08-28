@@ -3,6 +3,7 @@
 C_SRCS += \
 ../SPARK_Firmware_Driver/src/cc3000_spi.c \
 ../SPARK_Firmware_Driver/src/hw_config.c \
+../SPARK_Firmware_Driver/src/spark_wlan.c \
 ../SPARK_Firmware_Driver/src/sst25vf_spi.c \
 ../SPARK_Firmware_Driver/src/system_stm32f10x.c \
 ../SPARK_Firmware_Driver/src/usb_pwr.c 
@@ -10,6 +11,7 @@ C_SRCS += \
 OBJS += \
 ./SPARK_Firmware_Driver/src/cc3000_spi.o \
 ./SPARK_Firmware_Driver/src/hw_config.o \
+./SPARK_Firmware_Driver/src/spark_wlan.o \
 ./SPARK_Firmware_Driver/src/sst25vf_spi.o \
 ./SPARK_Firmware_Driver/src/system_stm32f10x.o \
 ./SPARK_Firmware_Driver/src/usb_pwr.o 
@@ -17,6 +19,7 @@ OBJS += \
 C_DEPS += \
 ./SPARK_Firmware_Driver/src/cc3000_spi.d \
 ./SPARK_Firmware_Driver/src/hw_config.d \
+./SPARK_Firmware_Driver/src/spark_wlan.d \
 ./SPARK_Firmware_Driver/src/sst25vf_spi.d \
 ./SPARK_Firmware_Driver/src/system_stm32f10x.d \
 ./SPARK_Firmware_Driver/src/usb_pwr.d 
