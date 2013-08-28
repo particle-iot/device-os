@@ -29,13 +29,6 @@ char digits[] = "0123456789";
 char recvBuff[SPARK_BUF_LEN];
 int total_bytes_received = 0;
 
-extern __IO uint32_t TimingSparkAliveTimeout;
-extern __IO uint8_t Spark_Error_Count;
-
-extern __IO uint8_t SPARK_SOCKET_CONNECTED;
-extern __IO uint8_t SPARK_DEVICE_ACKED;
-extern __IO uint8_t SPARK_DEVICE_IWDGRST;
-
 void (*pHandleMessage)(void);
 char msgBuff[SPARK_BUF_LEN];
 
@@ -142,7 +135,7 @@ void Spark_Sleep(int millis)
 
 bool Spark_Connected(void)
 {
-	if(SPARK_SOCKET_CONNECTED && SPARK_DEVICE_ACKED)
+	if(SPARK_DEVICE_ACKED)
 		return TRUE;
 	else
 		return FALSE;
@@ -274,7 +267,7 @@ int process_command()
 		}
 		TimingSparkAliveTimeout = 0;
 
-		if(SPARK_DEVICE_IWDGRST)
+		if(IWDG_SYSTEM_RESET)
 		{
 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_IWDGRST, NULL, NULL);
 		}

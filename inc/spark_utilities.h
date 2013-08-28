@@ -6,20 +6,13 @@
 
 #define SPARK_BUF_LEN	256
 
-//#define BYTE_N(x,n) (((x) >> n*8) & 0x000000FF)
+//#define BYTE_N(x,n)					(((x) >> n*8) & 0x000000FF)
 
-//#define SPARK_SERVER_IP	"54.235.79.249"
-#define SPARK_SERVER_PORT	8989
+//#define SPARK_SERVER_IP				"54.235.79.249"
+#define SPARK_SERVER_PORT			8989
 
-#define TIMING_SPARK_IWDG_RELOAD		1000	//1sec
-#define TIMING_SPARK_PROCESS_API		200		//200ms
-#define TIMING_SPARK_ALIVE_TIMEOUT		15000	//15sec
-#define TIMING_SPARK_RESET_TIMEOUT		30000	//30sec
-
-#define SOCKET_CONNECT_MAX_ATTEMPT		3		//Max no of connection attempts
-
-#define USER_FUNC_MAX_COUNT				10
-#define USER_FUNC_KEY_LENGTH			50
+#define USER_FUNC_MAX_COUNT			10
+#define USER_FUNC_KEY_LENGTH		50
 
 typedef struct Spark_Namespace {
 	void (*variable)(void *);

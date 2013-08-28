@@ -15,12 +15,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "hw_config.h"
-#include "evnt_handler.h"
-#include "hci.h"
-#include "wlan.h"
-#include "nvmem.h"
-#include "socket.h"
-#include "netapp.h"
+#include "spark_wlan.h"
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -53,34 +48,14 @@
  * upset the debugger
  */
 #define IWDG_RESET_ENABLE
+#define TIMING_IWDG_RELOAD	1000 //1sec
 
 #endif
 
-/* Flash Memory address where the System Flags will be saved and loaded from  */
-#define SYSTEM_FLAGS_ADDRESS		((uint32_t)0x08004C00)
-
-/* CC3000 EEPROM - Spark File Data Storage */
-#define NVMEM_SPARK_FILE_ID			14	//Do not change this ID
-#define NVMEM_SPARK_FILE_SIZE		16	//Change according to requirement
-#define WLAN_PROFILE_FILE_OFFSET	0
-#define ERROR_COUNT_FILE_OFFSET		1
-
-#define USART_RX_DATA_SIZE			256	//2048
+#define USART_RX_DATA_SIZE			256
 
 /* Exported functions ------------------------------------------------------- */
 void Timing_Decrement(void);
-void Delay(__IO uint32_t nTime);
-
-void Set_NetApp_Timeout(void);
-void Start_Smart_Config(void);
-
-/* WLAN Application related callbacks passed to wlan_init */
-void WLAN_Async_Callback(long lEventType, char *data, unsigned char length);
-char *WLAN_Firmware_Patch(unsigned long *length);
-char *WLAN_Driver_Patch(unsigned long *length);
-char *WLAN_BootLoader_Patch(unsigned long *length);
-
-void Start_OTA_Update(void);
 
 void USB_USART_Init(uint32_t baudRate);
 uint8_t USB_USART_Available_Data(void);

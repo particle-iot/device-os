@@ -1,7 +1,9 @@
 #include "application.h"
 
+/*
 int toggle = 0;
 void UserLedToggle(void);
+*/
 
 void setup()
 {
@@ -12,10 +14,12 @@ void setup()
 	Serial.begin(9600);
 */
 
+/*
 	pinMode(D7, OUTPUT);
 
 	//Register "UserLedToggle" function
 	Spark.function(UserLedToggle, "UserLedToggle");
+*/
 }
 
 void loop()
@@ -38,13 +42,17 @@ void loop()
 	delay(500);
 */
 
-	//Test code to invoke "UserLedToggle" function (This needs to be called via Spark API)
+/*
+	// Test code to invoke "UserLedToggle" function (This needs to be called via Spark API)
 	Spark_User_Func_Invoke("UserLedToggle");
 	delay(500);
+*/
 }
 
+/*
 void UserLedToggle(void)
 {
 	toggle ^= 1;
 	digitalWrite(D7, toggle);
 }
+*/
