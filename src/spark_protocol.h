@@ -1,6 +1,13 @@
 #include "coap.h"
 #include "tropicssl/aes.h"
 
+namespace ChunkReceivedCode {
+  enum Enum {
+    OK = 0x44,
+    BAD = 0x80
+  };
+}
+
 class SparkProtocol
 {
   public:
@@ -36,6 +43,8 @@ class SparkProtocol
                int event_name_length,
                const char *data,
                int data_length);
+    void chunk_received(unsigned char *buf, unsigned char token,
+                        unsigned char code);
 
   private:
     aes_context aes;

@@ -326,6 +326,13 @@ void SparkProtocol::event(unsigned char *buf,
   encrypt(buf, buflen);
 }
 
+void SparkProtocol::chunk_received(unsigned char *buf,
+                                   unsigned char token,
+                                   unsigned char code)
+{
+  separate_response(buf, token, code);
+}
+
 unsigned short SparkProtocol::next_message_id()
 {
   return ++_message_id;
