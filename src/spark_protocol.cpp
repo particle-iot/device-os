@@ -333,6 +333,11 @@ void SparkProtocol::chunk_received(unsigned char *buf,
   separate_response(buf, token, code);
 }
 
+void SparkProtocol::update_ready(unsigned char *buf, unsigned char token)
+{
+  separate_response(buf, token, 0x44);
+}
+
 unsigned short SparkProtocol::next_message_id()
 {
   return ++_message_id;

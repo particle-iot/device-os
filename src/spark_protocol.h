@@ -45,6 +45,7 @@ class SparkProtocol
                int data_length);
     void chunk_received(unsigned char *buf, unsigned char token,
                         unsigned char code);
+    void update_ready(unsigned char *buf, unsigned char token);
 
   private:
     aes_context aes;
