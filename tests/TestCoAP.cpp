@@ -348,6 +348,16 @@ SUITE(CoAP)
     CHECK_EQUAL(CoAPMessageType::UPDATE_DONE, message_type);
   }
 
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesDescribe)
+  {
+    uint8_t ciphertext[16] = {
+      0xd5, 0xb7, 0xf7, 0xfe, 0x9f, 0x2d, 0xca, 0xac,
+      0xda, 0x15, 0x10, 0xa3, 0x27, 0x8b, 0xa7, 0xa9 };
+    init();
+    message_type = spark_protocol.received_message(ciphertext);
+    CHECK_EQUAL(CoAPMessageType::DESCRIBE, message_type);
+  }
+
   TEST_FIXTURE(CoAPFixture, HelloMatchesOpenSSL)
   {
     uint8_t expected[16] = {

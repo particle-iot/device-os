@@ -35,7 +35,12 @@ CoAPMessageType::Enum
   switch (CoAP::code(buf))
   {
     case CoAPCode::GET:
-      return CoAPMessageType::VARIABLE_REQUEST;
+      switch (buf[6])
+      {
+        case 'v': return CoAPMessageType::VARIABLE_REQUEST;
+        case 'd': return CoAPMessageType::DESCRIBE;
+        default: return CoAPMessageType::ERROR;
+      }
     case CoAPCode::POST:
       switch (buf[6])
       {

@@ -6,7 +6,8 @@ namespace CoAPMessageType {
     UPDATE_BEGIN,
     UPDATE_DONE,
     KEY_CHANGE,
-    ERROR
+    ERROR,
+    DESCRIBE
   };
 }
 
