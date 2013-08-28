@@ -328,7 +328,7 @@ void SparkProtocol::event(unsigned char *buf,
 
 void SparkProtocol::chunk_received(unsigned char *buf,
                                    unsigned char token,
-                                   unsigned char code)
+                                   ChunkReceivedCode::Enum code)
 {
   separate_response(buf, token, code);
 }

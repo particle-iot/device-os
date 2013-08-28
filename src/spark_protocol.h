@@ -44,7 +44,7 @@ class SparkProtocol
                const char *data,
                int data_length);
     void chunk_received(unsigned char *buf, unsigned char token,
-                        unsigned char code);
+                        ChunkReceivedCode::Enum code);
     void update_ready(unsigned char *buf, unsigned char token);
 
   private:
