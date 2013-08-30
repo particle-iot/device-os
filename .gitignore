@@ -1,2 +1,10 @@
 *.o
 *.d
+*.a
+
+.settings/*
+.cproject
+.project
+
+Debug/*
+Release/*
