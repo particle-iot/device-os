@@ -32,6 +32,18 @@ int total_bytes_received = 0;
 void (*pHandleMessage)(void);
 char msgBuff[SPARK_BUF_LEN];
 
+int User_Var_Count;
+int User_Func_Count;
+
+struct
+{
+	void *userVar;
+	char userVarKey[USER_VAR_KEY_LENGTH];
+	Spark_Data_TypeDef userVarType;
+	bool userVarSchedule;
+	unsigned char token; //not sure we require this here
+} User_Var_Lookup_Table[USER_VAR_MAX_COUNT];
+
 struct
 {
 	int (*pUserFunc)(char *userArg);
@@ -41,8 +53,6 @@ struct
 	bool userFuncSchedule;
 	unsigned char token; //not sure we require this here
 } User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
-
-int User_Func_Count;
 
 static void handle_message(void);
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
@@ -70,9 +80,30 @@ Spark_Namespace Spark =
 	Spark_Disconnect
 };
 
-void Spark_Variable(const char *varKey, void *userVar)
+void Spark_Variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
 {
+	int i = 0;
+	if(NULL != userVar && NULL != varKey)
+	{
+		if(User_Var_Count == USER_VAR_MAX_COUNT)
+			return;
 
+		for(i = 0; i < User_Var_Count; i++)
+		{
+			if(User_Var_Lookup_Table[i].userVar == userVar && (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH)))
+			{
+				return;
+			}
+		}
+
+		User_Var_Lookup_Table[User_Var_Count].userVar = userVar;
+		User_Var_Lookup_Table[User_Var_Count].userVarType = userVarType;
+		memset(User_Var_Lookup_Table[User_Var_Count].userVarKey, 0, USER_VAR_KEY_LENGTH);
+		memcpy(User_Var_Lookup_Table[User_Var_Count].userVarKey, varKey, USER_VAR_KEY_LENGTH);
+		User_Var_Lookup_Table[User_Var_Count].userVarSchedule = FALSE;
+		User_Var_Lookup_Table[User_Var_Count].token = 0;
+		User_Var_Count++;
+	}
 }
 
 void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString))
@@ -325,6 +356,80 @@ int Spark_Process_API_Response(void)
 		retVal = process_command();
 
 	return retVal;
+}
+
+bool userVarSchedule(char *varKey, unsigned char token)
+{
+	int i = 0;
+	for(i = 0; i < User_Var_Count; i++)
+	{
+		if(0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
+		{
+			User_Var_Lookup_Table[i].userVarSchedule = TRUE;
+			User_Var_Lookup_Table[i].token = token;
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+void userVarReturn(void)
+{
+	int i = 0;
+	for(i = 0; i < User_Var_Count; i++)
+	{
+		if(TRUE == User_Var_Lookup_Table[i].userVarSchedule)
+		{
+			User_Var_Lookup_Table[i].userVarSchedule = FALSE;
+
+			//Send the "Variable value" back to the server here OR in a separate thread
+			if(User_Var_Lookup_Table[i].token)
+			{
+/*
+				bool boolVal;
+				int intVal;
+				char *stringVal;
+				double doubleVal;
+*/
+
+				unsigned char buf[16];
+				memset(buf, 0, 16);
+
+				switch(User_Var_Lookup_Table[i].userVarType)
+				{
+				case BOOLEAN:
+/*
+					boolVal = *((bool*)User_Var_Lookup_Table[i].userVar);
+					//spark_protocol.variable_value(buf, User_Func_Lookup_Table[i].token, boolVal);
+*/
+					break;
+
+				case INT:
+/*
+					intVal = *((int*)User_Var_Lookup_Table[i].userVar);
+					//spark_protocol.variable_value(buf, User_Func_Lookup_Table[i].token, intVal);
+*/
+					break;
+
+				case STRING:
+/*
+					stringVal = ((char*)User_Var_Lookup_Table[i].userVar);
+					//spark_protocol.variable_value(buf, User_Func_Lookup_Table[i].token, stringVal, strlen(stringVal));
+*/
+					break;
+
+				case DOUBLE:
+/*
+					doubleVal = *((double*)User_Var_Lookup_Table[i].userVar);
+					//spark_protocol.variable_value(buf, User_Func_Lookup_Table[i].token, doubleVal);
+*/
+					break;
+				}
+
+				User_Var_Lookup_Table[i].token = 0;
+			}
+		}
+	}
 }
 
 bool userFuncSchedule(char *funcKey, unsigned char token, char *paramString)

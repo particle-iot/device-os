@@ -24,7 +24,7 @@ typedef enum
 } Spark_Data_TypeDef;
 
 typedef struct Spark_Namespace {
-	void (*variable)(const char *, void *);
+	void (*variable)(const char *, void *, Spark_Data_TypeDef);
 	void (*function)(const char *, int (*)(char *));
 	void (*event)(char *, char *);
 	void (*sleep)(int);
@@ -33,7 +33,7 @@ typedef struct Spark_Namespace {
 	int (*disconnect)(void);
 } Spark_Namespace;
 
-void Spark_Variable(const char *varKey, void *userVar);
+void Spark_Variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
 void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString));
 void Spark_Event(char *eventName, char *eventResult);
 void Spark_Sleep(int millis);
@@ -41,6 +41,9 @@ bool Spark_Connected(void);
 int Spark_Connect(void);
 int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);
+
+bool userVarSchedule(char *varKey, unsigned char token);
+void userVarReturn(void);
 
 bool userFuncSchedule(char *funcKey, unsigned char token, char *paramString);
 void userFuncExecute(void);

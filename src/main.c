@@ -129,6 +129,7 @@ int main(void)
 		if(SPARK_DEVICE_ACKED && !IWDG_SYSTEM_RESET)
 		{
 #endif
+
 			if(NULL != loop)
 			{
 				//Execute user application loop
@@ -141,6 +142,9 @@ int main(void)
 			}
 
 			userFuncExecute();
+
+			userVarReturn();
+
 #ifdef SPARK_WLAN_ENABLE
 		}
 #endif

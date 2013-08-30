@@ -4,6 +4,8 @@
 int toggle = 0;
 int UserLedToggle(char *ledPin);
 
+double testReal = 99.99;
+
 void setup()
 {
 	// runs once
@@ -17,6 +19,9 @@ void setup()
 
 	//Register UserLedToggle() function
 	Spark.function("UserLed", UserLedToggle);
+
+	//Register testReal variable
+	Spark.variable("testReal", &testReal, DOUBLE);
 }
 
 void loop()
@@ -41,6 +46,9 @@ void loop()
 
 	// Call this in the process_command() to schedule the "UserLedToggle" function to execute
 	userFuncSchedule("UserLed", 0xc3, "D7");
+
+	// Call this in the process_command() to schedule the return of "testReal" value
+	userVarSchedule("testReal", 0xa1);
 
 	delay(500);
 }
