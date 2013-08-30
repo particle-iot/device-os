@@ -46,6 +46,8 @@ class SparkProtocol
     void chunk_received(unsigned char *buf, unsigned char token,
                         ChunkReceivedCode::Enum code);
     void update_ready(unsigned char *buf, unsigned char token);
+    void description(unsigned char *buf, unsigned char token,
+                     const char **function_names, int num_functions);
 
   private:
     aes_context aes;

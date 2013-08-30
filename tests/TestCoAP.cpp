@@ -542,6 +542,22 @@ SUITE(CoAP)
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
+  TEST_FIXTURE(CoAPFixture, DescriptionMatchesOpenSSL)
+  {
+    uint8_t expected[32] = {
+      0xac, 0xc9, 0x8f, 0x76, 0x26, 0x76, 0xc9, 0x53,
+      0xf5, 0xc2, 0x2a, 0x20, 0x70, 0xe6, 0x60, 0x28,
+      0x54, 0x56, 0x8e, 0x87, 0xd4, 0x1b, 0x16, 0x7b,
+      0xfe, 0xdc, 0x21, 0x6c, 0x1c, 0x59, 0xc5, 0x94 };
+    unsigned char buf[32];
+    memset(buf, 0, 32);
+    init();
+    const char *fnames[1];
+    fnames[0] = "brew";
+    spark_protocol.description(buf, 0x66, fnames, 1);
+    CHECK_ARRAY_EQUAL(expected, buf, 32);
+  }
+
   /*
   TEST_FIXTURE(CoAPFixture, ExampleHelloSizeIs16Bytes)
   {
