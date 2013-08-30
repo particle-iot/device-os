@@ -34,9 +34,12 @@ char msgBuff[SPARK_BUF_LEN];
 
 struct
 {
-	void (*pUserFunc)(void);
+	int (*pUserFunc)(char *userArg);
 	char userFuncKey[USER_FUNC_KEY_LENGTH];
-	bool userFuncInvoke;
+	char userFuncArg[USER_FUNC_ARG_LENGTH];
+	int userFuncRet;
+	bool userFuncSchedule;
+	unsigned char token; //not sure we require this here
 } User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
 
 int User_Func_Count;
@@ -67,12 +70,12 @@ Spark_Namespace Spark =
 	Spark_Disconnect
 };
 
-void Spark_Variable(void *userVar)
+void Spark_Variable(const char *varKey, void *userVar)
 {
 
 }
 
-void Spark_Function(void (*pFunc)(void), const char *funcKey)
+void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString))
 {
 	int i = 0;
 	if(NULL != pFunc && NULL != funcKey)
@@ -89,37 +92,12 @@ void Spark_Function(void (*pFunc)(void), const char *funcKey)
 		}
 
 		User_Func_Lookup_Table[User_Func_Count].pUserFunc = pFunc;
+		memset(User_Func_Lookup_Table[User_Func_Count].userFuncArg, 0, USER_FUNC_ARG_LENGTH);
 		memset(User_Func_Lookup_Table[User_Func_Count].userFuncKey, 0, USER_FUNC_KEY_LENGTH);
 		memcpy(User_Func_Lookup_Table[User_Func_Count].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH);
-		User_Func_Lookup_Table[User_Func_Count].userFuncInvoke = FALSE;
+		User_Func_Lookup_Table[User_Func_Count].userFuncSchedule = FALSE;
+		User_Func_Lookup_Table[User_Func_Count].token = 0;
 		User_Func_Count++;
-	}
-}
-
-bool Spark_User_Func_Invoke(char *funcKey)
-{
-	int i = 0;
-	for(i = 0; i < User_Func_Count; i++)
-	{
-		if(0 == strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH))
-		{
-			User_Func_Lookup_Table[i].userFuncInvoke = TRUE;
-			return TRUE;
-		}
-	}
-	return FALSE;
-}
-
-void Spark_User_Func_Execute(void)
-{
-	int i = 0;
-	for(i = 0; i < User_Func_Count; i++)
-	{
-		if(TRUE == User_Func_Lookup_Table[i].userFuncInvoke)
-		{
-			User_Func_Lookup_Table[i].userFuncInvoke = FALSE;
-			User_Func_Lookup_Table[i].pUserFunc();
-		}
 	}
 }
 
@@ -349,6 +327,48 @@ int Spark_Process_API_Response(void)
 	return retVal;
 }
 
+bool userFuncSchedule(char *funcKey, unsigned char token, char *paramString)
+{
+	int i = 0;
+	for(i = 0; i < User_Func_Count; i++)
+	{
+		if(NULL != paramString && (0 == strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH)))
+		{
+			size_t paramLength = strlen(paramString);
+			if(paramLength > USER_FUNC_ARG_LENGTH)
+				paramLength = USER_FUNC_ARG_LENGTH;
+			memcpy(User_Func_Lookup_Table[i].userFuncArg, paramString, paramLength);
+			User_Func_Lookup_Table[i].userFuncSchedule = TRUE;
+			User_Func_Lookup_Table[i].token = token;
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+void userFuncExecute(void)
+{
+	int i = 0;
+	for(i = 0; i < User_Func_Count; i++)
+	{
+		if(TRUE == User_Func_Lookup_Table[i].userFuncSchedule)
+		{
+			User_Func_Lookup_Table[i].userFuncSchedule = FALSE;
+			User_Func_Lookup_Table[i].userFuncRet = User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
+/*
+			//Send the "Function Return" back to the server here OR in a separate thread
+			if(User_Func_Lookup_Table[i].token)
+			{
+				unsigned char buf[16];
+				memset(buf, 0, 16);
+				spark_protocol.function_return(buf, User_Func_Lookup_Table[i].token, User_Func_Lookup_Table[i].userFuncRet);
+				User_Func_Lookup_Table[i].token = 0;
+			}
+*/
+		}
+	}
+}
+
 void sendMessage(char *message)
 {
 	Spark_Send_Device_Message(sparkSocket, (char *)API_SendMessage, (char *)message, NULL);
@@ -450,7 +470,7 @@ static unsigned char itoa(int cNum, char *cString)
 //Convert nibble to hexdecimal from ASCII
 static uint8_t atoc(char data)
 {
-	unsigned char ucRes;
+	unsigned char ucRes = 0;
 
 	if ((data >= 0x30) && (data <= 0x39))
 	{

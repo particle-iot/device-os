@@ -140,7 +140,7 @@ int main(void)
 				pHandleMessage();
 			}
 
-			Spark_User_Func_Execute();
+			userFuncExecute();
 #ifdef SPARK_WLAN_ENABLE
 		}
 #endif

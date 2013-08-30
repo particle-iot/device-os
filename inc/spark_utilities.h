@@ -11,12 +11,21 @@
 //#define SPARK_SERVER_IP				"54.235.79.249"
 #define SPARK_SERVER_PORT			8989
 
+#define USER_VAR_MAX_COUNT			10
+#define USER_VAR_KEY_LENGTH			12
+
 #define USER_FUNC_MAX_COUNT			10
-#define USER_FUNC_KEY_LENGTH		50
+#define USER_FUNC_KEY_LENGTH		12
+#define USER_FUNC_ARG_LENGTH		256
+
+typedef enum
+{
+	BOOLEAN = 1, INT = 2, STRING = 4, DOUBLE = 9
+} Spark_Data_TypeDef;
 
 typedef struct Spark_Namespace {
-	void (*variable)(void *);
-	void (*function)(void (*pFunc)(void), const char *);
+	void (*variable)(const char *, void *);
+	void (*function)(const char *, int (*)(char *));
 	void (*event)(char *, char *);
 	void (*sleep)(int);
 	bool (*connected)(void);
@@ -24,16 +33,17 @@ typedef struct Spark_Namespace {
 	int (*disconnect)(void);
 } Spark_Namespace;
 
-void Spark_Variable(void *userVar);
-void Spark_Function(void (*pFunc)(void), const char *funcKey);
-bool Spark_User_Func_Invoke(char *funcKey);
-void Spark_User_Func_Execute(void);
+void Spark_Variable(const char *varKey, void *userVar);
+void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString));
 void Spark_Event(char *eventName, char *eventResult);
 void Spark_Sleep(int millis);
 bool Spark_Connected(void);
 int Spark_Connect(void);
 int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);
+
+bool userFuncSchedule(char *funcKey, unsigned char token, char *paramString);
+void userFuncExecute(void);
 
 void sendMessage(char *message);
 //void sendMessageWithData(char *message, char *data, long size);
