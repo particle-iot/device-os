@@ -9,10 +9,10 @@
 */
 
 /* Includes ------------------------------------------------------------------*/
+#include "main.h"
 #include "usb_lib.h"
 #include "usb_desc.h"
 #include "usb_mem.h"
-#include "hw_config.h"
 #include "usb_istr.h"
 #include "usb_pwr.h"
 

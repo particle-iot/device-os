@@ -24,7 +24,7 @@
 
 #define STM32_DELAY_US_MULT 12 // TODO: Fix this.
 
-#define NULL ((void *)0)
+//#define NULL ((void *)0)
 #define NONE ((uint8_t)0xFF)
 
 /*

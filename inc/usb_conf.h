@@ -51,7 +51,7 @@
 /* IMR_MSK */
 /* mask defining which events has to be handled */
 /* by the device application software */
-#define IMR_MSK (CNTR_CTRM  | CNTR_SOFM  | CNTR_RESETM )
+//#define IMR_MSK (CNTR_CTRM  | CNTR_SOFM  | CNTR_RESETM )
 
 /*#define CTR_CALLBACK*/
 /*#define DOVR_CALLBACK*/
