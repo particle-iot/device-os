@@ -339,6 +339,15 @@ void SPARK_WLAN_Setup(void)
 #endif
 
 	SPARK_LED_TOGGLE = 1;
+
+
+	// Clear out the DHCP settings
+	unsigned long pucSubnetMask = 0;
+	unsigned long pucIP_Addr = 0;
+	unsigned long pucIP_DefaultGWAddr = 0;
+	unsigned long pucDNS = 0;
+
+  netapp_dhcp(&pucIP_Addr, &pucSubnetMask, &pucIP_DefaultGWAddr, &pucDNS);
 }
 
 void SPARK_WLAN_Loop(void)
@@ -392,7 +401,10 @@ void SPARK_WLAN_Loop(void)
 		}
 
 		WLAN_SMART_CONFIG_STOP = 0;
+
 	}
+
+	
 
 	if(WLAN_DHCP && !SPARK_SOCKET_CONNECTED)
 	{
