@@ -34,6 +34,7 @@ void PendSV_Handler(void);
 void SysTick_Handler(void);
 #if defined (USE_SPARK_CORE_V02)
 void RTC_IRQHandler(void);
+void RTCAlarm_IRQHandler(void);
 #endif
 void DMA1_Channel5_IRQHandler(void);
 void EXTI2_IRQHandler(void);

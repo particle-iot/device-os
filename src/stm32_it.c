@@ -163,19 +163,43 @@ void SysTick_Handler(void)
  *******************************************************************************/
 void RTC_IRQHandler(void)
 {
-	if (RTC_GetITStatus(RTC_IT_SEC) != RESET)
-	{
-		/* Clear the RTC Second interrupt */
-		RTC_ClearITPendingBit(RTC_IT_SEC);
+//	/* If counter is equal to 86339: one day was elapsed */
+//	if((RTC_GetCounter() / 3600 == 23)
+//			&& (((RTC_GetCounter() % 3600) / 60) == 59)
+//			&& (((RTC_GetCounter() % 3600) % 60) == 59)) /* 23*3600 + 59*60 + 59 = 86339 */
+//	{
+//		/* Wait until last write operation on RTC registers has finished */
+//		RTC_WaitForLastTask();
+//
+//		/* Reset counter value */
+//		RTC_SetCounter(0x0);
+//
+//		/* Wait until last write operation on RTC registers has finished */
+//		RTC_WaitForLastTask();
+//
+//		/* Increment no_of_days_elapsed variable here */
+//	}
 
-#if defined (RTC_TEST_ENABLE)
-		/* Toggle LED_USER */
-		LED_Toggle(LED_USER);
-#endif
+	/* Clear the RTC Second Interrupt pending bit */
+	RTC_ClearITPendingBit(RTC_IT_SEC);
+}
 
-		/* Wait until last write operation on RTC registers has finished */
-		RTC_WaitForLastTask();
-	}
+/*******************************************************************************
+* Function Name  : RTCAlarm_IRQHandler
+* Description    : This function handles RTC Alarm interrupt request.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void RTCAlarm_IRQHandler(void)
+{
+	SPARK_WLAN_SLEEP = 0;
+
+	/* Clear the Alarm Pending Bit */
+	RTC_ClearITPendingBit(RTC_IT_ALR);
+
+	/* Clear the EXTI Line 17/ */
+	EXTI_ClearITPendingBit(EXTI_Line17);
 }
 #endif
 
