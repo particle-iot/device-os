@@ -25,6 +25,8 @@ char device_name[] = "CC3000";
 
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
+__IO uint8_t SPARK_WLAN_SLEEP;
+__IO uint8_t SPARK_WLAN_STARTED;
 __IO uint8_t SPARK_SOCKET_CONNECTED;
 __IO uint8_t SPARK_SOCKET_ALIVE;
 __IO uint8_t SPARK_DEVICE_ACKED;
@@ -155,6 +157,8 @@ void Start_Smart_Config(void)
 
 	wlan_start(0);
 
+	SPARK_WLAN_STARTED = 1;
+
 	/* Mask out all non-required events */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
@@ -271,6 +275,8 @@ void SPARK_WLAN_Setup(void)
 	/* Trigger a WLAN device */
 	wlan_start(0);
 
+	SPARK_WLAN_STARTED = 1;
+
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
@@ -340,18 +346,41 @@ void SPARK_WLAN_Setup(void)
 
 	SPARK_LED_TOGGLE = 1;
 
-
 	// Clear out the DHCP settings
 	unsigned long pucSubnetMask = 0;
 	unsigned long pucIP_Addr = 0;
 	unsigned long pucIP_DefaultGWAddr = 0;
 	unsigned long pucDNS = 0;
 
-  netapp_dhcp(&pucIP_Addr, &pucSubnetMask, &pucIP_DefaultGWAddr, &pucDNS);
+	netapp_dhcp(&pucIP_Addr, &pucSubnetMask, &pucIP_DefaultGWAddr, &pucDNS);
 }
 
 void SPARK_WLAN_Loop(void)
 {
+	if(SPARK_WLAN_SLEEP)
+	{
+		if(SPARK_WLAN_STARTED)
+		{
+			/* Put WLAN to Sleep */
+			Spark_Disconnect();
+
+			wlan_stop();
+
+			SPARK_WLAN_STARTED = 0;
+		}
+	}
+	else
+	{
+		if(!SPARK_WLAN_STARTED)
+		{
+			wlan_start(0);
+
+			SPARK_WLAN_STARTED = 1;
+
+			wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+		}
+	}
+
 	if(WLAN_SMART_CONFIG_START)
 	{
 		/* Start CC3000 Smart Config Process */
@@ -404,9 +433,7 @@ void SPARK_WLAN_Loop(void)
 
 	}
 
-	
-
-	if(WLAN_DHCP && !SPARK_SOCKET_CONNECTED)
+	if(WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_SOCKET_CONNECTED)
 	{
 #if defined (USE_SPARK_CORE_V02)
 		LED_SetRGBColor(RGB_COLOR_CYAN);
@@ -425,7 +452,7 @@ void SPARK_WLAN_Loop(void)
 
 void SPARK_WLAN_Timing(void)
 {
-    if (WLAN_CONNECTED && !SPARK_SOCKET_CONNECTED)
+    if (WLAN_CONNECTED && !SPARK_WLAN_SLEEP && !SPARK_SOCKET_CONNECTED)
     {
 		if (!Spark_Connect_Count)
 		{

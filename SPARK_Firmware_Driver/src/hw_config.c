@@ -168,7 +168,16 @@ void Delay(uint32_t nTime)
 #if defined (USE_SPARK_CORE_V02)
 void RTC_Configuration(void)
 {
+	EXTI_InitTypeDef EXTI_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
+
+	/* Configure EXTI Line17(RTC Alarm) to generate an interrupt on rising edge */
+	EXTI_ClearITPendingBit(EXTI_Line17);
+	EXTI_InitStructure.EXTI_Line = EXTI_Line17;
+	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&EXTI_InitStructure);
 
 	/* Enable the RTC Interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = RTC_IRQn;
@@ -177,47 +186,67 @@ void RTC_Configuration(void)
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	/* Enable PWR and BKP clocks */
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+	/* Enable the RTC Alarm Interrupt */
+	NVIC_InitStructure.NVIC_IRQChannel = RTCAlarm_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x02;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
 
-	/* Allow access to BKP Domain */
-	PWR_BackupAccessCmd(ENABLE);
-
-	/* Reset Backup Domain */
-	BKP_DeInit();
-
-	/* Enable LSE */
-	RCC_LSEConfig(RCC_LSE_ON);
-
-	/* Wait till LSE is ready */
-	while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET)
+	/* Check if the StandBy flag is set */
+	if(PWR_GetFlagStatus(PWR_FLAG_SB) != RESET)
 	{
-	//Do nothing
+		/* System resumed from STANDBY mode */
+
+		/* Clear StandBy flag */
+		PWR_ClearFlag(PWR_FLAG_SB);
+
+		/* Wait for RTC APB registers synchronisation */
+		RTC_WaitForSynchro();
+
+		/* No need to configure the RTC as the RTC configuration(clock source, enable,
+	       prescaler,...) is kept after wake-up from STANDBY */
 	}
+	else
+	{
+		/* StandBy flag is not set */
 
-	/* Select LSE as RTC Clock Source */
-	RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
+		/* Reset Backup Domain */
+		BKP_DeInit();
 
-	/* Enable RTC Clock */
-	RCC_RTCCLKCmd(ENABLE);
+		/* Enable LSE */
+		RCC_LSEConfig(RCC_LSE_ON);
 
-	/* Wait for RTC registers synchronization */
-	RTC_WaitForSynchro();
+		/* Wait till LSE is ready */
+		while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET)
+		{
+			//Do nothing
+		}
 
-	/* Wait until last write operation on RTC registers has finished */
-	RTC_WaitForLastTask();
+		/* Select LSE as RTC Clock Source */
+		RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
 
-	/* Enable the RTC Second */
-	RTC_ITConfig(RTC_IT_SEC, ENABLE);
+		/* Enable RTC Clock */
+		RCC_RTCCLKCmd(ENABLE);
 
-	/* Wait until last write operation on RTC registers has finished */
-	RTC_WaitForLastTask();
+		/* Wait for RTC registers synchronization */
+		RTC_WaitForSynchro();
 
-	/* Set RTC prescaler: set RTC period to 1sec */
-	RTC_SetPrescaler(32767); /* RTC period = RTCCLK/RTC_PR = (32.768 KHz)/(32767+1) */
+		/* Wait until last write operation on RTC registers has finished */
+		RTC_WaitForLastTask();
 
-	/* Wait until last write operation on RTC registers has finished */
-	RTC_WaitForLastTask();
+		/* Enable the RTC Second and RTC Alarm interrupt */
+		RTC_ITConfig(RTC_IT_SEC | RTC_IT_ALR, ENABLE);
+
+		/* Wait until last write operation on RTC registers has finished */
+		RTC_WaitForLastTask();
+
+		/* Set RTC prescaler: set RTC period to 1sec */
+		RTC_SetPrescaler(32767); /* RTC period = RTCCLK/RTC_PR = (32.768 KHz)/(32767+1) */
+
+		/* Wait until last write operation on RTC registers has finished */
+		RTC_WaitForLastTask();
+	}
 }
 #endif
 

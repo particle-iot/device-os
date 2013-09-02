@@ -18,13 +18,11 @@
 #define USE_SPARK_CORE_V02
 #endif
 
-/* Uncomment the line below to enable WLAN, WIRING and SFLASH functionality */
+/* Uncomment the line below to enable WLAN, WIRING, SFLASH and RTC functionality */
 #define SPARK_WLAN_ENABLE
 #define SPARK_WIRING_ENABLE
 #define SPARK_SFLASH_ENABLE
-
-/* Toggle LED_USER for every second */
-//#define RTC_TEST_ENABLE
+//#define SPARK_RTC_ENABLE
 
 #define         ID1          (0x1FFFF7E8)
 #define         ID2          (0x1FFFF7EC)

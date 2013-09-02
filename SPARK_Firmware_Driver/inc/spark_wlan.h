@@ -44,10 +44,14 @@ extern int Spark_Process_API_Response(void);
 extern __IO uint32_t TimingSparkAliveTimeout;
 extern __IO uint32_t TimingSparkOTATimeout;
 
+extern __IO uint8_t SPARK_WLAN_SLEEP;
+extern __IO uint8_t SPARK_SOCKET_CONNECTED;
 extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint8_t SPARK_FLASH_UPDATE;
 extern __IO uint8_t SPARK_PROCESS_CHUNK;
 extern __IO uint8_t SPARK_LED_TOGGLE;
 extern __IO uint8_t SPARK_LED_FADE;
+
+uint8_t WLAN_SLEEP;
 
 #endif  /*__SPARK_WLAN_H*/
