@@ -35,7 +35,7 @@ char msgBuff[SPARK_BUF_LEN];
 int User_Var_Count;
 int User_Func_Count;
 
-struct
+struct User_Var_Lookup_Table_t
 {
 	void *userVar;
 	char userVarKey[USER_VAR_KEY_LENGTH];
@@ -44,7 +44,7 @@ struct
 	unsigned char token; //not sure we require this here
 } User_Var_Lookup_Table[USER_VAR_MAX_COUNT];
 
-struct
+struct User_Func_Lookup_Table_t
 {
 	int (*pUserFunc)(char *userArg);
 	char userFuncKey[USER_FUNC_KEY_LENGTH];
@@ -297,7 +297,7 @@ int process_command()
 	{
 		High_Dx[6] = recvBuff[6];
 
-		if (OK == DIO_SetState(atoc(High_Dx[6]), HIGH))
+		if (OK == DIO_SetState((DIO_TypeDef)atoc(High_Dx[6]), HIGH))
 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)High_Dx, NULL);
 		else
 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)High_Dx, NULL);
@@ -308,7 +308,7 @@ int process_command()
 	{
 		Low_Dx[5] = recvBuff[5];
 
-		if (OK == DIO_SetState(atoc(Low_Dx[5]), LOW))
+		if (OK == DIO_SetState((DIO_TypeDef)atoc(Low_Dx[5]), LOW))
 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)Low_Dx, NULL);
 		else
 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)Low_Dx, NULL);
@@ -358,7 +358,7 @@ int Spark_Process_API_Response(void)
 	return retVal;
 }
 
-bool userVarSchedule(char *varKey, unsigned char token)
+bool userVarSchedule(const char *varKey, unsigned char token)
 {
 	int i = 0;
 	for(i = 0; i < User_Var_Count; i++)
@@ -432,7 +432,7 @@ void userVarReturn(void)
 	}
 }
 
-bool userFuncSchedule(char *funcKey, unsigned char token, char *paramString)
+bool userFuncSchedule(const char *funcKey, unsigned char token, const char *paramString)
 {
 	int i = 0;
 	for(i = 0; i < User_Func_Count; i++)

@@ -15,7 +15,7 @@
 uint8_t adcInitFirstTime = true;
 uint8_t adcChannelConfigured = NONE;
 
-PinMode digitalPinModeSaved = NONE;
+PinMode digitalPinModeSaved = (PinMode)NONE;
 
 uint8_t serial1_enabled = false;
 
@@ -35,27 +35,27 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
  * timer_ch (1-4, or NONE)
  * pin_mode (NONE by default, can be set to OUTPUT, INPUT, or other types)
  */
-	{ GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, NONE },
-	{ GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, NONE },
-	{ GPIOB, GPIO_Pin_5, NONE, NULL, NONE, NONE },
-	{ GPIOB, GPIO_Pin_4, NONE, NULL, NONE, NONE },
-	{ GPIOB, GPIO_Pin_3, NONE, NULL, NONE, NONE },
-	{ GPIOA, GPIO_Pin_15, NONE, NULL, NONE, NONE },
-	{ GPIOA, GPIO_Pin_14, NONE, NULL, NONE, NONE },
-	{ GPIOA, GPIO_Pin_13, NONE, NULL, NONE, NONE },
-	{ GPIOA, GPIO_Pin_8, NONE, NULL, NONE, NONE },
-	{ GPIOA, GPIO_Pin_9, NONE, NULL, NONE, NONE },
-	{ GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM2, TIM_Channel_1, NONE },
-	{ GPIOA, GPIO_Pin_1, ADC_Channel_1, TIM2, TIM_Channel_2, NONE },
-	{ GPIOA, GPIO_Pin_4, ADC_Channel_4, NULL, NONE, NONE },
-	{ GPIOA, GPIO_Pin_5, ADC_Channel_5, NULL, NONE, NONE },
-	{ GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, NONE },
-	{ GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, NONE },
-	{ GPIOB, GPIO_Pin_0, ADC_Channel_8, TIM3, TIM_Channel_3, NONE },
-	{ GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, NONE },
-	{ GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, NONE },
-	{ GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, NONE },
-	{ GPIOA, GPIO_Pin_10, NONE, NULL, NONE, NONE }
+	{ GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, (PinMode)NONE },
+	{ GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, (PinMode)NONE },
+	{ GPIOB, GPIO_Pin_5, NONE, NULL, NONE, (PinMode)NONE },
+	{ GPIOB, GPIO_Pin_4, NONE, NULL, NONE, (PinMode)NONE },
+	{ GPIOB, GPIO_Pin_3, NONE, NULL, NONE, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_15, NONE, NULL, NONE, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_14, NONE, NULL, NONE, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_13, NONE, NULL, NONE, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_8, NONE, NULL, NONE, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_9, NONE, NULL, NONE, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM2, TIM_Channel_1, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_1, ADC_Channel_1, TIM2, TIM_Channel_2, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_4, ADC_Channel_4, NULL, NONE, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_5, ADC_Channel_5, NULL, NONE, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, (PinMode)NONE },
+	{ GPIOB, GPIO_Pin_0, ADC_Channel_8, TIM3, TIM_Channel_3, (PinMode)NONE },
+	{ GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, (PinMode)NONE },
+	{ GPIOA, GPIO_Pin_10, NONE, NULL, NONE, (PinMode)NONE }
 };
 
 void serial_begin(uint32_t baudRate);

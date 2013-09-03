@@ -57,28 +57,28 @@ dependents:
 	-cd ../../core-common-lib/build && $(MAKE) clean all
 
 # Tool invocations
-core-firmware.elf: $(OBJS) $(USER_OBJS) ../../core-common-lib/build/libcore-common-lib.a
+core-firmware.elf: $(OBJS) $(USER_OBJS) ../../core-common-lib/build/libcore-common-lib.a libraries/SparkCoreCommunication/libSparkCoreCommunication.a
 	@echo 'Building target: $@'
-	@echo 'Invoking: ARM Sourcery Windows GCC C++ Linker'
-	arm-none-eabi-g++ -T"../linker/linker_stm32f10x_md_dfu.ld" -nostartfiles -Xlinker --gc-sections -L"../../core-common-lib/build" -Wl,-Map,core-firmware.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "core-firmware.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	@echo 'Invoking: ARM GCC C++ Linker'
+	arm-none-eabi-g++ -T"../linker/linker_stm32f10x_md_dfu.ld" -nostartfiles -Xlinker --gc-sections -o "core-firmware.elf" -L"../../core-common-lib/build" -L"libraries/SparkCoreCommunication" -Wl,-Map,core-firmware.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
 
 core-firmware.hex: core-firmware.elf
-	@echo 'Invoking: ARM Sourcery Windows GNU Create Flash Image'
+	@echo 'Invoking: ARM GNU Create Flash Image'
 	arm-none-eabi-objcopy -O ihex core-firmware.elf  "core-firmware.hex"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 core-firmware.lst: core-firmware.elf
-	@echo 'Invoking: ARM Sourcery Windows GNU Create Listing'
+	@echo 'Invoking: ARM GNU Create Listing'
 	arm-none-eabi-objdump -h -S core-firmware.elf > "core-firmware.lst"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 core-firmware.siz: core-firmware.elf
-	@echo 'Invoking: ARM Sourcery Windows GNU Print Size'
+	@echo 'Invoking: ARM GNU Print Size'
 	arm-none-eabi-size  --format=berkeley core-firmware.elf
 	@echo 'Finished building: $@'
 	@echo ' '

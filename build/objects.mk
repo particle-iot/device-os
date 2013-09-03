@@ -1,5 +1,5 @@
 
 USER_OBJS :=
 
-LIBS := -lcore-common-lib
+LIBS := -lcore-common-lib -lSparkCoreCommunication
 
