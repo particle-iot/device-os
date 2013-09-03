@@ -1,10 +1,12 @@
 #include "application.h"
 #include "string.h"
 
+/*
 int toggle = 0;
 int UserLedToggle(char *ledPin);
 
 double testReal = 99.99;
+*/
 
 void setup()
 {
@@ -15,6 +17,7 @@ void setup()
 	Serial.begin(9600);
 */
 
+/*
 	pinMode(D7, OUTPUT);
 
 	//Register UserLedToggle() function
@@ -22,6 +25,7 @@ void setup()
 
 	//Register testReal variable
 	Spark.variable("testReal", &testReal, DOUBLE);
+*/
 }
 
 void loop()
@@ -44,15 +48,18 @@ void loop()
 	delay(500);
 */
 
+/*
 	// Call this in the process_command() to schedule the "UserLedToggle" function to execute
 	userFuncSchedule("UserLed", 0xc3, "D7");
 
 	// Call this in the process_command() to schedule the return of "testReal" value
 	userVarSchedule("testReal", 0xa1);
 
-	delay(500);
+	delay(1000);
+*/
 }
 
+/*
 int UserLedToggle(char *ledPin)
 {
 	if(0 == strncmp("D7", ledPin, strlen(ledPin)))
@@ -63,3 +70,4 @@ int UserLedToggle(char *ledPin)
 	}
 	return 0;
 }
+*/

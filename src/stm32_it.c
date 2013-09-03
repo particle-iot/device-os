@@ -163,25 +163,31 @@ void SysTick_Handler(void)
  *******************************************************************************/
 void RTC_IRQHandler(void)
 {
-//	/* If counter is equal to 86339: one day was elapsed */
-//	if((RTC_GetCounter() / 3600 == 23)
-//			&& (((RTC_GetCounter() % 3600) / 60) == 59)
-//			&& (((RTC_GetCounter() % 3600) % 60) == 59)) /* 23*3600 + 59*60 + 59 = 86339 */
-//	{
-//		/* Wait until last write operation on RTC registers has finished */
-//		RTC_WaitForLastTask();
+	if(RTC_GetITStatus(RTC_IT_SEC) != RESET)
+	{
+//		/* If counter is equal to 86339: one day was elapsed */
+//		if((RTC_GetCounter() / 3600 == 23)
+//				&& (((RTC_GetCounter() % 3600) / 60) == 59)
+//				&& (((RTC_GetCounter() % 3600) % 60) == 59)) /* 23*3600 + 59*60 + 59 = 86339 */
+//		{
+//			/* Wait until last write operation on RTC registers has finished */
+//			RTC_WaitForLastTask();
 //
-//		/* Reset counter value */
-//		RTC_SetCounter(0x0);
+//			/* Reset counter value */
+//			RTC_SetCounter(0x0);
 //
-//		/* Wait until last write operation on RTC registers has finished */
-//		RTC_WaitForLastTask();
+//			/* Wait until last write operation on RTC registers has finished */
+//			RTC_WaitForLastTask();
 //
-//		/* Increment no_of_days_elapsed variable here */
-//	}
+//			/* Increment no_of_days_elapsed variable here */
+//		}
 
-	/* Clear the RTC Second Interrupt pending bit */
-	RTC_ClearITPendingBit(RTC_IT_SEC);
+		/* Clear the RTC Second Interrupt pending bit */
+		RTC_ClearITPendingBit(RTC_IT_SEC);
+
+		/* Wait until last write operation on RTC registers has finished */
+		RTC_WaitForLastTask();
+	}
 }
 
 /*******************************************************************************
@@ -193,13 +199,29 @@ void RTC_IRQHandler(void)
 *******************************************************************************/
 void RTCAlarm_IRQHandler(void)
 {
-	SPARK_WLAN_SLEEP = 0;
+	if(RTC_GetITStatus(RTC_IT_ALR) != RESET)
+	{
+		SPARK_WLAN_SLEEP = 0;
 
-	/* Clear the Alarm Pending Bit */
-	RTC_ClearITPendingBit(RTC_IT_ALR);
+		/* Clear EXTI line17 pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line17);
 
-	/* Clear the EXTI Line 17/ */
-	EXTI_ClearITPendingBit(EXTI_Line17);
+		/* Check if the Wake-Up flag is set */
+		if(PWR_GetFlagStatus(PWR_FLAG_WU) != RESET)
+		{
+			/* Clear Wake Up flag */
+			PWR_ClearFlag(PWR_FLAG_WU);
+		}
+
+		/* Wait until last write operation on RTC registers has finished */
+		RTC_WaitForLastTask();
+
+		/* Clear RTC Alarm interrupt pending bit */
+		RTC_ClearITPendingBit(RTC_IT_ALR);
+
+		/* Wait until last write operation on RTC registers has finished */
+		RTC_WaitForLastTask();
+	}
 }
 #endif
 

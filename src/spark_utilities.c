@@ -141,11 +141,6 @@ void Spark_Event(char *eventName, char *eventResult)
 void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
 #if defined (SPARK_RTC_ENABLE)
-	/* Wait till RTC Second event occurs */
-	RTC_ClearFlag(RTC_FLAG_SEC);
-
-	while(RTC_GetFlagStatus(RTC_FLAG_SEC) == RESET);
-
 	/* Set the RTC Alarm */
 	RTC_SetAlarm(RTC_GetCounter() + (uint32_t)seconds);
 
@@ -163,8 +158,7 @@ void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 		break;
 
 	case SLEEP_MODE_DEEP:
-		/* Request to enter STANDBY mode (Wake Up flag is cleared in PWR_EnterSTANDBYMode function) */
-		PWR_EnterSTANDBYMode();
+		Enter_STANDBY_Mode();
 		break;
 	}
 #endif
