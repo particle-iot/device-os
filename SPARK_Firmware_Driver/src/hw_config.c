@@ -204,6 +204,8 @@ void RTC_Configuration(void)
 		/* Wait for RTC APB registers synchronisation */
 		RTC_WaitForSynchro();
 
+		BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
+
 		/* No need to configure the RTC as the RTC configuration(clock source, enable,
 	       prescaler,...) is kept after wake-up from STANDBY */
 	}
@@ -211,8 +213,11 @@ void RTC_Configuration(void)
 	{
 		/* StandBy flag is not set */
 
-		/* Reset Backup Domain */
-		BKP_DeInit();
+		if(BKP_ReadBackupRegister(BKP_DR9) == 0xA5A5)
+		{
+			/* Request to enter STANDBY mode (Wake Up flag is cleared in PWR_EnterSTANDBYMode function) */
+			PWR_EnterSTANDBYMode();
+		}
 
 		/* Enable LSE */
 		RCC_LSEConfig(RCC_LSE_ON);
@@ -247,6 +252,13 @@ void RTC_Configuration(void)
 		/* Wait until last write operation on RTC registers has finished */
 		RTC_WaitForLastTask();
 	}
+}
+
+void Enter_STANDBY_Mode(void)
+{
+	BKP_WriteBackupRegister(BKP_DR9, 0xA5A5);
+
+    NVIC_SystemReset();
 }
 #endif
 

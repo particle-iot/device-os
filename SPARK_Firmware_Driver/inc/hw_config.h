@@ -122,6 +122,7 @@ void Delay(__IO uint32_t nTime);
 
 #if defined (USE_SPARK_CORE_V02)
 void RTC_Configuration(void);
+void Enter_STANDBY_Mode(void);
 #endif
 
 void IWDG_Reset_Enable(uint32_t msTimeout);

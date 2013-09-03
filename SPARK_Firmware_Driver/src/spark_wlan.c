@@ -141,10 +141,13 @@ void Start_Smart_Config(void)
 	/* Configure to connect automatically to the AP retrieved in the Smart config process */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
 
-	if(Smart_Config_SysFlag != 0xBBBB)
+	if(USE_SYSTEM_FLAGS && (Smart_Config_SysFlag != 0xBBBB))
 	{
 		Smart_Config_SysFlag = 0xBBBB;
 		Save_SystemFlags();
+	}
+	else if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
+	{
 		BKP_WriteBackupRegister(BKP_DR2, 0xBBBB);
 	}
 
@@ -361,8 +364,12 @@ void SPARK_WLAN_Loop(void)
 	{
 		if(SPARK_WLAN_STARTED)
 		{
-			/* Put WLAN to Sleep */
 			Spark_Disconnect();
+
+			wlan_disconnect();
+
+			/* Wait until CC3000 is disconnected */
+			while (WLAN_CONNECTED == 1);
 
 			wlan_stop();
 
