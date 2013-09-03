@@ -1,4 +1,4 @@
-CXX = g++
+CXX ?= g++
 CXXFLAGS ?= -g -Wall -W -Winline -ansi
 CXXFLAGS += -Ilib/tropicssl/include -Isrc -Itests/UnitTest++/src
 LDFLAGS ?=
@@ -28,7 +28,7 @@ all: $(lib)
 
 $(lib): $(objects)
 	@echo Creating spark communication library...
-	@ar cr $(lib) $(objects)
+	@$(AR) cr $(lib) $(objects)
 
 .cpp.o:
 	@$(CXX) $(CXXFLAGS) -c -o $@ $<

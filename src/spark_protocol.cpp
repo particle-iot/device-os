@@ -343,6 +343,50 @@ void SparkProtocol::update_ready(unsigned char *buf, unsigned char token)
   separate_response(buf, token, 0x44);
 }
 
+void SparkProtocol::description(unsigned char *buf, unsigned char token,
+                                const char **function_names, int num_functions)
+{
+  unsigned short message_id = next_message_id();
+
+  buf[0] = 0x61; // acknowledgment, one-byte token
+  buf[1] = 0x45; // response code 2.05 CONTENT
+  buf[2] = message_id >> 8;
+  buf[3] = message_id & 0xff;
+  buf[4] = token;
+  buf[5] = 0xff; // payload marker
+
+  memcpy(buf + 6, "{\"f\":[", 6);
+
+  unsigned char *buf_ptr = buf + 12;
+  for (int i = 0; i < num_functions; ++i)
+  {
+    if (i)
+    {
+      *buf_ptr = ',';
+      ++buf_ptr;
+    }
+    *buf_ptr = '"';
+    ++buf_ptr;
+    int function_name_length = strlen(function_names[i]);
+    memcpy(buf_ptr, function_names[i], function_name_length);
+    buf_ptr += function_name_length;
+    *buf_ptr = '"';
+    ++buf_ptr;
+  }
+  memcpy(buf_ptr, "],\"v\":[", 7);
+  buf_ptr += 7;
+  // handle variables later
+  memcpy(buf_ptr, "]}", 2);
+  buf_ptr += 2;
+
+  int msglen = buf_ptr - buf;
+  int buflen = (msglen & ~15) + 16;
+  char pad = buflen - msglen;
+  memset(buf_ptr, pad, pad); // PKCS #7 padding
+
+  encrypt(buf, 32);
+}
+
 unsigned short SparkProtocol::next_message_id()
 {
   return ++_message_id;
