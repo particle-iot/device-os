@@ -55,12 +55,13 @@ all: core-firmware.elf secondary-outputs
 
 dependents:
 	-cd ../../core-common-lib/build && $(MAKE) clean all
+	-cd ../../core-communication-lib/build && $(MAKE) clean all
 
 # Tool invocations
-core-firmware.elf: $(OBJS) $(USER_OBJS) ../../core-common-lib/build/libcore-common-lib.a libraries/SparkCoreCommunication/libSparkCoreCommunication.a
+core-firmware.elf: $(OBJS) $(USER_OBJS) ../../core-common-lib/build/libcore-common-lib.a ../../core-communication-lib/build/libcore-communication-lib.a
 	@echo 'Building target: $@'
 	@echo 'Invoking: ARM GCC C++ Linker'
-	arm-none-eabi-g++ -T"../linker/linker_stm32f10x_md_dfu.ld" -nostartfiles -Xlinker --gc-sections -o "core-firmware.elf" -L"../../core-common-lib/build" -L"libraries/SparkCoreCommunication" -Wl,-Map,core-firmware.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-g++ -T"../linker/linker_stm32f10x_md_dfu.ld" -nostartfiles -Xlinker --gc-sections -o "core-firmware.elf" -L"../../core-common-lib/build" -L"../../core-communication-lib/build" -Wl,-Map,core-firmware.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
@@ -98,5 +99,6 @@ secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_LIST) $(SECONDARY_SIZE)
 .PHONY: all clean dependents
 .SECONDARY: post-build
 ../../core-common-lib/build/libcore-common-lib.a:
+../../core-communication-lib/build/libcore-communication-lib.a:
 
 -include ../makefile.targets

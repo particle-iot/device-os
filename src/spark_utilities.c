@@ -101,7 +101,7 @@ void Spark_Variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVa
 		User_Var_Lookup_Table[User_Var_Count].userVarType = userVarType;
 		memset(User_Var_Lookup_Table[User_Var_Count].userVarKey, 0, USER_VAR_KEY_LENGTH);
 		memcpy(User_Var_Lookup_Table[User_Var_Count].userVarKey, varKey, USER_VAR_KEY_LENGTH);
-		User_Var_Lookup_Table[User_Var_Count].userVarSchedule = FALSE;
+		User_Var_Lookup_Table[User_Var_Count].userVarSchedule = false;
 		User_Var_Lookup_Table[User_Var_Count].token = 0;
 		User_Var_Count++;
 	}
@@ -127,7 +127,7 @@ void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString))
 		memset(User_Func_Lookup_Table[User_Func_Count].userFuncArg, 0, USER_FUNC_ARG_LENGTH);
 		memset(User_Func_Lookup_Table[User_Func_Count].userFuncKey, 0, USER_FUNC_KEY_LENGTH);
 		memcpy(User_Func_Lookup_Table[User_Func_Count].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH);
-		User_Func_Lookup_Table[User_Func_Count].userFuncSchedule = FALSE;
+		User_Func_Lookup_Table[User_Func_Count].userFuncSchedule = false;
 		User_Func_Lookup_Table[User_Func_Count].token = 0;
 		User_Func_Count++;
 	}
@@ -167,9 +167,9 @@ void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 bool Spark_Connected(void)
 {
 	if(SPARK_DEVICE_ACKED)
-		return TRUE;
+		return true;
 	else
-		return FALSE;
+		return false;
 }
 
 int Spark_Connect(void)
@@ -387,12 +387,12 @@ bool userVarSchedule(const char *varKey, unsigned char token)
 	{
 		if(0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
 		{
-			User_Var_Lookup_Table[i].userVarSchedule = TRUE;
+			User_Var_Lookup_Table[i].userVarSchedule = true;
 			User_Var_Lookup_Table[i].token = token;
-			return TRUE;
+			return true;
 		}
 	}
-	return FALSE;
+	return false;
 }
 
 void userVarReturn(void)
@@ -400,9 +400,9 @@ void userVarReturn(void)
 	int i = 0;
 	for(i = 0; i < User_Var_Count; i++)
 	{
-		if(TRUE == User_Var_Lookup_Table[i].userVarSchedule)
+		if(true == User_Var_Lookup_Table[i].userVarSchedule)
 		{
-			User_Var_Lookup_Table[i].userVarSchedule = FALSE;
+			User_Var_Lookup_Table[i].userVarSchedule = false;
 
 			//Send the "Variable value" back to the server here OR in a separate thread
 			if(User_Var_Lookup_Table[i].token)
@@ -465,12 +465,12 @@ bool userFuncSchedule(const char *funcKey, unsigned char token, const char *para
 			if(paramLength > USER_FUNC_ARG_LENGTH)
 				paramLength = USER_FUNC_ARG_LENGTH;
 			memcpy(User_Func_Lookup_Table[i].userFuncArg, paramString, paramLength);
-			User_Func_Lookup_Table[i].userFuncSchedule = TRUE;
+			User_Func_Lookup_Table[i].userFuncSchedule = true;
 			User_Func_Lookup_Table[i].token = token;
-			return TRUE;
+			return true;
 		}
 	}
-	return FALSE;
+	return false;
 }
 
 void userFuncExecute(void)
@@ -478,9 +478,9 @@ void userFuncExecute(void)
 	int i = 0;
 	for(i = 0; i < User_Func_Count; i++)
 	{
-		if(TRUE == User_Func_Lookup_Table[i].userFuncSchedule)
+		if(true == User_Func_Lookup_Table[i].userFuncSchedule)
 		{
-			User_Func_Lookup_Table[i].userFuncSchedule = FALSE;
+			User_Func_Lookup_Table[i].userFuncSchedule = false;
 			User_Func_Lookup_Table[i].userFuncRet = User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
 /*
 			//Send the "Function Return" back to the server here OR in a separate thread
