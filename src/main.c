@@ -76,7 +76,7 @@ int main(void)
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
 
-#if defined (RTC_TEST_ENABLE)
+#if defined (SPARK_RTC_ENABLE)
     RTC_Configuration();
 #endif
 #endif

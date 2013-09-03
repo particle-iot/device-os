@@ -2,10 +2,12 @@
 #include "string.h"
 #include "handshake.h"
 
+/*
 int toggle = 0;
 int UserLedToggle(char *ledPin);
 
 double testReal = 99.99;
+*/
 
 unsigned char ciphertext[256];
 int err;
@@ -62,6 +64,7 @@ void setup()
 	// Serial Test
 	Serial.begin(9600);
 
+/*
 	pinMode(D7, OUTPUT);
 
 	//Register UserLedToggle() function
@@ -69,6 +72,7 @@ void setup()
 
 	//Register testReal variable
 	Spark.variable("testReal", &testReal, DOUBLE);
+*/
 }
 
 void loop()
@@ -91,15 +95,18 @@ void loop()
   Serial.println((char *)ciphertext);
 	delay(2000);
 
+/*
 	// Call this in the process_command() to schedule the "UserLedToggle" function to execute
 	userFuncSchedule("UserLed", 0xc3, "D7");
 
 	// Call this in the process_command() to schedule the return of "testReal" value
 	userVarSchedule("testReal", 0xa1);
 
-	delay(500);
+	delay(1000);
+*/
 }
 
+/*
 int UserLedToggle(char *ledPin)
 {
 	if(0 == strncmp("D7", ledPin, strlen(ledPin)))
@@ -110,3 +117,4 @@ int UserLedToggle(char *ledPin)
 	}
 	return 0;
 }
+*/

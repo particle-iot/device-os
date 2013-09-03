@@ -20,6 +20,11 @@
 
 typedef enum
 {
+	SLEEP_MODE_WLAN = 0, SLEEP_MODE_PEPH = 1, SLEEP_MODE_DEEP = 2
+} Spark_Sleep_TypeDef;
+
+typedef enum
+{
 	BOOLEAN = 1, INT = 2, STRING = 4, DOUBLE = 9
 } Spark_Data_TypeDef;
 
@@ -27,7 +32,7 @@ typedef struct Spark_Namespace {
 	void (*variable)(const char *, void *, Spark_Data_TypeDef);
 	void (*function)(const char *, int (*)(char *));
 	void (*event)(char *, char *);
-	void (*sleep)(int);
+	void (*sleep)(Spark_Sleep_TypeDef, long);
 	bool (*connected)(void);
 	int (*connect)(void);
 	int (*disconnect)(void);
@@ -36,7 +41,7 @@ typedef struct Spark_Namespace {
 void Spark_Variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
 void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString));
 void Spark_Event(char *eventName, char *eventResult);
-void Spark_Sleep(int millis);
+void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 bool Spark_Connected(void);
 int Spark_Connect(void);
 int Spark_Disconnect(void);

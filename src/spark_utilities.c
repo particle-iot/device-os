@@ -2,6 +2,7 @@
 #include "socket.h"
 #include "netapp.h"
 #include "string.h"
+#include <stdarg.h>
 
 long sparkSocket;
 sockaddr tSocketAddr;
@@ -137,9 +138,30 @@ void Spark_Event(char *eventName, char *eventResult)
 
 }
 
-void Spark_Sleep(int millis)
+void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
-	Delay(millis);
+#if defined (SPARK_RTC_ENABLE)
+	/* Set the RTC Alarm */
+	RTC_SetAlarm(RTC_GetCounter() + (uint32_t)seconds);
+
+	/* Wait until last write operation on RTC registers has finished */
+	RTC_WaitForLastTask();
+
+	switch(sleepMode)
+	{
+	case SLEEP_MODE_WLAN:
+		SPARK_WLAN_SLEEP = 1;
+		break;
+
+	case SLEEP_MODE_PEPH:
+		//To Do
+		break;
+
+	case SLEEP_MODE_DEEP:
+		Enter_STANDBY_Mode();
+		break;
+	}
+#endif
 }
 
 bool Spark_Connected(void)
