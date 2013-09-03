@@ -1,5 +1,10 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
+O_SRCS += \
+../src/coap.o \
+../src/handshake.o \
+../src/spark_protocol.o 
+
 CPP_SRCS += \
 ../src/coap.cpp \
 ../src/handshake.cpp \
