@@ -68,7 +68,7 @@ shared: libtropicssl.$(DLEXT)
 
 libtropicssl.a: $(OBJS)
 	@echo "  AR    $@"
-	ar r $@ $(OBJS)
+	$(AR) r $@ $(OBJS)
 	@echo "  RL    $@"
 	ranlib $@
 
