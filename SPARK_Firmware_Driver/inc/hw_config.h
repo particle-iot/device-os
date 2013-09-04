@@ -74,6 +74,15 @@ typedef enum
 /* External Flash memory address where core firmware will be saved for backup/restore */
 #define EXTERNAL_FLASH_BKP1_ADDRESS	((uint32_t)0x00010000)
 
+/* External Flash memory address where server public RSA key resides */
+#define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS ((uint32_t)0x00001000)
+/* Length in bytes of DER-encoded 2048-bit RSA public key */
+#define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH (294)
+/* External Flash memory address where core private RSA key resides */
+#define EXTERNAL_FLASH_CORE_PRIVATE_KEY_ADDRESS ((uint32_t)0x00002000)
+/* Length in bytes of DER-encoded 2048-bit RSA private key */
+#define EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH (1191)
+
 /* Select CC3000: ChipSelect pin low */
 #define CC3000_CS_LOW()		GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN)
 /* Deselect CC3000: ChipSelect pin high */
@@ -182,6 +191,8 @@ void FLASH_End(void);
 void FLASH_Backup(uint32_t sFLASH_Address);
 void FLASH_Restore(uint32_t sFLASH_Address);
 void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
+void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
+void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
 
 void Factory_Reset(void);
 void Reset_Device(void);

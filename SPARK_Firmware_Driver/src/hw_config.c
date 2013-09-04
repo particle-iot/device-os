@@ -1327,6 +1327,22 @@ void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 #endif
 }
 
+// keyBuffer length must be at least EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH
+void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
+{
+  sFLASH_ReadBuffer(keyBuffer,
+                    EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS,
+                    EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
+}
+
+// keyBuffer length must be at least EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH
+void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
+{
+  sFLASH_ReadBuffer(keyBuffer,
+                    EXTERNAL_FLASH_CORE_PRIVATE_KEY_ADDRESS,
+                    EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
+}
+
 void Factory_Reset(void)
 {
     //First take backup of the current application firmware to External Flash
