@@ -9,7 +9,8 @@ C_SRCS += \
 ../src/usb_desc.c \
 ../src/usb_endp.c \
 ../src/usb_istr.c \
-../src/usb_prop.c 
+../src/usb_prop.c \
+../src/newlib_stubs.c
 
 OBJS += \
 ./src/application.o \
@@ -20,7 +21,8 @@ OBJS += \
 ./src/usb_desc.o \
 ./src/usb_endp.o \
 ./src/usb_istr.o \
-./src/usb_prop.o 
+./src/usb_prop.o \
+./src/newlib_stubs.o
 
 C_DEPS += \
 ./src/application.d \
@@ -31,7 +33,8 @@ C_DEPS += \
 ./src/usb_desc.d \
 ./src/usb_endp.d \
 ./src/usb_istr.d \
-./src/usb_prop.d 
+./src/usb_prop.d \
+./src/newlib_stubs.d
 
 
 # Each subdirectory must supply rules for building sources it contributes

@@ -29,7 +29,7 @@ PROVIDE ( _Stack_Size = __Stack_Size ) ;
 
 __Stack_Init = _estack - __Stack_Size ;
 
-/*"PROVIDE" allows to easily override these values fFLASH an object file or the commmand line.*/
+/*"PROVIDE" allows to easily override these values from an object file or the commmand line.*/
 PROVIDE ( _Stack_Init = __Stack_Init ) ;
 
 /*
@@ -102,6 +102,7 @@ SECTIONS
     _ebss = .;        
   } >RAM
 
+  PROVIDE ( _end = _ebss );
  
   /* Generates an error if minimum stack size is not left in RAM */
   ._check_stack_space :
@@ -113,11 +114,12 @@ SECTIONS
 
   .ARM.attributes 0 : { KEEP (*(.ARM.attributes)) }
 
-  /* Remove debug information fFLASH the standard libraries */
+  /* Remove debug information from the standard libraries */
   /DISCARD/ : {
       *(.note.GNU-stack)
     libc.a ( * )
     libgcc.a ( * )
     libm.a ( * )
+    libg.a ( * )
   }
 }
