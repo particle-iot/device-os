@@ -52,6 +52,4 @@ extern __IO uint8_t SPARK_PROCESS_CHUNK;
 extern __IO uint8_t SPARK_LED_TOGGLE;
 extern __IO uint8_t SPARK_LED_FADE;
 
-uint8_t WLAN_SLEEP;
-
 #endif  /*__SPARK_WLAN_H*/
