@@ -19,9 +19,6 @@
 #define HIGH 0x1
 #define LOW 0x0
 
-#define true 0x1
-#define false 0x0
-
 #define STM32_DELAY_US_MULT 12 // TODO: Fix this.
 
 //#define NULL ((void *)0)

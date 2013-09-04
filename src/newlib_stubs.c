@@ -14,7 +14,7 @@ void _exit(int status)
   while(1);
 }
 
-extern "C" caddr_t _sbrk(int incr)
+caddr_t _sbrk(int incr)
 {
   extern char _end; /* Defined by the linker */
   static char *heap_end;
@@ -36,13 +36,13 @@ extern "C" caddr_t _sbrk(int incr)
 }
 
 /* Bare metal, no processes, so error */
-extern "C" int _kill(int pid, int sig)
+int _kill(int pid, int sig)
 {
   return -1;
 }
 
 /* Bare metal, no processes, so always process id 1 */
-extern "C" int _getpid(void)
+int _getpid(void)
 {
   return 1;
 }
