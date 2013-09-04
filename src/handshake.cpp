@@ -58,7 +58,7 @@ void init_rsa_context_with_public_key(rsa_context *rsa,
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
 
   rsa->len = 256;
-  mpi_read_binary(&rsa->N, pubkey, 256);
+  mpi_read_binary(&rsa->N, pubkey + 33, 256);
   mpi_read_string(&rsa->E, 16, "10001");
 }
 
@@ -68,12 +68,12 @@ void init_rsa_context_with_private_key(rsa_context *rsa,
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
 
   rsa->len = 256;
-  mpi_read_binary(&rsa->N, private_key, 256);
+  mpi_read_binary(&rsa->N, private_key + 12, 256);
   mpi_read_string(&rsa->E, 16, "10001");
-  mpi_read_binary(&rsa->D, private_key + 256, 256);
-  mpi_read_binary(&rsa->P, private_key + 512, 128);
-  mpi_read_binary(&rsa->Q, private_key + 640, 128);
-  mpi_read_binary(&rsa->DP, private_key + 768, 128);
-  mpi_read_binary(&rsa->DQ, private_key + 896, 128);
-  mpi_read_binary(&rsa->QP, private_key + 1024, 128);
+  mpi_read_binary(&rsa->D, private_key + 277, 256);
+  mpi_read_binary(&rsa->P, private_key + 537, 128);
+  mpi_read_binary(&rsa->Q, private_key + 669, 128);
+  mpi_read_binary(&rsa->DP, private_key + 800, 128);
+  mpi_read_binary(&rsa->DQ, private_key + 931, 128);
+  mpi_read_binary(&rsa->QP, private_key + 1063, 128);
 }

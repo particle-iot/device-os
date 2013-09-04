@@ -10,11 +10,13 @@
 *.so
 *.so.*
 *.dylib
+*.dSYM
 
 # Executables
 *.exe
 *.out
 *.app
+tests/testSparkCoreCommunication
 
 # Debug folder
 Debug/*
