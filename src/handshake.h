@@ -2,6 +2,10 @@
 #include "tropicssl/sha1.h"
 #include <string.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int ciphertext_from_nonce_and_id(const unsigned char *nonce,
                                  const unsigned char *id,
                                  const unsigned char *pubkey,
@@ -24,3 +28,8 @@ void init_rsa_context_with_public_key(rsa_context *rsa,
 
 void init_rsa_context_with_private_key(rsa_context *rsa,
                                        const unsigned char *private_key);
+
+#ifdef __cplusplus
+}
+#endif
+
