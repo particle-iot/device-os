@@ -358,29 +358,32 @@ int process_command()
 	// command to trigger OTA firmware upgrade
 	else if (0 == strncmp(recvBuff, API_Update, strlen(API_Update)))
 	{
-		FLASH_Backup(EXTERNAL_FLASH_BKP1_ADDRESS);
-		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Flash_Update, NULL, NULL);
+		//bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Flash_Update, NULL, NULL);
+		//Incomplete - WIP
 	}
 
 	// signal the MCU to reset and start the marvin application
 	else if (0 == strncmp(recvBuff, Flash_NoFile, strlen(Flash_NoFile)))
 	{
 		//FLASH_End();
+		//Incomplete - WIP
 	}
 
 	// command to start download and flashing the firmware
 	else if (0 == strncmp(recvBuff, Flash_Begin, strlen(Flash_Begin)))
 	{
-		SPARK_FLASH_UPDATE = 1;
-		chunkIndex = strlen(Flash_Begin) + 1;//+1 for '\n'
-		FLASH_Begin();
+		//SPARK_FLASH_UPDATE = 1;
+		//chunkIndex = strlen(Flash_Begin) + 1;//+1 for '\n'
+		//FLASH_Begin();
+		//Incomplete - WIP
 	}
 
 	// command to end the flashing process and reset the MCU
 	else if (0 == strncmp(recvBuff, Flash_End, strlen(Flash_End)))
 	{
-		SPARK_FLASH_UPDATE = 0;
-		FLASH_End();
+		//SPARK_FLASH_UPDATE = 0;
+		//FLASH_End();
+		//Incomplete - WIP
 	}
 
 	// command to set a pin high
