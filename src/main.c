@@ -64,16 +64,13 @@ int main(void)
 	switch(BKP_ReadBackupRegister(BKP_DR10))
 	{
 		case 0x5000:
-			ApplicationAddress = OTA_DFU_ADDRESS;
-			break;
-		case 0xC000:
 			ApplicationAddress = CORE_FW_ADDRESS;
 			break;
 		default:
-			if ((*(__IO uint16_t*)0x08004C04) == 0xC000)
+			if ((*(__IO uint16_t*)0x08004C04) == 0x5000)
 				ApplicationAddress = CORE_FW_ADDRESS;
 			else
-				ApplicationAddress = OTA_DFU_ADDRESS;
+				OTA_UPDATE_MODE = 1;
 			break;
 	}
 
@@ -101,12 +98,16 @@ int main(void)
 	{
 		Factory_Reset();
 	}
+	else if (OTA_UPDATE_MODE)
+	{
+		OTA_Update();
+	}
 	else if (!DFU_DEVICE_MODE)
 	{
 	    if ((BKP_ReadBackupRegister(BKP_DR10) == 0xCCCC) || (Flash_Update_SysFlag == 0xCCCC))
 	    {
 	    	//If the Factory Reset failed, restore the old working copy
-	    	FLASH_Restore(EXTERNAL_FLASH_BKP1_ADDRESS);
+	    	FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
 			/* The Device will reset at this point */
 			//while (1);
 	    }
@@ -196,7 +197,7 @@ void Timing_Decrement(void)
     {
         TimingLED--;
     }
-    else if(FACTORY_RESET_MODE || DFU_DEVICE_MODE)
+    else if(FACTORY_RESET_MODE || DFU_DEVICE_MODE || OTA_UPDATE_MODE)
     {
 #if defined (USE_SPARK_CORE_V01)
         LED_Toggle(LED1);
