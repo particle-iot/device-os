@@ -17,11 +17,18 @@ const char Device_Ok[] = "OK ";
 const char Device_Fail[] = "FAIL ";
 const char Device_IWDGRST[] = "IWDGRST";
 const char Device_CRLF[] = "\n";
+
+const char Flash_Update[] = "update";
+const char Flash_Begin[] = "flash begin";
+const char Flash_End[] = "flash end";
+const char Flash_NoFile[] = "flash no file";
+
 const char API_Alive[] = "alive";
 const char API_Who[] = "who";
 const char API_HandleMessage[] = "USERFUNC ";
 const char API_SendMessage[] = "CALLBACK ";
 const char API_Update[] = "UPDATE";
+
 char High_Dx[] = "HIGH D ";
 char Low_Dx[] = "LOW D ";
 
@@ -29,6 +36,12 @@ char digits[] = "0123456789";
 
 char recvBuff[SPARK_BUF_LEN];
 int total_bytes_received = 0;
+
+__IO uint32_t computedCRCValue;
+
+uint32_t chunkCRCValue;
+uint32_t chunkBytesAvailable;
+uint32_t chunkIndex;
 
 void (*pHandleMessage)(void);
 char msgBuff[SPARK_BUF_LEN];
@@ -57,7 +70,9 @@ struct User_Func_Lookup_Table_t
 
 static void handle_message(void);
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
-static unsigned char itoa(int cNum, char *cString);
+
+static unsigned char uitoa(unsigned int cNum, char *cString);
+static unsigned int atoui(char *cString);
 static uint8_t atoc(char data);
 
 /*
@@ -277,6 +292,38 @@ int receive_line()
     }
 }
 
+void process_chunk(void)
+{
+	char *chunkToken;
+
+	chunkToken = strtok(&recvBuff[chunkIndex], "\n");
+	if(chunkToken != NULL)
+	{
+		chunkCRCValue = atoui(chunkToken);
+		chunkIndex = chunkIndex + strlen(chunkToken) + 1;//+1 for '\n'
+	}
+
+	chunkToken = strtok(NULL, "\n");
+	if(chunkToken != NULL)
+	{
+		chunkBytesAvailable = atoui(chunkToken);
+		chunkIndex = chunkIndex + strlen(chunkToken) + 1;//+1 for '\n'
+	}
+
+	if(chunkBytesAvailable)
+	{
+		char CRCStr[11];
+		memset(CRCStr, 0, 11);
+		computedCRCValue = Compute_CRC32((uint8_t *)&recvBuff[chunkIndex], chunkBytesAvailable);
+		if(chunkCRCValue == computedCRCValue)
+		{
+			FLASH_Update((uint8_t *)&recvBuff[chunkIndex], chunkBytesAvailable);
+		}
+		uitoa(computedCRCValue, CRCStr);
+		Spark_Send_Device_Message(sparkSocket, (char *)CRCStr, NULL, NULL);
+	}
+}
+
 // process the contents of recvBuff
 // returns number of bytes transmitted or -1 on error
 int process_command()
@@ -298,11 +345,11 @@ int process_command()
 		}
 		TimingSparkAliveTimeout = 0;
 
-		if(IWDG_SYSTEM_RESET)
-		{
-			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_IWDGRST, NULL, NULL);
-		}
-		else
+//		if(IWDG_SYSTEM_RESET)
+//		{
+//			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_IWDGRST, NULL, NULL);
+//		}
+//		else
 		{
 			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
 		}
@@ -311,7 +358,29 @@ int process_command()
 	// command to trigger OTA firmware upgrade
 	else if (0 == strncmp(recvBuff, API_Update, strlen(API_Update)))
 	{
-		Start_OTA_Update();
+		FLASH_Backup(EXTERNAL_FLASH_BKP1_ADDRESS);
+		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Flash_Update, NULL, NULL);
+	}
+
+	// signal the MCU to reset and start the marvin application
+	else if (0 == strncmp(recvBuff, Flash_NoFile, strlen(Flash_NoFile)))
+	{
+		//FLASH_End();
+	}
+
+	// command to start download and flashing the firmware
+	else if (0 == strncmp(recvBuff, Flash_Begin, strlen(Flash_Begin)))
+	{
+		SPARK_FLASH_UPDATE = 1;
+		chunkIndex = strlen(Flash_Begin) + 1;//+1 for '\n'
+		FLASH_Begin();
+	}
+
+	// command to end the flashing process and reset the MCU
+	else if (0 == strncmp(recvBuff, Flash_End, strlen(Flash_End)))
+	{
+		SPARK_FLASH_UPDATE = 0;
+		FLASH_End();
 	}
 
 	// command to set a pin high
@@ -365,6 +434,13 @@ int process_command()
 	else
 	{
 		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
+	}
+
+	if(SPARK_FLASH_UPDATE)
+	{
+		TimingSparkAliveTimeout = 0;
+		process_chunk();
+		chunkIndex = 0;
 	}
 
 	return bytes_sent;
@@ -504,7 +580,7 @@ void sendMessage(char *message)
 //void sendMessageWithData(char *message, char *data, long size)
 //{
 //	char lenStr[11];
-//	int len = itoa(size, &lenStr[0]);
+//	unsigned char len = uitoa(size, &lenStr[0]);
 //	lenStr[len] = '\0';
 //	Spark_Send_Device_Message(sparkSocket, (char *)API_SendMessage, (char *)message, (char *)lenStr);
 //}
@@ -516,7 +592,7 @@ static void handle_message(void)
 		pHandleMessage = NULL;
 		char retStr[11];
 		int msgResult = handleMessage(msgBuff);
-		int retLen = itoa(msgResult, retStr);
+		unsigned char retLen = uitoa(msgResult, retStr);
 		retStr[retLen] = '\0';
 		Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_HandleMessage, (char *)retStr);
 	}
@@ -557,11 +633,11 @@ static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, c
     return retVal;
 }
 
-// brief  Convert integer to ASCII in decimal base
-static unsigned char itoa(int cNum, char *cString)
+// Convert unsigned integer to ASCII in decimal base
+static unsigned char uitoa(unsigned int cNum, char *cString)
 {
     char* ptr;
-    int uTemp = cNum;
+    unsigned int uTemp = cNum;
     unsigned char length;
 
     // value 0 is a special case
@@ -592,6 +668,21 @@ static unsigned char itoa(int cNum, char *cString)
     }
 
     return length;
+}
+
+// Convert ASCII to unsigned integer
+static unsigned int atoui(char *cString)
+{
+	unsigned int cNum = 0;
+	if (cString)
+	{
+		while (*cString && *cString <= '9' && *cString >= '0')
+		{
+			cNum = (cNum * 10) + (*cString - '0');
+			cString++;
+		}
+	}
+	return cNum;
 }
 
 //Convert nibble to hexdecimal from ASCII

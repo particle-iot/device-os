@@ -59,8 +59,8 @@ extern LINE_CODING linecoding;
 int main(void)
 {
 #ifdef DFU_BUILD_ENABLE
-	/* Set the Vector Table(VT) base location at 0xC000 */
-	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0xC000);
+	/* Set the Vector Table(VT) base location at 0x5000 */
+	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x5000);
 
 	USE_SYSTEM_FLAGS = 1;
 #endif
@@ -71,6 +71,9 @@ int main(void)
 #endif
 
 	Set_System();
+
+	/* Enable CRC clock */
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
 
 #if defined (USE_SPARK_CORE_V02)
     LED_SetRGBColor(RGB_COLOR_WHITE);
@@ -126,7 +129,7 @@ int main(void)
 
 #ifdef SPARK_WIRING_ENABLE
 #ifdef SPARK_WLAN_ENABLE
-		if(SPARK_DEVICE_ACKED && !IWDG_SYSTEM_RESET)
+		if(SPARK_DEVICE_ACKED && !SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 		{
 #endif
 
@@ -171,6 +174,10 @@ void Timing_Decrement(void)
     if (TimingLED != 0x00)
     {
         TimingLED--;
+    }
+    else if(SPARK_FLASH_UPDATE)
+    {
+    	//Do nothing
     }
     else if(SPARK_LED_FADE)
     {

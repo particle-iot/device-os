@@ -153,6 +153,13 @@ void SysTick_Handler(void)
 	Timing_Decrement();
 }
 
+/******************************************************************************/
+/*                 STM32 Peripherals Interrupt Handlers                   */
+/*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
+/*  available peripheral interrupt handler's name please refer to the startup */
+/*  file (startup_stm32xxx.S).                                            */
+/******************************************************************************/
+
 #if defined (USE_SPARK_CORE_V02)
 /*******************************************************************************
  * Function Name  : RTC_IRQHandler
@@ -224,13 +231,6 @@ void RTCAlarm_IRQHandler(void)
 	}
 }
 #endif
-
-/******************************************************************************/
-/*                 STM32 Peripherals Interrupt Handlers                   */
-/*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
-/*  available peripheral interrupt handler's name please refer to the startup */
-/*  file (startup_stm32xxx.S).                                            */
-/******************************************************************************/
 
 /*******************************************************************************
  * Function Name  : DMA1_Channel5_IRQHandler
