@@ -459,6 +459,20 @@ void SPARK_WLAN_Loop(void)
 
 void SPARK_WLAN_Timing(void)
 {
+/*
+	if (TimingSparkOTATimeout >= TIMING_SPARK_OTA_TIMEOUT)
+	{
+		if (BKP_ReadBackupRegister(BKP_DR10) != 0xCCCC)
+			BKP_WriteBackupRegister(BKP_DR10, 0xC000);
+
+		NVIC_SystemReset();
+	}
+	else
+	{
+		TimingSparkOTATimeout++;
+	}
+*/
+
     if (WLAN_CONNECTED && !SPARK_WLAN_SLEEP && !SPARK_SOCKET_CONNECTED)
     {
 		if (!Spark_Connect_Count)

@@ -1346,10 +1346,19 @@ void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
 void Factory_Reset(void)
 {
     //First take backup of the current application firmware to External Flash
-    FLASH_Backup(EXTERNAL_FLASH_BKP1_ADDRESS);
+    FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
 
     //Restore the Factory programmed application firmware from External Flash
-	FLASH_Restore(EXTERNAL_FLASH_FACT_ADDRESS);
+	FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
+}
+
+void OTA_Update(void)
+{
+    //First take backup of the current application firmware to External Flash
+    FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
+
+    //Restore the OTA programmed application firmware from External Flash
+	FLASH_Restore(EXTERNAL_FLASH_OTA_ADDRESS);
 }
 
 /*******************************************************************************
@@ -1360,21 +1369,11 @@ void Factory_Reset(void)
 *******************************************************************************/
 void Reset_Device(void)
 {
-	BKP_WriteBackupRegister(BKP_DR10, 0xC000);
+	BKP_WriteBackupRegister(BKP_DR10, 0x5000);
 
     USB_Cable_Config(DISABLE);
 
     NVIC_SystemReset();
-}
-
-void Start_OTA_Update(void)
-{
-	Flash_Update_SysFlag = 0x5000;
-	Save_SystemFlags();
-
-	BKP_WriteBackupRegister(BKP_DR10, 0x5000);
-
-	NVIC_SystemReset();
 }
 
 /**

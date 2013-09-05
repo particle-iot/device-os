@@ -60,8 +60,7 @@ typedef enum
 
 /* Flash memory address where various firmwares are located */
 #define USB_DFU_ADDRESS				((uint32_t)0x08000000)
-#define OTA_DFU_ADDRESS				((uint32_t)0x08005000)
-#define CORE_FW_ADDRESS				((uint32_t)0x0800C000)
+#define CORE_FW_ADDRESS				((uint32_t)0x08005000)
 
 /* Internal Flash memory address where the System Flags will be saved and loaded from  */
 #define SYSTEM_FLAGS_ADDRESS		((uint32_t)0x08004C00)
@@ -70,9 +69,11 @@ typedef enum
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE	((uint16_t)0x400)
 /* External Flash memory address where Factory programmed core firmware is located */
-#define EXTERNAL_FLASH_FACT_ADDRESS	((uint32_t)0x00001000)
+#define EXTERNAL_FLASH_FAC_ADDRESS	((uint32_t)0x00010000)
+/* External Flash memory address where OTA upgraded core firmware will be saved */
+#define EXTERNAL_FLASH_OTA_ADDRESS	((uint32_t)0x00020000)
 /* External Flash memory address where core firmware will be saved for backup/restore */
-#define EXTERNAL_FLASH_BKP1_ADDRESS	((uint32_t)0x00010000)
+#define EXTERNAL_FLASH_BKP_ADDRESS	((uint32_t)0x00030000)
 
 /* External Flash memory address where server public RSA key resides */
 #define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS ((uint32_t)0x00001000)
@@ -195,8 +196,8 @@ void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
 void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
 
 void Factory_Reset(void);
+void OTA_Update(void);
 void Reset_Device(void);
-void Start_OTA_Update(void);
 
 /* Hardware CRC32 calculation */
 uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize);
