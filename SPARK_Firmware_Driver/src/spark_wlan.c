@@ -170,6 +170,11 @@ void Start_Smart_Config(void)
 	LED_On(LED_RGB);
 	SPARK_LED_TOGGLE = 1;
 #endif
+
+	TimingSparkProcessAPI = 0;
+	TimingSparkAliveTimeout = 0;
+	TimingSparkResetTimeout = 0;
+	TimingSparkOTATimeout = 0;
 }
 
 /* WLAN Application related callbacks passed to wlan_init */
@@ -364,16 +369,21 @@ void SPARK_WLAN_Loop(void)
 	{
 		if(SPARK_WLAN_STARTED)
 		{
-			Spark_Disconnect();
+			//Spark_Disconnect();
 
-			wlan_disconnect();
+			CC3000_Write_Enable_Pin(WLAN_DISABLE);
 
-			/* Wait until CC3000 is disconnected */
-			while (WLAN_CONNECTED == 1);
+			Delay(100);
 
-			wlan_stop();
+			LED_SetRGBColor(RGB_COLOR_GREEN);
+			LED_On(LED_RGB);
 
 			SPARK_WLAN_STARTED = 0;
+			WLAN_CONNECTED = 0;
+			SPARK_SOCKET_CONNECTED = 0;
+			SPARK_LED_TOGGLE = 1;
+			SPARK_LED_FADE = 0;
+			Spark_Connect_Count = 0;
 		}
 	}
 	else
@@ -382,9 +392,17 @@ void SPARK_WLAN_Loop(void)
 		{
 			wlan_start(0);
 
-			SPARK_WLAN_STARTED = 1;
+			Delay(100);
 
-			wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+			SPARK_WLAN_STARTED = 1;
+			SPARK_DEVICE_ACKED = 0;
+			SPARK_FLASH_UPDATE = 0;
+			SPARK_PROCESS_CHUNK = 0;
+
+			TimingSparkProcessAPI = 0;
+			TimingSparkAliveTimeout = 0;
+			TimingSparkResetTimeout = 0;
+			TimingSparkOTATimeout = 0;
 		}
 	}
 
