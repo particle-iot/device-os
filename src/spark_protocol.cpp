@@ -44,6 +44,7 @@ CoAPMessageType::Enum
     case CoAPCode::POST:
       switch (buf[6])
       {
+		case 'h': return CoAPMessageType::HELLO;
         case 'f': return CoAPMessageType::FUNCTION_CALL;
         case 'u': return CoAPMessageType::UPDATE_BEGIN;
         case 'c': return CoAPMessageType::CHUNK;
