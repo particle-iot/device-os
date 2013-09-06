@@ -26,6 +26,7 @@ char device_name[] = "CC3000";
 /* Manual connect credentials; only used if WLAN_MANUAL_CONNECT == 1 */
 char _ssid[] = "ssid";
 char _password[] = "password";
+// Auth options are WLAN_SEC_UNSEC, WLAN_SEC_WPA, WLAN_SEC_WEP, and WLAN_SEC_WPA2
 unsigned char _auth = WLAN_SEC_WPA2;
 
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
