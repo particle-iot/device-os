@@ -6,7 +6,7 @@ __IO uint32_t TimingSparkAliveTimeout;
 __IO uint32_t TimingSparkResetTimeout;
 __IO uint32_t TimingSparkOTATimeout;
 
-uint8_t WLAN_MANUAL_CONNECT = 0;//For Manual connection, set this to 1
+uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
 uint8_t WLAN_SMART_CONFIG_START;
 uint8_t WLAN_SMART_CONFIG_STOP;
 uint8_t WLAN_SMART_CONFIG_FINISHED;
@@ -22,6 +22,11 @@ char aucCC3000_prefix[] = {'T', 'T', 'T'};
 const unsigned char smartconfigkey[] = "sparkdevices2013";	//16 bytes
 /* device name used by smart config response */
 char device_name[] = "CC3000";
+
+/* Manual connect credentials; only used if WLAN_MANUAL_CONNECT == 1 */
+char _ssid[] = "ssid";
+char _password[] = "password";
+unsigned char _auth = WLAN_SEC_WPA2;
 
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
@@ -397,7 +402,7 @@ void SPARK_WLAN_Loop(void)
 	{
 	    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
 	    /* Edit the below line before use*/
-	    wlan_connect(WLAN_SEC_WPA2, "ssid", 4, NULL, "password", 8);
+	    wlan_connect(WLAN_SEC_WPA2, _ssid, strlen(_ssid), NULL, _password, strlen(_password));
 	    WLAN_MANUAL_CONNECT = 0;
 	}
 
