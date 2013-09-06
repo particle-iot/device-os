@@ -83,16 +83,6 @@ typedef enum
 /* Length in bytes of DER-encoded 2048-bit RSA private key */
 #define EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH (1191)
 
-/* Select CC3000: ChipSelect pin low */
-#define CC3000_CS_LOW()		GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN)
-/* Deselect CC3000: ChipSelect pin high */
-#define CC3000_CS_HIGH()	GPIO_SetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN)
-
-/* Select sFLASH: Chip Select pin low */
-#define sFLASH_CS_LOW()		GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
-/* Deselect sFLASH: Chip Select pin high */
-#define sFLASH_CS_HIGH()	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN)
-
 #if defined (USE_SPARK_CORE_V02)
 //Extended LED Types
 #define LED_RED				LED3
@@ -163,6 +153,8 @@ void CC3000_SPI_Init(void);
 void CC3000_DMA_Config(CC3000_DMADirection_TypeDef Direction, uint8_t* buffer, uint16_t NumData);
 void CC3000_SPI_DMA_Init(void);
 void CC3000_SPI_DMA_Channels(FunctionalState NewState);
+void CC3000_CS_LOW(void);
+void CC3000_CS_HIGH(void);
 
 /* CC3000 Hardware related callbacks passed to wlan_init */
 long CC3000_Read_Interrupt_Pin(void);
@@ -173,6 +165,8 @@ void CC3000_Write_Enable_Pin(unsigned char val);
 /* Serial Flash Hardware related methods */
 void sFLASH_SPI_DeInit(void);
 void sFLASH_SPI_Init(void);
+void sFLASH_CS_LOW(void);
+void sFLASH_CS_HIGH(void);
 
 /* USB hardware peripheral related methods */
 void USB_Disconnect_Config(void);

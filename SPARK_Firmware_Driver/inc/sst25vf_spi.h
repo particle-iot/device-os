@@ -56,7 +56,7 @@ void sFLASH_WriteDisable(void);
 void sFLASH_WaitForWriteEnd(void);
 
 /* Flash Self Test Routine */
-void sFLASH_SelfTest(void);
+int sFLASH_SelfTest(void);
 
 extern void Delay(__IO uint32_t nTime);
 
