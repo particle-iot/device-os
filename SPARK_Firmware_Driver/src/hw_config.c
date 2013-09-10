@@ -69,6 +69,9 @@ uint32_t EraseCounter = 0;
 uint32_t NbrOfPage = 0;
 volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
 
+__IO uint16_t CC3000_SPI_CR;
+__IO uint16_t sFLASH_SPI_CR;
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -774,6 +777,8 @@ void CC3000_SPI_Init(void)
 	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
 	SPI_InitStructure.SPI_CRCPolynomial = 7;
 	SPI_Init(CC3000_SPI, &SPI_InitStructure);
+
+	CC3000_SPI_CR = CC3000_SPI->CR1;
 }
 
 /**
@@ -854,6 +859,21 @@ void CC3000_SPI_DMA_Channels(FunctionalState NewState)
 	DMA_Cmd(CC3000_SPI_RX_DMA_CHANNEL, NewState);
 	/* Enable/Disable DMA TX Channel */
 	DMA_Cmd(CC3000_SPI_TX_DMA_CHANNEL, NewState);
+}
+
+/* Select CC3000: ChipSelect pin low */
+void CC3000_CS_LOW(void)
+{
+	CC3000_SPI->CR1 &= ((uint16_t)0xFFBF);
+	sFLASH_CS_HIGH();
+	CC3000_SPI->CR1 = CC3000_SPI_CR | ((uint16_t)0x0040);
+	GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN);
+}
+
+/* Deselect CC3000: ChipSelect pin high */
+void CC3000_CS_HIGH(void)
+{
+	GPIO_SetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN);
 }
 
 /* CC3000 Hardware related callbacks passed to wlan_init */
@@ -1008,16 +1028,33 @@ void sFLASH_SPI_Init(void)
 	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
 	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
 	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
-	SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-	SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+	SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+	SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
 	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
 	SPI_InitStructure.SPI_BaudRatePrescaler = sFLASH_SPI_BAUDRATE_PRESCALER;
 	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
 	SPI_InitStructure.SPI_CRCPolynomial = 7;
 	SPI_Init(sFLASH_SPI, &SPI_InitStructure);
 
+	sFLASH_SPI_CR = sFLASH_SPI->CR1;
+
 	/*!< Enable the sFLASH_SPI  */
 	SPI_Cmd(sFLASH_SPI, ENABLE);
+}
+
+/* Select sFLASH: Chip Select pin low */
+void sFLASH_CS_LOW(void)
+{
+	sFLASH_SPI->CR1 &= ((uint16_t)0xFFBF);
+	CC3000_CS_HIGH();
+	sFLASH_SPI->CR1 = sFLASH_SPI_CR | ((uint16_t)0x0040);
+	GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN);
+}
+
+/* Deselect sFLASH: Chip Select pin high */
+void sFLASH_CS_HIGH(void)
+{
+	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN);
 }
 
 /*******************************************************************************

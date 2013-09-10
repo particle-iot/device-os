@@ -427,7 +427,7 @@ void sFLASH_WaitForWriteEnd(void)
   sFLASH_CS_HIGH();
 }
 
-void sFLASH_SelfTest(void)
+int sFLASH_SelfTest(void)
 {
   uint32_t FLASH_TestAddress = 0x000000;
   //Note: Make sure BufferSize should be Even and not Zero
@@ -436,8 +436,8 @@ void sFLASH_SelfTest(void)
   uint8_t Rx_Buffer[BufferSize];
   uint8_t Index = 0;
   uint32_t FlashID = 0;
-  uint8_t TestStatus = 0;
   uint8_t LEDToggle = 0;
+  int TestStatus = -1;
 
   /* Get SPI Flash ID */
   FlashID = sFLASH_ReadID();
@@ -461,30 +461,13 @@ void sFLASH_SelfTest(void)
       if (Tx_Buffer[Index] != Rx_Buffer[Index])
       {
         //FAILED : Transmitted and Received data by SPI are different
-        TestStatus = 0;
+    	TestStatus = -1;
       }
       else
       {
         //PASSED : Transmitted and Received data by SPI are same
-        TestStatus = 1;
+    	TestStatus = 0;
       }
-    }
-
-    /* Display Test Status */
-    if (TestStatus != 0)
-    {
-      LED_On(LED2);
-    }
-    else
-    {
-      LEDToggle = 10;
-      while (LEDToggle--)
-      {
-        /* Toggle the LED2 every 250ms */
-        LED_Toggle(LED2);
-        Delay(250);
-      }
-      LED_Off(LED2);
     }
 
     /* Perform an erase in the Flash followed by a read of the written data */
@@ -500,30 +483,15 @@ void sFLASH_SelfTest(void)
       if (Rx_Buffer[Index] != 0xFF)
       {
         //FAILED : Specified sector part is not well erased
-        TestStatus = 0;
+    	TestStatus = -1;
       }
       else
       {
         //PASSED : Specified sector part is erased
-    	TestStatus = 1;
-      }
-
-      /* Display Test Status */
-      if (TestStatus != 0)
-      {
-        LED_On(LED2);
-      }
-      else
-      {
-        LEDToggle = 10;
-        while (LEDToggle--)
-        {
-          /* Toggle the LED2 every 250ms */
-          LED_Toggle(LED2);
-          Delay(250);
-        }
-        LED_Off(LED2);
+    	TestStatus = 0;
       }
     }
   }
+
+  return TestStatus;
 }
