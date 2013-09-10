@@ -15,7 +15,7 @@ class SparkProtocol
              const unsigned char *pubkey,
              const unsigned char *encrypted_credentials,
              const unsigned char *signature);
-    CoAPMessageType::Enum received_message(unsigned char *buf);
+    CoAPMessageType::Enum received_message(unsigned char *buf, int length);
     void hello(unsigned char *buf);
     void hello(unsigned char *buf, unsigned char token);
     void function_return(unsigned char *buf, unsigned char token);

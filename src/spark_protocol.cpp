@@ -27,31 +27,33 @@ int SparkProtocol::init(const unsigned char *private_key,
 }
 
 CoAPMessageType::Enum
-  SparkProtocol::received_message(unsigned char *buf)
+  SparkProtocol::received_message(unsigned char *buf, int length)
 {
   aes_setkey_dec(&aes, key, 128);
-  aes_crypt_cbc(&aes, AES_DECRYPT, 32, iv, buf, buf);
+  aes_crypt_cbc(&aes, AES_DECRYPT, length, iv, buf, buf);
+
+  char path = buf[ 5 + (buf[0] & 0x0F) ];
 
   switch (CoAP::code(buf))
   {
     case CoAPCode::GET:
-      switch (buf[6])
+      switch (path)
       {
         case 'v': return CoAPMessageType::VARIABLE_REQUEST;
         case 'd': return CoAPMessageType::DESCRIBE;
         default: return CoAPMessageType::ERROR;
       }
     case CoAPCode::POST:
-      switch (buf[6])
+      switch (path)
       {
-		case 'h': return CoAPMessageType::HELLO;
+        case 'h': return CoAPMessageType::HELLO;
         case 'f': return CoAPMessageType::FUNCTION_CALL;
         case 'u': return CoAPMessageType::UPDATE_BEGIN;
         case 'c': return CoAPMessageType::CHUNK;
         default: return CoAPMessageType::ERROR;
       }
     case CoAPCode::PUT:
-      switch (buf[6])
+      switch (path)
       {
         case 'k': return CoAPMessageType::KEY_CHANGE;
         case 'u': return CoAPMessageType::UPDATE_DONE;

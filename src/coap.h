@@ -1,6 +1,5 @@
 namespace CoAPMessageType {
   enum Enum {
-	HELLO,
     FUNCTION_CALL,
     VARIABLE_REQUEST,
     CHUNK,
@@ -8,7 +7,8 @@ namespace CoAPMessageType {
     UPDATE_DONE,
     KEY_CHANGE,
     ERROR,
-    DESCRIBE
+    DESCRIBE,
+    HELLO
   };
 }
 

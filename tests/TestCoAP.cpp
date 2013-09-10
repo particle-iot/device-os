@@ -236,7 +236,7 @@ SUITE(CoAP)
       0xea, 0x48, 0x63, 0xd9, 0xf0, 0x30, 0xd3, 0xce,
       0xba, 0x39, 0xff, 0x46, 0x30, 0x9b, 0x24, 0xfc };
     init();
-    message_type = spark_protocol.received_message(ciphertext);
+    message_type = spark_protocol.received_message(ciphertext, 32);
     CHECK_EQUAL(CoAPMessageType::FUNCTION_CALL, message_type);
   }
 
@@ -248,7 +248,7 @@ SUITE(CoAP)
       0xf8, 0x73, 0x98, 0xc3, 0xe6, 0x8e, 0x7c, 0x34,
       0xea, 0xb8, 0x8c, 0xec, 0x2b, 0xd5, 0x25, 0xb0 };
     init();
-    message_type = spark_protocol.received_message(ciphertext);
+    message_type = spark_protocol.received_message(ciphertext, 32);
     CHECK_EQUAL(CoAPMessageType::VARIABLE_REQUEST, message_type);
   }
 
@@ -322,25 +322,23 @@ SUITE(CoAP)
       0xF2, 0x52, 0x8B, 0x73, 0xE0, 0xEC, 0xA2, 0x5E,
       0xAB, 0x0B, 0x54, 0x0E, 0x0D, 0xA8, 0x5A, 0x6F };
     init();
-    message_type = spark_protocol.received_message(ciphertext);
+    message_type = spark_protocol.received_message(ciphertext, 528);
     CHECK_EQUAL(CoAPMessageType::KEY_CHANGE, message_type);
   }
 
-/*
   TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesUpdateBegin)
   {
-    uint8_t ciphertext[] = {
+    uint8_t ciphertext[16] = {
       0x32, 0x28, 0x65, 0x77, 0x5B, 0xEE, 0xA8, 0x08,
       0xA9, 0xC6, 0x2F, 0x76, 0x44, 0x1A, 0xFF, 0x91 };
     init();
-    message_type = spark_protocol.received_message(ciphertext);
+    message_type = spark_protocol.received_message(ciphertext, 16);
     CHECK_EQUAL(CoAPMessageType::UPDATE_BEGIN, message_type);
   }
-*/
 
   TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesChunk)
   {
-    uint8_t ciphertext[] = {
+    uint8_t ciphertext[96] = {
       0x59, 0xE4, 0xEA, 0xC2, 0xE2, 0x4B, 0x0D, 0xEE,
       0xDC, 0x0F, 0x9C, 0x08, 0x02, 0x21, 0xA8, 0xB3,
       0xCC, 0xE4, 0xE2, 0xA8, 0x7E, 0xE4, 0x9A, 0xC3,
@@ -354,18 +352,17 @@ SUITE(CoAP)
       0xA2, 0x08, 0x1C, 0xB1, 0x99, 0xDE, 0xF1, 0x63,
       0x5A, 0x33, 0x92, 0xDB, 0xE3, 0xC5, 0xDF, 0x6D };
     init();
-    message_type = spark_protocol.received_message(ciphertext);
+    message_type = spark_protocol.received_message(ciphertext, 96);
     CHECK_EQUAL(CoAPMessageType::CHUNK, message_type);
   }
 
-/*
   TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesUpdateDone)
   {
     uint8_t ciphertext[16] = {
       0x5C, 0xC2, 0x80, 0x64, 0xAC, 0x11, 0xF4, 0x33,
       0x32, 0x82, 0x05, 0x7A, 0x9E, 0x8F, 0xAD, 0x2A };
     init();
-    message_type = spark_protocol.received_message(ciphertext);
+    message_type = spark_protocol.received_message(ciphertext, 16);
     CHECK_EQUAL(CoAPMessageType::UPDATE_DONE, message_type);
   }
 
@@ -375,10 +372,19 @@ SUITE(CoAP)
       0xd5, 0xb7, 0xf7, 0xfe, 0x9f, 0x2d, 0xca, 0xac,
       0xda, 0x15, 0x10, 0xa3, 0x27, 0x8b, 0xa7, 0xa9 };
     init();
-    message_type = spark_protocol.received_message(ciphertext);
+    message_type = spark_protocol.received_message(ciphertext, 16);
     CHECK_EQUAL(CoAPMessageType::DESCRIBE, message_type);
   }
-*/
+
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesHello)
+  {
+    uint8_t ciphertext[16] = {
+      0x89, 0x5f, 0xeb, 0x18, 0x07, 0xba, 0x1d, 0xbf,
+      0x11, 0x26, 0x55, 0x04, 0x75, 0x28, 0x2a, 0xef };
+    init();
+    message_type = spark_protocol.received_message(ciphertext, 16);
+    CHECK_EQUAL(CoAPMessageType::HELLO, message_type);
+  }
 
   TEST_FIXTURE(CoAPFixture, HelloMatchesOpenSSL)
   {
