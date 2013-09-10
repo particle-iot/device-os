@@ -101,12 +101,10 @@ int main(void)
 
 #ifdef DFU_BUILD_ENABLE
 	Load_SystemFlags();
+#endif
 
-	if(Flash_Update_SysFlag != 0xC000)
-	{
-		Flash_Update_SysFlag = 0xC000;
-		Save_SystemFlags();
-	}
+#ifdef SPARK_SFLASH_ENABLE
+	sFLASH_Init();
 #endif
 
 #ifdef SPARK_WIRING_ENABLE

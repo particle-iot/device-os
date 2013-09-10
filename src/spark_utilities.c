@@ -345,45 +345,41 @@ int process_command()
 		}
 		TimingSparkAliveTimeout = 0;
 
-//		if(IWDG_SYSTEM_RESET)
-//		{
-//			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_IWDGRST, NULL, NULL);
-//		}
-//		else
-		{
-			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
-		}
+		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
 	}
 
 	// command to trigger OTA firmware upgrade
 	else if (0 == strncmp(recvBuff, API_Update, strlen(API_Update)))
 	{
-		//bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Flash_Update, NULL, NULL);
-		//Incomplete - WIP
+		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Flash_Update, NULL, NULL);
 	}
 
 	// signal the MCU to reset and start the marvin application
 	else if (0 == strncmp(recvBuff, Flash_NoFile, strlen(Flash_NoFile)))
 	{
 		//FLASH_End();
-		//Incomplete - WIP
 	}
 
 	// command to start download and flashing the firmware
 	else if (0 == strncmp(recvBuff, Flash_Begin, strlen(Flash_Begin)))
 	{
-		//SPARK_FLASH_UPDATE = 1;
-		//chunkIndex = strlen(Flash_Begin) + 1;//+1 for '\n'
-		//FLASH_Begin();
-		//Incomplete - WIP
+		SPARK_FLASH_UPDATE = 1;
+		chunkIndex = strlen(Flash_Begin) + 1;//+1 for '\n'
+		FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS);
 	}
 
 	// command to end the flashing process and reset the MCU
 	else if (0 == strncmp(recvBuff, Flash_End, strlen(Flash_End)))
 	{
-		//SPARK_FLASH_UPDATE = 0;
-		//FLASH_End();
-		//Incomplete - WIP
+		SPARK_FLASH_UPDATE = 0;
+		FLASH_End();
+	}
+
+	if(SPARK_FLASH_UPDATE)
+	{
+		TimingSparkAliveTimeout = 0;
+		process_chunk();
+		chunkIndex = 0;
 	}
 
 	// command to set a pin high
@@ -437,13 +433,6 @@ int process_command()
 	else
 	{
 		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
-	}
-
-	if(SPARK_FLASH_UPDATE)
-	{
-		TimingSparkAliveTimeout = 0;
-		process_chunk();
-		chunkIndex = 0;
 	}
 
 	return bytes_sent;

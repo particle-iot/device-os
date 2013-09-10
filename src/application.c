@@ -9,38 +9,43 @@ int UserLedToggle(char *ledPin);
 double testReal = 99.99;
 */
 
+/*
 unsigned char ciphertext[256];
 int err, encrypt = 1;
 
-unsigned char nonce[40] ={
-  1, 1, 1, 1, 1, 1, 1, 1,
-  1, 1, 1, 1, 1, 1, 1, 1,
-  1, 1, 1, 1, 1, 1, 1, 1,
-  1, 1, 1, 1, 1, 1, 1, 1,
-  1, 1, 1, 1, 1, 1, 1, 1 };
+unsigned char nonce[40] =
+{
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1
+};
 unsigned char id[12];
 unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
+*/
 
 void setup()
 {
 	// runs once
 
+/*
 	memset(ciphertext, 0, 256);
-  memcpy(id, (void *)0x01fff7e8, 12);
-  FLASH_Read_ServerPublicKey(pubkey);
+	memcpy(id, (void *)0x01fff7e8, 12);
+	FLASH_Read_ServerPublicKey(pubkey);
 
 	pinMode(D7, OUTPUT);
-  digitalWrite(D7, LOW);
-  delay(500);
-  digitalWrite(D7, HIGH);
-  delay(500);
-  digitalWrite(D7, LOW);
+	digitalWrite(D7, LOW);
+	delay(500);
+	digitalWrite(D7, HIGH);
+	delay(500);
+	digitalWrite(D7, LOW);
+*/
 
 /*
 	// Serial Test
 	Serial.begin(9600);
 */
-
 
 /*
 	//Register UserLedToggle() function
@@ -62,7 +67,9 @@ void loop()
 	{
 		Serial.write(Serial.read());
 	}
+*/
 
+/*
 	// Serial print test
 	Serial.print("Hello ");
 	Serial.println("Spark");
@@ -73,6 +80,7 @@ void loop()
 	delay(2000);
 */
 
+/*
 	if(encrypt)
 	{
 		err = ciphertext_from_nonce_and_id(nonce, id, pubkey, ciphertext);
@@ -83,6 +91,7 @@ void loop()
 		}
 		encrypt = 0;
 	}
+*/
 
 /*
 	// Call this in the process_command() to schedule the "UserLedToggle" function to execute
