@@ -37,7 +37,6 @@ __IO uint8_t SPARK_SOCKET_CONNECTED;
 __IO uint8_t SPARK_SOCKET_ALIVE;
 __IO uint8_t SPARK_DEVICE_ACKED;
 __IO uint8_t SPARK_FLASH_UPDATE;
-__IO uint8_t SPARK_PROCESS_CHUNK;
 __IO uint8_t SPARK_LED_TOGGLE;
 __IO uint8_t SPARK_LED_FADE;
 
@@ -225,7 +224,6 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			SPARK_SOCKET_ALIVE = 0;
 			SPARK_DEVICE_ACKED = 0;
 			SPARK_FLASH_UPDATE = 0;
-			SPARK_PROCESS_CHUNK = 0;
 			SPARK_LED_TOGGLE = 1;
 			SPARK_LED_FADE = 0;
 			Spark_Connect_Count = 0;
@@ -403,7 +401,6 @@ void SPARK_WLAN_Loop(void)
 			SPARK_WLAN_STARTED = 1;
 			SPARK_DEVICE_ACKED = 0;
 			SPARK_FLASH_UPDATE = 0;
-			SPARK_PROCESS_CHUNK = 0;
 
 			TimingSparkProcessAPI = 0;
 			TimingSparkAliveTimeout = 0;
@@ -570,7 +567,6 @@ void SPARK_WLAN_Timing(void)
 			SPARK_SOCKET_CONNECTED = 0;
 			SPARK_DEVICE_ACKED = 0;
 			SPARK_FLASH_UPDATE = 0;
-			SPARK_PROCESS_CHUNK = 0;
 			Spark_Connect_Count = 0;
 		}
 	}

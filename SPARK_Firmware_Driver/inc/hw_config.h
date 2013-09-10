@@ -58,31 +58,33 @@ typedef enum
 
 /* Exported macros ------------------------------------------------------------*/
 
-/* Flash memory address where various firmwares are located */
+/* Internal Flash memory address where various firmwares are located */
 #define USB_DFU_ADDRESS				((uint32_t)0x08000000)
 #define CORE_FW_ADDRESS				((uint32_t)0x08005000)
-
 /* Internal Flash memory address where the System Flags will be saved and loaded from  */
 #define SYSTEM_FLAGS_ADDRESS		((uint32_t)0x08004C00)
 /* Internal Flash end memory address */
 #define INTERNAL_FLASH_END_ADDRESS	((uint32_t)0x08020000)	//For 128KB Internal Flash
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE	((uint16_t)0x400)
+
+/* External Flash block size allocated for firmware storage */
+#define EXTERNAL_FLASH_BLOCK_SIZE	((uint32_t)0x20000)	//128KB  (Maximum Internal Flash Size)
 /* External Flash memory address where Factory programmed core firmware is located */
-#define EXTERNAL_FLASH_FAC_ADDRESS	((uint32_t)0x00010000)
-/* External Flash memory address where OTA upgraded core firmware will be saved */
-#define EXTERNAL_FLASH_OTA_ADDRESS	((uint32_t)0x00020000)
+#define EXTERNAL_FLASH_FAC_ADDRESS	((uint32_t)EXTERNAL_FLASH_BLOCK_SIZE)
 /* External Flash memory address where core firmware will be saved for backup/restore */
-#define EXTERNAL_FLASH_BKP_ADDRESS	((uint32_t)0x00030000)
+#define EXTERNAL_FLASH_BKP_ADDRESS	((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_FAC_ADDRESS))
+/* External Flash memory address where OTA upgraded core firmware will be saved */
+#define EXTERNAL_FLASH_OTA_ADDRESS	((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_BKP_ADDRESS))
 
 /* External Flash memory address where server public RSA key resides */
-#define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS ((uint32_t)0x00001000)
+#define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS	((uint32_t)0x01000)
 /* Length in bytes of DER-encoded 2048-bit RSA public key */
-#define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH (294)
+#define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH		(294)
 /* External Flash memory address where core private RSA key resides */
-#define EXTERNAL_FLASH_CORE_PRIVATE_KEY_ADDRESS ((uint32_t)0x00002000)
+#define EXTERNAL_FLASH_CORE_PRIVATE_KEY_ADDRESS		((uint32_t)0x02000)
 /* Length in bytes of DER-encoded 2048-bit RSA private key */
-#define EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH (1191)
+#define EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH		(1191)
 
 #if defined (USE_SPARK_CORE_V02)
 //Extended LED Types
@@ -180,26 +182,28 @@ void USB_Cable_Config(FunctionalState NewState);
 void Load_SystemFlags(void);
 void Save_SystemFlags(void);
 
-/* Internal and External Flash Operations */
-void FLASH_Begin(void);
-void FLASH_End(void);
+/* Internal Flash Backup to sFlash and Restore from sFlash Helper routines */
 void FLASH_Backup(uint32_t sFLASH_Address);
 void FLASH_Restore(uint32_t sFLASH_Address);
+/* External Flash Helper routines */
+void FLASH_Begin(uint32_t sFLASH_Address);
 void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
+void FLASH_End(void);
 void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
 void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
 
-void Factory_Reset(void);
-void OTA_Update(void);
+void Factory_Flash_Reset(void);
+void OTA_Flash_Update(void);
+
 void Reset_Device(void);
 
 /* Hardware CRC32 calculation */
 uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize);
 
 /* External variables --------------------------------------------------------*/
+extern int8_t OTA_UPDATE_MODE;
 extern uint8_t DFU_DEVICE_MODE;
 extern uint8_t FACTORY_RESET_MODE;
-extern uint8_t OTA_UPDATE_MODE;
 extern uint8_t USE_SYSTEM_FLAGS;
 
 extern __IO uint32_t TimingDelay;

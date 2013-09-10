@@ -49,7 +49,6 @@ extern __IO uint8_t SPARK_WLAN_SLEEP;
 extern __IO uint8_t SPARK_SOCKET_CONNECTED;
 extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint8_t SPARK_FLASH_UPDATE;
-extern __IO uint8_t SPARK_PROCESS_CHUNK;
 extern __IO uint8_t SPARK_LED_TOGGLE;
 extern __IO uint8_t SPARK_LED_FADE;
 
