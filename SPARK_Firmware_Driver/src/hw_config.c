@@ -1517,3 +1517,26 @@ uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
 
 	return Data;
 }
+
+void Get_Unique_Device_ID(uint8_t *Device_ID)
+{
+  uint32_t Device_IDx;
+
+  Device_IDx = *(uint32_t*)ID1;
+  *(Device_ID+0) = (uint8_t)(Device_IDx & 0xFF);
+  *(Device_ID+1) = (uint8_t)((Device_IDx & 0xFF00) >> 8);
+  *(Device_ID+2) = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
+  *(Device_ID+3) = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
+
+  Device_IDx = *(uint32_t*)ID2;
+  *(Device_ID+4) = (uint8_t)(Device_IDx & 0xFF);
+  *(Device_ID+5) = (uint8_t)((Device_IDx & 0xFF00) >> 8);
+  *(Device_ID+6) = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
+  *(Device_ID+7) = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
+
+  Device_IDx = *(uint32_t*)ID3;
+  *(Device_ID+8) = (uint8_t)(Device_IDx & 0xFF);
+  *(Device_ID+9) = (uint8_t)((Device_IDx & 0xFF00) >> 8);
+  *(Device_ID+10) = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
+  *(Device_ID+11) = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
+}

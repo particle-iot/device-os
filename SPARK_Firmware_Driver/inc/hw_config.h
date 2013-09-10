@@ -200,6 +200,8 @@ void Reset_Device(void);
 /* Hardware CRC32 calculation */
 uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize);
 
+void Get_Unique_Device_ID(uint8_t *Device_ID);
+
 /* External variables --------------------------------------------------------*/
 extern int8_t OTA_UPDATE_MODE;
 extern uint8_t DFU_DEVICE_MODE;
