@@ -36,10 +36,10 @@ If the macro SPARK\_SFLASH\_ENABLE is uncommented in platform\_config.h, then th
 For Flashing core-firmware.bin using usb-bootloader, 
 cd to the core-firmware/build folder and type the below command to program the core-firmware application to Internal Flash starting from address 0x0800C000:
 
-    dfu-util -d 1d50:607f -a 0 -s 0x0800C000:leave -D core-firmware.bin
+    dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D core-firmware.bin
 
-For flashing factory core-firmware application to External Flash starting from address 0x00001000, run the following command:
+For flashing factory core-firmware application to External Flash starting from address 0x00020000, run the following command:
 
-    dfu-util -d 1d50:607f -a 1 -s 0x00001000 -D core-firmware.bin
+    dfu-util -d 1d50:607f -a 1 -s 0x00020000 -D core-firmware.bin
 
 To build the project using command line option, cd to the "build" folder and run "make clean dependents all".

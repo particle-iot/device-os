@@ -58,20 +58,21 @@ int main(void)
 
 	Load_SystemFlags();
 
-	/* Run SPI Flash Self Test (Uncomment for Debugging) */
-	//sFLASH_SelfTest();
-
-	switch(BKP_ReadBackupRegister(BKP_DR10))
+	if((BKP_ReadBackupRegister(BKP_DR10) == 0x5000) || (Flash_Update_SysFlag == 0x5000))
 	{
-		case 0x5000:
-			ApplicationAddress = CORE_FW_ADDRESS;
-			break;
-		default:
-			if ((*(__IO uint16_t*)0x08004C04) == 0x5000)
-				ApplicationAddress = CORE_FW_ADDRESS;
-			else
-				OTA_UPDATE_MODE = 1;
-			break;
+		ApplicationAddress = CORE_FW_ADDRESS;
+	}
+	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x0005) || (Flash_Update_SysFlag == 0x0005))
+	{
+		OTA_UPDATE_MODE = 1;	//OTA Update Success
+	}
+	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x5555) || (Flash_Update_SysFlag == 0x5555))
+	{
+		OTA_UPDATE_MODE = -1;	//OTA Update Failed
+	}
+	else
+	{
+		DFU_DEVICE_MODE = 1;
 	}
 
 	/* Check if BUTTON1 is pressed */
@@ -84,36 +85,35 @@ int main(void)
 			{
 				//if pressed for 10 sec, enter Factory Reset Mode
 				FACTORY_RESET_MODE = 1;
+				OTA_UPDATE_MODE = 0;	//High priority for Factory Reset
 				break;
 			}
 			else if(TimingBUTTON <= 7000)
 			{
 				//if pressed for >= 3 sec, enter USB DFU Mode
 				DFU_DEVICE_MODE = 1;
+				OTA_UPDATE_MODE = 0;	//High priority for USB Bootloader
 			}
 		}
 	}
 
-	if (FACTORY_RESET_MODE)
+	if (OTA_UPDATE_MODE == 1)
 	{
-		Factory_Reset();
+		OTA_Flash_Update();
 	}
-	else if (OTA_UPDATE_MODE)
+	else if (FACTORY_RESET_MODE == 1)
 	{
-		OTA_Update();
+		Factory_Flash_Reset();
 	}
-	else if (!DFU_DEVICE_MODE)
+	else if (DFU_DEVICE_MODE == 0)
 	{
-	    if ((BKP_ReadBackupRegister(BKP_DR10) == 0xCCCC) || (Flash_Update_SysFlag == 0xCCCC))
+		if (OTA_UPDATE_MODE == -1)
 	    {
-	    	//If the Factory Reset failed, restore the old working copy
+	    	//If the Factory Reset or OTA Update failed, restore the old working copy
 	    	FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
-			/* The Device will reset at this point */
-			//while (1);
-	    }
 
-	    if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) != 0x20000000)
-	        ApplicationAddress = CORE_FW_ADDRESS;
+			//The Device will reset at this point
+	    }
 
 		/* Test if user code is programmed starting from ApplicationAddress */
 		if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
