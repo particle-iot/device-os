@@ -50,15 +50,18 @@ void Set_NetApp_Timeout(void)
 	unsigned long aucKeepalive = 10;
 	unsigned long aucInactivity = 60;
 
-	NetApp_Timeout_SysFlag = 0xFFFF;
-	Save_SystemFlags();
-	BKP_WriteBackupRegister(BKP_DR1, 0xFFFF);
-
 	netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
+}
 
-	NetApp_Timeout_SysFlag = 0xAAAA;
-	Save_SystemFlags();
-	BKP_WriteBackupRegister(BKP_DR1, 0xAAAA);
+void Clear_NetApp_Dhcp(void)
+{
+	// Clear out the DHCP settings
+	unsigned long pucSubnetMask = 0;
+	unsigned long pucIP_Addr = 0;
+	unsigned long pucIP_DefaultGWAddr = 0;
+	unsigned long pucDNS = 0;
+
+	netapp_dhcp(&pucIP_Addr, &pucSubnetMask, &pucIP_DefaultGWAddr, &pucDNS);
 }
 
 /*******************************************************************************
@@ -76,10 +79,26 @@ void Start_Smart_Config(void)
 	WLAN_DHCP = 0;
 	WLAN_CAN_SHUTDOWN = 0;
 
+	SPARK_SOCKET_CONNECTED = 0;
+	SPARK_SOCKET_ALIVE = 0;
+	SPARK_DEVICE_ACKED = 0;
+	SPARK_FLASH_UPDATE = 0;
+	SPARK_LED_TOGGLE = 0;
+	SPARK_LED_FADE = 0;
+	Spark_Connect_Count = 0;
+
 	unsigned char wlan_profile_index;
+
+#if defined (USE_SPARK_CORE_V02)
+	LED_SetRGBColor(RGB_COLOR_BLUE);
+	LED_On(LED_RGB);
+#endif
 
 	/* Reset all the previous configuration */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
+
+	NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 0;
+	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
 
 	/* Wait until CC3000 is disconnected */
 	while (WLAN_CONNECTED == 1)
@@ -100,17 +119,10 @@ void Start_Smart_Config(void)
 	/* Start the SmartConfig start process */
 	wlan_smart_config_start(1);
 
-#if defined (USE_SPARK_CORE_V02)
-    LED_SetRGBColor(RGB_COLOR_BLUE);
-	LED_On(LED_RGB);
-	SPARK_LED_TOGGLE = 0;
-#endif
-
 	/* Wait for SmartConfig to finish */
 	while (WLAN_SMART_CONFIG_FINISHED == 0)
 	{
 #if defined (USE_SPARK_CORE_V01)
-		/* Toggle the LED2 every 100ms */
 		LED_Toggle(LED2);
 #elif defined (USE_SPARK_CORE_V02)
 		LED_Toggle(LED_RGB);
@@ -146,15 +158,8 @@ void Start_Smart_Config(void)
 	/* Configure to connect automatically to the AP retrieved in the Smart config process */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
 
-	if(USE_SYSTEM_FLAGS && (Smart_Config_SysFlag != 0xBBBB))
-	{
-		Smart_Config_SysFlag = 0xBBBB;
-		Save_SystemFlags();
-	}
-	else if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB)
-	{
-		BKP_WriteBackupRegister(BKP_DR2, 0xBBBB);
-	}
+	NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 1;
+	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
 
 	/* Reset the CC3000 */
 	wlan_stop();
@@ -292,7 +297,7 @@ void SPARK_WLAN_Setup(void)
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
-	if(nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != 0)
+	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != 0)
 	{
 		/* Delete all previously stored wlan profiles */
 		wlan_ioctl_del_profile(255);
@@ -305,6 +310,9 @@ void SPARK_WLAN_Setup(void)
 			NVMEM_Spark_File_Data[i] = 0;
 
 		nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
+
+		NVMEM_SPARK_Reset_SysFlag = 0x0000;
+		Save_SystemFlags();
 	}
 
 	Spark_Error_Count = NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET];
@@ -327,17 +335,26 @@ void SPARK_WLAN_Setup(void)
 	}
 #endif
 
-	if(USE_SYSTEM_FLAGS && (NetApp_Timeout_SysFlag != 0xAAAA))
-    	Set_NetApp_Timeout();
-	else if(BKP_ReadBackupRegister(BKP_DR1) != 0xAAAA)
+	if(NVMEM_Spark_File_Data[WLAN_TIMEOUT_FILE_OFFSET] == 0)
+	{
 		Set_NetApp_Timeout();
+		NVMEM_Spark_File_Data[WLAN_TIMEOUT_FILE_OFFSET] = 1;
+		nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_TIMEOUT_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_TIMEOUT_FILE_OFFSET]);
+	}
 
 	if(!WLAN_MANUAL_CONNECT)
 	{
-		if(USE_SYSTEM_FLAGS && (Smart_Config_SysFlag != 0xBBBB || NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] == 0))
+		if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] == 0)
+		{
 			WLAN_SMART_CONFIG_START = 1;
-		else if(BKP_ReadBackupRegister(BKP_DR2) != 0xBBBB || NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] == 0)
-			WLAN_SMART_CONFIG_START = 1;
+		}
+		else if(NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] == 0)
+		{
+			wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
+
+			NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 1;
+			nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
+		}
 	}
 
 	nvmem_read_sp_version(patchVer);
@@ -347,24 +364,16 @@ void SPARK_WLAN_Setup(void)
 		/* Latest Patch Available after flashing "cc3000-patch-programmer.bin" */
 	}
 
+	Clear_NetApp_Dhcp();
+
 #if defined (USE_SPARK_CORE_V02)
 	if(WLAN_MANUAL_CONNECT || !WLAN_SMART_CONFIG_START)
+	{
 		LED_SetRGBColor(RGB_COLOR_GREEN);
-	else
-		LED_SetRGBColor(RGB_COLOR_BLUE);
-
-	LED_On(LED_RGB);
+		LED_On(LED_RGB);
+		SPARK_LED_TOGGLE = 1;
+	}
 #endif
-
-	SPARK_LED_TOGGLE = 1;
-
-	// Clear out the DHCP settings
-	unsigned long pucSubnetMask = 0;
-	unsigned long pucIP_Addr = 0;
-	unsigned long pucIP_DefaultGWAddr = 0;
-	unsigned long pucDNS = 0;
-
-	netapp_dhcp(&pucIP_Addr, &pucSubnetMask, &pucIP_DefaultGWAddr, &pucDNS);
 }
 
 void SPARK_WLAN_Loop(void)
@@ -384,7 +393,11 @@ void SPARK_WLAN_Loop(void)
 
 			SPARK_WLAN_STARTED = 0;
 			WLAN_CONNECTED = 0;
+			WLAN_DHCP = 0;
 			SPARK_SOCKET_CONNECTED = 0;
+			SPARK_SOCKET_ALIVE = 0;
+			SPARK_DEVICE_ACKED = 0;
+			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_TOGGLE = 1;
 			SPARK_LED_FADE = 0;
 			Spark_Connect_Count = 0;
@@ -396,11 +409,7 @@ void SPARK_WLAN_Loop(void)
 		{
 			wlan_start(0);
 
-			Delay(100);
-
 			SPARK_WLAN_STARTED = 1;
-			SPARK_DEVICE_ACKED = 0;
-			SPARK_FLASH_UPDATE = 0;
 
 			TimingSparkProcessAPI = 0;
 			TimingSparkAliveTimeout = 0;

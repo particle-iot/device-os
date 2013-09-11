@@ -57,9 +57,9 @@ const uint16_t BUTTON_PIN_SOURCE[] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EXTI_PIN_
 const uint16_t BUTTON_IRQn[] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
 
-uint16_t NetApp_Timeout_SysFlag = 0xFFFF;
-uint16_t Smart_Config_SysFlag = 0xFFFF;
-uint16_t Flash_Update_SysFlag = 0xFFFF;
+uint16_t CORE_FW_Version_SysFlag = 0xFFFF;
+uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
+uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
 
 uint32_t Internal_Flash_Address = 0;
 uint32_t External_Flash_Address = 0;
@@ -1169,13 +1169,13 @@ void Load_SystemFlags(void)
 	if(!USE_SYSTEM_FLAGS)
 		return;
 
-	NetApp_Timeout_SysFlag = (*(__IO uint16_t*) Address);
+	CORE_FW_Version_SysFlag = (*(__IO uint16_t*) Address);
 	Address += 2;
 
-	Smart_Config_SysFlag = (*(__IO uint16_t*) Address);
+	NVMEM_SPARK_Reset_SysFlag = (*(__IO uint16_t*) Address);
 	Address += 2;
 
-	Flash_Update_SysFlag = (*(__IO uint16_t*) Address);
+	FLASH_OTA_Update_SysFlag = (*(__IO uint16_t*) Address);
 	Address += 2;
 }
 
@@ -1197,18 +1197,18 @@ void Save_SystemFlags(void)
 	FLASHStatus = FLASH_ErasePage(SYSTEM_FLAGS_ADDRESS);
 	while(FLASHStatus != FLASH_COMPLETE);
 
-	/* Program NetApp_Timeout_SysFlag */
-	FLASHStatus = FLASH_ProgramHalfWord(Address, NetApp_Timeout_SysFlag);
+	/* Program CORE_FW_Version_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, CORE_FW_Version_SysFlag);
 	while(FLASHStatus != FLASH_COMPLETE);
 	Address += 2;
 
-	/* Program Smart_Config_SysFlag */
-	FLASHStatus = FLASH_ProgramHalfWord(Address, Smart_Config_SysFlag);
+	/* Program NVMEM_SPARK_Reset_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, NVMEM_SPARK_Reset_SysFlag);
 	while(FLASHStatus != FLASH_COMPLETE);
 	Address += 2;
 
-	/* Program Flash_Update_SysFlag */
-	FLASHStatus = FLASH_ProgramHalfWord(Address, Flash_Update_SysFlag);
+	/* Program FLASH_OTA_Update_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, FLASH_OTA_Update_SysFlag);
 	while(FLASHStatus != FLASH_COMPLETE);
 	Address += 2;
 
@@ -1326,7 +1326,7 @@ void FLASH_Begin(uint32_t sFLASH_Address)
     LED_On(LED_RGB);
 #endif
 
-	Flash_Update_SysFlag = 0x5555;
+	FLASH_OTA_Update_SysFlag = 0x5555;
 	Save_SystemFlags();
 
 	BKP_WriteBackupRegister(BKP_DR10, 0x5555);
@@ -1399,7 +1399,7 @@ void FLASH_End(void)
 {
 #ifdef SPARK_SFLASH_ENABLE
 
-	Flash_Update_SysFlag = 0x0005;
+	FLASH_OTA_Update_SysFlag = 0x0005;
 	Save_SystemFlags();
 
 	BKP_WriteBackupRegister(BKP_DR10, 0x0005);
@@ -1461,7 +1461,7 @@ void OTA_Flash_Update(void)
 *******************************************************************************/
 void Reset_Device(void)
 {
-	Flash_Update_SysFlag = 0x5000;
+	FLASH_OTA_Update_SysFlag = 0x5000;
 	Save_SystemFlags();
 
 	BKP_WriteBackupRegister(BKP_DR10, 0x5000);
@@ -1523,20 +1523,20 @@ void Get_Unique_Device_ID(uint8_t *Device_ID)
   uint32_t Device_IDx;
 
   Device_IDx = *(uint32_t*)ID1;
-  *(Device_ID+0) = (uint8_t)(Device_IDx & 0xFF);
-  *(Device_ID+1) = (uint8_t)((Device_IDx & 0xFF00) >> 8);
-  *(Device_ID+2) = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
-  *(Device_ID+3) = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
+  *Device_ID++ = (uint8_t)(Device_IDx & 0xFF);
+  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF00) >> 8);
+  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
+  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
 
   Device_IDx = *(uint32_t*)ID2;
-  *(Device_ID+4) = (uint8_t)(Device_IDx & 0xFF);
-  *(Device_ID+5) = (uint8_t)((Device_IDx & 0xFF00) >> 8);
-  *(Device_ID+6) = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
-  *(Device_ID+7) = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
+  *Device_ID++ = (uint8_t)(Device_IDx & 0xFF);
+  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF00) >> 8);
+  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
+  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
 
   Device_IDx = *(uint32_t*)ID3;
-  *(Device_ID+8) = (uint8_t)(Device_IDx & 0xFF);
-  *(Device_ID+9) = (uint8_t)((Device_IDx & 0xFF00) >> 8);
-  *(Device_ID+10) = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
-  *(Device_ID+11) = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
+  *Device_ID++ = (uint8_t)(Device_IDx & 0xFF);
+  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF00) >> 8);
+  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
+  *Device_ID = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
 }

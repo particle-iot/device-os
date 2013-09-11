@@ -215,9 +215,9 @@ extern __IO uint32_t TimingIWDGReload;
 
 extern __IO uint8_t IWDG_SYSTEM_RESET;
 
-extern uint16_t NetApp_Timeout_SysFlag;
-extern uint16_t Smart_Config_SysFlag;
-extern uint16_t Flash_Update_SysFlag;
+extern uint16_t CORE_FW_Version_SysFlag;
+extern uint16_t NVMEM_SPARK_Reset_SysFlag;
+extern uint16_t FLASH_OTA_Update_SysFlag;
 
 extern unsigned char wlan_rx_buffer[];
 extern unsigned char wlan_tx_buffer[];

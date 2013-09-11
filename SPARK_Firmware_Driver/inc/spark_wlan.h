@@ -15,7 +15,9 @@
 #define NVMEM_SPARK_FILE_ID			14	//Do not change this ID
 #define NVMEM_SPARK_FILE_SIZE		16	//Change according to requirement
 #define WLAN_PROFILE_FILE_OFFSET	0
-#define ERROR_COUNT_FILE_OFFSET		1
+#define WLAN_POLICY_FILE_OFFSET		1
+#define WLAN_TIMEOUT_FILE_OFFSET	2
+#define ERROR_COUNT_FILE_OFFSET		3
 
 #define TIMING_SPARK_PROCESS_API	200		//200ms
 #define TIMING_SPARK_ALIVE_TIMEOUT	15000	//15sec
@@ -25,6 +27,7 @@
 #define SPARK_CONNECT_MAX_ATTEMPT	3		//Max no of connection attempts
 
 void Set_NetApp_Timeout(void);
+void Clear_NetApp_Dhcp(void);
 void Start_Smart_Config(void);
 
 /* WLAN Application related callbacks passed to wlan_init */
@@ -51,5 +54,7 @@ extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint8_t SPARK_FLASH_UPDATE;
 extern __IO uint8_t SPARK_LED_TOGGLE;
 extern __IO uint8_t SPARK_LED_FADE;
+
+extern uint8_t WLAN_SMART_CONFIG_START;
 
 #endif  /*__SPARK_WLAN_H*/
