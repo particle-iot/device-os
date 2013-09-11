@@ -213,17 +213,9 @@ void Timing_Decrement(void)
 	if(BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
 	{
 		BUTTON_ResetDebouncedState(BUTTON1);
-    	//Enter Smart Config Process On Next System Reset
-    	//Since socket connect() is currently blocking
-#ifdef DFU_BUILD_ENABLE
-		Smart_Config_SysFlag = 0xFFFF;
-		Save_SystemFlags();
-#else
-		BKP_WriteBackupRegister(BKP_DR2, 0xFFFF);
-#endif
 
-    	NVIC_SystemReset();
-    }
+		WLAN_SMART_CONFIG_START = 1;
+	}
 
 #ifdef IWDG_RESET_ENABLE
 	if (TimingIWDGReload >= TIMING_IWDG_RELOAD)
