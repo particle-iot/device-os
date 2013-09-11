@@ -58,15 +58,15 @@ int main(void)
 
 	Load_SystemFlags();
 
-	if((BKP_ReadBackupRegister(BKP_DR10) == 0x5000) || (Flash_Update_SysFlag == 0x5000))
+	if((BKP_ReadBackupRegister(BKP_DR10) == 0x5000) || (FLASH_OTA_Update_SysFlag == 0x5000))
 	{
 		ApplicationAddress = CORE_FW_ADDRESS;
 	}
-	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x0005) || (Flash_Update_SysFlag == 0x0005))
+	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x0005) || (FLASH_OTA_Update_SysFlag == 0x0005))
 	{
 		OTA_UPDATE_MODE = 1;	//OTA Update Success
 	}
-	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x5555) || (Flash_Update_SysFlag == 0x5555))
+	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x5555) || (FLASH_OTA_Update_SysFlag == 0x5555))
 	{
 		OTA_UPDATE_MODE = -1;	//OTA Update Failed
 	}
@@ -103,6 +103,9 @@ int main(void)
 	}
 	else if (FACTORY_RESET_MODE == 1)
 	{
+		NVMEM_SPARK_Reset_SysFlag = 0x0001;
+		Save_SystemFlags();
+
 		Factory_Flash_Reset();
 	}
 	else if (DFU_DEVICE_MODE == 0)
