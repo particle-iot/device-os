@@ -37,10 +37,6 @@ char digits[] = "0123456789";
 char recvBuff[SPARK_BUF_LEN];
 int total_bytes_received = 0;
 
-__IO uint32_t computedCRCValue;
-
-uint32_t chunkCRCValue;
-uint32_t chunkBytesAvailable;
 uint32_t chunkIndex;
 
 void (*pHandleMessage)(void);
@@ -294,6 +290,9 @@ int receive_line()
 
 void process_chunk(void)
 {
+	uint32_t chunkBytesAvailable = 0;
+	uint32_t chunkCRCValue = 0;
+	uint32_t computedCRCValue = 0;
 	char *chunkToken;
 
 	chunkToken = strtok(&recvBuff[chunkIndex], "\n");
@@ -424,16 +423,12 @@ int process_command()
 	    pHandleMessage = handle_message;
 	}
 
-	// Do nothing for new line returned
-	else if(strcmp(recvBuff, Device_CRLF) == 0)
-	{
-		bytes_sent = 0;
-	}
-
-	else
-	{
-		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
-	}
+/*
+//	else
+//	{
+//		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
+//	}
+*/
 
 	return bytes_sent;
 }
