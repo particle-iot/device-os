@@ -1,6 +1,12 @@
 #include "coap.h"
 #include "tropicssl/aes.h"
 
+namespace ProtocolState {
+  enum Enum {
+    READ_NONCE
+  };
+}
+
 namespace ChunkReceivedCode {
   enum Enum {
     OK = 0x44,
@@ -57,6 +63,9 @@ class SparkProtocol
     int queue_bytes_available();
     int queue_push(const char *src, int length);
     int queue_pop(char *dst, int length);
+
+    /********** State Machine **********/
+    ProtocolState::Enum state();
 
   private:
     aes_context aes;

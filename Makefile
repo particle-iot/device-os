@@ -22,7 +22,8 @@ objects = src/handshake.o \
 testobjects = tests/TestHandshake.o \
               tests/TestAES.o \
               tests/TestCoAP.o \
-              tests/TestQueue.o
+              tests/TestQueue.o \
+              tests/TestStateMachine.o
 
 
 all: $(lib)

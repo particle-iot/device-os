@@ -491,6 +491,11 @@ int SparkProtocol::queue_pop(char *dst, int length)
   }
 }
 
+ProtocolState::Enum SparkProtocol::state()
+{
+  return ProtocolState::READ_NONCE;
+}
+
 
 /********** Private methods **********/
 
