@@ -26,56 +26,56 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 SECONDARY_FLASH += \
-usb-bootloader.hex \
+bootloader.hex \
 
 SECONDARY_LIST += \
-usb-bootloader.lst \
+bootloader.lst \
 
 SECONDARY_SIZE += \
-usb-bootloader.siz \
+bootloader.siz \
 
 
 # All Target
-all: usb-bootloader.elf secondary-outputs
+all: bootloader.elf secondary-outputs
 
 dependents:
 	-cd ../../core-common-lib/build && $(MAKE) clean all
 
 # Tool invocations
-usb-bootloader.elf: $(OBJS) $(USER_OBJS) ../../core-common-lib/build/libcore-common-lib.a
+bootloader.elf: $(OBJS) $(USER_OBJS) ../../core-common-lib/build/libcore-common-lib.a
 	@echo 'Building target: $@'
 	@echo 'Invoking: ARM Sourcery Windows GCC C Linker'
-	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md.ld" -nostartfiles -Xlinker --gc-sections -L"../../core-common-lib/build" -Wl,-Map,usb-bootloader.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "usb-bootloader.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-gcc -T"../linker/linker_stm32f10x_md.ld" -nostartfiles -Xlinker --gc-sections -L"../../core-common-lib/build" -Wl,-Map,bootloader.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "bootloader.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
 
-usb-bootloader.hex: usb-bootloader.elf
+bootloader.hex: bootloader.elf
 	@echo 'Invoking: ARM Sourcery Windows GNU Create Flash Image'
-	arm-none-eabi-objcopy -O ihex usb-bootloader.elf  "usb-bootloader.hex"
+	arm-none-eabi-objcopy -O ihex bootloader.elf  "bootloader.hex"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-usb-bootloader.lst: usb-bootloader.elf
+bootloader.lst: bootloader.elf
 	@echo 'Invoking: ARM Sourcery Windows GNU Create Listing'
-	arm-none-eabi-objdump -h -S usb-bootloader.elf > "usb-bootloader.lst"
+	arm-none-eabi-objdump -h -S bootloader.elf > "bootloader.lst"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-usb-bootloader.siz: usb-bootloader.elf
+bootloader.siz: bootloader.elf
 	@echo 'Invoking: ARM Sourcery Windows GNU Print Size'
-	arm-none-eabi-size  --format=berkeley usb-bootloader.elf
+	arm-none-eabi-size  --format=berkeley bootloader.elf
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(SECONDARY_SIZE)$(OBJS)$(C_DEPS)$(ASM_DEPS)$(SECONDARY_FLASH)$(EXECUTABLES)$(SECONDARY_LIST)$(S_UPPER_DEPS) usb-bootloader.elf usb-bootloader.map usb-bootloader.bin
+	-$(RM) $(SECONDARY_SIZE)$(OBJS)$(C_DEPS)$(ASM_DEPS)$(SECONDARY_FLASH)$(EXECUTABLES)$(SECONDARY_LIST)$(S_UPPER_DEPS) bootloader.elf bootloader.map bootloader.bin
 	-@echo ' '
 
 post-build:
 	-@echo 'Create Binary'
-	-arm-none-eabi-objcopy -S -O binary "usb-bootloader.elf" "usb-bootloader.bin"
+	-arm-none-eabi-objcopy -S -O binary "bootloader.elf" "bootloader.bin"
 	-@echo ' '
 
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_LIST) $(SECONDARY_SIZE)
