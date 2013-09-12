@@ -1,6 +1,4 @@
-# usb-bootloader
-
-Spark USB bootloader for the STM32
+# Spark STM32 Bootloader
 
 After building with Eclipse or with `make` in the build folder, use JTAG to flash the .bin or .hex file to address 0x08000000 on the STM32.
 The device should appear as "STM Device in DFU Mode" on the Host platform.
