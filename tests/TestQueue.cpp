@@ -33,22 +33,24 @@ SUITE(Queue)
   TEST(QueueWrapsAsRingBuffer)
   {
     SparkProtocol spark_protocol;
-    char buf[600];
-    memset(buf, 42, 600);
+    int too_big = spark_protocol.QUEUE_SIZE + 16;
+    char buf[too_big];
+    memset(buf, 42, too_big);
     spark_protocol.queue_push(buf, 500);
     spark_protocol.queue_pop(buf, 400);
-    spark_protocol.queue_push(buf + 500, 100);
+    spark_protocol.queue_push(buf + 500, too_big - 500);
     int available = spark_protocol.queue_bytes_available();
-    // we've pushed 600 bytes and popped 400, so only 200 is used
-    CHECK_EQUAL(spark_protocol.QUEUE_SIZE - 1 - 200, available);
+    // we've pushed too_big bytes and popped 400, so too_big - 400 is used
+    CHECK_EQUAL(spark_protocol.QUEUE_SIZE - 1 - too_big + 400, available);
   }
 
   TEST(InitialQueueCannotOverfill)
   {
     SparkProtocol spark_protocol;
-    char buf[600];
-    memset(buf, 42, 600);
-    int written = spark_protocol.queue_push(buf, 600);
+    int too_big = spark_protocol.QUEUE_SIZE + 16;
+    char buf[too_big];
+    memset(buf, 42, too_big);
+    int written = spark_protocol.queue_push(buf, too_big);
     CHECK_EQUAL(spark_protocol.QUEUE_SIZE - 1, written);
   }
 
@@ -65,17 +67,17 @@ SUITE(Queue)
   TEST(QueueCanCopyOversizeInStages)
   {
     SparkProtocol spark_protocol;
-    char src_buf[600];
-    memset(src_buf,       'Z', 200);
-    memset(src_buf + 200, 'a', 200);
-    memset(src_buf + 400, 'c', 200);
-    char dst_buf[600];
-    memset(dst_buf, '*', 600);
-    int written1 = spark_protocol.queue_push(src_buf, 600);
+    char src_buf[900];
+    memset(src_buf,       'Z', 300);
+    memset(src_buf + 300, 'a', 300);
+    memset(src_buf + 600, 'c', 300);
+    char dst_buf[900];
+    memset(dst_buf, '*', 900);
+    int written1 = spark_protocol.queue_push(src_buf, 900);
     spark_protocol.queue_pop(dst_buf, written1);
-    int written2 = spark_protocol.queue_push(src_buf + written1, 600 - written1);
+    int written2 = spark_protocol.queue_push(src_buf + written1, 900 - written1);
     spark_protocol.queue_pop(dst_buf + written1, written2);
-    CHECK_ARRAY_EQUAL(src_buf, dst_buf, 600);
+    CHECK_ARRAY_EQUAL(src_buf, dst_buf, 900);
   }
 
   TEST(FullQueueShowsZeroAvailable)

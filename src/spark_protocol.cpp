@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-SparkProtocol::SparkProtocol() : QUEUE_SIZE(576)
+SparkProtocol::SparkProtocol() : QUEUE_SIZE(640)
 {
   queue_front = queue_back = queue = (char *) malloc(QUEUE_SIZE);
   queue_mem_boundary = queue + QUEUE_SIZE;
