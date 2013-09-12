@@ -1,6 +1,18 @@
 #include "spark_protocol.h"
 #include "handshake.h"
 #include <string.h>
+#include <stdlib.h>
+
+SparkProtocol::SparkProtocol() : QUEUE_SIZE(576)
+{
+  queue_front = queue_back = queue = (char *) malloc(QUEUE_SIZE);
+  queue_mem_boundary = queue + QUEUE_SIZE;
+}
+
+SparkProtocol::~SparkProtocol()
+{
+  free(queue);
+}
 
 int SparkProtocol::init(const unsigned char *private_key,
                         const unsigned char *pubkey,
@@ -389,6 +401,98 @@ void SparkProtocol::description(unsigned char *buf, unsigned char token,
 
   encrypt(buf, 32);
 }
+
+
+/********** Queue **********/
+
+int SparkProtocol::queue_bytes_available()
+{
+  int unoccupied = queue_front - queue_back - 1;
+  if (unoccupied < 0)
+    return unoccupied + QUEUE_SIZE;
+  else
+    return unoccupied;
+}
+
+int SparkProtocol::queue_push(const char *src, int length)
+{
+  int available = queue_bytes_available();
+  if (queue_back >= queue_front)
+  {
+    int tail_available = queue_mem_boundary - queue_back;
+    if (length <= available)
+    {
+      if (length <= tail_available)
+      {
+        memcpy(queue_back, src, length);
+        queue_back += length;
+      }
+      else
+      {
+        int head_needed = length - tail_available;
+        memcpy(queue_back, src, tail_available);
+        memcpy(queue, src + tail_available, head_needed);
+        queue_back = queue + head_needed;
+      }
+      return length;
+    }
+    else
+    {
+      // queue_back is greater than or equal to queue_front
+      // and length is greater than available
+      if (available < tail_available)
+      {
+        // queue_front is equal to queue, so don't fill the last bucket
+        memcpy(queue_back, src, available);
+        queue_back += available;
+      }
+      else
+      {
+        int head_available = available - tail_available;
+        memcpy(queue_back, src, tail_available);
+        memcpy(queue, src + tail_available, head_available);
+        queue_back = queue + head_available;
+      }
+      return available;
+    }
+  }
+  else
+  {
+    // queue_back is less than queue_front
+    int count = length < available ? length : available;
+    memcpy(queue_back, src, count);
+    queue_back += count;
+    return count;
+  }
+}
+
+int SparkProtocol::queue_pop(char *dst, int length)
+{
+  if (queue_back >= queue_front)
+  {
+    int filled = queue_back - queue_front;
+    int count = length <= filled ? length : filled;
+
+    memcpy(dst, queue_front, count);
+    queue_front += count;
+    return count;
+  }
+  else
+  {
+    int tail_filled = queue_mem_boundary - queue_front;
+    int head_requested = length - tail_filled;
+    int head_filled = queue_back - queue;
+    int head_count = head_requested < head_filled ? head_requested : head_filled;
+    
+    memcpy(dst, queue_front, tail_filled);
+    memcpy(dst + tail_filled, queue, head_count);
+    queue_front = queue + head_count;
+    return tail_filled + head_count;
+  }
+}
+
+
+/********** Private methods **********/
 
 unsigned short SparkProtocol::next_message_id()
 {
