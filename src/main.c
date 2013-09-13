@@ -173,7 +173,7 @@ void Timing_Decrement(void)
     {
         TimingLED--;
     }
-    else if(SPARK_FLASH_UPDATE)
+    else if(WLAN_SMART_CONFIG_START || SPARK_FLASH_UPDATE || Spark_Error_Count)
     {
     	//Do nothing
     }
@@ -189,24 +189,21 @@ void Timing_Decrement(void)
 #if defined (USE_SPARK_CORE_V01)
     	LED_Toggle(LED1);
 #elif defined (USE_SPARK_CORE_V02)
-    	if(SPARK_LED_TOGGLE)
-    		LED_Toggle(LED_RGB);
+		LED_Toggle(LED_RGB);
 #endif
     	TimingLED = 100;	//100ms
     }
     else
     {
-    	static __IO uint8_t SparkDeviceAckedLedOn = 0;
-    	if(!SparkDeviceAckedLedOn)
+    	if(!SPARK_LED_FADE)
     	{
 #if defined (USE_SPARK_CORE_V01)
     		LED_On(LED1);//SPARK_DEVICE_ACKED
 #elif defined (USE_SPARK_CORE_V02)
     		LED_SetRGBColor(RGB_COLOR_CYAN);
     		LED_On(LED_RGB);
-    		SPARK_LED_FADE = 1;
 #endif
-    		SparkDeviceAckedLedOn = 1;
+    		SPARK_LED_FADE = 1;
     	}
     }
 
