@@ -22,8 +22,7 @@ class SparkProtocol
 
     int init(const unsigned char *private_key,
              const unsigned char *pubkey,
-             const unsigned char *encrypted_credentials,
-             const unsigned char *signature);
+             const unsigned char *signed_encrypted_credentials);
     CoAPMessageType::Enum received_message(unsigned char *buf, int length);
     void hello(unsigned char *buf);
     void hello(unsigned char *buf, unsigned char token);

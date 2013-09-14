@@ -16,18 +16,19 @@ SparkProtocol::~SparkProtocol()
 
 int SparkProtocol::init(const unsigned char *private_key,
                         const unsigned char *pubkey,
-                        const unsigned char *encrypted_credentials,
-                        const unsigned char *signature)
+                        const unsigned char *signed_encrypted_credentials)
 {
   unsigned char credentials[40];
   unsigned char hmac[20];
 
-  if (0 != decipher_aes_credentials(private_key, encrypted_credentials, credentials))
+  if (0 != decipher_aes_credentials(private_key,
+                                    signed_encrypted_credentials,
+                                    credentials))
     return 1;
 
-  calculate_ciphertext_hmac(encrypted_credentials, credentials, hmac);
+  calculate_ciphertext_hmac(signed_encrypted_credentials, credentials, hmac);
 
-  if (0 == verify_signature(signature, pubkey, hmac))
+  if (0 == verify_signature(signed_encrypted_credentials + 256, pubkey, hmac))
   {
     memcpy(key,  credentials,      16);
     memcpy(iv,   credentials + 16, 16);
