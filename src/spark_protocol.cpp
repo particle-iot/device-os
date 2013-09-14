@@ -93,7 +93,7 @@ void SparkProtocol::hello(unsigned char *buf)
   encrypt(buf, 16);
 }
 
-void SparkProtocol::hello(unsigned char *buf, unsigned char token)
+void SparkProtocol::key_changed(unsigned char *buf, unsigned char token)
 {
   separate_response(buf, token, 0x44);
 }
