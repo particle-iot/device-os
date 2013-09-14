@@ -583,28 +583,4 @@ SUITE(CoAP)
     spark_protocol.description(buf, 0x66, fnames, 1);
     CHECK_ARRAY_EQUAL(expected, buf, 32);
   }
-
-  /*
-  TEST_FIXTURE(CoAPFixture, ExampleHelloSizeIs16Bytes)
-  {
-    uint8_t hello[512];
-    int hello_size = 0;
-    memset(hello, 0, 512);
-    hello_from_aes_credentials(credentials, hello, hello_size);
-    CHECK_EQUAL(16, hello_size);
-  }
-
-  TEST_FIXTURE(CoAPFixture, ValidHelloFromAESCredentials)
-  {
-    uint8_t expected[16] = {
-      0x58, 0x4f, 0x96, 0xfc, 0xb3, 0xdf, 0x98, 0x32,
-      0xb3, 0x7c, 0x72, 0x43, 0x04, 0xc1, 0xc3, 0xfb };
-    uint8_t hello[512];
-    int hello_size = 16;
-    memset(hello, 0, 512);
-    hello_from_aes_credentials(credentials, hello, hello_size);
-    CHECK_ARRAY_EQUAL(expected, hello, hello_size);
-  }
-  */
-
 }
