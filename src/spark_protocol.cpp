@@ -41,6 +41,7 @@ int SparkProtocol::handshake(void)
   if (err) return err;
 
   callback_send(queue + 52, 256);
+  callback_receive(queue, 512);
 
   return 0;
 }

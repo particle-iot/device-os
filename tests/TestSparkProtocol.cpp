@@ -8,7 +8,7 @@ struct ConstructorFixture
   static const uint8_t pubkey[294];
   static const uint8_t private_key[1192];
   static int bytes_sent;
-  static int bytes_received;
+  static int bytes_received[2];
   static uint8_t sent_buf[256];
   static int mock_send(const unsigned char *buf, int buflen);
   static int mock_receive(unsigned char *buf, int buflen);
@@ -165,13 +165,13 @@ const uint8_t ConstructorFixture::private_key[1192] =
   "\x10\x44\x52\xD1\x94\x35\x86\x36\x33\x2B\x4B\x36\xF1\x56\x42\xA3";
 
 int ConstructorFixture::bytes_sent = 0;
-int ConstructorFixture::bytes_received = 0;
+int ConstructorFixture::bytes_received[2] = { 0, 0 };
 uint8_t ConstructorFixture::sent_buf[256];
 
 ConstructorFixture::ConstructorFixture()
 {
   bytes_sent = 0;
-  bytes_received = 0;
+  bytes_received[0] = bytes_received[1] = 0;
   keys.core_private = private_key;
   keys.server_public = pubkey;
   callbacks.send = mock_send;
@@ -193,9 +193,15 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
 {
   if (0 < buflen)
   {
-    if (40 == buflen)
+    if (0 == bytes_received[0])
+    {
       memcpy(buf, nonce, 40);
-    bytes_received += buflen;
+      bytes_received[0] += buflen;
+    }
+    else
+    {
+      bytes_received[1] += buflen;
+    }
   }
   else buflen = 0;
   return buflen;
@@ -220,7 +226,7 @@ SUITE(SparkProtocolConstruction)
   {
     SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
-    CHECK_EQUAL(40, bytes_received);
+    CHECK_EQUAL(40, bytes_received[0]);
   }
 
   TEST_FIXTURE(ConstructorFixture, HandshakeSends256Bytes)
@@ -268,5 +274,12 @@ SUITE(SparkProtocolConstruction)
     SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     CHECK_ARRAY_EQUAL(expected, sent_buf, 256);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, HandshakeLaterReceives512Bytes)
+  {
+    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
+    spark_protocol.handshake();
+    CHECK_EQUAL(512, bytes_received[1]);
   }
 }
