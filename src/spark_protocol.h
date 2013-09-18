@@ -1,4 +1,5 @@
 #include "coap.h"
+#include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
 
 namespace ProtocolState {
@@ -14,9 +15,30 @@ namespace ChunkReceivedCode {
   };
 }
 
+struct SparkKeys
+{
+  const unsigned char *core_private;
+  const unsigned char *server_public;
+};
+
+struct SparkCallbacks
+{
+  int (*send)(unsigned char *buf, int buflen);
+  int (*receive)(unsigned char *buf, int buflen);
+};
+
+struct SparkDescriptor
+{
+
+};
+
 class SparkProtocol
 {
   public:
+    SparkProtocol(const unsigned char *id,
+                  const SparkKeys &keys,
+                  const SparkCallbacks &callbacks,
+                  SparkDescriptor *descriptor);
     SparkProtocol();
     ~SparkProtocol();
 
@@ -67,7 +89,11 @@ class SparkProtocol
     ProtocolState::Enum state();
 
   private:
+    rsa_context rsa;
     aes_context aes;
+    int (*callback_send)(unsigned char *buf, int buflen);
+    int (*callback_receive)(unsigned char *buf, int buflen);
+    SparkDescriptor *descriptor;
     unsigned char key[16];
     unsigned char iv[16];
     unsigned char salt[8];

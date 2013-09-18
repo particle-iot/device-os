@@ -3,6 +3,20 @@
 #include <string.h>
 #include <stdlib.h>
 
+SparkProtocol::SparkProtocol(const unsigned char *id,
+                             const SparkKeys &keys,
+                             const SparkCallbacks &callbacks,
+                             SparkDescriptor *descriptor) : QUEUE_SIZE(640)
+{
+  queue_front = queue_back = queue = (char *) malloc(QUEUE_SIZE);
+  queue_mem_boundary = queue + QUEUE_SIZE;
+  memcpy(queue + 40, id, 12);
+  init_rsa_context_with_public_key(&rsa, keys.server_public);
+  callback_send = callbacks.send;
+  callback_receive = callbacks.receive;
+  this->descriptor = descriptor;
+}
+
 SparkProtocol::SparkProtocol() : QUEUE_SIZE(640)
 {
   queue_front = queue_back = queue = (char *) malloc(QUEUE_SIZE);

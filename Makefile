@@ -23,7 +23,8 @@ testobjects = tests/TestHandshake.o \
               tests/TestAES.o \
               tests/TestCoAP.o \
               tests/TestQueue.o \
-              tests/TestStateMachine.o
+              tests/TestStateMachine.o \
+              tests/TestSparkProtocol.o
 
 
 all: $(lib)
