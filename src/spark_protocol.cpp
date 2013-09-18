@@ -31,6 +31,7 @@ SparkProtocol::~SparkProtocol()
 void SparkProtocol::handshake(void)
 {
   callback_receive(queue, 40);
+  callback_send(queue, 256);
 }
 
 int SparkProtocol::init(const unsigned char *private_key,
