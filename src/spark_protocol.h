@@ -21,12 +21,10 @@ struct SparkKeys
   const unsigned char *server_public;
 };
 
-typedef int (*SparkCallback)(unsigned char *buf, int buflen);
-
 struct SparkCallbacks
 {
-  SparkCallback send;
-  SparkCallback receive;
+  int (*send)(const unsigned char *buf, int buflen);
+  int (*receive)(unsigned char *buf, int buflen);
 };
 
 struct SparkDescriptor
@@ -44,7 +42,7 @@ class SparkProtocol
     SparkProtocol();
     ~SparkProtocol();
 
-    void handshake(void);
+    int handshake(void);
 
     int init(const unsigned char *private_key,
              const unsigned char *pubkey,
@@ -93,9 +91,9 @@ class SparkProtocol
     ProtocolState::Enum state();
 
   private:
-    rsa_context rsa;
+    const SparkKeys *rsa_keys;
     aes_context aes;
-    int (*callback_send)(unsigned char *buf, int buflen);
+    int (*callback_send)(const unsigned char *buf, int buflen);
     int (*callback_receive)(unsigned char *buf, int buflen);
     SparkDescriptor *descriptor;
     unsigned char key[16];

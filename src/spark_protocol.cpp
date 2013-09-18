@@ -11,7 +11,8 @@ SparkProtocol::SparkProtocol(const unsigned char *id,
   queue_front = queue_back = queue = (unsigned char *) malloc(QUEUE_SIZE);
   queue_mem_boundary = queue + QUEUE_SIZE;
   memcpy(queue + 40, id, 12);
-  init_rsa_context_with_public_key(&rsa, keys.server_public);
+  rsa_keys = &keys;
+
   callback_send = callbacks.send;
   callback_receive = callbacks.receive;
   this->descriptor = descriptor;
@@ -28,10 +29,20 @@ SparkProtocol::~SparkProtocol()
   free(queue);
 }
 
-void SparkProtocol::handshake(void)
+int SparkProtocol::handshake(void)
 {
   callback_receive(queue, 40);
-  callback_send(queue, 256);
+
+  rsa_context rsa;
+  init_rsa_context_with_public_key(&rsa, rsa_keys->server_public);
+  int err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, 52, queue, queue + 52);
+  rsa_free(&rsa);
+
+  if (err) return err;
+
+  callback_send(queue + 52, 256);
+
+  return 0;
 }
 
 int SparkProtocol::init(const unsigned char *private_key,
