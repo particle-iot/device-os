@@ -104,6 +104,7 @@ class SparkProtocol
     unsigned short next_message_id();
     void encrypt(unsigned char *buf, int length);
     void separate_response(unsigned char *buf, unsigned char token, unsigned char code);
+    int set_key(const unsigned char *signed_encrypted_credentials);
 
     /********** Queue **********/
     unsigned char *queue;

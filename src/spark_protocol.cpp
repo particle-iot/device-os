@@ -43,6 +43,14 @@ int SparkProtocol::handshake(void)
   callback_send(queue + 52, 256);
   callback_receive(queue, 512);
 
+  err = set_key(queue);
+  if (err) return err;
+
+  queue[0] = 0x00;
+  queue[1] = 0x10;
+  hello(queue + 2);
+  callback_send(queue, 18);
+
   return 0;
 }
 
@@ -558,4 +566,30 @@ void SparkProtocol::separate_response(unsigned char *buf,
   memset(buf + 5, 11, 11); // PKCS #7 padding
 
   encrypt(buf, 16);
+}
+
+int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
+{
+  unsigned char credentials[40];
+  unsigned char hmac[20];
+
+  if (0 != decipher_aes_credentials(rsa_keys->core_private,
+                                    signed_encrypted_credentials,
+                                    credentials))
+    return 1;
+
+  calculate_ciphertext_hmac(signed_encrypted_credentials, credentials, hmac);
+
+  if (0 == verify_signature(signed_encrypted_credentials + 256,
+                            rsa_keys->server_public,
+                            hmac))
+  {
+    memcpy(key,  credentials,      16);
+    memcpy(iv,   credentials + 16, 16);
+    memcpy(salt, credentials + 32,  8);
+    _message_id = *(credentials + 32) << 8 | *(credentials + 33);
+
+    return 0;
+  }
+  else return 2;
 }
