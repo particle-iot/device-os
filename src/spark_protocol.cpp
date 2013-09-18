@@ -8,7 +8,7 @@ SparkProtocol::SparkProtocol(const unsigned char *id,
                              const SparkCallbacks &callbacks,
                              SparkDescriptor *descriptor) : QUEUE_SIZE(640)
 {
-  queue_front = queue_back = queue = (char *) malloc(QUEUE_SIZE);
+  queue_front = queue_back = queue = (unsigned char *) malloc(QUEUE_SIZE);
   queue_mem_boundary = queue + QUEUE_SIZE;
   memcpy(queue + 40, id, 12);
   init_rsa_context_with_public_key(&rsa, keys.server_public);
@@ -19,13 +19,18 @@ SparkProtocol::SparkProtocol(const unsigned char *id,
 
 SparkProtocol::SparkProtocol() : QUEUE_SIZE(640)
 {
-  queue_front = queue_back = queue = (char *) malloc(QUEUE_SIZE);
+  queue_front = queue_back = queue = (unsigned char *) malloc(QUEUE_SIZE);
   queue_mem_boundary = queue + QUEUE_SIZE;
 }
 
 SparkProtocol::~SparkProtocol()
 {
   free(queue);
+}
+
+void SparkProtocol::handshake(void)
+{
+  callback_receive(queue, 40);
 }
 
 int SparkProtocol::init(const unsigned char *private_key,

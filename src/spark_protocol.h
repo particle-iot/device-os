@@ -21,10 +21,12 @@ struct SparkKeys
   const unsigned char *server_public;
 };
 
+typedef int (*SparkCallback)(unsigned char *buf, int buflen);
+
 struct SparkCallbacks
 {
-  int (*send)(unsigned char *buf, int buflen);
-  int (*receive)(unsigned char *buf, int buflen);
+  SparkCallback send;
+  SparkCallback receive;
 };
 
 struct SparkDescriptor
@@ -41,6 +43,8 @@ class SparkProtocol
                   SparkDescriptor *descriptor);
     SparkProtocol();
     ~SparkProtocol();
+
+    void handshake(void);
 
     int init(const unsigned char *private_key,
              const unsigned char *pubkey,
@@ -104,8 +108,8 @@ class SparkProtocol
     void separate_response(unsigned char *buf, unsigned char token, unsigned char code);
 
     /********** Queue **********/
-    char *queue;
-    const char *queue_mem_boundary;
-    char *queue_front;
-    char *queue_back;
+    unsigned char *queue;
+    const unsigned char *queue_mem_boundary;
+    unsigned char *queue_front;
+    unsigned char *queue_back;
 };
