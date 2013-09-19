@@ -379,4 +379,16 @@ SUITE(SparkProtocolConstruction)
     spark_protocol.handshake();
     CHECK_ARRAY_EQUAL(expected, sent_buf_1, 18);
   }
+
+
+  /********* event loop *********/
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopReceives2Bytes)
+  {
+    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
+    spark_protocol.handshake();
+    bytes_received[0] = 0;
+    spark_protocol.event_loop();
+    CHECK_EQUAL(2, bytes_received[0]);
+  }
 }

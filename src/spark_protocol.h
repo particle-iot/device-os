@@ -43,6 +43,7 @@ class SparkProtocol
     ~SparkProtocol();
 
     int handshake(void);
+    void event_loop(void);
 
     int init(const unsigned char *private_key,
              const unsigned char *pubkey,

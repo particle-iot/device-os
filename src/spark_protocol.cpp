@@ -54,6 +54,11 @@ int SparkProtocol::handshake(void)
   return 0;
 }
 
+void SparkProtocol::event_loop(void)
+{
+  callback_receive(queue, 2);
+}
+
 int SparkProtocol::init(const unsigned char *private_key,
                         const unsigned char *pubkey,
                         const unsigned char *signed_encrypted_credentials)
