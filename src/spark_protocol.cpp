@@ -15,6 +15,7 @@ SparkProtocol::SparkProtocol(const unsigned char *id,
 
   callback_send = callbacks.send;
   callback_receive = callbacks.receive;
+  callback_description = callbacks.description;
   this->descriptor = descriptor;
 }
 
@@ -59,6 +60,44 @@ void SparkProtocol::event_loop(void)
   callback_receive(queue, 2);
   int len = queue[0] << 8 | queue[1];
   callback_receive(queue, len);
+  CoAPMessageType::Enum message_type = received_message(queue, len);
+  unsigned char token = queue[4];
+  switch (message_type)
+  {
+    case CoAPMessageType::DESCRIBE:
+    {
+      const char *function_names[1];
+      function_names[0] = "brew";
+      int desc_len = description(queue + 2, token, function_names, 1);
+      queue[0] = 0;
+      queue[1] = 32;
+      callback_send(queue, desc_len + 2);
+      break;
+    }
+    case CoAPMessageType::FUNCTION_CALL:
+      // TODO
+      break;
+    case CoAPMessageType::VARIABLE_REQUEST:
+      // TODO
+      break;
+    case CoAPMessageType::CHUNK:
+      // TODO
+      break;
+    case CoAPMessageType::UPDATE_BEGIN:
+      // TODO
+      break;
+    case CoAPMessageType::UPDATE_DONE:
+      // TODO
+      break;
+    case CoAPMessageType::KEY_CHANGE:
+      // TODO
+      break;
+
+    case CoAPMessageType::HELLO:
+    case CoAPMessageType::ERROR:
+    default:
+      ; // drop it on the floor
+  }
 }
 
 int SparkProtocol::init(const unsigned char *private_key,
@@ -77,9 +116,10 @@ int SparkProtocol::init(const unsigned char *private_key,
 
   if (0 == verify_signature(signed_encrypted_credentials + 256, pubkey, hmac))
   {
-    memcpy(key,  credentials,      16);
-    memcpy(iv,   credentials + 16, 16);
-    memcpy(salt, credentials + 32,  8);
+    memcpy(key,        credentials,      16);
+    memcpy(iv_send,    credentials + 16, 16);
+    memcpy(iv_receive, credentials + 16, 16);
+    memcpy(salt,       credentials + 32,  8);
     _message_id = *(credentials + 32) << 8 | *(credentials + 33);
     return 0;
   }
@@ -89,8 +129,13 @@ int SparkProtocol::init(const unsigned char *private_key,
 CoAPMessageType::Enum
   SparkProtocol::received_message(unsigned char *buf, int length)
 {
+  unsigned char next_iv[16];
+  memcpy(next_iv, buf, 16);
+
   aes_setkey_dec(&aes, key, 128);
-  aes_crypt_cbc(&aes, AES_DECRYPT, length, iv, buf, buf);
+  aes_crypt_cbc(&aes, AES_DECRYPT, length, iv_receive, buf, buf);
+
+  memcpy(iv_receive, next_iv, 16);
 
   char path = buf[ 5 + (buf[0] & 0x0F) ];
 
@@ -406,7 +451,7 @@ void SparkProtocol::update_ready(unsigned char *buf, unsigned char token)
   separate_response(buf, token, 0x44);
 }
 
-void SparkProtocol::description(unsigned char *buf, unsigned char token,
+int SparkProtocol::description(unsigned char *buf, unsigned char token,
                                 const char **function_names, int num_functions)
 {
   unsigned short message_id = next_message_id();
@@ -447,7 +492,8 @@ void SparkProtocol::description(unsigned char *buf, unsigned char token,
   char pad = buflen - msglen;
   memset(buf_ptr, pad, pad); // PKCS #7 padding
 
-  encrypt(buf, 32);
+  encrypt(buf, buflen);
+  return buflen;
 }
 
 
@@ -555,7 +601,8 @@ unsigned short SparkProtocol::next_message_id()
 void SparkProtocol::encrypt(unsigned char *buf, int length)
 {
   aes_setkey_enc(&aes, key, 128);
-  aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv, buf, buf);
+  aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv_send, buf, buf);
+  memcpy(iv_send, buf, 16);
 }
 
 void SparkProtocol::separate_response(unsigned char *buf,
@@ -591,9 +638,10 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
                             rsa_keys->server_public,
                             hmac))
   {
-    memcpy(key,  credentials,      16);
-    memcpy(iv,   credentials + 16, 16);
-    memcpy(salt, credentials + 32,  8);
+    memcpy(key,        credentials,      16);
+    memcpy(iv_send,    credentials + 16, 16);
+    memcpy(iv_receive, credentials + 16, 16);
+    memcpy(salt,       credentials + 32,  8);
     _message_id = *(credentials + 32) << 8 | *(credentials + 33);
 
     return 0;

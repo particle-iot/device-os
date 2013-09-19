@@ -14,6 +14,7 @@ struct ConstructorFixture
   static uint8_t sent_buf_1[18];
   static int mock_send(const unsigned char *buf, int buflen);
   static int mock_receive(unsigned char *buf, int buflen);
+  static uint8_t message_to_receive[18];
 
   ConstructorFixture();
   SparkKeys keys;
@@ -281,20 +282,30 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
       else
       {
         // event_loop
-        char sixteen[2] = { 0, 16 };
-        memcpy(buf, sixteen, buflen);
+        memcpy(buf, message_to_receive, buflen);
       }
       bytes_received[0] += buflen;
     }
     else
     {
-      memcpy(buf, signed_encrypted_credentials, buflen);
+      if (512 == buflen)
+      {
+        // handshake
+        memcpy(buf, signed_encrypted_credentials, buflen);
+      }
+      else
+      {
+        // event_loop
+        memcpy(buf, message_to_receive + 2, buflen);
+      }
       bytes_received[1] += buflen;
     }
   }
   else buflen = 0;
   return buflen;
 }
+
+uint8_t ConstructorFixture::message_to_receive[18];
 
 SUITE(SparkProtocolConstruction)
 {
@@ -404,10 +415,49 @@ SUITE(SparkProtocolConstruction)
 
   TEST_FIXTURE(ConstructorFixture, EventLoopLaterReceives16Bytes)
   {
+    uint8_t describe[18] = {
+      0x00, 0x10,
+      0xd5, 0xb7, 0xf7, 0xfe, 0x9f, 0x2d, 0xca, 0xac,
+      0xda, 0x15, 0x10, 0xa3, 0x27, 0x8b, 0xa7, 0xa9 };
+    memcpy(message_to_receive, describe, 18);
     SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     bytes_received[0] = bytes_received[1] = 0;
     spark_protocol.event_loop();
     CHECK_EQUAL(16, bytes_received[1]);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToDescribeWith34Bytes)
+  {
+    uint8_t describe[18] = {
+      0x00, 0x10,
+      0xd5, 0xb7, 0xf7, 0xfe, 0x9f, 0x2d, 0xca, 0xac,
+      0xda, 0x15, 0x10, 0xa3, 0x27, 0x8b, 0xa7, 0xa9 };
+    memcpy(message_to_receive, describe, 18);
+    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.event_loop();
+    CHECK_EQUAL(34, bytes_sent[0]);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToDescribeWithDescription)
+  {
+    uint8_t describe[18] = {
+      0x00, 0x10,
+      0xd5, 0xb7, 0xf7, 0xfe, 0x9f, 0x2d, 0xca, 0xac,
+      0xda, 0x15, 0x10, 0xa3, 0x27, 0x8b, 0xa7, 0xa9 };
+    memcpy(message_to_receive, describe, 18);
+    const uint8_t expected[34] = {
+      0x00, 0x20,
+      0x02, 0xC4, 0x63, 0x34, 0x71, 0x75, 0x8F, 0x2C,
+      0xDB, 0x17, 0xA0, 0xB2, 0xFD, 0x11, 0x8B, 0xE0,
+      0x9E, 0x16, 0x47, 0x44, 0x28, 0x3E, 0x37, 0xA8,
+      0x11, 0x41, 0x55, 0x69, 0x5B, 0x50, 0x2F, 0x9E };
+    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.event_loop();
+    CHECK_ARRAY_EQUAL(expected, sent_buf_0, 34);
   }
 }
