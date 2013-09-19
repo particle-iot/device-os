@@ -57,6 +57,8 @@ int SparkProtocol::handshake(void)
 void SparkProtocol::event_loop(void)
 {
   callback_receive(queue, 2);
+  int len = queue[0] << 8 | queue[1];
+  callback_receive(queue, len);
 }
 
 int SparkProtocol::init(const unsigned char *private_key,

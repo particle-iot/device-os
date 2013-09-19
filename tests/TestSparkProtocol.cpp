@@ -273,7 +273,17 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
   {
     if (0 == bytes_received[0])
     {
-      memcpy(buf, nonce, buflen);
+      if (40 == buflen)
+      {
+        // handshake
+        memcpy(buf, nonce, buflen);
+      }
+      else
+      {
+        // event_loop
+        char sixteen[2] = { 0, 16 };
+        memcpy(buf, sixteen, buflen);
+      }
       bytes_received[0] += buflen;
     }
     else
@@ -390,5 +400,14 @@ SUITE(SparkProtocolConstruction)
     bytes_received[0] = 0;
     spark_protocol.event_loop();
     CHECK_EQUAL(2, bytes_received[0]);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopLaterReceives16Bytes)
+  {
+    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_received[1] = 0;
+    spark_protocol.event_loop();
+    CHECK_EQUAL(16, bytes_received[1]);
   }
 }
