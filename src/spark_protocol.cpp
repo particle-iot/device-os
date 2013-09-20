@@ -86,8 +86,15 @@ void SparkProtocol::event_loop(void)
       break;
     }
     case CoAPMessageType::VARIABLE_REQUEST:
-      // TODO
+    {
+      // TODO Get variable value, using the descriptor
+      double varval = -104.858;
+      queue[0] = 0;
+      queue[1] = 16;
+      variable_value(queue + 2, token, queue[2], queue[3], varval);
+      callback_send(queue, 18);
       break;
+    }
     case CoAPMessageType::CHUNK:
       // TODO
       break;
@@ -265,21 +272,20 @@ void SparkProtocol::variable_value(unsigned char *buf,
 
 void SparkProtocol::variable_value(unsigned char *buf,
                                    unsigned char token,
+                                   unsigned char message_id_msb,
+                                   unsigned char message_id_lsb,
                                    double return_value)
 {
-  unsigned short message_id = next_message_id();
-
   buf[0] = 0x61; // acknowledgment, one-byte token
   buf[1] = 0x45; // response code 2.05 CONTENT
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
+  buf[2] = message_id_msb;
+  buf[3] = message_id_lsb;
   buf[4] = token;
   buf[5] = 0xff; // payload marker
-  buf[6] = 0x09; // ASN.1 REAL type tag, here meaning 8-byte double
 
-  memcpy(buf + 7, &return_value, 8);
+  memcpy(buf + 6, &return_value, 8);
 
-  buf[15] = 0x01; // PKCS #7 padding
+  memset(buf + 14, 2, 2); // PKCS #7 padding
 
   encrypt(buf, 16);
 }
