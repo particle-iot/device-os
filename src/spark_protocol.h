@@ -25,7 +25,6 @@ struct SparkCallbacks
 {
   int (*send)(const unsigned char *buf, int buflen);
   int (*receive)(unsigned char *buf, int buflen);
-  int (*description)(unsigned char *buf, int buflen);
 };
 
 struct SparkDescriptor
@@ -97,7 +96,6 @@ class SparkProtocol
     aes_context aes;
     int (*callback_send)(const unsigned char *buf, int buflen);
     int (*callback_receive)(unsigned char *buf, int buflen);
-    int (*callback_description)(unsigned char *buf, int buflen);
     SparkDescriptor *descriptor;
     unsigned char key[16];
     unsigned char iv_send[16];

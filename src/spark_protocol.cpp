@@ -15,7 +15,6 @@ SparkProtocol::SparkProtocol(const unsigned char *id,
 
   callback_send = callbacks.send;
   callback_receive = callbacks.receive;
-  callback_description = callbacks.description;
   this->descriptor = descriptor;
 }
 
