@@ -107,6 +107,9 @@ class SparkProtocol
     void encrypt(unsigned char *buf, int length);
     void separate_response(unsigned char *buf, unsigned char token, unsigned char code);
     int set_key(const unsigned char *signed_encrypted_credentials);
+    inline void empty_ack(unsigned char *buf,
+                          unsigned char message_id_msb,
+                          unsigned char message_id_lsb);
 
     /********** Queue **********/
     unsigned char *queue;

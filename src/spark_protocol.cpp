@@ -74,7 +74,10 @@ void SparkProtocol::event_loop(void)
       break;
     }
     case CoAPMessageType::FUNCTION_CALL:
-      // TODO
+      queue[0] = 0;
+      queue[1] = 16;
+      empty_ack(queue + 2, queue[2], queue[3]);
+      callback_send(queue, 18);
       break;
     case CoAPMessageType::VARIABLE_REQUEST:
       // TODO
@@ -646,4 +649,18 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
     return 0;
   }
   else return 2;
+}
+
+inline void SparkProtocol::empty_ack(unsigned char *buf,
+                                     unsigned char message_id_msb,
+                                     unsigned char message_id_lsb)
+{
+  buf[0] = 0x60; // acknowledgment, no token
+  buf[1] = 0x00; // code signifying empty message
+  buf[2] = message_id_msb;
+  buf[3] = message_id_lsb;
+
+  memset(buf + 4, 12, 12); // PKCS #7 padding
+
+  encrypt(buf, 16);
 }
