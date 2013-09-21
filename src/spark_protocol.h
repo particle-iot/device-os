@@ -1,3 +1,4 @@
+#include "spark_descriptor.h"
 #include "coap.h"
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
@@ -25,11 +26,6 @@ struct SparkCallbacks
 {
   int (*send)(const unsigned char *buf, int buflen);
   int (*receive)(unsigned char *buf, int buflen);
-};
-
-struct SparkDescriptor
-{
-
 };
 
 class SparkProtocol
