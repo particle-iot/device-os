@@ -32,7 +32,7 @@ If the macro SPARK\_SFLASH\_ENABLE is uncommented in platform\_config.h, then th
     Found DFU: [1d50:607f] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
 
 For Flashing core-firmware.bin using the bootloader,
-cd to the core-firmware/build folder and type the below command to program the core-firmware application to Internal Flash starting from address 0x0800C000:
+cd to the core-firmware/build folder and type the below command to program the core-firmware application to Internal Flash starting from address 0x08005000:
 
     dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D core-firmware.bin
 
