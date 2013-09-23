@@ -75,14 +75,49 @@ void SparkProtocol::event_loop(void)
     }
     case CoAPMessageType::FUNCTION_CALL:
     {
-      queue[0] = 0;
-      queue[1] = 16;
-      empty_ack(queue + 2, queue[2], queue[3]);
-      callback_send(queue, 18);
-      // TODO Call the function, using the descriptor
-      int return_value = 287454020;
-      function_return(queue + 2, token, return_value);
-      callback_send(queue, 18);
+      unsigned char *msg_to_send = queue + len;
+
+      // send ACK
+      *msg_to_send = 0;
+      *(msg_to_send + 1) = 16;
+      empty_ack(msg_to_send + 2, queue[2], queue[3]);
+      callback_send(msg_to_send, 18);
+
+      // copy the function key
+      unsigned char function_key[13];
+      memset(function_key, 0, 13);
+      int function_key_length = queue[7] & 0x0F;
+      memcpy(function_key, queue + 8, function_key_length);
+
+      // How long is the argument?
+      int q_index = 8 + function_key_length;
+      int query_length = queue[q_index] & 0x0F;
+      if (13 == query_length)
+      {
+        ++q_index;
+        query_length = 13 + queue[q_index];
+      }
+      else if (14 == query_length)
+      {
+        ++q_index;
+        query_length = queue[q_index] << 8;
+        ++q_index;
+        query_length |= queue[q_index];
+        query_length += 269;
+      }
+
+      // malloc and copy the argument
+      unsigned char *arg = (unsigned char *) malloc(query_length + 1);
+      memcpy(arg, queue + q_index + 1, query_length);
+      arg[query_length] = 0; // null terminate string
+
+      // call the given user function then free the allocated arg
+      int return_value = descriptor->call_function(function_key, arg);
+      free(arg);
+
+      // send return value
+      function_return(msg_to_send + 2, token, return_value);
+      callback_send(msg_to_send, 18);
       break;
     }
     case CoAPMessageType::VARIABLE_REQUEST:
