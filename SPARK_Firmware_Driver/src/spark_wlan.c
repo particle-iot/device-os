@@ -288,6 +288,8 @@ void SPARK_WLAN_Setup(void)
 	/* Trigger a WLAN device */
 	wlan_start(0);
 
+	SPARK_LED_FADE = 0;
+
 	SPARK_WLAN_STARTED = 1;
 
 	/* Mask out all non-required events from CC3000 */
