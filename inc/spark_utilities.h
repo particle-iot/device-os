@@ -18,6 +18,10 @@
 #define USER_FUNC_KEY_LENGTH		12
 #define USER_FUNC_ARG_LENGTH		256
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum
 {
 	SLEEP_MODE_WLAN = 0, SLEEP_MODE_PEPH = 1, SLEEP_MODE_DEEP = 2
@@ -62,5 +66,9 @@ void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 
 extern void (*pHandleMessage)(void);
+
+#ifdef __cplusplus
+} /* end of extern "C" */
+#endif
 
 #endif  /* __SPARK_UTILITIES_H */

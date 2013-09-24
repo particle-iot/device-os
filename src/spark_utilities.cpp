@@ -4,6 +4,8 @@
 #include "string.h"
 #include <stdarg.h>
 
+extern "C" {
+
 long sparkSocket;
 sockaddr tSocketAddr;
 
@@ -225,14 +227,12 @@ int Spark_Connect(void)
 
 int Spark_Disconnect(void)
 {
-    int retVal = 0;
+  int retVal = closesocket(sparkSocket);
 
-    retVal = closesocket(sparkSocket);
+  if(retVal == 0)
+    sparkSocket = 0xFFFFFFFF;
 
-    if(retVal == 0)
-    	sparkSocket = 0xFFFFFFFF;
-
-    return retVal;
+  return retVal;
 }
 
 // receive from socket until we either find a newline or fill the buffer
@@ -242,85 +242,85 @@ int Spark_Disconnect(void)
 //          the number of bytes received when we have received a full line
 int receive_line()
 {
-	if (0 == total_bytes_received)
-	{
-		memset(recvBuff, 0, SPARK_BUF_LEN);
-	}
+  if (0 == total_bytes_received)
+  {
+    memset(recvBuff, 0, SPARK_BUF_LEN);
+  }
 
-    // reset the fd_set structure
-    FD_ZERO(&readSet);
-    FD_SET(sparkSocket, &readSet);
+  // reset the fd_set structure
+  FD_ZERO(&readSet);
+  FD_SET(sparkSocket, &readSet);
 
-    int buffer_bytes_available = SPARK_BUF_LEN - 1 - total_bytes_received;
-    char *newline = NULL;
+  int buffer_bytes_available = SPARK_BUF_LEN - 1 - total_bytes_received;
+  char *newline = NULL;
 
-    // tell select to timeout after 500 microseconds
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 500;
+  // tell select to timeout after 500 microseconds
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 500;
 
-	int num_fds_ready = select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
+  int num_fds_ready = select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
 
-	if (0 < num_fds_ready)
-	{
-		if (FD_ISSET(sparkSocket, &readSet))
-		{
-			char *buffer_ptr = recvBuff + total_bytes_received;
-
-			int bytes_received_once = recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
-
-			if (0 > bytes_received_once)
-				return bytes_received_once;
-
-			total_bytes_received += bytes_received_once;
-			newline = strchr(recvBuff, '\n');
-		}
-	}
-
-    if (NULL == newline && 0 < buffer_bytes_available)
+  if (0 < num_fds_ready)
+  {
+    if (FD_ISSET(sparkSocket, &readSet))
     {
-    	return 0;
+      char *buffer_ptr = recvBuff + total_bytes_received;
+
+      int bytes_received_once = recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
+
+      if (0 > bytes_received_once)
+        return bytes_received_once;
+
+      total_bytes_received += bytes_received_once;
+      newline = strchr(recvBuff, '\n');
     }
-    else
-    {
-    	int retVal = total_bytes_received;
-    	total_bytes_received = 0;
-    	return retVal;
-    }
+  }
+
+  if (NULL == newline && 0 < buffer_bytes_available)
+  {
+    return 0;
+  }
+  else
+  {
+    int retVal = total_bytes_received;
+    total_bytes_received = 0;
+    return retVal;
+  }
 }
 
 void process_chunk(void)
 {
-	uint32_t chunkBytesAvailable = 0;
-	uint32_t chunkCRCValue = 0;
-	uint32_t computedCRCValue = 0;
-	char *chunkToken;
+  uint32_t chunkBytesAvailable = 0;
+  uint32_t chunkCRCValue = 0;
+  uint32_t computedCRCValue = 0;
+  char *chunkToken;
 
-	chunkToken = strtok(&recvBuff[chunkIndex], "\n");
-	if(chunkToken != NULL)
-	{
-		chunkCRCValue = atoui(chunkToken);
-		chunkIndex = chunkIndex + strlen(chunkToken) + 1;//+1 for '\n'
-	}
+  chunkToken = strtok(&recvBuff[chunkIndex], "\n");
+  if (chunkToken != NULL)
+  {
+    chunkCRCValue = atoui(chunkToken);
+    chunkIndex = chunkIndex + strlen(chunkToken) + 1;//+1 for '\n'
+  }
 
-	chunkToken = strtok(NULL, "\n");
-	if(chunkToken != NULL)
-	{
-		chunkBytesAvailable = atoui(chunkToken);
-		chunkIndex = chunkIndex + strlen(chunkToken) + 1;//+1 for '\n'
-	}
+  chunkToken = strtok(NULL, "\n");
+  if (chunkToken != NULL)
+  {
+    chunkBytesAvailable = atoui(chunkToken);
+    chunkIndex = chunkIndex + strlen(chunkToken) + 1;//+1 for '\n'
+  }
 
-	if(chunkBytesAvailable)
-	{
-		char CRCStr[11];
-		memset(CRCStr, 0, 11);
-		computedCRCValue = Compute_CRC32((uint8_t *)&recvBuff[chunkIndex], chunkBytesAvailable);
-		if(chunkCRCValue == computedCRCValue)
-		{
-			FLASH_Update((uint8_t *)&recvBuff[chunkIndex], chunkBytesAvailable);
-		}
-		uitoa(computedCRCValue, CRCStr);
-		Spark_Send_Device_Message(sparkSocket, (char *)CRCStr, NULL, NULL);
-	}
+  if (chunkBytesAvailable)
+  {
+    char CRCStr[11];
+    memset(CRCStr, 0, 11);
+    computedCRCValue = Compute_CRC32((uint8_t *)&recvBuff[chunkIndex], chunkBytesAvailable);
+    if(chunkCRCValue == computedCRCValue)
+    {
+      FLASH_Update((uint8_t *)&recvBuff[chunkIndex], chunkBytesAvailable);
+    }
+    uitoa(computedCRCValue, CRCStr);
+    Spark_Send_Device_Message(sparkSocket, (char *)CRCStr, NULL, NULL);
+  }
 }
 
 // process the contents of recvBuff
@@ -406,21 +406,21 @@ int process_command()
 	// command to call the user-defined function
 	else if (0 == strncmp(recvBuff, API_HandleMessage, strlen(API_HandleMessage)))
 	{
-		char *msg_arg = &recvBuff[strlen(API_HandleMessage)];
-		char *newline = strchr(msg_arg, '\n');
-		if (NULL != newline)
-		{
-			if ('\r' == *(newline - 1))
-				newline--;
-			*newline = '\0';
-		}
+    char *msg_arg = &recvBuff[strlen(API_HandleMessage)];
+    char *newline = strchr(msg_arg, '\n');
+    if (NULL != newline)
+    {
+      if ('\r' == *(newline - 1))
+        newline--;
+      *newline = '\0';
+    }
 
-	    memset(msgBuff, 0, SPARK_BUF_LEN);
-	    if(NULL != msg_arg)
-	    {
-	    	memcpy(msgBuff, msg_arg, strlen(msg_arg));
-	    }
-	    pHandleMessage = handle_message;
+    memset(msgBuff, 0, SPARK_BUF_LEN);
+    if(NULL != msg_arg)
+    {
+      memcpy(msgBuff, msg_arg, strlen(msg_arg));
+    }
+    pHandleMessage = handle_message;
 	}
 
 /*
@@ -430,7 +430,7 @@ int process_command()
 //	}
 */
 
-	return bytes_sent;
+  return bytes_sent;
 }
 
 int Spark_Process_API_Response(void)
@@ -768,3 +768,5 @@ static void sub_str(char dest[], char src[], int offset, int len)
 }
 
 */
+
+} /* end of extern "C" */
