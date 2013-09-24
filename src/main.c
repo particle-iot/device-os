@@ -78,6 +78,7 @@ int main(void)
 #if defined (USE_SPARK_CORE_V02)
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
+    SPARK_LED_FADE = 1;
 
 #if defined (SPARK_RTC_ENABLE)
     RTC_Configuration();
@@ -171,7 +172,7 @@ void Timing_Decrement(void)
 
     if (TimingLED != 0x00)
     {
-        TimingLED--;
+    	TimingLED--;
     }
     else if(WLAN_SMART_CONFIG_START || SPARK_FLASH_UPDATE || Spark_Error_Count)
     {
@@ -181,30 +182,33 @@ void Timing_Decrement(void)
     {
 #if defined (USE_SPARK_CORE_V02)
     	LED_Fade(LED_RGB);
-    	TimingLED = 25;	//25ms
+    	if(SPARK_DEVICE_ACKED)
+    		TimingLED = 20;
+    	else
+    		TimingLED = 1;
 #endif
     }
-    else if(!SPARK_DEVICE_ACKED)
+    else if(SPARK_DEVICE_ACKED)
+    {
+#if defined (USE_SPARK_CORE_V01)
+    	LED_On(LED1);
+#elif defined (USE_SPARK_CORE_V02)
+    	LED_SetRGBColor(RGB_COLOR_CYAN);
+    	LED_On(LED_RGB);
+#endif
+    	SPARK_LED_FADE = 1;
+    }
+    else
     {
 #if defined (USE_SPARK_CORE_V01)
     	LED_Toggle(LED1);
 #elif defined (USE_SPARK_CORE_V02)
-		LED_Toggle(LED_RGB);
+    	LED_Toggle(LED_RGB);
 #endif
-    	TimingLED = 100;	//100ms
-    }
-    else
-    {
-    	if(!SPARK_LED_FADE)
-    	{
-#if defined (USE_SPARK_CORE_V01)
-    		LED_On(LED1);//SPARK_DEVICE_ACKED
-#elif defined (USE_SPARK_CORE_V02)
-    		LED_SetRGBColor(RGB_COLOR_CYAN);
-    		LED_On(LED_RGB);
-#endif
-    		SPARK_LED_FADE = 1;
-    	}
+    	if(SPARK_SOCKET_CONNECTED)
+    		TimingLED = 50;		//50ms
+    	else
+    		TimingLED = 100;	//100ms
     }
 
 	if(BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
