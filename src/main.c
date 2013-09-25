@@ -200,7 +200,17 @@ void Timing_Decrement(void)
     {
         TimingLED--;
     }
-    else if(FACTORY_RESET_MODE || DFU_DEVICE_MODE || OTA_UPDATE_MODE)
+    else if(FACTORY_RESET_MODE || OTA_UPDATE_MODE)
+    {
+#if defined (USE_SPARK_CORE_V01)
+        LED_Toggle(LED1);
+        LED_Toggle(LED2);
+#elif defined (USE_SPARK_CORE_V02)
+        LED_Toggle(LED_RGB);
+#endif
+        TimingLED = 50;
+    }
+    else if(DFU_DEVICE_MODE)
     {
 #if defined (USE_SPARK_CORE_V01)
         LED_Toggle(LED1);
