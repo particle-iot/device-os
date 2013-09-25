@@ -3,14 +3,17 @@
 #include "netapp.h"
 #include "string.h"
 #include <stdarg.h>
+#include "spark_protocol.h"
 
 extern "C" {
+
+SparkProtocol spark_protocol;
 
 long sparkSocket;
 sockaddr tSocketAddr;
 
 timeval timeout;
-fd_set readSet;
+_types_fd_set_cc3000 readSet;
 
 // Spark Messages
 const char Device_Secret[] = "secret";

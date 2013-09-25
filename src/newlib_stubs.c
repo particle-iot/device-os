@@ -46,3 +46,5 @@ int _getpid(void)
 {
   return 1;
 }
+
+void *__dso_handle = 0;
