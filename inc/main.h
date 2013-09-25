@@ -14,8 +14,14 @@
 
 /* Includes ------------------------------------------------------------------*/
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "hw_config.h"
 #include "spark_wlan.h"
+#ifdef __cplusplus
+}
+#endif
 
 /* Exported types ------------------------------------------------------------*/
 
