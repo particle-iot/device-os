@@ -21,10 +21,6 @@
 
 #define TIMING_SPARK_PROCESS_API	200		//200ms
 #define TIMING_SPARK_ALIVE_TIMEOUT	15000	//15sec
-#define TIMING_SPARK_RESET_TIMEOUT	30000	//30sec
-#define TIMING_SPARK_OTA_TIMEOUT	180000	//180sec
-
-#define SPARK_CONNECT_MAX_ATTEMPT	3		//Max no of connection attempts
 
 void Set_NetApp_Timeout(void);
 void Clear_NetApp_Dhcp(void);
@@ -46,7 +42,6 @@ extern int Spark_Disconnect(void);
 extern int Spark_Process_API_Response(void);
 
 extern __IO uint32_t TimingSparkAliveTimeout;
-extern __IO uint32_t TimingSparkOTATimeout;
 
 extern __IO uint8_t SPARK_WLAN_SLEEP;
 extern __IO uint8_t SPARK_SOCKET_CONNECTED;

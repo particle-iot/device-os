@@ -3,8 +3,6 @@
 
 __IO uint32_t TimingSparkProcessAPI;
 __IO uint32_t TimingSparkAliveTimeout;
-__IO uint32_t TimingSparkResetTimeout;
-__IO uint32_t TimingSparkOTATimeout;
 
 uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
 uint8_t WLAN_SMART_CONFIG_START;
@@ -31,6 +29,7 @@ unsigned char _auth = WLAN_SEC_WPA2;
 
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
+__IO uint8_t SPARK_WLAN_RESET;
 __IO uint8_t SPARK_WLAN_SLEEP;
 __IO uint8_t SPARK_WLAN_STARTED;
 __IO uint8_t SPARK_SOCKET_CONNECTED;
@@ -39,7 +38,6 @@ __IO uint8_t SPARK_DEVICE_ACKED;
 __IO uint8_t SPARK_FLASH_UPDATE;
 __IO uint8_t SPARK_LED_FADE;
 
-__IO uint8_t Spark_Connect_Count;
 __IO uint8_t Spark_Error_Count;
 
 void Set_NetApp_Timeout(void)
@@ -83,7 +81,9 @@ void Start_Smart_Config(void)
 	SPARK_DEVICE_ACKED = 0;
 	SPARK_FLASH_UPDATE = 0;
 	SPARK_LED_FADE = 0;
-	Spark_Connect_Count = 0;
+
+	TimingSparkProcessAPI = 0;
+	TimingSparkAliveTimeout = 0;
 
 	unsigned char wlan_profile_index;
 
@@ -176,11 +176,6 @@ void Start_Smart_Config(void)
 	LED_On(LED_RGB);
 #endif
 
-	TimingSparkProcessAPI = 0;
-	TimingSparkAliveTimeout = 0;
-	TimingSparkResetTimeout = 0;
-	TimingSparkOTATimeout = 0;
-
 	WLAN_SMART_CONFIG_START = 0;
 }
 
@@ -227,7 +222,8 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			SPARK_DEVICE_ACKED = 0;
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
-			Spark_Connect_Count = 0;
+			TimingSparkProcessAPI = 0;
+			TimingSparkAliveTimeout = 0;
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
@@ -381,11 +377,23 @@ void SPARK_WLAN_Setup(void)
 
 void SPARK_WLAN_Loop(void)
 {
-	if(SPARK_WLAN_SLEEP)
+	if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
 	{
 		if(SPARK_WLAN_STARTED)
 		{
-			//Spark_Disconnect();
+			WLAN_CONNECTED = 0;
+			WLAN_DHCP = 0;
+
+			SPARK_WLAN_RESET = 0;
+			SPARK_WLAN_STARTED = 0;
+			SPARK_SOCKET_CONNECTED = 0;
+			SPARK_SOCKET_ALIVE = 0;
+			SPARK_DEVICE_ACKED = 0;
+			SPARK_FLASH_UPDATE = 0;
+			SPARK_LED_FADE = 0;
+
+			TimingSparkProcessAPI = 0;
+			TimingSparkAliveTimeout = 0;
 
 			CC3000_Write_Enable_Pin(WLAN_DISABLE);
 
@@ -393,16 +401,6 @@ void SPARK_WLAN_Loop(void)
 
 			LED_SetRGBColor(RGB_COLOR_GREEN);
 			LED_On(LED_RGB);
-
-			SPARK_WLAN_STARTED = 0;
-			WLAN_CONNECTED = 0;
-			WLAN_DHCP = 0;
-			SPARK_SOCKET_CONNECTED = 0;
-			SPARK_SOCKET_ALIVE = 0;
-			SPARK_DEVICE_ACKED = 0;
-			SPARK_FLASH_UPDATE = 0;
-			SPARK_LED_FADE = 0;
-			Spark_Connect_Count = 0;
 		}
 	}
 	else
@@ -412,11 +410,6 @@ void SPARK_WLAN_Loop(void)
 			wlan_start(0);
 
 			SPARK_WLAN_STARTED = 1;
-
-			TimingSparkProcessAPI = 0;
-			TimingSparkAliveTimeout = 0;
-			TimingSparkResetTimeout = 0;
-			TimingSparkOTATimeout = 0;
 		}
 	}
 
@@ -459,8 +452,6 @@ void SPARK_WLAN_Loop(void)
 		LED_On(LED_RGB);
 #endif
 
-		Spark_Connect_Count++;
-
 		if(Spark_Connect() < 0)
 			SPARK_SOCKET_CONNECTED = 0;
 		else
@@ -470,54 +461,8 @@ void SPARK_WLAN_Loop(void)
 
 void SPARK_WLAN_Timing(void)
 {
-/*
-	if (TimingSparkOTATimeout >= TIMING_SPARK_OTA_TIMEOUT)
+	if (WLAN_CONNECTED && SPARK_SOCKET_CONNECTED)
 	{
-		if (BKP_ReadBackupRegister(BKP_DR10) != 0xCCCC)
-			BKP_WriteBackupRegister(BKP_DR10, 0xC000);
-
-		NVIC_SystemReset();
-	}
-	else
-	{
-		TimingSparkOTATimeout++;
-	}
-*/
-
-    if (WLAN_CONNECTED && !SPARK_WLAN_SLEEP && !SPARK_SOCKET_CONNECTED)
-    {
-		if (!Spark_Connect_Count)
-		{
-			if (TimingSparkResetTimeout >= TIMING_SPARK_RESET_TIMEOUT)
-			{
-				Spark_Error_Count = 2;
-				NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = Spark_Error_Count;
-				nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
-
-				NVIC_SystemReset();
-			}
-			else
-			{
-				TimingSparkResetTimeout++;
-			}
-		}
-		else if (Spark_Connect_Count >= SPARK_CONNECT_MAX_ATTEMPT)
-		{
-			Spark_Error_Count = 3;
-			NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = Spark_Error_Count;
-			nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
-
-			NVIC_SystemReset();
-		}
-    }
-
-	if (SPARK_SOCKET_CONNECTED)
-	{
-		if(Spark_Connect_Count)
-			Spark_Connect_Count = 0;
-		else
-			TimingSparkResetTimeout = 0;
-
 		SPARK_SOCKET_ALIVE = 1;
 
 		if (TimingSparkProcessAPI >= TIMING_SPARK_PROCESS_API)
@@ -548,16 +493,10 @@ void SPARK_WLAN_Timing(void)
 
 		if(SPARK_SOCKET_ALIVE != 1)
 		{
-			Spark_Error_Count = 4;
-			NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = Spark_Error_Count;
+			NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = 1;
 			nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
 
-			Spark_Disconnect();
-
-			SPARK_SOCKET_CONNECTED = 0;
-			SPARK_DEVICE_ACKED = 0;
-			SPARK_FLASH_UPDATE = 0;
-			Spark_Connect_Count = 0;
+			SPARK_WLAN_RESET = 1;
 		}
 	}
 }
