@@ -137,6 +137,8 @@ int main(void)
     LED_On(LED_RGB);
 #endif
 
+    DFU_DEVICE_MODE = 1;
+
     /* Enter DFU mode */
     DeviceState = STATE_dfuERROR;
     DeviceStatus[0] = STATUS_ERRFIRMWARE;
