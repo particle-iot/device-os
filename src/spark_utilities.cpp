@@ -190,7 +190,7 @@ bool Spark_Connected(void)
 
 int Spark_Send(const unsigned char *buf, int buflen)
 {
-  return 0;
+  return send(sparkSocket, buf, buflen, 0);
 }
 
 int Spark_Receive(unsigned char *buf, int buflen)
