@@ -9,7 +9,7 @@ struct CoAPFixture
   SparkProtocol spark_protocol;
   CoAPMessageType::Enum message_type;
 
-  int init();
+  void init();
 };
 
 const uint8_t CoAPFixture::private_key[1192] =
@@ -213,26 +213,55 @@ const uint8_t CoAPFixture::signed_encrypted_credentials[512] = {
   0x66, 0x0d, 0x9f, 0x3c, 0xeb, 0xa0, 0x7e, 0x9e,
   0x46, 0x98, 0xb6, 0x26, 0xe2, 0x89, 0xa1, 0xac };
 
-int CoAPFixture::init()
+int mock_send(const unsigned char *buf, int buflen)
 {
-  return spark_protocol.init(private_key, pubkey, signed_encrypted_credentials);
+  unsigned const char *prevent_warnings = buf;
+  prevent_warnings += buflen;
+  return 0;
+}
+
+int mock_receive(unsigned char *buf, int buflen)
+{
+  unsigned char *prevent_warnings = buf;
+  prevent_warnings += buflen;
+  return 0;
+}
+
+int mock_call_function(const char *function_key, const char *arg)
+{
+  const char *prevent_warnings = function_key;
+  prevent_warnings = arg;
+  return 0;
+}
+
+void CoAPFixture::init()
+{
+  const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+  SparkKeys keys;
+  keys.server_public = pubkey;
+  keys.core_private = private_key;
+
+  SparkCallbacks callbacks;
+  callbacks.send = mock_send;
+  callbacks.receive = mock_receive;
+
+  SparkDescriptor descriptor;
+  descriptor.call_function = mock_call_function;
+
+  spark_protocol.init(id, keys, callbacks, &descriptor);
+  spark_protocol.set_key(signed_encrypted_credentials);
 }
 
 
 SUITE(CoAP)
 {
-  TEST_FIXTURE(CoAPFixture, SparkProtocolInitSucceeds)
-  {
-    CHECK_EQUAL(0, init());
-  }
-
   TEST_FIXTURE(CoAPFixture, ReceivedMessageReturnsCoAPMessageTypeFunction)
   {
     uint8_t ciphertext[32] = {
-      0x43, 0x52, 0x3e, 0x02, 0x6c, 0x86, 0x75, 0xb7,
-      0x73, 0xcf, 0x8b, 0x50, 0x16, 0xa6, 0x5b, 0x5b,
-      0xea, 0x48, 0x63, 0xd9, 0xf0, 0x30, 0xd3, 0xce,
-      0xba, 0x39, 0xff, 0x46, 0x30, 0x9b, 0x24, 0xfc };
+      0xd7, 0xd1, 0x1c, 0x1c, 0x2d, 0xde, 0x7d, 0x09,
+      0x42, 0x49, 0x0d, 0x4b, 0x4f, 0x44, 0x19, 0xc3,
+      0x17, 0x00, 0x0f, 0xcf, 0xb2, 0x58, 0x85, 0x2d,
+      0xdb, 0x2d, 0xf7, 0xf8, 0x15, 0x61, 0x25, 0x9b };
     init();
     message_type = spark_protocol.received_message(ciphertext, 32);
     CHECK_EQUAL(CoAPMessageType::FUNCTION_CALL, message_type);

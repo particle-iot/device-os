@@ -31,19 +31,17 @@ struct SparkCallbacks
 class SparkProtocol
 {
   public:
-    SparkProtocol(const unsigned char *id,
-                  const SparkKeys &keys,
-                  const SparkCallbacks &callbacks,
-                  SparkDescriptor *descriptor);
     SparkProtocol();
     ~SparkProtocol();
 
+    void init(const char *id,
+              const SparkKeys &keys,
+              const SparkCallbacks &callbacks,
+              SparkDescriptor *descriptor);
     int handshake(void);
     void event_loop(void);
 
-    int init(const unsigned char *private_key,
-             const unsigned char *pubkey,
-             const unsigned char *signed_encrypted_credentials);
+    int set_key(const unsigned char *signed_encrypted_credentials);
     CoAPMessageType::Enum received_message(unsigned char *buf, int length);
     void hello(unsigned char *buf);
     void key_changed(unsigned char *buf, unsigned char token);
@@ -96,7 +94,6 @@ class SparkProtocol
     unsigned short next_message_id();
     void encrypt(unsigned char *buf, int length);
     void separate_response(unsigned char *buf, unsigned char token, unsigned char code);
-    int set_key(const unsigned char *signed_encrypted_credentials);
     inline void empty_ack(unsigned char *buf,
                           unsigned char message_id_msb,
                           unsigned char message_id_lsb);

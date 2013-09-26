@@ -3,21 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-SparkProtocol::SparkProtocol(const unsigned char *id,
-                             const SparkKeys &keys,
-                             const SparkCallbacks &callbacks,
-                             SparkDescriptor *descriptor) : QUEUE_SIZE(640)
-{
-  queue_front = queue_back = queue = (unsigned char *) malloc(QUEUE_SIZE);
-  queue_mem_boundary = queue + QUEUE_SIZE;
-  memcpy(queue + 40, id, 12);
-  rsa_keys = &keys;
-
-  callback_send = callbacks.send;
-  callback_receive = callbacks.receive;
-  this->descriptor = descriptor;
-}
-
 SparkProtocol::SparkProtocol() : QUEUE_SIZE(640)
 {
   queue_front = queue_back = queue = (unsigned char *) malloc(QUEUE_SIZE);
@@ -27,6 +12,20 @@ SparkProtocol::SparkProtocol() : QUEUE_SIZE(640)
 SparkProtocol::~SparkProtocol()
 {
   free(queue);
+}
+
+void SparkProtocol::init(const char *id,
+                         const SparkKeys &keys,
+                         const SparkCallbacks &callbacks,
+                         SparkDescriptor *descriptor)
+{
+  memcpy(queue + 40, id, 12);
+  rsa_keys = &keys;
+
+  callback_send = callbacks.send;
+  callback_receive = callbacks.receive;
+
+  this->descriptor = descriptor;
 }
 
 int SparkProtocol::handshake(void)
@@ -84,7 +83,7 @@ void SparkProtocol::event_loop(void)
       callback_send(msg_to_send, 18);
 
       // copy the function key
-      unsigned char function_key[13];
+      char function_key[13];
       memset(function_key, 0, 13);
       int function_key_length = queue[7] & 0x0F;
       memcpy(function_key, queue + 8, function_key_length);
@@ -107,7 +106,7 @@ void SparkProtocol::event_loop(void)
       }
 
       // malloc and copy the argument
-      unsigned char *arg = (unsigned char *) malloc(query_length + 1);
+      char *arg = (char *) malloc(query_length + 1);
       memcpy(arg, queue + q_index + 1, query_length);
       arg[query_length] = 0; // null terminate string
 
@@ -148,32 +147,6 @@ void SparkProtocol::event_loop(void)
     default:
       ; // drop it on the floor
   }
-}
-
-int SparkProtocol::init(const unsigned char *private_key,
-                        const unsigned char *pubkey,
-                        const unsigned char *signed_encrypted_credentials)
-{
-  unsigned char credentials[40];
-  unsigned char hmac[20];
-
-  if (0 != decipher_aes_credentials(private_key,
-                                    signed_encrypted_credentials,
-                                    credentials))
-    return 1;
-
-  calculate_ciphertext_hmac(signed_encrypted_credentials, credentials, hmac);
-
-  if (0 == verify_signature(signed_encrypted_credentials + 256, pubkey, hmac))
-  {
-    memcpy(key,        credentials,      16);
-    memcpy(iv_send,    credentials + 16, 16);
-    memcpy(iv_receive, credentials + 16, 16);
-    memcpy(salt,       credentials + 32,  8);
-    _message_id = *(credentials + 32) << 8 | *(credentials + 33);
-    return 0;
-  }
-  else return 2;
 }
 
 CoAPMessageType::Enum

@@ -4,7 +4,7 @@
 struct ConstructorFixture
 {
   static const uint8_t nonce[40];
-  static const uint8_t id[12];
+  static const char id[12];
   static const uint8_t pubkey[294];
   static const uint8_t private_key[1192];
   static const uint8_t signed_encrypted_credentials[512];
@@ -16,12 +16,13 @@ struct ConstructorFixture
   static int mock_receive(unsigned char *buf, int buflen);
   static uint8_t message_to_receive[18];
   static bool function_called;
-  static int mock_call_function(unsigned char *function_key, unsigned char *arg);
+  static int mock_call_function(const char *function_key, const char *arg);
 
   ConstructorFixture();
   SparkKeys keys;
   SparkCallbacks callbacks;
   SparkDescriptor descriptor;
+  SparkProtocol spark_protocol;
 };
 
 const uint8_t ConstructorFixture::nonce[40] = {
@@ -31,7 +32,7 @@ const uint8_t ConstructorFixture::nonce[40] = {
   0xed, 0x80, 0x05, 0xde, 0xe7, 0x44, 0x23, 0x22,
   0xc3, 0x4c, 0x81, 0x98, 0x1c, 0x29, 0xdc, 0xef };
 
-const uint8_t ConstructorFixture::id[12] = {
+const char ConstructorFixture::id[12] = {
   0x1b, 0x1d, 0x4a, 0xc3, 0x87, 0x8b,
   0x7f, 0x1d, 0x46, 0x9d, 0x7b, 0x33 };
 
@@ -251,6 +252,7 @@ ConstructorFixture::ConstructorFixture()
   callbacks.receive = mock_receive;
   descriptor.call_function = mock_call_function;
   function_called = false;
+  spark_protocol.init(id, keys, callbacks, &descriptor);
 }
 
 int ConstructorFixture::mock_send(const unsigned char *buf, int buflen)
@@ -312,10 +314,10 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
 uint8_t ConstructorFixture::message_to_receive[18];
 bool ConstructorFixture::function_called = false;
 
-int ConstructorFixture::mock_call_function(unsigned char *function_key,
-                                           unsigned char *arg)
+int ConstructorFixture::mock_call_function(const char *function_key,
+                                           const char *arg)
 {
-  unsigned char *prevent_warning;
+  const char *prevent_warning;
   prevent_warning = function_key;
   prevent_warning = arg;
   function_called = true;
@@ -324,29 +326,20 @@ int ConstructorFixture::mock_call_function(unsigned char *function_key,
 
 SUITE(SparkProtocolConstruction)
 {
-  TEST_FIXTURE(ConstructorFixture, ConstructorInjectsDependencies)
-  {
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
-    CHECK(&spark_protocol);
-  }
-
   TEST_FIXTURE(ConstructorFixture, NoErrorReturnedFromHandshake)
   {
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     int err = spark_protocol.handshake();
     CHECK_EQUAL(0, err);
   }
 
   TEST_FIXTURE(ConstructorFixture, HandshakeReceives40Bytes)
   {
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     CHECK_EQUAL(40, bytes_received[0]);
   }
 
   TEST_FIXTURE(ConstructorFixture, HandshakeSends256Bytes)
   {
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     CHECK_EQUAL(256, bytes_sent[0]);
   }
@@ -386,21 +379,18 @@ SUITE(SparkProtocolConstruction)
       0xa4, 0x03, 0x17, 0xef, 0xb4, 0xb2, 0xa7, 0x49,
       0x43, 0x64, 0x61, 0x82, 0xa9, 0x41, 0x16, 0xab,
       0x5f, 0x5a, 0x0e, 0xb6, 0xa5, 0x74, 0x15, 0xaf };
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     CHECK_ARRAY_EQUAL(expected, sent_buf_0, 256);
   }
 
   TEST_FIXTURE(ConstructorFixture, HandshakeLaterReceives512Bytes)
   {
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     CHECK_EQUAL(512, bytes_received[1]);
   }
 
   TEST_FIXTURE(ConstructorFixture, HandshakeLaterSends18Bytes)
   {
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     CHECK_EQUAL(18, bytes_sent[1]);
   }
@@ -411,7 +401,6 @@ SUITE(SparkProtocolConstruction)
       0x00, 0x10,
       0x89, 0x5f, 0xeb, 0x18, 0x07, 0xba, 0x1d, 0xbf,
       0x11, 0x26, 0x55, 0x04, 0x75, 0x28, 0x2a, 0xef };
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     CHECK_ARRAY_EQUAL(expected, sent_buf_1, 18);
   }
@@ -421,7 +410,6 @@ SUITE(SparkProtocolConstruction)
 
   TEST_FIXTURE(ConstructorFixture, EventLoopReceives2Bytes)
   {
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     bytes_received[0] = 0;
     spark_protocol.event_loop();
@@ -435,7 +423,6 @@ SUITE(SparkProtocolConstruction)
       0xd5, 0xb7, 0xf7, 0xfe, 0x9f, 0x2d, 0xca, 0xac,
       0xda, 0x15, 0x10, 0xa3, 0x27, 0x8b, 0xa7, 0xa9 };
     memcpy(message_to_receive, describe, 18);
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     bytes_received[0] = bytes_received[1] = 0;
     spark_protocol.event_loop();
@@ -449,7 +436,6 @@ SUITE(SparkProtocolConstruction)
       0xd5, 0xb7, 0xf7, 0xfe, 0x9f, 0x2d, 0xca, 0xac,
       0xda, 0x15, 0x10, 0xa3, 0x27, 0x8b, 0xa7, 0xa9 };
     memcpy(message_to_receive, describe, 18);
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();
@@ -469,7 +455,6 @@ SUITE(SparkProtocolConstruction)
       0xDB, 0x17, 0xA0, 0xB2, 0xFD, 0x11, 0x8B, 0xE0,
       0x9E, 0x16, 0x47, 0x44, 0x28, 0x3E, 0x37, 0xA8,
       0x11, 0x41, 0x55, 0x69, 0x5B, 0x50, 0x2F, 0x9E };
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();
@@ -489,7 +474,6 @@ SUITE(SparkProtocolConstruction)
       0x00, 0x10,
       0x11, 0xea, 0xc7, 0xe9, 0x5f, 0xe0, 0x90, 0x83,
       0xf7, 0xa0, 0xa0, 0x75, 0xf3, 0xc4, 0x4a, 0x7f };
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();
@@ -510,7 +494,6 @@ SUITE(SparkProtocolConstruction)
       0x00, 0x10,
       0x4a, 0x49, 0x79, 0xb4, 0x99, 0xce, 0xd4, 0x3e,
       0x84, 0xc2, 0xdf, 0x84, 0x90, 0x51, 0x9b, 0x59 };
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();
@@ -531,7 +514,6 @@ SUITE(SparkProtocolConstruction)
       0x00, 0x10,
       0xc8, 0x2b, 0xfb, 0xdf, 0x77, 0x5c, 0x40, 0x87,
       0xc8, 0x05, 0x48, 0x8b, 0x77, 0x9d, 0x89, 0x5d };
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();
@@ -547,7 +529,6 @@ SUITE(SparkProtocolConstruction)
       0x17, 0x00, 0x0f, 0xcf, 0xb2, 0x58, 0x85, 0x2d,
       0xdb, 0x2d, 0xf7, 0xf8, 0x15, 0x61, 0x25, 0x9b };
     memcpy(message_to_receive, function_call, 34);
-    SparkProtocol spark_protocol(id, keys, callbacks, &descriptor);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();

@@ -2,12 +2,13 @@
 #include "spark_descriptor.h"
 
 struct FunctionFixture {
-  static int execute_a_function(unsigned char *func_key, unsigned char *arg);
+  static int execute_a_function(const char *func_key, const char *arg);
 };
 
-int FunctionFixture::execute_a_function(unsigned char *func_key, unsigned char *arg)
+int FunctionFixture::execute_a_function(const char *func_key,
+                                        const char *arg)
 {
-  unsigned char *prevent_warning;
+  const char *prevent_warning;
   prevent_warning = func_key;
   prevent_warning = arg;
   return 99;
@@ -35,8 +36,8 @@ SUITE(Descriptor)
   {
     SparkDescriptor descriptor;
     descriptor.call_function = execute_a_function;
-    unsigned char *function_key = (unsigned char *)"brew";
-    unsigned char *arg= (unsigned char *)"32,240";
+    const char *function_key = "brew";
+    const char *arg = "32,240";
     int return_value = descriptor.call_function(function_key, arg);
     CHECK_EQUAL(99, return_value);
   }
