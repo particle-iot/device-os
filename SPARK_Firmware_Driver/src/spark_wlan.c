@@ -27,6 +27,9 @@ char _password[] = "password";
 // Auth options are WLAN_SEC_UNSEC, WLAN_SEC_WPA, WLAN_SEC_WEP, and WLAN_SEC_WPA2
 unsigned char _auth = WLAN_SEC_WPA2;
 
+unsigned char ping_IP_Addr[4] = {8, 8, 8, 8};
+netapp_pingreport_args_t pingReport;
+
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
 __IO uint8_t SPARK_WLAN_RESET;
@@ -169,7 +172,7 @@ void Start_Smart_Config(void)
 	SPARK_WLAN_STARTED = 1;
 
 	/* Mask out all non-required events */
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
 
 #if defined (USE_SPARK_CORE_V02)
     LED_SetRGBColor(RGB_COLOR_GREEN);
@@ -243,6 +246,23 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			}
 			break;
 
+		case HCI_EVNT_WLAN_ASYNC_PING_REPORT:
+			memset(&pingReport, 0 , sizeof(netapp_pingreport_args_t));
+			memcpy(&pingReport, data, length);
+			//"pingReport" is incorrect due to bug in CC3000 API implementation so is not reliable at present
+			if(pingReport.packets_sent == pingReport.packets_received)
+			{
+				//Google Server Reached
+				NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = 3;
+			}
+			else
+			{
+				//Bad Internet Connection
+				NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = 2;
+			}
+			nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
+			break;
+
 		case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
 			WLAN_CAN_SHUTDOWN = 1;
 			break;
@@ -289,7 +309,7 @@ void SPARK_WLAN_Setup(void)
 	SPARK_WLAN_STARTED = 1;
 
 	/* Mask out all non-required events from CC3000 */
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
 
 	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != 0)
 	{
@@ -453,9 +473,15 @@ void SPARK_WLAN_Loop(void)
 #endif
 
 		if(Spark_Connect() < 0)
+		{
 			SPARK_SOCKET_CONNECTED = 0;
+
+			netapp_ping_send((unsigned long *)ping_IP_Addr, 4, 100, 1000);
+		}
 		else
+		{
 			SPARK_SOCKET_CONNECTED = 1;
+		}
 	}
 }
 
