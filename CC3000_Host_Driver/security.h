@@ -123,4 +123,13 @@ extern signed long aes_write_key(unsigned char *key);
 
 #endif //CC3000_UNENCRYPTED_SMART_CONFIG
 
+//*****************************************************************************
+//
+// Mark the end of the C bindings section for C++ compilers.
+//
+//*****************************************************************************
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
 #endif
