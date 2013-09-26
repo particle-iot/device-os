@@ -329,7 +329,7 @@ int receive_line()
     {
       char *buffer_ptr = recvBuff + total_bytes_received;
 
-      int bytes_received_once = recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
+      int bytes_received_once = 0;//recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
 
       if (0 > bytes_received_once)
         return bytes_received_once;
@@ -677,7 +677,7 @@ static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, c
     memcpy(&cmdBuf[sendLen], Device_CRLF, strlen(Device_CRLF));
     sendLen += strlen(Device_CRLF);
 
-    retVal = send(socket, cmdBuf, sendLen, 0);
+    //retVal = send(socket, cmdBuf, sendLen, 0);
 
     return retVal;
 }
