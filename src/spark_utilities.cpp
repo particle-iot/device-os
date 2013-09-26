@@ -195,7 +195,27 @@ int Spark_Send(const unsigned char *buf, int buflen)
 
 int Spark_Receive(unsigned char *buf, int buflen)
 {
-  return 0;
+  // reset the fd_set structure
+  FD_ZERO(&readSet);
+  FD_SET(sparkSocket, &readSet);
+
+  // tell select to timeout after 500 microseconds
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 500;
+
+  int bytes_received = 0;
+  int num_fds_ready = select(sparkSocket + 1, &readSet, NULL, NULL, &timeout);
+
+  if (0 < num_fds_ready)
+  {
+    if (FD_ISSET(sparkSocket, &readSet))
+    {
+      // recv returns negative numbers on error
+      bytes_received = recv(sparkSocket, buf, buflen, 0);
+    }
+  }
+
+  return bytes_received;
 }
 
 void Spark_Handshake(void)
