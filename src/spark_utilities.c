@@ -144,9 +144,11 @@ void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString))
 	}
 }
 
-void Spark_Event(char *eventName, char *eventResult)
+void Spark_Event(const char *eventName, char *eventResult)
 {
-
+//	unsigned char buf[256];
+//	memset(buf, 0, 256);
+//	spark_protocol.event(buf, eventName, strlen(eventName), eventResult, strlen(eventResult));
 }
 
 void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
