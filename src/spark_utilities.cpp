@@ -188,6 +188,26 @@ bool Spark_Connected(void)
 		return false;
 }
 
+int Spark_Send(const unsigned char *buf, int buflen)
+{
+  return 0;
+}
+
+int Spark_Receive(unsigned char *buf, int buflen)
+{
+  return 0;
+}
+
+void Spark_Handshake(void)
+{
+  spark_protocol.handshake();
+}
+
+void Spark_Communication_Loop(void)
+{
+  spark_protocol.event_loop();
+}
+
 int Spark_Connect(void)
 {
 	int retVal = 0;
@@ -222,10 +242,30 @@ int Spark_Connect(void)
 	}
 	else
 	{
+    char id[12];
+    memcpy(id, (const void *)ID1, 12);
+
+    unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
+    unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
+    FLASH_Read_ServerPublicKey(pubkey);
+    FLASH_Read_CorePrivateKey(pubkey);
+    SparkKeys keys;
+    keys.server_public = pubkey;
+    keys.core_private = private_key;
+
+    SparkCallbacks callbacks;
+    callbacks.send = Spark_Send;
+    callbacks.receive = Spark_Receive;
+
+    SparkDescriptor descriptor;
+    descriptor.call_function = userFuncSchedule;
+
+    spark_protocol.init(id, keys, callbacks, &descriptor);
+
 		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, NULL);
 	}
 
-    return retVal;
+  return retVal;
 }
 
 int Spark_Disconnect(void)
@@ -520,7 +560,7 @@ void userVarReturn(void)
 	}
 }
 
-bool userFuncSchedule(const char *funcKey, unsigned char token, const char *paramString)
+int userFuncSchedule(const char *funcKey, const char *paramString)
 {
 	int i = 0;
 	for(i = 0; i < User_Func_Count; i++)
@@ -532,11 +572,10 @@ bool userFuncSchedule(const char *funcKey, unsigned char token, const char *para
 				paramLength = USER_FUNC_ARG_LENGTH;
 			memcpy(User_Func_Lookup_Table[i].userFuncArg, paramString, paramLength);
 			User_Func_Lookup_Table[i].userFuncSchedule = true;
-			User_Func_Lookup_Table[i].token = token;
-			return true;
+			return 0;
 		}
 	}
-	return false;
+	return -1;
 }
 
 void userFuncExecute(void)

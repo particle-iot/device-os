@@ -51,10 +51,13 @@ int Spark_Connect(void);
 int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);
 
+void Spark_Handshake(void);
+void Spark_Communication_Loop(void);
+
 bool userVarSchedule(const char *varKey, unsigned char token);
 void userVarReturn(void);
 
-bool userFuncSchedule(const char *funcKey, unsigned char token, const char *paramString);
+int userFuncSchedule(const char *funcKey, const char *paramString);
 void userFuncExecute(void);
 
 void sendMessage(char *message);

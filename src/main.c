@@ -117,6 +117,7 @@ int main(void)
 
 #ifdef SPARK_WLAN_ENABLE
 	SPARK_WLAN_Setup();
+  Spark_Handshake();
 #endif
 
 	/* Main loop */
@@ -124,6 +125,7 @@ int main(void)
 	{
 #ifdef SPARK_WLAN_ENABLE
 		SPARK_WLAN_Loop();
+    Spark_Communication_Loop();
 #endif
 
 #ifdef SPARK_WIRING_ENABLE

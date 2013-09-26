@@ -31,7 +31,7 @@ void setup()
 
 /*
 	memset(ciphertext, 0, 256);
-	memcpy(id, (void *)0x01fff7e8, 12);
+	memcpy(id, (const void *)ID1, 12);
 	FLASH_Read_ServerPublicKey(pubkey);
 
 	pinMode(D7, OUTPUT);
