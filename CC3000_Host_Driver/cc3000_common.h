@@ -64,16 +64,13 @@ extern "C" {
 //*****************************************************************************
 #define ERROR_SOCKET_INACTIVE   -57 
 
-#define HCI_CC_PAYLOAD_LEN      5
-
 #define WLAN_ENABLE      (1)   
 #define WLAN_DISABLE     (0)
 
-
 #define	MAC_ADDR_LEN	(6)
 
-
-
+#define	SP_PORTION_SIZE	(32)
+  
 /*Defines for minimal and maximal RX buffer size. This size includes the spi 
   header and hci header.
   The maximal buffer size derives from:
@@ -96,9 +93,16 @@ extern "C" {
   Using gethostbyname() with minimal buffer size will limit the host name
   returned to 99 bytes only.
   The 1 is used for the overrun detection 
+
+  Buffer size increased to 130 following the add_profile() with WEP security
+  which requires TX buffer size of 130 bytes: 
+  HEADERS_SIZE_EVNT + WLAN_ADD_PROFILE_WEP_PARAM_LEN + MAX SSID LEN + 4 * MAX KEY LEN = 130
+  MAX SSID LEN = 32 
+  MAX SSID LEN = 13 (with add_profile only ascii key setting is supported, 
+  therfore maximum key size is 13)
 */
 
-#define CC3000_MINIMAL_RX_SIZE      (118+1)
+#define CC3000_MINIMAL_RX_SIZE      (130 + 1)
 #define CC3000_MAXIMAL_RX_SIZE      (1519 + 1)
 
 /*Defines for minimal and maximal TX buffer size.
@@ -120,10 +124,10 @@ extern "C" {
  
   The 1 is used for the overrun detection */ 
 
-#define  CC3000_MINIMAL_TX_SIZE      (118 + 1) 
-#define CC3000_MAXIMAL_TX_SIZE      (1519 + 1)
+#define	CC3000_MINIMAL_TX_SIZE      (130 + 1)  
+#define	CC3000_MAXIMAL_TX_SIZE      (1519 + 1)
 
-//TX and RX buffer sizes - allow to receive and transmit maximum data at lengh 8.
+//TX and RX buffer sizes, allow to receive and transmit maximum data at length 8.
 #ifdef CC3000_TINY_DRIVER
 #define TINY_CC3000_MAXIMAL_RX_SIZE 44
 #define TINY_CC3000_MAXIMAL_TX_SIZE 59
@@ -140,17 +144,16 @@ extern "C" {
   
 #ifndef CC3000_TINY_DRIVER
   
-	#define CC3000_RX_BUFFER_SIZE   (CC3000_MAXIMAL_RX_SIZE)
-	#define CC3000_TX_BUFFER_SIZE   (CC3000_MAXIMAL_TX_SIZE)
-	#define	SP_PORTION_SIZE	        512
+	#define CC3000_RX_BUFFER_SIZE   (CC3000_MINIMAL_RX_SIZE)
+	#define CC3000_TX_BUFFER_SIZE   (CC3000_MINIMAL_TX_SIZE)
   
-//if defined TINY DRIVER we use smaller rx and tx buffer in order to minimize RAM consumption
+//if defined TINY DRIVER we use smaller RX and TX buffer in order to minimize RAM consumption
 #else
 	#define CC3000_RX_BUFFER_SIZE   (TINY_CC3000_MAXIMAL_RX_SIZE)
 	#define CC3000_TX_BUFFER_SIZE   (TINY_CC3000_MAXIMAL_TX_SIZE)
-	#define	SP_PORTION_SIZE		 32
 
 #endif  
+
 //*****************************************************************************
 //                  Compound Types
 //*****************************************************************************
