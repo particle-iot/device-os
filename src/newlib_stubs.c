@@ -4,6 +4,9 @@
 /* Define abort() */
 #include <stdlib.h>
 
+/* Needed for fstat */
+#include <sys/stat.h>
+
 /******************************************************
  * System call reference with suggested stubs:
  * http://sourceware.org/newlib/libc.html#Syscalls

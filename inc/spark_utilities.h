@@ -9,14 +9,14 @@
 //#define BYTE_N(x,n)					(((x) >> n*8) & 0x000000FF)
 
 //#define SPARK_SERVER_IP				"54.235.79.249"
-#define SPARK_SERVER_PORT			8989
+#define SPARK_SERVER_PORT			5683
 
 #define USER_VAR_MAX_COUNT			10
 #define USER_VAR_KEY_LENGTH			12
 
-#define USER_FUNC_MAX_COUNT			10
+#define USER_FUNC_MAX_COUNT			4
 #define USER_FUNC_KEY_LENGTH		12
-#define USER_FUNC_ARG_LENGTH		256
+#define USER_FUNC_ARG_LENGTH		64
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +51,7 @@ int Spark_Connect(void);
 int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);
 
+void Spark_Protocol_Init(void);
 void Spark_Handshake(void);
 void Spark_Communication_Loop(void);
 

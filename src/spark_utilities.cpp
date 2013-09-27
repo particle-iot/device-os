@@ -39,13 +39,13 @@ char Low_Dx[] = "LOW D ";
 
 char digits[] = "0123456789";
 
-char recvBuff[SPARK_BUF_LEN];
+//char recvBuff[SPARK_BUF_LEN];
 int total_bytes_received = 0;
 
 uint32_t chunkIndex;
 
 void (*pHandleMessage)(void);
-char msgBuff[SPARK_BUF_LEN];
+//char msgBuff[SPARK_BUF_LEN];
 
 int User_Var_Count;
 int User_Func_Count;
@@ -66,15 +66,15 @@ struct User_Func_Lookup_Table_t
 	char userFuncArg[USER_FUNC_ARG_LENGTH];
 	int userFuncRet;
 	bool userFuncSchedule;
-	unsigned char token; //not sure we require this here
 } User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
 
-static void handle_message(void);
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
 
+/*
 static unsigned char uitoa(unsigned int cNum, char *cString);
 static unsigned int atoui(char *cString);
 static uint8_t atoc(char data);
+*/
 
 /*
 static uint16_t atoshort(char b1, char b2);
@@ -144,7 +144,6 @@ void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString))
 		memset(User_Func_Lookup_Table[User_Func_Count].userFuncKey, 0, USER_FUNC_KEY_LENGTH);
 		memcpy(User_Func_Lookup_Table[User_Func_Count].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH);
 		User_Func_Lookup_Table[User_Func_Count].userFuncSchedule = false;
-		User_Func_Lookup_Table[User_Func_Count].token = 0;
 		User_Func_Count++;
 	}
 }
@@ -218,6 +217,29 @@ int Spark_Receive(unsigned char *buf, int buflen)
   return bytes_received;
 }
 
+void Spark_Protocol_Init(void)
+{
+  char id[12];
+  memcpy(id, (const void *)ID1, 12);
+
+  unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
+  unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
+  FLASH_Read_ServerPublicKey(pubkey);
+  FLASH_Read_CorePrivateKey(pubkey);
+  SparkKeys keys;
+  keys.server_public = pubkey;
+  keys.core_private = private_key;
+
+  SparkCallbacks callbacks;
+  callbacks.send = Spark_Send;
+  callbacks.receive = Spark_Receive;
+
+  SparkDescriptor descriptor;
+  descriptor.call_function = userFuncSchedule;
+
+  spark_protocol.init(id, keys, callbacks, &descriptor);
+}
+
 void Spark_Handshake(void)
 {
   spark_protocol.handshake();
@@ -248,10 +270,10 @@ int Spark_Connect(void)
     tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
 
 	// the destination IP address
-	tSocketAddr.sa_data[2] = 54;	// First Octet of destination IP
-	tSocketAddr.sa_data[3] = 235;	// Second Octet of destination IP
-	tSocketAddr.sa_data[4] = 79; 	// Third Octet of destination IP
-	tSocketAddr.sa_data[5] = 249;	// Fourth Octet of destination IP
+	tSocketAddr.sa_data[2] = 10;	// First Octet of destination IP
+	tSocketAddr.sa_data[3] = 105;	// Second Octet of destination IP
+	tSocketAddr.sa_data[4] = 5; 	// Third Octet of destination IP
+	tSocketAddr.sa_data[5] = 244;	// Fourth Octet of destination IP
 
 	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 
@@ -262,26 +284,6 @@ int Spark_Connect(void)
 	}
 	else
 	{
-    char id[12];
-    memcpy(id, (const void *)ID1, 12);
-
-    unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
-    unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
-    FLASH_Read_ServerPublicKey(pubkey);
-    FLASH_Read_CorePrivateKey(pubkey);
-    SparkKeys keys;
-    keys.server_public = pubkey;
-    keys.core_private = private_key;
-
-    SparkCallbacks callbacks;
-    callbacks.send = Spark_Send;
-    callbacks.receive = Spark_Receive;
-
-    SparkDescriptor descriptor;
-    descriptor.call_function = userFuncSchedule;
-
-    spark_protocol.init(id, keys, callbacks, &descriptor);
-
 		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, NULL);
 	}
 
@@ -305,6 +307,7 @@ int Spark_Disconnect(void)
 //          the number of bytes received when we have received a full line
 int receive_line()
 {
+  /*
   if (0 == total_bytes_received)
   {
     memset(recvBuff, 0, SPARK_BUF_LEN);
@@ -327,7 +330,7 @@ int receive_line()
   {
     if (FD_ISSET(sparkSocket, &readSet))
     {
-      char *buffer_ptr = recvBuff + total_bytes_received;
+      //char *buffer_ptr = recvBuff + total_bytes_received;
 
       int bytes_received_once = 0;//recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
 
@@ -349,10 +352,13 @@ int receive_line()
     total_bytes_received = 0;
     return retVal;
   }
+  */
+  return 0;
 }
 
 void process_chunk(void)
 {
+  /*
   uint32_t chunkBytesAvailable = 0;
   uint32_t chunkCRCValue = 0;
   uint32_t computedCRCValue = 0;
@@ -384,12 +390,14 @@ void process_chunk(void)
     uitoa(computedCRCValue, CRCStr);
     Spark_Send_Device_Message(sparkSocket, (char *)CRCStr, NULL, NULL);
   }
+  */
 }
 
 // process the contents of recvBuff
 // returns number of bytes transmitted or -1 on error
 int process_command()
 {
+  /*
 	int bytes_sent = 0;
 
 	// who
@@ -486,14 +494,15 @@ int process_command()
     pHandleMessage = handle_message;
 	}
 
-/*
 //	else
 //	{
 //		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
 //	}
-*/
+
 
   return bytes_sent;
+  */
+  return 0;
 }
 
 int Spark_Process_API_Response(void)
@@ -626,26 +635,6 @@ void sendMessage(char *message)
 	Spark_Send_Device_Message(sparkSocket, (char *)API_SendMessage, (char *)message, NULL);
 }
 
-//void sendMessageWithData(char *message, char *data, long size)
-//{
-//	char lenStr[11];
-//	unsigned char len = uitoa(size, &lenStr[0]);
-//	lenStr[len] = '\0';
-//	Spark_Send_Device_Message(sparkSocket, (char *)API_SendMessage, (char *)message, (char *)lenStr);
-//}
-
-static void handle_message(void)
-{
-	if (NULL != handleMessage)
-	{
-		pHandleMessage = NULL;
-		char retStr[11];
-		int msgResult = handleMessage(msgBuff);
-		unsigned char retLen = uitoa(msgResult, retStr);
-		retStr[retLen] = '\0';
-		Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)API_HandleMessage, (char *)retStr);
-	}
-}
 
 // returns number of bytes transmitted or -1 on error
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue)
@@ -683,6 +672,7 @@ static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, c
 }
 
 // Convert unsigned integer to ASCII in decimal base
+/*
 static unsigned char uitoa(unsigned int cNum, char *cString)
 {
     char* ptr;
@@ -772,6 +762,7 @@ static uint8_t atoc(char data)
 	}
 	return ucRes;
 }
+*/
 
 /*
 // Convert 2 nibbles in ASCII into a short number

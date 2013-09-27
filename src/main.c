@@ -117,14 +117,17 @@ int main(void)
 
 #ifdef SPARK_WLAN_ENABLE
 	SPARK_WLAN_Setup();
-  Spark_Handshake();
+  Spark_Protocol_Init();
 #endif
 
 	/* Main loop */
 	while (1)
 	{
 #ifdef SPARK_WLAN_ENABLE
+    uint8_t SOCKET_WAS_CONNECTED = SPARK_SOCKET_CONNECTED;
 		SPARK_WLAN_Loop();
+    if (!SOCKET_WAS_CONNECTED && SPARK_SOCKET_CONNECTED)
+      Spark_Handshake();
     Spark_Communication_Loop();
 #endif
 
