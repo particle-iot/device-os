@@ -3,15 +3,15 @@
 #include <string.h>
 #include <stdlib.h>
 
-SparkProtocol::SparkProtocol() : QUEUE_SIZE(640)
+SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640)
 {
-  queue_front = queue_back = queue = (unsigned char *) malloc(QUEUE_SIZE);
-  queue_mem_boundary = queue + QUEUE_SIZE;
+  queue_init();
 }
 
-SparkProtocol::~SparkProtocol()
+void SparkProtocol::queue_init(void)
 {
-  free(queue);
+  queue_front = queue_back = queue;
+  queue_mem_boundary = queue + QUEUE_SIZE;
 }
 
 void SparkProtocol::init(const char *id,
@@ -19,6 +19,9 @@ void SparkProtocol::init(const char *id,
                          const SparkCallbacks &callbacks,
                          SparkDescriptor *descriptor)
 {
+  // when using this lib in C, constructor is never called
+  queue_init();
+
   memcpy(queue + 40, id, 12);
   rsa_keys = &keys;
 

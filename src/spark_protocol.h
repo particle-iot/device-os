@@ -32,7 +32,6 @@ class SparkProtocol
 {
   public:
     SparkProtocol();
-    ~SparkProtocol();
 
     void init(const char *id,
               const SparkKeys &keys,
@@ -99,8 +98,9 @@ class SparkProtocol
                           unsigned char message_id_lsb);
 
     /********** Queue **********/
-    unsigned char *queue;
+    unsigned char queue[640];
     const unsigned char *queue_mem_boundary;
     unsigned char *queue_front;
     unsigned char *queue_back;
+    void queue_init(void);
 };
