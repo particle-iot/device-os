@@ -27,8 +27,10 @@ char _password[] = "password";
 // Auth options are WLAN_SEC_UNSEC, WLAN_SEC_WPA, WLAN_SEC_WEP, and WLAN_SEC_WPA2
 unsigned char _auth = WLAN_SEC_WPA2;
 
+/*
 unsigned char ping_IP_Addr[4] = {8, 8, 8, 8};
 netapp_pingreport_args_t pingReport;
+*/
 
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
@@ -247,6 +249,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			break;
 
 		case HCI_EVNT_WLAN_ASYNC_PING_REPORT:
+/*
 			memset(&pingReport, 0 , sizeof(netapp_pingreport_args_t));
 			memcpy(&pingReport, data, length);
 			//"pingReport" is incorrect due to bug in CC3000 API implementation so is not reliable at present
@@ -261,6 +264,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 				NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = 2;
 			}
 			nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
+*/
 			break;
 
 		case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
@@ -329,32 +333,6 @@ void SPARK_WLAN_Setup(void)
 		Save_SystemFlags();
 	}
 
-#if defined (USE_SPARK_CORE_V02)
-	//Sample code to display last captured error count
-	//To Do : Sending error count to server
-
-	Spark_Error_Count = NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET];
-
-	if(Spark_Error_Count)
-	{
-		LED_SetRGBColor(RGB_COLOR_RED);
-		LED_On(LED_RGB);
-
-		while(Spark_Error_Count != 0)
-		{
-			Delay(250);
-			LED_Toggle(LED_RGB);
-			Spark_Error_Count--;
-		}
-
-		LED_SetRGBColor(RGB_COLOR_WHITE);
-		LED_On(LED_RGB);
-
-		NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = Spark_Error_Count;
-		nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
-	}
-#endif
-
 	if(NVMEM_Spark_File_Data[WLAN_TIMEOUT_FILE_OFFSET] == 0)
 	{
 		Set_NetApp_Timeout();
@@ -386,9 +364,8 @@ void SPARK_WLAN_Setup(void)
 #endif
 
 	nvmem_read_sp_version(patchVer);
-	if (patchVer[1] == 19)
+	if (patchVer[1] == 24)//19 for old patch
 	{
-		/* patchVer = "\001\023" */
 		/* Latest Patch Available after flashing "cc3000-patch-programmer.bin" */
 	}
 
@@ -468,15 +445,44 @@ void SPARK_WLAN_Loop(void)
 	if(WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_SOCKET_CONNECTED)
 	{
 #if defined (USE_SPARK_CORE_V02)
+		if(Spark_Error_Count)
+		{
+			LED_SetRGBColor(RGB_COLOR_RED);
+
+			while(Spark_Error_Count != 0)
+			{
+				LED_On(LED_RGB);
+				Delay(500);
+				LED_Off(LED_RGB);
+				Delay(500);
+				Spark_Error_Count--;
+			}
+
+			//Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
+			//To Do
+
+			//Reset Error Count
+			NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = 0;
+			nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
+		}
+
 		LED_SetRGBColor(RGB_COLOR_CYAN);
 		LED_On(LED_RGB);
 #endif
 
 		if(Spark_Connect() < 0)
 		{
-			SPARK_SOCKET_CONNECTED = 0;
+			/*
+			//Do not use this as it doesn't work
+			//netapp_ping_send((unsigned long *)ping_IP_Addr, 4, 100, 1000);
+			*/
 
-			netapp_ping_send((unsigned long *)ping_IP_Addr, 4, 100, 1000);
+			//Cloud not Reachable OR Bad Internet Connection
+			Spark_Error_Count = 2;
+			NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = Spark_Error_Count;
+			nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
+
+			SPARK_SOCKET_CONNECTED = 0;
 		}
 		else
 		{
@@ -519,9 +525,6 @@ void SPARK_WLAN_Timing(void)
 
 		if(SPARK_SOCKET_ALIVE != 1)
 		{
-			NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = 1;
-			nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
-
 			SPARK_WLAN_RESET = 1;
 		}
 	}
