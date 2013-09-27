@@ -227,6 +227,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			SPARK_DEVICE_ACKED = 0;
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
+			Spark_Error_Count = 0;
 			TimingSparkProcessAPI = 0;
 			TimingSparkAliveTimeout = 0;
 			break;
@@ -380,7 +381,6 @@ void SPARK_WLAN_Loop(void)
 		{
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
-
 			SPARK_WLAN_RESET = 0;
 			SPARK_WLAN_STARTED = 0;
 			SPARK_SOCKET_CONNECTED = 0;
@@ -388,7 +388,7 @@ void SPARK_WLAN_Loop(void)
 			SPARK_DEVICE_ACKED = 0;
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
-
+			Spark_Error_Count = 0;
 			TimingSparkProcessAPI = 0;
 			TimingSparkAliveTimeout = 0;
 
