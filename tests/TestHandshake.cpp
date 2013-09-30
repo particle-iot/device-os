@@ -284,9 +284,16 @@ TEST(RSASelfTestSucceeds)
   CHECK_EQUAL(0, rsa_self_test(0));
 }
 
+TEST(MPISelfTestSucceeds)
+{
+  CHECK_EQUAL(0, mpi_self_test(0));
+}
+
 TEST_FIXTURE(HandshakeFixture, FixturePublicKeyIsValid)
 {
   rsa_context rsa;
+  rsa_init(&rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
+  rsa.len = 256;
   mpi_read_binary(&rsa.N, pubkey + 33, 256);
   mpi_read_string(&rsa.E, 16, "10001");
   CHECK_EQUAL(0, rsa_check_pubkey(&rsa));
