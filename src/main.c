@@ -23,6 +23,10 @@ typedef  void (*pFunction)(void);
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 
+int8_t OTA_UPDATE_MODE = 0;		//0, -1, 1
+uint8_t USB_DFU_MODE = 0;		//0, 1
+uint8_t FACTORY_RESET_MODE = 0;	//0, 1
+
 uint8_t DeviceState;
 uint8_t DeviceStatus[6];
 pFunction Jump_To_Application;
@@ -72,7 +76,7 @@ int main(void)
 	}
 	else
 	{
-		DFU_DEVICE_MODE = 1;
+		USB_DFU_MODE = 1;
 	}
 
 	/* Check if BUTTON1 is pressed */
@@ -84,34 +88,47 @@ int main(void)
 			if(TimingBUTTON == 0x00)
 			{
 				//if pressed for 10 sec, enter Factory Reset Mode
+				OTA_UPDATE_MODE = 0;
+				USB_DFU_MODE = 0;
+#if defined (USE_SPARK_CORE_V02)
+				LED_SetRGBColor(RGB_COLOR_WHITE);
+#endif
 				FACTORY_RESET_MODE = 1;
-				OTA_UPDATE_MODE = 0;	//High priority for Factory Reset
 				break;
 			}
-			else if(TimingBUTTON <= 7000)
+			else if(!USB_DFU_MODE && TimingBUTTON <= 7000)
 			{
 				//if pressed for >= 3 sec, enter USB DFU Mode
-				DFU_DEVICE_MODE = 1;
-				OTA_UPDATE_MODE = 0;	//High priority for USB Bootloader
+				OTA_UPDATE_MODE = 0;
+				FACTORY_RESET_MODE = 0;
+#if defined (USE_SPARK_CORE_V02)
+				LED_SetRGBColor(RGB_COLOR_YELLOW);
+#endif
+				USB_DFU_MODE = 1;
 			}
 		}
 	}
 
 	if (OTA_UPDATE_MODE == 1)
 	{
+#if defined (USE_SPARK_CORE_V02)
+		LED_SetRGBColor(RGB_COLOR_MAGENTA);
+#endif
 		OTA_Flash_Update();
 	}
 	else if (FACTORY_RESET_MODE == 1)
 	{
 		NVMEM_SPARK_Reset_SysFlag = 0x0001;
 		Save_SystemFlags();
-
 		Factory_Flash_Reset();
 	}
-	else if (DFU_DEVICE_MODE == 0)
+	else if (USB_DFU_MODE == 0)
 	{
 		if (OTA_UPDATE_MODE == -1)
 	    {
+#if defined (USE_SPARK_CORE_V02)
+			LED_SetRGBColor(RGB_COLOR_RED);
+#endif
 	    	//If the Factory Reset or OTA Update failed, restore the old working copy
 	    	FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
 
@@ -132,12 +149,9 @@ int main(void)
     /* Otherwise enters DFU mode to allow user to program his application */
 
 #if defined (USE_SPARK_CORE_V02)
-    /* Set DFU mode RGB Led Flashing color to Yellow */
     LED_SetRGBColor(RGB_COLOR_YELLOW);
-    LED_On(LED_RGB);
 #endif
-
-    DFU_DEVICE_MODE = 1;
+    USB_DFU_MODE = 1;
 
     /* Enter DFU mode */
     DeviceState = STATE_dfuERROR;
@@ -212,7 +226,7 @@ void Timing_Decrement(void)
 #endif
         TimingLED = 50;
     }
-    else if(DFU_DEVICE_MODE)
+    else if(USB_DFU_MODE)
     {
 #if defined (USE_SPARK_CORE_V01)
         LED_Toggle(LED1);
