@@ -20,9 +20,6 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-int8_t OTA_UPDATE_MODE = 0;		//0, -1, 1
-uint8_t DFU_DEVICE_MODE = 0;	//0, 1
-uint8_t FACTORY_RESET_MODE = 0;	//0, 1
 uint8_t USE_SYSTEM_FLAGS = 0;	//0, 1
 
 __IO uint32_t TimingDelay;
@@ -1259,17 +1256,6 @@ void FLASH_Backup(uint32_t sFLASH_Address)
 void FLASH_Restore(uint32_t sFLASH_Address)
 {
 #ifdef SPARK_SFLASH_ENABLE
-
-#if defined (USE_SPARK_CORE_V02)
-	if(FACTORY_RESET_MODE)
-		LED_SetRGBColor(RGB_COLOR_WHITE);
-	else if(OTA_UPDATE_MODE)
-		LED_SetRGBColor(RGB_COLOR_MAGENTA);
-	else
-		LED_SetRGBColor(RGB_COLOR_RED);
-
-    LED_On(LED_RGB);
-#endif
 
     /* Initialize SPI Flash */
 	sFLASH_Init();
