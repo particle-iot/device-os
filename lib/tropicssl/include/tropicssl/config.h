@@ -90,8 +90,8 @@
 /*
  * Uncomment this macro to store the AES tables in ROM.
  *
-#define TROPICSSL_AES_ROM_TABLES
  */
+#define TROPICSSL_AES_ROM_TABLES
 
 /*
  * Module:  library/aes.c
