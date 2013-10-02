@@ -33,7 +33,7 @@ void SparkProtocol::init(const char *id,
 
 int SparkProtocol::handshake(void)
 {
-  callback_receive(queue, 40);
+  blocking_receive(queue, 40);
 
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, rsa_keys->server_public);
@@ -42,8 +42,8 @@ int SparkProtocol::handshake(void)
 
   if (err) return err;
 
-  callback_send(queue + 52, 256);
-  callback_receive(queue, 512);
+  blocking_send(queue + 52, 256);
+  blocking_receive(queue, 512);
 
   err = set_key(queue);
   if (err) return err;
@@ -51,7 +51,8 @@ int SparkProtocol::handshake(void)
   queue[0] = 0x00;
   queue[1] = 0x10;
   hello(queue + 2);
-  callback_send(queue, 18);
+
+  blocking_send(queue, 18);
 
   return 0;
 }
@@ -149,6 +150,24 @@ void SparkProtocol::event_loop(void)
     case CoAPMessageType::ERROR:
     default:
       ; // drop it on the floor
+  }
+}
+
+void SparkProtocol::blocking_send(const unsigned char *buf, int length)
+{
+  int byte_count = 0;
+  while (length > byte_count)
+  {
+    byte_count += callback_send(buf + byte_count, length - byte_count);
+  }
+}
+
+void SparkProtocol::blocking_receive(unsigned char *buf, int length)
+{
+  int byte_count = 0;
+  while (length > byte_count)
+  {
+    byte_count += callback_receive(buf + byte_count, length - byte_count);
   }
 }
 

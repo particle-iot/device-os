@@ -41,6 +41,9 @@ class SparkProtocol
     void event_loop(void);
 
     int set_key(const unsigned char *signed_encrypted_credentials);
+    void blocking_send(const unsigned char *buf, int length);
+    void blocking_receive(unsigned char *buf, int length);
+
     CoAPMessageType::Enum received_message(unsigned char *buf, int length);
     void hello(unsigned char *buf);
     void key_changed(unsigned char *buf, unsigned char token);

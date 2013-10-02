@@ -259,9 +259,32 @@ int ConstructorFixture::mock_send(const unsigned char *buf, int buflen)
 {
   if (0 < buflen)
   {
-    if (0 == bytes_sent[0])
+    if (0 == bytes_sent[0] || 1 == bytes_sent[0])
     {
-      memcpy(sent_buf_0, buf, buflen);
+      uint8_t *dst = sent_buf_0;
+      if (20 == buflen)
+      {
+        // blocking send test, part 1
+        buflen = 1;
+      }
+      else if (19 == buflen)
+      {
+        // blocking send test, part 2
+        dst = sent_buf_0 + 1;
+      }
+      // event loop tests send 16 + 2 or 32 + 2
+      else if (34 != buflen && 18 != buflen)
+      {
+        // handshake, send first several bytes
+        buflen = 11;
+      }
+      memcpy(dst, buf, buflen);
+      bytes_sent[0] += buflen;
+    }
+    else if (11 == bytes_sent[0])
+    {
+      // handshake, send remaining bytes
+      memcpy(sent_buf_0 + 11, buf, buflen);
       bytes_sent[0] += buflen;
     }
     else
@@ -278,12 +301,18 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
 {
   if (0 < buflen)
   {
-    if (0 == bytes_received[0])
+    if (0 == bytes_received[0] || 7 == bytes_received[0])
     {
       if (40 == buflen)
       {
-        // handshake
+        // handshake, receive first several bytes
+        buflen = 7;
         memcpy(buf, nonce, buflen);
+      }
+      else if (33 == buflen)
+      {
+        // handshake, receive remainint bytes
+        memcpy(buf, nonce + 7, buflen);
       }
       else
       {
@@ -298,6 +327,17 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
       {
         // handshake
         memcpy(buf, signed_encrypted_credentials, buflen);
+      }
+      else if (20 == buflen)
+      {
+        // blocking receive test, part 1
+        buflen = 1;
+        memcpy(buf, message_to_receive, buflen);
+      }
+      else if (19 == buflen)
+      {
+        // blocking receive test, part 2
+        memcpy(buf, message_to_receive, buflen);
       }
       else
       {
@@ -533,5 +573,23 @@ SUITE(SparkProtocolConstruction)
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();
     CHECK(function_called);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, BlockingSendAccumulatesOverMultipleCalls)
+  {
+    uint8_t expected[20] = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 };
+    spark_protocol.blocking_send(expected, 20);
+    CHECK_ARRAY_EQUAL(expected, sent_buf_0, 20);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, BlockingReceiveAccumulatesOverMultipleCalls)
+  {
+    uint8_t expected[20] = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 };
+    uint8_t receive_buf[20];
+    memcpy(message_to_receive, expected, 20);
+    spark_protocol.blocking_receive(receive_buf, 20);
+    CHECK_ARRAY_EQUAL(expected, receive_buf, 20);
   }
 }
