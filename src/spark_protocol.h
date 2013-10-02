@@ -18,8 +18,8 @@ namespace ChunkReceivedCode {
 
 struct SparkKeys
 {
-  const unsigned char *core_private;
-  const unsigned char *server_public;
+  unsigned char *core_private;
+  unsigned char *server_public;
 };
 
 struct SparkCallbacks
@@ -82,7 +82,8 @@ class SparkProtocol
     ProtocolState::Enum state();
 
   private:
-    const SparkKeys *rsa_keys;
+    unsigned char server_public_key[294];
+    unsigned char core_private_key[1191];
     aes_context aes;
     int (*callback_send)(const unsigned char *buf, int buflen);
     int (*callback_receive)(unsigned char *buf, int buflen);

@@ -19,11 +19,13 @@ void SparkProtocol::init(const char *id,
                          const SparkCallbacks &callbacks,
                          SparkDescriptor *descriptor)
 {
+  memcpy(server_public_key, keys.server_public, 294);
+  memcpy(core_private_key, keys.core_private, 1191);
+
   // when using this lib in C, constructor is never called
   queue_init();
 
   memcpy(queue + 40, id, 12);
-  rsa_keys = &keys;
 
   callback_send = callbacks.send;
   callback_receive = callbacks.receive;
@@ -36,7 +38,7 @@ int SparkProtocol::handshake(void)
   blocking_receive(queue, 40);
 
   rsa_context rsa;
-  init_rsa_context_with_public_key(&rsa, rsa_keys->server_public);
+  init_rsa_context_with_public_key(&rsa, server_public_key);
   int err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, 52, queue, queue + 52);
   rsa_free(&rsa);
 
@@ -599,7 +601,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
   unsigned char credentials[40];
   unsigned char hmac[20];
 
-  if (0 != decipher_aes_credentials(rsa_keys->core_private,
+  if (0 != decipher_aes_credentials(core_private_key,
                                     signed_encrypted_credentials,
                                     credentials))
     return 1;
@@ -607,7 +609,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
   calculate_ciphertext_hmac(signed_encrypted_credentials, credentials, hmac);
 
   if (0 == verify_signature(signed_encrypted_credentials + 256,
-                            rsa_keys->server_public,
+                            server_public_key,
                             hmac))
   {
     memcpy(key,        credentials,      16);
