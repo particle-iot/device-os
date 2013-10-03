@@ -56,9 +56,29 @@ void setup()
 */
 }
 
+/*
+void LED_Signaling_Override(void)
+{
+	uint32_t i, color[] = {0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0x00FFFF, 0xFF00FF};
+	for(i = 0 ; i < 6 ; i++)
+	{
+		LED_SetSignalingColor(color[i]);
+		LED_On(LED_RGB);
+		delay(1000);
+	}
+}
+*/
+
 void loop()
 {
 	// runs repeatedly
+
+/*
+	// Test RGB Led Signaling
+	delay(15000);
+	LED_Signaling_Start();
+	LED_Signaling_Stop();
+*/
 
 /*
 	// Serial loopback test: what is typed on serial console

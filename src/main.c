@@ -175,7 +175,11 @@ void Timing_Decrement(void)
         TimingDelay--;
     }
 
-    if (TimingLED != 0x00)
+    if (LED_RGB_OVERRIDE != 0)
+    {
+    	//Do nothing
+    }
+    else if (TimingLED != 0x00)
     {
     	TimingLED--;
     }

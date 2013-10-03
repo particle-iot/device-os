@@ -170,10 +170,6 @@ void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 		SPARK_WLAN_SLEEP = 1;
 		break;
 
-	case SLEEP_MODE_PEPH:
-		//To Do
-		break;
-
 	case SLEEP_MODE_DEEP:
 		Enter_STANDBY_Mode();
 		break;
@@ -260,7 +256,6 @@ int Spark_Connect(void)
 
     if (sparkSocket < 0)
     {
-        //wlan_stop();
         return -1;
     }
 
