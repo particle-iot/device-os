@@ -136,6 +136,10 @@ void UI_Timer_Configure(void);
 
 #if defined (USE_SPARK_CORE_V02)
 void LED_SetRGBColor(uint32_t RGB_Color);
+void LED_SetSignalingColor(uint32_t RGB_Color);
+void LED_Signaling_Start(void);
+void LED_Signaling_Stop(void);
+void LED_Signaling_Override(void) __attribute__ ((weak));
 #endif
 
 void LED_Init(Led_TypeDef Led);
@@ -211,6 +215,8 @@ extern __IO uint32_t TimingBUTTON;
 extern __IO uint32_t TimingIWDGReload;
 
 extern __IO uint8_t IWDG_SYSTEM_RESET;
+
+extern uint8_t LED_RGB_OVERRIDE;
 
 extern uint16_t CORE_FW_Version_SysFlag;
 extern uint16_t NVMEM_SPARK_Reset_SysFlag;
