@@ -4,9 +4,6 @@
 /* Define abort() */
 #include <stdlib.h>
 
-/* Needed for fstat */
-#include <sys/stat.h>
-
 /******************************************************
  * System call reference with suggested stubs:
  * http://sourceware.org/newlib/libc.html#Syscalls
@@ -17,24 +14,34 @@ void _exit(int status)
   while(1);
 }
 
+/*
+ * _sbrk() -	allocate incr bytes of memory from the heap.
+ *
+ *		Return a pointer to the memory, or abort if there
+ *		is insufficient memory available on the heap.
+ *
+ *		The heap is all the RAM that exists between _end and
+ *		__Stack_Init, both of which are calculated by the linker.
+ *
+ *		_end marks the end of all the bss segments, and represents
+ *		the highest RAM address used by the linker to locate data
+ *		(either initialised or not.)
+ *
+ *		__Stack_Init marks the bottom of the stack, as reserved
+ *		in the linker script (../linker/linker_stm32f10x_md*.ld)
+ */
 caddr_t _sbrk(int incr)
 {
-  extern char _end; /* Defined by the linker */
-  static char *heap_end;
-  char *prev_heap_end;
+  extern char _end, __Stack_Init;
+  static char *heap_end = &_end;
+  char *prev_heap_end = heap_end;
 
-  /* From http://sourceware.org/ml/newlib/2006/msg00099.html */
-  register char *stack_ptr asm("sp"); 
+  heap_end += incr;
 
-  if (heap_end == 0) {
-    heap_end = &_end;
-  }
-  prev_heap_end = heap_end;
-  if (heap_end + incr > stack_ptr) {
+  if (heap_end > &__Stack_Init) {
     abort();
   }
 
-  heap_end += incr;
   return (caddr_t) prev_heap_end;
 }
 
