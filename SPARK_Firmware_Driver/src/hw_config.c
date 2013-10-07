@@ -414,11 +414,6 @@ void LED_Signaling_Start(void)
 	LED_RGB_OVERRIDE = 1;
 
 	LED_Off(LED_RGB);
-
-	if (NULL != LED_Signaling_Override)
-	{
-		LED_Signaling_Override();
-	}
 }
 
 void LED_Signaling_Stop(void)
