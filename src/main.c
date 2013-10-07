@@ -172,7 +172,10 @@ void Timing_Decrement(void)
 
     if (LED_RGB_OVERRIDE != 0)
     {
-    	//Do nothing
+    	if (NULL != LED_Signaling_Override)
+    	{
+    		LED_Signaling_Override();
+    	}
     }
     else if (TimingLED != 0x00)
     {
