@@ -18,6 +18,10 @@
 #define USER_FUNC_KEY_LENGTH		12
 #define USER_FUNC_ARG_LENGTH		256
 
+#define USER_EVENT_MAX_COUNT		10
+#define USER_EVENT_NAME_LENGTH		16
+#define USER_EVENT_RESULT_LENGTH	256
+
 typedef enum
 {
 	SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1
@@ -52,6 +56,8 @@ void userVarReturn(void);
 
 bool userFuncSchedule(const char *funcKey, unsigned char token, const char *paramString);
 void userFuncExecute(void);
+
+void userEventSend(void);
 
 void sendMessage(char *message);
 //void sendMessageWithData(char *message, char *data, long size);

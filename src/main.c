@@ -147,6 +147,8 @@ int main(void)
 
 			userVarReturn();
 
+			userEventSend();
+
 #ifdef SPARK_WLAN_ENABLE
 		}
 #endif

@@ -44,6 +44,7 @@ char msgBuff[SPARK_BUF_LEN];
 
 int User_Var_Count;
 int User_Func_Count;
+int User_Event_Count;
 
 struct User_Var_Lookup_Table_t
 {
@@ -63,6 +64,13 @@ struct User_Func_Lookup_Table_t
 	bool userFuncSchedule;
 	unsigned char token; //not sure we require this here
 } User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
+
+struct User_Event_Lookup_Table_t
+{
+	char userEventName[USER_EVENT_NAME_LENGTH];
+	char userEventResult[USER_EVENT_RESULT_LENGTH];
+	bool userEventSchedule;
+} User_Event_Lookup_Table[USER_EVENT_MAX_COUNT];
 
 static void handle_message(void);
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
@@ -146,9 +154,33 @@ void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString))
 
 void Spark_Event(const char *eventName, char *eventResult)
 {
-//	unsigned char buf[256];
-//	memset(buf, 0, 256);
-//	spark_protocol.event(buf, eventName, strlen(eventName), eventResult, strlen(eventResult));
+	int i = 0;
+	if(NULL != eventName && NULL != eventResult)
+	{
+		if(User_Event_Count == USER_EVENT_MAX_COUNT)
+			return;
+
+		size_t resultLength = strlen(eventResult);
+		if(resultLength > USER_EVENT_RESULT_LENGTH)
+			resultLength = USER_EVENT_RESULT_LENGTH;
+
+		for(i = 0; i < User_Event_Count; i++)
+		{
+			if(0 == strncmp(User_Event_Lookup_Table[i].userEventName, eventName, USER_EVENT_NAME_LENGTH))
+			{
+				memcpy(User_Event_Lookup_Table[i].userEventResult, eventResult, resultLength);
+				User_Event_Lookup_Table[i].userEventSchedule = true;
+				return;
+			}
+		}
+
+		memset(User_Event_Lookup_Table[User_Event_Count].userEventName, 0, USER_EVENT_NAME_LENGTH);
+		memset(User_Event_Lookup_Table[User_Event_Count].userEventResult, 0, USER_EVENT_RESULT_LENGTH);
+		memcpy(User_Event_Lookup_Table[User_Event_Count].userEventName, eventName, USER_EVENT_NAME_LENGTH);
+		memcpy(User_Event_Lookup_Table[User_Event_Count].userEventResult, eventResult, resultLength);
+		User_Event_Lookup_Table[User_Event_Count].userEventSchedule = true;
+		User_Event_Count++;
+	}
 }
 
 void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
@@ -551,6 +583,24 @@ void userFuncExecute(void)
 				spark_protocol.function_return(buf, User_Func_Lookup_Table[i].token, User_Func_Lookup_Table[i].userFuncRet);
 				User_Func_Lookup_Table[i].token = 0;
 			}
+*/
+		}
+	}
+}
+
+void userEventSend(void)
+{
+	int i = 0;
+	for(i = 0; i < User_Event_Count; i++)
+	{
+		if(true == User_Event_Lookup_Table[i].userEventSchedule)
+		{
+			User_Event_Lookup_Table[i].userEventSchedule = false;
+/*
+			//Send the "Event" back to the server here OR in a separate thread
+			unsigned char buf[256];
+			memset(buf, 0, 256);
+			spark_protocol.event(buf, User_Event_Lookup_Table[i].userEventName, strlen(User_Event_Lookup_Table[i].userEventName), User_Event_Lookup_Table[i].userEventResult, strlen(User_Event_Lookup_Table[i].userEventResult));
 */
 		}
 	}
