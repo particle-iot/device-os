@@ -28,8 +28,6 @@
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 
 /* Private function prototypes -----------------------------------------------*/
-extern void SPI_DMA_IntHandler(void);
-extern void SPI_EXTI_IntHandler(void);
 
 /* Private functions ---------------------------------------------------------*/
 

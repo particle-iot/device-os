@@ -20,11 +20,11 @@
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 
- void USB_Istr(void);
+extern "C" void USB_Istr(void);
 
 /* function prototypes Automatically built defining related macros */
 
-void EP1_IN_Callback(void);
+extern "C" void EP1_IN_Callback(void);
 void EP2_IN_Callback(void);
 void EP3_IN_Callback(void);
 void EP4_IN_Callback(void);
@@ -34,7 +34,7 @@ void EP7_IN_Callback(void);
 
 void EP1_OUT_Callback(void);
 void EP2_OUT_Callback(void);
-void EP3_OUT_Callback(void);
+extern "C" void EP3_OUT_Callback(void);
 void EP4_OUT_Callback(void);
 void EP5_OUT_Callback(void);
 void EP6_OUT_Callback(void);
@@ -65,7 +65,7 @@ void RESET_Callback(void);
 #endif
 
 #ifdef SOF_CALLBACK
-void SOF_Callback(void);
+extern "C" void SOF_Callback(void);
 #endif
 
 #ifdef ESOF_CALLBACK

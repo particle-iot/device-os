@@ -12,8 +12,11 @@
 #ifndef __STM32_IT_H
 #define __STM32_IT_H
 
+extern "C" {
+
 /* Includes ------------------------------------------------------------------*/
 #include "platform_config.h"
+#include "cc3000_spi.h"
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -41,6 +44,8 @@ void EXTI2_IRQHandler(void);
 void EXTI15_10_IRQHandler(void);
 void TIM1_CC_IRQHandler(void);
 void USB_LP_CAN1_RX0_IRQHandler(void);
+
+}
 
 #endif /* __STM32_IT_H */
 

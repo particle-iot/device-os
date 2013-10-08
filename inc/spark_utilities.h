@@ -4,6 +4,8 @@
 
 #include "main.h"
 
+extern "C" {
+
 #define SPARK_BUF_LEN				600
 
 //#define BYTE_N(x,n)					(((x) >> n*8) & 0x000000FF)
@@ -47,6 +49,7 @@ void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString));
 void Spark_Event(const char *eventName, char *eventResult);
 void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 bool Spark_Connected(void);
+
 int Spark_Connect(void);
 int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);
@@ -68,5 +71,7 @@ void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 
 extern void (*pHandleMessage)(void);
+
+}
 
 #endif  /* __SPARK_UTILITIES_H */
