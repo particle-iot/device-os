@@ -128,9 +128,13 @@ int main(void)
 #ifdef SPARK_WLAN_ENABLE
     uint8_t SOCKET_WAS_CONNECTED = SPARK_SOCKET_CONNECTED;
 		SPARK_WLAN_Loop();
-    if (!SOCKET_WAS_CONNECTED && SPARK_SOCKET_CONNECTED)
-      Spark_Handshake();
-    Spark_Communication_Loop();
+    if (SPARK_SOCKET_CONNECTED)
+    {
+      if (!SOCKET_WAS_CONNECTED)
+        Spark_Handshake();
+
+      Spark_Communication_Loop();
+    }
 #endif
 
 #ifdef SPARK_WIRING_ENABLE

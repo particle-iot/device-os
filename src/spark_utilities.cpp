@@ -76,7 +76,7 @@ struct User_Event_Lookup_Table_t
 	bool userEventSchedule;
 } User_Event_Lookup_Table[USER_EVENT_MAX_COUNT];
 
-static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
+//static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
 
 /*
 static unsigned char uitoa(unsigned int cNum, char *cString);
@@ -305,8 +305,8 @@ int Spark_Connect(void)
 	// the destination IP address
 	tSocketAddr.sa_data[2] = 10;	// First Octet of destination IP
 	tSocketAddr.sa_data[3] = 105;	// Second Octet of destination IP
-	tSocketAddr.sa_data[4] = 5; 	// Third Octet of destination IP
-	tSocketAddr.sa_data[5] = 244;	// Fourth Octet of destination IP
+	tSocketAddr.sa_data[4] = 34; 	// Third Octet of destination IP
+	tSocketAddr.sa_data[5] = 160;	// Fourth Octet of destination IP
 
 	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 
@@ -317,7 +317,7 @@ int Spark_Connect(void)
 	}
 	else
 	{
-		retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, NULL);
+		//retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, NULL);
 	}
 
   return retVal;
@@ -681,11 +681,11 @@ void userEventSend(void)
 	}
 }
 
+/*
 void sendMessage(char *message)
 {
 	Spark_Send_Device_Message(sparkSocket, (char *)API_SendMessage, (char *)message, NULL);
 }
-
 
 // returns number of bytes transmitted or -1 on error
 static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue)
@@ -721,6 +721,7 @@ static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, c
 
     return retVal;
 }
+*/
 
 // Convert unsigned integer to ASCII in decimal base
 /*
