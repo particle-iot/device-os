@@ -436,7 +436,6 @@ int sFLASH_SelfTest(void)
   uint8_t Rx_Buffer[BufferSize];
   uint8_t Index = 0;
   uint32_t FlashID = 0;
-  uint8_t LEDToggle = 0;
   int TestStatus = -1;
 
   /* Get SPI Flash ID */
