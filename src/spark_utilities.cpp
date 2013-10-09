@@ -89,18 +89,7 @@ static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
 */
 
-Spark_Namespace Spark =
-{
-	Spark_Variable,
-	Spark_Function,
-	Spark_Event,
-	Spark_Sleep,
-	Spark_Connected,
-	Spark_Connect,
-	Spark_Disconnect
-};
-
-void Spark_Variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
+void Spark::variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
 {
 	int i = 0;
 	if(NULL != userVar && NULL != varKey)
@@ -126,7 +115,7 @@ void Spark_Variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVa
 	}
 }
 
-void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString))
+void Spark::function(const char *funcKey, int (*pFunc)(char *paramString))
 {
 	int i = 0;
 	if(NULL != pFunc && NULL != funcKey)
@@ -152,7 +141,7 @@ void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString))
 	}
 }
 
-void Spark_Event(const char *eventName, char *eventResult)
+void Spark::event(const char *eventName, char *eventResult)
 {
 	int i = 0;
 	if(NULL != eventName && NULL != eventResult)
@@ -183,7 +172,7 @@ void Spark_Event(const char *eventName, char *eventResult)
 	}
 }
 
-void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
+void Spark::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
 #if defined (SPARK_RTC_ENABLE)
 	/* Set the RTC Alarm */
@@ -205,12 +194,27 @@ void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 #endif
 }
 
-bool Spark_Connected(void)
+void Spark::sleep(long seconds)
+{
+	Spark::sleep(SLEEP_MODE_WLAN, seconds);
+}
+
+bool Spark::connected(void)
 {
 	if(SPARK_DEVICE_ACKED)
 		return true;
 	else
 		return false;
+}
+
+int Spark::connect(void)
+{
+	return Spark_Connect();
+}
+
+int Spark::disconnect(void)
+{
+	return Spark_Disconnect();
 }
 
 int Spark_Connect(void)

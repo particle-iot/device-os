@@ -4,8 +4,6 @@
 
 #include "main.h"
 
-extern "C" {
-
 #define SPARK_BUF_LEN				600
 
 //#define BYTE_N(x,n)					(((x) >> n*8) & 0x000000FF)
@@ -34,21 +32,19 @@ typedef enum
 	BOOLEAN = 1, INT = 2, STRING = 4, DOUBLE = 9
 } Spark_Data_TypeDef;
 
-typedef struct Spark_Namespace {
-	void (*variable)(const char *, void *, Spark_Data_TypeDef);
-	void (*function)(const char *, int (*)(char *));
-	void (*event)(const char *, char *);
-	void (*sleep)(Spark_Sleep_TypeDef, long);
-	bool (*connected)(void);
-	int (*connect)(void);
-	int (*disconnect)(void);
-} Spark_Namespace;
+class Spark {
+public:
+	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
+	static void function(const char *funcKey, int (*pFunc)(char *paramString));
+	static void event(const char *eventName, char *eventResult);
+	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
+	static void sleep(long seconds);
+	static bool connected(void);
+	static int connect(void);
+	static int disconnect(void);
+};
 
-void Spark_Variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
-void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString));
-void Spark_Event(const char *eventName, char *eventResult);
-void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
-bool Spark_Connected(void);
+extern "C" {
 
 int Spark_Connect(void);
 int Spark_Disconnect(void);
