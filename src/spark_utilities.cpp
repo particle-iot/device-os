@@ -246,14 +246,6 @@ void Spark_Protocol_Init(void)
   char id[12];
   memcpy(id, (const void *)ID1, 12);
 
-  unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
-  unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
-  FLASH_Read_ServerPublicKey(pubkey);
-  FLASH_Read_CorePrivateKey(pubkey);
-  SparkKeys keys;
-  keys.server_public = pubkey;
-  keys.core_private = private_key;
-
   SparkCallbacks callbacks;
   callbacks.send = Spark_Send;
   callbacks.receive = Spark_Receive;
@@ -261,12 +253,25 @@ void Spark_Protocol_Init(void)
   SparkDescriptor descriptor;
   descriptor.call_function = userFuncSchedule;
 
+  unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
+  unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
+
+  SparkKeys keys;
+  keys.server_public = pubkey;
+  keys.core_private = private_key;
+
+  FLASH_Read_ServerPublicKey(pubkey);
+  FLASH_Read_CorePrivateKey(private_key);
+
   spark_protocol.init(id, keys, callbacks, &descriptor);
 }
 
-void Spark_Handshake(void)
+int Spark_Handshake(void)
 {
-  spark_protocol.handshake();
+  //unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
+  //FLASH_Read_ServerPublicKey(pubkey);
+  //spark_protocol.blocking_send(pubkey, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
+  return spark_protocol.handshake();
 }
 
 void Spark_Communication_Loop(void)

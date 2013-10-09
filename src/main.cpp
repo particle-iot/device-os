@@ -131,7 +131,14 @@ int main(void)
     if (SPARK_SOCKET_CONNECTED)
     {
       if (!SOCKET_WAS_CONNECTED)
-        Spark_Handshake();
+      {
+        if (Spark_Handshake())
+        {
+          // error, orange
+          LED_SetRGBColor(0xff9000);
+          LED_On(LED_RGB);
+        }
+      }
 
       Spark_Communication_Loop();
     }

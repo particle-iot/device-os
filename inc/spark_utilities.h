@@ -53,7 +53,7 @@ int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);
 
 void Spark_Protocol_Init(void);
-void Spark_Handshake(void);
+int Spark_Handshake(void);
 void Spark_Communication_Loop(void);
 
 bool userVarSchedule(const char *varKey, unsigned char token);
