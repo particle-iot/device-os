@@ -152,6 +152,4 @@ extern Serial_Interface Serial;
  */
 extern Serial_Interface Serial1;
 
-extern Spark_Namespace Spark;
-
 #endif /* SPARK_WIRING_H_ */

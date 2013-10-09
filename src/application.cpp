@@ -2,6 +2,10 @@
 #include "string.h"
 #include "handshake.h"
 
+__IO uint32_t LED_Signaling_Timing;
+uint32_t VIBGYOR_Colors[] = {0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000};
+uint32_t i, n = sizeof(VIBGYOR_Colors) / sizeof(uint32_t);
+
 /*
 int toggle = 0;
 int UserLedToggle(char *ledPin);
@@ -56,30 +60,9 @@ void setup()
 */
 }
 
-/*
-void LED_Signaling_Override(void)
-{
-	uint32_t i, color[] = {0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0x00FFFF, 0xFF00FF};
-	for(i = 0 ; i < 6 ; i++)
-	{
-		LED_SetSignalingColor(color[i]);
-		LED_On(LED_RGB);
-		delay(1000);
-	}
-}
-*/
-
 void loop()
 {
 	// runs repeatedly
-
-/*
-	// Test RGB Led Signaling
-	delay(15000);
-	LED_Signaling_Start();
-	LED_Signaling_Stop();
-*/
-
 /*
 	// Serial loopback test: what is typed on serial console
 	// using Hyperterminal/Putty should echo back on the console
@@ -136,3 +119,41 @@ int UserLedToggle(char *ledPin)
 	return 0;
 }
 */
+
+/* This should be a "NON-BlOCKING" function
+ * It will be executed every 1ms if LED_Signaling_Start() is called
+ * and stopped as soon as LED_Signaling_Stop() is called */
+void LED_Signaling_Override(void)
+{
+    if (LED_Signaling_Timing != 0)
+    {
+    	LED_Signaling_Timing--;
+    }
+    else
+	{
+		LED_SetSignalingColor(VIBGYOR_Colors[i]);
+		LED_On(LED_RGB);
+
+		LED_Signaling_Timing = 100;	//100ms
+
+		++i;
+		if(i >= n)
+		{
+			i = 0;
+		}
+	}
+}
+
+char handleMessage(char *user_arg)
+{
+	if(0 == strncmp(user_arg, "led_signaling_start", strlen("led_signaling_start")))
+	{
+		LED_Signaling_Start();
+	}
+	else if(0 == strncmp(user_arg, "led_signaling_stop", strlen("led_signaling_stop")))
+	{
+		LED_Signaling_Stop();
+	}
+
+	return 0;
+}

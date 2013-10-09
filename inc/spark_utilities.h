@@ -18,9 +18,9 @@
 #define USER_FUNC_KEY_LENGTH		12
 #define USER_FUNC_ARG_LENGTH		64
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define USER_EVENT_MAX_COUNT		10
+#define USER_EVENT_NAME_LENGTH		16
+#define USER_EVENT_RESULT_LENGTH	256
 
 typedef enum
 {
@@ -32,21 +32,22 @@ typedef enum
 	BOOLEAN = 1, INT = 2, STRING = 4, DOUBLE = 9
 } Spark_Data_TypeDef;
 
-typedef struct Spark_Namespace {
-	void (*variable)(const char *, void *, Spark_Data_TypeDef);
-	void (*function)(const char *, int (*)(char *));
-	void (*event)(const char *, char *);
-	void (*sleep)(Spark_Sleep_TypeDef, long);
-	bool (*connected)(void);
-	int (*connect)(void);
-	int (*disconnect)(void);
-} Spark_Namespace;
+class Spark {
+public:
+	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
+	static void function(const char *funcKey, int (*pFunc)(char *paramString));
+	static void event(const char *eventName, char *eventResult);
+	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
+	static void sleep(long seconds);
+	static bool connected(void);
+	static int connect(void);
+	static int disconnect(void);
+};
 
-void Spark_Variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
-void Spark_Function(const char *funcKey, int (*pFunc)(char *paramString));
-void Spark_Event(const char *eventName, char *eventResult);
-void Spark_Sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
-bool Spark_Connected(void);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int Spark_Connect(void);
 int Spark_Disconnect(void);
 int Spark_Process_API_Response(void);
@@ -60,6 +61,8 @@ void userVarReturn(void);
 
 int userFuncSchedule(const char *funcKey, const char *paramString);
 void userFuncExecute(void);
+
+void userEventSend(void);
 
 void sendMessage(char *message);
 //void sendMessageWithData(char *message, char *data, long size);

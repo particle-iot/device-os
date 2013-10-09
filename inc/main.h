@@ -12,6 +12,8 @@
 #ifndef __MAIN_H
 #define __MAIN_H
 
+extern "C" {
+
 /* Includes ------------------------------------------------------------------*/
 
 #ifdef __cplusplus
@@ -69,5 +71,7 @@ int32_t USB_USART_Receive_Data(void);
 void USB_USART_Send_Data(uint8_t Data);
 void Handle_USBAsynchXfer(void);
 void Get_SerialNum(void);
+
+}
 
 #endif /* __MAIN_H */

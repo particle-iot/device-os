@@ -9,13 +9,15 @@
  */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "spark_utilities.h"
+extern "C" {
 #include "usb_conf.h"
 #include "usb_lib.h"
 #include "usb_desc.h"
 #include "usb_pwr.h"
 #include "usb_prop.h"
 #include "sst25vf_spi.h"
-#include "spark_utilities.h"
+}
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -152,6 +154,8 @@ int main(void)
 
 			userVarReturn();
 
+			userEventSend();
+
 #ifdef SPARK_WLAN_ENABLE
 		}
 #endif
@@ -177,7 +181,10 @@ void Timing_Decrement(void)
 
     if (LED_RGB_OVERRIDE != 0)
     {
-    	//Do nothing
+    	if (NULL != LED_Signaling_Override)
+    	{
+    		LED_Signaling_Override();
+    	}
     }
     else if (TimingLED != 0x00)
     {
