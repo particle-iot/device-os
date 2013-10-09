@@ -13,8 +13,8 @@ S_UPPER_DEPS += \
 # Each subdirectory must supply rules for building sources it contributes
 startup/%.o: ../startup/%.S
 	@echo 'Building file: $<'
-	@echo 'Invoking: ARM Sourcery Windows GCC Assembler'
-	arm-none-eabi-gcc -x assembler-with-cpp -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "$@" "$<"
+	@echo 'Invoking: ARM Sourcery GCC Assembler'
+	arm-none-eabi-g++ -x assembler-with-cpp -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

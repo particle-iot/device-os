@@ -9,13 +9,15 @@
  */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "spark_utilities.h"
+extern "C" {
 #include "usb_conf.h"
 #include "usb_lib.h"
 #include "usb_desc.h"
 #include "usb_pwr.h"
 #include "usb_prop.h"
 #include "sst25vf_spi.h"
-#include "spark_utilities.h"
+}
 
 /* Private typedef -----------------------------------------------------------*/
 
