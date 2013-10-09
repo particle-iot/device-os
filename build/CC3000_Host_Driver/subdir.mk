@@ -34,7 +34,7 @@ C_DEPS += \
 # Each subdirectory must supply rules for building sources it contributes
 CC3000_Host_Driver/%.o: ../CC3000_Host_Driver/%.c
 	@echo 'Building file: $<'
-	@echo 'Invoking: ARM Sourcery Windows GCC C Compiler'
+	@echo 'Invoking: ARM GCC C Compiler'
 	arm-none-eabi-gcc -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD -I"../CMSIS/Include" -I"../CMSIS/Device/ST/STM32F10x/Include" -I"../STM32F10x_StdPeriph_Driver/inc" -I"../STM32_USB-FS-Device_Driver/inc" -I"../CC3000_Host_Driver" -I"../SPARK_Firmware_Driver/inc" -Os -ffunction-sections -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
