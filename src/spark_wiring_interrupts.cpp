@@ -2,7 +2,6 @@
 
 extern STM32_Pin_Info PIN_MAP[TOTAL_PINS];
 
-
 //Interrupts
  const uint8_t GPIO_IRQn[] = {
   EXTI0_IRQn,     //0
@@ -133,9 +132,9 @@ void attachInterrupt(uint16_t pin, voidFuncPtr handler, InterruptMode mode)
 	//select NVIC channel to configure
 	NVIC_InitStructure.NVIC_IRQChannel = GPIO_IRQn[GPIO_PinSource];
 	//set priority to lowest
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x03;
 	//set subpriority to lowest
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x03;
 	//enable IRQ channel
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	//update NVIC registers
@@ -407,3 +406,4 @@ void userISRFunction_multiple(uint8_t intNumStart, uint8_t intNUmEnd)
 		}
 	}
 }
+

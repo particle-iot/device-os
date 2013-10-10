@@ -626,7 +626,3 @@ void serial1_println(const char * str)
 	serial1_print("\r\n");
 }
 
-
-
-
-

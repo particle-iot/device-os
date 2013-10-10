@@ -17,6 +17,11 @@ typedef enum InterruptMode {
 typedef void (*voidFuncPtr)(void);
 
 void attachInterrupt(uint16_t pin, voidFuncPtr handler, InterruptMode mode);
+void detachInterrupt(uint16_t pin);
+void interrupts(void);
+void noInterrupts(void);
+
+
 void EXTI0_IRQHandler(void);
 void EXTI1_IRQHandler(void);
 //void EXTI2_IRQHandler(void);

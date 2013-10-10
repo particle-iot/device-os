@@ -12,6 +12,8 @@
 #include "platform_config.h"
 #include "spark_utilities.h"
 
+#include "spark_wiring_interrupts.h"
+
 /*
  * Basic variables
  */
