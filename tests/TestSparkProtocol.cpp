@@ -5,8 +5,8 @@ struct ConstructorFixture
 {
   static const uint8_t nonce[40];
   static const char id[12];
-  static const uint8_t pubkey[294];
-  static const uint8_t private_key[1192];
+  static uint8_t pubkey[294];
+  static uint8_t private_key[1192];
   static const uint8_t signed_encrypted_credentials[512];
   static int bytes_sent[2];
   static int bytes_received[2];
@@ -36,7 +36,7 @@ const char ConstructorFixture::id[12] = {
   0x1b, 0x1d, 0x4a, 0xc3, 0x87, 0x8b,
   0x7f, 0x1d, 0x46, 0x9d, 0x7b, 0x33 };
 
-const uint8_t ConstructorFixture::pubkey[294] = {
+uint8_t ConstructorFixture::pubkey[294] = {
   0x30, 0x82, 0x01, 0x22, 0x30, 0x0d, 0x06, 0x09,
   0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
   0x01, 0x05, 0x00, 0x03, 0x82, 0x01, 0x0f, 0x00,
@@ -75,7 +75,7 @@ const uint8_t ConstructorFixture::pubkey[294] = {
   0x26, 0x84, 0x77, 0x8b, 0xa8, 0xe5, 0xc7, 0x70,
   0x19, 0x02, 0x03, 0x01, 0x00, 0x01 };
 
-const uint8_t ConstructorFixture::private_key[1192] =
+uint8_t ConstructorFixture::private_key[1192] =
   // padding
   "\x30\x82\x04\xa3\x02\x01\x00\x02\x82\x01\x01\x00"
   // modulus N

@@ -62,18 +62,88 @@ void init_rsa_context_with_public_key(rsa_context *rsa,
   mpi_read_string(&rsa->E, 16, "10001");
 }
 
+/* Very simple ASN.1 parsing.
+ * Mainly needed because, even though all the RSA big integers
+ * are always a specific number of bytes, the key generation
+ * and encoding process sometimes pads each number with a
+ * leading zero byte.  Theoretical range of DER file size is
+ * 1187-1194. We have actually seen 1190-1194.
+ */
 void init_rsa_context_with_private_key(rsa_context *rsa,
                                        const unsigned char *private_key)
 {
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
 
   rsa->len = 256;
-  mpi_read_binary(&rsa->N, private_key + 12, 256);
+
+  int i = 10;
+  if (private_key[i])
+  {
+    // key contains an extra zero byte
+    ++i;
+  }
+  ++i;
+
+  mpi_read_binary(&rsa->N, private_key + i, 256);
   mpi_read_string(&rsa->E, 16, "10001");
-  mpi_read_binary(&rsa->D, private_key + 277, 256);
-  mpi_read_binary(&rsa->P, private_key + 537, 128);
-  mpi_read_binary(&rsa->Q, private_key + 669, 128);
-  mpi_read_binary(&rsa->DP, private_key + 800, 128);
-  mpi_read_binary(&rsa->DQ, private_key + 931, 128);
-  mpi_read_binary(&rsa->QP, private_key + 1063, 128);
+
+  i = i + 264;
+  if (private_key[i])
+  {
+    // key contains an extra zero byte
+    ++i;
+  }
+  ++i;
+
+  mpi_read_binary(&rsa->D, private_key + i, 256);
+
+  i = i + 258;
+  if (private_key[i] & 1)
+  {
+    // key contains an extra zero byte
+    ++i;
+  }
+  ++i;
+
+  mpi_read_binary(&rsa->P, private_key + i, 128);
+
+  i = i + 130;
+  if (private_key[i] & 1)
+  {
+    // key contains an extra zero byte
+    ++i;
+  }
+  ++i;
+
+  mpi_read_binary(&rsa->Q, private_key + i, 128);
+
+  i = i + 130;
+  if (private_key[i] & 1)
+  {
+    // key contains an extra zero byte
+    ++i;
+  }
+  ++i;
+
+  mpi_read_binary(&rsa->DP, private_key + i, 128);
+
+  i = i + 130;
+  if (private_key[i] & 1)
+  {
+    // key contains an extra zero byte
+    ++i;
+  }
+  ++i;
+
+  mpi_read_binary(&rsa->DQ, private_key + i, 128);
+
+  i = i + 130;
+  if (private_key[i] & 1)
+  {
+    // key contains an extra zero byte
+    ++i;
+  }
+  ++i;
+
+  mpi_read_binary(&rsa->QP, private_key + i, 128);
 }

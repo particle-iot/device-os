@@ -3,8 +3,8 @@
 
 struct CoAPFixture
 {
-  static const uint8_t private_key[1192];
-  static const uint8_t pubkey[294];
+  static uint8_t private_key[1192];
+  static uint8_t pubkey[294];
   static const uint8_t signed_encrypted_credentials[512];
   SparkProtocol spark_protocol;
   CoAPMessageType::Enum message_type;
@@ -12,7 +12,7 @@ struct CoAPFixture
   void init();
 };
 
-const uint8_t CoAPFixture::private_key[1192] =
+uint8_t CoAPFixture::private_key[1192] =
   // padding
   "\x30\x82\x04\xa3\x02\x01\x00\x02\x82\x01\x01\x00"
   // modulus N
@@ -107,7 +107,7 @@ const uint8_t CoAPFixture::private_key[1192] =
   "\xF3\xDD\x2D\x49\xB1\x17\x2D\xA8\x22\x68\xCB\xCE\x0F\x45\xF7\x08" \
   "\x10\x44\x52\xD1\x94\x35\x86\x36\x33\x2B\x4B\x36\xF1\x56\x42\xA3";
 
-const uint8_t CoAPFixture::pubkey[294] = {
+uint8_t CoAPFixture::pubkey[294] = {
   0x30, 0x82, 0x01, 0x22, 0x30, 0x0d, 0x06, 0x09,
   0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
   0x01, 0x05, 0x00, 0x03, 0x82, 0x01, 0x0f, 0x00,
