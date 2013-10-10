@@ -5,8 +5,8 @@
  *      Author: zsupalla
  */
 
-#ifndef SPARK_WIRING_H_
-#define SPARK_WIRING_H_
+#ifndef SPARK_WIRING_H
+#define SPARK_WIRING_H
 
 #include "stm32f10x.h"
 #include "platform_config.h"
@@ -152,28 +152,6 @@ extern Serial_Interface Serial;
  */
 extern Serial_Interface Serial1;
 
-/*
-*Interrupts
-*/
 
-typedef enum InterruptMode {
-  CHANGE,
-  RISING,
-  FALLING
-} InterruptMode;
-
-typedef void (*voidFuncPtr)(void);
-
-void attachInterrupt(uint16_t pin, voidFuncPtr handler, InterruptMode mode);
-void EXTI0_IRQHandler(void);
-void EXTI1_IRQHandler(void);
-//void EXTI2_IRQHandler(void);
-void EXTI3_IRQHandler(void);
-void EXTI4_IRQHandler(void);
-void EXTI9_5_IRQHandler(void);
-//void EXTI15_10_IRQHandler(void);
-
-void userISRFunction_single(uint8_t intNumber);
-void userISRFunction_multiple(uint8_t intNumStart, uint8_t intNUmEnd);
 
 #endif /* SPARK_WIRING_H_ */
