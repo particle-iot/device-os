@@ -7,6 +7,7 @@ CPP_SRCS += \
 ../src/spark_utilities.cpp \
 ../src/spark_wiring.cpp \
 ../src/spark_wiring_interrupts.cpp \
+../src/spark_wiring_string.cpp \
 ../src/spark_wlan.cpp \
 ../src/stm32_it.cpp \
 ../src/usb_desc.cpp \
@@ -21,6 +22,7 @@ OBJS += \
 ./src/spark_utilities.o \
 ./src/spark_wiring.o \
 ./src/spark_wiring_interrupts.o \
+./src/spark_wiring_string.o \
 ./src/spark_wlan.o \
 ./src/stm32_it.o \
 ./src/usb_desc.o \
@@ -35,6 +37,7 @@ CPP_DEPS += \
 ./src/spark_utilities.d \
 ./src/spark_wiring.d \
 ./src/spark_wiring_interrupts.d \
+./src/spark_wiring_string.d \
 ./src/spark_wlan.d \
 ./src/stm32_it.d \
 ./src/usb_desc.d \
