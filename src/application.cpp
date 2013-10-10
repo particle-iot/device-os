@@ -29,9 +29,22 @@ unsigned char id[12];
 unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
 */
 
+void MyISR(void)
+{
+	
+}
+
 void setup()
 {
 	// runs once
+
+	String test = "hello";
+	String meh = "123";
+
+	test.toLowerCase();
+
+	attachInterrupt(A0,MyISR,CHANGE);
+
 
 /*
 	memset(ciphertext, 0, 256);

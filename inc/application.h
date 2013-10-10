@@ -9,5 +9,6 @@
 #define APPLICATION_H_
 
 #include "spark_wiring.h"
+ #include "spark_wiring_string.h"
 
 #endif /* APPLICATION_H_ */
