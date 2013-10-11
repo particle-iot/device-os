@@ -128,17 +128,21 @@ void attachInterrupt(uint16_t pin, voidFuncPtr handler, InterruptMode mode)
 	//send values to registers
 	EXTI_Init(&EXTI_InitStructure);
 
-	//configure NVIC
-	//select NVIC channel to configure
-	NVIC_InitStructure.NVIC_IRQChannel = GPIO_IRQn[GPIO_PinSource];
-	//set priority to lowest
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x03;
-	//set subpriority to lowest
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x03;
-	//enable IRQ channel
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	//update NVIC registers
-	NVIC_Init(&NVIC_InitStructure);
+	if(GPIO_PinSource < 10)//Should not try changing the priority of EXTI15_10_IRQn
+	{
+		//configure NVIC
+		//select NVIC channel to configure
+		NVIC_InitStructure.NVIC_IRQChannel = GPIO_IRQn[GPIO_PinSource];
+		if(GPIO_PinSource > 4)
+			NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 14;
+		else
+			NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 13;
+		NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+		//enable IRQ channel
+		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+		//update NVIC registers
+		NVIC_Init(&NVIC_InitStructure);
+	}
 }
 
 
@@ -173,12 +177,15 @@ void detachInterrupt(uint16_t pin)
 		GPIO_PinSource++;
 	}
 
-	//Select the appropriate EXTI line
-	EXTI_InitStructure.EXTI_Line = gpio_pin;
-	//disable that EXTI line
-	EXTI_InitStructure.EXTI_LineCmd = DISABLE;
-	//send values to registers
-	EXTI_Init(&EXTI_InitStructure);
+	if(gpio_pin != EXTI_Line2 || gpio_pin != EXTI_Line11)
+	{
+		//Select the appropriate EXTI line
+		EXTI_InitStructure.EXTI_Line = gpio_pin;
+		//disable that EXTI line
+		EXTI_InitStructure.EXTI_LineCmd = DISABLE;
+		//send values to registers
+		EXTI_Init(&EXTI_InitStructure);
+	}
 
 	//unregister the user's handler
 	exti_channels[GPIO_PinSource].handler = NULL;
@@ -216,8 +223,6 @@ void interrupts(void)
 	NVIC_EnableIRQ(EXTI3_IRQn);
 	NVIC_EnableIRQ(EXTI4_IRQn);
 	NVIC_EnableIRQ(EXTI9_5_IRQn);
-
-	
 }
 
 /*******************************************************************************
