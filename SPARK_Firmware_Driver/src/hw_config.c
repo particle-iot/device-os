@@ -132,7 +132,7 @@ void Set_System(void)
 	}
 
 	/* Configure the SysTick Handler Priority: Preemption priority and subpriority */
-	NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00));
+	NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);	//OLD: NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00)
 }
 
 /*******************************************************************************
@@ -146,11 +146,11 @@ void NVIC_Configuration(void)
 {
 	/* Configure the NVIC Preemption Priority Bits */
 	/* 4 bits for pre-emption priority(0-15 PreemptionPriority) and 0 bits for subpriority(0 SubPriority) */
-	//NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 
 	/* Configure the Priority Group to 2 bits */
 	/* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+	//OLD: NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 }
 
 /*******************************************************************************
@@ -183,15 +183,15 @@ void RTC_Configuration(void)
 
 	/* Enable the RTC Interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = RTC_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = RTC_IRQ_PRIORITY;			//OLD: 0x01
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;								//OLD: 0x01
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
 	/* Enable the RTC Alarm Interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = RTCAlarm_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x02;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = RTCALARM_IRQ_PRIORITY;		//OLD: 0x01
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;								//OLD: 0x02
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
@@ -703,16 +703,16 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
         /* Enable the TIM1 Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = TIM1_CC_IRQn;
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = TIM1_CC_IRQ_PRIORITY;	//OLD: 0x02
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;							//OLD: 0x00
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
         NVIC_Init(&NVIC_InitStructure);
 
         /* Enable the Button EXTI Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = BUTTON_IRQn[Button];
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = EXTI2_IRQ_PRIORITY;		//OLD: 0x02
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;							//OLD: 0x01
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
         NVIC_Init(&NVIC_InitStructure);
@@ -890,8 +890,8 @@ void CC3000_SPI_DMA_Init(void)
 
 	/* Configure and enable SPI DMA TX Channel interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = CC3000_SPI_TX_DMA_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = DMA1_CHANNEL5_IRQ_PRIORITY;	//OLD: 0x00
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;								//OLD: 0x00
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
@@ -975,8 +975,8 @@ void CC3000_Interrupt_Enable(void)
 
 	/* Enable and set CC3000_WIFI_INT EXTI Interrupt to the lowest priority */
 	NVIC_InitStructure.NVIC_IRQChannel = CC3000_WIFI_INT_EXTI_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = EXTI15_10_IRQ_PRIORITY;		//OLD: 0x00
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;								//OLD: 0x01
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
@@ -1202,8 +1202,8 @@ void USB_Interrupts_Config(void)
 
 	/* Enable the USB interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = USB_LP_IRQ_PRIORITY;			//OLD: 0x01
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;								//OLD: 0x00
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }

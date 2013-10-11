@@ -35,6 +35,8 @@
 
 /* Exported constants --------------------------------------------------------*/
 
+/* Exported macro ------------------------------------------------------------*/
+
 /* Define the STM32F10x hardware depending on the used board */
 #if defined (USE_SPARK_CORE_V01)
 
@@ -211,7 +213,20 @@
 #define UI_TIMER_FREQUENCY					100							/* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL			1000 / UI_TIMER_FREQUENCY
 
-/* Exported macro ------------------------------------------------------------*/
+//NVIC Priorities based on NVIC_PriorityGroup_4
+#define DMA1_CHANNEL5_IRQ_PRIORITY			0	//CC3000_SPI_TX_DMA Interrupt
+#define EXTI15_10_IRQ_PRIORITY				1	//CC3000_WIFI_INT_EXTI & User Interrupt
+#define USB_LP_IRQ_PRIORITY					2	//USB_LP_CAN1_RX0 Interrupt
+#define RTC_IRQ_PRIORITY					3	//RTC Seconds Interrupt
+#define RTCALARM_IRQ_PRIORITY				4	//RTC Alarm Interrupt
+#define TIM1_CC_IRQ_PRIORITY				5	//TIM1_CC4 Interrupt
+#define EXTI2_IRQ_PRIORITY					6	//BUTTON1_EXTI Interrupt
+#define EXTI0_IRQ_PRIORITY					13	//User Interrupt
+#define EXTI1_IRQ_PRIORITY					13	//User Interrupt
+#define EXTI3_IRQ_PRIORITY					13	//User Interrupt
+#define EXTI4_IRQ_PRIORITY					13	//User Interrupt
+#define EXTI9_5_IRQ_PRIORITY				14	//User Interrupt
+#define SYSTICK_IRQ_PRIORITY				15	//CORTEX_M3 Systick Interrupt
 
 /* Exported functions ------------------------------------------------------- */
 
