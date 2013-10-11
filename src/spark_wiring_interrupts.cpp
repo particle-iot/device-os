@@ -220,147 +220,19 @@ void interrupts(void)
 	
 }
 
-//Interrupt Handlers
-//Inspired from the implepentation of interrupts in libmaple
 /*******************************************************************************
-* Function Name  : EXTI0_IRQHandler
-* Description    : Each interrupt has a unique ISR function that is called. 
-						 We use this to call the user ISR assigned in the 
-						 attachInterrupt function.
-						 This function is called when EXTIO is asserted.
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
-void EXTI0_IRQHandler(void)
-{
-	//Check if EXTI_Line0 is asserted
-    if(EXTI_GetITStatus(EXTI_Line0) != RESET)
-    {
-    	//call user function here
-    	userISRFunction_single(0);
-    }
-    //we need to clear line pending bit manually
-    EXTI_ClearITPendingBit(EXTI_Line0);
-
-}
-
-/*******************************************************************************
-* Function Name  : EXTI1_IRQHandler
-* Description    : Each interrupt has a unique ISR function that is called. 
-						 We use this to call the user ISR assigned in the 
-						 attachInterrupt function.
-						 This function is called when EXTI1 is asserted.
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
-void EXTI1_IRQHandler(void)
-{
-	//Check if EXTI_Line1 is asserted
-    if(EXTI_GetITStatus(EXTI_Line1) != RESET)
-    {
-    	//call user function here
-    	userISRFunction_single(1);
-    }
-    //we need to clear line pending bit manually
-    EXTI_ClearITPendingBit(EXTI_Line1);
-	
-}
-
-
-/* USED BY MODE BUTTON - not going to implement this for the time being
-void EXTI2_IRQHandler(void)
-{	
-}
-*/
-
-
-/*******************************************************************************
-* Function Name  : EXTI3_IRQHandler
-* Description    : Each interrupt has a unique ISR function that is called. 
-						 We use this to call the user ISR assigned in the 
-						 attachInterrupt function.
-						 This function is called when EXTI3 is asserted.
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
-void EXTI3_IRQHandler(void)
-{
-	//Check if EXTI_Line3 is asserted
-    if(EXTI_GetITStatus(EXTI_Line3) != RESET)
-    {
-    	//call user function here
-    	userISRFunction_single(3);
-
-    }
-    //we need to clear line pending bit manually
-    EXTI_ClearITPendingBit(EXTI_Line3);
-	
-}
-
-/*******************************************************************************
-* Function Name  : EXTI4_IRQHandler
-* Description    : Each interrupt has a unique ISR function that is called. 
-						 We use this to call the user ISR assigned in the 
-						 attachInterrupt function.
-						 This function is called when EXTI4 is asserted.
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
-void EXTI4_IRQHandler(void)
-{
-	//Check if EXTI_Line4 is asserted
-    if(EXTI_GetITStatus(EXTI_Line4) != RESET)
-    {
-    	//call user function here
-    	userISRFunction_single(4);
-    }
-    //we need to clear line pending bit manually
-    EXTI_ClearITPendingBit(EXTI_Line4);
-	
-}
-
-/*******************************************************************************
-* Function Name  : EXTI9_5_IRQHandler
-* Description    : Each interrupt has a unique ISR function that is called. 
-						 We use this to call the user ISR assigned in the 
-						 attachInterrupt function.
-						 This function is called when EXTI 5 through 9 are asserted.
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
-void EXTI9_5_IRQHandler(void)
-{
-	userISRFunction_multiple(5, 9);
-}
-
-
-/* USED BY CC3000 and SPI - - not going to implement this here
-Its currently being implemented in stm32_it.c
-//EXTI 10 to 15
-void EXTI15_10_IRQHandler(void)
-{	
-}
-*/
-
-
-/*******************************************************************************
-* Function Name  : userISRFunction_single
+* Function Name  : USER_EXTI_Line_Handler (Declared as weak in stm32_it.cpp)
 * Description    : This function is called by any of the interrupt handlers. It 
 						 essentially fetches the user function pointer from the array
 						 and calls it.
-* Input          : EXTI - Interrupt number - 
+* Input          : EXTI_Line_Number (Supported: 0, 1, 3, 4, 5, 6, 7, 13, 14 and 15)
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
-void userISRFunction_single(uint8_t intNumber)
+void USER_EXTI_Line_Handler(uint8_t EXTI_Line_Number)
 {
 	//fetch the user function pointer from the array
-	voidFuncPtr userISR_Handle = exti_channels[intNumber].handler;
+	voidFuncPtr userISR_Handle = exti_channels[EXTI_Line_Number].handler;
 	//Check to see if the user handle is NULL
 	if (!userISR_Handle) 
  	{
@@ -369,41 +241,3 @@ void userISRFunction_single(uint8_t intNumber)
   //This is the call to the actual user ISR function
      userISR_Handle();
 }
-
-
-/*******************************************************************************
-* Function Name  : userISRFunction_multiple
-* Description    : This function is similar to userISRFunction_single() but it 
-						 handles and sorts through multiple interrupts that are associated
-						 with the same handle like EXTI 5 to 9 and EXTI 10 to 15.
-* Input          : EXTI - Interrupt number range - 
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
-void userISRFunction_multiple(uint8_t intNumStart, uint8_t intNUmEnd)
-{
-	uint8_t count =0;
-	uint32_t EXTI_LineMask = 0;
-
-	//Go through all the interrupt flags and see which ones were asserted
-	for (count = intNumStart; count <= intNUmEnd; count++)
-	{
-		//Create a mask from the pin number
-		EXTI_LineMask = (1U << count);
-		//Check if the interrupt was asserted
-		if(EXTI_GetITStatus(EXTI_LineMask) != RESET)
-		{
-			//Fetch the user function from the array of user function pointers
-			voidFuncPtr userISR_Handle = exti_channels[count].handler;
-			//Check to see if the user handle is NULL
-			if (userISR_Handle) 
-			{
-				//This is the actual call to the user ISR function
-				userISR_Handle();
-				//Clear the appropriate interrupt flag before exiting
-				EXTI_ClearITPendingBit(EXTI_LineMask);
-			}
-		}
-	}
-}
-
