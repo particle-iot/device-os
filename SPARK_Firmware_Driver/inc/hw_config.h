@@ -83,7 +83,7 @@ typedef enum
 #define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH		(294)
 /* External Flash memory address where core private RSA key resides */
 #define EXTERNAL_FLASH_CORE_PRIVATE_KEY_ADDRESS		((uint32_t)0x02000)
-/* Length in bytes of DER-encoded 2048-bit RSA private key */
+/* Length in bytes of DER-encoded 1024-bit RSA private key */
 #define EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH		(612)
 
 #if defined (USE_SPARK_CORE_V02)
