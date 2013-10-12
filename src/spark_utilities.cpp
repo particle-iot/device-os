@@ -243,9 +243,6 @@ int Spark_Receive(unsigned char *buf, int buflen)
 
 void Spark_Protocol_Init(void)
 {
-  char id[12];
-  memcpy(id, (const void *)ID1, 12);
-
   SparkCallbacks callbacks;
   callbacks.send = Spark_Send;
   callbacks.receive = Spark_Receive;
@@ -263,14 +260,12 @@ void Spark_Protocol_Init(void)
   FLASH_Read_ServerPublicKey(pubkey);
   FLASH_Read_CorePrivateKey(private_key);
 
-  spark_protocol.init(id, keys, callbacks, &descriptor);
+  spark_protocol.init((const char *)ID1, keys, callbacks, &descriptor);
 }
 
 int Spark_Handshake(void)
 {
-  //unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
-  //FLASH_Read_ServerPublicKey(pubkey);
-  //spark_protocol.blocking_send(pubkey, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
+  Spark_Protocol_Init();
   return spark_protocol.handshake();
 }
 
@@ -308,10 +303,10 @@ int Spark_Connect(void)
     tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
 
 	// the destination IP address
-	tSocketAddr.sa_data[2] = 10;	// First Octet of destination IP
-	tSocketAddr.sa_data[3] = 105;	// Second Octet of destination IP
-	tSocketAddr.sa_data[4] = 34; 	// Third Octet of destination IP
-	tSocketAddr.sa_data[5] = 160;	// Fourth Octet of destination IP
+	tSocketAddr.sa_data[2] = 192;	// First Octet of destination IP
+	tSocketAddr.sa_data[3] = 168;	// Second Octet of destination IP
+	tSocketAddr.sa_data[4] = 13; 	// Third Octet of destination IP
+	tSocketAddr.sa_data[5] = 107;	// Fourth Octet of destination IP
 
 	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 

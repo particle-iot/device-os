@@ -119,7 +119,6 @@ int main(void)
 
 #ifdef SPARK_WLAN_ENABLE
 	SPARK_WLAN_Setup();
-  Spark_Protocol_Init();
 #endif
 
 	/* Main loop */
@@ -132,10 +131,19 @@ int main(void)
     {
       if (!SOCKET_WAS_CONNECTED)
       {
-        if (Spark_Handshake())
+        int err = Spark_Handshake();
+        if (err)
         {
-          // error, orange
-          LED_SetRGBColor(0xff9000);
+          if (1 == err)
+          {
+            // RSA decryption error, orange
+            LED_SetRGBColor(0xff8000);
+          }
+          else if (2 == err)
+          {
+            // RSA signature verification error, magenta
+            LED_SetRGBColor(0xff00ff);
+          }
           LED_On(LED_RGB);
         }
       }
