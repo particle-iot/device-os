@@ -45,7 +45,7 @@ int SparkProtocol::handshake(void)
   if (err) return err;
 
   blocking_send(queue + 52, 256);
-  blocking_receive(queue, 512);
+  blocking_receive(queue, 384);
 
   err = set_key(queue);
   if (err) return err;
@@ -608,7 +608,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
 
   calculate_ciphertext_hmac(signed_encrypted_credentials, credentials, hmac);
 
-  if (0 == verify_signature(signed_encrypted_credentials + 256,
+  if (0 == verify_signature(signed_encrypted_credentials + 128,
                             server_public_key,
                             hmac))
   {
