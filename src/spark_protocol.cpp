@@ -20,7 +20,7 @@ void SparkProtocol::init(const char *id,
                          SparkDescriptor *descriptor)
 {
   memcpy(server_public_key, keys.server_public, 294);
-  memcpy(core_private_key, keys.core_private, 1191);
+  memcpy(core_private_key, keys.core_private, 612);
 
   // when using this lib in C, constructor is never called
   queue_init();
