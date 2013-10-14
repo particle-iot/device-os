@@ -89,6 +89,11 @@
 #define ADC_SAMPLING_TIME	ADC_SampleTime_1Cycles5	//ADC_SampleTime_239Cycles5
 #define TIM_PWM_FREQ		500 //500Hz
 
+#define LSBFIRST 0
+#define MSBFIRST 1
+
+typedef unsigned char byte;
+
 typedef enum PinMode {
   OUTPUT,
   INPUT,
