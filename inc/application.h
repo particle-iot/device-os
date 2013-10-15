@@ -11,5 +11,6 @@
 #include "spark_wiring.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_string.h"
+#include "spark_wiring_print.h"
 
 #endif /* APPLICATION_H_ */
