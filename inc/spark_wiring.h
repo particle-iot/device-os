@@ -13,6 +13,7 @@
 #include "spark_utilities.h"
 
 #include "spark_wiring_interrupts.h"
+#include "spark_wiring_spi.h"
 
 /*
  * Basic variables

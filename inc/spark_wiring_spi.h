@@ -38,12 +38,9 @@ public:
 
 	static void attachInterrupt();
 	static void detachInterrupt();
-};
 
-bool SPIClass::SPI_Bit_Order_Set = false;
-bool SPIClass::SPI_Data_Mode_Set = false;
-bool SPIClass::SPI_Clock_Divider_Set = false;
-bool SPIClass::SPI_Enabled = false;
+	static bool isEnabled(void);
+};
 
 extern SPIClass SPI;
 

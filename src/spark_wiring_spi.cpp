@@ -2,6 +2,11 @@
 
 SPIClass SPI;
 
+bool SPIClass::SPI_Bit_Order_Set = false;
+bool SPIClass::SPI_Data_Mode_Set = false;
+bool SPIClass::SPI_Clock_Divider_Set = false;
+bool SPIClass::SPI_Enabled = false;
+
 void SPIClass::begin() {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
 
@@ -45,6 +50,8 @@ void SPIClass::end() {
 	if(SPI_Enabled != false)
 	{
 		SPI_Cmd(SPI1, DISABLE);
+
+		SPI_Enabled = false;
 	}
 }
 
@@ -153,3 +160,6 @@ void SPIClass::detachInterrupt() {
 	//To Do
 }
 
+bool SPIClass::isEnabled() {
+	return SPI_Enabled;
+}

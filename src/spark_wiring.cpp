@@ -21,7 +21,6 @@ uint8_t serial1_enabled = false;
 
 extern __IO uint32_t TimingMillis;
 
-
 /*
  * Pin mapping
  */
@@ -113,6 +112,12 @@ void pinMode(uint16_t pin, PinMode setMode)
 		return;
 	}
 
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return;
+	}
+
 	// Serial1 safety check
 	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
@@ -189,6 +194,12 @@ void digitalWrite(uint16_t pin, uint8_t value)
 		return;
 	}
 
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return;
+	}
+
 	// Serial1 safety check
 	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
@@ -217,6 +228,12 @@ void digitalWrite(uint16_t pin, uint8_t value)
 int32_t digitalRead(uint16_t pin)
 {
 	if (pin >= TOTAL_PINS || PIN_MAP[pin].pin_mode == OUTPUT || PIN_MAP[pin].pin_mode == NONE)
+	{
+		return -1;
+	}
+
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
 	{
 		return -1;
 	}
@@ -307,6 +324,12 @@ int32_t analogRead(uint16_t pin)
 		pin = pin + FIRST_ANALOG_PIN;
 	}
 
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return -1;
+	}
+
 	// Serial1 safety check
 	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
@@ -356,6 +379,12 @@ void analogWrite(uint16_t pin, uint8_t value)
 {
 
 	if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
+	{
+		return;
+	}
+
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
 	{
 		return;
 	}
