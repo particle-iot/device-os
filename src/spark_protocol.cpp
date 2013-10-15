@@ -17,7 +17,7 @@ void SparkProtocol::queue_init(void)
 void SparkProtocol::init(const char *id,
                          const SparkKeys &keys,
                          const SparkCallbacks &callbacks,
-                         SparkDescriptor *descriptor)
+                         const SparkDescriptor &descriptor)
 {
   memcpy(server_public_key, keys.server_public, 294);
   memcpy(core_private_key, keys.core_private, 612);
@@ -30,7 +30,7 @@ void SparkProtocol::init(const char *id,
   callback_send = callbacks.send;
   callback_receive = callbacks.receive;
 
-  this->descriptor = descriptor;
+  this->descriptor.call_function = descriptor.call_function;
 }
 
 int SparkProtocol::handshake(void)
@@ -61,97 +61,100 @@ int SparkProtocol::handshake(void)
 
 void SparkProtocol::event_loop(void)
 {
-  callback_receive(queue, 2);
-  int len = queue[0] << 8 | queue[1];
-  callback_receive(queue, len);
-  CoAPMessageType::Enum message_type = received_message(queue, len);
-  unsigned char token = queue[4];
-  switch (message_type)
+  int bytes_received = callback_receive(queue, 2);
+  if (2 <= bytes_received)
   {
-    case CoAPMessageType::DESCRIBE:
+    int len = queue[0] << 8 | queue[1];
+    blocking_receive(queue, len);
+    CoAPMessageType::Enum message_type = received_message(queue, len);
+    unsigned char token = queue[4];
+    switch (message_type)
     {
-      const char *function_names[1];
-      function_names[0] = "brew";
-      int desc_len = description(queue + 2, token, function_names, 1);
-      queue[0] = 0;
-      queue[1] = 32;
-      callback_send(queue, desc_len + 2);
-      break;
-    }
-    case CoAPMessageType::FUNCTION_CALL:
-    {
-      unsigned char *msg_to_send = queue + len;
-
-      // send ACK
-      *msg_to_send = 0;
-      *(msg_to_send + 1) = 16;
-      empty_ack(msg_to_send + 2, queue[2], queue[3]);
-      callback_send(msg_to_send, 18);
-
-      // copy the function key
-      char function_key[13];
-      memset(function_key, 0, 13);
-      int function_key_length = queue[7] & 0x0F;
-      memcpy(function_key, queue + 8, function_key_length);
-
-      // How long is the argument?
-      int q_index = 8 + function_key_length;
-      int query_length = queue[q_index] & 0x0F;
-      if (13 == query_length)
+      case CoAPMessageType::DESCRIBE:
       {
-        ++q_index;
-        query_length = 13 + queue[q_index];
+        const char *function_names[1];
+        function_names[0] = "brew";
+        int desc_len = description(queue + 2, token, function_names, 1);
+        queue[0] = 0;
+        queue[1] = 32;
+        callback_send(queue, desc_len + 2);
+        break;
       }
-      else if (14 == query_length)
+      case CoAPMessageType::FUNCTION_CALL:
       {
-        ++q_index;
-        query_length = queue[q_index] << 8;
-        ++q_index;
-        query_length |= queue[q_index];
-        query_length += 269;
+        unsigned char *msg_to_send = queue + len;
+
+        // send ACK
+        *msg_to_send = 0;
+        *(msg_to_send + 1) = 16;
+        empty_ack(msg_to_send + 2, queue[2], queue[3]);
+        callback_send(msg_to_send, 18);
+
+        // copy the function key
+        char function_key[13];
+        memset(function_key, 0, 13);
+        int function_key_length = queue[7] & 0x0F;
+        memcpy(function_key, queue + 8, function_key_length);
+
+        // How long is the argument?
+        int q_index = 8 + function_key_length;
+        int query_length = queue[q_index] & 0x0F;
+        if (13 == query_length)
+        {
+          ++q_index;
+          query_length = 13 + queue[q_index];
+        }
+        else if (14 == query_length)
+        {
+          ++q_index;
+          query_length = queue[q_index] << 8;
+          ++q_index;
+          query_length |= queue[q_index];
+          query_length += 269;
+        }
+
+        // malloc and copy the argument
+        char *arg = (char *) malloc(query_length + 1);
+        memcpy(arg, queue + q_index + 1, query_length);
+        arg[query_length] = 0; // null terminate string
+
+        // call the given user function then free the allocated arg
+        int return_value = descriptor.call_function(function_key, arg);
+        free(arg);
+
+        // send return value
+        function_return(msg_to_send + 2, token, return_value);
+        callback_send(msg_to_send, 18);
+        break;
       }
+      case CoAPMessageType::VARIABLE_REQUEST:
+      {
+        // TODO Get variable value, using the descriptor
+        double varval = -104.858;
+        queue[0] = 0;
+        queue[1] = 16;
+        variable_value(queue + 2, token, queue[2], queue[3], varval);
+        callback_send(queue, 18);
+        break;
+      }
+      case CoAPMessageType::CHUNK:
+        // TODO
+        break;
+      case CoAPMessageType::UPDATE_BEGIN:
+        // TODO
+        break;
+      case CoAPMessageType::UPDATE_DONE:
+        // TODO
+        break;
+      case CoAPMessageType::KEY_CHANGE:
+        // TODO
+        break;
 
-      // malloc and copy the argument
-      char *arg = (char *) malloc(query_length + 1);
-      memcpy(arg, queue + q_index + 1, query_length);
-      arg[query_length] = 0; // null terminate string
-
-      // call the given user function then free the allocated arg
-      int return_value = descriptor->call_function(function_key, arg);
-      free(arg);
-
-      // send return value
-      function_return(msg_to_send + 2, token, return_value);
-      callback_send(msg_to_send, 18);
-      break;
+      case CoAPMessageType::HELLO:
+      case CoAPMessageType::ERROR:
+      default:
+        ; // drop it on the floor
     }
-    case CoAPMessageType::VARIABLE_REQUEST:
-    {
-      // TODO Get variable value, using the descriptor
-      double varval = -104.858;
-      queue[0] = 0;
-      queue[1] = 16;
-      variable_value(queue + 2, token, queue[2], queue[3], varval);
-      callback_send(queue, 18);
-      break;
-    }
-    case CoAPMessageType::CHUNK:
-      // TODO
-      break;
-    case CoAPMessageType::UPDATE_BEGIN:
-      // TODO
-      break;
-    case CoAPMessageType::UPDATE_DONE:
-      // TODO
-      break;
-    case CoAPMessageType::KEY_CHANGE:
-      // TODO
-      break;
-
-    case CoAPMessageType::HELLO:
-    case CoAPMessageType::ERROR:
-    default:
-      ; // drop it on the floor
   }
 }
 

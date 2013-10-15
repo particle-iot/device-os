@@ -36,7 +36,7 @@ class SparkProtocol
     void init(const char *id,
               const SparkKeys &keys,
               const SparkCallbacks &callbacks,
-              SparkDescriptor *descriptor);
+              const SparkDescriptor &descriptor);
     int handshake(void);
     void event_loop(void);
 
@@ -87,7 +87,7 @@ class SparkProtocol
     aes_context aes;
     int (*callback_send)(const unsigned char *buf, int buflen);
     int (*callback_receive)(unsigned char *buf, int buflen);
-    SparkDescriptor *descriptor;
+    SparkDescriptor descriptor;
     unsigned char key[16];
     unsigned char iv_send[16];
     unsigned char iv_receive[16];

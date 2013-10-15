@@ -136,7 +136,7 @@ void CoAPFixture::init()
   SparkDescriptor descriptor;
   descriptor.call_function = mock_call_function;
 
-  spark_protocol.init(id, keys, callbacks, &descriptor);
+  spark_protocol.init(id, keys, callbacks, descriptor);
   spark_protocol.set_key(signed_encrypted_credentials);
 }
 

@@ -136,7 +136,7 @@ ConstructorFixture::ConstructorFixture()
   callbacks.receive = mock_receive;
   descriptor.call_function = mock_call_function;
   function_called = false;
-  spark_protocol.init(id, keys, callbacks, &descriptor);
+  spark_protocol.init(id, keys, callbacks, descriptor);
 }
 
 int ConstructorFixture::mock_send(const unsigned char *buf, int buflen)
