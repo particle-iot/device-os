@@ -73,7 +73,7 @@ void SparkProtocol::event_loop(void)
       case CoAPMessageType::DESCRIBE:
       {
         const char *function_names[1];
-        function_names[0] = "brew";
+        function_names[0] = "UserLed";
         int desc_len = description(queue + 2, token, function_names, 1);
         queue[0] = 0;
         queue[1] = 32;
