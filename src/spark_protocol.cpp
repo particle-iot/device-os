@@ -426,7 +426,7 @@ void SparkProtocol::update_ready(unsigned char *buf, unsigned char token)
 }
 
 int SparkProtocol::description(unsigned char *buf, unsigned char token,
-                                const char **function_names, int num_functions)
+                               const char **function_names, int num_functions)
 {
   unsigned short message_id = next_message_id();
 
