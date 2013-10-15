@@ -20,6 +20,47 @@
 */
 
 #include "spark_wiring_string.h"
+#include <stdio.h>
+
+//These are very crude implementations - will refine later
+//------------------------------------------------------------------------------------------
+char *dtostrf (double val, signed char width, unsigned char prec, char *sout) {
+  char fmt[20];
+  sprintf(fmt, "%%%d.%df", width, prec);
+  sprintf(sout, fmt, val);
+  return sout;
+}
+
+void itoa(int value, char *sp, int radix)
+{
+    char tmp[16];// be careful with the length of the buffer
+    char *tp = tmp;
+    int i;
+    unsigned v;
+    int sign;
+
+    sign = (radix == 10 && value < 0);
+    if (sign)   v = -value;
+    else    v = (unsigned)value;
+
+    while (v || tp == tmp)
+    {
+        i = v % radix;
+        v /= radix; // v/=radix uses less CPU clocks than v=v/radix does
+        if (i < 10)
+          *tp++ = i+'0';
+        else
+          *tp++ = i + 'a' - 10;
+    }
+
+    if (sign)
+    *sp++ = '-';
+    while (tp > tmp)
+    *sp++ = *--tp;
+}
+
+//------------------------------------------------------------------------------------------
+
 
 
 /*********************************************/
@@ -68,13 +109,13 @@ String::String(char c)
 // 	*this = buf;
 // }
 
-// String::String(int value, unsigned char base)
-// {
-// 	init();
-// 	char buf[18];
-// 	itoa(value, buf, base);
-// 	*this = buf;
-// }
+String::String(int value, unsigned char base)
+{
+	init();
+	char buf[18];
+	itoa(value, buf, base);
+	*this = buf;
+}
 
 // String::String(unsigned int value, unsigned char base)
 // {
@@ -100,19 +141,19 @@ String::String(char c)
 // 	*this = buf;
 // }
 
-// String::String(float value, int decimalPlaces)
-// {
-// 	init();
-// 	char buf[33];
-// 	*this = dtostrf(value, (decimalPlaces + 2), decimalPlaces, buf);
-// }
+String::String(float value, int decimalPlaces)
+{
+	init();
+	char buf[33];
+	*this = dtostrf(value, (decimalPlaces + 2), decimalPlaces, buf);
+}
 
-// String::String(double value, int decimalPlaces)
-// {
-// 	init();
-// 	char buf[33];
-// 	*this = dtostrf(value, (decimalPlaces + 2), decimalPlaces, buf);
-// }
+String::String(double value, int decimalPlaces)
+{
+	init();
+	char buf[33];
+	*this = dtostrf(value, (decimalPlaces + 2), decimalPlaces, buf);
+}
 String::~String()
 {
 	free(buffer);
@@ -268,12 +309,12 @@ unsigned char String::concat(char c)
 // 	return concat(buf, strlen(buf));
 // }
 
-// unsigned char String::concat(int num)
-// {
-// 	char buf[7];
-// 	itoa(num, buf, 10);
-// 	return concat(buf, strlen(buf));
-// }
+unsigned char String::concat(int num)
+{
+	char buf[7];
+	itoa(num, buf, 10);
+	return concat(buf, strlen(buf));
+}
 
 // unsigned char String::concat(unsigned int num)
 // {
@@ -296,19 +337,19 @@ unsigned char String::concat(char c)
 // 	return concat(buf, strlen(buf));
 // }
 
-// unsigned char String::concat(float num)
-// {
-// 	char buf[20];
-// 	char* string = dtostrf(num, 8, 6, buf);
-// 	return concat(string, strlen(string));
-// }
+unsigned char String::concat(float num)
+{
+	char buf[20];
+	char* string = dtostrf(num, 8, 6, buf);
+	return concat(string, strlen(string));
+}
 
-// unsigned char String::concat(double num)
-// {
-// 	char buf[20];
-// 	char* string = dtostrf(num, 8, 6, buf);
-// 	return concat(string, strlen(string));
-// }
+unsigned char String::concat(double num)
+{
+	char buf[20];
+	char* string = dtostrf(num, 8, 6, buf);
+	return concat(string, strlen(string));
+}
 
 /*********************************************/
 /*  Concatenate                              */
