@@ -21,6 +21,9 @@
 #define __SPARK_WIRING_PRINT_
 
 #include <stdio.h> // for size_t
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
 #include "spark_wiring_string.h"
 
