@@ -6,10 +6,10 @@ __IO uint32_t LED_Signaling_Timing;
 uint32_t VIBGYOR_Colors[] = {0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000};
 uint32_t i, n = sizeof(VIBGYOR_Colors) / sizeof(uint32_t);
 
-/*
 int toggle = 0;
 int UserLedToggle(char *ledPin);
 
+/*
 double testReal = 99.99;
 */
 
@@ -38,23 +38,23 @@ void setup()
 	memcpy(id, (const void *)ID1, 12);
 	FLASH_Read_ServerPublicKey(pubkey);
 
-	pinMode(D7, OUTPUT);
-	digitalWrite(D7, LOW);
-	delay(500);
-	digitalWrite(D7, HIGH);
-	delay(500);
-	digitalWrite(D7, LOW);
 */
+	pinMode(D0, OUTPUT);
+	digitalWrite(D0, LOW);
+	delay(500);
+	digitalWrite(D0, HIGH);
+	delay(500);
+	digitalWrite(D0, LOW);
 
 /*
 	// Serial Test
 	Serial.begin(9600);
 */
 
-/*
 	//Register UserLedToggle() function
-	Spark.function("UserLed", UserLedToggle);
+	Spark::function("UserLed", UserLedToggle);
 
+/*
 	//Register testReal variable
 	Spark.variable("testReal", &testReal, DOUBLE);
 */
@@ -107,18 +107,16 @@ void loop()
 */
 }
 
-/*
 int UserLedToggle(char *ledPin)
 {
-	if(0 == strncmp("D7", ledPin, strlen(ledPin)))
+	if(0 == strncmp("D0", ledPin, strlen(ledPin)))
 	{
 		toggle ^= 1;
-		digitalWrite(D7, toggle);
+		digitalWrite(D0, toggle);
 		return 1;
 	}
 	return 0;
 }
-*/
 
 /* This should be a "NON-BlOCKING" function
  * It will be executed every 1ms if LED_Signaling_Start() is called

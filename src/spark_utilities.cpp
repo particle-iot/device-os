@@ -634,12 +634,13 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
 				paramLength = USER_FUNC_ARG_LENGTH;
 			memcpy(User_Func_Lookup_Table[i].userFuncArg, paramString, paramLength);
 			User_Func_Lookup_Table[i].userFuncSchedule = true;
-			return 0;
+      return User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
 		}
 	}
 	return -1;
 }
 
+/*
 void userFuncExecute(void)
 {
 	int i = 0;
@@ -649,19 +650,19 @@ void userFuncExecute(void)
 		{
 			User_Func_Lookup_Table[i].userFuncSchedule = false;
 			User_Func_Lookup_Table[i].userFuncRet = User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
-/*
+
 			//Send the "Function Return" back to the server here OR in a separate thread
-			if(User_Func_Lookup_Table[i].token)
-			{
-				unsigned char buf[16];
-				memset(buf, 0, 16);
-				spark_protocol.function_return(buf, User_Func_Lookup_Table[i].token, User_Func_Lookup_Table[i].userFuncRet);
-				User_Func_Lookup_Table[i].token = 0;
-			}
-*/
+			//if(User_Func_Lookup_Table[i].token)
+			//{
+			//	unsigned char buf[16];
+			//	memset(buf, 0, 16);
+			//	spark_protocol.function_return(buf, User_Func_Lookup_Table[i].token, User_Func_Lookup_Table[i].userFuncRet);
+			//	User_Func_Lookup_Table[i].token = 0;
+			//}
 		}
 	}
 }
+*/
 
 void userEventSend(void)
 {

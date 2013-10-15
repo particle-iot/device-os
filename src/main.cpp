@@ -169,7 +169,7 @@ int main(void)
 				pHandleMessage();
 			}
 
-			userFuncExecute();
+			//userFuncExecute();
 
 			userVarReturn();
 
