@@ -522,9 +522,9 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
 
 //Implement an USART RX ISR here
 void USART2_IRQHandler(void)
-  {
-    // check if the USART1 receive interrupt flag was set
-	if( USART_GetITStatus(USART1, USART_IT_RXNE) )
+{
+    // check if the USART2 receive interrupt flag was set
+	if( USART_GetITStatus(USART2, USART_IT_RXNE) )
 	{
       //unsigned char c = USART_ReceiveData(USART1);
       //store_char(c, &rx_buffer);
@@ -533,4 +533,4 @@ void USART2_IRQHandler(void)
 	{
       //unsigned char c = USART_ReceiveData(USART1);
    }
-  }
+}
