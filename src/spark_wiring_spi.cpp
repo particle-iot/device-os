@@ -1,6 +1,6 @@
 /*
   SPI library
-  Borrowed from Arduino & Wiring
+  API declarations borrowed from Arduino & Wiring
   Modified by Spark
 */
 
