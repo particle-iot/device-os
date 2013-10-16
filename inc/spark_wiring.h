@@ -82,10 +82,15 @@
 
 // SPI pins
 
-#define SS 7
-#define SCK 6
-#define MISO 5
-#define MOSI 4
+#define SS   12
+#define SCK  13
+#define MISO 14
+#define MOSI 15
+
+// I2C pins
+
+#define SDA  0
+#define SCL  1
 
 #define ADC_SAMPLING_TIME ADC_SampleTime_1Cycles5 //ADC_SampleTime_239Cycles5
 #define TIM_PWM_FREQ 500 //500Hz
