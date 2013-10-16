@@ -29,6 +29,10 @@ void SparkProtocol::init(const char *id,
 
   callback_send = callbacks.send;
   callback_receive = callbacks.receive;
+  callback_prepare_for_firmware_update = callbacks.prepare_for_firmware_update;
+  callback_finish_firmware_update = callbacks.finish_firmware_update;
+  callback_calculate_crc = callbacks.calculate_crc;
+  callback_save_firmware_chunk = callbacks.save_firmware_chunk;
 
   this->descriptor.call_function = descriptor.call_function;
 }
@@ -68,12 +72,13 @@ void SparkProtocol::event_loop(void)
     blocking_receive(queue, len);
     CoAPMessageType::Enum message_type = received_message(queue, len);
     unsigned char token = queue[4];
+    unsigned char *msg_to_send = queue + len;
     switch (message_type)
     {
       case CoAPMessageType::DESCRIBE:
       {
         const char *function_names[1];
-        function_names[0] = "UserLed";
+        function_names[0] = "brew";
         int desc_len = description(queue + 2, token, function_names, 1);
         queue[0] = 0;
         queue[1] = 32;
@@ -82,8 +87,6 @@ void SparkProtocol::event_loop(void)
       }
       case CoAPMessageType::FUNCTION_CALL:
       {
-        unsigned char *msg_to_send = queue + len;
-
         // send ACK
         *msg_to_send = 0;
         *(msg_to_send + 1) = 16;
@@ -114,6 +117,7 @@ void SparkProtocol::event_loop(void)
         }
 
         // malloc and copy the argument
+        // TODO use queue instead of malloc
         char *arg = (char *) malloc(query_length + 1);
         memcpy(arg, queue + q_index + 1, query_length);
         arg[query_length] = 0; // null terminate string
@@ -138,13 +142,47 @@ void SparkProtocol::event_loop(void)
         break;
       }
       case CoAPMessageType::CHUNK:
-        // TODO
+      {
+        // send ACK
+        *msg_to_send = 0;
+        *(msg_to_send + 1) = 16;
+        empty_ack(msg_to_send + 2, queue[2], queue[3]);
+        blocking_send(msg_to_send, 18);
+
+        // check crc
+        unsigned int given_crc = queue[8] << 24 | queue[9] << 16 | queue[10] << 8 | queue[11];
+        if (callback_calculate_crc(queue + 13, len - 13) == given_crc)
+        {
+          callback_save_firmware_chunk(queue + 13, len - 13);
+          chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
+        }
+        else
+        {
+          chunk_received(msg_to_send + 2, token, ChunkReceivedCode::BAD);
+        }
         break;
+      }
       case CoAPMessageType::UPDATE_BEGIN:
-        // TODO
+        // send ACK
+        *msg_to_send = 0;
+        *(msg_to_send + 1) = 16;
+        empty_ack(msg_to_send + 2, queue[2], queue[3]);
+        blocking_send(msg_to_send, 18);
+
+        callback_prepare_for_firmware_update();
+
+        // send update_reaady
+        update_ready(msg_to_send + 2, token);
+        blocking_send(msg_to_send, 18);
         break;
       case CoAPMessageType::UPDATE_DONE:
-        // TODO
+        // send ACK 2.04
+        *msg_to_send = 0;
+        *(msg_to_send + 1) = 16;
+        coded_ack(msg_to_send + 2, ChunkReceivedCode::OK, queue[2], queue[3]);
+        blocking_send(msg_to_send, 18);
+
+        callback_finish_firmware_update();
         break;
       case CoAPMessageType::KEY_CHANGE:
         // TODO
@@ -630,8 +668,16 @@ inline void SparkProtocol::empty_ack(unsigned char *buf,
                                      unsigned char message_id_msb,
                                      unsigned char message_id_lsb)
 {
+  coded_ack(buf, 0, message_id_msb, message_id_lsb);
+}
+
+inline void SparkProtocol::coded_ack(unsigned char *buf,
+                                     unsigned char code,
+                                     unsigned char message_id_msb,
+                                     unsigned char message_id_lsb)
+{
   buf[0] = 0x60; // acknowledgment, no token
-  buf[1] = 0x00; // code signifying empty message
+  buf[1] = code; // code signifying empty message
   buf[2] = message_id_msb;
   buf[3] = message_id_lsb;
 

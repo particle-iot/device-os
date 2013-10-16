@@ -26,6 +26,10 @@ struct SparkCallbacks
 {
   int (*send)(const unsigned char *buf, int buflen);
   int (*receive)(unsigned char *buf, int buflen);
+  void (*prepare_for_firmware_update)(void);
+  void (*finish_firmware_update)(void);
+  long unsigned int (*calculate_crc)(unsigned char *buf, long unsigned int buflen);
+  void (*save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
 };
 
 class SparkProtocol
@@ -87,6 +91,10 @@ class SparkProtocol
     aes_context aes;
     int (*callback_send)(const unsigned char *buf, int buflen);
     int (*callback_receive)(unsigned char *buf, int buflen);
+    void (*callback_prepare_for_firmware_update)(void);
+    void (*callback_finish_firmware_update)(void);
+    long unsigned int (*callback_calculate_crc)(unsigned char *buf, long unsigned int buflen);
+    void (*callback_save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
     SparkDescriptor descriptor;
     unsigned char key[16];
     unsigned char iv_send[16];
@@ -98,6 +106,10 @@ class SparkProtocol
     void encrypt(unsigned char *buf, int length);
     void separate_response(unsigned char *buf, unsigned char token, unsigned char code);
     inline void empty_ack(unsigned char *buf,
+                          unsigned char message_id_msb,
+                          unsigned char message_id_lsb);
+    inline void coded_ack(unsigned char *buf,
+                          unsigned char code,
                           unsigned char message_id_msb,
                           unsigned char message_id_lsb);
 

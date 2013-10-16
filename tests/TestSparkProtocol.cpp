@@ -437,4 +437,58 @@ SUITE(SparkProtocolConstruction)
     spark_protocol.blocking_receive(receive_buf, 20);
     CHECK_ARRAY_EQUAL(expected, receive_buf, 20);
   }
+
+
+
+  /*********************************
+   * Over-the-air Firmware Updates *
+   *********************************/
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToUpdateBeginWithACK)
+  {
+    CHECK(false);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopPreparesForUpdateUponUpdateBegin)
+  {
+    // callbacks.prepare_for_firmware_update
+    CHECK(false);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToUpdateBeginWithUpdateReady)
+  {
+    CHECK(false);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToChunkWithACK)
+  {
+    CHECK(false);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToChunkWithChunkReceivedOKIfCRCMatches)
+  {
+    CHECK(false);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToChunkWithChunkReceivedBADOnCRCMismatch)
+  {
+    CHECK(false);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopSavesReceivedChunk)
+  {
+    // callbacks.save_firmware_chunk
+    CHECK(false);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToUpdateDoneWithACK)
+  {
+    CHECK(false);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopFinishesFirmwareUpdateOnUpdateDone)
+  {
+    // callbacks.finish_firmware_update
+    CHECK(false);
+  }
 }
