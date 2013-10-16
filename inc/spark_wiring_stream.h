@@ -52,7 +52,7 @@ class Stream : public Print
     int peekNextDigit(); // returns the next numeric digit in the stream or -1 if timeout
 
   public:
-    virtual int available() = 0;
+    virtual uint8_t available() = 0;
     virtual int read() = 0;
     virtual int peek() = 0;
     virtual void flush() = 0;
