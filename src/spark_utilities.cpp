@@ -241,11 +241,27 @@ int Spark_Receive(unsigned char *buf, int buflen)
   return bytes_received;
 }
 
+void Spark_Prepare_For_Firmware_Update(void)
+{
+  SPARK_FLASH_UPDATE = 1;
+  FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS);
+}
+
+void Spark_Finish_Firmware_Update(void)
+{
+  SPARK_FLASH_UPDATE = 0;
+  FLASH_End();
+}
+
 void Spark_Protocol_Init(void)
 {
   SparkCallbacks callbacks;
   callbacks.send = Spark_Send;
   callbacks.receive = Spark_Receive;
+  callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
+  callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
+  callbacks.calculate_crc = Compute_CRC32;
+  callbacks.save_firmware_chunk = FLASH_Update;
 
   SparkDescriptor descriptor;
   descriptor.call_function = userFuncSchedule;
@@ -305,8 +321,8 @@ int Spark_Connect(void)
 	// the destination IP address
 	tSocketAddr.sa_data[2] = 10;	// First Octet of destination IP
 	tSocketAddr.sa_data[3] = 105;	// Second Octet of destination IP
-	tSocketAddr.sa_data[4] = 33; 	// Third Octet of destination IP
-	tSocketAddr.sa_data[5] = 191;	// Fourth Octet of destination IP
+	tSocketAddr.sa_data[4] = 34; 	// Third Octet of destination IP
+	tSocketAddr.sa_data[5] = 30;	// Fourth Octet of destination IP
 
 	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 
