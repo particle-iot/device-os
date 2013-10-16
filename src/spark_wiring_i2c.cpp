@@ -291,7 +291,7 @@ size_t TwoWire::write(const uint8_t *data, size_t quantity)
 // must be called in:
 // slave rx event callback
 // or after requestFrom(address, numBytes)
-uint8_t TwoWire::available(void)
+int TwoWire::available(void)
 {
 	return rxBufferLength - rxBufferIndex;
 }

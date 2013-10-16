@@ -12,5 +12,6 @@
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_print.h"
+ #include "spark_wiring_hardwareserial.h"
 
 #endif /* APPLICATION_H_ */

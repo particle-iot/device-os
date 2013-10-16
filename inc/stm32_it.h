@@ -50,6 +50,8 @@ void TIM1_CC_IRQHandler(void);
 void DMA1_Channel5_IRQHandler(void);
 void USB_LP_CAN1_RX0_IRQHandler(void);
 
+void USART2_IRQHandler(void);
+
 }
 
 #endif /* __STM32_IT_H */

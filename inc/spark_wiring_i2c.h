@@ -47,7 +47,7 @@ public:
 	uint8_t requestFrom(int, int, int);
 	virtual size_t write(uint8_t);
 	virtual size_t write(const uint8_t *, size_t);
-	virtual uint8_t available(void);
+	virtual int available(void);
 	virtual int read(void);
 	virtual int peek(void);
 	virtual void flush(void);

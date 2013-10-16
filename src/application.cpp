@@ -9,6 +9,8 @@ int interruptCount = 0;
 
 double testReal = 99.99;
 
+int incomingByte = 0;
+
 //String stringyone;
 
 void ISR_A0 ()
@@ -23,10 +25,11 @@ void setup()
 {
 	// runs once
 
-/*
+
 	// Serial Test
 	Serial.begin(9600);
-*/
+
+	SerialW.begin(9600);
 
 	attachInterrupt(A1, ISR_A0, CHANGE);
 	//attachInterrupt(D1, ISR_A1, CHANGE);
@@ -48,10 +51,6 @@ void setup()
 
 	//Register testReal variable
 	//Spark.variable("testReal", &testReal, DOUBLE);
-
-	//String.compareto("mohit");
-
-
 	
 }
 
@@ -68,12 +67,17 @@ void loop()
 	}
 */
 
-/*
+
 	// Serial print test
 	Serial.print("Hello ");
 	Serial.println("Spark");
 	delay(500);
-*/
+
+	incomingByte = SerialW.read();
+
+	Serial.write(incomingByte);
+
+
 
 	// Call this in the process_command() to schedule the "UserLedToggle" function to execute
 	//userFuncSchedule("UserLed", 0xc3, "D7");
@@ -93,7 +97,7 @@ void loop()
 	// }
 	// interruptCount = 2;
 	// interrupts();
-	 delay(500);
+	// delay(500);
 }
 
 int UserLedToggle(char *ledPin)
