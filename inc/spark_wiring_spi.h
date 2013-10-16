@@ -1,3 +1,8 @@
+/*
+  SPI library
+  Borrowed from Arduino & Wiring
+  Modified by Spark
+*/
 
 #ifndef __SPARK_WIRING_SPI_H
 #define __SPARK_WIRING_SPI_H

@@ -105,8 +105,9 @@ typedef enum PinMode {
   INPUT,
   INPUT_PULLUP,
   INPUT_PULLDOWN,
-  AF_OUTPUT,  //Used internally for Alternate Function Output(TIM, UART, SPI etc)
-  AN_INPUT  //Used internally for ADC Input
+  AF_OUTPUT_PUSHPULL,	//Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
+  AF_OUTPUT_DRAIN,		//Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
+  AN_INPUT  			//Used internally for ADC Input
 } PinMode;
 
 typedef struct STM32_Pin_Info {

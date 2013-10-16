@@ -19,7 +19,7 @@ void HardwareSerial::begin(uint32_t baudRate)
 	pinMode(RX, INPUT);
 
 	// Configure USART Tx as alternate function push-pull
-	pinMode(TX, AF_OUTPUT);
+	pinMode(TX, AF_OUTPUT_PUSHPULL);
 
 	// USART default configuration
 	// USART configured as follow:
@@ -64,7 +64,7 @@ void HardwareSerial::begin(uint32_t baudRate, uint8_t config)
 	pinMode(RX, INPUT);
 
 	// Configure USART Tx as alternate function push-pull
-	pinMode(TX, AF_OUTPUT);
+	pinMode(TX, AF_OUTPUT_PUSHPULL);
 
 	// USART default configuration
 	// USART configured as follow:

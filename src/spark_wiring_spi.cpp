@@ -1,3 +1,9 @@
+/*
+  SPI library
+  Borrowed from Arduino & Wiring
+  Modified by Spark
+*/
+
 #include "spark_wiring_spi.h"
 
 SPIClass SPI;
@@ -10,8 +16,8 @@ bool SPIClass::SPI_Enabled = false;
 void SPIClass::begin() {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
 
-	pinMode(SCK, AF_OUTPUT);
-	pinMode(MOSI, AF_OUTPUT);
+	pinMode(SCK, AF_OUTPUT_PUSHPULL);
+	pinMode(MOSI, AF_OUTPUT_PUSHPULL);
 	pinMode(MISO, INPUT);
 
 	pinMode(SS, OUTPUT);

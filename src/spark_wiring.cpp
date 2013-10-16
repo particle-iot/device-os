@@ -164,13 +164,19 @@ void pinMode(uint16_t pin, PinMode setMode)
 		PIN_MAP[pin].pin_mode = INPUT_PULLDOWN;
 		break;
 
-	case AF_OUTPUT:	//Used internally for Alternate Function Output(TIM, UART, SPI etc)
+	case AF_OUTPUT_PUSHPULL:	//Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-		PIN_MAP[pin].pin_mode = AF_OUTPUT;
+		PIN_MAP[pin].pin_mode = AF_OUTPUT_PUSHPULL;
 		break;
 
-	case AN_INPUT:	//Used internally for ADC Input
+	case AF_OUTPUT_DRAIN:		//Used internally for Alternate Function Output Drain(I2C etc)
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		PIN_MAP[pin].pin_mode = AF_OUTPUT_DRAIN;
+		break;
+
+	case AN_INPUT:				//Used internally for ADC Input
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
 		PIN_MAP[pin].pin_mode = AN_INPUT;
 		break;
@@ -207,7 +213,7 @@ void digitalWrite(uint16_t pin, uint8_t value)
 	}
 
 	//If the pin is used by analogWrite, we need to change the mode
-	if(PIN_MAP[pin].pin_mode == AF_OUTPUT)
+	if(PIN_MAP[pin].pin_mode == AF_OUTPUT_PUSHPULL)
 	{
 		pinMode(pin, OUTPUT);
 	}
@@ -395,7 +401,7 @@ void analogWrite(uint16_t pin, uint8_t value)
 		return;
 	}
 
-	if(PIN_MAP[pin].pin_mode != OUTPUT && PIN_MAP[pin].pin_mode != AF_OUTPUT)
+	if(PIN_MAP[pin].pin_mode != OUTPUT && PIN_MAP[pin].pin_mode != AF_OUTPUT_PUSHPULL)
 	{
 		return;
 	}
@@ -414,7 +420,7 @@ void analogWrite(uint16_t pin, uint8_t value)
 	// AFIO clock enable
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
-	pinMode(pin, AF_OUTPUT);
+	pinMode(pin, AF_OUTPUT_PUSHPULL);
 
 	// TIM clock enable
 	if(PIN_MAP[pin].timer_peripheral == TIM2)
@@ -581,7 +587,7 @@ void serial1_begin(uint32_t baudRate)
 	pinMode(RX, INPUT);
 
 	// Configure USART Tx as alternate function push-pull
-	pinMode(TX, AF_OUTPUT);
+	pinMode(TX, AF_OUTPUT_PUSHPULL);
 
 	// USART default configuration
 	// USART configured as follow:
