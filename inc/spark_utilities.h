@@ -32,7 +32,7 @@ typedef enum
 	BOOLEAN = 1, INT = 2, STRING = 4, DOUBLE = 9
 } Spark_Data_TypeDef;
 
-class Spark {
+class SparkClass {
 public:
 	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
 	static void function(const char *funcKey, int (*pFunc)(char *paramString));
@@ -43,6 +43,8 @@ public:
 	static int connect(void);
 	static int disconnect(void);
 };
+
+extern SparkClass Spark;
 
 #ifdef __cplusplus
 extern "C" {

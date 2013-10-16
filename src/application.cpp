@@ -52,7 +52,7 @@ void setup()
 */
 
 	//Register UserLedToggle() function
-	Spark::function("UserLed", UserLedToggle);
+	Spark.function("UserLed", UserLedToggle);
 
 /*
 	//Register testReal variable

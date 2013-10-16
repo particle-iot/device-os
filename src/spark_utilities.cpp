@@ -5,8 +5,6 @@
 #include <stdarg.h>
 #include "spark_protocol.h"
 
-extern "C" {
-
 SparkProtocol spark_protocol;
 
 long sparkSocket;
@@ -94,7 +92,9 @@ static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
 */
 
-void Spark::variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
+SparkClass Spark;
+
+void SparkClass::variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
 {
 	int i = 0;
 	if(NULL != userVar && NULL != varKey)
@@ -120,7 +120,7 @@ void Spark::variable(const char *varKey, void *userVar, Spark_Data_TypeDef userV
 	}
 }
 
-void Spark::function(const char *funcKey, int (*pFunc)(char *paramString))
+void SparkClass::function(const char *funcKey, int (*pFunc)(char *paramString))
 {
 	int i = 0;
 	if(NULL != pFunc && NULL != funcKey)
@@ -145,7 +145,7 @@ void Spark::function(const char *funcKey, int (*pFunc)(char *paramString))
 	}
 }
 
-void Spark::event(const char *eventName, char *eventResult)
+void SparkClass::event(const char *eventName, char *eventResult)
 {
 	int i = 0;
 	if(NULL != eventName && NULL != eventResult)
@@ -176,7 +176,7 @@ void Spark::event(const char *eventName, char *eventResult)
 	}
 }
 
-void Spark::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
+void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
 #if defined (SPARK_RTC_ENABLE)
 	/* Set the RTC Alarm */
@@ -198,12 +198,12 @@ void Spark::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 #endif
 }
 
-void Spark::sleep(long seconds)
+void SparkClass::sleep(long seconds)
 {
-	Spark::sleep(SLEEP_MODE_WLAN, seconds);
+	SparkClass::sleep(SLEEP_MODE_WLAN, seconds);
 }
 
-bool Spark::connected(void)
+bool SparkClass::connected(void)
 {
 	if(SPARK_DEVICE_ACKED)
 		return true;
@@ -274,12 +274,12 @@ void Spark_Communication_Loop(void)
   spark_protocol.event_loop();
 }
 
-int Spark::connect(void)
+int SparkClass::connect(void)
 {
 	return Spark_Connect();
 }
 
-int Spark::disconnect(void)
+int SparkClass::disconnect(void)
 {
 	return Spark_Disconnect();
 }
@@ -874,5 +874,3 @@ static void sub_str(char dest[], char src[], int offset, int len)
 }
 
 */
-
-} /* end of extern "C" */

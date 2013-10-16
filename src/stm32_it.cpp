@@ -28,6 +28,7 @@
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 
 /* Private function prototypes -----------------------------------------------*/
+void USER_EXTI_Line_Handler(uint8_t EXTI_Line_Number) __attribute__ ((weak));
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -231,15 +232,45 @@ void RTCAlarm_IRQHandler(void)
 #endif
 
 /*******************************************************************************
- * Function Name  : DMA1_Channel5_IRQHandler
- * Description    : This function handles SPI2_TX_DMA interrupt request.
+ * Function Name  : EXTI0_IRQHandler
+ * Description    : This function handles EXTI0 interrupt request.
  * Input          : None
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void DMA1_Channel5_IRQHandler(void)
+void EXTI0_IRQHandler(void)
 {
-	SPI_DMA_IntHandler();
+	if (EXTI_GetITStatus(EXTI_Line0) != RESET)
+	{
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line0);
+
+		if(NULL != USER_EXTI_Line_Handler)
+		{
+			USER_EXTI_Line_Handler(0);
+		}
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI1_IRQHandler
+ * Description    : This function handles EXTI1 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI1_IRQHandler(void)
+{
+	if (EXTI_GetITStatus(EXTI_Line1) != RESET)
+	{
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line1);
+
+		if(NULL != USER_EXTI_Line_Handler)
+		{
+			USER_EXTI_Line_Handler(1);
+		}
+	}
 }
 
 /*******************************************************************************
@@ -252,10 +283,10 @@ void DMA1_Channel5_IRQHandler(void)
 void EXTI2_IRQHandler(void)
 {
 #if defined (USE_SPARK_CORE_V02)
-	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
+	if (EXTI_GetITStatus(EXTI_Line2) != RESET)//BUTTON1_EXTI_LINE
 	{
 		/* Clear the EXTI line pending bit */
-		EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE );
+		EXTI_ClearITPendingBit(EXTI_Line2);//BUTTON1_EXTI_LINE
 
 		BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
 
@@ -269,6 +300,93 @@ void EXTI2_IRQHandler(void)
 }
 
 /*******************************************************************************
+ * Function Name  : EXTI3_IRQHandler
+ * Description    : This function handles EXTI3 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI3_IRQHandler(void)
+{
+	if (EXTI_GetITStatus(EXTI_Line3) != RESET)
+	{
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line3);
+
+		if(NULL != USER_EXTI_Line_Handler)
+		{
+			USER_EXTI_Line_Handler(3);
+		}
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI4_IRQHandler
+ * Description    : This function handles EXTI4 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI4_IRQHandler(void)
+{
+	if (EXTI_GetITStatus(EXTI_Line4) != RESET)
+	{
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line4);
+
+		if(NULL != USER_EXTI_Line_Handler)
+		{
+			USER_EXTI_Line_Handler(4);
+		}
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI9_5_IRQHandler
+ * Description    : This function handles EXTI9_5 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI9_5_IRQHandler(void)
+{
+	//EXTI_Line8 and EXTI_Line9 support is not required for CORE_V02
+
+	if (EXTI_GetITStatus(EXTI_Line5) != RESET)
+	{
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line5);
+
+		if(NULL != USER_EXTI_Line_Handler)
+		{
+			USER_EXTI_Line_Handler(5);
+		}
+	}
+
+	if (EXTI_GetITStatus(EXTI_Line6) != RESET)
+	{
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line6);
+
+		if(NULL != USER_EXTI_Line_Handler)
+		{
+			USER_EXTI_Line_Handler(6);
+		}
+	}
+
+	if (EXTI_GetITStatus(EXTI_Line7) != RESET)
+	{
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line7);
+
+		if(NULL != USER_EXTI_Line_Handler)
+		{
+			USER_EXTI_Line_Handler(7);
+		}
+	}
+}
+
+/*******************************************************************************
  * Function Name  : EXTI15_10_IRQHandler
  * Description    : This function handles EXTI15_10 interrupt request.
  * Input          : None
@@ -277,19 +395,54 @@ void EXTI2_IRQHandler(void)
  *******************************************************************************/
 void EXTI15_10_IRQHandler(void)
 {
-	if (EXTI_GetITStatus(CC3000_WIFI_INT_EXTI_LINE ) != RESET)
+	//EXTI_Line10 and EXTI_Line12 support is not required for CORE_V02
+
+	if (EXTI_GetITStatus(EXTI_Line13) != RESET)
 	{
 		/* Clear the EXTI line pending bit */
-		EXTI_ClearITPendingBit(CC3000_WIFI_INT_EXTI_LINE );
+		EXTI_ClearITPendingBit(EXTI_Line13);
+
+		if(NULL != USER_EXTI_Line_Handler)
+		{
+			USER_EXTI_Line_Handler(13);
+		}
+	}
+
+	if (EXTI_GetITStatus(EXTI_Line14) != RESET)
+	{
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line14);
+
+		if(NULL != USER_EXTI_Line_Handler)
+		{
+			USER_EXTI_Line_Handler(14);
+		}
+	}
+
+	if (EXTI_GetITStatus(EXTI_Line15) != RESET)
+	{
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line15);
+
+		if(NULL != USER_EXTI_Line_Handler)
+		{
+			USER_EXTI_Line_Handler(15);
+		}
+	}
+
+	if (EXTI_GetITStatus(EXTI_Line11) != RESET)//CC3000_WIFI_INT_EXTI_LINE
+	{
+		/* Clear the EXTI line pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line11);//CC3000_WIFI_INT_EXTI_LINE
 
 		SPI_EXTI_IntHandler();
 	}
 
 #if defined (USE_SPARK_CORE_V01)
-	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
+	if (EXTI_GetITStatus(EXTI_Line10) != RESET)//BUTTON1_EXTI_LINE
 	{
 		/* Clear the EXTI line pending bit */
-		EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE );
+		EXTI_ClearITPendingBit(EXTI_Line10);//BUTTON1_EXTI_LINE
 
 		BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
 
@@ -328,6 +481,18 @@ void TIM1_CC_IRQHandler(void)
 			BUTTON_EXTI_Config(BUTTON1, ENABLE);
 		}
 	}
+}
+
+/*******************************************************************************
+ * Function Name  : DMA1_Channel5_IRQHandler
+ * Description    : This function handles SPI2_TX_DMA interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void DMA1_Channel5_IRQHandler(void)
+{
+	SPI_DMA_IntHandler();
 }
 
 /*******************************************************************************
