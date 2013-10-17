@@ -47,6 +47,33 @@ ISR(USART1_UDRE_vect)
 }
 */
 
+/*******************************************************************************
+* Function Name  : Wiring_USART2_Interrupt_Handler (Declared as weak in stm32_it.cpp)
+* Description    : This function handles USART2 global interrupt request.
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+void Wiring_USART2_Interrupt_Handler(void)
+{
+	// check if the USART2 receive interrupt flag was set
+	if( USART_GetITStatus(USART2, USART_IT_RXNE) )
+	{
+		USART_ClearITPendingBit(USART2, USART_IT_RXNE);
+		unsigned char c = USART_ReceiveData(USART2);
+      store_char(c, &rx_buffer);
+      //USB_USART_Send_Data(_rx_buffer->buffer[_rx_buffer->tail]);
+	}
+}
+
+// Constructors ////////////////////////////////////////////////////////////////
+
+HardwareSerial::HardwareSerial(ring_buffer *rx_buffer, ring_buffer *tx_buffer)
+{
+  _rx_buffer = rx_buffer;
+  _tx_buffer = tx_buffer;
+}
+
 // Public Methods //////////////////////////////////////////////////////////////
 
 //Implementing serial1 only
@@ -73,7 +100,7 @@ void HardwareSerial::begin(uint32_t baudRate)
 	//NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0); 
 	// Enabling interrupt from USART2
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn; 
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0; 
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 14; 
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0; 
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; 
 	NVIC_Init(&NVIC_InitStructure);
@@ -211,14 +238,19 @@ int HardwareSerial::peek(void)
 
 int HardwareSerial::read(void)
 {
-  // if the head isn't ahead of the tail, we don't have any characters
-  if (_rx_buffer->head == _rx_buffer->tail) {
-    return -1;
-  } else {
-    unsigned char c = _rx_buffer->buffer[_rx_buffer->tail];
-    _rx_buffer->tail = (unsigned int)(_rx_buffer->tail + 1) % SERIAL_BUFFER_SIZE;
-    return c;
-  }
+	//if the head isn't ahead of the tail, we don't have any characters
+  	if (_rx_buffer->head == _rx_buffer->tail) 
+  		{
+  			//return -1;
+  			return 'x';
+  		} 
+  	else 
+  		{
+  			unsigned char c = _rx_buffer->buffer[_rx_buffer->tail];
+    		_rx_buffer->tail = (unsigned int)(_rx_buffer->tail + 1) % SERIAL_BUFFER_SIZE;
+    		//USB_USART_Send_Data(c);
+    		return c;
+ 		}
 }
 
 void HardwareSerial::flush()
@@ -253,18 +285,7 @@ HardwareSerial::operator bool() {
 	return true;
 }
 
-/*******************************************************************************
-* Function Name  : Wiring_USART2_Interrupt_Handler (Declared as weak in stm32_it.cpp)
-* Description    : This function handles USART2 global interrupt request.
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
-void Wiring_USART2_Interrupt_Handler(void)
-{
-	//Mohit : Use this as the USART2 ISR routine. Be sure to clear the Interrupt Flags
-}
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
 
-HardwareSerial SerialW;
+HardwareSerial SerialW(&rx_buffer, &tx_buffer);

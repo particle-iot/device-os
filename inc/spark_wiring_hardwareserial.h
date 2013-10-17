@@ -30,10 +30,9 @@ class HardwareSerial : public Stream
 	private:
 		ring_buffer *_rx_buffer;
 		ring_buffer *_tx_buffer;
-
 		bool transmitting;
-
 	public:
+		HardwareSerial(ring_buffer *rx_buffer, ring_buffer *tx_buffer);
 		void begin(uint32_t);
     	void begin(uint32_t, uint8_t);
     	void end();

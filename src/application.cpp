@@ -9,7 +9,7 @@ int interruptCount = 0;
 
 double testReal = 99.99;
 
-int incomingByte = 0;
+unsigned char incomingByte;
 
 //String stringyone;
 
@@ -47,7 +47,7 @@ void setup()
 	digitalWrite(A0, HIGH);
 
 	//Register UserLedToggle() function
-	//Spark.function("UserLed", UserLedToggle);
+	Spark.function("UserLed", UserLedToggle);
 
 	//Register testReal variable
 	//Spark.variable("testReal", &testReal, DOUBLE);
@@ -69,11 +69,15 @@ void loop()
 
 
 	// Serial print test
-	Serial.print("Hello ");
-	Serial.println("Spark");
-	delay(500);
+	//Serial.print("Hello ");
+	//Serial.println("Spark");
+	//delay(500);
 
 	incomingByte = SerialW.read();
+	if (incomingByte == 'a')
+	{
+		userFuncSchedule("UserLed", 0xc3, "D7");
+	}
 
 	Serial.write(incomingByte);
 
@@ -97,7 +101,7 @@ void loop()
 	// }
 	// interruptCount = 2;
 	// interrupts();
-	// delay(500);
+	delay(500);
 }
 
 int UserLedToggle(char *ledPin)
