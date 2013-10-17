@@ -109,6 +109,7 @@ class SparkProtocol
                           unsigned char message_id_msb,
                           unsigned char message_id_lsb);
     inline void coded_ack(unsigned char *buf,
+                          unsigned char token,
                           unsigned char code,
                           unsigned char message_id_msb,
                           unsigned char message_id_lsb);

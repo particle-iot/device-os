@@ -151,15 +151,16 @@ void SparkProtocol::event_loop(void)
 
         // check crc
         unsigned int given_crc = queue[8] << 24 | queue[9] << 16 | queue[10] << 8 | queue[11];
-        if (callback_calculate_crc(queue + 13, len - 13) == given_crc)
+        if (callback_calculate_crc(queue + 13, len - 13 - queue[len - 1]) == given_crc)
         {
-          callback_save_firmware_chunk(queue + 13, len - 13);
+          callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
           chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
         }
         else
         {
           chunk_received(msg_to_send + 2, token, ChunkReceivedCode::BAD);
         }
+        blocking_send(msg_to_send, 18);
         break;
       }
       case CoAPMessageType::UPDATE_BEGIN:
@@ -179,7 +180,7 @@ void SparkProtocol::event_loop(void)
         // send ACK 2.04
         *msg_to_send = 0;
         *(msg_to_send + 1) = 16;
-        coded_ack(msg_to_send + 2, ChunkReceivedCode::OK, queue[2], queue[3]);
+        coded_ack(msg_to_send + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
         blocking_send(msg_to_send, 18);
 
         callback_finish_firmware_update();
@@ -668,20 +669,29 @@ inline void SparkProtocol::empty_ack(unsigned char *buf,
                                      unsigned char message_id_msb,
                                      unsigned char message_id_lsb)
 {
-  coded_ack(buf, 0, message_id_msb, message_id_lsb);
-}
-
-inline void SparkProtocol::coded_ack(unsigned char *buf,
-                                     unsigned char code,
-                                     unsigned char message_id_msb,
-                                     unsigned char message_id_lsb)
-{
   buf[0] = 0x60; // acknowledgment, no token
-  buf[1] = code; // code signifying empty message
+  buf[1] = 0x00; // code signifying empty message
   buf[2] = message_id_msb;
   buf[3] = message_id_lsb;
 
   memset(buf + 4, 12, 12); // PKCS #7 padding
+
+  encrypt(buf, 16);
+}
+
+inline void SparkProtocol::coded_ack(unsigned char *buf,
+                                     unsigned char token,
+                                     unsigned char code,
+                                     unsigned char message_id_msb,
+                                     unsigned char message_id_lsb)
+{
+  buf[0] = 0x61; // acknowledgment, one-byte token
+  buf[1] = code;
+  buf[2] = message_id_msb;
+  buf[3] = message_id_lsb;
+  buf[4] = token;
+
+  memset(buf + 5, 11, 11); // PKCS #7 padding
 
   encrypt(buf, 16);
 }
