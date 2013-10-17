@@ -253,6 +253,17 @@ HardwareSerial::operator bool() {
 	return true;
 }
 
+/*******************************************************************************
+* Function Name  : Wiring_USART2_Interrupt_Handler (Declared as weak in stm32_it.cpp)
+* Description    : This function handles USART2 global interrupt request.
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+void Wiring_USART2_Interrupt_Handler(void)
+{
+	//Mohit : Use this as the USART2 ISR routine. Be sure to clear the Interrupt Flags
+}
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
 

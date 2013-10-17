@@ -383,6 +383,30 @@ void TwoWire::onRequest( void (*function)(void) )
 	user_onRequest = function;
 }
 
+/*******************************************************************************
+* Function Name  : Wiring_I2C1_EV_Interrupt_Handler (Declared as weak in stm32_it.cpp)
+* Description    : This function handles I2C1 Event interrupt request.
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+void Wiring_I2C1_EV_Interrupt_Handler(void)
+{
+	//To Do
+}
+
+/*******************************************************************************
+* Function Name  : Wiring_I2C1_ER_Interrupt_Handler (Declared as weak in stm32_it.cpp)
+* Description    : This function handles I2C1 Error interrupt request.
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+void Wiring_I2C1_ER_Interrupt_Handler(void)
+{
+	//To Do
+}
+
 // Preinstantiate Objects //////////////////////////////////////////////////////
 
 TwoWire Wire = TwoWire();

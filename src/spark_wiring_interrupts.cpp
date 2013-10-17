@@ -226,7 +226,7 @@ void interrupts(void)
 }
 
 /*******************************************************************************
-* Function Name  : USER_EXTI_Line_Handler (Declared as weak in stm32_it.cpp)
+* Function Name  : Wiring_EXTI_Interrupt_Handler (Declared as weak in stm32_it.cpp)
 * Description    : This function is called by any of the interrupt handlers. It 
 						 essentially fetches the user function pointer from the array
 						 and calls it.
@@ -234,7 +234,7 @@ void interrupts(void)
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
-void USER_EXTI_Line_Handler(uint8_t EXTI_Line_Number)
+void Wiring_EXTI_Interrupt_Handler(uint8_t EXTI_Line_Number)
 {
 	//fetch the user function pointer from the array
 	voidFuncPtr userISR_Handle = exti_channels[EXTI_Line_Number].handler;
