@@ -491,6 +491,7 @@ void SPARK_WLAN_Timing(void)
 			TimingSparkProcessAPI++;
 		}
 
+/*
 		if (SPARK_DEVICE_ACKED)
 		{
 			if (TimingSparkAliveTimeout >= TIMING_SPARK_ALIVE_TIMEOUT)
@@ -504,6 +505,7 @@ void SPARK_WLAN_Timing(void)
 				TimingSparkAliveTimeout++;
 			}
 		}
+*/
 
 		if(SPARK_SOCKET_ALIVE != 1)
 		{

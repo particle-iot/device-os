@@ -146,6 +146,10 @@ int main(void)
           }
           LED_On(LED_RGB);
         }
+        else
+        {
+          SPARK_DEVICE_ACKED = 1;
+        }
       }
 
       Spark_Communication_Loop();
