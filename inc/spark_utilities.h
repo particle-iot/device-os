@@ -56,7 +56,7 @@ int Spark_Process_API_Response(void);
 
 void Spark_Protocol_Init(void);
 int Spark_Handshake(void);
-void Spark_Communication_Loop(void);
+bool Spark_Communication_Loop(void);
 
 bool userVarSchedule(const char *varKey, unsigned char token);
 void userVarReturn(void);

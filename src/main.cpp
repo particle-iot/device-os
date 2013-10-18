@@ -152,7 +152,11 @@ int main(void)
         }
       }
 
-      Spark_Communication_Loop();
+      if (!Spark_Communication_Loop())
+      {
+        SPARK_SOCKET_CONNECTED = 0;
+        SPARK_DEVICE_ACKED = 0;
+      }
     }
 #endif
 

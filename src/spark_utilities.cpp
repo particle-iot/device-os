@@ -211,20 +211,23 @@ bool SparkClass::connected(void)
 		return false;
 }
 
+// Returns number of bytes sent or -1 if an error occurred
 int Spark_Send(const unsigned char *buf, int buflen)
 {
   return send(sparkSocket, buf, buflen, 0);
 }
 
+// Returns number of bytes received or -1 if an error occurred
 int Spark_Receive(unsigned char *buf, int buflen)
 {
   // reset the fd_set structure
   FD_ZERO(&readSet);
   FD_SET(sparkSocket, &readSet);
 
-  // tell select to timeout after 500 microseconds
+  // tell select to timeout after the minimum 5000 microseconds
+  // defined in the SimpleLink API as SELECT_TIMEOUT_MIN_MICRO_SECONDS
   timeout.tv_sec = 0;
-  timeout.tv_usec = 500;
+  timeout.tv_usec = 5000;
 
   int bytes_received = 0;
   int num_fds_ready = select(sparkSocket + 1, &readSet, NULL, NULL, &timeout);
@@ -236,6 +239,11 @@ int Spark_Receive(unsigned char *buf, int buflen)
       // recv returns negative numbers on error
       bytes_received = recv(sparkSocket, buf, buflen, 0);
     }
+  }
+  else if (0 > num_fds_ready)
+  {
+    // error from select
+    return num_fds_ready;
   }
 
   return bytes_received;
@@ -285,9 +293,11 @@ int Spark_Handshake(void)
   return spark_protocol.handshake();
 }
 
-void Spark_Communication_Loop(void)
+// Returns true if all's well or
+//         false on error, meaning we're probably disconnected
+bool Spark_Communication_Loop(void)
 {
-  spark_protocol.event_loop();
+  return spark_protocol.event_loop();
 }
 
 int SparkClass::connect(void)
@@ -302,41 +312,27 @@ int SparkClass::disconnect(void)
 
 int Spark_Connect(void)
 {
-	int retVal = 0;
+  sparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-    sparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (sparkSocket < 0)
+  {
+    return -1;
+  }
 
-    if (sparkSocket < 0)
-    {
-        return -1;
-    }
+  // the family is always AF_INET
+  tSocketAddr.sa_family = AF_INET;
 
-	// the family is always AF_INET
-    tSocketAddr.sa_family = AF_INET;
+  // the destination port
+  tSocketAddr.sa_data[0] = (SPARK_SERVER_PORT & 0xFF00) >> 8;
+  tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
 
-	// the destination port
-    tSocketAddr.sa_data[0] = (SPARK_SERVER_PORT & 0xFF00) >> 8;
-    tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
+  // the destination IP address
+  tSocketAddr.sa_data[2] = 10;	// First Octet of destination IP
+  tSocketAddr.sa_data[3] = 105;	// Second Octet of destination IP
+  tSocketAddr.sa_data[4] = 34; 	// Third Octet of destination IP
+  tSocketAddr.sa_data[5] = 149;	// Fourth Octet of destination IP
 
-	// the destination IP address
-	tSocketAddr.sa_data[2] = 10;	// First Octet of destination IP
-	tSocketAddr.sa_data[3] = 105;	// Second Octet of destination IP
-	tSocketAddr.sa_data[4] = 34; 	// Third Octet of destination IP
-	tSocketAddr.sa_data[5] = 131;	// Fourth Octet of destination IP
-
-	retVal = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
-
-	if (retVal < 0)
-	{
-		// Unable to connect
-		return -1;
-	}
-	else
-	{
-		//retVal = Spark_Send_Device_Message(sparkSocket, (char *)Device_Secret, NULL, NULL);
-	}
-
-  return retVal;
+  return connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 }
 
 int Spark_Disconnect(void)
