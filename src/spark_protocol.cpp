@@ -63,13 +63,20 @@ int SparkProtocol::handshake(void)
   return 0;
 }
 
-void SparkProtocol::event_loop(void)
+// Returns true if no errors and still connected.
+// Returns false if there was an error, and we are probably disconnected.
+bool SparkProtocol::event_loop(void)
 {
   int bytes_received = callback_receive(queue, 2);
   if (2 <= bytes_received)
   {
+    no_op_cycles = 0;
     int len = queue[0] << 8 | queue[1];
-    blocking_receive(queue, len);
+    if (0 > blocking_receive(queue, len))
+    {
+      // error
+      return false;
+    }
     CoAPMessageType::Enum message_type = received_message(queue, len);
     unsigned char token = queue[4];
     unsigned char *msg_to_send = queue + len;
@@ -82,7 +89,11 @@ void SparkProtocol::event_loop(void)
         int desc_len = description(queue + 2, token, function_names, 1);
         queue[0] = 0;
         queue[1] = 32;
-        callback_send(queue, desc_len + 2);
+        if (0 > blocking_send(queue, desc_len + 2))
+        {
+          // error
+          return false;
+        }
         break;
       }
       case CoAPMessageType::FUNCTION_CALL:
@@ -91,7 +102,11 @@ void SparkProtocol::event_loop(void)
         *msg_to_send = 0;
         *(msg_to_send + 1) = 16;
         empty_ack(msg_to_send + 2, queue[2], queue[3]);
-        callback_send(msg_to_send, 18);
+        if (0 > blocking_send(msg_to_send, 18))
+        {
+          // error
+          return false;
+        }
 
         // copy the function key
         char function_key[13];
@@ -128,7 +143,11 @@ void SparkProtocol::event_loop(void)
 
         // send return value
         function_return(msg_to_send + 2, token, return_value);
-        callback_send(msg_to_send, 18);
+        if (0 > blocking_send(msg_to_send, 18))
+        {
+          // error
+          return false;
+        }
         break;
       }
       case CoAPMessageType::VARIABLE_REQUEST:
@@ -138,7 +157,11 @@ void SparkProtocol::event_loop(void)
         queue[0] = 0;
         queue[1] = 16;
         variable_value(queue + 2, token, queue[2], queue[3], varval);
-        callback_send(queue, 18);
+        if (0 > blocking_send(queue, 18))
+        {
+          // error
+          return false;
+        }
         break;
       }
       case CoAPMessageType::CHUNK:
@@ -147,7 +170,11 @@ void SparkProtocol::event_loop(void)
         *msg_to_send = 0;
         *(msg_to_send + 1) = 16;
         empty_ack(msg_to_send + 2, queue[2], queue[3]);
-        blocking_send(msg_to_send, 18);
+        if (0 > blocking_send(msg_to_send, 18))
+        {
+          // error
+          return false;
+        }
 
         // check crc
         unsigned int given_crc = queue[8] << 24 | queue[9] << 16 | queue[10] << 8 | queue[11];
@@ -160,7 +187,11 @@ void SparkProtocol::event_loop(void)
         {
           chunk_received(msg_to_send + 2, token, ChunkReceivedCode::BAD);
         }
-        blocking_send(msg_to_send, 18);
+        if (0 > blocking_send(msg_to_send, 18))
+        {
+          // error
+          return false;
+        }
         break;
       }
       case CoAPMessageType::UPDATE_BEGIN:
@@ -168,20 +199,32 @@ void SparkProtocol::event_loop(void)
         *msg_to_send = 0;
         *(msg_to_send + 1) = 16;
         empty_ack(msg_to_send + 2, queue[2], queue[3]);
-        blocking_send(msg_to_send, 18);
+        if (0 > blocking_send(msg_to_send, 18))
+        {
+          // error
+          return false;
+        }
 
         callback_prepare_for_firmware_update();
 
         // send update_reaady
         update_ready(msg_to_send + 2, token);
-        blocking_send(msg_to_send, 18);
+        if (0 > blocking_send(msg_to_send, 18))
+        {
+          // error
+          return false;
+        }
         break;
       case CoAPMessageType::UPDATE_DONE:
         // send ACK 2.04
         *msg_to_send = 0;
         *(msg_to_send + 1) = 16;
         coded_ack(msg_to_send + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
-        blocking_send(msg_to_send, 18);
+        if (0 > blocking_send(msg_to_send, 18))
+        {
+          // error
+          return false;
+        }
 
         callback_finish_firmware_update();
         break;
@@ -195,24 +238,69 @@ void SparkProtocol::event_loop(void)
         ; // drop it on the floor
     }
   }
+  else
+  {
+    if (0 > bytes_received)
+    {
+      // error, disconnected
+      return false;
+    }
+
+    if (++no_op_cycles >= 1000)
+    {
+      queue[0] = 0;
+      queue[1] = 16;
+      ping(queue + 2);
+      blocking_send(queue, 18);
+
+      no_op_cycles = 0;
+    }
+  }
+
+  // no errors, still connected
+  return true;
 }
 
-void SparkProtocol::blocking_send(const unsigned char *buf, int length)
+// Returns bytes sent or -1 on error
+int SparkProtocol::blocking_send(const unsigned char *buf, int length)
 {
+  int bytes_or_error;
   int byte_count = 0;
   while (length > byte_count)
   {
-    byte_count += callback_send(buf + byte_count, length - byte_count);
+    bytes_or_error = callback_send(buf + byte_count, length - byte_count);
+    if (0 > bytes_or_error)
+    {
+      // error, disconnected
+      return bytes_or_error;
+    }
+    else
+    {
+      byte_count += bytes_or_error;
+    }
   }
+  return byte_count;
 }
 
-void SparkProtocol::blocking_receive(unsigned char *buf, int length)
+// Returns bytes received or -1 on error
+int SparkProtocol::blocking_receive(unsigned char *buf, int length)
 {
+  int bytes_or_error;
   int byte_count = 0;
   while (length > byte_count)
   {
-    byte_count += callback_receive(buf + byte_count, length - byte_count);
+    bytes_or_error = callback_receive(buf + byte_count, length - byte_count);
+    if (0 > bytes_or_error)
+    {
+      // error, disconnected
+      return bytes_or_error;
+    }
+    else
+    {
+      byte_count += bytes_or_error;
+    }
   }
+  return byte_count;
 }
 
 CoAPMessageType::Enum
@@ -510,6 +598,20 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
 
   encrypt(buf, buflen);
   return buflen;
+}
+
+void SparkProtocol::ping(unsigned char *buf)
+{
+  unsigned short message_id = next_message_id();
+
+  buf[0] = 0x40; // Confirmable, no token
+  buf[1] = 0x00; // code signifying empty message
+  buf[2] = message_id >> 8;
+  buf[3] = message_id & 0xff;
+
+  memset(buf + 4, 12, 12); // PKCS #7 padding
+
+  encrypt(buf, 16);
 }
 
 

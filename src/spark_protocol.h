@@ -42,11 +42,11 @@ class SparkProtocol
               const SparkCallbacks &callbacks,
               const SparkDescriptor &descriptor);
     int handshake(void);
-    void event_loop(void);
+    bool event_loop(void);
 
     int set_key(const unsigned char *signed_encrypted_credentials);
-    void blocking_send(const unsigned char *buf, int length);
-    void blocking_receive(unsigned char *buf, int length);
+    int blocking_send(const unsigned char *buf, int length);
+    int blocking_receive(unsigned char *buf, int length);
 
     CoAPMessageType::Enum received_message(unsigned char *buf, int length);
     void hello(unsigned char *buf);
@@ -74,7 +74,8 @@ class SparkProtocol
                         ChunkReceivedCode::Enum code);
     void update_ready(unsigned char *buf, unsigned char token);
     int description(unsigned char *buf, unsigned char token,
-                     const char **function_names, int num_functions);
+                    const char **function_names, int num_functions);
+    void ping(unsigned char *buf);
 
     /********** Queue **********/
     const int QUEUE_SIZE;
@@ -101,6 +102,7 @@ class SparkProtocol
     unsigned char iv_receive[16];
     unsigned char salt[8];
     unsigned short _message_id;
+    int no_op_cycles;
 
     unsigned short next_message_id();
     void encrypt(unsigned char *buf, int length);
