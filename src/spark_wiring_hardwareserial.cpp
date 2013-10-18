@@ -24,13 +24,12 @@ inline void store_char(unsigned char c, ring_buffer *buffer)
   // and so we don't write the character or advance the head.
   if (i != buffer->tail) {
     buffer->buffer[buffer->head] = c;
+    USB_USART_Send_Data(buffer->buffer[buffer->head]);
     buffer->head = i;
   }
 }
 
-
-//Implement an USART TX ISR here
-/*
+/* TX ISR
 ISR(USART1_UDRE_vect)
 {
   if (tx_buffer1.head == tx_buffer1.tail) {
