@@ -450,4 +450,24 @@ SUITE(CoAP)
     spark_protocol.description(buf, 0x66, fnames, 1);
     CHECK_ARRAY_EQUAL(expected, buf, 32);
   }
+
+  TEST_FIXTURE(CoAPFixture, PresenceAnnouncementReturns19)
+  {
+    unsigned char buf[19];
+    init();
+    int len = spark_protocol.presence_announcement(buf);
+    CHECK_EQUAL(19, len);
+  }
+
+  TEST_FIXTURE(CoAPFixture, PresenceAnnouncementMatchesExpected)
+  {
+    uint8_t expected[19] = {
+      0x50, 0x02, 0xf6, 0x49, 0xb1, 'h', 0xff,
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+    unsigned char buf[19];
+    memset(buf, 0, 19);
+    init();
+    spark_protocol.presence_announcement(buf);
+    CHECK_ARRAY_EQUAL(expected, buf, 19);
+  }
 }

@@ -76,6 +76,7 @@ class SparkProtocol
     int description(unsigned char *buf, unsigned char token,
                     const char **function_names, int num_functions);
     void ping(unsigned char *buf);
+    int presence_announcement(unsigned char *buf);
 
     /********** Queue **********/
     const int QUEUE_SIZE;
@@ -87,8 +88,9 @@ class SparkProtocol
     ProtocolState::Enum state();
 
   private:
+    char device_id[12];
     unsigned char server_public_key[294];
-    unsigned char core_private_key[1191];
+    unsigned char core_private_key[612];
     aes_context aes;
     int (*callback_send)(const unsigned char *buf, int buflen);
     int (*callback_receive)(unsigned char *buf, int buflen);
