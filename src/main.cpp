@@ -118,7 +118,7 @@ int main(void)
 #endif
 
 #ifdef SPARK_WLAN_ENABLE
-	SPARK_WLAN_Setup();
+	SPARK_WLAN_Setup(Multicast_Presence_Announcement);
 #endif
 
 	/* Main loop */

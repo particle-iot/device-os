@@ -12,6 +12,8 @@ uint8_t WLAN_CONNECTED;
 uint8_t WLAN_DHCP;
 uint8_t WLAN_CAN_SHUTDOWN;
 
+void (*announce_presence)(void);
+
 unsigned char patchVer[2];
 
 /* Smart Config Prefix */
@@ -270,8 +272,10 @@ char *WLAN_BootLoader_Patch(unsigned long *length)
 	return NULL;
 }
 
-void SPARK_WLAN_Setup(void)
+void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 {
+  announce_presence = presence_announcement_callback;
+
 	/* Initialize CC3000's CS, EN and INT pins to their default states */
 	CC3000_WIFI_Init();
 
@@ -415,6 +419,8 @@ void SPARK_WLAN_Loop(void)
 			mdnsAdvertiser(1,device_name,strlen(device_name));
 			loop_index++;
 		}
+
+    announce_presence();
 
 		WLAN_SMART_CONFIG_STOP = 0;
 

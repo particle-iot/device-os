@@ -263,28 +263,31 @@ void Spark_Finish_Firmware_Update(void)
 
 void Spark_Protocol_Init(void)
 {
-  SparkCallbacks callbacks;
-  callbacks.send = Spark_Send;
-  callbacks.receive = Spark_Receive;
-  callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
-  callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
-  callbacks.calculate_crc = Compute_CRC32;
-  callbacks.save_firmware_chunk = FLASH_Update;
+  if (!spark_protocol.is_initialized())
+  {
+    SparkCallbacks callbacks;
+    callbacks.send = Spark_Send;
+    callbacks.receive = Spark_Receive;
+    callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
+    callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
+    callbacks.calculate_crc = Compute_CRC32;
+    callbacks.save_firmware_chunk = FLASH_Update;
 
-  SparkDescriptor descriptor;
-  descriptor.call_function = userFuncSchedule;
+    SparkDescriptor descriptor;
+    descriptor.call_function = userFuncSchedule;
 
-  unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
-  unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
+    unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
+    unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
 
-  SparkKeys keys;
-  keys.server_public = pubkey;
-  keys.core_private = private_key;
+    SparkKeys keys;
+    keys.server_public = pubkey;
+    keys.core_private = private_key;
 
-  FLASH_Read_ServerPublicKey(pubkey);
-  FLASH_Read_CorePrivateKey(private_key);
+    FLASH_Read_ServerPublicKey(pubkey);
+    FLASH_Read_CorePrivateKey(private_key);
 
-  spark_protocol.init((const char *)ID1, keys, callbacks, descriptor);
+    spark_protocol.init((const char *)ID1, keys, callbacks, descriptor);
+  }
 }
 
 int Spark_Handshake(void)
@@ -298,6 +301,33 @@ int Spark_Handshake(void)
 bool Spark_Communication_Loop(void)
 {
   return spark_protocol.event_loop();
+}
+
+void Multicast_Presence_Announcement(void)
+{
+  long multicast_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  if (0 > multicast_socket)
+    return;
+
+  unsigned char announcement[19];
+  spark_protocol.presence_announcement(announcement, (const char *)ID1);
+
+  // create multicast address 224.0.1.187 port 5683
+  sockaddr addr;
+  addr.sa_family = AF_INET;
+  addr.sa_data[0] = 0x16; // port MSB
+  addr.sa_data[1] = 0x33; // port LSB
+  addr.sa_data[2] = 0xe0; // IP MSB
+  addr.sa_data[3] = 0x00;
+  addr.sa_data[4] = 0x01;
+  addr.sa_data[5] = 0xbb; // IP LSB
+
+  for (int i = 3; i > 0; i--)
+  {
+    sendto(multicast_socket, announcement, 19, 0, &addr, sizeof(sockaddr));
+  }
+
+  closesocket(multicast_socket);
 }
 
 int SparkClass::connect(void)
@@ -329,8 +359,8 @@ int Spark_Connect(void)
   // the destination IP address
   tSocketAddr.sa_data[2] = 10;	// First Octet of destination IP
   tSocketAddr.sa_data[3] = 105;	// Second Octet of destination IP
-  tSocketAddr.sa_data[4] = 34; 	// Third Octet of destination IP
-  tSocketAddr.sa_data[5] = 149;	// Fourth Octet of destination IP
+  tSocketAddr.sa_data[4] = 5; 	// Third Octet of destination IP
+  tSocketAddr.sa_data[5] = 8;	// Fourth Octet of destination IP
 
   return connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 }

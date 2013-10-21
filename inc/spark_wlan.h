@@ -34,7 +34,7 @@ char *WLAN_Firmware_Patch(unsigned long *length);
 char *WLAN_Driver_Patch(unsigned long *length);
 char *WLAN_BootLoader_Patch(unsigned long *length);
 
-void SPARK_WLAN_Setup(void);
+void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
 void SPARK_WLAN_Loop(void);
 void SPARK_WLAN_Timing(void);
 
