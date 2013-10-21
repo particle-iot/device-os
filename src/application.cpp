@@ -6,12 +6,13 @@ int toggle = 0;
 int UserLedToggle(char *ledPin);
 
 int interruptCount = 0;
+int bytesent;
 
 double testReal = 99.99;
 
-/*
-unsigned char incomingByte;
 
+char incomingByte;
+/*
 void ISR_A0 ()
 {
 	toggle ^= 1;
@@ -53,12 +54,12 @@ void setup()
 	Wire.begin();
 */
 
-/*
+
 	// Serial Test
 	Serial.begin(9600);
 
 	SerialW.begin(9600);
-
+/*
 	attachInterrupt(A1, ISR_A0, CHANGE);
 	//attachInterrupt(D1, ISR_A1, CHANGE);
 	//attachInterrupt(D2, ISR_A2, CHANGE);
@@ -69,17 +70,17 @@ void setup()
 	//attachInterrupt(A7, ISR_A7, CHANGE);
 
 	pinMode(A0, OUTPUT);
-
+*/
 	pinMode(D7, OUTPUT);
-	digitalWrite(D7, HIGH);
-	digitalWrite(A0, HIGH);
+	//digitalWrite(D7, HIGH);
+	//digitalWrite(A0, HIGH);
 
 	//Register UserLedToggle() function
 	Spark.function("UserLed", UserLedToggle);
 
 	//Register testReal variable
 	//Spark.variable("testReal", &testReal, DOUBLE);
-*/
+
 }
 
 void loop()
@@ -109,15 +110,23 @@ void loop()
 	//Serial.println("Spark");
 	//delay(500);
 
-	/*
-	incomingByte = SerialW.read();
-	if (incomingByte == 'a')
+	
+	if(SerialW.available() > 0)
 	{
-		userFuncSchedule("UserLed", 0xc3, "D7");
+		incomingByte = SerialW.read();
+		Serial.write(incomingByte);
+		//bytesent = SerialW.write('x');
+		//SerialW.print(incomingByte);
+		if (incomingByte == 'a')
+		{
+			userFuncSchedule("UserLed", 0xc3, "D7");
+		}
+	
 	}
+	
+	
 
-	Serial.write(incomingByte);
-	 */
+	
 
 	// Call this in the process_command() to schedule the "UserLedToggle" function to execute
 	//userFuncSchedule("UserLed", 0xc3, "D7");
@@ -138,7 +147,7 @@ void loop()
 	// interruptCount = 2;
 	// interrupts();
 
-	delay(1000);
+	delay(50);
 }
 
 int UserLedToggle(char *ledPin)

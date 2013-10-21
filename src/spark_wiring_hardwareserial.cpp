@@ -24,27 +24,10 @@ inline void store_char(unsigned char c, ring_buffer *buffer)
   // and so we don't write the character or advance the head.
   if (i != buffer->tail) {
     buffer->buffer[buffer->head] = c;
-    USB_USART_Send_Data(buffer->buffer[buffer->head]);
     buffer->head = i;
   }
 }
 
-/* TX ISR
-ISR(USART1_UDRE_vect)
-{
-  if (tx_buffer1.head == tx_buffer1.tail) {
-	// Buffer empty, so disable interrupts
-    cbi(UCSR1B, UDRIE1);
-  }
-  else {
-    // There is more data in the output buffer. Send the next byte
-    unsigned char c = tx_buffer1.buffer[tx_buffer1.tail];
-    tx_buffer1.tail = (tx_buffer1.tail + 1) % SERIAL_BUFFER_SIZE;
-	
-    UDR1 = c;
-  }
-}
-*/
 
 /*******************************************************************************
 * Function Name  : Wiring_USART2_Interrupt_Handler (Declared as weak in stm32_it.cpp)
@@ -55,14 +38,38 @@ ISR(USART1_UDRE_vect)
 *******************************************************************************/
 void Wiring_USART2_Interrupt_Handler(void)
 {
+	unsigned char c;
 	// check if the USART2 receive interrupt flag was set
 	if( USART_GetITStatus(USART2, USART_IT_RXNE) )
 	{
 		USART_ClearITPendingBit(USART2, USART_IT_RXNE);
-		unsigned char c = USART_ReceiveData(USART2);
+		c = USART_ReceiveData(USART2);
       store_char(c, &rx_buffer);
-      //USB_USART_Send_Data(_rx_buffer->buffer[_rx_buffer->tail]);
 	}
+	else
+	{
+		c = USART_ReceiveData(USART2);
+	}
+
+	if(USART_GetITStatus(USART2, USART_IT_TXE)) USART_ClearITPendingBit(USART2, USART_IT_TXE);
+/*
+	if(USART_GetITStatus(USART2, USART_IT_TXE))
+	{
+		USART_ClearITPendingBit(USART2, USART_IT_TXE);
+		if (tx_buffer.head == tx_buffer.tail) 
+		{
+			// Buffer empty, so disable interrupts
+    		USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+  		}
+  		else 
+  		{
+    		// There is more data in the output buffer. Send the next byte
+    		unsigned char t = tx_buffer.buffer[tx_buffer.tail];
+    		tx_buffer.tail = (tx_buffer.tail + 1) % SERIAL_BUFFER_SIZE;
+    		USART_SendData( USART2, t );
+  		}
+	}
+	*/
 }
 
 // Constructors ////////////////////////////////////////////////////////////////
@@ -127,6 +134,8 @@ void HardwareSerial::begin(uint32_t baudRate)
 
 	//Enabling interrupt from USART2
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+	//transmit interrupt initially not running
+	//USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
 
 	transmitting = false;
 
@@ -188,6 +197,8 @@ void HardwareSerial::begin(uint32_t baudRate, uint8_t config)
 
 	//Enabling interrupt from USART2
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+	//transmit interrupt initially not running
+	//USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
 
 	//Enable USART2 global interrupt
     NVIC_EnableIRQ(USART2_IRQn);
@@ -211,19 +222,10 @@ void HardwareSerial::end()
 
 }
 
-//serial1 only
-// uint8_t HardwareSerial::available(void)
-// {
-//   // Check if the USART Receive Data Register is not empty
-// 	if(USART_GetFlagStatus(USART2, USART_FLAG_RXNE) != RESET)
-// 		return 1;
-// 	else
-// 		return 0;
-// }
-
 int HardwareSerial::available(void)
 {
-  return (unsigned int)(SERIAL_BUFFER_SIZE + _rx_buffer->head - _rx_buffer->tail) % SERIAL_BUFFER_SIZE;
+	ring_buffer *buffer = &rx_buffer;
+  return (unsigned int)(SERIAL_BUFFER_SIZE + buffer->head - buffer->tail) % SERIAL_BUFFER_SIZE;
 }
 
 int HardwareSerial::peek(void)
@@ -237,17 +239,16 @@ int HardwareSerial::peek(void)
 
 int HardwareSerial::read(void)
 {
+	ring_buffer *buffer = &rx_buffer;
 	//if the head isn't ahead of the tail, we don't have any characters
-  	if (_rx_buffer->head == _rx_buffer->tail) 
+  	if (buffer->head == buffer->tail) 
   		{
-  			//return -1;
-  			return 'x';
+  			return -1;
   		} 
   	else 
   		{
-  			unsigned char c = _rx_buffer->buffer[_rx_buffer->tail];
-    		_rx_buffer->tail = (unsigned int)(_rx_buffer->tail + 1) % SERIAL_BUFFER_SIZE;
-    		//USB_USART_Send_Data(c);
+  			unsigned char c = buffer->buffer[buffer->tail];
+    		buffer->tail = (unsigned int)(buffer->tail + 1) % SERIAL_BUFFER_SIZE;
     		return c;
  		}
 }
@@ -261,23 +262,23 @@ void HardwareSerial::flush()
 
 size_t HardwareSerial::write(uint8_t c)
 {
-  unsigned int i = (_tx_buffer->head + 1) % SERIAL_BUFFER_SIZE;
+	/*
+	ring_buffer *buffer = &tx_buffer;
+  	unsigned int i = (buffer->head + 1) % SERIAL_BUFFER_SIZE;
 	
-  // If the output buffer is full, there's nothing for it other than to 
-  // wait for the interrupt handler to empty it a bit
-  // ???: return 0 here instead?
-  while (i == _tx_buffer->tail)
-    ;
-	
-  _tx_buffer->buffer[_tx_buffer->head] = c;
-  _tx_buffer->head = i;
-	
-  //sbi(*_ucsrb, _udrie);
-  // clear the TXC bit -- "can be cleared by writing a one to its bit location"
-  transmitting = true;
-  //sbi(*_ucsra, TXC0);
-  
-  return 1;
+	// If the output buffer is full, there's nothing for it other than to 
+	// wait for the interrupt handler to empty it a bit
+	// ???: return 0 here instead?
+	//while (i == buffer->tail);
+
+	buffer->buffer[buffer->head] = c;
+	buffer->head = i;
+
+	//USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+	//transmitting = true;
+	//USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+*/
+	return 1;
 }
 
 HardwareSerial::operator bool() {
