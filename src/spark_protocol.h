@@ -35,6 +35,8 @@ struct SparkCallbacks
 class SparkProtocol
 {
   public:
+    static int presence_announcement(unsigned char *buf, const char *id);
+
     SparkProtocol();
 
     void init(const char *id,
@@ -77,7 +79,6 @@ class SparkProtocol
     int description(unsigned char *buf, unsigned char token,
                     const char **function_names, int num_functions);
     void ping(unsigned char *buf);
-    int presence_announcement(unsigned char *buf);
 
     /********** Queue **********/
     const int QUEUE_SIZE;

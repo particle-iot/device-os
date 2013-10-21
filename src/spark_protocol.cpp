@@ -622,19 +622,17 @@ void SparkProtocol::ping(unsigned char *buf)
   encrypt(buf, 16);
 }
 
-int SparkProtocol::presence_announcement(unsigned char *buf)
+int SparkProtocol::presence_announcement(unsigned char *buf, const char *id)
 {
-  unsigned short message_id = next_message_id();
-
   buf[0] = 0x50; // Confirmable, no token
   buf[1] = 0x02; // Code POST
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
+  buf[2] = 0x00; // message id ignorable in this context
+  buf[3] = 0x00;
   buf[4] = 0xb1; // Uri-Path option of length 1
   buf[5] = 'h';
   buf[6] = 0xff; // payload marker
 
-  memcpy(buf + 7, device_id, 12);
+  memcpy(buf + 7, id, 12);
 
   return 19;
 }

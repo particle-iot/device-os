@@ -453,21 +453,23 @@ SUITE(CoAP)
 
   TEST_FIXTURE(CoAPFixture, PresenceAnnouncementReturns19)
   {
+    const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
     unsigned char buf[19];
     init();
-    int len = spark_protocol.presence_announcement(buf);
+    int len = spark_protocol.presence_announcement(buf, id);
     CHECK_EQUAL(19, len);
   }
 
   TEST_FIXTURE(CoAPFixture, PresenceAnnouncementMatchesExpected)
   {
     uint8_t expected[19] = {
-      0x50, 0x02, 0xf6, 0x49, 0xb1, 'h', 0xff,
+      0x50, 0x02, 0x00, 0x00, 0xb1, 'h', 0xff,
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+    const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
     unsigned char buf[19];
     memset(buf, 0, 19);
     init();
-    spark_protocol.presence_announcement(buf);
+    spark_protocol.presence_announcement(buf, id);
     CHECK_ARRAY_EQUAL(expected, buf, 19);
   }
 }
