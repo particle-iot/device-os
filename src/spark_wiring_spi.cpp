@@ -8,6 +8,7 @@
 
 SPIClass SPI;
 
+SPI_InitTypeDef SPIClass::SPI_InitStructure;
 bool SPIClass::SPI_Bit_Order_Set = false;
 bool SPIClass::SPI_Data_Mode_Set = false;
 bool SPIClass::SPI_Clock_Divider_Set = false;
@@ -146,7 +147,7 @@ void SPIClass::setClockDivider(uint8_t rate)
 	SPI_Clock_Divider_Set = true;
 }
 
-uint16_t SPIClass::transfer(uint16_t _data) {
+byte SPIClass::transfer(byte _data) {
 	/* Wait for SPI1 Tx buffer empty */
 	while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET);
 	/* Send SPI1 data */

@@ -15,6 +15,7 @@ class TwoWire : public Stream
 {
 private:
 	static I2C_InitTypeDef I2C_InitStructure;
+
 	static bool I2C_SetAsSlave;
 	static bool I2C_Enabled;
 
@@ -59,6 +60,8 @@ public:
 	inline size_t write(unsigned int n) { return write((uint8_t)n); }
 	inline size_t write(int n) { return write((uint8_t)n); }
 	using Print::write;
+
+	static bool isEnabled(void);
 };
 
 extern TwoWire Wire;

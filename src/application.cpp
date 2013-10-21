@@ -9,9 +9,8 @@ int interruptCount = 0;
 
 double testReal = 99.99;
 
+/*
 unsigned char incomingByte;
-
-//String stringyone;
 
 void ISR_A0 ()
 {
@@ -19,13 +18,42 @@ void ISR_A0 ()
 	//digitalWrite(A0, toggle);
 	digitalWrite(D7, toggle);
 }
-
+ */
 
 void setup()
 {
 	// runs once
 
+/*
+	//Wiring - SPI test using an External Flash IC
+	SPI.begin();
+	pinMode(D7, OUTPUT);
+	uint32_t Temp = 0, Temp0 = 0, Temp1 = 0, Temp2 = 0;
+	//Select the FLASH: Chip Select low
+	digitalWrite(SS, LOW);
+	//Send "JEDEC ID Read" instruction
+	SPI.transfer(0x9F);
+	//Read a byte from the FLASH
+	Temp0 = SPI.transfer(0xFF);
+	//Read a byte from the FLASH
+	Temp1 = SPI.transfer(0xFF);
+	//Read a byte from the FLASH
+	Temp2 = SPI.transfer(0xFF);
+	//Deselect the FLASH: Chip Select high
+	digitalWrite(SS, HIGH);
+	Temp = (Temp0 << 16) | (Temp1 << 8) | Temp2;
+	if(Temp == sFLASH_SST25VF016_ID)
+		digitalWrite(D7, HIGH);
+	else
+		digitalWrite(D7, LOW);
+*/
 
+/*
+	//Wiring - I2C test using a Pressure Sensor IC
+	Wire.begin();
+*/
+
+/*
 	// Serial Test
 	Serial.begin(9600);
 
@@ -39,7 +67,7 @@ void setup()
 	//attachInterrupt(D5, ISR_A5, RISING);
 	//attachInterrupt(A6, ISR_A6, CHANGE);
 	//attachInterrupt(A7, ISR_A7, CHANGE);
-	
+
 	pinMode(A0, OUTPUT);
 
 	pinMode(D7, OUTPUT);
@@ -51,28 +79,37 @@ void setup()
 
 	//Register testReal variable
 	//Spark.variable("testReal", &testReal, DOUBLE);
-	
+*/
 }
 
 void loop()
 {
 	// runs repeatedly
 
-/*
+	/*
 	// Serial loopback test: what is typed on serial console
 	// using Hyperterminal/Putty should echo back on the console
 	if(Serial.available())
 	{
 		Serial.write(Serial.read());
 	}
-*/
+	 */
 
+/*
+	Wire.requestFrom(80, 2);    // request 2 bytes from Pressure Sensor
+
+	while(Wire.available())    // slave may send less than requested
+	{
+		int c = Wire.read();    // receive a byte as character
+	}
+*/
 
 	// Serial print test
 	//Serial.print("Hello ");
 	//Serial.println("Spark");
 	//delay(500);
 
+	/*
 	incomingByte = SerialW.read();
 	if (incomingByte == 'a')
 	{
@@ -80,8 +117,7 @@ void loop()
 	}
 
 	Serial.write(incomingByte);
-
-
+	 */
 
 	// Call this in the process_command() to schedule the "UserLedToggle" function to execute
 	//userFuncSchedule("UserLed", 0xc3, "D7");
@@ -101,7 +137,8 @@ void loop()
 	// }
 	// interruptCount = 2;
 	// interrupts();
-	delay(500);
+
+	delay(1000);
 }
 
 int UserLedToggle(char *ledPin)

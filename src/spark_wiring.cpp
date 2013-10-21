@@ -7,6 +7,9 @@
  */
 
 #include "spark_wiring.h"
+#include "spark_wiring_interrupts.h"
+#include "spark_wiring_spi.h"
+#include "spark_wiring_i2c.h"
 
 /*
  * Globals
@@ -118,6 +121,12 @@ void pinMode(uint16_t pin, PinMode setMode)
 		return;
 	}
 
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+	{
+		return;
+	}
+
 	// Serial1 safety check
 	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
@@ -206,6 +215,12 @@ void digitalWrite(uint16_t pin, uint8_t value)
 		return;
 	}
 
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+	{
+		return;
+	}
+
 	// Serial1 safety check
 	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
@@ -240,6 +255,12 @@ int32_t digitalRead(uint16_t pin)
 
 	// SPI safety check
 	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return -1;
+	}
+
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
 	{
 		return -1;
 	}
@@ -336,6 +357,12 @@ int32_t analogRead(uint16_t pin)
 		return -1;
 	}
 
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+	{
+		return -1;
+	}
+
 	// Serial1 safety check
 	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
@@ -391,6 +418,12 @@ void analogWrite(uint16_t pin, uint8_t value)
 
 	// SPI safety check
 	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return;
+	}
+
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
 	{
 		return;
 	}

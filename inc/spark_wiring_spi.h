@@ -26,6 +26,7 @@
 class SPIClass {
 private:
 	static SPI_InitTypeDef SPI_InitStructure;
+
 	static bool SPI_Bit_Order_Set;
 	static bool SPI_Data_Mode_Set;
 	static bool SPI_Clock_Divider_Set;
@@ -39,7 +40,7 @@ public:
 	static void setDataMode(uint8_t);
 	static void setClockDivider(uint8_t);
 
-	static uint16_t transfer(uint16_t _data);
+	static byte transfer(byte _data);
 
 	static void attachInterrupt();
 	static void detachInterrupt();
