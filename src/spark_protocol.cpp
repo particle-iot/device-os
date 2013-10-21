@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640)
+SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640), initialized(false)
 {
   queue_init();
 }
@@ -12,6 +12,11 @@ void SparkProtocol::queue_init(void)
 {
   queue_front = queue_back = queue;
   queue_mem_boundary = queue + QUEUE_SIZE;
+}
+
+bool SparkProtocol::is_initialized()
+{
+  return initialized;
 }
 
 void SparkProtocol::init(const char *id,
@@ -36,6 +41,8 @@ void SparkProtocol::init(const char *id,
   callback_save_firmware_chunk = callbacks.save_firmware_chunk;
 
   this->descriptor.call_function = descriptor.call_function;
+
+  initialized = true;
 }
 
 int SparkProtocol::handshake(void)

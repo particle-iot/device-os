@@ -491,4 +491,15 @@ SUITE(SparkProtocolConstruction)
     // callbacks.finish_firmware_update
     CHECK(false);
   }
+
+  TEST(IsInitializedIsFalse)
+  {
+    SparkProtocol spark_protocol;
+    CHECK_EQUAL(false, spark_protocol.is_initialized());
+  }
+
+  TEST_FIXTURE(ConstructorFixture, AfterInitIsInitializedIsTrue)
+  {
+    CHECK_EQUAL(true, spark_protocol.is_initialized());
+  }
 }
