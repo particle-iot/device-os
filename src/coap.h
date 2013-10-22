@@ -1,14 +1,16 @@
 namespace CoAPMessageType {
   enum Enum {
+    HELLO,
+    DESCRIBE,
     FUNCTION_CALL,
     VARIABLE_REQUEST,
-    CHUNK,
     UPDATE_BEGIN,
     UPDATE_DONE,
+    CHUNK,
     KEY_CHANGE,
-    ERROR,
-    DESCRIBE,
-    HELLO
+    SIGNAL_START,
+    SIGNAL_STOP,
+    ERROR
   };
 }
 

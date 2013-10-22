@@ -17,6 +17,8 @@ struct ConstructorFixture
   static uint8_t message_to_receive[34];
   static bool function_called;
   static int mock_call_function(const char *function_key, const char *arg);
+  static void mock_signal(bool on);
+  static bool signal_called_with;
 
   ConstructorFixture();
   SparkKeys keys;
@@ -134,6 +136,7 @@ ConstructorFixture::ConstructorFixture()
   keys.server_public = pubkey;
   callbacks.send = mock_send;
   callbacks.receive = mock_receive;
+  callbacks.signal = mock_signal;
   descriptor.call_function = mock_call_function;
   function_called = false;
   spark_protocol.init(id, keys, callbacks, descriptor);
@@ -237,6 +240,7 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
 
 uint8_t ConstructorFixture::message_to_receive[34];
 bool ConstructorFixture::function_called = false;
+bool ConstructorFixture::signal_called_with = false;
 
 int ConstructorFixture::mock_call_function(const char *function_key,
                                            const char *arg)
@@ -246,6 +250,11 @@ int ConstructorFixture::mock_call_function(const char *function_key,
   prevent_warning = arg;
   function_called = true;
   return 456;
+}
+
+void ConstructorFixture::mock_signal(bool on)
+{
+  signal_called_with = on;
 }
 
 SUITE(SparkProtocolConstruction)
@@ -490,6 +499,32 @@ SUITE(SparkProtocolConstruction)
   {
     // callbacks.finish_firmware_update
     CHECK(false);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopCallsSignalWithTrueOnSignalStart)
+  {
+    uint8_t signal_start[18] = {
+      0x00, 0x10,
+      0x0B, 0xD9, 0x31, 0x11, 0xF2, 0x1D, 0xD2, 0x48,
+      0x2B, 0x78, 0x26, 0x43, 0x38, 0x05, 0x9B, 0xB2 };
+    memcpy(message_to_receive, signal_start, 18);
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.event_loop();
+    CHECK_EQUAL(true, signal_called_with);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, EventLoopCallsSignalWithFalseOnSignalStop)
+  {
+    uint8_t signal_stop[18] = {
+      0x00, 0x10,
+      0xc0, 0x2f, 0x1e, 0x98, 0x92, 0x53, 0xc6, 0x12,
+      0x67, 0x2a, 0xe0, 0x10, 0xeb, 0x20, 0xcc, 0x9f };
+    memcpy(message_to_receive, signal_stop, 18);
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.event_loop();
+    CHECK_EQUAL(false, signal_called_with);
   }
 
   TEST(IsInitializedIsFalse)

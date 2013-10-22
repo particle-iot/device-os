@@ -31,14 +31,13 @@ void SparkProtocol::init(const char *id,
   // when using this lib in C, constructor is never called
   queue_init();
 
-  memcpy(queue + 40, id, 12);
-
   callback_send = callbacks.send;
   callback_receive = callbacks.receive;
   callback_prepare_for_firmware_update = callbacks.prepare_for_firmware_update;
   callback_finish_firmware_update = callbacks.finish_firmware_update;
   callback_calculate_crc = callbacks.calculate_crc;
   callback_save_firmware_chunk = callbacks.save_firmware_chunk;
+  callback_signal = callbacks.signal;
 
   this->descriptor.call_function = descriptor.call_function;
 
@@ -47,6 +46,7 @@ void SparkProtocol::init(const char *id,
 
 int SparkProtocol::handshake(void)
 {
+  memcpy(queue + 40, device_id, 12);
   blocking_receive(queue, 40);
 
   rsa_context rsa;
@@ -239,6 +239,12 @@ bool SparkProtocol::event_loop(void)
       case CoAPMessageType::KEY_CHANGE:
         // TODO
         break;
+      case CoAPMessageType::SIGNAL_START:
+        callback_signal(true);
+        break;
+      case CoAPMessageType::SIGNAL_STOP:
+        callback_signal(false);
+        break;
 
       case CoAPMessageType::HELLO:
       case CoAPMessageType::ERROR:
@@ -314,13 +320,8 @@ int SparkProtocol::blocking_receive(unsigned char *buf, int length)
 CoAPMessageType::Enum
   SparkProtocol::received_message(unsigned char *buf, int length)
 {
-  unsigned char next_iv[16];
-  memcpy(next_iv, buf, 16);
-
   aes_setkey_dec(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_DECRYPT, length, iv_receive, buf, buf);
-
-  memcpy(iv_receive, next_iv, 16);
 
   char path = buf[ 5 + (buf[0] & 0x0F) ];
 
@@ -347,6 +348,9 @@ CoAPMessageType::Enum
       {
         case 'k': return CoAPMessageType::KEY_CHANGE;
         case 'u': return CoAPMessageType::UPDATE_DONE;
+        case 's':
+          if (buf[8]) return CoAPMessageType::SIGNAL_START;
+          else return CoAPMessageType::SIGNAL_STOP;
         default: return CoAPMessageType::ERROR;
       }
     default:
@@ -743,7 +747,6 @@ void SparkProtocol::encrypt(unsigned char *buf, int length)
 {
   aes_setkey_enc(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv_send, buf, buf);
-  memcpy(iv_send, buf, 16);
 }
 
 void SparkProtocol::separate_response(unsigned char *buf,
