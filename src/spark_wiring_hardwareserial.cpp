@@ -50,9 +50,7 @@ void Wiring_USART2_Interrupt_Handler(void)
 	{
 		c = USART_ReceiveData(USART2);
 	}
-
-	if(USART_GetITStatus(USART2, USART_IT_TXE)) USART_ClearITPendingBit(USART2, USART_IT_TXE);
-/*
+	// check if the USART2 transmit interrupt flag was set
 	if(USART_GetITStatus(USART2, USART_IT_TXE))
 	{
 		USART_ClearITPendingBit(USART2, USART_IT_TXE);
@@ -69,7 +67,6 @@ void Wiring_USART2_Interrupt_Handler(void)
     		USART_SendData( USART2, t );
   		}
 	}
-	*/
 }
 
 // Constructors ////////////////////////////////////////////////////////////////
@@ -135,7 +132,7 @@ void HardwareSerial::begin(uint32_t baudRate)
 	//Enabling interrupt from USART2
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
 	//transmit interrupt initially not running
-	//USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
 
 	transmitting = false;
 
@@ -198,7 +195,7 @@ void HardwareSerial::begin(uint32_t baudRate, uint8_t config)
 	//Enabling interrupt from USART2
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
 	//transmit interrupt initially not running
-	//USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
 
 	//Enable USART2 global interrupt
     NVIC_EnableIRQ(USART2_IRQn);
@@ -262,25 +259,43 @@ void HardwareSerial::flush()
 
 size_t HardwareSerial::write(uint8_t c)
 {
-	/*
 	ring_buffer *buffer = &tx_buffer;
   	unsigned int i = (buffer->head + 1) % SERIAL_BUFFER_SIZE;
 	
 	// If the output buffer is full, there's nothing for it other than to 
 	// wait for the interrupt handler to empty it a bit
 	// ???: return 0 here instead?
-	//while (i == buffer->tail);
+	while (i == buffer->tail);
 
 	buffer->buffer[buffer->head] = c;
 	buffer->head = i;
 
-	//USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
-	//transmitting = true;
-	//USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
-*/
+	USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+	transmitting = true;
+	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
 	return 1;
 }
 
+/*
+size_t HardwareSerial::twerk(uint8_t c)
+{
+	ring_buffer *buffer = &tx_buffer;
+  	unsigned int i = (buffer->head + 1) % SERIAL_BUFFER_SIZE;
+	
+	// If the output buffer is full, there's nothing for it other than to 
+	// wait for the interrupt handler to empty it a bit
+	// ???: return 0 here instead?
+	while (i == buffer->tail);
+
+	buffer->buffer[buffer->head] = c;
+	buffer->head = i;
+
+	USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+	transmitting = true;
+	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+	return 1;
+}
+*/
 HardwareSerial::operator bool() {
 	return true;
 }

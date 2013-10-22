@@ -115,17 +115,16 @@ void loop()
 	{
 		incomingByte = SerialW.read();
 		Serial.write(incomingByte);
-		//bytesent = SerialW.write('x');
-		//SerialW.print(incomingByte);
+		bytesent = SerialW.write(incomingByte);
+
 		if (incomingByte == 'a')
 		{
 			userFuncSchedule("UserLed", 0xc3, "D7");
 		}
 	
 	}
-	
-	
 
+	//USART_SendData(USART2, incomingByte);
 	
 
 	// Call this in the process_command() to schedule the "UserLedToggle" function to execute
