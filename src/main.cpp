@@ -74,6 +74,8 @@ int main(void)
 
 	Set_System();
 
+	SysTick_Configuration();
+
 	/* Enable CRC clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
 
