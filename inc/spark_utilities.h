@@ -58,6 +58,7 @@ void Spark_Protocol_Init(void);
 int Spark_Handshake(void);
 bool Spark_Communication_Loop(void);
 void Multicast_Presence_Announcement(void);
+void Spark_Signal(bool on);
 
 bool userVarSchedule(const char *varKey, unsigned char token);
 void userVarReturn(void);

@@ -272,6 +272,7 @@ void Spark_Protocol_Init(void)
     callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
     callbacks.calculate_crc = Compute_CRC32;
     callbacks.save_firmware_chunk = FLASH_Update;
+    callbacks.signal = Spark_Signal;
 
     SparkDescriptor descriptor;
     descriptor.call_function = userFuncSchedule;
@@ -330,6 +331,45 @@ void Multicast_Presence_Announcement(void)
   closesocket(multicast_socket);
 }
 
+
+__IO uint32_t LED_Signaling_Timing;
+const uint32_t VIBGYOR_Colors[] = {
+  0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000};
+int VIBGYOR_Size = sizeof(VIBGYOR_Colors) / sizeof(uint32_t);
+int VIBGYOR_Index;
+
+/* This function MUST NOT BlOCK!
+ * It will be executed every 1ms if LED_Signaling_Start() is called
+ * and stopped as soon as LED_Signaling_Stop() is called */
+void LED_Signaling_Override(void)
+{
+  if (0 < LED_Signaling_Timing)
+  {
+    --LED_Signaling_Timing;
+  }
+  else
+  {
+    LED_SetSignalingColor(VIBGYOR_Colors[VIBGYOR_Index]);
+    LED_On(LED_RGB);
+
+    LED_Signaling_Timing = 100;	// 100 ms
+
+    ++VIBGYOR_Index;
+    if(VIBGYOR_Index >= VIBGYOR_Size)
+    {
+      VIBGYOR_Index = 0;
+    }
+  }
+}
+
+void Spark_Signal(bool on)
+{
+  if (on)
+    LED_Signaling_Start();
+  else
+    LED_Signaling_Stop();
+}
+
 int SparkClass::connect(void)
 {
 	return Spark_Connect();
@@ -342,6 +382,7 @@ int SparkClass::disconnect(void)
 
 int Spark_Connect(void)
 {
+  Spark_Disconnect();
   sparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
   if (sparkSocket < 0)
@@ -359,8 +400,8 @@ int Spark_Connect(void)
   // the destination IP address
   tSocketAddr.sa_data[2] = 10;	// First Octet of destination IP
   tSocketAddr.sa_data[3] = 105;	// Second Octet of destination IP
-  tSocketAddr.sa_data[4] = 5; 	// Third Octet of destination IP
-  tSocketAddr.sa_data[5] = 8;	// Fourth Octet of destination IP
+  tSocketAddr.sa_data[4] = 32; 	// Third Octet of destination IP
+  tSocketAddr.sa_data[5] = 169;	// Fourth Octet of destination IP
 
   return connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 }

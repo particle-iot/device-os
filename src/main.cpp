@@ -137,7 +137,7 @@ int main(void)
           if (1 == err)
           {
             // RSA decryption error, orange
-            LED_SetRGBColor(0xff8000);
+            LED_SetRGBColor(0xff6000);
           }
           else if (2 == err)
           {
@@ -155,7 +155,7 @@ int main(void)
       if (!Spark_Communication_Loop())
       {
         SPARK_SOCKET_CONNECTED = 0;
-        SPARK_DEVICE_ACKED = 0;
+        SPARK_LED_FADE = 0;
       }
     }
 #endif
