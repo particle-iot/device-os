@@ -3,7 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640), initialized(false), updating(false)
+SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640), expecting_ping_ack(false),
+                                     initialized(false), updating(false)
 {
   queue_init();
 }
@@ -79,6 +80,7 @@ bool SparkProtocol::event_loop(void)
   if (2 <= bytes_received)
   {
     no_op_cycles = 0;
+    expecting_ping_ack = false;
     int len = queue[0] << 8 | queue[1];
     if (0 > blocking_receive(queue, len))
     {
@@ -280,14 +282,32 @@ bool SparkProtocol::event_loop(void)
       return false;
     }
 
-    if (!updating && ++no_op_cycles >= 3000)
+    if (!updating)
     {
-      queue[0] = 0;
-      queue[1] = 16;
-      ping(queue + 2);
-      blocking_send(queue, 18);
+      ++no_op_cycles;
+      if (expecting_ping_ack)
+      {
+        if (2000 < no_op_cycles)
+        {
+          // timed out, disconnect
+          expecting_ping_ack = false;
+          no_op_cycles = 0;
+          return false;
+        }
+      }
+      else
+      {
+        if (3000 < no_op_cycles)
+        {
+          queue[0] = 0;
+          queue[1] = 16;
+          ping(queue + 2);
+          blocking_send(queue, 18);
 
-      no_op_cycles = 0;
+          expecting_ping_ack = true;
+          no_op_cycles = 0;
+        }
+      }
     }
   }
 

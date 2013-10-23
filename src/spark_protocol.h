@@ -111,6 +111,7 @@ class SparkProtocol
     unsigned char salt[8];
     unsigned short _message_id;
     int no_op_cycles;
+    bool expecting_ping_ack;
     bool initialized;
     bool updating;
 
