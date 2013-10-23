@@ -10,6 +10,7 @@ namespace CoAPMessageType {
     KEY_CHANGE,
     SIGNAL_START,
     SIGNAL_STOP,
+    EMPTY,
     ERROR
   };
 }
@@ -19,6 +20,7 @@ namespace CoAPCode {
     GET,
     POST,
     PUT,
+    EMPTY,
     ERROR
   };
 }

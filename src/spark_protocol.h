@@ -112,6 +112,7 @@ class SparkProtocol
     unsigned short _message_id;
     int no_op_cycles;
     bool initialized;
+    bool updating;
 
     unsigned short next_message_id();
     void encrypt(unsigned char *buf, int length);

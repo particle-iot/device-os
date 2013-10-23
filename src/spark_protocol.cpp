@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640), initialized(false)
+SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640), initialized(false), updating(false)
 {
   queue_init();
 }
@@ -214,6 +214,7 @@ bool SparkProtocol::event_loop(void)
         }
 
         callback_prepare_for_firmware_update();
+        updating = true;
 
         // send update_reaady
         update_ready(msg_to_send + 2, token);
@@ -234,15 +235,34 @@ bool SparkProtocol::event_loop(void)
           return false;
         }
 
+        updating = false;
         callback_finish_firmware_update();
         break;
       case CoAPMessageType::KEY_CHANGE:
         // TODO
         break;
       case CoAPMessageType::SIGNAL_START:
+        queue[0] = 0;
+        queue[1] = 16;
+        coded_ack(queue + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
+        if (0 > blocking_send(queue, 18))
+        {
+          // error
+          return false;
+        }
+
         callback_signal(true);
         break;
       case CoAPMessageType::SIGNAL_STOP:
+        queue[0] = 0;
+        queue[1] = 16;
+        coded_ack(queue + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
+        if (0 > blocking_send(queue, 18))
+        {
+          // error
+          return false;
+        }
+
         callback_signal(false);
         break;
 
@@ -260,7 +280,7 @@ bool SparkProtocol::event_loop(void)
       return false;
     }
 
-    if (++no_op_cycles >= 1000)
+    if (!updating && ++no_op_cycles >= 1000)
     {
       queue[0] = 0;
       queue[1] = 16;
@@ -320,8 +340,13 @@ int SparkProtocol::blocking_receive(unsigned char *buf, int length)
 CoAPMessageType::Enum
   SparkProtocol::received_message(unsigned char *buf, int length)
 {
+  unsigned char next_iv[16];
+  memcpy(next_iv, buf, 16);
+
   aes_setkey_dec(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_DECRYPT, length, iv_receive, buf, buf);
+
+  memcpy(iv_receive, next_iv, 16);
 
   char path = buf[ 5 + (buf[0] & 0x0F) ];
 
@@ -353,6 +378,8 @@ CoAPMessageType::Enum
           else return CoAPMessageType::SIGNAL_STOP;
         default: return CoAPMessageType::ERROR;
       }
+    case CoAPCode::EMPTY:
+      return CoAPMessageType::EMPTY;
     default:
       return CoAPMessageType::ERROR;
   }
@@ -747,6 +774,7 @@ void SparkProtocol::encrypt(unsigned char *buf, int length)
 {
   aes_setkey_enc(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv_send, buf, buf);
+  memcpy(iv_send, buf, 16);
 }
 
 void SparkProtocol::separate_response(unsigned char *buf,
