@@ -774,7 +774,6 @@ void SparkProtocol::encrypt(unsigned char *buf, int length)
 {
   aes_setkey_enc(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv_send, buf, buf);
-  memcpy(iv_send, buf, 16);
 }
 
 void SparkProtocol::separate_response(unsigned char *buf,
