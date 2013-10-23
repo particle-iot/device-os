@@ -11,7 +11,7 @@ int bytesent;
 double testReal = 99.99;
 
 
-char incomingByte;
+uint8_t incomingByte;
 /*
 void ISR_A0 ()
 {
@@ -115,7 +115,7 @@ void loop()
 	{
 		incomingByte = SerialW.read();
 		Serial.write(incomingByte);
-		bytesent = SerialW.write(incomingByte);
+		bytesent = SerialW.print(incomingByte);
 
 		if (incomingByte == 'a')
 		{
