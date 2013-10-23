@@ -58,6 +58,8 @@ int main(void)
 
 	Set_System();
 
+	SysTick_Configuration();
+
 	USE_SYSTEM_FLAGS = 1;
 
 	Load_SystemFlags();
