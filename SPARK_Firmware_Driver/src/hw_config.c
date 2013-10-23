@@ -121,18 +121,6 @@ void Set_System(void)
 
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
-
-	/* Setup SysTick Timer for 1 msec interrupts */
-	if (SysTick_Config(SystemCoreClock / 1000))
-	{
-		/* Capture error */
-		while (1)
-		{
-		}
-	}
-
-	/* Configure the SysTick Handler Priority: Preemption priority and subpriority */
-	NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);	//OLD: NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00)
 }
 
 /*******************************************************************************
@@ -151,6 +139,28 @@ void NVIC_Configuration(void)
 	/* Configure the Priority Group to 2 bits */
 	/* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
 	//OLD: NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+}
+
+/*******************************************************************************
+ * Function Name  : SysTick_Configuration
+ * Description    : Setup SysTick Timer and Configure its Interrupt Priority
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void SysTick_Configuration(void)
+{
+	/* Setup SysTick Timer for 1 msec interrupts */
+	if (SysTick_Config(SystemCoreClock / 1000))
+	{
+		/* Capture error */
+		while (1)
+		{
+		}
+	}
+
+	/* Configure the SysTick Handler Priority: Preemption priority and subpriority */
+	NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);	//OLD: NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00)
 }
 
 /*******************************************************************************

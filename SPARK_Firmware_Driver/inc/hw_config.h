@@ -119,7 +119,7 @@ typedef enum
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
-
+void SysTick_Configuration(void);
 void Delay(__IO uint32_t nTime);
 
 #if defined (USE_SPARK_CORE_V02)
