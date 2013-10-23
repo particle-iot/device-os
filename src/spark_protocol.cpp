@@ -280,7 +280,7 @@ bool SparkProtocol::event_loop(void)
       return false;
     }
 
-    if (!updating && ++no_op_cycles >= 1000)
+    if (!updating && ++no_op_cycles >= 3000)
     {
       queue[0] = 0;
       queue[1] = 16;
