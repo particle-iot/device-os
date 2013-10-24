@@ -51,6 +51,7 @@ extern __IO uint8_t SPARK_DEVICE_ACKED;
 extern __IO uint8_t SPARK_FLASH_UPDATE;
 extern __IO uint8_t SPARK_LED_FADE;
 
+extern uint8_t WLAN_DELETE_PROFILES;
 extern uint8_t WLAN_SMART_CONFIG_START;
 
 extern __IO uint8_t Spark_Error_Count;

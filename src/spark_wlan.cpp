@@ -5,6 +5,7 @@ __IO uint32_t TimingSparkProcessAPI;
 __IO uint32_t TimingSparkAliveTimeout;
 
 uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
+uint8_t WLAN_DELETE_PROFILES;
 uint8_t WLAN_SMART_CONFIG_START;
 uint8_t WLAN_SMART_CONFIG_STOP;
 uint8_t WLAN_SMART_CONFIG_FINISHED;
@@ -122,12 +123,31 @@ void Start_Smart_Config(void)
 	/* Wait for SmartConfig to finish */
 	while (WLAN_SMART_CONFIG_FINISHED == 0)
 	{
+		if(WLAN_DELETE_PROFILES && wlan_ioctl_del_profile(255) == 0)
+		{
+			int toggle = 25;
+			while(toggle--)
+			{
 #if defined (USE_SPARK_CORE_V01)
-		LED_Toggle(LED2);
+				LED_Toggle(LED2);
 #elif defined (USE_SPARK_CORE_V02)
-		LED_Toggle(LED_RGB);
+				LED_Toggle(LED_RGB);
 #endif
-		Delay(250);
+				Delay(50);
+			}
+			NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = 0;
+			nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
+			WLAN_DELETE_PROFILES = 0;
+		}
+		else
+		{
+#if defined (USE_SPARK_CORE_V01)
+			LED_Toggle(LED2);
+#elif defined (USE_SPARK_CORE_V02)
+			LED_Toggle(LED_RGB);
+#endif
+			Delay(250);
+		}
 	}
 
 #if defined (USE_SPARK_CORE_V01)
