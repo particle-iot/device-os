@@ -56,6 +56,8 @@ int main(void)
         system_stm32f10x.c file
     */
 
+	//FLASH_WriteProtection_Enable(BOOTLOADER_FLASH_PAGES);
+
 	Set_System();
 
 	SysTick_Configuration();
