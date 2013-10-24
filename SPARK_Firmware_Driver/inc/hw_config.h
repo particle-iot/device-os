@@ -86,6 +86,12 @@ typedef enum
 /* Length in bytes of DER-encoded 1024-bit RSA private key */
 #define EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH		(612)
 
+/* Bootloader Flash Pages that needs to be protected: 0x08000000 – 0x08003FFF */
+#define BOOTLOADER_FLASH_PAGES		( FLASH_WRProt_Pages0to3	\
+									| FLASH_WRProt_Pages4to7	\
+									| FLASH_WRProt_Pages8to11	\
+									| FLASH_WRProt_Pages12to15 )
+
 #if defined (USE_SPARK_CORE_V02)
 //Extended LED Types
 #define LED_RED				LED3
@@ -186,6 +192,9 @@ void USB_Cable_Config(FunctionalState NewState);
 void Load_SystemFlags(void);
 void Save_SystemFlags(void);
 
+/* Internal Flash Write Protection routines */
+void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages);
+void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages);
 /* Internal Flash Backup to sFlash and Restore from sFlash Helper routines */
 void FLASH_Backup(uint32_t sFLASH_Address);
 void FLASH_Restore(uint32_t sFLASH_Address);

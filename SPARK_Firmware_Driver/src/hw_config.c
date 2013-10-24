@@ -60,6 +60,8 @@ uint16_t CORE_FW_Version_SysFlag = 0xFFFF;
 uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
 uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
 
+uint32_t WRPR_Value = 0xFFFFFFFF;
+uint32_t Flash_Pages_Protected = 0x0;
 uint32_t Internal_Flash_Address = 0;
 uint32_t External_Flash_Address = 0;
 uint32_t Internal_Flash_Data = 0;
@@ -1288,6 +1290,62 @@ void Save_SystemFlags(void)
 
 	/* Locks the FLASH Program Erase Controller */
 	FLASH_Lock();
+}
+
+void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages)
+{
+	/* Get pages write protection status */
+	WRPR_Value = FLASH_GetWriteProtectionOptionByte();
+
+	/* Check if desired pages are not yet write protected */
+	if(((~WRPR_Value) & FLASH_Pages ) != FLASH_Pages)
+	{
+		/* Get current write protected pages and the new pages to be protected */
+		Flash_Pages_Protected =  (~WRPR_Value) | FLASH_Pages;
+
+		/* Unlock the Flash Program Erase controller */
+		FLASH_Unlock();
+
+		/* Erase all the option Bytes because if a program operation is
+	      performed on a protected page, the Flash memory returns a
+	      protection error */
+		FLASHStatus = FLASH_EraseOptionBytes();
+
+		/* Enable the pages write protection */
+		FLASHStatus = FLASH_EnableWriteProtection(Flash_Pages_Protected);
+
+		/* Generate System Reset to load the new option byte values */
+		NVIC_SystemReset();
+	}
+}
+
+void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages)
+{
+	/* Get pages write protection status */
+	WRPR_Value = FLASH_GetWriteProtectionOptionByte();
+
+	/* Check if desired pages are already write protected */
+	if((WRPR_Value | (~FLASH_Pages)) != 0xFFFFFFFF)
+	{
+		/* Get pages already write protected */
+		Flash_Pages_Protected = ~(WRPR_Value | FLASH_Pages);
+
+		/* Unlock the Flash Program Erase controller */
+		FLASH_Unlock();
+
+		/* Erase all the option Bytes */
+		FLASHStatus = FLASH_EraseOptionBytes();
+
+		/* Check if there is write protected pages */
+		if(Flash_Pages_Protected != 0x0)
+		{
+			/* Restore write protected pages */
+			FLASHStatus = FLASH_EnableWriteProtection(Flash_Pages_Protected);
+		}
+
+		/* Generate System Reset to load the new option byte values */
+		NVIC_SystemReset();
+	}
 }
 
 void FLASH_Backup(uint32_t sFLASH_Address)
