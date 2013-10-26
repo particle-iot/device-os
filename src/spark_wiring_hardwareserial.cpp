@@ -51,22 +51,22 @@ void Wiring_USART2_Interrupt_Handler(void)
 		c = USART_ReceiveData(USART2);
 	}
 	// check if the USART2 transmit interrupt flag was set
-	if(USART_GetITStatus(USART2, USART_IT_TXE))
-	{
-		USART_ClearITPendingBit(USART2, USART_IT_TXE);
-		if (tx_buffer.head == tx_buffer.tail) 
-		{
-			// Buffer empty, so disable interrupts
-    		USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
-  		}
-  		else 
-  		{
-    		// There is more data in the output buffer. Send the next byte
-    		unsigned char t = tx_buffer.buffer[tx_buffer.tail];
-    		tx_buffer.tail = (tx_buffer.tail + 1) % SERIAL_BUFFER_SIZE;
-    		USART_SendData( USART2, t );
-  		}
-	}
+	// if(USART_GetITStatus(USART2, USART_IT_TXE))
+	// {
+	// 	USART_ClearITPendingBit(USART2, USART_IT_TXE);
+	// 	if (tx_buffer.head == tx_buffer.tail) 
+	// 	{
+	// 		// Buffer empty, so disable interrupts
+ //    		USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+ //  		}
+ //  		else 
+ //  		{
+ //    		// There is more data in the output buffer. Send the next byte
+ //    		unsigned char t = tx_buffer.buffer[tx_buffer.tail];
+ //    		tx_buffer.tail = (tx_buffer.tail + 1) % SERIAL_BUFFER_SIZE;
+ //    		USART_SendData( USART2, t );
+ //  		}
+	// }
 }
 
 // Constructors ////////////////////////////////////////////////////////////////
@@ -259,20 +259,20 @@ void HardwareSerial::flush()
 
 size_t HardwareSerial::write(uint8_t c)
 {
-	ring_buffer *buffer = &tx_buffer;
-  	unsigned int i = (buffer->head + 1) % SERIAL_BUFFER_SIZE;
+	// ring_buffer *buffer = &tx_buffer;
+ //  	unsigned int i = (buffer->head + 1) % SERIAL_BUFFER_SIZE;
 	
-	// If the output buffer is full, there's nothing for it other than to 
-	// wait for the interrupt handler to empty it a bit
-	// ???: return 0 here instead?
-	while (i == buffer->tail);
+	// // If the output buffer is full, there's nothing for it other than to 
+	// // wait for the interrupt handler to empty it a bit
+	// // ???: return 0 here instead?
+	// while (i == buffer->tail);
 
-	buffer->buffer[buffer->head] = c;
-	buffer->head = i;
+	// buffer->buffer[buffer->head] = c;
+	// buffer->head = i;
 
-	USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
-	transmitting = true;
-	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+	// USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+	// transmitting = true;
+	// USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
 	return 1;
 }
 
