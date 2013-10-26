@@ -3,6 +3,14 @@
 #include <string.h>
 #include <stdlib.h>
 
+#ifndef SPARK_PRODUCT_ID
+#define SPARK_PRODUCT_ID (0xffff)
+#endif
+
+#ifndef PRODUCT_FIRMWARE_VERSION
+#define PRODUCT_FIRMWARE_VERSION (0xffff)
+#endif
+
 SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640), expecting_ping_ack(false),
                                      initialized(false), updating(false)
 {
@@ -415,9 +423,14 @@ void SparkProtocol::hello(unsigned char *buf)
   buf[3] = message_id & 0xff;
   buf[4] = 0xb1; // Uri-Path option of length 1
   buf[5] = 'h';
+  buf[6] = 0xff; // payload marker
+  buf[7] = SPARK_PRODUCT_ID >> 8;
+  buf[8] = SPARK_PRODUCT_ID & 0xff;
+  buf[9] = PRODUCT_FIRMWARE_VERSION >> 8;
+  buf[10] = PRODUCT_FIRMWARE_VERSION & 0xff;
 
-  memset(buf + 6, 10, 10); // PKCS #7 padding
-  
+  memset(buf + 11, 5, 5); // PKCS #7 padding
+
   encrypt(buf, 16);
 }
 
