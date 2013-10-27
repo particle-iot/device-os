@@ -74,6 +74,8 @@ int main(void)
 
 	Set_System();
 
+	SysTick_Configuration();
+
 	/* Enable CRC clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
 
@@ -254,11 +256,15 @@ void Timing_Decrement(void)
     		TimingLED = 100;	//100ms
     }
 
-	if(BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
+	if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
+	{
+		WLAN_SMART_CONFIG_START = 1;
+	}
+	else if(BUTTON_GetDebouncedTime(BUTTON1) >= 10000)
 	{
 		BUTTON_ResetDebouncedState(BUTTON1);
 
-		WLAN_SMART_CONFIG_START = 1;
+		WLAN_DELETE_PROFILES = 1;
 	}
 
 #ifdef IWDG_RESET_ENABLE
