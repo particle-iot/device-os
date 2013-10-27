@@ -7,6 +7,9 @@
  */
 
 #include "spark_wiring.h"
+#include "spark_wiring_interrupts.h"
+#include "spark_wiring_spi.h"
+#include "spark_wiring_i2c.h"
 
 /*
  * Globals
@@ -35,28 +38,29 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
  * timer_ch (1-4, or NONE)
  * pin_mode (NONE by default, can be set to OUTPUT, INPUT, or other types)
  */
-	{ GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, (PinMode)NONE },
-	{ GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, (PinMode)NONE },
-	{ GPIOB, GPIO_Pin_5, NONE, NULL, NONE, (PinMode)NONE },
-	{ GPIOB, GPIO_Pin_4, NONE, NULL, NONE, (PinMode)NONE },
-	{ GPIOB, GPIO_Pin_3, NONE, NULL, NONE, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_15, NONE, NULL, NONE, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_14, NONE, NULL, NONE, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_13, NONE, NULL, NONE, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_8, NONE, NULL, NONE, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_9, NONE, NULL, NONE, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM2, TIM_Channel_1, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_1, ADC_Channel_1, TIM2, TIM_Channel_2, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_4, ADC_Channel_4, NULL, NONE, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_5, ADC_Channel_5, NULL, NONE, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, (PinMode)NONE },
-	{ GPIOB, GPIO_Pin_0, ADC_Channel_8, TIM3, TIM_Channel_3, (PinMode)NONE },
-	{ GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, (PinMode)NONE },
-	{ GPIOA, GPIO_Pin_10, NONE, NULL, NONE, (PinMode)NONE }
+  { GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, (PinMode)NONE },
+  { GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, (PinMode)NONE },
+  { GPIOB, GPIO_Pin_5, NONE, NULL, NONE, (PinMode)NONE },
+  { GPIOB, GPIO_Pin_4, NONE, NULL, NONE, (PinMode)NONE },
+  { GPIOB, GPIO_Pin_3, NONE, NULL, NONE, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_15, NONE, NULL, NONE, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_14, NONE, NULL, NONE, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_13, NONE, NULL, NONE, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_8, NONE, NULL, NONE, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_9, NONE, NULL, NONE, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM2, TIM_Channel_1, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_1, ADC_Channel_1, TIM2, TIM_Channel_2, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_4, ADC_Channel_4, NULL, NONE, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_5, ADC_Channel_5, NULL, NONE, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, (PinMode)NONE },
+  { GPIOB, GPIO_Pin_0, ADC_Channel_8, TIM3, TIM_Channel_3, (PinMode)NONE },
+  { GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, (PinMode)NONE },
+  { GPIOA, GPIO_Pin_10, NONE, NULL, NONE, (PinMode)NONE }
 };
+
 
 void serial_begin(uint32_t baudRate);
 void serial_end(void);
@@ -111,6 +115,18 @@ void pinMode(uint16_t pin, PinMode setMode)
 		return;
 	}
 
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return;
+	}
+
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+	{
+		return;
+	}
+
 	// Serial1 safety check
 	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
@@ -157,13 +173,19 @@ void pinMode(uint16_t pin, PinMode setMode)
 		PIN_MAP[pin].pin_mode = INPUT_PULLDOWN;
 		break;
 
-	case AF_OUTPUT:	//Used internally for Alternate Function Output(TIM, UART, SPI etc)
+	case AF_OUTPUT_PUSHPULL:	//Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-		PIN_MAP[pin].pin_mode = AF_OUTPUT;
+		PIN_MAP[pin].pin_mode = AF_OUTPUT_PUSHPULL;
 		break;
 
-	case AN_INPUT:	//Used internally for ADC Input
+	case AF_OUTPUT_DRAIN:		//Used internally for Alternate Function Output Drain(I2C etc)
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		PIN_MAP[pin].pin_mode = AF_OUTPUT_DRAIN;
+		break;
+
+	case AN_INPUT:				//Used internally for ADC Input
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
 		PIN_MAP[pin].pin_mode = AN_INPUT;
 		break;
@@ -187,6 +209,18 @@ void digitalWrite(uint16_t pin, uint8_t value)
 		return;
 	}
 
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return;
+	}
+
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+	{
+		return;
+	}
+
 	// Serial1 safety check
 	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
@@ -194,7 +228,7 @@ void digitalWrite(uint16_t pin, uint8_t value)
 	}
 
 	//If the pin is used by analogWrite, we need to change the mode
-	if(PIN_MAP[pin].pin_mode == AF_OUTPUT)
+	if(PIN_MAP[pin].pin_mode == AF_OUTPUT_PUSHPULL)
 	{
 		pinMode(pin, OUTPUT);
 	}
@@ -215,6 +249,18 @@ void digitalWrite(uint16_t pin, uint8_t value)
 int32_t digitalRead(uint16_t pin)
 {
 	if (pin >= TOTAL_PINS || PIN_MAP[pin].pin_mode == OUTPUT || PIN_MAP[pin].pin_mode == NONE)
+	{
+		return -1;
+	}
+
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return -1;
+	}
+
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
 	{
 		return -1;
 	}
@@ -305,6 +351,18 @@ int32_t analogRead(uint16_t pin)
 		pin = pin + FIRST_ANALOG_PIN;
 	}
 
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return -1;
+	}
+
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+	{
+		return -1;
+	}
+
 	// Serial1 safety check
 	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
@@ -358,13 +416,25 @@ void analogWrite(uint16_t pin, uint8_t value)
 		return;
 	}
 
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return;
+	}
+
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+	{
+		return;
+	}
+
 	// Serial1 safety check
 	if (serial1_enabled == true && (pin == RX || pin == TX))
 	{
 		return;
 	}
 
-	if(PIN_MAP[pin].pin_mode != OUTPUT && PIN_MAP[pin].pin_mode != AF_OUTPUT)
+	if(PIN_MAP[pin].pin_mode != OUTPUT && PIN_MAP[pin].pin_mode != AF_OUTPUT_PUSHPULL)
 	{
 		return;
 	}
@@ -383,7 +453,7 @@ void analogWrite(uint16_t pin, uint8_t value)
 	// AFIO clock enable
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
-	pinMode(pin, AF_OUTPUT);
+	pinMode(pin, AF_OUTPUT_PUSHPULL);
 
 	// TIM clock enable
 	if(PIN_MAP[pin].timer_peripheral == TIM2)
@@ -550,7 +620,7 @@ void serial1_begin(uint32_t baudRate)
 	pinMode(RX, INPUT);
 
 	// Configure USART Tx as alternate function push-pull
-	pinMode(TX, AF_OUTPUT);
+	pinMode(TX, AF_OUTPUT_PUSHPULL);
 
 	// USART default configuration
 	// USART configured as follow:

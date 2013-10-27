@@ -1,20 +1,20 @@
 /*
- * spark_wiring.h
- *
- *  Created on: Apr 15, 2013
- *      Author: zsupalla
- */
+* spark_wiring.h
+*
+* Created on: Apr 15, 2013
+* Author: zsupalla
+*/
 
-#ifndef SPARK_WIRING_H_
-#define SPARK_WIRING_H_
+#ifndef SPARK_WIRING_H
+#define SPARK_WIRING_H
 
 #include "stm32f10x.h"
 #include "platform_config.h"
 #include "spark_utilities.h"
 
 /*
- * Basic variables
- */
+* Basic variables
+*/
 
 #define HIGH 0x1
 #define LOW 0x0
@@ -25,8 +25,8 @@
 #define NONE ((uint8_t)0xFF)
 
 /*
- * Pin mapping. Borrowed from Wiring
- */
+* Pin mapping. Borrowed from Wiring
+*/
 
 #define TOTAL_PINS 21
 #define TOTAL_ANALOG_PINS 8
@@ -79,21 +79,32 @@
 
 // SPI pins
 
-#define SS 7
-#define SCK 6
-#define MISO 5
-#define MOSI 4
+#define SS   12
+#define SCK  13
+#define MISO 14
+#define MOSI 15
 
-#define ADC_SAMPLING_TIME	ADC_SampleTime_1Cycles5	//ADC_SampleTime_239Cycles5
-#define TIM_PWM_FREQ		500 //500Hz
+// I2C pins
+
+#define SDA  0
+#define SCL  1
+
+#define ADC_SAMPLING_TIME ADC_SampleTime_1Cycles5 //ADC_SampleTime_239Cycles5
+#define TIM_PWM_FREQ 500 //500Hz
+
+#define LSBFIRST 0
+#define MSBFIRST 1
+
+typedef unsigned char byte;
 
 typedef enum PinMode {
   OUTPUT,
   INPUT,
   INPUT_PULLUP,
   INPUT_PULLDOWN,
-  AF_OUTPUT,	//Used internally for Alternate Function Output(TIM, UART, SPI etc)
-  AN_INPUT		//Used internally for ADC Input
+  AF_OUTPUT_PUSHPULL,	//Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
+  AF_OUTPUT_DRAIN,		//Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
+  AN_INPUT  			//Used internally for ADC Input
 } PinMode;
 
 typedef struct STM32_Pin_Info {
@@ -106,8 +117,8 @@ typedef struct STM32_Pin_Info {
 } STM32_Pin_Info;
 
 /*
- * GPIO
- */
+* GPIO
+*/
 void pinMode(uint16_t pin, PinMode mode);
 void digitalWrite(uint16_t pin, uint8_t value);
 int32_t digitalRead(uint16_t pin);
@@ -115,8 +126,8 @@ int32_t analogRead(uint16_t pin);
 void analogWrite(uint16_t pin, uint8_t value);
 
 /*
- * Timing
- */
+* Timing
+*/
 
 uint32_t millis();
 void delay(uint32_t ms);
@@ -130,8 +141,8 @@ extern int32_t USB_USART_Receive_Data(void);
 extern void USB_USART_Send_Data(uint8_t Data);
 
 /*
- * Serial_Interface
- */
+* Serial_Interface
+*/
 typedef struct Serial_Interface {
   void (*begin)(uint32_t);
   void (*end)(void);
@@ -143,13 +154,15 @@ typedef struct Serial_Interface {
 } Serial_Interface;
 
 /*
- * Serial
- */
+* Serial
+*/
 extern Serial_Interface Serial;
 
 /*
- * Serial1
- */
+* Serial1
+*/
 extern Serial_Interface Serial1;
+
+
 
 #endif /* SPARK_WIRING_H_ */
