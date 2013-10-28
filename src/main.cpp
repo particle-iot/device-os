@@ -280,10 +280,6 @@ void Timing_Decrement(void)
 		TimingIWDGReload++;
 	}
 #endif
-
-#ifdef SPARK_WLAN_ENABLE
-	SPARK_WLAN_Timing();
-#endif
 }
 
 /*******************************************************************************

@@ -499,47 +499,6 @@ void SPARK_WLAN_Loop(void)
 	}
 }
 
-void SPARK_WLAN_Timing(void)
-{
-	if (WLAN_CONNECTED && SPARK_SOCKET_CONNECTED)
-	{
-		SPARK_SOCKET_ALIVE = 1;
-
-		if (TimingSparkProcessAPI >= TIMING_SPARK_PROCESS_API)
-		{
-			TimingSparkProcessAPI = 0;
-
-			if(Spark_Process_API_Response() < 0)
-				SPARK_SOCKET_ALIVE = 0;
-		}
-		else
-		{
-			TimingSparkProcessAPI++;
-		}
-
-/*
-		if (SPARK_DEVICE_ACKED)
-		{
-			if (TimingSparkAliveTimeout >= TIMING_SPARK_ALIVE_TIMEOUT)
-			{
-				TimingSparkAliveTimeout = 0;
-
-				SPARK_SOCKET_ALIVE = 0;
-			}
-			else
-			{
-				TimingSparkAliveTimeout++;
-			}
-		}
-*/
-
-		if(SPARK_SOCKET_ALIVE != 1)
-		{
-			SPARK_WLAN_RESET = 1;
-		}
-	}
-}
-
 int Internet_Test(void)
 {
 	long testSocket;

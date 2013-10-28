@@ -13,37 +13,20 @@ sockaddr tSocketAddr;
 timeval timeout;
 _types_fd_set_cc3000 readSet;
 
-// Spark Messages
-const char Device_Secret[] = "secret";
-const char Device_Name[] = "sparkdemodevice";
-const char Device_Ok[] = "OK ";
-const char Device_Fail[] = "FAIL ";
-const char Device_IWDGRST[] = "IWDGRST";
-const char Device_CRLF[] = "\n";
-
-const char Flash_Update[] = "update";
-const char Flash_Begin[] = "flash begin";
-const char Flash_End[] = "flash end";
-const char Flash_NoFile[] = "flash no file";
-
-const char API_Alive[] = "alive";
-const char API_Who[] = "who";
-const char API_HandleMessage[] = "USERFUNC ";
-const char API_SendMessage[] = "CALLBACK ";
-const char API_Update[] = "UPDATE";
-
-char High_Dx[] = "HIGH D ";
-char Low_Dx[] = "LOW D ";
-
 char digits[] = "0123456789";
 
-//char recvBuff[SPARK_BUF_LEN];
 int total_bytes_received = 0;
 
 uint32_t chunkIndex;
 
 void (*pHandleMessage)(void);
-//char msgBuff[SPARK_BUF_LEN];
+
+// LED_Signaling_Override
+__IO uint32_t LED_Signaling_Timing;
+const uint32_t VIBGYOR_Colors[] = {
+  0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000};
+int VIBGYOR_Size = sizeof(VIBGYOR_Colors) / sizeof(uint32_t);
+int VIBGYOR_Index;
 
 int User_Var_Count;
 int User_Func_Count;
@@ -55,7 +38,6 @@ struct User_Var_Lookup_Table_t
 	char userVarKey[USER_VAR_KEY_LENGTH];
 	Spark_Data_TypeDef userVarType;
 	bool userVarSchedule;
-	unsigned char token; //not sure we require this here
 } User_Var_Lookup_Table[USER_VAR_MAX_COUNT];
 
 struct User_Func_Lookup_Table_t
@@ -74,7 +56,6 @@ struct User_Event_Lookup_Table_t
 	bool userEventSchedule;
 } User_Event_Lookup_Table[USER_EVENT_MAX_COUNT];
 
-//static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue);
 
 /*
 static unsigned char uitoa(unsigned int cNum, char *cString);
@@ -115,7 +96,6 @@ void SparkClass::variable(const char *varKey, void *userVar, Spark_Data_TypeDef 
 		memset(User_Var_Lookup_Table[User_Var_Count].userVarKey, 0, USER_VAR_KEY_LENGTH);
 		memcpy(User_Var_Lookup_Table[User_Var_Count].userVarKey, varKey, USER_VAR_KEY_LENGTH);
 		User_Var_Lookup_Table[User_Var_Count].userVarSchedule = false;
-		User_Var_Lookup_Table[User_Var_Count].token = 0;
 		User_Var_Count++;
 	}
 }
@@ -331,13 +311,6 @@ void Multicast_Presence_Announcement(void)
   closesocket(multicast_socket);
 }
 
-
-__IO uint32_t LED_Signaling_Timing;
-const uint32_t VIBGYOR_Colors[] = {
-  0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000};
-int VIBGYOR_Size = sizeof(VIBGYOR_Colors) / sizeof(uint32_t);
-int VIBGYOR_Index;
-
 /* This function MUST NOT BlOCK!
  * It will be executed every 1ms if LED_Signaling_Start() is called
  * and stopped as soon as LED_Signaling_Stop() is called */
@@ -400,8 +373,8 @@ int Spark_Connect(void)
   // the destination IP address
   tSocketAddr.sa_data[2] = 10;	// First Octet of destination IP
   tSocketAddr.sa_data[3] = 105;	// Second Octet of destination IP
-  tSocketAddr.sa_data[4] = 32; 	// Third Octet of destination IP
-  tSocketAddr.sa_data[5] = 169;	// Fourth Octet of destination IP
+  tSocketAddr.sa_data[4] = 5; 	// Third Octet of destination IP
+  tSocketAddr.sa_data[5] = 18;	// Fourth Octet of destination IP
 
   return connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 }
@@ -416,221 +389,6 @@ int Spark_Disconnect(void)
   return retVal;
 }
 
-// receive from socket until we either find a newline or fill the buffer
-// called repeatedly from an interrupt handler, so DO NOT BLOCK
-// returns: -1 on error, signifying socket disconnected
-//          0 if we have not yet received a full line
-//          the number of bytes received when we have received a full line
-int receive_line()
-{
-  /*
-  if (0 == total_bytes_received)
-  {
-    memset(recvBuff, 0, SPARK_BUF_LEN);
-  }
-
-  // reset the fd_set structure
-  FD_ZERO(&readSet);
-  FD_SET(sparkSocket, &readSet);
-
-  int buffer_bytes_available = SPARK_BUF_LEN - 1 - total_bytes_received;
-  char *newline = NULL;
-
-  // tell select to timeout after 500 microseconds
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 500;
-
-  int num_fds_ready = select(sparkSocket+1, &readSet, NULL, NULL, &timeout);
-
-  if (0 < num_fds_ready)
-  {
-    if (FD_ISSET(sparkSocket, &readSet))
-    {
-      //char *buffer_ptr = recvBuff + total_bytes_received;
-
-      int bytes_received_once = 0;//recv(sparkSocket, buffer_ptr, buffer_bytes_available, 0);
-
-      if (0 > bytes_received_once)
-        return bytes_received_once;
-
-      total_bytes_received += bytes_received_once;
-      newline = strchr(recvBuff, '\n');
-    }
-  }
-
-  if (NULL == newline && 0 < buffer_bytes_available)
-  {
-    return 0;
-  }
-  else
-  {
-    int retVal = total_bytes_received;
-    total_bytes_received = 0;
-    return retVal;
-  }
-  */
-  return 0;
-}
-
-void process_chunk(void)
-{
-  /*
-  uint32_t chunkBytesAvailable = 0;
-  uint32_t chunkCRCValue = 0;
-  uint32_t computedCRCValue = 0;
-  char *chunkToken;
-
-  chunkToken = strtok(&recvBuff[chunkIndex], "\n");
-  if (chunkToken != NULL)
-  {
-    chunkCRCValue = atoui(chunkToken);
-    chunkIndex = chunkIndex + strlen(chunkToken) + 1;//+1 for '\n'
-  }
-
-  chunkToken = strtok(NULL, "\n");
-  if (chunkToken != NULL)
-  {
-    chunkBytesAvailable = atoui(chunkToken);
-    chunkIndex = chunkIndex + strlen(chunkToken) + 1;//+1 for '\n'
-  }
-
-  if (chunkBytesAvailable)
-  {
-    char CRCStr[11];
-    memset(CRCStr, 0, 11);
-    computedCRCValue = Compute_CRC32((uint8_t *)&recvBuff[chunkIndex], chunkBytesAvailable);
-    if(chunkCRCValue == computedCRCValue)
-    {
-      FLASH_Update((uint8_t *)&recvBuff[chunkIndex], chunkBytesAvailable);
-    }
-    uitoa(computedCRCValue, CRCStr);
-    Spark_Send_Device_Message(sparkSocket, (char *)CRCStr, NULL, NULL);
-  }
-  */
-}
-
-// process the contents of recvBuff
-// returns number of bytes transmitted or -1 on error
-int process_command()
-{
-  /*
-	int bytes_sent = 0;
-
-	// who
-	if (0 == strncmp(recvBuff, API_Who, strlen(API_Who)))
-	{
-		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Name, NULL, NULL);
-	}
-
-	// API alive signal received and acknowledged by core, reset alive timeout
-	else if (0 == strncmp(recvBuff, API_Alive, strlen(API_Alive)))
-	{
-		if(!SPARK_DEVICE_ACKED)
-		{
-			SPARK_DEVICE_ACKED = 1;//First alive received by Core means Server received Device ID
-		}
-		TimingSparkAliveTimeout = 0;
-
-		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)API_Alive, NULL, NULL);
-	}
-
-	// command to trigger OTA firmware upgrade
-	else if (0 == strncmp(recvBuff, API_Update, strlen(API_Update)))
-	{
-		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Flash_Update, NULL, NULL);
-	}
-
-	// signal the MCU to reset and start the marvin application
-	else if (0 == strncmp(recvBuff, Flash_NoFile, strlen(Flash_NoFile)))
-	{
-		//FLASH_End();
-	}
-
-	// command to start download and flashing the firmware
-	else if (0 == strncmp(recvBuff, Flash_Begin, strlen(Flash_Begin)))
-	{
-		SPARK_FLASH_UPDATE = 1;
-		chunkIndex = strlen(Flash_Begin) + 1;//+1 for '\n'
-		FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS);
-	}
-
-	// command to end the flashing process and reset the MCU
-	else if (0 == strncmp(recvBuff, Flash_End, strlen(Flash_End)))
-	{
-		SPARK_FLASH_UPDATE = 0;
-		FLASH_End();
-	}
-
-	if(SPARK_FLASH_UPDATE)
-	{
-		TimingSparkAliveTimeout = 0;
-		process_chunk();
-		chunkIndex = 0;
-	}
-
-	// command to set a pin high
-	else if (0 == strncmp(recvBuff, High_Dx, 6))
-	{
-		High_Dx[6] = recvBuff[6];
-
-		if (OK == DIO_SetState((DIO_TypeDef)atoc(High_Dx[6]), HIGH))
-			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)High_Dx, NULL);
-		else
-			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)High_Dx, NULL);
-	}
-
-	// command to set a pin low
-	else if (0 == strncmp(recvBuff, Low_Dx, 5))
-	{
-		Low_Dx[5] = recvBuff[5];
-
-		if (OK == DIO_SetState((DIO_TypeDef)atoc(Low_Dx[5]), LOW))
-			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Ok, (char *)Low_Dx, NULL);
-		else
-			bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)Low_Dx, NULL);
-	}
-
-	// command to call the user-defined function
-	else if (0 == strncmp(recvBuff, API_HandleMessage, strlen(API_HandleMessage)))
-	{
-    char *msg_arg = &recvBuff[strlen(API_HandleMessage)];
-    char *newline = strchr(msg_arg, '\n');
-    if (NULL != newline)
-    {
-      if ('\r' == *(newline - 1))
-        newline--;
-      *newline = '\0';
-    }
-
-    memset(msgBuff, 0, SPARK_BUF_LEN);
-    if(NULL != msg_arg)
-    {
-      memcpy(msgBuff, msg_arg, strlen(msg_arg));
-    }
-    pHandleMessage = handle_message;
-	}
-
-//	else
-//	{
-//		bytes_sent = Spark_Send_Device_Message(sparkSocket, (char *)Device_Fail, (char *)recvBuff, NULL);
-//	}
-
-
-  return bytes_sent;
-  */
-  return 0;
-}
-
-int Spark_Process_API_Response(void)
-{
-	int retVal = receive_line();
-
-	if (0 < retVal)
-		retVal = process_command();
-
-	return retVal;
-}
-
 bool userVarSchedule(const char *varKey, unsigned char token)
 {
 	int i = 0;
@@ -639,7 +397,6 @@ bool userVarSchedule(const char *varKey, unsigned char token)
 		if(0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
 		{
 			User_Var_Lookup_Table[i].userVarSchedule = true;
-			User_Var_Lookup_Table[i].token = token;
 			return true;
 		}
 	}
@@ -656,51 +413,6 @@ void userVarReturn(void)
 			User_Var_Lookup_Table[i].userVarSchedule = false;
 
 			//Send the "Variable value" back to the server here OR in a separate thread
-			if(User_Var_Lookup_Table[i].token)
-			{
-/*
-				bool boolVal;
-				int intVal;
-				char *stringVal;
-				double doubleVal;
-*/
-
-				unsigned char buf[16];
-				memset(buf, 0, 16);
-
-				switch(User_Var_Lookup_Table[i].userVarType)
-				{
-				case BOOLEAN:
-/*
-					boolVal = *((bool*)User_Var_Lookup_Table[i].userVar);
-					//spark_protocol.variable_value(buf, User_Func_Lookup_Table[i].token, boolVal);
-*/
-					break;
-
-				case INT:
-/*
-					intVal = *((int*)User_Var_Lookup_Table[i].userVar);
-					//spark_protocol.variable_value(buf, User_Func_Lookup_Table[i].token, intVal);
-*/
-					break;
-
-				case STRING:
-/*
-					stringVal = ((char*)User_Var_Lookup_Table[i].userVar);
-					//spark_protocol.variable_value(buf, User_Func_Lookup_Table[i].token, stringVal, strlen(stringVal));
-*/
-					break;
-
-				case DOUBLE:
-/*
-					doubleVal = *((double*)User_Var_Lookup_Table[i].userVar);
-					//spark_protocol.variable_value(buf, User_Func_Lookup_Table[i].token, doubleVal);
-*/
-					break;
-				}
-
-				User_Var_Lookup_Table[i].token = 0;
-			}
 		}
 	}
 }
@@ -723,30 +435,6 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
 	return -1;
 }
 
-/*
-void userFuncExecute(void)
-{
-	int i = 0;
-	for(i = 0; i < User_Func_Count; i++)
-	{
-		if(true == User_Func_Lookup_Table[i].userFuncSchedule)
-		{
-			User_Func_Lookup_Table[i].userFuncSchedule = false;
-			User_Func_Lookup_Table[i].userFuncRet = User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
-
-			//Send the "Function Return" back to the server here OR in a separate thread
-			//if(User_Func_Lookup_Table[i].token)
-			//{
-			//	unsigned char buf[16];
-			//	memset(buf, 0, 16);
-			//	spark_protocol.function_return(buf, User_Func_Lookup_Table[i].token, User_Func_Lookup_Table[i].userFuncRet);
-			//	User_Func_Lookup_Table[i].token = 0;
-			//}
-		}
-	}
-}
-*/
-
 void userEventSend(void)
 {
 	int i = 0;
@@ -764,48 +452,6 @@ void userEventSend(void)
 		}
 	}
 }
-
-/*
-void sendMessage(char *message)
-{
-	Spark_Send_Device_Message(sparkSocket, (char *)API_SendMessage, (char *)message, NULL);
-}
-
-// returns number of bytes transmitted or -1 on error
-static int Spark_Send_Device_Message(long socket, char * cmd, char * cmdparam, char * cmdvalue)
-{
-    char cmdBuf[SPARK_BUF_LEN];
-    int sendLen = 0;
-    int retVal = 0;
-
-    memset(cmdBuf, 0, SPARK_BUF_LEN);
-
-    if(cmd != NULL)
-    {
-        sendLen = strlen(cmd);
-        memcpy(cmdBuf, cmd, strlen(cmd));
-    }
-
-    if(cmdparam != NULL)
-    {
-        memcpy(&cmdBuf[sendLen], cmdparam, strlen(cmdparam));
-        sendLen += strlen(cmdparam);
-    }
-
-    if(cmdvalue != NULL)
-    {
-        memcpy(&cmdBuf[sendLen], cmdvalue, strlen(cmdvalue));
-        sendLen += strlen(cmdvalue);
-    }
-
-    memcpy(&cmdBuf[sendLen], Device_CRLF, strlen(Device_CRLF));
-    sendLen += strlen(Device_CRLF);
-
-    //retVal = send(socket, cmdBuf, sendLen, 0);
-
-    return retVal;
-}
-*/
 
 // Convert unsigned integer to ASCII in decimal base
 /*
