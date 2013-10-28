@@ -12,7 +12,8 @@
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_print.h"
-#include "spark_wiring_hardwareserial.h"
+#include "spark_wiring_usartserial.h"
+#include "spark_wiring_usbserial.h"
 #include "spark_wiring_spi.h"
 #include "spark_wiring_i2c.h"
 

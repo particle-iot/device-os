@@ -58,7 +58,7 @@ void setup()
 	// Serial Test
 	Serial.begin(9600);
 
-	SerialW.begin(9600);
+	Serial1.begin(9600);
 /*
 	attachInterrupt(A1, ISR_A0, CHANGE);
 	//attachInterrupt(D1, ISR_A1, CHANGE);
@@ -111,11 +111,11 @@ void loop()
 	//delay(500);
 
 	
-	if(SerialW.available() > 0)
+	if(Serial1.available() > 0)
 	{
-		incomingByte = SerialW.read();
+		incomingByte = Serial1.read();
 		Serial.write(incomingByte);
-		bytesent = SerialW.print(incomingByte);
+		bytesent = Serial1.print(incomingByte);
 
 		if (incomingByte == 'a')
 		{

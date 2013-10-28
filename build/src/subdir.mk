@@ -13,6 +13,8 @@ CPP_SRCS += \
 ../src/spark_wiring_spi.cpp \
 ../src/spark_wiring_stream.cpp \
 ../src/spark_wiring_string.cpp \
+../src/spark_wiring_usartserial.cpp \
+../src/spark_wiring_usbserial.cpp \
 ../src/spark_wlan.cpp \
 ../src/stm32_it.cpp \
 ../src/usb_desc.cpp \
@@ -33,6 +35,8 @@ OBJS += \
 ./src/spark_wiring_spi.o \
 ./src/spark_wiring_stream.o \
 ./src/spark_wiring_string.o \
+./src/spark_wiring_usartserial.o \
+./src/spark_wiring_usbserial.o \
 ./src/spark_wlan.o \
 ./src/stm32_it.o \
 ./src/usb_desc.o \
@@ -44,6 +48,7 @@ CPP_DEPS += \
 ./src/application.d \
 ./src/main.d \
 ./src/newlib_stubs.d \
+./src/spark_utilities.d \
 ./src/spark_wiring.d \
 ./src/spark_wiring_hardwareserial.d \
 ./src/spark_wiring_i2c.d \
@@ -52,18 +57,14 @@ CPP_DEPS += \
 ./src/spark_wiring_spi.d \
 ./src/spark_wiring_stream.d \
 ./src/spark_wiring_string.d \
+./src/spark_wiring_usartserial.d \
+./src/spark_wiring_usbserial.d \
 ./src/spark_wlan.d \
 ./src/stm32_it.d \
 ./src/usb_desc.d \
 ./src/usb_endp.d \
 ./src/usb_istr.d \
 ./src/usb_prop.d 
-
-C++_SRCS += \
-../src/spark_utilities.cpp
-
-C++_DEPS += \
-./src/spark_utilities.d
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -73,13 +74,3 @@ src/%.o: ../src/%.cpp
 	arm-none-eabi-g++ -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD -DDFU_BUILD_ENABLE -I"../../core-common-lib/CMSIS/Include" -I"../../core-common-lib/CMSIS/Device/ST/STM32F10x/Include" -I"../../core-common-lib/STM32F10x_StdPeriph_Driver/inc" -I"../../core-common-lib/STM32_USB-FS-Device_Driver/inc" -I"../../core-common-lib/CC3000_Host_Driver" -I"../../core-common-lib/SPARK_Firmware_Driver/inc" -I"../../core-communication-lib/lib/tropicssl/include" -I"../../core-communication-lib/src" -I"../inc" -Os -ffunction-sections -Wall -Werror -fno-exceptions -fno-rtti -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
-
-
-src/%.o: ../src/%.cpp
-	@echo 'Building file: $<'
-	@echo 'Invoking: ARM GCC C++ Compiler'
-	arm-none-eabi-g++ -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD -DDFU_BUILD_ENABLE -I"../../core-common-lib/CMSIS/Include" -I"../../core-common-lib/CMSIS/Device/ST/STM32F10x/Include" -I"../../core-common-lib/STM32F10x_StdPeriph_Driver/inc" -I"../../core-common-lib/STM32_USB-FS-Device_Driver/inc" -I"../../core-common-lib/CC3000_Host_Driver" -I"../../core-common-lib/SPARK_Firmware_Driver/inc" -I"../../core-communication-lib/lib/tropicssl/include" -I"../../core-communication-lib/src" -I"../inc" -Os -ffunction-sections -Wall -Werror -fno-exceptions -fno-rtti -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "$@" "$<"
-	@echo 'Finished building: $<'
-	@echo ' '
-
-
