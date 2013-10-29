@@ -58,32 +58,70 @@ int main(void)
 
 	//FLASH_WriteProtection_Enable(BOOTLOADER_FLASH_PAGES);
 
+    //--------------------------------------------------------------------------
+    //    Initialize the system
+    //--------------------------------------------------------------------------
+    //    System Clocks
+    //    System Interrupts
+    //    Configure the I/Os
+    //    Configure the Timer
+    //    Configure the LEDs
+    //    Configure the MODE button 
+    //--------------------------------------------------------------------------
 	Set_System();
 
+    //--------------------------------------------------------------------------
+
+
+
+    /* Setup SysTick Timer for 1 msec interrupts to call Timing_Decrement() */
 	SysTick_Configuration();
 
 	USE_SYSTEM_FLAGS = 1;
 
+    //--------------------------------------------------------------------------
+    //  Load the system flags saved at SYSTEM_FLAGS_ADDRESS = 0x08004C00
+    //  CORE_FW_Version_SysFlag
+    //  NVMEM_SPARK_Reset_SysFlag
+    //  FLASH_OTA_Update_SysFlag
+    //--------------------------------------------------------------------------
 	Load_SystemFlags();
 
-	if((BKP_ReadBackupRegister(BKP_DR10) == 0x5000) || (FLASH_OTA_Update_SysFlag == 0x5000))
+    //--------------------------------------------------------------------------
+
+    // 0x5000 is written to the backup register just before the device is reset
+	if((BKP_ReadBackupRegister(BKP_DR10) == 0x5000) || 
+       (FLASH_OTA_Update_SysFlag == 0x5000))
 	{
-		ApplicationAddress = CORE_FW_ADDRESS;
+		ApplicationAddress = CORE_FW_ADDRESS; //0x08005000
 	}
-	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x0005) || (FLASH_OTA_Update_SysFlag == 0x0005))
+
+    // 0x0005 is written to the backup register at the end of firmware update
+    // if the register reads 0x0005 signifies that the firmware update 
+    // was successful
+	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x0005) || 
+            (FLASH_OTA_Update_SysFlag == 0x0005))
 	{
 		OTA_UPDATE_MODE = 1;	//OTA Update Success
 	}
-	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x5555) || (FLASH_OTA_Update_SysFlag == 0x5555))
+
+    // 0x5555 is written to the backup register at the beginning of firmware update
+    // if the register still reads 0x5555, it signifies that the firmware update
+    // was never completed => FAIL
+	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x5555) || 
+            (FLASH_OTA_Update_SysFlag == 0x5555))
 	{
 		OTA_UPDATE_MODE = -1;	//OTA Update Failed
 	}
+    // worst case: fall back on the DFU MODE
 	else
 	{
 		USB_DFU_MODE = 1;
 	}
 
-	/* Check if BUTTON1 is pressed */
+	//--------------------------------------------------------------------------
+    //    Check if BUTTON1 is pressed and determine the status
+    //--------------------------------------------------------------------------
 	if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
 	{
 		TimingBUTTON = 10000;
@@ -112,6 +150,7 @@ int main(void)
 			}
 		}
 	}
+    //--------------------------------------------------------------------------
 
 	if (OTA_UPDATE_MODE == 1)
 	{
@@ -200,6 +239,7 @@ int main(void)
 /*******************************************************************************
 * Function Name  : Timing_Decrement
 * Description    : Decrements the various Timing variables related to SysTick.
+                   This function is called every 1mS.
 * Input          : None
 * Output         : Timing
 * Return         : None
