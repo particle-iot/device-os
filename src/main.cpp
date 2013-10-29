@@ -174,15 +174,6 @@ int main(void)
 				loop();
 			}
 
-			if(NULL != pHandleMessage)
-			{
-				pHandleMessage();
-			}
-
-			//userFuncExecute();
-
-			userVarReturn();
-
 			userEventSend();
 
 #ifdef SPARK_WLAN_ENABLE

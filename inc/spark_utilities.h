@@ -6,8 +6,6 @@
 
 #define SPARK_BUF_LEN				600
 
-//#define BYTE_N(x,n)					(((x) >> n*8) & 0x000000FF)
-
 //#define SPARK_SERVER_IP				"54.235.79.249"
 #define SPARK_SERVER_PORT			5683
 
@@ -60,23 +58,13 @@ bool Spark_Communication_Loop(void);
 void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on);
 
-bool userVarSchedule(const char *varKey, unsigned char token);
-void userVarReturn(void);
-
+void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString);
-void userFuncExecute(void);
 
 void userEventSend(void);
 
-void sendMessage(char *message);
-//void sendMessageWithData(char *message, char *data, long size);
-
-//void handleMessage(void) __attribute__ ((weak, alias ("Default_Handler")));
-char handleMessage(char *user_arg) __attribute__ ((weak));
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
-
-extern void (*pHandleMessage)(void);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

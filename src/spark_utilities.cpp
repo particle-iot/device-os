@@ -37,7 +37,6 @@ struct User_Var_Lookup_Table_t
 	void *userVar;
 	char userVarKey[USER_VAR_KEY_LENGTH];
 	Spark_Data_TypeDef userVarType;
-	bool userVarSchedule;
 } User_Var_Lookup_Table[USER_VAR_MAX_COUNT];
 
 struct User_Func_Lookup_Table_t
@@ -77,27 +76,26 @@ SparkClass Spark;
 
 void SparkClass::variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
 {
-	int i = 0;
-	if(NULL != userVar && NULL != varKey)
-	{
-		if(User_Var_Count == USER_VAR_MAX_COUNT)
-			return;
+  if (NULL != userVar && NULL != varKey)
+  {
+    if (User_Var_Count == USER_VAR_MAX_COUNT)
+      return;
 
-		for(i = 0; i < User_Var_Count; i++)
-		{
-			if(User_Var_Lookup_Table[i].userVar == userVar && (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH)))
-			{
-				return;
-			}
-		}
+    for (int i = 0; i < User_Var_Count; i++)
+    {
+      if (User_Var_Lookup_Table[i].userVar == userVar &&
+          (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH)))
+      {
+        return;
+      }
+    }
 
-		User_Var_Lookup_Table[User_Var_Count].userVar = userVar;
-		User_Var_Lookup_Table[User_Var_Count].userVarType = userVarType;
-		memset(User_Var_Lookup_Table[User_Var_Count].userVarKey, 0, USER_VAR_KEY_LENGTH);
-		memcpy(User_Var_Lookup_Table[User_Var_Count].userVarKey, varKey, USER_VAR_KEY_LENGTH);
-		User_Var_Lookup_Table[User_Var_Count].userVarSchedule = false;
-		User_Var_Count++;
-	}
+    User_Var_Lookup_Table[User_Var_Count].userVar = userVar;
+    User_Var_Lookup_Table[User_Var_Count].userVarType = userVarType;
+    memset(User_Var_Lookup_Table[User_Var_Count].userVarKey, 0, USER_VAR_KEY_LENGTH);
+    memcpy(User_Var_Lookup_Table[User_Var_Count].userVarKey, varKey, USER_VAR_KEY_LENGTH);
+    User_Var_Count++;
+  }
 }
 
 void SparkClass::function(const char *funcKey, int (*pFunc)(char *paramString))
@@ -256,6 +254,7 @@ void Spark_Protocol_Init(void)
 
     SparkDescriptor descriptor;
     descriptor.call_function = userFuncSchedule;
+    descriptor.get_variable = getUserVar;
 
     unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
     unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
@@ -372,9 +371,9 @@ int Spark_Connect(void)
 
   // the destination IP address
   tSocketAddr.sa_data[2] = 10;	// First Octet of destination IP
-  tSocketAddr.sa_data[3] = 0;	// Second Octet of destination IP
-  tSocketAddr.sa_data[4] = 0; 	// Third Octet of destination IP
-  tSocketAddr.sa_data[5] = 3;	// Fourth Octet of destination IP
+  tSocketAddr.sa_data[3] = 105;	// Second Octet of destination IP
+  tSocketAddr.sa_data[4] = 34; 	// Third Octet of destination IP
+  tSocketAddr.sa_data[5] = 46;	// Fourth Octet of destination IP
 
   return connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 }
@@ -389,32 +388,16 @@ int Spark_Disconnect(void)
   return retVal;
 }
 
-bool userVarSchedule(const char *varKey, unsigned char token)
+void *getUserVar(const char *varKey)
 {
-	int i = 0;
-	for(i = 0; i < User_Var_Count; i++)
-	{
-		if(0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
-		{
-			User_Var_Lookup_Table[i].userVarSchedule = true;
-			return true;
-		}
-	}
-	return false;
-}
-
-void userVarReturn(void)
-{
-	int i = 0;
-	for(i = 0; i < User_Var_Count; i++)
-	{
-		if(true == User_Var_Lookup_Table[i].userVarSchedule)
-		{
-			User_Var_Lookup_Table[i].userVarSchedule = false;
-
-			//Send the "Variable value" back to the server here OR in a separate thread
-		}
-	}
+  for (int i = 0; i < User_Var_Count; ++i)
+  {
+    if (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
+    {
+      return User_Var_Lookup_Table[i].userVar;
+    }
+  }
+  return NULL;
 }
 
 int userFuncSchedule(const char *funcKey, const char *paramString)
