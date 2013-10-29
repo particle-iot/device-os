@@ -17,7 +17,6 @@ ssllib      = $(ssllibdir)/libtropicssl.a
 
 objects = src/handshake.o \
           src/coap.o \
-          src/spark_descriptor.o \
           src/spark_protocol.o
 
 testobjects = tests/TestHandshake.o \
