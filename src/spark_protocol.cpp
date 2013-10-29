@@ -49,6 +49,7 @@ void SparkProtocol::init(const char *id,
   callback_signal = callbacks.signal;
 
   this->descriptor.call_function = descriptor.call_function;
+  this->descriptor.get_variable = descriptor.get_variable;
 
   initialized = true;
 }
@@ -170,11 +171,19 @@ bool SparkProtocol::event_loop(void)
       }
       case CoAPMessageType::VARIABLE_REQUEST:
       {
-        // TODO Get variable value, using the descriptor
-        double varval = -104.858;
+        // copy the variable key
+        int variable_key_length = queue[7] & 0x0F;
+        if (12 < variable_key_length)
+          variable_key_length = 12;
+        char variable_key[13];
+        memcpy(variable_key, queue + 8, variable_key_length);
+        memset(variable_key + variable_key_length, 0, 13 - variable_key_length);
+
+        // get variable value, using the descriptor
+        int *int_val = (int *)descriptor.get_variable(variable_key);
         queue[0] = 0;
         queue[1] = 16;
-        variable_value(queue + 2, token, queue[2], queue[3], varval);
+        variable_value(queue + 2, token, queue[2], queue[3], *int_val);
         if (0 > blocking_send(queue, 18))
         {
           // error
@@ -463,43 +472,41 @@ void SparkProtocol::function_return(unsigned char *buf,
 
 void SparkProtocol::variable_value(unsigned char *buf,
                                    unsigned char token,
+                                   unsigned char message_id_msb,
+                                   unsigned char message_id_lsb,
                                    bool return_value)
 {
-  unsigned short message_id = next_message_id();
-
   buf[0] = 0x61; // acknowledgment, one-byte token
   buf[1] = 0x45; // response code 2.05 CONTENT
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
+  buf[2] = message_id_msb;
+  buf[3] = message_id_lsb;
   buf[4] = token;
   buf[5] = 0xff; // payload marker
-  buf[6] = 0x01; // ASN.1 BOOLEAN type tag
-  buf[7] = return_value ? 1 : 0;
+  buf[6] = return_value ? 1 : 0;
 
-  memset(buf + 8, 8, 8); // PKCS #7 padding
+  memset(buf + 7, 9, 9); // PKCS #7 padding
 
   encrypt(buf, 16);
 }
 
 void SparkProtocol::variable_value(unsigned char *buf,
                                    unsigned char token,
+                                   unsigned char message_id_msb,
+                                   unsigned char message_id_lsb,
                                    int return_value)
 {
-  unsigned short message_id = next_message_id();
-
   buf[0] = 0x61; // acknowledgment, one-byte token
   buf[1] = 0x45; // response code 2.05 CONTENT
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
+  buf[2] = message_id_msb;
+  buf[3] = message_id_lsb;
   buf[4] = token;
   buf[5] = 0xff; // payload marker
-  buf[6] = 0x02; // ASN.1 INTEGER type tag
-  buf[7] = return_value >> 24;
-  buf[8] = return_value >> 16 & 0xff;
-  buf[9] = return_value >> 8 & 0xff;
-  buf[10] = return_value & 0xff;
+  buf[6] = return_value >> 24;
+  buf[7] = return_value >> 16 & 0xff;
+  buf[8] = return_value >> 8 & 0xff;
+  buf[9] = return_value & 0xff;
 
-  memset(buf + 11, 5, 5); // PKCS #7 padding
+  memset(buf + 10, 6, 6); // PKCS #7 padding
 
   encrypt(buf, 16);
 }
@@ -526,22 +533,21 @@ void SparkProtocol::variable_value(unsigned char *buf,
 
 void SparkProtocol::variable_value(unsigned char *buf,
                                    unsigned char token,
+                                   unsigned char message_id_msb,
+                                   unsigned char message_id_lsb,
                                    const void *return_value,
                                    int length)
 {
-  unsigned short message_id = next_message_id();
-
   buf[0] = 0x61; // acknowledgment, one-byte token
   buf[1] = 0x45; // response code 2.05 CONTENT
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
+  buf[2] = message_id_msb;
+  buf[3] = message_id_lsb;
   buf[4] = token;
   buf[5] = 0xff; // payload marker
-  buf[6] = 0x04; // ASN.1 OCTET STRING type tag
 
-  memcpy(buf + 7, return_value, length);
+  memcpy(buf + 6, return_value, length);
 
-  int msglen = 7 + length;
+  int msglen = 6 + length;
   int buflen = (msglen & ~15) + 16;
   char pad = buflen - msglen;
   memset(buf + msglen, pad, pad); // PKCS #7 padding

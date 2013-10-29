@@ -17,8 +17,10 @@ struct ConstructorFixture
   static uint8_t message_to_receive[34];
   static bool function_called;
   static int mock_call_function(const char *function_key, const char *arg);
+  static void *mock_get_variable(const char *variable_key);
   static void mock_signal(bool on);
   static bool signal_called_with;
+  static int variable_to_get;
 
   ConstructorFixture();
   SparkKeys keys;
@@ -138,7 +140,9 @@ ConstructorFixture::ConstructorFixture()
   callbacks.receive = mock_receive;
   callbacks.signal = mock_signal;
   descriptor.call_function = mock_call_function;
+  descriptor.get_variable = mock_get_variable;
   function_called = false;
+  variable_to_get = -98765;
   spark_protocol.init(id, keys, callbacks, descriptor);
 }
 
@@ -240,6 +244,7 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
 
 uint8_t ConstructorFixture::message_to_receive[34];
 bool ConstructorFixture::function_called = false;
+int ConstructorFixture::variable_to_get = -98765;
 bool ConstructorFixture::signal_called_with = false;
 
 int ConstructorFixture::mock_call_function(const char *function_key,
@@ -250,6 +255,13 @@ int ConstructorFixture::mock_call_function(const char *function_key,
   prevent_warning = arg;
   function_called = true;
   return 456;
+}
+
+void *ConstructorFixture::mock_get_variable(const char *variable_key)
+{
+  const char *prevent_warning;
+  prevent_warning = variable_key;
+  return &variable_to_get;
 }
 
 void ConstructorFixture::mock_signal(bool on)
@@ -406,8 +418,8 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, variable_request, 34);
     const uint8_t expected[18] = {
       0x00, 0x10,
-      0x33, 0x5a, 0xfc, 0x90, 0xe9, 0xee, 0x1c, 0x36,
-      0x6f, 0x83, 0x34, 0x5a, 0xd5, 0x52, 0x31, 0xbe };
+      0x8f, 0xfc, 0x69, 0x56, 0xe2, 0x18, 0x07, 0x01,
+      0x3d, 0xfb, 0x49, 0xd6, 0x33, 0x34, 0xb9, 0x5e };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();
