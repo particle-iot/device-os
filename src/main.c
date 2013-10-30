@@ -281,7 +281,7 @@ void Timing_Decrement(void)
     {
         TimingLED--;
     }
-    else if(FACTORY_RESET_MODE || REFLASH_FROM_BACKUP)
+    else if(FACTORY_RESET_MODE || REFLASH_FROM_BACKUP || OTA_FLASH_AVAILABLE)
     {
         LED_Toggle(LED_RGB);
         TimingLED = 50;
