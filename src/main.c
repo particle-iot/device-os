@@ -89,15 +89,16 @@ int main(void)
 
     //--------------------------------------------------------------------------
 
-    // 0x5000 is written to the backup register just before the device is reset
+    // 0x5000 is written to the backup register after transferring the FW from 
+    // the external flash to the STM32's internal memory 
 	if((BKP_ReadBackupRegister(BKP_DR10) == 0x5000) || 
        (FLASH_OTA_Update_SysFlag == 0x5000))
 	{
 		ApplicationAddress = CORE_FW_ADDRESS; //0x08005000
 	}
 
-    // 0x0005 is written to the backup register at the end of firmware update
-    // if the register reads 0x0005 signifies that the firmware update 
+    // 0x0005 is written to the backup register at the end of firmware update.
+    // if the register reads 0x0005, it signifies that the firmware update 
     // was successful
 	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x0005) || 
             (FLASH_OTA_Update_SysFlag == 0x0005))
@@ -161,8 +162,11 @@ int main(void)
 	}
 	else if (FACTORY_RESET_MODE == 1)
 	{
+        //This tells the WLAN setup to clear the WiFi profiles on bootup
 		NVMEM_SPARK_Reset_SysFlag = 0x0001;
 		Save_SystemFlags();
+        //This following function takes a backup of the current firmware
+        //and then restores the factory reset firmware
 		Factory_Flash_Reset();
 	}
 	else if (USB_DFU_MODE == 0)
@@ -227,7 +231,9 @@ int main(void)
     {
     	if(BUTTON_GetDebouncedTime(BUTTON1) >= 1000)
     	{
+            //clear the button debounced time
     		BUTTON_ResetDebouncedState(BUTTON1);
+            //make sure that there is no fw download in progress
 			if (DeviceState == STATE_dfuIDLE || DeviceState == STATE_dfuERROR)
 			{
 				Reset_Device();	//Reset Device to enter User Application
