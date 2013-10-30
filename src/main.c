@@ -193,7 +193,7 @@ int main(void)
 	    	//If the Factory Reset or OTA Update failed, restore the old working copy
 	    	FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
 
-			//The Device will reset at this point
+	    	Reset_Device();
 	    }
 
 		/* Test if user code is programmed starting from ApplicationAddress */
