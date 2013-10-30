@@ -38,7 +38,8 @@ typedef  void (*pFunction)(void);
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 
-int8_t OTA_UPDATE_MODE = 0;		//0, -1, 1
+uint8_t REFLASH_FROM_BACKUP = 0;    //0, 1
+uint8_t OTA_FLASH_AVAILABLE = 0;    //0, 1
 uint8_t USB_DFU_MODE = 0;		//0, 1
 uint8_t FACTORY_RESET_MODE = 0;	//0, 1
 
@@ -118,7 +119,9 @@ int main(void)
 	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x0005) || 
             (FLASH_OTA_Update_SysFlag == 0x0005))
 	{
-		OTA_UPDATE_MODE = 1;	//OTA Update Success
+		//OTA was complete and the firmware is now available to be transfered to 
+        //the internal flash memory
+        OTA_FLASH_AVAILABLE = 1;
 	}
 
     // 0x5555 is written to the backup register at the beginning of firmware update
@@ -127,7 +130,9 @@ int main(void)
 	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x5555) || 
             (FLASH_OTA_Update_SysFlag == 0x5555))
 	{
-		OTA_UPDATE_MODE = -1;	//OTA Update Failed
+        //OTA transfer failed, hence, load firmware from the backup address
+        OTA_FLASH_AVAILABLE = 0;
+        REFLASH_FROM_BACKUP = 1;
 	}
     // worst case: fall back on the DFU MODE
 	else
@@ -146,7 +151,8 @@ int main(void)
 			if(TimingBUTTON == 0x00)
 			{
 				//if pressed for 10 sec, enter Factory Reset Mode
-				OTA_UPDATE_MODE = 0;
+                OTA_FLASH_AVAILABLE = 0;
+                REFLASH_FROM_BACKUP = 0;
 				USB_DFU_MODE = 0;
 				LED_SetRGBColor(RGB_COLOR_WHITE);
 				FACTORY_RESET_MODE = 1;
@@ -155,7 +161,8 @@ int main(void)
 			else if(!USB_DFU_MODE && TimingBUTTON <= 7000)
 			{
 				//if pressed for >= 3 sec, enter USB DFU Mode
-				OTA_UPDATE_MODE = 0;
+                OTA_FLASH_AVAILABLE = 0;
+                REFLASH_FROM_BACKUP = 0;
 				FACTORY_RESET_MODE = 0;
 				LED_SetRGBColor(RGB_COLOR_YELLOW);
 				USB_DFU_MODE = 1;
@@ -164,14 +171,14 @@ int main(void)
 	}
     //--------------------------------------------------------------------------
 
-	if (OTA_UPDATE_MODE == 1)
+	if (OTA_FLASH_AVAILABLE == 1)
 	{
 		LED_SetRGBColor(RGB_COLOR_MAGENTA);
 		OTA_Flash_Update();
 	}
 	else if (FACTORY_RESET_MODE == 1)
 	{
-        //This tells the WLAN setup to clear the WiFi profiles on bootup
+        //This tells the WLAN setup to clear the WiFi user profiles on bootup
 		NVMEM_SPARK_Reset_SysFlag = 0x0001;
 		Save_SystemFlags();
         //This following function takes a backup of the current firmware
@@ -180,7 +187,7 @@ int main(void)
 	}
 	else if (USB_DFU_MODE == 0)
 	{
-		if (OTA_UPDATE_MODE == -1)
+		if (REFLASH_FROM_BACKUP == 1)
 	    {
 			LED_SetRGBColor(RGB_COLOR_RED);
 	    	//If the Factory Reset or OTA Update failed, restore the old working copy
@@ -235,6 +242,7 @@ int main(void)
     /* Main loop */
     while (1)
     {
+        /*
     	if(BUTTON_GetDebouncedTime(BUTTON1) >= 1000)
     	{
             //clear the button debounced time
@@ -245,6 +253,7 @@ int main(void)
 				Reset_Device();	//Reset Device to enter User Application
 			}
     	}
+        */
     }
 }
 
@@ -272,7 +281,7 @@ void Timing_Decrement(void)
     {
         TimingLED--;
     }
-    else if(FACTORY_RESET_MODE || OTA_UPDATE_MODE)
+    else if(FACTORY_RESET_MODE || REFLASH_FROM_BACKUP)
     {
         LED_Toggle(LED_RGB);
         TimingLED = 50;
