@@ -8,7 +8,7 @@
   *          This file provides template for all exceptions handler and peripherals
   *          interrupt service routine.
   ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All right reserved.
+  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
