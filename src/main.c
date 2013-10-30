@@ -148,9 +148,7 @@ int main(void)
 				//if pressed for 10 sec, enter Factory Reset Mode
 				OTA_UPDATE_MODE = 0;
 				USB_DFU_MODE = 0;
-#if defined (USE_SPARK_CORE_V02)
 				LED_SetRGBColor(RGB_COLOR_WHITE);
-#endif
 				FACTORY_RESET_MODE = 1;
 				break;
 			}
@@ -159,9 +157,7 @@ int main(void)
 				//if pressed for >= 3 sec, enter USB DFU Mode
 				OTA_UPDATE_MODE = 0;
 				FACTORY_RESET_MODE = 0;
-#if defined (USE_SPARK_CORE_V02)
 				LED_SetRGBColor(RGB_COLOR_YELLOW);
-#endif
 				USB_DFU_MODE = 1;
 			}
 		}
@@ -170,9 +166,7 @@ int main(void)
 
 	if (OTA_UPDATE_MODE == 1)
 	{
-#if defined (USE_SPARK_CORE_V02)
 		LED_SetRGBColor(RGB_COLOR_MAGENTA);
-#endif
 		OTA_Flash_Update();
 	}
 	else if (FACTORY_RESET_MODE == 1)
@@ -188,9 +182,7 @@ int main(void)
 	{
 		if (OTA_UPDATE_MODE == -1)
 	    {
-#if defined (USE_SPARK_CORE_V02)
 			LED_SetRGBColor(RGB_COLOR_RED);
-#endif
 	    	//If the Factory Reset or OTA Update failed, restore the old working copy
 	    	FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
 
@@ -210,9 +202,8 @@ int main(void)
 	}
     /* Otherwise enters DFU mode to allow user to program his application */
 
-#if defined (USE_SPARK_CORE_V02)
     LED_SetRGBColor(RGB_COLOR_YELLOW);
-#endif
+
     USB_DFU_MODE = 1;
 
     /* Enter DFU mode */
@@ -283,22 +274,12 @@ void Timing_Decrement(void)
     }
     else if(FACTORY_RESET_MODE || OTA_UPDATE_MODE)
     {
-#if defined (USE_SPARK_CORE_V01)
-        LED_Toggle(LED1);
-        LED_Toggle(LED2);
-#elif defined (USE_SPARK_CORE_V02)
         LED_Toggle(LED_RGB);
-#endif
         TimingLED = 50;
     }
     else if(USB_DFU_MODE)
     {
-#if defined (USE_SPARK_CORE_V01)
-        LED_Toggle(LED1);
-        LED_Toggle(LED2);
-#elif defined (USE_SPARK_CORE_V02)
         LED_Toggle(LED_RGB);
-#endif
         TimingLED = 100;
     }
 }
