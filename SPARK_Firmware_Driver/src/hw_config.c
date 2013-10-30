@@ -1456,7 +1456,7 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 
    OTA_FLASHED_Status_SysFlag = 0x0000;
 	//FLASH_OTA_Update_SysFlag = 0x5555;
-	//Save_SystemFlags();
+	Save_SystemFlags();
 	//BKP_WriteBackupRegister(BKP_DR10, 0x5555);
 
 	External_Flash_Address = sFLASH_Address;
