@@ -39,34 +39,21 @@ inline void WiFiCredentialsReader::print(const char *s)
 
 inline void WiFiCredentialsReader::read_line(char *dst)
 {
-  bool reading_line = true;
-  char *p = dst;
-  while (reading_line && p - dst < 32)
-  {
-    read_available_char(reading_line, p);
-  }
-  flush_input();
-}
-
-inline void WiFiCredentialsReader::read_available_char(bool &reading_line, char *p)
-{
-  if (0 < serial.available())
-  {
-    char c = serial.read();
-    reading_line = ('\n' != c && '\r' != c);
-    if (reading_line)
-    {
-      serial.write(c);
-      *p++ = c;
-    }
-  }
-}
-
-inline void WiFiCredentialsReader::flush_input()
-{
-  serial.write('\r');
-  serial.write('\n');
-
-  while (serial.available())
-    serial.read();
+	char c = 0, i = 0;
+	while(1)
+	{
+		if(serial.available())
+		{
+			c = serial.read();
+			serial.write(c);
+			if(i == 32 || (c == '\r' || c == '\n'))
+			{
+				*dst = '\0';
+				break;
+			}
+			*dst++ = c;
+			i++;
+		}
+	}
+	serial.print("\r\n");
 }

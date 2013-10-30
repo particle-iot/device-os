@@ -17,6 +17,4 @@ class WiFiCredentialsReader
 
     void print(const char *s);
     void read_line(char *dst);
-    void read_available_char(bool &reading_line, char *p);
-    void flush_input();
 };

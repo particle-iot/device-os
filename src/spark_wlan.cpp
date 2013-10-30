@@ -10,6 +10,7 @@ uint8_t WLAN_DELETE_PROFILES;
 uint8_t WLAN_SMART_CONFIG_START;
 uint8_t WLAN_SMART_CONFIG_STOP;
 uint8_t WLAN_SMART_CONFIG_FINISHED;
+uint8_t WLAN_SERIAL_CONFIG_DONE;
 uint8_t WLAN_CONNECTED;
 uint8_t WLAN_DHCP;
 uint8_t WLAN_CAN_SHUTDOWN;
@@ -73,8 +74,7 @@ void wifi_add_profile_callback(const char *ssid, const char *password)
 {
 	wlan_profile_index = wlan_add_profile (WLAN_SEC_WPA2, (unsigned char *)ssid, strlen(ssid), NULL, 1, 0x18, 0x1e, 2, (unsigned char *)password, strlen(password));
 
-	WLAN_SMART_CONFIG_FINISHED = 1;
-	WLAN_SMART_CONFIG_STOP = 1;
+	WLAN_SERIAL_CONFIG_DONE = 1;
 }
 
 /*******************************************************************************
@@ -88,6 +88,7 @@ void Start_Smart_Config(void)
 {
 	WLAN_SMART_CONFIG_FINISHED = 0;
 	WLAN_SMART_CONFIG_STOP = 0;
+	WLAN_SERIAL_CONFIG_DONE = 0;
 	WLAN_CONNECTED = 0;
 	WLAN_DHCP = 0;
 	WLAN_CAN_SHUTDOWN = 0;
@@ -133,8 +134,8 @@ void Start_Smart_Config(void)
 
 	WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
 
-	/* Wait for SmartConfig to finish */
-	while (WLAN_SMART_CONFIG_FINISHED == 0)
+	/* Wait for SmartConfig/SerialConfig to finish */
+	while (!(WLAN_SMART_CONFIG_FINISHED | WLAN_SERIAL_CONFIG_DONE))
 	{
 		if(WLAN_DELETE_PROFILES && wlan_ioctl_del_profile(255) == 0)
 		{
@@ -180,8 +181,7 @@ void Start_Smart_Config(void)
 //			NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = 0;
 //	}
 
-	//if profile is added via serial, skip the below code
-	if(!WLAN_SMART_CONFIG_STOP)
+	if(WLAN_SMART_CONFIG_FINISHED)
 	{
 		/* Decrypt configuration information and add profile */
 		wlan_profile_index = wlan_smart_config_process();

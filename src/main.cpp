@@ -249,9 +249,11 @@ void Timing_Decrement(void)
 
 	if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
 	{
+		BUTTON_ResetDebouncedState(BUTTON1);
+
 		WLAN_SMART_CONFIG_START = 1;
 	}
-	else if(BUTTON_GetDebouncedTime(BUTTON1) >= 10000)
+	else if(BUTTON_GetDebouncedTime(BUTTON1) >= 7000)
 	{
 		BUTTON_ResetDebouncedState(BUTTON1);
 
