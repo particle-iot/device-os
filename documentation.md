@@ -76,6 +76,7 @@ External Flash memory address where core private RSA key resides
 
 EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH = 612  
 Length in bytes of DER-encoded 1024-bit RSA private key  
+
 ---
 
 
