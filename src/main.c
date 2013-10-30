@@ -193,7 +193,7 @@ int main(void)
 	    	//If the Factory Reset or OTA Update failed, restore the old working copy
 	    	FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
 
-	    	Reset_Device();
+	    	Finish_Update();
 	    }
 
 		/* Test if user code is programmed starting from ApplicationAddress */
@@ -250,7 +250,7 @@ int main(void)
             //make sure that there is no fw download in progress
 			if (DeviceState == STATE_dfuIDLE || DeviceState == STATE_dfuERROR)
 			{
-				Reset_Device();	//Reset Device to enter User Application
+				Finish_Update();	//Reset Device to enter User Application
 			}
     	}
         */

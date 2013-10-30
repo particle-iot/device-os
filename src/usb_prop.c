@@ -726,7 +726,7 @@ void DFU_write_crc(void)
     DeviceStatus[2] = 0;
     DeviceStatus[3] = 0;
 
-    Reset_Device();
+    Finish_Update();
 
     return;
   }
