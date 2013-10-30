@@ -35,6 +35,7 @@ This mode is triggered when the user presses the MODE button for more than 10 se
 
 **Over The Air Mode (aka OTA Mode):**  
 This mode is very similar to the factory reset mode. Upon detecting that the OTA_UPDATE_MODE flag is true, the bootloader takes a back up of the current firmware to EXTERNAL_FLASH_BKP_ADDRESS and the copies the firmware from EXTERNAL_FLASH_OTA_ADDRESS to the internal flash memory of the STM32.  
+
 ---
 
 ###System Constants  
