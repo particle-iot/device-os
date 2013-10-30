@@ -207,6 +207,8 @@ void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
 
 void Factory_Flash_Reset(void);
 void OTA_Flash_Update(void);
+bool OTA_Flashed_GetStatus(void);
+void OTA_Flashed_ResetStatus(void);
 
 void Reset_Device(void);
 

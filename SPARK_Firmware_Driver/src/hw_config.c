@@ -59,6 +59,7 @@ EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_
 uint16_t CORE_FW_Version_SysFlag = 0xFFFF;
 uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
 uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
+uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
 
 uint32_t WRPR_Value = 0xFFFFFFFF;
 uint32_t Flash_Pages_Protected = 0x0;
@@ -1253,6 +1254,9 @@ void Load_SystemFlags(void)
 
 	FLASH_OTA_Update_SysFlag = (*(__IO uint16_t*) Address);
 	Address += 2;
+
+	OTA_FLASHED_Status_SysFlag = (*(__IO uint16_t*) Address);
+	Address += 2;
 }
 
 void Save_SystemFlags(void)
@@ -1285,6 +1289,11 @@ void Save_SystemFlags(void)
 
 	/* Program FLASH_OTA_Update_SysFlag */
 	FLASHStatus = FLASH_ProgramHalfWord(Address, FLASH_OTA_Update_SysFlag);
+	while(FLASHStatus != FLASH_COMPLETE);
+	Address += 2;
+
+	/* Program OTA_FLASHED_Status_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, OTA_FLASHED_Status_SysFlag);
 	while(FLASHStatus != FLASH_COMPLETE);
 	Address += 2;
 
@@ -1433,8 +1442,6 @@ void FLASH_Restore(uint32_t sFLASH_Address)
 	/* Locks the FLASH Program Erase Controller */
 	FLASH_Lock();
 
-	Reset_Device();
-
 #endif
 }
 
@@ -1447,6 +1454,7 @@ void FLASH_Begin(uint32_t sFLASH_Address)
     LED_On(LED_RGB);
 #endif
 
+    OTA_FLASHED_Status_SysFlag = 0x0000;
 	FLASH_OTA_Update_SysFlag = 0x5555;
 	Save_SystemFlags();
 
@@ -1563,6 +1571,8 @@ void Factory_Flash_Reset(void)
 
     //Restore the Factory programmed application firmware from External Flash
 	FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
+
+	Reset_Device();
 }
 
 void OTA_Flash_Update(void)
@@ -1572,6 +1582,24 @@ void OTA_Flash_Update(void)
 
     //Restore the OTA programmed application firmware from External Flash
 	FLASH_Restore(EXTERNAL_FLASH_OTA_ADDRESS);
+
+    OTA_FLASHED_Status_SysFlag = 0x0001;
+
+	Reset_Device();
+}
+
+bool OTA_Flashed_GetStatus(void)
+{
+	if(OTA_FLASHED_Status_SysFlag == 0x0001)
+		return true;
+	else
+		return false;
+}
+
+void OTA_Flashed_ResetStatus(void)
+{
+    OTA_FLASHED_Status_SysFlag = 0x0000;
+	Save_SystemFlags();
 }
 
 /*******************************************************************************
