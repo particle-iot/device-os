@@ -31,6 +31,8 @@ char _password[] = "password";
 // Auth options are WLAN_SEC_UNSEC, WLAN_SEC_WPA, WLAN_SEC_WEP, and WLAN_SEC_WPA2
 unsigned char _auth = WLAN_SEC_WPA2;
 
+unsigned char wlan_profile_index;
+
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
 __IO uint8_t SPARK_WLAN_RESET;
@@ -67,12 +69,12 @@ void Clear_NetApp_Dhcp(void)
 	netapp_dhcp(&pucIP_Addr, &pucSubnetMask, &pucIP_DefaultGWAddr, &pucDNS);
 }
 
-void wifi_connect_callback(const char *ssid, const char *password)
+void wifi_add_profile_callback(const char *ssid, const char *password)
 {
-  wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
-  wlan_connect(WLAN_SEC_WPA2, (char *)ssid, strlen(ssid), NULL, (unsigned char *)password, strlen(password));
-  WLAN_SMART_CONFIG_FINISHED = 1;
-  WLAN_SMART_CONFIG_STOP = 1;
+	wlan_profile_index = wlan_add_profile (WLAN_SEC_WPA2, (unsigned char *)ssid, strlen(ssid), NULL, 1, 0x18, 0x1e, 2, (unsigned char *)password, strlen(password));
+
+	WLAN_SMART_CONFIG_FINISHED = 1;
+	WLAN_SMART_CONFIG_STOP = 1;
 }
 
 /*******************************************************************************
@@ -98,8 +100,6 @@ void Start_Smart_Config(void)
 
 	TimingSparkProcessAPI = 0;
 	TimingSparkAliveTimeout = 0;
-
-	unsigned char wlan_profile_index;
 
 #if defined (USE_SPARK_CORE_V02)
 	LED_SetRGBColor(RGB_COLOR_BLUE);
@@ -131,7 +131,7 @@ void Start_Smart_Config(void)
 	/* Start the SmartConfig start process */
 	wlan_smart_config_start(1);
 
-  WiFiCredentialsReader wifi_creds_reader(wifi_connect_callback);
+	WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
 
 	/* Wait for SmartConfig to finish */
 	while (WLAN_SMART_CONFIG_FINISHED == 0)
@@ -161,7 +161,7 @@ void Start_Smart_Config(void)
 #endif
 			Delay(250);
 
-      wifi_creds_reader.read();
+			wifi_creds_reader.read();
 		}
 	}
 
@@ -180,8 +180,13 @@ void Start_Smart_Config(void)
 //			NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = 0;
 //	}
 
-	/* Decrypt configuration information and add profile */
-	wlan_profile_index = wlan_smart_config_process();
+	//if profile is added via serial, skip the below code
+	if(!WLAN_SMART_CONFIG_STOP)
+	{
+		/* Decrypt configuration information and add profile */
+		wlan_profile_index = wlan_smart_config_process();
+	}
+
 	if(wlan_profile_index != -1)
 	{
 		NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = wlan_profile_index + 1;
@@ -453,7 +458,7 @@ void SPARK_WLAN_Loop(void)
 			loop_index++;
 		}
 
-    announce_presence();
+		announce_presence();
 
 		WLAN_SMART_CONFIG_STOP = 0;
 
