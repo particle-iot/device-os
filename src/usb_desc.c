@@ -224,5 +224,3 @@ uint8_t DFU_StringInterface1[DFU_SIZ_STRING_INTERFACE1] =
     '/', 0, '5', 0, '1', 0, '2', 0, '*', 0, '0', 0, '4', 0, 'K', 0, 'g', 0
   };
 #endif
-
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/

@@ -162,5 +162,4 @@ void USB_Istr(void)
 #endif
 } /* USB_Istr */
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/
 

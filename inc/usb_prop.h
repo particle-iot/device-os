@@ -120,4 +120,3 @@ typedef enum _DFU_REQUESTS {
 
 #endif /* __USB_PROP_H */
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/

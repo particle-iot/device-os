@@ -92,4 +92,3 @@
 
 #endif /*__USB_CONF_H*/
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/

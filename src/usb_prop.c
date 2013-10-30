@@ -717,4 +717,3 @@ void DFU_write_crc(void)
   }
 }
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/

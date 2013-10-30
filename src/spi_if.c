@@ -72,4 +72,3 @@ uint8_t *SPI_If_Read(uint32_t SectorAddress, uint32_t DataLength)
   return MAL_Buffer;
 }
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/

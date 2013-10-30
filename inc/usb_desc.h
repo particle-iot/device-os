@@ -53,4 +53,3 @@ extern  uint8_t DFU_StringInterface1 [DFU_SIZ_STRING_INTERFACE1];
 
 #endif /* __USB_DESC_H */
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/

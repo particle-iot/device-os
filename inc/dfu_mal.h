@@ -47,4 +47,4 @@ uint16_t MAL_GetStatus(uint32_t SectorAddress ,uint8_t Cmd, uint8_t *buffer);
 extern uint8_t  MAL_Buffer[wTransferSize]; /* RAM Buffer for Downloaded Data */
 #endif /* __DFU_MAL_H */
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/
+

@@ -86,4 +86,4 @@ uint8_t *FLASH_If_Read (uint32_t SectorAddress, uint32_t DataLength)
   return  (uint8_t*)(SectorAddress);
 }
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/
+

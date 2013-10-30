@@ -179,4 +179,4 @@ uint16_t MAL_GetStatus(uint32_t SectorAddress , uint8_t Cmd, uint8_t *buffer)
   return MAL_OK;
 }
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/
+
