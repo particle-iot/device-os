@@ -1,5 +1,6 @@
 #include "spark_wlan.h"
 #include "string.h"
+#include "wifi_credentials_reader.h"
 
 __IO uint32_t TimingSparkProcessAPI;
 __IO uint32_t TimingSparkAliveTimeout;
@@ -66,6 +67,13 @@ void Clear_NetApp_Dhcp(void)
 	netapp_dhcp(&pucIP_Addr, &pucSubnetMask, &pucIP_DefaultGWAddr, &pucDNS);
 }
 
+void wifi_connect_callback(const char *ssid, const char *password)
+{
+  wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
+  wlan_connect(WLAN_SEC_WPA2, (char *)ssid, strlen(ssid), NULL, (unsigned char *)password, strlen(password));
+  WLAN_SMART_CONFIG_FINISHED = 1;
+}
+
 /*******************************************************************************
  * Function Name  : Start_Smart_Config.
  * Description    : The function triggers a smart configuration process on CC3000.
@@ -122,6 +130,9 @@ void Start_Smart_Config(void)
 	/* Start the SmartConfig start process */
 	wlan_smart_config_start(1);
 
+  USBSerial wifi_creds_serial;
+  WiFiCredentialsReader wifi_creds_reader(wifi_creds_serial, wifi_connect_callback);
+
 	/* Wait for SmartConfig to finish */
 	while (WLAN_SMART_CONFIG_FINISHED == 0)
 	{
@@ -149,6 +160,8 @@ void Start_Smart_Config(void)
 			LED_Toggle(LED_RGB);
 #endif
 			Delay(250);
+
+      wifi_creds_reader.read();
 		}
 	}
 

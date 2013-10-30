@@ -20,7 +20,8 @@ CPP_SRCS += \
 ../src/usb_desc.cpp \
 ../src/usb_endp.cpp \
 ../src/usb_istr.cpp \
-../src/usb_prop.cpp 
+../src/usb_prop.cpp \
+../src/wifi_credentials_reader.cpp
 
 OBJS += \
 ./src/application.o \
@@ -42,7 +43,8 @@ OBJS += \
 ./src/usb_desc.o \
 ./src/usb_endp.o \
 ./src/usb_istr.o \
-./src/usb_prop.o 
+./src/usb_prop.o \
+./src/wifi_credentials_reader.o
 
 CPP_DEPS += \
 ./src/application.d \
@@ -64,7 +66,8 @@ CPP_DEPS += \
 ./src/usb_desc.d \
 ./src/usb_endp.d \
 ./src/usb_istr.d \
-./src/usb_prop.d 
+./src/usb_prop.d \
+./src/wifi_credentials_reader.d
 
 
 # Each subdirectory must supply rules for building sources it contributes
