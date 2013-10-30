@@ -72,6 +72,7 @@ void wifi_connect_callback(const char *ssid, const char *password)
   wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
   wlan_connect(WLAN_SEC_WPA2, (char *)ssid, strlen(ssid), NULL, (unsigned char *)password, strlen(password));
   WLAN_SMART_CONFIG_FINISHED = 1;
+  WLAN_SMART_CONFIG_STOP = 1;
 }
 
 /*******************************************************************************
@@ -130,8 +131,7 @@ void Start_Smart_Config(void)
 	/* Start the SmartConfig start process */
 	wlan_smart_config_start(1);
 
-  USBSerial wifi_creds_serial;
-  WiFiCredentialsReader wifi_creds_reader(wifi_creds_serial, wifi_connect_callback);
+  WiFiCredentialsReader wifi_creds_reader(wifi_connect_callback);
 
 	/* Wait for SmartConfig to finish */
 	while (WLAN_SMART_CONFIG_FINISHED == 0)
