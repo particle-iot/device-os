@@ -1454,11 +1454,10 @@ void FLASH_Begin(uint32_t sFLASH_Address)
     LED_On(LED_RGB);
 #endif
 
-    OTA_FLASHED_Status_SysFlag = 0x0000;
-	FLASH_OTA_Update_SysFlag = 0x5555;
-	Save_SystemFlags();
-
-	BKP_WriteBackupRegister(BKP_DR10, 0x5555);
+   OTA_FLASHED_Status_SysFlag = 0x0000;
+	//FLASH_OTA_Update_SysFlag = 0x5555;
+	//Save_SystemFlags();
+	//BKP_WriteBackupRegister(BKP_DR10, 0x5555);
 
 	External_Flash_Address = sFLASH_Address;
 
@@ -1579,6 +1578,10 @@ void OTA_Flash_Update(void)
 {
     //First take backup of the current application firmware to External Flash
     FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
+
+   FLASH_OTA_Update_SysFlag = 0x5555;
+	Save_SystemFlags();
+	BKP_WriteBackupRegister(BKP_DR10, 0x5555);
 
     //Restore the OTA programmed application firmware from External Flash
 	FLASH_Restore(EXTERNAL_FLASH_OTA_ADDRESS);
