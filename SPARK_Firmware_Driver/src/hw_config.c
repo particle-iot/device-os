@@ -1572,7 +1572,7 @@ void Factory_Flash_Reset(void)
     //Restore the Factory programmed application firmware from External Flash
 	FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
 
-	Reset_Device();
+	Finish_Update();
 }
 
 void OTA_Flash_Update(void)
@@ -1585,7 +1585,7 @@ void OTA_Flash_Update(void)
 
     OTA_FLASHED_Status_SysFlag = 0x0001;
 
-	Reset_Device();
+	Finish_Update();
 }
 
 bool OTA_Flashed_GetStatus(void)
@@ -1603,12 +1603,12 @@ void OTA_Flashed_ResetStatus(void)
 }
 
 /*******************************************************************************
-* Function Name  : Reset_Device.
+* Function Name  : Finish_Update.
 * Description    : Reset the device.
 * Input          : None.
 * Return         : None.
 *******************************************************************************/
-void Reset_Device(void)
+void Finish_Update(void)
 {
 	FLASH_OTA_Update_SysFlag = 0x5000;
 	Save_SystemFlags();
