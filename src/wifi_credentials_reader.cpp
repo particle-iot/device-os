@@ -22,17 +22,17 @@ void WiFiCredentialsReader::read(void)
       print("Password: ");
       read_line(password);
 
-      print("Thanks! Wait about 7 seconds while I test that...\r\n");
+      print("Thanks! Wait about 7 seconds while I test that...\r\n\r\n");
 
       connect_callback(ssid, password);
 
       print("Awesome. Now hang on 8 more seconds while I save\r\n");
-      print("these credentials, and then we'll connect!\r\n");
+      print("these credentials, and then we'll connect!\r\n\r\n");
       print("If you see a pulsing cyan light, your Spark Core\r\n");
-      print("has connected to the Cloud and is ready to go!\r\n");
+      print("has connected to the Cloud and is ready to go!\r\n\r\n");
       print("If your LED flashes red or you encounter any other problems,\r\n");
-      print("visit https://www.spark.io/support to debug.\r\n");
-      print("\r\n    Spark <3 you!\r\n\r\n");
+      print("visit https://www.spark.io/support to debug.\r\n\r\n");
+      print("    Spark <3 you!\r\n\r\n");
     }
     else if ('i' == c)
     {
@@ -46,7 +46,7 @@ void WiFiCredentialsReader::read(void)
         if (57 < hex_digit)
           hex_digit += 39;
         serial.write(hex_digit);
-        hex_digit = id[i] & 0xf;
+        hex_digit = 48 + (id[i] & 0xf);
         if (57 < hex_digit)
           hex_digit += 39;
         serial.write(hex_digit);
