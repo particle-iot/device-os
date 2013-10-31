@@ -49,7 +49,7 @@ extern uint8_t WLAN_DHCP;
 extern __IO uint8_t SPARK_WLAN_RESET;
 extern __IO uint8_t SPARK_WLAN_SLEEP;
 extern __IO uint8_t SPARK_SOCKET_CONNECTED;
-extern __IO uint8_t SPARK_DEVICE_ACKED;
+extern __IO uint8_t SPARK_HANDSHAKE_COMPLETED;
 extern __IO uint8_t SPARK_FLASH_UPDATE;
 extern __IO uint8_t SPARK_LED_FADE;
 

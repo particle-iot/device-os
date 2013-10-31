@@ -150,7 +150,7 @@ int main(void)
         }
         else
         {
-          SPARK_DEVICE_ACKED = 1;
+          SPARK_HANDSHAKE_COMPLETED = 1;
         }
       }
 
@@ -158,13 +158,14 @@ int main(void)
       {
         SPARK_SOCKET_CONNECTED = 0;
         SPARK_LED_FADE = 0;
+        SPARK_HANDSHAKE_COMPLETED = 0;
       }
     }
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
 #ifdef SPARK_WLAN_ENABLE
-		if(SPARK_DEVICE_ACKED && !SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
+		if(SPARK_HANDSHAKE_COMPLETED && !SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 		{
 #endif
 
@@ -218,13 +219,13 @@ void Timing_Decrement(void)
     {
 #if defined (USE_SPARK_CORE_V02)
     	LED_Fade(LED_RGB);
-    	if(SPARK_DEVICE_ACKED)
+    	if(SPARK_HANDSHAKE_COMPLETED)
     		TimingLED = 20;
     	else
     		TimingLED = 1;
 #endif
     }
-    else if(SPARK_DEVICE_ACKED)
+    else if(SPARK_HANDSHAKE_COMPLETED)
     {
 #if defined (USE_SPARK_CORE_V01)
     	LED_On(LED1);

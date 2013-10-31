@@ -183,7 +183,7 @@ void SparkClass::sleep(long seconds)
 
 bool SparkClass::connected(void)
 {
-	if(SPARK_DEVICE_ACKED)
+	if(SPARK_SOCKET_CONNECTED && SPARK_HANDSHAKE_COMPLETED)
 		return true;
 	else
 		return false;
