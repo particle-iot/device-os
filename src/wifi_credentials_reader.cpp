@@ -22,12 +22,11 @@ void WiFiCredentialsReader::read(void)
       print("Password: ");
       read_line(password);
 
-      print("Thanks! Wait about 7 seconds while I test that...\r\n\r\n");
+      print("Thanks! Wait about 7 seconds while I save those credentials...\r\n\r\n");
 
       connect_callback(ssid, password);
 
-      print("Awesome. Now hang on 8 more seconds while I save\r\n");
-      print("these credentials, and then we'll connect!\r\n\r\n");
+      print("Awesome. Now we'll connect!\r\n\r\n");
       print("If you see a pulsing cyan light, your Spark Core\r\n");
       print("has connected to the Cloud and is ready to go!\r\n\r\n");
       print("If your LED flashes red or you encounter any other problems,\r\n");
