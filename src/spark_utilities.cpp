@@ -256,6 +256,8 @@ void Spark_Protocol_Init(void)
     SparkDescriptor descriptor;
     descriptor.call_function = userFuncSchedule;
     descriptor.get_variable = getUserVar;
+    descriptor.was_ota_upgrade_successful = OTA_Flashed_GetStatus;
+    descriptor.ota_upgrade_status_sent = OTA_Flashed_ResetStatus;
 
     unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
     unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
