@@ -47,6 +47,7 @@ void SparkProtocol::init(const char *id,
   callback_calculate_crc = callbacks.calculate_crc;
   callback_save_firmware_chunk = callbacks.save_firmware_chunk;
   callback_signal = callbacks.signal;
+  callback_millis = callbacks.millis;
 
   this->descriptor.call_function = descriptor.call_function;
   this->descriptor.get_variable = descriptor.get_variable;
@@ -88,7 +89,7 @@ bool SparkProtocol::event_loop(void)
   int bytes_received = callback_receive(queue, 2);
   if (2 <= bytes_received)
   {
-    no_op_cycles = 0;
+    last_message_millis = callback_millis();
     expecting_ping_ack = false;
     int len = queue[0] << 8 | queue[1];
     if (0 > blocking_receive(queue, len))
@@ -301,20 +302,20 @@ bool SparkProtocol::event_loop(void)
 
     if (!updating)
     {
-      ++no_op_cycles;
+      unsigned int millis_since_last_message = callback_millis() - last_message_millis;
       if (expecting_ping_ack)
       {
-        if (2000 < no_op_cycles)
+        if (10000 < millis_since_last_message)
         {
           // timed out, disconnect
           expecting_ping_ack = false;
-          no_op_cycles = 0;
+          last_message_millis = callback_millis();
           return false;
         }
       }
       else
       {
-        if (3000 < no_op_cycles)
+        if (15000 < millis_since_last_message)
         {
           queue[0] = 0;
           queue[1] = 16;
@@ -322,7 +323,7 @@ bool SparkProtocol::event_loop(void)
           blocking_send(queue, 18);
 
           expecting_ping_ack = true;
-          no_op_cycles = 0;
+          last_message_millis = callback_millis();
         }
       }
     }

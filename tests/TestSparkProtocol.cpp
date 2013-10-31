@@ -21,6 +21,7 @@ struct ConstructorFixture
   static void mock_signal(bool on);
   static bool signal_called_with;
   static int variable_to_get;
+  static unsigned int mock_millis();
 
   ConstructorFixture();
   SparkKeys keys;
@@ -139,6 +140,7 @@ ConstructorFixture::ConstructorFixture()
   callbacks.send = mock_send;
   callbacks.receive = mock_receive;
   callbacks.signal = mock_signal;
+  callbacks.millis = mock_millis;
   descriptor.call_function = mock_call_function;
   descriptor.get_variable = mock_get_variable;
   function_called = false;
@@ -267,6 +269,11 @@ void *ConstructorFixture::mock_get_variable(const char *variable_key)
 void ConstructorFixture::mock_signal(bool on)
 {
   signal_called_with = on;
+}
+
+unsigned int ConstructorFixture::mock_millis()
+{
+  return 0;
 }
 
 SUITE(SparkProtocolConstruction)
