@@ -54,7 +54,7 @@ class SparkProtocol
     int blocking_receive(unsigned char *buf, int length);
 
     CoAPMessageType::Enum received_message(unsigned char *buf, int length);
-    void hello(unsigned char *buf);
+    void hello(unsigned char *buf, bool newly_upgraded);
     void key_changed(unsigned char *buf, unsigned char token);
     void function_return(unsigned char *buf, unsigned char token,
                          int return_value);

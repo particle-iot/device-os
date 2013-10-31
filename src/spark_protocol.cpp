@@ -51,6 +51,8 @@ void SparkProtocol::init(const char *id,
 
   this->descriptor.call_function = descriptor.call_function;
   this->descriptor.get_variable = descriptor.get_variable;
+  this->descriptor.was_ota_upgrade_successful = descriptor.was_ota_upgrade_successful;
+  this->descriptor.ota_upgrade_status_sent = descriptor.ota_upgrade_status_sent;
 
   initialized = true;
 }
@@ -75,7 +77,7 @@ int SparkProtocol::handshake(void)
 
   queue[0] = 0x00;
   queue[1] = 0x10;
-  hello(queue + 2);
+  hello(queue + 2, descriptor.was_ota_upgrade_successful());
 
   blocking_send(queue, 18);
 
@@ -104,9 +106,8 @@ bool SparkProtocol::event_loop(void)
     {
       case CoAPMessageType::DESCRIBE:
       {
-        const char *function_names[1];
-        function_names[0] = "brew";
-        int desc_len = description(queue + 2, token, function_names, 1);
+        const char *function_names[0];
+        int desc_len = description(queue + 2, token, function_names, 0);
         queue[0] = 0;
         queue[1] = 32;
         if (0 > blocking_send(queue, desc_len + 2))
@@ -287,6 +288,9 @@ bool SparkProtocol::event_loop(void)
         break;
 
       case CoAPMessageType::HELLO:
+        descriptor.ota_upgrade_status_sent();
+        break;
+
       case CoAPMessageType::ERROR:
       default:
         ; // drop it on the floor
@@ -423,7 +427,7 @@ CoAPMessageType::Enum
   }
 }
 
-void SparkProtocol::hello(unsigned char *buf)
+void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
 {
   unsigned short message_id = next_message_id();
 
@@ -438,8 +442,10 @@ void SparkProtocol::hello(unsigned char *buf)
   buf[8] = SPARK_PRODUCT_ID & 0xff;
   buf[9] = PRODUCT_FIRMWARE_VERSION >> 8;
   buf[10] = PRODUCT_FIRMWARE_VERSION & 0xff;
+  buf[11] = 0; // reserved flags
+  buf[12] = newly_upgraded ? 1 : 0;
 
-  memset(buf + 11, 5, 5); // PKCS #7 padding
+  memset(buf + 13, 3, 3); // PKCS #7 padding
 
   encrypt(buf, 16);
 }

@@ -22,6 +22,7 @@ struct ConstructorFixture
   static bool signal_called_with;
   static int variable_to_get;
   static unsigned int mock_millis();
+  static bool mock_ota_status_check();
 
   ConstructorFixture();
   SparkKeys keys;
@@ -143,6 +144,7 @@ ConstructorFixture::ConstructorFixture()
   callbacks.millis = mock_millis;
   descriptor.call_function = mock_call_function;
   descriptor.get_variable = mock_get_variable;
+  descriptor.was_ota_upgrade_successful = mock_ota_status_check;
   function_called = false;
   variable_to_get = -98765;
   spark_protocol.init(id, keys, callbacks, descriptor);
@@ -276,6 +278,11 @@ unsigned int ConstructorFixture::mock_millis()
   return 0;
 }
 
+bool ConstructorFixture::mock_ota_status_check()
+{
+  return false;
+}
+
 SUITE(SparkProtocolConstruction)
 {
   TEST_FIXTURE(ConstructorFixture, NoErrorReturnedFromHandshake)
@@ -364,10 +371,10 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, describe, 18);
     const uint8_t expected[34] = {
       0x00, 0x20,
-      0x5d, 0xf6, 0x26, 0x5a, 0x00, 0xb4, 0x5f, 0x8c,
-      0xaa, 0x96, 0x2e, 0x99, 0x3b, 0x15, 0x69, 0xd4,
-      0x43, 0x85, 0xaa, 0xa1, 0x9b, 0xa4, 0xf6, 0x06,
-      0x17, 0x73, 0x69, 0x52, 0x28, 0xe7, 0x0f, 0xe5 };
+      0x58, 0x8e, 0x14, 0xbb, 0x2f, 0xfe, 0xb9, 0xea,
+      0xb6, 0x0b, 0x97, 0x14, 0x31, 0x69, 0xbe, 0x1c,
+      0x30, 0xf0, 0xf4, 0x91, 0xe4, 0xc6, 0xae, 0xb0,
+      0x83, 0x92, 0x6c, 0x91, 0x01, 0x39, 0x06, 0x6e };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();
