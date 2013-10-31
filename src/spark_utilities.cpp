@@ -388,6 +388,16 @@ int Spark_Disconnect(void)
   return retVal;
 }
 
+void Spark_ConnectAbort_WLANReset(void)
+{
+	//Work around to exit the blocking nature of socket connect call
+	tSLInformation.usEventOrDataReceived = 1;
+	tSLInformation.usRxEventOpcode = 0;
+	tSLInformation.usRxDataPending = 0;
+
+	SPARK_WLAN_RESET = 1;
+}
+
 void *getUserVar(const char *varKey)
 {
   for (int i = 0; i < User_Var_Count; ++i)

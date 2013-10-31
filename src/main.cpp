@@ -251,6 +251,12 @@ void Timing_Decrement(void)
 	{
 		BUTTON_ResetDebouncedState(BUTTON1);
 
+		if(WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_SOCKET_CONNECTED)
+		{
+			//Work around to exit the blocking nature of socket connect call
+			Spark_ConnectAbort_WLANReset();
+		}
+
 		WLAN_SMART_CONFIG_START = 1;
 	}
 	else if(BUTTON_GetDebouncedTime(BUTTON1) >= 7000)

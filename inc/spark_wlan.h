@@ -45,6 +45,8 @@ extern int Spark_Process_API_Response(void);
 
 extern __IO uint32_t TimingSparkAliveTimeout;
 
+extern uint8_t WLAN_DHCP;
+extern __IO uint8_t SPARK_WLAN_RESET;
 extern __IO uint8_t SPARK_WLAN_SLEEP;
 extern __IO uint8_t SPARK_SOCKET_CONNECTED;
 extern __IO uint8_t SPARK_DEVICE_ACKED;

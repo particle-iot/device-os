@@ -416,6 +416,17 @@ void SPARK_WLAN_Loop(void)
 
 			Delay(100);
 
+			if(WLAN_SMART_CONFIG_START)
+			{
+				//Workaround to enter smart config when socket connect had blocked
+				wlan_start(0);
+
+				SPARK_WLAN_STARTED = 1;
+
+				/* Start CC3000 Smart Config Process */
+				Start_Smart_Config();
+			}
+
 			LED_SetRGBColor(RGB_COLOR_GREEN);
 			LED_On(LED_RGB);
 		}
@@ -494,6 +505,9 @@ void SPARK_WLAN_Loop(void)
 
 		if(Spark_Connect() < 0)
 		{
+			if(SPARK_WLAN_RESET)
+				return;
+
 			if(Internet_Test() < 0)
 			{
 				//No Internet Connection

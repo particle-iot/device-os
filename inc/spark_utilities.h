@@ -50,7 +50,7 @@ extern "C" {
 
 int Spark_Connect(void);
 int Spark_Disconnect(void);
-int Spark_Process_API_Response(void);
+void Spark_ConnectAbort_WLANReset(void);
 
 void Spark_Protocol_Init(void);
 int Spark_Handshake(void);
