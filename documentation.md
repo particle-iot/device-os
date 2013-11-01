@@ -101,30 +101,49 @@ Length in bytes of DER-encoded 1024-bit RSA private key
    <tr>
       <th>Memory Address</th>
       <th>Content</th>
+      <th>Size</th>
    </tr>
    <tr>
       <td>0x00000</td>
       <td>Reserved</td>
+      <td>4KB</td>
    </tr>
    <tr> 
       <td>0x01000</td>
       <td>Public Key</td>
+      <td>294 Bytes - 4KB max</td>
    </tr>
    <tr> 
       <td>0x02000</td>
       <td>Private Key</td>
+      <td>612 Bytes</td>
    </tr>
    <tr> 
       <td>0x20000</td>
       <td>Factory Reset Firmware Location</td>
+      <td>128 KB max</td>
    </tr>
    <tr> 
       <td>0x40000</td>
       <td>BackUp Firmware Location</td>
+      <td>128 KB max</td>
    </tr>
    <tr> 
       <td>0x60000</td>
       <td>OTA Firmware Location</td>
+      <td>128 KB max</td>
+   </tr>
+   <tr> 
+      <td>0x80000</td>
+      <td>End of OTA Firmware</td>
+   </tr>
+   <tr> 
+      <td> </td>
+      <td> NOT USED </td>
+   </tr>
+   <tr> 
+      <td>0x200000</td>
+      <td>End of Flash Memory</td>
    </tr>
 </table>
 
@@ -133,18 +152,22 @@ Length in bytes of DER-encoded 1024-bit RSA private key
    <tr>
       <th>Memory Address</th>
       <th>Content</th>
+      <th>Size</th>
    </tr>
    <tr> 
       <td>0x08000000</td>
       <td>Bootloader</td>
+      <td>19 KB max</td>
    </tr>
    <tr> 
       <td>0x08004C00</td>
       <td>System Flags</td>
+      <td>1 KB max</td>
    </tr>
    <tr> 
       <td>0x08005000</td>
       <td>Core Firmware Location</td>
+      <td>108 KB max</td>
    </tr>
 </table>
 
