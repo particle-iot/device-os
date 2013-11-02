@@ -156,9 +156,14 @@ int main(void)
 
       if (!Spark_Communication_Loop())
       {
-        SPARK_SOCKET_CONNECTED = 0;
+        if (LED_RGB_OVERRIDE)
+        {
+          LED_Signaling_Stop();
+        }
+        SPARK_FLASH_UPDATE = 0;
         SPARK_LED_FADE = 0;
         SPARK_HANDSHAKE_COMPLETED = 0;
+        SPARK_SOCKET_CONNECTED = 0;
       }
     }
 #endif
