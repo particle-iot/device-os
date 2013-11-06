@@ -1,10 +1,10 @@
 /**
   ******************************************************************************
-  * @file    application.c
+  * @file    application.cpp
   * @authors  Satish Nair, Zachary Crockett and Mohit Bhoite
   * @version V1.0.0
-  * @date    30-April-2013
-  * @brief   main file
+  * @date    05-November-2013
+  * @brief   Tinker application
   ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
 
@@ -29,7 +29,7 @@
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
-int tinkerDigitalWrite(String pin);
+int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
@@ -48,7 +48,7 @@ void setup()
 }
 
 
-/* This function is loops forever --------------------------------------------*/
+/* This function loops forever --------------------------------------------*/
 void loop()
 {
 	//This will run in a loop
@@ -90,25 +90,25 @@ int tinkerDigitalRead(String pin)
  * Output         : None.
  * Return         : 1 on success and -1 on fail
  *******************************************************************************/
-int tinkerDigitalWrite(String pin)
+int tinkerDigitalWrite(String command)
 {
 	bool value = 0;
 	//convert ascii to integer
-	int pinNumber = pin.charAt(1) - '0';
+	int pinNumber = command.charAt(1) - '0';
 	//Sanity check to see if the pin numbers are within limits
 	if (pinNumber< 0 || pinNumber >7) return -1;
 
-	if(pin.substring(3,7) == "HIGH") value = 1;
-	else if(pin.substring(3,6) == "LOW") value = 0;
+	if(command.substring(3,7) == "HIGH") value = 1;
+	else if(command.substring(3,6) == "LOW") value = 0;
 	else return -1;
 
-	if(pin.startsWith("D"))
+	if(command.startsWith("D"))
 	{
 		pinMode(pinNumber, OUTPUT);
 		digitalWrite(pinNumber, value);
 		return 1;
 	}
-	else if(pin.startsWith("A"))
+	else if(command.startsWith("A"))
 	{
 		pinMode(pinNumber+10, OUTPUT);
 		digitalWrite(pinNumber+10, value);
