@@ -41,7 +41,7 @@ struct User_Var_Lookup_Table_t
 
 struct User_Func_Lookup_Table_t
 {
-	int (*pUserFunc)(char *userArg);
+	int (*pUserFunc)(String userArg);
 	char userFuncKey[USER_FUNC_KEY_LENGTH];
 	char userFuncArg[USER_FUNC_ARG_LENGTH];
 	int userFuncRet;
@@ -98,7 +98,7 @@ void SparkClass::variable(const char *varKey, void *userVar, Spark_Data_TypeDef 
   }
 }
 
-void SparkClass::function(const char *funcKey, int (*pFunc)(char *paramString))
+void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString))
 {
 	int i = 0;
 	if(NULL != pFunc && NULL != funcKey)
@@ -415,6 +415,7 @@ void *getUserVar(const char *varKey)
 
 int userFuncSchedule(const char *funcKey, const char *paramString)
 {
+	String pString(paramString);
 	int i = 0;
 	for(i = 0; i < User_Func_Count; i++)
 	{
@@ -425,7 +426,8 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
 				paramLength = USER_FUNC_ARG_LENGTH;
 			memcpy(User_Func_Lookup_Table[i].userFuncArg, paramString, paramLength);
 			User_Func_Lookup_Table[i].userFuncSchedule = true;
-      return User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
+      //return User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
+      return User_Func_Lookup_Table[i].pUserFunc(pString);
 		}
 	}
 	return -1;

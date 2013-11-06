@@ -3,6 +3,7 @@
 #define __SPARK_UTILITIES_H
 
 #include "main.h"
+#include "spark_wiring_string.h"
 
 #define SPARK_BUF_LEN				600
 
@@ -33,7 +34,7 @@ typedef enum
 class SparkClass {
 public:
 	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
-	static void function(const char *funcKey, int (*pFunc)(char *paramString));
+	static void function(const char *funcKey, int (*pFunc)(String paramString));
 	static void event(const char *eventName, char *eventResult);
 	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 	static void sleep(long seconds);
