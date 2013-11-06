@@ -88,7 +88,7 @@ char *ltoa(long N, char *str, int base)
 }
 
 //convert unsigned long to string
-char* ultoa(unsigned long a, char* buffer, uint8_t radix){
+char* ultoa(unsigned long a, char* buffer, unsigned char radix){
 	if(radix<2 || radix>36){
 		return NULL;
 	}
@@ -120,11 +120,11 @@ char* ultoa(unsigned long a, char* buffer, uint8_t radix){
 }
 
 //convert unsigned int to string
-char* utoa(unsigned a, char* buffer, uint8_t radix){
+char* utoa(unsigned a, char* buffer, unsigned char radix){
 	return ultoa((unsigned)a, buffer, radix);
 }
 
-char* itoa(int a, char* buffer, uint8_t radix){
+char* itoa(int a, char* buffer, unsigned char radix){
 	if(a<0){
 		*buffer = '-';
 		a = -a;
