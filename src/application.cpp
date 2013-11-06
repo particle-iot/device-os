@@ -1,15 +1,41 @@
-//Tinker Application
+/**
+  ******************************************************************************
+  * @file    application.c
+  * @authors  Satish Nair, Zachary Crockett and Mohit Bhoite
+  * @version V1.0.0
+  * @date    30-April-2013
+  * @brief   main file
+  ******************************************************************************
+  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this program; if not, see <http://www.gnu.org/licenses/>.
+  ******************************************************************************
+  */
+
+/* Includes ------------------------------------------------------------------*/  
 #include "application.h"
 
 
+/* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
 int tinkerDigitalWrite(String pin);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
+/* This function is called once at start up ----------------------------------*/
 void setup()
 {
-	//This function is called once
 	//Setup the Tinker application here
 
 	//Register all the Tinker functions
@@ -21,6 +47,8 @@ void setup()
 
 }
 
+
+/* This function is loops forever --------------------------------------------*/
 void loop()
 {
 	//This will run in a loop
@@ -29,15 +57,14 @@ void loop()
 
 /*******************************************************************************
  * Function Name  : tinkerDigitalRead
- * Description    : This functions returns a digital value of the pin passed as 
- 						  an argument to the function.
- * Input          : Pin Number
+ * Description    : Reads the digital value of a given pin
+ * Input          : Pin 
  * Output         : None.
- * Return         : Value of the pin (0 or 1) in INT form
+ * Return         : Value of the pin (0 or 1) in INT type
+ 						  Returns -1 on fail
  *******************************************************************************/
 int tinkerDigitalRead(String pin)
 {
-	//String pin(command);
 	//convert ascii to integer
 	int pinNumber = pin.charAt(1) - '0';
 	//Sanity check to see if the pin numbers are within limits
@@ -58,14 +85,13 @@ int tinkerDigitalRead(String pin)
 
 /*******************************************************************************
  * Function Name  : tinkerDigitalWrite
- * Description    : 
- * Input          : None.
+ * Description    : Sets the specified pin HIGH or LOW
+ * Input          : Pin and value
  * Output         : None.
- * Return         : None.
+ * Return         : 1 on success and -1 on fail
  *******************************************************************************/
 int tinkerDigitalWrite(String pin)
 {
-	//String pin(command);
 	bool value = 0;
 	//convert ascii to integer
 	int pinNumber = pin.charAt(1) - '0';
@@ -88,19 +114,19 @@ int tinkerDigitalWrite(String pin)
 		digitalWrite(pinNumber+10, value);
 		return 1;
 	}
-	else return 0;
+	else return -1;
 }
 
 /*******************************************************************************
  * Function Name  : tinkerAnalogRead
- * Description    : 
- * Input          : None.
+ * Description    : Reads the analog value of a pin
+ * Input          : Pin 
  * Output         : None.
- * Return         : None.
+ * Return         : Returns the analog value in INT type (0 to 4095)
+ 						  Returns -1 on fail
  *******************************************************************************/
 int tinkerAnalogRead(String pin)
 {
-	//String pin(command);
 	//convert ascii to integer
 	int pinNumber = pin.charAt(1) - '0';
 	//Sanity check to see if the pin numbers are within limits
@@ -121,29 +147,18 @@ int tinkerAnalogRead(String pin)
 
 /*******************************************************************************
  * Function Name  : tinkerAnalogWrite
- * Description    : 
- * Input          : None.
+ * Description    : Writes an analog value (PWM) to the specified pin
+ * Input          : Pin and Value (0 to 255)
  * Output         : None.
- * Return         : None.
+ * Return         : 1 on success and -1 on fail
  *******************************************************************************/
 int tinkerAnalogWrite(String command)
 {
-	//String pin(command);
 	//convert ascii to integer
 	int pinNumber = command.charAt(1) - '0';
 	//Sanity check to see if the pin numbers are within limits
 	if (pinNumber< 0 || pinNumber >7) return -1;
 
-	// if (command.charAt(4) == '\0')
-	// {
-	// 	pinMode(D0, OUTPUT);
-	// 	digitalWrite(D0, HIGH);
-	// }
-	// else
-	// {
-	// 	pinMode(D0, OUTPUT);
-	// 	digitalWrite(D0, LOW);
-	// }
 	String value = command.substring(3);
 
 	if(command.startsWith("D"))
