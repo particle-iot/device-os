@@ -393,11 +393,6 @@ void SPARK_WLAN_Loop(void)
 	{
 		if(SPARK_WLAN_STARTED)
 		{
-			if(SPARK_HANDSHAKE_COMPLETED && SPARK_FLASH_UPDATE)
-			{
-				NVIC_SystemReset();
-			}
-
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_WLAN_RESET = 0;

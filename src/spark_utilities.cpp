@@ -291,6 +291,7 @@ void Spark_Protocol_Init(void)
 int Spark_Handshake(void)
 {
   Spark_Protocol_Init();
+  spark_protocol.reset_updating();
   return spark_protocol.handshake();
 }
 
