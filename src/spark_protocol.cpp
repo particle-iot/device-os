@@ -23,9 +23,14 @@ void SparkProtocol::queue_init(void)
   queue_mem_boundary = queue + QUEUE_SIZE;
 }
 
-bool SparkProtocol::is_initialized()
+bool SparkProtocol::is_initialized(void)
 {
   return initialized;
+}
+
+void SparkProtocol::reset_updating(void)
+{
+  updating = false;
 }
 
 void SparkProtocol::init(const char *id,

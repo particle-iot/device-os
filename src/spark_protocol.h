@@ -48,7 +48,8 @@ class SparkProtocol
               const SparkDescriptor &descriptor);
     int handshake(void);
     bool event_loop(void);
-    bool is_initialized();
+    bool is_initialized(void);
+    void reset_updating(void);
 
     int set_key(const unsigned char *signed_encrypted_credentials);
     int blocking_send(const unsigned char *buf, int length);
