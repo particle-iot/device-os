@@ -21,8 +21,7 @@ extern "C" {
 #define WLAN_TIMEOUT_FILE_OFFSET	2
 #define ERROR_COUNT_FILE_OFFSET		3
 
-#define TIMING_SPARK_PROCESS_API	200		//200ms
-#define TIMING_SPARK_ALIVE_TIMEOUT	15000	//15sec
+#define TIMING_SPARK_COMM_TIMEOUT	30000	//30sec
 
 void Set_NetApp_Timeout(void);
 void Clear_NetApp_Dhcp(void);
@@ -43,7 +42,7 @@ extern int Spark_Connect(void);
 extern int Spark_Disconnect(void);
 extern int Spark_Process_API_Response(void);
 
-extern __IO uint32_t TimingSparkAliveTimeout;
+extern __IO uint32_t TimingSparkCommTimeout;
 
 extern uint8_t WLAN_DHCP;
 extern __IO uint8_t SPARK_WLAN_RESET;

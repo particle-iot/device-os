@@ -2,8 +2,7 @@
 #include "string.h"
 #include "wifi_credentials_reader.h"
 
-__IO uint32_t TimingSparkProcessAPI;
-__IO uint32_t TimingSparkAliveTimeout;
+__IO uint32_t TimingSparkCommTimeout;
 
 uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
 uint8_t WLAN_DELETE_PROFILES;
@@ -97,8 +96,7 @@ void Start_Smart_Config(void)
 	SPARK_FLASH_UPDATE = 0;
 	SPARK_LED_FADE = 0;
 
-	TimingSparkProcessAPI = 0;
-	TimingSparkAliveTimeout = 0;
+	TimingSparkCommTimeout = 0;
 
 #if defined (USE_SPARK_CORE_V02)
 	LED_SetRGBColor(RGB_COLOR_BLUE);
@@ -262,8 +260,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
 			Spark_Error_Count = 0;
-			TimingSparkProcessAPI = 0;
-			TimingSparkAliveTimeout = 0;
+			TimingSparkCommTimeout = 0;
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
@@ -396,6 +393,11 @@ void SPARK_WLAN_Loop(void)
 	{
 		if(SPARK_WLAN_STARTED)
 		{
+			if(SPARK_HANDSHAKE_COMPLETED && SPARK_FLASH_UPDATE)
+			{
+				NVIC_SystemReset();
+			}
+
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_WLAN_RESET = 0;
@@ -405,8 +407,7 @@ void SPARK_WLAN_Loop(void)
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
 			Spark_Error_Count = 0;
-			TimingSparkProcessAPI = 0;
-			TimingSparkAliveTimeout = 0;
+			TimingSparkCommTimeout = 0;
 
 			CC3000_Write_Enable_Pin(WLAN_DISABLE);
 

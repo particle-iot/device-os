@@ -68,8 +68,8 @@ int main(void)
 #endif
 
 #ifdef SWD_JTAG_DISABLE
-    /* Disable the Serial Wire JTAG Debug Port SWJ-DP */
-    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
+	/* Disable the Serial Wire JTAG Debug Port SWJ-DP */
+	GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
 #endif
 
 	Set_System();
@@ -80,12 +80,12 @@ int main(void)
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
 
 #if defined (USE_SPARK_CORE_V02)
-    LED_SetRGBColor(RGB_COLOR_WHITE);
-    LED_On(LED_RGB);
-    SPARK_LED_FADE = 1;
+	LED_SetRGBColor(RGB_COLOR_WHITE);
+	LED_On(LED_RGB);
+	SPARK_LED_FADE = 1;
 
 #if defined (SPARK_RTC_ENABLE)
-    RTC_Configuration();
+	RTC_Configuration();
 #endif
 #endif
 
@@ -127,45 +127,47 @@ int main(void)
 	while (1)
 	{
 #ifdef SPARK_WLAN_ENABLE
-    uint8_t SOCKET_WAS_CONNECTED = SPARK_SOCKET_CONNECTED;
-		SPARK_WLAN_Loop();
-    if (SPARK_SOCKET_CONNECTED)
-    {
-      if (!SOCKET_WAS_CONNECTED)
-      {
-        int err = Spark_Handshake();
-        if (err)
-        {
-          if (1 == err)
-          {
-            // RSA decryption error, orange
-            LED_SetRGBColor(0xff6000);
-          }
-          else if (2 == err)
-          {
-            // RSA signature verification error, magenta
-            LED_SetRGBColor(0xff00ff);
-          }
-          LED_On(LED_RGB);
-        }
-        else
-        {
-          SPARK_HANDSHAKE_COMPLETED = 1;
-        }
-      }
+		uint8_t SOCKET_WAS_CONNECTED = SPARK_SOCKET_CONNECTED;
 
-      if (!Spark_Communication_Loop())
-      {
-        if (LED_RGB_OVERRIDE)
-        {
-          LED_Signaling_Stop();
-        }
-        SPARK_FLASH_UPDATE = 0;
-        SPARK_LED_FADE = 0;
-        SPARK_HANDSHAKE_COMPLETED = 0;
-        SPARK_SOCKET_CONNECTED = 0;
-      }
-    }
+		SPARK_WLAN_Loop();
+
+		if (SPARK_SOCKET_CONNECTED)
+		{
+			if (!SOCKET_WAS_CONNECTED)
+			{
+				int err = Spark_Handshake();
+				if (err)
+				{
+					if (1 == err)
+					{
+						// RSA decryption error, orange
+						LED_SetRGBColor(0xff6000);
+					}
+					else if (2 == err)
+					{
+						// RSA signature verification error, magenta
+						LED_SetRGBColor(0xff00ff);
+					}
+					LED_On(LED_RGB);
+				}
+				else
+				{
+					SPARK_HANDSHAKE_COMPLETED = 1;
+				}
+			}
+
+			if (!Spark_Communication_Loop())
+			{
+				if (LED_RGB_OVERRIDE)
+				{
+					LED_Signaling_Stop();
+				}
+				SPARK_FLASH_UPDATE = 0;
+				SPARK_LED_FADE = 0;
+				SPARK_HANDSHAKE_COMPLETED = 0;
+				SPARK_SOCKET_CONNECTED = 0;
+			}
+		}
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
@@ -190,69 +192,70 @@ int main(void)
 }
 
 /*******************************************************************************
-* Function Name  : Timing_Decrement
-* Description    : Decrements the various Timing variables related to SysTick.
-* Input          : None
-* Output         : Timing
-* Return         : None
-*******************************************************************************/
+ * Function Name  : Timing_Decrement
+ * Description    : Decrements the various Timing variables related to SysTick.
+ * Input          : None
+ * Output         : Timing
+ * Return         : None
+ *******************************************************************************/
 void Timing_Decrement(void)
 {
 	TimingMillis++;
 
-    if (TimingDelay != 0x00)
-    {
-        TimingDelay--;
-    }
+	if (TimingDelay != 0x00)
+	{
+		TimingDelay--;
+	}
 
-    if (LED_RGB_OVERRIDE != 0)
-    {
-    	if (NULL != LED_Signaling_Override)
-    	{
-    		LED_Signaling_Override();
-    	}
-    }
-    else if (TimingLED != 0x00)
-    {
-    	TimingLED--;
-    }
-    else if(WLAN_SMART_CONFIG_START || SPARK_FLASH_UPDATE || Spark_Error_Count)
-    {
-    	//Do nothing
-    }
-    else if(SPARK_LED_FADE)
-    {
+	if (LED_RGB_OVERRIDE != 0)
+	{
+		if (NULL != LED_Signaling_Override)
+		{
+			LED_Signaling_Override();
+		}
+	}
+	else if (TimingLED != 0x00)
+	{
+		TimingLED--;
+	}
+	else if(WLAN_SMART_CONFIG_START || SPARK_FLASH_UPDATE || Spark_Error_Count)
+	{
+		//Do nothing
+	}
+	else if(SPARK_LED_FADE)
+	{
 #if defined (USE_SPARK_CORE_V02)
-    	LED_Fade(LED_RGB);
-    	if(SPARK_HANDSHAKE_COMPLETED)
-    		TimingLED = 20;
-    	else
-    		TimingLED = 1;
+		LED_Fade(LED_RGB);
+		if(SPARK_HANDSHAKE_COMPLETED)
+			TimingLED = 20;
+		else
+			TimingLED = 1;
 #endif
-    }
-    else if(SPARK_HANDSHAKE_COMPLETED)
-    {
+	}
+	else if(SPARK_HANDSHAKE_COMPLETED)
+	{
 #if defined (USE_SPARK_CORE_V01)
-    	LED_On(LED1);
+		LED_On(LED1);
 #elif defined (USE_SPARK_CORE_V02)
-    	LED_SetRGBColor(RGB_COLOR_CYAN);
-    	LED_On(LED_RGB);
+		LED_SetRGBColor(RGB_COLOR_CYAN);
+		LED_On(LED_RGB);
 #endif
-    	SPARK_LED_FADE = 1;
-    }
-    else
-    {
+		SPARK_LED_FADE = 1;
+	}
+	else
+	{
 #if defined (USE_SPARK_CORE_V01)
-    	LED_Toggle(LED1);
+		LED_Toggle(LED1);
 #elif defined (USE_SPARK_CORE_V02)
-    	LED_Toggle(LED_RGB);
+		LED_Toggle(LED_RGB);
 #endif
-    	if(SPARK_SOCKET_CONNECTED)
-    		TimingLED = 50;		//50ms
-    	else
-    		TimingLED = 100;	//100ms
-    }
+		if(SPARK_SOCKET_CONNECTED)
+			TimingLED = 50;		//50ms
+		else
+			TimingLED = 100;	//100ms
+	}
 
+#ifdef SPARK_WLAN_ENABLE
 	if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
 	{
 		BUTTON_ResetDebouncedState(BUTTON1);
@@ -275,27 +278,56 @@ void Timing_Decrement(void)
 		WLAN_DELETE_PROFILES = 1;
 	}
 
+	if(!SPARK_WLAN_SLEEP && SPARK_HANDSHAKE_COMPLETED)
+	{
+		if (TimingSparkCommTimeout >= TIMING_SPARK_COMM_TIMEOUT)
+		{
+			TimingSparkCommTimeout = 0;
+
+			//Work around to reset WLAN in special cases such as
+			//when the server goes down during OTA upgrade
+			Spark_ConnectAbort_WLANReset();
+		}
+		else
+		{
+			TimingSparkCommTimeout++;
+		}
+	}
+#endif
+
 #ifdef IWDG_RESET_ENABLE
 	if (TimingIWDGReload >= TIMING_IWDG_RELOAD)
 	{
 		TimingIWDGReload = 0;
 
-	    /* Reload IWDG counter */
-	    IWDG_ReloadCounter();
+		/* Reload IWDG counter */
+		IWDG_ReloadCounter();
 	}
 	else
 	{
 		TimingIWDGReload++;
 	}
 #endif
+
+	if (TimingIWDGReload >= TIMING_IWDG_RELOAD)
+	{
+		TimingIWDGReload = 0;
+
+		/* Reload IWDG counter */
+		IWDG_ReloadCounter();
+	}
+	else
+	{
+		TimingIWDGReload++;
+	}
 }
 
 /*******************************************************************************
-* Function Name  : USB_USART_Init
-* Description    : Start USB-USART protocol.
-* Input          : baudRate.
-* Return         : None.
-*******************************************************************************/
+ * Function Name  : USB_USART_Init
+ * Description    : Start USB-USART protocol.
+ * Input          : baudRate.
+ * Return         : None.
+ *******************************************************************************/
 void USB_USART_Init(uint32_t baudRate)
 {
 	linecoding.bitrate = baudRate;
@@ -306,11 +338,11 @@ void USB_USART_Init(uint32_t baudRate)
 }
 
 /*******************************************************************************
-* Function Name  : USB_USART_Available_Data.
-* Description    : Return the length of available data received from USB.
-* Input          : None.
-* Return         : Length.
-*******************************************************************************/
+ * Function Name  : USB_USART_Available_Data.
+ * Description    : Return the length of available data received from USB.
+ * Input          : None.
+ * Return         : Length.
+ *******************************************************************************/
 uint8_t USB_USART_Available_Data(void)
 {
 	if(bDeviceState == CONFIGURED)
@@ -325,11 +357,11 @@ uint8_t USB_USART_Available_Data(void)
 }
 
 /*******************************************************************************
-* Function Name  : USB_USART_Receive_Data.
-* Description    : Return data sent by USB Host.
-* Input          : None
-* Return         : Data.
-*******************************************************************************/
+ * Function Name  : USB_USART_Receive_Data.
+ * Description    : Return data sent by USB Host.
+ * Input          : None
+ * Return         : Data.
+ *******************************************************************************/
 int32_t USB_USART_Receive_Data(void)
 {
 	if(bDeviceState == CONFIGURED)
@@ -352,11 +384,11 @@ int32_t USB_USART_Receive_Data(void)
 }
 
 /*******************************************************************************
-* Function Name  : USB_USART_Send_Data.
-* Description    : Send Data from USB_USART to USB Host.
-* Input          : Data.
-* Return         : None.
-*******************************************************************************/
+ * Function Name  : USB_USART_Send_Data.
+ * Description    : Send Data from USB_USART to USB Host.
+ * Input          : Data.
+ * Return         : None.
+ *******************************************************************************/
 void USB_USART_Send_Data(uint8_t Data)
 {
 	if(bDeviceState == CONFIGURED)
@@ -374,113 +406,113 @@ void USB_USART_Send_Data(uint8_t Data)
 }
 
 /*******************************************************************************
-* Function Name  : Handle_USBAsynchXfer.
-* Description    : send data to USB.
-* Input          : None.
-* Return         : None.
-*******************************************************************************/
+ * Function Name  : Handle_USBAsynchXfer.
+ * Description    : send data to USB.
+ * Input          : None.
+ * Return         : None.
+ *******************************************************************************/
 void Handle_USBAsynchXfer (void)
 {
 
-  uint16_t USB_Tx_ptr;
-  uint16_t USB_Tx_length;
+	uint16_t USB_Tx_ptr;
+	uint16_t USB_Tx_length;
 
-  if(USB_Tx_State != 1)
-  {
-    if (USART_Rx_ptr_out == USART_RX_DATA_SIZE)
-    {
-      USART_Rx_ptr_out = 0;
-    }
+	if(USB_Tx_State != 1)
+	{
+		if (USART_Rx_ptr_out == USART_RX_DATA_SIZE)
+		{
+			USART_Rx_ptr_out = 0;
+		}
 
-    if(USART_Rx_ptr_out == USART_Rx_ptr_in)
-    {
-      USB_Tx_State = 0;
-      return;
-    }
+		if(USART_Rx_ptr_out == USART_Rx_ptr_in)
+		{
+			USB_Tx_State = 0;
+			return;
+		}
 
-    if(USART_Rx_ptr_out > USART_Rx_ptr_in) /* rollback */
-    {
-      USART_Rx_length = USART_RX_DATA_SIZE - USART_Rx_ptr_out;
-    }
-    else
-    {
-      USART_Rx_length = USART_Rx_ptr_in - USART_Rx_ptr_out;
-    }
+		if(USART_Rx_ptr_out > USART_Rx_ptr_in) /* rollback */
+				{
+			USART_Rx_length = USART_RX_DATA_SIZE - USART_Rx_ptr_out;
+				}
+		else
+		{
+			USART_Rx_length = USART_Rx_ptr_in - USART_Rx_ptr_out;
+		}
 
-    if (USART_Rx_length > VIRTUAL_COM_PORT_DATA_SIZE)
-    {
-      USB_Tx_ptr = USART_Rx_ptr_out;
-      USB_Tx_length = VIRTUAL_COM_PORT_DATA_SIZE;
+		if (USART_Rx_length > VIRTUAL_COM_PORT_DATA_SIZE)
+		{
+			USB_Tx_ptr = USART_Rx_ptr_out;
+			USB_Tx_length = VIRTUAL_COM_PORT_DATA_SIZE;
 
-      USART_Rx_ptr_out += VIRTUAL_COM_PORT_DATA_SIZE;
-      USART_Rx_length -= VIRTUAL_COM_PORT_DATA_SIZE;
-    }
-    else
-    {
-      USB_Tx_ptr = USART_Rx_ptr_out;
-      USB_Tx_length = USART_Rx_length;
+			USART_Rx_ptr_out += VIRTUAL_COM_PORT_DATA_SIZE;
+			USART_Rx_length -= VIRTUAL_COM_PORT_DATA_SIZE;
+		}
+		else
+		{
+			USB_Tx_ptr = USART_Rx_ptr_out;
+			USB_Tx_length = USART_Rx_length;
 
-      USART_Rx_ptr_out += USART_Rx_length;
-      USART_Rx_length = 0;
-    }
-    USB_Tx_State = 1;
-    UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
-    SetEPTxCount(ENDP1, USB_Tx_length);
-    SetEPTxValid(ENDP1);
-  }
+			USART_Rx_ptr_out += USART_Rx_length;
+			USART_Rx_length = 0;
+		}
+		USB_Tx_State = 1;
+		UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
+		SetEPTxCount(ENDP1, USB_Tx_length);
+		SetEPTxValid(ENDP1);
+	}
 
 }
 
 /*******************************************************************************
-* Function Name  : Get_SerialNum.
-* Description    : Create the serial number string descriptor.
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
+ * Function Name  : Get_SerialNum.
+ * Description    : Create the serial number string descriptor.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
 void Get_SerialNum(void)
 {
-  uint32_t Device_Serial0, Device_Serial1, Device_Serial2;
+	uint32_t Device_Serial0, Device_Serial1, Device_Serial2;
 
-  Device_Serial0 = *(uint32_t*)ID1;
-  Device_Serial1 = *(uint32_t*)ID2;
-  Device_Serial2 = *(uint32_t*)ID3;
+	Device_Serial0 = *(uint32_t*)ID1;
+	Device_Serial1 = *(uint32_t*)ID2;
+	Device_Serial2 = *(uint32_t*)ID3;
 
-  Device_Serial0 += Device_Serial2;
+	Device_Serial0 += Device_Serial2;
 
-  if (Device_Serial0 != 0)
-  {
-    IntToUnicode (Device_Serial0, &Virtual_Com_Port_StringSerial[2] , 8);
-    IntToUnicode (Device_Serial1, &Virtual_Com_Port_StringSerial[18], 4);
-  }
+	if (Device_Serial0 != 0)
+	{
+		IntToUnicode (Device_Serial0, &Virtual_Com_Port_StringSerial[2] , 8);
+		IntToUnicode (Device_Serial1, &Virtual_Com_Port_StringSerial[18], 4);
+	}
 }
 
 /*******************************************************************************
-* Function Name  : HexToChar.
-* Description    : Convert Hex 32Bits value into char.
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
+ * Function Name  : HexToChar.
+ * Description    : Convert Hex 32Bits value into char.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
 {
-  uint8_t idx = 0;
+	uint8_t idx = 0;
 
-  for( idx = 0 ; idx < len ; idx ++)
-  {
-    if( ((value >> 28)) < 0xA )
-    {
-      pbuf[ 2* idx] = (value >> 28) + '0';
-    }
-    else
-    {
-      pbuf[2* idx] = (value >> 28) + 'A' - 10;
-    }
+	for( idx = 0 ; idx < len ; idx ++)
+	{
+		if( ((value >> 28)) < 0xA )
+		{
+			pbuf[ 2* idx] = (value >> 28) + '0';
+		}
+		else
+		{
+			pbuf[2* idx] = (value >> 28) + 'A' - 10;
+		}
 
-    value = value << 4;
+		value = value << 4;
 
-    pbuf[ 2* idx + 1] = 0;
-  }
+		pbuf[ 2* idx + 1] = 0;
+	}
 }
 
 #ifdef USE_FULL_ASSERT
