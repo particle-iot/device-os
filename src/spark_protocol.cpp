@@ -49,6 +49,8 @@ void SparkProtocol::init(const char *id,
   callback_signal = callbacks.signal;
   callback_millis = callbacks.millis;
 
+  this->descriptor.num_functions = descriptor.num_functions;
+  this->descriptor.copy_function_key = descriptor.copy_function_key;
   this->descriptor.call_function = descriptor.call_function;
   this->descriptor.get_variable = descriptor.get_variable;
   this->descriptor.was_ota_upgrade_successful = descriptor.was_ota_upgrade_successful;
@@ -106,10 +108,21 @@ bool SparkProtocol::event_loop(void)
     {
       case CoAPMessageType::DESCRIBE:
       {
-        const char *function_names[0];
-        int desc_len = description(queue + 2, token, function_names, 0);
-        queue[0] = 0;
-        queue[1] = 32;
+        int num_funcs = descriptor.num_functions();
+
+        // allocate enough space for all the function keys
+        char flat_chunk_of_mem[num_funcs * MAX_FUNCTION_KEY_LENGTH];
+        const char *function_keys[num_funcs];
+        for (int i = 0; i < num_funcs; ++i)
+        {
+          char *p = flat_chunk_of_mem + (MAX_FUNCTION_KEY_LENGTH * i);
+          descriptor.copy_function_key(p, i);
+          function_keys[i] = p;
+        }
+
+        int desc_len = description(queue + 2, token, function_keys, num_funcs);
+        queue[0] = (desc_len >> 8) & 0xff;
+        queue[1] = desc_len & 0xff;
         if (0 > blocking_send(queue, desc_len + 2))
         {
           // error
@@ -665,6 +678,8 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
     *buf_ptr = '"';
     ++buf_ptr;
     int function_name_length = strlen(function_names[i]);
+    if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
+      function_name_length = MAX_FUNCTION_KEY_LENGTH;
     memcpy(buf_ptr, function_names[i], function_name_length);
     buf_ptr += function_name_length;
     *buf_ptr = '"';

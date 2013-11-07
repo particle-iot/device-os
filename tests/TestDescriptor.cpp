@@ -3,6 +3,8 @@
 
 struct FunctionFixture {
   static int execute_a_function(const char *func_key, const char *arg);
+  static int get_number_of_funcs(void);
+  static void copy_a_function_key(char *destination, int function_index);
 };
 
 int FunctionFixture::execute_a_function(const char *func_key,
@@ -14,22 +16,34 @@ int FunctionFixture::execute_a_function(const char *func_key,
   return 99;
 }
 
+int FunctionFixture::get_number_of_funcs(void)
+{
+  return 3;
+}
+
+void FunctionFixture::copy_a_function_key(char *destination, int function_index)
+{
+  const char *function_keys[] = {
+    "brew\0\0\0\0\0\0\0\0", "clean\0\0\0\0\0\0\0", "bean_alert\0\0" };
+  memcpy(destination, function_keys[function_index], 12);
+}
+
 SUITE(Descriptor)
 {
-  TEST(DescriptorKnowsNumberOfRegisteredFunctions)
+  TEST_FIXTURE(FunctionFixture, DescriptorKnowsNumberOfRegisteredFunctions)
   {
-    unsigned char num_funcs = 3;
     SparkDescriptor descriptor;
-    descriptor.num_funcs_ptr = &num_funcs;
-    CHECK_EQUAL(3, *descriptor.num_funcs_ptr);
+    descriptor.num_functions = get_number_of_funcs;
+    CHECK_EQUAL(3, descriptor.num_functions());
   }
 
-  TEST(DescriptorCanAccessArrayOfFunctionKeys)
+  TEST_FIXTURE(FunctionFixture, DescriptorCanAccessArrayOfFunctionKeys)
   {
-    const char *function_keys[] = { "brew", "clean", "bean_alert" };
     SparkDescriptor descriptor;
-    descriptor.function_keys = function_keys;
-    CHECK_EQUAL("bean_alert", descriptor.function_keys[2]);
+    descriptor.copy_function_key = copy_a_function_key;
+    char buf[12];
+    descriptor.copy_function_key(buf, 2);
+    CHECK_EQUAL("bean_alert\0\0", buf);
   }
 
   TEST_FIXTURE(FunctionFixture, DescriptorCanCallRegisteredFunction)

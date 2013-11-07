@@ -11,11 +11,13 @@ struct ConstructorFixture
   static int bytes_sent[2];
   static int bytes_received[2];
   static uint8_t sent_buf_0[256];
-  static uint8_t sent_buf_1[18];
+  static uint8_t sent_buf_1[256];
   static int mock_send(const unsigned char *buf, int buflen);
   static int mock_receive(unsigned char *buf, int buflen);
   static uint8_t message_to_receive[34];
   static bool function_called;
+  static int mock_num_functions(void);
+  static void mock_copy_function_key(char *destination, int function_index);
   static int mock_call_function(const char *function_key, const char *arg);
   static void *mock_get_variable(const char *variable_key);
   static void mock_signal(bool on);
@@ -130,7 +132,7 @@ const uint8_t ConstructorFixture::signed_encrypted_credentials[385] =
 int ConstructorFixture::bytes_sent[2] = { 0, 0 };
 int ConstructorFixture::bytes_received[2] = { 0, 0 };
 uint8_t ConstructorFixture::sent_buf_0[256];
-uint8_t ConstructorFixture::sent_buf_1[18];
+uint8_t ConstructorFixture::sent_buf_1[256];
 
 ConstructorFixture::ConstructorFixture()
 {
@@ -142,6 +144,8 @@ ConstructorFixture::ConstructorFixture()
   callbacks.receive = mock_receive;
   callbacks.signal = mock_signal;
   callbacks.millis = mock_millis;
+  descriptor.num_functions = mock_num_functions;
+  descriptor.copy_function_key = mock_copy_function_key;
   descriptor.call_function = mock_call_function;
   descriptor.get_variable = mock_get_variable;
   descriptor.was_ota_upgrade_successful = mock_ota_status_check;
@@ -251,6 +255,17 @@ bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
 bool ConstructorFixture::signal_called_with = false;
 
+int ConstructorFixture::mock_num_functions(void)
+{
+  return 1;
+}
+
+void ConstructorFixture::mock_copy_function_key(char *dst, int i)
+{
+  const char *funcs[1] = { "brew\0\0\0\0\0\0\0\0" };
+  memcpy(dst, funcs[i], SparkProtocol::MAX_FUNCTION_KEY_LENGTH);
+}
+
 int ConstructorFixture::mock_call_function(const char *function_key,
                                            const char *arg)
 {
@@ -303,7 +318,7 @@ SUITE(SparkProtocolConstruction)
     CHECK_EQUAL(256, bytes_sent[0]);
   }
 
-  TEST_FIXTURE(ConstructorFixture, HandshakeLaterReceives512Bytes)
+  TEST_FIXTURE(ConstructorFixture, HandshakeLaterReceives384Bytes)
   {
     spark_protocol.handshake();
     CHECK_EQUAL(384, bytes_received[1]);

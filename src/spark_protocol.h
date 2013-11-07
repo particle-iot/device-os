@@ -37,6 +37,7 @@ struct SparkCallbacks
 class SparkProtocol
 {
   public:
+    static const int MAX_FUNCTION_KEY_LENGTH = 12;
     static int presence_announcement(unsigned char *buf, const char *id);
 
     SparkProtocol();
@@ -110,6 +111,7 @@ class SparkProtocol
     unsigned int (*callback_millis)();
 
     SparkDescriptor descriptor;
+
     unsigned char key[16];
     unsigned char iv_send[16];
     unsigned char iv_receive[16];
