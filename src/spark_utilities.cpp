@@ -239,6 +239,18 @@ void Spark_Finish_Firmware_Update(void)
   FLASH_End();
 }
 
+int numUserFunctions(void)
+{
+  return User_Func_Count;
+}
+
+void copyUserFunctionKey(char *destination, int function_index)
+{
+  memcpy(destination,
+         User_Func_Lookup_Table[function_index].userFuncKey,
+         USER_FUNC_KEY_LENGTH);
+}
+
 void Spark_Protocol_Init(void)
 {
   if (!spark_protocol.is_initialized())
@@ -254,6 +266,8 @@ void Spark_Protocol_Init(void)
     callbacks.millis = millis;
 
     SparkDescriptor descriptor;
+    descriptor.num_functions = numUserFunctions;
+    descriptor.copy_function_key = copyUserFunctionKey;
     descriptor.call_function = userFuncSchedule;
     descriptor.get_variable = getUserVar;
     descriptor.was_ota_upgrade_successful = OTA_Flashed_GetStatus;
