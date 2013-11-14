@@ -447,7 +447,7 @@ SUITE(CoAP)
     init();
     const char *fnames[1];
     fnames[0] = "brew";
-    spark_protocol.description(buf, 0x66, fnames, 1);
+    spark_protocol.description(buf, 0x66, 0xf6, 0x49, fnames, 1);
     CHECK_ARRAY_EQUAL(expected, buf, 32);
   }
 

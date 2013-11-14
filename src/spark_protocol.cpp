@@ -125,7 +125,7 @@ bool SparkProtocol::event_loop(void)
           function_keys[i] = p;
         }
 
-        int desc_len = description(queue + 2, token, function_keys, num_funcs);
+        int desc_len = description(queue + 2, token, queue[2], queue[3], function_keys, num_funcs);
         queue[0] = (desc_len >> 8) & 0xff;
         queue[1] = desc_len & 0xff;
         if (0 > blocking_send(queue, desc_len + 2))
@@ -659,14 +659,13 @@ void SparkProtocol::update_ready(unsigned char *buf, unsigned char token)
 }
 
 int SparkProtocol::description(unsigned char *buf, unsigned char token,
+                               unsigned char message_id_msb, unsigned char message_id_lsb,
                                const char **function_names, int num_functions)
 {
-  unsigned short message_id = next_message_id();
-
   buf[0] = 0x61; // acknowledgment, one-byte token
   buf[1] = 0x45; // response code 2.05 CONTENT
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
+  buf[2] = message_id_msb;
+  buf[3] = message_id_lsb;
   buf[4] = token;
   buf[5] = 0xff; // payload marker
 
@@ -840,6 +839,7 @@ void SparkProtocol::encrypt(unsigned char *buf, int length)
 {
   aes_setkey_enc(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv_send, buf, buf);
+  memcpy(iv_send, buf, 16);
 }
 
 void SparkProtocol::separate_response(unsigned char *buf,

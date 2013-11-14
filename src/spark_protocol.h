@@ -84,6 +84,7 @@ class SparkProtocol
                         ChunkReceivedCode::Enum code);
     void update_ready(unsigned char *buf, unsigned char token);
     int description(unsigned char *buf, unsigned char token,
+                    unsigned char message_id_msb, unsigned char message_id_lsb,
                     const char **function_names, int num_functions);
     void ping(unsigned char *buf);
 
