@@ -1,8 +1,17 @@
-#include <WiringUdp.h>
+/*
+  TCP/UDP library
+  API declarations borrowed from Arduino & Wiring
+  Modified by Spark
+*/
+
+#ifndef __SPARK_WIRING_UDP_H
+#define __SPARK_WIRING_UDP_H
+
+#include "spark_wiring.h"
 
 #define UDP_TX_PACKET_MAX_SIZE 24
 
-class UDP : public WiringUDP {
+class UDP {
 private:
   uint8_t _sock;  // socket ID for Wiz5100
   uint16_t _port; // local port to listen on
@@ -32,7 +41,7 @@ public:
   // Write size bytes from buffer into the packet
   virtual size_t write(const uint8_t *buffer, size_t size);
   
-  using Print::write;
+  //using Print::write;
 
   // Start processing the next available incoming packet
   // Returns the size of the packet in bytes, or 0 if no packets are available
@@ -56,3 +65,5 @@ public:
   // Return the port of the host who sent the current incoming packet
   virtual uint16_t remotePort() { return _remotePort; };
 };
+
+#endif

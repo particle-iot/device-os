@@ -11,6 +11,7 @@
 #include "stm32f10x.h"
 #include "platform_config.h"
 #include "spark_utilities.h"
+#include "spark_wiring_ipaddress.h"
 
 /*
 * Basic variables
@@ -94,6 +95,8 @@
 
 #define LSBFIRST 0
 #define MSBFIRST 1
+
+#define MAX_SOCK_NUM 4
 
 typedef unsigned char byte;
 

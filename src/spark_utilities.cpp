@@ -467,6 +467,11 @@ void userEventSend(void)
 	}
 }
 
+long socket_connect(long sd, const sockaddr *addr, long addrlen)
+{
+	return connect(sd, addr, addrlen);
+}
+
 // Convert unsigned integer to ASCII in decimal base
 /*
 static unsigned char uitoa(unsigned int cNum, char *cString)

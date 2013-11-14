@@ -5,6 +5,8 @@
 #include "main.h"
 #include "spark_wiring_string.h"
 
+#define BYTE_N(x,n)					(((x) >> n*8) & 0x000000FF)
+
 #define SPARK_BUF_LEN				600
 
 //#define SPARK_SERVER_IP				"54.235.79.249"
@@ -63,6 +65,8 @@ void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString);
 
 void userEventSend(void);
+
+long socket_connect(long sd, const sockaddr *addr, long addrlen);
 
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
