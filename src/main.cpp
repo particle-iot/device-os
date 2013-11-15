@@ -28,6 +28,8 @@ extern "C" {
 /* Private variables ---------------------------------------------------------*/
 __IO uint32_t TimingMillis;
 
+uint8_t ApplicationSetupOnce = 0;
+
 uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
 uint32_t USART_Rx_ptr_in = 0;
 uint32_t USART_Rx_ptr_out = 0;
@@ -112,13 +114,6 @@ int main(void)
 	sFLASH_Init();
 #endif
 
-#ifdef SPARK_WIRING_ENABLE
-	if((IWDG_SYSTEM_RESET != 1) && (NULL != setup))
-	{
-		setup();
-	}
-#endif
-
 #ifdef SPARK_WLAN_ENABLE
 	SPARK_WLAN_Setup(Multicast_Presence_Announcement);
 #endif
@@ -153,6 +148,7 @@ int main(void)
 				else
 				{
 					SPARK_HANDSHAKE_COMPLETED = 1;
+					ApplicationSetupOnce = 1;
 				}
 			}
 
@@ -175,6 +171,12 @@ int main(void)
 		if(SPARK_HANDSHAKE_COMPLETED && !SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 		{
 #endif
+			if((ApplicationSetupOnce != 0) && (NULL != setup))
+			{
+				//Execute user application setup only once
+				setup();
+				ApplicationSetupOnce = 0;
+			}
 
 			if(NULL != loop)
 			{
