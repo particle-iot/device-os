@@ -310,18 +310,6 @@ void Timing_Decrement(void)
 		TimingIWDGReload++;
 	}
 #endif
-
-	if (TimingIWDGReload >= TIMING_IWDG_RELOAD)
-	{
-		TimingIWDGReload = 0;
-
-		/* Reload IWDG counter */
-		IWDG_ReloadCounter();
-	}
-	else
-	{
-		TimingIWDGReload++;
-	}
 }
 
 /*******************************************************************************
