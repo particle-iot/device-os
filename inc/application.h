@@ -17,4 +17,6 @@
 #include "spark_wiring_spi.h"
 #include "spark_wiring_i2c.h"
 
+ #include "spark_wiring_tcpclient.h"
+
 #endif /* APPLICATION_H_ */

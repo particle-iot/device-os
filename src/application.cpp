@@ -33,6 +33,9 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
+char google[] = "www.google.com";
+TCPClient client;
+
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
@@ -45,6 +48,19 @@ void setup()
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
 
+	pinMode(D0,OUTPUT);
+	pinMode(D7,OUTPUT);
+
+	digitalWrite(D0,LOW);
+	digitalWrite(D7,LOW);
+
+	if (client.connect(google, 80)) 
+		{
+    		digitalWrite(D7,HIGH);
+		}
+	else digitalWrite(D7,LOW);
+
+	Serial.begin(9600);	
 }
 
 
@@ -52,6 +68,13 @@ void setup()
 void loop()
 {
 	//This will run in a loop
+	while (client.available()) 
+	{
+    char c = client.read();
+    Serial.write(c);
+    digitalWrite(D0,HIGH);
+   }
+   digitalWrite(D0,LOW);
 }
 
 
