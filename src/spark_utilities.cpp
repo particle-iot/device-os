@@ -198,6 +198,12 @@ int Spark_Send(const unsigned char *buf, int buflen)
 // Returns number of bytes received or -1 if an error occurred
 int Spark_Receive(unsigned char *buf, int buflen)
 {
+  if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
+  {
+    //break from any blocking loop
+    return -1;
+  }
+
   // reset the fd_set structure
   FD_ZERO(&readSet);
   FD_SET(sparkSocket, &readSet);
@@ -409,7 +415,7 @@ int Spark_Disconnect(void)
 
 void Spark_ConnectAbort_WLANReset(void)
 {
-	//Work around to exit the blocking nature of socket connect call
+	//Work around to exit the blocking nature of socket calls
 	tSLInformation.usEventOrDataReceived = 1;
 	tSLInformation.usRxEventOpcode = 0;
 	tSLInformation.usRxDataPending = 0;

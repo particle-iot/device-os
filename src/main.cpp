@@ -122,13 +122,11 @@ int main(void)
 	while (1)
 	{
 #ifdef SPARK_WLAN_ENABLE
-		uint8_t SOCKET_WAS_CONNECTED = SPARK_SOCKET_CONNECTED;
-
 		SPARK_WLAN_Loop();
 
 		if (SPARK_SOCKET_CONNECTED)
 		{
-			if (!SOCKET_WAS_CONNECTED)
+			if (!SPARK_HANDSHAKE_COMPLETED)
 			{
 				int err = Spark_Handshake();
 				if (err)
@@ -264,9 +262,9 @@ void Timing_Decrement(void)
 
 		if(!SPARK_WLAN_SLEEP)
 		{
-			if(WLAN_DHCP && !SPARK_SOCKET_CONNECTED)
+			if(WLAN_DHCP && !(SPARK_SOCKET_CONNECTED & SPARK_HANDSHAKE_COMPLETED))
 			{
-				//Work around to exit the blocking nature of socket connect call
+				//Work around to exit the blocking nature of socket calls
 				Spark_ConnectAbort_WLANReset();
 			}
 
