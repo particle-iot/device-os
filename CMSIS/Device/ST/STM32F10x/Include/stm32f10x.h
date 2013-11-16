@@ -1,49 +1,20 @@
 /**
   ******************************************************************************
-  * @file    stm32f10x.h
-  * @author  MCD Application Team
-  * @version V3.6.1
-  * @date    09-March-2012
-  * @brief   CMSIS Cortex-M3 Device Peripheral Access Layer Header File. 
-  *          This file contains all the peripheral register's definitions, bits 
-  *          definitions and memory mapping for STM32F10x Connectivity line, 
-  *          High density, High density value line, Medium density, 
-  *          Medium density Value line, Low density, Low density Value line 
-  *          and XL-density devices.
-  *
-  *          The file is the unique include file that the application programmer
-  *          is using in the C source code, usually in main.c. This file contains:
-  *           - Configuration section that allows to select:
-  *              - The device used in the target application
-  *              - To use or not the peripheral’s drivers in application code(i.e. 
-  *                code will be based on direct access to peripheral’s registers 
-  *                rather than drivers API), this option is controlled by 
-  *                "#define USE_STDPERIPH_DRIVER"
-  *              - To change few application-specific parameters such as the HSE 
-  *                crystal frequency
-  *           - Data structures and the address mapping for all peripherals
-  *           - Peripheral's registers declarations and bits definition
-  *           - Macros to access peripheral’s registers hardware
-  *
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
-  *
-  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
-  * You may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at:
-  *
-  *        http://www.st.com/software_license_agreement_liberty_v2
-  *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  *
+  Released into the public domain.
+  This work is free: you can redistribute it and/or modify it under the terms of 
+  Creative Commons Zero license v1.0
+
+  This work is licensed under the Creative Commons Zero 1.0 United States License. 
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  California, 94105, USA.
+
+  This program is distributed in the hope that it will be useful, 
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  or FITNESS FOR A PARTICULAR PURPOSE.
   ******************************************************************************
   */
+
 
 /** @addtogroup CMSIS
   * @{
@@ -8385,4 +8356,4 @@ typedef struct
   * @}
   */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+
