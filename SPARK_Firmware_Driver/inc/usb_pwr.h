@@ -66,4 +66,3 @@ extern __IO bool fSuspendEnabled;  /* true when suspend is possible */
 
 #endif  /*__USB_PWR_H*/
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/

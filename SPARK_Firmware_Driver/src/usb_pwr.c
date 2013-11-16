@@ -230,4 +230,3 @@ void Resume(RESUME_STATE eResumeSetVal)
   }
 }
 
-/*********************** (C) COPYRIGHT STMicroelectronics *********************/
