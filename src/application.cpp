@@ -1,11 +1,11 @@
 /**
-  ******************************************************************************
-  * @file    application.cpp
-  * @authors  Satish Nair, Zachary Crockett and Mohit Bhoite
-  * @version V1.0.0
-  * @date    05-November-2013
-  * @brief   Tinker application
-  ******************************************************************************
+ ******************************************************************************
+ * @file    application.cpp
+ * @authors  Satish Nair, Zachary Crockett and Mohit Bhoite
+ * @version V1.0.0
+ * @date    05-November-2013
+ * @brief   Tinker application
+ ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
 
   This program is free software; you can redistribute it and/or
@@ -20,12 +20,11 @@
 
   You should have received a copy of the GNU Lesser General Public
   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-  ******************************************************************************
-  */
+ ******************************************************************************
+ */
 
 /* Includes ------------------------------------------------------------------*/  
 #include "application.h"
-
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
@@ -33,7 +32,6 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
-char google[] = "www.google.com";
 TCPClient client;
 
 /* This function is called once at start up ----------------------------------*/
@@ -48,33 +46,79 @@ void setup()
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
 
-	pinMode(D0,OUTPUT);
-	pinMode(D7,OUTPUT);
+/*
+ 	//Simple Node.js TCP echo server to be run on computer for testing TCPClient
+
+	var net = require('net');
+
+	var HOST = '10.0.0.2';
+	var PORT = 8888;
+
+	net.createServer(function(sock) {
+
+		console.log('CONNECTED: ' + sock.remoteAddress +':'+ sock.remotePort);
+
+		sock.on('data', function(data) {
+
+			console.log('DATA ' + sock.remoteAddress + ': ' + data);
+			sock.write('You said "' + data + '"');
+
+		});
+
+		sock.on('close', function(data) {
+			console.log('CLOSED: ' + sock.remoteAddress +' '+ sock.remotePort);
+		});
+
+	}).listen(PORT, HOST);
+
+	console.log('Server listening on ' + HOST +':'+ PORT);
+*/
+
+	pinMode(D0, OUTPUT);
+	pinMode(D1, OUTPUT);
 
 	digitalWrite(D0,LOW);
-	digitalWrite(D7,LOW);
+	digitalWrite(D1,LOW);
 
-	if (client.connect(google, 80)) 
-		{
-    		digitalWrite(D7,HIGH);
-		}
-	else digitalWrite(D7,LOW);
+	Serial.begin(9600);
 
-	Serial.begin(9600);	
+	IPAddress ip(10, 0, 0, 2);
+
+	if (client.connect(ip, 8888))
+	{
+		digitalWrite(D1,HIGH);
+	}
+	else
+	{
+		digitalWrite(D1,LOW);
+	}
 }
-
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
 	//This will run in a loop
-	while (client.available()) 
+
+	if (client.connected())
 	{
-    char c = client.read();
-    Serial.write(c);
-    digitalWrite(D0,HIGH);
-   }
-   digitalWrite(D0,LOW);
+		if (Serial.available())
+		{
+			char r = Serial.read();
+
+			client.write(r);
+
+			digitalWrite(D0,LOW);
+		}
+
+		if (client.available())
+		{
+			char w = client.read();
+
+			Serial.write(w);
+
+			digitalWrite(D0,HIGH);
+		}
+	}
 }
 
 
