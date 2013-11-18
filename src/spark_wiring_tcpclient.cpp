@@ -10,10 +10,12 @@ uint16_t TCPClient::_srcport = 1024;
 
 TCPClient::TCPClient() : _sock(MAX_SOCK_NUM)
 {
+
 }
 
 TCPClient::TCPClient(uint8_t sock) : _sock(sock) 
 {
+
 }
 
 int TCPClient::connect(const char* host, uint16_t port) 

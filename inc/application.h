@@ -16,7 +16,8 @@
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_spi.h"
 #include "spark_wiring_i2c.h"
-
- #include "spark_wiring_tcpclient.h"
+#include "spark_wiring_tcpclient.h"
+#include "spark_wiring_tcpserver.h"
+#include "spark_wiring_udp.h"
 
 #endif /* APPLICATION_H_ */

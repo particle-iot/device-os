@@ -14,7 +14,9 @@ class TCPClient;
 class TCPServer {
 private:
 	uint16_t _port;
-	void accept();
+	long _sock;
+	TCPClient _clients[MAX_SOCK_NUM];
+	void acceptClientConnections();
 
 public:
 	TCPServer(uint16_t);
