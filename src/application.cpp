@@ -32,8 +32,8 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
-TCPClient client;
-//TCPServer server = TCPServer(23);
+//TCPClient client;
+TCPServer server = TCPServer(23);
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
@@ -81,6 +81,7 @@ void setup()
 	digitalWrite(D0,LOW);
 	digitalWrite(D1,LOW);
 
+/*
 	Serial.begin(9600);
 
 	IPAddress ip(10, 0, 0, 2);
@@ -93,9 +94,10 @@ void setup()
 	{
 		digitalWrite(D1,LOW);
 	}
+*/
 
-//	server = TCPServer(23);
-//	server.begin();
+	server = TCPServer(23);
+	server.begin();
 }
 
 /* This function loops forever --------------------------------------------*/
@@ -103,6 +105,7 @@ void loop()
 {
 	//This will run in a loop
 
+/*
 	if (client.connected())
 	{
 		if (Serial.available())
@@ -123,15 +126,14 @@ void loop()
 			digitalWrite(D0,HIGH);
 		}
 	}
+*/
 
-/*
-	client = server.available();
+	TCPClient client = server.available();
 	if (client == true) {
 		// read bytes from the incoming client and write them back
 		// to any clients connected to the server:
 		server.write(client.read());
 	}
-*/
 }
 
 

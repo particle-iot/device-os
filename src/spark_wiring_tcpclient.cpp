@@ -82,7 +82,7 @@ int TCPClient::available()
 	FD_SET(_sock, &readSet);
 
 	timeout.tv_sec = 0;
-	timeout.tv_usec = 500;
+	timeout.tv_usec = 5000;
 
 	if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
 	{
@@ -116,7 +116,9 @@ int TCPClient::read(uint8_t *buf, size_t size)
 int TCPClient::peek() 
 {
 	if (!available())
+	{
 		return -1;
+	}
 
 	return read();
 }

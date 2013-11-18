@@ -82,7 +82,7 @@ TCPClient TCPServer::available()
 		}
 	}
 
-	return TCPClient(NULL);
+	return TCPClient(MAX_SOCK_NUM);
 }
 
 size_t TCPServer::write(uint8_t b) 
