@@ -496,49 +496,58 @@ SUITE(SparkProtocolConstruction)
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToUpdateBeginWithACK)
   {
+	//TODO: Update this test
     CHECK(false);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopPreparesForUpdateUponUpdateBegin)
   {
     // callbacks.prepare_for_firmware_update
+	//TODO: Update this test
     CHECK(false);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToUpdateBeginWithUpdateReady)
   {
+	//TODO: Update this test
     CHECK(false);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToChunkWithACK)
   {
+	//TODO: Update this test
     CHECK(false);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToChunkWithChunkReceivedOKIfCRCMatches)
   {
+	//TODO: Update this test
     CHECK(false);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToChunkWithChunkReceivedBADOnCRCMismatch)
   {
+	//TODO: Update this test
     CHECK(false);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopSavesReceivedChunk)
   {
     // callbacks.save_firmware_chunk
+	//TODO: Update this test
     CHECK(false);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToUpdateDoneWithACK)
   {
+	//TODO: Update this test
     CHECK(false);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopFinishesFirmwareUpdateOnUpdateDone)
   {
     // callbacks.finish_firmware_update
+	//TODO: Update this test
     CHECK(false);
   }
 
