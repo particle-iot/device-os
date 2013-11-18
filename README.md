@@ -2,7 +2,7 @@
 
 This is the main source code repository of the Spark Core firmware libraries.
 
-This firmware depends on two other libraries: the [Spark Common Library](http://www.github.com/spark/core-common-lib) and the [Spark Communications Library](http://www.github.com/spark/core-communications-lib)
+This firmware depends on two other libraries: the [Spark Common Library](http://www.github.com/spark/core-common-lib) and the [Spark Communication Library](http://www.github.com/spark/core-communication-lib)
 
 #### Find out how to:
 1. [Download and Install Dependencies]()
