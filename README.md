@@ -16,18 +16,18 @@ The Spark application team: Zachary Crockett, Satish Nair, Zach Supalla, David M
 
 The core-firmware uses the GNU GCC toolchain for ARM Cortex-M processors, ARM's CMSIS libraries, TI's CC3000 host driver libraries, STM32 standard peripheral libraries and Arduino's implementation of Wiring.
 
-#### LICENSE
+### LICENSE
 
 Unless stated elsewhere, file headers or otherwise, all files herein are licensed under an LGPLv3 license. For more information, please read the LICENSE file.
 
-#### CONTRIBUTE
+### CONTRIBUTE
 
 Want to contribute to the Spark Core project? Follow [this link]() to find out how.
 
-#### CONNECT
+### CONNECT
 
 Having problems or have awesome suggestions? Connect with us [here.]()
 
-#### VERSION HISTORY
+### VERSION HISTORY
 
 Latest Version: v1.0.0
