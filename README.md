@@ -1,4 +1,4 @@
-# Core Comm
+# Core Communication Library
 
 This repository holds the firmware libraries used for the communication between the Spark Core and the Cloud service.
 
