@@ -2,7 +2,7 @@
 
 This repository holds all the common firmware libraries used by the Spark's main core firmware.
 
-Follow [this link]() to find out how to build and use this repository.
+Follow [this link](https://github.com/spark/core-firmware/blob/master/README.md) to find out how to build and use this repository.
 
 #### CREDITS AND ATTRIBUTIONS 
 
