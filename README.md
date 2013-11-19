@@ -19,7 +19,7 @@ Want to contribute to the Spark Core project? Follow [this link]() to find out h
 
 #### CONNECT
 
-Having problems or have awesome suggestions? Connect with us [here.]()
+Having problems or have awesome suggestions? Connect with us [here.](https://community.sparkdevices.com/)
 
 #### VERSION HISTORY
 
