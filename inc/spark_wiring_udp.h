@@ -17,8 +17,9 @@ private:
 	uint16_t _port;
 	IPAddress _remoteIP;
 	uint16_t _remotePort;
-	uint16_t _offset;
-	uint16_t _remaining;
+	sockaddr _remoteSockAddr;
+	socklen_t _remoteSockAddrLen;
+	uint16_t _available;
 
 public:
 	UDP();
