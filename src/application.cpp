@@ -33,7 +33,8 @@ int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
 //TCPClient client;
-TCPServer server = TCPServer(23);
+//TCPServer server = TCPServer(23);
+UDP Udp;
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
@@ -82,6 +83,7 @@ void setup()
 	digitalWrite(D1,LOW);
 
 /*
+ 	//TCPClient Test
 	Serial.begin(9600);
 
 	IPAddress ip(10, 0, 0, 2);
@@ -96,8 +98,14 @@ void setup()
 	}
 */
 
+/*
+ 	//TCPServer Test
 	server = TCPServer(23);
 	server.begin();
+*/
+
+ 	//UDP Test
+	Udp.begin(8888);
 }
 
 /* This function loops forever --------------------------------------------*/
@@ -106,6 +114,7 @@ void loop()
 	//This will run in a loop
 
 /*
+ 	//TCPClient Test
 	if (client.connected())
 	{
 		if (Serial.available())
@@ -128,11 +137,23 @@ void loop()
 	}
 */
 
-	TCPClient client = server.available();
-	if (client == true) {
+/*
+ 	//TCPServer Test
+	TCPClient _client = server.available();
+	if (_client == true) {
 		// read bytes from the incoming client and write them back
 		// to any clients connected to the server:
-		server.write(client.read());
+		server.write(_client.read());
+	}
+*/
+
+ 	//UDP Test
+	Udp.parsePacket();
+	if(Udp.available())
+	{
+		Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+		Udp.write(Udp.read());
+		Udp.endPacket();
 	}
 }
 

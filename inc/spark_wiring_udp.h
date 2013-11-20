@@ -9,7 +9,7 @@
 
 #include "spark_wiring.h"
 
-#define UDP_TX_PACKET_MAX_SIZE 24
+#define RX_BUF_MAX_SIZE	512
 
 class UDP {
 private:
@@ -19,7 +19,9 @@ private:
 	uint16_t _remotePort;
 	sockaddr _remoteSockAddr;
 	socklen_t _remoteSockAddrLen;
-	uint16_t _available;
+	uint8_t _buffer[RX_BUF_MAX_SIZE];
+	uint16_t _offset;
+	uint16_t _remaining;
 
 public:
 	UDP();
