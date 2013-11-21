@@ -300,9 +300,12 @@ void Timing_Decrement(void)
 		{
 			TimingSparkCommTimeout = 0;
 
-			//Work around to reset WLAN in special cases such as
-			//when the server goes down during OTA upgrade
-			Spark_ConnectAbort_WLANReset();
+			if(!ApplicationSetupOnce)
+			{
+				//Work around to reset WLAN in special cases such as
+				//when the server goes down during OTA upgrade
+				Spark_ConnectAbort_WLANReset();
+			}
 		}
 		else
 		{

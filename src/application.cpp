@@ -1,11 +1,11 @@
 /**
-  ******************************************************************************
-  * @file    application.cpp
-  * @authors  Satish Nair, Zachary Crockett and Mohit Bhoite
-  * @version V1.0.0
-  * @date    05-November-2013
-  * @brief   Tinker application
-  ******************************************************************************
+ ******************************************************************************
+ * @file    application.cpp
+ * @authors  Satish Nair, Zachary Crockett and Mohit Bhoite
+ * @version V1.0.0
+ * @date    05-November-2013
+ * @brief   Tinker application
+ ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
 
   This program is free software; you can redistribute it and/or
@@ -20,12 +20,11 @@
 
   You should have received a copy of the GNU Lesser General Public
   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-  ******************************************************************************
-  */
+ ******************************************************************************
+ */
 
 /* Includes ------------------------------------------------------------------*/  
 #include "application.h"
-
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
@@ -46,7 +45,6 @@ void setup()
 	Spark.function("analogwrite", tinkerAnalogWrite);
 
 }
-
 
 /* This function loops forever --------------------------------------------*/
 void loop()
