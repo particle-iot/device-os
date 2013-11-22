@@ -32,6 +32,8 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
+USBSerial *pSerial;
+
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
@@ -43,12 +45,22 @@ void setup()
 
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
+
+	pSerial = new USBSerial();
+	pSerial->begin(9600);
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
 	//This will run in a loop
+	if(pSerial->available())
+	{
+		if(pSerial->read())
+		{
+			pSerial->println("Hello World");
+		}
+	}
 }
 
 
