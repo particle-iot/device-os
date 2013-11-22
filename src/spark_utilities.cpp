@@ -322,7 +322,9 @@ int Spark_Handshake(void)
 {
   Spark_Protocol_Init();
   spark_protocol.reset_updating();
-  return spark_protocol.handshake();
+  int err = spark_protocol.handshake();
+  Multicast_Presence_Announcement();
+  return err;
 }
 
 // Returns true if all's well or

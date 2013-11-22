@@ -485,10 +485,7 @@ void SPARK_WLAN_Loop(void)
 			loop_index++;
 		}
 
-		announce_presence();
-
 		WLAN_SMART_CONFIG_STOP = 0;
-
 	}
 
 	if(WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_SOCKET_CONNECTED)
