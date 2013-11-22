@@ -6,7 +6,6 @@ CPP_SRCS += \
 ../src/newlib_stubs.cpp \
 ../src/spark_utilities.cpp \
 ../src/spark_wiring.cpp \
-../src/spark_wiring_hardwareserial.cpp \
 ../src/spark_wiring_i2c.cpp \
 ../src/spark_wiring_interrupts.cpp \
 ../src/spark_wiring_ipaddress.cpp \
@@ -33,7 +32,6 @@ OBJS += \
 ./src/newlib_stubs.o \
 ./src/spark_utilities.o \
 ./src/spark_wiring.o \
-./src/spark_wiring_hardwareserial.o \
 ./src/spark_wiring_i2c.o \
 ./src/spark_wiring_interrupts.o \
 ./src/spark_wiring_ipaddress.o \
@@ -60,7 +58,6 @@ CPP_DEPS += \
 ./src/newlib_stubs.d \
 ./src/spark_utilities.d \
 ./src/spark_wiring.d \
-./src/spark_wiring_hardwareserial.d \
 ./src/spark_wiring_i2c.d \
 ./src/spark_wiring_interrupts.d \
 ./src/spark_wiring_ipaddress.d \
@@ -86,6 +83,6 @@ CPP_DEPS += \
 src/%.o: ../src/%.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: ARM GCC C++ Compiler'
-	arm-none-eabi-g++ -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD -DDFU_BUILD_ENABLE -I"../../core-common-lib/CMSIS/Include" -I"../../core-common-lib/CMSIS/Device/ST/STM32F10x/Include" -I"../../core-common-lib/STM32F10x_StdPeriph_Driver/inc" -I"../../core-common-lib/STM32_USB-FS-Device_Driver/inc" -I"../../core-common-lib/CC3000_Host_Driver" -I"../../core-common-lib/SPARK_Firmware_Driver/inc" -I"../../core-communication-lib/lib/tropicssl/include" -I"../../core-communication-lib/src" -I"../inc" -Os -ffunction-sections -Wall -Werror -fno-exceptions -fno-rtti -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "$@" "$<"
+	arm-none-eabi-g++ -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD -DDFU_BUILD_ENABLE -I"../../core-common-lib/CMSIS/Include" -I"../../core-common-lib/CMSIS/Device/ST/STM32F10x/Include" -I"../../core-common-lib/STM32F10x_StdPeriph_Driver/inc" -I"../../core-common-lib/STM32_USB-FS-Device_Driver/inc" -I"../../core-common-lib/CC3000_Host_Driver" -I"../../core-common-lib/SPARK_Firmware_Driver/inc" -I"../../core-communication-lib/lib/tropicssl/include" -I"../../core-communication-lib/src" -I"../inc" -Os -ffunction-sections -Wall -Werror -std=gnu++0x -fno-exceptions -fno-rtti -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '

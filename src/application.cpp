@@ -32,10 +32,6 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
-//TCPClient client;
-//TCPServer server = TCPServer(23);
-UDP Udp;
-
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
@@ -48,113 +44,12 @@ void setup()
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
 
-/*
- 	//Simple Node.js TCP echo server to be run on computer for testing TCPClient
-
-	var net = require('net');
-
-	var HOST = '10.0.0.2';
-	var PORT = 8888;
-
-	net.createServer(function(sock) {
-
-		console.log('CONNECTED: ' + sock.remoteAddress +':'+ sock.remotePort);
-
-		sock.on('data', function(data) {
-
-			console.log('DATA ' + sock.remoteAddress + ': ' + data);
-			sock.write('You said "' + data + '"');
-
-		});
-
-		sock.on('close', function(data) {
-			console.log('CLOSED: ' + sock.remoteAddress +' '+ sock.remotePort);
-		});
-
-	}).listen(PORT, HOST);
-
-	console.log('Server listening on ' + HOST +':'+ PORT);
-*/
-
-	pinMode(D0, OUTPUT);
-	pinMode(D1, OUTPUT);
-
-	digitalWrite(D0,LOW);
-	digitalWrite(D1,LOW);
-
-/*
- 	//TCPClient Test
-	Serial.begin(9600);
-
-	IPAddress ip(10, 0, 0, 2);
-
-	if (client.connect(ip, 8888))
-	{
-		digitalWrite(D1,HIGH);
-	}
-	else
-	{
-		digitalWrite(D1,LOW);
-	}
-*/
-
-/*
- 	//TCPServer Test
-	server = TCPServer(23);
-	server.begin();
-*/
-
- 	//UDP Test
-	Udp.begin(8888);
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
 	//This will run in a loop
-
-/*
- 	//TCPClient Test
-	if (client.connected())
-	{
-		if (Serial.available())
-		{
-			char r = Serial.read();
-
-			client.write(r);
-
-			digitalWrite(D0,LOW);
-		}
-
-		if (client.available())
-		{
-			char w = client.read();
-
-			Serial.write(w);
-
-			digitalWrite(D0,HIGH);
-		}
-	}
-*/
-
-/*
- 	//TCPServer Test
-	TCPClient _client = server.available();
-	if (_client == true) {
-		// read bytes from the incoming client and write them back
-		// to any clients connected to the server:
-		server.write(_client.read());
-	}
-*/
-
- 	//UDP Test
-	Udp.parsePacket();
-	if(Udp.available())
-	{
-		Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-		Udp.write(Udp.read());
-		Udp.endPacket();
-	}
 }
 
 

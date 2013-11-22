@@ -1,3 +1,27 @@
+/**
+ ******************************************************************************
+ * @file    spark_utilities.cpp
+ * @author  Satish Nair, Zachary Crockett and Mohit Bhoite
+ * @version V1.0.0
+ * @date    13-March-2013
+ * @brief   
+ ******************************************************************************
+  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
+  ******************************************************************************
+ */
 #include "spark_utilities.h"
 #include "socket.h"
 #include "netapp.h"
@@ -298,7 +322,9 @@ int Spark_Handshake(void)
 {
   Spark_Protocol_Init();
   spark_protocol.reset_updating();
-  return spark_protocol.handshake();
+  int err = spark_protocol.handshake();
+  Multicast_Presence_Announcement();
+  return err;
 }
 
 // Returns true if all's well or
@@ -395,10 +421,10 @@ int Spark_Connect(void)
   tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
 
   // the destination IP address
-  tSocketAddr.sa_data[2] = 10;//54;	// First Octet of destination IP
-  tSocketAddr.sa_data[3] = 0;//208;	// Second Octet of destination IP
-  tSocketAddr.sa_data[4] = 0;//229; 	// Third Octet of destination IP
-  tSocketAddr.sa_data[5] = 2;//4;	// Fourth Octet of destination IP
+  tSocketAddr.sa_data[2] = 54;	// First Octet of destination IP
+  tSocketAddr.sa_data[3] = 208;	// Second Octet of destination IP
+  tSocketAddr.sa_data[4] = 229; 	// Third Octet of destination IP
+  tSocketAddr.sa_data[5] = 4;	// Fourth Octet of destination IP
 
   return connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
 }

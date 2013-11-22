@@ -1,11 +1,18 @@
-/*
-  Print.h - Base class that provides print() and println()
-  Copyright (c) 2008 David A. Mellis.  All right reserved.
+/**
+ ******************************************************************************
+ * @file    spark_wiring_print.h
+ * @author  Mohit Bhoite
+ * @version V1.0.0
+ * @date    13-March-2013
+ * @brief   Header for spark_wiring_print.c module
+ ******************************************************************************
+  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2010 David A. Mellis.  All right reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
 
   This library is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -13,9 +20,9 @@
   Lesser General Public License for more details.
 
   You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*/
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
+  ******************************************************************************
+ */
 
 #ifndef __SPARK_WIRING_PRINT_
 #define __SPARK_WIRING_PRINT_
