@@ -1,3 +1,27 @@
+/**
+ ******************************************************************************
+ * @file    spark_utilities.cpp
+ * @author  Satish Nair, Zachary Crockett and Mohit Bhoite
+ * @version V1.0.0
+ * @date    13-March-2013
+ * @brief   
+ ******************************************************************************
+  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
+  ******************************************************************************
+ */
 #include "spark_utilities.h"
 #include "socket.h"
 #include "netapp.h"
@@ -198,6 +222,12 @@ int Spark_Send(const unsigned char *buf, int buflen)
 // Returns number of bytes received or -1 if an error occurred
 int Spark_Receive(unsigned char *buf, int buflen)
 {
+  if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
+  {
+    //break from any blocking loop
+    return -1;
+  }
+
   // reset the fd_set structure
   FD_ZERO(&readSet);
   FD_SET(sparkSocket, &readSet);
@@ -292,7 +322,9 @@ int Spark_Handshake(void)
 {
   Spark_Protocol_Init();
   spark_protocol.reset_updating();
-  return spark_protocol.handshake();
+  int err = spark_protocol.handshake();
+  Multicast_Presence_Announcement();
+  return err;
 }
 
 // Returns true if all's well or
@@ -409,7 +441,7 @@ int Spark_Disconnect(void)
 
 void Spark_ConnectAbort_WLANReset(void)
 {
-	//Work around to exit the blocking nature of socket connect call
+	//Work around to exit the blocking nature of socket calls
 	tSLInformation.usEventOrDataReceived = 1;
 	tSLInformation.usRxEventOpcode = 0;
 	tSLInformation.usRxDataPending = 0;
@@ -465,6 +497,11 @@ void userEventSend(void)
 */
 		}
 	}
+}
+
+long socket_connect(long sd, const sockaddr *addr, long addrlen)
+{
+	return connect(sd, addr, addrlen);
 }
 
 // Convert unsigned integer to ASCII in decimal base

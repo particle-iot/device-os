@@ -1,9 +1,27 @@
-/*
-* spark_wiring.h
-*
-* Created on: Apr 15, 2013
-* Author: zsupalla
-*/
+/**
+ ******************************************************************************
+ * @file    spark_wiring.h
+ * @author  Satish Nair, Zachary Crockett, Zach Supalla and Mohit Bhoite
+ * @version V1.0.0
+ * @date    13-March-2013
+ * @brief   Header for spark_wiring.c module
+ ******************************************************************************
+  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
+  ******************************************************************************
+ */
 
 #ifndef SPARK_WIRING_H
 #define SPARK_WIRING_H
@@ -11,6 +29,7 @@
 #include "stm32f10x.h"
 #include "platform_config.h"
 #include "spark_utilities.h"
+#include "spark_wiring_ipaddress.h"
 
 /*
 * Basic variables
@@ -94,6 +113,8 @@
 
 #define LSBFIRST 0
 #define MSBFIRST 1
+
+#define MAX_SOCK_NUM 3
 
 typedef unsigned char byte;
 

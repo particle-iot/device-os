@@ -1,12 +1,28 @@
 /**
  ******************************************************************************
- * @file    main.c
- * @author  Spark Application Team
+ * @file    main.cpp
+ * @author  Satish Nair, Zachary Crockett, Zach Supalla and Mohit Bhoite
  * @version V1.0.0
  * @date    13-March-2013
  * @brief   Main program body.
  ******************************************************************************
+  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this program; if not, see <http://www.gnu.org/licenses/>.
+  ******************************************************************************
  */
+  
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "spark_utilities.h"
@@ -27,6 +43,8 @@ extern "C" {
 
 /* Private variables ---------------------------------------------------------*/
 __IO uint32_t TimingMillis;
+
+uint8_t ApplicationSetupOnce = 0;
 
 uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
 uint32_t USART_Rx_ptr_in = 0;
@@ -112,13 +130,6 @@ int main(void)
 	sFLASH_Init();
 #endif
 
-#ifdef SPARK_WIRING_ENABLE
-	if((IWDG_SYSTEM_RESET != 1) && (NULL != setup))
-	{
-		setup();
-	}
-#endif
-
 #ifdef SPARK_WLAN_ENABLE
 	SPARK_WLAN_Setup(Multicast_Presence_Announcement);
 #endif
@@ -127,13 +138,11 @@ int main(void)
 	while (1)
 	{
 #ifdef SPARK_WLAN_ENABLE
-		uint8_t SOCKET_WAS_CONNECTED = SPARK_SOCKET_CONNECTED;
-
 		SPARK_WLAN_Loop();
 
 		if (SPARK_SOCKET_CONNECTED)
 		{
-			if (!SOCKET_WAS_CONNECTED)
+			if (!SPARK_HANDSHAKE_COMPLETED)
 			{
 				int err = Spark_Handshake();
 				if (err)
@@ -153,6 +162,7 @@ int main(void)
 				else
 				{
 					SPARK_HANDSHAKE_COMPLETED = 1;
+					ApplicationSetupOnce = 1;
 				}
 			}
 
@@ -175,6 +185,12 @@ int main(void)
 		if(SPARK_HANDSHAKE_COMPLETED && !SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 		{
 #endif
+			if((ApplicationSetupOnce != 0) && (NULL != setup))
+			{
+				//Execute user application setup only once
+				setup();
+				ApplicationSetupOnce = 0;
+			}
 
 			if(NULL != loop)
 			{
@@ -262,9 +278,9 @@ void Timing_Decrement(void)
 
 		if(!SPARK_WLAN_SLEEP)
 		{
-			if(WLAN_DHCP && !SPARK_SOCKET_CONNECTED)
+			if(WLAN_DHCP && !(SPARK_SOCKET_CONNECTED & SPARK_HANDSHAKE_COMPLETED))
 			{
-				//Work around to exit the blocking nature of socket connect call
+				//Work around to exit the blocking nature of socket calls
 				Spark_ConnectAbort_WLANReset();
 			}
 
@@ -284,9 +300,12 @@ void Timing_Decrement(void)
 		{
 			TimingSparkCommTimeout = 0;
 
-			//Work around to reset WLAN in special cases such as
-			//when the server goes down during OTA upgrade
-			Spark_ConnectAbort_WLANReset();
+			if(!ApplicationSetupOnce)
+			{
+				//Work around to reset WLAN in special cases such as
+				//when the server goes down during OTA upgrade
+				Spark_ConnectAbort_WLANReset();
+			}
 		}
 		else
 		{
@@ -308,18 +327,6 @@ void Timing_Decrement(void)
 		TimingIWDGReload++;
 	}
 #endif
-
-	if (TimingIWDGReload >= TIMING_IWDG_RELOAD)
-	{
-		TimingIWDGReload = 0;
-
-		/* Reload IWDG counter */
-		IWDG_ReloadCounter();
-	}
-	else
-	{
-		TimingIWDGReload++;
-	}
 }
 
 /*******************************************************************************
