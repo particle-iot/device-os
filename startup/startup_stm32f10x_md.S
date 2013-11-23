@@ -39,6 +39,7 @@
 .global	g_pfnVectors
 .global	Default_Handler
 
+
 /* start address for the initialization values of the .data section. 
 defined in linker script */
 .word	_sidata
@@ -94,7 +95,9 @@ LoopFillZerobss:
 	cmp	r2, r3
 	bcc	FillZerobss
 /* Call the clock system intitialization function.*/
-  bl  SystemInit 	
+	bl  SystemInit
+/* Call C++ Constructors */
+	bl	CallConstructors
 /* Call the application's entry point.*/
 	bl	main
 	bx	lr    
