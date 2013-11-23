@@ -43,23 +43,13 @@ void setup()
 
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
-
-	Serial.begin(9600);
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
 	//This will run in a loop
-	if(Serial.available())
-	{
-		if(Serial.read())
-		{
-			Serial.println("Hello World");
-		}
-	}
 }
-
 
 /*******************************************************************************
  * Function Name  : tinkerDigitalRead
