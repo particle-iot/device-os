@@ -42,7 +42,7 @@ static void call_constructors(unsigned long *start, unsigned long *end)
 {
 	unsigned long *i;
 	void (*funcptr)();
-	for ( i = start; i < end; i++)
+	for (i = start; i < end; i++)
 	{
 		funcptr=(void (*)())(*i);
 		funcptr();
