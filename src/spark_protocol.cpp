@@ -81,6 +81,7 @@ void SparkProtocol::init(const char *id,
   this->descriptor.num_functions = descriptor.num_functions;
   this->descriptor.copy_function_key = descriptor.copy_function_key;
   this->descriptor.call_function = descriptor.call_function;
+  this->descriptor.variable_type = descriptor.variable_type;
   this->descriptor.get_variable = descriptor.get_variable;
   this->descriptor.was_ota_upgrade_successful = descriptor.was_ota_upgrade_successful;
   this->descriptor.ota_upgrade_status_sent = descriptor.ota_upgrade_status_sent;
