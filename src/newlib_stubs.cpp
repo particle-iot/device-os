@@ -58,6 +58,11 @@ void CallConstructors(void)
 }
 } /* extern "C" */
 
+extern "C"
+{
+void *__dso_handle = NULL;
+}
+
 /*
  * Implement C++ new/delete operators using the heap
  */
