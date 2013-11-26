@@ -223,11 +223,30 @@ bool SparkProtocol::event_loop(void)
         memcpy(variable_key, queue + 8, variable_key_length);
         memset(variable_key + variable_key_length, 0, 13 - variable_key_length);
 
-        // get variable value, using the descriptor
-        int *int_val = (int *)descriptor.get_variable(variable_key);
         queue[0] = 0;
         queue[1] = 16;
-        variable_value(queue + 2, token, queue[2], queue[3], *int_val);
+        // get variable value according to type using the descriptor
+        int var_type = descriptor.variable_type(variable_key);
+        if(var_type == 0x01)
+        {
+            bool *bool_val = (bool *)descriptor.get_variable(variable_key);
+            variable_value(queue + 2, token, queue[2], queue[3], *bool_val);
+        }
+        else if(var_type == 0x02)
+        {
+        	int *int_val = (int *)descriptor.get_variable(variable_key);
+            variable_value(queue + 2, token, queue[2], queue[3], *int_val);
+        }
+        else if(var_type == 0x04)
+        {
+        	char *str_val = (char *)descriptor.get_variable(variable_key);
+            variable_value(queue + 2, token, queue[2], queue[3], str_val, strlen(str_val));
+        }
+        else if(var_type == 0x09)
+        {
+            double *double_val = (double *)descriptor.get_variable(variable_key);
+            variable_value(queue + 2, token, queue[2], queue[3], *double_val);
+        }
         if (0 > blocking_send(queue, 18))
         {
           // error
