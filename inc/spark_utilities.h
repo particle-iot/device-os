@@ -86,6 +86,7 @@ bool Spark_Communication_Loop(void);
 void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on);
 
+int userVarType(const char *varKey);
 void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString);
 
