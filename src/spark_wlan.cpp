@@ -26,6 +26,8 @@
 #include "string.h"
 #include "wifi_credentials_reader.h"
 
+tNetappIpconfigRetArgs ip_config;
+
 __IO uint32_t TimingSparkCommTimeout;
 
 uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
@@ -490,6 +492,10 @@ void SPARK_WLAN_Loop(void)
 
 	if(WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_SOCKET_CONNECTED)
 	{
+		Delay(100);
+
+		netapp_ipconfig(&ip_config);
+
 #if defined (USE_SPARK_CORE_V02)
 		if(Spark_Error_Count)
 		{
