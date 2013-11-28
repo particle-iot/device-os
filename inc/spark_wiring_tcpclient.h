@@ -10,29 +10,29 @@
 #include "spark_wiring.h"
 
 
-class TCPClient {
+class TCPClient : public Stream {
 
 public:
 	TCPClient();
 	TCPClient(uint8_t sock);
 
 	uint8_t status();
-	int connect(IPAddress ip, uint16_t port);
-	int connect(const char *host, uint16_t port);
-	size_t write(uint8_t);
-	size_t write(const uint8_t *buf, size_t size);
-	int available();
-	int read();
-	int read(uint8_t *buf, size_t size);
-	int peek();
-	void flush();
-	void stop();
-	uint8_t connected();
-	operator bool();
+	virtual int connect(IPAddress ip, uint16_t port);
+	virtual int connect(const char *host, uint16_t port);
+	virtual size_t write(uint8_t);
+	virtual size_t write(const uint8_t *buf, size_t size);
+	virtual int available();
+	virtual int read();
+	virtual int read(uint8_t *buf, size_t size);
+	virtual int peek();
+	virtual void flush();
+	virtual void stop();
+	virtual uint8_t connected();
+	virtual operator bool();
 
 	friend class TCPServer;
 
-	//using Print::write;
+	using Print::write;
 
 private:
 	static uint16_t _srcport;

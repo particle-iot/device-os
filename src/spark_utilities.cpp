@@ -300,6 +300,7 @@ void Spark_Protocol_Init(void)
     descriptor.num_functions = numUserFunctions;
     descriptor.copy_function_key = copyUserFunctionKey;
     descriptor.call_function = userFuncSchedule;
+    descriptor.variable_type = userVarType;
     descriptor.get_variable = getUserVar;
     descriptor.was_ota_upgrade_successful = OTA_Flashed_GetStatus;
     descriptor.ota_upgrade_status_sent = OTA_Flashed_ResetStatus;
@@ -449,16 +450,28 @@ void Spark_ConnectAbort_WLANReset(void)
 	SPARK_WLAN_RESET = 1;
 }
 
+int userVarType(const char *varKey)
+{
+	for (int i = 0; i < User_Var_Count; ++i)
+	{
+		if (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
+		{
+			return User_Var_Lookup_Table[i].userVarType;
+		}
+	}
+	return -1;
+}
+
 void *getUserVar(const char *varKey)
 {
-  for (int i = 0; i < User_Var_Count; ++i)
-  {
-    if (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
-    {
-      return User_Var_Lookup_Table[i].userVar;
-    }
-  }
-  return NULL;
+	for (int i = 0; i < User_Var_Count; ++i)
+	{
+		if (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
+		{
+			return User_Var_Lookup_Table[i].userVar;
+		}
+	}
+	return NULL;
 }
 
 int userFuncSchedule(const char *funcKey, const char *paramString)
@@ -474,8 +487,8 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
 				paramLength = USER_FUNC_ARG_LENGTH;
 			memcpy(User_Func_Lookup_Table[i].userFuncArg, paramString, paramLength);
 			User_Func_Lookup_Table[i].userFuncSchedule = true;
-      //return User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
-      return User_Func_Lookup_Table[i].pUserFunc(pString);
+			//return User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
+			return User_Func_Lookup_Table[i].pUserFunc(pString);
 		}
 	}
 	return -1;
