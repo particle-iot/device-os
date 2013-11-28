@@ -220,34 +220,37 @@ bool SparkProtocol::event_loop(void)
         int variable_key_length = queue[7] & 0x0F;
         if (12 < variable_key_length)
           variable_key_length = 12;
+
         char variable_key[13];
         memcpy(variable_key, queue + 8, variable_key_length);
         memset(variable_key + variable_key_length, 0, 13 - variable_key_length);
 
         queue[0] = 0;
         queue[1] = 16;
+
         // get variable value according to type using the descriptor
-        int var_type = descriptor.variable_type(variable_key);
-        if(var_type == 0x01)
+        SparkReturnType::Enum var_type = descriptor.variable_type(variable_key);
+        if(SparkReturnType::BOOLEAN == var_type)
         {
-            bool *bool_val = (bool *)descriptor.get_variable(variable_key);
-            variable_value(queue + 2, token, queue[2], queue[3], *bool_val);
+          bool *bool_val = (bool *)descriptor.get_variable(variable_key);
+          variable_value(queue + 2, token, queue[2], queue[3], *bool_val);
         }
-        else if(var_type == 0x02)
+        else if(SparkReturnType::INT == var_type)
         {
         	int *int_val = (int *)descriptor.get_variable(variable_key);
-            variable_value(queue + 2, token, queue[2], queue[3], *int_val);
+          variable_value(queue + 2, token, queue[2], queue[3], *int_val);
         }
-        else if(var_type == 0x04)
+        else if(SparkReturnType::STRING == var_type)
         {
         	char *str_val = (char *)descriptor.get_variable(variable_key);
-            variable_value(queue + 2, token, queue[2], queue[3], str_val, strlen(str_val));
+          variable_value(queue + 2, token, queue[2], queue[3], str_val, strlen(str_val));
         }
-        else if(var_type == 0x09)
+        else if(SparkReturnType::DOUBLE == var_type)
         {
-            double *double_val = (double *)descriptor.get_variable(variable_key);
-            variable_value(queue + 2, token, queue[2], queue[3], *double_val);
+          double *double_val = (double *)descriptor.get_variable(variable_key);
+          variable_value(queue + 2, token, queue[2], queue[3], *double_val);
         }
+
         if (0 > blocking_send(queue, 18))
         {
           // error

@@ -23,8 +23,9 @@ struct ConstructorFixture
   static void mock_signal(bool on);
   static bool signal_called_with;
   static int variable_to_get;
-  static unsigned int mock_millis();
-  static bool mock_ota_status_check();
+  static unsigned int mock_millis(void);
+  static bool mock_ota_status_check(void);
+  static SparkReturnType::Enum mock_variable_type(const char *variable_key);
 
   ConstructorFixture();
   SparkKeys keys;
@@ -149,6 +150,7 @@ ConstructorFixture::ConstructorFixture()
   descriptor.call_function = mock_call_function;
   descriptor.get_variable = mock_get_variable;
   descriptor.was_ota_upgrade_successful = mock_ota_status_check;
+  descriptor.variable_type = mock_variable_type;
   function_called = false;
   variable_to_get = -98765;
   spark_protocol.init(id, keys, callbacks, descriptor);
@@ -288,14 +290,21 @@ void ConstructorFixture::mock_signal(bool on)
   signal_called_with = on;
 }
 
-unsigned int ConstructorFixture::mock_millis()
+unsigned int ConstructorFixture::mock_millis(void)
 {
   return 0;
 }
 
-bool ConstructorFixture::mock_ota_status_check()
+bool ConstructorFixture::mock_ota_status_check(void)
 {
   return false;
+}
+
+SparkReturnType::Enum ConstructorFixture::mock_variable_type(const char *variable_key)
+{
+  const char *prevent_warning;
+  prevent_warning = variable_key;
+  return SparkReturnType::INT;
 }
 
 SUITE(SparkProtocolConstruction)
@@ -445,11 +454,10 @@ SUITE(SparkProtocolConstruction)
       0x75, 0x28, 0x57, 0xa6, 0xc6, 0xf4, 0x44, 0x07,
       0xdd, 0xd2, 0x0a, 0x72, 0x32, 0xb0, 0x1c, 0xbf };
     memcpy(message_to_receive, variable_request, 34);
-    // TODO fix expected variable value to match current working code
     const uint8_t expected[18] = {
       0x00, 0x10,
-      0x8f, 0xfc, 0x69, 0x56, 0xe2, 0x18, 0x07, 0x01,
-      0x3d, 0xfb, 0x49, 0xd6, 0x33, 0x34, 0xb9, 0x5e };
+      0x59, 0x28, 0xfa, 0x3d, 0x00, 0xea, 0xb2, 0x85,
+      0x15, 0xb5, 0x06, 0x6d, 0x44, 0x65, 0x83, 0xa8 };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();

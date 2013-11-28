@@ -22,13 +22,24 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
   */
+
+// Deferring to ASN.1 type codes
+namespace SparkReturnType {
+  enum Enum {
+    BOOLEAN = 1,
+    INT     = 2,
+    STRING  = 4,
+    DOUBLE  = 9
+  };
+}
+
 struct SparkDescriptor
 {
   int (*num_functions)(void);
   void (*copy_function_key)(char *destination, int function_index);
   int (*call_function)(const char *function_key, const char *arg);
 
-  int (*variable_type)(const char *variable_key);
+  SparkReturnType::Enum (*variable_type)(const char *variable_key);
   void *(*get_variable)(const char *variable_key);
 
   bool (*was_ota_upgrade_successful)(void);
