@@ -42,18 +42,6 @@ size_t Print::write(const uint8_t *buffer, size_t size)
   return n;
 }
 
-// size_t Print::print(const __FlashStringHelper *ifsh)
-// {
-//   const char PROGMEM *p = (const char PROGMEM *)ifsh;
-//   size_t n = 0;
-//   while (1) {
-//     unsigned char c = pgm_read_byte(p++);
-//     if (c == 0) break;
-//     n += write(c);
-//   }
-//   return n;
-// }
-
 size_t Print::print(const String &s)
 {
   size_t n = 0;
@@ -115,17 +103,10 @@ size_t Print::print(double n, int digits)
   return printFloat(n, digits);
 }
 
-size_t Print::println(const __FlashStringHelper *ifsh)
-{
-  size_t n = print(ifsh);
-  n += println();
-  return n;
-}
-
-// size_t Print::print(const Printable& x)
-// {
-//   return x.printTo(*this);
-// }
+ size_t Print::print(const Printable& x)
+ {
+   return x.printTo(*this);
+ }
 
 size_t Print::println(void)
 {
@@ -197,12 +178,12 @@ size_t Print::println(double num, int digits)
   return n;
 }
 
-// size_t Print::println(const Printable& x)
-// {
-//   size_t n = print(x);
-//   n += println();
-//   return n;
-// }
+ size_t Print::println(const Printable& x)
+ {
+   size_t n = print(x);
+   n += println();
+   return n;
+ }
 
 // Private Methods /////////////////////////////////////////////////////////////
 

@@ -29,8 +29,9 @@
 #include "stm32f10x.h"
 #include "platform_config.h"
 #include "spark_utilities.h"
-#include "spark_wiring_ipaddress.h"
 #include "spark_wiring_stream.h"
+#include "spark_wiring_printable.h"
+#include "spark_wiring_ipaddress.h"
 
 /*
 * Basic variables
