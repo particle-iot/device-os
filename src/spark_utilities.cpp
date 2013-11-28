@@ -282,6 +282,28 @@ void copyUserFunctionKey(char *destination, int function_index)
          USER_FUNC_KEY_LENGTH);
 }
 
+SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
+{
+  switch (userVarType(varKey))
+  {
+    case 1:
+      return SparkReturnType::BOOLEAN;
+      break;
+
+    case 4:
+      return SparkReturnType::STRING;
+      break;
+
+    case 9:
+      return SparkReturnType::DOUBLE;
+      break;
+
+    case 2:
+    default:
+      return SparkReturnType::INT;
+  }
+}
+
 void Spark_Protocol_Init(void)
 {
   if (!spark_protocol.is_initialized())
@@ -300,7 +322,7 @@ void Spark_Protocol_Init(void)
     descriptor.num_functions = numUserFunctions;
     descriptor.copy_function_key = copyUserFunctionKey;
     descriptor.call_function = userFuncSchedule;
-    descriptor.variable_type = userVarType;
+    descriptor.variable_type = wrapVarTypeInEnum;
     descriptor.get_variable = getUserVar;
     descriptor.was_ota_upgrade_successful = OTA_Flashed_GetStatus;
     descriptor.ota_upgrade_status_sent = OTA_Flashed_ResetStatus;
