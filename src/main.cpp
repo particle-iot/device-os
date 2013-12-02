@@ -147,7 +147,12 @@ int main(void)
 				int err = Spark_Handshake();
 				if (err)
 				{
-					if (1 == err)
+					if (0 > err)
+					{
+						// Wrong key error, red
+						LED_SetRGBColor(0xff0000);
+					}
+					else if (1 == err)
 					{
 						// RSA decryption error, orange
 						LED_SetRGBColor(0xff6000);
