@@ -92,17 +92,19 @@ void SparkProtocol::init(const char *id,
 int SparkProtocol::handshake(void)
 {
   memcpy(queue + 40, device_id, 12);
-  blocking_receive(queue, 40);
+  int err = blocking_receive(queue, 40);
+  if (0 > err) return err;
 
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, server_public_key);
-  int err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, 52, queue, queue + 52);
+  err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, 52, queue, queue + 52);
   rsa_free(&rsa);
 
   if (err) return err;
 
   blocking_send(queue + 52, 256);
-  blocking_receive(queue, 384);
+  err = blocking_receive(queue, 384);
+  if (0 > err) return err;
 
   err = set_key(queue);
   if (err) return err;
@@ -428,6 +430,9 @@ int SparkProtocol::blocking_receive(unsigned char *buf, int length)
 {
   int bytes_or_error;
   int byte_count = 0;
+
+  unsigned int _millis = callback_millis();
+
   while (length > byte_count)
   {
     bytes_or_error = callback_receive(buf + byte_count, length - byte_count);
@@ -436,9 +441,17 @@ int SparkProtocol::blocking_receive(unsigned char *buf, int length)
       // error, disconnected
       return bytes_or_error;
     }
-    else
+    else if (0 < bytes_or_error)
     {
       byte_count += bytes_or_error;
+    }
+    else
+    {
+      if (20000 < (callback_millis() - _millis))
+      {
+        // timed out, disconnect
+        return -1;
+      }
     }
   }
   return byte_count;
