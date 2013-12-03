@@ -23,13 +23,15 @@ The Spark Core uses an ARM Cortex M3 CPU based microcontroller. All of the code 
 
 Download and install the latest version from: https://launchpad.net/gcc-arm-embedded
 
+See [this Gist](https://gist.github.com/joegoggins/7763637) for how to get setup on OS X.
+
 #### 2. Make 
 In order to turn your source code into binaries, you will need a tool called `make`. Windows users need to explicitly install `make` on their machines. Make sure you can use it from the terminal window.
 
 Download and install the latest version from: http://gnuwin32.sourceforge.net/packages/make.htm
 
 #### 3. Device Firmware Upgrade Utilities
-Install dfu-util. Mac users can install dfu-util with Homebrew, Linux users may find it in their package manager, and everyone can get it from http://dfu-util.gnumonks.org/index.html
+Install dfu-util. Mac users can install dfu-util with [Homebrew](http://brew.sh/), Linux users may find it in their package manager, and everyone can get it from http://dfu-util.gnumonks.org/index.html
 
 #### 4. Zatig
 In order for the Core to show up on the dfu list, you need to replace the USB driver with a utility called [Zadig](http://zadig.akeo.ie/). Here is a [tutorial](https://github.com/pbatard/libwdi/wiki/Zadig) on using it. This is only required for Windows users.
@@ -71,15 +73,27 @@ Open up a terminal window, navigate to your destination directory and type the f
 
 #### How do we *build* these repositories?
 
-Make sure you have downloaded and installed all the required dependencies as mentioned [previously.](#1-download-and-install-dependencies)
+Make sure you have downloaded and installed all the required dependencies as mentioned [previously.](#1-download-and-install-dependencies). Note, if you've downloaded or cloned these previously, you'll want to `git pull` or redownload all of them before proceeding.
 
-Open up a terminal window, navigate to the build folder under core-firmware and type:
+Open up a terminal window, navigate to the build folder under core-firmware
+(i.e. `cd core-firmware/build`) and type:
 
-`make clean dependents all`  
+    make clean dependents all
 
-This will build your main application and both the dependencies.
+This will build your main application (`core-firmware/src/application.cpp` and required dependencies.
 
 *For example:* `D:\Spark\core-firmware\build [master]> make clean dependents all`
+
+##### Common Errors
+
+* `arm-none-eabi-gcc` and other required gcc/arm binaries not in the PATH.
+  Solution: Add the /bin folder to your $PATH (i.e. `export PATH="$PATH:<SOME_GCC_ARM_DIR>/bin`).
+  Google "Add binary to PATH" for more details.
+
+* You get `'make: *** No rule to make target 'clean'.  Stop.`.
+  Solution: `cd core-firmware/build`.
+
+Please issue a pull request if you come across similar issues/fixes that trip you up.
 
 ### Navigating the code base
 
@@ -103,7 +117,7 @@ After you are done editing the files, you can rebuild the repository by running 
 
 Its now time to transfer your code to the Spark Core! You can always do this using the Over The Air update feature or, if you like wires, do it over the USB.
 
-*Make sure you have dfu-util installed and available through the command line*
+*Make sure you have the `dfu-util` command installed and available through the command line*
 
 #### Steps:
 1. Put you Core into the DFU mode by holding down the MODE button on the Core and then tapping on the RESET button once. Release the MODE button after you start to see the RGB LED flashing in yellow. This process is also described in greater detail [here.]()
@@ -117,6 +131,7 @@ Its now time to transfer your code to the Spark Core! You can always do this usi
    ```
 
    (Windows users will need to use the Zatig utility to replace the USB driver as described earlier)
+
 3. Now, navigate to the build folder in your core-firmware repository and use the following command to transfer the *.bin* file into the Core.
    ```
    dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D core-firmware.bin
