@@ -120,7 +120,8 @@ Its now time to transfer your code to the Spark Core! You can always do this usi
 *Make sure you have the `dfu-util` command installed and available through the command line*
 
 #### Steps:
-1. Put you Core into the DFU mode by holding down the MODE button on the Core and then tapping on the RESET button once. Release the MODE button after you start to see the RGB LED flashing in yellow. This process is also described in greater detail [here.]()
+1. Put you Core into the DFU mode by holding down the MODE button on the Core and then tapping on the RESET button once. Release the MODE button after you start to see the RGB LED flashing in yellow. It's easy to get this one wrong: Make sure you don't let go of the left button until you see flashing yellow, about 3 seconds after you release the right/RESET button. A flash of white then flashing green can happen when you get this wrong. You want flashing yellow.
+
 2. Open up a terminal window on your computer and type this command to find out if the Core indeed being detected correctly. 
 
    `dfu-util -l`   
