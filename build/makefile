@@ -50,7 +50,7 @@ all: libcore-common-lib.a
 libcore-common-lib.a: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: ARM GCC Archiver'
-	arm-none-eabi-ar -r  "libcore-common-lib.a" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-ar -r  libcore-common-lib.a $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
