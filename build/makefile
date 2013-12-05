@@ -48,7 +48,7 @@ all: libcore-communication-lib.a
 libcore-communication-lib.a: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: ARM Sourcery Windows GCC Archiver'
-	arm-none-eabi-ar -r  "libcore-communication-lib.a" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-ar -r  libcore-communication-lib.a $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

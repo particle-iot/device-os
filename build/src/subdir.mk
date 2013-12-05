@@ -27,7 +27,7 @@ PRODUCT_FIRMWARE_VERSION ?= 65535
 src/%.o: ../src/%.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: ARM GCC C++ Compiler'
-	arm-none-eabi-g++ -I"../lib/tropicssl/include" -I"../src" -Os -ffunction-sections -Wall -fno-exceptions -fno-rtti -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "$@" "$<" -D SPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID) -D PRODUCT_FIRMWARE_VERSION=$(PRODUCT_FIRMWARE_VERSION)
+	arm-none-eabi-gcc -I../lib/tropicssl/include -I../src -Os -ffunction-sections -Wall -fno-exceptions -fno-rtti -c -fmessage-length=0 -MMD -MP -MF -MT -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o $@ $< -D SPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID) -D PRODUCT_FIRMWARE_VERSION=$(PRODUCT_FIRMWARE_VERSION)
 	@echo 'Finished building: $<'
 	@echo ' '
 
