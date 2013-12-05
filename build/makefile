@@ -61,20 +61,20 @@ dependents:
 core-firmware.elf: $(OBJS) $(USER_OBJS) ../../core-common-lib/build/libcore-common-lib.a ../../core-communication-lib/build/libcore-communication-lib.a
 	@echo 'Building target: $@'
 	@echo 'Invoking: ARM GCC C++ Linker'
-	arm-none-eabi-g++ -T"../linker/linker_stm32f10x_md_dfu.ld" -nostartfiles -Xlinker --gc-sections -o "core-firmware.elf" -L"../../core-common-lib/build" -L"../../core-communication-lib/build" -Wl,-Map,core-firmware.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-g++ -T../linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections -o core-firmware.elf -L../../core-common-lib/build -L../../core-communication-lib/build -Wl,-Map,core-firmware.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
 
 core-firmware.hex: core-firmware.elf
 	@echo 'Invoking: ARM GNU Create Flash Image'
-	arm-none-eabi-objcopy -O ihex core-firmware.elf  "core-firmware.hex"
+	arm-none-eabi-objcopy -O ihex core-firmware.elf  core-firmware.hex
 	@echo 'Finished building: $@'
 	@echo ' '
 
 core-firmware.lst: core-firmware.elf
 	@echo 'Invoking: ARM GNU Create Listing'
-	arm-none-eabi-objdump -h -S core-firmware.elf > "core-firmware.lst"
+	arm-none-eabi-objdump -h -S core-firmware.elf
 	@echo 'Finished building: $@'
 	@echo ' '
 
@@ -91,7 +91,7 @@ clean:
 
 post-build:
 	-@echo 'Create Binary'
-	-arm-none-eabi-objcopy -S -O binary "core-firmware.elf" "core-firmware.bin"
+	-arm-none-eabi-objcopy -S -O binary core-firmware.elf core-firmware.bin
 	-@echo ' '
 
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_LIST) $(SECONDARY_SIZE)
