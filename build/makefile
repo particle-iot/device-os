@@ -52,6 +52,9 @@ CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -DUSE_STDPERIPH_DRIVER
 CFLAGS += -DSTM32F10X_MD
 
+# C++ specific flags
+CPPFLAGS = -fno-exceptions -fno-rtti
+
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
@@ -88,7 +91,7 @@ $(BUILD_PATH)/%.o : $(SRC_PATH)/%.cpp
 	@echo Building file: $<
 	@echo Invoking: ARM GCC CPP Compiler
 	$(MKDIR) $(dir $@)
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 	@echo
 
 # Other Targets
