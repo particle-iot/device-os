@@ -42,7 +42,7 @@ INCLUDE_DIRS +=
 # Compiler flags
 CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 
 CFLAGS += $(patsubst %,-I$(SRC_PATH)/%,$(INCLUDE_DIRS)) -I.
-CFLAGS += -ffunction-sections -Wall -fmessage-length=0 
+CFLAGS += -ffunction-sections -fmessage-length=0 -Wall
 
 # Generate dependancy files automatically.
 CFLAGS += -MD -MP -MF $@.d
@@ -50,6 +50,9 @@ CFLAGS += -MD -MP -MF $@.d
 # Target specific defines
 CFLAGS += -DSPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID)
 CFLAGS += -DPRODUCT_FIRMWARE_VERSION=$(PRODUCT_FIRMWARE_VERSION)
+
+# C++ specific flags
+CPPFLAGS = -fno-exceptions -fno-rtti 
 
 SPARK_PRODUCT_ID ?= 65535
 PRODUCT_FIRMWARE_VERSION ?= 65535
@@ -90,7 +93,7 @@ $(BUILD_PATH)/%.o : $(SRC_PATH)/%.cpp
 	@echo Building file: $<
 	@echo Invoking: ARM GCC CPP Compiler
 	$(MKDIR) $(dir $@)
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 	@echo
 
 # Other Targets
