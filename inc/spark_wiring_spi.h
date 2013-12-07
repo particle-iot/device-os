@@ -43,6 +43,8 @@
 #define SPI_CLOCK_DIV128	SPI_BaudRatePrescaler_128
 #define SPI_CLOCK_DIV256	SPI_BaudRatePrescaler_256
 
+typedef unsigned char byte;
+
 class SPIClass {
 private:
 	static SPI_InitTypeDef SPI_InitStructure;

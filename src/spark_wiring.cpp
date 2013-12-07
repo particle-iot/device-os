@@ -539,3 +539,8 @@ void delayMicroseconds(uint32_t us)
 	 : "r0");
 	 */
 }
+
+long map(long value, long fromStart, long fromEnd, long toStart, long toEnd)
+{
+    return (value - fromStart) * (toEnd - toStart) / (fromEnd - fromStart) + toStart;
+}
