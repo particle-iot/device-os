@@ -78,11 +78,11 @@ Make sure you have downloaded and installed all the required dependencies as men
 Open up a terminal window, navigate to the build folder under core-firmware
 (i.e. `cd core-firmware/build`) and type:
 
-    make clean dependents all
+    make
 
-This will build your main application (`core-firmware/src/application.cpp` and required dependencies.
+This will build your main application (`core-firmware/src/application.cpp`) and required dependencies.
 
-*For example:* `D:\Spark\core-firmware\build [master]> make clean dependents all`
+*For example:* `D:\Spark\core-firmware\build [master]> make`
 
 ##### Common Errors
 
@@ -90,7 +90,7 @@ This will build your main application (`core-firmware/src/application.cpp` and r
   Solution: Add the /bin folder to your $PATH (i.e. `export PATH="$PATH:<SOME_GCC_ARM_DIR>/bin`).
   Google "Add binary to PATH" for more details.
 
-* You get `'make: *** No rule to make target 'clean'.  Stop.`.
+* You get `make: *** No targets specified and no makefile found.  Stop.`.
   Solution: `cd core-firmware/build`.
 
 Please issue a pull request if you come across similar issues/fixes that trip you up.
@@ -101,7 +101,7 @@ All of the repositories are sub divided into functional folders:
 
 1. `/src` holds all the source code files
 2. `/inc` holds all the header files
-3. `/build` holds the make file and is also the destination for the compiled `.bin` and `.hex` files.
+3. `/build` holds the makefile and is also the destination for the compiled `.bin` and `.hex` files.
 
 ## 3. Edit and Rebuild
 
@@ -111,7 +111,7 @@ Now that you have your hands on the entire Spark Core firmware, its time to star
 
 The main user code sits in the application.cpp file under core-firmware/src/ folder. Unless you know what you are doing, refrain yourself from making changes to any other files.
 
-After you are done editing the files, you can rebuild the repository by running the `make clean all` command. If you have made changes to the other two repositories or have updated them, make sure to run `make clean dependents all` command to rebuild all of them.
+After you are done editing the files, you can rebuild the repository by running the `make` command in the `core-firmware/build` directory. If you have made changes to the other two repositories, make automatically determines which files need to be rebuilt and builds them for you.
 
 ## 4. Flash It!
 
