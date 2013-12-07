@@ -1,63 +1,109 @@
 
--include ../makefile.init
+# Define the compiler/tools prefix
+GCC_PREFIX = arm-none-eabi-
 
-RM := rm -rf
+# Define tools
+CC = $(GCC_PREFIX)gcc
+AR = $(GCC_PREFIX)ar
+OBJCOPY = $(GCC_PREFIX)objcopy
 
-# All of the sources participating in the build are defined here
--include sources.mk
--include src/subdir.mk
--include lib/tropicssl/library/subdir.mk
--include subdir.mk
--include objects.mk
+RM = rm -f
+MKDIR = mkdir -p
 
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(strip $(C++_DEPS)),)
--include $(C++_DEPS)
-endif
-ifneq ($(strip $(C_DEPS)),)
--include $(C_DEPS)
-endif
-ifneq ($(strip $(ASM_DEPS)),)
--include $(ASM_DEPS)
-endif
-ifneq ($(strip $(CC_DEPS)),)
--include $(CC_DEPS)
-endif
-ifneq ($(strip $(CPP_DEPS)),)
--include $(CPP_DEPS)
-endif
-ifneq ($(strip $(CXX_DEPS)),)
--include $(CXX_DEPS)
-endif
-ifneq ($(strip $(C_UPPER_DEPS)),)
--include $(C_UPPER_DEPS)
-endif
-ifneq ($(strip $(S_UPPER_DEPS)),)
--include $(S_UPPER_DEPS)
-endif
-endif
+# Recursive wildcard function
+rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 
--include ../makefile.defs
+# Define the build path, this is where all of the dependancies and
+# object files will be placed.
+# Note: Currently set to <project>/build/obj directory and set relative to
+# the dir which makefile is invoked. If the makefile is moved to the project
+# root, BUILD_PATH = build can be used to store the build products in 
+# the build directory.
+BUILD_PATH = obj
 
-# Add inputs and outputs from these tool invocations to the build variables 
+# Path to the root of source files, in this case root of the project to
+# inclue ../src and ../lib dirs.
+# Note: Consider relocating source files in lib to src, or build a
+#       seperate library.
+SRC_PATH = ..
+
+# Target this makefile is building.
+TARGET = libcore-communication-lib.a
+
+# Find all build.mk makefiles in each source directory in the src tree.
+SRC_MAKEFILES := $(call rwildcard,$(SRC_PATH)/,build.mk)
+
+# Include all build.mk defines source files.
+include $(SRC_MAKEFILES)
+
+# Additional include directories, applied to objects built for this target.
+INCLUDE_DIRS += 
+
+# Compiler flags
+CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 
+CFLAGS += $(patsubst %,-I$(SRC_PATH)/%,$(INCLUDE_DIRS)) -I.
+CFLAGS += -ffunction-sections -fmessage-length=0 -Wall
+
+# Generate dependancy files automatically.
+CFLAGS += -MD -MP -MF $@.d
+
+# Target specific defines
+CFLAGS += -DSPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID)
+CFLAGS += -DPRODUCT_FIRMWARE_VERSION=$(PRODUCT_FIRMWARE_VERSION)
+
+# C++ specific flags
+CPPFLAGS = -fno-exceptions -fno-rtti
+
+SPARK_PRODUCT_ID ?= 65535
+PRODUCT_FIRMWARE_VERSION ?= 65535
+
+# Collect all object and dep files
+ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
+ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
+ALLOBJ += $(addprefix $(BUILD_PATH)/, $(ASRC:.S=.o))
+
+ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
+ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
+ALLDEPS += $(addprefix $(BUILD_PATH)/, $(ASRC:.S=.o.d))
 
 # All Target
-all: libcore-communication-lib.a
+all: check_external_deps $(TARGET)
+
+# Check for external dependancies, none in this case.
+check_external_deps:
 
 # Tool invocations
-libcore-communication-lib.a: $(OBJS) $(USER_OBJS)
+$(TARGET) : $(ALLOBJ)
 	@echo 'Building target: $@'
-	@echo 'Invoking: ARM Sourcery Windows GCC Archiver'
-	arm-none-eabi-ar -r  "libcore-communication-lib.a" $(OBJS) $(USER_OBJS) $(LIBS)
-	@echo 'Finished building target: $@'
+	@echo 'Invoking: ARM GCC Archiver'
+	$(AR) -r $@ $^
 	@echo ' '
+
+# C compiler to build .o from .c in $(BUILD_DIR)
+$(BUILD_PATH)/%.o : $(SRC_PATH)/%.c
+	@echo Building file: $<
+	@echo Invoking: ARM GCC C Compiler
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) -c -o $@ $<
+	@echo
+
+# CPP compiler to build .o from .cpp in $(BUILD_DIR)
+# Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
+$(BUILD_PATH)/%.o : $(SRC_PATH)/%.cpp
+	@echo Building file: $<
+	@echo Invoking: ARM GCC CPP Compiler
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+	@echo
 
 # Other Targets
 clean:
-	-$(RM) $(C++_DEPS)$(OBJS)$(C_DEPS)$(ASM_DEPS)$(CC_DEPS)$(ARCHIVES)$(CPP_DEPS)$(CXX_DEPS)$(C_UPPER_DEPS)$(S_UPPER_DEPS) libcore-communication-lib.a
-	-@echo ' '
+	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET)
+	@echo ' '
 
-.PHONY: all clean dependents
+.PHONY: all clean
 .SECONDARY:
 
--include ../makefile.targets
+# Include auto generated dependancy files
+-include $(ALLDEPS)
+
