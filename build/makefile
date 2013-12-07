@@ -132,13 +132,6 @@ check_external_deps:
 	@echo
 
 # Tool invocations
-# C compiler to build .o from .c in $(BUILD_DIR)
-$(BUILD_PATH)/%.o : $(SRC_PATH)/%.c
-	@echo Building file: $<
-	@echo Invoking: ARM GCC C Compiler
-	$(MKDIR) $(dir $@)
-	$(CC) $(CFLAGS) -c -o $@ $<
-	@echo
 
 # C compiler to build .o from .c in $(BUILD_DIR)
 $(BUILD_PATH)/%.o : $(SRC_PATH)/%.c
