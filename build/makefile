@@ -1,104 +1,185 @@
 
--include ../makefile.init
+# Define the compiler/tools prefix
+GCC_PREFIX = arm-none-eabi-
 
-RM := rm -rf
+# Define tools
+CC = $(GCC_PREFIX)gcc
+CPP = $(GCC_PREFIX)g++
+AR = $(GCC_PREFIX)ar
+OBJCOPY = $(GCC_PREFIX)objcopy
+SIZE = $(GCC_PREFIX)size
 
-# All of the sources participating in the build are defined here
--include sources.mk
--include startup/subdir.mk
--include src/subdir.mk
--include subdir.mk
--include objects.mk
+RM = rm -f
+MKDIR = mkdir -p
 
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(strip $(C++_DEPS)),)
--include $(C++_DEPS)
-endif
-ifneq ($(strip $(C_DEPS)),)
--include $(C_DEPS)
-endif
-ifneq ($(strip $(ASM_DEPS)),)
--include $(ASM_DEPS)
-endif
-ifneq ($(strip $(CC_DEPS)),)
--include $(CC_DEPS)
-endif
-ifneq ($(strip $(CPP_DEPS)),)
--include $(CPP_DEPS)
-endif
-ifneq ($(strip $(CXX_DEPS)),)
--include $(CXX_DEPS)
-endif
-ifneq ($(strip $(C_UPPER_DEPS)),)
--include $(C_UPPER_DEPS)
-endif
-ifneq ($(strip $(S_UPPER_DEPS)),)
--include $(S_UPPER_DEPS)
-endif
-endif
+# Recursive wildcard function
+rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 
--include ../makefile.defs
+# Define the build path, this is where all of the dependancies and
+# object files will be placed.
+# Note: Currently set to <project>/build/obj directory and set relative to
+# the dir which makefile is invoked. If the makefile is moved to the project
+# root, BUILD_PATH = build can be used to store the build products in 
+# the build directory.
+BUILD_PATH = obj
 
-# Add inputs and outputs from these tool invocations to the build variables 
-SECONDARY_FLASH += \
-core-firmware.hex \
+# Path to the root of source files, in this case root of the project to
+# inclue ../src and ../lib dirs.
+# Note: Consider relocating source files in lib to src, or build a
+#       seperate library.
+SRC_PATH = ..
 
-SECONDARY_LIST += \
-core-firmware.lst \
+# Target this makefile is building.
+TARGET = core-firmware
 
-SECONDARY_SIZE += \
-core-firmware.siz \
+# Find all build.mk makefiles in each source directory in the src tree.
+SRC_MAKEFILES := $(call rwildcard,$(SRC_PATH)/,build.mk)
 
+# Include all build.mk defines source files.
+include $(SRC_MAKEFILES)
+
+# Paths to dependant projects, referenced from root of this project
+LIB_CORE_COMMON_PATH = ../core-common-lib
+LIB_CORE_COMMUNICATION_PATH = ../core-communication-lib
+
+# Additional include directories, applied to objects built for this target.
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)/CMSIS/Include
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)/CMSIS/Device/ST/STM32F10x/Include
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)/STM32F10x_StdPeriph_Driver/inc
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)/STM32_USB-FS-Device_Driver/inc
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)/CC3000_Host_Driver
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)/SPARK_Firmware_Driver/inc
+INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)/lib/tropicssl/include
+INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)/src
+
+# Compiler flags
+CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 
+CFLAGS += $(patsubst %,-I$(SRC_PATH)/%,$(INCLUDE_DIRS)) -I.
+CFLAGS += -ffunction-sections -Wall -Werror -fmessage-length=0 
+
+# Generate dependancy files automatically.
+CFLAGS += -MD -MP -MF $@.d
+
+# Target specific defines
+CFLAGS += -DUSE_STDPERIPH_DRIVER
+CFLAGS += -DSTM32F10X_MD
+CFLAGS += -DDFU_BUILD_ENABLE
+
+# C++ specific flags
+CPPFLAGS = -fno-exceptions -fno-rtti 
+
+# Linker flags
+LDFLAGS += -T../linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
+LDFLAGS += -L$(SRC_PATH)/$(LIB_CORE_COMMON_PATH)/build -lcore-common-lib
+LDFLAGS += -L$(SRC_PATH)/$(LIB_CORE_COMMUNICATION_PATH)/build -lcore-communication-lib
+LDFLAGS += -Wl,-Map,$(TARGET).map
+
+# Assember flags
+ASFLAGS =  -g3 -gdwarf-2 -mcpu=cortex-m3 -mthumb 
+ASFLAGS += -x assembler-with-cpp -fmessage-length=0
+
+# Collect all object and dep files
+ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
+ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
+ALLOBJ += $(addprefix $(BUILD_PATH)/, $(ASRC:.S=.o))
+
+ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
+ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
+ALLDEPS += $(addprefix $(BUILD_PATH)/, $(ASRC:.S=.o.d))
 
 # All Target
-all: core-firmware.elf secondary-outputs
+all: elf bin hex size
 
-dependents:
-	-cd ../../core-common-lib/build && $(MAKE) clean all
-	-cd ../../core-communication-lib/build && $(MAKE) clean all
+elf: $(TARGET).elf
+bin: $(TARGET).bin
+hex: $(TARGET).hex
+
+# Display size
+size: $(TARGET).elf
+	@echo Invoking: ARM GNU Print Size
+	$(SIZE) --format=berkeley $<
+	@echo
+
+# Create a hex file from ELF file
+%.hex : %.elf
+	@echo Invoking: ARM GNU Create Flash Image
+	$(OBJCOPY) -O ihex $< $@
+	@echo
+
+# Create a bin file from ELF file
+%.bin : %.elf
+	@echo Invoking: ARM GNU Create Flash Image
+	$(OBJCOPY) -O binary $< $@
+	@echo
+
+$(TARGET).elf : check_external_deps $(ALLOBJ)
+	@echo Building target: $@
+	@echo Invoking: ARM GCC C++ Linker
+	$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
+	@echo
+
+# Check for external dependancies are up to date
+# Note: Since this makefile has no knowledge of depenancies for
+#       the external libs, make must be called on the libs for
+#       every build. Targets which depend directly on this recipie
+#       will then always be rebuilt, ie. $(TARGET).elf
+check_external_deps:
+	@echo Building core-common-lib
+	@$(MAKE) -C $(SRC_PATH)/$(LIB_CORE_COMMON_PATH)/build --no-print-directory
+	@echo
+	@echo Building core-communication-lib
+	@$(MAKE) -C $(SRC_PATH)/$(LIB_CORE_COMMUNICATION_PATH)/build --no-print-directory
+	@echo
 
 # Tool invocations
-core-firmware.elf: $(OBJS) $(USER_OBJS) ../../core-common-lib/build/libcore-common-lib.a ../../core-communication-lib/build/libcore-communication-lib.a
-	@echo 'Building target: $@'
-	@echo 'Invoking: ARM GCC C++ Linker'
-	arm-none-eabi-g++ -T"../linker/linker_stm32f10x_md_dfu.ld" -nostartfiles -Xlinker --gc-sections -o "core-firmware.elf" -L"../../core-common-lib/build" -L"../../core-communication-lib/build" -Wl,-Map,core-firmware.map -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 $(OBJS) $(USER_OBJS) $(LIBS)
-	@echo 'Finished building target: $@'
-	@echo ' '
-	$(MAKE) --no-print-directory post-build
+# C compiler to build .o from .c in $(BUILD_DIR)
+$(BUILD_PATH)/%.o : $(SRC_PATH)/%.c
+	@echo Building file: $<
+	@echo Invoking: ARM GCC C Compiler
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) -c -o $@ $<
+	@echo
 
-core-firmware.hex: core-firmware.elf
-	@echo 'Invoking: ARM GNU Create Flash Image'
-	arm-none-eabi-objcopy -O ihex core-firmware.elf  "core-firmware.hex"
-	@echo 'Finished building: $@'
-	@echo ' '
+# C compiler to build .o from .c in $(BUILD_DIR)
+$(BUILD_PATH)/%.o : $(SRC_PATH)/%.c
+	@echo Building file: $<
+	@echo Invoking: ARM GCC C Compiler
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) -c -o $@ $<
+	@echo
 
-core-firmware.lst: core-firmware.elf
-	@echo 'Invoking: ARM GNU Create Listing'
-	arm-none-eabi-objdump -h -S core-firmware.elf > "core-firmware.lst"
-	@echo 'Finished building: $@'
-	@echo ' '
+# Assember to build .o from .S in $(BUILD_DIR)
+$(BUILD_PATH)/%.o : $(SRC_PATH)/%.S
+	@echo Building file: $<
+	@echo Invoking: ARM GCC Assember
+	$(MKDIR) $(dir $@)
+	$(CC) $(ASFLAGS) -c -o $@ $<
+	@echo
 
-core-firmware.siz: core-firmware.elf
-	@echo 'Invoking: ARM GNU Print Size'
-	arm-none-eabi-size  --format=berkeley core-firmware.elf
-	@echo 'Finished building: $@'
-	@echo ' '
+# CPP compiler to build .o from .cpp in $(BUILD_DIR)
+# Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
+$(BUILD_PATH)/%.o : $(SRC_PATH)/%.cpp
+	@echo Building file: $<
+	@echo Invoking: ARM GCC CPP Compiler
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+	@echo
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(SECONDARY_FLASH)$(CXX_DEPS)$(S_UPPER_DEPS)$(SECONDARY_LIST)$(SECONDARY_SIZE)$(C++_DEPS)$(ASM_DEPS)$(CC_DEPS)$(CPP_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS) core-firmware.elf core-firmware.map core-firmware.bin
-	-@echo ' '
+	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET).elf $(TARGET).bin $(TARGET).hex $(TARGET).map
+	@echo
+	@echo Clean core-common-lib
+# Should clean invoke clean on the dependant libs as well? Sure..
+	@$(MAKE) -C $(SRC_PATH)/$(LIB_CORE_COMMON_PATH)/build clean --no-print-directory
+	@echo
+	@echo Clean core-communication-lib
+	@$(MAKE) -C $(SRC_PATH)/$(LIB_CORE_COMMUNICATION_PATH)/build clean --no-print-directory
+	@echo
 
-post-build:
-	-@echo 'Create Binary'
-	-arm-none-eabi-objcopy -S -O binary "core-firmware.elf" "core-firmware.bin"
-	-@echo ' '
+.PHONY: all clean check_external_deps elf bin hex size
+.SECONDARY:
 
-secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_LIST) $(SECONDARY_SIZE)
+# Include auto generated dependancy files
+-include $(ALLDEPS)
 
-.PHONY: all clean dependents
-.SECONDARY: post-build
-../../core-common-lib/build/libcore-common-lib.a:
-../../core-communication-lib/build/libcore-communication-lib.a:
-
--include ../makefile.targets
