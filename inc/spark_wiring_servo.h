@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    spark_wiring_spi.h
+ * @file    spark_wiring_servo.h
  * @author  Zach Supalla
  * @version V1.0.0
  * @date    06-December-2013
@@ -26,6 +26,8 @@
 
 #ifndef _SERVO_H_
 #define _SERVO_H_
+
+#include "spark_wiring.h"
 
 /*
  * Note on Arduino compatibility:
