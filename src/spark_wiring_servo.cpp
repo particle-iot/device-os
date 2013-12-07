@@ -36,7 +36,7 @@
 //
 // This picks the smallest prescaler that allows an overflow < 2^16.
 #define MAX_OVERFLOW    ((1 << 16) - 1)
-#define CYC_MSEC        (1000 * 72)	//72 MHz -> 72 cycles per microsecond
+#define CYC_MSEC        (SystemCoreClock / 1000)
 #define TAU_MSEC        20
 #define TAU_USEC        (TAU_MSEC * 1000)
 #define TAU_CYC         (TAU_MSEC * CYC_MSEC)
@@ -224,15 +224,15 @@ uint16_t Servo::readMicroseconds() const {
     }
     else if(PIN_MAP[this->pin].timer_ch == TIM_Channel_2)
     {
-        Capture_Value = TIM_GetCapture1(PIN_MAP[this->pin].timer_peripheral);
+        Capture_Value = TIM_GetCapture2(PIN_MAP[this->pin].timer_peripheral);
     }
     else if(PIN_MAP[this->pin].timer_ch == TIM_Channel_3)
     {
-        Capture_Value = TIM_GetCapture1(PIN_MAP[this->pin].timer_peripheral);
+        Capture_Value = TIM_GetCapture3(PIN_MAP[this->pin].timer_peripheral);
     }
     else if(PIN_MAP[this->pin].timer_ch == TIM_Channel_4)
     {
-        Capture_Value = TIM_GetCapture1(PIN_MAP[this->pin].timer_peripheral);
+        Capture_Value = TIM_GetCapture4(PIN_MAP[this->pin].timer_peripheral);
     }
 
     return CAPTURE_TO_US(Capture_Value);
