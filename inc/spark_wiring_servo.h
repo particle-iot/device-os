@@ -108,7 +108,7 @@ public:
      *
      * @return true if successful, false when pin doesn't support PWM.
      */
-    bool attach(uint8_t pin,
+    bool attach(uint16_t pin,
                 uint16_t minPulseWidth=SERVO_DEFAULT_MIN_PW,
                 uint16_t maxPulseWidth=SERVO_DEFAULT_MAX_PW,
                 int16_t minAngle=SERVO_DEFAULT_MIN_ANGLE,

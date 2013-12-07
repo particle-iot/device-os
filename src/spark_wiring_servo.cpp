@@ -52,7 +52,7 @@ Servo::Servo() {
     this->resetFields();
 }
 
-bool Servo::attach(uint8_t pin,
+bool Servo::attach(uint16_t pin,
                    uint16_t minPW,
                    uint16_t maxPW,
                    int16_t minAngle,
