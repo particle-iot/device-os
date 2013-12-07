@@ -32,8 +32,6 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
-Servo myservo;
-
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
@@ -45,37 +43,12 @@ void setup()
 
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
-
-	Serial.begin(9600);
-	myservo.attach(0);
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
 	//This will run in a loop
-	if(Serial.available())
-	{
-		char command = Serial.read();
-		switch(command)
-		{
-		case 'l':
-			myservo.writeMicroseconds(1000);
-			break;
-
-		case 'm':
-			myservo.writeMicroseconds(1500);
-			break;
-
-		case 'r':
-			myservo.writeMicroseconds(2000);
-			break;
-
-		case 'p':
-			Serial.println(myservo.readMicroseconds());
-			break;
-		}
-	}
 }
 
 /*******************************************************************************
