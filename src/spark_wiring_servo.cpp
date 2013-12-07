@@ -29,23 +29,10 @@
 #include "spark_wiring_spi.h"
 #include "spark_wiring_i2c.h"
 
-// 20 millisecond period config.  For a 1-based prescaler,
-//
-//    (prescaler * overflow / CYC_MSEC) msec = 1 timer cycle = 20 msec
-// => prescaler * overflow = 20 * CYC_MSEC
-//
-// This picks the smallest prescaler that allows an overflow < 2^16.
-#define MAX_OVERFLOW    ((1 << 16) - 1)
-#define CYC_MSEC        (SystemCoreClock / 1000)
-#define TAU_MSEC        20
-#define TAU_USEC        (TAU_MSEC * 1000)
-#define TAU_CYC         (TAU_MSEC * CYC_MSEC)
-#define SERVO_PRESCALER (TAU_CYC / MAX_OVERFLOW + 1)
-#define SERVO_OVERFLOW  ((uint16_t)round((double)TAU_CYC / SERVO_PRESCALER))
+#define SERVO_TIM_PWM_FREQ		50	//20ms
+#define SERVO_TIM_PRESCALER		(uint16_t)(SystemCoreClock / 10000) - 1
+#define SERVO_TIM_ARR			(uint16_t)(10000 / SERVO_TIM_PWM_FREQ) - 1
 
-// Unit conversions
-#define US_TO_COMPARE(us) ((uint16_t)map((us), 0, TAU_USEC, 0, SERVO_OVERFLOW))
-#define CAPTURE_TO_US(c)  ((uint32_t)map((c), 0, SERVO_OVERFLOW, 0, TAU_USEC))
 #define ANGLE_TO_US(a)    ((uint16_t)(map((a), this->minAngle, this->maxAngle, \
                                         this->minPW, this->maxPW)))
 #define US_TO_ANGLE(us)   ((int16_t)(map((us), this->minPW, this->maxPW,  \
@@ -111,8 +98,8 @@ bool Servo::attach(uint16_t pin,
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 
 	// Time base configuration
-	TIM_TimeBaseStructure.TIM_Period = SERVO_OVERFLOW;
-	TIM_TimeBaseStructure.TIM_Prescaler = SERVO_PRESCALER - 1;
+	TIM_TimeBaseStructure.TIM_Period = SERVO_TIM_ARR;
+	TIM_TimeBaseStructure.TIM_Prescaler = SERVO_TIM_PRESCALER;
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 
@@ -154,6 +141,9 @@ bool Servo::attach(uint16_t pin,
     // TIM enable counter
     TIM_Cmd(PIN_MAP[this->pin].timer_peripheral, ENABLE);
 
+	// Main Output Enable
+	TIM_CtrlPWMOutputs(PIN_MAP[this->pin].timer_peripheral, ENABLE);
+
     return true;
 }
 
@@ -191,23 +181,23 @@ void Servo::writeMicroseconds(uint16_t pulseWidth) {
 
     pulseWidth = constrain(pulseWidth, this->minPW, this->maxPW);
 
-    uint16_t Compare_Value = US_TO_COMPARE(pulseWidth);
+    uint16_t SERVO_TIM_CCR = (uint16_t)(pulseWidth / 100);
 
     if(PIN_MAP[this->pin].timer_ch == TIM_Channel_1)
     {
-        TIM_SetCompare1(PIN_MAP[this->pin].timer_peripheral, Compare_Value);
+        TIM_SetCompare1(PIN_MAP[this->pin].timer_peripheral, SERVO_TIM_CCR);
     }
     else if(PIN_MAP[this->pin].timer_ch == TIM_Channel_2)
     {
-        TIM_SetCompare2(PIN_MAP[this->pin].timer_peripheral, Compare_Value);
+        TIM_SetCompare2(PIN_MAP[this->pin].timer_peripheral, SERVO_TIM_CCR);
     }
     else if(PIN_MAP[this->pin].timer_ch == TIM_Channel_3)
     {
-        TIM_SetCompare3(PIN_MAP[this->pin].timer_peripheral, Compare_Value);
+        TIM_SetCompare3(PIN_MAP[this->pin].timer_peripheral, SERVO_TIM_CCR);
     }
     else if(PIN_MAP[this->pin].timer_ch == TIM_Channel_4)
     {
-        TIM_SetCompare4(PIN_MAP[this->pin].timer_peripheral, Compare_Value);
+        TIM_SetCompare4(PIN_MAP[this->pin].timer_peripheral, SERVO_TIM_CCR);
     }
 }
 
@@ -216,26 +206,26 @@ uint16_t Servo::readMicroseconds() const {
         return 0;
     }
 
-    uint16_t Capture_Value = 0x0000;
+    uint16_t SERVO_TIM_CCR = 0x0000;
 
     if(PIN_MAP[this->pin].timer_ch == TIM_Channel_1)
     {
-        Capture_Value = TIM_GetCapture1(PIN_MAP[this->pin].timer_peripheral);
+    	SERVO_TIM_CCR = TIM_GetCapture1(PIN_MAP[this->pin].timer_peripheral);
     }
     else if(PIN_MAP[this->pin].timer_ch == TIM_Channel_2)
     {
-        Capture_Value = TIM_GetCapture2(PIN_MAP[this->pin].timer_peripheral);
+    	SERVO_TIM_CCR = TIM_GetCapture2(PIN_MAP[this->pin].timer_peripheral);
     }
     else if(PIN_MAP[this->pin].timer_ch == TIM_Channel_3)
     {
-        Capture_Value = TIM_GetCapture3(PIN_MAP[this->pin].timer_peripheral);
+    	SERVO_TIM_CCR = TIM_GetCapture3(PIN_MAP[this->pin].timer_peripheral);
     }
     else if(PIN_MAP[this->pin].timer_ch == TIM_Channel_4)
     {
-        Capture_Value = TIM_GetCapture4(PIN_MAP[this->pin].timer_peripheral);
+    	SERVO_TIM_CCR = TIM_GetCapture4(PIN_MAP[this->pin].timer_peripheral);
     }
 
-    return CAPTURE_TO_US(Capture_Value);
+    return (uint16_t)(SERVO_TIM_CCR * 100);
 }
 
 void Servo::resetFields(void) {
