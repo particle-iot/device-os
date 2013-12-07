@@ -37,6 +37,11 @@
 * Basic variables
 */
 
+#define min(a,b)                ((a)<(b)?(a):(b))
+#define max(a,b)                ((a)>(b)?(a):(b))
+#define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
+#define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+
 #define HIGH 0x1
 #define LOW 0x0
 
@@ -139,6 +144,8 @@ typedef struct STM32_Pin_Info {
   PinMode pin_mode;
 } STM32_Pin_Info;
 
+extern STM32_Pin_Info PIN_MAP[];
+
 /*
 * GPIO
 */
@@ -155,6 +162,8 @@ void analogWrite(uint16_t pin, uint8_t value);
 uint32_t millis();
 void delay(uint32_t ms);
 void delayMicroseconds(uint32_t us);
+
+long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
 
 extern void Delay(__IO uint32_t nTime);
 

@@ -23,6 +23,7 @@ CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_interrupts.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_ipaddress.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_network.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_print.cpp
+CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_servo.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_spi.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_stream.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_string.cpp
