@@ -29,9 +29,9 @@
 #include "spark_wiring_spi.h"
 #include "spark_wiring_i2c.h"
 
-#define SERVO_TIM_PWM_FREQ		50	//20ms
-#define SERVO_TIM_PRESCALER		(uint16_t)(SystemCoreClock / 10000) - 1
-#define SERVO_TIM_ARR			(uint16_t)(10000 / SERVO_TIM_PWM_FREQ) - 1
+#define SERVO_TIM_PWM_FREQ	50											//20ms = 50Hz
+#define SERVO_TIM_PRESCALER	(uint16_t)(SystemCoreClock / 10000) - 1		//To get TIM counter clock = 10KHz
+#define SERVO_TIM_ARR		(uint16_t)(10000 / SERVO_TIM_PWM_FREQ) - 1	//To get PWM period = 20ms
 
 #define ANGLE_TO_US(a)    ((uint16_t)(map((a), this->minAngle, this->maxAngle, \
                                         this->minPW, this->maxPW)))
@@ -181,6 +181,7 @@ void Servo::writeMicroseconds(uint16_t pulseWidth) {
 
     pulseWidth = constrain(pulseWidth, this->minPW, this->maxPW);
 
+    //SERVO_TIM_CCR = pulseWidth * (SERVO_TIM_ARR + 1) * SERVO_TIM_PWM_FREQ / 1000000;
     uint16_t SERVO_TIM_CCR = (uint16_t)(pulseWidth / 100);
 
     if(PIN_MAP[this->pin].timer_ch == TIM_Channel_1)
@@ -225,6 +226,7 @@ uint16_t Servo::readMicroseconds() const {
     	SERVO_TIM_CCR = TIM_GetCapture4(PIN_MAP[this->pin].timer_peripheral);
     }
 
+    //pulseWidth = (SERVO_TIM_CCR * 1000000) / ((SERVO_TIM_ARR + 1) * SERVO_TIM_PWM_FREQ);
     return (uint16_t)(SERVO_TIM_CCR * 100);
 }
 
