@@ -416,12 +416,11 @@ void analogWrite(uint16_t pin, uint8_t value)
 	TIM_OCInitTypeDef  TIM_OCInitStructure;
 
 	//PWM Frequency : 500 Hz
-	uint16_t TIM_Prescaler = (uint16_t)(SystemCoreClock / 10000) - 1;
-	uint16_t TIM_ARR = (uint16_t)(10000 / TIM_PWM_FREQ) - 1;
+	uint16_t TIM_Prescaler = (uint16_t)(SystemCoreClock / 24000000) - 1;//TIM Counter clock = 24MHz
+	uint16_t TIM_ARR = (uint16_t)(24000000 / TIM_PWM_FREQ) - 1;
 
-	uint16_t Duty_Cycle = (uint16_t)((value * 100) / 255);
 	// TIM Channel Duty Cycle(%) = (TIM_CCR / TIM_ARR + 1) * 100
-	uint16_t TIM_CCR = (uint16_t)((Duty_Cycle * (TIM_ARR + 1)) / 100);
+	uint16_t TIM_CCR = (uint16_t)(value * (TIM_ARR + 1) / 255);
 
 	// AFIO clock enable
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
