@@ -29,6 +29,21 @@
 #include <stdarg.h>
 #include "spark_protocol.h"
 
+/*
+ * default status, works the way it does now
+ */
+//#define RGB_NOTIFICATIONS_ON
+/*
+ * should prevent any of the Spark notifications from ever being shown on the LED;
+ * if the user never takes manual control of the LED, it should never turn on.
+ */
+//#define RGB_NOTIFICATIONS_OFF
+/*
+ * keep all of the statuses except the 'breathing cyan' - this would be a good
+ * power saver while still showing when important things are happening on the Core.
+ */
+//#define RGB_NOTIFICATIONS_CONNECTING_ONLY
+
 SparkProtocol spark_protocol;
 
 long sparkSocket;
@@ -96,7 +111,35 @@ static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
 */
 
+RGBClass RGB;
 SparkClass Spark;
+
+bool RGBClass::_control = false;
+
+bool RGBClass::controlled(void)
+{
+	return _control;
+}
+
+void RGBClass::control(bool override)
+{
+	if (override)
+		LED_Signaling_Start();
+	else
+		LED_Signaling_Stop();
+
+	_control = override;
+}
+
+void RGBClass::color(int red, int blue, int green)
+{
+	if (true != _control)
+		return;
+
+	TIM1->CCR2 = (uint16_t)(red * (TIM1->ARR + 1) / 255);	//Red Led
+	TIM1->CCR3 = (uint16_t)(blue * (TIM1->ARR + 1) / 255);	//Green Led
+	TIM1->CCR1 = (uint16_t)(green * (TIM1->ARR + 1) / 255);	//Blue Led
+}
 
 void SparkClass::variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
 {
@@ -389,7 +432,11 @@ void Multicast_Presence_Announcement(void)
  * and stopped as soon as LED_Signaling_Stop() is called */
 void LED_Signaling_Override(void)
 {
-  if (0 < LED_Signaling_Timing)
+  if (false != RGB.controlled())
+  {
+	  return;
+  }
+  else if (0 < LED_Signaling_Timing)
   {
     --LED_Signaling_Timing;
   }
