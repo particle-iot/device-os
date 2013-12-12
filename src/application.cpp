@@ -44,27 +44,11 @@ void setup()
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
 
-	Serial.begin(9600);
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-	if(Serial.available())
-	{
-		char c = Serial.read();
-
-		if(c == '1')
-			Spark_Signal(true);
-		else if(c == '0')
-			Spark_Signal(false);
-		else if(c == 't')
-			RGB.control(true);
-		else if(c == 'f')
-			RGB.control(false);
-		else if(c == 'r')
-			RGB.color(255, 0, 0);
-	}
 	//This will run in a loop
 }
 

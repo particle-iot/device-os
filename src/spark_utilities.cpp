@@ -29,21 +29,6 @@
 #include <stdarg.h>
 #include "spark_protocol.h"
 
-/*
- * default status, works the way it does now
- */
-//#define RGB_NOTIFICATIONS_ON
-/*
- * should prevent any of the Spark notifications from ever being shown on the LED;
- * if the user never takes manual control of the LED, it should never turn on.
- */
-//#define RGB_NOTIFICATIONS_OFF
-/*
- * keep all of the statuses except the 'breathing cyan' - this would be a good
- * power saver while still showing when important things are happening on the Core.
- */
-//#define RGB_NOTIFICATIONS_CONNECTING_ONLY
-
 SparkProtocol spark_protocol;
 
 long sparkSocket;
