@@ -61,6 +61,7 @@ uint32_t chunkIndex;
 extern unsigned int millis();
 
 // LED_Signaling_Override
+__IO uint8_t LED_Spark_Signal;
 __IO uint32_t LED_Signaling_Timing;
 const uint32_t VIBGYOR_Colors[] = {
   0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000};
@@ -432,11 +433,7 @@ void Multicast_Presence_Announcement(void)
  * and stopped as soon as LED_Signaling_Stop() is called */
 void LED_Signaling_Override(void)
 {
-  if (false != RGB.controlled())
-  {
-	  return;
-  }
-  else if (0 < LED_Signaling_Timing)
+  if (0 < LED_Signaling_Timing)
   {
     --LED_Signaling_Timing;
   }
@@ -458,9 +455,15 @@ void LED_Signaling_Override(void)
 void Spark_Signal(bool on)
 {
   if (on)
+  {
     LED_Signaling_Start();
+    LED_Spark_Signal = 1;
+  }
   else
+  {
     LED_Signaling_Stop();
+    LED_Spark_Signal = 0;
+  }
 }
 
 int SparkClass::connect(void)

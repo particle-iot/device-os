@@ -97,6 +97,10 @@ int main(void)
 	/* Enable CRC clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
 
+#if defined (RGB_NOTIFICATIONS_OFF)
+	LED_RGB_OVERRIDE = 1;
+#endif
+
 #if defined (USE_SPARK_CORE_V02)
 	LED_SetRGBColor(RGB_COLOR_WHITE);
 	LED_On(LED_RGB);
@@ -228,9 +232,18 @@ void Timing_Decrement(void)
 		TimingDelay--;
 	}
 
+#if defined (RGB_NOTIFICATIONS_OFF)
+	//Just needed in case LED_RGB_OVERRIDE is set to 0 by accident
+	if (LED_RGB_OVERRIDE == 0)
+	{
+		LED_RGB_OVERRIDE = 1;
+		LED_Off(LED_RGB);
+	}
+#endif
+
 	if (LED_RGB_OVERRIDE != 0)
 	{
-		if (NULL != LED_Signaling_Override)
+		if ((LED_Spark_Signal != 0) && (NULL != LED_Signaling_Override))
 		{
 			LED_Signaling_Override();
 		}
@@ -258,10 +271,14 @@ void Timing_Decrement(void)
 #if defined (USE_SPARK_CORE_V01)
 		LED_On(LED1);
 #elif defined (USE_SPARK_CORE_V02)
+#if defined (RGB_NOTIFICATIONS_CONNECTING_ONLY)
+		LED_Off(LED_RGB);
+#else
 		LED_SetRGBColor(RGB_COLOR_CYAN);
 		LED_On(LED_RGB);
-#endif
 		SPARK_LED_FADE = 1;
+#endif
+#endif
 	}
 	else
 	{
