@@ -96,9 +96,14 @@ void Clear_NetApp_Dhcp(void)
 
 void wifi_add_profile_callback(const char *ssid, const char *password)
 {
-	wlan_profile_index = wlan_add_profile (WLAN_SEC_WPA2, (unsigned char *)ssid, strlen(ssid), NULL, 1, 0x18, 0x1e, 2, (unsigned char *)password, strlen(password));
+  unsigned long security_type = WLAN_SEC_WPA2;
+  if (0 == password[0]) {
+    security_type = WLAN_SEC_UNSEC;
+  }
 
-	WLAN_SERIAL_CONFIG_DONE = 1;
+  wlan_profile_index = wlan_add_profile(security_type, (unsigned char *)ssid, strlen(ssid), NULL, 1, 0x18, 0x1e, 2, (unsigned char *)password, strlen(password));
+
+  WLAN_SERIAL_CONFIG_DONE = 1;
 }
 
 /*******************************************************************************
