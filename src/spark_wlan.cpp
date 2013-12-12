@@ -264,6 +264,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 #if defined (USE_SPARK_CORE_V01)
 				LED_Off(LED2);
 #elif defined (USE_SPARK_CORE_V02)
+				LED_RGB_OVERRIDE = 0;
 				LED_SetRGBColor(RGB_COLOR_GREEN);
 				LED_On(LED_RGB);
 #endif
@@ -419,6 +420,10 @@ void SPARK_WLAN_Loop(void)
 	{
 		if(SPARK_WLAN_STARTED)
 		{
+			if (LED_RGB_OVERRIDE)
+			{
+				LED_Signaling_Stop();
+			}
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_WLAN_RESET = 0;

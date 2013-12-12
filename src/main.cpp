@@ -97,7 +97,7 @@ int main(void)
 	/* Enable CRC clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
 
-#if defined (RGB_NOTIFICATIONS_OFF)
+#if !defined (RGB_NOTIFICATIONS_ON)	&& defined (RGB_NOTIFICATIONS_OFF)
 	LED_RGB_OVERRIDE = 1;
 #endif
 
@@ -232,7 +232,7 @@ void Timing_Decrement(void)
 		TimingDelay--;
 	}
 
-#if defined (RGB_NOTIFICATIONS_OFF)
+#if !defined (RGB_NOTIFICATIONS_ON)	&& defined (RGB_NOTIFICATIONS_OFF)
 	//Just needed in case LED_RGB_OVERRIDE is set to 0 by accident
 	if (LED_RGB_OVERRIDE == 0)
 	{

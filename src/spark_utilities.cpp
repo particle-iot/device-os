@@ -109,22 +109,26 @@ bool RGBClass::controlled(void)
 
 void RGBClass::control(bool override)
 {
+#if !defined (RGB_NOTIFICATIONS_ON)
 	if (override)
 		LED_Signaling_Start();
 	else
 		LED_Signaling_Stop();
 
 	_control = override;
+#endif
 }
 
 void RGBClass::color(int red, int blue, int green)
 {
+#if !defined (RGB_NOTIFICATIONS_ON)
 	if (true != _control)
 		return;
 
 	TIM1->CCR2 = (uint16_t)(red * (TIM1->ARR + 1) / 255);	//Red Led
 	TIM1->CCR3 = (uint16_t)(blue * (TIM1->ARR + 1) / 255);	//Green Led
 	TIM1->CCR1 = (uint16_t)(green * (TIM1->ARR + 1) / 255);	//Blue Led
+#endif
 }
 
 void SparkClass::variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
