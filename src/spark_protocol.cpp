@@ -409,6 +409,9 @@ int SparkProtocol::blocking_send(const unsigned char *buf, int length)
 {
   int bytes_or_error;
   int byte_count = 0;
+
+  unsigned int _millis = callback_millis();
+
   while (length > byte_count)
   {
     bytes_or_error = callback_send(buf + byte_count, length - byte_count);
@@ -417,9 +420,17 @@ int SparkProtocol::blocking_send(const unsigned char *buf, int length)
       // error, disconnected
       return bytes_or_error;
     }
-    else
+    else if (0 < bytes_or_error)
     {
       byte_count += bytes_or_error;
+    }
+    else
+    {
+      if (20000 < (callback_millis() - _millis))
+      {
+        // timed out, disconnect
+        return -1;
+      }
     }
   }
   return byte_count;
