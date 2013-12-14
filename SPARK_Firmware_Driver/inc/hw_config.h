@@ -142,6 +142,7 @@ void Set_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
 void Delay(__IO uint32_t nTime);
+void Delay_Microsecond(__IO uint32_t uSec);
 
 #if defined (USE_SPARK_CORE_V02)
 void RTC_Configuration(void);

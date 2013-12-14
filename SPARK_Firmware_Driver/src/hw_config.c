@@ -94,6 +94,19 @@ __IO uint16_t sFLASH_SPI_CR;
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private functions ---------------------------------------------------------*/
+
+/**
+ * @brief  Initialise Data Watchpoint and Trace Register (DWT).
+ * @param  None
+ * @retval None
+ */
+static void DWT_Init(void)
+{
+	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->CYCCNT = 0;
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+}
+
 /**
  * @brief  Configures Main system clocks & power.
  * @param  None
@@ -107,6 +120,8 @@ void Set_System(void)
 	 To reconfigure the default setting of SystemInit() function, refer to
 	 system_stm32f10x.c file
 	 */
+
+	DWT_Init();
 
 	/* Enable PWR and BKP clock */
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
@@ -188,11 +203,24 @@ void SysTick_Configuration(void)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void Delay(uint32_t nTime)
+void Delay(__IO uint32_t nTime)
 {
     TimingDelay = nTime;
 
     while (TimingDelay != 0x00);
+}
+
+/*******************************************************************************
+ * Function Name  : Delay_Microsecond
+ * Description    : Inserts a delay time in microseconds using DWT.
+ * Input          : uSec: specifies the delay time length, in microseconds.
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void Delay_Microsecond(__IO uint32_t uSec)
+{
+	uint32_t DWT_CYCCNT = (((SystemCoreClock / 1000000) * uSec) + DWT->CYCCNT);
+	while (DWT_CYCCNT > DWT->CYCCNT);
 }
 
 #if defined (USE_SPARK_CORE_V02)
