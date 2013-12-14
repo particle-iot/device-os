@@ -65,20 +65,6 @@ long SpiReadDataCont(void);
 void SpiReadHeader(void);
 void SpiContReadOperation(void);
 
-/**
- * @brief  The functions delay for a number of MCU clk period
- * @param  The number of MCU clk period to delay for
- * @retval None
- */
-inline void SysCtlDelay(unsigned long ulDelay)
-{
-	/* Decrement nCount value */
-	while (ulDelay != 0)
-	{
-		ulDelay--;
-	}
-}
-
 /****************************************************************************
  CC3000 SPI Protocol API
  ****************************************************************************/
@@ -175,8 +161,8 @@ void SpiWriteAsync(const unsigned char *data, unsigned short size)
  */
 void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize)
 {
-	/* Delay for at lest 50 us at the start of every transfer */
-	SysCtlDelay(FIFTY_US_DELAY);
+	/* Delay for at least 50 us at the start of every transfer */
+	Delay_Microsecond(50);
 
 	/* Disable DMA Channels */
 	CC3000_SPI_DMA_Channels(DISABLE);
@@ -222,7 +208,8 @@ void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_
  */
 void SpiReadWriteString(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize)
 {
-	SysCtlDelay(FIFTY_US_DELAY);
+	/* Delay for at least 50 us at the start of every transfer */
+	Delay_Microsecond(50);
 
 	/* Disable DMA RX Channels */
 	CC3000_SPI_DMA_Channels(DISABLE);
@@ -344,7 +331,7 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		{
 		}
 
-		//SysCtlDelay(9000000);
+		//Delay_Microsecond(9000000);
 
 		while (!tSLInformation.ReadWlanInterruptPin())
 		{
@@ -359,7 +346,7 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		//
 		ASSERT_CS();
 
-		//SysCtlDelay(90000);
+		//Delay_Microsecond(90000);
 
 		while (!tSLInformation.ReadWlanInterruptPin())
 		{
