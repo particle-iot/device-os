@@ -94,9 +94,10 @@ void Clear_NetApp_Dhcp(void)
 	netapp_dhcp(&pucIP_Addr, &pucSubnetMask, &pucIP_DefaultGWAddr, &pucDNS);
 }
 
-void wifi_add_profile_callback(const char *ssid, const char *password)
+void wifi_add_profile_callback(const char *ssid,
+                               const char *password,
+                               unsigned long security_type)
 {
-  unsigned long security_type = WLAN_SEC_WPA2;
   if (0 == password[0]) {
     security_type = WLAN_SEC_UNSEC;
   }

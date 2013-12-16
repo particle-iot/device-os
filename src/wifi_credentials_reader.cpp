@@ -40,16 +40,31 @@ void WiFiCredentialsReader::read(void)
     {
       memset(ssid, 0, 33);
       memset(password, 0, 33);
+      memset(security_type_string, 0, 2);
 
       print("SSID: ");
-      read_line(ssid);
+      read_line(ssid, 32);
 
-      print("Password: ");
-      read_line(password);
+      do {
+        print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2: ");
+        read_line(security_type_string, 1);
+      } while ('0' > security_type_string[0] || '3' < security_type_string[0]);
+
+      if ('1' == security_type_string[0]) {
+        print("\r\n ** Even though the CC3000 supposedly supports WEP,");
+        print("\r\n ** we at Spark have never seen it work.");
+        print("\r\n ** If you control the network, we recommend changing it to WPA2.\r\n");
+      }
+
+      unsigned long security_type = security_type_string[0] - '0';
+      if (0 < security_type) {
+        print("Password: ");
+        read_line(password, 32);
+      }
 
       print("Thanks! Wait about 7 seconds while I save those credentials...\r\n\r\n");
 
-      connect_callback(ssid, password);
+      connect_callback(ssid, password, security_type);
 
       print("Awesome. Now we'll connect!\r\n\r\n");
       print("If you see a pulsing cyan light, your Spark Core\r\n");
@@ -92,7 +107,7 @@ void WiFiCredentialsReader::print(const char *s)
   }
 }
 
-void WiFiCredentialsReader::read_line(char *dst)
+void WiFiCredentialsReader::read_line(char *dst, int max_len)
 {
   char c = 0, i = 0;
   while (1)
@@ -100,7 +115,7 @@ void WiFiCredentialsReader::read_line(char *dst)
     if (0 < serial.available())
     {
       c = serial.read();
-      if (i == 32 || c == '\r' || c == '\n')
+      if (i == max_len || c == '\r' || c == '\n')
       {
         *dst = '\0';
         break;
