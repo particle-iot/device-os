@@ -58,6 +58,15 @@ typedef enum
 	BOOLEAN = 1, INT = 2, STRING = 4, DOUBLE = 9
 } Spark_Data_TypeDef;
 
+class RGBClass {
+private:
+	static bool _control;
+public:
+	static bool controlled(void);
+	static void control(bool);
+	static void color(int, int, int);
+};
+
 class SparkClass {
 public:
 	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
@@ -70,7 +79,10 @@ public:
 	static int disconnect(void);
 };
 
+extern RGBClass RGB;
 extern SparkClass Spark;
+
+extern __IO uint8_t LED_Spark_Signal;
 
 #ifdef __cplusplus
 extern "C" {

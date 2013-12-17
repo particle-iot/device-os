@@ -43,6 +43,7 @@ void setup()
 
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
+
 }
 
 /* This function loops forever --------------------------------------------*/

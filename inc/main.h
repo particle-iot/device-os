@@ -75,6 +75,21 @@ extern "C" {
 
 #endif
 
+/*
+ * default status, works the way it does now, no need to define explicitly
+ */
+//#define RGB_NOTIFICATIONS_ON
+/*
+ * should prevent any of the Spark notifications from ever being shown on the LED;
+ * if the user never takes manual control of the LED, it should never turn on.
+ */
+//#define RGB_NOTIFICATIONS_OFF
+/*
+ * keep all of the statuses except the 'breathing cyan' - this would be a good
+ * power saver while still showing when important things are happening on the Core.
+ */
+//#define RGB_NOTIFICATIONS_CONNECTING_ONLY
+
 #define USART_RX_DATA_SIZE			256
 
 /* Exported functions ------------------------------------------------------- */
