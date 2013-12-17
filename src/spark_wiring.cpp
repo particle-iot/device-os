@@ -490,15 +490,23 @@ void analogWrite(uint16_t pin, uint8_t value)
  * 		  For now, let's not worry about what happens when this overflows (which should happen after 49 days).
  * 		  At some point we'll have to figure that out, though.
  */
-uint32_t millis()
+unsigned long millis(void)
 {
 	return TimingMillis;
 }
 
 /*
+ * @brief Should return the number of microseconds since the processor started up.
+ */
+unsigned long micros(void)
+{
+	return (DWT->CYCCNT / US_TICKS);
+}
+
+/*
  * @brief This should block for a certain number of milliseconds.
  */
-void delay(uint32_t ms)
+void delay(unsigned long ms)
 {
 	Delay(ms);
 }
@@ -506,7 +514,7 @@ void delay(uint32_t ms)
 /*
  * @brief This should block for a certain number of microseconds.
  */
-void delayMicroseconds(uint32_t us)
+void delayMicroseconds(unsigned int us)
 {
 	Delay_Microsecond(us);
 }

@@ -45,7 +45,7 @@
 #define HIGH 0x1
 #define LOW 0x0
 
-#define STM32_DELAY_US_MULT 12 // TODO: Fix this.
+#define US_TICKS (SystemCoreClock / 1000000)//cycles per microsecond
 
 //#define NULL ((void *)0)
 #define NONE ((uint8_t)0xFF)
@@ -158,13 +158,11 @@ void analogWrite(uint16_t pin, uint8_t value);
 /*
 * Timing
 */
-
-uint32_t millis();
-void delay(uint32_t ms);
-void delayMicroseconds(uint32_t us);
+unsigned long millis(void);
+unsigned long micros(void);
+void delay(unsigned long ms);
+void delayMicroseconds(unsigned int us);
 
 long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
-
-extern void Delay(__IO uint32_t nTime);
 
 #endif /* SPARK_WIRING_H_ */
