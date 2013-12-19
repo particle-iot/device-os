@@ -77,6 +77,7 @@ public:
 	static bool connected(void);
 	static int connect(void);
 	static int disconnect(void);
+	static String deviceID(void);
 };
 
 extern RGBClass RGB;

@@ -465,6 +465,36 @@ int SparkClass::disconnect(void)
 	return Spark_Disconnect();
 }
 
+String SparkClass::deviceID(void)
+{
+	String deviceID;
+	char hex_digit;
+	char id[12];
+	memcpy(id, (char *)ID1, 12);
+	//OR
+	//uint8_t id[12];
+	//Get_Unique_Device_ID(id);
+
+	for (int i = 0; i < 12; ++i)
+	{
+		hex_digit = 48 + (id[i] >> 4);
+		if (57 < hex_digit)
+		{
+			hex_digit += 39;
+		}
+		deviceID.concat(hex_digit);
+
+		hex_digit = 48 + (id[i] & 0xf);
+		if (57 < hex_digit)
+		{
+			hex_digit += 39;
+		}
+		deviceID.concat(hex_digit);
+	}
+
+	return deviceID;
+}
+
 int Spark_Connect(void)
 {
   Spark_Disconnect();
