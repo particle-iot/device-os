@@ -144,6 +144,7 @@ class SparkProtocol
     unsigned char salt[8];
     unsigned short _message_id;
     unsigned int last_message_millis;
+    unsigned int last_chunk_millis;
     bool expecting_ping_ack;
     bool initialized;
     bool updating;

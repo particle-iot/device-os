@@ -262,6 +262,8 @@ bool SparkProtocol::event_loop(void)
       }
       case CoAPMessageType::CHUNK:
       {
+        last_chunk_millis = callback_millis();
+
         // send ACK
         *msg_to_send = 0;
         *(msg_to_send + 1) = 16;
@@ -396,6 +398,23 @@ bool SparkProtocol::event_loop(void)
           expecting_ping_ack = true;
           last_message_millis = callback_millis();
         }
+      }
+    }
+    else
+    {
+      unsigned int millis_since_last_chunk = callback_millis() - last_chunk_millis;
+      if (3000 < millis_since_last_chunk)
+      {
+        queue[0] = 0;
+        queue[1] = 16;
+        coded_ack(queue + 2, 0x00, ChunkReceivedCode::BAD, queue[2], queue[3]);
+        if (0 > blocking_send(queue, 18))
+        {
+          // error
+          return false;
+        }
+
+        last_chunk_millis = callback_millis();
       }
     }
   }
