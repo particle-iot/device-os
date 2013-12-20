@@ -106,6 +106,7 @@ class SparkProtocol
                int data_length);
     void chunk_received(unsigned char *buf, unsigned char token,
                         ChunkReceivedCode::Enum code);
+    void chunk_missed(unsigned char *buf, unsigned short chunk_index);
     void update_ready(unsigned char *buf, unsigned char token);
     int description(unsigned char *buf, unsigned char token,
                     unsigned char message_id_msb, unsigned char message_id_lsb,
@@ -145,6 +146,7 @@ class SparkProtocol
     unsigned short _message_id;
     unsigned int last_message_millis;
     unsigned int last_chunk_millis;
+    unsigned short chunk_index;
     bool expecting_ping_ack;
     bool initialized;
     bool updating;

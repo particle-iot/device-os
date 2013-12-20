@@ -280,6 +280,7 @@ bool SparkProtocol::event_loop(void)
         {
           callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
           chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
+          ++chunk_index;
         }
         else
         {
@@ -304,6 +305,8 @@ bool SparkProtocol::event_loop(void)
         }
 
         callback_prepare_for_firmware_update();
+        last_chunk_millis = callback_millis();
+        chunk_index = 0;
         updating = true;
 
         // send update_reaady
@@ -373,7 +376,25 @@ bool SparkProtocol::event_loop(void)
       return false;
     }
 
-    if (!updating)
+    if (updating)
+    {
+      unsigned int millis_since_last_chunk = callback_millis() - last_chunk_millis;
+
+      if (3000 < millis_since_last_chunk)
+      {
+        queue[0] = 0;
+        queue[1] = 16;
+        chunk_missed(queue + 2, chunk_index);
+        if (0 > blocking_send(queue, 18))
+        {
+          // error
+          return false;
+        }
+
+        last_chunk_millis = callback_millis();
+      }
+    }
+    else
     {
       unsigned int millis_since_last_message = callback_millis() - last_message_millis;
       if (expecting_ping_ack)
@@ -398,23 +419,6 @@ bool SparkProtocol::event_loop(void)
           expecting_ping_ack = true;
           last_message_millis = callback_millis();
         }
-      }
-    }
-    else
-    {
-      unsigned int millis_since_last_chunk = callback_millis() - last_chunk_millis;
-      if (3000 < millis_since_last_chunk)
-      {
-        queue[0] = 0;
-        queue[1] = 16;
-        coded_ack(queue + 2, 0x00, ChunkReceivedCode::BAD, queue[2], queue[3]);
-        if (0 > blocking_send(queue, 18))
-        {
-          // error
-          return false;
-        }
-
-        last_chunk_millis = callback_millis();
       }
     }
   }
@@ -741,6 +745,25 @@ void SparkProtocol::chunk_received(unsigned char *buf,
                                    ChunkReceivedCode::Enum code)
 {
   separate_response(buf, token, code);
+}
+
+void SparkProtocol::chunk_missed(unsigned char *buf, unsigned short chunk_index)
+{
+  unsigned short message_id = next_message_id();
+
+  buf[0] = 0x40; // confirmable, no token
+  buf[1] = 0x01; // code 0.01 GET
+  buf[2] = message_id >> 8;
+  buf[3] = message_id & 0xff;
+  buf[4] = 0xb1; // one-byte Uri-Path option
+  buf[5] = 'c';
+  buf[6] = 0xff; // payload marker
+  buf[7] = chunk_index >> 8;
+  buf[8] = chunk_index & 0xff;
+
+  memset(buf + 9, 7, 7); // PKCS #7 padding
+
+  encrypt(buf, 16);
 }
 
 void SparkProtocol::update_ready(unsigned char *buf, unsigned char token)
