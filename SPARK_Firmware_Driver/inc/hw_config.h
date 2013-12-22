@@ -162,6 +162,7 @@ void LED_SetSignalingColor(uint32_t RGB_Color);
 void LED_Signaling_Start(void);
 void LED_Signaling_Stop(void);
 void LED_Signaling_Override(void) __attribute__ ((weak));
+void LED_SetIntensity(uint8_t intensity); /* 0 = off, 255 = full brightness */
 #endif
 
 void LED_Init(Led_TypeDef Led);

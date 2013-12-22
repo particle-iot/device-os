@@ -56,8 +56,13 @@ const uint16_t LED_PIN[] = {LED1_PIN, LED2_PIN, LED3_PIN, LED4_PIN};
 const uint32_t LED_CLK[] = {LED1_GPIO_CLK, LED2_GPIO_CLK, LED3_GPIO_CLK, LED4_GPIO_CLK};
 __IO uint16_t LED_TIM_CCR[] = {0x0000, 0x0000, 0x0000, 0x0000};
 __IO uint16_t LED_TIM_CCR_SIGNAL[] = {0x0000, 0x0000, 0x0000, 0x0000};	//TIM CCR Signal Override
-int8_t delta1, delta2, delta3;
 uint8_t LED_RGB_OVERRIDE = 0;
+uint8_t LED_INTENSITY = 64;
+
+/* Led Fading. */
+#define NUM_LED_FADE_STEPS 100 /* Called at 100Hz, fade over 1 second. */
+static uint8_t led_fade_step = NUM_LED_FADE_STEPS - 1;
+static int8_t led_fade_direction = -1; /* 1 = rising, -1 = falling. */
 
 GPIO_TypeDef* BUTTON_PORT[] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
 const uint16_t BUTTON_PIN[] = {BUTTON1_PIN, BUTTON2_PIN};
@@ -393,11 +398,11 @@ void UI_Timer_Configure(void)
     /* Enable TIM1 clock */
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
 
-    /* TIM1 Update Frequency = 72000000/7200/100 = 100Hz = 10ms */
-    /* TIM1_Prescaler: 7199 */
-    /* TIM1_Autoreload: 99 -> 100Hz = 10ms */
-    uint16_t TIM1_Prescaler = (SystemCoreClock / 10000) - 1;
-    uint16_t TIM1_Autoreload = (10000 / UI_TIMER_FREQUENCY) - 1;
+    /* TIM1 Update Frequency = 72000000/72/10000 = 100Hz = 10ms */
+    /* TIM1_Prescaler: 71 */
+    /* TIM1_Autoreload: 9999 -> 100Hz = 10ms */
+    uint16_t TIM1_Prescaler = (SystemCoreClock / 1000000) - 1;
+    uint16_t TIM1_Autoreload = (1000000 / UI_TIMER_FREQUENCY) - 1;
 
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 
@@ -453,16 +458,16 @@ void UI_Timer_Configure(void)
 #if defined (USE_SPARK_CORE_V02)
 void LED_SetRGBColor(uint32_t RGB_Color)
 {
-	LED_TIM_CCR[2] = (uint16_t)(((RGB_Color & 0xFF0000) >> 16) * (TIM1->ARR + 1) / 255);	//LED3 -> Red Led
-	LED_TIM_CCR[3] = (uint16_t)(((RGB_Color & 0xFF00) >> 8) * (TIM1->ARR + 1) / 255);		//LED4 -> Green Led
-	LED_TIM_CCR[1] = (uint16_t)((RGB_Color & 0xFF) * (TIM1->ARR + 1) / 255);				//LED2 -> Blue Led
+	LED_TIM_CCR[2] = (uint16_t)((((RGB_Color & 0xFF0000) >> 16) * LED_INTENSITY * (TIM1->ARR + 1)) >> 16); //LED3 -> Red Led
+	LED_TIM_CCR[3] = (uint16_t)((((RGB_Color & 0xFF00) >> 8) * LED_INTENSITY * (TIM1->ARR + 1)) >> 16);    //LED4 -> Green Led
+	LED_TIM_CCR[1] = (uint16_t)(((RGB_Color & 0xFF) * LED_INTENSITY * (TIM1->ARR + 1)) >> 16);             //LED2 -> Blue Led
 }
 
 void LED_SetSignalingColor(uint32_t RGB_Color)
 {
-	LED_TIM_CCR_SIGNAL[2] = (uint16_t)(((RGB_Color & 0xFF0000) >> 16) * (TIM1->ARR + 1) / 255);	//LED3 -> Red Led
-	LED_TIM_CCR_SIGNAL[3] = (uint16_t)(((RGB_Color & 0xFF00) >> 8) * (TIM1->ARR + 1) / 255);	//LED4 -> Green Led
-	LED_TIM_CCR_SIGNAL[1] = (uint16_t)((RGB_Color & 0xFF) * (TIM1->ARR + 1) / 255);				//LED2 -> Blue Led
+	LED_TIM_CCR_SIGNAL[2] = (uint16_t)((((RGB_Color & 0xFF0000) >> 16) * LED_INTENSITY * (TIM1->ARR + 1)) >> 16); //LED3 -> Red Led
+	LED_TIM_CCR_SIGNAL[3] = (uint16_t)((((RGB_Color & 0xFF00) >> 8) * LED_INTENSITY * (TIM1->ARR + 1)) >> 16);    //LED4 -> Green Led
+	LED_TIM_CCR_SIGNAL[1] = (uint16_t)(((RGB_Color & 0xFF) * LED_INTENSITY * (TIM1->ARR + 1)) >> 16);             //LED2 -> Blue Led
 }
 
 void LED_Signaling_Start(void)
@@ -477,6 +482,11 @@ void LED_Signaling_Stop(void)
 	LED_RGB_OVERRIDE = 0;
 
 	LED_On(LED_RGB);
+}
+
+void LED_SetIntensity(uint8_t intensity)
+{
+  LED_INTENSITY = intensity;
 }
 #endif
 
@@ -522,11 +532,11 @@ void LED_On(Led_TypeDef Led)
 	switch(Led)
 	{
 	case LED1:
-		TIM1->CCR1 = TIM1->ARR + 1;
+		TIM1->CCR1 = ((TIM1->ARR + 1) * LED_INTENSITY) >> 8;
 		break;
 
 	case LED2:
-		TIM1->CCR2 = TIM1->ARR + 1;
+		TIM1->CCR2 = ((TIM1->ARR + 1) * LED_INTENSITY) >> 8;
 		break;
 	}
 #elif defined (USE_SPARK_CORE_V02)
@@ -549,6 +559,9 @@ void LED_On(Led_TypeDef Led)
 			TIM1->CCR3 = LED_TIM_CCR_SIGNAL[3];
 			TIM1->CCR1 = LED_TIM_CCR_SIGNAL[1];
 		}
+
+    led_fade_step = NUM_LED_FADE_STEPS - 1;
+    led_fade_direction = -1; /* next fade is falling */
 		break;
 	}
 #endif
@@ -585,6 +598,8 @@ void LED_Off(Led_TypeDef Led)
 		TIM1->CCR2 = 0;
 		TIM1->CCR3 = 0;
 		TIM1->CCR1 = 0;
+    led_fade_step = 0;
+    led_fade_direction = 1; /* next fade is rising. */
 		break;
 	}
 #endif
@@ -603,11 +618,17 @@ void LED_Toggle(Led_TypeDef Led)
 	switch(Led)
 	{
 	case LED1:
-		TIM1->CCR1 ^= TIM1->ARR + 1;
+    if (TIM1->CCR1)
+      TIM1->CCR1 = 0;
+    else
+      TIM1->CCR1 = ((TIM1->ARR + 1) * LED_INTENSITY) >> 8;
 		break;
 
 	case LED2:
-		TIM1->CCR2 ^= TIM1->ARR + 1;
+    if (TIM1->CCR2)
+      TIM1->CCR2 = 0;
+    else
+      TIM1->CCR2 = ((TIM1->ARR + 1) * LED_INTENSITY) >> 8;
 		break;
 	}
 #elif defined (USE_SPARK_CORE_V02)
@@ -620,15 +641,37 @@ void LED_Toggle(Led_TypeDef Led)
 	case LED_RGB://LED_SetRGBColor() and LED_On() should be called first for this Case
 		if(LED_RGB_OVERRIDE == 0)
 		{
-			TIM1->CCR2 ^= LED_TIM_CCR[2];
-			TIM1->CCR3 ^= LED_TIM_CCR[3];
-			TIM1->CCR1 ^= LED_TIM_CCR[1];
+      if (TIM1->CCR2)
+        TIM1->CCR2 = 0;
+      else
+        TIM1->CCR2 = LED_TIM_CCR[2];
+
+      if (TIM1->CCR3)
+        TIM1->CCR3 = 0;
+      else
+        TIM1->CCR3 = LED_TIM_CCR[3];
+
+      if (TIM1->CCR1)
+        TIM1->CCR1 = 0;
+      else
+        TIM1->CCR1 = LED_TIM_CCR[1];
 		}
 		else
 		{
-			TIM1->CCR2 ^= LED_TIM_CCR_SIGNAL[2];
-			TIM1->CCR3 ^= LED_TIM_CCR_SIGNAL[3];
-			TIM1->CCR1 ^= LED_TIM_CCR_SIGNAL[1];
+      if (TIM1->CCR2)
+        TIM1->CCR2 = 0;
+      else
+        TIM1->CCR2 = LED_TIM_CCR_SIGNAL[2];
+
+      if (TIM1->CCR3)
+        TIM1->CCR3 = 0;
+      else
+        TIM1->CCR3 = LED_TIM_CCR_SIGNAL[3];
+
+      if (TIM1->CCR1)
+        TIM1->CCR1 = 0;
+      else
+        TIM1->CCR1 = LED_TIM_CCR_SIGNAL[1];
 		}
 		break;
 	}
@@ -644,29 +687,23 @@ void LED_Toggle(Led_TypeDef Led)
   */
 void LED_Fade(Led_TypeDef Led)
 {
+  /* Update position in fade. */
+  if (led_fade_step == 0)
+    led_fade_direction = 1; /* Switch to fade growing. */
+  else if (led_fade_step == NUM_LED_FADE_STEPS - 1)
+    led_fade_direction = -1; /* Switch to fade falling. */
+
+  led_fade_step += led_fade_direction;
+
 #if defined (USE_SPARK_CORE_V01)
 	switch(Led)
 	{
 	case LED1:
-		if(LED_TIM_CCR[1] == 0)
-			delta1 = 0;
-		else if(TIM1->CCR1 == 0)
-			delta1 = 1;
-		else if(TIM1->CCR1 == TIM1->ARR + 1)
-			delta1 = -1;
-
-		TIM1->CCR1 += delta1;
+    TIM1->CCR1 = (((uint32_t) LED_TIM_CCR[1]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
 		break;
 
 	case LED2:
-		if(LED_TIM_CCR[2] == 0)
-			delta2 = 0;
-		else if(TIM1->CCR2 == 0)
-			delta2 = 1;
-		else if(TIM1->CCR2 == TIM1->ARR + 1)
-			delta2 = -1;
-
-		TIM1->CCR2 += delta2;
+    TIM1->CCR2 = (((uint32_t) LED_TIM_CCR[2]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
 		break;
 	}
 #elif defined (USE_SPARK_CORE_V02)
@@ -674,54 +711,16 @@ void LED_Fade(Led_TypeDef Led)
 	{
 		if(LED_RGB_OVERRIDE == 0)
 		{
-			if(LED_TIM_CCR[2] == 0)
-				delta2 = 0;
-			else if(TIM1->CCR2 == 0)
-				delta2 = 1;
-			else if(TIM1->CCR2 == TIM1->ARR + 1)
-				delta2 = -1;
-
-			if(LED_TIM_CCR[3] == 0)
-				delta3 = 0;
-			else if(TIM1->CCR3 == 0)
-				delta3 = 1;
-			else if(TIM1->CCR3 == TIM1->ARR + 1)
-				delta3 = -1;
-
-			if(LED_TIM_CCR[1] == 0)
-				delta1 = 0;
-			else if(TIM1->CCR1 == 0)
-				delta1 = 1;
-			else if(TIM1->CCR1 == TIM1->ARR + 1)
-				delta1 = -1;
+      TIM1->CCR2 = (((uint32_t) LED_TIM_CCR[2]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
+      TIM1->CCR3 = (((uint32_t) LED_TIM_CCR[3]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
+      TIM1->CCR1 = (((uint32_t) LED_TIM_CCR[1]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
 		}
 		else
 		{
-			if(LED_TIM_CCR_SIGNAL[2] == 0)
-				delta2 = 0;
-			else if(TIM1->CCR2 == 0)
-				delta2 = 1;
-			else if(TIM1->CCR2 == TIM1->ARR + 1)
-				delta2 = -1;
-
-			if(LED_TIM_CCR_SIGNAL[3] == 0)
-				delta3 = 0;
-			else if(TIM1->CCR3 == 0)
-				delta3 = 1;
-			else if(TIM1->CCR3 == TIM1->ARR + 1)
-				delta3 = -1;
-
-			if(LED_TIM_CCR_SIGNAL[1] == 0)
-				delta1 = 0;
-			else if(TIM1->CCR1 == 0)
-				delta1 = 1;
-			else if(TIM1->CCR1 == TIM1->ARR + 1)
-				delta1 = -1;
+      TIM1->CCR2 = (((uint32_t) LED_TIM_CCR_SIGNAL[2]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
+      TIM1->CCR3 = (((uint32_t) LED_TIM_CCR_SIGNAL[3]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
+      TIM1->CCR1 = (((uint32_t) LED_TIM_CCR_SIGNAL[1]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
 		}
-
-		TIM1->CCR2 += delta2;
-		TIM1->CCR3 += delta3;
-		TIM1->CCR1 += delta1;
 	}
 #endif
 }
