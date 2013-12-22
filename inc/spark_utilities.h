@@ -65,6 +65,7 @@ public:
 	static bool controlled(void);
 	static void control(bool);
 	static void color(int, int, int);
+  static void intensity(uint8_t);
 };
 
 class SparkClass {
