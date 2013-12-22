@@ -119,15 +119,15 @@ void RGBClass::control(bool override)
 #endif
 }
 
-void RGBClass::color(int red, int blue, int green)
+void RGBClass::color(int red, int green, int blue)
 {
 #if !defined (RGB_NOTIFICATIONS_ON)
 	if (true != _control)
 		return;
 
-	TIM1->CCR2 = (uint16_t)(red * (TIM1->ARR + 1) / 255);	//Red Led
-	TIM1->CCR3 = (uint16_t)(blue * (TIM1->ARR + 1) / 255);	//Green Led
-	TIM1->CCR1 = (uint16_t)(green * (TIM1->ARR + 1) / 255);	//Blue Led
+	TIM1->CCR2 = (uint16_t)(red   * (TIM1->ARR + 1) / 255);	// Red LED
+	TIM1->CCR3 = (uint16_t)(green * (TIM1->ARR + 1) / 255);	// Green LED
+	TIM1->CCR1 = (uint16_t)(blue  * (TIM1->ARR + 1) / 255);	// Blue LED
 #endif
 }
 
