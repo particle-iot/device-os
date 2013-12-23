@@ -127,6 +127,8 @@ void TwoWire::begin(int address)
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
 {
+	uint32_t _millis;
+
 	// clamp to buffer length
 	if(quantity > BUFFER_LENGTH){
 		quantity = BUFFER_LENGTH;
@@ -135,12 +137,20 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop
 	/* Send START condition */
 	I2C_GenerateSTART(I2C1, ENABLE);
 
-	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+	_millis = millis();
+	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
+	{
+		if(EVENT_TIMEOUT < (millis() - _millis)) return 0;
+	}
 
 	/* Send Slave address for read */
 	I2C_Send7bitAddress(I2C1, address, I2C_Direction_Receiver);
 
-	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED));
+	_millis = millis();
+	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
+	{
+		if(EVENT_TIMEOUT < (millis() - _millis)) return 0;
+	}
 
 	/* perform blocking read into buffer */
 	uint8_t *pBuffer = rxBuffer;
@@ -230,17 +240,27 @@ void TwoWire::beginTransmission(int address)
 //
 uint8_t TwoWire::endTransmission(uint8_t sendStop)
 {
+	uint32_t _millis;
+
 	// transmit buffer (blocking)
 
 	/* Send START condition */
 	I2C_GenerateSTART(I2C1, ENABLE);
 
-	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+	_millis = millis();
+	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
+	{
+		if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
+	}
 
 	/* Send Slave address for write */
 	I2C_Send7bitAddress(I2C1, txAddress, I2C_Direction_Transmitter);
 
-	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
+	_millis = millis();
+	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
+	{
+		if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
+	}
 
 	uint8_t *pBuffer = txBuffer;
 	uint8_t NumByteToWrite = txBufferLength;
@@ -254,7 +274,11 @@ uint8_t TwoWire::endTransmission(uint8_t sendStop)
 		/* Point to the next byte to be written */
 		pBuffer++;
 
-		while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
+		_millis = millis();
+		while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+		{
+			if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
+		}
 	}
 
 	if(sendStop == true)

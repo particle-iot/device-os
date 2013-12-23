@@ -30,6 +30,7 @@
 #include "spark_wiring_stream.h"
 
 #define BUFFER_LENGTH 32
+#define EVENT_TIMEOUT 10
 
 class TwoWire : public Stream
 {
