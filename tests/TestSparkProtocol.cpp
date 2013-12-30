@@ -19,6 +19,8 @@ struct ConstructorFixture
   static int mock_num_functions(void);
   static void mock_copy_function_key(char *destination, int function_index);
   static int mock_call_function(const char *function_key, const char *arg);
+  static int mock_num_variables(void);
+  static void mock_copy_variable_key(char *destination, int variable_index);
   static void *mock_get_variable(const char *variable_key);
   static void mock_signal(bool on);
   static bool signal_called_with;
@@ -148,6 +150,8 @@ ConstructorFixture::ConstructorFixture()
   descriptor.num_functions = mock_num_functions;
   descriptor.copy_function_key = mock_copy_function_key;
   descriptor.call_function = mock_call_function;
+  descriptor.num_variables = mock_num_variables;
+  descriptor.copy_variable_key = mock_copy_variable_key;
   descriptor.get_variable = mock_get_variable;
   descriptor.was_ota_upgrade_successful = mock_ota_status_check;
   descriptor.variable_type = mock_variable_type;
@@ -278,6 +282,17 @@ int ConstructorFixture::mock_call_function(const char *function_key,
   return 456;
 }
 
+int ConstructorFixture::mock_num_variables(void)
+{
+  return 1;
+}
+
+void ConstructorFixture::mock_copy_variable_key(char *dst, int i)
+{
+  const char *vars[1] = { "temperature\0" };
+  memcpy(dst, vars[i], SparkProtocol::MAX_VARIABLE_KEY_LENGTH);
+}
+
 void *ConstructorFixture::mock_get_variable(const char *variable_key)
 {
   const char *prevent_warning;
@@ -373,7 +388,7 @@ SUITE(SparkProtocolConstruction)
     CHECK_EQUAL(16, bytes_received[1]);
   }
 
-  TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToDescribeWith34Bytes)
+  TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToDescribeWith50Bytes)
   {
     uint8_t describe[18] = {
       0x00, 0x10,
@@ -383,7 +398,7 @@ SUITE(SparkProtocolConstruction)
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();
-    CHECK_EQUAL(34, bytes_sent[0]);
+    CHECK_EQUAL(50, bytes_sent[0]);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToDescribeWithDescription)
@@ -393,16 +408,18 @@ SUITE(SparkProtocolConstruction)
       0x4d, 0x2b, 0x01, 0x6f, 0x13, 0xee, 0xde, 0xdc,
       0xaf, 0x79, 0x23, 0xfb, 0x76, 0x81, 0xb3, 0x7a };
     memcpy(message_to_receive, describe, 18);
-    const uint8_t expected[34] = {
-      0x00, 0x20,
+    const uint8_t expected[50] = {
+      0x00, 0x30,
       0x8c, 0x75, 0x7e, 0x24, 0xf7, 0x56, 0xde, 0x78,
       0xd8, 0x4f, 0x19, 0x80, 0xa8, 0xe0, 0xd1, 0x84,
-      0xa3, 0x36, 0xb2, 0x8c, 0xb8, 0xfb, 0x3c, 0xfa,
-      0xdf, 0x88, 0xe3, 0x66, 0x18, 0xe3, 0x18, 0x24 };
+      0xb0, 0x96, 0x00, 0x94, 0x76, 0x92, 0x11, 0xc8,
+      0x84, 0xf5, 0x95, 0x6a, 0xe4, 0x16, 0x21, 0x61,
+      0x10, 0xf5, 0xe5, 0x1a, 0xf1, 0x78, 0x0b, 0x75,
+      0x6a, 0xed, 0x83, 0xc5, 0xe0, 0x5d, 0x5c, 0x5a };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     spark_protocol.event_loop();
-    CHECK_ARRAY_EQUAL(expected, sent_buf_0, 34);
+    CHECK_ARRAY_EQUAL(expected, sent_buf_0, 50);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToFunctionCallWithACK)

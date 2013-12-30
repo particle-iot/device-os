@@ -39,6 +39,8 @@ struct SparkDescriptor
   void (*copy_function_key)(char *destination, int function_index);
   int (*call_function)(const char *function_key, const char *arg);
 
+  int (*num_variables)(void);
+  void (*copy_variable_key)(char *destination, int variable_index);
   SparkReturnType::Enum (*variable_type)(const char *variable_key);
   void *(*get_variable)(const char *variable_key);
 

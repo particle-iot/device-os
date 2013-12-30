@@ -122,6 +122,31 @@ int mock_call_function(const char *function_key, const char *arg)
   return 0;
 }
 
+int mock_num_functions()
+{
+  return 1;
+}
+
+void mock_copy_function_key(char *dst, int)
+{
+  memcpy(dst, "brew", 5);
+}
+
+int mock_num_variables()
+{
+  return 1;
+}
+
+void mock_copy_variable_key(char *dst, int)
+{
+  memcpy(dst, "temperature", 12);
+}
+
+SparkReturnType::Enum mock_variable_type(const char *)
+{
+  return SparkReturnType::INT;
+}
+
 void CoAPFixture::init()
 {
   const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
@@ -135,6 +160,11 @@ void CoAPFixture::init()
 
   SparkDescriptor descriptor;
   descriptor.call_function = mock_call_function;
+  descriptor.num_functions = mock_num_functions;
+  descriptor.copy_function_key = mock_copy_function_key;
+  descriptor.num_variables = mock_num_variables;
+  descriptor.copy_variable_key = mock_copy_variable_key;
+  descriptor.variable_type = mock_variable_type;
 
   spark_protocol.init(id, keys, callbacks, descriptor);
   spark_protocol.set_key(signed_encrypted_credentials);
@@ -437,18 +467,18 @@ SUITE(CoAP)
 
   TEST_FIXTURE(CoAPFixture, DescriptionMatchesOpenSSL)
   {
-    uint8_t expected[32] = {
+    uint8_t expected[48] = {
       0xac, 0xc9, 0x8f, 0x76, 0x26, 0x76, 0xc9, 0x53,
       0xf5, 0xc2, 0x2a, 0x20, 0x70, 0xe6, 0x60, 0x28,
-      0x54, 0x56, 0x8e, 0x87, 0xd4, 0x1b, 0x16, 0x7b,
-      0xfe, 0xdc, 0x21, 0x6c, 0x1c, 0x59, 0xc5, 0x94 };
-    unsigned char buf[32];
-    memset(buf, 0, 32);
+      0x5a, 0xa0, 0x95, 0x15, 0x1c, 0x4a, 0xdc, 0x53,
+      0x19, 0xbf, 0x95, 0x44, 0x6c, 0xe5, 0x50, 0x59,
+      0xf9, 0x26, 0xd4, 0x04, 0x36, 0x9b, 0x97, 0xef,
+      0x4d, 0xe7, 0x45, 0xc6, 0xce, 0x13, 0xb3, 0x5d };
+    unsigned char buf[48];
+    memset(buf, 0, 48);
     init();
-    const char *fnames[1];
-    fnames[0] = "brew";
-    spark_protocol.description(buf, 0x66, 0xf6, 0x49, fnames, 1);
-    CHECK_ARRAY_EQUAL(expected, buf, 32);
+    spark_protocol.description(buf, 0x66, 0xf6, 0x49);
+    CHECK_ARRAY_EQUAL(expected, buf, 48);
   }
 
   TEST_FIXTURE(CoAPFixture, PresenceAnnouncementReturns19)

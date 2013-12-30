@@ -81,6 +81,8 @@ void SparkProtocol::init(const char *id,
   this->descriptor.num_functions = descriptor.num_functions;
   this->descriptor.copy_function_key = descriptor.copy_function_key;
   this->descriptor.call_function = descriptor.call_function;
+  this->descriptor.num_variables = descriptor.num_variables;
+  this->descriptor.copy_variable_key = descriptor.copy_variable_key;
   this->descriptor.variable_type = descriptor.variable_type;
   this->descriptor.get_variable = descriptor.get_variable;
   this->descriptor.was_ota_upgrade_successful = descriptor.was_ota_upgrade_successful;
@@ -140,19 +142,7 @@ bool SparkProtocol::event_loop(void)
     {
       case CoAPMessageType::DESCRIBE:
       {
-        int num_funcs = descriptor.num_functions();
-
-        // allocate enough space for all the function keys
-        char flat_chunk_of_mem[num_funcs * MAX_FUNCTION_KEY_LENGTH];
-        const char *function_keys[num_funcs];
-        for (int i = 0; i < num_funcs; ++i)
-        {
-          char *p = flat_chunk_of_mem + (MAX_FUNCTION_KEY_LENGTH * i);
-          descriptor.copy_function_key(p, i);
-          function_keys[i] = p;
-        }
-
-        int desc_len = description(queue + 2, token, queue[2], queue[3], function_keys, num_funcs);
+        int desc_len = description(queue + 2, token, queue[2], queue[3]);
         queue[0] = (desc_len >> 8) & 0xff;
         queue[1] = desc_len & 0xff;
         if (0 > blocking_send(queue, desc_len + 2))
@@ -772,8 +762,7 @@ void SparkProtocol::update_ready(unsigned char *buf, unsigned char token)
 }
 
 int SparkProtocol::description(unsigned char *buf, unsigned char token,
-                               unsigned char message_id_msb, unsigned char message_id_lsb,
-                               const char **function_names, int num_functions)
+                               unsigned char message_id_msb, unsigned char message_id_lsb)
 {
   buf[0] = 0x61; // acknowledgment, one-byte token
   buf[1] = 0x45; // response code 2.05 CONTENT
@@ -784,8 +773,11 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
 
   memcpy(buf + 6, "{\"f\":[", 6);
 
-  unsigned char *buf_ptr = buf + 12;
-  for (int i = 0; i < num_functions; ++i)
+  char *buf_ptr = (char *)buf + 12;
+
+  int num_keys = descriptor.num_functions();
+  int i;
+  for (i = 0; i < num_keys; ++i)
   {
     if (i)
     {
@@ -794,21 +786,48 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
     }
     *buf_ptr = '"';
     ++buf_ptr;
-    int function_name_length = strlen(function_names[i]);
+    descriptor.copy_function_key(buf_ptr, i);
+    int function_name_length = strlen(buf_ptr);
     if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
+    {
       function_name_length = MAX_FUNCTION_KEY_LENGTH;
-    memcpy(buf_ptr, function_names[i], function_name_length);
+    }
     buf_ptr += function_name_length;
     *buf_ptr = '"';
     ++buf_ptr;
   }
-  memcpy(buf_ptr, "],\"v\":[", 7);
+
+  memcpy(buf_ptr, "],\"v\":{", 7);
   buf_ptr += 7;
-  // handle variables later
-  memcpy(buf_ptr, "]}", 2);
+
+  num_keys = descriptor.num_variables();
+  for (i = 0; i < num_keys; ++i)
+  {
+    if (i)
+    {
+      *buf_ptr = ',';
+      ++buf_ptr;
+    }
+    *buf_ptr = '"';
+    ++buf_ptr;
+    descriptor.copy_variable_key(buf_ptr, i);
+    int variable_name_length = strlen(buf_ptr);
+    SparkReturnType::Enum t = descriptor.variable_type(buf_ptr);
+    if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
+    {
+      variable_name_length = MAX_VARIABLE_KEY_LENGTH;
+    }
+    buf_ptr += variable_name_length;
+    memcpy(buf_ptr, "\":", 2);
+    buf_ptr += 2;
+    *buf_ptr = '0' + (char)t;
+    ++buf_ptr;
+  }
+
+  memcpy(buf_ptr, "}}", 2);
   buf_ptr += 2;
 
-  int msglen = buf_ptr - buf;
+  int msglen = buf_ptr - (char *)buf;
   int buflen = (msglen & ~15) + 16;
   char pad = buflen - msglen;
   memset(buf_ptr, pad, pad); // PKCS #7 padding

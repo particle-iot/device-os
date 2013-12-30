@@ -62,6 +62,7 @@ class SparkProtocol
 {
   public:
     static const int MAX_FUNCTION_KEY_LENGTH = 12;
+    static const int MAX_VARIABLE_KEY_LENGTH = 12;
     static int presence_announcement(unsigned char *buf, const char *id);
 
     SparkProtocol();
@@ -109,8 +110,7 @@ class SparkProtocol
     void chunk_missed(unsigned char *buf, unsigned short chunk_index);
     void update_ready(unsigned char *buf, unsigned char token);
     int description(unsigned char *buf, unsigned char token,
-                    unsigned char message_id_msb, unsigned char message_id_lsb,
-                    const char **function_names, int num_functions);
+                    unsigned char message_id_msb, unsigned char message_id_lsb);
     void ping(unsigned char *buf);
 
     /********** Queue **********/
