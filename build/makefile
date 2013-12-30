@@ -55,7 +55,7 @@ INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)/src
 # Compiler flags
 CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 
 CFLAGS += $(patsubst %,-I$(SRC_PATH)/%,$(INCLUDE_DIRS)) -I.
-CFLAGS += -ffunction-sections -Wall -Werror -fmessage-length=0 
+CFLAGS += -ffunction-sections -Wall -fmessage-length=0
 
 # Generate dependancy files automatically.
 CFLAGS += -MD -MP -MF $@.d
