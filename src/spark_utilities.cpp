@@ -315,6 +315,18 @@ void copyUserFunctionKey(char *destination, int function_index)
          USER_FUNC_KEY_LENGTH);
 }
 
+int numUserVariables(void)
+{
+  return User_Var_Count;
+}
+
+void copyUserVariableKey(char *destination, int variable_index)
+{
+  memcpy(destination,
+         User_Var_Lookup_Table[variable_index].userVarKey,
+         USER_VAR_KEY_LENGTH);
+}
+
 SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 {
   switch (userVarType(varKey))
@@ -355,6 +367,8 @@ void Spark_Protocol_Init(void)
     descriptor.num_functions = numUserFunctions;
     descriptor.copy_function_key = copyUserFunctionKey;
     descriptor.call_function = userFuncSchedule;
+    descriptor.num_variables = numUserVariables;
+    descriptor.copy_variable_key = copyUserVariableKey;
     descriptor.variable_type = wrapVarTypeInEnum;
     descriptor.get_variable = getUserVar;
     descriptor.was_ota_upgrade_successful = OTA_Flashed_GetStatus;
