@@ -142,4 +142,7 @@ int _getpid(void)
 	return 1;
 }
 
+/* Default implementation for call made to pure virtual function. */
+void __cxa_pure_virtual() { while (1); }
+
 } /* extern "C" */
