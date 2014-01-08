@@ -98,7 +98,7 @@ void SpiResumeSpi(void)
 	//
 	//Enable IRQ Interrupts
 	//
-	__enable_irq();
+	NVIC_EnableIRQ(CC3000_WIFI_INT_EXTI_IRQn);
 }
 
 void SpiPauseSpi(void)
@@ -106,7 +106,7 @@ void SpiPauseSpi(void)
 	//
 	//Disable IRQ Interrupts
 	//
-	__disable_irq();
+	NVIC_DisableIRQ(CC3000_WIFI_INT_EXTI_IRQn);
 }
 
 /**
