@@ -608,13 +608,17 @@ void I2C_Send7bitAddress(I2C_TypeDef* I2Cx, uint8_t Address, uint8_t I2C_Directi
   /* Test on the direction to set/reset the read/write bit */
   if (I2C_Direction != I2C_Direction_Transmitter)
   {
-    /* Set the address bit0 for read */
-    Address |= OAR1_ADD0_Set;
+	/* Shift the address one bit to the left */
+	Address = Address << 1;
+	/* Set the address bit0 for read */
+	Address |= OAR1_ADD0_Set;
   }
   else
   {
-    /* Reset the address bit0 for write */
-    Address &= OAR1_ADD0_Reset;
+	/* Shift the address one bit to the left */
+	Address = Address << 1;
+	/* Reset the address bit0 for write */
+	Address &= OAR1_ADD0_Reset;
   }
   /* Send the address */
   I2Cx->DR = Address;
