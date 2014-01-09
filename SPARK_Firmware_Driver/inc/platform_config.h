@@ -236,12 +236,14 @@
 #define RTCALARM_IRQ_PRIORITY				4	//RTC Alarm Interrupt
 #define TIM1_CC_IRQ_PRIORITY				5	//TIM1_CC4 Interrupt
 #define EXTI2_IRQ_PRIORITY					6	//BUTTON1_EXTI Interrupt
-#define EXTI0_IRQ_PRIORITY					13	//User Interrupt
-#define EXTI1_IRQ_PRIORITY					13	//User Interrupt
-#define EXTI3_IRQ_PRIORITY					13	//User Interrupt
-#define EXTI4_IRQ_PRIORITY					13	//User Interrupt
-#define EXTI9_5_IRQ_PRIORITY				14	//User Interrupt
-#define SYSTICK_IRQ_PRIORITY				15	//CORTEX_M3 Systick Interrupt
+#define EXTI0_IRQ_PRIORITY					11	//User Interrupt
+#define EXTI1_IRQ_PRIORITY					11	//User Interrupt
+#define EXTI3_IRQ_PRIORITY					11	//User Interrupt
+#define EXTI4_IRQ_PRIORITY					11	//User Interrupt
+#define EXTI9_5_IRQ_PRIORITY				12	//User Interrupt
+#define SYSTICK_IRQ_PRIORITY				13	//CORTEX_M3 Systick Interrupt
+#define SVCALL_IRQ_PRIORITY					14	//CORTEX_M3 SVCall Interrupt
+#define PENDSV_IRQ_PRIORITY					15	//CORTEX_M3 PendSV Interrupt
 
 /* Exported functions ------------------------------------------------------- */
 
