@@ -96,7 +96,7 @@ void SpiClose(void)
 void SpiResumeSpi(void)
 {
 	//
-	//Enable IRQ Interrupts
+	//Enable CC3000 SPI IRQ Line Interrupt
 	//
 	NVIC_EnableIRQ(CC3000_WIFI_INT_EXTI_IRQn);
 }
@@ -104,7 +104,7 @@ void SpiResumeSpi(void)
 void SpiPauseSpi(void)
 {
 	//
-	//Disable IRQ Interrupts
+	//Disable CC3000 SPI IRQ Line Interrupt
 	//
 	NVIC_DisableIRQ(CC3000_WIFI_INT_EXTI_IRQn);
 }
@@ -161,9 +161,6 @@ void SpiWriteAsync(const unsigned char *data, unsigned short size)
  */
 void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize)
 {
-	/* Delay for at least 50 us at the start of every transfer */
-	Delay_Microsecond(50);
-
 	/* Disable DMA Channels */
 	CC3000_SPI_DMA_Channels(DISABLE);
 
@@ -208,9 +205,6 @@ void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_
  */
 void SpiReadWriteString(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize)
 {
-	/* Delay for at least 50 us at the start of every transfer */
-	Delay_Microsecond(50);
-
 	/* Disable DMA RX Channels */
 	CC3000_SPI_DMA_Channels(DISABLE);
 
@@ -256,8 +250,15 @@ long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 	//
 	ASSERT_CS();
 
+	//Delay for at least 50 us
+	Delay_Microsecond(50);
+
 	//SPI writes first 4 bytes of data
 	SpiReadWriteString(FALSE, ucBuf, 4);
+
+	//Delay for at least 50 us
+	Delay_Microsecond(50);
+
 	//SPI writes next 4 bytes of data
 	SpiReadWriteString(FALSE, ucBuf + 4, usLength - 4);
 
@@ -331,8 +332,6 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		{
 		}
 
-		//Delay_Microsecond(9000000);
-
 		while (!tSLInformation.ReadWlanInterruptPin())
 		{
 		}
@@ -345,8 +344,6 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		// Assert the CS line and wait till IRQ line is active and then initialize write operation
 		//
 		ASSERT_CS();
-
-		//Delay_Microsecond(90000);
 
 		while (!tSLInformation.ReadWlanInterruptPin())
 		{
