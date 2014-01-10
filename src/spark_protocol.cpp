@@ -127,235 +127,11 @@ bool SparkProtocol::event_loop(void)
   int bytes_received = callback_receive(queue, 2);
   if (2 <= bytes_received)
   {
-    last_message_millis = callback_millis();
-    expecting_ping_ack = false;
-    int len = queue[0] << 8 | queue[1];
-    if (0 > blocking_receive(queue, len))
+    bool success = handle_received_message();
+    if (!success)
     {
-      // error
+      // bail if and only if there was an error
       return false;
-    }
-    CoAPMessageType::Enum message_type = received_message(queue, len);
-    unsigned char token = queue[4];
-    unsigned char *msg_to_send = queue + len;
-    switch (message_type)
-    {
-      case CoAPMessageType::DESCRIBE:
-      {
-        int desc_len = description(queue + 2, token, queue[2], queue[3]);
-        queue[0] = (desc_len >> 8) & 0xff;
-        queue[1] = desc_len & 0xff;
-        if (0 > blocking_send(queue, desc_len + 2))
-        {
-          // error
-          return false;
-        }
-        break;
-      }
-      case CoAPMessageType::FUNCTION_CALL:
-      {
-        // send ACK
-        *msg_to_send = 0;
-        *(msg_to_send + 1) = 16;
-        empty_ack(msg_to_send + 2, queue[2], queue[3]);
-        if (0 > blocking_send(msg_to_send, 18))
-        {
-          // error
-          return false;
-        }
-
-        // copy the function key
-        char function_key[13];
-        memset(function_key, 0, 13);
-        int function_key_length = queue[7] & 0x0F;
-        memcpy(function_key, queue + 8, function_key_length);
-
-        // How long is the argument?
-        int q_index = 8 + function_key_length;
-        int query_length = queue[q_index] & 0x0F;
-        if (13 == query_length)
-        {
-          ++q_index;
-          query_length = 13 + queue[q_index];
-        }
-        else if (14 == query_length)
-        {
-          ++q_index;
-          query_length = queue[q_index] << 8;
-          ++q_index;
-          query_length |= queue[q_index];
-          query_length += 269;
-        }
-
-        // malloc and copy the argument
-        // TODO use queue instead of malloc
-        char *arg = (char *) malloc(query_length + 1);
-        memcpy(arg, queue + q_index + 1, query_length);
-        arg[query_length] = 0; // null terminate string
-
-        // call the given user function then free the allocated arg
-        int return_value = descriptor.call_function(function_key, arg);
-        free(arg);
-
-        // send return value
-        function_return(msg_to_send + 2, token, return_value);
-        if (0 > blocking_send(msg_to_send, 18))
-        {
-          // error
-          return false;
-        }
-        break;
-      }
-      case CoAPMessageType::VARIABLE_REQUEST:
-      {
-        // copy the variable key
-        int variable_key_length = queue[7] & 0x0F;
-        if (12 < variable_key_length)
-          variable_key_length = 12;
-
-        char variable_key[13];
-        memcpy(variable_key, queue + 8, variable_key_length);
-        memset(variable_key + variable_key_length, 0, 13 - variable_key_length);
-
-        queue[0] = 0;
-        queue[1] = 16;
-
-        // get variable value according to type using the descriptor
-        SparkReturnType::Enum var_type = descriptor.variable_type(variable_key);
-        if(SparkReturnType::BOOLEAN == var_type)
-        {
-          bool *bool_val = (bool *)descriptor.get_variable(variable_key);
-          variable_value(queue + 2, token, queue[2], queue[3], *bool_val);
-        }
-        else if(SparkReturnType::INT == var_type)
-        {
-        	int *int_val = (int *)descriptor.get_variable(variable_key);
-          variable_value(queue + 2, token, queue[2], queue[3], *int_val);
-        }
-        else if(SparkReturnType::STRING == var_type)
-        {
-        	char *str_val = (char *)descriptor.get_variable(variable_key);
-          variable_value(queue + 2, token, queue[2], queue[3], str_val, strlen(str_val));
-        }
-        else if(SparkReturnType::DOUBLE == var_type)
-        {
-          double *double_val = (double *)descriptor.get_variable(variable_key);
-          variable_value(queue + 2, token, queue[2], queue[3], *double_val);
-        }
-
-        if (0 > blocking_send(queue, 18))
-        {
-          // error
-          return false;
-        }
-        break;
-      }
-      case CoAPMessageType::CHUNK:
-      {
-        last_chunk_millis = callback_millis();
-
-        // send ACK
-        *msg_to_send = 0;
-        *(msg_to_send + 1) = 16;
-        empty_ack(msg_to_send + 2, queue[2], queue[3]);
-        if (0 > blocking_send(msg_to_send, 18))
-        {
-          // error
-          return false;
-        }
-
-        // check crc
-        unsigned int given_crc = queue[8] << 24 | queue[9] << 16 | queue[10] << 8 | queue[11];
-        if (callback_calculate_crc(queue + 13, len - 13 - queue[len - 1]) == given_crc)
-        {
-          callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
-          chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
-          ++chunk_index;
-        }
-        else
-        {
-          chunk_received(msg_to_send + 2, token, ChunkReceivedCode::BAD);
-        }
-        if (0 > blocking_send(msg_to_send, 18))
-        {
-          // error
-          return false;
-        }
-        break;
-      }
-      case CoAPMessageType::UPDATE_BEGIN:
-        // send ACK
-        *msg_to_send = 0;
-        *(msg_to_send + 1) = 16;
-        empty_ack(msg_to_send + 2, queue[2], queue[3]);
-        if (0 > blocking_send(msg_to_send, 18))
-        {
-          // error
-          return false;
-        }
-
-        callback_prepare_for_firmware_update();
-        last_chunk_millis = callback_millis();
-        chunk_index = 0;
-        updating = true;
-
-        // send update_reaady
-        update_ready(msg_to_send + 2, token);
-        if (0 > blocking_send(msg_to_send, 18))
-        {
-          // error
-          return false;
-        }
-        break;
-      case CoAPMessageType::UPDATE_DONE:
-        // send ACK 2.04
-        *msg_to_send = 0;
-        *(msg_to_send + 1) = 16;
-        coded_ack(msg_to_send + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
-        if (0 > blocking_send(msg_to_send, 18))
-        {
-          // error
-          return false;
-        }
-
-        updating = false;
-        callback_finish_firmware_update();
-        break;
-      case CoAPMessageType::KEY_CHANGE:
-        // TODO
-        break;
-      case CoAPMessageType::SIGNAL_START:
-        queue[0] = 0;
-        queue[1] = 16;
-        coded_ack(queue + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
-        if (0 > blocking_send(queue, 18))
-        {
-          // error
-          return false;
-        }
-
-        callback_signal(true);
-        break;
-      case CoAPMessageType::SIGNAL_STOP:
-        queue[0] = 0;
-        queue[1] = 16;
-        coded_ack(queue + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
-        if (0 > blocking_send(queue, 18))
-        {
-          // error
-          return false;
-        }
-
-        callback_signal(false);
-        break;
-
-      case CoAPMessageType::HELLO:
-        descriptor.ota_upgrade_status_sent();
-        break;
-
-      case CoAPMessageType::ERROR:
-      default:
-        ; // drop it on the floor
     }
   }
   else
@@ -961,6 +737,243 @@ ProtocolState::Enum SparkProtocol::state()
 
 
 /********** Private methods **********/
+
+bool SparkProtocol::handle_received_message(void)
+{
+  last_message_millis = callback_millis();
+  expecting_ping_ack = false;
+  int len = queue[0] << 8 | queue[1];
+  if (0 > blocking_receive(queue, len))
+  {
+    // error
+    return false;
+  }
+  CoAPMessageType::Enum message_type = received_message(queue, len);
+  unsigned char token = queue[4];
+  unsigned char *msg_to_send = queue + len;
+  switch (message_type)
+  {
+    case CoAPMessageType::DESCRIBE:
+    {
+      int desc_len = description(queue + 2, token, queue[2], queue[3]);
+      queue[0] = (desc_len >> 8) & 0xff;
+      queue[1] = desc_len & 0xff;
+      if (0 > blocking_send(queue, desc_len + 2))
+      {
+        // error
+        return false;
+      }
+      break;
+    }
+    case CoAPMessageType::FUNCTION_CALL:
+    {
+      // send ACK
+      *msg_to_send = 0;
+      *(msg_to_send + 1) = 16;
+      empty_ack(msg_to_send + 2, queue[2], queue[3]);
+      if (0 > blocking_send(msg_to_send, 18))
+      {
+        // error
+        return false;
+      }
+
+      // copy the function key
+      char function_key[13];
+      memset(function_key, 0, 13);
+      int function_key_length = queue[7] & 0x0F;
+      memcpy(function_key, queue + 8, function_key_length);
+
+      // How long is the argument?
+      int q_index = 8 + function_key_length;
+      int query_length = queue[q_index] & 0x0F;
+      if (13 == query_length)
+      {
+        ++q_index;
+        query_length = 13 + queue[q_index];
+      }
+      else if (14 == query_length)
+      {
+        ++q_index;
+        query_length = queue[q_index] << 8;
+        ++q_index;
+        query_length |= queue[q_index];
+        query_length += 269;
+      }
+
+      // malloc and copy the argument
+      // TODO use queue instead of malloc
+      char *arg = (char *) malloc(query_length + 1);
+      memcpy(arg, queue + q_index + 1, query_length);
+      arg[query_length] = 0; // null terminate string
+
+      // call the given user function then free the allocated arg
+      int return_value = descriptor.call_function(function_key, arg);
+      free(arg);
+
+      // send return value
+      function_return(msg_to_send + 2, token, return_value);
+      if (0 > blocking_send(msg_to_send, 18))
+      {
+        // error
+        return false;
+      }
+      break;
+    }
+    case CoAPMessageType::VARIABLE_REQUEST:
+    {
+      // copy the variable key
+      int variable_key_length = queue[7] & 0x0F;
+      if (12 < variable_key_length)
+        variable_key_length = 12;
+
+      char variable_key[13];
+      memcpy(variable_key, queue + 8, variable_key_length);
+      memset(variable_key + variable_key_length, 0, 13 - variable_key_length);
+
+      queue[0] = 0;
+      queue[1] = 16;
+
+      // get variable value according to type using the descriptor
+      SparkReturnType::Enum var_type = descriptor.variable_type(variable_key);
+      if(SparkReturnType::BOOLEAN == var_type)
+      {
+        bool *bool_val = (bool *)descriptor.get_variable(variable_key);
+        variable_value(queue + 2, token, queue[2], queue[3], *bool_val);
+      }
+      else if(SparkReturnType::INT == var_type)
+      {
+        int *int_val = (int *)descriptor.get_variable(variable_key);
+        variable_value(queue + 2, token, queue[2], queue[3], *int_val);
+      }
+      else if(SparkReturnType::STRING == var_type)
+      {
+        char *str_val = (char *)descriptor.get_variable(variable_key);
+        variable_value(queue + 2, token, queue[2], queue[3], str_val, strlen(str_val));
+      }
+      else if(SparkReturnType::DOUBLE == var_type)
+      {
+        double *double_val = (double *)descriptor.get_variable(variable_key);
+        variable_value(queue + 2, token, queue[2], queue[3], *double_val);
+      }
+
+      if (0 > blocking_send(queue, 18))
+      {
+        // error
+        return false;
+      }
+      break;
+    }
+    case CoAPMessageType::CHUNK:
+    {
+      last_chunk_millis = callback_millis();
+
+      // send ACK
+      *msg_to_send = 0;
+      *(msg_to_send + 1) = 16;
+      empty_ack(msg_to_send + 2, queue[2], queue[3]);
+      if (0 > blocking_send(msg_to_send, 18))
+      {
+        // error
+        return false;
+      }
+
+      // check crc
+      unsigned int given_crc = queue[8] << 24 | queue[9] << 16 | queue[10] << 8 | queue[11];
+      if (callback_calculate_crc(queue + 13, len - 13 - queue[len - 1]) == given_crc)
+      {
+        callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
+        chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
+        ++chunk_index;
+      }
+      else
+      {
+        chunk_received(msg_to_send + 2, token, ChunkReceivedCode::BAD);
+      }
+      if (0 > blocking_send(msg_to_send, 18))
+      {
+        // error
+        return false;
+      }
+      break;
+    }
+    case CoAPMessageType::UPDATE_BEGIN:
+      // send ACK
+      *msg_to_send = 0;
+      *(msg_to_send + 1) = 16;
+      empty_ack(msg_to_send + 2, queue[2], queue[3]);
+      if (0 > blocking_send(msg_to_send, 18))
+      {
+        // error
+        return false;
+      }
+
+      callback_prepare_for_firmware_update();
+      last_chunk_millis = callback_millis();
+      chunk_index = 0;
+      updating = true;
+
+      // send update_reaady
+      update_ready(msg_to_send + 2, token);
+      if (0 > blocking_send(msg_to_send, 18))
+      {
+        // error
+        return false;
+      }
+      break;
+    case CoAPMessageType::UPDATE_DONE:
+      // send ACK 2.04
+      *msg_to_send = 0;
+      *(msg_to_send + 1) = 16;
+      coded_ack(msg_to_send + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
+      if (0 > blocking_send(msg_to_send, 18))
+      {
+        // error
+        return false;
+      }
+
+      updating = false;
+      callback_finish_firmware_update();
+      break;
+    case CoAPMessageType::KEY_CHANGE:
+      // TODO
+      break;
+    case CoAPMessageType::SIGNAL_START:
+      queue[0] = 0;
+      queue[1] = 16;
+      coded_ack(queue + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
+      if (0 > blocking_send(queue, 18))
+      {
+        // error
+        return false;
+      }
+
+      callback_signal(true);
+      break;
+    case CoAPMessageType::SIGNAL_STOP:
+      queue[0] = 0;
+      queue[1] = 16;
+      coded_ack(queue + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
+      if (0 > blocking_send(queue, 18))
+      {
+        // error
+        return false;
+      }
+
+      callback_signal(false);
+      break;
+
+    case CoAPMessageType::HELLO:
+      descriptor.ota_upgrade_status_sent();
+      break;
+
+    case CoAPMessageType::ERROR:
+    default:
+      ; // drop it on the floor
+  }
+
+  // all's well
+  return true;
+}
 
 unsigned short SparkProtocol::next_message_id()
 {

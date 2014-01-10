@@ -151,6 +151,7 @@ class SparkProtocol
     bool initialized;
     bool updating;
 
+    bool handle_received_message(void);
     unsigned short next_message_id();
     void encrypt(unsigned char *buf, int length);
     void separate_response(unsigned char *buf, unsigned char token, unsigned char code);
