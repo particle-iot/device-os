@@ -381,7 +381,11 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 		Save_SystemFlags();
 	}
 
-	if(NVMEM_Spark_File_Data[WLAN_TIMEOUT_FILE_OFFSET] == 0)
+	/*
+	 * Commenting the below condition for now since running the patch-programmmer
+	 * over core-firmware resets the netapp_timeout_values to its default values.
+	 */
+	//if(NVMEM_Spark_File_Data[WLAN_TIMEOUT_FILE_OFFSET] == 0)
 	{
 		Set_NetApp_Timeout();
 		NVMEM_Spark_File_Data[WLAN_TIMEOUT_FILE_OFFSET] = 1;
