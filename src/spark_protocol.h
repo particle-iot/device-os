@@ -22,6 +22,10 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
   */
+
+#ifndef __SPARK_PROTOCOL_H
+#define __SPARK_PROTOCOL_H
+
 #include "spark_descriptor.h"
 #include "coap.h"
 #include "tropicssl/rsa.h"
@@ -61,6 +65,7 @@ struct SparkCallbacks
 class SparkProtocol
 {
   public:
+    static const int MAX_FUNCTION_ARG_LENGTH = 64;
     static const int MAX_FUNCTION_KEY_LENGTH = 12;
     static const int MAX_VARIABLE_KEY_LENGTH = 12;
     static int presence_announcement(unsigned char *buf, const char *id);
@@ -150,6 +155,7 @@ class SparkProtocol
     bool expecting_ping_ack;
     bool initialized;
     bool updating;
+    char function_arg[MAX_FUNCTION_ARG_LENGTH];
 
     bool handle_received_message(void);
     unsigned short next_message_id();
@@ -171,3 +177,5 @@ class SparkProtocol
     unsigned char *queue_back;
     void queue_init(void);
 };
+
+#endif // __SPARK_PROTOCOL_H

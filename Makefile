@@ -19,13 +19,15 @@ objects = src/handshake.o \
           src/coap.o \
           src/spark_protocol.o
 
-testobjects = tests/TestHandshake.o \
+testobjects = tests/ConstructorFixture.o \
+              tests/TestHandshake.o \
               tests/TestAES.o \
               tests/TestCoAP.o \
               tests/TestQueue.o \
               tests/TestStateMachine.o \
               tests/TestSparkProtocol.o \
-              tests/TestDescriptor.o
+              tests/TestDescriptor.o \
+              tests/TestUserFunctions.o
 
 
 all: $(lib)

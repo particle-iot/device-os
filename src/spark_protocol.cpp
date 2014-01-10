@@ -800,15 +800,18 @@ bool SparkProtocol::handle_received_message(void)
         query_length += 269;
       }
 
-      // malloc and copy the argument
-      // TODO use queue instead of malloc
-      char *arg = (char *) malloc(query_length + 1);
-      memcpy(arg, queue + q_index + 1, query_length);
-      arg[query_length] = 0; // null terminate string
+      // allocated memory bounds check
+      if (MAX_FUNCTION_ARG_LENGTH <= query_length)
+      {
+        return false;
+      }
 
-      // call the given user function then free the allocated arg
-      int return_value = descriptor.call_function(function_key, arg);
-      free(arg);
+      // save a copy of the argument
+      memcpy(function_arg, queue + q_index + 1, query_length);
+      function_arg[query_length] = 0; // null terminate string
+
+      // call the given user function
+      int return_value = descriptor.call_function(function_key, function_arg);
 
       // send return value
       function_return(msg_to_send + 2, token, return_value);
