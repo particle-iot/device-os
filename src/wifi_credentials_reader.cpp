@@ -39,7 +39,7 @@ void WiFiCredentialsReader::read(void)
     if ('w' == c)
     {
       memset(ssid, 0, 33);
-      memset(password, 0, 33);
+      memset(password, 0, 65);
       memset(security_type_string, 0, 2);
 
       print("SSID: ");
@@ -59,7 +59,7 @@ void WiFiCredentialsReader::read(void)
       unsigned long security_type = security_type_string[0] - '0';
       if (0 < security_type) {
         print("Password: ");
-        read_line(password, 32);
+        read_line(password, 64);
       }
 
       print("Thanks! Wait about 7 seconds while I save those credentials...\r\n\r\n");

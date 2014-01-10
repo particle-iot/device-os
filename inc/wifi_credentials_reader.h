@@ -39,7 +39,7 @@ class WiFiCredentialsReader
     USBSerial serial;
     ConnectCallback connect_callback;
     char ssid[33];
-    char password[33];
+    char password[65];
     char security_type_string[2];
 
     void print(const char *s);
