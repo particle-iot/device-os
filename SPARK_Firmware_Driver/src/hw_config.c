@@ -57,7 +57,7 @@ const uint32_t LED_CLK[] = {LED1_GPIO_CLK, LED2_GPIO_CLK, LED3_GPIO_CLK, LED4_GP
 __IO uint16_t LED_TIM_CCR[] = {0x0000, 0x0000, 0x0000, 0x0000};
 __IO uint16_t LED_TIM_CCR_SIGNAL[] = {0x0000, 0x0000, 0x0000, 0x0000};	//TIM CCR Signal Override
 uint8_t LED_RGB_OVERRIDE = 0;
-uint8_t LED_INTENSITY = 64;
+uint8_t LED_INTENSITY = 96;
 
 /* Led Fading. */
 #define NUM_LED_FADE_STEPS 100 /* Called at 100Hz, fade over 1 second. */
