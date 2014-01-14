@@ -58,7 +58,7 @@ void loop()
  * Input          : Pin 
  * Output         : None.
  * Return         : Value of the pin (0 or 1) in INT type
- 						  Returns -1 on fail
+                    Returns a negative number on failure
  *******************************************************************************/
 int tinkerDigitalRead(String pin)
 {
@@ -77,7 +77,7 @@ int tinkerDigitalRead(String pin)
 		pinMode(pinNumber+10, INPUT_PULLDOWN);
 		return digitalRead(pinNumber+10);
 	}
-	return -1;
+	return -2;
 }
 
 /*******************************************************************************
@@ -85,7 +85,7 @@ int tinkerDigitalRead(String pin)
  * Description    : Sets the specified pin HIGH or LOW
  * Input          : Pin and value
  * Output         : None.
- * Return         : 1 on success and -1 on fail
+ * Return         : 1 on success and a negative number on failure
  *******************************************************************************/
 int tinkerDigitalWrite(String command)
 {
@@ -97,7 +97,7 @@ int tinkerDigitalWrite(String command)
 
 	if(command.substring(3,7) == "HIGH") value = 1;
 	else if(command.substring(3,6) == "LOW") value = 0;
-	else return -1;
+	else return -2;
 
 	if(command.startsWith("D"))
 	{
@@ -111,7 +111,7 @@ int tinkerDigitalWrite(String command)
 		digitalWrite(pinNumber+10, value);
 		return 1;
 	}
-	else return -1;
+	else return -3;
 }
 
 /*******************************************************************************
@@ -120,7 +120,7 @@ int tinkerDigitalWrite(String command)
  * Input          : Pin 
  * Output         : None.
  * Return         : Returns the analog value in INT type (0 to 4095)
- 						  Returns -1 on fail
+                    Returns a negative number on failure
  *******************************************************************************/
 int tinkerAnalogRead(String pin)
 {
@@ -139,7 +139,7 @@ int tinkerAnalogRead(String pin)
 		pinMode(pinNumber+10, INPUT);
 		return analogRead(pinNumber+10);
 	}
-	return -1;
+	return -2;
 }
 
 /*******************************************************************************
@@ -147,7 +147,7 @@ int tinkerAnalogRead(String pin)
  * Description    : Writes an analog value (PWM) to the specified pin
  * Input          : Pin and Value (0 to 255)
  * Output         : None.
- * Return         : 1 on success and -1 on fail
+ * Return         : 1 on success and a negative number on failure
  *******************************************************************************/
 int tinkerAnalogWrite(String command)
 {
@@ -170,5 +170,5 @@ int tinkerAnalogWrite(String command)
 		analogWrite(pinNumber+10, value.toInt());
 		return 1;
 	}
-	else return -1;
+	else return -2;
 }
