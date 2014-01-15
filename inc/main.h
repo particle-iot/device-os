@@ -75,6 +75,8 @@ extern "C" {
 
 #endif
 
+//#undef SPARK_WLAN_ENABLE
+
 /*
  * default status, works the way it does now, no need to define explicitly
  */

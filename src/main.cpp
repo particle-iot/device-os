@@ -193,6 +193,8 @@ int main(void)
 #ifdef SPARK_WLAN_ENABLE
 		if(SPARK_HANDSHAKE_COMPLETED && !SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 		{
+#else
+			ApplicationSetupOnce = 1;
 #endif
 			if((ApplicationSetupOnce != 0) && (NULL != setup))
 			{
@@ -207,9 +209,8 @@ int main(void)
 				loop();
 			}
 
-			userEventSend();
-
 #ifdef SPARK_WLAN_ENABLE
+			userEventSend();
 		}
 #endif
 #endif
