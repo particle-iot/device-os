@@ -200,7 +200,7 @@
 
 #define CC3000_SPI_DR_BASE                  ((uint32_t)0x4000380C)	/* SPI2_BASE | 0x0C */
 
-#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
+#define CC3000_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
 
 //SST25 FLASH Interface pins
 #define sFLASH_SPI							SPI2
@@ -219,7 +219,7 @@
 #define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
 #define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
-#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_32
+#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
 
 #define USB_DISCONNECT_PIN               	GPIO_Pin_10
 #define USB_DISCONNECT_GPIO_PORT       		GPIOB

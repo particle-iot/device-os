@@ -872,7 +872,7 @@ void CC3000_SPI_Init(void)
 
 	/* Configure CC3000_SPI pins: SCK */
 	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_SCK_PIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_Init(CC3000_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 
@@ -1121,7 +1121,7 @@ void sFLASH_SPI_Init(void)
 
 	/* Configure sFLASH_SPI pins: SCK */
 	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 
