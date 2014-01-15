@@ -102,9 +102,16 @@ int main(void)
 #endif
 
 #if defined (USE_SPARK_CORE_V02)
+#ifdef SPARK_WLAN_ENABLE
 	LED_SetRGBColor(RGB_COLOR_WHITE);
 	LED_On(LED_RGB);
 	SPARK_LED_FADE = 1;
+#else
+	// If WLAN is disabled, LED will pulse magenta
+	LED_SetRGBColor(RGB_COLOR_MAGENTA);
+	LED_On(LED_RGB);
+	SPARK_LED_FADE = 1;
+#endif
 
 #if defined (SPARK_RTC_ENABLE)
 	RTC_Configuration();
@@ -187,6 +194,11 @@ int main(void)
 				SPARK_SOCKET_CONNECTED = 0;
 			}
 		}
+#endif
+
+#ifndef SPARK_WLAN_ENABLE
+	// If WLAN is disabled, this will make user application run
+	ApplicationSetupOnce = 1;
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
