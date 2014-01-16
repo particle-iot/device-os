@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdint.h> // for uint8_t
 
 #include "spark_wiring_string.h"
 #include "spark_wiring_printable.h"

@@ -45,6 +45,8 @@
 #define HIGH 0x1
 #define LOW 0x0
 
+#define boolean bool
+
 #define US_TICKS (SystemCoreClock / 1000000)//cycles per microsecond
 
 //#define NULL ((void *)0)
