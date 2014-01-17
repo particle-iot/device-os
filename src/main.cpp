@@ -317,6 +317,8 @@ void USB_USART_Init(uint32_t baudRate)
 {
 	linecoding.bitrate = baudRate;
 	USB_Disconnect_Config();
+	USB_Cable_Config(DISABLE);
+	Delay_Microsecond(100000);
 	Set_USBClock();
 	USB_Interrupts_Config();
 	USB_Init();
