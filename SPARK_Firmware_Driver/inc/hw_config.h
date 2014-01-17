@@ -109,9 +109,6 @@ typedef enum
 
 #if defined (USE_SPARK_CORE_V02)
 //Extended LED Types
-#define LED_RED				LED3
-#define LED_GREEN			LED4
-#define LED_BLUE			LED2
 #define LED_RGB				LED3_LED4_LED2
 #define LED_USER			LED1
 
