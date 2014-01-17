@@ -254,6 +254,50 @@ bool SparkClass::connected(void)
 		return false;
 }
 
+int SparkClass::connect(void)
+{
+	//Schedule Spark's cloud connection and handshake
+	SPARK_SOCKET_HANDSHAKE = 1;
+	return 0;
+}
+
+int SparkClass::disconnect(void)
+{
+	//Schedule Spark's cloud disconnection
+	SPARK_SOCKET_HANDSHAKE = 0;
+	return 0;
+}
+
+String SparkClass::deviceID(void)
+{
+	String deviceID;
+	char hex_digit;
+	char id[12];
+	memcpy(id, (char *)ID1, 12);
+	//OR
+	//uint8_t id[12];
+	//Get_Unique_Device_ID(id);
+
+	for (int i = 0; i < 12; ++i)
+	{
+		hex_digit = 48 + (id[i] >> 4);
+		if (57 < hex_digit)
+		{
+			hex_digit += 39;
+		}
+		deviceID.concat(hex_digit);
+
+		hex_digit = 48 + (id[i] & 0xf);
+		if (57 < hex_digit)
+		{
+			hex_digit += 39;
+		}
+		deviceID.concat(hex_digit);
+	}
+
+	return deviceID;
+}
+
 // Returns number of bytes sent or -1 if an error occurred
 int Spark_Send(const unsigned char *buf, int buflen)
 {
@@ -477,49 +521,44 @@ void Spark_Signal(bool on)
   }
 }
 
-int SparkClass::connect(void)
+int Internet_Test(void)
 {
-	return Spark_Connect();
-}
+	long testSocket;
+	sockaddr testSocketAddr;
+	int testResult = 0;
 
-int SparkClass::disconnect(void)
-{
-	return Spark_Disconnect();
-}
+    testSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-String SparkClass::deviceID(void)
-{
-	String deviceID;
-	char hex_digit;
-	char id[12];
-	memcpy(id, (char *)ID1, 12);
-	//OR
-	//uint8_t id[12];
-	//Get_Unique_Device_ID(id);
+    if (testSocket < 0)
+    {
+        return -1;
+    }
 
-	for (int i = 0; i < 12; ++i)
-	{
-		hex_digit = 48 + (id[i] >> 4);
-		if (57 < hex_digit)
-		{
-			hex_digit += 39;
-		}
-		deviceID.concat(hex_digit);
+	// the family is always AF_INET
+    testSocketAddr.sa_family = AF_INET;
 
-		hex_digit = 48 + (id[i] & 0xf);
-		if (57 < hex_digit)
-		{
-			hex_digit += 39;
-		}
-		deviceID.concat(hex_digit);
-	}
+	// the destination port: 53
+    testSocketAddr.sa_data[0] = 0;
+    testSocketAddr.sa_data[1] = 53;
 
-	return deviceID;
+	// the destination IP address: 8.8.8.8
+	testSocketAddr.sa_data[2] = 8;
+	testSocketAddr.sa_data[3] = 8;
+	testSocketAddr.sa_data[4] = 8;
+	testSocketAddr.sa_data[5] = 8;
+
+	testResult = connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
+
+	closesocket(testSocket);
+
+	//if connection fails, testResult returns -1
+    return testResult;
 }
 
 int Spark_Connect(void)
 {
   Spark_Disconnect();
+
   sparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
   if (sparkSocket < 0)

@@ -90,6 +90,8 @@ extern __IO uint8_t LED_Spark_Signal;
 extern "C" {
 #endif
 
+int Internet_Test(void);
+
 int Spark_Connect(void);
 int Spark_Disconnect(void);
 void Spark_ConnectAbort_WLANReset(void);

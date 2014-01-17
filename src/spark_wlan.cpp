@@ -64,14 +64,13 @@ unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 __IO uint8_t SPARK_WLAN_RESET;
 __IO uint8_t SPARK_WLAN_SLEEP;
 __IO uint8_t SPARK_WLAN_STARTED;
+__IO uint8_t SPARK_SOCKET_HANDSHAKE;
 __IO uint8_t SPARK_SOCKET_CONNECTED;
 __IO uint8_t SPARK_HANDSHAKE_COMPLETED;
 __IO uint8_t SPARK_FLASH_UPDATE;
 __IO uint8_t SPARK_LED_FADE;
 
 __IO uint8_t Spark_Error_Count;
-
-int Internet_Test(void);
 
 void Set_NetApp_Timeout(void)
 {
@@ -498,6 +497,24 @@ void SPARK_WLAN_Loop(void)
 		WLAN_SMART_CONFIG_STOP = 0;
 	}
 
+	if(SPARK_SOCKET_HANDSHAKE == 0)
+	{
+		if(SPARK_SOCKET_CONNECTED || SPARK_HANDSHAKE_COMPLETED)
+		{
+			Spark_Disconnect();
+
+			SPARK_FLASH_UPDATE = 0;
+			SPARK_LED_FADE = 0;
+			SPARK_HANDSHAKE_COMPLETED = 0;
+			SPARK_SOCKET_CONNECTED = 0;
+
+			LED_SetRGBColor(RGB_COLOR_GREEN);
+			LED_On(LED_RGB);
+		}
+
+		return;
+	}
+
 	if(WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_SOCKET_CONNECTED)
 	{
 		Delay(100);
@@ -556,38 +573,48 @@ void SPARK_WLAN_Loop(void)
 			SPARK_SOCKET_CONNECTED = 1;
 		}
 	}
-}
 
-int Internet_Test(void)
-{
-	long testSocket;
-	sockaddr testSocketAddr;
-	int testResult = 0;
+	if (SPARK_SOCKET_CONNECTED)
+	{
+		if (!SPARK_HANDSHAKE_COMPLETED)
+		{
+			int err = Spark_Handshake();
+			if (err)
+			{
+				if (0 > err)
+				{
+					// Wrong key error, red
+					LED_SetRGBColor(0xff0000);
+				}
+				else if (1 == err)
+				{
+					// RSA decryption error, orange
+					LED_SetRGBColor(0xff6000);
+				}
+				else if (2 == err)
+				{
+					// RSA signature verification error, magenta
+					LED_SetRGBColor(0xff00ff);
+				}
+				LED_On(LED_RGB);
+			}
+			else
+			{
+				SPARK_HANDSHAKE_COMPLETED = 1;
+			}
+		}
 
-    testSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (!Spark_Communication_Loop())
+		{
+			if (LED_RGB_OVERRIDE)
+			{
+				LED_Signaling_Stop();
+			}
 
-    if (testSocket < 0)
-    {
-        return -1;
-    }
-
-	// the family is always AF_INET
-    testSocketAddr.sa_family = AF_INET;
-
-	// the destination port: 53
-    testSocketAddr.sa_data[0] = 0;
-    testSocketAddr.sa_data[1] = 53;
-
-	// the destination IP address: 8.8.8.8
-	testSocketAddr.sa_data[2] = 8;
-	testSocketAddr.sa_data[3] = 8;
-	testSocketAddr.sa_data[4] = 8;
-	testSocketAddr.sa_data[5] = 8;
-
-	testResult = connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
-
-	closesocket(testSocket);
-
-	//if connection fails, testResult returns -1
-    return testResult;
+			SPARK_FLASH_UPDATE = 0;
+			SPARK_LED_FADE = 0;
+			SPARK_HANDSHAKE_COMPLETED = 0;
+			SPARK_SOCKET_CONNECTED = 0;
+		}
+	}
 }
