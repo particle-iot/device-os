@@ -44,7 +44,7 @@ int total_bytes_received = 0;
 uint32_t chunkIndex;
 
 extern unsigned int millis();
-extern uint8_t LED_INTENSITY;
+extern uint8_t LED_RGB_BRIGHTNESS;
 
 // LED_Signaling_Override
 __IO uint8_t LED_Spark_Signal;
@@ -126,16 +126,16 @@ void RGBClass::color(int red, int green, int blue)
 	if (true != _control)
 		return;
 
-	TIM1->CCR2 = (uint16_t)((red   * LED_INTENSITY * (TIM1->ARR + 1)) >> 16);	// Red LED
-	TIM1->CCR3 = (uint16_t)((green * LED_INTENSITY * (TIM1->ARR + 1)) >> 16);	// Green LED
-	TIM1->CCR1 = (uint16_t)((blue  * LED_INTENSITY * (TIM1->ARR + 1)) >> 16);	// Blue LED
+	TIM1->CCR2 = (uint16_t)((red   * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);	// Red LED
+	TIM1->CCR3 = (uint16_t)((green * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);	// Green LED
+	TIM1->CCR1 = (uint16_t)((blue  * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);	// Blue LED
 #endif
 }
 
-void RGBClass::intensity(uint8_t intensity)
+void RGBClass::brightness(uint8_t brightness)
 {
 #if !defined (RGB_NOTIFICATIONS_ON)
-  LED_SetIntensity(intensity);
+  LED_SetBrightness(brightness);
 #endif
 }
 
