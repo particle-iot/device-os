@@ -16,6 +16,7 @@ This firmware depends on two other libraries: the [Spark Common Library](http://
 3. [Device Firmware Upgrade Utilities](#3-device-firmware-upgrade-utilities)
 4. [Zatig](#4-zatig) (for windows users only)
 5. [Git](#5-git)
+6. [GNU CoreUtils](#6-gnu-coreutils) (for windows users only)
 
 
 #### 1. GCC for ARM Cortex processors
@@ -39,6 +40,10 @@ In order for the Core to show up on the dfu list, you need to replace the USB dr
 #### 5. Git
 
 Download and install Git: http://git-scm.com/
+
+#### 6. GNU CoreUtils (Windows only)
+
+Download and install CoreUtils for Windows: http://gnuwin32.sourceforge.net/packages/coreutils.htm
 
 ## 2. Download and Build Repositories
 
@@ -83,6 +88,26 @@ Open up a terminal window, navigate to the build folder under core-firmware
 This will build your main application (`core-firmware/src/application.cpp`) and required dependencies.
 
 *For example:* `D:\Spark\core-firmware\build [master]> make`
+
+##### Additional Steps for Windows Users
+
+After downloading the above dependencies, you must update each `makefile` to point to the GNU CoreUtils directory.
+
+In
+
+* core-firmware\build\makefile
+* core-common-lib\build\makefile
+* core-communication-lib\build\makefile
+
+replace
+
+    RM = rm -f
+    MKDIR = mkdir -p
+
+with 
+
+    RM = C:\Program Files (x86)\GnuWin32\bin\rm -f
+    MKDIR = C:\Program Files (x86)\GnuWin32\bin\mkdir -p
 
 ##### Common Errors
 
