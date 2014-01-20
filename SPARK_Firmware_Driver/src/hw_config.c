@@ -399,9 +399,9 @@ void UI_Timer_Configure(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
 
     /* TIM1 Update Frequency = 72000000/72/10000 = 100Hz = 10ms */
-    /* TIM1_Prescaler: 71 */
+    /* TIM1_Prescaler: 72 */
     /* TIM1_Autoreload: 9999 -> 100Hz = 10ms */
-    uint16_t TIM1_Prescaler = (SystemCoreClock / 1000000) - 1;
+    uint16_t TIM1_Prescaler = SystemCoreClock / 1000000;
     uint16_t TIM1_Autoreload = (1000000 / UI_TIMER_FREQUENCY) - 1;
 
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
