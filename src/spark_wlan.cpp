@@ -77,7 +77,7 @@ void Set_NetApp_Timeout(void)
 	unsigned long aucDHCP = 14400;
 	unsigned long aucARP = 3600;
 	unsigned long aucKeepalive = 10;
-	unsigned long aucInactivity = 60;
+	unsigned long aucInactivity = 20;
 
 	netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
 }
@@ -615,6 +615,7 @@ void SPARK_WLAN_Loop(void)
 			SPARK_LED_FADE = 0;
 			SPARK_HANDSHAKE_COMPLETED = 0;
 			SPARK_SOCKET_CONNECTED = 0;
+			SPARK_WLAN_RESET = 1;
 		}
 	}
 }
