@@ -52,6 +52,8 @@
 
 #define HEADERS_SIZE_EVNT       (SPI_HEADER_SIZE + 5)
 
+#define SPI_BUFFER_SIZE        	1024
+
 typedef void (*gcSpiHandleRx)(void *p);
 typedef void (*gcSpiHandleTx)(void);
 
