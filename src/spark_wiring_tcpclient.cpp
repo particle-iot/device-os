@@ -34,7 +34,8 @@ TCPClient::TCPClient() : _sock(MAX_SOCK_NUM)
 
 TCPClient::TCPClient(uint8_t sock) : _sock(sock) 
 {
-
+	_remaining = 0;
+	_offset = 0;
 }
 
 int TCPClient::connect(const char* host, uint16_t port) 
@@ -53,6 +54,11 @@ int TCPClient::connect(const char* host, uint16_t port)
 
 int TCPClient::connect(IPAddress ip, uint16_t port) 
 {
+	if(WLAN_DHCP != 1)
+	{
+		return 0;
+	}
+
 	sockaddr tSocketAddr;
 
 	_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -89,11 +95,26 @@ size_t TCPClient::write(uint8_t b)
 
 size_t TCPClient::write(const uint8_t *buf, size_t size) 
 {
+	if(WLAN_DHCP != 1 || _sock == MAX_SOCK_NUM)
+	{
+		return -1;
+	}
+
 	return send(_sock, buf, size, 0);
 }
 
 int TCPClient::available() 
 {
+	if(WLAN_DHCP != 1 || _sock == MAX_SOCK_NUM)
+	{
+		return 0;
+	}
+
+	if ((_remaining > 0) && (_offset < _remaining))
+	{
+		return (_remaining - _offset);
+	}
+
 	_types_fd_set_cc3000 readSet;
 	timeval timeout;
 
@@ -116,19 +137,36 @@ int TCPClient::available()
 
 int TCPClient::read() 
 {
-	uint8_t b;
-	if (recv(_sock, &b, 1, 0) > 0)
-	{
-		return b;
-	}
-	else
+	if(WLAN_DHCP != 1 || _sock == MAX_SOCK_NUM)
 	{
 		return -1;
 	}
+
+	while ((_remaining <= 0) || (_remaining == _offset))
+	{
+		_remaining = recv(_sock, _buffer, sizeof(_buffer), 0);
+
+		if (_remaining < 0)
+		{
+			return 0;
+		}
+
+		_offset = 0;
+	}
+
+	uint8_t ret = _buffer[_offset];
+	_offset++;
+
+	return ret;
 }
 
 int TCPClient::read(uint8_t *buf, size_t size) 
 {
+	if(WLAN_DHCP != 1 || _sock == MAX_SOCK_NUM)
+	{
+		return -1;
+	}
+
 	return recv(_sock, buf, size, 0);
 }
 
