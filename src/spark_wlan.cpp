@@ -77,7 +77,7 @@ void Set_NetApp_Timeout(void)
 	unsigned long aucDHCP = 14400;
 	unsigned long aucARP = 3600;
 	unsigned long aucKeepalive = 10;
-	unsigned long aucInactivity = 20;
+	unsigned long aucInactivity = 60;
 
 	netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
 }
