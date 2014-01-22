@@ -37,11 +37,9 @@ sockaddr tSocketAddr;
 timeval timeout;
 _types_fd_set_cc3000 readSet;
 
-char digits[] = "0123456789";
+//char digits[] = "0123456789";
 
-int total_bytes_received = 0;
-
-uint32_t chunkIndex;
+extern volatile uint32_t TimingFlashUpdateTimeout;
 
 extern unsigned int millis();
 extern uint8_t LED_RGB_BRIGHTNESS;
@@ -331,7 +329,6 @@ int Spark_Receive(unsigned char *buf, int buflen)
     {
       // recv returns negative numbers on error
       bytes_received = recv(sparkSocket, buf, buflen, 0);
-      TimingSparkCommTimeout = 0;
     }
   }
   else if (0 > num_fds_ready)
@@ -346,13 +343,21 @@ int Spark_Receive(unsigned char *buf, int buflen)
 void Spark_Prepare_For_Firmware_Update(void)
 {
   SPARK_FLASH_UPDATE = 1;
+  TimingFlashUpdateTimeout = 0;
   FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS);
 }
 
 void Spark_Finish_Firmware_Update(void)
 {
   SPARK_FLASH_UPDATE = 0;
+  TimingFlashUpdateTimeout = 0;
   FLASH_End();
+}
+
+void Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen)
+{
+  TimingFlashUpdateTimeout = 0;
+  FLASH_Update(buf, buflen);
 }
 
 int numUserFunctions(void)
@@ -411,7 +416,7 @@ void Spark_Protocol_Init(void)
     callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
     callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
     callbacks.calculate_crc = Compute_CRC32;
-    callbacks.save_firmware_chunk = FLASH_Update;
+    callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
     callbacks.signal = Spark_Signal;
     callbacks.millis = millis;
 

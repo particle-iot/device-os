@@ -42,9 +42,10 @@ extern "C" {
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-__IO uint32_t TimingMillis;
+volatile uint32_t TimingMillis;
+volatile uint32_t TimingFlashUpdateTimeout;
 
-__IO uint8_t SPARK_WIRING_APPLICATION = 0;
+volatile uint8_t SPARK_WIRING_APPLICATION = 0;
 
 uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
 uint32_t USART_Rx_ptr_in = 0;
@@ -277,17 +278,17 @@ void Timing_Decrement(void)
 		WLAN_DELETE_PROFILES = 1;
 	}
 
-	if(!SPARK_WLAN_SLEEP && SPARK_HANDSHAKE_COMPLETED)
+	if(!SPARK_WLAN_SLEEP && SPARK_FLASH_UPDATE)
 	{
-		if (TimingSparkCommTimeout >= TIMING_SPARK_COMM_TIMEOUT)
+		if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
 		{
-			TimingSparkCommTimeout = 0;
-
-			Spark_ConnectAbort_WLANReset();
+			//TimingFlashUpdateTimeout = 0;
+			//Reset is the only way now to recover from stuck OTA update
+			NVIC_SystemReset();
 		}
 		else
 		{
-			TimingSparkCommTimeout++;
+			TimingFlashUpdateTimeout++;
 		}
 	}
 #endif

@@ -28,17 +28,15 @@
 
 tNetappIpconfigRetArgs ip_config;
 
-__IO uint32_t TimingSparkCommTimeout;
-
-uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
-uint8_t WLAN_DELETE_PROFILES;
-uint8_t WLAN_SMART_CONFIG_START;
-uint8_t WLAN_SMART_CONFIG_STOP;
-uint8_t WLAN_SMART_CONFIG_FINISHED;
-uint8_t WLAN_SERIAL_CONFIG_DONE;
-uint8_t WLAN_CONNECTED;
-uint8_t WLAN_DHCP;
-uint8_t WLAN_CAN_SHUTDOWN;
+volatile uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
+volatile uint8_t WLAN_DELETE_PROFILES;
+volatile uint8_t WLAN_SMART_CONFIG_START;
+volatile uint8_t WLAN_SMART_CONFIG_STOP;
+volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
+volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
+volatile uint8_t WLAN_CONNECTED;
+volatile uint8_t WLAN_DHCP;
+volatile uint8_t WLAN_CAN_SHUTDOWN;
 
 void (*announce_presence)(void);
 
@@ -61,16 +59,16 @@ unsigned char wlan_profile_index;
 
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
-__IO uint8_t SPARK_WLAN_RESET;
-__IO uint8_t SPARK_WLAN_SLEEP;
-__IO uint8_t SPARK_WLAN_STARTED;
-__IO uint8_t SPARK_SOCKET_HANDSHAKE;
-__IO uint8_t SPARK_SOCKET_CONNECTED;
-__IO uint8_t SPARK_HANDSHAKE_COMPLETED;
-__IO uint8_t SPARK_FLASH_UPDATE;
-__IO uint8_t SPARK_LED_FADE;
+volatile uint8_t SPARK_WLAN_RESET;
+volatile uint8_t SPARK_WLAN_SLEEP;
+volatile uint8_t SPARK_WLAN_STARTED;
+volatile uint8_t SPARK_SOCKET_HANDSHAKE;
+volatile uint8_t SPARK_SOCKET_CONNECTED;
+volatile uint8_t SPARK_HANDSHAKE_COMPLETED;
+volatile uint8_t SPARK_FLASH_UPDATE;
+volatile uint8_t SPARK_LED_FADE;
 
-__IO uint8_t Spark_Error_Count;
+volatile uint8_t Spark_Error_Count;
 
 void Set_NetApp_Timeout(void)
 {
@@ -126,8 +124,6 @@ void Start_Smart_Config(void)
 	SPARK_HANDSHAKE_COMPLETED = 0;
 	SPARK_FLASH_UPDATE = 0;
 	SPARK_LED_FADE = 0;
-
-	TimingSparkCommTimeout = 0;
 
 #if defined (USE_SPARK_CORE_V02)
 	LED_SetRGBColor(RGB_COLOR_BLUE);
@@ -294,7 +290,6 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
 			Spark_Error_Count = 0;
-			TimingSparkCommTimeout = 0;
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
@@ -435,9 +430,8 @@ void SPARK_WLAN_Loop(void)
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
 			Spark_Error_Count = 0;
-			TimingSparkCommTimeout = 0;
 
-			CC3000_Write_Enable_Pin(WLAN_DISABLE);
+			wlan_stop();
 
 			Delay(100);
 

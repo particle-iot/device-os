@@ -38,7 +38,7 @@ uint8_t adcChannelConfigured = NONE;
 
 PinMode digitalPinModeSaved = (PinMode)NONE;
 
-extern __IO uint32_t TimingMillis;
+extern volatile uint32_t TimingMillis;
 
 /*
  * Pin mapping
