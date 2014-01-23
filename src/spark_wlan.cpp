@@ -612,7 +612,7 @@ void SPARK_WLAN_Loop(void)
 			SPARK_HANDSHAKE_COMPLETED = 0;
 			SPARK_SOCKET_CONNECTED = 0;
 
-			if(TimingCloudSocketTimeout == 0) /* Set within Timing_Decrement() */
+			if(TimingCloudSocketTimeout != 0) /* Set within Timing_Decrement() */
 			{
 				/* Work around for CFOD issue */
 				SPARK_WLAN_RESET = 1;
