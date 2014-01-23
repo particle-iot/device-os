@@ -65,6 +65,9 @@ extern int Spark_Connect(void);
 extern int Spark_Disconnect(void);
 extern int Spark_Process_API_Response(void);
 
+extern volatile uint32_t TimingCloudSocketTimeout;
+extern volatile uint32_t TimingFlashUpdateTimeout;
+
 extern tNetappIpconfigRetArgs ip_config;
 
 extern volatile uint8_t WLAN_DHCP;

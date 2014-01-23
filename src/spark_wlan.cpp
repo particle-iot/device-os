@@ -431,7 +431,8 @@ void SPARK_WLAN_Loop(void)
 			SPARK_LED_FADE = 0;
 			Spark_Error_Count = 0;
 
-			wlan_stop();
+			CC3000_Write_Enable_Pin(WLAN_DISABLE);
+			//wlan_stop();
 
 			Delay(100);
 
@@ -595,6 +596,7 @@ void SPARK_WLAN_Loop(void)
 			else
 			{
 				SPARK_HANDSHAKE_COMPLETED = 1;
+				TimingCloudSocketTimeout = 0;
 			}
 		}
 
@@ -609,7 +611,14 @@ void SPARK_WLAN_Loop(void)
 			SPARK_LED_FADE = 0;
 			SPARK_HANDSHAKE_COMPLETED = 0;
 			SPARK_SOCKET_CONNECTED = 0;
-			SPARK_WLAN_RESET = 1;
+
+			if(TimingCloudSocketTimeout == 0) /* Set within Timing_Decrement() */
+			{
+				/* Work around for CFOD issue */
+				SPARK_WLAN_RESET = 1;
+
+				//NVIC_SystemReset(); /* Better alternative */
+			}
 		}
 	}
 }

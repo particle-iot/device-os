@@ -43,6 +43,7 @@ extern "C" {
 
 /* Private variables ---------------------------------------------------------*/
 volatile uint32_t TimingMillis;
+volatile uint32_t TimingCloudSocketTimeout;
 volatile uint32_t TimingFlashUpdateTimeout;
 
 volatile uint8_t SPARK_WIRING_APPLICATION = 0;
@@ -278,17 +279,33 @@ void Timing_Decrement(void)
 		WLAN_DELETE_PROFILES = 1;
 	}
 
-	if(!SPARK_WLAN_SLEEP && SPARK_FLASH_UPDATE)
+	if(!SPARK_WLAN_SLEEP)
 	{
-		if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
+		if(SPARK_FLASH_UPDATE)
 		{
-			//TimingFlashUpdateTimeout = 0;
-			//Reset is the only way now to recover from stuck OTA update
-			NVIC_SystemReset();
+			if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
+			{
+				//Reset is the only way now to recover from stuck OTA update
+				NVIC_SystemReset();
+			}
+			else
+			{
+				TimingFlashUpdateTimeout++;
+			}
 		}
-		else
+		else if(SPARK_HANDSHAKE_COMPLETED)
 		{
-			TimingFlashUpdateTimeout++;
+			if (TimingCloudSocketTimeout >= TIMING_CLOUD_SOCKET_TIMEOUT)
+			{
+				TimingCloudSocketTimeout = 0;
+
+				//Reset WLAN in worst case if Spark_Communication_Loop() doesn't detect failure
+				Spark_ConnectAbort_WLANReset();
+			}
+			else
+			{
+				TimingCloudSocketTimeout++;
+			}
 		}
 	}
 #endif

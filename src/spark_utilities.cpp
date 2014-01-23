@@ -34,12 +34,7 @@ SparkProtocol spark_protocol;
 long sparkSocket;
 sockaddr tSocketAddr;
 
-timeval timeout;
-_types_fd_set_cc3000 readSet;
-
 //char digits[] = "0123456789";
-
-extern volatile uint32_t TimingFlashUpdateTimeout;
 
 extern unsigned int millis();
 extern uint8_t LED_RGB_BRIGHTNESS;
@@ -299,12 +294,54 @@ String SparkClass::deviceID(void)
 // Returns number of bytes sent or -1 if an error occurred
 int Spark_Send(const unsigned char *buf, int buflen)
 {
-  return send(sparkSocket, buf, buflen, 0);
+  timeval timeout;
+  _types_fd_set_cc3000 writeSet;
+  int bytes_sent = 0;
+  int num_fds_ready = 0;
+
+  if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
+  {
+    //break from any blocking loop
+    return -1;
+  }
+
+  // reset the fd_set structure
+  FD_ZERO(&writeSet);
+  FD_SET(sparkSocket, &writeSet);
+
+  // tell select to timeout after the minimum 5000 microseconds
+  // defined in the SimpleLink API as SELECT_TIMEOUT_MIN_MICRO_SECONDS
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 5000;
+
+  num_fds_ready = select(sparkSocket + 1, NULL, &writeSet, NULL, &timeout);
+
+  if (0 < num_fds_ready)
+  {
+    if (FD_ISSET(sparkSocket, &writeSet))
+    {
+      // send returns negative numbers on error
+      bytes_sent = send(sparkSocket, buf, buflen, 0);
+      TimingCloudSocketTimeout = 0;
+    }
+  }
+  else if (0 > num_fds_ready)
+  {
+    // error from select
+    return num_fds_ready;
+  }
+
+  return bytes_sent;
 }
 
 // Returns number of bytes received or -1 if an error occurred
 int Spark_Receive(unsigned char *buf, int buflen)
 {
+  timeval timeout;
+  _types_fd_set_cc3000 readSet;
+  int bytes_received = 0;
+  int num_fds_ready = 0;
+
   if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
   {
     //break from any blocking loop
@@ -320,8 +357,7 @@ int Spark_Receive(unsigned char *buf, int buflen)
   timeout.tv_sec = 0;
   timeout.tv_usec = 5000;
 
-  int bytes_received = 0;
-  int num_fds_ready = select(sparkSocket + 1, &readSet, NULL, NULL, &timeout);
+  num_fds_ready = select(sparkSocket + 1, &readSet, NULL, NULL, &timeout);
 
   if (0 < num_fds_ready)
   {
@@ -329,6 +365,7 @@ int Spark_Receive(unsigned char *buf, int buflen)
     {
       // recv returns negative numbers on error
       bytes_received = recv(sparkSocket, buf, buflen, 0);
+      TimingCloudSocketTimeout = 0;
     }
   }
   else if (0 > num_fds_ready)
