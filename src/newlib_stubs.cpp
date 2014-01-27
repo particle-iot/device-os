@@ -28,6 +28,15 @@
 
 /* Define abort() */
 #include <stdlib.h>
+#ifdef __CS_SOURCERYGXX_REV__
+#define abort() _exit(-1);
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/times.h>
+#include <sys/unistd.h>
+#include "stm32f10x_usart.h"
+
+#endif
 
 extern unsigned long __preinit_array_start;
 extern unsigned long __preinit_array_end;
@@ -93,12 +102,13 @@ extern "C" {
  * System call reference with suggested stubs:
  * http://sourceware.org/newlib/libc.html#Syscalls
  *****************************************************/
+#ifndef __CS_SOURCERYGXX_REV__
 
 void _exit(int status)
 {
 	while(1);
 }
-
+#endif
 /*
  * _sbrk() -  allocate incr bytes of memory from the heap.
  *
