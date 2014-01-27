@@ -135,8 +135,10 @@ char* itoa(int a, char* buffer, unsigned char radix){
 	if(a<0){
 		*buffer = '-';
 		a = -a;
+		ultoa(a, buffer + 1, radix);
+	}else{
+		ultoa(a, buffer, radix);
 	}
-	ultoa(a, buffer + 1, radix);
 	return buffer;
 }
 
