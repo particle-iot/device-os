@@ -60,6 +60,7 @@ private:
 	uint8_t _buffer[RX_BUF_MAX_SIZE];
 	uint16_t _offset;
 	uint16_t _remaining;
+	uint16_t _buffered;
 };
 
 #endif
