@@ -28,7 +28,7 @@
 
 #include "spark_wiring.h"
 
-#define TCPCLIENT_BUF_MAX_SIZE	32
+#define TCPCLIENT_BUF_MAX_SIZE	16
 
 class TCPClient : public Stream {
 
