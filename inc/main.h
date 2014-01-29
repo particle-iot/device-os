@@ -63,8 +63,8 @@ extern "C" {
  * Note that once the JTAG IOs are disabled, the connection with the host debugger
  * is lost and cannot be re-established as long as the JTAG IOs remain disabled.
  */
+#ifndef USE_SWD_JTAG
 #define SWD_JTAG_DISABLE
-
 /*
  * Use Independent Watchdog to force a system reset when a software error occurs
  * During JTAG program/debug, the Watchdog has to be disabled so that it does not
@@ -72,6 +72,7 @@ extern "C" {
  */
 #define IWDG_RESET_ENABLE
 #define TIMING_IWDG_RELOAD	1000 //1sec
+#endif
 
 #endif
 
