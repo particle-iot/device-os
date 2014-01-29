@@ -144,8 +144,11 @@ D:\Spark\core-firmware\build [master]> dfu-util -d 1d50:607f -a 0 -s 0x08005000:
    ```
 Upon successful transfer, the Core will automatically reset and start the running the program.
 
-Note: As of 12/4/13, you will likely see `Error during download get_status` as the last line from 
+##### Common Errors
+* As of 12/4/13, you will likely see `Error during download get_status` as the last line from 
 the `dfu-util` command. You can ignore this message for now.  We're not sure what this error is all about.
+
+* If you are having trouble with dfu-util, (like invalid dfuse address), try a newer version of dfu-util. v0.7 works well.
 
 **Still having troubles?** Checkout our [resources page](https://www.spark.io/resources), hit us up on IRC, etc.
 
