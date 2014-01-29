@@ -110,9 +110,9 @@ int TCPClient::available()
 		return 0;
 	}
 
-	if ((_remaining > 0) && (_offset < _remaining))
+	if ((_remaining > 0) && (_offset < _buffered))
 	{
-		return (_remaining - _offset);
+		return (_buffered - _offset);
 	}
 
 	_types_fd_set_cc3000 readSet;
@@ -128,11 +128,12 @@ int TCPClient::available()
 	{
 		if (FD_ISSET(_sock, &readSet))
 		{
-			int ret = recv(_sock, _buffer, RX_BUF_MAX_SIZE, 0);
+			int ret = recv(_sock, _buffer, TCPCLIENT_BUF_MAX_SIZE, 0);
 			if (ret > 0)
 			{
 				_offset = 0;
 				_remaining = ret;
+				_buffered = ret;
 			}
 
 			return ret;
@@ -151,7 +152,7 @@ int TCPClient::read()
 
 	uint8_t byte;
 
-	if ((_remaining > 0) && (_offset < RX_BUF_MAX_SIZE))
+	if ((_remaining > 0) && (_offset < TCPCLIENT_BUF_MAX_SIZE))
 	{
 		byte = _buffer[_offset++];
 		_remaining--;
@@ -168,7 +169,7 @@ int TCPClient::read(uint8_t *buffer, size_t size)
 		return -1;
 	}
 
-	if ((_remaining > 0) && (_offset < RX_BUF_MAX_SIZE))
+	if ((_remaining > 0) && (_offset < TCPCLIENT_BUF_MAX_SIZE))
 	{
 		if (_remaining <= size)
 		{
