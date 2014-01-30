@@ -31,50 +31,52 @@ UDP::UDP() : _sock(MAX_SOCK_NUM)
 
 }
 
+int UDP::isWanReady()
+{
+  return SPARK_WLAN_hasAddress();
+}
+
 uint8_t UDP::begin(uint16_t port) 
 {
+        int bound = 0;
 	sockaddr tUDPAddr;
 
-	int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
-	if (sock < 0)
+	if(isWanReady())
 	{
-		return 0;
+	    _sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+            if (_sock >= 0)
+            {
+
+              flush();
+              _port = port;
+
+              memset(&tUDPAddr, 0, sizeof(tUDPAddr));
+              tUDPAddr.sa_family = AF_INET;
+              tUDPAddr.sa_data[0] = (_port & 0xFF00) >> 8;
+              tUDPAddr.sa_data[1] = (_port & 0x00FF);
+
+              bound = bind(_sock, (sockaddr*)&tUDPAddr, sizeof(tUDPAddr)) >= 0;
+              if(!bound)
+              {
+                  stop();
+              }
+
+            }
 	}
-
-	_sock = sock;
-	_port = port;
-	flush();
-
-	tUDPAddr.sa_family = AF_INET;
-
-	tUDPAddr.sa_data[0] = (_port & 0xFF00) >> 8;
-	tUDPAddr.sa_data[1] = (_port & 0x00FF);
-	tUDPAddr.sa_data[2] = 0;
-	tUDPAddr.sa_data[3] = 0;
-	tUDPAddr.sa_data[4] = 0;
-	tUDPAddr.sa_data[5] = 0;
-
-	if (bind(_sock, (sockaddr*)&tUDPAddr, sizeof(tUDPAddr)) < 0)
-	{
-		return 0;
-	}
-
-	return 1;
+        return bound;
 }
 
 int UDP::available() 
 {
-      return _total - _offset;
+    return _total - _offset;
 
 }
 
 void UDP::stop()
 {
-	if (closesocket(_sock) == 0)
-	{
-		_sock = MAX_SOCK_NUM;
-	}
+    closesocket(_sock);
+    _sock = MAX_SOCK_NUM;
 }
 
 int UDP::beginPacket(const char *host, uint16_t port)
@@ -128,58 +130,51 @@ size_t UDP::write(const uint8_t *buffer, size_t size)
 
 int UDP::parsePacket()
 {
-	_types_fd_set_cc3000 readSet;
-	timeval timeout;
+  if(available() == 0 && connected())
+  {
+      _types_fd_set_cc3000 readSet;
+      timeval timeout;
 
-	FD_ZERO(&readSet);
-	FD_SET(_sock, &readSet);
+      FD_ZERO(&readSet);
+      FD_SET(_sock, &readSet);
 
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 5000;
+      timeout.tv_sec = 10;
+      timeout.tv_usec = 5000;
 
-	if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
-	{
-		if (FD_ISSET(_sock, &readSet))
-		{
-			int ret = recvfrom(_sock, _buffer, arraySize(_buffer), 0, &_remoteSockAddr, &_remoteSockAddrLen);
+      if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
+      {
+              if (FD_ISSET(_sock, &readSet))
+              {
 
-			if (ret > 0)
-			{
-				_remotePort = _remoteSockAddr.sa_data[0] << 8;
-				_remotePort = _remoteSockAddr.sa_data[1] | _remotePort;
+                      int ret = recvfrom(_sock, _buffer, arraySize(_buffer), 0, &_remoteSockAddr, &_remoteSockAddrLen);
 
-				_remoteIP._address[0] = _remoteSockAddr.sa_data[2];
-				_remoteIP._address[1] = _remoteSockAddr.sa_data[3];
-				_remoteIP._address[2] = _remoteSockAddr.sa_data[4];
-				_remoteIP._address[3] = _remoteSockAddr.sa_data[5];
+                      if (ret > 0)
+                      {
+                              _remotePort = _remoteSockAddr.sa_data[0] << 8 | _remoteSockAddr.sa_data[1];
 
-				_offset = 0;
-				_total = ret;
-			}
+                              _remoteIP._address[0] = _remoteSockAddr.sa_data[2];
+                              _remoteIP._address[1] = _remoteSockAddr.sa_data[3];
+                              _remoteIP._address[2] = _remoteSockAddr.sa_data[4];
+                              _remoteIP._address[3] = _remoteSockAddr.sa_data[5];
 
-			return ret;
-		}
-	}
-
-	return 0;
+                              _offset = 0;
+                              _total = ret;
+                      }
+              }
+      }
+   }
+   return available();
 }
 
 int UDP::read()
 {
-	uint8_t byte = -1;
-
-	if (_offset < _total)
-	{
-		byte = _buffer[_offset++];
-	}
-
-	return byte;
+  return available() ? _buffer[_offset++] : -1;
 }
 
 int UDP::read(unsigned char* buffer, size_t len)
 {
         int read = -1;
-	if (available())
+        if (available())
 	{
           read = (len > (size_t) available()) ? available() : len;
           memcpy(buffer, _buffer, read);
@@ -198,4 +193,9 @@ void UDP::flush()
   _offset = 0;
   _total = 0;
 
+}
+
+uint8_t UDP::connected()
+{
+   return  (isWanReady() && (_sock != MAX_SOCK_NUM)) ? 1 : 0;
 }
