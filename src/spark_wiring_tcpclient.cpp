@@ -51,41 +51,35 @@ int TCPClient::connect(const char* host, uint16_t port)
 
 int TCPClient::connect(IPAddress ip, uint16_t port) 
 {
-	if(WLAN_DHCP != 1)
+        int connected = 0;
+        _offset = 0;
+        _total = 0;
+	if(isWanReady())
 	{
-		return 0;
+          sockaddr tSocketAddr;
+          _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+          if (_sock >= 0)
+          {
+
+            tSocketAddr.sa_family = AF_INET;
+
+            tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
+            tSocketAddr.sa_data[1] = (port & 0x00FF);
+
+            tSocketAddr.sa_data[2] = ip._address[0];
+            tSocketAddr.sa_data[3] = ip._address[1];
+            tSocketAddr.sa_data[4] = ip._address[2];
+            tSocketAddr.sa_data[5] = ip._address[3];
+
+            connected = (socket_connect(_sock, &tSocketAddr, sizeof(tSocketAddr)) >= 0 ? 1 : 0);
+            if(!connected)
+            {
+                stop();
+            }
+          }
 	}
-
-	sockaddr tSocketAddr;
-
-	_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-	if (_sock < 0)
-	{
-		return 0;
-	}
-
-	_offset = 0;
-	_total = 0;
-
-	tSocketAddr.sa_family = AF_INET;
-
-	tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
-	tSocketAddr.sa_data[1] = (port & 0x00FF);
-
-	tSocketAddr.sa_data[2] = ip._address[0];
-	tSocketAddr.sa_data[3] = ip._address[1];
-	tSocketAddr.sa_data[4] = ip._address[2];
-	tSocketAddr.sa_data[5] = ip._address[3];
-
-	if(socket_connect(_sock, &tSocketAddr, sizeof(tSocketAddr)) < 0)
-	{
-		_sock = MAX_SOCK_NUM;
-
-		return 0;
-	}
-
-	return 1;
+	return connected;
 }
 
 size_t TCPClient::write(uint8_t b) 
@@ -95,57 +89,58 @@ size_t TCPClient::write(uint8_t b)
 
 size_t TCPClient::write(const uint8_t *buffer, size_t size)
 {
-	if((WLAN_DHCP != 1) || (_sock == MAX_SOCK_NUM))
-	{
-		return -1;
-	}
+	return connected() ? send(_sock, buffer, size, 0) : -1;
+}
 
-	return send(_sock, buffer, size, 0);
+int TCPClient::isWanReady()
+{
+  return SPARK_WLAN_hasAddress();
 }
 
 int TCPClient::available() 
 {
-	if((WLAN_DHCP != 1) || (_sock == MAX_SOCK_NUM))
+        int avail = 0;
+	if(connected())
 	{
-		return 0;
+          // Have room
+          if (_total && _offset == _total)
+          {
+             flush();
+          }
+
+          if ( _total < arraySize(_buffer))
+          {
+            _types_fd_set_cc3000 readSet;
+            timeval timeout;
+
+            FD_ZERO(&readSet);
+            FD_SET(_sock, &readSet);
+
+            timeout.tv_sec = 0;
+            timeout.tv_usec = 5000;
+
+            if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
+            {
+                    if (FD_ISSET(_sock, &readSet))
+                    {
+                            int ret = recv(_sock, _buffer + _total , arraySize(_buffer)-_total, 0);
+                            if (ret > 0)
+                            {
+                                    if (_total == 0) _offset = 0;
+                                    _total += ret;
+                            }
+                    }
+            }
+          }
+          avail = _total - _offset;
 	}
-
-	if (_offset < _total)
-	{
-	    return _total - _offset;
-	}
-
-	_types_fd_set_cc3000 readSet;
-	timeval timeout;
-
-	FD_ZERO(&readSet);
-	FD_SET(_sock, &readSet);
-
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 5000;
-
-	if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
-	{
-		if (FD_ISSET(_sock, &readSet))
-		{
-			int ret = recv(_sock, _buffer, arraySize(_buffer), 0);
-			if (ret > 0)
-			{
-				_offset = 0;
-				_total = ret;
-			}
-			return ret;
-		}
-	}
-
-	return 0;
+        return avail;
 }
 
 int TCPClient::read() 
 {
   uint8_t byte = -1;
-  if ( (WLAN_DHCP == 1) && (_sock != MAX_SOCK_NUM)
-      && available())
+  if ( connected() && available())
   {
        byte = _buffer[_offset++];
   }
@@ -155,8 +150,7 @@ int TCPClient::read()
 int TCPClient::read(uint8_t *buffer, size_t size)
 {
         int read = -1;
-        if ( (WLAN_DHCP == 1) && (_sock != MAX_SOCK_NUM)
-            && available())
+        if (connected() && available())
         {
           read = (size > (size_t) available()) ? available() : size;
           memcpy(buffer, _buffer, read);
@@ -178,16 +172,13 @@ void TCPClient::flush()
 
 void TCPClient::stop() 
 {
-	if (closesocket(_sock) == 0)
-	{
-		_sock = MAX_SOCK_NUM;
-	}
+  closesocket(_sock);
+ _sock = MAX_SOCK_NUM;
 }
 
 uint8_t TCPClient::connected() 
 {
-  //To Do
-   return  (_sock != MAX_SOCK_NUM) ? 1 : 0;
+   return  (isWanReady() && (_sock != MAX_SOCK_NUM)) ? 1 : 0;
 }
 
 uint8_t TCPClient::status() 

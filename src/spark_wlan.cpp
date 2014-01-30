@@ -28,7 +28,7 @@
 
 tNetappIpconfigRetArgs ip_config;
 
-volatile uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
+volatile int8_t  WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
 volatile uint8_t WLAN_DELETE_PROFILES;
 volatile uint8_t WLAN_SMART_CONFIG_START;
 volatile uint8_t WLAN_SMART_CONFIG_STOP;
@@ -333,6 +333,11 @@ char *WLAN_BootLoader_Patch(unsigned long *length)
 	return NULL;
 }
 
+int SPARK_WLAN_hasAddress(void)
+{
+  return WLAN_DHCP || WLAN_MANUAL_CONNECT != 0;
+}
+
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 {
   announce_presence = presence_announcement_callback;
@@ -377,7 +382,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 		Save_SystemFlags();
 	}
 
-	if(!WLAN_MANUAL_CONNECT)
+	if(WLAN_MANUAL_CONNECT == 0)
 	{
 		if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] == 0)
 		{
@@ -393,7 +398,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	}
 
 #if defined (USE_SPARK_CORE_V02)
-	if(WLAN_MANUAL_CONNECT || !WLAN_SMART_CONFIG_START)
+	if((WLAN_MANUAL_CONNECT > 0) || !WLAN_SMART_CONFIG_START)
 	{
 		LED_SetRGBColor(RGB_COLOR_GREEN);
 		LED_On(LED_RGB);
@@ -466,12 +471,12 @@ void SPARK_WLAN_Loop(void)
 		/* Start CC3000 Smart Config Process */
 		Start_Smart_Config();
 	}
-	else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
+	else if (WLAN_MANUAL_CONNECT > 0 && !WLAN_DHCP)
 	{
 	    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
 	    /* Edit the below line before use*/
 	    wlan_connect(WLAN_SEC_WPA2, _ssid, strlen(_ssid), NULL, (unsigned char*)_password, strlen(_password));
-	    WLAN_MANUAL_CONNECT = 0;
+	    WLAN_MANUAL_CONNECT = -1;
 	}
 
 	// Complete Smart Config Process:
