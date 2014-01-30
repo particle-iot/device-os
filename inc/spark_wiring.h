@@ -37,10 +37,21 @@
 * Basic variables
 */
 
-#define min(a,b)                ((a)<(b)?(a):(b))
-#define max(a,b)                ((a)>(b)?(a):(b))
-#define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
-#define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+#if !defined(min)
+#   define min(a,b)                ((a)<(b)?(a):(b))
+#endif
+#if !defined(max)
+#   define max(a,b)                ((a)>(b)?(a):(b))
+#endif
+#if !defined(constrain)
+#   define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
+#endif
+#if !defined(round)
+#   define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+#endif
+#if !defined(arraySize)
+#   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
+#endif
 
 #define HIGH 0x1
 #define LOW 0x0
