@@ -28,7 +28,7 @@
 
 #include "spark_wiring.h"
 
-#define TCPCLIENT_BUF_MAX_SIZE	16
+#define TCPCLIENT_BUF_MAX_SIZE	512
 
 class TCPClient : public Stream {
 
@@ -59,8 +59,7 @@ private:
 	long _sock;
 	uint8_t _buffer[TCPCLIENT_BUF_MAX_SIZE];
 	uint16_t _offset;
-	uint16_t _remaining;
-	uint16_t _buffered;
+	uint16_t _total;
 };
 
 #endif

@@ -44,8 +44,7 @@ uint8_t UDP::begin(uint16_t port)
 
 	_sock = sock;
 	_port = port;
-	_offset = 0;
-	_remaining = 0;
+	flush();
 
 	tUDPAddr.sa_family = AF_INET;
 
@@ -66,7 +65,8 @@ uint8_t UDP::begin(uint16_t port)
 
 int UDP::available() 
 {
-	return _remaining;
+      return _total - _offset;
+
 }
 
 void UDP::stop()
@@ -141,7 +141,7 @@ int UDP::parsePacket()
 	{
 		if (FD_ISSET(_sock, &readSet))
 		{
-			int ret = recvfrom(_sock, _buffer, RX_BUF_MAX_SIZE, 0, &_remoteSockAddr, &_remoteSockAddrLen);
+			int ret = recvfrom(_sock, _buffer, arraySize(_buffer), 0, &_remoteSockAddr, &_remoteSockAddrLen);
 
 			if (ret > 0)
 			{
@@ -154,7 +154,7 @@ int UDP::parsePacket()
 				_remoteIP._address[3] = _remoteSockAddr.sa_data[5];
 
 				_offset = 0;
-				_remaining = ret;
+				_total = ret;
 			}
 
 			return ret;
@@ -166,57 +166,36 @@ int UDP::parsePacket()
 
 int UDP::read()
 {
-	uint8_t byte;
+	uint8_t byte = -1;
 
-	if ((_remaining > 0) && (_offset < RX_BUF_MAX_SIZE))
+	if (_offset < _total)
 	{
 		byte = _buffer[_offset++];
-		_remaining--;
-		return byte;
 	}
 
-	return -1;
+	return byte;
 }
 
 int UDP::read(unsigned char* buffer, size_t len)
 {
-	if ((_remaining > 0) && (_offset < RX_BUF_MAX_SIZE))
+        int read = -1;
+	if (available())
 	{
-		if (_remaining <= len)
-		{
-			memcpy(buffer, _buffer, _remaining);
-			_offset = _remaining;
-		}
-		else
-		{
-			memcpy(buffer, _buffer, len);
-			_offset = len;
-		}
-
-		if (_offset > 0)
-		{
-			_remaining -= _offset;
-			return _offset;
-		}
+          read = (len > (size_t) available()) ? available() : len;
+          memcpy(buffer, _buffer, read);
+          _offset += read;
 	}
-
-	return -1;
+	return read;
 }
 
 int UDP::peek()
 {
-	if (!available())
-	{
-		return -1;
-	}
-
-	return read();
+     return available() ? _buffer[_offset] : -1;
 }
 
 void UDP::flush()
 {
-	while (available())
-	{
-		read();
-	}
+  _offset = 0;
+  _total = 0;
+
 }
