@@ -52,8 +52,6 @@ int TCPClient::connect(const char* host, uint16_t port)
 int TCPClient::connect(IPAddress ip, uint16_t port) 
 {
         int connected = 0;
-        _offset = 0;
-        _total = 0;
 	if(isWanReady())
 	{
           sockaddr tSocketAddr;
@@ -61,6 +59,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
 
           if (_sock >= 0)
           {
+            flush();
 
             tSocketAddr.sa_family = AF_INET;
 
@@ -139,12 +138,7 @@ int TCPClient::available()
 
 int TCPClient::read() 
 {
-  uint8_t byte = -1;
-  if ( connected() && available())
-  {
-       byte = _buffer[_offset++];
-  }
-  return byte;
+  return connected() && available() ? _buffer[_offset++] : -1;
 }
 
 int TCPClient::read(uint8_t *buffer, size_t size)
@@ -161,7 +155,7 @@ int TCPClient::read(uint8_t *buffer, size_t size)
 
 int TCPClient::peek() 
 {
-  return available() ? _buffer[_offset] : -1;
+  return connected() && available() ? _buffer[_offset] : -1;
 }
 
 void TCPClient::flush() 
