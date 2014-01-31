@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include "config.h"
+#include "spark_macros.h"
 #include "debug.h"
 
 extern unsigned long millis(void);
@@ -30,11 +31,25 @@ void log_print_(int level, int line, const char *func, const char *file, const c
         va_list args;
         va_start(args, msg);
         file = file ? strrchr(file,'/') + 1 : "";
-        snprintf(_buffer, arraySize(_buffer), "%010lu:<%s> %s %s(%d):", millis(), levels[level], func, file, line);
-        if (debug_output_) debug_output_(_buffer);
-        vsnprintf(_buffer,arraySize(_buffer), msg, args);
-        strcat(_buffer,"\r\n");
-        if (debug_output_) debug_output_(_buffer);
+        int trunc = snprintf(_buffer, arraySize(_buffer), "%010lu:<%s> %s %s(%d):", millis(), levels[level], func, file, line);
+        if (debug_output_)
+        {
+            debug_output_(_buffer);
+          if (trunc > arraySize(_buffer))
+          {
+              debug_output_("...");
+          }
+        }
+        trunc = vsnprintf(_buffer,arraySize(_buffer), msg, args);
+        if (debug_output_)
+        {
+          debug_output_(_buffer);
+          if (trunc > arraySize(_buffer))
+          {
+              debug_output_("...");
+          }
+          debug_output_("\r\n");
+        }
 }
 
 
