@@ -31,7 +31,7 @@
 #include "usb_desc.h"
 #include "usb_pwr.h"
 #include "dfu_mal.h"
-
+void Get_SerialNum(void);
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
