@@ -834,7 +834,7 @@ bool SparkProtocol::handle_received_message(void)
       memset(variable_key + variable_key_length, 0, 13 - variable_key_length);
 
       queue[0] = 0;
-      queue[1] = 16;
+      queue[1] = 16; //default buffer length
 
       // get variable value according to type using the descriptor
       SparkReturnType::Enum var_type = descriptor.variable_type(variable_key);
@@ -852,6 +852,7 @@ bool SparkProtocol::handle_received_message(void)
       {
         char *str_val = (char *)descriptor.get_variable(variable_key);
         variable_value(queue + 2, token, queue[2], queue[3], str_val, strlen(str_val));
+		queue[1]=((6+strlen(str_val)) & ~15) + 16; //buffer length from variable_value
       }
       else if(SparkReturnType::DOUBLE == var_type)
       {
@@ -859,7 +860,7 @@ bool SparkProtocol::handle_received_message(void)
         variable_value(queue + 2, token, queue[2], queue[3], *double_val);
       }
 
-      if (0 > blocking_send(queue, 18))
+      if (0 > blocking_send(queue, queue[1]+2)) //queue length from variable in case of a long string
       {
         // error
         return false;
