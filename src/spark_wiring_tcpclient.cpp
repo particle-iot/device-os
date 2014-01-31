@@ -29,10 +29,12 @@ uint16_t TCPClient::_srcport = 1024;
 
 TCPClient::TCPClient() : _sock(MAX_SOCK_NUM)
 {
+  flush();
 }
 
 TCPClient::TCPClient(uint8_t sock) : _sock(sock) 
 {
+  flush();
 }
 
 int TCPClient::connect(const char* host, uint16_t port) 
@@ -56,6 +58,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
 	{
           sockaddr tSocketAddr;
           _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+          DEBUG("socket=%d",_sock);
 
           if (_sock >= 0)
           {
@@ -72,6 +75,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
             tSocketAddr.sa_data[5] = ip._address[3];
 
             connected = (socket_connect(_sock, &tSocketAddr, sizeof(tSocketAddr)) >= 0 ? 1 : 0);
+            DEBUG("connected=%d",connected);
             if(!connected)
             {
                 stop();
@@ -123,6 +127,7 @@ int TCPClient::available()
                     if (FD_ISSET(_sock, &readSet))
                     {
                             int ret = recv(_sock, _buffer + _total , arraySize(_buffer)-_total, 0);
+                            DEBUG("recv(=%d",ret);
                             if (ret > 0)
                             {
                                     if (_total == 0) _offset = 0;
@@ -166,7 +171,8 @@ void TCPClient::flush()
 
 void TCPClient::stop() 
 {
-  closesocket(_sock);
+  int rv = closesocket(_sock);
+  DEBUG("closesocket=%d",closesocket);
  _sock = MAX_SOCK_NUM;
 }
 

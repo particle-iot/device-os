@@ -25,6 +25,161 @@
 
 /* Includes ------------------------------------------------------------------*/  
 #include "application.h"
+extern "C" void debug(const char *p);
+
+
+#define RENEW_INTERVAL      5*1000      // 30 secs
+#define RETRY_INTERVAL      5*1000      // 10 secs
+#define RESPONSE_INTERVAL   1*1000       // 1 sec
+#define LET_IT_FILL_INTERVAL   3*1000       // 1 sec
+
+TCPClient client;
+char server[] = "nscdg.com";
+
+// IO
+int led = D2;
+
+// Globals
+volatile int state = 0;
+volatile int wait = 0;
+volatile int loopwait = 10;
+
+volatile int tries = 0;
+volatile int store = 0;
+volatile int hash = 0;
+
+volatile char command[32];
+volatile int command_i=0;
+
+void setup1()
+{
+
+    DEBUG("Thermometer sketch");
+
+    pinMode(led, OUTPUT);
+    // Button resistorless
+    state = 0;
+    wait = RETRY_INTERVAL;
+
+    // Connecting
+}
+uint8_t buffer[TCPCLIENT_BUF_MAX_SIZE+1]; // for EOT
+int loops = 0;
+int total = 0;
+void loop1()
+{
+
+    delay(1);
+    switch(state){
+        case 0:
+            // Waiting for next time
+            wait-=10;
+            if(wait<0){
+                wait = 0;
+                state = 1;
+            }
+            break;
+        case 1:
+            // Connecting
+            DEBUG("connecting");
+            total = 0;
+            if (client.connect(server, 80)){
+                state = 2;
+            }else{
+                DEBUG("connection failed state 1");
+                wait = RETRY_INTERVAL;
+                state = 0;
+            }
+            break;
+        case 2:
+            // Requesting
+            if(client.connected()){
+                DEBUG (" Send");
+                client.println("GET /t.php HTTP/1.0\r\n\r\n");
+                DEBUG (" Sent");
+                wait = 1000 * 15;
+                state = -2;
+            }else{
+                DEBUG("connection lost state 2");
+                wait = RETRY_INTERVAL;
+                state = 0;
+            }
+            break;
+
+        case -2:
+          wait--;
+          if(wait<0){
+              wait = 0;
+              state = 4;
+          }
+          break;
+
+        case -3:
+          if (client.available()) {
+              DEBUG ("Ready");
+              state = 3;
+          }
+          wait--;
+          if(wait<0){
+              wait = 0;
+              state = 4;
+          }
+          break;
+        case 3:
+            // Receiving
+            if(client.connected()){
+                int count = client.available();
+                DEBUG("client.available() %d", count);
+                if (count > 0)
+                {
+                    loops = 0;
+                    // Print response to serial
+                    count = client.read(buffer, arraySize(buffer));
+                    buffer[count] ='\0';
+                    char *p = strstr((const char *)buffer,"0.1.2.3");
+                    if (p)
+                      {
+                       total = -(p-(char*)buffer);
+                      }
+                    total += count;
+                    DEBUG("client.read() %d", count);
+                    DEBUG("%s",(const char*)buffer);
+                } else {
+                    delay(100);
+                    if (++loops > 2) {
+                      wait = 1;
+                      state = 4;
+                    }
+                }
+            }else{
+                // We lost connection
+                DEBUG("connection lost state 3");
+                wait = RETRY_INTERVAL;
+                state = 0;
+            }
+            break;
+        case 4:
+            // Disconnecting
+            if(client.connected()){
+                DEBUG("%d total Bytes Read",total);
+                client.stop();
+                DEBUG("connection closed state 4");
+                wait = RENEW_INTERVAL;
+                state = 0;
+            }else{
+                LOG("connection closed by server state 4");
+                WARN("connection closed by server state 4");
+                DEBUG("connection closed by server state 4");
+                ERROR("connection closed by server state 4");
+                PANIC(0,"connection closed by server state 4");
+                wait = RENEW_INTERVAL;
+                state = 0;
+            }
+            break;
+      }
+}
+
+
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
@@ -36,8 +191,10 @@ int tinkerAnalogWrite(String command);
 void setup()
 {
 	//Setup the Tinker application here
-
+//        Serial1.begin(115200);
 	//Register all the Tinker functions
+
+        setup1();
 	Spark.function("digitalread", tinkerDigitalRead);
 	Spark.function("digitalwrite", tinkerDigitalWrite);
 
@@ -47,8 +204,30 @@ void setup()
 }
 
 /* This function loops forever --------------------------------------------*/
+static boolean once = false;
+
+void debug_output_(const char *p)
+{
+ if (!once)
+   {
+     once = true;
+     Serial1.begin(115200);
+   }
+
+ Serial1.print(p);
+}
+
+
 void loop()
 {
+  static int count  = 0;
+  if (count) {
+  count+= 5000;
+  Serial1.print(count);
+  delay(count);
+  DEBUG("end");
+  }
+  loop1();
 	//This will run in a loop
 }
 

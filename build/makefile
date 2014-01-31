@@ -69,6 +69,12 @@ ifeq ("$(USE_SWD_JTAG)","y")
 CFLAGS += -DUSE_SWD_JTAG
 endif
 
+ifeq ("$(DEBUG_BUILD)","y") 
+CFLAGS += -DDEBUG_BUILD
+else
+CFLAGS += -DRELEASE_BUILD
+endif
+
 # C++ specific flags
 CPPFLAGS = -fno-exceptions -fno-rtti 
 
