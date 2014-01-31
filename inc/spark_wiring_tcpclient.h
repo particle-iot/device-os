@@ -35,6 +35,7 @@ class TCPClient : public Stream {
 public:
 	TCPClient();
 	TCPClient(uint8_t sock);
+        virtual ~TCPClient() {};
 
 	uint8_t status();
 	virtual int connect(IPAddress ip, uint16_t port);
