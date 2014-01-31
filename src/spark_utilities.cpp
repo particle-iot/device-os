@@ -23,6 +23,7 @@
   ******************************************************************************
  */
 #include "spark_utilities.h"
+#include "spark_wiring.h"
 #include "socket.h"
 #include "netapp.h"
 #include "string.h"
@@ -31,12 +32,13 @@
 
 SparkProtocol spark_protocol;
 
-long sparkSocket;
+#define INVALID_SOCKET (-1)
+
+long sparkSocket = INVALID_SOCKET;
 sockaddr tSocketAddr;
 
 //char digits[] = "0123456789";
 
-extern unsigned int millis();
 extern uint8_t LED_RGB_BRIGHTNESS;
 
 // LED_Signaling_Override
@@ -239,6 +241,11 @@ void SparkClass::sleep(long seconds)
 	SparkClass::sleep(SLEEP_MODE_WLAN, seconds);
 }
 
+inline uint8_t isSocketClosed()
+{
+  return get_socket_active_status(sparkSocket)==SOCKET_STATUS_INACTIVE;
+}
+
 bool SparkClass::connected(void)
 {
 	if(SPARK_SOCKET_CONNECTED && SPARK_HANDSHAKE_COMPLETED)
@@ -299,7 +306,7 @@ int Spark_Send(const unsigned char *buf, int buflen)
   int bytes_sent = 0;
   int num_fds_ready = 0;
 
-  if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
+  if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed())
   {
     //break from any blocking loop
     return -1;
@@ -342,7 +349,7 @@ int Spark_Receive(unsigned char *buf, int buflen)
   int bytes_received = 0;
   int num_fds_ready = 0;
 
-  if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
+  if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed())
   {
     //break from any blocking loop
     return -1;
@@ -478,6 +485,7 @@ void Spark_Protocol_Init(void)
     FLASH_Read_ServerPublicKey(pubkey);
     FLASH_Read_CorePrivateKey(private_key);
 
+
     spark_protocol.init((const char *)ID1, keys, callbacks, descriptor);
   }
 }
@@ -589,9 +597,15 @@ int Internet_Test(void)
 	testSocketAddr.sa_data[4] = 8;
 	testSocketAddr.sa_data[5] = 8;
 
+        DEBUG("connect");
 	testResult = connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
-
-	closesocket(testSocket);
+        DEBUG("connected testResult=%d",testResult);
+        DEBUG("send");
+	char c = 0;
+	send(testSocket, &c,1, 0);
+	DEBUG("Close");
+	int rv = closesocket(testSocket);
+        DEBUG("Closed rv=%d",rv);
 
 	//if connection fails, testResult returns -1
     return testResult;
@@ -600,8 +614,9 @@ int Internet_Test(void)
 int Spark_Connect(void)
 {
   Spark_Disconnect();
-
+  DEBUG("socket");
   sparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  DEBUG("socketed sparkSocket=%d",sparkSocket);
 
   if (sparkSocket < 0)
   {
@@ -621,16 +636,30 @@ int Spark_Connect(void)
   tSocketAddr.sa_data[4] = 229; 	// Third Octet of destination IP
   tSocketAddr.sa_data[5] = 4;	// Fourth Octet of destination IP
 
-  return connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
+  DEBUG("connet");
+  int rv = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
+  DEBUG("connected connect=%d",rv);
+  return rv;
 }
 
 int Spark_Disconnect(void)
 {
-  int retVal = closesocket(sparkSocket);
+  int retVal= 0;
+  DEBUG("");
+  if (sparkSocket >= 0)
+  {
+     if (!isSocketClosed())
+     {
+        DEBUG("send");
+        char c = 0;
+        send(sparkSocket, &c,1, 0);
+        DEBUG("Close");
 
-  if(retVal == 0)
-    sparkSocket = 0xFFFFFFFF;
-
+        retVal = closesocket(sparkSocket);
+        DEBUG("Closed retVal=%d", retVal);
+     }
+    sparkSocket = INVALID_SOCKET;
+  }
   return retVal;
 }
 
