@@ -28,6 +28,7 @@
 
 /* Define abort() */
 #include <stdlib.h>
+#include "debug.h"
 #ifdef __CS_SOURCERYGXX_REV__
 #define abort() _exit(-1);
 #include <errno.h>
@@ -106,6 +107,7 @@ extern "C" {
 
 void _exit(int status)
 {
+        PANIC(Exit,"Exit Called");
 	while(1);
 }
 #endif
@@ -134,6 +136,7 @@ caddr_t _sbrk(int incr)
 	heap_end += incr;
 
 	if (heap_end > &__Stack_Init) {
+	        PANIC(OutOfHeap,"Out Of Heap");
 		abort();
 	}
 
@@ -214,6 +217,8 @@ int _write(int file, char *ptr, int len) {
 
 void _exit(int status) {
     _write(1, (char *)"exit", 4);
+    PANIC(Exit,"Exit Called");
+
     while (1) {
         ;
     }
