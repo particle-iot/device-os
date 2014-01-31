@@ -595,7 +595,7 @@ wlan_add_profile(unsigned long ulSecType,
 								 unsigned char* ucPf_OrKey,
 								 unsigned long ulPassPhraseLen)
 {
-	unsigned short arg_len;
+	unsigned short arg_len = 0;
 	long ret;
 	unsigned char *ptr;
 	long i = 0;

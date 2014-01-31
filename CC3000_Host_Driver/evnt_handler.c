@@ -474,10 +474,11 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 			
 			if ((tSLInformation.usRxEventOpcode == 0) && (tSLInformation.usRxDataPending == 0))
 			{
-				return NULL;
+			    break;
 			}	
 		}
 	}
+        return NULL;
 
 }
 
