@@ -61,6 +61,7 @@ private:
 	uint8_t _buffer[TCPCLIENT_BUF_MAX_SIZE];
 	uint16_t _offset;
 	uint16_t _total;
+	inline int bufferCount();
 	inline int isWanReady();
 };
 

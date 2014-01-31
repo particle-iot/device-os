@@ -100,6 +100,11 @@ int TCPClient::isWanReady()
   return SPARK_WLAN_hasAddress();
 }
 
+int TCPClient::bufferCount()
+{
+  return _total - _offset;
+}
+
 int TCPClient::available() 
 {
         int avail = 0;
@@ -136,22 +141,23 @@ int TCPClient::available()
                     }
             }
           }
-          avail = _total - _offset;
+          avail = bufferCount();
 	}
         return avail;
 }
 
 int TCPClient::read() 
 {
-  return connected() && available() ? _buffer[_offset++] : -1;
+
+  return (bufferCount() || available()) ? _buffer[_offset++] : -1;
 }
 
 int TCPClient::read(uint8_t *buffer, size_t size)
 {
         int read = -1;
-        if (connected() && available())
+        if (bufferCount() || available())
         {
-          read = (size > (size_t) available()) ? available() : size;
+          read = (size > (size_t) bufferCount()) ? bufferCount() : size;
           memcpy(buffer, _buffer, read);
           _offset += read;
         }
@@ -160,7 +166,7 @@ int TCPClient::read(uint8_t *buffer, size_t size)
 
 int TCPClient::peek() 
 {
-  return connected() && available() ? _buffer[_offset] : -1;
+  return  (bufferCount() || available()) ? _buffer[_offset] : -1;
 }
 
 void TCPClient::flush() 
