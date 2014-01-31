@@ -16,3 +16,6 @@ def_panic_codes(Faults,RGB_COLOR_RED,BusFault)
 def_panic_codes(Faults,RGB_COLOR_RED,UsageFault)
 
 def_panic_codes(Cloud,RGB_COLOR_RED,InvalidLenth)
+
+def_panic_codes(System,RGB_COLOR_RED,Exit)
+def_panic_codes(System,RGB_COLOR_RED,OutOfHeap)
