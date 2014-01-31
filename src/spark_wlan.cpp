@@ -620,7 +620,7 @@ void SPARK_WLAN_Loop(void)
 			if(TimingCloudSocketTimeout != 0) /* Set within Timing_Decrement() */
 			{
 				/* Work around for CFOD issue */
-				SPARK_WLAN_RESET = 1;
+//				SPARK_WLAN_RESET = 1;
 
 				//NVIC_SystemReset(); /* Better alternative */
 			}

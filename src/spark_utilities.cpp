@@ -613,10 +613,33 @@ int Internet_Test(void)
 
 int Spark_Connect(void)
 {
+  // Create a sacrificial lamb
+  // Should be socket # 0 if sparkSocket was SOCKET_STATUS_INACTIVE
+  // or 1 if sparkSocket was still open
+  DEBUG("sparkSocket Now =%d",sparkSocket);
+
+  DEBUG("sacrificial lamb socket");
+  long lamb = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  DEBUG("sacrificial lamb socket =%d",lamb);
+
+  // Should be socket # 1 if sparkSocket was SOCKET_STATUS_INACTIVE
+  // or 2 if sparkSocket was still open
+
+  DEBUG("New socket");
+  long newsparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  DEBUG("socketed newsparkSocket=%d",newsparkSocket);
+
+  // Close Original
+
   Spark_Disconnect();
-  DEBUG("socket");
-  sparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  DEBUG("socketed sparkSocket=%d",sparkSocket);
+
+  sparkSocket = newsparkSocket;
+
+
+  DEBUG("closesocket(lamb)");
+  int rv = closesocket(lamb);
+  DEBUG("closesocket(lamb)=%d",rv);
+
 
   if (sparkSocket < 0)
   {
@@ -637,7 +660,7 @@ int Spark_Connect(void)
   tSocketAddr.sa_data[5] = 4;	// Fourth Octet of destination IP
 
   DEBUG("connet");
-  int rv = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
+  rv = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
   DEBUG("connected connect=%d",rv);
   return rv;
 }

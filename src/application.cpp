@@ -25,7 +25,6 @@
 
 /* Includes ------------------------------------------------------------------*/  
 #include "application.h"
-extern "C" void debug(const char *p);
 
 
 #define RENEW_INTERVAL      5*1000      // 30 secs
@@ -142,6 +141,8 @@ void loop1()
                 {
                     loops = 0;
                     // Print response to serial
+                    DEBUG("client.peek %d", client.peek());
+
                     count = client.read(buffer, arraySize(buffer));
                     buffer[count] ='\0';
                     char *p = strstr((const char *)buffer,"0.1.2.3");
@@ -151,7 +152,7 @@ void loop1()
                       }
                     total += count;
                     DEBUG("client.read() %d", count);
-                    DEBUG("%s",(const char*)buffer);
+                    debug_output_((const char*)buffer);
                 } else {
                     delay(100);
                     if (++loops > 2) {
