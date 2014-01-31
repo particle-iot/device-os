@@ -54,7 +54,7 @@ volatile int command_i=0;
 void setup1()
 {
 
-    DEBUG("Test TCP Good Usage!");
+    DEBUG("Test TCP BAD Usage!");
 
     LOG("The following 4 mmessages are a test of the logger....");
     LOG("Want %d more cores",command_i);
@@ -106,7 +106,7 @@ void loop1()
                 client.println("GET /t.php HTTP/1.0\r\n\r\n");
                 DEBUG (" Sent");
                 wait = 1000 * 15;
-                state = -3;
+                state = -2;
             }else{
                 DEBUG("connection lost state 2");
                 wait = RETRY_INTERVAL;
