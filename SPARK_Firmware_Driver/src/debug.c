@@ -30,9 +30,9 @@ void log_print_(int level, int line, const char *func, const char *file, const c
         va_list args;
         va_start(args, msg);
         file = file ? strrchr(file,'/') + 1 : "";
-        snprintf(_buffer, sizeof(_buffer), "%010lu:<%s> %s %s(%d):", millis(), levels[level], func, file, line);
+        snprintf(_buffer, arraySize(_buffer), "%010lu:<%s> %s %s(%d):", millis(), levels[level], func, file, line);
         if (debug_output_) debug_output_(_buffer);
-        vsprintf(_buffer, msg, args);
+        vsnprintf(_buffer,arraySize(_buffer), msg, args);
         strcat(_buffer,"\r\n");
         if (debug_output_) debug_output_(_buffer);
 }
