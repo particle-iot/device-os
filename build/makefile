@@ -29,14 +29,20 @@ BUILD_PATH = obj
 #       seperate library.
 SRC_PATH = ..
 
-# Target this makefile is building.
-TARGET = core-firmware
+# Target this makefile is building. (let our target be adjustable)
+CORE_FIRMWARE ?= core-firmware
+TARGET = $(CORE_FIRMWARE)
 
 # Find all build.mk makefiles in each source directory in the src tree.
 SRC_MAKEFILES := $(call rwildcard,$(SRC_PATH)/,build.mk)
 
+# Add our user folder.
+USER_DIR ?=user
+USER_MAKEFILES := $(call rwildcard,$(SRC_PATH)/$(USER_DIR),subdir.mk)
+
 # Include all build.mk defines source files.
 include $(SRC_MAKEFILES)
+include $(USER_MAKEFILES)
 
 # Paths to dependant projects, referenced from root of this project
 LIB_CORE_COMMON_PATH = ../core-common-lib
@@ -64,10 +70,6 @@ CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -DUSE_STDPERIPH_DRIVER
 CFLAGS += -DSTM32F10X_MD
 CFLAGS += -DDFU_BUILD_ENABLE
-
-ifeq ("$(USE_SWD_JTAG)","y") 
-CFLAGS += -DUSE_SWD_JTAG
-endif
 
 # C++ specific flags
 CPPFLAGS = -fno-exceptions -fno-rtti 
@@ -179,4 +181,3 @@ clean:
 
 # Include auto generated dependancy files
 -include $(ALLDEPS)
-
