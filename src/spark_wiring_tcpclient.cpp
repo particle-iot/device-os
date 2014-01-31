@@ -172,7 +172,7 @@ void TCPClient::flush()
 void TCPClient::stop() 
 {
   int rv = closesocket(_sock);
-  DEBUG("closesocket=%d",closesocket);
+  DEBUG("closesocket=%d",rv);
  _sock = MAX_SOCK_NUM;
 }
 
