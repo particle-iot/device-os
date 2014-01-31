@@ -59,7 +59,7 @@ struct SparkCallbacks
   long unsigned int (*calculate_crc)(unsigned char *buf, long unsigned int buflen);
   void (*save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
   void (*signal)(bool on);
-  unsigned int (*millis)();
+  unsigned long (*millis)();
 };
 
 class SparkProtocol
@@ -140,7 +140,7 @@ class SparkProtocol
     long unsigned int (*callback_calculate_crc)(unsigned char *buf, long unsigned int buflen);
     void (*callback_save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
     void (*callback_signal)(bool on);
-    unsigned int (*callback_millis)();
+    unsigned long (*callback_millis)();
 
     SparkDescriptor descriptor;
 
