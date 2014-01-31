@@ -13,7 +13,6 @@
  *
  * For a message be compiled in the message type has to be >= to then the LOG_LEVEL_AT_COMPILE_TIME
  * For a message to be output the message type has to be >= then the LOG_LEVEL_AT_RUN_TIME
- * and finally the D_XXXXX bit has to be set in the COMPILE_TIME_LOG_FILTER the sets the run_time_log_fillter.
  *
  * This module assumes one of two #defines RELEASE_BUILD or DEBUG_BUILD exist
  * Then the LOG_LEVEL_AT_COMPILE_TIME and LOG_LEVEL_AT_RUN_TIME are set based on RELEASE or DEBUG
