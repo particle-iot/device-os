@@ -25,6 +25,7 @@ void log_print_(int level, int line, const char *func, const char *file, const c
                 "DEBUG",
                 "WARN ",
                 "ERROR",
+                "PANIC",
         };
         va_list args;
         va_start(args, msg);

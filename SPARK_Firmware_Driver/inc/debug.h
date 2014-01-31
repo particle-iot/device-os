@@ -7,6 +7,7 @@
 #ifndef DEBUG_H_
 #define DEBUG_H_
 
+
 /*
  * This module supports runtime and compile time message filtering.
  *
@@ -32,13 +33,14 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "panic.h"
 
 // Debug Levels
 #define LOG_LEVEL       1
-#define DEBUG_LEVEL 2
+#define DEBUG_LEVEL     2
 #define WARN_LEVEL      3
-#define ERROR_LEVEL 4
-#define PANIC_LEVEL 5
+#define ERROR_LEVEL     4
+#define PANIC_LEVEL     5
 
 #if !defined(INCLUDE_FILE_INFO_IN_DEBUG)
 #define _FILE_PATH          __FILE__
@@ -63,7 +65,6 @@ extern "C" {
 extern uint32_t log_level_at_run_time __attribute__ ((weak));;
 void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...);
 void debug_output_(const char *) __attribute__ ((weak));
-void panic_(int code) __attribute__ ((weak));
 #ifdef __cplusplus
 }
 #endif
@@ -77,7 +78,7 @@ void panic_(int code) __attribute__ ((weak));
 #define DEBUG(fmt, ...)  do { if ( __LOG_LEVEL_TEST(DEBUG_LEVEL))  {log_print_(DEBUG_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
 #define WARN(fmt, ...)   do { if ( __LOG_LEVEL_TEST(WARN_LEVEL) )  {log_print_(WARN_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
 #define ERROR(fmt, ...)  do { if ( __LOG_LEVEL_TEST(ERROR_LEVEL) ) {log_print_(ERROR_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
-#define PANIC(code,fmt, ...)  do { if ( __LOG_LEVEL_TEST(ERROR_LEVEL) ) {log_print_(ERROR_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}  if(panic_) panic_(code);}while(0)
+#define PANIC(code,fmt, ...)  do { if ( __LOG_LEVEL_TEST(PANIC_LEVEL) ) {log_print_(PANIC_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);} panic_(code);}while(0)
 #else
 #define LOG(fmt, ...)
 #define DEBUG(fmt, ...)
