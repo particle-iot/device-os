@@ -54,7 +54,15 @@ volatile int command_i=0;
 void setup1()
 {
 
-    DEBUG("Thermometer sketch");
+    DEBUG("Test TCP BAD Usage!");
+
+    LOG("The following 4 mmessages are a test of the logger....");
+    LOG("Want %d more cores",command_i);
+    WARN("Running %s on cores only %d more left","Low",command_i);
+    DEBUG("connection closed %d",command_i);
+    ERROR("Flash write Failed @0x%0x",command_i);
+    LOG("Logger test Done");
+
 
     pinMode(led, OUTPUT);
     // Button resistorless
@@ -167,11 +175,7 @@ void loop1()
                 wait = RENEW_INTERVAL;
                 state = 0;
             }else{
-                LOG("connection closed by server state 4");
-                WARN("connection closed by server state 4");
                 DEBUG("connection closed by server state 4");
-                ERROR("connection closed by server state 4");
-                PANIC(0,"connection closed by server state 4");
                 wait = RENEW_INTERVAL;
                 state = 0;
             }
@@ -204,10 +208,10 @@ void setup()
 }
 
 /* This function loops forever --------------------------------------------*/
-static boolean once = false;
 
 void debug_output_(const char *p)
 {
+  static boolean once = false;
  if (!once)
    {
      once = true;
