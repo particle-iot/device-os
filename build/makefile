@@ -37,7 +37,8 @@ SRC_MAKEFILES := $(call rwildcard,$(SRC_PATH)/,build.mk)
 include $(SRC_MAKEFILES)
 
 # Additional include directories, applied to objects built for this target.
-INCLUDE_DIRS += 
+INCLUDE_DIRS += ../core-common-lib/SPARK_Firmware_Driver/inc
+
 
 # Compiler flags
 CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 
