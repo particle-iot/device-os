@@ -12,5 +12,15 @@
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
 #endif
 
+#define INVALID_CASE(c) PANIC(InvalidCase,"Invalid Case %d",(c))
+#define UNUSED(var) (void)(var)
+
+#define CCASSERT(predicate) _x_CCASSERT_LINE(predicate, __LINE__)
+#define _x_CCASSERT_LINE(predicate, line) typedef char constraint_violated_on_line_##line[2*((predicate)!=0)-1];
+
+// Seconds to Us
+#define S2u(s) ((s)*1000000)
+// Mili Seconds to Us
+#define MS2u(m) ((m)*1000)
 
 #endif /* SPARK_MACROS_H_ */
