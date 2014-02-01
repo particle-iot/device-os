@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include "hw_config.h"
+#include "spark_macros.h"
 #include "panic.h"
 
 
@@ -24,46 +25,6 @@ static const flash_codes_t flash_codes[] = {
 #include "panic_codes.h"
 };
 #undef def_panic_codes
-#define S2u(s) ((s)*1000000)
-#define MS2u(m) ((m)*1000)
-
-static void udelay(long microseconds)
-{
-  volatile int i;
-
-  while (microseconds > 1000)
-    {
-      for (i = 0; i < LOOPSPERMSEC; i++)
-        {
-        }
-      microseconds -= 1000;
-    }
-
-  while (microseconds > 100)
-    {
-      for (i = 0; i < LOOPSPERMSEC; i++)
-        {
-        }
-      microseconds -= 100;
-    }
-
-  while (microseconds > 10)
-    {
-      for (i = 0; i < LOOPSPERMSEC; i++)
-        {
-        }
-      microseconds -= 10;
-    }
-
-  while (microseconds > 0)
-    {
-      for (i = 0; i < LOOPSPERMSEC; i++)
-        {
-        }
-      microseconds--;
-    }
-}
-
 
 /****************************************************************************
 * Public Functions
@@ -81,40 +42,40 @@ void panic_(ePanicCode code)
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
                 LED_On(LED_RGB);
-                udelay(MS2u(150));
+                Delay_Microsecond(MS2u(150));
                 LED_Off(LED_RGB);
-                udelay(MS2u(100));
+                Delay_Microsecond(MS2u(100));
             }
 
-            udelay(MS2u(100));
+            Delay_Microsecond(MS2u(100));
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
                 LED_On(LED_RGB);
-                udelay(MS2u(300));
+                Delay_Microsecond(MS2u(300));
                 LED_Off(LED_RGB);
-                udelay(MS2u(100));
+                Delay_Microsecond(MS2u(100));
             }
-            udelay(MS2u(100));
+            Delay_Microsecond(MS2u(100));
 
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
                 LED_On(LED_RGB);
-                udelay(MS2u(150));
+                Delay_Microsecond(MS2u(150));
                 LED_Off(LED_RGB);
-                udelay(MS2u(100));
+                Delay_Microsecond(MS2u(100));
             }
 
                 // pause
-                udelay(MS2u(900));
+                Delay_Microsecond(MS2u(900));
                 // play code
                 for (c = code; c; c--) {
                     LED_SetRGBColor(pcd.led);
                     LED_On(LED_RGB);
-                    udelay(MS2u(300));
+                    Delay_Microsecond(MS2u(300));
                     LED_Off(LED_RGB);
-                    udelay(MS2u(300));
+                    Delay_Microsecond(MS2u(300));
                 }
                 // pause
-                udelay(MS2u(800));
+                Delay_Microsecond(MS2u(800));
         }
 }
