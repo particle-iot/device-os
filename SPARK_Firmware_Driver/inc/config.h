@@ -9,8 +9,9 @@
 #define CONFIG_H_
 
 #if !defined(RELEASE_BUILD) && !defined(DEBUG_BUILD)
-#define DEBUG_BUILD
-#undef  RELEASE_BUILD
+#warning  "Defaulting to Release Build"
+#define RELEASE_BUILD
+#undef  DEBUG_BUILD
 #endif
 
 // define to include __FILE__ information within the debug output

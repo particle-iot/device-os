@@ -7,6 +7,7 @@
 #ifndef DEBUG_H_
 #define DEBUG_H_
 
+#include "config.h"
 
 /*
  * This module supports runtime and compile time message filtering.
@@ -83,7 +84,9 @@ void debug_output_(const char *) __attribute__ ((weak));
 #define DEBUG(fmt, ...)
 #define WARN(fmt, ...)
 #define ERROR(fmt, ...)
-#define PANIC(code,fmt, ...)
+#define PANIC(code,fmt, ...) do {panic_(code);}while(0)
 #endif
+
+#define SPARK_ASSERT(predicate) do { if (!predicate) PANIC(AssertionFailure,"AssertionFailure ##predicate");} while(0);
 
 #endif /* DEBUG_H_ */
