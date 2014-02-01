@@ -573,11 +573,13 @@ void Spark_Signal(bool on)
 
 int Internet_Test(void)
 {
-	long testSocket;
-	sockaddr testSocketAddr;
-	int testResult = 0;
-
+    long testSocket;
+    sockaddr testSocketAddr;
+    int testResult = 0;
+    DEBUG("socket");
     testSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    DEBUG("socketed testSocket=%d",testSocket);
+
 
     if (testSocket < 0)
     {
@@ -591,23 +593,23 @@ int Internet_Test(void)
     testSocketAddr.sa_data[0] = 0;
     testSocketAddr.sa_data[1] = 53;
 
-	// the destination IP address: 8.8.8.8
-	testSocketAddr.sa_data[2] = 8;
-	testSocketAddr.sa_data[3] = 8;
-	testSocketAddr.sa_data[4] = 8;
-	testSocketAddr.sa_data[5] = 8;
+    // the destination IP address: 8.8.8.8
+    testSocketAddr.sa_data[2] = 8;
+    testSocketAddr.sa_data[3] = 8;
+    testSocketAddr.sa_data[4] = 8;
+    testSocketAddr.sa_data[5] = 8;
 
-        DEBUG("connect");
-	testResult = connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
-        DEBUG("connected testResult=%d",testResult);
-        DEBUG("send");
-	char c = 0;
-	send(testSocket, &c,1, 0);
-	DEBUG("Close");
-	int rv = closesocket(testSocket);
-        DEBUG("Closed rv=%d",rv);
+    DEBUG("connect");
+    testResult = connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
+    DEBUG("connected testResult=%d",testResult);
+    DEBUG("send");
+    char c = 0;
+    send(testSocket, &c,1, 0);
+    DEBUG("Close");
+    int rv = closesocket(testSocket);
+    DEBUG("Closed rv=%d",rv);
 
-	//if connection fails, testResult returns -1
+    //if connection fails, testResult returns -1
     return testResult;
 }
 
@@ -618,12 +620,14 @@ int Spark_Connect(void)
   // or 1 if sparkSocket was still open
   DEBUG("sparkSocket Now =%d",sparkSocket);
 
+
   DEBUG("sacrificial lamb socket");
   long lamb = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   DEBUG("sacrificial lamb socket =%d",lamb);
 
-  // Should be socket # 1 if sparkSocket was SOCKET_STATUS_INACTIVE
-  // or 2 if sparkSocket was still open
+  DEBUG("sacrificial lamb1 socket");
+  long lamb1 = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  DEBUG("sacrificial lamb1 socket =%d",lamb1);
 
   DEBUG("New socket");
   long newsparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -639,6 +643,10 @@ int Spark_Connect(void)
   DEBUG("closesocket(lamb)");
   int rv = closesocket(lamb);
   DEBUG("closesocket(lamb)=%d",rv);
+
+  DEBUG("closesocket(lamb1)");
+  rv = closesocket(lamb1);
+  DEBUG("closesocket(lamb1)=%d",rv);
 
 
   if (sparkSocket < 0)

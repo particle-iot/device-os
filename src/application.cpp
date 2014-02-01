@@ -54,7 +54,6 @@ void setup1()
 {
 
     DEBUG("Test TCP BAD Usage!");
-
     LOG("The following 4 mmessages are a test of the logger....");
     LOG("Want %d more cores",command_i);
     WARN("Running %s on cores only %d more left","Low",command_i);
@@ -153,6 +152,7 @@ void loop1()
                     total += count;
                     DEBUG("client.read() %d", count);
                     debug_output_((const char*)buffer);
+                    debug_output_("\r\n");
                 } else {
                     delay(100);
                     if (++loops > 2) {
