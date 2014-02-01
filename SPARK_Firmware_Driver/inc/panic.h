@@ -11,7 +11,6 @@
 
 #ifndef PANIC_H_
 #define PANIC_H_
-
 #ifdef __cplusplus
 extern "C" {
 #endif
