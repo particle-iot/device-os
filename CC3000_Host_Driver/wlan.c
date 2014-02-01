@@ -256,8 +256,6 @@ void
 wlan_start(unsigned short usPatchesAvailableAtHost)
 {
 	
-	unsigned long ulSpiIRQState;
-	
 	tSLInformation.NumberOfSentPackets = 0;
 	tSLInformation.NumberOfReleasedPackets = 0;
 	tSLInformation.usRxEventOpcode = 0;
@@ -274,31 +272,6 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 	
 	// init spi
 	SpiOpen(SpiReceiveHandler);
-	
-	// Check the IRQ line
-	ulSpiIRQState = tSLInformation.ReadWlanInterruptPin();
-	
-	// Chip enable: toggle WLAN EN line
-	tSLInformation.WriteWlanPin( WLAN_ENABLE );
-	
-	if (ulSpiIRQState)
-	{
-		// wait till the IRQ line goes low
-		while(tSLInformation.ReadWlanInterruptPin() != 0)
-		{
-		}
-	}
-	else
-	{
-		// wait till the IRQ line goes high and than low
-		while(tSLInformation.ReadWlanInterruptPin() == 0)
-		{
-		}
-		
-		while(tSLInformation.ReadWlanInterruptPin() != 0)
-		{
-		}
-	}
 	
 	SimpleLink_Init_Start(usPatchesAvailableAtHost);
 	

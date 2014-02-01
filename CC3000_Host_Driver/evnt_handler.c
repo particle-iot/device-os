@@ -51,6 +51,7 @@
 #include "socket.h"
 #include "netapp.h"
 #include "spi.h"
+#include "debug.h"
 
  
 
@@ -661,29 +662,33 @@ long
 hci_unsolicited_event_handler(void)
 {
 	unsigned long   res = 0;
+	int isEvent = 0;
 	unsigned char *pucReceivedData;
 	
+	// Buffer has message in it
 	if (tSLInformation.usEventOrDataReceived != 0)
 	{
 		pucReceivedData = (tSLInformation.pucReceivedData);
-		
-		if (*pucReceivedData == HCI_TYPE_EVNT)
-		{			
-			
-			// In case unsolicited event received - here the handling finished
-			if (hci_unsol_event_handler((char *)pucReceivedData) == 1)
-			{
-				
-				// There was an unsolicited event received - we can release the buffer
-				// and clean the event received 
-				tSLInformation.usEventOrDataReceived = 0;
-				
-				res = 1;
-				SpiResumeSpi();
-			}
-		}
+		isEvent = (*pucReceivedData == HCI_TYPE_EVNT);
+		// An event did hci_unsol_event_handler handle it?
+		res = isEvent && hci_unsol_event_handler((char *)pucReceivedData);
 	}
-	
+
+	// Handled here Or if not there is oustanding op code.
+
+	if (res || (isEvent && tSLInformation.usRxEventOpcode == 0) ) {
+            // There was an unsolicited event received - we can release the buffer
+            // and clean the event received
+	    if (!res)
+	    {
+	        ERROR("isEvent w/Opcode ==0  0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x",
+                    pucReceivedData[0],pucReceivedData[1],pucReceivedData[2],pucReceivedData[3],
+                    pucReceivedData[4],pucReceivedData[5],pucReceivedData[6]);
+	    }
+            tSLInformation.usEventOrDataReceived = 0;
+	    // Fire it up again
+            SpiResumeSpi();
+	}
 	return res;
 }
 
