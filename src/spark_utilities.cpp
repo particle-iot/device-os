@@ -241,10 +241,6 @@ void SparkClass::sleep(long seconds)
 	SparkClass::sleep(SLEEP_MODE_WLAN, seconds);
 }
 
-inline uint8_t isSocketClosed()
-{
-  return get_socket_active_status(sparkSocket)==SOCKET_STATUS_INACTIVE;
-}
 
 bool SparkClass::connected(void)
 {
@@ -329,7 +325,6 @@ int Spark_Send(const unsigned char *buf, int buflen)
     {
       // send returns negative numbers on error
       bytes_sent = send(sparkSocket, buf, buflen, 0);
-      TimingCloudSocketTimeout = 0;
     }
   }
   else if (0 > num_fds_ready)
@@ -372,7 +367,6 @@ int Spark_Receive(unsigned char *buf, int buflen)
     {
       // recv returns negative numbers on error
       bytes_received = recv(sparkSocket, buf, buflen, 0);
-      TimingCloudSocketTimeout = 0;
     }
   }
   else if (0 > num_fds_ready)
@@ -599,8 +593,10 @@ int Internet_Test(void)
     testSocketAddr.sa_data[4] = 8;
     testSocketAddr.sa_data[5] = 8;
 
+    uint32_t lastTo = SPARK_WLAN_SetNetWatchDog(S2u(8));
     DEBUG("connect");
     testResult = connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
+    SPARK_WLAN_SetNetWatchDog(lastTo);
     DEBUG("connected testResult=%d",testResult);
     DEBUG("send");
     char c = 0;
@@ -668,8 +664,14 @@ int Spark_Connect(void)
   tSocketAddr.sa_data[5] = 4;	// Fourth Octet of destination IP
 
   DEBUG("connet");
+  uint32_t lastTo = SPARK_WLAN_SetNetWatchDog(S2u(10));
   rv = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
+  SPARK_WLAN_SetNetWatchDog(lastTo);
   DEBUG("connected connect=%d",rv);
+  if (rv < 0)
+  {
+      Spark_Disconnect();
+  }
   return rv;
 }
 
@@ -679,17 +681,14 @@ int Spark_Disconnect(void)
   DEBUG("");
   if (sparkSocket >= 0)
   {
-     if (!isSocketClosed())
-     {
-        DEBUG("send");
-        char c = 0;
-        send(sparkSocket, &c,1, 0);
-        DEBUG("Close");
+      DEBUG("send");
+      char c = 0;
+      send(sparkSocket, &c,1, 0);
+      DEBUG("Close");
 
-        retVal = closesocket(sparkSocket);
-        DEBUG("Closed retVal=%d", retVal);
-     }
-    sparkSocket = INVALID_SOCKET;
+      retVal = closesocket(sparkSocket);
+      DEBUG("Closed retVal=%d", retVal);
+      sparkSocket = INVALID_SOCKET;
   }
   return retVal;
 }

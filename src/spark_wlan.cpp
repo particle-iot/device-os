@@ -23,6 +23,7 @@
   ******************************************************************************
  */
 #include "spark_wlan.h"
+#include "spark_macros.h"
 #include "string.h"
 #include "wifi_credentials_reader.h"
 
@@ -76,7 +77,7 @@ void Set_NetApp_Timeout(void)
 	unsigned long aucARP = 3600;
 	unsigned long aucKeepalive = 10;
 	unsigned long aucInactivity = 60;
-
+	SPARK_WLAN_SetNetWatchDog(S2u(aucInactivity));
 	netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
 }
 
@@ -337,6 +338,17 @@ int SPARK_WLAN_hasAddress(void)
 {
   return WLAN_DHCP || WLAN_MANUAL_CONNECT != 0;
 }
+
+uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS)
+{
+  if (timeOutInuS) {
+      timeOutInuS += MS2u(100);
+  }
+  uint32_t rv = cc3000__event_timeout_us;
+  cc3000__event_timeout_us = timeOutInuS;
+  return rv;
+}
+
 
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 {
@@ -601,7 +613,6 @@ reconnect:
 			else
 			{
 				SPARK_HANDSHAKE_COMPLETED = 1;
-				TimingCloudSocketTimeout = 0;
 			}
 		}
 
@@ -618,14 +629,6 @@ reconnect:
 			SPARK_SOCKET_CONNECTED = 0;
 
 			if (Internet_Test() > 0) goto reconnect;
-
-			if(TimingCloudSocketTimeout != 0) /* Set within Timing_Decrement() */
-			{
-				/* Work around for CFOD issue */
-//				SPARK_WLAN_RESET = 1;
-
-				//NVIC_SystemReset(); /* Better alternative */
-			}
 		}
 	}
 }

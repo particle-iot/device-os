@@ -43,7 +43,6 @@ extern "C" {
 
 /* Private variables ---------------------------------------------------------*/
 volatile uint32_t TimingMillis;
-volatile uint32_t TimingCloudSocketTimeout;
 volatile uint32_t TimingFlashUpdateTimeout;
 
 volatile uint8_t SPARK_WIRING_APPLICATION = 0;
@@ -291,20 +290,6 @@ void Timing_Decrement(void)
 			else
 			{
 				TimingFlashUpdateTimeout++;
-			}
-		}
-		else if(SPARK_HANDSHAKE_COMPLETED)
-		{
-			if (TimingCloudSocketTimeout >= TIMING_CLOUD_SOCKET_TIMEOUT)
-			{
-				TimingCloudSocketTimeout = 0;
-
-				//Reset WLAN in worst case if Spark_Communication_Loop() doesn't detect failure
-				Spark_ConnectAbort_WLANReset();
-			}
-			else
-			{
-				TimingCloudSocketTimeout++;
 			}
 		}
 	}
