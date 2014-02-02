@@ -153,6 +153,9 @@ typedef struct _bsd_gethostbyname_return_t
     long             outputAddress;
 } tBsdGethostbynameParams;
 
+
+extern uint32_t cc3000__event_timeout_us;
+unsigned long micros(void);
 //*****************************************************************************
 //
 // Mark the end of the C bindings section for C++ compilers.

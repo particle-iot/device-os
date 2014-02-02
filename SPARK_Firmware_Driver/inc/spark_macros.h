@@ -26,4 +26,7 @@
 // Mili Seconds to Us
 #define MS2u(m) ((m)*1000)
 
+// Seconds to Ms
+#define S2M(s) ((s)*1000)
+
 #endif /* SPARK_MACROS_H_ */

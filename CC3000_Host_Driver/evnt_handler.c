@@ -117,7 +117,7 @@
 //*****************************************************************************
 
 unsigned long socket_active_status = SOCKET_STATUS_INIT_VAL; 
-
+uint32_t cc3000__event_timeout_us = 0;
 
 //*****************************************************************************
 //            Prototypes for the static functions
@@ -236,10 +236,24 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
   unsigned char * RecvParams;
   unsigned char *RetParams;
 	
-	
+	volatile int32_t start = micros();
 	while (1)
 	{
-		if (tSLInformation.usEventOrDataReceived != 0)
+		if (tSLInformation.usEventOrDataReceived == 0)
+		{
+                    volatile int32_t now = micros();
+                    volatile int32_t elapsed = now - start;
+                      if (elapsed < 0) { // Did we wrap
+                         elapsed = start + now; // yes now
+                      }
+
+		    if (cc3000__event_timeout_us && (elapsed > cc3000__event_timeout_us))
+		    {
+		        ERROR("Timeout");
+		         break;
+		    }
+   	        }
+		else
 		{				
 			pucReceivedData = (tSLInformation.pucReceivedData);
 
