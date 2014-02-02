@@ -241,6 +241,10 @@ void SparkClass::sleep(long seconds)
 	SparkClass::sleep(SLEEP_MODE_WLAN, seconds);
 }
 
+inline uint8_t isSocketClosed()
+{
+  return get_socket_active_status(sparkSocket)==SOCKET_STATUS_INACTIVE;
+}
 
 bool SparkClass::connected(void)
 {
