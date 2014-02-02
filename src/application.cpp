@@ -50,10 +50,11 @@ volatile int hash = 0;
 volatile char command[32];
 volatile int command_i=0;
 
+int bad_mod = 0;
 void setup1()
 {
 
-    DEBUG("Test TCP BAD Usage!");
+    DEBUG("Test TCP BAD Every 3 Usage!");
     LOG("The following 4 mmessages are a test of the logger....");
     LOG("Want %d more cores",command_i);
     WARN("Running %s on cores only %d more left","Low",command_i);
@@ -87,6 +88,7 @@ void loop1()
             break;
         case 1:
             // Connecting
+            bad_mod++;
             DEBUG("connecting");
             total = 0;
             if (client.connect(server, 80)){
@@ -103,8 +105,15 @@ void loop1()
                 DEBUG (" Send");
                 client.println("GET /t.php HTTP/1.0\r\n\r\n");
                 DEBUG (" Sent");
-                wait = 1000 * 15;
-                state = -2;
+                if ((bad_mod % 3) == 0)
+                  {
+                    wait = 1000 * 15;
+                    state = -2;
+                  } else {
+                      wait = RETRY_INTERVAL;
+                      state = -3;
+
+                  }
             }else{
                 DEBUG("connection lost state 2");
                 wait = RETRY_INTERVAL;
