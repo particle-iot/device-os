@@ -748,7 +748,12 @@ bool SparkProtocol::handle_received_message(void)
   expecting_ping_ack = false;
   int len = queue[0] << 8 | queue[1];
   if (len > (int)arraySize(queue)) {
+#if defined(DEBUG_BUILD)
+      PANIC(InvalidLenth,"len(%d) > arraySize(queue)",len);
+#else
       ERROR("len(%d) > arraySize(queue)",len);
+      return false;
+#endif
   }
   if (0 > blocking_receive(queue, len))
   {
