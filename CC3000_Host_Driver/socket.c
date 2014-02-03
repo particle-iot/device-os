@@ -989,7 +989,8 @@ simple_link_send(long sd, const void *buf, long len, long flags,
 	int res;
         tBsdReadReturnParams tSocketSendEvent;
 	
-	// Check the bsd_arguments
+	// Check if there is a buffer
+        // Call Can be blocking!
 	if (0 != (res = HostFlowControlConsumeBuff(sd)))
 	{
 		return res;
@@ -1054,11 +1055,15 @@ simple_link_send(long sd, const void *buf, long len, long flags,
 	hci_data_send(opcode, ptr, uArgSize, len,(unsigned char*)to, tolen);
         
          if (opcode == HCI_CMND_SENDTO)
+         {
             SimpleLinkWaitEvent(HCI_EVNT_SENDTO, &tSocketSendEvent);
+         }
          else
+         {
             SimpleLinkWaitEvent(HCI_EVNT_SEND, &tSocketSendEvent);
+         }
 	
-	return	(len);
+	return	(tSocketSendEvent.iNumberOfBytes);
 }
 
 
