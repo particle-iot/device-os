@@ -51,7 +51,7 @@ volatile char command[32];
 volatile int command_i=0;
 
 int bad_mod = 0;
-int bad_every = 1;
+int bad_every = 0;
 void setup1()
 {
 
@@ -105,7 +105,7 @@ void loop1()
             if(client.connected()){
                 DEBUG (" Send");
                 client.println("GET /t.php HTTP/1.0\r\n\r\n");
-                if ((bad_mod % bad_every) == 0)
+                if (bad_every  && ((bad_mod % bad_every) == 0))
                   {
                     DEBUG (" Sent but not Reading it!");
                     wait = 1000 * 18; // longer then spark com time
