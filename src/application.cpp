@@ -51,10 +51,11 @@ volatile char command[32];
 volatile int command_i=0;
 
 int bad_mod = 0;
+int bad_every = 1;
 void setup1()
 {
 
-    DEBUG("Test TCP BAD Every 3 Usage!");
+    DEBUG("Test TCP BAD Every %d Usage!",bad_every);
     LOG("The following 4 mmessages are a test of the logger....");
     LOG("Want %d more cores",command_i);
     WARN("Running %s on cores only %d more left","Low",command_i);
@@ -104,12 +105,13 @@ void loop1()
             if(client.connected()){
                 DEBUG (" Send");
                 client.println("GET /t.php HTTP/1.0\r\n\r\n");
-                DEBUG (" Sent");
-                if ((bad_mod % 3) == 0)
+                if ((bad_mod % bad_every) == 0)
                   {
-                    wait = 1000 * 15;
+                    DEBUG (" Sent but not Reading it!");
+                    wait = 1000 * 18; // longer then spark com time
                     state = -2;
                   } else {
+                      DEBUG (" Sent Doing Read");
                       wait = RETRY_INTERVAL;
                       state = -3;
 
@@ -122,7 +124,17 @@ void loop1()
             break;
 
         case -2:
+          if ((wait % 500) ==0) {
+              DEBUG("Waiting client.status()=%d",client.status()) ;
+          }
+#if defined(GOOD)
+          if (!client.status()) {
+              state = 4;
+              DEBUG("Waiting Aborted - Closing") ;
+          }
+#endif
           wait--;
+
           if(wait<0){
               wait = 0;
               state = 4;
@@ -179,7 +191,8 @@ void loop1()
         case 4:
             // Disconnecting
             if(client.connected()){
-                DEBUG("%d total Bytes Read",total);
+                DEBUG("\r\n\r\n");
+                DEBUG("%d total Bytes Read\r\n\r\n",total);
                 client.stop();
                 DEBUG("connection closed state 4");
                 wait = RENEW_INTERVAL;
