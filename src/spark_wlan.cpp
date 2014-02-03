@@ -555,7 +555,6 @@ void SPARK_WLAN_Loop(void)
 		LED_SetRGBColor(RGB_COLOR_CYAN);
 		LED_On(LED_RGB);
 #endif
-reconnect:
 		if(Spark_Connect() < 0)
 		{
 			if(SPARK_WLAN_RESET)
@@ -624,8 +623,6 @@ reconnect:
 			SPARK_LED_FADE = 0;
 			SPARK_HANDSHAKE_COMPLETED = 0;
 			SPARK_SOCKET_CONNECTED = 0;
-
-			if (Internet_Test() > 0) goto reconnect;
 		}
 	}
 }
