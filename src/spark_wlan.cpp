@@ -76,8 +76,8 @@ void Set_NetApp_Timeout(void)
 	unsigned long aucDHCP = 14400;
 	unsigned long aucARP = 3600;
 	unsigned long aucKeepalive = 10;
-	unsigned long aucInactivity = 60;
-	SPARK_WLAN_SetNetWatchDog(S2u(aucInactivity));
+	unsigned long aucInactivity = 20;
+	SPARK_WLAN_SetNetWatchDog(S2M(aucInactivity)+250);
 	netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
 }
 
@@ -339,13 +339,10 @@ int SPARK_WLAN_hasAddress(void)
   return WLAN_DHCP || WLAN_MANUAL_CONNECT != 0;
 }
 
-uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS)
+uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
 {
-  if (timeOutInuS) {
-      timeOutInuS += MS2u(100);
-  }
-  uint32_t rv = cc3000__event_timeout_us;
-  cc3000__event_timeout_us = timeOutInuS;
+  uint32_t rv = cc3000__event_timeout_ms;
+  cc3000__event_timeout_ms = timeOutInMS;
   return rv;
 }
 
