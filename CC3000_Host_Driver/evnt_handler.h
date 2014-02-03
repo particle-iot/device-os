@@ -154,7 +154,7 @@ typedef struct _bsd_gethostbyname_return_t
 } tBsdGethostbynameParams;
 
 
-extern uint32_t cc3000__event_timeout_us;
+extern uint32_t cc3000__event_timeout_ms;
 unsigned long micros(void);
 //*****************************************************************************
 //

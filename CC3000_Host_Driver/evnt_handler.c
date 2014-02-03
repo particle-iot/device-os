@@ -43,15 +43,11 @@
 //                  INCLUDE FILES
 //******************************************************************************
 
-#include "cc3000_common.h"
-#include "string.h"
-#include "hci.h"
 #include "evnt_handler.h"
-#include "wlan.h"
-#include "socket.h"
+#include "debug.h"
+#include "spark_macros.h"
 #include "netapp.h"
 #include "spi.h"
-#include "debug.h"
 
  
 
@@ -117,7 +113,7 @@
 //*****************************************************************************
 
 unsigned long socket_active_status = SOCKET_STATUS_INIT_VAL; 
-uint32_t cc3000__event_timeout_us = 0;
+uint32_t cc3000__event_timeout_ms = 0;
 
 //*****************************************************************************
 //            Prototypes for the static functions
@@ -233,24 +229,100 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 	unsigned char *pucReceivedParams;
 	unsigned short usReceivedEventOpcode = 0;
 	unsigned long retValue32;
-  unsigned char * RecvParams;
-  unsigned char *RetParams;
+	unsigned char * RecvParams;
+        unsigned char *RetParams;
 	
-	volatile int32_t start = micros();
+	volatile int32_t start = millis();
 	while (1)
 	{
 		if (tSLInformation.usEventOrDataReceived == 0)
 		{
-                    volatile int32_t now = micros();
+                    volatile int32_t now = millis();
                     volatile int32_t elapsed = now - start;
                       if (elapsed < 0) { // Did we wrap
                          elapsed = start + now; // yes now
                       }
 
-		    if (cc3000__event_timeout_us && (elapsed > cc3000__event_timeout_us))
+		    if (cc3000__event_timeout_ms && (elapsed > cc3000__event_timeout_ms))
 		    {
-		        ERROR("Timeout");
-		         break;
+                        ERROR("Timeout now %ld start %ld elapsed %ld cc3000__event_timeout_ms %ld",now,start,elapsed,cc3000__event_timeout_ms);
+                        ERROR("Timeout waiting on tSLInformation.usRxEventOpcode 0x%04x",tSLInformation.usRxEventOpcode);
+
+		        // Timeout Return Error for requested Opcode
+		        // This sucks because callers should have initialized pucReceivedParams
+                        switch(tSLInformation.usRxEventOpcode)
+                        {
+
+                        default:
+                          INVALID_CASE(tSLInformation.usRxEventOpcode);
+                          break;
+
+                        case HCI_CMND_SIMPLE_LINK_START:
+                        case HCI_CMND_READ_BUFFER_SIZE:
+                          break;
+
+                        case HCI_CMND_WLAN_CONFIGURE_PATCH:
+                        case HCI_NETAPP_DHCP:
+                        case HCI_NETAPP_PING_SEND:
+                        case HCI_NETAPP_PING_STOP:
+                        case HCI_NETAPP_ARP_FLUSH:
+                        case HCI_NETAPP_SET_DEBUG_LEVEL:
+                        case HCI_NETAPP_SET_TIMERS:
+                        case HCI_EVNT_NVMEM_READ:
+                        case HCI_EVNT_NVMEM_CREATE_ENTRY:
+                        case HCI_CMND_NVMEM_WRITE_PATCH:
+                        case HCI_NETAPP_PING_REPORT:
+                        case HCI_EVNT_MDNS_ADVERTISE:
+                        case HCI_EVNT_READ_SP_VERSION:
+                        case HCI_EVNT_SELECT:
+                          *(unsigned char *)pRetParams = -1;
+                            break;
+
+                        case HCI_CMND_SETSOCKOPT:
+                        case HCI_CMND_WLAN_CONNECT:
+                        case HCI_CMND_WLAN_IOCTL_STATUSGET:
+                        case HCI_EVNT_WLAN_IOCTL_ADD_PROFILE:
+                        case HCI_CMND_WLAN_IOCTL_DEL_PROFILE:
+                        case HCI_CMND_WLAN_IOCTL_SET_CONNECTION_POLICY:
+                        case HCI_CMND_WLAN_IOCTL_SET_SCANPARAM:
+                        case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_START:
+                        case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_STOP:
+                        case HCI_CMND_WLAN_IOCTL_SIMPLE_CONFIG_SET_PREFIX:
+                        case HCI_CMND_EVENT_MASK:
+                        case HCI_EVNT_WLAN_DISCONNECT:
+                        case HCI_EVNT_SOCKET:
+                        case HCI_EVNT_BIND:
+                        case HCI_CMND_LISTEN:
+                        case HCI_EVNT_CLOSE_SOCKET:
+                        case HCI_EVNT_CONNECT:
+                        case HCI_EVNT_NVMEM_WRITE:
+                        case HCI_EVNT_BSD_GETHOSTBYNAME:
+                            *(int32_t *)pRetParams = -1;
+                            break;
+
+
+                        case HCI_EVNT_RECV:
+                        case HCI_EVNT_RECVFROM:
+                        case HCI_EVNT_ACCEPT:
+                        case HCI_EVNT_SEND:
+                        case HCI_EVNT_SENDTO:
+                        case HCI_CMND_GETSOCKOPT:
+                          *(int32_t *)pRetParams = -1;
+                          pRetParams += sizeof(int32_t );
+                          *(int32_t *)pRetParams = -1;
+                          break;
+
+                        case HCI_CMND_WLAN_IOCTL_GET_SCAN_RESULTS:
+                          *(int32_t *)pRetParams = 0;
+                          break;
+
+
+                        case HCI_NETAPP_IPCONFIG:
+                          memset(pRetParams,0,sizeof(tNetappIpconfigRetArgs));
+                          break;
+
+
+                        }
 		    }
    	        }
 		else
