@@ -243,7 +243,22 @@ void SparkClass::sleep(long seconds)
 
 inline uint8_t isSocketClosed()
 {
-  return get_socket_active_status(sparkSocket)==SOCKET_STATUS_INACTIVE;
+  uint8_t closed  = get_socket_active_status(sparkSocket)==SOCKET_STATUS_INACTIVE;
+
+  if(closed)
+  {
+      DEBUG("get_socket_active_status(sparkSocket=%d)==SOCKET_STATUS_INACTIVE", sparkSocket);
+  }
+  if(closed && sparkSocket != INVALID_SOCKET)
+  {
+      DEBUG("!!!!!!closed && sparkSocket(%d) != INVALID_SOCKET", sparkSocket);
+  }
+  if(sparkSocket == INVALID_SOCKET)
+    {
+      DEBUG("sparkSocket == INVALID_SOCKET");
+      closed = true;
+    }
+  return closed;
 }
 
 bool SparkClass::connected(void)
@@ -308,6 +323,7 @@ int Spark_Send(const unsigned char *buf, int buflen)
 
   if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed())
   {
+    DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
     //break from any blocking loop
     return -1;
   }
@@ -329,14 +345,15 @@ int Spark_Send(const unsigned char *buf, int buflen)
     {
       // send returns negative numbers on error
       bytes_sent = send(sparkSocket, buf, buflen, 0);
+      DEBUG("bytes_sent %d",bytes_sent);
     }
   }
   else if (0 > num_fds_ready)
   {
+    DEBUG("select Error %d",num_fds_ready);
     // error from select
     return num_fds_ready;
   }
-
   return bytes_sent;
 }
 
@@ -351,6 +368,7 @@ int Spark_Receive(unsigned char *buf, int buflen)
   if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed())
   {
     //break from any blocking loop
+    DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
     return -1;
   }
 
@@ -371,14 +389,15 @@ int Spark_Receive(unsigned char *buf, int buflen)
     {
       // recv returns negative numbers on error
       bytes_received = recv(sparkSocket, buf, buflen, 0);
+      DEBUG("bytes_received %d",bytes_received);
     }
   }
   else if (0 > num_fds_ready)
   {
     // error from select
+   DEBUG("select Error %d",num_fds_ready);
     return num_fds_ready;
   }
-
   return bytes_received;
 }
 
