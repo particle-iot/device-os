@@ -597,14 +597,15 @@ int Internet_Test(void)
     testSocketAddr.sa_data[4] = 8;
     testSocketAddr.sa_data[5] = 8;
 
-    uint32_t lastTo = SPARK_WLAN_SetNetWatchDog(S2u(8));
     DEBUG("connect");
     testResult = connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
-    SPARK_WLAN_SetNetWatchDog(lastTo);
     DEBUG("connected testResult=%d",testResult);
+#if defined(SEND_ON_CLOSE)
     DEBUG("send");
     char c = 0;
-    send(testSocket, &c,1, 0);
+    int rc = send(testSocket, &c,1, 0);
+    DEBUG("send %d",rc);
+#endif
     DEBUG("Close");
     int rv = closesocket(testSocket);
     DEBUG("Closed rv=%d",rv);
@@ -615,39 +616,14 @@ int Internet_Test(void)
 
 int Spark_Connect(void)
 {
-  // Create a sacrificial lamb
-  // Should be socket # 0 if sparkSocket was SOCKET_STATUS_INACTIVE
-  // or 1 if sparkSocket was still open
   DEBUG("sparkSocket Now =%d",sparkSocket);
-
-
-  DEBUG("sacrificial lamb socket");
-  long lamb = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  DEBUG("sacrificial lamb socket =%d",lamb);
-
-  DEBUG("sacrificial lamb1 socket");
-  long lamb1 = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  DEBUG("sacrificial lamb1 socket =%d",lamb1);
-
-  DEBUG("New socket");
-  long newsparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  DEBUG("socketed newsparkSocket=%d",newsparkSocket);
 
   // Close Original
 
   Spark_Disconnect();
 
-  sparkSocket = newsparkSocket;
-
-
-  DEBUG("closesocket(lamb)");
-  int rv = closesocket(lamb);
-  DEBUG("closesocket(lamb)=%d",rv);
-
-  DEBUG("closesocket(lamb1)");
-  rv = closesocket(lamb1);
-  DEBUG("closesocket(lamb1)=%d",rv);
-
+  sparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  DEBUG("socketed sparkSocket=%d",sparkSocket);
 
   if (sparkSocket < 0)
   {
@@ -668,14 +644,8 @@ int Spark_Connect(void)
   tSocketAddr.sa_data[5] = 4;	// Fourth Octet of destination IP
 
   DEBUG("connet");
-  uint32_t lastTo = SPARK_WLAN_SetNetWatchDog(S2u(10));
-  rv = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
-  SPARK_WLAN_SetNetWatchDog(lastTo);
+  int rv = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
   DEBUG("connected connect=%d",rv);
-  if (rv < 0)
-  {
-      Spark_Disconnect();
-  }
   return rv;
 }
 
@@ -685,11 +655,13 @@ int Spark_Disconnect(void)
   DEBUG("");
   if (sparkSocket >= 0)
   {
+#if defined(SEND_ON_CLOSE)
       DEBUG("send");
       char c = 0;
-      send(sparkSocket, &c,1, 0);
+      int rc = send(sparkSocket, &c,1, 0);
+      DEBUG("send %d",rc);
+#endif
       DEBUG("Close");
-
       retVal = closesocket(sparkSocket);
       DEBUG("Closed retVal=%d", retVal);
       sparkSocket = INVALID_SOCKET;
