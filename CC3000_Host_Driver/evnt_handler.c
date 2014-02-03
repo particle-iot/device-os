@@ -243,7 +243,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
                          elapsed = start + now; // yes now
                       }
 
-		    if (cc3000__event_timeout_ms && (elapsed > cc3000__event_timeout_ms))
+		    if (cc3000__event_timeout_ms && (elapsed >= cc3000__event_timeout_ms))
 		    {
                         ERROR("Timeout now %ld start %ld elapsed %ld cc3000__event_timeout_ms %ld",now,start,elapsed,cc3000__event_timeout_ms);
                         ERROR("Timeout waiting on tSLInformation.usRxEventOpcode 0x%04x",tSLInformation.usRxEventOpcode);
@@ -320,10 +320,10 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
                         case HCI_NETAPP_IPCONFIG:
                           memset(pRetParams,0,sizeof(tNetappIpconfigRetArgs));
                           break;
-
-
                         }
+                        break; // Exit Loop
 		    }
+
    	        }
 		else
 		{				
