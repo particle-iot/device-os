@@ -133,7 +133,6 @@ static inline int WaitFor(eCC3000States s)
       // The following handles the race or if the SPiResumeSpi was not called
       if (rv && s== eSPI_STATE_WRITE_PROCEED && 0==tSLInformation.ReadWlanInterruptPin())
       {
-         sSpiInformation.ulSpiState = eSPI_STATE_WRITE_PROCEED;
          rv = 0;
       }
       ENABLE_INT(save);
