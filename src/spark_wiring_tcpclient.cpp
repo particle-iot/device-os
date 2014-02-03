@@ -75,7 +75,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
             tSocketAddr.sa_data[5] = ip._address[3];
 
             connected = (socket_connect(_sock, &tSocketAddr, sizeof(tSocketAddr)) >= 0 ? 1 : 0);
-            DEBUG("connected=%d",connected);
+            DEBUG("_sock %d connected=%d",_sock, connected);
             if(!connected)
             {
                 stop();
@@ -132,7 +132,7 @@ int TCPClient::available()
                     if (FD_ISSET(_sock, &readSet))
                     {
                             int ret = recv(_sock, _buffer + _total , arraySize(_buffer)-_total, 0);
-                            DEBUG("recv(=%d",ret);
+                            DEBUG("recv(=%d)",ret);
                             if (ret > 0)
                             {
                                     if (_total == 0) _offset = 0;
@@ -178,7 +178,7 @@ void TCPClient::flush()
 void TCPClient::stop() 
 {
   int rv = closesocket(_sock);
-  DEBUG("closesocket=%d",rv);
+  DEBUG("_sock %d closesocket=%d", _sock, rv);
  _sock = MAX_SOCK_NUM;
 }
 
@@ -190,7 +190,7 @@ uint8_t TCPClient::connected()
 uint8_t TCPClient::status() 
 {
   //To Do
-   return  connected();
+   return  connected() && (SOCKET_STATUS_INACTIVE != get_socket_active_status(_sock));
 }
 
 TCPClient::operator bool()
