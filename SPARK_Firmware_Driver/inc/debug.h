@@ -50,12 +50,12 @@
 
 #if defined(DEBUG_BUILD)
 #define LOG_LEVEL_AT_COMPILE_TIME LOG_LEVEL
-#define LOG_LEVEL_AT_RUN_TIME LOG_LEVEL         // Set to allow all LOG_LEVEL and above messages to be displayed conditionally by filters.
+#define LOG_LEVEL_AT_RUN_TIME LOG_LEVEL         // Set to allow all LOG_LEVEL and above messages to be displayed conditionally by levels.
 #endif
 
 #if defined(RELEASE_BUILD)
-#define LOG_LEVEL_AT_COMPILE_TIME WARN_LEVEL
-#define LOG_LEVEL_AT_RUN_TIME WARN_LEVEL
+#define LOG_LEVEL_AT_COMPILE_TIME ERROR_LEVEL
+#define LOG_LEVEL_AT_RUN_TIME ERROR_LEVEL
 #endif
 
 #ifdef __cplusplus
@@ -71,22 +71,21 @@ void debug_output_(const char *) __attribute__ ((weak));
 
 // Short Cuts
 #define __LOG_LEVEL_TEST(level) (level >= LOG_LEVEL_AT_COMPILE_TIME && level >= LOG_LEVEL_AT_RUN_TIME)
-
-#if defined(DEBUG_BUILD)
+//#define USE_ONLY_PANIC
+#if defined(USE_ONLY_PANIC)
+#define LOG(fmt, ...)
+#define DEBUG(fmt, ...)
+#define WARN(fmt, ...)
+#define ERROR(fmt, ...)
+#define PANIC(code,fmt, ...) do {panic_(code);}while(0)
+#else
 // Macros to use
 #define LOG(fmt, ...)    do { if ( __LOG_LEVEL_TEST(LOG_LEVEL)  )  {log_print_(LOG_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt, ##__VA_ARGS__);}}while(0)
 #define DEBUG(fmt, ...)  do { if ( __LOG_LEVEL_TEST(DEBUG_LEVEL))  {log_print_(DEBUG_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
 #define WARN(fmt, ...)   do { if ( __LOG_LEVEL_TEST(WARN_LEVEL) )  {log_print_(WARN_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
 #define ERROR(fmt, ...)  do { if ( __LOG_LEVEL_TEST(ERROR_LEVEL) ) {log_print_(ERROR_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
 #define PANIC(code,fmt, ...)  do { if ( __LOG_LEVEL_TEST(PANIC_LEVEL) ) {log_print_(PANIC_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);} panic_(code);}while(0)
-#else
-#define LOG(fmt, ...)
-#define DEBUG(fmt, ...)
-#define WARN(fmt, ...)
-#define ERROR(fmt, ...)
-#define PANIC(code,fmt, ...) do {panic_(code);}while(0)
 #endif
-
 #define SPARK_ASSERT(predicate) do { if (!predicate) PANIC(AssertionFailure,"AssertionFailure ##predicate");} while(0);
 
 #endif /* DEBUG_H_ */
