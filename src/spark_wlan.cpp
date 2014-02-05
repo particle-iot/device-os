@@ -373,7 +373,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
-	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != 0)
+	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE)
 	{
 		/* Delete all previously stored wlan profiles */
 		wlan_ioctl_del_profile(255);
@@ -381,9 +381,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 		/* Create new entry for Spark File in CC3000 EEPROM */
 		nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
 
-		int i = 0;
-		for(i = 0; i < NVMEM_SPARK_FILE_SIZE; i++)
-			NVMEM_Spark_File_Data[i] = 0;
+		memset(NVMEM_Spark_File_Data,0, arraySize(NVMEM_Spark_File_Data));
 
 		nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
 
