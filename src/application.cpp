@@ -50,6 +50,42 @@ volatile int hash = 0;
 volatile char command[32];
 volatile int command_i=0;
 
+
+#include "application.h"
+
+#define SERVER_IP 10,10,0,1
+//------------------------------
+#define SERVER_PORT 9999
+#define WAIT_TIME 60000
+
+UDP udpClient;
+IPAddress serverAddress(SERVER_IP);
+
+void setup2() {
+  pinMode(D2,OUTPUT);
+}
+
+unsigned long lastMillis = (unsigned long) -WAIT_TIME;
+
+char buf[50];
+
+
+void loop2() {
+    if(millis() > lastMillis + WAIT_TIME){
+        udpClient.begin(SERVER_PORT);
+        udpClient.beginPacket(serverAddress,SERVER_PORT);
+        snprintf(buf, sizeof(buf),"tick %ld", lastMillis);
+        udpClient.write(buf);
+        udpClient.endPacket();
+        lastMillis = millis();
+        DEBUG("tick ************ %ld",lastMillis);
+        digitalWrite(D2,HIGH);
+        delay(20);
+        digitalWrite(D2,LOW);
+        udpClient.stop();
+
+  }
+}
 int bad_mod = 0;
 int bad_every = 0;
 void setup1()
@@ -70,13 +106,15 @@ void setup1()
     wait = RETRY_INTERVAL;
 
     // Connecting
+
+    setup2();
 }
 uint8_t buffer[TCPCLIENT_BUF_MAX_SIZE+1]; // for EOT
 int loops = 0;
 int total = 0;
 void loop1()
 {
-
+    loop2();
     delay(1);
     switch(state){
         case 0:
