@@ -265,6 +265,7 @@ long SpiSetUp(unsigned char *pUserBuffer, unsigned short usLength)
         pUserBuffer[3] = 0;
         pUserBuffer[4] = 0;
 
+        tSLInformation.solicitedResponse = 1; // We are doing a write
         sSpiInformation.pTxPacket = pUserBuffer;
         sSpiInformation.usTxPacketLength = usLength;
         tx_len += SPI_HEADER_SIZE;

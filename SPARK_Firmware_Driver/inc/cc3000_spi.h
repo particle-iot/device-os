@@ -56,8 +56,8 @@
 typedef void (*gcSpiHandleRx)(void *p);
 typedef void (*gcSpiHandleTx)(void);
 
-extern unsigned char wlan_rx_buffer[];
-extern unsigned char wlan_tx_buffer[];
+extern unsigned char wlan_rx_buffer[RX_SPI_BUFFER_SIZE];
+extern unsigned char wlan_tx_buffer[TX_SPI_BUFFER_SIZE];
 
 /* CC3000 SPI Protocol API */
 extern void SpiOpen(gcSpiHandleRx pfRxHandler);

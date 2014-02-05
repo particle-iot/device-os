@@ -861,7 +861,7 @@ getsockopt (long sd, long level, long optname, void *optval, socklen_t *optlen)
 //*****************************************************************************
 int
 simple_link_recv(long sd, void *buf, long len, long flags, sockaddr *from,
-                socklen_t *fromlen, long opcode)
+                 socklen_t *fromlen, long opcode)
 {
 	unsigned char *ptr, *args;
 	tBsdReadReturnParams tSocketReadEvent;
@@ -885,7 +885,17 @@ simple_link_recv(long sd, void *buf, long len, long flags, sockaddr *from,
 	{
 		// Wait for the data in a synchronous way. Here we assume that the bug is 
 		// big enough to store also parameters of receive from too....
-		SimpleLinkWaitData(buf, (unsigned char *)from, (unsigned char *)fromlen);
+	        long lenRead; // Let's look at length
+		SimpleLinkWaitData(buf, (unsigned char *)from, &lenRead);
+
+		// return it if wanted
+		if (fromlen) {
+		    *fromlen =  lenRead;
+		}
+		// Error ?
+		if (lenRead <= 0) {
+		    tSocketReadEvent.iNumberOfBytes = lenRead;
+		}
 	}
 	
 	errno = tSocketReadEvent.iNumberOfBytes;
@@ -950,11 +960,9 @@ recv(long sd, void *buf, long len, long flags)
 //
 //*****************************************************************************
 int
-recvfrom(long sd, void *buf, long len, long flags, sockaddr *from,
-         socklen_t *fromlen)
+recvfrom(long sd, void *buf, long len, long flags, sockaddr *from, socklen_t  *fromlen)
 {
-	return(simple_link_recv(sd, buf, len, flags, from, fromlen,
-													HCI_CMND_RECVFROM));
+	return(simple_link_recv(sd, buf, len, flags, from, fromlen, HCI_CMND_RECVFROM));
 }
 
 //*****************************************************************************
