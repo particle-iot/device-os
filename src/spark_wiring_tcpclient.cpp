@@ -74,6 +74,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
             tSocketAddr.sa_data[4] = ip._address[2];
             tSocketAddr.sa_data[5] = ip._address[3];
 
+            DEBUG("_sock %d connect",_sock);
             connected = (socket_connect(_sock, &tSocketAddr, sizeof(tSocketAddr)) >= 0 ? 1 : 0);
             DEBUG("_sock %d connected=%d",_sock, connected);
             if(!connected)
@@ -177,8 +178,9 @@ void TCPClient::flush()
 
 void TCPClient::stop() 
 {
+  DEBUG("_sock %d closesocket", _sock);
   int rv = closesocket(_sock);
-  DEBUG("_sock %d closesocket=%d", _sock, rv);
+  DEBUG("_sock %d closed=%d", _sock, rv);
  _sock = MAX_SOCK_NUM;
 }
 
