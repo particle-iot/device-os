@@ -814,7 +814,9 @@ SimpleLinkWaitEvent(unsigned short usOpcode, void *pRetParams)
 	// In the blocking implementation the control to caller will be returned only 
 	// after the end of current transaction
 	tSLInformation.usRxEventOpcode = usOpcode;
+	CC3000_API_BLOCKING = 1;
 	hci_event_handler(pRetParams, 0, 0);
+	CC3000_API_BLOCKING = 0;
 }
 
 //*****************************************************************************
@@ -840,7 +842,9 @@ SimpleLinkWaitData(unsigned char *pBuf, unsigned char *from,
 	// In the blocking implementation the control to caller will be returned only 
 	// after the end of current transaction, i.e. only after data will be received
 	tSLInformation.usRxDataPending = 1;
+	CC3000_API_BLOCKING = 1;
 	hci_event_handler(pBuf, from, fromlen);
+	CC3000_API_BLOCKING = 0;
 }
 
 //*****************************************************************************

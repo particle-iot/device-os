@@ -988,10 +988,12 @@ simple_link_send(long sd, const void *buf, long len, long flags,
         tBsdReadReturnParams tSocketSendEvent;
 	
 	// Check the bsd_arguments
+    CC3000_API_BLOCKING = 1;
 	if (0 != (res = HostFlowControlConsumeBuff(sd)))
 	{
 		return res;
 	}
+	CC3000_API_BLOCKING = 0;
 	
 	//Update the number of sent packets
 	tSLInformation.NumberOfSentPackets++;

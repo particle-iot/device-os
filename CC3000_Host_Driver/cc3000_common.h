@@ -215,6 +215,7 @@ typedef struct
 
 extern volatile sSimplLinkInformation tSLInformation;
 
+extern volatile unsigned char CC3000_API_BLOCKING;
 
 //*****************************************************************************
 // Prototypes for the APIs.
