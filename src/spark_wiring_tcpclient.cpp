@@ -33,6 +33,9 @@ TCPClient::TCPClient() : _sock(MAX_SOCK_NUM)
 
 TCPClient::TCPClient(uint8_t sock) : _sock(sock) 
 {
+	_offset = 0;
+	_remaining = 0;
+	_buffered = 0;
 }
 
 int TCPClient::connect(const char* host, uint16_t port) 
@@ -67,6 +70,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
 
 	_offset = 0;
 	_remaining = 0;
+	_buffered = 0;
 
 	tSocketAddr.sa_family = AF_INET;
 
@@ -212,6 +216,14 @@ void TCPClient::flush()
 
 void TCPClient::stop() 
 {
+	if((WLAN_DHCP != 1) || (_sock == MAX_SOCK_NUM))
+	{
+		return;
+	}
+
+	//Delay 100ms to prevent CC3000 freeze
+	delay(100);
+
 	if (closesocket(_sock) == 0)
 	{
 		_sock = MAX_SOCK_NUM;
@@ -220,7 +232,7 @@ void TCPClient::stop()
 
 uint8_t TCPClient::connected() 
 {
-	if (_sock == MAX_SOCK_NUM)
+	if((WLAN_DHCP != 1) || (_sock == MAX_SOCK_NUM))
 	{
 		return 0;
 	}
@@ -232,7 +244,7 @@ uint8_t TCPClient::connected()
 
 uint8_t TCPClient::status() 
 {
-	if (_sock == MAX_SOCK_NUM)
+	if((WLAN_DHCP != 1) || (_sock == MAX_SOCK_NUM))
 	{
 		return 0;
 	}
