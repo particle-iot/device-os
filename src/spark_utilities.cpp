@@ -626,6 +626,8 @@ int Spark_Connect(void)
 
 int Spark_Disconnect(void)
 {
+  Delay(100);
+
   int retVal = closesocket(sparkSocket);
 
   if(retVal == 0)
