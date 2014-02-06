@@ -45,6 +45,7 @@ extern "C" {
 volatile uint32_t TimingMillis;
 volatile uint32_t TimingCloudSocketTimeout;
 volatile uint32_t TimingFlashUpdateTimeout;
+volatile uint32_t TimingAPIBlockingTimeout;
 
 volatile uint8_t SPARK_WIRING_APPLICATION = 0;
 
@@ -257,6 +258,23 @@ void Timing_Decrement(void)
 	}
 
 #ifdef SPARK_WLAN_ENABLE
+	if(CC3000_API_BLOCKING)
+	{
+		if (TimingAPIBlockingTimeout >= TIMING_API_BLOCKING_TIMEOUT)
+		{
+			//Reset system when the timeout expires exclusively for CC3000 Blocking APIs
+			NVIC_SystemReset();
+		}
+		else
+		{
+			TimingAPIBlockingTimeout++;
+		}
+	}
+	else
+	{
+		TimingAPIBlockingTimeout = 0;
+	}
+
 	if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
 	{
 		BUTTON_ResetDebouncedState(BUTTON1);
