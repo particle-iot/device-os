@@ -35,14 +35,23 @@ bool SPIClass::SPI_Clock_Divider_Set = false;
 bool SPIClass::SPI_Enabled = false;
 
 void SPIClass::begin() {
+	begin(SS);
+}
+
+void SPIClass::begin(uint16_t ss_pin) {
+	if (ss_pin >= TOTAL_PINS )
+	{
+		return;
+	}
+
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
 
 	pinMode(SCK, AF_OUTPUT_PUSHPULL);
 	pinMode(MOSI, AF_OUTPUT_PUSHPULL);
 	pinMode(MISO, INPUT);
 
-	pinMode(SS, OUTPUT);
-	digitalWrite(SS, HIGH);
+	pinMode(ss_pin, OUTPUT);
+	digitalWrite(ss_pin, HIGH);
 
 	/* SPI configuration */
 	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
@@ -84,11 +93,6 @@ void SPIClass::end() {
 
 void SPIClass::setBitOrder(uint8_t bitOrder)
 {
-	if(SPI_Enabled != false)
-	{
-		SPI_Cmd(SPI1, DISABLE);
-	}
-
 	if(bitOrder == LSBFIRST)
 	{
 		SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_LSB;
@@ -99,11 +103,6 @@ void SPIClass::setBitOrder(uint8_t bitOrder)
 	}
 
 	SPI_Init(SPI1, &SPI_InitStructure);
-
-	if(SPI_Enabled != false)
-	{
-		SPI_Cmd(SPI1, ENABLE);
-	}
 
 	SPI_Bit_Order_Set = true;
 }
@@ -150,19 +149,9 @@ void SPIClass::setDataMode(uint8_t mode)
 
 void SPIClass::setClockDivider(uint8_t rate)
 {
-	if(SPI_Enabled != false)
-	{
-		SPI_Cmd(SPI1, DISABLE);
-	}
-
 	SPI_InitStructure.SPI_BaudRatePrescaler = rate;
 
 	SPI_Init(SPI1, &SPI_InitStructure);
-
-	if(SPI_Enabled != false)
-	{
-		SPI_Cmd(SPI1, ENABLE);
-	}
 
 	SPI_Clock_Divider_Set = true;
 }
