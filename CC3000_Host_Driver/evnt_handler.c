@@ -514,7 +514,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, long *fromlen)
 			{
 			    if (tSLInformation.usRxDataPending == 0)
                                 {
-                                    ERROR("type != HCI_TYPE_EVNT is (%d) usRxDataPending=%d usRxEventOpcode=%d usReceivedEventOpcode=%d",
+                                    ERROR("type != HCI_TYPE_EVNT is (%d) usRxDataPending=%d usRxEventOpcode=%u usReceivedEventOpcode=%u",
                                         *pucReceivedData,
                                         tSLInformation.usRxDataPending,
                                         tSLInformation.usRxEventOpcode,
