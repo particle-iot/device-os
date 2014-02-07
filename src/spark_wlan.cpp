@@ -70,7 +70,7 @@ volatile uint8_t SPARK_LED_FADE;
 
 volatile uint8_t Spark_Error_Count;
 
-bool wlan_sockets[MAX_SOCK_NUM] = {false, false, false, false};
+bool wlan_sockets[MAX_SOCK_NUM] = {false, false, false, false, false, false, false, false};
 
 void Set_NetApp_Timeout(void)
 {

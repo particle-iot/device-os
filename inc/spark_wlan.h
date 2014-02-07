@@ -46,7 +46,7 @@ extern "C" {
 #define WLAN_TIMEOUT_FILE_OFFSET	2
 #define ERROR_COUNT_FILE_OFFSET		3
 
-#define MAX_SOCK_NUM				4
+#define MAX_SOCK_NUM				8
 
 void Set_NetApp_Timeout(void);
 void Clear_NetApp_Dhcp(void);
