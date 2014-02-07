@@ -70,6 +70,8 @@ volatile uint8_t SPARK_LED_FADE;
 
 volatile uint8_t Spark_Error_Count;
 
+bool wlan_sockets[MAX_SOCK_NUM] = {false, false, false, false};
+
 void Set_NetApp_Timeout(void)
 {
 	unsigned long aucDHCP = 14400;
@@ -312,6 +314,14 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 		case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
 			WLAN_CAN_SHUTDOWN = 1;
 			break;
+
+		case HCI_EVNT_BSD_TCP_CLOSE_WAIT:
+		    uint8_t socket = data[0];
+		    if (socket < MAX_SOCK_NUM)
+		    {
+		    	wlan_sockets[socket] = true;
+		    }
+		    break;
 	}
 }
 

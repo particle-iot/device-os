@@ -46,6 +46,8 @@ extern "C" {
 #define WLAN_TIMEOUT_FILE_OFFSET	2
 #define ERROR_COUNT_FILE_OFFSET		3
 
+#define MAX_SOCK_NUM				4
+
 void Set_NetApp_Timeout(void);
 void Clear_NetApp_Dhcp(void);
 void Start_Smart_Config(void);
@@ -84,6 +86,7 @@ extern volatile uint8_t WLAN_SMART_CONFIG_START;
 
 extern volatile uint8_t Spark_Error_Count;
 
+extern bool wlan_sockets[];
 }
 
 #endif  /*__SPARK_WLAN_H*/

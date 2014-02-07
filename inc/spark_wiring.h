@@ -123,8 +123,6 @@
 #define LSBFIRST 0
 #define MSBFIRST 1
 
-#define MAX_SOCK_NUM 3
-
 typedef unsigned char byte;
 
 typedef enum PinMode {
