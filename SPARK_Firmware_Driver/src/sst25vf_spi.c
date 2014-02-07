@@ -247,8 +247,11 @@ void sFLASH_WriteBuffer(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteTo
   /* Write bulk of bytes using auto increment write, with restriction
    * that address must always be even and two bytes are written at a time. */
   evenBytes = NumByteToWrite & ~0x1;
-  sFLASH_WriteBytes(pBuffer, WriteAddr, evenBytes);
-  NumByteToWrite -= evenBytes;
+  if (evenBytes)
+  {
+    sFLASH_WriteBytes(pBuffer, WriteAddr, evenBytes);
+    NumByteToWrite -= evenBytes;
+  }
 
   /* If number of bytes to write is odd, need to use a single byte write
    * to write the last address. */
