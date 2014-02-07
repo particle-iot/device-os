@@ -36,7 +36,6 @@ public:
 	TCPClient();
 	TCPClient(uint8_t sock);
 
-	uint8_t status();
 	virtual int connect(IPAddress ip, uint16_t port);
 	virtual int connect(const char *host, uint16_t port);
 	virtual size_t write(uint8_t);
@@ -47,7 +46,7 @@ public:
 	virtual int peek();
 	virtual void flush();
 	virtual void stop();
-	virtual uint8_t connected();
+	virtual bool connected();
 	virtual operator bool();
 
 	friend class TCPServer;
