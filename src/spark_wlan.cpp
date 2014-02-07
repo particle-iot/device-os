@@ -76,8 +76,8 @@ void Set_NetApp_Timeout(void)
 	unsigned long aucDHCP = 14400;
 	unsigned long aucARP = 3600;
 	unsigned long aucKeepalive = 10;
-	unsigned long aucInactivity = 32;
-	SPARK_WLAN_SetNetWatchDog(S2M(aucInactivity)+250);
+	unsigned long aucInactivity = DEFAULT_SEC_INACTIVITY;
+	SPARK_WLAN_SetNetWatchDog(S2M(DEFAULT_SEC_NETOPS)+ (DEFAULT_SEC_INACTIVITY ? 250 : 0) );
 	netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
 }
 
@@ -425,7 +425,9 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 
 void SPARK_WLAN_Loop(void)
 {
-	if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
+        static int cofd_count = 0;
+
+        if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
 	{
 		if(SPARK_WLAN_STARTED)
 		{
@@ -442,6 +444,7 @@ void SPARK_WLAN_Loop(void)
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
 			Spark_Error_Count = 0;
+			cofd_count = 0;
 
 			CC3000_Write_Enable_Pin(WLAN_DISABLE);
 			//wlan_stop();
@@ -553,14 +556,30 @@ void SPARK_WLAN_Loop(void)
 		LED_SetRGBColor(RGB_COLOR_CYAN);
 		LED_On(LED_RGB);
 #endif
-		if(Spark_Connect() < 0)
+		if(Spark_Connect() >= 0)
+                {
+                        cofd_count  = 0;
+                        SPARK_SOCKET_CONNECTED = 1;
+                }
+                else
 		{
 			if(SPARK_WLAN_RESET)
 				return;
 
+                        if ((cofd_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
+			{
+			    SPARK_WLAN_RESET = RESET_ON_CFOD;
+
+			}
+
 			if(Internet_Test() < 0)
 			{
 				//No Internet Connection
+	                        if ((cofd_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
+	                        {
+	                            SPARK_WLAN_RESET = RESET_ON_CFOD;
+
+	                        }
 				Spark_Error_Count = 2;
 			}
 			else
@@ -573,10 +592,6 @@ void SPARK_WLAN_Loop(void)
 			nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
 
 			SPARK_SOCKET_CONNECTED = 0;
-		}
-		else
-		{
-			SPARK_SOCKET_CONNECTED = 1;
 		}
 	}
 

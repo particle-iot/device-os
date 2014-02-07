@@ -616,15 +616,19 @@ int Internet_Test(void)
     testSocketAddr.sa_data[4] = 8;
     testSocketAddr.sa_data[5] = 8;
 
+    uint32_t ot = SPARK_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
     DEBUG("connect");
     testResult = connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
     DEBUG("connected testResult=%d",testResult);
+    SPARK_WLAN_SetNetWatchDog(ot);
+
 #if defined(SEND_ON_CLOSE)
     DEBUG("send");
     char c = 0;
     int rc = send(testSocket, &c,1, 0);
     DEBUG("send %d",rc);
 #endif
+
     DEBUG("Close");
     int rv = closesocket(testSocket);
     DEBUG("Closed rv=%d",rv);
@@ -662,9 +666,11 @@ int Spark_Connect(void)
   tSocketAddr.sa_data[4] = 229; 	// Third Octet of destination IP
   tSocketAddr.sa_data[5] = 4;	// Fourth Octet of destination IP
 
-  DEBUG("connet");
+  uint32_t ot = SPARK_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
+  DEBUG("connect");
   int rv = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
   DEBUG("connected connect=%d",rv);
+  SPARK_WLAN_SetNetWatchDog(ot);
   return rv;
 }
 
