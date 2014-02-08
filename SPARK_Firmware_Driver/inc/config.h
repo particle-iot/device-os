@@ -13,6 +13,7 @@
 #define RELEASE_BUILD
 #undef  DEBUG_BUILD
 #endif
+//#define USE_ONLY_PANIC // Define to remove all Logging and only have Panic
 
 // define to include __FILE__ information within the debug output
 #define INCLUDE_FILE_INFO_IN_DEBUG

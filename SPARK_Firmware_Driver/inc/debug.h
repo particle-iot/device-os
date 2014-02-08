@@ -71,7 +71,7 @@ void debug_output_(const char *) __attribute__ ((weak));
 
 // Short Cuts
 #define __LOG_LEVEL_TEST(level) (level >= LOG_LEVEL_AT_COMPILE_TIME && level >= LOG_LEVEL_AT_RUN_TIME)
-//#define USE_ONLY_PANIC
+
 #if defined(USE_ONLY_PANIC)
 #define LOG(fmt, ...)
 #define DEBUG(fmt, ...)
