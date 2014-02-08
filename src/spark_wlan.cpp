@@ -569,6 +569,7 @@ void SPARK_WLAN_Loop(void)
                         if ((cofd_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
 			{
 			    SPARK_WLAN_RESET = RESET_ON_CFOD;
+			    ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
 
 			}
 
@@ -578,7 +579,7 @@ void SPARK_WLAN_Loop(void)
 	                        if ((cofd_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
 	                        {
 	                            SPARK_WLAN_RESET = RESET_ON_CFOD;
-
+	                            ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
 	                        }
 				Spark_Error_Count = 2;
 			}
