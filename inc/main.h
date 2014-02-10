@@ -41,5 +41,6 @@
 
 void Timing_Decrement(void);
 void Delay(__IO uint32_t nTime);
+void Get_SerialNum(void);
 
 #endif /* __MAIN_H */
