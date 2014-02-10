@@ -58,6 +58,8 @@ __IO uint16_t LED_TIM_CCR[] = {0x0000, 0x0000, 0x0000, 0x0000};
 __IO uint16_t LED_TIM_CCR_SIGNAL[] = {0x0000, 0x0000, 0x0000, 0x0000};	//TIM CCR Signal Override
 uint8_t LED_RGB_OVERRIDE = 0;
 uint8_t LED_RGB_BRIGHTNESS = 96;
+uint32_t lastSignalColor = 0;
+uint32_t lastRGBColor = 0;
 
 /* Led Fading. */
 #define NUM_LED_FADE_STEPS 100 /* Called at 100Hz, fade over 1 second. */
@@ -458,6 +460,7 @@ void UI_Timer_Configure(void)
 #if defined (USE_SPARK_CORE_V02)
 void LED_SetRGBColor(uint32_t RGB_Color)
 {
+  lastRGBColor = RGB_Color;
 	LED_TIM_CCR[2] = (uint16_t)((((RGB_Color & 0xFF0000) >> 16) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16); //LED3 -> Red Led
 	LED_TIM_CCR[3] = (uint16_t)((((RGB_Color & 0xFF00) >> 8) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);    //LED4 -> Green Led
 	LED_TIM_CCR[1] = (uint16_t)(((RGB_Color & 0xFF) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);             //LED2 -> Blue Led
@@ -465,6 +468,7 @@ void LED_SetRGBColor(uint32_t RGB_Color)
 
 void LED_SetSignalingColor(uint32_t RGB_Color)
 {
+  lastSignalColor = RGB_Color;
 	LED_TIM_CCR_SIGNAL[2] = (uint16_t)((((RGB_Color & 0xFF0000) >> 16) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16); //LED3 -> Red Led
 	LED_TIM_CCR_SIGNAL[3] = (uint16_t)((((RGB_Color & 0xFF00) >> 8) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);    //LED4 -> Green Led
 	LED_TIM_CCR_SIGNAL[1] = (uint16_t)(((RGB_Color & 0xFF) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);             //LED2 -> Blue Led
@@ -487,6 +491,12 @@ void LED_Signaling_Stop(void)
 void LED_SetBrightness(uint8_t brightness)
 {
   LED_RGB_BRIGHTNESS = brightness;
+
+  /* Recompute RGB scale using new value for brightness. */
+	if (LED_RGB_OVERRIDE)
+    LED_SetSignalingColor(lastSignalColor);
+  else
+    LED_SetRGBColor(lastRGBColor);
 }
 #endif
 
