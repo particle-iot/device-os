@@ -322,7 +322,7 @@ int Spark_Send(const unsigned char *buf, int buflen)
     {
       // send returns negative numbers on error
       bytes_sent = send(sparkSocket, buf, buflen, 0);
-      TimingCloudSocketTimeout = 0;
+      TimingCloudActivityTimeout = 0;
     }
   }
   else if (0 > num_fds_ready)
@@ -365,7 +365,7 @@ int Spark_Receive(unsigned char *buf, int buflen)
     {
       // recv returns negative numbers on error
       bytes_received = recv(sparkSocket, buf, buflen, 0);
-      TimingCloudSocketTimeout = 0;
+      TimingCloudActivityTimeout = 0;
     }
   }
   else if (0 > num_fds_ready)

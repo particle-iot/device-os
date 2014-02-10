@@ -30,27 +30,28 @@
 #include "main.h"
 #include "spark_wiring_string.h"
 
-#define BYTE_N(x,n)					(((x) >> n*8) & 0x000000FF)
+#define BYTE_N(x,n)						(((x) >> n*8) & 0x000000FF)
 
-#define SPARK_BUF_LEN				600
+#define SPARK_BUF_LEN					600
 
 //#define SPARK_SERVER_IP				"54.235.79.249"
-#define SPARK_SERVER_PORT			5683
+#define SPARK_SERVER_PORT				5683
 
-#define TIMING_API_BLOCKING_TIMEOUT	60000	//60sec
-#define TIMING_CLOUD_SOCKET_TIMEOUT	30000	//30sec
-#define TIMING_FLASH_UPDATE_TIMEOUT	5000	//5sec
+#define TIMING_API_BLOCKING_TIMEOUT		60000	//60sec
+#define TIMING_CLOUD_ACTIVITY_TIMEOUT	30000	//30sec
+#define TIMING_CLOUD_HANDSHAKE_TIMEOUT	10000	//10sec
+#define TIMING_FLASH_UPDATE_TIMEOUT		5000	//5sec
 
-#define USER_VAR_MAX_COUNT			10
-#define USER_VAR_KEY_LENGTH			12
+#define USER_VAR_MAX_COUNT				10
+#define USER_VAR_KEY_LENGTH				12
 
-#define USER_FUNC_MAX_COUNT			4
-#define USER_FUNC_KEY_LENGTH		12
-#define USER_FUNC_ARG_LENGTH		64
+#define USER_FUNC_MAX_COUNT				4
+#define USER_FUNC_KEY_LENGTH			12
+#define USER_FUNC_ARG_LENGTH			64
 
-#define USER_EVENT_MAX_COUNT		3
-#define USER_EVENT_NAME_LENGTH		16
-#define USER_EVENT_RESULT_LENGTH	64
+#define USER_EVENT_MAX_COUNT			3
+#define USER_EVENT_NAME_LENGTH			16
+#define USER_EVENT_RESULT_LENGTH		64
 
 typedef enum
 {

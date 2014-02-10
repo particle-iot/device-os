@@ -345,7 +345,7 @@ char *WLAN_BootLoader_Patch(unsigned long *length)
 
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 {
-  announce_presence = presence_announcement_callback;
+	announce_presence = presence_announcement_callback;
 
 	/* Initialize CC3000's CS, EN and INT pins to their default states */
 	CC3000_WIFI_Init();
@@ -576,6 +576,7 @@ void SPARK_WLAN_Loop(void)
 		else
 		{
 			SPARK_SOCKET_CONNECTED = 1;
+			TimingCloudHandshakeTimeout = 0;
 		}
 	}
 
@@ -606,7 +607,7 @@ void SPARK_WLAN_Loop(void)
 			else
 			{
 				SPARK_HANDSHAKE_COMPLETED = 1;
-				TimingCloudSocketTimeout = 0;
+				TimingCloudActivityTimeout = 0;
 			}
 		}
 
@@ -622,7 +623,7 @@ void SPARK_WLAN_Loop(void)
 			SPARK_HANDSHAKE_COMPLETED = 0;
 			SPARK_SOCKET_CONNECTED = 0;
 
-			if(TimingCloudSocketTimeout != 0) /* Set within Timing_Decrement() */
+			if(TimingCloudActivityTimeout != 0) /* Set within Timing_Decrement() */
 			{
 				/* Work around for CFOD issue */
 				SPARK_WLAN_RESET = 1;
