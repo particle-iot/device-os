@@ -23,8 +23,6 @@
   ******************************************************************************
   */
 #include "spark_protocol.h"
-#include "debug.h"
-#include "spark_macros.h"
 #include "handshake.h"
 #include <string.h>
 #include <stdlib.h>
@@ -747,13 +745,8 @@ bool SparkProtocol::handle_received_message(void)
   last_message_millis = callback_millis();
   expecting_ping_ack = false;
   int len = queue[0] << 8 | queue[1];
-  if (len > (int)arraySize(queue)) {
-#if defined(DEBUG_BUILD)
-      PANIC(InvalidLenth,"len(%d) > arraySize(queue)",len);
-#else
-      ERROR("len(%d) > arraySize(queue)",len);
+  if (len > (int)arraySize(queue)) { // Todo add sanity check on data i.e. CRC
       return false;
-#endif
   }
   if (0 > blocking_receive(queue, len))
   {

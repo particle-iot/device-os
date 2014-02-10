@@ -31,6 +31,11 @@
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
 
+
+#if !defined(arraySize)
+#   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
+#endif
+
 namespace ProtocolState {
   enum Enum {
     READ_NONCE
