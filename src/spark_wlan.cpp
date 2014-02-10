@@ -319,7 +319,19 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 		    uint8_t socket = data[0];
 		    if (socket < MAX_SOCK_NUM)
 		    {
-		    	wlan_sockets[socket] = true;
+				wlan_sockets[socket] = true;
+				if(socket == sparkSocket)
+				{
+					SPARK_FLASH_UPDATE = 0;
+					SPARK_LED_FADE = 0;
+					SPARK_HANDSHAKE_COMPLETED = 0;
+					SPARK_SOCKET_CONNECTED = 0;
+					/*
+					 * Need to uncomment the below line and test
+					 * this on CFOD network to see if it helps
+					 */
+					//SPARK_WLAN_RESET = 1;
+				}
 		    }
 		    break;
 	}
@@ -623,7 +635,7 @@ void SPARK_WLAN_Loop(void)
 			SPARK_HANDSHAKE_COMPLETED = 0;
 			SPARK_SOCKET_CONNECTED = 0;
 
-			if(TimingCloudActivityTimeout != 0) /* Set within Timing_Decrement() */
+			if(TimingCloudActivityTimeout != 0)
 			{
 				/* Work around for CFOD issue */
 				SPARK_WLAN_RESET = 1;

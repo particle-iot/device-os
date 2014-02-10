@@ -88,6 +88,7 @@ extern volatile uint8_t WLAN_SMART_CONFIG_START;
 extern volatile uint8_t Spark_Error_Count;
 
 extern bool wlan_sockets[];
+extern long sparkSocket;
 }
 
 #endif  /*__SPARK_WLAN_H*/
