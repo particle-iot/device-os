@@ -237,7 +237,7 @@ void sFLASH_WriteBuffer(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteTo
 
   /* If write starts at an odd address, need to use single byte write
    * to write the first address. */
-  if (WriteAddr & 0x1 == 0x1)
+  if ((WriteAddr & 0x1) == 0x1)
   {
     sFLASH_WriteByte(WriteAddr, *pBuffer++);
     ++WriteAddr;
