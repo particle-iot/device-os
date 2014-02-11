@@ -326,11 +326,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 					SPARK_LED_FADE = 0;
 					SPARK_HANDSHAKE_COMPLETED = 0;
 					SPARK_SOCKET_CONNECTED = 0;
-					/*
-					 * Need to uncomment the below line and test
-					 * this on CFOD network to see if it helps
-					 */
-					//SPARK_WLAN_RESET = 1;
+					SPARK_WLAN_RESET = 1;
 				}
 		    }
 		    break;
