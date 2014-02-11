@@ -300,7 +300,11 @@ int Spark_Send(const unsigned char *buf, int buflen)
     return -1;
   }
 
-  return send(sparkSocket, buf, buflen, 0);
+  // send returns negative numbers on error
+  int bytes_sent = send(sparkSocket, buf, buflen, 0);
+  TimingCloudActivityTimeout = 0;
+
+  return bytes_sent;
 }
 
 // Returns number of bytes received or -1 if an error occurred
