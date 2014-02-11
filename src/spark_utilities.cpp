@@ -455,7 +455,7 @@ void Spark_Protocol_Init(void)
     callbacks.calculate_crc = Compute_CRC32;
     callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
     callbacks.signal = Spark_Signal;
-    callbacks.millis = millis;
+    callbacks.millis = (unsigned long (*)())millis;
 
     SparkDescriptor descriptor;
     descriptor.num_functions = numUserFunctions;
