@@ -86,6 +86,6 @@ void debug_output_(const char *) __attribute__ ((weak));
 #define ERROR(fmt, ...)  do { if ( __LOG_LEVEL_TEST(ERROR_LEVEL) ) {log_print_(ERROR_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
 #define PANIC(code,fmt, ...)  do { if ( __LOG_LEVEL_TEST(PANIC_LEVEL) ) {log_print_(PANIC_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);} panic_(code);}while(0)
 #endif
-#define SPARK_ASSERT(predicate) do { if (!predicate) PANIC(AssertionFailure,"AssertionFailure ##predicate");} while(0);
+#define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure,"AssertionFailure "#predicate);} while(0);
 
 #endif /* DEBUG_H_ */
