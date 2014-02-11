@@ -51,6 +51,16 @@ CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -DSPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID)
 CFLAGS += -DPRODUCT_FIRMWARE_VERSION=$(PRODUCT_FIRMWARE_VERSION)
 
+ifeq ("$(USE_SWD_JTAG)","y") 
+CFLAGS += -DUSE_SWD_JTAG
+endif
+
+ifeq ("$(DEBUG_BUILD)","y") 
+CFLAGS += -DDEBUG_BUILD
+else
+CFLAGS += -DRELEASE_BUILD
+endif
+
 # C++ specific flags
 CPPFLAGS = -fno-exceptions -fno-rtti
 

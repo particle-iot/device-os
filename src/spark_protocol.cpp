@@ -277,8 +277,8 @@ CoAPMessageType::Enum
       {
         case 'v': return CoAPMessageType::VARIABLE_REQUEST;
         case 'd': return CoAPMessageType::DESCRIBE;
-        default: return CoAPMessageType::ERROR;
-      }
+        default: break;
+      } break;
     case CoAPCode::POST:
       switch (path)
       {
@@ -286,8 +286,8 @@ CoAPMessageType::Enum
         case 'f': return CoAPMessageType::FUNCTION_CALL;
         case 'u': return CoAPMessageType::UPDATE_BEGIN;
         case 'c': return CoAPMessageType::CHUNK;
-        default: return CoAPMessageType::ERROR;
-      }
+        default: break;
+      }  break;
     case CoAPCode::PUT:
       switch (path)
       {
@@ -296,13 +296,15 @@ CoAPMessageType::Enum
         case 's':
           if (buf[8]) return CoAPMessageType::SIGNAL_START;
           else return CoAPMessageType::SIGNAL_STOP;
-        default: return CoAPMessageType::ERROR;
-      }
+        default: break;
+      }  break;
     case CoAPCode::EMPTY:
       return CoAPMessageType::EMPTY;
+      break;
     default:
-      return CoAPMessageType::ERROR;
+      break;
   }
+  return CoAPMessageType::ERROR;
 }
 
 void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
@@ -743,6 +745,9 @@ bool SparkProtocol::handle_received_message(void)
   last_message_millis = callback_millis();
   expecting_ping_ack = false;
   int len = queue[0] << 8 | queue[1];
+  if (len > (int)arraySize(queue)) { // Todo add sanity check on data i.e. CRC
+      return false;
+  }
   if (0 > blocking_receive(queue, len))
   {
     // error
