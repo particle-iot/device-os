@@ -117,7 +117,7 @@
 #define SDA  0
 #define SCL  1
 
-#define ADC_SAMPLING_TIME ADC_SampleTime_1Cycles5 //ADC_SampleTime_239Cycles5
+#define ADC_SAMPLING_TIME ADC_SampleTime_41Cycles5 // ~8.5us conversion time (37.2k max input impedance)
 #define TIM_PWM_FREQ 500 //500Hz
 
 #define LSBFIRST 0
