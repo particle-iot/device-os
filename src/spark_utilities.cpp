@@ -36,7 +36,7 @@ sockaddr tSocketAddr;
 
 //char digits[] = "0123456789";
 
-extern unsigned int millis();
+system_tick_t millis();
 extern uint8_t LED_RGB_BRIGHTNESS;
 
 // LED_Signaling_Override
