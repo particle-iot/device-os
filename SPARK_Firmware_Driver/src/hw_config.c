@@ -1734,3 +1734,16 @@ void Get_Unique_Device_ID(uint8_t *Device_ID)
   *Device_ID++ = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
   *Device_ID = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
 }
+
+static volatile system_tick_t system_1ms_tick = 0;
+
+void System1MsTick(void)
+{
+   system_1ms_tick++;
+}
+
+system_tick_t GetSystem1MsTick()
+{
+ return system_1ms_tick;
+}
+
