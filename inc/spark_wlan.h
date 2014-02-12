@@ -86,6 +86,7 @@ extern volatile uint8_t WLAN_DELETE_PROFILES;
 extern volatile uint8_t WLAN_SMART_CONFIG_START;
 
 extern volatile uint8_t Spark_Error_Count;
+extern volatile uint8_t Cloud_Handshake_Error_Count;
 
 extern bool wlan_sockets[];
 extern long sparkSocket;

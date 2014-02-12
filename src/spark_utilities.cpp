@@ -418,7 +418,7 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 
 void Spark_Protocol_Init(void)
 {
-  if (!spark_protocol.is_initialized())
+  if (Cloud_Handshake_Error_Count || !spark_protocol.is_initialized())
   {
     SparkCallbacks callbacks;
     callbacks.send = Spark_Send;
