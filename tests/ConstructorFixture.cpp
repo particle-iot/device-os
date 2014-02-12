@@ -295,7 +295,7 @@ void ConstructorFixture::mock_signal(bool on)
   signal_called_with = on;
 }
 
-unsigned long ConstructorFixture::mock_millis(void)
+system_tick_t ConstructorFixture::mock_millis(void)
 {
   return 0;
 }
