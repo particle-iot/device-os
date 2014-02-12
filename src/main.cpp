@@ -43,6 +43,7 @@ extern "C" {
 
 /* Private variables ---------------------------------------------------------*/
 volatile uint32_t TimingMillis;
+volatile uint32_t TimingSparkConnectDelay;
 volatile uint32_t TimingCloudHandshakeTimeout;
 volatile uint32_t TimingCloudActivityTimeout;
 volatile uint32_t TimingFlashUpdateTimeout;
@@ -301,7 +302,11 @@ void Timing_Decrement(void)
 
 	if(!SPARK_WLAN_SLEEP)
 	{
-		if(SPARK_FLASH_UPDATE)
+		if (TimingSparkConnectDelay != 0x00)
+		{
+			TimingSparkConnectDelay--;
+		}
+		else if(SPARK_FLASH_UPDATE)
 		{
 			if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
 			{

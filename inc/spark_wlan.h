@@ -60,13 +60,13 @@ char *WLAN_BootLoader_Patch(unsigned long *length);
 
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
 void SPARK_WLAN_Loop(void);
-void SPARK_WLAN_Timing(void);
 
 /* Spark Cloud APIs */
 extern int Spark_Connect(void);
 extern int Spark_Disconnect(void);
 extern int Spark_Process_API_Response(void);
 
+extern volatile uint32_t TimingSparkConnectDelay;
 extern volatile uint32_t TimingCloudHandshakeTimeout;
 extern volatile uint32_t TimingCloudActivityTimeout;
 extern volatile uint32_t TimingFlashUpdateTimeout;

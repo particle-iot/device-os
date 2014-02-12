@@ -69,6 +69,7 @@ volatile uint8_t SPARK_FLASH_UPDATE;
 volatile uint8_t SPARK_LED_FADE;
 
 volatile uint8_t Spark_Error_Count;
+volatile uint8_t Cloud_Handshake_Error_Count;
 
 bool wlan_sockets[MAX_SOCK_NUM] = {false, false, false, false, false, false, false, false};
 
@@ -528,6 +529,11 @@ void SPARK_WLAN_Loop(void)
 		return;
 	}
 
+	if(TimingSparkConnectDelay != 0)
+	{
+		return;
+	}
+
 	if(WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_SOCKET_CONNECTED)
 	{
 		Delay(100);
@@ -593,6 +599,7 @@ void SPARK_WLAN_Loop(void)
 		if (!SPARK_HANDSHAKE_COMPLETED)
 		{
 			int err = Spark_Handshake();
+
 			if (err)
 			{
 				if (0 > err)
@@ -611,10 +618,14 @@ void SPARK_WLAN_Loop(void)
 					LED_SetRGBColor(0xff00ff);
 				}
 				LED_On(LED_RGB);
+
+				Cloud_Handshake_Error_Count++;
+				TimingSparkConnectDelay = Cloud_Handshake_Error_Count * TIMING_CLOUD_HANDSHAKE_TIMEOUT;
 			}
 			else
 			{
 				SPARK_HANDSHAKE_COMPLETED = 1;
+				Cloud_Handshake_Error_Count = 0;
 				TimingCloudActivityTimeout = 0;
 			}
 		}
