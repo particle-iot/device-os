@@ -101,7 +101,7 @@ typedef enum
 /* Length in bytes of DER-encoded 1024-bit RSA private key */
 #define EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH		(612)
 
-/* Bootloader Flash Pages that needs to be protected: 0x08000000 � 0x08003FFF */
+/* Bootloader Flash Pages that needs to be protected: 0x08000000 - 0x08003FFF */
 #define BOOTLOADER_FLASH_PAGES		( FLASH_WRProt_Pages0to3	\
 									| FLASH_WRProt_Pages4to7	\
 									| FLASH_WRProt_Pages8to11	\
