@@ -142,7 +142,7 @@ void Delay(__IO uint32_t nTime);
 void Delay_Microsecond(__IO uint32_t uSec);
 
 typedef uint32_t system_tick_t;
-void System1MsTick(void) __attribute__ ((weak));
+void System1MsTick(void);
 system_tick_t GetSystem1MsTick(void);
 
 #if defined (USE_SPARK_CORE_V02)
