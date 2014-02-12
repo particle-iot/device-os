@@ -144,7 +144,7 @@ bool SparkProtocol::event_loop(void)
 
     if (updating)
     {
-      unsigned int millis_since_last_chunk = callback_millis() - last_chunk_millis;
+    	system_tick_t millis_since_last_chunk = callback_millis() - last_chunk_millis;
 
       if (3000 < millis_since_last_chunk)
       {
@@ -162,7 +162,7 @@ bool SparkProtocol::event_loop(void)
     }
     else
     {
-      unsigned int millis_since_last_message = callback_millis() - last_message_millis;
+    	system_tick_t millis_since_last_message = callback_millis() - last_message_millis;
       if (expecting_ping_ack)
       {
         if (10000 < millis_since_last_message)
@@ -199,7 +199,7 @@ int SparkProtocol::blocking_send(const unsigned char *buf, int length)
   int bytes_or_error;
   int byte_count = 0;
 
-  unsigned int _millis = callback_millis();
+  system_tick_t _millis = callback_millis();
 
   while (length > byte_count)
   {
@@ -231,7 +231,7 @@ int SparkProtocol::blocking_receive(unsigned char *buf, int length)
   int bytes_or_error;
   int byte_count = 0;
 
-  unsigned int _millis = callback_millis();
+  system_tick_t _millis = callback_millis();
 
   while (length > byte_count)
   {

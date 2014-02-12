@@ -31,6 +31,8 @@
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
 
+typedef unsigned long system_tick_t; // This needs to match the definition of millis
+
 namespace ProtocolState {
   enum Enum {
     READ_NONCE
@@ -59,7 +61,7 @@ struct SparkCallbacks
   long unsigned int (*calculate_crc)(unsigned char *buf, long unsigned int buflen);
   void (*save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
   void (*signal)(bool on);
-  unsigned int (*millis)();
+  system_tick_t (*millis)();
 };
 
 class SparkProtocol
@@ -140,7 +142,7 @@ class SparkProtocol
     long unsigned int (*callback_calculate_crc)(unsigned char *buf, long unsigned int buflen);
     void (*callback_save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
     void (*callback_signal)(bool on);
-    unsigned int (*callback_millis)();
+    system_tick_t (*callback_millis)();
 
     SparkDescriptor descriptor;
 
