@@ -42,10 +42,10 @@ extern "C" {
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-volatile uint32_t TimingMillis;
 volatile uint32_t TimingSparkConnectDelay;
 volatile uint32_t TimingCloudHandshakeTimeout;
 volatile uint32_t TimingCloudActivityTimeout;
+volatile uint32_t TimingCloudSocketTimeout;
 volatile uint32_t TimingFlashUpdateTimeout;
 volatile uint32_t TimingAPIBlockingTimeout;
 
@@ -192,7 +192,6 @@ int main(void)
  *******************************************************************************/
 void Timing_Decrement(void)
 {
-	TimingMillis++;
 
 	if (TimingDelay != 0x00)
 	{
