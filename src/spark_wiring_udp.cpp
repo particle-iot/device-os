@@ -147,7 +147,7 @@ int UDP::parsePacket()
       FD_ZERO(&readSet);
       FD_SET(_sock, &readSet);
 
-      timeout.tv_sec = 10;
+      timeout.tv_sec = 0;
       timeout.tv_usec = 5000;
 
       if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
