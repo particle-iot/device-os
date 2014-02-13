@@ -65,7 +65,7 @@ void setup2() {
   pinMode(D2,OUTPUT);
 }
 
-unsigned long lastMillis = (unsigned long) -WAIT_TIME;
+system_tick_t lastMillis = (system_tick_t) -WAIT_TIME;
 
 char buf[50];
 

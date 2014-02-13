@@ -127,7 +127,7 @@ void TwoWire::begin(int address)
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
 {
-	uint32_t _millis;
+        system_tick_t _millis;
 
 	// clamp to buffer length
 	if(quantity > BUFFER_LENGTH){

@@ -174,7 +174,7 @@ void analogWrite(uint16_t pin, uint8_t value);
 /*
 * Timing
 */
-unsigned long millis(void);
+system_tick_t millis(void);
 unsigned long micros(void);
 void delay(unsigned long ms);
 void delayMicroseconds(unsigned int us);
