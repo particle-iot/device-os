@@ -27,6 +27,9 @@
 #define SPARK_WIRING_H
 
 #include "stm32f10x.h"
+#include "config.h"
+#include "spark_macros.h"
+#include "debug.h"
 #include "platform_config.h"
 #include "spark_utilities.h"
 #include "spark_wiring_stream.h"
@@ -37,10 +40,18 @@
 * Basic variables
 */
 
-#define min(a,b)                ((a)<(b)?(a):(b))
-#define max(a,b)                ((a)>(b)?(a):(b))
-#define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
-#define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+#if !defined(min)
+#   define min(a,b)                ((a)<(b)?(a):(b))
+#endif
+#if !defined(max)
+#   define max(a,b)                ((a)>(b)?(a):(b))
+#endif
+#if !defined(constrain)
+#   define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
+#endif
+#if !defined(round)
+#   define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+#endif
 
 #define HIGH 0x1
 #define LOW 0x0
@@ -140,6 +151,9 @@ typedef struct STM32_Pin_Info {
 } STM32_Pin_Info;
 
 extern STM32_Pin_Info PIN_MAP[];
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
 * GPIO
@@ -162,5 +176,9 @@ long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
 
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SPARK_WIRING_H_ */

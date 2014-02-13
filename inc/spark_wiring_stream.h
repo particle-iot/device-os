@@ -50,8 +50,8 @@ readBytesBetween( pre_string, terminator, buffer, length)
 class Stream : public Print
 {
   protected:
-    unsigned long _timeout;      // number of milliseconds to wait for the next char before aborting timed read
-    unsigned long _startMillis;  // used for timeout measurement
+    system_tick_t _timeout;      // number of milliseconds to wait for the next char before aborting timed read
+    system_tick_t _startMillis;  // used for timeout measurement
     int timedRead();    // private method to read stream with timeout
     int timedPeek();    // private method to peek stream with timeout
     int peekNextDigit(); // returns the next numeric digit in the stream or -1 if timeout
@@ -66,7 +66,7 @@ class Stream : public Print
 
 // parsing methods
 
-  void setTimeout(unsigned long timeout);  // sets maximum milliseconds to wait for stream data, default is 1 second
+  void setTimeout(system_tick_t timeout);  // sets maximum milliseconds to wait for stream data, default is 1 second
 
   bool find(char *target);   // reads data from the stream until the target string is found
   // returns true if target string is found, false if timed out (see setTimeout)

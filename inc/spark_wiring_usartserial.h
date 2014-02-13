@@ -37,6 +37,7 @@ class USARTSerial : public Stream
 	static bool USARTSerial_Enabled;
   public:
     USARTSerial();
+    virtual ~USARTSerial() {};
     void begin(unsigned long);
     void begin(unsigned long, uint8_t);
     void end();

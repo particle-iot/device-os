@@ -45,6 +45,8 @@ public:
 	IPAddress(uint32_t address);
 	IPAddress(const uint8_t *address);
 
+        virtual ~IPAddress() {}
+
 	// Overloaded cast operator to allow IPAddress objects to be used where a pointer
 	// to a four-byte uint8_t array is expected
 	//operator uint32_t() { return *((uint32_t*)_address); };

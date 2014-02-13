@@ -38,8 +38,6 @@ uint8_t adcChannelConfigured = NONE;
 
 PinMode digitalPinModeSaved = (PinMode)NONE;
 
-extern volatile uint32_t TimingMillis;
-
 /*
  * Pin mapping
  */
@@ -492,7 +490,7 @@ void analogWrite(uint16_t pin, uint8_t value)
  */
 system_tick_t millis(void)
 {
-	return GetSystem1MsTick();
+    return GetSystem1MsTick();
 }
 
 /*
