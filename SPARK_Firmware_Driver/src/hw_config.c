@@ -1440,6 +1440,7 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 		sFLASH_EraseSector(sFLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
 	}
 
+#endif
 }
 
 void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
