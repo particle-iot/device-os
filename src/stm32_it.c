@@ -200,32 +200,6 @@ void EXTI2_IRQHandler(void)
 }
 
 /*******************************************************************************
- * Function Name  : EXTI15_10_IRQHandler
- * Description    : This function handles EXTI15_10 interrupt request.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void EXTI15_10_IRQHandler(void)
-{
-// #if defined (USE_SPARK_CORE_V01)
-// 	if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
-// 	{
-// 		/* Clear the EXTI line pending bit */
-// 		EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE );
-
-// 		BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
-
-// 		/* Disable BUTTON1 Interrupt */
-// 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
-
-// 		/* Enable TIM1 CC4 Interrupt */
-// 		TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
-// 	}
-// #endif
-}
-
-/*******************************************************************************
  * Function Name  : TIM1_CC_IRQHandler
  * Description    : This function handles TIM1 Capture Compare interrupt request.
  * Input          : None
