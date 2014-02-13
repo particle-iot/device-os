@@ -45,20 +45,19 @@
 #define LO(value)				((value) & 0x00FF)
 
 #define ASSERT_CS()				CC3000_CS_LOW()
-#define DEASSERT_CS()			CC3000_CS_HIGH()
+#define DEASSERT_CS()			        CC3000_CS_HIGH()
 
-#define DMA_WINDOW_SIZE         1024
-#define SPI_WINDOW_SIZE         DMA_WINDOW_SIZE
 
 #define HEADERS_SIZE_EVNT       (SPI_HEADER_SIZE + 5)
-
-#define SPI_BUFFER_SIZE        	1024
+#define MAX_PACKET_PAYLOAD_SIZE 1014
+#define RX_SPI_BUFFER_SIZE      (MAX_PACKET_PAYLOAD_SIZE+HEADERS_SIZE_EVNT)
+#define TX_SPI_BUFFER_SIZE      (MAX_PACKET_PAYLOAD_SIZE+HEADERS_SIZE_EVNT)
 
 typedef void (*gcSpiHandleRx)(void *p);
 typedef void (*gcSpiHandleTx)(void);
 
-extern unsigned char wlan_rx_buffer[];
-extern unsigned char wlan_tx_buffer[];
+extern unsigned char wlan_rx_buffer[RX_SPI_BUFFER_SIZE];
+extern unsigned char wlan_tx_buffer[TX_SPI_BUFFER_SIZE];
 
 /* CC3000 SPI Protocol API */
 extern void SpiOpen(gcSpiHandleRx pfRxHandler);

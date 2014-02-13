@@ -493,11 +493,7 @@ void aes_decrypt(unsigned char *state,
 
 signed long aes_read_key(unsigned char *key)
 {
-	signed long	returnValue;
-	
-	returnValue = nvmem_read(NVMEM_AES128_KEY_FILEID, AES128_KEY_SIZE, 0, key);
-
-	return returnValue;
+	return ((AES128_KEY_SIZE == nvmem_read(NVMEM_AES128_KEY_FILEID, AES128_KEY_SIZE, 0, key)) ? 0 : -1);
 }
 
 //*****************************************************************************

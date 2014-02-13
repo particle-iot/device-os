@@ -539,6 +539,8 @@ void LED_On(Led_TypeDef Led)
     led_fade_step = NUM_LED_FADE_STEPS - 1;
     led_fade_direction = -1; /* next fade is falling */
 		break;
+          default:
+		break;
 	}
 }
 
@@ -564,6 +566,8 @@ void LED_Off(Led_TypeDef Led)
     led_fade_step = 0;
     led_fade_direction = 1; /* next fade is rising. */
 		break;
+	default:
+		break;
 	}
 }
 
@@ -580,6 +584,8 @@ void LED_Toggle(Led_TypeDef Led)
 	{
 	case LED_USER:
 		LED_GPIO_PORT[Led]->ODR ^= LED_GPIO_PIN[Led];
+		break;
+	default:
 		break;
 
 	case LED_RGB://LED_SetRGBColor() and LED_On() should be called first for this Case

@@ -211,6 +211,7 @@ typedef struct
 	unsigned long    NumberOfReleasedPackets;
 
 	unsigned char	 InformHostOnTxComplete;
+	unsigned char    solicitedResponse;
 }sSimplLinkInformation;
 
 extern volatile sSimplLinkInformation tSLInformation;
@@ -255,7 +256,7 @@ extern void SimpleLinkWaitEvent(unsigned short usOpcode, void *pRetParams);
 //
 //*****************************************************************************
 
-extern void SimpleLinkWaitData(unsigned char *pBuf, unsigned char *from, unsigned char *fromlen);
+extern void SimpleLinkWaitData(unsigned char *pBuf, unsigned char *from, long *fromlen);
 
 //*****************************************************************************
 //

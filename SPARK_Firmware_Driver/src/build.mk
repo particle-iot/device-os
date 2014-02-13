@@ -16,6 +16,8 @@ CSRC += $(TARGET_SPARK_SRC_PATH)/hw_config.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/sst25vf_spi.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/system_stm32f10x.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/usb_pwr.c
+CSRC += $(TARGET_SPARK_SRC_PATH)/debug.c
+CSRC += $(TARGET_SPARK_SRC_PATH)/panic.c
 
 # C++ source files included in this build.
 CPPSRC +=

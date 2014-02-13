@@ -67,7 +67,7 @@ extern "C" {
 //!                  event handler from global array of handlers pointers
 //
 //*****************************************************************************
-extern unsigned char *hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen);
+extern unsigned char *hci_event_handler(void *pRetParams, unsigned char *from, long *fromlen);
 
 //*****************************************************************************
 //
@@ -153,6 +153,9 @@ typedef struct _bsd_gethostbyname_return_t
     long             outputAddress;
 } tBsdGethostbynameParams;
 
+
+extern uint32_t cc3000__event_timeout_ms;
+unsigned long micros(void);
 //*****************************************************************************
 //
 // Mark the end of the C bindings section for C++ compilers.

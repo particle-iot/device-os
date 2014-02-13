@@ -106,9 +106,10 @@ nvmem_read(unsigned long ulFileId, unsigned long ulLength, unsigned long ulOffse
 	// Wait for the data in a synchronous way. Here we assume that the buffer is 
 	// big enough to store also parameters of nvmem
 	
-	SimpleLinkWaitData(buff, 0, 0);
+	long length;
+	SimpleLinkWaitData(buff, 0, &length);
 	
-	return(ucStatus);
+	return(length);
 }
 
 //*****************************************************************************
@@ -198,7 +199,7 @@ unsigned char nvmem_set_mac_address(unsigned char *mac)
 
 unsigned char nvmem_get_mac_address(unsigned char *mac)
 {
-	return  nvmem_read(NVMEM_MAC_FILEID, MAC_ADDR_LEN, 0, mac);
+	return  ((MAC_ADDR_LEN == nvmem_read(NVMEM_MAC_FILEID, MAC_ADDR_LEN, 0, mac)) ? 0 : -1);
 }
 
 //*****************************************************************************

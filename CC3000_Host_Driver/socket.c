@@ -861,7 +861,7 @@ getsockopt (long sd, long level, long optname, void *optval, socklen_t *optlen)
 //*****************************************************************************
 int
 simple_link_recv(long sd, void *buf, long len, long flags, sockaddr *from,
-                socklen_t *fromlen, long opcode)
+                 socklen_t *fromlen, long opcode)
 {
 	unsigned char *ptr, *args;
 	tBsdReadReturnParams tSocketReadEvent;
@@ -885,7 +885,17 @@ simple_link_recv(long sd, void *buf, long len, long flags, sockaddr *from,
 	{
 		// Wait for the data in a synchronous way. Here we assume that the bug is 
 		// big enough to store also parameters of receive from too....
-		SimpleLinkWaitData(buf, (unsigned char *)from, (unsigned char *)fromlen);
+	        long lenRead; // Let's look at length
+		SimpleLinkWaitData(buf, (unsigned char *)from, &lenRead);
+
+		// return it if wanted
+		if (fromlen) {
+		    *fromlen =  lenRead;
+		}
+		// Error ?
+		if (lenRead <= 0) {
+		    tSocketReadEvent.iNumberOfBytes = lenRead;
+		}
 	}
 	
 	errno = tSocketReadEvent.iNumberOfBytes;
@@ -950,11 +960,9 @@ recv(long sd, void *buf, long len, long flags)
 //
 //*****************************************************************************
 int
-recvfrom(long sd, void *buf, long len, long flags, sockaddr *from,
-         socklen_t *fromlen)
+recvfrom(long sd, void *buf, long len, long flags, sockaddr *from, socklen_t  *fromlen)
 {
-	return(simple_link_recv(sd, buf, len, flags, from, fromlen,
-													HCI_CMND_RECVFROM));
+	return(simple_link_recv(sd, buf, len, flags, from, fromlen, HCI_CMND_RECVFROM));
 }
 
 //*****************************************************************************
@@ -981,14 +989,17 @@ int
 simple_link_send(long sd, const void *buf, long len, long flags,
               const sockaddr *to, long tolen, long opcode)
 {    
-	unsigned char uArgSize,  addrlen;
-	unsigned char *ptr, *pDataPtr, *args;
-	unsigned long addr_offset;
+        unsigned char uArgSize = 0;
+        unsigned long addr_offset = 0;
+        unsigned char *pDataPtr = 0;
+        unsigned char addrlen;
+        unsigned char *ptr, *args;
 	int res;
         tBsdReadReturnParams tSocketSendEvent;
 	
-	// Check the bsd_arguments
-    CC3000_API_BLOCKING = 1;
+  // Check if there is a buffer
+  // Call Can be blocking!
+  CC3000_API_BLOCKING = 1;
 	if (0 != (res = HostFlowControlConsumeBuff(sd)))
 	{
 		return res;
@@ -1054,11 +1065,15 @@ simple_link_send(long sd, const void *buf, long len, long flags,
 	hci_data_send(opcode, ptr, uArgSize, len,(unsigned char*)to, tolen);
         
          if (opcode == HCI_CMND_SENDTO)
+         {
             SimpleLinkWaitEvent(HCI_EVNT_SENDTO, &tSocketSendEvent);
+         }
          else
+         {
             SimpleLinkWaitEvent(HCI_EVNT_SEND, &tSocketSendEvent);
+         }
 	
-	return	(len);
+	return	(tSocketSendEvent.iNumberOfBytes);
 }
 
 

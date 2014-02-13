@@ -200,6 +200,7 @@ void wlan_init(		tWlanCB	 	sWlanCB,
 	
 	// By default TX Complete events are routed to host too
 	tSLInformation.InformHostOnTxComplete = 1;
+	tSLInformation.solicitedResponse = 0;    // Assume not a send command
 }
 
 //*****************************************************************************
@@ -256,8 +257,6 @@ void
 wlan_start(unsigned short usPatchesAvailableAtHost)
 {
 	
-	unsigned long ulSpiIRQState;
-	
 	tSLInformation.NumberOfSentPackets = 0;
 	tSLInformation.NumberOfReleasedPackets = 0;
 	tSLInformation.usRxEventOpcode = 0;
@@ -274,31 +273,6 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 	
 	// init spi
 	SpiOpen(SpiReceiveHandler);
-	
-	// Check the IRQ line
-	ulSpiIRQState = tSLInformation.ReadWlanInterruptPin();
-	
-	// Chip enable: toggle WLAN EN line
-	tSLInformation.WriteWlanPin( WLAN_ENABLE );
-	
-	if (ulSpiIRQState)
-	{
-		// wait till the IRQ line goes low
-		while(tSLInformation.ReadWlanInterruptPin() != 0)
-		{
-		}
-	}
-	else
-	{
-		// wait till the IRQ line goes high and than low
-		while(tSLInformation.ReadWlanInterruptPin() == 0)
-		{
-		}
-		
-		while(tSLInformation.ReadWlanInterruptPin() != 0)
-		{
-		}
-	}
 	
 	SimpleLink_Init_Start(usPatchesAvailableAtHost);
 	
@@ -595,7 +569,7 @@ wlan_add_profile(unsigned long ulSecType,
 								 unsigned char* ucPf_OrKey,
 								 unsigned long ulPassPhraseLen)
 {
-	unsigned short arg_len;
+	unsigned short arg_len = 0;
 	long ret;
 	unsigned char *ptr;
 	long i = 0;
@@ -1161,7 +1135,7 @@ wlan_smart_config_process()
 	//	 to elaborate, there are two corner cases:
 	//		1) the KEY is 32 bytes long. In this case, the first byte does not represent KEY length
 	//		2) the KEY is 31 bytes long. In this case, the first byte represent KEY length and equals 31
-	returnValue = nvmem_read(NVMEM_SHARED_MEM_FILEID, SMART_CONFIG_PROFILE_SIZE, 0, profileArray);
+	returnValue = (SMART_CONFIG_PROFILE_SIZE == nvmem_read(NVMEM_SHARED_MEM_FILEID, SMART_CONFIG_PROFILE_SIZE, 0, profileArray)) ? 0 : -1;
 	
 	if (returnValue != 0)
 		return returnValue;
