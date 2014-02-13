@@ -85,15 +85,17 @@ void UDP::stop()
 
 int UDP::beginPacket(const char *host, uint16_t port)
 {
-	uint32_t ip_addr = 0;
+        if(isWanReady())
+        {
+          uint32_t ip_addr = 0;
 
-	if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
-	{
-		IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
+          if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
+          {
+                  IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
 
-		return beginPacket(remote_addr, port);
-	}
-
+                  return beginPacket(remote_addr, port);
+          }
+        }
 	return 0;
 }
 
