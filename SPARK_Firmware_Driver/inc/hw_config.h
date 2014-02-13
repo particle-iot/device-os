@@ -107,7 +107,6 @@ typedef enum
 									| FLASH_WRProt_Pages8to11	\
 									| FLASH_WRProt_Pages12to15 )
 
-#if defined (USE_SPARK_CORE_V02)
 //Extended LED Types
 #define LED_RGB				LED3_LED4_LED2
 #define LED_USER			LED1
@@ -120,7 +119,6 @@ typedef enum
 #define RGB_COLOR_CYAN		0x00FFFF
 #define RGB_COLOR_MAGENTA	0xFF00FF
 #define RGB_COLOR_WHITE		0xFFFFFF
-#endif
 
 /* USB Config : IMR_MSK */
 /* mask defining which events has to be handled */
@@ -145,10 +143,8 @@ typedef uint32_t system_tick_t;
 void System1MsTick(void);
 system_tick_t GetSystem1MsTick(void);
 
-#if defined (USE_SPARK_CORE_V02)
 void RTC_Configuration(void);
 void Enter_STANDBY_Mode(void);
-#endif
 
 void IWDG_Reset_Enable(uint32_t msTimeout);
 
@@ -157,14 +153,12 @@ DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State);
 
 void UI_Timer_Configure(void);
 
-#if defined (USE_SPARK_CORE_V02)
 void LED_SetRGBColor(uint32_t RGB_Color);
 void LED_SetSignalingColor(uint32_t RGB_Color);
 void LED_Signaling_Start(void);
 void LED_Signaling_Stop(void);
 void LED_Signaling_Override(void) __attribute__ ((weak));
 void LED_SetBrightness(uint8_t brightness); /* 0 = off, 255 = full brightness */
-#endif
 
 void LED_Init(Led_TypeDef Led);
 void LED_On(Led_TypeDef Led);

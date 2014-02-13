@@ -228,7 +228,6 @@ void Delay_Microsecond(__IO uint32_t uSec)
 	while (DWT_CYCCNT > DWT->CYCCNT);
 }
 
-#if defined (USE_SPARK_CORE_V02)
 void RTC_Configuration(void)
 {
 	EXTI_InitTypeDef EXTI_InitStructure;
@@ -323,7 +322,6 @@ void Enter_STANDBY_Mode(void)
 
     NVIC_SystemReset();
 }
-#endif
 
 void IWDG_Reset_Enable(uint32_t msTimeout)
 {
@@ -421,11 +419,7 @@ void UI_Timer_Configure(void)
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
 	TIM_OCInitStructure.TIM_Pulse = 0x0000;
-#if defined (USE_SPARK_CORE_V01)
-	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-#elif defined (USE_SPARK_CORE_V02)
 	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
-#endif
 	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Reset;
 
 	TIM_OC1Init(TIM1, &TIM_OCInitStructure);
@@ -455,7 +449,6 @@ void UI_Timer_Configure(void)
 	TIM_CtrlPWMOutputs(TIM1, ENABLE);
 }
 
-#if defined (USE_SPARK_CORE_V02)
 void LED_SetRGBColor(uint32_t RGB_Color)
 {
 	LED_TIM_CCR[2] = (uint16_t)((((RGB_Color & 0xFF0000) >> 16) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16); //LED3 -> Red Led
@@ -488,7 +481,6 @@ void LED_SetBrightness(uint8_t brightness)
 {
   LED_RGB_BRIGHTNESS = brightness;
 }
-#endif
 
 /**
   * @brief  Configures LED GPIO.
@@ -506,14 +498,10 @@ void LED_Init(Led_TypeDef Led)
 
     /* Configure the GPIO_LED pin as alternate function push-pull */
     GPIO_InitStructure.GPIO_Pin = LED_GPIO_PIN[Led];
-#if defined (USE_SPARK_CORE_V01)
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-#elif defined (USE_SPARK_CORE_V02)
     if(Led == LED_USER)
     	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     else
     	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-#endif
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
     GPIO_Init(LED_GPIO_PORT[Led], &GPIO_InitStructure);
@@ -528,18 +516,6 @@ void LED_Init(Led_TypeDef Led)
   */
 void LED_On(Led_TypeDef Led)
 {
-#if defined (USE_SPARK_CORE_V01)
-	switch(Led)
-	{
-	case LED1:
-		TIM1->CCR1 = ((TIM1->ARR + 1) * LED_RGB_BRIGHTNESS) >> 8;
-		break;
-
-	case LED2:
-		TIM1->CCR2 = ((TIM1->ARR + 1) * LED_RGB_BRIGHTNESS) >> 8;
-		break;
-	}
-#elif defined (USE_SPARK_CORE_V02)
 	switch(Led)
 	{
 	case LED_USER:
@@ -564,7 +540,6 @@ void LED_On(Led_TypeDef Led)
     led_fade_direction = -1; /* next fade is falling */
 		break;
 	}
-#endif
 }
 
 /**
@@ -576,18 +551,6 @@ void LED_On(Led_TypeDef Led)
   */
 void LED_Off(Led_TypeDef Led)
 {
-#if defined (USE_SPARK_CORE_V01)
-	switch(Led)
-	{
-	case LED1:
-		TIM1->CCR1 = 0;
-		break;
-
-	case LED2:
-		TIM1->CCR2 = 0;
-		break;
-	}
-#elif defined (USE_SPARK_CORE_V02)
 	switch(Led)
 	{
 	case LED_USER:
@@ -602,7 +565,6 @@ void LED_Off(Led_TypeDef Led)
     led_fade_direction = 1; /* next fade is rising. */
 		break;
 	}
-#endif
 }
 
 /**
@@ -614,24 +576,6 @@ void LED_Off(Led_TypeDef Led)
   */
 void LED_Toggle(Led_TypeDef Led)
 {
-#if defined (USE_SPARK_CORE_V01)
-	switch(Led)
-	{
-	case LED1:
-    if (TIM1->CCR1)
-      TIM1->CCR1 = 0;
-    else
-      TIM1->CCR1 = ((TIM1->ARR + 1) * LED_RGB_BRIGHTNESS) >> 8;
-		break;
-
-	case LED2:
-    if (TIM1->CCR2)
-      TIM1->CCR2 = 0;
-    else
-      TIM1->CCR2 = ((TIM1->ARR + 1) * LED_RGB_BRIGHTNESS) >> 8;
-		break;
-	}
-#elif defined (USE_SPARK_CORE_V02)
 	switch(Led)
 	{
 	case LED_USER:
@@ -675,7 +619,6 @@ void LED_Toggle(Led_TypeDef Led)
 		}
 		break;
 	}
-#endif
 }
 
 /**
@@ -695,18 +638,6 @@ void LED_Fade(Led_TypeDef Led)
 
   led_fade_step += led_fade_direction;
 
-#if defined (USE_SPARK_CORE_V01)
-	switch(Led)
-	{
-	case LED1:
-    TIM1->CCR1 = (((uint32_t) LED_TIM_CCR[1]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
-		break;
-
-	case LED2:
-    TIM1->CCR2 = (((uint32_t) LED_TIM_CCR[2]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
-		break;
-	}
-#elif defined (USE_SPARK_CORE_V02)
 	if(Led == LED_RGB)
 	{
 		if(LED_RGB_OVERRIDE == 0)
@@ -722,7 +653,6 @@ void LED_Fade(Led_TypeDef Led)
       TIM1->CCR1 = (((uint32_t) LED_TIM_CCR_SIGNAL[1]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
 		}
 	}
-#endif
 }
 
 /**
@@ -1491,12 +1421,10 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 {
 #ifdef SPARK_SFLASH_ENABLE
 
-#if defined (USE_SPARK_CORE_V02)
 	LED_SetRGBColor(RGB_COLOR_MAGENTA);
     LED_On(LED_RGB);
-#endif
 
-   OTA_FLASHED_Status_SysFlag = 0x0000;
+    OTA_FLASHED_Status_SysFlag = 0x0000;
 	//FLASH_OTA_Update_SysFlag = 0x5555;
 	Save_SystemFlags();
 	//BKP_WriteBackupRegister(BKP_DR10, 0x5555);
@@ -1512,7 +1440,6 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 		sFLASH_EraseSector(sFLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
 	}
 
-#endif
 }
 
 void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
@@ -1556,11 +1483,7 @@ void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 		sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
 	}
 
-#if defined (USE_SPARK_CORE_V01)
-	LED_Toggle(LED2);
-#elif defined (USE_SPARK_CORE_V02)
 	LED_Toggle(LED_RGB);
-#endif
 
 #endif
 }

@@ -27,12 +27,6 @@
 #ifndef __PLATFORM_CONFIG_H
 #define __PLATFORM_CONFIG_H
 
-/* Uncomment the line corresponding to the STM32 board used */
-#if !defined (USE_SPARK_CORE_V01) && !defined (USE_SPARK_CORE_V02)
-//#define USE_SPARK_CORE_V01
-#define USE_SPARK_CORE_V02
-#endif
-
 /* Uncomment the line below to enable WLAN, WIRING, SFLASH and RTC functionality */
 #define SPARK_WLAN_ENABLE
 #define SPARK_WIRING_ENABLE
@@ -51,49 +45,6 @@
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-
-/* Define the STM32F10x hardware depending on the used board */
-#if defined (USE_SPARK_CORE_V01)
-
-//LEDs
-#define LEDn                           		2
-#define LED1_GPIO_PIN                    	GPIO_Pin_8
-#define LED1_GPIO_PORT                   	GPIOA
-#define LED1_GPIO_CLK                    	RCC_APB2Periph_GPIOA
-#define LED2_GPIO_PIN                   	GPIO_Pin_9
-#define LED2_GPIO_PORT                   	GPIOA
-#define LED2_GPIO_CLK                    	RCC_APB2Periph_GPIOA
-#define LED3_GPIO_PIN                     	0
-#define LED3_GPIO_PORT                   	0
-#define LED3_GPIO_CLK                    	0
-#define LED4_GPIO_PIN                     	0
-#define LED4_GPIO_PORT                   	0
-#define LED4_GPIO_CLK                    	0
-
-//Push Buttons
-#define BUTTONn                           	1
-#define BUTTON1_GPIO_PIN                 	GPIO_Pin_10
-#define BUTTON1_GPIO_PORT                	GPIOA
-#define BUTTON1_GPIO_CLK                 	RCC_APB2Periph_GPIOA
-#define BUTTON1_GPIO_MODE					GPIO_Mode_IPU
-#define BUTTON1_PRESSED						0x00
-#define BUTTON1_EXTI_LINE                	EXTI_Line10
-#define BUTTON1_EXTI_PORT_SOURCE         	GPIO_PortSourceGPIOA
-#define BUTTON1_EXTI_PIN_SOURCE          	GPIO_PinSource10
-#define BUTTON1_EXTI_IRQn                	EXTI15_10_IRQn
-#define	BUTTON1_EXTI_TRIGGER				EXTI_Trigger_Falling
-#define BUTTON2_GPIO_PIN                  	0
-#define BUTTON2_GPIO_PORT               	0
-#define BUTTON2_GPIO_CLK                	0
-#define BUTTON2_GPIO_MODE					0
-#define BUTTON2_PRESSED						0
-#define BUTTON2_EXTI_LINE               	0
-#define BUTTON2_EXTI_PORT_SOURCE        	0
-#define BUTTON2_EXTI_PIN_SOURCE         	0
-#define BUTTON2_EXTI_IRQn               	0
-#define	BUTTON2_EXTI_TRIGGER				0
-
-#elif defined (USE_SPARK_CORE_V02)
 
 //LEDs
 #define LEDn                           		4
@@ -132,8 +83,6 @@
 #define BUTTON2_EXTI_PIN_SOURCE         	0
 #define BUTTON2_EXTI_IRQn               	0
 #define	BUTTON2_EXTI_TRIGGER				0
-
-#endif
 
 //Header IOs
 #define Dn                           		8
