@@ -856,8 +856,9 @@ bool SparkProtocol::handle_received_message(void)
       else if(SparkReturnType::STRING == var_type)
       {
         char *str_val = (char *)descriptor.get_variable(variable_key);
-        variable_value(queue + 2, token, queue[2], queue[3], str_val, strlen(str_val));
-		queue[1]=((6+strlen(str_val)) & ~15) + 16; //buffer length from variable_value
+		unsigned char str_length = (strlen(str_val)>233) ? 233 : strlen(str_val); //truncate too long string
+        variable_value(queue + 2, token, queue[2], queue[3], str_val, str_length);
+		queue[1]=((6+str_length) & ~15) + 16; //buffer length from variable_value
       }
       else if(SparkReturnType::DOUBLE == var_type)
       {
