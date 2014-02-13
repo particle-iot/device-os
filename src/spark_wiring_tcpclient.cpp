@@ -39,16 +39,20 @@ TCPClient::TCPClient(uint8_t sock) : _sock(sock)
 
 int TCPClient::connect(const char* host, uint16_t port) 
 {
-	uint32_t ip_addr = 0;
+      int rv = 0;
+      if(isWanReady())
+      {
 
-	if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
-	{
-		IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
+        uint32_t ip_addr = 0;
 
-		return connect(remote_addr, port);
-	}
+        if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
+        {
+                IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
 
-	return 0;
+                return connect(remote_addr, port);
+        }
+      }
+      return rv;
 }
 
 int TCPClient::connect(IPAddress ip, uint16_t port) 
