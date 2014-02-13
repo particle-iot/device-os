@@ -56,11 +56,11 @@ void TCPServer::begin()
 		return;
 	}
 
-	if (setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, SOCK_ON, sizeof(SOCK_ON)) < 0)
+	long optval = SOCK_ON;
+	if (setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &optval, sizeof(optval)) < 0)
 	{
 		return;
 	}
-
 
 	if (bind(sock, (sockaddr*)&tServerAddr, sizeof(tServerAddr)) < 0)
 	{
