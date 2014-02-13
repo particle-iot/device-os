@@ -27,6 +27,13 @@
 
 uint16_t TCPClient::_srcport = 1024;
 
+// ToDO There seems to be inconsistency of use of open wlan_sockets[_sock] in
+// commit ab42a580b79321756b1392d18c85846481df00ec so it is commented out here
+// Lets define enum eSocketState{  eSocketClosed, eSocketOpen }
+// Let also look at (SOCKET_STATUS_INACTIVE != get_socket_active_status(_sock)
+// To see if the 2 concepts can be merged down to 1
+
+
 TCPClient::TCPClient() : _sock(MAX_SOCK_NUM)
 {
   flush();
@@ -39,23 +46,27 @@ TCPClient::TCPClient(uint8_t sock) : _sock(sock)
 
 int TCPClient::connect(const char* host, uint16_t port) 
 {
-	uint32_t ip_addr = 0;
+      int rv = 0;
+      if(isWanReady())
+      {
 
-	if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
-	{
-		IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
+        uint32_t ip_addr = 0;
 
-		return connect(remote_addr, port);
-	}
+        if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
+        {
+                IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
 
-	return 0;
+                return connect(remote_addr, port);
+        }
+      }
+      return rv;
 }
 
 int TCPClient::connect(IPAddress ip, uint16_t port) 
 {
         int connected = 0;
-	if(isWanReady())
-	{
+        if(isWanReady())
+        {
           sockaddr tSocketAddr;
           _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
           DEBUG("socket=%d",_sock);
@@ -84,20 +95,20 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
             if(!connected)
             {
                 stop();
-            }
+            } // Todo else mark socket open wlan_sockets[_sock] = eSocketOpen;
           }
-	}
-	return connected;
+        }
+        return connected;
 }
 
 size_t TCPClient::write(uint8_t b) 
 {
-	return write(&b, 1);
+        return write(&b, 1);
 }
 
 size_t TCPClient::write(const uint8_t *buffer, size_t size)
 {
-	return connected() ? send(_sock, buffer, size, 0) : -1;
+        return connected() ? send(_sock, buffer, size, 0) : -1;
 }
 
 int TCPClient::isWanReady()
@@ -113,8 +124,8 @@ int TCPClient::bufferCount()
 int TCPClient::available() 
 {
         int avail = 0;
-	if(connected())
-	{
+        if(connected())
+        {
           // Have room
           if (_total && _offset == _total)
           {
@@ -147,7 +158,7 @@ int TCPClient::available()
             }
           }
           avail = bufferCount();
-	}
+        }
         return avail;
 }
 
@@ -184,22 +195,31 @@ void TCPClient::stop()
 {
   DEBUG("_sock %d closesocket", _sock);
   int rv = closesocket(_sock);
+  //Todo mark socket closed wlan_sockets[_sock] = eSocketClosed;
   DEBUG("_sock %d closed=%d", _sock, rv);
  _sock = MAX_SOCK_NUM;
 }
 
 uint8_t TCPClient::connected() 
 {
-   return  (isWanReady() && (_sock != MAX_SOCK_NUM)) ? 1 : 0;
+   bool rv =   (_sock != MAX_SOCK_NUM)
+               && (isWanReady()
+               && (SOCKET_STATUS_INACTIVE != get_socket_active_status(_sock))) ? 1 : 0;
+ /*     Todo && wlan_sockets[_sock] == eSocketOpen /
+    if (!rv && _sock != MAX_SOCK_NUM) {
+       stop(0);
+   }
+ */
+   return rv;
 }
 
 uint8_t TCPClient::status() 
 {
   //To Do
-   return  connected() && (SOCKET_STATUS_INACTIVE != get_socket_active_status(_sock));
+   return  connected();
 }
 
 TCPClient::operator bool()
 {
-   return _sock != MAX_SOCK_NUM;
+   return 1 == connected() ? true : false;
 }
