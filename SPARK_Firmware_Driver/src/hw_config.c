@@ -44,16 +44,16 @@ __IO uint32_t TimingIWDGReload;
 
 __IO uint8_t IWDG_SYSTEM_RESET;
 
-GPIO_TypeDef* DIO_PORT[] = {D0_GPIO_PORT, D1_GPIO_PORT, D2_GPIO_PORT, D3_GPIO_PORT,
+GPIO_TypeDef* DIO_GPIO_PORT[] = {D0_GPIO_PORT, D1_GPIO_PORT, D2_GPIO_PORT, D3_GPIO_PORT,
 								D4_GPIO_PORT, D5_GPIO_PORT, D6_GPIO_PORT, D7_GPIO_PORT};
-const uint16_t DIO_PIN[] = {D0_PIN, D1_PIN, D2_PIN, D3_PIN,
-								D4_PIN, D5_PIN, D6_PIN, D7_PIN};
-const uint32_t DIO_CLK[] = {D0_GPIO_CLK, D1_GPIO_CLK, D2_GPIO_CLK, D3_GPIO_CLK,
+const uint16_t DIO_GPIO_PIN[] = {D0_GPIO_PIN, D1_GPIO_PIN, D2_GPIO_PIN, D3_GPIO_PIN,
+								D4_GPIO_PIN, D5_GPIO_PIN, D6_GPIO_PIN, D7_GPIO_PIN};
+const uint32_t DIO_GPIO_CLK[] = {D0_GPIO_CLK, D1_GPIO_CLK, D2_GPIO_CLK, D3_GPIO_CLK,
 								D4_GPIO_CLK, D5_GPIO_CLK, D6_GPIO_CLK, D7_GPIO_CLK};
 
-GPIO_TypeDef* LED_PORT[] = {LED1_GPIO_PORT, LED2_GPIO_PORT, LED3_GPIO_PORT, LED4_GPIO_PORT};
-const uint16_t LED_PIN[] = {LED1_PIN, LED2_PIN, LED3_PIN, LED4_PIN};
-const uint32_t LED_CLK[] = {LED1_GPIO_CLK, LED2_GPIO_CLK, LED3_GPIO_CLK, LED4_GPIO_CLK};
+GPIO_TypeDef* LED_GPIO_PORT[] = {LED1_GPIO_PORT, LED2_GPIO_PORT, LED3_GPIO_PORT, LED4_GPIO_PORT};
+const uint16_t LED_GPIO_PIN[] = {LED1_GPIO_PIN, LED2_GPIO_PIN, LED3_GPIO_PIN, LED4_GPIO_PIN};
+const uint32_t LED_GPIO_CLK[] = {LED1_GPIO_CLK, LED2_GPIO_CLK, LED3_GPIO_CLK, LED4_GPIO_CLK};
 __IO uint16_t LED_TIM_CCR[] = {0x0000, 0x0000, 0x0000, 0x0000};
 __IO uint16_t LED_TIM_CCR_SIGNAL[] = {0x0000, 0x0000, 0x0000, 0x0000};	//TIM CCR Signal Override
 uint8_t LED_RGB_OVERRIDE = 0;
@@ -64,15 +64,15 @@ uint8_t LED_RGB_BRIGHTNESS = 96;
 static uint8_t led_fade_step = NUM_LED_FADE_STEPS - 1;
 static int8_t led_fade_direction = -1; /* 1 = rising, -1 = falling. */
 
-GPIO_TypeDef* BUTTON_PORT[] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
-const uint16_t BUTTON_PIN[] = {BUTTON1_PIN, BUTTON2_PIN};
-const uint32_t BUTTON_CLK[] = {BUTTON1_GPIO_CLK, BUTTON2_GPIO_CLK};
+GPIO_TypeDef* BUTTON_GPIO_PORT[] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
+const uint16_t BUTTON_GPIO_PIN[] = {BUTTON1_GPIO_PIN, BUTTON2_GPIO_PIN};
+const uint32_t BUTTON_GPIO_CLK[] = {BUTTON1_GPIO_CLK, BUTTON2_GPIO_CLK};
 GPIOMode_TypeDef BUTTON_GPIO_MODE[] = {BUTTON1_GPIO_MODE, BUTTON2_GPIO_MODE};
 __IO uint16_t BUTTON_DEBOUNCED_TIME[] = {0, 0};
 
 const uint16_t BUTTON_EXTI_LINE[] = {BUTTON1_EXTI_LINE, BUTTON2_EXTI_LINE};
-const uint16_t BUTTON_PORT_SOURCE[] = {BUTTON1_EXTI_PORT_SOURCE, BUTTON2_EXTI_PORT_SOURCE};
-const uint16_t BUTTON_PIN_SOURCE[] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EXTI_PIN_SOURCE};
+const uint16_t BUTTON_GPIO_PORT_SOURCE[] = {BUTTON1_EXTI_PORT_SOURCE, BUTTON2_EXTI_PORT_SOURCE};
+const uint16_t BUTTON_GPIO_PIN_SOURCE[] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EXTI_PIN_SOURCE};
 const uint16_t BUTTON_IRQn[] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
 
@@ -360,13 +360,13 @@ void DIO_Init(DIO_TypeDef Dx)
     GPIO_InitTypeDef  GPIO_InitStructure;
 
     /* Enable the GPIO_Dx Clock */
-    RCC_APB2PeriphClockCmd(DIO_CLK[Dx], ENABLE);
+    RCC_APB2PeriphClockCmd(DIO_GPIO_CLK[Dx], ENABLE);
 
     /* Configure the GPIO_Dx pin */
-    GPIO_InitStructure.GPIO_Pin = DIO_PIN[Dx];
+    GPIO_InitStructure.GPIO_Pin = DIO_GPIO_PIN[Dx];
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(DIO_PORT[Dx], &GPIO_InitStructure);
+    GPIO_Init(DIO_GPIO_PORT[Dx], &GPIO_InitStructure);
 
     /* Set to Off State */
     DIO_SetState(Dx, LOW);
@@ -383,9 +383,9 @@ DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State)
 	if(Dx < 0 || Dx > Dn)
 		return FAIL;
 	else if(State == HIGH)
-		DIO_PORT[Dx]->BSRR = DIO_PIN[Dx];
+		DIO_GPIO_PORT[Dx]->BSRR = DIO_GPIO_PIN[Dx];
 	else if(State == LOW)
-		DIO_PORT[Dx]->BRR = DIO_PIN[Dx];
+		DIO_GPIO_PORT[Dx]->BRR = DIO_GPIO_PIN[Dx];
 
 	return OK;
 }
@@ -502,10 +502,10 @@ void LED_Init(Led_TypeDef Led)
     GPIO_InitTypeDef  GPIO_InitStructure;
 
     /* Enable the GPIO_LED Clock */
-    RCC_APB2PeriphClockCmd(LED_CLK[Led], ENABLE);
+    RCC_APB2PeriphClockCmd(LED_GPIO_CLK[Led], ENABLE);
 
     /* Configure the GPIO_LED pin as alternate function push-pull */
-    GPIO_InitStructure.GPIO_Pin = LED_PIN[Led];
+    GPIO_InitStructure.GPIO_Pin = LED_GPIO_PIN[Led];
 #if defined (USE_SPARK_CORE_V01)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 #elif defined (USE_SPARK_CORE_V02)
@@ -516,7 +516,7 @@ void LED_Init(Led_TypeDef Led)
 #endif
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-    GPIO_Init(LED_PORT[Led], &GPIO_InitStructure);
+    GPIO_Init(LED_GPIO_PORT[Led], &GPIO_InitStructure);
 }
 
 /**
@@ -543,7 +543,7 @@ void LED_On(Led_TypeDef Led)
 	switch(Led)
 	{
 	case LED_USER:
-		LED_PORT[Led]->BSRR = LED_PIN[Led];
+		LED_GPIO_PORT[Led]->BSRR = LED_GPIO_PIN[Led];
 		break;
 
 	case LED_RGB:	//LED_SetRGBColor() should be called first for this Case
@@ -560,9 +560,9 @@ void LED_On(Led_TypeDef Led)
 			TIM1->CCR1 = LED_TIM_CCR_SIGNAL[1];
 		}
 
-                led_fade_step = NUM_LED_FADE_STEPS - 1;
-                led_fade_direction = -1; /* next fade is falling */
-                break;
+    led_fade_step = NUM_LED_FADE_STEPS - 1;
+    led_fade_direction = -1; /* next fade is falling */
+		break;
           default:
 		break;
 	}
@@ -593,7 +593,7 @@ void LED_Off(Led_TypeDef Led)
 	switch(Led)
 	{
 	case LED_USER:
-		LED_PORT[Led]->BRR = LED_PIN[Led];
+		LED_GPIO_PORT[Led]->BRR = LED_GPIO_PIN[Led];
 		break;
 
 	case LED_RGB:
@@ -602,7 +602,7 @@ void LED_Off(Led_TypeDef Led)
 		TIM1->CCR1 = 0;
     led_fade_step = 0;
     led_fade_direction = 1; /* next fade is rising. */
-                break;
+		break;
 	default:
 		break;
 	}
@@ -639,8 +639,8 @@ void LED_Toggle(Led_TypeDef Led)
 	switch(Led)
 	{
 	case LED_USER:
-		LED_PORT[Led]->ODR ^= LED_PIN[Led];
-                break;
+		LED_GPIO_PORT[Led]->ODR ^= LED_GPIO_PIN[Led];
+		break;
 	default:
 		break;
 
@@ -750,12 +750,12 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
     NVIC_InitTypeDef NVIC_InitStructure;
 
     /* Enable the BUTTON Clock */
-    RCC_APB2PeriphClockCmd(BUTTON_CLK[Button] | RCC_APB2Periph_AFIO, ENABLE);
+    RCC_APB2PeriphClockCmd(BUTTON_GPIO_CLK[Button] | RCC_APB2Periph_AFIO, ENABLE);
 
     /* Configure Button pin as input floating */
     GPIO_InitStructure.GPIO_Mode = BUTTON_GPIO_MODE[Button];
-    GPIO_InitStructure.GPIO_Pin = BUTTON_PIN[Button];
-    GPIO_Init(BUTTON_PORT[Button], &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin = BUTTON_GPIO_PIN[Button];
+    GPIO_Init(BUTTON_GPIO_PORT[Button], &GPIO_InitStructure);
 
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
@@ -787,7 +787,7 @@ void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState)
     EXTI_InitTypeDef EXTI_InitStructure;
 
 	/* Connect Button EXTI Line to Button GPIO Pin */
-    GPIO_EXTILineConfig(BUTTON_PORT_SOURCE[Button], BUTTON_PIN_SOURCE[Button]);
+    GPIO_EXTILineConfig(BUTTON_GPIO_PORT_SOURCE[Button], BUTTON_GPIO_PIN_SOURCE[Button]);
 
 	/* Clear the EXTI line pending flag */
 	EXTI_ClearFlag(BUTTON_EXTI_LINE[Button]);
@@ -810,7 +810,7 @@ void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState)
   */
 uint8_t BUTTON_GetState(Button_TypeDef Button)
 {
-    return GPIO_ReadInputDataBit(BUTTON_PORT[Button], BUTTON_PIN[Button]);
+    return GPIO_ReadInputDataBit(BUTTON_GPIO_PORT[Button], BUTTON_GPIO_PIN[Button]);
 }
 
 /**
@@ -844,7 +844,7 @@ void CC3000_WIFI_Init(void)
 	RCC_APB2PeriphClockCmd(CC3000_WIFI_CS_GPIO_CLK | CC3000_WIFI_EN_GPIO_CLK, ENABLE);
 
 	/* Configure CC3000_WIFI pins: CS */
-	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_CS_PIN;
+	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_CS_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(CC3000_WIFI_CS_GPIO_PORT, &GPIO_InitStructure);
@@ -853,7 +853,7 @@ void CC3000_WIFI_Init(void)
 	CC3000_CS_HIGH();
 
 	/* Configure CC3000_WIFI pins: Enable */
-	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_EN_PIN;
+	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_EN_GPIO_PIN;
 	GPIO_Init(CC3000_WIFI_EN_GPIO_PORT, &GPIO_InitStructure);
 
 	/* Disable CC3000 */
@@ -877,17 +877,17 @@ void CC3000_SPI_Init(void)
 	CC3000_SPI_CLK_CMD(CC3000_SPI_CLK, ENABLE);
 
 	/* Configure CC3000_SPI pins: SCK */
-	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_SCK_PIN;
+	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_SCK_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_Init(CC3000_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 
 	/* Configure CC3000_SPI pins: MOSI */
-	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_MOSI_PIN;
+	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_MOSI_GPIO_PIN;
 	GPIO_Init(CC3000_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
 
 	/* Configure CC3000_SPI pins: MISO */
-	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_MISO_PIN;
+	GPIO_InitStructure.GPIO_Pin = CC3000_SPI_MISO_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(CC3000_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
 
@@ -992,19 +992,19 @@ void CC3000_CS_LOW(void)
 	CC3000_SPI->CR1 &= ((uint16_t)0xFFBF);
 	sFLASH_CS_HIGH();
 	CC3000_SPI->CR1 = CC3000_SPI_CR | ((uint16_t)0x0040);
-	GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN);
+	GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_GPIO_PIN);
 }
 
 /* Deselect CC3000: ChipSelect pin high */
 void CC3000_CS_HIGH(void)
 {
-	GPIO_SetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_PIN);
+	GPIO_SetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_GPIO_PIN);
 }
 
 /* CC3000 Hardware related callbacks passed to wlan_init */
 long CC3000_Read_Interrupt_Pin(void)
 {
-	return GPIO_ReadInputDataBit(CC3000_WIFI_INT_GPIO_PORT, CC3000_WIFI_INT_PIN );
+	return GPIO_ReadInputDataBit(CC3000_WIFI_INT_GPIO_PORT, CC3000_WIFI_INT_GPIO_PIN );
 }
 
 void CC3000_Interrupt_Enable(void)
@@ -1017,7 +1017,7 @@ void CC3000_Interrupt_Enable(void)
 	RCC_APB2PeriphClockCmd(CC3000_WIFI_INT_GPIO_CLK | RCC_APB2Periph_AFIO, ENABLE);
 
 	/* Configure CC3000_WIFI pins: Interrupt */
-	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_INT_PIN;
+	GPIO_InitStructure.GPIO_Pin = CC3000_WIFI_INT_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
 	GPIO_Init(CC3000_WIFI_INT_GPIO_PORT, &GPIO_InitStructure);
 
@@ -1063,11 +1063,11 @@ void CC3000_Write_Enable_Pin(unsigned char val)
 	/* Set WLAN Enable/Disable */
 	if (val != WLAN_DISABLE)
 	{
-		GPIO_SetBits(CC3000_WIFI_EN_GPIO_PORT, CC3000_WIFI_EN_PIN );
+		GPIO_SetBits(CC3000_WIFI_EN_GPIO_PORT, CC3000_WIFI_EN_GPIO_PIN );
 	}
 	else
 	{
-		GPIO_ResetBits(CC3000_WIFI_EN_GPIO_PORT, CC3000_WIFI_EN_PIN );
+		GPIO_ResetBits(CC3000_WIFI_EN_GPIO_PORT, CC3000_WIFI_EN_GPIO_PIN );
 	}
 }
 
@@ -1090,20 +1090,20 @@ void sFLASH_SPI_DeInit(void)
 	sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, DISABLE);
 
 	/* Configure sFLASH_SPI pins: SCK */
-	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 
 	/* Configure sFLASH_SPI pins: MISO */
-	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_PIN;
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_GPIO_PIN;
 	GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
 
 	/* Configure sFLASH_SPI pins: MOSI */
-	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_PIN;
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_GPIO_PIN;
 	GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
 
-	/* Configure sFLASH_MEM_CS_PIN pin: sFLASH CS pin */
-	GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_PIN;
+	/* Configure sFLASH_MEM_CS_GPIO_PIN pin: sFLASH CS pin */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_GPIO_PIN;
 	GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
 }
 
@@ -1126,22 +1126,22 @@ void sFLASH_SPI_Init(void)
 	sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, ENABLE);
 
 	/* Configure sFLASH_SPI pins: SCK */
-	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_PIN;
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 
 	/* Configure sFLASH_SPI pins: MOSI */
-	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_PIN;
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_GPIO_PIN;
 	GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
 
 	/* Configure sFLASH_SPI pins: MISO */
-	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_PIN;
+	GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
 
-	/* Configure sFLASH_MEM_CS_PIN pin: sFLASH CS pin */
-	GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_PIN;
+	/* Configure sFLASH_MEM_CS_GPIO_PIN pin: sFLASH CS pin */
+	GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
@@ -1173,13 +1173,13 @@ void sFLASH_CS_LOW(void)
 	sFLASH_SPI->CR1 &= ((uint16_t)0xFFBF);
 	CC3000_CS_HIGH();
 	sFLASH_SPI->CR1 = sFLASH_SPI_CR | ((uint16_t)0x0040);
-	GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN);
+	GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_GPIO_PIN);
 }
 
 /* Deselect sFLASH: Chip Select pin high */
 void sFLASH_CS_HIGH(void)
 {
-	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_PIN);
+	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_GPIO_PIN);
 }
 
 /*******************************************************************************
@@ -1195,8 +1195,8 @@ void USB_Disconnect_Config(void)
 	/* Enable USB_DISCONNECT GPIO clock */
 	RCC_APB2PeriphClockCmd(USB_DISCONNECT_GPIO_CLK, ENABLE);
 
-	/* USB_DISCONNECT_PIN used as USB pull-up */
-	GPIO_InitStructure.GPIO_Pin = USB_DISCONNECT_PIN;
+	/* USB_DISCONNECT_GPIO_PIN used as USB pull-up */
+	GPIO_InitStructure.GPIO_Pin = USB_DISCONNECT_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
 	GPIO_Init(USB_DISCONNECT_GPIO_PORT, &GPIO_InitStructure);
@@ -1279,11 +1279,11 @@ void USB_Cable_Config (FunctionalState NewState)
 {
 	if (NewState != DISABLE)
 	{
-		GPIO_ResetBits(USB_DISCONNECT_GPIO_PORT, USB_DISCONNECT_PIN);
+		GPIO_ResetBits(USB_DISCONNECT_GPIO_PORT, USB_DISCONNECT_GPIO_PIN);
 	}
 	else
 	{
-		GPIO_SetBits(USB_DISCONNECT_GPIO_PORT, USB_DISCONNECT_PIN);
+		GPIO_SetBits(USB_DISCONNECT_GPIO_PORT, USB_DISCONNECT_GPIO_PIN);
 	}
 }
 
@@ -1740,3 +1740,16 @@ void Get_Unique_Device_ID(uint8_t *Device_ID)
   *Device_ID++ = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
   *Device_ID = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
 }
+
+static volatile system_tick_t system_1ms_tick = 0;
+
+void System1MsTick(void)
+{
+   system_1ms_tick++;
+}
+
+system_tick_t GetSystem1MsTick()
+{
+ return system_1ms_tick;
+}
+

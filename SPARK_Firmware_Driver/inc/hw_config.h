@@ -101,7 +101,7 @@ typedef enum
 /* Length in bytes of DER-encoded 1024-bit RSA private key */
 #define EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH		(612)
 
-/* Bootloader Flash Pages that needs to be protected: 0x08000000 – 0x08003FFF */
+/* Bootloader Flash Pages that needs to be protected: 0x08000000 - 0x08003FFF */
 #define BOOTLOADER_FLASH_PAGES		( FLASH_WRProt_Pages0to3	\
 									| FLASH_WRProt_Pages4to7	\
 									| FLASH_WRProt_Pages8to11	\
@@ -140,6 +140,10 @@ void NVIC_Configuration(void);
 void SysTick_Configuration(void);
 void Delay(__IO uint32_t nTime);
 void Delay_Microsecond(__IO uint32_t uSec);
+
+typedef uint32_t system_tick_t;
+void System1MsTick(void);
+system_tick_t GetSystem1MsTick(void);
 
 #if defined (USE_SPARK_CORE_V02)
 void RTC_Configuration(void);

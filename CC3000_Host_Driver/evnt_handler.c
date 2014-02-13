@@ -43,6 +43,7 @@
 //                  INCLUDE FILES
 //******************************************************************************
 
+#include "hw_config.h"
 #include "evnt_handler.h"
 #include "debug.h"
 #include "spark_macros.h"
@@ -226,13 +227,14 @@ hci_event_handler(void *pRetParams, unsigned char *from, long *fromlen)
 	unsigned char * RecvParams;
         unsigned char *RetParams;
 	
-	volatile int32_t start = millis();
+	volatile system_tick_t start = GetSystem1MsTick();
+
 	while (1)
 	{
 		if (tSLInformation.usEventOrDataReceived == 0)
 		{
-                    volatile int32_t now = millis();
-                    volatile int32_t elapsed = now - start;
+                    volatile system_tick_t now = GetSystem1MsTick();
+                    volatile system_tick_t elapsed = now - start;
                       if (elapsed < 0) { // Did we wrap
                          elapsed = start + now; // yes now
                       }

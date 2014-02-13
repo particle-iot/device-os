@@ -57,22 +57,22 @@
 
 //LEDs
 #define LEDn                           		2
-#define LED1_PIN                         	GPIO_Pin_8
+#define LED1_GPIO_PIN                    	GPIO_Pin_8
 #define LED1_GPIO_PORT                   	GPIOA
 #define LED1_GPIO_CLK                    	RCC_APB2Periph_GPIOA
-#define LED2_PIN                         	GPIO_Pin_9
+#define LED2_GPIO_PIN                   	GPIO_Pin_9
 #define LED2_GPIO_PORT                   	GPIOA
 #define LED2_GPIO_CLK                    	RCC_APB2Periph_GPIOA
-#define LED3_PIN                         	0
+#define LED3_GPIO_PIN                     	0
 #define LED3_GPIO_PORT                   	0
 #define LED3_GPIO_CLK                    	0
-#define LED4_PIN                         	0
+#define LED4_GPIO_PIN                     	0
 #define LED4_GPIO_PORT                   	0
 #define LED4_GPIO_CLK                    	0
 
 //Push Buttons
 #define BUTTONn                           	1
-#define BUTTON1_PIN                      	GPIO_Pin_10
+#define BUTTON1_GPIO_PIN                 	GPIO_Pin_10
 #define BUTTON1_GPIO_PORT                	GPIOA
 #define BUTTON1_GPIO_CLK                 	RCC_APB2Periph_GPIOA
 #define BUTTON1_GPIO_MODE					GPIO_Mode_IPU
@@ -82,7 +82,7 @@
 #define BUTTON1_EXTI_PIN_SOURCE          	GPIO_PinSource10
 #define BUTTON1_EXTI_IRQn                	EXTI15_10_IRQn
 #define	BUTTON1_EXTI_TRIGGER				EXTI_Trigger_Falling
-#define BUTTON2_PIN                     	0
+#define BUTTON2_GPIO_PIN                  	0
 #define BUTTON2_GPIO_PORT               	0
 #define BUTTON2_GPIO_CLK                	0
 #define BUTTON2_GPIO_MODE					0
@@ -97,22 +97,22 @@
 
 //LEDs
 #define LEDn                           		4
-#define LED1_PIN                         	GPIO_Pin_13
+#define LED1_GPIO_PIN                    	GPIO_Pin_13
 #define LED1_GPIO_PORT                   	GPIOA
 #define LED1_GPIO_CLK                    	RCC_APB2Periph_GPIOA
-#define LED2_PIN                         	GPIO_Pin_8
+#define LED2_GPIO_PIN                   	GPIO_Pin_8
 #define LED2_GPIO_PORT                   	GPIOA
 #define LED2_GPIO_CLK                    	RCC_APB2Periph_GPIOA
-#define LED3_PIN                         	GPIO_Pin_9
+#define LED3_GPIO_PIN                   	GPIO_Pin_9
 #define LED3_GPIO_PORT                   	GPIOA
 #define LED3_GPIO_CLK                    	RCC_APB2Periph_GPIOA
-#define LED4_PIN                         	GPIO_Pin_10
+#define LED4_GPIO_PIN                    	GPIO_Pin_10
 #define LED4_GPIO_PORT                   	GPIOA
 #define LED4_GPIO_CLK                    	RCC_APB2Periph_GPIOA
 
 //Push Buttons
 #define BUTTONn                           	1
-#define BUTTON1_PIN                      	GPIO_Pin_2
+#define BUTTON1_GPIO_PIN                 	GPIO_Pin_2
 #define BUTTON1_GPIO_PORT                	GPIOB
 #define BUTTON1_GPIO_CLK                 	RCC_APB2Periph_GPIOB
 #define BUTTON1_GPIO_MODE					GPIO_Mode_IPU
@@ -122,7 +122,7 @@
 #define BUTTON1_EXTI_PIN_SOURCE          	GPIO_PinSource2
 #define BUTTON1_EXTI_IRQn                	EXTI2_IRQn
 #define	BUTTON1_EXTI_TRIGGER				EXTI_Trigger_Falling
-#define BUTTON2_PIN                     	0
+#define BUTTON2_GPIO_PIN                 	0
 #define BUTTON2_GPIO_PORT               	0
 #define BUTTON2_GPIO_CLK                	0
 #define BUTTON2_GPIO_MODE					0
@@ -137,28 +137,28 @@
 
 //Header IOs
 #define Dn                           		8
-#define D0_PIN                         		GPIO_Pin_7
+#define D0_GPIO_PIN                       	GPIO_Pin_7
 #define D0_GPIO_PORT                   		GPIOB
 #define D0_GPIO_CLK                    		RCC_APB2Periph_GPIOB
-#define D1_PIN                         		GPIO_Pin_6
+#define D1_GPIO_PIN                       	GPIO_Pin_6
 #define D1_GPIO_PORT                   		GPIOB
 #define D1_GPIO_CLK                    		RCC_APB2Periph_GPIOB
-#define D2_PIN                         		GPIO_Pin_5
+#define D2_GPIO_PIN                     	GPIO_Pin_5
 #define D2_GPIO_PORT                   		GPIOB
 #define D2_GPIO_CLK                    		RCC_APB2Periph_GPIOB
-#define D3_PIN                         		GPIO_Pin_4
+#define D3_GPIO_PIN                      	GPIO_Pin_4
 #define D3_GPIO_PORT                   		GPIOB
 #define D3_GPIO_CLK                    		RCC_APB2Periph_GPIOB
-#define D4_PIN                         		GPIO_Pin_3
+#define D4_GPIO_PIN                      	GPIO_Pin_3
 #define D4_GPIO_PORT                   		GPIOB
 #define D4_GPIO_CLK                    		RCC_APB2Periph_GPIOB
-#define D5_PIN                         		GPIO_Pin_15
+#define D5_GPIO_PIN                     	GPIO_Pin_15
 #define D5_GPIO_PORT                   		GPIOA
 #define D5_GPIO_CLK                    		RCC_APB2Periph_GPIOA
-#define D6_PIN                         		GPIO_Pin_14
+#define D6_GPIO_PIN                      	GPIO_Pin_14
 #define D6_GPIO_PORT                   		GPIOA
 #define D6_GPIO_CLK                    		RCC_APB2Periph_GPIOA
-#define D7_PIN                         		GPIO_Pin_13
+#define D7_GPIO_PIN                      	GPIO_Pin_13
 #define D7_GPIO_PORT                   		GPIOA
 #define D7_GPIO_CLK                    		RCC_APB2Periph_GPIOA
 
@@ -166,22 +166,22 @@
 #define CC3000_SPI							SPI2
 #define CC3000_SPI_CLK						RCC_APB1Periph_SPI2
 #define CC3000_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
-#define CC3000_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
+#define CC3000_SPI_SCK_GPIO_PIN				GPIO_Pin_13					/* PB.13 */
 #define CC3000_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
 #define CC3000_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
-#define CC3000_SPI_MISO_PIN					GPIO_Pin_14					/* PB.14 */
+#define CC3000_SPI_MISO_GPIO_PIN			GPIO_Pin_14					/* PB.14 */
 #define CC3000_SPI_MISO_GPIO_PORT			GPIOB						/* GPIOB */
 #define CC3000_SPI_MISO_GPIO_CLK			RCC_APB2Periph_GPIOB
-#define CC3000_SPI_MOSI_PIN					GPIO_Pin_15					/* PB.15 */
+#define CC3000_SPI_MOSI_GPIO_PIN			GPIO_Pin_15					/* PB.15 */
 #define CC3000_SPI_MOSI_GPIO_PORT			GPIOB						/* GPIOB */
 #define CC3000_SPI_MOSI_GPIO_CLK			RCC_APB2Periph_GPIOB
-#define CC3000_WIFI_CS_PIN					GPIO_Pin_12					/* PB.12 */
+#define CC3000_WIFI_CS_GPIO_PIN				GPIO_Pin_12					/* PB.12 */
 #define CC3000_WIFI_CS_GPIO_PORT			GPIOB						/* GPIOB */
 #define CC3000_WIFI_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
-#define CC3000_WIFI_EN_PIN					GPIO_Pin_8					/* PB.08 */
+#define CC3000_WIFI_EN_GPIO_PIN				GPIO_Pin_8					/* PB.08 */
 #define CC3000_WIFI_EN_GPIO_PORT			GPIOB						/* GPIOB */
 #define CC3000_WIFI_EN_GPIO_CLK				RCC_APB2Periph_GPIOB
-#define CC3000_WIFI_INT_PIN					GPIO_Pin_11					/* PB.11 */
+#define CC3000_WIFI_INT_GPIO_PIN			GPIO_Pin_11					/* PB.11 */
 #define CC3000_WIFI_INT_GPIO_PORT			GPIOB						/* GPIOB */
 #define CC3000_WIFI_INT_GPIO_CLK			RCC_APB2Periph_GPIOB
 
@@ -206,22 +206,22 @@
 #define sFLASH_SPI							SPI2
 #define sFLASH_SPI_CLK						RCC_APB1Periph_SPI2
 #define sFLASH_SPI_CLK_CMD					RCC_APB1PeriphClockCmd
-#define sFLASH_SPI_SCK_PIN					GPIO_Pin_13					/* PB.13 */
+#define sFLASH_SPI_SCK_GPIO_PIN				GPIO_Pin_13					/* PB.13 */
 #define sFLASH_SPI_SCK_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_SCK_GPIO_CLK				RCC_APB2Periph_GPIOB
-#define sFLASH_SPI_MISO_PIN					GPIO_Pin_14					/* PB.14 */
+#define sFLASH_SPI_MISO_GPIO_PIN			GPIO_Pin_14					/* PB.14 */
 #define sFLASH_SPI_MISO_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_MISO_GPIO_CLK			RCC_APB2Periph_GPIOB
-#define sFLASH_SPI_MOSI_PIN					GPIO_Pin_15					/* PB.15 */
+#define sFLASH_SPI_MOSI_GPIO_PIN			GPIO_Pin_15					/* PB.15 */
 #define sFLASH_SPI_MOSI_GPIO_PORT			GPIOB						/* GPIOB */
 #define sFLASH_SPI_MOSI_GPIO_CLK			RCC_APB2Periph_GPIOB
-#define sFLASH_MEM_CS_PIN					GPIO_Pin_9					/* PB.09 */
+#define sFLASH_MEM_CS_GPIO_PIN				GPIO_Pin_9					/* PB.09 */
 #define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
 #define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
 #define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
 
-#define USB_DISCONNECT_PIN               	GPIO_Pin_10
+#define USB_DISCONNECT_GPIO_PIN           	GPIO_Pin_10
 #define USB_DISCONNECT_GPIO_PORT       		GPIOB
 #define USB_DISCONNECT_GPIO_CLK		  		RCC_APB2Periph_GPIOB
 
