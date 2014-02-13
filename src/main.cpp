@@ -25,6 +25,7 @@
   
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "debug.h"
 #include "spark_utilities.h"
 extern "C" {
 #include "usb_conf.h"
@@ -96,7 +97,7 @@ int main(void)
 
 	/* Enable CRC clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
-
+	DEBUG("Hello from Spark!");
 #if !defined (RGB_NOTIFICATIONS_ON)	&& defined (RGB_NOTIFICATIONS_OFF)
 	LED_RGB_OVERRIDE = 1;
 #endif
