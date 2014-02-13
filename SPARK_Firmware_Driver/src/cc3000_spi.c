@@ -1,12 +1,18 @@
 /**
   ******************************************************************************
   * @file    cc3000_spi.c
-  * @author  Satish Nair, Zachary Crockett and Mohit Bhoite
-  * @version V1.0.0
+  * @author  Satish Nair, Zachary Crockett, Mohit Bhoite and David Sidrane
+  * @version V2.0.0
   * @date    29-March-2013
   * @brief   This file contains all the functions prototypes for the
   *          CC3000 SPI firmware driver.
+  *
+  *   feb-12-2014 V2.00  David Sidrane david_s5@usa.net see
+  *   http://nscdg.com/spark/David_Sidrane's_rework_of_the_TI_CC3000_driver_for_Spark.pdf
+  *   for details of rework
   ******************************************************************************
+
+
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
 
   This program is free software; you can redistribute it and/or
