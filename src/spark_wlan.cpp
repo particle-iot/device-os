@@ -27,6 +27,29 @@
 #include "string.h"
 #include "wifi_credentials_reader.h"
 
+#define DEBUG_WIFI
+#if defined(DEBUG_WIFI)
+static uint32_t lastEvent = 0;
+#define SET_LAST_EVENT(x) do {lastEvent = (x);} while(0)
+#define GET_LAST_EVENT(x) do { x = lastEvent; lastEvent = 0;} while(0)
+#define DUMP_STATE() do { \
+    DEBUG("\r\nWLAN_MANUAL_CONNECT=%d\r\nWLAN_DELETE_PROFILES=%d\r\nWLAN_SMART_CONFIG_START=%d\r\nWLAN_SMART_CONFIG_STOP=%d", \
+          WLAN_MANUAL_CONNECT,WLAN_DELETE_PROFILES,WLAN_SMART_CONFIG_START, WLAN_SMART_CONFIG_STOP); \
+    DEBUG("\r\nWLAN_SMART_CONFIG_FINISHED=%d\r\nWLAN_SERIAL_CONFIG_DONE=%d\r\nWLAN_CONNECTED=%d\r\nWLAN_DHCP=%d\r\nWLAN_CAN_SHUTDOWN=%d", \
+          WLAN_SMART_CONFIG_FINISHED,WLAN_SERIAL_CONFIG_DONE,WLAN_CONNECTED,WLAN_DHCP,WLAN_CAN_SHUTDOWN); \
+    DEBUG("\r\nSPARK_WLAN_RESET=%d\r\nSPARK_WLAN_SLEEP=%d\r\nSPARK_WLAN_STARTED=%d\r\nSPARK_SOCKET_HANDSHAKE=%d", \
+           SPARK_WLAN_RESET,SPARK_WLAN_SLEEP,SPARK_WLAN_STARTED,SPARK_SOCKET_HANDSHAKE); \
+    DEBUG("\r\nSPARK_SOCKET_CONNECTED=%d\r\nSPARK_HANDSHAKE_COMPLETED=%d\r\nSPARK_FLASH_UPDATE=%d\r\nSPARK_LED_FADE=%d\r\n", \
+           SPARK_SOCKET_CONNECTED,SPARK_HANDSHAKE_COMPLETED,SPARK_FLASH_UPDATE,SPARK_LED_FADE); \
+ } while(0)
+
+#define ON_EVENT_DELTA()  do { if (lastEvent != 0) { uint32_t l; GET_LAST_EVENT(l); DEBUG("\r\nAsyncEvent 0x%04x", l); DUMP_STATE();}} while(0)
+#else
+#define SET_LAST_EVENT(x)
+#define GET_LAST_EVENT(x)
+#define DUMP_STATE()
+#define ON_EVENT_DELTA()
+#endif
 tNetappIpconfigRetArgs ip_config;
 
 volatile int8_t  WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
@@ -38,6 +61,22 @@ volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
 volatile uint8_t WLAN_CONNECTED;
 volatile uint8_t WLAN_DHCP;
 volatile uint8_t WLAN_CAN_SHUTDOWN;
+
+enum eWanTimings {
+  CONNECT_TO_ADDRESS_MAX = S2M(30),
+  DISCONNECT_TO_RECONNECT = S2M(30),
+};
+#define DEBUG_WAN_WD
+#if defined(DEBUG_WAN_WD)
+#define WAN_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
+#else
+#define WAN_WD_DEBUG(x,...)
+#endif
+uint32_t wlan_watchdog = 0;
+#define ARM_WLAN_WD(x) do { wlan_watchdog = millis()+(x); WAN_WD_DEBUG("WD Set "#x" %d",(x));}while(0)
+#define WLAN_WD_TO() (wlan_watchdog && (millis() >= wlan_watchdog))
+#define CLR_WLAN_WD() do { wlan_watchdog = 0; WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog);;}while(0)
+
 
 void (*announce_presence)(void);
 
@@ -250,6 +289,7 @@ void Start_Smart_Config(void)
 /* WLAN Application related callbacks passed to wlan_init */
 void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 {
+        SET_LAST_EVENT(lEventType);
 	switch (lEventType)
 	{
 		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
@@ -260,11 +300,13 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 
 		case HCI_EVNT_WLAN_UNSOL_CONNECT:
 			WLAN_CONNECTED = 1;
+  		        ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
 			if(WLAN_CONNECTED)
 			{
+                        ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
 #if defined (USE_SPARK_CORE_V01)
 				LED_Off(LED2);
 #elif defined (USE_SPARK_CORE_V02)
@@ -284,6 +326,9 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 					WLAN_SMART_CONFIG_START = 1;
 				}
 			}
+			if (WLAN_MANUAL_CONNECT == -1) {
+			    WLAN_MANUAL_CONNECT = 1;
+			}
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_SOCKET_CONNECTED = 0;
@@ -297,6 +342,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			if (*(data + 20) == 0)
 			{
 				WLAN_DHCP = 1;
+				CLR_WLAN_WD();
 #if defined (USE_SPARK_CORE_V01)
 				LED_On(LED2);
 #elif defined (USE_SPARK_CORE_V02)
@@ -426,8 +472,9 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 void SPARK_WLAN_Loop(void)
 {
         static int cofd_count = 0;
+        ON_EVENT_DELTA();
 
-        if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
+        if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || WLAN_WD_TO())
 	{
 		if(SPARK_WLAN_STARTED)
 		{
@@ -435,6 +482,8 @@ void SPARK_WLAN_Loop(void)
 			{
 				LED_Signaling_Stop();
 			}
+			DEBUG("Resetting CC3000!");
+			CLR_WLAN_WD();
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_WLAN_RESET = 0;
@@ -470,8 +519,10 @@ void SPARK_WLAN_Loop(void)
 	{
 		if(!SPARK_WLAN_STARTED)
 		{
+                      if (WLAN_MANUAL_CONNECT == 0) {
+                          ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
+                      }
 			wlan_start(0);
-
 			SPARK_WLAN_STARTED = 1;
 		}
 	}
@@ -483,6 +534,7 @@ void SPARK_WLAN_Loop(void)
 	}
 	else if (WLAN_MANUAL_CONNECT > 0 && !WLAN_DHCP)
 	{
+	    CLR_WLAN_WD();
 	    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
 	    /* Edit the below line before use*/
 	    wlan_connect(WLAN_SEC_WPA2, _ssid, strlen(_ssid), NULL, (unsigned char*)_password, strlen(_password));
