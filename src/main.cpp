@@ -4,6 +4,9 @@
  * @author  Satish Nair, Zachary Crockett, Zach Supalla and Mohit Bhoite
  * @version V1.0.0
  * @date    13-March-2013
+ * 
+ * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
+ * 
  * @brief   Main program body.
  ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
@@ -25,6 +28,7 @@
   
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "debug.h"
 #include "spark_utilities.h"
 extern "C" {
 #include "usb_conf.h"
@@ -101,7 +105,7 @@ int main(void)
 
 	/* Enable CRC clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
-
+	DEBUG("Hello from Spark!");
 #if !defined (RGB_NOTIFICATIONS_ON)	&& defined (RGB_NOTIFICATIONS_OFF)
 	LED_RGB_OVERRIDE = 1;
 #endif
