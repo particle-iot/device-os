@@ -72,7 +72,6 @@ volatile uint8_t SPARK_LED_FADE;
 volatile uint8_t Spark_Error_Count;
 volatile uint8_t Cloud_Handshake_Error_Count;
 
-bool wlan_sockets[MAX_SOCK_NUM] = {false, false, false, false, false, false, false, false};
 
 void Set_NetApp_Timeout(void)
 {
@@ -238,6 +237,9 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 {
 	switch (lEventType)
 	{
+	        default:
+	          break;
+
 		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
 			WLAN_SMART_CONFIG_FINISHED = 1;
 			WLAN_SMART_CONFIG_STOP = 1;
@@ -266,6 +268,9 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 					WLAN_SMART_CONFIG_START = 1;
 				}
 			}
+			if (WLAN_MANUAL_CONNECT == -1) {
+			    WLAN_MANUAL_CONNECT = 1;
+			}
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_SOCKET_CONNECTED = 0;
@@ -293,10 +298,9 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			break;
 
 		case HCI_EVNT_BSD_TCP_CLOSE_WAIT:
-		    uint8_t socket = data[0];
-		    if (socket < MAX_SOCK_NUM)
-		    {
-				wlan_sockets[socket] = true;
+                      long socket = -1;
+		      STREAM_TO_UINT32(data,0,socket);
+		      set_socket_active_status(socket, SOCKET_STATUS_INACTIVE);
 				if(socket == sparkSocket)
 				{
 					SPARK_FLASH_UPDATE = 0;
@@ -305,7 +309,6 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 					SPARK_SOCKET_CONNECTED = 0;
 					SPARK_WLAN_RESET = 1;
 				}
-		    }
 		    break;
 	}
 }

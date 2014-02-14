@@ -4,6 +4,8 @@
  * @author  Satish Nair
  * @version V1.0.0
  * @date    13-Nov-2013
+ *
+ * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
  * @brief   
  ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
@@ -25,6 +27,12 @@
  */
 
 #include "spark_wiring_udp.h"
+
+
+static bool inline isOpen(long sd)
+{
+   return sd != MAX_SOCK_NUM;
+}
 
 UDP::UDP() : _sock(MAX_SOCK_NUM)
 {
@@ -59,6 +67,7 @@ uint8_t UDP::begin(uint16_t port)
               DEBUG("bind socket=%d",_sock);
               bound = bind(_sock, (sockaddr*)&tUDPAddr, sizeof(tUDPAddr)) >= 0;
               DEBUG("socket=%d bound=%d",_sock,bound);
+
               if(!bound)
               {
                   stop();
@@ -78,22 +87,27 @@ int UDP::available()
 void UDP::stop()
 {
   DEBUG("_sock %d closesocket", _sock);
-  int rv = closesocket(_sock);
-  DEBUG("_sock %d closed=%d", _sock, rv);
+  if (isOpen(_sock))
+  {
+      int rv = closesocket(_sock);
+      DEBUG("_sock %d closed=%d", _sock, rv);
+  }
  _sock = MAX_SOCK_NUM;
 }
 
 int UDP::beginPacket(const char *host, uint16_t port)
 {
-	uint32_t ip_addr = 0;
+        if(isWanReady())
+        {
+	   uint32_t ip_addr = 0;
 
-	if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
-	{
-		IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
+          if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
+          {
+                  IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
 
-		return beginPacket(remote_addr, port);
-	}
-
+                  return beginPacket(remote_addr, port);
+          }
+        }
 	return 0;
 }
 
@@ -130,16 +144,15 @@ size_t UDP::write(uint8_t byte)
 size_t UDP::write(const uint8_t *buffer, size_t size)
 {
 
-        DEBUG("(Closed ? %d)",get_socket_active_status(_sock)==SOCKET_STATUS_INACTIVE);
 	int rv =  sendto(_sock, buffer, size, 0, &_remoteSockAddr, _remoteSockAddrLen);
         DEBUG("sendto(buffer=%lx, size=%d)=%d",buffer, size , rv);
-        DEBUG("(Closed ? %d)",get_socket_active_status(_sock)==SOCKET_STATUS_INACTIVE);
 	return rv;
 }
 
 int UDP::parsePacket()
 {
-  if(available() == 0 && connected())
+  // No data buffered
+  if(available() == 0 && isWanReady() && isOpen(_sock))
   {
       _types_fd_set_cc3000 readSet;
       timeval timeout;
@@ -202,9 +215,4 @@ void UDP::flush()
   _offset = 0;
   _total = 0;
 
-}
-
-uint8_t UDP::connected()
-{
-   return  (isWanReady() && (_sock != MAX_SOCK_NUM)) ? 1 : 0;
 }
