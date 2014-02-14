@@ -8,9 +8,14 @@ CPP = $(GCC_PREFIX)g++
 AR = $(GCC_PREFIX)ar
 OBJCOPY = $(GCC_PREFIX)objcopy
 SIZE = $(GCC_PREFIX)size
+DFU = dfu-util
+CURL = curl
 
 RM = rm -f
 MKDIR = mkdir -p
+
+# URL to invoke cloud flashing
+CLOUD_FLASH_URL = https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token=$(SPARK_ACCESS_TOKEN)
 
 # Recursive wildcard function
 rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
@@ -104,6 +109,18 @@ elf: $(TARGET).elf
 bin: $(TARGET).bin
 hex: $(TARGET).hex
 
+# Program the core using dfu-util. The core should have been placed
+# in bootloader mode before invoking 'make program-dfu'
+program-dfu: $(TARGET).bin
+	@echo Flashing using dfu:
+	$(DFU) -d 1d50:607f -a 0 -s 0x08005000:leave -D $<
+
+# Program the core using the cloud. SPARK_CORE_ID and SPARK_ACCESS_KEY must
+# have been defined in the environment before invoking 'make program-cloud'
+program-cloud: $(TARGET).bin
+	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
+	$(CURL) -X PUT -F file=@$< -F file_type=binary $(CLOUD_FLASH_URL)
+
 # Display size
 size: $(TARGET).elf
 	@echo Invoking: ARM GNU Print Size
@@ -180,7 +197,7 @@ clean:
 	@$(MAKE) -C $(SRC_PATH)/$(LIB_CORE_COMMUNICATION_PATH)/build clean --no-print-directory
 	@echo
 
-.PHONY: all clean check_external_deps elf bin hex size
+.PHONY: all clean check_external_deps elf bin hex size program-dfu program-cloud
 .SECONDARY:
 
 # Include auto generated dependancy files
