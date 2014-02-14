@@ -418,12 +418,13 @@ void SparkProtocol::variable_value(unsigned char *buf,
   encrypt(buf, 16);
 }
 
-void SparkProtocol::variable_value(unsigned char *buf,
-                                   unsigned char token,
-                                   unsigned char message_id_msb,
-                                   unsigned char message_id_lsb,
-                                   const void *return_value,
-                                   int length)
+// Returns the length of the buffer to send
+int SparkProtocol::variable_value(unsigned char *buf,
+                                  unsigned char token,
+                                  unsigned char message_id_msb,
+                                  unsigned char message_id_lsb,
+                                  const void *return_value,
+                                  int length)
 {
   buf[0] = 0x61; // acknowledgment, one-byte token
   buf[1] = 0x45; // response code 2.05 CONTENT
@@ -440,6 +441,8 @@ void SparkProtocol::variable_value(unsigned char *buf,
   memset(buf + msglen, pad, pad); // PKCS #7 padding
 
   encrypt(buf, buflen);
+
+  return buflen;
 }
 
 void SparkProtocol::event(unsigned char *buf,
@@ -839,7 +842,7 @@ bool SparkProtocol::handle_received_message(void)
       memset(variable_key + variable_key_length, 0, 13 - variable_key_length);
 
       queue[0] = 0;
-      queue[1] = 16; //default buffer length
+      queue[1] = 16; // default buffer length
 
       // get variable value according to type using the descriptor
       SparkReturnType::Enum var_type = descriptor.variable_type(variable_key);
@@ -856,9 +859,17 @@ bool SparkProtocol::handle_received_message(void)
       else if(SparkReturnType::STRING == var_type)
       {
         char *str_val = (char *)descriptor.get_variable(variable_key);
-		unsigned char str_length = (strlen(str_val)>233) ? 233 : strlen(str_val); //truncate too long string
-        variable_value(queue + 2, token, queue[2], queue[3], str_val, str_length);
-		queue[1]=((6+str_length) & ~15) + 16; //buffer length from variable_value
+
+        // 2-byte leading length, 16 potential padding bytes
+        int max_length = QUEUE_SIZE - 2 - 16;
+        int str_length = strlen(str_val);
+        if (str_length > max_length) {
+          str_length = max_length;
+        }
+
+        int buf_size = variable_value(queue + 2, token, queue[2], queue[3], str_val, str_length);
+        queue[1] = buf_size & 0xff;
+        queue[0] = (buf_size >> 8) & 0xff;
       }
       else if(SparkReturnType::DOUBLE == var_type)
       {
@@ -866,7 +877,8 @@ bool SparkProtocol::handle_received_message(void)
         variable_value(queue + 2, token, queue[2], queue[3], *double_val);
       }
 
-      if (0 > blocking_send(queue, queue[1]+2)) //queue length from variable in case of a long string
+      // buffer length may have changed if variable is a long string
+      if (0 > blocking_send(queue, (queue[0] << 8) + queue[1] + 2))
       {
         // error
         return false;

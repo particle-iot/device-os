@@ -105,9 +105,9 @@ class SparkProtocol
     void variable_value(unsigned char *buf, unsigned char token,
                         unsigned char message_id_msb, unsigned char message_id_lsb,
                         double return_value);
-    void variable_value(unsigned char *buf, unsigned char token,
-                        unsigned char message_id_msb, unsigned char message_id_lsb,
-                        const void *return_value, int length);
+    int variable_value(unsigned char *buf, unsigned char token,
+                       unsigned char message_id_msb, unsigned char message_id_lsb,
+                       const void *return_value, int length);
     void event(unsigned char *buf,
                const char *event_name,
                int event_name_length);
