@@ -37,10 +37,10 @@
 /* Private variables ---------------------------------------------------------*/
 uint8_t USE_SYSTEM_FLAGS = 0;	//0, 1
 
-__IO uint32_t TimingDelay;
-__IO uint32_t TimingLED;
-__IO uint32_t TimingBUTTON;
-__IO uint32_t TimingIWDGReload;
+volatile uint32_t TimingDelay;
+volatile uint32_t TimingLED;
+volatile uint32_t TimingBUTTON;
+volatile uint32_t TimingIWDGReload;
 
 __IO uint8_t IWDG_SYSTEM_RESET;
 
