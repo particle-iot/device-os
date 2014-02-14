@@ -807,11 +807,17 @@ hci_unsolicited_event_handler(void)
 //*****************************************************************************
 void set_socket_active_status(long Sd, long Status)
 {
+        DEBUG("Sd=%d, Status %s",Sd, Status == SOCKET_STATUS_ACTIVE ?  "SOCKET_STATUS_ACTIVE" : "SOCKET_STATUS_IACTIVE");
 	if(M_IS_VALID_SD(Sd) && M_IS_VALID_STATUS(Status))
 	{
+	        uint32_t is = __get_PRIMASK();
+              __disable_irq();
 		socket_active_status &= ~(1 << Sd);      /* clean socket's mask */
 		socket_active_status |= (Status << Sd); /* set new socket's mask */
+              if ((is & 1) == 0) {
+                  __enable_irq();
 	}
+}
 }
 
 
@@ -868,11 +874,17 @@ hci_event_unsol_flowcontrol_handler(char *pEvent)
 long
 get_socket_active_status(long Sd)
 {
+        long rv = SOCKET_STATUS_INACTIVE;
 	if(M_IS_VALID_SD(Sd))
 	{
-		return (socket_active_status & (1 << Sd)) ? SOCKET_STATUS_INACTIVE : SOCKET_STATUS_ACTIVE;
+            uint32_t is = __get_PRIMASK();
+            __disable_irq();
+            rv = (socket_active_status & (1 << Sd)) ? SOCKET_STATUS_INACTIVE : SOCKET_STATUS_ACTIVE;
+            if ((is & 1) == 0) {
+                __enable_irq();
+            }
 	}
-	return SOCKET_STATUS_INACTIVE;
+	return rv;
 }
 
 //*****************************************************************************
