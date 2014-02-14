@@ -238,7 +238,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, long *fromlen)
 		if (tSLInformation.usEventOrDataReceived == 0)
 		{
                     volatile system_tick_t now = GetSystem1MsTick();
-                    volatile system_tick_t elapsed = now - start;
+                    volatile long elapsed = now - start;
                       if (elapsed < 0) { // Did we wrap
                          elapsed = start + now; // yes now
                       }
