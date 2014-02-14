@@ -145,8 +145,6 @@ void setup1()
 
 void loop1()
 {
-    loop3();
-return;
     delay(1);
     switch(state){
         case 0:
