@@ -4,6 +4,8 @@
  * @author  Satish Nair, Zachary Crockett and Mohit Bhoite
  * @version V1.0.0
  * @date    13-March-2013
+ *
+ * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
  * @brief   
  ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
@@ -453,7 +455,7 @@ void Spark_Protocol_Init(void)
     callbacks.calculate_crc = Compute_CRC32;
     callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
     callbacks.signal = Spark_Signal;
-    callbacks.millis = (unsigned long (*)())millis;
+    callbacks.millis = millis;
 
     SparkDescriptor descriptor;
     descriptor.num_functions = numUserFunctions;
