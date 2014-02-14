@@ -155,7 +155,6 @@ typedef struct _bsd_gethostbyname_return_t
 
 
 extern uint32_t cc3000__event_timeout_ms;
-unsigned long micros(void);
 //*****************************************************************************
 //
 // Mark the end of the C bindings section for C++ compilers.

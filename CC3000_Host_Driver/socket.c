@@ -3,6 +3,8 @@
 *  socket.c  - CC3000 Host Driver Implementation.
 *  Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
 *
+*  Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
+
 *  Redistribution and use in source and binary forms, with or without
 *  modification, are permitted provided that the following conditions
 *  are met:
@@ -47,6 +49,9 @@
 #include "socket.h"
 #include "evnt_handler.h"
 #include "netapp.h"
+#include "hw_config.h"
+#include "debug.h"
+#include "spark_macros.h"
 
 
 
@@ -114,6 +119,8 @@ HostFlowControlConsumeBuff(int sd)
 {
 #ifndef SEND_NON_BLOCKING
 	/* wait in busy loop */
+        volatile system_tick_t start = GetSystem1MsTick();
+
 	do
 	{
 		// In case last transmission failed then we will return the last failure 
@@ -126,8 +133,19 @@ HostFlowControlConsumeBuff(int sd)
 			return errno;
 		}
 		
-		if(SOCKET_STATUS_ACTIVE != get_socket_active_status(sd))
+		if(SOCKET_STATUS_ACTIVE != get_socket_active_status(sd)) {
+		    return -1;
+		}
+                volatile system_tick_t now = GetSystem1MsTick();
+                volatile long elapsed = now - start;
+                if (elapsed < 0) { // Did we wrap
+                   elapsed = start + now; // yes now
+                }
+                if (elapsed >= cc3000__event_timeout_ms) {
+                    ERROR("Timeout waiting on on buffers now %ld start %ld elapsed %ld cc3000__event_timeout_ms %ld",now,start,elapsed,cc3000__event_timeout_ms);
 			return -1;
+                }
+
 	} while(0 == tSLInformation.usNumberOfFreeBuffers);
 	
 	tSLInformation.usNumberOfFreeBuffers--;
@@ -998,13 +1016,11 @@ simple_link_send(long sd, const void *buf, long len, long flags,
         tBsdReadReturnParams tSocketSendEvent;
 	
   // Check if there is a buffer
-  // Call Can be blocking!
-  CC3000_API_BLOCKING = 1;
+	// Call has Timeout
 	if (0 != (res = HostFlowControlConsumeBuff(sd)))
 	{
 		return res;
 	}
-	CC3000_API_BLOCKING = 0;
 	
 	//Update the number of sent packets
 	tSLInformation.NumberOfSentPackets++;
