@@ -54,25 +54,23 @@
 #define sFLASH_SST25VF040_ID			0xBF258D	/* JEDEC Read-ID Data */
 #define sFLASH_SST25VF016_ID			0xBF2541	/* JEDEC Read-ID Data */
 
-/* High layer functions */
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+/* High level functions. */
 void sFLASH_Init(void);
 void sFLASH_EraseSector(uint32_t SectorAddr);
 void sFLASH_EraseBulk(void);
-void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte);
-void sFLASH_WritePage(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite);
-void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite);
-void sFLASH_ReadBuffer(uint8_t* pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead);
+void sFLASH_WriteBuffer(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
+void sFLASH_ReadBuffer(uint8_t *pBuffer, uint32_t ReadAddr, uint32_t NumByteToRead);
 uint32_t sFLASH_ReadID(void);
-
-/* Low layer functions */
-uint8_t sFLASH_SendByte(uint8_t byte);
-void sFLASH_WriteEnable(void);
-void sFLASH_WriteDisable(void);
-void sFLASH_WaitForWriteEnd(void);
 
 /* Flash Self Test Routine */
 int sFLASH_SelfTest(void);
 
-extern void Delay(__IO uint32_t nTime);
+#ifdef __cplusplus
+} /* extern "C" */
+#endif /* __cplusplus */
 
 #endif /* __SST25VF_SPI_H */

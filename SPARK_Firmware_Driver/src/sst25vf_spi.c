@@ -27,6 +27,14 @@
 /* Includes ------------------------------------------------------------------*/
 #include "sst25vf_spi.h"
 
+/* Local function forward declarations ---------------------------------------*/
+static void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte);
+static void sFLASH_WriteBytes(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
+static void sFLASH_WriteEnable(void);
+static void sFLASH_WriteDisable(void);
+static void sFLASH_WaitForWriteEnd(void);
+static uint8_t sFLASH_SendByte(uint8_t byte);
+
 /**
   * @brief Initializes SPI Flash
   * @param void
@@ -123,11 +131,12 @@ void sFLASH_EraseBulk(void)
 
 /**
   * @brief  Write one byte to the FLASH.
+  * @note   Addresses to be written must be in the erased state
   * @param  WriteAddr: FLASH's internal address to write to.
   * @param  byte: the data to be written.
   * @retval None
   */
-void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte)
+static void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte)
 {
   /* Enable the write access to the FLASH */
   sFLASH_WriteEnable();
@@ -152,15 +161,16 @@ void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte)
 
 /**
   * @brief  Writes more than one byte to the FLASH.
-  * @note   The number of bytes can't exceed the FLASH page size.
+  * @note   The address must be even and the number of bytes must be a multiple
+  *         of two.
+  * @note   Addresses to be written must be in the erased state
   * @param  pBuffer: pointer to the buffer containing the data to be written
   *         to the FLASH.
-  * @param  WriteAddr: FLASH's internal address to write to.
-  * @param  NumByteToWrite: number of bytes to write to the FLASH, must be even,
-  *         equal or less than "sFLASH_PAGESIZE" value.
+  * @param  WriteAddr: FLASH's internal address to write to, must be even.
+  * @param  NumByteToWrite: number of bytes to write to the FLASH, must be even.
   * @retval None
   */
-void sFLASH_WritePage(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+static void sFLASH_WriteBytes(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
 {
   /* Enable the write access to the FLASH */
   sFLASH_WriteEnable();
@@ -214,80 +224,42 @@ void sFLASH_WritePage(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWr
 
 /**
   * @brief  Writes block of data to the FLASH.
+  * @note   Addresses to be written must be in the erased state
   * @param  pBuffer: pointer to the buffer  containing the data to be written
   *         to the FLASH.
   * @param  WriteAddr: FLASH's internal address to write to.
   * @param  NumByteToWrite: number of bytes to write to the FLASH.
   * @retval None
   */
-void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+void sFLASH_WriteBuffer(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
 {
-  uint8_t NumOfPage = 0, NumOfSingle = 0, Addr = 0, count = 0, temp = 0;
+  uint32_t evenBytes;
 
-  Addr = WriteAddr % sFLASH_PAGESIZE;
-  count = sFLASH_PAGESIZE - Addr;
-  NumOfPage =  NumByteToWrite / sFLASH_PAGESIZE;
-  NumOfSingle = NumByteToWrite % sFLASH_PAGESIZE;
-
-  if (Addr == 0) /* WriteAddr is sFLASH_PAGESIZE aligned  */
+  /* If write starts at an odd address, need to use single byte write
+   * to write the first address. */
+  if ((WriteAddr & 0x1) == 0x1)
   {
-    if (NumOfPage == 0) /* NumByteToWrite < sFLASH_PAGESIZE */
-    {
-      sFLASH_WritePage(pBuffer, WriteAddr, NumByteToWrite);
-    }
-    else /* NumByteToWrite > sFLASH_PAGESIZE */
-    {
-      while (NumOfPage--)
-      {
-        sFLASH_WritePage(pBuffer, WriteAddr, sFLASH_PAGESIZE);
-        WriteAddr +=  sFLASH_PAGESIZE;
-        pBuffer += sFLASH_PAGESIZE;
-      }
-
-      sFLASH_WritePage(pBuffer, WriteAddr, NumOfSingle);
-    }
+    sFLASH_WriteByte(WriteAddr, *pBuffer++);
+    ++WriteAddr;
+    --NumByteToWrite;
   }
-  else /* WriteAddr is not sFLASH_PAGESIZE aligned  */
+
+  /* Write bulk of bytes using auto increment write, with restriction
+   * that address must always be even and two bytes are written at a time. */
+  evenBytes = NumByteToWrite & ~0x1;
+  if (evenBytes)
   {
-    if (NumOfPage == 0) /* NumByteToWrite < sFLASH_PAGESIZE */
-    {
-      if (NumOfSingle > count) /* (NumByteToWrite + WriteAddr) > sFLASH_PAGESIZE */
-      {
-        temp = NumOfSingle - count;
+    sFLASH_WriteBytes(pBuffer, WriteAddr, evenBytes);
+    NumByteToWrite -= evenBytes;
+  }
 
-        sFLASH_WritePage(pBuffer, WriteAddr, count);
-        WriteAddr +=  count;
-        pBuffer += count;
-
-        sFLASH_WritePage(pBuffer, WriteAddr, temp);
-      }
-      else
-      {
-        sFLASH_WritePage(pBuffer, WriteAddr, NumByteToWrite);
-      }
-    }
-    else /* NumByteToWrite > sFLASH_PAGESIZE */
-    {
-      NumByteToWrite -= count;
-      NumOfPage =  NumByteToWrite / sFLASH_PAGESIZE;
-      NumOfSingle = NumByteToWrite % sFLASH_PAGESIZE;
-
-      sFLASH_WritePage(pBuffer, WriteAddr, count);
-      WriteAddr +=  count;
-      pBuffer += count;
-
-      while (NumOfPage--)
-      {
-        sFLASH_WritePage(pBuffer, WriteAddr, sFLASH_PAGESIZE);
-        WriteAddr +=  sFLASH_PAGESIZE;
-        pBuffer += sFLASH_PAGESIZE;
-      }
-
-      if (NumOfSingle != 0)
-      {
-        sFLASH_WritePage(pBuffer, WriteAddr, NumOfSingle);
-      }
-    }
+  /* If number of bytes to write is odd, need to use a single byte write
+   * to write the last address. */
+  if (NumByteToWrite)
+  {
+    pBuffer += evenBytes;
+    WriteAddr += evenBytes;
+    sFLASH_WriteByte(WriteAddr, *pBuffer++);
   }
 }
 
@@ -298,7 +270,7 @@ void sFLASH_WriteBuffer(uint8_t* pBuffer, uint32_t WriteAddr, uint16_t NumByteTo
   * @param  NumByteToRead: number of bytes to read from the FLASH.
   * @retval None
   */
-void sFLASH_ReadBuffer(uint8_t* pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
+void sFLASH_ReadBuffer(uint8_t* pBuffer, uint32_t ReadAddr, uint32_t NumByteToRead)
 {
   /* Select the FLASH: Chip Select low */
   sFLASH_CS_LOW();
@@ -332,7 +304,7 @@ void sFLASH_ReadBuffer(uint8_t* pBuffer, uint32_t ReadAddr, uint16_t NumByteToRe
   */
 uint32_t sFLASH_ReadID(void)
 {
-  uint32_t Temp = 0, Temp0 = 0, Temp1 = 0, Temp2 = 0;
+  uint8_t byte[3];
 
   /* Select the FLASH: Chip Select low */
   sFLASH_CS_LOW();
@@ -341,22 +313,19 @@ uint32_t sFLASH_ReadID(void)
   sFLASH_SendByte(sFLASH_CMD_RDID);
 
   /* Read a byte from the FLASH */
-  Temp0 = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+  byte[0] = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
 
   /* Read a byte from the FLASH */
-  Temp1 = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+  byte[1] = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
 
   /* Read a byte from the FLASH */
-  Temp2 = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+  byte[2] = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
 
   /* Deselect the FLASH: Chip Select high */
   sFLASH_CS_HIGH();
 
-  Temp = (Temp0 << 16) | (Temp1 << 8) | Temp2;
-
-  return Temp;
+  return (byte[0] << 16) | (byte[1] << 8) | byte[2];
 }
-
 
 /**
   * @brief  Sends a byte through the SPI interface and return the byte received
@@ -364,7 +333,7 @@ uint32_t sFLASH_ReadID(void)
   * @param  byte: byte to send.
   * @retval The value of the received byte.
   */
-uint8_t sFLASH_SendByte(uint8_t byte)
+static uint8_t sFLASH_SendByte(uint8_t byte)
 {
   /* Loop while DR register in not empty */
   while (SPI_I2S_GetFlagStatus(sFLASH_SPI, SPI_I2S_FLAG_TXE) == RESET);
@@ -384,7 +353,7 @@ uint8_t sFLASH_SendByte(uint8_t byte)
   * @param  None
   * @retval None
   */
-void sFLASH_WriteEnable(void)
+static void sFLASH_WriteEnable(void)
 {
   /* Select the FLASH: Chip Select low */
   sFLASH_CS_LOW();
@@ -401,7 +370,7 @@ void sFLASH_WriteEnable(void)
   * @param  None
   * @retval None
   */
-void sFLASH_WriteDisable(void)
+static void sFLASH_WriteDisable(void)
 {
   /* Select the FLASH: Chip Select low */
   sFLASH_CS_LOW();
@@ -419,7 +388,7 @@ void sFLASH_WriteDisable(void)
   * @param  None
   * @retval None
   */
-void sFLASH_WaitForWriteEnd(void)
+static void sFLASH_WaitForWriteEnd(void)
 {
   uint8_t flashstatus = 0;
 

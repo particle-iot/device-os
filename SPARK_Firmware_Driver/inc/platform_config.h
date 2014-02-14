@@ -168,7 +168,7 @@
 #define sFLASH_MEM_CS_GPIO_PORT				GPIOB						/* GPIOB */
 #define sFLASH_MEM_CS_GPIO_CLK				RCC_APB2Periph_GPIOB
 
-#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_4
+#define sFLASH_SPI_BAUDRATE_PRESCALER		SPI_BaudRatePrescaler_2
 
 #define USB_DISCONNECT_GPIO_PIN           	GPIO_Pin_10
 #define USB_DISCONNECT_GPIO_PORT       		GPIOB
