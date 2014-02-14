@@ -26,6 +26,251 @@
 /* Includes ------------------------------------------------------------------*/  
 #include "application.h"
 
+
+#define RENEW_INTERVAL      5*1000      // 30 secs
+#define RETRY_INTERVAL      5*1000      // 10 secs
+#define RESPONSE_INTERVAL   1*1000       // 1 sec
+#define LET_IT_FILL_INTERVAL   3*1000       // 1 sec
+
+TCPClient client;
+char server[] = "nscdg.com";
+
+// IO
+int led = D2;
+
+// Globals
+volatile int state = 0;
+volatile int wait = 0;
+volatile int loopwait = 10;
+
+volatile int tries = 0;
+volatile int store = 0;
+volatile int hash = 0;
+
+volatile char command[32];
+volatile int command_i=0;
+
+
+#include "application.h"
+
+uint8_t buffer[TCPCLIENT_BUF_MAX_SIZE+1]; // for EOT
+int loops = 0;
+int total = 0;
+int wcl=2;
+
+
+#define SERVER_IP 10,10,0,1
+//------------------------------
+#define SERVER_PORT 9999
+#define WAIT_TIME 3000
+
+UDP udpClient;
+IPAddress serverAddress(SERVER_IP);
+
+void setup2() {
+  pinMode(D2,OUTPUT);
+}
+
+system_tick_t lastMillis = (system_tick_t) -WAIT_TIME;
+
+char buf[50];
+
+
+void loop2() {
+    if(millis() > lastMillis + WAIT_TIME){
+        udpClient.begin(SERVER_PORT);
+        udpClient.beginPacket(serverAddress,SERVER_PORT);
+        snprintf(buf, sizeof(buf),"tick %ld", lastMillis);
+        udpClient.write(buf);
+        udpClient.endPacket();
+        lastMillis = millis();
+        DEBUG("tick ************ %ld",lastMillis);
+        digitalWrite(D2,HIGH);
+        delay(20);
+        digitalWrite(D2,LOW);
+        udpClient.stop();
+
+  }
+}
+
+
+UDP Udp2;
+void setup3()
+{
+
+    DEBUG("UDB RX");
+
+    pinMode(led, OUTPUT);
+    // Button resistorless
+    state = 0;
+    wait = RETRY_INTERVAL;
+    Udp2.begin(8738);
+    // Connecting
+}
+
+void loop3()
+{
+      delay(1);
+      if (++loops == 100) {
+          loops = 0;
+        int packetSize = Udp2.parsePacket();
+        DEBUG("parsePacket %d", packetSize);
+        if(packetSize > 0)
+        {
+          int count = Udp2.read(buffer,sizeof(buffer));
+          buffer[count] = '\0';
+          DEBUG("read %d %s", count, buffer);
+          total += count;
+        }
+      }
+}
+
+
+
+
+int bad_mod = 0;
+int bad_every = 0;
+void setup1()
+{
+
+    LOG("Test TCP BAD Every %d Usage!",bad_every);
+
+    pinMode(led, OUTPUT);
+    // Button resistorless
+    state = 0;
+    wait = RETRY_INTERVAL;
+
+    // Connecting
+}
+
+void loop1()
+{
+    loop3();
+return;
+    delay(1);
+    switch(state){
+        case 0:
+            // Waiting for next time
+            wait-=10;
+            if(wait<0){
+                wait = 0;
+                state = 1;
+            }
+            break;
+        case 1:
+            // Connecting
+            bad_mod++;
+            DEBUG("connecting");
+            total = 0;
+            if (client.connect(server, 80)){
+                state = 2;
+            }else{
+                DEBUG("connection failed state 1");
+                wait = RETRY_INTERVAL;
+                state = 0;
+            }
+            break;
+        case 2:
+            // Requesting
+            if(client.connected()){
+                DEBUG (" Send");
+                client.println("GET /t.php HTTP/1.0\r\n\r\n");
+                if (bad_every  && ((bad_mod % bad_every) == 0))
+                  {
+                    DEBUG (" Sent but not Reading it!");
+                    wait = 1000 * 18; // longer then spark com time
+                    state = -2;
+                  } else {
+                      DEBUG (" Sent Doing Read");
+                      wait = RETRY_INTERVAL;
+                      state = -3;
+
+                  }
+            }else{
+                DEBUG("connection lost state 2");
+                wait = RETRY_INTERVAL;
+                state = 0;
+            }
+            break;
+
+        case -2:
+          if ((wait % 500) ==0) {
+              DEBUG("Waiting client.status()=%d",client.status()) ;
+          }
+#if defined(GOOD)
+          if (!client.status()) {
+              state = 4;
+              DEBUG("Waiting Aborted - Closing") ;
+          }
+#endif
+          wait--;
+
+          if(wait<0){
+              wait = 0;
+              state = 4;
+          }
+          break;
+
+        case -3:
+          if (client.available()) {
+              DEBUG ("Ready");
+              state = 3;
+              loops = 0;
+          }
+          wait--;
+          if(wait<0){
+              wait = 0;
+              state = 4;
+          }
+          break;
+
+        case 3: {
+          if(!client.connected()){
+              wait = 1;
+              state = 4;
+          } else {
+              // Receiving
+            int count = client.available();
+            if (count) {
+                  DEBUG("client.available() %d", count);
+                  // Print response to serial
+                  DEBUG("client.peek %d", client.peek());
+
+                  count = client.read(buffer, arraySize(buffer));
+                  buffer[count] ='\0';
+                  char *p = strstr((const char *)buffer,"0.1.2.3");
+                  if (p)
+                    {
+                     total = -(p-(char*)buffer);
+                    }
+                  total += count;
+                  DEBUG("client.read() %d", count);
+                  debug_output_((const char*)buffer);
+                  debug_output_("\r\n");
+             }
+          }
+        }
+            break;
+        case 4:
+          DEBUG("\r\n\r\n");
+          DEBUG("%d total Bytes Read\r\n\r\n",total);
+            // Disconnecting
+            if(client.connected()){
+                client.stop();
+                DEBUG("connection closed state 4");
+                wait = RENEW_INTERVAL;
+                state = 0;
+            }else{
+                DEBUG("connection closed by server state 4");
+                wait = RENEW_INTERVAL;
+                state = 0;
+            }
+            break;
+      }
+}
+
+
+
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
 int tinkerDigitalWrite(String command);
@@ -38,6 +283,10 @@ void setup()
 	//Setup the Tinker application here
 
 	//Register all the Tinker functions
+
+//        setup1();
+//        setup2();
+        setup3();
 	Spark.function("digitalread", tinkerDigitalRead);
 	Spark.function("digitalwrite", tinkerDigitalWrite);
 
@@ -47,9 +296,24 @@ void setup()
 }
 
 /* This function loops forever --------------------------------------------*/
+
+void debug_output_(const char *p)
+{
+  static boolean once = false;
+ if (!once)
+   {
+     once = true;
+     Serial1.begin(115200);
+   }
+
+ Serial1.print(p);
+}
+
+
 void loop()
 {
 	//This will run in a loop
+	  loop1();
 }
 
 /*******************************************************************************

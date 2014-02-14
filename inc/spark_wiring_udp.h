@@ -43,7 +43,7 @@ private:
 	uint16_t _offset;
         uint16_t _total;
         inline int isWanReady();
-        uint8_t connected();
+
 public:
 	UDP();
 

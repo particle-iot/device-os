@@ -4,6 +4,8 @@
  * @author  Satish Nair
  * @version V1.0.0
  * @date    10-Nov-2013
+ *
+ * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
  * @brief   
  ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
@@ -27,12 +29,10 @@
 
 uint16_t TCPClient::_srcport = 1024;
 
-// ToDO There seems to be inconsistency of use of open wlan_sockets[_sock] in
-// commit ab42a580b79321756b1392d18c85846481df00ec so it is commented out here
-// Lets define enum eSocketState{  eSocketClosed, eSocketOpen }
-// Let also look at (SOCKET_STATUS_INACTIVE != get_socket_active_status(_sock)
-// To see if the 2 concepts can be merged down to 1
-
+static bool inline isOpen(long sd)
+{
+   return sd != MAX_SOCK_NUM;
+}
 
 TCPClient::TCPClient() : _sock(MAX_SOCK_NUM)
 {
@@ -95,7 +95,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
             if(!connected)
             {
                 stop();
-            } // Todo else mark socket open wlan_sockets[_sock] = eSocketOpen;
+            }
           }
         }
         return connected;
@@ -108,7 +108,7 @@ size_t TCPClient::write(uint8_t b)
 
 size_t TCPClient::write(const uint8_t *buffer, size_t size)
 {
-        return connected() ? send(_sock, buffer, size, 0) : -1;
+        return status() ? send(_sock, buffer, size, 0) : -1;
 }
 
 int TCPClient::isWanReady()
@@ -123,43 +123,45 @@ int TCPClient::bufferCount()
 
 int TCPClient::available() 
 {
-        int avail = 0;
-        if(connected())
+    int avail = 0;
+
+    // At EOB => Flush it
+    if (_total && _offset == _total)
+    {
+      flush();
+    }
+
+    if( isWanReady() && isOpen(_sock))
+    {
+        // Have room
+        if ( _total < arraySize(_buffer))
         {
-          // Have room
-          if (_total && _offset == _total)
+          _types_fd_set_cc3000 readSet;
+          timeval timeout;
+
+          FD_ZERO(&readSet);
+          FD_SET(_sock, &readSet);
+
+          timeout.tv_sec = 0;
+          timeout.tv_usec = 5000;
+
+          if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
           {
-             flush();
-          }
-
-          if ( _total < arraySize(_buffer))
-          {
-            _types_fd_set_cc3000 readSet;
-            timeval timeout;
-
-            FD_ZERO(&readSet);
-            FD_SET(_sock, &readSet);
-
-            timeout.tv_sec = 0;
-            timeout.tv_usec = 5000;
-
-            if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
-            {
-                    if (FD_ISSET(_sock, &readSet))
-                    {
-                            int ret = recv(_sock, _buffer + _total , arraySize(_buffer)-_total, 0);
-                            DEBUG("recv(=%d)",ret);
-                            if (ret > 0)
-                            {
-                                    if (_total == 0) _offset = 0;
-                                    _total += ret;
-                            }
-                    }
-            }
-          }
-          avail = bufferCount();
-        }
-        return avail;
+              if (FD_ISSET(_sock, &readSet))
+              {
+                  int ret = recv(_sock, _buffer + _total , arraySize(_buffer)-_total, 0);
+                  DEBUG("recv(=%d)",ret);
+                  if (ret > 0)
+                  {
+                      if (_total == 0) _offset = 0;
+                      _total += ret;
+                  }
+              }
+          } // Select
+          } // Have Space
+    } // isWanReady() && isOpen(_sock)
+    avail = bufferCount();
+    return avail;
 }
 
 int TCPClient::read() 
@@ -194,32 +196,38 @@ void TCPClient::flush()
 void TCPClient::stop() 
 {
   DEBUG("_sock %d closesocket", _sock);
-  int rv = closesocket(_sock);
-  //Todo mark socket closed wlan_sockets[_sock] = eSocketClosed;
-  DEBUG("_sock %d closed=%d", _sock, rv);
+
+  if (isOpen(_sock))
+  {
+      int rv = closesocket(_sock);
+      DEBUG("_sock %d closed=%d", _sock, rv);
+  }
  _sock = MAX_SOCK_NUM;
 }
 
 bool TCPClient::connected() 
 {
-   bool rv =   (_sock != MAX_SOCK_NUM)
-               && (isWanReady()
-               && (SOCKET_STATUS_INACTIVE != get_socket_active_status(_sock))) ? 1 : 0;
- /*     Todo && wlan_sockets[_sock] == eSocketOpen /
-    if (!rv && _sock != MAX_SOCK_NUM) {
-       stop(0);
-   }
- */
-   return rv;
+  // Wlan up, open and not in CLOSE_WAIT or data still in the local buffer
+  bool rv = ( 1 == status() || bufferCount()) ? true : false;
+  // no data in the local buffer, Socket open but my be in CLOSE_WAIT yet the CC3000 may have data in its buffer
+  if(!rv && isOpen(_sock) && (SOCKET_STATUS_INACTIVE == get_socket_active_status(_sock)))
+    {
+      rv = available(); // Try CC3000
+      if (!rv) {        // No more Data and CLOSE_WAIT
+          DEBUG("caling Stop No more Data and in CLOSE_WAIT");
+          stop();       // Close our side
+      }
+  }
+  return rv;
 }
 
 uint8_t TCPClient::status()
 {
-  // TODO
-  return connected();
+  return (isOpen(_sock) && isWanReady() && (SOCKET_STATUS_ACTIVE == get_socket_active_status(_sock)) ? 1 : 0);
+
 }
 
 TCPClient::operator bool()
 {
-   return 1 == connected() ? true : false;
+   return (status() ? 1 : 0);
 }

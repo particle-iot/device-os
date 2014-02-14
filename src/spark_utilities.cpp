@@ -4,6 +4,8 @@
  * @author  Satish Nair, Zachary Crockett and Mohit Bhoite
  * @version V1.0.0
  * @date    13-March-2013
+ *
+ * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
  * @brief   
  ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
@@ -325,7 +327,6 @@ int Spark_Send(const unsigned char *buf, int buflen)
 
   // send returns negative numbers on error
   int bytes_sent = send(sparkSocket, buf, buflen, 0);
-  TimingCloudActivityTimeout = 0;
 
   return bytes_sent;
 }
@@ -362,7 +363,6 @@ int Spark_Receive(unsigned char *buf, int buflen)
     {
       // recv returns negative numbers on error
       bytes_received = recv(sparkSocket, buf, buflen, 0);
-      TimingCloudActivityTimeout = 0;
       DEBUG("bytes_received %d",bytes_received);
     }
   }
@@ -443,7 +443,7 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 
 void Spark_Protocol_Init(void)
 {
-  if (Cloud_Handshake_Error_Count || !spark_protocol.is_initialized())
+  if (!spark_protocol.is_initialized())
   {
     SparkCallbacks callbacks;
     callbacks.send = Spark_Send;
@@ -453,7 +453,7 @@ void Spark_Protocol_Init(void)
     callbacks.calculate_crc = Compute_CRC32;
     callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
     callbacks.signal = Spark_Signal;
-    callbacks.millis = (unsigned long (*)())millis;
+    callbacks.millis = millis;
 
     SparkDescriptor descriptor;
     descriptor.num_functions = numUserFunctions;
@@ -605,6 +605,7 @@ int Internet_Test(void)
 
     DEBUG("Close");
     int rv = closesocket(testSocket);
+
     DEBUG("Closed rv=%d",rv);
 
     //if connection fails, testResult returns -1
