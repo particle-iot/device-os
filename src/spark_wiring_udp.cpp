@@ -199,7 +199,7 @@ int UDP::read(unsigned char* buffer, size_t len)
         if (available())
 	{
           read = (len > (size_t) available()) ? available() : len;
-          memcpy(buffer, _buffer, read);
+          memcpy(buffer, &_buffer[_offset], read);
           _offset += read;
 	}
 	return read;
