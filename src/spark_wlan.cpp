@@ -426,10 +426,6 @@ void SPARK_WLAN_Loop(void)
 	{
 		if(SPARK_WLAN_STARTED)
 		{
-			if (LED_RGB_OVERRIDE)
-			{
-				LED_Signaling_Stop();
-			}
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_WLAN_RESET = 0;
@@ -634,11 +630,6 @@ void SPARK_WLAN_Loop(void)
 
 		if (!Spark_Communication_Loop())
 		{
-			if (LED_RGB_OVERRIDE)
-			{
-				LED_Signaling_Stop();
-			}
-
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
 			SPARK_HANDSHAKE_COMPLETED = 0;
