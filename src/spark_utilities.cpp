@@ -99,7 +99,9 @@ bool RGBClass::controlled(void)
 void RGBClass::control(bool override)
 {
 #if !defined (RGB_NOTIFICATIONS_ON)
-	if (override)
+	if(override == _control)
+		return;
+	else if (override)
 		LED_Signaling_Start();
 	else
 		LED_Signaling_Stop();
@@ -114,16 +116,18 @@ void RGBClass::color(int red, int green, int blue)
 	if (true != _control)
 		return;
 
-	TIM1->CCR2 = (uint16_t)((red   * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);	// Red LED
-	TIM1->CCR3 = (uint16_t)((green * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);	// Green LED
-	TIM1->CCR1 = (uint16_t)((blue  * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);	// Blue LED
+	LED_SetSignalingColor(red << 16 | green << 8 | blue);
+	LED_On(LED_RGB);
 #endif
 }
 
 void RGBClass::brightness(uint8_t brightness)
 {
 #if !defined (RGB_NOTIFICATIONS_ON)
-  LED_SetBrightness(brightness);
+	if (true != _control)
+		return;
+
+	LED_SetBrightness(brightness);
 #endif
 }
 
