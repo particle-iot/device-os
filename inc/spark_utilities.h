@@ -49,9 +49,8 @@
 #define USER_FUNC_KEY_LENGTH			12
 #define USER_FUNC_ARG_LENGTH			64
 
-#define USER_EVENT_MAX_COUNT			3
-#define USER_EVENT_NAME_LENGTH			16
-#define USER_EVENT_RESULT_LENGTH		64
+#define USER_EVENT_NAME_LENGTH			64
+#define USER_EVENT_DATA_LENGTH			64
 
 typedef enum
 {
@@ -62,6 +61,11 @@ typedef enum
 {
 	BOOLEAN = 1, INT = 2, STRING = 4, DOUBLE = 9
 } Spark_Data_TypeDef;
+
+typedef enum
+{
+	PUBLIC = 0, PRIVATE = 1
+} Spark_Event_TypeDef;
 
 class RGBClass {
 private:
@@ -77,7 +81,10 @@ class SparkClass {
 public:
 	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
 	static void function(const char *funcKey, int (*pFunc)(String paramString));
-	static void event(const char *eventName, char *eventResult);
+	static void publish(const char *eventName);
+	static void publish(const char *eventName, const char *eventData);
+	static void publish(const char *eventName, const char *eventData, int ttl);
+	static void publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType);
 	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 	static void sleep(long seconds);
 	static bool connected(void);
@@ -110,8 +117,6 @@ void Spark_Signal(bool on);
 int userVarType(const char *varKey);
 void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString);
-
-void userEventSend(void);
 
 long socket_connect(long sd, const sockaddr *addr, long addrlen);
 

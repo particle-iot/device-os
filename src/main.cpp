@@ -176,7 +176,6 @@ int main(void)
 				}
 
 #ifdef SPARK_WLAN_ENABLE
-				userEventSend();
 			}
 		}
 #endif
