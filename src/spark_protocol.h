@@ -50,6 +50,13 @@ namespace ChunkReceivedCode {
   };
 }
 
+namespace EventType {
+  enum Enum {
+    PUBLIC = 'e',
+    PRIVATE = 'E'
+  };
+}
+
 struct SparkKeys
 {
   unsigned char *core_private;
@@ -74,6 +81,9 @@ class SparkProtocol
     static const int MAX_FUNCTION_ARG_LENGTH = 64;
     static const int MAX_FUNCTION_KEY_LENGTH = 12;
     static const int MAX_VARIABLE_KEY_LENGTH = 12;
+    static const int MAX_EVENT_NAME_LENGTH = 64;
+    static const int MAX_EVENT_DATA_LENGTH = 64;
+    static const int MAX_EVENT_TTL_SECONDS = 16777215;
     static int presence_announcement(unsigned char *buf, const char *id);
 
     SparkProtocol();
@@ -110,12 +120,16 @@ class SparkProtocol
                        const void *return_value, int length);
     void event(unsigned char *buf,
                const char *event_name,
-               int event_name_length);
+               int event_name_length,
+               int ttl,
+               EventType::Enum event_type);
     void event(unsigned char *buf,
                const char *event_name,
                int event_name_length,
                const char *data,
-               int data_length);
+               int data_length,
+               int ttl,
+               EventType::Enum event_type);
     void chunk_received(unsigned char *buf, unsigned char token,
                         ChunkReceivedCode::Enum code);
     void chunk_missed(unsigned char *buf, unsigned short chunk_index);

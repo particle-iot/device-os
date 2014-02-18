@@ -447,11 +447,17 @@ int SparkProtocol::variable_value(unsigned char *buf,
 
 void SparkProtocol::event(unsigned char *buf,
                           const char *event_name,
-                          int event_name_length)
+                          int event_name_length,
+                          int ttl,
+                          EventType::Enum event_type)
 {
   // truncate event names that are too long for 4-bit CoAP option length
-  if (event_name_length > 12)
-    event_name_length = 12;
+  if (event_name_length > MAX_EVENT_NAME_LENGTH)
+    event_name_length = MAX_EVENT_NAME_LENGTH;
+
+  // limit ttl to max 28 bits
+  if (ttl > MAX_EVENT_TTL_SECONDS)
+    ttl = MAX_EVENT_TTL_SECONDS;
 
   unsigned short message_id = next_message_id();
 
@@ -460,12 +466,16 @@ void SparkProtocol::event(unsigned char *buf,
   buf[2] = message_id >> 8;
   buf[3] = message_id & 0xff;
   buf[4] = 0xb1; // one-byte Uri-Path option
-  buf[5] = 'e';
-  buf[6] = event_name_length;
-  
-  memcpy(buf + 7, event_name, event_name_length);
+  buf[5] = event_type;
+  buf[6] = ttl >> 24;
+  buf[7] = ttl >> 16 & 0xff;
+  buf[8] = ttl >> 8 & 0xff;
+  buf[9] = ttl & 0xff;
+  buf[10] = event_name_length;
 
-  int msglen = 7 + event_name_length;
+  memcpy(buf + 11, event_name, event_name_length);
+
+  int msglen = 11 + event_name_length;
   int buflen = (msglen & ~15) + 16;
   char pad = buflen - msglen;
   memset(buf + msglen, pad, pad); // PKCS #7 padding
@@ -477,15 +487,21 @@ void SparkProtocol::event(unsigned char *buf,
                           const char *event_name,
                           int event_name_length,
                           const char *data,
-                          int data_length)
+                          int data_length,
+                          int ttl,
+                          EventType::Enum event_type)
 {
   // truncate event names that are too long for 4-bit CoAP option length
-  if (event_name_length > 12)
-    event_name_length = 12;
+  if (event_name_length > MAX_EVENT_NAME_LENGTH)
+    event_name_length = MAX_EVENT_NAME_LENGTH;
 
   // truncate data to fit in one network packet
-  if (data_length > 1024)
-    data_length = 1024;
+  if (data_length > MAX_EVENT_DATA_LENGTH)
+    data_length = MAX_EVENT_DATA_LENGTH;
+
+  // limit ttl to max 28 bits
+  if (ttl > MAX_EVENT_TTL_SECONDS)
+    ttl = MAX_EVENT_TTL_SECONDS;
 
   unsigned short message_id = next_message_id();
 
@@ -494,16 +510,20 @@ void SparkProtocol::event(unsigned char *buf,
   buf[2] = message_id >> 8;
   buf[3] = message_id & 0xff;
   buf[4] = 0xb1; // one-byte Uri-Path option
-  buf[5] = 'e';
-  buf[6] = event_name_length;
-  
-  memcpy(buf + 7, event_name, event_name_length);
+  buf[5] = event_type;
+  buf[6] = ttl >> 24;
+  buf[7] = ttl >> 16 & 0xff;
+  buf[8] = ttl >> 8 & 0xff;
+  buf[9] = ttl & 0xff;
+  buf[10] = event_name_length;
 
-  buf[7 + event_name_length] = 0xff; // payload marker
+  memcpy(buf + 11, event_name, event_name_length);
 
-  memcpy(buf + 8 + event_name_length, data, data_length);
+  buf[11 + event_name_length] = 0xff; // payload marker
 
-  int msglen = 8 + event_name_length + data_length;
+  memcpy(buf + 12 + event_name_length, data, data_length);
+
+  int msglen = 12 + event_name_length + data_length;
   int buflen = (msglen & ~15) + 16;
   char pad = buflen - msglen;
   memset(buf + msglen, pad, pad); // PKCS #7 padding
