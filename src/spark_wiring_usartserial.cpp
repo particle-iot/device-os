@@ -26,15 +26,40 @@
 
 #include "spark_wiring_usartserial.h"
 
+#define SERIAL_BUFFER_SIZE 64
+
+struct ring_buffer
+{
+	unsigned char buffer[SERIAL_BUFFER_SIZE];
+	volatile unsigned int head;
+	volatile unsigned int tail;
+};
+
+ring_buffer rx_buffer = { { 0 }, 0, 0};
+ring_buffer tx_buffer = { { 0 }, 0, 0};
+
+inline void store_char(unsigned char c, ring_buffer *buffer)
+{
+	int i = (unsigned int)(buffer->head + 1) % SERIAL_BUFFER_SIZE;
+
+	if (i != buffer->tail)
+	{
+		buffer->buffer[buffer->head] = c;
+		buffer->head = i;
+	}
+}
+
 // Initialize Class Variables //////////////////////////////////////////////////
 USART_InitTypeDef USARTSerial::USART_InitStructure;
-
 bool USARTSerial::USARTSerial_Enabled = false;
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-USARTSerial::USARTSerial()
+USARTSerial::USARTSerial(ring_buffer *rx_buffer, ring_buffer *tx_buffer)
 {
+	_rx_buffer = rx_buffer;
+	_tx_buffer = tx_buffer;
+	transmitting = false;
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
@@ -46,6 +71,16 @@ void USARTSerial::begin(unsigned long baud)
 
 	// Enable USART Clock
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	// Enable the USART Interrupt
+	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+	NVIC_Init(&NVIC_InitStructure);
 
 	// Configure USART Rx as input floating
 	pinMode(RX, INPUT);
@@ -71,10 +106,15 @@ void USARTSerial::begin(unsigned long baud)
 	// Configure USART
 	USART_Init(USART2, &USART_InitStructure);
 
+	// Enable USART Receive and Transmit interrupts
+	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+	USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+
 	// Enable the USART
 	USART_Cmd(USART2, ENABLE);
 
 	USARTSerial_Enabled = true;
+	transmitting = false;
 }
 
 void USARTSerial::begin(unsigned long baud, byte config)
@@ -84,46 +124,75 @@ void USARTSerial::begin(unsigned long baud, byte config)
 
 void USARTSerial::end()
 {
+	// wait for transmission of outgoing data
+	while (_tx_buffer->head != _tx_buffer->tail);
+
+	// Disable USART Receive and Transmit interrupts
+	USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
+	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+
 	// Disable the USART
 	USART_Cmd(USART2, DISABLE);
+
+	// clear any received data
+	_rx_buffer->head = _rx_buffer->tail;
 
 	USARTSerial_Enabled = false;
 }
 
 int USARTSerial::available(void)
 {
-	// Check if the USART Receive Data Register is not empty
-	if(USART_GetFlagStatus(USART2, USART_FLAG_RXNE) != RESET)
-		return 1;
-	else
-		return 0;
+	return (unsigned int)(SERIAL_BUFFER_SIZE + _rx_buffer->head - _rx_buffer->tail) % SERIAL_BUFFER_SIZE;
 }
 
 int USARTSerial::peek(void)
 {
-    return -1;
+	if (_rx_buffer->head == _rx_buffer->tail)
+	{
+		return -1;
+	}
+	else
+	{
+		return _rx_buffer->buffer[_rx_buffer->tail];
+	}
 }
 
 int USARTSerial::read(void)
 {
-	// Return the received byte
-	return USART_ReceiveData(USART2);
+	// if the head isn't ahead of the tail, we don't have any characters
+	if (_rx_buffer->head == _rx_buffer->tail)
+	{
+		return -1;
+	}
+	else
+	{
+		unsigned char c = _rx_buffer->buffer[_rx_buffer->tail];
+		_rx_buffer->tail = (unsigned int)(_rx_buffer->tail + 1) % SERIAL_BUFFER_SIZE;
+		return c;
+	}
 }
 
 void USARTSerial::flush()
 {
-	//To Do
+	// Loop until USART DR register is empty
+	while (transmitting && (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET));
+	transmitting = false;
 }
 
 size_t USARTSerial::write(uint8_t c)
 {
-	// Send one byte from USART
-	USART_SendData(USART2, c);
+	int i = (_tx_buffer->head + 1) % SERIAL_BUFFER_SIZE;
 
-	// Loop until USART DR register is empty
-	while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET)
-	{
-	}
+	// If the output buffer is full, there's nothing for it other than to
+	// wait for the interrupt handler to empty it a bit
+	while (i == _tx_buffer->tail);
+
+	_tx_buffer->buffer[_tx_buffer->head] = c;
+	_tx_buffer->head = i;
+
+	transmitting = true;
+
+	USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
 
 	return 1;
 }
@@ -139,10 +208,33 @@ USARTSerial::operator bool() {
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
-//void Wiring_USART2_Interrupt_Handler(void)
-//{
-//	//To Do
-//}
+void Wiring_USART2_Interrupt_Handler(void)
+{
+	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
+	{
+		// Read byte from the receive data register
+		unsigned char c = USART_ReceiveData(USART2);
+		store_char(c, &rx_buffer);
+	}
+
+	if(USART_GetITStatus(USART2, USART_IT_TXE) != RESET)
+	{
+		// Write byte to the transmit data register
+		if (tx_buffer.head == tx_buffer.tail)
+		{
+			// Buffer empty, so disable the USART Transmit interrupt
+			USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+		}
+		else
+		{
+			// There is more data in the output buffer. Send the next byte
+			unsigned char c = tx_buffer.buffer[tx_buffer.tail];
+			tx_buffer.tail = (tx_buffer.tail + 1) % SERIAL_BUFFER_SIZE;
+
+			USART_SendData(USART2, c);
+		}
+	}
+}
 
 bool USARTSerial::isEnabled() {
 	return USARTSerial_Enabled;
@@ -150,4 +242,4 @@ bool USARTSerial::isEnabled() {
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
 
-USARTSerial Serial1;
+USARTSerial Serial1(&rx_buffer, &tx_buffer);
