@@ -126,7 +126,7 @@ int TCPClient::available()
     int avail = 0;
 
     // At EOB => Flush it
-    if (_total && _offset == _total)
+    if (_total && (_offset == _total))
     {
       flush();
     }
@@ -176,7 +176,7 @@ int TCPClient::read(uint8_t *buffer, size_t size)
         if (bufferCount() || available())
         {
           read = (size > (size_t) bufferCount()) ? bufferCount() : size;
-          memcpy(buffer, _buffer, read);
+          memcpy(buffer, &_buffer[_offset], read);
           _offset += read;
         }
         return read;
