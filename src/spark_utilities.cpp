@@ -315,7 +315,6 @@ int Spark_Send(const unsigned char *buf, int buflen)
 
   // send returns negative numbers on error
   int bytes_sent = send(sparkSocket, buf, buflen, 0);
-  TimingCloudActivityTimeout = 0;
 
   return bytes_sent;
 }
@@ -352,7 +351,6 @@ int Spark_Receive(unsigned char *buf, int buflen)
     {
       // recv returns negative numbers on error
       bytes_received = recv(sparkSocket, buf, buflen, 0);
-      TimingCloudActivityTimeout = 0;
       DEBUG("bytes_received %d",bytes_received);
     }
   }
@@ -433,7 +431,7 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 
 void Spark_Protocol_Init(void)
 {
-  if (Cloud_Handshake_Error_Count || !spark_protocol.is_initialized())
+  if (!spark_protocol.is_initialized())
   {
     SparkCallbacks callbacks;
     callbacks.send = Spark_Send;

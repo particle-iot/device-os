@@ -46,14 +46,9 @@ extern "C" {
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-volatile uint32_t TimingSparkConnectDelay;
-volatile uint32_t TimingCloudHandshakeTimeout;
-volatile uint32_t TimingCloudActivityTimeout;
 volatile uint32_t TimingFlashUpdateTimeout;
-volatile uint32_t TimingAPIBlockingTimeout;
 
 volatile uint8_t SPARK_WIRING_APPLICATION = 0;
-volatile uint8_t SPARK_SYSTEM_RESET = 0;
 
 uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
 uint32_t USART_Rx_ptr_in = 0;
@@ -249,34 +244,12 @@ void Timing_Decrement(void)
 	}
 
 #ifdef SPARK_WLAN_ENABLE
-	if(CC3000_API_BLOCKING)
-	{
-		if (TimingAPIBlockingTimeout >= TIMING_API_BLOCKING_TIMEOUT)
-		{
-			//Reset system when the timeout expires exclusively for CC3000 Blocking APIs
-			SPARK_SYSTEM_RESET = 1;
-		}
-		else
-		{
-			TimingAPIBlockingTimeout++;
-		}
-	}
-	else
-	{
-		TimingAPIBlockingTimeout = 0;
-	}
-
 	if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
 	{
 		BUTTON_ResetDebouncedState(BUTTON1);
 
 		if(!SPARK_WLAN_SLEEP)
 		{
-			if(WLAN_DHCP && !(SPARK_SOCKET_CONNECTED & SPARK_HANDSHAKE_COMPLETED))
-			{
-				//Work around to exit the blocking nature of socket calls
-				SPARK_WLAN_RESET = 1;
-			}
 
 			WLAN_SMART_CONFIG_START = 1;
 		}
@@ -290,51 +263,16 @@ void Timing_Decrement(void)
 
 	if(!SPARK_WLAN_SLEEP)
 	{
-		if (TimingSparkConnectDelay != 0x00)
-		{
-			TimingSparkConnectDelay--;
-		}
-		else if(SPARK_FLASH_UPDATE)
+		if(SPARK_FLASH_UPDATE)
 		{
 			if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
 			{
 				//Reset is the only way now to recover from stuck OTA update
-				//SPARK_WLAN_RESET = 1;
-				SPARK_SYSTEM_RESET = 1;
+				NVIC_SystemReset();
 			}
 			else
 			{
 				TimingFlashUpdateTimeout++;
-			}
-		}
-		else if(SPARK_HANDSHAKE_COMPLETED)
-		{
-			if (TimingCloudActivityTimeout >= TIMING_CLOUD_ACTIVITY_TIMEOUT)
-			{
-				TimingCloudActivityTimeout = 0;
-
-				//Reset WLAN in worst case if Spark_Communication_Loop() doesn't detect failure
-				SPARK_WLAN_RESET = 1;
-				//SPARK_SYSTEM_RESET = 1;
-			}
-			else
-			{
-				TimingCloudActivityTimeout++;
-			}
-		}
-		else if(SPARK_SOCKET_CONNECTED)
-		{
-			if (TimingCloudHandshakeTimeout >= TIMING_CLOUD_HANDSHAKE_TIMEOUT)
-			{
-				TimingCloudHandshakeTimeout = 0;
-
-				//Something failure other than bad keys prevents Handshake from happening
-				//SPARK_WLAN_RESET = 1;
-				SPARK_SYSTEM_RESET = 1;
-			}
-			else
-			{
-				TimingCloudHandshakeTimeout++;
 			}
 		}
 	}
@@ -353,15 +291,6 @@ void Timing_Decrement(void)
 		TimingIWDGReload++;
 	}
 #endif
-
-	if(SPARK_SYSTEM_RESET)
-	{
-		NVIC_SystemReset();
-	}
-	else if(SPARK_WLAN_RESET)
-	{
-		Spark_ConnectAbort_WLANReset();
-	}
 }
 
 /*******************************************************************************
