@@ -248,12 +248,9 @@ void Wiring_USART2_Interrupt_Handler(void)
 		}
 		else
 		{
-		        // Keep the Transmitter full
-		        do {
-		            // There is more data in the output buffer. Send the next byte
-			USART_SendData(USART2,  tx_buffer.buffer[tx_buffer.tail++]);
-                        tx_buffer.tail %= SERIAL_BUFFER_SIZE;
-		        } while(tx_buffer.head != tx_buffer.tail && USART_GetFlagStatus(USART2, USART_FLAG_TXE));
+	            // There is more data in the output buffer. Send the next byte
+		    USART_SendData(USART2,  tx_buffer.buffer[tx_buffer.tail++]);
+                    tx_buffer.tail %= SERIAL_BUFFER_SIZE;
 		}
 	}
 }
