@@ -185,6 +185,7 @@
 #define RTCALARM_IRQ_PRIORITY				4	//RTC Alarm Interrupt
 #define TIM1_CC_IRQ_PRIORITY				5	//TIM1_CC4 Interrupt
 #define EXTI2_IRQ_PRIORITY					6	//BUTTON1_EXTI Interrupt
+#define USART2_IRQ_PRIORITY					7	//USART2 Interrupt
 #define EXTI0_IRQ_PRIORITY					11	//User Interrupt
 #define EXTI1_IRQ_PRIORITY					11	//User Interrupt
 #define EXTI3_IRQ_PRIORITY					11	//User Interrupt

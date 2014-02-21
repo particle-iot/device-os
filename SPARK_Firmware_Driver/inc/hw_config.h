@@ -132,6 +132,8 @@ typedef enum
                  CNTR_RESETM  \
                 )
 
+#define TIMING_IWDG_RELOAD	1000 //1sec
+
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
