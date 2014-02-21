@@ -88,8 +88,6 @@ int main(void)
 
     //--------------------------------------------------------------------------
 
-
-
     /* Setup SysTick Timer for 1 msec interrupts to call Timing_Decrement() */
 	SysTick_Configuration();
 
@@ -107,7 +105,7 @@ int main(void)
 
     // 0x5000 is written to the backup register after transferring the FW from 
     // the external flash to the STM32's internal memory 
-	if((BKP_ReadBackupRegister(BKP_DR10) == 0x5000) || 
+	if((BKP_ReadBackupRegister(BKP_DR10) == 0x5000) ||
        (FLASH_OTA_Update_SysFlag == 0x5000))
 	{
 		ApplicationAddress = CORE_FW_ADDRESS; //0x08005000
@@ -139,6 +137,52 @@ int main(void)
 	{
 		USB_DFU_MODE = 1;
 	}
+
+	__IO uint16_t BKP_DR1_Value = BKP_ReadBackupRegister(BKP_DR1);
+
+	/* Check if the system has resumed from IWDG reset due to corrupt/invalid firmware*/
+	if ((BKP_DR1_Value != 0xFFFF) && (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET))
+	{
+		REFLASH_FROM_BACKUP = 0;
+		OTA_FLASH_AVAILABLE = 0;
+		USB_DFU_MODE = 0;
+		FACTORY_RESET_MODE = 0;
+
+		switch(BKP_DR1_Value)
+		{
+		case 1:	//On 1st recovery attempt, try to recover using sFlash - Backup Area
+			REFLASH_FROM_BACKUP = 1;
+			BKP_DR1_Value += 1;
+			break;
+
+		case 2:	//On 2nd recovery attempt, try to recover using sFlash - Factory Reset
+			FACTORY_RESET_MODE = 1;
+			BKP_DR1_Value += 1;
+			break;
+
+		case 3:	//On 3rd recovery attempt, try to recover using USB DFU Mode
+			USB_DFU_MODE = 1;
+			FLASH_Erase();
+			break;
+		}
+
+		BKP_WriteBackupRegister(BKP_DR1, BKP_DR1_Value);
+		BKP_WriteBackupRegister(BKP_DR10, 0x0000);
+		FLASH_OTA_Update_SysFlag = 0x0000;
+	    OTA_FLASHED_Status_SysFlag = 0x0000;
+		Save_SystemFlags();
+
+		/* Clear reset flags */
+		RCC_ClearFlag();
+	}
+	else
+	{
+		BKP_DR1_Value = 1;
+		BKP_WriteBackupRegister(BKP_DR1, BKP_DR1_Value);
+	}
+
+	/* Set IWDG Timeout to 3 secs */
+	IWDG_Reset_Enable(3 * TIMING_IWDG_RELOAD);
 
 	//--------------------------------------------------------------------------
     //    Check if BUTTON1 is pressed and determine the status
@@ -291,6 +335,18 @@ void Timing_Decrement(void)
         LED_Toggle(LED_RGB);
         TimingLED = 100;
     }
+
+	if (TimingIWDGReload >= TIMING_IWDG_RELOAD)
+	{
+		TimingIWDGReload = 0;
+
+		/* Reload IWDG counter */
+		IWDG_ReloadCounter();
+	}
+	else
+	{
+		TimingIWDGReload++;
+	}
 }
 
 /*******************************************************************************
