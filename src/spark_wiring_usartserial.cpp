@@ -40,7 +40,7 @@ ring_buffer tx_buffer = { { 0 }, 0, 0};
 
 inline void store_char(unsigned char c, ring_buffer *buffer)
 {
-	int i = (unsigned int)(buffer->head + 1) % SERIAL_BUFFER_SIZE;
+        unsigned i = (unsigned int)(buffer->head + 1) % SERIAL_BUFFER_SIZE;
 
 	if (i != buffer->tail)
 	{
@@ -181,18 +181,39 @@ void USARTSerial::flush()
 
 size_t USARTSerial::write(uint8_t c)
 {
-	int i = (_tx_buffer->head + 1) % SERIAL_BUFFER_SIZE;
+
+        // interrupts are off and data in queue;
+        if ((USART_GetITStatus(USART2, USART_IT_TXE) == RESET)
+            && _tx_buffer->head != _tx_buffer->tail) {
+            // Get him busy
+            USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+        }
+
+        unsigned i = (_tx_buffer->head + 1) % SERIAL_BUFFER_SIZE;
 
 	// If the output buffer is full, there's nothing for it other than to
-	// wait for the interrupt handler to empty it a bit
-	while (i == _tx_buffer->tail);
+        // wait for the interrupt handler to empty it a bit
 
-	_tx_buffer->buffer[_tx_buffer->head] = c;
-	_tx_buffer->head = i;
+        while (i == _tx_buffer->tail) {
+            // Interrupts are on but they are not being serviced because this was called from a higher
+            // Priority interrupt
+            if (USART_GetITStatus(USART2, USART_IT_TXE) && USART_GetFlagStatus(USART2, USART_FLAG_TXE))
+            {
+                // protect for good measure
+                USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+                // Write out a byte
+                USART_SendData(USART2,  _tx_buffer->buffer[_tx_buffer->tail++]);
+                _tx_buffer->tail %= SERIAL_BUFFER_SIZE;
+                // unprotect
+                USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+            }
+        }
 
+        _tx_buffer->buffer[_tx_buffer->head] = c;
+        _tx_buffer->head = i;
 	transmitting = true;
+        USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
 
-	USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
 
 	return 1;
 }
@@ -227,11 +248,12 @@ void Wiring_USART2_Interrupt_Handler(void)
 		}
 		else
 		{
-			// There is more data in the output buffer. Send the next byte
-			unsigned char c = tx_buffer.buffer[tx_buffer.tail];
-			tx_buffer.tail = (tx_buffer.tail + 1) % SERIAL_BUFFER_SIZE;
-
-			USART_SendData(USART2, c);
+		        // Keep the Transmitter full
+		        do {
+		            // There is more data in the output buffer. Send the next byte
+			USART_SendData(USART2,  tx_buffer.buffer[tx_buffer.tail++]);
+                        tx_buffer.tail %= SERIAL_BUFFER_SIZE;
+		        } while(tx_buffer.head == tx_buffer.tail && USART_GetFlagStatus(USART2, USART_FLAG_TXE));
 		}
 	}
 }
