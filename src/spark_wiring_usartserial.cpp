@@ -136,7 +136,7 @@ void USARTSerial::end()
 
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	// Enable the USART Interrupt
+	// Disable the USART Interrupt
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
 
