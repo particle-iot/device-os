@@ -124,6 +124,7 @@ int main(void)
 		RCC_ClearFlag();
 	}
 
+	/* We are duplicating the IWDG call here for compatibility with old bootloader */
 	/* Set IWDG Timeout to 3 secs */
 	IWDG_Reset_Enable(3 * TIMING_IWDG_RELOAD);
 #endif
@@ -285,6 +286,12 @@ void Timing_Decrement(void)
 
 		/* Reload IWDG counter */
 		IWDG_ReloadCounter();
+
+		if (BKP_ReadBackupRegister(BKP_DR1) != 0xFFFF)
+		{
+			//We have a running firmware otherwise we wouldn't have been here
+			BKP_WriteBackupRegister(BKP_DR1, 0xFFFF);	//Reset BKP_DR1
+		}
 	}
 	else
 	{
