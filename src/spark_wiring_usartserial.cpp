@@ -76,7 +76,7 @@ void USARTSerial::begin(unsigned long baud)
 
 	// Enable the USART Interrupt
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = USART2_IRQ_PRIORITY;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
@@ -133,6 +133,14 @@ void USARTSerial::end()
 
 	// Disable the USART
 	USART_Cmd(USART2, DISABLE);
+
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	// Enable the USART Interrupt
+	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+
+	NVIC_Init(&NVIC_InitStructure);
 
 	// clear any received data
 	_rx_buffer->head = _rx_buffer->tail;
