@@ -1,5 +1,5 @@
-[![Stories in Ready](https://badge.waffle.io/spark/core-firmware.png?label=ready)](https://waffle.io/spark/core-firmware)
-# Spark Core Firmware
+# Spark Core Firmware [![Stories in Ready](https://badge.waffle.io/spark/core-firmware.png?label=ready)](https://waffle.io/spark/core-firmware)
+
 
 This is the main source code repository of the Spark Core firmware libraries.
 
