@@ -183,7 +183,7 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop
 			/* Decrement the read bytes counter */
 			numByteToRead--;
 
-			/* Reset our last read for timeout */
+			/* Reset timeout to our last read */
 			_millis = millis();
 		}
 	}
