@@ -382,6 +382,12 @@ void USB_USART_Send_Data(uint8_t Data)
 		{
 			USART_Rx_ptr_in = 0;
 		}
+
+		if(CC3000_Read_Interrupt_Pin())
+		{
+			//Delay 100us to avoid losing the data
+			Delay_Microsecond(100);
+		}
 	}
 }
 
