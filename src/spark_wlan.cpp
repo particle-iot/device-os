@@ -418,8 +418,12 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 		/* Delete all previously stored wlan profiles */
 		wlan_ioctl_del_profile(255);
 
-		/* Create new entry for Spark File in CC3000 EEPROM */
-		nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
+		/* EEPROM because Spark file IO on old TI Driver was corrupting nvmem
+		 * Let's Remove entry for Spark File in CC3000  */
+                nvmem_create_entry(NVMEM_SPARK_FILE_ID, 0);
+
+                /* Create new entry for Spark File in CC3000 EEPROM */
+                nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
 
 		memset(NVMEM_Spark_File_Data,0, arraySize(NVMEM_Spark_File_Data));
 
