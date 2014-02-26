@@ -565,7 +565,7 @@ system_tick_t millis(void)
  */
 unsigned long micros(void)
 {
-	return (DWT->CYCCNT / US_TICKS);
+	return (DWT->CYCCNT / SYSTEM_US_TICKS);
 }
 
 /*

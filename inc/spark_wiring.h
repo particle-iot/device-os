@@ -58,8 +58,6 @@
 
 #define boolean bool
 
-#define US_TICKS (SystemCoreClock / 1000000)//cycles per microsecond
-
 //#define NULL ((void *)0)
 #define NONE ((uint8_t)0xFF)
 
