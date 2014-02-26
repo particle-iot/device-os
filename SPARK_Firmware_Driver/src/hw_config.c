@@ -103,18 +103,6 @@ __IO uint16_t sFLASH_SPI_CR;
 /* Private functions ---------------------------------------------------------*/
 
 /**
- * @brief  Initialise Data Watchpoint and Trace Register (DWT).
- * @param  None
- * @retval None
- */
-static void DWT_Init(void)
-{
-	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-	DWT->CYCCNT = 0;
-	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-}
-
-/**
  * @brief  Configures Main system clocks & power.
  * @param  None
  * @retval None
@@ -127,8 +115,6 @@ void Set_System(void)
 	 To reconfigure the default setting of SystemInit() function, refer to
 	 system_stm32f10x.c file
 	 */
-
-	DWT_Init();
 
 	/* Enable PWR and BKP clock */
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
@@ -210,7 +196,7 @@ void SysTick_Configuration(void)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void Delay(__IO uint32_t nTime)
+void Delay(uint32_t nTime)
 {
     TimingDelay = nTime;
 
@@ -224,9 +210,14 @@ void Delay(__IO uint32_t nTime)
  * Output         : None
  * Return         : None
  *******************************************************************************/
-void Delay_Microsecond(__IO uint32_t uSec)
+void Delay_Microsecond(uint32_t uSec)
 {
-	uint32_t DWT_CYCCNT = (((SystemCoreClock / 1000000) * uSec) + DWT->CYCCNT);
+	//Reset DWT cycle counter register
+	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->CYCCNT = 0;
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+	uint32_t DWT_CYCCNT = ((SYSTEM_US_TICKS * uSec) + DWT->CYCCNT);
 	while (DWT_CYCCNT > DWT->CYCCNT);
 }
 

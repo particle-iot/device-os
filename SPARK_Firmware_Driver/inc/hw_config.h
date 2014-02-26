@@ -134,12 +134,14 @@ typedef enum
 
 #define TIMING_IWDG_RELOAD	1000 //1sec
 
+#define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
+
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
-void Delay(__IO uint32_t nTime);
-void Delay_Microsecond(__IO uint32_t uSec);
+void Delay(uint32_t nTime);
+void Delay_Microsecond(uint32_t uSec);
 
 typedef uint32_t system_tick_t;
 void System1MsTick(void);
