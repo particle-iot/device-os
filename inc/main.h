@@ -71,7 +71,6 @@ extern "C" {
  * upset the debugger
  */
 #define IWDG_RESET_ENABLE
-#define TIMING_IWDG_RELOAD	1000 //1sec
 #endif
 
 #endif

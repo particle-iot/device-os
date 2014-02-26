@@ -23,12 +23,38 @@
   ******************************************************************************
  */
 #include "spark_wlan.h"
+#include "spark_macros.h"
 #include "string.h"
 #include "wifi_credentials_reader.h"
 
+//#define DEBUG_WIFI    // Define to show all the flags in debug output
+//#define DEBUG_WAN_WD  // Define to show all SW WD activity in debug output
+
+#if defined(DEBUG_WIFI)
+static uint32_t lastEvent = 0;
+#define SET_LAST_EVENT(x) do {lastEvent = (x);} while(0)
+#define GET_LAST_EVENT(x) do { x = lastEvent; lastEvent = 0;} while(0)
+#define DUMP_STATE() do { \
+    DEBUG("\r\nWLAN_MANUAL_CONNECT=%d\r\nWLAN_DELETE_PROFILES=%d\r\nWLAN_SMART_CONFIG_START=%d\r\nWLAN_SMART_CONFIG_STOP=%d", \
+          WLAN_MANUAL_CONNECT,WLAN_DELETE_PROFILES,WLAN_SMART_CONFIG_START, WLAN_SMART_CONFIG_STOP); \
+    DEBUG("\r\nWLAN_SMART_CONFIG_FINISHED=%d\r\nWLAN_SERIAL_CONFIG_DONE=%d\r\nWLAN_CONNECTED=%d\r\nWLAN_DHCP=%d\r\nWLAN_CAN_SHUTDOWN=%d", \
+          WLAN_SMART_CONFIG_FINISHED,WLAN_SERIAL_CONFIG_DONE,WLAN_CONNECTED,WLAN_DHCP,WLAN_CAN_SHUTDOWN); \
+    DEBUG("\r\nSPARK_WLAN_RESET=%d\r\nSPARK_WLAN_SLEEP=%d\r\nSPARK_WLAN_STARTED=%d\r\nSPARK_SOCKET_HANDSHAKE=%d", \
+           SPARK_WLAN_RESET,SPARK_WLAN_SLEEP,SPARK_WLAN_STARTED,SPARK_SOCKET_HANDSHAKE); \
+    DEBUG("\r\nSPARK_SOCKET_CONNECTED=%d\r\nSPARK_HANDSHAKE_COMPLETED=%d\r\nSPARK_FLASH_UPDATE=%d\r\nSPARK_LED_FADE=%d\r\n", \
+           SPARK_SOCKET_CONNECTED,SPARK_HANDSHAKE_COMPLETED,SPARK_FLASH_UPDATE,SPARK_LED_FADE); \
+ } while(0)
+
+#define ON_EVENT_DELTA()  do { if (lastEvent != 0) { uint32_t l; GET_LAST_EVENT(l); DEBUG("\r\nAsyncEvent 0x%04x", l); DUMP_STATE();}} while(0)
+#else
+#define SET_LAST_EVENT(x)
+#define GET_LAST_EVENT(x)
+#define DUMP_STATE()
+#define ON_EVENT_DELTA()
+#endif
 tNetappIpconfigRetArgs ip_config;
 
-volatile uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
+volatile int8_t  WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
 volatile uint8_t WLAN_DELETE_PROFILES;
 volatile uint8_t WLAN_SMART_CONFIG_START;
 volatile uint8_t WLAN_SMART_CONFIG_STOP;
@@ -37,6 +63,22 @@ volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
 volatile uint8_t WLAN_CONNECTED;
 volatile uint8_t WLAN_DHCP;
 volatile uint8_t WLAN_CAN_SHUTDOWN;
+
+enum eWanTimings {
+  CONNECT_TO_ADDRESS_MAX = S2M(30),
+  DISCONNECT_TO_RECONNECT = S2M(30),
+};
+
+#if defined(DEBUG_WAN_WD)
+#define WAN_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
+#else
+#define WAN_WD_DEBUG(x,...)
+#endif
+uint32_t wlan_watchdog = 0;
+#define ARM_WLAN_WD(x) do { wlan_watchdog = millis()+(x); WAN_WD_DEBUG("WD Set "#x" %d",(x));}while(0)
+#define WLAN_WD_TO() (wlan_watchdog && (millis() >= wlan_watchdog))
+#define CLR_WLAN_WD() do { wlan_watchdog = 0; WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog);;}while(0)
+
 
 void (*announce_presence)(void);
 
@@ -70,13 +112,14 @@ volatile uint8_t SPARK_LED_FADE;
 
 volatile uint8_t Spark_Error_Count;
 
+
 void Set_NetApp_Timeout(void)
 {
 	unsigned long aucDHCP = 14400;
 	unsigned long aucARP = 3600;
 	unsigned long aucKeepalive = 10;
-	unsigned long aucInactivity = 60;
-
+	unsigned long aucInactivity = DEFAULT_SEC_INACTIVITY;
+	SPARK_WLAN_SetNetWatchDog(S2M(DEFAULT_SEC_NETOPS)+ (DEFAULT_SEC_INACTIVITY ? 250 : 0) );
 	netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
 }
 
@@ -125,10 +168,8 @@ void Start_Smart_Config(void)
 	SPARK_FLASH_UPDATE = 0;
 	SPARK_LED_FADE = 0;
 
-#if defined (USE_SPARK_CORE_V02)
 	LED_SetRGBColor(RGB_COLOR_BLUE);
 	LED_On(LED_RGB);
-#endif
 
 	/* Reset all the previous configuration */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
@@ -165,11 +206,7 @@ void Start_Smart_Config(void)
 			int toggle = 25;
 			while(toggle--)
 			{
-#if defined (USE_SPARK_CORE_V01)
-				LED_Toggle(LED2);
-#elif defined (USE_SPARK_CORE_V02)
 				LED_Toggle(LED_RGB);
-#endif
 				Delay(50);
 			}
 			NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = 0;
@@ -178,22 +215,13 @@ void Start_Smart_Config(void)
 		}
 		else
 		{
-#if defined (USE_SPARK_CORE_V01)
-			LED_Toggle(LED2);
-#elif defined (USE_SPARK_CORE_V02)
 			LED_Toggle(LED_RGB);
-#endif
 			Delay(250);
-
 			wifi_creds_reader.read();
 		}
 	}
 
-#if defined (USE_SPARK_CORE_V01)
-	LED_Off(LED2);
-#elif defined (USE_SPARK_CORE_V02)
 	LED_On(LED_RGB);
-#endif
 
 	/* read count of wlan profiles stored */
 	nvmem_read(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
@@ -236,10 +264,8 @@ void Start_Smart_Config(void)
 	/* Mask out all non-required events */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
-#if defined (USE_SPARK_CORE_V02)
     LED_SetRGBColor(RGB_COLOR_GREEN);
 	LED_On(LED_RGB);
-#endif
 
 	Set_NetApp_Timeout();
 
@@ -249,8 +275,12 @@ void Start_Smart_Config(void)
 /* WLAN Application related callbacks passed to wlan_init */
 void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 {
+        SET_LAST_EVENT(lEventType);
 	switch (lEventType)
 	{
+	        default:
+	          break;
+
 		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
 			WLAN_SMART_CONFIG_FINISHED = 1;
 			WLAN_SMART_CONFIG_STOP = 1;
@@ -259,18 +289,16 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 
 		case HCI_EVNT_WLAN_UNSOL_CONNECT:
 			WLAN_CONNECTED = 1;
+  		        ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
 			if(WLAN_CONNECTED)
 			{
-#if defined (USE_SPARK_CORE_V01)
-				LED_Off(LED2);
-#elif defined (USE_SPARK_CORE_V02)
+	                        ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
 				LED_RGB_OVERRIDE = 0;
 				LED_SetRGBColor(RGB_COLOR_GREEN);
 				LED_On(LED_RGB);
-#endif
 			}
 			else
 			{
@@ -282,6 +310,9 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 				{
 					WLAN_SMART_CONFIG_START = 1;
 				}
+			}
+			if (WLAN_MANUAL_CONNECT == -1) {
+			    WLAN_MANUAL_CONNECT = 1;
 			}
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
@@ -296,12 +327,9 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			if (*(data + 20) == 0)
 			{
 				WLAN_DHCP = 1;
-#if defined (USE_SPARK_CORE_V01)
-				LED_On(LED2);
-#elif defined (USE_SPARK_CORE_V02)
+				CLR_WLAN_WD();
 				LED_SetRGBColor(RGB_COLOR_GREEN);
 				LED_On(LED_RGB);
-#endif
 			}
 			else
 			{
@@ -312,6 +340,19 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 		case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
 			WLAN_CAN_SHUTDOWN = 1;
 			break;
+
+		case HCI_EVNT_BSD_TCP_CLOSE_WAIT:
+                      long socket = -1;
+		      STREAM_TO_UINT32(data,0,socket);
+		      set_socket_active_status(socket, SOCKET_STATUS_INACTIVE);
+  		      if(socket == sparkSocket)
+		      {
+			SPARK_FLASH_UPDATE = 0;
+			SPARK_LED_FADE = 0;
+			SPARK_HANDSHAKE_COMPLETED = 0;
+			SPARK_SOCKET_CONNECTED = 0;
+ 		      }
+		    break;
 	}
 }
 
@@ -333,9 +374,22 @@ char *WLAN_BootLoader_Patch(unsigned long *length)
 	return NULL;
 }
 
+int SPARK_WLAN_hasAddress(void)
+{
+  return WLAN_DHCP || WLAN_MANUAL_CONNECT != 0;
+}
+
+uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
+{
+  uint32_t rv = cc3000__event_timeout_ms;
+  cc3000__event_timeout_ms = timeOutInMS;
+  return rv;
+}
+
+
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 {
-  announce_presence = presence_announcement_callback;
+	announce_presence = presence_announcement_callback;
 
 	/* Initialize CC3000's CS, EN and INT pins to their default states */
 	CC3000_WIFI_Init();
@@ -359,17 +413,19 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
-	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != 0)
+	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE)
 	{
 		/* Delete all previously stored wlan profiles */
 		wlan_ioctl_del_profile(255);
 
-		/* Create new entry for Spark File in CC3000 EEPROM */
-		nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
+		/* EEPROM because Spark file IO on old TI Driver was corrupting nvmem
+		 * Let's Remove entry for Spark File in CC3000  */
+                nvmem_create_entry(NVMEM_SPARK_FILE_ID, 0);
 
-		int i = 0;
-		for(i = 0; i < NVMEM_SPARK_FILE_SIZE; i++)
-			NVMEM_Spark_File_Data[i] = 0;
+                /* Create new entry for Spark File in CC3000 EEPROM */
+                nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
+
+		memset(NVMEM_Spark_File_Data,0, arraySize(NVMEM_Spark_File_Data));
 
 		nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
 
@@ -377,7 +433,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 		Save_SystemFlags();
 	}
 
-	if(!WLAN_MANUAL_CONNECT)
+	if(WLAN_MANUAL_CONNECT == 0)
 	{
 		if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] == 0)
 		{
@@ -392,13 +448,11 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 		}
 	}
 
-#if defined (USE_SPARK_CORE_V02)
-	if(WLAN_MANUAL_CONNECT || !WLAN_SMART_CONFIG_START)
+	if((WLAN_MANUAL_CONNECT > 0) || !WLAN_SMART_CONFIG_START)
 	{
 		LED_SetRGBColor(RGB_COLOR_GREEN);
 		LED_On(LED_RGB);
 	}
-#endif
 
 	nvmem_read_sp_version(patchVer);
 	if (patchVer[1] == 24)//19 for old patch
@@ -413,14 +467,15 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 
 void SPARK_WLAN_Loop(void)
 {
-	if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP)
+        static int cofd_count = 0;
+        ON_EVENT_DELTA();
+
+        if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || WLAN_WD_TO())
 	{
 		if(SPARK_WLAN_STARTED)
 		{
-			if (LED_RGB_OVERRIDE)
-			{
-				LED_Signaling_Stop();
-			}
+			DEBUG("Resetting CC3000!");
+			CLR_WLAN_WD();
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_WLAN_RESET = 0;
@@ -430,10 +485,9 @@ void SPARK_WLAN_Loop(void)
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
 			Spark_Error_Count = 0;
+			cofd_count = 0;
 
-			CC3000_Write_Enable_Pin(WLAN_DISABLE);
-			//wlan_stop();
-
+			wlan_stop();
 			Delay(100);
 
 			if(WLAN_SMART_CONFIG_START)
@@ -455,6 +509,9 @@ void SPARK_WLAN_Loop(void)
 	{
 		if(!SPARK_WLAN_STARTED)
 		{
+                      if (WLAN_MANUAL_CONNECT == 0) {
+                          ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
+                      }
 			wlan_start(0);
 
 			SPARK_WLAN_STARTED = 1;
@@ -466,12 +523,13 @@ void SPARK_WLAN_Loop(void)
 		/* Start CC3000 Smart Config Process */
 		Start_Smart_Config();
 	}
-	else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
+	else if (WLAN_MANUAL_CONNECT > 0 && !WLAN_DHCP)
 	{
+	    CLR_WLAN_WD();
 	    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
 	    /* Edit the below line before use*/
 	    wlan_connect(WLAN_SEC_WPA2, _ssid, strlen(_ssid), NULL, (unsigned char*)_password, strlen(_password));
-	    WLAN_MANUAL_CONNECT = 0;
+	    WLAN_MANUAL_CONNECT = -1;
 	}
 
 	// Complete Smart Config Process:
@@ -516,7 +574,6 @@ void SPARK_WLAN_Loop(void)
 
 		netapp_ipconfig(&ip_config);
 
-#if defined (USE_SPARK_CORE_V02)
 		if(Spark_Error_Count)
 		{
 			LED_SetRGBColor(RGB_COLOR_RED);
@@ -540,16 +597,32 @@ void SPARK_WLAN_Loop(void)
 
 		LED_SetRGBColor(RGB_COLOR_CYAN);
 		LED_On(LED_RGB);
-#endif
 
-		if(Spark_Connect() < 0)
+		if(Spark_Connect() >= 0)
+                {
+                        cofd_count  = 0;
+                        SPARK_SOCKET_CONNECTED = 1;
+                }
+                else
 		{
 			if(SPARK_WLAN_RESET)
 				return;
 
+                        if ((cofd_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
+			{
+			    SPARK_WLAN_RESET = RESET_ON_CFOD;
+			    ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
+
+			}
+
 			if(Internet_Test() < 0)
 			{
 				//No Internet Connection
+	                        if ((cofd_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
+	                        {
+	                            SPARK_WLAN_RESET = RESET_ON_CFOD;
+	                            ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
+	                        }
 				Spark_Error_Count = 2;
 			}
 			else
@@ -563,10 +636,6 @@ void SPARK_WLAN_Loop(void)
 
 			SPARK_SOCKET_CONNECTED = 0;
 		}
-		else
-		{
-			SPARK_SOCKET_CONNECTED = 1;
-		}
 	}
 
 	if (SPARK_SOCKET_CONNECTED)
@@ -574,6 +643,7 @@ void SPARK_WLAN_Loop(void)
 		if (!SPARK_HANDSHAKE_COMPLETED)
 		{
 			int err = Spark_Handshake();
+
 			if (err)
 			{
 				if (0 > err)
@@ -596,29 +666,15 @@ void SPARK_WLAN_Loop(void)
 			else
 			{
 				SPARK_HANDSHAKE_COMPLETED = 1;
-				TimingCloudSocketTimeout = 0;
 			}
 		}
 
 		if (!Spark_Communication_Loop())
 		{
-			if (LED_RGB_OVERRIDE)
-			{
-				LED_Signaling_Stop();
-			}
-
 			SPARK_FLASH_UPDATE = 0;
 			SPARK_LED_FADE = 0;
 			SPARK_HANDSHAKE_COMPLETED = 0;
 			SPARK_SOCKET_CONNECTED = 0;
-
-			if(TimingCloudSocketTimeout != 0) /* Set within Timing_Decrement() */
-			{
-				/* Work around for CFOD issue */
-				SPARK_WLAN_RESET = 1;
-
-				//NVIC_SystemReset(); /* Better alternative */
-			}
 		}
 	}
 }

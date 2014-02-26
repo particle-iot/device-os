@@ -57,20 +57,23 @@ int Stream::timedPeek()
 // discards non-numeric characters
 int Stream::peekNextDigit()
 {
-  int c;
+  int c = -1;
   while (1) {
     c = timedPeek();
-    if (c < 0) return c;  // timeout
-    if (c == '-') return c;
-    if (c >= '0' && c <= '9') return c;
+    // timeout
+    if ((c < 0) || (c == '-') || (c >= '0' && c <= '9'))
+    {
+        break;
+    }
     read();  // discard non-numeric
   }
+  return c;
 }
 
 // Public Methods
 //////////////////////////////////////////////////////////////
 
-void Stream::setTimeout(unsigned long timeout)  // sets the maximum number of milliseconds to wait
+void Stream::setTimeout(system_tick_t timeout)  // sets the maximum number of milliseconds to wait
 {
   _timeout = timeout;
 }
@@ -150,12 +153,13 @@ long Stream::parseInt(char skipChar)
     return 0; // zero returned if timeout
 
   do{
-    if(c == skipChar)
-      ; // ignore this charactor
-    else if(c == '-')
+    if(c == skipChar) {
+      // ignore this charactor
+    } else if(c == '-') {
       isNegative = true;
-    else if(c >= '0' && c <= '9')        // is c a digit?
+    } else if(c >= '0' && c <= '9') {        // is c a digit?
       value = value * 10 + c - '0';
+    }
     read();  // consume the character we got with peek
     c = timedPeek();
   }
@@ -188,13 +192,13 @@ float Stream::parseFloat(char skipChar){
     return 0; // zero returned if timeout
 
   do{
-    if(c == skipChar)
-      ; // ignore
-    else if(c == '-')
+    if(c == skipChar) {
+      // ignore
+    } else if(c == '-') {
       isNegative = true;
-    else if (c == '.')
+    } else if (c == '.') {
       isFraction = true;
-    else if(c >= '0' && c <= '9')  {      // is c a digit?
+    } else if(c >= '0' && c <= '9')  {      // is c a digit?
       value = value * 10 + c - '0';
       if(isFraction)
          fraction *= 0.1;

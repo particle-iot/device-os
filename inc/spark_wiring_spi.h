@@ -54,6 +54,7 @@ private:
 
 public:
 	static void begin();
+	static void begin(uint16_t);
 	static void end();
 
 	static void setBitOrder(uint8_t);

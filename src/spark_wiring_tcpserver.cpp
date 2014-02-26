@@ -26,13 +26,18 @@
 #include "spark_wiring_tcpclient.h"
 #include "spark_wiring_tcpserver.h"
 
-TCPServer::TCPServer(uint16_t port) : _port(port), _sock(MAX_SOCK_NUM)
+TCPServer::TCPServer(uint16_t port) : _port(port), _sock(MAX_SOCK_NUM), _client(MAX_SOCK_NUM)
 {
 
 }
 
 void TCPServer::begin()
 {
+	if(!SPARK_WLAN_hasAddress())
+	{
+		return;
+	}
+
 	sockaddr tServerAddr;
 
 	tServerAddr.sa_family = AF_INET;
@@ -51,11 +56,11 @@ void TCPServer::begin()
 		return;
 	}
 
-	if (setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, SOCK_ON, sizeof(SOCK_ON)) < 0)
+	long optval = SOCK_ON;
+	if (setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &optval, sizeof(optval)) < 0)
 	{
 		return;
 	}
-
 
 	if (bind(sock, (sockaddr*)&tServerAddr, sizeof(tServerAddr)) < 0)
 	{
@@ -70,38 +75,35 @@ void TCPServer::begin()
 	_sock = sock;
 }
 
-void TCPServer::acceptClientConnections()
+TCPClient TCPServer::available()
 {
+	if(_sock == MAX_SOCK_NUM)
+	{
+		begin();
+	}
+
+	if(!SPARK_WLAN_hasAddress() || (_sock == MAX_SOCK_NUM))
+	{
+		_sock = MAX_SOCK_NUM;
+		_client = TCPClient(MAX_SOCK_NUM);
+		return _client;
+	}
+
 	sockaddr tClientAddr;
 	socklen_t tAddrLen = sizeof(tClientAddr);
 
-	for (int i = 0; i < MAX_SOCK_NUM; ++i)
-	{
-		if (!_clients[i].connected())
-		{
-			int sock = accept(_sock, (sockaddr*)&tClientAddr, &tAddrLen);
+	int sock = accept(_sock, (sockaddr*)&tClientAddr, &tAddrLen);
 
-			if (sock > -1)
-			{
-				_clients[i] = TCPClient(sock);
-			}
-		}
+	if (sock < 0)
+	{
+		_client = TCPClient(MAX_SOCK_NUM);
 	}
-}
-
-TCPClient TCPServer::available()
-{
-	acceptClientConnections();
-
-	for (int i = 0; i < MAX_SOCK_NUM; ++i)
+	else
 	{
-		if (_clients[i].connected() && _clients[i].available())
-		{
-			return _clients[i];
-		}
+		_client = TCPClient(sock);
 	}
 
-	return TCPClient(MAX_SOCK_NUM);
+	return _client;
 }
 
 size_t TCPServer::write(uint8_t b) 
@@ -111,14 +113,5 @@ size_t TCPServer::write(uint8_t b)
 
 size_t TCPServer::write(const uint8_t *buffer, size_t size) 
 {
-	size_t n = 0;
-	for (int i = 0; i < MAX_SOCK_NUM; ++i)
-	{
-		if (_clients[i].connected())
-		{
-			n += _clients[i].write(buffer, size);
-		}
-	}
-
-	return n;
+	return _client.write(buffer, size);
 }

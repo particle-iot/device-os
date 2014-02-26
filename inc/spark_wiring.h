@@ -27,6 +27,9 @@
 #define SPARK_WIRING_H
 
 #include "stm32f10x.h"
+#include "config.h"
+#include "spark_macros.h"
+#include "debug.h"
 #include "platform_config.h"
 #include "spark_utilities.h"
 #include "spark_wiring_stream.h"
@@ -37,10 +40,18 @@
 * Basic variables
 */
 
-#define min(a,b)                ((a)<(b)?(a):(b))
-#define max(a,b)                ((a)>(b)?(a):(b))
-#define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
-#define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+#if !defined(min)
+#   define min(a,b)                ((a)<(b)?(a):(b))
+#endif
+#if !defined(max)
+#   define max(a,b)                ((a)>(b)?(a):(b))
+#endif
+#if !defined(constrain)
+#   define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
+#endif
+#if !defined(round)
+#   define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+#endif
 
 #define HIGH 0x1
 #define LOW 0x0
@@ -69,12 +80,7 @@
 #define D6 6
 #define D7 7
 
-#if defined (USE_SPARK_CORE_V01)
-#define LED1 8
-#define LED2 9
-#elif defined (USE_SPARK_CORE_V02)
 #define LED1 LED_USER
-#endif
 
 #define A0 10
 #define A1 11
@@ -117,13 +123,14 @@
 #define SDA  0
 #define SCL  1
 
-#define ADC_SAMPLING_TIME ADC_SampleTime_1Cycles5 //ADC_SampleTime_239Cycles5
+#define ADC1_DR_ADDRESS		((uint32_t)0x4001244C)
+#define ADC_DMA_BUFFERSIZE	10
+#define ADC_SAMPLING_TIME	ADC_SampleTime_41Cycles5
+
 #define TIM_PWM_FREQ 500 //500Hz
 
 #define LSBFIRST 0
 #define MSBFIRST 1
-
-#define MAX_SOCK_NUM 3
 
 typedef unsigned char byte;
 
@@ -147,6 +154,9 @@ typedef struct STM32_Pin_Info {
 } STM32_Pin_Info;
 
 extern STM32_Pin_Info PIN_MAP[];
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
 * GPIO
@@ -160,7 +170,7 @@ void analogWrite(uint16_t pin, uint8_t value);
 /*
 * Timing
 */
-unsigned long millis(void);
+system_tick_t millis(void);
 unsigned long micros(void);
 void delay(unsigned long ms);
 void delayMicroseconds(unsigned int us);
@@ -169,5 +179,9 @@ long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
 
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SPARK_WIRING_H_ */

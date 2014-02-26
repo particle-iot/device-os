@@ -28,6 +28,7 @@
 
 /* Define abort() */
 #include <stdlib.h>
+#include "debug.h"
 #ifdef __CS_SOURCERYGXX_REV__
 #define abort() _exit(-1);
 #include <errno.h>
@@ -106,6 +107,7 @@ extern "C" {
 
 void _exit(int status)
 {
+        PANIC(Exit,"Exit Called");
 	while(1);
 }
 #endif
@@ -134,6 +136,7 @@ caddr_t _sbrk(int incr)
 	heap_end += incr;
 
 	if (heap_end > &__Stack_Init) {
+	        PANIC(OutOfHeap,"Out Of Heap");
 		abort();
 	}
 
@@ -214,6 +217,8 @@ int _write(int file, char *ptr, int len) {
 
 void _exit(int status) {
     _write(1, (char *)"exit", 4);
+    PANIC(Exit,"Exit Called");
+
     while (1) {
         ;
     }
@@ -269,5 +274,13 @@ int _read(int file, char *ptr, int len) {
 
 /* Default implementation for call made to pure virtual function. */
 void __cxa_pure_virtual() { while (1); }
+
+/* Provide default implemenation for __cxa_guard_acquire() and
+ * __cxa_guard_release(). Note: these must be revisited if a multitasking
+ * OS is ported to this platform. */
+__extension__ typedef int __guard __attribute__((mode (__DI__)));
+int __cxa_guard_acquire(__guard *g) {return !*(char *)(g);};
+void __cxa_guard_release (__guard *g) {*(char *)g = 1;};
+void __cxa_guard_abort (__guard *) {};
 
 } /* extern "C" */

@@ -4,6 +4,9 @@
  * @author  Satish Nair, Zachary Crockett, Zach Supalla and Mohit Bhoite
  * @version V1.0.0
  * @date    13-March-2013
+ * 
+ * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
+ * 
  * @brief   Main program body.
  ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
@@ -25,6 +28,7 @@
   
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "debug.h"
 #include "spark_utilities.h"
 extern "C" {
 #include "usb_conf.h"
@@ -42,8 +46,6 @@ extern "C" {
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-volatile uint32_t TimingMillis;
-volatile uint32_t TimingCloudSocketTimeout;
 volatile uint32_t TimingFlashUpdateTimeout;
 
 volatile uint8_t SPARK_WIRING_APPLICATION = 0;
@@ -98,19 +100,17 @@ int main(void)
 
 	/* Enable CRC clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
-
+	DEBUG("Hello from Spark!");
 #if !defined (RGB_NOTIFICATIONS_ON)	&& defined (RGB_NOTIFICATIONS_OFF)
 	LED_RGB_OVERRIDE = 1;
 #endif
 
-#if defined (USE_SPARK_CORE_V02)
 	LED_SetRGBColor(RGB_COLOR_WHITE);
 	LED_On(LED_RGB);
 	SPARK_LED_FADE = 1;
 
 #if defined (SPARK_RTC_ENABLE)
 	RTC_Configuration();
-#endif
 #endif
 
 #ifdef IWDG_RESET_ENABLE
@@ -124,6 +124,7 @@ int main(void)
 		RCC_ClearFlag();
 	}
 
+	/* We are duplicating the IWDG call here for compatibility with old bootloader */
 	/* Set IWDG Timeout to 3 secs */
 	IWDG_Reset_Enable(3 * TIMING_IWDG_RELOAD);
 #endif
@@ -171,7 +172,6 @@ int main(void)
 				}
 
 #ifdef SPARK_WLAN_ENABLE
-				userEventSend();
 			}
 		}
 #endif
@@ -188,8 +188,6 @@ int main(void)
  *******************************************************************************/
 void Timing_Decrement(void)
 {
-	TimingMillis++;
-
 	if (TimingDelay != 0x00)
 	{
 		TimingDelay--;
@@ -221,19 +219,14 @@ void Timing_Decrement(void)
 	}
 	else if(SPARK_LED_FADE)
 	{
-#if defined (USE_SPARK_CORE_V02)
 		LED_Fade(LED_RGB);
 		if(SPARK_HANDSHAKE_COMPLETED)
 			TimingLED = 20;
 		else
 			TimingLED = 1;
-#endif
 	}
 	else if(SPARK_HANDSHAKE_COMPLETED)
 	{
-#if defined (USE_SPARK_CORE_V01)
-		LED_On(LED1);
-#elif defined (USE_SPARK_CORE_V02)
 #if defined (RGB_NOTIFICATIONS_CONNECTING_ONLY)
 		LED_Off(LED_RGB);
 #else
@@ -241,15 +234,10 @@ void Timing_Decrement(void)
 		LED_On(LED_RGB);
 		SPARK_LED_FADE = 1;
 #endif
-#endif
 	}
 	else
 	{
-#if defined (USE_SPARK_CORE_V01)
-		LED_Toggle(LED1);
-#elif defined (USE_SPARK_CORE_V02)
 		LED_Toggle(LED_RGB);
-#endif
 		if(SPARK_SOCKET_CONNECTED)
 			TimingLED = 50;		//50ms
 		else
@@ -263,11 +251,6 @@ void Timing_Decrement(void)
 
 		if(!SPARK_WLAN_SLEEP)
 		{
-			if(WLAN_DHCP && !(SPARK_SOCKET_CONNECTED & SPARK_HANDSHAKE_COMPLETED))
-			{
-				//Work around to exit the blocking nature of socket calls
-				Spark_ConnectAbort_WLANReset();
-			}
 
 			WLAN_SMART_CONFIG_START = 1;
 		}
@@ -293,20 +276,6 @@ void Timing_Decrement(void)
 				TimingFlashUpdateTimeout++;
 			}
 		}
-		else if(SPARK_HANDSHAKE_COMPLETED)
-		{
-			if (TimingCloudSocketTimeout >= TIMING_CLOUD_SOCKET_TIMEOUT)
-			{
-				TimingCloudSocketTimeout = 0;
-
-				//Reset WLAN in worst case if Spark_Communication_Loop() doesn't detect failure
-				Spark_ConnectAbort_WLANReset();
-			}
-			else
-			{
-				TimingCloudSocketTimeout++;
-			}
-		}
 	}
 #endif
 
@@ -317,6 +286,12 @@ void Timing_Decrement(void)
 
 		/* Reload IWDG counter */
 		IWDG_ReloadCounter();
+
+		if (BKP_ReadBackupRegister(BKP_DR1) != 0xFFFF)
+		{
+			//We have a running firmware otherwise we wouldn't have been here
+			BKP_WriteBackupRegister(BKP_DR1, 0xFFFF);	//Reset BKP_DR1
+		}
 	}
 	else
 	{
@@ -406,6 +381,12 @@ void USB_USART_Send_Data(uint8_t Data)
 		if(USART_Rx_ptr_in == USART_RX_DATA_SIZE)
 		{
 			USART_Rx_ptr_in = 0;
+		}
+
+		if(CC3000_Read_Interrupt_Pin())
+		{
+			//Delay 100us to avoid losing the data
+			Delay_Microsecond(100);
 		}
 	}
 }

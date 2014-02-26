@@ -26,6 +26,8 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+#include "spark_macros.h"
+#include "debug.h"
 #include "stm32_it.h"
 #include "main.h"
 #include "usb_lib.h"
@@ -77,6 +79,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
 	/* Go to infinite loop when Hard Fault exception occurs */
+        PANIC(HardFault,"HardFault");
 	while (1)
 	{
 	}
@@ -92,6 +95,7 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
 	/* Go to infinite loop when Memory Manage exception occurs */
+        PANIC(MemManage,"MemManage");
 	while (1)
 	{
 	}
@@ -107,7 +111,8 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
 	/* Go to infinite loop when Bus Fault exception occurs */
-	while (1)
+        PANIC(BusFault,"BusFault");
+        while (1)
 	{
 	}
 }
@@ -122,6 +127,7 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
 	/* Go to infinite loop when Usage Fault exception occurs */
+        PANIC(UsageFault,"UsageFault");
 	while (1)
 	{
 	}
@@ -169,6 +175,7 @@ void PendSV_Handler(void)
  *******************************************************************************/
 void SysTick_Handler(void)
 {
+	System1MsTick();
 	Timing_Decrement();
 }
 
@@ -305,7 +312,6 @@ void EXTI1_IRQHandler(void)
  *******************************************************************************/
 void EXTI2_IRQHandler(void)
 {
-#if defined (USE_SPARK_CORE_V02)
 	if (EXTI_GetITStatus(EXTI_Line2) != RESET)//BUTTON1_EXTI_LINE
 	{
 		/* Clear the EXTI line pending bit */
@@ -319,7 +325,6 @@ void EXTI2_IRQHandler(void)
 		/* Enable TIM1 CC4 Interrupt */
 		TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
 	}
-#endif
 }
 
 /*******************************************************************************
@@ -460,22 +465,6 @@ void EXTI15_10_IRQHandler(void)
 
 		SPI_EXTI_IntHandler();
 	}
-
-#if defined (USE_SPARK_CORE_V01)
-	if (EXTI_GetITStatus(EXTI_Line10) != RESET)//BUTTON1_EXTI_LINE
-	{
-		/* Clear the EXTI line pending bit */
-		EXTI_ClearITPendingBit(EXTI_Line10);//BUTTON1_EXTI_LINE
-
-		BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
-
-		/* Disable BUTTON1 Interrupt */
-		BUTTON_EXTI_Config(BUTTON1, DISABLE);
-
-		/* Enable TIM1 CC4 Interrupt */
-		TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
-	}
-#endif
 }
 
 /*******************************************************************************
@@ -506,7 +495,6 @@ void TIM1_CC_IRQHandler(void)
 	}
 }
 
-#if defined (USE_SPARK_CORE_V02)
 /*******************************************************************************
  * Function Name  : RTC_IRQHandler
  * Description    : This function handles RTC global interrupt request.
@@ -576,7 +564,6 @@ void RTCAlarm_IRQHandler(void)
 		RTC_WaitForLastTask();
 	}
 }
-#endif
 
 /*******************************************************************************
  * Function Name  : DMA1_Channel5_IRQHandler

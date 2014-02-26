@@ -4,6 +4,8 @@
  * @author  Satish Nair
  * @version V1.0.0
  * @date    10-Nov-2013
+ *
+ * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
  * @brief   
  ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
@@ -27,222 +29,205 @@
 
 uint16_t TCPClient::_srcport = 1024;
 
+static bool inline isOpen(long sd)
+{
+   return sd != MAX_SOCK_NUM;
+}
+
 TCPClient::TCPClient() : _sock(MAX_SOCK_NUM)
 {
+  flush();
 }
 
 TCPClient::TCPClient(uint8_t sock) : _sock(sock) 
 {
+  flush();
 }
 
 int TCPClient::connect(const char* host, uint16_t port) 
 {
-	uint32_t ip_addr = 0;
+      int rv = 0;
+      if(isWanReady())
+      {
 
-	if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
-	{
-		IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
+        uint32_t ip_addr = 0;
 
-		return connect(remote_addr, port);
-	}
+        if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
+        {
+                IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
 
-	return 0;
+                return connect(remote_addr, port);
+        }
+      }
+      return rv;
 }
 
 int TCPClient::connect(IPAddress ip, uint16_t port) 
 {
-	if(WLAN_DHCP != 1)
-	{
-		return 0;
-	}
+        int connected = 0;
+        if(isWanReady())
+        {
+          sockaddr tSocketAddr;
+          _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+          DEBUG("socket=%d",_sock);
 
-	sockaddr tSocketAddr;
+          if (_sock >= 0)
+          {
+            flush();
 
-	_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            tSocketAddr.sa_family = AF_INET;
 
-	if (_sock < 0)
-	{
-		return 0;
-	}
+            tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
+            tSocketAddr.sa_data[1] = (port & 0x00FF);
 
-	_offset = 0;
-	_remaining = 0;
+            tSocketAddr.sa_data[2] = ip._address[0];
+            tSocketAddr.sa_data[3] = ip._address[1];
+            tSocketAddr.sa_data[4] = ip._address[2];
+            tSocketAddr.sa_data[5] = ip._address[3];
 
-	tSocketAddr.sa_family = AF_INET;
 
-	tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
-	tSocketAddr.sa_data[1] = (port & 0x00FF);
+            uint32_t ot = SPARK_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
+            DEBUG("_sock %d connect",_sock);
+            connected = (socket_connect(_sock, &tSocketAddr, sizeof(tSocketAddr)) >= 0 ? 1 : 0);
+            DEBUG("_sock %d connected=%d",_sock, connected);
+            SPARK_WLAN_SetNetWatchDog(ot);
 
-	tSocketAddr.sa_data[2] = ip._address[0];
-	tSocketAddr.sa_data[3] = ip._address[1];
-	tSocketAddr.sa_data[4] = ip._address[2];
-	tSocketAddr.sa_data[5] = ip._address[3];
-
-	if(socket_connect(_sock, &tSocketAddr, sizeof(tSocketAddr)) < 0)
-	{
-		_sock = MAX_SOCK_NUM;
-
-		return 0;
-	}
-
-	return 1;
+            if(!connected)
+            {
+                stop();
+            }
+          }
+        }
+        return connected;
 }
 
 size_t TCPClient::write(uint8_t b) 
 {
-	return write(&b, 1);
+        return write(&b, 1);
 }
 
 size_t TCPClient::write(const uint8_t *buffer, size_t size)
 {
-	if((WLAN_DHCP != 1) || (_sock == MAX_SOCK_NUM))
-	{
-		return -1;
-	}
+        return status() ? send(_sock, buffer, size, 0) : -1;
+}
 
-	return send(_sock, buffer, size, 0);
+int TCPClient::isWanReady()
+{
+  return SPARK_WLAN_hasAddress();
+}
+
+int TCPClient::bufferCount()
+{
+  return _total - _offset;
 }
 
 int TCPClient::available() 
 {
-	if((WLAN_DHCP != 1) || (_sock == MAX_SOCK_NUM))
-	{
-		return 0;
-	}
+    int avail = 0;
 
-	if ((_remaining > 0) && (_offset < _buffered))
-	{
-		return (_buffered - _offset);
-	}
+    // At EOB => Flush it
+    if (_total && (_offset == _total))
+    {
+      flush();
+    }
 
-	_types_fd_set_cc3000 readSet;
-	timeval timeout;
+    if( isWanReady() && isOpen(_sock))
+    {
+        // Have room
+        if ( _total < arraySize(_buffer))
+        {
+          _types_fd_set_cc3000 readSet;
+          timeval timeout;
 
-	FD_ZERO(&readSet);
-	FD_SET(_sock, &readSet);
+          FD_ZERO(&readSet);
+          FD_SET(_sock, &readSet);
 
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 5000;
+          timeout.tv_sec = 0;
+          timeout.tv_usec = 5000;
 
-	if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
-	{
-		if (FD_ISSET(_sock, &readSet))
-		{
-			int ret = recv(_sock, _buffer, TCPCLIENT_BUF_MAX_SIZE, 0);
-			if (ret > 0)
-			{
-				_offset = 0;
-				_remaining = ret;
-				_buffered = ret;
-			}
-
-			return ret;
-		}
-	}
-
-	return 0;
+          if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
+          {
+              if (FD_ISSET(_sock, &readSet))
+              {
+                  int ret = recv(_sock, _buffer + _total , arraySize(_buffer)-_total, 0);
+                  DEBUG("recv(=%d)",ret);
+                  if (ret > 0)
+                  {
+                      if (_total == 0) _offset = 0;
+                      _total += ret;
+                  }
+              }
+          } // Select
+          } // Have Space
+    } // isWanReady() && isOpen(_sock)
+    avail = bufferCount();
+    return avail;
 }
 
 int TCPClient::read() 
 {
-	if((WLAN_DHCP != 1) || (_sock == MAX_SOCK_NUM))
-	{
-		return -1;
-	}
 
-	uint8_t byte;
-
-	if ((_remaining > 0) && (_offset < TCPCLIENT_BUF_MAX_SIZE))
-	{
-		byte = _buffer[_offset++];
-		_remaining--;
-		return byte;
-	}
-
-	return -1;
+  return (bufferCount() || available()) ? _buffer[_offset++] : -1;
 }
 
 int TCPClient::read(uint8_t *buffer, size_t size)
 {
-	if((WLAN_DHCP != 1) || (_sock == MAX_SOCK_NUM))
-	{
-		return -1;
-	}
-
-	if ((_remaining > 0) && (_offset < TCPCLIENT_BUF_MAX_SIZE))
-	{
-		if (_remaining <= size)
-		{
-			memcpy(buffer, _buffer, _remaining);
-			_offset = _remaining;
-		}
-		else
-		{
-			memcpy(buffer, _buffer, size);
-			_offset = size;
-		}
-
-		if (_offset > 0)
-		{
-			_remaining -= _offset;
-			return _offset;
-		}
-	}
-
-	return -1;
+        int read = -1;
+        if (bufferCount() || available())
+        {
+          read = (size > (size_t) bufferCount()) ? bufferCount() : size;
+          memcpy(buffer, &_buffer[_offset], read);
+          _offset += read;
+        }
+        return read;
 }
 
 int TCPClient::peek() 
 {
-	if (!available())
-	{
-		return -1;
-	}
-
-	return read();
+  return  (bufferCount() || available()) ? _buffer[_offset] : -1;
 }
 
 void TCPClient::flush() 
 {
-	while (available())
-	{
-		read();
-	}
+  _offset = 0;
+  _total = 0;
 }
 
 void TCPClient::stop() 
 {
-	if (closesocket(_sock) == 0)
-	{
-		_sock = MAX_SOCK_NUM;
-	}
+  DEBUG("_sock %d closesocket", _sock);
+
+  if (isOpen(_sock))
+  {
+      int rv = closesocket(_sock);
+      DEBUG("_sock %d closed=%d", _sock, rv);
+  }
+ _sock = MAX_SOCK_NUM;
 }
 
-uint8_t TCPClient::connected() 
+bool TCPClient::connected() 
 {
-	if (_sock == MAX_SOCK_NUM)
-	{
-		return 0;
-	}
-
-	//To Do
-
-	return 1;
+  // Wlan up, open and not in CLOSE_WAIT or data still in the local buffer
+  bool rv = ( 1 == status() || bufferCount()) ? true : false;
+  // no data in the local buffer, Socket open but my be in CLOSE_WAIT yet the CC3000 may have data in its buffer
+  if(!rv && isOpen(_sock) && (SOCKET_STATUS_INACTIVE == get_socket_active_status(_sock)))
+    {
+      rv = available(); // Try CC3000
+      if (!rv) {        // No more Data and CLOSE_WAIT
+          DEBUG("caling Stop No more Data and in CLOSE_WAIT");
+          stop();       // Close our side
+      }
+  }
+  return rv;
 }
 
-uint8_t TCPClient::status() 
+uint8_t TCPClient::status()
 {
-	if (_sock == MAX_SOCK_NUM)
-	{
-		return 0;
-	}
+  return (isOpen(_sock) && isWanReady() && (SOCKET_STATUS_ACTIVE == get_socket_active_status(_sock)) ? 1 : 0);
 
-	//To Do
-
-	return 1;
 }
 
 TCPClient::operator bool()
 {
-	return _sock != MAX_SOCK_NUM;
+   return (status() ? 1 : 0);
 }

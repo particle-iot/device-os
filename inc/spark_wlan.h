@@ -46,6 +46,8 @@ extern "C" {
 #define WLAN_TIMEOUT_FILE_OFFSET	2
 #define ERROR_COUNT_FILE_OFFSET		3
 
+#define MAX_SOCK_NUM				8
+
 void Set_NetApp_Timeout(void);
 void Clear_NetApp_Dhcp(void);
 void Start_Smart_Config(void);
@@ -56,16 +58,16 @@ char *WLAN_Firmware_Patch(unsigned long *length);
 char *WLAN_Driver_Patch(unsigned long *length);
 char *WLAN_BootLoader_Patch(unsigned long *length);
 
+uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
 void SPARK_WLAN_Loop(void);
-void SPARK_WLAN_Timing(void);
+int SPARK_WLAN_hasAddress(void);
 
 /* Spark Cloud APIs */
 extern int Spark_Connect(void);
 extern int Spark_Disconnect(void);
 extern int Spark_Process_API_Response(void);
 
-extern volatile uint32_t TimingCloudSocketTimeout;
 extern volatile uint32_t TimingFlashUpdateTimeout;
 
 extern tNetappIpconfigRetArgs ip_config;
@@ -83,7 +85,10 @@ extern volatile uint8_t WLAN_DELETE_PROFILES;
 extern volatile uint8_t WLAN_SMART_CONFIG_START;
 
 extern volatile uint8_t Spark_Error_Count;
+extern volatile uint8_t Cloud_Handshake_Error_Count;
 
+extern bool wlan_sockets[];
+extern long sparkSocket;
 }
 
 #endif  /*__SPARK_WLAN_H*/

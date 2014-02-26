@@ -4,6 +4,8 @@
  * @author  Satish Nair
  * @version V1.0.0
  * @date    13-Nov-2013
+ *
+ * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
  * @brief   
  ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
@@ -26,68 +28,86 @@
 
 #include "spark_wiring_udp.h"
 
+
+static bool inline isOpen(long sd)
+{
+   return sd != MAX_SOCK_NUM;
+}
+
 UDP::UDP() : _sock(MAX_SOCK_NUM)
 {
 
 }
 
+int UDP::isWanReady()
+{
+  return SPARK_WLAN_hasAddress();
+}
+
 uint8_t UDP::begin(uint16_t port) 
 {
+        int bound = 0;
 	sockaddr tUDPAddr;
 
-	int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
-	if (sock < 0)
+	if(isWanReady())
 	{
-		return 0;
+	   _sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+           DEBUG("socket=%d",_sock);
+           if (_sock >= 0)
+            {
+
+              flush();
+              _port = port;
+
+              memset(&tUDPAddr, 0, sizeof(tUDPAddr));
+              tUDPAddr.sa_family = AF_INET;
+              tUDPAddr.sa_data[0] = (_port & 0xFF00) >> 8;
+              tUDPAddr.sa_data[1] = (_port & 0x00FF);
+
+              DEBUG("bind socket=%d",_sock);
+              bound = bind(_sock, (sockaddr*)&tUDPAddr, sizeof(tUDPAddr)) >= 0;
+              DEBUG("socket=%d bound=%d",_sock,bound);
+
+              if(!bound)
+              {
+                  stop();
+              }
+
+            }
 	}
-
-	_sock = sock;
-	_port = port;
-	_offset = 0;
-	_remaining = 0;
-
-	tUDPAddr.sa_family = AF_INET;
-
-	tUDPAddr.sa_data[0] = (_port & 0xFF00) >> 8;
-	tUDPAddr.sa_data[1] = (_port & 0x00FF);
-	tUDPAddr.sa_data[2] = 0;
-	tUDPAddr.sa_data[3] = 0;
-	tUDPAddr.sa_data[4] = 0;
-	tUDPAddr.sa_data[5] = 0;
-
-	if (bind(_sock, (sockaddr*)&tUDPAddr, sizeof(tUDPAddr)) < 0)
-	{
-		return 0;
-	}
-
-	return 1;
+        return bound;
 }
 
 int UDP::available() 
 {
-	return _remaining;
+    return _total - _offset;
+
 }
 
 void UDP::stop()
 {
-	if (closesocket(_sock) == 0)
-	{
-		_sock = MAX_SOCK_NUM;
-	}
+  DEBUG("_sock %d closesocket", _sock);
+  if (isOpen(_sock))
+  {
+      int rv = closesocket(_sock);
+      DEBUG("_sock %d closed=%d", _sock, rv);
+  }
+ _sock = MAX_SOCK_NUM;
 }
 
 int UDP::beginPacket(const char *host, uint16_t port)
 {
-	uint32_t ip_addr = 0;
+        if(isWanReady())
+        {
+	   uint32_t ip_addr = 0;
 
-	if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
-	{
-		IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
+          if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
+          {
+                  IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
 
-		return beginPacket(remote_addr, port);
-	}
-
+                  return beginPacket(remote_addr, port);
+          }
+        }
 	return 0;
 }
 
@@ -123,100 +143,76 @@ size_t UDP::write(uint8_t byte)
 
 size_t UDP::write(const uint8_t *buffer, size_t size)
 {
-	return sendto(_sock, buffer, size, 0, &_remoteSockAddr, _remoteSockAddrLen);
+
+	int rv =  sendto(_sock, buffer, size, 0, &_remoteSockAddr, _remoteSockAddrLen);
+        DEBUG("sendto(buffer=%lx, size=%d)=%d",buffer, size , rv);
+	return rv;
 }
 
 int UDP::parsePacket()
 {
-	_types_fd_set_cc3000 readSet;
-	timeval timeout;
+  // No data buffered
+  if(available() == 0 && isWanReady() && isOpen(_sock))
+  {
+      _types_fd_set_cc3000 readSet;
+      timeval timeout;
 
-	FD_ZERO(&readSet);
-	FD_SET(_sock, &readSet);
+      FD_ZERO(&readSet);
+      FD_SET(_sock, &readSet);
 
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 5000;
+      timeout.tv_sec = 0;
+      timeout.tv_usec = 5000;
 
-	if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
-	{
-		if (FD_ISSET(_sock, &readSet))
-		{
-			int ret = recvfrom(_sock, _buffer, RX_BUF_MAX_SIZE, 0, &_remoteSockAddr, &_remoteSockAddrLen);
+      if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
+      {
+              if (FD_ISSET(_sock, &readSet))
+              {
 
-			if (ret > 0)
-			{
-				_remotePort = _remoteSockAddr.sa_data[0] << 8;
-				_remotePort = _remoteSockAddr.sa_data[1] | _remotePort;
+                      int ret = recvfrom(_sock, _buffer, arraySize(_buffer), 0, &_remoteSockAddr, &_remoteSockAddrLen);
 
-				_remoteIP._address[0] = _remoteSockAddr.sa_data[2];
-				_remoteIP._address[1] = _remoteSockAddr.sa_data[3];
-				_remoteIP._address[2] = _remoteSockAddr.sa_data[4];
-				_remoteIP._address[3] = _remoteSockAddr.sa_data[5];
+                      if (ret > 0)
+                      {
+                              _remotePort = _remoteSockAddr.sa_data[0] << 8 | _remoteSockAddr.sa_data[1];
 
-				_offset = 0;
-				_remaining = ret;
-			}
+                              _remoteIP._address[0] = _remoteSockAddr.sa_data[2];
+                              _remoteIP._address[1] = _remoteSockAddr.sa_data[3];
+                              _remoteIP._address[2] = _remoteSockAddr.sa_data[4];
+                              _remoteIP._address[3] = _remoteSockAddr.sa_data[5];
 
-			return ret;
-		}
-	}
-
-	return 0;
+                              _offset = 0;
+                              _total = ret;
+                      }
+              }
+      }
+   }
+   return available();
 }
 
 int UDP::read()
 {
-	uint8_t byte;
-
-	if ((_remaining > 0) && (_offset < RX_BUF_MAX_SIZE))
-	{
-		byte = _buffer[_offset++];
-		_remaining--;
-		return byte;
-	}
-
-	return -1;
+  return available() ? _buffer[_offset++] : -1;
 }
 
 int UDP::read(unsigned char* buffer, size_t len)
 {
-	if ((_remaining > 0) && (_offset < RX_BUF_MAX_SIZE))
+        int read = -1;
+        if (available())
 	{
-		if (_remaining <= len)
-		{
-			memcpy(buffer, _buffer, _remaining);
-			_offset = _remaining;
-		}
-		else
-		{
-			memcpy(buffer, _buffer, len);
-			_offset = len;
-		}
-
-		if (_offset > 0)
-		{
-			_remaining -= _offset;
-			return _offset;
-		}
+          read = (len > (size_t) available()) ? available() : len;
+          memcpy(buffer, &_buffer[_offset], read);
+          _offset += read;
 	}
-
-	return -1;
+	return read;
 }
 
 int UDP::peek()
 {
-	if (!available())
-	{
-		return -1;
-	}
-
-	return read();
+     return available() ? _buffer[_offset] : -1;
 }
 
 void UDP::flush()
 {
-	while (available())
-	{
-		read();
-	}
+  _offset = 0;
+  _total = 0;
+
 }

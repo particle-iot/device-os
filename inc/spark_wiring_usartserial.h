@@ -29,14 +29,20 @@
 
 #include "spark_wiring_stream.h"
 
+struct ring_buffer;
+
 class USARTSerial : public Stream
 {
   private:
 	static USART_InitTypeDef USART_InitStructure;
-
 	static bool USARTSerial_Enabled;
+    ring_buffer *_rx_buffer;
+    ring_buffer *_tx_buffer;
+    bool transmitting;
+
   public:
-    USARTSerial();
+    USARTSerial(ring_buffer *rx_buffer, ring_buffer *tx_buffer);
+    virtual ~USARTSerial() {};
     void begin(unsigned long);
     void begin(unsigned long, uint8_t);
     void end();

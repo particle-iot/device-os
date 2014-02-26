@@ -34,8 +34,7 @@ class TCPServer : public Print {
 private:
 	uint16_t _port;
 	long _sock;
-	TCPClient _clients[MAX_SOCK_NUM];
-	void acceptClientConnections();
+	TCPClient _client;
 
 public:
 	TCPServer(uint16_t);
