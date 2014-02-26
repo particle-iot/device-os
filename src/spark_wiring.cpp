@@ -573,8 +573,24 @@ unsigned long micros(void)
  */
 void delay(unsigned long ms)
 {
-	system_tick_t _millis = millis() + ms;
-	while (_millis > millis());
+	volatile system_tick_t last_millis = GetSystem1MsTick();
+
+	while (1)
+	{
+		volatile system_tick_t current_millis = GetSystem1MsTick();
+		volatile long elapsed_millis = current_millis - last_millis;
+
+		//Check for wrapping
+		if (elapsed_millis < 0)
+		{
+			elapsed_millis = last_millis + current_millis;
+		}
+
+		if(elapsed_millis >= ms)
+		{
+			break;
+		}
+	}
 }
 
 /*
