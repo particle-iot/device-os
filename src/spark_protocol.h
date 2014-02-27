@@ -50,13 +50,6 @@ namespace ChunkReceivedCode {
   };
 }
 
-namespace EventType {
-  enum Enum {
-    PUBLIC = 'e',
-    PRIVATE = 'E'
-  };
-}
-
 struct SparkKeys
 {
   unsigned char *core_private;

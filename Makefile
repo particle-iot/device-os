@@ -17,7 +17,8 @@ ssllib      = $(ssllibdir)/libtropicssl.a
 
 objects = src/handshake.o \
           src/coap.o \
-          src/spark_protocol.o
+          src/spark_protocol.o \
+          src/events.o
 
 testobjects = tests/ConstructorFixture.o \
               tests/TestHandshake.o \
@@ -27,7 +28,8 @@ testobjects = tests/ConstructorFixture.o \
               tests/TestStateMachine.o \
               tests/TestSparkProtocol.o \
               tests/TestDescriptor.o \
-              tests/TestUserFunctions.o
+              tests/TestUserFunctions.o \
+              tests/TestEvents.o
 
 
 all: $(lib)
