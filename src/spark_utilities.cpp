@@ -43,6 +43,8 @@ sockaddr tSocketAddr;
 
 extern uint8_t LED_RGB_BRIGHTNESS;
 
+extern volatile uint8_t ARP_WAITING;
+
 // LED_Signaling_Override
 __IO uint8_t LED_Spark_Signal;
 __IO uint32_t LED_Signaling_Timing;
@@ -313,6 +315,7 @@ int Spark_Send(const unsigned char *buf, int buflen)
     return -1;
   }
 
+  while(ARP_WAITING);
   // send returns negative numbers on error
   int bytes_sent = send(sparkSocket, buf, buflen, 0);
 
@@ -586,6 +589,7 @@ int Internet_Test(void)
 #if defined(SEND_ON_CLOSE)
     DEBUG("send");
     char c = 0;
+    while(ARP_WAITING);
     int rc = send(testSocket, &c,1, 0);
     DEBUG("send %d",rc);
 #endif
@@ -644,6 +648,7 @@ int Spark_Disconnect(void)
 #if defined(SEND_ON_CLOSE)
       DEBUG("send");
       char c = 0;
+      while(ARP_WAITING);
       int rc = send(sparkSocket, &c,1, 0);
       DEBUG("send %d",rc);
 #endif

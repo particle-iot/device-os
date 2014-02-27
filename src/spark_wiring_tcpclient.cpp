@@ -28,6 +28,7 @@
 #include "spark_wiring_tcpclient.h"
 
 uint16_t TCPClient::_srcport = 1024;
+extern volatile uint8_t ARP_WAITING;
 
 static bool inline isOpen(long sd)
 {
@@ -108,6 +109,7 @@ size_t TCPClient::write(uint8_t b)
 
 size_t TCPClient::write(const uint8_t *buffer, size_t size)
 {
+        while(ARP_WAITING);
         return status() ? send(_sock, buffer, size, 0) : -1;
 }
 

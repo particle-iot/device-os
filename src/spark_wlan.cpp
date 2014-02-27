@@ -64,6 +64,8 @@ volatile uint8_t WLAN_CONNECTED;
 volatile uint8_t WLAN_DHCP;
 volatile uint8_t WLAN_CAN_SHUTDOWN;
 
+volatile uint8_t ARP_WAITING;
+
 enum eWanTimings {
   CONNECT_TO_ADDRESS_MAX = S2M(30),
   DISCONNECT_TO_RECONNECT = S2M(30),
@@ -280,6 +282,14 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 	{
 	        default:
 	          break;
+
+	    case HCI_EVNT_ASYNC_ARP_WAITING:
+	    	ARP_WAITING = 1;
+	    	break;
+
+	    case HCI_EVNT_ASYNC_ARP_DONE:
+	    	ARP_WAITING = 0;
+	    	break;
 
 		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
 			WLAN_SMART_CONFIG_FINISHED = 1;
