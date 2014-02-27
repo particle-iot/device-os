@@ -1361,6 +1361,29 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages)
 	}
 }
 
+void FLASH_Erase(void)
+{
+	FLASHStatus = FLASH_COMPLETE;
+
+	/* Unlock the Flash Program Erase Controller */
+	FLASH_Unlock();
+
+	/* Define the number of Internal Flash pages to be erased */
+	NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS) / INTERNAL_FLASH_PAGE_SIZE;
+
+	/* Clear All pending flags */
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+	/* Erase the Internal Flash pages */
+	for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
+	{
+		FLASHStatus = FLASH_ErasePage(CORE_FW_ADDRESS + (INTERNAL_FLASH_PAGE_SIZE * EraseCounter));
+	}
+
+	/* Locks the FLASH Program Erase Controller */
+	FLASH_Lock();
+}
+
 void FLASH_Backup(uint32_t sFLASH_Address)
 {
 #ifdef SPARK_SFLASH_ENABLE
@@ -1408,25 +1431,13 @@ void FLASH_Restore(uint32_t sFLASH_Address)
     /* Initialize SPI Flash */
 	sFLASH_Init();
 
-	FLASHStatus = FLASH_COMPLETE;
-
-	/* Unlock the Flash Program Erase Controller */
-	FLASH_Unlock();
-
-	/* Define the number of Internal Flash pages to be erased */
-	NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS) / INTERNAL_FLASH_PAGE_SIZE;
-
-	/* Clear All pending flags */
-	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
-
-	/* Erase the Internal Flash pages */
-	for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
-	{
-		FLASHStatus = FLASH_ErasePage(CORE_FW_ADDRESS + (INTERNAL_FLASH_PAGE_SIZE * EraseCounter));
-	}
+	FLASH_Erase();
 
 	Internal_Flash_Address = CORE_FW_ADDRESS;
 	External_Flash_Address = sFLASH_Address;
+
+	/* Unlock the Flash Program Erase Controller */
+	FLASH_Unlock();
 
 	/* Program Internal Flash Bank1 */
 	while ((Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS) && (FLASHStatus == FLASH_COMPLETE))
@@ -1561,30 +1572,35 @@ void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
 #endif
 }
 
-void Factory_Flash_Reset(void)
+void FACTORY_Flash_Reset(void)
 {
-    //First take backup of the current application firmware to External Flash
-    FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
-
     //Restore the Factory programmed application firmware from External Flash
 	FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
 
 	Finish_Update();
 }
 
-void OTA_Flash_Update(void)
+void BACKUP_Flash_Reset(void)
 {
-    //First take backup of the current application firmware to External Flash
-    FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
+    //Restore the Backup programmed application firmware from External Flash
+	FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
 
-   FLASH_OTA_Update_SysFlag = 0x5555;
+	Finish_Update();
+}
+
+void OTA_Flash_Reset(void)
+{
+	//First take backup of the current application firmware to External Flash
+	FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
+
+	FLASH_OTA_Update_SysFlag = 0x5555;
 	Save_SystemFlags();
 	BKP_WriteBackupRegister(BKP_DR10, 0x5555);
 
-    //Restore the OTA programmed application firmware from External Flash
+	//Restore the OTA programmed application firmware from External Flash
 	FLASH_Restore(EXTERNAL_FLASH_OTA_ADDRESS);
 
-    OTA_FLASHED_Status_SysFlag = 0x0001;
+	OTA_FLASHED_Status_SysFlag = 0x0001;
 
 	Finish_Update();
 }

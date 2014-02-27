@@ -212,6 +212,7 @@ void Save_SystemFlags(void);
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages);
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages);
 /* Internal Flash Backup to sFlash and Restore from sFlash Helper routines */
+void FLASH_Erase(void);
 void FLASH_Backup(uint32_t sFLASH_Address);
 void FLASH_Restore(uint32_t sFLASH_Address);
 /* External Flash Helper routines */
@@ -221,8 +222,10 @@ void FLASH_End(void);
 void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
 void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
 
-void Factory_Flash_Reset(void);
-void OTA_Flash_Update(void);
+void FACTORY_Flash_Reset(void);
+void BACKUP_Flash_Reset(void);
+void OTA_Flash_Reset(void);
+
 bool OTA_Flashed_GetStatus(void);
 void OTA_Flashed_ResetStatus(void);
 
