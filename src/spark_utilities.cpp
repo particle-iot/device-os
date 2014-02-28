@@ -182,26 +182,22 @@ void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString))
 
 void SparkClass::publish(const char *eventName)
 {
-	unsigned char eventBuffer[USER_EVENT_NAME_LENGTH + 28];
-	spark_protocol.event(eventBuffer, eventName, strlen(eventName), 60, EventType::PUBLIC);
-	spark_protocol.blocking_send(eventBuffer, sizeof(eventBuffer));
+  spark_protocol.send_event(eventName, NULL, 60, EventType::PUBLIC);
 }
 
 void SparkClass::publish(const char *eventName, const char *eventData)
 {
-	SparkClass::publish(eventName, eventData, 60, PUBLIC);
+  spark_protocol.send_event(eventName, eventData, 60, EventType::PUBLIC);
 }
 
 void SparkClass::publish(const char *eventName, const char *eventData, int ttl)
 {
-	SparkClass::publish(eventName, eventData, ttl, PUBLIC);
+  spark_protocol.send_event(eventName, eventData, ttl, EventType::PUBLIC);
 }
 
 void SparkClass::publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType)
 {
-	unsigned char eventBuffer[USER_EVENT_NAME_LENGTH + USER_EVENT_DATA_LENGTH + 28];
-	spark_protocol.event(eventBuffer, eventName, strlen(eventName), eventData, strlen(eventData), ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
-	spark_protocol.blocking_send(eventBuffer, sizeof(eventBuffer));
+  spark_protocol.send_event(eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
 }
 
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
