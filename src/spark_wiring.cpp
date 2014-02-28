@@ -601,7 +601,12 @@ void delay(unsigned long ms)
 		{
 			spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
 			//spark_loop_total_millis is reset to 0 in SPARK_WLAN_Loop()
-			SPARK_WLAN_Loop();
+			do
+			{
+				//Run once if the above condition passes
+				SPARK_WLAN_Loop();
+			}
+			while (SPARK_FLASH_UPDATE);//loop during OTA update
 		}
 #endif
 	}
