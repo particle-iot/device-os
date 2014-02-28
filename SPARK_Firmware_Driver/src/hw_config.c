@@ -219,31 +219,20 @@ void Delay(uint32_t nTime)
 
 /*******************************************************************************
  * Function Name  : Delay_Microsecond
- * Description    : Inserts a delay time in microseconds using DWT.
+ * Description    : Inserts a delay time in microseconds using 32-bit DWT->CYCCNT
  * Input          : uSec: specifies the delay time length, in microseconds.
  * Output         : None
  * Return         : None
  *******************************************************************************/
 void Delay_Microsecond(uint32_t uSec)
 {
-	volatile uint32_t last_DWT_CYCCNT = DWT->CYCCNT;
+	volatile uint32_t DWT_START = DWT->CYCCNT;
 
-	while (1)
-	{
-		volatile uint32_t current_DWT_CYCCNT = DWT->CYCCNT;
-		volatile long elapsed_DWT_CYCCNT = current_DWT_CYCCNT - last_DWT_CYCCNT;
+	// keep DWT_TOTAL from overflowing (max 59.652323s)
+	if(uSec > 59652323) uSec = 59652323;
 
-		//Check for wrapping
-		if (elapsed_DWT_CYCCNT < 0)
-		{
-			elapsed_DWT_CYCCNT = last_DWT_CYCCNT + current_DWT_CYCCNT;
-		}
-
-		if((elapsed_DWT_CYCCNT / SYSTEM_US_TICKS) >= uSec)
-		{
-			break;
-		}
-	}
+	volatile uint32_t DWT_TOTAL = ((SystemCoreClock / 1000000) * uSec);
+	while((DWT->CYCCNT - DWT_START) < DWT_TOTAL);
 }
 
 void RTC_Configuration(void)
