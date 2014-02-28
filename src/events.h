@@ -11,7 +11,9 @@ namespace EventType {
   };
 }
 
-size_t event(uint8_t[], uint16_t, const char *, const char *, int, EventType::Enum);
-size_t event_name_uri_path(uint8_t[], const char *, size_t);
+size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
+             const char *data, int ttl, EventType::Enum event_type);
+
+size_t event_name_uri_path(uint8_t buf[], const char *name, size_t name_len);
 
 #endif // __EVENTS_H

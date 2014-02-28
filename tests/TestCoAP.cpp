@@ -115,6 +115,12 @@ int mock_receive(unsigned char *buf, int buflen)
   return 0;
 }
 
+system_tick_t mock_millis(void)
+{
+  static system_tick_t tick = 0;
+  return ++tick;
+}
+
 int mock_call_function(const char *function_key, const char *arg)
 {
   const char *prevent_warnings = function_key;
@@ -157,6 +163,7 @@ void CoAPFixture::init()
   SparkCallbacks callbacks;
   callbacks.send = mock_send;
   callbacks.receive = mock_receive;
+  callbacks.millis = mock_millis;
 
   SparkDescriptor descriptor;
   descriptor.call_function = mock_call_function;
@@ -454,32 +461,6 @@ SUITE(CoAP)
     const char *the_string = "Hey, wow, this is like a super long string. It just goes on and on and on... I just like don't know why anyone tries to send things like this in a constrained environment, but whatevs. Peeps be thinkin' outside the box.";
     int buffer_length = spark_protocol.variable_value(buf, 0x5c, 0xf6, 0x49, the_string, strlen(the_string));
     CHECK_ARRAY_EQUAL(expected, buf, buffer_length);
-  }
-
-  TEST_FIXTURE(CoAPFixture, EventMatchesOpenSSL)
-  {
-    uint8_t expected[16] = {
-      0xfa, 0xe4, 0x18, 0x59, 0x71, 0x3c, 0xed, 0xf6,
-      0x37, 0xc3, 0x1d, 0xbb, 0x4f, 0x29, 0x25, 0xcd };
-    unsigned char buf[16];
-    memset(buf, 0, 16);
-    init();
-    spark_protocol.event(buf, "temp", 4);
-    CHECK_ARRAY_EQUAL(expected, buf, 16);
-  }
-
-  TEST_FIXTURE(CoAPFixture, EventWithDataMatchesOpenSSL)
-  {
-    uint8_t expected[32] = {
-      0xd6, 0x05, 0xd1, 0xcf, 0xe2, 0xa7, 0x2b, 0xe9,
-      0x9d, 0x68, 0x74, 0x9d, 0x24, 0xc5, 0x02, 0xed,
-      0x02, 0x6d, 0x61, 0x18, 0xdb, 0x02, 0xb7, 0x86,
-      0x6c, 0x86, 0x4c, 0x70, 0x22, 0x31, 0x93, 0x4e };
-    unsigned char buf[32];
-    memset(buf, 0, 32);
-    init();
-    spark_protocol.event(buf, "temp", 4, "22.3", 4);
-    CHECK_ARRAY_EQUAL(expected, buf, 32);
   }
 
   TEST_FIXTURE(CoAPFixture, ChunkReceivedMatchesOpenSSL)

@@ -445,90 +445,23 @@ int SparkProtocol::variable_value(unsigned char *buf,
   return buflen;
 }
 
-void SparkProtocol::event(unsigned char *buf,
-                          const char *event_name,
-                          int event_name_length,
-                          int ttl,
-                          EventType::Enum event_type)
+// Returns true on success, false on sending timeout failure
+bool SparkProtocol::send_event(const char *event_name, const char *data,
+                               int ttl, EventType::Enum event_type)
 {
-  // truncate event names that are too long for 4-bit CoAP option length
-  if (event_name_length > MAX_EVENT_NAME_LENGTH)
-    event_name_length = MAX_EVENT_NAME_LENGTH;
+  uint16_t msg_id = next_message_id();
+  size_t msglen = event(queue + 2, msg_id, event_name, data, ttl, event_type);
 
-  // limit ttl to max 28 bits
-  if (ttl > MAX_EVENT_TTL_SECONDS)
-    ttl = MAX_EVENT_TTL_SECONDS;
-
-  unsigned short message_id = next_message_id();
-
-  buf[0] = 0x50; // non-confirmable, no token
-  buf[1] = 0x02; // code 0.02 POST request
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
-  buf[4] = 0xb1; // one-byte Uri-Path option
-  buf[5] = event_type;
-  buf[6] = ttl >> 24;
-  buf[7] = ttl >> 16 & 0xff;
-  buf[8] = ttl >> 8 & 0xff;
-  buf[9] = ttl & 0xff;
-  buf[10] = event_name_length;
-
-  memcpy(buf + 11, event_name, event_name_length);
-
-  int msglen = 11 + event_name_length;
-  int buflen = (msglen & ~15) + 16;
+  size_t buflen = (msglen & ~15) + 16;
   char pad = buflen - msglen;
-  memset(buf + msglen, pad, pad); // PKCS #7 padding
+  memset(queue + 2 + msglen, pad, pad); // PKCS #7 padding
 
-  encrypt(buf, buflen);
-}
+  encrypt(queue + 2, buflen);
 
-void SparkProtocol::event(unsigned char *buf,
-                          const char *event_name,
-                          int event_name_length,
-                          const char *data,
-                          int data_length,
-                          int ttl,
-                          EventType::Enum event_type)
-{
-  // truncate event names that are too long for 4-bit CoAP option length
-  if (event_name_length > MAX_EVENT_NAME_LENGTH)
-    event_name_length = MAX_EVENT_NAME_LENGTH;
+  queue[0] = (buflen >> 8) & 0xff;
+  queue[1] = buflen & 0xff;
 
-  // truncate data to fit in one network packet
-  if (data_length > MAX_EVENT_DATA_LENGTH)
-    data_length = MAX_EVENT_DATA_LENGTH;
-
-  // limit ttl to max 28 bits
-  if (ttl > MAX_EVENT_TTL_SECONDS)
-    ttl = MAX_EVENT_TTL_SECONDS;
-
-  unsigned short message_id = next_message_id();
-
-  buf[0] = 0x50; // non-confirmable, no token
-  buf[1] = 0x02; // code 0.02 POST request
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
-  buf[4] = 0xb1; // one-byte Uri-Path option
-  buf[5] = event_type;
-  buf[6] = ttl >> 24;
-  buf[7] = ttl >> 16 & 0xff;
-  buf[8] = ttl >> 8 & 0xff;
-  buf[9] = ttl & 0xff;
-  buf[10] = event_name_length;
-
-  memcpy(buf + 11, event_name, event_name_length);
-
-  buf[11 + event_name_length] = 0xff; // payload marker
-
-  memcpy(buf + 12 + event_name_length, data, data_length);
-
-  int msglen = 12 + event_name_length + data_length;
-  int buflen = (msglen & ~15) + 16;
-  char pad = buflen - msglen;
-  memset(buf + msglen, pad, pad); // PKCS #7 padding
-
-  encrypt(buf, buflen);
+  return (0 <= blocking_send(queue, buflen + 2));
 }
 
 void SparkProtocol::chunk_received(unsigned char *buf,

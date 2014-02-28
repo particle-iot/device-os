@@ -28,6 +28,7 @@
 
 #include "spark_descriptor.h"
 #include "coap.h"
+#include "events.h"
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
 
@@ -111,18 +112,8 @@ class SparkProtocol
     int variable_value(unsigned char *buf, unsigned char token,
                        unsigned char message_id_msb, unsigned char message_id_lsb,
                        const void *return_value, int length);
-    void event(unsigned char *buf,
-               const char *event_name,
-               int event_name_length,
-               int ttl,
-               EventType::Enum event_type);
-    void event(unsigned char *buf,
-               const char *event_name,
-               int event_name_length,
-               const char *data,
-               int data_length,
-               int ttl,
-               EventType::Enum event_type);
+    bool send_event(const char *event_name, const char *data,
+                    int ttl, EventType::Enum event_type);
     void chunk_received(unsigned char *buf, unsigned char token,
                         ChunkReceivedCode::Enum code);
     void chunk_missed(unsigned char *buf, unsigned short chunk_index);
