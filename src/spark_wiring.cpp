@@ -569,10 +569,15 @@ unsigned long micros(void)
 }
 
 /*
- * @brief This should block for a certain number of milliseconds.
+ * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
  */
 void delay(unsigned long ms)
 {
+#ifdef SPARK_WLAN_ENABLE
+	volatile system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
+	spark_loop_total_millis += ms;
+#endif
+
 	volatile system_tick_t last_millis = GetSystem1MsTick();
 
 	while (1)
@@ -590,6 +595,15 @@ void delay(unsigned long ms)
 		{
 			break;
 		}
+
+#ifdef SPARK_WLAN_ENABLE
+		if((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
+		{
+			spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
+			//spark_loop_total_millis is reset to 0 in SPARK_WLAN_Loop()
+			SPARK_WLAN_Loop();
+		}
+#endif
 	}
 }
 

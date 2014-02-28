@@ -39,6 +39,8 @@
 
 #define TIMING_FLASH_UPDATE_TIMEOUT		30000	//30sec
 
+#define SPARK_LOOP_DELAY_MILLIS			1000	//1sec
+
 #define USER_VAR_MAX_COUNT				10
 #define USER_VAR_KEY_LENGTH				12
 
