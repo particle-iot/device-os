@@ -317,8 +317,6 @@ void EXTI2_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line2);//BUTTON1_EXTI_LINE
 
-		BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
-
 		/* Disable BUTTON1 Interrupt */
 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
 
@@ -482,10 +480,14 @@ void TIM1_CC_IRQHandler(void)
 
 		if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
 		{
+			/* Accumulate debounce time when BUTTON1 is pressed */
 			BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
 		}
 		else
 		{
+			/* Reset debounce time when BUTTON1 is released */
+			BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
+
 			/* Disable TIM1 CC4 Interrupt */
 			TIM_ITConfig(TIM1, TIM_IT_CC4, DISABLE);
 
