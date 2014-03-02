@@ -468,7 +468,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 
 void SPARK_WLAN_Loop(void)
 {
-  static int cofd_count = 0;
+  static int cfod_count = 0;
 
   ON_EVENT_DELTA();
 
@@ -489,7 +489,7 @@ void SPARK_WLAN_Loop(void)
       SPARK_FLASH_UPDATE = 0;
       SPARK_LED_FADE = 0;
       Spark_Error_Count = 0;
-      cofd_count = 0;
+      cfod_count = 0;
 
       wlan_stop();
       Delay(100);
@@ -603,7 +603,7 @@ void SPARK_WLAN_Loop(void)
 
     if (Spark_Connect() >= 0)
     {
-      cofd_count  = 0;
+      cfod_count  = 0;
       SPARK_SOCKET_CONNECTED = 1;
     }
     else
@@ -613,7 +613,7 @@ void SPARK_WLAN_Loop(void)
         return;
       }
 
-      if ((cofd_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
+      if ((cfod_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
       {
         SPARK_WLAN_RESET = RESET_ON_CFOD;
         ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
@@ -622,7 +622,7 @@ void SPARK_WLAN_Loop(void)
       if (Internet_Test() < 0)
       {
         // No Internet Connection
-        if ((cofd_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
+        if ((cfod_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
         {
           SPARK_WLAN_RESET = RESET_ON_CFOD;
           ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
