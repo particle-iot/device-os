@@ -69,6 +69,19 @@ typedef enum
 	CC3000_DMA_TX = 0, CC3000_DMA_RX = 1
 } CC3000_DMADirection_TypeDef;
 
+typedef enum
+{
+  IP_ADDRESS = 0, DOMAIN_NAME = 1, INVALID_INTERNET_ADDRESS = 0xff
+} Internet_Address_TypeDef;
+
+typedef struct ServerAddress {
+  Internet_Address_TypeDef addr_type;
+  union {
+    char domain[127];
+    uint32_t ip;
+  };
+} ServerAddress;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros ------------------------------------------------------------*/
@@ -92,6 +105,10 @@ typedef enum
 /* External Flash memory address where OTA upgraded core firmware will be saved */
 #define EXTERNAL_FLASH_OTA_ADDRESS	((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_BKP_ADDRESS))
 
+/* External Flash memory address where server domain/IP resides */
+#define EXTERNAL_FLASH_SERVER_DOMAIN_ADDRESS      ((uint32_t)0x1180)
+/* Length in bytes of server domain/IP data */
+#define EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH       (128)
 /* External Flash memory address where server public RSA key resides */
 #define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS	((uint32_t)0x01000)
 /* Length in bytes of DER-encoded 2048-bit RSA public key */
@@ -219,6 +236,7 @@ void FLASH_Restore(uint32_t sFLASH_Address);
 void FLASH_Begin(uint32_t sFLASH_Address);
 void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
 void FLASH_End(void);
+void FLASH_Read_ServerAddress(ServerAddress *server_addr);
 void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
 void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
 
