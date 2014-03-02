@@ -594,6 +594,7 @@ int Internet_Test(void)
     return testResult;
 }
 
+// Same return value as connect(), -1 on error
 int Spark_Connect(void)
 {
   DEBUG("sparkSocket Now =%d",sparkSocket);
@@ -617,11 +618,44 @@ int Spark_Connect(void)
   tSocketAddr.sa_data[0] = (SPARK_SERVER_PORT & 0xFF00) >> 8;
   tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
 
-  // the destination IP address
-  tSocketAddr.sa_data[2] = 54;	// First Octet of destination IP
-  tSocketAddr.sa_data[3] = 208;	// Second Octet of destination IP
-  tSocketAddr.sa_data[4] = 229; 	// Third Octet of destination IP
-  tSocketAddr.sa_data[5] = 4;	// Fourth Octet of destination IP
+  ServerAddress server_addr;
+  FLASH_Read_ServerAddress(&server_addr);
+
+  uint32_t ip_addr = 0;
+
+  switch (server_addr.addr_type)
+  {
+    case IP_ADDRESS:
+      ip_addr = server_addr.ip;
+      break;
+
+    default:
+    case INVALID_INTERNET_ADDRESS:
+    {
+      const char default_domain[] = "device.spark.io";
+      memcpy(server_addr.domain, default_domain, strlen(default_domain));
+      // and fall through to domain name case
+    }
+
+    case DOMAIN_NAME:
+      // CC3000 unreliability workaround, usually takes 2 or 3 attempts
+      int attempts = 10;
+      while (!ip_addr && 0 < --attempts)
+      {
+        gethostbyname(server_addr.domain, strnlen(server_addr.domain, 127), &ip_addr);
+      }
+  }
+
+  if (!ip_addr)
+  {
+    // final fallback
+    ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
+  }
+
+  tSocketAddr.sa_data[2] = BYTE_N(ip_addr, 3);
+  tSocketAddr.sa_data[3] = BYTE_N(ip_addr, 2);
+  tSocketAddr.sa_data[4] = BYTE_N(ip_addr, 1);
+  tSocketAddr.sa_data[5] = BYTE_N(ip_addr, 0);
 
   uint32_t ot = SPARK_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
   DEBUG("connect");
