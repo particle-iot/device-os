@@ -642,7 +642,7 @@ int Spark_Connect(void)
       int attempts = 10;
       while (!ip_addr && 0 < --attempts)
       {
-        gethostbyname(server_addr.domain, strnlen(server_addr.domain, 127), &ip_addr);
+        gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr);
       }
   }
 
