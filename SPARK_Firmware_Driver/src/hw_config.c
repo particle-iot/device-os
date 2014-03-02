@@ -228,10 +228,10 @@ void Delay_Microsecond(uint32_t uSec)
 {
 	volatile uint32_t DWT_START = DWT->CYCCNT;
 
-	// keep DWT_TOTAL from overflowing (max 59.652323s)
-	if(uSec > 59652323) uSec = 59652323;
+	// keep DWT_TOTAL from overflowing (max 59.652323s w/72MHz SystemCoreClock)
+	if(uSec > (UINT_MAX/SYSTEM_US_TICKS)) uSec = (UINT_MAX/SYSTEM_US_TICKS);
 
-	volatile uint32_t DWT_TOTAL = ((SystemCoreClock / 1000000) * uSec);
+	volatile uint32_t DWT_TOTAL = (SYSTEM_US_TICKS * uSec);
 	while((DWT->CYCCNT - DWT_START) < DWT_TOTAL);
 }
 
