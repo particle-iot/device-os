@@ -185,7 +185,7 @@ void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString))
 void SparkClass::publish(const char *eventName)
 {
 	unsigned char eventBuffer[USER_EVENT_NAME_LENGTH + 28];
-	spark_protocol.event(eventBuffer, eventName, strlen(eventName), 60, EventType::PUBLIC);
+	//spark_protocol.event(eventBuffer, eventName, strlen(eventName), 60, EventType::PUBLIC);
 	spark_protocol.blocking_send(eventBuffer, sizeof(eventBuffer));
 }
 
@@ -202,7 +202,7 @@ void SparkClass::publish(const char *eventName, const char *eventData, int ttl)
 void SparkClass::publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType)
 {
 	unsigned char eventBuffer[USER_EVENT_NAME_LENGTH + USER_EVENT_DATA_LENGTH + 28];
-	spark_protocol.event(eventBuffer, eventName, strlen(eventName), eventData, strlen(eventData), ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
+	//spark_protocol.event(eventBuffer, eventName, strlen(eventName), eventData, strlen(eventData), ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
 	spark_protocol.blocking_send(eventBuffer, sizeof(eventBuffer));
 }
 
