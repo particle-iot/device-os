@@ -44,12 +44,18 @@ void setup()
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
 
+	pinMode(A0,OUTPUT);
+
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
 	//This will run in a loop
+	digitalWrite(A0,1);
+	delay(200);
+	digitalWrite(A0,0);
+	delay(200);
 }
 
 /*******************************************************************************

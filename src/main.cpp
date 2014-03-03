@@ -30,6 +30,8 @@
 #include "main.h"
 #include "debug.h"
 #include "spark_utilities.h"
+ #include "spark_wiring_usartserial.h"
+  #include "spark_wiring.h"
 extern "C" {
 #include "usb_conf.h"
 #include "usb_lib.h"
@@ -143,6 +145,8 @@ int main(void)
 
 	/* Connect to Spark Cloud by default */
 	SPARK_SOCKET_HANDSHAKE = 1;
+	Serial1.begin(9600);
+	Serial1.println("This is the beginning");
 
 	/* Main loop */
 	while (1)
@@ -522,3 +526,8 @@ void assert_failed(uint8_t* file, uint32_t line)
 	}
 }
 #endif
+
+void debug_output_(const char *message)
+{
+	Serial1.print(message);
+}

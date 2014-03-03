@@ -27,6 +27,8 @@
 #ifndef __MAIN_H
 #define __MAIN_H
 
+#define DEBUG_BUILD
+
 extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
@@ -103,6 +105,7 @@ int32_t USB_USART_Receive_Data(void);
 void USB_USART_Send_Data(uint8_t Data);
 void Handle_USBAsynchXfer(void);
 void Get_SerialNum(void);
+void debug_output_(const char *message);
 
 }
 
