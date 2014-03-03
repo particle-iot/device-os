@@ -292,9 +292,6 @@ void ADC_DMA_Init()
 	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
 	DMA_Init(DMA1_Channel1, &DMA_InitStructure);
 
-	// Enable DMA1 Channel1
-	DMA_Cmd(DMA1_Channel1, ENABLE);
-
 	// ADC1 configuration
 	ADC_InitStructure.ADC_Mode = ADC_Mode_SlowInterl;
 	ADC_InitStructure.ADC_ScanConvMode = DISABLE;
@@ -315,9 +312,6 @@ void ADC_DMA_Init()
 
 	// Enable ADC2 external trigger conversion
 	ADC_ExternalTrigConvCmd(ADC2, ENABLE);
-
-	// Enable ADC1 DMA
-	ADC_DMACmd(ADC1, ENABLE);
 
 	// Enable ADC1
 	ADC_Cmd(ADC1, ENABLE);
@@ -408,6 +402,12 @@ int32_t analogRead(uint16_t pin)
 		adcChannelConfigured = PIN_MAP[pin].adc_channel;
 	}
 
+	// Enable DMA1 Channel1
+	DMA_Cmd(DMA1_Channel1, ENABLE);
+
+	// Enable ADC1 DMA
+	ADC_DMACmd(ADC1, ENABLE);
+
 	// Start ADC1 Software Conversion
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 
@@ -416,6 +416,12 @@ int32_t analogRead(uint16_t pin)
 
 	// Clear Channel 1 DMA1_FLAG_TC flag
 	DMA_ClearFlag(DMA1_FLAG_TC1);
+
+	// Disable ADC1 DMA
+	ADC_DMACmd(ADC1, DISABLE);
+
+	// Disable DMA1 Channel1
+	DMA_Cmd(DMA1_Channel1, DISABLE);
 
 	uint16_t ADC_ConvertedValues[ADC_DMA_BUFFERSIZE * 2];
 	uint32_t ADC_SummatedValue = 0;
