@@ -30,6 +30,8 @@ size_t len;
 
 SUITE(Events)
 {
+  /***** publishing *****/
+
   TEST(LengthOfSingleCharEventWithNoDataIs8)
   {
     const size_t expected = 8;
@@ -112,5 +114,68 @@ SUITE(Events)
     len = event(buf, 0x7654, "weather/us/mn/minneapolis",
                 "t:5F,d:-2F,p:15%", 3600, EventType::PUBLIC);
     CHECK_ARRAY_EQUAL(expected, buf, len);
+  }
+
+
+  /***** subscribing *****/
+
+  TEST(LengthOfSubscriptionToOneDeviceFiltered)
+  {
+
+  }
+
+  TEST(ExpectedBufForSubscriptionToOneDeviceFiltered)
+  {
+
+  }
+
+  TEST(LengthOfSubscriptionToOneDeviceUnfiltered)
+  {
+
+  }
+
+  TEST(ExpectedBufForSubscriptionToOneDeviceUnfiltered)
+  {
+
+  }
+
+  TEST(LengthOfSubscriptionToMyDevicesFiltered)
+  {
+
+  }
+
+  TEST(ExpectedBufForSubscriptionToMyDevicesFiltered)
+  {
+
+  }
+
+  TEST(LengthOfSubscriptionToMyDevicesUnfiltered)
+  {
+
+  }
+
+  TEST(ExpectedBufForSubscriptionToMyDevicesUnfiltered)
+  {
+
+  }
+
+  TEST(LengthOfSubscriptionToFirehostFiltered)
+  {
+
+  }
+
+  TEST(ExpectedBufForSubscriptionToFirehoseFiltered)
+  {
+
+  }
+
+  TEST(LengthOfDisallowedFirehoseUnfiltered)
+  {
+
+  }
+
+  TEST(ExpectedBufForDisallowedFirehoseUnfiltered)
+  {
+
   }
 }
