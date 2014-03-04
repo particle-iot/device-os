@@ -287,7 +287,7 @@ void ADC_DMA_Init()
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Word;
 	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;
-	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
 	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
 	DMA_Init(DMA1_Channel1, &DMA_InitStructure);
@@ -309,9 +309,6 @@ void ADC_DMA_Init()
 	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
 	ADC_InitStructure.ADC_NbrOfChannel = 1;
 	ADC_Init(ADC2, &ADC_InitStructure);
-
-	// Enable ADC2 external trigger conversion
-	ADC_ExternalTrigConvCmd(ADC2, ENABLE);
 
 	// Enable ADC1
 	ADC_Cmd(ADC1, ENABLE);
@@ -380,6 +377,8 @@ int32_t analogRead(uint16_t pin)
 		return -1;
 	}
 
+	int i = 0, j = 0;
+
 	if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
 	{
 		digitalPinModeSaved = PIN_MAP[pin].pin_mode;
@@ -398,9 +397,20 @@ int32_t analogRead(uint16_t pin)
 		ADC_RegularChannelConfig(ADC1, PIN_MAP[pin].adc_channel, 1, ADC_SAMPLING_TIME);
 		// ADC2 regular channel configuration
 		ADC_RegularChannelConfig(ADC2, PIN_MAP[pin].adc_channel, 1, ADC_SAMPLING_TIME);
-
+		// Save the ADC configured channel
 		adcChannelConfigured = PIN_MAP[pin].adc_channel;
 	}
+
+	for(i = 0 ; i < ADC_DMA_BUFFERSIZE ; i++)
+	{
+		ADC_DualConvertedValues[i] = 0;
+	}
+
+	// Enable ADC2 external trigger conversion
+	ADC_ExternalTrigConvCmd(ADC2, ENABLE);
+
+	// Reset the number of data units in the DMA1 Channel1 transfer
+	DMA_SetCurrDataCounter(DMA1_Channel1, ADC_DMA_BUFFERSIZE);
 
 	// Enable DMA1 Channel1
 	DMA_Cmd(DMA1_Channel1, ENABLE);
@@ -426,9 +436,8 @@ int32_t analogRead(uint16_t pin)
 	uint16_t ADC_ConvertedValues[ADC_DMA_BUFFERSIZE * 2];
 	uint32_t ADC_SummatedValue = 0;
 	uint16_t ADC_AveragedValue = 0;
-	uint16_t j = 0;
 
-	for(uint16_t i = 0 ; i < ADC_DMA_BUFFERSIZE ; i++)
+	for(i = 0, j = 0 ; i < ADC_DMA_BUFFERSIZE ; i++)
 	{
 		// Fill the table with ADC2 converted values
 		ADC_ConvertedValues[j++] = ADC_DualConvertedValues[i] >> 16;
