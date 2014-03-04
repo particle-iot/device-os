@@ -94,11 +94,13 @@ LoopFillZerobss:
 	ldr	r3, = _ebss
 	cmp	r2, r3
 	bcc	FillZerobss
-/* Call the clock system intitialization function.*/
+/* Call the clock system intitialization function. */
 	bl  SystemInit
-/* Call C++ Constructors */
+/* Call the spark core configuration function. */
+	bl  SparkCoreConfig
+/* Call C++ constructors. */
 	bl	CallConstructors
-/* Call the application's entry point.*/
+/* Call the application's entry point. */
 	bl	main
 	bx	lr    
 .size	Reset_Handler, .-Reset_Handler

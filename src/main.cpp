@@ -74,13 +74,13 @@ extern LINE_CODING linecoding;
 /* Private functions ---------------------------------------------------------*/
 
 /*******************************************************************************
- * Function Name  : main.
- * Description    : main routine.
+ * Function Name  : SparkCoreConfig.
+ * Description    : Called in startup routine, before calling C++ constructors.
  * Input          : None.
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-int main(void)
+extern "C" void SparkCoreConfig(void)
 {
 #ifdef DFU_BUILD_ENABLE
 	/* Set the Vector Table(VT) base location at 0x5000 */
@@ -139,11 +139,20 @@ int main(void)
 
 #ifdef SPARK_WLAN_ENABLE
 	SPARK_WLAN_Setup(Multicast_Presence_Announcement);
-#endif
-
 	/* Connect to Spark Cloud by default */
 	SPARK_SOCKET_HANDSHAKE = 1;
+#endif
+}
 
+/*******************************************************************************
+ * Function Name  : main.
+ * Description    : main routine.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+int main(void)
+{
 	/* Main loop */
 	while (1)
 	{
