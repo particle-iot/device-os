@@ -565,16 +565,51 @@ system_tick_t millis(void)
  */
 unsigned long micros(void)
 {
-	return (DWT->CYCCNT / US_TICKS);
+	return (DWT->CYCCNT / SYSTEM_US_TICKS);
 }
 
 /*
- * @brief This should block for a certain number of milliseconds.
+ * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
  */
 void delay(unsigned long ms)
 {
-	system_tick_t _millis = millis() + ms;
-	while (_millis > millis());
+#ifdef SPARK_WLAN_ENABLE
+	volatile system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
+	spark_loop_total_millis += ms;
+#endif
+
+	volatile system_tick_t last_millis = GetSystem1MsTick();
+
+	while (1)
+	{
+		volatile system_tick_t current_millis = GetSystem1MsTick();
+		volatile long elapsed_millis = current_millis - last_millis;
+
+		//Check for wrapping
+		if (elapsed_millis < 0)
+		{
+			elapsed_millis = last_millis + current_millis;
+		}
+
+		if(elapsed_millis >= ms)
+		{
+			break;
+		}
+
+#ifdef SPARK_WLAN_ENABLE
+		if((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
+		{
+			spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
+			//spark_loop_total_millis is reset to 0 in SPARK_WLAN_Loop()
+			do
+			{
+				//Run once if the above condition passes
+				SPARK_WLAN_Loop();
+			}
+			while (SPARK_FLASH_UPDATE);//loop during OTA update
+		}
+#endif
+	}
 }
 
 /*

@@ -79,6 +79,7 @@ uint32_t wlan_watchdog = 0;
 #define WLAN_WD_TO() (wlan_watchdog && (millis() >= wlan_watchdog))
 #define CLR_WLAN_WD() do { wlan_watchdog = 0; WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog);;}while(0)
 
+volatile system_tick_t spark_loop_total_millis = 0;
 
 void (*announce_presence)(void);
 
@@ -467,10 +468,12 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 
 void SPARK_WLAN_Loop(void)
 {
-        static int cofd_count = 0;
-        ON_EVENT_DELTA();
+	static int cofd_count = 0;
+	ON_EVENT_DELTA();
 
-        if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || WLAN_WD_TO())
+	spark_loop_total_millis = 0;
+
+	if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || WLAN_WD_TO())
 	{
 		if(SPARK_WLAN_STARTED)
 		{
