@@ -377,7 +377,7 @@ int32_t analogRead(uint16_t pin)
 		return -1;
 	}
 
-	int i = 0, j = 0;
+	int i = 0;
 
 	if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
 	{
@@ -406,11 +406,11 @@ int32_t analogRead(uint16_t pin)
 		ADC_DualConvertedValues[i] = 0;
 	}
 
-	// Enable ADC2 external trigger conversion
-	ADC_ExternalTrigConvCmd(ADC2, ENABLE);
-
 	// Reset the number of data units in the DMA1 Channel1 transfer
 	DMA_SetCurrDataCounter(DMA1_Channel1, ADC_DMA_BUFFERSIZE);
+
+	// Enable ADC2 external trigger conversion
+	ADC_ExternalTrigConvCmd(ADC2, ENABLE);
 
 	// Enable DMA1 Channel1
 	DMA_Cmd(DMA1_Channel1, ENABLE);
@@ -433,22 +433,20 @@ int32_t analogRead(uint16_t pin)
 	// Disable DMA1 Channel1
 	DMA_Cmd(DMA1_Channel1, DISABLE);
 
-	uint16_t ADC_ConvertedValues[ADC_DMA_BUFFERSIZE * 2];
+	uint16_t ADC1_ConvertedValue = 0;
+	uint16_t ADC2_ConvertedValue = 0;
 	uint32_t ADC_SummatedValue = 0;
 	uint16_t ADC_AveragedValue = 0;
 
-	for(i = 0, j = 0 ; i < ADC_DMA_BUFFERSIZE ; i++)
+	for(int i = 0 ; i < ADC_DMA_BUFFERSIZE ; i++)
 	{
-		// Fill the table with ADC2 converted values
-		ADC_ConvertedValues[j++] = ADC_DualConvertedValues[i] >> 16;
+		// Retrieve the ADC2 converted value and add to ADC_SummatedValue
+		ADC2_ConvertedValue = ADC_DualConvertedValues[i] >> 16;
+		ADC_SummatedValue += ADC2_ConvertedValue;
 
-		// Fill the table with ADC1 converted values
-		ADC_ConvertedValues[j++] = ADC_DualConvertedValues[i] & 0xFFFF;
-	}
-
-	for(j = 0 ; j < (ADC_DMA_BUFFERSIZE * 2) ; j++)
-	{
-		ADC_SummatedValue += ADC_ConvertedValues[j];
+		// Retrieve the ADC1 converted value and add to ADC_SummatedValue
+		ADC1_ConvertedValue = ADC_DualConvertedValues[i] & 0xFFFF;
+		ADC_SummatedValue += ADC1_ConvertedValue;
 	}
 
 	ADC_AveragedValue = (uint16_t)(ADC_SummatedValue / (ADC_DMA_BUFFERSIZE * 2));
