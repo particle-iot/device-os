@@ -121,12 +121,20 @@ SUITE(Events)
 
   TEST(LengthOfSubscriptionToOneDeviceFiltered)
   {
-
+    const size_t expected = 39;
+    len = subscription(buf, 0x8888, "weather", "53ff73065067544816300187");
+    CHECK_EQUAL(expected, len);
   }
 
   TEST(ExpectedBufForSubscriptionToOneDeviceFiltered)
   {
-
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x88, 0x88, 0xB1, 'e', 0x07,
+      'w', 'e', 'a', 't', 'h', 'e', 'r', 0xFF,
+      '5','3','f','f','7','3','0','6','5','0','6','7',
+      '5','4','4','8','1','6','3','0','0','1','8','7' };
+    len = subscription(buf, 0x8888, "weather", "53ff73065067544816300187");
+    CHECK_ARRAY_EQUAL(expected, buf, len);
   }
 
   TEST(LengthOfSubscriptionToOneDeviceUnfiltered)

@@ -33,7 +33,7 @@ size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
   *p++ = 0x02; // code 0.02 POST request
   *p++ = message_id >> 8;
   *p++ = message_id & 0xff;
-  *p++ = 0xb1;
+  *p++ = 0xb1; // one-byte Uri-Path option
   *p++ = event_type;
 
   size_t name_data_len = strnlen(event_name, 63);
@@ -54,6 +54,37 @@ size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
     *p++ = 0xff;
     memcpy(p, data, name_data_len);
     p += name_data_len;
+  }
+
+  return p - buf;
+}
+
+size_t subscription(uint8_t buf[], uint16_t message_id,
+                    const char *event_name, const char *device_id)
+{
+  uint8_t *p = buf;
+  *p++ = 0x40; // confirmable, no token
+  *p++ = 0x01; // code 0.01 GET request
+  *p++ = message_id >> 8;
+  *p++ = message_id & 0xff;
+  *p++ = 0xb1; // one-byte Uri-Path option
+  *p++ = 'e';
+
+  size_t len;
+
+  if (NULL != event_name)
+  {
+    len = strnlen(event_name, 63);
+    p += event_name_uri_path(p, event_name, len);
+  }
+
+  if (NULL != device_id)
+  {
+    len = strnlen(device_id, 63);
+
+    *p++ = 0xff;
+    memcpy(p, device_id, len);
+    p += len;
   }
 
   return p - buf;
