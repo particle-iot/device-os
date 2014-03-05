@@ -35,6 +35,7 @@
 __IO uint32_t ADC_DualConvertedValues[ADC_DMA_BUFFERSIZE];
 uint8_t adcInitFirstTime = true;
 uint8_t adcChannelConfigured = NONE;
+static uint8_t ADC_Sample_Time = ADC_SAMPLING_TIME;
 
 PinMode digitalPinModeSaved = (PinMode)NONE;
 
@@ -342,6 +343,32 @@ void ADC_DMA_Init()
 }
 
 /*
+ * @brief  Override the default ADC Sample time depending on requirement
+ * @param  ADC_SampleTime: The sample time value to be set.
+ * This parameter can be one of the following values:
+ * @arg ADC_SampleTime_1Cycles5: Sample time equal to 1.5 cycles
+ * @arg ADC_SampleTime_7Cycles5: Sample time equal to 7.5 cycles
+ * @arg ADC_SampleTime_13Cycles5: Sample time equal to 13.5 cycles
+ * @arg ADC_SampleTime_28Cycles5: Sample time equal to 28.5 cycles
+ * @arg ADC_SampleTime_41Cycles5: Sample time equal to 41.5 cycles
+ * @arg ADC_SampleTime_55Cycles5: Sample time equal to 55.5 cycles
+ * @arg ADC_SampleTime_71Cycles5: Sample time equal to 71.5 cycles
+ * @arg ADC_SampleTime_239Cycles5: Sample time equal to 239.5 cycles
+ * @retval None
+ */
+void setADCSampleTime(uint8_t ADC_SampleTime)
+{
+	if(ADC_SampleTime < ADC_SampleTime_1Cycles5 || ADC_SampleTime > ADC_SampleTime_239Cycles5)
+	{
+		ADC_Sample_Time = ADC_SAMPLING_TIME;
+	}
+	else
+	{
+		ADC_Sample_Time = ADC_SampleTime;
+	}
+}
+
+/*
  * @brief Read the analog value of a pin.
  * Should return a 16-bit value, 0-65536 (0 = LOW, 65536 = HIGH)
  * Note: ADC is 12-bit. Currently it returns 0-4096
@@ -394,9 +421,9 @@ int32_t analogRead(uint16_t pin)
 	if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
 	{
 		// ADC1 regular channel configuration
-		ADC_RegularChannelConfig(ADC1, PIN_MAP[pin].adc_channel, 1, ADC_SAMPLING_TIME);
+		ADC_RegularChannelConfig(ADC1, PIN_MAP[pin].adc_channel, 1, ADC_Sample_Time);
 		// ADC2 regular channel configuration
-		ADC_RegularChannelConfig(ADC2, PIN_MAP[pin].adc_channel, 1, ADC_SAMPLING_TIME);
+		ADC_RegularChannelConfig(ADC2, PIN_MAP[pin].adc_channel, 1, ADC_Sample_Time);
 		// Save the ADC configured channel
 		adcChannelConfigured = PIN_MAP[pin].adc_channel;
 	}

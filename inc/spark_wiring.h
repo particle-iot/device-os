@@ -157,6 +157,11 @@ extern "C" {
 #endif
 
 /*
+* ADC
+*/
+void setADCSampleTime(uint8_t ADC_SampleTime);
+
+/*
 * GPIO
 */
 void pinMode(uint16_t pin, PinMode mode);
