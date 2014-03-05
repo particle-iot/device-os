@@ -26,7 +26,7 @@
 #include "spark_wiring_usbserial.h"
 
 typedef void (*ConnectCallback)(const char *ssid,
-                                const char *passowrd,
+                                const char *password,
                                 unsigned long security_type);
 
 class WiFiCredentialsReader
