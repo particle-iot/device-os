@@ -48,8 +48,6 @@ extern "C" {
 /* Private variables ---------------------------------------------------------*/
 volatile uint32_t TimingFlashUpdateTimeout;
 
-volatile uint8_t SPARK_WIRING_APPLICATION = 0;
-
 uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
 uint32_t USART_Rx_ptr_in = 0;
 uint32_t USART_Rx_ptr_out = 0;
@@ -162,16 +160,17 @@ int main(void)
 
 #ifdef SPARK_WIRING_ENABLE
 #ifdef SPARK_WLAN_ENABLE
-		if(SPARK_HANDSHAKE_COMPLETED || SPARK_WIRING_APPLICATION)
+		if(!SPARK_SOCKET_HANDSHAKE || SPARK_HANDSHAKE_COMPLETED)
 		{
 			if(!SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 			{
 #endif
-				if((SPARK_WIRING_APPLICATION != 1) && (NULL != setup))
+				static int setupExecuteOnce = 0;
+				if((setupExecuteOnce != 1) && (NULL != setup))
 				{
 					//Execute user application setup only once
 					setup();
-					SPARK_WIRING_APPLICATION = 1;
+					setupExecuteOnce = 1;
 				}
 
 				if(NULL != loop)
