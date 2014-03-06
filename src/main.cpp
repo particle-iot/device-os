@@ -135,12 +135,6 @@ extern "C" void SparkCoreConfig(void)
 #endif
 
 #ifdef SPARK_WLAN_ENABLE
-
-	// DBS- NB this is dangerous because the if there is
-	// an error in the network it will try to run ERROR
-	// before the Constructors are called
-
-	SPARK_WLAN_Setup(Multicast_Presence_Announcement);
 	/* Connect to Spark Cloud by default */
 	SPARK_CLOUD_CONNECT = 1;
 #endif
@@ -155,7 +149,11 @@ extern "C" void SparkCoreConfig(void)
  *******************************************************************************/
 int main(void)
 {
-        DEBUG("Hello from Spark!");
+	DEBUG("Hello from Spark!");
+
+#ifdef SPARK_WLAN_ENABLE
+	SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+#endif
 
 	/* Main loop */
 	while (1)
