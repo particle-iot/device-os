@@ -139,7 +139,7 @@ int main(void)
 	}
 
 	// Get the Bootloader Mode that will be used when IWDG reset occurs due to invalid firmware
-	volatile uint16_t BKP_DR1_Value = BKP_ReadBackupRegister(BKP_DR1);
+	volatile uint16_t BKP_DR1_Value = GET_SYS_HEALTH();
 
 	if(BKP_DR1_Value != 0xFFFF)
 	{
@@ -153,21 +153,35 @@ int main(void)
 
 			switch(BKP_DR1_Value)
 			{
-			case 1:	// On 1st retry attempt, try to recover using sFlash - Backup Area
+			case FIRST_RETRY:	// On 1st retry attempt, try to recover using sFlash - Backup Area
 				REFLASH_FROM_BACKUP = 1;
 				BKP_DR1_Value += 1;
 				break;
 
-			case 2:	// On 2nd retry attempt, try to recover using sFlash - Factory Reset
+			case SECOND_RETRY:	// On 2nd retry attempt, try to recover using sFlash - Factory Reset
 				FACTORY_RESET_MODE = 1;
 				BKP_DR1_Value += 1;
 				break;
 
-			case 3:	// On 3rd retry attempt, try to recover using USB DFU Mode (Final attempt)
+			case THIRD_RETRY:	// On 3rd retry attempt, try to recover using USB DFU Mode (Final attempt)
 				USB_DFU_MODE = 1;
 				FLASH_Erase();	// Erase the invalid firmware from internal flash
+ 		                // fall through - No break at the end of case
+                        default:
 				BKP_DR1_Value = 0xFFFF;
 				break;
+			// toDO create a location in vector table for bootloadr->app - app->bootloader API.
+			// add version number to build, and mode (debug,release etc) in vector table
+			// Then make informed decisions on what to do on WDT timeouts
+			// for now ran something
+                        case ENTERED_SparkCoreConfig:
+                        case ENTERED_Main:
+                        case ENTERED_Setup:
+                        case ENTERED_Loop:
+                        case RAN_Loop:
+                        case PRESERVE_APP:
+                          BKP_DR1_Value = 0xFFFF;
+                          break;
 			}
 
 			BKP_WriteBackupRegister(BKP_DR1, BKP_DR1_Value);
@@ -184,6 +198,7 @@ int main(void)
 		BKP_DR1_Value = 1;	//Assume we have an invalid firmware loaded in internal flash
 		BKP_WriteBackupRegister(BKP_DR1, BKP_DR1_Value);
 	}
+
 
 	//--------------------------------------------------------------------------
 	//    Check if BUTTON1 is pressed and determine the status
@@ -223,11 +238,17 @@ int main(void)
 		// Load the OTA Firmware from external flash
 		OTA_Flash_Reset();
 	}
-	else if (FACTORY_RESET_MODE == 1)
+	else if (FACTORY_RESET_MODE)
 	{
-		LED_SetRGBColor(RGB_COLOR_WHITE);
-		// Restore the Factory Firmware from external flash
-		FACTORY_Flash_Reset();
+	        if (FACTORY_RESET_MODE == 1)
+	        {
+	            LED_SetRGBColor(RGB_COLOR_WHITE);
+	            // Restore the Factory Firmware from external flash
+	            FACTORY_Flash_Reset();
+	        } else {
+	            FACTORY_RESET_MODE = 0;
+	            Finish_Update();
+	        }
 	}
 	else if (USB_DFU_MODE == 0)
 	{
@@ -238,17 +259,21 @@ int main(void)
 			BACKUP_Flash_Reset();
 		}
 
-		// Commenting below test since we can now recover from invalid firmware using IWDG reset
-		// Test if user code is programmed starting from ApplicationAddress
-		// if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
-		// {
-		// Jump to user application
-		JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
-		Jump_To_Application = (pFunction) JumpAddress;
-		// Initialize user application's Stack Pointer
-		__set_MSP(*(__IO uint32_t*) ApplicationAddress);
-		Jump_To_Application();
-		// }
+		// ToDo add CRC check
+                // Test if user code is programmed starting from ApplicationAddress
+		if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
+		{
+                  // Jump to user application
+                  JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
+                  Jump_To_Application = (pFunction) JumpAddress;
+                  // Initialize user application's Stack Pointer
+                  __set_MSP(*(__IO uint32_t*) ApplicationAddress);
+
+                  // Set IWDG Timeout to 5 secs
+                  IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
+
+                  Jump_To_Application();
+		}
 	}
 	// Otherwise enters DFU mode to allow user to program his application
 
@@ -333,18 +358,6 @@ void Timing_Decrement(void)
 	{
 		LED_Toggle(LED_RGB);
 		TimingLED = 100;
-	}
-
-	if (TimingIWDGReload >= TIMING_IWDG_RELOAD)
-	{
-		TimingIWDGReload = 0;
-
-		// Reload IWDG counter
-		IWDG_ReloadCounter();
-	}
-	else
-	{
-		TimingIWDGReload++;
 	}
 }
 
