@@ -173,7 +173,7 @@ int main(void)
 
 #ifdef SPARK_WIRING_ENABLE
 #ifdef SPARK_WLAN_ENABLE
-		if(!SPARK_WLAN_START || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED)
+		if((!SPARK_WLAN_START || SPARK_WLAN_SLEEP) || (!SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED))
 		{
 			if(!SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 			{
@@ -266,23 +266,20 @@ void Timing_Decrement(void)
 	}
 
 #ifdef SPARK_WLAN_ENABLE
-	if(!SPARK_WLAN_START)
+	if(!SPARK_WLAN_START || SPARK_WLAN_SLEEP)
 	{
 		//Do nothing
 	}
-	else if(!SPARK_WLAN_SLEEP)
+	else if(SPARK_FLASH_UPDATE)
 	{
-		if(SPARK_FLASH_UPDATE)
+		if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
 		{
-			if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
-			{
-				//Reset is the only way now to recover from stuck OTA update
-				NVIC_SystemReset();
-			}
-			else
-			{
-				TimingFlashUpdateTimeout++;
-			}
+			//Reset is the only way now to recover from stuck OTA update
+			NVIC_SystemReset();
+		}
+		else
+		{
+			TimingFlashUpdateTimeout++;
 		}
 	}
 	else if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
