@@ -172,18 +172,18 @@ int main(void)
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
+		static uint8_t SPARK_WIRING_APPLICATION = 0;
 #ifdef SPARK_WLAN_ENABLE
-		if((!SPARK_WLAN_START || SPARK_WLAN_SLEEP) || (!SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED))
+		if(!SPARK_WLAN_START || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
 		{
 			if(!SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 			{
 #endif
-				static int setupExecuteOnce = 0;
-				if((setupExecuteOnce != 1) && (NULL != setup))
+				if((SPARK_WIRING_APPLICATION != 1) && (NULL != setup))
 				{
 					//Execute user application setup only once
 					setup();
-					setupExecuteOnce = 1;
+					SPARK_WIRING_APPLICATION = 1;
 				}
 
 				if(NULL != loop)
@@ -191,7 +191,6 @@ int main(void)
 					//Execute user application loop
 					loop();
 				}
-
 #ifdef SPARK_WLAN_ENABLE
 			}
 		}
