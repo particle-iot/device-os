@@ -98,7 +98,6 @@ extern "C" void SparkCoreConfig(void)
 
 	/* Enable CRC clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
-	DEBUG("Hello from Spark!");
 #if !defined (RGB_NOTIFICATIONS_ON)	&& defined (RGB_NOTIFICATIONS_OFF)
 	LED_RGB_OVERRIDE = 1;
 #endif
@@ -136,6 +135,11 @@ extern "C" void SparkCoreConfig(void)
 #endif
 
 #ifdef SPARK_WLAN_ENABLE
+
+	// DBS- NB this is dangerous because the if there is
+	// an error in the network it will try to run ERROR
+	// before the Constructors are called
+
 	SPARK_WLAN_Setup(Multicast_Presence_Announcement);
 	/* Connect to Spark Cloud by default */
 	SPARK_SOCKET_HANDSHAKE = 1;
@@ -151,6 +155,8 @@ extern "C" void SparkCoreConfig(void)
  *******************************************************************************/
 int main(void)
 {
+        DEBUG("Hello from Spark!");
+
 	/* Main loop */
 	while (1)
 	{
