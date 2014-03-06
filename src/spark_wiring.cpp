@@ -622,6 +622,8 @@ void delay(unsigned long ms)
 
 	while (1)
 	{
+	        KICK_WDT();
+
 		volatile system_tick_t current_millis = GetSystem1MsTick();
 		volatile long elapsed_millis = current_millis - last_millis;
 
