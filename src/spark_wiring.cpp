@@ -631,13 +631,17 @@ void delay(unsigned long ms)
 			elapsed_millis = last_millis + current_millis;
 		}
 
-		if(elapsed_millis >= ms)
+		if (elapsed_millis >= ms)
 		{
 			break;
 		}
 
 #ifdef SPARK_WLAN_ENABLE
-		if((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
+		if (!SPARK_WLAN_START)
+		{
+			//Do not yield for SPARK_WLAN_Loop()
+		}
+		else if ((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
 		{
 			spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
 			//spark_loop_total_millis is reset to 0 in SPARK_WLAN_Loop()

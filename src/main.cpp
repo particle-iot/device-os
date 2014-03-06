@@ -135,6 +135,9 @@ extern "C" void SparkCoreConfig(void)
 #endif
 
 #ifdef SPARK_WLAN_ENABLE
+	/* Start Spark Wlan and connect to Wifi Router by default */
+	SPARK_WLAN_START = 1;
+
 	/* Connect to Spark Cloud by default */
 	SPARK_CLOUD_CONNECT = 1;
 #endif
@@ -152,19 +155,25 @@ int main(void)
 	DEBUG("Hello from Spark!");
 
 #ifdef SPARK_WLAN_ENABLE
-	SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+	if(SPARK_WLAN_START)
+	{
+		SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+	}
 #endif
 
 	/* Main loop */
 	while (1)
 	{
 #ifdef SPARK_WLAN_ENABLE
-		SPARK_WLAN_Loop();
+		if(SPARK_WLAN_START)
+		{
+			SPARK_WLAN_Loop();
+		}
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
 #ifdef SPARK_WLAN_ENABLE
-		if(!SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED)
+		if(!SPARK_WLAN_START || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED)
 		{
 			if(!SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 			{
@@ -237,7 +246,7 @@ void Timing_Decrement(void)
 		else
 			TimingLED = 1;
 	}
-	else if(SPARK_CLOUD_CONNECTED)
+	else if(SPARK_WLAN_START && SPARK_CLOUD_CONNECTED)
 	{
 #if defined (RGB_NOTIFICATIONS_CONNECTING_ONLY)
 		LED_Off(LED_RGB);
@@ -257,24 +266,11 @@ void Timing_Decrement(void)
 	}
 
 #ifdef SPARK_WLAN_ENABLE
-	if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
+	if(!SPARK_WLAN_START)
 	{
-		BUTTON_ResetDebouncedState(BUTTON1);
-
-		if(!SPARK_WLAN_SLEEP)
-		{
-
-			WLAN_SMART_CONFIG_START = 1;
-		}
+		//Do nothing
 	}
-	else if(BUTTON_GetDebouncedTime(BUTTON1) >= 7000)
-	{
-		BUTTON_ResetDebouncedState(BUTTON1);
-
-		WLAN_DELETE_PROFILES = 1;
-	}
-
-	if(!SPARK_WLAN_SLEEP)
+	else if(!SPARK_WLAN_SLEEP)
 	{
 		if(SPARK_FLASH_UPDATE)
 		{
@@ -288,6 +284,21 @@ void Timing_Decrement(void)
 				TimingFlashUpdateTimeout++;
 			}
 		}
+	}
+	else if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
+	{
+		BUTTON_ResetDebouncedState(BUTTON1);
+
+		if(!SPARK_WLAN_SLEEP)
+		{
+			WLAN_SMART_CONFIG_START = 1;
+		}
+	}
+	else if(BUTTON_GetDebouncedTime(BUTTON1) >= 7000)
+	{
+		BUTTON_ResetDebouncedState(BUTTON1);
+
+		WLAN_DELETE_PROFILES = 1;
 	}
 #endif
 
