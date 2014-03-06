@@ -142,7 +142,7 @@ extern "C" void SparkCoreConfig(void)
 
 	SPARK_WLAN_Setup(Multicast_Presence_Announcement);
 	/* Connect to Spark Cloud by default */
-	SPARK_SOCKET_HANDSHAKE = 1;
+	SPARK_CLOUD_CONNECT = 1;
 #endif
 }
 
@@ -166,7 +166,7 @@ int main(void)
 
 #ifdef SPARK_WIRING_ENABLE
 #ifdef SPARK_WLAN_ENABLE
-		if(!SPARK_SOCKET_HANDSHAKE || SPARK_HANDSHAKE_COMPLETED)
+		if(!SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED)
 		{
 			if(!SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 			{
@@ -234,12 +234,12 @@ void Timing_Decrement(void)
 	else if(SPARK_LED_FADE)
 	{
 		LED_Fade(LED_RGB);
-		if(SPARK_HANDSHAKE_COMPLETED)
+		if(SPARK_CLOUD_CONNECTED)
 			TimingLED = 20;
 		else
 			TimingLED = 1;
 	}
-	else if(SPARK_HANDSHAKE_COMPLETED)
+	else if(SPARK_CLOUD_CONNECTED)
 	{
 #if defined (RGB_NOTIFICATIONS_CONNECTING_ONLY)
 		LED_Off(LED_RGB);
@@ -252,7 +252,7 @@ void Timing_Decrement(void)
 	else
 	{
 		LED_Toggle(LED_RGB);
-		if(SPARK_SOCKET_CONNECTED)
+		if(SPARK_CLOUD_SOCKETED)
 			TimingLED = 50;		//50ms
 		else
 			TimingLED = 100;	//100ms

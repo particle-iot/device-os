@@ -75,9 +75,10 @@ extern tNetappIpconfigRetArgs ip_config;
 extern volatile uint8_t WLAN_DHCP;
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
-extern volatile uint8_t SPARK_SOCKET_HANDSHAKE;
-extern volatile uint8_t SPARK_SOCKET_CONNECTED;
-extern volatile uint8_t SPARK_HANDSHAKE_COMPLETED;
+extern volatile uint8_t SPARK_WLAN_START;
+extern volatile uint8_t SPARK_CLOUD_CONNECT;
+extern volatile uint8_t SPARK_CLOUD_SOCKETED;
+extern volatile uint8_t SPARK_CLOUD_CONNECTED;
 extern volatile uint8_t SPARK_FLASH_UPDATE;
 extern volatile uint8_t SPARK_LED_FADE;
 

@@ -249,7 +249,7 @@ inline uint8_t isSocketClosed()
 
 bool SparkClass::connected(void)
 {
-	if(SPARK_SOCKET_CONNECTED && SPARK_HANDSHAKE_COMPLETED)
+	if(SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED)
 		return true;
 	else
 		return false;
@@ -258,14 +258,14 @@ bool SparkClass::connected(void)
 int SparkClass::connect(void)
 {
 	//Schedule Spark's cloud connection and handshake
-	SPARK_SOCKET_HANDSHAKE = 1;
+	SPARK_CLOUD_CONNECT = 1;
 	return 0;
 }
 
 int SparkClass::disconnect(void)
 {
 	//Schedule Spark's cloud disconnection
-	SPARK_SOCKET_HANDSHAKE = 0;
+	SPARK_CLOUD_CONNECT = 0;
 	return 0;
 }
 

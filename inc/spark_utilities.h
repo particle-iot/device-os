@@ -79,7 +79,7 @@ public:
 class SparkClass {
 public:
 	SparkClass() {}
-	SparkClass(bool cloudConnect) {SPARK_SOCKET_HANDSHAKE = cloudConnect;}
+	SparkClass(bool cloudConnect) {SPARK_CLOUD_CONNECT = cloudConnect;}
 
 	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
 	static void function(const char *funcKey, int (*pFunc)(String paramString));
