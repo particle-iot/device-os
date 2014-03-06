@@ -185,9 +185,6 @@ int main(void)
 		BKP_WriteBackupRegister(BKP_DR1, BKP_DR1_Value);
 	}
 
-	// Set IWDG Timeout to 5 secs
-	IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
-
 	//--------------------------------------------------------------------------
 	//    Check if BUTTON1 is pressed and determine the status
 	//--------------------------------------------------------------------------
