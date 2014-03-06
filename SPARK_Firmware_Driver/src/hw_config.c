@@ -37,6 +37,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 uint8_t USE_SYSTEM_FLAGS = 0;	//0, 1
+uint16_t sys_health_cache = 0; // Used by the SYS_HEALTH macros store new heath if higher
 
 volatile uint32_t TimingDelay;
 volatile uint32_t TimingLED;
@@ -107,9 +108,13 @@ __IO uint16_t sFLASH_SPI_CR;
  * @brief  Initialise Data Watchpoint and Trace Register (DWT).
  * @param  None
  * @retval None
+ *
+ *
  */
+
 static void DWT_Init(void)
 {
+        DBGMCU->CR |= DBGMCU_SETTINGS;
 	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 	DWT->CYCCNT = 0;
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
@@ -231,6 +236,7 @@ void Delay_Microsecond(uint32_t uSec)
 
 	while (1)
 	{
+	        KICK_WDT();
 		volatile uint32_t current_DWT_CYCCNT = DWT->CYCCNT;
 		volatile long elapsed_DWT_CYCCNT = current_DWT_CYCCNT - last_DWT_CYCCNT;
 
@@ -239,7 +245,6 @@ void Delay_Microsecond(uint32_t uSec)
 		{
 			elapsed_DWT_CYCCNT = last_DWT_CYCCNT + current_DWT_CYCCNT;
 		}
-
 		if((elapsed_DWT_CYCCNT / SYSTEM_US_TICKS) >= uSec)
 		{
 			break;
@@ -344,21 +349,17 @@ void Enter_STANDBY_Mode(void)
 
 void IWDG_Reset_Enable(uint32_t msTimeout)
 {
-	uint16_t Reload_Value;
-
-	if(msTimeout > 10000)
-		msTimeout = 10000;	//Max IWDG timeout that can be set is 10 sec
-
 	/* Enable write access to IWDG_PR and IWDG_RLR registers */
 	IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
 
 	/* IWDG counter clock: LSI/256 */
 	IWDG_SetPrescaler(IWDG_Prescaler_256);
 
-	/* IWDG timeout may vary due to LSI frequency dispersion */
-	Reload_Value = (uint16_t)((msTimeout * 40) / 256); //Assuming LSI Frequency = 40000
+        /* IWDG timeout may vary due to LSI frequency dispersion */
+        msTimeout = ((msTimeout * 40) / 256); //Assuming LSI Frequency = 40000
+        if (msTimeout > 0xfff) msTimeout = 0xfff;   // 26214.4
 
-	IWDG_SetReload(Reload_Value);
+	IWDG_SetReload((uint16_t)msTimeout);
 
 	/* Reload IWDG counter */
 	IWDG_ReloadCounter();
@@ -1761,4 +1762,3 @@ system_tick_t GetSystem1MsTick()
 {
  return system_1ms_tick;
 }
-
