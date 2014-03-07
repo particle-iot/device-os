@@ -41,7 +41,7 @@ UDP::UDP() : _sock(MAX_SOCK_NUM)
 
 int UDP::isWanReady()
 {
-  return SPARK_WLAN_hasAddress();
+  return (WIFI_ON == WiFi.status());
 }
 
 uint8_t UDP::begin(uint16_t port) 

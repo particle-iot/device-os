@@ -374,11 +374,6 @@ char *WLAN_BootLoader_Patch(unsigned long *length)
 	return NULL;
 }
 
-int SPARK_WLAN_hasAddress(void)
-{
-  return WLAN_DHCP || WLAN_MANUAL_CONNECT != 0;
-}
-
 uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
 {
   uint32_t rv = cc3000__event_timeout_ms;

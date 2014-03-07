@@ -113,7 +113,7 @@ size_t TCPClient::write(const uint8_t *buffer, size_t size)
 
 int TCPClient::isWanReady()
 {
-  return SPARK_WLAN_hasAddress();
+  return (WIFI_ON == WiFi.status());
 }
 
 int TCPClient::bufferCount()

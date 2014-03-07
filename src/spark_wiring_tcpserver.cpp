@@ -33,7 +33,7 @@ TCPServer::TCPServer(uint16_t port) : _port(port), _sock(MAX_SOCK_NUM), _client(
 
 void TCPServer::begin()
 {
-	if(!SPARK_WLAN_hasAddress())
+	if(WIFI_ON != WiFi.status())
 	{
 		return;
 	}
@@ -82,7 +82,7 @@ TCPClient TCPServer::available()
 		begin();
 	}
 
-	if(!SPARK_WLAN_hasAddress() || (_sock == MAX_SOCK_NUM))
+	if((WIFI_ON != WiFi.status()) || (_sock == MAX_SOCK_NUM))
 	{
 		_sock = MAX_SOCK_NUM;
 		_client = TCPClient(MAX_SOCK_NUM);
