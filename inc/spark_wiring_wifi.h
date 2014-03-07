@@ -1,10 +1,10 @@
 /**
  ******************************************************************************
- * @file    spark_disable_wlan.h
+ * @file    spark_wiring_wifi.h
  * @author  Satish Nair
  * @version V1.0.0
- * @date    6-March-2014
- * @brief   Header to be included to prevent the core from starting the wlan
+ * @date    7-Mar-2014
+ * @brief   Header for spark_wiring_wifi.cpp module
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -23,18 +23,27 @@
   ******************************************************************************
  */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __SPARK_DISABLE_WLAN_H
-#define __SPARK_DISABLE_WLAN_H
+#ifndef __SPARK_WIRING_WIFI_H
+#define __SPARK_WIRING_WIFI_H
 
-class SparkDisableWlan {
+#include "spark_wiring.h"
+
+typedef enum
+{
+	WIFI_OFF = 0, WIFI_CONNECTING = 1, WIFI_ON = 2
+} WiFi_Status_TypeDef;
+
+class WiFiClass
+{
 public:
-	SparkDisableWlan()
-	{
-		SPARK_WLAN_SETUP = 0;
-	}
+	WiFiClass() {}
+    ~WiFiClass() {}
+
+	static void on(void);
+	static void off(void);
+	static WiFi_Status_TypeDef status(void);
 };
 
-SparkDisableWlan sparkDisableWlan;
+extern WiFiClass WiFi;
 
-#endif  /* __SPARK_DISABLE_WLAN_H */
+#endif

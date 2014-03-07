@@ -102,9 +102,9 @@ unsigned char wlan_profile_index;
 
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
+volatile uint8_t SPARK_WLAN_SETUP;
 volatile uint8_t SPARK_WLAN_RESET;
 volatile uint8_t SPARK_WLAN_SLEEP;
-volatile uint8_t SPARK_WLAN_START;
 volatile uint8_t SPARK_WLAN_STARTED;
 volatile uint8_t SPARK_CLOUD_CONNECT;
 volatile uint8_t SPARK_CLOUD_SOCKETED;
@@ -260,14 +260,13 @@ void Start_Smart_Config(void)
 	Delay(100);
 
 	wlan_start(0);
-
 	SPARK_WLAN_STARTED = 1;
+	SPARK_LED_FADE = 0;
+    LED_SetRGBColor(RGB_COLOR_GREEN);
+	LED_On(LED_RGB);
 
 	/* Mask out all non-required events */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
-
-    LED_SetRGBColor(RGB_COLOR_GREEN);
-	LED_On(LED_RGB);
 
 	Set_NetApp_Timeout();
 
@@ -298,7 +297,6 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			if(WLAN_CONNECTED)
 			{
 	                        ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
-				LED_RGB_OVERRIDE = 0;
 				LED_SetRGBColor(RGB_COLOR_GREEN);
 				LED_On(LED_RGB);
 			}
@@ -328,8 +326,9 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
 			if (*(data + 20) == 0)
 			{
-				WLAN_DHCP = 1;
 				CLR_WLAN_WD();
+				WLAN_DHCP = 1;
+				SPARK_LED_FADE = 1;
 				LED_SetRGBColor(RGB_COLOR_GREEN);
 				LED_On(LED_RGB);
 			}
@@ -350,7 +349,6 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
   		      if(socket == sparkSocket)
 		      {
 			SPARK_FLASH_UPDATE = 0;
-			SPARK_LED_FADE = 0;
 			SPARK_CLOUD_CONNECTED = 0;
 			SPARK_CLOUD_SOCKETED = 0;
  		      }
@@ -407,10 +405,8 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 
 	/* Trigger a WLAN device */
 	wlan_start(0);
-
-	SPARK_LED_FADE = 0;
-
 	SPARK_WLAN_STARTED = 1;
+	SPARK_LED_FADE = 0;
 
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
@@ -488,25 +484,23 @@ void SPARK_WLAN_Loop(void)
       SPARK_CLOUD_SOCKETED = 0;
       SPARK_CLOUD_CONNECTED = 0;
       SPARK_FLASH_UPDATE = 0;
-      SPARK_LED_FADE = 0;
       Spark_Error_Count = 0;
       cfod_count = 0;
 
       wlan_stop();
+      SPARK_LED_FADE = 1;
+      LED_SetRGBColor(RGB_COLOR_WHITE);
+      LED_On(LED_RGB);
+
       Delay(100);
 
       if (WLAN_SMART_CONFIG_START)
       {
         // Workaround to enter smart config when socket connect had blocked
         wlan_start(0);
-
         SPARK_WLAN_STARTED = 1;
-
         Start_Smart_Config();
       }
-
-      LED_SetRGBColor(RGB_COLOR_GREEN);
-      LED_On(LED_RGB);
     }
   }
   else
@@ -519,8 +513,10 @@ void SPARK_WLAN_Loop(void)
       }
 
       wlan_start(0);
-
       SPARK_WLAN_STARTED = 1;
+      SPARK_LED_FADE = 0;
+      LED_SetRGBColor(RGB_COLOR_GREEN);
+      LED_On(LED_RGB);
     }
   }
 
@@ -562,7 +558,6 @@ void SPARK_WLAN_Loop(void)
       Spark_Disconnect();
 
       SPARK_FLASH_UPDATE = 0;
-      SPARK_LED_FADE = 0;
       SPARK_CLOUD_CONNECTED = 0;
       SPARK_CLOUD_SOCKETED = 0;
 
@@ -599,6 +594,7 @@ void SPARK_WLAN_Loop(void)
       nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
     }
 
+    SPARK_LED_FADE = 0;
     LED_SetRGBColor(RGB_COLOR_CYAN);
     LED_On(LED_RGB);
 
@@ -679,7 +675,6 @@ void SPARK_WLAN_Loop(void)
     if (!Spark_Communication_Loop())
     {
       SPARK_FLASH_UPDATE = 0;
-      SPARK_LED_FADE = 0;
       SPARK_CLOUD_CONNECTED = 0;
       SPARK_CLOUD_SOCKETED = 0;
     }

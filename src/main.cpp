@@ -136,7 +136,7 @@ extern "C" void SparkCoreConfig(void)
 
 #ifdef SPARK_WLAN_ENABLE
 	/* Start Spark Wlan and connect to Wifi Router by default */
-	SPARK_WLAN_START = 1;
+	SPARK_WLAN_SETUP = 1;
 
 	/* Connect to Spark Cloud by default */
 	SPARK_CLOUD_CONNECT = 1;
@@ -155,7 +155,7 @@ int main(void)
 	DEBUG("Hello from Spark!");
 
 #ifdef SPARK_WLAN_ENABLE
-	if(SPARK_WLAN_START)
+	if(SPARK_WLAN_SETUP)
 	{
 		SPARK_WLAN_Setup(Multicast_Presence_Announcement);
 	}
@@ -165,7 +165,7 @@ int main(void)
 	while (1)
 	{
 #ifdef SPARK_WLAN_ENABLE
-		if(SPARK_WLAN_START)
+		if(SPARK_WLAN_SETUP)
 		{
 			SPARK_WLAN_Loop();
 		}
@@ -174,7 +174,7 @@ int main(void)
 #ifdef SPARK_WIRING_ENABLE
 		static uint8_t SPARK_WIRING_APPLICATION = 0;
 #ifdef SPARK_WLAN_ENABLE
-		if(!SPARK_WLAN_START || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
+		if(!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
 		{
 			if(!SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 			{
@@ -240,12 +240,9 @@ void Timing_Decrement(void)
 	else if(SPARK_LED_FADE)
 	{
 		LED_Fade(LED_RGB);
-		if(SPARK_CLOUD_CONNECTED)
-			TimingLED = 20;
-		else
-			TimingLED = 1;
+		TimingLED = 20;//Breathing frequency kept constant
 	}
-	else if(SPARK_WLAN_START && SPARK_CLOUD_CONNECTED)
+	else if(SPARK_WLAN_SETUP && SPARK_CLOUD_CONNECTED)
 	{
 #if defined (RGB_NOTIFICATIONS_CONNECTING_ONLY)
 		LED_Off(LED_RGB);
@@ -265,7 +262,7 @@ void Timing_Decrement(void)
 	}
 
 #ifdef SPARK_WLAN_ENABLE
-	if(!SPARK_WLAN_START || SPARK_WLAN_SLEEP)
+	if(!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP)
 	{
 		//Do nothing
 	}

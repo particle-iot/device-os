@@ -1,10 +1,10 @@
 /**
  ******************************************************************************
- * @file    spark_disable_wlan.h
+ * @file    spark_wiring_wifi.cpp
  * @author  Satish Nair
  * @version V1.0.0
- * @date    6-March-2014
- * @brief   Header to be included to prevent the core from starting the wlan
+ * @date    7-Mar-2013
+ * @brief   WiFi utility class to help users manage the WiFi connection
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -23,18 +23,36 @@
   ******************************************************************************
  */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __SPARK_DISABLE_WLAN_H
-#define __SPARK_DISABLE_WLAN_H
+#include "spark_wiring_wifi.h"
 
-class SparkDisableWlan {
-public:
-	SparkDisableWlan()
+void WiFiClass::on(void)
+{
+	extern void (*announce_presence)(void);
+	if(announce_presence != Multicast_Presence_Announcement)
 	{
-		SPARK_WLAN_SETUP = 0;
+		//Get the setup executed once if not done already
+		SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+		SPARK_WLAN_SETUP = 1;
 	}
-};
+	SPARK_WLAN_SLEEP = 0;	//Logic to call wlan_start() inside SPARK_WLAN_Loop()
+}
 
-SparkDisableWlan sparkDisableWlan;
+void WiFiClass::off(void)
+{
+	SPARK_WLAN_SLEEP = 1;	//Logic to call wlan_stop() inside SPARK_WLAN_Loop()
+}
 
-#endif  /* __SPARK_DISABLE_WLAN_H */
+WiFi_Status_TypeDef WiFiClass::status(void)
+{
+	if(SPARK_WLAN_STARTED)
+	{
+		if(!WLAN_DHCP)
+		{
+			return WIFI_CONNECTING;
+		}
+		return WIFI_ON;
+	}
+	return WIFI_OFF;
+}
+
+WiFiClass WiFi;
