@@ -35,10 +35,18 @@ namespace EventType {
   };
 }
 
+namespace SubscriptionScope {
+  enum Enum {
+    MY_DEVICES = 'u'
+  };
+}
+
 size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
              const char *data, int ttl, EventType::Enum event_type);
 
 size_t subscription(uint8_t[], uint16_t, const char *, const char *);
+
+size_t subscription(uint8_t[], uint16_t, const char *, SubscriptionScope::Enum);
 
 size_t event_name_uri_path(uint8_t buf[], const char *name, size_t name_len);
 

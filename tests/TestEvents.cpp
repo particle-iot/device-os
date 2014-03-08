@@ -173,12 +173,19 @@ SUITE(Events)
 
   TEST(LengthOfSubscriptionToMyDevicesFiltered)
   {
-
+    const size_t expected = 20;
+    len = subscription(buf, 0x1113, "motion/open", SubscriptionScope::MY_DEVICES);
+    CHECK_EQUAL(expected, len);
   }
 
   TEST(ExpectedBufForSubscriptionToMyDevicesFiltered)
   {
-
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x11, 0x13, 0xB1, 'e', 0x0B,
+      'm', 'o', 't', 'i', 'o', 'n', '/', 'o', 'p', 'e', 'n',
+      0x41, 'u' };
+    len = subscription(buf, 0x1113, "motion/open", SubscriptionScope::MY_DEVICES);
+    CHECK_ARRAY_EQUAL(expected, buf, len);
   }
 
   TEST(LengthOfSubscriptionToMyDevicesUnfiltered)
