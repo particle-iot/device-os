@@ -37,7 +37,8 @@ namespace EventType {
 
 namespace SubscriptionScope {
   enum Enum {
-    MY_DEVICES = 'u'
+    MY_DEVICES,
+    FIREHOSE
   };
 }
 

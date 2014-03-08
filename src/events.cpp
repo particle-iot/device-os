@@ -102,8 +102,20 @@ size_t subscription(uint8_t buf[], uint16_t message_id,
 {
   uint8_t *p = subscription_prelude(buf, message_id, event_name);
 
-  *p++ = 0x41; // one-byte Uri-Query option
-  *p++ = scope;
+  switch (scope)
+  {
+    case SubscriptionScope::MY_DEVICES:
+      *p++ = 0x41; // one-byte Uri-Query option
+      *p++ = 'u';
+      break;
+    case SubscriptionScope::FIREHOSE:
+    default:
+      // unfiltered firehose is not allowed
+      if (NULL == event_name || 0 == *event_name)
+      {
+        return -1;
+      }
+  }
 
   return p - buf;
 }

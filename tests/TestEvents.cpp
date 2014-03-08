@@ -190,31 +190,42 @@ SUITE(Events)
 
   TEST(LengthOfSubscriptionToMyDevicesUnfiltered)
   {
-
+    const size_t expected = 8;
+    len = subscription(buf, 0x1114, NULL, SubscriptionScope::MY_DEVICES);
+    CHECK_EQUAL(expected, len);
   }
 
   TEST(ExpectedBufForSubscriptionToMyDevicesUnfiltered)
   {
-
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x11, 0x14, 0xB1, 'e', 0x41, 'u' };
+    len = subscription(buf, 0x1114, NULL, SubscriptionScope::MY_DEVICES);
+    CHECK_ARRAY_EQUAL(expected, buf, len);
   }
 
-  TEST(LengthOfSubscriptionToFirehostFiltered)
+  TEST(LengthOfSubscriptionToFirehoseFiltered)
   {
-
+    const size_t expected = 34;
+    len = subscription(buf, 0x1115, "China/ShenZhen/FuTianKouAn",
+                       SubscriptionScope::FIREHOSE);
+    CHECK_EQUAL(expected, len);
   }
 
   TEST(ExpectedBufForSubscriptionToFirehoseFiltered)
   {
-
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x11, 0x15, 0xB1, 'e', 0x0D, 0x0D,
+      'C','h','i','n','a','/','S','h','e','n','Z','h','e','n','/',
+      'F','u','T','i','a','n','K','o','u','A','n' };
+    len = subscription(buf, 0x1115, "China/ShenZhen/FuTianKouAn",
+                       SubscriptionScope::FIREHOSE);
+    CHECK_ARRAY_EQUAL(expected, buf, len);
   }
 
   TEST(LengthOfDisallowedFirehoseUnfiltered)
   {
-
-  }
-
-  TEST(ExpectedBufForDisallowedFirehoseUnfiltered)
-  {
-
+    const size_t expected = -1;
+    len = subscription(buf, 0x1116, NULL, SubscriptionScope::FIREHOSE);
+    CHECK_EQUAL(expected, len);
   }
 }
