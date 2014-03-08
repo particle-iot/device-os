@@ -92,7 +92,11 @@ size_t subscription(uint8_t buf[], uint16_t message_id,
 
 size_t event_name_uri_path(uint8_t buf[], const char *name, size_t name_len)
 {
-  if (name_len < 13)
+  if (0 == name_len)
+  {
+    return 0;
+  }
+  else if (name_len < 13)
   {
     buf[0] = name_len;
     memcpy(buf + 1, name, name_len);

@@ -137,12 +137,26 @@ SUITE(Events)
     CHECK_ARRAY_EQUAL(expected, buf, len);
   }
 
-  TEST(LengthOfSubscriptionToOneDeviceUnfiltered)
+  TEST(LengthOfSubscriptionToOneDeviceUnfilteredWithNull)
+  {
+    const size_t expected = 31;
+    len = subscription(buf, 0x7000, NULL, "53ff73065067544816300187");
+    CHECK_EQUAL(expected, len);
+  }
+
+  TEST(LengthOfSubscriptionToOneDeviceUnfilteredWithEmptyString)
+  {
+    const size_t expected = 31;
+    len = subscription(buf, 0x7000, "", "53ff73065067544816300187");
+    CHECK_EQUAL(expected, len);
+  }
+
+  TEST(ExpectedBufForSubscriptionToOneDeviceUnfilteredWithNull)
   {
 
   }
 
-  TEST(ExpectedBufForSubscriptionToOneDeviceUnfiltered)
+  TEST(ExpectedBufForSubscriptionToOneDeviceUnfilteredWithEmptyString)
   {
 
   }
