@@ -153,12 +153,22 @@ SUITE(Events)
 
   TEST(ExpectedBufForSubscriptionToOneDeviceUnfilteredWithNull)
   {
-
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x70, 0x00, 0xB1, 'e', 0xFF,
+      '5','3','f','f','7','3','0','6','5','0','6','7',
+      '5','4','4','8','1','6','3','0','0','1','8','7' };
+    len = subscription(buf, 0x7000, NULL, "53ff73065067544816300187");
+    CHECK_ARRAY_EQUAL(expected, buf, len);
   }
 
   TEST(ExpectedBufForSubscriptionToOneDeviceUnfilteredWithEmptyString)
   {
-
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x70, 0x00, 0xB1, 'e', 0xFF,
+      '5','3','f','f','7','3','0','6','5','0','6','7',
+      '5','4','4','8','1','6','3','0','0','1','8','7' };
+    len = subscription(buf, 0x7000, "", "53ff73065067544816300187");
+    CHECK_ARRAY_EQUAL(expected, buf, len);
   }
 
   TEST(LengthOfSubscriptionToMyDevicesFiltered)
