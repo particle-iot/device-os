@@ -464,6 +464,41 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
   return (0 <= blocking_send(queue, buflen + 2));
 }
 
+bool SparkProtocol::send_subscription(const char *event_name, const char *device_id)
+{
+  uint16_t msg_id = next_message_id();
+  size_t msglen = subscription(queue + 2, msg_id, event_name, device_id);
+
+  size_t buflen = (msglen & ~15) + 16;
+  char pad = buflen - msglen;
+  memset(queue + 2 + msglen, pad, pad); // PKCS #7 padding
+
+  encrypt(queue + 2, buflen);
+
+  queue[0] = (buflen >> 8) & 0xff;
+  queue[1] = buflen & 0xff;
+
+  return (0 <= blocking_send(queue, buflen + 2));
+}
+
+bool SparkProtocol::send_subscription(const char *event_name,
+                                      SubscriptionScope::Enum scope)
+{
+  uint16_t msg_id = next_message_id();
+  size_t msglen = subscription(queue + 2, msg_id, event_name, scope);
+
+  size_t buflen = (msglen & ~15) + 16;
+  char pad = buflen - msglen;
+  memset(queue + 2 + msglen, pad, pad); // PKCS #7 padding
+
+  encrypt(queue + 2, buflen);
+
+  queue[0] = (buflen >> 8) & 0xff;
+  queue[1] = buflen & 0xff;
+
+  return (0 <= blocking_send(queue, buflen + 2));
+}
+
 void SparkProtocol::chunk_received(unsigned char *buf,
                                    unsigned char token,
                                    ChunkReceivedCode::Enum code)
