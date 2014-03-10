@@ -333,23 +333,46 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
+void deathStar()
+{
+  typedef void(*pv)(void);
+
+  volatile enum {eNone,eHalt,eHangIntsOn, eHangIntsOff } failuremode = eNone;
+  switch(failuremode) {
+  case eNone:
+    break;
+
+  case eHalt:
+    {
+      int k = 0;
+      pv p = 0;
+      p();
+    }
+    break;
+  case eHangIntsOff:
+    {
+      __disable_irq();
+        while(1) {failuremode = failuremode;}
+     }
+    break;
+    // fall through - No break at the end of case
+  case eHangIntsOn:
+    {
+        while(1) {failuremode=failuremode;}
+     }
+    break;
+    }
+
+}
+
+
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
 	//Setup the Tinker application here
         DECLARE_SYS_HEALTH(PRESERVE_APP); // toDo LTE uses system policy inline as wrappers
-        typedef void(*pv)(void);
-#ifndef DIE
-          int k = 0;
-          pv p = 0;
-          p();
-#endif
-#ifdef HANG
-          __disable_irq();
-          while(1) {};
-#endif
 	//Register all the Tinker functions
-
+        deathStar();
         setup1();
         setup2();
         setup3();
@@ -364,6 +387,7 @@ void setup()
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
+        deathStar();
 	loop1();
 	loop2();
 	loop3();
