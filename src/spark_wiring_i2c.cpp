@@ -158,7 +158,8 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop
 	uint8_t bytesRead = 0;
 
 	/* While there is data to be read */
-	while(numByteToRead)
+	_millis = millis();
+	while(numByteToRead && (EVENT_TIMEOUT > (millis() - _millis)))
 	{
 		if(numByteToRead == 1 && sendStop == true)
 		{
@@ -181,6 +182,9 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop
 
 			/* Decrement the read bytes counter */
 			numByteToRead--;
+
+			/* Reset timeout to our last read */
+			_millis = millis();
 		}
 	}
 
