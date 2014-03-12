@@ -49,22 +49,23 @@ void Time_Init(void)
 	system_date.day = 01;
 	system_date.year = 1970;
 
-	if ((BKP_ReadBackupRegister(BKP_DR7) != 0xFFFF) || (BKP_ReadBackupRegister(BKP_DR8) != 0xFFFF))
+	/* Check if Time was set earlier */
+	if (BKP_ReadBackupRegister(BKP_DR6) == 0xABCD)
 	{
 		/* Initialize Date from the BKP registers */
 		system_date.month = (BKP_ReadBackupRegister(BKP_DR7) & 0xFF00) >> 8;
 		system_date.day = (BKP_ReadBackupRegister(BKP_DR7) & 0x00FF);
 		system_date.year = BKP_ReadBackupRegister(BKP_DR8);
 
-		if (RTC_GetCounter() / 86399 != 0)
+		if (RTC_GetCounter() / 86400 != 0)
 		{
 			/* Loop to retrieve and update the elapsed days */
-			for (i = 0; i < (RTC_GetCounter() / 86399); i++)
+			for (i = 0; i < (RTC_GetCounter() / 86400); i++)
 			{
 				Time_DateUpdate();
 			}
 
-			RTC_SetCounter(RTC_GetCounter() % 86399);
+			RTC_SetCounter(RTC_GetCounter() % 86400);
 
 			/* Save the day, month and year in the BKP registers */
 			BKP_WriteBackupRegister(BKP_DR8, system_date.year);
@@ -169,13 +170,13 @@ void Time_DateUpdate(void)
  *******************************************************************************/
 void Wiring_RTC_Interrupt_Handler(void)
 {
-	/* If counter is equal to 86339: one day was elapsed */
+	/* If counter is equal to 86400: one day was elapsed */
 	/*
 	 * if ((RTC_GetCounter() / 3600 == 23)
 	 * && (((RTC_GetCounter() % 3600) / 60) == 59)
 	 * && (((RTC_GetCounter() % 3600) % 60) == 59))
 	 */
-	if (RTC_GetCounter() == 0x00015180)
+	if (RTC_GetCounter() == 86400)
 	{
 		/* Wait until last write operation on RTC registers has finished */
 		RTC_WaitForLastTask();
@@ -255,17 +256,17 @@ int TimeClass::year()
 /* set the given time as system time */
 void TimeClass::setTime(uint32_t datetime)
 {
-	uint32_t i = 0, tmp = 0;
-
 	/* Disable RTC IRQ */
 	NVIC_DisableIRQ(RTC_IRQn);
+
+	uint32_t i = 0, tmp = 0;
 
 	/* Initialize Date to default */
 	system_date.month = 01;
 	system_date.day = 01;
 	system_date.year = 1970;
 
-	int days_count = datetime / 86399;
+	int days_count = datetime / 86400;
 
 	if (days_count != 0)
 	{
@@ -275,7 +276,7 @@ void TimeClass::setTime(uint32_t datetime)
 			Time_DateUpdate();
 		}
 
-		RTC_SetCounter(datetime % 86399);
+		RTC_SetCounter(datetime % 86400);
 	}
 	else
 	{
@@ -286,6 +287,9 @@ void TimeClass::setTime(uint32_t datetime)
 	tmp = system_date.month << 8;
 	tmp |= system_date.day;
 	BKP_WriteBackupRegister(BKP_DR7, tmp);
+
+	/* Time has been successfully set */
+	BKP_WriteBackupRegister(BKP_DR6, 0xABCD);
 
 	/* Enable RTC IRQ */
 	NVIC_EnableIRQ(RTC_IRQn);
