@@ -34,3 +34,4 @@ Release/*
 .settings/*
 .cproject
 .project
+.DS_Store
