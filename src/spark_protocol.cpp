@@ -445,10 +445,22 @@ int SparkProtocol::variable_value(unsigned char *buf,
   return buflen;
 }
 
-// Returns true on success, false on sending timeout failure
+// Returns true on success, false on sending timeout or rate-limiting failure
 bool SparkProtocol::send_event(const char *event_name, const char *data,
                                int ttl, EventType::Enum event_type)
 {
+  static system_tick_t recent_event_ticks[5] = { -1000, -1000, -1000, -1000, -1000 };
+  static int evt_tick_idx = 0;
+
+  system_tick_t now = recent_event_ticks[evt_tick_idx] = callback_millis();
+  evt_tick_idx++;
+  evt_tick_idx %= 5;
+  if (now - recent_event_ticks[evt_tick_idx] < 1000)
+  {
+    // exceeded allowable burst of 4 events per second
+    return false;
+  }
+
   uint16_t msg_id = next_message_id();
   size_t msglen = event(queue + 2, msg_id, event_name, data, ttl, event_type);
 
