@@ -29,6 +29,7 @@
 
 #include "main.h"
 #include "spark_wiring_string.h"
+#include "spark_wiring_time.h"
 
 #define BYTE_N(x,n)						(((x) >> n*8) & 0x000000FF)
 
@@ -112,6 +113,7 @@ int Spark_Handshake(void);
 bool Spark_Communication_Loop(void);
 void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on);
+void Spark_SetTime(unsigned long dateTime);
 
 int userVarType(const char *varKey);
 void *getUserVar(const char *varKey);

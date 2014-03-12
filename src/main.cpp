@@ -68,7 +68,6 @@ static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 extern LINE_CODING linecoding;
 
 /* Private function prototypes -----------------------------------------------*/
-void Calendar_Init(void) __attribute__ ((weak));
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -109,11 +108,7 @@ extern "C" void SparkCoreConfig(void)
 
 #if defined (SPARK_RTC_ENABLE)
 	RTC_Configuration();
-
-	if(NULL != Calendar_Init)
-	{
-		Calendar_Init();
-	}
+	Time_Init();
 #endif
 
 #ifdef IWDG_RESET_ENABLE
