@@ -27,32 +27,34 @@
 #define __SPARK_WIRING_TIME_H
 
 #include "spark_wiring.h"
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
-void Time_Init(void);
-void Time_DateUpdate(void);
-
-#ifdef __cplusplus
-}
-#endif
+#include <time.h>
 
 class TimeClass {
 public:
 	// Arduino time and date functions
 	static int     hour();            			// current hour
+	static int     hour(time_t t);				// the hour for the given time
 	static int     hourFormat12();    			// current hour in 12 hour format
+	static int     hourFormat12(time_t t);		// the hour for the given time in 12 hour format
 	static uint8_t isAM();            			// returns true if time now is AM
+	static uint8_t isAM(time_t t);    			// returns true the given time is AM
 	static uint8_t isPM();            			// returns true if time now is PM
+	static uint8_t isPM(time_t t);    			// returns true the given time is PM
 	static int     minute();          			// current minute
-	static int     second();          			// current seconds
+	static int     minute(time_t t);  			// the minute for the given time
+	static int     second();          			// current second
+	static int     second(time_t t);  			// the second for the given time
 	static int     day();             			// current day
+	static int     day(time_t t);     			// the day for the given time
+	static int     weekday();         			// the current weekday
+	static int     weekday(time_t t); 			// the weekday for the given time
 	static int     month();           			// current month
+	static int     month(time_t t);   			// the month for the given time
 	static int     year();            			// current four digit year
-	static void    setTime(uint32_t datetime);	// set the given time as system time
+	static int     year(time_t t);    			// the year for the given time
+	static time_t  now();              			// return the current time as seconds since Jan 1 1970
+	static void    setTime(time_t t);			// set the given time as unix/rtc time
+	static String  timeStr(time_t t);			// returns string representation for the given time
 };
 
 extern TimeClass Time;	//eg. usage: Time.day();

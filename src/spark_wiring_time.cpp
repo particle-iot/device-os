@@ -25,141 +25,31 @@
 
 #include "spark_wiring_time.h"
 
-/* Time Structure not required : using real-time RTC_GetCounter() & RTC_SetCounter() calls */
+/* The calendar "tm" structure from the standard libray "time.h" has the following definition: */
+//struct tm
+//{
+//	int tm_sec;         /* seconds,  range 0 to 59          */
+//	int tm_min;         /* minutes, range 0 to 59           */
+//	int tm_hour;        /* hours, range 0 to 23             */
+//	int tm_mday;        /* day of the month, range 1 to 31  */
+//	int tm_mon;         /* month, range 0 to 11             */
+//	int tm_year;        /* The number of years since 1900   */
+//	int tm_wday;        /* day of the week, range 0 to 6    */
+//	int tm_yday;        /* day in the year, range 0 to 365  */
+//	int tm_isdst;       /* daylight saving time             */
+//};
 
-/* Date Structure */
-struct date_structure
-{
-	uint8_t day;
-	uint8_t month;
-	uint16_t year;
-} system_date;
+struct tm calendar_time_cache;	// a cache of calendar time structure elements
+time_t unix_time_cache;  		// a cache of unix_time that was updated
 
-/**
- * @brief  Initializes calendar application.
- * @param  None
- * @retval None
- */
-void Time_Init(void)
-{
-	uint32_t i = 0, tmp = 0;
-
-	/* Initialize Date to default */
-	system_date.month = 01;
-	system_date.day = 01;
-	system_date.year = 1970;
-
-	/* Check if Time was set earlier */
-	if (BKP_ReadBackupRegister(BKP_DR6) == 0xABCD)
-	{
-		/* Initialize Date from the BKP registers */
-		system_date.month = (BKP_ReadBackupRegister(BKP_DR7) & 0xFF00) >> 8;
-		system_date.day = (BKP_ReadBackupRegister(BKP_DR7) & 0x00FF);
-		system_date.year = BKP_ReadBackupRegister(BKP_DR8);
-
-		if (RTC_GetCounter() / 86400 != 0)
-		{
-			/* Loop to retrieve and update the elapsed days */
-			for (i = 0; i < (RTC_GetCounter() / 86400); i++)
-			{
-				Time_DateUpdate();
-			}
-
-			RTC_SetCounter(RTC_GetCounter() % 86400);
-
-			/* Save the day, month and year in the BKP registers */
-			BKP_WriteBackupRegister(BKP_DR8, system_date.year);
-			tmp = system_date.month << 8;
-			tmp |= system_date.day;
-			BKP_WriteBackupRegister(BKP_DR7, tmp);
-		}
-	}
-}
-
-/**
- * @brief  Check whether the passed year is Leap or not.
- * @param  None
- * @retval 1: leap year
- *         0: not leap year
- */
-static uint8_t Time_IsLeapYear(uint16_t nYear)
-{
-	if (nYear % 4 != 0) return 0;
-	if (nYear % 100 != 0) return 1;
-	return (uint8_t)(nYear % 400 == 0);
-}
-
-/**
- * @brief  Updates date when time is 23:59:59.
- * @param  None
- * @retval None
- */
-void Time_DateUpdate(void)
-{
-	if (system_date.month == 1 || system_date.month == 3 || system_date.month == 5 || system_date.month == 7 ||
-			system_date.month == 8 || system_date.month == 10 || system_date.month == 12)
-	{
-		if (system_date.day < 31)
-		{
-			system_date.day++;
-		}
-		/* Date structure member: system_date.day = 31 */
-		else
-		{
-			if (system_date.month != 12)
-			{
-				system_date.month++;
-				system_date.day = 1;
-			}
-			/* Date structure member: system_date.day = 31 & system_date.month =12 */
-			else
-			{
-				system_date.month = 1;
-				system_date.day = 1;
-				system_date.year++;
-			}
-		}
-	}
-	else if (system_date.month == 4 || system_date.month == 6 || system_date.month == 9 ||
-			system_date.month == 11)
-	{
-		if (system_date.day < 30)
-		{
-			system_date.day++;
-		}
-		/* Date structure member: system_date.day = 30 */
-		else
-		{
-			system_date.month++;
-			system_date.day = 1;
-		}
-	}
-	else if (system_date.month == 2)
-	{
-		if (system_date.day < 28)
-		{
-			system_date.day++;
-		}
-		else if (system_date.day == 28)
-		{
-			/* Leap year */
-			if (Time_IsLeapYear(system_date.year))
-			{
-				system_date.day++;
-			}
-			else
-			{
-				system_date.month++;
-				system_date.day = 1;
-			}
-		}
-		else if (system_date.day == 29)
-		{
-			system_date.month++;
-			system_date.day = 1;
-		}
-	}
-}
+/* Time utility functions */
+static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time);
+static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time);
+static time_t Get_UnixTime(void);
+static struct tm Get_CalendarTime(void);
+static void Set_UnixTime(time_t unix_time);
+static void Set_CalendarTime(struct tm t);
+static void Refresh_UnixTime_Cache(time_t unix_time);
 
 /*******************************************************************************
  * Function Name  : Wiring_RTC_Interrupt_Handler (Declared as weak in stm32_it.cpp)
@@ -168,131 +58,219 @@ void Time_DateUpdate(void)
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-void Wiring_RTC_Interrupt_Handler(void)
+//void Wiring_RTC_Interrupt_Handler(void)
+//{
+//	/* Not Required */
+//}
+
+/* Convert Unix/RTC time to Calendar time */
+static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time)
 {
-	/* If counter is equal to 86400: one day was elapsed */
-	/*
-	 * if ((RTC_GetCounter() / 3600 == 23)
-	 * && (((RTC_GetCounter() % 3600) / 60) == 59)
-	 * && (((RTC_GetCounter() % 3600) % 60) == 59))
-	 */
-	if (RTC_GetCounter() == 86400)
+	struct tm *calendar_time;
+	calendar_time = localtime(&unix_time);
+	calendar_time->tm_year += 1900;
+	return *calendar_time;
+}
+
+/* Convert Calendar time to Unix/RTC time */
+static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time)
+{
+	calendar_time.tm_year -= 1900;
+	time_t unix_time = mktime(&calendar_time);
+	return unix_time;
+}
+
+/* Get Unix/RTC time */
+static time_t Get_UnixTime(void)
+{
+	time_t unix_time = (time_t)RTC_GetCounter();
+	return unix_time;
+}
+
+/* Get converted Calendar time */
+static struct tm Get_CalendarTime(void)
+{
+	time_t unix_time = Get_UnixTime();
+	struct tm calendar_time = Convert_UnixTime_To_CalendarTime(unix_time);
+	return calendar_time;
+}
+
+/* Set Unix/RTC time */
+static void Set_UnixTime(time_t unix_time)
+{
+	RTC_WaitForLastTask();
+	RTC_SetCounter((uint32_t)unix_time);
+	RTC_WaitForLastTask();
+}
+
+/* Set Calendar time as Unix/RTC time */
+static void Set_CalendarTime(struct tm calendar_time)
+{
+	Set_UnixTime(Convert_CalendarTime_To_UnixTime(calendar_time));
+}
+
+/* Refresh Unix/RTC time cache */
+static void Refresh_UnixTime_Cache(time_t unix_time)
+{
+	if(unix_time != unix_time_cache)
 	{
-		/* Wait until last write operation on RTC registers has finished */
-		RTC_WaitForLastTask();
-
-		/* Reset counter value */
-		RTC_SetCounter(0x0);
-
-		/* Wait until last write operation on RTC registers has finished */
-		RTC_WaitForLastTask();
-
-		/* Increment the date */
-		Time_DateUpdate();
+		calendar_time_cache = Convert_UnixTime_To_CalendarTime(unix_time);
+		unix_time_cache = unix_time;
 	}
 }
 
 /* current hour */
 int TimeClass::hour()
 {
-	return (RTC_GetCounter() / 3600);
+	return hour(now());
+}
+
+/* the hour for the given time */
+int TimeClass::hour(time_t t)
+{
+	Refresh_UnixTime_Cache(t);
+	return calendar_time_cache.tm_hour;
 }
 
 /* current hour in 12 hour format */
 int TimeClass::hourFormat12()
 {
-	int hr = hour();
+	return hourFormat12(now());
+}
 
-	if(hr == 0 )
-		return 12; //midnight
-	else if( hr  > 12)
-		return hr - 12;
+/* the hour for the given time in 12 hour format */
+int TimeClass::hourFormat12(time_t t)
+{
+	Refresh_UnixTime_Cache(t);
+	if(calendar_time_cache.tm_hour == 0)
+		return 12;	//midnight
+	else if( calendar_time_cache.tm_hour > 12)
+		return calendar_time_cache.tm_hour - 12 ;
 	else
-		return hr;
+		return calendar_time_cache.tm_hour ;
 }
 
 /* returns true if time now is AM */
 uint8_t TimeClass::isAM()
 {
-	return !isPM();
+	return !isPM(now());
+}
+
+/* returns true the given time is AM */
+uint8_t TimeClass::isAM(time_t t)
+{
+	return !isPM(t);
 }
 
 /* returns true if time now is PM */
 uint8_t TimeClass::isPM()
 {
-	return (hour() >= 12);
+	return isPM(now());
+}
+
+/* returns true the given time is PM */
+uint8_t TimeClass::isPM(time_t t)
+{
+	return (hour(t) >= 12);
 }
 
 /* current minute */
 int TimeClass::minute()
 {
-	return ((RTC_GetCounter() % 3600) / 60);
+	return minute(now());
+}
+
+/* the minute for the given time */
+int TimeClass::minute(time_t t)
+{
+	Refresh_UnixTime_Cache(t);
+	return calendar_time_cache.tm_min;
 }
 
 /* current seconds */
 int TimeClass::second()
 {
-	return ((RTC_GetCounter() % 3600) % 60);
+	return second(now());
+}
+
+/* the second for the given time */
+int TimeClass::second(time_t t)
+{
+	Refresh_UnixTime_Cache(t);
+	return calendar_time_cache.tm_sec;
 }
 
 /* current day */
 int TimeClass::day()
 {
-	return system_date.day;
+	return day(now());
+}
+
+/* the day for the given time */
+int TimeClass::day(time_t t)
+{
+	Refresh_UnixTime_Cache(t);
+	return calendar_time_cache.tm_mday;
+}
+
+/* the current weekday */
+int TimeClass::weekday()
+{
+	return weekday(now());
+}
+
+/* the weekday for the given time */
+int TimeClass::weekday(time_t t)
+{
+	Refresh_UnixTime_Cache(t);
+	return calendar_time_cache.tm_wday;
 }
 
 /* current month */
 int TimeClass::month()
 {
-	return system_date.month;
+	return month(now());
+}
+
+/* the month for the given time */
+int TimeClass::month(time_t t)
+{
+	Refresh_UnixTime_Cache(t);
+	return calendar_time_cache.tm_mon;
 }
 
 /* current four digit year */
 int TimeClass::year()
 {
-	return system_date.year;
+	return year(now());
 }
 
-/* set the given time as system time */
-void TimeClass::setTime(uint32_t datetime)
+/* the year for the given time */
+int TimeClass::year(time_t t)
 {
-	/* Disable RTC IRQ */
-	NVIC_DisableIRQ(RTC_IRQn);
+	Refresh_UnixTime_Cache(t);
+	return calendar_time_cache.tm_year;
+}
 
-	uint32_t i = 0, tmp = 0;
+/* return the current time as seconds since Jan 1 1970 */
+time_t TimeClass::now()
+{
+	return Get_UnixTime();
+}
 
-	/* Initialize Date to default */
-	system_date.month = 01;
-	system_date.day = 01;
-	system_date.year = 1970;
+/* set the given time as unix/rtc time */
+void TimeClass::setTime(time_t t)
+{
+	Set_UnixTime(t);
+}
 
-	int days_count = datetime / 86400;
-
-	if (days_count != 0)
-	{
-		/* Loop to update the date structure */
-		for (i = 0; i < days_count; i++)
-		{
-			Time_DateUpdate();
-		}
-
-		RTC_SetCounter(datetime % 86400);
-	}
-	else
-	{
-		RTC_SetCounter(datetime);
-	}
-
-	BKP_WriteBackupRegister(BKP_DR8, system_date.year);
-	tmp = system_date.month << 8;
-	tmp |= system_date.day;
-	BKP_WriteBackupRegister(BKP_DR7, tmp);
-
-	/* Time has been successfully set */
-	BKP_WriteBackupRegister(BKP_DR6, 0xABCD);
-
-	/* Enable RTC IRQ */
-	NVIC_EnableIRQ(RTC_IRQn);
+/* return string representation for the given time */
+String TimeClass::timeStr(time_t t)
+{
+	struct tm *calendar_time;
+	calendar_time = localtime(&t);
+	String calendar_time_string = String(asctime(calendar_time));
+	return calendar_time_string;
 }
 
 TimeClass Time;

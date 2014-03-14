@@ -108,7 +108,6 @@ extern "C" void SparkCoreConfig(void)
 
 #if defined (SPARK_RTC_ENABLE)
 	RTC_Configuration();
-	Time_Init();
 #endif
 
 #ifdef IWDG_RESET_ENABLE
