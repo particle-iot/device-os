@@ -41,6 +41,7 @@
 
 struct tm calendar_time_cache;	// a cache of calendar time structure elements
 time_t unix_time_cache;  		// a cache of unix_time that was updated
+time_t time_zone_cache;			// a cache of the time zone that was set
 
 /* Time utility functions */
 static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time);
@@ -67,6 +68,7 @@ static void Refresh_UnixTime_Cache(time_t unix_time);
 static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time)
 {
 	struct tm *calendar_time;
+	unix_time += time_zone_cache;
 	calendar_time = localtime(&unix_time);
 	calendar_time->tm_year += 1900;
 	return *calendar_time;
@@ -91,6 +93,7 @@ static time_t Get_UnixTime(void)
 static struct tm Get_CalendarTime(void)
 {
 	time_t unix_time = Get_UnixTime();
+	unix_time += time_zone_cache;
 	struct tm calendar_time = Convert_UnixTime_To_CalendarTime(unix_time);
 	return calendar_time;
 }
@@ -223,7 +226,7 @@ int TimeClass::weekday()
 int TimeClass::weekday(time_t t)
 {
 	Refresh_UnixTime_Cache(t);
-	return calendar_time_cache.tm_wday;
+	return (calendar_time_cache.tm_wday + 1);//Arduino's weekday representation
 }
 
 /* current month */
@@ -236,7 +239,7 @@ int TimeClass::month()
 int TimeClass::month(time_t t)
 {
 	Refresh_UnixTime_Cache(t);
-	return calendar_time_cache.tm_mon;
+	return (calendar_time_cache.tm_mon + 1);//Arduino's month representation
 }
 
 /* current four digit year */
@@ -258,6 +261,16 @@ time_t TimeClass::now()
 	return Get_UnixTime();
 }
 
+/* set the time zone (+/-) offset from GMT */
+void TimeClass::zone(float GMT_Offset)
+{
+	if(GMT_Offset < -12 || GMT_Offset > 13)
+	{
+		return;
+	}
+	time_zone_cache = GMT_Offset * 3600;
+}
+
 /* set the given time as unix/rtc time */
 void TimeClass::setTime(time_t t)
 {
@@ -268,6 +281,7 @@ void TimeClass::setTime(time_t t)
 String TimeClass::timeStr(time_t t)
 {
 	struct tm *calendar_time;
+	t += time_zone_cache;
 	calendar_time = localtime(&t);
 	String calendar_time_string = String(asctime(calendar_time));
 	return calendar_time_string;

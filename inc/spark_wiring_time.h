@@ -53,6 +53,7 @@ public:
 	static int     year();            			// current four digit year
 	static int     year(time_t t);    			// the year for the given time
 	static time_t  now();              			// return the current time as seconds since Jan 1 1970
+	static void    zone(float GMT_Offset);		// set the time zone (+/-) offset from GMT
 	static void    setTime(time_t t);			// set the given time as unix/rtc time
 	static String  timeStr(time_t t);			// returns string representation for the given time
 };
