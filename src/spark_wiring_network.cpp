@@ -62,7 +62,7 @@ char* NetworkClass::SSID()
 int8_t NetworkClass::RSSI()
 {
     uint8_t _loopCount = 0; /* Meet Vari the Varible! */
-    int8_t _returnValue = 0; /* Set to 1 to indicate failure if RSSI isn't detected by end of loop. */
+    int8_t _returnValue = 0; /* Set to 0 to indicate failure if RSSI isn't detected by end of loop. */
     while (_loopCount++ < 16) /* The wlan_ioctl_get_scan_results table can only hold 16 entires so we don't need to loop any more. */
     {
         unsigned char wlan_scan_results_table[50]; /* Stores current entry from results table. */
