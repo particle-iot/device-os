@@ -22,7 +22,7 @@ def_panic_codes(System,RGB_COLOR_RED,OutOfHeap)
 
 def_panic_codes(System,RGB_COLOR_RED,SPIOverRun)
 
-def_panic_codes(Sofwtare,RGB_COLOR_RED,AssertionFailure)
-def_panic_codes(Sofwtare,RGB_COLOR_RED,InvalidCase)
-def_panic_codes(Sofwtare,RGB_COLOR_RED,PureVirtualCall)
+def_panic_codes(Software,RGB_COLOR_RED,AssertionFailure)
+def_panic_codes(Software,RGB_COLOR_RED,InvalidCase)
+def_panic_codes(Software,RGB_COLOR_RED,PureVirtualCall)
 
