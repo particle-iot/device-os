@@ -153,6 +153,8 @@ typedef struct ServerAddress {
 
 #define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
 
+#define UINT_MAX					0xFFFFFFFF	// max size of unsigned integer
+
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
