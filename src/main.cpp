@@ -80,6 +80,7 @@ extern LINE_CODING linecoding;
  *******************************************************************************/
 extern "C" void SparkCoreConfig(void)
 {
+        DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 #ifdef DFU_BUILD_ENABLE
 	/* Set the Vector Table(VT) base location at 0x5000 */
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x5000);
@@ -111,6 +112,7 @@ extern "C" void SparkCoreConfig(void)
 #endif
 
 #ifdef IWDG_RESET_ENABLE
+	// ToDo this needs rework for new bootloader
 	/* Check if the system has resumed from IWDG reset */
 	if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
 	{
@@ -152,23 +154,26 @@ extern "C" void SparkCoreConfig(void)
  *******************************************************************************/
 int main(void)
 {
-	DEBUG("Hello from Spark!");
+  // We have running firmware, otherwise we wouldn't have gotten here
+  DECLARE_SYS_HEALTH(ENTERED_Main);
+  DEBUG("Hello from Spark!");
 
 #ifdef SPARK_WLAN_ENABLE
-	if(SPARK_WLAN_SETUP)
-	{
-		SPARK_WLAN_Setup(Multicast_Presence_Announcement);
-	}
+  if (SPARK_WLAN_SETUP)
+  {
+    SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+  }
 #endif
 
-	/* Main loop */
-	while (1)
-	{
+  /* Main loop */
+  while (1)
+  {
 #ifdef SPARK_WLAN_ENABLE
-		if(SPARK_WLAN_SETUP)
-		{
-			SPARK_WLAN_Loop();
-		}
+    if(SPARK_WLAN_SETUP)
+    {
+      DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
+      SPARK_WLAN_Loop();
+    }
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
@@ -182,6 +187,7 @@ int main(void)
 				if((SPARK_WIRING_APPLICATION != 1) && (NULL != setup))
 				{
 					//Execute user application setup only once
+				        DECLARE_SYS_HEALTH(ENTERED_Setup);
 					setup();
 					SPARK_WIRING_APPLICATION = 1;
 				}
@@ -189,7 +195,9 @@ int main(void)
 				if(NULL != loop)
 				{
 					//Execute user application loop
+			                DECLARE_SYS_HEALTH(ENTERED_Loop);
 					loop();
+                                        DECLARE_SYS_HEALTH(RAN_Loop);
 				}
 #ifdef SPARK_WLAN_ENABLE
 			}
@@ -300,14 +308,9 @@ void Timing_Decrement(void)
 	{
 		TimingIWDGReload = 0;
 
-		/* Reload IWDG counter */
-		IWDG_ReloadCounter();
-
-		if (BKP_ReadBackupRegister(BKP_DR1) != 0xFFFF)
-		{
-			//We have a running firmware otherwise we wouldn't have been here
-			BKP_WriteBackupRegister(BKP_DR1, 0xFFFF);	//Reset BKP_DR1
-		}
+		/* Reload WDG counter */
+		KICK_WDT();
+		DECLARE_SYS_HEALTH(0xFFFF);
 	}
 	else
 	{

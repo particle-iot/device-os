@@ -273,7 +273,10 @@ int _read(int file, char *ptr, int len) {
 #endif
 
 /* Default implementation for call made to pure virtual function. */
-void __cxa_pure_virtual() { while (1); }
+void __cxa_pure_virtual() {
+  PANIC(PureVirtualCall,"Call on pure virtual");
+  while (1);
+}
 
 /* Provide default implemenation for __cxa_guard_acquire() and
  * __cxa_guard_release(). Note: these must be revisited if a multitasking

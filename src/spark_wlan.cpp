@@ -460,9 +460,9 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 void SPARK_WLAN_Loop(void)
 {
   static int cfod_count = 0;
+  KICK_WDT();
 
   ON_EVENT_DELTA();
-
   spark_loop_total_millis = 0;
 
   if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || WLAN_WD_TO())
