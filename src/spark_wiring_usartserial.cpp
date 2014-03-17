@@ -183,7 +183,9 @@ int USARTSerial::read(void)
 void USARTSerial::flush()
 {
 	// Loop until USART DR register is empty
-	while (transmitting && (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET));
+	while ( _tx_buffer->head != _tx_buffer->tail );
+	// Loop until last frame transmission complete
+	while (transmitting && (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET));
 	transmitting = false;
 }
 
