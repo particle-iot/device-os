@@ -30,6 +30,7 @@
 
 #include <limits.h>
 #include "platform_config.h"
+#include "config.h"
 #include "sst25vf_spi.h"
 #include "cc3000_common.h"
 #include "usb_type.h"
@@ -274,4 +275,22 @@ extern uint16_t FLASH_OTA_Update_SysFlag;
 extern unsigned char wlan_rx_buffer[];
 extern unsigned char wlan_tx_buffer[];
 
+enum eSystemHealth {
+  FIRST_RETRY = 1,
+  SECOND_RETRY = 2,
+  THIRD_RETRY = 3,
+  ENTERED_SparkCoreConfig,
+  ENTERED_Main,
+  ENTERED_WLAN_Loop,
+  ENTERED_Setup,
+  ENTERED_Loop,
+  RAN_Loop,
+  PRESERVE_APP,
+};
+
+#define SET_SYS_HEALTH(health) BKP_WriteBackupRegister(BKP_DR1, (health))
+#define GET_SYS_HEALTH() BKP_ReadBackupRegister(BKP_DR1)
+extern uint16_t sys_health_cache;
+#define DECLARE_SYS_HEALTH(health)  do { if ((health) > sys_health_cache) {SET_SYS_HEALTH(sys_health_cache=(health));}} while(0)
+#define KICK_WDT() IWDG_ReloadCounter()
 #endif  /*__HW_CONFIG_H*/

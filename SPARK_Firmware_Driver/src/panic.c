@@ -9,6 +9,7 @@
 #include "hw_config.h"
 #include "spark_macros.h"
 #include "panic.h"
+#include "debug.h"
 
 
 #define LOOPSPERMSEC 5483
@@ -33,12 +34,17 @@ static const flash_codes_t flash_codes[] = {
 void panic_(ePanicCode code)
 {
         __disable_irq();
+        // Flush any serial message to help the poor bugger debug this;
         flash_codes_t pcd = flash_codes[code];
-        LED_SetRGBColor(RGB_COLOR_WHITE);
-        LED_Off(LED_RGB);
+        LED_SetRGBColor(RGB_COLOR_RED);
+        LED_On(LED_RGB);
         uint16_t c;
-        while(1) {
+        int loops = 2;
+        if (debug_output_)(debug_output_("!"));
+        LED_Off(LED_RGB);
+        while(loops) {
                 // preamble
+            KICK_WDT();
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
                 LED_On(LED_RGB);
@@ -77,5 +83,9 @@ void panic_(ePanicCode code)
                 }
                 // pause
                 Delay_Microsecond(MS2u(800));
+#ifdef RELEASE_BUILD
+                if (--loops == 0) NVIC_SystemReset();
+#endif
         }
+
 }

@@ -13,8 +13,14 @@
 #define RELEASE_BUILD
 #undef  DEBUG_BUILD
 #endif
-//#define USE_ONLY_PANIC // Define to remove all Logging and only have Panic
 
+
+#if defined(DEBUG_BUILD)
+#define DBGMCU_SETTINGS (DBGMCU_CR_DBG_SLEEP|DBGMCU_CR_DBG_STOP|DBGMCU_CR_DBG_STANDBY|DBGMCU_CR_DBG_IWDG_STOP|DBGMCU_CR_DBG_WWDG_STOP)
+#else
+#define USE_ONLY_PANIC // Define to remove all Logging and only have Panic
+#define DBGMCU_SETTINGS (DBGMCU_CR_DBG_IWDG_STOP|DBGMCU_CR_DBG_WWDG_STOP)
+#endif
 // define to include __FILE__ information within the debug output
 #define INCLUDE_FILE_INFO_IN_DEBUG
 #define MAX_DEBUG_MESSAGE_LENGTH 120
