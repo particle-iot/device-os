@@ -84,6 +84,10 @@ public:
 	static void publish(const char *eventName, const char *eventData);
 	static void publish(const char *eventName, const char *eventData, int ttl);
 	static void publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType);
+	static void publish(String eventName);
+	static void publish(String eventName, String eventData);
+	static void publish(String eventName, String eventData, int ttl);
+	static void publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType);
 	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 	static void sleep(long seconds);
 	static bool connected(void);
