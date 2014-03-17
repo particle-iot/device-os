@@ -28,6 +28,7 @@
 #define __HW_CONFIG_H
 /* Includes ------------------------------------------------------------------*/
 
+#include <limits.h>
 #include "platform_config.h"
 #include "sst25vf_spi.h"
 #include "cc3000_common.h"
@@ -152,8 +153,6 @@ typedef struct ServerAddress {
 #define TIMING_IWDG_RELOAD	1000 //1sec
 
 #define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
-
-#define UINT_MAX					0xFFFFFFFF	// max size of unsigned integer
 
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
