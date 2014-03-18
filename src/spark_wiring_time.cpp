@@ -25,6 +25,12 @@
 
 #include "spark_wiring_time.h"
 
+static struct skew
+{
+  int8_t error;
+  uint8_t ticks;
+} skew;
+
 /* The calendar "tm" structure from the standard libray "time.h" has the following definition: */
 //struct tm
 //{
@@ -59,10 +65,42 @@ static void Refresh_UnixTime_Cache(time_t unix_time);
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-//void Wiring_RTC_Interrupt_Handler(void)
-//{
-//	/* Not Required */
-//}
+void Wiring_RTC_Interrupt_Handler(void)
+{
+  // Only intervene if we have an error to correct
+  if (0 != skew.error && 0 < skew.ticks)
+  {
+    time_t now = Get_UnixTime();
+
+    // By default, we set the clock 1 second forward
+    time_t skew_step = 1;
+
+    if (skew.error > 0)
+    {
+      // Error is positive, so we need to slow down
+      if (skew.ticks / skew.error < 2)
+      {
+        // Don't let time go backwards!
+        // Hold the clock still for a second
+        skew_step--;
+        skew.error--;
+      }
+    }
+    else
+    {
+      // Error is negative, so we need to speed up
+      if (skew.ticks / skew.error > -2)
+      {
+        // Skip a second forward
+        skew_step++;
+        skew.error++;
+      }
+    }
+
+    skew.ticks--;
+    Set_UnixTime(now + skew_step);
+  }
+}
 
 /* Convert Unix/RTC time to Calendar time */
 static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time)
@@ -274,7 +312,18 @@ void TimeClass::zone(float GMT_Offset)
 /* set the given time as unix/rtc time */
 void TimeClass::setTime(time_t t)
 {
-	Set_UnixTime(t);
+  int32_t delta_error = Get_UnixTime() - t;
+  if (delta_error > 127 || delta_error < -127)
+  {
+    // big delta, jump abruptly to the new time
+    Set_UnixTime(t);
+  }
+  else
+  {
+    // small delta, gradually skew toward the new time
+    skew.error = delta_error;
+    skew.ticks = 2 * abs(delta_error);
+  }
 }
 
 /* return string representation for the given time */
