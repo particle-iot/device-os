@@ -115,14 +115,33 @@ void WiFiCredentialsReader::read_line(char *dst, int max_len)
     if (0 < serial.available())
     {
       c = serial.read();
+
       if (i == max_len || c == '\r' || c == '\n')
       {
         *dst = '\0';
         break;
       }
+
+      if (c == 8 || c == 127)
+      {
+    	//for backspace or delete
+    	if (i > 0)
+    	{
+          --dst;
+          --i;
+    	}
+    	else
+    	{
+    	  continue;
+    	}
+      }
+      else
+      {
+        *dst++ = c;
+        ++i;
+      }
+
       serial.write(c);
-      *dst++ = c;
-      ++i;
     }
   }
   print("\r\n");
