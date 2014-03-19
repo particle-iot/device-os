@@ -53,6 +53,7 @@ struct ConstructorFixture
   static void mock_signal(bool on);
   static bool signal_called_with;
   static int variable_to_get;
+  static system_tick_t next_millis;
   static system_tick_t mock_millis(void);
   static bool mock_ota_status_check(void);
   static SparkReturnType::Enum mock_variable_type(const char *variable_key);

@@ -317,4 +317,48 @@ SUITE(SparkProtocolConstruction)
     spark_protocol.send_event("lake-depth/1", "28m", 21600, EventType::PRIVATE);
     CHECK_ARRAY_EQUAL(expected, sent_buf_0, 34);
   }
+
+  TEST_FIXTURE(ConstructorFixture, PublishingBurst4EventsSucceeds)
+  {
+    bool success[4];
+    next_millis = 1000;
+    success[0] = spark_protocol.send_event("a", NULL, 60, EventType::PUBLIC);
+    success[1] = spark_protocol.send_event("b", NULL, 60, EventType::PUBLIC);
+    success[2] = spark_protocol.send_event("c", NULL, 60, EventType::PUBLIC);
+    success[3] = spark_protocol.send_event("d", NULL, 60, EventType::PUBLIC);
+    CHECK(success[0] && success[1] && success[2] && success[3]);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, PublishingBurst5EventsFails)
+  {
+    bool success[5];
+    next_millis = 2000;
+    success[0] = spark_protocol.send_event("a", NULL, 60, EventType::PUBLIC);
+    success[1] = spark_protocol.send_event("b", NULL, 60, EventType::PUBLIC);
+    success[2] = spark_protocol.send_event("c", NULL, 60, EventType::PUBLIC);
+    success[3] = spark_protocol.send_event("d", NULL, 60, EventType::PUBLIC);
+    success[4] = spark_protocol.send_event("e", NULL, 60, EventType::PUBLIC);
+    CHECK(success[0] && success[1] && success[2] && success[3] && !success[4]);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, PublishingBurst4Wait1SBurst4AgainSucceeds)
+  {
+    bool success[4];
+
+    next_millis = 3000;
+    success[0] = spark_protocol.send_event("a", NULL, 60, EventType::PUBLIC);
+    success[1] = spark_protocol.send_event("b", NULL, 60, EventType::PUBLIC);
+    success[2] = spark_protocol.send_event("c", NULL, 60, EventType::PUBLIC);
+    success[3] = spark_protocol.send_event("d", NULL, 60, EventType::PUBLIC);
+    bool first_burst_success = success[0] && success[1] && success[2] && success[3];
+
+    next_millis = 4000;
+    success[0] = spark_protocol.send_event("a", NULL, 60, EventType::PUBLIC);
+    success[1] = spark_protocol.send_event("b", NULL, 60, EventType::PUBLIC);
+    success[2] = spark_protocol.send_event("c", NULL, 60, EventType::PUBLIC);
+    success[3] = spark_protocol.send_event("d", NULL, 60, EventType::PUBLIC);
+    bool second_burst_success = success[0] && success[1] && success[2] && success[3];
+
+    CHECK(first_burst_success && second_burst_success);
+  }
 }

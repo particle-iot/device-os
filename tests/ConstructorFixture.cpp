@@ -295,9 +295,11 @@ void ConstructorFixture::mock_signal(bool on)
   signal_called_with = on;
 }
 
+system_tick_t ConstructorFixture::next_millis = 0;
+
 system_tick_t ConstructorFixture::mock_millis(void)
 {
-  return 0;
+  return next_millis;
 }
 
 bool ConstructorFixture::mock_ota_status_check(void)
