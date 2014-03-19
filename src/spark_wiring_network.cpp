@@ -2,8 +2,8 @@
  ******************************************************************************
  * @file    spark_wiring_network.cpp
  * @author  Satish Nair, Timothy Brown
- * @version V1.0.1
- * @date    15-Mar-2014
+ * @version V1.0.3
+ * @date    18-Mar-2014
  * @brief   
  ******************************************************************************
   Copyright (c) 2014 Spark Labs, Inc.  All rights reserved.
@@ -55,22 +55,23 @@ char* NetworkClass::SSID()
 	return (char *)ip_config.uaSSID;
 }
 
-/*	***********************************************	*/
-/*	* Network.RSSI() - @TimothyBrown - 2014.03.17 *	*/
-/*	***********************************************	*/
-/*	----------------------------------------------------------------------------------------------------------------------------------------------	*/
-/*		This function returns the WiFi signal strength in -dB [-127 to 0]. Error Values: 1 [CC3000 Problem]; 2 [Function Timeout/Bad Data].			*/
-/*		It reads through all entires in the table, continuing even after finding the correct SSID; this prevents stale entries on the next call.	*/
-/*		There is a one second timeout on the function for safety; this also forces the function to re-run if the results table is corrupt.			*/
-/*		Note: The CC3000 only updates the RSSI status every few minutes, so this function doesn't need to be called constantly in the main loop.	*/
-/*	----------------------------------------------------------------------------------------------------------------------------------------------	*/
+/* ***********************************************
+   * Network.RSSI() - @TimothyBrown - 2014.03.18 *
+   ***********************************************
+   -----------------------------------------------
+    Command: Network.RSSI()
+    Returns: Signal Strength from -127 to -1dB
+    Errors:  [1]CC300 Issue; [2]Function Timeout
+    Timeout: One Second
+   ----------------------------------------------- */
+
 int8_t NetworkClass::RSSI()
 {
-	_functionTimeout = millis() + 1000;
-	_loopCount = 0;
+	_functionStart = millis();
 	_returnValue = 0;
-	while (millis() < _functionTimeout)
+	while ((millis() - _functionStart) < 1000)
 	{
+		_loopCount = 0;
 		while (_loopCount++ < 16)
 		{
 			unsigned char wlan_scan_results_table[50];
@@ -88,5 +89,28 @@ int8_t NetworkClass::RSSI()
 	}
 	return(2);
 }
+
+/********************************* Bug Notice *********************************
+ On occasion, "wlan_ioctl_get_scan_results" only returns a single bad entry
+ (with index 0). I suspect this happens when the CC3000 is refreshing the
+ scan table; I suspect this happens when the CC3000 is refreshing the scan
+ table; I think it deletes the current entires, does a new scan then
+ repopulates the table. If the function is called during this process
+ the table only contains the invalid zero indexed entry.
+ The good news is the way I've designed the function mitigates this problem.
+ The main while loop prevents the function from running for more than one
+ second; the inner while loop prevents the function from reading more than
+ 16 entries from the scan table (which is the maximum amount it can hold).
+ The first byte of the scan table lists the number of entries remaining;
+ we use this to break out of the inner loop when we reach the last entry.
+ This is done so that we read out the entire scan table (ever after finding
+ our SSID) so the data isn't stale on the next function call. If the function
+ is called when the table contains invalid data, the index will be zero;
+ this causes the inner loop to break and start again; this action will
+ repeat until the scan table has been repopulated with valid entries (or the
+ one second timeout is reached). If the aforementioned "bug" is ever fixed by
+ TI, no changes need to be made to this function, as it would be implemented
+ the same way.
+ *****************************************************************************/
 
 NetworkClass Network;
