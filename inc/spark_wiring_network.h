@@ -2,11 +2,11 @@
  ******************************************************************************
  * @file    spark_wiring_network.h
  * @author  Satish Nair, Timothy Brown
- * @version V1.0.3
+ * @version V1.0.0
  * @date    18-Mar-2014
  * @brief   Header for spark_wiring_network.cpp module
  ******************************************************************************
-  Copyright (c) 2014 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
