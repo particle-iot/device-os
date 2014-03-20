@@ -393,10 +393,10 @@ void Spark_Finish_Firmware_Update(void)
   FLASH_End();
 }
 
-void Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen)
+bool Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen)
 {
   TimingFlashUpdateTimeout = 0;
-  FLASH_Update(buf, buflen);
+  return FLASH_Update(buf, buflen);
 }
 
 int numUserFunctions(void)
