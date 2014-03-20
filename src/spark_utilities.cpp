@@ -565,6 +565,11 @@ void Spark_Signal(bool on)
   }
 }
 
+void Spark_SetTime(unsigned long dateTime)
+{
+	Time.setTime(dateTime);
+}
+
 int Internet_Test(void)
 {
     long testSocket;
