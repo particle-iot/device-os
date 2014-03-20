@@ -868,9 +868,16 @@ bool SparkProtocol::handle_received_message(void)
       unsigned int given_crc = queue[8] << 24 | queue[9] << 16 | queue[10] << 8 | queue[11];
       if (callback_calculate_crc(queue + 13, len - 13 - queue[len - 1]) == given_crc)
       {
-        callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
-        chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
-        ++chunk_index;
+        bool chunk_saved_status = callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
+        if (chunk_saved_status != true)
+        {
+          chunk_received(msg_to_send + 2, token, ChunkReceivedCode::BAD);
+        }
+        else
+        {
+          chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
+          ++chunk_index;
+        }
       }
       else
       {
