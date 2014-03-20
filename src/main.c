@@ -246,6 +246,9 @@ int main(void)
 	            // Restore the Factory Firmware from external flash
 	            FACTORY_Flash_Reset();
 	        } else {
+	            // This else clause is only for JTAG debugging
+	            // Break and set FACTORY_RESET_MODE to 2
+	            // to run the current code at 0x08005000
 	            FACTORY_RESET_MODE = 0;
 	            Finish_Update();
 	        }
