@@ -1484,48 +1484,30 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 #endif
 }
 
-void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
+bool FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 {
 #ifdef SPARK_SFLASH_ENABLE
 
-	uint32_t i = bufferSize >> 2;
+	uint8_t *writeBuffer = pBuffer;
+	uint8_t readBuffer[bufferSize];
+	bool Flash_Updated = false;
 
-	/* Program External Flash */
-	while (i--)
+	/* Write Data Buffer to SPI Flash memory */
+	sFLASH_WriteBuffer(writeBuffer, External_Flash_Address, bufferSize);
+
+	/* Read Data Buffer from SPI Flash memory */
+	sFLASH_ReadBuffer(readBuffer, External_Flash_Address, bufferSize);
+
+	/* Is the Data Buffer successfully programmed to SPI Flash memory */
+	if(0 == memcmp(writeBuffer, readBuffer, bufferSize))
 	{
-		Internal_Flash_Data = *((uint32_t *)pBuffer);
-		pBuffer += 4;
-
-	    /* Program Word to SPI Flash memory */
-		External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
-		External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
-		External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
-		External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);
-		//OR
-		//*((uint32_t *)External_Flash_Data) = Internal_Flash_Data;
-		sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
-		External_Flash_Address += 4;
-	}
-
-	i = bufferSize & 3;
-
-	/* Not an aligned data */
-	if (i != 0)
-	{
-	    /* Program the last word to SPI Flash memory */
-		Internal_Flash_Data = *((uint32_t *)pBuffer);
-
-	    /* Program Word to SPI Flash memory */
-		External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
-		External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
-		External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
-		External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);
-		//OR
-		//*((uint32_t *)External_Flash_Data) = Internal_Flash_Data;
-		sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
+		External_Flash_Address += bufferSize;
+		Flash_Updated = true;
 	}
 
 	LED_Toggle(LED_RGB);
+
+	return Flash_Updated;
 
 #endif
 }
