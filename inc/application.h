@@ -42,5 +42,6 @@
 #include "spark_wiring_tcpclient.h"
 #include "spark_wiring_tcpserver.h"
 #include "spark_wiring_udp.h"
+#include "spark_wiring_time.h"
 
 #endif /* APPLICATION_H_ */

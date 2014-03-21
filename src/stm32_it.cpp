@@ -51,6 +51,7 @@ void Wiring_I2C1_EV_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_I2C1_ER_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_SPI1_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_EXTI_Interrupt_Handler(uint8_t EXTI_Line_Number) __attribute__ ((weak));
+void Wiring_RTC_Interrupt_Handler(void) __attribute__ ((weak));
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -506,25 +507,13 @@ void RTC_IRQHandler(void)
 {
 	if(RTC_GetITStatus(RTC_IT_SEC) != RESET)
 	{
-//		/* If counter is equal to 86339: one day was elapsed */
-//		if((RTC_GetCounter() / 3600 == 23)
-//				&& (((RTC_GetCounter() % 3600) / 60) == 59)
-//				&& (((RTC_GetCounter() % 3600) % 60) == 59)) /* 23*3600 + 59*60 + 59 = 86339 */
-//		{
-//			/* Wait until last write operation on RTC registers has finished */
-//			RTC_WaitForLastTask();
-//
-//			/* Reset counter value */
-//			RTC_SetCounter(0x0);
-//
-//			/* Wait until last write operation on RTC registers has finished */
-//			RTC_WaitForLastTask();
-//
-//			/* Increment no_of_days_elapsed variable here */
-//		}
-
 		/* Clear the RTC Second Interrupt pending bit */
 		RTC_ClearITPendingBit(RTC_IT_SEC);
+
+		if(NULL != Wiring_RTC_Interrupt_Handler)
+		{
+			Wiring_RTC_Interrupt_Handler();
+		}
 
 		/* Wait until last write operation on RTC registers has finished */
 		RTC_WaitForLastTask();
