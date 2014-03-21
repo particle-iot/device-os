@@ -64,7 +64,7 @@ struct SparkCallbacks
   void (*prepare_for_firmware_update)(void);
   void (*finish_firmware_update)(void);
   long unsigned int (*calculate_crc)(unsigned char *buf, long unsigned int buflen);
-  bool (*save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
+  unsigned short (*save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
   void (*signal)(bool on);
   system_tick_t (*millis)();
 };
@@ -142,7 +142,7 @@ class SparkProtocol
     void (*callback_prepare_for_firmware_update)(void);
     void (*callback_finish_firmware_update)(void);
     long unsigned int (*callback_calculate_crc)(unsigned char *buf, long unsigned int buflen);
-    bool (*callback_save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
+    unsigned short (*callback_save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
     void (*callback_signal)(bool on);
     system_tick_t (*callback_millis)();
 
