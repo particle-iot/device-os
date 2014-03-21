@@ -91,6 +91,7 @@ uint32_t Internal_Flash_Address = 0;
 uint32_t External_Flash_Address = 0;
 uint32_t Internal_Flash_Data = 0;
 uint8_t External_Flash_Data[4];
+uint16_t Flash_Update_Index = 0;
 uint32_t EraseCounter = 0;
 uint32_t NbrOfPage = 0;
 volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
@@ -1470,6 +1471,7 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 	Save_SystemFlags();
 	//BKP_WriteBackupRegister(BKP_DR10, 0x5555);
 
+	Flash_Update_Index = 0;
 	External_Flash_Address = sFLASH_Address;
 
 	/* Define the number of External Flash pages to be erased */
@@ -1484,13 +1486,12 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 #endif
 }
 
-bool FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
+uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 {
 #ifdef SPARK_SFLASH_ENABLE
 
 	uint8_t *writeBuffer = pBuffer;
 	uint8_t readBuffer[bufferSize];
-	bool Flash_Updated = false;
 
 	/* Write Data Buffer to SPI Flash memory */
 	sFLASH_WriteBuffer(writeBuffer, External_Flash_Address, bufferSize);
@@ -1499,15 +1500,22 @@ bool FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 	sFLASH_ReadBuffer(readBuffer, External_Flash_Address, bufferSize);
 
 	/* Is the Data Buffer successfully programmed to SPI Flash memory */
-	if(0 == memcmp(writeBuffer, readBuffer, bufferSize))
+	if (0 == memcmp(writeBuffer, readBuffer, bufferSize))
 	{
 		External_Flash_Address += bufferSize;
-		Flash_Updated = true;
+		Flash_Update_Index += 1;
+	}
+	else
+	{
+		/* Erase the problematic SPI Flash pages and back off the chunk index */
+		External_Flash_Address = ((uint32_t)(External_Flash_Address / sFLASH_PAGESIZE)) * sFLASH_PAGESIZE;
+		sFLASH_EraseSector(External_Flash_Address);
+		Flash_Update_Index = (uint16_t)((External_Flash_Address - EXTERNAL_FLASH_OTA_ADDRESS) / bufferSize);
 	}
 
 	LED_Toggle(LED_RGB);
 
-	return Flash_Updated;
+	return Flash_Update_Index;
 
 #endif
 }
