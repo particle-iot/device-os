@@ -113,4 +113,28 @@ int8_t NetworkClass::RSSI()
  the same way.
  *****************************************************************************/
 
+uint32_t NetworkClass::ping(IPAddress remoteIP)
+{
+  return ping(remoteIP, 5);
+}
+
+uint32_t NetworkClass::ping(IPAddress remoteIP, uint8_t nTries)
+{
+  uint32_t result = 0;
+  uint32_t pingIPAddr = remoteIP[3] << 24 | remoteIP[2] << 16 | remoteIP[1] << 8 | remoteIP[0];
+  unsigned long pingSize = 32UL;
+  unsigned long pingTimeout = 500UL; // in milliseconds
+
+  memset(&ping_report,0,sizeof(netapp_pingreport_args_t));
+  ping_report_num = 0;	 
+
+  long psend = netapp_ping_send(&pingIPAddr, (unsigned long)nTries, pingSize, pingTimeout);
+  unsigned long lastTime = millis();
+  while( ping_report_num==0 && (millis() < lastTime+2*nTries*pingTimeout)) {}
+  if (psend==0L && ping_report_num) {
+    result = ping_report.packets_received;
+  }
+  return result;
+}
+
 NetworkClass Network;

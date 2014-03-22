@@ -53,6 +53,8 @@ static uint32_t lastEvent = 0;
 #define ON_EVENT_DELTA()
 #endif
 tNetappIpconfigRetArgs ip_config;
+netapp_pingreport_args_t ping_report;
+int ping_report_num;
 
 volatile uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
 volatile uint8_t WLAN_DELETE_PROFILES;
@@ -266,7 +268,7 @@ void Start_Smart_Config(void)
 	LED_On(LED_RGB);
 
 	/* Mask out all non-required events */
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
 
 	Set_NetApp_Timeout();
 
@@ -341,6 +343,11 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			WLAN_CAN_SHUTDOWN = 1;
 			break;
 
+                case HCI_EVNT_WLAN_ASYNC_PING_REPORT:
+		        memcpy(&ping_report,data,length);
+		        ping_report_num++;
+			break;
+
 		case HCI_EVNT_BSD_TCP_CLOSE_WAIT:
                       long socket = -1;
 		      STREAM_TO_UINT32(data,0,socket);
@@ -403,7 +410,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	SPARK_LED_FADE = 0;
 
 	/* Mask out all non-required events from CC3000 */
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
 
 	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE)
 	{

@@ -39,6 +39,8 @@ public:
 	IPAddress gatewayIP();
 	char* SSID();
 	int8_t RSSI();
+	uint32_t ping(IPAddress remoteIP);
+	uint32_t ping(IPAddress remoteIP, uint8_t nTries);
 
 	friend class TCPClient;
 	friend class TCPServer;
