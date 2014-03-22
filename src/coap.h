@@ -34,7 +34,8 @@ namespace CoAPMessageType {
     KEY_CHANGE,
     SIGNAL_START,
     SIGNAL_STOP,
-    EMPTY,
+    EMPTY_ACK,
+    PING,
     ERROR
   };
 }
@@ -49,8 +50,18 @@ namespace CoAPCode {
   };
 }
 
+namespace CoAPType {
+  enum Enum {
+    CON,
+    NON,
+    ACK,
+    RESET
+  };
+}
+
 class CoAP
 {
   public:
     static CoAPCode::Enum code(const unsigned char *message);
+    static CoAPType::Enum type(const unsigned char *message);
 };
