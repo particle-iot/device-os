@@ -287,7 +287,7 @@ CoAPMessageType::Enum
         case 'u': return CoAPMessageType::UPDATE_BEGIN;
         case 'c': return CoAPMessageType::CHUNK;
         default: break;
-      }  break;
+      } break;
     case CoAPCode::PUT:
       switch (path)
       {
@@ -297,10 +297,13 @@ CoAPMessageType::Enum
           if (buf[8]) return CoAPMessageType::SIGNAL_START;
           else return CoAPMessageType::SIGNAL_STOP;
         default: break;
-      }  break;
+      } break;
     case CoAPCode::EMPTY:
-      return CoAPMessageType::EMPTY;
-      break;
+      switch (CoAP::type(buf))
+      {
+        case CoAPType::CON: return CoAPMessageType::PING;
+        default: return CoAPMessageType::EMPTY_ACK;
+      } break;
     default:
       break;
   }
@@ -449,7 +452,10 @@ int SparkProtocol::variable_value(unsigned char *buf,
 bool SparkProtocol::send_event(const char *event_name, const char *data,
                                int ttl, EventType::Enum event_type)
 {
-  static system_tick_t recent_event_ticks[5] = { -1000, -1000, -1000, -1000, -1000 };
+  static system_tick_t recent_event_ticks[5] = {
+    (system_tick_t) -1000, (system_tick_t) -1000,
+    (system_tick_t) -1000, (system_tick_t) -1000,
+    (system_tick_t) -1000 };
   static int evt_tick_idx = 0;
 
   system_tick_t now = recent_event_ticks[evt_tick_idx] = callback_millis();
@@ -953,6 +959,18 @@ bool SparkProtocol::handle_received_message(void)
       descriptor.ota_upgrade_status_sent();
       break;
 
+    case CoAPMessageType::PING:
+      *msg_to_send = 0;
+      *(msg_to_send + 1) = 16;
+      empty_ack(msg_to_send + 2, queue[2], queue[3]);
+      if (0 > blocking_send(msg_to_send, 18))
+      {
+        // error
+        return false;
+      }
+      break;
+
+    case CoAPMessageType::EMPTY_ACK:
     case CoAPMessageType::ERROR:
     default:
       ; // drop it on the floor
