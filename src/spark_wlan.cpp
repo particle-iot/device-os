@@ -294,25 +294,11 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
-			if(WLAN_CONNECTED)
-			{
-				//What if AP is Off or Out Of Range, do we still need to ARM_WLAN_WD?
-				//ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
-				CLR_WLAN_WD();
-				LED_SetRGBColor(RGB_COLOR_GREEN);
-				LED_On(LED_RGB);
+			if (WLAN_CONNECTED) {
+				ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
 			}
-			else
-			{
-				if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] != 0)
-				{
-					NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] -= 1;
-				}
-				else
-				{
-					WLAN_SMART_CONFIG_START = 1;
-				}
-			}
+			LED_SetRGBColor(RGB_COLOR_GREEN);
+			LED_On(LED_RGB);
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_CLOUD_SOCKETED = 0;
