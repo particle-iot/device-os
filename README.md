@@ -32,7 +32,7 @@ In order to turn your source code into binaries, you will need a tool called `ma
 Download and install the latest version from: http://gnuwin32.sourceforge.net/packages/make.htm
 
 #### 3. Device Firmware Upgrade Utilities
-Install dfu-util. Mac users can install dfu-util with [Homebrew](http://brew.sh/) or [Macports](http://www.macports.org), Linux users may find it in their package manager, and everyone can get it from http://dfu-util.gnumonks.org/index.html
+Install dfu-util 0.7. Mac users can install dfu-util with [Homebrew](http://brew.sh/) or [Macports](http://www.macports.org), Linux users may find it in their package manager, and everyone can get it from http://dfu-util.gnumonks.org/index.html
 
 #### 4. Zatig
 In order for the Core to show up on the dfu list, you need to replace the USB driver with a utility called [Zadig](http://zadig.akeo.ie/). Here is a [tutorial](https://github.com/pbatard/libwdi/wiki/Zadig) on using it. This is only required for Windows users.

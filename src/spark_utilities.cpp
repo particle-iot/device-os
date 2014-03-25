@@ -200,6 +200,26 @@ void SparkClass::publish(const char *eventName, const char *eventData, int ttl, 
   spark_protocol.send_event(eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
 }
 
+void SparkClass::publish(String eventName)
+{
+  publish(eventName.c_str());
+}
+
+void SparkClass::publish(String eventName, String eventData)
+{
+  publish(eventName.c_str(), eventData.c_str());
+}
+
+void SparkClass::publish(String eventName, String eventData, int ttl)
+{
+  publish(eventName.c_str(), eventData.c_str(), ttl);
+}
+
+void SparkClass::publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType)
+{
+  publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
+}
+
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
 #if defined (SPARK_RTC_ENABLE)
@@ -249,7 +269,7 @@ inline uint8_t isSocketClosed()
 
 bool SparkClass::connected(void)
 {
-	if(SPARK_SOCKET_CONNECTED && SPARK_HANDSHAKE_COMPLETED)
+	if(SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED)
 		return true;
 	else
 		return false;
@@ -258,14 +278,14 @@ bool SparkClass::connected(void)
 int SparkClass::connect(void)
 {
 	//Schedule Spark's cloud connection and handshake
-	SPARK_SOCKET_HANDSHAKE = 1;
+	SPARK_CLOUD_CONNECT = 1;
 	return 0;
 }
 
 int SparkClass::disconnect(void)
 {
 	//Schedule Spark's cloud disconnection
-	SPARK_SOCKET_HANDSHAKE = 0;
+	SPARK_CLOUD_CONNECT = 0;
 	return 0;
 }
 
@@ -545,6 +565,11 @@ void Spark_Signal(bool on)
   }
 }
 
+void Spark_SetTime(unsigned long dateTime)
+{
+	Time.setTime(dateTime);
+}
+
 int Internet_Test(void)
 {
     long testSocket;
@@ -594,6 +619,7 @@ int Internet_Test(void)
     return testResult;
 }
 
+// Same return value as connect(), -1 on error
 int Spark_Connect(void)
 {
   DEBUG("sparkSocket Now =%d",sparkSocket);
@@ -617,11 +643,44 @@ int Spark_Connect(void)
   tSocketAddr.sa_data[0] = (SPARK_SERVER_PORT & 0xFF00) >> 8;
   tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
 
-  // the destination IP address
-  tSocketAddr.sa_data[2] = 54;	// First Octet of destination IP
-  tSocketAddr.sa_data[3] = 208;	// Second Octet of destination IP
-  tSocketAddr.sa_data[4] = 229; 	// Third Octet of destination IP
-  tSocketAddr.sa_data[5] = 4;	// Fourth Octet of destination IP
+  ServerAddress server_addr;
+  FLASH_Read_ServerAddress(&server_addr);
+
+  uint32_t ip_addr = 0;
+
+  switch (server_addr.addr_type)
+  {
+    case IP_ADDRESS:
+      ip_addr = server_addr.ip;
+      break;
+
+    default:
+    case INVALID_INTERNET_ADDRESS:
+    {
+      const char default_domain[] = "device.spark.io";
+      memcpy(server_addr.domain, default_domain, strlen(default_domain));
+      // and fall through to domain name case
+    }
+
+    case DOMAIN_NAME:
+      // CC3000 unreliability workaround, usually takes 2 or 3 attempts
+      int attempts = 10;
+      while (!ip_addr && 0 < --attempts)
+      {
+        gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr);
+      }
+  }
+
+  if (!ip_addr)
+  {
+    // final fallback
+    ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
+  }
+
+  tSocketAddr.sa_data[2] = BYTE_N(ip_addr, 3);
+  tSocketAddr.sa_data[3] = BYTE_N(ip_addr, 2);
+  tSocketAddr.sa_data[4] = BYTE_N(ip_addr, 1);
+  tSocketAddr.sa_data[5] = BYTE_N(ip_addr, 0);
 
   uint32_t ot = SPARK_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
   DEBUG("connect");

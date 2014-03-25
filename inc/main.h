@@ -56,8 +56,6 @@ extern "C" {
  * Browse & select linker file : "linker_stm32f10x_md_dfu.ld"
  */
 
-#ifdef DFU_BUILD_ENABLE
-
 /*
  * Use the JTAG IOs as standard GPIOs (D3 to D7)
  * Note that once the JTAG IOs are disabled, the connection with the host debugger
@@ -65,15 +63,13 @@ extern "C" {
  */
 #ifndef USE_SWD_JTAG
 #define SWD_JTAG_DISABLE
-/*
- * Use Independent Watchdog to force a system reset when a software error occurs
- * During JTAG program/debug, the Watchdog has to be disabled so that it does not
- * upset the debugger
- */
-#define IWDG_RESET_ENABLE
 #endif
 
-#endif
+/*
+ * Use Independent Watchdog to force a system reset when a software error occurs
+ * During JTAG program/debug, the Watchdog counting is disabled by debug configuration
+ */
+#define IWDG_RESET_ENABLE
 
 //#undef SPARK_WLAN_ENABLE
 

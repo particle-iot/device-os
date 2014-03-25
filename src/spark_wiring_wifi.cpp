@@ -1,12 +1,12 @@
 /**
  ******************************************************************************
- * @file    spark_wiring_network.h
- * @author  Satish Nair, Timothy Brown
+ * @file    spark_wiring_wifi.cpp
+ * @author  Satish Nair
  * @version V1.0.0
- * @date    18-Mar-2014
- * @brief   Header for spark_wiring_network.cpp module
+ * @date    7-Mar-2013
+ * @brief   WiFi utility class to help users manage the WiFi connection
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -23,32 +23,36 @@
   ******************************************************************************
  */
 
-#ifndef __SPARK_WIRING_NETWORK_H
-#define __SPARK_WIRING_NETWORK_H
+#include "spark_wiring_wifi.h"
 
-#include "spark_wiring.h"
-
-class NetworkClass
+void WiFiClass::on(void)
 {
-public:
-	NetworkClass();
+	extern void (*announce_presence)(void);
+	if(announce_presence != Multicast_Presence_Announcement)
+	{
+		//Get the setup executed once if not done already
+		SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+		SPARK_WLAN_SETUP = 1;
+	}
+	SPARK_WLAN_SLEEP = 0;	//Logic to call wlan_start() inside SPARK_WLAN_Loop()
+}
 
-	uint8_t* macAddress(uint8_t* mac);
-	IPAddress localIP();
-	IPAddress subnetMask();
-	IPAddress gatewayIP();
-	char* SSID();
-	int8_t RSSI();
+void WiFiClass::off(void)
+{
+	SPARK_WLAN_SLEEP = 1;	//Logic to call wlan_stop() inside SPARK_WLAN_Loop()
+}
 
-	friend class TCPClient;
-	friend class TCPServer;
+WiFi_Status_TypeDef WiFiClass::status(void)
+{
+	if(SPARK_WLAN_STARTED)
+	{
+		if(!WLAN_DHCP)
+		{
+			return WIFI_CONNECTING;
+		}
+		return WIFI_ON;
+	}
+	return WIFI_OFF;
+}
 
-private:
-	uint32_t _functionStart;
-	uint8_t _loopCount;
-	int8_t _returnValue;
-};
-
-extern NetworkClass Network;
-
-#endif
+WiFiClass WiFi;

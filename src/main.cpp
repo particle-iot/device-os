@@ -48,8 +48,6 @@ extern "C" {
 /* Private variables ---------------------------------------------------------*/
 volatile uint32_t TimingFlashUpdateTimeout;
 
-volatile uint8_t SPARK_WIRING_APPLICATION = 0;
-
 uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
 uint32_t USART_Rx_ptr_in = 0;
 uint32_t USART_Rx_ptr_out = 0;
@@ -74,14 +72,15 @@ extern LINE_CODING linecoding;
 /* Private functions ---------------------------------------------------------*/
 
 /*******************************************************************************
- * Function Name  : main.
- * Description    : main routine.
+ * Function Name  : SparkCoreConfig.
+ * Description    : Called in startup routine, before calling C++ constructors.
  * Input          : None.
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-int main(void)
+extern "C" void SparkCoreConfig(void)
 {
+        DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 #ifdef DFU_BUILD_ENABLE
 	/* Set the Vector Table(VT) base location at 0x5000 */
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x5000);
@@ -100,7 +99,6 @@ int main(void)
 
 	/* Enable CRC clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
-	DEBUG("Hello from Spark!");
 #if !defined (RGB_NOTIFICATIONS_ON)	&& defined (RGB_NOTIFICATIONS_OFF)
 	LED_RGB_OVERRIDE = 1;
 #endif
@@ -114,6 +112,7 @@ int main(void)
 #endif
 
 #ifdef IWDG_RESET_ENABLE
+	// ToDo this needs rework for new bootloader
 	/* Check if the system has resumed from IWDG reset */
 	if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
 	{
@@ -138,22 +137,49 @@ int main(void)
 #endif
 
 #ifdef SPARK_WLAN_ENABLE
-	SPARK_WLAN_Setup(Multicast_Presence_Announcement);
-#endif
+	/* Start Spark Wlan and connect to Wifi Router by default */
+	SPARK_WLAN_SETUP = 1;
 
 	/* Connect to Spark Cloud by default */
-	SPARK_SOCKET_HANDSHAKE = 1;
+	SPARK_CLOUD_CONNECT = 1;
+#endif
+}
 
-	/* Main loop */
-	while (1)
-	{
+/*******************************************************************************
+ * Function Name  : main.
+ * Description    : main routine.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+int main(void)
+{
+  // We have running firmware, otherwise we wouldn't have gotten here
+  DECLARE_SYS_HEALTH(ENTERED_Main);
+  DEBUG("Hello from Spark!");
+
 #ifdef SPARK_WLAN_ENABLE
-		SPARK_WLAN_Loop();
+  if (SPARK_WLAN_SETUP)
+  {
+    SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+  }
+#endif
+
+  /* Main loop */
+  while (1)
+  {
+#ifdef SPARK_WLAN_ENABLE
+    if(SPARK_WLAN_SETUP)
+    {
+      DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
+      SPARK_WLAN_Loop();
+    }
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
+		static uint8_t SPARK_WIRING_APPLICATION = 0;
 #ifdef SPARK_WLAN_ENABLE
-		if(SPARK_HANDSHAKE_COMPLETED || SPARK_WIRING_APPLICATION)
+		if(!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
 		{
 			if(!SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 			{
@@ -161,6 +187,7 @@ int main(void)
 				if((SPARK_WIRING_APPLICATION != 1) && (NULL != setup))
 				{
 					//Execute user application setup only once
+				        DECLARE_SYS_HEALTH(ENTERED_Setup);
 					setup();
 					SPARK_WIRING_APPLICATION = 1;
 				}
@@ -168,9 +195,10 @@ int main(void)
 				if(NULL != loop)
 				{
 					//Execute user application loop
+			                DECLARE_SYS_HEALTH(ENTERED_Loop);
 					loop();
+                                        DECLARE_SYS_HEALTH(RAN_Loop);
 				}
-
 #ifdef SPARK_WLAN_ENABLE
 			}
 		}
@@ -220,12 +248,9 @@ void Timing_Decrement(void)
 	else if(SPARK_LED_FADE)
 	{
 		LED_Fade(LED_RGB);
-		if(SPARK_HANDSHAKE_COMPLETED)
-			TimingLED = 20;
-		else
-			TimingLED = 1;
+		TimingLED = 20;//Breathing frequency kept constant
 	}
-	else if(SPARK_HANDSHAKE_COMPLETED)
+	else if(SPARK_WLAN_SETUP && SPARK_CLOUD_CONNECTED)
 	{
 #if defined (RGB_NOTIFICATIONS_CONNECTING_ONLY)
 		LED_Off(LED_RGB);
@@ -238,20 +263,35 @@ void Timing_Decrement(void)
 	else
 	{
 		LED_Toggle(LED_RGB);
-		if(SPARK_SOCKET_CONNECTED)
+		if(SPARK_CLOUD_SOCKETED)
 			TimingLED = 50;		//50ms
 		else
 			TimingLED = 100;	//100ms
 	}
 
 #ifdef SPARK_WLAN_ENABLE
-	if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
+	if(!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP)
+	{
+		//Do nothing
+	}
+	else if(SPARK_FLASH_UPDATE)
+	{
+		if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
+		{
+			//Reset is the only way now to recover from stuck OTA update
+			NVIC_SystemReset();
+		}
+		else
+		{
+			TimingFlashUpdateTimeout++;
+		}
+	}
+	else if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
 	{
 		BUTTON_ResetDebouncedState(BUTTON1);
 
 		if(!SPARK_WLAN_SLEEP)
 		{
-
 			WLAN_SMART_CONFIG_START = 1;
 		}
 	}
@@ -261,22 +301,6 @@ void Timing_Decrement(void)
 
 		WLAN_DELETE_PROFILES = 1;
 	}
-
-	if(!SPARK_WLAN_SLEEP)
-	{
-		if(SPARK_FLASH_UPDATE)
-		{
-			if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
-			{
-				//Reset is the only way now to recover from stuck OTA update
-				NVIC_SystemReset();
-			}
-			else
-			{
-				TimingFlashUpdateTimeout++;
-			}
-		}
-	}
 #endif
 
 #ifdef IWDG_RESET_ENABLE
@@ -284,14 +308,9 @@ void Timing_Decrement(void)
 	{
 		TimingIWDGReload = 0;
 
-		/* Reload IWDG counter */
-		IWDG_ReloadCounter();
-
-		if (BKP_ReadBackupRegister(BKP_DR1) != 0xFFFF)
-		{
-			//We have a running firmware otherwise we wouldn't have been here
-			BKP_WriteBackupRegister(BKP_DR1, 0xFFFF);	//Reset BKP_DR1
-		}
+		/* Reload WDG counter */
+		KICK_WDT();
+		DECLARE_SYS_HEALTH(0xFFFF);
 	}
 	else
 	{

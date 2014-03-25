@@ -1,12 +1,12 @@
 /**
  ******************************************************************************
- * @file    spark_wiring_network.h
- * @author  Satish Nair, Timothy Brown
+ * @file    spark_wiring_wifi.h
+ * @author  Satish Nair
  * @version V1.0.0
- * @date    18-Mar-2014
- * @brief   Header for spark_wiring_network.cpp module
+ * @date    7-Mar-2014
+ * @brief   Header for spark_wiring_wifi.cpp module
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -23,32 +23,27 @@
   ******************************************************************************
  */
 
-#ifndef __SPARK_WIRING_NETWORK_H
-#define __SPARK_WIRING_NETWORK_H
+#ifndef __SPARK_WIRING_WIFI_H
+#define __SPARK_WIRING_WIFI_H
 
 #include "spark_wiring.h"
 
-class NetworkClass
+typedef enum
+{
+	WIFI_OFF = 0, WIFI_CONNECTING = 1, WIFI_ON = 2
+} WiFi_Status_TypeDef;
+
+class WiFiClass
 {
 public:
-	NetworkClass();
+	WiFiClass() {}
+    ~WiFiClass() {}
 
-	uint8_t* macAddress(uint8_t* mac);
-	IPAddress localIP();
-	IPAddress subnetMask();
-	IPAddress gatewayIP();
-	char* SSID();
-	int8_t RSSI();
-
-	friend class TCPClient;
-	friend class TCPServer;
-
-private:
-	uint32_t _functionStart;
-	uint8_t _loopCount;
-	int8_t _returnValue;
+	static void on(void);
+	static void off(void);
+	static WiFi_Status_TypeDef status(void);
 };
 
-extern NetworkClass Network;
+extern WiFiClass WiFi;
 
 #endif

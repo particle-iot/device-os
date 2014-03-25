@@ -61,7 +61,6 @@ char *WLAN_BootLoader_Patch(unsigned long *length);
 uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
 void SPARK_WLAN_Loop(void);
-int SPARK_WLAN_hasAddress(void);
 
 /* Spark Cloud APIs */
 extern int Spark_Connect(void);
@@ -73,11 +72,13 @@ extern volatile uint32_t TimingFlashUpdateTimeout;
 extern tNetappIpconfigRetArgs ip_config;
 
 extern volatile uint8_t WLAN_DHCP;
+extern volatile uint8_t SPARK_WLAN_SETUP;
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
-extern volatile uint8_t SPARK_SOCKET_HANDSHAKE;
-extern volatile uint8_t SPARK_SOCKET_CONNECTED;
-extern volatile uint8_t SPARK_HANDSHAKE_COMPLETED;
+extern volatile uint8_t SPARK_WLAN_STARTED;
+extern volatile uint8_t SPARK_CLOUD_CONNECT;
+extern volatile uint8_t SPARK_CLOUD_SOCKETED;
+extern volatile uint8_t SPARK_CLOUD_CONNECTED;
 extern volatile uint8_t SPARK_FLASH_UPDATE;
 extern volatile uint8_t SPARK_LED_FADE;
 

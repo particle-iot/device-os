@@ -35,6 +35,7 @@
 #include "spark_wiring_stream.h"
 #include "spark_wiring_printable.h"
 #include "spark_wiring_ipaddress.h"
+#include "spark_wiring_wifi.h"
 
 /*
 * Basic variables
@@ -123,7 +124,7 @@
 
 #define ADC1_DR_ADDRESS		((uint32_t)0x4001244C)
 #define ADC_DMA_BUFFERSIZE	10
-#define ADC_SAMPLING_TIME	ADC_SampleTime_41Cycles5
+#define ADC_SAMPLING_TIME	ADC_SampleTime_7Cycles5	//Allowed values: 1.5, 7.5 and 13.5 for "Dual slow interleaved mode"
 
 #define TIM_PWM_FREQ 500 //500Hz
 
@@ -155,6 +156,11 @@ extern STM32_Pin_Info PIN_MAP[];
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*
+* ADC
+*/
+void setADCSampleTime(uint8_t ADC_SampleTime);
 
 /*
 * GPIO

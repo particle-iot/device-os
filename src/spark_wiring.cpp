@@ -35,6 +35,7 @@
 __IO uint32_t ADC_DualConvertedValues[ADC_DMA_BUFFERSIZE];
 uint8_t adcInitFirstTime = true;
 uint8_t adcChannelConfigured = NONE;
+static uint8_t ADC_Sample_Time = ADC_SAMPLING_TIME;
 
 PinMode digitalPinModeSaved = (PinMode)NONE;
 
@@ -287,13 +288,10 @@ void ADC_DMA_Init()
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Word;
 	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;
-	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
 	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
 	DMA_Init(DMA1_Channel1, &DMA_InitStructure);
-
-	// Enable DMA1 Channel1
-	DMA_Cmd(DMA1_Channel1, ENABLE);
 
 	// ADC1 configuration
 	ADC_InitStructure.ADC_Mode = ADC_Mode_SlowInterl;
@@ -312,12 +310,6 @@ void ADC_DMA_Init()
 	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
 	ADC_InitStructure.ADC_NbrOfChannel = 1;
 	ADC_Init(ADC2, &ADC_InitStructure);
-
-	// Enable ADC2 external trigger conversion
-	ADC_ExternalTrigConvCmd(ADC2, ENABLE);
-
-	// Enable ADC1 DMA
-	ADC_DMACmd(ADC1, ENABLE);
 
 	// Enable ADC1
 	ADC_Cmd(ADC1, ENABLE);
@@ -348,6 +340,32 @@ void ADC_DMA_Init()
 
 	// Check the end of ADC2 calibration
 	while(ADC_GetCalibrationStatus(ADC2));
+}
+
+/*
+ * @brief  Override the default ADC Sample time depending on requirement
+ * @param  ADC_SampleTime: The sample time value to be set.
+ * This parameter can be one of the following values:
+ * @arg ADC_SampleTime_1Cycles5: Sample time equal to 1.5 cycles
+ * @arg ADC_SampleTime_7Cycles5: Sample time equal to 7.5 cycles
+ * @arg ADC_SampleTime_13Cycles5: Sample time equal to 13.5 cycles
+ * @arg ADC_SampleTime_28Cycles5: Sample time equal to 28.5 cycles
+ * @arg ADC_SampleTime_41Cycles5: Sample time equal to 41.5 cycles
+ * @arg ADC_SampleTime_55Cycles5: Sample time equal to 55.5 cycles
+ * @arg ADC_SampleTime_71Cycles5: Sample time equal to 71.5 cycles
+ * @arg ADC_SampleTime_239Cycles5: Sample time equal to 239.5 cycles
+ * @retval None
+ */
+void setADCSampleTime(uint8_t ADC_SampleTime)
+{
+	if(ADC_SampleTime < ADC_SampleTime_1Cycles5 || ADC_SampleTime > ADC_SampleTime_239Cycles5)
+	{
+		ADC_Sample_Time = ADC_SAMPLING_TIME;
+	}
+	else
+	{
+		ADC_Sample_Time = ADC_SampleTime;
+	}
 }
 
 /*
@@ -386,6 +404,8 @@ int32_t analogRead(uint16_t pin)
 		return -1;
 	}
 
+	int i = 0;
+
 	if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
 	{
 		digitalPinModeSaved = PIN_MAP[pin].pin_mode;
@@ -401,12 +421,29 @@ int32_t analogRead(uint16_t pin)
 	if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
 	{
 		// ADC1 regular channel configuration
-		ADC_RegularChannelConfig(ADC1, PIN_MAP[pin].adc_channel, 1, ADC_SAMPLING_TIME);
+		ADC_RegularChannelConfig(ADC1, PIN_MAP[pin].adc_channel, 1, ADC_Sample_Time);
 		// ADC2 regular channel configuration
-		ADC_RegularChannelConfig(ADC2, PIN_MAP[pin].adc_channel, 1, ADC_SAMPLING_TIME);
-
+		ADC_RegularChannelConfig(ADC2, PIN_MAP[pin].adc_channel, 1, ADC_Sample_Time);
+		// Save the ADC configured channel
 		adcChannelConfigured = PIN_MAP[pin].adc_channel;
 	}
+
+	for(i = 0 ; i < ADC_DMA_BUFFERSIZE ; i++)
+	{
+		ADC_DualConvertedValues[i] = 0;
+	}
+
+	// Reset the number of data units in the DMA1 Channel1 transfer
+	DMA_SetCurrDataCounter(DMA1_Channel1, ADC_DMA_BUFFERSIZE);
+
+	// Enable ADC2 external trigger conversion
+	ADC_ExternalTrigConvCmd(ADC2, ENABLE);
+
+	// Enable DMA1 Channel1
+	DMA_Cmd(DMA1_Channel1, ENABLE);
+
+	// Enable ADC1 DMA
+	ADC_DMACmd(ADC1, ENABLE);
 
 	// Start ADC1 Software Conversion
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
@@ -417,23 +454,26 @@ int32_t analogRead(uint16_t pin)
 	// Clear Channel 1 DMA1_FLAG_TC flag
 	DMA_ClearFlag(DMA1_FLAG_TC1);
 
-	uint16_t ADC_ConvertedValues[ADC_DMA_BUFFERSIZE * 2];
+	// Disable ADC1 DMA
+	ADC_DMACmd(ADC1, DISABLE);
+
+	// Disable DMA1 Channel1
+	DMA_Cmd(DMA1_Channel1, DISABLE);
+
+	uint16_t ADC1_ConvertedValue = 0;
+	uint16_t ADC2_ConvertedValue = 0;
 	uint32_t ADC_SummatedValue = 0;
 	uint16_t ADC_AveragedValue = 0;
-	uint16_t j = 0;
 
-	for(uint16_t i = 0 ; i < ADC_DMA_BUFFERSIZE ; i++)
+	for(int i = 0 ; i < ADC_DMA_BUFFERSIZE ; i++)
 	{
-		// Fill the table with ADC2 converted values
-		ADC_ConvertedValues[j++] = ADC_DualConvertedValues[i] >> 16;
+		// Retrieve the ADC2 converted value and add to ADC_SummatedValue
+		ADC2_ConvertedValue = ADC_DualConvertedValues[i] >> 16;
+		ADC_SummatedValue += ADC2_ConvertedValue;
 
-		// Fill the table with ADC1 converted values
-		ADC_ConvertedValues[j++] = ADC_DualConvertedValues[i] & 0xFFFF;
-	}
-
-	for(j = 0 ; j < (ADC_DMA_BUFFERSIZE * 2) ; j++)
-	{
-		ADC_SummatedValue += ADC_ConvertedValues[j];
+		// Retrieve the ADC1 converted value and add to ADC_SummatedValue
+		ADC1_ConvertedValue = ADC_DualConvertedValues[i] & 0xFFFF;
+		ADC_SummatedValue += ADC1_ConvertedValue;
 	}
 
 	ADC_AveragedValue = (uint16_t)(ADC_SummatedValue / (ADC_DMA_BUFFERSIZE * 2));
@@ -582,6 +622,8 @@ void delay(unsigned long ms)
 
 	while (1)
 	{
+	        KICK_WDT();
+
 		volatile system_tick_t current_millis = GetSystem1MsTick();
 		volatile long elapsed_millis = current_millis - last_millis;
 
@@ -591,13 +633,17 @@ void delay(unsigned long ms)
 			elapsed_millis = last_millis + current_millis;
 		}
 
-		if(elapsed_millis >= ms)
+		if (elapsed_millis >= ms)
 		{
 			break;
 		}
 
 #ifdef SPARK_WLAN_ENABLE
-		if((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
+		if (!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP)
+		{
+			//Do not yield for SPARK_WLAN_Loop()
+		}
+		else if ((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
 		{
 			spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
 			//spark_loop_total_millis is reset to 0 in SPARK_WLAN_Loop()

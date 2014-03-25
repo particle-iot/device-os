@@ -183,7 +183,9 @@ int USARTSerial::read(void)
 void USARTSerial::flush()
 {
 	// Loop until USART DR register is empty
-	while (transmitting && (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET));
+	while ( _tx_buffer->head != _tx_buffer->tail );
+	// Loop until last frame transmission complete
+	while (transmitting && (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET));
 	transmitting = false;
 }
 
@@ -201,10 +203,12 @@ size_t USARTSerial::write(uint8_t c)
 
 	// If the output buffer is full, there's nothing for it other than to
         // wait for the interrupt handler to empty it a bit
-
-        while (i == _tx_buffer->tail) {
+        //         no space so       or  Called Off Panic with interrupt off get the message out!
+        //         make space                     Enter Polled IO mode
+        while (i == _tx_buffer->tail || ((__get_PRIMASK() & 1) && _tx_buffer->head != _tx_buffer->tail) ) {
             // Interrupts are on but they are not being serviced because this was called from a higher
             // Priority interrupt
+
             if (USART_GetITStatus(USART2, USART_IT_TXE) && USART_GetFlagStatus(USART2, USART_FLAG_TXE))
             {
                 // protect for good measure
