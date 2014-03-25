@@ -296,9 +296,9 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
 			if (WLAN_CONNECTED) {
 				ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+				LED_SetRGBColor(RGB_COLOR_GREEN);
+				LED_On(LED_RGB);
 			}
-			LED_SetRGBColor(RGB_COLOR_GREEN);
-			LED_On(LED_RGB);
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_CLOUD_SOCKETED = 0;
