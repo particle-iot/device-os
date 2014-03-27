@@ -48,7 +48,7 @@ void *spark_memory_malloc(size_t size)
 {
 	memory_block_ptr block_ptr = (memory_block_ptr)memory_buffer_start;
 	size_t sizeof_memory_block = sizeof(memory_block);
-	unsigned char memory_block_flag = -1;
+	int memory_block_flag = -1;
 
 	if ((size + sizeof_memory_block) > (memory_buffer_size - (memory_buffer_used + memory_block_count * sizeof_memory_block)))
 	{
