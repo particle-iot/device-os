@@ -88,7 +88,20 @@ extern "C" {
  */
 //#define RGB_NOTIFICATIONS_CONNECTING_ONLY
 
+//For USB VCP use
 #define USART_RX_DATA_SIZE			256
+
+//For USB HID use (testing purpose only)
+#define CURSOR_STEP     			20
+typedef enum
+{
+  HID_NONE = 0,
+  HID_SEL = 1,
+  HID_LEFT = 2,
+  HID_RIGHT = 3,
+  HID_UP = 4,
+  HID_DOWN = 5
+} HID_State_TypeDef;
 
 /* Exported functions ------------------------------------------------------- */
 void Timing_Decrement(void);
@@ -98,6 +111,7 @@ uint8_t USB_USART_Available_Data(void);
 int32_t USB_USART_Receive_Data(void);
 void USB_USART_Send_Data(uint8_t Data);
 void Handle_USBAsynchXfer(void);
+void HID_Send(uint8_t Keys);
 void Get_SerialNum(void);
 
 }

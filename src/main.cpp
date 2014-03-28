@@ -53,7 +53,7 @@ uint32_t USART_Rx_ptr_in = 0;
 uint32_t USART_Rx_ptr_out = 0;
 uint32_t USART_Rx_length  = 0;
 
-uint8_t USB_Rx_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
+uint8_t USB_Rx_Buffer[VCP_DATA_SIZE];
 uint16_t USB_Rx_length = 0;
 uint16_t USB_Rx_ptr = 0;
 
@@ -62,12 +62,13 @@ uint8_t  USB_Rx_State = 0;
 
 uint32_t USB_USART_BaudRate = 9600;
 
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
+__IO uint8_t PrevXferComplete;
 
 /* Extern variables ----------------------------------------------------------*/
 extern LINE_CODING linecoding;
 
 /* Private function prototypes -----------------------------------------------*/
+static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -444,13 +445,13 @@ void Handle_USBAsynchXfer (void)
 			USART_Rx_length = USART_Rx_ptr_in - USART_Rx_ptr_out;
 		}
 
-		if (USART_Rx_length > VIRTUAL_COM_PORT_DATA_SIZE)
+		if (USART_Rx_length > VCP_DATA_SIZE)
 		{
 			USB_Tx_ptr = USART_Rx_ptr_out;
-			USB_Tx_length = VIRTUAL_COM_PORT_DATA_SIZE;
+			USB_Tx_length = VCP_DATA_SIZE;
 
-			USART_Rx_ptr_out += VIRTUAL_COM_PORT_DATA_SIZE;
-			USART_Rx_length -= VIRTUAL_COM_PORT_DATA_SIZE;
+			USART_Rx_ptr_out += VCP_DATA_SIZE;
+			USART_Rx_length -= VCP_DATA_SIZE;
 		}
 		else
 		{
@@ -466,6 +467,54 @@ void Handle_USBAsynchXfer (void)
 		SetEPTxValid(ENDP1);
 	}
 
+}
+
+/*******************************************************************************
+ * Function Name : HID_Send.
+ * Description   : prepares buffer to be sent containing HID event information.
+ * Input         : Keys: keys received.
+ * Output        : None.
+ * Return value  : None.
+ *******************************************************************************/
+void HID_Send(uint8_t Keys)
+{
+	if (bDeviceState == CONFIGURED)
+	{
+		uint8_t HID_Buffer[4] = {0, 0, 0, 0};
+		int8_t X = 0, Y = 0;
+
+		switch (Keys)
+		{
+		case HID_LEFT:
+			X -= CURSOR_STEP;
+			break;
+		case HID_RIGHT:
+			X += CURSOR_STEP;
+			break;
+		case HID_UP:
+			Y -= CURSOR_STEP;
+			break;
+		case HID_DOWN:
+			Y += CURSOR_STEP;
+			break;
+		default:
+			return;
+		}
+
+		/* prepare buffer to send */
+		HID_Buffer[1] = X;
+		HID_Buffer[2] = Y;
+
+		/* Reset the control token to inform upper layer that a transfer is ongoing */
+		PrevXferComplete = 0;
+
+		/* Copy HID info in ENDP1 Tx Packet Memory Area*/
+		UserToPMABufferCopy(HID_Buffer, ENDP1_TXADDR, 4);
+		SetEPTxCount(ENDP1, 4);
+
+		/* Enable endpoint for transmission */
+		SetEPTxValid(ENDP1);
+	}
 }
 
 /*******************************************************************************
@@ -487,8 +536,8 @@ void Get_SerialNum(void)
 
 	if (Device_Serial0 != 0)
 	{
-		IntToUnicode (Device_Serial0, &Virtual_Com_Port_StringSerial[2] , 8);
-		IntToUnicode (Device_Serial1, &Virtual_Com_Port_StringSerial[18], 4);
+		IntToUnicode (Device_Serial0, &USB_StringSerial[2] , 8);
+		IntToUnicode (Device_Serial1, &USB_StringSerial[18], 4);
 	}
 }
 

@@ -4,9 +4,9 @@
   * @author  Satish Nair
   * @version V1.0.0
   * @date    24-April-2013
-  * @brief   Virtual COM Port configuration header
+  * @brief   USB VCP-HID configuration header
   ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -34,12 +34,22 @@
 /* Exported functions ------------------------------------------------------- */
 /* External variables --------------------------------------------------------*/
 
+/* Uncomment only one usb feature from below at present */
+#define USB_VCP_ENABLE
+//#define USB_HID_ENABLE	//Work in progress
+
 /*-------------------------------------------------------------*/
 /* EP_NUM */
 /* defines how many endpoints are used by the device */
 /*-------------------------------------------------------------*/
 
-#define EP_NUM                          (4)
+#ifdef USB_VCP_ENABLE
+#define EP_NUM              (4)
+#endif
+
+#ifdef USB_HID_ENABLE
+#define EP_NUM              (2)
+#endif
 
 /*-------------------------------------------------------------*/
 /* --------------   Buffer Description Table  -----------------*/
@@ -48,6 +58,7 @@
 /* buffer table base address */
 #define BTABLE_ADDRESS      (0x00)
 
+#ifdef USB_VCP_ENABLE
 /* EP0  */
 /* rx/tx buffer base address */
 #define ENDP0_RXADDR        (0x40)
@@ -58,15 +69,23 @@
 #define ENDP1_TXADDR        (0xC0)
 #define ENDP2_TXADDR        (0x100)
 #define ENDP3_RXADDR        (0x110)
+#endif
 
+#ifdef USB_HID_ENABLE
+/* EP0  */
+/* rx/tx buffer base address */
+#define ENDP0_RXADDR        (0x18)
+#define ENDP0_TXADDR        (0x58)
+
+/* EP1  */
+/* tx buffer base address */
+#define ENDP1_TXADDR        (0x100)
+#endif
 
 /*-------------------------------------------------------------*/
 /* -------------------   ISTR events  -------------------------*/
 /*-------------------------------------------------------------*/
-/* IMR_MSK */
-/* mask defining which events has to be handled */
-/* by the device application software */
-//#define IMR_MSK (CNTR_CTRM  | CNTR_SOFM  | CNTR_RESETM )
+/* IMR_MSK defined in hw_config.h */
 
 /*#define CTR_CALLBACK*/
 /*#define DOVR_CALLBACK*/
@@ -74,11 +93,18 @@
 /*#define WKUP_CALLBACK*/
 /*#define SUSP_CALLBACK*/
 /*#define RESET_CALLBACK*/
+#ifdef USB_VCP_ENABLE
 #define SOF_CALLBACK
+#endif
 /*#define ESOF_CALLBACK*/
 /* CTR service routines */
 /* associated to defined endpoints */
+#ifdef USB_VCP_ENABLE
 /*#define  EP1_IN_Callback   NOP_Process*/
+#endif
+#ifdef USB_HID_ENABLE
+/*#define  EP1_IN_Callback   NOP_Process*/
+#endif
 #define  EP2_IN_Callback   NOP_Process
 #define  EP3_IN_Callback   NOP_Process
 #define  EP4_IN_Callback   NOP_Process
@@ -88,7 +114,12 @@
 
 #define  EP1_OUT_Callback   NOP_Process
 #define  EP2_OUT_Callback   NOP_Process
+#ifdef USB_VCP_ENABLE
 /*#define  EP3_OUT_Callback   NOP_Process*/
+#endif
+#ifdef USB_HID_ENABLE
+#define  EP3_OUT_Callback   NOP_Process
+#endif
 #define  EP4_OUT_Callback   NOP_Process
 #define  EP5_OUT_Callback   NOP_Process
 #define  EP6_OUT_Callback   NOP_Process

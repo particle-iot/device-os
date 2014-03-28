@@ -4,9 +4,9 @@
   * @author  Satish Nair
   * @version V1.0.0
   * @date    24-April-2013
-  * @brief   All processing related to Virtual COM Port (Endpoint 0)
+  * @brief   All processing related to USB VCP-HID (Endpoint 0)
   ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -35,48 +35,70 @@ typedef struct
   uint8_t format;
   uint8_t paritytype;
   uint8_t datatype;
-}LINE_CODING;
+} LINE_CODING;
+
+typedef enum _HID_REQUESTS
+{
+  GET_REPORT = 1,
+  GET_IDLE,
+  GET_PROTOCOL,
+
+  SET_REPORT = 9,
+  SET_IDLE,
+  SET_PROTOCOL
+} HID_REQUESTS;
 
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported define -----------------------------------------------------------*/
 
-#define Virtual_Com_Port_GetConfiguration          NOP_Process
-//#define Virtual_Com_Port_SetConfiguration          NOP_Process
-#define Virtual_Com_Port_GetInterface              NOP_Process
-#define Virtual_Com_Port_SetInterface              NOP_Process
-#define Virtual_Com_Port_GetStatus                 NOP_Process
-#define Virtual_Com_Port_ClearFeature              NOP_Process
-#define Virtual_Com_Port_SetEndPointFeature        NOP_Process
-#define Virtual_Com_Port_SetDeviceFeature          NOP_Process
-//#define Virtual_Com_Port_SetDeviceAddress          NOP_Process
+#define USB_GetConfiguration          NOP_Process
+//#define USB_SetConfiguration          NOP_Process
+#define USB_GetInterface              NOP_Process
+#define USB_SetInterface              NOP_Process
+#define USB_GetStatus                 NOP_Process
+#define USB_ClearFeature              NOP_Process
+#define USB_SetEndPointFeature        NOP_Process
+#define USB_SetDeviceFeature          NOP_Process
+//#define USB_SetDeviceAddress          NOP_Process
 
-#define SEND_ENCAPSULATED_COMMAND   0x00
-#define GET_ENCAPSULATED_RESPONSE   0x01
-#define SET_COMM_FEATURE            0x02
-#define GET_COMM_FEATURE            0x03
-#define CLEAR_COMM_FEATURE          0x04
-#define SET_LINE_CODING             0x20
-#define GET_LINE_CODING             0x21
-#define SET_CONTROL_LINE_STATE      0x22
-#define SEND_BREAK                  0x23
+#define SEND_ENCAPSULATED_COMMAND     0x00
+#define GET_ENCAPSULATED_RESPONSE     0x01
+#define SET_COMM_FEATURE              0x02
+#define GET_COMM_FEATURE              0x03
+#define CLEAR_COMM_FEATURE            0x04
+#define SET_LINE_CODING               0x20
+#define GET_LINE_CODING               0x21
+#define SET_CONTROL_LINE_STATE        0x22
+#define SEND_BREAK                    0x23
+
+#define REPORT_DESCRIPTOR             0x22
 
 /* Exported functions ------------------------------------------------------- */
-void Virtual_Com_Port_init(void);
-void Virtual_Com_Port_Reset(void);
-void Virtual_Com_Port_SetConfiguration(void);
-void Virtual_Com_Port_SetDeviceAddress (void);
-void Virtual_Com_Port_Status_In (void);
-void Virtual_Com_Port_Status_Out (void);
-RESULT Virtual_Com_Port_Data_Setup(uint8_t);
-RESULT Virtual_Com_Port_NoData_Setup(uint8_t);
-RESULT Virtual_Com_Port_Get_Interface_Setting(uint8_t Interface, uint8_t AlternateSetting);
-uint8_t *Virtual_Com_Port_GetDeviceDescriptor(uint16_t );
-uint8_t *Virtual_Com_Port_GetConfigDescriptor(uint16_t);
-uint8_t *Virtual_Com_Port_GetStringDescriptor(uint16_t);
+void USB_init(void);
+void USB_Reset(void);
+void USB_SetConfiguration(void);
+void USB_SetDeviceAddress (void);
+void USB_Status_In (void);
+void USB_Status_Out (void);
+RESULT USB_Data_Setup(uint8_t);
+RESULT USB_NoData_Setup(uint8_t);
+RESULT USB_Get_Interface_Setting(uint8_t Interface, uint8_t AlternateSetting);
+uint8_t *USB_GetDeviceDescriptor(uint16_t );
+uint8_t *USB_GetConfigDescriptor(uint16_t);
+uint8_t *USB_GetStringDescriptor(uint16_t);
 
-uint8_t *Virtual_Com_Port_GetLineCoding(uint16_t Length);
-uint8_t *Virtual_Com_Port_SetLineCoding(uint16_t Length);
+#ifdef USB_VCP_ENABLE
+uint8_t *VCP_GetLineCoding(uint16_t Length);
+uint8_t *VCP_SetLineCoding(uint16_t Length);
+#endif
+
+#ifdef USB_HID_ENABLE
+uint8_t *HID_GetReportDescriptor(uint16_t Length);
+uint8_t *HID_GetDescriptor(uint16_t Length);
+RESULT HID_SetProtocol(void);
+uint8_t *HID_GetProtocolValue(uint16_t Length);
+#endif
 
 #endif /* __usb_prop_H */
 

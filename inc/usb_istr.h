@@ -6,7 +6,7 @@
   * @date    24-April-2013
   * @brief   This file includes the peripherals header files in the user application.
   ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -39,7 +39,12 @@ extern "C" void USB_Istr(void);
 
 /* function prototypes Automatically built defining related macros */
 
+#ifdef USB_VCP_ENABLE
 extern "C" void EP1_IN_Callback(void);
+#endif
+#ifdef USB_HID_ENABLE
+extern "C" void EP1_IN_Callback(void);
+#endif
 void EP2_IN_Callback(void);
 void EP3_IN_Callback(void);
 void EP4_IN_Callback(void);
@@ -49,7 +54,12 @@ void EP7_IN_Callback(void);
 
 void EP1_OUT_Callback(void);
 void EP2_OUT_Callback(void);
+#ifdef USB_VCP_ENABLE
 extern "C" void EP3_OUT_Callback(void);
+#endif
+#ifdef USB_HID_ENABLE
+void EP3_OUT_Callback(void);
+#endif
 void EP4_OUT_Callback(void);
 void EP5_OUT_Callback(void);
 void EP6_OUT_Callback(void);
@@ -80,7 +90,9 @@ void RESET_Callback(void);
 #endif
 
 #ifdef SOF_CALLBACK
+#ifdef USB_VCP_ENABLE
 extern "C" void SOF_Callback(void);
+#endif
 #endif
 
 #ifdef ESOF_CALLBACK

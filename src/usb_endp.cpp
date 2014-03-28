@@ -6,7 +6,7 @@
   * @date    24-April-2013
   * @brief   Endpoint routines
   ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -37,7 +37,7 @@ extern "C" {
 /* Private define ------------------------------------------------------------*/
 
 /* Interval between sending IN packets in frame number (1 frame = 1ms) */
-#define VCOMPORT_IN_FRAME_INTERVAL             5
+#define VCP_IN_FRAME_INTERVAL             5
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -53,12 +53,15 @@ extern uint16_t USB_Rx_ptr;
 extern uint8_t  USB_Tx_State;
 extern uint8_t  USB_Rx_State;
 
+extern __IO uint8_t PrevXferComplete;
+
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
+#ifdef USB_VCP_ENABLE
 /*******************************************************************************
-* Function Name  : EP1_IN_Callback
-* Description    :
+* Function Name  : EP1_IN_Callback.
+* Description    : EP1 IN Callback Routine.
 * Input          : None.
 * Output         : None.
 * Return         : None.
@@ -76,12 +79,12 @@ void EP1_IN_Callback (void)
     }
     else 
     {
-      if (USART_Rx_length > VIRTUAL_COM_PORT_DATA_SIZE){
+      if (USART_Rx_length > VCP_DATA_SIZE){
         USB_Tx_ptr = USART_Rx_ptr_out;
-        USB_Tx_length = VIRTUAL_COM_PORT_DATA_SIZE;
+        USB_Tx_length = VCP_DATA_SIZE;
         
-        USART_Rx_ptr_out += VIRTUAL_COM_PORT_DATA_SIZE;
-        USART_Rx_length -= VIRTUAL_COM_PORT_DATA_SIZE;    
+        USART_Rx_ptr_out += VCP_DATA_SIZE;
+        USART_Rx_length -= VCP_DATA_SIZE;
       }
       else 
       {
@@ -100,7 +103,7 @@ void EP1_IN_Callback (void)
 
 /*******************************************************************************
 * Function Name  : EP3_OUT_Callback
-* Description    :
+* Description    : EP3 OUT Callback Routine.
 * Input          : None.
 * Output         : None.
 * Return         : None.
@@ -121,10 +124,9 @@ void EP3_OUT_Callback(void)
   NAKed till the end of the processing */
 }
 
-
 /*******************************************************************************
 * Function Name  : SOF_Callback / INTR_SOFINTR_Callback
-* Description    :
+* Description    : SOF Callback Routine.
 * Input          : None.
 * Output         : None.
 * Return         : None.
@@ -135,7 +137,7 @@ void SOF_Callback(void)
   
   if(bDeviceState == CONFIGURED)
   {
-    if (FrameCount++ == VCOMPORT_IN_FRAME_INTERVAL)
+    if (FrameCount++ == VCP_IN_FRAME_INTERVAL)
     {
       /* Reset the frame counter */
       FrameCount = 0;
@@ -145,4 +147,20 @@ void SOF_Callback(void)
     }
   }  
 }
+#endif
 
+#ifdef USB_HID_ENABLE
+/*******************************************************************************
+* Function Name  : EP1_IN_Callback.
+* Description    : EP1 IN Callback Routine.
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+void EP1_IN_Callback(void)
+{
+  /* Set the transfer complete token to inform upper layer that the current
+  transfer has been complete */
+  PrevXferComplete = 1;
+}
+#endif
