@@ -42,7 +42,8 @@ extern "C" {
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 
-extern  uint8_t USART_Rx_Buffer[];
+extern uint8_t USART_Rx_Buffer[];
+extern uint32_t USART_Rx_ptr_in;
 extern uint32_t USART_Rx_ptr_out;
 extern uint32_t USART_Rx_length;
 
@@ -122,6 +123,62 @@ void EP3_OUT_Callback(void)
 
   /* USB data should be immediately processed, this allow next USB traffic being
   NAKed till the end of the processing */
+}
+
+/*******************************************************************************
+ * Function Name  : Handle_USBAsynchXfer.
+ * Description    : send data to USB.
+ * Input          : None.
+ * Return         : None.
+ *******************************************************************************/
+void Handle_USBAsynchXfer (void)
+{
+	uint16_t USB_Tx_ptr;
+	uint16_t USB_Tx_length;
+
+	if(USB_Tx_State != 1)
+	{
+		if (USART_Rx_ptr_out == USART_RX_DATA_SIZE)
+		{
+			USART_Rx_ptr_out = 0;
+		}
+
+		if(USART_Rx_ptr_out == USART_Rx_ptr_in)
+		{
+			USB_Tx_State = 0;
+			return;
+		}
+
+		if(USART_Rx_ptr_out > USART_Rx_ptr_in) /* rollback */
+		{
+			USART_Rx_length = USART_RX_DATA_SIZE - USART_Rx_ptr_out;
+		}
+		else
+		{
+			USART_Rx_length = USART_Rx_ptr_in - USART_Rx_ptr_out;
+		}
+
+		if (USART_Rx_length > VCP_DATA_SIZE)
+		{
+			USB_Tx_ptr = USART_Rx_ptr_out;
+			USB_Tx_length = VCP_DATA_SIZE;
+
+			USART_Rx_ptr_out += VCP_DATA_SIZE;
+			USART_Rx_length -= VCP_DATA_SIZE;
+		}
+		else
+		{
+			USB_Tx_ptr = USART_Rx_ptr_out;
+			USB_Tx_length = USART_Rx_length;
+
+			USART_Rx_ptr_out += USART_Rx_length;
+			USART_Rx_length = 0;
+		}
+		USB_Tx_State = 1;
+		UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
+		SetEPTxCount(ENDP1, USB_Tx_length);
+		SetEPTxValid(ENDP1);
+	}
 }
 
 /*******************************************************************************

@@ -28,15 +28,21 @@
 #define __USB_CONF_H
 
 /* Includes ------------------------------------------------------------------*/
+#include "main.h"
+
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 /* External variables --------------------------------------------------------*/
 
-/* Uncomment only one usb feature from below at present */
-#define USB_VCP_ENABLE
-//#define USB_HID_ENABLE	//Work in progress
+#if !defined (SPARK_USB_SERIAL) && !defined (SPARK_USB_MOUSE) && !defined (SPARK_USB_KEYBOARD)
+#define USB_VCP_ENABLE	//Use USB Serial feature by default if none is defined
+#elif defined (SPARK_USB_SERIAL)
+#define USB_VCP_ENABLE	//Enable USB VCP code
+#elif defined (SPARK_USB_MOUSE) || defined (SPARK_USB_KEYBOARD)
+#define USB_HID_ENABLE	//Enable USB HID code
+#endif
 
 /*-------------------------------------------------------------*/
 /* EP_NUM */

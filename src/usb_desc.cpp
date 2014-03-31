@@ -151,8 +151,13 @@ const uint8_t HID_DeviceDescriptor[HID_SIZ_DEVICE_DESC] =
     0x40,   /*bMaxPacketSize 64*/
     0x50,
     0x1D,   /* idVendor = 0x1D50 */
+#if defined (SPARK_USB_MOUSE)
     0x7D,
-    0x60,   /* idProduct = 0x607D */
+    0x70,   /* idProduct = 0x707D (Temporary, need to request a new one from openmoko) */
+#elif defined (SPARK_USB_KEYBOARD)
+    0x7D,
+    0x80,   /* idProduct = 0x807D (Temporary, need to request a new one from openmoko) */
+#endif
     0x00,
     0x02,   /* bcdDevice = 2.00 */
     1,      /*Index of string descriptor describing manufacturer */
@@ -184,7 +189,11 @@ const uint8_t HID_ConfigDescriptor[HID_SIZ_CONFIG_DESC] =
     0x01,   /*bNumEndpoints*/
     0x03,   /*bInterfaceClass: HID*/
     0x01,   /*bInterfaceSubClass : 1=BOOT, 0=no boot*/
+#if defined (SPARK_USB_MOUSE)
     0x02,   /*nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse*/
+#elif defined (SPARK_USB_KEYBOARD)
+    0x01,   /*nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse*/
+#endif
     0,      /*iInterface: Index of string descriptor*/
     /******************** Descriptor of HID Mouse HID ********************/
     /* 18 */
@@ -204,98 +213,83 @@ const uint8_t HID_ConfigDescriptor[HID_SIZ_CONFIG_DESC] =
 
     0x81,   /*bEndpointAddress: Endpoint Address (IN)*/
     0x03,   /*bmAttributes: Interrupt endpoint*/
-    0x04,   /*wMaxPacketSize: 4 Byte max */
+#if defined (SPARK_USB_MOUSE)
+    0x03,   /*wMaxPacketSize: 3 Byte max */
+#elif defined (SPARK_USB_KEYBOARD)
+    0x01,   /*nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse*/
+#endif
     0x00,
     0x20,   /*bInterval: Polling Interval (32 ms)*/
     /* 34 */
   };
 
-const uint8_t HID_ReportDescriptor[HID_SIZ_REPORT_DESC] =
-  {
-    0x05,   /*Usage Page(Generic Desktop)*/
-    0x01,
-    0x09,   /*Usage(Mouse)*/
-    0x02,
-    0xA1,   /*Collection(Logical)*/
-    0x01,
-    0x09,   /*Usage(Pointer)*/
-    0x01,
-    /* 8 */
-    0xA1,   /*Collection(Linked)*/
-    0x00,
-    0x05,   /*Usage Page(Buttons)*/
-    0x09,
-    0x19,   /*Usage Minimum(1)*/
-    0x01,
-    0x29,   /*Usage Maximum(3)*/
-    0x03,
-    /* 16 */
-    0x15,   /*Logical Minimum(0)*/
-    0x00,
-    0x25,   /*Logical Maximum(1)*/
-    0x01,
-    0x95,   /*Report Count(3)*/
-    0x03,
-    0x75,   /*Report Size(1)*/
-    0x01,
-    /* 24 */
-    0x81,   /*Input(Variable)*/
-    0x02,
-    0x95,   /*Report Count(1)*/
-    0x01,
-    0x75,   /*Report Size(5)*/
-    0x05,
-    0x81,   /*Input(Constant,Array)*/
-    0x01,
-    /* 32 */
-    0x05,   /*Usage Page(Generic Desktop)*/
-    0x01,
-    0x09,   /*Usage(X axis)*/
-    0x30,
-    0x09,   /*Usage(Y axis)*/
-    0x31,
-    0x09,   /*Usage(Wheel)*/
-    0x38,
-    /* 40 */
-    0x15,   /*Logical Minimum(-127)*/
-    0x81,
-    0x25,   /*Logical Maximum(127)*/
-    0x7F,
-    0x75,   /*Report Size(8)*/
-    0x08,
-    0x95,   /*Report Count(3)*/
-    0x03,
-    /* 48 */
-    0x81,   /*Input(Variable, Relative)*/
-    0x06,
-    0xC0,   /*End Collection*/
-    0x09,
-    0x3c,
-    0x05,
-    0xff,
-    0x09,
-    /* 56 */
-    0x01,
-    0x15,
-    0x00,
-    0x25,
-    0x01,
-    0x75,
-    0x01,
-    0x95,
-    /* 64 */
-    0x02,
-    0xb1,
-    0x22,
-    0x75,
-    0x06,
-    0x95,
-    0x01,
-    0xb1,
-    /* 72 */
-    0x01,
-    0xc0
-  };
+#if defined (SPARK_USB_MOUSE)
+/* Generated report descriptor using : "http://www.usb.org/developers/hidpage#HID Descriptor Tool" */
+const uint8_t HID_ReportDescriptor[HID_SIZ_REPORT_DESC] = {
+    0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+    0x09, 0x02,                    // USAGE (Mouse)
+    0xa1, 0x01,                    // COLLECTION (Application)
+    0x09, 0x01,                    //   USAGE (Pointer)
+    0xa1, 0x00,                    //   COLLECTION (Physical)
+    0x05, 0x09,                    //     USAGE_PAGE (Button)
+    0x19, 0x01,                    //     USAGE_MINIMUM (Button 1)
+    0x29, 0x03,                    //     USAGE_MAXIMUM (Button 3)
+    0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
+    0x25, 0x01,                    //     LOGICAL_MAXIMUM (1)
+    0x95, 0x03,                    //     REPORT_COUNT (3)
+    0x75, 0x01,                    //     REPORT_SIZE (1)
+    0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+    0x95, 0x01,                    //     REPORT_COUNT (1)
+    0x75, 0x05,                    //     REPORT_SIZE (5)
+    0x81, 0x03,                    //     INPUT (Cnst,Var,Abs)
+    0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
+    0x09, 0x30,                    //     USAGE (X)
+    0x09, 0x31,                    //     USAGE (Y)
+    0x15, 0x81,                    //     LOGICAL_MINIMUM (-127)
+    0x25, 0x7f,                    //     LOGICAL_MAXIMUM (127)
+    0x75, 0x08,                    //     REPORT_SIZE (8)
+    0x95, 0x02,                    //     REPORT_COUNT (2)
+    0x81, 0x06,                    //     INPUT (Data,Var,Rel)
+    0xc0,                          //   END_COLLECTION
+    0xc0                           // END_COLLECTION
+};
+#elif defined (SPARK_USB_KEYBOARD)
+/* Generated report descriptor using : "http://www.usb.org/developers/hidpage#HID Descriptor Tool" */
+const uint8_t HID_ReportDescriptor[HID_SIZ_REPORT_DESC] = {
+    0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+    0x09, 0x06,                    // USAGE (Keyboard)
+    0xa1, 0x01,                    // COLLECTION (Application)
+    0x05, 0x07,                    //   USAGE_PAGE (Keyboard)
+    0x19, 0xe0,                    //   USAGE_MINIMUM (Keyboard LeftControl)
+    0x29, 0xe7,                    //   USAGE_MAXIMUM (Keyboard Right GUI)
+    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+    0x25, 0x01,                    //   LOGICAL_MAXIMUM (1)
+    0x75, 0x01,                    //   REPORT_SIZE (1)
+    0x95, 0x08,                    //   REPORT_COUNT (8)
+    0x81, 0x02,                    //   INPUT (Data,Var,Abs)
+    0x95, 0x01,                    //   REPORT_COUNT (1)
+    0x75, 0x08,                    //   REPORT_SIZE (8)
+    0x81, 0x03,                    //   INPUT (Cnst,Var,Abs)
+    0x95, 0x05,                    //   REPORT_COUNT (5)
+    0x75, 0x01,                    //   REPORT_SIZE (1)
+    0x05, 0x08,                    //   USAGE_PAGE (LEDs)
+    0x19, 0x01,                    //   USAGE_MINIMUM (Num Lock)
+    0x29, 0x05,                    //   USAGE_MAXIMUM (Kana)
+    0x91, 0x02,                    //   OUTPUT (Data,Var,Abs)
+    0x95, 0x01,                    //   REPORT_COUNT (1)
+    0x75, 0x03,                    //   REPORT_SIZE (3)
+    0x91, 0x03,                    //   OUTPUT (Cnst,Var,Abs)
+    0x95, 0x06,                    //   REPORT_COUNT (6)
+    0x75, 0x08,                    //   REPORT_SIZE (8)
+    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+    0x25, 0x65,                    //   LOGICAL_MAXIMUM (101)
+    0x05, 0x07,                    //   USAGE_PAGE (Keyboard)
+    0x19, 0x00,                    //   USAGE_MINIMUM (Reserved (no event indicated))
+    0x29, 0x65,                    //   USAGE_MAXIMUM (Keyboard Application)
+    0x81, 0x00,                    //   INPUT (Data,Ary,Abs)
+    0xc0                           // END_COLLECTION
+};
+#endif
 #endif
 
 /* USB String Descriptors */

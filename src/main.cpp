@@ -320,6 +320,16 @@ void Timing_Decrement(void)
 #endif
 }
 
+void SPARK_USB_Setup(void)
+{
+	USB_Disconnect_Config();
+	USB_Cable_Config(DISABLE);
+	Delay_Microsecond(100000);
+	Set_USBClock();
+	USB_Interrupts_Config();
+	USB_Init();
+}
+
 /*******************************************************************************
  * Function Name  : USB_USART_Init
  * Description    : Start USB-USART protocol.
@@ -329,12 +339,7 @@ void Timing_Decrement(void)
 void USB_USART_Init(uint32_t baudRate)
 {
 	linecoding.bitrate = baudRate;
-	USB_Disconnect_Config();
-	USB_Cable_Config(DISABLE);
-	Delay_Microsecond(100000);
-	Set_USBClock();
-	USB_Interrupts_Config();
-	USB_Init();
+	SPARK_USB_Setup();
 }
 
 /*******************************************************************************
@@ -412,105 +417,47 @@ void USB_USART_Send_Data(uint8_t Data)
 }
 
 /*******************************************************************************
- * Function Name  : Handle_USBAsynchXfer.
- * Description    : send data to USB.
- * Input          : None.
- * Return         : None.
- *******************************************************************************/
-void Handle_USBAsynchXfer (void)
-{
-
-	uint16_t USB_Tx_ptr;
-	uint16_t USB_Tx_length;
-
-	if(USB_Tx_State != 1)
-	{
-		if (USART_Rx_ptr_out == USART_RX_DATA_SIZE)
-		{
-			USART_Rx_ptr_out = 0;
-		}
-
-		if(USART_Rx_ptr_out == USART_Rx_ptr_in)
-		{
-			USB_Tx_State = 0;
-			return;
-		}
-
-		if(USART_Rx_ptr_out > USART_Rx_ptr_in) /* rollback */
-		{
-			USART_Rx_length = USART_RX_DATA_SIZE - USART_Rx_ptr_out;
-		}
-		else
-		{
-			USART_Rx_length = USART_Rx_ptr_in - USART_Rx_ptr_out;
-		}
-
-		if (USART_Rx_length > VCP_DATA_SIZE)
-		{
-			USB_Tx_ptr = USART_Rx_ptr_out;
-			USB_Tx_length = VCP_DATA_SIZE;
-
-			USART_Rx_ptr_out += VCP_DATA_SIZE;
-			USART_Rx_length -= VCP_DATA_SIZE;
-		}
-		else
-		{
-			USB_Tx_ptr = USART_Rx_ptr_out;
-			USB_Tx_length = USART_Rx_length;
-
-			USART_Rx_ptr_out += USART_Rx_length;
-			USART_Rx_length = 0;
-		}
-		USB_Tx_State = 1;
-		UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
-		SetEPTxCount(ENDP1, USB_Tx_length);
-		SetEPTxValid(ENDP1);
-	}
-
-}
-
-/*******************************************************************************
- * Function Name : HID_Send.
- * Description   : prepares buffer to be sent containing HID event information.
- * Input         : Keys: keys received.
+ * Function Name : USB_HID_Send.
+ * Description   : Send HID Buffer Info to Host.
+ * Input         : pHIDBuffer and bufferSize.
  * Output        : None.
  * Return value  : None.
  *******************************************************************************/
-void HID_Send(uint8_t Keys)
+void USB_HID_Send(uint8_t *pHIDBuffer, uint16_t bufferSize)
 {
 	if (bDeviceState == CONFIGURED)
 	{
-		uint8_t HID_Buffer[4] = {0, 0, 0, 0};
-		int8_t X = 0, Y = 0;
-
-		switch (Keys)
-		{
-		case HID_LEFT:
-			X -= CURSOR_STEP;
-			break;
-		case HID_RIGHT:
-			X += CURSOR_STEP;
-			break;
-		case HID_UP:
-			Y -= CURSOR_STEP;
-			break;
-		case HID_DOWN:
-			Y += CURSOR_STEP;
-			break;
-		default:
-			return;
-		}
-
-		/* prepare buffer to send */
-		HID_Buffer[1] = X;
-		HID_Buffer[2] = Y;
+//		uint8_t HID_Buffer[3] = {0, 0, 0};
+//		int8_t X = 0, Y = 0;
+//
+//		switch (Keys)
+//		{
+//		case HID_LEFT:
+//			X -= CURSOR_STEP;
+//			break;
+//		case HID_RIGHT:
+//			X += CURSOR_STEP;
+//			break;
+//		case HID_UP:
+//			Y -= CURSOR_STEP;
+//			break;
+//		case HID_DOWN:
+//			Y += CURSOR_STEP;
+//			break;
+//		default:
+//			return;
+//		}
+//
+//		/* prepare buffer to send */
+//		HID_Buffer[1] = X;
+//		HID_Buffer[2] = Y;
 
 		/* Reset the control token to inform upper layer that a transfer is ongoing */
 		PrevXferComplete = 0;
 
-		/* Copy HID info in ENDP1 Tx Packet Memory Area*/
-		UserToPMABufferCopy(HID_Buffer, ENDP1_TXADDR, 4);
-		SetEPTxCount(ENDP1, 4);
+		/* Copy HID Buffer in ENDP1 Tx Packet Memory Area*/
+		UserToPMABufferCopy(pHIDBuffer, ENDP1_TXADDR, bufferSize);
+		SetEPTxCount(ENDP1, bufferSize);
 
 		/* Enable endpoint for transmission */
 		SetEPTxValid(ENDP1);

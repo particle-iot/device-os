@@ -41,17 +41,24 @@
 #define VCP_DATA_SIZE                           64
 #define VCP_INT_SIZE                            8
 
+#ifdef USB_VCP_ENABLE
 #define VCP_SIZ_DEVICE_DESC                     18
 #define VCP_SIZ_CONFIG_DESC                     67
+#endif
 
-#ifdef USB_HID_ENABLE
 #define HID_DESCRIPTOR_TYPE                     0x21
 #define HID_SIZ_HID_DESC                        0x09
 #define HID_OFF_HID_DESC                        0x12
 
+#ifdef USB_HID_ENABLE
 #define HID_SIZ_DEVICE_DESC                     18
 #define HID_SIZ_CONFIG_DESC                     34
-#define HID_SIZ_REPORT_DESC                     74
+
+#if defined (SPARK_USB_MOUSE)
+#define HID_SIZ_REPORT_DESC                     50
+#elif defined (SPARK_USB_KEYBOARD)
+#define HID_SIZ_REPORT_DESC                     63
+#endif
 #endif
 
 #define USB_SIZ_STRING_LANGID                   4

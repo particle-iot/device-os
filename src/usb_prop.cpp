@@ -226,7 +226,11 @@ void USB_Reset(void)
   /* Initialize Endpoint 1 */
   SetEPType(ENDP1, EP_INTERRUPT);
   SetEPTxAddr(ENDP1, ENDP1_TXADDR);
-  SetEPTxCount(ENDP1, 4);
+#if defined (SPARK_USB_MOUSE)
+  SetEPTxCount(ENDP1, 3);
+#elif defined (SPARK_USB_KEYBOARD)
+  SetEPTxCount(ENDP1, 3);
+#endif
   SetEPRxStatus(ENDP1, EP_RX_DIS);
   SetEPTxStatus(ENDP1, EP_TX_NAK);
 #endif
