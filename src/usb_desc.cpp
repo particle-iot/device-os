@@ -214,9 +214,9 @@ const uint8_t HID_ConfigDescriptor[HID_SIZ_CONFIG_DESC] =
     0x81,   /*bEndpointAddress: Endpoint Address (IN)*/
     0x03,   /*bmAttributes: Interrupt endpoint*/
 #if defined (SPARK_USB_MOUSE)
-    0x03,   /*wMaxPacketSize: 3 Byte max */
+    0x03,   /*wMaxPacketSize: 3 Bytes max */
 #elif defined (SPARK_USB_KEYBOARD)
-    0x01,   /*nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse*/
+    0x08,   /*wMaxPacketSize: 8 Bytes max */
 #endif
     0x00,
     0x20,   /*bInterval: Polling Interval (32 ms)*/

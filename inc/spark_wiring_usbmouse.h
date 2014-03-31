@@ -31,6 +31,10 @@
 class USBMouse
 {
 private:
+	int8_t Mouse_Buffer[3];//Signed type
+	//Mouse_Buffer[0] : Buttons (Bit 0 -> Right, Bit 1 -> Middle, Bit 2 -> Left)
+	//Mouse_Buffer[1] : X Axis Relative Movement
+	//Mouse_Buffer[2] : Y Axis Relative Movement
 
 public:
 	// public methods

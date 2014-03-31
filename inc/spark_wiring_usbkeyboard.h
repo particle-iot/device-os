@@ -31,6 +31,10 @@
 class USBKeyboard
 {
 private:
+	uint8_t Keyboard_Buffer[8];//Unsigned type
+	//Keyboard_Buffer[0] : Modifier
+	//Keyboard_Buffer[1] : Reserved
+	//Keyboard_Buffer[2-7] : Keycode
 
 public:
 	// public methods

@@ -427,31 +427,6 @@ void USB_HID_Send(uint8_t *pHIDBuffer, uint16_t bufferSize)
 {
 	if (bDeviceState == CONFIGURED)
 	{
-//		uint8_t HID_Buffer[3] = {0, 0, 0};
-//		int8_t X = 0, Y = 0;
-//
-//		switch (Keys)
-//		{
-//		case HID_LEFT:
-//			X -= CURSOR_STEP;
-//			break;
-//		case HID_RIGHT:
-//			X += CURSOR_STEP;
-//			break;
-//		case HID_UP:
-//			Y -= CURSOR_STEP;
-//			break;
-//		case HID_DOWN:
-//			Y += CURSOR_STEP;
-//			break;
-//		default:
-//			return;
-//		}
-//
-//		/* prepare buffer to send */
-//		HID_Buffer[1] = X;
-//		HID_Buffer[2] = Y;
-
 		/* Reset the control token to inform upper layer that a transfer is ongoing */
 		PrevXferComplete = 0;
 
