@@ -33,14 +33,18 @@
 #define MOUSE_MIDDLE	0x04
 #define MOUSE_ALL		(MOUSE_LEFT | MOUSE_RIGHT | MOUSE_MIDDLE)
 
+typedef struct
+{
+	uint8_t buttons;
+	uint8_t x;
+	uint8_t y;
+	uint8_t wheel;
+} MouseReport;
+
 class USBMouse
 {
 private:
-	uint8_t mouseBuffer[4];//Unsigned type
-	//mouseBuffer[0] : Buttons (Bit 0 -> Right, Bit 1 -> Middle, Bit 2 -> Left)
-	//mouseBuffer[1] : X Axis Relative Movement
-	//mouseBuffer[2] : Y Axis Relative Movement
-	//mouseBuffer[3] : Wheel Scroll
+	MouseReport mouseReport;
 	void buttons(uint8_t button);
 
 public:

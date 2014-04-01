@@ -30,17 +30,13 @@
 //
 USBMouse::USBMouse(void)
 {
-	for(int i = 0 ; i < 4 ; i++)
-	{
-		mouseBuffer[i] = 0;
-	}
 }
 
 void USBMouse::buttons(uint8_t button)
 {
-	if (mouseBuffer[0] != button)
+	if (mouseReport.buttons != button)
 	{
-		mouseBuffer[0] = button;
+		mouseReport.buttons = button;
 		move(0,0,0);
 	}
 }
@@ -57,33 +53,33 @@ void USBMouse::end(void)
 
 void USBMouse::move(uint8_t x, uint8_t y, uint8_t wheel)
 {
-	mouseBuffer[1] = x;
-	mouseBuffer[2] = y;
-	mouseBuffer[3] = wheel;
-	USB_HID_Send(mouseBuffer, 4);
+	mouseReport.x = x;
+	mouseReport.y = y;
+	mouseReport.wheel = wheel;
+	USB_HID_Send((unsigned char *)&mouseReport, sizeof(mouseReport));
 }
 
 void USBMouse::click(uint8_t button)
 {
-	mouseBuffer[0] = button;
+	mouseReport.buttons = button;
 	move(0,0,0);
-	mouseBuffer[0] = 0;
+	mouseReport.buttons = 0;
 	move(0,0,0);
 }
 
 void USBMouse::press(uint8_t button)
 {
-	buttons(mouseBuffer[0] | button);
+	buttons(mouseReport.buttons | button);
 }
 
 void USBMouse::release(uint8_t button)
 {
-	buttons(mouseBuffer[0] & ~button);
+	buttons(mouseReport.buttons & ~button);
 }
 
 bool USBMouse::isPressed(uint8_t button)
 {
-	if ((mouseBuffer[0] & button) > 0)
+	if ((mouseReport.buttons & button) > 0)
 	{
 		return true;
 	}
