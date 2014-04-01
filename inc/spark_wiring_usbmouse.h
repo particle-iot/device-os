@@ -28,25 +28,31 @@
 
 #include "spark_wiring.h"
 
+#define MOUSE_LEFT		0x01
+#define MOUSE_RIGHT		0x02
+#define MOUSE_MIDDLE	0x04
+#define MOUSE_ALL		(MOUSE_LEFT | MOUSE_RIGHT | MOUSE_MIDDLE)
+
 class USBMouse
 {
 private:
-	int8_t Mouse_Buffer[3];//Signed type
-	//Mouse_Buffer[0] : Buttons (Bit 0 -> Right, Bit 1 -> Middle, Bit 2 -> Left)
-	//Mouse_Buffer[1] : X Axis Relative Movement
-	//Mouse_Buffer[2] : Y Axis Relative Movement
+	uint8_t mouseBuffer[4];//Unsigned type
+	//mouseBuffer[0] : Buttons (Bit 0 -> Right, Bit 1 -> Middle, Bit 2 -> Left)
+	//mouseBuffer[1] : X Axis Relative Movement
+	//mouseBuffer[2] : Y Axis Relative Movement
+	//mouseBuffer[3] : Wheel Scroll
+	void buttons(uint8_t button);
 
 public:
-	// public methods
-	USBMouse();
+	USBMouse(void);
 
-	void begin();
-	void end();
-	void move();
-	void click();
-	void press();
-	void release();
-	bool isPressed();
+	void begin(void);
+	void end(void);
+	void move(uint8_t x, uint8_t y, uint8_t wheel);
+	void click(uint8_t button = MOUSE_LEFT);
+	void press(uint8_t button = MOUSE_LEFT);		// press LEFT by default
+	void release(uint8_t button = MOUSE_LEFT);		// release LEFT by default
+	bool isPressed(uint8_t button = MOUSE_LEFT);	// check LEFT by default
 };
 
 extern USBMouse Mouse;

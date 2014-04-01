@@ -28,50 +28,68 @@
 //
 // Constructor
 //
-USBMouse::USBMouse()
+USBMouse::USBMouse(void)
 {
+	for(int i = 0 ; i < 4 ; i++)
+	{
+		mouseBuffer[i] = 0;
+	}
 }
 
-//
-// Public methods
-//
+void USBMouse::buttons(uint8_t button)
+{
+	if (mouseBuffer[0] != button)
+	{
+		mouseBuffer[0] = button;
+		move(0,0,0);
+	}
+}
 
-void USBMouse::begin()
+void USBMouse::begin(void)
 {
 	SPARK_USB_Setup();
 }
 
-void USBMouse::end()
+void USBMouse::end(void)
 {
 	//To Do
 }
 
-void USBMouse::move()
+void USBMouse::move(uint8_t x, uint8_t y, uint8_t wheel)
 {
-	//To Do
+	mouseBuffer[1] = x;
+	mouseBuffer[2] = y;
+	mouseBuffer[3] = wheel;
+	USB_HID_Send(mouseBuffer, 4);
 }
 
-void USBMouse::click()
+void USBMouse::click(uint8_t button)
 {
-	//To Do
+	mouseBuffer[0] = button;
+	move(0,0,0);
+	mouseBuffer[0] = 0;
+	move(0,0,0);
 }
 
-void USBMouse::press()
+void USBMouse::press(uint8_t button)
 {
-	//To Do
+	buttons(mouseBuffer[0] | button);
 }
 
-void USBMouse::release()
+void USBMouse::release(uint8_t button)
 {
-	//To Do
+	buttons(mouseBuffer[0] & ~button);
 }
 
-bool USBMouse::isPressed()
+bool USBMouse::isPressed(uint8_t button)
 {
-	//To Do
+	if ((mouseBuffer[0] & button) > 0)
+	{
+		return true;
+	}
+
 	return false;
 }
 
-// Preinstantiate Objects //////////////////////////////////////////////////////
-
+//Preinstantiate Object
 USBMouse Mouse;

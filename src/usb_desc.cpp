@@ -214,7 +214,7 @@ const uint8_t HID_ConfigDescriptor[HID_SIZ_CONFIG_DESC] =
     0x81,   /*bEndpointAddress: Endpoint Address (IN)*/
     0x03,   /*bmAttributes: Interrupt endpoint*/
 #if defined (SPARK_USB_MOUSE)
-    0x03,   /*wMaxPacketSize: 3 Bytes max */
+    0x04,   /*wMaxPacketSize: 4 Bytes max */
 #elif defined (SPARK_USB_KEYBOARD)
     0x08,   /*wMaxPacketSize: 8 Bytes max */
 #endif
@@ -245,10 +245,11 @@ const uint8_t HID_ReportDescriptor[HID_SIZ_REPORT_DESC] = {
     0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
     0x09, 0x30,                    //     USAGE (X)
     0x09, 0x31,                    //     USAGE (Y)
+    0x09, 0x38,                    //     USAGE (Wheel)
     0x15, 0x81,                    //     LOGICAL_MINIMUM (-127)
     0x25, 0x7f,                    //     LOGICAL_MAXIMUM (127)
     0x75, 0x08,                    //     REPORT_SIZE (8)
-    0x95, 0x02,                    //     REPORT_COUNT (2)
+    0x95, 0x03,                    //     REPORT_COUNT (3)
     0x81, 0x06,                    //     INPUT (Data,Var,Rel)
     0xc0,                          //   END_COLLECTION
     0xc0                           // END_COLLECTION

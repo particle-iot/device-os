@@ -55,7 +55,7 @@
 #define HID_SIZ_CONFIG_DESC                     34
 
 #if defined (SPARK_USB_MOUSE)
-#define HID_SIZ_REPORT_DESC                     50
+#define HID_SIZ_REPORT_DESC                     52
 #elif defined (SPARK_USB_KEYBOARD)
 #define HID_SIZ_REPORT_DESC                     63
 #endif

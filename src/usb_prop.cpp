@@ -227,7 +227,7 @@ void USB_Reset(void)
   SetEPType(ENDP1, EP_INTERRUPT);
   SetEPTxAddr(ENDP1, ENDP1_TXADDR);
 #if defined (SPARK_USB_MOUSE)
-  SetEPTxCount(ENDP1, 3);
+  SetEPTxCount(ENDP1, 4);
 #elif defined (SPARK_USB_KEYBOARD)
   SetEPTxCount(ENDP1, 8);
 #endif
