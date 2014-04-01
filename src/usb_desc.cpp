@@ -4,7 +4,7 @@
   * @author  Satish Nair
   * @version V1.0.0
   * @date    24-April-2013
-  * @brief   Descriptors for USB VCP-HID
+  * @brief   Descriptors for USB CDC-HID
   ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -30,9 +30,9 @@ extern "C" {
 #include "usb_desc.h"
 }
 
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 /* USB Standard Device Descriptor */
-const uint8_t VCP_DeviceDescriptor[] =
+const uint8_t CDC_DeviceDescriptor[] =
   {
     0x12,   /* bLength */
     USB_DEVICE_DESCRIPTOR_TYPE,     /* bDescriptorType */
@@ -54,12 +54,12 @@ const uint8_t VCP_DeviceDescriptor[] =
     0x01    /* bNumConfigurations */
   };
 
-const uint8_t VCP_ConfigDescriptor[] =
+const uint8_t CDC_ConfigDescriptor[] =
   {
     /*Configuration Descriptor*/
     0x09,   /* bLength: Configuration Descriptor size */
     USB_CONFIGURATION_DESCRIPTOR_TYPE,      /* bDescriptorType: Configuration */
-    VCP_SIZ_CONFIG_DESC,       /* wTotalLength:no of returned bytes */
+    CDC_SIZ_CONFIG_DESC,       /* wTotalLength:no of returned bytes */
     0x00,
     0x02,   /* bNumInterfaces: 2 interface */
     0x01,   /* bConfigurationValue: Configuration value */
@@ -105,7 +105,7 @@ const uint8_t VCP_ConfigDescriptor[] =
     USB_ENDPOINT_DESCRIPTOR_TYPE,   /* bDescriptorType: Endpoint */
     0x82,   /* bEndpointAddress: (IN2) */
     0x03,   /* bmAttributes: Interrupt */
-    VCP_INT_SIZE,      /* wMaxPacketSize: */
+    CDC_INT_SIZE,      /* wMaxPacketSize: */
     0x00,
     0xFF,   /* bInterval: */
     /*Data class interface descriptor*/
@@ -123,7 +123,7 @@ const uint8_t VCP_ConfigDescriptor[] =
     USB_ENDPOINT_DESCRIPTOR_TYPE,   /* bDescriptorType: Endpoint */
     0x03,   /* bEndpointAddress: (OUT3) */
     0x02,   /* bmAttributes: Bulk */
-    VCP_DATA_SIZE,             /* wMaxPacketSize: */
+    CDC_DATA_SIZE,             /* wMaxPacketSize: */
     0x00,
     0x00,   /* bInterval: ignore for Bulk transfer */
     /*Endpoint 1 Descriptor*/
@@ -131,7 +131,7 @@ const uint8_t VCP_ConfigDescriptor[] =
     USB_ENDPOINT_DESCRIPTOR_TYPE,   /* bDescriptorType: Endpoint */
     0x81,   /* bEndpointAddress: (IN1) */
     0x02,   /* bmAttributes: Bulk */
-    VCP_DATA_SIZE,             /* wMaxPacketSize: */
+    CDC_DATA_SIZE,             /* wMaxPacketSize: */
     0x00,
     0x00    /* bInterval */
   };

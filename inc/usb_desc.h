@@ -4,7 +4,7 @@
   * @author  Satish Nair
   * @version V1.0.0
   * @date    24-April-2013
-  * @brief   Descriptor Header for USB VCP-HID Device
+  * @brief   Descriptor Header for USB CDC-HID Device
   ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -38,12 +38,12 @@
 #define USB_INTERFACE_DESCRIPTOR_TYPE           0x04
 #define USB_ENDPOINT_DESCRIPTOR_TYPE            0x05
 
-#define VCP_DATA_SIZE                           64
-#define VCP_INT_SIZE                            8
+#define CDC_DATA_SIZE                           64
+#define CDC_INT_SIZE                            8
 
-#ifdef USB_VCP_ENABLE
-#define VCP_SIZ_DEVICE_DESC                     18
-#define VCP_SIZ_CONFIG_DESC                     67
+#ifdef USB_CDC_ENABLE
+#define CDC_SIZ_DEVICE_DESC                     18
+#define CDC_SIZ_CONFIG_DESC                     67
 #endif
 
 #define HID_DESCRIPTOR_TYPE                     0x21
@@ -69,9 +69,9 @@
 #define STANDARD_ENDPOINT_DESC_SIZE             0x09
 
 /* Exported functions ------------------------------------------------------- */
-#ifdef USB_VCP_ENABLE
-extern const uint8_t VCP_DeviceDescriptor[VCP_SIZ_DEVICE_DESC];
-extern const uint8_t VCP_ConfigDescriptor[VCP_SIZ_CONFIG_DESC];
+#ifdef USB_CDC_ENABLE
+extern const uint8_t CDC_DeviceDescriptor[CDC_SIZ_DEVICE_DESC];
+extern const uint8_t CDC_ConfigDescriptor[CDC_SIZ_CONFIG_DESC];
 #endif
 
 #ifdef USB_HID_ENABLE

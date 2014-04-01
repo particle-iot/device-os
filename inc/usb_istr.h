@@ -39,7 +39,7 @@ extern "C" void USB_Istr(void);
 
 /* function prototypes Automatically built defining related macros */
 
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 extern "C" void EP1_IN_Callback(void);
 #endif
 #ifdef USB_HID_ENABLE
@@ -54,7 +54,7 @@ void EP7_IN_Callback(void);
 
 void EP1_OUT_Callback(void);
 void EP2_OUT_Callback(void);
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 extern "C" void EP3_OUT_Callback(void);
 #endif
 #ifdef USB_HID_ENABLE
@@ -90,7 +90,7 @@ void RESET_Callback(void);
 #endif
 
 #ifdef SOF_CALLBACK
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 extern "C" void SOF_Callback(void);
 #endif
 #endif

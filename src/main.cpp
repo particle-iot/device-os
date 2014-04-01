@@ -53,7 +53,7 @@ uint32_t USART_Rx_ptr_in = 0;
 uint32_t USART_Rx_ptr_out = 0;
 uint32_t USART_Rx_length  = 0;
 
-uint8_t USB_Rx_Buffer[VCP_DATA_SIZE];
+uint8_t USB_Rx_Buffer[CDC_DATA_SIZE];
 uint16_t USB_Rx_length = 0;
 uint16_t USB_Rx_ptr = 0;
 

@@ -4,7 +4,7 @@
   * @author  Satish Nair
   * @version V1.0.0
   * @date    24-April-2013
-  * @brief   All processing related to USB VCP-HID
+  * @brief   All processing related to USB CDC-HID
   ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -88,17 +88,17 @@ USER_STANDARD_REQUESTS User_Standard_Requests =
     USB_SetDeviceAddress
   };
 
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 ONE_DESCRIPTOR Device_Descriptor =
   {
-    (uint8_t*)VCP_DeviceDescriptor,
-    VCP_SIZ_DEVICE_DESC
+    (uint8_t*)CDC_DeviceDescriptor,
+    CDC_SIZ_DEVICE_DESC
   };
 
 ONE_DESCRIPTOR Config_Descriptor =
   {
-    (uint8_t*)VCP_ConfigDescriptor,
-    VCP_SIZ_CONFIG_DESC
+    (uint8_t*)CDC_ConfigDescriptor,
+    CDC_SIZ_CONFIG_DESC
   };
 #endif
 
@@ -180,9 +180,9 @@ void USB_Reset(void)
   /* Set USB DEVICE with the default Interface*/
   pInformation->Current_Interface = 0;
 
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
   /* Current Feature initialization */
-  pInformation->Current_Feature = VCP_ConfigDescriptor[7];
+  pInformation->Current_Feature = CDC_ConfigDescriptor[7];
 #endif
 
 #ifdef USB_HID_ENABLE
@@ -201,7 +201,7 @@ void USB_Reset(void)
   SetEPRxCount(ENDP0, Device_Property.MaxPacketSize);
   SetEPRxValid(ENDP0);
 
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
   /* Initialize Endpoint 1 */
   SetEPType(ENDP1, EP_BULK);
   SetEPTxAddr(ENDP1, ENDP1_TXADDR);
@@ -217,7 +217,7 @@ void USB_Reset(void)
   /* Initialize Endpoint 3 */
   SetEPType(ENDP3, EP_BULK);
   SetEPRxAddr(ENDP3, ENDP3_RXADDR);
-  SetEPRxCount(ENDP3, VCP_DATA_SIZE);
+  SetEPRxCount(ENDP3, CDC_DATA_SIZE);
   SetEPRxStatus(ENDP3, EP_RX_VALID);
   SetEPTxStatus(ENDP3, EP_TX_DIS);
 #endif
@@ -280,7 +280,7 @@ void USB_SetDeviceAddress (void)
 *******************************************************************************/
 void USB_Status_In(void)
 {
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
   if (Request == SET_LINE_CODING)
   {
     //Set Usart BaudRate here
@@ -313,19 +313,19 @@ RESULT USB_Data_Setup(uint8_t RequestNo)
 
   CopyRoutine = NULL;
 
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
   if (RequestNo == GET_LINE_CODING)
   {
     if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
     {
-      CopyRoutine = VCP_GetLineCoding;
+      CopyRoutine = CDC_GetLineCoding;
     }
   }
   else if (RequestNo == SET_LINE_CODING)
   {
     if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
     {
-      CopyRoutine = VCP_SetLineCoding;
+      CopyRoutine = CDC_SetLineCoding;
     }
     Request = SET_LINE_CODING;
   }
@@ -375,7 +375,7 @@ RESULT USB_Data_Setup(uint8_t RequestNo)
 *******************************************************************************/
 RESULT USB_NoData_Setup(uint8_t RequestNo)
 {
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
   if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
   {
     if (RequestNo == SET_COMM_FEATURE)
@@ -466,15 +466,15 @@ RESULT USB_Get_Interface_Setting(uint8_t Interface, uint8_t AlternateSetting)
   return USB_SUCCESS;
 }
 
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 /*******************************************************************************
-* Function Name  : VCP_GetLineCoding.
+* Function Name  : CDC_GetLineCoding.
 * Description    : send the linecoding structure to the PC host.
 * Input          : Length.
 * Output         : None.
 * Return         : Linecoding structure base address.
 *******************************************************************************/
-uint8_t *VCP_GetLineCoding(uint16_t Length)
+uint8_t *CDC_GetLineCoding(uint16_t Length)
 {
   if (Length == 0)
   {
@@ -485,13 +485,13 @@ uint8_t *VCP_GetLineCoding(uint16_t Length)
 }
 
 /*******************************************************************************
-* Function Name  : VCP_SetLineCoding.
+* Function Name  : CDC_SetLineCoding.
 * Description    : Set the linecoding structure fields.
 * Input          : Length.
 * Output         : None.
 * Return         : Linecoding structure base address.
 *******************************************************************************/
-uint8_t *VCP_SetLineCoding(uint16_t Length)
+uint8_t *CDC_SetLineCoding(uint16_t Length)
 {
   if (Length == 0)
   {

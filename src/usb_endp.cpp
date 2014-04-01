@@ -37,7 +37,7 @@ extern "C" {
 /* Private define ------------------------------------------------------------*/
 
 /* Interval between sending IN packets in frame number (1 frame = 1ms) */
-#define VCP_IN_FRAME_INTERVAL             5
+#define CDC_IN_FRAME_INTERVAL             5
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -59,7 +59,7 @@ extern __IO uint8_t PrevXferComplete;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 /*******************************************************************************
 * Function Name  : EP1_IN_Callback.
 * Description    : EP1 IN Callback Routine.
@@ -80,12 +80,12 @@ void EP1_IN_Callback (void)
     }
     else 
     {
-      if (USART_Rx_length > VCP_DATA_SIZE){
+      if (USART_Rx_length > CDC_DATA_SIZE){
         USB_Tx_ptr = USART_Rx_ptr_out;
-        USB_Tx_length = VCP_DATA_SIZE;
+        USB_Tx_length = CDC_DATA_SIZE;
         
-        USART_Rx_ptr_out += VCP_DATA_SIZE;
-        USART_Rx_length -= VCP_DATA_SIZE;
+        USART_Rx_ptr_out += CDC_DATA_SIZE;
+        USART_Rx_length -= CDC_DATA_SIZE;
       }
       else 
       {
@@ -158,13 +158,13 @@ void Handle_USBAsynchXfer (void)
 			USART_Rx_length = USART_Rx_ptr_in - USART_Rx_ptr_out;
 		}
 
-		if (USART_Rx_length > VCP_DATA_SIZE)
+		if (USART_Rx_length > CDC_DATA_SIZE)
 		{
 			USB_Tx_ptr = USART_Rx_ptr_out;
-			USB_Tx_length = VCP_DATA_SIZE;
+			USB_Tx_length = CDC_DATA_SIZE;
 
-			USART_Rx_ptr_out += VCP_DATA_SIZE;
-			USART_Rx_length -= VCP_DATA_SIZE;
+			USART_Rx_ptr_out += CDC_DATA_SIZE;
+			USART_Rx_length -= CDC_DATA_SIZE;
 		}
 		else
 		{
@@ -194,7 +194,7 @@ void SOF_Callback(void)
   
   if(bDeviceState == CONFIGURED)
   {
-    if (FrameCount++ == VCP_IN_FRAME_INTERVAL)
+    if (FrameCount++ == CDC_IN_FRAME_INTERVAL)
     {
       /* Reset the frame counter */
       FrameCount = 0;

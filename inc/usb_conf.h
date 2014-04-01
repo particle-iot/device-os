@@ -4,7 +4,7 @@
   * @author  Satish Nair
   * @version V1.0.0
   * @date    24-April-2013
-  * @brief   USB VCP-HID configuration header
+  * @brief   USB CDC-HID configuration header
   ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -37,9 +37,9 @@
 /* External variables --------------------------------------------------------*/
 
 #if !defined (SPARK_USB_SERIAL) && !defined (SPARK_USB_MOUSE) && !defined (SPARK_USB_KEYBOARD)
-#define USB_VCP_ENABLE	//Use USB Serial feature by default if none is defined
+#define USB_CDC_ENABLE	//Use USB Serial feature by default if none is defined
 #elif defined (SPARK_USB_SERIAL)
-#define USB_VCP_ENABLE	//Enable USB VCP code
+#define USB_CDC_ENABLE	//Enable USB CDC code
 #elif defined (SPARK_USB_MOUSE) || defined (SPARK_USB_KEYBOARD)
 #define USB_HID_ENABLE	//Enable USB HID code
 #endif
@@ -49,7 +49,7 @@
 /* defines how many endpoints are used by the device */
 /*-------------------------------------------------------------*/
 
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 #define EP_NUM              (4)
 #endif
 
@@ -64,7 +64,7 @@
 /* buffer table base address */
 #define BTABLE_ADDRESS      (0x00)
 
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 /* EP0  */
 /* rx/tx buffer base address */
 #define ENDP0_RXADDR        (0x40)
@@ -99,13 +99,13 @@
 /*#define WKUP_CALLBACK*/
 /*#define SUSP_CALLBACK*/
 /*#define RESET_CALLBACK*/
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 #define SOF_CALLBACK
 #endif
 /*#define ESOF_CALLBACK*/
 /* CTR service routines */
 /* associated to defined endpoints */
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 /*#define  EP1_IN_Callback   NOP_Process*/
 #endif
 #ifdef USB_HID_ENABLE
@@ -120,7 +120,7 @@
 
 #define  EP1_OUT_Callback   NOP_Process
 #define  EP2_OUT_Callback   NOP_Process
-#ifdef USB_VCP_ENABLE
+#ifdef USB_CDC_ENABLE
 /*#define  EP3_OUT_Callback   NOP_Process*/
 #endif
 #ifdef USB_HID_ENABLE

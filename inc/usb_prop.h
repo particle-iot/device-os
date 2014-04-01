@@ -4,7 +4,7 @@
   * @author  Satish Nair
   * @version V1.0.0
   * @date    24-April-2013
-  * @brief   All processing related to USB VCP-HID (Endpoint 0)
+  * @brief   All processing related to USB CDC-HID (Endpoint 0)
   ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -88,9 +88,9 @@ uint8_t *USB_GetDeviceDescriptor(uint16_t );
 uint8_t *USB_GetConfigDescriptor(uint16_t);
 uint8_t *USB_GetStringDescriptor(uint16_t);
 
-#ifdef USB_VCP_ENABLE
-uint8_t *VCP_GetLineCoding(uint16_t Length);
-uint8_t *VCP_SetLineCoding(uint16_t Length);
+#ifdef USB_CDC_ENABLE
+uint8_t *CDC_GetLineCoding(uint16_t Length);
+uint8_t *CDC_SetLineCoding(uint16_t Length);
 #endif
 
 #ifdef USB_HID_ENABLE
