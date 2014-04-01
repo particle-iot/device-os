@@ -88,4 +88,6 @@ bool USBMouse::isPressed(uint8_t button)
 }
 
 //Preinstantiate Object
+#ifdef SPARK_USB_MOUSE
 USBMouse Mouse;
+#endif

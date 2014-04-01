@@ -304,4 +304,6 @@ size_t USBKeyboard::write(uint8_t key)
 }
 
 //Preinstantiate Object
+#ifdef SPARK_USB_KEYBOARD
 USBKeyboard Keyboard;
+#endif
