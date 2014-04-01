@@ -233,7 +233,7 @@ size_t USBKeyboard::press(uint8_t key)
 		}
 	}
 
-	USB_HID_Send((unsigned char *)&keyReport, sizeof(KeyReport));
+	USB_HID_Send_Report(&keyReport, sizeof(KeyReport));
 	return 1;
 }
 
@@ -280,7 +280,7 @@ size_t USBKeyboard::release(uint8_t key)
 		}
 	}
 
-	USB_HID_Send((unsigned char *)&keyReport, sizeof(KeyReport));
+	USB_HID_Send_Report(&keyReport, sizeof(KeyReport));
 	return 1;
 }
 
@@ -293,7 +293,7 @@ void USBKeyboard::releaseAll(void)
 	keyReport.keys[4] = 0;
 	keyReport.keys[5] = 0;
 	keyReport.modifiers = 0;
-	USB_HID_Send((unsigned char *)&keyReport, sizeof(KeyReport));
+	USB_HID_Send_Report(&keyReport, sizeof(KeyReport));
 }
 
 size_t USBKeyboard::write(uint8_t key)

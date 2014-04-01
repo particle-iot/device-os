@@ -417,22 +417,22 @@ void USB_USART_Send_Data(uint8_t Data)
 }
 
 /*******************************************************************************
- * Function Name : USB_HID_Send.
- * Description   : Send HID Buffer Info to Host.
- * Input         : pHIDBuffer and bufferSize.
+ * Function Name : USB_HID_Send_Report.
+ * Description   : Send HID Report Info to Host.
+ * Input         : pHIDReport and reportSize.
  * Output        : None.
  * Return value  : None.
  *******************************************************************************/
-void USB_HID_Send(uint8_t *pHIDBuffer, uint16_t bufferSize)
+void USB_HID_Send_Report(void *pHIDReport, size_t reportSize)
 {
 	if (bDeviceState == CONFIGURED)
 	{
 		/* Reset the control token to inform upper layer that a transfer is ongoing */
 		PrevXferComplete = 0;
 
-		/* Copy HID Buffer in ENDP1 Tx Packet Memory Area*/
-		UserToPMABufferCopy(pHIDBuffer, ENDP1_TXADDR, bufferSize);
-		SetEPTxCount(ENDP1, bufferSize);
+		/* Copy HID Report to ENDP1 Tx Packet Memory Area*/
+		UserToPMABufferCopy((uint8_t *)pHIDReport, ENDP1_TXADDR, reportSize);
+		SetEPTxCount(ENDP1, reportSize);
 
 		/* Enable endpoint for transmission */
 		SetEPTxValid(ENDP1);

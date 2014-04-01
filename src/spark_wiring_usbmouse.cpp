@@ -56,7 +56,7 @@ void USBMouse::move(uint8_t x, uint8_t y, uint8_t wheel)
 	mouseReport.x = x;
 	mouseReport.y = y;
 	mouseReport.wheel = wheel;
-	USB_HID_Send((unsigned char *)&mouseReport, sizeof(mouseReport));
+	USB_HID_Send_Report(&mouseReport, sizeof(mouseReport));
 }
 
 void USBMouse::click(uint8_t button)
