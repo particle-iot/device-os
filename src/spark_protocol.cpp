@@ -793,6 +793,8 @@ bool SparkProtocol::handle_received_message(void)
       int return_value = descriptor.call_function(function_key, function_arg);
 
       // send return value
+      *msg_to_send = 0;
+      *(msg_to_send + 1) = 16;
       function_return(msg_to_send + 2, token, return_value);
       if (0 > blocking_send(msg_to_send, 18))
       {
