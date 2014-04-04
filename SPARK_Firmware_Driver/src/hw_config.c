@@ -134,13 +134,26 @@ void Set_System(void)
 	 system_stm32f10x.c file
 	 */
 
-	DWT_Init();
-
 	/* Enable PWR and BKP clock */
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
 
 	/* Enable write access to Backup domain */
 	PWR_BackupAccessCmd(ENABLE);
+
+	/* Should we execute System Standby mode */
+	if(BKP_ReadBackupRegister(BKP_DR9) == 0xA5A5)
+	{
+		/* Clear Standby mode system flag */
+		BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
+
+		/* Request to enter STANDBY mode */
+		PWR_EnterSTANDBYMode();
+
+		/* Following code will not be reached */
+		while(1);
+	}
+
+	DWT_Init();
 
 	/* NVIC configuration */
 	NVIC_Configuration();
@@ -286,20 +299,12 @@ void RTC_Configuration(void)
 		/* Wait for RTC APB registers synchronisation */
 		RTC_WaitForSynchro();
 
-		BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
-
 		/* No need to configure the RTC as the RTC configuration(clock source, enable,
 	       prescaler,...) is kept after wake-up from STANDBY */
 	}
 	else
 	{
 		/* StandBy flag is not set */
-
-		if(BKP_ReadBackupRegister(BKP_DR9) == 0xA5A5)
-		{
-			/* Request to enter STANDBY mode (Wake Up flag is cleared in PWR_EnterSTANDBYMode function) */
-			PWR_EnterSTANDBYMode();
-		}
 
 		/* Enable LSE */
 		RCC_LSEConfig(RCC_LSE_ON);
@@ -322,25 +327,27 @@ void RTC_Configuration(void)
 		/* Wait until last write operation on RTC registers has finished */
 		RTC_WaitForLastTask();
 
-		/* Enable the RTC Second and RTC Alarm interrupt */
-		RTC_ITConfig(RTC_IT_SEC | RTC_IT_ALR, ENABLE);
-
-		/* Wait until last write operation on RTC registers has finished */
-		RTC_WaitForLastTask();
-
 		/* Set RTC prescaler: set RTC period to 1sec */
 		RTC_SetPrescaler(32767); /* RTC period = RTCCLK/RTC_PR = (32.768 KHz)/(32767+1) */
 
 		/* Wait until last write operation on RTC registers has finished */
 		RTC_WaitForLastTask();
 	}
+
+	/* Enable the RTC Second and RTC Alarm interrupt */
+	RTC_ITConfig(RTC_IT_SEC | RTC_IT_ALR, ENABLE);
+
+	/* Wait until last write operation on RTC registers has finished */
+	RTC_WaitForLastTask();
 }
 
 void Enter_STANDBY_Mode(void)
 {
+	/* Execute Standby mode on next system reset */
 	BKP_WriteBackupRegister(BKP_DR9, 0xA5A5);
 
-    NVIC_SystemReset();
+	/* Reset System */
+	NVIC_SystemReset();
 }
 
 void IWDG_Reset_Enable(uint32_t msTimeout)
