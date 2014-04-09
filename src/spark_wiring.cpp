@@ -700,3 +700,147 @@ void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val)
 		digitalWrite(clockPin, LOW);
 	}
 }
+
+void tone(uint8_t pin, unsigned int frequency)
+{
+	if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
+	{
+		return;
+	}
+
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return;
+	}
+
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+	{
+		return;
+	}
+
+	// Serial1 safety check
+	if (Serial1.isEnabled() == true && (pin == RX || pin == TX))
+	{
+		return;
+	}
+
+	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+
+	//PWM Frequency : frequency
+	uint16_t TIM_Prescaler = (uint16_t)(SystemCoreClock / 100000) - 1;//TIM Counter clock = 100KHz
+	uint16_t TIM_ARR = (uint16_t)(100000 / frequency) - 1;
+
+	// TIM Channel Duty Cycle = 50%
+	uint16_t TIM_CCR = (uint16_t)((TIM_ARR + 1) / 2);
+
+	// AFIO clock enable
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+
+	pinMode(pin, AF_OUTPUT_PUSHPULL);
+
+	// TIM clock enable
+	if(PIN_MAP[pin].timer_peripheral == TIM2)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+	else if(PIN_MAP[pin].timer_peripheral == TIM3)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	else if(PIN_MAP[pin].timer_peripheral == TIM4)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+
+	// Time base configuration
+	TIM_TimeBaseStructure.TIM_Period = TIM_ARR;
+	TIM_TimeBaseStructure.TIM_Prescaler = TIM_Prescaler;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+
+	TIM_TimeBaseInit(PIN_MAP[pin].timer_peripheral, &TIM_TimeBaseStructure);
+
+	// PWM1 Mode configuration
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	TIM_OCInitStructure.TIM_Pulse = TIM_CCR;
+
+	if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
+	{
+		// PWM1 Mode configuration: Channel1
+		TIM_OC1Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
+		TIM_OC1PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+	}
+	else if(PIN_MAP[pin].timer_ch == TIM_Channel_2)
+	{
+		// PWM1 Mode configuration: Channel2
+		TIM_OC2Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
+		TIM_OC2PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+	}
+	else if(PIN_MAP[pin].timer_ch == TIM_Channel_3)
+	{
+		// PWM1 Mode configuration: Channel3
+		TIM_OC3Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
+		TIM_OC3PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+	}
+	else if(PIN_MAP[pin].timer_ch == TIM_Channel_4)
+	{
+		// PWM1 Mode configuration: Channel4
+		TIM_OC4Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
+		TIM_OC4PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+	}
+
+	TIM_ARRPreloadConfig(PIN_MAP[pin].timer_peripheral, ENABLE);
+
+	// TIM enable counter
+	TIM_Cmd(PIN_MAP[pin].timer_peripheral, ENABLE);
+
+	// Main Output Enable
+	TIM_CtrlPWMOutputs(PIN_MAP[pin].timer_peripheral, ENABLE);
+}
+
+void noTone(uint8_t pin)
+{
+	if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
+	{
+		return;
+	}
+
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return;
+	}
+
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+	{
+		return;
+	}
+
+	// Serial1 safety check
+	if (Serial1.isEnabled() == true && (pin == RX || pin == TX))
+	{
+		return;
+	}
+
+	if (PIN_MAP[pin].pin_mode != AF_OUTPUT_PUSHPULL)
+	{
+		return;
+	}
+
+    if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
+    {
+        TIM_SetCompare1(PIN_MAP[pin].timer_peripheral, 0);
+    }
+    else if(PIN_MAP[pin].timer_ch == TIM_Channel_2)
+    {
+        TIM_SetCompare2(PIN_MAP[pin].timer_peripheral, 0);
+    }
+    else if(PIN_MAP[pin].timer_ch == TIM_Channel_3)
+    {
+        TIM_SetCompare3(PIN_MAP[pin].timer_peripheral, 0);
+    }
+    else if(PIN_MAP[pin].timer_ch == TIM_Channel_4)
+    {
+        TIM_SetCompare4(PIN_MAP[pin].timer_peripheral, 0);
+    }
+}
