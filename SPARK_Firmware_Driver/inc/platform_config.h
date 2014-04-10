@@ -181,8 +181,8 @@
 #define DMA1_CHANNEL5_IRQ_PRIORITY			0	//CC3000_SPI_TX_DMA Interrupt
 #define EXTI15_10_IRQ_PRIORITY				1	//CC3000_WIFI_INT_EXTI & User Interrupt
 #define USB_LP_IRQ_PRIORITY					2	//USB_LP_CAN1_RX0 Interrupt
-#define RTC_IRQ_PRIORITY					3	//RTC Seconds Interrupt
-#define RTCALARM_IRQ_PRIORITY				4	//RTC Alarm Interrupt
+#define RTCALARM_IRQ_PRIORITY				3	//RTC Alarm Interrupt
+#define RTC_IRQ_PRIORITY					4	//RTC Seconds Interrupt
 #define TIM1_CC_IRQ_PRIORITY				5	//TIM1_CC4 Interrupt
 #define EXTI2_IRQ_PRIORITY					6	//BUTTON1_EXTI Interrupt
 #define USART2_IRQ_PRIORITY					7	//USART2 Interrupt
