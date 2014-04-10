@@ -531,6 +531,19 @@ void SPARK_WLAN_Loop(void)
     WLAN_SMART_CONFIG_STOP = 0;
   }
 
+  if (WLAN_DHCP && !SPARK_WLAN_SLEEP)
+  {
+	if (ip_config.aucIP[3] == 0)
+	{
+	  Delay(100);
+      netapp_ipconfig(&ip_config);
+	}
+  }
+  else if (ip_config.aucIP[3] != 0)
+  {
+    memset(&ip_config, 0, sizeof(tNetappIpconfigRetArgs));
+  }
+
   if (SPARK_CLOUD_CONNECT == 0)
   {
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
@@ -550,10 +563,6 @@ void SPARK_WLAN_Loop(void)
 
   if (WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
   {
-    Delay(100);
-
-    netapp_ipconfig(&ip_config);
-
     if (Spark_Error_Count)
     {
       LED_SetRGBColor(RGB_COLOR_RED);
