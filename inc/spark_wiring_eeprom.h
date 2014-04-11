@@ -4,7 +4,7 @@
  * @author  Satish Nair
  * @version V1.0.0
  * @date    10-April-2014
- * @brief   Functions prototypes for the EEPROM emulation library.
+ * @brief   Functions/Class prototypes for the EEPROM emulation library.
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -29,6 +29,15 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x.h"
+
+//#define CC3000_NVMEM_EEPROM_EMULATION
+#define INTERNAL_FLASH_EEPROM_EMULATION
+
+#if defined (CC3000_NVMEM_EEPROM_EMULATION)
+
+  //To Do
+
+#elif defined (INTERNAL_FLASH_EEPROM_EMULATION)
 
 /* Internal Flash Page size = 1KByte */
 #define PAGE_SIZE  (uint16_t)0x400
@@ -62,15 +71,14 @@
 /* Page full define */
 #define PAGE_FULL               ((uint8_t)0x80)
 
-/* EEPROM Size */
+/* EEPROM Emulation Size */
 #define EEPROM_SIZE             ((uint8_t)0x64)       /* 100 bytes */
 
-/* Exported types ------------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-/* Exported functions --------------------------------------------------------*/
 uint16_t EEPROM_Init(void);
 uint16_t EEPROM_ReadVariable(uint16_t EepromAddress, uint16_t *EepromData);
 uint16_t EEPROM_WriteVariable(uint16_t EepromAddress, uint16_t EepromData);
+
+#endif
 
 /* Arduino Compatibility Class -----------------------------------------------*/
 class EEPROMClass

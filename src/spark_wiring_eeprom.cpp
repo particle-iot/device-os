@@ -26,10 +26,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "spark_wiring_eeprom.h"
 
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
+#if defined (CC3000_NVMEM_EEPROM_EMULATION)
+
+//To Do
+
+#elif defined (INTERNAL_FLASH_EEPROM_EMULATION)
 
 /* Global variable used to store variable value in read sequence */
 uint16_t EepromDataVar = 0;
@@ -37,8 +38,6 @@ uint16_t EepromDataVar = 0;
 /* Virtual address defined by the user: 0xFFFF value is prohibited */
 uint16_t EepromAddressTab[EEPROM_SIZE];
 
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
 static FLASH_Status EEPROM_Format(void);
 static uint16_t EEPROM_FindValidPage(uint8_t Operation);
 static uint16_t EEPROM_VerifyPageFullWriteVariable(uint16_t EepromAddress, uint16_t EepromData);
@@ -611,17 +610,29 @@ static uint16_t EEPROM_PageTransfer(uint16_t EepromAddress, uint16_t EepromData)
   return FlashStatus;
 }
 
+#endif
+
 /* Arduino Compatibility EEPROM methods */
 uint8_t EEPROMClass::read(int address)
 {
-	uint16_t data;
-	EEPROM_ReadVariable((uint16_t)address, &data);
-	return data;
+  uint16_t data;
+
+#if defined (CC3000_NVMEM_EEPROM_EMULATION)
+  //To Do
+#elif defined (INTERNAL_FLASH_EEPROM_EMULATION)
+  EEPROM_ReadVariable((uint16_t)address, &data);
+#endif
+
+  return data;
 }
 
 void EEPROMClass::write(int address, uint8_t value)
 {
-	EEPROM_WriteVariable((uint16_t)address, value);
+#if defined (CC3000_NVMEM_EEPROM_EMULATION)
+  //To Do
+#elif defined (INTERNAL_FLASH_EEPROM_EMULATION)
+  EEPROM_WriteVariable((uint16_t)address, value);
+#endif
 }
 
 EEPROMClass EEPROM;
