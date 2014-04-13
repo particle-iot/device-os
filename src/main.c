@@ -98,6 +98,7 @@ int main(void)
 	//  CORE_FW_Version_SysFlag
 	//  NVMEM_SPARK_Reset_SysFlag
 	//  FLASH_OTA_Update_SysFlag
+	//  Factory_Reset_SysFlag
 	//--------------------------------------------------------------------------
 	Load_SystemFlags();
 
@@ -136,6 +137,12 @@ int main(void)
 	else
 	{
 		USB_DFU_MODE = 1;
+	}
+
+	// 0xAAAA is written to the Factory_Reset_SysFlag in order to trigger a factory reset
+	if (0xAAAA == Factory_Reset_SysFlag)
+	{
+		FACTORY_RESET_MODE = 1;
 	}
 
 	// Get the Bootloader Mode that will be used when IWDG reset occurs due to invalid firmware
