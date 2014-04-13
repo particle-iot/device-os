@@ -149,6 +149,22 @@ void wifi_add_profile_callback(const char *ssid,
   WLAN_SERIAL_CONFIG_DONE = 1;
 }
 
+void recreate_spark_nvmem_file(void)
+{
+  // Spark file IO on old TI Driver was corrupting nvmem
+  // so remove the entry for Spark file in CC3000 EEPROM
+  nvmem_create_entry(NVMEM_SPARK_FILE_ID, 0);
+
+  // Create new entry for Spark File in CC3000 EEPROM
+  nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
+
+  // Zero out our array copy of the EEPROM
+  memset(NVMEM_Spark_File_Data, 0, NVMEM_SPARK_FILE_SIZE);
+
+  // Write zeroed-out array into the EEPROM
+  nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
+}
+
 /*******************************************************************************
  * Function Name  : Start_Smart_Config.
  * Description    : The function triggers a smart configuration process on CC3000.
@@ -211,8 +227,7 @@ void Start_Smart_Config(void)
 				LED_Toggle(LED_RGB);
 				Delay(50);
 			}
-			NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = 0;
-			nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
+			recreate_spark_nvmem_file();
 			WLAN_DELETE_PROFILES = 0;
 		}
 		else
@@ -396,16 +411,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 		/* Delete all previously stored wlan profiles */
 		wlan_ioctl_del_profile(255);
 
-		/* EEPROM because Spark file IO on old TI Driver was corrupting nvmem
-		 * Let's Remove entry for Spark File in CC3000  */
-                nvmem_create_entry(NVMEM_SPARK_FILE_ID, 0);
-
-                /* Create new entry for Spark File in CC3000 EEPROM */
-                nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
-
-		memset(NVMEM_Spark_File_Data,0, arraySize(NVMEM_Spark_File_Data));
-
-		nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
+		recreate_spark_nvmem_file();
 
 		NVMEM_SPARK_Reset_SysFlag = 0x0000;
 		Save_SystemFlags();
