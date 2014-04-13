@@ -91,6 +91,7 @@ uint32_t Internal_Flash_Address = 0;
 uint32_t External_Flash_Address = 0;
 uint32_t Internal_Flash_Data = 0;
 uint8_t External_Flash_Data[4];
+uint16_t Flash_Update_Index = 0;
 uint32_t EraseCounter = 0;
 uint32_t NbrOfPage = 0;
 volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
@@ -1477,6 +1478,7 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 	Save_SystemFlags();
 	//BKP_WriteBackupRegister(BKP_DR10, 0x5555);
 
+	Flash_Update_Index = 0;
 	External_Flash_Address = sFLASH_Address;
 
 	/* Define the number of External Flash pages to be erased */
@@ -1491,48 +1493,36 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 #endif
 }
 
-void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
+uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 {
 #ifdef SPARK_SFLASH_ENABLE
 
-	uint32_t i = bufferSize >> 2;
+	uint8_t *writeBuffer = pBuffer;
+	uint8_t readBuffer[bufferSize];
 
-	/* Program External Flash */
-	while (i--)
+	/* Write Data Buffer to SPI Flash memory */
+	sFLASH_WriteBuffer(writeBuffer, External_Flash_Address, bufferSize);
+
+	/* Read Data Buffer from SPI Flash memory */
+	sFLASH_ReadBuffer(readBuffer, External_Flash_Address, bufferSize);
+
+	/* Is the Data Buffer successfully programmed to SPI Flash memory */
+	if (0 == memcmp(writeBuffer, readBuffer, bufferSize))
 	{
-		Internal_Flash_Data = *((uint32_t *)pBuffer);
-		pBuffer += 4;
-
-	    /* Program Word to SPI Flash memory */
-		External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
-		External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
-		External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
-		External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);
-		//OR
-		//*((uint32_t *)External_Flash_Data) = Internal_Flash_Data;
-		sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
-		External_Flash_Address += 4;
+		External_Flash_Address += bufferSize;
+		Flash_Update_Index += 1;
 	}
-
-	i = bufferSize & 3;
-
-	/* Not an aligned data */
-	if (i != 0)
+	else
 	{
-	    /* Program the last word to SPI Flash memory */
-		Internal_Flash_Data = *((uint32_t *)pBuffer);
-
-	    /* Program Word to SPI Flash memory */
-		External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
-		External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
-		External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
-		External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);
-		//OR
-		//*((uint32_t *)External_Flash_Data) = Internal_Flash_Data;
-		sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
+		/* Erase the problematic SPI Flash pages and back off the chunk index */
+		External_Flash_Address = ((uint32_t)(External_Flash_Address / sFLASH_PAGESIZE)) * sFLASH_PAGESIZE;
+		sFLASH_EraseSector(External_Flash_Address);
+		Flash_Update_Index = (uint16_t)((External_Flash_Address - EXTERNAL_FLASH_OTA_ADDRESS) / bufferSize);
 	}
 
 	LED_Toggle(LED_RGB);
+
+	return Flash_Update_Index;
 
 #endif
 }
