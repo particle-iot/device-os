@@ -84,6 +84,7 @@ uint16_t CORE_FW_Version_SysFlag = 0xFFFF;
 uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
 uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
 uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
+uint16_t Factory_Reset_SysFlag = 0xFFFF;
 
 uint32_t WRPR_Value = 0xFFFFFFFF;
 uint32_t Flash_Pages_Protected = 0x0;
@@ -1267,6 +1268,9 @@ void Load_SystemFlags(void)
 
 	OTA_FLASHED_Status_SysFlag = (*(__IO uint16_t*) Address);
 	Address += 2;
+
+	Factory_Reset_SysFlag = (*(__IO uint16_t*) Address);
+	Address += 2;
 }
 
 void Save_SystemFlags(void)
@@ -1304,6 +1308,11 @@ void Save_SystemFlags(void)
 
 	/* Program OTA_FLASHED_Status_SysFlag */
 	FLASHStatus = FLASH_ProgramHalfWord(Address, OTA_FLASHED_Status_SysFlag);
+	while(FLASHStatus != FLASH_COMPLETE);
+	Address += 2;
+
+	/* Program Factory_Reset_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, Factory_Reset_SysFlag);
 	while(FLASHStatus != FLASH_COMPLETE);
 	Address += 2;
 
@@ -1611,10 +1620,12 @@ void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
 
 void FACTORY_Flash_Reset(void)
 {
-    //Restore the Factory programmed application firmware from External Flash
-	FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
+  // Restore the Factory programmed application firmware from External Flash
+  FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
 
-	Finish_Update();
+  Factory_Reset_SysFlag = 0xFFFF;
+
+  Finish_Update();
 }
 
 void BACKUP_Flash_Reset(void)
