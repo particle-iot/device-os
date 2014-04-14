@@ -88,16 +88,21 @@ extern "C" {
  */
 //#define RGB_NOTIFICATIONS_CONNECTING_ONLY
 
+#define SPARK_USB_SERIAL
+//#define SPARK_USB_MOUSE
+//#define SPARK_USB_KEYBOARD
+
 #define USART_RX_DATA_SIZE			256
 
 /* Exported functions ------------------------------------------------------- */
 void Timing_Decrement(void);
 
+void SPARK_USB_Setup(void);
 void USB_USART_Init(uint32_t baudRate);
 uint8_t USB_USART_Available_Data(void);
 int32_t USB_USART_Receive_Data(void);
 void USB_USART_Send_Data(uint8_t Data);
-void Handle_USBAsynchXfer(void);
+void USB_HID_Send_Report(void *pHIDReport, size_t reportSize);
 void Get_SerialNum(void);
 
 }

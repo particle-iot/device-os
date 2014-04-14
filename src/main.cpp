@@ -53,7 +53,7 @@ uint32_t USART_Rx_ptr_in = 0;
 uint32_t USART_Rx_ptr_out = 0;
 uint32_t USART_Rx_length  = 0;
 
-uint8_t USB_Rx_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
+uint8_t USB_Rx_Buffer[CDC_DATA_SIZE];
 uint16_t USB_Rx_length = 0;
 uint16_t USB_Rx_ptr = 0;
 
@@ -62,12 +62,13 @@ uint8_t  USB_Rx_State = 0;
 
 uint32_t USB_USART_BaudRate = 9600;
 
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
+__IO uint8_t PrevXferComplete;
 
 /* Extern variables ----------------------------------------------------------*/
 extern LINE_CODING linecoding;
 
 /* Private function prototypes -----------------------------------------------*/
+static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -319,6 +320,16 @@ void Timing_Decrement(void)
 #endif
 }
 
+void SPARK_USB_Setup(void)
+{
+	USB_Disconnect_Config();
+	USB_Cable_Config(DISABLE);
+	Delay_Microsecond(100000);
+	Set_USBClock();
+	USB_Interrupts_Config();
+	USB_Init();
+}
+
 /*******************************************************************************
  * Function Name  : USB_USART_Init
  * Description    : Start USB-USART protocol.
@@ -328,12 +339,7 @@ void Timing_Decrement(void)
 void USB_USART_Init(uint32_t baudRate)
 {
 	linecoding.bitrate = baudRate;
-	USB_Disconnect_Config();
-	USB_Cable_Config(DISABLE);
-	Delay_Microsecond(100000);
-	Set_USBClock();
-	USB_Interrupts_Config();
-	USB_Init();
+	SPARK_USB_Setup();
 }
 
 /*******************************************************************************
@@ -411,61 +417,26 @@ void USB_USART_Send_Data(uint8_t Data)
 }
 
 /*******************************************************************************
- * Function Name  : Handle_USBAsynchXfer.
- * Description    : send data to USB.
- * Input          : None.
- * Return         : None.
+ * Function Name : USB_HID_Send_Report.
+ * Description   : Send HID Report Info to Host.
+ * Input         : pHIDReport and reportSize.
+ * Output        : None.
+ * Return value  : None.
  *******************************************************************************/
-void Handle_USBAsynchXfer (void)
+void USB_HID_Send_Report(void *pHIDReport, size_t reportSize)
 {
-
-	uint16_t USB_Tx_ptr;
-	uint16_t USB_Tx_length;
-
-	if(USB_Tx_State != 1)
+	if (bDeviceState == CONFIGURED)
 	{
-		if (USART_Rx_ptr_out == USART_RX_DATA_SIZE)
-		{
-			USART_Rx_ptr_out = 0;
-		}
+		/* Reset the control token to inform upper layer that a transfer is ongoing */
+		PrevXferComplete = 0;
 
-		if(USART_Rx_ptr_out == USART_Rx_ptr_in)
-		{
-			USB_Tx_State = 0;
-			return;
-		}
+		/* Copy HID Report to ENDP1 Tx Packet Memory Area*/
+		UserToPMABufferCopy((uint8_t *)pHIDReport, ENDP1_TXADDR, reportSize);
+		SetEPTxCount(ENDP1, reportSize);
 
-		if(USART_Rx_ptr_out > USART_Rx_ptr_in) /* rollback */
-		{
-			USART_Rx_length = USART_RX_DATA_SIZE - USART_Rx_ptr_out;
-		}
-		else
-		{
-			USART_Rx_length = USART_Rx_ptr_in - USART_Rx_ptr_out;
-		}
-
-		if (USART_Rx_length > VIRTUAL_COM_PORT_DATA_SIZE)
-		{
-			USB_Tx_ptr = USART_Rx_ptr_out;
-			USB_Tx_length = VIRTUAL_COM_PORT_DATA_SIZE;
-
-			USART_Rx_ptr_out += VIRTUAL_COM_PORT_DATA_SIZE;
-			USART_Rx_length -= VIRTUAL_COM_PORT_DATA_SIZE;
-		}
-		else
-		{
-			USB_Tx_ptr = USART_Rx_ptr_out;
-			USB_Tx_length = USART_Rx_length;
-
-			USART_Rx_ptr_out += USART_Rx_length;
-			USART_Rx_length = 0;
-		}
-		USB_Tx_State = 1;
-		UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
-		SetEPTxCount(ENDP1, USB_Tx_length);
+		/* Enable endpoint for transmission */
 		SetEPTxValid(ENDP1);
 	}
-
 }
 
 /*******************************************************************************
@@ -487,8 +458,8 @@ void Get_SerialNum(void)
 
 	if (Device_Serial0 != 0)
 	{
-		IntToUnicode (Device_Serial0, &Virtual_Com_Port_StringSerial[2] , 8);
-		IntToUnicode (Device_Serial1, &Virtual_Com_Port_StringSerial[18], 4);
+		IntToUnicode (Device_Serial0, &USB_StringSerial[2] , 8);
+		IntToUnicode (Device_Serial1, &USB_StringSerial[18], 4);
 	}
 }
 
