@@ -72,7 +72,7 @@
 #define PAGE_FULL               ((uint8_t)0x80)
 
 /* EEPROM Emulation Size */
-#define EEPROM_SIZE             ((uint8_t)0x64)       /* 100 bytes */
+#define EEPROM_SIZE             ((uint8_t)0x64)       /* 100 bytes (Max 255/0xFF bytes) */
 
 uint16_t EEPROM_Init(void);
 uint16_t EEPROM_ReadVariable(uint16_t EepromAddress, uint16_t *EepromData);
@@ -84,6 +84,7 @@ uint16_t EEPROM_WriteVariable(uint16_t EepromAddress, uint16_t EepromData);
 class EEPROMClass
 {
   public:
+    EEPROMClass();
     uint8_t read(int);
     void write(int, uint8_t);
 };
