@@ -1,12 +1,12 @@
 /**
  ******************************************************************************
- * @file    spark_wiring_network.h
- * @author  Satish Nair, Timothy Brown
+ * @file    spark_wiring_usbmouse.h
+ * @author  Satish Nair
  * @version V1.0.0
- * @date    18-Mar-2014
- * @brief   Header for spark_wiring_network.cpp module
+ * @date    31-March-2014
+ * @brief   Header for spark_wiring_usbmouse.c module
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -23,34 +23,42 @@
   ******************************************************************************
  */
 
-#ifndef __SPARK_WIRING_NETWORK_H
-#define __SPARK_WIRING_NETWORK_H
+#ifndef __SPARK_WIRING_USBMOUSE_H
+#define __SPARK_WIRING_USBMOUSE_H
 
 #include "spark_wiring.h"
 
-class NetworkClass
+#define MOUSE_LEFT		0x01
+#define MOUSE_RIGHT		0x02
+#define MOUSE_MIDDLE	0x04
+#define MOUSE_ALL		(MOUSE_LEFT | MOUSE_RIGHT | MOUSE_MIDDLE)
+
+typedef struct
 {
-public:
-	NetworkClass();
+	uint8_t buttons;
+	uint8_t x;
+	uint8_t y;
+	uint8_t wheel;
+} MouseReport;
 
-	uint8_t* macAddress(uint8_t* mac);
-	IPAddress localIP();
-	IPAddress subnetMask();
-	IPAddress gatewayIP();
-	char* SSID();
-	int8_t RSSI();
-	uint32_t ping(IPAddress remoteIP);
-	uint32_t ping(IPAddress remoteIP, uint8_t nTries);
-
-	friend class TCPClient;
-	friend class TCPServer;
-
+class USBMouse
+{
 private:
-	uint32_t _functionStart;
-	uint8_t _loopCount;
-	int8_t _returnValue;
+	MouseReport mouseReport;
+	void buttons(uint8_t button);
+
+public:
+	USBMouse(void);
+
+	void begin(void);
+	void end(void);
+	void move(uint8_t x, uint8_t y, uint8_t wheel);
+	void click(uint8_t button = MOUSE_LEFT);
+	void press(uint8_t button = MOUSE_LEFT);		// press LEFT by default
+	void release(uint8_t button = MOUSE_LEFT);		// release LEFT by default
+	bool isPressed(uint8_t button = MOUSE_LEFT);	// check LEFT by default
 };
 
-extern NetworkClass Network;
+extern USBMouse Mouse;
 
 #endif

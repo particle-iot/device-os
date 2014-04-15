@@ -70,6 +70,8 @@ extern int Spark_Process_API_Response(void);
 extern volatile uint32_t TimingFlashUpdateTimeout;
 
 extern tNetappIpconfigRetArgs ip_config;
+extern netapp_pingreport_args_t ping_report;
+extern int ping_report_num;
 
 extern volatile uint8_t WLAN_DHCP;
 extern volatile uint8_t SPARK_WLAN_SETUP;
