@@ -128,6 +128,9 @@ long socket_connect(long sd, const sockaddr *addr, long addrlen);
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 
+void set_tropicssl_memory_functions(void *(*tropicssl_memory_malloc)(size_t),
+                                    void (*tropicssl_memory_free)(void *));
+
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif

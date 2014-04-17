@@ -31,6 +31,7 @@
 #include "string.h"
 #include <stdarg.h>
 #include "spark_protocol.h"
+#include "spark_memory.h"
 
 SparkProtocol spark_protocol;
 
@@ -486,6 +487,9 @@ void Spark_Protocol_Init(void)
 
 int Spark_Handshake(void)
 {
+  unsigned char memory_buffer[6656];//use the buffer only for cloud handshake
+  spark_memory_init(memory_buffer, sizeof(memory_buffer));
+  set_tropicssl_memory_functions(spark_memory_malloc, spark_memory_free);
   Spark_Protocol_Init();
   spark_protocol.reset_updating();
   int err = spark_protocol.handshake();

@@ -1,13 +1,12 @@
 /**
  ******************************************************************************
- * @file    spark_wiring_usbserial.cpp
+ * @file    spark_memory.h
  * @author  Satish Nair
  * @version V1.0.0
- * @date    13-March-2013
- * @brief   Wrapper for wiring usb serial module
+ * @date    25-March-2014
+ * @brief   Header for spark_memory.cpp module
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
-  Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
+  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -24,59 +23,20 @@
   ******************************************************************************
  */
 
-#include "spark_wiring_usbserial.h"
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __SPARK_MEMORY_H
+#define __SPARK_MEMORY_H
 
-//
-// Constructor
-//
-USBSerial::USBSerial()
+#include <string.h>
+
+struct spark_memory_block
 {
-}
+	unsigned char handle;
+	unsigned int size;
+};
 
-//
-// Public methods
-//
+void spark_memory_init(unsigned char *buffer, size_t size);
+void *spark_memory_malloc(size_t size);
+void spark_memory_free(void *ptr);
 
-void USBSerial::begin(long speed)
-{
-	USB_USART_Init(speed);
-}
-
-void USBSerial::end()
-{
-	//To Do
-}
-
-
-// Read data from buffer
-int USBSerial::read()
-{
-	return USB_USART_Receive_Data();
-}
-
-int USBSerial::available()
-{
-	return USB_USART_Available_Data();
-}
-
-size_t USBSerial::write(uint8_t byte)
-{
-	USB_USART_Send_Data(byte);
-
-	return 1;
-}
-
-void USBSerial::flush()
-{
-	//To Do
-}
-
-int USBSerial::peek()
-{
-	return -1;
-}
-
-// Preinstantiate Objects //////////////////////////////////////////////////////
-#ifdef SPARK_USB_SERIAL
-USBSerial Serial;
-#endif
+#endif  /* __SPARK_MEMORY_H */
