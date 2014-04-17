@@ -731,10 +731,9 @@ void tone(uint8_t pin, unsigned int frequency)
 
 	//PWM Frequency : frequency
 	uint16_t TIM_Prescaler = (uint16_t)(SystemCoreClock / 100000) - 1;//TIM Counter clock = 100KHz
-	uint16_t TIM_ARR = (uint16_t)(100000 / frequency) - 1;
-
-	// TIM Channel Duty Cycle = 50%
-	uint16_t TIM_CCR = (uint16_t)((TIM_ARR + 1) / 2);
+	uint16_t TIM_Period = (uint16_t)(100000 / frequency);
+	uint16_t TIM_ARR = TIM_Period - 1;
+	uint16_t TIM_CCR = TIM_Period / 2;//Duty Cycle = 50%
 
 	// AFIO clock enable
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
