@@ -793,6 +793,8 @@ bool SparkProtocol::handle_received_message(void)
       int return_value = descriptor.call_function(function_key, function_arg);
 
       // send return value
+      *msg_to_send = 0;
+      *(msg_to_send + 1) = 16;
       function_return(msg_to_send + 2, token, return_value);
       if (0 > blocking_send(msg_to_send, 18))
       {
@@ -874,9 +876,16 @@ bool SparkProtocol::handle_received_message(void)
       unsigned int given_crc = queue[8] << 24 | queue[9] << 16 | queue[10] << 8 | queue[11];
       if (callback_calculate_crc(queue + 13, len - 13 - queue[len - 1]) == given_crc)
       {
-        callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
-        chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
-        ++chunk_index;
+    	unsigned short next_chunk_index = callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
+        if (next_chunk_index > chunk_index)
+        {
+          chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
+        }
+        else
+        {
+          chunk_missed(msg_to_send + 2, next_chunk_index);
+        }
+        chunk_index = next_chunk_index;
       }
       else
       {
