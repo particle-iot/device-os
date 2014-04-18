@@ -236,7 +236,7 @@ void FLASH_Backup(uint32_t sFLASH_Address);
 void FLASH_Restore(uint32_t sFLASH_Address);
 /* External Flash Helper routines */
 void FLASH_Begin(uint32_t sFLASH_Address);
-void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
+uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
 void FLASH_End(void);
 void FLASH_Read_ServerAddress(ServerAddress *server_addr);
 void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
@@ -271,6 +271,7 @@ extern uint8_t LED_RGB_OVERRIDE;
 extern uint16_t CORE_FW_Version_SysFlag;
 extern uint16_t NVMEM_SPARK_Reset_SysFlag;
 extern uint16_t FLASH_OTA_Update_SysFlag;
+extern uint16_t Factory_Reset_SysFlag;
 
 extern unsigned char wlan_rx_buffer[];
 extern unsigned char wlan_tx_buffer[];

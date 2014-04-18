@@ -84,6 +84,7 @@ uint16_t CORE_FW_Version_SysFlag = 0xFFFF;
 uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
 uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
 uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
+uint16_t Factory_Reset_SysFlag = 0xFFFF;
 
 uint32_t WRPR_Value = 0xFFFFFFFF;
 uint32_t Flash_Pages_Protected = 0x0;
@@ -91,6 +92,7 @@ uint32_t Internal_Flash_Address = 0;
 uint32_t External_Flash_Address = 0;
 uint32_t Internal_Flash_Data = 0;
 uint8_t External_Flash_Data[4];
+uint16_t Flash_Update_Index = 0;
 uint32_t EraseCounter = 0;
 uint32_t NbrOfPage = 0;
 volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
@@ -134,13 +136,26 @@ void Set_System(void)
 	 system_stm32f10x.c file
 	 */
 
-	DWT_Init();
-
 	/* Enable PWR and BKP clock */
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
 
 	/* Enable write access to Backup domain */
 	PWR_BackupAccessCmd(ENABLE);
+
+	/* Should we execute System Standby mode */
+	if(BKP_ReadBackupRegister(BKP_DR9) == 0xA5A5)
+	{
+		/* Clear Standby mode system flag */
+		BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
+
+		/* Request to enter STANDBY mode */
+		PWR_EnterSTANDBYMode();
+
+		/* Following code will not be reached */
+		while(1);
+	}
+
+	DWT_Init();
 
 	/* NVIC configuration */
 	NVIC_Configuration();
@@ -286,20 +301,12 @@ void RTC_Configuration(void)
 		/* Wait for RTC APB registers synchronisation */
 		RTC_WaitForSynchro();
 
-		BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
-
 		/* No need to configure the RTC as the RTC configuration(clock source, enable,
 	       prescaler,...) is kept after wake-up from STANDBY */
 	}
 	else
 	{
 		/* StandBy flag is not set */
-
-		if(BKP_ReadBackupRegister(BKP_DR9) == 0xA5A5)
-		{
-			/* Request to enter STANDBY mode (Wake Up flag is cleared in PWR_EnterSTANDBYMode function) */
-			PWR_EnterSTANDBYMode();
-		}
 
 		/* Enable LSE */
 		RCC_LSEConfig(RCC_LSE_ON);
@@ -322,25 +329,27 @@ void RTC_Configuration(void)
 		/* Wait until last write operation on RTC registers has finished */
 		RTC_WaitForLastTask();
 
-		/* Enable the RTC Second and RTC Alarm interrupt */
-		RTC_ITConfig(RTC_IT_SEC | RTC_IT_ALR, ENABLE);
-
-		/* Wait until last write operation on RTC registers has finished */
-		RTC_WaitForLastTask();
-
 		/* Set RTC prescaler: set RTC period to 1sec */
 		RTC_SetPrescaler(32767); /* RTC period = RTCCLK/RTC_PR = (32.768 KHz)/(32767+1) */
 
 		/* Wait until last write operation on RTC registers has finished */
 		RTC_WaitForLastTask();
 	}
+
+	/* Enable the RTC Second and RTC Alarm interrupt */
+	RTC_ITConfig(RTC_IT_SEC | RTC_IT_ALR, ENABLE);
+
+	/* Wait until last write operation on RTC registers has finished */
+	RTC_WaitForLastTask();
 }
 
 void Enter_STANDBY_Mode(void)
 {
+	/* Execute Standby mode on next system reset */
 	BKP_WriteBackupRegister(BKP_DR9, 0xA5A5);
 
-    NVIC_SystemReset();
+	/* Reset System */
+	NVIC_SystemReset();
 }
 
 void IWDG_Reset_Enable(uint32_t msTimeout)
@@ -1259,6 +1268,9 @@ void Load_SystemFlags(void)
 
 	OTA_FLASHED_Status_SysFlag = (*(__IO uint16_t*) Address);
 	Address += 2;
+
+	Factory_Reset_SysFlag = (*(__IO uint16_t*) Address);
+	Address += 2;
 }
 
 void Save_SystemFlags(void)
@@ -1296,6 +1308,11 @@ void Save_SystemFlags(void)
 
 	/* Program OTA_FLASHED_Status_SysFlag */
 	FLASHStatus = FLASH_ProgramHalfWord(Address, OTA_FLASHED_Status_SysFlag);
+	while(FLASHStatus != FLASH_COMPLETE);
+	Address += 2;
+
+	/* Program Factory_Reset_SysFlag */
+	FLASHStatus = FLASH_ProgramHalfWord(Address, Factory_Reset_SysFlag);
 	while(FLASHStatus != FLASH_COMPLETE);
 	Address += 2;
 
@@ -1470,6 +1487,7 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 	Save_SystemFlags();
 	//BKP_WriteBackupRegister(BKP_DR10, 0x5555);
 
+	Flash_Update_Index = 0;
 	External_Flash_Address = sFLASH_Address;
 
 	/* Define the number of External Flash pages to be erased */
@@ -1484,48 +1502,36 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 #endif
 }
 
-void FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
+uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 {
 #ifdef SPARK_SFLASH_ENABLE
 
-	uint32_t i = bufferSize >> 2;
+	uint8_t *writeBuffer = pBuffer;
+	uint8_t readBuffer[bufferSize];
 
-	/* Program External Flash */
-	while (i--)
+	/* Write Data Buffer to SPI Flash memory */
+	sFLASH_WriteBuffer(writeBuffer, External_Flash_Address, bufferSize);
+
+	/* Read Data Buffer from SPI Flash memory */
+	sFLASH_ReadBuffer(readBuffer, External_Flash_Address, bufferSize);
+
+	/* Is the Data Buffer successfully programmed to SPI Flash memory */
+	if (0 == memcmp(writeBuffer, readBuffer, bufferSize))
 	{
-		Internal_Flash_Data = *((uint32_t *)pBuffer);
-		pBuffer += 4;
-
-	    /* Program Word to SPI Flash memory */
-		External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
-		External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
-		External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
-		External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);
-		//OR
-		//*((uint32_t *)External_Flash_Data) = Internal_Flash_Data;
-		sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
-		External_Flash_Address += 4;
+		External_Flash_Address += bufferSize;
+		Flash_Update_Index += 1;
 	}
-
-	i = bufferSize & 3;
-
-	/* Not an aligned data */
-	if (i != 0)
+	else
 	{
-	    /* Program the last word to SPI Flash memory */
-		Internal_Flash_Data = *((uint32_t *)pBuffer);
-
-	    /* Program Word to SPI Flash memory */
-		External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
-		External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
-		External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
-		External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);
-		//OR
-		//*((uint32_t *)External_Flash_Data) = Internal_Flash_Data;
-		sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
+		/* Erase the problematic SPI Flash pages and back off the chunk index */
+		External_Flash_Address = ((uint32_t)(External_Flash_Address / sFLASH_PAGESIZE)) * sFLASH_PAGESIZE;
+		sFLASH_EraseSector(External_Flash_Address);
+		Flash_Update_Index = (uint16_t)((External_Flash_Address - EXTERNAL_FLASH_OTA_ADDRESS) / bufferSize);
 	}
 
 	LED_Toggle(LED_RGB);
+
+	return Flash_Update_Index;
 
 #endif
 }
@@ -1614,10 +1620,12 @@ void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
 
 void FACTORY_Flash_Reset(void)
 {
-    //Restore the Factory programmed application firmware from External Flash
-	FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
+  // Restore the Factory programmed application firmware from External Flash
+  FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
 
-	Finish_Update();
+  Factory_Reset_SysFlag = 0xFFFF;
+
+  Finish_Update();
 }
 
 void BACKUP_Flash_Reset(void)
