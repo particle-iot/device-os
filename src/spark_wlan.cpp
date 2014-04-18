@@ -53,6 +53,8 @@ static uint32_t lastEvent = 0;
 #define ON_EVENT_DELTA()
 #endif
 tNetappIpconfigRetArgs ip_config;
+netapp_pingreport_args_t ping_report;
+int ping_report_num;
 
 volatile uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
 volatile uint8_t WLAN_DELETE_PROFILES;
@@ -149,6 +151,22 @@ void wifi_add_profile_callback(const char *ssid,
   WLAN_SERIAL_CONFIG_DONE = 1;
 }
 
+void recreate_spark_nvmem_file(void)
+{
+  // Spark file IO on old TI Driver was corrupting nvmem
+  // so remove the entry for Spark file in CC3000 EEPROM
+  nvmem_create_entry(NVMEM_SPARK_FILE_ID, 0);
+
+  // Create new entry for Spark File in CC3000 EEPROM
+  nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
+
+  // Zero out our array copy of the EEPROM
+  memset(NVMEM_Spark_File_Data, 0, NVMEM_SPARK_FILE_SIZE);
+
+  // Write zeroed-out array into the EEPROM
+  nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
+}
+
 /*******************************************************************************
  * Function Name  : Start_Smart_Config.
  * Description    : The function triggers a smart configuration process on CC3000.
@@ -211,8 +229,7 @@ void Start_Smart_Config(void)
 				LED_Toggle(LED_RGB);
 				Delay(50);
 			}
-			NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = 0;
-			nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
+			recreate_spark_nvmem_file();
 			WLAN_DELETE_PROFILES = 0;
 		}
 		else
@@ -266,7 +283,7 @@ void Start_Smart_Config(void)
 	LED_On(LED_RGB);
 
 	/* Mask out all non-required events */
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
 
 	Set_NetApp_Timeout();
 
@@ -325,6 +342,11 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 
 		case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
 			WLAN_CAN_SHUTDOWN = 1;
+			break;
+
+                case HCI_EVNT_WLAN_ASYNC_PING_REPORT:
+		        memcpy(&ping_report,data,length);
+		        ping_report_num++;
 			break;
 
 		case HCI_EVNT_BSD_TCP_CLOSE_WAIT:
@@ -389,23 +411,14 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	SPARK_LED_FADE = 0;
 
 	/* Mask out all non-required events from CC3000 */
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT | HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
 
 	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE)
 	{
 		/* Delete all previously stored wlan profiles */
 		wlan_ioctl_del_profile(255);
 
-		/* EEPROM because Spark file IO on old TI Driver was corrupting nvmem
-		 * Let's Remove entry for Spark File in CC3000  */
-                nvmem_create_entry(NVMEM_SPARK_FILE_ID, 0);
-
-                /* Create new entry for Spark File in CC3000 EEPROM */
-                nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
-
-		memset(NVMEM_Spark_File_Data,0, arraySize(NVMEM_Spark_File_Data));
-
-		nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
+		recreate_spark_nvmem_file();
 
 		NVMEM_SPARK_Reset_SysFlag = 0x0000;
 		Save_SystemFlags();
@@ -531,6 +544,19 @@ void SPARK_WLAN_Loop(void)
     WLAN_SMART_CONFIG_STOP = 0;
   }
 
+  if (WLAN_DHCP && !SPARK_WLAN_SLEEP)
+  {
+	if (ip_config.aucIP[3] == 0)
+	{
+	  Delay(100);
+      netapp_ipconfig(&ip_config);
+	}
+  }
+  else if (ip_config.aucIP[3] != 0)
+  {
+    memset(&ip_config, 0, sizeof(tNetappIpconfigRetArgs));
+  }
+
   if (SPARK_CLOUD_CONNECT == 0)
   {
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
@@ -550,10 +576,6 @@ void SPARK_WLAN_Loop(void)
 
   if (WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
   {
-    Delay(100);
-
-    netapp_ipconfig(&ip_config);
-
     if (Spark_Error_Count)
     {
       LED_SetRGBColor(RGB_COLOR_RED);
