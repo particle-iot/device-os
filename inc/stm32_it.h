@@ -63,11 +63,17 @@ void EXTI4_IRQHandler(void);
 void EXTI9_5_IRQHandler(void);
 void EXTI15_10_IRQHandler(void);
 void TIM1_CC_IRQHandler(void);
+void TIM2_IRQHandler(void);
+void TIM3_IRQHandler(void);
+void TIM4_IRQHandler(void);
 void RTC_IRQHandler(void);
 void RTCAlarm_IRQHandler(void);
 void DMA1_Channel5_IRQHandler(void);
 void USB_LP_CAN1_RX0_IRQHandler(void);
 
+extern void (*Wiring_TIM2_Interrupt_Handler)(void);
+extern void (*Wiring_TIM3_Interrupt_Handler)(void);
+extern void (*Wiring_TIM4_Interrupt_Handler)(void);
 }
 
 #endif /* __STM32_IT_H */

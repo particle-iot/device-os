@@ -31,6 +31,7 @@
 #include "spark_macros.h"
 #include "debug.h"
 #include "platform_config.h"
+#include "stm32_it.h"
 #include "spark_utilities.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_printable.h"
@@ -150,6 +151,8 @@ typedef struct STM32_Pin_Info {
   TIM_TypeDef* timer_peripheral;
   uint16_t timer_ch;
   PinMode pin_mode;
+  uint16_t timer_ccr;
+  int32_t user_property;
 } STM32_Pin_Info;
 
 extern STM32_Pin_Info PIN_MAP[];
@@ -184,7 +187,7 @@ long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder);
 
-void tone(uint8_t pin, unsigned int frequency);
+void tone(uint8_t pin, unsigned int frequency, unsigned long duration = 0);
 void noTone(uint8_t pin);
 
 #ifdef __cplusplus

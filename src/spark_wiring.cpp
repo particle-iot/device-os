@@ -52,28 +52,30 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
  * timer_peripheral (TIM2 - TIM4, or NONE)
  * timer_ch (1-4, or NONE)
  * pin_mode (NONE by default, can be set to OUTPUT, INPUT, or other types)
+ * timer_ccr (0 by default, store the CCR value for TIM interrupt use)
+ * user_property (0 by default, user variable storage)
  */
-  { GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_5, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_4, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_3, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_15, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_14, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_13, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_8, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_9, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM2, TIM_Channel_1, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_1, ADC_Channel_1, TIM2, TIM_Channel_2, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_4, ADC_Channel_4, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_5, ADC_Channel_5, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_0, ADC_Channel_8, TIM3, TIM_Channel_3, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_10, NONE, NULL, NONE, (PinMode)NONE }
+  { GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, (PinMode)NONE, NULL, NULL },
+  { GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, (PinMode)NONE, NULL, NULL },
+  { GPIOB, GPIO_Pin_5, NONE, NULL, NONE, (PinMode)NONE, NULL, NULL },
+  { GPIOB, GPIO_Pin_4, NONE, NULL, NONE, (PinMode)NONE, NULL, NULL },
+  { GPIOB, GPIO_Pin_3, NONE, NULL, NONE, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_15, NONE, NULL, NONE, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_14, NONE, NULL, NONE, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_13, NONE, NULL, NONE, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_8, NONE, NULL, NONE, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_9, NONE, NULL, NONE, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM2, TIM_Channel_1, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_1, ADC_Channel_1, TIM2, TIM_Channel_2, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_4, ADC_Channel_4, NULL, NONE, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_5, ADC_Channel_5, NULL, NONE, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, (PinMode)NONE, NULL, NULL },
+  { GPIOB, GPIO_Pin_0, ADC_Channel_8, TIM3, TIM_Channel_3, (PinMode)NONE, NULL, NULL },
+  { GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, (PinMode)NONE, NULL, NULL },
+  { GPIOA, GPIO_Pin_10, NONE, NULL, NONE, (PinMode)NONE, NULL, NULL }
 };
 
 /*
@@ -540,11 +542,17 @@ void analogWrite(uint16_t pin, uint8_t value)
 
 	// TIM clock enable
 	if(PIN_MAP[pin].timer_peripheral == TIM2)
+	{
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+	}
 	else if(PIN_MAP[pin].timer_peripheral == TIM3)
+	{
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	}
 	else if(PIN_MAP[pin].timer_peripheral == TIM4)
+	{
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+	}
 
 	// Time base configuration
 	TIM_TimeBaseStructure.TIM_Period = TIM_ARR;
@@ -563,24 +571,28 @@ void analogWrite(uint16_t pin, uint8_t value)
 	if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
 	{
 		// PWM1 Mode configuration: Channel1
+		PIN_MAP[pin].timer_ccr = TIM_CCR;
 		TIM_OC1Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
 		TIM_OC1PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
 	}
 	else if(PIN_MAP[pin].timer_ch == TIM_Channel_2)
 	{
 		// PWM1 Mode configuration: Channel2
+		PIN_MAP[pin].timer_ccr = TIM_CCR;
 		TIM_OC2Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
 		TIM_OC2PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
 	}
 	else if(PIN_MAP[pin].timer_ch == TIM_Channel_3)
 	{
 		// PWM1 Mode configuration: Channel3
+		PIN_MAP[pin].timer_ccr = TIM_CCR;
 		TIM_OC3Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
 		TIM_OC3PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
 	}
 	else if(PIN_MAP[pin].timer_ch == TIM_Channel_4)
 	{
 		// PWM1 Mode configuration: Channel4
+		PIN_MAP[pin].timer_ccr = TIM_CCR;
 		TIM_OC4Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
 		TIM_OC4PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
 	}
@@ -707,7 +719,212 @@ void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val)
 	}
 }
 
-void tone(uint8_t pin, unsigned int frequency)
+void TIM2_Tone_Interrupt_Handler(void)
+{
+	uint16_t capture;
+
+	if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)
+	{
+		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1 );
+		capture = TIM_GetCapture1(TIM2);
+		TIM_SetCompare1(TIM2, capture + PIN_MAP[10].timer_ccr);
+		if(PIN_MAP[10].user_property != -1)
+		{
+			if (PIN_MAP[10].user_property > 0)
+			{
+				PIN_MAP[10].user_property -= 1;
+			}
+			else
+			{
+				TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
+				TIM_SetCompare1(TIM2, 0);
+			}
+		}
+	}
+
+	if (TIM_GetITStatus(TIM2, TIM_IT_CC2) != RESET)
+	{
+		TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
+		capture = TIM_GetCapture2(TIM2);
+		TIM_SetCompare2(TIM2, capture + PIN_MAP[11].timer_ccr);
+		if(PIN_MAP[11].user_property != -1)
+		{
+			if (PIN_MAP[11].user_property > 0)
+			{
+				PIN_MAP[11].user_property -= 1;
+			}
+			else
+			{
+				TIM_ITConfig(TIM2, TIM_IT_CC2, DISABLE);
+				TIM_SetCompare2(TIM2, 0);
+			}
+		}
+	}
+
+	if (TIM_GetITStatus(TIM2, TIM_IT_CC3) != RESET)
+	{
+		TIM_ClearITPendingBit(TIM2, TIM_IT_CC3);
+		capture = TIM_GetCapture3(TIM2);
+		TIM_SetCompare3(TIM2, capture + PIN_MAP[19].timer_ccr);
+		if(PIN_MAP[19].user_property != -1)
+		{
+			if (PIN_MAP[19].user_property > 0)
+			{
+				PIN_MAP[19].user_property -= 1;
+			}
+			else
+			{
+				TIM_ITConfig(TIM2, TIM_IT_CC3, DISABLE);
+				TIM_SetCompare3(TIM2, 0);
+			}
+		}
+	}
+
+	if (TIM_GetITStatus(TIM2, TIM_IT_CC4) != RESET)
+	{
+		TIM_ClearITPendingBit(TIM2, TIM_IT_CC4);
+		capture = TIM_GetCapture4(TIM2);
+		TIM_SetCompare4(TIM2, capture + PIN_MAP[18].timer_ccr);
+		if(PIN_MAP[18].user_property != -1)
+		{
+			if (PIN_MAP[18].user_property > 0)
+			{
+				PIN_MAP[18].user_property -= 1;
+			}
+			else
+			{
+				TIM_ITConfig(TIM2, TIM_IT_CC4, DISABLE);
+				TIM_SetCompare4(TIM2, 0);
+			}
+		}
+	}
+}
+
+void TIM3_Tone_Interrupt_Handler(void)
+{
+	uint16_t capture;
+
+	if (TIM_GetITStatus(TIM3, TIM_IT_CC1) != RESET)
+	{
+		TIM_ClearITPendingBit(TIM3, TIM_IT_CC1 );
+		capture = TIM_GetCapture1(TIM3);
+		TIM_SetCompare1(TIM3, capture + PIN_MAP[14].timer_ccr);
+		if(PIN_MAP[14].user_property != -1)
+		{
+			if (PIN_MAP[14].user_property > 0)
+			{
+				PIN_MAP[14].user_property -= 1;
+			}
+			else
+			{
+				TIM_ITConfig(TIM3, TIM_IT_CC1, DISABLE);
+				TIM_SetCompare1(TIM3, 0);
+			}
+		}
+	}
+
+	if (TIM_GetITStatus(TIM3, TIM_IT_CC2) != RESET)
+	{
+		TIM_ClearITPendingBit(TIM3, TIM_IT_CC2);
+		capture = TIM_GetCapture2(TIM3);
+		TIM_SetCompare2(TIM3, capture + PIN_MAP[15].timer_ccr);
+		if(PIN_MAP[15].user_property != -1)
+		{
+			if (PIN_MAP[15].user_property > 0)
+			{
+				PIN_MAP[15].user_property -= 1;
+			}
+			else
+			{
+				TIM_ITConfig(TIM3, TIM_IT_CC2, DISABLE);
+				TIM_SetCompare2(TIM3, 0);
+			}
+		}
+	}
+
+	if (TIM_GetITStatus(TIM3, TIM_IT_CC3) != RESET)
+	{
+		TIM_ClearITPendingBit(TIM3, TIM_IT_CC3);
+		capture = TIM_GetCapture3(TIM3);
+		TIM_SetCompare3(TIM3, capture + PIN_MAP[16].timer_ccr);
+		if(PIN_MAP[16].user_property != -1)
+		{
+			if (PIN_MAP[16].user_property > 0)
+			{
+				PIN_MAP[16].user_property -= 1;
+			}
+			else
+			{
+				TIM_ITConfig(TIM3, TIM_IT_CC3, DISABLE);
+				TIM_SetCompare3(TIM3, 0);
+			}
+		}
+	}
+
+	if (TIM_GetITStatus(TIM3, TIM_IT_CC4) != RESET)
+	{
+		TIM_ClearITPendingBit(TIM3, TIM_IT_CC4);
+		capture = TIM_GetCapture4(TIM3);
+		TIM_SetCompare4(TIM3, capture + PIN_MAP[17].timer_ccr);
+		if(PIN_MAP[17].user_property != -1)
+		{
+			if (PIN_MAP[17].user_property > 0)
+			{
+				PIN_MAP[17].user_property -= 1;
+			}
+			else
+			{
+				TIM_ITConfig(TIM3, TIM_IT_CC4, DISABLE);
+				TIM_SetCompare4(TIM3, 0);
+			}
+		}
+	}
+}
+
+void TIM4_Tone_Interrupt_Handler(void)
+{
+	uint16_t capture;
+
+	if (TIM_GetITStatus(TIM4, TIM_IT_CC1) != RESET)
+	{
+		TIM_ClearITPendingBit(TIM4, TIM_IT_CC1 );
+		capture = TIM_GetCapture1(TIM4);
+		TIM_SetCompare1(TIM4, capture + PIN_MAP[1].timer_ccr);
+		if(PIN_MAP[1].user_property != -1)
+		{
+			if (PIN_MAP[1].user_property > 0)
+			{
+				PIN_MAP[1].user_property -= 1;
+			}
+			else
+			{
+				TIM_ITConfig(TIM4, TIM_IT_CC1, DISABLE);
+				TIM_SetCompare1(TIM4, 0);
+			}
+		}
+	}
+
+	if (TIM_GetITStatus(TIM4, TIM_IT_CC2) != RESET)
+	{
+		TIM_ClearITPendingBit(TIM4, TIM_IT_CC2);
+		capture = TIM_GetCapture2(TIM4);
+		TIM_SetCompare2(TIM4, capture + PIN_MAP[0].timer_ccr);
+		if(PIN_MAP[0].user_property != -1)
+		{
+			if (PIN_MAP[0].user_property > 0)
+			{
+				PIN_MAP[0].user_property -= 1;
+			}
+			else
+			{
+				TIM_ITConfig(TIM4, TIM_IT_CC2, DISABLE);
+				TIM_SetCompare2(TIM4, 0);
+			}
+		}
+	}
+}
+
+void tone(uint8_t pin, unsigned int frequency, unsigned long duration)
 {
 	if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
 	{
@@ -740,19 +957,45 @@ void tone(uint8_t pin, unsigned int frequency)
 	uint16_t TIM_Period = (uint16_t)(100000 / frequency);
 	uint16_t TIM_ARR = TIM_Period - 1;
 	uint16_t TIM_CCR = TIM_Period / 2;//Duty Cycle = 50%
+	int32_t TIM_Toggle_Count = -1;
+
+    // Calculate the toggle count
+    if (duration > 0)
+    {
+    	TIM_Toggle_Count = frequency * duration / 1000;
+    }
 
 	// AFIO clock enable
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
 	pinMode(pin, AF_OUTPUT_PUSHPULL);
 
+	NVIC_InitTypeDef NVIC_InitStructure;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
 	// TIM clock enable
 	if(PIN_MAP[pin].timer_peripheral == TIM2)
+	{
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+		NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
+		Wiring_TIM2_Interrupt_Handler = TIM2_Tone_Interrupt_Handler;
+	}
 	else if(PIN_MAP[pin].timer_peripheral == TIM3)
+	{
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+		NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
+		Wiring_TIM3_Interrupt_Handler = TIM3_Tone_Interrupt_Handler;
+	}
 	else if(PIN_MAP[pin].timer_peripheral == TIM4)
+	{
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+		NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
+		Wiring_TIM4_Interrupt_Handler = TIM4_Tone_Interrupt_Handler;
+	}
+
+	NVIC_Init(&NVIC_InitStructure);
 
 	// Time base configuration
 	TIM_TimeBaseStructure.TIM_Period = TIM_ARR;
@@ -763,43 +1006,50 @@ void tone(uint8_t pin, unsigned int frequency)
 	TIM_TimeBaseInit(PIN_MAP[pin].timer_peripheral, &TIM_TimeBaseStructure);
 
 	// PWM1 Mode configuration
-	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Toggle;
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
 	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
 	TIM_OCInitStructure.TIM_Pulse = TIM_CCR;
 
 	if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
 	{
-		// PWM1 Mode configuration: Channel1
+		// Output Compare Toggle Mode configuration: Channel1
+		PIN_MAP[pin].timer_ccr = TIM_CCR;
+		PIN_MAP[pin].user_property = TIM_Toggle_Count;
 		TIM_OC1Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
-		TIM_OC1PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+		TIM_OC1PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Disable);
+		TIM_ITConfig(PIN_MAP[pin].timer_peripheral, TIM_IT_CC1, ENABLE);
 	}
 	else if(PIN_MAP[pin].timer_ch == TIM_Channel_2)
 	{
-		// PWM1 Mode configuration: Channel2
+		// Output Compare Toggle Mode configuration: Channel2
+		PIN_MAP[pin].timer_ccr = TIM_CCR;
+		PIN_MAP[pin].user_property = TIM_Toggle_Count;
 		TIM_OC2Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
-		TIM_OC2PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+		TIM_OC2PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Disable);
+		TIM_ITConfig(PIN_MAP[pin].timer_peripheral, TIM_IT_CC2, ENABLE);
 	}
 	else if(PIN_MAP[pin].timer_ch == TIM_Channel_3)
 	{
-		// PWM1 Mode configuration: Channel3
+		// Output Compare Toggle Mode configuration: Channel3
+		PIN_MAP[pin].timer_ccr = TIM_CCR;
+		PIN_MAP[pin].user_property = TIM_Toggle_Count;
 		TIM_OC3Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
-		TIM_OC3PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+		TIM_OC3PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Disable);
+		TIM_ITConfig(PIN_MAP[pin].timer_peripheral, TIM_IT_CC3, ENABLE);
 	}
 	else if(PIN_MAP[pin].timer_ch == TIM_Channel_4)
 	{
-		// PWM1 Mode configuration: Channel4
+		// Output Compare Toggle Mode configuration: Channel4
+		PIN_MAP[pin].timer_ccr = TIM_CCR;
+		PIN_MAP[pin].user_property = TIM_Toggle_Count;
 		TIM_OC4Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
-		TIM_OC4PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Enable);
+		TIM_OC4PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Disable);
+		TIM_ITConfig(PIN_MAP[pin].timer_peripheral, TIM_IT_CC4, ENABLE);
 	}
-
-	TIM_ARRPreloadConfig(PIN_MAP[pin].timer_peripheral, ENABLE);
 
 	// TIM enable counter
 	TIM_Cmd(PIN_MAP[pin].timer_peripheral, ENABLE);
-
-	// Main Output Enable
-	TIM_CtrlPWMOutputs(PIN_MAP[pin].timer_peripheral, ENABLE);
 }
 
 void noTone(uint8_t pin)
@@ -834,18 +1084,30 @@ void noTone(uint8_t pin)
 
     if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
     {
+        TIM_ITConfig(PIN_MAP[pin].timer_peripheral, TIM_IT_CC1, DISABLE);
+    	PIN_MAP[pin].timer_ccr = 0;
+		PIN_MAP[pin].user_property = 0;
         TIM_SetCompare1(PIN_MAP[pin].timer_peripheral, 0);
     }
     else if(PIN_MAP[pin].timer_ch == TIM_Channel_2)
     {
+        TIM_ITConfig(PIN_MAP[pin].timer_peripheral, TIM_IT_CC2, DISABLE);
+    	PIN_MAP[pin].timer_ccr = 0;
+		PIN_MAP[pin].user_property = 0;
         TIM_SetCompare2(PIN_MAP[pin].timer_peripheral, 0);
-    }
+     }
     else if(PIN_MAP[pin].timer_ch == TIM_Channel_3)
     {
+        TIM_ITConfig(PIN_MAP[pin].timer_peripheral, TIM_IT_CC3, DISABLE);
+    	PIN_MAP[pin].timer_ccr = 0;
+		PIN_MAP[pin].user_property = 0;
         TIM_SetCompare3(PIN_MAP[pin].timer_peripheral, 0);
     }
     else if(PIN_MAP[pin].timer_ch == TIM_Channel_4)
     {
+        TIM_ITConfig(PIN_MAP[pin].timer_peripheral, TIM_IT_CC4, DISABLE);
+    	PIN_MAP[pin].timer_ccr = 0;
+		PIN_MAP[pin].user_property = 0;
         TIM_SetCompare4(PIN_MAP[pin].timer_peripheral, 0);
     }
 }
