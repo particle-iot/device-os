@@ -5,6 +5,9 @@
  * @version V1.0.0
  * @date    10-April-2014
  * @brief   This file provides all the EEPROM emulation functions.
+ * 			Based on ST Application Note for STM32: AN2594
+ * 			http://www.st.com/st-web-ui/static/active/en/resource/
+ * 			technical/document/application_note/CD00165693.pdf
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -25,12 +28,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "spark_wiring_eeprom.h"
-
-#if defined (CC3000_NVMEM_EEPROM_EMULATION)
-
-//To Do
-
-#elif defined (INTERNAL_FLASH_EEPROM_EMULATION)
 
 /* Global variable used to store variable value in read sequence */
 uint16_t EepromDataVar = 0;
@@ -613,47 +610,34 @@ static uint16_t EEPROM_PageTransfer(uint16_t EepromAddress, uint16_t EepromData)
   return FlashStatus;
 }
 
-#endif
-
 /* Arduino Compatibility EEPROM methods */
 EEPROMClass::EEPROMClass()
 {
-#if defined (CC3000_NVMEM_EEPROM_EMULATION)
-  //To Do
-#elif defined (INTERNAL_FLASH_EEPROM_EMULATION)
   EEPROM_Init();
   for (uint16_t i = 0 ; i < EEPROM_SIZE ; i++)
   {
     EepromAddressTab[i] = i;
   }
-#endif
 }
 
 uint8_t EEPROMClass::read(int address)
 {
-#if defined (CC3000_NVMEM_EEPROM_EMULATION)
-  //To Do
-#elif defined (INTERNAL_FLASH_EEPROM_EMULATION)
   uint16_t data;
+
   if ((address < EEPROM_SIZE) && (EEPROM_ReadVariable(EepromAddressTab[address], &data) == 0))
   {
     return data;
   }
-#endif
 
   return 0xFF;
 }
 
 void EEPROMClass::write(int address, uint8_t value)
 {
-#if defined (CC3000_NVMEM_EEPROM_EMULATION)
-  //To Do
-#elif defined (INTERNAL_FLASH_EEPROM_EMULATION)
   if (address < EEPROM_SIZE)
   {
     EEPROM_WriteVariable(EepromAddressTab[address], value);
   }
-#endif
 }
 
 EEPROMClass EEPROM;

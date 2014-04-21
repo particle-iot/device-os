@@ -30,15 +30,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x.h"
 
-//#define CC3000_NVMEM_EEPROM_EMULATION
-#define INTERNAL_FLASH_EEPROM_EMULATION
-
-#if defined (CC3000_NVMEM_EEPROM_EMULATION)
-
-  //To Do
-
-#elif defined (INTERNAL_FLASH_EEPROM_EMULATION)
-
 /* Internal Flash Page size = 1KByte */
 #define PAGE_SIZE  (uint16_t)0x400
 
@@ -77,8 +68,6 @@
 uint16_t EEPROM_Init(void);
 uint16_t EEPROM_ReadVariable(uint16_t EepromAddress, uint16_t *EepromData);
 uint16_t EEPROM_WriteVariable(uint16_t EepromAddress, uint16_t EepromData);
-
-#endif
 
 /* Arduino Compatibility Class -----------------------------------------------*/
 class EEPROMClass
