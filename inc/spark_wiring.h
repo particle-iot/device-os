@@ -31,7 +31,6 @@
 #include "spark_macros.h"
 #include "debug.h"
 #include "platform_config.h"
-#include "stm32_it.h"
 #include "spark_utilities.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_printable.h"
@@ -186,9 +185,6 @@ long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
 
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder);
-
-void tone(uint8_t pin, unsigned int frequency, unsigned long duration = 0);
-void noTone(uint8_t pin);
 
 #ifdef __cplusplus
 }
