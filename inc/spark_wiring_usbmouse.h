@@ -36,9 +36,9 @@
 typedef struct
 {
 	uint8_t buttons;
-	uint8_t x;
-	uint8_t y;
-	uint8_t wheel;
+	int8_t x;
+	int8_t y;
+	int8_t wheel;
 } MouseReport;
 
 class USBMouse
@@ -52,7 +52,7 @@ public:
 
 	void begin(void);
 	void end(void);
-	void move(uint8_t x, uint8_t y, uint8_t wheel);
+	void move(int8_t x, int8_t y, int8_t wheel);
 	void click(uint8_t button = MOUSE_LEFT);
 	void press(uint8_t button = MOUSE_LEFT);		// press LEFT by default
 	void release(uint8_t button = MOUSE_LEFT);		// release LEFT by default

@@ -51,7 +51,7 @@ void USBMouse::end(void)
 	//To Do
 }
 
-void USBMouse::move(uint8_t x, uint8_t y, uint8_t wheel)
+void USBMouse::move(int8_t x, int8_t y, int8_t wheel)
 {
 	mouseReport.x = x;
 	mouseReport.y = y;
