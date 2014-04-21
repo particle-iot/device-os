@@ -150,6 +150,8 @@ typedef struct STM32_Pin_Info {
   TIM_TypeDef* timer_peripheral;
   uint16_t timer_ch;
   PinMode pin_mode;
+  uint16_t timer_ccr;
+  int32_t user_property;
 } STM32_Pin_Info;
 
 extern STM32_Pin_Info PIN_MAP[];

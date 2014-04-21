@@ -53,6 +53,10 @@ void Wiring_SPI1_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_EXTI_Interrupt_Handler(uint8_t EXTI_Line_Number) __attribute__ ((weak));
 void Wiring_RTC_Interrupt_Handler(void) __attribute__ ((weak));
 
+void (*Wiring_TIM2_Interrupt_Handler)(void);
+void (*Wiring_TIM3_Interrupt_Handler)(void);
+void (*Wiring_TIM4_Interrupt_Handler)(void);
+
 /* Private functions ---------------------------------------------------------*/
 
 /******************************************************************************/
@@ -493,6 +497,51 @@ void TIM1_CC_IRQHandler(void)
 			/* Enable BUTTON1 Interrupt */
 			BUTTON_EXTI_Config(BUTTON1, ENABLE);
 		}
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : TIM2_IRQHandler
+ * Description    : This function handles TIM2 global interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void TIM2_IRQHandler(void)
+{
+	if(NULL != Wiring_TIM2_Interrupt_Handler)
+	{
+		Wiring_TIM2_Interrupt_Handler();
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : TIM3_IRQHandler
+ * Description    : This function handles TIM3 global interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void TIM3_IRQHandler(void)
+{
+	if(NULL != Wiring_TIM3_Interrupt_Handler)
+	{
+		Wiring_TIM3_Interrupt_Handler();
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : TIM4_IRQHandler
+ * Description    : This function handles TIM4 global interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void TIM4_IRQHandler(void)
+{
+	if(NULL != Wiring_TIM4_Interrupt_Handler)
+	{
+		Wiring_TIM4_Interrupt_Handler();
 	}
 }
 
