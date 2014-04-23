@@ -40,8 +40,8 @@ STM32_USART_Info USART_MAP[TOTAL_USARTS] =
    * tx_buffer pointer
    * interrupt number (USART1_IRQn or USART2_IRQn)
    */
-  { USART1, RCC->APB2ENR, RCC_APB2Periph_USART1, NULL, NULL, USART1_IRQn },
-  { USART2, RCC->APB1ENR, RCC_APB1Periph_USART2, NULL, NULL, USART2_IRQn }
+  { USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, NULL, NULL, USART1_IRQn, D1, D0, GPIO_Remap_USART1 },
+  { USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, NULL, NULL, USART2_IRQn, TX, RX, NULL }
 };
 
 inline void store_char(unsigned char c, Ring_Buffer *buffer)
@@ -63,14 +63,7 @@ bool USARTSerial::USARTSerial_Enabled = false;
 
 USARTSerial::USARTSerial(USART_Num_Def usartNum)
 {
-  STM32_USART_Info* myUSART = &USART_MAP[usartNum];
-
-//        myUSART->usart_rx_buffer = (Ring_Buffer *)malloc(sizeof(Ring_Buffer));
-//        myUSART->usart_rx_buffer = (Ring_Buffer *)malloc(sizeof(Ring_Buffer));
-//        _rx_buffer = myUSART->usart_rx_buffer;
-//        _tx_buffer = myUSART->usart_tx_buffer;
-  //      memset(_rx_buffer, 0, sizeof(Ring_Buffer));
-  //      memset(_tx_buffer, 0, sizeof(Ring_Buffer));
+        myUSART = &USART_MAP[usartNum];
 
         _rx_buffer = &__rx_buffer;
         _tx_buffer = &__tx_buffer;
@@ -78,12 +71,10 @@ USARTSerial::USARTSerial(USART_Num_Def usartNum)
         myUSART->usart_rx_buffer = _rx_buffer;
         myUSART->usart_tx_buffer = _tx_buffer;
 
-        _rx_buffer->buffer[0] = '\0';
-        _rx_buffer->head = _rx_buffer->tail = 0;
-        _tx_buffer->buffer[0] = '\0';
-        _tx_buffer->head = _tx_buffer->tail = 0;
+        memset(_rx_buffer, 0, sizeof(Ring_Buffer));
+        memset(_tx_buffer, 0, sizeof(Ring_Buffer));
 
-	transmitting = false;
+        transmitting = false;
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
@@ -94,23 +85,27 @@ void USARTSerial::begin(unsigned long baud)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
 	// Enable USART Clock
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+        *myUSART->usart_apbReg |=  myUSART->usart_clock_en;
 
 	NVIC_InitTypeDef NVIC_InitStructure;
 
 	// Enable the USART Interrupt
-	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannel = myUSART->usart_int_n;
         NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = USART2_IRQ_PRIORITY;
         NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
 	NVIC_Init(&NVIC_InitStructure);
 
-	// Configure USART Rx as input floating
-	pinMode(RX, INPUT);
+        // Configure USART Rx as input floating
+        pinMode(myUSART->usart_rx_pin, INPUT);
 
-	// Configure USART Tx as alternate function push-pull
-	pinMode(TX, AF_OUTPUT_PUSHPULL);
+        // Configure USART Tx as alternate function push-pull
+        pinMode(myUSART->usart_tx_pin, AF_OUTPUT_PUSHPULL);
+
+        // Remap USARTn to alternate pins EG. USART1 to pins TX/PB6, RX/PB7
+        if (myUSART->usart_pin_remap != NULL)
+          GPIO_PinRemapConfig(myUSART->usart_pin_remap, ENABLE);
 
 	// USART default configuration
 	// USART configured as follow:
@@ -128,14 +123,14 @@ void USARTSerial::begin(unsigned long baud)
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 
 	// Configure USART
-	USART_Init(USART2, &USART_InitStructure);
+	USART_Init(myUSART->usart_peripheral, &USART_InitStructure);
 
 	// Enable USART Receive and Transmit interrupts
-	//XXX USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
-	//XXX USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+	USART_ITConfig(myUSART->usart_peripheral, USART_IT_RXNE, ENABLE);
+	USART_ITConfig(myUSART->usart_peripheral, USART_IT_TXE, ENABLE);
 
 	// Enable the USART
-	USART_Cmd(USART2, ENABLE);
+	USART_Cmd(myUSART->usart_peripheral, ENABLE);
 
 	USARTSerial_Enabled = true;
 	transmitting = false;
@@ -152,16 +147,16 @@ void USARTSerial::end()
 	while (_tx_buffer->head != _tx_buffer->tail);
 
 	// Disable USART Receive and Transmit interrupts
-	USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
-	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+	USART_ITConfig(myUSART->usart_peripheral, USART_IT_RXNE, DISABLE);
+	USART_ITConfig(myUSART->usart_peripheral, USART_IT_TXE, DISABLE);
 
 	// Disable the USART
-	USART_Cmd(USART2, DISABLE);
+	USART_Cmd(myUSART->usart_peripheral, DISABLE);
 
 	NVIC_InitTypeDef NVIC_InitStructure;
 
 	// Disable the USART Interrupt
-	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannel = myUSART->usart_int_n;
         NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
 
 	NVIC_Init(&NVIC_InitStructure);
@@ -209,7 +204,7 @@ void USARTSerial::flush()
 	// Loop until USART DR register is empty
 	while ( _tx_buffer->head != _tx_buffer->tail );
 	// Loop until last frame transmission complete
-	while (transmitting && (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET));
+	while (transmitting && (USART_GetFlagStatus(myUSART->usart_peripheral, USART_FLAG_TC) == RESET));
 	transmitting = false;
 }
 
@@ -217,10 +212,10 @@ size_t USARTSerial::write(uint8_t c)
 {
 
         // interrupts are off and data in queue;
-        if ((USART_GetITStatus(USART1, USART_IT_TXE) == RESET)
+        if ((USART_GetITStatus(myUSART->usart_peripheral, USART_IT_TXE) == RESET)
             && _tx_buffer->head != _tx_buffer->tail) {
             // Get him busy
-            USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
+            USART_ITConfig(myUSART->usart_peripheral, USART_IT_TXE, ENABLE);
         }
 
         unsigned i = (_tx_buffer->head + 1) % SERIAL_BUFFER_SIZE;
@@ -233,22 +228,22 @@ size_t USARTSerial::write(uint8_t c)
             // Interrupts are on but they are not being serviced because this was called from a higher
             // Priority interrupt
 
-            if (USART_GetITStatus(USART1, USART_IT_TXE) && USART_GetFlagStatus(USART1, USART_FLAG_TXE))
+            if (USART_GetITStatus(myUSART->usart_peripheral, USART_IT_TXE) && USART_GetFlagStatus(myUSART->usart_peripheral, USART_FLAG_TXE))
             {
                 // protect for good measure
-                USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
+                USART_ITConfig(myUSART->usart_peripheral, USART_IT_TXE, DISABLE);
                 // Write out a byte
-                USART_SendData(USART1,  _tx_buffer->buffer[_tx_buffer->tail++]);
+                USART_SendData(myUSART->usart_peripheral,  _tx_buffer->buffer[_tx_buffer->tail++]);
                 _tx_buffer->tail %= SERIAL_BUFFER_SIZE;
                 // unprotect
-                USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
+                USART_ITConfig(myUSART->usart_peripheral, USART_IT_TXE, ENABLE);
             }
         }
 
         _tx_buffer->buffer[_tx_buffer->head] = c;
         _tx_buffer->head = i;
 	transmitting = true;
-        USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
+        USART_ITConfig(myUSART->usart_peripheral, USART_IT_TXE, ENABLE);
 
 
 	return 1;
@@ -321,97 +316,8 @@ bool USARTSerial::isEnabled() {
 /*************************************************************/
 /*** Serial2, using alternate function pins TX/PB6, RX/PB7 ***/
 
-void USARTSerial2::begin(unsigned long baud)
-{
-	// AFIO clock enable
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-
-	// Enable USART Clock and GPIOB
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 | RCC_APB2Periph_GPIOB, ENABLE);
-
-	NVIC_InitTypeDef NVIC_InitStructure;
-
-	// Enable the USART Interrupt
-	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = USART2_IRQ_PRIORITY; // same priority as USART2 (Serial1)
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-
-	NVIC_Init(&NVIC_InitStructure);
-
-	// Configure USART Rx as input floating
-	pinMode(D0, INPUT);
-
-	// Configure USART Tx as alternate function push-pull
-	pinMode(D1, AF_OUTPUT_PUSHPULL);
-
-        // Remap USART1 to alternate pins TX/PB6, RX/PB7
-        GPIO_PinRemapConfig(GPIO_Remap_USART1, ENABLE);
-
-	// USART default configuration
-	// USART configured as follow:
-	// - BaudRate = (set baudRate as 9600 baud)
-	// - Word Length = 8 Bits
-	// - One Stop Bit
-	// - No parity
-	// - Hardware flow control disabled (RTS and CTS signals)
-	// - Receive and transmit enabled
-	USART_InitStructure.USART_BaudRate = baud;
-	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	USART_InitStructure.USART_Parity = USART_Parity_No;
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-
-	// Configure USART
-	USART_Init(USART1, &USART_InitStructure);
-
-	// Enable USART Receive and Transmit interrupts
-	//XXX USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
-	//XXX USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
-
-	// Enable the USART
-	USART_Cmd(USART1, ENABLE);
-
-	USARTSerial_Enabled = true;
-	transmitting = false;
-}
-
-void USARTSerial2::begin(unsigned long baud, byte config)
-{
-
-}
-
-void USARTSerial2::end()
-{
-	// wait for transmission of outgoing data
-	while (_tx_buffer->head != _tx_buffer->tail);
-
-	// Disable USART Receive and Transmit interrupts
-	USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);
-	USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
-
-	// Disable the USART
-	USART_Cmd(USART1, DISABLE);
-
-	NVIC_InitTypeDef NVIC_InitStructure;
-
-	// Disable the USART Interrupt
-	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
-        NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
-
-	NVIC_Init(&NVIC_InitStructure);
-
-	// clear any received data
-	_rx_buffer->head = _rx_buffer->tail;
-
-        // un-map alt. fnction pins PB6/D1, PB7/D0
-        AFIO->MAPR &= ~AFIO_MAPR_USART1_REMAP;
-
-	USARTSerial_Enabled = false;
-}
 // Preinstantiate Objects //////////////////////////////////////////////////////
 
 USARTSerial Serial1(USART_2);
-USARTSerial2 Serial2(USART_1);
+USARTSerial Serial2(USART_1);
 

@@ -44,6 +44,7 @@ void setup()
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
 
+  Serial1.begin(9600);
   Serial2.begin(9600);
 
 }
@@ -53,7 +54,10 @@ void loop()
 {
 	//This will run in a loop
   static int x = 0;
-  Serial2.print("Test ");
+  Serial1.print("TestX ");
+  Serial1.println(x++, DEC);
+
+  Serial2.print("TestZ ");
   Serial2.println(x++, DEC);
   // Serial2.write('Z');
 

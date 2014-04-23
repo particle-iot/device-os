@@ -46,7 +46,7 @@ typedef enum USART_Num_Def {
 #define TOTAL_USARTS 2
 typedef struct STM32_USART_Info {
   USART_TypeDef* usart_peripheral;
-  uint32_t usart_rcc;
+  __IO uint32_t* usart_apbReg;
   uint32_t usart_clock_en; 
 
   // buffer pointers need to be in global scope for int handler access
@@ -54,6 +54,12 @@ typedef struct STM32_USART_Info {
   Ring_Buffer* usart_tx_buffer;
 
   IRQn usart_int_n;
+
+  uint16_t usart_tx_pin;
+  uint16_t usart_rx_pin;
+
+  uint32_t usart_pin_remap;
+
 } STM32_USART_Info;
 
 extern STM32_Pin_Info PIN_MAP[];
@@ -68,6 +74,7 @@ class USARTSerial : public Stream
     Ring_Buffer __tx_buffer;
     Ring_Buffer* _rx_buffer;
     Ring_Buffer* _tx_buffer;
+    STM32_USART_Info* myUSART;
 
   public:
     USARTSerial(USART_Num_Def usartNum);
@@ -95,19 +102,7 @@ class USARTSerial : public Stream
 
 };
 
-class USARTSerial2 : public USARTSerial
-{
-  public:
-    USARTSerial2(USART_Num_Def usartNum) 
-      : USARTSerial(usartNum) {} ;
-    virtual ~USARTSerial2() {};
-    void begin(unsigned long);
-    void begin(unsigned long, uint8_t);
-    void end();
-
-};
-
 extern USARTSerial Serial1;  // USART2 on PA2/3
-extern USARTSerial2 Serial2; // USART1 on alternate PB6/7 (Spark D1, D0)
+extern USARTSerial Serial2; // USART1 on alternate PB6/7 (Spark D1, D0)
 
 #endif
