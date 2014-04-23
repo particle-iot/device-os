@@ -39,8 +39,8 @@ typedef struct Ring_Buffer
 } Ring_Buffer;
 
 typedef enum USART_Num_Def {
-  USART_1 = 0,
-  USART_2
+  USART_D1_D0 = 0,
+  USART_TX_RX
 } USART_Num_Def;
 
 #define TOTAL_USARTS 2
@@ -67,15 +67,13 @@ extern STM32_Pin_Info PIN_MAP[];
 
 class USARTSerial : public Stream
 {
-  protected:
+  private:
     static USART_InitTypeDef USART_InitStructure;
     static bool USARTSerial_Enabled;
     bool transmitting;
-    Ring_Buffer __rx_buffer;
-    Ring_Buffer __tx_buffer;
-    Ring_Buffer* _rx_buffer;
-    Ring_Buffer* _tx_buffer;
-    STM32_USART_Info* myUSART;
+    Ring_Buffer _rx_buffer;
+    Ring_Buffer _tx_buffer;
+    int umapIndex; // USART_MAP index
 
   public:
     USARTSerial(USART_Num_Def usartNum);
