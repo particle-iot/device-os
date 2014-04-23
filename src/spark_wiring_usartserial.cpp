@@ -36,12 +36,12 @@ STM32_USART_Info USART_MAP[TOTAL_USARTS] =
    * USRAT_peripheral (USART1-USART2; not using others)
    * clock control register (APB1ENR or APB1ENR)
    * clock enable bit value (RCC_APB2Periph_USART1 or RCC_APB2Periph_USART2)
-   * rx_buffer pointer
-   * tx_buffer pointer
    * interrupt number (USART1_IRQn or USART2_IRQn)
+   * <tx_buffer pointer> used internally and does not appear in map set-up, below
+   * <rx_buffer pointer> used internally and does not appear in map set-up, below
    */
-  { USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, NULL, NULL, USART1_IRQn, D1, D0, GPIO_Remap_USART1 },
-  { USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, NULL, NULL, USART2_IRQn, TX, RX, NULL }
+  { USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, USART1_IRQn, D1, D0, GPIO_Remap_USART1 },
+  { USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, TX, RX, REMAP_NONE }
 };
 
 inline void store_char(unsigned char c, Ring_Buffer *buffer)
@@ -104,7 +104,7 @@ void USARTSerial::begin(unsigned long baud)
         pinMode(myUSART->usart_tx_pin, AF_OUTPUT_PUSHPULL);
 
         // Remap USARTn to alternate pins EG. USART1 to pins TX/PB6, RX/PB7
-        if (myUSART->usart_pin_remap != NULL)
+        if (myUSART->usart_pin_remap != REMAP_NONE)
           GPIO_PinRemapConfig(myUSART->usart_pin_remap, ENABLE);
 
 	// USART default configuration

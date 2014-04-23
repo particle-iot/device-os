@@ -44,14 +44,11 @@ typedef enum USART_Num_Def {
 } USART_Num_Def;
 
 #define TOTAL_USARTS 2
+#define REMAP_NONE 0
 typedef struct STM32_USART_Info {
   USART_TypeDef* usart_peripheral;
   __IO uint32_t* usart_apbReg;
   uint32_t usart_clock_en; 
-
-  // buffer pointers need to be in global scope for int handler access
-  Ring_Buffer* usart_rx_buffer;
-  Ring_Buffer* usart_tx_buffer;
 
   IRQn usart_int_n;
 
@@ -59,6 +56,10 @@ typedef struct STM32_USART_Info {
   uint16_t usart_rx_pin;
 
   uint32_t usart_pin_remap;
+
+  // Buffer pointers. These need to beglobal for IRQ handler access
+  Ring_Buffer* usart_tx_buffer;
+  Ring_Buffer* usart_rx_buffer;
 
 } STM32_USART_Info;
 
