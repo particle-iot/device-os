@@ -33,9 +33,9 @@
 
 typedef struct Ring_Buffer
 {
-	unsigned char buffer[SERIAL_BUFFER_SIZE];
-	volatile unsigned int head;
-	volatile unsigned int tail;
+  unsigned char buffer[SERIAL_BUFFER_SIZE];
+  volatile unsigned int head;
+  volatile unsigned int tail;
 } Ring_Buffer;
 
 typedef enum USART_Num_Def {
@@ -49,7 +49,7 @@ typedef struct STM32_USART_Info {
   uint32_t usart_rcc;
   uint32_t usart_clock_en; 
 
-  // buffers pointer need to be in global scope for int handler access
+  // buffer pointers need to be in global scope for int handler access
   Ring_Buffer* usart_rx_buffer;
   Ring_Buffer* usart_tx_buffer;
 
@@ -64,6 +64,8 @@ class USARTSerial : public Stream
     static USART_InitTypeDef USART_InitStructure;
     static bool USARTSerial_Enabled;
     bool transmitting;
+    Ring_Buffer __rx_buffer;
+    Ring_Buffer __tx_buffer;
     Ring_Buffer* _rx_buffer;
     Ring_Buffer* _tx_buffer;
 

@@ -63,12 +63,25 @@ bool USARTSerial::USARTSerial_Enabled = false;
 
 USARTSerial::USARTSerial(USART_Num_Def usartNum)
 {
-        USART_MAP[usartNum].usart_rx_buffer = (Ring_Buffer *)malloc(sizeof(Ring_Buffer));
-        USART_MAP[usartNum].usart_rx_buffer = (Ring_Buffer *)malloc(sizeof(Ring_Buffer));
-        _rx_buffer = USART_MAP[usartNum].usart_rx_buffer;
-        _tx_buffer = USART_MAP[usartNum].usart_tx_buffer;
-        memset(_rx_buffer, 0, sizeof(Ring_Buffer));
-        memset(_tx_buffer, 0, sizeof(Ring_Buffer));
+  STM32_USART_Info* myUSART = &USART_MAP[usartNum];
+
+//        myUSART->usart_rx_buffer = (Ring_Buffer *)malloc(sizeof(Ring_Buffer));
+//        myUSART->usart_rx_buffer = (Ring_Buffer *)malloc(sizeof(Ring_Buffer));
+//        _rx_buffer = myUSART->usart_rx_buffer;
+//        _tx_buffer = myUSART->usart_tx_buffer;
+  //      memset(_rx_buffer, 0, sizeof(Ring_Buffer));
+  //      memset(_tx_buffer, 0, sizeof(Ring_Buffer));
+
+        _rx_buffer = &__rx_buffer;
+        _tx_buffer = &__tx_buffer;
+
+        myUSART->usart_rx_buffer = _rx_buffer;
+        myUSART->usart_tx_buffer = _tx_buffer;
+
+        _rx_buffer->buffer[0] = '\0';
+        _rx_buffer->head = _rx_buffer->tail = 0;
+        _tx_buffer->buffer[0] = '\0';
+        _tx_buffer->head = _tx_buffer->tail = 0;
 
 	transmitting = false;
 }
@@ -118,8 +131,8 @@ void USARTSerial::begin(unsigned long baud)
 	USART_Init(USART2, &USART_InitStructure);
 
 	// Enable USART Receive and Transmit interrupts
-	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
-	USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+	//XXX USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+	//XXX USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
 
 	// Enable the USART
 	USART_Cmd(USART2, ENABLE);
@@ -245,6 +258,37 @@ USARTSerial::operator bool() {
 	return true;
 }
 
+static void Spark_USART_Interrupt_Handler(USART_Num_Def usartNum)
+{
+  STM32_USART_Info* myUSART = &USART_MAP[usartNum];
+  Ring_Buffer* rx_buffer = USART_MAP[usartNum].usart_rx_buffer;
+  Ring_Buffer* tx_buffer = USART_MAP[usartNum].usart_tx_buffer;
+
+  if(USART_GetITStatus(USART_MAP[usartNum].usart_peripheral, USART_IT_RXNE) != RESET)
+  {
+    // Read byte from the receive data register
+    unsigned char c = USART_ReceiveData(myUSART->usart_peripheral);
+    store_char(c, rx_buffer);
+  }
+
+  if(USART_GetITStatus(myUSART->usart_peripheral, USART_IT_TXE) != RESET)
+  {
+    // Write byte to the transmit data register
+    if (tx_buffer->head == tx_buffer->tail)
+    {
+      // Buffer empty, so disable the USART Transmit interrupt
+      USART_ITConfig(myUSART->usart_peripheral, USART_IT_TXE, DISABLE);
+    }
+    else
+    {
+      // There is more data in the output buffer. Send the next byte
+      USART_SendData(myUSART->usart_peripheral, tx_buffer->buffer[tx_buffer->tail++]);
+      tx_buffer->tail %= SERIAL_BUFFER_SIZE;
+    }
+  }
+}
+
+// Serial2 interrupt handler
 /*******************************************************************************
 * Function Name  : Wiring_USART2_Interrupt_Handler (Declared as weak in stm32_it.cpp)
 * Description    : This function handles USART2 global interrupt request.
@@ -254,28 +298,7 @@ USARTSerial::operator bool() {
 *******************************************************************************/
 void Wiring_USART2_Interrupt_Handler(void)
 {
-	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
-	{
-		// Read byte from the receive data register
-		unsigned char c = USART_ReceiveData(USART2);
-		store_char(c, &rx_buffer);
-	}
-
-	if(USART_GetITStatus(USART2, USART_IT_TXE) != RESET)
-	{
-		// Write byte to the transmit data register
-		if (tx_buffer.head == tx_buffer.tail)
-		{
-			// Buffer empty, so disable the USART Transmit interrupt
-			USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
-		}
-		else
-		{
-	            // There is more data in the output buffer. Send the next byte
-		    USART_SendData(USART2,  tx_buffer.buffer[tx_buffer.tail++]);
-                    tx_buffer.tail %= SERIAL_BUFFER_SIZE;
-		}
-	}
+  Spark_USART_Interrupt_Handler(USART_2);
 }
 
 // Serial2 interrupt handler
@@ -288,28 +311,7 @@ void Wiring_USART2_Interrupt_Handler(void)
 *******************************************************************************/
 void Wiring_USART1_Interrupt_Handler(void)
 {
-	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
-	{
-		// Read byte from the receive data register
-		unsigned char c = USART_ReceiveData(USART1);
-		store_char(c, &rx_buffer2);
-	}
-
-	if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET)
-	{
-		// Write byte to the transmit data register
-		if (tx_buffer2.head == tx_buffer2.tail)
-		{
-			// Buffer empty, so disable the USART Transmit interrupt
-			USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
-		}
-		else
-		{
-	            // There is more data in the output buffer. Send the next byte
-		    USART_SendData(USART1,  tx_buffer2.buffer[tx_buffer2.tail++]);
-                    tx_buffer2.tail %= SERIAL_BUFFER_SIZE;
-		}
-	}
+  Spark_USART_Interrupt_Handler(USART_1);
 }
 
 bool USARTSerial::isEnabled() {
@@ -365,8 +367,8 @@ void USARTSerial2::begin(unsigned long baud)
 	USART_Init(USART1, &USART_InitStructure);
 
 	// Enable USART Receive and Transmit interrupts
-	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
-	USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
+	//XXX USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+	//XXX USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
 
 	// Enable the USART
 	USART_Cmd(USART1, ENABLE);
@@ -410,6 +412,6 @@ void USARTSerial2::end()
 }
 // Preinstantiate Objects //////////////////////////////////////////////////////
 
-USARTSerial Serial1(&rx_buffer, &tx_buffer);
-USARTSerial2 Serial2(&rx_buffer2, &tx_buffer2);
+USARTSerial Serial1(USART_2);
+USARTSerial2 Serial2(USART_1);
 
