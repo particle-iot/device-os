@@ -29,7 +29,6 @@
 /*
  * USART mapping
  */
-
 STM32_USART_Info USART_MAP[TOTAL_USARTS] =
 {
   /*
@@ -37,6 +36,9 @@ STM32_USART_Info USART_MAP[TOTAL_USARTS] =
    * clock control register (APB1ENR or APB1ENR)
    * clock enable bit value (RCC_APB2Periph_USART1 or RCC_APB2Periph_USART2)
    * interrupt number (USART1_IRQn or USART2_IRQn)
+   * TX pin
+   * RX pin
+   * GPIO Remap (RCC_APB2Periph_USART2 or REMAP_NONE)
    * <tx_buffer pointer> used internally and does not appear in map set-up, below
    * <rx_buffer pointer> used internally and does not appear in map set-up, below
    */
