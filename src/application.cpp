@@ -44,12 +44,21 @@ void setup()
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
 
+  Serial2.begin(9600);
+
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
 	//This will run in a loop
+  static int x = 0;
+  Serial2.print("Test ");
+  Serial2.println(x++, DEC);
+  // Serial2.write('Z');
+
+  delay(500);
+
 }
 
 /*******************************************************************************

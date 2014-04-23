@@ -29,19 +29,46 @@
 
 #include "spark_wiring_stream.h"
 
-struct ring_buffer;
+#define SERIAL_BUFFER_SIZE 64
+
+typedef struct Ring_Buffer
+{
+	unsigned char buffer[SERIAL_BUFFER_SIZE];
+	volatile unsigned int head;
+	volatile unsigned int tail;
+} Ring_Buffer;
+
+typedef enum USART_Num_Def {
+  USART_1 = 0,
+  USART_2
+} USART_Num_Def;
+
+#define TOTAL_USARTS 2
+typedef struct STM32_USART_Info {
+  USART_TypeDef* usart_peripheral;
+  uint32_t usart_rcc;
+  uint32_t usart_clock_en; 
+
+  // buffers pointer need to be in global scope for int handler access
+  Ring_Buffer* usart_rx_buffer;
+  Ring_Buffer* usart_tx_buffer;
+
+  IRQn usart_int_n;
+} STM32_USART_Info;
+
+extern STM32_Pin_Info PIN_MAP[];
 
 class USARTSerial : public Stream
 {
-  private:
-	static USART_InitTypeDef USART_InitStructure;
-	static bool USARTSerial_Enabled;
-    ring_buffer *_rx_buffer;
-    ring_buffer *_tx_buffer;
+  protected:
+    static USART_InitTypeDef USART_InitStructure;
+    static bool USARTSerial_Enabled;
     bool transmitting;
+    Ring_Buffer* _rx_buffer;
+    Ring_Buffer* _tx_buffer;
 
   public:
-    USARTSerial(ring_buffer *rx_buffer, ring_buffer *tx_buffer);
+    USARTSerial(USART_Num_Def usartNum);
     virtual ~USARTSerial() {};
     void begin(unsigned long);
     void begin(unsigned long, uint8_t);
@@ -66,6 +93,19 @@ class USARTSerial : public Stream
 
 };
 
-extern USARTSerial Serial1;
+class USARTSerial2 : public USARTSerial
+{
+  public:
+    USARTSerial2(USART_Num_Def usartNum) 
+      : USARTSerial(usartNum) {} ;
+    virtual ~USARTSerial2() {};
+    void begin(unsigned long);
+    void begin(unsigned long, uint8_t);
+    void end();
+
+};
+
+extern USARTSerial Serial1;  // USART2 on PA2/3
+extern USARTSerial2 Serial2; // USART1 on alternate PB6/7 (Spark D1, D0)
 
 #endif
