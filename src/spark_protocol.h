@@ -26,6 +26,7 @@
 #ifndef __SPARK_PROTOCOL_H
 #define __SPARK_PROTOCOL_H
 
+#include <time.h>
 #include "spark_descriptor.h"
 #include "coap.h"
 #include "events.h"
@@ -67,6 +68,7 @@ struct SparkCallbacks
   unsigned short (*save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
   void (*signal)(bool on);
   system_tick_t (*millis)();
+  void (*set_time)(time_t t);
 };
 
 class SparkProtocol
@@ -147,6 +149,7 @@ class SparkProtocol
     unsigned short (*callback_save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
     void (*callback_signal)(bool on);
     system_tick_t (*callback_millis)();
+    void (*callback_set_time)(time_t t);
 
     SparkDescriptor descriptor;
 

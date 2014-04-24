@@ -77,6 +77,7 @@ void SparkProtocol::init(const char *id,
   callback_save_firmware_chunk = callbacks.save_firmware_chunk;
   callback_signal = callbacks.signal;
   callback_millis = callbacks.millis;
+  callback_set_time = callbacks.set_time;
 
   this->descriptor.num_functions = descriptor.num_functions;
   this->descriptor.copy_function_key = descriptor.copy_function_key;
@@ -304,6 +305,8 @@ CoAPMessageType::Enum
         case CoAPType::CON: return CoAPMessageType::PING;
         default: return CoAPMessageType::EMPTY_ACK;
       } break;
+    case CoAPCode::CONTENT:
+      return CoAPMessageType::TIME;
     default:
       break;
   }
@@ -762,7 +765,7 @@ bool SparkProtocol::handle_received_message(void)
   last_message_millis = callback_millis();
   expecting_ping_ack = false;
   int len = queue[0] << 8 | queue[1];
-  if (len > (int)arraySize(queue)) { // Todo add sanity check on data i.e. CRC
+  if (len > QUEUE_SIZE) { // TODO add sanity check on data, e.g. CRC
       return false;
   }
   if (0 > blocking_receive(queue, len))
@@ -1009,6 +1012,10 @@ bool SparkProtocol::handle_received_message(void)
 
     case CoAPMessageType::HELLO:
       descriptor.ota_upgrade_status_sent();
+      break;
+
+    case CoAPMessageType::TIME:
+      callback_set_time(queue[6] << 24 | queue[7] << 16 | queue[8] << 8 | queue[9]);
       break;
 
     case CoAPMessageType::PING:

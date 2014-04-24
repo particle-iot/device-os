@@ -57,6 +57,8 @@ struct ConstructorFixture
   static system_tick_t mock_millis(void);
   static bool mock_ota_status_check(void);
   static SparkReturnType::Enum mock_variable_type(const char *variable_key);
+  static void mock_set_time(time_t t);
+  static time_t set_time_called_with;
 
   ConstructorFixture();
   SparkKeys keys;

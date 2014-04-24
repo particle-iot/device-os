@@ -131,6 +131,7 @@ uint8_t ConstructorFixture::message_to_receive[34];
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
 bool ConstructorFixture::signal_called_with = false;
+time_t ConstructorFixture::set_time_called_with = -1;
 
 ConstructorFixture::ConstructorFixture()
 {
@@ -142,6 +143,7 @@ ConstructorFixture::ConstructorFixture()
   callbacks.receive = mock_receive;
   callbacks.signal = mock_signal;
   callbacks.millis = mock_millis;
+  callbacks.set_time = mock_set_time;
   descriptor.num_functions = mock_num_functions;
   descriptor.copy_function_key = mock_copy_function_key;
   descriptor.call_function = mock_call_function;
@@ -312,4 +314,9 @@ SparkReturnType::Enum ConstructorFixture::mock_variable_type(const char *variabl
   const char *prevent_warning;
   prevent_warning = variable_key;
   return SparkReturnType::INT;
+}
+
+void ConstructorFixture::mock_set_time(time_t t)
+{
+  set_time_called_with = t;
 }
