@@ -105,8 +105,7 @@ void USARTSerial::begin(unsigned long baud)
         pinMode(_UMAP.usart_tx_pin, AF_OUTPUT_PUSHPULL);
 
         // Remap USARTn to alternate pins EG. USART1 to pins TX/PB6, RX/PB7
-        if (_UMAP.usart_pin_remap != REMAP_NONE)
-          GPIO_PinRemapConfig(_UMAP.usart_pin_remap, ENABLE);
+        GPIO_PinRemapConfig(_UMAP.usart_pin_remap, ENABLE);
 
 	// USART default configuration
 	// USART configured as follow:
@@ -164,6 +163,10 @@ void USARTSerial::end()
 
 	// clear any received data
 	_rx_buffer.head = _rx_buffer.tail;
+
+        // null ring buffer pointers
+        _UMAP.usart_tx_buffer = NULL;
+        _UMAP.usart_rx_buffer = NULL;
 
 	USARTSerial_Enabled = false;
 }
@@ -254,32 +257,28 @@ USARTSerial::operator bool() {
 	return true;
 }
 
-static void Spark_USART_Interrupt_Handler(USART_Num_Def usartNum)
+static void Spark_USART_Interrupt_Handler(USART_Num_Def umapIndex)
 {
-  STM32_USART_Info* myUSART = &USART_MAP[usartNum];
-  Ring_Buffer* rx_buffer = USART_MAP[usartNum].usart_rx_buffer;
-  Ring_Buffer* tx_buffer = USART_MAP[usartNum].usart_tx_buffer;
-
-  if(USART_GetITStatus(myUSART->usart_peripheral, USART_IT_RXNE) != RESET)
+  if(USART_GetITStatus(_UMAP.usart_peripheral, USART_IT_RXNE) != RESET)
   {
     // Read byte from the receive data register
-    unsigned char c = USART_ReceiveData(myUSART->usart_peripheral);
-    store_char(c, rx_buffer);
+    unsigned char c = USART_ReceiveData(_UMAP.usart_peripheral);
+    store_char(c, _UMAP.usart_rx_buffer);
   }
 
-  if(USART_GetITStatus(myUSART->usart_peripheral, USART_IT_TXE) != RESET)
+  if(USART_GetITStatus(_UMAP.usart_peripheral, USART_IT_TXE) != RESET)
   {
     // Write byte to the transmit data register
-    if (tx_buffer->head == tx_buffer->tail)
+    if (_UMAP.usart_tx_buffer->head == _UMAP.usart_tx_buffer->tail)
     {
       // Buffer empty, so disable the USART Transmit interrupt
-      USART_ITConfig(myUSART->usart_peripheral, USART_IT_TXE, DISABLE);
+      USART_ITConfig(_UMAP.usart_peripheral, USART_IT_TXE, DISABLE);
     }
     else
     {
       // There is more data in the output buffer. Send the next byte
-      USART_SendData(myUSART->usart_peripheral, tx_buffer->buffer[tx_buffer->tail++]);
-      tx_buffer->tail %= SERIAL_BUFFER_SIZE;
+      USART_SendData(_UMAP.usart_peripheral, _UMAP.usart_tx_buffer->buffer[_UMAP.usart_tx_buffer->tail++]);
+      _UMAP.usart_tx_buffer->tail %= SERIAL_BUFFER_SIZE;
     }
   }
 }
