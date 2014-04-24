@@ -257,7 +257,7 @@ USARTSerial::operator bool() {
 	return true;
 }
 
-static void Spark_USART_Interrupt_Handler(USART_Num_Def umapIndex)
+static void USART_Interrupt_Handler(USART_Num_Def umapIndex)
 {
   if(USART_GetITStatus(_UMAP.usart_peripheral, USART_IT_RXNE) != RESET)
   {
@@ -293,7 +293,7 @@ static void Spark_USART_Interrupt_Handler(USART_Num_Def umapIndex)
 *******************************************************************************/
 void Wiring_USART2_Interrupt_Handler(void)
 {
-  Spark_USART_Interrupt_Handler(USART_TX_RX);
+  USART_Interrupt_Handler(USART_TX_RX);
 }
 
 // Serial2 interrupt handler
@@ -306,7 +306,7 @@ void Wiring_USART2_Interrupt_Handler(void)
 *******************************************************************************/
 void Wiring_USART1_Interrupt_Handler(void)
 {
-  Spark_USART_Interrupt_Handler(USART_D1_D0);
+  USART_Interrupt_Handler(USART_D1_D0);
 }
 
 bool USARTSerial::isEnabled() {
