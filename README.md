@@ -20,10 +20,43 @@ For the final version, Spark may choose not to instantiate Serial2 by default (l
     USARTSerial Serial2(USART_D1_D0);
     Serial2.begin(9600);
     
-In either case, the pins D1/D0 do not get clobbered until the ::begin method is called -- and they are released again by calling ::end. 
+In either case, the pins `D1`/`D0` do not get clobbered until the `::begin` method is called -- and they are released again by calling `::end`. 
+
+### Resource Cost -- Serial2 present
+
+Binary code size analysis, with `Serial1.begin(9600)` added to `application.src` and both Serial1/Serial2 instantiated
+
+#### Branch: master
+    arm-none-eabi-size --format=berkeley core-firmware.elf
+       text    data     bss     dec     hex filename
+      69132     2948   11608   83688   146e8 core-firmware.elf
+
+
+#### Branch: feature/serial2
+    arm-none-eabi-size --format=berkeley core-firmware.elf
+       text    data     bss     dec     hex filename
+      69364    3012   11772   84148   148b4 core-firmware.elf
+
+#### Net difference Serial1+Serial2
+Total Flash: +460 bytes
+RAM:  +64 bytes
+
+### Resource Cost -- Serial2 not-present
+
+Binary code size analysis, with `Serial1.begin(9600)` added to `application.src`, but only Serial1 instantiated
+
+    arm-none-eabi-size --format=berkeley core-firmware.elf
+       text    data     bss     dec     hex filename
+      69340    3012   11604   83956   147f4 core-firmware.elf
+
+#### Net difference Serial1 only
+Total Flash: +268 bytes
+RAM: +64 bytes
+
+Cost of having Serial2 instantiated by default, versus only Serial1: 192 bytes
+
 
 ## Original README follows ...
-
 
 This is the main source code repository of the Spark Core firmware libraries.
 
