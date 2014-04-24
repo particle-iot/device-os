@@ -29,7 +29,7 @@ Binary code size analysis, with `Serial1.begin(9600)` added to `application.src`
 #### Branch: master
     arm-none-eabi-size --format=berkeley core-firmware.elf
        text    data     bss     dec     hex filename
-      69132     2948   11608   83688   146e8 core-firmware.elf
+      69132    2948   11608   83688   146e8 core-firmware.elf
 
 
 #### Branch: feature/serial2
@@ -39,7 +39,7 @@ Binary code size analysis, with `Serial1.begin(9600)` added to `application.src`
 
 #### Net difference Serial1+Serial2
 Total Flash: +460 bytes
-RAM:  +64 bytes
+RAM:  +228 bytes
 
 ### Resource Cost -- Serial2 not-present
 
@@ -51,10 +51,13 @@ Binary code size analysis, with `Serial1.begin(9600)` added to `application.src`
 
 #### Net difference Serial1 only
 Total Flash: +268 bytes
-RAM: +64 bytes
+RAM: +60 bytes
 
-Cost of having Serial2 instantiated by default, versus only Serial1: 192 bytes
+#### Cost of having Serial2 instantiated by default, versus only Serial1
+Flash: +192 bytes
+RAM: +168 bytes 
 
+**CAVEAT** Some of that seems unlikely, to me. Perhaps my understanding of text/data/bss is inaccurate. :-/ You decide.
 
 ## Original README follows ...
 
