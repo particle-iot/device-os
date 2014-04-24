@@ -452,6 +452,11 @@ int SparkProtocol::variable_value(unsigned char *buf,
 bool SparkProtocol::send_event(const char *event_name, const char *data,
                                int ttl, EventType::Enum event_type)
 {
+  if (updating)
+  {
+    return false;
+  }
+
   static system_tick_t recent_event_ticks[5] = {
     (system_tick_t) -1000, (system_tick_t) -1000,
     (system_tick_t) -1000, (system_tick_t) -1000,
