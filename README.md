@@ -1,5 +1,24 @@
 # Spark Core Firmware [![Backlog](https://badge.waffle.io/spark/core-firmware.png?label=backlog&title=backlog)](https://waffle.io/spark/core-firmware)
 
+## feature/serial2
+From [issue 89](https://github.com/spark/core-firmware/issues/89)
+
+This branch modifies the USARTSerial class in `src/spar_wiring_usartserial.cpp` to allow it to be used for other USARTS.
+
+In particular, support is added for a 'Serial2', on STM32 USART1, remaped to pins D1(TX) and D0(RX). (The existing Serial1 feature uses USART2, on semi-dedicated pins labelled TX and RX.)
+
+There are changes to a few system files to enable processing of the interrupt for USART1.
+
+This implementation employs a USART functional mapping array, `USART_MAP` array, similar to `PIN_MAP[]`, used to simplify GPIO functions elsewhere. This should make it quite trival to add extra USARTs in the future, say for a Sparkcore with a 100 pin STM32 chip.
+
+There are some minor compromises in terms of raw binary code size efficiency, to improve code readability -- something on the order of 16 or so 16-bit Flash words might have been saved, at the cost of barely human comprehendable code. :-P
+
+I have tested transmit and receive functions (using interrupts and the new ring buffers, present when I started) and all appears to be working well.
+
+For the final version, Spark may choose not to instantiate Serial2 by default (like Serial1 is) to save alittle RAM. (See the last lines of src/spark_wrigin_usartserial.cpp`.) Documentation could mention that one needs to create a Serial2, before running Serial2.begin(<baud>). Example: `USARTSerial Serial2(USART_D1_D0);`. In either case, the pins D1/D0 do not get clobbered until the ::begin method is called and they are released again by calling ::end. 
+
+## Original README follows ...
+
 
 This is the main source code repository of the Spark Core firmware libraries.
 

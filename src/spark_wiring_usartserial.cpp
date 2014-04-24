@@ -168,6 +168,9 @@ void USARTSerial::end()
         _UMAP.usart_tx_buffer = NULL;
         _UMAP.usart_rx_buffer = NULL;
 
+        // Undo any pin re-mapping done for this USART
+        GPIO_PinRemapConfig(_UMAP.usart_pin_remap, DISABLE);
+
 	USARTSerial_Enabled = false;
 }
 
