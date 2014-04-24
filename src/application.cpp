@@ -61,6 +61,12 @@ void loop()
   Serial2.println(x++, DEC);
   // Serial2.write('Z');
 
+  while (Serial1.available())
+  {
+    char inC = Serial1.read();
+    Serial2.write(inC);
+  }
+
   delay(500);
 
 }
