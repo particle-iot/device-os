@@ -220,6 +220,11 @@ void SparkClass::publish(String eventName, String eventData, int ttl, Spark_Even
   publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
 }
 
+void SparkClass::setTime(void)
+{
+  spark_protocol.send_time_request();
+}
+
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
 #if defined (SPARK_RTC_ENABLE)
