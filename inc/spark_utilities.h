@@ -95,7 +95,7 @@ public:
 	static int connect(void);
 	static int disconnect(void);
 	static String deviceID(void);
-	static void setTime(void);
+	static void syncTime(void);
 };
 
 extern RGBClass RGB;
