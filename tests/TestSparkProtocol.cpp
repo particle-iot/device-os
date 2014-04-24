@@ -361,4 +361,16 @@ SUITE(SparkProtocolConstruction)
 
     CHECK(first_burst_success && second_burst_success);
   }
+
+  TEST_FIXTURE(ConstructorFixture, TimeRequestMatchesOpenSSL)
+  {
+    const uint8_t expected[] = {
+      0x00, 0x10,
+      0x49, 0x36, 0x08, 0xa8, 0x38, 0xfd, 0xb8, 0x09,
+      0xa5, 0xf2, 0x86, 0x56, 0xdc, 0xf8, 0x1f, 0x8e };
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.send_time_request();
+    CHECK_ARRAY_EQUAL(expected, sent_buf_0, 18);
+  }
 }

@@ -474,17 +474,41 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
 
   uint16_t msg_id = next_message_id();
   size_t msglen = event(queue + 2, msg_id, event_name, data, ttl, event_type);
+  size_t wrapped_len = wrap(queue, msglen);
 
-  size_t buflen = (msglen & ~15) + 16;
-  char pad = buflen - msglen;
-  memset(queue + 2 + msglen, pad, pad); // PKCS #7 padding
+  return (0 <= blocking_send(queue, wrapped_len));
+}
 
-  encrypt(queue + 2, buflen);
+size_t SparkProtocol::time_request(unsigned char *buf)
+{
+  unsigned char *p = buf;
 
-  queue[0] = (buflen >> 8) & 0xff;
-  queue[1] = buflen & 0xff;
+  *p++ = 0x41; // Confirmable, one-byte token
+  *p++ = 0x01; // GET request
 
-  return (0 <= blocking_send(queue, buflen + 2));
+  uint16_t msg_id = next_message_id();
+  *p++ = msg_id >> 8;
+  *p++ = msg_id & 0xff;
+
+  *p++ = next_token();
+  *p++ = 0xb1; // One-byte, Uri-Path option
+  *p++ = 't';
+
+  return p - buf;
+}
+
+// returns true on success, false on failure
+bool SparkProtocol::send_time_request(void)
+{
+  if (updating)
+  {
+    return false;
+  }
+
+  size_t msglen = time_request(queue + 2);
+  size_t wrapped_len = wrap(queue, msglen);
+
+  return (0 <= blocking_send(queue, wrapped_len));
 }
 
 void SparkProtocol::chunk_received(unsigned char *buf,
@@ -718,6 +742,20 @@ ProtocolState::Enum SparkProtocol::state()
 
 
 /********** Private methods **********/
+
+size_t SparkProtocol::wrap(unsigned char *buf, size_t msglen)
+{
+  size_t buflen = (msglen & ~15) + 16;
+  char pad = buflen - msglen;
+  memset(buf + 2 + msglen, pad, pad); // PKCS #7 padding
+
+  encrypt(buf + 2, buflen);
+
+  buf[0] = (buflen >> 8) & 0xff;
+  buf[1] = buflen & 0xff;
+
+  return buflen + 2;
+}
 
 bool SparkProtocol::handle_received_message(void)
 {
@@ -999,6 +1037,11 @@ unsigned short SparkProtocol::next_message_id()
   return ++_message_id;
 }
 
+unsigned char SparkProtocol::next_token()
+{
+  return ++_token;
+}
+
 void SparkProtocol::encrypt(unsigned char *buf, int length)
 {
   aes_setkey_enc(&aes, key, 128);
@@ -1044,6 +1087,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
     memcpy(iv_receive, credentials + 16, 16);
     memcpy(salt,       credentials + 32,  8);
     _message_id = *(credentials + 32) << 8 | *(credentials + 33);
+    _token = *(credentials + 34);
 
     return 0;
   }
