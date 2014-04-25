@@ -148,6 +148,11 @@ void wifi_add_profile_callback(const char *ssid,
 
   wlan_profile_index = wlan_add_profile(security_type, (unsigned char *)ssid, strlen(ssid), NULL, 1, 0x18, 0x1e, 2, (unsigned char *)password, strlen(password));
 
+  if(wlan_profile_index != -1)
+  {
+    SPARK_WLAN_AddProfileToFlash(wlan_profile_index, security_type, (uint8_t *)ssid, strlen(ssid), (uint8_t *)password, strlen(password));
+  }
+
   WLAN_SERIAL_CONFIG_DONE = 1;
 }
 
@@ -254,7 +259,7 @@ void Start_Smart_Config(void)
 	if(WLAN_SMART_CONFIG_FINISHED)
 	{
 		/* Decrypt configuration information and add profile */
-		wlan_profile_index = wlan_smart_config_process();
+		wlan_profile_index = SPARK_WLAN_SmartConfigProcess();
 	}
 
 	if(wlan_profile_index != -1)
@@ -681,4 +686,228 @@ void SPARK_WLAN_Loop(void)
       SPARK_CLOUD_SOCKETED = 0;
     }
   }
+}
+
+int SPARK_WLAN_SmartConfigProcess(void)
+{
+	extern uint8_t key[];
+	extern uint8_t profileArray[];
+	uint32_t ssidLen, keyLen;
+	unsigned char *decKeyPtr;
+	unsigned char *ssidPtr;
+	int	returnValue;
+
+	// read the key from EEPROM - fileID 12
+	returnValue = aes_read_key(key);
+
+	if (returnValue != 0)
+		return returnValue;
+
+	// read the received data from fileID #13 and parse it according to the followings:
+	// 1) SSID LEN - not encrypted
+	// 2) SSID - not encrypted
+	// 3) KEY LEN - not encrypted. always 32 bytes long
+	// 4) Security type - not encrypted
+	// 5) KEY - encrypted together with true key length as the first byte in KEY
+	//	 to elaborate, there are two corner cases:
+	//		1) the KEY is 32 bytes long. In this case, the first byte does not represent KEY length
+	//		2) the KEY is 31 bytes long. In this case, the first byte represent KEY length and equals 31
+	returnValue = (SMART_CONFIG_PROFILE_SIZE == nvmem_read(NVMEM_SHARED_MEM_FILEID, SMART_CONFIG_PROFILE_SIZE, 0, profileArray)) ? 0 : -1;
+
+	if (returnValue != 0)
+		return returnValue;
+
+	ssidPtr = &profileArray[1];
+
+	ssidLen = profileArray[0];
+
+	decKeyPtr = &profileArray[profileArray[0] + 3];
+
+	aes_decrypt(decKeyPtr, key);
+	if (profileArray[profileArray[0] + 1] > 16)
+		aes_decrypt((unsigned char *)(decKeyPtr + 16), key);
+
+	if (*(unsigned char *)(decKeyPtr +31) != 0)
+	{
+		if (*decKeyPtr == 31)
+		{
+			keyLen = 31;
+			decKeyPtr++;
+		}
+		else
+		{
+			keyLen = 32;
+		}
+	}
+	else
+	{
+		keyLen = *decKeyPtr;
+		decKeyPtr++;
+	}
+
+	// add a profile
+	unsigned long securityType = profileArray[profileArray[0] + 2];
+	switch (securityType)
+	{
+	case WLAN_SEC_UNSEC:
+		returnValue = wlan_add_profile(WLAN_SEC_UNSEC, ssidPtr, ssidLen, NULL, 1, 0, 0, 0, 0, 0);
+		break;
+
+	case WLAN_SEC_WEP:
+		returnValue = wlan_add_profile(WLAN_SEC_WEP, ssidPtr, ssidLen, NULL, 1, keyLen, 0, 0, decKeyPtr, 0);
+		break;
+
+	case WLAN_SEC_WPA:
+	case WLAN_SEC_WPA2:
+		returnValue = wlan_add_profile(WLAN_SEC_WPA2, ssidPtr, ssidLen, NULL, 1, 0x18, 0x1e, 2, decKeyPtr, keyLen);
+		break;
+	}
+
+	if(returnValue != -1)
+	{
+		SPARK_WLAN_AddProfileToFlash(returnValue, securityType, (uint8_t *)ssidPtr, ssidLen, (uint8_t *)decKeyPtr, keyLen);
+	}
+
+	return returnValue;
+}
+
+void SPARK_WLAN_AddProfileToFlash(uint32_t profileIndex, uint32_t securityType,
+									uint8_t *ssidPtr, uint32_t ssidLen,
+									uint8_t *passwordPtr, uint32_t passwordLen)
+{
+	FLASH_Status FLASHStatus = FLASH_COMPLETE;
+	uint8_t profileDataBuffer[INTERNAL_FLASH_PAGE_SIZE];
+	uint8_t *pProfileDataBuffer = profileDataBuffer;
+	uint32_t profileFlashAddress = WLAN_PROFILE_FLASH_ADDRESS;
+	uint32_t profileDataIterator = INTERNAL_FLASH_PAGE_SIZE >> 2;
+
+	/* Read the WLAN Profile Flash Page into memory */
+	while (profileDataIterator--)
+	{
+		/* Read profile data from Internal Flash memory */
+		*((uint32_t *)pProfileDataBuffer) = (*(__IO uint32_t*) profileFlashAddress);
+		pProfileDataBuffer += 4;
+		profileFlashAddress += 4;
+	}
+
+	//profileIndex indicates the total count of profile, so storing at 0th location in Buffer
+	profileDataBuffer[0] = profileIndex;							//1 byte
+	//Store the profile data in the buffer based on profile index
+	int index = ((profileIndex - 1) * SMART_CONFIG_PROFILE_SIZE) + 1;
+	profileDataBuffer[index] = (uint8_t)securityType;				//1 byte
+	index += 1;
+	memcpy(&profileDataBuffer[index], ssidPtr, ssidLen);			//32 bytes
+	index += 32;
+	memcpy(&profileDataBuffer[index], passwordPtr, passwordLen);	//32 bytes
+	index += 32;
+	profileDataBuffer[index] = (uint8_t)ssidLen;					//1 byte
+	index += 1;
+	profileDataBuffer[index] = (uint8_t)passwordLen;				//1 byte
+
+	/* Unlock the Flash Program Erase Controller */
+	FLASH_Unlock();
+
+	/* Clear All pending flags */
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+	/* Erase the Internal Flash page */
+	FLASHStatus = FLASH_ErasePage(WLAN_PROFILE_FLASH_ADDRESS);
+	while(FLASHStatus != FLASH_COMPLETE);
+
+	pProfileDataBuffer = profileDataBuffer;
+	profileFlashAddress = WLAN_PROFILE_FLASH_ADDRESS;
+	profileDataIterator = INTERNAL_FLASH_PAGE_SIZE >> 2;
+	/* Program Profile Data Buffer to Flash */
+	while (profileDataIterator-- && (FLASHStatus == FLASH_COMPLETE))
+	{
+		/* Program profile data to Internal Flash memory */
+		FLASHStatus = FLASH_ProgramWord(profileFlashAddress, *((uint32_t *)pProfileDataBuffer));
+		pProfileDataBuffer += 4;
+		profileFlashAddress += 4;
+	}
+
+	/* Locks the FLASH Program Erase Controller */
+	FLASH_Lock();
+}
+
+void SPARK_WLAN_ApplyProfilefromFlash(void)
+{
+	uint8_t profileDataBuffer[INTERNAL_FLASH_PAGE_SIZE];
+	uint8_t *pProfileDataBuffer = profileDataBuffer;
+	uint32_t profileFlashAddress = WLAN_PROFILE_FLASH_ADDRESS;
+	uint32_t profileDataIterator = INTERNAL_FLASH_PAGE_SIZE >> 2;
+
+	/* Read the WLAN Profile Flash Page into memory */
+	while (profileDataIterator--)
+	{
+		/* Read profile data from Internal Flash memory */
+		*((uint32_t *)pProfileDataBuffer) = (*(__IO uint32_t*) profileFlashAddress);
+		pProfileDataBuffer += 4;
+		profileFlashAddress += 4;
+	}
+
+	uint8_t totalProfileCount, securityType;
+	uint8_t *ssidPtr, *passwordPtr;
+	uint8_t ssidLen, passwordLen;
+
+	totalProfileCount = profileDataBuffer[0];
+	for (int i = 0 ; i < totalProfileCount ; i++)
+	{
+		int index = (i * SMART_CONFIG_PROFILE_SIZE) + 1;
+		securityType = profileDataBuffer[index];
+		index += 1;
+		memcpy(ssidPtr, &profileDataBuffer[index], ssidLen);
+		index += 32;
+		memcpy(passwordPtr, &profileDataBuffer[index], passwordLen);
+		index += 32;
+		ssidLen = profileDataBuffer[index];
+		index += 1;
+		passwordLen = profileDataBuffer[index];
+
+		// add the profile
+		int	wlan_profile_index;
+		switch (securityType)
+		{
+		case WLAN_SEC_UNSEC:
+			wlan_profile_index = wlan_add_profile(WLAN_SEC_UNSEC, ssidPtr, ssidLen, NULL, 1, 0, 0, 0, 0, 0);
+			break;
+
+		case WLAN_SEC_WEP:
+			wlan_profile_index = wlan_add_profile(WLAN_SEC_WEP, ssidPtr, ssidLen, NULL, 1, passwordLen, 0, 0, passwordPtr, 0);
+			break;
+
+		case WLAN_SEC_WPA:
+		case WLAN_SEC_WPA2:
+			wlan_profile_index = wlan_add_profile(WLAN_SEC_WPA2, ssidPtr, ssidLen, NULL, 1, 0x18, 0x1e, 2, passwordPtr, passwordLen);
+			break;
+		}
+	}
+
+	if(wlan_profile_index != -1)
+	{
+		NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = wlan_profile_index + 1;
+	}
+
+	/* write count of wlan profiles stored */
+	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
+
+	/* Configure to connect automatically to the AP retrieved in the Smart config process */
+	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
+
+	NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 1;
+	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
+
+	/* Reset the CC3000 */
+	wlan_stop();
+
+	Delay(100);
+
+	wlan_start(0);
+	SPARK_WLAN_STARTED = 1;
+	SPARK_LED_FADE = 0;
+    LED_SetRGBColor(RGB_COLOR_GREEN);
+	LED_On(LED_RGB);
+
+	/* Mask out all non-required events */
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
 }
