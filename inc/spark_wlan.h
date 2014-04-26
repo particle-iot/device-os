@@ -72,7 +72,8 @@ int SPARK_WLAN_SmartConfigProcess(void);
 void SPARK_WLAN_AddProfileToFlash(uint32_t profileIndex, uint32_t securityType,
 									uint8_t *ssidPtr, uint32_t ssidLen,
 									uint8_t *passwordPtr, uint32_t passwordLen);
-void SPARK_WLAN_ApplyProfilefromFlash(void);
+void SPARK_WLAN_ApplyProfilesfromFlash(void);
+void SPARK_WLAN_ClearProfilesfromFlash(void);
 
 /* Spark Cloud APIs */
 extern int Spark_Connect(void);

@@ -235,6 +235,7 @@ void Start_Smart_Config(void)
 				Delay(50);
 			}
 			recreate_spark_nvmem_file();
+			SPARK_WLAN_ClearProfilesfromFlash();
 			WLAN_DELETE_PROFILES = 0;
 		}
 		else
@@ -418,12 +419,22 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
 
-	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE)
+	if(CC3000_Patch_Updated_SysFlag == 0x0001)
+	{
+		recreate_spark_nvmem_file();
+		SPARK_WLAN_ApplyProfilesfromFlash();
+
+		NVMEM_SPARK_Reset_SysFlag = 0x0000;
+		CC3000_Patch_Updated_SysFlag = 0x0000;
+		Save_SystemFlags();
+	}
+	else if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE)
 	{
 		/* Delete all previously stored wlan profiles */
 		wlan_ioctl_del_profile(255);
 
 		recreate_spark_nvmem_file();
+		SPARK_WLAN_ClearProfilesfromFlash();
 
 		NVMEM_SPARK_Reset_SysFlag = 0x0000;
 		Save_SystemFlags();
@@ -746,29 +757,30 @@ int SPARK_WLAN_SmartConfigProcess(void)
 	}
 
 	// add a profile
+	int	wlan_profile_index;
 	unsigned long securityType = profileArray[profileArray[0] + 2];
 	switch (securityType)
 	{
 	case WLAN_SEC_UNSEC:
-		returnValue = wlan_add_profile(WLAN_SEC_UNSEC, ssidPtr, ssidLen, NULL, 1, 0, 0, 0, 0, 0);
+		wlan_profile_index = wlan_add_profile(WLAN_SEC_UNSEC, ssidPtr, ssidLen, NULL, 1, 0, 0, 0, 0, 0);
 		break;
 
 	case WLAN_SEC_WEP:
-		returnValue = wlan_add_profile(WLAN_SEC_WEP, ssidPtr, ssidLen, NULL, 1, keyLen, 0, 0, decKeyPtr, 0);
+		wlan_profile_index = wlan_add_profile(WLAN_SEC_WEP, ssidPtr, ssidLen, NULL, 1, keyLen, 0, 0, decKeyPtr, 0);
 		break;
 
 	case WLAN_SEC_WPA:
 	case WLAN_SEC_WPA2:
-		returnValue = wlan_add_profile(WLAN_SEC_WPA2, ssidPtr, ssidLen, NULL, 1, 0x18, 0x1e, 2, decKeyPtr, keyLen);
+		wlan_profile_index = wlan_add_profile(WLAN_SEC_WPA2, ssidPtr, ssidLen, NULL, 1, 0x18, 0x1e, 2, decKeyPtr, keyLen);
 		break;
 	}
 
-	if(returnValue != -1)
+	if(wlan_profile_index != -1)
 	{
 		SPARK_WLAN_AddProfileToFlash(returnValue, securityType, (uint8_t *)ssidPtr, ssidLen, (uint8_t *)decKeyPtr, keyLen);
 	}
 
-	return returnValue;
+	return wlan_profile_index;
 }
 
 void SPARK_WLAN_AddProfileToFlash(uint32_t profileIndex, uint32_t securityType,
@@ -790,10 +802,11 @@ void SPARK_WLAN_AddProfileToFlash(uint32_t profileIndex, uint32_t securityType,
 		profileFlashAddress += 4;
 	}
 
-	//profileIndex indicates the total count of profile, so storing at 0th location in Buffer
-	profileDataBuffer[0] = profileIndex;							//1 byte
+	//(profileIndex + 1) indicates the total count of profiles, so storing at 0th location in Buffer
+	uint8_t totalProfileCount = profileIndex + 1;
+	profileDataBuffer[0] = totalProfileCount;						//1 byte
 	//Store the profile data in the buffer based on profile index
-	int index = ((profileIndex - 1) * SMART_CONFIG_PROFILE_SIZE) + 1;
+	int index = (profileIndex * SMART_CONFIG_PROFILE_SIZE) + 1;
 	profileDataBuffer[index] = (uint8_t)securityType;				//1 byte
 	index += 1;
 	memcpy(&profileDataBuffer[index], ssidPtr, ssidLen);			//32 bytes
@@ -830,7 +843,7 @@ void SPARK_WLAN_AddProfileToFlash(uint32_t profileIndex, uint32_t securityType,
 	FLASH_Lock();
 }
 
-void SPARK_WLAN_ApplyProfilefromFlash(void)
+void SPARK_WLAN_ApplyProfilesfromFlash(void)
 {
 	uint8_t profileDataBuffer[INTERNAL_FLASH_PAGE_SIZE];
 	uint8_t *pProfileDataBuffer = profileDataBuffer;
@@ -850,15 +863,21 @@ void SPARK_WLAN_ApplyProfilefromFlash(void)
 	uint8_t *ssidPtr, *passwordPtr;
 	uint8_t ssidLen, passwordLen;
 
+	if(profileDataBuffer[0] == 0xFF)
+	{
+		//Indicates cleared wlan profiles so do not proceed
+		return;
+	}
+
 	totalProfileCount = profileDataBuffer[0];
 	for (int i = 0 ; i < totalProfileCount ; i++)
 	{
 		int index = (i * SMART_CONFIG_PROFILE_SIZE) + 1;
 		securityType = profileDataBuffer[index];
 		index += 1;
-		memcpy(ssidPtr, &profileDataBuffer[index], ssidLen);
+		ssidPtr = &profileDataBuffer[index];
 		index += 32;
-		memcpy(passwordPtr, &profileDataBuffer[index], passwordLen);
+		passwordPtr = &profileDataBuffer[index];
 		index += 32;
 		ssidLen = profileDataBuffer[index];
 		index += 1;
@@ -910,4 +929,22 @@ void SPARK_WLAN_ApplyProfilefromFlash(void)
 
 	/* Mask out all non-required events */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
+}
+
+void SPARK_WLAN_ClearProfilesfromFlash(void)
+{
+	FLASH_Status FLASHStatus = FLASH_COMPLETE;
+
+	/* Unlock the Flash Program Erase Controller */
+	FLASH_Unlock();
+
+	/* Clear All pending flags */
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+	/* Erase the Internal Flash page */
+	FLASHStatus = FLASH_ErasePage(WLAN_PROFILE_FLASH_ADDRESS);
+	while(FLASHStatus != FLASH_COMPLETE);
+
+	/* Locks the FLASH Program Erase Controller */
+	FLASH_Lock();
 }
