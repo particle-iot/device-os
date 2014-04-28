@@ -287,7 +287,7 @@ CoAPMessageType::Enum
         case 'u': return CoAPMessageType::UPDATE_BEGIN;
         case 'c': return CoAPMessageType::CHUNK;
         default: break;
-      }  break;
+      } break;
     case CoAPCode::PUT:
       switch (path)
       {
@@ -297,10 +297,13 @@ CoAPMessageType::Enum
           if (buf[8]) return CoAPMessageType::SIGNAL_START;
           else return CoAPMessageType::SIGNAL_STOP;
         default: break;
-      }  break;
+      } break;
     case CoAPCode::EMPTY:
-      return CoAPMessageType::EMPTY;
-      break;
+      switch (CoAP::type(buf))
+      {
+        case CoAPType::CON: return CoAPMessageType::PING;
+        default: return CoAPMessageType::EMPTY_ACK;
+      } break;
     default:
       break;
   }
@@ -445,10 +448,30 @@ int SparkProtocol::variable_value(unsigned char *buf,
   return buflen;
 }
 
-// Returns true on success, false on sending timeout failure
+// Returns true on success, false on sending timeout or rate-limiting failure
 bool SparkProtocol::send_event(const char *event_name, const char *data,
                                int ttl, EventType::Enum event_type)
 {
+  if (updating)
+  {
+    return false;
+  }
+
+  static system_tick_t recent_event_ticks[5] = {
+    (system_tick_t) -1000, (system_tick_t) -1000,
+    (system_tick_t) -1000, (system_tick_t) -1000,
+    (system_tick_t) -1000 };
+  static int evt_tick_idx = 0;
+
+  system_tick_t now = recent_event_ticks[evt_tick_idx] = callback_millis();
+  evt_tick_idx++;
+  evt_tick_idx %= 5;
+  if (now - recent_event_ticks[evt_tick_idx] < 1000)
+  {
+    // exceeded allowable burst of 4 events per second
+    return false;
+  }
+
   uint16_t msg_id = next_message_id();
   size_t msglen = event(queue + 2, msg_id, event_name, data, ttl, event_type);
 
@@ -810,6 +833,8 @@ bool SparkProtocol::handle_received_message(void)
       int return_value = descriptor.call_function(function_key, function_arg);
 
       // send return value
+      *msg_to_send = 0;
+      *(msg_to_send + 1) = 16;
       function_return(msg_to_send + 2, token, return_value);
       if (0 > blocking_send(msg_to_send, 18))
       {
@@ -891,9 +916,16 @@ bool SparkProtocol::handle_received_message(void)
       unsigned int given_crc = queue[8] << 24 | queue[9] << 16 | queue[10] << 8 | queue[11];
       if (callback_calculate_crc(queue + 13, len - 13 - queue[len - 1]) == given_crc)
       {
-        callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
-        chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
-        ++chunk_index;
+    	unsigned short next_chunk_index = callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
+        if (next_chunk_index > chunk_index)
+        {
+          chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
+        }
+        else
+        {
+          chunk_missed(msg_to_send + 2, next_chunk_index);
+        }
+        chunk_index = next_chunk_index;
       }
       else
       {
@@ -976,6 +1008,18 @@ bool SparkProtocol::handle_received_message(void)
       descriptor.ota_upgrade_status_sent();
       break;
 
+    case CoAPMessageType::PING:
+      *msg_to_send = 0;
+      *(msg_to_send + 1) = 16;
+      empty_ack(msg_to_send + 2, queue[2], queue[3]);
+      if (0 > blocking_send(msg_to_send, 18))
+      {
+        // error
+        return false;
+      }
+      break;
+
+    case CoAPMessageType::EMPTY_ACK:
     case CoAPMessageType::ERROR:
     default:
       ; // drop it on the floor

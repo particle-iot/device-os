@@ -35,3 +35,15 @@ CoAPCode::Enum CoAP::code(const unsigned char *message)
     default: return CoAPCode::ERROR;
   }
 }
+
+CoAPType::Enum CoAP::type(const unsigned char *message)
+{
+  switch (message[0] & 0x30)
+  {
+    case 0x00: return CoAPType::CON;
+    case 0x10: return CoAPType::NON;
+    default:
+    case 0x20: return CoAPType::ACK;
+    case 0x30: return CoAPType::RESET;
+  }
+}
