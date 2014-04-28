@@ -31,6 +31,7 @@ namespace CoAPMessageType {
     UPDATE_BEGIN,
     UPDATE_DONE,
     CHUNK,
+    EVENT,
     KEY_CHANGE,
     SIGNAL_START,
     SIGNAL_STOP,

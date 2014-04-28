@@ -282,6 +282,9 @@ CoAPMessageType::Enum
     case CoAPCode::POST:
       switch (path)
       {
+        case 'E':
+        case 'e':
+          return CoAPMessageType::EVENT;
         case 'h': return CoAPMessageType::HELLO;
         case 'f': return CoAPMessageType::FUNCTION_CALL;
         case 'u': return CoAPMessageType::UPDATE_BEGIN;
@@ -975,6 +978,11 @@ bool SparkProtocol::handle_received_message(void)
 
       updating = false;
       callback_finish_firmware_update();
+      break;
+    case CoAPMessageType::EVENT:
+      // TODO
+      // if a non-null event handler is registered
+      // call it with the event name and data
       break;
     case CoAPMessageType::KEY_CHANGE:
       // TODO
