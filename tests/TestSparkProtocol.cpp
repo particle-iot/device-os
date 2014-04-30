@@ -253,6 +253,165 @@ SUITE(SparkProtocolConstruction)
     CHECK(false);
   }
 
+
+  SUITE(EventLoopEventHandlers)
+  {
+    TEST_FIXTURE(ConstructorFixture, EventLoopCallsOnlyHandlerOnExactlyMatchedEvent)
+    {
+      const char *event_name = "teapot-boiled";
+      uint8_t event[34] = {
+        0x00, 0x20,
+        0x36, 0x0b, 0xed, 0xd1, 0x5a, 0x7b, 0x9b, 0xf0,
+        0xe5, 0x44, 0xd2, 0xce, 0x49, 0x6f, 0x6b, 0xc1,
+        0x27, 0xa7, 0x88, 0x9a, 0xa8, 0x72, 0xd3, 0x5a,
+        0x8f, 0xce, 0x2a, 0x94, 0xbd, 0x49, 0x26, 0xdc };
+      memcpy(message_to_receive, event, 34);
+      spark_protocol.handshake();
+      bytes_received[0] = bytes_sent[0] = 0;
+      event_handlers_called_with[0].event_name[0] = 0;
+
+      spark_protocol.add_event_handler(event_name, mock_event_handler_0);
+      spark_protocol.event_loop();
+      CHECK_EQUAL(event_name, event_handlers_called_with[0].event_name);
+    }
+
+    TEST_FIXTURE(ConstructorFixture, EventLoopCallsOnlyHandlerWithNULLDataOnMatchedEvent)
+    {
+      const char *event_name = "teapot-boiled";
+      uint8_t event[34] = {
+        0x00, 0x20,
+        0x36, 0x0b, 0xed, 0xd1, 0x5a, 0x7b, 0x9b, 0xf0,
+        0xe5, 0x44, 0xd2, 0xce, 0x49, 0x6f, 0x6b, 0xc1,
+        0x27, 0xa7, 0x88, 0x9a, 0xa8, 0x72, 0xd3, 0x5a,
+        0x8f, 0xce, 0x2a, 0x94, 0xbd, 0x49, 0x26, 0xdc };
+      memcpy(message_to_receive, event, 34);
+      spark_protocol.handshake();
+      bytes_received[0] = bytes_sent[0] = 0;
+      event_handlers_called_with[0].data[0] = 0;
+
+      spark_protocol.add_event_handler(event_name, mock_event_handler_0);
+      spark_protocol.event_loop();
+      CHECK_EQUAL("", event_handlers_called_with[0].data);
+    }
+
+    TEST_FIXTURE(ConstructorFixture, EventLoopCallsOnlyHandlerOnPrefixMatchedEvent)
+    {
+      const char *event_name = "teapot";
+      uint8_t event[34] = {
+        0x00, 0x20,
+        0x36, 0x0b, 0xed, 0xd1, 0x5a, 0x7b, 0x9b, 0xf0,
+        0xe5, 0x44, 0xd2, 0xce, 0x49, 0x6f, 0x6b, 0xc1,
+        0x27, 0xa7, 0x88, 0x9a, 0xa8, 0x72, 0xd3, 0x5a,
+        0x8f, 0xce, 0x2a, 0x94, 0xbd, 0x49, 0x26, 0xdc };
+      memcpy(message_to_receive, event, 34);
+      spark_protocol.handshake();
+      bytes_received[0] = bytes_sent[0] = 0;
+      event_handlers_called_with[0].event_name[0] = 0;
+
+      spark_protocol.add_event_handler(event_name, mock_event_handler_0);
+      spark_protocol.event_loop();
+      CHECK_ARRAY_EQUAL(event_name, event_handlers_called_with[0].event_name, strlen(event_name));
+    }
+
+    TEST_FIXTURE(ConstructorFixture, EventLoopCallsFirstHandlerOnMatchedEvent)
+    {
+      const char *event_name = "teapot";
+      uint8_t event[34] = {
+        0x00, 0x20,
+        0x36, 0x0b, 0xed, 0xd1, 0x5a, 0x7b, 0x9b, 0xf0,
+        0xe5, 0x44, 0xd2, 0xce, 0x49, 0x6f, 0x6b, 0xc1,
+        0x27, 0xa7, 0x88, 0x9a, 0xa8, 0x72, 0xd3, 0x5a,
+        0x8f, 0xce, 0x2a, 0x94, 0xbd, 0x49, 0x26, 0xdc };
+      memcpy(message_to_receive, event, 34);
+      spark_protocol.handshake();
+      bytes_received[0] = bytes_sent[0] = 0;
+      event_handlers_called_with[0].event_name[0] = 0;
+
+      spark_protocol.add_event_handler(event_name, mock_event_handler_0);
+      spark_protocol.add_event_handler("foo", mock_event_handler_1);
+      spark_protocol.event_loop();
+      CHECK_ARRAY_EQUAL(event_name, event_handlers_called_with[0].event_name, strlen(event_name));
+    }
+
+    TEST_FIXTURE(ConstructorFixture, EventLoopDoesNotCallSecondHandlerOnMatchedEvent)
+    {
+      const char *event_name = "teapot";
+      uint8_t event[34] = {
+        0x00, 0x20,
+        0x36, 0x0b, 0xed, 0xd1, 0x5a, 0x7b, 0x9b, 0xf0,
+        0xe5, 0x44, 0xd2, 0xce, 0x49, 0x6f, 0x6b, 0xc1,
+        0x27, 0xa7, 0x88, 0x9a, 0xa8, 0x72, 0xd3, 0x5a,
+        0x8f, 0xce, 0x2a, 0x94, 0xbd, 0x49, 0x26, 0xdc };
+      memcpy(message_to_receive, event, 34);
+      spark_protocol.handshake();
+      bytes_received[0] = bytes_sent[0] = 0;
+      event_handlers_called_with[1].event_name[0] = 0;
+
+      spark_protocol.add_event_handler(event_name, mock_event_handler_0);
+      spark_protocol.add_event_handler("foo", mock_event_handler_1);
+      spark_protocol.event_loop();
+      CHECK_EQUAL("", event_handlers_called_with[1].event_name);
+    }
+
+    TEST_FIXTURE(ConstructorFixture, EventLoopCallsSecondHandlerOnMatchedEvent)
+    {
+      const char *event_name = "teapot";
+      uint8_t event[34] = {
+        0x00, 0x20,
+        0x36, 0x0b, 0xed, 0xd1, 0x5a, 0x7b, 0x9b, 0xf0,
+        0xe5, 0x44, 0xd2, 0xce, 0x49, 0x6f, 0x6b, 0xc1,
+        0x27, 0xa7, 0x88, 0x9a, 0xa8, 0x72, 0xd3, 0x5a,
+        0x8f, 0xce, 0x2a, 0x94, 0xbd, 0x49, 0x26, 0xdc };
+      memcpy(message_to_receive, event, 34);
+      spark_protocol.handshake();
+      bytes_received[0] = bytes_sent[0] = 0;
+      event_handlers_called_with[1].event_name[0] = 0;
+
+      spark_protocol.add_event_handler("foo", mock_event_handler_0);
+      spark_protocol.add_event_handler(event_name, mock_event_handler_1);
+      spark_protocol.event_loop();
+      CHECK_ARRAY_EQUAL(event_name, event_handlers_called_with[1].event_name, strlen(event_name));
+    }
+
+    TEST_FIXTURE(ConstructorFixture, EventLoopCallsHandlerWithData)
+    {
+      const char *event_name = "teapot";
+      uint8_t event[34] = {
+        0x00, 0x20,
+        0x36, 0x0b, 0xed, 0xd1, 0x5a, 0x7b, 0x9b, 0xf0,
+        0xe5, 0x44, 0xd2, 0xce, 0x49, 0x6f, 0x6b, 0xc1,
+        0x06, 0x55, 0xfd, 0x63, 0xfb, 0x45, 0x1d, 0x75,
+        0xc9, 0xb7, 0xda, 0xf5, 0x04, 0x7e, 0x4e, 0x68 };
+      memcpy(message_to_receive, event, 34);
+      spark_protocol.handshake();
+      bytes_received[0] = bytes_sent[0] = 0;
+      event_handlers_called_with[1].data[0] = 0;
+
+      spark_protocol.add_event_handler("foo", mock_event_handler_0);
+      spark_protocol.add_event_handler(event_name, mock_event_handler_1);
+      spark_protocol.event_loop();
+      const char *expected = "208F";
+      CHECK_EQUAL(expected, event_handlers_called_with[1].data);
+    }
+
+    TEST_FIXTURE(ConstructorFixture, EventLoopDoesNotCallHandlerOnEventNameShorterThanFilter)
+    {
+      uint8_t event[18] = {
+        0x00, 0x10,
+        0x06, 0x4b, 0x2a, 0x76, 0x21, 0x57, 0x8d, 0x73,
+        0xc9, 0x87, 0x7a, 0xb0, 0xff, 0x18, 0xa8, 0x66 };
+      memcpy(message_to_receive, event, 18);
+      spark_protocol.handshake();
+      bytes_received[0] = bytes_sent[0] = 0;
+      event_handlers_called_with[0].event_name[0] = 0;
+
+      spark_protocol.add_event_handler("teapot-boiled-over", mock_event_handler_0);
+      spark_protocol.event_loop();
+      CHECK_EQUAL("", event_handlers_called_with[0].event_name);
+    }
+  }
+
+
   TEST_FIXTURE(ConstructorFixture, EventLoopCallsSignalWithTrueOnSignalStart)
   {
     uint8_t signal_start[18] = {

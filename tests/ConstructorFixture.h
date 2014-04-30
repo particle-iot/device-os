@@ -29,6 +29,12 @@
 #include <stdint.h>
 #include "spark_protocol.h"
 
+struct EventHandlerCalledWith
+{
+  char event_name[64];
+  char data[64];
+};
+
 struct ConstructorFixture
 {
   static const uint8_t nonce[41];
@@ -57,6 +63,9 @@ struct ConstructorFixture
   static system_tick_t mock_millis(void);
   static bool mock_ota_status_check(void);
   static SparkReturnType::Enum mock_variable_type(const char *variable_key);
+  static EventHandlerCalledWith event_handlers_called_with[2];
+  static void mock_event_handler_0(const char *event_name, const char *data);
+  static void mock_event_handler_1(const char *event_name, const char *data);
 
   ConstructorFixture();
   SparkKeys keys;

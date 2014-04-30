@@ -88,6 +88,8 @@ void SparkProtocol::init(const char *id,
   this->descriptor.was_ota_upgrade_successful = descriptor.was_ota_upgrade_successful;
   this->descriptor.ota_upgrade_status_sent = descriptor.ota_upgrade_status_sent;
 
+  memset(event_handlers, 0, sizeof(event_handlers));
+
   initialized = true;
 }
 
@@ -523,6 +525,24 @@ bool SparkProtocol::send_subscription(const char *event_name,
   queue[1] = buflen & 0xff;
 
   return (0 <= blocking_send(queue, buflen + 2));
+}
+
+bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handler)
+{
+  const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
+  for (int i = 0; i < NUM_HANDLERS; i++)
+  {
+    if (NULL == event_handlers[i].handler)
+    {
+      const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
+      const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);
+      memcpy(event_handlers[i].filter, event_name, FILTER_LEN);
+      memset(event_handlers[i].filter + FILTER_LEN, 0, MAX_FILTER_LEN - FILTER_LEN);
+      event_handlers[i].handler = handler;
+      return true;
+    }
+  }
+  return false;
 }
 
 void SparkProtocol::chunk_received(unsigned char *buf,
@@ -980,10 +1000,60 @@ bool SparkProtocol::handle_received_message(void)
       callback_finish_firmware_update();
       break;
     case CoAPMessageType::EVENT:
-      // TODO
-      // if a non-null event handler is registered
-      // call it with the event name and data
+    {
+      const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(EventHandler);
+      for (int i = 0; i < NUM_HANDLERS; i++)
+      {
+        if (NULL == event_handlers[i].handler)
+        {
+          break;
+        }
+
+        unsigned char *event_name = queue + 6;
+        size_t event_name_length = CoAP::option_decode(&event_name);
+        if (0 == event_name_length)
+        {
+          // error, malformed CoAP option
+          break;
+        }
+
+        const size_t MAX_FILTER_LENGTH = sizeof(event_handlers[i].filter);
+        const size_t filter_length = strnlen(event_handlers[i].filter, MAX_FILTER_LENGTH);
+        if (event_name_length < filter_length)
+        {
+          // does not match this filter, try the next event handler
+          continue;
+        }
+
+        const int cmp = memcmp(event_handlers[i].filter, event_name, filter_length);
+        if (0 == cmp)
+        {
+          unsigned char pad = queue[len - 1];
+          if (0 == pad || 16 < pad)
+          {
+            // ignore bad message, PKCS #7 padding must be 1-16
+            break;
+          }
+          unsigned char *end = queue + len - pad;
+          unsigned char *data = event_name + event_name_length + 1;
+          if (data > end)
+          {
+            data = NULL;
+          }
+          else
+          {
+            // null terminate data string
+            *end = 0;
+          }
+          // null terminate event name string
+          event_name[event_name_length] = 0;
+          event_handlers[i].handler((char *)event_name, (char *)data);
+          break;
+        }
+        // else continue the for loop to try the next handler
+      }
       break;
+    }
     case CoAPMessageType::KEY_CHANGE:
       // TODO
       break;
