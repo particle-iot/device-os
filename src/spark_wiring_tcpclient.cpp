@@ -205,7 +205,7 @@ void TCPClient::stop()
  _sock = MAX_SOCK_NUM;
 }
 
-bool TCPClient::connected() 
+uint8_t TCPClient::connected() 
 {
   // Wlan up, open and not in CLOSE_WAIT or data still in the local buffer
   bool rv = ( 1 == status() || bufferCount()) ? true : false;
