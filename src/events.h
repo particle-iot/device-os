@@ -42,14 +42,6 @@ namespace SubscriptionScope {
   };
 }
 
-typedef void (*EventHandler)(const char *event_name, const char *data);
-
-struct FilteringEventHandler
-{
-  char filter[64];
-  EventHandler handler;
-};
-
 size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
              const char *data, int ttl, EventType::Enum event_type);
 

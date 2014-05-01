@@ -69,6 +69,14 @@ struct SparkCallbacks
   system_tick_t (*millis)();
 };
 
+typedef void (*EventHandler)(const char *event_name, const char *data);
+
+struct FilteringEventHandler
+{
+  char filter[64];
+  EventHandler handler;
+};
+
 class SparkProtocol
 {
   public:
