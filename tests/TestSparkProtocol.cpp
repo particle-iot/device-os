@@ -458,6 +458,19 @@ SUITE(SparkProtocolConstruction)
     CHECK_EQUAL(false, signal_called_with);
   }
 
+  TEST_FIXTURE(ConstructorFixture, EventLoopCallsSetTimeOnTimeResponse)
+  {
+    const uint8_t time[18] = {
+      0x00, 0x10,
+      0xb9, 0xa0, 0xa4, 0x3e, 0x05, 0x4f, 0xbb, 0xb3,
+      0x35, 0x6a, 0xbc, 0x0f, 0x64, 0xe9, 0xbc, 0xa1 };
+    memcpy(message_to_receive, time, 18);
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.event_loop();
+    CHECK_EQUAL(1398367917, set_time_called_with);
+  }
+
   TEST(IsInitializedIsFalse)
   {
     SparkProtocol spark_protocol;
@@ -592,5 +605,17 @@ SUITE(SparkProtocolConstruction)
     bool second_burst_success = success[0] && success[1] && success[2] && success[3];
 
     CHECK(first_burst_success && second_burst_success);
+  }
+
+  TEST_FIXTURE(ConstructorFixture, TimeRequestMatchesOpenSSL)
+  {
+    const uint8_t expected[] = {
+      0x00, 0x10,
+      0x49, 0x36, 0x08, 0xa8, 0x38, 0xfd, 0xb8, 0x09,
+      0xa5, 0xf2, 0x86, 0x56, 0xdc, 0xf8, 0x1f, 0x8e };
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.send_time_request();
+    CHECK_ARRAY_EQUAL(expected, sent_buf_0, 18);
   }
 }

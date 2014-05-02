@@ -32,6 +32,7 @@ CoAPCode::Enum CoAP::code(const unsigned char *message)
     case 0x01: return CoAPCode::GET;
     case 0x02: return CoAPCode::POST;
     case 0x03: return CoAPCode::PUT;
+    case 0x45: return CoAPCode::CONTENT;
     default: return CoAPCode::ERROR;
   }
 }

@@ -63,6 +63,8 @@ struct ConstructorFixture
   static system_tick_t mock_millis(void);
   static bool mock_ota_status_check(void);
   static SparkReturnType::Enum mock_variable_type(const char *variable_key);
+  static void mock_set_time(time_t t);
+  static time_t set_time_called_with;
   static EventHandlerCalledWith event_handlers_called_with[2];
   static void mock_event_handler_0(const char *event_name, const char *data);
   static void mock_event_handler_1(const char *event_name, const char *data);

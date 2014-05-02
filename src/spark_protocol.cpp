@@ -77,6 +77,7 @@ void SparkProtocol::init(const char *id,
   callback_save_firmware_chunk = callbacks.save_firmware_chunk;
   callback_signal = callbacks.signal;
   callback_millis = callbacks.millis;
+  callback_set_time = callbacks.set_time;
 
   this->descriptor.num_functions = descriptor.num_functions;
   this->descriptor.copy_function_key = descriptor.copy_function_key;
@@ -309,6 +310,8 @@ CoAPMessageType::Enum
         case CoAPType::CON: return CoAPMessageType::PING;
         default: return CoAPMessageType::EMPTY_ACK;
       } break;
+    case CoAPCode::CONTENT:
+      return CoAPMessageType::TIME;
     default:
       break;
   }
@@ -479,17 +482,41 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
 
   uint16_t msg_id = next_message_id();
   size_t msglen = event(queue + 2, msg_id, event_name, data, ttl, event_type);
+  size_t wrapped_len = wrap(queue, msglen);
 
-  size_t buflen = (msglen & ~15) + 16;
-  char pad = buflen - msglen;
-  memset(queue + 2 + msglen, pad, pad); // PKCS #7 padding
+  return (0 <= blocking_send(queue, wrapped_len));
+}
 
-  encrypt(queue + 2, buflen);
+size_t SparkProtocol::time_request(unsigned char *buf)
+{
+  unsigned char *p = buf;
 
-  queue[0] = (buflen >> 8) & 0xff;
-  queue[1] = buflen & 0xff;
+  *p++ = 0x41; // Confirmable, one-byte token
+  *p++ = 0x01; // GET request
 
-  return (0 <= blocking_send(queue, buflen + 2));
+  uint16_t msg_id = next_message_id();
+  *p++ = msg_id >> 8;
+  *p++ = msg_id & 0xff;
+
+  *p++ = next_token();
+  *p++ = 0xb1; // One-byte, Uri-Path option
+  *p++ = 't';
+
+  return p - buf;
+}
+
+// returns true on success, false on failure
+bool SparkProtocol::send_time_request(void)
+{
+  if (updating)
+  {
+    return false;
+  }
+
+  size_t msglen = time_request(queue + 2);
+  size_t wrapped_len = wrap(queue, msglen);
+
+  return (0 <= blocking_send(queue, wrapped_len));
 }
 
 bool SparkProtocol::send_subscription(const char *event_name, const char *device_id)
@@ -777,12 +804,26 @@ ProtocolState::Enum SparkProtocol::state()
 
 /********** Private methods **********/
 
+size_t SparkProtocol::wrap(unsigned char *buf, size_t msglen)
+{
+  size_t buflen = (msglen & ~15) + 16;
+  char pad = buflen - msglen;
+  memset(buf + 2 + msglen, pad, pad); // PKCS #7 padding
+
+  encrypt(buf + 2, buflen);
+
+  buf[0] = (buflen >> 8) & 0xff;
+  buf[1] = buflen & 0xff;
+
+  return buflen + 2;
+}
+
 bool SparkProtocol::handle_received_message(void)
 {
   last_message_millis = callback_millis();
   expecting_ping_ack = false;
   int len = queue[0] << 8 | queue[1];
-  if (len > (int)arraySize(queue)) { // Todo add sanity check on data i.e. CRC
+  if (len > QUEUE_SIZE) { // TODO add sanity check on data, e.g. CRC
       return false;
   }
   if (0 > blocking_receive(queue, len))
@@ -1094,6 +1135,10 @@ bool SparkProtocol::handle_received_message(void)
       descriptor.ota_upgrade_status_sent();
       break;
 
+    case CoAPMessageType::TIME:
+      callback_set_time(queue[6] << 24 | queue[7] << 16 | queue[8] << 8 | queue[9]);
+      break;
+
     case CoAPMessageType::PING:
       *msg_to_send = 0;
       *(msg_to_send + 1) = 16;
@@ -1118,6 +1163,11 @@ bool SparkProtocol::handle_received_message(void)
 unsigned short SparkProtocol::next_message_id()
 {
   return ++_message_id;
+}
+
+unsigned char SparkProtocol::next_token()
+{
+  return ++_token;
 }
 
 void SparkProtocol::encrypt(unsigned char *buf, int length)
@@ -1165,6 +1215,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
     memcpy(iv_receive, credentials + 16, 16);
     memcpy(salt,       credentials + 32,  8);
     _message_id = *(credentials + 32) << 8 | *(credentials + 33);
+    _token = *(credentials + 34);
 
     return 0;
   }

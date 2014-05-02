@@ -38,6 +38,7 @@ namespace CoAPMessageType {
     KEY_CHANGE,
     SIGNAL_START,
     SIGNAL_STOP,
+    TIME,
     EMPTY_ACK,
     PING,
     ERROR
@@ -50,6 +51,7 @@ namespace CoAPCode {
     POST,
     PUT,
     EMPTY,
+    CONTENT,
     ERROR
   };
 }
