@@ -1034,14 +1034,22 @@ bool SparkProtocol::handle_received_message(void)
             // ignore bad message, PKCS #7 padding must be 1-16
             break;
           }
+          // end of CoAP message
           unsigned char *end = queue + len - pad;
-          unsigned char *data = event_name + event_name_length + 1;
-          if (data > end)
+
+          unsigned char *next = event_name + event_name_length;
+          if (end > next && 0x30 == (*next & 0xf0))
           {
-            data = NULL;
+            // Max-Age option is next, which we ignore
+            size_t next_len = CoAP::option_decode(&next);
+            next += next_len;
           }
-          else
+
+          unsigned char *data = NULL;
+          if (end > next && 0xff == *next)
           {
+            // payload is next
+            data = next + 1;
             // null terminate data string
             *end = 0;
           }

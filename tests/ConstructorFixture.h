@@ -48,7 +48,7 @@ struct ConstructorFixture
   static uint8_t sent_buf_1[256];
   static int mock_send(const unsigned char *buf, int buflen);
   static int mock_receive(unsigned char *buf, int buflen);
-  static uint8_t message_to_receive[34];
+  static uint8_t message_to_receive[50];
   static bool function_called;
   static int mock_num_functions(void);
   static void mock_copy_function_key(char *destination, int function_index);

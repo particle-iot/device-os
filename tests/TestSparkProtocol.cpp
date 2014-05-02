@@ -409,6 +409,26 @@ SUITE(SparkProtocolConstruction)
       spark_protocol.event_loop();
       CHECK_EQUAL("", event_handlers_called_with[0].event_name);
     }
+
+    TEST_FIXTURE(ConstructorFixture, EventLoopParsesMaxAgeOptionOnMatchedEvent)
+    {
+      uint8_t event[50] = {
+        0x00, 0x30,
+        0x3a, 0x5f, 0x86, 0xfd, 0x82, 0xc3, 0x20, 0x87,
+        0xc4, 0x92, 0x81, 0xaf, 0x80, 0xd6, 0x95, 0x1b,
+        0xf3, 0x58, 0x49, 0x07, 0xf4, 0x9d, 0xd6, 0x51,
+        0x9b, 0x9d, 0x70, 0x19, 0x5b, 0x3d, 0x17, 0x8f,
+        0xb0, 0x62, 0xf5, 0x3f, 0xac, 0x42, 0xe4, 0xda,
+        0x4d, 0xa9, 0xd6, 0xe2, 0x98, 0x54, 0xb0, 0x20 };
+      memcpy(message_to_receive, event, 50);
+      spark_protocol.handshake();
+      bytes_received[0] = bytes_sent[0] = 0;
+      event_handlers_called_with[0].event_name[0] = 0;
+
+      spark_protocol.add_event_handler("teacup", mock_event_handler_0);
+      spark_protocol.event_loop();
+      CHECK_EQUAL("teacup-overflow", event_handlers_called_with[0].event_name);
+    }
   }
 
 
