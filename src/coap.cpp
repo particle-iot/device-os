@@ -47,3 +47,31 @@ CoAPType::Enum CoAP::type(const unsigned char *message)
     case 0x30: return CoAPType::RESET;
   }
 }
+
+size_t CoAP::option_decode(unsigned char **option)
+{
+  unsigned char nibble = **option & 0x0f;
+  size_t option_length;
+  if (13 > nibble)
+  {
+    option_length = nibble;
+    (*option)++;
+  }
+  else if (13 == nibble)
+  {
+    (*option)++;
+    option_length = **option + 13;
+    (*option)++;
+  }
+  else if (14 == nibble)
+  {
+    option_length = ((*(*option + 1) << 8) | *(*option + 2)) + 269;
+    (*option) += 3;
+  }
+  else
+  {
+    // 15 == nibble, reserved value in CoAP spec
+    option_length = 0;
+  }
+  return option_length;
+}
