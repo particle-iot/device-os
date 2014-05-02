@@ -29,6 +29,12 @@
 #include <stdint.h>
 #include "spark_protocol.h"
 
+struct EventHandlerCalledWith
+{
+  char event_name[64];
+  char data[64];
+};
+
 struct ConstructorFixture
 {
   static const uint8_t nonce[41];
@@ -42,7 +48,7 @@ struct ConstructorFixture
   static uint8_t sent_buf_1[256];
   static int mock_send(const unsigned char *buf, int buflen);
   static int mock_receive(unsigned char *buf, int buflen);
-  static uint8_t message_to_receive[34];
+  static uint8_t message_to_receive[50];
   static bool function_called;
   static int mock_num_functions(void);
   static void mock_copy_function_key(char *destination, int function_index);
@@ -59,6 +65,9 @@ struct ConstructorFixture
   static SparkReturnType::Enum mock_variable_type(const char *variable_key);
   static void mock_set_time(time_t t);
   static time_t set_time_called_with;
+  static EventHandlerCalledWith event_handlers_called_with[2];
+  static void mock_event_handler_0(const char *event_name, const char *data);
+  static void mock_event_handler_1(const char *event_name, const char *data);
 
   ConstructorFixture();
   SparkKeys keys;

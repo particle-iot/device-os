@@ -89,6 +89,8 @@ void SparkProtocol::init(const char *id,
   this->descriptor.was_ota_upgrade_successful = descriptor.was_ota_upgrade_successful;
   this->descriptor.ota_upgrade_status_sent = descriptor.ota_upgrade_status_sent;
 
+  memset(event_handlers, 0, sizeof(event_handlers));
+
   initialized = true;
 }
 
@@ -283,6 +285,9 @@ CoAPMessageType::Enum
     case CoAPCode::POST:
       switch (path)
       {
+        case 'E':
+        case 'e':
+          return CoAPMessageType::EVENT;
         case 'h': return CoAPMessageType::HELLO;
         case 'f': return CoAPMessageType::FUNCTION_CALL;
         case 'u': return CoAPMessageType::UPDATE_BEGIN;
@@ -512,6 +517,59 @@ bool SparkProtocol::send_time_request(void)
   size_t wrapped_len = wrap(queue, msglen);
 
   return (0 <= blocking_send(queue, wrapped_len));
+}
+
+bool SparkProtocol::send_subscription(const char *event_name, const char *device_id)
+{
+  uint16_t msg_id = next_message_id();
+  size_t msglen = subscription(queue + 2, msg_id, event_name, device_id);
+
+  size_t buflen = (msglen & ~15) + 16;
+  char pad = buflen - msglen;
+  memset(queue + 2 + msglen, pad, pad); // PKCS #7 padding
+
+  encrypt(queue + 2, buflen);
+
+  queue[0] = (buflen >> 8) & 0xff;
+  queue[1] = buflen & 0xff;
+
+  return (0 <= blocking_send(queue, buflen + 2));
+}
+
+bool SparkProtocol::send_subscription(const char *event_name,
+                                      SubscriptionScope::Enum scope)
+{
+  uint16_t msg_id = next_message_id();
+  size_t msglen = subscription(queue + 2, msg_id, event_name, scope);
+
+  size_t buflen = (msglen & ~15) + 16;
+  char pad = buflen - msglen;
+  memset(queue + 2 + msglen, pad, pad); // PKCS #7 padding
+
+  encrypt(queue + 2, buflen);
+
+  queue[0] = (buflen >> 8) & 0xff;
+  queue[1] = buflen & 0xff;
+
+  return (0 <= blocking_send(queue, buflen + 2));
+}
+
+bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handler)
+{
+  const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
+  for (int i = 0; i < NUM_HANDLERS; i++)
+  {
+    if (NULL == event_handlers[i].handler)
+    {
+      const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
+      const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);
+      memcpy(event_handlers[i].filter, event_name, FILTER_LEN);
+      memset(event_handlers[i].filter + FILTER_LEN, 0, MAX_FILTER_LEN - FILTER_LEN);
+      event_handlers[i].handler = handler;
+      return true;
+    }
+  }
+  return false;
 }
 
 void SparkProtocol::chunk_received(unsigned char *buf,
@@ -982,6 +1040,69 @@ bool SparkProtocol::handle_received_message(void)
       updating = false;
       callback_finish_firmware_update();
       break;
+    case CoAPMessageType::EVENT:
+    {
+      const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(EventHandler);
+      for (int i = 0; i < NUM_HANDLERS; i++)
+      {
+        if (NULL == event_handlers[i].handler)
+        {
+          break;
+        }
+
+        unsigned char *event_name = queue + 6;
+        size_t event_name_length = CoAP::option_decode(&event_name);
+        if (0 == event_name_length)
+        {
+          // error, malformed CoAP option
+          break;
+        }
+
+        const size_t MAX_FILTER_LENGTH = sizeof(event_handlers[i].filter);
+        const size_t filter_length = strnlen(event_handlers[i].filter, MAX_FILTER_LENGTH);
+        if (event_name_length < filter_length)
+        {
+          // does not match this filter, try the next event handler
+          continue;
+        }
+
+        const int cmp = memcmp(event_handlers[i].filter, event_name, filter_length);
+        if (0 == cmp)
+        {
+          unsigned char pad = queue[len - 1];
+          if (0 == pad || 16 < pad)
+          {
+            // ignore bad message, PKCS #7 padding must be 1-16
+            break;
+          }
+          // end of CoAP message
+          unsigned char *end = queue + len - pad;
+
+          unsigned char *next = event_name + event_name_length;
+          if (end > next && 0x30 == (*next & 0xf0))
+          {
+            // Max-Age option is next, which we ignore
+            size_t next_len = CoAP::option_decode(&next);
+            next += next_len;
+          }
+
+          unsigned char *data = NULL;
+          if (end > next && 0xff == *next)
+          {
+            // payload is next
+            data = next + 1;
+            // null terminate data string
+            *end = 0;
+          }
+          // null terminate event name string
+          event_name[event_name_length] = 0;
+          event_handlers[i].handler((char *)event_name, (char *)data);
+          break;
+        }
+        // else continue the for loop to try the next handler
+      }
+      break;
+    }
     case CoAPMessageType::KEY_CHANGE:
       // TODO
       break;

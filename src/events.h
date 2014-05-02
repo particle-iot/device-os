@@ -35,8 +35,29 @@ namespace EventType {
   };
 }
 
+namespace SubscriptionScope {
+  enum Enum {
+    MY_DEVICES,
+    FIREHOSE
+  };
+}
+
+typedef void (*EventHandler)(const char *event_name, const char *data);
+
+struct FilteringEventHandler
+{
+  char filter[64];
+  EventHandler handler;
+};
+
 size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
              const char *data, int ttl, EventType::Enum event_type);
+
+size_t subscription(uint8_t buf[], uint16_t message_id,
+                    const char *event_name, const char *device_id);
+
+size_t subscription(uint8_t buf[], uint16_t message_id,
+                    const char *event_name, SubscriptionScope::Enum scope);
 
 size_t event_name_uri_path(uint8_t buf[], const char *name, size_t name_len);
 

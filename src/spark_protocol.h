@@ -116,6 +116,9 @@ class SparkProtocol
                        const void *return_value, int length);
     bool send_event(const char *event_name, const char *data,
                     int ttl, EventType::Enum event_type);
+    bool send_subscription(const char *event_name, const char *device_id);
+    bool send_subscription(const char *event_name, SubscriptionScope::Enum scope);
+    bool add_event_handler(const char *event_name, EventHandler handler);
     size_t time_request(unsigned char *buf);
     bool send_time_request(void);
     void chunk_received(unsigned char *buf, unsigned char token,
@@ -150,6 +153,7 @@ class SparkProtocol
     void (*callback_signal)(bool on);
     system_tick_t (*callback_millis)();
     void (*callback_set_time)(time_t t);
+    FilteringEventHandler event_handlers[4];
 
     SparkDescriptor descriptor;
 
