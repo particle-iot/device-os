@@ -127,7 +127,7 @@ int ConstructorFixture::bytes_received[2] = { 0, 0 };
 uint8_t ConstructorFixture::sent_buf_0[256];
 uint8_t ConstructorFixture::sent_buf_1[256];
 
-uint8_t ConstructorFixture::message_to_receive[50];
+uint8_t ConstructorFixture::message_to_receive[66];
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
 bool ConstructorFixture::signal_called_with = false;
