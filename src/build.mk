@@ -31,6 +31,7 @@ CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_string.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_tcpclient.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_tcpserver.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_time.cpp
+CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_tone.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_udp.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_usartserial.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_usbserial.cpp

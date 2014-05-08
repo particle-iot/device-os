@@ -43,6 +43,7 @@
 #include "spark_wiring_tcpserver.h"
 #include "spark_wiring_udp.h"
 #include "spark_wiring_time.h"
+#include "spark_wiring_tone.h"
 #include "spark_wiring_eeprom.h"
 
 #endif /* APPLICATION_H_ */
