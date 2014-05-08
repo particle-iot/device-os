@@ -26,6 +26,7 @@
 #ifndef __SPARK_PROTOCOL_H
 #define __SPARK_PROTOCOL_H
 
+#include <time.h>
 #include "spark_descriptor.h"
 #include "coap.h"
 #include "events.h"
@@ -67,6 +68,7 @@ struct SparkCallbacks
   unsigned short (*save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
   void (*signal)(bool on);
   system_tick_t (*millis)();
+  void (*set_time)(time_t t);
 };
 
 class SparkProtocol
@@ -114,6 +116,11 @@ class SparkProtocol
                        const void *return_value, int length);
     bool send_event(const char *event_name, const char *data,
                     int ttl, EventType::Enum event_type);
+    bool send_subscription(const char *event_name, const char *device_id);
+    bool send_subscription(const char *event_name, SubscriptionScope::Enum scope);
+    bool add_event_handler(const char *event_name, EventHandler handler);
+    size_t time_request(unsigned char *buf);
+    bool send_time_request(void);
     void chunk_received(unsigned char *buf, unsigned char token,
                         ChunkReceivedCode::Enum code);
     void chunk_missed(unsigned char *buf, unsigned short chunk_index);
@@ -145,6 +152,8 @@ class SparkProtocol
     unsigned short (*callback_save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
     void (*callback_signal)(bool on);
     system_tick_t (*callback_millis)();
+    void (*callback_set_time)(time_t t);
+    FilteringEventHandler event_handlers[4];
 
     SparkDescriptor descriptor;
 
@@ -153,6 +162,7 @@ class SparkProtocol
     unsigned char iv_receive[16];
     unsigned char salt[8];
     unsigned short _message_id;
+    unsigned char _token;
     system_tick_t last_message_millis;
     system_tick_t last_chunk_millis;
     unsigned short chunk_index;
@@ -161,8 +171,10 @@ class SparkProtocol
     bool updating;
     char function_arg[MAX_FUNCTION_ARG_LENGTH];
 
+    size_t wrap(unsigned char *buf, size_t msglen);
     bool handle_received_message(void);
     unsigned short next_message_id();
+    unsigned char next_token();
     void encrypt(unsigned char *buf, int length);
     void separate_response(unsigned char *buf, unsigned char token, unsigned char code);
     inline void empty_ack(unsigned char *buf,

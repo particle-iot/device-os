@@ -127,10 +127,12 @@ int ConstructorFixture::bytes_received[2] = { 0, 0 };
 uint8_t ConstructorFixture::sent_buf_0[256];
 uint8_t ConstructorFixture::sent_buf_1[256];
 
-uint8_t ConstructorFixture::message_to_receive[34];
+uint8_t ConstructorFixture::message_to_receive[66];
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
 bool ConstructorFixture::signal_called_with = false;
+time_t ConstructorFixture::set_time_called_with = -1;
+EventHandlerCalledWith ConstructorFixture::event_handlers_called_with[2];
 
 ConstructorFixture::ConstructorFixture()
 {
@@ -142,6 +144,7 @@ ConstructorFixture::ConstructorFixture()
   callbacks.receive = mock_receive;
   callbacks.signal = mock_signal;
   callbacks.millis = mock_millis;
+  callbacks.set_time = mock_set_time;
   descriptor.num_functions = mock_num_functions;
   descriptor.copy_function_key = mock_copy_function_key;
   descriptor.call_function = mock_call_function;
@@ -312,4 +315,35 @@ SparkReturnType::Enum ConstructorFixture::mock_variable_type(const char *variabl
   const char *prevent_warning;
   prevent_warning = variable_key;
   return SparkReturnType::INT;
+}
+
+void ConstructorFixture::mock_set_time(time_t t)
+{
+  set_time_called_with = t;
+}
+
+void ConstructorFixture::mock_event_handler_0(const char *event_name, const char *data)
+{
+  memcpy(event_handlers_called_with[0].event_name, event_name, strlen(event_name));
+  if (data)
+  {
+    memcpy(event_handlers_called_with[0].data, data, strlen(event_name));
+  }
+  else
+  {
+    event_handlers_called_with[0].data[0] = 0;
+  }
+}
+
+void ConstructorFixture::mock_event_handler_1(const char *event_name, const char *data)
+{
+  memcpy(event_handlers_called_with[1].event_name, event_name, strlen(event_name));
+  if (data)
+  {
+    memcpy(event_handlers_called_with[1].data, data, strlen(event_name));
+  }
+  else
+  {
+    event_handlers_called_with[1].data[0] = 0;
+  }
 }

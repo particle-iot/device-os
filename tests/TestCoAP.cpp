@@ -524,4 +524,97 @@ SUITE(CoAP)
     spark_protocol.presence_announcement(buf, id);
     CHECK_ARRAY_EQUAL(expected, buf, 19);
   }
+
+  TEST(OptionLength12)
+  {
+    unsigned char option[2];
+    option[0] = 12;
+    unsigned char *option_start = &option[0];
+    size_t option_len = CoAP::option_decode(&option_start);
+    size_t expected = 12;
+    CHECK_EQUAL(expected, option_len);
+  }
+
+  TEST(OptionLength12Pointer)
+  {
+    unsigned char option[2];
+    option[0] = 12;
+    unsigned char *option_start = option;
+    CoAP::option_decode(&option_start);
+    CHECK_EQUAL(option + 1, option_start);
+  }
+
+  TEST(OptionLength13)
+  {
+    unsigned char option[3];
+    option[0] = 13;
+    option[1] = 0;
+    unsigned char *option_start = option;
+    size_t option_len = CoAP::option_decode(&option_start);
+    size_t expected = 13;
+    CHECK_EQUAL(expected, option_len);
+  }
+
+  TEST(OptionLength13Pointer)
+  {
+    unsigned char option[3];
+    option[0] = 13;
+    option[1] = 0;
+    unsigned char *option_start = option;
+    CoAP::option_decode(&option_start);
+    CHECK_EQUAL(option + 2, option_start);
+  }
+
+  TEST(OptionLength268)
+  {
+    unsigned char option[3];
+    option[0] = 13;
+    option[1] = 255;
+    unsigned char *option_start = option;
+    size_t option_len = CoAP::option_decode(&option_start);
+    size_t expected = 268;
+    CHECK_EQUAL(expected, option_len);
+  }
+
+  TEST(OptionLength268Pointer)
+  {
+    unsigned char option[3];
+    option[0] = 13;
+    option[1] = 255;
+    unsigned char *option_start = option;
+    CoAP::option_decode(&option_start);
+    CHECK_EQUAL(option + 2, option_start);
+  }
+
+  TEST(OptionLength269)
+  {
+    unsigned char option[4];
+    option[0] = 14;
+    option[1] = 0;
+    option[2] = 0;
+    unsigned char *option_start = option;
+    size_t option_len = CoAP::option_decode(&option_start);
+    size_t expected = 269;
+    CHECK_EQUAL(expected, option_len);
+  }
+
+  TEST(OptionLength269Pointer)
+  {
+    unsigned char option[4];
+    option[0] = 14;
+    option[1] = 0;
+    option[2] = 0;
+    unsigned char *option_start = option;
+    CoAP::option_decode(&option_start);
+    CHECK_EQUAL(option + 3, option_start);
+  }
+
+  TEST(ReservedOptionLengthReturnsZero)
+  {
+    unsigned char option = 15;
+    unsigned char *option_start = &option;
+    size_t option_length = CoAP::option_decode(&option_start);
+    size_t expected = 0;
+    CHECK_EQUAL(expected, option_length);
+  }
 }

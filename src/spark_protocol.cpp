@@ -77,6 +77,7 @@ void SparkProtocol::init(const char *id,
   callback_save_firmware_chunk = callbacks.save_firmware_chunk;
   callback_signal = callbacks.signal;
   callback_millis = callbacks.millis;
+  callback_set_time = callbacks.set_time;
 
   this->descriptor.num_functions = descriptor.num_functions;
   this->descriptor.copy_function_key = descriptor.copy_function_key;
@@ -87,6 +88,8 @@ void SparkProtocol::init(const char *id,
   this->descriptor.get_variable = descriptor.get_variable;
   this->descriptor.was_ota_upgrade_successful = descriptor.was_ota_upgrade_successful;
   this->descriptor.ota_upgrade_status_sent = descriptor.ota_upgrade_status_sent;
+
+  memset(event_handlers, 0, sizeof(event_handlers));
 
   initialized = true;
 }
@@ -282,6 +285,9 @@ CoAPMessageType::Enum
     case CoAPCode::POST:
       switch (path)
       {
+        case 'E':
+        case 'e':
+          return CoAPMessageType::EVENT;
         case 'h': return CoAPMessageType::HELLO;
         case 'f': return CoAPMessageType::FUNCTION_CALL;
         case 'u': return CoAPMessageType::UPDATE_BEGIN;
@@ -304,6 +310,8 @@ CoAPMessageType::Enum
         case CoAPType::CON: return CoAPMessageType::PING;
         default: return CoAPMessageType::EMPTY_ACK;
       } break;
+    case CoAPCode::CONTENT:
+      return CoAPMessageType::TIME;
     default:
       break;
   }
@@ -452,6 +460,11 @@ int SparkProtocol::variable_value(unsigned char *buf,
 bool SparkProtocol::send_event(const char *event_name, const char *data,
                                int ttl, EventType::Enum event_type)
 {
+  if (updating)
+  {
+    return false;
+  }
+
   static system_tick_t recent_event_ticks[5] = {
     (system_tick_t) -1000, (system_tick_t) -1000,
     (system_tick_t) -1000, (system_tick_t) -1000,
@@ -469,6 +482,47 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
 
   uint16_t msg_id = next_message_id();
   size_t msglen = event(queue + 2, msg_id, event_name, data, ttl, event_type);
+  size_t wrapped_len = wrap(queue, msglen);
+
+  return (0 <= blocking_send(queue, wrapped_len));
+}
+
+size_t SparkProtocol::time_request(unsigned char *buf)
+{
+  unsigned char *p = buf;
+
+  *p++ = 0x41; // Confirmable, one-byte token
+  *p++ = 0x01; // GET request
+
+  uint16_t msg_id = next_message_id();
+  *p++ = msg_id >> 8;
+  *p++ = msg_id & 0xff;
+
+  *p++ = next_token();
+  *p++ = 0xb1; // One-byte, Uri-Path option
+  *p++ = 't';
+
+  return p - buf;
+}
+
+// returns true on success, false on failure
+bool SparkProtocol::send_time_request(void)
+{
+  if (updating)
+  {
+    return false;
+  }
+
+  size_t msglen = time_request(queue + 2);
+  size_t wrapped_len = wrap(queue, msglen);
+
+  return (0 <= blocking_send(queue, wrapped_len));
+}
+
+bool SparkProtocol::send_subscription(const char *event_name, const char *device_id)
+{
+  uint16_t msg_id = next_message_id();
+  size_t msglen = subscription(queue + 2, msg_id, event_name, device_id);
 
   size_t buflen = (msglen & ~15) + 16;
   char pad = buflen - msglen;
@@ -480,6 +534,42 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
   queue[1] = buflen & 0xff;
 
   return (0 <= blocking_send(queue, buflen + 2));
+}
+
+bool SparkProtocol::send_subscription(const char *event_name,
+                                      SubscriptionScope::Enum scope)
+{
+  uint16_t msg_id = next_message_id();
+  size_t msglen = subscription(queue + 2, msg_id, event_name, scope);
+
+  size_t buflen = (msglen & ~15) + 16;
+  char pad = buflen - msglen;
+  memset(queue + 2 + msglen, pad, pad); // PKCS #7 padding
+
+  encrypt(queue + 2, buflen);
+
+  queue[0] = (buflen >> 8) & 0xff;
+  queue[1] = buflen & 0xff;
+
+  return (0 <= blocking_send(queue, buflen + 2));
+}
+
+bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handler)
+{
+  const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
+  for (int i = 0; i < NUM_HANDLERS; i++)
+  {
+    if (NULL == event_handlers[i].handler)
+    {
+      const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
+      const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);
+      memcpy(event_handlers[i].filter, event_name, FILTER_LEN);
+      memset(event_handlers[i].filter + FILTER_LEN, 0, MAX_FILTER_LEN - FILTER_LEN);
+      event_handlers[i].handler = handler;
+      return true;
+    }
+  }
+  return false;
 }
 
 void SparkProtocol::chunk_received(unsigned char *buf,
@@ -714,12 +804,26 @@ ProtocolState::Enum SparkProtocol::state()
 
 /********** Private methods **********/
 
+size_t SparkProtocol::wrap(unsigned char *buf, size_t msglen)
+{
+  size_t buflen = (msglen & ~15) + 16;
+  char pad = buflen - msglen;
+  memset(buf + 2 + msglen, pad, pad); // PKCS #7 padding
+
+  encrypt(buf + 2, buflen);
+
+  buf[0] = (buflen >> 8) & 0xff;
+  buf[1] = buflen & 0xff;
+
+  return buflen + 2;
+}
+
 bool SparkProtocol::handle_received_message(void)
 {
   last_message_millis = callback_millis();
   expecting_ping_ack = false;
   int len = queue[0] << 8 | queue[1];
-  if (len > (int)arraySize(queue)) { // Todo add sanity check on data i.e. CRC
+  if (len > QUEUE_SIZE) { // TODO add sanity check on data, e.g. CRC
       return false;
   }
   if (0 > blocking_receive(queue, len))
@@ -936,6 +1040,85 @@ bool SparkProtocol::handle_received_message(void)
       updating = false;
       callback_finish_firmware_update();
       break;
+    case CoAPMessageType::EVENT:
+    {
+      const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(EventHandler);
+      for (int i = 0; i < NUM_HANDLERS; i++)
+      {
+        if (NULL == event_handlers[i].handler)
+        {
+          break;
+        }
+
+        unsigned char pad = queue[len - 1];
+        if (0 == pad || 16 < pad)
+        {
+          // ignore bad message, PKCS #7 padding must be 1-16
+          break;
+        }
+        // end of CoAP message
+        unsigned char *end = queue + len - pad;
+
+        unsigned char *event_name = queue + 6;
+        size_t event_name_length = CoAP::option_decode(&event_name);
+        if (0 == event_name_length)
+        {
+          // error, malformed CoAP option
+          break;
+        }
+
+        unsigned char *next_src = event_name + event_name_length;
+        unsigned char *next_dst = next_src;
+        while (next_src < end && 0x00 == (*next_src & 0xf0))
+        {
+          // there's another Uri-Path option, i.e., event name with slashes
+          size_t option_len = CoAP::option_decode(&next_src);
+          *next_dst++ = '/';
+          if (next_dst != next_src)
+          {
+            // at least one extra byte has been used to encode a CoAP Uri-Path option length
+            memmove(next_dst, next_src, option_len);
+          }
+          next_src += option_len;
+          next_dst += option_len;
+        }
+        event_name_length = next_dst - event_name;
+
+        const size_t MAX_FILTER_LENGTH = sizeof(event_handlers[i].filter);
+        const size_t filter_length = strnlen(event_handlers[i].filter, MAX_FILTER_LENGTH);
+        if (event_name_length < filter_length)
+        {
+          // does not match this filter, try the next event handler
+          continue;
+        }
+
+        const int cmp = memcmp(event_handlers[i].filter, event_name, filter_length);
+        if (0 == cmp)
+        {
+          if (next_src < end && 0x30 == (*next_src & 0xf0))
+          {
+            // Max-Age option is next, which we ignore
+            size_t next_len = CoAP::option_decode(&next_src);
+            next_src += next_len;
+          }
+
+          unsigned char *data = NULL;
+          if (next_src < end && 0xff == *next_src)
+          {
+            // payload is next
+            data = next_src + 1;
+            // null terminate data string
+            *end = 0;
+          }
+          // null terminate event name string
+          event_name[event_name_length] = 0;
+          event_handlers[i].handler((char *)event_name, (char *)data);
+          break;
+        }
+        // else continue the for loop to try the next handler
+      }
+      break;
+    }
     case CoAPMessageType::KEY_CHANGE:
       // TODO
       break;
@@ -968,6 +1151,10 @@ bool SparkProtocol::handle_received_message(void)
       descriptor.ota_upgrade_status_sent();
       break;
 
+    case CoAPMessageType::TIME:
+      callback_set_time(queue[6] << 24 | queue[7] << 16 | queue[8] << 8 | queue[9]);
+      break;
+
     case CoAPMessageType::PING:
       *msg_to_send = 0;
       *(msg_to_send + 1) = 16;
@@ -992,6 +1179,11 @@ bool SparkProtocol::handle_received_message(void)
 unsigned short SparkProtocol::next_message_id()
 {
   return ++_message_id;
+}
+
+unsigned char SparkProtocol::next_token()
+{
+  return ++_token;
 }
 
 void SparkProtocol::encrypt(unsigned char *buf, int length)
@@ -1039,6 +1231,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
     memcpy(iv_receive, credentials + 16, 16);
     memcpy(salt,       credentials + 32,  8);
     _message_id = *(credentials + 32) << 8 | *(credentials + 33);
+    _token = *(credentials + 34);
 
     return 0;
   }

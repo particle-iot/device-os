@@ -22,6 +22,9 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
   */
+
+#include <string.h>
+
 namespace CoAPMessageType {
   enum Enum {
     HELLO,
@@ -31,9 +34,11 @@ namespace CoAPMessageType {
     UPDATE_BEGIN,
     UPDATE_DONE,
     CHUNK,
+    EVENT,
     KEY_CHANGE,
     SIGNAL_START,
     SIGNAL_STOP,
+    TIME,
     EMPTY_ACK,
     PING,
     ERROR
@@ -46,6 +51,7 @@ namespace CoAPCode {
     POST,
     PUT,
     EMPTY,
+    CONTENT,
     ERROR
   };
 }
@@ -64,4 +70,5 @@ class CoAP
   public:
     static CoAPCode::Enum code(const unsigned char *message);
     static CoAPType::Enum type(const unsigned char *message);
+    static size_t option_decode(unsigned char **option);
 };
