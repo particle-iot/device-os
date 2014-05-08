@@ -18,6 +18,7 @@ CPPSRC += $(TARGET_SRC_PATH)/main.cpp
 CPPSRC += $(TARGET_SRC_PATH)/newlib_stubs.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_utilities.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring.cpp
+CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_eeprom.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_i2c.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_interrupts.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_wiring_ipaddress.cpp
