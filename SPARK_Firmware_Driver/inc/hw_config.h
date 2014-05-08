@@ -272,6 +272,7 @@ extern uint16_t CORE_FW_Version_SysFlag;
 extern uint16_t NVMEM_SPARK_Reset_SysFlag;
 extern uint16_t FLASH_OTA_Update_SysFlag;
 extern uint16_t Factory_Reset_SysFlag;
+extern uint16_t CC3000_Patch_Updated_SysFlag;
 
 extern unsigned char wlan_rx_buffer[];
 extern unsigned char wlan_tx_buffer[];
