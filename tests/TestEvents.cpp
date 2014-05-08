@@ -30,6 +30,8 @@ size_t len;
 
 SUITE(Events)
 {
+  /***** publishing *****/
+
   TEST(LengthOfSingleCharEventWithNoDataIs8)
   {
     const size_t expected = 8;
@@ -112,5 +114,118 @@ SUITE(Events)
     len = event(buf, 0x7654, "weather/us/mn/minneapolis",
                 "t:5F,d:-2F,p:15%", 3600, EventType::PUBLIC);
     CHECK_ARRAY_EQUAL(expected, buf, len);
+  }
+
+
+  /***** subscribing *****/
+
+  TEST(LengthOfSubscriptionToOneDeviceFiltered)
+  {
+    const size_t expected = 39;
+    len = subscription(buf, 0x8888, "weather", "53ff73065067544816300187");
+    CHECK_EQUAL(expected, len);
+  }
+
+  TEST(ExpectedBufForSubscriptionToOneDeviceFiltered)
+  {
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x88, 0x88, 0xB1, 'e', 0x07,
+      'w', 'e', 'a', 't', 'h', 'e', 'r', 0xFF,
+      '5','3','f','f','7','3','0','6','5','0','6','7',
+      '5','4','4','8','1','6','3','0','0','1','8','7' };
+    len = subscription(buf, 0x8888, "weather", "53ff73065067544816300187");
+    CHECK_ARRAY_EQUAL(expected, buf, len);
+  }
+
+  TEST(LengthOfSubscriptionToOneDeviceUnfilteredWithNull)
+  {
+    const size_t expected = 31;
+    len = subscription(buf, 0x7000, NULL, "53ff73065067544816300187");
+    CHECK_EQUAL(expected, len);
+  }
+
+  TEST(LengthOfSubscriptionToOneDeviceUnfilteredWithEmptyString)
+  {
+    const size_t expected = 31;
+    len = subscription(buf, 0x7000, "", "53ff73065067544816300187");
+    CHECK_EQUAL(expected, len);
+  }
+
+  TEST(ExpectedBufForSubscriptionToOneDeviceUnfilteredWithNull)
+  {
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x70, 0x00, 0xB1, 'e', 0xFF,
+      '5','3','f','f','7','3','0','6','5','0','6','7',
+      '5','4','4','8','1','6','3','0','0','1','8','7' };
+    len = subscription(buf, 0x7000, NULL, "53ff73065067544816300187");
+    CHECK_ARRAY_EQUAL(expected, buf, len);
+  }
+
+  TEST(ExpectedBufForSubscriptionToOneDeviceUnfilteredWithEmptyString)
+  {
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x70, 0x00, 0xB1, 'e', 0xFF,
+      '5','3','f','f','7','3','0','6','5','0','6','7',
+      '5','4','4','8','1','6','3','0','0','1','8','7' };
+    len = subscription(buf, 0x7000, "", "53ff73065067544816300187");
+    CHECK_ARRAY_EQUAL(expected, buf, len);
+  }
+
+  TEST(LengthOfSubscriptionToMyDevicesFiltered)
+  {
+    const size_t expected = 20;
+    len = subscription(buf, 0x1113, "motion/open", SubscriptionScope::MY_DEVICES);
+    CHECK_EQUAL(expected, len);
+  }
+
+  TEST(ExpectedBufForSubscriptionToMyDevicesFiltered)
+  {
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x11, 0x13, 0xB1, 'e', 0x0B,
+      'm', 'o', 't', 'i', 'o', 'n', '/', 'o', 'p', 'e', 'n',
+      0x41, 'u' };
+    len = subscription(buf, 0x1113, "motion/open", SubscriptionScope::MY_DEVICES);
+    CHECK_ARRAY_EQUAL(expected, buf, len);
+  }
+
+  TEST(LengthOfSubscriptionToMyDevicesUnfiltered)
+  {
+    const size_t expected = 8;
+    len = subscription(buf, 0x1114, NULL, SubscriptionScope::MY_DEVICES);
+    CHECK_EQUAL(expected, len);
+  }
+
+  TEST(ExpectedBufForSubscriptionToMyDevicesUnfiltered)
+  {
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x11, 0x14, 0xB1, 'e', 0x41, 'u' };
+    len = subscription(buf, 0x1114, NULL, SubscriptionScope::MY_DEVICES);
+    CHECK_ARRAY_EQUAL(expected, buf, len);
+  }
+
+  TEST(LengthOfSubscriptionToFirehoseFiltered)
+  {
+    const size_t expected = 34;
+    len = subscription(buf, 0x1115, "China/ShenZhen/FuTianKouAn",
+                       SubscriptionScope::FIREHOSE);
+    CHECK_EQUAL(expected, len);
+  }
+
+  TEST(ExpectedBufForSubscriptionToFirehoseFiltered)
+  {
+    const uint8_t expected[] = {
+      0x40, 0x01, 0x11, 0x15, 0xB1, 'e', 0x0D, 0x0D,
+      'C','h','i','n','a','/','S','h','e','n','Z','h','e','n','/',
+      'F','u','T','i','a','n','K','o','u','A','n' };
+    len = subscription(buf, 0x1115, "China/ShenZhen/FuTianKouAn",
+                       SubscriptionScope::FIREHOSE);
+    CHECK_ARRAY_EQUAL(expected, buf, len);
+  }
+
+  TEST(LengthOfDisallowedFirehoseUnfiltered)
+  {
+    const size_t expected = -1;
+    len = subscription(buf, 0x1116, NULL, SubscriptionScope::FIREHOSE);
+    CHECK_EQUAL(expected, len);
   }
 }
