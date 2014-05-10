@@ -26,8 +26,6 @@
 #ifndef APPLICATION_H_
 #define APPLICATION_H_
 
-#define SPARK_CORE (1)
-
 #include "spark_wiring.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_string.h"
