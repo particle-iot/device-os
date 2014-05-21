@@ -146,7 +146,64 @@ void wifi_add_profile_callback(const char *ssid,
     security_type = WLAN_SEC_UNSEC;
   }
 
-  wlan_profile_index = wlan_add_profile(security_type, (unsigned char *)ssid, strlen(ssid), NULL, 1, 0x18, 0x1e, 2, (unsigned char *)password, strlen(password));
+  // add a profile
+  switch (security_type)
+  {
+  case WLAN_SEC_UNSEC://None
+    {
+      wlan_profile_index = wlan_add_profile(security_type,    // Security type
+        (unsigned char *)ssid,                                // SSID
+        strlen(ssid),                                         // SSID length
+        NULL,                                                 // BSSID
+        1,                                                    // Priority
+        0, 0, 0, 0, 0);
+      
+      break;
+    }
+
+  case WLAN_SEC_WEP://WEP
+    {
+      // Get WEP key from string, needs converting
+      UINT32 keyLen = (strlen(password)/2); // WEP key length in bytes
+      UINT8 decKey[32]; // Longest WEP key I can find is 256-bit, or 32 bytes long
+      char byteStr[3]; byteStr[2] = '\0';
+      
+      for (UINT32 i = 0 ; i < keyLen ; i++) { // Basic loop to convert text-based WEP key to byte array, can definitely be improved
+        byteStr[0] = password[2*i]; byteStr[1] = password[(2*i)+1];
+        decKey[i] = strtoul(byteStr, NULL, 16);
+      }
+      
+      wlan_profile_index = wlan_add_profile(security_type,    // Security type
+        (unsigned char *)ssid,                                // SSID
+        strlen(ssid),                                         // SSID length
+        NULL,                                                 // BSSID
+        1,                                                    // Priority
+        keyLen,                                               // KEY length
+        0,                                                    // KEY index
+        0,
+        decKey,                                               // KEY
+        0);
+        
+      break;
+    }
+
+  case WLAN_SEC_WPA://WPA
+  case WLAN_SEC_WPA2://WPA2
+    {
+      wlan_profile_index = wlan_add_profile(security_type,    // Security type
+        (unsigned char *)ssid,                                // SSID
+        strlen(ssid),                                         // SSID length
+        NULL,                                                 // BSSID
+        1,                                                    // Priority
+        0x18,                                                 // PairwiseCipher
+        0x1e,                                                 // GroupCipher
+        2,                                                    // KEY management
+        (unsigned char *)password,                            // KEY
+        strlen(password));                                    // KEY length
+        
+      break;
+    }
+  }
 
   WLAN_SERIAL_CONFIG_DONE = 1;
 }
