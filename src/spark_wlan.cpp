@@ -158,6 +158,11 @@ void wifi_add_profile_callback(const char *ssid,
         1,                                                    // Priority
         0, 0, 0, 0, 0);
       
+      if(wlan_profile_index != -1)
+      {
+        SPARK_WLAN_AddProfileToFlash(wlan_profile_index, security_type, (uint8_t *)ssid, strlen(ssid), 0, 0);
+      }
+
       break;
     }
 
@@ -184,6 +189,11 @@ void wifi_add_profile_callback(const char *ssid,
         decKey,                                               // KEY
         0);
         
+      if(wlan_profile_index != -1)
+      {
+        SPARK_WLAN_AddProfileToFlash(wlan_profile_index, security_type, (uint8_t *)ssid, strlen(ssid), (uint8_t *)decKey, keyLen);
+      }
+
       break;
     }
 
@@ -201,13 +211,13 @@ void wifi_add_profile_callback(const char *ssid,
         (unsigned char *)password,                            // KEY
         strlen(password));                                    // KEY length
         
+      if(wlan_profile_index != -1)
+      {
+        SPARK_WLAN_AddProfileToFlash(wlan_profile_index, security_type, (uint8_t *)ssid, strlen(ssid), (uint8_t *)password, strlen(password));
+      }
+
       break;
     }
-  }
-
-  if(wlan_profile_index != -1)
-  {
-    SPARK_WLAN_AddProfileToFlash(wlan_profile_index, security_type, (uint8_t *)ssid, strlen(ssid), (uint8_t *)password, strlen(password));
   }
 
   WLAN_SERIAL_CONFIG_DONE = 1;
@@ -476,12 +486,11 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
 
-	if(CC3000_Patch_Updated_SysFlag == 0x0001)
+	if(CC3000_Patch_Updated_SysFlag == 0xABCD)
 	{
 		recreate_spark_nvmem_file();
 		SPARK_WLAN_ApplyProfilesfromFlash();
 
-		NVMEM_SPARK_Reset_SysFlag = 0x0000;
 		CC3000_Patch_Updated_SysFlag = 0x0000;
 		Save_SystemFlags();
 	}
@@ -834,7 +843,7 @@ int SPARK_WLAN_SmartConfigProcess(void)
 
 	if(wlan_profile_index != -1)
 	{
-		SPARK_WLAN_AddProfileToFlash(returnValue, securityType, (uint8_t *)ssidPtr, ssidLen, (uint8_t *)decKeyPtr, keyLen);
+		SPARK_WLAN_AddProfileToFlash(wlan_profile_index, securityType, (uint8_t *)ssidPtr, ssidLen, (uint8_t *)decKeyPtr, keyLen);
 	}
 
 	return wlan_profile_index;
