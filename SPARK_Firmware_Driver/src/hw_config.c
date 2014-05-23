@@ -85,7 +85,6 @@ uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
 uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
 uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
 uint16_t Factory_Reset_SysFlag = 0xFFFF;
-uint16_t CC3000_Patch_Updated_SysFlag = 0xFFFF;
 
 uint32_t WRPR_Value = 0xFFFFFFFF;
 uint32_t Flash_Pages_Protected = 0x0;
@@ -1272,9 +1271,6 @@ void Load_SystemFlags(void)
 
 	Factory_Reset_SysFlag = (*(__IO uint16_t*) Address);
 	Address += 2;
-
-	CC3000_Patch_Updated_SysFlag = (*(__IO uint16_t*) Address);
-	Address += 2;
 }
 
 void Save_SystemFlags(void)
@@ -1317,11 +1313,6 @@ void Save_SystemFlags(void)
 
 	/* Program Factory_Reset_SysFlag */
 	FLASHStatus = FLASH_ProgramHalfWord(Address, Factory_Reset_SysFlag);
-	while(FLASHStatus != FLASH_COMPLETE);
-	Address += 2;
-
-	/* Program CC3000_Patch_Updated_SysFlag */
-	FLASHStatus = FLASH_ProgramHalfWord(Address, CC3000_Patch_Updated_SysFlag);
 	while(FLASHStatus != FLASH_COMPLETE);
 	Address += 2;
 
