@@ -26,11 +26,12 @@
 #ifndef __SPARK_WIRING_TCPCLIENT_H
 #define __SPARK_WIRING_TCPCLIENT_H
 
+#include "spark_wiring_client.h"
 #include "spark_wiring.h"
 
 #define TCPCLIENT_BUF_MAX_SIZE	512
 
-class TCPClient : public Stream {
+class TCPClient : public Client {
 
 public:
 	TCPClient();
@@ -48,7 +49,7 @@ public:
 	virtual int peek();
 	virtual void flush();
 	virtual void stop();
-	virtual bool connected();
+	virtual uint8_t connected();
 	virtual operator bool();
 
 	friend class TCPServer;

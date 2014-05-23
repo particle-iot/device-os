@@ -30,6 +30,7 @@
 #include "main.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_time.h"
+#include "spark_protocol.h"
 
 #define BYTE_N(x,n)						(((x) >> n*8) & 0x000000FF)
 
@@ -67,6 +68,11 @@ typedef enum
 	PUBLIC = 0, PRIVATE = 1
 } Spark_Event_TypeDef;
 
+typedef enum
+{
+  MY_DEVICES
+} Spark_Subscription_Scope_TypeDef;
+
 class RGBClass {
 private:
 	static bool _control;
@@ -89,12 +95,19 @@ public:
 	static void publish(String eventName, String eventData);
 	static void publish(String eventName, String eventData, int ttl);
 	static void publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType);
+	static bool subscribe(const char *eventName, EventHandler handler);
+	static bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope);
+	static bool subscribe(const char *eventName, EventHandler handler, const char *deviceID);
+	static bool subscribe(String eventName, EventHandler handler);
+	static bool subscribe(String eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope);
+	static bool subscribe(String eventName, EventHandler handler, String deviceID);
 	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 	static void sleep(long seconds);
 	static bool connected(void);
 	static int connect(void);
 	static int disconnect(void);
 	static String deviceID(void);
+	static void syncTime(void);
 };
 
 extern RGBClass RGB;
