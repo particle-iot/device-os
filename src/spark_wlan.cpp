@@ -486,12 +486,13 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
 
-	if(CC3000_Patch_Updated_SysFlag == 0xABCD)
+	if(NVMEM_SPARK_Reset_SysFlag == 0xABCD)
 	{
+		/* CC3000 patch successfully applied so re-apply stored wlan profiles from Internal Flash */
 		recreate_spark_nvmem_file();
 		SPARK_WLAN_ApplyProfilesfromFlash();
 
-		CC3000_Patch_Updated_SysFlag = 0x0000;
+		NVMEM_SPARK_Reset_SysFlag = 0x0000;
 		Save_SystemFlags();
 	}
 	else if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE)
