@@ -42,9 +42,9 @@ typedef enum USART_Num_Def {
   USART_TX_RX =0,
   USART_D1_D0
 } USART_Num_Def;
-
 #define TOTAL_USARTS 2
-#define REMAP_NONE 0
+
+#define GPIO_Remap_None 0
 
 typedef struct STM32_USART_Info {
   USART_TypeDef* usart_peripheral;
@@ -58,7 +58,7 @@ typedef struct STM32_USART_Info {
 
   uint32_t usart_pin_remap;
 
-  // Buffer pointers. These need to beglobal for IRQ handler access
+  // Buffer pointers. These need to be global for IRQ handler access
   Ring_Buffer* usart_tx_buffer;
   Ring_Buffer* usart_rx_buffer;
 
@@ -75,10 +75,10 @@ class USARTSerial : public Stream
     bool transmitting;
     Ring_Buffer _rx_buffer;
     Ring_Buffer _tx_buffer;
-    STM32_USART_Info *myUSART;
+    STM32_USART_Info *usartMap; // pointer to USART_MAP[] containing USART peripheral register locations (etc)
 
   public:
-    USARTSerial(STM32_USART_Info *usartMap);
+    USARTSerial(STM32_USART_Info *usartMapPtr);
     virtual ~USARTSerial() {};
     void begin(unsigned long);
     void begin(unsigned long, uint8_t);
@@ -103,9 +103,7 @@ class USARTSerial : public Stream
 
 };
 
-extern USARTSerial Serial1;  // USART2 on PA2/3
-#ifdef __LIB_SERIAL2_H
+extern USARTSerial Serial1; // USART2 on PA2/3 (Spark TX, RX)
 extern USARTSerial Serial2; // USART1 on alternate PB6/7 (Spark D1, D0)
-#endif
 
 #endif

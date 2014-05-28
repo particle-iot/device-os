@@ -5,6 +5,7 @@
 
 // instantiate Serial2
 USARTSerial Serial2(&USART_MAP[USART_D1_D0]);
+
 #endif
 
 
