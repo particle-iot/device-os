@@ -260,6 +260,8 @@ USARTSerial::operator bool() {
 	return true;
 }
 
+// Shared Interrupt Handler for USART2/Serial1 and USART1/Serial2
+// WARNING: This function MUST remain reentrance compliant -- no local static variables etc.
 static void USART_Interrupt_Handler(STM32_USART_Info *usartMap)
 {
   if(USART_GetITStatus(usartMap->usart_peripheral, USART_IT_RXNE) != RESET)
