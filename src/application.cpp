@@ -24,6 +24,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/  
+#include "Serial2.h"
 #include "application.h"
 
 /* Function prototypes -------------------------------------------------------*/
@@ -50,6 +51,9 @@ void setup()
 void loop()
 {
 	//This will run in a loop
+  Serial2.begin(9600);
+  Serial2.write("test\n");
+  delay(500);
 }
 
 /*******************************************************************************

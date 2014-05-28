@@ -39,12 +39,13 @@ typedef struct Ring_Buffer
 } Ring_Buffer;
 
 typedef enum USART_Num_Def {
-  USART_D1_D0 = 0,
-  USART_TX_RX
+  USART_TX_RX =0,
+  USART_D1_D0
 } USART_Num_Def;
 
 #define TOTAL_USARTS 2
 #define REMAP_NONE 0
+
 typedef struct STM32_USART_Info {
   USART_TypeDef* usart_peripheral;
   __IO uint32_t* usart_apbReg;
@@ -62,6 +63,7 @@ typedef struct STM32_USART_Info {
   Ring_Buffer* usart_rx_buffer;
 
 } STM32_USART_Info;
+extern STM32_USART_Info USART_MAP[TOTAL_USARTS];
 
 extern STM32_Pin_Info PIN_MAP[];
 
@@ -73,10 +75,10 @@ class USARTSerial : public Stream
     bool transmitting;
     Ring_Buffer _rx_buffer;
     Ring_Buffer _tx_buffer;
-    int umapIndex; // USART_MAP index
+    STM32_USART_Info *myUSART;
 
   public:
-    USARTSerial(USART_Num_Def usartNum);
+    USARTSerial(STM32_USART_Info *usartMap);
     virtual ~USARTSerial() {};
     void begin(unsigned long);
     void begin(unsigned long, uint8_t);
@@ -102,6 +104,8 @@ class USARTSerial : public Stream
 };
 
 extern USARTSerial Serial1;  // USART2 on PA2/3
+#ifdef __LIB_SERIAL2_H
 extern USARTSerial Serial2; // USART1 on alternate PB6/7 (Spark D1, D0)
+#endif
 
 #endif
