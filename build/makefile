@@ -87,6 +87,7 @@ LDFLAGS += -T../linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-se
 LDFLAGS += -L$(SRC_PATH)/$(LIB_CORE_COMMON_PATH)/build -lcore-common-lib
 LDFLAGS += -L$(SRC_PATH)/$(LIB_CORE_COMMUNICATION_PATH)/build -lcore-communication-lib
 LDFLAGS += -Wl,-Map,$(TARGET).map
+LDFLAGS += --specs=nano.specs -lc -lnosys
 
 # Assember flags
 ASFLAGS =  -g3 -gdwarf-2 -mcpu=cortex-m3 -mthumb 
