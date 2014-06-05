@@ -29,19 +29,56 @@
 
 #include "spark_wiring_stream.h"
 
-struct ring_buffer;
+#define SERIAL_BUFFER_SIZE 64
+
+typedef struct Ring_Buffer
+{
+  unsigned char buffer[SERIAL_BUFFER_SIZE];
+  volatile unsigned int head;
+  volatile unsigned int tail;
+} Ring_Buffer;
+
+typedef enum USART_Num_Def {
+  USART_TX_RX =0,
+  USART_D1_D0
+} USART_Num_Def;
+#define TOTAL_USARTS 2
+
+#define GPIO_Remap_None 0
+
+typedef struct STM32_USART_Info {
+  USART_TypeDef* usart_peripheral;
+  __IO uint32_t* usart_apbReg;
+  uint32_t usart_clock_en; 
+
+  IRQn usart_int_n;
+
+  uint16_t usart_tx_pin;
+  uint16_t usart_rx_pin;
+
+  uint32_t usart_pin_remap;
+
+  // Buffer pointers. These need to be global for IRQ handler access
+  Ring_Buffer* usart_tx_buffer;
+  Ring_Buffer* usart_rx_buffer;
+
+} STM32_USART_Info;
+extern STM32_USART_Info USART_MAP[TOTAL_USARTS];
+
+extern STM32_Pin_Info PIN_MAP[];
 
 class USARTSerial : public Stream
 {
   private:
-	static USART_InitTypeDef USART_InitStructure;
-	static bool USARTSerial_Enabled;
-    ring_buffer *_rx_buffer;
-    ring_buffer *_tx_buffer;
+    static USART_InitTypeDef USART_InitStructure;
+    static bool USARTSerial_Enabled;
     bool transmitting;
+    Ring_Buffer _rx_buffer;
+    Ring_Buffer _tx_buffer;
+    STM32_USART_Info *usartMap; // pointer to USART_MAP[] containing USART peripheral register locations (etc)
 
   public:
-    USARTSerial(ring_buffer *rx_buffer, ring_buffer *tx_buffer);
+    USARTSerial(STM32_USART_Info *usartMapPtr);
     virtual ~USARTSerial() {};
     void begin(unsigned long);
     void begin(unsigned long, uint8_t);
@@ -66,6 +103,7 @@ class USARTSerial : public Stream
 
 };
 
-extern USARTSerial Serial1;
+extern USARTSerial Serial1; // USART2 on PA2/3 (Spark TX, RX)
+extern USARTSerial Serial2; // USART1 on alternate PB6/7 (Spark D1, D0)
 
 #endif
