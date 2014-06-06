@@ -491,7 +491,7 @@ INT32 aes_read_key(UINT8 *key)
 {
 	INT32	returnValue;
 
-	returnValue = nvmem_read(NVMEM_AES128_KEY_FILEID, AES128_KEY_SIZE, 0, key);
+	returnValue = (AES128_KEY_SIZE == nvmem_read(NVMEM_AES128_KEY_FILEID, AES128_KEY_SIZE, 0, key)) ? 0 : -1;
 
 	return returnValue;
 }
