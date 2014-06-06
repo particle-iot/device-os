@@ -69,9 +69,7 @@ uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
 void SPARK_WLAN_Loop(void);
 int SPARK_WLAN_SmartConfigProcess(void);
-void SPARK_WLAN_AddProfileToFlash(uint32_t profileIndex, uint32_t securityType,
-									uint8_t *ssidPtr, uint32_t ssidLen,
-									uint8_t *passwordPtr, uint32_t passwordLen);
+void SPARK_WLAN_AddProfileToFlash(uint8_t profileIndex, uint8_t *profileData);
 void SPARK_WLAN_ApplyProfilesfromFlash(void);
 void SPARK_WLAN_ClearProfilesfromFlash(void);
 
