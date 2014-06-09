@@ -149,12 +149,12 @@ void wifi_add_profile_callback(const char *ssid,
   uint32_t keyLen = strlen(password);
   if (keyLen > 31)
   {
-	  memcpy(keyPtr, password, strlen(password));
+	  memcpy(keyPtr, password, keyLen);
   }
   else
   {
 	  *keyPtr = keyLen;
-	  memcpy((keyPtr + 1), password, strlen(password));
+	  memcpy((keyPtr + 1), password, keyLen);
 	  *(keyPtr + 31) = 0;
   }
   aes_encrypt(keyPtr, (unsigned char *)smartconfigkey);
@@ -873,7 +873,7 @@ void SPARK_WLAN_AddProfileToFlash(uint8_t profileIndex, uint8_t *profileData)
 
 	//(profileIndex + 1) indicates the total count of profiles, so storing at 0th location in Buffer
 	uint8_t totalProfileCount = profileIndex + 1;
-	profileDataBuffer[0] = totalProfileCount;						//1 byte
+	profileDataBuffer[0] = ((0xE << 4) | totalProfileCount);	//1 byte (0xE stands for encrypted)
 	//Store the profile data in the buffer based on profile index
 	int index = (profileIndex * SMART_CONFIG_PROFILE_SIZE) + 1;
 	memcpy((uint8_t *)&profileDataBuffer[index], profileData, SMART_CONFIG_PROFILE_SIZE);
@@ -921,13 +921,13 @@ void SPARK_WLAN_ApplyProfilesfromFlash(void)
 		profileFlashAddress += 4;
 	}
 
-	if(profileDataBuffer[0] == 0xFF)
+	if((profileDataBuffer[0] == 0xFF) || ((profileDataBuffer[0] >> 4) != 0xE))
 	{
-		//Indicates cleared wlan profiles so do not proceed
+		//Indicates cleared wlan profiles or non-encrypted profiles so do not proceed
 		return;
 	}
 
-	uint8_t totalProfileCount = profileDataBuffer[0];
+	uint8_t totalProfileCount = (profileDataBuffer[0] & 0x0F);
 	for (int i = 0 ; i < totalProfileCount ; i++)
 	{
 		uint32_t ssidLen, keyLen;
