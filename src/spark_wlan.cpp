@@ -145,9 +145,19 @@ void wifi_add_profile_callback(const char *ssid,
   profileData[0] = strlen(ssid);
   memcpy(&profileData[1], ssid, strlen(ssid));
   profileData[profileData[0] + 2] = security_type;
-  memcpy(&profileData[profileData[0] + 3], password, strlen(password));
-  aes_encrypt(&profileData[profileData[0] + 3], (unsigned char *)smartconfigkey);
-  //Important : To Do - We are missing something here
+  unsigned char *keyPtr = &profileData[profileData[0] + 3];
+  uint32_t keyLen = strlen(password);
+  if (keyLen > 31)
+  {
+	  memcpy(keyPtr, password, strlen(password));
+  }
+  else
+  {
+	  *keyPtr = keyLen;
+	  memcpy((keyPtr + 1), password, strlen(password));
+	  *(keyPtr + 31) = 0;
+  }
+  aes_encrypt(keyPtr, (unsigned char *)smartconfigkey);
 
   if (0 == password[0]) {
     security_type = WLAN_SEC_UNSEC;
