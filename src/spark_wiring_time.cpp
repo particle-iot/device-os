@@ -326,6 +326,12 @@ void TimeClass::setTime(time_t t)
   }
 }
 
+/* return string representation of the current time */
+String TimeClass::timeStr()
+{
+	return timeStr(now());
+}
+
 /* return string representation for the given time */
 String TimeClass::timeStr(time_t t)
 {
