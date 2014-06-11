@@ -196,7 +196,7 @@ UINT8 nvmem_set_mac_address(UINT8 *mac)
 
 UINT8 nvmem_get_mac_address(UINT8 *mac)
 {
-	return  nvmem_read(NVMEM_MAC_FILEID, MAC_ADDR_LEN, 0, mac);
+	return  (MAC_ADDR_LEN == nvmem_read(NVMEM_MAC_FILEID, MAC_ADDR_LEN, 0, mac)) ? 0 : -1;
 }
 
 //*****************************************************************************
