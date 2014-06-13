@@ -137,4 +137,39 @@ uint32_t NetworkClass::ping(IPAddress remoteIP, uint8_t nTries)
   return result;
 }
 
+void NetworkClass::connect(void)
+{
+  extern void (*announce_presence)(void);
+  if(announce_presence != Multicast_Presence_Announcement)
+  {
+          //Get the setup executed once if not done already
+          SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+          SPARK_WLAN_SETUP = 1;
+  }
+  SPARK_WLAN_SLEEP = 0;   //Logic to call wlan_start() inside SPARK_WLAN_Loop()
+}
+
+void NetworkClass::disconnect(void)
+{
+  SPARK_WLAN_SLEEP = 1;   //Logic to call wlan_stop() inside SPARK_WLAN_Loop()
+}
+
+bool NetworkClass::connecting(void)
+{
+  if(SPARK_WLAN_STARTED && !WLAN_DHCP)
+  {
+    return true;
+  }
+  return false;
+}
+
+bool NetworkClass::ready(void)
+{
+  if(SPARK_WLAN_STARTED && WLAN_DHCP)
+  {
+    return true;
+  }
+  return false;
+}
+
 NetworkClass Network;

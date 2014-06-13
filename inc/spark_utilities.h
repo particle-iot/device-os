@@ -55,6 +55,11 @@
 
 typedef enum
 {
+  AUTOMATIC = 0, SEMI_AUTOMATIC = 1
+} System_Mode_TypeDef;
+
+typedef enum
+{
 	SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1
 } Spark_Sleep_TypeDef;
 
@@ -72,6 +77,14 @@ typedef enum
 {
   MY_DEVICES
 } Spark_Subscription_Scope_TypeDef;
+
+class SystemClass {
+public:
+  static void mode(System_Mode_TypeDef mode);
+  static void factoryReset(void);
+  static void bootloader(void);
+  static void reset(void);
+};
 
 class RGBClass {
 private:
@@ -104,12 +117,14 @@ public:
 	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 	static void sleep(long seconds);
 	static bool connected(void);
-	static int connect(void);
-	static int disconnect(void);
+	static void connect(void);
+	static void disconnect(void);
+        static void process(void);
 	static String deviceID(void);
 	static void syncTime(void);
 };
 
+extern SystemClass System;
 extern RGBClass RGB;
 extern SparkClass Spark;
 
@@ -138,6 +153,7 @@ int userFuncSchedule(const char *funcKey, const char *paramString);
 
 long socket_connect(long sd, const sockaddr *addr, long addrlen);
 
+void init() __attribute__ ((weak));
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 

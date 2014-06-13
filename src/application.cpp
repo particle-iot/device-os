@@ -33,6 +33,12 @@ int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
 /* This function is called once at start up ----------------------------------*/
+void init()
+{
+        System.mode(AUTOMATIC);
+}
+
+/* This function is called once at start up ----------------------------------*/
 void setup()
 {
 	//Setup the Tinker application here

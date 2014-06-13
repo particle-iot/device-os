@@ -85,8 +85,54 @@ static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
 */
 
+SystemClass System;
 RGBClass RGB;
 SparkClass Spark;
+
+void SystemClass::mode(System_Mode_TypeDef mode)
+{
+  //Work in Progress
+  switch(mode)
+  {
+    case AUTOMATIC:
+      SPARK_WLAN_SETUP = 1;
+      SPARK_CLOUD_CONNECT = 1;
+      break;
+
+    case SEMI_AUTOMATIC:
+      SPARK_WLAN_SETUP = 1;
+      SPARK_CLOUD_CONNECT = 0;
+      break;
+  }
+}
+
+void SystemClass::factoryReset(void)
+{
+  //Work in Progress
+  //This method will work only if the Core is supplied
+  //with the latest version of Bootloader
+  Factory_Reset_SysFlag = 0xAAAA;
+  Save_SystemFlags();
+
+  reset();
+}
+
+void SystemClass::bootloader(void)
+{
+  //Work in Progress
+  //The drawback here being it will enter bootloader mode until firmware
+  //is loaded again. Require bootloader changes for proper working.
+  BKP_WriteBackupRegister(BKP_DR10, 0xFFFF);
+  FLASH_OTA_Update_SysFlag = 0xFFFF;
+  Save_SystemFlags();
+
+  reset();
+}
+
+void SystemClass::reset(void)
+{
+  NVIC_SystemReset();
+}
 
 bool RGBClass::_control = false;
 
@@ -324,18 +370,28 @@ bool SparkClass::connected(void)
 		return false;
 }
 
-int SparkClass::connect(void)
+void SparkClass::connect(void)
 {
 	//Schedule Spark's cloud connection and handshake
 	SPARK_CLOUD_CONNECT = 1;
-	return 0;
 }
 
-int SparkClass::disconnect(void)
+void SparkClass::disconnect(void)
 {
 	//Schedule Spark's cloud disconnection
 	SPARK_CLOUD_CONNECT = 0;
-	return 0;
+}
+
+void SparkClass::process(void)
+{
+  //Work in Progress
+#ifdef SPARK_WLAN_ENABLE
+  if(SPARK_WLAN_SETUP)
+  {
+    DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
+    SPARK_WLAN_Loop();
+  }
+#endif
 }
 
 String SparkClass::deviceID(void)

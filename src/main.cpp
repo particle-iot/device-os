@@ -165,6 +165,11 @@ int main(void)
   }
 #endif
 
+  if(NULL != init)
+  {
+    init();
+  }
+
   /* Main loop */
   while (1)
   {

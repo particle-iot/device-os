@@ -93,6 +93,9 @@ extern volatile uint8_t Cloud_Handshake_Error_Count;
 extern volatile system_tick_t spark_loop_total_millis;
 
 extern long sparkSocket;
+
+extern unsigned char wlan_profile_index;
+extern unsigned char NVMEM_Spark_File_Data[];
 }
 
 #endif  /*__SPARK_WLAN_H*/
