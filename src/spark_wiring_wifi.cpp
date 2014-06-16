@@ -27,30 +27,31 @@
 
 void WiFiClass::listen(void)
 {
-  //Work in Progress
+  WLAN_SMART_CONFIG_START = 1;
 }
 
 bool WiFiClass::listening(void)
 {
-  //Work in Progress
+  if (WLAN_SMART_CONFIG_START)
+  {
+    return true;
+  }
+
   return false;
 }
 
 void WiFiClass::setCredentials(const char *ssid)
 {
-  //Work in Progress
   setCredentials(ssid, NULL, UNSEC);
 }
 
 void WiFiClass::setCredentials(const char *ssid, const char *password)
 {
-  //Work in Progress
   setCredentials(ssid, password, WPA2);
 }
 
 void WiFiClass::setCredentials(const char *ssid, const char *password, unsigned long security)
 {
-  //Work in Progress
   if(!SPARK_WLAN_STARTED)
   {
     return;
@@ -130,13 +131,21 @@ void WiFiClass::setCredentials(const char *ssid, const char *password, unsigned 
 
 bool WiFiClass::hasCredentials(void)
 {
-  //Work in Progress
+  if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] != 0)
+  {
+    return true;
+  }
+
   return false;
 }
 
 void WiFiClass::clearCredentials(void)
 {
-  //Work in Progress
+  if(wlan_ioctl_del_profile(255) == 0)
+  {
+    extern void recreate_spark_nvmem_file(void);
+    recreate_spark_nvmem_file();
+  }
 }
 
 //Duplicated as Network.connect()

@@ -32,11 +32,7 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
-/* This function is called once at start up ----------------------------------*/
-void init()
-{
-        System.mode(AUTOMATIC);
-}
+SYSTEM_MODE(AUTOMATIC);
 
 /* This function is called once at start up ----------------------------------*/
 void setup()

@@ -80,7 +80,9 @@ typedef enum
 
 class SystemClass {
 public:
-  static void mode(System_Mode_TypeDef mode);
+  SystemClass();
+  SystemClass(System_Mode_TypeDef mode);
+
   static void factoryReset(void);
   static void bootloader(void);
   static void reset(void);
@@ -124,6 +126,8 @@ public:
 	static void syncTime(void);
 };
 
+#define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
+
 extern SystemClass System;
 extern RGBClass RGB;
 extern SparkClass Spark;
@@ -153,7 +157,6 @@ int userFuncSchedule(const char *funcKey, const char *paramString);
 
 long socket_connect(long sd, const sockaddr *addr, long addrlen);
 
-void init() __attribute__ ((weak));
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 
