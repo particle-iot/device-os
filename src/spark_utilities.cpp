@@ -89,6 +89,8 @@ SystemClass System;
 RGBClass RGB;
 SparkClass Spark;
 
+System_Mode_TypeDef SystemClass::_mode = AUTOMATIC;
+
 SystemClass::SystemClass()
 {
 }
@@ -98,13 +100,25 @@ SystemClass::SystemClass(System_Mode_TypeDef mode)
   switch(mode)
   {
     case AUTOMATIC:
+      _mode = AUTOMATIC;
       SPARK_CLOUD_CONNECT = 1;
       break;
 
     case SEMI_AUTOMATIC:
+      _mode = SEMI_AUTOMATIC;
+      SPARK_CLOUD_CONNECT = 0;
+      break;
+
+    case MANUAL:
+      _mode = MANUAL;
       SPARK_CLOUD_CONNECT = 0;
       break;
   }
+}
+
+System_Mode_TypeDef SystemClass::mode(void)
+{
+  return _mode;
 }
 
 void SystemClass::factoryReset(void)
@@ -386,10 +400,11 @@ void SparkClass::disconnect(void)
 void SparkClass::process(void)
 {
 #ifdef SPARK_WLAN_ENABLE
-  if(SPARK_WLAN_SETUP)
+  if (!Spark_Communication_Loop())
   {
-    DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
-    SPARK_WLAN_Loop();
+    SPARK_FLASH_UPDATE = 0;
+    SPARK_CLOUD_CONNECTED = 0;
+    SPARK_CLOUD_SOCKETED = 0;
   }
 #endif
 }

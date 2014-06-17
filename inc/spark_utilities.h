@@ -55,7 +55,7 @@
 
 typedef enum
 {
-  AUTOMATIC = 0, SEMI_AUTOMATIC = 1
+  AUTOMATIC = 0, SEMI_AUTOMATIC = 1, MANUAL = 2
 } System_Mode_TypeDef;
 
 typedef enum
@@ -79,10 +79,13 @@ typedef enum
 } Spark_Subscription_Scope_TypeDef;
 
 class SystemClass {
+private:
+  static System_Mode_TypeDef _mode;
+
 public:
   SystemClass();
   SystemClass(System_Mode_TypeDef mode);
-
+  static System_Mode_TypeDef mode(void);
   static void factoryReset(void);
   static void bootloader(void);
   static void reset(void);

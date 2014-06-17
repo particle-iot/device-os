@@ -156,7 +156,7 @@ void NetworkClass::disconnect(void)
 
 bool NetworkClass::connecting(void)
 {
-  if(SPARK_WLAN_STARTED && !WLAN_DHCP)
+  if(!WLAN_DHCP)
   {
     return true;
   }
