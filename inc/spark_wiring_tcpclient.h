@@ -29,7 +29,7 @@
 #include "spark_wiring_client.h"
 #include "spark_wiring.h"
 
-#define TCPCLIENT_BUF_MAX_SIZE	512
+#define TCPCLIENT_BUF_MAX_SIZE	128
 
 class TCPClient : public Client {
 
