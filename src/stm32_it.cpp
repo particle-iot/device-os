@@ -46,6 +46,7 @@ extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 
 /* Private function prototypes -----------------------------------------------*/
 void Wiring_ADC1_2_Interrupt_Handler(void) __attribute__ ((weak));
+void Wiring_USART1_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_USART2_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_I2C1_EV_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_I2C1_ER_Interrupt_Handler(void) __attribute__ ((weak));
@@ -185,10 +186,10 @@ void SysTick_Handler(void)
 }
 
 /******************************************************************************/
-/*                 STM32 Peripherals Interrupt Handlers                   */
+/*                 STM32 Peripherals Interrupt Handlers                       */
 /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
 /*  available peripheral interrupt handler's name please refer to the startup */
-/*  file (startup_stm32xxx.S).                                            */
+/*  file (startup_stm32xxx.S).                                                */
 /******************************************************************************/
 
 /*******************************************************************************
@@ -203,6 +204,21 @@ void ADC1_2_IRQHandler(void)
 	if(NULL != Wiring_ADC1_2_Interrupt_Handler)
 	{
 		Wiring_ADC1_2_Interrupt_Handler();
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : USART1_IRQHandler
+ * Description    : This function handles USART1 global interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void USART1_IRQHandler(void)
+{
+	if(NULL != Wiring_USART1_Interrupt_Handler)
+	{
+		Wiring_USART1_Interrupt_Handler();
 	}
 }
 

@@ -26,19 +26,28 @@
 
 #include "spark_wiring_usartserial.h"
 
-#define SERIAL_BUFFER_SIZE 64
-
-struct ring_buffer
+/*
+ * USART mapping
+ */
+STM32_USART_Info USART_MAP[TOTAL_USARTS] =
 {
-	unsigned char buffer[SERIAL_BUFFER_SIZE];
-	volatile unsigned int head;
-	volatile unsigned int tail;
+  /*
+   * USRAT_peripheral (USART1-USART2; not using others)
+   * clock control register (APB1ENR or APB1ENR)
+   * clock enable bit value (RCC_APB2Periph_USART1 or RCC_APB2Periph_USART2)
+   * interrupt number (USART1_IRQn or USART2_IRQn)
+   * TX pin
+   * RX pin
+   * GPIO Remap (RCC_APB2Periph_USART2 or GPIO_Remap_None )
+   * <tx_buffer pointer> used internally and does not appear below
+   * <rx_buffer pointer> used internally and does not appear below
+   */
+  { USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, TX, RX, GPIO_Remap_None },
+  { USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, USART1_IRQn, D1, D0, GPIO_Remap_USART1 }
 };
 
-ring_buffer rx_buffer = { { 0 }, 0, 0};
-ring_buffer tx_buffer = { { 0 }, 0, 0};
 
-inline void store_char(unsigned char c, ring_buffer *buffer)
+inline void store_char(unsigned char c, Ring_Buffer *buffer)
 {
         unsigned i = (unsigned int)(buffer->head + 1) % SERIAL_BUFFER_SIZE;
 
@@ -55,11 +64,17 @@ bool USARTSerial::USARTSerial_Enabled = false;
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-USARTSerial::USARTSerial(ring_buffer *rx_buffer, ring_buffer *tx_buffer)
+USARTSerial::USARTSerial(STM32_USART_Info *usartMapPtr)
 {
-	_rx_buffer = rx_buffer;
-	_tx_buffer = tx_buffer;
-	transmitting = false;
+        usartMap = usartMapPtr;
+
+        usartMap->usart_rx_buffer = &_rx_buffer;
+        usartMap->usart_tx_buffer = &_tx_buffer;
+
+        memset(&_rx_buffer, 0, sizeof(Ring_Buffer));
+        memset(&_tx_buffer, 0, sizeof(Ring_Buffer));
+
+        transmitting = false;
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
@@ -70,23 +85,26 @@ void USARTSerial::begin(unsigned long baud)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
 	// Enable USART Clock
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+        *usartMap->usart_apbReg |=  usartMap->usart_clock_en;
 
 	NVIC_InitTypeDef NVIC_InitStructure;
 
 	// Enable the USART Interrupt
-	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = USART2_IRQ_PRIORITY;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_InitStructure.NVIC_IRQChannel = usartMap->usart_int_n;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = USART2_IRQ_PRIORITY;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
 	NVIC_Init(&NVIC_InitStructure);
 
-	// Configure USART Rx as input floating
-	pinMode(RX, INPUT);
+        // Configure USART Rx as input floating
+        pinMode(usartMap->usart_rx_pin, INPUT);
 
-	// Configure USART Tx as alternate function push-pull
-	pinMode(TX, AF_OUTPUT_PUSHPULL);
+        // Configure USART Tx as alternate function push-pull
+        pinMode(usartMap->usart_tx_pin, AF_OUTPUT_PUSHPULL);
+
+        // Remap USARTn to alternate pins EG. USART1 to pins TX/PB6, RX/PB7
+        GPIO_PinRemapConfig(usartMap->usart_pin_remap, ENABLE);
 
 	// USART default configuration
 	// USART configured as follow:
@@ -104,19 +122,20 @@ void USARTSerial::begin(unsigned long baud)
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 
 	// Configure USART
-	USART_Init(USART2, &USART_InitStructure);
+	USART_Init(usartMap->usart_peripheral, &USART_InitStructure);
 
 	// Enable USART Receive and Transmit interrupts
-	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
-	USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+	USART_ITConfig(usartMap->usart_peripheral, USART_IT_RXNE, ENABLE);
+	USART_ITConfig(usartMap->usart_peripheral, USART_IT_TXE, ENABLE);
 
 	// Enable the USART
-	USART_Cmd(USART2, ENABLE);
+	USART_Cmd(usartMap->usart_peripheral, ENABLE);
 
 	USARTSerial_Enabled = true;
 	transmitting = false;
 }
 
+// TODO
 void USARTSerial::begin(unsigned long baud, byte config)
 {
 
@@ -125,57 +144,64 @@ void USARTSerial::begin(unsigned long baud, byte config)
 void USARTSerial::end()
 {
 	// wait for transmission of outgoing data
-	while (_tx_buffer->head != _tx_buffer->tail);
+	while (_tx_buffer.head != _tx_buffer.tail);
 
 	// Disable USART Receive and Transmit interrupts
-	USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
-	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+	USART_ITConfig(usartMap->usart_peripheral, USART_IT_RXNE, DISABLE);
+	USART_ITConfig(usartMap->usart_peripheral, USART_IT_TXE, DISABLE);
 
 	// Disable the USART
-	USART_Cmd(USART2, DISABLE);
+	USART_Cmd(usartMap->usart_peripheral, DISABLE);
 
 	NVIC_InitTypeDef NVIC_InitStructure;
 
 	// Disable the USART Interrupt
-	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+	NVIC_InitStructure.NVIC_IRQChannel = usartMap->usart_int_n;
+        NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
 
 	NVIC_Init(&NVIC_InitStructure);
 
 	// clear any received data
-	_rx_buffer->head = _rx_buffer->tail;
+	_rx_buffer.head = _rx_buffer.tail;
+
+        // null ring buffer pointers
+        usartMap->usart_tx_buffer = NULL;
+        usartMap->usart_rx_buffer = NULL;
+
+        // Undo any pin re-mapping done for this USART
+        GPIO_PinRemapConfig(usartMap->usart_pin_remap, DISABLE);
 
 	USARTSerial_Enabled = false;
 }
 
 int USARTSerial::available(void)
 {
-	return (unsigned int)(SERIAL_BUFFER_SIZE + _rx_buffer->head - _rx_buffer->tail) % SERIAL_BUFFER_SIZE;
+	return (unsigned int)(SERIAL_BUFFER_SIZE + _rx_buffer.head - _rx_buffer.tail) % SERIAL_BUFFER_SIZE;
 }
 
 int USARTSerial::peek(void)
 {
-	if (_rx_buffer->head == _rx_buffer->tail)
+	if (_rx_buffer.head == _rx_buffer.tail)
 	{
 		return -1;
 	}
 	else
 	{
-		return _rx_buffer->buffer[_rx_buffer->tail];
+		return _rx_buffer.buffer[_rx_buffer.tail];
 	}
 }
 
 int USARTSerial::read(void)
 {
 	// if the head isn't ahead of the tail, we don't have any characters
-	if (_rx_buffer->head == _rx_buffer->tail)
+	if (_rx_buffer.head == _rx_buffer.tail)
 	{
 		return -1;
 	}
 	else
 	{
-		unsigned char c = _rx_buffer->buffer[_rx_buffer->tail];
-		_rx_buffer->tail = (unsigned int)(_rx_buffer->tail + 1) % SERIAL_BUFFER_SIZE;
+		unsigned char c = _rx_buffer.buffer[_rx_buffer.tail];
+		_rx_buffer.tail = (unsigned int)(_rx_buffer.tail + 1) % SERIAL_BUFFER_SIZE;
 		return c;
 	}
 }
@@ -183,9 +209,9 @@ int USARTSerial::read(void)
 void USARTSerial::flush()
 {
 	// Loop until USART DR register is empty
-	while ( _tx_buffer->head != _tx_buffer->tail );
+	while ( _tx_buffer.head != _tx_buffer.tail );
 	// Loop until last frame transmission complete
-	while (transmitting && (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET));
+	while (transmitting && (USART_GetFlagStatus(usartMap->usart_peripheral, USART_FLAG_TC) == RESET));
 	transmitting = false;
 }
 
@@ -193,38 +219,38 @@ size_t USARTSerial::write(uint8_t c)
 {
 
         // interrupts are off and data in queue;
-        if ((USART_GetITStatus(USART2, USART_IT_TXE) == RESET)
-            && _tx_buffer->head != _tx_buffer->tail) {
+        if ((USART_GetITStatus(usartMap->usart_peripheral, USART_IT_TXE) == RESET)
+            && _tx_buffer.head != _tx_buffer.tail) {
             // Get him busy
-            USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+            USART_ITConfig(usartMap->usart_peripheral, USART_IT_TXE, ENABLE);
         }
 
-        unsigned i = (_tx_buffer->head + 1) % SERIAL_BUFFER_SIZE;
+        unsigned i = (_tx_buffer.head + 1) % SERIAL_BUFFER_SIZE;
 
 	// If the output buffer is full, there's nothing for it other than to
         // wait for the interrupt handler to empty it a bit
         //         no space so       or  Called Off Panic with interrupt off get the message out!
         //         make space                     Enter Polled IO mode
-        while (i == _tx_buffer->tail || ((__get_PRIMASK() & 1) && _tx_buffer->head != _tx_buffer->tail) ) {
+        while (i == _tx_buffer.tail || ((__get_PRIMASK() & 1) && _tx_buffer.head != _tx_buffer.tail) ) {
             // Interrupts are on but they are not being serviced because this was called from a higher
             // Priority interrupt
 
-            if (USART_GetITStatus(USART2, USART_IT_TXE) && USART_GetFlagStatus(USART2, USART_FLAG_TXE))
+            if (USART_GetITStatus(usartMap->usart_peripheral, USART_IT_TXE) && USART_GetFlagStatus(usartMap->usart_peripheral, USART_FLAG_TXE))
             {
                 // protect for good measure
-                USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+                USART_ITConfig(usartMap->usart_peripheral, USART_IT_TXE, DISABLE);
                 // Write out a byte
-                USART_SendData(USART2,  _tx_buffer->buffer[_tx_buffer->tail++]);
-                _tx_buffer->tail %= SERIAL_BUFFER_SIZE;
+                USART_SendData(usartMap->usart_peripheral,  _tx_buffer.buffer[_tx_buffer.tail++]);
+                _tx_buffer.tail %= SERIAL_BUFFER_SIZE;
                 // unprotect
-                USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+                USART_ITConfig(usartMap->usart_peripheral, USART_IT_TXE, ENABLE);
             }
         }
 
-        _tx_buffer->buffer[_tx_buffer->head] = c;
-        _tx_buffer->head = i;
+        _tx_buffer.buffer[_tx_buffer.head] = c;
+        _tx_buffer.head = i;
 	transmitting = true;
-        USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+        USART_ITConfig(usartMap->usart_peripheral, USART_IT_TXE, ENABLE);
 
 
 	return 1;
@@ -234,6 +260,36 @@ USARTSerial::operator bool() {
 	return true;
 }
 
+// Shared Interrupt Handler for USART2/Serial1 and USART1/Serial2
+// WARNING: This function MUST remain reentrance compliant -- no local static variables etc.
+static void USART_Interrupt_Handler(STM32_USART_Info *usartMap)
+{
+  if(USART_GetITStatus(usartMap->usart_peripheral, USART_IT_RXNE) != RESET)
+  {
+    // Read byte from the receive data register
+    unsigned char c = USART_ReceiveData(usartMap->usart_peripheral);
+    store_char(c, usartMap->usart_rx_buffer);
+  }
+
+  if(USART_GetITStatus(usartMap->usart_peripheral, USART_IT_TXE) != RESET)
+  {
+    // Write byte to the transmit data register
+    if (usartMap->usart_tx_buffer->head == usartMap->usart_tx_buffer->tail)
+    {
+      // Buffer empty, so disable the USART Transmit interrupt
+      USART_ITConfig(usartMap->usart_peripheral, USART_IT_TXE, DISABLE);
+    }
+    else
+    {
+      // There is more data in the output buffer. Send the next byte
+      USART_SendData(usartMap->usart_peripheral, usartMap->usart_tx_buffer->buffer[usartMap->usart_tx_buffer->tail++]);
+      usartMap->usart_tx_buffer->tail %= SERIAL_BUFFER_SIZE;
+    }
+  }
+}
+
+// Serial1 interrupt handler
+// Serial1 uses standard Sparkcore pins PA2/TX(TX), PA3/RX(RX)
 /*******************************************************************************
 * Function Name  : Wiring_USART2_Interrupt_Handler (Declared as weak in stm32_it.cpp)
 * Description    : This function handles USART2 global interrupt request.
@@ -243,34 +299,29 @@ USARTSerial::operator bool() {
 *******************************************************************************/
 void Wiring_USART2_Interrupt_Handler(void)
 {
-	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
-	{
-		// Read byte from the receive data register
-		unsigned char c = USART_ReceiveData(USART2);
-		store_char(c, &rx_buffer);
-	}
+  USART_Interrupt_Handler(&USART_MAP[USART_TX_RX]);
+}
 
-	if(USART_GetITStatus(USART2, USART_IT_TXE) != RESET)
-	{
-		// Write byte to the transmit data register
-		if (tx_buffer.head == tx_buffer.tail)
-		{
-			// Buffer empty, so disable the USART Transmit interrupt
-			USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
-		}
-		else
-		{
-	            // There is more data in the output buffer. Send the next byte
-		    USART_SendData(USART2,  tx_buffer.buffer[tx_buffer.tail++]);
-                    tx_buffer.tail %= SERIAL_BUFFER_SIZE;
-		}
-	}
+// Serial2 interrupt handler
+// Serial2 uses alternate function pins PB6/D1(TX), PB7/D0(RX)
+/*******************************************************************************
+* Function Name  : Wiring_USART1_Interrupt_Handler (Declared as weak in stm32_it.cpp)
+* Description    : This function handles USART1 global interrupt request.
+* Input          : None.
+* Output         : None.
+* Return         : None.
+*******************************************************************************/
+void Wiring_USART1_Interrupt_Handler(void)
+{
+  USART_Interrupt_Handler(&USART_MAP[USART_D1_D0]);
 }
 
 bool USARTSerial::isEnabled() {
 	return USARTSerial_Enabled;
 }
 
+
 // Preinstantiate Objects //////////////////////////////////////////////////////
 
-USARTSerial Serial1(&rx_buffer, &tx_buffer);
+USARTSerial Serial1(&USART_MAP[USART_TX_RX]);
+// optional Serial2 is instantiated from libraries/Serial2/Serial2.h
