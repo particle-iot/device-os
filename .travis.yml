@@ -3,7 +3,7 @@ before_install: npm install -g spark-cli
 install: 
   - ./ci/create_spark_cli_json.sh
 script:
-  - run_memory_available_tests.sh
+  - ./ci/run_memory_available_tests.sh
 env:
   global:
   - secure: eihq5J+oGVVWxZ2gsIAR8VPNUmfMqt5iPzbFMdUqZ80dHsdPr0WJhrPtITPJ1oN/Av2Qi6NVzblVZdfIphEclzkSTPN4fk7ve8WS0LIp8ali0fIp3+JffRz6BQQ+Mgx4a5pWZSqvKoiz7xtJ0gVnvYgcCWTsQQ/DzpObKpxhQZA=

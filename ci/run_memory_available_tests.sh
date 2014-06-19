@@ -10,6 +10,7 @@ spark flash joe_prod_core2 $bin_name
 
 # Wait 60 seconds for the flash to complete
 sleep 60
+echo "slept 60 seconds"
 
 # Use the API to snag the Spark Variable
 spark get joe_prod_core2 free_mem | tee variable_get_output.txt
@@ -21,10 +22,11 @@ if [[ $return_val =~ ^[0-9]+$ ]]; then
   headroom=$(( $guaranteed_ram - $available_ram ))
   if [[ $headroom -ge 0 ]]; then
     echo "$headroom bytes of headroom after this commit, use it wisely grasshoppa."
-    exit 0;
+    exit 0
   else
     echo "exceeded guaranteed ram by $headroom bytes."
-    exit 1;
+    exit 1
+  fi
 else
   echo "spark variable did not return an integer. Network connectivity problems?"
   exit 1;
