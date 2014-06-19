@@ -1,23 +1,30 @@
+# Set a maximum amount of RAM
+export guaranteed_ram=20000
+
+# Jump into the CI dir
 cd ci
-# Use spark-cli to compile a simple program that checks available ram
+
+# Use spark-cli to compile a simple firmware that checks available ram
 spark compile firmware/memory_available.ino | tee compile_output.txt
 
-# Parse the binary name from cli output, would be nice if there were a `--format json` flag
+# Parse binary name from CLI output
+# would be nice if there were a `--format json` flag
 bin_name=$(cat compile_output.txt | grep "firmware.*bin" | awk ' { print ( $(NF) ) }')
 
-# Flash the memory_available firmware to core OTA style
+# Flash the firmware to core OTA style
 spark flash joe_prod_core2 $bin_name
 
-# Wait 60 seconds for the flash to complete
+# Wait 60 seconds for the flash to complete + core to reconnect;
+# would be nice if this polled instead
 sleep 60
 echo "slept 60 seconds"
 
-# Use the API to snag the Spark Variable
+# Use Spark API to interogate core
 spark get joe_prod_core2 free_mem | tee variable_get_output.txt
 
 # If it's an integer, ensure it's below the limit
-guaranteed_ram=20000
-available_ram=`cat variable_get_output.txt`
+# and report amount of headroom
+export available_ram=`cat variable_get_output.txt`
 if [[ $available_ram =~ ^[0-9]+$ ]]; then
   headroom=$(( $guaranteed_ram - $available_ram ))
   if [[ $headroom -ge 0 ]]; then
@@ -28,6 +35,8 @@ if [[ $available_ram =~ ^[0-9]+$ ]]; then
     exit 1
   fi
 else
+  # note: this is going to yield false positives;
+  # librato graph will annotate time series graph when this occurs
   echo "spark variable did not return an integer. Network connectivity problems?"
   exit 1;
 fi

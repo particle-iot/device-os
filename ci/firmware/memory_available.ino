@@ -1,3 +1,5 @@
+// Code originally taken from https://community.spark.io/t/how-to-know-how-much-ram-flash-i-am-using/2150
+
 unsigned int __heap_start;
 void *__brkval;
 
