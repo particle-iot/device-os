@@ -18,7 +18,7 @@ spark get joe_prod_core2 free_mem | tee variable_get_output.txt
 # If it's an integer, ensure it's below the limit
 guaranteed_ram=20000
 available_ram=`cat variable_get_output.txt`
-if [[ $return_val =~ ^[0-9]+$ ]]; then
+if [[ $available_ram =~ ^[0-9]+$ ]]; then
   headroom=$(( $guaranteed_ram - $available_ram ))
   if [[ $headroom -ge 0 ]]; then
     echo "$headroom bytes of headroom after this commit, use it wisely grasshoppa."
