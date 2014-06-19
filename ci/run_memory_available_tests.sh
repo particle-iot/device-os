@@ -44,7 +44,10 @@ if [[ $available_ram =~ ^[0-9]+$ ]]; then
    -X POST \
    https://metrics-api.librato.com/v1/metrics
   if [[ $headroom -ge 0 ]]; then
-    echo "$headroom bytes of headroom after this commit, use it wisely grasshoppa."
+    echo "available ram: $available_ram"
+    echo "available ram minus handshake: $available_ram_minus_handshake"
+    echo "guaranteed ram: $guaranteed_ram"
+    echo "headroom: $headroom bytes of headroom after this commit, use it wisely grasshoppa."
     exit 0
   else
     echo "exceeded guaranteed ram by $headroom bytes."
