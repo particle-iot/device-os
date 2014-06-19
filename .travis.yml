@@ -1,5 +1,8 @@
 language: cpp
 compiler:
-  - gcc
-# Change this to your needs
+- gcc
 script: touch ttt
+env:
+  global:
+  - secure: eihq5J+oGVVWxZ2gsIAR8VPNUmfMqt5iPzbFMdUqZ80dHsdPr0WJhrPtITPJ1oN/Av2Qi6NVzblVZdfIphEclzkSTPN4fk7ve8WS0LIp8ali0fIp3+JffRz6BQQ+Mgx4a5pWZSqvKoiz7xtJ0gVnvYgcCWTsQQ/DzpObKpxhQZA=
+  - secure: C1Iv+52IMV1fdlP8/jaBj14MSgGcVIb1PgnYsfSPR3x+cHHKD5MDcLUiqMQOlWeRoAs+xnpFe5fuS3yxUOFTFpZZ1SeZCyv4/1kMeBfYszRWPcJrb9/I0YNpI57Dywem7HzQD8Um9CIqMTyewttxPrvR2b28f/ZnPZ50sLcVR+w=
