@@ -1,5 +1,6 @@
 # Set a maximum amount of RAM
-export guaranteed_ram=20000
+export guaranteed_ram=4096
+export handshake_ram=7896
 
 # Jump into the CI dir
 cd ci
@@ -25,8 +26,10 @@ spark get joe_prod_core2 free_mem | tee variable_get_output.txt
 # If it's an integer, ensure it's below the limit
 # and report amount of headroom
 export available_ram=`cat variable_get_output.txt`
+export available_ram_minus_handshake
 if [[ $available_ram =~ ^[0-9]+$ ]]; then
-  headroom=$(( $guaranteed_ram - $available_ram ))
+  available_ram_minus_handshake=$(( $available_ram - $handshake_ram ))
+  headroom=$(( $available_ram_minus_handshake - $guaranteed_ram ))
   if [[ $headroom -ge 0 ]]; then
     echo "$headroom bytes of headroom after this commit, use it wisely grasshoppa."
     exit 0
