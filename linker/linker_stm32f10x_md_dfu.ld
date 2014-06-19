@@ -18,24 +18,12 @@
 *****************************************************************************
 */
 
-/* default stack sizes. 
+/* Highest address of the user mode stack */
+_estack = 0x20005000;
 
-These are used by the startup in order to allocate stacks for the different modes.
-*/
-
-__Stack_Size = 2048 ;
-
-PROVIDE ( _Stack_Size = __Stack_Size ) ;
-
-__Stack_Init = _estack - __Stack_Size ;
-
-/*"PROVIDE" allows to easily override these values from an object file or the commmand line.*/
-PROVIDE ( _Stack_Init = __Stack_Init ) ;
-
-/*
-There will be a link error if there is not this amount of RAM free at the end.
-*/
-_Minimum_Stack_Size = 0x1400;
+/* Generate a link error if heap and stack don't fit into RAM */
+_Min_Heap_Size = 0;      /* required amount of heap  */
+_Min_Stack_Size = 0x100; /* required amount of stack */
 
 /* include the memory spaces definitions sub-script */
 /*
@@ -47,15 +35,7 @@ MEMORY
 {
   RAM (xrw)     : ORIGIN = 0x20000000, LENGTH = 20K
   FLASH (rx)    : ORIGIN = 0x08005000, LENGTH = 128K-0x5000
-  FLASHB1 (rx)  : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB0 (rx) : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB1 (rx) : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB2 (rx) : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB3 (rx) : ORIGIN = 0x00000000, LENGTH = 0
 }
-
-/* higher address of the user mode stack */
-_estack = 0x20005000;
 
 /* include the sections management sub-script for FLASH mode */
 
@@ -161,67 +141,15 @@ SECTIONS
     PROVIDE ( end = _ebss );
     PROVIDE ( _end = _ebss );
     
-    /* This is the user stack section 
-    This is just to check that there is enough RAM left for the User mode stack
-    It should generate an error if it's full.
-     */
-    ._usrstack :
+    /* User_heap_stack section, used to check that there is enough RAM left */
+    ._user_heap_stack :
     {
-	    . = ALIGN(4);
-        _susrstack = . ;
-        
-        . = . + _Minimum_Stack_Size ;
-        
-	    . = ALIGN(4);
-        _eusrstack = . ;
+        . = ALIGN(4);
+        . = . + _Min_Heap_Size;
+        . = . + _Min_Stack_Size;
+        . = ALIGN(4);
     } >RAM
-   
-    /* this is the FLASH Bank1 */
-    /* the C or assembly source must explicitly place the code or data there
-    using the "section" attribute */
-    .b1text :
-    {
-        *(.b1text)                   /* remaining code */
-        *(.b1rodata)                 /* read-only data (constants) */
-        *(.b1rodata*)
-    } >FLASHB1
-    
-    /* this is the EXTMEM */
-    /* the C or assembly source must explicitly place the code or data there
-    using the "section" attribute */
-    
-    /* EXTMEM Bank0 */
-    .eb0text :
-    {
-        *(.eb0text)                   /* remaining code */
-        *(.eb0rodata)                 /* read-only data (constants) */
-        *(.eb0rodata*)
-    } >EXTMEMB0
-    
-    /* EXTMEM Bank1 */
-    .eb1text :
-    {
-        *(.eb1text)                   /* remaining code */
-        *(.eb1rodata)                 /* read-only data (constants) */
-        *(.eb1rodata*)
-    } >EXTMEMB1
-    
-    /* EXTMEM Bank2 */
-    .eb2text :
-    {
-        *(.eb2text)                   /* remaining code */
-        *(.eb2rodata)                 /* read-only data (constants) */
-        *(.eb2rodata*)
-    } >EXTMEMB2
-    
-    /* EXTMEM Bank0 */
-    .eb3text :
-    {
-        *(.eb3text)                   /* remaining code */
-        *(.eb3rodata)                 /* read-only data (constants) */
-        *(.eb3rodata*)
-    } >EXTMEMB3
-       
+          
     /* after that it's only debugging information. */
     
     /* remove the debugging information from the standard libraries */
