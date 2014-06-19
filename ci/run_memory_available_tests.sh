@@ -1,5 +1,6 @@
 # Set a maximum amount of RAM
 export guaranteed_ram=4096
+# Set a how much the handshake takes
 export handshake_ram=7896
 
 # Jump into the CI dir
