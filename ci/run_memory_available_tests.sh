@@ -1,0 +1,31 @@
+cd ci
+# Use spark-cli to compile a simple program that checks available ram
+spark compile firmware/memory_available.ino | tee compile_output.txt
+
+# Parse the binary name from cli output, would be nice if there were a `--format json` flag
+bin_name=$(cat compile_output.txt | grep "firmware.*bin" | awk ' { print ( $(NF) ) }')
+
+# Flash the memory_available firmware to core OTA style
+spark flash joe_prod_core2 $bin_name
+
+# Wait 60 seconds for the flash to complete
+sleep 60
+
+# Use the API to snag the Spark Variable
+spark get joe_prod_core2 free_mem | tee variable_get_output.txt
+
+# If it's an integer, ensure it's below the limit
+guaranteed_ram=20000
+available_ram=`cat variable_get_output.txt`
+if [[ $return_val =~ ^[0-9]+$ ]]; then
+  headroom=$(( $guaranteed_ram - $available_ram ))
+  if [[ $headroom -ge 0 ]]; then
+    echo "$headroom bytes of headroom after this commit, use it wisely grasshoppa."
+    exit 0;
+  else
+    echo "exceeded guaranteed ram by $headroom bytes."
+    exit 1;
+else
+  echo "spark variable did not return an integer. Network connectivity problems?"
+  exit 1;
+fi
