@@ -138,6 +138,8 @@ int userFuncSchedule(const char *funcKey, const char *paramString);
 
 long socket_connect(long sd, const sockaddr *addr, long addrlen);
 
+long freeMemoryAvailable(void);
+
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 
