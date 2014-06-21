@@ -69,7 +69,7 @@ extern "C" {
 //!	 
 //!
 //*****************************************************************************
-extern void aes_encrypt(unsigned char *state, unsigned char *key);
+extern void aes_encrypt(unsigned char *state, unsigned char *key, unsigned char expandedKey[176]);
 
 //*****************************************************************************
 //
@@ -87,7 +87,7 @@ extern void aes_encrypt(unsigned char *state, unsigned char *key);
 //!	 
 //!
 //*****************************************************************************
-extern void aes_decrypt(unsigned char *state, unsigned char *key);
+extern void aes_decrypt(unsigned char *state, unsigned char *key, unsigned char expandedKey[176]);
 
 
 //*****************************************************************************

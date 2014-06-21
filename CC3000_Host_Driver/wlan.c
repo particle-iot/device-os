@@ -1146,9 +1146,10 @@ wlan_smart_config_process()
 	
 	decKeyPtr = &profileArray[profileArray[0] + 3];
 	
-	aes_decrypt(decKeyPtr, key);
+        unsigned char expandedKey[176];
+	aes_decrypt(decKeyPtr, key, expandedKey);
 	if (profileArray[profileArray[0] + 1] > 16)
-		aes_decrypt((unsigned char *)(decKeyPtr + 16), key);
+		aes_decrypt((unsigned char *)(decKeyPtr + 16), key, expandedKey);
 	
 	if (*(unsigned char *)(decKeyPtr +31) != 0)
 	{
