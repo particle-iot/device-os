@@ -35,8 +35,12 @@
 #include "hci.h"
 #include "wlan.h"
 
+#ifndef FALSE
 #define FALSE					0x00
+#endif
+#ifndef TRUE
 #define TRUE					!FALSE
+#endif
 
 #define READ					0x03
 #define WRITE					0x01
