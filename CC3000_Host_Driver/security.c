@@ -85,7 +85,6 @@ const UINT8 Rcon[11] = {
 		0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36};
 
 
-UINT8 expandedKey[176];
 
 //*****************************************************************************
 //
@@ -442,7 +441,7 @@ void aes_decr(UINT8 *state, UINT8 *expandedKey)
 //!
 //*****************************************************************************
 
-void aes_encrypt(UINT8 *state, UINT8 *key)
+void aes_encrypt(UINT8 *state, UINT8 *key, UINT8 expandedKey[176])
 {
 	// expand the key into 176 bytes
 	expandKey(expandedKey, key);       
@@ -466,7 +465,7 @@ void aes_encrypt(UINT8 *state, UINT8 *key)
 //!
 //*****************************************************************************
 
-void aes_decrypt(UINT8 *state, UINT8 *key)
+void aes_decrypt(UINT8 *state, UINT8 *key, UINT8 expandedKey[176])
 {
 	expandKey(expandedKey, key);       // expand the key into 176 bytes
 	aes_decr(state, expandedKey);

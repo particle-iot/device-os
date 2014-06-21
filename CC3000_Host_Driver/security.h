@@ -59,7 +59,8 @@ extern "C" {
 //!
 //!  @param[in]  key   AES128 key of size 16 bytes
 //!  @param[in\out] state   16 bytes of plain text and cipher text
-//!
+//!  @param[in] expandedKey temporary buffer for key
+//!    
 //!  @return  none
 //!
 //!  @brief   AES128 encryption:
@@ -69,7 +70,7 @@ extern "C" {
 //!	 
 //!
 //*****************************************************************************
-extern void aes_encrypt(UINT8 *state, UINT8 *key);
+extern void aes_encrypt(UINT8 *state, UINT8 *key, UINT8 expandedKey[176]);
 
 //*****************************************************************************
 //
@@ -77,6 +78,7 @@ extern void aes_encrypt(UINT8 *state, UINT8 *key);
 //!
 //!  @param[in]  key   AES128 key of size 16 bytes
 //!  @param[in\out] state   16 bytes of cipher text and plain text
+//!  @param[in] expandedKey temporary buffer for key
 //!
 //!  @return  none
 //!
@@ -87,7 +89,7 @@ extern void aes_encrypt(UINT8 *state, UINT8 *key);
 //!	 
 //!
 //*****************************************************************************
-extern void aes_decrypt(UINT8 *state, UINT8 *key);
+extern void aes_decrypt(UINT8 *state, UINT8 *key, UINT8 expandedKey[176]);
 
 
 //*****************************************************************************
