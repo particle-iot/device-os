@@ -169,7 +169,7 @@ void WiFiClass::off(void)
 	SPARK_WLAN_SLEEP = 1;	//Logic to call wlan_stop() inside SPARK_WLAN_Loop()
 }
 
-//Duplicated as Network.connectinging() and Network.ready()
+//Duplicated as Network.connecting() and Network.ready()
 //Retained for backward compatibility
 WiFi_Status_TypeDef WiFiClass::status(void)
 {

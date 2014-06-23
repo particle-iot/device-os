@@ -342,7 +342,7 @@ void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 	switch(sleepMode)
 	{
 	case SLEEP_MODE_WLAN:
-		SPARK_WLAN_SLEEP = 1;
+		WiFi.off();
 		break;
 
 	case SLEEP_MODE_DEEP:

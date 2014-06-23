@@ -733,12 +733,7 @@ void SPARK_WLAN_Loop(void)
 
     if(System.mode() != MANUAL)
     {
-      if (!Spark_Communication_Loop())
-      {
-        SPARK_FLASH_UPDATE = 0;
-        SPARK_CLOUD_CONNECTED = 0;
-        SPARK_CLOUD_SOCKETED = 0;
-      }
+      Spark.process();
     }
   }
 }
