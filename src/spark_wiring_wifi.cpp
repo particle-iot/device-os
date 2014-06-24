@@ -148,40 +148,4 @@ void WiFiClass::clearCredentials(void)
   }
 }
 
-//Duplicated as Network.connect()
-//Retained for backward compatibility
-void WiFiClass::on(void)
-{
-	extern void (*announce_presence)(void);
-	if(announce_presence != Multicast_Presence_Announcement)
-	{
-		//Get the setup executed once if not done already
-		SPARK_WLAN_Setup(Multicast_Presence_Announcement);
-		SPARK_WLAN_SETUP = 1;
-	}
-	SPARK_WLAN_SLEEP = 0;	//Logic to call wlan_start() inside SPARK_WLAN_Loop()
-}
-
-//Duplicated as Network.disconnect()
-//Retained for backward compatibility
-void WiFiClass::off(void)
-{
-	SPARK_WLAN_SLEEP = 1;	//Logic to call wlan_stop() inside SPARK_WLAN_Loop()
-}
-
-//Duplicated as Network.connecting() and Network.ready()
-//Retained for backward compatibility
-WiFi_Status_TypeDef WiFiClass::status(void)
-{
-	if(SPARK_WLAN_STARTED)
-	{
-		if(!WLAN_DHCP)
-		{
-			return WIFI_CONNECTING;
-		}
-		return WIFI_ON;
-	}
-	return WIFI_OFF;
-}
-
 WiFiClass WiFi;

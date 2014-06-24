@@ -111,11 +111,6 @@ size_t TCPClient::write(const uint8_t *buffer, size_t size)
         return status() ? send(_sock, buffer, size, 0) : -1;
 }
 
-int TCPClient::isWanReady()
-{
-  return (WIFI_ON == WiFi.status());
-}
-
 int TCPClient::bufferCount()
 {
   return _total - _offset;

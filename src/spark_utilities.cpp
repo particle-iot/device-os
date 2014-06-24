@@ -26,6 +26,7 @@
  */
 #include "spark_utilities.h"
 #include "spark_wiring.h"
+#include "spark_wiring_network.h"
 #include "socket.h"
 #include "netapp.h"
 #include "string.h"
@@ -342,7 +343,7 @@ void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 	switch(sleepMode)
 	{
 	case SLEEP_MODE_WLAN:
-		WiFi.off();
+		Network.disconnect();
 		break;
 
 	case SLEEP_MODE_DEEP:

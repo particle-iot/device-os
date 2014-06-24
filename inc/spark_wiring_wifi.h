@@ -33,11 +33,6 @@
 #define WPA     (WLAN_SEC_WPA)
 #define WPA2    (WLAN_SEC_WPA2)
 
-typedef enum
-{
-	WIFI_OFF = 0, WIFI_CONNECTING = 1, WIFI_ON = 2
-} WiFi_Status_TypeDef;
-
 class WiFiClass
 {
 public:
@@ -51,10 +46,6 @@ public:
         static void setCredentials(const char *ssid, const char *password, unsigned long security);
         static bool hasCredentials(void);
         static void clearCredentials(void);
-
-	static void on(void);
-	static void off(void);
-	static WiFi_Status_TypeDef status(void);
 };
 
 extern WiFiClass WiFi;
