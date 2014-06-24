@@ -44,6 +44,7 @@ public:
         static void setCredentials(const char *ssid);
         static void setCredentials(const char *ssid, const char *password);
         static void setCredentials(const char *ssid, const char *password, unsigned long security);
+        static void setCredentials(char *ssid, unsigned int ssidLen, char *password, unsigned int passwordLen, unsigned long security);
         static bool hasCredentials(void);
         static void clearCredentials(void);
 };

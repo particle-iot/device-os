@@ -32,7 +32,7 @@ void WiFiClass::listen(void)
 
 bool WiFiClass::listening(void)
 {
-  if (WLAN_SMART_CONFIG_START)
+  if (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE))
   {
     return true;
   }
@@ -52,6 +52,11 @@ void WiFiClass::setCredentials(const char *ssid, const char *password)
 
 void WiFiClass::setCredentials(const char *ssid, const char *password, unsigned long security)
 {
+  setCredentials((char *)ssid, strlen(ssid), (char *)password, strlen(password), security);
+}
+
+void WiFiClass::setCredentials(char *ssid, unsigned int ssidLen, char *password, unsigned int passwordLen, unsigned long security)
+{
   if(!SPARK_WLAN_STARTED)
   {
     return;
@@ -68,7 +73,7 @@ void WiFiClass::setCredentials(const char *ssid, const char *password, unsigned 
     {
       wlan_profile_index = wlan_add_profile(WLAN_SEC_UNSEC,   // Security type
         (unsigned char *)ssid,                                // SSID
-        strlen(ssid),                                         // SSID length
+        ssidLen,                                              // SSID length
         NULL,                                                 // BSSID
         1,                                                    // Priority
         0, 0, 0, 0, 0);
@@ -78,25 +83,27 @@ void WiFiClass::setCredentials(const char *ssid, const char *password, unsigned 
 
   case WLAN_SEC_WEP://WEP
     {
-      // Get WEP key from string, needs converting
-      UINT32 keyLen = (strlen(password)/2); // WEP key length in bytes
-      UINT8 decKey[32]; // Longest WEP key I can find is 256-bit, or 32 bytes long
-      char byteStr[3]; byteStr[2] = '\0';
+      if(WLAN_SERIAL_CONFIG_DONE)
+      {
+        // Get WEP key from string, needs converting
+        passwordLen = (strlen(password)/2); // WEP key length in bytes
+        char byteStr[3]; byteStr[2] = '\0';
 
-      for (UINT32 i = 0 ; i < keyLen ; i++) { // Basic loop to convert text-based WEP key to byte array, can definitely be improved
-        byteStr[0] = password[2*i]; byteStr[1] = password[(2*i)+1];
-        decKey[i] = strtoul(byteStr, NULL, 16);
+        for (UINT32 i = 0 ; i < passwordLen ; i++) { // Basic loop to convert text-based WEP key to byte array, can definitely be improved
+          byteStr[0] = password[2*i]; byteStr[1] = password[(2*i)+1];
+          password[i] = strtoul(byteStr, NULL, 16);
+        }
       }
 
       wlan_profile_index = wlan_add_profile(WLAN_SEC_WEP,    // Security type
         (unsigned char *)ssid,                                // SSID
-        strlen(ssid),                                         // SSID length
+        ssidLen,                                              // SSID length
         NULL,                                                 // BSSID
         1,                                                    // Priority
-        keyLen,                                               // KEY length
+        passwordLen,                                          // KEY length
         0,                                                    // KEY index
         0,
-        decKey,                                               // KEY
+        (unsigned char *)password,                            // KEY
         0);
 
       break;
@@ -107,14 +114,14 @@ void WiFiClass::setCredentials(const char *ssid, const char *password, unsigned 
     {
       wlan_profile_index = wlan_add_profile(WLAN_SEC_WPA2,    // Security type
         (unsigned char *)ssid,                                // SSID
-        strlen(ssid),                                         // SSID length
+        ssidLen,                                              // SSID length
         NULL,                                                 // BSSID
         1,                                                    // Priority
         0x18,                                                 // PairwiseCipher
         0x1e,                                                 // GroupCipher
         2,                                                    // KEY management
         (unsigned char *)password,                            // KEY
-        strlen(password));                                    // KEY length
+        passwordLen);                                         // KEY length
 
       break;
     }
