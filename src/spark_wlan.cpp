@@ -710,17 +710,17 @@ void SPARK_WLAN_Loop(void)
         if (0 > err)
         {
           // Wrong key error, red
-          LED_SetRGBColor(0xff0000);
+          LED_SetRGBColor(RGB_COLOR_RED);
         }
         else if (1 == err)
         {
           // RSA decryption error, orange
-          LED_SetRGBColor(0xff6000);
+          LED_SetRGBColor(RGB_COLOR_ORANGE);
         }
         else if (2 == err)
         {
           // RSA signature verification error, magenta
-          LED_SetRGBColor(0xff00ff);
+          LED_SetRGBColor(RGB_COLOR_MAGENTA);
         }
 
         LED_On(LED_RGB);
