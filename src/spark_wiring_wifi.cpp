@@ -83,7 +83,7 @@ void WiFiClass::setCredentials(char *ssid, unsigned int ssidLen, char *password,
 
   case WLAN_SEC_WEP://WEP
     {
-      if(WLAN_SERIAL_CONFIG_DONE)
+      if(!WLAN_SMART_CONFIG_FINISHED)
       {
         // Get WEP key from string, needs converting
         passwordLen = (strlen(password)/2); // WEP key length in bytes
