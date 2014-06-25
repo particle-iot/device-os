@@ -138,6 +138,7 @@ typedef struct ServerAddress {
 #define RGB_COLOR_CYAN		0x00FFFF
 #define RGB_COLOR_MAGENTA	0xFF00FF
 #define RGB_COLOR_WHITE		0xFFFFFF
+#define RGB_COLOR_ORANGE  0xFF6000
 
 /* USB Config : IMR_MSK */
 /* mask defining which events has to be handled */
