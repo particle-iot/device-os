@@ -126,10 +126,11 @@ void _exit(int status)
  *
  *            stack_top marks the top of the stack given by __get_MSP()
  */
+extern char _end;
+static char *heap_end = &_end;
+static int memory_available_during_cloud_handshake = -1;
 caddr_t _sbrk(int incr)
 {
-	extern char _end;
-	static char *heap_end = &_end;
 	char *prev_heap_end = heap_end;
 	char *stack_top = (char *)__get_MSP();
 
@@ -140,7 +141,31 @@ caddr_t _sbrk(int incr)
 		abort();
 	}
 
+	extern volatile uint8_t SPARK_CLOUD_CONNECT;
+	extern volatile uint8_t SPARK_CLOUD_CONNECTED;
+
+	if(SPARK_CLOUD_CONNECT && !SPARK_CLOUD_CONNECTED)
+	{
+	        //rewrite variable till the cloud gets connected
+	        memory_available_during_cloud_handshake = stack_top - heap_end;
+	        //account for stack pointer
+                static int count = 0;
+	        memory_available_during_cloud_handshake = memory_available_during_cloud_handshake  - ((++count)*sizeof(int));
+	}
+
 	return (caddr_t) prev_heap_end;
+}
+
+long minimumMemoryAvailable(void)
+{
+        //assuming cloud handshake is the most memory intensive process
+        return memory_available_during_cloud_handshake;
+}
+
+long freeMemoryAvailable(void)
+{
+        char *stack_top = (char *)__get_MSP();
+        return (stack_top - heap_end);
 }
 
 /* Bare metal, no processes, so error */

@@ -815,14 +815,6 @@ long socket_connect(long sd, const sockaddr *addr, long addrlen)
 	return connect(sd, addr, addrlen);
 }
 
-long freeMemoryAvailable(void)
-{
-  extern char _end;
-  char *current_heap_end = &_end;
-  char *current_stack_pointer = (char *)__get_MSP();
-  return (current_stack_pointer - current_heap_end);
-}
-
 // Convert unsigned integer to ASCII in decimal base
 /*
 static unsigned char uitoa(unsigned int cNum, char *cString)
