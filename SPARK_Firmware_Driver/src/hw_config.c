@@ -28,6 +28,9 @@
 #include "usb_lib.h"
 #include "usb_pwr.h"
 #include <string.h>
+#include "spi_bus.h"
+#include "debug.h"
+
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -952,8 +955,8 @@ void CC3000_SPI_DMA_Channels(FunctionalState NewState)
 /* Select CC3000: ChipSelect pin low */
 void CC3000_CS_LOW(void)
 {
+    acquire_spi_bus(BUS_OWNER_CC3000);
 	CC3000_SPI->CR1 &= ((uint16_t)0xFFBF);
-	sFLASH_CS_HIGH();
 	CC3000_SPI->CR1 = CC3000_SPI_CR | ((uint16_t)0x0040);
 	GPIO_ResetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_GPIO_PIN);
 }
@@ -962,6 +965,7 @@ void CC3000_CS_LOW(void)
 void CC3000_CS_HIGH(void)
 {
 	GPIO_SetBits(CC3000_WIFI_CS_GPIO_PORT, CC3000_WIFI_CS_GPIO_PIN);
+        release_spi_bus(BUS_OWNER_CC3000);
 }
 
 /* CC3000 Hardware related callbacks passed to wlan_init */
@@ -1133,16 +1137,20 @@ void sFLASH_SPI_Init(void)
 /* Select sFLASH: Chip Select pin low */
 void sFLASH_CS_LOW(void)
 {
-	sFLASH_SPI->CR1 &= ((uint16_t)0xFFBF);
-	CC3000_CS_HIGH();
-	sFLASH_SPI->CR1 = sFLASH_SPI_CR | ((uint16_t)0x0040);
-	GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_GPIO_PIN);
+    WARN("sFLASH acquiring spi bus");
+    acquire_spi_bus(BUS_OWNER_SFLASH);
+    sFLASH_SPI->CR1 &= ((uint16_t)0xFFBF);
+    sFLASH_SPI->CR1 = sFLASH_SPI_CR | ((uint16_t)0x0040);
+    GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_GPIO_PIN);
 }
 
 /* Deselect sFLASH: Chip Select pin high */
 void sFLASH_CS_HIGH(void)
 {
-	GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_GPIO_PIN);
+    GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_GPIO_PIN);
+    release_spi_bus(BUS_OWNER_SFLASH);
+    WARN("sFLASH release spi bus");
+
 }
 
 /*******************************************************************************

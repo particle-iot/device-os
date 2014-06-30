@@ -189,8 +189,8 @@ extern void wlan_stop(void);
 //
 //*****************************************************************************
 #ifndef CC3000_TINY_DRIVER
-extern INT32 wlan_connect(UINT32 ulSecType, CHAR *ssid, INT32 ssid_len,
-                        UINT8 *bssid, UINT8 *key, INT32 key_len);
+extern INT32 wlan_connect(UINT32 ulSecType, const CHAR *ssid, INT32 ssid_len,
+                        const UINT8 *bssid, const UINT8 *key, INT32 key_len);
 #else
 extern INT32 wlan_connect(CHAR *ssid, INT32 ssid_len);
 

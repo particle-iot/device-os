@@ -638,24 +638,22 @@ INT32 hci_unsol_event_handler(CHAR *event_hdr)
 	{
 		switch(event_type)
 		{
+                    case HCI_EVNT_DATA_UNSOL_FREE_BUFF:
+                    {
+                            hci_event_unsol_flowcontrol_handler(event_hdr);
 
-		case HCI_EVNT_DATA_UNSOL_FREE_BUFF:
-		{
-			hci_event_unsol_flowcontrol_handler(event_hdr);
+                            NumberOfReleasedPackets = tSLInformation.NumberOfReleasedPackets;
+                            NumberOfSentPackets = tSLInformation.NumberOfSentPackets;
 
-			NumberOfReleasedPackets = tSLInformation.NumberOfReleasedPackets;
-			NumberOfSentPackets = tSLInformation.NumberOfSentPackets;
-
-			if (NumberOfReleasedPackets == NumberOfSentPackets)
-			{
-				if (tSLInformation.InformHostOnTxComplete)
-				{
-					tSLInformation.sWlanCB(HCI_EVENT_CC3000_CAN_SHUT_DOWN, NULL, 0);
-				}
-			}
-			return 1;
-
-		}
+                            if (NumberOfReleasedPackets == NumberOfSentPackets)
+                            {
+                                    if (tSLInformation.InformHostOnTxComplete)
+                                    {
+                                            tSLInformation.sWlanCB(HCI_EVENT_CC3000_CAN_SHUT_DOWN, NULL, 0);
+                                    }
+                            }
+                            return 1;
+                    }
 		}
 	}
 
@@ -880,9 +878,9 @@ INT32 hci_event_unsol_flowcontrol_handler(CHAR *pEvent)
 		temp += value;
 		pReadPayload += FLOW_CONTROL_EVENT_SIZE;  
 	}
-
-	tSLInformation.usNumberOfFreeBuffers += temp;
-	tSLInformation.NumberOfReleasedPackets += temp;
+        
+        __sync_add_and_fetch(&tSLInformation.usNumberOfFreeBuffers, temp);
+	__sync_add_and_fetch(&tSLInformation.NumberOfReleasedPackets, temp);
 
 	return(ESUCCESS);
 }

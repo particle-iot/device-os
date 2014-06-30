@@ -35,6 +35,7 @@
 #include "socket.h"
 #include "spark_macros.h"
 #include "debug.h"
+#include "spi_bus.h"
 
 #define READ_COMMAND           {READ, 0 , 0 , 0 , 0}
 #define READ_OFFSET_TO_LENGTH   3 //cmd  dmy dmy lh  ll
@@ -49,7 +50,7 @@ typedef enum
   eSPI_STATE_WRITE_WAIT_IRQ,
   eSPI_STATE_WRITE_PROCEED,
   eSPI_STATE_WRITE_DONE,
-  eSPI_STATE_READ_IRQ,
+  eSPI_STATE_READ_IRQ,      
   eSPI_STATE_READ_PROCEED,
   eSPI_STATE_READ_READY,
 } eCC3000States;
@@ -117,14 +118,17 @@ static inline eCC3000States State()
 
 static inline eCC3000States SetState(eCC3000States ns, eCSActions cs)
 {
-
   intState save = DISABLE_INT();
   eCC3000States os = sSpiInformation.ulSpiState;
   sSpiInformation.ulSpiState = ns;
-  if (cs != eNone)
-  {
-      cs == eAssert ? ASSERT_CS() : DEASSERT_CS();
-  }
+  switch (cs) {
+      case eAssert:
+          ASSERT_CS();
+          break;
+      case eDeAssert:
+          DEASSERT_CS();
+          break;
+  }  
   ENABLE_INT(save);
   return os;
 }
@@ -236,7 +240,7 @@ void SpiPauseSpi(void)
 int SpiIO(eSPIOperation op, const uint8_t *ptrData, uint32_t ulDataSize, int waitOnCompletion)
 {
 
-        eCC3000States current = State();
+    eCC3000States current = State();
 	/* Disable DMA Channels */
 	CC3000_SPI_DMA_Channels(DISABLE);
 
@@ -258,7 +262,6 @@ int SpiIO(eSPIOperation op, const uint8_t *ptrData, uint32_t ulDataSize, int wai
 	/* Enable DMA Channels */
 	CC3000_SPI_DMA_Channels(ENABLE);
 	return waitOnCompletion ? Still(current) : 0;
-
 }
 
 long SpiSetUp(unsigned char *pUserBuffer, unsigned short usLength)
@@ -325,6 +328,7 @@ long SpiWrite(unsigned char *ucBuf, unsigned short usLength)
             if(NotAborted)
             {
               NotAborted = Reserve(eSPI_STATE_WRITE_WAIT_IRQ);
+              WARN("CC3000 SpiWrite acquire bus");                  
               if(NotAborted)
               {
                   usLength = SpiSetUp(ucBuf, usLength);
@@ -396,9 +400,9 @@ void SPI_DMA_IntHandler(void)
                   /* Clear SPI_DMA Interrupt Pending Flags */
                   DMA_ClearFlag(CC3000_SPI_TX_DMA_TCFLAG | CC3000_SPI_RX_DMA_TCFLAG);
 
-                  sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
                   SpiPauseSpi();
-                  DEASSERT_CS();
+                  SetState(eSPI_STATE_IDLE, eDeAssert);
+                  WARN("CC3000 DmaHandler release read spi bus");
                   // Call out to the Unsolicited handler
                   // It will handle the event or leave it there for an outstanding opcode
                   // It it handles it the it Will resume the SPI ISR
@@ -426,9 +430,8 @@ void SPI_DMA_IntHandler(void)
                   }
                   else
                   {
-                      DEASSERT_CS();
-
-                      sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
+                    SetState(eSPI_STATE_IDLE, eDeAssert);
+                    WARN("CC3000 DmaHandler release write spi bus");
                   }
           }
           break;
@@ -440,6 +443,16 @@ void SPI_DMA_IntHandler(void)
 	}
 }
 
+void handle_spi_request() {
+    return;
+    if (!tSLInformation.ReadWlanInterruptPin() && sSpiInformation.ulSpiState==eSPI_STATE_IDLE)
+    {
+        if (try_acquire_spi_bus(BUS_OWNER_CC3000)) {
+            SetState(eSPI_STATE_READ_IRQ, eNone);
+            SpiIO(eRead, sSpiInformation.pRxPacket, arraySize(spi_readCommand), FALSE);
+        }
+    }
+}
 
 /**
  * @brief  The handler for Interrupt that is generated when CC3000 brings the
@@ -449,25 +462,27 @@ void SPI_DMA_IntHandler(void)
  */
 void SPI_EXTI_IntHandler(void)
 {
-	//Pending is cleared in first level of ISR handler
-	if (!tSLInformation.ReadWlanInterruptPin())
-	{
-	    switch(sSpiInformation.ulSpiState)
-	    {
-	    case eSPI_STATE_POWERUP:
-	        sSpiInformation.ulSpiState = eSPI_STATE_INITIALIZED;
-	      break;
-            case eSPI_STATE_IDLE:
-                sSpiInformation.ulSpiState = eSPI_STATE_READ_IRQ;
-                ASSERT_CS();
+    //Pending is cleared in first level of ISR handler
+    if (!tSLInformation.ReadWlanInterruptPin())
+    {
+        switch(sSpiInformation.ulSpiState)
+        {
+        case eSPI_STATE_POWERUP:
+            sSpiInformation.ulSpiState = eSPI_STATE_INITIALIZED;
+          break;
+        case eSPI_STATE_IDLE:
+            WARN("CC3000 IntHandler acquire spi bux");
+            if (try_acquire_spi_bus(BUS_OWNER_CC3000)) {
+                SetState(eSPI_STATE_READ_IRQ, eNone);
                 SpiIO(eRead, sSpiInformation.pRxPacket, arraySize(spi_readCommand), FALSE);
-		break;
-            case eSPI_STATE_WRITE_WAIT_IRQ:
-              sSpiInformation.ulSpiState = eSPI_STATE_WRITE_PROCEED;
-              break;
-            default:
-              break;
-	    }
-	}
+            }
+            break;
+        case eSPI_STATE_WRITE_WAIT_IRQ:
+          sSpiInformation.ulSpiState = eSPI_STATE_WRITE_PROCEED;
+          break;
+        default:
+          break;
+        }
+    }
 }
 

@@ -71,4 +71,6 @@ extern void SpiResumeSpi(void);
 extern void SPI_DMA_IntHandler(void);
 extern void SPI_EXTI_IntHandler(void);
 
+
+
 #endif /* __CC3000_SPI_H */

@@ -231,7 +231,7 @@ static void sFLASH_WriteBytes(const uint8_t *pBuffer, uint32_t WriteAddr, uint32
   * @param  NumByteToWrite: number of bytes to write to the FLASH.
   * @retval None
   */
-void sFLASH_WriteBuffer(const uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
+void sFLASH_WriteBuffer(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
 {
   uint32_t evenBytes;
 
