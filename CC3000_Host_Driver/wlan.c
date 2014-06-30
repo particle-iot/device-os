@@ -349,7 +349,7 @@ void wlan_stop(void)
 //*****************************************************************************
 
 #ifndef CC3000_TINY_DRIVER
-INT32 wlan_connect(UINT32 ulSecType, CHAR *ssid, INT32 ssid_len,
+INT32 wlan_connect(UINT32 ulSecType, const CHAR *ssid, INT32 ssid_len,
 	UINT8 *bssid, UINT8 *key, INT32 key_len)
 {
 	INT32 ret;

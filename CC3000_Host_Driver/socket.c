@@ -1149,7 +1149,7 @@ INT16 sendto(INT32 sd, const void *buf, INT32 len, INT32 flags, const sockaddr *
 //
 //*****************************************************************************
 
-INT16 mdnsAdvertiser(UINT16 mdnsEnabled, CHAR * deviceServiceName, UINT16 deviceServiceNameLength)
+INT16 mdnsAdvertiser(UINT16 mdnsEnabled, const CHAR * deviceServiceName, UINT16 deviceServiceNameLength)
 {
 	INT8 ret;
 	UINT8 *pTxBuffer, *pArgs;

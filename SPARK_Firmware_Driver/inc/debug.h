@@ -58,6 +58,10 @@
 #define LOG_LEVEL_AT_RUN_TIME ERROR_LEVEL
 #endif
 
+#define LOG_LEVEL_AT_COMPILE_TIME WARN_LEVEL
+#define LOG_LEVEL_AT_RUN_TIME WARN_LEVEL
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
