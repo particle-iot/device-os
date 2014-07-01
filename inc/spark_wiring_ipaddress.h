@@ -43,7 +43,7 @@ public:
 	IPAddress();
 	IPAddress(uint8_t first_octet, uint8_t second_octet, uint8_t third_octet, uint8_t fourth_octet);
 	IPAddress(uint32_t address);
-	IPAddress(const uint8_t *address);
+	IPAddress(const uint8_t* address);
 
         virtual ~IPAddress() {}
 
@@ -58,7 +58,7 @@ public:
 	uint8_t& operator[](int index) { return _address[index]; };
 
 	// Overloaded copy operators to allow initialisation of IPAddress objects from other types
-	IPAddress& operator=(const uint8_t *address);
+	IPAddress& operator=(const uint8_t* address);
 	IPAddress& operator=(uint32_t address);
 
 	virtual size_t printTo(Print& p) const;
