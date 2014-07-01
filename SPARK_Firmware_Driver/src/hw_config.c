@@ -30,6 +30,7 @@
 #include <string.h>
 #include "spi_bus.h"
 #include "debug.h"
+#include "cc3000_spi.h"
 
 
 /* Private typedef -----------------------------------------------------------*/
@@ -1137,7 +1138,6 @@ void sFLASH_SPI_Init(void)
 /* Select sFLASH: Chip Select pin low */
 void sFLASH_CS_LOW(void)
 {
-    WARN("sFLASH acquiring spi bus");
     acquire_spi_bus(BUS_OWNER_SFLASH);
     sFLASH_SPI->CR1 &= ((uint16_t)0xFFBF);
     sFLASH_SPI->CR1 = sFLASH_SPI_CR | ((uint16_t)0x0040);
@@ -1148,9 +1148,8 @@ void sFLASH_CS_LOW(void)
 void sFLASH_CS_HIGH(void)
 {
     GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_GPIO_PIN);
-    release_spi_bus(BUS_OWNER_SFLASH);
-    WARN("sFLASH release spi bus");
-
+    release_spi_bus(BUS_OWNER_SFLASH);    
+    handle_spi_request();
 }
 
 /*******************************************************************************

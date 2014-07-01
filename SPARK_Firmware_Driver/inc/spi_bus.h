@@ -12,13 +12,15 @@
 extern "C" {
 #endif
 
-int try_acquire_spi_bus(uint8_t owner);
+    void reset_bus();
     
-void acquire_spi_bus(uint8_t owner);
+int try_acquire_spi_bus(int owner);
+    
+void acquire_spi_bus(int owner);
 
-void release_spi_bus(uint8_t owner);
+void release_spi_bus(int owner);
 
-uint8_t current_bus_owner();
+int current_bus_owner();
 
 #ifdef __cplusplus
 }
