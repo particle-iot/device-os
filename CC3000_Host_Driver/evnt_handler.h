@@ -107,7 +107,7 @@ extern INT32 hci_unsolicited_event_handler(void);
 #define M_IS_VALID_SD(sd) ((0 <= (sd)) && ((sd) <= 7))
 #define M_IS_VALID_STATUS(status) (((status) == SOCKET_STATUS_ACTIVE)||((status) == SOCKET_STATUS_INACTIVE))
 
-extern UINT32 socket_active_status;
+//extern UINT32 socket_active_status;
 
 extern void set_socket_active_status(INT32 Sd, INT32 Status);
 extern INT32 get_socket_active_status(INT32 Sd);

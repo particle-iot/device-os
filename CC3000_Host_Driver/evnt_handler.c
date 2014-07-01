@@ -58,6 +58,7 @@
 #include "hw_config.h"
 #include "debug.h"
 #include "spark_macros.h"
+#include <stdatomic.h>
 
 //*****************************************************************************
 //                  COMMON DEFINES
@@ -120,7 +121,7 @@
 //                  GLOBAL VARAIABLES
 //*****************************************************************************
 
-UINT32 socket_active_status = SOCKET_STATUS_INIT_VAL; 
+static volatile UINT32 socket_active_status = SOCKET_STATUS_INIT_VAL; 
 uint32_t cc3000__event_timeout_ms = 0;
 
 //*****************************************************************************
@@ -830,21 +831,23 @@ INT32 hci_unsolicited_event_handler(void)
 //!                  accordingly  the global socket status
 //
 //*****************************************************************************
+
 void set_socket_active_status(INT32 Sd, INT32 Status)
 {
-	DEBUG("Sd=%d, Status %s",Sd, Status == SOCKET_STATUS_ACTIVE ?  "SOCKET_STATUS_ACTIVE" : "SOCKET_STATUS_IACTIVE");
-	if(M_IS_VALID_SD(Sd) && M_IS_VALID_STATUS(Status))
-	{
-		uint32_t is = __get_PRIMASK();
-		__disable_irq();
-		socket_active_status &= ~(1 << Sd);      /* clean socket's mask */
-		socket_active_status |= (Status << Sd); /* set new socket's mask */
-		if ((is & 1) == 0) {
-			__enable_irq();
-		}
-	}
+	//DEBUG("Sd=%d, Status %s",Sd, Status == SOCKET_STATUS_ACTIVE ?  "SOCKET_STATUS_ACTIVE" : "SOCKET_STATUS_INACTIVE");
+	
+        if(M_IS_VALID_SD(Sd) && M_IS_VALID_STATUS(Status))
+        {            
+            for (;;) {
+                INT32 oldStatus = socket_active_status;
+                INT32 newStatus = oldStatus;
+                newStatus &= ~(1 << Sd);      /* clean socket's mask */
+                newStatus |= (Status << Sd); /* set new socket's mask */
+                if (__sync_bool_compare_and_swap(&socket_active_status, oldStatus, newStatus))
+                    break;
+            }
+        }
 }
-
 
 //*****************************************************************************
 //
@@ -901,12 +904,7 @@ INT32 get_socket_active_status(INT32 Sd)
 	long rv = SOCKET_STATUS_INACTIVE;
 	if(M_IS_VALID_SD(Sd))
 	{
-		uint32_t is = __get_PRIMASK();
-		__disable_irq();
 		rv = (socket_active_status & (1 << Sd)) ? SOCKET_STATUS_INACTIVE : SOCKET_STATUS_ACTIVE;
-		if ((is & 1) == 0) {
-			__enable_irq();
-		}
 	}
 	return rv;
 }

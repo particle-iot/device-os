@@ -58,8 +58,8 @@
 #define LOG_LEVEL_AT_RUN_TIME WARN_LEVEL
 #endif
 
-#define LOG_LEVEL_AT_COMPILE_TIME WARN_LEVEL
-#define LOG_LEVEL_AT_RUN_TIME WARN_LEVEL
+#define LOG_LEVEL_AT_COMPILE_TIME LOG_LEVEL
+#define LOG_LEVEL_AT_RUN_TIME LOG_LEVEL
 
 
 #ifdef __cplusplus
@@ -68,7 +68,7 @@ extern "C" {
 // Must be provided by main if wanted as extern C definitions
 extern uint32_t log_level_at_run_time __attribute__ ((weak));;
 void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...);
-void debug_output_(const char *);
+void debug_output_(const char *); // __attribute__ ((weak));
 #ifdef __cplusplus
 }
 #endif
