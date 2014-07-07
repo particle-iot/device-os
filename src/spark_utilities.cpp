@@ -430,9 +430,12 @@ int Spark_Receive(unsigned char *buf, int buflen)
 
 void Spark_Prepare_For_Firmware_Update(void)
 {
-  SPARK_FLASH_UPDATE = 1;
-  TimingFlashUpdateTimeout = 0;
-  FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS);
+  if(!SPARK_FLASH_UPDATE)
+  {
+    SPARK_FLASH_UPDATE = 1;
+    TimingFlashUpdateTimeout = 0;
+    FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS);
+  }
 }
 
 void Spark_Finish_Firmware_Update(void)
