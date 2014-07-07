@@ -44,7 +44,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdatomic.h>
 #include "hci.h"
 #include "socket.h"
 #include "evnt_handler.h"

@@ -1,5 +1,5 @@
 
-
+#include <stdint.h>
 #include <stdatomic.h>
 #include "spi_bus.h"
 #include "debug.h"
