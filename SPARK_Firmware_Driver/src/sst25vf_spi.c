@@ -29,7 +29,7 @@
 
 /* Local function forward declarations ---------------------------------------*/
 static void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte);
-static void sFLASH_WriteBytes(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
+static void sFLASH_WriteBytes(const uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
 static void sFLASH_WriteEnable(void);
 static void sFLASH_WriteDisable(void);
 static void sFLASH_WaitForWriteEnd(void);
@@ -170,7 +170,7 @@ static void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte)
   * @param  NumByteToWrite: number of bytes to write to the FLASH, must be even.
   * @retval None
   */
-static void sFLASH_WriteBytes(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
+static void sFLASH_WriteBytes(const uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
 {
   /* Enable the write access to the FLASH */
   sFLASH_WriteEnable();
@@ -231,7 +231,7 @@ static void sFLASH_WriteBytes(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t Num
   * @param  NumByteToWrite: number of bytes to write to the FLASH.
   * @retval None
   */
-void sFLASH_WriteBuffer(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
+void sFLASH_WriteBuffer(const uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
 {
   uint32_t evenBytes;
 
