@@ -835,7 +835,7 @@ INT32 hci_unsolicited_event_handler(void)
 //*****************************************************************************
 void set_socket_active_status(INT32 Sd, INT32 Status)
 {
-	//DEBUG("Sd=%d, Status %s",Sd, Status == SOCKET_STATUS_ACTIVE ?  "SOCKET_STATUS_ACTIVE" : "SOCKET_STATUS_INACTIVE");
+	DEBUG("Sd=%d, Status %s",Sd, Status == SOCKET_STATUS_ACTIVE ?  "SOCKET_STATUS_ACTIVE" : "SOCKET_STATUS_INACTIVE");
 	if(M_IS_VALID_SD(Sd) && M_IS_VALID_STATUS(Status))
 	{
 		for (;;) {
