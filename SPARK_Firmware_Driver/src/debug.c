@@ -14,6 +14,7 @@
 #include "spark_macros.h"
 #include "debug.h"
 
+
 uint32_t log_level_at_run_time = LOG_LEVEL_AT_RUN_TIME;
 
 void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...)

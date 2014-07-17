@@ -199,10 +199,10 @@ static void sFLASH_WriteBytes(const uint8_t *pBuffer, uint32_t WriteAddr, uint32
   /* while there is data to be written on the FLASH */
   while (NumByteToWrite)
   {
-    /* Select the FLASH: Chip Select low */
-    sFLASH_CS_LOW();
-    /* Send "Auto Address Increment Word-Program" instruction */
-    sFLASH_SendByte(sFLASH_CMD_AAIP);
+	/* Select the FLASH: Chip Select low */
+	sFLASH_CS_LOW();
+	/* Send "Auto Address Increment Word-Program" instruction */
+	sFLASH_SendByte(sFLASH_CMD_AAIP);
     /* Send the next byte and point on the next byte */
     sFLASH_SendByte(*pBuffer++);
     /* Send the next byte and point on the next byte */
@@ -231,7 +231,7 @@ static void sFLASH_WriteBytes(const uint8_t *pBuffer, uint32_t WriteAddr, uint32
   * @param  NumByteToWrite: number of bytes to write to the FLASH.
   * @retval None
   */
-void sFLASH_WriteBuffer(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
+void sFLASH_WriteBuffer(const uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
 {
   uint32_t evenBytes;
 

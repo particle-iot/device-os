@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   spi_bus.h
  * Author: mat
  *
@@ -13,9 +13,9 @@ extern "C" {
 #endif
 
     void reset_bus();
-    
+
 int try_acquire_spi_bus(int owner);
-    
+
 void acquire_spi_bus(int owner);
 
 void release_spi_bus(int owner);

@@ -118,7 +118,8 @@ INT16 HostFlowControlConsumeBuff(INT16 sd)
 #ifndef SEND_NON_BLOCKING
 	/* wait in busy loop */
 	volatile system_tick_t start = GetSystem1MsTick();
-        bool stop = false;
+
+	bool stop = false;
 	do
 	{
 		// In case last transmission failed then we will return the last failure 
@@ -144,16 +145,16 @@ INT16 HostFlowControlConsumeBuff(INT16 sd)
 			ERROR("Timeout waiting on on buffers now %ld start %ld elapsed %ld cc3000__event_timeout_ms %ld",now,start,elapsed,cc3000__event_timeout_ms);
 			return -1;
 		}
-                
-                // Do an atomic decrement if > 0
-                UINT16 freeBuffers = tSLInformation.usNumberOfFreeBuffers;                
-                if (0 < freeBuffers) {
-                    stop = __sync_bool_compare_and_swap(&tSLInformation.usNumberOfFreeBuffers, freeBuffers, freeBuffers-1);                    
-                }
+
+		// Do an atomic decrement if > 0
+		UINT16 freeBuffers = tSLInformation.usNumberOfFreeBuffers;
+		if (0 < freeBuffers) {
+			stop = __sync_bool_compare_and_swap(&tSLInformation.usNumberOfFreeBuffers, freeBuffers, freeBuffers-1);
+		}
 	} while (!stop);
 	return 0;
 #else
-#error not here
+
 	// In case last transmission failed then we will return the last failure 
 	// reason here.
 	// Note that the buffer will not be allocated in this case
@@ -1053,7 +1054,7 @@ INT16 simple_link_send(INT32 sd, const void *buf, INT32 len, INT32 flags,
 		args = UINT32_TO_STREAM(args, addr_offset);
 		args = UINT32_TO_STREAM(args, addrlen);
 	}
-        
+
 	// Copy the data received from user into the TX Buffer
 	ARRAY_TO_STREAM(pDataPtr, ((UINT8 *)buf), len);
 

@@ -121,7 +121,7 @@
 //                  GLOBAL VARAIABLES
 //*****************************************************************************
 
-static volatile UINT32 socket_active_status = SOCKET_STATUS_INIT_VAL; 
+static volatile UINT32 socket_active_status = SOCKET_STATUS_INIT_VAL;
 uint32_t cc3000__event_timeout_ms = 0;
 
 //*****************************************************************************
@@ -639,22 +639,24 @@ INT32 hci_unsol_event_handler(CHAR *event_hdr)
 	{
 		switch(event_type)
 		{
-                    case HCI_EVNT_DATA_UNSOL_FREE_BUFF:
-                    {
-                            hci_event_unsol_flowcontrol_handler(event_hdr);
 
-                            NumberOfReleasedPackets = tSLInformation.NumberOfReleasedPackets;
-                            NumberOfSentPackets = tSLInformation.NumberOfSentPackets;
+		case HCI_EVNT_DATA_UNSOL_FREE_BUFF:
+		{
+			hci_event_unsol_flowcontrol_handler(event_hdr);
 
-                            if (NumberOfReleasedPackets == NumberOfSentPackets)
-                            {
-                                    if (tSLInformation.InformHostOnTxComplete)
-                                    {
-                                            tSLInformation.sWlanCB(HCI_EVENT_CC3000_CAN_SHUT_DOWN, NULL, 0);
-                                    }
-                            }
-                            return 1;
-                    }
+			NumberOfReleasedPackets = tSLInformation.NumberOfReleasedPackets;
+			NumberOfSentPackets = tSLInformation.NumberOfSentPackets;
+
+			if (NumberOfReleasedPackets == NumberOfSentPackets)
+			{
+				if (tSLInformation.InformHostOnTxComplete)
+				{
+					tSLInformation.sWlanCB(HCI_EVENT_CC3000_CAN_SHUT_DOWN, NULL, 0);
+				}
+			}
+			return 1;
+
+		}
 		}
 	}
 
@@ -831,22 +833,20 @@ INT32 hci_unsolicited_event_handler(void)
 //!                  accordingly  the global socket status
 //
 //*****************************************************************************
-
 void set_socket_active_status(INT32 Sd, INT32 Status)
 {
 	//DEBUG("Sd=%d, Status %s",Sd, Status == SOCKET_STATUS_ACTIVE ?  "SOCKET_STATUS_ACTIVE" : "SOCKET_STATUS_INACTIVE");
-	
-        if(M_IS_VALID_SD(Sd) && M_IS_VALID_STATUS(Status))
-        {            
-            for (;;) {
-                INT32 oldStatus = socket_active_status;
-                INT32 newStatus = oldStatus;
-                newStatus &= ~(1 << Sd);      /* clean socket's mask */
-                newStatus |= (Status << Sd); /* set new socket's mask */
-                if (__sync_bool_compare_and_swap(&socket_active_status, oldStatus, newStatus))
-                    break;
-            }
-        }
+	if(M_IS_VALID_SD(Sd) && M_IS_VALID_STATUS(Status))
+	{
+		for (;;) {
+		  INT32 oldStatus = socket_active_status;
+		  INT32 newStatus = oldStatus;
+		  newStatus &= ~(1 << Sd);      /* clean socket's mask */
+		  newStatus |= (Status << Sd); /* set new socket's mask */
+		  if (__sync_bool_compare_and_swap(&socket_active_status, oldStatus, newStatus))
+		    break;
+		}
+	}
 }
 
 //*****************************************************************************
@@ -881,8 +881,8 @@ INT32 hci_event_unsol_flowcontrol_handler(CHAR *pEvent)
 		temp += value;
 		pReadPayload += FLOW_CONTROL_EVENT_SIZE;  
 	}
-        
-        __sync_add_and_fetch(&tSLInformation.usNumberOfFreeBuffers, temp);
+
+	__sync_add_and_fetch(&tSLInformation.usNumberOfFreeBuffers, temp);
 	__sync_add_and_fetch(&tSLInformation.NumberOfReleasedPackets, temp);
 
 	return(ESUCCESS);

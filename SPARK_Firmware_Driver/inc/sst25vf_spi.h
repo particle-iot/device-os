@@ -62,7 +62,7 @@ extern "C" {
 void sFLASH_Init(void);
 void sFLASH_EraseSector(uint32_t SectorAddr);
 void sFLASH_EraseBulk(void);
-void sFLASH_WriteBuffer(uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
+void sFLASH_WriteBuffer(const uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
 void sFLASH_ReadBuffer(uint8_t *pBuffer, uint32_t ReadAddr, uint32_t NumByteToRead);
 uint32_t sFLASH_ReadID(void);
 
