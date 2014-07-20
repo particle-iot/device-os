@@ -257,7 +257,7 @@ extern void SimpleLinkWaitEvent(UINT16 usOpcode, void *pRetParams);
 //
 //*****************************************************************************
 
-extern void SimpleLinkWaitData(UINT8 *pBuf, UINT8 *from, UINT8 *fromlen);
+extern void SimpleLinkWaitData(UINT8 *pBuf, UINT8 *from, INT32 *fromlen);
 
 //*****************************************************************************
 //
