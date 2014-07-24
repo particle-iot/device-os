@@ -3,8 +3,7 @@ before_install: npm install -g spark-cli
 install:
 - ./ci/create_spark_cli_json.sh
 script:
-- ./ci/run_memory_available_tests.sh
-- ./ci/post_metric_to_librato.sh
+- ./ci/test_memory_available.sh
 env:
   global:
   - secure: GD7qZLbxcm/fyc1bmyH+hdXWR2T+vV//+fVTXqIG/YiOvA/2bzckfCFWDQuQXPd9fYoCNSqEk7PphW17ZuPne7++fZe2fBuzXZpbZJU7eM8IG9s7EIjlAoC+9bC9l4IUuPg4Eg9E35g4ydzPSq35ziufjSYlYhdzDGng9u43KyI=
