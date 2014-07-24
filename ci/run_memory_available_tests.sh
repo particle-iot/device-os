@@ -1,7 +1,14 @@
 # Set a maximum amount of RAM
 export guaranteed_ram=4096
+
 # Set a how much the handshake takes
 export handshake_ram=7896
+
+# Set a core name to use in spark-cli commands
+export core_name=ci-free-memory-available
+
+# Set a metric prefix name for Librato/graphing
+export metric_prefix=spark_dev
 
 # Jump into the CI dir
 cd ci
@@ -14,7 +21,7 @@ spark compile firmware/memory_available.ino | tee compile_output.txt
 bin_name=$(cat compile_output.txt | grep "firmware.*bin" | awk ' { print ( $(NF) ) }')
 
 # Flash the firmware to core OTA style
-spark flash joe_prod_core2 $bin_name
+spark flash $core_name $bin_name
 
 # Wait 60 seconds for the flash to complete + core to reconnect;
 # would be nice if this polled instead
@@ -22,7 +29,7 @@ sleep 60
 echo "slept 60 seconds"
 
 # Use Spark API to interogate core
-spark get joe_prod_core2 free_mem | tee variable_get_output.txt
+spark get $core_name free_mem | tee variable_get_output.txt
 
 # If it's an integer, ensure it's below the limit
 # and report amount of headroom
@@ -33,16 +40,17 @@ if [[ $available_ram =~ ^[0-9]+$ ]]; then
   curl \
    -u ${LIBRATO_USER}:${LIBRATO_ACCESS_TOKEN} \
    -d 'source=core-firmware-travis-ci' \
-   -d 'gauges[0][name]=spark_dev.ci.firmware.memory.available' \
+   -d 'gauges[0][name]='$metric_prefix'.ci.firmware.memory.available' \
    -d "gauges[0][value]=$available_ram" \
-   -d 'gauges[1][name]=spark_dev.ci.firmware.memory.available_minus_handshake' \
+   -d 'gauges[1][name]='$metric_prefix'.ci.firmware.memory.available_minus_handshake' \
    -d "gauges[1][value]=$available_ram_minus_handshake" \
-   -d 'gauges[2][name]=spark_dev.ci.firmware.memory.guanantee_headroom' \
+   -d 'gauges[2][name]='$metric_prefix'.ci.firmware.memory.guanantee_headroom' \
    -d "gauges[2][value]=$headroom" \
-   -d 'gauges[3][name]=spark_dev.ci.firmware.memory.guaranteed' \
+   -d 'gauges[3][name]='$metric_prefix'.ci.firmware.memory.guaranteed' \
    -d "gauges[3][value]=$guaranteed_ram" \
    -X POST \
    https://metrics-api.librato.com/v1/metrics
+
   if [[ $headroom -ge 0 ]]; then
     echo "available ram: $available_ram"
     echo "available ram minus handshake: $available_ram_minus_handshake"
