@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/spark/core-communication-lib.svg)](https://travis-ci.org/spark/core-communication-lib)
+
 # Core Communication Library
 
 This repository holds the firmware libraries used for the communication between the Spark Core and the Cloud service.
