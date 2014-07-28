@@ -38,6 +38,13 @@ extern "C" {
 #include "netapp.h"
 #include "security.h"
 
+#ifndef SMART_CONFIG_PROFILE_SIZE
+/* NVMEM's profile array size : 67 = 32 (max ssid) + 32 (max key) + 1 (SSID length) + 1 (security type) + 1 (key length) */
+#define SMART_CONFIG_PROFILE_SIZE	67
+#endif
+/* WLAN profile address in Internal Flash (The 1KB Page between Emulated EEPROM and System Flags) */
+#define WLAN_PROFILE_FLASH_ADDRESS	((uint32_t)0x08004800)
+
 /* CC3000 EEPROM - Spark File Data Storage */
 #define NVMEM_SPARK_FILE_ID			14	//Do not change this ID
 #define NVMEM_SPARK_FILE_SIZE		16	//Change according to requirement
@@ -61,6 +68,10 @@ char *WLAN_BootLoader_Patch(unsigned long *length);
 uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
 void SPARK_WLAN_Loop(void);
+int SPARK_WLAN_SmartConfigProcess(void);
+void SPARK_WLAN_AddProfileToFlash(uint8_t profileIndex, uint8_t *profileData);
+void SPARK_WLAN_ApplyProfilesfromFlash(void);
+void SPARK_WLAN_ClearProfilesfromFlash(void);
 
 /* Spark Cloud APIs */
 extern int Spark_Connect(void);
