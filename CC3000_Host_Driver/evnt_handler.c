@@ -230,7 +230,7 @@ void hci_unsol_handle_patch_request(CHAR *event_hdr)
 //*****************************************************************************
 
 
-UINT8 * hci_event_handler(void *pRetParams, UINT8 *from, UINT8 *fromlen)
+UINT8 * hci_event_handler(void *pRetParams, UINT8 *from, INT32 *fromlen)
 {
 	UINT8 *pucReceivedData, ucArgsize;
 	UINT16 usLength;
@@ -971,7 +971,7 @@ void SimpleLinkWaitEvent(UINT16 usOpcode, void *pRetParams)
 //
 //*****************************************************************************
 
-void SimpleLinkWaitData(UINT8 *pBuf, UINT8 *from, UINT8 *fromlen)
+void SimpleLinkWaitData(UINT8 *pBuf, UINT8 *from, INT32 *fromlen)
 {
 	// In the blocking implementation the control to caller will be returned only 
 	// after the end of current transaction, i.e. only after data will be received
