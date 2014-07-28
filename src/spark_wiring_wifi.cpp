@@ -24,6 +24,19 @@
  */
 
 #include "spark_wiring_wifi.h"
+#include "spark_wiring_network.h"
+
+// WiFi.on() is deprecated and will be removed soon
+void WiFiClass::on(void)
+{
+  Network.connect();
+}
+
+// WiFi.off() is deprecated and will be removed soon
+void WiFiClass::off(void)
+{
+  Network.disconnect();
+}
 
 void WiFiClass::listen(void)
 {

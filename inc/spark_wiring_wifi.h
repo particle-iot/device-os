@@ -39,6 +39,8 @@ public:
 	WiFiClass() {}
 	~WiFiClass() {}
 
+        static void on(void);
+        static void off(void);
         static void listen(void);
         static bool listening(void);
         static void setCredentials(const char *ssid);
