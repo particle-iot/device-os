@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file    spark_wiring_ipaddress.cpp
- * @author  Satish Nair
+ * @authors Satish Nair, Technobly
  * @version V1.0.0
  * @date    10-Nov-2013
  * @brief   
@@ -41,15 +41,19 @@ IPAddress::IPAddress(uint8_t first_octet, uint8_t second_octet, uint8_t third_oc
 
 IPAddress::IPAddress(uint32_t address)
 {
-	memcpy(_address, &address, sizeof(_address));
+	// done this way because endianness of octet vs. array order doesn't work correctly with memcpy()
+	_address[3] = address & 0x000f;
+	_address[2] = (address >> 8) & 0x000f;
+	_address[1] = (address >> 16) & 0x000f;
+	_address[0] = (address >> 24) & 0x000f;
 }
 
-IPAddress::IPAddress(const uint8_t *address)
+IPAddress::IPAddress(const uint8_t* address)
 {
 	memcpy(_address, address, sizeof(_address));
 }
 
-IPAddress& IPAddress::operator=(const uint8_t *address)
+IPAddress& IPAddress::operator=(const uint8_t* address)
 {
 	memcpy(_address, address, sizeof(_address));
 	return *this;
@@ -57,13 +61,31 @@ IPAddress& IPAddress::operator=(const uint8_t *address)
 
 IPAddress& IPAddress::operator=(uint32_t address)
 {
-	memcpy(_address, (const uint8_t *)&address, sizeof(_address));
+	// done this way because endianness of octet vs. array order doesn't work correctly with memcpy()
+	_address[3] = address & 0x000f;
+	_address[2] = (address >> 8) & 0x000f;
+	_address[1] = (address >> 16) & 0x000f;
+	_address[0] = (address >> 24) & 0x000f;
 	return *this;
 }
 
-bool IPAddress::operator==(const uint8_t* addr)
+bool IPAddress::operator==(uint32_t address)
+{ 
+	// done this way because endianness of octet vs. array order doesn't work correctly with memcmp()
+	return (_address[3] == (address & 0x000f) &&
+		_address[2] == ((address >> 8) & 0x000f) &&
+		_address[1] == ((address >> 16) & 0x000f) &&
+		_address[0] == ((address >> 24) & 0x000f));
+}
+
+bool IPAddress::operator==(const uint8_t* address)
 {
-	return memcmp(addr, _address, sizeof(_address)) == 0;
+	return memcmp(address, _address, sizeof(_address)) == 0;
+}
+
+bool IPAddress::operator==(const IPAddress& address)
+{
+	return memcmp(address._address, _address, sizeof(_address)) == 0;
 }
 
 size_t IPAddress::printTo(Print& p) const
