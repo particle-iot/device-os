@@ -611,8 +611,16 @@ int Spark_Handshake(void)
   Spark_Protocol_Init();
   spark_protocol.reset_updating();
   int err = spark_protocol.handshake();
+
   Multicast_Presence_Announcement();
   spark_protocol.send_time_request();
+
+  unsigned char patchver[2];
+  nvmem_read_sp_version(patchver);
+  char patchstr[8];
+  snprintf(patchstr, 8, "%d.%d", patchver[0], patchver[1]);
+  Spark.publish("spark/cc3000-patch-version", patchstr, 60, PRIVATE);
+
   return err;
 }
 
