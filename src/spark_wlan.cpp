@@ -694,9 +694,12 @@ void SPARK_WLAN_SmartConfigProcess()
 
         decKeyPtr = &profileArray[profileArray[0] + 3];
 
-        aes_decrypt(decKeyPtr, (unsigned char *)smartconfigkey);
+        UINT8 expandedKey[176];
+        aes_decrypt(decKeyPtr, (unsigned char *)smartconfigkey, expandedKey);
         if (profileArray[profileArray[0] + 1] > 16)
-                aes_decrypt((UINT8 *)(decKeyPtr + 16), (unsigned char *)smartconfigkey);
+        {
+          aes_decrypt((UINT8 *)(decKeyPtr + 16), (unsigned char *)smartconfigkey, expandedKey);
+        }
 
         if (*(UINT8 *)(decKeyPtr +31) != 0)
         {
