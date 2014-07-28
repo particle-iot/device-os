@@ -207,13 +207,13 @@ void digitalWrite(uint16_t pin, uint8_t value)
 		pinMode(pin, OUTPUT);
 	}
 
-	if (value == HIGH)
-	{
-		PIN_MAP[pin].gpio_peripheral->BSRR = PIN_MAP[pin].gpio_pin;
-	}
-	else if (value == LOW)
+	if (value == LOW)
 	{
 		PIN_MAP[pin].gpio_peripheral->BRR = PIN_MAP[pin].gpio_pin;
+	}
+	else	// wiring treats everything but LOW as HIGH (just like "if" treats everything but 0 as true)
+	{
+		PIN_MAP[pin].gpio_peripheral->BSRR = PIN_MAP[pin].gpio_pin;
 	}
 }
 
