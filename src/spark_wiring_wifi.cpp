@@ -159,13 +159,15 @@ bool WiFiClass::hasCredentials(void)
   return false;
 }
 
-void WiFiClass::clearCredentials(void)
+bool WiFiClass::clearCredentials(void)
 {
   if(wlan_ioctl_del_profile(255) == 0)
   {
     extern void recreate_spark_nvmem_file(void);
     recreate_spark_nvmem_file();
+    return true;
   }
+  return false;
 }
 
 WiFiClass WiFi;
