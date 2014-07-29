@@ -292,7 +292,7 @@ void Timing_Decrement(void)
 
 		if(!SPARK_WLAN_SLEEP)
 		{
-			WLAN_SMART_CONFIG_START = 1;
+			WiFi.listen();
 		}
 	}
 	else if(BUTTON_GetDebouncedTime(BUTTON1) >= 7000)

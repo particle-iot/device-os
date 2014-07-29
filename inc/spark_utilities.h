@@ -55,6 +55,11 @@
 
 typedef enum
 {
+  AUTOMATIC = 0, SEMI_AUTOMATIC = 1, MANUAL = 2
+} System_Mode_TypeDef;
+
+typedef enum
+{
 	SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1
 } Spark_Sleep_TypeDef;
 
@@ -72,6 +77,19 @@ typedef enum
 {
   MY_DEVICES
 } Spark_Subscription_Scope_TypeDef;
+
+class SystemClass {
+private:
+  static System_Mode_TypeDef _mode;
+
+public:
+  SystemClass();
+  SystemClass(System_Mode_TypeDef mode);
+  static System_Mode_TypeDef mode(void);
+  static void factoryReset(void);
+  static void bootloader(void);
+  static void reset(void);
+};
 
 class RGBClass {
 private:
@@ -104,12 +122,16 @@ public:
 	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 	static void sleep(long seconds);
 	static bool connected(void);
-	static int connect(void);
-	static int disconnect(void);
+	static void connect(void);
+	static void disconnect(void);
+        static void process(void);
 	static String deviceID(void);
 	static void syncTime(void);
 };
 
+#define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
+
+extern SystemClass System;
 extern RGBClass RGB;
 extern SparkClass Spark;
 

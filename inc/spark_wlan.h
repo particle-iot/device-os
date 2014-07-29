@@ -38,8 +38,10 @@ extern "C" {
 #include "netapp.h"
 #include "security.h"
 
+#define SMART_CONFIG_PROFILE_SIZE       67
+
 /* CC3000 EEPROM - Spark File Data Storage */
-#define NVMEM_SPARK_FILE_ID			14	//Do not change this ID
+#define NVMEM_SPARK_FILE_ID		14	//Do not change this ID
 #define NVMEM_SPARK_FILE_SIZE		16	//Change according to requirement
 #define WLAN_PROFILE_FILE_OFFSET	0
 #define WLAN_POLICY_FILE_OFFSET		1
@@ -61,6 +63,7 @@ char *WLAN_BootLoader_Patch(unsigned long *length);
 uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
 void SPARK_WLAN_Loop(void);
+void SPARK_WLAN_SmartConfigProcess();
 
 /* Spark Cloud APIs */
 extern int Spark_Connect(void);
@@ -86,6 +89,8 @@ extern volatile uint8_t SPARK_LED_FADE;
 
 extern volatile uint8_t WLAN_DELETE_PROFILES;
 extern volatile uint8_t WLAN_SMART_CONFIG_START;
+extern volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
+extern volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
 
 extern volatile uint8_t Spark_Error_Count;
 extern volatile uint8_t Cloud_Handshake_Error_Count;
@@ -93,6 +98,9 @@ extern volatile uint8_t Cloud_Handshake_Error_Count;
 extern volatile system_tick_t spark_loop_total_millis;
 
 extern long sparkSocket;
+
+extern unsigned char wlan_profile_index;
+extern unsigned char NVMEM_Spark_File_Data[];
 }
 
 #endif  /*__SPARK_WLAN_H*/

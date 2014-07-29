@@ -60,8 +60,8 @@ volatile uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
 volatile uint8_t WLAN_DELETE_PROFILES;
 volatile uint8_t WLAN_SMART_CONFIG_START;
 volatile uint8_t WLAN_SMART_CONFIG_STOP;
-volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
-volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
+volatile uint8_t WLAN_SMART_CONFIG_FINISHED = 1;
+volatile uint8_t WLAN_SERIAL_CONFIG_DONE = 1;
 volatile uint8_t WLAN_CONNECTED;
 volatile uint8_t WLAN_DHCP;
 volatile uint8_t WLAN_CAN_SHUTDOWN;
@@ -142,70 +142,9 @@ void wifi_add_profile_callback(const char *ssid,
                                const char *password,
                                unsigned long security_type)
 {
-  if (0 == password[0]) {
-    security_type = WLAN_SEC_UNSEC;
-  }
-
-  // add a profile
-  switch (security_type)
-  {
-  case WLAN_SEC_UNSEC://None
-    {
-      wlan_profile_index = wlan_add_profile(security_type,    // Security type
-        (unsigned char *)ssid,                                // SSID
-        strlen(ssid),                                         // SSID length
-        NULL,                                                 // BSSID
-        1,                                                    // Priority
-        0, 0, 0, 0, 0);
-      
-      break;
-    }
-
-  case WLAN_SEC_WEP://WEP
-    {
-      // Get WEP key from string, needs converting
-      UINT32 keyLen = (strlen(password)/2); // WEP key length in bytes
-      UINT8 decKey[32]; // Longest WEP key I can find is 256-bit, or 32 bytes long
-      char byteStr[3]; byteStr[2] = '\0';
-      
-      for (UINT32 i = 0 ; i < keyLen ; i++) { // Basic loop to convert text-based WEP key to byte array, can definitely be improved
-        byteStr[0] = password[2*i]; byteStr[1] = password[(2*i)+1];
-        decKey[i] = strtoul(byteStr, NULL, 16);
-      }
-      
-      wlan_profile_index = wlan_add_profile(security_type,    // Security type
-        (unsigned char *)ssid,                                // SSID
-        strlen(ssid),                                         // SSID length
-        NULL,                                                 // BSSID
-        1,                                                    // Priority
-        keyLen,                                               // KEY length
-        0,                                                    // KEY index
-        0,
-        decKey,                                               // KEY
-        0);
-        
-      break;
-    }
-
-  case WLAN_SEC_WPA://WPA
-  case WLAN_SEC_WPA2://WPA2
-    {
-      wlan_profile_index = wlan_add_profile(security_type,    // Security type
-        (unsigned char *)ssid,                                // SSID
-        strlen(ssid),                                         // SSID length
-        NULL,                                                 // BSSID
-        1,                                                    // Priority
-        0x18,                                                 // PairwiseCipher
-        0x1e,                                                 // GroupCipher
-        2,                                                    // KEY management
-        (unsigned char *)password,                            // KEY
-        strlen(password));                                    // KEY length
-        
-      break;
-    }
-  }
-
   WLAN_SERIAL_CONFIG_DONE = 1;
+
+  WiFi.setCredentials((char *)ssid, strlen(ssid), (char *)password, strlen(password), security_type);
 }
 
 void recreate_spark_nvmem_file(void)
@@ -276,9 +215,9 @@ void Start_Smart_Config(void)
 	WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
 
 	/* Wait for SmartConfig/SerialConfig to finish */
-	while (!(WLAN_SMART_CONFIG_FINISHED | WLAN_SERIAL_CONFIG_DONE))
+	while (WiFi.listening())
 	{
-		if(WLAN_DELETE_PROFILES && wlan_ioctl_del_profile(255) == 0)
+		if(WLAN_DELETE_PROFILES)
 		{
 			int toggle = 25;
 			while(toggle--)
@@ -286,7 +225,7 @@ void Start_Smart_Config(void)
 				LED_Toggle(LED_RGB);
 				Delay(50);
 			}
-			recreate_spark_nvmem_file();
+			WiFi.clearCredentials();
 			WLAN_DELETE_PROFILES = 0;
 		}
 		else
@@ -311,16 +250,8 @@ void Start_Smart_Config(void)
 	if(WLAN_SMART_CONFIG_FINISHED)
 	{
 		/* Decrypt configuration information and add profile */
-		wlan_profile_index = wlan_smart_config_process();
+		SPARK_WLAN_SmartConfigProcess();
 	}
-
-	if(wlan_profile_index != -1)
-	{
-		NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = wlan_profile_index + 1;
-	}
-
-	/* write count of wlan profiles stored */
-	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
 
 	/* Configure to connect automatically to the AP retrieved in the Smart config process */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
@@ -473,9 +404,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE)
 	{
 		/* Delete all previously stored wlan profiles */
-		wlan_ioctl_del_profile(255);
-
-		recreate_spark_nvmem_file();
+		WiFi.clearCredentials();
 
 		NVMEM_SPARK_Reset_SysFlag = 0x0000;
 		Save_SystemFlags();
@@ -483,9 +412,9 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 
 	if(!WLAN_MANUAL_CONNECT)
 	{
-		if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] == 0)
+		if(!WiFi.hasCredentials())
 		{
-			WLAN_SMART_CONFIG_START = 1;
+			WiFi.listen();
 		}
 		else if(NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] == 0)
 		{
@@ -731,11 +660,64 @@ void SPARK_WLAN_Loop(void)
       }
     }
 
-    if (!Spark_Communication_Loop())
+    if(System.mode() != MANUAL)
     {
-      SPARK_FLASH_UPDATE = 0;
-      SPARK_CLOUD_CONNECTED = 0;
-      SPARK_CLOUD_SOCKETED = 0;
+      Spark.process();
     }
   }
+}
+
+void SPARK_WLAN_SmartConfigProcess()
+{
+        unsigned int ssidLen, keyLen;
+        unsigned char *decKeyPtr;
+        unsigned char *ssidPtr;
+        extern unsigned char profileArray[];
+
+        // read the received data from fileID #13 and parse it according to the followings:
+        // 1) SSID LEN - not encrypted
+        // 2) SSID - not encrypted
+        // 3) KEY LEN - not encrypted. always 32 bytes long
+        // 4) Security type - not encrypted
+        // 5) KEY - encrypted together with true key length as the first byte in KEY
+        //       to elaborate, there are two corner cases:
+        //              1) the KEY is 32 bytes long. In this case, the first byte does not represent KEY length
+        //              2) the KEY is 31 bytes long. In this case, the first byte represent KEY length and equals 31
+        if(SMART_CONFIG_PROFILE_SIZE != nvmem_read(NVMEM_SHARED_MEM_FILEID, SMART_CONFIG_PROFILE_SIZE, 0, profileArray))
+        {
+          return;
+        }
+
+        ssidPtr = &profileArray[1];
+
+        ssidLen = profileArray[0];
+
+        decKeyPtr = &profileArray[profileArray[0] + 3];
+
+        UINT8 expandedKey[176];
+        aes_decrypt(decKeyPtr, (unsigned char *)smartconfigkey, expandedKey);
+        if (profileArray[profileArray[0] + 1] > 16)
+        {
+          aes_decrypt((UINT8 *)(decKeyPtr + 16), (unsigned char *)smartconfigkey, expandedKey);
+        }
+
+        if (*(UINT8 *)(decKeyPtr +31) != 0)
+        {
+                if (*decKeyPtr == 31)
+                {
+                        keyLen = 31;
+                        decKeyPtr++;
+                }
+                else
+                {
+                        keyLen = 32;
+                }
+        }
+        else
+        {
+                keyLen = *decKeyPtr;
+                decKeyPtr++;
+        }
+
+        WiFi.setCredentials((char *)ssidPtr, ssidLen, (char *)decKeyPtr, keyLen, profileArray[profileArray[0] + 2]);
 }

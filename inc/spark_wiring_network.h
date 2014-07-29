@@ -42,6 +42,11 @@ public:
 	uint32_t ping(IPAddress remoteIP);
 	uint32_t ping(IPAddress remoteIP, uint8_t nTries);
 
+        static void connect(void);
+        static void disconnect(void);
+        static bool connecting(void);
+        static bool ready(void);
+
 	friend class TCPClient;
 	friend class TCPServer;
 

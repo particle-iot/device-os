@@ -63,7 +63,6 @@ private:
 	uint16_t _offset;
 	uint16_t _total;
 	inline int bufferCount();
-	inline int isWanReady();
 };
 
 #endif

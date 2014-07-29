@@ -28,6 +28,7 @@
 #define __SPARK_WIRING_UDP_H
 
 #include "spark_wiring.h"
+#include "spark_wiring_network.h"
 
 #define RX_BUF_MAX_SIZE	512
 
@@ -42,8 +43,6 @@ private:
 	uint8_t _buffer[RX_BUF_MAX_SIZE];
 	uint16_t _offset;
         uint16_t _total;
-        inline int isWanReady();
-        uint8_t connected();
 public:
 	UDP();
 
