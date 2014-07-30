@@ -25,6 +25,7 @@
 
 /* Includes ------------------------------------------------------------------*/  
 #include "application.h"
+#include "spark_flasher_ymodem.h"
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
@@ -46,12 +47,23 @@ void setup()
 	Spark.function("analogread", tinkerAnalogRead);
 	Spark.function("analogwrite", tinkerAnalogWrite);
 
+        Serial.begin(115200);
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-	//This will run in a loop
+  //This will run in a loop
+  if(Serial.available())
+  {
+    char c = Serial.read();
+    if(c == 'd')
+    {
+      //Test Serial Flasher (uses YMODEM protocol)
+      //Use TeraTerm to upload the binary file
+      Serial_Download();
+    }
+  }
 }
 
 /*******************************************************************************
