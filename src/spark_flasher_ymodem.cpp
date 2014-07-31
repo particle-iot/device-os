@@ -27,144 +27,17 @@
 
 #include "spark_flasher_ymodem.h"
 
-#define IS_AF(c)  ((c >= 'A') && (c <= 'F'))
-#define IS_af(c)  ((c >= 'a') && (c <= 'f'))
-#define IS_09(c)  ((c >= '0') && (c <= '9'))
-#define ISVALIDHEX(c)  IS_AF(c) || IS_af(c) || IS_09(c)
-#define ISVALIDDEC(c)  IS_09(c)
-#define CONVERTDEC(c)  (c - '0')
-
-#define CONVERTHEX_alpha(c)  (IS_AF(c) ? (c - 'A'+10) : (c - 'a'+10))
-#define CONVERTHEX(c)   (IS_09(c) ? (c - '0') : CONVERTHEX_alpha(c))
-
-/**
- * @brief  Convert an Integer to a string
- * @param  str: The string
- * @param  intnum: The intger to be converted
- * @retval None
- */
-static void Int2Str(uint8_t* str, int32_t intnum)
-{
-  uint32_t i, Div = 1000000000, j = 0, Status = 0;
-
-  for (i = 0; i < 10; i++)
-  {
-    str[j++] = (intnum / Div) + 48;
-
-    intnum = intnum % Div;
-    Div /= 10;
-    if ((str[j-1] == '0') & (Status == 0))
-    {
-      j = 0;
-    }
-    else
-    {
-      Status++;
-    }
-  }
-}
-
-/**
- * @brief  Convert a string to an integer
- * @param  inputstr: The string to be converted
- * @param  intnum: The intger value
- * @retval 1: Correct
- *         0: Error
- */
-static uint32_t Str2Int(uint8_t *inputstr, int32_t *intnum)
-{
-  uint32_t i = 0, res = 0;
-  uint32_t val = 0;
-
-  if (inputstr[0] == '0' && (inputstr[1] == 'x' || inputstr[1] == 'X'))
-  {
-    if (inputstr[2] == '\0')
-    {
-      return 0;
-    }
-    for (i = 2; i < 11; i++)
-    {
-      if (inputstr[i] == '\0')
-      {
-        *intnum = val;
-        /* return 1; */
-        res = 1;
-        break;
-      }
-      if (ISVALIDHEX(inputstr[i]))
-      {
-        val = (val << 4) + CONVERTHEX(inputstr[i]);
-      }
-      else
-      {
-        /* return 0, Invalid input */
-        res = 0;
-        break;
-      }
-    }
-    /* over 8 digit hex --invalid */
-    if (i >= 11)
-    {
-      res = 0;
-    }
-  }
-  else /* max 10-digit decimal input */
-  {
-    for (i = 0;i < 11;i++)
-    {
-      if (inputstr[i] == '\0')
-      {
-        *intnum = val;
-        /* return 1 */
-        res = 1;
-        break;
-      }
-      else if ((inputstr[i] == 'k' || inputstr[i] == 'K') && (i > 0))
-      {
-        val = val << 10;
-        *intnum = val;
-        res = 1;
-        break;
-      }
-      else if ((inputstr[i] == 'm' || inputstr[i] == 'M') && (i > 0))
-      {
-        val = val << 20;
-        *intnum = val;
-        res = 1;
-        break;
-      }
-      else if (ISVALIDDEC(inputstr[i]))
-      {
-        val = val * 10 + CONVERTDEC(inputstr[i]);
-      }
-      else
-      {
-        /* return 0, Invalid input */
-        res = 0;
-        break;
-      }
-    }
-    /* Over 10 digit decimal --invalid */
-    if (i >= 11)
-    {
-      res = 0;
-    }
-  }
-
-  return res;
-}
-
 /**
  * @brief  Test to see if a key has been pressed on the HyperTerminal
  * @param  key: The key pressed
  * @retval 1: Correct
  *         0: Error
  */
-static uint32_t SerialKeyPressed(uint8_t *key)
+static uint32_t Serial_KeyPressed(Stream *serialObj, uint8_t *key)
 {
-  if(Serial.available())
+  if(serialObj->available())
   {
-    *key = Serial.read();
+    *key = serialObj->read();
     return 1;
   }
   else
@@ -174,115 +47,16 @@ static uint32_t SerialKeyPressed(uint8_t *key)
 }
 
 /**
- * @brief  Get a key from the HyperTerminal
- * @param  None
- * @retval The Key Pressed
- */
-static uint8_t GetKey(void)
-{
-  uint8_t key = 0;
-
-  /* Waiting for user input */
-  while (1)
-  {
-    if (SerialKeyPressed((uint8_t*)&key)) break;
-  }
-  return key;
-
-}
-
-/**
- * @brief  Print a character on the HyperTerminal
- * @param  c: The character to be printed
- * @retval None
- */
-static void SerialPutChar(uint8_t c)
-{
-  Serial.write(c);
-}
-
-/**
  * @brief  Print a string on the HyperTerminal
  * @param  s: The string to be printed
  * @retval None
  */
-static void SerialPrintCharArray(uint8_t *s)
+static void Serial_PrintCharArray(Stream *serialObj, uint8_t *s)
 {
   while (*s != '\0')
   {
-    SerialPutChar(*s);
+    serialObj->write(*s);
     s++;
-  }
-}
-
-/**
- * @brief  Get Input string from the HyperTerminal
- * @param  buffP: The input string
- * @retval None
- */
-static void GetInputString (uint8_t * buffP)
-{
-  uint32_t bytes_read = 0;
-  uint8_t c = 0;
-  do
-  {
-    c = GetKey();
-    if (c == '\r')
-      break;
-    if (c == '\b') /* Backspace */
-    {
-      if (bytes_read > 0)
-      {
-        Serial.println("\b \b");
-        bytes_read --;
-      }
-      continue;
-    }
-    if (bytes_read >= CMD_STRING_SIZE )
-    {
-      Serial.println("Command string size overflow");
-      bytes_read = 0;
-      continue;
-    }
-    if (c >= 0x20 && c <= 0x7E)
-    {
-      buffP[bytes_read++] = c;
-      SerialPutChar(c);
-    }
-  }
-  while (1);
-  Serial.println(("\n\r"));
-  buffP[bytes_read] = '\0';
-}
-
-/**
- * @brief  Get an integer from the HyperTerminal
- * @param  num: The inetger
- * @retval 1: Correct
- *         0: Error
- */
-static uint32_t GetIntegerInput(int32_t * num)
-{
-  uint8_t inputstr[16];
-
-  while (1)
-  {
-    GetInputString(inputstr);
-    if (inputstr[0] == '\0') continue;
-    if ((inputstr[0] == 'a' || inputstr[0] == 'A') && inputstr[1] == '\0')
-    {
-      Serial.println("User Canceled");
-      return 0;
-    }
-
-    if (Str2Int(inputstr, num) == 0)
-    {
-      Serial.println("Error, Input again: ");
-    }
-    else
-    {
-      return 1;
-    }
   }
 }
 
@@ -293,11 +67,11 @@ static uint32_t GetIntegerInput(int32_t * num)
  * @retval 0: Byte received
  *         -1: Timeout
  */
-static int32_t Receive_Byte(uint8_t *c, uint32_t timeout)
+static int32_t Receive_Byte(Stream *serialObj, uint8_t *c, uint32_t timeout)
 {
   while (timeout-- > 0)
   {
-    if (SerialKeyPressed(c) == 1)
+    if (Serial_KeyPressed(serialObj, c) == 1)
     {
       return 0;
     }
@@ -310,9 +84,9 @@ static int32_t Receive_Byte(uint8_t *c, uint32_t timeout)
  * @param  c: Character
  * @retval 0: Byte sent
  */
-static uint32_t Send_Byte(uint8_t c)
+static uint32_t Send_Byte(Stream *serialObj, uint8_t c)
 {
-  SerialPutChar(c);
+  serialObj->write(c);
   return 0;
 }
 
@@ -328,12 +102,12 @@ static uint32_t Send_Byte(uint8_t c)
  *        -1: timeout or packet error
  *         1: abort by user
  */
-static int32_t Receive_Packet(uint8_t *data, int32_t *length, uint32_t timeout)
+static int32_t Receive_Packet(Stream *serialObj, uint8_t *data, int32_t *length, uint32_t timeout)
 {
   uint16_t i, packet_size;
   uint8_t c;
   *length = 0;
-  if (Receive_Byte(&c, timeout) != 0)
+  if (Receive_Byte(serialObj, &c, timeout) != 0)
   {
     return -1;
   }
@@ -348,7 +122,7 @@ static int32_t Receive_Packet(uint8_t *data, int32_t *length, uint32_t timeout)
     case EOT:
       return 0;
     case CA:
-      if ((Receive_Byte(&c, timeout) == 0) && (c == CA))
+      if ((Receive_Byte(serialObj, &c, timeout) == 0) && (c == CA))
       {
         *length = -1;
         return 0;
@@ -366,7 +140,7 @@ static int32_t Receive_Packet(uint8_t *data, int32_t *length, uint32_t timeout)
   *data = c;
   for (i = 1; i < (packet_size + PACKET_OVERHEAD); i ++)
   {
-    if (Receive_Byte(data + i, timeout) != 0)
+    if (Receive_Byte(serialObj, data + i, timeout) != 0)
     {
       return -1;
     }
@@ -384,7 +158,7 @@ static int32_t Receive_Packet(uint8_t *data, int32_t *length, uint32_t timeout)
  * @param  buf: Address of the first byte
  * @retval The size of the file
  */
-int32_t Ymodem_Receive(uint8_t *buf, uint8_t* fileName)
+int32_t Ymodem_Receive(Stream *serialObj, uint8_t *buf, uint8_t* fileName)
 {
   uint8_t packet_data[PACKET_1K_SIZE + PACKET_OVERHEAD], file_size[FILE_SIZE_LENGTH], *file_ptr, *buf_ptr;
   int32_t i, packet_length, session_done, file_done, packets_received, errors, session_begin, size = 0;
@@ -394,7 +168,7 @@ int32_t Ymodem_Receive(uint8_t *buf, uint8_t* fileName)
   {
     for (packets_received = 0, file_done = 0, buf_ptr = buf; ;)
     {
-      switch (Receive_Packet(packet_data, &packet_length, NAK_TIMEOUT))
+      switch (Receive_Packet(serialObj, packet_data, &packet_length, NAK_TIMEOUT))
       {
         case 0:
           errors = 0;
@@ -402,18 +176,18 @@ int32_t Ymodem_Receive(uint8_t *buf, uint8_t* fileName)
           {
             /* Abort by sender */
             case -1:
-              Send_Byte(ACK);
+              Send_Byte(serialObj, ACK);
               return 0;
               /* End of transmission */
             case 0:
-              Send_Byte(ACK);
+              Send_Byte(serialObj, ACK);
               file_done = 1;
               break;
               /* Normal packet */
             default:
               if ((packet_data[PACKET_SEQNO_INDEX] & 0xff) != (packets_received & 0xff))
               {
-                Send_Byte(NAK);
+                Send_Byte(serialObj, NAK);
               }
               else
               {
@@ -433,27 +207,27 @@ int32_t Ymodem_Receive(uint8_t *buf, uint8_t* fileName)
                       file_size[i++] = *file_ptr++;
                     }
                     file_size[i++] = '\0';
-                    Str2Int(file_size, &size);
+                    size = strtoul((const char *)file_size, NULL, 10);
 
                     /* Test the size of the image to be sent */
                     /* Image size is greater than Flash max size */
                     if (size > FLASH_MAX_SIZE)
                     {
                       /* End session */
-                      Send_Byte(CA);
-                      Send_Byte(CA);
+                      Send_Byte(serialObj, CA);
+                      Send_Byte(serialObj, CA);
                       return -1;
                     }
 
                     Spark_Prepare_For_Firmware_Update();
 
-                    Send_Byte(ACK);
-                    Send_Byte(CRC16);
+                    Send_Byte(serialObj, ACK);
+                    Send_Byte(serialObj, CRC16);
                   }
                   /* Filename packet is empty, end session */
                   else
                   {
-                    Send_Byte(ACK);
+                    Send_Byte(serialObj, ACK);
                     file_done = 1;
                     session_done = 1;
                     break;
@@ -467,13 +241,13 @@ int32_t Ymodem_Receive(uint8_t *buf, uint8_t* fileName)
                   if(saved_index > current_index)
                   {
                     current_index = saved_index;
-                    Send_Byte(ACK);
+                    Send_Byte(serialObj, ACK);
                   }
                   else
                   {
                     /* End session if Spark_Save_Firmware_Chunk() fails */
-                    Send_Byte(CA);
-                    Send_Byte(CA);
+                    Send_Byte(serialObj, CA);
+                    Send_Byte(serialObj, CA);
                     return -2;
                   }
                 }
@@ -483,8 +257,8 @@ int32_t Ymodem_Receive(uint8_t *buf, uint8_t* fileName)
           }
           break;
             case 1:
-              Send_Byte(CA);
-              Send_Byte(CA);
+              Send_Byte(serialObj, CA);
+              Send_Byte(serialObj, CA);
               return -3;
             default:
               if (session_begin > 0)
@@ -493,11 +267,11 @@ int32_t Ymodem_Receive(uint8_t *buf, uint8_t* fileName)
               }
               if (errors > MAX_ERRORS)
               {
-                Send_Byte(CA);
-                Send_Byte(CA);
+                Send_Byte(serialObj, CA);
+                Send_Byte(serialObj, CA);
                 return 0;
               }
-              Send_Byte(CRC16);
+              Send_Byte(serialObj, CRC16);
               break;
       }
       if (file_done != 0)
@@ -514,45 +288,45 @@ int32_t Ymodem_Receive(uint8_t *buf, uint8_t* fileName)
 }
 
 /**
- * @brief  Download a file via serial port
- * @param  None
+ * @brief  Firmware Update via Serial Port
+ * @param  serialObj (Possible values : &Serial, &Serial1 or &Serial2)
  * @retval None
  */
-void Serial_Download(void)
+void Serial_Firmware_Update(Stream *serialObj)
 {
   int32_t Size = 0;
   uint8_t fileName[FILE_NAME_LENGTH] = {0};
   uint8_t buffer[1024] = {0};
 
-  Serial.println("Waiting for the binary file to be sent ... (press 'a' to abort)");
-  Size = Ymodem_Receive(&buffer[0], fileName);
+  serialObj->println("Waiting for the binary file to be sent ... (press 'a' to abort)");
+  Size = Ymodem_Receive(serialObj, &buffer[0], fileName);
   if (Size > 0)
   {
-    Serial.println("Downloaded file successfully!");
-    Serial.print("Name: ");
-    SerialPrintCharArray(fileName);
-    Serial.println("");
-    Serial.print("Size: ");
-    Serial.print(String(Size));
-    Serial.println(" bytes");
-    Serial.println("Restarting system To apply firmware update...");
+    serialObj->println("\r\nDownloaded file successfully!");
+    serialObj->print("Name: ");
+    Serial_PrintCharArray(serialObj, fileName);
+    serialObj->println("");
+    serialObj->print("Size: ");
+    serialObj->print(Size);
+    serialObj->println(" bytes");
+    serialObj->println("Restarting system to apply firmware update...");
     delay(100);
     Spark_Finish_Firmware_Update();
   }
   else if (Size == -1)
   {
-    Serial.println("The file size is higher than the allowed space memory!");
+    serialObj->println("The file size is higher than the allowed space memory!");
   }
   else if (Size == -2)
   {
-    Serial.println("Verification failed!");
+    serialObj->println("Verification failed!");
   }
   else if (Size == -3)
   {
-    Serial.println("Aborted by user.");
+    serialObj->println("Aborted by user.");
   }
   else
   {
-    Serial.println("Failed to receive the file!");
+    serialObj->println("Failed to receive the file!");
   }
 }

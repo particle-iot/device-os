@@ -28,7 +28,6 @@
 #define __SPARK_FLASHER_YMODEM_H
 
 #include "spark_wiring.h"
-#include "spark_wiring_usbserial.h"
 
 #define PACKET_SEQNO_INDEX      (1)
 #define PACKET_SEQNO_COMP_INDEX (2)
@@ -66,8 +65,8 @@
 extern "C" {
 #endif
 
-  int32_t Ymodem_Receive(uint8_t *, uint8_t*);
-  void Serial_Download(void);
+  int32_t Ymodem_Receive(Stream *, uint8_t *, uint8_t*);
+  void Serial_Firmware_Update(Stream *);
 
 #ifdef __cplusplus
 } /* end of extern "C" */
