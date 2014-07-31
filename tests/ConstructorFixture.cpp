@@ -128,6 +128,7 @@ uint8_t ConstructorFixture::sent_buf_0[256];
 uint8_t ConstructorFixture::sent_buf_1[256];
 
 uint8_t ConstructorFixture::message_to_receive[66];
+bool ConstructorFixture::did_prepare_for_update = false;
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
 bool ConstructorFixture::signal_called_with = false;
@@ -154,6 +155,7 @@ ConstructorFixture::ConstructorFixture()
   descriptor.get_variable = mock_get_variable;
   descriptor.was_ota_upgrade_successful = mock_ota_status_check;
   descriptor.variable_type = mock_variable_type;
+  did_prepare_for_update = false;
   function_called = false;
   variable_to_get = -98765;
   spark_protocol.init(id, keys, callbacks, descriptor);
@@ -257,7 +259,7 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
 
 void ConstructorFixture::mock_prepare_for_firmware_update(void)
 {
-  // no-op
+  did_prepare_for_update = true;
 }
 
 int ConstructorFixture::mock_num_functions(void)

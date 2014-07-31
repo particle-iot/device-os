@@ -219,8 +219,15 @@ SUITE(SparkProtocolConstruction)
 
   TEST_FIXTURE(ConstructorFixture, EventLoopPreparesForUpdateUponUpdateBegin)
   {
-    // callbacks.prepare_for_firmware_update
-    CHECK(false);
+    uint8_t update_begin[18] = {
+      0x00, 0x10,
+      0x61, 0x30, 0xc7, 0x4c, 0x9c, 0x11, 0x5c, 0x5b,
+      0x03, 0x83, 0x8a, 0x9a, 0xa7, 0x6c, 0xf1, 0x83 };
+    memcpy(message_to_receive, update_begin, 18);
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.event_loop();
+    CHECK(did_prepare_for_update);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToUpdateBeginWithUpdateReady)
