@@ -142,6 +142,7 @@ ConstructorFixture::ConstructorFixture()
   keys.server_public = pubkey;
   callbacks.send = mock_send;
   callbacks.receive = mock_receive;
+  callbacks.prepare_for_firmware_update = mock_prepare_for_firmware_update;
   callbacks.signal = mock_signal;
   callbacks.millis = mock_millis;
   callbacks.set_time = mock_set_time;
@@ -252,6 +253,11 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
   }
   else buflen = 0;
   return buflen;
+}
+
+void ConstructorFixture::mock_prepare_for_firmware_update(void)
+{
+  // no-op
 }
 
 int ConstructorFixture::mock_num_functions(void)
