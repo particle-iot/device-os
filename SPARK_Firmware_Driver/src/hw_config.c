@@ -1503,13 +1503,8 @@ void FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize)
 {
 #ifdef SPARK_SFLASH_ENABLE
 
-	LED_SetRGBColor(RGB_COLOR_MAGENTA);
-    LED_On(LED_RGB);
-
-    OTA_FLASHED_Status_SysFlag = 0x0000;
-	//FLASH_OTA_Update_SysFlag = 0x5555;
+	OTA_FLASHED_Status_SysFlag = 0x0000;
 	Save_SystemFlags();
-	//BKP_WriteBackupRegister(BKP_DR10, 0x5555);
 
 	Flash_Update_Index = 0;
 	External_Flash_Start_Address = sFLASH_Address;
@@ -1553,8 +1548,6 @@ uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 		sFLASH_EraseSector(External_Flash_Address);
 		Flash_Update_Index = (uint16_t)((External_Flash_Address - External_Flash_Start_Address) / bufferSize);
 	}
-
-	LED_Toggle(LED_RGB);
 
 	return Flash_Update_Index;
 
