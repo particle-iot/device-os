@@ -128,6 +128,7 @@ uint8_t ConstructorFixture::sent_buf_0[256];
 uint8_t ConstructorFixture::sent_buf_1[256];
 
 uint8_t ConstructorFixture::message_to_receive[98];
+unsigned short ConstructorFixture::next_chunk_index = 0;
 bool ConstructorFixture::did_prepare_for_update = false;
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
@@ -266,12 +267,12 @@ void ConstructorFixture::mock_prepare_for_firmware_update(void)
 
 long unsigned int ConstructorFixture::mock_calculate_crc(unsigned char *buf, long unsigned int buflen)
 {
-  return 0;
+  return 0x01234567;
 }
 
 unsigned short ConstructorFixture::mock_save_firmware_chunk(unsigned char *buf, long unsigned int buflen)
 {
-  return 0;
+  return next_chunk_index;
 }
 
 int ConstructorFixture::mock_num_functions(void)
