@@ -195,14 +195,21 @@ void RGBClass::control(bool override)
 #endif
 }
 
-void RGBClass::color(int red, int green, int blue)
+void RGBClass::color(uint32_t rgbColor)
 {
 #if !defined (RGB_NOTIFICATIONS_ON)
-	if (true != _control)
-		return;
+        if (true != _control)
+                return;
 
-	LED_SetSignalingColor(red << 16 | green << 8 | blue);
-	LED_On(LED_RGB);
+        LED_SetSignalingColor(rgbColor);
+        LED_On(LED_RGB);
+#endif
+}
+
+void RGBClass::color(uint32_t red, uint32_t green, uint32_t blue)
+{
+#if !defined (RGB_NOTIFICATIONS_ON)
+	color(red << 16 | green << 8 | blue);
 #endif
 }
 
@@ -526,6 +533,8 @@ int Spark_Receive(unsigned char *buf, int buflen)
 
 void Spark_Prepare_To_Save_File(unsigned int sFlashAddress, unsigned int fileSize)
 {
+  RGB.control(true);
+  RGB.color(RGB_COLOR_MAGENTA);
   SPARK_FLASH_UPDATE = 2;
   TimingFlashUpdateTimeout = 0;
   FLASH_Begin(sFlashAddress, fileSize);
@@ -533,6 +542,8 @@ void Spark_Prepare_To_Save_File(unsigned int sFlashAddress, unsigned int fileSiz
 
 void Spark_Prepare_For_Firmware_Update(void)
 {
+  RGB.control(true);
+  RGB.color(RGB_COLOR_MAGENTA);
   SPARK_FLASH_UPDATE = 1;
   TimingFlashUpdateTimeout = 0;
   FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS, EXTERNAL_FLASH_BLOCK_SIZE);
@@ -550,12 +561,16 @@ void Spark_Finish_Firmware_Update(void)
     //Reset the system to complete the OTA update
     FLASH_End();
   }
+  RGB.control(false);
 }
 
 uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen)
 {
+  uint16_t chunkUpdatedIndex;
   TimingFlashUpdateTimeout = 0;
-  return FLASH_Update(buf, buflen);
+  chunkUpdatedIndex = FLASH_Update(buf, buflen);
+  LED_Toggle(LED_RGB);
+  return chunkUpdatedIndex;
 }
 
 int numUserFunctions(void)

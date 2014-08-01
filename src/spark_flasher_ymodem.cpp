@@ -219,6 +219,8 @@ int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, 
                       return -1;
                     }
 
+                    RGB.control(true);
+                    RGB.color(RGB_COLOR_MAGENTA);
                     SPARK_FLASH_UPDATE = 1;
                     TimingFlashUpdateTimeout = 0;
                     FLASH_Begin(sFlashAddress, size);
@@ -239,7 +241,9 @@ int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, 
                 else
                 {
                   memcpy(buf_ptr, packet_data + PACKET_HEADER, packet_length);
-                  saved_index = Spark_Save_Firmware_Chunk(buf, packet_length);
+                  TimingFlashUpdateTimeout = 0;
+                  saved_index = FLASH_Update(buf, packet_length);
+                  LED_Toggle(LED_RGB);
                   if(saved_index > current_index)
                   {
                     current_index = saved_index;
@@ -302,6 +306,7 @@ bool Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress)
 
   serialObj->println("Waiting for the binary file to be sent ... (press 'a' to abort)");
   Size = Ymodem_Receive(serialObj, sFlashAddress, &buffer[0], fileName);
+  RGB.control(false);;
   if (Size > 0)
   {
     serialObj->println("\r\nDownloaded file successfully!");
