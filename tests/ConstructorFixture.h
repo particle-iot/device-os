@@ -48,8 +48,10 @@ struct ConstructorFixture
   static uint8_t sent_buf_1[256];
   static int mock_send(const unsigned char *buf, int buflen);
   static int mock_receive(unsigned char *buf, int buflen);
-  static uint8_t message_to_receive[66];
+  static uint8_t message_to_receive[98];
   static void mock_prepare_for_firmware_update(void);
+  static long unsigned int mock_calculate_crc(unsigned char *buf, long unsigned int buflen);
+  static unsigned short mock_save_firmware_chunk(unsigned char *buf, long unsigned int buflen);
   static bool did_prepare_for_update;
   static bool function_called;
   static int mock_num_functions(void);

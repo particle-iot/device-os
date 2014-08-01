@@ -127,7 +127,7 @@ int ConstructorFixture::bytes_received[2] = { 0, 0 };
 uint8_t ConstructorFixture::sent_buf_0[256];
 uint8_t ConstructorFixture::sent_buf_1[256];
 
-uint8_t ConstructorFixture::message_to_receive[66];
+uint8_t ConstructorFixture::message_to_receive[98];
 bool ConstructorFixture::did_prepare_for_update = false;
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
@@ -144,6 +144,8 @@ ConstructorFixture::ConstructorFixture()
   callbacks.send = mock_send;
   callbacks.receive = mock_receive;
   callbacks.prepare_for_firmware_update = mock_prepare_for_firmware_update;
+  callbacks.calculate_crc = mock_calculate_crc;
+  callbacks.save_firmware_chunk = mock_save_firmware_chunk;
   callbacks.signal = mock_signal;
   callbacks.millis = mock_millis;
   callbacks.set_time = mock_set_time;
@@ -260,6 +262,16 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
 void ConstructorFixture::mock_prepare_for_firmware_update(void)
 {
   did_prepare_for_update = true;
+}
+
+long unsigned int ConstructorFixture::mock_calculate_crc(unsigned char *buf, long unsigned int buflen)
+{
+  return 0;
+}
+
+unsigned short ConstructorFixture::mock_save_firmware_chunk(unsigned char *buf, long unsigned int buflen)
+{
+  return 0;
 }
 
 int ConstructorFixture::mock_num_functions(void)
