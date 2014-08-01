@@ -56,6 +56,7 @@ struct ConstructorFixture
   static unsigned short mock_save_firmware_chunk(unsigned char *buf, long unsigned int buflen);
   static bool did_prepare_for_update;
   static uint8_t saved_firmware_chunk[72];
+  static void mock_finish_firmware_update(void);
   static bool function_called;
   static int mock_num_functions(void);
   static void mock_copy_function_key(char *destination, int function_index);

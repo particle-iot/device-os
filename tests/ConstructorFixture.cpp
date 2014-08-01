@@ -149,6 +149,7 @@ ConstructorFixture::ConstructorFixture()
   callbacks.prepare_for_firmware_update = mock_prepare_for_firmware_update;
   callbacks.calculate_crc = mock_calculate_crc;
   callbacks.save_firmware_chunk = mock_save_firmware_chunk;
+  callbacks.finish_firmware_update = mock_finish_firmware_update;
   callbacks.signal = mock_signal;
   callbacks.millis = mock_millis;
   callbacks.set_time = mock_set_time;
@@ -279,6 +280,11 @@ unsigned short ConstructorFixture::mock_save_firmware_chunk(unsigned char *buf, 
 {
   memcpy(saved_firmware_chunk, buf, buflen);
   return next_chunk_index;
+}
+
+void ConstructorFixture::mock_finish_firmware_update(void)
+{
+  // no-op
 }
 
 int ConstructorFixture::mock_num_functions(void)

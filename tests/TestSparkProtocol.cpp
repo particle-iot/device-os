@@ -396,7 +396,19 @@ SUITE(SparkProtocolConstruction)
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToUpdateDoneWithACK)
   {
-    CHECK(false);
+    uint8_t update_done[18] = {
+      0x00, 0x10,
+      0x7d, 0xa6, 0xd1, 0x4f, 0x57, 0x4c, 0x09, 0xc9,
+      0x86, 0xa0, 0xae, 0xc2, 0x26, 0xd2, 0x0a, 0xb2 };
+    memcpy(message_to_receive, update_done, 18);
+    const uint8_t expected[18] = {
+      0x00, 0x10,
+      0x89, 0xdc, 0x43, 0x5c, 0x63, 0x8e, 0x7a, 0x2e,
+      0x76, 0xb2, 0xf5, 0xab, 0xb9, 0xb2, 0x2d, 0xae };
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.event_loop();
+    CHECK_ARRAY_EQUAL(expected, sent_buf_0, 18);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopFinishesFirmwareUpdateOnUpdateDone)
