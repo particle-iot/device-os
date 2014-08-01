@@ -128,6 +128,7 @@ uint8_t ConstructorFixture::sent_buf_0[256];
 uint8_t ConstructorFixture::sent_buf_1[256];
 
 uint8_t ConstructorFixture::message_to_receive[98];
+long unsigned int ConstructorFixture::mock_crc = 0;
 unsigned short ConstructorFixture::next_chunk_index = 0;
 bool ConstructorFixture::did_prepare_for_update = false;
 bool ConstructorFixture::function_called = false;
@@ -158,6 +159,8 @@ ConstructorFixture::ConstructorFixture()
   descriptor.get_variable = mock_get_variable;
   descriptor.was_ota_upgrade_successful = mock_ota_status_check;
   descriptor.variable_type = mock_variable_type;
+  mock_crc = 0;
+  next_chunk_index = 1;
   did_prepare_for_update = false;
   function_called = false;
   variable_to_get = -98765;
@@ -265,12 +268,12 @@ void ConstructorFixture::mock_prepare_for_firmware_update(void)
   did_prepare_for_update = true;
 }
 
-long unsigned int ConstructorFixture::mock_calculate_crc(unsigned char *buf, long unsigned int buflen)
+long unsigned int ConstructorFixture::mock_calculate_crc(unsigned char *, long unsigned int)
 {
-  return 0x01234567;
+  return mock_crc;
 }
 
-unsigned short ConstructorFixture::mock_save_firmware_chunk(unsigned char *buf, long unsigned int buflen)
+unsigned short ConstructorFixture::mock_save_firmware_chunk(unsigned char *, long unsigned int)
 {
   return next_chunk_index;
 }
