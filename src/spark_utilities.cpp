@@ -27,6 +27,7 @@
 #include "spark_utilities.h"
 #include "spark_wiring.h"
 #include "spark_wiring_network.h"
+#include "spark_flasher_ymodem.h"
 #include "socket.h"
 #include "netapp.h"
 #include "string.h"
@@ -120,6 +121,29 @@ SystemClass::SystemClass(System_Mode_TypeDef mode)
 System_Mode_TypeDef SystemClass::mode(void)
 {
   return _mode;
+}
+
+void SystemClass::serialSaveFile(Stream *serialObj, uint32_t sFlashAddress)
+{
+  Serial_Flash_Update(serialObj, sFlashAddress);
+  SPARK_FLASH_UPDATE = 0;
+  TimingFlashUpdateTimeout = 0;
+}
+
+void SystemClass::serialFirmwareUpdate(Stream *serialObj)
+{
+  bool status = Serial_Flash_Update(serialObj, EXTERNAL_FLASH_OTA_ADDRESS);
+  if(status == true)
+  {
+    serialObj->println("Restarting system to apply firmware update...");
+    delay(100);
+    FLASH_End();
+  }
+  else
+  {
+    SPARK_FLASH_UPDATE = 0;
+    TimingFlashUpdateTimeout = 0;
+  }
 }
 
 void SystemClass::factoryReset(void)
@@ -500,18 +524,32 @@ int Spark_Receive(unsigned char *buf, int buflen)
   return bytes_received;
 }
 
+void Spark_Prepare_To_Save_File(unsigned int sFlashAddress, unsigned int fileSize)
+{
+  SPARK_FLASH_UPDATE = 2;
+  TimingFlashUpdateTimeout = 0;
+  FLASH_Begin(sFlashAddress, fileSize);
+}
+
 void Spark_Prepare_For_Firmware_Update(void)
 {
   SPARK_FLASH_UPDATE = 1;
   TimingFlashUpdateTimeout = 0;
-  FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS);
+  FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS, EXTERNAL_FLASH_BLOCK_SIZE);
 }
 
 void Spark_Finish_Firmware_Update(void)
 {
-  SPARK_FLASH_UPDATE = 0;
-  TimingFlashUpdateTimeout = 0;
-  FLASH_End();
+  if (SPARK_FLASH_UPDATE == 2)
+  {
+    SPARK_FLASH_UPDATE = 0;
+    TimingFlashUpdateTimeout = 0;
+  }
+  else
+  {
+    //Reset the system to complete the OTA update
+    FLASH_End();
+  }
 }
 
 uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen)
@@ -573,6 +611,7 @@ void Spark_Protocol_Init(void)
     SparkCallbacks callbacks;
     callbacks.send = Spark_Send;
     callbacks.receive = Spark_Receive;
+    callbacks.prepare_to_save_file = Spark_Prepare_To_Save_File;
     callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
     callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
     callbacks.calculate_crc = Compute_CRC32;
