@@ -65,8 +65,8 @@
 extern "C" {
 #endif
 
-  int32_t Ymodem_Receive(Stream *, uint8_t *, uint8_t*);
-  void Serial_Firmware_Update(Stream *);
+  int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, uint8_t* fileName);
+  bool Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

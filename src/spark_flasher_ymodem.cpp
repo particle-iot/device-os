@@ -158,7 +158,7 @@ static int32_t Receive_Packet(Stream *serialObj, uint8_t *data, int32_t *length,
  * @param  buf: Address of the first byte
  * @retval The size of the file
  */
-int32_t Ymodem_Receive(Stream *serialObj, uint8_t *buf, uint8_t* fileName)
+int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, uint8_t* fileName)
 {
   uint8_t packet_data[PACKET_1K_SIZE + PACKET_OVERHEAD], file_size[FILE_SIZE_LENGTH], *file_ptr, *buf_ptr;
   int32_t i, packet_length, session_done, file_done, packets_received, errors, session_begin, size = 0;
@@ -219,7 +219,9 @@ int32_t Ymodem_Receive(Stream *serialObj, uint8_t *buf, uint8_t* fileName)
                       return -1;
                     }
 
-                    Spark_Prepare_For_Firmware_Update();
+                    SPARK_FLASH_UPDATE = 1;
+                    TimingFlashUpdateTimeout = 0;
+                    FLASH_Begin(sFlashAddress, size);
 
                     Send_Byte(serialObj, ACK);
                     Send_Byte(serialObj, CRC16);
@@ -288,18 +290,18 @@ int32_t Ymodem_Receive(Stream *serialObj, uint8_t *buf, uint8_t* fileName)
 }
 
 /**
- * @brief  Firmware Update via Serial Port
+ * @brief  Flash Update via Serial Port
  * @param  serialObj (Possible values : &Serial, &Serial1 or &Serial2)
- * @retval None
+ * @retval true on success
  */
-void Serial_Firmware_Update(Stream *serialObj)
+bool Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress)
 {
   int32_t Size = 0;
   uint8_t fileName[FILE_NAME_LENGTH] = {0};
   uint8_t buffer[1024] = {0};
 
   serialObj->println("Waiting for the binary file to be sent ... (press 'a' to abort)");
-  Size = Ymodem_Receive(serialObj, &buffer[0], fileName);
+  Size = Ymodem_Receive(serialObj, sFlashAddress, &buffer[0], fileName);
   if (Size > 0)
   {
     serialObj->println("\r\nDownloaded file successfully!");
@@ -309,9 +311,7 @@ void Serial_Firmware_Update(Stream *serialObj)
     serialObj->print("Size: ");
     serialObj->print(Size);
     serialObj->println(" bytes");
-    serialObj->println("Restarting system to apply firmware update...");
-    delay(100);
-    Spark_Finish_Firmware_Update();
+    return true;
   }
   else if (Size == -1)
   {
@@ -329,4 +329,5 @@ void Serial_Firmware_Update(Stream *serialObj)
   {
     serialObj->println("Failed to receive the file!");
   }
+  return false;
 }
