@@ -232,7 +232,19 @@ SUITE(SparkProtocolConstruction)
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToUpdateBeginWithUpdateReady)
   {
-    CHECK(false);
+    uint8_t update_begin[18] = {
+      0x00, 0x10,
+      0x61, 0x30, 0xc7, 0x4c, 0x9c, 0x11, 0x5c, 0x5b,
+      0x03, 0x83, 0x8a, 0x9a, 0xa7, 0x6c, 0xf1, 0x83 };
+    memcpy(message_to_receive, update_begin, 18);
+    const uint8_t expected[18] = {
+      0x00, 0x10,
+      0x69, 0xd7, 0x04, 0x83, 0xe7, 0x49, 0x21, 0xda,
+      0x83, 0xa8, 0xe4, 0x32, 0x55, 0x2f, 0x21, 0xcb };
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.event_loop();
+    CHECK_ARRAY_EQUAL(expected, sent_buf_1, 18);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopRespondsToChunkWithACK)
