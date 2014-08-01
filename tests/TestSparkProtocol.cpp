@@ -413,8 +413,15 @@ SUITE(SparkProtocolConstruction)
 
   TEST_FIXTURE(ConstructorFixture, EventLoopFinishesFirmwareUpdateOnUpdateDone)
   {
-    // callbacks.finish_firmware_update
-    CHECK(false);
+    uint8_t update_done[18] = {
+      0x00, 0x10,
+      0x7d, 0xa6, 0xd1, 0x4f, 0x57, 0x4c, 0x09, 0xc9,
+      0x86, 0xa0, 0xae, 0xc2, 0x26, 0xd2, 0x0a, 0xb2 };
+    memcpy(message_to_receive, update_done, 18);
+    spark_protocol.handshake();
+    bytes_received[0] = bytes_sent[0] = 0;
+    spark_protocol.event_loop();
+    CHECK(did_finish_update);
   }
 
   TEST_FIXTURE(ConstructorFixture, EventLoopSendsChunkMissedOnTimeout)

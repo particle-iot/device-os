@@ -132,6 +132,7 @@ long unsigned int ConstructorFixture::mock_crc = 0;
 unsigned short ConstructorFixture::next_chunk_index = 0;
 uint8_t ConstructorFixture::saved_firmware_chunk[72];
 bool ConstructorFixture::did_prepare_for_update = false;
+bool ConstructorFixture::did_finish_update = false;
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
 bool ConstructorFixture::signal_called_with = false;
@@ -165,6 +166,7 @@ ConstructorFixture::ConstructorFixture()
   next_chunk_index = 1;
   memset(saved_firmware_chunk, 0, 72);
   did_prepare_for_update = false;
+  did_finish_update = false;
   function_called = false;
   variable_to_get = -98765;
   spark_protocol.init(id, keys, callbacks, descriptor);
@@ -284,7 +286,7 @@ unsigned short ConstructorFixture::mock_save_firmware_chunk(unsigned char *buf, 
 
 void ConstructorFixture::mock_finish_firmware_update(void)
 {
-  // no-op
+  did_finish_update = true;
 }
 
 int ConstructorFixture::mock_num_functions(void)
