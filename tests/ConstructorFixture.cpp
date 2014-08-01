@@ -130,6 +130,7 @@ uint8_t ConstructorFixture::sent_buf_1[256];
 uint8_t ConstructorFixture::message_to_receive[98];
 long unsigned int ConstructorFixture::mock_crc = 0;
 unsigned short ConstructorFixture::next_chunk_index = 0;
+uint8_t ConstructorFixture::saved_firmware_chunk[72];
 bool ConstructorFixture::did_prepare_for_update = false;
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
@@ -161,6 +162,7 @@ ConstructorFixture::ConstructorFixture()
   descriptor.variable_type = mock_variable_type;
   mock_crc = 0;
   next_chunk_index = 1;
+  memset(saved_firmware_chunk, 0, 72);
   did_prepare_for_update = false;
   function_called = false;
   variable_to_get = -98765;
@@ -273,8 +275,9 @@ long unsigned int ConstructorFixture::mock_calculate_crc(unsigned char *, long u
   return mock_crc;
 }
 
-unsigned short ConstructorFixture::mock_save_firmware_chunk(unsigned char *, long unsigned int)
+unsigned short ConstructorFixture::mock_save_firmware_chunk(unsigned char *buf, long unsigned int buflen)
 {
+  memcpy(saved_firmware_chunk, buf, buflen);
   return next_chunk_index;
 }
 
