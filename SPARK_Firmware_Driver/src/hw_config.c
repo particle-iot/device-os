@@ -99,6 +99,7 @@ uint16_t Flash_Update_Index = 0;
 uint32_t EraseCounter = 0;
 uint32_t NbrOfPage = 0;
 volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
+static uint32_t External_Flash_Start_Address = 0;
 
 __IO uint16_t CC3000_SPI_CR;
 __IO uint16_t sFLASH_SPI_CR;
@@ -1481,7 +1482,24 @@ void FLASH_Restore(uint32_t sFLASH_Address)
 #endif
 }
 
-void FLASH_Begin(uint32_t sFLASH_Address)
+uint32_t FLASH_PagesMask(uint32_t fileSize)
+{
+  //Calculate the number of flash pages that needs to be erased
+  uint32_t numPages = 0x0;
+
+  if ((fileSize % sFLASH_PAGESIZE) != 0)
+  {
+    numPages = (fileSize / sFLASH_PAGESIZE) + 1;
+  }
+  else
+  {
+    numPages = fileSize / sFLASH_PAGESIZE;
+  }
+
+  return numPages;
+}
+
+void FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize)
 {
 #ifdef SPARK_SFLASH_ENABLE
 
@@ -1494,15 +1512,16 @@ void FLASH_Begin(uint32_t sFLASH_Address)
 	//BKP_WriteBackupRegister(BKP_DR10, 0x5555);
 
 	Flash_Update_Index = 0;
-	External_Flash_Address = sFLASH_Address;
+	External_Flash_Start_Address = sFLASH_Address;
+	External_Flash_Address = External_Flash_Start_Address;
 
 	/* Define the number of External Flash pages to be erased */
-	NbrOfPage = EXTERNAL_FLASH_BLOCK_SIZE / sFLASH_PAGESIZE;
+	NbrOfPage = FLASH_PagesMask(fileSize);
 
 	/* Erase the SPI Flash pages */
 	for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
 	{
-		sFLASH_EraseSector(sFLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
+		sFLASH_EraseSector(External_Flash_Start_Address + (sFLASH_PAGESIZE * EraseCounter));
 	}
 
 #endif
@@ -1532,7 +1551,7 @@ uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 		/* Erase the problematic SPI Flash pages and back off the chunk index */
 		External_Flash_Address = ((uint32_t)(External_Flash_Address / sFLASH_PAGESIZE)) * sFLASH_PAGESIZE;
 		sFLASH_EraseSector(External_Flash_Address);
-		Flash_Update_Index = (uint16_t)((External_Flash_Address - EXTERNAL_FLASH_OTA_ADDRESS) / bufferSize);
+		Flash_Update_Index = (uint16_t)((External_Flash_Address - External_Flash_Start_Address) / bufferSize);
 	}
 
 	LED_Toggle(LED_RGB);
