@@ -119,6 +119,7 @@ INT16 HostFlowControlConsumeBuff(INT16 sd)
 	/* wait in busy loop */
 	volatile system_tick_t start = GetSystem1MsTick();
 
+	bool stop = false;
 	do
 	{
 		// In case last transmission failed then we will return the last failure 
@@ -145,10 +146,12 @@ INT16 HostFlowControlConsumeBuff(INT16 sd)
 			return -1;
 		}
 
-	} while(0 == tSLInformation.usNumberOfFreeBuffers);
-
-	tSLInformation.usNumberOfFreeBuffers--;
-
+		// Do an atomic decrement if > 0
+		UINT16 freeBuffers = tSLInformation.usNumberOfFreeBuffers;
+		if (0 < freeBuffers) {
+			stop = __sync_bool_compare_and_swap(&tSLInformation.usNumberOfFreeBuffers, freeBuffers, freeBuffers-1);
+		}
+	} while (!stop);
 	return 0;
 #else
 

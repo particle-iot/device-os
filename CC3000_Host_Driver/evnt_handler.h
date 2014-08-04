@@ -67,7 +67,7 @@ extern "C" {
 //!                  event handler from global array of handlers pointers
 //
 //*****************************************************************************
-extern UINT8 *hci_event_handler(void *pRetParams, UINT8 *from, UINT8 *fromlen);
+extern UINT8 *hci_event_handler(void *pRetParams, UINT8 *from, INT32 *fromlen);
 
 //*****************************************************************************
 //
@@ -106,8 +106,6 @@ extern INT32 hci_unsolicited_event_handler(void);
 #define SOCKET_STATUS_INIT_VAL  0xFFFF
 #define M_IS_VALID_SD(sd) ((0 <= (sd)) && ((sd) <= 7))
 #define M_IS_VALID_STATUS(status) (((status) == SOCKET_STATUS_ACTIVE)||((status) == SOCKET_STATUS_INACTIVE))
-
-extern UINT32 socket_active_status;
 
 extern void set_socket_active_status(INT32 Sd, INT32 Status);
 extern INT32 get_socket_active_status(INT32 Sd);

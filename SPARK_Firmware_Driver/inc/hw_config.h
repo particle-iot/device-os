@@ -35,6 +35,13 @@
 #include "cc3000_common.h"
 #include "usb_type.h"
 
+enum SpiBusOwner {
+    BUS_OWNER_NONE = 0,
+    BUS_OWNER_CC3000 = 1,
+    BUS_OWNER_SFLASH = 2
+};
+
+
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {
