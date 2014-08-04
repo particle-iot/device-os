@@ -56,6 +56,7 @@ tNetappIpconfigRetArgs ip_config;
 netapp_pingreport_args_t ping_report;
 int ping_report_num;
 
+volatile uint8_t WLAN_DISCONNECT;
 volatile uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
 volatile uint8_t WLAN_DELETE_PROFILES;
 volatile uint8_t WLAN_SMART_CONFIG_START;
@@ -189,7 +190,6 @@ void Start_Smart_Config(void)
 
 	/* Reset all the previous configuration */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
-
 	NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 0;
 	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
 
@@ -255,7 +255,6 @@ void Start_Smart_Config(void)
 
 	/* Configure to connect automatically to the AP retrieved in the Smart config process */
 	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
-
 	NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 1;
 	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
 
@@ -264,11 +263,7 @@ void Start_Smart_Config(void)
 
 	Delay(100);
 
-	wlan_start(0);
-	SPARK_WLAN_STARTED = 1;
-	SPARK_LED_FADE = 0;
-    LED_SetRGBColor(RGB_COLOR_GREEN);
-	LED_On(LED_RGB);
+	WiFi.connect();
 
 	/* Mask out all non-required events */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
@@ -295,22 +290,26 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 
 		case HCI_EVNT_WLAN_UNSOL_CONNECT:
 			WLAN_CONNECTED = 1;
-  		        ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
+			if(!WLAN_DISCONNECT)
+			{
+  		          ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
+			}
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
-			if (WLAN_CONNECTED) {
-				ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
-				LED_SetRGBColor(RGB_COLOR_GREEN);
-				LED_On(LED_RGB);
+			if (WLAN_CONNECTED && !WLAN_DISCONNECT)
+			{
+			  ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
 			}
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_CLOUD_SOCKETED = 0;
 			SPARK_CLOUD_CONNECTED = 0;
 			SPARK_FLASH_UPDATE = 0;
-			SPARK_LED_FADE = 0;
-			Spark_Error_Count = 0;
+			SPARK_LED_FADE = 1;
+                        LED_SetRGBColor(RGB_COLOR_BLUE);
+                        LED_On(LED_RGB);
+                        Spark_Error_Count = 0;
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:
@@ -394,9 +393,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	Delay(100);
 
 	/* Trigger a WLAN device */
-	wlan_start(0);
-	SPARK_WLAN_STARTED = 1;
-	SPARK_LED_FADE = 0;
+	WiFi.connect();
 
 	/* Mask out all non-required events from CC3000 */
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
@@ -418,24 +415,17 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 		}
 		else if(NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] == 0)
 		{
-			wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
-
-			NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 1;
-			nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
+		        wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
+		        NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 1;
+		        nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
 		}
 	}
 
-	if(WLAN_MANUAL_CONNECT || !WLAN_SMART_CONFIG_START)
-	{
-		LED_SetRGBColor(RGB_COLOR_GREEN);
-		LED_On(LED_RGB);
-	}
-
 	nvmem_read_sp_version(patchVer);
-	if (patchVer[1] == 24)//19 for old patch
-	{
-		/* Latest Patch Available after flashing "cc3000-patch-programmer.bin" */
-	}
+	//if (patchVer[1] == 24)//19 for old patch
+	//{
+	//	/* Latest Patch Available after flashing "cc3000-patch-programmer.bin" */
+	//}
 
 	Clear_NetApp_Dhcp();
 
@@ -476,8 +466,7 @@ void SPARK_WLAN_Loop(void)
       if (WLAN_SMART_CONFIG_START)
       {
         // Workaround to enter smart config when socket connect had blocked
-        wlan_start(0);
-        SPARK_WLAN_STARTED = 1;
+        WiFi.connect();
         Start_Smart_Config();
       }
     }
@@ -486,16 +475,11 @@ void SPARK_WLAN_Loop(void)
   {
     if (!SPARK_WLAN_STARTED)
     {
-      if (!WLAN_MANUAL_CONNECT)
+      if (!WLAN_MANUAL_CONNECT && !WLAN_DISCONNECT)
       {
         ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
       }
-
-      wlan_start(0);
-      SPARK_WLAN_STARTED = 1;
-      SPARK_LED_FADE = 0;
-      LED_SetRGBColor(RGB_COLOR_GREEN);
-      LED_On(LED_RGB);
+      WiFi.connect();
     }
   }
 
