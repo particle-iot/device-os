@@ -44,11 +44,11 @@ extern "C" {
 #define NVMEM_SPARK_FILE_ID		14	//Do not change this ID
 #define NVMEM_SPARK_FILE_SIZE		16	//Change according to requirement
 #define WLAN_PROFILE_FILE_OFFSET	0
-#define WLAN_POLICY_FILE_OFFSET		1
+#define WLAN_POLICY_FILE_OFFSET		1       //Not used henceforth
 #define WLAN_TIMEOUT_FILE_OFFSET	2
 #define ERROR_COUNT_FILE_OFFSET		3
 
-#define MAX_SOCK_NUM				8
+#define MAX_SOCK_NUM			8
 
 void Set_NetApp_Timeout(void);
 void Clear_NetApp_Dhcp(void);

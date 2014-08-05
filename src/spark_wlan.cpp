@@ -188,18 +188,7 @@ void Start_Smart_Config(void)
 	LED_SetRGBColor(RGB_COLOR_BLUE);
 	LED_On(LED_RGB);
 
-	/* Reset all the previous configuration */
-	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
-	NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 0;
-	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
-
-	/* Wait until CC3000 is disconnected */
-	while (WLAN_CONNECTED == 1)
-	{
-		//Delay 100ms
-		Delay(100);
-		hci_unsolicited_event_handler();
-	}
+	WiFi.disconnect();
 
 	/* Create new entry for AES encryption key */
 	nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
@@ -241,27 +230,11 @@ void Start_Smart_Config(void)
 	/* read count of wlan profiles stored */
 	nvmem_read(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
 
-//	if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] >= 7)
-//	{
-//		if(wlan_ioctl_del_profile(255) == 0)
-//			NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = 0;
-//	}
-
 	if(WLAN_SMART_CONFIG_FINISHED)
 	{
 		/* Decrypt configuration information and add profile */
 		SPARK_WLAN_SmartConfigProcess();
 	}
-
-	/* Configure to connect automatically to the AP retrieved in the Smart config process */
-	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
-	NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 1;
-	nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
-
-	/* Reset the CC3000 */
-	wlan_stop();
-
-	Delay(100);
 
 	WiFi.connect();
 
@@ -407,25 +380,12 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 		Save_SystemFlags();
 	}
 
-	if(!WLAN_MANUAL_CONNECT)
+	if(!WLAN_MANUAL_CONNECT && !WiFi.hasCredentials())
 	{
-		if(!WiFi.hasCredentials())
-		{
-			WiFi.listen();
-		}
-		else if(NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] == 0)
-		{
-		        wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
-		        NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET] = 1;
-		        nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_POLICY_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_POLICY_FILE_OFFSET]);
-		}
+                WiFi.listen();
 	}
 
 	nvmem_read_sp_version(patchVer);
-	//if (patchVer[1] == 24)//19 for old patch
-	//{
-	//	/* Latest Patch Available after flashing "cc3000-patch-programmer.bin" */
-	//}
 
 	Clear_NetApp_Dhcp();
 
@@ -490,7 +450,7 @@ void SPARK_WLAN_Loop(void)
   else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
   {
     CLR_WLAN_WD();
-    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
+    WiFi.disconnect();
     // Edit the below line before use
     wlan_connect(WLAN_SEC_WPA2, _ssid, strlen(_ssid), NULL, (unsigned char*)_password, strlen(_password));
     WLAN_MANUAL_CONNECT = 0;

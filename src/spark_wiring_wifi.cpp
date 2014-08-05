@@ -135,18 +135,26 @@ uint32_t WiFiClass::ping(IPAddress remoteIP, uint8_t nTries)
 
 void WiFiClass::connect(void)
 {
-  WLAN_DISCONNECT = 0;
-  wlan_start(0);//No other option to connect other than wlan_start()
-  SPARK_WLAN_STARTED = 1;
-  SPARK_LED_FADE = 1;
-  LED_SetRGBColor(RGB_COLOR_BLUE);
-  LED_On(LED_RGB);
+  if(!ready())
+  {
+    WLAN_DISCONNECT = 0;
+    wlan_start(0);//No other option to connect other than wlan_start()
+    SPARK_WLAN_STARTED = 1;
+    SPARK_LED_FADE = 1;
+    LED_SetRGBColor(RGB_COLOR_BLUE);
+    LED_On(LED_RGB);
+    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);//Enable auto connect
+  }
 }
 
 void WiFiClass::disconnect(void)
 {
-  WLAN_DISCONNECT = 1;//Do not ARM_WLAN_WD() in WLAN_Async_Callback()
-  wlan_disconnect();
+  if(ready())
+  {
+    WLAN_DISCONNECT = 1;//Do not ARM_WLAN_WD() in WLAN_Async_Callback()
+    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);//Disable auto connect
+    wlan_disconnect();
+  }
 }
 
 bool WiFiClass::connecting(void)
