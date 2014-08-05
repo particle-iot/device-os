@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include "UnitTest++.h"
 #include "handshake.h"
 #include "tropicssl/rsa.h"
