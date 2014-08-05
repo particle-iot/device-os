@@ -127,7 +127,13 @@ int ConstructorFixture::bytes_received[2] = { 0, 0 };
 uint8_t ConstructorFixture::sent_buf_0[256];
 uint8_t ConstructorFixture::sent_buf_1[256];
 
-uint8_t ConstructorFixture::message_to_receive[66];
+uint8_t ConstructorFixture::message_to_receive[98];
+long unsigned int ConstructorFixture::mock_crc = 0;
+unsigned short ConstructorFixture::next_chunk_index = 0;
+uint8_t ConstructorFixture::saved_firmware_chunk[72];
+bool ConstructorFixture::did_prepare_for_update = false;
+bool ConstructorFixture::did_finish_update = false;
+bool ConstructorFixture::nothing_to_receive = false;
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
 bool ConstructorFixture::signal_called_with = false;
@@ -142,6 +148,10 @@ ConstructorFixture::ConstructorFixture()
   keys.server_public = pubkey;
   callbacks.send = mock_send;
   callbacks.receive = mock_receive;
+  callbacks.prepare_for_firmware_update = mock_prepare_for_firmware_update;
+  callbacks.calculate_crc = mock_calculate_crc;
+  callbacks.save_firmware_chunk = mock_save_firmware_chunk;
+  callbacks.finish_firmware_update = mock_finish_firmware_update;
   callbacks.signal = mock_signal;
   callbacks.millis = mock_millis;
   callbacks.set_time = mock_set_time;
@@ -153,6 +163,12 @@ ConstructorFixture::ConstructorFixture()
   descriptor.get_variable = mock_get_variable;
   descriptor.was_ota_upgrade_successful = mock_ota_status_check;
   descriptor.variable_type = mock_variable_type;
+  mock_crc = 0;
+  next_chunk_index = 1;
+  memset(saved_firmware_chunk, 0, 72);
+  did_prepare_for_update = false;
+  did_finish_update = false;
+  nothing_to_receive = false;
   function_called = false;
   variable_to_get = -98765;
   spark_protocol.init(id, keys, callbacks, descriptor);
@@ -202,6 +218,9 @@ int ConstructorFixture::mock_send(const unsigned char *buf, int buflen)
 
 int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
 {
+  if (nothing_to_receive)
+    return 0;
+
   if (0 < buflen)
   {
     if (0 == bytes_received[0] || 7 == bytes_received[0])
@@ -252,6 +271,27 @@ int ConstructorFixture::mock_receive(unsigned char *buf, int buflen)
   }
   else buflen = 0;
   return buflen;
+}
+
+void ConstructorFixture::mock_prepare_for_firmware_update(void)
+{
+  did_prepare_for_update = true;
+}
+
+long unsigned int ConstructorFixture::mock_calculate_crc(unsigned char *, long unsigned int)
+{
+  return mock_crc;
+}
+
+unsigned short ConstructorFixture::mock_save_firmware_chunk(unsigned char *buf, long unsigned int buflen)
+{
+  memcpy(saved_firmware_chunk, buf, buflen);
+  return next_chunk_index;
+}
+
+void ConstructorFixture::mock_finish_firmware_update(void)
+{
+  did_finish_update = true;
 }
 
 int ConstructorFixture::mock_num_functions(void)
