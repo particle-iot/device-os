@@ -596,6 +596,7 @@ void RTCAlarm_IRQHandler(void)
 {
 	if(RTC_GetITStatus(RTC_IT_ALR) != RESET)
 	{
+	        /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
 		SPARK_WLAN_SLEEP = 0;
 
 		/* Clear EXTI line17 pending bit */
