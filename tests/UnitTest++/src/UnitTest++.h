@@ -4,6 +4,7 @@
 //lint -esym(1509,*Fixture)
 
 #include <stdint.h>
+#include <string.h>
 
 #include "Config.h"
 #include "Test.h"
