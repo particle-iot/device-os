@@ -331,7 +331,6 @@ long SpiWrite(unsigned char *ucBuf, unsigned short usLength)
             if(NotAborted)
             {
               NotAborted = Reserve(eSPI_STATE_WRITE_WAIT_IRQ);
-              WARN("CC3000 SpiWrite acquire bus");
               if(NotAborted)
               {
                   usLength = SpiSetUp(ucBuf, usLength);
@@ -405,7 +404,6 @@ void SPI_DMA_IntHandler(void)
 
                   SpiPauseSpi();
                   SetState(eSPI_STATE_IDLE, eDeAssert);
-                  WARN("CC3000 DmaHandler release read spi bus");
                   // Call out to the Unsolicited handler
                   // It will handle the event or leave it there for an outstanding opcode
                   // It it handles it the it Will resume the SPI ISR
@@ -434,7 +432,6 @@ void SPI_DMA_IntHandler(void)
                   else
                   {
                       SetState(eSPI_STATE_IDLE, eDeAssert);
-                      WARN("CC3000 DmaHandler release write spi bus");
                   }
           }
           break;
