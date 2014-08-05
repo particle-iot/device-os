@@ -32,19 +32,19 @@
 class NetworkClass
 {
 public:
-	uint8_t* macAddress(uint8_t* mac) __attribute__((deprecated));
-	IPAddress localIP() __attribute__((deprecated));
-	IPAddress subnetMask() __attribute__((deprecated));
-	IPAddress gatewayIP() __attribute__((deprecated));
-	char* SSID() __attribute__((deprecated));
-	int8_t RSSI() __attribute__((deprecated));
-	uint32_t ping(IPAddress remoteIP) __attribute__((deprecated));
-	uint32_t ping(IPAddress remoteIP, uint8_t nTries) __attribute__((deprecated));
+    uint8_t* macAddress(uint8_t* mac) __attribute__((deprecated("Please use WiFi.macAddress() instead")));
+    IPAddress localIP() __attribute__((deprecated("Please use WiFi.localIP() instead")));
+    IPAddress subnetMask() __attribute__((deprecated("Please use WiFi.subnetMask() instead")));
+    IPAddress gatewayIP() __attribute__((deprecated("Please use WiFi.gatewayIP() instead")));
+    char* SSID() __attribute__((deprecated("Please use WiFi.SSID() instead")));
+    int8_t RSSI() __attribute__((deprecated("Please use WiFi.RSSI() instead")));
+    uint32_t ping(IPAddress remoteIP) __attribute__((deprecated("Please use WiFi.ping() instead")));
+    uint32_t ping(IPAddress remoteIP, uint8_t nTries) __attribute__((deprecated("Please use WiFi.ping() instead")));
 
-        static void connect(void) __attribute__((deprecated));
-        static void disconnect(void) __attribute__((deprecated));
-        static bool connecting(void) __attribute__((deprecated));
-        static bool ready(void) __attribute__((deprecated));
+    static void connect(void) __attribute__((deprecated("Please use WiFi.connect() instead")));
+    static void disconnect(void) __attribute__((deprecated("Please use WiFi.disconnect() instead")));
+    static bool connecting(void) __attribute__((deprecated("Please use WiFi.connecting() instead")));
+    static bool ready(void) __attribute__((deprecated("Please use WiFi.ready() instead")));
 };
 
 extern NetworkClass Network;
