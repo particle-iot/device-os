@@ -299,6 +299,7 @@ void USBKeyboard::releaseAll(void)
 size_t USBKeyboard::write(uint8_t key)
 {
 	uint8_t p = press(key);		// Keydown
+	delay(100);
 	uint8_t r = release(key);	// Keyup
 	return (p);					// just return the result of press() since release() almost always returns 1
 }
