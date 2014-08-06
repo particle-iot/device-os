@@ -1,3 +1,5 @@
+#include <stdint.h>
+#include <string.h>
 #include "UnitTest++.h"
 #include "tropicssl/aes.h"
 
