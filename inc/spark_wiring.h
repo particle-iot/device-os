@@ -123,8 +123,7 @@
 #define SCL  1
 
 #define ADC1_DR_ADDRESS		((uint32_t)0x4001244C)
-#define ADC_DMA_BUFFERSIZE	10
-#define ADC_SAMPLING_TIME	ADC_SampleTime_7Cycles5	//Allowed values: 1.5, 7.5 and 13.5 for "Dual slow interleaved mode"
+#define ADC_SAMPLING_TIME	ADC_SampleTime_239Cycles5
 
 #define TIM_PWM_FREQ 500 //500Hz
 
