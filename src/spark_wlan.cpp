@@ -86,8 +86,6 @@ volatile system_tick_t spark_loop_total_millis = 0;
 
 void (*announce_presence)(void);
 
-unsigned char patchVer[2];
-
 /* Smart Config Prefix */
 char aucCC3000_prefix[] = {'T', 'T', 'T'};
 /* AES key "sparkdevices2013" */
@@ -238,11 +236,6 @@ void Start_Smart_Config(void)
 
 	WiFi.connect();
 
-	/* Mask out all non-required events */
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
-
-	Set_NetApp_Timeout();
-
 	WLAN_SMART_CONFIG_START = 0;
 }
 
@@ -367,29 +360,6 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 
 	/* Trigger a WLAN device */
 	WiFi.connect();
-
-	/* Mask out all non-required events from CC3000 */
-	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
-
-	if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE)
-	{
-		/* Delete all previously stored wlan profiles */
-		WiFi.clearCredentials();
-
-		NVMEM_SPARK_Reset_SysFlag = 0x0000;
-		Save_SystemFlags();
-	}
-
-	if(!WLAN_MANUAL_CONNECT && !WiFi.hasCredentials())
-	{
-                WiFi.listen();
-	}
-
-	nvmem_read_sp_version(patchVer);
-
-	Clear_NetApp_Dhcp();
-
-	Set_NetApp_Timeout();
 }
 
 void SPARK_WLAN_Loop(void)
@@ -416,19 +386,7 @@ void SPARK_WLAN_Loop(void)
       Spark_Error_Count = 0;
       cfod_count = 0;
 
-      wlan_stop();
-      SPARK_LED_FADE = 1;
-      LED_SetRGBColor(RGB_COLOR_WHITE);
-      LED_On(LED_RGB);
-
-      Delay(100);
-
-      if (WLAN_SMART_CONFIG_START)
-      {
-        // Workaround to enter smart config when socket connect had blocked
-        WiFi.connect();
-        Start_Smart_Config();
-      }
+      WiFi.off();
     }
   }
   else

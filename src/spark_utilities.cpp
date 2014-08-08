@@ -388,6 +388,7 @@ bool SparkClass::connected(void)
 void SparkClass::connect(void)
 {
 	//Schedule Spark's cloud connection and handshake
+        WiFi.connect();
 	SPARK_CLOUD_CONNECT = 1;
 }
 
