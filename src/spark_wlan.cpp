@@ -455,8 +455,11 @@ void SPARK_WLAN_Loop(void)
       SPARK_CLOUD_CONNECTED = 0;
       SPARK_CLOUD_SOCKETED = 0;
 
-      LED_SetRGBColor(RGB_COLOR_GREEN);
-      LED_On(LED_RGB);
+      if(!WLAN_DISCONNECT)
+      {
+        LED_SetRGBColor(RGB_COLOR_GREEN);
+        LED_On(LED_RGB);
+      }
     }
 
     return;
