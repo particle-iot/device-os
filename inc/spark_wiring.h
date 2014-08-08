@@ -158,7 +158,10 @@ extern STM32_Pin_Info PIN_MAP[];
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+/*
+* Safety Chack
+*/
+void Wire_Safety_Check(void);
 /*
 * ADC
 */

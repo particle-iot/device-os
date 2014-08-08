@@ -44,26 +44,31 @@ uint8_t TwoWire::txBufferLength = 0;
 uint8_t TwoWire::transmitting = 0;
 void (*TwoWire::user_onRequest)(void);
 void (*TwoWire::user_onReceive)(int);
+/* I2C Bus Speed Varables */ 
+uint8_t FAST = 400000;
+uint8_t SLOW = 100000;
 
-//#define BufferSize           	32
-//#define I2C1_SLAVE_ADDRESS7     0x00
-//#define Transmitter             0x00
-//#define Receiver                0x01
+/* Used in Interupt Handler */
+#define BufferSize           	32
+#define I2C1_SLAVE_ADDRESS7     0x00
+#define Transmitter             0x00
+#define Receiver                0x01
 
-//uint8_t I2C1_Buffer_Tx[BufferSize];
-//uint8_t I2C1_Buffer_Rx[BufferSize];
-//__IO uint8_t Tx_Idx = 0, Rx_Idx = 0;
-//__IO uint8_t Direction = Transmitter;
+uint8_t I2C1_Buffer_Tx[BufferSize];
+uint8_t I2C1_Buffer_Rx[BufferSize];
+__IO uint8_t Tx_Idx = 0, Rx_Idx = 0;
+__IO uint8_t Direction = Transmitter;
 
 // Constructors ////////////////////////////////////////////////////////////////
 
 TwoWire::TwoWire()
 {
+
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-void TwoWire::begin(void)
+void TwoWire::begin(uint8_t I2C_Speed)
 {
 	rxBufferIndex = 0;
 	rxBufferLength = 0;
@@ -71,7 +76,7 @@ void TwoWire::begin(void)
 	txBufferIndex = 0;
 	txBufferLength = 0;
 
-	//NVIC_InitTypeDef  NVIC_InitStructure;
+	NVIC_InitTypeDef  NVIC_InitStructure;
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
 
@@ -88,41 +93,40 @@ void TwoWire::begin(void)
 	}
 	I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
 	I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-	I2C_InitStructure.I2C_ClockSpeed = 100000;
+	I2C_InitStructure.I2C_ClockSpeed = I2C_Speed;
 	I2C_Init(I2C1, &I2C_InitStructure);
 
-	//	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF, ENABLE);
-	//
-	//	NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQn;
-	//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
-	//	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	//	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	//	NVIC_Init(&NVIC_InitStructure);
+	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF, ENABLE);
+	
+		NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQn;
+		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
+		NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+		NVIC_Init(&NVIC_InitStructure);
 
 	I2C_Cmd(I2C1, ENABLE);
 
 	I2C_Enabled = true;
 }
 
-void TwoWire::begin(uint8_t address)
+void TwoWire::begin(uint8_t address, uint8_t I2C_Speed)
 {
-//	I2C_SetAsSlave = true;
-//
-//	if(I2C_Enabled != false)
-//	{
-//		I2C_Cmd(I2C1, DISABLE);
-//	}
-//
-//	//attachSlaveTxEvent(onRequestService);
-//	//attachSlaveRxEvent(onReceiveService);
-//	I2C_InitStructure.I2C_OwnAddress1 = address;
-//
-//	begin();
+	I2C_SetAsSlave = true;
+
+	if(I2C_Enabled != false)
+	{
+		I2C_Cmd(I2C1, DISABLE);
+	}
+
+	//attachSlaveRxEvent(onReceiveService);
+	I2C_InitStructure.I2C_OwnAddress1 = address;
+
+	begin(I2C_Speed);
 }
 
-void TwoWire::begin(int address)
+void TwoWire::begin(int address, int I2C_Speed)
 {
-//	begin((uint8_t)address);
+  begin((uint8_t)address, (uint8_t) I2C_Speed);
 }
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
@@ -213,6 +217,13 @@ uint8_t TwoWire::requestFrom(int address, int quantity, int sendStop)
 	return requestFrom((uint8_t)address, (uint8_t)quantity, (uint8_t)sendStop);
 }
 
+/* 
+	This inciates the address that will be send on tx 
+	to select teh slave device you want to set up I2C 
+	comunication with. You can also use this function 
+	to switch the master slave relationship. By leaving 
+	the address empty you are declaring the divice master. 
+*/
 void TwoWire::beginTransmission(uint8_t address)
 {
 	// indicate that we are transmitting
@@ -229,24 +240,37 @@ void TwoWire::beginTransmission(int address)
 	beginTransmission((uint8_t)address);
 }
 
-//
-//	Originally, 'endTransmission' was an f(void) function.
-//	It has been modified to take one parameter indicating
-//	whether or not a STOP should be performed on the bus.
-//	Calling endTransmission(false) allows a sketch to 
-//	perform a repeated start. 
-//
-//	WARNING: Nothing in the library keeps track of whether
-//	the bus tenure has been properly ended with a STOP. It
-//	is very possible to leave the bus in a hung state if
-//	no call to endTransmission(true) is made. Some I2C
-//	devices will behave oddly if they do not see a STOP.
-//
+/* 
+	To chnage the master in the I2C bus use this fuction 
+	input in the address of the master device you want to 
+	set as master.
+*/
+void TwoWire::selectMaster(uint8_t address)
+{
+	transmitting =1;
+	txAddress = address;
+	txBufferIndex =1;
+	txBufferLength =0;
+}
+
+/*	
+	Originally, 'endTransmission' was an f(void) function.
+	It has been modified to take one parameter indicating
+	whether or not a STOP should be performed on the bus.
+	Calling endTransmission(false) allows a sketch to 
+	perform a repeated start. 
+
+	WARNING: Nothing in the library keeps track of whether
+	the bus tenure has been properly ended with a STOP. It
+	is very possible to leave the bus in a hung state if
+	no call to endTransmission(true) is made. Some I2C
+	devices will behave oddly if they do not see a STOP.
+*/
 uint8_t TwoWire::endTransmission(uint8_t sendStop)
 {
 	uint32_t _millis;
 
-	// transmit buffer (blocking)
+	//transmit buffer (blocking)
 
 	/* Send START condition */
 	I2C_GenerateSTART(I2C1, ENABLE);
@@ -340,29 +364,29 @@ size_t TwoWire::write(uint8_t data)
 size_t TwoWire::write(const uint8_t *data, size_t quantity)
 {
 	if(transmitting){
-		// in master transmitter mode
+		// In master transmitter mode
 		for(size_t i = 0; i < quantity; ++i){
 			write(data[i]);
 		}
 	}else{
-//		// in slave send mode
-//		// reply to master
-//		while(!I2C_CheckEvent(I2C1, I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED));
-//
-//		uint8_t *pBuffer = txBuffer;
-//		uint8_t NumByteToWrite = quantity;
-//
-//		/* While there is data to be written */
-//		while(NumByteToWrite--)
-//		{
-//			/* Send the current byte to master */
-//			I2C_SendData(I2C1, *pBuffer);
-//
-//			/* Point to the next byte to be written */
-//			pBuffer++;
-//
-//			while (!I2C_CheckEvent(I2C1, I2C_EVENT_SLAVE_BYTE_TRANSMITTED));
-//		}
+	// If slave send mode
+	// reply to master
+		while(!I2C_CheckEvent(I2C1, I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED));
+
+		uint8_t *pBuffer = txBuffer;
+		uint8_t NumByteToWrite = quantity;
+
+		/* While there is data to be written */
+		while(NumByteToWrite--)
+		{
+			/* Send the current byte to master */
+			I2C_SendData(I2C1, *pBuffer);
+
+			/* Point to the next byte to be written */
+			pBuffer++;
+
+			while (!I2C_CheckEvent(I2C1, I2C_EVENT_SLAVE_BYTE_TRANSMITTED));
+		}
 	}
 	return quantity;
 }
@@ -471,115 +495,115 @@ void TwoWire::onRequest( void (*function)(void) )
  *******************************************************************************/
 void Wiring_I2C1_EV_Interrupt_Handler(void)
 {
-//	switch (I2C_GetLastEvent(I2C1))
-//	{
-//	case I2C_EVENT_MASTER_MODE_SELECT:                 /* EV5 */
-//		if(Direction == Transmitter)
-//		{
-//			/* Master Transmitter ----------------------------------------------*/
-//			/* Send slave Address for write */
-//			I2C_Send7bitAddress(I2C1, I2C1_SLAVE_ADDRESS7, I2C_Direction_Transmitter);
-//		}
-//		else
-//		{
-//			/* Master Receiver -------------------------------------------------*/
-//			/* Send slave Address for read */
-//			I2C_Send7bitAddress(I2C1, I2C1_SLAVE_ADDRESS7, I2C_Direction_Receiver);
-//
-//		}
-//		break;
-//
-//		/* Master Transmitter --------------------------------------------------*/
-//		/* Test on I2C1 EV6 and first EV8 and clear them */
-//	case I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED:
-//
-//		/* Send the first data */
-//		I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
-//		break;
-//
-//		/* Test on I2C1 EV8 and clear it */
-//	case I2C_EVENT_MASTER_BYTE_TRANSMITTING:  /* Without BTF, EV8 */
-//		if(Tx_Idx < (BufferSize))
-//		{
-//			/* Transmit I2C1 data */
-//			I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
-//
-//		}
-//		else
-//		{
-//			I2C_TransmitPEC(I2C1, ENABLE);
-//			I2C_ITConfig(I2C1, I2C_IT_BUF, DISABLE);
-//		}
-//		break;
-//
-//	case I2C_EVENT_MASTER_BYTE_TRANSMITTED: /* With BTF EV8-2 */
-//		I2C_ITConfig(I2C1, I2C_IT_BUF, ENABLE);
-//		/* I2C1 Re-START Condition */
-//		I2C_GenerateSTART(I2C1, ENABLE);
-//		break;
-//
-//		/* Master Receiver -------------------------------------------------------*/
-//	case I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED:
-//		if(BufferSize == 1)
-//		{
-//			/* Disable I2C1 acknowledgement */
-//			I2C_AcknowledgeConfig(I2C1, DISABLE);
-//			/* Send I2C1 STOP Condition */
-//			I2C_GenerateSTOP(I2C1, ENABLE);
-//		}
-//		break;
-//
-//		/* Test on I2C1 EV7 and clear it */
-//	case I2C_EVENT_MASTER_BYTE_RECEIVED:
-//		/* Store I2C1 received data */
-//		I2C1_Buffer_Rx[Rx_Idx++] = I2C_ReceiveData (I2C1);
-//		/* Disable ACK and send I2C1 STOP condition before receiving the last data */
-//		if(Rx_Idx == (BufferSize - 1))
-//		{
-//			/* Disable I2C1 acknowledgement */
-//			I2C_AcknowledgeConfig(I2C1, DISABLE);
-//			/* Send I2C1 STOP Condition */
-//			I2C_GenerateSTOP(I2C1, ENABLE);
-//		}
-//		break;
-//
-//		/* Slave Transmitter ---------------------------------------------------*/
-//	case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED:  /* EV1 */
-//
-//		/* Transmit I2C1 data */
-//		I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
-//		break;
-//
-//	case I2C_EVENT_SLAVE_BYTE_TRANSMITTED:             /* EV3 */
-//		/* Transmit I2C1 data */
-//		I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
-//		break;
-//
-//
-//		/* Slave Receiver ------------------------------------------------------*/
-//	case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED:     /* EV1 */
-//		break;
-//
-//	case I2C_EVENT_SLAVE_BYTE_RECEIVED:                /* EV2 */
-//		/* Store I2C1 received data */
-//		I2C1_Buffer_Rx[Rx_Idx++] = I2C_ReceiveData(I2C1);
-//
-//		if(Rx_Idx == BufferSize)
-//		{
-//			I2C_TransmitPEC(I2C1, ENABLE);
-//			Direction = Receiver;
-//		}
-//		break;
-//
-//	case I2C_EVENT_SLAVE_STOP_DETECTED:                /* EV4 */
-//		/* Clear I2C1 STOPF flag: read of I2C_SR1 followed by a write on I2C_CR1 */
-//		(void)(I2C_GetITStatus(I2C1, I2C_IT_STOPF));
-//		I2C_Cmd(I2C1, ENABLE);
-//		break;
-//
-//	default:
-//		break;
-//	}
+	 switch (I2C_GetLastEvent(I2C1))
+	 {
+		case I2C_EVENT_MASTER_MODE_SELECT:                 /* EV5 */
+			if(Direction == Transmitter)
+			{
+				/* Master Transmitter ----------------------------------------------*/
+				/* Send slave Address for write */
+				I2C_Send7bitAddress(I2C1, I2C1_SLAVE_ADDRESS7, I2C_Direction_Transmitter);
+			}
+			else
+			{
+				/* Master Receiver -------------------------------------------------*/
+				/* Send slave Address for read */
+				I2C_Send7bitAddress(I2C1, I2C1_SLAVE_ADDRESS7, I2C_Direction_Receiver);
+
+			}
+			break;
+
+		/* Master Transmitter --------------------------------------------------*/
+		/* Test on I2C1 EV6 and first EV8 and clear them */
+		case I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED:
+
+			/* Send the first data */
+			I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
+			break;
+
+			/* Test on I2C1 EV8 and clear it */
+		case I2C_EVENT_MASTER_BYTE_TRANSMITTING:  /* Without BTF, EV8 */
+			if(Tx_Idx < (BufferSize))
+			{
+				/* Transmit I2C1 data */
+				I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
+
+			}
+			else
+			{
+				I2C_TransmitPEC(I2C1, ENABLE);
+				I2C_ITConfig(I2C1, I2C_IT_BUF, DISABLE);
+			}
+			break;
+
+		case I2C_EVENT_MASTER_BYTE_TRANSMITTED: /* With BTF EV8-2 */
+			I2C_ITConfig(I2C1, I2C_IT_BUF, ENABLE);
+			/* I2C1 Re-START Condition */
+			I2C_GenerateSTART(I2C1, ENABLE);
+			break;
+
+			/* Master Receiver -------------------------------------------------------*/
+		case I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED:
+			if(BufferSize == 1)
+			{
+				/* Disable I2C1 acknowledgement */
+				I2C_AcknowledgeConfig(I2C1, DISABLE);
+				/* Send I2C1 STOP Condition */
+				I2C_GenerateSTOP(I2C1, ENABLE);
+			}
+			break;
+
+			/* Test on I2C1 EV7 and clear it */
+		case I2C_EVENT_MASTER_BYTE_RECEIVED:
+			/* Store I2C1 received data */
+			I2C1_Buffer_Rx[Rx_Idx++] = I2C_ReceiveData (I2C1);
+			// Disable ACK and send I2C1 STOP condition before receiving the last data 
+			if(Rx_Idx == (BufferSize - 1))
+			{
+				/* Disable I2C1 acknowledgement */
+				I2C_AcknowledgeConfig(I2C1, DISABLE);
+				/* Send I2C1 STOP Condition */
+				I2C_GenerateSTOP(I2C1, ENABLE);
+			}
+			break;
+
+			/* Slave Transmitter ---------------------------------------------------*/
+		case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED:  /* EV1 */
+
+			/* Transmit I2C1 data */
+			I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
+			break;
+
+		case I2C_EVENT_SLAVE_BYTE_TRANSMITTED:             /* EV3 */
+			/* Transmit I2C1 data */
+			I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
+			break;
+
+
+			/* Slave Receiver ------------------------------------------------------*/
+		case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED:     /* EV1 */
+			break;
+
+		case I2C_EVENT_SLAVE_BYTE_RECEIVED:                /* EV2 */
+			/* Store I2C1 received data */
+			I2C1_Buffer_Rx[Rx_Idx++] = I2C_ReceiveData(I2C1);
+
+			if(Rx_Idx == BufferSize)
+			{
+				I2C_TransmitPEC(I2C1, ENABLE);
+				Direction = Receiver;
+			}
+			break;
+
+		case I2C_EVENT_SLAVE_STOP_DETECTED:                /* EV4 */
+			/* Clear I2C1 STOPF flag: read of I2C_SR1 followed by a write on I2C_CR1 */
+			(void)(I2C_GetITStatus(I2C1, I2C_IT_STOPF));
+			I2C_Cmd(I2C1, ENABLE);
+			break;
+
+		default:
+			break;
+	 }
 }
 
 /*******************************************************************************
@@ -588,6 +612,8 @@ void Wiring_I2C1_EV_Interrupt_Handler(void)
  * Input          : None.
  * Output         : None.
  * Return         : None.
+ * Nicholas is working on creating Error Checking for the previous I2C_Init_Handler
+ looking at reg Values to make sure nothing gets lost while switching nessisary to getting working. 
  *******************************************************************************/
 void Wiring_I2C1_ER_Interrupt_Handler(void)
 {
@@ -598,7 +624,7 @@ bool TwoWire::isEnabled() {
 	return I2C_Enabled;
 }
 
-// Preinstantiate Objects //////////////////////////////////////////////////////
+/* Preinstantiate Objects */
 
 TwoWire Wire = TwoWire();
 

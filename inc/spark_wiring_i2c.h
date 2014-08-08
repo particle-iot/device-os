@@ -54,19 +54,22 @@ private:
 	static void (*user_onReceive)(int);
 	static void onRequestService(void);
 	static void onReceiveService(uint8_t*, int);
+	
 public:
 	TwoWire();
-	void begin();
 	void begin(uint8_t);
-	void begin(int);
+	void begin(uint8_t, uint8_t);
+	void begin(int, int);
 	void beginTransmission(uint8_t);
 	void beginTransmission(int);
+	void selectMaster(uint8_t);
 	uint8_t endTransmission(void);
 	uint8_t endTransmission(uint8_t);
 	uint8_t requestFrom(uint8_t, uint8_t);
 	uint8_t requestFrom(uint8_t, uint8_t, uint8_t);
 	uint8_t requestFrom(int, int);
 	uint8_t requestFrom(int, int, int);
+
 	virtual size_t write(uint8_t);
 	virtual size_t write(const uint8_t *, size_t);
 	virtual int available(void);

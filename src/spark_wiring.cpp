@@ -83,29 +83,8 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
  */
 void pinMode(uint16_t pin, PinMode setMode)
 {
-
-	if (pin >= TOTAL_PINS || setMode == NONE )
-	{
-		return;
-	}
-
-	// SPI safety check
-	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
-	{
-		return;
-	}
-
-	// I2C safety check
-	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
-	{
-		return;
-	}
-
-	// Serial1 safety check
-	if (Serial1.isEnabled() == true && (pin == RX || pin == TX))
-	{
-		return;
-	}
+	/* Checks that bus comunications lines are clean */
+	Wire_Safety_Check();
 
 	GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
 	uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
@@ -183,23 +162,8 @@ void digitalWrite(uint16_t pin, uint8_t value)
 		return;
 	}
 
-	// SPI safety check
-	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
-	{
-		return;
-	}
-
-	// I2C safety check
-	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
-	{
-		return;
-	}
-
-	// Serial1 safety check
-	if (Serial1.isEnabled() == true && (pin == RX || pin == TX))
-	{
-		return;
-	}
+	/* Checks that bus comunications lines are clean */
+	Wire_Safety_Check();
 
 	//If the pin is used by analogWrite, we need to change the mode
 	if(PIN_MAP[pin].pin_mode == AF_OUTPUT_PUSHPULL)
@@ -496,29 +460,8 @@ int32_t analogRead(uint16_t pin)
  */
 void analogWrite(uint16_t pin, uint8_t value)
 {
-
-	if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
-	{
-		return;
-	}
-
-	// SPI safety check
-	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
-	{
-		return;
-	}
-
-	// I2C safety check
-	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
-	{
-		return;
-	}
-
-	// Serial1 safety check
-	if (Serial1.isEnabled() == true && (pin == RX || pin == TX))
-	{
-		return;
-	}
+	/* Checks that bus comunications lines are clean */
+	Wire_Safety_Check();
 
 	if(PIN_MAP[pin].pin_mode != OUTPUT && PIN_MAP[pin].pin_mode != AF_OUTPUT_PUSHPULL)
 	{
@@ -713,4 +656,32 @@ void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val)
 		digitalWrite(clockPin, HIGH);
 		digitalWrite(clockPin, LOW);
 	}
+}
+
+void Wire_Safety_Check(void){
+	
+	// Pin Safety check 
+	if (pin >= TOTAL_PINS || setMode == NONE )
+	{
+		return;
+	}
+
+	// SPI safety check
+	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+	{
+		return;
+	}
+
+	// I2C safety check
+	if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+	{
+		return;
+	}
+
+	// Serial1 safety check
+	if (Serial1.isEnabled() == true && (pin == RX || pin == TX))
+	{
+		return;
+	}
+
 }
