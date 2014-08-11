@@ -650,7 +650,8 @@ void Multicast_Presence_Announcement(void)
   addr.sa_data[4] = 0x01;
   addr.sa_data[5] = 0xbb; // IP LSB
 
-  for (int i = 3; i > 0; i--)
+  //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
+  //for (int i = 3; i > 0; i--)
   {
     sendto(multicast_socket, announcement, 19, 0, &addr, sizeof(sockaddr));
   }
