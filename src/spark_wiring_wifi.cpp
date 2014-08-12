@@ -166,7 +166,6 @@ void WiFiClass::connect(void)
       wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);//Enable auto connect
     }
 
-    Clear_NetApp_Dhcp();
     Set_NetApp_Timeout();
   }
 }
@@ -353,6 +352,7 @@ bool WiFiClass::clearCredentials(void)
   {
     extern void recreate_spark_nvmem_file(void);
     recreate_spark_nvmem_file();
+    Clear_NetApp_Dhcp();
     return true;
   }
   return false;
