@@ -67,7 +67,6 @@ TwoWire::TwoWire()
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
-
 void TwoWire::begin(uint8_t I2C_Speed)
 {
 	rxBufferIndex = 0;
@@ -429,7 +428,7 @@ int TwoWire::peek(void)
 	return value;
 }
 
-void TwoWire::flush(void)
+void TwoWire::flush(void) 
 {
 	// XXX: to be implemented.
 }
@@ -582,6 +581,9 @@ void Wiring_I2C1_EV_Interrupt_Handler(void)
 
 			/* Slave Receiver ------------------------------------------------------*/
 		case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED:     /* EV1 */
+			
+			/* */
+			I2C_SendData(I2C1,I2C1_Buffer_Tx[Tx_Idx++]);
 			break;
 
 		case I2C_EVENT_SLAVE_BYTE_RECEIVED:                /* EV2 */
@@ -617,7 +619,52 @@ void Wiring_I2C1_EV_Interrupt_Handler(void)
  *******************************************************************************/
 void Wiring_I2C1_ER_Interrupt_Handler(void)
 {
-	//To Do
+	switch (I2C_GetLastEvent(I2C1))
+	{
+		case I2C_EVENT_MASTER_MODE_SELECT:
+			if(Direction == !Transmitter)
+			{	
+				/* reste the dirction to equal the transmitter*/
+				Direction = Transmitter;
+			break;
+			}
+			else 
+			{
+				/* If direction  now equals transmitter recal interupt handler*/
+				Wiring_I2C1_EV_Interrupt_Handler();
+			}
+			break;
+
+		case I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED:
+			
+				/* 7 bit Address  */
+				
+			break;
+
+		case I2C_EVENT_MASTER_BYTE_TRANSMITTING: //ADD10
+
+			break;
+
+		case I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED: //AF
+
+			break;
+
+		case I2C_EVENT_MASTER_BYTE_RECEIVED://over
+
+			break;
+
+		case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED: //percerr
+
+			break;
+
+		case I2C_EVENT_SLAVE_STOP_DETECTED: //timeout
+
+			break;
+
+		// case : //smBallert
+
+		// 	break;
+	}
 }
 
 bool TwoWire::isEnabled() {

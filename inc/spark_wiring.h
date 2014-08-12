@@ -161,7 +161,7 @@ extern "C" {
 /*
 * Safety Chack
 */
-void Wire_Safety_Check(void);
+void Wire_Safety_Check(uint16_t);
 /*
 * ADC
 */

@@ -83,8 +83,13 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
  */
 void pinMode(uint16_t pin, PinMode setMode)
 {
-	/* Checks that bus comunications lines are clean */
-	Wire_Safety_Check();
+
+	if (pin >= TOTAL_PINS || setMode == NONE )
+	{
+		return;
+	}
+
+	Wire_Safety_Check(pin);
 
 	GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
 	uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
@@ -162,8 +167,7 @@ void digitalWrite(uint16_t pin, uint8_t value)
 		return;
 	}
 
-	/* Checks that bus comunications lines are clean */
-	Wire_Safety_Check();
+	Wire_Safety_Check(pin);
 
 	//If the pin is used by analogWrite, we need to change the mode
 	if(PIN_MAP[pin].pin_mode == AF_OUTPUT_PUSHPULL)
@@ -460,8 +464,13 @@ int32_t analogRead(uint16_t pin)
  */
 void analogWrite(uint16_t pin, uint8_t value)
 {
-	/* Checks that bus comunications lines are clean */
-	Wire_Safety_Check();
+
+	if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
+	{
+		return;
+	}
+
+	Wire_Safety_Check(pin);
 
 	if(PIN_MAP[pin].pin_mode != OUTPUT && PIN_MAP[pin].pin_mode != AF_OUTPUT_PUSHPULL)
 	{
@@ -658,14 +667,8 @@ void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val)
 	}
 }
 
-void Wire_Safety_Check(void){
-	
-	// Pin Safety check 
-	if (pin >= TOTAL_PINS || setMode == NONE )
-	{
-		return;
-	}
-
+void Wire_Safety_Check(uint16_t pin)
+{
 	// SPI safety check
 	if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
 	{
@@ -683,5 +686,5 @@ void Wire_Safety_Check(void){
 	{
 		return;
 	}
-
+	
 }
