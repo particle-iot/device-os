@@ -401,7 +401,7 @@ void SparkClass::disconnect(void)
 void SparkClass::process(void)
 {
 #ifdef SPARK_WLAN_ENABLE
-  if (!Spark_Communication_Loop())
+  if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
   {
     SPARK_FLASH_UPDATE = 0;
     SPARK_CLOUD_CONNECTED = 0;
