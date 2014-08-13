@@ -63,6 +63,7 @@ public:
 	void beginTransmission(uint8_t);
 	void beginTransmission(int);
 	void selectMaster(uint8_t);
+	void Wiring_I2C1_EV_Interrupt_Handler(void);
 	uint8_t endTransmission(void);
 	uint8_t endTransmission(uint8_t);
 	uint8_t requestFrom(uint8_t, uint8_t);

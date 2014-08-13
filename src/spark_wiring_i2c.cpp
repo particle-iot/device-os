@@ -89,6 +89,7 @@ void TwoWire::begin(uint8_t I2C_Speed)
 	if(I2C_SetAsSlave != true)
 	{
 		I2C_InitStructure.I2C_OwnAddress1 = 0x00;
+		Wiring_I2C1_EV_Interrupt_Handler();
 	}
 	I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
 	I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
@@ -225,6 +226,8 @@ uint8_t TwoWire::requestFrom(int address, int quantity, int sendStop)
 */
 void TwoWire::beginTransmission(uint8_t address)
 {
+	// checks for inturpts before transmitting
+	Wiring_I2C1_EV_Interrupt_Handler();
 	// indicate that we are transmitting
 	transmitting = 1;
 	// set address of targeted slave
@@ -245,7 +248,8 @@ void TwoWire::beginTransmission(int address)
 	set as master.
 */
 void TwoWire::selectMaster(uint8_t address)
-{
+{	
+	Wiring_I2C1_EV_Interrupt_Handler();
 	transmitting =1;
 	txAddress = address;
 	txBufferIndex =1;
@@ -350,9 +354,7 @@ size_t TwoWire::write(uint8_t data)
 		// update amount in buffer
 		txBufferLength = txBufferIndex;
 	}else{
-//		// in slave send mode
-//		// reply to master
-//		write(&data, 1);
+		//Wiring_I2C1_EV_Interrupt_Handler();
 	}
 	return 1;
 }
@@ -619,52 +621,7 @@ void Wiring_I2C1_EV_Interrupt_Handler(void)
  *******************************************************************************/
 void Wiring_I2C1_ER_Interrupt_Handler(void)
 {
-	switch (I2C_GetLastEvent(I2C1))
-	{
-		case I2C_EVENT_MASTER_MODE_SELECT:
-			if(Direction == !Transmitter)
-			{	
-				/* reste the dirction to equal the transmitter*/
-				Direction = Transmitter;
-			break;
-			}
-			else 
-			{
-				/* If direction  now equals transmitter recal interupt handler*/
-				Wiring_I2C1_EV_Interrupt_Handler();
-			}
-			break;
-
-		case I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED:
-			
-				/* 7 bit Address  */
-				
-			break;
-
-		case I2C_EVENT_MASTER_BYTE_TRANSMITTING: //ADD10
-
-			break;
-
-		case I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED: //AF
-
-			break;
-
-		case I2C_EVENT_MASTER_BYTE_RECEIVED://over
-
-			break;
-
-		case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED: //percerr
-
-			break;
-
-		case I2C_EVENT_SLAVE_STOP_DETECTED: //timeout
-
-			break;
-
-		// case : //smBallert
-
-		// 	break;
-	}
+	// To Finish 
 }
 
 bool TwoWire::isEnabled() {
