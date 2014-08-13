@@ -357,6 +357,76 @@ void SparkClass::sleep(long seconds)
 	SparkClass::sleep(SLEEP_MODE_WLAN, seconds);
 }
 
+void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
+{
+  if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
+  {
+    uint16_t BKP_DR9_Data = wakeUpPin;//set wakeup pin mumber
+    BKP_DR9_Data |= (edgeTriggerMode << 8);//set edge trigger mode
+    BKP_DR9_Data |= (0xA << 12);//set stop mode flag
+
+    /*************************************************/
+    //BKP_DR9_Data: 0xAXXX
+    //                ||||
+    //                ||----- octet wakeUpPin number
+    //                |------ nibble edgeTriggerMode
+    //                ------- nibble stop mode flag
+    /*************************************************/
+
+    /* Execute Stop mode on next system reset */
+    BKP_WriteBackupRegister(BKP_DR9, BKP_DR9_Data);
+
+    /* Reset System */
+    NVIC_SystemReset();
+  }
+}
+
+void Enter_STOP_Mode(void)
+{
+  if((BKP_ReadBackupRegister(BKP_DR9) >> 12) == 0xA)
+  {
+    uint16_t wakeUpPin = BKP_ReadBackupRegister(BKP_DR9) & 0xFF;
+    InterruptMode edgeTriggerMode = (InterruptMode)((BKP_ReadBackupRegister(BKP_DR9) >> 8) & 0x0F);
+
+    /* Clear Stop mode system flag */
+    BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
+
+    if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
+    {
+      PinMode wakeUpPinMode = INPUT;
+
+      /* Set required pinMode based on edgeTriggerMode */
+      switch(edgeTriggerMode)
+      {
+        case CHANGE:
+          wakeUpPinMode = INPUT;
+          break;
+
+        case RISING:
+          wakeUpPinMode = INPUT_PULLDOWN;
+          break;
+
+        case FALLING:
+          wakeUpPinMode = INPUT_PULLUP;
+          break;
+      }
+      pinMode(wakeUpPin, wakeUpPinMode);
+
+      /* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
+      attachInterrupt(wakeUpPin, NULL, edgeTriggerMode);
+
+      /* Request to enter STOP mode with regulator in low power mode*/
+      PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
+
+      /* At this stage the system has resumed from STOP mode */
+
+      /* Either reconfigure system clock and continue or reset the system */
+      /* We chose to reset the system */
+      NVIC_SystemReset();
+    }
+  }
+}
+
 inline uint8_t isSocketClosed()
 {
   uint8_t closed  = get_socket_active_status(sparkSocket)==SOCKET_STATUS_INACTIVE;

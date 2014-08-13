@@ -95,6 +95,9 @@ extern "C" void SparkCoreConfig(void)
 
 	Set_System();
 
+        /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
+	Enter_STOP_Mode();
+
 	SysTick_Configuration();
 
 	/* Enable CRC clock */
