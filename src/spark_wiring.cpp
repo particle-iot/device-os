@@ -626,10 +626,6 @@ unsigned long micros(void)
  */
 void delay(unsigned long ms)
 {
-    if (ms <= MIN_MILLIS_DELAY) {
-        // use delay_microsecond if delay time is particularly short
-        Delay_Microsecond(ms * 1000);
-    } else {
 #ifdef SPARK_WLAN_ENABLE
 	volatile system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
 	spark_loop_total_millis += ms;
@@ -673,8 +669,6 @@ void delay(unsigned long ms)
 		}
 #endif
 	}
-    }
-
 }
 
 /*

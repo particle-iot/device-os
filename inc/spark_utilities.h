@@ -43,8 +43,6 @@
 
 #define SPARK_LOOP_DELAY_MILLIS			1000	//1sec
 
-#define MIN_MILLIS_DELAY                        5       //switch to delayMicrosends if delay(n) is below this
-
 #define USER_VAR_MAX_COUNT				10
 #define USER_VAR_KEY_LENGTH				12
 
