@@ -381,6 +381,19 @@ void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
   }
 }
 
+void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
+{
+#if defined (SPARK_RTC_ENABLE)
+  /* Set the RTC Alarm */
+  RTC_SetAlarm(RTC_GetCounter() + (uint32_t)seconds);
+
+  /* Wait until last write operation on RTC registers has finished */
+  RTC_WaitForLastTask();
+
+  sleep(wakeUpPin, edgeTriggerMode);
+#endif
+}
+
 void Enter_STOP_Mode(void)
 {
   if((BKP_ReadBackupRegister(BKP_DR9) >> 12) == 0xA)
@@ -415,14 +428,33 @@ void Enter_STOP_Mode(void)
       /* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
       attachInterrupt(wakeUpPin, NULL, edgeTriggerMode);
 
-      /* Request to enter STOP mode with regulator in low power mode*/
+      /* Request to enter STOP mode with regulator in low power mode */
       PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
 
       /* At this stage the system has resumed from STOP mode */
+      /* Enable HSE, PLL and select PLL as system clock source after wake-up from STOP */
 
-      /* Either reconfigure system clock and continue or reset the system */
-      /* We chose to reset the system */
-      NVIC_SystemReset();
+      /* Enable HSE */
+      RCC_HSEConfig(RCC_HSE_ON);
+
+      /* Wait till HSE is ready */
+      if(RCC_WaitForHSEStartUp() != SUCCESS)
+      {
+        /* If HSE startup fails try to recover by system reset */
+        NVIC_SystemReset();
+      }
+
+      /* Enable PLL */
+      RCC_PLLCmd(ENABLE);
+
+      /* Wait till PLL is ready */
+      while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
+
+      /* Select PLL as system clock source */
+      RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+
+      /* Wait till PLL is used as system clock source */
+      while(RCC_GetSYSCLKSource() != 0x08);
     }
   }
 }

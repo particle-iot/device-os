@@ -123,6 +123,7 @@ public:
 	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 	static void sleep(long seconds);
 	static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
+	static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
 	static bool connected(void);
 	static void connect(void);
 	static void disconnect(void);
