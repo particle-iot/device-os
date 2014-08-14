@@ -76,8 +76,6 @@ extern tNetappIpconfigRetArgs ip_config;
 extern netapp_pingreport_args_t ping_report;
 extern int ping_report_num;
 
-extern volatile uint8_t WLAN_DISCONNECT;
-extern volatile uint8_t WLAN_DHCP;
 extern volatile uint8_t SPARK_WLAN_SETUP;
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
@@ -88,6 +86,9 @@ extern volatile uint8_t SPARK_CLOUD_CONNECTED;
 extern volatile uint8_t SPARK_FLASH_UPDATE;
 extern volatile uint8_t SPARK_LED_FADE;
 
+extern volatile uint8_t WLAN_DISCONNECT;
+extern volatile uint8_t WLAN_DHCP;
+extern volatile uint8_t WLAN_MANUAL_CONNECT;
 extern volatile uint8_t WLAN_DELETE_PROFILES;
 extern volatile uint8_t WLAN_SMART_CONFIG_START;
 extern volatile uint8_t WLAN_SMART_CONFIG_FINISHED;

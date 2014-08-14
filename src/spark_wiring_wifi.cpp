@@ -140,10 +140,33 @@ void WiFiClass::connect(void)
     WLAN_DISCONNECT = 0;
     wlan_start(0);//No other option to connect other than wlan_start()
     SPARK_WLAN_STARTED = 1;
-    SPARK_LED_FADE = 1;
-    LED_SetRGBColor(RGB_COLOR_BLUE);
-    LED_On(LED_RGB);
-    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);//Enable auto connect
+    SPARK_WLAN_SLEEP = 0;
+
+    /* Mask out all non-required events from CC3000 */
+    wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
+
+    if(NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE)
+    {
+      /* Delete all previously stored wlan profiles */
+      WiFi.clearCredentials();
+
+      NVMEM_SPARK_Reset_SysFlag = 0x0000;
+      Save_SystemFlags();
+    }
+
+    if(!WLAN_MANUAL_CONNECT && !WiFi.hasCredentials())
+    {
+      WiFi.listen();
+    }
+    else
+    {
+      SPARK_LED_FADE = 0;
+      LED_SetRGBColor(RGB_COLOR_GREEN);
+      LED_On(LED_RGB);
+      wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);//Enable auto connect
+    }
+
+    Set_NetApp_Timeout();
   }
 }
 
@@ -152,6 +175,7 @@ void WiFiClass::disconnect(void)
   if(ready())
   {
     WLAN_DISCONNECT = 1;//Do not ARM_WLAN_WD() in WLAN_Async_Callback()
+    SPARK_CLOUD_CONNECT = 0;
     wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);//Disable auto connect
     wlan_disconnect();
   }
@@ -177,19 +201,28 @@ bool WiFiClass::ready(void)
 
 void WiFiClass::on(void)
 {
-  extern void (*announce_presence)(void);
-  if(announce_presence != Multicast_Presence_Announcement)
+  if(!SPARK_WLAN_STARTED)
   {
-          //Get the setup executed once if not done already
-          SPARK_WLAN_Setup(Multicast_Presence_Announcement);
-          SPARK_WLAN_SETUP = 1;
+    wlan_start(0);
+    SPARK_WLAN_STARTED = 1;
+    SPARK_WLAN_SLEEP = 0;
+    SPARK_LED_FADE = 1;
+    LED_SetRGBColor(RGB_COLOR_BLUE);
+    LED_On(LED_RGB);
+    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);//Disable auto connect
   }
-  SPARK_WLAN_SLEEP = 0;   //Logic to call wlan_start() inside SPARK_WLAN_Loop()
 }
 
 void WiFiClass::off(void)
 {
-  SPARK_WLAN_SLEEP = 1;   //Logic to call wlan_stop() inside SPARK_WLAN_Loop()
+  if(SPARK_WLAN_STARTED)
+  {
+    wlan_stop();
+    SPARK_WLAN_SLEEP = 1;//Logic to reset remaining state variables inside SPARK_WLAN_Loop()
+    SPARK_LED_FADE = 1;
+    LED_SetRGBColor(RGB_COLOR_WHITE);
+    LED_On(LED_RGB);
+  }
 }
 
 void WiFiClass::listen(void)
@@ -319,6 +352,7 @@ bool WiFiClass::clearCredentials(void)
   {
     extern void recreate_spark_nvmem_file(void);
     recreate_spark_nvmem_file();
+    Clear_NetApp_Dhcp();
     return true;
   }
   return false;
