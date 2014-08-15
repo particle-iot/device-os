@@ -27,14 +27,8 @@
 #ifndef __SPARK_DISABLE_CLOUD_H
 #define __SPARK_DISABLE_CLOUD_H
 
-class SparkDisableCloud {
-public:
-	SparkDisableCloud()
-	{
-		SPARK_CLOUD_CONNECT = 0;
-	}
-};
-
-SparkDisableCloud sparkDisableCloud;
+#error This header (spark_disable_cloud.h) has been deprecated. \
+        Please use SYSTEM_MODE instead \
+        "http://docs.spark.io/firmware/#advanced-system-modes".
 
 #endif  /* __SPARK_DISABLE_CLOUD_H */
