@@ -218,7 +218,14 @@ void WiFiClass::off(void)
   if(SPARK_WLAN_STARTED)
   {
     wlan_stop();
-    SPARK_WLAN_SLEEP = 1;//Logic to reset remaining state variables inside SPARK_WLAN_Loop()
+
+    // Reset remaining state variables in SPARK_WLAN_Loop()
+    SPARK_WLAN_SLEEP = 1;
+
+    // Do not automatically connect to the cloud
+    // the next time we connect to a Wi-Fi network
+    SPARK_CLOUD_CONNECT = 0;
+
     SPARK_LED_FADE = 1;
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
