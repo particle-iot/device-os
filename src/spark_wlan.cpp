@@ -359,7 +359,10 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 	Delay(100);
 
 	/* Trigger a WLAN device */
-	WiFi.connect();
+	if (System.mode() == AUTOMATIC)
+	{
+	  WiFi.connect();
+	}
 }
 
 void SPARK_WLAN_Loop(void)

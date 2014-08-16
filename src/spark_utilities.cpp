@@ -107,11 +107,13 @@ SystemClass::SystemClass(System_Mode_TypeDef mode)
     case SEMI_AUTOMATIC:
       _mode = SEMI_AUTOMATIC;
       SPARK_CLOUD_CONNECT = 0;
+      SPARK_WLAN_SLEEP = 1;
       break;
 
     case MANUAL:
       _mode = MANUAL;
       SPARK_CLOUD_CONNECT = 0;
+      SPARK_WLAN_SLEEP = 1;
       break;
   }
 }
