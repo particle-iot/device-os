@@ -183,13 +183,12 @@ void RGBClass::color(int red, int green, int blue)
 #endif
 }
 
-void RGBClass::brightness(uint8_t brightness)
+void RGBClass::brightness(uint8_t brightness, bool update)
 {
-#if !defined (RGB_NOTIFICATIONS_ON)
-	if (true != _control)
-		return;
-
+#if !defined (RGB_NOTIFICATIONS_ON)	
 	LED_SetBrightness(brightness);
+    if (_control && update)
+        LED_On(LED_RGB);
 #endif
 }
 
