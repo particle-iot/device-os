@@ -279,8 +279,12 @@ int main(void)
                   // Initialize user application's Stack Pointer
                   __set_MSP(*(__IO uint32_t*) ApplicationAddress);
 
-                  // Set IWDG Timeout to 5 secs
-                  IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
+                  // Do not enable IWDG if Stop Mode Flag is set
+                  if((BKP_ReadBackupRegister(BKP_DR9) >> 12) != 0xA)
+                  {
+                    // Set IWDG Timeout to 5 secs
+                    IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
+                  }
 
                   Jump_To_Application();
 		}
