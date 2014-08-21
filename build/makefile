@@ -28,7 +28,7 @@ rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2
 BUILD_PATH = obj
 
 # Path to the root of source files, in this case root of the project to
-# inclue ../src and ../lib dirs.
+# include ../src and ../lib dirs.
 # Note: Consider relocating source files in lib to src, or build a
 #       seperate library.
 SRC_PATH = ..
@@ -42,13 +42,19 @@ SRC_MAKEFILES := $(call rwildcard,$(SRC_PATH)/,build.mk)
 # Include all build.mk defines source files.
 include $(SRC_MAKEFILES)
 
+# Include user application makefiles, defaults to tinker
+ifndef APP
+    APP = tinker
+endif
+include $(SRC_PATH)/applications/$(APP)/Makefile
+
 # Paths to dependant projects, referenced from root of this project
 LIB_CORE_COMMON_PATH = ../core-common-lib
 LIB_CORE_COMMUNICATION_PATH = ../core-communication-lib
-LIB_CORE_LIBRARIES_PATH = libraries/
+LIB_CORE_LIBRARIES_PATH = libraries
 
-# Include directoris for optional "libraries" (eg. Serial2.h)
-INCLUDE_DIRS += $(LIB_CORE_LIBRARIES_PATH)/Serial2
+# Include directories for optional "libraries" (eg. Serial2.h)
+INCLUDE_DIRS += $(LIB_CORE_LIBRARIES_PATH)
 
 # Additional include directories, applied to objects built for this target.
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)/CMSIS/Include
@@ -196,7 +202,7 @@ $(BUILD_PATH)/%.o : $(SRC_PATH)/%.cpp
 
 # Other Targets
 clean:
-	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET).elf $(TARGET).bin $(TARGET).hex $(TARGET).map
+	$(RM) $(ALLOBJ) $(BUILD_PATH)/applications/*/*.o* $(BUILD_PATH)/libraries/*/*.o* $(ALLDEPS) $(TARGET).elf $(TARGET).bin $(TARGET).hex $(TARGET).map
 	@echo
 	@echo Clean core-common-lib
 # Should clean invoke clean on the dependant libs as well? Sure..
