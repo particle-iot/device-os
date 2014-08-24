@@ -56,6 +56,8 @@ ifndef TARGET
 TARGET ?= $(TEST)
 TARGETDIR ?= $(USRSRC)
 endif
+include $(PROJECT_DIR)tests/tests.mk
+-include $(PROJECT_DIR)$(USRSRC)test.mk
 endif
 
 # user sources specified, so override application.cpp and pull in files from 
