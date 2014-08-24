@@ -45,7 +45,7 @@ USRSRC += ""	# ensure defined
 ifdef APP
 USRSRC = applications/$(APP)/
 ifndef TARGET
-TARGET ?= $(APP)
+TARGET ?= $(notdir $(APP))
 TARGETDIR ?= $(USRSRC)
 endif
 endif
@@ -53,7 +53,7 @@ endif
 ifdef TEST
 USRSRC = tests/$(TEST)/
 ifndef TARGET
-TARGET ?= $(TEST)
+TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
 endif
 include $(PROJECT_DIR)tests/tests.mk
