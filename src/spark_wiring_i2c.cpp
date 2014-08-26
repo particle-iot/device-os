@@ -63,23 +63,22 @@ void TwoWire_DMAConfig(uint8_t *pBuffer, uint32_t BufferSize, uint32_t Direction
 {
   DMA_InitTypeDef  DMA_InitStructure;
 
-  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)0x40005410;
-  DMA_InitStructure.DMA_MemoryBaseAddr = pBuffer;
-  DMA_InitStructure.DMA_BufferSize = BufferSize;
-  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
-  DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
-  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
-
   if (Direction == TWOWIRE_DIRECTION_TX)
   {
     /* Configure the DMA Tx Channel with the buffer address and the buffer size */
     /* DMA1 channel6 configuration */
     DMA_DeInit(DMA1_Channel6);
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)0x40005410;
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
+    DMA_InitStructure.DMA_MemoryBaseAddr = pBuffer;
+    DMA_InitStructure.DMA_BufferSize = BufferSize;
+    DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+    DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+    DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
     DMA_Init(DMA1_Channel6, &DMA_InitStructure);
   }
   else
@@ -87,7 +86,17 @@ void TwoWire_DMAConfig(uint8_t *pBuffer, uint32_t BufferSize, uint32_t Direction
     /* Configure the DMA Rx Channel with the buffer address and the buffer size */
     /* DMA1 channel7 configuration */
     DMA_DeInit(DMA1_Channel7);
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)0x40005410;
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+    DMA_InitStructure.DMA_MemoryBaseAddr = pBuffer;
+    DMA_InitStructure.DMA_BufferSize = BufferSize;
+    DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+    DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+    DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
     DMA_Init(DMA1_Channel7, &DMA_InitStructure);
   }
 }
