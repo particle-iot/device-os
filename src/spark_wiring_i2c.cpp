@@ -55,6 +55,43 @@ void (*TwoWire::user_onReceive)(int);
 //__IO uint8_t Tx_Idx = 0, Rx_Idx = 0;
 //__IO uint8_t Direction = Transmitter;
 
+#define TWOWIRE_DIRECTION_TX    0
+#define TWOWIRE_DIRECTION_RX    1
+
+//Initializes DMA channel used by the I2C1 peripheral based on Direction
+void TwoWire_DMAConfig(uint8_t *pBuffer, uint32_t BufferSize, uint32_t Direction)
+{
+  DMA_InitTypeDef  DMA_InitStructure;
+
+  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)0x40005410;
+  DMA_InitStructure.DMA_MemoryBaseAddr = pBuffer;
+  DMA_InitStructure.DMA_BufferSize = BufferSize;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+
+  if (Direction == TWOWIRE_DIRECTION_TX)
+  {
+    /* Configure the DMA Tx Channel with the buffer address and the buffer size */
+    /* DMA1 channel6 configuration */
+    DMA_DeInit(DMA1_Channel6);
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
+    DMA_Init(DMA1_Channel6, &DMA_InitStructure);
+  }
+  else
+  {
+    /* Configure the DMA Rx Channel with the buffer address and the buffer size */
+    /* DMA1 channel7 configuration */
+    DMA_DeInit(DMA1_Channel7);
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+    DMA_Init(DMA1_Channel7, &DMA_InitStructure);
+  }
+}
+
 // Constructors ////////////////////////////////////////////////////////////////
 
 TwoWire::TwoWire()
@@ -152,50 +189,45 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop
 		if(EVENT_TIMEOUT < (millis() - _millis)) return 0;
 	}
 
-	/* perform blocking read into buffer */
-	uint8_t *pBuffer = rxBuffer;
-	uint8_t numByteToRead = quantity;
-	uint8_t bytesRead = 0;
+        TwoWire_DMAConfig(rxBuffer, quantity, TWOWIRE_DIRECTION_RX);
 
-	/* While there is data to be read */
-	_millis = millis();
-	while(numByteToRead && (EVENT_TIMEOUT > (millis() - _millis)))
-	{
-		if(numByteToRead == 1 && sendStop == true)
-		{
-			/* Disable Acknowledgement */
-			I2C_AcknowledgeConfig(I2C1, DISABLE);
+        /* Enable I2C DMA request */
+        I2C_DMACmd(I2C1, ENABLE);
 
-			/* Send STOP Condition */
-			I2C_GenerateSTOP(I2C1, ENABLE);
-		}
+        /* Enable DMA RX Channel */
+        DMA_Cmd(DMA1_Channel7, ENABLE);
 
-		if(I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED))
-		{
-			/* Read a byte from the Slave */
-			*pBuffer = I2C_ReceiveData(I2C1);
+        /* Wait until DMA Transfer Complete */
+        _millis = millis();
+        while(!DMA_GetFlagStatus(DMA1_FLAG_TC7))
+        {
+        if(EVENT_TIMEOUT < (millis() - _millis)) return 0;
+        }
 
-			bytesRead++;
+        /* Send STOP Condition */
+        if(sendStop == true)
+        {
+          /* Send STOP condition */
+          I2C_GenerateSTOP(I2C1, ENABLE);
+        }
 
-			/* Point to the next location where the byte read will be saved */
-			pBuffer++;
+        /* Disable DMA RX Channel */
+        DMA_Cmd(DMA1_Channel7, DISABLE);
 
-			/* Decrement the read bytes counter */
-			numByteToRead--;
+        /* Disable I2C DMA request */
+        I2C_DMACmd(I2C1, DISABLE);
 
-			/* Reset timeout to our last read */
-			_millis = millis();
-		}
-	}
+        /* Clear DMA RX Transfer Complete Flag */
+        DMA_ClearFlag(DMA1_FLAG_TC7);
 
-	/* Enable Acknowledgement to be ready for another reception */
-	I2C_AcknowledgeConfig(I2C1, ENABLE);
+        /* Enable Acknowledgement to be ready for another reception */
+        //I2C_AcknowledgeConfig(I2C1, ENABLE);
 
 	// set rx buffer iterator vars
 	rxBufferIndex = 0;
-	rxBufferLength = bytesRead;
+	rxBufferLength = quantity;
 
-	return bytesRead;
+	return quantity;
 }
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity)
@@ -266,30 +298,36 @@ uint8_t TwoWire::endTransmission(uint8_t sendStop)
 		if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
 	}
 
-	uint8_t *pBuffer = txBuffer;
-	uint8_t NumByteToWrite = txBufferLength;
+        TwoWire_DMAConfig(txBuffer, txBufferLength, TWOWIRE_DIRECTION_TX);
 
-	/* While there is data to be written */
-	while(NumByteToWrite--)
-	{
-		/* Send the current byte to slave */
-		I2C_SendData(I2C1, *pBuffer);
+        /* Enable I2C DMA request */
+        I2C_DMACmd(I2C1, ENABLE);
 
-		/* Point to the next byte to be written */
-		pBuffer++;
+        /* Enable DMA TX Channel */
+        DMA_Cmd(DMA1_Channel6, ENABLE);
 
-		_millis = millis();
-		while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
-		{
-			if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
-		}
-	}
+        /* Wait until DMA Transfer Complete */
+        _millis = millis();
+        while(!DMA_GetFlagStatus(DMA1_FLAG_TC6))
+        {
+          if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
+        }
 
-	if(sendStop == true)
-	{
-		/* Send STOP condition */
-		I2C_GenerateSTOP(I2C1, ENABLE);
-	}
+        /* Send STOP Condition */
+        if(sendStop == true)
+        {
+          /* Send STOP condition */
+          I2C_GenerateSTOP(I2C1, ENABLE);
+        }
+
+        /* Disable DMA TX Channel */
+        DMA_Cmd(DMA1_Channel6, DISABLE);
+
+        /* Disable I2C DMA request */
+        I2C_DMACmd(I2C1, DISABLE);
+
+        /* Clear DMA TX Transfer Complete Flag */
+        DMA_ClearFlag(DMA1_FLAG_TC6);
 
 	// reset tx buffer iterator vars
 	txBufferIndex = 0;
