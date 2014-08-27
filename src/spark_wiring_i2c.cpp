@@ -47,7 +47,6 @@ void (*TwoWire::user_onReceive)(int);
 
 #define TRANSMITTER             0x00
 #define RECEIVER                0x01
-#define I2C1_SLAVE_ADDRESS7     0x00
 
 uint8_t I2C1_Buffer_Tx[BUFFER_LENGTH];
 uint8_t I2C1_Buffer_Rx[BUFFER_LENGTH];
@@ -101,8 +100,6 @@ void TwoWire::begin(void)
 	txBufferIndex = 0;
 	txBufferLength = 0;
 
-	NVIC_InitTypeDef  NVIC_InitStructure;
-
         /* Enable I2C1 clock */
         RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
         /* Enable DMA1 clock */
@@ -124,14 +121,6 @@ void TwoWire::begin(void)
 	I2C_InitStructure.I2C_ClockSpeed = 100000;
 	I2C_Init(I2C1, &I2C_InitStructure);
 
-        I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF, ENABLE);
-
-        NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQn;
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-        NVIC_Init(&NVIC_InitStructure);
-
 	I2C_Cmd(I2C1, ENABLE);
 
 	I2C_Enabled = true;
@@ -139,23 +128,26 @@ void TwoWire::begin(void)
 
 void TwoWire::begin(uint8_t address)
 {
-	I2C_SetAsSlave = true;
+        NVIC_InitTypeDef  NVIC_InitStructure;
 
-	if(I2C_Enabled != false)
-	{
-		I2C_Cmd(I2C1, DISABLE);
-	}
+        NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQn;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+        NVIC_Init(&NVIC_InitStructure);
 
-	//attachSlaveTxEvent(onRequestService);
-	//attachSlaveRxEvent(onReceiveService);
-	I2C_InitStructure.I2C_OwnAddress1 = address;
+        I2C_ITConfig(I2C1, I2C_IT_EVT, ENABLE);
 
-	begin();
+        I2C_SetAsSlave = true;
+
+        I2C_InitStructure.I2C_OwnAddress1 = address;
+
+        begin();
 }
 
 void TwoWire::begin(int address)
 {
-//	begin((uint8_t)address);
+	begin((uint8_t)address);
 }
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
@@ -518,7 +510,6 @@ void Wiring_I2C1_EV_Interrupt_Handler(void)
 		/* Transmit I2C1 data */
 		I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
 		break;
-
 
 		/* Slave Receiver ------------------------------------------------------*/
 	case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED:     /* EV1 */
