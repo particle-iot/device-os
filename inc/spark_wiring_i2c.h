@@ -53,7 +53,7 @@ private:
 	static void (*user_onRequest)(void);
 	static void (*user_onReceive)(int);
 	static void onRequestService(void);
-	static void onReceiveService(uint8_t*, int);
+	static void onReceiveService(int);
 public:
 	TwoWire();
 	void begin();
@@ -82,6 +82,7 @@ public:
 	inline size_t write(int n) { return write((uint8_t)n); }
 	using Print::write;
 
+	static void slaveEventHandler(void);
 	static bool isEnabled(void);
 };
 

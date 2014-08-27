@@ -48,11 +48,6 @@ void (*TwoWire::user_onReceive)(int);
 #define TRANSMITTER             0x00
 #define RECEIVER                0x01
 
-uint8_t I2C1_Buffer_Tx[BUFFER_LENGTH];
-uint8_t I2C1_Buffer_Rx[BUFFER_LENGTH];
-__IO uint8_t Tx_Idx = 0, Rx_Idx = 0;
-__IO uint8_t Direction = TRANSMITTER;
-
 //Initializes DMA channel used by the I2C1 peripheral based on Direction
 void TwoWire_DMAConfig(uint8_t *pBuffer, uint32_t BufferSize, uint32_t Direction)
 {
@@ -373,22 +368,35 @@ size_t TwoWire::write(const uint8_t *data, size_t quantity)
 	}else{
 		// in slave send mode
 		// reply to master
-		while(!I2C_CheckEvent(I2C1, I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED));
-
-		uint8_t *pBuffer = txBuffer;
-		uint8_t NumByteToWrite = quantity;
-
-		/* While there is data to be written */
-		while(NumByteToWrite--)
+	        uint32_t _millis = millis();
+		while(!I2C_CheckEvent(I2C1, I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED))
 		{
-			/* Send the current byte to master */
-			I2C_SendData(I2C1, *pBuffer);
-
-			/* Point to the next byte to be written */
-			pBuffer++;
-
-			while (!I2C_CheckEvent(I2C1, I2C_EVENT_SLAVE_BYTE_TRANSMITTED));
+		  if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
 		}
+
+	        TwoWire_DMAConfig(txBuffer, quantity, TRANSMITTER);
+
+	        /* Enable I2C DMA request */
+	        I2C_DMACmd(I2C1, ENABLE);
+
+	        /* Enable DMA TX Channel */
+	        DMA_Cmd(DMA1_Channel6, ENABLE);
+
+	        /* Wait until DMA Transfer Complete */
+	        _millis = millis();
+	        while(!DMA_GetFlagStatus(DMA1_FLAG_TC6))
+	        {
+	          if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
+	        }
+
+	        /* Disable DMA TX Channel */
+	        DMA_Cmd(DMA1_Channel6, DISABLE);
+
+	        /* Disable I2C DMA request */
+	        I2C_DMACmd(I2C1, DISABLE);
+
+	        /* Clear DMA TX Transfer Complete Flag */
+	        DMA_ClearFlag(DMA1_FLAG_TC6);
 	}
 	return quantity;
 }
@@ -437,26 +445,12 @@ void TwoWire::flush(void)
 }
 
 // behind the scenes function that is called when data is received
-void TwoWire::onReceiveService(uint8_t* inBytes, int numBytes)
+void TwoWire::onReceiveService(int numBytes)
 {
 	// don't bother if user hasn't registered a callback
 	if(!user_onReceive){
 		return;
 	}
-	// don't bother if rx buffer is in use by a master requestFrom() op
-	// i know this drops data, but it allows for slight stupidity
-	// meaning, they may not have read all the master requestFrom() data yet
-	if(rxBufferIndex < rxBufferLength){
-		return;
-	}
-	// copy twi rx buffer into local read buffer
-	// this enables new reads to happen in parallel
-	for(uint8_t i = 0; i < numBytes; ++i){
-		rxBuffer[i] = inBytes[i];
-	}
-	// set rx iterator vars
-	rxBufferIndex = 0;
-	rxBufferLength = numBytes;
 	// alert user program
 	user_onReceive(numBytes);
 }
@@ -468,10 +462,6 @@ void TwoWire::onRequestService(void)
 	if(!user_onRequest){
 		return;
 	}
-	// reset tx buffer iterator vars
-	// !!! this will kill any pending pre-master sendTo() activity
-	txBufferIndex = 0;
-	txBufferLength = 0;
 	// alert user program
 	user_onRequest();
 }
@@ -488,53 +478,57 @@ void TwoWire::onRequest( void (*function)(void) )
 	user_onRequest = function;
 }
 
+void TwoWire::slaveEventHandler(void)
+{
+  switch (I2C_GetLastEvent(I2C1))
+  {
+          /* Slave Transmitter ---------------------------------------------------*/
+  case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED:  /* EV1 */
+          txBufferIndex = 0;
+          txBufferLength = 0;
+          onRequestService();
+          /* Transmit I2C1 data */
+          I2C_SendData(I2C1, txBuffer[txBufferIndex++]);
+          break;
+
+  case I2C_EVENT_SLAVE_BYTE_TRANSMITTED:             /* EV3 */
+          /* Transmit I2C1 data */
+          I2C_SendData(I2C1, txBuffer[txBufferIndex++]);
+          break;
+
+          /* Slave Receiver ------------------------------------------------------*/
+  case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED:     /* EV1 */
+          break;
+
+  case I2C_EVENT_SLAVE_BYTE_RECEIVED:                /* EV2 */
+          /* Store I2C1 received data */
+          rxBuffer[rxBufferIndex++] = I2C_ReceiveData(I2C1);
+          break;
+
+  case I2C_EVENT_SLAVE_STOP_DETECTED:                /* EV4 */
+          /* Clear I2C1 STOPF flag: read of I2C_SR1 followed by a write on I2C_CR1 */
+          (void)(I2C_GetITStatus(I2C1, I2C_IT_STOPF));
+          I2C_Cmd(I2C1, ENABLE);
+          rxBufferLength = rxBufferIndex;
+          rxBufferIndex = 0;
+          onReceiveService(rxBufferLength);
+          break;
+
+  default:
+          break;
+  }
+}
+
 /*******************************************************************************
  * Function Name  : Wiring_I2C1_EV_Interrupt_Handler (Declared as weak in stm32_it.cpp)
- * Description    : This function handles I2C1 Event interrupt request.
+ * Description    : This function handles I2C1 Event interrupt request(Only for Slave mode).
  * Input          : None.
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
 void Wiring_I2C1_EV_Interrupt_Handler(void)
 {
-	switch (I2C_GetLastEvent(I2C1))
-	{
-		/* Slave Transmitter ---------------------------------------------------*/
-	case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED:  /* EV1 */
-
-		/* Transmit I2C1 data */
-		I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
-		break;
-
-	case I2C_EVENT_SLAVE_BYTE_TRANSMITTED:             /* EV3 */
-		/* Transmit I2C1 data */
-		I2C_SendData(I2C1, I2C1_Buffer_Tx[Tx_Idx++]);
-		break;
-
-		/* Slave Receiver ------------------------------------------------------*/
-	case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED:     /* EV1 */
-		break;
-
-	case I2C_EVENT_SLAVE_BYTE_RECEIVED:                /* EV2 */
-		/* Store I2C1 received data */
-		I2C1_Buffer_Rx[Rx_Idx++] = I2C_ReceiveData(I2C1);
-
-		if(Rx_Idx == BUFFER_LENGTH)
-		{
-			I2C_TransmitPEC(I2C1, ENABLE);
-			Direction = RECEIVER;
-		}
-		break;
-
-	case I2C_EVENT_SLAVE_STOP_DETECTED:                /* EV4 */
-		/* Clear I2C1 STOPF flag: read of I2C_SR1 followed by a write on I2C_CR1 */
-		(void)(I2C_GetITStatus(I2C1, I2C_IT_STOPF));
-		I2C_Cmd(I2C1, ENABLE);
-		break;
-
-	default:
-		break;
-	}
+  TwoWire::slaveEventHandler();
 }
 
 /*******************************************************************************
