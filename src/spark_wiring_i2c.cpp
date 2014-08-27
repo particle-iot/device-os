@@ -55,8 +55,8 @@ void (*TwoWire::user_onReceive)(int);
 //__IO uint8_t Tx_Idx = 0, Rx_Idx = 0;
 //__IO uint8_t Direction = Transmitter;
 
-#define TWOWIRE_DIRECTION_TX    0
-#define TWOWIRE_DIRECTION_RX    1
+#define TRANSMITTER     0x00
+#define RECEIVER        0x01
 
 //Initializes DMA channel used by the I2C1 peripheral based on Direction
 void TwoWire_DMAConfig(uint8_t *pBuffer, uint32_t BufferSize, uint32_t Direction)
@@ -75,7 +75,7 @@ void TwoWire_DMAConfig(uint8_t *pBuffer, uint32_t BufferSize, uint32_t Direction
   DMA_InitStructure.DMA_Priority = DMA_Priority_High;
   DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
 
-  if (Direction == TWOWIRE_DIRECTION_TX)
+  if (Direction == TRANSMITTER)
   {
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
     /* DMA1 channel6 configuration */
@@ -107,7 +107,10 @@ void TwoWire::begin(void)
 
 	//NVIC_InitTypeDef  NVIC_InitStructure;
 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
+        /* Enable I2C1 clock */
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
+        /* Enable DMA1 clock */
+        RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
 	pinMode(SCL, AF_OUTPUT_DRAIN);
 	pinMode(SDA, AF_OUTPUT_DRAIN);
@@ -186,7 +189,7 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop
 		if(EVENT_TIMEOUT < (millis() - _millis)) return 0;
 	}
 
-        TwoWire_DMAConfig(rxBuffer, quantity, TWOWIRE_DIRECTION_RX);
+        TwoWire_DMAConfig(rxBuffer, quantity, RECEIVER);
 
         /* Enable I2C DMA request */
         I2C_DMACmd(I2C1, ENABLE);
@@ -295,7 +298,7 @@ uint8_t TwoWire::endTransmission(uint8_t sendStop)
 		if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
 	}
 
-        TwoWire_DMAConfig(txBuffer, txBufferLength, TWOWIRE_DIRECTION_TX);
+        TwoWire_DMAConfig(txBuffer, txBufferLength, TRANSMITTER);
 
         /* Enable I2C DMA request */
         I2C_DMACmd(I2C1, ENABLE);
