@@ -58,6 +58,10 @@ public:
         return _state>=RUNNING;
     }
     
+    bool isComplete() {
+        return _state==COMPLETE;
+    }
+    
     void start() {
         if (!isStarted())
             setState(RUNNING);
@@ -97,8 +101,7 @@ public:
     }
     
     void testDone() {        
-        updateLEDStatus();
-        delay(500);
+        updateLEDStatus();        
     }
 };
 
