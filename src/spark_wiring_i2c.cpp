@@ -131,13 +131,16 @@ void TwoWire::begin(uint8_t address)
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
         NVIC_Init(&NVIC_InitStructure);
 
-        I2C_ITConfig(I2C1, I2C_IT_EVT, ENABLE);
+        NVIC_InitStructure.NVIC_IRQChannel = I2C1_ER_IRQn;
+        NVIC_Init(&NVIC_InitStructure);
 
         I2C_SetAsSlave = true;
 
-        I2C_InitStructure.I2C_OwnAddress1 = address;
+        I2C_InitStructure.I2C_OwnAddress1 = address << 1;
 
         begin();
+
+        I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF, ENABLE);
 }
 
 void TwoWire::begin(int address)
@@ -368,35 +371,13 @@ size_t TwoWire::write(const uint8_t *data, size_t quantity)
 	}else{
 		// in slave send mode
 		// reply to master
-	        uint32_t _millis = millis();
-		while(!I2C_CheckEvent(I2C1, I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED))
-		{
-		  if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
-		}
-
-	        TwoWire_DMAConfig(txBuffer, quantity, TRANSMITTER);
+	        TwoWire_DMAConfig((uint8_t *)data, quantity, TRANSMITTER);
 
 	        /* Enable I2C DMA request */
 	        I2C_DMACmd(I2C1, ENABLE);
 
 	        /* Enable DMA TX Channel */
 	        DMA_Cmd(DMA1_Channel6, ENABLE);
-
-	        /* Wait until DMA Transfer Complete */
-	        _millis = millis();
-	        while(!DMA_GetFlagStatus(DMA1_FLAG_TC6))
-	        {
-	          if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
-	        }
-
-	        /* Disable DMA TX Channel */
-	        DMA_Cmd(DMA1_Channel6, DISABLE);
-
-	        /* Disable I2C DMA request */
-	        I2C_DMACmd(I2C1, DISABLE);
-
-	        /* Clear DMA TX Transfer Complete Flag */
-	        DMA_ClearFlag(DMA1_FLAG_TC6);
 	}
 	return quantity;
 }
@@ -487,17 +468,12 @@ void TwoWire::slaveEventHandler(void)
           txBufferIndex = 0;
           txBufferLength = 0;
           onRequestService();
-          /* Transmit I2C1 data */
-          I2C_SendData(I2C1, txBuffer[txBufferIndex++]);
-          break;
-
-  case I2C_EVENT_SLAVE_BYTE_TRANSMITTED:             /* EV3 */
-          /* Transmit I2C1 data */
-          I2C_SendData(I2C1, txBuffer[txBufferIndex++]);
           break;
 
           /* Slave Receiver ------------------------------------------------------*/
   case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED:     /* EV1 */
+          rxBufferIndex = 0;
+          rxBufferLength = 0;
           break;
 
   case I2C_EVENT_SLAVE_BYTE_RECEIVED:                /* EV2 */
@@ -540,7 +516,11 @@ void Wiring_I2C1_EV_Interrupt_Handler(void)
  *******************************************************************************/
 void Wiring_I2C1_ER_Interrupt_Handler(void)
 {
-	//To Do
+  /* Check on I2C1 AF flag and clear it */
+  if (I2C_GetITStatus(I2C1, I2C_IT_AF))
+  {
+    I2C_ClearITPendingBit(I2C1, I2C_IT_AF);
+  }
 }
 
 bool TwoWire::isEnabled() {
