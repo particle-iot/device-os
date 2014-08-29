@@ -23,9 +23,9 @@ $ci_dir/make_test.sh $platform $suite || die
 
 # flash the firmware
 echo OTA flashing firmware
-# spark flash $core_name $target_file || die 
+spark flash $core_name $target_file || die 
 # give enough time for the core to go into OTA mode
-# sleep 10 || die
+sleep 10 || die
 
 echo "Waiting for test suite to party"
 waitForState waiting 120 || die "Timeout waiting for test suite"
