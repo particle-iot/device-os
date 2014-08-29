@@ -31,6 +31,7 @@
 #include "spark_wiring_string.h"
 #include "spark_wiring_time.h"
 #include "spark_protocol.h"
+#include "rgbled.h"
 
 #define BYTE_N(x,n)						(((x) >> n*8) & 0x000000FF)
 
@@ -98,8 +99,8 @@ public:
 	static bool controlled(void);
 	static void control(bool);
 	static void color(int, int, int);
-        static void color(uint32_t rgb);
-        static void brightness(uint8_t);
+	static void color(uint32_t rgb);
+	static void brightness(uint8_t, bool update=true);
 };
 
 class SparkClass {
