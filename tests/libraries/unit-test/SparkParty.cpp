@@ -61,7 +61,7 @@ bool _enterDFU = false;
 
 Flashee::CircularBuffer* log;
 PrintTee* tee;
-uint8_t buf[128];
+uint8_t buf[601];
 
 /**
  * A convenience method to setup serial.
@@ -142,7 +142,7 @@ int testCmd(String arg) {
     if (arg.equals("log")) {
         result = advanceLog();
     }
-    if (arg.equals("start")) {
+    else if (arg.equals("start")) {
         requestStart = true;
     }
     else if (arg.startsWith("exclude=")) {
