@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _path=$HOME/.spark
-mkdir $_path
+mkdir -p $_path
 cat <<EOS > ${_path}/spark.config.json
 {
   "apiUrl": "https://api.spark.io",
