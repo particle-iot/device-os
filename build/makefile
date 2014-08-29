@@ -151,9 +151,6 @@ ALLDEPS += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH), $(CPPSRC:.cpp=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH), $(ASRC:.S=.o.d))
 
-$(info $$CPPSRC is [${CPPSRC}]) 
-$(info $$ALLOBJ is [${ALLOBJ}]) 
-
 
 # All Target
 all: elf bin hex size
