@@ -29,6 +29,7 @@
 // Initialize Class Variables //////////////////////////////////////////////////
 I2C_InitTypeDef TwoWire::I2C_InitStructure;
 
+uint32_t TwoWire::I2C_ClockSpeed = CLOCK_SPEED_100KHZ;
 bool TwoWire::I2C_SetAsSlave = false;
 bool TwoWire::I2C_Enabled = false;
 
@@ -91,6 +92,12 @@ TwoWire::TwoWire()
 
 // Public Methods //////////////////////////////////////////////////////////////
 
+//speed() should be called before begin() else default to 100KHz
+void TwoWire::speed(uint32_t clockSpeed)
+{
+  I2C_ClockSpeed = clockSpeed;
+}
+
 void TwoWire::begin(void)
 {
   rxBufferIndex = 0;
@@ -117,7 +124,7 @@ void TwoWire::begin(void)
   }
   I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
   I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-  I2C_InitStructure.I2C_ClockSpeed = 100000;
+  I2C_InitStructure.I2C_ClockSpeed = I2C_ClockSpeed;
   I2C_Init(I2C1, &I2C_InitStructure);
 
   I2C_Cmd(I2C1, ENABLE);
@@ -198,13 +205,6 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop
     if(EVENT_TIMEOUT < (millis() - _millis)) break;
   }
 
-  /* Send STOP Condition */
-  if(sendStop == true)
-  {
-    /* Send STOP condition */
-    I2C_GenerateSTOP(I2C1, ENABLE);
-  }
-
   /* Disable DMA RX Channel */
   DMA_Cmd(DMA1_Channel7, DISABLE);
 
@@ -213,6 +213,13 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop
 
   /* Clear DMA RX Transfer Complete Flag */
   DMA_ClearFlag(DMA1_FLAG_TC7);
+
+  /* Send STOP Condition */
+  if(sendStop == true)
+  {
+    /* Send STOP condition */
+    I2C_GenerateSTOP(I2C1, ENABLE);
+  }
 
   /* Enable Acknowledgement to be ready for another reception */
   I2C_AcknowledgeConfig(I2C1, ENABLE);
@@ -272,8 +279,6 @@ uint8_t TwoWire::endTransmission(uint8_t sendStop)
 {
   uint32_t _millis;
 
-  // transmit buffer (blocking)
-
   /* Send START condition */
   I2C_GenerateSTART(I2C1, ENABLE);
 
@@ -292,7 +297,7 @@ uint8_t TwoWire::endTransmission(uint8_t sendStop)
     if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
   }
 
-  TwoWire_DMAConfig(txBuffer, txBufferLength, TRANSMITTER);
+  TwoWire_DMAConfig(txBuffer, txBufferLength+1, TRANSMITTER);
 
   /* Enable DMA NACK automatic generation */
   I2C_DMALastTransferCmd(I2C1, ENABLE);
@@ -310,13 +315,6 @@ uint8_t TwoWire::endTransmission(uint8_t sendStop)
     if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
   }
 
-  /* Send STOP Condition */
-  if(sendStop == true)
-  {
-    /* Send STOP condition */
-    I2C_GenerateSTOP(I2C1, ENABLE);
-  }
-
   /* Disable DMA TX Channel */
   DMA_Cmd(DMA1_Channel6, DISABLE);
 
@@ -325,6 +323,13 @@ uint8_t TwoWire::endTransmission(uint8_t sendStop)
 
   /* Clear DMA TX Transfer Complete Flag */
   DMA_ClearFlag(DMA1_FLAG_TC6);
+
+  /* Send STOP Condition */
+  if(sendStop == true)
+  {
+    /* Send STOP condition */
+    I2C_GenerateSTOP(I2C1, ENABLE);
+  }
 
   // reset tx buffer iterator vars
   txBufferIndex = 0;
@@ -351,7 +356,7 @@ size_t TwoWire::write(uint8_t data)
 {
   if(transmitting)
   {
-    // in master transmitter mode
+    // in master/slave transmitter mode
     // don't bother if buffer is full
     if(txBufferLength >= BUFFER_LENGTH)
     {
@@ -359,8 +364,7 @@ size_t TwoWire::write(uint8_t data)
       return 0;
     }
     // put byte in tx buffer
-    txBuffer[txBufferIndex] = data;
-    ++txBufferIndex;
+    txBuffer[txBufferIndex++] = data;
     // update amount in buffer
     txBufferLength = txBufferIndex;
   }
@@ -375,7 +379,7 @@ size_t TwoWire::write(const uint8_t *data, size_t quantity)
 {
   if(transmitting)
   {
-    // in master transmitter mode
+    // in master/slave transmitter mode
     for(size_t i = 0; i < quantity; ++i)
     {
       write(data[i]);
@@ -403,8 +407,7 @@ int TwoWire::read(void)
   // get each successive byte on each call
   if(rxBufferIndex < rxBufferLength)
   {
-    value = rxBuffer[rxBufferIndex];
-    ++rxBufferIndex;
+    value = rxBuffer[rxBufferIndex++];
   }
 
   return value;
@@ -476,7 +479,7 @@ void TwoWire::slaveEventHandler(void)
         user_onRequest();
       }
 
-      TwoWire_DMAConfig(txBuffer, txBufferLength, TRANSMITTER);
+      TwoWire_DMAConfig(txBuffer, txBufferLength+1, TRANSMITTER);
       /* Enable DMA NACK automatic generation */
       I2C_DMALastTransferCmd(I2C1, ENABLE);
       /* Enable I2C DMA request */

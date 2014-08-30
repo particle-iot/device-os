@@ -32,11 +32,15 @@
 #define BUFFER_LENGTH 32
 #define EVENT_TIMEOUT 100
 
+#define CLOCK_SPEED_100KHZ (uint32_t)100000
+#define CLOCK_SPEED_400KHZ (uint32_t)400000
+
 class TwoWire : public Stream
 {
 private:
   static I2C_InitTypeDef I2C_InitStructure;
 
+  static uint32_t I2C_ClockSpeed;
   static bool I2C_SetAsSlave;
   static bool I2C_Enabled;
 
@@ -54,6 +58,7 @@ private:
   static void (*user_onReceive)(int);
 public:
   TwoWire();
+  void speed(uint32_t);
   void begin();
   void begin(uint8_t);
   void begin(int);
