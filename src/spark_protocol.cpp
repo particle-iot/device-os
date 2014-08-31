@@ -1234,7 +1234,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
     _token = *(credentials + 34);
 
     unsigned int seed;
-    memcpy(&seed, credentials + 35, sizeof(seed));
+    memcpy(&seed, credentials + 35, 4);
     srand(seed);
 
     return 0;
