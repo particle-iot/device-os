@@ -186,8 +186,13 @@ long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder);
 
+int random(int max);
+void randomSeed(unsigned int seed);
+
 #ifdef __cplusplus
 }
 #endif
+
+int random(int min, int max);
 
 #endif /* SPARK_WIRING_H_ */
