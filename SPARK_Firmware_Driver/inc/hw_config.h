@@ -34,6 +34,7 @@
 #include "sst25vf_spi.h"
 #include "cc3000_common.h"
 #include "usb_type.h"
+#include "rgbled.h"
 
 enum SpiBusOwner {
     BUS_OWNER_NONE = 0,
@@ -57,11 +58,6 @@ typedef enum
 {
 	D0 = 0, D1 = 1, D2 = 2, D3 = 3, D4 = 4, D5 = 5, D6 = 6, D7 = 7
 } DIO_TypeDef;
-
-typedef enum
-{
-	LED1 = 0, LED2 = 1, LED3 = 2, LED4 = 3, LED3_LED4_LED2 = 231
-} Led_TypeDef;
 
 typedef enum
 {
@@ -133,20 +129,6 @@ typedef struct ServerAddress {
 									| FLASH_WRProt_Pages8to11	\
 									| FLASH_WRProt_Pages12to15 )
 
-//Extended LED Types
-#define LED_RGB				LED3_LED4_LED2
-#define LED_USER			LED1
-
-//RGB Basic Colors
-#define RGB_COLOR_RED		0xFF0000
-#define RGB_COLOR_GREEN		0x00FF00
-#define RGB_COLOR_BLUE		0x0000FF
-#define RGB_COLOR_YELLOW	0xFFFF00
-#define RGB_COLOR_CYAN		0x00FFFF
-#define RGB_COLOR_MAGENTA	0xFF00FF
-#define RGB_COLOR_WHITE		0xFFFFFF
-#define RGB_COLOR_ORANGE  0xFF6000
-
 /* USB Config : IMR_MSK */
 /* mask defining which events has to be handled */
 /* by the device application software */
@@ -184,18 +166,6 @@ DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State);
 
 void UI_Timer_Configure(void);
 
-void LED_SetRGBColor(uint32_t RGB_Color);
-void LED_SetSignalingColor(uint32_t RGB_Color);
-void LED_Signaling_Start(void);
-void LED_Signaling_Stop(void);
-void LED_Signaling_Override(void) __attribute__ ((weak));
-void LED_SetBrightness(uint8_t brightness); /* 0 = off, 255 = full brightness */
-
-void LED_Init(Led_TypeDef Led);
-void LED_On(Led_TypeDef Led);
-void LED_Off(Led_TypeDef Led);
-void LED_Toggle(Led_TypeDef Led);
-void LED_Fade(Led_TypeDef Led);
 
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);

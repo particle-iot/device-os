@@ -59,17 +59,6 @@ const uint32_t DIO_GPIO_CLK[] = {D0_GPIO_CLK, D1_GPIO_CLK, D2_GPIO_CLK, D3_GPIO_
 GPIO_TypeDef* LED_GPIO_PORT[] = {LED1_GPIO_PORT, LED2_GPIO_PORT, LED3_GPIO_PORT, LED4_GPIO_PORT};
 const uint16_t LED_GPIO_PIN[] = {LED1_GPIO_PIN, LED2_GPIO_PIN, LED3_GPIO_PIN, LED4_GPIO_PIN};
 const uint32_t LED_GPIO_CLK[] = {LED1_GPIO_CLK, LED2_GPIO_CLK, LED3_GPIO_CLK, LED4_GPIO_CLK};
-__IO uint16_t LED_TIM_CCR[] = {0x0000, 0x0000, 0x0000, 0x0000};
-__IO uint16_t LED_TIM_CCR_SIGNAL[] = {0x0000, 0x0000, 0x0000, 0x0000};	//TIM CCR Signal Override
-uint8_t LED_RGB_OVERRIDE = 0;
-uint8_t LED_RGB_BRIGHTNESS = 96;
-uint32_t lastSignalColor = 0;
-uint32_t lastRGBColor = 0;
-
-/* Led Fading. */
-#define NUM_LED_FADE_STEPS 100 /* Called at 100Hz, fade over 1 second. */
-static uint8_t led_fade_step = NUM_LED_FADE_STEPS - 1;
-static int8_t led_fade_direction = -1; /* 1 = rising, -1 = falling. */
 
 GPIO_TypeDef* BUTTON_GPIO_PORT[] = {BUTTON1_GPIO_PORT, BUTTON2_GPIO_PORT};
 const uint16_t BUTTON_GPIO_PIN[] = {BUTTON1_GPIO_PIN, BUTTON2_GPIO_PIN};
@@ -477,47 +466,6 @@ void UI_Timer_Configure(void)
 	TIM_CtrlPWMOutputs(TIM1, ENABLE);
 }
 
-void LED_SetRGBColor(uint32_t RGB_Color)
-{
-  lastRGBColor = RGB_Color;
-	LED_TIM_CCR[2] = (uint16_t)((((RGB_Color & 0xFF0000) >> 16) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16); //LED3 -> Red Led
-	LED_TIM_CCR[3] = (uint16_t)((((RGB_Color & 0xFF00) >> 8) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);    //LED4 -> Green Led
-	LED_TIM_CCR[1] = (uint16_t)(((RGB_Color & 0xFF) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);             //LED2 -> Blue Led
-}
-
-void LED_SetSignalingColor(uint32_t RGB_Color)
-{
-  lastSignalColor = RGB_Color;
-	LED_TIM_CCR_SIGNAL[2] = (uint16_t)((((RGB_Color & 0xFF0000) >> 16) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16); //LED3 -> Red Led
-	LED_TIM_CCR_SIGNAL[3] = (uint16_t)((((RGB_Color & 0xFF00) >> 8) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);    //LED4 -> Green Led
-	LED_TIM_CCR_SIGNAL[1] = (uint16_t)(((RGB_Color & 0xFF) * LED_RGB_BRIGHTNESS * (TIM1->ARR + 1)) >> 16);             //LED2 -> Blue Led
-}
-
-void LED_Signaling_Start(void)
-{
-	LED_RGB_OVERRIDE = 1;
-
-	LED_Off(LED_RGB);
-}
-
-void LED_Signaling_Stop(void)
-{
-	LED_RGB_OVERRIDE = 0;
-
-	LED_On(LED_RGB);
-}
-
-void LED_SetBrightness(uint8_t brightness)
-{
-  LED_RGB_BRIGHTNESS = brightness;
-
-  /* Recompute RGB scale using new value for brightness. */
-	if (LED_RGB_OVERRIDE)
-    LED_SetSignalingColor(lastSignalColor);
-  else
-    LED_SetRGBColor(lastRGBColor);
-}
-
 /**
   * @brief  Configures LED GPIO.
   * @param  Led: Specifies the Led to be configured.
@@ -543,158 +491,31 @@ void LED_Init(Led_TypeDef Led)
     GPIO_Init(LED_GPIO_PORT[Led], &GPIO_InitStructure);
 }
 
-/**
-  * @brief  Turns selected LED On.
-  * @param  Led: Specifies the Led to be set on.
-  *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED_USER, LED_RGB
-  * @retval None
-  */
-void LED_On(Led_TypeDef Led)
-{
-	switch(Led)
-	{
-	case LED_USER:
-		LED_GPIO_PORT[Led]->BSRR = LED_GPIO_PIN[Led];
-		break;
-
-	case LED_RGB:	//LED_SetRGBColor() should be called first for this Case
-		if(LED_RGB_OVERRIDE == 0)
-		{
-			TIM1->CCR2 = LED_TIM_CCR[2];
-			TIM1->CCR3 = LED_TIM_CCR[3];
-			TIM1->CCR1 = LED_TIM_CCR[1];
-		}
-		else
-		{
-			TIM1->CCR2 = LED_TIM_CCR_SIGNAL[2];
-			TIM1->CCR3 = LED_TIM_CCR_SIGNAL[3];
-			TIM1->CCR1 = LED_TIM_CCR_SIGNAL[1];
-		}
-
-    led_fade_step = NUM_LED_FADE_STEPS - 1;
-    led_fade_direction = -1; /* next fade is falling */
-		break;
-          default:
-		break;
-	}
+void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b) {
+    TIM1->CCR2 = r;
+    TIM1->CCR3 = g;
+    TIM1->CCR1 = b;   
 }
 
-/**
-  * @brief  Turns selected LED Off.
-  * @param  Led: Specifies the Led to be set off.
-  *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED_USER, LED_RGB
-  * @retval None
-  */
-void LED_Off(Led_TypeDef Led)
-{
-	switch(Led)
-	{
-	case LED_USER:
-		LED_GPIO_PORT[Led]->BRR = LED_GPIO_PIN[Led];
-		break;
-
-	case LED_RGB:
-		TIM1->CCR2 = 0;
-		TIM1->CCR3 = 0;
-		TIM1->CCR1 = 0;
-    led_fade_step = 0;
-    led_fade_direction = 1; /* next fade is rising. */
-		break;
-	default:
-		break;
-	}
+void Get_RGB_LED_Values(uint16_t* values) {
+    values[0] = TIM1->CCR2;
+    values[1] = TIM1->CCR3;
+    values[2] = TIM1->CCR1;
 }
 
-/**
-  * @brief  Toggles the selected LED.
-  * @param  Led: Specifies the Led to be toggled.
-  *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED_USER, LED_RGB
-  * @retval None
-  */
-void LED_Toggle(Led_TypeDef Led)
-{
-	switch(Led)
-	{
-	case LED_USER:
-		LED_GPIO_PORT[Led]->ODR ^= LED_GPIO_PIN[Led];
-		break;
-	default:
-		break;
-
-	case LED_RGB://LED_SetRGBColor() and LED_On() should be called first for this Case
-		if(LED_RGB_OVERRIDE == 0)
-		{
-      if (TIM1->CCR2)
-        TIM1->CCR2 = 0;
-      else
-        TIM1->CCR2 = LED_TIM_CCR[2];
-
-      if (TIM1->CCR3)
-        TIM1->CCR3 = 0;
-      else
-        TIM1->CCR3 = LED_TIM_CCR[3];
-
-      if (TIM1->CCR1)
-        TIM1->CCR1 = 0;
-      else
-        TIM1->CCR1 = LED_TIM_CCR[1];
-		}
-		else
-		{
-      if (TIM1->CCR2)
-        TIM1->CCR2 = 0;
-      else
-        TIM1->CCR2 = LED_TIM_CCR_SIGNAL[2];
-
-      if (TIM1->CCR3)
-        TIM1->CCR3 = 0;
-      else
-        TIM1->CCR3 = LED_TIM_CCR_SIGNAL[3];
-
-      if (TIM1->CCR1)
-        TIM1->CCR1 = 0;
-      else
-        TIM1->CCR1 = LED_TIM_CCR_SIGNAL[1];
-		}
-		break;
-	}
+void Set_User_LED(uint8_t state) {
+    if (state)
+        LED_GPIO_PORT[LED_USER]->BSRR = LED_GPIO_PIN[LED_USER];
+    else
+        LED_GPIO_PORT[LED_USER]->BRR = LED_GPIO_PIN[LED_USER];
 }
 
-/**
-  * @brief  Fades selected LED.
-  * @param  Led: Specifies the Led to be set on.
-  *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED_RGB
-  * @retval None
-  */
-void LED_Fade(Led_TypeDef Led)
-{
-  /* Update position in fade. */
-  if (led_fade_step == 0)
-    led_fade_direction = 1; /* Switch to fade growing. */
-  else if (led_fade_step == NUM_LED_FADE_STEPS - 1)
-    led_fade_direction = -1; /* Switch to fade falling. */
+void Toggle_User_LED() {
+    LED_GPIO_PORT[LED_USER]->ODR ^= LED_GPIO_PIN[LED_USER];
+}
 
-  led_fade_step += led_fade_direction;
-
-	if(Led == LED_RGB)
-	{
-		if(LED_RGB_OVERRIDE == 0)
-		{
-      TIM1->CCR2 = (((uint32_t) LED_TIM_CCR[2]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
-      TIM1->CCR3 = (((uint32_t) LED_TIM_CCR[3]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
-      TIM1->CCR1 = (((uint32_t) LED_TIM_CCR[1]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
-		}
-		else
-		{
-      TIM1->CCR2 = (((uint32_t) LED_TIM_CCR_SIGNAL[2]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
-      TIM1->CCR3 = (((uint32_t) LED_TIM_CCR_SIGNAL[3]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
-      TIM1->CCR1 = (((uint32_t) LED_TIM_CCR_SIGNAL[1]) * led_fade_step) / (NUM_LED_FADE_STEPS - 1);
-		}
-	}
+uint16_t Get_RGB_LED_Max_Value() {
+    return (TIM1->ARR + 1);
 }
 
 /**
