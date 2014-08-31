@@ -1233,6 +1233,10 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
     _message_id = *(credentials + 32) << 8 | *(credentials + 33);
     _token = *(credentials + 34);
 
+    unsigned int seed;
+    memcpy(&seed, credentials + 35, sizeof(seed));
+    srand(seed);
+
     return 0;
   }
   else return 2;
