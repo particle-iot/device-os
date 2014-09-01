@@ -92,8 +92,8 @@ TwoWire::TwoWire()
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-//speed() should be called before begin() else default to 100KHz
-void TwoWire::speed(uint32_t clockSpeed)
+//setSpeed() should be called before begin() else default to 100KHz
+void TwoWire::setSpeed(uint32_t clockSpeed)
 {
   I2C_ClockSpeed = clockSpeed;
 }

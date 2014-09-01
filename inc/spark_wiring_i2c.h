@@ -58,7 +58,7 @@ private:
   static void (*user_onReceive)(int);
 public:
   TwoWire();
-  void speed(uint32_t);
+  void setSpeed(uint32_t);
   void begin();
   void begin(uint8_t);
   void begin(int);
