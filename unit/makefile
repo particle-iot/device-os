@@ -53,7 +53,7 @@ CFLAGS += -DDEBUG_BUILD
 
 CPPFLAGS += -std=gnu++11
 
-LDFLAGS +=  -Wl,--gc-sections -Wl,-static
+LDFLAGS +=  -Wl,--gc-sections
 
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o))

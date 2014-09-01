@@ -4,11 +4,12 @@ before_install:
 install:
   - cd .. && $TRAVIS_BUILD_DIR/ci/clone_repos.sh $TRAVIS_BRANCH && cd $TRAVIS_BUILD_DIR
   - npm install -g spark-cli
-  - ./ci/install_arm_gcc.sh
+  - ./ci/install_arm_gcc.sh && ./ci/install_gcc.sh
   - ./ci/create_spark_cli_json.sh
 script:
-  - ./ci/integration_tests.sh
-  - ./ci/test_memory_available_with_real_core.sh
+  - ./ci/unit_tests.sh && ./ci/integration_tests.sh
+# put on the bench: error'd with: flash core got error:  {"code":"ECONNRESET"}
+#  - ./ci/test_memory_available_with_real_core.sh
 
 env:
   global:
