@@ -72,32 +72,40 @@ function testState() {
 function waitForState() {
   local state=$1
   local timeout=$2
-  # have to launch as a background proc so CTRL+C works
-  timeout $timeout bash & <<EOT
-  trap 'kill -INT -$pid' INT
+  # save success state
+  echo "1" > success
+  # This little bit of convolved script is to allow CTRL-C to interrupt
+  # the timeout. The timeout command (a sub-shell) is ran as a background process
+  # which we wait for. The interrupt trap terminates this process.
+  # Without this, it's not possible to interrupt the timeout.
+  (timeout $timeout bash << EOT
   source $ci_dir/test_setup.sh 
   while ! testState $state; do
-    sleep 1 || die 
+    sleep 5 || die 
   done
+  echo "0" > success  # flag success
 EOT
+) &
+  trap 'kill -INT -$pid' INT
   pid=$!
   wait $pid
+  return $(cat success)
 }
 
 function startTests() {
-  [ $(sendCommand start)=="0" ]
+  [ "$(sendCommand start)"=="0" ]
 }
 
 # tests that match the given regex are flagged as included
 # $1 the regex to include
 function includeTests() {
   echo "include tests matching $1"
-  [[ $(sendCommand "include=$1")=="0" ]]
+  [[ "$(sendCommand 'include=$1')"=="0" ]]
 }
 
 function excludeTests() {
   echo "exclude tests matching $1"
-  [[ $(sendCommand "exclude=$1")=="0" ]]
+  [[ "$(sendCommand 'exclude=$1')"=="0" ]]
 }
 
 # sends a command to the test harness
@@ -129,7 +137,7 @@ function parseFlags() {
 function readTestLog() {
   local len
   local val
-  while len=$(sendCommand log) && [ $? ] && (( $len > -1 )) && val=$(readVar log) ; do
+  while len=$(sendCommand log) && [ -n "$len" ] && (( $len > -1 )) && val=$(readVar log) ; do
     echo -n "${val:0:$len}"     
   done  
 }

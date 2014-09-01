@@ -14,7 +14,8 @@ make all > build.log || die "Problem building unit tests"
 
 [ -f "$target_file" ] || die "Couldn't find the unit test executable"
 
-$target_file > test.log
+# -r junit - use junit reporting
+$target_file -r junit > test.xml
 
 if [ "$?" == "0" ]; then
     echo Yay! Unit tests PASSED!    

@@ -21,7 +21,7 @@ cd $build || die "couldn't change directory to '$build'"
 # just for sanity test, remove existing firmware
 [[ ! -f $target_file ]] || rm $target_file
   
-make TARGET=$target TEST=$platform/$suite || die 
+make TARGET=$target TEST=$platform/$suite > build_${platform}_${suite}.log || die 
 
 [[ -f $target_file ]] || die "Expected target file '$target_file' to be produced by make."
 
