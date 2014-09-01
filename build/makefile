@@ -1,4 +1,10 @@
 
+MAKE_ARGS = --no-print-directory
+
+# don't propagate command line definitions to submakes, specifically, TARGET,
+# since this will override the local makefile's definition of that. 
+MAKEOVERRIDES=
+
 # by convention, all symbols referring to a directory end with a slash - this allows
 # directories to resolve to "" when equal to the working directory
 SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
@@ -204,10 +210,10 @@ $(TARGETDIR)$(TARGET).elf : check_external_deps $(ALLOBJ)
 #       will then always be rebuilt, ie. $(TARGET).elf
 check_external_deps:
 	@echo Building core-common-lib
-	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build --no-print-directory
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build $(MAKE_ARGS)
 	@echo
 	@echo Building core-communication-lib
-	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build --no-print-directory
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build $(MAKE_ARGS)
 	@echo
 
 # Tool invocations
@@ -245,10 +251,10 @@ clean:
 	@echo
 	@echo Clean core-common-lib
 # Should clean invoke clean on the dependant libs as well? Sure..
-	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build clean --no-print-directory
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build clean $(MAKE_ARGS)
 	@echo
 	@echo Clean core-communication-lib
-	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build clean --no-print-directory
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build clean $(MAKE_ARGS)
 	@echo
 
 .PHONY: all clean check_external_deps elf bin hex size program-dfu program-cloud
