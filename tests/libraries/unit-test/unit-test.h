@@ -83,9 +83,7 @@ public:
     void updateLEDStatus() {
         int rgb = testStatusColor();
         RGB.control(true);
-        //RGB.color(rgb);
-        LED_SetSignalingColor(rgb);
-        LED_On(LED_RGB);
+        RGB.color(rgb);
     }
     
     RunnerState state() const { return (RunnerState)_state; }

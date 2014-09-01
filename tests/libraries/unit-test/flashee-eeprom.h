@@ -575,7 +575,7 @@ public:
      * Creates a circular buffer that uses the pages
      */
     static CircularBuffer* createCircularBuffer(flash_addr_t startAddress=0, flash_addr_t endAddress=-1) {
-        if (endAddress==-1)
+        if (endAddress==flash_addr_t(-1))
             endAddress = userFlash().length();
         FlashDevice* device = createUserFlashRegion(startAddress, endAddress, 2);
         return device ? new CircularBuffer(*device) : NULL;
