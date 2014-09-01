@@ -59,6 +59,7 @@ private:
 public:
   TwoWire();
   void setSpeed(uint32_t);
+  void stretchClock(bool);
   void begin();
   void begin(uint8_t);
   void begin(int);

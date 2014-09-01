@@ -98,6 +98,18 @@ void TwoWire::setSpeed(uint32_t clockSpeed)
   I2C_ClockSpeed = clockSpeed;
 }
 
+void TwoWire::stretchClock(bool stretch)
+{
+  if(stretch == true)
+  {
+    I2C_StretchClockCmd(I2C1, ENABLE);
+  }
+  else
+  {
+    I2C_StretchClockCmd(I2C1, DISABLE);
+  }
+}
+
 void TwoWire::begin(void)
 {
   rxBufferIndex = 0;
