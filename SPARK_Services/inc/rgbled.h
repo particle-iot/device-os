@@ -36,6 +36,7 @@ void LED_Off(Led_TypeDef Led);
 void LED_Toggle(Led_TypeDef Led);
 void LED_Fade(Led_TypeDef Led);
 
+uint8_t Get_LED_Brightness();
 // Hardware interface
 
 /**

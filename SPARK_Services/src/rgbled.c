@@ -51,15 +51,24 @@ void LED_SetBrightness(uint8_t brightness)
     LED_RGB_BRIGHTNESS = brightness;
 }
 
+uint8_t Get_LED_Brightness() 
+{
+    return LED_RGB_BRIGHTNESS;
+}
+
+/**
+ * Sets the color on the RGB led. The color is adjusted for brightness.
+ * @param color
+ */
+
 void Set_RGB_LED_Color(uint32_t color) {
     uint16_t ccr[3];
     Set_CCR_Color(color, ccr);
     Set_RGB_LED(ccr);
 }
 
-
 uint16_t scale_fade(uint8_t step, uint16_t value) {
-    return (uint16_t)(((uint32_t) value) * step) / (NUM_LED_FADE_STEPS - 1);
+    return (uint16_t)((((uint32_t) value) * step) / (NUM_LED_FADE_STEPS - 1));
 }
 
 void Set_RGB_LED_Scale(uint8_t step, uint32_t color) {
@@ -134,6 +143,7 @@ void LED_Off(Led_TypeDef Led)
 void LED_Toggle(Led_TypeDef Led)
 {
     uint32_t color;
+    uint16_t rgb[3];
     switch(Led)
     {
     case LED_USER:
@@ -143,12 +153,13 @@ void LED_Toggle(Led_TypeDef Led)
         break;
 
     case LED_RGB://LED_SetRGBColor() and LED_On() should be called first for this Case        
+        
         color = LED_RGB_OVERRIDE ? lastSignalColor : lastRGBColor;
-        if (color)
+        Get_RGB_LED_Values(rgb);
+        if (rgb[0] | rgb[1] | rgb[2])
             Set_RGB_LED_Values(0,0,0);
-        else {
-            Set_RGB_LED_Color(color);
-        }
+        else
+            Set_RGB_LED_Color(color);        
         break;
     }
 }
@@ -183,7 +194,7 @@ void LED_RGB_Get(uint8_t* rgb) {
     uint16_t values[3];
     Get_RGB_LED_Values(values);
     for (i=0; i<3; i++) {
-        rgb[i] = (values[i]*Get_RGB_LED_Max_Value())>>8;
+        rgb[i] = (uint8_t)(((uint32_t)(values[i])<<8)/(Get_RGB_LED_Max_Value()));
     }
 }
 
