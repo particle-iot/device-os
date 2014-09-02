@@ -92,6 +92,10 @@ void WiFiCredentialsReader::read(void)
       }
       print("\r\n");
     }
+    else if ('f' == c)
+    {
+      System.serialFirmwareUpdate(&serial);
+    }
   }
 }
 

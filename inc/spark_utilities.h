@@ -78,6 +78,8 @@ typedef enum
   MY_DEVICES
 } Spark_Subscription_Scope_TypeDef;
 
+class Stream;
+
 class SystemClass {
 private:
   static System_Mode_TypeDef _mode;
@@ -86,6 +88,8 @@ public:
   SystemClass();
   SystemClass(System_Mode_TypeDef mode);
   static System_Mode_TypeDef mode(void);
+  static void serialSaveFile(Stream *serialObj, uint32_t sFlashAddress);
+  static void serialFirmwareUpdate(Stream *serialObj);
   static void factoryReset(void);
   static void bootloader(void);
   static void reset(void);
@@ -97,8 +101,9 @@ private:
 public:
 	static bool controlled(void);
 	static void control(bool);
-	static void color(int, int, int);
-  static void brightness(uint8_t);
+	static void color(uint32_t);
+	static void color(uint32_t, uint32_t, uint32_t);
+        static void brightness(uint8_t);
 };
 
 class SparkClass {
@@ -153,6 +158,11 @@ bool Spark_Communication_Loop(void);
 void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on);
 void Spark_SetTime(unsigned long dateTime);
+
+void Spark_Prepare_To_Save_File(unsigned int sFlashAddress, unsigned int fileSize);
+void Spark_Prepare_For_Firmware_Update(void);
+void Spark_Finish_Firmware_Update(void);
+uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen);
 
 int userVarType(const char *varKey);
 void *getUserVar(const char *varKey);
