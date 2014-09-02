@@ -137,7 +137,7 @@ function parseFlags() {
 function readTestLog() {
   local len
   local val
-  while len=$(sendCommand log) && [ -n "$len" ] && (( $len > -1 )) && val=$(readVar log) ; do
+  while len=$(sendCommand log) && [ -n "$len" ] && [ "$len" -gt "-1" ] && val=$(readVar log) ; do
     echo -n "${val:0:$len}"     
   done  
 }

@@ -15,7 +15,7 @@ make all > build.log || die "Problem building unit tests"
 [ -f "$target_file" ] || die "Couldn't find the unit test executable"
 
 # -r junit - use junit reporting
-$target_file -r junit > test.xml
+$target_file -r junit -n "build_${TRAVIS_BUILD_NUMBER}" > obj/TEST-${TRAVIS_BUILD_NUMBER}.xml
 
 if [ "$?" == "0" ]; then
     echo Yay! Unit tests PASSED!    
@@ -24,8 +24,7 @@ else
     exit 1
 fi
 
-
-
-
-
-
+# build test report
+cd obj || die "cannot find obj dir"
+cp ../ci/unitth/* .
+java -jar unitth.jar .

@@ -5253,7 +5253,7 @@ namespace Catch {
 
             Totals totals;
 
-            context.testGroupStarting( "", 1, 1 ); // deprecated?
+            context.testGroupStarting( "test", 1, 1 ); // deprecated?
 
             TestSpec testSpec = m_config->testSpec();
             if( !testSpec.hasFilters() )
@@ -7843,7 +7843,7 @@ namespace Catch {
 
         virtual void testRunStarting( TestRunInfo const& runInfo ) {
             CumulativeReporterBase::testRunStarting( runInfo );
-            xml.startElement( "testsuites" );
+            xml.startElement( "testsuites" );            
         }
 
         virtual void testGroupStarting( GroupInfo const& groupInfo ) {
