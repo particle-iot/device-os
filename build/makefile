@@ -65,6 +65,9 @@ CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb
 CFLAGS += $(patsubst %,-I$(SRC_PATH)/%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -Wall -fmessage-length=0
 
+# Flag compiler error for [-Wdeprecated-declarations]
+CFLAGS += -Werror=deprecated-declarations
+
 # Generate dependancy files automatically.
 CFLAGS += -MD -MP -MF $@.d
 

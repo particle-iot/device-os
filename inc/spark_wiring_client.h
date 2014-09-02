@@ -23,7 +23,6 @@
 #include "spark_wiring_print.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_ipaddress.h"
-#include "spark_wiring_network.h"
 
 class Client : public Stream {
 

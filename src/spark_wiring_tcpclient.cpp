@@ -47,7 +47,7 @@ TCPClient::TCPClient(uint8_t sock) : _sock(sock)
 int TCPClient::connect(const char* host, uint16_t port) 
 {
       int rv = 0;
-      if(Network.ready())
+      if(WiFi.ready())
       {
 
         uint32_t ip_addr = 0;
@@ -65,7 +65,7 @@ int TCPClient::connect(const char* host, uint16_t port)
 int TCPClient::connect(IPAddress ip, uint16_t port) 
 {
         int connected = 0;
-        if(Network.ready())
+        if(WiFi.ready())
         {
           sockaddr tSocketAddr;
           _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -126,7 +126,7 @@ int TCPClient::available()
       flush();
     }
 
-    if(Network.ready() && isOpen(_sock))
+    if(WiFi.ready() && isOpen(_sock))
     {
         // Have room
         if ( _total < arraySize(_buffer))
@@ -154,7 +154,7 @@ int TCPClient::available()
               }
           } // Select
           } // Have Space
-    } // Network.ready() && isOpen(_sock)
+    } // WiFi.ready() && isOpen(_sock)
     avail = bufferCount();
     return avail;
 }
@@ -218,7 +218,7 @@ uint8_t TCPClient::connected()
 
 uint8_t TCPClient::status()
 {
-  return (isOpen(_sock) && Network.ready() && (SOCKET_STATUS_ACTIVE == get_socket_active_status(_sock)) ? 1 : 0);
+  return (isOpen(_sock) && WiFi.ready() && (SOCKET_STATUS_ACTIVE == get_socket_active_status(_sock)) ? 1 : 0);
 
 }
 

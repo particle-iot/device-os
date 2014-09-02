@@ -109,11 +109,13 @@ SystemClass::SystemClass(System_Mode_TypeDef mode)
     case SEMI_AUTOMATIC:
       _mode = SEMI_AUTOMATIC;
       SPARK_CLOUD_CONNECT = 0;
+      SPARK_WLAN_SLEEP = 1;
       break;
 
     case MANUAL:
       _mode = MANUAL;
       SPARK_CLOUD_CONNECT = 0;
+      SPARK_WLAN_SLEEP = 1;
       break;
   }
 }
@@ -374,7 +376,7 @@ void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 	switch(sleepMode)
 	{
 	case SLEEP_MODE_WLAN:
-		Network.disconnect();
+		WiFi.off();
 		break;
 
 	case SLEEP_MODE_DEEP:
@@ -420,6 +422,7 @@ bool SparkClass::connected(void)
 void SparkClass::connect(void)
 {
 	//Schedule Spark's cloud connection and handshake
+        WiFi.connect();
 	SPARK_CLOUD_CONNECT = 1;
 }
 
@@ -432,7 +435,7 @@ void SparkClass::disconnect(void)
 void SparkClass::process(void)
 {
 #ifdef SPARK_WLAN_ENABLE
-  if (!Spark_Communication_Loop())
+  if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
   {
     SPARK_FLASH_UPDATE = 0;
     SPARK_CLOUD_CONNECTED = 0;
@@ -704,7 +707,8 @@ void Multicast_Presence_Announcement(void)
   addr.sa_data[4] = 0x01;
   addr.sa_data[5] = 0xbb; // IP LSB
 
-  for (int i = 3; i > 0; i--)
+  //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
+  //for (int i = 3; i > 0; i--)
   {
     sendto(multicast_socket, announcement, 19, 0, &addr, sizeof(sockaddr));
   }
@@ -838,7 +842,8 @@ int Spark_Connect(void)
     case INVALID_INTERNET_ADDRESS:
     {
       const char default_domain[] = "device.spark.io";
-      memcpy(server_addr.domain, default_domain, strlen(default_domain));
+      // Make sure we copy the NULL terminator, so subsequent strlen() calls on server_addr.domain return the correct length
+      memcpy(server_addr.domain, default_domain, strlen(default_domain) + 1);
       // and fall through to domain name case
     }
 

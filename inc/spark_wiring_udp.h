@@ -28,7 +28,6 @@
 #define __SPARK_WIRING_UDP_H
 
 #include "spark_wiring.h"
-#include "spark_wiring_network.h"
 
 #define RX_BUF_MAX_SIZE	512
 

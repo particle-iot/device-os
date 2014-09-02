@@ -44,7 +44,7 @@ uint8_t UDP::begin(uint16_t port)
         int bound = 0;
 	sockaddr tUDPAddr;
 
-	if(Network.ready())
+	if(WiFi.ready())
 	{
 	   _sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
            DEBUG("socket=%d",_sock);
@@ -92,7 +92,7 @@ void UDP::stop()
 
 int UDP::beginPacket(const char *host, uint16_t port)
 {
-        if(Network.ready())
+        if(WiFi.ready())
         {
 	   uint32_t ip_addr = 0;
 
@@ -147,7 +147,7 @@ size_t UDP::write(const uint8_t *buffer, size_t size)
 int UDP::parsePacket()
 {
   // No data buffered
-  if(available() == 0 && Network.ready() && isOpen(_sock))
+  if(available() == 0 && WiFi.ready() && isOpen(_sock))
   {
       _types_fd_set_cc3000 readSet;
       timeval timeout;
