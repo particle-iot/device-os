@@ -26,5 +26,5 @@ fi
 
 # build test report
 cd obj || die "cannot find obj dir"
-cp ../ci/unitth/* .
+cp ../../ci/unitth/* .
 java -jar unitth.jar .
