@@ -21,6 +21,7 @@ if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
   #go into directory and copy data we're interested in to that directory
   cd gh-pages  
   cp -Rr $TRAVIS_BUILD_DIR/unit/obj/report.th .
+  cp -Rr $TRAVIS_BUILD_DIR/ci/test-reports .
 
   #add, commit and push files
   git add -f .

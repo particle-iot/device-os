@@ -32,4 +32,4 @@ fi
 # build test report
 cd obj || die "cannot find obj dir"
 cp ../../ci/unitth/* .
-java -jar unitth.jar .
+java -jar unitth.jar . > unitth.log
