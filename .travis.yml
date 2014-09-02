@@ -7,7 +7,7 @@ install:
   - ./ci/install_arm_gcc.sh && ./ci/install_gcc.sh
   - ./ci/create_spark_cli_json.sh
 script:
-  - ./ci/unit_tests.sh # && ./ci/integration_tests.sh
+  - ./ci/unit_tests.sh && ./ci/integration_tests.sh
   - ./ci/test_memory_available_with_real_core.sh
 
 after_success: ./ci/update-gh-pages.sh
