@@ -1,3 +1,4 @@
+#include <string.h>
 #include "UnitTest++.h"
 #include "spark_descriptor.h"
 
