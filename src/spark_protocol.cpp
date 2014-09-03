@@ -24,6 +24,7 @@
   */
 #include "spark_protocol.h"
 #include "handshake.h"
+#include "functions.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -1235,7 +1236,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
 
     unsigned int seed;
     memcpy(&seed, credentials + 35, 4);
-    srand(seed);
+    random_seed_from_cloud(seed);
 
     return 0;
   }
@@ -1269,6 +1270,6 @@ inline void SparkProtocol::coded_ack(unsigned char *buf,
   buf[4] = token;
 
   memset(buf + 5, 11, 11); // PKCS #7 padding
-
+  
   encrypt(buf, 16);
 }

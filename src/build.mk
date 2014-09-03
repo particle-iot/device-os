@@ -10,7 +10,7 @@ TARGET_SRC_PATH = src
 INCLUDE_DIRS += $(TARGET_SRC_PATH)
 
 # C source files included in this build.
-CSRC += 
+CSRC += $(TARGET_SRC_PATH)/functions.c
 
 # C++ source files included in this build.
 CPPSRC += $(TARGET_SRC_PATH)/coap.cpp
