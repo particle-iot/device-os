@@ -7,10 +7,11 @@ set -e
 
 testroot=$2
 ci_dir=$(dirname $0)
-if [[ -z "$testroot" ]]; then
-  testroot="$ci_dir/../tests"
-fi
 . $ci_dir/test_setup.sh
+
+if [[ -z "$testroot" ]]; then
+  testroot="$testDir"
+fi
 
 handler=$1
 [ "$handler" ] || die "Usage: $0 [test-handler-script]"
@@ -43,7 +44,7 @@ function excluding() {
 }
 
 function enum_platforms() {
-  enum_dirs excluding libraries $@ 
+  enum_dirs excluding "libraries|unit" $@ 
 }
 
 function enum_suites() {

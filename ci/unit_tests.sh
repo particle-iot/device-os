@@ -6,7 +6,7 @@ cd $ci_dir
 
 . test_setup.sh
 
-cd ../unit || die "Hey where's the ./unit directory?"
+cd $testDir/unit || die "Hey where's the ./unit directory?"
 
 # clear out target directory
 [ ! -e obj ] || rm -rf obj
@@ -31,5 +31,5 @@ fi
 
 # build test report
 cd obj || die "cannot find obj dir"
-cp ../../ci/unitth/* .
+cp ../../../ci/unitth/* .
 java -jar unitth.jar . > unitth.log
