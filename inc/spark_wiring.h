@@ -134,8 +134,8 @@
 typedef unsigned char byte;
 
 typedef enum PinMode {
-  OUTPUT,
   INPUT,
+  OUTPUT,
   INPUT_PULLUP,
   INPUT_PULLDOWN,
   AF_OUTPUT_PUSHPULL,	//Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
