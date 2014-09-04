@@ -3,6 +3,7 @@
 ### FEATURES
 
  - Cloud: Secure random seed. When the spark does a handshake with the cloud, it receives a random number that is set as a seed for `rand()`  
+ - Wiring: Arduino-compatible `random()` and `randomSeed()` functions. #289
 
 ### ENHANCEMENTS
 
