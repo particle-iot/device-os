@@ -16,7 +16,7 @@ extern "C" {
  * Handle the cryptographically secure random seed from the cloud.
  * @param seed  A random value. This is typically used to seed a pseudo-random generator. 
  */
-extern __attribute__((weak)) void random_seed_from_cloud(unsigned int seed);
+extern void random_seed_from_cloud(unsigned int seed);
 
 
 
