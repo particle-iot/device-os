@@ -9,7 +9,12 @@ RM = rm -f
 RMDIR = rm -f -r
 MKDIR = mkdir -p
 
-SRC_PATH=../
+# root of core-firmware project relative to this folder
+SRC_ROOT=../../
+
+# location of this folder relative to the root
+SRC_PATH=/tests/unit
+
 
 TARGETDIR=obj/
 TARGET=runner
@@ -24,15 +29,17 @@ rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2
 # enumerates files in the filesystem and returns their path relative to the project root
 # $1 the directory relative to the project root
 # $2 the pattern to match, e.g. *.cpp
-target_files = $(patsubst $(SRC_PATH)%,%,$(call rwildcard,$(SRC_PATH)$1,$2))
+target_files = $(patsubst $(SRC_ROOT)%,%,$(call rwildcard,$(SRC_ROOT)$1,$2))
 
-CPPSRC += $(call target_files,unit/,*.cpp)
+CPPSRC += $(call target_files,tests/unit/,*.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_CORE_COMMON_PATH = ../core-common-lib/
 
 CSRC += $(call target_files,$(LIB_CORE_COMMON_PATH)SPARK_Services/src,*.c)
 
+$(info "CSRC $(CSRC)")
+$(info "CPPSRC $(CPPSRC)")
 
 # Additional include directories, applied to objects built for this target.
 # todo - delegate this to a include.mk file in each repo so include dirs are better
@@ -40,7 +47,7 @@ CSRC += $(call target_files,$(LIB_CORE_COMMON_PATH)SPARK_Services/src,*.c)
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
 
 
-CFLAGS += $(patsubst %,-I$(SRC_PATH)%,$(INCLUDE_DIRS)) -I.
+CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -Wall
 
 # Flag compiler error for [-Wdeprecated-declarations]
@@ -63,10 +70,6 @@ ALLDEPS += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH), $(CPPSRC:.cpp=.o.d))
 
 
-$(info "CPPSRC is $(CPPSRC)")
-$(info "CSRC is $(CSRC)")
-
-
 all: runner
 
 runner: $(TARGETDIR)$(TARGET)
@@ -84,7 +87,7 @@ $(BUILD_PATH):
 # Tool invocations
 
 # C compiler to build .o from .c in $(BUILD_DIR)
-$(BUILD_PATH)%.o : $(SRC_PATH)%.c
+$(BUILD_PATH)%.o : $(SRC_ROOT)%.c
 	@echo Building file: $<
 	@echo Invoking: GCC C Compiler
 	$(MKDIR) $(dir $@)
@@ -93,7 +96,7 @@ $(BUILD_PATH)%.o : $(SRC_PATH)%.c
 
 # CPP compiler to build .o from .cpp in $(BUILD_DIR)
 # Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
-$(BUILD_PATH)%.o : $(SRC_PATH)%.cpp
+$(BUILD_PATH)%.o : $(SRC_ROOT)%.cpp
 	@echo Building file: $<
 	@echo Invoking: GCC CPP Compiler
 	$(MKDIR) $(dir $@)
