@@ -172,6 +172,10 @@ void RGBClass::control(bool override)
 #endif
 }
 
+void RGBClass::color(uint32_t rgb) {
+    color((rgb>>16)&0xFF, (rgb>>8)&0xFF, (rgb)&0xFF);
+}
+
 void RGBClass::color(int red, int green, int blue)
 {
 #if !defined (RGB_NOTIFICATIONS_ON)

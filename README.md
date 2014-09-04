@@ -1,4 +1,4 @@
-# Spark Core Firmware [![Backlog](https://badge.waffle.io/spark/core-firmware.png?label=backlog&title=backlog)](https://waffle.io/spark/core-firmware)
+# Spark Core Firmware [![Backlog](https://badge.waffle.io/spark/core-firmware.png?label=backlog&title=backlog)](https://waffle.io/spark/core-firmware) [![Build Status](https://travis-ci.org/spark/core-firmware.svg)](https://travis-ci.org/spark/core-firmware)
 
 This is the main source code repository of the Spark Core firmware libraries.
 
