@@ -34,6 +34,6 @@ waitForState waiting 120 || die "Timeout waiting for test suite"
 
 # do it
 $ci_dir/configure_and_run_test.sh $1 $2 $3 
-result = $?
+result=$?
 echo Test $platform/$suite complete. 
-exit $result
+exit "$result"

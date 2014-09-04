@@ -38,7 +38,7 @@ function excluding() {
   local args=$@
   local path="${!#}" 
   local dir=$(basename "$path") 
-  if [[ ! "$dir" =~ "$exclude" ]]; then
+  if [[ ! "$dir" =~ $exclude ]]; then
      $args
   fi
 }
