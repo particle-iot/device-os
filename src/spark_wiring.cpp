@@ -714,23 +714,3 @@ void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val)
 	}
 }
 
-int random(int max)
-{
-  if (0 == max) {
-    return 0;
-  }
-  return rand() % max;
-}
-
-int random(int min, int max)
-{
-  if (min >= max) {
-    return min;
-  }
-  return random(max - min) + min;
-}
-
-inline void randomSeed(unsigned int seed)
-{
-  srand(seed);
-}

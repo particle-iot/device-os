@@ -32,6 +32,7 @@ rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2
 target_files = $(patsubst $(SRC_ROOT)%,%,$(call rwildcard,$(SRC_ROOT)$1,$2))
 
 CPPSRC += $(call target_files,tests/unit/,*.cpp)
+CPPSRC += $(call target_files,src,spark_wiring_random.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_CORE_COMMON_PATH = ../core-common-lib/
@@ -45,7 +46,7 @@ $(info "CPPSRC $(CPPSRC)")
 # todo - delegate this to a include.mk file in each repo so include dirs are better
 # encapsulated by their owning repo
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
-
+INCLUDE_DIRS += inc
 
 CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -Wall
