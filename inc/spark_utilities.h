@@ -30,6 +30,7 @@
 #include "main.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_time.h"
+#include "spark_wiring_interrupts.h"
 #include "spark_protocol.h"
 
 #define BYTE_N(x,n)						(((x) >> n*8) & 0x000000FF)
@@ -122,6 +123,8 @@ public:
 	static bool subscribe(String eventName, EventHandler handler, String deviceID);
 	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 	static void sleep(long seconds);
+	static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
+	static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
 	static bool connected(void);
 	static void connect(void);
 	static void disconnect(void);
@@ -143,6 +146,8 @@ extern "C" {
 #endif
 
 int Internet_Test(void);
+
+void Enter_STOP_Mode(void);
 
 int Spark_Connect(void);
 int Spark_Disconnect(void);
