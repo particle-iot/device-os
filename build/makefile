@@ -153,6 +153,8 @@ size: $(TARGET).elf
 	@echo Invoking: ARM GNU Create Flash Image
 	$(OBJCOPY) -O binary $< $@
 	@echo
+	dfu-suffix -d 1d50:607f -a $@
+	@echo
 
 $(TARGET).elf : check_external_deps $(ALLOBJ)
 	@echo Building target: $@
