@@ -36,6 +36,7 @@
 #include "spark_wiring_printable.h"
 #include "spark_wiring_ipaddress.h"
 #include "spark_wiring_wifi.h"
+#include "spark_wiring_random.h"
 
 /*
 * Basic variables

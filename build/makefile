@@ -61,6 +61,8 @@ USRSRC = tests/$(TEST)/
 ifndef TARGET
 TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
+# enable gnu++11 for testing. Will eventually enable this for the main source too.
+CPPFLAGS += -std=gnu++11
 endif
 include $(PROJECT_DIR)tests/tests.mk
 -include $(PROJECT_DIR)$(USRSRC)test.mk
@@ -135,7 +137,7 @@ CFLAGS += -DRELEASE_BUILD
 endif
 
 # C++ specific flags
-CPPFLAGS = -fno-exceptions -fno-rtti 
+CPPFLAGS += -fno-exceptions -fno-rtti 
 
 # Linker flags
 LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
