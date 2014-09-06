@@ -22,15 +22,15 @@ echo Building test suite in "$1"
 $ci_dir/make_test.sh $platform $suite || die 
 
 # flash the firmware
-echo OTA flashing firmware
+echo "OTA flashing firmware at $(date)"
 spark flash $core_name $target_file || die 
 # todo - verify test suite build time or fix spark-cli return codes
 
 # give enough time for the core to go into OTA mode
 sleep 10 || die
 
-echo "Waiting for test suite to party"
-waitForState waiting 120 || die "Timeout waiting for test suite"
+echo "Waiting for test suite to party... $(date)"
+waitForState waiting 300 || die "Timeout waiting for test suite. $(date)"
 
 # do it
 $ci_dir/configure_and_run_test.sh $1 $2 $3 
