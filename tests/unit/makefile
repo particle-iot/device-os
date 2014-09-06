@@ -45,7 +45,7 @@ $(info "CPPSRC $(CPPSRC)")
 # todo - delegate this to a include.mk file in each repo so include dirs are better
 # encapsulated by their owning repo
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
-
+INCLUDE_DIRS += inc
 
 CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -Wall
