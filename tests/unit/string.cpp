@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <limits.h>
 #include "catch.hpp"
 
 #include "spark_wiring_string.h"
