@@ -60,11 +60,10 @@ endif
 
 ifdef TEST
 USRSRC = tests/$(TEST)/
+CPPFLAGS += -std=gnu++11
 ifndef TARGET
 TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
-# enable gnu++11 for testing. Will eventually enable this for the main source too.
-CPPFLAGS += -std=gnu++11
 endif
 include $(PROJECT_DIR)tests/tests.mk
 -include $(PROJECT_DIR)$(USRSRC)test.mk
