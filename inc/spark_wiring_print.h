@@ -41,6 +41,8 @@ const unsigned char HEX = 16;
 const unsigned char OCT = 8;
 const unsigned char BIN = 2;
 
+class String;
+
 class Print
 {
   private:
