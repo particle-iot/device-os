@@ -28,6 +28,7 @@
 
 #include "spark_wiring_string.h"
 #include <stdio.h>
+#include <limits.h>
 
 //------------------------------------------------------------------------------------------
 #define BUFSIZE (sizeof(long) * 8 + 1)
