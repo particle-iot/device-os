@@ -2,7 +2,7 @@ language: node_js
 before_install:
   - sudo apt-get update
 install:
-  - cd .. && $TRAVIS_BUILD_DIR/ci/clone_repos.sh $TRAVIS_BRANCH && cd $TRAVIS_BUILD_DIR
+  - cd .. && $TRAVIS_BUILD_DIR/ci/clone_repos.sh $TRAVIS_BRANCH $TRAVIS_BRANCH && cd $TRAVIS_BUILD_DIR
   - npm install -g spark-cli
   - ./ci/install_arm_gcc.sh && ./ci/install_gcc.sh
   - ./ci/create_spark_cli_json.sh
