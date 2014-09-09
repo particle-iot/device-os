@@ -33,6 +33,7 @@ rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2
 target_files = $(patsubst $(SRC_ROOT)%,%,$(call rwildcard,$(SRC_ROOT)$1,$2))
 
 CPPSRC += $(call target_files,tests/unit/,*.cpp)
+CPPSRC += $(call target_files,src,spark_wiring_random.cpp)
 CPPSRC += src/spark_wiring_string.cpp
 
 # Paths to dependent projects, referenced from root of this project

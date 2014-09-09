@@ -51,6 +51,8 @@ USRSRC += ""
 # determine where user sources are, relative to project root
 ifdef APP
 USRSRC = applications/$(APP)/
+CPPFLAGS += -std=gnu++11
+
 ifndef TARGET
 TARGET ?= $(notdir $(APP))
 TARGETDIR ?= $(USRSRC)
@@ -59,6 +61,7 @@ endif
 
 ifdef TEST
 USRSRC = tests/$(TEST)/
+CPPFLAGS += -std=gnu++11
 ifndef TARGET
 TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
@@ -136,7 +139,7 @@ CFLAGS += -DRELEASE_BUILD
 endif
 
 # C++ specific flags
-CPPFLAGS = -fno-exceptions -fno-rtti 
+CPPFLAGS += -fno-rtti -fno-exceptions
 
 # Linker flags
 LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
