@@ -45,7 +45,8 @@ CLOUD_FLASH_URL = https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token
 #       separate library.
 SRC_PATH = $(PROJECT_DIR)
 
-USRSRC += ""	# ensure defined
+# ensure defined
+USRSRC += ""
 
 # determine where user sources are, relative to project root
 ifdef APP
@@ -68,7 +69,7 @@ endif
 
 # user sources specified, so override application.cpp and pull in files from 
 # the user source folder
-ifneq ($(USRSRC),'')       
+ifneq ($(USRSRC),"")       
     NO_APPLICATION_CPP=1
     INCLUDE_DIRS += $(USRSRC)  # add user sources to include path
     # add C and CPP files 
