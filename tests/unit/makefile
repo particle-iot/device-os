@@ -2,6 +2,7 @@
 
 CCC = gcc
 CXX = g++
+LD = g++
 CFLAGS = -g
 CCFLAGS = $(CFLAGS)
 CXXFLAGS = $(CFLAGS)
@@ -33,14 +34,12 @@ target_files = $(patsubst $(SRC_ROOT)%,%,$(call rwildcard,$(SRC_ROOT)$1,$2))
 
 CPPSRC += $(call target_files,tests/unit/,*.cpp)
 CPPSRC += $(call target_files,src,spark_wiring_random.cpp)
+CPPSRC += src/spark_wiring_string.cpp
 
 # Paths to dependent projects, referenced from root of this project
 LIB_CORE_COMMON_PATH = ../core-common-lib/
-
 CSRC += $(call target_files,$(LIB_CORE_COMMON_PATH)SPARK_Services/src,*.c)
 
-$(info "CSRC $(CSRC)")
-$(info "CPPSRC $(CPPSRC)")
 
 # Additional include directories, applied to objects built for this target.
 # todo - delegate this to a include.mk file in each repo so include dirs are better
@@ -61,7 +60,7 @@ CFLAGS += -DDEBUG_BUILD
 
 CPPFLAGS += -std=gnu++11
 
-LDFLAGS +=  -Wl,--gc-sections
+LDFLAGS +=  -Wl,--gc-sections 
 
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o))
@@ -79,7 +78,7 @@ $(TARGETDIR)$(TARGET) : $(BUILD_PATH) $(ALLOBJ)
 	@echo Building target: $@
 	@echo Invoking: GCC C++ Linker
 	$(MKDIR) $(dir $@)
-	$(CXX) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
+	$(LD) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
 	@echo
 
 $(BUILD_PATH): 
