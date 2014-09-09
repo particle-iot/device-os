@@ -25,7 +25,7 @@
 
 /* Define caddr_t as char* */
 #include <sys/types.h>
-
+#include "stm32f10x.h"
 /* Define abort() */
 #include <stdlib.h>
 #include "debug.h"
@@ -118,29 +118,54 @@ void _exit(int status)
  *            is insufficient memory available on the heap.
  *
  *            The heap is all the RAM that exists between _end and
- *            __Stack_Init, both of which are calculated by the linker.
+ *            __get_MSP()
  *
  *            _end marks the end of all the bss segments, and represents
  *            the highest RAM address used by the linker to locate data
  *            (either initialised or not.)
  *
- *            __Stack_Init marks the bottom of the stack, as reserved
- *            in the linker script (../linker/linker_stm32f10x_md*.ld)
+ *            stack_top marks the top of the stack given by __get_MSP()
  */
+extern char _end;
+static char *heap_end = &_end;
+static int memory_available_during_cloud_handshake = -1;
 caddr_t _sbrk(int incr)
 {
-	extern char _end, __Stack_Init;
-	static char *heap_end = &_end;
 	char *prev_heap_end = heap_end;
+	char *stack_top = (char *)__get_MSP();
 
 	heap_end += incr;
 
-	if (heap_end > &__Stack_Init) {
+	if (heap_end > stack_top) {
 	        PANIC(OutOfHeap,"Out Of Heap");
 		abort();
 	}
 
+	extern volatile uint8_t SPARK_CLOUD_CONNECT;
+	extern volatile uint8_t SPARK_CLOUD_CONNECTED;
+
+	if(SPARK_CLOUD_CONNECT && !SPARK_CLOUD_CONNECTED)
+	{
+	        //rewrite variable till the cloud gets connected
+	        memory_available_during_cloud_handshake = stack_top - heap_end;
+	        //account for stack pointer
+                static int count = 0;
+	        memory_available_during_cloud_handshake = memory_available_during_cloud_handshake  - ((++count)*sizeof(int));
+	}
+
 	return (caddr_t) prev_heap_end;
+}
+
+long minimumMemoryAvailable(void)
+{
+        //assuming cloud handshake is the most memory intensive process
+        return memory_available_during_cloud_handshake;
+}
+
+long freeMemoryAvailable(void)
+{
+        char *stack_top = (char *)__get_MSP();
+        return (stack_top - heap_end);
 }
 
 /* Bare metal, no processes, so error */
