@@ -32,9 +32,10 @@
 #include "platform_config.h"
 #include "config.h"
 #include "sst25vf_spi.h"
-#include "cc3000_common.h"
+//#include "cc3000_common.h"
 #include "usb_type.h"
 #include "rgbled.h"
+#include "system_tick.h"
 
 enum SpiBusOwner {
     BUS_OWNER_NONE = 0,
@@ -152,7 +153,7 @@ void SysTick_Configuration(void);
 void Delay(uint32_t nTime);
 void Delay_Microsecond(uint32_t uSec);
 
-typedef uint32_t system_tick_t;
+
 void System1MsTick(void);
 system_tick_t GetSystem1MsTick(void);
 
