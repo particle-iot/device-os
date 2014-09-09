@@ -30,6 +30,8 @@
 #define String_class_h
 #ifdef __cplusplus
 
+#include "spark_wiring_print.h" // for HEX, DEC ... constants
+
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>

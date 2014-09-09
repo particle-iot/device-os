@@ -1,0 +1,9 @@
+# associates platform names with the core it runs on
+declare -A name
+
+name[core-v1]=ci-free-memory-available
+
+if [[ $SPARK_USER =~ mat.* ]]; then
+name[core-v1]=JTAG
+fi
+

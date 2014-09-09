@@ -30,59 +30,64 @@
 #include "spark_wiring_stream.h"
 
 #define BUFFER_LENGTH 32
-#define EVENT_TIMEOUT 10
+#define EVENT_TIMEOUT 100
+
+#define CLOCK_SPEED_100KHZ (uint32_t)100000
+#define CLOCK_SPEED_400KHZ (uint32_t)400000
 
 class TwoWire : public Stream
 {
 private:
-	static I2C_InitTypeDef I2C_InitStructure;
+  static I2C_InitTypeDef I2C_InitStructure;
 
-	static bool I2C_SetAsSlave;
-	static bool I2C_Enabled;
+  static uint32_t I2C_ClockSpeed;
+  static bool I2C_SetAsSlave;
+  static bool I2C_Enabled;
 
-	static uint8_t rxBuffer[];
-	static uint8_t rxBufferIndex;
-	static uint8_t rxBufferLength;
+  static uint8_t rxBuffer[];
+  static uint8_t rxBufferIndex;
+  static uint8_t rxBufferLength;
 
-	static uint8_t txAddress;
-	static uint8_t txBuffer[];
-	static uint8_t txBufferIndex;
-	static uint8_t txBufferLength;
+  static uint8_t txAddress;
+  static uint8_t txBuffer[];
+  static uint8_t txBufferIndex;
+  static uint8_t txBufferLength;
 
-	static uint8_t transmitting;
-	static void (*user_onRequest)(void);
-	static void (*user_onReceive)(int);
-	static void onRequestService(void);
-	static void onReceiveService(uint8_t*, int);
+  static uint8_t transmitting;
+  static void (*user_onRequest)(void);
+  static void (*user_onReceive)(int);
 public:
-	TwoWire();
-	void begin();
-	void begin(uint8_t);
-	void begin(int);
-	void beginTransmission(uint8_t);
-	void beginTransmission(int);
-	uint8_t endTransmission(void);
-	uint8_t endTransmission(uint8_t);
-	uint8_t requestFrom(uint8_t, uint8_t);
-	uint8_t requestFrom(uint8_t, uint8_t, uint8_t);
-	uint8_t requestFrom(int, int);
-	uint8_t requestFrom(int, int, int);
-	virtual size_t write(uint8_t);
-	virtual size_t write(const uint8_t *, size_t);
-	virtual int available(void);
-	virtual int read(void);
-	virtual int peek(void);
-	virtual void flush(void);
-	void onReceive( void (*)(int) );
-	void onRequest( void (*)(void) );
+  TwoWire();
+  void setSpeed(uint32_t);
+  void stretchClock(bool);
+  void begin();
+  void begin(uint8_t);
+  void begin(int);
+  void beginTransmission(uint8_t);
+  void beginTransmission(int);
+  uint8_t endTransmission(void);
+  uint8_t endTransmission(uint8_t);
+  uint8_t requestFrom(uint8_t, uint8_t);
+  uint8_t requestFrom(uint8_t, uint8_t, uint8_t);
+  uint8_t requestFrom(int, int);
+  uint8_t requestFrom(int, int, int);
+  virtual size_t write(uint8_t);
+  virtual size_t write(const uint8_t *, size_t);
+  virtual int available(void);
+  virtual int read(void);
+  virtual int peek(void);
+  virtual void flush(void);
+  void onReceive( void (*)(int) );
+  void onRequest( void (*)(void) );
 
-	inline size_t write(unsigned long n) { return write((uint8_t)n); }
-	inline size_t write(long n) { return write((uint8_t)n); }
-	inline size_t write(unsigned int n) { return write((uint8_t)n); }
-	inline size_t write(int n) { return write((uint8_t)n); }
-	using Print::write;
+  inline size_t write(unsigned long n) { return write((uint8_t)n); }
+  inline size_t write(long n) { return write((uint8_t)n); }
+  inline size_t write(unsigned int n) { return write((uint8_t)n); }
+  inline size_t write(int n) { return write((uint8_t)n); }
+  using Print::write;
 
-	static bool isEnabled(void);
+  static void slaveEventHandler(void);
+  static bool isEnabled(void);
 };
 
 extern TwoWire Wire;

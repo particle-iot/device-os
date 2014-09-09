@@ -27,14 +27,8 @@
 #ifndef __SPARK_DISABLE_WLAN_H
 #define __SPARK_DISABLE_WLAN_H
 
-class SparkDisableWlan {
-public:
-	SparkDisableWlan()
-	{
-		SPARK_WLAN_SETUP = 0;
-	}
-};
-
-SparkDisableWlan sparkDisableWlan;
+#error This header (spark_disable_wlan.h) has been deprecated. \
+        Please use SYSTEM_MODE instead \
+        "http://docs.spark.io/firmware/#advanced-system-modes".
 
 #endif  /* __SPARK_DISABLE_WLAN_H */

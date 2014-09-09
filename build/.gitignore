@@ -1,6 +1,7 @@
 # Compiled objects and dependancies
 obj/
-core-firmware.bin
-core-firmware.elf
-core-firmware.hex
-core-firmware.map
+applications/
+*.elf
+*.bin
+*.map
+*.hex

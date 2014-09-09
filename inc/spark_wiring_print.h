@@ -36,10 +36,12 @@
 #include "spark_wiring_string.h"
 #include "spark_wiring_printable.h"
 
-#define DEC 10
-#define HEX 16
-#define OCT 8
-#define BIN 2
+const unsigned char DEC = 10;
+const unsigned char HEX = 16;
+const unsigned char OCT = 8;
+const unsigned char BIN = 2;
+
+class String;
 
 class Print
 {
