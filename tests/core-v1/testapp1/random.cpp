@@ -69,13 +69,3 @@ test(Negative_range_values_are_within_range) {
 test(ZeroCrossing_range_values_are_within_range) {
     assertRandomRange(-10,10, 1000);
 }
-
-
-
-test(Random_Value_Is_Between_Limits) {
-    // this is
-    for (int i=0; i<100; i++) {
-        
-    }
-}
-
