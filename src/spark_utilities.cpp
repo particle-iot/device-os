@@ -30,7 +30,6 @@
 #include "netapp.h"
 #include "string.h"
 #include <stdarg.h>
-#include "spark_protocol.h"
 
 SparkProtocol spark_protocol;
 
@@ -86,8 +85,71 @@ static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
 */
 
+SystemClass System;
 RGBClass RGB;
 SparkClass Spark;
+
+System_Mode_TypeDef SystemClass::_mode = AUTOMATIC;
+
+SystemClass::SystemClass()
+{
+}
+
+SystemClass::SystemClass(System_Mode_TypeDef mode)
+{
+  switch(mode)
+  {
+    case AUTOMATIC:
+      _mode = AUTOMATIC;
+      SPARK_CLOUD_CONNECT = 1;
+      break;
+
+    case SEMI_AUTOMATIC:
+      _mode = SEMI_AUTOMATIC;
+      SPARK_CLOUD_CONNECT = 0;
+      SPARK_WLAN_SLEEP = 1;
+      break;
+
+    case MANUAL:
+      _mode = MANUAL;
+      SPARK_CLOUD_CONNECT = 0;
+      SPARK_WLAN_SLEEP = 1;
+      break;
+  }
+}
+
+System_Mode_TypeDef SystemClass::mode(void)
+{
+  return _mode;
+}
+
+void SystemClass::factoryReset(void)
+{
+  //Work in Progress
+  //This method will work only if the Core is supplied
+  //with the latest version of Bootloader
+  Factory_Reset_SysFlag = 0xAAAA;
+  Save_SystemFlags();
+
+  reset();
+}
+
+void SystemClass::bootloader(void)
+{
+  //Work in Progress
+  //The drawback here being it will enter bootloader mode until firmware
+  //is loaded again. Require bootloader changes for proper working.
+  BKP_WriteBackupRegister(BKP_DR10, 0xFFFF);
+  FLASH_OTA_Update_SysFlag = 0xFFFF;
+  Save_SystemFlags();
+
+  reset();
+}
+
+void SystemClass::reset(void)
+{
+  NVIC_SystemReset();
+}
 
 bool RGBClass::_control = false;
 
@@ -110,6 +172,10 @@ void RGBClass::control(bool override)
 #endif
 }
 
+void RGBClass::color(uint32_t rgb) {
+    color((rgb>>16)&0xFF, (rgb>>8)&0xFF, (rgb)&0xFF);
+}
+
 void RGBClass::color(int red, int green, int blue)
 {
 #if !defined (RGB_NOTIFICATIONS_ON)
@@ -121,13 +187,12 @@ void RGBClass::color(int red, int green, int blue)
 #endif
 }
 
-void RGBClass::brightness(uint8_t brightness)
+void RGBClass::brightness(uint8_t brightness, bool update)
 {
-#if !defined (RGB_NOTIFICATIONS_ON)
-	if (true != _control)
-		return;
-
+#if !defined (RGB_NOTIFICATIONS_ON)	
 	LED_SetBrightness(brightness);
+    if (_control && update)
+        LED_On(LED_RGB);
 #endif
 }
 
@@ -220,6 +285,56 @@ void SparkClass::publish(String eventName, String eventData, int ttl, Spark_Even
   publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
 }
 
+bool SparkClass::subscribe(const char *eventName, EventHandler handler)
+{
+  bool success = spark_protocol.add_event_handler(eventName, handler);
+  if (success)
+  {
+    success = spark_protocol.send_subscription(eventName, SubscriptionScope::FIREHOSE);
+  }
+  return success;
+}
+
+bool SparkClass::subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
+{
+  bool success = spark_protocol.add_event_handler(eventName, handler);
+  if (success)
+  {
+    success = spark_protocol.send_subscription(eventName, SubscriptionScope::MY_DEVICES);
+  }
+  return success;
+}
+
+bool SparkClass::subscribe(const char *eventName, EventHandler handler, const char *deviceID)
+{
+  bool success = spark_protocol.add_event_handler(eventName, handler);
+  if (success)
+  {
+    success = spark_protocol.send_subscription(eventName, deviceID);
+  }
+  return success;
+}
+
+bool SparkClass::subscribe(String eventName, EventHandler handler)
+{
+  return subscribe(eventName.c_str(), handler);
+}
+
+bool SparkClass::subscribe(String eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
+{
+  return subscribe(eventName.c_str(), handler, scope);
+}
+
+bool SparkClass::subscribe(String eventName, EventHandler handler, String deviceID)
+{
+  return subscribe(eventName.c_str(), handler, deviceID.c_str());
+}
+
+void SparkClass::syncTime(void)
+{
+  spark_protocol.send_time_request();
+}
+
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
 #if defined (SPARK_RTC_ENABLE)
@@ -232,7 +347,7 @@ void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 	switch(sleepMode)
 	{
 	case SLEEP_MODE_WLAN:
-		SPARK_WLAN_SLEEP = 1;
+		WiFi.off();
 		break;
 
 	case SLEEP_MODE_DEEP:
@@ -245,6 +360,108 @@ void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 void SparkClass::sleep(long seconds)
 {
 	SparkClass::sleep(SLEEP_MODE_WLAN, seconds);
+}
+
+void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
+{
+  if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
+  {
+    uint16_t BKP_DR9_Data = wakeUpPin;//set wakeup pin mumber
+    BKP_DR9_Data |= (edgeTriggerMode << 8);//set edge trigger mode
+    BKP_DR9_Data |= (0xA << 12);//set stop mode flag
+
+    /*************************************************/
+    //BKP_DR9_Data: 0xAXXX
+    //                ||||
+    //                ||----- octet wakeUpPin number
+    //                |------ nibble edgeTriggerMode
+    //                ------- nibble stop mode flag
+    /*************************************************/
+
+    /* Execute Stop mode on next system reset */
+    BKP_WriteBackupRegister(BKP_DR9, BKP_DR9_Data);
+
+    /* Reset System */
+    NVIC_SystemReset();
+  }
+}
+
+void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
+{
+#if defined (SPARK_RTC_ENABLE)
+  /* Set the RTC Alarm */
+  RTC_SetAlarm(RTC_GetCounter() + (uint32_t)seconds);
+
+  /* Wait until last write operation on RTC registers has finished */
+  RTC_WaitForLastTask();
+
+  sleep(wakeUpPin, edgeTriggerMode);
+#endif
+}
+
+void Enter_STOP_Mode(void)
+{
+  if((BKP_ReadBackupRegister(BKP_DR9) >> 12) == 0xA)
+  {
+    uint16_t wakeUpPin = BKP_ReadBackupRegister(BKP_DR9) & 0xFF;
+    InterruptMode edgeTriggerMode = (InterruptMode)((BKP_ReadBackupRegister(BKP_DR9) >> 8) & 0x0F);
+
+    /* Clear Stop mode system flag */
+    BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
+
+    if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
+    {
+      PinMode wakeUpPinMode = INPUT;
+
+      /* Set required pinMode based on edgeTriggerMode */
+      switch(edgeTriggerMode)
+      {
+        case CHANGE:
+          wakeUpPinMode = INPUT;
+          break;
+
+        case RISING:
+          wakeUpPinMode = INPUT_PULLDOWN;
+          break;
+
+        case FALLING:
+          wakeUpPinMode = INPUT_PULLUP;
+          break;
+      }
+      pinMode(wakeUpPin, wakeUpPinMode);
+
+      /* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
+      attachInterrupt(wakeUpPin, NULL, edgeTriggerMode);
+
+      /* Request to enter STOP mode with regulator in low power mode */
+      PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
+
+      /* At this stage the system has resumed from STOP mode */
+      /* Enable HSE, PLL and select PLL as system clock source after wake-up from STOP */
+
+      /* Enable HSE */
+      RCC_HSEConfig(RCC_HSE_ON);
+
+      /* Wait till HSE is ready */
+      if(RCC_WaitForHSEStartUp() != SUCCESS)
+      {
+        /* If HSE startup fails try to recover by system reset */
+        NVIC_SystemReset();
+      }
+
+      /* Enable PLL */
+      RCC_PLLCmd(ENABLE);
+
+      /* Wait till PLL is ready */
+      while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
+
+      /* Select PLL as system clock source */
+      RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+
+      /* Wait till PLL is used as system clock source */
+      while(RCC_GetSYSCLKSource() != 0x08);
+    }
+  }
 }
 
 inline uint8_t isSocketClosed()
@@ -275,18 +492,29 @@ bool SparkClass::connected(void)
 		return false;
 }
 
-int SparkClass::connect(void)
+void SparkClass::connect(void)
 {
 	//Schedule Spark's cloud connection and handshake
+        WiFi.connect();
 	SPARK_CLOUD_CONNECT = 1;
-	return 0;
 }
 
-int SparkClass::disconnect(void)
+void SparkClass::disconnect(void)
 {
 	//Schedule Spark's cloud disconnection
 	SPARK_CLOUD_CONNECT = 0;
-	return 0;
+}
+
+void SparkClass::process(void)
+{
+#ifdef SPARK_WLAN_ENABLE
+  if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
+  {
+    SPARK_FLASH_UPDATE = 0;
+    SPARK_CLOUD_CONNECTED = 0;
+    SPARK_CLOUD_SOCKETED = 0;
+  }
+#endif
 }
 
 String SparkClass::deviceID(void)
@@ -458,6 +686,7 @@ void Spark_Protocol_Init(void)
     callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
     callbacks.signal = Spark_Signal;
     callbacks.millis = millis;
+    callbacks.set_time = Time.setTime;
 
     SparkDescriptor descriptor;
     descriptor.num_functions = numUserFunctions;
@@ -489,7 +718,16 @@ int Spark_Handshake(void)
   Spark_Protocol_Init();
   spark_protocol.reset_updating();
   int err = spark_protocol.handshake();
+
   Multicast_Presence_Announcement();
+  spark_protocol.send_time_request();
+
+  unsigned char patchver[2];
+  nvmem_read_sp_version(patchver);
+  char patchstr[8];
+  snprintf(patchstr, 8, "%d.%d", patchver[0], patchver[1]);
+  Spark.publish("spark/cc3000-patch-version", patchstr, 60, PRIVATE);
+
   return err;
 }
 
@@ -519,7 +757,8 @@ void Multicast_Presence_Announcement(void)
   addr.sa_data[4] = 0x01;
   addr.sa_data[5] = 0xbb; // IP LSB
 
-  for (int i = 3; i > 0; i--)
+  //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
+  //for (int i = 3; i > 0; i--)
   {
     sendto(multicast_socket, announcement, 19, 0, &addr, sizeof(sockaddr));
   }
@@ -563,11 +802,6 @@ void Spark_Signal(bool on)
     LED_Signaling_Stop();
     LED_Spark_Signal = 0;
   }
-}
-
-void Spark_SetTime(unsigned long dateTime)
-{
-	Time.setTime(dateTime);
 }
 
 int Internet_Test(void)
@@ -658,7 +892,8 @@ int Spark_Connect(void)
     case INVALID_INTERNET_ADDRESS:
     {
       const char default_domain[] = "device.spark.io";
-      memcpy(server_addr.domain, default_domain, strlen(default_domain));
+      // Make sure we copy the NULL terminator, so subsequent strlen() calls on server_addr.domain return the correct length
+      memcpy(server_addr.domain, default_domain, strlen(default_domain) + 1);
       // and fall through to domain name case
     }
 

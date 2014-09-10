@@ -104,13 +104,16 @@ extern "C" void SparkCoreConfig(void)
 	LED_RGB_OVERRIDE = 1;
 #endif
 
-	LED_SetRGBColor(RGB_COLOR_WHITE);
-	LED_On(LED_RGB);
-	SPARK_LED_FADE = 1;
-
 #if defined (SPARK_RTC_ENABLE)
 	RTC_Configuration();
 #endif
+
+        /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
+        Enter_STOP_Mode();
+
+        LED_SetRGBColor(RGB_COLOR_WHITE);
+        LED_On(LED_RGB);
+        SPARK_LED_FADE = 1;
 
 #ifdef IWDG_RESET_ENABLE
 	// ToDo this needs rework for new bootloader
@@ -293,7 +296,7 @@ void Timing_Decrement(void)
 
 		if(!SPARK_WLAN_SLEEP)
 		{
-			WLAN_SMART_CONFIG_START = 1;
+			WiFi.listen();
 		}
 	}
 	else if(BUTTON_GetDebouncedTime(BUTTON1) >= 7000)

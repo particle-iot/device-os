@@ -28,20 +28,50 @@
 
 #include "spark_wiring.h"
 
-typedef enum
-{
-	WIFI_OFF = 0, WIFI_CONNECTING = 1, WIFI_ON = 2
-} WiFi_Status_TypeDef;
+#define UNSEC   (WLAN_SEC_UNSEC)
+#define WEP     (WLAN_SEC_WEP)
+#define WPA     (WLAN_SEC_WPA)
+#define WPA2    (WLAN_SEC_WPA2)
+
+class IPAddress;
 
 class WiFiClass
 {
 public:
 	WiFiClass() {}
-    ~WiFiClass() {}
+	~WiFiClass() {}
 
-	static void on(void);
-	static void off(void);
-	static WiFi_Status_TypeDef status(void);
+        uint8_t* macAddress(uint8_t* mac);
+        IPAddress localIP();
+        IPAddress subnetMask();
+        IPAddress gatewayIP();
+        char* SSID();
+        int8_t RSSI();
+        uint32_t ping(IPAddress remoteIP);
+        uint32_t ping(IPAddress remoteIP, uint8_t nTries);
+
+        static void connect(void);
+        static void disconnect(void);
+        static bool connecting(void);
+        static bool ready(void);
+        static void on(void);
+        static void off(void);
+        static void listen(void);
+        static bool listening(void);
+        static void setCredentials(const char *ssid);
+        static void setCredentials(const char *ssid, const char *password);
+        static void setCredentials(const char *ssid, const char *password, unsigned long security);
+        static void setCredentials(char *ssid, unsigned int ssidLen, char *password, unsigned int passwordLen, unsigned long security);
+        static bool hasCredentials(void);
+        static bool clearCredentials(void);
+
+        friend class TCPClient;
+        friend class TCPServer;
+
+private:
+        uint32_t _functionStart;
+        uint8_t _loopCount;
+        int8_t _returnValue;
 };
 
 extern WiFiClass WiFi;

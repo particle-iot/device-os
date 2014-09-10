@@ -25,7 +25,6 @@
 
 #ifndef SPARK_WIRING_H
 #define SPARK_WIRING_H
-
 #include "stm32f10x.h"
 #include "config.h"
 #include "spark_macros.h"
@@ -36,6 +35,9 @@
 #include "spark_wiring_printable.h"
 #include "spark_wiring_ipaddress.h"
 #include "spark_wiring_wifi.h"
+#include "spark_wiring_character.h"
+#include "spark_wiring_constants.h"
+#include "spark_wiring_random.h"
 
 /*
 * Basic variables
@@ -150,6 +152,8 @@ typedef struct STM32_Pin_Info {
   TIM_TypeDef* timer_peripheral;
   uint16_t timer_ch;
   PinMode pin_mode;
+  uint16_t timer_ccr;
+  int32_t user_property;
 } STM32_Pin_Info;
 
 extern STM32_Pin_Info PIN_MAP[];

@@ -30,6 +30,8 @@
 #include "main.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_time.h"
+#include "spark_wiring_interrupts.h"
+#include "spark_protocol.h"
 
 #define BYTE_N(x,n)						(((x) >> n*8) & 0x000000FF)
 
@@ -54,6 +56,11 @@
 
 typedef enum
 {
+  AUTOMATIC = 0, SEMI_AUTOMATIC = 1, MANUAL = 2
+} System_Mode_TypeDef;
+
+typedef enum
+{
 	SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1
 } Spark_Sleep_TypeDef;
 
@@ -67,6 +74,24 @@ typedef enum
 	PUBLIC = 0, PRIVATE = 1
 } Spark_Event_TypeDef;
 
+typedef enum
+{
+  MY_DEVICES
+} Spark_Subscription_Scope_TypeDef;
+
+class SystemClass {
+private:
+  static System_Mode_TypeDef _mode;
+
+public:
+  SystemClass();
+  SystemClass(System_Mode_TypeDef mode);
+  static System_Mode_TypeDef mode(void);
+  static void factoryReset(void);
+  static void bootloader(void);
+  static void reset(void);
+};
+
 class RGBClass {
 private:
 	static bool _control;
@@ -74,7 +99,8 @@ public:
 	static bool controlled(void);
 	static void control(bool);
 	static void color(int, int, int);
-  static void brightness(uint8_t);
+	static void color(uint32_t rgb);
+	static void brightness(uint8_t, bool update=true);
 };
 
 class SparkClass {
@@ -89,14 +115,27 @@ public:
 	static void publish(String eventName, String eventData);
 	static void publish(String eventName, String eventData, int ttl);
 	static void publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType);
+	static bool subscribe(const char *eventName, EventHandler handler);
+	static bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope);
+	static bool subscribe(const char *eventName, EventHandler handler, const char *deviceID);
+	static bool subscribe(String eventName, EventHandler handler);
+	static bool subscribe(String eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope);
+	static bool subscribe(String eventName, EventHandler handler, String deviceID);
 	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 	static void sleep(long seconds);
+	static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
+	static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
 	static bool connected(void);
-	static int connect(void);
-	static int disconnect(void);
+	static void connect(void);
+	static void disconnect(void);
+        static void process(void);
 	static String deviceID(void);
+	static void syncTime(void);
 };
 
+#define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
+
+extern SystemClass System;
 extern RGBClass RGB;
 extern SparkClass Spark;
 
@@ -107,6 +146,8 @@ extern "C" {
 #endif
 
 int Internet_Test(void);
+
+void Enter_STOP_Mode(void);
 
 int Spark_Connect(void);
 int Spark_Disconnect(void);

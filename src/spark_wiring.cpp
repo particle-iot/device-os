@@ -52,28 +52,30 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
  * timer_peripheral (TIM2 - TIM4, or NONE)
  * timer_ch (1-4, or NONE)
  * pin_mode (NONE by default, can be set to OUTPUT, INPUT, or other types)
+ * timer_ccr (0 by default, store the CCR value for TIM interrupt use)
+ * user_property (0 by default, user variable storage)
  */
-  { GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_5, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_4, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_3, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_15, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_14, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_13, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_8, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_9, NONE, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM2, TIM_Channel_1, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_1, ADC_Channel_1, TIM2, TIM_Channel_2, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_4, ADC_Channel_4, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_5, ADC_Channel_5, NULL, NONE, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_0, ADC_Channel_8, TIM3, TIM_Channel_3, (PinMode)NONE },
-  { GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, (PinMode)NONE },
-  { GPIOA, GPIO_Pin_10, NONE, NULL, NONE, (PinMode)NONE }
+  { GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, (PinMode)NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, (PinMode)NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_5, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_4, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_3, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_15, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_14, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_13, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_8, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_9, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM2, TIM_Channel_1, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_1, ADC_Channel_1, TIM2, TIM_Channel_2, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_4, ADC_Channel_4, NULL, NONE, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_5, ADC_Channel_5, NULL, NONE, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, (PinMode)NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_0, ADC_Channel_8, TIM3, TIM_Channel_3, (PinMode)NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, (PinMode)NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_10, NONE, NULL, NONE, (PinMode)NONE, 0, 0 }
 };
 
 /*
@@ -205,13 +207,12 @@ void digitalWrite(uint16_t pin, uint8_t value)
 		pinMode(pin, OUTPUT);
 	}
 
-	if (value == HIGH)
-	{
-		PIN_MAP[pin].gpio_peripheral->BSRR = PIN_MAP[pin].gpio_pin;
-	}
-	else if (value == LOW)
+	if (value == LOW)
 	{
 		PIN_MAP[pin].gpio_peripheral->BRR = PIN_MAP[pin].gpio_pin;
+	} else
+	{
+		PIN_MAP[pin].gpio_peripheral->BSRR = PIN_MAP[pin].gpio_pin;
 	}
 }
 
@@ -540,11 +541,17 @@ void analogWrite(uint16_t pin, uint8_t value)
 
 	// TIM clock enable
 	if(PIN_MAP[pin].timer_peripheral == TIM2)
+	{
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+	}
 	else if(PIN_MAP[pin].timer_peripheral == TIM3)
+	{
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	}
 	else if(PIN_MAP[pin].timer_peripheral == TIM4)
+	{
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+	}
 
 	// Time base configuration
 	TIM_TimeBaseStructure.TIM_Period = TIM_ARR;
@@ -706,3 +713,4 @@ void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val)
 		digitalWrite(clockPin, LOW);
 	}
 }
+

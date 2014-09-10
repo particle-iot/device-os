@@ -28,6 +28,7 @@
 
 #include "spark_wiring_string.h"
 #include <stdio.h>
+#include <limits.h>
 
 //------------------------------------------------------------------------------------------
 #define BUFSIZE (sizeof(long) * 8 + 1)
@@ -134,8 +135,8 @@ char* utoa(unsigned a, char* buffer, unsigned char radix){
 char* itoa(int a, char* buffer, unsigned char radix){
 	if(a<0){
 		*buffer = '-';
-		a = -a;
-		ultoa(a, buffer + 1, radix);
+		unsigned v = a==INT_MIN ? ((unsigned)INT_MAX+1) : -a;        
+		ultoa((unsigned)v, buffer + 1, radix);
 	}else{
 		ultoa(a, buffer, radix);
 	}
@@ -224,7 +225,7 @@ String::String(unsigned char value, unsigned char base)
 String::String(int value, unsigned char base)
 {
 	init();
-	char buf[18];
+	char buf[34];
 	itoa(value, buf, base);
 	*this = buf;
 }
@@ -232,7 +233,7 @@ String::String(int value, unsigned char base)
 String::String(unsigned int value, unsigned char base)
 {
 	init();
-	char buf[17];
+	char buf[33];
 	utoa(value, buf, base);
 	*this = buf;
 }
@@ -445,7 +446,7 @@ unsigned char String::concat(long num)
 unsigned char String::concat(unsigned long num)
 {
 	char buf[11];
-	ultoa(num, buf, 10);
+	ultoa(num, buf, DEC);
 	return concat(buf, strlen(buf));
 }
 
