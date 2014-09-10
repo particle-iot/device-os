@@ -23,6 +23,7 @@
   ******************************************************************************
  */
 
+#ifdef SPARK_USB_KEYBOARD
 #include "spark_wiring_usbkeyboard.h"
 
 #define SHIFT 0x80
@@ -305,6 +306,5 @@ size_t USBKeyboard::write(uint8_t key)
 }
 
 //Preinstantiate Object
-#ifdef SPARK_USB_KEYBOARD
 USBKeyboard Keyboard;
 #endif

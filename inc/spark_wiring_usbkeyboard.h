@@ -26,6 +26,7 @@
 #ifndef __SPARK_WIRING_USBKEYBOARD_H
 #define __SPARK_WIRING_USBKEYBOARD_H
 
+#ifdef SPARK_USB_KEYBOARD
 #include "spark_wiring.h"
 
 #define KEY_LEFT_CTRL		0x80
@@ -89,5 +90,6 @@ public:
 };
 
 extern USBKeyboard Keyboard;
+#endif
 
 #endif
