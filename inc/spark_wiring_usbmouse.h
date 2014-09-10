@@ -26,6 +26,7 @@
 #ifndef __SPARK_WIRING_USBMOUSE_H
 #define __SPARK_WIRING_USBMOUSE_H
 
+#ifdef SPARK_USB_MOUSE
 #include "spark_wiring.h"
 
 #define MOUSE_LEFT		0x01
@@ -60,5 +61,6 @@ public:
 };
 
 extern USBMouse Mouse;
+#endif
 
 #endif
