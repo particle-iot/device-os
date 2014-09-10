@@ -4,7 +4,7 @@
 # Define the prefix to this directory. 
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
-TARGET_STDPERIPH_PATH = STM32F10x_StdPeriph_Driver
+TARGET_STDPERIPH_PATH = HAL
 TARGET_STDPERIPH_SRC_PATH = $(TARGET_STDPERIPH_PATH)/src
 
 # Add tropicssl include to all objects built for this target
