@@ -18,6 +18,7 @@ public:
     virtual size_t write(uint8_t w) {
         p1.write(w);
         p2.write(w);
+        return 1;
     }
     
     virtual size_t write(const uint8_t *buffer, size_t size) {

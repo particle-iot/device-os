@@ -1,8 +1,9 @@
+#include <stdlib.h>
+#include <array>
 #include "application.h"
 #include "unit-test/unit-test.h"
-#include <array>
-#include <stdlib.h>
 
+// the headers have to be declared in this order, or the #define min() in the spark wiring clashes with std::min)
 
 template <std::size_t size> void fillBuf(std::array<int, size>& buf, int min, int max) {
     int count = size;
