@@ -63,6 +63,7 @@ void USBMouse::click(uint8_t button)
 {
 	mouseReport.buttons = button;
 	move(0,0,0);
+	delay(100);
 	mouseReport.buttons = 0;
 	move(0,0,0);
 }
