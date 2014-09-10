@@ -88,10 +88,6 @@ extern "C" {
  */
 //#define RGB_NOTIFICATIONS_CONNECTING_ONLY
 
-#define SPARK_USB_SERIAL
-//#define SPARK_USB_MOUSE
-//#define SPARK_USB_KEYBOARD
-
 #define USART_RX_DATA_SIZE			256
 
 /* Exported functions ------------------------------------------------------- */
