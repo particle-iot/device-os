@@ -16,7 +16,7 @@
  - RGB: calling `RGB.brightness()` doesn't change the LED brightness immediately [#261](https://github.com/spark/core-firmware/issues/261)
  - Wiring: `pinMode()` `INPUT` and `OUTPUT` constants had reversed values compared to Arduino. [#282](https://github.com/spark/core-firmware/issues/282)
  - Wiring: compiler error using `HEX` with `String`. [#210](https://github.com/spark/core-firmware/pull/210)
- - System Mode: MANUAL mode breaks OTA udpate [#294](https://github.com/spark/core-firmware/issues/294)
+ - System Mode: MANUAL mode breaks OTA update [#294](https://github.com/spark/core-firmware/issues/294)
 
 ## pre v0.3.3 versions
 
