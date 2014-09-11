@@ -16,10 +16,14 @@ CSRC += $(TARGET_SPARK_SRC_PATH)/cc3000_spi.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/hw_config.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/sst25vf_spi.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/system_stm32f10x.c
-CSRC += $(TARGET_SPARK_SRC_PATH)/usb_pwr.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/debug.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/panic.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/spi_bus.c
+CSRC += $(TARGET_SPARK_SRC_PATH)/usb_desc.c
+CSRC += $(TARGET_SPARK_SRC_PATH)/usb_endp.c
+CSRC += $(TARGET_SPARK_SRC_PATH)/usb_istr.c
+CSRC += $(TARGET_SPARK_SRC_PATH)/usb_prop.c
+CSRC += $(TARGET_SPARK_SRC_PATH)/usb_pwr.c
 
 # C++ source files included in this build.
 CPPSRC +=

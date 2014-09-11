@@ -35,6 +35,7 @@
 #include "cc3000_common.h"
 #include "usb_type.h"
 #include "rgbled.h"
+#include "usb_hal.h"
 
 enum SpiBusOwner {
     BUS_OWNER_NONE = 0,
@@ -128,18 +129,6 @@ typedef struct ServerAddress {
 									| FLASH_WRProt_Pages4to7	\
 									| FLASH_WRProt_Pages8to11	\
 									| FLASH_WRProt_Pages12to15 )
-
-/* USB Config : IMR_MSK */
-/* mask defining which events has to be handled */
-/* by the device application software */
-#define IMR_MSK (CNTR_CTRM  | \
-                 CNTR_WKUPM | \
-                 CNTR_SUSPM | \
-                 CNTR_ERRM  | \
-                 CNTR_SOFM  | \
-                 CNTR_ESOFM | \
-                 CNTR_RESETM  \
-                )
 
 #define TIMING_IWDG_RELOAD	1000 //1sec
 
