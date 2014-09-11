@@ -1,10 +1,10 @@
 /**
  ******************************************************************************
- * @file    usb_hal.c
+ * @file    usb_device.c
  * @author  Satish Nair
  * @version V1.0.0
  * @date    10-Sept-2014
- * @brief   USB HAL
+ * @brief   USB Virtual COM Port and HID device HAL
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -24,7 +24,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include "usb_hal.h"
+#include "usb_device.h"
 #include "usb_conf.h"
 #include "usb_lib.h"
 #include "usb_desc.h"

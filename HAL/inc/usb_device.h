@@ -1,10 +1,10 @@
 /**
  ******************************************************************************
- * @file    usb_hal.h
+ * @file    usb_device.h
  * @author  Satish Nair
  * @version V1.0.0
  * @date    10-Sept-2014
- * @brief   USB HAL
+ * @brief   USB Virtual COM Port and HID device HAL
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 

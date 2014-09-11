@@ -4,12 +4,12 @@
 # Define the prefix to this directory. 
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
-TARGET_SPARK_SERVICES_PATH = SPARK_Services
-TARGET_SPARK_SERVICES_SRC_PATH = $(TARGET_SPARK_SERVICES_PATH)/src
+TARGET_HAL_PATH = HAL
+TARGET_HAL_SRC_PATH = $(TARGET_HAL_PATH)/src
 
-INCLUDE_DIRS += $(TARGET_SPARK_SERVICES_SRC_PATH)/inc
+INCLUDE_DIRS += $(TARGET_HAL_PATH)/inc
 
-CSRC += $(TARGET_SPARK_SERVICES_SRC_PATH)/rgbled.c
+CSRC += $(TARGET_HAL_SRC_PATH)/usb_device.c
 
 # C++ source files included in this build.
 CPPSRC +=

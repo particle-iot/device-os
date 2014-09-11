@@ -35,7 +35,7 @@
 #include "cc3000_common.h"
 #include "usb_type.h"
 #include "rgbled.h"
-#include "usb_hal.h"
+#include "usb_device.h"
 
 enum SpiBusOwner {
     BUS_OWNER_NONE = 0,
