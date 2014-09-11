@@ -1,0 +1,1 @@
+This folder contains Bluetooth Low Energy devices vendor supplied libraries
