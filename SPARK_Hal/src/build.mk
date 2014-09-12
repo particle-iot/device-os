@@ -11,7 +11,7 @@ INCLUDE_DIRS += $(TARGET_HAL_PATH)/inc
 
 CSRC += $(TARGET_HAL_SRC_PATH)/debug.c
 CSRC += $(TARGET_HAL_SRC_PATH)/panic.c
-CSRC += $(TARGET_HAL_SRC_PATH)/usb_device.c
+CSRC += $(TARGET_HAL_SRC_PATH)/usb_hal.c
 
 # C++ source files included in this build.
 CPPSRC +=

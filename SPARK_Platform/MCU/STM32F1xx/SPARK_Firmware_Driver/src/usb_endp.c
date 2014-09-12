@@ -24,7 +24,7 @@
 */
 
 /* Includes ------------------------------------------------------------------*/
-#include "usb_device.h"
+#include "usb_hal.h"
 #include "usb_lib.h"
 #include "usb_desc.h"
 #include "usb_mem.h"

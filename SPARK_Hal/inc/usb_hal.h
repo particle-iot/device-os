@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    usb_device.h
+ * @file    usb_hal.h
  * @author  Satish Nair
  * @version V1.0.0
  * @date    10-Sept-2014
