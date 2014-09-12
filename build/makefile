@@ -38,7 +38,7 @@ include $(SRC_MAKEFILES)
 
 # Additional include directories, applied to objects built for this target.
 INCLUDE_DIRS += SPARK_Platform/MCU/STM32F1xx/CMSIS/Include
-INCLUDE_DIRS += SPARK_Platform/MCU/STM32F1xx/CMSIS/Device/ST/STM32F10x/Include
+INCLUDE_DIRS += SPARK_Platform/MCU/STM32F1xx/CMSIS/Device/ST/Include
 
 # Compiler flags
 CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 

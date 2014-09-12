@@ -4,7 +4,7 @@
 # Define the prefix to this directory. 
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
-TARGET_USB_FS_PATH = SPARK_Platform/MCU/STM32F1xx/STM32_USB-FS-Device_Driver
+TARGET_USB_FS_PATH = SPARK_Platform/MCU/STM32F1xx/STM32_USB_Device_Driver
 TARGET_USB_FS_SRC_PATH = $(TARGET_USB_FS_PATH)/src
 
 # Add tropicssl include to all objects built for this target

@@ -4,7 +4,7 @@
 # Define the prefix to this directory. 
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
-TARGET_SPARK_PATH = SPARK_Firmware_Driver
+TARGET_SPARK_PATH = SPARK_Platform/MCU/STM32F1xx/SPARK_Firmware_Driver
 TARGET_SPARK_SRC_PATH = $(TARGET_SPARK_PATH)/src
 
 # Add tropicssl include to all objects built for this target
@@ -16,8 +16,6 @@ CSRC += $(TARGET_SPARK_SRC_PATH)/cc3000_spi.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/hw_config.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/sst25vf_spi.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/system_stm32f10x.c
-CSRC += $(TARGET_SPARK_SRC_PATH)/debug.c
-CSRC += $(TARGET_SPARK_SRC_PATH)/panic.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/spi_bus.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/usb_desc.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/usb_endp.c
