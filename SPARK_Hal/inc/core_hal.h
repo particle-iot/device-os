@@ -69,4 +69,7 @@
 
 /* Exported functions --------------------------------------------------------*/
 
+void SparkCoreConfig(void);
+void Enter_STOP_Mode(void);
+
 #endif  /* __CORE_HAL_H */
