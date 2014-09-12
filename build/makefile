@@ -65,6 +65,10 @@ endif
 # C++ specific flags
 CPPFLAGS = -fno-exceptions -fno-rtti
 
+# Assembler flags
+ASFLAGS =  -g3 -gdwarf-2 -mcpu=cortex-m3 -mthumb 
+ASFLAGS += -x assembler-with-cpp -fmessage-length=0
+
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
@@ -95,6 +99,14 @@ $(BUILD_PATH)/%.o : $(SRC_PATH)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 	@echo
 
+# Assember to build .o from .S in $(BUILD_DIR)
+$(BUILD_PATH)%.o : $(SRC_PATH)%.S
+	@echo Building file: $<
+	@echo Invoking: ARM GCC Assembler
+	$(MKDIR) $(dir $@)
+	$(CC) $(ASFLAGS) -c -o $@ $<
+	@echo
+	
 # CPP compiler to build .o from .cpp in $(BUILD_DIR)
 # Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
 $(BUILD_PATH)/%.o : $(SRC_PATH)/%.cpp

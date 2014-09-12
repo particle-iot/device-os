@@ -27,8 +27,6 @@
 #ifndef __STM32_IT_H
 #define __STM32_IT_H
 
-extern "C" {
-
 /* Includes ------------------------------------------------------------------*/
 #include "platform_config.h"
 #include "cc3000_spi.h"
@@ -75,7 +73,6 @@ void USB_LP_CAN1_RX0_IRQHandler(void);
 extern void (*Wiring_TIM2_Interrupt_Handler)(void);
 extern void (*Wiring_TIM3_Interrupt_Handler)(void);
 extern void (*Wiring_TIM4_Interrupt_Handler)(void);
-}
 
 #endif /* __STM32_IT_H */
 

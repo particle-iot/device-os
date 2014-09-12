@@ -28,7 +28,7 @@
 #define __USB_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "core_hal.h"
+#include "hw_config.h"
 #include "usb_conf.h"
 
 /* Exported types ------------------------------------------------------------*/

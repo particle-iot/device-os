@@ -29,11 +29,8 @@
 #include "spark_macros.h"
 #include "debug.h"
 #include "stm32_it.h"
-#include "main.h"
-extern "C" {
 #include "usb_lib.h"
 #include "usb_istr.h"
-}
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -184,6 +181,7 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
 	System1MsTick();
+	extern void Timing_Decrement(void);
 	Timing_Decrement();
 }
 
@@ -599,6 +597,7 @@ void RTCAlarm_IRQHandler(void)
 	if(RTC_GetITStatus(RTC_IT_ALR) != RESET)
 	{
 	        /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
+	        extern volatile uint8_t SPARK_WLAN_SLEEP;
 		SPARK_WLAN_SLEEP = 0;
 
 		/* Clear EXTI line17 pending bit */
