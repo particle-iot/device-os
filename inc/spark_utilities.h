@@ -40,6 +40,8 @@
 //#define SPARK_SERVER_IP				"54.235.79.249"
 #define SPARK_SERVER_PORT				5683
 
+#define TIMING_FLASH_UPDATE_TIMEOUT             30000   //30sec
+
 #define SPARK_LOOP_DELAY_MILLIS			1000	//1sec
 
 #define USER_VAR_MAX_COUNT				10
@@ -148,6 +150,8 @@ extern "C" {
 #endif
 
 int Internet_Test(void);
+
+void Enter_STOP_Mode(void);
 
 int Spark_Connect(void);
 int Spark_Disconnect(void);
