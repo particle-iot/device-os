@@ -9,9 +9,15 @@ TARGET_HAL_SRC_PATH = $(TARGET_HAL_PATH)/src
 
 INCLUDE_DIRS += $(TARGET_HAL_PATH)/inc
 
-CSRC += $(TARGET_HAL_SRC_PATH)/debug.c
-CSRC += $(TARGET_HAL_SRC_PATH)/panic.c
+CSRC += $(TARGET_HAL_SRC_PATH)/core_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/eeprom_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/i2c_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/interrupt_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/spi_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/timing_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/usart_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/usb_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/wlan_hal.c
 
 # C++ source files included in this build.
 CPPSRC +=
