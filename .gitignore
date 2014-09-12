@@ -32,6 +32,7 @@ Release/*
 .settings/*
 .cproject
 .project
+.DS_Store
 
 # Raisonance RIDE Project
 RIDE/*
