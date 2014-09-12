@@ -31,6 +31,7 @@ namespace CoAPMessageType {
     DESCRIBE,
     FUNCTION_CALL,
     VARIABLE_REQUEST,
+    SAVE_BEGIN,
     UPDATE_BEGIN,
     UPDATE_DONE,
     CHUNK,

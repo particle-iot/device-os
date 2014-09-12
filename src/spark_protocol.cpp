@@ -72,6 +72,7 @@ void SparkProtocol::init(const char *id,
 
   callback_send = callbacks.send;
   callback_receive = callbacks.receive;
+  callback_prepare_to_save_file = callbacks.prepare_to_save_file;
   callback_prepare_for_firmware_update = callbacks.prepare_for_firmware_update;
   callback_finish_firmware_update = callbacks.finish_firmware_update;
   callback_calculate_crc = callbacks.calculate_crc;
@@ -291,6 +292,7 @@ CoAPMessageType::Enum
           return CoAPMessageType::EVENT;
         case 'h': return CoAPMessageType::HELLO;
         case 'f': return CoAPMessageType::FUNCTION_CALL;
+        case 's': return CoAPMessageType::SAVE_BEGIN;
         case 'u': return CoAPMessageType::UPDATE_BEGIN;
         case 'c': return CoAPMessageType::CHUNK;
         default: break;
@@ -1003,6 +1005,8 @@ bool SparkProtocol::handle_received_message(void)
       }
       break;
     }
+    case CoAPMessageType::SAVE_BEGIN:
+      // fall through
     case CoAPMessageType::UPDATE_BEGIN:
       // send ACK
       *msg_to_send = 0;
@@ -1014,7 +1018,19 @@ bool SparkProtocol::handle_received_message(void)
         return false;
       }
 
-      callback_prepare_for_firmware_update();
+      if(message_type == CoAPMessageType::SAVE_BEGIN)
+      {
+        // save file to the specified location in external flash
+        unsigned int sflash_address = queue[8] << 24 | queue[9] << 16 | queue[10] << 8 | queue[11];
+        // file size information is required to calculate the sectors that need to be erased
+        unsigned int file_size = queue[12] << 24 | queue[13] << 16 | queue[14] << 8 | queue[15];
+        callback_prepare_to_save_file(sflash_address, file_size);
+      }
+      else
+      {
+        callback_prepare_for_firmware_update();
+      }
+
       last_chunk_millis = callback_millis();
       chunk_index = 0;
       updating = true;

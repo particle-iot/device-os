@@ -62,6 +62,7 @@ struct SparkCallbacks
 {
   int (*send)(const unsigned char *buf, int buflen);
   int (*receive)(unsigned char *buf, int buflen);
+  void (*prepare_to_save_file)(unsigned int sflash_address, unsigned int file_size);
   void (*prepare_for_firmware_update)(void);
   void (*finish_firmware_update)(void);
   long unsigned int (*calculate_crc)(unsigned char *buf, long unsigned int buflen);
@@ -146,6 +147,7 @@ class SparkProtocol
 
     int (*callback_send)(const unsigned char *buf, int buflen);
     int (*callback_receive)(unsigned char *buf, int buflen);
+    void (*callback_prepare_to_save_file)(unsigned int sflash_address, unsigned int file_size);
     void (*callback_prepare_for_firmware_update)(void);
     void (*callback_finish_firmware_update)(void);
     long unsigned int (*callback_calculate_crc)(unsigned char *buf, long unsigned int buflen);
