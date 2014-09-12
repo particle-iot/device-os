@@ -256,8 +256,6 @@ void SpiReceiveHandler(void *pvBuffer)
 void wlan_start(UINT16 usPatchesAvailableAtHost)
 {
 
-	UINT32 ulSpiIRQState;
-
 	tSLInformation.NumberOfSentPackets = 0;
 	tSLInformation.NumberOfReleasedPackets = 0;
 	tSLInformation.usRxEventOpcode = 0;
@@ -564,7 +562,7 @@ INT32 wlan_add_profile(UINT32 ulSecType,
 	UINT8* ucPf_OrKey,
 	UINT32 ulPassPhraseLen)
 {
-	UINT16 arg_len;
+	UINT16 arg_len = 0;
 	INT32 ret;
 	UINT8 *ptr;
 	INT32 i = 0;
@@ -664,13 +662,13 @@ INT32 wlan_add_profile(UINT32 ulSecType,
 		break;
 	}    
 
-	// Initiate a HCI command
-	hci_command_send(HCI_CMND_WLAN_IOCTL_ADD_PROFILE,
-		ptr, arg_len);
+        if (arg_len>0) {
+            // Initiate a HCI command
+            hci_command_send(HCI_CMND_WLAN_IOCTL_ADD_PROFILE, ptr, arg_len);
 
-	// Wait for command complete event
-	SimpleLinkWaitEvent(HCI_CMND_WLAN_IOCTL_ADD_PROFILE, &ret);
-
+            // Wait for command complete event
+            SimpleLinkWaitEvent(HCI_CMND_WLAN_IOCTL_ADD_PROFILE, &ret);
+        }
 	return(ret);
 }
 #else
