@@ -28,13 +28,16 @@
 #define __TIMING_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
+#include "core_hal.h"
 
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
+#define TIMING_FLASH_UPDATE_TIMEOUT             30000   //30sec
 
 /* Exported functions --------------------------------------------------------*/
+void Timing_Decrement(void);
 
 #endif  /* __TIMING_HAL_H */
