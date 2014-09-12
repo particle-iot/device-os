@@ -143,7 +143,7 @@ endif
 CPPFLAGS += -fno-rtti -fno-exceptions
 
 # Linker flags
-LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
+LDFLAGS += -T$(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/SPARK_Linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
 LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build -lcore-common-lib
 LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build -lcore-communication-lib
 LDFLAGS += -Wl,-Map,$(TARGETDIR)$(TARGET).map
