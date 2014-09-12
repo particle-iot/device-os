@@ -115,6 +115,15 @@ volatile uint8_t SPARK_LED_FADE;
 
 volatile uint8_t Spark_Error_Count;
 
+static inline void Reset_Flash_Update(void)
+{
+  if (SPARK_FLASH_UPDATE)
+  {
+    SPARK_FLASH_UPDATE = 0;
+    TimingFlashUpdateTimeout = 0;
+    RGB.control(false);
+  }
+}
 
 void Set_NetApp_Timeout(void)
 {
@@ -177,11 +186,10 @@ void Start_Smart_Config(void)
 	WLAN_CONNECTED = 0;
 	WLAN_DHCP = 0;
 	WLAN_CAN_SHUTDOWN = 0;
-
 	SPARK_CLOUD_SOCKETED = 0;
 	SPARK_CLOUD_CONNECTED = 0;
-	SPARK_FLASH_UPDATE = 0;
 	SPARK_LED_FADE = 0;
+	Reset_Flash_Update();
 
 	LED_SetRGBColor(RGB_COLOR_BLUE);
 	LED_On(LED_RGB);
@@ -271,7 +279,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			WLAN_DHCP = 0;
 			SPARK_CLOUD_SOCKETED = 0;
 			SPARK_CLOUD_CONNECTED = 0;
-			SPARK_FLASH_UPDATE = 0;
+			Reset_Flash_Update();
 			SPARK_LED_FADE = 1;
                         LED_SetRGBColor(RGB_COLOR_BLUE);
                         LED_On(LED_RGB);
@@ -308,9 +316,9 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 		      set_socket_active_status(socket, SOCKET_STATUS_INACTIVE);
   		      if(socket == sparkSocket)
 		      {
-			SPARK_FLASH_UPDATE = 0;
 			SPARK_CLOUD_CONNECTED = 0;
 			SPARK_CLOUD_SOCKETED = 0;
+			Reset_Flash_Update();
  		      }
 		    break;
 	}
@@ -385,9 +393,9 @@ void SPARK_WLAN_Loop(void)
       SPARK_WLAN_STARTED = 0;
       SPARK_CLOUD_SOCKETED = 0;
       SPARK_CLOUD_CONNECTED = 0;
-      SPARK_FLASH_UPDATE = 0;
       Spark_Error_Count = 0;
       cfod_count = 0;
+      Reset_Flash_Update();
 
       WiFi.off();
     }
@@ -454,9 +462,9 @@ void SPARK_WLAN_Loop(void)
     {
       Spark_Disconnect();
 
-      SPARK_FLASH_UPDATE = 0;
       SPARK_CLOUD_CONNECTED = 0;
       SPARK_CLOUD_SOCKETED = 0;
+      Reset_Flash_Update();
 
       if(!WLAN_DISCONNECT)
       {

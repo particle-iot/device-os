@@ -26,6 +26,8 @@
  */
 #include "spark_utilities.h"
 #include "spark_wiring.h"
+#include "spark_wiring_network.h"
+#include "spark_flasher_ymodem.h"
 #include "socket.h"
 #include "netapp.h"
 #include "string.h"
@@ -123,6 +125,29 @@ System_Mode_TypeDef SystemClass::mode(void)
   return _mode;
 }
 
+void SystemClass::serialSaveFile(Stream *serialObj, uint32_t sFlashAddress)
+{
+  Serial_Flash_Update(serialObj, sFlashAddress);
+  SPARK_FLASH_UPDATE = 0;
+  TimingFlashUpdateTimeout = 0;
+}
+
+void SystemClass::serialFirmwareUpdate(Stream *serialObj)
+{
+  bool status = Serial_Flash_Update(serialObj, EXTERNAL_FLASH_OTA_ADDRESS);
+  if(status == true)
+  {
+    serialObj->println("Restarting system to apply firmware update...");
+    delay(100);
+    FLASH_End();
+  }
+  else
+  {
+    SPARK_FLASH_UPDATE = 0;
+    TimingFlashUpdateTimeout = 0;
+  }
+}
+
 void SystemClass::factoryReset(void)
 {
   //Work in Progress
@@ -179,11 +204,11 @@ void RGBClass::color(uint32_t rgb) {
 void RGBClass::color(int red, int green, int blue)
 {
 #if !defined (RGB_NOTIFICATIONS_ON)
-	if (true != _control)
-		return;
+        if (true != _control)
+                return;
 
-	LED_SetSignalingColor(red << 16 | green << 8 | blue);
-	LED_On(LED_RGB);
+        LED_SetSignalingColor(red << 16 | green << 8 | blue);
+        LED_On(LED_RGB);
 #endif
 }
 
@@ -607,24 +632,46 @@ int Spark_Receive(unsigned char *buf, int buflen)
   return bytes_received;
 }
 
+void Spark_Prepare_To_Save_File(unsigned int sFlashAddress, unsigned int fileSize)
+{
+  RGB.control(true);
+  RGB.color(RGB_COLOR_MAGENTA);
+  SPARK_FLASH_UPDATE = 2;
+  TimingFlashUpdateTimeout = 0;
+  FLASH_Begin(sFlashAddress, fileSize);
+}
+
 void Spark_Prepare_For_Firmware_Update(void)
 {
+  RGB.control(true);
+  RGB.color(RGB_COLOR_MAGENTA);
   SPARK_FLASH_UPDATE = 1;
   TimingFlashUpdateTimeout = 0;
-  FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS);
+  FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS, EXTERNAL_FLASH_BLOCK_SIZE);
 }
 
 void Spark_Finish_Firmware_Update(void)
 {
-  SPARK_FLASH_UPDATE = 0;
-  TimingFlashUpdateTimeout = 0;
-  FLASH_End();
+  if (SPARK_FLASH_UPDATE == 2)
+  {
+    SPARK_FLASH_UPDATE = 0;
+    TimingFlashUpdateTimeout = 0;
+  }
+  else
+  {
+    //Reset the system to complete the OTA update
+    FLASH_End();
+  }
+  RGB.control(false);
 }
 
 uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen)
 {
+  uint16_t chunkUpdatedIndex;
   TimingFlashUpdateTimeout = 0;
-  return FLASH_Update(buf, buflen);
+  chunkUpdatedIndex = FLASH_Update(buf, buflen);
+  LED_Toggle(LED_RGB);
+  return chunkUpdatedIndex;
 }
 
 int numUserFunctions(void)
@@ -680,6 +727,7 @@ void Spark_Protocol_Init(void)
     SparkCallbacks callbacks;
     callbacks.send = Spark_Send;
     callbacks.receive = Spark_Receive;
+    callbacks.prepare_to_save_file = Spark_Prepare_To_Save_File;
     callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
     callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
     callbacks.calculate_crc = Compute_CRC32;
