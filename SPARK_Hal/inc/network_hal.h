@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    timing_hal.h
+ * @file    network_hal.h
  * @author  Satish Nair
  * @version V1.0.0
  * @date    12-Sept-2014
@@ -24,8 +24,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __TIMING_HAL_H
-#define __TIMING_HAL_H
+#ifndef __NETWORK_HAL_H
+#define __NETWORK_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -37,4 +37,4 @@
 
 /* Exported functions --------------------------------------------------------*/
 
-#endif  /* __TIMING_HAL_H */
+#endif  /* __NETWORK_HAL_H */
