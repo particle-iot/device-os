@@ -45,14 +45,11 @@ CLOUD_FLASH_URL = https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token
 #       separate library.
 SRC_PATH = $(PROJECT_DIR)
 
-# ensure defined
-USRSRC += ""
+USRSRC += ""	# ensure defined
 
 # determine where user sources are, relative to project root
 ifdef APP
 USRSRC = applications/$(APP)/
-CPPFLAGS += -std=gnu++11
-
 ifndef TARGET
 TARGET ?= $(notdir $(APP))
 TARGETDIR ?= $(USRSRC)
@@ -61,7 +58,6 @@ endif
 
 ifdef TEST
 USRSRC = tests/$(TEST)/
-CPPFLAGS += -std=gnu++11
 ifndef TARGET
 TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
@@ -72,7 +68,7 @@ endif
 
 # user sources specified, so override application.cpp and pull in files from 
 # the user source folder
-ifneq ($(USRSRC),"")       
+ifneq ($(USRSRC),'')       
     NO_APPLICATION_CPP=1
     INCLUDE_DIRS += $(USRSRC)  # add user sources to include path
     # add C and CPP files 
@@ -101,14 +97,23 @@ INCLUDE_DIRS += $(LIB_CORE_LIBRARIES_PATH)Serial2
 # Additional include directories, applied to objects built for this target.
 # todo - delegate this to a include.mk file in each repo so include dirs are better
 # encapsulated by their owning repo
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/WLAN/CC3000/CC3000_Host_Driver
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/CMSIS/Include
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/CMSIS/Device/ST/Include
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/STM32_StdPeriph_Driver/inc
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/STM32_USB_Device_Driver/inc
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/SPARK_Firmware_Driver/inc
+
+# todo - these PLATFORM includes can be removed to see if the wiring layer is only dependent
+# on HAL
+# they are here now to make the build work while we transition
+PLATFORM=$(LIB_CORE_COMMON_PATH)SPARK_Platform/
+PLATFORM_MCU=$(PLATFORM)MCU/STM32F1xx/
+PLATFORM_WLAN=$(PLATFORM)WLAN/
+INCLUDE_DIRS += $(PLATFORM_MCU)CMSIS/Include
+INCLUDE_DIRS += $(PLATFORM_MCU)CMSIS/Device/ST/Include
+INCLUDE_DIRS += $(PLATFORM_MCU)SPARK_Firmware_Driver/inc
+INCLUDE_DIRS += $(PLATFORM_MCU)STM32_StdPeriph_Driver/inc
+INCLUDE_DIRS += $(PLATFORM_MCU)STM32_USB_Device_Driver/inc
+INCLUDE_DIRS += $(PLATFORM_WLAN)CC3000/CC3000_Host_Driver
+
+#INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)CC3000_Host_Driver
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_HAL/inc
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Hal/inc
 INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)lib/tropicssl/include
 INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)src
 
@@ -140,10 +145,10 @@ CFLAGS += -DRELEASE_BUILD
 endif
 
 # C++ specific flags
-CPPFLAGS += -fno-rtti -fno-exceptions
+CPPFLAGS = -fno-exceptions -fno-rtti 
 
 # Linker flags
-LDFLAGS += -T$(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/SPARK_Linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
+LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
 LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build -lcore-common-lib
 LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build -lcore-communication-lib
 LDFLAGS += -Wl,-Map,$(TARGETDIR)$(TARGET).map
@@ -215,10 +220,10 @@ $(TARGETDIR)$(TARGET).elf : check_external_deps $(ALLOBJ)
 #       will then always be rebuilt, ie. $(TARGET).elf
 check_external_deps:
 	@echo Building core-common-lib
-	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build $(MAKE_ARGS)
+#	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build $(MAKE_ARGS)
 	@echo
 	@echo Building core-communication-lib
-	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build $(MAKE_ARGS)
+#	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build $(MAKE_ARGS)
 	@echo
 
 # Tool invocations
@@ -256,10 +261,10 @@ clean:
 	@echo
 	@echo Clean core-common-lib
 # Should clean invoke clean on the dependant libs as well? Sure..
-	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build clean $(MAKE_ARGS)
+#	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build clean $(MAKE_ARGS)
 	@echo
 	@echo Clean core-communication-lib
-	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build clean $(MAKE_ARGS)
+#	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build clean $(MAKE_ARGS)
 	@echo
 
 .PHONY: all clean check_external_deps elf bin hex size program-dfu program-cloud
