@@ -4,7 +4,7 @@
 
  - Cloud: [Secure random seed](https://github.com/spark/core-communication-lib/pull/25). When the spark does a handshake with the cloud, it receives a random number that is set as a seed for `rand()` 
  - Wiring: Arduino-compatible `random()` and `randomSeed()` functions. [#289](https://github.com/spark/core-firmware/pull/289)
- - Wiring: Arduino-compatible functions like `isALpha()` and `toLowerCase()`. [#293](https://github.com/spark/core-firmware/pull/293)
+ - Wiring: Arduino-compatible functions like `isAlpha()` and `toLowerCase()`. [#293](https://github.com/spark/core-firmware/pull/293)
 
 ### ENHANCEMENTS
 
