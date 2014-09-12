@@ -37,8 +37,8 @@ SRC_MAKEFILES := $(call rwildcard,$(SRC_PATH)/,build.mk)
 include $(SRC_MAKEFILES)
 
 # Additional include directories, applied to objects built for this target.
-INCLUDE_DIRS += CMSIS/Include
-INCLUDE_DIRS += CMSIS/Device/ST/STM32F10x/Include
+INCLUDE_DIRS += SPARK_Platform/MCU/STM32F1xx/CMSIS/Include
+INCLUDE_DIRS += SPARK_Platform/MCU/STM32F1xx/CMSIS/Device/ST/Include
 
 # Compiler flags
 CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 
@@ -64,6 +64,10 @@ endif
 
 # C++ specific flags
 CPPFLAGS = -fno-exceptions -fno-rtti
+
+# Assembler flags
+ASFLAGS =  -g3 -gdwarf-2 -mcpu=cortex-m3 -mthumb 
+ASFLAGS += -x assembler-with-cpp -fmessage-length=0
 
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
@@ -95,6 +99,14 @@ $(BUILD_PATH)/%.o : $(SRC_PATH)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 	@echo
 
+# Assember to build .o from .S in $(BUILD_DIR)
+$(BUILD_PATH)%.o : $(SRC_PATH)%.S
+	@echo Building file: $<
+	@echo Invoking: ARM GCC Assembler
+	$(MKDIR) $(dir $@)
+	$(CC) $(ASFLAGS) -c -o $@ $<
+	@echo
+	
 # CPP compiler to build .o from .cpp in $(BUILD_DIR)
 # Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
 $(BUILD_PATH)/%.o : $(SRC_PATH)/%.cpp
