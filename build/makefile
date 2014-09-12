@@ -100,7 +100,7 @@ $(BUILD_PATH)/%.o : $(SRC_PATH)/%.c
 	@echo
 
 # Assember to build .o from .S in $(BUILD_DIR)
-$(BUILD_PATH)%.o : $(SRC_PATH)%.S
+$(BUILD_PATH)/%.o : $(SRC_PATH)/%.S
 	@echo Building file: $<
 	@echo Invoking: ARM GCC Assembler
 	$(MKDIR) $(dir $@)
