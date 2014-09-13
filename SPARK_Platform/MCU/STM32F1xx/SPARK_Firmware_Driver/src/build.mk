@@ -28,5 +28,6 @@ CSRC += $(TARGET_SPARK_SRC_PATH)/usb_pwr.c
 CPPSRC +=
 
 # ASM source files included in this build.
-ASRC += $(TARGET_SPARK_SRC_PATH)/startup_stm32f10x_md.S
+ASRC +=
+
 
