@@ -53,7 +53,4 @@
 //#define NULL ((void *)0)
 #define NONE ((uint8_t)0xFF)
 
-
-
 #endif	/* SPARK_WIRING_CONSTANTS_H */
-

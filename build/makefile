@@ -82,6 +82,7 @@ TARGETDIR ?=
 
 # Find all build.mk makefiles in each source directory in the src tree.
 SRC_MAKEFILES := $(call rwildcard,$(SRC_PATH)src,build.mk)
+SRC_MAKEFILES += $(call rwildcard,$(SRC_PATH)hal,build.mk)
 
 # Include all build.mk defines source files.
 include $(SRC_MAKEFILES)
@@ -90,9 +91,13 @@ include $(SRC_MAKEFILES)
 LIB_CORE_COMMON_PATH = ../core-common-lib/
 LIB_CORE_COMMUNICATION_PATH = ../core-communication-lib/
 LIB_CORE_LIBRARIES_PATH = libraries/
+LIB_CORE_HAL_PATH = hal/
 
 # Include directories for optional "libraries" (eg. Serial2.h)
 INCLUDE_DIRS += $(LIB_CORE_LIBRARIES_PATH)Serial2
+
+# Include directories for standard "libraries" (eg. hal, services, communication)
+INCLUDE_DIRS += $(LIB_CORE_HAL_PATH)inc
 
 # Additional include directories, applied to objects built for this target.
 # todo - delegate this to a include.mk file in each repo so include dirs are better
@@ -101,9 +106,11 @@ INCLUDE_DIRS += $(LIB_CORE_LIBRARIES_PATH)Serial2
 # todo - these PLATFORM includes can be removed to see if the wiring layer is only dependent
 # on HAL
 # they are here now to make the build work while we transition
+
 PLATFORM=$(LIB_CORE_COMMON_PATH)SPARK_Platform/
 PLATFORM_MCU=$(PLATFORM)MCU/STM32F1xx/
 PLATFORM_WLAN=$(PLATFORM)WLAN/
+
 INCLUDE_DIRS += $(PLATFORM_MCU)CMSIS/Include
 INCLUDE_DIRS += $(PLATFORM_MCU)CMSIS/Device/ST/Include
 INCLUDE_DIRS += $(PLATFORM_MCU)SPARK_Firmware_Driver/inc
@@ -116,6 +123,7 @@ INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_HAL/inc
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
 INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)lib/tropicssl/include
 INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)src
+
 
 # Compiler flags
 CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 
