@@ -228,10 +228,10 @@ $(TARGETDIR)$(TARGET).elf : check_external_deps $(ALLOBJ)
 #       will then always be rebuilt, ie. $(TARGET).elf
 check_external_deps:
 	@echo Building core-common-lib
-#	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build $(MAKE_ARGS)
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build $(MAKE_ARGS)
 	@echo
 	@echo Building core-communication-lib
-#	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build $(MAKE_ARGS)
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build $(MAKE_ARGS)
 	@echo
 
 # Tool invocations
