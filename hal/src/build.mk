@@ -13,6 +13,7 @@ INCLUDE_DIRS += $(TARGET_SPARK_HAL_PATH)/inc
 CSRC += $(TARGET_HAL_SRC_PATH)/pinmap_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/gpio_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/adc_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/pwm_hal.c
 
 # C++ source files included in this build.
 CPPSRC +=

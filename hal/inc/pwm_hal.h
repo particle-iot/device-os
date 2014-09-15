@@ -28,7 +28,8 @@
 #define __PWM_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
-
+#include "pinmap_hal.h"
+ 
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/
@@ -41,7 +42,7 @@
 extern "C" {
 #endif
 
-
+void HAL_PWM_Write(uint16_t pin, uint8_t value);
 
 #ifdef __cplusplus
 }
