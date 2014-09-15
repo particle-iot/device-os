@@ -45,7 +45,7 @@ CLOUD_FLASH_URL = https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token
 #       separate library.
 SRC_PATH = $(PROJECT_DIR)
 
-USRSRC += ""	# ensure defined
+USRSRC += ""
 
 # determine where user sources are, relative to project root
 ifdef APP
@@ -68,7 +68,7 @@ endif
 
 # user sources specified, so override application.cpp and pull in files from 
 # the user source folder
-ifneq ($(USRSRC),'')       
+ifneq ($(USRSRC),"")       
     NO_APPLICATION_CPP=1
     INCLUDE_DIRS += $(USRSRC)  # add user sources to include path
     # add C and CPP files 
@@ -269,10 +269,10 @@ clean:
 	@echo
 	@echo Clean core-common-lib
 # Should clean invoke clean on the dependant libs as well? Sure..
-#	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build clean $(MAKE_ARGS)
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build clean $(MAKE_ARGS)
 	@echo
 	@echo Clean core-communication-lib
-#	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build clean $(MAKE_ARGS)
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build clean $(MAKE_ARGS)
 	@echo
 
 .PHONY: all clean check_external_deps elf bin hex size program-dfu program-cloud
