@@ -1,7 +1,8 @@
 /**
  ******************************************************************************
  * @file    spark_wiring.cpp
- * @author  Satish Nair, Zachary Crockett, Zach Supalla and Mohit Bhoite
+ * @authors Satish Nair, Zachary Crockett, Zach Supalla, Mohit Bhoite and
+ *          Brett Walach
  * @version V1.0.0
  * @date    13-March-2013
  * @brief   
@@ -209,7 +210,7 @@ system_tick_t millis(void)
  */
 unsigned long micros(void)
 {
-  return (DWT->CYCCNT / SYSTEM_US_TICKS);
+  return HAL_Micro_Seconds();
 }
 
 /*

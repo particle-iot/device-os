@@ -28,6 +28,7 @@
 #define __TIMER_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
+#include "timer_hal.h"
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -36,5 +37,15 @@
 /* Exported macros -----------------------------------------------------------*/
 
 /* Exported functions --------------------------------------------------------*/
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+unsigned long HAL_Micro_Seconds(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  /* __TIMER_HAL_H */

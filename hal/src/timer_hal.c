@@ -24,7 +24,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include "timer_hal.h"
+#include "hw_config.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -38,12 +38,10 @@
 
 /* Private function prototypes -----------------------------------------------*/
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
-#ifdef __cplusplus
+/*
+ * @brief Should return the number of microseconds since the processor started up.
+ */
+unsigned long HAL_Micro_Seconds(void)
+{
+  return (DWT->CYCCNT / SYSTEM_US_TICKS);
 }
-#endif

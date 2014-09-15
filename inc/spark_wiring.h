@@ -30,6 +30,7 @@
 #include "gpio_hal.h"
 #include "adc_hal.h"
 #include "pwm_hal.h"
+#include "timer_hal.h"
 #include "config.h"
 #include "spark_macros.h"
 #include "debug.h"
