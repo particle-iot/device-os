@@ -24,26 +24,27 @@
   ******************************************************************************
  */
 
+/* Includes ------------------------------------------------------------------*/
 #include "spark_wiring.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_usartserial.h"
 #include "spark_wiring_spi.h"
 #include "spark_wiring_i2c.h"
 
-
 /*
- * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, or INPUT_PULLDOWN
+ * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, 
+ * or INPUT_PULLDOWN
  */
 void pinMode(uint16_t pin, PinMode setMode)
 {
 
-  if (pin >= TOTAL_PINS || setMode == NONE )
+  if(pin >= TOTAL_PINS || setMode == NONE )
   {
     return;
   }
 
   // Safety check
-  if ( !pinAvailable(pin) ) {
+  if( !pinAvailable(pin) ) {
     return;
   }
 
@@ -57,19 +58,19 @@ void pinMode(uint16_t pin, PinMode setMode)
 bool pinAvailable(uint16_t pin) {
 
   // SPI safety check
-  if (SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+  if(SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
   {
     return 0; // 'pin' is used
   }
 
   // I2C safety check
-  if (Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+  if(Wire.isEnabled() == true && (pin == SCL || pin == SDA))
   {
     return 0; // 'pin' is used
   }
 
   // Serial1 safety check
-  if (Serial1.isEnabled() == true && (pin == RX || pin == TX))
+  if(Serial1.isEnabled() == true && (pin == RX || pin == TX))
   {
     return 0; // 'pin' is used
   }
@@ -82,15 +83,17 @@ bool pinAvailable(uint16_t pin) {
  */
 void digitalWrite(uint16_t pin, uint8_t value)
 {
-  if (pin >= TOTAL_PINS || PIN_MAP[pin].pin_mode == INPUT
-  || PIN_MAP[pin].pin_mode == INPUT_PULLUP || PIN_MAP[pin].pin_mode == INPUT_PULLDOWN
-  || PIN_MAP[pin].pin_mode == AN_INPUT || PIN_MAP[pin].pin_mode == NONE)
+  if(pin >= TOTAL_PINS || PIN_MAP[pin].pin_mode == INPUT || 
+     PIN_MAP[pin].pin_mode == INPUT_PULLUP || 
+     PIN_MAP[pin].pin_mode == INPUT_PULLDOWN || 
+     PIN_MAP[pin].pin_mode == AN_INPUT || 
+     PIN_MAP[pin].pin_mode == NONE)
   {
     return;
   }
 
   // Safety check
-  if ( !pinAvailable(pin) ) {
+  if( !pinAvailable(pin) ) {
     return;
   }
 
@@ -102,7 +105,7 @@ void digitalWrite(uint16_t pin, uint8_t value)
  */
 int32_t digitalRead(uint16_t pin)
 {
-  if (pin >= TOTAL_PINS || 
+  if( pin >= TOTAL_PINS || 
       PIN_MAP[pin].pin_mode == NONE || 
       PIN_MAP[pin].pin_mode == AF_OUTPUT_PUSHPULL || 
       PIN_MAP[pin].pin_mode == AF_OUTPUT_DRAIN)
@@ -111,7 +114,7 @@ int32_t digitalRead(uint16_t pin)
   }
 
   // Safety check
-  if ( !pinAvailable(pin) ) {
+  if( !pinAvailable(pin) ) {
     return LOW;
   }
 
@@ -146,17 +149,17 @@ void setADCSampleTime(uint8_t ADC_SampleTime)
 int32_t analogRead(uint16_t pin)
 {
   // Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
-  if (pin < FIRST_ANALOG_PIN)
+  if(pin < FIRST_ANALOG_PIN)
   {
     pin = pin + FIRST_ANALOG_PIN;
   }
 
   // Safety check
-  if ( !pinAvailable(pin) ) {
+  if( !pinAvailable(pin) ) {
     return LOW;
   }
 
-  if (pin >= TOTAL_PINS || PIN_MAP[pin].adc_channel == NONE )
+  if(pin >= TOTAL_PINS || PIN_MAP[pin].adc_channel == NONE )
   {
     return LOW;
   }
@@ -172,13 +175,13 @@ int32_t analogRead(uint16_t pin)
 void analogWrite(uint16_t pin, uint8_t value)
 {
 
-  if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
+  if(pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
   {
     return;
   }
 
   // Safety check
-  if ( !pinAvailable(pin) ) {
+  if( !pinAvailable(pin) ) {
     return;
   }
 
@@ -202,7 +205,7 @@ void analogWrite(uint16_t pin, uint8_t value)
  */
 system_tick_t millis(void)
 {
-    return GetSystem1MsTick();
+  return GetSystem1MsTick();
 }
 
 /*
@@ -227,7 +230,7 @@ void delay(unsigned long ms)
 
   while (1)
   {
-          KICK_WDT();
+    KICK_WDT();
 
     volatile system_tick_t current_millis = GetSystem1MsTick();
     volatile long elapsed_millis = current_millis - last_millis;
@@ -273,7 +276,7 @@ void delayMicroseconds(unsigned int us)
 
 long map(long value, long fromStart, long fromEnd, long toStart, long toEnd)
 {
-    return (value - fromStart) * (toEnd - toStart) / (fromEnd - fromStart) + toStart;
+  return (value - fromStart) * (toEnd - toStart) / (fromEnd - fromStart) + toStart;
 }
 
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder) {
