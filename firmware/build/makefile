@@ -82,7 +82,6 @@ TARGETDIR ?=
 
 # Find all build.mk makefiles in each source directory in the src tree.
 SRC_MAKEFILES := $(call rwildcard,$(SRC_PATH)src,build.mk)
-SRC_MAKEFILES += $(call rwildcard,$(SRC_PATH)hal,build.mk)
 
 # Include all build.mk defines source files.
 include $(SRC_MAKEFILES)
@@ -91,13 +90,9 @@ include $(SRC_MAKEFILES)
 LIB_CORE_COMMON_PATH = ../common/
 LIB_CORE_COMMUNICATION_PATH = ../communication/
 LIB_CORE_LIBRARIES_PATH = libraries/
-LIB_CORE_HAL_PATH = hal/
 
 # Include directories for optional "libraries" (eg. Serial2.h)
 INCLUDE_DIRS += $(LIB_CORE_LIBRARIES_PATH)Serial2
-
-# Include directories for standard "libraries" (eg. hal, services, communication)
-INCLUDE_DIRS += $(LIB_CORE_HAL_PATH)inc
 
 # Additional include directories, applied to objects built for this target.
 # todo - delegate this to a include.mk file in each repo so include dirs are better
