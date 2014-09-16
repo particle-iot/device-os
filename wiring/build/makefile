@@ -45,11 +45,14 @@ CLOUD_FLASH_URL = https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token
 #       separate library.
 SRC_PATH = $(PROJECT_DIR)
 
+# ensure defined
 USRSRC += ""
 
 # determine where user sources are, relative to project root
 ifdef APP
 USRSRC = applications/$(APP)/
+CPPFLAGS += -std=gnu++11
+
 ifndef TARGET
 TARGET ?= $(notdir $(APP))
 TARGETDIR ?= $(USRSRC)
@@ -58,6 +61,7 @@ endif
 
 ifdef TEST
 USRSRC = tests/$(TEST)/
+CPPFLAGS += -std=gnu++11
 ifndef TARGET
 TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
