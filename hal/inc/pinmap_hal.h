@@ -29,6 +29,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x.h"
+#include <stdbool.h>
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -81,7 +82,9 @@ extern STM32_Pin_Info PIN_MAP[];
 #define LOW  0x0
 */
 
+/*
 #define boolean bool
+*/
 
 //#define NULL ((void *)0)
 #ifndef NULL
@@ -89,6 +92,7 @@ extern STM32_Pin_Info PIN_MAP[];
 #endif
 #define NONE ((uint8_t)0xFF)
 
+/*
 #ifndef false
   #define false 0
 #endif
@@ -96,6 +100,7 @@ extern STM32_Pin_Info PIN_MAP[];
 #ifndef true
   #define true  (!false)
 #endif
+*/
 
 /*
 * Pin mapping. Borrowed from Wiring
