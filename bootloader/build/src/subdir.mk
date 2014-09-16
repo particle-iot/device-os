@@ -30,12 +30,17 @@ C_DEPS += \
 ./src/usb_istr.d \
 ./src/usb_prop.d 
 
+PLATFORM=../../common/SPARK_Platform/
+SERVICES=../../common/SPARK_Services/
+HAL=../../common/SPARK_Hal/
+PLATFORM_MCU=$(PLATFORM)MCU/STM32F1xx/
+PLATFORM_CC3000=$(PLATFORM)WLAN/CC3000_Host_Driver
 
 # Each subdirectory must supply rules for building sources it contributes
 src/%.o: ../src/%.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: ARM Sourcery Windows GCC C Compiler'
-	arm-none-eabi-gcc -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD -I"../../core-common-lib/CMSIS/Include" -I"../../core-common-lib/CMSIS/Device/ST/STM32F10x/Include" -I"../../core-common-lib/STM32F10x_StdPeriph_Driver/inc" -I"../../core-common-lib/STM32_USB-FS-Device_Driver/inc" -I"../../core-common-lib/CC3000_Host_Driver" -I"../../core-common-lib/SPARK_Firmware_Driver/inc" -I"../inc" -Os -ffunction-sections -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "$@" "$<"
+	arm-none-eabi-gcc -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD -I"../inc" -I"$(PLATFORM_MCU)CMSIS/Include" -I"$(PLATFORM_MCU)CMSIS/Device/ST/Include" -I"$(PLATFORM_MCU)STM32_StdPeriph_Driver/inc" -I"$(PLATFORM_MCU)STM32_USB_Device_Driver/inc" -I"$(PLATFORM_CC3000)CC3000_Host_Driver" -I"$(PLATFORM_MCU)SPARK_Firmware_Driver/inc" -I"$(SERVICES)/inc" -I"$(HAL)/inc" -Os -ffunction-sections -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m3 -mthumb -g3 -gdwarf-2 -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

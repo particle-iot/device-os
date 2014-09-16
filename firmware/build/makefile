@@ -88,8 +88,8 @@ SRC_MAKEFILES += $(call rwildcard,$(SRC_PATH)hal,build.mk)
 include $(SRC_MAKEFILES)
 
 # Paths to dependent projects, referenced from root of this project
-LIB_CORE_COMMON_PATH = ../core-common-lib/
-LIB_CORE_COMMUNICATION_PATH = ../core-communication-lib/
+LIB_CORE_COMMON_PATH = ../common/
+LIB_CORE_COMMUNICATION_PATH = ../communication/
 LIB_CORE_LIBRARIES_PATH = libraries/
 LIB_CORE_HAL_PATH = hal/
 
@@ -227,10 +227,10 @@ $(TARGETDIR)$(TARGET).elf : check_external_deps $(ALLOBJ)
 #       every build. Targets which depend directly on this recipie
 #       will then always be rebuilt, ie. $(TARGET).elf
 check_external_deps:
-	@echo Building core-common-lib
+	@echo Building common-lib
 	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build $(MAKE_ARGS)
 	@echo
-	@echo Building core-communication-lib
+	@echo Building communication-lib
 	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build $(MAKE_ARGS)
 	@echo
 
@@ -267,11 +267,11 @@ clean:
 	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGETDIR)$(TARGET).elf $(TARGETDIR)$(TARGET).bin $(TARGETDIR)$(TARGET).hex $(TARGETDIR)$(TARGET).map
 	$(RMDIR) $(BUILD_PATH)
 	@echo
-	@echo Clean core-common-lib
+	@echo Clean common-lib
 # Should clean invoke clean on the dependant libs as well? Sure..
 	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build clean $(MAKE_ARGS)
 	@echo
-	@echo Clean core-communication-lib
+	@echo Clean communication-lib
 	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build clean $(MAKE_ARGS)
 	@echo
 
