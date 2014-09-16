@@ -46,3 +46,4 @@ libraries/Arduino/
 # TropicSSL libraries
 libraries/Tropicssl/
 ci/test-reports/
+nbproject/
