@@ -46,3 +46,11 @@ unsigned long HAL_Micro_Seconds(void)
 {
   return (DWT->CYCCNT / SYSTEM_US_TICKS);
 }
+
+/*
+ * @brief Should return the number of milliseconds since the processor started up.
+ */
+unsigned long HAL_Milli_Seconds(void)
+{
+  return GetSystem1MsTick();
+}

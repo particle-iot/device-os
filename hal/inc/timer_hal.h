@@ -42,6 +42,7 @@ extern "C" {
 #endif
 
 unsigned long HAL_Micro_Seconds(void);
+unsigned long HAL_Milli_Seconds(void);
 
 #ifdef __cplusplus
 }
