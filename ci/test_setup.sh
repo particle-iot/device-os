@@ -11,7 +11,7 @@ export build=$ci_dir/../wiring/build
 export target=core-firmware.bin
 export events=$ci_dir/events.log
 export target=core-firmware
-export target_file=$build/$target.bin
+export target_file=$target.bin
 export testDir=$ci_dir/../wiring/tests
 
 # directory for the test reports
