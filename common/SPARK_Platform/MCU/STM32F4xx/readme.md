@@ -1,0 +1,1 @@
+This folder contains STM32F4 devices vendor supplied libraries
