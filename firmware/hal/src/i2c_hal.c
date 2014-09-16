@@ -26,6 +26,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "i2c_hal.h"
 #include "gpio_hal.h"
+#include "timer_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -341,12 +342,12 @@ uint32_t HAL_I2C_Write_Data(uint8_t data)
   return 1;
 }
 
-uint32_t HAL_I2C_Available_Data(void)
+int32_t HAL_I2C_Available_Data(void)
 {
   return rxBufferLength - rxBufferIndex;
 }
 
-uint32_t HAL_I2C_Read_Data(void)
+int32_t HAL_I2C_Read_Data(void)
 {
   int value = -1;
 
@@ -359,7 +360,7 @@ uint32_t HAL_I2C_Read_Data(void)
   return value;
 }
 
-uint32_t HAL_I2C_Peek_Data(void)
+int32_t HAL_I2C_Peek_Data(void)
 {
   int value = -1;
 
