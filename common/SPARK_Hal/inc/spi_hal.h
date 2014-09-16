@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    i2c_hal.h
+ * @file    spi_hal.h
  * @author  Satish Nair, Brett Walach
  * @version V1.0.0
  * @date    12-Sept-2014
@@ -24,23 +24,30 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __I2C_HAL_H
-#define __I2C_HAL_H
+#ifndef __SPI_HAL_H
+#define __SPI_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
 
 /* Exported types ------------------------------------------------------------*/
-typedef enum
-{
-  I2C_MODE_MASTER = 0, I2C_MODE_SLAVE = 1
-} I2C_Mode;
 
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
-#define CLOCK_SPEED_100KHZ      (uint32_t)100000
-#define CLOCK_SPEED_400KHZ      (uint32_t)400000
+#define SPI_MODE0               0x00
+#define SPI_MODE1               0x01
+#define SPI_MODE2               0x02
+#define SPI_MODE3               0x03
+
+#define SPI_CLOCK_DIV2          SPI_BaudRatePrescaler_2
+#define SPI_CLOCK_DIV4          SPI_BaudRatePrescaler_4
+#define SPI_CLOCK_DIV8          SPI_BaudRatePrescaler_8
+#define SPI_CLOCK_DIV16         SPI_BaudRatePrescaler_16
+#define SPI_CLOCK_DIV32         SPI_BaudRatePrescaler_32
+#define SPI_CLOCK_DIV64         SPI_BaudRatePrescaler_64
+#define SPI_CLOCK_DIV128        SPI_BaudRatePrescaler_128
+#define SPI_CLOCK_DIV256        SPI_BaudRatePrescaler_256
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -48,26 +55,16 @@ typedef enum
 extern "C" {
 #endif
 
-void HAL_I2C_Set_Speed(uint32_t speed);
-void HAL_I2C_Stretch_Clock(bool stretch);
-void HAL_I2C_Begin(I2C_Mode mode, uint8_t address);
-void HAL_I2C_End(void);
-uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop);
-void HAL_I2C_Begin_Transmission(uint8_t address);
-uint8_t HAL_I2C_End_Transmission(uint8_t stop);
-uint32_t HAL_I2C_Write_Data(uint8_t data);
-int32_t HAL_I2C_Available_Data(void);
-int32_t HAL_I2C_Read_Data(void);
-int32_t HAL_I2C_Peek_Data(void);
-void HAL_I2C_Flush_Data(void);
-bool HAL_I2C_Is_Enabled(void);
-void HAL_I2C_Set_Callback_On_Receive(void (*function)(int));
-void HAL_I2C_Set_Callback_On_Request(void (*function)(void));
-void HAL_I2C1_EV_Interrupt_Handler(void);
-void HAL_I2C1_ER_Interrupt_Handler(void);
+void HAL_SPI_Begin(uint16_t pin);
+void HAL_SPI_End(void);
+void HAL_SPI_Set_Bit_Order(uint8_t order);
+void HAL_SPI_Set_Data_Mode(uint8_t mode);
+void HAL_SPI_Set_Clock_Divider(uint8_t rate);
+uint16_t HAL_SPI_Send_Receive_Data(uint16_t data);
+bool HAL_SPI_Is_Enabled(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  /* __I2C_HAL_H */
+#endif  /* __SPI_HAL_H */

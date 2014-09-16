@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    i2c_hal.h
+ * @file    eeprom_hal.h
  * @author  Satish Nair, Brett Walach
  * @version V1.0.0
  * @date    12-Sept-2014
@@ -24,23 +24,26 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __I2C_HAL_H
-#define __I2C_HAL_H
+#ifndef __EEPROM_HAL_H
+#define __EEPROM_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "pinmap_hal.h"
+#include "stm32f10x.h"
 
 /* Exported types ------------------------------------------------------------*/
-typedef enum
-{
-  I2C_MODE_MASTER = 0, I2C_MODE_SLAVE = 1
-} I2C_Mode;
 
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
-#define CLOCK_SPEED_100KHZ      (uint32_t)100000
-#define CLOCK_SPEED_400KHZ      (uint32_t)400000
+/* Internal Flash Page size = 1KByte */
+#define PAGE_SIZE               (uint16_t)0x400
+/* EEPROM emulation start address in Flash (just after the write protected bootloader program space) */
+#define EEPROM_START_ADDRESS    ((uint32_t)0x08004000)
+/* EEPROM Emulation Size */
+#define EEPROM_SIZE             ((uint8_t)0x64)       /* 100 bytes (Max 255/0xFF bytes) */
+
+/* Extern variables ----------------------------------------------------------*/
+extern uint16_t EepromAddressTab[];
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -48,26 +51,12 @@ typedef enum
 extern "C" {
 #endif
 
-void HAL_I2C_Set_Speed(uint32_t speed);
-void HAL_I2C_Stretch_Clock(bool stretch);
-void HAL_I2C_Begin(I2C_Mode mode, uint8_t address);
-void HAL_I2C_End(void);
-uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop);
-void HAL_I2C_Begin_Transmission(uint8_t address);
-uint8_t HAL_I2C_End_Transmission(uint8_t stop);
-uint32_t HAL_I2C_Write_Data(uint8_t data);
-int32_t HAL_I2C_Available_Data(void);
-int32_t HAL_I2C_Read_Data(void);
-int32_t HAL_I2C_Peek_Data(void);
-void HAL_I2C_Flush_Data(void);
-bool HAL_I2C_Is_Enabled(void);
-void HAL_I2C_Set_Callback_On_Receive(void (*function)(int));
-void HAL_I2C_Set_Callback_On_Request(void (*function)(void));
-void HAL_I2C1_EV_Interrupt_Handler(void);
-void HAL_I2C1_ER_Interrupt_Handler(void);
+uint16_t HAL_EEPROM_Init(void);
+uint16_t HAL_EEPROM_Read_Variable(uint16_t EepromAddress, uint16_t *EepromData);
+uint16_t HAL_EEPROM_Write_Variable(uint16_t EepromAddress, uint16_t EepromData);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  /* __I2C_HAL_H */
+#endif  /* __EEPROM_HAL_H */
