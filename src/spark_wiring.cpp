@@ -118,8 +118,7 @@ int32_t digitalRead(uint16_t pin)
     return LOW;
   }
 
-  int32_t rv = HAL_GPIO_Read(pin);
-  return rv;
+  return HAL_GPIO_Read(pin);
 }
 
 /*
@@ -164,8 +163,7 @@ int32_t analogRead(uint16_t pin)
     return LOW;
   }
 
-  int32_t rv = HAL_ADC_Read(pin);
-  return rv;
+  return HAL_ADC_Read(pin);
 }
 
 /*
