@@ -21,173 +21,77 @@
 
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
-  ******************************************************************************
+ ******************************************************************************
  */
 
 #include "spark_wiring_spi.h"
+#include "spi_hal.h"
 
 SPIClass SPI;
 
-SPI_InitTypeDef SPIClass::SPI_InitStructure;
-bool SPIClass::SPI_Bit_Order_Set = false;
-bool SPIClass::SPI_Data_Mode_Set = false;
-bool SPIClass::SPI_Clock_Divider_Set = false;
-bool SPIClass::SPI_Enabled = false;
-
-void SPIClass::begin() {
-	begin(SS);
+void SPIClass::begin()
+{
+  begin(SS);
 }
 
-void SPIClass::begin(uint16_t ss_pin) {
-	if (ss_pin >= TOTAL_PINS )
-	{
-		return;
-	}
+void SPIClass::begin(uint16_t ss_pin)
+{
+  if (ss_pin >= TOTAL_PINS )
+  {
+    return;
+  }
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
-
-	pinMode(SCK, AF_OUTPUT_PUSHPULL);
-	pinMode(MOSI, AF_OUTPUT_PUSHPULL);
-	pinMode(MISO, INPUT);
-
-	pinMode(ss_pin, OUTPUT);
-	digitalWrite(ss_pin, HIGH);
-
-	/* SPI configuration */
-	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
-	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
-	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
-	if(SPI_Data_Mode_Set != true)
-	{
-		//Default: SPI_MODE3
-		SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-		SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
-	}
-	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-	if(SPI_Clock_Divider_Set != true)
-	{
-		SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;
-	}
-	if(SPI_Bit_Order_Set != true)
-	{
-		//Default: MSBFIRST
-		SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
-	}
-	SPI_InitStructure.SPI_CRCPolynomial = 7;
-
-	SPI_Init(SPI1, &SPI_InitStructure);
-
-	SPI_Cmd(SPI1, ENABLE);
-
-	SPI_Enabled = true;
+  HAL_SPI_Begin(ss_pin);
 }
 
-void SPIClass::end() {
-	if(SPI_Enabled != false)
-	{
-		SPI_Cmd(SPI1, DISABLE);
-
-		SPI_Enabled = false;
-	}
+void SPIClass::end()
+{
+  HAL_SPI_End();
 }
 
 void SPIClass::setBitOrder(uint8_t bitOrder)
 {
-	if(bitOrder == LSBFIRST)
-	{
-		SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_LSB;
-	}
-	else
-	{
-		SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
-	}
-
-	SPI_Init(SPI1, &SPI_InitStructure);
-
-	SPI_Bit_Order_Set = true;
+  HAL_SPI_Set_Bit_Order(bitOrder);
 }
 
 void SPIClass::setDataMode(uint8_t mode)
 {
-	if(SPI_Enabled != false)
-	{
-		SPI_Cmd(SPI1, DISABLE);
-	}
-
-	switch(mode)
-	{
-	case SPI_MODE0:
-		SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
-		SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
-		break;
-
-	case SPI_MODE1:
-		SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
-		SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
-		break;
-
-	case SPI_MODE2:
-		SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-		SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
-		break;
-
-	case SPI_MODE3:
-		SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-		SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
-		break;
-	}
-
-	SPI_Init(SPI1, &SPI_InitStructure);
-
-	if(SPI_Enabled != false)
-	{
-		SPI_Cmd(SPI1, ENABLE);
-	}
-
-	SPI_Data_Mode_Set = true;
+  HAL_SPI_Set_Data_Mode(mode);
 }
 
 void SPIClass::setClockDivider(uint8_t rate)
 {
-	SPI_InitStructure.SPI_BaudRatePrescaler = rate;
-
-	SPI_Init(SPI1, &SPI_InitStructure);
-
-	SPI_Clock_Divider_Set = true;
+  HAL_SPI_Set_Clock_Divider(rate);
 }
 
-byte SPIClass::transfer(byte _data) {
-	/* Wait for SPI1 Tx buffer empty */
-	while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET);
-	/* Send SPI1 data */
-	SPI_I2S_SendData(SPI1, _data);
-
-	/* Wait for SPI1 data reception */
-	while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);
-	/* Read and return SPI1 received data */
-	return SPI_I2S_ReceiveData(SPI1);
+byte SPIClass::transfer(byte _data)
+{
+  return HAL_SPI_Send_Receive_Data(_data);
 }
 
-void SPIClass::attachInterrupt() {
-	//To Do
+void SPIClass::attachInterrupt()
+{
+  //To Do
 }
 
-void SPIClass::detachInterrupt() {
-	//To Do
+void SPIClass::detachInterrupt()
+{
+  //To Do
 }
 
-bool SPIClass::isEnabled() {
-	return SPI_Enabled;
+bool SPIClass::isEnabled()
+{
+  return HAL_SPI_Is_Enabled();
 }
 
 /*******************************************************************************
-* Function Name  : Wiring_SPI1_Interrupt_Handler (Declared as weak in stm32_it.cpp)
-* Description    : This function handles SPI1 global interrupt request.
-* Input          : None.
-* Output         : None.
-* Return         : None.
-*******************************************************************************/
+ * Function Name  : Wiring_SPI1_Interrupt_Handler (Declared as weak in stm32_it.cpp)
+ * Description    : This function handles SPI1 global interrupt request.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
 void Wiring_SPI1_Interrupt_Handler(void)
 {
-	//To Do
+  //To Do
 }
