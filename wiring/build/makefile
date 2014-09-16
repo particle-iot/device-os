@@ -52,7 +52,6 @@ USRSRC += ""
 ifdef APP
 USRSRC = applications/$(APP)/
 CPPFLAGS += -std=gnu++11
-
 ifndef TARGET
 TARGET ?= $(notdir $(APP))
 TARGETDIR ?= $(USRSRC)
@@ -152,7 +151,7 @@ CFLAGS += -DRELEASE_BUILD
 endif
 
 # C++ specific flags
-CPPFLAGS = -fno-exceptions -fno-rtti 
+CPPFLAGS += -fno-exceptions -fno-rtti 
 
 # Linker flags
 LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 

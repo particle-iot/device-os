@@ -1,31 +1,44 @@
 digraph dependencies {
-	size="6,6";
+	size="600,600";
 	node [color=lightblue2, style=filled];
 
 # bootloader is coded directly to the platform it targets and pulls in some
 # hardware neutral code (presently LED control)
-"bootloader" -> "platform/<device>";
-"bootloader" -> "services";
+"bootloader/core-v1" -> "platform/core-v1";
+"bootloader/core-v1" -> "services";
 
-"wiring" -> "hal";
-
+"bootloader/core-v2" -> "platform/core-v2";
+"bootloader/core-v2" -> "services";
 
 # compile binary for STM32
-"main/arm" -> "wiring";
-"main/arm" -> "communication";
-"main/arm" -> "services";
-"main/arm" -> "hal/<device>";
+"main/core-v1" -> "wiring";
+"main/core-v1" -> "communication";
+"main/core-v1" -> "services";
+"main/core-v1" -> "hal/core-v1";
+
+"main/core-v2" -> "wiring";
+"main/core-v2" -> "communication";
+"main/core-v2" -> "services";
+"main/core-v2" -> "hal/core-v2";
 
 "main/gcc" -> "wiring";
 "main/gcc" -> "communication";
 "main/gcc" -> "services";
 "main/gcc" -> "hal/gcc";
 
-"hal/<device>" -> "hal";
-"hal/<device>" -> "platform/<device>";
+"hal/core-v1" -> "hal";
+"hal/core-v1" -> "platform/STM32";
+"hal/core-v1" -> "platform/CC3000";
+
+"hal/core-v2" -> "hal";
+"hal/core-v2" -> "platform/STM32";
+"hal/core-v2" -> "platform/WICED";
+
 
 "hal/gcc" -> "hal";
 "hal/gcc" -> "gcc stdlib";
+
+"wiring" -> "hal";
 
         
 }
