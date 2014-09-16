@@ -1,0 +1,31 @@
+digraph dependencies {
+	size="6,6";
+	node [color=lightblue2, style=filled];
+
+# bootloader is coded directly to the platform it targets and pulls in some
+# hardware neutral code (presently LED control)
+"bootloader" -> "platform/<device>";
+"bootloader" -> "services";
+
+"wiring" -> "hal";
+
+
+# compile binary for STM32
+"main/arm" -> "wiring";
+"main/arm" -> "communication";
+"main/arm" -> "services";
+"main/arm" -> "hal/<device>";
+
+"main/gcc" -> "wiring";
+"main/gcc" -> "communication";
+"main/gcc" -> "services";
+"main/gcc" -> "hal/gcc";
+
+"hal/<device>" -> "hal";
+"hal/<device>" -> "platform/<device>";
+
+"hal/gcc" -> "hal";
+"hal/gcc" -> "gcc stdlib";
+
+        
+}
