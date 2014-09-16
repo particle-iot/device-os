@@ -1,8 +1,6 @@
-# Spark Core Firmware [![Backlog](https://badge.waffle.io/spark/core-firmware.png?label=backlog&title=backlog)](https://waffle.io/spark/core-firmware) [![Build Status](https://travis-ci.org/spark/core-firmware.svg)](https://travis-ci.org/spark/core-firmware)
+# Spark Firmware [![Backlog](https://badge.waffle.io/spark/core-firmware.png?label=backlog&title=backlog)](https://waffle.io/spark/core-firmware) [![Build Status](https://travis-ci.org/spark/core-firmware.svg)](https://travis-ci.org/spark/core-firmware)
 
-This is the main source code repository of the Spark Core firmware libraries.
-
-This firmware depends on two other libraries: the [Spark Common Library](http://www.github.com/spark/core-common-lib) and the [Spark Communication Library](http://www.github.com/spark/core-communication-lib)
+This is the main source code repository of the Spark firmware libraries.
 
 1. [Download and Install Dependencies](#1-download-and-install-dependencies)
 2. [Download and Build Repositories](#2-download-and-build-repositories)
@@ -42,18 +40,12 @@ Download and install Git: http://git-scm.com/
 
 ## 2. Download and Build Repositories
 
-The entire Spark Core firmware is organized into three repositories. The main firmware is located under *core-firmware*, while the supporting libraries are subdivided in to *core-common-lib* and *core-communication-lib*.
+The entire Spark Core firmware is contained in this repository. 
+The main firmware is located under the *firmware/* directory, while the supporting 
+libraries are located in to *common/* and *communication/* subdirectories.
 
-#### How do we *download* these repositories?
+#### How do we *download* this repositories?
 You can access all of the repositories via any git interface or download it directly from the website.
-
-Make sure all of the following repositories are downloaded into the same folder. *For example (if all of the repositories are downloaded in a folder called Spark):*
-
-```
-D:\Spark\core-firmware
-D:\Spark\core-common-lib
-D:\Spark\core-communication-lib
-```
 
 *Method 1: Through the git command line interface.*  
 
@@ -61,28 +53,24 @@ Open up a terminal window, navigate to your destination directory and type the f
 
 (Make sure you have git installed on your machine!)
 
-* `git clone https://github.com/spark/core-firmware.git`  
-* `git clone https://github.com/spark/core-common-lib.git`  
-* `git clone https://github.com/spark/core-communication-lib.git`  
+* `git clone https://github.com/spark/firmware.git`  
 
 *Meathod 2: Download the zipped files directly from the Spark's GitHub website*
 
-* [core-firmware](https://github.com/spark/core-firmware/archive/master.zip)
-* [core-common-lib](https://github.com/spark/core-common-lib/archive/master.zip)
-* [core-communication-lib](https://github.com/spark/core-communication-lib/archive/master.zip)
+* [firmware](https://github.com/spark/firmware/archive/master.zip)
 
 #### How do we *build* these repositories?
 
 Make sure you have downloaded and installed all the required dependencies as mentioned [previously.](#1-download-and-install-dependencies). Note, if you've downloaded or cloned these previously, you'll want to `git pull` or redownload all of them before proceeding.
 
-Open up a terminal window, navigate to the build folder under core-firmware
-(i.e. `cd core-firmware/build`) and type:
+Open up a terminal window, navigate to the build folder under firmware
+(i.e. `cd firmware/wiring/build`) and type:
 
     make
 
-This will build your main application (`core-firmware/src/application.cpp`) and required dependencies.
+This will build your main application (`firmware/wiring/src/application.cpp`) and required dependencies.
 
-*For example:* `D:\Spark\core-firmware\build [master]> make`
+*For example:* `D:\Spark\firmware\wiring\build [master]> make`
 
 ##### Common Errors
 
@@ -91,13 +79,13 @@ This will build your main application (`core-firmware/src/application.cpp`) and 
   Google "Add binary to PATH" for more details.
 
 * You get `make: *** No targets specified and no makefile found.  Stop.`.
-  Solution: `cd core-firmware/build`.
+  Solution: `cd firmware/wiring/build`.
 
 Please issue a pull request if you come across similar issues/fixes that trip you up.
 
 ### Navigating the code base
 
-All of the repositories are sub divided into functional folders:
+All of the top-level directories are sub divided into functional folders:
 
 1. `/src` holds all the source code files
 2. `/inc` holds all the header files
@@ -109,9 +97,9 @@ Now that you have your hands on the entire Spark Core firmware, its time to star
 
 ### What to edit and what not to edit?
 
-The main user code sits in the application.cpp file under core-firmware/src/ folder. Unless you know what you are doing, refrain yourself from making changes to any other files.
+The main user code sits in the application.cpp file under firmware/wiring/src/ folder. Unless you know what you are doing, refrain yourself from making changes to any other files.
 
-After you are done editing the files, you can rebuild the repository by running the `make` command in the `core-firmware/build` directory. If you have made changes to the other two repositories, make automatically determines which files need to be rebuilt and builds them for you.
+After you are done editing the files, you can rebuild the repository by running the `make` command in the `firmware/wiring/build` directory. If you have made changes to the other two repositories, make automatically determines which files need to be rebuilt and builds them for you.
 
 ## 4. Flash It!
 
@@ -133,14 +121,14 @@ Its now time to transfer your code to the Spark Core! You can always do this usi
 
    (Windows users will need to use the Zatig utility to replace the USB driver as described earlier)
 
-3. Now, navigate to the build folder in your core-firmware repository and use the following command to transfer the *.bin* file into the Core.
+3. Now, navigate to the build folder in your firmware repository and use the following command to transfer the *.bin* file into the Core.
    ```
    dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D core-firmware.bin
    ```
 
    For example, this is how my terminal looks like:
    ```
-D:\Spark\core-firmware\build [master]> dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D core-firmware.bin
+D:\Spark\firmware\wiring\build [master]> dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D core-firmware.bin
    ```
 Upon successful transfer, the Core will automatically reset and start the running the program.
 
