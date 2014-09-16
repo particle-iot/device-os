@@ -11,11 +11,12 @@ RMDIR = rm -f -r
 MKDIR = mkdir -p
 
 # root of core-firmware project relative to this folder
-SRC_ROOT=../../
+SRC_ROOT=../../../
 
 # location of this folder relative to the root
-SRC_PATH=/tests/unit
-
+SRC_PATH=wiring/tests/unit/
+WIRING=wiring/
+WIRING_SRC=$(WIRING)src/
 
 TARGETDIR=obj/
 TARGET=runner
@@ -32,20 +33,22 @@ rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2
 # $2 the pattern to match, e.g. *.cpp
 target_files = $(patsubst $(SRC_ROOT)%,%,$(call rwildcard,$(SRC_ROOT)$1,$2))
 
-CPPSRC += $(call target_files,tests/unit/,*.cpp)
-CPPSRC += $(call target_files,src,spark_wiring_random.cpp)
-CPPSRC += src/spark_wiring_string.cpp
+CPPSRC += $(call target_files,$(SRC_PATH),*.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_random.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_string.cpp)
+
 
 # Paths to dependent projects, referenced from root of this project
-LIB_CORE_COMMON_PATH = ../core-common-lib/
-CSRC += $(call target_files,$(LIB_CORE_COMMON_PATH)SPARK_Services/src,*.c)
+LIB_CORE_COMMON_PATH = common/
+# for now, just RGB led
+CSRC += $(call target_files,$(LIB_CORE_COMMON_PATH)SPARK_Services/src,rgbled.c)
 
 
 # Additional include directories, applied to objects built for this target.
 # todo - delegate this to a include.mk file in each repo so include dirs are better
 # encapsulated by their owning repo
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
-INCLUDE_DIRS += inc
+INCLUDE_DIRS += $(WIRING)/inc
 
 CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -Wall
