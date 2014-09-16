@@ -15,6 +15,7 @@ CSRC += $(TARGET_HAL_SRC_PATH)/gpio_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/adc_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/pwm_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/timer_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/rtc_hal.c
 
 # C++ source files included in this build.
 CPPSRC +=
