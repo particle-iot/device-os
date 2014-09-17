@@ -51,9 +51,9 @@ extern uint16_t EepromAddressTab[];
 extern "C" {
 #endif
 
-uint16_t HAL_EEPROM_Init(void);
-uint16_t HAL_EEPROM_Read_Variable(uint16_t EepromAddress, uint16_t *EepromData);
-uint16_t HAL_EEPROM_Write_Variable(uint16_t EepromAddress, uint16_t EepromData);
+void HAL_EEPROM_Init(void);
+uint8_t HAL_EEPROM_Read(uint32_t address);
+void HAL_EEPROM_Write(uint32_t address, uint8_t data);
 
 #ifdef __cplusplus
 }

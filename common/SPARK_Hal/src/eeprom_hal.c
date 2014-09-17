@@ -70,6 +70,40 @@ static FLASH_Status EEPROM_Format(void);
 static uint16_t EEPROM_FindValidPage(uint8_t Operation);
 static uint16_t EEPROM_VerifyPageFullWriteVariable(uint16_t EepromAddress, uint16_t EepromData);
 static uint16_t EEPROM_PageTransfer(uint16_t EepromAddress, uint16_t EepromData);
+static uint16_t EEPROM_Init(void);
+static uint16_t EEPROM_ReadVariable(uint16_t EepromAddress, uint16_t *EepromData);
+static uint16_t EEPROM_WriteVariable(uint16_t EepromAddress, uint16_t EepromData);
+
+void HAL_EEPROM_Init(void)
+{
+  EEPROM_Init();
+
+  uint16_t i;
+  for (i = 0 ; i < EEPROM_SIZE ; i++)
+  {
+    EepromAddressTab[i] = i;
+  }
+}
+
+uint8_t HAL_EEPROM_Read(uint32_t address)
+{
+  uint16_t data;
+
+  if ((address < EEPROM_SIZE) && (EEPROM_ReadVariable(EepromAddressTab[address], &data) == 0))
+  {
+    return data;
+  }
+
+  return 0xFF;
+}
+
+void HAL_EEPROM_Write(uint32_t address, uint8_t data)
+{
+  if (address < EEPROM_SIZE)
+  {
+    EEPROM_WriteVariable(EepromAddressTab[address], data);
+  }
+}
 
 /**
   * @brief  Erases PAGE0 and PAGE1 and writes VALID_PAGE header to PAGE0
@@ -301,7 +335,7 @@ static uint16_t EEPROM_PageTransfer(uint16_t EepromAddress, uint16_t EepromData)
     if (EepromAddressTab[EepromAddressIdx] != EepromAddress)  /* Check each variable except the one passed as parameter */
     {
       /* Read the other last variable updates */
-      ReadStatus = HAL_EEPROM_Read_Variable(EepromAddressTab[EepromAddressIdx], &EepromDataVar);
+      ReadStatus = EEPROM_ReadVariable(EepromAddressTab[EepromAddressIdx], &EepromDataVar);
       /* In case variable corresponding to the virtual address was found */
       if (ReadStatus != 0x1)
       {
@@ -343,7 +377,7 @@ static uint16_t EEPROM_PageTransfer(uint16_t EepromAddress, uint16_t EepromData)
   * @retval - Flash error code: on write Flash error
   *         - FLASH_COMPLETE: on success
   */
-uint16_t HAL_EEPROM_Init(void)
+static uint16_t EEPROM_Init(void)
 {
   uint16_t PageStatus0 = 6, PageStatus1 = 6;
   uint16_t EepromAddressIdx = 0;
@@ -415,7 +449,7 @@ uint16_t HAL_EEPROM_Init(void)
           if (EepromAddressIdx != x)
           {
             /* Read the last variables' updates */
-            ReadStatus = HAL_EEPROM_Read_Variable(EepromAddressTab[EepromAddressIdx], &EepromDataVar);
+            ReadStatus = EEPROM_ReadVariable(EepromAddressTab[EepromAddressIdx], &EepromDataVar);
             /* In case variable corresponding to the virtual address was found */
             if (ReadStatus != 0x1)
             {
@@ -506,7 +540,7 @@ uint16_t HAL_EEPROM_Init(void)
           if (EepromAddressIdx != x)
           {
             /* Read the last variables' updates */
-            ReadStatus = HAL_EEPROM_Read_Variable(EepromAddressTab[EepromAddressIdx], &EepromDataVar);
+            ReadStatus = EEPROM_ReadVariable(EepromAddressTab[EepromAddressIdx], &EepromDataVar);
             /* In case variable corresponding to the virtual address was found */
             if (ReadStatus != 0x1)
             {
@@ -561,7 +595,7 @@ uint16_t HAL_EEPROM_Init(void)
   *           - 1: if the variable was not found
   *           - NO_VALID_PAGE: if no valid page was found.
   */
-uint16_t HAL_EEPROM_Read_Variable(uint16_t EepromAddress, uint16_t *EepromData)
+static uint16_t EEPROM_ReadVariable(uint16_t EepromAddress, uint16_t *EepromData)
 {
   uint16_t ValidPage = PAGE0;
   uint16_t AddressValue = 0, ReadStatus = 1;
@@ -620,7 +654,7 @@ uint16_t HAL_EEPROM_Read_Variable(uint16_t EepromAddress, uint16_t *EepromData)
   *           - NO_VALID_PAGE: if no valid page was found
   *           - Flash error code: on write Flash error
   */
-uint16_t HAL_EEPROM_Write_Variable(uint16_t EepromAddress, uint16_t EepromData)
+static uint16_t EEPROM_WriteVariable(uint16_t EepromAddress, uint16_t EepromData)
 {
   uint16_t Status = 0;
 

@@ -33,30 +33,16 @@
 EEPROMClass::EEPROMClass()
 {
   HAL_EEPROM_Init();
-  for (uint16_t i = 0 ; i < EEPROM_SIZE ; i++)
-  {
-    EepromAddressTab[i] = i;
-  }
 }
 
 uint8_t EEPROMClass::read(int address)
 {
-  uint16_t data;
-
-  if ((address < EEPROM_SIZE) && (HAL_EEPROM_Read_Variable(EepromAddressTab[address], &data) == 0))
-  {
-    return data;
-  }
-
-  return 0xFF;
+  return HAL_EEPROM_Read(address);
 }
 
 void EEPROMClass::write(int address, uint8_t value)
 {
-  if (address < EEPROM_SIZE)
-  {
-    HAL_EEPROM_Write_Variable(EepromAddressTab[address], value);
-  }
+  HAL_EEPROM_Write(address, value);
 }
 
 EEPROMClass EEPROM;
