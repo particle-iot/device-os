@@ -12,6 +12,8 @@ INCLUDE_DIRS += $(TARGET_SPARK_PATH)/inc
 INCLUDE_DIRS += SPARK_Services/inc
 
 # C source files included in this build.
+CSRC += $(TARGET_SPARK_SRC_PATH)/debug.c
+CSRC += $(TARGET_SPARK_SRC_PATH)/panic.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/stm32_it.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/cc3000_spi.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/hw_config.c
