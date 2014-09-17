@@ -31,6 +31,7 @@
 #include "stm32_it.h"
 #include "usb_lib.h"
 #include "usb_istr.h"
+#include "cc3000_spi.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
