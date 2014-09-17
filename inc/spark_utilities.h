@@ -107,6 +107,7 @@ class SparkClass {
 public:
 	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
 	static void function(const char *funcKey, int (*pFunc)(String paramString));
+	static void function(const char *funcKey, int (*pFunc)(String paramString, void* pv), void* pv);
 	static void publish(const char *eventName);
 	static void publish(const char *eventName, const char *eventData);
 	static void publish(const char *eventName, const char *eventData, int ttl);

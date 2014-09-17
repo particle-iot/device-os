@@ -62,10 +62,12 @@ struct User_Var_Lookup_Table_t
 
 struct User_Func_Lookup_Table_t
 {
-	int (*pUserFunc)(String userArg);
+  int (*pUserFunc)(String userArg);
+  int (*pUserFuncPv)(String userArg, void* pv);
 	char userFuncKey[USER_FUNC_KEY_LENGTH];
 	char userFuncArg[USER_FUNC_ARG_LENGTH];
 	int userFuncRet;
+  void* userFuncPv;
 	bool userFuncSchedule;
 } User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
 
@@ -237,12 +239,41 @@ void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString))
 		}
 
 		User_Func_Lookup_Table[User_Func_Count].pUserFunc = pFunc;
+    User_Func_Lookup_Table[User_Func_Count].pUserFuncPv = NULL;
+    
 		memset(User_Func_Lookup_Table[User_Func_Count].userFuncArg, 0, USER_FUNC_ARG_LENGTH);
 		memset(User_Func_Lookup_Table[User_Func_Count].userFuncKey, 0, USER_FUNC_KEY_LENGTH);
 		memcpy(User_Func_Lookup_Table[User_Func_Count].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH);
 		User_Func_Lookup_Table[User_Func_Count].userFuncSchedule = false;
 		User_Func_Count++;
 	}
+}
+
+void SparkClass::function(const char *funcKey, int (*pFuncPv)(String paramString, void* pv), void* pv)
+{
+  int i = 0;
+  if(NULL != pFuncPv && funcKey != NULL)
+  {
+    if(User_Func_Count == USER_FUNC_MAX_COUNT)
+      return;
+    for(i = 0; i < User_Func_Count; i++)
+    {
+      if(User_Func_Lookup_Table[i].pUserFuncPv == pFuncPv && User_Func_Lookup_Table[i].userFuncPv == pv && (0 == strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH)))
+      {
+        return;
+      }
+    }
+
+    User_Func_Lookup_Table[User_Func_Count].pUserFuncPv = pFuncPv;
+    User_Func_Lookup_Table[User_Func_Count].pUserFunc = NULL;
+    User_Func_Lookup_Table[User_Func_Count].userFuncPv = pv;
+
+    memset(User_Func_Lookup_Table[User_Func_Count].userFuncArg, 0, USER_FUNC_ARG_LENGTH);
+    memset(User_Func_Lookup_Table[User_Func_Count].userFuncKey, 0, USER_FUNC_KEY_LENGTH);
+    memcpy(User_Func_Lookup_Table[User_Func_Count].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH);
+    User_Func_Lookup_Table[User_Func_Count].userFuncSchedule = false;
+    User_Func_Count++;
+  }
 }
 
 void SparkClass::publish(const char *eventName)
@@ -993,7 +1024,13 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
 			memcpy(User_Func_Lookup_Table[i].userFuncArg, paramString, paramLength);
 			User_Func_Lookup_Table[i].userFuncSchedule = true;
 			//return User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
-			return User_Func_Lookup_Table[i].pUserFunc(pString);
+			if (User_Func_Lookup_Table[i].pUserFuncPv != NULL)
+      {
+        return User_Func_Lookup_Table[i].pUserFuncPv(pString, User_Func_Lookup_Table[i].userFuncPv);
+      } else
+      {
+        return User_Func_Lookup_Table[i].pUserFunc(pString);
+      }
 		}
 	}
 	return -1;
