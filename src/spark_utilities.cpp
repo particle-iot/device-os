@@ -66,7 +66,7 @@ struct User_Func_Lookup_Table_t
 	char userFuncKey[USER_FUNC_KEY_LENGTH];
 	char userFuncArg[USER_FUNC_ARG_LENGTH];
 	int userFuncRet;
-  void* userFuncPv;
+	void* userFuncPv;
 	bool userFuncSchedule;
 } User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
 
@@ -222,7 +222,7 @@ void SparkClass::variable(const char *varKey, void *userVar, Spark_Data_TypeDef 
 }
 
 void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString)) {
-    function(funcKey, (int (*)(String, void*))pFunc, NULL);
+	function(funcKey, (int (*)(String, void*))pFunc, NULL);
 }
 
 void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString, void* pv), void* pv)
@@ -230,7 +230,7 @@ void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString, 
 	if(User_Func_Count == USER_FUNC_MAX_COUNT || pFunc == NULL || funcKey == NULL)
 		return;
 	
-    for(int i = 0; i < User_Func_Count; i++)
+	for(int i = 0; i < User_Func_Count; i++)
 	{
 		if(
 			User_Func_Lookup_Table[i].pUserFuncPv == pFunc &&
