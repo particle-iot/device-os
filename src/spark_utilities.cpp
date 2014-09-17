@@ -225,22 +225,22 @@ void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString))
 	function(funcKey, (int (*)(String, void*))pFunc, NULL);
 }
 
-void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString, void* pv), void* pv)
+void SparkClass::function(const char *funcKey, int (*pFuncPv)(String paramString, void* pv), void* pv)
 {
-	if(User_Func_Count == USER_FUNC_MAX_COUNT || pFunc == NULL || funcKey == NULL)
+	if(User_Func_Count == USER_FUNC_MAX_COUNT || pFuncPv == NULL || funcKey == NULL)
 		return;
 	
 	for(int i = 0; i < User_Func_Count; i++)
 	{
 		if(
-			User_Func_Lookup_Table[i].pUserFuncPv == pFunc &&
+			User_Func_Lookup_Table[i].pUserFuncPv == pFuncPv &&
 			User_Func_Lookup_Table[i].userFuncPv == pv &&
 			!strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH)
 		)
 			return;
 	}
 
-	User_Func_Lookup_Table[User_Func_Count].pUserFuncPv = pFunc;
+	User_Func_Lookup_Table[User_Func_Count].pUserFuncPv = pFuncPv;
 	User_Func_Lookup_Table[User_Func_Count].userFuncPv = pv;
 
 	memset(User_Func_Lookup_Table[User_Func_Count].userFuncArg, 0, USER_FUNC_ARG_LENGTH);
