@@ -22,6 +22,7 @@ CSRC += $(TARGET_HAL_SRC_PATH)/spi_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/i2c_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/tone_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/servo_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/interrupts_hal.c
 
 # C++ source files included in this build.
 CPPSRC +=

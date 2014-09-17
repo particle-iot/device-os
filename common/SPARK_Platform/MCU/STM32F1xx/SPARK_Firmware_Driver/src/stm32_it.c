@@ -45,13 +45,17 @@
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 
 /* Private function prototypes -----------------------------------------------*/
+//HAL Interrupt Handlers defined in xxx_hal.c files
+void HAL_Interrupts_EXTI_Handler(uint8_t EXTI_Line) __attribute__ ((weak));
+
+//Wiring Interrupt Handlers defined in xxx_wiring_xxx.cpp files
+//These would be gradually renamed and moved to xxx_hal.c files
 void Wiring_ADC1_2_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_USART1_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_USART2_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_I2C1_EV_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_I2C1_ER_Interrupt_Handler(void) __attribute__ ((weak));
 void Wiring_SPI1_Interrupt_Handler(void) __attribute__ ((weak));
-void Wiring_EXTI_Interrupt_Handler(uint8_t EXTI_Line_Number) __attribute__ ((weak));
 void Wiring_RTC_Interrupt_Handler(void) __attribute__ ((weak));
 
 void (*Wiring_TIM2_Interrupt_Handler)(void);
@@ -297,9 +301,9 @@ void EXTI0_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line0);
 
-		if(NULL != Wiring_EXTI_Interrupt_Handler)
+		if(NULL != HAL_Interrupts_EXTI_Handler)
 		{
-			Wiring_EXTI_Interrupt_Handler(0);
+			HAL_Interrupts_EXTI_Handler(0);
 		}
 	}
 }
@@ -318,9 +322,9 @@ void EXTI1_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line1);
 
-		if(NULL != Wiring_EXTI_Interrupt_Handler)
+		if(NULL != HAL_Interrupts_EXTI_Handler)
 		{
-			Wiring_EXTI_Interrupt_Handler(1);
+			HAL_Interrupts_EXTI_Handler(1);
 		}
 	}
 }
@@ -363,9 +367,9 @@ void EXTI3_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line3);
 
-		if(NULL != Wiring_EXTI_Interrupt_Handler)
+		if(NULL != HAL_Interrupts_EXTI_Handler)
 		{
-			Wiring_EXTI_Interrupt_Handler(3);
+			HAL_Interrupts_EXTI_Handler(3);
 		}
 	}
 }
@@ -384,9 +388,9 @@ void EXTI4_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line4);
 
-		if(NULL != Wiring_EXTI_Interrupt_Handler)
+		if(NULL != HAL_Interrupts_EXTI_Handler)
 		{
-			Wiring_EXTI_Interrupt_Handler(4);
+			HAL_Interrupts_EXTI_Handler(4);
 		}
 	}
 }
@@ -407,9 +411,9 @@ void EXTI9_5_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line5);
 
-		if(NULL != Wiring_EXTI_Interrupt_Handler)
+		if(NULL != HAL_Interrupts_EXTI_Handler)
 		{
-			Wiring_EXTI_Interrupt_Handler(5);
+			HAL_Interrupts_EXTI_Handler(5);
 		}
 	}
 
@@ -418,9 +422,9 @@ void EXTI9_5_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line6);
 
-		if(NULL != Wiring_EXTI_Interrupt_Handler)
+		if(NULL != HAL_Interrupts_EXTI_Handler)
 		{
-			Wiring_EXTI_Interrupt_Handler(6);
+			HAL_Interrupts_EXTI_Handler(6);
 		}
 	}
 
@@ -429,9 +433,9 @@ void EXTI9_5_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line7);
 
-		if(NULL != Wiring_EXTI_Interrupt_Handler)
+		if(NULL != HAL_Interrupts_EXTI_Handler)
 		{
-			Wiring_EXTI_Interrupt_Handler(7);
+			HAL_Interrupts_EXTI_Handler(7);
 		}
 	}
 }
@@ -452,9 +456,9 @@ void EXTI15_10_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line13);
 
-		if(NULL != Wiring_EXTI_Interrupt_Handler)
+		if(NULL != HAL_Interrupts_EXTI_Handler)
 		{
-			Wiring_EXTI_Interrupt_Handler(13);
+			HAL_Interrupts_EXTI_Handler(13);
 		}
 	}
 
@@ -463,9 +467,9 @@ void EXTI15_10_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line14);
 
-		if(NULL != Wiring_EXTI_Interrupt_Handler)
+		if(NULL != HAL_Interrupts_EXTI_Handler)
 		{
-			Wiring_EXTI_Interrupt_Handler(14);
+			HAL_Interrupts_EXTI_Handler(14);
 		}
 	}
 
@@ -474,9 +478,9 @@ void EXTI15_10_IRQHandler(void)
 		/* Clear the EXTI line pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line15);
 
-		if(NULL != Wiring_EXTI_Interrupt_Handler)
+		if(NULL != HAL_Interrupts_EXTI_Handler)
 		{
-			Wiring_EXTI_Interrupt_Handler(15);
+			HAL_Interrupts_EXTI_Handler(15);
 		}
 	}
 
