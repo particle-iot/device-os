@@ -1,11 +1,10 @@
 /**
  ******************************************************************************
- * @file    spark_wiring_tone.cpp
- * @author  Satish Nair
+ * @file    tone_hal.h
+ * @author  Satish Nair, Brett Walach
  * @version V1.0.0
- * @date    21-April-2014
- * @brief   Generates a square wave of the specified frequency and duration
- * 	  	  	(and 50% duty cycle) on a timer channel pin
+ * @date    12-Sept-2014
+ * @brief
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -24,31 +23,30 @@
  ******************************************************************************
  */
 
-#include "spark_wiring_tone.h"
-#include "tone_hal.h"
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __TONE_HAL_H
+#define __TONE_HAL_H
 
-void tone(uint8_t pin, unsigned int frequency, unsigned long duration)
-{
-  if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
-  {
-    return;
-  }
+/* Includes ------------------------------------------------------------------*/
+#include "pinmap_hal.h"
 
-  // Safety check
-  if (!pinAvailable(pin))
-  {
-    return;
-  }
+/* Exported types ------------------------------------------------------------*/
 
-  HAL_Tone_Start(pin, frequency, duration);
+/* Exported constants --------------------------------------------------------*/
+
+/* Exported macros -----------------------------------------------------------*/
+
+/* Exported functions --------------------------------------------------------*/
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration);
+void HAL_Tone_Stop(uint8_t pin);
+
+#ifdef __cplusplus
 }
+#endif
 
-void noTone(uint8_t pin)
-{
-  if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
-  {
-    return;
-  }
-
-  HAL_Tone_Stop(pin);
-}
+#endif  /* __TONE_HAL_H */
