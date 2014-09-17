@@ -42,9 +42,6 @@
 /* EEPROM Emulation Size */
 #define EEPROM_SIZE             ((uint8_t)0x64)       /* 100 bytes (Max 255/0xFF bytes) */
 
-/* Extern variables ----------------------------------------------------------*/
-extern uint16_t EepromAddressTab[];
-
 /* Exported functions --------------------------------------------------------*/
 
 #ifdef __cplusplus

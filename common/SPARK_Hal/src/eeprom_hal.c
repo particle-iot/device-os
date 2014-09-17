@@ -61,7 +61,7 @@
 /* Global variable used to store variable value in read sequence */
 static uint16_t EepromDataVar = 0;
 /* Virtual address defined by the user: 0xFFFF value is prohibited */
-uint16_t EepromAddressTab[EEPROM_SIZE];
+static uint16_t EepromAddressTab[EEPROM_SIZE];
 
 /* Extern variables ----------------------------------------------------------*/
 
