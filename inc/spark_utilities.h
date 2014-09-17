@@ -107,7 +107,7 @@ class SparkClass {
 public:
 	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
 	static void function(const char *funcKey, int (*pFunc)(String paramString));
-	static void function(const char *funcKey, int (*pFunc)(String paramString, void* pv), void* pv);
+	static void function(const char *funcKey, int (*pFuncPv)(String paramString, void* pv), void* pv);
 	static void publish(const char *eventName);
 	static void publish(const char *eventName, const char *eventData);
 	static void publish(const char *eventName, const char *eventData, int ttl);
@@ -129,7 +129,7 @@ public:
 	static bool connected(void);
 	static void connect(void);
 	static void disconnect(void);
-        static void process(void);
+	static void process(void);
 	static String deviceID(void);
 	static void syncTime(void);
 };
