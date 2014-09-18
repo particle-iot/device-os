@@ -398,10 +398,27 @@ void HAL_WLAN_notify_connected()
     
 void HAL_WLAN_notify_disconnected()
 {
-    if (WLAN_CONNECTED && !WLAN_DISCONNECT)
+    if (WLAN_CONNECTED)
     {
+      //Breathe blue if established connection gets disconnected
+      if(!WLAN_DISCONNECT)
+      {
+        //if WiFi.disconnect called, do not enable wlan watchdog
         ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+      }
+      SPARK_LED_FADE = 1;
+      LED_SetRGBColor(RGB_COLOR_BLUE);
+      LED_On(LED_RGB);
     }
+    else if (!WLAN_SMART_CONFIG_START)
+    {
+      //Do not enter if smart config related disconnection happens
+      //Blink green if connection fails because of wrong password
+      ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+      SPARK_LED_FADE = 0;
+      LED_SetRGBColor(RGB_COLOR_GREEN);
+      LED_On(LED_RGB);
+    }		 			
     WLAN_CONNECTED = 0;
     WLAN_DHCP = 0;
     SPARK_CLOUD_SOCKETED = 0;
