@@ -230,7 +230,7 @@ void SparkClass::function(const char *funcKey, int (*pFuncPv)(String paramString
 	if(User_Func_Count == USER_FUNC_MAX_COUNT || pFuncPv == NULL || funcKey == NULL)
 		return;
 	
-	for(byte i = 0; i < User_Func_Count; i++)
+	for(int i = 0; i < User_Func_Count; i++)
 	{
 		if(
 			User_Func_Lookup_Table[i].pUserFuncPv == pFuncPv &&
