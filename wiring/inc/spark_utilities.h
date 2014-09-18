@@ -151,8 +151,6 @@ extern "C" {
 
 int Internet_Test(void);
 
-void Enter_STOP_Mode(void);
-
 int Spark_Connect(void);
 int Spark_Disconnect(void);
 void Spark_ConnectAbort_WLANReset(void);

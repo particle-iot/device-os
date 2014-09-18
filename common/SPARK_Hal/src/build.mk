@@ -10,6 +10,7 @@ TARGET_HAL_SRC_PATH = $(TARGET_HAL_PATH)/src
 INCLUDE_DIRS += $(TARGET_HAL_PATH)/inc
 
 # C source files included in this build.
+CSRC += $(TARGET_HAL_SRC_PATH)/core_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/usb_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/pinmap_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/gpio_hal.c

@@ -51,6 +51,7 @@ CFLAGS += -MD -MP -MF $@.d
 # Target specific defines
 CFLAGS += -DUSE_STDPERIPH_DRIVER
 CFLAGS += -DSTM32F10X_MD
+CFLAGS += -DDFU_BUILD_ENABLE
 
 ifeq ("$(USE_SWD_JTAG)","y") 
 CFLAGS += -DUSE_SWD_JTAG
