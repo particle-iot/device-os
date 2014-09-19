@@ -150,30 +150,21 @@ void SystemClass::serialFirmwareUpdate(Stream *serialObj)
 
 void SystemClass::factoryReset(void)
 {
-  //Work in Progress
   //This method will work only if the Core is supplied
   //with the latest version of Bootloader
-  Factory_Reset_SysFlag = 0xAAAA;
-  Save_SystemFlags();
-
-  reset();
+  HAL_Core_Factory_Reset();
 }
 
 void SystemClass::bootloader(void)
 {
-  //Work in Progress
   //The drawback here being it will enter bootloader mode until firmware
   //is loaded again. Require bootloader changes for proper working.
-  BKP_WriteBackupRegister(BKP_DR10, 0xFFFF);
-  FLASH_OTA_Update_SysFlag = 0xFFFF;
-  Save_SystemFlags();
-
-  reset();
+  HAL_Core_Enter_Bootloader();
 }
 
 void SystemClass::reset(void)
 {
-  NVIC_SystemReset();
+  HAL_Core_System_Reset();
 }
 
 bool RGBClass::_control = false;

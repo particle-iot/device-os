@@ -120,6 +120,26 @@ void HAL_Core_Config(void)
 #endif
 }
 
+void HAL_Core_System_Reset(void)
+{
+  NVIC_SystemReset();
+}
+
+void HAL_Core_Factory_Reset(void)
+{
+  Factory_Reset_SysFlag = 0xAAAA;
+  Save_SystemFlags();
+  HAL_Core_System_Reset();
+}
+
+void HAL_Core_Enter_Bootloader(void)
+{
+  BKP_WriteBackupRegister(BKP_DR10, 0xFFFF);
+  FLASH_OTA_Update_SysFlag = 0xFFFF;
+  Save_SystemFlags();
+  HAL_Core_System_Reset();
+}
+
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
 {
   if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
