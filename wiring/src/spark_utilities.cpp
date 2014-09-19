@@ -45,8 +45,7 @@ sockaddr tSocketAddr;
 extern uint8_t LED_RGB_BRIGHTNESS;
 
 // LED_Signaling_Override
-__IO uint8_t LED_Spark_Signal;
-__IO uint32_t LED_Signaling_Timing;
+volatile uint8_t LED_Spark_Signal;
 const uint32_t VIBGYOR_Colors[] = {
   0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000};
 int VIBGYOR_Size = sizeof(VIBGYOR_Colors) / sizeof(uint32_t);
@@ -718,6 +717,7 @@ void Multicast_Presence_Announcement(void)
  * and stopped as soon as LED_Signaling_Stop() is called */
 void LED_Signaling_Override(void)
 {
+  uint32_t LED_Signaling_Timing;
   if (0 < LED_Signaling_Timing)
   {
     --LED_Signaling_Timing;

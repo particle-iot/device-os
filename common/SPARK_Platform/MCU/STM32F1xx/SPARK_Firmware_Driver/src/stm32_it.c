@@ -47,6 +47,7 @@ extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 /* Private function prototypes -----------------------------------------------*/
 //HAL Interrupt Handlers defined in xxx_hal.c files
 void HAL_Interrupts_EXTI_Handler(uint8_t EXTI_Line) __attribute__ ((weak));
+void HAL_Timer_SysTick_Handler(void) __attribute__ ((weak));
 
 //Wiring Interrupt Handlers defined in xxx_wiring_xxx.cpp files
 //These would be gradually renamed and moved to xxx_hal.c files
@@ -186,8 +187,10 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
 	System1MsTick();
-	extern void Timing_Decrement(void);
-	Timing_Decrement();
+        if(NULL != HAL_Timer_SysTick_Handler)
+        {
+                HAL_Timer_SysTick_Handler();
+        }
 }
 
 /******************************************************************************/
