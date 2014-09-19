@@ -39,12 +39,12 @@
 
 /* Private function prototypes -----------------------------------------------*/
 
-uint32_t HAL_I2C_Get_RTC_Counter(void)
+uint32_t HAL_RTC_Get_Counter(void)
 {
   return RTC_GetCounter();
 }
 
-void HAL_I2C_Set_RTC_Counter(uint32_t value)
+void HAL_RTC_Set_Counter(uint32_t value)
 {
   RTC_WaitForLastTask();
   RTC_SetCounter(value);

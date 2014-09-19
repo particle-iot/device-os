@@ -42,8 +42,8 @@
 extern "C" {
 #endif
 
-uint32_t HAL_I2C_Get_RTC_Counter(void);
-void HAL_I2C_Set_RTC_Counter(uint32_t value);
+uint32_t HAL_RTC_Get_Counter(void);
+void HAL_RTC_Set_Counter(uint32_t value);
 
 #ifdef __cplusplus
 }
