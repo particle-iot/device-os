@@ -385,26 +385,7 @@ void SparkClass::sleep(long seconds)
 
 void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
 {
-  if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
-  {
-    uint16_t BKP_DR9_Data = wakeUpPin;//set wakeup pin mumber
-    BKP_DR9_Data |= (edgeTriggerMode << 8);//set edge trigger mode
-    BKP_DR9_Data |= (0xA << 12);//set stop mode flag
-
-    /*************************************************/
-    //BKP_DR9_Data: 0xAXXX
-    //                ||||
-    //                ||----- octet wakeUpPin number
-    //                |------ nibble edgeTriggerMode
-    //                ------- nibble stop mode flag
-    /*************************************************/
-
-    /* Execute Stop mode on next system reset */
-    BKP_WriteBackupRegister(BKP_DR9, BKP_DR9_Data);
-
-    /* Reset System */
-    NVIC_SystemReset();
-  }
+  HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode);
 }
 
 void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)

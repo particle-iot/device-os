@@ -74,7 +74,8 @@ extern "C" {
 #endif
 
 void HAL_Core_Config(void);
-void HAL_Core_Enter_STOP_Mode(void);
+void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
+void HAL_Core_Execute_Stop_Mode(void);
 
 #ifdef __cplusplus
 }

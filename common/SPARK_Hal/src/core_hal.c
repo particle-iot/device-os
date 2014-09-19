@@ -80,7 +80,7 @@ void HAL_Core_Config(void)
 #endif
 
         /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
-        HAL_Core_Enter_STOP_Mode();
+        HAL_Core_Execute_Stop_Mode();
 
         LED_SetRGBColor(RGB_COLOR_WHITE);
         LED_On(LED_RGB);
@@ -120,7 +120,31 @@ void HAL_Core_Config(void)
 #endif
 }
 
-void HAL_Core_Enter_STOP_Mode(void)
+void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
+{
+  if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
+  {
+    uint16_t BKP_DR9_Data = wakeUpPin;//set wakeup pin mumber
+    BKP_DR9_Data |= (edgeTriggerMode << 8);//set edge trigger mode
+    BKP_DR9_Data |= (0xA << 12);//set stop mode flag
+
+    /*************************************************/
+    //BKP_DR9_Data: 0xAXXX
+    //                ||||
+    //                ||----- octet wakeUpPin number
+    //                |------ nibble edgeTriggerMode
+    //                ------- nibble stop mode flag
+    /*************************************************/
+
+    /* Execute Stop mode on next system reset */
+    BKP_WriteBackupRegister(BKP_DR9, BKP_DR9_Data);
+
+    /* Reset System */
+    NVIC_SystemReset();
+  }
+}
+
+void HAL_Core_Execute_Stop_Mode(void)
 {
   if((BKP_ReadBackupRegister(BKP_DR9) >> 12) == 0xA)
   {
