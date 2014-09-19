@@ -363,11 +363,7 @@ void SparkClass::syncTime(void)
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
 #if defined (SPARK_RTC_ENABLE)
-	/* Set the RTC Alarm */
-	RTC_SetAlarm(RTC_GetCounter() + (uint32_t)seconds);
-
-	/* Wait until last write operation on RTC registers has finished */
-	RTC_WaitForLastTask();
+        HAL_RTC_Set_Alarm((uint32_t)seconds);
 
 	switch(sleepMode)
 	{
@@ -414,11 +410,7 @@ void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
 void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
 #if defined (SPARK_RTC_ENABLE)
-  /* Set the RTC Alarm */
-  RTC_SetAlarm(RTC_GetCounter() + (uint32_t)seconds);
-
-  /* Wait until last write operation on RTC registers has finished */
-  RTC_WaitForLastTask();
+  HAL_RTC_Set_Alarm((uint32_t)seconds);
 
   sleep(wakeUpPin, edgeTriggerMode);
 #endif

@@ -28,6 +28,7 @@
 #define __SPARK_UTILITIES_H
 
 #include "main.h"
+#include "rtc_hal.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_time.h"
 #include "spark_wiring_interrupts.h"
