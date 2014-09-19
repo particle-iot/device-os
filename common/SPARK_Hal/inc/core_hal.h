@@ -35,6 +35,11 @@
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
+//Following is normally defined via "CFLAGS += -DDFU_BUILD_ENABLE" in makefile
+#ifndef DFU_BUILD_ENABLE
+#define DFU_BUILD_ENABLE
+#endif
+
 /*
  * Use the JTAG IOs as standard GPIOs (D3 to D7)
  * Note that once the JTAG IOs are disabled, the connection with the host debugger
@@ -81,7 +86,6 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
 void HAL_Core_Execute_Stop_Mode(void);
 void HAL_Core_Enter_Standby_Mode(void);
 void HAL_Core_Execute_Standby_Mode(void);
-
 
 #ifdef __cplusplus
 }
