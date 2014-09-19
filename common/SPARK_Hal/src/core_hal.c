@@ -52,71 +52,71 @@ extern volatile uint8_t SPARK_LED_FADE;
  *******************************************************************************/
 void HAL_Core_Config(void)
 {
-        DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
+  DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 #ifdef DFU_BUILD_ENABLE
-        /* Set the Vector Table(VT) base location at 0x5000 */
-        NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x5000);
+  /* Set the Vector Table(VT) base location at 0x5000 */
+  NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x5000);
 
-        USE_SYSTEM_FLAGS = 1;
+  USE_SYSTEM_FLAGS = 1;
 #endif
 
 #ifdef SWD_JTAG_DISABLE
-        /* Disable the Serial Wire JTAG Debug Port SWJ-DP */
-        GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
+  /* Disable the Serial Wire JTAG Debug Port SWJ-DP */
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
 #endif
 
-        Set_System();
+  Set_System();
 
-        SysTick_Configuration();
+  SysTick_Configuration();
 
-        /* Enable CRC clock */
-        RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
+  /* Enable CRC clock */
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
 #if !defined (RGB_NOTIFICATIONS_ON)     && defined (RGB_NOTIFICATIONS_OFF)
-        LED_RGB_OVERRIDE = 1;
+  LED_RGB_OVERRIDE = 1;
 #endif
 
 #if defined (SPARK_RTC_ENABLE)
-        RTC_Configuration();
+  RTC_Configuration();
 #endif
 
-        /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
-        HAL_Core_Execute_Stop_Mode();
+  /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
+  HAL_Core_Execute_Stop_Mode();
 
-        LED_SetRGBColor(RGB_COLOR_WHITE);
-        LED_On(LED_RGB);
-        SPARK_LED_FADE = 1;
+  LED_SetRGBColor(RGB_COLOR_WHITE);
+  LED_On(LED_RGB);
+  SPARK_LED_FADE = 1;
 
 #ifdef IWDG_RESET_ENABLE
-        // ToDo this needs rework for new bootloader
-        /* Check if the system has resumed from IWDG reset */
-        if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
-        {
-                /* IWDGRST flag set */
-                IWDG_SYSTEM_RESET = 1;
+  // ToDo this needs rework for new bootloader
+  /* Check if the system has resumed from IWDG reset */
+  if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
+  {
+    /* IWDGRST flag set */
+    IWDG_SYSTEM_RESET = 1;
 
-                /* Clear reset flags */
-                RCC_ClearFlag();
-        }
+    /* Clear reset flags */
+    RCC_ClearFlag();
+  }
 
-        /* We are duplicating the IWDG call here for compatibility with old bootloader */
-        /* Set IWDG Timeout to 3 secs */
-        IWDG_Reset_Enable(3 * TIMING_IWDG_RELOAD);
+  /* We are duplicating the IWDG call here for compatibility with old bootloader */
+  /* Set IWDG Timeout to 3 secs */
+  IWDG_Reset_Enable(3 * TIMING_IWDG_RELOAD);
 #endif
 
 #ifdef DFU_BUILD_ENABLE
-        Load_SystemFlags();
+  Load_SystemFlags();
 #endif
 
 #ifdef SPARK_SFLASH_ENABLE
-        sFLASH_Init();
+  sFLASH_Init();
 #endif
 
 #ifdef SPARK_WLAN_ENABLE
-        /* Start Spark Wlan and connect to Wifi Router by default */
-        SPARK_WLAN_SETUP = 1;
+  /* Start Spark Wlan and connect to Wifi Router by default */
+  SPARK_WLAN_SETUP = 1;
 
-        /* Connect to Spark Cloud by default */
-        SPARK_CLOUD_CONNECT = 1;
+  /* Connect to Spark Cloud by default */
+  SPARK_CLOUD_CONNECT = 1;
 #endif
 }
 
@@ -206,5 +206,30 @@ void HAL_Core_Execute_Stop_Mode(void)
       /* Wait till PLL is used as system clock source */
       while(RCC_GetSYSCLKSource() != 0x08);
     }
+  }
+}
+
+void HAL_Core_Enter_Standby_Mode(void)
+{
+  /* Execute Standby mode on next system reset */
+  BKP_WriteBackupRegister(BKP_DR9, 0xA5A5);
+
+  /* Reset System */
+  NVIC_SystemReset();
+}
+
+void HAL_Core_Execute_Standby_Mode(void)
+{
+  /* Should we execute System Standby mode */
+  if(BKP_ReadBackupRegister(BKP_DR9) == 0xA5A5)
+  {
+    /* Clear Standby mode system flag */
+    BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
+
+    /* Request to enter STANDBY mode */
+    PWR_EnterSTANDBYMode();
+
+    /* Following code will not be reached */
+    while(1);
   }
 }

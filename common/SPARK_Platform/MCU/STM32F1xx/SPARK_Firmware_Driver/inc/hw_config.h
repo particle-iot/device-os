@@ -142,12 +142,10 @@ void SysTick_Configuration(void);
 void Delay(uint32_t nTime);
 void Delay_Microsecond(uint32_t uSec);
 
-
 void System1MsTick(void);
 system_tick_t GetSystem1MsTick(void);
 
 void RTC_Configuration(void);
-void Enter_STANDBY_Mode(void);
 
 void IWDG_Reset_Enable(uint32_t msTimeout);
 
