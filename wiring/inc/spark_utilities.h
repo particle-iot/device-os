@@ -155,7 +155,6 @@ void Enter_STOP_Mode(void);
 
 int Spark_Connect(void);
 int Spark_Disconnect(void);
-void Spark_ConnectAbort_WLANReset(void);
 
 void Spark_Protocol_Init(void);
 int Spark_Handshake(void);
@@ -172,8 +171,6 @@ uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen)
 int userVarType(const char *varKey);
 void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString);
-
-long socket_connect(long sd, const sockaddr *addr, long addrlen);
 
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));

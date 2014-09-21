@@ -37,6 +37,7 @@
 #include "debug.h"
 #include "spi_bus.h"
 
+
 #define READ_COMMAND           {READ, 0 , 0 , 0 , 0}
 #define READ_OFFSET_TO_LENGTH   3 //cmd  dmy dmy lh  ll
 #define SPI_HEADER_SIZE         (5)

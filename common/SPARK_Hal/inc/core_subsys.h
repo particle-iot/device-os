@@ -13,10 +13,19 @@ extern "C" {
 #endif
 
 
+/**
+ * Reads the subsystem version as a string into a given buffer.
+ * @return 0 on success.
+ */       
 int core_read_subsystem_version(char* buf, int bufLen);
   
 // cc3000
-#define SPARK_SUBSYSTEM_EVENT_NAME "spark/cc3000-patch-version"
+
+
+/**
+ * The event name to publish for this subsystem type.
+ */
+#define SPARK_SUBSYSTEM_EVENT_NAME "cc3000-patch-version"
   
 
 

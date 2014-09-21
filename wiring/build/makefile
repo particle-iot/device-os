@@ -3,7 +3,7 @@ MAKE_ARGS = --no-print-directory
 
 # don't propagate command line definitions to submakes, specifically, TARGET,
 # since this will override the local makefile's definition of that. 
-MAKEOVERRIDES=
+MAKEOVERRIDES:=$(filter-out TARGET%,$(MAKEOVERRIDES))
 
 # by convention, all symbols referring to a directory end with a slash - this allows
 # directories to resolve to "" when equal to the working directory
@@ -12,7 +12,7 @@ SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 # for now, assume current dir is build/
 PROJECT_DIR=../
 
-# Define the build path, this is where all of the dependancies and
+# Define the build path, this is where all of the dependencies and
 # object files will be placed.
 # Note: Currently set to <project>/build/obj directory and set relative to
 # the dir which makefile is invoked. If the makefile is moved to the project
@@ -51,7 +51,6 @@ USRSRC += ""
 # determine where user sources are, relative to project root
 ifdef APP
 USRSRC = applications/$(APP)/
-CPPFLAGS += -std=gnu++11
 ifndef TARGET
 TARGET ?= $(notdir $(APP))
 TARGETDIR ?= $(USRSRC)
@@ -60,7 +59,7 @@ endif
 
 ifdef TEST
 USRSRC = tests/$(TEST)/
-CPPFLAGS += -std=gnu++11
+
 ifndef TARGET
 TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
@@ -105,6 +104,8 @@ INCLUDE_DIRS += $(LIB_CORE_LIBRARIES_PATH)Serial2
 # on HAL
 # they are here now to make the build work while we transition
 
+PLATFORM_NET=CC3000
+
 PLATFORM=$(LIB_CORE_COMMON_PATH)SPARK_Platform/
 PLATFORM_MCU=$(PLATFORM)MCU/STM32F1xx/
 PLATFORM_WLAN=$(PLATFORM)WLAN/
@@ -114,9 +115,13 @@ INCLUDE_DIRS += $(PLATFORM_MCU)CMSIS/Device/ST/Include
 INCLUDE_DIRS += $(PLATFORM_MCU)SPARK_Firmware_Driver/inc
 INCLUDE_DIRS += $(PLATFORM_MCU)STM32_StdPeriph_Driver/inc
 INCLUDE_DIRS += $(PLATFORM_MCU)STM32_USB_Device_Driver/inc
-INCLUDE_DIRS += $(PLATFORM_WLAN)CC3000/CC3000_Host_Driver
 
-#INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)CC3000_Host_Driver
+ifeq ("$(PLATFORM_NET)","CC3000")
+#INCLUDE_DIRS += $(PLATFORM_WLAN)CC3000/CC3000_Host_Driver
+else
+$(error PLATFORM_NET not defined)
+endif
+
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Hal/inc
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
 INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)lib/tropicssl/include
@@ -139,6 +144,7 @@ CFLAGS += -DUSE_STDPERIPH_DRIVER
 CFLAGS += -DSTM32F10X_MD
 CFLAGS += -DDFU_BUILD_ENABLE
 CFLAGS += -DSPARK=1
+CFLAGS += -DSPARK_PLATFORM_NET=$(PLATFORM_NET)
 
 ifeq ("$(USE_SWD_JTAG)","y") 
 CFLAGS += -DUSE_SWD_JTAG
@@ -151,7 +157,8 @@ CFLAGS += -DRELEASE_BUILD
 endif
 
 # C++ specific flags
-CPPFLAGS += -fno-exceptions -fno-rtti 
+CPPFLAGS += -fno-exceptions -fno-rtti -std=gnu++11
+
 
 # Linker flags
 LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 

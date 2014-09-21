@@ -28,16 +28,17 @@
 #include "spark_wiring.h"
 #include "spark_wiring_network.h"
 #include "spark_flasher_ymodem.h"
-#include "socket.h"
-#include "netapp.h"
+#include "socket_hal.h"
+#include "inet_hal.h"
+#include "core_subsys.h"
 #include "string.h"
 #include <stdarg.h>
 
+using namespace spark;
+
 SparkProtocol spark_protocol;
 
-#define INVALID_SOCKET (-1)
-
-long sparkSocket = INVALID_SOCKET;
+sock_handle_t sparkSocket = SOCKET_INVALID;
 sockaddr tSocketAddr;
 
 //char digits[] = "0123456789";
@@ -491,19 +492,19 @@ void Enter_STOP_Mode(void)
 
 inline uint8_t isSocketClosed()
 {
-  uint8_t closed  = get_socket_active_status(sparkSocket)==SOCKET_STATUS_INACTIVE;
+  uint8_t closed  = socket_active_status(sparkSocket)==SOCKET_STATUS_INACTIVE;
 
   if(closed)
   {
       DEBUG("get_socket_active_status(sparkSocket=%d)==SOCKET_STATUS_INACTIVE", sparkSocket);
   }
-  if(closed && sparkSocket != INVALID_SOCKET)
+  if(closed && sparkSocket != SOCKET_INVALID)
   {
-      DEBUG("!!!!!!closed && sparkSocket(%d) != INVALID_SOCKET", sparkSocket);
+      DEBUG("!!!!!!closed && sparkSocket(%d) != SOCKET_INVALID", sparkSocket);
   }
-  if(sparkSocket == INVALID_SOCKET)
+  if(sparkSocket == SOCKET_INVALID)
     {
-      DEBUG("sparkSocket == INVALID_SOCKET");
+      DEBUG("sparkSocket == SOCKET_INVALID");
       closed = true;
     }
   return closed;
@@ -583,8 +584,7 @@ int Spark_Send(const unsigned char *buf, int buflen)
   }
 
   // send returns negative numbers on error
-  int bytes_sent = send(sparkSocket, buf, buflen, 0);
-
+  int bytes_sent = socket_send(sparkSocket, buf, buflen);
   return bytes_sent;
 }
 
@@ -597,39 +597,7 @@ int Spark_Receive(unsigned char *buf, int buflen)
     DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
     return -1;
   }
-
-  timeval timeout;
-  _types_fd_set_cc3000 readSet;
-  int bytes_received = 0;
-  int num_fds_ready = 0;
-
-  // reset the fd_set structure
-  FD_ZERO(&readSet);
-  FD_SET(sparkSocket, &readSet);
-
-  // tell select to timeout after the minimum 5000 microseconds
-  // defined in the SimpleLink API as SELECT_TIMEOUT_MIN_MICRO_SECONDS
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 5000;
-
-  num_fds_ready = select(sparkSocket + 1, &readSet, NULL, NULL, &timeout);
-
-  if (0 < num_fds_ready)
-  {
-    if (FD_ISSET(sparkSocket, &readSet))
-    {
-      // recv returns negative numbers on error
-      bytes_received = recv(sparkSocket, buf, buflen, 0);
-      DEBUG("bytes_received %d",bytes_received);
-    }
-  }
-  else if (0 > num_fds_ready)
-  {
-    // error from select
-   DEBUG("select Error %d",num_fds_ready);
-    return num_fds_ready;
-  }
-  return bytes_received;
+  return socket_receive(sparkSocket, buf, buflen, 0);  
 }
 
 void Spark_Prepare_To_Save_File(unsigned int sFlashAddress, unsigned int fileSize)
@@ -770,12 +738,10 @@ int Spark_Handshake(void)
   Multicast_Presence_Announcement();
   spark_protocol.send_time_request();
 
-  unsigned char patchver[2];
-  nvmem_read_sp_version(patchver);
-  char patchstr[8];
-  snprintf(patchstr, 8, "%d.%d", patchver[0], patchver[1]);
-  Spark.publish("spark/cc3000-patch-version", patchstr, 60, PRIVATE);
-
+  char patchstr[8];  
+  if (!core_read_subsystem_version(patchstr, 8)) {
+      Spark.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, patchstr, 60, PRIVATE);
+  }
   return err;
 }
 
@@ -788,7 +754,7 @@ bool Spark_Communication_Loop(void)
 
 void Multicast_Presence_Announcement(void)
 {
-  long multicast_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (0 > multicast_socket)
     return;
 
@@ -808,10 +774,10 @@ void Multicast_Presence_Announcement(void)
   //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
   //for (int i = 3; i > 0; i--)
   {
-    sendto(multicast_socket, announcement, 19, 0, &addr, sizeof(sockaddr));
+    socket_sendto(multicast_socket, announcement, 19, 0, &addr, sizeof(sockaddr));
   }
 
-  closesocket(multicast_socket);
+  socket_close(multicast_socket);
 }
 
 /* This function MUST NOT BlOCK!
@@ -858,7 +824,7 @@ int Internet_Test(void)
     sockaddr testSocketAddr;
     int testResult = 0;
     DEBUG("socket");
-    testSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     DEBUG("socketed testSocket=%d",testSocket);
 
 
@@ -882,7 +848,7 @@ int Internet_Test(void)
 
     uint32_t ot = SPARK_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
     DEBUG("connect");
-    testResult = connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
+    testResult = socket_connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
     DEBUG("connected testResult=%d",testResult);
     SPARK_WLAN_SetNetWatchDog(ot);
 
@@ -892,10 +858,8 @@ int Internet_Test(void)
     int rc = send(testSocket, &c,1, 0);
     DEBUG("send %d",rc);
 #endif
-
     DEBUG("Close");
-    int rv = closesocket(testSocket);
-    DEBUG("Closed rv=%d",rv);
+    socket_close(testSocket);
 
     //if connection fails, testResult returns -1
     return testResult;
@@ -910,7 +874,7 @@ int Spark_Connect(void)
 
   Spark_Disconnect();
 
-  sparkSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  sparkSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   DEBUG("socketed sparkSocket=%d",sparkSocket);
 
   if (sparkSocket < 0)
@@ -950,7 +914,7 @@ int Spark_Connect(void)
       int attempts = 10;
       while (!ip_addr && 0 < --attempts)
       {
-        gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr);
+        inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr);
       }
   }
 
@@ -967,7 +931,7 @@ int Spark_Connect(void)
 
   uint32_t ot = SPARK_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
   DEBUG("connect");
-  int rv = connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
+  int rv = socket_connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
   DEBUG("connected connect=%d",rv);
   SPARK_WLAN_SetNetWatchDog(ot);
   return rv;
@@ -986,21 +950,11 @@ int Spark_Disconnect(void)
       DEBUG("send %d",rc);
 #endif
       DEBUG("Close");
-      retVal = closesocket(sparkSocket);
+      retVal = socket_close(sparkSocket);
       DEBUG("Closed retVal=%d", retVal);
-      sparkSocket = INVALID_SOCKET;
+      sparkSocket = SOCKET_INVALID;
   }
   return retVal;
-}
-
-void Spark_ConnectAbort_WLANReset(void)
-{
-	//Work around to exit the blocking nature of socket calls
-	tSLInformation.usEventOrDataReceived = 1;
-	tSLInformation.usRxEventOpcode = 0;
-	tSLInformation.usRxDataPending = 0;
-
-	SPARK_WLAN_RESET = 1;
 }
 
 int userVarType(const char *varKey)
@@ -1045,11 +999,6 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
 		}
 	}
 	return -1;
-}
-
-long socket_connect(long sd, const sockaddr *addr, long addrlen)
-{
-	return connect(sd, addr, addrlen);
 }
 
 // Convert unsigned integer to ASCII in decimal base

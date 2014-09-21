@@ -28,12 +28,13 @@
 #define __SPARK_WIRING_UDP_H
 
 #include "spark_wiring.h"
+#include "socket_hal.h"
 
 #define RX_BUF_MAX_SIZE	512
 
 class UDP : public Stream {
 private:
-	uint8_t _sock;
+	sock_handle_t _sock;
 	uint16_t _port;
 	IPAddress _remoteIP;
 	uint16_t _remotePort;

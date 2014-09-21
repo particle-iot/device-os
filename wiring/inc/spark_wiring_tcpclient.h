@@ -28,6 +28,7 @@
 
 #include "spark_wiring_client.h"
 #include "spark_wiring.h"
+#include "socket_hal.h"
 
 #define TCPCLIENT_BUF_MAX_SIZE	128
 
@@ -35,7 +36,7 @@ class TCPClient : public Client {
 
 public:
 	TCPClient();
-	TCPClient(uint8_t sock);
+	TCPClient(sock_handle_t sock);
         virtual ~TCPClient() {};
 
   uint8_t status();
@@ -58,7 +59,7 @@ public:
 
 private:
 	static uint16_t _srcport;
-	long _sock;
+	sock_handle_t _sock;
 	uint8_t _buffer[TCPCLIENT_BUF_MAX_SIZE];
 	uint16_t _offset;
 	uint16_t _total;

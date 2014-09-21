@@ -29,14 +29,15 @@
 
 extern "C" {
 
-#include "hw_config.h"
-#include "evnt_handler.h"
-#include "hci.h"
-#include "wlan.h"
-#include "nvmem.h"
-#include "socket.h"
-#include "netapp.h"
-#include "security.h"
+#include "socket_hal.h"
+//#include "hw_config.h"
+//#include "evnt_handler.h"
+//#include "hci.h"
+//#include "wlan.h"
+//#include "nvmem.h"
+//#include "socket.h"
+//#include "netapp.h"
+//#include "security.h"
 
 #define SMART_CONFIG_PROFILE_SIZE       67
 
@@ -48,7 +49,7 @@ extern "C" {
 #define WLAN_TIMEOUT_FILE_OFFSET	2
 #define ERROR_COUNT_FILE_OFFSET		3
 
-#define MAX_SOCK_NUM			8
+//#define MAX_SOCK_NUM			8
 
 void Set_NetApp_Timeout(void);
 void Clear_NetApp_Dhcp(void);
@@ -72,9 +73,9 @@ extern int Spark_Process_API_Response(void);
 
 extern volatile uint32_t TimingFlashUpdateTimeout;
 
-extern tNetappIpconfigRetArgs ip_config;
-extern netapp_pingreport_args_t ping_report;
-extern int ping_report_num;
+//extern tNetappIpconfigRetArgs ip_config;
+//extern netapp_pingreport_args_t ping_report;
+//extern int ping_report_num;
 
 extern volatile uint8_t SPARK_WLAN_SETUP;
 extern volatile uint8_t SPARK_WLAN_RESET;
@@ -99,7 +100,7 @@ extern volatile uint8_t Cloud_Handshake_Error_Count;
 
 extern volatile system_tick_t spark_loop_total_millis;
 
-extern long sparkSocket;
+extern sock_handle_t sparkSocket;
 
 extern unsigned char wlan_profile_index;
 extern unsigned char NVMEM_Spark_File_Data[];

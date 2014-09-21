@@ -32,10 +32,10 @@
 #include "platform_config.h"
 #include "config.h"
 #include "sst25vf_spi.h"
-//#include "cc3000_common.h"
+#include "cc3000_common.h"
 #include "usb_type.h"
 #include "rgbled.h"
-#include "system_tick.h"
+#include "system_tick_hal.h"
 #include "usb_hal.h"
 
 enum SpiBusOwner {

@@ -27,6 +27,34 @@
 /* Includes ------------------------------------------------------------------*/
 #include "sst25vf_spi.h"
 
+
+/* Includes ------------------------------------------------------------------*/
+#include "hw_config.h"
+
+/* SST25 SPI Flash supported commands */
+#define sFLASH_CMD_RDSR					0x05		/* Read Status Register */
+#define sFLASH_CMD_WRSR					0x01		/* Write Status Register */
+#define sFLASH_CMD_EWSR					0x50		/* Write Enable Status */
+#define sFLASH_CMD_WRDI					0x04		/* Write Disable */
+#define sFLASH_CMD_WREN					0x06		/* Write Enable */
+#define sFLASH_CMD_READ					0x03		/* Read Data Bytes */
+#define sFLASH_CMD_WRITE 				0x02		/* Byte Program */
+#define sFLASH_CMD_AAIP                 0xAD		/* Auto Address Increment */
+#define sFLASH_CMD_SE             		0x20		/* 4KB Sector Erase instruction */
+#define sFLASH_CMD_BE             		0xC7		/* Bulk Chip Erase instruction */
+#define sFLASH_CMD_RDID            		0x9F		/* JEDEC ID Read */
+#define sFLASH_CMD_EBSY                 0x70		/* Enable SO RY/BY# Status */
+#define sFLASH_CMD_DBSY                 0x80		/* Disable SO RY/BY# Status */
+
+#define sFLASH_WIP_FLAG           		0x01		/* Write In Progress (WIP) flag */
+
+#define sFLASH_DUMMY_BYTE         		0xFF
+#define sFLASH_PAGESIZE					0x1000		/* 4096 bytes */
+
+#define sFLASH_SST25VF040_ID			0xBF258D	/* JEDEC Read-ID Data */
+#define sFLASH_SST25VF016_ID			0xBF2541	/* JEDEC Read-ID Data */
+
+
 /* Local function forward declarations ---------------------------------------*/
 static void sFLASH_WriteByte(uint32_t WriteAddr, uint8_t byte);
 static void sFLASH_WriteBytes(const uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);

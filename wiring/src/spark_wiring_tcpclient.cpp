@@ -26,20 +26,23 @@
  */
 
 #include "spark_wiring_tcpclient.h"
+#include "socket_hal.h"
+#include "inet_hal.h"
+
+using namespace spark;
 
 uint16_t TCPClient::_srcport = 1024;
 
-static bool inline isOpen(long sd)
+static bool inline isOpen(sock_handle_t sd)
 {
-   return sd != MAX_SOCK_NUM;
+   return sd != SOCKET_INVALID;
 }
 
-TCPClient::TCPClient() : _sock(MAX_SOCK_NUM)
+TCPClient::TCPClient() : TCPClient(SOCKET_INVALID)
 {
-  flush();
 }
 
-TCPClient::TCPClient(uint8_t sock) : _sock(sock) 
+TCPClient::TCPClient(sock_handle_t sock) : _sock(sock) 
 {
   flush();
 }
@@ -52,7 +55,7 @@ int TCPClient::connect(const char* host, uint16_t port)
 
         uint32_t ip_addr = 0;
 
-        if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
+        if(inet_gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
         {
                 IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
 
@@ -68,7 +71,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
         if(WiFi.ready())
         {
           sockaddr tSocketAddr;
-          _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+          _sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
           DEBUG("socket=%d",_sock);
 
           if (_sock >= 0)
@@ -108,7 +111,7 @@ size_t TCPClient::write(uint8_t b)
 
 size_t TCPClient::write(const uint8_t *buffer, size_t size)
 {
-        return status() ? send(_sock, buffer, size, 0) : -1;
+        return status() ? socket_send(_sock, buffer, size) : -1;
 }
 
 int TCPClient::bufferCount()
@@ -131,29 +134,14 @@ int TCPClient::available()
         // Have room
         if ( _total < arraySize(_buffer))
         {
-          _types_fd_set_cc3000 readSet;
-          timeval timeout;
-
-          FD_ZERO(&readSet);
-          FD_SET(_sock, &readSet);
-
-          timeout.tv_sec = 0;
-          timeout.tv_usec = 5000;
-
-          if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
-          {
-              if (FD_ISSET(_sock, &readSet))
-              {
-                  int ret = recv(_sock, _buffer + _total , arraySize(_buffer)-_total, 0);
-                  DEBUG("recv(=%d)",ret);
-                  if (ret > 0)
-                  {
-                      if (_total == 0) _offset = 0;
-                      _total += ret;
-                  }
-              }
-          } // Select
-          } // Have Space
+            int ret = socket_receive(_sock, _buffer + _total , arraySize(_buffer)-_total, 0);
+            DEBUG("recv(=%d)",ret);
+            if (ret > 0)
+            {
+                if (_total == 0) _offset = 0;
+                _total += ret;
+            }
+        } // Have Space
     } // WiFi.ready() && isOpen(_sock)
     avail = bufferCount();
     return avail;
@@ -188,16 +176,14 @@ void TCPClient::flush()
   _total = 0;
 }
 
+
 void TCPClient::stop() 
 {
   DEBUG("_sock %d closesocket", _sock);
 
   if (isOpen(_sock))
-  {
-      int rv = closesocket(_sock);
-      DEBUG("_sock %d closed=%d", _sock, rv);
-  }
- _sock = MAX_SOCK_NUM;
+      socket_close(_sock);
+ _sock = SOCKET_INVALID;
 }
 
 uint8_t TCPClient::connected() 
@@ -205,7 +191,7 @@ uint8_t TCPClient::connected()
   // Wlan up, open and not in CLOSE_WAIT or data still in the local buffer
   bool rv = ( 1 == status() || bufferCount()) ? true : false;
   // no data in the local buffer, Socket open but my be in CLOSE_WAIT yet the CC3000 may have data in its buffer
-  if(!rv && isOpen(_sock) && (SOCKET_STATUS_INACTIVE == get_socket_active_status(_sock)))
+  if(!rv && isOpen(_sock) && (SOCKET_STATUS_INACTIVE == socket_active_status(_sock)))
     {
       rv = available(); // Try CC3000
       if (!rv) {        // No more Data and CLOSE_WAIT
@@ -218,8 +204,7 @@ uint8_t TCPClient::connected()
 
 uint8_t TCPClient::status()
 {
-  return (isOpen(_sock) && WiFi.ready() && (SOCKET_STATUS_ACTIVE == get_socket_active_status(_sock)) ? 1 : 0);
-
+  return (isOpen(_sock) && WiFi.ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(_sock)) ? 1 : 0);
 }
 
 TCPClient::operator bool()

@@ -47,4 +47,6 @@
 #include "spark_wiring_tone.h"
 #include "spark_wiring_eeprom.h"
 
+using namespace spark;
+
 #endif /* APPLICATION_H_ */

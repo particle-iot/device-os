@@ -14,71 +14,63 @@ extern "C" {
 
 #include "debug.h"
 #include <stdint.h>
-        
+#include "system_tick_hal.h"
+    
 typedef struct _sockaddr_t
 {
     uint16_t   sa_family;
-    uint8_t     sa_data[14];
+    uint8_t    sa_data[14];
 } sockaddr;
 
-typedef uint32_t socket_handle_t;
-typedef uint32_t socklen_t;
-
+typedef uint32_t sock_handle_t;
+typedef int32_t socklen_t;
+typedef int32_t sock_result_t;
 
 const uint8_t SOCKET_STATUS_INACTIVE = 1;
 const uint8_t SOCKET_STATUS_ACTIVE = 0;
 
-uint8_t get_socket_active_status(socket_handle_t socket);
+uint8_t socket_active_status(sock_handle_t socket);
 
 
-int32_t socket_connect(socket_handle_t sd, const sockaddr *addr, long addrlen);
+sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol);
+
+sock_result_t socket_connect(sock_handle_t sd, const sockaddr *addr, long addrlen);
 
 /**
  * Reads from a socket to a buffer, upto a given number of bytes, with timeout.
  * Returns the number of bytes read, which can be less than the number requested.
  * Returns <0 on error or if the stream is closed.
  */
-int32_t socket_receive(socket_handle_t sd, void* buffer, int len, system_tick_t _timeout);
+sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, system_tick_t _timeout);
 
-int32_t socket_receivefrom(socket_handle_t sd, void* buffer, int len, sockaddr* address, socklen_t* addr_size);
+sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t len, uint32_t flags, sockaddr* address, socklen_t* addr_size);
 
-int32_t socket_send(socket_handle_t sd, const void* buffer, socklen_t len);
+sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len);
 
-int32_t socket_sendto(socket_handle_t sd, const void* buffer, socklen_t len, sockaddr* addr, socklen_t addr_size);
+sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr* addr, socklen_t addr_size);
 
-int32_t socket_close(socket_handle_t sd);
+sock_result_t socket_close(sock_handle_t sd);
 
-int32_t socket_reset_blocking_call();
+sock_result_t socket_reset_blocking_call();
 
-socket_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol);
-
-int32_t socket_create_nonblocking_server(socket_handle_t handle);
-int32_t socket_accept(socket_handle_t sd);
+sock_result_t socket_create_nonblocking_server(sock_handle_t handle, uint16_t port);
+sock_result_t socket_accept(sock_handle_t sd);
 
 /**
  * Binds a client socket.
  */
-int32_t socket_bind(socket_handle_t sd, uint16_t port);
+sock_result_t socket_bind(sock_handle_t sd, uint16_t port);
 
 
 
-//int32_t bind(socket_handle_t sd, const sockaddr *addr, int32_t addrlen);
-//int32_t listen(int32_t sd, int32_t backlog);
-//int32_t setsockopt(socket_handle_t sd, int32_t level, int32_t optname, const void *optval, socklen_t optlen);
+//sock_result_t bind(sock_handle_t sd, const sockaddr *addr, int32_t addrlen);
+//sock_result_t listen(int32_t sd, int32_t backlog);
+//sock_result_t setsockopt(sock_handle_t sd, int32_t level, int32_t optname, const void *optval, socklen_t optlen);
 
 
 // CC3000
-const socket_handle_t MAX_SOCK_NUM = (socket_handle_t)8;
-
-
-/**
- * 
- * @param hostname      buffer to receive the hostname
- * @param hostnameLen   length of the hostname buffer 
- * @param out_ip_addr   The ip address 
- * @return 
- */
-int gethostbyname(char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr);
+const sock_handle_t SOCKET_MAX = (sock_handle_t)8;
+const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
 
 
 //--------- Address Families --------

@@ -34,6 +34,8 @@ extern "C" {
 #include "sst25vf_spi.h"
 }
 
+using namespace spark;
+
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/

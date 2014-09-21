@@ -27,53 +27,61 @@
 #define __SPARK_WIRING_WIFI_H
 
 #include "spark_wiring.h"
-
-#define UNSEC   (WLAN_SEC_UNSEC)
-#define WEP     (WLAN_SEC_WEP)
-#define WPA     (WLAN_SEC_WPA)
-#define WPA2    (WLAN_SEC_WPA2)
+#include "wlan_hal.h"
 
 class IPAddress;
 
+namespace spark { 
+        
+enum SecurityType {
+    UNSEC = WLAN_SEC_UNSEC,
+    WEP = WLAN_SEC_WEP,
+    WPA = WLAN_SEC_WPA,
+    WPA2 = WLAN_SEC_WPA2        
+};
+    
 class WiFiClass
 {
+    
 public:
-	WiFiClass() {}
-	~WiFiClass() {}
+    WiFiClass() {}
+    ~WiFiClass() {}
 
-        uint8_t* macAddress(uint8_t* mac);
-        IPAddress localIP();
-        IPAddress subnetMask();
-        IPAddress gatewayIP();
-        char* SSID();
-        int8_t RSSI();
-        uint32_t ping(IPAddress remoteIP);
-        uint32_t ping(IPAddress remoteIP, uint8_t nTries);
+    uint8_t* macAddress(uint8_t* mac);
+    IPAddress localIP();
+    IPAddress subnetMask();
+    IPAddress gatewayIP();
+    const char* SSID();
+    int8_t RSSI();
+    uint32_t ping(IPAddress remoteIP);
+    uint32_t ping(IPAddress remoteIP, uint8_t nTries);
 
-        static void connect(void);
-        static void disconnect(void);
-        static bool connecting(void);
-        static bool ready(void);
-        static void on(void);
-        static void off(void);
-        static void listen(void);
-        static bool listening(void);
-        static void setCredentials(const char *ssid);
-        static void setCredentials(const char *ssid, const char *password);
-        static void setCredentials(const char *ssid, const char *password, unsigned long security);
-        static void setCredentials(char *ssid, unsigned int ssidLen, char *password, unsigned int passwordLen, unsigned long security);
-        static bool hasCredentials(void);
-        static bool clearCredentials(void);
+    static void connect(void);
+    static void disconnect(void);
+    static bool connecting(void);
+    static bool ready(void);
+    static void on(void);
+    static void off(void);
+    static void listen(void);
+    static bool listening(void);
+    static void setCredentials(const char *ssid);
+    static void setCredentials(const char *ssid, const char *password);
+    static void setCredentials(const char *ssid, const char *password, unsigned long security);
+    static void setCredentials(const char *ssid, unsigned int ssidLen, const char *password, unsigned int passwordLen, unsigned long security);
+    static bool hasCredentials(void);
+    static bool clearCredentials(void);
 
-        friend class TCPClient;
-        friend class TCPServer;
+    friend class TCPClient;
+    friend class TCPServer;
 
 private:
-        uint32_t _functionStart;
-        uint8_t _loopCount;
-        int8_t _returnValue;
+    uint32_t _functionStart;
+    uint8_t _loopCount;
+    int8_t _returnValue;
 };
 
 extern WiFiClass WiFi;
+
+}   // namespace Spark
 
 #endif

@@ -27,82 +27,72 @@
  */
 
 #include "spark_wiring_udp.h"
+#include "socket_hal.h"
+#include "inet_hal.h"
 
+using namespace spark;
 
-static bool inline isOpen(long sd)
+static bool inline isOpen(sock_handle_t sd)
 {
-   return sd != MAX_SOCK_NUM;
+   return sd != SOCKET_INVALID;
 }
 
-UDP::UDP() : _sock(MAX_SOCK_NUM)
+UDP::UDP() : _sock(SOCKET_INVALID)
 {
 
 }
 
 uint8_t UDP::begin(uint16_t port) 
 {
-        int bound = 0;
-	sockaddr tUDPAddr;
-
+    bool bound = 0;
 	if(WiFi.ready())
 	{
-	   _sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-           DEBUG("socket=%d",_sock);
-           if (_sock >= 0)
+	   _sock = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        DEBUG("socket=%d",_sock);
+        if (_sock >= 0)
+        {
+            flush();
+            _port = port;
+            bound = socket_bind(_sock, port) >= 0;
+            DEBUG("socket=%d bound=%d",_sock,bound);
+
+            if(!bound)
             {
-
-              flush();
-              _port = port;
-
-              memset(&tUDPAddr, 0, sizeof(tUDPAddr));
-              tUDPAddr.sa_family = AF_INET;
-              tUDPAddr.sa_data[0] = (_port & 0xFF00) >> 8;
-              tUDPAddr.sa_data[1] = (_port & 0x00FF);
-
-              DEBUG("bind socket=%d",_sock);
-              bound = bind(_sock, (sockaddr*)&tUDPAddr, sizeof(tUDPAddr)) >= 0;
-              DEBUG("socket=%d bound=%d",_sock,bound);
-
-              if(!bound)
-              {
-                  stop();
-              }
-
+                stop();
             }
+        }
 	}
-        return bound;
+    return bound;
 }
 
 int UDP::available() 
 {
     return _total - _offset;
-
 }
 
 void UDP::stop()
 {
-  DEBUG("_sock %d closesocket", _sock);
-  if (isOpen(_sock))
-  {
-      int rv = closesocket(_sock);
-      DEBUG("_sock %d closed=%d", _sock, rv);
-  }
- _sock = MAX_SOCK_NUM;
+    DEBUG("_sock %d closesocket", _sock);
+    if (isOpen(_sock))
+    {
+        socket_close(_sock);        
+    }
+    _sock = SOCKET_INVALID;
 }
 
 int UDP::beginPacket(const char *host, uint16_t port)
 {
-        if(WiFi.ready())
+    if(WiFi.ready())
+    {
+        uint32_t ip_addr = 0;
+
+        if(inet_gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
         {
-	   uint32_t ip_addr = 0;
+            IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
 
-          if(gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
-          {
-                  IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
-
-                  return beginPacket(remote_addr, port);
-          }
+            return beginPacket(remote_addr, port);
         }
+    }
 	return 0;
 }
 
@@ -138,8 +128,7 @@ size_t UDP::write(uint8_t byte)
 
 size_t UDP::write(const uint8_t *buffer, size_t size)
 {
-
-	int rv =  sendto(_sock, buffer, size, 0, &_remoteSockAddr, _remoteSockAddrLen);
+	int rv =  socket_sendto(_sock, buffer, size, 0, &_remoteSockAddr, _remoteSockAddrLen);
         DEBUG("sendto(buffer=%lx, size=%d)=%d",buffer, size , rv);
 	return rv;
 }
@@ -147,40 +136,23 @@ size_t UDP::write(const uint8_t *buffer, size_t size)
 int UDP::parsePacket()
 {
   // No data buffered
-  if(available() == 0 && WiFi.ready() && isOpen(_sock))
-  {
-      _types_fd_set_cc3000 readSet;
-      timeval timeout;
+    if(available() == 0 && WiFi.ready() && isOpen(_sock))
+    {
+        int ret = socket_receivefrom(_sock, _buffer, arraySize(_buffer), 0, &_remoteSockAddr, &_remoteSockAddrLen);
+        if (ret > 0)
+        {
+            _remotePort = _remoteSockAddr.sa_data[0] << 8 | _remoteSockAddr.sa_data[1];
 
-      FD_ZERO(&readSet);
-      FD_SET(_sock, &readSet);
+            _remoteIP._address[0] = _remoteSockAddr.sa_data[2];
+            _remoteIP._address[1] = _remoteSockAddr.sa_data[3];
+            _remoteIP._address[2] = _remoteSockAddr.sa_data[4];
+            _remoteIP._address[3] = _remoteSockAddr.sa_data[5];
 
-      timeout.tv_sec = 0;
-      timeout.tv_usec = 5000;
-
-      if (select(_sock + 1, &readSet, NULL, NULL, &timeout) > 0)
-      {
-              if (FD_ISSET(_sock, &readSet))
-              {
-
-                      int ret = recvfrom(_sock, _buffer, arraySize(_buffer), 0, &_remoteSockAddr, &_remoteSockAddrLen);
-
-                      if (ret > 0)
-                      {
-                              _remotePort = _remoteSockAddr.sa_data[0] << 8 | _remoteSockAddr.sa_data[1];
-
-                              _remoteIP._address[0] = _remoteSockAddr.sa_data[2];
-                              _remoteIP._address[1] = _remoteSockAddr.sa_data[3];
-                              _remoteIP._address[2] = _remoteSockAddr.sa_data[4];
-                              _remoteIP._address[3] = _remoteSockAddr.sa_data[5];
-
-                              _offset = 0;
-                              _total = ret;
-                      }
-              }
-      }
-   }
-   return available();
+            _offset = 0;
+            _total = ret;
+        }      
+    }
+    return available();
 }
 
 int UDP::read()

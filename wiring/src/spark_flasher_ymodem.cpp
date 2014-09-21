@@ -27,6 +27,8 @@
 
 #include "spark_flasher_ymodem.h"
 
+using namespace spark;
+
 /**
  * @brief  Test to see if a key has been pressed on the HyperTerminal
  * @param  key: The key pressed

@@ -52,12 +52,12 @@ time_t time_zone_cache;			// a cache of the time zone that was set
 
 /* Time utility functions */
 static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time);
-static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time);
+//static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time);
 static time_t Get_UnixTime(void);
-static struct tm Get_CalendarTime(void);
+//static struct tm Get_CalendarTime(void);
 static void Set_UnixTime(time_t unix_time);
-static void Set_CalendarTime(struct tm t);
-static void Refresh_UnixTime_Cache(time_t unix_time);
+//static void Set_CalendarTime(struct tm t);
+//static void Refresh_UnixTime_Cache(time_t unix_time);
 
 /*******************************************************************************
  * Function Name  : Wiring_RTC_Interrupt_Handler (Declared as weak in stm32_it.cpp)
@@ -114,12 +114,14 @@ static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time)
 }
 
 /* Convert Calendar time to Unix/RTC time */
+/*
 static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time)
 {
 	calendar_time.tm_year -= 1900;
 	time_t unix_time = mktime(&calendar_time);
 	return unix_time;
 }
+*/
 
 /* Get Unix/RTC time */
 static time_t Get_UnixTime(void)
@@ -129,13 +131,15 @@ static time_t Get_UnixTime(void)
 }
 
 /* Get converted Calendar time */
-static struct tm Get_CalendarTime(void)
+/*
+ static struct tm Get_CalendarTime(void)
 {
 	time_t unix_time = Get_UnixTime();
 	unix_time += time_zone_cache;
 	struct tm calendar_time = Convert_UnixTime_To_CalendarTime(unix_time);
 	return calendar_time;
 }
+ */
 
 /* Set Unix/RTC time */
 static void Set_UnixTime(time_t unix_time)
@@ -144,10 +148,12 @@ static void Set_UnixTime(time_t unix_time)
 }
 
 /* Set Calendar time as Unix/RTC time */
+/*
 static void Set_CalendarTime(struct tm calendar_time)
 {
 	Set_UnixTime(Convert_CalendarTime_To_UnixTime(calendar_time));
 }
+*/
 
 /* Refresh Unix/RTC time cache */
 static void Refresh_UnixTime_Cache(time_t unix_time)

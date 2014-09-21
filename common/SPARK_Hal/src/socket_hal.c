@@ -1,7 +1,8 @@
 #include "socket.h"
 
 
-long socket_connect(long sd, const sockaddr *addr, long addrlen)
+
+int32_t socket_connect(sock_handle_t sd, const sockaddr *addr, long addrlen)
 {
     return connect(sd, addr, addrlen);
 }
@@ -14,7 +15,7 @@ void socket_reset_blocking_call()
     tSLInformation.usRxDataPending = 0;
 }
 
-int socket_receive(socket_handle_t sd, void* buffer, int len, system_tick_t _timeout)
+socklen_t socket_receive(socket_handle_t sd, void* buffer, socklen_t len, system_tick_t _timeout)
 {
   timeval timeout;
   _types_fd_set_cc3000 readSet;
@@ -52,9 +53,19 @@ int socket_receive(socket_handle_t sd, void* buffer, int len, system_tick_t _tim
   return bytes_received;
 }
 
-int32_t socket_create_nonblocking_server(socket_handle_t sock) {
+int32_t socket_create_nonblocking_server(socket_handle_t sock, uint16_t port) {
     long optval = SOCK_ON;
     int32 retVal;
+    sockaddr tServerAddr;
+
+    tServerAddr.sa_family = AF_INET;
+    tServerAddr.sa_data[0] = (_port & 0xFF00) >> 8;
+    tServerAddr.sa_data[1] = (_port & 0x00FF);
+    tServerAddr.sa_data[2] = 0;
+    tServerAddr.sa_data[3] = 0;
+    tServerAddr.sa_data[4] = 0;
+    tServerAddr.sa_data[5] = 0;
+
     (retVal=setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &optval, sizeof(optval)) >= 0) &&
     (retVal=bind(sock, (sockaddr*)&tServerAddr, sizeof(tServerAddr)) >= 0) &&
     (retVal=listen(sock, 0));
@@ -91,4 +102,11 @@ int32_t socket_bind(socket_handle_t sock, uint16_t port) {
     tUDPAddr.sa_data[1] = (_port & 0x00FF);
 
     return bind(sock, &tUDPAddr, sizoef(tUDBAddr));
+}
+
+sockt_result_t socket_accept(socket_handle_t sock) {
+    
+    sockaddr tClientAddr;
+    socklen_t tAddrLen = sizeof(tClientAddr);
+    return accept(sock, &tClientAddr, &tAddrLen)
 }

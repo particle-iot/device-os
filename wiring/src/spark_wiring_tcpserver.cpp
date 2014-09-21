@@ -26,7 +26,9 @@
 #include "spark_wiring_tcpclient.h"
 #include "spark_wiring_tcpserver.h"
 
-TCPServer::TCPServer(uint16_t port) : _port(port), _sock(MAX_SOCK_NUM), _client(MAX_SOCK_NUM)
+using namespace spark;
+
+TCPServer::TCPServer(uint16_t port) : _port(port), _sock(SOCKET_INVALID), _client(SOCKET_INVALID)
 {
 
 }
@@ -38,65 +40,35 @@ void TCPServer::begin()
 		return;
 	}
 
-	sockaddr tServerAddr;
-
-	tServerAddr.sa_family = AF_INET;
-
-	tServerAddr.sa_data[0] = (_port & 0xFF00) >> 8;
-	tServerAddr.sa_data[1] = (_port & 0x00FF);
-	tServerAddr.sa_data[2] = 0;
-	tServerAddr.sa_data[3] = 0;
-	tServerAddr.sa_data[4] = 0;
-	tServerAddr.sa_data[5] = 0;
-
-	int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
 	if (sock < 0)
 	{
 		return;
 	}
 
-	long optval = SOCK_ON;
-	if (setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &optval, sizeof(optval)) < 0)
-	{
-		return;
-	}
-
-	if (bind(sock, (sockaddr*)&tServerAddr, sizeof(tServerAddr)) < 0)
-	{
-		return;
-	}
-
-	if (listen(sock, 0) < 0)
-	{
-		return;
-	}
-
-	_sock = sock;
+	_sock = socket_create_nonblocking_server(sock, _port);
 }
 
 TCPClient TCPServer::available()
 {
-	if(_sock == MAX_SOCK_NUM)
+	if(_sock == SOCKET_INVALID)
 	{
 		begin();
 	}
 
-	if((!WiFi.ready()) || (_sock == MAX_SOCK_NUM))
+	if((!WiFi.ready()) || (_sock == SOCKET_INVALID))
 	{
-		_sock = MAX_SOCK_NUM;
-		_client = TCPClient(MAX_SOCK_NUM);
+		_sock = SOCKET_INVALID;
+		_client = TCPClient(SOCKET_INVALID);
 		return _client;
 	}
 
-	sockaddr tClientAddr;
-	socklen_t tAddrLen = sizeof(tClientAddr);
-
-	int sock = accept(_sock, (sockaddr*)&tClientAddr, &tAddrLen);
+	int sock = socket_accept(_sock);
 
 	if (sock < 0)
 	{
-		_client = TCPClient(MAX_SOCK_NUM);
+		_client = TCPClient(SOCKET_INVALID);
 	}
 	else
 	{

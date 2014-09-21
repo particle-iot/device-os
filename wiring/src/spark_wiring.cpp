@@ -231,7 +231,7 @@ void delay(unsigned long ms)
     KICK_WDT();
 
     volatile system_tick_t current_millis = GetSystem1MsTick();
-    volatile long elapsed_millis = current_millis - last_millis;
+    volatile system_tick_t elapsed_millis = current_millis - last_millis;
 
     //Check for wrapping
     if (elapsed_millis < 0)

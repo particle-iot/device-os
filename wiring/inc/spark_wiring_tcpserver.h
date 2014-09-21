@@ -33,7 +33,7 @@ class TCPClient;
 class TCPServer : public Print {
 private:
 	uint16_t _port;
-	long _sock;
+	sock_handle_t _sock;
 	TCPClient _client;
 
 public:
