@@ -96,8 +96,8 @@ LoopFillZerobss:
 	bcc	FillZerobss
 /* Call the clock system intitialization function. */
 	bl  SystemInit
-/* Call the spark core configuration function. */
-	bl  SparkCoreConfig
+/* Call the hal core configuration function. */
+	bl  HAL_Core_Config
 /* Call C++ constructors. */
 	bl	CallConstructors
 /* Call the application's entry point. */

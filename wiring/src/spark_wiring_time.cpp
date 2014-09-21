@@ -126,7 +126,7 @@ static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time)
 /* Get Unix/RTC time */
 static time_t Get_UnixTime(void)
 {
-	time_t unix_time = (time_t)HAL_I2C_Get_RTC_Counter();
+	time_t unix_time = (time_t)HAL_RTC_Get_Counter();
 	return unix_time;
 }
 
@@ -144,7 +144,7 @@ static time_t Get_UnixTime(void)
 /* Set Unix/RTC time */
 static void Set_UnixTime(time_t unix_time)
 {
-        HAL_I2C_Set_RTC_Counter((uint32_t)unix_time);
+        HAL_RTC_Set_Counter((uint32_t)unix_time);
 }
 
 /* Set Calendar time as Unix/RTC time */

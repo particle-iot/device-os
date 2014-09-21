@@ -34,6 +34,7 @@
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
+#define TIMING_FLASH_UPDATE_TIMEOUT     30000   //30sec
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -41,8 +42,8 @@
 extern "C" {
 #endif
 
-unsigned long HAL_Micro_Seconds(void);
-unsigned long HAL_Milli_Seconds(void);
+unsigned long HAL_Timer_Get_Micro_Seconds(void);
+unsigned long HAL_Timer_Get_Milli_Seconds(void);
 
 #ifdef __cplusplus
 }

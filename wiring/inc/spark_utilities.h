@@ -28,6 +28,7 @@
 #define __SPARK_UTILITIES_H
 
 #include "main.h"
+#include "rtc_hal.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_time.h"
 #include "spark_wiring_interrupts.h"
@@ -39,8 +40,6 @@
 
 //#define SPARK_SERVER_IP				"54.235.79.249"
 #define SPARK_SERVER_PORT				5683
-
-#define TIMING_FLASH_UPDATE_TIMEOUT             30000   //30sec
 
 #define SPARK_LOOP_DELAY_MILLIS			1000	//1sec
 
@@ -150,8 +149,6 @@ extern "C" {
 #endif
 
 int Internet_Test(void);
-
-void Enter_STOP_Mode(void);
 
 int Spark_Connect(void);
 int Spark_Disconnect(void);

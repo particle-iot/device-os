@@ -136,6 +136,8 @@ void Set_System(void)
 	PWR_BackupAccessCmd(ENABLE);
 
 	/* Should we execute System Standby mode */
+	// Use "HAL_Core_Execute_Standby_Mode()" defined in core_hal.c
+	// Or Use below code
 	if(BKP_ReadBackupRegister(BKP_DR9) == 0xA5A5)
 	{
 		/* Clear Standby mode system flag */
@@ -334,15 +336,6 @@ void RTC_Configuration(void)
 
 	/* Wait until last write operation on RTC registers has finished */
 	RTC_WaitForLastTask();
-}
-
-void Enter_STANDBY_Mode(void)
-{
-	/* Execute Standby mode on next system reset */
-	BKP_WriteBackupRegister(BKP_DR9, 0xA5A5);
-
-	/* Reset System */
-	NVIC_SystemReset();
 }
 
 void IWDG_Reset_Enable(uint32_t msTimeout)

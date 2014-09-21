@@ -203,7 +203,7 @@ void analogWrite(uint16_t pin, uint8_t value)
  */
 system_tick_t millis(void)
 {
-  return GetSystem1MsTick();
+  return HAL_Timer_Get_Milli_Seconds();
 }
 
 /*
@@ -211,7 +211,7 @@ system_tick_t millis(void)
  */
 unsigned long micros(void)
 {
-  return HAL_Micro_Seconds();
+  return HAL_Timer_Get_Micro_Seconds();
 }
 
 /*
@@ -224,13 +224,13 @@ void delay(unsigned long ms)
   spark_loop_total_millis += ms;
 #endif
 
-  volatile system_tick_t last_millis = GetSystem1MsTick();
+  volatile system_tick_t last_millis = HAL_Timer_Get_Milli_Seconds();
 
   while (1)
   {
     KICK_WDT();
 
-    volatile system_tick_t current_millis = GetSystem1MsTick();
+    volatile system_tick_t current_millis = HAL_Timer_Get_Milli_Seconds();
     volatile system_tick_t elapsed_millis = current_millis - last_millis;
 
     //Check for wrapping

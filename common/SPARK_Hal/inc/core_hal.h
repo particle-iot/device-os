@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    rtc_hal.h
+ * @file    core_hal.h
  * @author  Satish Nair, Brett Walach
  * @version V1.0.0
  * @date    12-Sept-2014
@@ -24,17 +24,53 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __RTC_HAL_H
-#define __RTC_HAL_H
+#ifndef __CORE_HAL_H
+#define __CORE_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f10x.h"
+#include "hw_config.h"
 
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
+//Following is normally defined via "CFLAGS += -DDFU_BUILD_ENABLE" in makefile
+#ifndef DFU_BUILD_ENABLE
+#define DFU_BUILD_ENABLE
+#endif
+
+/*
+ * Use the JTAG IOs as standard GPIOs (D3 to D7)
+ * Note that once the JTAG IOs are disabled, the connection with the host debugger
+ * is lost and cannot be re-established as long as the JTAG IOs remain disabled.
+ */
+#ifndef USE_SWD_JTAG
+#define SWD_JTAG_DISABLE
+#endif
+
+/*
+ * Use Independent Watchdog to force a system reset when a software error occurs
+ * During JTAG program/debug, the Watchdog counting is disabled by debug configuration
+ */
+#define IWDG_RESET_ENABLE
+
+//#undef SPARK_WLAN_ENABLE
+
+/*
+ * default status, works the way it does now, no need to define explicitly
+ */
+//#define RGB_NOTIFICATIONS_ON
+/*
+ * should prevent any of the Spark notifications from ever being shown on the LED;
+ * if the user never takes manual control of the LED, it should never turn on.
+ */
+//#define RGB_NOTIFICATIONS_OFF
+/*
+ * keep all of the statuses except the 'breathing cyan' - this would be a good
+ * power saver while still showing when important things are happening on the Core.
+ */
+//#define RGB_NOTIFICATIONS_CONNECTING_ONLY
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -42,12 +78,17 @@
 extern "C" {
 #endif
 
-uint32_t HAL_RTC_Get_Counter(void);
-void HAL_RTC_Set_Counter(uint32_t value);
-void HAL_RTC_Set_Alarm(uint32_t value);
+void HAL_Core_Config(void);
+void HAL_Core_System_Reset(void);
+void HAL_Core_Factory_Reset(void);
+void HAL_Core_Enter_Bootloader(void);
+void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
+void HAL_Core_Execute_Stop_Mode(void);
+void HAL_Core_Enter_Standby_Mode(void);
+void HAL_Core_Execute_Standby_Mode(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  /* __RTC_HAL_H */
+#endif  /* __CORE_HAL_H */

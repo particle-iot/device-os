@@ -46,8 +46,7 @@ sockaddr tSocketAddr;
 extern uint8_t LED_RGB_BRIGHTNESS;
 
 // LED_Signaling_Override
-__IO uint8_t LED_Spark_Signal;
-__IO uint32_t LED_Signaling_Timing;
+volatile uint8_t LED_Spark_Signal;
 const uint32_t VIBGYOR_Colors[] = {
   0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000};
 int VIBGYOR_Size = sizeof(VIBGYOR_Colors) / sizeof(uint32_t);
@@ -151,30 +150,21 @@ void SystemClass::serialFirmwareUpdate(Stream *serialObj)
 
 void SystemClass::factoryReset(void)
 {
-  //Work in Progress
   //This method will work only if the Core is supplied
   //with the latest version of Bootloader
-  Factory_Reset_SysFlag = 0xAAAA;
-  Save_SystemFlags();
-
-  reset();
+  HAL_Core_Factory_Reset();
 }
 
 void SystemClass::bootloader(void)
 {
-  //Work in Progress
   //The drawback here being it will enter bootloader mode until firmware
   //is loaded again. Require bootloader changes for proper working.
-  BKP_WriteBackupRegister(BKP_DR10, 0xFFFF);
-  FLASH_OTA_Update_SysFlag = 0xFFFF;
-  Save_SystemFlags();
-
-  reset();
+  HAL_Core_Enter_Bootloader();
 }
 
 void SystemClass::reset(void)
 {
-  NVIC_SystemReset();
+  HAL_Core_System_Reset();
 }
 
 bool RGBClass::_control = false;
@@ -364,11 +354,7 @@ void SparkClass::syncTime(void)
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
 #if defined (SPARK_RTC_ENABLE)
-	/* Set the RTC Alarm */
-	RTC_SetAlarm(RTC_GetCounter() + (uint32_t)seconds);
-
-	/* Wait until last write operation on RTC registers has finished */
-	RTC_WaitForLastTask();
+        HAL_RTC_Set_Alarm((uint32_t)seconds);
 
 	switch(sleepMode)
 	{
@@ -377,7 +363,7 @@ void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 		break;
 
 	case SLEEP_MODE_DEEP:
-		Enter_STANDBY_Mode();
+	        HAL_Core_Enter_Standby_Mode();
 		break;
 	}
 #endif
@@ -390,104 +376,16 @@ void SparkClass::sleep(long seconds)
 
 void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
 {
-  if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
-  {
-    uint16_t BKP_DR9_Data = wakeUpPin;//set wakeup pin mumber
-    BKP_DR9_Data |= (edgeTriggerMode << 8);//set edge trigger mode
-    BKP_DR9_Data |= (0xA << 12);//set stop mode flag
-
-    /*************************************************/
-    //BKP_DR9_Data: 0xAXXX
-    //                ||||
-    //                ||----- octet wakeUpPin number
-    //                |------ nibble edgeTriggerMode
-    //                ------- nibble stop mode flag
-    /*************************************************/
-
-    /* Execute Stop mode on next system reset */
-    BKP_WriteBackupRegister(BKP_DR9, BKP_DR9_Data);
-
-    /* Reset System */
-    NVIC_SystemReset();
-  }
+  HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode);
 }
 
 void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
 #if defined (SPARK_RTC_ENABLE)
-  /* Set the RTC Alarm */
-  RTC_SetAlarm(RTC_GetCounter() + (uint32_t)seconds);
-
-  /* Wait until last write operation on RTC registers has finished */
-  RTC_WaitForLastTask();
+  HAL_RTC_Set_Alarm((uint32_t)seconds);
 
   sleep(wakeUpPin, edgeTriggerMode);
 #endif
-}
-
-void Enter_STOP_Mode(void)
-{
-  if((BKP_ReadBackupRegister(BKP_DR9) >> 12) == 0xA)
-  {
-    uint16_t wakeUpPin = BKP_ReadBackupRegister(BKP_DR9) & 0xFF;
-    InterruptMode edgeTriggerMode = (InterruptMode)((BKP_ReadBackupRegister(BKP_DR9) >> 8) & 0x0F);
-
-    /* Clear Stop mode system flag */
-    BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
-
-    if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
-    {
-      PinMode wakeUpPinMode = INPUT;
-
-      /* Set required pinMode based on edgeTriggerMode */
-      switch(edgeTriggerMode)
-      {
-        case CHANGE:
-          wakeUpPinMode = INPUT;
-          break;
-
-        case RISING:
-          wakeUpPinMode = INPUT_PULLDOWN;
-          break;
-
-        case FALLING:
-          wakeUpPinMode = INPUT_PULLUP;
-          break;
-      }
-      pinMode(wakeUpPin, wakeUpPinMode);
-
-      /* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
-      attachInterrupt(wakeUpPin, NULL, edgeTriggerMode);
-
-      /* Request to enter STOP mode with regulator in low power mode */
-      PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
-
-      /* At this stage the system has resumed from STOP mode */
-      /* Enable HSE, PLL and select PLL as system clock source after wake-up from STOP */
-
-      /* Enable HSE */
-      RCC_HSEConfig(RCC_HSE_ON);
-
-      /* Wait till HSE is ready */
-      if(RCC_WaitForHSEStartUp() != SUCCESS)
-      {
-        /* If HSE startup fails try to recover by system reset */
-        NVIC_SystemReset();
-      }
-
-      /* Enable PLL */
-      RCC_PLLCmd(ENABLE);
-
-      /* Wait till PLL is ready */
-      while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
-
-      /* Select PLL as system clock source */
-      RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
-
-      /* Wait till PLL is used as system clock source */
-      while(RCC_GetSYSCLKSource() != 0x08);
-    }
-  }
 }
 
 inline uint8_t isSocketClosed()
@@ -785,6 +683,7 @@ void Multicast_Presence_Announcement(void)
  * and stopped as soon as LED_Signaling_Stop() is called */
 void LED_Signaling_Override(void)
 {
+  uint32_t LED_Signaling_Timing;
   if (0 < LED_Signaling_Timing)
   {
     --LED_Signaling_Timing;

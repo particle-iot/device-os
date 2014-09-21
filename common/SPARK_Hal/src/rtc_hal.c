@@ -39,14 +39,22 @@
 
 /* Private function prototypes -----------------------------------------------*/
 
-uint32_t HAL_I2C_Get_RTC_Counter(void)
+uint32_t HAL_RTC_Get_Counter(void)
 {
   return RTC_GetCounter();
 }
 
-void HAL_I2C_Set_RTC_Counter(uint32_t value)
+void HAL_RTC_Set_Counter(uint32_t value)
 {
   RTC_WaitForLastTask();
   RTC_SetCounter(value);
+  RTC_WaitForLastTask();
+}
+
+void HAL_RTC_Set_Alarm(uint32_t value)
+{
+  /* Set the RTC Alarm */
+  RTC_SetAlarm(RTC_GetCounter() + value);
+  /* Wait until last write operation on RTC registers has finished */
   RTC_WaitForLastTask();
 }
