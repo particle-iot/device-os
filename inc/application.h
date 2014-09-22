@@ -45,4 +45,14 @@
 #include "spark_wiring_tone.h"
 #include "spark_wiring_eeprom.h"
 
+// min/max/round defines are no longer used in the firmware main
+// namespace but are provided for use in applications for back
+// compatibility. If applications or libraries want to use a clean
+// C++ namespace then #define SPARK_APP_USES_CLEAN_NAMESPACE
+#ifndef SPARK_APP_USES_CLEAN_NAMESPACE
+using std::min;
+using std::max;
+#include <math.h>
+#endif
+
 #endif /* APPLICATION_H_ */
