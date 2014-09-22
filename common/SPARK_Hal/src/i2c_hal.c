@@ -59,8 +59,8 @@ static uint8_t transmitting = 0;
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
-static void (*user_onRequest)(void);
-static void (*user_onReceive)(int);
+static void (*callback_onRequest)(void);
+static void (*callback_onReceive)(int);
 
 //Initializes DMA channel used by the I2C1 peripheral based on Direction
 static void TwoWire_DMAConfig(uint8_t *pBuffer, uint32_t BufferSize, uint32_t Direction)
@@ -384,15 +384,22 @@ bool HAL_I2C_Is_Enabled(void)
 
 void HAL_I2C_Set_Callback_On_Receive(void (*function)(int))
 {
-  user_onReceive = function;
+  callback_onReceive = function;
 }
 
 void HAL_I2C_Set_Callback_On_Request(void (*function)(void))
 {
-  user_onRequest = function;
+  callback_onRequest = function;
 }
 
-void HAL_I2C1_EV_Interrupt_Handler(void)
+/*******************************************************************************
+ * Function Name  : HAL_I2C1_EV_Handler (Declared as weak in stm32_it.cpp)
+ * Description    : This function handles I2C1 Event interrupt request(Only for Slave mode).
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+void HAL_I2C1_EV_Handler(void)
 {
   //Slave Event Handler
   __IO uint32_t SR1Register = 0;
@@ -421,10 +428,10 @@ void HAL_I2C1_EV_Interrupt_Handler(void)
       rxBufferIndex = 0;
       rxBufferLength = 0;
 
-      if(NULL != user_onRequest)
+      if(NULL != callback_onRequest)
       {
         // alert user program
-        user_onRequest();
+        callback_onRequest();
       }
 
       TwoWire_DMAConfig(txBuffer, txBufferLength+1, TRANSMITTER);
@@ -457,16 +464,23 @@ void HAL_I2C1_EV_Interrupt_Handler(void)
       rxBufferIndex = 0;
       rxBufferLength = BUFFER_LENGTH - DMA_GetCurrDataCounter(DMA1_Channel7);
 
-      if(NULL != user_onReceive)
+      if(NULL != callback_onReceive)
       {
         // alert user program
-        user_onReceive(rxBufferLength);
+        callback_onReceive(rxBufferLength);
       }
     }
   }
 }
 
-void HAL_I2C1_ER_Interrupt_Handler(void)
+/*******************************************************************************
+ * Function Name  : HAL_I2C1_ER_Handler (Declared as weak in stm32_it.cpp)
+ * Description    : This function handles I2C1 Error interrupt request.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+void HAL_I2C1_ER_Handler(void)
 {
   __IO uint32_t SR1Register = 0;
 

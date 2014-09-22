@@ -26,7 +26,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "tone_hal.h"
 #include "gpio_hal.h"
-#include "stm32_it.h"
+#include "timer_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -39,10 +39,13 @@
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
-/* Private function prototypes */
-void TIM2_Tone_Interrupt_Handler(void);
-void TIM3_Tone_Interrupt_Handler(void);
-void TIM4_Tone_Interrupt_Handler(void);
+extern void (*HAL_TIM2_Handler)(void);
+extern void (*HAL_TIM3_Handler)(void);
+extern void (*HAL_TIM4_Handler)(void);
+
+static void Tone_TIM2_Handler(void);
+static void Tone_TIM3_Handler(void);
+static void Tone_TIM4_Handler(void);
 
 void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
 {
@@ -77,19 +80,19 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
   {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
     NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
-    Wiring_TIM2_Interrupt_Handler = TIM2_Tone_Interrupt_Handler;
+    HAL_TIM2_Handler = Tone_TIM2_Handler;
   }
   else if(PIN_MAP[pin].timer_peripheral == TIM3)
   {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
     NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
-    Wiring_TIM3_Interrupt_Handler = TIM3_Tone_Interrupt_Handler;
+    HAL_TIM3_Handler = Tone_TIM3_Handler;
   }
   else if(PIN_MAP[pin].timer_peripheral == TIM4)
   {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
     NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
-    Wiring_TIM4_Interrupt_Handler = TIM4_Tone_Interrupt_Handler;
+    HAL_TIM4_Handler = Tone_TIM4_Handler;
   }
 
   NVIC_Init(&NVIC_InitStructure);
@@ -165,7 +168,7 @@ void HAL_Tone_Stop(uint8_t pin)
   PIN_MAP[pin].user_property = 0;
 }
 
-void TIM2_Tone_Interrupt_Handler(void)
+static void Tone_TIM2_Handler(void)
 {
   uint16_t capture;
 
@@ -242,7 +245,7 @@ void TIM2_Tone_Interrupt_Handler(void)
   }
 }
 
-void TIM3_Tone_Interrupt_Handler(void)
+static void Tone_TIM3_Handler(void)
 {
   uint16_t capture;
 
@@ -319,7 +322,7 @@ void TIM3_Tone_Interrupt_Handler(void)
   }
 }
 
-void TIM4_Tone_Interrupt_Handler(void)
+static void Tone_TIM4_Handler(void)
 {
   uint16_t capture;
 

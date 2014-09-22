@@ -71,7 +71,7 @@ void HAL_Core_Config(void)
 
   /* Enable CRC clock */
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
-#if !defined (RGB_NOTIFICATIONS_ON)     && defined (RGB_NOTIFICATIONS_OFF)
+#if !defined (RGB_NOTIFICATIONS_ON) && defined (RGB_NOTIFICATIONS_OFF)
   LED_RGB_OVERRIDE = 1;
 #endif
 

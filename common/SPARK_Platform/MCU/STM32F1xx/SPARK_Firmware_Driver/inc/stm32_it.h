@@ -69,9 +69,5 @@ void RTCAlarm_IRQHandler(void);
 void DMA1_Channel5_IRQHandler(void);
 void USB_LP_CAN1_RX0_IRQHandler(void);
 
-extern void (*Wiring_TIM2_Interrupt_Handler)(void);
-extern void (*Wiring_TIM3_Interrupt_Handler)(void);
-extern void (*Wiring_TIM4_Interrupt_Handler)(void);
-
 #endif /* __STM32_IT_H */
 

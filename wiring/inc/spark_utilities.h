@@ -34,24 +34,26 @@
 #include "spark_wiring_interrupts.h"
 #include "spark_protocol.h"
 
-#define BYTE_N(x,n)						(((x) >> n*8) & 0x000000FF)
+#define BYTE_N(x,n)			        (((x) >> n*8) & 0x000000FF)
 
-#define SPARK_BUF_LEN					600
+#define SPARK_BUF_LEN			        600
 
-//#define SPARK_SERVER_IP				"54.235.79.249"
-#define SPARK_SERVER_PORT				5683
+//#define SPARK_SERVER_IP			        "54.235.79.249"
+#define SPARK_SERVER_PORT		        5683
 
-#define SPARK_LOOP_DELAY_MILLIS			1000	//1sec
+#define SPARK_LOOP_DELAY_MILLIS		        1000	//1sec
 
-#define USER_VAR_MAX_COUNT				10
-#define USER_VAR_KEY_LENGTH				12
+#define TIMING_FLASH_UPDATE_TIMEOUT             30000   //30sec
 
-#define USER_FUNC_MAX_COUNT				4
-#define USER_FUNC_KEY_LENGTH			12
-#define USER_FUNC_ARG_LENGTH			64
+#define USER_VAR_MAX_COUNT		        10
+#define USER_VAR_KEY_LENGTH		        12
 
-#define USER_EVENT_NAME_LENGTH			64
-#define USER_EVENT_DATA_LENGTH			64
+#define USER_FUNC_MAX_COUNT		        4
+#define USER_FUNC_KEY_LENGTH		        12
+#define USER_FUNC_ARG_LENGTH		        64
+
+#define USER_EVENT_NAME_LENGTH		        64
+#define USER_EVENT_DATA_LENGTH		        64
 
 typedef enum
 {
