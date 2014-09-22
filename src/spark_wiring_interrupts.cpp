@@ -51,7 +51,7 @@ extern STM32_Pin_Info PIN_MAP[TOTAL_PINS];
 
 // Create a structure for user ISR function pointers
  typedef struct exti_channel {
-    void (*handler)();
+    voidFuncPtr handler;
 } exti_channel;
 
 //Array to hold user ISR function pointers
