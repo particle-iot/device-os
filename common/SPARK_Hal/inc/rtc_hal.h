@@ -47,6 +47,7 @@ void HAL_RTC_Set_Counter(uint32_t value);
 void HAL_RTC_Set_Alarm(uint32_t value);
 
 void HAL_RTC_Handler(void) __attribute__ ((weak));
+void HAL_RTCAlarm_Handler(void) __attribute__ ((weak));
 
 #ifdef __cplusplus
 }

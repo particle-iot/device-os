@@ -49,7 +49,7 @@ volatile uint32_t TimingFlashUpdateTimeout;
 
 /* Private functions ---------------------------------------------------------*/
 /*******************************************************************************
- * Function Name  : HAL_SysTick_Handler (Declared as weak in stm32_it.cpp)
+ * Function Name  : HAL_SysTick_Handler (Declared as weak in core_hal.h)
  * Description    : Decrements the various Timing variables related to SysTick.
  * Input          : None
  * Output         : None.
@@ -153,6 +153,19 @@ extern "C" void HAL_SysTick_Handler(void)
     TimingIWDGReload++;
   }
 #endif
+}
+
+/*******************************************************************************
+ * Function Name  : HAL_RTCAlarm_Handler (Declared as weak in rtc_hal.h)
+ * Description    : This function handles additional application requirements.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+extern "C" void HAL_RTCAlarm_Handler(void)
+{
+  /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
+  SPARK_WLAN_SLEEP = 0;
 }
 
 /*******************************************************************************

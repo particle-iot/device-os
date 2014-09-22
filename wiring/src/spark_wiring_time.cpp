@@ -60,7 +60,7 @@ static void Set_CalendarTime(struct tm t);
 static void Refresh_UnixTime_Cache(time_t unix_time);
 
 /*******************************************************************************
- * Function Name  : HAL_RTC_Handler (Declared as weak in stm32_it.cpp)
+ * Function Name  : HAL_RTC_Handler (Declared as weak in rtc_hal.h)
  * Description    : This function handles RTC global interrupt request.
  * Input          : None.
  * Output         : None.

@@ -49,6 +49,7 @@ extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 void HAL_EXTI_Handler(uint8_t EXTI_Line) __attribute__ ((weak));
 void HAL_SysTick_Handler(void) __attribute__ ((weak));
 void HAL_RTC_Handler(void) __attribute__ ((weak));
+void HAL_RTCAlarm_Handler(void) __attribute__ ((weak));
 void HAL_I2C1_EV_Handler(void) __attribute__ ((weak));
 void HAL_I2C1_ER_Handler(void) __attribute__ ((weak));
 void HAL_SPI1_Handler(void) __attribute__ ((weak));
@@ -610,9 +611,10 @@ void RTCAlarm_IRQHandler(void)
 {
 	if(RTC_GetITStatus(RTC_IT_ALR) != RESET)
 	{
-	        /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
-	        extern volatile uint8_t SPARK_WLAN_SLEEP;
-		SPARK_WLAN_SLEEP = 0;
+                if(NULL != HAL_RTCAlarm_Handler)
+                {
+                  HAL_RTCAlarm_Handler();
+                }
 
 		/* Clear EXTI line17 pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line17);
