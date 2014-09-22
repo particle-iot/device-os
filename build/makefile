@@ -63,12 +63,16 @@ endif
 
 ifdef TEST
 USRSRC = tests/$(TEST)/
+CPPFLAGS += -fexceptions
 ifndef TARGET
 TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
 endif
 include $(PROJECT_DIR)tests/tests.mk
 -include $(PROJECT_DIR)$(USRSRC)test.mk
+else
+# We only want exceptions for a TEST build which uses them in catch
+CPPFLAGS += -fno-exceptions
 endif
 
 # user sources specified, so override application.cpp and pull in files from 
@@ -140,7 +144,7 @@ CFLAGS += -DRELEASE_BUILD
 endif
 
 # C++ specific flags
-CPPFLAGS += -fno-rtti -fno-exceptions
+CPPFLAGS += -fno-rtti
 
 # Linker flags
 LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
