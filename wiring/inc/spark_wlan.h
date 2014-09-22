@@ -76,7 +76,6 @@ extern tNetappIpconfigRetArgs ip_config;
 extern netapp_pingreport_args_t ping_report;
 extern int ping_report_num;
 
-extern volatile uint8_t SPARK_WLAN_SETUP;
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
 extern volatile uint8_t SPARK_WLAN_STARTED;

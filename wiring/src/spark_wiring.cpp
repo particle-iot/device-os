@@ -245,7 +245,7 @@ void delay(unsigned long ms)
     }
 
 #ifdef SPARK_WLAN_ENABLE
-    if (!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP)
+    if (SPARK_WLAN_SLEEP)
     {
       //Do not yield for SPARK_WLAN_Loop()
     }

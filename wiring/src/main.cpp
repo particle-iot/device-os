@@ -86,7 +86,7 @@ extern "C" void HAL_SysTick_Handler(void)
     LED_Fade(LED_RGB);
     TimingLED = 20;//Breathing frequency kept constant
   }
-  else if(SPARK_WLAN_SETUP && SPARK_CLOUD_CONNECTED)
+  else if(SPARK_CLOUD_CONNECTED)
   {
 #if defined (RGB_NOTIFICATIONS_CONNECTING_ONLY)
     LED_Off(LED_RGB);
@@ -106,7 +106,7 @@ extern "C" void HAL_SysTick_Handler(void)
   }
 
 #ifdef SPARK_WLAN_ENABLE
-  if(!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP)
+  if(SPARK_WLAN_SLEEP)
   {
     //Do nothing
   }
@@ -169,27 +169,21 @@ int main(void)
   DEBUG("Hello from Spark!");
 
 #ifdef SPARK_WLAN_ENABLE
-  if (SPARK_WLAN_SETUP)
-  {
     SPARK_WLAN_Setup(Multicast_Presence_Announcement);
-  }
 #endif
 
   /* Main loop */
   while (1)
   {
 #ifdef SPARK_WLAN_ENABLE
-    if(SPARK_WLAN_SETUP)
-    {
       DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
       SPARK_WLAN_Loop();
-    }
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
 		static uint8_t SPARK_WIRING_APPLICATION = 0;
 #ifdef SPARK_WLAN_ENABLE
-		if(!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
+		if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
 		{
 			if(!SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
 			{

@@ -37,9 +37,6 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* Extern variables ----------------------------------------------------------*/
-extern volatile uint8_t SPARK_WLAN_SETUP;
-extern volatile uint8_t SPARK_CLOUD_CONNECT;
-extern volatile uint8_t SPARK_LED_FADE;
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -84,7 +81,6 @@ void HAL_Core_Config(void)
 
   LED_SetRGBColor(RGB_COLOR_WHITE);
   LED_On(LED_RGB);
-  SPARK_LED_FADE = 1;
 
 #ifdef IWDG_RESET_ENABLE
   // ToDo this needs rework for new bootloader
@@ -109,14 +105,6 @@ void HAL_Core_Config(void)
 
 #ifdef SPARK_SFLASH_ENABLE
   sFLASH_Init();
-#endif
-
-#ifdef SPARK_WLAN_ENABLE
-  /* Start Spark Wlan and connect to Wifi Router by default */
-  SPARK_WLAN_SETUP = 1;
-
-  /* Connect to Spark Cloud by default */
-  SPARK_CLOUD_CONNECT = 1;
 #endif
 }
 

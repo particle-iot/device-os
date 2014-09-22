@@ -103,7 +103,6 @@ unsigned char wlan_profile_index;
 
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
-volatile uint8_t SPARK_WLAN_SETUP;
 volatile uint8_t SPARK_WLAN_RESET;
 volatile uint8_t SPARK_WLAN_SLEEP;
 volatile uint8_t SPARK_WLAN_STARTED;
@@ -111,7 +110,7 @@ volatile uint8_t SPARK_CLOUD_CONNECT;
 volatile uint8_t SPARK_CLOUD_SOCKETED;
 volatile uint8_t SPARK_CLOUD_CONNECTED;
 volatile uint8_t SPARK_FLASH_UPDATE;
-volatile uint8_t SPARK_LED_FADE;
+volatile uint8_t SPARK_LED_FADE = 1;
 
 volatile uint8_t Spark_Error_Count;
 
