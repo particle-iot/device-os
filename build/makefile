@@ -48,10 +48,12 @@ SRC_PATH = $(PROJECT_DIR)
 # ensure defined
 USRSRC += ""
 
+# The entire firmware is gnu+11 safe
+CPPFLAGS += -std=gnu++11
+
 # determine where user sources are, relative to project root
 ifdef APP
 USRSRC = applications/$(APP)/
-CPPFLAGS += -std=gnu++11
 
 ifndef TARGET
 TARGET ?= $(notdir $(APP))
@@ -61,7 +63,6 @@ endif
 
 ifdef TEST
 USRSRC = tests/$(TEST)/
-CPPFLAGS += -std=gnu++11
 ifndef TARGET
 TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
@@ -254,7 +255,6 @@ $(BUILD_PATH)%.o : $(SRC_PATH)%.cpp
 
 # Other Targets
 clean:
-	
 	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGETDIR)$(TARGET).elf $(TARGETDIR)$(TARGET).bin $(TARGETDIR)$(TARGET).hex $(TARGETDIR)$(TARGET).map
 	$(RMDIR) $(BUILD_PATH)
 	@echo
