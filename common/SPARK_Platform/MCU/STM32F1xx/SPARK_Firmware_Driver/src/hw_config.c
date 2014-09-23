@@ -47,7 +47,6 @@ volatile uint32_t TimingLED;
 volatile uint32_t TimingBUTTON;
 volatile uint32_t TimingIWDGReload;
 
-__IO uint8_t IWDG_SYSTEM_RESET;
 
 GPIO_TypeDef* DIO_GPIO_PORT[] = {D0_GPIO_PORT, D1_GPIO_PORT, D2_GPIO_PORT, D3_GPIO_PORT,
 								D4_GPIO_PORT, D5_GPIO_PORT, D6_GPIO_PORT, D7_GPIO_PORT};
@@ -109,10 +108,10 @@ __IO uint16_t sFLASH_SPI_CR;
 
 static void DWT_Init(void)
 {
-        DBGMCU->CR |= DBGMCU_SETTINGS;
-	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-	DWT->CYCCNT = 0;
-	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+    DBGMCU->CR |= DBGMCU_SETTINGS;
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 
 /**
@@ -1496,7 +1495,7 @@ bool OTA_Flashed_GetStatus(void)
 void OTA_Flashed_ResetStatus(void)
 {
     OTA_FLASHED_Status_SysFlag = 0x0000;
-	Save_SystemFlags();
+    Save_SystemFlags();
 }
 
 /*******************************************************************************

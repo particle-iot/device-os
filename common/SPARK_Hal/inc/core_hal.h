@@ -27,8 +27,8 @@
 #ifndef __CORE_HAL_H
 #define __CORE_HAL_H
 
-/* Includes ------------------------------------------------------------------*/
-#include "hw_config.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -86,6 +86,8 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
 void HAL_Core_Execute_Stop_Mode(void);
 void HAL_Core_Enter_Standby_Mode(void);
 void HAL_Core_Execute_Standby_Mode(void);
+
+bool HAL_watchdog_reset_flagged();
 
 #ifdef __cplusplus
 }

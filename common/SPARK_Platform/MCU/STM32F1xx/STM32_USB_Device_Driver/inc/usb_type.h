@@ -28,21 +28,12 @@
 #define __USB_TYPE_H
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdbool.h>
+#include <stddef.h>
+
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
-
-#ifndef __cplusplus
-typedef enum
-{
-  false = 0, true  = !false
-}
-bool;
-#endif
-
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 /* External variables --------------------------------------------------------*/

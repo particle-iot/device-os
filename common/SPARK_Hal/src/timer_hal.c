@@ -24,8 +24,12 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdint.h>
+#include "hw_config.h"
 #include "core_hal.h"
 #include "timer_hal.h"
+#include "syshealth_hal.h"
+
 
 /* Private typedef -----------------------------------------------------------*/
 

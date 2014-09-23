@@ -231,8 +231,6 @@ extern volatile uint32_t TimingLED;
 extern volatile uint32_t TimingBUTTON;
 extern volatile  uint32_t TimingIWDGReload;
 
-extern __IO uint8_t IWDG_SYSTEM_RESET;
-
 extern uint8_t LED_RGB_OVERRIDE;
 
 extern uint16_t CORE_FW_Version_SysFlag;
@@ -243,22 +241,5 @@ extern uint16_t Factory_Reset_SysFlag;
 extern unsigned char wlan_rx_buffer[];
 extern unsigned char wlan_tx_buffer[];
 
-enum eSystemHealth {
-  FIRST_RETRY = 1,
-  SECOND_RETRY = 2,
-  THIRD_RETRY = 3,
-  ENTERED_SparkCoreConfig,
-  ENTERED_Main,
-  ENTERED_WLAN_Loop,
-  ENTERED_Setup,
-  ENTERED_Loop,
-  RAN_Loop,
-  PRESERVE_APP,
-};
-
-#define SET_SYS_HEALTH(health) BKP_WriteBackupRegister(BKP_DR1, (health))
-#define GET_SYS_HEALTH() BKP_ReadBackupRegister(BKP_DR1)
-extern uint16_t sys_health_cache;
-#define DECLARE_SYS_HEALTH(health)  do { if ((health) > sys_health_cache) {SET_SYS_HEALTH(sys_health_cache=(health));}} while(0)
 #define KICK_WDT() IWDG_ReloadCounter()
 #endif  /*__HW_CONFIG_H*/

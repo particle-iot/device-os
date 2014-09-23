@@ -24,9 +24,14 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdint.h>
 #include "core_hal.h"
 #include "gpio_hal.h"
 #include "interrupts_hal.h"
+#include "hw_config.h"
+#include "syshealth_hal.h"
+
+__IO uint8_t IWDG_SYSTEM_RESET;
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -252,4 +257,11 @@ void HAL_Core_Execute_Standby_Mode(void)
     /* Following code will not be reached */
     while(1);
   }
+}
+
+// todo find a technique that allows accessor functions to be inlined while still keeping
+// hardware independence.
+bool HAL_watchdog_reset_flagged() 
+{
+    return IWDG_SYSTEM_RESET;
 }

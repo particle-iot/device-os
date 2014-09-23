@@ -30,6 +30,9 @@
 
 #include <stdint.h>
 
+#define sFLASH_PAGESIZE					0x1000		/* 4096 bytes */
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */

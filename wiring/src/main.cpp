@@ -30,6 +30,7 @@
 #include "main.h"
 #include "debug.h"
 #include "spark_utilities.h"
+#include "syshealth_hal.h"
 extern "C" {
 #include "sst25vf_spi.h"
 }
@@ -86,13 +87,13 @@ int main(void)
 #ifdef SPARK_WLAN_ENABLE
 		if(!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
 		{
-			if(!SPARK_FLASH_UPDATE && !IWDG_SYSTEM_RESET)
+			if(!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
 			{
 #endif
 				if((SPARK_WIRING_APPLICATION != 1) && (NULL != setup))
 				{
 					//Execute user application setup only once
-				        DECLARE_SYS_HEALTH(ENTERED_Setup);
+                    DECLARE_SYS_HEALTH(ENTERED_Setup);
 					setup();
 					SPARK_WIRING_APPLICATION = 1;
 				}
@@ -100,9 +101,9 @@ int main(void)
 				if(NULL != loop)
 				{
 					//Execute user application loop
-			                DECLARE_SYS_HEALTH(ENTERED_Loop);
+                    DECLARE_SYS_HEALTH(ENTERED_Loop);
 					loop();
-                                        DECLARE_SYS_HEALTH(RAN_Loop);
+                    DECLARE_SYS_HEALTH(RAN_Loop);
 				}
 #ifdef SPARK_WLAN_ENABLE
 			}

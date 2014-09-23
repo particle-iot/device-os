@@ -49,7 +49,6 @@
 #define sFLASH_WIP_FLAG           		0x01		/* Write In Progress (WIP) flag */
 
 #define sFLASH_DUMMY_BYTE         		0xFF
-#define sFLASH_PAGESIZE					0x1000		/* 4096 bytes */
 
 #define sFLASH_SST25VF040_ID			0xBF258D	/* JEDEC Read-ID Data */
 #define sFLASH_SST25VF016_ID			0xBF2541	/* JEDEC Read-ID Data */
