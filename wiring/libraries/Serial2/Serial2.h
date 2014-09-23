@@ -4,7 +4,10 @@
 #include "spark_wiring_usartserial.h"
 
 // instantiate Serial2
-USARTSerial Serial2(&USART_MAP[USART_D1_D0]);
+static Ring_Buffer serial2_rx_buffer;
+static Ring_Buffer serial2_tx_buffer;
+
+USARTSerial Serial2(HAL_USART_SERIAL2, &serial2_rx_buffer, &serial2_tx_buffer);
 
 #endif
 

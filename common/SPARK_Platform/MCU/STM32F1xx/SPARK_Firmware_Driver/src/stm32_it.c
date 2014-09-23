@@ -54,15 +54,12 @@ void HAL_I2C1_EV_Handler(void) __attribute__ ((weak));
 void HAL_I2C1_ER_Handler(void) __attribute__ ((weak));
 void HAL_SPI1_Handler(void) __attribute__ ((weak));
 void HAL_ADC1_2_Handler(void) __attribute__ ((weak));
+void HAL_USART1_Handler(void) __attribute__ ((weak));
+void HAL_USART2_Handler(void) __attribute__ ((weak));
 
 void (*HAL_TIM2_Handler)(void);
 void (*HAL_TIM3_Handler)(void);
 void (*HAL_TIM4_Handler)(void);
-
-//Wiring Interrupt Handlers defined in xxx_wiring_xxx.cpp files
-//These would be gradually renamed and moved to xxx_hal.c files
-void Wiring_USART1_Interrupt_Handler(void) __attribute__ ((weak));
-void Wiring_USART2_Interrupt_Handler(void) __attribute__ ((weak));
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -231,9 +228,9 @@ void ADC1_2_IRQHandler(void)
  *******************************************************************************/
 void USART1_IRQHandler(void)
 {
-	if(NULL != Wiring_USART1_Interrupt_Handler)
+	if(NULL != HAL_USART1_Handler)
 	{
-		Wiring_USART1_Interrupt_Handler();
+		HAL_USART1_Handler();
 	}
 }
 
@@ -246,9 +243,9 @@ void USART1_IRQHandler(void)
  *******************************************************************************/
 void USART2_IRQHandler(void)
 {
-	if(NULL != Wiring_USART2_Interrupt_Handler)
+	if(NULL != HAL_USART2_Handler)
 	{
-		Wiring_USART2_Interrupt_Handler();
+		HAL_USART2_Handler();
 	}
 }
 
