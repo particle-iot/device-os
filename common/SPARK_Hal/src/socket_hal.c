@@ -138,7 +138,7 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
 
 sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr* addr, socklen_t addr_size) 
 {
-    return sendto(sd, buffer, len, flags, addr, &addr_size);
+    return sendto(sd, buffer, len, flags, addr, addr_size);
 }
 
 
