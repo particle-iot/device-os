@@ -32,7 +32,7 @@ CSRC += $(TARGET_HAL_SRC_PATH)/usb_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/wlan_hal.c
 
 # C++ source files included in this build.
-CPPSRC +=
+CPPSRC += $(TARGET_HAL_SRC_PATH)/deviceid_hal.cpp
 
 # ASM source files included in this build.
 ASRC +=

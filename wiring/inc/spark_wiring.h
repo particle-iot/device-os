@@ -34,7 +34,6 @@
 #include "config.h"
 #include "spark_macros.h"
 #include "debug.h"
-#include "platform_config.h"
 #include "spark_utilities.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_printable.h"

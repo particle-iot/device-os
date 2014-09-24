@@ -25,6 +25,7 @@
 
 #include "wifi_credentials_reader.h"
 #include "delay_hal.h"
+#include "spark_utilities.h"
 
 WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 {
@@ -76,22 +77,9 @@ void WiFiCredentialsReader::read(void)
     }
     else if ('i' == c)
     {
-      char id[12];
-      memcpy(id, (char *)ID1, 12);
-      print("Your core id is ");
-      char hex_digit;
-      for (int i = 0; i < 12; ++i)
-      {
-        hex_digit = 48 + (id[i] >> 4);
-        if (57 < hex_digit)
-          hex_digit += 39;
-        serial.write(hex_digit);
-        hex_digit = 48 + (id[i] & 0xf);
-        if (57 < hex_digit)
-          hex_digit += 39;
-        serial.write(hex_digit);
-      }
-      print("\r\n");
+        String id = Spark.deviceID();
+        print(id.c_str());
+        print("\r\n");
     }
     else if ('f' == c)
     {

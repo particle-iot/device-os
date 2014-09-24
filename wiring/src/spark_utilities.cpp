@@ -31,6 +31,7 @@
 #include "socket_hal.h"
 #include "inet_hal.h"
 #include "core_subsys_hal.h"
+#include "deviceid_hal.h"
 #include "string.h"
 #include <stdarg.h>
 
@@ -441,35 +442,34 @@ void SparkClass::process(void)
 #endif
 }
 
+inline void concat_nibble(String& result, uint8_t nibble) 
+{
+    char hex_digit = nibble + 48;
+    if (57 < hex_digit)
+        hex_digit += 39;
+    result.concat(hex_digit);
+}
+
+String bytes2hex(const uint8_t* buf, unsigned len) 
+{    
+    String result;	
+	for (unsigned i = 0; i < len; ++i)
+	{
+        concat_nibble(result, (buf[i] >> 4));
+        concat_nibble(result, (buf[i] & 0xF));
+	}
+	return result;
+}
+
+
 String SparkClass::deviceID(void)
 {
-	String deviceID;
-	char hex_digit;
-	char id[12];
-	memcpy(id, (char *)ID1, 12);
-	//OR
-	//uint8_t id[12];
-	//Get_Unique_Device_ID(id);
-
-	for (int i = 0; i < 12; ++i)
-	{
-		hex_digit = 48 + (id[i] >> 4);
-		if (57 < hex_digit)
-		{
-			hex_digit += 39;
-		}
-		deviceID.concat(hex_digit);
-
-		hex_digit = 48 + (id[i] & 0xf);
-		if (57 < hex_digit)
-		{
-			hex_digit += 39;
-		}
-		deviceID.concat(hex_digit);
-	}
-
-	return deviceID;
-}
+    unsigned len = HAL_device_ID(NULL, 0);
+	uint8_t id[len];
+    HAL_device_ID(id, len);
+    return bytes2hex(id, len);
+}    
+ 
 
 // Returns number of bytes sent or -1 if an error occurred
 int Spark_Send(const unsigned char *buf, int buflen)
