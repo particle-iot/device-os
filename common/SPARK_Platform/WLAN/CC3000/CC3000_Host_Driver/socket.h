@@ -35,6 +35,10 @@
 #ifndef __SOCKET_H__
 #define __SOCKET_H__
 
+#include "data_types.h"
+#include "time.h"
+
+struct timeval;
 
 //*****************************************************************************
 //
@@ -113,11 +117,13 @@ typedef struct _in_addr_t
     UINT32 s_addr;                   // load with inet_aton()
 } in_addr;
 
+#ifndef _SOCKET_HAL_H
 typedef struct _sockaddr_t
 {
     UINT16   sa_family;
     UINT8     sa_data[14];
 } sockaddr;
+#endif
 
 typedef struct _sockaddr_in_t
 {
@@ -143,6 +149,7 @@ typedef struct
     __fd_mask fds_bits[__FD_SETSIZE / __NFDBITS];
 #define __FDS_BITS(set)        ((set)->fds_bits)
 } _types_fd_set_cc3000;
+#undef fd_set
 #define fd_set _types_fd_set_cc3000
 
 // We don't use `memset' because this would require a prototype and
@@ -159,6 +166,12 @@ typedef struct
 #define __FD_ISSET(d, set)     (__FDS_BITS (set)[__FDELT (d)] & __FDMASK (d))
 
 // Access macros for 'fd_set'.
+// avoid already defined warnings since these are declared from types.h
+#undef FD_SET
+#undef FD_CLR
+#undef FD_ISSET
+#undef FD_ZERO
+
 #define FD_SET(fd, fdsetp)      __FD_SET (fd, fdsetp)
 #define FD_CLR(fd, fdsetp)      __FD_CLR (fd, fdsetp)
 #define FD_ISSET(fd, fdsetp)    __FD_ISSET (fd, fdsetp)
@@ -417,7 +430,6 @@ extern INT32 connect(INT32 sd, const sockaddr *addr, INT32 addrlen);
 //*****************************************************************************
 extern INT16 select(INT32 nfds, fd_set *readsds, fd_set *writesds,
                   fd_set *exceptsds, struct timeval *timeout);
-
 //*****************************************************************************
 //
 //! setsockopt

@@ -42,7 +42,6 @@
 uint8_t USE_SYSTEM_FLAGS = 0;	//0, 1
 uint16_t sys_health_cache = 0; // Used by the SYS_HEALTH macros store new heath if higher
 
-volatile uint32_t TimingDelay;
 volatile uint32_t TimingLED;
 volatile uint32_t TimingBUTTON;
 volatile uint32_t TimingIWDGReload;
@@ -218,45 +217,6 @@ void SysTick_Configuration(void)
 	NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);	//OLD: NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00)
 }
 
-/*******************************************************************************
-* Function Name  : Delay
-* Description    : Inserts a delay time.
-* Input          : nTime: specifies the delay time length, in milliseconds.
-* Output         : None
-* Return         : None
-*******************************************************************************/
-void Delay(uint32_t nTime)
-{
-    TimingDelay = nTime;
-
-    while (TimingDelay != 0x00);
-}
-
-/*******************************************************************************
- * Function Name  : Delay_Microsecond
- * Description    : Inserts a delay time in microseconds using 32-bit DWT->CYCCNT
- * Input          : uSec: specifies the delay time length, in microseconds.
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void Delay_Microsecond(uint32_t uSec)
-{
-  volatile uint32_t DWT_START = DWT->CYCCNT;
-
-  // keep DWT_TOTAL from overflowing (max 59.652323s w/72MHz SystemCoreClock)
-  if (uSec > (UINT_MAX / SYSTEM_US_TICKS))
-  {
-    uSec = (UINT_MAX / SYSTEM_US_TICKS);
-  }
-
-  volatile uint32_t DWT_TOTAL = (SYSTEM_US_TICKS * uSec);
-
-  while((DWT->CYCCNT - DWT_START) < DWT_TOTAL)
-  {
-    KICK_WDT();
-  }
-}
-
 void RTC_Configuration(void)
 {
 	EXTI_InitTypeDef EXTI_InitStructure;
@@ -377,7 +337,7 @@ void DIO_Init(DIO_TypeDef Dx)
     GPIO_Init(DIO_GPIO_PORT[Dx], &GPIO_InitStructure);
 
     /* Set to Off State */
-    DIO_SetState(Dx, LOW);
+    DIO_SetState(Dx, DIO_LOW);
 }
 
 /**
@@ -390,9 +350,9 @@ DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State)
 {
 	if(Dx < 0 || Dx > Dn)
 		return FAIL;
-	else if(State == HIGH)
+	else if(State == DIO_HIGH)
 		DIO_GPIO_PORT[Dx]->BSRR = DIO_GPIO_PIN[Dx];
-	else if(State == LOW)
+	else if(State == DIO_LOW)
 		DIO_GPIO_PORT[Dx]->BRR = DIO_GPIO_PIN[Dx];
 
 	return OK;

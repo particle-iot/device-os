@@ -30,7 +30,7 @@
 #include "spark_flasher_ymodem.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
-#include "core_subsys.h"
+#include "core_subsys_hal.h"
 #include "string.h"
 #include <stdarg.h>
 
@@ -49,11 +49,11 @@ extern uint8_t LED_RGB_BRIGHTNESS;
 volatile uint8_t LED_Spark_Signal;
 const uint32_t VIBGYOR_Colors[] = {
   0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000};
-int VIBGYOR_Size = sizeof(VIBGYOR_Colors) / sizeof(uint32_t);
+const int VIBGYOR_Size = sizeof(VIBGYOR_Colors) / sizeof(uint32_t);
 int VIBGYOR_Index;
 
-int User_Var_Count;
-int User_Func_Count;
+uint8_t User_Var_Count;
+uint8_t User_Func_Count;
 
 struct User_Var_Lookup_Table_t
 {
@@ -683,7 +683,7 @@ void Multicast_Presence_Announcement(void)
  * and stopped as soon as LED_Signaling_Stop() is called */
 void LED_Signaling_Override(void)
 {
-  uint32_t LED_Signaling_Timing;
+  static uint8_t LED_Signaling_Timing =0;
   if (0 < LED_Signaling_Timing)
   {
     --LED_Signaling_Timing;

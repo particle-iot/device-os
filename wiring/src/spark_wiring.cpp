@@ -30,6 +30,8 @@
 #include "spark_wiring_usartserial.h"
 #include "spark_wiring_spi.h"
 #include "spark_wiring_i2c.h"
+#include "watchdog_hal.h"
+#include "delay_hal.h"
 
 /*
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, 
@@ -228,7 +230,7 @@ void delay(unsigned long ms)
 
   while (1)
   {
-    KICK_WDT();
+    HAL_Notify_WDT();
 
     volatile system_tick_t current_millis = HAL_Timer_Get_Milli_Seconds();
     volatile system_tick_t elapsed_millis = current_millis - last_millis;
@@ -245,7 +247,7 @@ void delay(unsigned long ms)
     }
 
 #ifdef SPARK_WLAN_ENABLE
-    if (!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP)
+    if (SPARK_WLAN_SLEEP)
     {
       //Do not yield for SPARK_WLAN_Loop()
     }
@@ -269,7 +271,7 @@ void delay(unsigned long ms)
  */
 void delayMicroseconds(unsigned int us)
 {
-  Delay_Microsecond(us);
+  HAL_Delay_Microseconds(us);
 }
 
 long map(long value, long fromStart, long fromEnd, long toStart, long toEnd)

@@ -41,9 +41,6 @@
 //
 //*****************************************************************************
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "hci.h"
 #include "socket.h"
 #include "evnt_handler.h"
@@ -52,6 +49,8 @@
 #include "debug.h"
 #include "spark_macros.h"
 
+#include <string.h>
+#include <stdlib.h>
 
 
 //Enable this flag if and only if you must comply with BSD socket 

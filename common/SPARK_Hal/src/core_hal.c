@@ -26,6 +26,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
 #include "core_hal.h"
+#include "watchdog_hal.h"
 #include "gpio_hal.h"
 #include "interrupts_hal.h"
 #include "hw_config.h"
@@ -42,9 +43,6 @@ __IO uint8_t IWDG_SYSTEM_RESET;
 /* Private variables ---------------------------------------------------------*/
 
 /* Extern variables ----------------------------------------------------------*/
-extern volatile uint8_t SPARK_WLAN_SETUP;
-extern volatile uint8_t SPARK_CLOUD_CONNECT;
-extern volatile uint8_t SPARK_LED_FADE;
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -76,7 +74,7 @@ void HAL_Core_Config(void)
 
   /* Enable CRC clock */
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
-#if !defined (RGB_NOTIFICATIONS_ON)     && defined (RGB_NOTIFICATIONS_OFF)
+#if !defined (RGB_NOTIFICATIONS_ON) && defined (RGB_NOTIFICATIONS_OFF)
   LED_RGB_OVERRIDE = 1;
 #endif
 
@@ -89,7 +87,6 @@ void HAL_Core_Config(void)
 
   LED_SetRGBColor(RGB_COLOR_WHITE);
   LED_On(LED_RGB);
-  SPARK_LED_FADE = 1;
 
 #ifdef IWDG_RESET_ENABLE
   // ToDo this needs rework for new bootloader
@@ -114,14 +111,6 @@ void HAL_Core_Config(void)
 
 #ifdef SPARK_SFLASH_ENABLE
   sFLASH_Init();
-#endif
-
-#ifdef SPARK_WLAN_ENABLE
-  /* Start Spark Wlan and connect to Wifi Router by default */
-  SPARK_WLAN_SETUP = 1;
-
-  /* Connect to Spark Cloud by default */
-  SPARK_CLOUD_CONNECT = 1;
 #endif
 }
 
@@ -264,4 +253,9 @@ void HAL_Core_Execute_Standby_Mode(void)
 bool HAL_watchdog_reset_flagged() 
 {
     return IWDG_SYSTEM_RESET;
+}
+
+void HAL_Notify_WDT()
+{
+    KICK_WDT();
 }

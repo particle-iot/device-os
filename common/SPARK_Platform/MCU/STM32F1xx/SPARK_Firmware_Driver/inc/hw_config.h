@@ -32,7 +32,7 @@
 #include "platform_config.h"
 #include "config.h"
 #include "sst25vf_spi.h"
-#include "cc3000_common.h"
+//#include "cc3000_common.h"
 #include "usb_type.h"
 #include "rgbled.h"
 #include "system_tick_hal.h"
@@ -48,7 +48,7 @@ enum SpiBusOwner {
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {
-	LOW = 0, HIGH = 1
+	DIO_LOW = 0, DIO_HIGH = 1
 } DIO_State_TypeDef;
 
 typedef enum
@@ -139,8 +139,6 @@ typedef struct ServerAddress {
 void Set_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
-void Delay(uint32_t nTime);
-void Delay_Microsecond(uint32_t uSec);
 
 void System1MsTick(void);
 system_tick_t GetSystem1MsTick(void);

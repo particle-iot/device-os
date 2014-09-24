@@ -1,11 +1,53 @@
+
 #include "wlan_hal.h"
+#include "timer_hal.h"
+#include "socket_hal.h"
+#include "socket.h"
 #include "netapp.h"
-#include "hw_config.h"
 #include "cc3000_common.h"
 #include "cc3000_spi.h"
+#include "nvmem.h"
+#include "hw_config.h"
+#include "spark_macros.h"
+#include "security.h"
+#include "evnt_handler.h"
+
+
+uint32_t wlan_watchdog;
+
+/* Smart Config Prefix */
+const char aucCC3000_prefix[] = {'T', 'T', 'T'};
+/* AES key "sparkdevices2013" */
+const unsigned char smartconfigkey[] = "sparkdevices2013";	//16 bytes
+/* device name used by smart config response */
+const char device_name[] = "CC3000";
+
+#if defined(DEBUG_WIFI)
+uint32_t lastEvent = 0;
+#endif
+
+#define SMART_CONFIG_PROFILE_SIZE       67
+
+/* CC3000 EEPROM - Spark File Data Storage */
+#define NVMEM_SPARK_FILE_ID		14	//Do not change this ID
+#define NVMEM_SPARK_FILE_SIZE		16	//Change according to requirement
+#define WLAN_PROFILE_FILE_OFFSET	0
+#define WLAN_POLICY_FILE_OFFSET		1       //Not used henceforth
+#define WLAN_TIMEOUT_FILE_OFFSET	2
+#define ERROR_COUNT_FILE_OFFSET		3
+
+
+uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
+{
+    uint32_t rv = cc3000__event_timeout_ms;
+    cc3000__event_timeout_ms = timeOutInMS;
+    return rv;
+}
 
 
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
+
+void recreate_spark_nvmem_file();
 
 
 int wlan_clear_credentials() 
@@ -35,13 +77,13 @@ void swap(uint8_t* array, uint8_t idx1, uint8_t idx2) {
     array[idx2] = tmp;
 }
 
-reverseIP(uint8_t* ip) {
+void reverseIP(uint8_t* ip) {
     swap(ip, 0, 3);
     swap(ip, 1, 2);
 }
 
 
-void fixup_ipconfig(WlanConfig* config) {
+void fixup_ipconfig(WLanConfig* config) {
     reverseIP(config->aucIP);
     reverseIP(config->aucSubnetMask);
     reverseIP(config->aucDefaultGateway);
@@ -54,31 +96,32 @@ int wlan_connect_init()
     wlan_start(0);//No other option to connect other than wlan_start()
     /* Mask out all non-required events from CC3000 */
     wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
+    return 0;
 }
 
-int wlan_activate() {
+wlan_result_t wlan_activate() {
     wlan_start(0);
     wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
     return 0;
 }
 
-int wlan_deactivate() {
+wlan_result_t wlan_deactivate() {
     wlan_stop();
     return 0;
 }
 
-
 bool wlan_reset_credentials_storage_required() 
 {
-    return (NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE));    
+    return (NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE);
 }
 
-void wlan_reset_credentials_storage()
+wlan_result_t wlan_reset_credentials_storage()
 {
     /* Delete all previously stored wlan profiles */
     wlan_clear_credentials();
     NVMEM_SPARK_Reset_SysFlag = 0x0000;
     Save_SystemFlags();
+    return 0;
 }
 
 
@@ -86,10 +129,10 @@ void wlan_reset_credentials_storage()
  * Do what is needed to finalize the connection. 
  * @return 
  */
-int wlan_connect_finalize() 
+wlan_result_t wlan_connect_finalize() 
 {
     // enable connection from stored profiles
-    wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);//Enable auto connect    
+    return wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);//Enable auto connect    
 }
 
 
@@ -114,29 +157,33 @@ void Clear_NetApp_Dhcp(void)
     netapp_dhcp(&pucIP_Addr, &pucSubnetMask, &pucIP_DefaultGWAddr, &pucDNS);
 }
 
-void wlan_disconnect_now() 
+wlan_result_t wlan_disconnect_now() 
 {
     wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);//Disable auto connect
-    wlan_disconnect();    
+    return wlan_disconnect();    
 }
 
-int wlan_connected_rssi() 
+wlan_result_t wlan_connected_rssi(char* ssid) 
 {        
     int _returnValue = 0;
-    for (int l=0; l<16; l++)
+    int l;
+    for (l=0; l<16; l++)
     {
-        unsigned char wlan_scan_results_table[50];
-        if(wlan_ioctl_get_scan_results(0, wlan_scan_results_table) != 0) 
+        char wlan_scan_results_table[50];
+        if(wlan_ioctl_get_scan_results(0, (unsigned char*)wlan_scan_results_table) != 0) 
             return(1);
         if (wlan_scan_results_table[0] == 0) 
             break;
-        if (!strcmp(wlan_scan_results_ssid+12, ip_config.uaSSID)) {
+        if (!strcmp(wlan_scan_results_table+12, ssid)) {
             _returnValue = ((wlan_scan_results_table[8] >> 1) - 127);
             break;
         }
     }       
     return _returnValue;
 }
+
+netapp_pingreport_args_t ping_report;
+uint8_t ping_report_num;
 
 int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
     int result = 0;
@@ -148,8 +195,8 @@ int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
     ping_report_num = 0;
 
     long psend = netapp_ping_send(&pingIPAddr, (unsigned long)nTries, pingSize, pingTimeout);
-    unsigned long lastTime = millis();
-    while( ping_report_num==0 && (millis() < lastTime+2*nTries*pingTimeout)) {}
+    system_tick_t lastTime = HAL_Timer_Get_Milli_Seconds();
+    while( ping_report_num==0 && (HAL_Timer_Get_Milli_Seconds() < lastTime+2*nTries*pingTimeout)) {}
     if (psend==0L && ping_report_num) {
         result = (int)ping_report.packets_received;
     }
@@ -157,9 +204,10 @@ int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
 }
 
 
-int wlan_set_credentials(const char *ssid, unsigned int ssidLen, const char *password, 
-    unsigned int passwordLen, unsigned long security)
+int wlan_set_credentials(const char *ssid, uint16_t ssidLen, const char *password, 
+    uint16_t passwordLen, WLanSecurityType security)
 {
+    int wlan_profile_index = -1;
   // add a profile
   switch (security)
   {
@@ -221,26 +269,23 @@ int wlan_set_credentials(const char *ssid, unsigned int ssidLen, const char *pas
   return 0;
 }
 
-netapp_pingreport_args_t ping_report;
-int ping_report_num;
-
 /**
  * Rebuilds the eeprom storage file.
  */
 void recreate_spark_nvmem_file(void)
 {
-  // Spark file IO on old TI Driver was corrupting nvmem
-  // so remove the entry for Spark file in CC3000 EEPROM
-  nvmem_create_entry(NVMEM_SPARK_FILE_ID, 0);
+    // Spark file IO on old TI Driver was corrupting nvmem
+    // so remove the entry for Spark file in CC3000 EEPROM
+    nvmem_create_entry(NVMEM_SPARK_FILE_ID, 0);
 
-  // Create new entry for Spark File in CC3000 EEPROM
-  nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
+    // Create new entry for Spark File in CC3000 EEPROM
+    nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
 
-  // Zero out our array copy of the EEPROM
-  memset(NVMEM_Spark_File_Data, 0, NVMEM_SPARK_FILE_SIZE);
+    // Zero out our array copy of the EEPROM
+    memset(NVMEM_Spark_File_Data, 0, NVMEM_SPARK_FILE_SIZE);
 
-  // Write zeroed-out array into the EEPROM
-  nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
+    // Write zeroed-out array into the EEPROM
+    nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
 }
 
 void wlan_smart_config_init() {
@@ -267,77 +312,44 @@ void wlan_smart_config_finalize() {
 void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 {
     SET_LAST_EVENT(lEventType);
-	switch (lEventType)
-	{
-        default:
+    switch (lEventType)
+    {
+    default:
+        break;
+    case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
+        HAL_WLAN_notify_simple_config_done();
+        break;
+
+    case HCI_EVNT_WLAN_UNSOL_CONNECT:
+        HAL_WLAN_notify_connected();
+        break;
+
+    case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
+        HAL_WLAN_notify_disconnected();
+        break;
+
+    case HCI_EVNT_WLAN_UNSOL_DHCP:
+        HAL_WLAN_notify_dhcp(*(data + 20) == 0);
+        break;
+
+    case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
+        HAL_WLAN_notify_can_shutdown();
+        break;
+
+    case HCI_EVNT_WLAN_ASYNC_PING_REPORT:
+        memcpy(&ping_report,data,length);
+        ping_report_num++;
+        break;
+
+    case HCI_EVNT_BSD_TCP_CLOSE_WAIT:
+        {
+            sock_handle_t socket = -1;
+            STREAM_TO_UINT32(data,0,socket);
+            set_socket_active_status(socket, SOCKET_STATUS_INACTIVE);
+            HAL_WLAN_notify_socket_closed(socket);
             break;
-
-		case HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE:
-			WLAN_SMART_CONFIG_FINISHED = 1;
-			WLAN_SMART_CONFIG_STOP = 1;
-			WLAN_MANUAL_CONNECT = 0;
-			break;
-
-		case HCI_EVNT_WLAN_UNSOL_CONNECT:
-			WLAN_CONNECTED = 1;
-			if(!WLAN_DISCONNECT)
-			{
-  		          ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
-			}
-			break;
-
-		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
-			if (WLAN_CONNECTED && !WLAN_DISCONNECT)
-			{
-			  ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
-			}
-			WLAN_CONNECTED = 0;
-			WLAN_DHCP = 0;
-			SPARK_CLOUD_SOCKETED = 0;
-			SPARK_CLOUD_CONNECTED = 0;
-			SPARK_FLASH_UPDATE = 0;
-			SPARK_LED_FADE = 1;
-                        LED_SetRGBColor(RGB_COLOR_BLUE);
-                        LED_On(LED_RGB);
-                        Spark_Error_Count = 0;
-			break;
-
-		case HCI_EVNT_WLAN_UNSOL_DHCP:
-			if (*(data + 20) == 0)
-			{
-				CLR_WLAN_WD();
-				WLAN_DHCP = 1;
-				SPARK_LED_FADE = 1;
-				LED_SetRGBColor(RGB_COLOR_GREEN);
-				LED_On(LED_RGB);
-			}
-			else
-			{
-				WLAN_DHCP = 0;
-			}
-			break;
-
-		case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
-			WLAN_CAN_SHUTDOWN = 1;
-			break;
-
-        case HCI_EVNT_WLAN_ASYNC_PING_REPORT:
-            memcpy(&ping_report,data,length);
-            ping_report_num++;
-			break;
-
-		case HCI_EVNT_BSD_TCP_CLOSE_WAIT:
-                      long socket = -1;
-		      STREAM_TO_UINT32(data,0,socket);
-		      set_socket_active_status(socket, SOCKET_STATUS_INACTIVE);
-  		      if(socket == sparkSocket)
-		      {
-			SPARK_FLASH_UPDATE = 0;
-			SPARK_CLOUD_CONNECTED = 0;
-			SPARK_CLOUD_SOCKETED = 0;
- 		      }
-		    break;
-	}
+        }
+    }
 }
 
 char *WLAN_Firmware_Patch(unsigned long *length)
@@ -372,10 +384,8 @@ void wlan_smart_config_cleanup()
 
 extern uint32_t wlan_watchdog;
 
-
-void wlan_setup() 
-[
-    
+void wlan_setup()
+{    
     /* Initialize CC3000's CS, EN and INT pins to their default states */
     CC3000_WIFI_Init();
 
@@ -387,17 +397,17 @@ void wlan_setup()
                             CC3000_Read_Interrupt_Pin, CC3000_Interrupt_Enable, CC3000_Interrupt_Disable, CC3000_Write_Enable_Pin);
 
     Delay(100);
-]
+}
             
             
 /* Manual connect credentials; only used if WLAN_MANUAL_CONNECT == 1 */
-char _ssid[] = "ssid";
-char _password[] = "password";
+static const char* _ssid = "ssid";
+static const char* _password = "password";
 
-void wlan_manual_connect() 
+wlan_result_t wlan_manual_connect() 
 {
     // Edit the below line before use
-    wlan_connect(WLAN_SEC_WPA2, _ssid, strlen(_ssid), NULL, (unsigned char*)_password, strlen(_password));    
+    return wlan_connect(WLAN_SEC_WPA2, _ssid, strlen(_ssid), NULL, (unsigned char*)_password, strlen(_password));    
 }
 
 void wlan_clear_spark_error_count() 
@@ -406,11 +416,16 @@ void wlan_clear_spark_error_count()
     nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);    
 }
 
-void wlan_set_error_count(uint32_t errorCount) {
+void wlan_set_error_count(uint32_t errorCount) 
+{
     NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = errorCount;
     nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
 }
 
+void wlan_fetch_ipconfig(WLanConfig* config) {
+    // the WLanConfig and the CC3000 structure are identical
+    netapp_ipconfig((void*)config);
+}
 
 void SPARK_WLAN_SmartConfigProcess()
 {
@@ -464,5 +479,6 @@ void SPARK_WLAN_SmartConfigProcess()
             decKeyPtr++;
     }
 
-    wlan_set_credentials(ssidPtr, ssidLen, decKeyPtr, keyLen, profileArray[profileArray[0] + 2]);
+    wlan_set_credentials((const char*)ssidPtr, ssidLen, (const char*)decKeyPtr, keyLen, profileArray[profileArray[0] + 2]);
 }
+

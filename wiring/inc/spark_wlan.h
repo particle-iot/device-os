@@ -27,39 +27,20 @@
 #ifndef __SPARK_WLAN_H
 #define __SPARK_WLAN_H
 
+#include "socket_hal.h"
+#include "wlan_hal.h"    
+
 extern "C" {
 
-#include "socket_hal.h"
-//#include "hw_config.h"
-//#include "evnt_handler.h"
-//#include "hci.h"
-//#include "wlan.h"
-//#include "nvmem.h"
-//#include "socket.h"
-//#include "netapp.h"
-//#include "security.h"
-
-#define SMART_CONFIG_PROFILE_SIZE       67
-
-/* CC3000 EEPROM - Spark File Data Storage */
-#define NVMEM_SPARK_FILE_ID		14	//Do not change this ID
-#define NVMEM_SPARK_FILE_SIZE		16	//Change according to requirement
-#define WLAN_PROFILE_FILE_OFFSET	0
-#define WLAN_POLICY_FILE_OFFSET		1       //Not used henceforth
-#define WLAN_TIMEOUT_FILE_OFFSET	2
-#define ERROR_COUNT_FILE_OFFSET		3
-
-//#define MAX_SOCK_NUM			8
-
-void Set_NetApp_Timeout(void);
-void Clear_NetApp_Dhcp(void);
-void Start_Smart_Config(void);
+//void Set_NetApp_Timeout(void);
+//void Clear_NetApp_Dhcp(void);
+//void Start_Smart_Config(void);
 
 /* WLAN Application related callbacks passed to wlan_init */
-void WLAN_Async_Callback(long lEventType, char *data, unsigned char length);
-char *WLAN_Firmware_Patch(unsigned long *length);
-char *WLAN_Driver_Patch(unsigned long *length);
-char *WLAN_BootLoader_Patch(unsigned long *length);
+//void WLAN_Async_Callback(long lEventType, char *data, unsigned char length);
+//char *WLAN_Firmware_Patch(unsigned long *length);
+//char *WLAN_Driver_Patch(unsigned long *length);
+//char *WLAN_BootLoader_Patch(unsigned long *length);
 
 uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
@@ -73,11 +54,6 @@ extern int Spark_Process_API_Response(void);
 
 extern volatile uint32_t TimingFlashUpdateTimeout;
 
-//extern tNetappIpconfigRetArgs ip_config;
-//extern netapp_pingreport_args_t ping_report;
-//extern int ping_report_num;
-
-extern volatile uint8_t SPARK_WLAN_SETUP;
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
 extern volatile uint8_t SPARK_WLAN_STARTED;
@@ -102,8 +78,8 @@ extern volatile system_tick_t spark_loop_total_millis;
 
 extern sock_handle_t sparkSocket;
 
-extern unsigned char wlan_profile_index;
-extern unsigned char NVMEM_Spark_File_Data[];
+extern WLanConfig ip_config;
+
 }
 
 #endif  /*__SPARK_WLAN_H*/

@@ -1,12 +1,5 @@
-/* 
- * File:   socket.h
- * Author: mat
- *
- * Created on 09 September 2014, 01:01
- */
-
-#ifndef SOCKET_H
-#define	SOCKET_H
+#ifndef _SOCKET_HAL_H
+#define	_SOCKET_HAL_H
 
 #ifdef	__cplusplus
 extern "C" {
@@ -23,11 +16,11 @@ typedef struct _sockaddr_t
 } sockaddr;
 
 typedef uint32_t sock_handle_t;
-typedef int32_t socklen_t;
+typedef uint32_t socklen_t;
 typedef int32_t sock_result_t;
 
-const uint8_t SOCKET_STATUS_INACTIVE = 1;
-const uint8_t SOCKET_STATUS_ACTIVE = 0;
+static const uint8_t SOCKET_STATUS_INACTIVE = 1;
+static const uint8_t SOCKET_STATUS_ACTIVE = 0;
 
 uint8_t socket_active_status(sock_handle_t socket);
 
@@ -68,9 +61,9 @@ sock_result_t socket_bind(sock_handle_t sd, uint16_t port);
 //sock_result_t setsockopt(sock_handle_t sd, int32_t level, int32_t optname, const void *optval, socklen_t optlen);
 
 
-// CC3000
-const sock_handle_t SOCKET_MAX = (sock_handle_t)8;
-const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
+
+extern const sock_handle_t SOCKET_MAX;
+extern const sock_handle_t SOCKET_INVALID;
 
 
 //--------- Address Families --------

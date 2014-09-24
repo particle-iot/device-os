@@ -25,6 +25,8 @@ License along with this library; if not, see <http://www.gnu.org/licenses/>.
 
 #include "spark_wiring_wifi.h"
 #include "inet_hal.h"
+#include "rgbled.h"
+#include "spark_wlan.h"
 
 namespace spark {
 
@@ -116,7 +118,7 @@ the same way.
             }
             else {
                 SPARK_LED_FADE = 0;
-                LED_SetRGBColor(RGB_COLOR_GREEN);
+                    LED_SetRGBColor(RGB_COLOR_GREEN);
                 LED_On(LED_RGB);
                 wlan_connect_finalize();
             }

@@ -227,7 +227,7 @@ void HAL_Interrupts_Disable_All(void)
 }
 
 /*******************************************************************************
- * Function Name  : HAL_Interrupts_EXTI_Handler (Declared as weak in stm32_it.cpp)
+ * Function Name  : HAL_EXTI_Handler (Declared as weak in stm32_it.cpp)
  * Description    : This function is called by any of the interrupt handlers. It
                                                  essentially fetches the user function pointer from the array
                                                  and calls it.
@@ -235,7 +235,7 @@ void HAL_Interrupts_Disable_All(void)
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-void HAL_Interrupts_EXTI_Handler(uint8_t EXTI_Line)
+void HAL_EXTI_Handler(uint8_t EXTI_Line)
 {
   //fetch the user function pointer from the array
   voidFuncPtr userISR_Handle = exti_channels[EXTI_Line].handler;

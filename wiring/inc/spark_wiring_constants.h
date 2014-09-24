@@ -45,10 +45,12 @@
 #   define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
 #endif
 
-#define HIGH 0x1
-#define LOW 0x0
+enum PinState {
+    LOW = 0,
+    HIGH = 1
+};
 
-#define boolean bool
+typedef bool boolean;
 
 //#define NULL ((void *)0)
 #define NONE ((uint8_t)0xFF)

@@ -63,8 +63,6 @@ void HAL_I2C_Flush_Data(void);
 bool HAL_I2C_Is_Enabled(void);
 void HAL_I2C_Set_Callback_On_Receive(void (*function)(int));
 void HAL_I2C_Set_Callback_On_Request(void (*function)(void));
-void HAL_I2C1_EV_Interrupt_Handler(void);
-void HAL_I2C1_ER_Interrupt_Handler(void);
 
 #ifdef __cplusplus
 }

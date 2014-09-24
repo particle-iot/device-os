@@ -27,13 +27,13 @@
  */
   
 /* Includes ------------------------------------------------------------------*/
+#include "hw_config.h"  // todo - remove me
 #include "main.h"
 #include "debug.h"
 #include "spark_utilities.h"
 #include "syshealth_hal.h"
-extern "C" {
-#include "sst25vf_spi.h"
-}
+#include "watchdog_hal.h"
+
 
 using namespace spark;
 
@@ -44,12 +44,132 @@ using namespace spark;
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+volatile uint32_t TimingFlashUpdateTimeout;
 
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private functions ---------------------------------------------------------*/
+/*******************************************************************************
+ * Function Name  : HAL_SysTick_Handler (Declared as weak in core_hal.h)
+ * Description    : Decrements the various Timing variables related to SysTick.
+ * Input          : None
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+extern "C" void HAL_SysTick_Handler(void)
+{
+#if !defined (RGB_NOTIFICATIONS_ON) && defined (RGB_NOTIFICATIONS_OFF)
+  //Just needed in case LED_RGB_OVERRIDE is set to 0 by accident
+  if (LED_RGB_OVERRIDE == 0)
+  {
+    LED_RGB_OVERRIDE = 1;
+    LED_Off(LED_RGB);
+  }
+#endif
+
+  if (LED_RGB_OVERRIDE != 0)
+  {
+    if ((LED_Spark_Signal != 0) && (NULL != LED_Signaling_Override))
+    {
+      LED_Signaling_Override();
+    }
+  }
+  else if (TimingLED != 0x00)
+  {
+    TimingLED--;
+  }
+  else if(WLAN_SMART_CONFIG_START || SPARK_FLASH_UPDATE || Spark_Error_Count)
+  {
+    //Do nothing
+  }
+  else if(SPARK_LED_FADE)
+  {
+    LED_Fade(LED_RGB);
+    TimingLED = 20;//Breathing frequency kept constant
+  }
+  else if(SPARK_CLOUD_CONNECTED)
+  {
+#if defined (RGB_NOTIFICATIONS_CONNECTING_ONLY)
+    LED_Off(LED_RGB);
+#else
+    LED_SetRGBColor(RGB_COLOR_CYAN);
+    LED_On(LED_RGB);
+    SPARK_LED_FADE = 1;
+#endif
+  }
+  else
+  {
+    LED_Toggle(LED_RGB);
+    if(SPARK_CLOUD_SOCKETED)
+      TimingLED = 50;         //50ms
+    else
+      TimingLED = 100;        //100ms
+  }
+
+#ifdef SPARK_WLAN_ENABLE
+  if(SPARK_WLAN_SLEEP)
+  {
+    //Do nothing
+  }
+  else if(SPARK_FLASH_UPDATE)
+  {
+    if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
+    {
+      //Reset is the only way now to recover from stuck OTA update
+      HAL_Core_System_Reset();
+    }
+    else
+    {
+      TimingFlashUpdateTimeout++;
+    }
+  }
+  else if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
+  {
+    BUTTON_ResetDebouncedState(BUTTON1);
+
+    if(!SPARK_WLAN_SLEEP)
+    {
+      WLAN_SMART_CONFIG_START = 1;
+    }
+  }
+  else if(BUTTON_GetDebouncedTime(BUTTON1) >= 7000)
+  {
+    BUTTON_ResetDebouncedState(BUTTON1);
+
+    WLAN_DELETE_PROFILES = 1;
+  }
+#endif
+
+#ifdef IWDG_RESET_ENABLE
+  if (TimingIWDGReload >= TIMING_IWDG_RELOAD)
+  {
+    TimingIWDGReload = 0;
+
+    /* Reload WDG counter */
+    HAL_Notify_WDT();
+    DECLARE_SYS_HEALTH(0xFFFF);
+  }
+  else
+  {
+    TimingIWDGReload++;
+  }
+#endif
+}
+
+/*******************************************************************************
+ * Function Name  : HAL_RTCAlarm_Handler (Declared as weak in rtc_hal.h)
+ * Description    : This function handles additional application requirements.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+extern "C" void HAL_RTCAlarm_Handler(void)
+{
+  /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
+  SPARK_WLAN_SLEEP = 0;
+}
 
 /*******************************************************************************
  * Function Name  : main.
@@ -65,27 +185,21 @@ int main(void)
   DEBUG("Hello from Spark!");
 
 #ifdef SPARK_WLAN_ENABLE
-  if (SPARK_WLAN_SETUP)
-  {
     SPARK_WLAN_Setup(Multicast_Presence_Announcement);
-  }
 #endif
 
   /* Main loop */
   while (1)
   {
 #ifdef SPARK_WLAN_ENABLE
-    if(SPARK_WLAN_SETUP)
-    {
       DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
       SPARK_WLAN_Loop();
-    }
 #endif
 
 #ifdef SPARK_WIRING_ENABLE
 		static uint8_t SPARK_WIRING_APPLICATION = 0;
 #ifdef SPARK_WLAN_ENABLE
-		if(!SPARK_WLAN_SETUP || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
+		if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
 		{
 			if(!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
 			{

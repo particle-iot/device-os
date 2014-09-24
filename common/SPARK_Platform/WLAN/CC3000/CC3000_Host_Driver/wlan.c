@@ -39,7 +39,6 @@
 //! @{
 //
 //*****************************************************************************
-#include <string.h>
 #include "wlan.h"
 #include "hci.h"
 #include "spi.h"
@@ -47,6 +46,7 @@
 #include "nvmem.h"
 #include "security.h"
 #include "evnt_handler.h"
+#include <string.h>
 
 
 volatile sSimplLinkInformation tSLInformation;

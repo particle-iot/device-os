@@ -87,7 +87,7 @@ void HAL_Core_Execute_Stop_Mode(void);
 void HAL_Core_Enter_Standby_Mode(void);
 void HAL_Core_Execute_Standby_Mode(void);
 
-bool HAL_watchdog_reset_flagged();
+void HAL_SysTick_Handler(void) __attribute__ ((weak));
 
 #ifdef __cplusplus
 }

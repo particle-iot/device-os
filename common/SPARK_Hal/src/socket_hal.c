@@ -1,21 +1,24 @@
+
+
+#include "socket_hal.h"
+#include "cc3000_spi.h"
 #include "socket.h"
-
-
 
 int32_t socket_connect(sock_handle_t sd, const sockaddr *addr, long addrlen)
 {
     return connect(sd, addr, addrlen);
 }
 
-void socket_reset_blocking_call() 
+sock_result_t socket_reset_blocking_call() 
 {
     //Work around to exit the blocking nature of socket calls
     tSLInformation.usEventOrDataReceived = 1;
     tSLInformation.usRxEventOpcode = 0;
     tSLInformation.usRxDataPending = 0;
+    return 0;
 }
 
-socklen_t socket_receive(socket_handle_t sd, void* buffer, socklen_t len, system_tick_t _timeout)
+sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, system_tick_t _timeout)
 {
   timeval timeout;
   _types_fd_set_cc3000 readSet;
@@ -24,7 +27,7 @@ socklen_t socket_receive(socket_handle_t sd, void* buffer, socklen_t len, system
 
   // reset the fd_set structure
   FD_ZERO(&readSet);
-  FD_SET(sparkSocket, &readSet);
+  FD_SET(sd, &readSet);
 
   // tell select to timeout after the minimum 5000 microseconds
   // defined in the SimpleLink API as SELECT_TIMEOUT_MIN_MICRO_SECONDS
@@ -33,14 +36,14 @@ socklen_t socket_receive(socket_handle_t sd, void* buffer, socklen_t len, system
   if (timeout.tv_sec==0 && timeout.tv_usec<5000)
       timeout.tv_usec = 5000;
   
-  num_fds_ready = select(sparkSocket + 1, &readSet, NULL, NULL, &timeout);
+  num_fds_ready = select(sd + 1, &readSet, NULL, NULL, &timeout);
 
   if (0 < num_fds_ready)
   {
-    if (FD_ISSET(sparkSocket, &readSet))
+    if (FD_ISSET(sd, &readSet))
     {
       // recv returns negative numbers on error
-      bytes_received = recv(sparkSocket, buf, buflen, 0);
+      bytes_received = recv(sd, buffer, len, 0);
       DEBUG("bytes_received %d",bytes_received);
     }
   }
@@ -53,31 +56,31 @@ socklen_t socket_receive(socket_handle_t sd, void* buffer, socklen_t len, system
   return bytes_received;
 }
 
-int32_t socket_create_nonblocking_server(socket_handle_t sock, uint16_t port) {
+sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port) {
     long optval = SOCK_ON;
-    int32 retVal;
+    sock_result_t retVal;
     sockaddr tServerAddr;
 
     tServerAddr.sa_family = AF_INET;
-    tServerAddr.sa_data[0] = (_port & 0xFF00) >> 8;
-    tServerAddr.sa_data[1] = (_port & 0x00FF);
+    tServerAddr.sa_data[0] = (port & 0xFF00) >> 8;
+    tServerAddr.sa_data[1] = (port & 0x00FF);
     tServerAddr.sa_data[2] = 0;
     tServerAddr.sa_data[3] = 0;
     tServerAddr.sa_data[4] = 0;
     tServerAddr.sa_data[5] = 0;
 
-    (retVal=setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &optval, sizeof(optval)) >= 0) &&
-    (retVal=bind(sock, (sockaddr*)&tServerAddr, sizeof(tServerAddr)) >= 0) &&
-    (retVal=listen(sock, 0));
+    ((retVal=setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &optval, sizeof(optval))) >= 0) &&
+        ((retVal=bind(sock, (sockaddr*)&tServerAddr, sizeof(tServerAddr))) >= 0) &&
+            ((retVal=listen(sock, 0)) >=0);
     return retVal;
 }
 
-int32_t socket_receivefrom(socket_handle_t sock, void* buffer, uint32_t bufLen, sockaddr* addr, socklen_t addrsize) {
+sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr* addr, socklen_t* addrsize) {
     _types_fd_set_cc3000 readSet;
     timeval timeout;
 
     FD_ZERO(&readSet);
-    FD_SET(_sock, &readSet);
+    FD_SET(sock, &readSet);
 
     timeout.tv_sec = 0;
     timeout.tv_usec = 5000;
@@ -87,26 +90,30 @@ int32_t socket_receivefrom(socket_handle_t sock, void* buffer, uint32_t bufLen, 
     {
         if (FD_ISSET(sock, &readSet))
         {
-            ret = socket_recvfrom(sock, buffer, bufLen, 0, addr, &addrsize);
+            ret = socket_receivefrom(sock, buffer, bufLen, 0, addr, addrsize);
         }
     }
     return ret;
 }
 
-int32_t socket_bind(socket_handle_t sock, uint16_t port) {
-           
+sock_result_t socket_bind(sock_handle_t sock, uint16_t port) 
+{           
     sockaddr tUDPAddr;
     memset(&tUDPAddr, 0, sizeof(tUDPAddr));
     tUDPAddr.sa_family = AF_INET;
-    tUDPAddr.sa_data[0] = (_port & 0xFF00) >> 8;
-    tUDPAddr.sa_data[1] = (_port & 0x00FF);
+    tUDPAddr.sa_data[0] = (port & 0xFF00) >> 8;
+    tUDPAddr.sa_data[1] = (port & 0x00FF);
 
-    return bind(sock, &tUDPAddr, sizoef(tUDBAddr));
+    return bind(sock, &tUDPAddr, sizeof(tUDPAddr));
 }
 
-sockt_result_t socket_accept(socket_handle_t sock) {
-    
+sock_result_t socket_accept(sock_handle_t sock) 
+{    
     sockaddr tClientAddr;
     socklen_t tAddrLen = sizeof(tClientAddr);
-    return accept(sock, &tClientAddr, &tAddrLen)
+    return accept(sock, &tClientAddr, &tAddrLen);
 }
+
+
+const sock_handle_t SOCKET_MAX = (sock_handle_t)8;
+const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;

@@ -26,35 +26,19 @@
 #include "spark_macros.h"
 #include "string.h"
 #include "wifi_credentials_reader.h"
-#include "sys_tick.h"
+#include "system_tick_hal.h"
+#include "watchdog_hal.h"
+#include "wlan_hal.h"
+#include "delay_hal.h"
+#include "rgbled.h"
 
 using namespace spark;
+
+WLanConfig ip_config;
 
 //#define DEBUG_WIFI    // Define to show all the flags in debug output
 //#define DEBUG_WAN_WD  // Define to show all SW WD activity in debug output
 
-#if defined(DEBUG_WIFI)
-static uint32_t lastEvent = 0;
-#define SET_LAST_EVENT(x) do {lastEvent = (x);} while(0)
-#define GET_LAST_EVENT(x) do { x = lastEvent; lastEvent = 0;} while(0)
-#define DUMP_STATE() do { \
-    DEBUG("\r\nWLAN_MANUAL_CONNECT=%d\r\nWLAN_DELETE_PROFILES=%d\r\nWLAN_SMART_CONFIG_START=%d\r\nWLAN_SMART_CONFIG_STOP=%d", \
-          WLAN_MANUAL_CONNECT,WLAN_DELETE_PROFILES,WLAN_SMART_CONFIG_START, WLAN_SMART_CONFIG_STOP); \
-    DEBUG("\r\nWLAN_SMART_CONFIG_FINISHED=%d\r\nWLAN_SERIAL_CONFIG_DONE=%d\r\nWLAN_CONNECTED=%d\r\nWLAN_DHCP=%d\r\nWLAN_CAN_SHUTDOWN=%d", \
-          WLAN_SMART_CONFIG_FINISHED,WLAN_SERIAL_CONFIG_DONE,WLAN_CONNECTED,WLAN_DHCP,WLAN_CAN_SHUTDOWN); \
-    DEBUG("\r\nSPARK_WLAN_RESET=%d\r\nSPARK_WLAN_SLEEP=%d\r\nSPARK_WLAN_STARTED=%d\r\nSPARK_CLOUD_CONNECT=%d", \
-           SPARK_WLAN_RESET,SPARK_WLAN_SLEEP,SPARK_WLAN_STARTED,SPARK_CLOUD_CONNECT); \
-    DEBUG("\r\nSPARK_CLOUD_SOCKETED=%d\r\nSPARK_CLOUD_CONNECTED=%d\r\nSPARK_FLASH_UPDATE=%d\r\nSPARK_LED_FADE=%d\r\n", \
-           SPARK_CLOUD_SOCKETED,SPARK_CLOUD_CONNECTED,SPARK_FLASH_UPDATE,SPARK_LED_FADE); \
- } while(0)
-
-#define ON_EVENT_DELTA()  do { if (lastEvent != 0) { uint32_t l; GET_LAST_EVENT(l); DEBUG("\r\nAsyncEvent 0x%04x", l); DUMP_STATE();}} while(0)
-#else
-#define SET_LAST_EVENT(x)
-#define GET_LAST_EVENT(x)
-#define DUMP_STATE()
-#define ON_EVENT_DELTA()
-#endif
 
 volatile uint8_t WLAN_DISCONNECT;
 volatile uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
@@ -76,19 +60,11 @@ volatile system_tick_t spark_loop_total_millis = 0;
 
 void (*announce_presence)(void);
 
-/* Smart Config Prefix */
-char aucCC3000_prefix[] = {'T', 'T', 'T'};
-/* AES key "sparkdevices2013" */
-const unsigned char smartconfigkey[] = "sparkdevices2013";	//16 bytes
-/* device name used by smart config response */
-char device_name[] = "CC3000";
-
 // Auth options are WLAN_SEC_UNSEC, WLAN_SEC_WPA, WLAN_SEC_WEP, and WLAN_SEC_WPA2
 unsigned char _auth = WLAN_SEC_WPA2;
 
 unsigned char wlan_profile_index;
 
-volatile uint8_t SPARK_WLAN_SETUP;
 volatile uint8_t SPARK_WLAN_RESET;
 volatile uint8_t SPARK_WLAN_SLEEP;
 volatile uint8_t SPARK_WLAN_STARTED;
@@ -96,7 +72,7 @@ volatile uint8_t SPARK_CLOUD_CONNECT;
 volatile uint8_t SPARK_CLOUD_SOCKETED;
 volatile uint8_t SPARK_CLOUD_CONNECTED;
 volatile uint8_t SPARK_FLASH_UPDATE;
-volatile uint8_t SPARK_LED_FADE;
+volatile uint8_t SPARK_LED_FADE = 1;
 
 volatile uint8_t Spark_Error_Count;
 
@@ -153,7 +129,7 @@ void Start_Smart_Config(void)
 			while(toggle--)
 			{
 				LED_Toggle(LED_RGB);
-				Delay(50);
+				HAL_Delay_Milliseconds(50);
 			}
 			WiFi.clearCredentials();
 			WLAN_DELETE_PROFILES = 0;
@@ -161,7 +137,7 @@ void Start_Smart_Config(void)
 		else
 		{
 			LED_Toggle(LED_RGB);
-			Delay(250);
+			HAL_Delay_Milliseconds(250);
 			wifi_creds_reader.read();
 		}
 	}
@@ -182,14 +158,6 @@ void Start_Smart_Config(void)
 }
 
 
-uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
-{
-    uint32_t rv = cc3000__event_timeout_ms;
-    cc3000__event_timeout_ms = timeOutInMS;
-    return rv;
-}
-
-
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 {
 	announce_presence = presence_announcement_callback;
@@ -206,7 +174,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 void SPARK_WLAN_Loop(void)
 {
   static int cfod_count = 0;
-  KICK_WDT();
+  HAL_Notify_WDT();
 
   ON_EVENT_DELTA();
   spark_loop_total_millis = 0;
@@ -269,8 +237,8 @@ void SPARK_WLAN_Loop(void)
   {
     if (ip_config.aucIP[0] == 0)
     {
-      Delay(100);
-      netapp_ipconfig(&ip_config);
+      HAL_Delay_Milliseconds(100);
+      wlan_fetch_ipconfig(&ip_config);
     }
   }
   else if (ip_config.aucIP[0] != 0)
@@ -307,9 +275,9 @@ void SPARK_WLAN_Loop(void)
       while (Spark_Error_Count != 0)
       {
         LED_On(LED_RGB);
-        Delay(500);
+        HAL_Delay_Milliseconds(500);
         LED_Off(LED_RGB);
-        Delay(500);
+        HAL_Delay_Milliseconds(500);
         Spark_Error_Count--;
       }
 
@@ -402,3 +370,63 @@ void SPARK_WLAN_Loop(void)
   }
 }
 
+void HAL_WLAN_notify_simple_config_done() 
+{       
+    WLAN_SMART_CONFIG_FINISHED = 1;
+    WLAN_SMART_CONFIG_STOP = 1;
+    WLAN_MANUAL_CONNECT = 0;
+}
+
+void HAL_WLAN_notify_connected()
+{
+    WLAN_CONNECTED = 1;
+    if(!WLAN_DISCONNECT)
+    {
+        ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
+    }
+}
+    
+void HAL_WLAN_notify_disconnected()
+{
+    if (WLAN_CONNECTED && !WLAN_DISCONNECT)
+    {
+        ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+    }
+    WLAN_CONNECTED = 0;
+    WLAN_DHCP = 0;
+    SPARK_CLOUD_SOCKETED = 0;
+    SPARK_CLOUD_CONNECTED = 0;
+    SPARK_FLASH_UPDATE = 0;
+    SPARK_LED_FADE = 1;
+    LED_SetRGBColor(RGB_COLOR_BLUE);
+    LED_On(LED_RGB);
+    Spark_Error_Count = 0;
+}
+
+void HAL_WLAN_notify_dhcp(bool dhcp) 
+{
+    if (dhcp) {
+        CLR_WLAN_WD();
+        WLAN_DHCP = 1;
+        SPARK_LED_FADE = 1;
+        LED_SetRGBColor(RGB_COLOR_GREEN);
+        LED_On(LED_RGB);
+    }
+    else {
+        WLAN_DHCP = 0;
+    }    
+}
+
+void HAL_WLAN_notify_can_shutdown()
+{
+    WLAN_CAN_SHUTDOWN = 1;
+}
+
+void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
+{
+    if (socket==sparkSocket) {
+        SPARK_FLASH_UPDATE = 0;
+        SPARK_CLOUD_CONNECTED = 0;
+        SPARK_CLOUD_SOCKETED = 0;
+    }    
+}

@@ -83,15 +83,3 @@ bool SPIClass::isEnabled()
 {
   return HAL_SPI_Is_Enabled();
 }
-
-/*******************************************************************************
- * Function Name  : Wiring_SPI1_Interrupt_Handler (Declared as weak in stm32_it.cpp)
- * Description    : This function handles SPI1 global interrupt request.
- * Input          : None.
- * Output         : None.
- * Return         : None.
- *******************************************************************************/
-void Wiring_SPI1_Interrupt_Handler(void)
-{
-  //To Do
-}

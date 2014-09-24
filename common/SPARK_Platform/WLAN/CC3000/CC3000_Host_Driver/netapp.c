@@ -32,12 +32,12 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *****************************************************************************/
-#include <string.h>
 #include "netapp.h"
 #include "hci.h"
 #include "socket.h"
 #include "evnt_handler.h"
 #include "nvmem.h"
+#include <string.h>
 
 #define MIN_TIMER_VAL_SECONDS      10
 #define MIN_TIMER_SET(t)    if ((0 != t) && (t < MIN_TIMER_VAL_SECONDS)) \

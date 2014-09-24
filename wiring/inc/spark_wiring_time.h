@@ -26,7 +26,7 @@
 #ifndef __SPARK_WIRING_TIME_H
 #define __SPARK_WIRING_TIME_H
 
-#include "spark_wiring.h"
+#include "spark_wiring_string.h"
 #include <time.h>
 
 class TimeClass {

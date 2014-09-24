@@ -26,8 +26,9 @@
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __SPARK_FLASHER_YMODEM_H
 #define __SPARK_FLASHER_YMODEM_H
-
+#include "hw_config.h"      // todo remove me
 #include "spark_wiring.h"
+
 
 #define PACKET_SEQNO_INDEX      (1)
 #define PACKET_SEQNO_COMP_INDEX (2)
