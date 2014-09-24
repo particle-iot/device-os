@@ -996,9 +996,9 @@ INT16 recvfrom(INT32 sd, void *buf, INT32 len, INT32 flags, sockaddr *from,
 INT16 simple_link_send(INT32 sd, const void *buf, INT32 len, INT32 flags,
 		const sockaddr *to, INT32 tolen, INT32 opcode)
 {    
-	UINT8 uArgSize,  addrlen;
-	UINT8 *ptr, *pDataPtr, *args;
-	UINT32 addr_offset;
+	UINT8 uArgSize=0,  addrlen;
+	UINT8 *ptr, *pDataPtr = NULL, *args;
+	UINT32 addr_offset = 0;
 	INT16 res;
 	tBsdReadReturnParams tSocketSendEvent;
 

@@ -1,5 +1,5 @@
 #include "inet_hal.h"
-#include "netapp.h"
+#include "socket.h"
 
 int inet_gethostbyname(char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr)
 {
