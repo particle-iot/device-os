@@ -43,7 +43,7 @@ INCLUDE_DIRS += SPARK_Platform/MCU/STM32F1xx/CMSIS/Device/ST/Include
 # Compiler flags
 CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 
 CFLAGS += $(patsubst %,-I$(SRC_PATH)/%,$(INCLUDE_DIRS)) -I.
-CFLAGS += -ffunction-sections -Wall -Wno-switch -fmessage-length=0
+CFLAGS += -ffunction-sections -Wall -Werror -Wno-switch -fmessage-length=0
 
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
