@@ -21,7 +21,7 @@ sock_result_t socket_reset_blocking_call()
 }
 
 sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, system_tick_t _timeout)
-{
+{  
   timeval timeout;
   _types_fd_set_cc3000 readSet;
   int bytes_received = 0;
@@ -31,12 +31,11 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
   FD_ZERO(&readSet);
   FD_SET(sd, &readSet);
 
-  // tell select to timeout after the minimum 5000 microseconds
+  // tell select to timeout after the minimum 5 milliseconds
   // defined in the SimpleLink API as SELECT_TIMEOUT_MIN_MICRO_SECONDS
+  _timeout = _timeout<5 ? 5 : _timeout;
   timeout.tv_sec = _timeout/1000;    
   timeout.tv_usec = (_timeout%1000)*1000;
-  if (timeout.tv_sec==0 && timeout.tv_usec<5000)
-      timeout.tv_usec = 5000;
   
   num_fds_ready = select(sd + 1, &readSet, NULL, NULL, &timeout);
 
@@ -71,9 +70,9 @@ sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port
     tServerAddr.sa_data[4] = 0;
     tServerAddr.sa_data[5] = 0;
 
-    ((retVal=setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &optval, sizeof(optval))) >= 0) &&
-        ((retVal=bind(sock, (sockaddr*)&tServerAddr, sizeof(tServerAddr))) >= 0) &&
-            ((retVal=listen(sock, 0)) >=0);
+    retVal=setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &optval, sizeof(optval));
+    if (retVal>=0) retVal=bind(sock, (sockaddr*)&tServerAddr, sizeof(tServerAddr));
+    if (retVal>=0) retVal=listen(sock,0);            
     return retVal;
 }
 
@@ -138,7 +137,7 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
 
 sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr* addr, socklen_t addr_size) 
 {
-    return sendto(sd, buffer, len, flags, addr, &addr_size);
+    return sendto(sd, buffer, len, flags, addr, addr_size);
 }
 
 
