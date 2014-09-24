@@ -8,6 +8,8 @@
 #ifndef DELAY_HAL_H
 #define	DELAY_HAL_H
 
+#include <stdint.h>
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

@@ -38,6 +38,11 @@
 #include "system_tick_hal.h"
 #include "usb_hal.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum SpiBusOwner {
     BUS_OWNER_NONE = 0,
     BUS_OWNER_CC3000 = 1,
@@ -240,4 +245,10 @@ extern unsigned char wlan_rx_buffer[];
 extern unsigned char wlan_tx_buffer[];
 
 #define KICK_WDT() IWDG_ReloadCounter()
+
+#ifdef __cplusplus
+}
+#endif
+
+
 #endif  /*__HW_CONFIG_H*/

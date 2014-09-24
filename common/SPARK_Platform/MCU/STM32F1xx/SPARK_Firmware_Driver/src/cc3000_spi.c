@@ -36,6 +36,7 @@
 #include "spark_macros.h"
 #include "debug.h"
 #include "spi_bus.h"
+#include "delay_hal.h"
 
 
 #define READ_COMMAND           {READ, 0 , 0 , 0 , 0}
@@ -197,9 +198,9 @@ void SpiOpen(gcSpiHandleRx pfRxHandler)
 
 	/* Enable Interrupt */
         tSLInformation.WriteWlanPin( WLAN_DISABLE );
-        Delay_Microsecond(MS2u(300));
+        HAL_Delay_Microseconds(MS2u(300));
  	tSLInformation.WlanInterruptEnable();
-        Delay_Microsecond(MS2u(1));
+        HAL_Delay_Microseconds(MS2u(1));
         tSLInformation.WriteWlanPin( WLAN_ENABLE );
         WaitFor(eSPI_STATE_INITIALIZED);
 
@@ -312,14 +313,14 @@ long SpiWrite(unsigned char *ucBuf, unsigned short usLength)
           if (NotAborted)
           {
               //Delay for at least 50 us
-              Delay_Microsecond(50);
+              HAL_Delay_Microseconds(50);
 
               //SPI writes first 4 bytes of data
               NotAborted = SpiIO(eWrite, ucBuf, 4, TRUE);
               if (NotAborted)
               {
                 //Delay for at least 50 us
-                Delay_Microsecond(50);
+                HAL_Delay_Microseconds(50);
 
                 //SPI writes next 4 bytes of data
                 NotAborted = SpiIO(eWrite, &ucBuf[4], usLength - 4, TRUE);

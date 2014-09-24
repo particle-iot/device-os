@@ -1,4 +1,8 @@
+
 #include "delay_hal.h"
+#include "stm32f10x.h"
+#include "hw_config.h"
+#include <limits.h>
 
 /**
  * Updated by interrupt in stm32_it.c

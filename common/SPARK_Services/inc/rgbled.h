@@ -2,6 +2,11 @@
 #ifndef RGBLED_H
 #define	RGBLED_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+    
+
 typedef enum
 {
 	LED1 = 0, LED2 = 1, LED3 = 2, LED4 = 3, LED3_LED4_LED2 = 231
@@ -52,6 +57,10 @@ extern void Toggle_User_LED();
 
 extern uint16_t Get_RGB_LED_Max_Value();
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* RGBLED_H */
 
