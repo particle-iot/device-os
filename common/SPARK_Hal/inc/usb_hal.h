@@ -28,15 +28,19 @@
 #define __USB_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "hw_config.h"
 #include "usb_conf.h"
-
+#include <stdint.h>
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros ------------------------------------------------------------*/
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+    
 /* We are temporary defining this macro over here */
 /* This could also be passed via -D option in build script */
 #define SPARK_USB_SERIAL        //Default is Virtual COM Port
@@ -73,5 +77,10 @@ void USB_USART_Send_Data(uint8_t Data);
 #ifdef USB_HID_ENABLE
 void USB_HID_Send_Report(void *pHIDReport, size_t reportSize);
 #endif
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif  /* __USB_HAL_H */

@@ -30,6 +30,7 @@
 #include "usb_desc.h"
 #include "usb_pwr.h"
 #include "usb_prop.h"
+#include "delay_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -73,7 +74,7 @@ void SPARK_USB_Setup(void)
 {
   USB_Disconnect_Config();
   USB_Cable_Config(DISABLE);
-  Delay_Microsecond(100000);
+  HAL_Delay_Microseconds(100000);
   Set_USBClock();
   USB_Interrupts_Config();
   USB_Init();
@@ -186,7 +187,7 @@ void USB_USART_Send_Data(uint8_t Data)
     if(CC3000_Read_Interrupt_Pin())
     {
       //Delay 100us to avoid losing the data
-      Delay_Microsecond(100);
+      HAL_Delay_Microseconds(100);
     }
   }
 }
