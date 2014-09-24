@@ -65,7 +65,7 @@ int wlan_has_credentials()
 {
     if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] != 0)
     {
-       return 0;
+        return 0;
     }
     return 1;    
 }
