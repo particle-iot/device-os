@@ -2,7 +2,9 @@
 
 #include "socket_hal.h"
 #include "cc3000_spi.h"
+#include "evnt_handler.h"
 #include "socket.h"
+
 
 int32_t socket_connect(sock_handle_t sd, const sockaddr *addr, long addrlen)
 {
@@ -113,6 +115,33 @@ sock_result_t socket_accept(sock_handle_t sock)
     socklen_t tAddrLen = sizeof(tClientAddr);
     return accept(sock, &tClientAddr, &tAddrLen);
 }
+
+uint8_t socket_active_status(sock_handle_t socket) 
+{
+    return get_socket_active_status(socket);    
+}
+
+sock_result_t socket_close(sock_handle_t sock) 
+{
+    return closesocket(sock);
+}
+
+sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol) 
+{
+    return socket(family, type, protocol);
+}
+
+sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len) 
+{
+    return send(sd, buffer, len, 0);
+}
+
+sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr* addr, socklen_t addr_size) 
+{
+    return sendto(sd, buffer, len, flags, addr, &addr_size);
+}
+
+
 
 
 const sock_handle_t SOCKET_MAX = (sock_handle_t)8;

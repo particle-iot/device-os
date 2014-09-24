@@ -104,10 +104,9 @@ the same way.
     void WiFiClass::connect(void) {
         if (!ready()) {
             WLAN_DISCONNECT = 0;
+            wlan_connect_init();
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
-
-            wlan_connect_init();
 
             if (wlan_reset_credentials_store_required()) {
                 wlan_reset_credentials_store();
@@ -223,11 +222,11 @@ the same way.
     }
 
     bool WiFiClass::hasCredentials(void) {
-        return wlan_has_credentials() != 0;
+        return wlan_has_credentials() == 0;
     }
 
     bool WiFiClass::clearCredentials(void) {
-        return wlan_clear_credentials() != 0;
+        return wlan_clear_credentials() == 0;
     }
 
     WiFiClass WiFi;

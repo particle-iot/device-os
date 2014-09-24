@@ -8,6 +8,8 @@
 #ifndef WATCHDOG_HAL_H
 #define	WATCHDOG_HAL_H
 
+#include <stdbool.h>
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

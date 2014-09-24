@@ -91,7 +91,7 @@ wlan_result_t wlan_deactivate();
 int wlan_connected_rssi();
 
 int wlan_clear_credentials();
-bool wlan_has_credentials();
+int wlan_has_credentials();
 
 typedef enum {
     WLAN_SEC_UNSEC,

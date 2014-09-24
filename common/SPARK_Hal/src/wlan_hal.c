@@ -1,5 +1,6 @@
 
 #include "wlan_hal.h"
+#include "delay_hal.h"
 #include "timer_hal.h"
 #include "socket_hal.h"
 #include "socket.h"
@@ -44,7 +45,6 @@ uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
     return rv;
 }
 
-
 unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
 void recreate_spark_nvmem_file();
@@ -56,18 +56,18 @@ int wlan_clear_credentials()
     {
         recreate_spark_nvmem_file();
         Clear_NetApp_Dhcp();
-        return true;
+        return 0;
     }
-    return false;
+    return 1;
 }
 
-int wifi_has_credentials()
+int wlan_has_credentials()
 {
-  if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] != 0)
-  {
-     return 0;
-  }
-  return 1;    
+    if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] != 0)
+    {
+       return 0;
+    }
+    return 1;    
 }
 
 
@@ -110,12 +110,12 @@ wlan_result_t wlan_deactivate() {
     return 0;
 }
 
-bool wlan_reset_credentials_storage_required() 
+bool wlan_reset_credentials_store_required() 
 {
     return (NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE);
 }
 
-wlan_result_t wlan_reset_credentials_storage()
+wlan_result_t wlan_reset_credentials_store()
 {
     /* Delete all previously stored wlan profiles */
     wlan_clear_credentials();
@@ -187,7 +187,7 @@ uint8_t ping_report_num;
 
 int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
     int result = 0;
-    uint32_t pingIPAddr = remoteIP[3] << 24 | remoteIP[2] << 16 | remoteIP[1] << 8 | remoteIP[0];
+    uint32_t pingIPAddr = remoteIP[0] << 24 | remoteIP[1] << 16 | remoteIP[2] << 8 | remoteIP[3];
     unsigned long pingSize = 32UL;
     unsigned long pingTimeout = 500UL; // in milliseconds
 
@@ -396,7 +396,7 @@ void wlan_setup()
     wlan_init(WLAN_Async_Callback, WLAN_Firmware_Patch, WLAN_Driver_Patch, WLAN_BootLoader_Patch,
                             CC3000_Read_Interrupt_Pin, CC3000_Interrupt_Enable, CC3000_Interrupt_Disable, CC3000_Write_Enable_Pin);
 
-    Delay(100);
+    HAL_Delay_Microseconds(100);
 }
             
             
@@ -410,7 +410,7 @@ wlan_result_t wlan_manual_connect()
     return wlan_connect(WLAN_SEC_WPA2, _ssid, strlen(_ssid), NULL, (unsigned char*)_password, strlen(_password));    
 }
 
-void wlan_clear_spark_error_count() 
+void wlan_clear_error_count() 
 {
     NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = 0;
     nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);    

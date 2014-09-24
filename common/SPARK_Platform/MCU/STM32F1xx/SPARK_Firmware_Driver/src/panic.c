@@ -6,10 +6,13 @@
  */
 
 #include <stdint.h>
-#include "hw_config.h"
 #include "spark_macros.h"
 #include "panic.h"
 #include "debug.h"
+#include "rgbled.h"
+#include "delay_hal.h"
+#include "watchdog_hal.h"
+#include "interrupts_hal.h"
 
 
 #define LOOPSPERMSEC 5483
@@ -33,7 +36,7 @@ static const flash_codes_t flash_codes[] = {
 
 void panic_(ePanicCode code)
 {
-        __disable_irq();
+        HAL_disable_irq();
         // Flush any serial message to help the poor bugger debug this;
         flash_codes_t pcd = flash_codes[code];
         LED_SetRGBColor(RGB_COLOR_RED);
@@ -44,45 +47,45 @@ void panic_(ePanicCode code)
         LED_Off(LED_RGB);
         while(loops) {
                 // preamble
-            KICK_WDT();
+            HAL_Notify_WDT();
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
                 LED_On(LED_RGB);
-                Delay_Microsecond(MS2u(150));
+                HAL_Delay_Microseconds(MS2u(150));
                 LED_Off(LED_RGB);
-                Delay_Microsecond(MS2u(100));
+                HAL_Delay_Microseconds(MS2u(100));
             }
 
-            Delay_Microsecond(MS2u(100));
+            HAL_Delay_Microseconds(MS2u(100));
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
                 LED_On(LED_RGB);
-                Delay_Microsecond(MS2u(300));
+                HAL_Delay_Microseconds(MS2u(300));
                 LED_Off(LED_RGB);
-                Delay_Microsecond(MS2u(100));
+                HAL_Delay_Microseconds(MS2u(100));
             }
-            Delay_Microsecond(MS2u(100));
+            HAL_Delay_Microseconds(MS2u(100));
 
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
                 LED_On(LED_RGB);
-                Delay_Microsecond(MS2u(150));
+                HAL_Delay_Microseconds(MS2u(150));
                 LED_Off(LED_RGB);
-                Delay_Microsecond(MS2u(100));
+                HAL_Delay_Microseconds(MS2u(100));
             }
 
                 // pause
-                Delay_Microsecond(MS2u(900));
+                HAL_Delay_Microseconds(MS2u(900));
                 // play code
                 for (c = code; c; c--) {
                     LED_SetRGBColor(pcd.led);
                     LED_On(LED_RGB);
-                    Delay_Microsecond(MS2u(300));
+                    HAL_Delay_Microseconds(MS2u(300));
                     LED_Off(LED_RGB);
-                    Delay_Microsecond(MS2u(300));
+                    HAL_Delay_Microseconds(MS2u(300));
                 }
                 // pause
-                Delay_Microsecond(MS2u(800));
+                HAL_Delay_Microseconds(MS2u(800));
 #ifdef RELEASE_BUILD
                 if (--loops == 0) NVIC_SystemReset();
 #endif
