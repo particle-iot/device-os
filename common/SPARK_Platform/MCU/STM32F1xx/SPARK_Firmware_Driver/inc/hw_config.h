@@ -53,21 +53,6 @@ enum SpiBusOwner {
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {
-	DIO_LOW = 0, DIO_HIGH = 1
-} DIO_State_TypeDef;
-
-typedef enum
-{
-	FAIL = -1, OK = 0
-} DIO_Error_TypeDef;
-
-typedef enum
-{
-	D0 = 0, D1 = 1, D2 = 2, D3 = 3, D4 = 4, D5 = 5, D6 = 6, D7 = 7
-} DIO_TypeDef;
-
-typedef enum
-{
 	BUTTON1 = 0, BUTTON2 = 1
 } Button_TypeDef;
 
@@ -152,11 +137,7 @@ void RTC_Configuration(void);
 
 void IWDG_Reset_Enable(uint32_t msTimeout);
 
-void DIO_Init(DIO_TypeDef Dx);
-DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State);
-
 void UI_Timer_Configure(void);
-
 
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);

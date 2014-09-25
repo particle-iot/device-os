@@ -156,13 +156,6 @@ void Set_System(void)
     /* Enable AFIO clock */
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
-	/* Configure DIOs */
-	int Dx;
-	for(Dx = 0; Dx < Dn; ++Dx)
-	{
-		DIO_Init(Dx);
-	}
-
 	/* Configure TIM1 for LED-PWM and BUTTON-DEBOUNCE usage */
 	UI_Timer_Configure();
 
@@ -316,46 +309,6 @@ void IWDG_Reset_Enable(uint32_t msTimeout)
 
 	/* Enable IWDG (the LSI oscillator will be enabled by hardware) */
 	IWDG_Enable();
-}
-
-/**
-  * @brief  Configures Dx GPIO.
-  * @param  Dx: Specifies the Dx to be configured.
-  * @retval None
-  */
-void DIO_Init(DIO_TypeDef Dx)
-{
-    GPIO_InitTypeDef  GPIO_InitStructure;
-
-    /* Enable the GPIO_Dx Clock */
-    RCC_APB2PeriphClockCmd(DIO_GPIO_CLK[Dx], ENABLE);
-
-    /* Configure the GPIO_Dx pin */
-    GPIO_InitStructure.GPIO_Pin = DIO_GPIO_PIN[Dx];
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(DIO_GPIO_PORT[Dx], &GPIO_InitStructure);
-
-    /* Set to Off State */
-    DIO_SetState(Dx, DIO_LOW);
-}
-
-/**
-  * @brief  Turns selected Dx On/Off.
-  * @param  Dx: Specifies the Dx.
-  * @param  State: Set On or Off.
-  * @retval None
-  */
-DIO_Error_TypeDef DIO_SetState(DIO_TypeDef Dx, DIO_State_TypeDef State)
-{
-	if(Dx < 0 || Dx > Dn)
-		return FAIL;
-	else if(State == DIO_HIGH)
-		DIO_GPIO_PORT[Dx]->BSRR = DIO_GPIO_PIN[Dx];
-	else if(State == DIO_LOW)
-		DIO_GPIO_PORT[Dx]->BRR = DIO_GPIO_PIN[Dx];
-
-	return OK;
 }
 
 void UI_Timer_Configure(void)
