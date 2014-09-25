@@ -2,6 +2,8 @@
 #ifndef RGBLED_H
 #define	RGBLED_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -57,6 +59,7 @@ extern void Toggle_User_LED();
 
 extern uint16_t Get_RGB_LED_Max_Value();
 
+extern bool LED_RGB_IsOverRidden(void);
 
 #ifdef __cplusplus
 }

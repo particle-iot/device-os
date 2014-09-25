@@ -71,7 +71,7 @@ extern "C" void HAL_SysTick_Handler(void)
     }
 #endif
 
-    if (LED_RGB_OVERRIDE != 0)
+    if (LED_RGB_IsOverRidden())
     {
         if ((LED_Spark_Signal != 0) && (NULL != LED_Signaling_Override))
         {

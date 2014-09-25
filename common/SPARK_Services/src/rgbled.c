@@ -201,3 +201,8 @@ void LED_RGB_Get(uint8_t* rgb) {
 void Set_RGB_LED(uint16_t* data) {
     Set_RGB_LED_Values(data[0], data[1], data[2]);
 }
+
+bool LED_RGB_IsOverRidden(void)
+{
+    return (LED_RGB_OVERRIDE!=0)?true:false;
+}

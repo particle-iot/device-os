@@ -207,8 +207,6 @@ extern uint8_t USE_SYSTEM_FLAGS;
 
 extern volatile uint32_t TimingDelay;
 
-extern uint8_t LED_RGB_OVERRIDE;
-
 extern uint16_t CORE_FW_Version_SysFlag;
 extern uint16_t NVMEM_SPARK_Reset_SysFlag;
 extern uint16_t FLASH_OTA_Update_SysFlag;
