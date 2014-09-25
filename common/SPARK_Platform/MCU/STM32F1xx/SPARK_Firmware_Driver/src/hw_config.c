@@ -42,9 +42,6 @@
 uint8_t USE_SYSTEM_FLAGS = 0;	//0, 1
 uint16_t sys_health_cache = 0; // Used by the SYS_HEALTH macros store new heath if higher
 
-volatile uint32_t TimingLED;
-volatile uint32_t TimingIWDGReload;
-
 GPIO_TypeDef* LED_GPIO_PORT[] = {LED1_GPIO_PORT, LED2_GPIO_PORT, LED3_GPIO_PORT, LED4_GPIO_PORT};
 const uint16_t LED_GPIO_PIN[] = {LED1_GPIO_PIN, LED2_GPIO_PIN, LED3_GPIO_PIN, LED4_GPIO_PIN};
 const uint32_t LED_GPIO_CLK[] = {LED1_GPIO_CLK, LED2_GPIO_CLK, LED3_GPIO_CLK, LED4_GPIO_CLK};

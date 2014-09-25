@@ -206,8 +206,6 @@ void Finish_Update(void);
 extern uint8_t USE_SYSTEM_FLAGS;
 
 extern volatile uint32_t TimingDelay;
-extern volatile uint32_t TimingLED;
-extern volatile  uint32_t TimingIWDGReload;
 
 extern uint8_t LED_RGB_OVERRIDE;
 

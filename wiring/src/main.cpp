@@ -44,6 +44,8 @@ using namespace spark;
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+volatile uint32_t TimingLED;
+volatile uint32_t TimingIWDGReload;
 volatile uint32_t TimingFlashUpdateTimeout;
 
 /* Extern variables ----------------------------------------------------------*/

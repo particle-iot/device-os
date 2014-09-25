@@ -32,8 +32,6 @@
 #include "hw_config.h"
 #include "syshealth_hal.h"
 
-__IO uint8_t IWDG_SYSTEM_RESET;
-
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
@@ -41,6 +39,7 @@ __IO uint8_t IWDG_SYSTEM_RESET;
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+volatile uint8_t IWDG_SYSTEM_RESET;
 
 /* Extern variables ----------------------------------------------------------*/
 
