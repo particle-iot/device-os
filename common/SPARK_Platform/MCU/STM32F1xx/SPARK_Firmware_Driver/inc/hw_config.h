@@ -121,8 +121,6 @@ typedef struct ServerAddress {
 									| FLASH_WRProt_Pages8to11	\
 									| FLASH_WRProt_Pages12to15 )
 
-#define TIMING_IWDG_RELOAD	1000 //1sec
-
 #define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
 
 /* Exported functions ------------------------------------------------------- */

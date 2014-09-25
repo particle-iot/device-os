@@ -54,6 +54,7 @@
  * During JTAG program/debug, the Watchdog counting is disabled by debug configuration
  */
 #define IWDG_RESET_ENABLE
+#define TIMING_IWDG_RELOAD      1000 //1sec
 
 /* Define the following if not already defined */
 #ifndef __PLATFORM_CONFIG_H
