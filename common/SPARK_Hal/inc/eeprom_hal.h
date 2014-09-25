@@ -27,8 +27,9 @@
 #ifndef __EEPROM_HAL_H
 #define __EEPROM_HAL_H
 
+#include <stdint.h>
+
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f10x.h"
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -36,12 +37,6 @@
 
 /* Exported macros -----------------------------------------------------------*/
 /* Internal Flash Page size = 1KByte */
-#define PAGE_SIZE               (uint16_t)0x400
-/* EEPROM emulation start address in Flash (just after the write protected bootloader program space) */
-#define EEPROM_START_ADDRESS    ((uint32_t)0x08004000)
-/* EEPROM Emulation Size */
-#define EEPROM_SIZE             ((uint8_t)0x64)       /* 100 bytes (Max 255/0xFF bytes) */
-
 /* Exported functions --------------------------------------------------------*/
 
 #ifdef __cplusplus
