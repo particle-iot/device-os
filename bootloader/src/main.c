@@ -30,6 +30,8 @@
 #include "usb_prop.h"
 #include "usb_pwr.h"
 #include "dfu_mal.h"
+#include "syshealth_hal.h"
+#include "core_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);
@@ -48,6 +50,10 @@ uint8_t DeviceStatus[6];
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
 uint32_t ApplicationAddress;
+
+volatile uint32_t TimingBUTTON;
+volatile uint32_t TimingLED;
+volatile uint32_t TimingIWDGReload;
 
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
