@@ -27,6 +27,7 @@
 #include "tone_hal.h"
 #include "gpio_hal.h"
 #include "timer_hal.h"
+#include "pinmap_impl.h"
 
 /* Private typedef -----------------------------------------------------------*/
 

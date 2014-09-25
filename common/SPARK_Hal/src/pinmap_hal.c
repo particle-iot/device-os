@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file    pinmap_hal.c
- * @authors Satish Nair, Brett Walach
+ * @authors Satish Nair, Brett Walach, Matthew McGowan
  * @version V1.0.0
  * @date    12-Sept-2014
  * @brief
@@ -25,6 +25,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
+#include "pinmap_impl.h"
+#include <stddef.h>
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -40,45 +42,27 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
  * timer_ccr (0 by default, store the CCR value for TIM interrupt use)
  * user_property (0 by default, user variable storage)
  */
-  { GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, (PinMode)NONE, 0, 0 },
-  { GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, (PinMode)NONE, 0, 0 },
-  { GPIOB, GPIO_Pin_5, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
-  { GPIOB, GPIO_Pin_4, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
-  { GPIOB, GPIO_Pin_3, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_15, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_14, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_13, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_8, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_9, NONE, NULL, NONE, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM2, TIM_Channel_1, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_1, ADC_Channel_1, TIM2, TIM_Channel_2, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_4, ADC_Channel_4, NULL, NONE, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_5, ADC_Channel_5, NULL, NONE, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, (PinMode)NONE, 0, 0 },
-  { GPIOB, GPIO_Pin_0, ADC_Channel_8, TIM3, TIM_Channel_3, (PinMode)NONE, 0, 0 },
-  { GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_10, NONE, NULL, NONE, (PinMode)NONE, 0, 0 }
+  { GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_5, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_4, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_3, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_15, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_14, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_13, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_8, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_9, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM2, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_1, ADC_Channel_1, TIM2, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_4, ADC_Channel_4, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_5, ADC_Channel_5, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_0, ADC_Channel_8, TIM3, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_10, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 }
 };
 
-/* Private define ------------------------------------------------------------*/
 
-/* Private macro -------------------------------------------------------------*/
-
-/* Private variables ---------------------------------------------------------*/
-
-/* Extern variables ----------------------------------------------------------*/
-
-/* Private function prototypes -----------------------------------------------*/
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
-#ifdef __cplusplus
-}
-#endif

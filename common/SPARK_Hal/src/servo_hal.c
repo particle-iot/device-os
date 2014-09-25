@@ -26,6 +26,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "servo_hal.h"
 #include "gpio_hal.h"
+#include "pinmap_impl.h"
 
 /* Private typedef -----------------------------------------------------------*/
 

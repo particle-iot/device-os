@@ -32,6 +32,7 @@
 #include "spark_wiring_i2c.h"
 #include "watchdog_hal.h"
 #include "delay_hal.h"
+#include "pinmap_hal.h"
 
 /*
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, 
@@ -40,7 +41,7 @@
 void pinMode(uint16_t pin, PinMode setMode)
 {
 
-  if(pin >= TOTAL_PINS || setMode == NONE )
+  if(pin >= TOTAL_PINS || setMode == PIN_MODE_NONE )
   {
     return;
   }
@@ -80,20 +81,21 @@ bool pinAvailable(uint16_t pin) {
   return 1; // 'pin' is available
 }
 
+inline bool is_input_mode(PinMode mode) {
+    return  mode == INPUT || 
+            mode == INPUT_PULLUP || 
+            mode == INPUT_PULLDOWN || 
+            mode == AN_INPUT;            
+}
+
 /*
  * @brief Sets a GPIO pin to HIGH or LOW.
  */
-void digitalWrite(uint16_t pin, uint8_t value)
+void digitalWrite(pin_t pin, uint8_t value)
 {
-  if(pin >= TOTAL_PINS || PIN_MAP[pin].pin_mode == INPUT || 
-     PIN_MAP[pin].pin_mode == INPUT_PULLUP || 
-     PIN_MAP[pin].pin_mode == INPUT_PULLDOWN || 
-     PIN_MAP[pin].pin_mode == AN_INPUT || 
-     PIN_MAP[pin].pin_mode == NONE)
-  {
-    return;
-  }
-
+    PinMode mode = HAL_Get_Pin_Mode(pin);
+    if (mode==PIN_MODE_NONE || is_input_mode(mode))
+        return;
   // Safety check
   if( !pinAvailable(pin) ) {
     return;
@@ -102,25 +104,26 @@ void digitalWrite(uint16_t pin, uint8_t value)
   HAL_GPIO_Write(pin, value);
 }
 
+inline bool is_af_output_mode(PinMode mode) {    
+    return mode == AF_OUTPUT_PUSHPULL || 
+           mode == AF_OUTPUT_DRAIN;
+}
+
 /*
  * @brief Reads the value of a GPIO pin. Should return either 1 (HIGH) or 0 (LOW).
  */
-int32_t digitalRead(uint16_t pin)
+int32_t digitalRead(pin_t pin)
 {
-  if( pin >= TOTAL_PINS || 
-      PIN_MAP[pin].pin_mode == NONE || 
-      PIN_MAP[pin].pin_mode == AF_OUTPUT_PUSHPULL || 
-      PIN_MAP[pin].pin_mode == AF_OUTPUT_DRAIN)
-  {
-    return LOW;
-  }
+    PinMode mode = HAL_Get_Pin_Mode(pin);
+    if (is_af_output_mode(mode))
+        return LOW;
 
-  // Safety check
-  if( !pinAvailable(pin) ) {
-    return LOW;
-  }
+    // Safety check
+    if( !pinAvailable(pin) ) {
+      return LOW;
+    }
 
-  return HAL_GPIO_Read(pin);
+    return HAL_GPIO_Read(pin);
 }
 
 /*
@@ -147,7 +150,7 @@ void setADCSampleTime(uint8_t ADC_SampleTime)
  * Should return a 16-bit value, 0-65536 (0 = LOW, 65536 = HIGH)
  * Note: ADC is 12-bit. Currently it returns 0-4096
  */
-int32_t analogRead(uint16_t pin)
+int32_t analogRead(pin_t pin)
 {
   // Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
   if(pin < FIRST_ANALOG_PIN)
@@ -160,7 +163,7 @@ int32_t analogRead(uint16_t pin)
     return LOW;
   }
 
-  if(pin >= TOTAL_PINS || PIN_MAP[pin].adc_channel == NONE )
+  if(pin >= TOTAL_PINS || HAL_Pin_Function(pin)!=PF_ADC)
   {
     return LOW;
   }
@@ -172,10 +175,10 @@ int32_t analogRead(uint16_t pin)
  * @brief Should take an integer 0-255 and create a PWM signal with a duty cycle from 0-100%.
  * TIM_PWM_FREQ is set at 500 Hz
  */
-void analogWrite(uint16_t pin, uint8_t value)
+void analogWrite(pin_t pin, uint8_t value)
 {
 
-  if(pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
+  if(pin >= TOTAL_PINS || HAL_Pin_Function(pin)!=PF_TIMER)
   {
     return;
   }
@@ -185,7 +188,8 @@ void analogWrite(uint16_t pin, uint8_t value)
     return;
   }
 
-  if(PIN_MAP[pin].pin_mode != OUTPUT && PIN_MAP[pin].pin_mode != AF_OUTPUT_PUSHPULL)
+  PinMode mode = HAL_Get_Pin_Mode(pin);  
+  if(mode != OUTPUT && mode != AF_OUTPUT_PUSHPULL)
   {
     return;
   }

@@ -51,8 +51,7 @@ enum PinState {
 };
 
 typedef bool boolean;
+typedef uint8_t byte;
 
-//#define NULL ((void *)0)
-#define NONE ((uint8_t)0xFF)
 
 #endif	/* SPARK_WIRING_CONSTANTS_H */

@@ -25,10 +25,9 @@
 
 /* Includes -----------------------------------------------------------------*/
 #include "gpio_hal.h"
-//#include "pinmap_hal.h"
+#include "pinmap_impl.h"
 #include "stm32f10x.h"
-//#include "spark_wiring.h"
-//#include "spark_macros.h"
+#include <stddef.h>
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -38,21 +37,42 @@
 
 /* Private variables --------------------------------------------------------*/
 
-PinMode digitalPinModeSaved = (PinMode)NONE;
+PinMode digitalPinModeSaved = PIN_MODE_NONE;
 
 /* Extern variables ---------------------------------------------------------*/
 
 /* Private function prototypes ----------------------------------------------*/
 
+inline bool is_valid_pin(pin_t pin)
+{
+    return pin<TOTAL_PINS;
+}
+
+PinMode HAL_Get_Pin_Mode(pin_t pin) 
+{
+    return (!is_valid_pin(pin)) ? PIN_MODE_NONE : PIN_MAP[pin].pin_mode;
+}
+
+PinFunction HAL_Pin_Function(pin_t pin) 
+{
+    if (!is_valid_pin(pin))
+        return PF_NONE;
+    if (PIN_MAP[pin].adc_channel!=ADC_CHANNEL_NONE)
+        return PF_ADC;
+    if (PIN_MAP[pin].timer_peripheral!=NULL)
+        return PF_TIMER;
+    return PF_DIO;
+}
+
 /*
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, 
  * or INPUT_PULLDOWN
  */
-void HAL_Pin_Mode(uint16_t pin, PinMode setMode)
+void HAL_Pin_Mode(pin_t pin, PinMode setMode)
 {
 
   GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
-  uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
+  pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
 
   GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -160,7 +180,7 @@ int32_t HAL_GPIO_Read(uint16_t pin)
   if(PIN_MAP[pin].pin_mode == AN_INPUT)
   {
     PinMode pm = HAL_GPIO_Recall_Pin_Mode();
-    if(pm == NONE)
+    if(pm == PIN_MODE_NONE)
     {
       return 0;
     }

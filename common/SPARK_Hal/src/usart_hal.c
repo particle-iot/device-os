@@ -26,6 +26,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usart_hal.h"
 #include "gpio_hal.h"
+#include "stm32f10x.h"
 #include <string.h>
 
 /* Private typedef -----------------------------------------------------------*/

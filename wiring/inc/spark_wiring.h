@@ -25,7 +25,6 @@
 
 #ifndef SPARK_WIRING_H
 #define SPARK_WIRING_H
-#include "stm32f10x.h"
 #include "pinmap_hal.h"
 #include "gpio_hal.h"
 #include "adc_hal.h"
@@ -35,12 +34,12 @@
 #include "spark_macros.h"
 #include "debug.h"
 #include "spark_utilities.h"
+#include "spark_wiring_constants.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_printable.h"
 #include "spark_wiring_ipaddress.h"
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_character.h"
-#include "spark_wiring_constants.h"
 #include "spark_wiring_random.h"
 
 

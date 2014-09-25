@@ -26,6 +26,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "interrupts_hal.h"
 #include "gpio_hal.h"
+#include "pinmap_impl.h"
+#include "stm32f10x.h"
+#include <stddef.h>
 
 /* Private typedef -----------------------------------------------------------*/
 

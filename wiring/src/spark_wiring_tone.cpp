@@ -29,26 +29,14 @@
 
 void tone(uint8_t pin, unsigned int frequency, unsigned long duration)
 {
-  if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
-  {
-    return;
-  }
-
-  // Safety check
-  if (!pinAvailable(pin))
-  {
-    return;
-  }
-
-  HAL_Tone_Start(pin, frequency, duration);
+    if (pinAvailable(pin) && HAL_Pin_Function(pin)==PF_TIMER) {
+        HAL_Tone_Start(pin, frequency, duration);
+    }
 }
 
 void noTone(uint8_t pin)
 {
-  if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
-  {
-    return;
-  }
-
-  HAL_Tone_Stop(pin);
+    if (pinAvailable(pin) && HAL_Pin_Function(pin)==PF_TIMER) {
+        HAL_Tone_Stop(pin);
+    }
 }

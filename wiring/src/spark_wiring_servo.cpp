@@ -44,7 +44,7 @@ bool Servo::attach(uint16_t pin,
     int16_t maxAngle)
 {
 
-  if (pin >= TOTAL_PINS || PIN_MAP[pin].timer_peripheral == NULL)
+  if (HAL_Pin_Function(pin)!=PF_TIMER)
   {
     return false;
   }

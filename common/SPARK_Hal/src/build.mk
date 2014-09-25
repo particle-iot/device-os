@@ -8,6 +8,7 @@ TARGET_HAL_PATH = SPARK_Hal
 TARGET_HAL_SRC_PATH = $(TARGET_HAL_PATH)/src
 
 INCLUDE_DIRS += $(TARGET_HAL_PATH)/inc
+INCLUDE_DIRS += $(TARGET_HAL_SRC_PATH)
 
 # C source files included in this build.
 CSRC += $(TARGET_HAL_SRC_PATH)/adc_hal.c

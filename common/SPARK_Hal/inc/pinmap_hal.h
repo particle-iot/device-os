@@ -28,10 +28,16 @@
 #define __PINMAP_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f10x.h"
 #include <stdbool.h>
+#include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif    
+    
 /* Exported types ------------------------------------------------------------*/
+
+typedef uint16_t pin_t;
 
 typedef enum PinMode {
   OUTPUT,
@@ -40,67 +46,20 @@ typedef enum PinMode {
   INPUT_PULLDOWN,
   AF_OUTPUT_PUSHPULL, //Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
   AF_OUTPUT_DRAIN,    //Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
-  AN_INPUT        //Used internally for ADC Input
+  AN_INPUT,        //Used internally for ADC Input
+  PIN_MODE_NONE=0xFF          
 } PinMode;
 
-typedef struct STM32_Pin_Info {
-  GPIO_TypeDef* gpio_peripheral;
-  uint16_t gpio_pin;
-  uint8_t adc_channel;
-  TIM_TypeDef* timer_peripheral;
-  uint16_t timer_ch;
-  PinMode pin_mode;
-  uint16_t timer_ccr;
-  int32_t user_property;
-} STM32_Pin_Info;
+typedef enum {
+    PF_NONE,
+    PF_DIO,
+    PF_TIMER,
+    PF_ADC
+} PinFunction;
 
-/* Exported constants --------------------------------------------------------*/
-
-extern STM32_Pin_Info PIN_MAP[];
+PinFunction HAL_Pin_Function(pin_t pin);
 
 /* Exported macros -----------------------------------------------------------*/
-
-/*
-* Basic variables
-*/
-
-#if !defined(min)
-  #define min(a,b)                ((a)<(b)?(a):(b))
-#endif
-#if !defined(max)
-  #define max(a,b)                ((a)>(b)?(a):(b))
-#endif
-#if !defined(constrain)
-  #define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
-#endif
-#if !defined(round)
-  #define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
-#endif
-
-/*
-#define HIGH 0x1
-#define LOW  0x0
-*/
-
-/*
-#define boolean bool
-*/
-
-//#define NULL ((void *)0)
-#ifndef NULL
-  #define NULL  0
-#endif
-#define NONE ((uint8_t)0xFF)
-
-/*
-#ifndef false
-  #define false 0
-#endif
-
-#ifndef true
-  #define true  (!false)
-#endif
-*/
 
 /*
 * Pin mapping. Borrowed from Wiring
@@ -120,6 +79,8 @@ extern STM32_Pin_Info PIN_MAP[];
 #define D6 6
 #define D7 7
 */
+
+// todo - this is corev1 specific, needs to go in a conditional define
 
 #define LED1 LED_USER
 
@@ -173,8 +134,11 @@ extern STM32_Pin_Info PIN_MAP[];
 #define LSBFIRST 0
 #define MSBFIRST 1
 
-typedef unsigned char byte;
-
 /* Exported functions --------------------------------------------------------*/
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif  /* __PINMAP_HAL_H */

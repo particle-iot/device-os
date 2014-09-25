@@ -41,12 +41,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-void HAL_Pin_Mode(uint16_t pin, PinMode mode);
-void HAL_GPIO_Save_Pin_Mode(PinMode mode);
-PinMode HAL_GPIO_Recall_Pin_Mode();
-void HAL_GPIO_Write(uint16_t pin, uint8_t value);
-int32_t HAL_GPIO_Read(uint16_t pin);
+    
+void HAL_Pin_Mode(pin_t pin, PinMode mode);
+PinMode HAL_Get_Pin_Mode(pin_t pin);
+void HAL_GPIO_Write(pin_t pin, uint8_t value);
+int32_t HAL_GPIO_Read(pin_t pin);
 
 #ifdef __cplusplus
 }

@@ -27,6 +27,8 @@
 #include "i2c_hal.h"
 #include "gpio_hal.h"
 #include "timer_hal.h"
+#include "stm32f10x.h"
+#include <stddef.h>
 
 /* Private typedef -----------------------------------------------------------*/
 

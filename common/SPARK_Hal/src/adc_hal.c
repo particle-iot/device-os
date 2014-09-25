@@ -26,6 +26,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "adc_hal.h"
 #include "gpio_hal.h"
+#include "pinmap_hal.h"
+#include "pinmap_impl.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -37,7 +39,7 @@
 
 __IO uint32_t ADC_DualConvertedValues[ADC_DMA_BUFFERSIZE];
 uint8_t adcInitFirstTime = true;
-uint8_t adcChannelConfigured = NONE;
+uint8_t adcChannelConfigured = ADC_CHANNEL_NONE;
 static uint8_t ADC_Sample_Time = ADC_SAMPLING_TIME;
 
 /* Extern variables ----------------------------------------------------------*/
