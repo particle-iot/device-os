@@ -62,15 +62,6 @@ volatile uint32_t TimingFlashUpdateTimeout;
  *******************************************************************************/
 extern "C" void HAL_SysTick_Handler(void)
 {
-#if !defined (RGB_NOTIFICATIONS_ON) && defined (RGB_NOTIFICATIONS_OFF)
-    //Just needed in case LED_RGB_OVERRIDE is set to 0 by accident
-    if (LED_RGB_OVERRIDE == 0)
-    {
-        LED_RGB_OVERRIDE = 1;
-        LED_Off(LED_RGB);
-    }
-#endif
-
     if (LED_RGB_IsOverRidden())
     {
         if ((LED_Spark_Signal != 0) && (NULL != LED_Signaling_Override))
@@ -93,13 +84,9 @@ extern "C" void HAL_SysTick_Handler(void)
     }
     else if(SPARK_CLOUD_CONNECTED)
     {
-#if defined (RGB_NOTIFICATIONS_CONNECTING_ONLY)
-        LED_Off(LED_RGB);
-#else
         LED_SetRGBColor(RGB_COLOR_CYAN);
         LED_On(LED_RGB);
         SPARK_LED_FADE = 1;
-#endif
     }
     else
     {

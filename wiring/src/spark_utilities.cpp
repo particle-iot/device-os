@@ -177,7 +177,6 @@ bool RGBClass::controlled(void)
 
 void RGBClass::control(bool override)
 {
-#if !defined (RGB_NOTIFICATIONS_ON)
 	if(override == _control)
 		return;
 	else if (override)
@@ -186,7 +185,6 @@ void RGBClass::control(bool override)
 		LED_Signaling_Stop();
 
 	_control = override;
-#endif
 }
 
 void RGBClass::color(uint32_t rgb) {
@@ -195,22 +193,18 @@ void RGBClass::color(uint32_t rgb) {
 
 void RGBClass::color(int red, int green, int blue)
 {
-#if !defined (RGB_NOTIFICATIONS_ON)
         if (true != _control)
                 return;
 
         LED_SetSignalingColor(red << 16 | green << 8 | blue);
         LED_On(LED_RGB);
-#endif
 }
 
 void RGBClass::brightness(uint8_t brightness, bool update)
 {
-#if !defined (RGB_NOTIFICATIONS_ON)	
 	LED_SetBrightness(brightness);
     if (_control && update)
         LED_On(LED_RGB);
-#endif
 }
 
 void SparkClass::variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
