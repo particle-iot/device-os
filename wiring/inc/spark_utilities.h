@@ -144,7 +144,7 @@ extern SystemClass System;
 extern RGBClass RGB;
 extern SparkClass Spark;
 
-extern __IO uint8_t LED_Spark_Signal;
+extern volatile uint8_t LED_Spark_Signal;
 
 #ifdef __cplusplus
 extern "C" {

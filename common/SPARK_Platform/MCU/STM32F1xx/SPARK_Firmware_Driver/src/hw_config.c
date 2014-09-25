@@ -1284,45 +1284,12 @@ void FLASH_End(void)
 #endif
 }
 
-void FLASH_Read_ServerAddress(ServerAddress *server_addr)
+void FLASH_Read_ServerAddress_Data(void *buf)
 {
-#ifdef SPARK_SFLASH_ENABLE
-
-  uint8_t buf[EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH];
+#ifdef SPARK_SFLASH_ENABLE  
   sFLASH_ReadBuffer(buf,
       EXTERNAL_FLASH_SERVER_DOMAIN_ADDRESS,
       EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH);
-
-  // Internet address stored on external flash may be
-  // either a domain name or an IP address.
-  // It's stored in a type-length-value encoding.
-  // First byte is type, second byte is length, the rest is value.
-
-  switch (buf[0])
-  {
-    case IP_ADDRESS:
-      server_addr->addr_type = IP_ADDRESS;
-      server_addr->ip = (buf[2] << 24) | (buf[3] << 16) |
-                        (buf[4] << 8)  |  buf[5];
-      break;
-
-    case DOMAIN_NAME:
-      if (buf[1] <= EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH - 2)
-      {
-        server_addr->addr_type = DOMAIN_NAME;
-        memcpy(server_addr->domain, buf + 2, buf[1]);
-
-        // null terminate string
-        char *p = server_addr->domain + buf[1];
-        *p = 0;
-        break;
-      }
-      // else fall through to default
-
-    default:
-      server_addr->addr_type = INVALID_INTERNET_ADDRESS;
-  }
-
 #endif
 }
 

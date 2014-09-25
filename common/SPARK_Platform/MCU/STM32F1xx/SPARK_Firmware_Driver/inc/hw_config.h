@@ -32,7 +32,6 @@
 #include "platform_config.h"
 #include "config.h"
 #include "sst25vf_spi.h"
-//#include "cc3000_common.h"
 #include "usb_type.h"
 #include "rgbled.h"
 #include "system_tick_hal.h"
@@ -66,18 +65,6 @@ typedef enum
 	CC3000_DMA_TX = 0, CC3000_DMA_RX = 1
 } CC3000_DMADirection_TypeDef;
 
-typedef enum
-{
-  IP_ADDRESS = 0, DOMAIN_NAME = 1, INVALID_INTERNET_ADDRESS = 0xff
-} Internet_Address_TypeDef;
-
-typedef struct ServerAddress {
-  Internet_Address_TypeDef addr_type;
-  union {
-    char domain[127];
-    uint32_t ip;
-  };
-} ServerAddress;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -187,7 +174,12 @@ uint32_t FLASH_PagesMask(uint32_t fileSize);
 void FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize);
 uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
 void FLASH_End(void);
-void FLASH_Read_ServerAddress(ServerAddress *server_addr);
+
+/** 
+ * @param server_addr   The buffer to hold the data. Must be at least
+ * EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH bytes.
+ */
+void FLASH_Read_ServerAddress_Data(void *server_addr);
 void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
 void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
 

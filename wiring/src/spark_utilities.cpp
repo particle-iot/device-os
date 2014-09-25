@@ -32,6 +32,7 @@
 #include "inet_hal.h"
 #include "core_subsys_hal.h"
 #include "deviceid_hal.h"
+#include "ota_flash_hal.h"
 #include "string.h"
 #include <stdarg.h>
 
@@ -135,12 +136,12 @@ void SystemClass::serialSaveFile(Stream *serialObj, uint32_t sFlashAddress)
 
 void SystemClass::serialFirmwareUpdate(Stream *serialObj)
 {
-  bool status = Serial_Flash_Update(serialObj, EXTERNAL_FLASH_OTA_ADDRESS);
+  bool status = Serial_Flash_Update(serialObj, HAL_OTA_FlashAddress());
   if(status == true)
   {
     serialObj->println("Restarting system to apply firmware update...");
     delay(100);
-    FLASH_End();
+    HAL_FLASH_End();
   }
   else
   {
@@ -492,22 +493,23 @@ int Spark_Receive(unsigned char *buf, int buflen)
   return socket_receive(sparkSocket, buf, buflen, 0);  
 }
 
-void Spark_Prepare_To_Save_File(unsigned int sFlashAddress, unsigned int fileSize)
+void begin_flash_file(int flashType, unsigned int sFlashAddress, unsigned int fileSize) 
 {
   RGB.control(true);
   RGB.color(RGB_COLOR_MAGENTA);
-  SPARK_FLASH_UPDATE = 2;
+  SPARK_FLASH_UPDATE = flashType;
   TimingFlashUpdateTimeout = 0;
-  FLASH_Begin(sFlashAddress, fileSize);
+  HAL_FLASH_Begin(sFlashAddress, fileSize);  
+}
+
+void Spark_Prepare_To_Save_File(unsigned int sFlashAddress, unsigned int fileSize)
+{
+    begin_flash_file(2, sFlashAddress, fileSize);
 }
 
 void Spark_Prepare_For_Firmware_Update(void)
 {
-  RGB.control(true);
-  RGB.color(RGB_COLOR_MAGENTA);
-  SPARK_FLASH_UPDATE = 1;
-  TimingFlashUpdateTimeout = 0;
-  FLASH_Begin(EXTERNAL_FLASH_OTA_ADDRESS, EXTERNAL_FLASH_BLOCK_SIZE);
+    begin_flash_file(1, HAL_OTA_FlashAddress(), HAL_OTA_FlashLength());
 }
 
 void Spark_Finish_Firmware_Update(void)
@@ -520,7 +522,7 @@ void Spark_Finish_Firmware_Update(void)
   else
   {
     //Reset the system to complete the OTA update
-    FLASH_End();
+    HAL_FLASH_End();
   }
   RGB.control(false);
 }
@@ -529,7 +531,7 @@ uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen)
 {
   uint16_t chunkUpdatedIndex;
   TimingFlashUpdateTimeout = 0;
-  chunkUpdatedIndex = FLASH_Update(buf, buflen);
+  chunkUpdatedIndex = HAL_FLASH_Update(buf, buflen);
   LED_Toggle(LED_RGB);
   return chunkUpdatedIndex;
 }
@@ -604,8 +606,8 @@ void Spark_Protocol_Init(void)
     descriptor.copy_variable_key = copyUserVariableKey;
     descriptor.variable_type = wrapVarTypeInEnum;
     descriptor.get_variable = getUserVar;
-    descriptor.was_ota_upgrade_successful = OTA_Flashed_GetStatus;
-    descriptor.ota_upgrade_status_sent = OTA_Flashed_ResetStatus;
+    descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
+    descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
 
     unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
     unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
@@ -614,10 +616,13 @@ void Spark_Protocol_Init(void)
     keys.server_public = pubkey;
     keys.core_private = private_key;
 
-    FLASH_Read_ServerPublicKey(pubkey);
-    FLASH_Read_CorePrivateKey(private_key);
+    HAL_FLASH_Read_ServerPublicKey(pubkey);
+    HAL_FLASH_Read_CorePrivateKey(private_key);
 
-    spark_protocol.init((const char *)ID1, keys, callbacks, descriptor);
+    uint8_t id_length = HAL_device_ID(NULL, 0);
+    uint8_t id[id_length];
+    HAL_device_ID(id, id_length);
+    spark_protocol.init((const char*)id, keys, callbacks, descriptor);
   }
 }
 
@@ -651,7 +656,10 @@ void Multicast_Presence_Announcement(void)
     return;
 
   unsigned char announcement[19];
-  spark_protocol.presence_announcement(announcement, (const char *)ID1);
+  uint8_t id_length = HAL_device_ID(NULL, 0);
+  uint8_t id[id_length];
+  HAL_device_ID(id, id_length);
+  spark_protocol.presence_announcement(announcement, (const char *)id);
 
   // create multicast address 224.0.1.187 port 5683
   sockaddr addr;
@@ -783,7 +791,7 @@ int Spark_Connect(void)
   tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
 
   ServerAddress server_addr;
-  FLASH_Read_ServerAddress(&server_addr);
+  HAL_FLASH_Read_ServerAddress(&server_addr);
 
   uint32_t ip_addr = 0;
 

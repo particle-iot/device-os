@@ -20,6 +20,7 @@ CSRC += $(TARGET_HAL_SRC_PATH)/gpio_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/i2c_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/inet_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/interrupts_hal.c
+CSRC += $(TARGET_HAL_SRC_PATH)/ota_flash_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/pinmap_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/pwm_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/rtc_hal.c
@@ -34,6 +35,7 @@ CSRC += $(TARGET_HAL_SRC_PATH)/wlan_hal.c
 
 # C++ source files included in this build.
 CPPSRC += $(TARGET_HAL_SRC_PATH)/deviceid_hal.cpp
+# WIP - CPPSRC += $(TARGET_HAL_SRC_PATH)/memory_hal.cpp
 
 # ASM source files included in this build.
 ASRC +=

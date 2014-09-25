@@ -26,6 +26,7 @@
  */
 
 #include "spark_flasher_ymodem.h"
+#include "ota_flash_hal.h"
 
 using namespace spark;
 
@@ -163,7 +164,8 @@ static int32_t Receive_Packet(Stream *serialObj, uint8_t *data, int32_t *length,
 int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, uint8_t* fileName)
 {
   uint8_t packet_data[PACKET_1K_SIZE + PACKET_OVERHEAD], file_size[FILE_SIZE_LENGTH], *file_ptr, *buf_ptr;
-  int32_t i, packet_length, session_done, file_done, packets_received, errors, session_begin, size = 0;
+  int32_t i, packet_length, session_done, file_done, packets_received, errors, session_begin;
+  uint32_t size = 0;
   uint16_t current_index = 0, saved_index = 0;
 
   for (session_done = 0, errors = 0, session_begin = 0; ;)
@@ -213,7 +215,7 @@ int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, 
 
                     /* Test the size of the image to be sent */
                     /* Image size is greater than Flash max size */
-                    if (size > FLASH_MAX_SIZE)
+                    if (size > HAL_OTA_FlashLength())
                     {
                       /* End session */
                       Send_Byte(serialObj, CA);
@@ -225,7 +227,7 @@ int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, 
                     RGB.color(RGB_COLOR_MAGENTA);
                     SPARK_FLASH_UPDATE = 1;
                     TimingFlashUpdateTimeout = 0;
-                    FLASH_Begin(sFlashAddress, size);
+                    HAL_FLASH_Begin(sFlashAddress, size);
 
                     Send_Byte(serialObj, ACK);
                     Send_Byte(serialObj, CRC16);
@@ -244,7 +246,7 @@ int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, 
                 {
                   memcpy(buf_ptr, packet_data + PACKET_HEADER, packet_length);
                   TimingFlashUpdateTimeout = 0;
-                  saved_index = FLASH_Update(buf, packet_length);
+                  saved_index = HAL_FLASH_Update(buf, packet_length);
                   LED_Toggle(LED_RGB);
                   if(saved_index > current_index)
                   {
