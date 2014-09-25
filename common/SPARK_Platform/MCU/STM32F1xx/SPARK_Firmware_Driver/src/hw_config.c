@@ -43,7 +43,6 @@ uint8_t USE_SYSTEM_FLAGS = 0;	//0, 1
 uint16_t sys_health_cache = 0; // Used by the SYS_HEALTH macros store new heath if higher
 
 volatile uint32_t TimingLED;
-volatile uint32_t TimingBUTTON;
 volatile uint32_t TimingIWDGReload;
 
 
