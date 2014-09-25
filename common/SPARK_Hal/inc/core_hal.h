@@ -55,7 +55,13 @@
  */
 #define IWDG_RESET_ENABLE
 
-//#undef SPARK_WLAN_ENABLE
+/* Define the following if not already defined */
+#ifndef __PLATFORM_CONFIG_H
+#define SPARK_WLAN_ENABLE
+#define SPARK_WIRING_ENABLE
+#define SPARK_SFLASH_ENABLE
+#define SPARK_RTC_ENABLE
+#endif
 
 /* Exported functions --------------------------------------------------------*/
 
