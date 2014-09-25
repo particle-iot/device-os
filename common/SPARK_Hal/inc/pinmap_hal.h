@@ -69,7 +69,6 @@ PinFunction HAL_Pin_Function(pin_t pin);
 #define TOTAL_ANALOG_PINS 8
 #define FIRST_ANALOG_PIN 10
 
-/*
 #define D0 0
 #define D1 1
 #define D2 2
@@ -78,7 +77,6 @@ PinFunction HAL_Pin_Function(pin_t pin);
 #define D5 5
 #define D6 6
 #define D7 7
-*/
 
 // todo - this is corev1 specific, needs to go in a conditional define
 
