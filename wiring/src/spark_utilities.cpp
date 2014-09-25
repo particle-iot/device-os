@@ -596,7 +596,7 @@ void Spark_Protocol_Init(void)
     callbacks.prepare_to_save_file = Spark_Prepare_To_Save_File;
     callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
     callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
-    callbacks.calculate_crc = Compute_CRC32;
+    callbacks.calculate_crc = HAL_Core_Compute_CRC32;
     callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
     callbacks.signal = Spark_Signal;
     callbacks.millis = millis;
