@@ -599,7 +599,7 @@ void Spark_Protocol_Init(void)
     callbacks.calculate_crc = HAL_Core_Compute_CRC32;
     callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
     callbacks.signal = Spark_Signal;
-    callbacks.millis = millis;
+    callbacks.millis = HAL_Timer_Get_Milli_Seconds;
     callbacks.set_time = Time.setTime;
 
     SparkDescriptor descriptor;
