@@ -28,7 +28,6 @@
 #define __USB_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "usb_conf.h"
 #include <stdint.h>
 /* Exported types ------------------------------------------------------------*/
 
@@ -47,7 +46,17 @@ extern "C" {
 //#define SPARK_USB_MOUSE
 //#define SPARK_USB_KEYBOARD
 
-/* USB Config : IMR_MSK */
+#if !defined (SPARK_USB_SERIAL) && !defined (SPARK_USB_MOUSE) && !defined (SPARK_USB_KEYBOARD)
+#define USB_CDC_ENABLE	//Use USB Serial feature by default if none is defined
+#elif defined (SPARK_USB_SERIAL)
+#define USB_CDC_ENABLE	//Enable USB CDC code
+#elif defined (SPARK_USB_MOUSE) || defined (SPARK_USB_KEYBOARD)
+#define USB_HID_ENABLE	//Enable USB HID code
+#endif
+
+    
+    
+    /* USB Config : IMR_MSK */
 /* mask defining which events has to be handled */
 /* by the device application software */
 #define IMR_MSK (CNTR_CTRM  | \
