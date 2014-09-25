@@ -13,6 +13,7 @@
 #include "delay_hal.h"
 #include "watchdog_hal.h"
 #include "interrupts_hal.h"
+#include "core_hal.h"
 
 
 #define LOOPSPERMSEC 5483
@@ -87,7 +88,7 @@ void panic_(ePanicCode code)
                 // pause
                 HAL_Delay_Microseconds(MS2u(800));
 #ifdef RELEASE_BUILD
-                if (--loops == 0) NVIC_SystemReset();
+                if (--loops == 0) HAL_Core_System_Reset();
 #endif
         }
 
