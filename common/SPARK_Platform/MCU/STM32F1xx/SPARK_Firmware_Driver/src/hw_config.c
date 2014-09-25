@@ -1523,29 +1523,6 @@ uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
 	return Data;
 }
 
-void Get_Unique_Device_ID(uint8_t *Device_ID)
-{
-  uint32_t Device_IDx;
-
-  Device_IDx = *(uint32_t*)ID1;
-  *Device_ID++ = (uint8_t)(Device_IDx & 0xFF);
-  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF00) >> 8);
-  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
-  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
-
-  Device_IDx = *(uint32_t*)ID2;
-  *Device_ID++ = (uint8_t)(Device_IDx & 0xFF);
-  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF00) >> 8);
-  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
-  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
-
-  Device_IDx = *(uint32_t*)ID3;
-  *Device_ID++ = (uint8_t)(Device_IDx & 0xFF);
-  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF00) >> 8);
-  *Device_ID++ = (uint8_t)((Device_IDx & 0xFF0000) >> 16);
-  *Device_ID = (uint8_t)((Device_IDx & 0xFF000000) >> 24);
-}
-
 static volatile system_tick_t system_1ms_tick = 0;
 
 void System1MsTick(void)

@@ -224,8 +224,6 @@ void Finish_Update(void);
 /* Hardware CRC32 calculation */
 uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize);
 
-void Get_Unique_Device_ID(uint8_t *Device_ID);
-
 /* External variables --------------------------------------------------------*/
 extern uint8_t USE_SYSTEM_FLAGS;
 
