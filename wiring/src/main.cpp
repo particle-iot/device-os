@@ -27,13 +27,12 @@
  */
   
 /* Includes ------------------------------------------------------------------*/
-#include "hw_config.h"  // todo - remove me
 #include "main.h"
 #include "debug.h"
 #include "spark_utilities.h"
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"
-
+#include "rgbled.h"
 
 using namespace spark;
 
