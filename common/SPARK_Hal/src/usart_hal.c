@@ -80,7 +80,7 @@ STM32_USART_Info USART_MAP[TOTAL_USARTS] =
      * <usart transmitting> used internally and does not appear below
      */
     { USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, TX, RX, GPIO_Remap_None },
-    { USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, USART1_IRQn, 1, 0, GPIO_Remap_USART1 }
+    { USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, USART1_IRQn, D1, D0, GPIO_Remap_USART1 }
 };
 
 static USART_InitTypeDef USART_InitStructure;
