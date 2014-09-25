@@ -113,6 +113,23 @@ void HAL_Core_Config(void)
 #endif
 }
 
+bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
+{
+    bool pressedState = false;
+
+    if(BUTTON_GetDebouncedTime(BUTTON1) >= pressedMillisDuration)
+    {
+        pressedState = true;
+    }
+
+    return pressedState;
+}
+
+void HAL_Core_Mode_Button_Reset(void)
+{
+    BUTTON_ResetDebouncedState(BUTTON1);
+}
+
 void HAL_Core_System_Reset(void)
 {
   NVIC_SystemReset();
