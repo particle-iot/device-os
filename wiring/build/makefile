@@ -77,7 +77,7 @@ INCLUDE_DIRS += $(PLATFORM_MCU)STM32_StdPeriph_Driver/inc
 INCLUDE_DIRS += $(PLATFORM_MCU)STM32_USB_Device_Driver/inc
 
 ifeq ("$(PLATFORM_NET)","CC3000")
-#INCLUDE_DIRS += $(PLATFORM_WLAN)CC3000/CC3000_Host_Driver
+INCLUDE_DIRS += $(PLATFORM_WLAN)CC3000/CC3000_Host_Driver
 else
 $(error PLATFORM_NET not defined)
 endif
@@ -98,18 +98,6 @@ CFLAGS += -Werror=deprecated-declarations
 
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
-
-# Target specific defines
-CFLAGS += -DUSE_STDPERIPH_DRIVER
-CFLAGS += -DSTM32F10X_MD
-CFLAGS += -DDFU_BUILD_ENABLE
-CFLAGS += -DSPARK=1
-CFLAGS += -DSPARK_PLATFORM_NET=$(PLATFORM_NET)
-CFLAGS += -DINCLUDE_PLATFORM=$(INCLUDE_PLATFORM)
-
-ifeq ("$(USE_SWD_JTAG)","y") 
-CFLAGS += -DUSE_SWD_JTAG
-endif
 
 ifeq ("$(DEBUG_BUILD)","y") 
 CFLAGS += -DDEBUG_BUILD
@@ -134,19 +122,7 @@ ALLDEPS += $(addprefix $(BUILD_PATH), $(CPPSRC:.cpp=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH), $(ASRC:.S=.o.d))
 
 # All Target
-all: check_external_deps $(TARGET)
-
-# Check for external dependancies are up to date
-# Note: Since this makefile has no knowledge of depenancies for
-#       the external libs, make must be called on the libs for
-#       every build.
-check_external_deps:
-	@echo Building common-lib
-	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build $(MAKE_ARGS)
-	@echo
-	@echo Building communication-lib
-	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build $(MAKE_ARGS)
-	@echo
+all: $(TARGET)
 
 # Tool invocations
 $(TARGET) : $(ALLOBJ)

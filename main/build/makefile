@@ -164,9 +164,9 @@ CPPFLAGS += -fno-exceptions -fno-rtti -std=gnu++11
 
 # Linker flags
 LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
-LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build -lcore-common-lib
-LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build -lcore-communication-lib
 LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_WIRING_PATH)build -lcore-wiring-lib
+LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build -lcore-communication-lib
+LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build -lcore-common-lib
 LDFLAGS += -Wl,-Map,$(TARGETDIR)$(TARGET).map
 LDFLAGS += --specs=nano.specs -lc -lnosys
 LDFLAGS += -u _printf_float
