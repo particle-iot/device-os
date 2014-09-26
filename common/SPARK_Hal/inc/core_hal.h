@@ -75,6 +75,7 @@ void HAL_Core_Execute_Standby_Mode(void);
 uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize);
 
 void HAL_SysTick_Handler(void) __attribute__ ((weak));
+extern void mdma(void);
 
 #ifdef __cplusplus
 }
