@@ -27,7 +27,8 @@
 #ifndef __SPARK_UTILITIES_H
 #define __SPARK_UTILITIES_H
 
-#include "main.h"
+#include "core_hal.h"
+#include "spark_wlan.h"
 #include "rtc_hal.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_time.h"

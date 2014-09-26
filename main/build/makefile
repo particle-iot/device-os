@@ -33,14 +33,50 @@ rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2
 # $2 the pattern to match, e.g. *.cpp
 target_files = $(patsubst $(SRC_PATH)%,%,$(call rwildcard,$(SRC_PATH)$1,$2))
 
+# URL to invoke cloud flashing
+CLOUD_FLASH_URL = https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token=$(SPARK_ACCESS_TOKEN)
+
 # Path to the root of source files, in this case root of the project to
 # include ../src and ../lib dirs.
 # Note: Consider relocating source files in lib to src, or build a
 #       separate library.
 SRC_PATH = $(PROJECT_DIR)
 
-# Target this makefile is building.
-TARGET = libcore-wiring-lib.a
+# ensure defined
+USRSRC += ""
+
+# determine where user sources are, relative to project root
+ifdef APP
+USRSRC = applications/$(APP)/
+ifndef TARGET
+TARGET ?= $(notdir $(APP))
+TARGETDIR ?= $(USRSRC)
+endif
+endif
+
+ifdef TEST
+USRSRC = tests/$(TEST)/
+
+ifndef TARGET
+TARGET ?= $(notdir $(TEST))
+TARGETDIR ?= $(USRSRC)
+endif
+include $(PROJECT_DIR)tests/tests.mk
+-include $(PROJECT_DIR)$(USRSRC)test.mk
+endif
+
+# user sources specified, so override application.cpp and pull in files from 
+# the user source folder
+ifneq ($(USRSRC),"")       
+    NO_APPLICATION_CPP=1
+    INCLUDE_DIRS += $(USRSRC)  # add user sources to include path
+    # add C and CPP files 
+    CPPSRC += $(call target_files,$(USRSRC),*.cpp)
+    CSRC += $(call target_files,$(USRSRC),*.c)    
+endif
+
+TARGET ?= core-firmware
+TARGETDIR ?= 
 
 # Find all build.mk makefiles in each source directory in the src tree.
 SRC_MAKEFILES := $(call rwildcard,$(SRC_PATH)src,build.mk)
@@ -51,6 +87,11 @@ include $(SRC_MAKEFILES)
 # Paths to dependent projects, referenced from root of this project
 LIB_CORE_COMMON_PATH = ../common/
 LIB_CORE_COMMUNICATION_PATH = ../communication/
+LIB_CORE_WIRING_PATH = ../wiring/
+LIB_CORE_LIBRARIES_PATH = libraries/
+
+# Include directories for optional "libraries" (eg. Serial2.h)
+INCLUDE_DIRS += $(LIB_CORE_LIBRARIES_PATH)Serial2
 
 # Additional include directories, applied to objects built for this target.
 # todo - delegate this to a include.mk file in each repo so include dirs are better
@@ -87,6 +128,7 @@ INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Hal/inc
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
 INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)lib/tropicssl/include
 INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)src
+INCLUDE_DIRS += $(LIB_CORE_WIRING_PATH)inc
 
 # Compiler flags
 CFLAGS =  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 
@@ -120,6 +162,15 @@ endif
 # C++ specific flags
 CPPFLAGS += -fno-exceptions -fno-rtti -std=gnu++11
 
+# Linker flags
+LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
+LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build -lcore-common-lib
+LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build -lcore-communication-lib
+LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_WIRING_PATH)build -lcore-wiring-lib
+LDFLAGS += -Wl,-Map,$(TARGETDIR)$(TARGET).map
+LDFLAGS += --specs=nano.specs -lc -lnosys
+LDFLAGS += -u _printf_float
+
 # Assembler flags
 ASFLAGS =  -g3 -gdwarf-2 -mcpu=cortex-m3 -mthumb 
 ASFLAGS += -x assembler-with-cpp -fmessage-length=0
@@ -134,12 +185,54 @@ ALLDEPS += $(addprefix $(BUILD_PATH), $(CPPSRC:.cpp=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH), $(ASRC:.S=.o.d))
 
 # All Target
-all: check_external_deps $(TARGET)
+all: elf bin hex size
+
+elf: $(TARGETDIR)$(TARGET).elf
+bin: $(TARGETDIR)$(TARGET).bin
+hex: $(TARGETDIR)$(TARGET).hex
+
+# Program the core using dfu-util. The core should have been placed
+# in bootloader mode before invoking 'make program-dfu'
+program-dfu: $(TARGETDIR)$(TARGET).bin
+	@echo Flashing using dfu:
+	$(DFU) -d 1d50:607f -a 0 -s 0x08005000:leave -D $<
+
+# Program the core using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
+# have been defined in the environment before invoking 'make program-cloud'
+program-cloud: $(TARGETDIR)$(TARGET).bin
+	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
+	$(CURL) -X PUT -F file=@$< -F file_type=binary $(CLOUD_FLASH_URL)
+
+# Display size
+size: $(TARGETDIR)$(TARGET).elf
+	@echo Invoking: ARM GNU Print Size
+	$(SIZE) --format=berkeley $<
+	@echo
+
+# Create a hex file from ELF file
+%.hex : %.elf
+	@echo Invoking: ARM GNU Create Flash Image
+	$(OBJCOPY) -O ihex $< $@
+	@echo
+
+# Create a bin file from ELF file
+%.bin : %.elf
+	@echo Invoking: ARM GNU Create Flash Image
+	$(OBJCOPY) -O binary $< $@
+	@echo
+
+$(TARGETDIR)$(TARGET).elf : check_external_deps $(ALLOBJ)
+	@echo Building target: $@
+	@echo Invoking: ARM GCC C++ Linker
+	$(MKDIR) $(dir $@)
+	$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
+	@echo
 
 # Check for external dependancies are up to date
 # Note: Since this makefile has no knowledge of depenancies for
 #       the external libs, make must be called on the libs for
-#       every build.
+#       every build. Targets which depend directly on this recipie
+#       will then always be rebuilt, ie. $(TARGET).elf
 check_external_deps:
 	@echo Building common-lib
 	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build $(MAKE_ARGS)
@@ -147,13 +240,11 @@ check_external_deps:
 	@echo Building communication-lib
 	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build $(MAKE_ARGS)
 	@echo
+	@echo Building wiring-lib
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_WIRING_PATH)build $(MAKE_ARGS)
+	@echo
 
 # Tool invocations
-$(TARGET) : $(ALLOBJ)
-	@echo 'Building target: $@'
-	@echo 'Invoking: ARM GCC Archiver'
-	$(AR) -r $@ $^
-	@echo ' '
 
 # C compiler to build .o from .c in $(BUILD_DIR)
 $(BUILD_PATH)%.o : $(SRC_PATH)%.c
@@ -182,11 +273,22 @@ $(BUILD_PATH)%.o : $(SRC_PATH)%.cpp
 
 # Other Targets
 clean:
-	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET)
+	
+	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGETDIR)$(TARGET).elf $(TARGETDIR)$(TARGET).bin $(TARGETDIR)$(TARGET).hex $(TARGETDIR)$(TARGET).map
 	$(RMDIR) $(BUILD_PATH)
 	@echo
+# Should clean invoke clean on the dependant libs as well? Sure..
+	@echo Clean common-lib
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMON_PATH)build clean $(MAKE_ARGS)
+	@echo
+	@echo Clean communication-lib
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_COMMUNICATION_PATH)build clean $(MAKE_ARGS)
+	@echo
+	@echo Clean wiring-lib
+	@$(MAKE) -C $(PROJECT_DIR)$(LIB_CORE_WIRING_PATH)build clean $(MAKE_ARGS)
+	@echo
 
-.PHONY: all clean check_external_deps
+.PHONY: all clean check_external_deps elf bin hex size program-dfu program-cloud
 .SECONDARY:
 
 # Include auto generated dependency files

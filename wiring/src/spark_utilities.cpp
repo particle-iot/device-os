@@ -38,6 +38,8 @@
 
 using namespace spark;
 
+volatile uint32_t TimingFlashUpdateTimeout;
+
 SparkProtocol spark_protocol;
 
 sock_handle_t sparkSocket = SOCKET_INVALID;

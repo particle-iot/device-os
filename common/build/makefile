@@ -8,6 +8,7 @@ AR = $(GCC_PREFIX)ar
 OBJCOPY = $(GCC_PREFIX)objcopy
 
 RM = rm -f
+RMDIR = rm -f -r
 MKDIR = mkdir -p
 
 # Recursive wildcard function
@@ -120,6 +121,7 @@ $(BUILD_PATH)/%.o : $(SRC_PATH)/%.cpp
 # Other Targets
 clean:
 	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET)
+	$(RMDIR) $(BUILD_PATH)
 	@echo ' '
 
 .PHONY: all clean

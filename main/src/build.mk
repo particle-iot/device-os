@@ -15,6 +15,11 @@ CSRC +=
 # enumerate target cpp files
 CPPSRC += $(call target_files,src/,*.cpp)
 
+# ignore application.cpp if requested
+ifdef NO_APPLICATION_CPP
+CPPSRC := $(filter-out $(TARGET_SRC_PATH)/application.cpp,$(CPPSRC))
+endif
+
 # ASM source files included in this build.
 ASRC +=
 
