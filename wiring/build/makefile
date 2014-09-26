@@ -59,7 +59,7 @@ endif
 
 ifdef TEST
 USRSRC = tests/$(TEST)/
-
+INCLUDE_PLATFORM?=1
 ifndef TARGET
 TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
@@ -70,7 +70,7 @@ endif
 
 # user sources specified, so override application.cpp and pull in files from 
 # the user source folder
-ifneq ($(USRSRC),"")       
+ifneq ($(USRSRC),"")
     NO_APPLICATION_CPP=1
     INCLUDE_DIRS += $(USRSRC)  # add user sources to include path
     # add C and CPP files 
@@ -110,7 +110,7 @@ PLATFORM=$(LIB_CORE_COMMON_PATH)SPARK_Platform/
 PLATFORM_MCU=$(PLATFORM)MCU/STM32F1xx/
 PLATFORM_WLAN=$(PLATFORM)WLAN/
 
-INCLUDE_PLATFORM=0
+INCLUDE_PLATFORM?=0
 
 ifeq ("$(INCLUDE_PLATFORM)","1")
 
