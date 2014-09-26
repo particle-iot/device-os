@@ -42,11 +42,11 @@
 uint32_t wlan_watchdog;
 
 /* Smart Config Prefix */
-const char aucCC3000_prefix[] = {'T', 'T', 'T'};
+static char aucCC3000_prefix[] = {'T', 'T', 'T'};
 /* AES key "sparkdevices2013" */
-const unsigned char smartconfigkey[] = "sparkdevices2013";	//16 bytes
+static const unsigned char smartconfigkey[] = "sparkdevices2013";	//16 bytes
 /* device name used by smart config response */
-const char device_name[] = "CC3000";
+static char device_name[] = "CC3000";
 
 #if defined(DEBUG_WIFI)
 uint32_t lastEvent = 0;
