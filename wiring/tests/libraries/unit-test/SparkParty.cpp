@@ -1,6 +1,7 @@
 #include "application.h"
 #include "unit-test.h"
 #include "flashee-eeprom.h"
+#include "rgbled.h"
 
 
 /**
