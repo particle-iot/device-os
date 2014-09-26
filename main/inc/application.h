@@ -47,6 +47,10 @@
 #include "spark_wiring_tone.h"
 #include "spark_wiring_eeprom.h"
 
+// this was being implicitly pulled in by some of the other headers
+// adding here for backwards compatibility.
+#include "spark_wlan.h"
+
 using namespace spark;
 
 #endif /* APPLICATION_H_ */

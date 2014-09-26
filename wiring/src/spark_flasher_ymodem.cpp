@@ -26,7 +26,10 @@
  */
 
 #include "spark_flasher_ymodem.h"
+#include "spark_wlan.h"
 #include "ota_flash_hal.h"
+
+
 
 using namespace spark;
 

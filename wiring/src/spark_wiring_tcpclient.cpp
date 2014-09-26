@@ -26,8 +26,10 @@
  */
 
 #include "spark_wiring_tcpclient.h"
+#include "spark_wlan.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
+
 
 using namespace spark;
 

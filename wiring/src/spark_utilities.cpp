@@ -28,11 +28,13 @@
 #include "spark_wiring.h"
 #include "spark_wiring_network.h"
 #include "spark_flasher_ymodem.h"
+#include "spark_wlan.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
 #include "core_subsys_hal.h"
 #include "deviceid_hal.h"
 #include "ota_flash_hal.h"
+#include "core_hal.h"
 #include "string.h"
 #include <stdarg.h>
 

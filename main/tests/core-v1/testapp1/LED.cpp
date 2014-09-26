@@ -1,6 +1,7 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "rgbled.h"
 
 void assertLEDColor(uint8_t r, uint8_t g, uint8_t b, bool equal) {
     uint8_t rgb[3];
