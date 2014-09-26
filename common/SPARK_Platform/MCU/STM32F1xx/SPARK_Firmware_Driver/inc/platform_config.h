@@ -27,11 +27,8 @@
 #ifndef __PLATFORM_CONFIG_H
 #define __PLATFORM_CONFIG_H
 
-/* Uncomment the line below to enable WLAN, WIRING, SFLASH and RTC functionality */
-#define SPARK_WLAN_ENABLE
-#define SPARK_WIRING_ENABLE
+/* If serial flash is present on board uncomment this define for "bootloader" use */
 #define SPARK_SFLASH_ENABLE
-#define SPARK_RTC_ENABLE
 
 #define         ID1          (0x1FFFF7E8)
 #define         ID2          (0x1FFFF7EC)

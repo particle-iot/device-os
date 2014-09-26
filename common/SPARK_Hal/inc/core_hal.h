@@ -56,14 +56,6 @@
 #define IWDG_RESET_ENABLE
 #define TIMING_IWDG_RELOAD      1000 //1sec
 
-/* Define the following if not already defined */
-#ifndef __PLATFORM_CONFIG_H
-#define SPARK_WLAN_ENABLE
-#define SPARK_WIRING_ENABLE
-#define SPARK_SFLASH_ENABLE
-#define SPARK_RTC_ENABLE
-#endif
-
 /* Exported functions --------------------------------------------------------*/
 
 #ifdef __cplusplus
@@ -83,6 +75,7 @@ void HAL_Core_Execute_Standby_Mode(void);
 uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize);
 
 void HAL_SysTick_Handler(void) __attribute__ ((weak));
+extern void mdma(void);
 
 #ifdef __cplusplus
 }

@@ -41,6 +41,8 @@
 /* Private variables ---------------------------------------------------------*/
 volatile uint8_t IWDG_SYSTEM_RESET;
 
+extern void linkme(void);
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -54,6 +56,9 @@ volatile uint8_t IWDG_SYSTEM_RESET;
  *******************************************************************************/
 void HAL_Core_Config(void)
 {
+    // this ensures the stm32_it.c functions aren't dropped by the linker, thinking
+    // they are unused. Without this none of the interrupts handlers are linked.
+    linkme();
   DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 #ifdef DFU_BUILD_ENABLE
   /* Set the Vector Table(VT) base location at 0x5000 */
@@ -73,13 +78,8 @@ void HAL_Core_Config(void)
 
   /* Enable CRC clock */
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
-#if !defined (RGB_NOTIFICATIONS_ON) && defined (RGB_NOTIFICATIONS_OFF)
-  LED_RGB_OVERRIDE = 1;
-#endif
 
-#if defined (SPARK_RTC_ENABLE)
   RTC_Configuration();
-#endif
 
   /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
   HAL_Core_Execute_Stop_Mode();
@@ -108,9 +108,7 @@ void HAL_Core_Config(void)
   Load_SystemFlags();
 #endif
 
-#ifdef SPARK_SFLASH_ENABLE
   sFLASH_Init();
-#endif
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
