@@ -13,7 +13,7 @@ INCLUDE_DIRS += $(TARGET_HAL_SRC_PATH)
 # C source files included in this build.
 CSRC += $(TARGET_HAL_SRC_PATH)/adc_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/core_hal.c
-CSRC += $(TARGET_HAL_SRC_PATH)/core_subsys.c
+CSRC += $(TARGET_HAL_SRC_PATH)/core_subsys_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/delay_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/eeprom_hal.c
 CSRC += $(TARGET_HAL_SRC_PATH)/gpio_hal.c

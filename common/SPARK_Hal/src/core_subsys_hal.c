@@ -1,10 +1,10 @@
 /**
  ******************************************************************************
- * @file    pinmap_impl.h
- * @author  Satish Nair, Matthew McGowan
+ * @file    core_subsys_hal.c
+ * @author  Matthew McGowan
  * @version V1.0.0
  * @date    25-Sept-2014
- * @brief   Implementation details of pins on STM32
+ * @brief
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
 
@@ -23,40 +23,22 @@
  ******************************************************************************
  */
 
-#ifndef PINMAP_IMPL_H
-#define	PINMAP_IMPL_H
+#include "core_subsys_hal.h"
+#include "nvmem.h"
+#include "stdio.h"
 
-#include "stm32f10x.h"
 
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
-typedef struct STM32_Pin_Info {
-  GPIO_TypeDef* gpio_peripheral;
-  pin_t gpio_pin;
-  uint8_t adc_channel;
-  TIM_TypeDef* timer_peripheral;
-  uint16_t timer_ch;
-  PinMode pin_mode;
-  uint16_t timer_ccr;
-  int32_t user_property;
-} STM32_Pin_Info;
-
-/* Exported constants --------------------------------------------------------*/
-
-extern STM32_Pin_Info PIN_MAP[];
-
-extern void HAL_GPIO_Save_Pin_Mode(PinMode mode);
-extern PinMode HAL_GPIO_Recall_Pin_Mode();
-
-#define NONE ((uint8_t)0xFF)
-#define ADC_CHANNEL_NONE NONE
-
-#ifdef	__cplusplus
+inline void core_read_subsystem_version_impl(char* patchstr, int bufLen, unsigned char patchver[2]) {      
+    snprintf(patchstr, bufLen, "%d.%d", patchver[0], patchver[1]);    
 }
-#endif
 
-#endif	/* PINMAP_IMPL_H */
+int core_read_subsystem_version(char* patchstr, int bufLen) {
+    unsigned char patchver[2];
+    int result = nvmem_read_sp_version(patchver);
+    core_read_subsystem_version_impl(patchstr, bufLen, patchver);
+    return result;
+}
+
 
