@@ -225,10 +225,8 @@ unsigned long micros(void)
  */
 void delay(unsigned long ms)
 {
-#ifdef SPARK_WLAN_ENABLE
   volatile system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
   spark_loop_total_millis += ms;
-#endif
 
   volatile system_tick_t last_millis = HAL_Timer_Get_Milli_Seconds();
 
@@ -250,7 +248,6 @@ void delay(unsigned long ms)
       break;
     }
 
-#ifdef SPARK_WLAN_ENABLE
     if (SPARK_WLAN_SLEEP)
     {
       //Do not yield for SPARK_WLAN_Loop()
@@ -266,7 +263,6 @@ void delay(unsigned long ms)
       }
       while (SPARK_FLASH_UPDATE);//loop during OTA update
     }
-#endif
   }
 }
 

@@ -353,39 +353,35 @@ void SparkClass::syncTime(void)
 
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
-#if defined (SPARK_RTC_ENABLE)
-        HAL_RTC_Set_Alarm((uint32_t)seconds);
+    HAL_RTC_Set_Alarm((uint32_t)seconds);
 
-	switch(sleepMode)
-	{
-	case SLEEP_MODE_WLAN:
-		WiFi.off();
-		break;
+    switch(sleepMode)
+    {
+        case SLEEP_MODE_WLAN:
+            WiFi.off();
+            break;
 
-	case SLEEP_MODE_DEEP:
-	        HAL_Core_Enter_Standby_Mode();
-		break;
-	}
-#endif
+        case SLEEP_MODE_DEEP:
+            HAL_Core_Enter_Standby_Mode();
+            break;
+    }
 }
 
 void SparkClass::sleep(long seconds)
 {
-	SparkClass::sleep(SLEEP_MODE_WLAN, seconds);
+    SparkClass::sleep(SLEEP_MODE_WLAN, seconds);
 }
 
 void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
 {
-  HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode);
+    HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode);
 }
 
 void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
-#if defined (SPARK_RTC_ENABLE)
-  HAL_RTC_Set_Alarm((uint32_t)seconds);
+    HAL_RTC_Set_Alarm((uint32_t)seconds);
 
-  sleep(wakeUpPin, edgeTriggerMode);
-#endif
+    sleep(wakeUpPin, edgeTriggerMode);
 }
 
 inline uint8_t isSocketClosed()
@@ -431,14 +427,12 @@ void SparkClass::disconnect(void)
 
 void SparkClass::process(void)
 {
-#ifdef SPARK_WLAN_ENABLE
-  if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
-  {
-    SPARK_FLASH_UPDATE = 0;
-    SPARK_CLOUD_CONNECTED = 0;
-    SPARK_CLOUD_SOCKETED = 0;
-  }
-#endif
+    if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
+    {
+        SPARK_FLASH_UPDATE = 0;
+        SPARK_CLOUD_CONNECTED = 0;
+        SPARK_CLOUD_SOCKETED = 0;
+    }
 }
 
 inline void concat_nibble(String& result, uint8_t nibble) 
@@ -464,7 +458,7 @@ String bytes2hex(const uint8_t* buf, unsigned len)
 String SparkClass::deviceID(void)
 {
     unsigned len = HAL_device_ID(NULL, 0);
-	uint8_t id[len];
+    uint8_t id[len];
     HAL_device_ID(id, len);
     return bytes2hex(id, len);
 }    

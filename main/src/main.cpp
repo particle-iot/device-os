@@ -96,7 +96,6 @@ extern "C" void HAL_SysTick_Handler(void)
             TimingLED = 100;        //100ms
     }
 
-#ifdef SPARK_WLAN_ENABLE
     if(SPARK_WLAN_SLEEP)
     {
         //Do nothing
@@ -130,7 +129,6 @@ extern "C" void HAL_SysTick_Handler(void)
 
         WLAN_DELETE_PROFILES = 1;
     }
-#endif
 
 #ifdef IWDG_RESET_ENABLE
     if (TimingIWDGReload >= TIMING_IWDG_RELOAD)
@@ -170,51 +168,41 @@ extern "C" void HAL_RTCAlarm_Handler(void)
  *******************************************************************************/
 int main(void)
 {
-  // We have running firmware, otherwise we wouldn't have gotten here
-  DECLARE_SYS_HEALTH(ENTERED_Main);
-  DEBUG("Hello from Spark!");
+    // We have running firmware, otherwise we wouldn't have gotten here
+    DECLARE_SYS_HEALTH(ENTERED_Main);
+    DEBUG("Hello from Spark!");
 
-#ifdef SPARK_WLAN_ENABLE
     SPARK_WLAN_Setup(Multicast_Presence_Announcement);
-#endif
 
-  /* Main loop */
-  while (1)
-  {
-#ifdef SPARK_WLAN_ENABLE
-      DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
-      SPARK_WLAN_Loop();
-#endif
+    /* Main loop */
+    while (1)
+    {
+        DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
+        SPARK_WLAN_Loop();
 
-#ifdef SPARK_WIRING_ENABLE
-		static uint8_t SPARK_WIRING_APPLICATION = 0;
-#ifdef SPARK_WLAN_ENABLE
-		if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
-		{
-			if(!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
-			{
-#endif
-				if((SPARK_WIRING_APPLICATION != 1) && (NULL != setup))
-				{
-					//Execute user application setup only once
+        static uint8_t SPARK_WIRING_APPLICATION = 0;
+        if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
+        {
+            if(!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
+            {
+                if((SPARK_WIRING_APPLICATION != 1) && (NULL != setup))
+                {
+                    //Execute user application setup only once
                     DECLARE_SYS_HEALTH(ENTERED_Setup);
-					setup();
-					SPARK_WIRING_APPLICATION = 1;
-				}
+                    setup();
+                    SPARK_WIRING_APPLICATION = 1;
+                }
 
-				if(NULL != loop)
-				{
-					//Execute user application loop
+                if(NULL != loop)
+                {
+                    //Execute user application loop
                     DECLARE_SYS_HEALTH(ENTERED_Loop);
-					loop();
+                    loop();
                     DECLARE_SYS_HEALTH(RAN_Loop);
-				}
-#ifdef SPARK_WLAN_ENABLE
-			}
-		}
-#endif
-#endif
-	}
+                }
+            }
+        }
+    }
 }
 
 #ifdef USE_FULL_ASSERT

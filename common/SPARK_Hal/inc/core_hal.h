@@ -56,14 +56,6 @@
 #define IWDG_RESET_ENABLE
 #define TIMING_IWDG_RELOAD      1000 //1sec
 
-/* Define the following if not already defined */
-#ifndef __PLATFORM_CONFIG_H
-#define SPARK_WLAN_ENABLE
-#define SPARK_WIRING_ENABLE
-#define SPARK_SFLASH_ENABLE
-#define SPARK_RTC_ENABLE
-#endif
-
 /* Exported functions --------------------------------------------------------*/
 
 #ifdef __cplusplus
