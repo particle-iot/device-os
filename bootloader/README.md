@@ -9,7 +9,7 @@
 
 Welcome! The bootloader on the stm32 is protected by a "write protect" flag that helps prevent accidental "bricking" of a core for those without a programmer shield / st-link programmer. But that's not you, you want to fully erase your core, or re-write your bootloader, and you're not scared of "bricking" anything.
 
- * Grab the "unlocker" from here: (https://github.com/spark/bootloader/tree/master/tools (use "raw")
+ * Grab the "unlocker" from here: (https://github.com/spark/firmware/tree/master/bootloader/tools (use "raw")
  * dfu that with a:  `dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D unlocker-firmware.bin`
  * Your core should restart, flash some lights, and end with a 'green' flash before wiping saved wifi profiles and resetting   
  * Your bootloader is unlocked!
@@ -30,7 +30,7 @@ Welcome! The bootloader on the stm32 is protected by a "write protect" flag that
     
 **2. Grab a copy of the latest bootloader from here:**
 
-  https://github.com/spark/bootloader/blob/master/build/bootloader.bin?raw=true5.) With your core in your programmer shield / st-link connected, lets re-flash some stuff!
+  https://github.com/spark/firmware/blob/master/bootloader/build/bootloader.bin?raw=true5.) With your core in your programmer shield / st-link connected, lets re-flash some stuff!
 
  * In the windows utility set device -> settings to "connect under reset" true! (if you can't find this that's okay)
  * Do a full erase of your core, do this a few times, if you're in the windows utility, view the memory and make sure it's zero-ed out.
@@ -39,7 +39,7 @@ Welcome! The bootloader on the stm32 is protected by a "write protect" flag that
 
 **3. Lock your bootloader back up! (Optional, but recommended)**
 
- * Grab the locking firmware here:  (https://github.com/spark/bootloader/tree/master/tools (use "raw")
+ * Grab the locking firmware here:  (https://github.com/spark/firmware/tree/master/bootloader/tools (use "raw")
  * dfu that to `dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D locker-firmware.bin`
  * your core should reset, flash some lights, and flash 'red' when locked.
 
@@ -72,7 +72,7 @@ Welcome! The bootloader on the stm32 is protected by a "write protect" flag that
 
  **4. Grab the latest firmware and flash it**  
  
-    https://github.com/spark/core-firmware/blob/spark_2/build/core-firmware.bin?raw=true
+    https://github.com/spark/firmware/blob/master/main/build/core-firmware.bin?raw=true
     
 ```
     # to the factory reset spot 

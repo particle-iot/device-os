@@ -36,6 +36,8 @@ HAL=../../common/SPARK_Hal/
 PLATFORM_MCU=$(PLATFORM)MCU/STM32F1xx/
 PLATFORM_CC3000=$(PLATFORM)WLAN/CC3000_Host_Driver
 
+
+
 CFLAGS=-mcpu=cortex-m3 -mthumb -g3 -gdwarf-2
 CFLAGS+=-Werror
 

@@ -81,6 +81,7 @@ all: $(MAKE_DEPENDENCIES) $(TARGET)
 elf: $(TARGET_BASE).elf
 bin: $(TARGET_BASE).bin
 hex: $(TARGET_BASE).hex
+lst: $(TARGET_BASE).lst
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
@@ -98,6 +99,13 @@ program-cloud: $(TARGET_BASE).bin
 size: $(TARGET_BASE).elf
 	$(call,echo,'Invoking: ARM GNU Print Size')
 	$(VERBOSE)$(SIZE) --format=berkeley $<
+	$(call,echo,)
+
+# create a object listing from the elf file
+%.lst: %.elf
+	$(call,echo,'Invoking: ARM GNU Create Listing')
+	$(VERBOSE)$(OBJDUMP) -h -S $< > $@
+	$(call,echo,'Finished building: $@')
 	$(call,echo,)
 
 # Create a hex file from ELF file
