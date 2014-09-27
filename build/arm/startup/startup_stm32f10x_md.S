@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file      startup_stm32f10x_md.s
-  * @author    
+  * @author    MCD Application Team
   * @version   V3.6.1
   * @date      09-March-2012
   * @brief     STM32F10x Medium Density Devices vector table for RIDE7 toolchain.
@@ -15,6 +15,20 @@
   *            After Reset the Cortex-M3 processor is in Thread mode,
   *            priority is Privileged, and the Stack is set to Main.
   ******************************************************************************
+  Released into the public domain.
+  This work is free: you can redistribute it and/or modify it under the terms of 
+  Creative Commons Zero license v1.0
+
+  This work is licensed under the Creative Commons Zero 1.0 United States License. 
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  California, 94105, USA.
+
+  This program is distributed in the hope that it will be useful, 
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  or FITNESS FOR A PARTICULAR PURPOSE.
+
+  ******************************************************************************
   */
     
   .syntax unified
@@ -24,6 +38,7 @@
 
 .global	g_pfnVectors
 .global	Default_Handler
+
 
 /* start address for the initialization values of the .data section. 
 defined in linker script */
@@ -79,9 +94,10 @@ LoopFillZerobss:
 	ldr	r3, = _ebss
 	cmp	r2, r3
 	bcc	FillZerobss
-/* Call the clock system intitialization function.*/
-  bl  SystemInit 	
-/* Call the application's entry point.*/
+/* Call the clock system intitialization function. */
+	bl  SystemInit
+        .include "spark_init.S"
+/* Call the application's entry point. */
 	bl	main
 	bx	lr    
 .size	Reset_Handler, .-Reset_Handler

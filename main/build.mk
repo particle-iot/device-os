@@ -39,9 +39,12 @@ INCLUDE_DIRS += $(MODULE_PATH)/libraries
 CFLAGS += -DSPARK_PLATFORM_NET=$(PLATFORM_NET)
 
 # Linker flags
-LDFLAGS += -T$(MODULE_PATH)/linker/linker_stm32f10x_md_dfu.ld
+LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_stm32f10x_md_dfu.ld
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 LDFLAGS += --specs=nano.specs -lc -lnosys
 LDFLAGS += -u _printf_float
 
+ASRC += $(COMMON_BUILD)/arm/startup/startup_stm32f10x_md.S 
+ASFLAGS += -I$(COMMON_BUILD)/arm/startup
+ASFLAGS += -DSPARK_INIT_STARTUP
 
