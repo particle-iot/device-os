@@ -2,7 +2,7 @@
 # It contains common recipes for bulding C/CPP/asm files to objects, and
 # to combine those objects into libraries or elf files.
 
-MAKEOVERRIDES:=$(filter-out TARGET%,$(MAKEOVERRIDES))
+MAKEOVERRIDES:=$(filter-out TARGET_FILE%,$(MAKEOVERRIDES))
 
 include $(COMMON_BUILD)/verbose.mk
 

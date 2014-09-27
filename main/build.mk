@@ -5,16 +5,18 @@ USRSRC += ""
 # determine where user sources are, relative to project root
 ifdef APP
 USRSRC = applications/$(APP)
-ifndef TARGET
+ifndef TARGET_FILE
 TARGET_FILE ?= $(notdir $(APP))
 TARGET_DIR ?= $(USRSRC)
 endif
+$(info "building $(APP) to $(TARGET_FILE)")
+
 endif
 
 ifdef TEST
 USRSRC = tests/$(TEST)
 INCLUDE_PLATFORM?=1
-ifndef TARGET
+ifndef TARGET_FILE
 TARGET_FILE ?= $(notdir $(TEST))
 TARGET_DIR ?= $(USRSRC)
 endif
@@ -32,7 +34,7 @@ ifneq ($(USRSRC),"")
     CSRC += $(call target_files,$(USRSRC),*.c)    
 endif
 
-TARGET_FILE ?= core-firmware
+#TARGET_FILE ?= core-firmware
 
 INCLUDE_DIRS += $(MODULE_PATH)/libraries
 
