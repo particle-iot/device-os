@@ -36,6 +36,8 @@ using namespace spark;
 
 WLanConfig ip_config;
 
+uint32_t wlan_watchdog;
+
 //#define DEBUG_WIFI    // Define to show all the flags in debug output
 //#define DEBUG_WAN_WD  // Define to show all SW WD activity in debug output
 

@@ -39,8 +39,6 @@
 #include "evnt_handler.h"
 
 
-uint32_t wlan_watchdog;
-
 /* Smart Config Prefix */
 static char aucCC3000_prefix[] = {'T', 'T', 'T'};
 /* AES key "sparkdevices2013" */
@@ -406,8 +404,6 @@ void wlan_smart_config_cleanup()
     }
 }
 
-
-extern uint32_t wlan_watchdog;
 
 void wlan_setup()
 {    
