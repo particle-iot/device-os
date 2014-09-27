@@ -34,7 +34,8 @@ CFLAGS += -ffunction-sections -Wall -Werror -Wno-switch -fmessage-length=0
 CFLAGS += -DSPARK=1
 
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
-LDFLAGS += $(patsubst %,-l%,$(LIBS))
+# include libraries twice to avoid gcc library craziness
+LDFLAGS += -Wl,--start-group $(patsubst %,-l%,$(LIBS)) -Wl,--end-group
 
 # Assembler flags
 ASFLAGS += -x assembler-with-cpp -fmessage-length=0
@@ -70,6 +71,7 @@ elf: $(TARGET_BASE).elf
 bin: $(TARGET_BASE).bin
 hex: $(TARGET_BASE).hex
 lst: $(TARGET_BASE).lst
+exe: $(TARGET_BASE).exe
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
@@ -108,12 +110,13 @@ size: $(TARGET_BASE).elf
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@
 	$(call,echo,)
 
-$(TARGET_BASE).elf : $(ALLOBJ)
+$(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ)
 	$(call,echo,'Building target: $@')
 	$(call,echo,'Invoking: ARM GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
 	$(call,echo,)
+
 
 # Tool invocations
 $(TARGET_BASE).a : $(ALLOBJ)	

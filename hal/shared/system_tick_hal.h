@@ -27,6 +27,8 @@
 #ifndef system_tick_h_
 #define system_tick_h_
 
+#include <stdint.h>
+
 typedef uint32_t system_tick_t;
 
 #endif

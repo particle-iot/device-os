@@ -32,12 +32,13 @@
 #include "events.h"
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
+#include <stdint.h>
 
 #if !defined(arraySize)
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
 #endif
 
-typedef unsigned long system_tick_t; // This needs to match the definition of millis
+typedef uint32_t system_tick_t; // This needs to match the definition of millis
 
 namespace ProtocolState {
   enum Enum {
@@ -60,13 +61,13 @@ struct SparkKeys
 
 struct SparkCallbacks
 {
-  int (*send)(const unsigned char *buf, int buflen);
-  int (*receive)(unsigned char *buf, int buflen);
-  void (*prepare_to_save_file)(unsigned int sflash_address, unsigned int file_size);
+  int (*send)(const unsigned char *buf, uint32_t buflen);
+  int (*receive)(unsigned char *buf, uint32_t buflen);
+  void (*prepare_to_save_file)(uint32_t sflash_address, uint32_t file_size);
   void (*prepare_for_firmware_update)(void);
   void (*finish_firmware_update)(void);
-  long unsigned int (*calculate_crc)(unsigned char *buf, long unsigned int buflen);
-  unsigned short (*save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
+  uint32_t (*calculate_crc)(unsigned char *buf, uint32_t buflen);
+  unsigned short (*save_firmware_chunk)(unsigned char *buf, uint32_t buflen);
   void (*signal)(bool on);
   system_tick_t (*millis)();
   void (*set_time)(time_t t);
@@ -145,13 +146,13 @@ class SparkProtocol
     unsigned char core_private_key[612];
     aes_context aes;
 
-    int (*callback_send)(const unsigned char *buf, int buflen);
-    int (*callback_receive)(unsigned char *buf, int buflen);
-    void (*callback_prepare_to_save_file)(unsigned int sflash_address, unsigned int file_size);
+    int (*callback_send)(const unsigned char *buf, uint32_t buflen);
+    int (*callback_receive)(unsigned char *buf, uint32_t buflen);
+    void (*callback_prepare_to_save_file)(uint32_t sflash_address, uint32_t file_size);
     void (*callback_prepare_for_firmware_update)(void);
     void (*callback_finish_firmware_update)(void);
-    long unsigned int (*callback_calculate_crc)(unsigned char *buf, long unsigned int buflen);
-    unsigned short (*callback_save_firmware_chunk)(unsigned char *buf, long unsigned int buflen);
+    uint32_t (*callback_calculate_crc)(unsigned char *buf, uint32_t buflen);
+    unsigned short (*callback_save_firmware_chunk)(unsigned char *buf, uint32_t buflen);
     void (*callback_signal)(bool on);
     system_tick_t (*callback_millis)();
     void (*callback_set_time)(time_t t);

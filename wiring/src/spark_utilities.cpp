@@ -465,7 +465,7 @@ String SparkClass::deviceID(void)
  
 
 // Returns number of bytes sent or -1 if an error occurred
-int Spark_Send(const unsigned char *buf, int buflen)
+int Spark_Send(const unsigned char *buf, uint32_t buflen)
 {
   if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed())
   {
@@ -480,7 +480,7 @@ int Spark_Send(const unsigned char *buf, int buflen)
 }
 
 // Returns number of bytes received or -1 if an error occurred
-int Spark_Receive(unsigned char *buf, int buflen)
+int Spark_Receive(unsigned char *buf, uint32_t buflen)
 {
   if(SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed())
   {
@@ -491,7 +491,7 @@ int Spark_Receive(unsigned char *buf, int buflen)
   return socket_receive(sparkSocket, buf, buflen, 0);  
 }
 
-void begin_flash_file(int flashType, unsigned int sFlashAddress, unsigned int fileSize) 
+void begin_flash_file(int flashType, uint32_t sFlashAddress, uint32_t fileSize) 
 {
   RGB.control(true);
   RGB.color(RGB_COLOR_MAGENTA);
@@ -500,7 +500,7 @@ void begin_flash_file(int flashType, unsigned int sFlashAddress, unsigned int fi
   HAL_FLASH_Begin(sFlashAddress, fileSize);  
 }
 
-void Spark_Prepare_To_Save_File(unsigned int sFlashAddress, unsigned int fileSize)
+void Spark_Prepare_To_Save_File(uint32_t sFlashAddress, uint32_t fileSize)
 {
     begin_flash_file(2, sFlashAddress, fileSize);
 }
@@ -525,7 +525,7 @@ void Spark_Finish_Firmware_Update(void)
   RGB.control(false);
 }
 
-uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen)
+uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, uint32_t buflen)
 {
   uint16_t chunkUpdatedIndex;
   TimingFlashUpdateTimeout = 0;

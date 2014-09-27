@@ -43,12 +43,10 @@ enum eSystemHealth {
   PRESERVE_APP,
 };
 
-#if INCLUDE_PLATFORM
-#if PLATFORM_MCU==STM32F1xx
+#ifdef STM32_DEVICE
 #include "hw_config.h"
 #define SET_SYS_HEALTH(health) BKP_WriteBackupRegister(BKP_DR1, (health))
 #define GET_SYS_HEALTH() BKP_ReadBackupRegister(BKP_DR1)
-#endif
 
 extern uint16_t sys_health_cache;
 #define DECLARE_SYS_HEALTH(health)  do { if ((health) > sys_health_cache) {SET_SYS_HEALTH(sys_health_cache=(health));}} while(0)

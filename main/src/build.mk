@@ -17,6 +17,11 @@ ifdef NO_APPLICATION_CPP
 CPPSRC := $(filter-out $(TARGET_SRC_PATH)/application.cpp,$(CPPSRC))
 endif
 
+ifneq ("$(ARCH)","arm")
+CPPSRC := $(filter-out $(TARGET_SRC_PATH)/newlib_stubs.cpp,$(CPPSRC))
+endif
+
+
 # ASM source files included in this build.
 ASRC +=
 

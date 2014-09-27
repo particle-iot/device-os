@@ -2,19 +2,10 @@
 # Define ARM tools
 #
 
-include $(COMMON_BUILD)/common-tools.mk
-
 # Define the compiler/tools prefix
 GCC_PREFIX = arm-none-eabi-
 
-CC = $(GCC_PREFIX)gcc
-CPP = $(GCC_PREFIX)g++
-AR = $(GCC_PREFIX)ar
-OBJCOPY = $(GCC_PREFIX)objcopy
-OBJDUMP = $(GCC_PREFIX)objdump
-SIZE = $(GCC_PREFIX)size
-DFU = dfu-util
-CURL = curl
+include $(COMMON_BUILD)/common-tools.mk
 
 
 #
@@ -25,7 +16,7 @@ CURL = curl
 CFLAGS +=  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb 
 
 # C++ specific flags
-CPPFLAGS += -fno-exceptions -fno-rtti -std=gnu++11
+CPPFLAGS += -fno-exceptions -fno-rtti
 
 ASFLAGS +=  -g3 -gdwarf-2 -mcpu=cortex-m3 -mthumb 
 

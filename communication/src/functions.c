@@ -11,7 +11,16 @@
  * handle the random number in some other way. For example, to combine with local
  * entropy sources.
  */
-__attribute__((weak)) void random_seed_from_cloud(unsigned int seed){
+
+#ifdef __arm__
+ __attribute__((weak)) void random_seed_from_cloud(unsigned int seed){
     srand(seed);
 }
+#else
+// weak linking doesn't seem to be working on regular gcc
+ void random_seed_from_cloud(unsigned int seed)
+{
+    srand(seed);
+}
+#endif
 

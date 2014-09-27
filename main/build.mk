@@ -34,19 +34,24 @@ ifneq ($(USRSRC),"")
     CSRC += $(call target_files,$(USRSRC),*.c)    
 endif
 
-#TARGET_FILE ?= core-firmware
+TARGET_FILE ?= core-firmware
 
 INCLUDE_DIRS += $(MODULE_PATH)/libraries
 
 CFLAGS += -DSPARK_PLATFORM_NET=$(PLATFORM_NET)
 
 # Linker flags
-LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_stm32f10x_md_dfu.ld
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
+ifeq ("$(ARCH)","arm")
+
+LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_$(STM32_DEVICE)_dfu.ld
 LDFLAGS += --specs=nano.specs -lc -lnosys
 LDFLAGS += -u _printf_float
 
-ASRC += $(COMMON_BUILD)/arm/startup/startup_stm32f10x_md.S 
+ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE).S 
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup
 ASFLAGS += -DSPARK_INIT_STARTUP
+
+endif
+
 

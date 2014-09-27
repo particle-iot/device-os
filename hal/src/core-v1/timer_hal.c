@@ -46,7 +46,7 @@
 /*
  * @brief Should return the number of microseconds since the processor started up.
  */
-unsigned long HAL_Timer_Get_Micro_Seconds(void)
+system_tick_t HAL_Timer_Get_Micro_Seconds(void)
 {
   return (DWT->CYCCNT / SYSTEM_US_TICKS);
 }
@@ -54,7 +54,7 @@ unsigned long HAL_Timer_Get_Micro_Seconds(void)
 /*
  * @brief Should return the number of milliseconds since the processor started up.
  */
-unsigned long HAL_Timer_Get_Milli_Seconds(void)
+system_tick_t HAL_Timer_Get_Milli_Seconds(void)
 {
   return GetSystem1MsTick();
 }

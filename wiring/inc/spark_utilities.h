@@ -161,10 +161,10 @@ void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on);
 void Spark_SetTime(unsigned long dateTime);
 
-void Spark_Prepare_To_Save_File(unsigned int sFlashAddress, unsigned int fileSize);
+void Spark_Prepare_To_Save_File(uint32_t sFlashAddress, uint32_t fileSize);
 void Spark_Prepare_For_Firmware_Update(void);
 void Spark_Finish_Firmware_Update(void);
-uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, long unsigned int buflen);
+uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, uint32_t bufLen);
 
 int userVarType(const char *varKey);
 void *getUserVar(const char *varKey);

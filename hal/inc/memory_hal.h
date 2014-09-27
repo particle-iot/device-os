@@ -135,10 +135,10 @@ public:
      * Retrieves the store for the internal program.
      * @return 
      */
-    static void internalFirmware(MemoryDeviceRegion& region) const;    
-    static void factoryDefaultFirmware(ThisMemoryDeviceRegion& region) const;
-    static void backupFirmware(MemoryDeviceRegion& region) const;
-    static void OTAFlashFirmware(MemoryDeviceRegion& region) const;
+    static void internalFirmware(MemoryDeviceRegion& region);    
+    static void factoryDefaultFirmware(ThisMemoryDeviceRegion& region);
+    static void backupFirmware(MemoryDeviceRegion& region);
+    static void OTAFlashFirmware(MemoryDeviceRegion& region);
     
 };
 

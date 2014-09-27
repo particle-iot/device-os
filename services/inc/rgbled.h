@@ -3,6 +3,7 @@
 #define	RGBLED_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,16 +51,15 @@ uint8_t Get_LED_Brightness();
  * Directly set the color of the RGB led.
  */
 void Set_RGB_LED(uint16_t* data);
-extern void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b);
+bool LED_RGB_IsOverRidden(void);
 
-extern void Get_RGB_LED_Values(uint16_t* rgb);
+// This is the low-level api to the LED
+void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b);
+void Get_RGB_LED_Values(uint16_t* rgb);
+void Set_User_LED(uint8_t state);
+void Toggle_User_LED();
+uint16_t Get_RGB_LED_Max_Value();
 
-extern void Set_User_LED(uint8_t state);
-extern void Toggle_User_LED();
-
-extern uint16_t Get_RGB_LED_Max_Value();
-
-extern bool LED_RGB_IsOverRidden(void);
 
 #ifdef __cplusplus
 }

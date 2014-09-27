@@ -7,7 +7,6 @@ endif
 
 # Determine which is the target device
 
-STM32_DEVICE=STM32F10X_MD
 ARCH=arm
 
 ifeq ("$(SPARK_PRODUCT_ID)","0")
@@ -32,7 +31,7 @@ PLATFORM_NET=CC3000
 endif
 
 ifeq ("$(SPARK_PRODUCT_ID)","3")
-PLATFORM_NAME=gcc
+PLATFORM_NAME=template
 PLATFORM_MCU=gcc
 PLATFORM_NET=gcc
 ARCH=gcc
@@ -50,7 +49,10 @@ endif
 # lower case version of the STM32_DEVICE string for use in filenames
 STM32_DEVICE_LC  = $(shell echo $(STM32_DEVICE) | tr A-Z a-z)
 
+ifdef STM32_DEVICE
 CFLAGS += -D$(STM32_DEVICE)
+endif
+
 CFLAGS += -DSPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID)
 
 MAKE_ARGS += SPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID)
