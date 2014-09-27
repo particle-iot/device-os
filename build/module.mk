@@ -4,18 +4,7 @@
 
 MAKEOVERRIDES:=$(filter-out TARGET%,$(MAKEOVERRIDES))
 
-# silence commands by default
-
-ifdef v
-ECHO=echo
-VERBOSE=
-else
-ECHO = #
-VERBOSE=@
-MAKE_ARGS:=$(MAKE_ARGS) -s
-endif
-
-echo=$(ECHO $1)
+include $(COMMON_BUILD)/verbose.mk
 
 # Recursive wildcard function - finds matching files in a directory tree
 rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
@@ -30,9 +19,6 @@ include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 # the dependency module directory
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),../$(module)/import.mk)
 include $(DEPS_INCLUDE_SCRIPTS)	
-
-# create a list of targets to clean from the list of dependencies
-CLEAN_DEPENDENCIES=$(patsubst %,clean_%,$(MAKE_DEPENDENCIES))
 	
 ifeq ("$(DEBUG_BUILD)","y") 
 CFLAGS += -DDEBUG_BUILD
@@ -165,19 +151,11 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-# allow recursive invocation across dependencies to make
-clean_deps: $(CLEAN_DEPENDENCIES)
-make_deps: $(MAKE_DEPENDENCIES)
-	
-$(MAKE_DEPENDENCIES):
-	$(VERBOSE)$(MAKE) -C ../$@ $(SUBDIR_GOALS) $(MAKE_ARGS)
-
-$(CLEAN_DEPENDENCIES):
-	$(VERBOSE)$(MAKE) -C ../$(patsubst clean_%,%,$@) clean $(MAKE_ARGS)
-
-
-.PHONY: all clean elf bin hex size program-dfu program-cloud make_deps clean_deps $(MAKE_DEPENDENCIES) $(CLEAN_DEPENDENCIES)
+.PHONY: all elf bin hex size program-dfu program-cloud
 .SECONDARY:
+
+include $(COMMON_BUILD)/recurse.mk
+
 
 # Include auto generated dependency files
 ifneq ("MAKECMDGOALS","clean")
