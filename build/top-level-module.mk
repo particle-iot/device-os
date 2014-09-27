@@ -1,10 +1,10 @@
 # Makefile for building modules
 
 PROJECT_ROOT=..
-COMMON_BUILD=$(PROJECT_ROOT)/build
 MODULE_PATH=../$(MODULE)
-
+COMMON_BUILD=$(PROJECT_ROOT)/build
 BUILD_PATH_BASE=$(COMMON_BUILD)/target
+
 
 # Define the build path, this is where all of the dependancies and
 # object files will be placed.

@@ -42,10 +42,10 @@ ASFLAGS += -x assembler-with-cpp -fmessage-length=0
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
-ALLOBJ += $(addprefix $(BUILD_PATH)/, $(ASRC:.S=.o))
+ALLOBJ += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o)))
 
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
-ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
+ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o.d)))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(ASRC:.S=.o.d))
 
 ifeq ("$(TARGET_TYPE)","a") 
@@ -129,7 +129,7 @@ $(BUILD_PATH)/%.o : $(MODULE_PATH)/%.c
 	$(call,echo,)
 
 # Assember to build .o from .S in $(BUILD_DIR)
-$(BUILD_PATH)/%.o : $(MODULE_PATH)/%.S
+$(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
 	$(call,echo,'Building file: $<')
 	$(call,echo,'Invoking: ARM GCC Assembler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
