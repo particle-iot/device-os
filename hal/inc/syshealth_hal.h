@@ -44,7 +44,7 @@ enum eSystemHealth {
 };
 
 #if INCLUDE_PLATFORM
-#if PLATFORM_MCU==STM32
+#if PLATFORM_MCU==STM32F1xx
 #include "hw_config.h"
 #define SET_SYS_HEALTH(health) BKP_WriteBackupRegister(BKP_DR1, (health))
 #define GET_SYS_HEALTH() BKP_ReadBackupRegister(BKP_DR1)

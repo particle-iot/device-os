@@ -192,6 +192,24 @@
 #define SVCALL_IRQ_PRIORITY					14	//CORTEX_M3 SVCall Interrupt
 #define PENDSV_IRQ_PRIORITY					15	//CORTEX_M3 PendSV Interrupt
 
+
+#ifndef SPARK_PRODUCT_ID
+#define SPARK_PRODUCT_ID 0
+#warning "SPARK_PRODUCT_ID not defined, assuming 0"
+#endif
+
+#define PREPSTRING2(x) #x
+#define PREPSTRING(x) PREPSTRING2(x)
+
+#if SPARK_PRODUCT_ID < 2
+#define INTERNAL_FLASH_SIZE     (0x20000)
+#elif SPARK_PRODUCT_ID == 2
+    #define INTERNAL_FLASH_SIZE (0x40000)
+#else
+    #pragma message "SPARK_PRODUCT_ID is " PREPSTRING(SPARK_PRODUCT_ID)
+    #error "Unknown SPARK_PRODUCT_ID"
+#endif
+
 /* Exported functions ------------------------------------------------------- */
 
 #endif /* __PLATFORM_CONFIG_H */

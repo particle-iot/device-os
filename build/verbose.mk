@@ -9,7 +9,7 @@ VERBOSE=
 else
 ECHO = #
 VERBOSE=@
-MAKE_ARGS:=$(MAKE_ARGS) -s
+MAKE_ARGS += -s
 endif
 
 echo=$(ECHO $1)

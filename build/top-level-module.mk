@@ -12,7 +12,12 @@ BUILD_PATH_BASE=$(COMMON_BUILD)/target
 # the dir which makefile is invoked. If the makefile is moved to the project
 # root, BUILD_PATH = build can be used to store the build products in 
 # the build directory.
+
+ifdef BUILD_PATH_EXT
+BUILD_PATH = $(BUILD_PATH_BASE)/$(MODULE)/$(BUILD_PATH_EXT)
+else
 BUILD_PATH = $(BUILD_PATH_BASE)/$(MODULE)
+endif
 
-
+include $(COMMON_BUILD)/product-id.mk
 include $(COMMON_BUILD)/module.mk

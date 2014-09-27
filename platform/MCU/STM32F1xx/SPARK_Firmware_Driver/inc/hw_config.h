@@ -70,24 +70,45 @@ typedef enum
 
 /* Exported macros ------------------------------------------------------------*/
 
+#ifndef INTERNAL_FLASH_SIZE
+#   error "INTERNAL_FLASH_SIZE not defined"
+#endif
+
+// Firmware image size is usually same size as internal flash
+#ifndef FIRMWARE_IMAGE_SIZE
+#define FIRMWARE_IMAGE_SIZE INTERNAL_FLASH_SIZE
+#endif
+
+#if FIRMWARE_IMAGE_SIZE > INTERNAL_FLASH_SIZE 
+#   error "FIRMWARE_IMAGE_SIZE too large to fit into internal flash"
+#endif
+
 /* Internal Flash memory address where various firmwares are located */
-#define USB_DFU_ADDRESS				((uint32_t)0x08000000)
+#ifndef INTERNAL_FLASH_START
+#define INTERNAL_FLASH_START                    ((uint32_t)0x08000000)
+#endif
+
+#define USB_DFU_ADDRESS				INTERNAL_FLASH_START
 #define CORE_FW_ADDRESS				((uint32_t)0x08005000)
 /* Internal Flash memory address where the System Flags will be saved and loaded from  */
 #define SYSTEM_FLAGS_ADDRESS		((uint32_t)0x08004C00)
 /* Internal Flash end memory address */
-#define INTERNAL_FLASH_END_ADDRESS	((uint32_t)0x08020000)	//For 128KB Internal Flash
+
+#define INTERNAL_FLASH_END_ADDRESS	((uint32_t)INTERNAL_FLASH_START+INTERNAL_FLASH_SIZE)	//For 128KB Internal Flash
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE	((uint16_t)0x400)
 
 /* External Flash block size allocated for firmware storage */
-#define EXTERNAL_FLASH_BLOCK_SIZE	((uint32_t)0x20000)	//128KB  (Maximum Internal Flash Size)
+#define EXTERNAL_FLASH_BLOCK_SIZE	((uint32_t)FIRMWARE_IMAGE_SIZE)
 /* External Flash memory address where Factory programmed core firmware is located */
 #define EXTERNAL_FLASH_FAC_ADDRESS	((uint32_t)EXTERNAL_FLASH_BLOCK_SIZE)
 /* External Flash memory address where core firmware will be saved for backup/restore */
 #define EXTERNAL_FLASH_BKP_ADDRESS	((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_FAC_ADDRESS))
 /* External Flash memory address where OTA upgraded core firmware will be saved */
 #define EXTERNAL_FLASH_OTA_ADDRESS	((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_BKP_ADDRESS))
+
+/* External flash location where user can start writing */
+#define EXTERNAL_FLASH_USER_ADDRESS     ((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_OTA_ADDRESS))
 
 /* External Flash memory address where server domain/IP resides */
 #define EXTERNAL_FLASH_SERVER_DOMAIN_ADDRESS      ((uint32_t)0x1180)

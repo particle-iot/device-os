@@ -5,6 +5,7 @@ PROJECT_ROOT = .
 COMMON_BUILD=build
 BUILD_PATH_BASE=$(COMMON_BUILD)/target
 
+include $(COMMON_BUILD)/product-id.mk
 
 all: make_deps
 

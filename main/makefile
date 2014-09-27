@@ -1,9 +1,8 @@
 MODULE=main
-PLATFORM_NET=CC3000
-PLATFORM_MCU=STM32
 
 # Target this makefile is building.
 TARGET=elf bin hex size 
+BUILD_PATH_EXT = prod-$(SPARK_PRODUCT_ID)
 
 DEPENDENCIES = wiring communication hal services platform
 MAKE_DEPENDENCIES = $(DEPENDENCIES)

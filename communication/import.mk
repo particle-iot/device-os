@@ -1,7 +1,7 @@
 COMMUNICATION_MODULE_PATH ?= ../communication
 include $(call rwildcard,$(COMMUNICATION_MODULE_PATH)/,include.mk)
 
-LIB_DIRS += $(BUILD_PATH_BASE)/communication
+LIB_DIRS += $(BUILD_PATH_BASE)/communication/$(ARCH)
 LIBS += communication
 
 CFLAGS += -DSPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID)

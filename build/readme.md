@@ -37,4 +37,17 @@ cd main
 make
 ```
 
+## Specifying the target Product ID
+
+By default, the build system targets the stock Spark Core (Product ID 0). If
+your product has been given a different product ID, you should pass this on the
+command line to specifically target your product. For example:
+
+```
+make SPARK_PRODUCT_ID=2
+```
+
+Would build the bootloader and firmware for product ID 2.
+
+
 
