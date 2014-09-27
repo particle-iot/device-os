@@ -13,6 +13,12 @@ include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 # the dependency module directory
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),../$(module)/import.mk)
 include $(DEPS_INCLUDE_SCRIPTS)	
+
+# propagate the clean goal, otherwise use the default goal
+ifeq ("$(MAKECMDGOALS)","clean")
+   SUBDIR_GOALS = clean
+endif
+
 	
 ifeq ("$(DEBUG_BUILD)","y") 
 CFLAGS += -DDEBUG_BUILD
@@ -56,12 +62,11 @@ TARGET_BASE ?= $(BUILD_PATH)/$(TARGET_DIR)$(TARGET_FILE_PREFIX)$(TARGET_FILE)
 TARGET ?= $(TARGET_BASE).$(TARGET_TYPE)
 
 # All Target
-all: $(MAKE_DEPENDENCIES) $(TARGET)
+all: subdirs $(TARGET)
 
 elf: $(TARGET_BASE).elf
 bin: $(TARGET_BASE).bin
 hex: $(TARGET_BASE).hex
-
 
 
 # Program the core using dfu-util. The core should have been placed
@@ -135,15 +140,23 @@ $(BUILD_PATH)/%.o : $(MODULE_PATH)/%.cpp
 	@echo
 
 # Other Targets
-clean:
+clean:  subdirs
 	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET)
 	$(RMDIR) $(BUILD_PATH)
 	@echo ' '
 
-.PHONY: all clean elf bin hex size program-dfu program-cloud
+# allow recursive invocation across dependencies to make
+subdirs: $(MAKE_DEPENDENCIES)
+	
+$(MAKE_DEPENDENCIES):
+	$(MAKE) -C ../$@ $(SUBDIR_GOALS) $(MAKE_ARGS)
+
+.PHONY: all clean elf bin hex size program-dfu program-cloud subdirs $(MAKE_DEPENDENCIES)
 .SECONDARY:
 
 # Include auto generated dependency files
+ifneq ("MAKECMDGOALS","clean")
 -include $(ALLDEPS)
+endif
 
 
