@@ -12,8 +12,6 @@ CSRC +=
 # enumerate target cpp files
 CPPSRC += $(call target_files,src/,*.cpp)
 
-$(info "CPPSRC $(CPPSRC)")
-
 # ASM source files included in this build.
 ASRC +=
 

@@ -1,4 +1,21 @@
+# This is the common makefile used to build all top-level modules
+# It contains common recipes for bulding C/CPP/asm files to objects, and
+# to combine those objects into libraries or elf files.
+
 MAKEOVERRIDES:=$(filter-out TARGET%,$(MAKEOVERRIDES))
+
+# silence commands by default
+
+ifdef v
+ECHO=echo
+VERBOSE=
+else
+ECHO = #
+VERBOSE=@
+MAKE_ARGS:=$(MAKE_ARGS) -s
+endif
+
+echo=$(ECHO $1)
 
 # Recursive wildcard function - finds matching files in a directory tree
 rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
@@ -14,11 +31,8 @@ include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),../$(module)/import.mk)
 include $(DEPS_INCLUDE_SCRIPTS)	
 
-# propagate the clean goal, otherwise use the default goal
-ifeq ("$(MAKECMDGOALS)","clean")
-   SUBDIR_GOALS = clean
-endif
-
+# create a list of targets to clean from the list of dependencies
+CLEAN_DEPENDENCIES=$(patsubst %,clean_%,$(MAKE_DEPENDENCIES))
 	
 ifeq ("$(DEBUG_BUILD)","y") 
 CFLAGS += -DDEBUG_BUILD
@@ -62,12 +76,11 @@ TARGET_BASE ?= $(BUILD_PATH)/$(TARGET_DIR)$(TARGET_FILE_PREFIX)$(TARGET_FILE)
 TARGET ?= $(TARGET_BASE).$(TARGET_TYPE)
 
 # All Target
-all: subdirs $(TARGET)
+all: $(MAKE_DEPENDENCIES) $(TARGET)
 
 elf: $(TARGET_BASE).elf
 bin: $(TARGET_BASE).bin
 hex: $(TARGET_BASE).hex
-
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
@@ -83,75 +96,80 @@ program-cloud: $(TARGET_BASE).bin
 
 # Display size
 size: $(TARGET_BASE).elf
-	@echo Invoking: ARM GNU Print Size
-	$(SIZE) --format=berkeley $<
-	@echo
+	$(call,echo,'Invoking: ARM GNU Print Size')
+	$(VERBOSE)$(SIZE) --format=berkeley $<
+	$(call,echo,)
 
 # Create a hex file from ELF file
 %.hex : %.elf
-	@echo Invoking: ARM GNU Create Flash Image
-	$(OBJCOPY) -O ihex $< $@
-	@echo
+	$(call,echo,'Invoking: ARM GNU Create Flash Image')
+	$(VERBOSE)$(OBJCOPY) -O ihex $< $@
+	$(call,echo,)
 
 # Create a bin file from ELF file
 %.bin : %.elf
-	@echo Invoking: ARM GNU Create Flash Image
-	$(OBJCOPY) -O binary $< $@
-	@echo
+	$(call,echo,'Invoking: ARM GNU Create Flash Image')
+	$(VERBOSE)$(OBJCOPY) -O binary $< $@
+	$(call,echo,)
 
 $(TARGET_BASE).elf : $(ALLOBJ)
-	@echo Building target: $@
-	@echo Invoking: ARM GCC C++ Linker
-	$(MKDIR) $(dir $@)
-	$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
-	@echo
+	$(call,echo,'Building target: $@')
+	$(call,echo,'Invoking: ARM GCC C++ Linker')
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
+	$(call,echo,)
 
 # Tool invocations
 $(TARGET_BASE).a : $(ALLOBJ)	
-	@echo 'Building target: $@'
-	@echo 'Invoking: ARM GCC Archiver'
-	$(MKDIR) $(dir $@)
-	$(AR) -r $@ $^
-	@echo ' '
+	$(call,echo,'Building target: $@')
+	$(call,echo,'Invoking: ARM GCC Archiver')
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(AR) -cr $@ $^
+	$(call,echo,)
 
 # C compiler to build .o from .c in $(BUILD_DIR)
 $(BUILD_PATH)/%.o : $(MODULE_PATH)/%.c
-	@echo Building file: $<
-	@echo Invoking: ARM GCC C Compiler
-	$(MKDIR) $(dir $@)
-	$(CC) $(CFLAGS) -c -o $@ $<
-	@echo
+	$(call,echo,'Building file: $<')
+	$(call,echo,'Invoking: ARM GCC C Compiler')
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(CC) $(CFLAGS) -c -o $@ $<
+	$(call,echo,)
 
 # Assember to build .o from .S in $(BUILD_DIR)
 $(BUILD_PATH)/%.o : $(MODULE_PATH)/%.S
-	@echo Building file: $<
-	@echo Invoking: ARM GCC Assembler
-	$(MKDIR) $(dir $@)
-	$(CC) $(ASFLAGS) -c -o $@ $<
-	@echo
+	$(call,echo,'Building file: $<')
+	$(call,echo,'Invoking: ARM GCC Assembler')
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(CC) $(ASFLAGS) -c -o $@ $<
+	$(call,echo,)
 	
 # CPP compiler to build .o from .cpp in $(BUILD_DIR)
 # Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
 $(BUILD_PATH)/%.o : $(MODULE_PATH)/%.cpp
-	@echo Building file: $<
-	@echo Invoking: ARM GCC CPP Compiler
-	$(MKDIR) $(dir $@)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-	@echo
+	$(call,echo,'Building file: $<')
+	$(call,echo,'Invoking: ARM GCC CPP Compiler')
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+	$(call,echo,)
 
 # Other Targets
-clean:  subdirs
-	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET)
-	$(RMDIR) $(BUILD_PATH)
-	@echo ' '
+clean: clean_deps
+	$(VERBOSE)$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET)
+	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
+	$(call,echo,)
 
 # allow recursive invocation across dependencies to make
-subdirs: $(MAKE_DEPENDENCIES)
+clean_deps: $(CLEAN_DEPENDENCIES)
+make_deps: $(MAKE_DEPENDENCIES)
 	
 $(MAKE_DEPENDENCIES):
-	$(MAKE) -C ../$@ $(SUBDIR_GOALS) $(MAKE_ARGS)
+	$(VERBOSE)$(MAKE) -C ../$@ $(SUBDIR_GOALS) $(MAKE_ARGS)
 
-.PHONY: all clean elf bin hex size program-dfu program-cloud subdirs $(MAKE_DEPENDENCIES)
+$(CLEAN_DEPENDENCIES):
+	$(VERBOSE)$(MAKE) -C ../$(patsubst clean_%,%,$@) clean $(MAKE_ARGS)
+
+
+.PHONY: all clean elf bin hex size program-dfu program-cloud make_deps clean_deps $(MAKE_DEPENDENCIES) $(CLEAN_DEPENDENCIES)
 .SECONDARY:
 
 # Include auto generated dependency files
