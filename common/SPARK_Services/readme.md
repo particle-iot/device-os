@@ -1,1 +1,0 @@
-This folder contains hardware-neutral services. In principle these could be part of a separate repo, but are kept here to avoid users needing to clone another repo.

@@ -6,9 +6,6 @@
 #       based on the root of the project
 TARGET_SRC_PATH = src
 
-# Add include to all objects built for this target
-INCLUDE_DIRS += inc
-
 # C source files included in this build.
 CSRC +=
 

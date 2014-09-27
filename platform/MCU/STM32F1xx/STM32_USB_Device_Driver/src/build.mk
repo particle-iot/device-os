@@ -4,17 +4,18 @@
 # Define the prefix to this directory. 
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
-TARGET_SRC_PATH = src
-
+TARGET_USB_FS_SRC_PATH = $(TARGET_USB_FS_PATH)/src
 
 # C source files included in this build.
-CSRC += $(TARGET_SRC_PATH)/functions.c
+CSRC += $(TARGET_USB_FS_SRC_PATH)/usb_core.c
+CSRC += $(TARGET_USB_FS_SRC_PATH)/usb_init.c
+CSRC += $(TARGET_USB_FS_SRC_PATH)/usb_int.c
+CSRC += $(TARGET_USB_FS_SRC_PATH)/usb_mem.c
+CSRC += $(TARGET_USB_FS_SRC_PATH)/usb_regs.c
+CSRC += $(TARGET_USB_FS_SRC_PATH)/usb_sil.c
 
 # C++ source files included in this build.
-CPPSRC += $(TARGET_SRC_PATH)/coap.cpp
-CPPSRC += $(TARGET_SRC_PATH)/handshake.cpp
-CPPSRC += $(TARGET_SRC_PATH)/spark_protocol.cpp
-CPPSRC += $(TARGET_SRC_PATH)/events.cpp
+CPPSRC +=
 
 # ASM source files included in this build.
 ASRC +=

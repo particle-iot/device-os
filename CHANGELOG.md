@@ -1,3 +1,12 @@
+## v0.4.0
+
+### FEATURES
+
+ - Platform: hardware dependencies are factored out from wiring into a hardware abstraction layer
+ - Repo: all 3 spark repos (core-common-lib, core-communication-lib, core-firmware) are combined into this repo
+ - Modularization: factored common-lib into `platform`, `services` and `hal` modules.
+
+
 ## v0.3.3
 
 ### FEATURES

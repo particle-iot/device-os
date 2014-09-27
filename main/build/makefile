@@ -153,15 +153,6 @@ ifeq ("$(USE_SWD_JTAG)","y")
 CFLAGS += -DUSE_SWD_JTAG
 endif
 
-ifeq ("$(DEBUG_BUILD)","y") 
-CFLAGS += -DDEBUG_BUILD
-else
-CFLAGS += -DRELEASE_BUILD
-endif
-
-# C++ specific flags
-CPPFLAGS += -fno-exceptions -fno-rtti -std=gnu++11
-
 # Linker flags
 LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
 LDFLAGS += -L$(PROJECT_DIR)$(LIB_CORE_WIRING_PATH)build -lcore-wiring-lib
@@ -184,49 +175,6 @@ ALLDEPS += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH), $(CPPSRC:.cpp=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH), $(ASRC:.S=.o.d))
 
-# All Target
-all: elf bin hex size
-
-elf: $(TARGETDIR)$(TARGET).elf
-bin: $(TARGETDIR)$(TARGET).bin
-hex: $(TARGETDIR)$(TARGET).hex
-
-# Program the core using dfu-util. The core should have been placed
-# in bootloader mode before invoking 'make program-dfu'
-program-dfu: $(TARGETDIR)$(TARGET).bin
-	@echo Flashing using dfu:
-	$(DFU) -d 1d50:607f -a 0 -s 0x08005000:leave -D $<
-
-# Program the core using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
-# have been defined in the environment before invoking 'make program-cloud'
-program-cloud: $(TARGETDIR)$(TARGET).bin
-	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
-	$(CURL) -X PUT -F file=@$< -F file_type=binary $(CLOUD_FLASH_URL)
-
-# Display size
-size: $(TARGETDIR)$(TARGET).elf
-	@echo Invoking: ARM GNU Print Size
-	$(SIZE) --format=berkeley $<
-	@echo
-
-# Create a hex file from ELF file
-%.hex : %.elf
-	@echo Invoking: ARM GNU Create Flash Image
-	$(OBJCOPY) -O ihex $< $@
-	@echo
-
-# Create a bin file from ELF file
-%.bin : %.elf
-	@echo Invoking: ARM GNU Create Flash Image
-	$(OBJCOPY) -O binary $< $@
-	@echo
-
-$(TARGETDIR)$(TARGET).elf : check_external_deps $(ALLOBJ)
-	@echo Building target: $@
-	@echo Invoking: ARM GCC C++ Linker
-	$(MKDIR) $(dir $@)
-	$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
-	@echo
 
 # Check for external dependancies are up to date
 # Note: Since this makefile has no knowledge of depenancies for
