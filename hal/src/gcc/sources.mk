@@ -1,19 +1,28 @@
-# This file is a makefile included from the top level makefile which
-# defines the sources built for the target.
-
-# Define the prefix to this directory. 
-# Note: The name must be unique within this build and should be
-#       based on the root of the project
 HAL_SRC_GCC_PATH = $(TARGET_HAL_PATH)/src/gcc
 
+HAL_SRC_TEMPLATE_PATH = $(TARGET_HAL_PATH)/src/template
+
+basedir = HAL_SRC_TEMPLATE_PATH
+overridedir = HAL_SRC_GCC_PATH
+
 # C source files included in this build.
-CSRC += $(call target_files,$(HAL_SRC_GCC_PATH)/,*.c)
+# Use files from the template unless they are overridden by files in the 
+# gcc folder. Also manually exclude some files that have changed from c->cpp.
 
+CSRC += $(call target_files,$(basedir)/,*.c)
+CPPSRC += $(call target_files,$(basedir)/,*.cpp)
 
-# C++ source files included in this build.
-CPPSRC += $(call target_files,$(HAL_SRC_GCC_PATH)/,*.cpp)
+# find the overridden list of files (without extension)
+overrides = $(basename $(call,rwildcard,$(override),*.c*))
 
-# WIP - CPPSRC += $(HAL_SRC_TEMPLATE_PATH)/memory_hal.cpp
+# remove files from template that have the same basename as an overridden file
+CSRC := $(filter-out $(addsuffix $(addprefix $(basedir),$(overrides)),'.c), $(CSRC))
+CPPSRC := $(filter-out $(addsuffix $(addprefix $(basedir),$(overrides)),'.cpp), $(CPPSRC))
+
+CSRC += $(call target_files,$(override)/,*.c)
+CPPSRC += $(call target_files,$(override)/,*.cpp)
+
+$(info source $(CSRC) $(CPPSRC))
 
 # ASM source files included in this build.
 ASRC +=

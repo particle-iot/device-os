@@ -11,11 +11,8 @@ INCLUDE_DIRS += $(HAL_SRC_TEMPLATE_PATH)
 # C source files included in this build.
 CSRC += $(call target_files,$(HAL_SRC_TEMPLATE_PATH)/,*.c)
 
-
 # C++ source files included in this build.
 CPPSRC += $(call target_files,$(HAL_SRC_TEMPLATE_PATH)/,*.cpp)
-
-# WIP - CPPSRC += $(HAL_SRC_TEMPLATE_PATH)/memory_hal.cpp
 
 # ASM source files included in this build.
 ASRC +=
