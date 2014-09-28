@@ -72,6 +72,7 @@ bin: $(TARGET_BASE).bin
 hex: $(TARGET_BASE).hex
 lst: $(TARGET_BASE).lst
 exe: $(TARGET_BASE).exe
+none: 
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
@@ -157,7 +158,7 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-.PHONY: all elf bin hex size program-dfu program-cloud
+.PHONY: all none elf bin hex size program-dfu program-cloud
 .SECONDARY:
 
 include $(COMMON_BUILD)/recurse.mk
