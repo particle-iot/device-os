@@ -45,7 +45,7 @@ class ExternalFlashDevice : public MemoryDevice {
         return 512;
     }
 
-    virtual bool erasePage(flash_addr_t address) {
+    virtual bool erasePage(mem_addr_t address) {
         bool success = false;
         if (address < pageAddress(pageCount()) && (address % pageSize()) == 0) {
             sFLASH_EraseSector(address);
@@ -62,13 +62,13 @@ class ExternalFlashDevice : public MemoryDevice {
      * @param length
      * @return
      */
-    virtual bool writePage(const void* data, flash_addr_t address, page_size_t length) {
+    virtual bool write(const void* data, mem_addr_t address, mem_page_size_t length) {
         // TODO: SPI interface shouldn't need mutable data buffer to write?
         sFLASH_WriteBuffer(const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(data)), address, length);
         return true;
     }
 
-    virtual bool readPage(void* data, flash_addr_t address, page_size_t length) const {
+    virtual bool read(void* data, mem_addr_t address, mem_page_size_t length) const {
         sFLASH_ReadBuffer((uint8_t*) data, address, length);
         return true;
     }
@@ -78,7 +78,7 @@ class ExternalFlashDevice : public MemoryDevice {
 /*
  * The external flash. 
  */
-static ExternalFlashDevice& externalFlash;
+static ExternalFlashDevice externalFlash;
 
 
 #define EXTERNAL_FLASH_FAC_ADDRESS	((uint32_t)EXTERNAL_FLASH_BLOCK_SIZE)
@@ -87,22 +87,22 @@ static ExternalFlashDevice& externalFlash;
 /* External Flash memory address where OTA upgraded core firmware will be saved */
 #define EXTERNAL_FLASH_OTA_ADDRESS	((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_BKP_ADDRESS))
 
-void MemoryDevices::internalFirmware(MemoryDeviceRegion& region) const 
+void MemoryDevices::internalFirmware(MemoryDeviceRegion& region) 
 {
     // todo
 }
 
-void MemoryDevices::factoryDefaultFirmware(MemoryDeviceRegion& region) const
+void MemoryDevices::factoryDefaultFirmware(MemoryDeviceRegion& region)
 {
     region.set(externalFlash, EXTERNAL_FLASH_FAC_ADDRESS, EXTERNAL_FLASH_FAC_ADDRESS+EXTERNAL_FLASH_BLOCK_SIZE);    
 }
 
-void MemoryDevices::backupFirmware(MemoryDeviceRegion& region) const
+void MemoryDevices::backupFirmware(MemoryDeviceRegion& region)
 {
     region.set(externalFlash, EXTERNAL_FLASH_BKP_ADDRESS, EXTERNAL_FLASH_BKP_ADDRESS+EXTERNAL_FLASH_BLOCK_SIZE);
 }
 
-void MemoryDevices::OTAFlashFirmware(MemoryDeviceRegion& region) const
+void MemoryDevices::OTAFlashFirmware(MemoryDeviceRegion& region)
 {
     region.set(externalFlash, EXTERNAL_FLASH_OTA_ADDRESS, EXTERNAL_FLASH_OTA_ADDRESS+EXTERNAL_FLASH_BLOCK_SIZE);
 }

@@ -22,7 +22,9 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
+#pragma once
 
+#include <stdint.h>
 
 typedef uint32_t mem_addr_t;
 typedef uint32_t mem_page_size_t;
@@ -33,6 +35,7 @@ typedef uint32_t mem_page_count_t;
  */
 class MemoryDevice
 {
+public:    
     virtual ~MemoryDevice();
 
     /**
@@ -136,12 +139,10 @@ public:
      * @return 
      */
     static void internalFirmware(MemoryDeviceRegion& region);    
-    static void factoryDefaultFirmware(ThisMemoryDeviceRegion& region);
+    static void factoryDefaultFirmware(MemoryDeviceRegion& region);
     static void backupFirmware(MemoryDeviceRegion& region);
     static void OTAFlashFirmware(MemoryDeviceRegion& region);
     
 };
 
-
-#endif	/* MEMORY_HAL_H */
 
