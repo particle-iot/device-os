@@ -4,7 +4,6 @@
 PLATFORM_MODULE_PATH ?= ../platform
 
 LIB_DIRS += $(BUILD_PATH_BASE)/platform/prod-$(SPARK_PRODUCT_ID)
-LIBS += platform
 
 # Target specific defines
 CFLAGS += -DUSE_STDPERIPH_DRIVER

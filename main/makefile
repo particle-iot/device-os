@@ -4,6 +4,7 @@ BUILD_PATH_EXT = prod-$(SPARK_PRODUCT_ID)
 
 DEPENDENCIES = wiring services platform communication hal
 MAKE_DEPENDENCIES = $(DEPENDENCIES)
+LIBS += $(DEPENDENCIES)
 
 include ../build/product-id.mk
 

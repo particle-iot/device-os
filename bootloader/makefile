@@ -4,6 +4,8 @@ BUILD_PATH_EXT = prod-$(SPARK_PRODUCT_ID)
 
 DEPENDENCIES = platform hal services
 MAKE_DEPENDENCIES = platform services
+# dependent on HAL headers, but not the library
+LIBS += $(MAKE_DEPENDENCIES)
 
 include ../build/product-id.mk
 
