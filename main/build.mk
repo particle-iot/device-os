@@ -44,7 +44,7 @@ CFLAGS += -DSPARK_PLATFORM_NET=$(PLATFORM_NET)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 ifeq ("$(ARCH)","arm")
 
-LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_$(STM32_DEVICE)_dfu.ld
+LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_$(STM32_DEVICE_LC)_dfu.ld
 LDFLAGS += --specs=nano.specs -lc -lnosys
 LDFLAGS += -u _printf_float
 
