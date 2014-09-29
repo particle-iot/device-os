@@ -355,11 +355,6 @@ int main(void)
  *******************************************************************************/
 void Timing_Decrement(void)
 {
-	if (TimingDelay != 0x00)
-	{
-		TimingDelay--;
-	}
-
 	if (TimingBUTTON != 0x00)
 	{
 		TimingBUTTON--;
