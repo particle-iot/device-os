@@ -120,7 +120,7 @@ $(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ)
 
 
 # Tool invocations
-$(TARGET_BASE).a : $(ALLOBJ)	
+$(TARGET_BASE).a : $(ALLOBJ)
 	$(call,echo,'Building target: $@')
 	$(call,echo,'Invoking: ARM GCC Archiver')
 	$(VERBOSE)$(MKDIR) $(dir $@)
