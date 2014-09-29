@@ -50,7 +50,7 @@ LDFLAGS += -u _printf_float
 
 ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE).S 
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup
-ASFLAGS += -DSPARK_INIT_STARTUP
+ASFLAGS += --defsym SPARK_INIT_STARTUP=1
 
 endif
 
