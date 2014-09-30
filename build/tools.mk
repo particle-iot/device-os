@@ -8,6 +8,7 @@ AR = $(GCC_PREFIX)ar
 OBJCOPY = $(GCC_PREFIX)objcopy
 SIZE = $(GCC_PREFIX)size
 DFU = dfu-util
+DFUSUFFIX = dfu-suffix
 CURL = curl
 
 RM = rm -f
