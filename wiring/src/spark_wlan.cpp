@@ -116,10 +116,14 @@ void Start_Smart_Config(void)
 	LED_SetRGBColor(RGB_COLOR_BLUE);
 	LED_On(LED_RGB);
 
+	/* If WiFi module is connected, disconnect it */
 	WiFi.disconnect();
 
-    wlan_smart_config_init();
-    
+	/* If WiFi module is powered off, turn it on */
+	WiFi.on();
+
+	wlan_smart_config_init();
+
 	WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
 
 	/* Wait for SmartConfig/SerialConfig to finish */
