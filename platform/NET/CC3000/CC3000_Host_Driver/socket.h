@@ -117,13 +117,11 @@ typedef struct _in_addr_t
     UINT32 s_addr;                   // load with inet_aton()
 } in_addr;
 
-#ifndef _SOCKET_HAL_H
-typedef struct _sockaddr_t
+typedef struct _sockaddr
 {
     UINT16   sa_family;
     UINT8     sa_data[14];
 } sockaddr;
-#endif
 
 typedef struct _sockaddr_in_t
 {

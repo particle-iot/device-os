@@ -39,7 +39,7 @@ typedef struct _sockaddr_t
 {
     uint16_t   sa_family;
     uint8_t    sa_data[14];
-} sockaddr;
+} sockaddr_t;
 
 typedef uint32_t sock_handle_t;
 typedef uint32_t socklen_t;
@@ -53,7 +53,7 @@ uint8_t socket_active_status(sock_handle_t socket);
 
 sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol);
 
-sock_result_t socket_connect(sock_handle_t sd, const sockaddr *addr, long addrlen);
+sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen);
 
 /**
  * Reads from a socket to a buffer, upto a given number of bytes, with timeout.
@@ -62,11 +62,11 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr *addr, long addrle
  */
 sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, system_tick_t _timeout);
 
-sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t len, uint32_t flags, sockaddr* address, socklen_t* addr_size);
+sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t len, uint32_t flags, sockaddr_t* address, socklen_t* addr_size);
 
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len);
 
-sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr* addr, socklen_t addr_size);
+sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size);
 
 sock_result_t socket_close(sock_handle_t sd);
 
@@ -82,7 +82,7 @@ sock_result_t socket_bind(sock_handle_t sd, uint16_t port);
 
 
 
-//sock_result_t bind(sock_handle_t sd, const sockaddr *addr, int32_t addrlen);
+//sock_result_t bind(sock_handle_t sd, const sockaddr_t *addr, int32_t addrlen);
 //sock_result_t listen(int32_t sd, int32_t backlog);
 //sock_result_t setsockopt(sock_handle_t sd, int32_t level, int32_t optname, const void *optval, socklen_t optlen);
 

@@ -38,7 +38,7 @@ private:
 	uint16_t _port;
 	IPAddress _remoteIP;
 	uint16_t _remotePort;
-	sockaddr _remoteSockAddr;
+	sockaddr_t _remoteSockAddr;
 	socklen_t _remoteSockAddrLen;
 	uint8_t _buffer[RX_BUF_MAX_SIZE];
 	uint16_t _offset;

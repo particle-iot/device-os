@@ -45,7 +45,7 @@ volatile uint32_t TimingFlashUpdateTimeout;
 SparkProtocol spark_protocol;
 
 sock_handle_t sparkSocket = SOCKET_INVALID;
-sockaddr tSocketAddr;
+//sockaddr_t tSocketAddr;
 
 //char digits[] = "0123456789";
 
@@ -660,7 +660,7 @@ void Multicast_Presence_Announcement(void)
   spark_protocol.presence_announcement(announcement, (const char *)id);
 
   // create multicast address 224.0.1.187 port 5683
-  sockaddr addr;
+  sockaddr_t addr;
   addr.sa_family = AF_INET;
   addr.sa_data[0] = 0x16; // port MSB
   addr.sa_data[1] = 0x33; // port LSB
@@ -672,7 +672,7 @@ void Multicast_Presence_Announcement(void)
   //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
   //for (int i = 3; i > 0; i--)
   {
-    socket_sendto(multicast_socket, announcement, 19, 0, &addr, sizeof(sockaddr));
+    socket_sendto(multicast_socket, announcement, 19, 0, &addr, sizeof(sockaddr_t));
   }
 
   socket_close(multicast_socket);
@@ -720,7 +720,7 @@ void Spark_Signal(bool on)
 int Internet_Test(void)
 {
     long testSocket;
-    sockaddr testSocketAddr;
+    sockaddr_t testSocketAddr;
     int testResult = 0;
     DEBUG("socket");
     testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -780,7 +780,7 @@ int Spark_Connect(void)
   {
     return -1;
   }
-
+  sockaddr_t tSocketAddr;
   // the family is always AF_INET
   tSocketAddr.sa_family = AF_INET;
 

@@ -26,7 +26,7 @@
 #include "socket_hal.h"
 
 
-int32_t socket_connect(sock_handle_t sd, const sockaddr *addr, long addrlen)
+int32_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen)
 {
     return 0;
 }
@@ -46,7 +46,7 @@ sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port
     return 0;
 }
 
-sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr* addr, socklen_t* addrsize) 
+sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize) 
 {
     return 0;
 }
@@ -81,7 +81,7 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
     return 0;
 }
 
-sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr* addr, socklen_t addr_size) 
+sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size) 
 {
     return 0;
 }

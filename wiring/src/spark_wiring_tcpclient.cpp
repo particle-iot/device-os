@@ -72,7 +72,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
         int connected = 0;
         if(WiFi.ready())
         {
-          sockaddr tSocketAddr;
+          sockaddr_t tSocketAddr;
           _sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
           DEBUG("socket=%d",_sock);
 
