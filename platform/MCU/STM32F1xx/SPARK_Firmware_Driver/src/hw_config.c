@@ -383,6 +383,8 @@ void LED_Init(Led_TypeDef Led)
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
     GPIO_Init(LED_GPIO_PORT[Led], &GPIO_InitStructure);
+
+    Set_User_LED(DISABLE);
 }
 
 void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b) {
