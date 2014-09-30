@@ -41,6 +41,7 @@
 #define SPARK_SERVER_PORT		        5683
 
 #define SPARK_LOOP_DELAY_MILLIS		        1000	//1sec
+#define SPARK_RECEIVE_DELAY_MILLIS              100    //100ms
 
 #define TIMING_FLASH_UPDATE_TIMEOUT             30000   //30sec
 
