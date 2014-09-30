@@ -28,10 +28,11 @@
 #include <stddef.h>
 #include <algorithm>
 
-uint8_t* device_id = "/x48/xff/x6b/x06/x50/x67/x55/x50/x37/x34/x13/x87"
+const char* device_id = "\x48\xff\x6b\x06\x50\x67\x55\x50\x37\x34\x13\x87";
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {    
-    memcpy(dest, device_id, std::min(destLen, 12));
+    memcpy(dest, device_id, std::min(destLen, 12u));
     return 12;
 }
+

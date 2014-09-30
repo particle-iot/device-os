@@ -168,6 +168,7 @@ extern "C" void HAL_RTCAlarm_Handler(void)
  *******************************************************************************/
 int main(void)
 {
+    HAL_Core_Init();
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
     DEBUG("Hello from Spark!");

@@ -1,3 +1,9 @@
+CPPFLAGS += -DBOOST_ASIO_SEPARATE_COMPILATION 
+
+# use the boost libraries
+INCLUDE_DIRS += $(BOOST_ROOT)
+INCLUDE_DIRS += $(BOOST_ROOT)/libs/asio/include
+
 HAL_SRC_TEMPLATE_PATH = $(TARGET_HAL_PATH)/src/template
 HAL_SRC_GCC_PATH = $(TARGET_HAL_PATH)/src/gcc
 
@@ -12,11 +18,18 @@ CSRC += $(call target_files,$(templatedir)/,*.c)
 CPPSRC += $(call target_files,$(templatedir)/,*.cpp)
 
 # find the overridden list of files (without extension)
-overrides = $(call rwildcard,$(overridedir)/,*.cpp)
+overrides_abs = $(call rwildcard,$(overridedir)/,*.cpp)
+overrides_abs += $(call rwildcard,$(overridedir)/,*.c)
+overrides = $(basename $(patsubst $(overridedir)/%,%,$(overrides_abs)))
+
+remove_c = $(addsuffix .c,$(addprefix $(templatedir)/,$(overrides)))
+remove_cpp = $(addsuffix .cpp,$(addprefix $(templatedir)/,$(overrides)))
 
 # remove files from template that have the same basename as an overridden file
-CSRC := $(filter-out $(addsuffix $(addprefix $(templatedir),$(overrides)),'.c), $(CSRC))
-CPPSRC := $(filter-out $(addsuffix $(addprefix $(templatedir),$(overrides)),'.cpp), $(CPPSRC))
+# e.g. if template contains core_hal.c, and gcc contains core_hal.cpp, the gcc module
+# will override
+CSRC := $(filter-out $(remove_c),$(CSRC))
+CPPSRC := $(filter-out $(remove_cpp),$(CPPSRC))
 
 CSRC += $(call target_files,$(overridedir)/,*.c)
 CPPSRC += $(call target_files,$(overridedir)/,*.cpp)
@@ -25,3 +38,4 @@ CPPSRC += $(call target_files,$(overridedir)/,*.cpp)
 ASRC +=
 
 CPPFLAGS += -DBOOST_ASIO_SEPARATE_COMPILATION
+

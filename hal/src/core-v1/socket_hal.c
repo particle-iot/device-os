@@ -23,16 +23,15 @@
  ******************************************************************************
  */
 
-
 #include "socket_hal.h"
 #include "cc3000_spi.h"
 #include "evnt_handler.h"
 #include "socket.h"
 
 
-int32_t socket_connect(sock_handle_t sd, const sockaddr *addr, long addrlen)
+int32_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen)
 {
-    return connect(sd, addr, addrlen);
+    return connect(sd, (const sockaddr*)addr, addrlen);
 }
 
 sock_result_t socket_reset_blocking_call() 
@@ -95,12 +94,12 @@ sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port
     tServerAddr.sa_data[5] = 0;
 
     retVal=setsockopt(sock, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &optval, sizeof(optval));
-    if (retVal>=0) retVal=bind(sock, (sockaddr*)&tServerAddr, sizeof(tServerAddr));
+    if (retVal>=0) retVal=bind(sock, &tServerAddr, sizeof(tServerAddr));
     if (retVal>=0) retVal=listen(sock,0);            
     return retVal;
 }
 
-sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr* addr, socklen_t* addrsize) {
+sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize) {
     _types_fd_set_cc3000 readSet;
     timeval timeout;
 
@@ -115,7 +114,7 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
     {
         if (FD_ISSET(sock, &readSet))
         {
-            ret = socket_receivefrom(sock, buffer, bufLen, 0, addr, addrsize);
+            ret = recvfrom(sock, buffer, bufLen, 0, (sockaddr*)addr, addrsize);
         }
     }
     return ret;
@@ -159,9 +158,9 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
     return send(sd, buffer, len, 0);
 }
 
-sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr* addr, socklen_t addr_size) 
+sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size) 
 {
-    return sendto(sd, buffer, len, flags, addr, addr_size);
+    return sendto(sd, buffer, len, flags, (sockaddr*)addr, addr_size);
 }
 
 

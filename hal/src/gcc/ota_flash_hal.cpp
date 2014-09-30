@@ -1,11 +1,14 @@
 #include "ota_flash_hal.h"
 #include <string.h>
+#include <cstdio>
 
 void read_file(const char* filename, void* data, size_t length)
 {
     FILE *f = fopen(filename, "rb");    
-    fread(data, length, 1, f);
-    fclose(f);
+    if (f!=NULL) {
+        fread(data, length, 1, f);
+        fclose(f);
+    }
 }
 
 uint32_t HAL_OTA_FlashAddress()
@@ -31,6 +34,7 @@ void HAL_FLASH_End(void)
 {    
 }
 
+#define EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH 128
 
 // todo - duplicate from core-v1, factor this down into a common area
 void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
@@ -67,7 +71,6 @@ void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
 
 }
 
-#define EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH 128
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
@@ -86,7 +89,7 @@ void HAL_OTA_Flashed_ResetStatus(void)
 }
 
 #define PUBLIC_KEY_LEN 294
-#define PRIVATE_KEY_ELN
+#define PRIVATE_KEY_LEN 612
 
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {

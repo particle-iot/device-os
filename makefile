@@ -7,6 +7,8 @@ BUILD_PATH_BASE=$(COMMON_BUILD)/target
 
 include $(COMMON_BUILD)/product-id.mk
 
+$(info Building firmware for $(PRODUCT_DESC) (product id $(SPARK_PRODUCT_ID)))
+
 all: make_deps
 
 include $(COMMON_BUILD)/common-tools.mk

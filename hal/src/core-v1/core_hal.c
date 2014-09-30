@@ -47,6 +47,10 @@ extern void linkme(void);
 
 /* Private function prototypes -----------------------------------------------*/
 
+void HAL_Core_Init(void)
+{    
+}
+
 /*******************************************************************************
  * Function Name  : HAL_Core_Config.
  * Description    : Called in startup routine, before calling C++ constructors.

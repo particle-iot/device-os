@@ -57,11 +57,13 @@
 #define TIMING_IWDG_RELOAD      1000 //1sec
 
 /* Exported functions --------------------------------------------------------*/
+#include "watchdog_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+void HAL_Core_Init(void);
 void HAL_Core_Config(void);
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration);
 void HAL_Core_Mode_Button_Reset(void);

@@ -45,9 +45,7 @@ volatile uint32_t TimingFlashUpdateTimeout;
 SparkProtocol spark_protocol;
 
 sock_handle_t sparkSocket = SOCKET_INVALID;
-//sockaddr_t tSocketAddr;
 
-//char digits[] = "0123456789";
 
 extern uint8_t LED_RGB_BRIGHTNESS;
 

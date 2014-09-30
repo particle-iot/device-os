@@ -28,7 +28,11 @@
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
-extern void linkme(void);
+
+void HAL_Core_Init(void)
+{
+}
+
 
 /*******************************************************************************
  * Function Name  : HAL_Core_Config.
@@ -39,9 +43,6 @@ extern void linkme(void);
  *******************************************************************************/
 void HAL_Core_Config(void)
 {
-    // this ensures the stm32_it.c functions aren't dropped by the linker, thinking
-    // they are unused. Without this none of the interrupts handlers are linked.
-    linkme();
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)

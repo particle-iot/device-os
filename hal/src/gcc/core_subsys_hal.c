@@ -24,11 +24,12 @@
  */
 
 #include "core_subsys_hal.h"
+#include <string.h>
 
 
 int core_read_subsystem_version(char* patchstr, int bufLen) {
-    *patchstr = 0;
-    return 0;    
+    strcpy(patchstr, "1.30");
+    return 5;    
 }
 
 

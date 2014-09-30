@@ -2,7 +2,7 @@
 
 ifndef SPARK_PRODUCT_ID
 SPARK_PRODUCT_ID=0
-$(info SPARK_PRODUCT_ID not set, assuming 0)
+#$(info SPARK_PRODUCT_ID not set, assuming 0)
 endif
 
 # Determine which is the target device
@@ -14,6 +14,7 @@ STM32_DEVICE=STM32F10X_MD
 PLATFORM_NAME=core-v1
 PLATFORM_MCU=STM32F1xx
 PLATFORM_NET=CC3000
+PRODUCT_DESC=Spark core
 endif
 
 ifeq ("$(SPARK_PRODUCT_ID)","1")
@@ -28,6 +29,7 @@ STM32_DEVICE=STM32F10X_HD
 PLATFORM_NAME=core-v1
 PLATFORM_MCU=STM32F1xx
 PLATFORM_NET=CC3000
+PRODUCT_DESC=Spark core (STM32F103 HD - 256k flash, 48k ram)
 endif
 
 ifeq ("$(SPARK_PRODUCT_ID)","3")
@@ -35,6 +37,7 @@ PLATFORM_NAME=gcc
 PLATFORM_MCU=gcc
 PLATFORM_NET=gcc
 ARCH=gcc
+PRODUCT_DESC=GCC xcompile
 endif
 
 

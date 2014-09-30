@@ -83,8 +83,19 @@ typedef struct _WLanConfig_t {
 
 typedef int wlan_result_t;
 
+/**
+ * Connect start the wireless connection.
+ */
 wlan_result_t  wlan_connect_init();
+
+/**
+ * Finalize the connection by connecting to stored profiles.
+ */
 wlan_result_t  wlan_connect_finalize();
+
+/**
+  * Connect to the manually configured network.
+ */
 wlan_result_t  wlan_manual_connect();
 
 bool wlan_reset_credentials_store_required();
@@ -95,13 +106,19 @@ void Clear_NetApp_Dhcp();
 
 wlan_result_t wlan_disconnect_now();
 
+/**
+ * Enable wifi without connecting.
+ */
 wlan_result_t wlan_activate();
+
+/**
+ * Disable wifi.
+ */
 wlan_result_t wlan_deactivate();
 
 
 
 /**
- * 
  * @return <0 for a valid signal strength, in db. 
  *         0 for rssi not found (caller could retry)
  *         >0 for an error
@@ -136,8 +153,10 @@ void wlan_set_error_count(uint32_t error_count);
  */
 void wlan_smart_config_finalize();
 
+/**
+ * Retrieve IP address info. Available after HAL_WLAN_notify_dhcp() has been callted.
+ */
 void wlan_fetch_ipconfig(WLanConfig* config);
-
 
 /**
  * Called once at startup to initialize the wlan hardware.
@@ -150,10 +169,24 @@ void welan_set_error_count();
 void SPARK_WLAN_SmartConfigProcess();
 
 void HAL_WLAN_notify_simple_config_done();
+
+/**
+ * Notification that the wifi network has been connected to. 
+ */
 void HAL_WLAN_notify_connected();   
 void HAL_WLAN_notify_disconnected();
+
+/**
+ * Notification that an IP address has been received via DHCP.
+ * todo - what with the case of static IP config?
+ */
 void HAL_WLAN_notify_dhcp(bool dhcp);
+
 void HAL_WLAN_notify_can_shutdown();
+
+/**
+ * Notification that an open socket has been closed.
+ */
 void HAL_WLAN_notify_socket_closed(sock_handle_t socket);
 
 
