@@ -30,6 +30,7 @@
 I2C_InitTypeDef TwoWire::I2C_InitStructure;
 
 uint32_t TwoWire::I2C_ClockSpeed = CLOCK_SPEED_100KHZ;
+bool TwoWire::I2C_EnableDMAMode = false;
 bool TwoWire::I2C_SetAsSlave = false;
 bool TwoWire::I2C_Enabled = false;
 
@@ -98,6 +99,12 @@ void TwoWire::setSpeed(uint32_t clockSpeed)
   I2C_ClockSpeed = clockSpeed;
 }
 
+//enableDMAMode(true) should be called before begin() else default polling mode used
+void TwoWire::enableDMAMode(bool enableDMAMode)
+{
+  I2C_EnableDMAMode = enableDMAMode;
+}
+
 void TwoWire::stretchClock(bool stretch)
 {
   if(stretch == true)
@@ -120,8 +127,12 @@ void TwoWire::begin(void)
 
   /* Enable I2C1 clock */
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
-  /* Enable DMA1 clock */
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+
+  if(I2C_EnableDMAMode)
+  {
+    /* Enable DMA1 clock */
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+  }
 
   pinMode(SCL, AF_OUTPUT_DRAIN);
   pinMode(SDA, AF_OUTPUT_DRAIN);
@@ -174,6 +185,7 @@ void TwoWire::begin(int address)
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
 {
   system_tick_t _millis;
+  uint8_t bytesRead = 0;
 
   // clamp to buffer length
   if(quantity > BUFFER_LENGTH)
@@ -199,38 +211,80 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop
     if(EVENT_TIMEOUT < (millis() - _millis)) return 0;
   }
 
-  TwoWire_DMAConfig(rxBuffer, quantity, RECEIVER);
-
-  /* Enable DMA NACK automatic generation */
-  I2C_DMALastTransferCmd(I2C1, ENABLE);
-
-  /* Enable I2C DMA request */
-  I2C_DMACmd(I2C1, ENABLE);
-
-  /* Enable DMA RX Channel */
-  DMA_Cmd(DMA1_Channel7, ENABLE);
-
-  /* Wait until DMA Transfer Complete */
-  _millis = millis();
-  while(!DMA_GetFlagStatus(DMA1_FLAG_TC7))
+  if(I2C_EnableDMAMode)
   {
-    if(EVENT_TIMEOUT < (millis() - _millis)) break;
+    TwoWire_DMAConfig(rxBuffer, quantity, RECEIVER);
+
+    /* Enable DMA NACK automatic generation */
+    I2C_DMALastTransferCmd(I2C1, ENABLE);
+
+    /* Enable I2C DMA request */
+    I2C_DMACmd(I2C1, ENABLE);
+
+    /* Enable DMA RX Channel */
+    DMA_Cmd(DMA1_Channel7, ENABLE);
+
+    /* Wait until DMA Transfer Complete */
+    _millis = millis();
+    while(!DMA_GetFlagStatus(DMA1_FLAG_TC7))
+    {
+      if(EVENT_TIMEOUT < (millis() - _millis)) break;
+    }
+
+    /* Disable DMA RX Channel */
+    DMA_Cmd(DMA1_Channel7, DISABLE);
+
+    /* Disable I2C DMA request */
+    I2C_DMACmd(I2C1, DISABLE);
+
+    /* Clear DMA RX Transfer Complete Flag */
+    DMA_ClearFlag(DMA1_FLAG_TC7);
+
+    /* Send STOP Condition */
+    if(sendStop == true)
+    {
+      /* Send STOP condition */
+      I2C_GenerateSTOP(I2C1, ENABLE);
+    }
+
+    bytesRead = quantity - DMA_GetCurrDataCounter(DMA1_Channel7);
   }
-
-  /* Disable DMA RX Channel */
-  DMA_Cmd(DMA1_Channel7, DISABLE);
-
-  /* Disable I2C DMA request */
-  I2C_DMACmd(I2C1, DISABLE);
-
-  /* Clear DMA RX Transfer Complete Flag */
-  DMA_ClearFlag(DMA1_FLAG_TC7);
-
-  /* Send STOP Condition */
-  if(sendStop == true)
+  else
   {
-    /* Send STOP condition */
-    I2C_GenerateSTOP(I2C1, ENABLE);
+    /* perform blocking read into buffer */
+    uint8_t *pBuffer = rxBuffer;
+    uint8_t numByteToRead = quantity;
+
+    /* While there is data to be read */
+    _millis = millis();
+    while(numByteToRead && (EVENT_TIMEOUT > (millis() - _millis)))
+    {
+      if(numByteToRead == 1 && sendStop == true)
+      {
+        /* Disable Acknowledgement */
+        I2C_AcknowledgeConfig(I2C1, DISABLE);
+
+        /* Send STOP Condition */
+        I2C_GenerateSTOP(I2C1, ENABLE);
+      }
+
+      if(I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED))
+      {
+        /* Read a byte from the Slave */
+        *pBuffer = I2C_ReceiveData(I2C1);
+
+        bytesRead++;
+
+        /* Point to the next location where the byte read will be saved */
+        pBuffer++;
+
+        /* Decrement the read bytes counter */
+        numByteToRead--;
+
+        /* Reset timeout to our last read */
+        _millis = millis();
+      }
+    }
   }
 
   /* Enable Acknowledgement to be ready for another reception */
@@ -238,9 +292,9 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop
 
   // set rx buffer iterator vars
   rxBufferIndex = 0;
-  rxBufferLength = quantity - DMA_GetCurrDataCounter(DMA1_Channel7);
+  rxBufferLength = bytesRead;
 
-  return rxBufferLength;
+  return bytesRead;
 }
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity)
@@ -309,32 +363,56 @@ uint8_t TwoWire::endTransmission(uint8_t sendStop)
     if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
   }
 
-  TwoWire_DMAConfig(txBuffer, txBufferLength+1, TRANSMITTER);
-
-  /* Enable DMA NACK automatic generation */
-  I2C_DMALastTransferCmd(I2C1, ENABLE);
-
-  /* Enable I2C DMA request */
-  I2C_DMACmd(I2C1, ENABLE);
-
-  /* Enable DMA TX Channel */
-  DMA_Cmd(DMA1_Channel6, ENABLE);
-
-  /* Wait until DMA Transfer Complete */
-  _millis = millis();
-  while(!DMA_GetFlagStatus(DMA1_FLAG_TC6))
+  if(I2C_EnableDMAMode)
   {
-    if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
+    TwoWire_DMAConfig(txBuffer, txBufferLength+1, TRANSMITTER);
+
+    /* Enable DMA NACK automatic generation */
+    I2C_DMALastTransferCmd(I2C1, ENABLE);
+
+    /* Enable I2C DMA request */
+    I2C_DMACmd(I2C1, ENABLE);
+
+    /* Enable DMA TX Channel */
+    DMA_Cmd(DMA1_Channel6, ENABLE);
+
+    /* Wait until DMA Transfer Complete */
+    _millis = millis();
+    while(!DMA_GetFlagStatus(DMA1_FLAG_TC6))
+    {
+      if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
+    }
+
+    /* Disable DMA TX Channel */
+    DMA_Cmd(DMA1_Channel6, DISABLE);
+
+    /* Disable I2C DMA request */
+    I2C_DMACmd(I2C1, DISABLE);
+
+    /* Clear DMA TX Transfer Complete Flag */
+    DMA_ClearFlag(DMA1_FLAG_TC6);
   }
+  else
+  {
+    uint8_t *pBuffer = txBuffer;
+    uint8_t NumByteToWrite = txBufferLength;
 
-  /* Disable DMA TX Channel */
-  DMA_Cmd(DMA1_Channel6, DISABLE);
+    /* While there is data to be written */
+    while(NumByteToWrite--)
+    {
+      /* Send the current byte to slave */
+      I2C_SendData(I2C1, *pBuffer);
 
-  /* Disable I2C DMA request */
-  I2C_DMACmd(I2C1, DISABLE);
+      /* Point to the next byte to be written */
+      pBuffer++;
 
-  /* Clear DMA TX Transfer Complete Flag */
-  DMA_ClearFlag(DMA1_FLAG_TC6);
+      _millis = millis();
+      while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+      {
+        if(EVENT_TIMEOUT < (millis() - _millis)) return 4;
+      }
+    }
+  }
 
   /* Send STOP Condition */
   if(sendStop == true)
