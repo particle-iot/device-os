@@ -49,6 +49,7 @@ extern "C" {
 #endif
 
 void HAL_I2C_Set_Speed(uint32_t speed);
+void HAL_I2C_Enable_DMA_Mode(bool enable);
 void HAL_I2C_Stretch_Clock(bool stretch);
 void HAL_I2C_Begin(I2C_Mode mode, uint8_t address);
 void HAL_I2C_End(void);

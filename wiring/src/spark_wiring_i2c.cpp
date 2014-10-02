@@ -41,6 +41,12 @@ void TwoWire::setSpeed(uint32_t clockSpeed)
   HAL_I2C_Set_Speed(clockSpeed);
 }
 
+//enableDMAMode(true) should be called before begin() else default polling mode used
+void TwoWire::enableDMAMode(bool enableDMAMode)
+{
+  HAL_I2C_Enable_DMA_Mode(enableDMAMode);
+}
+
 void TwoWire::stretchClock(bool stretch)
 {
   HAL_I2C_Stretch_Clock(stretch);

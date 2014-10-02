@@ -41,7 +41,6 @@
 using namespace spark;
 
 volatile uint32_t TimingFlashUpdateTimeout;
-static volatile system_tick_t spark_receive_delay_millis;
 
 SparkProtocol spark_protocol;
 
@@ -488,23 +487,19 @@ int Spark_Receive(unsigned char *buf, uint32_t buflen)
     return -1;
   }
 
-  int bytes_received = 0;
-  if(spark_receive_delay_millis < HAL_Timer_Get_Milli_Seconds())
+  static int spark_receive_last_bytes_received = 0;
+  static volatile system_tick_t spark_receive_last_request_millis = 0;
+  //no delay between successive socket_receive() calls for cloud
+  //not connected or ota flash in process or on last data receipt
+  if ((SPARK_CLOUD_CONNECTED != 1) || (SPARK_FLASH_UPDATE == 1)
+      || (spark_receive_last_bytes_received > 0)
+      || ((millis()-spark_receive_last_request_millis) > SPARK_RECEIVE_DELAY_MILLIS))
   {
-    bytes_received = socket_receive(sparkSocket, buf, buflen, 0);
-    if((SPARK_CLOUD_CONNECTED != 1) || (SPARK_FLASH_UPDATE == 1) || (bytes_received > 0))
-    {
-      //no delay for cloud not connected or ota flash in process or on socket data receipt
-      spark_receive_delay_millis = 0;
-    }
-    else
-    {
-      //add SPARK_RECEIVE_DELAY_MILLIS between successive socket_receive() calls
-      spark_receive_delay_millis = HAL_Timer_Get_Milli_Seconds() + SPARK_RECEIVE_DELAY_MILLIS;
-    }
+    spark_receive_last_bytes_received = socket_receive(sparkSocket, buf, buflen, 0);
+    spark_receive_last_request_millis = millis();
   }
 
-  return bytes_received;
+  return spark_receive_last_bytes_received;
 }
 
 void begin_flash_file(int flashType, uint32_t sFlashAddress, uint32_t fileSize) 

@@ -34,6 +34,7 @@ class TwoWire : public Stream
 public:
   TwoWire();
   void setSpeed(uint32_t);
+  void enableDMAMode(bool);
   void stretchClock(bool);
   void begin();
   void begin(uint8_t);
