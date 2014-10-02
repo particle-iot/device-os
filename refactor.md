@@ -28,8 +28,5 @@ git merge -s recursive -Xsubtree=repodir repodir/feature-in-progress
 
 
 Todo:
-- top level build that makes everything
+
 - reinstate travis-ci build
-- factor common elements of bootloader and firmware (e.g. startup scripts, linker files.)
-- factor firmware into wiring and main (for want of a better name)
-- add include.mk to each project that adds it's publicly visible includes to INCLUDE_DIRS

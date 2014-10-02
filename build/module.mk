@@ -72,6 +72,7 @@ bin: $(TARGET_BASE).bin
 hex: $(TARGET_BASE).hex
 lst: $(TARGET_BASE).lst
 exe: $(TARGET_BASE).exe
+	@echo Built x-compile executable at $(TARGET_BASE).exe
 none: 
 
 # Program the core using dfu-util. The core should have been placed
@@ -116,7 +117,7 @@ $(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ)
 	$(call,echo,'Invoking: ARM GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
-	$(call,echo,)
+	$(call,echo,)	
 
 
 # Tool invocations

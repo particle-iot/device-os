@@ -12,7 +12,7 @@ export target=core-firmware.bin
 export events=$ci_dir/events.log
 export target=core-firmware
 export target_file=$target.bin
-export testDir=$ci_dir/../wiring/tests
+export testDir=$ci_dir/../main/tests
 
 # directory for the test reports
 export log_dir=${ci_dir}/test-reports

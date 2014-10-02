@@ -36,7 +36,7 @@ extern "C" {
  * 
  * @param hostname      buffer to receive the hostname
  * @param hostnameLen   length of the hostname buffer 
- * @param out_ip_addr   The ip address 
+ * @param out_ip_addr   The ip address in network byte order.
  * @return 
  */
 int inet_gethostbyname(char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr);
