@@ -23,7 +23,7 @@ $ci_dir/make_test.sh $platform $suite || die
 
 # flash the firmware
 echo "OTA flashing firmware at $(date)"
-spark flash $core_name $build/$target_file || die 
+spark flash $core_name $target_file || die 
 # todo - verify test suite build time or fix spark-cli return codes
 
 # give enough time for the core to go into OTA mode

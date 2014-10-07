@@ -31,5 +31,8 @@ fi
 
 # build test report
 cd obj || die "cannot find obj dir"
-cp ../../../../ci/unitth/* .
-java -jar unitth.jar . > unitth.log
+
+# The test report was just for a demo. Need to find a better solution for
+# production.
+# cp ../../../../ci/unitth/* .
+# java -jar unitth.jar . > unitth.log

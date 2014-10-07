@@ -14,7 +14,7 @@ MKDIR = mkdir -p
 SRC_ROOT=../../../
 
 # location of this folder relative to the root
-SRC_PATH=wiring/tests/unit/
+SRC_PATH=main/tests/unit/
 WIRING=wiring/
 WIRING_SRC=$(WIRING)src/
 
@@ -39,16 +39,16 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_string.cpp)
 
 
 # Paths to dependent projects, referenced from root of this project
-LIB_CORE_COMMON_PATH = common/
+LIB_SERVICES = services/
 # for now, just RGB led
-CSRC += $(call target_files,$(LIB_CORE_COMMON_PATH)SPARK_Services/src,rgbled.c)
+CSRC += $(call target_files,$(LIB_SERVICES)src,rgbled.c)
 
 
 # Additional include directories, applied to objects built for this target.
 # todo - delegate this to a include.mk file in each repo so include dirs are better
 # encapsulated by their owning repo
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
-INCLUDE_DIRS += $(WIRING)/inc
+INCLUDE_DIRS += $(LIB_SERVICES)inc
+INCLUDE_DIRS += $(WIRING)inc
 
 CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -Wall

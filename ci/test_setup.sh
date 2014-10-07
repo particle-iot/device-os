@@ -7,15 +7,17 @@ export ci_dir=$(dirname $BASH_SOURCE)
 
 . $ci_dir/functions.sh
 
-export build=$ci_dir/../wiring/build
+export build=$ci_dir/../build
+export main=$ci_dir/../main
+export target_dir=$build/target
 export target=core-firmware.bin
 export events=$ci_dir/events.log
 export target=core-firmware
-export target_file=$target.bin
-export testDir=$ci_dir/../main/tests
+export target_file=$target_dir/main/prod-0/$target.bin
+export testDir=$main/tests
 
 # directory for the test reports
-export log_dir=${ci_dir}/test-reports
+export log_dir=${target_dir}/test-reports
 mkdir -p ${log_dir}
 
 
