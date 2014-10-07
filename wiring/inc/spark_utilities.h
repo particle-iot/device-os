@@ -173,6 +173,7 @@ int userFuncSchedule(const char *funcKey, const char *paramString);
 
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
+uint32_t loop_frequency_hz() __attribute__ ((weak));
 
 #ifdef __cplusplus
 } /* end of extern "C" */

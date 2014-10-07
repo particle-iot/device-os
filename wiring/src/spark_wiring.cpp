@@ -275,6 +275,16 @@ void delayMicroseconds(unsigned int us)
   HAL_Delay_Microseconds(us);
 }
 
+int loopFrequencyHz()
+{
+  if(NULL != loop_frequency_hz)
+  {
+    return loop_frequency_hz();
+  }
+
+  return -1;
+}
+
 long map(long value, long fromStart, long fromEnd, long toStart, long toEnd)
 {
   return (value - fromStart) * (toEnd - toStart) / (fromEnd - fromStart) + toStart;

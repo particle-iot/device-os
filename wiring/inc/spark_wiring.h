@@ -69,6 +69,7 @@ system_tick_t millis(void);
 unsigned long micros(void);
 void delay(unsigned long ms);
 void delayMicroseconds(unsigned int us);
+int loopFrequencyHz();
 
 long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
 

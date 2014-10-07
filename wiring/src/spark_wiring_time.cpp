@@ -60,13 +60,13 @@ static void Set_UnixTime(time_t unix_time);
 //static void Refresh_UnixTime_Cache(time_t unix_time);
 
 /*******************************************************************************
- * Function Name  : HAL_RTC_Handler (Declared as weak in rtc_hal.h)
- * Description    : This function handles RTC global interrupt request.
+ * Function Name  : Time_Update_Handler (Declared as weak)
+ * Description    : This function should be called in RTC Interrupt handler.
  * Input          : None.
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-extern "C" void HAL_RTC_Handler(void)
+void Time_Update_Handler(void)
 {
   // Only intervene if we have an error to correct
   if (0 != skew.error && 0 < skew.ticks)

@@ -44,8 +44,10 @@ using namespace spark;
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-volatile uint32_t TimingLED;
-volatile uint32_t TimingIWDGReload;
+static volatile uint32_t TimingLED;
+static volatile uint32_t TimingIWDGReload;
+static volatile uint32_t loop_counter;
+static volatile uint32_t loop_frequency;
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -147,6 +149,24 @@ extern "C" void HAL_SysTick_Handler(void)
 }
 
 /*******************************************************************************
+ * Function Name  : HAL_RTC_Handler (Declared as weak in rtc_hal.h)
+ * Description    : This function handles RTC global interrupt request.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+extern "C" void HAL_RTC_Handler(void)
+{
+  loop_frequency = loop_counter;
+  loop_counter = 0;
+
+  if(NULL != Time_Update_Handler)
+  {
+    Time_Update_Handler();
+  }
+}
+
+/*******************************************************************************
  * Function Name  : HAL_RTCAlarm_Handler (Declared as weak in rtc_hal.h)
  * Description    : This function handles additional application requirements.
  * Input          : None.
@@ -157,6 +177,12 @@ extern "C" void HAL_RTCAlarm_Handler(void)
 {
   /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
   SPARK_WLAN_SLEEP = 0;
+}
+
+/* Utility call declared as weak - used to return loop() frequency measured in Hz */
+uint32_t loop_frequency_hz()
+{
+  return loop_frequency;
 }
 
 /*******************************************************************************
@@ -198,6 +224,7 @@ int main(void)
                 {
                     //Execute user application loop
                     DECLARE_SYS_HEALTH(ENTERED_Loop);
+                    loop_counter++;
                     loop();
                     DECLARE_SYS_HEALTH(RAN_Loop);
                 }
