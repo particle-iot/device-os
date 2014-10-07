@@ -46,8 +46,11 @@ using namespace spark;
 /* Private variables ---------------------------------------------------------*/
 static volatile uint32_t TimingLED;
 static volatile uint32_t TimingIWDGReload;
+
+#ifdef MEASURE_LOOP_FREQUENCY
 static volatile uint32_t loop_counter;
 static volatile uint32_t loop_frequency;
+#endif
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -157,8 +160,10 @@ extern "C" void HAL_SysTick_Handler(void)
  *******************************************************************************/
 extern "C" void HAL_RTC_Handler(void)
 {
+#ifdef MEASURE_LOOP_FREQUENCY
   loop_frequency = loop_counter;
   loop_counter = 0;
+#endif
 
   if(NULL != Time_Update_Handler)
   {
@@ -179,11 +184,13 @@ extern "C" void HAL_RTCAlarm_Handler(void)
   SPARK_WLAN_SLEEP = 0;
 }
 
+#ifdef MEASURE_LOOP_FREQUENCY
 /* Utility call declared as weak - used to return loop() frequency measured in Hz */
 uint32_t loop_frequency_hz()
 {
   return loop_frequency;
 }
+#endif
 
 /*******************************************************************************
  * Function Name  : main.
@@ -224,7 +231,9 @@ int main(void)
                 {
                     //Execute user application loop
                     DECLARE_SYS_HEALTH(ENTERED_Loop);
+#ifdef MEASURE_LOOP_FREQUENCY
                     loop_counter++;
+#endif
                     loop();
                     DECLARE_SYS_HEALTH(RAN_Loop);
                 }
