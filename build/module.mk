@@ -3,6 +3,7 @@
 # to combine those objects into libraries or elf files.
 
 MAKEOVERRIDES:=$(filter-out TARGET_FILE%,$(MAKEOVERRIDES))
+unexport TARGET_FILE
 
 include $(COMMON_BUILD)/verbose.mk
 
@@ -57,7 +58,9 @@ ifneq ("$(TARGET_DIR)","")
 TARGET_DIR := $(TARGET_DIR)/
 endif
 
-TARGET_FILE ?= $(MODULE)
+ifeq ("$(TARGET_FILE)","")
+    TARGET_FILE = $(MODULE)
+endif
 TARGET_NAME ?= $(TARGET_FILE_PREFIX)$(TARGET_FILE)
 # TARGET_PATH ends with a slash, to allow TARGET_DIR to be empty
 TARGET_PATH ?= $(BUILD_PATH)/$(TARGET_DIR)

@@ -22,7 +22,7 @@ cd $main || die "couldn't change directory to '$main'"
 # just for sanity test, remove existing firmware
 [[ ! -f $target_file ]] || rm $target_file
   
-make v=1 TARGET_FILE=core-firmware TEST=$platform/$suite > build_${platform}_${suite}.log || die 
+make v=1 TARGET_FILE=core-firmware TEST=$platform/$suite || die 
 
 [[ -f $target_file ]] || die "Expected target file '$target_file' to be produced by make."
 
