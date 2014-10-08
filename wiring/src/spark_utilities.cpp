@@ -637,7 +637,6 @@ void Spark_Protocol_Init(void)
 
 int Spark_Handshake(void)
 {
-  Spark_Protocol_Init();
   spark_protocol.reset_updating();
   int err = spark_protocol.handshake();
 

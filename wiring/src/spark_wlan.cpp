@@ -175,11 +175,9 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
     {
         WiFi.connect();
     }
-    else
-    {
-        //Initialize spark protocol callbacks for SEMI_AUTOMATIC/MANUAL
-        Spark_Protocol_Init();
-    }
+
+    //Initialize spark protocol callbacks for all System modes
+    Spark_Protocol_Init();
 }
 
 void SPARK_WLAN_Loop(void)
