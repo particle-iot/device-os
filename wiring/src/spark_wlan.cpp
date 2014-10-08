@@ -70,7 +70,7 @@ unsigned char wlan_profile_index;
 volatile uint8_t SPARK_WLAN_RESET;
 volatile uint8_t SPARK_WLAN_SLEEP;
 volatile uint8_t SPARK_WLAN_STARTED;
-volatile uint8_t SPARK_CLOUD_CONNECT;
+volatile uint8_t SPARK_CLOUD_CONNECT = 1;
 volatile uint8_t SPARK_CLOUD_SOCKETED;
 volatile uint8_t SPARK_CLOUD_CONNECTED;
 volatile uint8_t SPARK_FLASH_UPDATE;
