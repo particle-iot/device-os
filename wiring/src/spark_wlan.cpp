@@ -70,7 +70,7 @@ unsigned char wlan_profile_index;
 volatile uint8_t SPARK_WLAN_RESET;
 volatile uint8_t SPARK_WLAN_SLEEP;
 volatile uint8_t SPARK_WLAN_STARTED;
-volatile uint8_t SPARK_CLOUD_CONNECT = 1;
+volatile uint8_t SPARK_CLOUD_CONNECT = 1; //default is AUTOMATIC mode
 volatile uint8_t SPARK_CLOUD_SOCKETED;
 volatile uint8_t SPARK_CLOUD_CONNECTED;
 volatile uint8_t SPARK_FLASH_UPDATE;
@@ -166,15 +166,20 @@ void Start_Smart_Config(void)
 
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 {
-	announce_presence = presence_announcement_callback;
+    announce_presence = presence_announcement_callback;
 
     wlan_setup();
-    
-	/* Trigger a WLAN device */
-	if (System.mode() == AUTOMATIC)
-	{
+
+    /* Trigger a WLAN device */
+    if (System.mode() == AUTOMATIC)
+    {
         WiFi.connect();
-	}
+    }
+    else
+    {
+        //Initialize spark protocol callbacks for SEMI_AUTOMATIC/MANUAL
+        Spark_Protocol_Init();
+    }
 }
 
 void SPARK_WLAN_Loop(void)
