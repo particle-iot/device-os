@@ -47,8 +47,9 @@ ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o)))
 
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
+ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o.d)))
-ALLDEPS += $(addprefix $(BUILD_PATH)/, $(ASRC:.S=.o.d))
+
 
 ifeq ("$(TARGET_TYPE)","a") 
 TARGET_FILE_PREFIX = lib
