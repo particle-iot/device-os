@@ -44,7 +44,7 @@ bool Servo::attach(uint16_t pin,
     int16_t maxAngle)
 {
 
-  if (HAL_Pin_Function(pin)!=PF_TIMER)
+  if (HAL_Validate_Pin_Function(pin, PF_TIMER)!=PF_TIMER)
   {
     return false;
   }

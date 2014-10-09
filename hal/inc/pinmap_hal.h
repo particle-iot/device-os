@@ -57,7 +57,7 @@ typedef enum {
     PF_ADC
 } PinFunction;
 
-PinFunction HAL_Pin_Function(pin_t pin);
+PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
 
 /* Exported macros -----------------------------------------------------------*/
 

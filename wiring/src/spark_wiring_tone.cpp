@@ -29,14 +29,14 @@
 
 void tone(uint8_t pin, unsigned int frequency, unsigned long duration)
 {
-    if (pinAvailable(pin) && HAL_Pin_Function(pin)==PF_TIMER) {
+    if (pinAvailable(pin) && HAL_Validate_Pin_Function(pin, PF_TIMER)==PF_TIMER) {
         HAL_Tone_Start(pin, frequency, duration);
     }
 }
 
 void noTone(uint8_t pin)
 {
-    if (pinAvailable(pin) && HAL_Pin_Function(pin)==PF_TIMER) {
+    if (pinAvailable(pin) && HAL_Validate_Pin_Function(pin, PF_TIMER)==PF_TIMER) {
         HAL_Tone_Stop(pin);
     }
 }

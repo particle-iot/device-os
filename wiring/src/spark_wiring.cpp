@@ -164,7 +164,7 @@ int32_t analogRead(pin_t pin)
     return LOW;
   }
 
-  if(pin >= TOTAL_PINS || HAL_Pin_Function(pin)!=PF_ADC)
+  if(HAL_Validate_Pin_Function(pin, PF_ADC)!=PF_ADC)
   {
     return LOW;
   }
@@ -178,8 +178,7 @@ int32_t analogRead(pin_t pin)
  */
 void analogWrite(pin_t pin, uint8_t value)
 {
-
-  if(pin >= TOTAL_PINS || HAL_Pin_Function(pin)!=PF_TIMER)
+  if(HAL_Validate_Pin_Function(pin, PF_TIMER)!=PF_TIMER)
   {
     return;
   }
@@ -189,7 +188,7 @@ void analogWrite(pin_t pin, uint8_t value)
     return;
   }
 
-  PinMode mode = HAL_Get_Pin_Mode(pin);  
+  PinMode mode = HAL_Get_Pin_Mode(pin);
   if(mode != OUTPUT && mode != AF_OUTPUT_PUSHPULL)
   {
     return;

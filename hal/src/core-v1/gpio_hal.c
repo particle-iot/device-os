@@ -53,13 +53,13 @@ PinMode HAL_Get_Pin_Mode(pin_t pin)
     return (!is_valid_pin(pin)) ? PIN_MODE_NONE : PIN_MAP[pin].pin_mode;
 }
 
-PinFunction HAL_Pin_Function(pin_t pin) 
+PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
 {
     if (!is_valid_pin(pin))
         return PF_NONE;
-    if (PIN_MAP[pin].adc_channel!=ADC_CHANNEL_NONE)
+    if (pinFunction==PF_ADC && PIN_MAP[pin].adc_channel!=ADC_CHANNEL_NONE)
         return PF_ADC;
-    if (PIN_MAP[pin].timer_peripheral!=NULL)
+    if (pinFunction==PF_TIMER && PIN_MAP[pin].timer_peripheral!=NULL)
         return PF_TIMER;
     return PF_DIO;
 }
