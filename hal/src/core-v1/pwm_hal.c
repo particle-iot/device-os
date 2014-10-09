@@ -51,8 +51,8 @@ void HAL_PWM_Write(uint16_t pin, uint8_t value)
   TIM_OCInitTypeDef  TIM_OCInitStructure;
 
   //PWM Frequency : 500 Hz
-  uint16_t TIM_Prescaler = (uint16_t)(SystemCoreClock / 24000000) - 1;//TIM Counter clock = 24MHz
-  uint16_t TIM_ARR = (uint16_t)(24000000 / TIM_PWM_FREQ) - 1;
+  uint16_t TIM_Prescaler = (uint16_t)(SystemCoreClock / TIM_PWM_COUNTER_CLOCK_FREQ) - 1;
+  uint16_t TIM_ARR = (uint16_t)(TIM_PWM_COUNTER_CLOCK_FREQ / TIM_PWM_FREQ) - 1;
 
   // TIM Channel Duty Cycle(%) = (TIM_CCR / TIM_ARR + 1) * 100
   uint16_t TIM_CCR = (uint16_t)(value * (TIM_ARR + 1) / 255);
@@ -120,3 +120,63 @@ void HAL_PWM_Write(uint16_t pin, uint8_t value)
   // TIM enable counter
   TIM_Cmd(PIN_MAP[pin].timer_peripheral, ENABLE);
 }
+
+uint16_t HAL_PWM_Get_Frequency(uint16_t pin)
+{
+    uint16_t TIM_ARR = 0;
+    uint16_t PWM_Frequency = 0;
+
+    if(PIN_MAP[pin].timer_peripheral == TIM2)
+    {
+        TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
+    }
+    else if(PIN_MAP[pin].timer_peripheral == TIM3)
+    {
+        TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
+    }
+    else if(PIN_MAP[pin].timer_peripheral == TIM4)
+    {
+        TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
+    }
+    else
+    {
+        return PWM_Frequency;
+    }
+
+    PWM_Frequency = (uint16_t)(TIM_PWM_COUNTER_CLOCK_FREQ / (TIM_ARR + 1));
+
+    return PWM_Frequency;
+}
+
+uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
+{
+    uint16_t TIM_CCR = 0;
+    uint16_t TIM_ARR = 0;
+    uint16_t PWM_AnalogValue = 0;
+
+    if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
+    {
+        TIM_CCR = PIN_MAP[pin].timer_peripheral->CCR1;
+    }
+    else if(PIN_MAP[pin].timer_ch == TIM_Channel_2)
+    {
+        TIM_CCR = PIN_MAP[pin].timer_peripheral->CCR2;
+    }
+    else if(PIN_MAP[pin].timer_ch == TIM_Channel_3)
+    {
+        TIM_CCR = PIN_MAP[pin].timer_peripheral->CCR3;
+    }
+    else if(PIN_MAP[pin].timer_ch == TIM_Channel_4)
+    {
+        TIM_CCR = PIN_MAP[pin].timer_peripheral->CCR4;
+    }
+    else
+    {
+        return PWM_AnalogValue;
+    }
+
+    TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
+    PWM_AnalogValue = (uint16_t)(((TIM_CCR + 1) * 255) / (TIM_ARR + 1));
+
+    return PWM_AnalogValue;
+ }

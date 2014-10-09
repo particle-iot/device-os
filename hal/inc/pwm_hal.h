@@ -43,6 +43,8 @@ extern "C" {
 #endif
 
 void HAL_PWM_Write(uint16_t pin, uint8_t value);
+uint16_t HAL_PWM_Get_Frequency(uint16_t pin);
+uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin);
 
 #ifdef __cplusplus
 }
