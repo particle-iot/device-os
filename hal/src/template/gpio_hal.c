@@ -43,7 +43,7 @@ PinMode HAL_Get_Pin_Mode(pin_t pin)
     return PIN_MODE_NONE;
 }
 
-PinFunction HAL_Pin_Function(pin_t pin) 
+PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
 {
     return PF_DIO;
 }
