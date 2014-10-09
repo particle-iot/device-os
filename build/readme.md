@@ -5,7 +5,9 @@ This root project folder contains the top-level makefile:
 
 To build all projects simply run
 
-```make```
+```
+make
+```
 
 This creates build artefacts for all projects under the `build/target` directory.
 
@@ -16,7 +18,9 @@ submodules before deleting the `build\target` directory.
 
 E.g.
 
-```make clean all```
+```
+make clean all
+```
 
 ## Controlling Verbosity
 
@@ -30,7 +34,8 @@ make v=1
 
 ## Building individual modules
 
-Each module can be built on its own by executing the makefile in the module's directory:
+Each module can be built on its own by executing the makefile in the module's directory. 
+In particular the firmware can be built by running make from the `main` directory.
 
 ```
 cd main
@@ -120,4 +125,14 @@ Then after building main, the artefacts will be available in the `build` subdire
 as before.
 
 
+## Flashing the firmware to the core
+
+The `program-dfu` target can be used when building from the `main` directory to flash
+the compiled `.bin` file to the core, using dfu-util. For this to work, `dfu-util` needs to be
+in your path, and the core put in DFU mode (flashing yellow).
+
+```
+cd main
+make all program-dfu
+```
 

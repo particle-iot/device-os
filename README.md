@@ -41,8 +41,8 @@ Download and install Git: http://git-scm.com/
 ## 2. Download and Build Repositories
 
 The entire Spark Core firmware is contained in this repository. 
-The main firmware is located under the *firmware/* directory, while the supporting 
-libraries are located in to *common/* and *communication/* subdirectories.
+The main firmware is located under the *main/* directory, while the supporting 
+libraries are located in *platform/* and *communication/* subdirectories.
 
 #### How do we *download* this repositories?
 You can access all of the repositories via any git interface or download it directly from the website.
@@ -68,9 +68,9 @@ Open up a terminal window, navigate to the build folder under firmware
 
     make
 
-This will build your main application (`firmware/wiring/src/application.cpp`) and required dependencies.
+This will build your main application (`firmware/main/src/application.cpp`) and required dependencies.
 
-*For example:* `D:\Spark\firmware\wiring\build [master]> make`
+*For example:* `D:\Spark\firmware\main [master]> make`
 
 ##### Common Errors
 
@@ -79,7 +79,7 @@ This will build your main application (`firmware/wiring/src/application.cpp`) an
   Google "Add binary to PATH" for more details.
 
 * You get `make: *** No targets specified and no makefile found.  Stop.`.
-  Solution: `cd firmware/wiring/build`.
+  Solution: `cd firmware/main`.
 
 Please issue a pull request if you come across similar issues/fixes that trip you up.
 
@@ -89,7 +89,8 @@ All of the top-level directories are sub divided into functional folders:
 
 1. `/src` holds all the source code files
 2. `/inc` holds all the header files
-3. `/build` holds the makefile and is also the destination for the compiled `.bin` and `.hex` files.
+
+The compiled `.bin` and `.hex` files appear under `build/target/prod-N/main/`.
 
 ## 3. Edit and Rebuild
 
@@ -97,9 +98,10 @@ Now that you have your hands on the entire Spark Core firmware, its time to star
 
 ### What to edit and what not to edit?
 
-The main user code sits in the application.cpp file under firmware/wiring/src/ folder. Unless you know what you are doing, refrain yourself from making changes to any other files.
+The main user code sits in the application.cpp file under firmware/main/src/ folder. Unless you know what you are doing, refrain yourself from making changes to any other files.
 
-After you are done editing the files, you can rebuild the repository by running the `make` command in the `firmware/wiring/build` directory. If you have made changes to the other two repositories, make automatically determines which files need to be rebuilt and builds them for you.
+After you are done editing the files, you can rebuild the repository by running the `make` command in the `firmware/main/` directory. 
+If you have made changes to any of the other directories, make automatically determines which files need to be rebuilt and builds them for you.
 
 ## 4. Flash It!
 
@@ -121,15 +123,11 @@ Its now time to transfer your code to the Spark Core! You can always do this usi
 
    (Windows users will need to use the Zatig utility to replace the USB driver as described earlier)
 
-3. Now, navigate to the build folder in your firmware repository and use the following command to transfer the *.bin* file into the Core.
+3. Now, from the `main/` folder in your firmware repository and use the following command to transfer the *.bin* file into the Core.
    ```
-   dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D core-firmware.bin
+   make program-dfu
    ```
 
-   For example, this is how my terminal looks like:
-   ```
-D:\Spark\firmware\wiring\build [master]> dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D core-firmware.bin
-   ```
 Upon successful transfer, the Core will automatically reset and start the running the program.
 
 ##### Common Errors
