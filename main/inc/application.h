@@ -51,6 +51,10 @@
 // adding here for backwards compatibility.
 #include "spark_wlan.h"
 
+#ifdef SPARK_PLATFORM
+#include "platform_headers.h"
+#endif
+
 using namespace spark;
 
 #endif /* APPLICATION_H_ */
