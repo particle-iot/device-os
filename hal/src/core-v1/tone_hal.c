@@ -32,6 +32,7 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#define TONE_TIM_COUNTER_CLOCK_FREQ 1000000 ////TIM Counter clock = 1MHz
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -50,11 +51,16 @@ static void Tone_TIM4_Handler(void);
 
 void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
 {
+  if(frequency < 20 || frequency > 20000)
+  {
+      return;//no tone for frequency outside of human audible range
+  }
+
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
   TIM_OCInitTypeDef  TIM_OCInitStructure;
 
-  uint16_t TIM_Prescaler = (uint16_t)(SystemCoreClock / 1000000) - 1;//TIM Counter clock = 1MHz
-  uint16_t TIM_CCR = (uint16_t)(1000000 / (2 * frequency));
+  uint16_t TIM_Prescaler = (uint16_t)(SystemCoreClock / TONE_TIM_COUNTER_CLOCK_FREQ) - 1;
+  uint16_t TIM_CCR = (uint16_t)(TONE_TIM_COUNTER_CLOCK_FREQ / (2 * frequency));
   int32_t timer_channel_toggle_count = -1;
 
   // Calculate the toggle count
@@ -167,6 +173,49 @@ void HAL_Tone_Stop(uint8_t pin)
   TIM_CCxCmd(PIN_MAP[pin].timer_peripheral, PIN_MAP[pin].timer_ch, TIM_CCx_Disable);
   PIN_MAP[pin].timer_ccr = 0;
   PIN_MAP[pin].user_property = 0;
+}
+
+//HAL_Tone_Get_Frequency() should be called immediately after calling tone()
+//"only" useful for unit-testing
+uint32_t HAL_Tone_Get_Frequency(uint8_t pin)
+{
+    uint16_t TIM_CCR = 0;
+    uint16_t Tone_Frequency = 0;
+
+    if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
+    {
+        TIM_CCR = PIN_MAP[pin].timer_peripheral->CCR1;
+    }
+    else if(PIN_MAP[pin].timer_ch == TIM_Channel_2)
+    {
+        TIM_CCR = PIN_MAP[pin].timer_peripheral->CCR2;
+    }
+    else if(PIN_MAP[pin].timer_ch == TIM_Channel_3)
+    {
+        TIM_CCR = PIN_MAP[pin].timer_peripheral->CCR3;
+    }
+    else if(PIN_MAP[pin].timer_ch == TIM_Channel_4)
+    {
+        TIM_CCR = PIN_MAP[pin].timer_peripheral->CCR4;
+    }
+    else
+    {
+        return Tone_Frequency;
+    }
+
+    Tone_Frequency = (uint16_t)(TONE_TIM_COUNTER_CLOCK_FREQ / TIM_CCR);
+
+    return Tone_Frequency;
+}
+
+bool HAL_Tone_Is_Stopped(uint8_t pin)
+{
+    if(PIN_MAP[pin].timer_ccr > 0)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 static void Tone_TIM2_Handler(void)

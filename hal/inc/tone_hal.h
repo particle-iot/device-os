@@ -44,6 +44,8 @@ extern "C" {
 
 void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration);
 void HAL_Tone_Stop(uint8_t pin);
+uint32_t HAL_Tone_Get_Frequency(uint8_t pin);
+bool HAL_Tone_Is_Stopped(uint8_t pin);
 
 #ifdef __cplusplus
 }
