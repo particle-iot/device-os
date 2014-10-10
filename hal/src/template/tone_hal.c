@@ -34,3 +34,12 @@ void HAL_Tone_Stop(uint8_t pin)
 {
 }
 
+uint32_t HAL_Tone_Get_Frequency(uint8_t pin)
+{
+    return 0;
+}
+
+bool HAL_Tone_Is_Stopped(uint8_t pin)
+{
+    return true;
+}
