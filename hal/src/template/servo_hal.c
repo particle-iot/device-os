@@ -50,3 +50,8 @@ uint16_t HAL_Servo_Read_Pulse_Width(uint16_t pin)
 {
     return 0;
 }
+
+uint16_t HAL_Servo_Read_Frequency(uint16_t pin)
+{
+    return 0;
+}
