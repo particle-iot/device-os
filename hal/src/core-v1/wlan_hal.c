@@ -105,7 +105,6 @@ void reverseIP(uint8_t* ip) {
     swap(ip, 1, 2);
 }
 
-
 void fixup_ipconfig(WLanConfig* config) {
     reverseIP(config->aucIP);
     reverseIP(config->aucSubnetMask);
@@ -210,7 +209,7 @@ uint8_t ping_report_num;
 
 int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
     int result = 0;
-    uint32_t pingIPAddr = remoteIP[0] << 24 | remoteIP[1] << 16 | remoteIP[2] << 8 | remoteIP[3];
+    uint32_t pingIPAddr = remoteIP[3] << 24 | remoteIP[2] << 16 | remoteIP[1] << 8 | remoteIP[0];
     unsigned long pingSize = 32UL;
     unsigned long pingTimeout = 500UL; // in milliseconds
 
