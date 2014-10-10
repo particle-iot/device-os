@@ -41,13 +41,13 @@ Download and install Git: http://git-scm.com/
 ## 2. Download and Build Repositories
 
 The entire Spark Core firmware is contained in this repository. 
-The main firmware is located under the *main/* directory, while the supporting 
-libraries are located in *platform/* and *communication/* subdirectories.
+The main firmware is located under the `main/` directory, while the supporting 
+libraries are located in `platform/` and `communication/` subdirectories.
 
 #### How do we *download* this repositories?
 You can access all of the repositories via any git interface or download it directly from the website.
 
-*Method 1: Through the git command line interface.*  
+**Method 1:** Through the git command line interface.
 
 Open up a terminal window, navigate to your destination directory and type the following commands:
 
@@ -55,7 +55,7 @@ Open up a terminal window, navigate to your destination directory and type the f
 
 * `git clone https://github.com/spark/firmware.git`  
 
-*Meathod 2: Download the zipped files directly from the Spark's GitHub website*
+**Method 2:** Download the zipped files directly from the Spark's GitHub website
 
 * [firmware](https://github.com/spark/firmware/archive/master.zip)
 
@@ -64,7 +64,7 @@ Open up a terminal window, navigate to your destination directory and type the f
 Make sure you have downloaded and installed all the required dependencies as mentioned [previously.](#1-download-and-install-dependencies). Note, if you've downloaded or cloned these previously, you'll want to `git pull` or redownload all of them before proceeding.
 
 Open up a terminal window, navigate to the build folder under firmware
-(i.e. `cd firmware/wiring/build`) and type:
+(i.e. `cd firmware/main`) and type:
 
     make
 
@@ -72,14 +72,18 @@ This will build your main application (`firmware/main/src/application.cpp`) and 
 
 *For example:* `D:\Spark\firmware\main [master]> make`
 
+You won't see any verbose compiler output for about 10 seconds or so since verbose output is disabled by default and can be enabled with the `v=1` switch.
+
+*For example:* `D:\Spark\firmware\main [master]> make v=1`
+
 ##### Common Errors
 
 * `arm-none-eabi-gcc` and other required gcc/arm binaries not in the PATH.
   Solution: Add the /bin folder to your $PATH (i.e. `export PATH="$PATH:<SOME_GCC_ARM_DIR>/bin`).
   Google "Add binary to PATH" for more details.
 
-* You get `make: *** No targets specified and no makefile found.  Stop.`.
-  Solution: `cd firmware/main`.
+* You get `make: *** No targets specified and no makefile found.  Stop.`
+  Solution: `cd firmware/main`
 
 Please issue a pull request if you come across similar issues/fixes that trip you up.
 
@@ -90,7 +94,7 @@ All of the top-level directories are sub divided into functional folders:
 1. `/src` holds all the source code files
 2. `/inc` holds all the header files
 
-The compiled `.bin` and `.hex` files appear under `build/target/prod-N/main/`.
+The compiled `.bin` and `.hex` files appear under `build/target/main/prod-N/`
 
 ## 3. Edit and Rebuild
 
@@ -110,7 +114,7 @@ Its now time to transfer your code to the Spark Core! You can always do this usi
 *Make sure you have the `dfu-util` command installed and available through the command line*
 
 #### Steps:
-1. Put you Core into the DFU mode by holding down the MODE button on the Core and then tapping on the RESET button once. Release the MODE button after you start to see the RGB LED flashing in yellow. It's easy to get this one wrong: Make sure you don't let go of the left button until you see flashing yellow, about 3 seconds after you release the right/RESET button. A flash of white then flashing green can happen when you get this wrong. You want flashing yellow.
+1. Put your Core into the DFU mode by holding down the MODE button on the Core and then tapping on the RESET button once. Release the MODE button after you start to see the RGB LED flashing in yellow. It's easy to get this one wrong: Make sure you don't let go of the MODE button until you see flashing yellow, about 3 seconds after you release the RESET button. A flash of white then flashing green can happen when you get this wrong. You want flashing yellow.
 
 2. Open up a terminal window on your computer and type this command to find out if the Core indeed being detected correctly. 
 
