@@ -46,6 +46,7 @@ void HAL_Servo_Attach(uint16_t pin);
 void HAL_Servo_Detach(uint16_t pin);
 void HAL_Servo_Write_Pulse_Width(uint16_t pin, uint16_t pulseWidth);
 uint16_t HAL_Servo_Read_Pulse_Width(uint16_t pin);
+uint16_t HAL_Servo_Read_Frequency(uint16_t pin);
 
 #ifdef __cplusplus
 }

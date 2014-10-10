@@ -31,9 +31,8 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#define SERVO_TIM_PWM_FREQ      50                                                                                      //20ms = 50Hz
-#define SERVO_TIM_PRESCALER     (uint16_t)(SystemCoreClock / 1000000) - 1               //To get TIM counter clock = 1MHz
-#define SERVO_TIM_ARR           (uint16_t)(1000000 / SERVO_TIM_PWM_FREQ) - 1    //To get PWM period = 20ms
+#define SERVO_TIM_PRESCALER     (uint16_t)(SystemCoreClock / SERVO_TIM_PWM_COUNTER_CLOCK) - 1      //To get TIM counter clock = 1MHz
+#define SERVO_TIM_ARR           (uint16_t)(SERVO_TIM_PWM_COUNTER_CLOCK / SERVO_TIM_PWM_FREQ) - 1   //To get PWM period = 20ms
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -161,4 +160,31 @@ uint16_t HAL_Servo_Read_Pulse_Width(uint16_t pin)
 
   //pulseWidth = (SERVO_TIM_CCR * 1000000) / ((SERVO_TIM_ARR + 1) * SERVO_TIM_PWM_FREQ);
   return SERVO_TIM_CCR;
+}
+
+uint16_t HAL_Servo_Read_Frequency(uint16_t pin)
+{
+    uint16_t TIM_ARR = 0;
+    uint16_t Servo_Frequency = 0;
+
+    if(PIN_MAP[pin].timer_peripheral == TIM2)
+    {
+        TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
+    }
+    else if(PIN_MAP[pin].timer_peripheral == TIM3)
+    {
+        TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
+    }
+    else if(PIN_MAP[pin].timer_peripheral == TIM4)
+    {
+        TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
+    }
+    else
+    {
+        return Servo_Frequency;
+    }
+
+    Servo_Frequency = (uint16_t)(SERVO_TIM_PWM_COUNTER_CLOCK / (TIM_ARR + 1));
+
+    return Servo_Frequency;
 }

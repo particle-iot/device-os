@@ -130,6 +130,9 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
 #define TIM_PWM_COUNTER_CLOCK_FREQ 24000000 //TIM Counter clock = 24MHz
 #define TIM_PWM_FREQ 500 //500Hz
 
+#define SERVO_TIM_PWM_COUNTER_CLOCK 1000000 //TIM Counter clock = 1MHz
+#define SERVO_TIM_PWM_FREQ 50//50Hz                                                                                      //20ms = 50Hz
+
 #define LSBFIRST 0
 #define MSBFIRST 1
 
