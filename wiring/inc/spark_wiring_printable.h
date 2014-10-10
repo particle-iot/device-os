@@ -27,6 +27,8 @@
 #ifndef __SPARK_WIRING_PRINTABLE_H
 #define __SPARK_WIRING_PRINTABLE_H
 
+#include <cstddef>
+
 class Print;
 
 /** The Printable class provides a way for new classes to allow themselves to be printed.

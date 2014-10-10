@@ -1,3 +1,4 @@
+#include "spark_wiring_constants.h"
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include <array>

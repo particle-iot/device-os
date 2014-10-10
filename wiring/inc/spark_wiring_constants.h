@@ -27,6 +27,7 @@
 #ifndef SPARK_WIRING_CONSTANTS_H
 #define	SPARK_WIRING_CONSTANTS_H
 
+#include <stdint.h>
 
 /*
 * Basic variables

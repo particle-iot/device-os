@@ -31,6 +31,7 @@
 #include "wlan_hal.h"
 #include "delay_hal.h"
 #include "rgbled.h"
+#include "spark_wiring_wifi.h"
 
 using namespace spark;
 

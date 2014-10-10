@@ -25,6 +25,8 @@
  */
 
 #include "spark_wiring_ipaddress.h"
+#include "spark_wiring_print.h"
+#include "string.h"
 
 IPAddress::IPAddress()
 {

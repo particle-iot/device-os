@@ -16,6 +16,7 @@ SRC_ROOT=../../../
 # location of this folder relative to the root
 SRC_PATH=main/tests/unit/
 WIRING=wiring/
+HAL=hal/
 WIRING_SRC=$(WIRING)src/
 
 TARGETDIR=obj/
@@ -36,6 +37,8 @@ target_files = $(patsubst $(SRC_ROOT)%,%,$(call rwildcard,$(SRC_ROOT)$1,$2))
 CPPSRC += $(call target_files,$(SRC_PATH),*.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_random.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_string.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_ipaddress.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_print.cpp)
 
 
 # Paths to dependent projects, referenced from root of this project
@@ -49,6 +52,7 @@ CSRC += $(call target_files,$(LIB_SERVICES)src,rgbled.c)
 # encapsulated by their owning repo
 INCLUDE_DIRS += $(LIB_SERVICES)inc
 INCLUDE_DIRS += $(WIRING)inc
+INCLUDE_DIRS += $(HAL)shared
 
 CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -Wall
