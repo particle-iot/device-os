@@ -118,3 +118,7 @@ void HAL_I2C1_EV_Handler(void)
 void HAL_I2C1_ER_Handler(void)
 {
 }
+
+void HAL_I2C_Enable_DMA_Mode(bool enable)
+{
+}

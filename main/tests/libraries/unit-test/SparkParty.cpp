@@ -1,8 +1,36 @@
 #include "application.h"
 #include "unit-test.h"
-#include "flashee-eeprom.h"
 #include "rgbled.h"
 
+#ifdef SPARK_PLATFORM
+#include "flashee-eeprom.h"
+
+typedef void (*BufferFullCallback)();
+
+
+class CircularBufferPrint : public Print {
+    Flashee::CircularBuffer& buffer;
+    BufferFullCallback callback;
+public:
+    
+    CircularBufferPrint(Flashee::CircularBuffer& _buffer, BufferFullCallback _callback) 
+    : buffer(_buffer), callback(_callback) {}
+    
+    virtual size_t write(uint8_t w) {
+        return write(&w, 1);
+    }
+    
+    virtual size_t write(const uint8_t *data, size_t size) {
+        // all or nothing write. Here we are assuming the buffer is much larger than
+        // individual writes, and that the callback will help flush the buffer.
+        while (!buffer.write(data, size)) {
+            callback();
+        }
+        return size;
+    }    
+    
+};
+#endif
 
 /**
  * A tee - allows print output to be directed to two places at once.
@@ -29,31 +57,6 @@ public:
     }    
 };
 
-typedef void (*BufferFullCallback)();
-
-class CircularBufferPrint : public Print {
-    Flashee::CircularBuffer& buffer;
-    BufferFullCallback callback;
-public:
-    
-    CircularBufferPrint(Flashee::CircularBuffer& _buffer, BufferFullCallback _callback) 
-    : buffer(_buffer), callback(_callback) {}
-    
-    virtual size_t write(uint8_t w) {
-        return write(&w, 1);
-    }
-    
-    virtual size_t write(const uint8_t *data, size_t size) {
-        // all or nothing write. Here we are assuming the buffer is much larger than
-        // individual writes, and that the callback will help flush the buffer.
-        while (!buffer.write(data, size)) {
-            callback();
-        }
-        return size;
-    }    
-    
-};
-
 
 
 SparkTestRunner _runner;
@@ -61,8 +64,11 @@ SparkTestRunner _runner;
 bool requestStart = false;
 bool _enterDFU = false;
 
+#ifdef SPARK_PLATFORM
 Flashee::CircularBuffer* log;
 PrintTee* tee;
+#endif
+
 uint8_t buf[601];
 
 /**
@@ -71,6 +77,7 @@ uint8_t buf[601];
 void unit_test_setup()
 {
     Serial.begin(9600);    
+#ifdef SPARK_PLATFORM
     Flashee::FlashDevice& store = Flashee::Devices::userFlash();
     // 64k should be plenty for anyone.
     int pageSize = store.pageSize();
@@ -80,6 +87,9 @@ void unit_test_setup()
     // direct output to Serial and to the circular buffer
     tee = new PrintTee(*Test::out, *new CircularBufferPrint(*log, SPARK_WLAN_Loop));
     Test::out = tee;
+#else
+    Test::out = &Serial;
+#endif    
     Spark.variable("log", buf, STRING);
     _runner.begin();
 }
@@ -131,12 +141,16 @@ int SparkTestRunner::testStatusColor() {
  * Returns the number of bytes of data available in the variable
  */
 int advanceLog() {
+#if SPARK_PLATFORM
     int end = sizeof(buf)-1;
     int read = log->read_soft(buf, end);
     buf[read] = 0;  // terminate string
     if (!read && _runner.isComplete())
         read = -1;  // end of stream.
     return read;
+#else
+    return -1;
+#endif    
 }
 
 int testCmd(String arg) {

@@ -46,6 +46,8 @@ PLATFORM_MCU=gcc
 PLATFORM_NET=gcc
 ARCH=gcc
 PRODUCT_DESC=GCC xcompile
+# explicitly exclude platform headers
+SPARK_NO_PLATFORM=1
 endif
 
 ifeq ("$(SPARK_PRODUCT_ID)","4")

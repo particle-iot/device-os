@@ -5,6 +5,8 @@ BUILD_PATH_EXT = prod-$(SPARK_PRODUCT_ID)$(MAIN_FLAVOR)
 
 DEPENDENCIES = wiring services communication hal
 
+include ../build/product-id.mk
+
 ifeq ("","$(SPARK_NO_PLATFORM)")
 DEPENDENCIES += platform
 CFLAGS += -DSPARK_PLATFORM
@@ -13,7 +15,6 @@ endif
 MAKE_DEPENDENCIES = $(DEPENDENCIES)
 LIBS += $(DEPENDENCIES)
 
-include ../build/product-id.mk
 
 # Target this makefile is building.
 ifeq ("$(ARCH)","gcc")
