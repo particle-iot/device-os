@@ -175,19 +175,19 @@ bool RGBClass::_control = false;
 
 bool RGBClass::controlled(void)
 {
-	return _control;
+    return _control;
 }
 
 void RGBClass::control(bool override)
 {
-	if(override == _control)
-		return;
-	else if (override)
-		LED_Signaling_Start();
-	else
-		LED_Signaling_Stop();
+    if(override == _control)
+            return;
+    else if (override)
+            LED_Signaling_Start();
+    else
+            LED_Signaling_Stop();
 
-	_control = override;
+    _control = override;
 }
 
 void RGBClass::color(uint32_t rgb) {
@@ -196,16 +196,16 @@ void RGBClass::color(uint32_t rgb) {
 
 void RGBClass::color(int red, int green, int blue)
 {
-        if (true != _control)
-                return;
+    if (true != _control)
+            return;
 
-        LED_SetSignalingColor(red << 16 | green << 8 | blue);
-        LED_On(LED_RGB);
+    LED_SetSignalingColor(red << 16 | green << 8 | blue);
+    LED_On(LED_RGB);
 }
 
 void RGBClass::brightness(uint8_t brightness, bool update)
 {
-	LED_SetBrightness(brightness);
+    LED_SetBrightness(brightness);
     if (_control && update)
         LED_On(LED_RGB);
 }
