@@ -11,7 +11,7 @@ include $(COMMON_BUILD)/verbose.mk
 rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 target_files = $(patsubst $(MODULE_PATH)/%,%,$(call rwildcard,$(MODULE_PATH)/$1,$2))
 
-# import this modules symbols
+# import this module's symbols
 include $(MODULE_PATH)/import.mk
 
 include $(call rwildcard,$(MODULE_PATH)/,build.mk)
@@ -25,6 +25,10 @@ ifeq ("$(DEBUG_BUILD)","y")
 CFLAGS += -DDEBUG_BUILD
 else
 CFLAGS += -DRELEASE_BUILD
+endif
+
+ifdef SPARK_TEST_DRIVER
+CFLAGS += -DSPARK_TEST_DRIVER=$(SPARK_TEST_DRIVER)
 endif
 
 # add include directories

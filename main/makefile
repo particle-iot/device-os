@@ -1,7 +1,7 @@
 MODULE=main
 MAIN_MODULE_PATH=.
 
-BUILD_PATH_EXT = prod-$(SPARK_PRODUCT_ID)
+BUILD_PATH_EXT = prod-$(SPARK_PRODUCT_ID)$(MAIN_FLAVOR)
 
 DEPENDENCIES = wiring services communication hal
 

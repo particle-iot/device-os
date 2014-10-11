@@ -44,7 +44,7 @@ function excluding() {
 }
 
 function enum_platforms() {
-  enum_dirs excluding "libraries|unit" $@ 
+  enum_dirs excluding "libraries|unit|reflection" $@ 
 }
 
 function enum_suites() {
