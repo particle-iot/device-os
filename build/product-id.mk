@@ -1,8 +1,15 @@
 
+# defines 
+# PLATFORM_NAME - a unique name for the platform, can be used to organise sources
+#                 by platform
+# PLATFORM_MCU  - an identifier for the MCU family
+# STM32_DEVICE  - the specific device being targeted for STM32 platform builds
+# PLATFORM_NET  - the network subsystem
+# ARCH		- architecture (ARM/GCC)
+# PRODUCT_DESC  - text description of the product ID
 
 ifndef SPARK_PRODUCT_ID
 SPARK_PRODUCT_ID=0
-#$(info SPARK_PRODUCT_ID not set, assuming 0)
 endif
 
 # Determine which is the target device
@@ -22,6 +29,7 @@ STM32_DEVICE=STM32F10X_MD
 PLATFORM_NAME=core-v1
 PLATFORM_MCU=STM32F1xx
 PLATFORM_NET=CC3000
+PRODUCT_DESC=Teacup Pigtail
 endif
 
 ifeq ("$(SPARK_PRODUCT_ID)","2")
