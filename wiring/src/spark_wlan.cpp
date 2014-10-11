@@ -68,10 +68,18 @@ unsigned char _auth = WLAN_SEC_WPA2;
 
 unsigned char wlan_profile_index;
 
+bool defaultSparkCloudConnected() {
+#ifndef SPARK_NO_CLOUD
+    return true;
+#else
+    return false;
+#endif
+}
+
 volatile uint8_t SPARK_WLAN_RESET;
 volatile uint8_t SPARK_WLAN_SLEEP;
 volatile uint8_t SPARK_WLAN_STARTED;
-volatile uint8_t SPARK_CLOUD_CONNECT = 1; //default is AUTOMATIC mode
+volatile uint8_t SPARK_CLOUD_CONNECT = defaultSparkCloudConnected();
 volatile uint8_t SPARK_CLOUD_SOCKETED;
 volatile uint8_t SPARK_CLOUD_CONNECTED;
 volatile uint8_t SPARK_FLASH_UPDATE;
@@ -102,66 +110,66 @@ void wifi_add_profile_callback(const char *ssid,
  *******************************************************************************/
 void Start_Smart_Config(void)
 {
-	WLAN_SMART_CONFIG_FINISHED = 0;
-	WLAN_SMART_CONFIG_STOP = 0;
-	WLAN_SERIAL_CONFIG_DONE = 0;
-	WLAN_CONNECTED = 0;
-	WLAN_DHCP = 0;
-	WLAN_CAN_SHUTDOWN = 0;
+    WLAN_SMART_CONFIG_FINISHED = 0;
+    WLAN_SMART_CONFIG_STOP = 0;
+    WLAN_SERIAL_CONFIG_DONE = 0;
+    WLAN_CONNECTED = 0;
+    WLAN_DHCP = 0;
+    WLAN_CAN_SHUTDOWN = 0;
 
-	SPARK_CLOUD_SOCKETED = 0;
-	SPARK_CLOUD_CONNECTED = 0;
-	SPARK_FLASH_UPDATE = 0;
-	SPARK_LED_FADE = 0;
+    SPARK_CLOUD_SOCKETED = 0;
+    SPARK_CLOUD_CONNECTED = 0;
+    SPARK_FLASH_UPDATE = 0;
+    SPARK_LED_FADE = 0;
 
-	LED_SetRGBColor(RGB_COLOR_BLUE);
-	LED_On(LED_RGB);
+    LED_SetRGBColor(RGB_COLOR_BLUE);
+    LED_On(LED_RGB);
 
-	/* If WiFi module is connected, disconnect it */
-	WiFi.disconnect();
+    /* If WiFi module is connected, disconnect it */
+    WiFi.disconnect();
 
-	/* If WiFi module is powered off, turn it on */
-	WiFi.on();
+    /* If WiFi module is powered off, turn it on */
+    WiFi.on();
 
-	wlan_smart_config_init();
+    wlan_smart_config_init();
 
-	WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
+    WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
 
-	/* Wait for SmartConfig/SerialConfig to finish */
-	while (WiFi.listening())
-	{
-		if(WLAN_DELETE_PROFILES)
-		{
-			int toggle = 25;
-			while(toggle--)
-			{
-				LED_Toggle(LED_RGB);
-				HAL_Delay_Milliseconds(50);
-			}
-			WiFi.clearCredentials();
-			WLAN_DELETE_PROFILES = 0;
-		}
-		else
-		{
-			LED_Toggle(LED_RGB);
-			HAL_Delay_Milliseconds(250);
-			wifi_creds_reader.read();
-		}
-	}
+    /* Wait for SmartConfig/SerialConfig to finish */
+    while (WiFi.listening())
+    {
+            if(WLAN_DELETE_PROFILES)
+            {
+                    int toggle = 25;
+                    while(toggle--)
+                    {
+                            LED_Toggle(LED_RGB);
+                            HAL_Delay_Milliseconds(50);
+                    }
+                    WiFi.clearCredentials();
+                    WLAN_DELETE_PROFILES = 0;
+            }
+            else
+            {
+                    LED_Toggle(LED_RGB);
+                    HAL_Delay_Milliseconds(250);
+                    wifi_creds_reader.read();
+            }
+    }
 
-	LED_On(LED_RGB);
+    LED_On(LED_RGB);
 
     wlan_smart_config_finalize();
     
-	if(WLAN_SMART_CONFIG_FINISHED)
-	{
-		/* Decrypt configuration information and add profile */
-		SPARK_WLAN_SmartConfigProcess();
-	}
+    if(WLAN_SMART_CONFIG_FINISHED)
+    {
+            /* Decrypt configuration information and add profile */
+            SPARK_WLAN_SmartConfigProcess();
+    }
 
-	WiFi.connect();
+    WiFi.connect();
 
-	WLAN_SMART_CONFIG_START = 0;
+    WLAN_SMART_CONFIG_START = 0;
 }
 
 
@@ -183,201 +191,205 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 
 void SPARK_WLAN_Loop(void)
 {
-  static int cfod_count = 0;
-  HAL_Notify_WDT();
+#ifndef SPARK_NO_CLOUD
+    static int cfod_count = 0;
+#endif    
+    HAL_Notify_WDT();
 
-  ON_EVENT_DELTA();
-  spark_loop_total_millis = 0;
+    ON_EVENT_DELTA();
+    spark_loop_total_millis = 0;
 
-  if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || WLAN_WD_TO())
-  {
-    if (SPARK_WLAN_STARTED)
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || WLAN_WD_TO())
     {
-      DEBUG("Resetting CC3000!");
-      CLR_WLAN_WD();
-      WLAN_CONNECTED = 0;
-      WLAN_DHCP = 0;
-      SPARK_WLAN_RESET = 0;
-      SPARK_WLAN_STARTED = 0;
-      SPARK_CLOUD_SOCKETED = 0;
-      SPARK_CLOUD_CONNECTED = 0;
-      SPARK_FLASH_UPDATE = 0;
-      Spark_Error_Count = 0;
-      cfod_count = 0;
-
-      WiFi.off();
+        if (SPARK_WLAN_STARTED)
+        {
+            DEBUG("Resetting CC3000!");
+            CLR_WLAN_WD();
+            WLAN_CONNECTED = 0;
+            WLAN_DHCP = 0;
+            SPARK_WLAN_RESET = 0;
+            SPARK_WLAN_STARTED = 0;
+            SPARK_CLOUD_SOCKETED = 0;
+            SPARK_CLOUD_CONNECTED = 0;
+            SPARK_FLASH_UPDATE = 0;
+            Spark_Error_Count = 0;
+#ifndef SPARK_NO_CLOUD
+            cfod_count = 0;
+#endif
+            WiFi.off();
+        }
     }
-  }
-  else
-  {
-    if (!SPARK_WLAN_STARTED)
+    else
     {
-      if (!WLAN_MANUAL_CONNECT && !WLAN_DISCONNECT)
-      {
-        ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
-      }
-      WiFi.connect();
+        if (!SPARK_WLAN_STARTED)
+        {
+            if (!WLAN_MANUAL_CONNECT && !WLAN_DISCONNECT)
+            {
+                ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
+            }
+            WiFi.connect();
+        }
     }
-  }
 
-  if (WLAN_SMART_CONFIG_START)
-  {
-    Start_Smart_Config();
-  }
-  else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
-  {
-    CLR_WLAN_WD();
-    WiFi.disconnect();
-    wlan_manual_connect();
-    WLAN_MANUAL_CONNECT = 0;
-  }
+    if (WLAN_SMART_CONFIG_START)
+    {
+        Start_Smart_Config();
+    }
+    else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
+    {
+        CLR_WLAN_WD();
+        WiFi.disconnect();
+        wlan_manual_connect();
+        WLAN_MANUAL_CONNECT = 0;
+    }
 
-  // Complete Smart Config Process:
-  // 1. if smart config is done
-  // 2. CC3000 established AP connection
-  // 3. DHCP IP is configured
-  // then send mDNS packet to stop external SmartConfig application
+    // Complete Smart Config Process:
+    // 1. if smart config is done
+    // 2. CC3000 established AP connection
+    // 3. DHCP IP is configured
+    // then send mDNS packet to stop external SmartConfig application
     if ((WLAN_SMART_CONFIG_STOP == 1) && (WLAN_DHCP == 1) && (WLAN_CONNECTED == 1))
     {
         wlan_smart_config_cleanup();
         WLAN_SMART_CONFIG_STOP = 0;
     }
 
-  if (WLAN_DHCP && !SPARK_WLAN_SLEEP)
-  {
-    if (ip_config.aucIP[0] == 0)
+    if (WLAN_DHCP && !SPARK_WLAN_SLEEP)
     {
-      HAL_Delay_Milliseconds(100);
-      wlan_fetch_ipconfig(&ip_config);
+        if (ip_config.aucIP[0] == 0)
+        {
+            HAL_Delay_Milliseconds(100);
+            wlan_fetch_ipconfig(&ip_config);
+        }
     }
-  }
-  else if (ip_config.aucIP[0] != 0)
-  {
-    memset(&ip_config, 0, sizeof(ip_config));
-  }
-
-  if (SPARK_CLOUD_CONNECT == 0)
-  {
-    if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
+    else if (ip_config.aucIP[0] != 0)
     {
-      Spark_Disconnect();
-
-      SPARK_FLASH_UPDATE = 0;
-      SPARK_CLOUD_CONNECTED = 0;
-      SPARK_CLOUD_SOCKETED = 0;
-
-      if(!WLAN_DISCONNECT)
-      {
-        LED_SetRGBColor(RGB_COLOR_GREEN);
-        LED_On(LED_RGB);
-      }
+        memset(&ip_config, 0, sizeof(ip_config));
     }
 
-    return;
-  }
-
-  if (WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
-  {
-    if (Spark_Error_Count)
+    if (SPARK_CLOUD_CONNECT == 0)
     {
-      LED_SetRGBColor(RGB_COLOR_RED);
+        if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
+        {
+            Spark_Disconnect();
 
-      while (Spark_Error_Count != 0)
-      {
-        LED_On(LED_RGB);
-        HAL_Delay_Milliseconds(500);
-        LED_Off(LED_RGB);
-        HAL_Delay_Milliseconds(500);
-        Spark_Error_Count--;
-      }
+            SPARK_FLASH_UPDATE = 0;
+            SPARK_CLOUD_CONNECTED = 0;
+            SPARK_CLOUD_SOCKETED = 0;
 
-      // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
+            if(!WLAN_DISCONNECT)
+            {
+                LED_SetRGBColor(RGB_COLOR_GREEN);
+                LED_On(LED_RGB);
+            }
+        }
 
-      // Reset Error Count
-      wlan_clear_error_count();
-    }
-
-    SPARK_LED_FADE = 0;
-    LED_SetRGBColor(RGB_COLOR_CYAN);
-    LED_On(LED_RGB);
-
-    if (Spark_Connect() >= 0)
-    {
-      cfod_count  = 0;
-      SPARK_CLOUD_SOCKETED = 1;
-    }
-    else
-    {
-      if (SPARK_WLAN_RESET)
-      {
         return;
-      }
-
-      if ((cfod_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
-      {
-        SPARK_WLAN_RESET = RESET_ON_CFOD;
-        ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
-      }
-
-      if (Internet_Test() < 0)
-      {
-        // No Internet Connection
-        if ((cfod_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
-        {
-          SPARK_WLAN_RESET = RESET_ON_CFOD;
-          ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
-        }
-
-        Spark_Error_Count = 2;
-      }
-      else
-      {
-        // Cloud not Reachable
-        Spark_Error_Count = 3;
-      }
-
-      wlan_set_error_count(Spark_Error_Count);
-      SPARK_CLOUD_SOCKETED = 0;
     }
-  }
 
-  if (SPARK_CLOUD_SOCKETED)
-  {
-    if (!SPARK_CLOUD_CONNECTED)
+    if (WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
     {
-      int err = Spark_Handshake();
+        if (Spark_Error_Count)
+        {
+            LED_SetRGBColor(RGB_COLOR_RED);
 
-      if (err)
-      {
-        if (0 > err)
-        {
-          // Wrong key error, red
-          LED_SetRGBColor(RGB_COLOR_RED);
-        }
-        else if (1 == err)
-        {
-          // RSA decryption error, orange
-          LED_SetRGBColor(RGB_COLOR_ORANGE);
-        }
-        else if (2 == err)
-        {
-          // RSA signature verification error, magenta
-          LED_SetRGBColor(RGB_COLOR_MAGENTA);
+            while (Spark_Error_Count != 0)
+            {
+                LED_On(LED_RGB);
+                HAL_Delay_Milliseconds(500);
+                LED_Off(LED_RGB);
+                HAL_Delay_Milliseconds(500);
+                Spark_Error_Count--;
+            }
+
+            // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
+
+            // Reset Error Count
+            wlan_clear_error_count();
         }
 
+#ifndef SPARK_NO_CLOUD
+        SPARK_LED_FADE = 0;
+        LED_SetRGBColor(RGB_COLOR_CYAN);
         LED_On(LED_RGB);
-      }
-      else
-      {
-        SPARK_CLOUD_CONNECTED = 1;
-      }
-    }
+        
+        if (Spark_Connect() >= 0)
+        {
+            cfod_count  = 0;
+            SPARK_CLOUD_SOCKETED = 1;
+        }
+        else
+        {
+            if (SPARK_WLAN_RESET)
+            {
+                return;
+            }
 
-    if(SPARK_FLASH_UPDATE || System.mode() != MANUAL)
-    {
-      Spark.process();
+            if ((cfod_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
+            {
+                SPARK_WLAN_RESET = RESET_ON_CFOD;
+                ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
+            }
+
+            if (Internet_Test() < 0)
+            {
+                // No Internet Connection
+                if ((cfod_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
+                {
+                    SPARK_WLAN_RESET = RESET_ON_CFOD;
+                    ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
+                }
+
+                Spark_Error_Count = 2;
+            }
+            else
+            {
+                // Cloud not Reachable
+                Spark_Error_Count = 3;
+            }
+
+            wlan_set_error_count(Spark_Error_Count);
+            SPARK_CLOUD_SOCKETED = 0;
+        }
+#endif
     }
-  }
+    
+    if (SPARK_CLOUD_SOCKETED)
+    {
+        if (!SPARK_CLOUD_CONNECTED)
+        {
+            int err = Spark_Handshake();
+
+            if (err)
+            {
+                if (0 > err)
+                {
+                  // Wrong key error, red
+                  LED_SetRGBColor(RGB_COLOR_RED);
+                }
+                else if (1 == err)
+                {
+                  // RSA decryption error, orange
+                  LED_SetRGBColor(RGB_COLOR_ORANGE);
+                }
+                else if (2 == err)
+                {
+                  // RSA signature verification error, magenta
+                  LED_SetRGBColor(RGB_COLOR_MAGENTA);
+                }
+                LED_On(LED_RGB);
+            }
+            else
+            {
+              SPARK_CLOUD_CONNECTED = 1;
+            }
+        }
+
+        if(SPARK_FLASH_UPDATE || System.mode() != MANUAL)
+        {
+            Spark.process();
+        }
+    }
 }
 
 void HAL_WLAN_notify_simple_config_done() 
@@ -434,7 +446,7 @@ void HAL_WLAN_notify_can_shutdown()
 
 void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
 {
-    if (socket==sparkSocket) {
+    if (Spark_IsSparkSocket(socket)) {    
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;

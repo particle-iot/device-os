@@ -68,10 +68,12 @@ extern "C" void HAL_SysTick_Handler(void)
 {
     if (LED_RGB_IsOverRidden())
     {
+#ifndef SPARK_NO_CLOUD
         if ((LED_Spark_Signal != 0) && (NULL != LED_Signaling_Override))
         {
-            LED_Signaling_Override();
+            LED_Signaling_Override();            
         }
+#endif        
     }
     else if (TimingLED != 0x00)
     {
@@ -107,6 +109,7 @@ extern "C" void HAL_SysTick_Handler(void)
     }
     else if(SPARK_FLASH_UPDATE)
     {
+#ifndef SPARK_NO_CLOUD        
         if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
         {
             //Reset is the only way now to recover from stuck OTA update
@@ -116,6 +119,7 @@ extern "C" void HAL_SysTick_Handler(void)
         {
             TimingFlashUpdateTimeout++;
         }
+#endif        
     }
     else if(!WLAN_SMART_CONFIG_START && HAL_Core_Mode_Button_Pressed(3000))
     {

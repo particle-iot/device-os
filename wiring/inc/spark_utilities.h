@@ -28,6 +28,7 @@
 #define __SPARK_UTILITIES_H
 
 #include "rtc_hal.h"
+#include "socket_hal.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_time.h"
 #include "spark_wiring_interrupts.h"
@@ -57,12 +58,12 @@
 
 typedef enum
 {
-  AUTOMATIC = 0, SEMI_AUTOMATIC = 1, MANUAL = 2
+    AUTOMATIC = 0, SEMI_AUTOMATIC = 1, MANUAL = 2
 } System_Mode_TypeDef;
 
 typedef enum
 {
-	SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1
+    SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1
 } Spark_Sleep_TypeDef;
 
 typedef enum
@@ -84,17 +85,17 @@ class Stream;
 
 class SystemClass {
 private:
-  static System_Mode_TypeDef _mode;
+    static System_Mode_TypeDef _mode;
 
 public:
-  SystemClass();
-  SystemClass(System_Mode_TypeDef mode);
-  static System_Mode_TypeDef mode(void);
-  static void serialSaveFile(Stream *serialObj, uint32_t sFlashAddress);
-  static void serialFirmwareUpdate(Stream *serialObj);
-  static void factoryReset(void);
-  static void bootloader(void);
-  static void reset(void);
+    SystemClass();
+    SystemClass(System_Mode_TypeDef mode);
+    static System_Mode_TypeDef mode(void);
+    static void serialSaveFile(Stream *serialObj, uint32_t sFlashAddress);
+    static void serialFirmwareUpdate(Stream *serialObj);
+    static void factoryReset(void);
+    static void bootloader(void);
+    static void reset(void);
 };
 
 class RGBClass {
@@ -110,32 +111,32 @@ public:
 
 class SparkClass {
 public:
-	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
-	static void function(const char *funcKey, int (*pFunc)(String paramString));
-	static void publish(const char *eventName);
-	static void publish(const char *eventName, const char *eventData);
-	static void publish(const char *eventName, const char *eventData, int ttl);
-	static void publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType);
-	static void publish(String eventName);
-	static void publish(String eventName, String eventData);
-	static void publish(String eventName, String eventData, int ttl);
-	static void publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType);
-	static bool subscribe(const char *eventName, EventHandler handler);
-	static bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope);
-	static bool subscribe(const char *eventName, EventHandler handler, const char *deviceID);
-	static bool subscribe(String eventName, EventHandler handler);
-	static bool subscribe(String eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope);
-	static bool subscribe(String eventName, EventHandler handler, String deviceID);
-	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
-	static void sleep(long seconds);
-	static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
-	static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
-	static bool connected(void);
-	static void connect(void);
-	static void disconnect(void);
-        static void process(void);
-	static String deviceID(void);
-	static void syncTime(void);
+    static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
+    static void function(const char *funcKey, int (*pFunc)(String paramString));
+    static void publish(const char *eventName);
+    static void publish(const char *eventName, const char *eventData);
+    static void publish(const char *eventName, const char *eventData, int ttl);
+    static void publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType);
+    static void publish(String eventName);
+    static void publish(String eventName, String eventData);
+    static void publish(String eventName, String eventData, int ttl);
+    static void publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType);
+    static bool subscribe(const char *eventName, EventHandler handler);
+    static bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope);
+    static bool subscribe(const char *eventName, EventHandler handler, const char *deviceID);
+    static bool subscribe(String eventName, EventHandler handler);
+    static bool subscribe(String eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope);
+    static bool subscribe(String eventName, EventHandler handler, String deviceID);
+    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
+    static void sleep(long seconds);
+    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
+    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
+    static bool connected(void);
+    static void connect(void);
+    static void disconnect(void);
+    static void process(void);
+    static String deviceID(void);
+    static void syncTime(void);
 };
 
 #define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
@@ -154,7 +155,7 @@ int Internet_Test(void);
 
 int Spark_Connect(void);
 int Spark_Disconnect(void);
-
+bool Spark_IsSparkSocket(sock_handle_t socket);
 void Spark_Protocol_Init(void);
 int Spark_Handshake(void);
 bool Spark_Communication_Loop(void);

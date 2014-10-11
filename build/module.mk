@@ -27,6 +27,12 @@ else
 CFLAGS += -DRELEASE_BUILD
 endif
 
+ifeq ("$(SPARK_CLOUD)","n") 
+CFLAGS += -DSPARK_NO_CLOUD
+endif
+
+
+
 # add include directories
 CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 # Generate dependency files automatically.
