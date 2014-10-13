@@ -14,3 +14,15 @@ test(SERIAL_ReadWriteSucceedsWithUserIntervention) {
     // then
     assertTrue(strncmp(test, message, 5)==0);
 }
+
+test(SERIAL1_ReadWriteSucceedsInLoopbackWithTxRxShorted) {
+    //The following code will test all the important USART Serial routines
+    char test[] = "hello";
+    char message[10];
+    // when
+    Serial1.begin(9600);
+    Serial1.println(test);
+    serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+    // then
+    assertTrue(strncmp(test, message, 5)==0);
+}
