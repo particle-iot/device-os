@@ -111,7 +111,7 @@ These can of course also be combined like so:
 make APP=myapp TARGET_DIR=myfolder/ TARGET_FILE=core-firmware
 ```
 
-## Integrated application with firmware
+## Integrated application.cpp with firmware
 
 In previous versions of the make system, the application code was integrated with the firmware code at `core-firmware/src/application.cpp`.
 This mode of building is still supported, however the location has changed to: `main/src/application.cpp` simply run `make`
@@ -121,6 +121,14 @@ make
 ```
 
 This will then build the firmware as before with the user code in `main/src/application.cpp`
+
+## Platform Specific vs Platform Agnostic builds
+
+Currently the low level hardware specific details are abstracted away in the HAL (Hardware Abstraction Layer) implementation.  By default the makefile will build for the Spark Core platform which will allow you to add direct hardware calls in your application firmware.  You should however try to make use of the HAL functions and methods instead of making direct hardware calls, which will ensure your code is more future proof!  To build the firmware as platform agnostic, first run `make clean`, then simply include `SPARK_NO_PLATFORM=y` in the make command.  This is also a great way to find all of the places in your code that make hardware specific calls, as they should generate an error when building as platform agnostic.
+
+```
+make APP=myapp SPARK_NO_PLATFORM=y
+```
 
 ## Build directory changes
 
