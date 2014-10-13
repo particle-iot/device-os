@@ -1,10 +1,21 @@
 ## v0.4.0
 
-### FEATURES
+### UNDER THE HOOD
 
  - Platform: hardware dependencies are factored out from wiring into a hardware abstraction layer
- - Repo: all 3 spark repos (core-common-lib, core-communication-lib, core-firmware) are combined into this repo
- - Modularization: factored common-lib into `platform`, `services` and `hal` modules.
+ - Repo: all 3 spark repos (core-common-lib, core-communication-lib, core-firmware) are combined into this repo. 
+ - Modularization: factored common-lib into `platform`, `services` and `hal` modules. 
+ - Modularization: factored core-firmware into `wiring` and `main` modules. 
+ - Build system: fancy shmancy new build system - [build/readme.md](build/readme.md)
+
+### ENHANCEMENTS
+
+ - loop() iteration rate increased by 1000 times - from 200 Hz to over 200 kHz!
+ - Compiler: Removed all warnings from the compile (and made warnings as errors) so compiler output is pristine!
+
+### BUGFIXES
+
+- SOS calling `Spark.publish()` in `SEMI_AUTOMATIC`/`MANUAL` mode
 
 
 ## v0.3.3
