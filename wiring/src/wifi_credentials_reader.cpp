@@ -102,7 +102,7 @@ void WiFiCredentialsReader::print(const char *s)
 
 void WiFiCredentialsReader::read_line(char *dst, int max_len)
 {
-    serialReadLine(&serial, dst, max_len);
+    serialReadLine(&serial, dst, max_len, 0);//no timeout
     print("\r\n");
     while (0 < serial.available())
       serial.read();

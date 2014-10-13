@@ -910,11 +910,19 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
 	return -1;
 }
 
-void serialReadLine(Stream *serialObj, char *dst, int max_len)
+void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t timeout)
 {
     char c = 0, i = 0;
+    system_tick_t last_millis = millis();
+
     while (1)
     {
+        if((timeout > 0) && ((millis()-last_millis) > timeout))
+        {
+            //Abort after a specified timeout
+            break;
+        }
+
         if (0 < serialObj->available())
         {
             c = serialObj->read();

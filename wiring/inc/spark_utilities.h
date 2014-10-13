@@ -171,7 +171,7 @@ int userVarType(const char *varKey);
 void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString);
 
-void serialReadLine(Stream *serialObj, char *dst, int max_len);
+void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t timeout);
 
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
