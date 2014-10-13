@@ -910,6 +910,45 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
 	return -1;
 }
 
+void serialReadLine(Stream *serialObj, char *dst, int max_len)
+{
+    char c = 0, i = 0;
+    while (1)
+    {
+        if (0 < serialObj->available())
+        {
+            c = serialObj->read();
+
+            if (i == max_len || c == '\r' || c == '\n')
+            {
+                *dst = '\0';
+                break;
+            }
+
+            if (c == 8 || c == 127)
+            {
+                //for backspace or delete
+                if (i > 0)
+                {
+                    --dst;
+                    --i;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                *dst++ = c;
+                ++i;
+            }
+
+            serialObj->write(c);
+        }
+    }
+}
+
 // Convert unsigned integer to ASCII in decimal base
 /*
 static unsigned char uitoa(unsigned int cNum, char *cString)
