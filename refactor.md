@@ -26,7 +26,3 @@ git merge -s recursive -Xsubtree=repodir repodir/feature-in-progress
 ```
 [source](http://saintgimp.org/2013/01/22/merging-two-git-repositories-into-one-repository-without-losing-file-history/)
 
-
-Todo:
-
-- reinstate travis-ci build

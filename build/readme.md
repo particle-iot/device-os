@@ -3,13 +3,11 @@ This root project folder contains the top-level makefile:
 > One Makefile to rule them all, One Makefile to find them; One ring to bring 
 > them all and in the darkness build them.
 
-## All of the following make commands should be run from the `main/` directory
-
 ```
 make
 ```
 
-This creates build artifacts for all projects under the `build/target/` directory.
+In the top-level directory creates build artifacts for all projects under the `build/target/` directory.
 
 ## Clean Build
 
@@ -32,8 +30,9 @@ make v=1
 
 ## Building individual modules
 
-Each module can be built on its own by executing the makefile in the module's directory. 
-In particular the firmware can be built by running make from the `main/` directory.
+The top-level makefile builds all modules. Also, each module can be built on its own 
+by executing the makefile in the module's directory. The make also builds any dependencies.
+This means the firmware can be built by running make from the `main/` directory.
 
 ```
 cd main
