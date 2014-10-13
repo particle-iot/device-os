@@ -23,7 +23,8 @@ startTests || die "Unable to start test suite"
 
 # fetch the test log concurrently as tests run
 echo Reading test log
-readTestLog > ${log_dir}/test_${platform}_${suite}.log || die "Unable to read test log"
+testLogFile=${log_dir}/test_${platform}_${suite}.log
+readTestLog > $(testLogFile) || die "Unable to read test log"
 
 echo Verifying test complete
 waitForState complete 60 || die "Test suite not complete"
@@ -37,6 +38,9 @@ readTestResult > $testResultFile || die "Unable to read test result"
 if [ "$failed" != "0" ]; then
   touch $testFailures
   echo "Yikes! Test $platform/$suite has FAILED."
+  echo "Test log follows:"
+  cat $(testLogFile)
+  cat $(testResultFile)
 else
   echo "Yey! Test $platform/$suite has passed!"
 fi

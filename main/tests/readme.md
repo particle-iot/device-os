@@ -49,4 +49,4 @@ test framework.
 
 ## Reflections tests
 
-Please see [reflection/readme.md](reflection/readme.md) there.
+Please see [reflection/readme.md](reflection/readme.md).
