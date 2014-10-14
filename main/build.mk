@@ -9,8 +9,6 @@ ifndef TARGET_FILE
 TARGET_FILE ?= $(notdir $(APP))
 TARGET_DIR ?= $(USRSRC)
 endif
-$(info "building $(APP) to $(TARGET_FILE)")
-
 endif
 
 ifdef TEST
