@@ -26,6 +26,14 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+/*
+ * ADC Test requires two 100k ohm resistors hooked up to the unit under test as follows:
+ *
+ *           R1 100k           R2 100k
+ * (3V3*) ---/\/\/\--- (A5) ---/\/\/\--- (GND)
+ *
+ */
+
 test(ADC_NoAnalogReadWhenPinSelectedIsOutOfRange) {
     pin_t pin = 23;//pin under test (not a valid user pin)
     // when

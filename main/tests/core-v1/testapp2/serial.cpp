@@ -26,6 +26,14 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+/*
+ * Serial Test requires TX to be jumpered to RX as follows:
+ *
+ *           WIRE
+ * (TX) --==========-- (RX)
+ *
+ */
+
 test(SERIAL_ReadWriteSucceedsWithUserIntervention) {
     //The following code will test all the important USB Serial routines
     char test[] = "hello";
