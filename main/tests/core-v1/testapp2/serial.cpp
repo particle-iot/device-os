@@ -24,13 +24,19 @@
  */
 
 #include "application.h"
+#include "Serial2/Serial2.h"
 #include "unit-test/unit-test.h"
 
 /*
- * Serial Test requires TX to be jumpered to RX as follows:
+ * Serial1 Test requires TX to be jumpered to RX as follows:
  *
  *           WIRE
  * (TX) --==========-- (RX)
+ *
+ * Serial2 Test requires D0 to be jumpered to D1 as follows:
+ *
+ *           WIRE
+ * (D0) --==========-- (D1)
  *
  */
 
@@ -48,13 +54,25 @@ test(SERIAL_ReadWriteSucceedsWithUserIntervention) {
 }
 
 test(SERIAL1_ReadWriteSucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial routines
+    //The following code will test all the important USART Serial1 routines
     char test[] = "hello";
     char message[10];
     // when
     Serial1.begin(9600);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+    // then
+    assertTrue(strncmp(test, message, 5)==0);
+}
+
+test(SERIAL2_ReadWriteSucceedsInLoopbackWithD0D1Shorted) {
+    //The following code will test all the important USART Serial2 routines
+    char test[] = "hello";
+    char message[10];
+    // when
+    Serial2.begin(9600);
+    Serial2.println(test);
+    serialReadLine(&Serial2, message, 9, 1000);//1 sec timeout
     // then
     assertTrue(strncmp(test, message, 5)==0);
 }
