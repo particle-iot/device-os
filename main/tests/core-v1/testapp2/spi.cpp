@@ -25,7 +25,6 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
-#include "spi_hal.h"
 
 /*
  * SPI Test requires Spark MicroSD Shield with FM25CL64B-G or MB85RS64A FRAM populated for U3,

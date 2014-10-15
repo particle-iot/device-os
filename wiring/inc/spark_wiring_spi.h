@@ -28,6 +28,7 @@
 #define __SPARK_WIRING_SPI_H
 
 #include "spark_wiring.h"
+#include "spi_hal.h"
 
 class SPIClass {
 public:

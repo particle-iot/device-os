@@ -25,7 +25,6 @@
  */
 
 #include "spark_wiring_spi.h"
-#include "spi_hal.h"
 
 SPIClass SPI;
 
