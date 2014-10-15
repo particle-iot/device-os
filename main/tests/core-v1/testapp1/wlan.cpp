@@ -41,7 +41,7 @@ test(WLAN_Ping_By_Hostname)
     assertEqual(count, tries);    
 }
 
-// todo - this doesn't work, eyt works fine cross compiled in the unit tests suite
+// todo - this doesn't work, it works fine cross compiled in the unit tests suite
 #if 0
 test(IPAddress_Construct_From_Uint32)
 {
