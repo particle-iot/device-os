@@ -27,7 +27,6 @@
 #include "spark_utilities.h"
 #include "spark_wiring.h"
 #include "spark_wiring_network.h"
-#include "spark_flasher_ymodem.h"
 #include "spark_wlan.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
@@ -35,6 +34,7 @@
 #include "deviceid_hal.h"
 #include "ota_flash_hal.h"
 #include "core_hal.h"
+#include "rgbled.h"
 #include "string.h"
 #include <stdarg.h>
 
@@ -129,27 +129,46 @@ System_Mode_TypeDef SystemClass::mode(void)
   return _mode;
 }
 
-void SystemClass::serialSaveFile(Stream *serialObj, uint32_t sFlashAddress)
+bool SystemClass::serialSaveFile(Stream *serialObj, uint32_t sFlashAddress)
 {
-  Serial_Flash_Update(serialObj, sFlashAddress);
-  SPARK_FLASH_UPDATE = 0;
-  TimingFlashUpdateTimeout = 0;
-}
+  bool status = false;
 
-void SystemClass::serialFirmwareUpdate(Stream *serialObj)
-{
-  bool status = Serial_Flash_Update(serialObj, HAL_OTA_FlashAddress());
-  if(status == true)
+  if(NULL != Ymodem_Serial_Flash_Update)
   {
-    serialObj->println("Restarting system to apply firmware update...");
-    delay(100);
-    HAL_FLASH_End();
-  }
-  else
-  {
+    status = Ymodem_Serial_Flash_Update(serialObj, sFlashAddress);
     SPARK_FLASH_UPDATE = 0;
     TimingFlashUpdateTimeout = 0;
   }
+
+  return status;
+}
+
+bool SystemClass::serialFirmwareUpdate(Stream *serialObj)
+{
+    bool status = false;
+
+    if(NULL != Ymodem_Serial_Flash_Update)
+    {
+        status = Ymodem_Serial_Flash_Update(serialObj, HAL_OTA_FlashAddress());
+        if(status == true)
+        {
+            serialObj->println("Restarting system to apply firmware update...");
+            delay(100);
+            HAL_FLASH_End();
+        }
+        else
+        {
+            SPARK_FLASH_UPDATE = 0;
+            TimingFlashUpdateTimeout = 0;
+        }
+    }
+    else
+    {
+        serialObj->println("Firmware update using this terminal is not supported!");
+        serialObj->println("Add #include \"YmodemUtil\\YmodemUtil.h\" to your sketch and try again.");
+    }
+
+    return status;
 }
 
 void SystemClass::factoryReset(void)

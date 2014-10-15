@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    spark_flasher_ymodem.cpp
+ * @file    Ymodem.h
  * @author  Satish Nair
  * @version V1.0.0
  * @date    28-July-2014
@@ -25,11 +25,42 @@
  ******************************************************************************
  */
 
-#include "spark_flasher_ymodem.h"
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __LIB_YMODEM_H
+#define __LIB_YMODEM_H
+
+#include "spark_wiring.h"
 #include "spark_wlan.h"
 #include "ota_flash_hal.h"
 
+#define PACKET_SEQNO_INDEX      (1)
+#define PACKET_SEQNO_COMP_INDEX (2)
 
+#define PACKET_HEADER           (3)
+#define PACKET_TRAILER          (2)
+#define PACKET_OVERHEAD         (PACKET_HEADER + PACKET_TRAILER)
+#define PACKET_SIZE             (128)
+#define PACKET_1K_SIZE          (1024)
+
+#define FILE_NAME_LENGTH        (256)
+#define FILE_SIZE_LENGTH        (16)
+
+#define SOH                     (0x01)  /* start of 128-byte data packet */
+#define STX                     (0x02)  /* start of 1024-byte data packet */
+#define EOT                     (0x04)  /* end of transmission */
+#define ACK                     (0x06)  /* acknowledge */
+#define NAK                     (0x15)  /* negative acknowledge */
+#define CA                      (0x18)  /* two of these in succession aborts transfer */
+#define CRC16                   (0x43)  /* 'C' == 0x43, request 16-bit CRC */
+
+#define ABORT1                  (0x41)  /* 'A' == 0x41, abort by user */
+#define ABORT2                  (0x61)  /* 'a' == 0x61, abort by user */
+
+#define NAK_TIMEOUT             (0x100000)
+#define MAX_ERRORS              (5)
+
+/* Constants used by Serial Command Line Mode */
+#define CMD_STRING_SIZE         128
 
 using namespace spark;
 
@@ -164,7 +195,7 @@ static int32_t Receive_Packet(Stream *serialObj, uint8_t *data, int32_t *length,
  * @param  buf: Address of the first byte
  * @retval The size of the file
  */
-int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, uint8_t* fileName)
+static int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, uint8_t* fileName)
 {
   uint8_t packet_data[PACKET_1K_SIZE + PACKET_OVERHEAD], file_size[FILE_SIZE_LENGTH], *file_ptr, *buf_ptr;
   int32_t i, packet_length, session_done, file_done, packets_received, errors, session_begin;
@@ -301,11 +332,11 @@ int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t *buf, 
 }
 
 /**
- * @brief  Flash Update via Serial Port
+ * @brief  Flash update via serial port using ymodem protocol
  * @param  serialObj (Possible values : &Serial, &Serial1 or &Serial2)
  * @retval true on success
  */
-bool Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress)
+bool Ymodem_Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress)
 {
   int32_t Size = 0;
   uint8_t fileName[FILE_NAME_LENGTH] = {0};
@@ -343,3 +374,5 @@ bool Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress)
   }
   return false;
 }
+
+#endif  /* __LIB_YMODEM_H */

@@ -90,8 +90,8 @@ public:
   SystemClass();
   SystemClass(System_Mode_TypeDef mode);
   static System_Mode_TypeDef mode(void);
-  static void serialSaveFile(Stream *serialObj, uint32_t sFlashAddress);
-  static void serialFirmwareUpdate(Stream *serialObj);
+  static bool serialSaveFile(Stream *serialObj, uint32_t sFlashAddress);
+  static bool serialFirmwareUpdate(Stream *serialObj);
   static void factoryReset(void);
   static void bootloader(void);
   static void reset(void);
@@ -176,6 +176,8 @@ void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t tim
 void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 uint32_t loop_frequency_hz() __attribute__ ((weak));
+
+bool Ymodem_Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress) __attribute__ ((weak));;
 
 #ifdef __cplusplus
 } /* end of extern "C" */
