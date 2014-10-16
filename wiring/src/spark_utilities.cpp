@@ -375,6 +375,7 @@ void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
     switch(sleepMode)
     {
         case SLEEP_MODE_WLAN:
+            SPARK_WLAN_SLEEP = 1;//Flag Wifi.off() not to disable cloud connection
             WiFi.off();
             break;
 

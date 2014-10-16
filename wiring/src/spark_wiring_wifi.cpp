@@ -157,12 +157,15 @@ the same way.
         if (SPARK_WLAN_STARTED) {
             wlan_deactivate();
 
-            // Reset remaining state variables in SPARK_WLAN_Loop()
-            SPARK_WLAN_SLEEP = 1;
+            if(!SPARK_WLAN_SLEEP)//if Spark.sleep() is not called
+            {
+                // Reset remaining state variables in SPARK_WLAN_Loop()
+                SPARK_WLAN_SLEEP = 1;
 
-            // Do not automatically connect to the cloud
-            // the next time we connect to a Wi-Fi network
-            SPARK_CLOUD_CONNECT = 0;
+                // Do not automatically connect to the cloud
+                // the next time we connect to a Wi-Fi network
+                SPARK_CLOUD_CONNECT = 0;
+            }
 
             SPARK_LED_FADE = 1;
             LED_SetRGBColor(RGB_COLOR_WHITE);
