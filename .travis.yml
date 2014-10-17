@@ -13,4 +13,5 @@ after_success: ./ci/update-gh-pages.sh
 
 env:
   global:
-  - secure: "UM1+Ps1t21JfJaTFhuqkaY/U21j1Gfja6oSJTALcU0Y7zmo7TNyYMJwP+tbRfss7RBilWwUA8osr3sr6NXPREChojKpRQaRt52iD6wDfcxhsxGrpOU79cYO7FK1aQhCmhDGcnXahtxzbOGwS74jjTFW9U6TSveWa+EV1OgagLMc="
+  - secure: UM1+Ps1t21JfJaTFhuqkaY/U21j1Gfja6oSJTALcU0Y7zmo7TNyYMJwP+tbRfss7RBilWwUA8osr3sr6NXPREChojKpRQaRt52iD6wDfcxhsxGrpOU79cYO7FK1aQhCmhDGcnXahtxzbOGwS74jjTFW9U6TSveWa+EV1OgagLMc=
+  - secure: aJ+EUGgXIp8t0s/f3EEyiUjYXnzAlYW9+jukG240A2Wb/XnGp9Av/JE+wBnBeMv7eF+hxkODo99gDXPumV6uYQevIBtqiHWtAu7kyvCxUWXhSmag+Q89pCJO8QpUrcxra9UZ6i+zhFEfskBctBjlT9nMKoUsGSg4jMg6Kx71QsA=
