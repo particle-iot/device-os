@@ -852,7 +852,11 @@ void unit_test_setup();
 /*
  * A convenience method to run tests as part of the main loop after a character
  * is received over serial.
+ * 
+ * @param runImmediately    When true, the test runner is started on first call to this function. 
+ *  Otherwise the test runner is only started when an external start signal is received.
+ * @param 
  **/
-void unit_test_loop(bool runImmediately=false);
+void unit_test_loop(bool runImmediately=false, bool runTest=true);
 
 int testCmd(String arg);
