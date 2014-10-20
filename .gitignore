@@ -48,3 +48,4 @@ libraries/Tropicssl/
 ci/test-reports/
 nbproject/
 build/target/
+build/cores/
