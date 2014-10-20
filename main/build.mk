@@ -28,8 +28,8 @@ ifneq ($(USRSRC),"")
     NO_APPLICATION_CPP=1
     INCLUDE_DIRS += $(USRSRC)  # add user sources to include path
     # add C and CPP files 
-    CPPSRC += $(call target_files,$(USRSRC),*.cpp)
-    CSRC += $(call target_files,$(USRSRC),*.c)    
+    CPPSRC += $(call target_files,$(USRSRC)/,*.cpp)
+    CSRC += $(call target_files,$(USRSRC)/,*.c)    
 endif
 
 TARGET_FILE ?= core-firmware
