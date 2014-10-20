@@ -31,7 +31,6 @@
 #include "usb_desc.h"
 #include "usb_pwr.h"
 #include "dfu_mal.h"
-#include "main.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/

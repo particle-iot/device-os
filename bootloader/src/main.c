@@ -25,7 +25,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "hw_config.h"
-#include "main.h"
 #include "syshealth_hal.h"
 #include "core_hal.h"
 #include "dfu_hal.h"
