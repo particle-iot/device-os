@@ -112,7 +112,7 @@ bool isStartRequested(bool runImmediately) {
  * A convenience method to run tests as part of the main loop after a character
  * is received over serial.
  **/
-void unit_test_loop(bool runImmediately)
+void unit_test_loop(bool runImmediately, bool runTest)
 {       
     if (_enterDFU)
         System.bootloader();
@@ -122,9 +122,9 @@ void unit_test_loop(bool runImmediately)
         _runner.start();
     }
     
-    if (_runner.isStarted()) {
+    if (runTest && _runner.isStarted()) {
         Test::run();
-    }
+    }    
 }
 
 int SparkTestRunner::testStatusColor() {
