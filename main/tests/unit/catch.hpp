@@ -1,6 +1,6 @@
 /*
- *  CATCH v1.0 build 53 (master branch)
- *  Generated: 2014-08-20 08:08:19.533804
+ *  CATCH v1.1 build 6 (develop branch)
+ *  Generated: 2014-10-02 19:13:03.375275
  *  ----------------------------------------------------------
  *  This file has been merged from multiple headers. Please don't edit it directly
  *  Copyright (c) 2012 Two Blue Cubes Ltd. All rights reserved.
@@ -134,6 +134,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Visual C++
 #ifdef _MSC_VER
+
+#if (_MSC_VER >= 1600)
+#define CATCH_CONFIG_CPP11_NULLPTR
+#endif
 
 #if (_MSC_VER >= 1310 ) // (VC++ 7.0+)
 //#define CATCH_CONFIG_SFINAE // Not confirmed
@@ -603,7 +607,9 @@ namespace Catch {
         Exception = 0x100 | FailureBit,
 
         ThrewException = Exception | 1,
-        DidntThrowException = Exception | 2
+        DidntThrowException = Exception | 2,
+
+        FatalErrorCondition = 0x200 | FailureBit
 
     }; };
 
@@ -1035,7 +1041,14 @@ inline id performOptionalSelector( id obj, SEL sel ) {
 #endif
 
 namespace Catch {
+
+// Why we're here.
+template<typename T>
+std::string toString( T const& value );
+
 namespace Detail {
+
+    extern std::string unprintableString;
 
 // SFINAE is currently disabled by default for all compilers.
 // If the non SFINAE version of IsStreamInsertable is ambiguous for you
@@ -1077,10 +1090,38 @@ namespace Detail {
 
 #endif
 
+#if defined(CATCH_CPP11_OR_GREATER)
+    template<typename T,
+             bool IsEnum = std::is_enum<T>::value
+             >
+    struct EnumStringMaker
+    {
+        static std::string convert( T const& ) { return unprintableString; }
+    };
+
+    template<typename T>
+    struct EnumStringMaker<T,true>
+    {
+        static std::string convert( T const& v )
+        {
+            return ::Catch::toString(
+                static_cast<typename std::underlying_type<T>::type>(v)
+                );
+        }
+    };
+#endif
     template<bool C>
     struct StringMakerBase {
+#if defined(CATCH_CPP11_OR_GREATER)
         template<typename T>
-        static std::string convert( T const& ) { return "{?}"; }
+        static std::string convert( T const& v )
+        {
+            return EnumStringMaker<T>::convert( v );
+        }
+#else
+        template<typename T>
+        static std::string convert( T const& ) { return unprintableString; }
+#endif
     };
 
     template<>
@@ -1101,9 +1142,6 @@ namespace Detail {
     }
 
 } // end namespace Detail
-
-template<typename T>
-std::string toString( T const& value );
 
 template<typename T>
 struct StringMaker :
@@ -1135,12 +1173,17 @@ namespace Detail {
     std::string rangeToString( InputIterator first, InputIterator last );
 }
 
+//template<typename T, typename Allocator>
+//struct StringMaker<std::vector<T, Allocator> > {
+//    static std::string convert( std::vector<T,Allocator> const& v ) {
+//        return Detail::rangeToString( v.begin(), v.end() );
+//    }
+//};
+
 template<typename T, typename Allocator>
-struct StringMaker<std::vector<T, Allocator> > {
-    static std::string convert( std::vector<T,Allocator> const& v ) {
-        return Detail::rangeToString( v.begin(), v.end() );
-    }
-};
+std::string toString( std::vector<T,Allocator> const& v ) {
+    return Detail::rangeToString( v.begin(), v.end() );
+}
 
 namespace Detail {
     template<typename T>
@@ -1395,6 +1438,8 @@ namespace Catch {
 
         virtual std::string getCurrentTestName() const = 0;
         virtual const AssertionResult* getLastResult() const = 0;
+
+        virtual void handleFatalErrorCondition( std::string const& message ) = 0;
     };
 
     IResultCapture& getResultCapture();
@@ -1575,7 +1620,7 @@ namespace Catch {
             std::string matcherAsString = ::Catch::Matchers::matcher.toString(); \
             __catchResult \
                 .setLhs( Catch::toString( arg ) ) \
-                .setRhs( matcherAsString == "{?}" ? #matcher : matcherAsString ) \
+                .setRhs( matcherAsString == Catch::Detail::unprintableString ? #matcher : matcherAsString ) \
                 .setOp( "matches" ) \
                 .setResultType( ::Catch::Matchers::matcher.match( arg ) ); \
             __catchResult.captureExpression(); \
@@ -1688,7 +1733,7 @@ namespace Catch {
     public:
         Timer() : m_ticks( 0 ) {}
         void start();
-        unsigned int getElapsedNanoseconds() const;
+        unsigned int getElapsedMicroseconds() const;
         unsigned int getElapsedMilliseconds() const;
         double getElapsedSeconds() const;
 
@@ -2962,6 +3007,11 @@ namespace Catch {
         Always,
         Never
     }; };
+    struct RunTests { enum InWhatOrder {
+        InDeclarationOrder,
+        InLexicographicalOrder,
+        InRandomOrder
+    }; };
 
     class TestSpec;
 
@@ -2979,6 +3029,8 @@ namespace Catch {
         virtual bool showInvisibles() const = 0;
         virtual ShowDurations::OrNot showDurations() const = 0;
         virtual TestSpec const& testSpec() const = 0;
+        virtual RunTests::InWhatOrder runOrder() const = 0;
+        virtual unsigned int rngSeed() const = 0;
     };
 }
 
@@ -3004,12 +3056,16 @@ namespace Catch {
     private:
         bool isOwned;
     };
+
+    std::ostream& cout();
+    std::ostream& cerr();
 }
 
 #include <memory>
 #include <vector>
 #include <string>
 #include <iostream>
+#include <ctime>
 
 #ifndef CATCH_CONFIG_CONSOLE_WIDTH
 #define CATCH_CONFIG_CONSOLE_WIDTH 80
@@ -3030,9 +3086,11 @@ namespace Catch {
             showHelp( false ),
             showInvisibles( false ),
             abortAfter( -1 ),
+            rngSeed( 0 ),
             verbosity( Verbosity::Normal ),
             warnings( WarnAbout::Nothing ),
-            showDurations( ShowDurations::DefaultForReporter )
+            showDurations( ShowDurations::DefaultForReporter ),
+            runOrder( RunTests::InDeclarationOrder )
         {}
 
         bool listTests;
@@ -3047,10 +3105,12 @@ namespace Catch {
         bool showInvisibles;
 
         int abortAfter;
+        unsigned int rngSeed;
 
         Verbosity::Level verbosity;
         WarnAbout::What warnings;
         ShowDurations::OrNot showDurations;
+        RunTests::InWhatOrder runOrder;
 
         std::string reporterName;
         std::string outputFilename;
@@ -3068,12 +3128,12 @@ namespace Catch {
     public:
 
         Config()
-        :   m_os( std::cout.rdbuf() )
+        :   m_os( Catch::cout().rdbuf() )
         {}
 
         Config( ConfigData const& data )
         :   m_data( data ),
-            m_os( std::cout.rdbuf() )
+            m_os( Catch::cout().rdbuf() )
         {
             if( !data.testsOrTags.empty() ) {
                 TestSpecParser parser( ITagAliasRegistry::get() );
@@ -3084,7 +3144,7 @@ namespace Catch {
         }
 
         virtual ~Config() {
-            m_os.rdbuf( std::cout.rdbuf() );
+            m_os.rdbuf( Catch::cout().rdbuf() );
             m_stream.release();
         }
 
@@ -3106,7 +3166,7 @@ namespace Catch {
         bool shouldDebugBreak() const { return m_data.shouldDebugBreak; }
 
         void setStreamBuf( std::streambuf* buf ) {
-            m_os.rdbuf( buf ? buf : std::cout.rdbuf() );
+            m_os.rdbuf( buf ? buf : Catch::cout().rdbuf() );
         }
 
         void useStream( std::string const& streamName ) {
@@ -3132,6 +3192,8 @@ namespace Catch {
         virtual bool includeSuccessfulResults() const   { return m_data.showSuccessfulTests; }
         virtual bool warnAboutMissingAssertions() const { return m_data.warnings & WarnAbout::NoAssertions; }
         virtual ShowDurations::OrNot showDurations() const { return m_data.showDurations; }
+        virtual RunTests::InWhatOrder runOrder() const  { return m_data.runOrder; }
+        virtual unsigned int rngSeed() const    { return m_data.rngSeed; }
 
     private:
         ConfigData m_data;
@@ -3760,7 +3822,7 @@ namespace Clara {
             m_throwOnUnrecognisedTokens( other.m_throwOnUnrecognisedTokens )
         {
             if( other.m_floatingArg.get() )
-                m_floatingArg = ArgAutoPtr( new Arg( *other.m_floatingArg ) );
+                m_floatingArg.reset( new Arg( *other.m_floatingArg ) );
         }
 
         CommandLine& setThrowOnUnrecognisedTokens( bool shouldThrow = true ) {
@@ -3788,7 +3850,7 @@ namespace Clara {
         ArgBuilder operator[]( UnpositionalTag ) {
             if( m_floatingArg.get() )
                 throw std::logic_error( "Only one unpositional argument can be added" );
-            m_floatingArg = ArgAutoPtr( new Arg() );
+            m_floatingArg.reset( new Arg() );
             ArgBuilder builder( m_floatingArg.get() );
             return builder;
         }
@@ -3930,7 +3992,7 @@ namespace Clara {
                 if( it == itEnd ) {
                     if( token.type == Parser::Token::Positional || !m_throwOnUnrecognisedTokens )
                         unusedTokens.push_back( token );
-                    else if( m_throwOnUnrecognisedTokens )
+                    else if( errors.empty() && m_throwOnUnrecognisedTokens )
                         errors.push_back( "unrecognised option: " + token.data );
                 }
             }
@@ -4028,7 +4090,28 @@ namespace Catch {
             config.warnings = static_cast<WarnAbout::What>( config.warnings | WarnAbout::NoAssertions );
         else
             throw std::runtime_error( "Unrecognised warning: '" + _warning + "'" );
-
+    }
+    inline void setOrder( ConfigData& config, std::string const& order ) {
+        if( startsWith( "declared", order ) )
+            config.runOrder = RunTests::InDeclarationOrder;
+        else if( startsWith( "lexical", order ) )
+            config.runOrder = RunTests::InLexicographicalOrder;
+        else if( startsWith( "random", order ) )
+            config.runOrder = RunTests::InRandomOrder;
+        else
+            throw std::runtime_error( "Unrecognised ordering: '" + order + "'" );
+    }
+    inline void setRngSeed( ConfigData& config, std::string const& seed ) {
+        if( seed == "time" ) {
+            config.rngSeed = static_cast<unsigned int>( std::time(0) );
+        }
+        else {
+            std::stringstream ss;
+            ss << seed;
+            ss >> config.rngSeed;
+            if( ss.fail() )
+                throw std::runtime_error( "Argment to --rng-seed should be the word 'time' or a number" );
+        }
     }
     inline void setVerbosity( ConfigData& config, int level ) {
         // !TBD: accept strings?
@@ -4139,6 +4222,14 @@ namespace Catch {
         cli["--list-reporters"]
             .describe( "list all reporters" )
             .bind( &ConfigData::listReporters );
+
+        cli["--order"]
+            .describe( "test case order (defaults to decl)" )
+            .bind( &setOrder, "decl|lex|rand" );
+
+        cli["--rng-seed"]
+            .describe( "set a specific seed for random numbers" )
+            .bind( &setRngSeed, "'time'|number" );
 
         return cli;
     }
@@ -4624,9 +4715,9 @@ namespace Catch {
 
         TestSpec testSpec = config.testSpec();
         if( config.testSpec().hasFilters() )
-            std::cout << "Matching test cases:\n";
+            Catch::cout() << "Matching test cases:\n";
         else {
-            std::cout << "All available test cases:\n";
+            Catch::cout() << "All available test cases:\n";
             testSpec = TestSpecParser( ITagAliasRegistry::get() ).parse( "*" ).testSpec();
         }
 
@@ -4647,15 +4738,15 @@ namespace Catch {
                 : Colour::None;
             Colour colourGuard( colour );
 
-            std::cout << Text( testCaseInfo.name, nameAttr ) << std::endl;
+            Catch::cout() << Text( testCaseInfo.name, nameAttr ) << std::endl;
             if( !testCaseInfo.tags.empty() )
-                std::cout << Text( testCaseInfo.tagsAsString, tagsAttr ) << std::endl;
+                Catch::cout() << Text( testCaseInfo.tagsAsString, tagsAttr ) << std::endl;
         }
 
         if( !config.testSpec().hasFilters() )
-            std::cout << pluralise( matchedTests, "test case" ) << "\n" << std::endl;
+            Catch::cout() << pluralise( matchedTests, "test case" ) << "\n" << std::endl;
         else
-            std::cout << pluralise( matchedTests, "matching test case" ) << "\n" << std::endl;
+            Catch::cout() << pluralise( matchedTests, "matching test case" ) << "\n" << std::endl;
         return matchedTests;
     }
 
@@ -4671,7 +4762,7 @@ namespace Catch {
                 ++it ) {
             matchedTests++;
             TestCaseInfo const& testCaseInfo = it->getTestCaseInfo();
-            std::cout << testCaseInfo.name << std::endl;
+            Catch::cout() << testCaseInfo.name << std::endl;
         }
         return matchedTests;
     }
@@ -4697,9 +4788,9 @@ namespace Catch {
     inline std::size_t listTags( Config const& config ) {
         TestSpec testSpec = config.testSpec();
         if( config.testSpec().hasFilters() )
-            std::cout << "Tags for matching test cases:\n";
+            Catch::cout() << "Tags for matching test cases:\n";
         else {
-            std::cout << "All available tags:\n";
+            Catch::cout() << "All available tags:\n";
             testSpec = TestSpecParser( ITagAliasRegistry::get() ).parse( "*" ).testSpec();
         }
 
@@ -4733,14 +4824,14 @@ namespace Catch {
                                                     .setInitialIndent( 0 )
                                                     .setIndent( oss.str().size() )
                                                     .setWidth( CATCH_CONFIG_CONSOLE_WIDTH-10 ) );
-            std::cout << oss.str() << wrapper << "\n";
+            Catch::cout() << oss.str() << wrapper << "\n";
         }
-        std::cout << pluralise( tagCounts.size(), "tag" ) << "\n" << std::endl;
+        Catch::cout() << pluralise( tagCounts.size(), "tag" ) << "\n" << std::endl;
         return tagCounts.size();
     }
 
     inline std::size_t listReporters( Config const& /*config*/ ) {
-        std::cout << "Available reports:\n";
+        Catch::cout() << "Available reports:\n";
         IReporterRegistry::FactoryMap const& factories = getRegistryHub().getReporterRegistry().getFactories();
         IReporterRegistry::FactoryMap::const_iterator itBegin = factories.begin(), itEnd = factories.end(), it;
         std::size_t maxNameLen = 0;
@@ -4752,13 +4843,13 @@ namespace Catch {
                                                         .setInitialIndent( 0 )
                                                         .setIndent( 7+maxNameLen )
                                                         .setWidth( CATCH_CONFIG_CONSOLE_WIDTH - maxNameLen-8 ) );
-            std::cout << "  "
+            Catch::cout() << "  "
                     << it->first
                     << ":"
                     << std::string( maxNameLen - it->first.size() + 2, ' ' )
                     << wrapper << "\n";
         }
-        std::cout << std::endl;
+        Catch::cout() << std::endl;
         return factories.size();
     }
 
@@ -4914,6 +5005,79 @@ namespace SectionTracking {
 using SectionTracking::TestCaseTracker;
 
 } // namespace Catch
+
+// #included from: catch_fatal_condition.hpp
+#define TWOBLUECUBES_CATCH_FATAL_CONDITION_H_INCLUDED
+
+namespace Catch {
+
+    // Report the error condition then exit the process
+    inline void fatal( std::string const& message, int exitCode ) {
+        IContext& context = Catch::getCurrentContext();
+        IResultCapture* resultCapture = context.getResultCapture();
+        resultCapture->handleFatalErrorCondition( message );
+
+		if( Catch::alwaysTrue() ) // avoids "no return" warnings
+            exit( exitCode );
+    }
+
+} // namespace Catch
+
+#if defined ( CATCH_PLATFORM_WINDOWS ) /////////////////////////////////////////
+
+namespace Catch {
+
+    struct FatalConditionHandler {};
+
+} // namespace Catch
+
+#else // Not Windows - assumed to be POSIX compatible //////////////////////////
+
+#include <signal.h>
+
+namespace Catch {
+
+    struct SignalDefs { int id; const char* name; };
+    extern SignalDefs signalDefs[];
+    SignalDefs signalDefs[] = {
+            { SIGINT,  "SIGINT - Terminal interrupt signal" },
+            { SIGILL,  "SIGILL - Illegal instruction signal" },
+            { SIGFPE,  "SIGFPE - Floating point error signal" },
+            { SIGSEGV, "SIGSEGV - Segmentation violation signal" },
+            { SIGTERM, "SIGTERM - Termination request signal" },
+            { SIGABRT, "SIGABRT - Abort (abnormal termination) signal" }
+        };
+
+    struct FatalConditionHandler {
+
+        static void handleSignal( int sig ) {
+            for( std::size_t i = 0; i < sizeof(signalDefs)/sizeof(SignalDefs); ++i )
+                if( sig == signalDefs[i].id )
+                    fatal( signalDefs[i].name, -sig );
+            fatal( "<unknown signal>", -sig );
+        }
+
+        FatalConditionHandler() : m_isSet( true ) {
+            for( std::size_t i = 0; i < sizeof(signalDefs)/sizeof(SignalDefs); ++i )
+                signal( signalDefs[i].id, handleSignal );
+        }
+        ~FatalConditionHandler() {
+            reset();
+        }
+        void reset() {
+            if( m_isSet ) {
+                for( std::size_t i = 0; i < sizeof(signalDefs)/sizeof(SignalDefs); ++i )
+                    signal( signalDefs[i].id, SIG_DFL );
+                m_isSet = false;
+            }
+        }
+
+        bool m_isSet;
+    };
+
+} // namespace Catch
+
+#endif // not Windows
 
 #include <set>
 #include <string>
@@ -5102,6 +5266,37 @@ namespace Catch {
             return &m_lastResult;
         }
 
+        virtual void handleFatalErrorCondition( std::string const& message ) {
+            ResultBuilder resultBuilder = makeUnexpectedResultBuilder();
+            resultBuilder.setResultType( ResultWas::FatalErrorCondition );
+            resultBuilder << message;
+            resultBuilder.captureExpression();
+
+            handleUnfinishedSections();
+
+            // Recreate section for test case (as we will lose the one that was in scope)
+            TestCaseInfo const& testCaseInfo = m_activeTestCase->getTestCaseInfo();
+            SectionInfo testCaseSection( testCaseInfo.lineInfo, testCaseInfo.name, testCaseInfo.description );
+
+            Counts assertions;
+            assertions.failed = 1;
+            SectionStats testCaseSectionStats( testCaseSection, assertions, 0, false );
+            m_reporter->sectionEnded( testCaseSectionStats );
+
+            TestCaseInfo testInfo = m_activeTestCase->getTestCaseInfo();
+
+            Totals deltaTotals;
+            deltaTotals.testCases.failed = 1;
+            m_reporter->testCaseEnded( TestCaseStats(   testInfo,
+                                                        deltaTotals,
+                                                        "",
+                                                        "",
+                                                        false ) );
+            m_totals.testCases.failed++;
+            testGroupEnded( "", m_totals, 1, 1 );
+            m_reporter->testRunEnded( TestRunStats( m_runInfo, m_totals, false ) );
+        }
+
     public:
         // !TBD We need to do this another way!
         bool aborting() const {
@@ -5123,12 +5318,12 @@ namespace Catch {
                 Timer timer;
                 timer.start();
                 if( m_reporter->getPreferences().shouldRedirectStdOut ) {
-                    StreamRedirect coutRedir( std::cout, redirectedCout );
-                    StreamRedirect cerrRedir( std::cerr, redirectedCerr );
-                    m_activeTestCase->invoke();
+                    StreamRedirect coutRedir( Catch::cout(), redirectedCout );
+                    StreamRedirect cerrRedir( Catch::cerr(), redirectedCerr );
+                    invokeActiveTestCase();
                 }
                 else {
-                    m_activeTestCase->invoke();
+                    invokeActiveTestCase();
                 }
                 duration = timer.getElapsedSeconds();
             }
@@ -5136,20 +5331,9 @@ namespace Catch {
                 // This just means the test was aborted due to failure
             }
             catch(...) {
-                ResultBuilder exResult( m_lastAssertionInfo.macroName.c_str(),
-                                        m_lastAssertionInfo.lineInfo,
-                                        m_lastAssertionInfo.capturedExpression.c_str(),
-                                        m_lastAssertionInfo.resultDisposition );
-                exResult.useActiveException();
+                makeUnexpectedResultBuilder().useActiveException();
             }
-            // If sections ended prematurely due to an exception we stored their
-            // infos here so we can tear them down outside the unwind process.
-            for( std::vector<UnfinishedSections>::const_reverse_iterator it = m_unfinishedSections.rbegin(),
-                        itEnd = m_unfinishedSections.rend();
-                    it != itEnd;
-                    ++it )
-                sectionEnded( it->info, it->prevAssertions, it->durationInSeconds );
-            m_unfinishedSections.clear();
+            handleUnfinishedSections();
             m_messages.clear();
 
             Counts assertions = m_totals.assertions - prevAssertions;
@@ -5165,7 +5349,32 @@ namespace Catch {
             m_reporter->sectionEnded( testCaseSectionStats );
         }
 
+        void invokeActiveTestCase() {
+            FatalConditionHandler fatalConditionHandler; // Handle signals
+            m_activeTestCase->invoke();
+            fatalConditionHandler.reset();
+        }
+
     private:
+
+        ResultBuilder makeUnexpectedResultBuilder() const {
+            return ResultBuilder(   m_lastAssertionInfo.macroName.c_str(),
+                                    m_lastAssertionInfo.lineInfo,
+                                    m_lastAssertionInfo.capturedExpression.c_str(),
+                                    m_lastAssertionInfo.resultDisposition );
+        }
+
+        void handleUnfinishedSections() {
+            // If sections ended prematurely due to an exception we stored their
+            // infos here so we can tear them down outside the unwind process.
+            for( std::vector<UnfinishedSections>::const_reverse_iterator it = m_unfinishedSections.rbegin(),
+                        itEnd = m_unfinishedSections.rend();
+                    it != itEnd;
+                    ++it )
+                sectionEnded( it->info, it->prevAssertions, it->durationInSeconds );
+            m_unfinishedSections.clear();
+        }
+
         struct UnfinishedSections {
             UnfinishedSections( SectionInfo const& _info, Counts const& _prevAssertions, double _durationInSeconds )
             : info( _info ), prevAssertions( _prevAssertions ), durationInSeconds( _durationInSeconds )
@@ -5253,7 +5462,7 @@ namespace Catch {
 
             Totals totals;
 
-            context.testGroupStarting( "test", 1, 1 ); // deprecated?
+            context.testGroupStarting( "all tests", 1, 1 ); // deprecated?
 
             TestSpec testSpec = m_config->testSpec();
             if( !testSpec.hasFilters() )
@@ -5276,7 +5485,7 @@ namespace Catch {
                     m_testsAlreadyRun.insert( *it );
                 }
             }
-            context.testGroupEnded( "", totals, 1, 1 );
+            context.testGroupEnded( "all tests", totals, 1, 1 );
             return totals;
         }
 
@@ -5324,7 +5533,7 @@ namespace Catch {
         : m_cli( makeCommandLineParser() ) {
             if( alreadyInstantiated ) {
                 std::string msg = "Only one instance of Catch::Session can ever be used";
-                std::cerr << msg << std::endl;
+                Catch::cerr() << msg << std::endl;
                 throw std::logic_error( msg );
             }
             alreadyInstantiated = true;
@@ -5334,15 +5543,15 @@ namespace Catch {
         }
 
         void showHelp( std::string const& processName ) {
-            std::cout << "\nCatch v"    << libraryVersion.majorVersion << "."
+            Catch::cout() << "\nCatch v"    << libraryVersion.majorVersion << "."
                                         << libraryVersion.minorVersion << " build "
                                         << libraryVersion.buildNumber;
             if( libraryVersion.branchName != std::string( "master" ) )
-                std::cout << " (" << libraryVersion.branchName << " branch)";
-            std::cout << "\n";
+                Catch::cout() << " (" << libraryVersion.branchName << " branch)";
+            Catch::cout() << "\n";
 
-            m_cli.usage( std::cout, processName );
-            std::cout << "For more detail usage please see the project docs\n" << std::endl;
+            m_cli.usage( Catch::cout(), processName );
+            Catch::cout() << "For more detail usage please see the project docs\n" << std::endl;
         }
 
         int applyCommandLine( int argc, char* const argv[], OnUnusedOptions::DoWhat unusedOptionBehaviour = OnUnusedOptions::Fail ) {
@@ -5356,11 +5565,11 @@ namespace Catch {
             catch( std::exception& ex ) {
                 {
                     Colour colourGuard( Colour::Red );
-                    std::cerr   << "\nError(s) in input:\n"
+                    Catch::cerr()   << "\nError(s) in input:\n"
                                 << Text( ex.what(), TextAttributes().setIndent(2) )
                                 << "\n\n";
                 }
-                m_cli.usage( std::cout, m_configData.processName );
+                m_cli.usage( Catch::cout(), m_configData.processName );
                 return (std::numeric_limits<int>::max)();
             }
             return 0;
@@ -5386,6 +5595,9 @@ namespace Catch {
             try
             {
                 config(); // Force config to be constructed
+
+                std::srand( m_configData.rngSeed );
+
                 Runner runner( m_config );
 
                 // Handle list request
@@ -5395,7 +5607,7 @@ namespace Catch {
                 return static_cast<int>( runner.runTests().assertions.failed );
             }
             catch( std::exception& ex ) {
-                std::cerr << ex.what() << std::endl;
+                Catch::cerr() << ex.what() << std::endl;
                 return (std::numeric_limits<int>::max)();
             }
         }
@@ -5436,10 +5648,18 @@ namespace Catch {
 #include <set>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 
 namespace Catch {
 
     class TestRegistry : public ITestCaseRegistry {
+        struct LexSort {
+            bool operator() (TestCase i,TestCase j) const { return (i<j);}
+        };
+        struct RandomNumberGenerator {
+            int operator()( int n ) const { return std::rand() % n; }
+        };
+
     public:
         TestRegistry() : m_unnamedCount( 0 ) {}
         virtual ~TestRegistry();
@@ -5462,7 +5682,7 @@ namespace Catch {
                 TestCase const& prev = *m_functions.find( testCase );
                 {
                     Colour colourGuard( Colour::Red );
-                    std::cerr   << "error: TEST_CASE( \"" << name << "\" ) already defined.\n"
+                    Catch::cerr()   << "error: TEST_CASE( \"" << name << "\" ) already defined.\n"
                                 << "\tFirst seen at " << prev.getTestCaseInfo().lineInfo << "\n"
                                 << "\tRedefined at " << testCase.getTestCaseInfo().lineInfo << std::endl;
                 }
@@ -5479,12 +5699,27 @@ namespace Catch {
         }
 
         virtual void getFilteredTests( TestSpec const& testSpec, IConfig const& config, std::vector<TestCase>& matchingTestCases ) const {
+
             for( std::vector<TestCase>::const_iterator  it = m_functionsInOrder.begin(),
                                                         itEnd = m_functionsInOrder.end();
                     it != itEnd;
                     ++it ) {
                 if( testSpec.matches( *it ) && ( config.allowThrows() || !it->throws() ) )
                     matchingTestCases.push_back( *it );
+            }
+            switch( config.runOrder() ) {
+                case RunTests::InLexicographicalOrder:
+                    std::sort( matchingTestCases.begin(), matchingTestCases.end(), LexSort() );
+                    break;
+                case RunTests::InRandomOrder:
+                    {
+                        RandomNumberGenerator rng;
+                        std::random_shuffle( matchingTestCases.begin(), matchingTestCases.end(), rng );
+                    }
+                    break;
+                case RunTests::InDeclarationOrder:
+                    // already in declaration order
+                    break;
             }
         }
 
@@ -5760,6 +5995,7 @@ namespace Catch {
 
 #include <stdexcept>
 #include <cstdio>
+#include <iostream>
 
 namespace Catch {
 
@@ -5823,6 +6059,15 @@ namespace Catch {
             isOwned = false;
         }
     }
+
+#ifndef CATCH_CONFIG_NOSTDOUT // If you #define this you must implement this functions
+    std::ostream& cout() {
+        return std::cout;
+    }
+    std::ostream& cerr() {
+        return std::cerr;
+    }
+#endif
 }
 
 namespace Catch {
@@ -5908,8 +6153,8 @@ namespace Catch {
     }
 
     Stream createStream( std::string const& streamName ) {
-        if( streamName == "stdout" ) return Stream( std::cout.rdbuf(), false );
-        if( streamName == "stderr" ) return Stream( std::cerr.rdbuf(), false );
+        if( streamName == "stdout" ) return Stream( Catch::cout().rdbuf(), false );
+        if( streamName == "stderr" ) return Stream( Catch::cerr().rdbuf(), false );
         if( streamName == "debug" ) return Stream( new StreamBufImpl<OutputDebugWriter>, true );
 
         throw std::domain_error( "Unknown stream: " + streamName );
@@ -6029,7 +6274,7 @@ namespace {
         }
     private:
         void setColour( const char* _escapeCode ) {
-            std::cout << '\033' << _escapeCode;
+            Catch::cout() << '\033' << _escapeCode;
         }
     };
 
@@ -6258,13 +6503,13 @@ namespace Catch {
         if( isReservedTag( tag ) ) {
             {
                 Colour colourGuard( Colour::Red );
-                std::cerr
+                Catch::cerr()
                     << "Tag name [" << tag << "] not allowed.\n"
                     << "Tag names starting with non alpha-numeric characters are reserved\n";
             }
             {
                 Colour colourGuard( Colour::FileName );
-                std::cerr << _lineInfo << std::endl;
+                Catch::cerr() << _lineInfo << std::endl;
             }
             exit(1);
         }
@@ -6417,7 +6662,7 @@ namespace Catch {
 namespace Catch {
 
     // These numbers are maintained by a script
-    Version libraryVersion( 1, 0, 53, "master" );
+    Version libraryVersion( 1, 1, 6, "develop" );
 }
 
 // #included from: catch_message.hpp
@@ -6615,14 +6860,14 @@ namespace Catch {
     void Timer::start() {
         m_ticks = getCurrentTicks();
     }
-    unsigned int Timer::getElapsedNanoseconds() const {
+    unsigned int Timer::getElapsedMicroseconds() const {
         return static_cast<unsigned int>(getCurrentTicks() - m_ticks);
     }
     unsigned int Timer::getElapsedMilliseconds() const {
-        return static_cast<unsigned int>((getCurrentTicks() - m_ticks)/1000);
+        return static_cast<unsigned int>(getElapsedMicroseconds()/1000);
     }
     double Timer::getElapsedSeconds() const {
-        return (getCurrentTicks() - m_ticks)/1000000.0;
+        return getElapsedMicroseconds()/1000000.0;
     }
 
 } // namespace Catch
@@ -6781,7 +7026,7 @@ namespace Catch {
 
             size = sizeof(info);
             if( sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0) != 0 ) {
-                std::cerr << "\n** Call to sysctl failed - unable to determine if debugger is active **\n" << std::endl;
+                Catch::cerr() << "\n** Call to sysctl failed - unable to determine if debugger is active **\n" << std::endl;
                 return false;
             }
 
@@ -6822,7 +7067,7 @@ namespace Catch {
     namespace Catch {
         void writeToDebugConsole( std::string const& text ) {
             // !TBD: Need a version for Mac/ XCode and other IDEs
-            std::cout << text;
+            Catch::cout() << text;
         }
     }
 #endif // Platform
@@ -6833,6 +7078,8 @@ namespace Catch {
 namespace Catch {
 
 namespace Detail {
+
+    std::string unprintableString = "{?}";
 
     namespace {
         struct Endianness {
@@ -7195,7 +7442,7 @@ namespace Catch {
         }
         catch( std::exception& ex ) {
             Colour colourGuard( Colour::Red );
-            std::cerr << ex.what() << std::endl;
+            Catch::cerr() << ex.what() << std::endl;
             exit(1);
         }
     }
@@ -7464,7 +7711,6 @@ namespace Catch {
 #define TWOBLUECUBES_CATCH_XMLWRITER_HPP_INCLUDED
 
 #include <sstream>
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -7507,7 +7753,7 @@ namespace Catch {
         XmlWriter()
         :   m_tagIsOpen( false ),
             m_needsNewline( false ),
-            m_os( &std::cout )
+            m_os( &Catch::cout() )
         {}
 
         XmlWriter( std::ostream& os )
@@ -7770,6 +8016,13 @@ namespace Catch {
                         .writeText( assertionResult.getMessage() );
                     m_currentTestSuccess = false;
                     break;
+                case ResultWas::FatalErrorCondition:
+                    m_xml.scopedElement( "Fatal Error Condition" )
+                        .writeAttribute( "filename", assertionResult.getSourceInfo().file )
+                        .writeAttribute( "line", assertionResult.getSourceInfo().line )
+                        .writeText( assertionResult.getMessage() );
+                    m_currentTestSuccess = false;
+                    break;
                 case ResultWas::Info:
                     m_xml.scopedElement( "Info" )
                         .writeText( assertionResult.getMessage() );
@@ -7843,7 +8096,7 @@ namespace Catch {
 
         virtual void testRunStarting( TestRunInfo const& runInfo ) {
             CumulativeReporterBase::testRunStarting( runInfo );
-            xml.startElement( "testsuites" );            
+            xml.startElement( "testsuites" );
         }
 
         virtual void testGroupStarting( GroupInfo const& groupInfo ) {
@@ -7879,8 +8132,7 @@ namespace Catch {
         void writeGroup( TestGroupNode const& groupNode, double suiteTime ) {
             XmlWriter::ScopedElement e = xml.scopedElement( "testsuite" );
             TestGroupStats const& stats = groupNode.value;
-            //xml.writeAttribute( "name", stats.groupInfo.name );
-            xml.writeAttribute( "name", "test" );
+            xml.writeAttribute( "name", stats.groupInfo.name );
             xml.writeAttribute( "errors", unexpectedExceptions );
             xml.writeAttribute( "failures", stats.totals.assertions.failed-unexpectedExceptions );
             xml.writeAttribute( "tests", stats.totals.assertions.total() );
@@ -7971,6 +8223,7 @@ namespace Catch {
                 std::string elementName;
                 switch( result.getResultType() ) {
                     case ResultWas::ThrewException:
+                    case ResultWas::FatalErrorCondition:
                         elementName = "error";
                         break;
                     case ResultWas::ExplicitFailure:
@@ -8165,6 +8418,11 @@ namespace Catch {
                         passOrFail = "FAILED";
                         messageLabel = "due to unexpected exception with message";
                         break;
+                    case ResultWas::FatalErrorCondition:
+                        colour = Colour::Error;
+                        passOrFail = "FAILED";
+                        messageLabel = "due to a fatal error condition";
+                        break;
                     case ResultWas::DidntThrowException:
                         colour = Colour::Error;
                         passOrFail = "FAILED";
@@ -8281,6 +8539,9 @@ namespace Catch {
                 stream << " (" << libraryVersion.branchName << ")";
             stream  << " host application.\n"
                     << "Run with -? for options\n\n";
+
+            if( m_config->rngSeed() != 0 )
+                stream << "Randomness seeded to: " << m_config->rngSeed() << "\n\n";
 
             currentTestRunInfo.used = true;
         }
@@ -8566,6 +8827,13 @@ namespace Catch {
                     case ResultWas::ThrewException:
                         printResultType( Colour::Error, failedString() );
                         printIssue( "unexpected exception with message:" );
+                        printMessage();
+                        printExpressionWas();
+                        printRemainingMessages();
+                        break;
+                    case ResultWas::FatalErrorCondition:
+                        printResultType( Colour::Error, failedString() );
+                        printIssue( "fatal error condition with message:" );
                         printMessage();
                         printExpressionWas();
                         printRemainingMessages();
