@@ -26,7 +26,6 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
 #include "hw_config.h"
 #include "stm32_it.h"
 #include "usb_lib.h"
@@ -44,6 +43,9 @@
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 
 /* Private function prototypes -----------------------------------------------*/
+
+/* Extern function prototypes ------------------------------------------------*/
+extern void Timing_Decrement(void);
 
 /* Private functions ---------------------------------------------------------*/
 

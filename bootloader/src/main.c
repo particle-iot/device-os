@@ -24,14 +24,11 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+#include "hw_config.h"
 #include "main.h"
-#include "usb_lib.h"
-#include "usb_conf.h"
-#include "usb_prop.h"
-#include "usb_pwr.h"
-#include "dfu_mal.h"
 #include "syshealth_hal.h"
 #include "core_hal.h"
+#include "dfu_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);
@@ -45,8 +42,6 @@ uint8_t OTA_FLASH_AVAILABLE = 0;	//0, 1
 uint8_t USB_DFU_MODE = 0;			//0, 1
 uint8_t FACTORY_RESET_MODE = 0;		//0, 1
 
-uint8_t DeviceState;
-uint8_t DeviceStatus[6];
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
 uint32_t ApplicationAddress;
@@ -57,8 +52,6 @@ volatile uint32_t TimingIWDGReload;
 
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
-
 /* Private functions ---------------------------------------------------------*/
 
 /*******************************************************************************
@@ -301,31 +294,7 @@ int main(void)
 
 	USB_DFU_MODE = 1;
 
-	// Enter DFU mode
-	DeviceState = STATE_dfuERROR;
-	DeviceStatus[0] = STATUS_ERRFIRMWARE;
-	DeviceStatus[4] = DeviceState;
-
-	// Unlock the internal flash
-	FLASH_Unlock();
-
-	// USB Disconnect configuration
-	USB_Disconnect_Config();
-
-	// Disable the USB connection till initialization phase end
-	USB_Cable_Config(DISABLE);
-
-	// Init the media interface
-	MAL_Init();
-
-	// Enable the USB connection
-	USB_Cable_Config(ENABLE);
-
-	// USB Clock configuration
-	Set_USBClock();
-
-	// USB System initialization
-	USB_Init();
+	HAL_DFU_USB_Init();
 
 	// Main loop
 	while (1)
@@ -373,56 +342,6 @@ void Timing_Decrement(void)
 	{
 		LED_Toggle(LED_RGB);
 		TimingLED = 100;
-	}
-}
-
-/*******************************************************************************
- * Function Name  : Get_SerialNum.
- * Description    : Create the serial number string descriptor.
- * Input          : None.
- * Return         : None.
- *******************************************************************************/
-void Get_SerialNum(void)
-{
-	uint32_t Device_Serial0, Device_Serial1, Device_Serial2;
-
-	Device_Serial0 = *(uint32_t*)ID1;
-	Device_Serial1 = *(uint32_t*)ID2;
-	Device_Serial2 = *(uint32_t*)ID3;
-
-	Device_Serial0 += Device_Serial2;
-
-	if (Device_Serial0 != 0)
-	{
-		IntToUnicode (Device_Serial0, &DFU_StringSerial[2] , 8);
-		IntToUnicode (Device_Serial1, &DFU_StringSerial[18], 4);
-	}
-}
-
-/*******************************************************************************
- * Function Name  : HexToChar.
- * Description    : Convert Hex 32Bits value into char.
- * Input          : None.
- * Return         : None.
- *******************************************************************************/
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
-{
-	uint8_t idx = 0;
-
-	for( idx = 0 ; idx < len ; idx ++)
-	{
-		if( ((value >> 28)) < 0xA )
-		{
-			pbuf[ 2* idx] = (value >> 28) + '0';
-		}
-		else
-		{
-			pbuf[2* idx] = (value >> 28) + 'A' - 10;
-		}
-
-		value = value << 4;
-
-		pbuf[ 2* idx + 1] = 0;
 	}
 }
 
