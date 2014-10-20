@@ -4,14 +4,12 @@
   * @author    MCD Application Team
   * @version   V1.1.3
   * @date      05-March-2012
-  * @brief     STM32F2xx Devices vector table for RIDE7 toolchain. 
+  * @brief     STM32F2xx Devices vector table.
   *            This module performs:
   *                - Set the initial SP
   *                - Set the initial PC == Reset_Handler,
   *                - Set the vector table entries with the exceptions ISR address
-  *                - Configure the system clock and the external SRAM mounted on 
-  *                  STM322xG-EVAL board to be used as data memory (optional, 
-  *                  to be enabled by user)
+  *                - Configure the system clock
   *                - Branches to main in the C library (which eventually
   *                  calls main()).
   *            After Reset the Cortex-M3 processor is in Thread mode,
