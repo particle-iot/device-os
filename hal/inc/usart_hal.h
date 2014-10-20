@@ -38,8 +38,8 @@
 typedef struct Ring_Buffer
 {
   unsigned char buffer[SERIAL_BUFFER_SIZE];
-  volatile unsigned int head;
-  volatile unsigned int tail;
+  volatile uint8_t head;
+  volatile uint8_t tail;
 } Ring_Buffer;
 
 typedef enum HAL_USART_Serial {
