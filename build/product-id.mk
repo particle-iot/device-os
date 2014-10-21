@@ -50,15 +50,6 @@ PRODUCT_DESC=GCC xcompile
 SPARK_NO_PLATFORM=1
 endif
 
-ifeq ("$(SPARK_PRODUCT_ID)","4")
-STM32_DEVICE=STM32F20X_HD
-PLATFORM_NAME=core-v2
-PLATFORM_MCU=STM32F2xx
-PLATFORM_NET=WICED
-PRODUCT_DESC=Spark core-v2/WICED
-endif
-
-
 ifeq ("$(PLATFORM_MCU)","")
 $(error PLATFORM_MCU not defined. Check product id $(SPARK_PRODUCT_ID))
 endif
