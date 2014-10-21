@@ -186,7 +186,11 @@ void Start_Smart_Config(void)
 	LED_SetRGBColor(RGB_COLOR_BLUE);
 	LED_On(LED_RGB);
 
+	/* If WiFi module is connected, disconnect it */
 	WiFi.disconnect();
+
+	/* If WiFi module is powered off, turn it on */
+	WiFi.on();
 
 	/* Create new entry for AES encryption key */
 	nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
