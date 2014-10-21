@@ -21,11 +21,11 @@ export core_name=${name[$platform]}
 echo Building test suite in "$1"
 $ci_dir/make_test.sh $platform $suite || die 
 
-# flash the firmware
-echo "OTA flashing firmware at $(date)"
-spark flash $core_name $target_file || die 
-# todo - verify test suite build time or fix spark-cli return codes
+sparkFlash 5 $core_name $target_file || { echo "Unable to OTA flash test suite"; die; }
 
+
+echo "Waiting for core to reboot"
+# todo - verify test suite build time or fix spark-cli return codes
 # give enough time for the core to go into OTA mode
 sleep 10 || die
 

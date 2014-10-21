@@ -159,3 +159,17 @@ function echoVar {
 function readVar() {
   spark variable get $core_name $1 
 }
+
+function sparkFlash() {
+    # flash the firmware - attempt to do this up to $1 times
+    count=$1
+    for ((n=1; n<=count; n++))
+    do
+        echo "OTA flashing firmware at $(date) - attempt $n"
+        ./spark flash $2 $3 > otaflash
+        [[ $? -eq 0 ]] && grep -q -v ECONN otaflash && break
+    done
+    
+    [ $n -lt $count ]
+    return $?
+}
