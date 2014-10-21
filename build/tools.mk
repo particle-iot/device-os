@@ -1,5 +1,5 @@
 # Define the compiler/tools prefix
-GCC_PREFIX = arm-none-eabi-
+GCC_PREFIX ?= arm-none-eabi-
 
 # Define tools
 CC = $(GCC_PREFIX)gcc
