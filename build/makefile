@@ -172,7 +172,7 @@ hex: $(TARGETDIR)$(TARGET).hex
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
-program-dfu: $(TARGETDIR)$(TARGET).bin
+program-dfu: $(TARGETDIR)$(TARGET).dfu
 	@echo Flashing using dfu:
 	$(DFU) -d 1d50:607f -a 0 -s 0x08005000:leave -D $<
 
@@ -199,6 +199,11 @@ size: $(TARGETDIR)$(TARGET).elf
 	@echo Invoking: ARM GNU Create Flash Image
 	$(OBJCOPY) -O binary $< $@
 	@echo
+
+# Create a DFU file from bin file
+%.dfu: %.bin
+	@cp $< $@
+	$(DFUSUFFIX) -v 1d50 -p 607f -a $@
 
 $(TARGETDIR)$(TARGET).elf : check_external_deps $(ALLOBJ)
 	@echo Building target: $@
