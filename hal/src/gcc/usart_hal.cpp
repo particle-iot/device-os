@@ -10,27 +10,33 @@ struct Usart {
     virtual int32_t read()=0;
     virtual int32_t peek()=0;
     virtual uint32_t write(uint8_t byte)=0;
+    virtual void flush()=0;
+    
+    bool enabled() { return true; }
 };
 
 class SocketUsartBase : public Usart 
 {
     private:
-        sock_handle_t socket;
         Ring_Buffer* rx;
         Ring_Buffer* tx;
+
+    protected:
+        sock_handle_t socket;
+
+    
+        SocketUsartBase() : socket(SOCKET_INVALID) {}
         
-        SocketUsartBase() : socket(INVALID_SOCKET) {}
-        
-        virtual void initSocket()=0;
+        virtual bool initSocket()=0;
 
         inline int32_t read_char(bool peek=false)
         {
-            if (rx->tail==buffer->head)
+            if (rx->tail==rx->head)
                 return -1;
 
             int32_t c = rx->buffer[rx->tail];
             if (!peek)
-                buffer->tail = (fx->tail+1) % SERIAL_BUFFER_SIZE;
+                rx->tail = (rx->tail+1) % SERIAL_BUFFER_SIZE;
             return c;
         }
         
@@ -53,30 +59,36 @@ class SocketUsartBase : public Usart
                 space = rx->tail-rx->head;  // may be 0
             }
             if (socket!=SOCKET_INVALID && space>0) {                
-                socket_receive(socket, rx->buffer+rx->head, space);
+                socket_receive(socket, rx->buffer+rx->head, space, 0);
             }
         }
+        
+
         
     public:
         virtual void init(Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer) {
             this->rx = rx_buffer;
             this->tx = tx_buffer;
         }
-        
+                
         virtual void end() {
             socket_close(socket);
         }
+        virtual void flush() {
+            // todo 
+        }
+        
         virtual int32_t available() {            
             fillFromSocketIfNeeded();
             return (rx->head-rx->tail) % SERIAL_BUFFER_SIZE;            
         }
         virtual int32_t read() {
             fillFromSocketIfNeeded();
-            return load_char();
+            return read_char();
         }
         virtual int32_t peek() {
             fillFromSocketIfNeeded();
-            return load_char(true);
+            return read_char(true);
         }
         virtual uint32_t write(uint8_t byte) {
             if (!initSocket())
@@ -94,22 +106,22 @@ class SocketUsartClient : public SocketUsartBase {
         if (socket==SOCKET_INVALID) {
             socket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         
-            sockaddr_t testSocketAddr;
+            sockaddr_t socketAddr;
             int testResult = 0;
 
             // the family is always AF_INET
-            testSocketAddr.sa_family = AF_INET;
+            socketAddr.sa_family = AF_INET;
 
-            testSocketAddr.sa_data[0] = 0;
-            testSocketAddr.sa_data[1] = 54;
+            socketAddr.sa_data[0] = 0;
+            socketAddr.sa_data[1] = 54;
 
             // the destination IP address: 8.8.8.8
-            testSocketAddr.sa_data[2] = 127;
-            testSocketAddr.sa_data[3] = 0;
-            testSocketAddr.sa_data[4] = 0;
-            testSocketAddr.sa_data[5] = 1;
+            socketAddr.sa_data[2] = 127;
+            socketAddr.sa_data[3] = 0;
+            socketAddr.sa_data[4] = 0;
+            socketAddr.sa_data[5] = 1;
 
-            testResult = socket_connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));            
+            testResult = socket_connect(socket, &socketAddr, sizeof(socketAddr));            
             if (testResult) {
                 socket_close(socket);
                 socket = SOCKET_INVALID;                
@@ -122,13 +134,40 @@ class SocketUsartClient : public SocketUsartBase {
         
         virtual void begin(uint32_t baud) {}
     
-}
+};
+
+/**
+ * Client that provides data to/from the server when connected.
+ */
+class SocketUsartServer : public SocketUsartBase {
+    
+    protected:
+    
+        virtual bool initSocket() {
+            return socket!=SOCKET_INVALID;
+        }
+    
+    public:
+        
+        virtual void begin(uint32_t baud) {}    
+};
 
 
-#if SPARK_TEST_DRIVER=1
-UsartInfo[2] usartInfo = { SocketUsartServer, SocketUsartServer };
+#if SPARK_TEST_DRIVER==1
+SocketUsartServer usart1 = SocketUsartServer();
+SocketUsartServer usart2 = SocketUsartServer();
 #else
-UsartInfo[2] usartInfo = { SocketUsartClient, SocketUsartClient };
+SocketUsartClient usart1 = SocketUsartClient();
+SocketUsartClient usart2 = SocketUsartClient();
+#endif
+
+Usart& usartMap(unsigned index) {
+    switch (index) {
+        case 0: return usart1;
+        default: return usart2;
+        
+    }
+}
 
 void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
 {    
