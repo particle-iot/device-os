@@ -17,7 +17,7 @@ but should end with `.cpp`. For example, you might create these files:
 
 ```
 myapp.cpp
-halper.cpp
+helper.cpp
 helper.h
 ```
 
