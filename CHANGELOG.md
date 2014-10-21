@@ -1,3 +1,21 @@
+## v0.3.4
+
+### FEATURES
+
+- Local Build: Specify custom toolchain with `GCC_PREFIX` environment variable ([firmware](https://github.com/spark/firmware/pull/328), [core-common-lib](https://github.com/spark/core-common-lib/pull/39), [core-communication-lib](https://github.com/spark/core-communication-lib/pull/29))
+
+### ENHANCEMENTS
+
+- Wiring: More efficient and reliable `print(String)` (fix issue [#281](https://github.com/spark/firmware/issues/281)) [#305](https://github.com/spark/firmware/pull/305)
+- DFU: Add DFU suffix to .bin file [#323](https://github.com/spark/firmware/pull/323)
+
+### BUGFIXES
+
+- I2C: Use I2C polling mode by default [#322](https://github.com/spark/firmware/pull/322)
+- Listening Mode: Fix hard fault when Wi-Fi is off [#320](https://github.com/spark/firmware/pull/320)
+- LED Interaction: Fix breathing blue that should be blinking green [#315](https://github.com/spark/firmware/pull/315)
+
+
 ## v0.3.3
 
 ### FEATURES
