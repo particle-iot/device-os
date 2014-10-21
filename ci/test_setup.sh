@@ -166,7 +166,7 @@ function sparkFlash() {
     for ((n=1; n<=count; n++))
     do
         echo "OTA flashing firmware at $(date) - attempt $n"
-        ./spark flash $2 $3 > otaflash
+        spark flash $2 $3 > otaflash
         [[ $? -eq 0 ]] && grep -q -v ECONN otaflash && break
     done
     
