@@ -41,6 +41,7 @@ private:
   static I2C_InitTypeDef I2C_InitStructure;
 
   static uint32_t I2C_ClockSpeed;
+  static bool I2C_EnableDMAMode;
   static bool I2C_SetAsSlave;
   static bool I2C_Enabled;
 
@@ -59,6 +60,7 @@ private:
 public:
   TwoWire();
   void setSpeed(uint32_t);
+  void enableDMAMode(bool);
   void stretchClock(bool);
   void begin();
   void begin(uint8_t);
