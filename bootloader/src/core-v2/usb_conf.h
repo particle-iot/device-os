@@ -45,7 +45,7 @@
  *  when FS core is used.
  *******************************************************************************/
 #ifndef USE_USB_OTG_FS
-//#define USE_USB_OTG_FS
+#define USE_USB_OTG_FS //Uncommented by Satish
 #endif /* USE_USB_OTG_FS */
 
 #ifdef USE_USB_OTG_FS 
