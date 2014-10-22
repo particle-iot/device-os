@@ -64,7 +64,7 @@
 //#define BUTTON1_GPIO_PORT                	GPIOB
 //#define BUTTON1_GPIO_CLK                 	RCC_APB2Periph_GPIOB
 //#define BUTTON1_GPIO_MODE					GPIO_Mode_IPU
-//#define BUTTON1_PRESSED						0x00
+#define BUTTON1_PRESSED						0x00
 //#define BUTTON1_EXTI_LINE                	EXTI_Line2
 //#define BUTTON1_EXTI_PORT_SOURCE         	GPIO_PortSourceGPIOB
 //#define BUTTON1_EXTI_PIN_SOURCE          	GPIO_PinSource2
