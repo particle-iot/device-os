@@ -53,7 +53,7 @@
 #define APP_DEFAULT_ADD                 0x0800C000 /* The first 3 sectores (48 KB) are reserved for DFU code */
 
 /* Uncomment this define to impelement OTP memory interface */
-#define DFU_MAL_SUPPORT_OTP
+//#define DFU_MAL_SUPPORT_OTP
 
 /* Uncomment this define to implement template memory interface  */
 /* #define DFU_MAL_SUPPORT_MEM */
