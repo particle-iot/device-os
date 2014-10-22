@@ -21,5 +21,5 @@ PLATFORM_NET_PATH=$(PLATFORM_MODULE_PATH)/NET/$(PLATFORM_NET)
 include $(call rwildcard,$(PLATFORM_MCU_PATH)/,include.mk)
 include $(call rwildcard,$(PLATFORM_NET_PATH)/,include.mk)
 
-
-
+#Added temporarily to compile USB files for core-v2(WIP/testing)
+INCLUDE_DIRS += ../bootloader/src/core-v2
