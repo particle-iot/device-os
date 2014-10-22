@@ -1,4 +1,0 @@
-
-
-CSRC += \
-src/main.c
