@@ -68,13 +68,13 @@ typedef enum
 #   error "FIRMWARE_IMAGE_SIZE too large to fit into internal flash"
 #endif
 
-///* Internal Flash memory address where various firmwares are located */
-//#ifndef INTERNAL_FLASH_START
-//#define INTERNAL_FLASH_START                    ((uint32_t)0x08000000)
-//#endif
-//
-//#define USB_DFU_ADDRESS				INTERNAL_FLASH_START
-//#define CORE_FW_ADDRESS				((uint32_t)0x08005000)
+/* Internal Flash memory address where various firmwares are located */
+#ifndef INTERNAL_FLASH_START
+#define INTERNAL_FLASH_START                    ((uint32_t)0x08000000)
+#endif
+
+#define USB_DFU_ADDRESS				INTERNAL_FLASH_START
+#define CORE_FW_ADDRESS				((uint32_t)0x08005000)
 ///* Internal Flash memory address where the System Flags will be saved and loaded from  */
 //#define SYSTEM_FLAGS_ADDRESS		((uint32_t)0x08004C00)
 ///* Internal Flash end memory address */
