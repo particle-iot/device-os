@@ -24,7 +24,6 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include "hw_config.h"
 #include "syshealth_hal.h"
 #include "core_hal.h"
 #include "dfu_hal.h"
@@ -102,7 +101,7 @@ int main(void)
 
     // 0x5000 is written to the backup register after transferring the FW from
     // the external flash to the STM32's internal memory
-    if((BKP_ReadBackupRegister(BKP_DR10) == 0x5000) ||
+    if((HAL_Core_Read_Backup_Register(BKP_DR_10) == 0x5000) ||
             (FLASH_OTA_Update_SysFlag == 0x5000))
     {
         ApplicationAddress = CORE_FW_ADDRESS; //0x08005000
@@ -111,7 +110,7 @@ int main(void)
     // 0x0005 is written to the backup register at the end of firmware update.
     // if the register reads 0x0005, it signifies that the firmware update
     // was successful
-    else if((BKP_ReadBackupRegister(BKP_DR10) == 0x0005) ||
+    else if((HAL_Core_Read_Backup_Register(BKP_DR_10) == 0x0005) ||
             (FLASH_OTA_Update_SysFlag == 0x0005))
     {
         // OTA was complete and the firmware is now available to be transfered to
@@ -122,7 +121,7 @@ int main(void)
     // 0x5555 is written to the backup register at the beginning of firmware update
     // if the register still reads 0x5555, it signifies that the firmware update
     // was never completed => FAIL
-    else if((BKP_ReadBackupRegister(BKP_DR10) == 0x5555) ||
+    else if((HAL_Core_Read_Backup_Register(BKP_DR_10) == 0x5555) ||
             (FLASH_OTA_Update_SysFlag == 0x5555))
     {
         // OTA transfer failed, hence, load firmware from the backup address
@@ -187,7 +186,7 @@ int main(void)
                     break;
             }
 
-            BKP_WriteBackupRegister(BKP_DR1, BKP_DR1_Value);
+            HAL_Core_Write_Backup_Register(BKP_DR_01, BKP_DR1_Value);
 
             OTA_Flashed_ResetStatus();
 
@@ -199,7 +198,7 @@ int main(void)
     {
         // On successful firmware transition, BKP_DR1_Value is reset to default 0xFFFF
         BKP_DR1_Value = 1;	//Assume we have an invalid firmware loaded in internal flash
-        BKP_WriteBackupRegister(BKP_DR1, BKP_DR1_Value);
+        HAL_Core_Write_Backup_Register(BKP_DR_01, BKP_DR1_Value);
     }
 
 
@@ -276,7 +275,7 @@ int main(void)
             __set_MSP(*(__IO uint32_t*) ApplicationAddress);
 
             // Do not enable IWDG if Stop Mode Flag is set
-            if((BKP_ReadBackupRegister(BKP_DR9) >> 12) != 0xA)
+            if((HAL_Core_Read_Backup_Register(BKP_DR_09) >> 12) != 0xA)
             {
                 // Set IWDG Timeout to 5 secs
                 IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
