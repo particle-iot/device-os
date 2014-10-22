@@ -49,17 +49,17 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
 extern uint8_t DeviceState;
 
 uint8_t* USER_INFORMATION[11] = {
-        ">STATE: Application IDLE        ",
-        ">STATE: Application Detach      ",
-        ">STATE: DFU IDLE                ",
-        ">STATE: DFU Download Synch      ",
-        ">STATE: DFU Download Busy       ",
-        ">STATE: DFU Download IDLE       ",
-        ">STATE: DFU Manifest Synch      ",
-        ">STATE: DFU Manifest            ",
-        ">STATE: DFU Manifest Wait Reset ",
-        ">STATE: DFU Upload IDLE         ",
-        ">STATE: DFU ERROR               "
+        (uint8_t*)">STATE: Application IDLE        ",
+        (uint8_t*)">STATE: Application Detach      ",
+        (uint8_t*)">STATE: DFU IDLE                ",
+        (uint8_t*)">STATE: DFU Download Synch      ",
+        (uint8_t*)">STATE: DFU Download Busy       ",
+        (uint8_t*)">STATE: DFU Download IDLE       ",
+        (uint8_t*)">STATE: DFU Manifest Synch      ",
+        (uint8_t*)">STATE: DFU Manifest            ",
+        (uint8_t*)">STATE: DFU Manifest Wait Reset ",
+        (uint8_t*)">STATE: DFU Upload IDLE         ",
+        (uint8_t*)">STATE: DFU ERROR               "
 };
 /******************************************************************************/
 /*             Cortex-M Processor Exceptions Handlers                         */
