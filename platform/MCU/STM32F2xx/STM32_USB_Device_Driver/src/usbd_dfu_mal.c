@@ -65,12 +65,12 @@ DFU_MAL_Prop_TypeDef* tMALTab[MAX_USED_MEDIA] = {
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 
 __ALIGN_BEGIN const uint8_t* usbd_dfu_StringDesc[MAX_USED_MEDIA] __ALIGN_END  = {
-    FLASH_IF_STRING
+    (uint8_t*)FLASH_IF_STRING
 #ifdef DFU_MAL_SUPPORT_OTP
-  , OTP_IF_STRING
+  , (uint8_t*)OTP_IF_STRING
 #endif
 #ifdef DFU_MAL_SUPPORT_MEM
-  , MEM_IF_STRING
+  , (uint8_t*)MEM_IF_STRING
 #endif
 };
 

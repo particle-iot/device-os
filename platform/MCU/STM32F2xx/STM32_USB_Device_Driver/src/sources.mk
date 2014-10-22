@@ -10,14 +10,11 @@ TARGET_USB_FS_SRC_PATH = $(TARGET_USB_FS_PATH)/src
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_core.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_req.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_ioreq.c
-CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_cdc_core.c
-CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_cdc_if_template.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_dfu_core.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_dfu_mal.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_flash_if.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_mem_if_template.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_otp_if.c
-CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_hid_core.c
 
 # C++ source files included in this build.
 CPPSRC +=

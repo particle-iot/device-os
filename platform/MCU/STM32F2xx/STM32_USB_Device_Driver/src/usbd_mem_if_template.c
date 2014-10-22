@@ -47,7 +47,7 @@ uint16_t MEM_If_CheckAdd(uint32_t Add);
 /* Private variables ---------------------------------------------------------*/
 DFU_MAL_Prop_TypeDef DFU_Mem_cb =
   {
-    MEM_IF_STRING,
+    (uint8_t*)MEM_IF_STRING,
     MEM_If_Init,
     MEM_If_DeInit,
     MEM_If_Erase,
