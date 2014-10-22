@@ -201,5 +201,7 @@
 #define __ALIGN_BEGIN
 #define __ALIGN_END
 
+#define __packed    __attribute__ ((__packed__))
+
 #endif //__USB_CONF__H__
 
