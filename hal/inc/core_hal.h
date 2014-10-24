@@ -45,10 +45,16 @@
  * Note that once the JTAG IOs are disabled, the connection with the host debugger
  * is lost and cannot be re-established as long as the JTAG IOs remain disabled.
  */
-#ifndef USE_SWD_JTAG
+
+#ifdef USE_SWD_JTAG
+#define SWD_JTAG_ENABLE    
+#else 
+#ifdef USE_SWD
+#define SWD_ENABLE_JTAG_DISABLE    
+#else
 #define SWD_JTAG_DISABLE
 #endif
-
+#endif
 /*
  * Use Independent Watchdog to force a system reset when a software error occurs
  * During JTAG program/debug, the Watchdog counting is disabled by debug configuration
