@@ -127,7 +127,7 @@ static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time)
 static time_t Get_UnixTime(void)
 {
 	time_t unix_time = (time_t)HAL_RTC_Get_Counter();
-	return unix_time += time_zone_cache;
+	return unix_time;
 }
 
 /* Get converted Calendar time */
@@ -311,7 +311,7 @@ void TimeClass::zone(float GMT_Offset)
 	{
 		return;
 	}
-	time_zone_cache = GMT_Offset * 1800;
+	time_zone_cache = GMT_Offset * 3600;
 }
 
 /* set the given time as unix/rtc time */
