@@ -34,7 +34,7 @@ Unit Tests
 The unit tests are also built and executed. These are found under
 
 ```
-   testes/unit/
+   tests/unit/
 ```
 
 These tests are compiled under regular gcc (not the ARM version) and executed on 
