@@ -62,6 +62,9 @@ endif
 STM32_DEVICE_LC  = $(shell echo $(STM32_DEVICE) | tr A-Z a-z)
 
 ifdef STM32_DEVICE
+# needed for conditional compilation of syshealth_hal.h
+CFLAGS += -DSTM32_DEVICE
+# needed for conditional compilation of some stm32 specific files
 CFLAGS += -D$(STM32_DEVICE)
 endif
 
