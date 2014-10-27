@@ -43,7 +43,7 @@ uint16_t OTP_If_CheckAdd(uint32_t Add);
 /* Private variables ---------------------------------------------------------*/
 DFU_MAL_Prop_TypeDef DFU_Otp_cb =
   {
-    (uint8_t*)OTP_IF_STRING,
+    OTP_IF_STRING,
     NULL, /* Init not supported*/
     NULL, /* DeInit not supported */
     NULL, /* Erase not supported */

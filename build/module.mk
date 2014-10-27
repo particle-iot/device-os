@@ -36,6 +36,7 @@ CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -ffunction-sections -Wall -Werror -Wno-switch -fmessage-length=0
+CFLAGS += -Wno-pointer-sign -fno-strict-aliasing
 CFLAGS += -DSPARK=1
 
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))

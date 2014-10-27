@@ -38,19 +38,19 @@
 #define USBD_PID                        0xDF11
 
 #define USBD_LANGID_STRING              0x409
-#define USBD_MANUFACTURER_STRING        (uint8_t *)"STMicroelectronics"
+#define USBD_MANUFACTURER_STRING        "STMicroelectronics"
 
-#define USBD_PRODUCT_HS_STRING          (uint8_t *)"DFU in HS mode"
-#define USBD_SERIALNUMBER_HS_STRING     (uint8_t *)"00000000010B"
+#define USBD_PRODUCT_HS_STRING          "DFU in HS mode"
+#define USBD_SERIALNUMBER_HS_STRING     "00000000010B"
 
-#define USBD_PRODUCT_FS_STRING          (uint8_t *)"DFU in FS Mode"
-#define USBD_SERIALNUMBER_FS_STRING     (uint8_t *)"00000000010C"
+#define USBD_PRODUCT_FS_STRING          "DFU in FS Mode"
+#define USBD_SERIALNUMBER_FS_STRING     "00000000010C"
 
-#define USBD_CONFIGURATION_HS_STRING    (uint8_t *)"DFU Config"
-#define USBD_INTERFACE_HS_STRING        (uint8_t *)"DFU Interface"
+#define USBD_CONFIGURATION_HS_STRING    "DFU Config"
+#define USBD_INTERFACE_HS_STRING        "DFU Interface"
 
-#define USBD_CONFIGURATION_FS_STRING    (uint8_t *)"DFU Config"
-#define USBD_INTERFACE_FS_STRING        (uint8_t *)"DFU Interface"
+#define USBD_CONFIGURATION_FS_STRING    "DFU Config"
+#define USBD_INTERFACE_FS_STRING        "DFU Interface"
 
 USBD_DEVICE USR_desc =
 {
