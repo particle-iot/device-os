@@ -67,7 +67,7 @@ Open up a terminal window, navigate to your destination directory and type the f
 
 Make sure you have downloaded and installed all the required dependencies as mentioned [previously.](#1-download-and-install-dependencies). Note, if you've downloaded or cloned these previously, you'll want to `git pull` or redownload all of them before proceeding.
 
-Open up a terminal window, navigate to the build folder under firmware
+Open up a terminal window, navigate to the main folder under firmware
 (i.e. `cd firmware/main`) and type:
 
     make

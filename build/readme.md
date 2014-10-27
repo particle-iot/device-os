@@ -73,7 +73,7 @@ mylibrary.h
 
 You can also add header files - the application subdirectory is part of the include path.
 
-To build this application, change directory to the `build/` directory and run
+To build this application, change directory to the `main/` directory and run
 
 ```
 make APP=myapp
