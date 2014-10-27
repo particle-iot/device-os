@@ -8,7 +8,7 @@ TARGET_USB_OTG_SRC_PATH = $(TARGET_USB_OTG_PATH)/src
 
 # C source files included in this build.
 CSRC += $(TARGET_USB_OTG_SRC_PATH)/usb_core.c
-CSRC += $(TARGET_USB_OTG_SRC_PATH)/usb_dcd_init.c
+CSRC += $(TARGET_USB_OTG_SRC_PATH)/usb_dcd_int.c
 CSRC += $(TARGET_USB_OTG_SRC_PATH)/usb_dcd.c
 
 # C++ source files included in this build.
