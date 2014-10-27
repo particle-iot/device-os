@@ -2,8 +2,9 @@
 # Define ARM tools
 #
 
+
 # Define the compiler/tools prefix
-GCC_PREFIX = arm-none-eabi-
+GCC_PREFIX ?= arm-none-eabi-
 
 include $(COMMON_BUILD)/common-tools.mk
 

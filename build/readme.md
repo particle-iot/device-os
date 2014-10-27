@@ -18,6 +18,32 @@ submodules before deleting the `build\target` directory, E.g.
 make clean all
 ```
 
+
+## Specifying custom toolchain location
+
+Custom compiler prefix can be used via an environment variable `GCC_PREFIX`.
+
+For example when you have installed a custom toolchain under
+`/opt/gcc-arm-embedded-bin` you can use invoke make using that toolchain
+like this:
+
+```
+GCC_PREFIX="/opt/gcc-arm-embedded-bin/bin/arm-none-eabi-" make
+```
+
+The default value of `GCC_PREFIX` is `arm-none-eabi`, which uses the ARM
+version of the GCC toolchain, assumed to be in the path. 
+
+Alternatively, path for the tools can be specified separately as `GCC_ARM_PATH`,
+which, if specified should end with a directory separator, e.g.
+
+```
+GCC_ARM_PATH="/opt/gcc-arm-embedded-bin/bin/" make
+```
+
+
+
+
 ## Controlling Verbosity
 
 By default the makefile is quiet - the only output is when an .elf file is produced to
