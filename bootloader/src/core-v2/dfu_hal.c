@@ -24,11 +24,11 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include "dfu_hal.h"
 #include "usbd_dfu_core.h"
 #include "usbd_usr.h"
 #include "usbd_desc.h"
 #include "usb_conf.h"
+#include "core_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/

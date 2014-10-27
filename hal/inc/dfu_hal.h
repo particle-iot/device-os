@@ -28,30 +28,11 @@
 #define __DFU_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "hw_config.h"
-
 /* Exported types ------------------------------------------------------------*/
-typedef enum
-{
-    BKP_DR_01 = 0x01,
-    BKP_DR_02 = 0x02,
-    BKP_DR_03 = 0x03,
-    BKP_DR_04 = 0x04,
-    BKP_DR_05 = 0x05,
-    BKP_DR_06 = 0x06,
-    BKP_DR_07 = 0x07,
-    BKP_DR_08 = 0x08,
-    BKP_DR_09 = 0x09,
-    BKP_DR_10 = 0x10
-} BKP_DR_TypeDef;
-
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 
 void HAL_DFU_USB_Init(void);
-int32_t HAL_Core_Backup_Register(uint32_t BKP_DR);
-void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data);
-uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR);
 
 #endif /* __DFU_HAL_H */

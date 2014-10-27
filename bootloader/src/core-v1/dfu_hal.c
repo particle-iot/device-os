@@ -30,7 +30,7 @@
 #include "usb_prop.h"
 #include "usb_pwr.h"
 #include "dfu_mal.h"
-#include "dfu_hal.h"
+#include "core_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
