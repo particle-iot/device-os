@@ -85,7 +85,7 @@ none:
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
-program-dfu: $(TARGET_BASE).bin
+program-dfu: $(TARGET_BASE).dfu
 	@echo Flashing using dfu:
 	$(DFU) -d 1d50:607f -a 0 -s 0x08005000:leave -D $<
 
@@ -113,6 +113,12 @@ size: $(TARGET_BASE).elf
 	$(call,echo,'Invoking: ARM GNU Create Flash Image')
 	$(VERBOSE)$(OBJCOPY) -O ihex $< $@
 	$(call,echo,)
+
+
+# Create a DFU file from bin file
+%.dfu: %.bin
+	@cp $< $@
+	$(DFUSUFFIX) -v 1d50 -p 607f -a $@
 
 # Create a bin file from ELF file
 %.bin : %.elf

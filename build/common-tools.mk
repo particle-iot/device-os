@@ -15,6 +15,7 @@ OBJCOPY = $(GCC_ARM_PATH)$(GCC_PREFIX)objcopy
 OBJDUMP = $(GCC_ARM_PATH)$(GCC_PREFIX)objdump
 SIZE = $(GCC_ARM_PATH)$(GCC_PREFIX)size
 DFU = dfu-util
+DFUSUFFIX = dfu-suffix
 CURL = curl
 
 CPPFLAGS += -std=gnu++11
