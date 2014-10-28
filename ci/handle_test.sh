@@ -17,8 +17,13 @@ ci_dir=$(dirname $0)
 
 export core_name=${name[$platform]}
 
+if [ -z "$core_name" ]; then
+  echo "No core defined for platform $platform. Skipping test $platform/$suite."
+  exit 0
+fi
+
 # make the firmware 
-echo Building test suite in "$1"
+echo Building test suite in "$testdir"
 $ci_dir/make_test.sh $platform $suite || die 
 
 sparkFlash 5 $core_name $target_file || { echo "Unable to OTA flash test suite"; die; }
