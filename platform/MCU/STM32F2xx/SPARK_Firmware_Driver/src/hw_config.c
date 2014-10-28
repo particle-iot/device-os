@@ -136,9 +136,9 @@ void Set_System(void)
     /* NVIC configuration */
     NVIC_Configuration();
 
-//    /* Enable AFIO clock */
-//    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-//
+    /* Enable SYSCFG clock */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+
 //    /* Configure TIM1 for LED-PWM and BUTTON-DEBOUNCE usage */
 //    UI_Timer_Configure();
 //
