@@ -1,7 +1,7 @@
 # associates platform names with the core it runs on
 declare -A name
 
-name[core-v1]=reggy
+name[core-v1]=ci-mat
 
 if [[ $SPARK_USER =~ mat.* ]]; then
 name[core-v1]=JTAG

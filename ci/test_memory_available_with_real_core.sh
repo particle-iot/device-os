@@ -27,9 +27,6 @@ export guaranteed_ram=4096
 # Set a how much the handshake takes
 export handshake_ram=7896
 
-# Set a core name to use in spark-cli commands
-export core_name=ci-free-memory-available
-
 # Set a metric prefix name for Librato/graphing
 export metric_prefix=spark_dev
 
@@ -38,6 +35,12 @@ export post_to_librato=true
 
 # Jump into the CI dir
 cd ci
+
+# read in list of cores
+. ./cores
+
+core_name=${name['ci-mem-test']}
+
 
 # Use spark-cli to compile a simple firmware that checks available ram
 # TODO: THIS IS WHERE WE NEED TO USE THE `--latest` flag
