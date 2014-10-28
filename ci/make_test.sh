@@ -13,7 +13,6 @@ echo "Building test $suite for platform $platform"
 checkDefined build
 checkDefined main
 checkDefined target_file
-checkDefined target
 
 # where the build directory is. Presently the makefile must be
 # run with that as the cwd
@@ -22,7 +21,7 @@ cd $main || die "couldn't change directory to '$main'"
 # just for sanity test, remove existing firmware
 [[ ! -f $target_file ]] || rm $target_file
   
-make v=1 TARGET_FILE=core-firmware TEST=$platform/$suite || die 
+make v=1 TEST=$platform/$suite || die 
 
 [[ -f $target_file ]] || die "Expected target file '$target_file' to be produced by make."
 
