@@ -9,7 +9,7 @@
 #define	SPARK_WIRING_RANDOM_H
 
 void randomSeed(unsigned int seed);
-int random(int min);
+int random(int max);
 int random(int min, int max);
 
 #endif	/* SPARK_WIRING_RANDOM_H */
