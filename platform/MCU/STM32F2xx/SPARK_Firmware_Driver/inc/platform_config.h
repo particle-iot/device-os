@@ -89,23 +89,24 @@
 //#define BUTTON_DEBOUNCE_INTERVAL			1000 / UI_TIMER_FREQUENCY
 
 //NVIC Priorities based on NVIC_PriorityGroup_4
-//#define DMA1_CHANNEL5_IRQ_PRIORITY			0	//CC3000_SPI_TX_DMA Interrupt
-//#define EXTI15_10_IRQ_PRIORITY				1	//CC3000_WIFI_INT_EXTI & User Interrupt
-//#define USB_LP_IRQ_PRIORITY					2	//USB_LP_CAN1_RX0 Interrupt
-//#define RTCALARM_IRQ_PRIORITY				3	//RTC Alarm Interrupt
-//#define RTC_IRQ_PRIORITY					4	//RTC Seconds Interrupt
-//#define TIM1_CC_IRQ_PRIORITY				5	//TIM1_CC4 Interrupt
-//#define EXTI2_IRQ_PRIORITY					6	//BUTTON1_EXTI Interrupt
-//#define USART2_IRQ_PRIORITY					7	//USART2 Interrupt
-//#define EXTI0_IRQ_PRIORITY					11	//User Interrupt
-//#define EXTI1_IRQ_PRIORITY					11	//User Interrupt
-//#define EXTI3_IRQ_PRIORITY					11	//User Interrupt
-//#define EXTI4_IRQ_PRIORITY					11	//User Interrupt
-//#define EXTI9_5_IRQ_PRIORITY				12	//User Interrupt
-//#define SYSTICK_IRQ_PRIORITY				13	//CORTEX_M3 Systick Interrupt
-//#define SVCALL_IRQ_PRIORITY					14	//CORTEX_M3 SVCall Interrupt
-//#define PENDSV_IRQ_PRIORITY					15	//CORTEX_M3 PendSV Interrupt
-
+#define SDIO_IRQ_PRIORITY                       0       //??? BCM43362 SDIO Interrupt
+#define OTG_FS_IRQ_PRIORITY                     2       //USB OTG FS Interrupt
+#define OTG_FS_WKUP_IRQ_PRIORITY                2       //USB OTG FS Wakeup Interrupt
+#define RTC_Alarm_IRQ_PRIORITY                  3       //RTC Alarm Interrupt
+#define RTC_WKUP_IRQ_PRIORITY                   4       //RTC Seconds Interrupt
+#define USART1_IRQ_PRIORITY                     5       //USART1 Interrupt
+#define USART2_IRQ_PRIORITY                     5       //USART2 Interrupt
+#define TIM1_CC_IRQ_PRIORITY                    6       //TIM1 CC Interrupt(Button & RGB Use)
+#define EXTI9_5_IRQ_PRIORITY                    7       //Mode Button and User Interrupt
+#define EXTI15_10_IRQ_PRIORITY                  8       //??? User Interrupt
+#define EXTI0_IRQ_PRIORITY                      9       //??? User Interrupt
+#define EXTI1_IRQ_PRIORITY                      9       //??? User Interrupt
+#define EXTI2_IRQ_PRIORITY                      9       //??? User Interrupt
+#define EXTI3_IRQ_PRIORITY                      9       //??? User Interrupt
+#define EXTI4_IRQ_PRIORITY                      9       //??? User Interrupt
+#define SYSTICK_IRQ_PRIORITY                    13      //CORTEX_M3 Systick Interrupt
+#define SVCALL_IRQ_PRIORITY                     14      //CORTEX_M3 SVCall Interrupt
+#define PENDSV_IRQ_PRIORITY                     15      //CORTEX_M3 PendSV Interrupt
 
 #ifndef SPARK_PRODUCT_ID
 #define SPARK_PRODUCT_ID 0

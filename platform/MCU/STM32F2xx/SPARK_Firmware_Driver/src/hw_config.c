@@ -86,10 +86,7 @@ uint16_t Factory_Reset_SysFlag = 0xFFFF;
  * @brief  Initialise Data Watchpoint and Trace Register (DWT).
  * @param  None
  * @retval None
- *
- *
  */
-
 static void DWT_Init(void)
 {
     DBGMCU->CR |= DBGMCU_CR_SETTINGS;
@@ -135,10 +132,10 @@ void Set_System(void)
     }
 
     DWT_Init();
-//
-//    /* NVIC configuration */
-//    NVIC_Configuration();
-//
+
+    /* NVIC configuration */
+    NVIC_Configuration();
+
 //    /* Enable AFIO clock */
 //    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 //
@@ -165,13 +162,13 @@ void Set_System(void)
  *******************************************************************************/
 void NVIC_Configuration(void)
 {
-//    /* Configure the NVIC Preemption Priority Bits */
-//    /* 4 bits for pre-emption priority(0-15 PreemptionPriority) and 0 bits for subpriority(0 SubPriority) */
-//    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
-//
-//    /* Configure the Priority Group to 2 bits */
-//    /* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
-//    //OLD: NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+    /* Configure the NVIC Preemption Priority Bits */
+    /* 4 bits for pre-emption priority(0-15 PreemptionPriority) and 0 bits for subpriority(0 SubPriority) */
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+
+    /* Configure the Priority Group to 2 bits */
+    /* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
+    //OLD: NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 }
 
 /*******************************************************************************
