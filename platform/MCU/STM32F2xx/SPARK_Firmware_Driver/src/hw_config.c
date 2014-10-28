@@ -31,6 +31,8 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#define DBGMCU_CR_SETTINGS      (DBGMCU_CR_DBG_SLEEP|DBGMCU_CR_DBG_STOP|DBGMCU_CR_DBG_STANDBY)
+#define DBGMCU_APB1FZ_SETTINGS  (DBGMCU_APB1_FZ_DBG_IWDG_STOP|DBGMCU_APB1_FZ_DBG_WWDG_STOP)
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -90,10 +92,11 @@ uint16_t Factory_Reset_SysFlag = 0xFFFF;
 
 static void DWT_Init(void)
 {
-//    DBGMCU->CR |= DBGMCU_SETTINGS;
-//    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-//    DWT->CYCCNT = 0;
-//    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+    DBGMCU->CR |= DBGMCU_CR_SETTINGS;
+    DBGMCU->APB1FZ |= DBGMCU_APB1FZ_SETTINGS;
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 
 /**

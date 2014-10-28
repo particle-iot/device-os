@@ -35,6 +35,11 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#if defined(DEBUG_BUILD)
+#define DBGMCU_SETTINGS (DBGMCU_CR_DBG_SLEEP|DBGMCU_CR_DBG_STOP|DBGMCU_CR_DBG_STANDBY|DBGMCU_CR_DBG_IWDG_STOP|DBGMCU_CR_DBG_WWDG_STOP)
+#else
+#define DBGMCU_SETTINGS (DBGMCU_CR_DBG_IWDG_STOP|DBGMCU_CR_DBG_WWDG_STOP)
+#endif
 
 /* Private macro -------------------------------------------------------------*/
 
