@@ -102,12 +102,12 @@ function startTests() {
 # $1 the regex to include
 function includeTests() {
   echo "include tests matching $1"
-  [[ "$(sendCommand 'include=$1')"=="0" ]]
+  [[ $(sendCommand "include=$1")=="0" ]]
 }
 
 function excludeTests() {
   echo "exclude tests matching $1"
-  [[ "$(sendCommand 'exclude=$1')"=="0" ]]
+  [[ $(sendCommand "exclude=$1")=="0" ]]
 }
 
 # sends a command to the test harness
