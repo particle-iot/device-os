@@ -32,12 +32,16 @@
 #include "usbd_core.h"
 #include "usb_conf.h"
 #include "usbd_dfu_core.h"
+#include "hw_config.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
+/* Extern function prototypes ------------------------------------------------*/
+extern void Timing_Decrement(void);
+
 extern USB_OTG_CORE_HANDLE           USB_OTG_dev;
 extern uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
 
@@ -160,6 +164,8 @@ void PendSV_Handler(void)
  */
 void SysTick_Handler(void)
 {
+    System1MsTick();
+    Timing_Decrement();
 }
 
 /**

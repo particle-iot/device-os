@@ -180,17 +180,17 @@ void NVIC_Configuration(void)
  *******************************************************************************/
 void SysTick_Configuration(void)
 {
-//    /* Setup SysTick Timer for 1 msec interrupts */
-//    if (SysTick_Config(SystemCoreClock / 1000))
-//    {
-//        /* Capture error */
-//        while (1)
-//        {
-//        }
-//    }
-//
-//    /* Configure the SysTick Handler Priority: Preemption priority and subpriority */
-//    NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);	//OLD: NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00)
+    /* Setup SysTick Timer for 1 msec interrupts */
+    if (SysTick_Config(SystemCoreClock / 1000))
+    {
+        /* Capture error */
+        while (1)
+        {
+        }
+    }
+
+    /* Configure the SysTick Handler Priority: Preemption priority and subpriority */
+    NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);	//OLD: NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00)
 }
 
 void RTC_Configuration(void)
