@@ -11,6 +11,15 @@ TARGET_DIR ?= $(USRSRC)
 endif
 endif
 
+ifdef APPDIR
+USRSRC = $(APPDIR)
+ifndef TARGET_FILE
+TARGET_FILE ?= $(notdir $(APPDIR))
+TARGET_DIR ?= $(USRSRC)
+endif
+endif
+
+
 ifdef TEST
 USRSRC = tests/$(TEST)
 INCLUDE_PLATFORM?=1
