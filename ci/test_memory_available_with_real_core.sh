@@ -51,6 +51,7 @@ spark compile firmware/memory_available.ino | tee compile_output.txt
 bin_name=$(cat compile_output.txt | grep "firmware.*bin" | awk ' { print ( $(NF) ) }')
 
 # Flash the firmware to core OTA style
+echo "Flashing mem-test to $(core_name)"
 spark flash $core_name $bin_name
 
 # Wait 60 seconds for the flash to complete + core to reconnect;
