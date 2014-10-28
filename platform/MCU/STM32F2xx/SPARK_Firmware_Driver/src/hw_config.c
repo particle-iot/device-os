@@ -113,27 +113,27 @@ void Set_System(void)
 	 system_stm32f2xx.c file
      */
 
-//    /* Enable PWR and BKP clock */
-//    RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
-//
-//    /* Enable write access to Backup domain */
-//    PWR_BackupAccessCmd(ENABLE);
-//
-//    /* Should we execute System Standby mode */
-//    // Use "HAL_Core_Execute_Standby_Mode()" defined in core_hal.c
-//    // Or Use below code
-//    if(BKP_ReadBackupRegister(BKP_DR9) == 0xA5A5)
-//    {
-//        /* Clear Standby mode system flag */
-//        BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
-//
-//        /* Request to enter STANDBY mode */
-//        PWR_EnterSTANDBYMode();
-//
-//        /* Following code will not be reached */
-//        while(1);
-//    }
-//
+    /* Enable the PWR clock */
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+
+    /* Allow access to RTC Backup domain */
+    PWR_BackupAccessCmd(ENABLE);
+
+    /* Should we execute System Standby mode */
+    // Use "HAL_Core_Execute_Standby_Mode()" defined in core_hal.c
+    // Or Use below code
+    if(RTC_ReadBackupRegister(RTC_BKP_DR9) == 0xA5A5)
+    {
+        /* Clear Standby mode system flag */
+        RTC_WriteBackupRegister(RTC_BKP_DR9, 0xFFFF);
+
+        /* Request to enter STANDBY mode */
+        PWR_EnterSTANDBYMode();
+
+        /* Following code will not be reached */
+        while(1);
+    }
+
     DWT_Init();
 //
 //    /* NVIC configuration */
