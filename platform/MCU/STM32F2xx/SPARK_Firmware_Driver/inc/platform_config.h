@@ -44,19 +44,27 @@
 /* Exported macro ------------------------------------------------------------*/
 
 //LEDs
-//#define LEDn                           		4
-//#define LED1_GPIO_PIN                    	GPIO_Pin_13
-//#define LED1_GPIO_PORT                   	GPIOA
-//#define LED1_GPIO_CLK                    	RCC_APB2Periph_GPIOA
-//#define LED2_GPIO_PIN                   	GPIO_Pin_8
-//#define LED2_GPIO_PORT                   	GPIOA
-//#define LED2_GPIO_CLK                    	RCC_APB2Periph_GPIOA
-//#define LED3_GPIO_PIN                   	GPIO_Pin_9
-//#define LED3_GPIO_PORT                   	GPIOA
-//#define LED3_GPIO_CLK                    	RCC_APB2Periph_GPIOA
-//#define LED4_GPIO_PIN                    	GPIO_Pin_10
-//#define LED4_GPIO_PORT                   	GPIOA
-//#define LED4_GPIO_CLK                    	RCC_APB2Periph_GPIOA
+#define LEDn                           		4
+#define LED1_GPIO_AF_TIM                        0                       //To Decide
+#define LED1_GPIO_PIN                    	0                       //To Decide
+#define LED1_GPIO_PIN_SOURCE                    0                       //To Decide
+#define LED1_GPIO_PORT                   	0                       //To Decide
+#define LED1_GPIO_CLK                    	0                       //To Decide
+#define LED2_GPIO_AF_TIM                        GPIO_AF_TIM2            //BLUE Led
+#define LED2_GPIO_PIN                   	GPIO_Pin_3              //BLUE Led
+#define LED2_GPIO_PIN_SOURCE                    GPIO_PinSource3         //BLUE Led
+#define LED2_GPIO_PORT                   	GPIOA                   //BLUE Led
+#define LED2_GPIO_CLK                    	RCC_AHB1Periph_GPIOA    //BLUE Led
+#define LED3_GPIO_AF_TIM                        GPIO_AF_TIM2            //RED Led
+#define LED3_GPIO_PIN                   	GPIO_Pin_1              //RED Led
+#define LED3_GPIO_PIN_SOURCE                    GPIO_PinSource1         //RED Led
+#define LED3_GPIO_PORT                   	GPIOA                   //RED Led
+#define LED3_GPIO_CLK                    	RCC_AHB1Periph_GPIOA    //RED Led
+#define LED4_GPIO_AF_TIM                        GPIO_AF_TIM2            //GREEN Led
+#define LED4_GPIO_PIN                    	GPIO_Pin_2              //GREEN Led
+#define LED4_GPIO_PIN_SOURCE                    GPIO_PinSource2         //GREEN Led
+#define LED4_GPIO_PORT                   	GPIOA                   //GREEN Led
+#define LED4_GPIO_CLK                    	RCC_AHB1Periph_GPIOA    //GREEN Led
 
 //Push Buttons
 //#define BUTTONn                           	1
@@ -85,8 +93,8 @@
 //#define USB_DISCONNECT_GPIO_PORT       		GPIOB
 //#define USB_DISCONNECT_GPIO_CLK		  		RCC_APB2Periph_GPIOB
 
-//#define UI_TIMER_FREQUENCY					100							/* 100Hz -> 10ms */
-//#define BUTTON_DEBOUNCE_INTERVAL			1000 / UI_TIMER_FREQUENCY
+#define UI_TIMER_FREQUENCY                      100	/* 100Hz -> 10ms */
+#define BUTTON_DEBOUNCE_INTERVAL		1000 / UI_TIMER_FREQUENCY
 
 //NVIC Priorities based on NVIC_PriorityGroup_4
 #define SDIO_IRQ_PRIORITY                       0       //??? BCM43362 SDIO Interrupt
