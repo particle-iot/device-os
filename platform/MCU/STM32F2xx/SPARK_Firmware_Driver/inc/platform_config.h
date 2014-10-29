@@ -67,31 +67,22 @@
 #define LED4_GPIO_CLK                    	RCC_AHB1Periph_GPIOA    //GREEN Led
 
 //Push Buttons
-//#define BUTTONn                           	1
-//#define BUTTON1_GPIO_PIN                 	GPIO_Pin_2
-//#define BUTTON1_GPIO_PORT                	GPIOB
-//#define BUTTON1_GPIO_CLK                 	RCC_APB2Periph_GPIOB
-//#define BUTTON1_GPIO_MODE					GPIO_Mode_IPU
-#define BUTTON1_PRESSED						0x00
-//#define BUTTON1_EXTI_LINE                	EXTI_Line2
-//#define BUTTON1_EXTI_PORT_SOURCE         	GPIO_PortSourceGPIOB
-//#define BUTTON1_EXTI_PIN_SOURCE          	GPIO_PinSource2
-//#define BUTTON1_EXTI_IRQn                	EXTI2_IRQn
-//#define	BUTTON1_EXTI_TRIGGER				EXTI_Trigger_Falling
-//#define BUTTON2_GPIO_PIN                 	0
-//#define BUTTON2_GPIO_PORT               	0
-//#define BUTTON2_GPIO_CLK                	0
-//#define BUTTON2_GPIO_MODE					0
-//#define BUTTON2_PRESSED						0
-//#define BUTTON2_EXTI_LINE               	0
-//#define BUTTON2_EXTI_PORT_SOURCE        	0
-//#define BUTTON2_EXTI_PIN_SOURCE         	0
-//#define BUTTON2_EXTI_IRQn               	0
-//#define	BUTTON2_EXTI_TRIGGER				0
+#define BUTTONn                                 1
+#define BUTTON1_GPIO_PIN                        GPIO_Pin_2
+#define BUTTON1_GPIO_PORT                       GPIOC
+#define BUTTON1_GPIO_CLK                        RCC_AHB1Periph_GPIOC
+#define BUTTON1_GPIO_MODE		        GPIO_Mode_IN
+#define BUTTON1_GPIO_PUPD                       GPIO_PuPd_UP
+#define BUTTON1_PRESSED			        0x00
+#define BUTTON1_EXTI_LINE                       EXTI_Line2
+#define BUTTON1_EXTI_PORT_SOURCE                EXTI_PortSourceGPIOC
+#define BUTTON1_EXTI_PIN_SOURCE                 EXTI_PinSource2
+#define BUTTON1_EXTI_IRQn                       EXTI2_IRQn
+#define	BUTTON1_EXTI_TRIGGER		        EXTI_Trigger_Falling
 
-//#define USB_DISCONNECT_GPIO_PIN           	GPIO_Pin_10
-//#define USB_DISCONNECT_GPIO_PORT       		GPIOB
-//#define USB_DISCONNECT_GPIO_CLK		  		RCC_APB2Periph_GPIOB
+//#define USB_DISCONNECT_GPIO_PIN                 GPIO_Pin_10
+//#define USB_DISCONNECT_GPIO_PORT                GPIOB
+//#define USB_DISCONNECT_GPIO_CLK                 RCC_APB2Periph_GPIOB
 
 #define UI_TIMER_FREQUENCY                      100	/* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL		1000 / UI_TIMER_FREQUENCY
@@ -104,14 +95,14 @@
 #define RTC_WKUP_IRQ_PRIORITY                   4       //RTC Seconds Interrupt
 #define USART1_IRQ_PRIORITY                     5       //USART1 Interrupt
 #define USART2_IRQ_PRIORITY                     5       //USART2 Interrupt
-#define TIM1_CC_IRQ_PRIORITY                    6       //TIM1 CC Interrupt(Button & RGB Use)
-#define EXTI9_5_IRQ_PRIORITY                    7       //Mode Button and User Interrupt
+#define TIM2_IRQ_PRIORITY                       6       //TIM2 CC Interrupt(Button Use)
+#define EXTI2_IRQ_PRIORITY                      7       //Mode Button
 #define EXTI15_10_IRQ_PRIORITY                  8       //??? User Interrupt
-#define EXTI0_IRQ_PRIORITY                      9       //??? User Interrupt
-#define EXTI1_IRQ_PRIORITY                      9       //??? User Interrupt
-#define EXTI2_IRQ_PRIORITY                      9       //??? User Interrupt
-#define EXTI3_IRQ_PRIORITY                      9       //??? User Interrupt
-#define EXTI4_IRQ_PRIORITY                      9       //??? User Interrupt
+#define EXTI9_5_IRQ_PRIORITY                    9       //??? User Interrupt
+#define EXTI0_IRQ_PRIORITY                      10      //??? User Interrupt
+#define EXTI1_IRQ_PRIORITY                      10      //??? User Interrupt
+#define EXTI3_IRQ_PRIORITY                      10      //??? User Interrupt
+#define EXTI4_IRQ_PRIORITY                      10      //??? User Interrupt
 #define SYSTICK_IRQ_PRIORITY                    13      //CORTEX_M3 Systick Interrupt
 #define SVCALL_IRQ_PRIORITY                     14      //CORTEX_M3 SVCall Interrupt
 #define PENDSV_IRQ_PRIORITY                     15      //CORTEX_M3 PendSV Interrupt

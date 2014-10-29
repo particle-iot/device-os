@@ -39,6 +39,8 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
+/* Extern variables ----------------------------------------------------------*/
+extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 /* Extern function prototypes ------------------------------------------------*/
 extern void Timing_Decrement(void);
 
@@ -169,7 +171,55 @@ void SysTick_Handler(void)
 }
 
 /**
- * @brief  This function handles EXTI15_10_IRQ Handler.
+ * @brief  This function handles EXTI2 Handler.
+ * @param  None
+ * @retval None
+ */
+void EXTI2_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE );
+
+        BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
+
+        /* Disable BUTTON1 Interrupt */
+        BUTTON_EXTI_Config(BUTTON1, DISABLE);
+
+        /* Enable TIM2 CC1 Interrupt */
+        TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
+    }
+}
+
+/**
+ * @brief  This function handles TIM2 Handler.
+ * @param  None
+ * @retval None
+ */
+void TIM2_IRQHandler(void)
+{
+    if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
+
+        if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+        {
+            BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
+        }
+        else
+        {
+            /* Disable TIM2 CC1 Interrupt */
+            TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
+
+            /* Enable BUTTON1 Interrupt */
+            BUTTON_EXTI_Config(BUTTON1, ENABLE);
+        }
+    }
+}
+
+/**
+ * @brief  This function handles OTG_FS_WKUP Handler.
  * @param  None
  * @retval None
  */
@@ -187,7 +237,7 @@ void OTG_FS_WKUP_IRQHandler(void)
 #endif
 
 /**
- * @brief  This function handles EXTI15_10_IRQ Handler.
+ * @brief  This function handles OTG_HS_WKUP Handler.
  * @param  None
  * @retval None
  */
