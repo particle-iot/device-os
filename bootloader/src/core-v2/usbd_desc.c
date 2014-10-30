@@ -33,17 +33,17 @@
 #include "usbd_conf.h"
 #include "usb_regs.h"
 
-#define USBD_VID                        0x0483
+#define USBD_VID                        0x1D50  //Spark Vendor ID
 
-#define USBD_PID                        0xDF11
+#define USBD_PID                        0x607F  //Spark DFU Product ID
 
-#define USBD_LANGID_STRING              0x409
-#define USBD_MANUFACTURER_STRING        "STMicroelectronics"
+#define USBD_LANGID_STRING              0x0409  //U.S. English
+#define USBD_MANUFACTURER_STRING        "Spark Devices     "
 
-#define USBD_PRODUCT_HS_STRING          "DFU in HS mode"
+#define USBD_PRODUCT_HS_STRING          "SPARK DFU MODE"
 #define USBD_SERIALNUMBER_HS_STRING     "00000000010B"
 
-#define USBD_PRODUCT_FS_STRING          "DFU in FS Mode"
+#define USBD_PRODUCT_FS_STRING          "SPARK DFU MODE"
 #define USBD_SERIALNUMBER_FS_STRING     "00000000010C"
 
 #define USBD_CONFIGURATION_HS_STRING    "DFU Config"
