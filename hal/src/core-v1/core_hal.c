@@ -41,8 +41,6 @@
 /* Private variables ---------------------------------------------------------*/
 volatile uint8_t IWDG_SYSTEM_RESET;
 
-extern void linkme(void);
-
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -62,7 +60,6 @@ void HAL_Core_Config(void)
 {
     // this ensures the stm32_it.c functions aren't dropped by the linker, thinking
     // they are unused. Without this none of the interrupts handlers are linked.
-    linkme();
   DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 #ifdef DFU_BUILD_ENABLE
   /* Set the Vector Table(VT) base location at 0x5000 */
@@ -325,3 +322,8 @@ void HAL_Notify_WDT()
 {
     KICK_WDT();
 }
+    
+int main() {
+    app_setup_and_loop();    
+    return 0;
+}    

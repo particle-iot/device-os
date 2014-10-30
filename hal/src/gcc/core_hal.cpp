@@ -226,3 +226,8 @@ void HAL_Notify_WDT()
 void HAL_Core_Init(void)
 {    
 }
+
+int main() {
+    app_setup_and_loop();    
+    return 0;
+}
