@@ -131,12 +131,6 @@ uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
 void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
-/* Serial Flash Hardware related methods */
-void sFLASH_SPI_DeInit(void);
-void sFLASH_SPI_Init(void);
-void sFLASH_CS_LOW(void);
-void sFLASH_CS_HIGH(void);
-
 /* USB hardware peripheral related methods */
 void USB_Disconnect_Config(void);
 void Set_USBClock(void);
@@ -148,16 +142,13 @@ void USB_Cable_Config(FunctionalState NewState);
 void Load_SystemFlags(void);
 void Save_SystemFlags(void);
 
-/* Internal Flash Write Protection routines */
+/* Internal Flash Routines */
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages);
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages);
-/* Internal Flash Backup to sFlash and Restore from sFlash Helper routines */
 void FLASH_Erase(void);
-void FLASH_Backup(uint32_t sFLASH_Address);
-void FLASH_Restore(uint32_t sFLASH_Address);
-/* External Flash Helper routines */
-uint32_t FLASH_PagesMask(uint32_t fileSize);
-void FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize);
+void FLASH_Backup(uint32_t FLASH_Address);
+void FLASH_Restore(uint32_t FLASH_Address);
+void FLASH_Begin(uint32_t FLASH_Address, uint32_t fileSize);
 uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
 void FLASH_End(void);
 

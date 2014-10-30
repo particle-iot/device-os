@@ -65,20 +65,6 @@ uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
 uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
 uint16_t Factory_Reset_SysFlag = 0xFFFF;
 
-//uint32_t WRPR_Value = 0xFFFFFFFF;
-//uint32_t Flash_Pages_Protected = 0x0;
-//uint32_t Internal_Flash_Address = 0;
-//uint32_t External_Flash_Address = 0;
-//uint32_t Internal_Flash_Data = 0;
-//uint8_t External_Flash_Data[4];
-//uint16_t Flash_Update_Index = 0;
-//uint32_t EraseCounter = 0;
-//uint32_t NbrOfPage = 0;
-//volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
-//static uint32_t External_Flash_Start_Address = 0;
-
-//__IO uint16_t sFLASH_SPI_CR;
-
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -198,103 +184,12 @@ void SysTick_Configuration(void)
 
 void RTC_Configuration(void)
 {
-//    EXTI_InitTypeDef EXTI_InitStructure;
-//    NVIC_InitTypeDef NVIC_InitStructure;
-//
-//    /* Configure EXTI Line17(RTC Alarm) to generate an interrupt on rising edge */
-//    EXTI_ClearITPendingBit(EXTI_Line17);
-//    EXTI_InitStructure.EXTI_Line = EXTI_Line17;
-//    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-//    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-//    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-//    EXTI_Init(&EXTI_InitStructure);
-//
-//    /* Enable the RTC Interrupt */
-//    NVIC_InitStructure.NVIC_IRQChannel = RTC_IRQn;
-//    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = RTC_IRQ_PRIORITY;			//OLD: 0x01
-//    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;								//OLD: 0x01
-//    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-//    NVIC_Init(&NVIC_InitStructure);
-//
-//    /* Enable the RTC Alarm Interrupt */
-//    NVIC_InitStructure.NVIC_IRQChannel = RTCAlarm_IRQn;
-//    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = RTCALARM_IRQ_PRIORITY;		//OLD: 0x01
-//    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;								//OLD: 0x02
-//    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-//    NVIC_Init(&NVIC_InitStructure);
-//
-//    /* Check if the StandBy flag is set */
-//    if(PWR_GetFlagStatus(PWR_FLAG_SB) != RESET)
-//    {
-//        /* System resumed from STANDBY mode */
-//
-//        /* Clear StandBy flag */
-//        PWR_ClearFlag(PWR_FLAG_SB);
-//
-//        /* Wait for RTC APB registers synchronisation */
-//        RTC_WaitForSynchro();
-//
-//        /* No need to configure the RTC as the RTC configuration(clock source, enable,
-//	       prescaler,...) is kept after wake-up from STANDBY */
-//    }
-//    else
-//    {
-//        /* StandBy flag is not set */
-//
-//        /* Enable LSE */
-//        RCC_LSEConfig(RCC_LSE_ON);
-//
-//        /* Wait till LSE is ready */
-//        while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET)
-//        {
-//            //Do nothing
-//        }
-//
-//        /* Select LSE as RTC Clock Source */
-//        RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
-//
-//        /* Enable RTC Clock */
-//        RCC_RTCCLKCmd(ENABLE);
-//
-//        /* Wait for RTC registers synchronization */
-//        RTC_WaitForSynchro();
-//
-//        /* Wait until last write operation on RTC registers has finished */
-//        RTC_WaitForLastTask();
-//
-//        /* Set RTC prescaler: set RTC period to 1sec */
-//        RTC_SetPrescaler(32767); /* RTC period = RTCCLK/RTC_PR = (32.768 KHz)/(32767+1) */
-//
-//        /* Wait until last write operation on RTC registers has finished */
-//        RTC_WaitForLastTask();
-//    }
-//
-//    /* Enable the RTC Second and RTC Alarm interrupt */
-//    RTC_ITConfig(RTC_IT_SEC | RTC_IT_ALR, ENABLE);
-//
-//    /* Wait until last write operation on RTC registers has finished */
-//    RTC_WaitForLastTask();
+    //To Do
 }
 
 void IWDG_Reset_Enable(uint32_t msTimeout)
 {
-//    /* Enable write access to IWDG_PR and IWDG_RLR registers */
-//    IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
-//
-//    /* IWDG counter clock: LSI/256 */
-//    IWDG_SetPrescaler(IWDG_Prescaler_256);
-//
-//    /* IWDG timeout may vary due to LSI frequency dispersion */
-//    msTimeout = ((msTimeout * 40) / 256); //Assuming LSI Frequency = 40000
-//    if (msTimeout > 0xfff) msTimeout = 0xfff;   // 26214.4
-//
-//    IWDG_SetReload((uint16_t)msTimeout);
-//
-//    /* Reload IWDG counter */
-//    IWDG_ReloadCounter();
-//
-//    /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
-//    IWDG_Enable();
+    //To Do
 }
 
 void UI_Timer_Configure(void)
@@ -526,119 +421,6 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button)
     BUTTON_DEBOUNCED_TIME[Button] = 0;
 }
 
-/**
- * @brief  DeInitializes the peripherals used by the SPI FLASH driver.
- * @param  None
- * @retval None
- */
-void sFLASH_SPI_DeInit(void)
-{
-//    GPIO_InitTypeDef GPIO_InitStructure;
-//
-//    /* Disable the sFLASH_SPI  */
-//    SPI_Cmd(sFLASH_SPI, DISABLE);
-//
-//    /* DeInitializes the sFLASH_SPI */
-//    SPI_I2S_DeInit(sFLASH_SPI);
-//
-//    /* sFLASH_SPI Peripheral clock disable */
-//    sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, DISABLE);
-//
-//    /* Configure sFLASH_SPI pins: SCK */
-//    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_GPIO_PIN;
-//    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-//    GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
-//
-//    /* Configure sFLASH_SPI pins: MISO */
-//    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_GPIO_PIN;
-//    GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
-//
-//    /* Configure sFLASH_SPI pins: MOSI */
-//    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_GPIO_PIN;
-//    GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
-//
-//    /* Configure sFLASH_MEM_CS_GPIO_PIN pin: sFLASH CS pin */
-//    GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_GPIO_PIN;
-//    GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
-}
-
-/**
- * @brief  Initializes the peripherals used by the SPI FLASH driver.
- * @param  None
- * @retval None
- */
-void sFLASH_SPI_Init(void)
-{
-//    GPIO_InitTypeDef GPIO_InitStructure;
-//    SPI_InitTypeDef  SPI_InitStructure;
-//
-//    /* sFLASH_MEM_CS_GPIO, sFLASH_SPI_MOSI_GPIO, sFLASH_SPI_MISO_GPIO
-//	   and sFLASH_SPI_SCK_GPIO Periph clock enable */
-//    RCC_APB2PeriphClockCmd(sFLASH_MEM_CS_GPIO_CLK | sFLASH_SPI_MOSI_GPIO_CLK | sFLASH_SPI_MISO_GPIO_CLK |
-//            sFLASH_SPI_SCK_GPIO_CLK, ENABLE);
-//
-//    /* sFLASH_SPI Periph clock enable */
-//    sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, ENABLE);
-//
-//    /* Configure sFLASH_SPI pins: SCK */
-//    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_GPIO_PIN;
-//    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-//    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-//    GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
-//
-//    /* Configure sFLASH_SPI pins: MOSI */
-//    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_GPIO_PIN;
-//    GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
-//
-//    /* Configure sFLASH_SPI pins: MISO */
-//    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_GPIO_PIN;
-//    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-//    GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
-//
-//    /* Configure sFLASH_MEM_CS_GPIO_PIN pin: sFLASH CS pin */
-//    GPIO_InitStructure.GPIO_Pin = sFLASH_MEM_CS_GPIO_PIN;
-//    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-//    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-//    GPIO_Init(sFLASH_MEM_CS_GPIO_PORT, &GPIO_InitStructure);
-//
-//    /*!< Deselect the FLASH: Chip Select high */
-//    sFLASH_CS_HIGH();
-//
-//    /*!< SPI configuration */
-//    SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
-//    SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
-//    SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
-//    SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
-//    SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
-//    SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-//    SPI_InitStructure.SPI_BaudRatePrescaler = sFLASH_SPI_BAUDRATE_PRESCALER;
-//    SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
-//    SPI_InitStructure.SPI_CRCPolynomial = 7;
-//    SPI_Init(sFLASH_SPI, &SPI_InitStructure);
-//
-//    sFLASH_SPI_CR = sFLASH_SPI->CR1;
-//
-//    /*!< Enable the sFLASH_SPI  */
-//    SPI_Cmd(sFLASH_SPI, ENABLE);
-}
-
-/* Select sFLASH: Chip Select pin low */
-void sFLASH_CS_LOW(void)
-{
-//    acquire_spi_bus(BUS_OWNER_SFLASH);
-//    sFLASH_SPI->CR1 &= ((uint16_t)0xFFBF);
-//    sFLASH_SPI->CR1 = sFLASH_SPI_CR | ((uint16_t)0x0040);
-//    GPIO_ResetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_GPIO_PIN);
-}
-
-/* Deselect sFLASH: Chip Select pin high */
-void sFLASH_CS_HIGH(void)
-{
-//    GPIO_SetBits(sFLASH_MEM_CS_GPIO_PORT, sFLASH_MEM_CS_GPIO_PIN);
-//    release_spi_bus(BUS_OWNER_SFLASH);
-//    handle_spi_request();
-}
-
 /*******************************************************************************
  * Function Name  : USB_Disconnect_Config
  * Description    : Disconnect pin configuration
@@ -746,370 +528,96 @@ void USB_Cable_Config (FunctionalState NewState)
 
 void Load_SystemFlags(void)
 {
-//    uint32_t Address = SYSTEM_FLAGS_ADDRESS;
-//
-//    if(!USE_SYSTEM_FLAGS)
-//        return;
-//
-//    CORE_FW_Version_SysFlag = (*(__IO uint16_t*) Address);
-//    Address += 2;
-//
-//    NVMEM_SPARK_Reset_SysFlag = (*(__IO uint16_t*) Address);
-//    Address += 2;
-//
-//    FLASH_OTA_Update_SysFlag = (*(__IO uint16_t*) Address);
-//    Address += 2;
-//
-//    OTA_FLASHED_Status_SysFlag = (*(__IO uint16_t*) Address);
-//    Address += 2;
-//
-//    Factory_Reset_SysFlag = (*(__IO uint16_t*) Address);
-//    Address += 2;
+    //To Do
 }
 
 void Save_SystemFlags(void)
 {
-//    uint32_t Address = SYSTEM_FLAGS_ADDRESS;
-//    FLASH_Status FLASHStatus = FLASH_COMPLETE;
-//
-//    if(!USE_SYSTEM_FLAGS)
-//        return;
-//
-//    /* Unlock the Flash Program Erase Controller */
-//    FLASH_Unlock();
-//
-//    /* Clear All pending flags */
-//    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
-//
-//    /* Erase the Internal Flash pages */
-//    FLASHStatus = FLASH_ErasePage(SYSTEM_FLAGS_ADDRESS);
-//    while(FLASHStatus != FLASH_COMPLETE);
-//
-//    /* Program CORE_FW_Version_SysFlag */
-//    FLASHStatus = FLASH_ProgramHalfWord(Address, CORE_FW_Version_SysFlag);
-//    while(FLASHStatus != FLASH_COMPLETE);
-//    Address += 2;
-//
-//    /* Program NVMEM_SPARK_Reset_SysFlag */
-//    FLASHStatus = FLASH_ProgramHalfWord(Address, NVMEM_SPARK_Reset_SysFlag);
-//    while(FLASHStatus != FLASH_COMPLETE);
-//    Address += 2;
-//
-//    /* Program FLASH_OTA_Update_SysFlag */
-//    FLASHStatus = FLASH_ProgramHalfWord(Address, FLASH_OTA_Update_SysFlag);
-//    while(FLASHStatus != FLASH_COMPLETE);
-//    Address += 2;
-//
-//    /* Program OTA_FLASHED_Status_SysFlag */
-//    FLASHStatus = FLASH_ProgramHalfWord(Address, OTA_FLASHED_Status_SysFlag);
-//    while(FLASHStatus != FLASH_COMPLETE);
-//    Address += 2;
-//
-//    /* Program Factory_Reset_SysFlag */
-//    FLASHStatus = FLASH_ProgramHalfWord(Address, Factory_Reset_SysFlag);
-//    while(FLASHStatus != FLASH_COMPLETE);
-//    Address += 2;
-//
-//    /* Locks the FLASH Program Erase Controller */
-//    FLASH_Lock();
+    //To Do
 }
 
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages)
 {
-//    /* Get pages write protection status */
-//    WRPR_Value = FLASH_GetWriteProtectionOptionByte();
-//
-//    /* Check if desired pages are not yet write protected */
-//    if(((~WRPR_Value) & FLASH_Pages ) != FLASH_Pages)
-//    {
-//        /* Get current write protected pages and the new pages to be protected */
-//        Flash_Pages_Protected =  (~WRPR_Value) | FLASH_Pages;
-//
-//        /* Unlock the Flash Program Erase controller */
-//        FLASH_Unlock();
-//
-//        /* Erase all the option Bytes because if a program operation is
-//	      performed on a protected page, the Flash memory returns a
-//	      protection error */
-//        FLASHStatus = FLASH_EraseOptionBytes();
-//
-//        /* Enable the pages write protection */
-//        FLASHStatus = FLASH_EnableWriteProtection(Flash_Pages_Protected);
-//
-//        /* Generate System Reset to load the new option byte values */
-//        NVIC_SystemReset();
-//    }
+    //To Do
 }
 
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages)
 {
-//    /* Get pages write protection status */
-//    WRPR_Value = FLASH_GetWriteProtectionOptionByte();
-//
-//    /* Check if desired pages are already write protected */
-//    if((WRPR_Value | (~FLASH_Pages)) != 0xFFFFFFFF)
-//    {
-//        /* Get pages already write protected */
-//        Flash_Pages_Protected = ~(WRPR_Value | FLASH_Pages);
-//
-//        /* Unlock the Flash Program Erase controller */
-//        FLASH_Unlock();
-//
-//        /* Erase all the option Bytes */
-//        FLASHStatus = FLASH_EraseOptionBytes();
-//
-//        /* Check if there is write protected pages */
-//        if(Flash_Pages_Protected != 0x0)
-//        {
-//            /* Restore write protected pages */
-//            FLASHStatus = FLASH_EnableWriteProtection(Flash_Pages_Protected);
-//        }
-//
-//        /* Generate System Reset to load the new option byte values */
-//        NVIC_SystemReset();
-//    }
+    //To Do
 }
 
 void FLASH_Erase(void)
 {
-//    FLASHStatus = FLASH_COMPLETE;
-//
-//    /* Unlock the Flash Program Erase Controller */
-//    FLASH_Unlock();
-//
-//    /* Define the number of Internal Flash pages to be erased */
-//    NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS) / INTERNAL_FLASH_PAGE_SIZE;
-//
-//    /* Clear All pending flags */
-//    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
-//
-//    /* Erase the Internal Flash pages */
-//    for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
-//    {
-//        FLASHStatus = FLASH_ErasePage(CORE_FW_ADDRESS + (INTERNAL_FLASH_PAGE_SIZE * EraseCounter));
-//    }
-//
-//    /* Locks the FLASH Program Erase Controller */
-//    FLASH_Lock();
+    //To Do
 }
 
-void FLASH_Backup(uint32_t sFLASH_Address)
+void FLASH_Backup(uint32_t FLASH_Address)
 {
-//    /* Initialize SPI Flash */
-//    sFLASH_Init();
-//
-//    /* Define the number of External Flash pages to be erased */
-//    NbrOfPage = EXTERNAL_FLASH_BLOCK_SIZE / sFLASH_PAGESIZE;
-//
-//    /* Erase the SPI Flash pages */
-//    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
-//    {
-//        sFLASH_EraseSector(sFLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
-//    }
-//
-//    Internal_Flash_Address = CORE_FW_ADDRESS;
-//    External_Flash_Address = sFLASH_Address;
-//
-//    /* Program External Flash */
-//    while (Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS)
-//    {
-//        /* Read data from Internal Flash memory */
-//        Internal_Flash_Data = (*(__IO uint32_t*) Internal_Flash_Address);
-//        Internal_Flash_Address += 4;
-//
-//        /* Program Word to SPI Flash memory */
-//        External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
-//        External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
-//        External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
-//        External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);
-//        //OR
-//        //*((uint32_t *)External_Flash_Data) = Internal_Flash_Data;
-//        sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
-//        External_Flash_Address += 4;
-//    }
+    //To Do
 }
 
-void FLASH_Restore(uint32_t sFLASH_Address)
+void FLASH_Restore(uint32_t FLASH_Address)
 {
-//    /* Initialize SPI Flash */
-//    sFLASH_Init();
-//
-//    FLASH_Erase();
-//
-//    Internal_Flash_Address = CORE_FW_ADDRESS;
-//    External_Flash_Address = sFLASH_Address;
-//
-//    /* Unlock the Flash Program Erase Controller */
-//    FLASH_Unlock();
-//
-//    /* Program Internal Flash Bank1 */
-//    while ((Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS) && (FLASHStatus == FLASH_COMPLETE))
-//    {
-//        /* Read data from SPI Flash memory */
-//        sFLASH_ReadBuffer(External_Flash_Data, External_Flash_Address, 4);
-//        External_Flash_Address += 4;
-//
-//        /* Program Word to Internal Flash memory */
-//        Internal_Flash_Data = (uint32_t)(External_Flash_Data[0] | (External_Flash_Data[1] << 8) | (External_Flash_Data[2] << 16) | (External_Flash_Data[3] << 24));
-//        //OR
-//        //Internal_Flash_Data = *((uint32_t *)External_Flash_Data);
-//        FLASHStatus = FLASH_ProgramWord(Internal_Flash_Address, Internal_Flash_Data);
-//        Internal_Flash_Address += 4;
-//    }
-//
-//    /* Locks the FLASH Program Erase Controller */
-//    FLASH_Lock();
+    //To Do
 }
 
-uint32_t FLASH_PagesMask(uint32_t fileSize)
+void FLASH_Begin(uint32_t FLASH_Address, uint32_t fileSize)
 {
-//    //Calculate the number of flash pages that needs to be erased
-//    uint32_t numPages = 0x0;
-//
-//    if ((fileSize % sFLASH_PAGESIZE) != 0)
-//    {
-//        numPages = (fileSize / sFLASH_PAGESIZE) + 1;
-//    }
-//    else
-//    {
-//        numPages = fileSize / sFLASH_PAGESIZE;
-//    }
-//
-//    return numPages;
-    return 0;
-}
-
-void FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize)
-{
-//    OTA_FLASHED_Status_SysFlag = 0x0000;
-//    Save_SystemFlags();
-//
-//    Flash_Update_Index = 0;
-//    External_Flash_Start_Address = sFLASH_Address;
-//    External_Flash_Address = External_Flash_Start_Address;
-//
-//    /* Define the number of External Flash pages to be erased */
-//    NbrOfPage = FLASH_PagesMask(fileSize);
-//
-//    /* Erase the SPI Flash pages */
-//    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
-//    {
-//        sFLASH_EraseSector(External_Flash_Start_Address + (sFLASH_PAGESIZE * EraseCounter));
-//    }
+    //To Do
 }
 
 uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 {
-//    uint8_t *writeBuffer = pBuffer;
-//    uint8_t readBuffer[bufferSize];
-//
-//    /* Write Data Buffer to SPI Flash memory */
-//    sFLASH_WriteBuffer(writeBuffer, External_Flash_Address, bufferSize);
-//
-//    /* Read Data Buffer from SPI Flash memory */
-//    sFLASH_ReadBuffer(readBuffer, External_Flash_Address, bufferSize);
-//
-//    /* Is the Data Buffer successfully programmed to SPI Flash memory */
-//    if (0 == memcmp(writeBuffer, readBuffer, bufferSize))
-//    {
-//        External_Flash_Address += bufferSize;
-//        Flash_Update_Index += 1;
-//    }
-//    else
-//    {
-//        /* Erase the problematic SPI Flash pages and back off the chunk index */
-//        External_Flash_Address = ((uint32_t)(External_Flash_Address / sFLASH_PAGESIZE)) * sFLASH_PAGESIZE;
-//        sFLASH_EraseSector(External_Flash_Address);
-//        Flash_Update_Index = (uint16_t)((External_Flash_Address - External_Flash_Start_Address) / bufferSize);
-//    }
-//
-//    return Flash_Update_Index;
+    //To Do
     return 0;
 }
 
 void FLASH_End(void)
 {
-//    FLASH_OTA_Update_SysFlag = 0x0005;
-//    Save_SystemFlags();
-//
-//    BKP_WriteBackupRegister(BKP_DR10, 0x0005);
-//
-//    USB_Cable_Config(DISABLE);
-//
-//    NVIC_SystemReset();
+    //To Do
 }
 
 void FLASH_Read_ServerAddress_Data(void *buf)
 {
-//    sFLASH_ReadBuffer(buf,
-//            EXTERNAL_FLASH_SERVER_DOMAIN_ADDRESS,
-//            EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH);
+    //To Do
 }
 
 // keyBuffer length must be at least EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH
 void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {
-//    sFLASH_ReadBuffer(keyBuffer,
-//            EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS,
-//            EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
+    //To Do
 }
 
 // keyBuffer length must be at least EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH
 void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
 {
-//    sFLASH_ReadBuffer(keyBuffer,
-//            EXTERNAL_FLASH_CORE_PRIVATE_KEY_ADDRESS,
-//            EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
+    //To Do
 }
 
 void FACTORY_Flash_Reset(void)
 {
-//    // Restore the Factory programmed application firmware from External Flash
-//    FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
-//
-//    Factory_Reset_SysFlag = 0xFFFF;
-//
-//    Finish_Update();
+    //To Do
 }
 
 void BACKUP_Flash_Reset(void)
 {
-//    //Restore the Backup programmed application firmware from External Flash
-//    FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
-//
-//    Finish_Update();
+    //To Do
 }
 
 void OTA_Flash_Reset(void)
 {
-//    //First take backup of the current application firmware to External Flash
-//    FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
-//
-//    FLASH_OTA_Update_SysFlag = 0x5555;
-//    Save_SystemFlags();
-//    BKP_WriteBackupRegister(BKP_DR10, 0x5555);
-//
-//    //Restore the OTA programmed application firmware from External Flash
-//    FLASH_Restore(EXTERNAL_FLASH_OTA_ADDRESS);
-//
-//    OTA_FLASHED_Status_SysFlag = 0x0001;
-//
-//    Finish_Update();
+    //To Do
 }
 
 bool OTA_Flashed_GetStatus(void)
 {
-//    if(OTA_FLASHED_Status_SysFlag == 0x0001)
-//        return true;
-//    else
-//        return false;
+    //To Do
     return false;
 }
 
 void OTA_Flashed_ResetStatus(void)
 {
-//    OTA_FLASHED_Status_SysFlag = 0x0000;
-//    Save_SystemFlags();
+    //To Do
 }
 
 /*******************************************************************************
@@ -1120,14 +628,7 @@ void OTA_Flashed_ResetStatus(void)
  *******************************************************************************/
 void Finish_Update(void)
 {
-//    FLASH_OTA_Update_SysFlag = 0x5000;
-//    Save_SystemFlags();
-//
-//    BKP_WriteBackupRegister(BKP_DR10, 0x5000);
-//
-//    USB_Cable_Config(DISABLE);
-//
-//    NVIC_SystemReset();
+    //To Do
 }
 
 static volatile system_tick_t system_1ms_tick = 0;
