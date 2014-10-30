@@ -5,3 +5,4 @@ applications/
 *.bin
 *.map
 *.hex
+*.dfu

@@ -186,7 +186,11 @@ void Start_Smart_Config(void)
 	LED_SetRGBColor(RGB_COLOR_BLUE);
 	LED_On(LED_RGB);
 
+	/* If WiFi module is connected, disconnect it */
 	WiFi.disconnect();
+
+	/* If WiFi module is powered off, turn it on */
+	WiFi.on();
 
 	/* Create new entry for AES encryption key */
 	nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
@@ -263,19 +267,33 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
-			if (WLAN_CONNECTED && !WLAN_DISCONNECT)
+			if (WLAN_CONNECTED)
 			{
+			  //Breathe blue if established connection gets disconnected
+			  if(!WLAN_DISCONNECT)
+			  {
+			    //if WiFi.disconnect called, do not enable wlan watchdog
+			    ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+			  }
+			  SPARK_LED_FADE = 1;
+			  LED_SetRGBColor(RGB_COLOR_BLUE);
+			  LED_On(LED_RGB);
+			}
+			else if (!WLAN_SMART_CONFIG_START)
+			{
+			  //Do not enter if smart config related disconnection happens
+			  //Blink green if connection fails because of wrong password
 			  ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+			  SPARK_LED_FADE = 0;
+			  LED_SetRGBColor(RGB_COLOR_GREEN);
+			  LED_On(LED_RGB);
 			}
 			WLAN_CONNECTED = 0;
 			WLAN_DHCP = 0;
 			SPARK_CLOUD_SOCKETED = 0;
 			SPARK_CLOUD_CONNECTED = 0;
 			SPARK_FLASH_UPDATE = 0;
-			SPARK_LED_FADE = 1;
-                        LED_SetRGBColor(RGB_COLOR_BLUE);
-                        LED_On(LED_RGB);
-                        Spark_Error_Count = 0;
+			Spark_Error_Count = 0;
 			break;
 
 		case HCI_EVNT_WLAN_UNSOL_DHCP:

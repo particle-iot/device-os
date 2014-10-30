@@ -1,21 +1,19 @@
 language: node_js
 before_install:
-  - sudo apt-get update
+- sudo apt-get update
 install:
-  - cd .. && $TRAVIS_BUILD_DIR/ci/clone_repos.sh master master && cd $TRAVIS_BUILD_DIR
-  - npm install -g spark-cli
-  - ./ci/install_arm_gcc.sh && ./ci/install_gcc.sh
-  - ./ci/create_spark_cli_json.sh
+- cd .. && $TRAVIS_BUILD_DIR/ci/clone_repos.sh master master && cd $TRAVIS_BUILD_DIR
+- npm install -g spark-cli
+- ./ci/install_arm_gcc.sh && ./ci/install_gcc.sh
+- ./ci/create_spark_cli_json.sh
 script:
-  - ./ci/unit_tests.sh && ./ci/integration_tests.sh
-  - ./ci/test_memory_available_with_real_core.sh
-
+- ./ci/unit_tests.sh && ./ci/integration_tests.sh
+- ./ci/test_memory_available_with_real_core.sh
 after_success: ./ci/update-gh-pages.sh
-
 env:
   global:
-  - secure: GD7qZLbxcm/fyc1bmyH+hdXWR2T+vV//+fVTXqIG/YiOvA/2bzckfCFWDQuQXPd9fYoCNSqEk7PphW17ZuPne7++fZe2fBuzXZpbZJU7eM8IG9s7EIjlAoC+9bC9l4IUuPg4Eg9E35g4ydzPSq35ziufjSYlYhdzDGng9u43KyI=
-  - secure: cN3Q1RhvyCLyS3gVy60tuCtY3x7LKfB1Vxd/NNYtODEGOCj1lY3Ud6a4V5MSNBPOv/IPbllei7w7u0I2nE6hdXsBpAVbiWxUzplDa3iIBV0qeJuEYl2fm9UzPeoTYj2xNIebyEQd/CbL5nqUYnImxczZe1QFLtXK/I9liacsBnc=
-  - secure: BIPlCDiiX5r2NVw7Sb9RbmyYhGUDWcvd/DiHB2OK9HjV7Z+JLRBri8LzUDsIV40WQGnvj14yJcJFI+mMwQJDUMuXkjElaku9rRBFIbU8GBegmJvtpUrdzAEph78x1pu2ZW474ZiGkW0nnvToX0OgX7us3IFp7NaA7UPCIyVcz6o=
-  - secure: VfcIglJRuvbbOR0qvd+IgFCdxKgH9VypqtNx4jW1LpYdaXRCbEcusti+RcIdwoiZy25H8GSepu5qhMewvTru9YvPxdLIte9h38Skzz0UO893uTYYitPGnasgsWOmYC/H8L+gTUMfQaNvJTGRGBG18l0iGAZTd+lDJN1Ux78k5ys=
-  - secure: "UM1+Ps1t21JfJaTFhuqkaY/U21j1Gfja6oSJTALcU0Y7zmo7TNyYMJwP+tbRfss7RBilWwUA8osr3sr6NXPREChojKpRQaRt52iD6wDfcxhsxGrpOU79cYO7FK1aQhCmhDGcnXahtxzbOGwS74jjTFW9U6TSveWa+EV1OgagLMc="
+  - secure: UM1+Ps1t21JfJaTFhuqkaY/U21j1Gfja6oSJTALcU0Y7zmo7TNyYMJwP+tbRfss7RBilWwUA8osr3sr6NXPREChojKpRQaRt52iD6wDfcxhsxGrpOU79cYO7FK1aQhCmhDGcnXahtxzbOGwS74jjTFW9U6TSveWa+EV1OgagLMc=
+  - secure: aJ+EUGgXIp8t0s/f3EEyiUjYXnzAlYW9+jukG240A2Wb/XnGp9Av/JE+wBnBeMv7eF+hxkODo99gDXPumV6uYQevIBtqiHWtAu7kyvCxUWXhSmag+Q89pCJO8QpUrcxra9UZ6i+zhFEfskBctBjlT9nMKoUsGSg4jMg6Kx71QsA=
+  - secure: Iq58mKqq5Nz4B6OEZu1nmnquhvlQncxT4T3f1x+M/0I6VW5xirMWFlpeke8QyyPOZlwNLDnB5QVjsR2UQspNIhMT4rCfDeCCr9AeinoMDmqPbzpmLLmtaUpz0uTZyJVx7+IRe9QtljPfbzlAxybmrx1HdCCw++F/+qhgFoGLi9o=
+  - secure: O8Zu2sWO63svmSTdOk+7Z7N2oUcg3N07WckMoy1m7AYmRZydX5hdVXlbagA06FCtpu1Kvvwc7QYB+1wpoxZYZnxt2mVetVsAcSpOz3c03LodM+yKaHm9luqLfQobuC7oyNdumpqMLsWiELM9rxEpIazYDYM2QI+lh7fTUTHnQ3s=
+  - secure: A83drTFobkGvgrPNwGwNS3ZSHX35iNELjH6W9h07pw/n1YSssBHxtLF8aVAEwfIF1VyUoHvQ4HYLNd+9RMyo162xxiWne+/4/gSFyUJNi11w3YX5bwodKPl7OwEO/YnJgHYk8YAAfdnZT4470Fpt6ytcOhEhMsB/IFeepMUiZZA=

@@ -17,7 +17,7 @@ but should end with `.cpp`. For example, you might create these files:
 
 ```
 myapp.cpp
-halper.cpp
+helper.cpp
 helper.h
 ```
 
@@ -63,3 +63,15 @@ make
 
 This will then build the firmware as before, with the result placed in `build\core-firmware.bin`.
 
+Specifying custom toolchain
+---------------------------
+
+Custom compiler prefix can be used via an environment variable `GCC_PREFIX`.
+
+For example when you have installed a custom toolchain under
+`/opt/gcc-arm-embedded-bin` you can use invoke make using that toolchain
+like this:
+
+```
+GCC_PREFIX="/opt/gcc-arm-embedded-bin/bin/arm-none-eabi-" make
+```
