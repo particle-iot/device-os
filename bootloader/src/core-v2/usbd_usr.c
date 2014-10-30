@@ -51,7 +51,8 @@ uint8_t State = 0;
  */
 void USBD_USR_Init(void)
 {
-    //To Do
+    //Additional application hooks - update this section as per requirement
+    //User initialization code if any (not required now for core-v2)
 }
 
 /**
@@ -61,6 +62,7 @@ void USBD_USR_Init(void)
  */
 void USBD_USR_DeviceReset(uint8_t speed )
 {
+    //Additional application hooks - update this section as per requirement
     switch (speed)
     {
         case USB_OTG_SPEED_HIGH:
@@ -84,6 +86,7 @@ void USBD_USR_DeviceReset(uint8_t speed )
  */
 void USBD_USR_DeviceConfigured (void)
 {
+    //Additional application hooks - update this section as per requirement
     if (State == 0)
     {
         //DFU Interface Started
@@ -102,6 +105,7 @@ void USBD_USR_DeviceConfigured (void)
  */
 void USBD_USR_DeviceSuspended(void)
 {
+    //Additional application hooks - update this section as per requirement
     //> USB Device in Suspend Mode
     /* Users can do their application actions here for the USB-Reset */
 }
@@ -114,6 +118,7 @@ void USBD_USR_DeviceSuspended(void)
  */
 void USBD_USR_DeviceResumed(void)
 {
+    //Additional application hooks - update this section as per requirement
     //> USB Device in Idle Mode
     /* Users can do their application actions here for the USB-Reset */
 }
@@ -125,6 +130,7 @@ void USBD_USR_DeviceResumed(void)
  */
 void USBD_USR_DeviceConnected (void)
 {
+    //Additional application hooks - update this section as per requirement
     //> USB Device Connected
 }
 
@@ -136,5 +142,6 @@ void USBD_USR_DeviceConnected (void)
  */
 void USBD_USR_DeviceDisconnected (void)
 {
+    //Additional application hooks - update this section as per requirement
     //> USB Device Disconnected
 }

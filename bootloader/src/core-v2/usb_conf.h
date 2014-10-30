@@ -33,6 +33,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f2xx.h"
 
+/* NOTE: BM-09 uses USB_OTG_HS so comment defines related to USB_OTG_FS - Satish */
+
 /* USB Core and PHY interface configuration.
    Tip: To avoid modifying these defines each time you need to change the USB
         configuration, you can declare the needed define in your toolchain
@@ -45,11 +47,11 @@
  *  when FS core is used.
  *******************************************************************************/
 #ifndef USE_USB_OTG_FS
-#define USE_USB_OTG_FS //Uncommented by Satish
+//#define USE_USB_OTG_FS
 #endif /* USE_USB_OTG_FS */
 
 #ifdef USE_USB_OTG_FS 
-#define USB_OTG_FS_CORE
+//#define USB_OTG_FS_CORE
 #endif
 
 /****************** USB OTG HS PHY CONFIGURATION *******************************
@@ -70,7 +72,7 @@
  *     STM32 device datasheet.
  *******************************************************************************/
 #ifndef USE_USB_OTG_HS
-//#define USE_USB_OTG_HS
+#define USE_USB_OTG_HS
 #endif /* USE_USB_OTG_HS */
 
 #ifndef USE_ULPI_PHY
@@ -78,7 +80,7 @@
 #endif /* USE_ULPI_PHY */
 
 #ifndef USE_EMBEDDED_PHY
-//#define USE_EMBEDDED_PHY
+#define USE_EMBEDDED_PHY
 #endif /* USE_EMBEDDED_PHY */
 
 #ifdef USE_USB_OTG_HS 
@@ -167,7 +169,7 @@
 #endif
 
 /****************** USB OTG MISC CONFIGURATION ********************************/
-#define VBUS_SENSING_ENABLED
+//#define VBUS_SENSING_ENABLED  //OTG_HS_VBUS (PB13 pin) on BM-09 is not exposed
 
 /****************** USB OTG MODE CONFIGURATION ********************************/
 //#define USE_HOST_MODE
@@ -198,10 +200,10 @@
 #endif
 #endif
 
+/* Following defines needed in platform's usb driver */
 #define __ALIGN_BEGIN
 #define __ALIGN_END
-
-#define __packed    __attribute__ ((__packed__))
+#define __packed
 
 #endif //__USB_CONF__H__
 

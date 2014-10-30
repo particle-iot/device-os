@@ -45,8 +45,8 @@
 #define DFU_IN_EP                       0x80
 #define DFU_OUT_EP                      0x00
 
-/* Maximum number of supported media (Flash and OTP) */
-#define MAX_USED_MEDIA                  2
+/* Maximum number of supported media (Flash only) */
+#define MAX_USED_MEDIA                  1 //2 for both Flash and OTP
 
 /* Flash memory address from where user application will be loaded 
    This address represents the DFU code protected against write and erase operations.*/
