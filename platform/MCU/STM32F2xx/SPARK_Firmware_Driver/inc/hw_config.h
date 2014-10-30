@@ -131,14 +131,6 @@ uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
 void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
-/* USB hardware peripheral related methods */
-void USB_Disconnect_Config(void);
-void Set_USBClock(void);
-void Enter_LowPowerMode(void);
-void Leave_LowPowerMode(void);
-void USB_Interrupts_Config(void);
-void USB_Cable_Config(FunctionalState NewState);
-
 void Load_SystemFlags(void);
 void Save_SystemFlags(void);
 
