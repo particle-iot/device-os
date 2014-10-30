@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    stm32fxxx_it.h
+ * @file    stm32_it.h
  * @author  Satish Nair
  * @version V1.0.0
  * @date    21-Oct-2014
@@ -27,8 +27,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __STM32Fxxx_IT_H
-#define __STM32Fxxx_IT_H
+#ifndef __STM32_IT_H
+#define __STM32_IT_H
 
 #ifdef __cplusplus
  extern "C" {
@@ -56,4 +56,4 @@ void SysTick_Handler(void);
 }
 #endif
 
-#endif /* __STM32Fxxx_IT_H */
+#endif /* __STM32_IT_H */

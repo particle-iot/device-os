@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    stm32fxxx_it.c
+ * @file    stm32_it.c
  * @author  Satish Nair
  * @version V1.0.0
  * @date    21-Oct-2014
@@ -27,7 +27,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32fxxx_it.h"
+#include "stm32_it.h"
 #include "usb_core.h"
 #include "usbd_core.h"
 #include "usb_conf.h"
