@@ -2,6 +2,10 @@
 HAL_SRC_TEMPLATE_PATH = $(TARGET_HAL_PATH)/src/template
 HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/core-v2
 
+# private includes - WICED is not exposed to the HAL clients
+INCLUDE_PATH += 
+
+
 templatedir=$(HAL_SRC_TEMPLATE_PATH)
 overridedir=$(HAL_SRC_COREV2_PATH)
 
