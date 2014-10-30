@@ -39,7 +39,8 @@ _Minimum_Stack_Size = 0x100 ;
 
 /* include the memory spaces definitions sub-script */
 /*
-Linker subscript for STM32F10x definitions with 128K Flash and 20K RAM */
+Linker subscript for STM32F205xx definitions with 1024K Flash and 128K RAM
+*/
 
 /* Memory Spaces Definitions */
 

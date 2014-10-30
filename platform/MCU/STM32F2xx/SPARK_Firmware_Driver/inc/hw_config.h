@@ -73,41 +73,10 @@ typedef enum
 #define INTERNAL_FLASH_START                    ((uint32_t)0x08000000)
 #endif
 
+//Bootloader firmware at the start of internal flash
 #define USB_DFU_ADDRESS				INTERNAL_FLASH_START
-#define CORE_FW_ADDRESS				((uint32_t)0x08005000)
-///* Internal Flash memory address where the System Flags will be saved and loaded from  */
-//#define SYSTEM_FLAGS_ADDRESS		((uint32_t)0x08004C00)
-///* Internal Flash end memory address */
-//
-//#define INTERNAL_FLASH_END_ADDRESS	((uint32_t)INTERNAL_FLASH_START+INTERNAL_FLASH_SIZE)	//For 128KB Internal Flash
-///* Internal Flash page size */
-//#define INTERNAL_FLASH_PAGE_SIZE	((uint16_t)0x400)
-//
-///* External Flash block size allocated for firmware storage */
-//#define EXTERNAL_FLASH_BLOCK_SIZE	((uint32_t)FIRMWARE_IMAGE_SIZE)
-///* External Flash memory address where Factory programmed core firmware is located */
-//#define EXTERNAL_FLASH_FAC_ADDRESS	((uint32_t)EXTERNAL_FLASH_BLOCK_SIZE)
-///* External Flash memory address where core firmware will be saved for backup/restore */
-//#define EXTERNAL_FLASH_BKP_ADDRESS	((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_FAC_ADDRESS))
-///* External Flash memory address where OTA upgraded core firmware will be saved */
-//#define EXTERNAL_FLASH_OTA_ADDRESS	((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_BKP_ADDRESS))
-//
-///* External flash location where user can start writing */
-//#define EXTERNAL_FLASH_USER_ADDRESS     ((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_OTA_ADDRESS))
-//
-///* External Flash memory address where server domain/IP resides */
-//#define EXTERNAL_FLASH_SERVER_DOMAIN_ADDRESS      ((uint32_t)0x1180)
-///* Length in bytes of server domain/IP data */
-//#define EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH       (128)
-///* External Flash memory address where server public RSA key resides */
-//#define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS	((uint32_t)0x01000)
-///* Length in bytes of DER-encoded 2048-bit RSA public key */
-//#define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH		(294)
-///* External Flash memory address where core private RSA key resides */
-//#define EXTERNAL_FLASH_CORE_PRIVATE_KEY_ADDRESS		((uint32_t)0x02000)
-///* Length in bytes of DER-encoded 1024-bit RSA private key */
-//#define EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH		(612)
-//
+//Main firmware begin address after 128KB (4 x 16K + 64K) from start of flash
+#define CORE_FW_ADDRESS				((uint32_t)0x08020000)
 
 #define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
 

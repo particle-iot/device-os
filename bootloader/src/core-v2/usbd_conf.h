@@ -32,6 +32,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_conf.h"
+#include "hw_config.h"
 
 #define USBD_CFG_MAX_NUM                1
 #define USBD_ITF_MAX_NUM                MAX_USED_MEDIA
@@ -50,7 +51,7 @@
 
 /* Flash memory address from where user application will be loaded 
    This address represents the DFU code protected against write and erase operations.*/
-#define APP_DEFAULT_ADD                 0x0800C000 /* The first 3 sectores (48 KB) are reserved for DFU code */
+#define APP_DEFAULT_ADD                 CORE_FW_ADDRESS
 
 /* Uncomment this define to impelement OTP memory interface */
 //#define DFU_MAL_SUPPORT_OTP
