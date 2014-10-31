@@ -36,8 +36,10 @@ CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -ffunction-sections -Wall -Werror -Wno-switch -fmessage-length=0
-CFLAGS += -Wno-pointer-sign -fno-strict-aliasing
+CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1
+
+CONLYFLAGS += -Wno-pointer-sign
 
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
 # include libraries twice to avoid gcc library craziness
@@ -142,7 +144,7 @@ $(BUILD_PATH)/%.o : $(MODULE_PATH)/%.c
 	$(call,echo,'Building file: $<')
 	$(call,echo,'Invoking: ARM GCC C Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
-	$(VERBOSE)$(CC) $(CFLAGS) -c -o $@ $<
+	$(VERBOSE)$(CC) $(CFLAGS) $(CONLYFLAGS) -c -o $@ $<
 	$(call,echo,)
 
 # Assember to build .o from .S in $(BUILD_DIR)
