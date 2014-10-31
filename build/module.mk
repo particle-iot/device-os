@@ -35,7 +35,7 @@ endif
 CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
-CFLAGS += -ffunction-sections -Wall -Werror -Wno-switch -fmessage-length=0
+CFLAGS += -ffunction-sections -fdata-sections -Wall -Werror -Wno-switch -fmessage-length=0
 CFLAGS += -DSPARK=1
 
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
