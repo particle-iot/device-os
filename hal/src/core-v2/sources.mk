@@ -3,7 +3,13 @@ HAL_SRC_TEMPLATE_PATH = $(TARGET_HAL_PATH)/src/template
 HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/core-v2
 
 # private includes - WICED is not exposed to the HAL clients
-INCLUDE_PATH += 
+# find all .h files, convert to directory and remove duplicates
+HAL_WICED_INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_COREV2_PATH)/,*.h))
+HAL_WICED_INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced
+HAL_WICED_INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced/WWD
+HAL_WICED_INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced/network/LwIP/ver1.4.0.rc1/src/include
+HAL_WICED_INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced/network/LwIP/ver1.4.0.rc1/src/include/ipv4
+INCLUDE_DIRS += $(sort $(HAL_WICED_INCLUDE_DIRS))
 
 
 templatedir=$(HAL_SRC_TEMPLATE_PATH)
