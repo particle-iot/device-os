@@ -4,7 +4,7 @@
   * @author    MCD Application Team
   * @version   V3.6.1
   * @date      09-March-2012
-  * @brief     STM32F10x Medium Density Devices vector table for RIDE7 toolchain.
+  * @brief     STM32F10x Medium Density Devices vector table.
   *            This module performs:
   *                - Set the initial SP
   *                - Set the initial PC == Reset_Handler,

@@ -34,7 +34,7 @@
   *    function will do nothing and HSI still used as system clock source. User can 
   *    add some code to deal with this issue inside the SetSysClock() function.
   *
-  * 4. The default value of HSE crystal is set to 25MHz, refer to "HSE_VALUE" define
+  * 4. The default value of HSE crystal is set to 26MHz, refer to "HSE_VALUE" define
   *    in "stm32f2xx.h" file. When HSE is used as system clock source, directly or
   *    through PLL, and you are using different crystal you have to adapt the HSE
   *    value to your own configuration.
@@ -56,9 +56,9 @@
   *-----------------------------------------------------------------------------
   *        APB2 Prescaler                         | 2
   *-----------------------------------------------------------------------------
-  *        HSE Frequency(Hz)                      | 25000000
+  *        HSE Frequency(Hz)                      | 26000000
   *-----------------------------------------------------------------------------
-  *        PLL_M                                  | 25
+  *        PLL_M                                  | 26
   *-----------------------------------------------------------------------------
   *        PLL_N                                  | 240
   *-----------------------------------------------------------------------------
@@ -137,7 +137,7 @@
   */
 
 /*!< Uncomment the following line if you need to use external SRAM mounted
-     on STM322xG_EVAL board as data memory  */
+     on custom board as data memory  */
 /* #define DATA_IN_ExtSRAM */
 
 /*!< Uncomment the following line if you need to relocate your vector Table in
@@ -148,7 +148,7 @@
 
 
 /* PLL_VCO = (HSE_VALUE or HSI_VALUE / PLL_M) * PLL_N */
-#define PLL_M      25
+#define PLL_M      26
 #define PLL_N      240
 
 /* SYSCLK = PLL_VCO / PLL_P */
@@ -268,7 +268,7 @@ void SystemInit(void)
   *             in voltage and temperature.   
   *    
   *         (**) HSE_VALUE is a constant defined in stm32f2xx.h file (default value
-  *              25 MHz), user has to ensure that HSE_VALUE is same as the real
+  *              26 MHz), user has to ensure that HSE_VALUE is same as the real
   *              frequency of the crystal used. Otherwise, this function may
   *              have wrong result.
   *                

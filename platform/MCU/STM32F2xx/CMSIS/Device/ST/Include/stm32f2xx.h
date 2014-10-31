@@ -94,7 +94,7 @@
         can define the HSE value in your toolchain compiler preprocessor.
   */           
 #if !defined  (HSE_VALUE) 
-  #define HSE_VALUE    ((uint32_t)25000000) /*!< Value of the External oscillator in Hz */
+  #define HSE_VALUE    ((uint32_t)26000000) /*!< Value of the External oscillator in Hz */
 #endif /* HSE_VALUE */
 
 /**

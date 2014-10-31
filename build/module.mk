@@ -36,7 +36,10 @@ CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -ffunction-sections -fdata-sections -Wall -Werror -Wno-switch -fmessage-length=0
+CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1
+
+CONLYFLAGS += -Wno-pointer-sign
 
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
 # include libraries twice to avoid gcc library craziness
@@ -126,7 +129,7 @@ size: $(TARGET_BASE).elf
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@
 	$(call,echo,)
 
-$(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ)
+$(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ) $(LIB_DEPS)
 	$(call,echo,'Building target: $@')
 	$(call,echo,'Invoking: ARM GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
@@ -147,7 +150,7 @@ $(BUILD_PATH)/%.o : $(MODULE_PATH)/%.c
 	$(call,echo,'Building file: $<')
 	$(call,echo,'Invoking: ARM GCC C Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
-	$(VERBOSE)$(CC) $(CFLAGS) -c -o $@ $<
+	$(VERBOSE)$(CC) $(CFLAGS) $(CONLYFLAGS) -c -o $@ $<
 	$(call,echo,)
 
 # Assember to build .o from .S in $(BUILD_DIR)
