@@ -426,12 +426,72 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button)
 
 void Load_SystemFlags(void)
 {
-    //To Do
+    uint32_t Address = SYSTEM_FLAGS_ADDRESS;
+
+    if(!USE_SYSTEM_FLAGS)
+        return;
+
+    CORE_FW_Version_SysFlag = (*(__IO uint16_t*) Address);
+    Address += 2;
+
+    NVMEM_SPARK_Reset_SysFlag = (*(__IO uint16_t*) Address);
+    Address += 2;
+
+    FLASH_OTA_Update_SysFlag = (*(__IO uint16_t*) Address);
+    Address += 2;
+
+    OTA_FLASHED_Status_SysFlag = (*(__IO uint16_t*) Address);
+    Address += 2;
+
+    Factory_Reset_SysFlag = (*(__IO uint16_t*) Address);
+    Address += 2;
 }
 
 void Save_SystemFlags(void)
 {
-    //To Do
+    uint32_t Address = SYSTEM_FLAGS_ADDRESS;
+    FLASH_Status FLASHStatus = FLASH_COMPLETE;
+
+    if(!USE_SYSTEM_FLAGS)
+        return;
+
+    /* UnLock the FLASH control register access */
+    FLASH_Unlock();
+
+    /* Clear All pending flags */
+    FLASH_ClearFlags();
+
+    /* Erase the Internal Flash Sector1 (16KB) */
+    FLASHStatus = FLASH_EraseSector(FLASH_Sector_1, VoltageRange_3);
+    while(FLASHStatus != FLASH_COMPLETE);
+
+    /* Program CORE_FW_Version_SysFlag */
+    FLASHStatus = FLASH_ProgramHalfWord(Address, CORE_FW_Version_SysFlag);
+    while(FLASHStatus != FLASH_COMPLETE);
+    Address += 2;
+
+    /* Program NVMEM_SPARK_Reset_SysFlag (??? required for Core-V2) */
+    FLASHStatus = FLASH_ProgramHalfWord(Address, NVMEM_SPARK_Reset_SysFlag);
+    while(FLASHStatus != FLASH_COMPLETE);
+    Address += 2;
+
+    /* Program FLASH_OTA_Update_SysFlag */
+    FLASHStatus = FLASH_ProgramHalfWord(Address, FLASH_OTA_Update_SysFlag);
+    while(FLASHStatus != FLASH_COMPLETE);
+    Address += 2;
+
+    /* Program OTA_FLASHED_Status_SysFlag */
+    FLASHStatus = FLASH_ProgramHalfWord(Address, OTA_FLASHED_Status_SysFlag);
+    while(FLASHStatus != FLASH_COMPLETE);
+    Address += 2;
+
+    /* Program Factory_Reset_SysFlag */
+    FLASHStatus = FLASH_ProgramHalfWord(Address, Factory_Reset_SysFlag);
+    while(FLASHStatus != FLASH_COMPLETE);
+    Address += 2;
+
+    /* Locks the FLASH control register access */
+    FLASH_Lock();
 }
 
 void FLASH_ClearFlags(void)

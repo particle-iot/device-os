@@ -77,6 +77,8 @@ typedef enum
 #define USB_DFU_ADDRESS				INTERNAL_FLASH_START
 //Main firmware begin address after 128KB (4 x 16K + 64K) from start of flash
 #define CORE_FW_ADDRESS				((uint32_t)0x08020000)
+/* Internal Flash memory address where the System Flags will be saved and loaded from  */
+#define SYSTEM_FLAGS_ADDRESS                    ((uint32_t)0x08004000)
 
 #define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
 
