@@ -977,8 +977,8 @@ void DFU_LeaveDFUMode(void *pdev)
     /* DeInitilialize the MAL(Media Access Layer) */
     MAL_DeInit();
     
-    /* Generate system reset to allow jumping to the user code */
-    NVIC_SystemReset();
+    /* Set system flags and generate system reset to allow jumping to the user code */
+    Finish_Update();
    
     /* This instruction will not be reached (system reset) */
     return;

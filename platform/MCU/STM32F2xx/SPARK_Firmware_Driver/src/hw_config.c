@@ -593,7 +593,12 @@ void OTA_Flashed_ResetStatus(void)
  *******************************************************************************/
 void Finish_Update(void)
 {
-    //To Do
+    FLASH_OTA_Update_SysFlag = 0x5000;
+    Save_SystemFlags();
+
+    RTC_WriteBackupRegister(RTC_BKP_DR10, 0x5000);
+
+    NVIC_SystemReset();
 }
 
 static volatile system_tick_t system_1ms_tick = 0;
