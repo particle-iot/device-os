@@ -140,6 +140,9 @@ void Set_System(void)
 
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
+
+    /* Internal Flash Erase/Program fails if this is not called */
+    FLASH_ClearFlags();
 }
 
 /*******************************************************************************
@@ -429,6 +432,13 @@ void Load_SystemFlags(void)
 void Save_SystemFlags(void)
 {
     //To Do
+}
+
+void FLASH_ClearFlags(void)
+{
+    /* Clear All pending flags */
+    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
+                    FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
 }
 
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages)

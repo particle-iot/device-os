@@ -104,6 +104,7 @@ void Load_SystemFlags(void);
 void Save_SystemFlags(void);
 
 /* Internal Flash Routines */
+void FLASH_ClearFlags(void);
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages);
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages);
 void FLASH_Erase(void);
