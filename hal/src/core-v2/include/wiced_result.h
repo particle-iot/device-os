@@ -19,7 +19,9 @@
 #include "security/BESL/include/besl_structures.h"
 #include "platform_constants.h"
 #include "wiced_constants.h"
+#ifndef SPARK
 #include "../libraries/bluetooth/include/wiced_bt_constants.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -86,7 +88,9 @@ typedef enum
     TLS_RESULT_LIST     (  WICED_TLS_      )  /* 5000 - 5999 */
     PLATFORM_RESULT_LIST(  WICED_PLATFORM_ )  /* 6000 - 6999 */
     TCPIP_RESULT_LIST   (  WICED_TCPIP_    )  /* 7000 - 7999 */
+#ifndef SPARK
     BT_RESULT_LIST      (  WICED_BT_       )  /* 8000 - 8999 */
+#endif            
 } wiced_result_t;
 
 /******************************************************
