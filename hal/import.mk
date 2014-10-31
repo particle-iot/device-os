@@ -1,9 +1,10 @@
 HAL_MODULE_PATH?=../hal
 
-LIB_DIRS += $(BUILD_PATH_BASE)/hal/prod-$(SPARK_PRODUCT_ID)$(HAL_TEST_FLAVOR)
-
+HAL_LIB_DIR = $(BUILD_PATH_BASE)/hal/prod-$(SPARK_PRODUCT_ID)$(HAL_TEST_FLAVOR)
+HAL_LIB_DEP = $(HAL_LIB_DIR)/libhal.a
 
 include $(call rwildcard,$(HAL_MODULE_PATH)/,include.mk)
+
 
 ifeq "$(ARCH)" "gcc"
 # additional libraries required by gcc build
