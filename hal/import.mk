@@ -3,7 +3,9 @@ HAL_MODULE_PATH?=../hal
 LIB_DIRS += $(BUILD_PATH_BASE)/hal/prod-$(SPARK_PRODUCT_ID)$(HAL_TEST_FLAVOR)
 
 
-include $(call rwildcard,$(HAL_MODULE_PATH)/,include.mk)
+include $(call rwildcard,$(HAL_MODULE_PATH)/inc/,include.mk)
+include $(call rwildcard,$(HAL_MODULE_PATH)/shared/,include.mk)
+include $(call rwildcard,$(HAL_MODULE_PATH)/src/$(PLATFORM_NAME)/,include.mk)
 
 # Linker flags
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
