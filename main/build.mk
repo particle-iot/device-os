@@ -46,5 +46,6 @@ TARGET_FILE ?= core-firmware
 INCLUDE_DIRS += $(MODULE_PATH)/libraries
 
 CFLAGS += -DSPARK_PLATFORM_NET=$(PLATFORM_NET)
+CPPFLAGS += -std=gnu++11
 
 

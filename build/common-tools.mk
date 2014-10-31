@@ -18,5 +18,5 @@ DFU = dfu-util
 DFUSUFFIX = dfu-suffix
 CURL = curl
 
-CPPFLAGS += -std=gnu++11
+CPPFLAGS += 
 
