@@ -10,14 +10,14 @@ HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/core-v2
 # implementation headers.
 ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)
-INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced/include
 endif
 
 HAL_LIB_COREV2 = $(HAL_SRC_COREV2_PATH)/lib
 
 LIB_DIRS += $(HAL_LIB_COREV2)
 
-LIBS += $(basename $(call rwildcard,$(HAL_LIB_COREV2)/,*.a))
+HAL_WICED_LIBS += $(basename $(call rwildcard,$(HAL_LIB_COREV2)/,*.a))
+
 
 LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_$(STM32_DEVICE_LC)_dfu.ld
 LDFLAGS += --specs=nano.specs -lc -lnosys
