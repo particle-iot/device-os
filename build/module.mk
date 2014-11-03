@@ -36,7 +36,10 @@ CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -ffunction-sections -Wall -Werror -Wno-switch -fmessage-length=0
+CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1
+
+CONLYFLAGS += -Wno-pointer-sign
 
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
 # include libraries twice to avoid gcc library craziness
@@ -85,7 +88,7 @@ none:
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
-program-dfu: $(TARGET_BASE).bin
+program-dfu: $(TARGET_BASE).dfu
 	@echo Flashing using dfu:
 	$(DFU) -d 1d50:607f -a 0 -s 0x08005000:leave -D $<
 
@@ -114,13 +117,19 @@ size: $(TARGET_BASE).elf
 	$(VERBOSE)$(OBJCOPY) -O ihex $< $@
 	$(call,echo,)
 
+
+# Create a DFU file from bin file
+%.dfu: %.bin
+	@cp $< $@
+	$(DFUSUFFIX) -v 1d50 -p 607f -a $@
+
 # Create a bin file from ELF file
 %.bin : %.elf
 	$(call,echo,'Invoking: ARM GNU Create Flash Image')
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@
 	$(call,echo,)
 
-$(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ)
+$(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ) $(LIB_DEPS)
 	$(call,echo,'Building target: $@')
 	$(call,echo,'Invoking: ARM GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
@@ -141,7 +150,7 @@ $(BUILD_PATH)/%.o : $(MODULE_PATH)/%.c
 	$(call,echo,'Building file: $<')
 	$(call,echo,'Invoking: ARM GCC C Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
-	$(VERBOSE)$(CC) $(CFLAGS) -c -o $@ $<
+	$(VERBOSE)$(CC) $(CFLAGS) $(CONLYFLAGS) -c -o $@ $<
 	$(call,echo,)
 
 # Assember to build .o from .S in $(BUILD_DIR)

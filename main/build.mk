@@ -11,6 +11,15 @@ TARGET_DIR ?= $(USRSRC)
 endif
 endif
 
+ifdef APPDIR
+USRSRC = $(APPDIR)
+ifndef TARGET_FILE
+TARGET_FILE ?= $(notdir $(APPDIR))
+TARGET_DIR ?= $(USRSRC)
+endif
+endif
+
+
 ifdef TEST
 USRSRC = tests/$(TEST)
 INCLUDE_PLATFORM?=1
@@ -37,19 +46,5 @@ TARGET_FILE ?= core-firmware
 INCLUDE_DIRS += $(MODULE_PATH)/libraries
 
 CFLAGS += -DSPARK_PLATFORM_NET=$(PLATFORM_NET)
-
-# Linker flags
-LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
-ifeq ("$(ARCH)","arm")
-
-LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_$(STM32_DEVICE_LC)_dfu.ld
-LDFLAGS += --specs=nano.specs -lc -lnosys
-LDFLAGS += -u _printf_float
-
-ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S 
-ASFLAGS += -I$(COMMON_BUILD)/arm/startup
-ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=1
-
-endif
 
 

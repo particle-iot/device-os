@@ -31,6 +31,19 @@
 #include <stdbool.h>
 
 /* Exported types ------------------------------------------------------------*/
+typedef enum
+{
+    BKP_DR_01 = 0x01,
+    BKP_DR_02 = 0x02,
+    BKP_DR_03 = 0x03,
+    BKP_DR_04 = 0x04,
+    BKP_DR_05 = 0x05,
+    BKP_DR_06 = 0x06,
+    BKP_DR_07 = 0x07,
+    BKP_DR_08 = 0x08,
+    BKP_DR_09 = 0x09,
+    BKP_DR_10 = 0x10
+} BKP_DR_TypeDef;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -82,8 +95,15 @@ void HAL_Core_Enter_Standby_Mode(void);
 void HAL_Core_Execute_Standby_Mode(void);
 uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize);
 
+//Following is currently defined in bootloader/src/core-vx/dfu_hal.c
+//Move the definitions to core_hal.c and add hal as a dependency for bootloader
+int32_t HAL_Core_Backup_Register(uint32_t BKP_DR);
+void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data);
+uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR);
+
 void HAL_SysTick_Handler(void) __attribute__ ((weak));
-extern void mdma(void);
+
+extern void app_setup_and_loop();
 
 #ifdef __cplusplus
 }

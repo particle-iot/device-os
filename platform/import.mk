@@ -3,7 +3,9 @@
 
 PLATFORM_MODULE_PATH ?= ../platform
 
-LIB_DIRS += $(BUILD_PATH_BASE)/platform/prod-$(SPARK_PRODUCT_ID)
+PLATFORM_LIB_DIR = $(BUILD_PATH_BASE)/platform/prod-$(SPARK_PRODUCT_ID)
+PLATFORM_LIB_DEP = $(PLATFORM_LIB_DIR)/libplatform.a
+
 
 # Target specific defines
 CFLAGS += -DUSE_STDPERIPH_DRIVER
@@ -25,5 +27,5 @@ PLATFORM_NET_PATH=$(PLATFORM_MODULE_PATH)/NET/$(PLATFORM_NET)
 include $(call rwildcard,$(PLATFORM_MCU_PATH)/,include.mk)
 include $(call rwildcard,$(PLATFORM_NET_PATH)/,include.mk)
 
-
-
+#Added temporarily to compile USB files for core-v2(WIP/testing)
+INCLUDE_DIRS += ../bootloader/src/core-v2

@@ -199,7 +199,7 @@ uint32_t loop_frequency_hz()
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-int main(void)
+void app_setup_and_loop(void)
 {
     HAL_Core_Init();
     // We have running firmware, otherwise we wouldn't have gotten here

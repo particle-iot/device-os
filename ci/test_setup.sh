@@ -12,8 +12,7 @@ export main=$ci_dir/../main
 export target_dir=$build/target
 export target=core-firmware.bin
 export events=$ci_dir/events.log
-export target=core-firmware
-export target_file=$target_dir/main/prod-0/$target.bin
+export target_file=$target_dir/main/prod-0/tests/$platform/$suite/main.bin
 export testDir=$main/tests
 
 # directory for the test reports
@@ -103,12 +102,12 @@ function startTests() {
 # $1 the regex to include
 function includeTests() {
   echo "include tests matching $1"
-  [[ "$(sendCommand 'include=$1')"=="0" ]]
+  [[ $(sendCommand "include=$1")=="0" ]]
 }
 
 function excludeTests() {
   echo "exclude tests matching $1"
-  [[ "$(sendCommand 'exclude=$1')"=="0" ]]
+  [[ $(sendCommand "exclude=$1")=="0" ]]
 }
 
 # sends a command to the test harness

@@ -18,6 +18,31 @@ submodules before deleting the `build\target` directory, E.g.
 make clean all
 ```
 
+
+## Specifying custom toolchain location
+
+Custom compiler prefix can be used via an environment variable `GCC_PREFIX`.
+
+For example when you have installed a custom toolchain under
+`/opt/gcc-arm-embedded-bin` you can use invoke make using that toolchain
+like this:
+
+```
+GCC_PREFIX="/opt/gcc-arm-embedded-bin/bin/arm-none-eabi-" make
+```
+
+The default value of `GCC_PREFIX` is `arm-none-eabi`, which uses the ARM
+version of the GCC toolchain, assumed to be in the path. 
+
+Alternatively, path for the tools can be specified separately as `GCC_ARM_PATH`,
+which, if specified should end with a directory separator, e.g.
+
+```
+GCC_ARM_PATH="/opt/gcc-arm-embedded-bin/bin/" make
+```
+
+
+
 ## Controlling Verbosity
 
 By default the makefile is quiet - the only output is when an .elf file is produced to
@@ -109,6 +134,25 @@ These can of course also be combined like so:
 ```
 make APP=myapp TARGET_DIR=myfolder/ TARGET_FILE=core-firmware
 ```
+
+## Compiling an application outside the firmware source
+
+It's natural to want to separate application code from the firmware code, and
+the build system supports this, via the `APPDIR` parameter.
+
+```
+make APPDIR=/path/to/applications/tinker TARGET_PATH=/path/to/applications/tinker/target/ TARGET_FILE=tinker
+```
+
+Parameters:
+
+- `APPDIR`: The relative or full path to the directory containing the user application
+- `TARGET_PATH`: the directory where the build output should go. Note that this *MUST* end with a final slash. In the example
+    this puts the output files under a `target` directory of the application sources.
+- `TARGET_FILE`: the basename of the files created. In the example, the resulting image file will be
+`tinker.bin` (stored in a target subdirectory of the application, as set by `TARGET_PATH`.)
+
+
 
 ## Integrated application.cpp with firmware
 
