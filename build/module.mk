@@ -42,7 +42,6 @@ CFLAGS += -DSPARK=1
 CONLYFLAGS += -Wno-pointer-sign
 
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
-# include libraries twice to avoid gcc library craziness
 LDFLAGS += -Wl,--start-group $(patsubst %,-l%,$(LIBS)) -Wl,--end-group
 
 # Assembler flags

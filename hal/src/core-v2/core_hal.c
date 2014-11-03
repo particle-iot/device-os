@@ -82,3 +82,7 @@ bool HAL_watchdog_reset_flagged()
 void HAL_Notify_WDT()
 {    
 }
+
+void application_start() {
+    app_setup_and_loop();
+}
