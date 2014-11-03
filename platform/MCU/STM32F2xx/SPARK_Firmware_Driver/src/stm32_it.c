@@ -151,7 +151,7 @@ void SysTick_Handler(void)
         TimingDelay--;
     }
 
-    if(NULL != HAL_SysTick_Handler)
+    if(HAL_SysTick_Handler)
     {
         HAL_SysTick_Handler();
     }
