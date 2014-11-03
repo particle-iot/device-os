@@ -13,9 +13,6 @@ Initially all repos were merged into a directory based on their name
 - core-common-lib --> common/
 - core-communications-lib -->  communications/
 
-At present, there is no top-level build/ directory. To build firmware, cd to 
-`firmware/build` and run make as usual. Similarly for the bootloader.
-
 When merging unmerged branches from the external repos, first add the external repos as
 remotes to the firmware repo. Then you can switch to the local feature branch, and merge
 the changes, taking into account the new directory structure, with -Xsubtree, e.g.
