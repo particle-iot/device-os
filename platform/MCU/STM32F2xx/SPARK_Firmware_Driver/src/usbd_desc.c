@@ -30,7 +30,6 @@
 #include "usbd_core.h"
 #include "usbd_desc.h"
 #include "usbd_req.h"
-#include "usbd_conf.h"
 #include "usb_regs.h"
 
 #define USBD_VID                        0x1D50  //Spark Vendor ID
