@@ -35,25 +35,6 @@
 
 /* NOTE: BM-09 uses USB_OTG_HS so comment defines related to USB_OTG_FS - Satish */
 
-/* USB Core and PHY interface configuration.
-   Tip: To avoid modifying these defines each time you need to change the USB
-        configuration, you can declare the needed define in your toolchain
-        compiler preprocessor.
- */
-/****************** USB OTG FS PHY CONFIGURATION *******************************
- *  The USB OTG FS Core supports one on-chip Full Speed PHY.
- *
- *  The USE_EMBEDDED_PHY symbol is defined in the project compiler preprocessor
- *  when FS core is used.
- *******************************************************************************/
-#ifndef USE_USB_OTG_FS
-//#define USE_USB_OTG_FS
-#endif /* USE_USB_OTG_FS */
-
-#ifdef USE_USB_OTG_FS 
-//#define USB_OTG_FS_CORE
-#endif
-
 /****************** USB OTG HS PHY CONFIGURATION *******************************
  *  The USB OTG HS Core supports two PHY interfaces:
  *   (i)  An ULPI interface for the external High Speed PHY: the USB HS Core will
@@ -63,13 +44,6 @@
  *  You can select the PHY to be used using one of these two defines:
  *   (i)  USE_ULPI_PHY: if the USB OTG HS Core is to be used in High speed mode
  *   (ii) USE_EMBEDDED_PHY: if the USB OTG HS Core is to be used in Full speed mode
- *
- *  Notes:
- *   - The USE_ULPI_PHY symbol is defined in the project compiler preprocessor as
- *     default PHY when HS core is used.
- *   - On STM322xG-EVAL and STM324xG-EVAL boards, only configuration(i) is available.
- *     Configuration (ii) need a different hardware, for more details refer to your
- *     STM32 device datasheet.
  *******************************************************************************/
 #ifndef USE_USB_OTG_HS
 #define USE_USB_OTG_HS
@@ -153,19 +127,7 @@
                                                  in performance degradation for transfers relative to these 
                                                  memories in High Speed mode. It is advised to disable DMA 
                                                  mode if it is not used for other interfaces. */
-/* #define USB_OTG_HS_DEDICATED_EP1_ENABLED */
-#endif
-
-/****************** USB OTG FS CONFIGURATION **********************************/
-#ifdef USB_OTG_FS_CORE
-#define RX_FIFO_FS_SIZE                           160
-#define TX0_FIFO_FS_SIZE                          160
-#define TX1_FIFO_FS_SIZE                          0
-#define TX2_FIFO_FS_SIZE                          0
-#define TX3_FIFO_FS_SIZE                          0
-
-// #define USB_OTG_FS_LOW_PWR_MGMT_SUPPORT
-// #define USB_OTG_FS_SOF_OUTPUT_ENABLED
+#define USB_OTG_HS_DEDICATED_EP1_ENABLED
 #endif
 
 /****************** USB OTG MISC CONFIGURATION ********************************/
