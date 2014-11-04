@@ -35,7 +35,8 @@ endif
 CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
-CFLAGS += -ffunction-sections -fdata-sections -Wall -Werror -Wno-switch -fmessage-length=0
+# Removed "-fdata-sections" as firmware doesn't work as expected
+CFLAGS += -ffunction-sections -Wall -Werror -Wno-switch -fmessage-length=0
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1
 
