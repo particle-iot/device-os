@@ -34,4 +34,19 @@ int inet_gethostbyname(char* hostname, uint16_t hostnameLen, uint32_t* out_ip_ad
     return result;
 }
 
-// inet_ping in wlan_hal.c
+int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
+    
+    const uint32_t     ping_timeout = 1000;
+    uint32_t           elapsed_ms;    
+    wiced_ip_address_t ping_target_ip;
+    
+    SET_IPV4_ADDRESS(ping_target_ip, MAKE_IPV4_ADDRESS(remoteIP[0], remoteIP[1], remoteIP[2], remoteIP[3]));
+    
+    int count = 0;
+    for (int i=0; i<nTries; i++) {
+        wiced_result_t     status = wiced_ping(WICED_STA_INTERFACE, &ping_target_ip, ping_timeout, &elapsed_ms);
+        if (status==WICED_SUCCESS)
+            count++;
+    }
+    return count;
+}
