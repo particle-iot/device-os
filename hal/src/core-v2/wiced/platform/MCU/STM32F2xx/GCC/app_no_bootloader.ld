@@ -154,3 +154,9 @@ PROVIDE( __RAM_segment_used_end__ = link_stack_end );
 PROVIDE( __tx_free_memory_start = link_stack_end );
 PROVIDE( __tx_vectors = link_interrupt_vectors_location );
 
+/* todo - find why dct functions are needed */
+PROVIDE( dct1_start_addr_loc     = ORIGIN( APP_FLASH ));
+PROVIDE( dct1_size_loc           = LENGTH( APP_FLASH ));
+PROVIDE( dct2_start_addr_loc     = ORIGIN( APP_FLASH ));
+PROVIDE( dct2_size_loc           = LENGTH( APP_FLASH ));
+
