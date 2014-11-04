@@ -191,8 +191,18 @@ bool HAL_watchdog_reset_flagged()
 void HAL_Notify_WDT()
 {    
     KICK_WDT();
+    wiced_watchdog_kick();
 }
 
+/**
+ * The entrypoint from FreeRTOS to our application.
+ * 
+ */
 void application_start() {
+    
+    // while this is linked as a single image, assume c'tors are handled by the
+    // WICED startup scripts.    
+    HAL_Core_Config();
+    
     app_setup_and_loop();
 }
