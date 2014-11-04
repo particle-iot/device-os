@@ -43,6 +43,8 @@ volatile uint32_t TimingDelay;
 *******************************************************************************/
 void HAL_Delay_Milliseconds(uint32_t nTime)
 {
+    // review - wiced_rtos_delay_milliseconds() ??
+    
     TimingDelay = nTime;
 
     while (TimingDelay != 0x00);

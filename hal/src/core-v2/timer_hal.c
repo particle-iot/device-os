@@ -48,7 +48,7 @@
  */
 system_tick_t HAL_Timer_Get_Micro_Seconds(void)
 {
-  return (DWT->CYCCNT / SYSTEM_US_TICKS);
+    return (DWT->CYCCNT / SYSTEM_US_TICKS);
 }
 
 /*
@@ -56,5 +56,6 @@ system_tick_t HAL_Timer_Get_Micro_Seconds(void)
  */
 system_tick_t HAL_Timer_Get_Milli_Seconds(void)
 {
-  return GetSystem1MsTick();
+    // review - wiced_time_get_time()) ??
+    return GetSystem1MsTick();
 }
