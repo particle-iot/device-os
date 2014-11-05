@@ -93,7 +93,7 @@
  *       --> Txn should be configured with the minimum space of 16 words
  *  (v) The FIFO is used optimally when used TxFIFOs are allocated in the top
  *       of the FIFO.Ex: use EP1 and EP2 as IN instead of EP1 and EP3 as IN ones.
- *   (vi) In HS case12 FIFO locations should be reserved for internal DMA register
+ *   (vi) In HS case 12 FIFO locations should be reserved for internal DMA registers
  *        so total FIFO size should be 1012 Only instead of 1024
  *******************************************************************************/
 
