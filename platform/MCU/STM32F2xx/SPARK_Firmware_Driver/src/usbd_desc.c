@@ -3,7 +3,7 @@
  * @file    usbd_desc.c
  * @author  Satish Nair
  * @version V1.0.0
- * @date    21-Oct-2014
+ * @date    05-Nov-2014
  * @brief   This file provides the USBD descriptors and string formating method.
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
@@ -34,22 +34,22 @@
 
 #define USBD_VID                        0x1D50  //Spark Vendor ID
 
-#define USBD_PID                        0x607F  //Spark DFU Product ID
+#define USBD_PID                        0x607D  //Spark VCP Product ID
 
 #define USBD_LANGID_STRING              0x0409  //U.S. English
 #define USBD_MANUFACTURER_STRING        "Spark Devices     "
 
-#define USBD_PRODUCT_HS_STRING          "Spark DFU Mode"
-#define USBD_SERIALNUMBER_HS_STRING     "00000000010B"
+#define USBD_PRODUCT_HS_STRING          "SPARK USB Serial Port Mode      "
+#define USBD_SERIALNUMBER_HS_STRING     "00000000050B"
 
-#define USBD_PRODUCT_FS_STRING          "Spark DFU Mode"
-#define USBD_SERIALNUMBER_FS_STRING     "00000000010C"
+#define USBD_PRODUCT_FS_STRING          "SPARK USB Serial Port Mode      "
+#define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
 
-#define USBD_CONFIGURATION_HS_STRING    "DFU Config"
-#define USBD_INTERFACE_HS_STRING        "DFU Interface"
+#define USBD_CONFIGURATION_HS_STRING    "VCP Config"
+#define USBD_INTERFACE_HS_STRING        "VCP Interface"
 
-#define USBD_CONFIGURATION_FS_STRING    "DFU Config"
-#define USBD_INTERFACE_FS_STRING        "DFU Interface"
+#define USBD_CONFIGURATION_FS_STRING    "VCP Config"
+#define USBD_INTERFACE_FS_STRING        "VCP Interface"
 
 USBD_DEVICE USR_desc =
 {
