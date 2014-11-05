@@ -85,6 +85,8 @@
 
 //NVIC Priorities based on NVIC_PriorityGroup_4
 #define SDIO_IRQ_PRIORITY                       0       //??? BCM43362 SDIO Interrupt
+#define OTG_HS_EP1_IN_IRQ_PRIORITY              2       //USB OTG HS EP1 IN Interrupt
+#define OTG_HS_EP1_OUT_IRQ_PRIORITY             2       //USB OTG HS EP1 OUT Interrupt
 #define OTG_HS_IRQ_PRIORITY                     2       //USB OTG HS Interrupt
 #define OTG_HS_WKUP_IRQ_PRIORITY                2       //USB OTG HS Wakeup Interrupt
 #define RTC_Alarm_IRQ_PRIORITY                  3       //RTC Alarm Interrupt

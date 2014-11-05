@@ -36,7 +36,7 @@
 
 #define USBD_CFG_MAX_NUM                1
 #define USBD_ITF_MAX_NUM                1      /* MAX_USED_MEDIA */
-#define USB_MAX_STR_DESC_SIZ            64     /* DFU->200, VCP->255 */
+#define USB_MAX_STR_DESC_SIZ            255
 #define USB_SUPPORT_USER_STRING_DESC
 
 #define USBD_SELF_POWERED               
