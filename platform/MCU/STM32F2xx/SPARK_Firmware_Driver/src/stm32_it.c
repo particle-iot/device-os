@@ -29,6 +29,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32_it.h"
 #include "hw_config.h"
+#include "usb_conf.h"
+#include "usb_core.h"
+#include "usbd_core.h"
+#include "usbd_cdc_core.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -40,6 +44,14 @@ void HAL_SysTick_Handler(void) __attribute__ ((weak));
 
 /* Extern variables and function prototypes ----------------------------------*/
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
+
+extern USB_OTG_CORE_HANDLE           USB_OTG_dev;
+extern uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+
+#ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
+extern uint32_t USBD_OTG_EP1IN_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+extern uint32_t USBD_OTG_EP1OUT_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+#endif
 
 void linkme(void)
 {
@@ -204,6 +216,54 @@ void TIM2_IRQHandler(void)
         }
     }
 }
+
+/**
+ * @brief  This function handles EXTI15_10_IRQ Handler.
+ * @param  None
+ * @retval None
+ */
+void OTG_HS_WKUP_IRQHandler(void)
+{
+    if(USB_OTG_dev.cfg.low_power)
+    {
+        *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
+        SystemInit();
+        USB_OTG_UngateClock(&USB_OTG_dev);
+    }
+    EXTI_ClearITPendingBit(EXTI_Line20);
+}
+
+/**
+ * @brief  This function handles OTG_HS Handler.
+ * @param  None
+ * @retval None
+ */
+void OTG_HS_IRQHandler(void)
+{
+    USBD_OTG_ISR_Handler (&USB_OTG_dev);
+}
+
+#ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
+/**
+ * @brief  This function handles EP1_IN Handler.
+ * @param  None
+ * @retval None
+ */
+void OTG_HS_EP1_IN_IRQHandler(void)
+{
+    USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
+}
+
+/**
+ * @brief  This function handles EP1_OUT Handler.
+ * @param  None
+ * @retval None
+ */
+void OTG_HS_EP1_OUT_IRQHandler(void)
+{
+    USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
+}
+#endif
 
 /******************************************************************************/
 /*                 STM32Fxxx Peripherals Interrupt Handlers                   */
