@@ -81,7 +81,7 @@
 #define APP_RX_DATA_SIZE                2048 /* Total size of IN buffer:
                                                 APP_RX_DATA_SIZE*8/MAX_BAUDARATE*1000 should be > CDC_IN_FRAME_INTERVAL*8 */
 
-#define APP_FOPS                        USBSerial_fops
+#define APP_FOPS                        APP_fops
 
 #endif //__USBD_CONF__H__
 

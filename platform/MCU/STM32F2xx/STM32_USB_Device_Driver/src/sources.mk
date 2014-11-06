@@ -16,6 +16,7 @@ CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_dfu_mal.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_flash_if.c
 # cdc/usbserial specific files
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_cdc_core.c
+CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_cdc_if.c
 
 # C++ source files included in this build.
 CPPSRC +=
