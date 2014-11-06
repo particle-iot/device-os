@@ -42,7 +42,7 @@ USBD_Usr_cb_TypeDef USR_cb =
         USBD_USR_DeviceDisconnected,
 };
 
-uint8_t State = 0;
+uint8_t USB_DEVICE_CONFIGURED = 0;//We are just interested in "CONFIGURED" state
 
 /**
  * @brief  USBD_USR_Init
@@ -51,8 +51,8 @@ uint8_t State = 0;
  */
 void USBD_USR_Init(void)
 {
-    //Additional application hooks - update this section as per requirement
-    //User initialization code if any (not required now for core-v2)
+    //USB Device Init
+    USB_DEVICE_CONFIGURED = 0;
 }
 
 /**
@@ -62,20 +62,8 @@ void USBD_USR_Init(void)
  */
 void USBD_USR_DeviceReset(uint8_t speed )
 {
-    //Additional application hooks - update this section as per requirement
-    switch (speed)
-    {
-        case USB_OTG_SPEED_HIGH:
-            //USB Device Library v1.1.0 [HS]
-            break;
-
-        case USB_OTG_SPEED_FULL:
-            //USB Device Library v1.1.0 [FS]
-            break;
-        default:
-            //USB Device Library v1.1.0 [??]
-            break;
-    }
+    //USB Device Reset
+    USB_DEVICE_CONFIGURED = 0;
 }
 
 
@@ -86,17 +74,8 @@ void USBD_USR_DeviceReset(uint8_t speed )
  */
 void USBD_USR_DeviceConfigured (void)
 {
-    //Additional application hooks - update this section as per requirement
-    if (State == 0)
-    {
-        //DFU Interface Started
-    }
-    else if (State == 1)
-    {
-        //DFU Interface Configured
-    }
-
-    State++;
+    //USB Device Configured
+    USB_DEVICE_CONFIGURED = 1;
 }
 /**
  * @brief  USBD_USR_DeviceSuspended
@@ -105,9 +84,8 @@ void USBD_USR_DeviceConfigured (void)
  */
 void USBD_USR_DeviceSuspended(void)
 {
-    //Additional application hooks - update this section as per requirement
-    //> USB Device in Suspend Mode
-    /* Users can do their application actions here for the USB-Reset */
+    //USB Device in Suspend Mode
+    USB_DEVICE_CONFIGURED = 0;
 }
 
 
@@ -118,9 +96,8 @@ void USBD_USR_DeviceSuspended(void)
  */
 void USBD_USR_DeviceResumed(void)
 {
-    //Additional application hooks - update this section as per requirement
-    //> USB Device in Idle Mode
-    /* Users can do their application actions here for the USB-Reset */
+    //USB Device in Idle Mode
+    USB_DEVICE_CONFIGURED = 0;
 }
 
 /**
@@ -130,8 +107,8 @@ void USBD_USR_DeviceResumed(void)
  */
 void USBD_USR_DeviceConnected (void)
 {
-    //Additional application hooks - update this section as per requirement
-    //> USB Device Connected
+    //USB Device Connected
+    USB_DEVICE_CONFIGURED = 0;
 }
 
 
@@ -142,6 +119,6 @@ void USBD_USR_DeviceConnected (void)
  */
 void USBD_USR_DeviceDisconnected (void)
 {
-    //Additional application hooks - update this section as per requirement
-    //> USB Device Disconnected
+    //USB Device Disconnected
+    USB_DEVICE_CONFIGURED = 0;
 }
