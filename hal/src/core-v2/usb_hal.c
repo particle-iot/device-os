@@ -158,7 +158,11 @@ static uint16_t USBSerial_DataRx (uint8_t* Buf, uint32_t Len)
  *******************************************************************************/
 void SPARK_USB_Setup(void)
 {
-    //To Do
+    USBD_Init(&USB_OTG_dev,
+              USB_OTG_HS_CORE_ID,
+              &USR_desc,
+              &USBD_CDC_cb,
+              &USR_cb);
 }
 
 /*******************************************************************************
@@ -183,7 +187,7 @@ void Get_SerialNum(void)
  *******************************************************************************/
 void USB_USART_Init(uint32_t baudRate)
 {
-    //To Do
+    SPARK_USB_Setup();
 }
 
 /*******************************************************************************
