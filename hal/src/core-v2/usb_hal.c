@@ -32,6 +32,7 @@
 #include "usbd_usr.h"
 #include "usb_conf.h"
 #include "usbd_desc.h"
+#include "delay_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -46,7 +47,14 @@ USB_OTG_CORE_HANDLE USB_OTG_dev;
 
 /* Extern variables ----------------------------------------------------------*/
 #ifdef USB_CDC_ENABLE
-//To Do
+extern uint8_t USB_DEVICE_CONFIGURED;
+extern uint8_t USB_Rx_Buffer[];
+extern uint8_t APP_Rx_Buffer[];
+extern uint32_t APP_Rx_ptr_in;
+extern uint16_t USB_Rx_length;
+extern uint16_t USB_Rx_ptr;
+extern uint8_t  USB_Tx_State;
+extern uint8_t  USB_Rx_State;
 #endif
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
@@ -74,7 +82,7 @@ void SPARK_USB_Setup(void)
  *******************************************************************************/
 void Get_SerialNum(void)
 {
-    //To Do
+    //Not required. Retained for compatibility
 }
 #endif
 
@@ -98,7 +106,14 @@ void USB_USART_Init(uint32_t baudRate)
  *******************************************************************************/
 uint8_t USB_USART_Available_Data(void)
 {
-    //To Do
+    if(USB_DEVICE_CONFIGURED)
+    {
+        if(USB_Rx_State == 1)
+        {
+            return (USB_Rx_length - USB_Rx_ptr);
+        }
+    }
+
     return 0;
 }
 
@@ -110,7 +125,22 @@ uint8_t USB_USART_Available_Data(void)
  *******************************************************************************/
 int32_t USB_USART_Receive_Data(void)
 {
-    //To Do
+    if(USB_DEVICE_CONFIGURED)
+    {
+        if(USB_Rx_State == 1)
+        {
+            if((USB_Rx_length - USB_Rx_ptr) == 1)
+            {
+                USB_Rx_State = 0;
+
+                /* Prepare Out endpoint to receive next packet */
+                //To Do
+            }
+
+            return USB_Rx_Buffer[USB_Rx_ptr++];
+        }
+    }
+
     return -1;
 }
 
@@ -122,7 +152,21 @@ int32_t USB_USART_Receive_Data(void)
  *******************************************************************************/
 void USB_USART_Send_Data(uint8_t Data)
 {
-    //To Do
+    if(USB_DEVICE_CONFIGURED)
+    {
+        APP_Rx_Buffer[APP_Rx_ptr_in] = Data;
+
+        APP_Rx_ptr_in++;
+
+        /* To avoid buffer overflow */
+        if(APP_Rx_ptr_in == APP_RX_DATA_SIZE)
+        {
+            APP_Rx_ptr_in = 0;
+        }
+
+        //Delay 100us to avoid losing the data
+        HAL_Delay_Microseconds(100);
+    }
 }
 #endif
 
