@@ -41,112 +41,12 @@
 
 /* Private variables ---------------------------------------------------------*/
 #ifdef USB_CDC_ENABLE
-//To Do
+USB_OTG_CORE_HANDLE USB_OTG_dev;
 #endif
 
 /* Extern variables ----------------------------------------------------------*/
 #ifdef USB_CDC_ENABLE
-/* These are external variables imported from CDC core to be used for IN
-   transfer management. */
-extern uint8_t  APP_Rx_Buffer []; /* Write CDC received data in this buffer.
-                                     These data will be sent over USB IN endpoint
-                                     in the CDC core functions. */
-extern uint32_t APP_Rx_ptr_in;    /* Increment this pointer or roll it back to
-                                     start address when writing received data
-                                     in the buffer APP_Rx_Buffer. */
-#endif
-
-/* Private function prototypes -----------------------------------------------*/
-#ifdef USB_CDC_ENABLE
-static uint16_t USBSerial_Init     (void);
-static uint16_t USBSerial_DeInit   (void);
-static uint16_t USBSerial_Ctrl     (uint32_t Cmd, uint8_t* Buf, uint32_t Len);
-static uint16_t USBSerial_DataTx   (uint8_t* Buf, uint32_t Len);
-static uint16_t USBSerial_DataRx   (uint8_t* Buf, uint32_t Len);
-
-CDC_IF_Prop_TypeDef USBSerial_fops =
-{
-        USBSerial_Init,
-        USBSerial_DeInit,
-        USBSerial_Ctrl,
-        USBSerial_DataTx,
-        USBSerial_DataRx
-};
-#endif
-
-/* Private functions ---------------------------------------------------------*/
-#ifdef USB_CDC_ENABLE
-/**
- * @brief  USBSerial_Init
- * @param  None
- * @retval Result of the operation (USBD_OK in all cases)
- */
-static uint16_t USBSerial_Init(void)
-{
-    //Nothing To Do
-    return USBD_OK;
-}
-
-/**
- * @brief  USBSerial_DeInit
- * @param  None
- * @retval Result of the operation (USBD_OK in all cases)
- */
-static uint16_t USBSerial_DeInit(void)
-{
-    //Nothing To Do
-    return USBD_OK;
-}
-
-
-/**
- * @brief  USBSerial_Ctrl
- *         Manage the CDC class requests
- * @param  Cmd: Command code
- * @param  Buf: Buffer containing command data (request parameters)
- * @param  Len: Number of data to be sent (in bytes)
- * @retval Result of the operation (USBD_OK in all cases)
- */
-static uint16_t USBSerial_Ctrl (uint32_t Cmd, uint8_t* Buf, uint32_t Len)
-{
-    //Nothing To Do
-    return USBD_OK;
-}
-
-/**
- * @brief  USBSerial_DataTx
- *         CDC received data to be send over USB IN endpoint are managed in
- *         this function.
- * @param  Buf: Buffer of data to be sent
- * @param  Len: Number of data to be sent (in bytes)
- * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
- */
-static uint16_t USBSerial_DataTx (uint8_t* Buf, uint32_t Len)
-{
-    //To Do
-    return USBD_OK;
-}
-
-/**
- * @brief  USBSerial_DataRx
- *         Data received over USB OUT endpoint are sent over CDC interface
- *         through this function.
- *
- *         @note
- *         This function will block any OUT packet reception on USB endpoint
- *         untill exiting this function. If you exit this function before transfer
- *         is complete on CDC interface (ie. using DMA controller) it will result
- *         in receiving more data while previous ones are still not sent.
- *
- * @param  Buf: Buffer of data to be received
- * @param  Len: Number of data received (in bytes)
- * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
- */
-static uint16_t USBSerial_DataRx (uint8_t* Buf, uint32_t Len)
-{
-    //To Do
-    return USBD_OK;
-}
+//To Do
 #endif
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
