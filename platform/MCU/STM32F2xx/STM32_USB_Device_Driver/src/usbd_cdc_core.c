@@ -171,7 +171,6 @@ __ALIGN_BEGIN uint8_t USB_Rx_Buffer   [CDC_DATA_MAX_PACKET_SIZE] __ALIGN_END ;
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 __ALIGN_BEGIN uint8_t APP_Rx_Buffer   [APP_RX_DATA_SIZE] __ALIGN_END ; 
 
-
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   #if defined ( __ICCARM__ ) /*!< IAR Compiler */
     #pragma data_alignment=4   
@@ -183,7 +182,11 @@ uint32_t APP_Rx_ptr_in  = 0;
 uint32_t APP_Rx_ptr_out = 0;
 uint32_t APP_Rx_length  = 0;
 
+uint16_t USB_Rx_length = 0;
+uint16_t USB_Rx_ptr = 0;
+
 uint8_t  USB_Tx_State = 0;
+uint8_t  USB_Rx_State = 0;
 
 static uint32_t cdcCmd = 0xFF;
 static uint32_t cdcLen = 0;
@@ -670,20 +673,21 @@ static uint8_t  usbd_cdc_DataIn (void *pdev, uint8_t epnum)
   */
 static uint8_t  usbd_cdc_DataOut (void *pdev, uint8_t epnum)
 {      
-  uint16_t USB_Rx_Cnt;
-  
+  USB_Rx_State = 1;
+  USB_Rx_ptr = 0;
+
   /* Get the received data buffer and update the counter */
-  USB_Rx_Cnt = ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].xfer_count;
+  USB_Rx_length = ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].xfer_count;
   
   /* USB data will be immediately processed, this allow next USB traffic being 
      NAKed till the end of the application Xfer */
-  APP_FOPS.pIf_DataRx(USB_Rx_Buffer, USB_Rx_Cnt);
+  APP_FOPS.pIf_DataRx(USB_Rx_Buffer, USB_Rx_length);
   
   /* Prepare Out endpoint to receive next packet */
   DCD_EP_PrepareRx(pdev,
                    CDC_OUT_EP,
                    (uint8_t*)(USB_Rx_Buffer),
-                   CDC_DATA_OUT_PACKET_SIZE);
+                   USB_Rx_length);
 
   return USBD_OK;
 }
