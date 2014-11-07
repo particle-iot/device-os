@@ -30,7 +30,9 @@
 #include "interrupts_hal.h"
 #include "hw_config.h"
 #include "syshealth_hal.h"
+#if (USE_WICED_SDK == 1)
 #include "wiced.h"
+#endif
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -50,7 +52,9 @@ extern void linkme(void);
 
 void HAL_Core_Init(void)
 {
+#if (USE_WICED_SDK == 1)
     wiced_init();
+#endif
 }
 
 
@@ -191,9 +195,12 @@ bool HAL_watchdog_reset_flagged()
 void HAL_Notify_WDT()
 {    
     KICK_WDT();
+#if (USE_WICED_SDK == 1)
     wiced_watchdog_kick();
+#endif
 }
 
+#if (USE_WICED_SDK == 1)
 /**
  * The entrypoint from FreeRTOS to our application.
  * 
@@ -206,3 +213,9 @@ void application_start() {
     
     app_setup_and_loop();
 }
+#else
+int main() {
+    app_setup_and_loop();
+    return 0;
+}
+#endif
