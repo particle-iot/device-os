@@ -2,6 +2,8 @@
 HAL_SRC_TEMPLATE_PATH = $(TARGET_HAL_PATH)/src/template
 HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/core-v2
 
+ifeq ("$(USE_WICED_SDK)","1")
+
 # private includes - WICED is not exposed to the HAL clients
 # find all .h files, convert to directory and remove duplicates
 HAL_WICED_INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_COREV2_PATH)/,*.h))
@@ -11,6 +13,7 @@ HAL_WICED_INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced/network/LwIP/ver1.4.0.rc1
 HAL_WICED_INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced/network/LwIP/ver1.4.0.rc1/src/include/ipv4
 INCLUDE_DIRS += $(sort $(HAL_WICED_INCLUDE_DIRS))
 
+endif
 
 templatedir=$(HAL_SRC_TEMPLATE_PATH)
 overridedir=$(HAL_SRC_COREV2_PATH)
@@ -36,8 +39,23 @@ remove_cpp = $(addsuffix .cpp,$(addprefix $(templatedir)/,$(overrides)))
 CSRC := $(filter-out $(remove_c),$(CSRC))
 CPPSRC := $(filter-out $(remove_cpp),$(CPPSRC))
 
+ifeq ("$(USE_WICED_SDK)","1")
+
 CSRC += $(call target_files,$(overridedir)/,*.c)
 CPPSRC += $(call target_files,$(overridedir)/,*.cpp)
+
+else
+
+# compile just the needed files
+CSRC += $(HAL_SRC_COREV2_PATH)/core_hal.c
+CSRC += $(HAL_SRC_COREV2_PATH)/delay_hal.c
+CSRC += $(HAL_SRC_COREV2_PATH)/timer_hal.c
+CSRC += $(HAL_SRC_COREV2_PATH)/usb_hal.c
+
+CPPSRC += $(HAL_SRC_COREV2_PATH)/newlib_stubs.cpp
+CPPSRC += $(HAL_SRC_TEMPLATE_PATH)/inet_hal.cpp
+
+endif
 
 # ASM source files included in this build.
 ASRC +=
