@@ -22,7 +22,7 @@ LIB_DIRS += $(dir $(LIB_DEPS))
 ifeq ("$(ARCH)","gcc")
 TARGET=exe
 else
-TARGET=elf bin hex size 
+TARGET=elf bin lst hex size 
 endif
 
 
