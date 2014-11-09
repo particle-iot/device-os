@@ -15,12 +15,16 @@ INCLUDE_DIRS += $(sort $(HAL_WICED_INCLUDE_DIRS))
 
 endif
 
+# make the make variable also a preprocessor define
+CFLAGS += -DUSE_WICED_SDK=$(USE_WICED_SDK)
+
+
 templatedir=$(HAL_SRC_TEMPLATE_PATH)
 overridedir=$(HAL_SRC_COREV2_PATH)
 
 # C source files included in this build.
 # Use files from the template unless they are overridden by files in the 
-# gcc folder. Also manually exclude some files that have changed from c->cpp.
+# core-v2 folder. Also manually exclude some files that have changed from c->cpp.
 
 CSRC += $(call target_files,$(templatedir)/,*.c)
 CPPSRC += $(call target_files,$(templatedir)/,*.cpp)
@@ -39,23 +43,8 @@ remove_cpp = $(addsuffix .cpp,$(addprefix $(templatedir)/,$(overrides)))
 CSRC := $(filter-out $(remove_c),$(CSRC))
 CPPSRC := $(filter-out $(remove_cpp),$(CPPSRC))
 
-ifeq ("$(USE_WICED_SDK)","1")
-
 CSRC += $(call target_files,$(overridedir)/,*.c)
 CPPSRC += $(call target_files,$(overridedir)/,*.cpp)
-
-else
-
-# compile just the needed files
-CSRC += $(HAL_SRC_COREV2_PATH)/core_hal.c
-CSRC += $(HAL_SRC_COREV2_PATH)/delay_hal.c
-CSRC += $(HAL_SRC_COREV2_PATH)/timer_hal.c
-CSRC += $(HAL_SRC_COREV2_PATH)/usb_hal.c
-
-CPPSRC += $(HAL_SRC_COREV2_PATH)/newlib_stubs.cpp
-CPPSRC += $(HAL_SRC_TEMPLATE_PATH)/inet_hal.cpp
-
-endif
 
 # ASM source files included in this build.
 ASRC +=

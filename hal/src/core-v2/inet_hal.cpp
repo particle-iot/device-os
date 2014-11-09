@@ -23,6 +23,7 @@
  ******************************************************************************
  */
 
+#if USE_WICED_SDK==1
 
 #include "inet_hal.h"
 #include "wiced_tcpip.h"
@@ -50,3 +51,9 @@ int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
     }
     return count;
 }
+
+#else
+
+#include "../template/inet_hal.c"
+
+#endif

@@ -23,6 +23,8 @@
   ******************************************************************************
 */
 
+#if USE_WICED_SDK==0
+
 /* Define caddr_t as char* */
 #include <sys/types.h>
 
@@ -287,3 +289,5 @@ void __cxa_guard_release (__guard *g) {*(char *)g = 1;};
 void __cxa_guard_abort (__guard *) {};
 
 } /* extern "C" */
+
+#endif
