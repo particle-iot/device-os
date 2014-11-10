@@ -266,7 +266,7 @@ int main(void)
 
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
-        if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
+        if (((*(__IO uint32_t*)ApplicationAddress) & APP_START_MASK) == 0x20000000)
         {
             // Jump to user application
             JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);

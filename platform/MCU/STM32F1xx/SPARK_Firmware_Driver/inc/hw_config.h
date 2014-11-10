@@ -88,8 +88,9 @@ typedef enum
 #define INTERNAL_FLASH_START                    ((uint32_t)0x08000000)
 #endif
 
-#define USB_DFU_ADDRESS				INTERNAL_FLASH_START
-#define CORE_FW_ADDRESS				((uint32_t)0x08005000)
+#define USB_DFU_ADDRESS			        INTERNAL_FLASH_START
+#define CORE_FW_ADDRESS			        ((uint32_t)0x08005000)
+#define APP_START_MASK                          ((uint32_t)0x2FFE0000)
 /* Internal Flash memory address where the System Flags will be saved and loaded from  */
 #define SYSTEM_FLAGS_ADDRESS		((uint32_t)0x08004C00)
 /* Internal Flash end memory address */
