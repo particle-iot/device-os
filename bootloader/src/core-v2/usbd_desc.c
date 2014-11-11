@@ -33,16 +33,15 @@
 #include "usb_regs.h"
 
 #define USBD_VID                        0x1D50  //Spark Vendor ID
-
 #define USBD_PID                        0x607F  //Spark DFU Product ID
 
 #define USBD_LANGID_STRING              0x0409  //U.S. English
-#define USBD_MANUFACTURER_STRING        "Spark Devices     "
+#define USBD_MANUFACTURER_STRING        "Spark Devices"
 
-#define USBD_PRODUCT_HS_STRING          "Spark DFU Mode"
+#define USBD_PRODUCT_HS_STRING          "Spark Core DFU Mode"
 #define USBD_SERIALNUMBER_HS_STRING     "00000000010B"
 
-#define USBD_PRODUCT_FS_STRING          "Spark DFU Mode"
+#define USBD_PRODUCT_FS_STRING          "Spark Core DFU Mode"
 #define USBD_SERIALNUMBER_FS_STRING     "00000000010C"
 
 #define USBD_CONFIGURATION_HS_STRING    "DFU Config"
@@ -131,7 +130,7 @@ uint8_t *  USBD_USR_DeviceDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_LangIDStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    *length =  sizeof(USBD_LangIDDesc);
+    *length = sizeof(USBD_LangIDDesc);
     return USBD_LangIDDesc;
 }
 
@@ -144,9 +143,7 @@ uint8_t *  USBD_USR_LangIDStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_ProductStrDescriptor( uint8_t speed , uint16_t *length)
 {
-
-
-    if(speed == 0)
+    if(speed == USB_OTG_SPEED_HIGH)
     {
         USBD_GetString (USBD_PRODUCT_HS_STRING, USBD_StrDesc, length);
     }
@@ -179,7 +176,7 @@ uint8_t *  USBD_USR_ManufacturerStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed  == USB_OTG_SPEED_HIGH)
+    if(speed == USB_OTG_SPEED_HIGH)
     {
         USBD_GetString (USBD_SERIALNUMBER_HS_STRING, USBD_StrDesc, length);
     }
@@ -199,7 +196,7 @@ uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_ConfigStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed  == USB_OTG_SPEED_HIGH)
+    if(speed == USB_OTG_SPEED_HIGH)
     {
         USBD_GetString (USBD_CONFIGURATION_HS_STRING, USBD_StrDesc, length);
     }
@@ -219,7 +216,7 @@ uint8_t *  USBD_USR_ConfigStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed == 0)
+    if(speed == USB_OTG_SPEED_HIGH)
     {
         USBD_GetString (USBD_INTERFACE_HS_STRING, USBD_StrDesc, length);
     }
