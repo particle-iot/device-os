@@ -69,7 +69,7 @@ uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] =
         USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
         0x00,                       /*bcdUSB */
         0x02,
-        0x00,                       /*bDeviceClass*/
+        0x02,                       /*bDeviceClass: CDC*/
         0x00,                       /*bDeviceSubClass*/
         0x00,                       /*bDeviceProtocol*/
         USB_OTG_MAX_EP0_SIZE,      /*bMaxPacketSize*/
