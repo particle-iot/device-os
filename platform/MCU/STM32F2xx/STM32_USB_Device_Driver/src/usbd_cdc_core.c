@@ -684,10 +684,7 @@ static uint8_t  usbd_cdc_DataOut (void *pdev, uint8_t epnum)
   APP_FOPS.pIf_DataRx(USB_Rx_Buffer, USB_Rx_length);
   
   /* Prepare Out endpoint to receive next packet */
-  DCD_EP_PrepareRx(pdev,
-                   CDC_OUT_EP,
-                   (uint8_t*)(USB_Rx_Buffer),
-                   USB_Rx_length);
+  //DCD_EP_PrepareRx() is now called in USB_USART_Receive_Data() in usb_hal.c
 
   return USBD_OK;
 }

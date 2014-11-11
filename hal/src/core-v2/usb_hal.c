@@ -134,7 +134,10 @@ int32_t USB_USART_Receive_Data(void)
                 USB_Rx_State = 0;
 
                 /* Prepare Out endpoint to receive next packet */
-                //To Do
+                DCD_EP_PrepareRx(&USB_OTG_dev,
+                                 CDC_OUT_EP,
+                                 (uint8_t*)(USB_Rx_Buffer),
+                                 CDC_DATA_OUT_PACKET_SIZE);
             }
 
             return USB_Rx_Buffer[USB_Rx_ptr++];
