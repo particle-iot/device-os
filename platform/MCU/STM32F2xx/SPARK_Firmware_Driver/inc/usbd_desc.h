@@ -42,7 +42,7 @@
 #define USB_SIZ_DEVICE_DESC                     18
 #define USB_SIZ_STRING_LANGID                   4
 
-extern  uint8_t USBD_DeviceDesc  [USB_SIZ_DEVICE_DESC];
+extern  uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC];
 extern  uint8_t USBD_StrDesc[USB_MAX_STR_DESC_SIZ];
 extern  uint8_t USBD_OtherSpeedCfgDesc[USB_LEN_CFG_DESC]; 
 extern  uint8_t USBD_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC];
