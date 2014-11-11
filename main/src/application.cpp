@@ -27,21 +27,23 @@
 #include "application.h"
 
 /* Function prototypes -------------------------------------------------------*/
-#if USE_WICED_SDK==1
+#if (STM32_DEVICE==STM32F2XX && USE_WICED_SDK==0)
+SYSTEM_MODE(MANUAL);
+#else
 int tinkerDigitalRead(String pin);
 int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
 SYSTEM_MODE(AUTOMATIC);
-#else
-SYSTEM_MODE(MANUAL);
 #endif
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
-#if USE_WICED_SDK==1
+#if (STM32_DEVICE==STM32F2XX && USE_WICED_SDK==0)
+    Serial.begin(9600);
+#else
     //Setup the Tinker application here
     //Register all the Tinker functions
     Spark.function("digitalread", tinkerDigitalRead);
@@ -49,8 +51,6 @@ void setup()
 
     Spark.function("analogread", tinkerAnalogRead);
     Spark.function("analogwrite", tinkerAnalogWrite);
-#else
-    Serial.begin(9600);
 #endif
 }
 
@@ -58,9 +58,7 @@ void setup()
 void loop()
 {
     //This will run in a loop
-#if USE_WICED_SDK==1
-    //Do nothing
-#else
+#if (STM32_DEVICE==STM32F2XX && USE_WICED_SDK==0)
     //Simple USBSerial loopback test
     if(Serial.available())
     {
@@ -69,7 +67,9 @@ void loop()
 #endif
 }
 
-#if USE_WICED_SDK==1
+#if (STM32_DEVICE==STM32F2XX && USE_WICED_SDK==0)
+//NA
+#else
 /*******************************************************************************
  * Function Name  : tinkerDigitalRead
  * Description    : Reads the digital value of a given pin
