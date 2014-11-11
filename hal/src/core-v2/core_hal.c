@@ -30,6 +30,8 @@
 #include "interrupts_hal.h"
 #include "hw_config.h"
 #include "syshealth_hal.h"
+#include "rgbled.h"
+#include "delay_hal.h"
 #if (USE_WICED_SDK == 1)
 #include "wiced.h"
 #endif
@@ -53,7 +55,7 @@ extern void linkme(void);
 void HAL_Core_Init(void)
 {
 #if (USE_WICED_SDK == 1)
-    wiced_init();
+    
 #endif
 }
 
@@ -74,8 +76,9 @@ void HAL_Core_Config(void)
     DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 #ifdef DFU_BUILD_ENABLE
     /* Set the Vector Table(VT) base location at 0x20000 */
+#if USE_WICED_SDK == 0    
     NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x20000);
-
+#endif    
     USE_SYSTEM_FLAGS = 1;
 #endif
 
@@ -211,10 +214,20 @@ void application_start() {
     // WICED startup scripts.    
     HAL_Core_Config();
     
-    app_setup_and_loop();
+    LED_SetRGBColor(RGB_COLOR_CYAN);
+    LED_On(LED_RGB);
+    wiced_init();
+    
+    //app_setup_and_loop();
+    for (;;) {
+        LED_On(LED_RGB);
+        HAL_Delay_Milliseconds(1500);
+        LED_Off(LED_RGB);
+        HAL_Delay_Milliseconds(500);
+    }
 }
 #else
-int main() {
+int main() {        
     app_setup_and_loop();
     return 0;
 }
