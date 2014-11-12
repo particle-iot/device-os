@@ -32,17 +32,6 @@
 
 extern "C" {
 
-//void Set_NetApp_Timeout(void);
-//void Clear_NetApp_Dhcp(void);
-//void Start_Smart_Config(void);
-
-/* WLAN Application related callbacks passed to wlan_init */
-//void WLAN_Async_Callback(long lEventType, char *data, unsigned char length);
-//char *WLAN_Firmware_Patch(unsigned long *length);
-//char *WLAN_Driver_Patch(unsigned long *length);
-//char *WLAN_BootLoader_Patch(unsigned long *length);
-
-uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
 void SPARK_WLAN_Loop(void);
 void SPARK_WLAN_SmartConfigProcess();
