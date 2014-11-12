@@ -136,7 +136,7 @@ typedef enum
 void Set_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
-
+void SysTick_Disable(void);
 void System1MsTick(void);
 system_tick_t GetSystem1MsTick(void);
 

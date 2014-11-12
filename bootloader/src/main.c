@@ -104,7 +104,7 @@ int main(void)
     if((HAL_Core_Read_Backup_Register(BKP_DR_10) == 0x5000) ||
             (FLASH_OTA_Update_SysFlag == 0x5000))
     {
-        ApplicationAddress = CORE_FW_ADDRESS; //0x08005000
+        ApplicationAddress = CORE_FW_ADDRESS;
     }
 
     // 0x0005 is written to the backup register at the end of firmware update.
@@ -281,6 +281,7 @@ int main(void)
                 IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
             }
 
+            SysTick_Disable();
             Jump_To_Application();
         }
     }
