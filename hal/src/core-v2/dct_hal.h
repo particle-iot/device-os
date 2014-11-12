@@ -12,12 +12,22 @@
 extern "C" {
 #endif
 
-#include "wiced_dct.h"    
+#include "platform_dct.h"    
+    
+struct hal_system_flags_t {
+    platform_system_flags_t flags;
+};
+
+struct hal_server_endpoint_t {
+    
+};
     
 /**
  * Custom extensions to the DCT data stored
  */    
-class dct_hal {
+struct hal_dct {
+    
+    hal_system_flags_t hal_system_flags;
     
 };
 

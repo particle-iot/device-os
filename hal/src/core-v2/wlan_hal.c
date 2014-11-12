@@ -74,13 +74,13 @@ wlan_result_t wlan_deactivate() {
 
 bool wlan_reset_credentials_store_required() 
 {
-    return NVMEM_SPARK_Reset_SysFlag == 0x0001;
+    return system_flags.NVMEM_SPARK_Reset_SysFlag == 0x0001;
 }
 
 wlan_result_t wlan_reset_credentials_store()
 {
     wlan_clear_credentials();
-    NVMEM_SPARK_Reset_SysFlag = 0x0000;
+    system_flags.NVMEM_SPARK_Reset_SysFlag = 0x0000;
     Save_SystemFlags();    
     return 0;
 }

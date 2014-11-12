@@ -59,12 +59,6 @@ const uint16_t BUTTON_EXTI_PIN_SOURCE[] = {BUTTON1_EXTI_PIN_SOURCE};
 const uint16_t BUTTON_IRQn[] = {BUTTON1_EXTI_IRQn};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER};
 
-uint16_t CORE_FW_Version_SysFlag = 0xFFFF;
-uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
-uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
-uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
-uint16_t Factory_Reset_SysFlag = 0xFFFF;
-
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -431,89 +425,29 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button)
 
 #include "dct.h"
 
-int platform_watchdog_kick( void )
+inline void Load_SystemFlags_Impl(platform_system_flags_t* flags)
 {
-    /* Reload IWDG counter */
-    IWDG_ReloadCounter( );
-    return 0;
+    void* flags_store = dct_read_app_data(0);
+    memcpy(flags, flags_store, sizeof(*flags));    
 }
 
-void Load_SystemFlags(void)
+inline void Save_SystemFlags_Impl(const platform_system_flags_t* flags)
 {
-    char data[200];
-    uint32_t Address = SYSTEM_FLAGS_ADDRESS;
-
-    if ( dct_read_app_data(0)==NULL )
-        return;
-    
-    if (dct_write_app_data(data, 0, 200))
-        return;
-    
-    if(!USE_SYSTEM_FLAGS)
-        return;
-
-    CORE_FW_Version_SysFlag = (*(__IO uint16_t*) Address);
-    Address += 2;
-
-    NVMEM_SPARK_Reset_SysFlag = (*(__IO uint16_t*) Address);
-    Address += 2;
-
-    FLASH_OTA_Update_SysFlag = (*(__IO uint16_t*) Address);
-    Address += 2;
-
-    OTA_FLASHED_Status_SysFlag = (*(__IO uint16_t*) Address);
-    Address += 2;
-
-    Factory_Reset_SysFlag = (*(__IO uint16_t*) Address);
-    Address += 2;
+    dct_write_app_data(flags, 0, sizeof(*flags));
 }
 
-void Save_SystemFlags(void)
+platform_system_flags_t system_flags;
+
+void Load_SystemFlags() 
 {
-    uint32_t Address = SYSTEM_FLAGS_ADDRESS;
-    FLASH_Status FLASHStatus = FLASH_COMPLETE;
-
-    if(!USE_SYSTEM_FLAGS)
-        return;
-
-    /* UnLock the FLASH control register access */
-    FLASH_Unlock();
-
-    /* Clear All pending flags */
-    FLASH_ClearFlags();
-
-    /* Erase the Internal Flash Sector1 (16KB) */
-    FLASHStatus = FLASH_EraseSector(FLASH_Sector_1, VoltageRange_3);
-    while(FLASHStatus != FLASH_COMPLETE);
-
-    /* Program CORE_FW_Version_SysFlag */
-    FLASHStatus = FLASH_ProgramHalfWord(Address, CORE_FW_Version_SysFlag);
-    while(FLASHStatus != FLASH_COMPLETE);
-    Address += 2;
-
-    /* Program NVMEM_SPARK_Reset_SysFlag (??? required for Core-V2) */
-    FLASHStatus = FLASH_ProgramHalfWord(Address, NVMEM_SPARK_Reset_SysFlag);
-    while(FLASHStatus != FLASH_COMPLETE);
-    Address += 2;
-
-    /* Program FLASH_OTA_Update_SysFlag */
-    FLASHStatus = FLASH_ProgramHalfWord(Address, FLASH_OTA_Update_SysFlag);
-    while(FLASHStatus != FLASH_COMPLETE);
-    Address += 2;
-
-    /* Program OTA_FLASHED_Status_SysFlag */
-    FLASHStatus = FLASH_ProgramHalfWord(Address, OTA_FLASHED_Status_SysFlag);
-    while(FLASHStatus != FLASH_COMPLETE);
-    Address += 2;
-
-    /* Program Factory_Reset_SysFlag */
-    FLASHStatus = FLASH_ProgramHalfWord(Address, Factory_Reset_SysFlag);
-    while(FLASHStatus != FLASH_COMPLETE);
-    Address += 2;
-
-    /* Locks the FLASH control register access */
-    FLASH_Lock();
+    Load_SystemFlags_Impl(&system_flags);
 }
+
+void Save_SystemFlags() 
+{
+    Save_SystemFlags_Impl(&system_flags);
+}
+
 
 void FLASH_ClearFlags(void)
 {
@@ -614,7 +548,7 @@ void OTA_Flashed_ResetStatus(void)
  *******************************************************************************/
 void Finish_Update(void)
 {
-    FLASH_OTA_Update_SysFlag = 0x5000;
+    system_flags.FLASH_OTA_Update_SysFlag = 0x5000;
     Save_SystemFlags();
 
     RTC_WriteBackupRegister(RTC_BKP_DR10, 0x5000);

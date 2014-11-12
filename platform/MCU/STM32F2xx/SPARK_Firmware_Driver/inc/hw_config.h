@@ -34,7 +34,7 @@
 #include "rgbled.h"
 #include "system_tick_hal.h"
 #include "usb_hal.h"
-
+#include "platform_system_flags.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -79,7 +79,6 @@ typedef enum
 #define CORE_FW_ADDRESS				((uint32_t)0x08020000)
 #define APP_START_MASK                          ((uint32_t)0x2FF10000)
 /* Internal Flash memory address where the System Flags will be saved and loaded from  */
-#define SYSTEM_FLAGS_ADDRESS                    ((uint32_t)0x08004000)
 
 #define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
 
@@ -110,6 +109,7 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
 void Load_SystemFlags(void);
 void Save_SystemFlags(void);
+extern platform_system_flags_t system_flags;
 
 /* Internal Flash Routines */
 void FLASH_ClearFlags(void);
@@ -144,12 +144,8 @@ extern uint8_t USE_SYSTEM_FLAGS;
 
 extern volatile uint32_t TimingDelay;
 
-extern uint16_t CORE_FW_Version_SysFlag;
-extern uint16_t NVMEM_SPARK_Reset_SysFlag;
-extern uint16_t FLASH_OTA_Update_SysFlag;
-extern uint16_t Factory_Reset_SysFlag;
-
 #define KICK_WDT() IWDG_ReloadCounter()
+
 
 #ifdef __cplusplus
 }

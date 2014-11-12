@@ -102,7 +102,7 @@ int main(void)
     // 0x5000 is written to the backup register after transferring the FW from
     // the external flash to the STM32's internal memory
     if((HAL_Core_Read_Backup_Register(BKP_DR_10) == 0x5000) ||
-            (FLASH_OTA_Update_SysFlag == 0x5000))
+            (system_flags.FLASH_OTA_Update_SysFlag == 0x5000))
     {
         ApplicationAddress = CORE_FW_ADDRESS;
     }
@@ -111,7 +111,7 @@ int main(void)
     // if the register reads 0x0005, it signifies that the firmware update
     // was successful
     else if((HAL_Core_Read_Backup_Register(BKP_DR_10) == 0x0005) ||
-            (FLASH_OTA_Update_SysFlag == 0x0005))
+            (system_flags.FLASH_OTA_Update_SysFlag == 0x0005))
     {
         // OTA was complete and the firmware is now available to be transfered to
         // the internal flash memory
@@ -122,7 +122,7 @@ int main(void)
     // if the register still reads 0x5555, it signifies that the firmware update
     // was never completed => FAIL
     else if((HAL_Core_Read_Backup_Register(BKP_DR_10) == 0x5555) ||
-            (FLASH_OTA_Update_SysFlag == 0x5555))
+            (system_flags.FLASH_OTA_Update_SysFlag == 0x5555))
     {
         // OTA transfer failed, hence, load firmware from the backup address
         OTA_FLASH_AVAILABLE = 0;
@@ -135,7 +135,7 @@ int main(void)
     }
 
     // 0xAAAA is written to the Factory_Reset_SysFlag in order to trigger a factory reset
-    if (0xAAAA == Factory_Reset_SysFlag)
+    if (0xAAAA == system_flags.Factory_Reset_SysFlag)
     {
         FACTORY_RESET_MODE = 1;
     }
@@ -218,7 +218,7 @@ int main(void)
                 USB_DFU_MODE = 0;
                 FACTORY_RESET_MODE = 1;
                 // This tells the WLAN setup to clear the WiFi user profiles on bootup
-                NVMEM_SPARK_Reset_SysFlag = 0x0001;
+                system_flags.NVMEM_SPARK_Reset_SysFlag = 0x0001;
                 break;
             }
             else if(!USB_DFU_MODE && TimingBUTTON <= 7000)
