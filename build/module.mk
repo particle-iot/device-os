@@ -43,7 +43,7 @@ CFLAGS += -DSPARK=1
 CONLYFLAGS += -Wno-pointer-sign
 
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
-LDFLAGS += -Wl,--start-group $(patsubst %,-l%,$(LIBS)) -Wl,--end-group
+LDFLAGS += -Wl,--start-group $(patsubst %,-l%,$(LIBS)) -Wl,--end-group $(LIBS_EXT)
 
 # Assembler flags
 ASFLAGS += -x assembler-with-cpp -fmessage-length=0
