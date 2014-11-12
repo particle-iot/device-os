@@ -429,10 +429,26 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button)
     BUTTON_DEBOUNCED_TIME[Button] = 0;
 }
 
+#include "dct.h"
+
+int platform_watchdog_kick( void )
+{
+    /* Reload IWDG counter */
+    IWDG_ReloadCounter( );
+    return 0;
+}
+
 void Load_SystemFlags(void)
 {
+    char data[200];
     uint32_t Address = SYSTEM_FLAGS_ADDRESS;
 
+    if ( dct_read_app_data(0)==NULL )
+        return;
+    
+    if (dct_write_app_data(data, 0, 200))
+        return;
+    
     if(!USE_SYSTEM_FLAGS)
         return;
 

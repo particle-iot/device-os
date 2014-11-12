@@ -47,7 +47,10 @@ Linker subscript for STM32F205xx definitions with 1024K Flash and 128K RAM
 MEMORY
 {
   RAM (xrw)     : ORIGIN = 0x20000000, LENGTH = 128K
-  FLASH (rx)    : ORIGIN = 0x08000000, LENGTH = 1024K
+  FLASH (rx)    : ORIGIN = 0x08000000, LENGTH = 16K
+  DCT1_FLASH (rx) : ORIGIN = 0x08004000, LENGTH = 16K
+  DCT2_FLASH (rx) : ORIGIN = 0x08008000, LENGTH = 16K
+
   FLASHB1 (rx)  : ORIGIN = 0x00000000, LENGTH = 0
   EXTMEMB0 (rx) : ORIGIN = 0x00000000, LENGTH = 0
   EXTMEMB1 (rx) : ORIGIN = 0x00000000, LENGTH = 0
@@ -238,3 +241,9 @@ SECTIONS
     .debug_typenames 0 : { *(.debug_typenames) }
     .debug_varnames  0 : { *(.debug_varnames) }
 }
+
+
+PROVIDE( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH ));
+PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
+PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
+PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
