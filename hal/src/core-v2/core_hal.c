@@ -214,7 +214,8 @@ void application_start() {
     // WICED startup scripts.    
     HAL_Core_Config();
     
-    USB_USART_Init(9600);
+    //Starting USB Serial here results in UNKNOWN DEVICE error on PC
+    //USB_USART_Init(9600);
 
     LED_SetRGBColor(RGB_COLOR_CYAN);
     LED_On(LED_RGB);
