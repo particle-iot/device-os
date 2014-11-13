@@ -41,8 +41,13 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-#ifdef USB_CDC_ENABLE
 USB_OTG_CORE_HANDLE USB_OTG_dev;
+
+extern uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+
+#ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
+extern uint32_t USBD_OTG_EP1IN_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+extern uint32_t USBD_OTG_EP1OUT_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
 #endif
 
 /* Extern variables ----------------------------------------------------------*/
@@ -187,3 +192,66 @@ void USB_HID_Send_Report(void *pHIDReport, size_t reportSize)
 }
 #endif
 
+/**
+ * @brief  This function handles OTG_HS_WKUP_IRQ Handler.
+ * @param  None
+ * @retval None
+ */
+#if USE_WICED_SDK==1
+void OTG_HS_WKUP_irq(void)
+#else
+void OTG_HS_WKUP_IRQHandler(void)
+#endif
+{
+    if(USB_OTG_dev.cfg.low_power)
+    {
+        *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
+        SystemInit();
+        USB_OTG_UngateClock(&USB_OTG_dev);
+    }
+    EXTI_ClearITPendingBit(EXTI_Line20);
+}
+
+/**
+ * @brief  This function handles OTG_HS_IRQ Handler.
+ * @param  None
+ * @retval None
+ */
+#if USE_WICED_SDK==1
+void OTG_HS_irq(void)
+#else
+void OTG_HS_IRQHandler(void)
+#endif
+{
+    USBD_OTG_ISR_Handler (&USB_OTG_dev);
+}
+
+#ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
+/**
+ * @brief  This function handles OTG_HS_EP1_IN_IRQ Handler.
+ * @param  None
+ * @retval None
+ */
+#if USE_WICED_SDK==1
+void OTG_HS_EP1_IN_irq(void)
+#else
+void OTG_HS_EP1_IN_IRQHandler(void)
+#endif
+{
+    USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
+}
+
+/**
+ * @brief  This function handles OTG_HS_EP1_OUT_IRQ Handler.
+ * @param  None
+ * @retval None
+ */
+#if USE_WICED_SDK==1
+void OTG_HS_EP1_OUT_irq(void)
+#else
+void OTG_HS_EP1_OUT_IRQHandler(void)
+#endif
+{
+    USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
+}
+#endif
