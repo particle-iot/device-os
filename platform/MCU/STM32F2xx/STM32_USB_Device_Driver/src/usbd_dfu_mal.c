@@ -29,6 +29,7 @@
 #include "usbd_dfu_mal.h"
 
 #include "usbd_flash_if.h"
+#include "usbd_dct_if.h"
 
 #ifdef DFU_MAL_SUPPORT_OTP
  #include "usbd_otp_if.h"
@@ -49,7 +50,8 @@
    Then add the pointer to the memory string descriptor in usbd_dfu_StringDesc table.
    No other operation is required. */
 DFU_MAL_Prop_TypeDef* tMALTab[MAX_USED_MEDIA] = {
-    &DFU_Flash_cb
+    &DFU_Flash_cb,
+    &DFU_DCT_cb,
 #ifdef DFU_MAL_SUPPORT_OTP
   , &DFU_Otp_cb
 #endif
@@ -65,7 +67,8 @@ DFU_MAL_Prop_TypeDef* tMALTab[MAX_USED_MEDIA] = {
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 
 __ALIGN_BEGIN const uint8_t* usbd_dfu_StringDesc[MAX_USED_MEDIA] __ALIGN_END  = {
-    FLASH_IF_STRING
+    FLASH_IF_STRING,
+    DCT_IF_STRING
 #ifdef DFU_MAL_SUPPORT_OTP
   , OTP_IF_STRING
 #endif
