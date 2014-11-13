@@ -181,6 +181,7 @@ void Leave_LowPowerMode(void);
 void USB_Interrupts_Config(void);
 void USB_Cable_Config(FunctionalState NewState);
 
+#define SYSTEM_FLAG(x) (x)
 void Load_SystemFlags(void);
 void Save_SystemFlags(void);
 
