@@ -423,6 +423,7 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button)
     BUTTON_DEBOUNCED_TIME[Button] = 0;
 }
 
+#if USE_WICED_SDK==1
 #include "dct.h"
 
 inline void Load_SystemFlags_Impl(platform_system_flags_t* flags)
@@ -435,17 +436,26 @@ inline void Save_SystemFlags_Impl(const platform_system_flags_t* flags)
 {
     dct_write_app_data(flags, 0, sizeof(*flags));
 }
+#endif
 
 platform_system_flags_t system_flags;
 
 void Load_SystemFlags() 
 {
+#if USE_WICED_SDK==1
     Load_SystemFlags_Impl(&system_flags);
+#else
+    //To Do
+#endif
 }
 
 void Save_SystemFlags() 
 {
+#if USE_WICED_SDK==1
     Save_SystemFlags_Impl(&system_flags);
+#else
+    //To Do
+#endif
 }
 
 
