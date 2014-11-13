@@ -174,7 +174,7 @@ void wlan_smart_config_init() {
     if (soft_ap_setup==NULL) {        
         soft_ap_setup = new softap_setup_t();
         soft_ap_setup->force = WICED_TRUE;        
-        soft_ap_setup->result = wiced_easy_setup_stop_softap( soft_ap_setup );
+        soft_ap_setup->result = wiced_easy_setup_start_softap( soft_ap_setup );
     }
 }
 
