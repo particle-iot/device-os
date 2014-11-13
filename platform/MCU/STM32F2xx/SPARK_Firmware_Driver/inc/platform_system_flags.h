@@ -17,6 +17,8 @@ typedef struct platform_system_flags {
     uint16_t NVMEM_SPARK_Reset_SysFlag;
     uint16_t FLASH_OTA_Update_SysFlag;
     uint16_t Factory_Reset_SysFlag;    
+    uint16_t reserved[12];
+    
 } platform_system_flags_t;
 
 
