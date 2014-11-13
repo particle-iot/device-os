@@ -12,24 +12,21 @@
 extern "C" {
 #endif
 
-#include "platform_dct.h"    
+#include "platform_dct.h" 
+#include "platform_system_flags.h"
+#include "dct.h"    
     
-struct hal_system_flags_t {
-    platform_system_flags_t flags;
-};
+typedef struct complete_dct {
+    platform_dct_data_t system;
+    application_dct_t application;     
+} complete_dct_t;
 
-struct hal_server_endpoint_t {
-    
-};
-    
-/**
- * Custom extensions to the DCT data stored
- */    
-struct hal_dct {
-    
-    hal_system_flags_t hal_system_flags;
-    
-};
+STATIC_ASSERT(offset_application_dct, (offsetof(complete_dct_t, application)==7548) );
+
+STATIC_ASSERT(size_complete_dct, (sizeof(complete_dct_t)<16384));
+        
+
+
 
 
 #ifdef	__cplusplus

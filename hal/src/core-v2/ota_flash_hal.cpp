@@ -25,6 +25,8 @@
 
 #if USE_WICED_SDK==1
 #include "ota_flash_hal.h"
+#include "dct_hal.h"
+#include <cstring>
 
 uint32_t HAL_OTA_FlashAddress()
 {
@@ -50,8 +52,16 @@ void HAL_FLASH_End(void)
 {    
 }
 
+
+void copy_dct(void* target, uint16_t offset, uint16_t length) {
+    void* data = dct_read_app_data(offset);
+    memcpy(target, data, length);
+}
+
+
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
+    copy_dct(server_addr, DCT_SERVER_ADDRESS_OFFSET, DCT_SERVER_ADDRESS_SIZE);
 }
 
 
@@ -66,13 +76,14 @@ void HAL_OTA_Flashed_ResetStatus(void)
 
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {
-    // fetch this from dct data
+    copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, DCT_SERVER_PUBLIC_KEY_SIZE);
 }
 
 void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
 { 
-    // fetch from dct data
+    copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, DCT_DEVICE_PRIVATE_KEY_SIZE);
 }
+
 #else
 
 #include "../template/ota_flash_hal.c"
