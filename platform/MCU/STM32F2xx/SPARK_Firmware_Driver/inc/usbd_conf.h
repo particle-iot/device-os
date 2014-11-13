@@ -35,20 +35,20 @@
 #include "hw_config.h"
 
 #define USBD_CFG_MAX_NUM                1
-#define USBD_ITF_MAX_NUM                1      /* MAX_USED_MEDIA */
+#define USBD_ITF_MAX_NUM                2      /* MAX_USED_MEDIA */
 #define USB_MAX_STR_DESC_SIZ            255
 #define USB_SUPPORT_USER_STRING_DESC
 
 #define USBD_SELF_POWERED               
 
 /* USB DFU Class Layer Parameter */
-#define XFERSIZE                        1024   /* Max DFU Packet Size   = 1024 bytes */
+#define XFERSIZE                        16384   /* Max DFU Packet Size   = 16384 bytes */
 
 #define DFU_IN_EP                       0x80
 #define DFU_OUT_EP                      0x00
 
 /* Maximum number of supported media (Flash only) */
-#define MAX_USED_MEDIA                  1 //2 for both Flash and OTP
+#define MAX_USED_MEDIA                  2 //3 for both Flash and OTP
 
 /* Flash memory address from where user application will be loaded 
    This address represents the DFU code protected against write and erase operations.*/
