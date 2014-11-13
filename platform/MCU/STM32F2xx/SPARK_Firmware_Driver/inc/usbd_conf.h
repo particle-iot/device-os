@@ -42,7 +42,7 @@
 #define USBD_SELF_POWERED               
 
 /* USB DFU Class Layer Parameter */
-#define XFERSIZE                        16384   /* Max DFU Packet Size   = 16384 bytes */
+#define XFERSIZE                        4096   /* Max DFU Packet Size   = 16384 bytes */
 
 #define DFU_IN_EP                       0x80
 #define DFU_OUT_EP                      0x00
