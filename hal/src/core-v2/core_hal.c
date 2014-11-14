@@ -55,7 +55,7 @@ extern void linkme(void);
 void HAL_Core_Init(void)
 {
 #if USE_WICED_SDK==1
-    
+    wiced_core_init();
 #endif
 }
 
@@ -214,28 +214,7 @@ void application_start() {
     // WICED startup scripts.    
     HAL_Core_Config();
     
-    //Starting USB Serial here just for Serial-WICED co-testing
-    USB_USART_Init(9600);//Or Serial.begin(9600)
-
-    LED_SetRGBColor(RGB_COLOR_CYAN);
-    LED_On(LED_RGB);
-    wiced_init();
-    
-    //app_setup_and_loop();
-    for (;;) {
-        //The following commented code causes the USB Serial to fail.
-        //USB Serial need a separate RTOS task???
-        //LED_On(LED_RGB);
-        //HAL_Delay_Milliseconds(1500);
-        //LED_Off(LED_RGB);
-        //HAL_Delay_Milliseconds(500);
-
-        //Simple USBSerial loopback test by calling HAL APIs directly
-        if(USB_USART_Available_Data())
-        {
-            USB_USART_Send_Data(USB_USART_Receive_Data());
-        }
-    }
+    app_setup_and_loop();
 }
 #else
 int main() {        
