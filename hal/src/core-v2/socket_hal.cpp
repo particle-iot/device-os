@@ -23,8 +23,6 @@
  ******************************************************************************
  */
 
-#if USE_WICED_SDK==1
-
 #include "socket_hal.h"
 #include "wiced.h"
 #include <algorithm>
@@ -207,7 +205,3 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
 {
     return 0;
 }
-
-#else
-#include "../template/socket_hal.c"
-#endif

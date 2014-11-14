@@ -32,9 +32,7 @@
 #include "syshealth_hal.h"
 #include "rgbled.h"
 #include "delay_hal.h"
-#if USE_WICED_SDK==1
 #include "wiced.h"
-#endif
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -54,9 +52,7 @@ extern void linkme(void);
 
 void HAL_Core_Init(void)
 {
-#if USE_WICED_SDK==1
     wiced_core_init();
-#endif
 }
 
 
@@ -75,10 +71,8 @@ void HAL_Core_Config(void)
 
     DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 #ifdef DFU_BUILD_ENABLE
-    /* Set the Vector Table(VT) base location at 0x20000 */
-#if USE_WICED_SDK==0
-    NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x20000);
-#endif    
+    //Currently this is done through WICED library API so commented.
+    //NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x20000);
     USE_SYSTEM_FLAGS = 1;
 #endif
 
@@ -198,12 +192,9 @@ bool HAL_watchdog_reset_flagged()
 void HAL_Notify_WDT()
 {    
     KICK_WDT();
-#if USE_WICED_SDK==1
     wiced_watchdog_kick();
-#endif
 }
 
-#if USE_WICED_SDK==1
 /**
  * The entrypoint from FreeRTOS to our application.
  * 
@@ -216,12 +207,6 @@ void application_start() {
     
     app_setup_and_loop();
 }
-#else
-int main() {        
-    app_setup_and_loop();
-    return 0;
-}
-#endif
 
 /**
  * The following tick hook will only get called if configUSE_TICK_HOOK

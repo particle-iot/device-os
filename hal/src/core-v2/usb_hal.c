@@ -197,11 +197,7 @@ void USB_HID_Send_Report(void *pHIDReport, size_t reportSize)
  * @param  None
  * @retval None
  */
-#if USE_WICED_SDK==1
 void OTG_HS_WKUP_irq(void)
-#else
-void OTG_HS_WKUP_IRQHandler(void)
-#endif
 {
     if(USB_OTG_dev.cfg.low_power)
     {
@@ -217,11 +213,7 @@ void OTG_HS_WKUP_IRQHandler(void)
  * @param  None
  * @retval None
  */
-#if USE_WICED_SDK==1
 void OTG_HS_irq(void)
-#else
-void OTG_HS_IRQHandler(void)
-#endif
 {
     USBD_OTG_ISR_Handler (&USB_OTG_dev);
 }
@@ -232,11 +224,7 @@ void OTG_HS_IRQHandler(void)
  * @param  None
  * @retval None
  */
-#if USE_WICED_SDK==1
 void OTG_HS_EP1_IN_irq(void)
-#else
-void OTG_HS_EP1_IN_IRQHandler(void)
-#endif
 {
     USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
 }
@@ -246,11 +234,7 @@ void OTG_HS_EP1_IN_IRQHandler(void)
  * @param  None
  * @retval None
  */
-#if USE_WICED_SDK==1
 void OTG_HS_EP1_OUT_irq(void)
-#else
-void OTG_HS_EP1_OUT_IRQHandler(void)
-#endif
 {
     USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
 }

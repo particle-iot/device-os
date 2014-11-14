@@ -23,8 +23,6 @@
  ******************************************************************************
  */
 
-#if USE_WICED_SDK==1
-
 #include "wiced.h"
 #include "wiced_easy_setup.h"
 #include "wlan_hal.h"
@@ -258,9 +256,3 @@ void wlan_fetch_ipconfig(WLanConfig* config)
 void SPARK_WLAN_SmartConfigProcess()
 {
 }
-
-#else
-
-#include "../template/wlan_hal.c"
-
-#endif

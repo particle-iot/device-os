@@ -56,8 +56,6 @@ PLATFORM_NAME=core-v2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=WICED
 PRODUCT_DESC=Spark core-v2/WICED
-#To Enable WICED SDK build dependencies, use "USE_WICED_SDK=1"
-USE_WICED_SDK?=0
 endif
 
 

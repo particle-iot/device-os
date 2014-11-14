@@ -27,23 +27,16 @@
 #include "application.h"
 
 /* Function prototypes -------------------------------------------------------*/
-#if (STM32_DEVICE==STM32F2XX && USE_WICED_SDK==0)
-SYSTEM_MODE(MANUAL);
-#else
 int tinkerDigitalRead(String pin);
 int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
 SYSTEM_MODE(AUTOMATIC);
-#endif
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
-#if (STM32_DEVICE==STM32F2XX && USE_WICED_SDK==0)
-    Serial.begin(9600);
-#else
     //Setup the Tinker application here
     //Register all the Tinker functions
     Spark.function("digitalread", tinkerDigitalRead);
@@ -51,25 +44,14 @@ void setup()
 
     Spark.function("analogread", tinkerAnalogRead);
     Spark.function("analogwrite", tinkerAnalogWrite);
-#endif
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
     //This will run in a loop
-#if (STM32_DEVICE==STM32F2XX && USE_WICED_SDK==0)
-    //Simple USBSerial loopback test
-    if(Serial.available())
-    {
-        Serial.write(Serial.read());
-    }
-#endif
 }
 
-#if (STM32_DEVICE==STM32F2XX && USE_WICED_SDK==0)
-//NA
-#else
 /*******************************************************************************
  * Function Name  : tinkerDigitalRead
  * Description    : Reads the digital value of a given pin
@@ -190,4 +172,3 @@ int tinkerAnalogWrite(String command)
     }
     else return -2;
 }
-#endif

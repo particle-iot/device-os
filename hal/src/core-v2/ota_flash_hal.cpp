@@ -23,7 +23,6 @@
  ******************************************************************************
  */
 
-#if USE_WICED_SDK==1
 #include "ota_flash_hal.h"
 #include "dct_hal.h"
 #include <cstring>
@@ -83,11 +82,3 @@ void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
 { 
     copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
 }
-
-#else
-
-#include "../template/ota_flash_hal.c"
-
-#endif
-
-

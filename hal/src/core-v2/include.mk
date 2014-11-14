@@ -15,8 +15,6 @@ endif
 ifneq (,$(findstring hal,$(MAKE_DEPENDENCIES)))
 # if hal is used as a make dependency (linked) then add linker commands
 
-ifeq ("$(USE_WICED_SDK)","1")
-
 HAL_LIB_COREV2 = $(HAL_SRC_COREV2_PATH)/lib
 HAL_WICED_LIBS += Platform_BCM9WCDUSI09 FreeRTOS LwIP WICED SPI_Flash_Library_BCM9WCDUSI09 WWD_FreeRTOS_Interface_BCM9WCDUSI09 WICED_FreeRTOS_Interface WWD_LwIP_Interface_FreeRTOS WICED_LwIP_Interface Lib_HTTP_Server Lib_DNS_Redirect_Daemon Lib_DNS WWD_for_SDIO_FreeRTOS Lib_Wiced_RO_FS STM32F2xx Wiced_Network_LwIP_FreeRTOS Lib_DHCP_Server Lib_base64 STM32F2xx_Peripheral_Drivers Ring_Buffer STM32F2xx_Peripheral_Libraries common_GCC
 
@@ -31,19 +29,6 @@ LDFLAGS += -L$(WICED_MCU)/STM32F2x5
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=1400
 LDFLAGS += -u _printf_float
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
-
-else
-
-LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_$(STM32_DEVICE_LC)_dfu.ld
-LDFLAGS += --specs=nano.specs -lc -lnosys
-LDFLAGS += -u _printf_float
-LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
-
-ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S 
-ASFLAGS += -I$(COMMON_BUILD)/arm/startup
-ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=1
-
-endif
 
 endif
 

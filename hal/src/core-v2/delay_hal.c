@@ -28,10 +28,6 @@
 #include "hw_config.h"
 #include <limits.h>
 
-#if USE_WICED_SDK==1
-#include "wiced.h"
-#endif
-
 /**
  * Updated by interrupt in stm32_it.c
  */
