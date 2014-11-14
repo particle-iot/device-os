@@ -40,7 +40,6 @@
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 //HAL Interrupt Handlers defined in xxx_hal.c files
-void HAL_SysTick_Handler(void) __attribute__ ((weak));
 
 /* Extern variables and function prototypes ----------------------------------*/
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
@@ -115,50 +114,12 @@ void UsageFault_Handler(void)
 }
 
 /**
- * @brief  This function handles SVCall exception.
- * @param  None
- * @retval None
- */
-void SVC_Handler(void)
-{
-}
-
-/**
  * @brief  This function handles Debug Monitor exception.
  * @param  None
  * @retval None
  */
 void DebugMon_Handler(void)
 {
-}
-
-/**
- * @brief  This function handles PendSVC exception.
- * @param  None
- * @retval None
- */
-void PendSV_Handler(void)
-{
-}
-
-/**
- * @brief  This function handles SysTick Handler.
- * @param  None
- * @retval None
- */
-void SysTick_Handler(void)
-{
-    System1MsTick();
-
-    if (TimingDelay != 0x00)
-    {
-        TimingDelay--;
-    }
-
-    if(HAL_SysTick_Handler)
-    {
-        HAL_SysTick_Handler();
-    }
 }
 
 /**

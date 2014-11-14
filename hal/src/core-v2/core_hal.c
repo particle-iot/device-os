@@ -222,3 +222,22 @@ int main() {
     return 0;
 }
 #endif
+
+/**
+ * The following tick hook will only get called if configUSE_TICK_HOOK
+ * is set to 1 within FreeRTOSConfig.h
+ */
+void vApplicationTickHook(void)
+{
+    System1MsTick();
+
+    if (TimingDelay != 0x00)
+    {
+        TimingDelay--;
+    }
+
+    if(HAL_SysTick_Handler)
+    {
+        HAL_SysTick_Handler();
+    }
+}
