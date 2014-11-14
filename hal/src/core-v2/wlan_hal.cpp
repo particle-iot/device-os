@@ -37,7 +37,6 @@ uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
     return 0;
 }
 
-
 int wlan_clear_credentials() 
 {
     // write to DCT credentials
@@ -87,7 +86,7 @@ int wlan_has_credentials()
  */
 int wlan_connect_init() 
 {   
-    return wiced_wlan_connectivity_init();    
+    return wiced_wlan_connectivity_init();
 }
 
 /**
@@ -97,12 +96,14 @@ int wlan_connect_init()
 wlan_result_t wlan_connect_finalize() 
 {
     // enable connection from stored profiles
-    return wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);    
+    wlan_result_t result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);        
+    HAL_WLAN_notify_dhcp(!result);
+    return result;
 }
 
 wlan_result_t wlan_activate() 
 {    
-    return wiced_wlan_connectivity_init();    
+    return wiced_wlan_connectivity_init();
 }
 
 wlan_result_t wlan_deactivate() {
@@ -178,6 +179,9 @@ void wlan_smart_config_init() {
         soft_ap_setup->result = wiced_easy_setup_start_softap( soft_ap_setup );
     }
 #endif
+    
+    // todo - when the user has completed the soft ap setup process,
+    // call HAL_WLAN_notify_simple_config_done() to exit the calling process.
 }
 
 void wlan_smart_config_finalize() 
@@ -193,11 +197,13 @@ void wlan_smart_config_finalize()
 
 void wlan_smart_config_cleanup() 
 {    
+    // todo - mDNS broadcast device IP? Not sure that is needed for soft-ap.
 }
 
-
 void wlan_setup()
-{        
+{    
+    wiced_wlan_connectivity_init();
+    wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected);
 }
             
             
