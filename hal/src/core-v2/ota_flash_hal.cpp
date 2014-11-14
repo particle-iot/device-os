@@ -76,12 +76,12 @@ void HAL_OTA_Flashed_ResetStatus(void)
 
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {
-    copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, DCT_SERVER_PUBLIC_KEY_SIZE);
+    copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
 }
 
 void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
 { 
-    copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, DCT_DEVICE_PRIVATE_KEY_SIZE);
+    copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
 }
 
 #else
