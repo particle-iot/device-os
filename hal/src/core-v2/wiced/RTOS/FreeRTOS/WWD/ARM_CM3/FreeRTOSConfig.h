@@ -49,7 +49,7 @@ extern "C" {
 #define configTIMER_TASK_STACK_DEPTH                ( ( unsigned short ) (1024 / sizeof( portSTACK_TYPE )) )
 #define configUSE_PREEMPTION                        ( 1 )
 #define configUSE_IDLE_HOOK                         ( 0 )
-#define configUSE_TICK_HOOK                         ( 0 )
+#define configUSE_TICK_HOOK                         ( 1 )
 #define configCPU_CLOCK_HZ                          ( ( unsigned long ) CPU_CLOCK_HZ )
 #define configTICK_RATE_HZ                          ( ( portTickType ) SYSTICK_FREQUENCY )
 #define configMAX_PRIORITIES                        ( ( unsigned portBASE_TYPE ) 10 )
