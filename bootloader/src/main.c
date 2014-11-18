@@ -141,7 +141,7 @@ int main(void)
     }
 
     // Get the Bootloader Mode that will be used when IWDG reset occurs due to invalid firmware
-    volatile uint16_t BKP_DR1_Value = GET_SYS_HEALTH();
+    volatile uint16_t BKP_DR1_Value = HAL_Core_Read_Backup_Register(BKP_DR_01);
 
     if(BKP_DR1_Value != 0xFFFF)
     {
