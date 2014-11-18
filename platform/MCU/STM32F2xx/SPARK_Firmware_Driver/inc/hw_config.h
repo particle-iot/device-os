@@ -123,14 +123,6 @@ void FLASH_Begin(uint32_t FLASH_Address, uint32_t fileSize);
 uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
 void FLASH_End(void);
 
-/** 
- * @param server_addr   The buffer to hold the data. Must be at least
- * EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH bytes.
- */
-void FLASH_Read_ServerAddress_Data(void *server_addr);
-void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
-void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
-
 void FACTORY_Flash_Reset(void);
 void BACKUP_Flash_Reset(void);
 void OTA_Flash_Reset(void);

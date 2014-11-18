@@ -496,23 +496,6 @@ void FLASH_End(void)
     //To Do
 }
 
-void FLASH_Read_ServerAddress_Data(void *buf)
-{
-    //To Do
-}
-
-// keyBuffer length must be at least EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH
-void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
-{
-    //To Do
-}
-
-// keyBuffer length must be at least EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH
-void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
-{
-    //To Do
-}
-
 void FACTORY_Flash_Reset(void)
 {
     //To Do
