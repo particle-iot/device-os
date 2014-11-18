@@ -70,15 +70,18 @@ typedef enum
 
 /* Internal Flash memory address where various firmwares are located */
 #ifndef INTERNAL_FLASH_START
-#define INTERNAL_FLASH_START                    ((uint32_t)0x08000000)
+#define INTERNAL_FLASH_START        ((uint32_t)0x08000000)
 #endif
 
 //Bootloader firmware at the start of internal flash
-#define USB_DFU_ADDRESS				INTERNAL_FLASH_START
+#define USB_DFU_ADDRESS             INTERNAL_FLASH_START
 //Main firmware begin address after 128KB (4 x 16K + 64K) from start of flash
-#define CORE_FW_ADDRESS				((uint32_t)0x08020000)
-#define APP_START_MASK                          ((uint32_t)0x2FF10000)
+#define CORE_FW_ADDRESS             ((uint32_t)0x08020000)
+#define APP_START_MASK              ((uint32_t)0x2FF10000)
 /* Internal Flash memory address where the System Flags will be saved and loaded from  */
+
+/* Bootloader Flash regions that needs to be protected: 0x08000000 - 0x08003FFF */
+#define BOOTLOADER_FLASH_PAGES      (OB_WRP_Sector_0) //Sector 0
 
 #define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
 
@@ -114,8 +117,8 @@ extern platform_system_flags_t system_flags;
 
 /* Internal Flash Routines */
 void FLASH_ClearFlags(void);
-void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages);
-void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages);
+void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors);
+void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors);
 void FLASH_Erase(void);
 void FLASH_Backup(uint32_t FLASH_Address);
 void FLASH_Restore(uint32_t FLASH_Address);

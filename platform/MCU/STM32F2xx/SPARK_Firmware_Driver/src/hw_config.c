@@ -455,14 +455,80 @@ void FLASH_ClearFlags(void)
                     FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
 }
 
-void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages)
+void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors)
 {
-    //To Do
+    /* Get FLASH_Sectors write protection status */
+    uint32_t SectorsWRPStatus = FLASH_OB_GetWRP() & FLASH_Sectors;
+
+    if (SectorsWRPStatus != 0)
+    {
+        //If FLASH_Sectors are not write protected, enable the write protection
+
+        /* Enable the Flash option control register access */
+        FLASH_OB_Unlock();
+
+        /* Enable FLASH_Sectors write protection */
+        FLASH_OB_WRPConfig(FLASH_Sectors, ENABLE);
+
+        /* Start the Option Bytes programming process */
+        if (FLASH_OB_Launch() != FLASH_COMPLETE)
+        {
+            //Error during Option Bytes programming process
+        }
+
+        /* Disable the Flash option control register access */
+        FLASH_OB_Lock();
+
+        /* Get FLASH_Sectors write protection status */
+        SectorsWRPStatus = FLASH_OB_GetWRP() & FLASH_Sectors;
+
+        /* Check if FLASH_Sectors are write protected */
+        if (SectorsWRPStatus == 0)
+        {
+            //Write Protection Enable Operation is done correctly
+        }
+
+        /* Generate System Reset (not mandatory on F2 series ???) */
+        NVIC_SystemReset();
+    }
 }
 
-void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages)
+void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
 {
-    //To Do
+    /* Get FLASH_Sectors write protection status */
+    uint32_t SectorsWRPStatus = FLASH_OB_GetWRP() & FLASH_Sectors;
+
+    if (SectorsWRPStatus == 0)
+    {
+        //If FLASH_Sectors are write protected, disable the write protection
+
+        /* Enable the Flash option control register access */
+        FLASH_OB_Unlock();
+
+        /* Disable FLASH_Sectors write protection */
+        FLASH_OB_WRPConfig(FLASH_Sectors, DISABLE);
+
+        /* Start the Option Bytes programming process */
+        if (FLASH_OB_Launch() != FLASH_COMPLETE)
+        {
+            //Error during Option Bytes programming process
+        }
+
+        /* Disable the Flash option control register access */
+        FLASH_OB_Lock();
+
+        /* Get FLASH_Sectors write protection status */
+        SectorsWRPStatus = FLASH_OB_GetWRP() & FLASH_Sectors;
+
+        /* Check if FLASH_Sectors write protection is disabled */
+        if (SectorsWRPStatus == FLASH_Sectors)
+        {
+            //Write Protection Disable Operation is done correctly
+        }
+
+        /* Generate System Reset (not mandatory on F2 series ???) */
+        NVIC_SystemReset();
+    }
 }
 
 void FLASH_Erase(void)
