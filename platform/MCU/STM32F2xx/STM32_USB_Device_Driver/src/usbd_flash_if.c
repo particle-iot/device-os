@@ -69,6 +69,9 @@ uint16_t FLASH_If_Init(void)
 {
   /* Unlock the internal flash */
   FLASH_Unlock();
+
+  FLASH_ClearFlags();
+  USB_OTG_BSP_mDelay(10);
   
   return MAL_OK;
 }
