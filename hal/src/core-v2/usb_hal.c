@@ -103,6 +103,10 @@ void USB_USART_Init(uint32_t baudRate)
     SPARK_USB_Setup();
 }
 
+void USB_USART_DeInit() 
+{
+}
+
 /*******************************************************************************
  * Function Name  : USB_USART_Available_Data.
  * Description    : Return the length of available data received from USB.

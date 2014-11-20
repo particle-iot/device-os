@@ -78,6 +78,7 @@ void Get_SerialNum(void);
 
 #ifdef USB_CDC_ENABLE
 void USB_USART_Init(uint32_t baudRate);
+void USB_USART_DeInit();
 uint8_t USB_USART_Available_Data(void);
 int32_t USB_USART_Receive_Data(void);
 void USB_USART_Send_Data(uint8_t Data);
