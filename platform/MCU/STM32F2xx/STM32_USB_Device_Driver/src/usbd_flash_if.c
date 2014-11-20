@@ -28,6 +28,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_flash_if.h"
 #include "usbd_dfu_mal.h"
+#include "usb_bsp.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -95,55 +96,57 @@ uint16_t FLASH_If_DeInit(void)
 *******************************************************************************/
 uint16_t FLASH_If_Erase(uint32_t Add)
 {
+  FLASH_Status FlashStatus = FLASH_COMPLETE;
+
 #if defined (STM32F2XX) || defined (STM32F4XX)
   /* Check which sector has to be erased */
   if (Add < 0x08004000)
   {
-    FLASH_EraseSector(FLASH_Sector_0, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_0, VoltageRange_3);
   }
   else if (Add < 0x08008000)
   {
-    FLASH_EraseSector(FLASH_Sector_1, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_1, VoltageRange_3);
   }
   else if (Add < 0x0800C000)
   {
-    FLASH_EraseSector(FLASH_Sector_2, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_2, VoltageRange_3);
   }
   else if (Add < 0x08010000)
   {
-    FLASH_EraseSector(FLASH_Sector_3, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_3, VoltageRange_3);
   }
   else if (Add < 0x08020000)
   {
-    FLASH_EraseSector(FLASH_Sector_4, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_4, VoltageRange_3);
   }
   else if (Add < 0x08040000)
   {
-    FLASH_EraseSector(FLASH_Sector_5, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_5, VoltageRange_3);
   }
   else if (Add < 0x08060000)
   {
-    FLASH_EraseSector(FLASH_Sector_6, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_6, VoltageRange_3);
   }
   else if (Add < 0x08080000)
   {
-    FLASH_EraseSector(FLASH_Sector_7, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_7, VoltageRange_3);
   }
   else if (Add < 0x080A0000)
   {
-    FLASH_EraseSector(FLASH_Sector_8, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_8, VoltageRange_3);
   }
   else if (Add < 0x080C0000)
   {
-    FLASH_EraseSector(FLASH_Sector_9, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_9, VoltageRange_3);
   }
   else if (Add < 0x080E0000)
   {
-    FLASH_EraseSector(FLASH_Sector_10, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_10, VoltageRange_3);
   }
   else if (Add < 0x08100000)
   {
-    FLASH_EraseSector(FLASH_Sector_11, VoltageRange_3);
+    FlashStatus = FLASH_EraseSector(FLASH_Sector_11, VoltageRange_3);
   }
   else
   {
@@ -151,9 +154,17 @@ uint16_t FLASH_If_Erase(uint32_t Add)
   }
 #elif defined(STM32F10X_CL)
   /* Call the standard Flash erase function */
-  FLASH_ErasePage(Add);  
+  FlashStatus = FLASH_ErasePage(Add);
 #endif /* STM32F2XX */
   
+  /* If erase operation fails, a Flash error code is returned */
+  if (FlashStatus != FLASH_COMPLETE)
+  {
+    //return MAL_FAIL;
+    //system reset is the only way now to abort the dfu-util host program
+    NVIC_SystemReset();
+  }
+
   return MAL_OK;
 }
 
@@ -166,6 +177,8 @@ uint16_t FLASH_If_Erase(uint32_t Add)
   */
 uint16_t FLASH_If_Write(uint32_t Add, uint32_t Len)
 {
+  FLASH_Status FlashStatus = FLASH_COMPLETE;
+
   uint32_t idx = 0;
   
   if  (Len & 0x3) /* Not an aligned data */
@@ -179,7 +192,14 @@ uint16_t FLASH_If_Write(uint32_t Add, uint32_t Len)
   /* Data received are Word multiple */
   for (idx = 0; idx <  Len; idx = idx + 4)
   {
-    FLASH_ProgramWord(Add, *(uint32_t *)(MAL_Buffer + idx));
+    FlashStatus = FLASH_ProgramWord(Add, *(uint32_t *)(MAL_Buffer + idx));
+    /* If program operation fails, a Flash error code is returned */
+    if (FlashStatus != FLASH_COMPLETE)
+    {
+      //return MAL_FAIL;
+      //system reset is the only way now to abort the dfu-util host program
+      NVIC_SystemReset();
+    }
     Add += 4;
   }
   return MAL_OK;
