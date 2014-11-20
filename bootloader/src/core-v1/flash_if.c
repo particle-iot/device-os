@@ -43,6 +43,8 @@
 *******************************************************************************/
 uint16_t FLASH_If_Init(void)
 {
+  FLASH_ClearFlags();
+
   return MAL_OK;
 }
 
@@ -55,8 +57,18 @@ uint16_t FLASH_If_Init(void)
 *******************************************************************************/
 uint16_t FLASH_If_Erase(uint32_t SectorAddress)
 {
-  FLASH_ErasePage(SectorAddress);
+  FLASH_Status FlashStatus = FLASH_COMPLETE;
+
+  FlashStatus = FLASH_ErasePage(SectorAddress);
   
+  /* If erase operation fails, a Flash error code is returned */
+  if (FlashStatus != FLASH_COMPLETE)
+  {
+    //return MAL_FAIL;
+    //system reset is the only way now to abort the dfu-util host program
+    NVIC_SystemReset();
+  }
+
   return MAL_OK;
 }
 
@@ -69,6 +81,8 @@ uint16_t FLASH_If_Erase(uint32_t SectorAddress)
 *******************************************************************************/
 uint16_t FLASH_If_Write(uint32_t SectorAddress, uint32_t DataLength)
 {
+  FLASH_Status FlashStatus = FLASH_COMPLETE;
+
   uint32_t idx = 0;
   
   if  (DataLength & 0x3) /* Not an aligned data */
@@ -82,7 +96,14 @@ uint16_t FLASH_If_Write(uint32_t SectorAddress, uint32_t DataLength)
   /* Data received are Word multiple */    
   for (idx = 0; idx <  DataLength; idx = idx + 4)
   {
-    FLASH_ProgramWord(SectorAddress, *(uint32_t *)(MAL_Buffer + idx));  
+    FlashStatus = FLASH_ProgramWord(SectorAddress, *(uint32_t *)(MAL_Buffer + idx));
+    /* If program operation fails, a Flash error code is returned */
+    if (FlashStatus != FLASH_COMPLETE)
+    {
+      //return MAL_FAIL;
+      //system reset is the only way now to abort the dfu-util host program
+      NVIC_SystemReset();
+    }
     SectorAddress += 4;
   } 
  
