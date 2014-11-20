@@ -426,13 +426,15 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button)
 
 inline void Load_SystemFlags_Impl(platform_system_flags_t* flags)
 {
-    void* flags_store = dct_read_app_data(0);
-    memcpy(flags, flags_store, sizeof(*flags));    
+    const void* flags_store = dct_read_app_data(0);
+    memcpy(flags, flags_store, sizeof(platform_system_flags_t));    
+    flags->header[0] = 0xACC0;
+    flags->header[1] = 0x1ADE;
 }
 
 inline void Save_SystemFlags_Impl(const platform_system_flags_t* flags)
 {
-    dct_write_app_data(flags, 0, sizeof(*flags));
+    dct_write_app_data(flags, 0, sizeof(*flags));        
 }
 
 platform_system_flags_t system_flags;

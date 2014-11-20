@@ -13,11 +13,12 @@ extern "C" {
 #endif
 
 typedef struct platform_system_flags {    
+    uint16_t header[2];
     uint16_t CORE_FW_Version_SysFlag;
     uint16_t NVMEM_SPARK_Reset_SysFlag;
     uint16_t FLASH_OTA_Update_SysFlag;
     uint16_t Factory_Reset_SysFlag;    
-    uint16_t reserved[12];
+    uint16_t reserved[10];
     
 } platform_system_flags_t;
 
