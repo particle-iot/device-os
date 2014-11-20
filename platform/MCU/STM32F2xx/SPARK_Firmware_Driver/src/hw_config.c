@@ -28,6 +28,7 @@
 #include <string.h>
 #include "debug.h"
 #include "dct.h"
+#include "usb_dcd.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -61,6 +62,7 @@ const uint16_t BUTTON_IRQn[] = {BUTTON1_EXTI_IRQn};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER};
 
 /* Extern variables ----------------------------------------------------------*/
+extern USB_OTG_CORE_HANDLE USB_OTG_dev;
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -422,6 +424,26 @@ uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button)
 void BUTTON_ResetDebouncedState(Button_TypeDef Button)
 {
     BUTTON_DEBOUNCED_TIME[Button] = 0;
+}
+
+/*******************************************************************************
+ * Function Name  : USB_Cable_Config
+ * Description    : Software Connection/Disconnection of USB Cable
+ * Input          : None.
+ * Return         : Status
+ *******************************************************************************/
+void USB_Cable_Config (FunctionalState NewState)
+{
+    if (NewState != DISABLE)
+    {
+        /* Connect device (enable internal pull-up) */
+        DCD_DevConnect(&USB_OTG_dev);
+    }
+    else
+    {
+        /* Disconnect device (disable internal pull-up) */
+        DCD_DevDisconnect(&USB_OTG_dev);
+    }
 }
 
 inline void Load_SystemFlags_Impl(platform_system_flags_t* flags)

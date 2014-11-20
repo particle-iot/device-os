@@ -163,9 +163,15 @@
 #endif
 
 /* Following defines needed in platform's usb driver */
+#ifndef __ALIGN_BEGIN
 #define __ALIGN_BEGIN
+#endif
+#ifndef __ALIGN_END
 #define __ALIGN_END
+#endif
+#ifndef __packed
 #define __packed
+#endif
 
 #endif //__USB_CONF__H__
 

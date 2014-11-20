@@ -110,6 +110,8 @@ uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
 void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
+void USB_Cable_Config(FunctionalState NewState);
+
 #define SYSTEM_FLAG(x) (system_flags.x)
 void Load_SystemFlags(void);
 void Save_SystemFlags(void);
