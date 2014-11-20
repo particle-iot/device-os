@@ -44,7 +44,7 @@ void USBSerial::begin(long speed)
 
 void USBSerial::end()
 {
-	//To Do
+	USB_USART_DeInit();
 }
 
 

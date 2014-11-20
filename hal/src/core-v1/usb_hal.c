@@ -80,6 +80,11 @@ void SPARK_USB_Setup(void)
   USB_Init();
 }
 
+void SPARK_USB_Teardown()
+{
+    USB_Cable_Config(DISABLE);    
+}
+
 /*******************************************************************************
  * Function Name  : Get_SerialNum.
  * Description    : Create the serial number string descriptor.
@@ -117,6 +122,12 @@ void USB_USART_Init(uint32_t baudRate)
   linecoding.bitrate = baudRate;
   SPARK_USB_Setup();
 }
+
+void USB_USART_DeInit() 
+{
+    SPARK_USB_Teardown();
+}
+
 
 /*******************************************************************************
  * Function Name  : USB_USART_Available_Data.
