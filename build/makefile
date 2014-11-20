@@ -80,7 +80,7 @@ ifneq ($(USRSRC),"")
     CSRC += $(call target_files,$(USRSRC),*.c)    
 endif
 
-TARGET ?= core-firmware
+TARGET ?= firmware
 TARGETDIR ?= 
 
 
