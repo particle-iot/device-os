@@ -231,6 +231,12 @@ void HAL_Interrupts_Disable_All(void)
   NVIC_DisableIRQ(EXTI9_5_IRQn);
 }
 
+void HAL_EXTI_Register_Handler(uint8_t EXTI_Line, voidFuncPtr EXTI_Line_Handler)
+{
+    // Register the handler for the user function name
+    exti_channels[EXTI_Line].handler = EXTI_Line_Handler;
+}
+
 /*******************************************************************************
  * Function Name  : HAL_EXTI_Handler (Declared as weak in WICED - platform_gpio.c)
  * Description    : This function is called by any of the interrupt handlers. It
