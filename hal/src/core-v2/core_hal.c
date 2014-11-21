@@ -44,17 +44,16 @@
 volatile uint8_t IWDG_SYSTEM_RESET;
 
 /* Private function prototypes -----------------------------------------------*/
+void Mode_Button_EXTI2_irq(void);
 
 /* Extern variables ----------------------------------------------------------*/
+extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 
 /* Extern function prototypes ------------------------------------------------*/
-extern void linkme(void);
-
 void HAL_Core_Init(void)
 {
     wiced_core_init();
 }
-
 
 /*******************************************************************************
  * Function Name  : HAL_Core_Config.
@@ -65,10 +64,6 @@ void HAL_Core_Init(void)
  *******************************************************************************/
 void HAL_Core_Config(void)
 {
-    // this ensures the stm32_it.c functions aren't dropped by the linker, thinking
-    // they are unused. Without this none of the interrupts handlers are linked.
-    linkme();
-
     DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 #ifdef DFU_BUILD_ENABLE
     //Currently this is done through WICED library API so commented.
@@ -82,6 +77,9 @@ void HAL_Core_Config(void)
 #endif
 
     Set_System();
+
+    /* Register Mode Button Interrupt Handler (WICED hack for Mode Button usage) */
+    HAL_EXTI_Register_Handler(BUTTON1_EXTI_LINE, Mode_Button_EXTI2_irq);
 
     SysTick_Configuration();
 
@@ -224,5 +222,50 @@ void vApplicationTickHook(void)
     if(HAL_SysTick_Handler)
     {
         HAL_SysTick_Handler();
+    }
+}
+
+/**
+ * @brief  This function handles EXTI2_IRQ Handler.
+ * @param  None
+ * @retval None
+ */
+void Mode_Button_EXTI2_irq(void)
+{
+    /* Clear the EXTI line pending bit (cleared in WICED GPIO IRQ handler) */
+    EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE);
+
+    BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
+
+    /* Disable BUTTON1 Interrupt */
+    BUTTON_EXTI_Config(BUTTON1, DISABLE);
+
+    /* Enable TIM2 CC1 Interrupt */
+    TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
+}
+
+/**
+ * @brief  This function handles TIM2_IRQ Handler.
+ * @param  None
+ * @retval None
+ */
+void TIM2_irq(void)
+{
+    if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
+
+        if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+        {
+            BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
+        }
+        else
+        {
+            /* Disable TIM2 CC1 Interrupt */
+            TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
+
+            /* Enable BUTTON1 Interrupt */
+            BUTTON_EXTI_Config(BUTTON1, ENABLE);
+        }
     }
 }
