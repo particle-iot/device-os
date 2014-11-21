@@ -41,7 +41,7 @@ void HAL_Interrupts_Disable_All(void)
 {
 }
 
-void HAL_EXTI_Register_Handler(uint8_t EXTI_Line, voidFuncPtr EXTI_Line_Handler)
+void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, voidFuncPtr EXTI_Line_Handler)
 {
 }
 

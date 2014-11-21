@@ -231,10 +231,22 @@ void HAL_Interrupts_Disable_All(void)
   NVIC_DisableIRQ(EXTI9_5_IRQn);
 }
 
-void HAL_EXTI_Register_Handler(uint8_t EXTI_Line, voidFuncPtr EXTI_Line_Handler)
+void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, voidFuncPtr EXTI_Line_Handler)
 {
+    uint8_t GPIO_PinSource = 0;     //variable to hold the pin number
+    uint8_t PinNumber;              //temp variable to calculate the pin number
+
+    //Find out the pin number from the mask
+    PinNumber = EXTI_Line;
+    PinNumber = PinNumber >> 1;
+    while(PinNumber)
+    {
+      PinNumber = PinNumber >> 1;
+      GPIO_PinSource++;
+    }
+
     // Register the handler for the user function name
-    exti_channels[EXTI_Line].handler = EXTI_Line_Handler;
+    exti_channels[GPIO_PinSource].handler = EXTI_Line_Handler;
 }
 
 /*******************************************************************************
