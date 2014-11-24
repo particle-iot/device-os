@@ -44,8 +44,8 @@
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 extern void Timing_Decrement(void);
 
-extern USB_OTG_CORE_HANDLE           USB_OTG_dev;
-extern uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+extern USB_OTG_CORE_HANDLE USB_OTG_dev;
+extern uint32_t USBD_OTG_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 
 extern uint8_t DeviceState;
 
@@ -153,16 +153,20 @@ void SysTick_Handler(void)
 }
 
 /**
- * @brief  This function handles EXTI2 Handler.
+ * @brief  This function handles BUTTON EXTI Handler.
  * @param  None
  * @retval None
  */
+#if (SPARK_PRODUCT_ID == 4)
 void EXTI2_IRQHandler(void)
+#elif (SPARK_PRODUCT_ID == 5 || SPARK_PRODUCT_ID == 6)
+void EXTI9_5_IRQHandler(void)
+#endif
 {
-    if (EXTI_GetITStatus(BUTTON1_EXTI_LINE ) != RESET)
+    if (EXTI_GetITStatus(BUTTON1_EXTI_LINE) != RESET)
     {
         /* Clear the EXTI line pending bit */
-        EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE );
+        EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE);
 
         BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
 
@@ -200,6 +204,25 @@ void TIM2_IRQHandler(void)
     }
 }
 
+#ifdef USE_USB_OTG_FS
+/**
+ * @brief  This function handles OTG_FS_WKUP Handler.
+ * @param  None
+ * @retval None
+ */
+void OTG_FS_WKUP_IRQHandler(void)
+{
+    if(USB_OTG_dev.cfg.low_power)
+    {
+        *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
+        SystemInit();
+        USB_OTG_UngateClock(&USB_OTG_dev);
+    }
+    EXTI_ClearITPendingBit(EXTI_Line18);
+}
+#endif
+
+#ifdef USE_USB_OTG_HS
 /**
  * @brief  This function handles OTG_HS_WKUP Handler.
  * @param  None
@@ -215,7 +238,21 @@ void OTG_HS_WKUP_IRQHandler(void)
     }
     EXTI_ClearITPendingBit(EXTI_Line20);
 }
+#endif
 
+#ifdef USE_USB_OTG_FS
+/**
+ * @brief  This function handles OTG_FS Handler.
+ * @param  None
+ * @retval None
+ */
+void OTG_FS_IRQHandler(void)
+{
+    USBD_OTG_ISR_Handler(&USB_OTG_dev);
+}
+#endif
+
+#ifdef USE_USB_OTG_HS
 /**
  * @brief  This function handles OTG_HS Handler.
  * @param  None
@@ -223,8 +260,9 @@ void OTG_HS_WKUP_IRQHandler(void)
  */
 void OTG_HS_IRQHandler(void)
 {
-    USBD_OTG_ISR_Handler (&USB_OTG_dev);
+    USBD_OTG_ISR_Handler(&USB_OTG_dev);
 }
+#endif
 
 /******************************************************************************/
 /*                 STM32Fxxx Peripherals Interrupt Handlers                   */
