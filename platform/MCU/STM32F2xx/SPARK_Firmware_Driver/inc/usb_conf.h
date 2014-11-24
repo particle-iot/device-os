@@ -66,8 +66,10 @@
 #define USE_EMBEDDED_PHY
 #endif /* USE_EMBEDDED_PHY */
 
+#ifndef USB_OTG_FS_CORE
 #ifdef USE_USB_OTG_HS
 #define USB_OTG_HS_CORE
+#endif
 #endif
 
 /*******************************************************************************

@@ -50,10 +50,10 @@ USB_OTG_CORE_HANDLE USB_OTG_dev;
 void HAL_DFU_USB_Init(void)
 {
     USBD_Init(&USB_OTG_dev,
-#ifdef USE_USB_OTG_HS
-            USB_OTG_HS_CORE_ID,
-#else
+#ifdef USE_USB_OTG_FS
             USB_OTG_FS_CORE_ID,
+#elif defined USE_USB_OTG_HS
+            USB_OTG_HS_CORE_ID,
 #endif
             &USR_desc,
             &DFU_cb,

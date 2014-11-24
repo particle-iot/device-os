@@ -220,9 +220,7 @@ void OTG_FS_WKUP_IRQHandler(void)
     }
     EXTI_ClearITPendingBit(EXTI_Line18);
 }
-#endif
-
-#ifdef USE_USB_OTG_HS
+#elif defined USE_USB_OTG_HS
 /**
  * @brief  This function handles OTG_HS_WKUP Handler.
  * @param  None
@@ -250,9 +248,7 @@ void OTG_FS_IRQHandler(void)
 {
     USBD_OTG_ISR_Handler(&USB_OTG_dev);
 }
-#endif
-
-#ifdef USE_USB_OTG_HS
+#elif defined USE_USB_OTG_HS
 /**
  * @brief  This function handles OTG_HS Handler.
  * @param  None

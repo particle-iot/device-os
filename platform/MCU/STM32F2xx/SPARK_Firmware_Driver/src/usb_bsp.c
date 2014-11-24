@@ -69,9 +69,8 @@ void USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
 
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
     RCC_AHB2PeriphClockCmd(RCC_AHB2Periph_OTG_FS, ENABLE) ;
-#endif
 
-#ifdef USE_USB_OTG_HS
+#elif defined USE_USB_OTG_HS
     //USB_OTG_HS used on BM-09 module
 
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
@@ -111,9 +110,7 @@ void USB_OTG_BSP_EnableInterrupt(USB_OTG_CORE_HANDLE *pdev)
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
-#endif
-
-#ifdef USE_USB_OTG_HS
+#elif defined USE_USB_OTG_HS
     NVIC_InitStructure.NVIC_IRQChannel = OTG_HS_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = OTG_HS_IRQ_PRIORITY;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;

@@ -102,8 +102,7 @@
 #ifdef USE_USB_OTG_FS
 #define OTG_FS_IRQ_PRIORITY                 2       //USB OTG FS Interrupt
 #define OTG_FS_WKUP_IRQ_PRIORITY            2       //USB OTG FS Wakeup Interrupt
-#endif
-#ifdef USE_USB_OTG_HS
+#elif defined USE_USB_OTG_HS
 #define OTG_HS_EP1_IN_IRQ_PRIORITY          2       //USB OTG HS EP1 IN Interrupt
 #define OTG_HS_EP1_OUT_IRQ_PRIORITY         2       //USB OTG HS EP1 OUT Interrupt
 #define OTG_HS_IRQ_PRIORITY                 2       //USB OTG HS Interrupt
