@@ -97,6 +97,14 @@
 #define UI_TIMER_FREQUENCY                  100	/* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
+#if (SPARK_PRODUCT_ID == 5)
+//BM-14 uses USB_OTG_FS peripheral
+#define USE_USB_OTG_FS
+#elif (SPARK_PRODUCT_ID == 4 || SPARK_PRODUCT_ID == 6)
+//BM-09 uses USB_OTG_HS peripheral
+#define USE_USB_OTG_HS
+#endif
+
 //NVIC Priorities based on NVIC_PriorityGroup_4
 #define SDIO_IRQ_PRIORITY                   0       //??? BCM43362 SDIO Interrupt
 #ifdef USE_USB_OTG_FS

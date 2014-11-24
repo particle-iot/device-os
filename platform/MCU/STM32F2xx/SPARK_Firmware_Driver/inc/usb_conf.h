@@ -31,10 +31,10 @@
 #define __USB_CONF__H__
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f2xx.h"
+#include "platform_config.h"
 
 /* NOTE: BM-09 uses USB_OTG_HS peripheral and BM-14 uses USB_OTG_FS peripheral */
-/* One of the below define should be added in product-id.mk - Satish */
+/* Define one of below in platform_config.h or product-id.mk - Satish */
 //#define USE_USB_OTG_FS
 //#define USE_USB_OTG_HS
 
