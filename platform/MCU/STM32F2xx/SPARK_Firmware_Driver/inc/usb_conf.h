@@ -33,7 +33,20 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f2xx.h"
 
-/* NOTE: BM-09 uses USB_OTG_HS so comment defines related to USB_OTG_FS - Satish */
+/* NOTE: BM-09 uses USB_OTG_HS peripheral and BM-14 uses USB_OTG_FS peripheral */
+/* One of the below define should be added in product-id.mk - Satish */
+//#define USE_USB_OTG_FS
+//#define USE_USB_OTG_HS
+
+/****************** USB OTG FS PHY CONFIGURATION *******************************
+*  The USB OTG FS Core supports one on-chip Full Speed PHY.
+*
+*  The USE_EMBEDDED_PHY symbol is defined in the project compiler preprocessor
+*  when FS core is used.
+*******************************************************************************/
+#ifdef USE_USB_OTG_FS
+#define USB_OTG_FS_CORE
+#endif
 
 /****************** USB OTG HS PHY CONFIGURATION *******************************
  *  The USB OTG HS Core supports two PHY interfaces:
@@ -45,19 +58,15 @@
  *   (i)  USE_ULPI_PHY: if the USB OTG HS Core is to be used in High speed mode
  *   (ii) USE_EMBEDDED_PHY: if the USB OTG HS Core is to be used in Full speed mode
  *******************************************************************************/
-#ifndef USE_USB_OTG_HS
-#define USE_USB_OTG_HS
-#endif /* USE_USB_OTG_HS */
-
-#ifndef USE_ULPI_PHY
+//#ifndef USE_ULPI_PHY
 //#define USE_ULPI_PHY
-#endif /* USE_ULPI_PHY */
+//#endif /* USE_ULPI_PHY */
 
 #ifndef USE_EMBEDDED_PHY
 #define USE_EMBEDDED_PHY
 #endif /* USE_EMBEDDED_PHY */
 
-#ifdef USE_USB_OTG_HS 
+#ifdef USE_USB_OTG_HS
 #define USB_OTG_HS_CORE
 #endif
 
@@ -96,6 +105,18 @@
  *   (vi) In HS case 12 FIFO locations should be reserved for internal DMA registers
  *        so total FIFO size should be 1012 Only instead of 1024
  *******************************************************************************/
+
+/****************** USB OTG FS CONFIGURATION **********************************/
+#ifdef USB_OTG_FS_CORE
+ #define RX_FIFO_FS_SIZE                          128
+ #define TX0_FIFO_FS_SIZE                          32
+ #define TX1_FIFO_FS_SIZE                         128
+ #define TX2_FIFO_FS_SIZE                          32
+ #define TX3_FIFO_FS_SIZE                           0
+
+// #define USB_OTG_FS_LOW_PWR_MGMT_SUPPORT
+// #define USB_OTG_FS_SOF_OUTPUT_ENABLED
+#endif
 
 /****************** USB OTG HS CONFIGURATION **********************************/
 #ifdef USB_OTG_HS_CORE
