@@ -119,6 +119,8 @@
     #define INTERNAL_FLASH_SIZE (0x40000)
 #elif SPARK_PRODUCT_ID == 4
     #define INTERNAL_FLASH_SIZE (0x100000)
+#elif SPARK_PRODUCT_ID == 4
+    #define INTERNAL_FLASH_SIZE (0x100000)
 #else
     #pragma message "SPARK_PRODUCT_ID is " PREPSTRING(SPARK_PRODUCT_ID)
     #error "Unknown SPARK_PRODUCT_ID"
