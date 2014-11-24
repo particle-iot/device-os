@@ -44,66 +44,86 @@
 /* Exported macro ------------------------------------------------------------*/
 
 //LEDs
-#define LEDn                           		4
-#define LED1_GPIO_AF_TIM                        0                       //To Decide
-#define LED1_GPIO_PIN                    	0                       //To Decide
-#define LED1_GPIO_PIN_SOURCE                    0                       //To Decide
-#define LED1_GPIO_PORT                   	0                       //To Decide
-#define LED1_GPIO_CLK                    	0                       //To Decide
-#define LED2_GPIO_AF_TIM                        GPIO_AF_TIM2            //BLUE Led
-#define LED2_GPIO_PIN                   	GPIO_Pin_3              //BLUE Led
-#define LED2_GPIO_PIN_SOURCE                    GPIO_PinSource3         //BLUE Led
-#define LED2_GPIO_PORT                   	GPIOA                   //BLUE Led
-#define LED2_GPIO_CLK                    	RCC_AHB1Periph_GPIOA    //BLUE Led
-#define LED3_GPIO_AF_TIM                        GPIO_AF_TIM2            //RED Led
-#define LED3_GPIO_PIN                   	GPIO_Pin_1              //RED Led
-#define LED3_GPIO_PIN_SOURCE                    GPIO_PinSource1         //RED Led
-#define LED3_GPIO_PORT                   	GPIOA                   //RED Led
-#define LED3_GPIO_CLK                    	RCC_AHB1Periph_GPIOA    //RED Led
-#define LED4_GPIO_AF_TIM                        GPIO_AF_TIM2            //GREEN Led
-#define LED4_GPIO_PIN                    	GPIO_Pin_2              //GREEN Led
-#define LED4_GPIO_PIN_SOURCE                    GPIO_PinSource2         //GREEN Led
-#define LED4_GPIO_PORT                   	GPIOA                   //GREEN Led
-#define LED4_GPIO_CLK                    	RCC_AHB1Periph_GPIOA    //GREEN Led
+#define LEDn                                4
+#define LED1_GPIO_AF_TIM                    0                       //To Decide
+#define LED1_GPIO_PIN                       0                       //To Decide
+#define LED1_GPIO_PIN_SOURCE                0                       //To Decide
+#define LED1_GPIO_PORT                      0                       //To Decide
+#define LED1_GPIO_CLK                       0                       //To Decide
+#define LED2_GPIO_AF_TIM                    GPIO_AF_TIM2            //BLUE Led
+#define LED2_GPIO_PIN                       GPIO_Pin_3              //BLUE Led
+#define LED2_GPIO_PIN_SOURCE                GPIO_PinSource3         //BLUE Led
+#define LED2_GPIO_PORT                      GPIOA                   //BLUE Led
+#define LED2_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //BLUE Led
+#define LED3_GPIO_AF_TIM                    GPIO_AF_TIM2            //RED Led
+#define LED3_GPIO_PIN                       GPIO_Pin_1              //RED Led
+#define LED3_GPIO_PIN_SOURCE                GPIO_PinSource1         //RED Led
+#define LED3_GPIO_PORT                      GPIOA                   //RED Led
+#define LED3_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //RED Led
+#define LED4_GPIO_AF_TIM                    GPIO_AF_TIM2            //GREEN Led
+#define LED4_GPIO_PIN                       GPIO_Pin_2              //GREEN Led
+#define LED4_GPIO_PIN_SOURCE                GPIO_PinSource2         //GREEN Led
+#define LED4_GPIO_PORT                      GPIOA                   //GREEN Led
+#define LED4_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //GREEN Led
 
 //Push Buttons
-#define BUTTONn                                 1
-#define BUTTON1_GPIO_PIN                        GPIO_Pin_2
-#define BUTTON1_GPIO_PORT                       GPIOC
-#define BUTTON1_GPIO_CLK                        RCC_AHB1Periph_GPIOC
-#define BUTTON1_GPIO_MODE		        GPIO_Mode_IN
-#define BUTTON1_GPIO_PUPD                       GPIO_PuPd_UP
-#define BUTTON1_PRESSED			        0x00
-#define BUTTON1_EXTI_LINE                       EXTI_Line2
-#define BUTTON1_EXTI_PORT_SOURCE                EXTI_PortSourceGPIOC
-#define BUTTON1_EXTI_PIN_SOURCE                 EXTI_PinSource2
-#define BUTTON1_EXTI_IRQn                       EXTI2_IRQn
+#define BUTTONn                             1
+#if (SPARK_PRODUCT_ID == 4)
+#define BUTTON1_GPIO_PIN                    GPIO_Pin_2
+#define BUTTON1_GPIO_PORT                   GPIOC
+#define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
+#define BUTTON1_GPIO_MODE		            GPIO_Mode_IN
+#define BUTTON1_GPIO_PUPD                   GPIO_PuPd_UP
+#define BUTTON1_PRESSED			            0x00
+#define BUTTON1_EXTI_LINE                   EXTI_Line2
+#define BUTTON1_EXTI_PORT_SOURCE            EXTI_PortSourceGPIOC
+#define BUTTON1_EXTI_PIN_SOURCE             EXTI_PinSource2
+#define BUTTON1_EXTI_IRQn                   EXTI2_IRQn
 #define	BUTTON1_EXTI_TRIGGER		        EXTI_Trigger_Falling
+#elif (SPARK_PRODUCT_ID == 5 || SPARK_PRODUCT_ID == 6)
+#define BUTTON1_GPIO_PIN                    GPIO_Pin_7
+#define BUTTON1_GPIO_PORT                   GPIOC
+#define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
+#define BUTTON1_GPIO_MODE                   GPIO_Mode_IN
+#define BUTTON1_GPIO_PUPD                   GPIO_PuPd_UP
+#define BUTTON1_PRESSED                     0x00
+#define BUTTON1_EXTI_LINE                   EXTI_Line7
+#define BUTTON1_EXTI_PORT_SOURCE            EXTI_PortSourceGPIOC
+#define BUTTON1_EXTI_PIN_SOURCE             EXTI_PinSource7
+#define BUTTON1_EXTI_IRQn                   EXTI9_5_IRQn
+#define BUTTON1_EXTI_TRIGGER                EXTI_Trigger_Falling
+#endif
 
-#define UI_TIMER_FREQUENCY                      100	/* 100Hz -> 10ms */
-#define BUTTON_DEBOUNCE_INTERVAL		1000 / UI_TIMER_FREQUENCY
+#define UI_TIMER_FREQUENCY                  100	/* 100Hz -> 10ms */
+#define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
 //NVIC Priorities based on NVIC_PriorityGroup_4
-#define SDIO_IRQ_PRIORITY                       0       //??? BCM43362 SDIO Interrupt
-#define OTG_HS_EP1_IN_IRQ_PRIORITY              2       //USB OTG HS EP1 IN Interrupt
-#define OTG_HS_EP1_OUT_IRQ_PRIORITY             2       //USB OTG HS EP1 OUT Interrupt
-#define OTG_HS_IRQ_PRIORITY                     2       //USB OTG HS Interrupt
-#define OTG_HS_WKUP_IRQ_PRIORITY                2       //USB OTG HS Wakeup Interrupt
-#define RTC_Alarm_IRQ_PRIORITY                  3       //RTC Alarm Interrupt
-#define RTC_WKUP_IRQ_PRIORITY                   4       //RTC Seconds Interrupt
-#define USART1_IRQ_PRIORITY                     5       //USART1 Interrupt
-#define USART2_IRQ_PRIORITY                     5       //USART2 Interrupt
-#define TIM2_IRQ_PRIORITY                       6       //TIM2 CC Interrupt(Button Use)
-#define EXTI2_IRQ_PRIORITY                      7       //Mode Button
-#define EXTI15_10_IRQ_PRIORITY                  8       //??? User Interrupt
-#define EXTI9_5_IRQ_PRIORITY                    9       //??? User Interrupt
-#define EXTI0_IRQ_PRIORITY                      10      //??? User Interrupt
-#define EXTI1_IRQ_PRIORITY                      10      //??? User Interrupt
-#define EXTI3_IRQ_PRIORITY                      10      //??? User Interrupt
-#define EXTI4_IRQ_PRIORITY                      10      //??? User Interrupt
-#define SYSTICK_IRQ_PRIORITY                    13      //CORTEX_M3 Systick Interrupt
-#define SVCALL_IRQ_PRIORITY                     14      //CORTEX_M3 SVCall Interrupt
-#define PENDSV_IRQ_PRIORITY                     15      //CORTEX_M3 PendSV Interrupt
+#define SDIO_IRQ_PRIORITY                   0       //??? BCM43362 SDIO Interrupt
+#ifdef USE_USB_OTG_FS
+#define OTG_FS_IRQ_PRIORITY                 2       //USB OTG FS Interrupt
+#define OTG_FS_WKUP_IRQ_PRIORITY            2       //USB OTG FS Wakeup Interrupt
+#endif
+#ifdef USE_USB_OTG_HS
+#define OTG_HS_EP1_IN_IRQ_PRIORITY          2       //USB OTG HS EP1 IN Interrupt
+#define OTG_HS_EP1_OUT_IRQ_PRIORITY         2       //USB OTG HS EP1 OUT Interrupt
+#define OTG_HS_IRQ_PRIORITY                 2       //USB OTG HS Interrupt
+#define OTG_HS_WKUP_IRQ_PRIORITY            2       //USB OTG HS Wakeup Interrupt
+#endif
+#define RTC_Alarm_IRQ_PRIORITY              3       //RTC Alarm Interrupt
+#define RTC_WKUP_IRQ_PRIORITY               4       //RTC Seconds Interrupt
+#define USART1_IRQ_PRIORITY                 5       //USART1 Interrupt
+#define USART2_IRQ_PRIORITY                 5       //USART2 Interrupt
+#define TIM2_IRQ_PRIORITY                   6       //TIM2 CC Interrupt(Button Use)
+#define EXTI9_5_IRQ_PRIORITY                7       //Mode Button on BM-14
+#define EXTI15_10_IRQ_PRIORITY              8       //User Interrupt
+#define EXTI2_IRQ_PRIORITY                  9       //User Interrupt(Mode Button on BM-09 kit)
+#define EXTI0_IRQ_PRIORITY                  10      //User Interrupt
+#define EXTI1_IRQ_PRIORITY                  10      //User Interrupt
+#define EXTI3_IRQ_PRIORITY                  10      //User Interrupt
+#define EXTI4_IRQ_PRIORITY                  10      //User Interrupt
+#define SYSTICK_IRQ_PRIORITY                13      //CORTEX_M3 Systick Interrupt
+#define SVCALL_IRQ_PRIORITY                 14      //CORTEX_M3 SVCall Interrupt
+#define PENDSV_IRQ_PRIORITY                 15      //CORTEX_M3 PendSV Interrupt
 
 #ifndef SPARK_PRODUCT_ID
 #define SPARK_PRODUCT_ID 0
@@ -114,13 +134,15 @@
 #define PREPSTRING(x) PREPSTRING2(x)
 
 #if SPARK_PRODUCT_ID < 2
-#define INTERNAL_FLASH_SIZE     (0x20000)
+#define INTERNAL_FLASH_SIZE                 (0x20000)
 #elif SPARK_PRODUCT_ID == 2
-    #define INTERNAL_FLASH_SIZE (0x40000)
+    #define INTERNAL_FLASH_SIZE             (0x40000)
 #elif SPARK_PRODUCT_ID == 4
-    #define INTERNAL_FLASH_SIZE (0x100000)
-#elif SPARK_PRODUCT_ID == 4
-    #define INTERNAL_FLASH_SIZE (0x100000)
+    #define INTERNAL_FLASH_SIZE             (0x100000)
+#elif SPARK_PRODUCT_ID == 5
+    #define INTERNAL_FLASH_SIZE             (0x100000)
+#elif SPARK_PRODUCT_ID == 6
+    #define INTERNAL_FLASH_SIZE             (0x100000)
 #else
     #pragma message "SPARK_PRODUCT_ID is " PREPSTRING(SPARK_PRODUCT_ID)
     #error "Unknown SPARK_PRODUCT_ID"
