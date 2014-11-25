@@ -58,7 +58,8 @@ __IO uint16_t BUTTON_DEBOUNCED_TIME[] = {0};
 const uint16_t BUTTON_EXTI_LINE[] = {BUTTON1_EXTI_LINE};
 const uint16_t BUTTON_EXTI_PORT_SOURCE[] = {BUTTON1_EXTI_PORT_SOURCE};
 const uint16_t BUTTON_EXTI_PIN_SOURCE[] = {BUTTON1_EXTI_PIN_SOURCE};
-const uint16_t BUTTON_IRQn[] = {BUTTON1_EXTI_IRQn};
+const uint16_t BUTTON_EXTI_IRQn[] = {BUTTON1_EXTI_IRQn};
+const uint8_t BUTTON_EXTI_IRQ_PRIORITY[] = {BUTTON1_EXTI_IRQ_PRIORITY};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER};
 
 /* Extern variables ----------------------------------------------------------*/
@@ -367,16 +368,16 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
         /* Enable the TIM2 Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = TIM2_IRQ_PRIORITY;	//OLD: 0x02
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;							//OLD: 0x00
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = TIM2_IRQ_PRIORITY;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
         NVIC_Init(&NVIC_InitStructure);
 
         /* Enable the Button EXTI Interrupt */
-        NVIC_InitStructure.NVIC_IRQChannel = BUTTON_IRQn[Button];
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = EXTI2_IRQ_PRIORITY;		//OLD: 0x02
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;							//OLD: 0x01
+        NVIC_InitStructure.NVIC_IRQChannel = BUTTON_EXTI_IRQn[Button];
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = BUTTON_EXTI_IRQ_PRIORITY[Button];
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
         NVIC_Init(&NVIC_InitStructure);

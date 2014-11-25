@@ -79,6 +79,7 @@
 #define BUTTON1_EXTI_PORT_SOURCE            EXTI_PortSourceGPIOC
 #define BUTTON1_EXTI_PIN_SOURCE             EXTI_PinSource2
 #define BUTTON1_EXTI_IRQn                   EXTI2_IRQn
+#define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define	BUTTON1_EXTI_TRIGGER		        EXTI_Trigger_Falling
 #elif (SPARK_PRODUCT_ID == 5 || SPARK_PRODUCT_ID == 6)
 #define BUTTON1_GPIO_PIN                    GPIO_Pin_7
@@ -91,6 +92,7 @@
 #define BUTTON1_EXTI_PORT_SOURCE            EXTI_PortSourceGPIOC
 #define BUTTON1_EXTI_PIN_SOURCE             EXTI_PinSource7
 #define BUTTON1_EXTI_IRQn                   EXTI9_5_IRQn
+#define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define BUTTON1_EXTI_TRIGGER                EXTI_Trigger_Falling
 #endif
 
@@ -121,11 +123,12 @@
 #define USART1_IRQ_PRIORITY                 5       //USART1 Interrupt
 #define USART2_IRQ_PRIORITY                 5       //USART2 Interrupt
 #define TIM2_IRQ_PRIORITY                   6       //TIM2 CC Interrupt(Button Use)
-#define EXTI9_5_IRQ_PRIORITY                7       //Mode Button on BM-14
+//BUTTON1_EXTI_IRQ_PRIORITY                 7       //Mode Button Interrupt
 #define EXTI15_10_IRQ_PRIORITY              8       //User Interrupt
-#define EXTI2_IRQ_PRIORITY                  9       //User Interrupt(Mode Button on BM-09 kit)
+#define EXTI9_5_IRQ_PRIORITY                9       //User Interrupt
 #define EXTI0_IRQ_PRIORITY                  10      //User Interrupt
 #define EXTI1_IRQ_PRIORITY                  10      //User Interrupt
+#define EXTI2_IRQ_PRIORITY                  10      //User Interrupt
 #define EXTI3_IRQ_PRIORITY                  10      //User Interrupt
 #define EXTI4_IRQ_PRIORITY                  10      //User Interrupt
 #define SYSTICK_IRQ_PRIORITY                13      //CORTEX_M3 Systick Interrupt
