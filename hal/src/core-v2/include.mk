@@ -16,7 +16,7 @@ ifneq (,$(findstring hal,$(MAKE_DEPENDENCIES)))
 # if hal is used as a make dependency (linked) then add linker commands
 
 HAL_LIB_COREV2 = $(HAL_SRC_COREV2_PATH)/lib
-HAL_WICED_LIBS += Platform_$(USI_PART_NO) FreeRTOS LwIP WICED SPI_Flash_Library_$(USI_PART_NO) WWD_FreeRTOS_Interface_$(USI_PART_NO) WICED_FreeRTOS_Interface WWD_LwIP_Interface_FreeRTOS WICED_LwIP_Interface Lib_HTTP_Server Lib_DNS_Redirect_Daemon Lib_DNS WWD_for_SDIO_FreeRTOS Lib_Wiced_RO_FS STM32F2xx Wiced_Network_LwIP_FreeRTOS Lib_DHCP_Server Lib_base64 STM32F2xx_Peripheral_Drivers Ring_Buffer STM32F2xx_Peripheral_Libraries common_GCC
+HAL_WICED_LIBS += Platform_$(PLATFORM_NET) FreeRTOS LwIP WICED SPI_Flash_Library_$(PLATFORM_NET) WWD_FreeRTOS_Interface_$(PLATFORM_NET) WICED_FreeRTOS_Interface WWD_LwIP_Interface_FreeRTOS WICED_LwIP_Interface Lib_HTTP_Server Lib_DNS_Redirect_Daemon Lib_DNS WWD_for_SDIO_FreeRTOS Lib_Wiced_RO_FS STM32F2xx Wiced_Network_LwIP_FreeRTOS Lib_DHCP_Server Lib_base64 STM32F2xx_Peripheral_Drivers Ring_Buffer STM32F2xx_Peripheral_Libraries common_GCC
 
 HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_COREV2)/,$(addsuffix .a,$(HAL_WICED_LIBS)))
 WICED_MCU = $(HAL_SRC_COREV2_PATH)/wiced/platform/MCU/STM32F2xx/GCC
