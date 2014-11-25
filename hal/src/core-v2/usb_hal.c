@@ -71,10 +71,14 @@ extern uint8_t  USB_Rx_State;
 void SPARK_USB_Setup(void)
 {
     USBD_Init(&USB_OTG_dev,
-              USB_OTG_HS_CORE_ID,
-              &USR_desc,
-              &USBD_CDC_cb,
-              &USR_cb);
+#ifdef USE_USB_OTG_FS
+            USB_OTG_FS_CORE_ID,
+#elif defined USE_USB_OTG_HS
+            USB_OTG_HS_CORE_ID,
+#endif
+            &USR_desc,
+            &USBD_CDC_cb,
+            &USR_cb);
 }
 
 void SPARK_USB_Teardown()
@@ -201,8 +205,25 @@ void USB_HID_Send_Report(void *pHIDReport, size_t reportSize)
 }
 #endif
 
+#ifdef USE_USB_OTG_FS
 /**
- * @brief  This function handles OTG_HS_WKUP_IRQ Handler.
+ * @brief  This function handles OTG_FS_WKUP Handler.
+ * @param  None
+ * @retval None
+ */
+void OTG_FS_WKUP_irq(void)
+{
+    if(USB_OTG_dev.cfg.low_power)
+    {
+        *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
+        SystemInit();
+        USB_OTG_UngateClock(&USB_OTG_dev);
+    }
+    EXTI_ClearITPendingBit(EXTI_Line18);
+}
+#elif defined USE_USB_OTG_HS
+/**
+ * @brief  This function handles OTG_HS_WKUP Handler.
  * @param  None
  * @retval None
  */
@@ -216,16 +237,29 @@ void OTG_HS_WKUP_irq(void)
     }
     EXTI_ClearITPendingBit(EXTI_Line20);
 }
+#endif
 
+#ifdef USE_USB_OTG_FS
 /**
- * @brief  This function handles OTG_HS_IRQ Handler.
+ * @brief  This function handles OTG_FS Handler.
+ * @param  None
+ * @retval None
+ */
+void OTG_FS_irq(void)
+{
+    USBD_OTG_ISR_Handler(&USB_OTG_dev);
+}
+#elif defined USE_USB_OTG_HS
+/**
+ * @brief  This function handles OTG_HS Handler.
  * @param  None
  * @retval None
  */
 void OTG_HS_irq(void)
 {
-    USBD_OTG_ISR_Handler (&USB_OTG_dev);
+    USBD_OTG_ISR_Handler(&USB_OTG_dev);
 }
+#endif
 
 #ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
 /**

@@ -44,7 +44,7 @@
 volatile uint8_t IWDG_SYSTEM_RESET;
 
 /* Private function prototypes -----------------------------------------------*/
-void Mode_Button_EXTI2_irq(void);
+void Mode_Button_EXTI_irq(void);
 
 /* Extern variables ----------------------------------------------------------*/
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
@@ -79,7 +79,7 @@ void HAL_Core_Config(void)
     Set_System();
 
     /* Register Mode Button Interrupt Handler (WICED hack for Mode Button usage) */
-    HAL_EXTI_Register_Handler(BUTTON1_EXTI_LINE, Mode_Button_EXTI2_irq);
+    HAL_EXTI_Register_Handler(BUTTON1_EXTI_LINE, Mode_Button_EXTI_irq);
 
     SysTick_Configuration();
 
@@ -230,7 +230,7 @@ void vApplicationTickHook(void)
  * @param  None
  * @retval None
  */
-void Mode_Button_EXTI2_irq(void)
+void Mode_Button_EXTI_irq(void)
 {
     /* Clear the EXTI line pending bit (cleared in WICED GPIO IRQ handler) */
     EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE);
