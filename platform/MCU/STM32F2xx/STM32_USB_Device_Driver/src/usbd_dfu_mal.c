@@ -31,6 +31,10 @@
 #include "usbd_flash_if.h"
 #include "usbd_dct_if.h"
 
+#ifdef DFU_MAL_SUPPORT_sFLASH
+#include "usbd_sflash_if.h"
+#endif
+
 #ifdef DFU_MAL_SUPPORT_OTP
  #include "usbd_otp_if.h"
 #endif
@@ -51,7 +55,10 @@
    No other operation is required. */
 DFU_MAL_Prop_TypeDef* tMALTab[MAX_USED_MEDIA] = {
     &DFU_Flash_cb,
-    &DFU_DCT_cb,
+    &DFU_DCT_cb
+#ifdef DFU_MAL_SUPPORT_sFLASH
+  , &DFU_sFlash_cb
+#endif
 #ifdef DFU_MAL_SUPPORT_OTP
   , &DFU_Otp_cb
 #endif
@@ -69,6 +76,9 @@ DFU_MAL_Prop_TypeDef* tMALTab[MAX_USED_MEDIA] = {
 __ALIGN_BEGIN const uint8_t* usbd_dfu_StringDesc[MAX_USED_MEDIA] __ALIGN_END  = {
     FLASH_IF_STRING,
     DCT_IF_STRING
+#ifdef DFU_MAL_SUPPORT_sFLASH
+  , sFLASH_IF_STRING
+#endif
 #ifdef DFU_MAL_SUPPORT_OTP
   , OTP_IF_STRING
 #endif
