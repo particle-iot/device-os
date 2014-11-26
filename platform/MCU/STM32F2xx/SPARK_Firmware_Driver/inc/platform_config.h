@@ -27,9 +27,6 @@
 #ifndef __PLATFORM_CONFIG_H
 #define __PLATFORM_CONFIG_H
 
-/* If serial flash is present on board uncomment this define for "bootloader" use */
-//#define SPARK_SFLASH_ENABLE
-
 #define         ID1          (0x1FFF7A10)
 #define         ID2          (0x1FFF7A14)
 #define         ID3          (0x1FFF7A18)
@@ -102,6 +99,8 @@
 #if (SPARK_PRODUCT_ID == 5)
 //BM-14 uses USB_OTG_FS peripheral
 #define USE_USB_OTG_FS
+//BM-14 has serial flash
+#define USE_SERIAL_FLASH
 #elif (SPARK_PRODUCT_ID == 4 || SPARK_PRODUCT_ID == 6)
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
