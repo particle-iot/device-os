@@ -15,6 +15,9 @@ CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_dfu_core.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_dfu_mal.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_flash_if.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_dct_if.c
+ifeq ("$(SPARK_PRODUCT_ID)","5")
+CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_sflash_if.c
+endif
 # cdc/usbserial specific files
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_cdc_core.c
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_cdc_if.c
