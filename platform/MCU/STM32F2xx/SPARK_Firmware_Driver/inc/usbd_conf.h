@@ -35,7 +35,7 @@
 #include "hw_config.h"
 
 #define USBD_CFG_MAX_NUM                1
-#define USBD_ITF_MAX_NUM                2      /* MAX_USED_MEDIA */
+#define USBD_ITF_MAX_NUM                3      /* MAX_USED_MEDIA */
 #define USB_MAX_STR_DESC_SIZ            255
 #define USB_SUPPORT_USER_STRING_DESC
 
@@ -47,12 +47,16 @@
 #define DFU_IN_EP                       0x80
 #define DFU_OUT_EP                      0x00
 
-/* Maximum number of supported media (Flash only) */
-#define MAX_USED_MEDIA                  2 //3 for both Flash and OTP
+/* Maximum number of supported media (Flash, sFlash & DCT) */
+#define MAX_USED_MEDIA                  3
 
 /* Flash memory address from where user application will be loaded 
    This address represents the DFU code protected against write and erase operations.*/
 #define APP_DEFAULT_ADD                 CORE_FW_ADDRESS
+
+#ifdef USE_SERIAL_FLASH
+#define DFU_MAL_SUPPORT_sFLASH
+#endif
 
 /* Uncomment this define to impelement OTP memory interface */
 //#define DFU_MAL_SUPPORT_OTP
