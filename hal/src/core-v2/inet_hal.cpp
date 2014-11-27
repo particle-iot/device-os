@@ -29,7 +29,9 @@
 int inet_gethostbyname(char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr)
 {
     wiced_ip_address_t address;
+    address.version = WICED_IPV4;
     wiced_result_t result = wiced_hostname_lookup (hostname, &address, 1000);
+    *out_ip_addr = address.ip.v4;
     return result;
 }
 

@@ -30,20 +30,33 @@
 #include <string.h>
 #include <algorithm>
 
+void initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
+{
+    if (force || wifi_config->device_configured!=WICED_TRUE) {
+        memset(wifi_config, 0, sizeof(*wifi_config));            
+    }
+    wifi_config->country_code = WICED_COUNTRY_UNITED_STATES;
+    wifi_config->device_configured = WICED_TRUE;    
+}
+
 uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
 {
+    wiced_watchdog_kick();
     return 0;
 }
 
+/**
+ * Clears the WLAN credentials by erasing the DCT data and taking down the STA
+ * network interface.
+ * @return 
+ */
 int wlan_clear_credentials() 
 {
     // write to DCT credentials
     // clear current IP
     platform_dct_wifi_config_t* wifi_config = NULL;
     wiced_result_t result = wiced_dct_read_lock( (void**) &wifi_config, WICED_TRUE, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
-    if (!result) {
-        //int is_up = wiced_network_is_up(WICED_STA_INTERFACE);
-        wifi_config->device_configured = WICED_FALSE;
+    if (!result) {        
         memset(wifi_config->stored_ap_list, 0, sizeof(wifi_config->stored_ap_list));
         result = wiced_dct_write( (const void*) wifi_config, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config) );
         wiced_dct_read_unlock(wifi_config, WICED_TRUE);
@@ -67,14 +80,19 @@ bool is_ap_config_set(const wiced_config_ap_entry_t& ap_entry)
       || is_set(ap_entry.details.BSSID.octet, sizeof(ap_entry.details.BSSID));
 }
 
+/**
+ * Determine if the DCT contains wifi credentials.
+ * @return 
+ */
 int wlan_has_credentials()
 {
     int has_credentials = 0;
     platform_dct_wifi_config_t* wifi_config = NULL;
     wiced_result_t result = wiced_dct_read_lock( (void**) &wifi_config, WICED_FALSE, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
     if (result==WICED_SUCCESS) {
-        has_credentials = wifi_config->device_configured && is_ap_config_set(wifi_config->stored_ap_list[0]);                
+        has_credentials = wifi_config->device_configured!=WICED_TRUE || !is_ap_config_set(wifi_config->stored_ap_list[0]);
     }
+    wiced_dct_read_unlock(wifi_config, WICED_FALSE);
     return has_credentials;
 }
 
@@ -84,7 +102,7 @@ int wlan_has_credentials()
  */
 int wlan_connect_init() 
 {   
-    return wiced_wlan_connectivity_init();
+    return wiced_wlan_connectivity_init();    
 }
 
 /**
@@ -95,13 +113,14 @@ wlan_result_t wlan_connect_finalize()
 {
     // enable connection from stored profiles
     wlan_result_t result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);        
+    // DHCP happens synchronously
     HAL_WLAN_notify_dhcp(!result);
     return result;
 }
 
 wlan_result_t wlan_activate() 
 {    
-    return wiced_wlan_connectivity_init();
+    return wiced_wlan_connectivity_init();    
 }
 
 wlan_result_t wlan_deactivate() {
@@ -129,12 +148,44 @@ void Set_NetApp_Timeout(void)
 
 wlan_result_t wlan_disconnect_now() 
 {
-    return wiced_network_down(WICED_STA_INTERFACE);    
+    return wiced_network_down(WICED_STA_INTERFACE);
 }
 
 wlan_result_t wlan_connected_rssi(char* ssid) 
 {        
-    return -1;
+    // todo;
+    return 0;
+}
+
+int find_empty_slot(platform_dct_wifi_config_t* wifi_config) {
+    int empty = -1;      // 0 if all full
+    for (int i=0; i<CONFIG_AP_LIST_SIZE; i++) {
+        if (!is_ap_config_set(wifi_config->stored_ap_list[i])) {
+            empty = i;
+            break;
+        }
+    }        
+    // if empty == -1, write to last one, and shuffle all from index N to index N-1.
+    if (empty<0) {
+        empty = CONFIG_AP_LIST_SIZE-1;
+        memcpy(wifi_config->stored_ap_list, wifi_config->stored_ap_list+1, sizeof(wifi_config->stored_ap_list[0])*(empty));
+    }        
+    return empty;
+}
+
+wiced_security_t toSecurity(WLanSecurityType sec)
+{
+    switch (sec) {
+        default:
+        case WLAN_SEC_UNSEC:
+            return WICED_SECURITY_OPEN;
+        case WLAN_SEC_WEP:
+            return WICED_SECURITY_WEP_PSK;
+        case WLAN_SEC_WPA:
+            return wiced_security_t(WPA_SECURITY | AES_ENABLED | TKIP_ENABLED);
+        case WLAN_SEC_WPA2:
+            return wiced_security_t(WPA2_SECURITY | AES_ENABLED | TKIP_ENABLED);
+    }
 }
 
 int wlan_set_credentials(const char *ssid, uint16_t ssidLen, const char *password, 
@@ -144,53 +195,34 @@ int wlan_set_credentials(const char *ssid, uint16_t ssidLen, const char *passwor
     platform_dct_wifi_config_t* wifi_config = NULL;
     wiced_result_t result = wiced_dct_read_lock( (void**) &wifi_config, WICED_TRUE, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));    
     if (!result) {        
-        wifi_config->device_configured = WICED_TRUE;
-        int empty = 0;      // 0 if all full
-        for (int i=0; i<CONFIG_AP_LIST_SIZE; i++) {
-            if (!is_ap_config_set(wifi_config->stored_ap_list[i])) {
-                empty = i;
-                break;
-            }
-        }        
+        // the storage may not have been initialized, so device_configured will be 0xFF
+        initialize_dct(wifi_config);
+        int empty = 0; //find_empty_slot(wifi_config);
+        
         wiced_config_ap_entry_t& entry = wifi_config->stored_ap_list[empty];
-        memset(&entry, 0, sizeof(entry));
+        memset(&entry, 0, sizeof(entry));        
         passwordLen = std::min(passwordLen, uint16_t(64));
         ssidLen = std::min(ssidLen, uint16_t(32));
         memcpy(entry.details.SSID.value, ssid, ssidLen);
         entry.details.SSID.length = ssidLen;
         memcpy(entry.security_key, password, passwordLen);
         entry.security_key_length = passwordLen;
+        entry.details.security = toSecurity(security);
         result = wiced_dct_write( (const void*) wifi_config, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config) );
         wiced_dct_read_unlock(wifi_config, WICED_TRUE);
     }    
     return result;    
 }
 
-softap_setup_t* soft_ap_setup = NULL;
-configuration_entry_t configuration[] = { {0,0,0,CONFIG_STRING_DATA} };
-
-void wlan_smart_config_init() {
-#if 0    
-    if (soft_ap_setup==NULL) {        
-        soft_ap_setup = new softap_setup_t();
-        soft_ap_setup->force = WICED_TRUE;        
-        soft_ap_setup->result = wiced_easy_setup_start_softap( soft_ap_setup );
-    }
-#endif
-    
+void wlan_smart_config_init() {    
+    // todo - launch our own soft-ap daemon
     // todo - when the user has completed the soft ap setup process,
     // call HAL_WLAN_notify_simple_config_done() to exit the calling process.
 }
 
 void wlan_smart_config_finalize() 
 {    
-#if 0
-    if (soft_ap_setup!=NULL && !soft_ap_setup->result) {
-        wiced_easy_setup_stop_softap(soft_ap_setup);
-    }
-    delete soft_ap_setup;
-    soft_ap_setup = NULL;
-#endif
+    // dispose the soft AP daemon
 }
 
 void wlan_smart_config_cleanup() 
@@ -200,11 +232,10 @@ void wlan_smart_config_cleanup()
 
 void wlan_setup()
 {    
-    wiced_wlan_connectivity_init();
-    wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected);
+    if (!wiced_wlan_connectivity_init())
+        wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected);
 }
-            
-            
+
 wlan_result_t wlan_manual_connect() 
 {
     return 0;
@@ -219,7 +250,7 @@ void wlan_set_error_count(uint32_t errorCount)
 }
 
 void setAddress(wiced_ip_address_t* addr, uint8_t* target) {
-    memcpy(target, addr, 4);
+    memcpy(target, (void*)&addr->ip.v4, 4);
 }
 
 void wlan_fetch_ipconfig(WLanConfig* config) 
