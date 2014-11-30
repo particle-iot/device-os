@@ -32,6 +32,8 @@
 #include "hw_config.h"
 #include "syshealth_hal.h"
 
+extern void linkme();
+
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
@@ -60,6 +62,7 @@ void HAL_Core_Config(void)
 {
     // this ensures the stm32_it.c functions aren't dropped by the linker, thinking
     // they are unused. Without this none of the interrupts handlers are linked.
+    linkme();
   DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 #ifdef DFU_BUILD_ENABLE
   /* Set the Vector Table(VT) base location at 0x5000 */

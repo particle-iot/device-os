@@ -183,6 +183,8 @@ void USB_Cable_Config(FunctionalState NewState);
 void Load_SystemFlags(void);
 void Save_SystemFlags(void);
 
+/* Internal Flash Clear Flags : used before calling Flash Erase/Program operations */
+void FLASH_ClearFlags(void);
 /* Internal Flash Write Protection routines */
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages);
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages);

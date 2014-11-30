@@ -35,6 +35,11 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#if defined(DEBUG_BUILD)
+#define DBGMCU_SETTINGS (DBGMCU_CR_DBG_SLEEP|DBGMCU_CR_DBG_STOP|DBGMCU_CR_DBG_STANDBY|DBGMCU_CR_DBG_IWDG_STOP|DBGMCU_CR_DBG_WWDG_STOP)
+#else
+#define DBGMCU_SETTINGS (DBGMCU_CR_DBG_IWDG_STOP|DBGMCU_CR_DBG_WWDG_STOP)
+#endif
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -156,6 +161,9 @@ void Set_System(void)
 
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
+
+    /* Sometimes Internal Flash Erase/Program fails if this is not called */
+    FLASH_ClearFlags();
 }
 
 /*******************************************************************************
@@ -1008,7 +1016,7 @@ void Save_SystemFlags(void)
     FLASH_Unlock();
 
     /* Clear All pending flags */
-    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+    FLASH_ClearFlags();
 
     /* Erase the Internal Flash pages */
     FLASHStatus = FLASH_ErasePage(SYSTEM_FLAGS_ADDRESS);
@@ -1041,6 +1049,12 @@ void Save_SystemFlags(void)
 
     /* Locks the FLASH Program Erase Controller */
     FLASH_Lock();
+}
+
+void FLASH_ClearFlags(void)
+{
+    /* Clear All pending flags */
+    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
 }
 
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages)
@@ -1110,7 +1124,7 @@ void FLASH_Erase(void)
     NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS) / INTERNAL_FLASH_PAGE_SIZE;
 
     /* Clear All pending flags */
-    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+    FLASH_ClearFlags();
 
     /* Erase the Internal Flash pages */
     for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
