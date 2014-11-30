@@ -81,6 +81,21 @@ void WiFiCredentialsReader::read(void)
         print("Your device id is");
         print(id.c_str());
         print("\r\n");
+
+        byte mac[6];
+        WiFi.macAddress(mac);
+        print("MAC: ");
+        serial.print(mac[5],HEX);
+        print(":");
+        serial.print(mac[4],HEX);
+        print(":");
+        serial.print(mac[3],HEX);
+        print(":");
+        serial.print(mac[2],HEX);
+        print(":");
+        serial.print(mac[1],HEX);
+        print(":");
+        serial.print(mac[0],HEX);
     }
     else if ('f' == c)
     {
