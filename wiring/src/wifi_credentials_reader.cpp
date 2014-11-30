@@ -4,7 +4,7 @@
   * @author  Zachary Crockett and Satish Nair
   * @version V1.0.0
   * @date    24-April-2013
-  * @brief  
+  * @brief
   ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
 
@@ -78,6 +78,7 @@ void WiFiCredentialsReader::read(void)
     else if ('i' == c)
     {
         String id = Spark.deviceID();
+        print("Your device id is");
         print(id.c_str());
         print("\r\n");
     }
