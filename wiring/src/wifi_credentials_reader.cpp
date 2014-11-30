@@ -27,6 +27,8 @@
 #include "delay_hal.h"
 #include "spark_utilities.h"
 
+using namespace spark;
+
 WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 {
   this->connect_callback = connect_callback;
