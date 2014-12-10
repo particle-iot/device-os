@@ -176,11 +176,11 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value)
 
     if(value == 0)
     {
-        PIN_MAP[pin].gpio_peripheral->BSRRL = PIN_MAP[pin].gpio_pin;
+        PIN_MAP[pin].gpio_peripheral->BSRRH = PIN_MAP[pin].gpio_pin;
     }
     else
     {
-        PIN_MAP[pin].gpio_peripheral->BSRRH = PIN_MAP[pin].gpio_pin;
+        PIN_MAP[pin].gpio_peripheral->BSRRL = PIN_MAP[pin].gpio_pin;
     }
 }
 
