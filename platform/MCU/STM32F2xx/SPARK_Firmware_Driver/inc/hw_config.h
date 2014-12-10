@@ -110,6 +110,14 @@ uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
 void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
+#ifdef USE_SERIAL_FLASH
+/* Serial Flash Hardware related methods */
+void sFLASH_SPI_DeInit(void);
+void sFLASH_SPI_Init(void);
+void sFLASH_CS_LOW(void);
+void sFLASH_CS_HIGH(void);
+#endif
+
 void USB_Cable_Config(FunctionalState NewState);
 
 #define SYSTEM_FLAG(x) (system_flags.x)

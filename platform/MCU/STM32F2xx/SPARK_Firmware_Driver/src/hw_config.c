@@ -433,6 +433,126 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button)
     BUTTON_DEBOUNCED_TIME[Button] = 0;
 }
 
+#ifdef USE_SERIAL_FLASH
+/**
+ * @brief  DeInitializes the peripherals used by the SPI FLASH driver.
+ * @param  None
+ * @retval None
+ */
+void sFLASH_SPI_DeInit(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    /* Disable the sFLASH_SPI  */
+    SPI_Cmd(sFLASH_SPI, DISABLE);
+
+    /* DeInitializes the sFLASH_SPI */
+    SPI_I2S_DeInit(sFLASH_SPI);
+
+    /* sFLASH_SPI Peripheral clock disable */
+    sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, DISABLE);
+
+    /* Configure all pins used by the SPI as input floating */
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+
+    /* Configure sFLASH_SPI pin: SCK */
+    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_GPIO_PIN;
+    GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
+
+    /* Configure sFLASH_SPI pin: MISO */
+    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_GPIO_PIN;
+    GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
+
+    /* Configure sFLASH_SPI pin: MOSI */
+    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_GPIO_PIN;
+    GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
+
+    /* Configure sFLASH_SPI_CS_GPIO_PIN pin: sFLASH CS pin */
+    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_CS_GPIO_PIN;
+    GPIO_Init(sFLASH_SPI_CS_GPIO_PORT, &GPIO_InitStructure);
+}
+
+/**
+ * @brief  Initializes the peripherals used by the SPI FLASH driver.
+ * @param  None
+ * @retval None
+ */
+void sFLASH_SPI_Init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    SPI_InitTypeDef  SPI_InitStructure;
+
+    /* sFLASH_SPI_CS_GPIO, sFLASH_SPI_SCK_GPIOs, FLASH_SPI_MOSI_GPIO
+       and sFLASH_SPI_MISO_GPIO Periph clock enable */
+    RCC_AHB1PeriphClockCmd(sFLASH_SPI_CS_GPIO_CLK | sFLASH_SPI_SCK_GPIO_CLK |
+            sFLASH_SPI_MOSI_GPIO_CLK | sFLASH_SPI_MISO_GPIO_CLK, ENABLE);
+
+    /* sFLASH_SPI Periph clock enable */
+    sFLASH_SPI_CLK_CMD(sFLASH_SPI_CLK, ENABLE);
+
+    /* Connect SPI pins to AF5 */
+    GPIO_PinAFConfig(sFLASH_SPI_SCK_GPIO_PORT, sFLASH_SPI_SCK_SOURCE, sFLASH_SPI_SCK_AF);
+    GPIO_PinAFConfig(sFLASH_SPI_MISO_GPIO_PORT, sFLASH_SPI_MISO_SOURCE, sFLASH_SPI_MISO_AF);
+    GPIO_PinAFConfig(sFLASH_SPI_MOSI_GPIO_PORT, sFLASH_SPI_MOSI_SOURCE, sFLASH_SPI_MOSI_AF);
+
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+
+    /* Configure sFLASH_SPI pin: SCK */
+    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_SCK_GPIO_PIN;
+    GPIO_Init(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
+
+    /* Configure sFLASH_SPI pin: MOSI */
+    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MOSI_GPIO_PIN;
+    GPIO_Init(sFLASH_SPI_MOSI_GPIO_PORT, &GPIO_InitStructure);
+
+    /* Configure sFLASH_SPI pin: MISO */
+    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_MISO_GPIO_PIN;
+    GPIO_Init(sFLASH_SPI_MISO_GPIO_PORT, &GPIO_InitStructure);
+
+    /* Configure sFLASH_SPI_CS_GPIO_PIN pin: sFLASH CS pin */
+    GPIO_InitStructure.GPIO_Pin = sFLASH_SPI_CS_GPIO_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(sFLASH_SPI_CS_GPIO_PORT, &GPIO_InitStructure);
+
+    /* Deselect the FLASH: Chip Select high */
+    sFLASH_CS_HIGH();
+
+    /* SPI configuration */
+    SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+    SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+    SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+    SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+    SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+    SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+    SPI_InitStructure.SPI_BaudRatePrescaler = sFLASH_SPI_BAUDRATE_PRESCALER;
+    SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+    SPI_InitStructure.SPI_CRCPolynomial = 7;
+    SPI_Init(sFLASH_SPI, &SPI_InitStructure);
+
+    /* Enable the sFLASH_SPI  */
+    SPI_Cmd(sFLASH_SPI, ENABLE);
+}
+
+/* Select sFLASH: Chip Select pin low */
+void sFLASH_CS_LOW(void)
+{
+    GPIO_ResetBits(sFLASH_SPI_CS_GPIO_PORT, sFLASH_SPI_CS_GPIO_PIN);
+}
+
+/* Deselect sFLASH: Chip Select pin high */
+void sFLASH_CS_HIGH(void)
+{
+    GPIO_SetBits(sFLASH_SPI_CS_GPIO_PORT, sFLASH_SPI_CS_GPIO_PIN);
+}
+#endif
+
 /*******************************************************************************
  * Function Name  : USB_Cable_Config
  * Description    : Software Connection/Disconnection of USB Cable
