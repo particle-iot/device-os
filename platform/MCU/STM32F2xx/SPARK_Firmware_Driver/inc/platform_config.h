@@ -106,6 +106,33 @@
 #define USE_USB_OTG_HS
 #endif
 
+#ifdef USE_SERIAL_FLASH
+//SPI FLASH Interface pins
+#define sFLASH_SPI                          SPI2
+#define sFLASH_SPI_CLK                      RCC_APB1Periph_SPI2
+#define sFLASH_SPI_CLK_CMD                  RCC_APB1PeriphClockCmd
+#define sFLASH_SPI_CS_GPIO_PIN              GPIO_Pin_12                 /* PB.12 */
+#define sFLASH_SPI_CS_GPIO_PORT             GPIOB                       /* GPIOB */
+#define sFLASH_SPI_CS_GPIO_CLK              RCC_AHB1Periph_GPIOB
+#define sFLASH_SPI_SCK_GPIO_PIN             GPIO_Pin_13                 /* PB.13 */
+#define sFLASH_SPI_SCK_GPIO_PORT            GPIOB                       /* GPIOB */
+#define sFLASH_SPI_SCK_GPIO_CLK             RCC_AHB1Periph_GPIOB
+#define sFLASH_SPI_SCK_SOURCE               GPIO_PinSource13
+#define sFLASH_SPI_SCK_AF                   GPIO_AF_SPI2
+#define sFLASH_SPI_MISO_GPIO_PIN            GPIO_Pin_14                 /* PB.14 */
+#define sFLASH_SPI_MISO_GPIO_PORT           GPIOB                       /* GPIOB */
+#define sFLASH_SPI_MISO_GPIO_CLK            RCC_AHB1Periph_GPIOB
+#define sFLASH_SPI_MISO_SOURCE              GPIO_PinSource14
+#define sFLASH_SPI_MISO_AF                  GPIO_AF_SPI2
+#define sFLASH_SPI_MOSI_GPIO_PIN            GPIO_Pin_15                 /* PB.15 */
+#define sFLASH_SPI_MOSI_GPIO_PORT           GPIOB                       /* GPIOB */
+#define sFLASH_SPI_MOSI_GPIO_CLK            RCC_AHB1Periph_GPIOB
+#define sFLASH_SPI_MOSI_SOURCE              GPIO_PinSource15
+#define sFLASH_SPI_MOSI_AF                  GPIO_AF_SPI2
+
+#define sFLASH_SPI_BAUDRATE_PRESCALER       SPI_BaudRatePrescaler_4
+#endif
+
 //NVIC Priorities based on NVIC_PriorityGroup_4
 #define SDIO_IRQ_PRIORITY                   0       //??? BCM43362 SDIO Interrupt
 #ifdef USE_USB_OTG_FS
