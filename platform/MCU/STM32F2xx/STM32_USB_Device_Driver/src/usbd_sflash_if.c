@@ -41,8 +41,6 @@ DFU_MAL_Prop_TypeDef DFU_sFlash_cb =
         50  /* Programming Time in ms */
 };
 
-sflash_handle_t sflash_handle;
-
 /* Private functions ---------------------------------------------------------*/
 
 /**
@@ -53,17 +51,7 @@ sflash_handle_t sflash_handle;
  */
 uint16_t sFLASH_If_Init(void)
 {
-    /* Initialise the serial flash driver */
-    /*
-    //currently linking with below WICED API fails hence commented
-    if(init_sflash(&sflash_handle, 0, SFLASH_WRITE_ALLOWED) != 0)
-    {
-        //return MAL_FAIL;
-        //system reset is the only way now to abort the dfu-util host program
-        NVIC_SystemReset();
-    }
-     */
-
+    sFLASH_Init();
     return MAL_OK;
 }
 
@@ -87,16 +75,7 @@ uint16_t sFLASH_If_DeInit(void)
  *******************************************************************************/
 uint16_t sFLASH_If_Erase(uint32_t Add)
 {
-    /*
-    //currently linking with below WICED API fails hence commented
-    if (sflash_sector_erase(&sflash_handle, Add) != 0)
-    {
-        //return MAL_FAIL;
-        //system reset is the only way now to abort the dfu-util host program
-        NVIC_SystemReset();
-    }
-     */
-
+    sFLASH_EraseSector(Add);
     return MAL_OK;
 }
 
@@ -109,16 +88,7 @@ uint16_t sFLASH_If_Erase(uint32_t Add)
  */
 uint16_t sFLASH_If_Write(uint32_t Add, uint32_t Len)
 {
-    /*
-    //currently linking with below WICED API fails hence commented
-    if(sflash_write(&sflash_handle, Add, MAL_Buffer, Len) != 0)
-    {
-        //return MAL_FAIL;
-        //system reset is the only way now to abort the dfu-util host program
-        NVIC_SystemReset();
-    }
-     */
-
+    sFLASH_WriteBuffer(MAL_Buffer, Add, (uint16_t)Len);
     return MAL_OK;
 }
 
@@ -131,16 +101,7 @@ uint16_t sFLASH_If_Write(uint32_t Add, uint32_t Len)
  */
 uint8_t *sFLASH_If_Read (uint32_t Add, uint32_t Len)
 {
-    /*
-    //currently linking with below WICED API fails hence commented
-    if(sflash_read(&sflash_handle, Add, MAL_Buffer, Len) != 0)
-    {
-        //return MAL_FAIL;
-        //system reset is the only way now to abort the dfu-util host program
-        NVIC_SystemReset();
-    }
-     */
-
+    sFLASH_ReadBuffer(MAL_Buffer, Add, (uint16_t)Len);
     return MAL_Buffer;
 }
 
