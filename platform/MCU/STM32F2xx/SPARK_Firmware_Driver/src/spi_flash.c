@@ -27,23 +27,23 @@
 #include "hw_config.h"
 
 /* SST25 SPI Flash supported commands */
-#define sFLASH_CMD_RDSR					0x05		/* Read Status Register */
-#define sFLASH_CMD_WRSR					0x01		/* Write Status Register */
-#define sFLASH_CMD_EWSR					0x50		/* Write Enable Status */
-#define sFLASH_CMD_WRDI					0x04		/* Write Disable */
-#define sFLASH_CMD_WREN					0x06		/* Write Enable */
-#define sFLASH_CMD_READ					0x03		/* Read Data Bytes */
-#define sFLASH_CMD_WRITE 				0x02		/* Byte Program */
-#define sFLASH_CMD_SE             		0x20		/* 4KB Sector Erase instruction */
-#define sFLASH_CMD_BE             		0xC7		/* Bulk Chip Erase instruction */
-#define sFLASH_CMD_RDID            	    0x9F		/* JEDEC ID Read */
+#define sFLASH_CMD_RDSR                 0x05        /* Read Status Register */
+#define sFLASH_CMD_WRSR                 0x01        /* Write Status Register */
+#define sFLASH_CMD_EWSR                 0x50        /* Write Enable Status */
+#define sFLASH_CMD_WRDI                 0x04        /* Write Disable */
+#define sFLASH_CMD_WREN                 0x06        /* Write Enable */
+#define sFLASH_CMD_READ                 0x03        /* Read Data Bytes */
+#define sFLASH_CMD_WRITE                0x02        /* Byte Program */
+#define sFLASH_CMD_SE                   0x20        /* 4KB Sector Erase instruction */
+#define sFLASH_CMD_BE                   0xC7        /* Bulk Chip Erase instruction */
+#define sFLASH_CMD_RDID                 0x9F        /* JEDEC ID Read */
 
-#define sFLASH_WIP_FLAG           	    0x01		/* Write In Progress (WIP) flag */
+#define sFLASH_WIP_FLAG                 0x01        /* Write In Progress (WIP) flag */
 
-#define sFLASH_DUMMY_BYTE         	    0xA5
+#define sFLASH_DUMMY_BYTE               0xA5
 #define sFLASH_PROGRAM_PAGESIZE         0x100       /* 256 bytes */
 
-#define sFLASH_MX25L8006E_ID		    0xC22014	/* JEDEC Read-ID Data */
+#define sFLASH_MX25L8006E_ID            0xC22014    /* JEDEC Read-ID Data */
 
 /* Local function forward declarations ---------------------------------------*/
 static void sFLASH_WritePage(const uint8_t* pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
@@ -415,8 +415,8 @@ int sFLASH_SelfTest(void)
 {
     uint32_t FLASH_TestAddress = 0x000000;
     //Note: Make sure BufferSize should be Even and not Zero
-    uint8_t Tx_Buffer[1000];// = "Test communication with SPI FLASH!";//BufferSize = 34
-    uint32_t BufferSize = 1000;
+    uint8_t Tx_Buffer[] = "Test communication with SPI FLASH!";//BufferSize = 34
+    uint32_t BufferSize = (sizeof(Tx_Buffer) / sizeof(*(Tx_Buffer))) - 1;
     uint8_t Rx_Buffer[BufferSize];
     uint8_t Index = 0;
     uint32_t FlashID = 0;
