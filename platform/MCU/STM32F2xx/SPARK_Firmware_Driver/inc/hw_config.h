@@ -35,6 +35,7 @@
 #include "system_tick_hal.h"
 #include "usb_hal.h"
 #include "platform_system_flags.h"
+#include "spi_flash.h"
 
 #ifdef __cplusplus
 extern "C" {

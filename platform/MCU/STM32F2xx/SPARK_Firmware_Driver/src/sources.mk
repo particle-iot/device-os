@@ -14,6 +14,7 @@ CSRC += $(TARGET_SPARK_SRC_PATH)/hw_config.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/usb_bsp.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/usbd_usr.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/usbd_desc.c
+CSRC += $(TARGET_SPARK_SRC_PATH)/spi_flash.c
 
 # C++ source files included in this build.
 CPPSRC +=
