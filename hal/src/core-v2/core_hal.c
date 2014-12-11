@@ -115,7 +115,9 @@ void HAL_Core_Config(void)
     Load_SystemFlags();
 #endif
 
+#ifdef USE_SERIAL_FLASH
     sFLASH_Init();
+#endif
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
