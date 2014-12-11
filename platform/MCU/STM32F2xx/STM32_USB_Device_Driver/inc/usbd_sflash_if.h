@@ -20,9 +20,9 @@
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
 #define sFLASH_START_ADD                  0x00000000
+#define sFLASH_END_ADD                    0x00100000
 
-#define sFLASH_END_ADD                    0x001F4000
-#define sFLASH_IF_STRING                  "@Serial Flash   /0x00000000/512*004Kg"
+#define sFLASH_IF_STRING                  "@Serial Flash   /0x00000000/256*004Kg"
 
 extern DFU_MAL_Prop_TypeDef DFU_sFlash_cb;
 
