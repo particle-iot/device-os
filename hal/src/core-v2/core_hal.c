@@ -114,6 +114,8 @@ void HAL_Core_Config(void)
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
 #endif
+
+    sFLASH_Init();
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
