@@ -24,31 +24,39 @@
  */
 
 #include "ota_flash_hal.h"
+#include "hw_config.h"
 #include "dct_hal.h"
 #include <cstring>
 
 uint32_t HAL_OTA_FlashAddress()
 {
+#ifdef USE_SERIAL_FLASH
+    return EXTERNAL_FLASH_OTA_ADDRESS;
+#else
     return 0;
+#endif
 }
+
+#define FLASH_MAX_SIZE  (int32_t)(INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS)
 
 uint32_t HAL_OTA_FlashLength()
 {
-    return 0;
+    return FLASH_MAX_SIZE;
 }
     
-
 void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize) 
 {
+    FLASH_Begin(sFLASH_Address, fileSize);
 }
 
 uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize) 
 {
-    return 0;
+    return FLASH_Update(pBuffer, bufferSize);
 }
 
 void HAL_FLASH_End(void) 
-{    
+{
+    FLASH_End();
 }
 
 
@@ -66,11 +74,12 @@ void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 
 bool HAL_OTA_Flashed_GetStatus(void) 
 {
-    return false;
+    return OTA_Flashed_GetStatus();
 }
 
 void HAL_OTA_Flashed_ResetStatus(void)
 {    
+    OTA_Flashed_ResetStatus();
 }
 
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
