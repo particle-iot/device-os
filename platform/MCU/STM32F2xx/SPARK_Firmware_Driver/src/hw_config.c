@@ -305,16 +305,28 @@ void LED_Init(Led_TypeDef Led)
 
 void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
 {
+#ifdef RGB_LINES_REVERSED
+    TIM2->CCR4 = r;
+    TIM2->CCR3 = g;
+    TIM2->CCR2 = b;
+#else
     TIM2->CCR2 = r;
     TIM2->CCR3 = g;
     TIM2->CCR4 = b;
+#endif
 }
 
 void Get_RGB_LED_Values(uint16_t* values)
 {
+#ifdef RGB_LINES_REVERSED
     values[0] = TIM2->CCR2;
     values[1] = TIM2->CCR3;
     values[2] = TIM2->CCR4;
+#else
+    values[0] = TIM2->CCR4;
+    values[1] = TIM2->CCR3;
+    values[2] = TIM2->CCR2;
+#endif
 }
 
 void Set_User_LED(uint8_t state)

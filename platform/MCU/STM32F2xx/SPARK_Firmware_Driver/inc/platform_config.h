@@ -101,6 +101,8 @@
 #define USE_USB_OTG_FS
 //BM-14 has serial flash
 #define USE_SERIAL_FLASH
+//On Pigtail board with BM-14, RGB lines are reversed
+#define RGB_LINES_REVERSED
 #elif (SPARK_PRODUCT_ID == 4 || SPARK_PRODUCT_ID == 6)
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
