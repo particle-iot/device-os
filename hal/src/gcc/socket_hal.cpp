@@ -27,6 +27,7 @@
 #include "core_msg.h"
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wmissing-braces"
 #include <boost/array.hpp>
 
 // conflict of types
@@ -43,7 +44,7 @@ boost::asio::io_service io_service;
 boost::system::error_code ec;
 
 boost::array<ip::tcp::socket, 8> handles = {
-    ip::tcp::socket(io_service),
+    ip::tcp::socket({io_service}),
     ip::tcp::socket(io_service),
     ip::tcp::socket(io_service),
     ip::tcp::socket(io_service),
@@ -108,7 +109,7 @@ int32_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen)
     // 2-5 are IP address in network byte order
     const uint8_t* dest = addr->sa_data+2;
     
-    ip::address_v4::bytes_type address = { dest[0], dest[1], dest[2], dest[3] };
+    ip::address_v4::bytes_type address = {{ dest[0], dest[1], dest[2], dest[3] }};
     ip::tcp::endpoint endpoint(boost::asio::ip::address_v4(address),port);
 
     handle.connect(endpoint, ec);
@@ -203,5 +204,8 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
     return 0;
 }
 
+uint8_t socket_handle_valid(sock_handle_t handle) {
+    return is_valid(from(handle));
+}
 
 

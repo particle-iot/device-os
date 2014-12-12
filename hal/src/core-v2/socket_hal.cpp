@@ -83,6 +83,9 @@ inline bool is_valid(sock_handle_t handle) {
     return handle<SOCKET_MAX;
 }
 
+uint8_t socket_handle_valid(sock_handle_t handle) {
+    return is_valid(handle);    
+}
 
 /**
  * Fetches the tcp_socket_t info from an opaque handle. 

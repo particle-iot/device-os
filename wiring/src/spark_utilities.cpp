@@ -806,7 +806,7 @@ int Spark_Connect(void)
   sparkSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   DEBUG("socketed sparkSocket=%d",sparkSocket);
 
-  if (sparkSocket < 0)
+  if (!socket_handle_valid(sparkSocket))
   {
     return -1;
   }
@@ -870,7 +870,7 @@ int Spark_Disconnect(void)
 {
   int retVal= 0;
   DEBUG("");
-  if (sparkSocket >= 0)
+  if (socket_handle_valid(sparkSocket))
   {
 #if defined(SEND_ON_CLOSE)
       DEBUG("send");

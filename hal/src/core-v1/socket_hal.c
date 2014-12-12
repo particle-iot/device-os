@@ -163,6 +163,10 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
     return sendto(sd, buffer, len, flags, (sockaddr*)addr, addr_size);
 }
 
+uint8_t socket_handle_valid(sock_handle_t handle) 
+{
+    return handle<SOCKET_MAX;
+}
 
 const sock_handle_t SOCKET_MAX = (sock_handle_t)8;
 const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;

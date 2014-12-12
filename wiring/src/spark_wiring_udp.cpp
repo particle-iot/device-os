@@ -49,7 +49,7 @@ uint8_t UDP::begin(uint16_t port)
 	{
 	   _sock = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         DEBUG("socket=%d",_sock);
-        if (_sock >= 0)
+        if (socket_handle_valid(_sock))
         {
             flush();
             _port = port;

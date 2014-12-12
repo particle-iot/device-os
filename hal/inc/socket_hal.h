@@ -50,6 +50,7 @@ static const uint8_t SOCKET_STATUS_ACTIVE = 0;
 
 uint8_t socket_active_status(sock_handle_t socket);
 
+uint8_t socket_handle_valid(sock_handle_t handle);
 
 sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol);
 

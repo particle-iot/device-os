@@ -31,8 +31,17 @@
 #include <cstdarg>
 #include <cstdint>
 #include <iostream>
+#include "filesystem.h"
 
 using std::cout;
+
+class Stream;
+extern "C" bool Ymodem_Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress)
+{
+    return false;
+}
+
+
 
 void debug_output_(const char* msg) {
     cout << msg << std::endl;
@@ -92,8 +101,7 @@ void HAL_Core_Config(void)
     char hex[len*2+1];
     HAL_device_ID(id, len);
     *bytes2hex(id, hex, len)=0;
-        
-    MSG("Virtual core started");
+    
     MSG("Core device id %s", hex);    
 }
 
@@ -227,7 +235,11 @@ void HAL_Core_Init(void)
 {    
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc>1) {
+        printf("set keys folder to %s\n", argv[1]);
+        set_root_dir(argv[1]);
+    }
     app_setup_and_loop();    
     return 0;
 }

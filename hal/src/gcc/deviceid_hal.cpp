@@ -27,12 +27,32 @@
 #include "deviceid_hal.h"
 #include <stddef.h>
 #include <algorithm>
+#include "filesystem.h"
+#include <string.h>
+#include <cstdio>
 
-const char* device_id = "\x48\xff\x6b\x06\x50\x67\x55\x50\x37\x34\x13\x87";
+
+uint8_t hex2dec(char c) {
+    if (c<='9')
+        return uint8_t(c-'0');
+    if (c<='Z')
+        return uint8_t(c-'A');
+    return uint8_t(c-'a');
+}
+
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {    
-    memcpy(dest, device_id, std::min(destLen, 12u));
+    char text[24];
+    read_file("id", text, 24);
+    uint8_t id[12];
+    int idx=0;
+    for (int i=0; i<sizeof(text); i+=2) {
+        char c1 = text[i];
+        char c2 = text[i+1];
+        uint8_t b = hex2dec(c1) << 4 | hex2dec(c2);
+        id[idx++] = b;
+    }
     return 12;
 }
 

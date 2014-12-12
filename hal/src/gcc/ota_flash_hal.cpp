@@ -2,14 +2,7 @@
 #include <string.h>
 #include <cstdio>
 
-void read_file(const char* filename, void* data, size_t length)
-{
-    FILE *f = fopen(filename, "rb");    
-    if (f!=NULL) {
-        fread(data, length, 1, f);
-        fclose(f);
-    }
-}
+#include "filesystem.h"
 
 uint32_t HAL_OTA_FlashAddress()
 {

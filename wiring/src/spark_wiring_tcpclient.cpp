@@ -76,7 +76,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
           _sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
           DEBUG("socket=%d",_sock);
 
-          if (_sock >= 0)
+          if (socket_handle_valid(_sock))
           {
             flush();
 

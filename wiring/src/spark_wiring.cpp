@@ -238,7 +238,7 @@ void delay(unsigned long ms)
     volatile system_tick_t elapsed_millis = current_millis - last_millis;
 
     //Check for wrapping
-    if (elapsed_millis < 0)
+    if (elapsed_millis >= 0x80000000)
     {
       elapsed_millis = last_millis + current_millis;
     }
@@ -279,7 +279,7 @@ int loopFrequencyHz()
   if(NULL != loop_frequency_hz)
   {
     return loop_frequency_hz();
-  }
+}
 
   return -1;
 }

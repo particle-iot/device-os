@@ -148,7 +148,7 @@ public:
     : resolver_(io_service), socket_(io_service, icmp::v4()),
       timer_(io_service), sequence_number_(0), num_replies_(0)
   {
-    boost::asio::ip::address_v4::bytes_type address = { destinationIP[3], destinationIP[2], destinationIP[1], destinationIP[0] };
+    boost::asio::ip::address_v4::bytes_type address = { { destinationIP[3], destinationIP[2], destinationIP[1], destinationIP[0] } };
     destination_ = icmp::endpoint(boost::asio::ip::address_v4(address),0);
     start_send();
     start_receive();

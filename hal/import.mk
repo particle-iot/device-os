@@ -10,8 +10,9 @@ include $(call rwildcard,$(HAL_MODULE_PATH)/src/$(PLATFORM_NAME)/,include.mk)
 
 ifeq "$(ARCH)" "gcc"
 # additional libraries required by gcc build
-LIBS += boost_system-mgw48-mt-1_57 ws2_32 wsock32
+#LIBS += boost_system-mgw48-mt-1_57 ws2_32 wsock32
 LIB_DIRS += $(BOOST_ROOT)/stage/lib
+LIBS += boost_system
 
 # gcc HAL is different for test driver and test subject
 ifeq "$(SPARK_TEST_DRIVER)" "1"
