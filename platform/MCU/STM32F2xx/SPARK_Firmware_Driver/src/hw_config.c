@@ -911,7 +911,10 @@ void OTA_Flash_Reset(void)
 {
 #ifdef USE_SERIAL_FLASH
     //First take backup of the current application firmware to External Flash
-    FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
+    //Commented now since on BM-14 there's not much external flash space.
+    //By uncommenting the below code, the crucial factory reset firmware
+    //is at risk of corruption.
+    //FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
 
     system_flags.FLASH_OTA_Update_SysFlag = 0x5555;
     Save_SystemFlags();
