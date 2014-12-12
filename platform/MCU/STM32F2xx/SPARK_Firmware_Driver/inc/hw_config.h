@@ -62,9 +62,8 @@ typedef enum
 #   error "INTERNAL_FLASH_SIZE not defined"
 #endif
 
-// Firmware image size is usually same size as internal flash
 #ifndef FIRMWARE_IMAGE_SIZE
-#define FIRMWARE_IMAGE_SIZE INTERNAL_FLASH_SIZE
+#define FIRMWARE_IMAGE_SIZE         (0x7E000) //504K
 #endif
 
 #if FIRMWARE_IMAGE_SIZE > INTERNAL_FLASH_SIZE 
@@ -81,7 +80,21 @@ typedef enum
 //Main firmware begin address after 128KB (4 x 16K + 64K) from start of flash
 #define CORE_FW_ADDRESS             ((uint32_t)0x08020000)
 #define APP_START_MASK              ((uint32_t)0x2FF10000)
-/* Internal Flash memory address where the System Flags will be saved and loaded from  */
+
+#define INTERNAL_FLASH_END_ADDRESS  ((uint32_t)CORE_FW_ADDRESS+FIRMWARE_IMAGE_SIZE)    //For 1MB Internal Flash
+/* Internal Flash page size */
+#define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x20000) //128K (7 sectors of 128K each used by main firmware)
+
+#ifdef USE_SERIAL_FLASH
+/* External Flash block size allocated for firmware storage */
+#define EXTERNAL_FLASH_BLOCK_SIZE   ((uint32_t)FIRMWARE_IMAGE_SIZE)
+/* External Flash memory address where Factory programmed core firmware is located */
+#define EXTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)0x4000)
+/* External Flash memory address where core firmware will be saved for backup/restore */
+#define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)EXTERNAL_FLASH_FAC_ADDRESS)
+/* External Flash memory address where OTA upgraded core firmware will be saved */
+#define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_BKP_ADDRESS))
+#endif
 
 /* Bootloader Flash regions that needs to be protected: 0x08000000 - 0x08003FFF */
 #define BOOTLOADER_FLASH_PAGES      (OB_WRP_Sector_0) //Sector 0
@@ -135,6 +148,7 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors);
 void FLASH_Erase(void);
 void FLASH_Backup(uint32_t FLASH_Address);
 void FLASH_Restore(uint32_t FLASH_Address);
+uint32_t FLASH_PagesMask(uint32_t fileSize);
 void FLASH_Begin(uint32_t FLASH_Address, uint32_t fileSize);
 uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
 void FLASH_End(void);
