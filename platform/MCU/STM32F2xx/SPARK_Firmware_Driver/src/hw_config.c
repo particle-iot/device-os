@@ -62,6 +62,18 @@ const uint16_t BUTTON_EXTI_IRQn[] = {BUTTON1_EXTI_IRQn};
 const uint8_t BUTTON_EXTI_IRQ_PRIORITY[] = {BUTTON1_EXTI_IRQ_PRIORITY};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER};
 
+uint32_t Internal_Flash_Address = 0;
+uint32_t Internal_Flash_Data = 0;
+uint16_t Flash_Update_Index = 0;
+uint32_t EraseCounter = 0;
+uint32_t NbrOfPage = 0;
+volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
+#ifdef USE_SERIAL_FLASH
+uint32_t External_Flash_Address = 0;
+uint8_t External_Flash_Data[4];
+static uint32_t External_Flash_Start_Address = 0;
+#endif
+
 /* Extern variables ----------------------------------------------------------*/
 extern USB_OTG_CORE_HANDLE USB_OTG_dev;
 
@@ -696,59 +708,236 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
 
 void FLASH_Erase(void)
 {
-    //To Do
+    FLASHStatus = FLASH_COMPLETE;
+
+    /* Unlock the Flash Program Erase Controller */
+    FLASH_Unlock();
+
+    /* Define the number of Internal Flash pages to be erased */
+    NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS) / INTERNAL_FLASH_PAGE_SIZE;
+
+    /* Clear All pending flags */
+    FLASH_ClearFlags();
+
+    /* Erase the Internal Flash pages */
+    for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
+    {
+        FLASHStatus = FLASH_EraseSector(FLASH_Sector_5 + (8 * EraseCounter), VoltageRange_3);
+    }
+
+    /* Locks the FLASH Program Erase Controller */
+    FLASH_Lock();
 }
 
 void FLASH_Backup(uint32_t FLASH_Address)
 {
-    //To Do
+#ifdef USE_SERIAL_FLASH
+    /* Initialize SPI Flash */
+    sFLASH_Init();
+
+    /* Define the number of External Flash pages to be erased */
+    NbrOfPage = EXTERNAL_FLASH_BLOCK_SIZE / sFLASH_PAGESIZE;
+
+    /* Erase the SPI Flash pages */
+    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
+    {
+        sFLASH_EraseSector(FLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
+    }
+
+    Internal_Flash_Address = CORE_FW_ADDRESS;
+    External_Flash_Address = FLASH_Address;
+
+    /* Program External Flash */
+    while (Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS)
+    {
+        /* Read data from Internal Flash memory */
+        Internal_Flash_Data = (*(__IO uint32_t*) Internal_Flash_Address);
+        Internal_Flash_Address += 4;
+
+        /* Program Word to SPI Flash memory */
+        External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
+        External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
+        External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
+        External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);
+        //OR
+        //*((uint32_t *)External_Flash_Data) = Internal_Flash_Data;
+        sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
+        External_Flash_Address += 4;
+    }
+#endif
 }
 
 void FLASH_Restore(uint32_t FLASH_Address)
 {
-    //To Do
+#ifdef USE_SERIAL_FLASH
+    /* Initialize SPI Flash */
+    sFLASH_Init();
+
+    FLASH_Erase();
+
+    Internal_Flash_Address = CORE_FW_ADDRESS;
+    External_Flash_Address = FLASH_Address;
+
+    /* Unlock the Flash Program Erase Controller */
+    FLASH_Unlock();
+
+    /* Program Internal Flash Bank1 */
+    while ((Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS) && (FLASHStatus == FLASH_COMPLETE))
+    {
+        /* Read data from SPI Flash memory */
+        sFLASH_ReadBuffer(External_Flash_Data, External_Flash_Address, 4);
+        External_Flash_Address += 4;
+
+        /* Program Word to Internal Flash memory */
+        Internal_Flash_Data = (uint32_t)(External_Flash_Data[0] | (External_Flash_Data[1] << 8) | (External_Flash_Data[2] << 16) | (External_Flash_Data[3] << 24));
+        //OR
+        //Internal_Flash_Data = *((uint32_t *)External_Flash_Data);
+        FLASHStatus = FLASH_ProgramWord(Internal_Flash_Address, Internal_Flash_Data);
+        Internal_Flash_Address += 4;
+    }
+
+    /* Locks the FLASH Program Erase Controller */
+    FLASH_Lock();
+#endif
+}
+
+uint32_t FLASH_PagesMask(uint32_t fileSize)
+{
+    //Calculate the number of flash pages that needs to be erased
+    uint32_t numPages = 0x0;
+
+#ifdef USE_SERIAL_FLASH
+    if ((fileSize % sFLASH_PAGESIZE) != 0)
+    {
+        numPages = (fileSize / sFLASH_PAGESIZE) + 1;
+    }
+    else
+    {
+        numPages = fileSize / sFLASH_PAGESIZE;
+    }
+#endif
+
+    return numPages;
 }
 
 void FLASH_Begin(uint32_t FLASH_Address, uint32_t fileSize)
 {
-    //To Do
+#ifdef USE_SERIAL_FLASH
+    system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
+    Save_SystemFlags();
+
+    Flash_Update_Index = 0;
+    External_Flash_Start_Address = FLASH_Address;
+    External_Flash_Address = External_Flash_Start_Address;
+
+    /* Define the number of External Flash pages to be erased */
+    NbrOfPage = FLASH_PagesMask(fileSize);
+
+    /* Erase the SPI Flash pages */
+    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
+    {
+        sFLASH_EraseSector(External_Flash_Start_Address + (sFLASH_PAGESIZE * EraseCounter));
+    }
+#endif
 }
 
 uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 {
-    //To Do
-    return 0;
+#ifdef USE_SERIAL_FLASH
+    uint8_t *writeBuffer = pBuffer;
+    uint8_t readBuffer[bufferSize];
+
+    /* Write Data Buffer to SPI Flash memory */
+    sFLASH_WriteBuffer(writeBuffer, External_Flash_Address, bufferSize);
+
+    /* Read Data Buffer from SPI Flash memory */
+    sFLASH_ReadBuffer(readBuffer, External_Flash_Address, bufferSize);
+
+    /* Is the Data Buffer successfully programmed to SPI Flash memory */
+    if (0 == memcmp(writeBuffer, readBuffer, bufferSize))
+    {
+        External_Flash_Address += bufferSize;
+        Flash_Update_Index += 1;
+    }
+    else
+    {
+        /* Erase the problematic SPI Flash pages and back off the chunk index */
+        External_Flash_Address = ((uint32_t)(External_Flash_Address / sFLASH_PAGESIZE)) * sFLASH_PAGESIZE;
+        sFLASH_EraseSector(External_Flash_Address);
+        Flash_Update_Index = (uint16_t)((External_Flash_Address - External_Flash_Start_Address) / bufferSize);
+    }
+#endif
+
+    return Flash_Update_Index;
 }
 
 void FLASH_End(void)
 {
-    //To Do
+#ifdef USE_SERIAL_FLASH
+    system_flags.FLASH_OTA_Update_SysFlag = 0x0005;
+    Save_SystemFlags();
+
+    RTC_WriteBackupRegister(RTC_BKP_DR10, 0x0005);
+
+    USB_Cable_Config(DISABLE);
+
+    NVIC_SystemReset();
+#endif
 }
 
 void FACTORY_Flash_Reset(void)
 {
-    //To Do
+#ifdef USE_SERIAL_FLASH
+    // Restore the Factory programmed application firmware from External Flash
+    FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
+
+    system_flags.Factory_Reset_SysFlag = 0xFFFF;
+
+    Finish_Update();
+#endif
 }
 
 void BACKUP_Flash_Reset(void)
 {
-    //To Do
+#ifdef USE_SERIAL_FLASH
+    //Restore the Backup programmed application firmware from External Flash
+    FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
+
+    Finish_Update();
+#endif
 }
 
 void OTA_Flash_Reset(void)
 {
-    //To Do
+#ifdef USE_SERIAL_FLASH
+    //First take backup of the current application firmware to External Flash
+    FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
+
+    system_flags.FLASH_OTA_Update_SysFlag = 0x5555;
+    Save_SystemFlags();
+    RTC_WriteBackupRegister(RTC_BKP_DR10, 0x5555);
+
+    //Restore the OTA programmed application firmware from External Flash
+    FLASH_Restore(EXTERNAL_FLASH_OTA_ADDRESS);
+
+    system_flags.OTA_FLASHED_Status_SysFlag = 0x0001;
+
+    Finish_Update();
+#endif
 }
 
 bool OTA_Flashed_GetStatus(void)
 {
-    //To Do
-    return false;
+    if(system_flags.OTA_FLASHED_Status_SysFlag == 0x0001)
+        return true;
+    else
+        return false;
 }
 
 void OTA_Flashed_ResetStatus(void)
 {
-    //To Do
+    system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
+    Save_SystemFlags();
 }
 
 /*******************************************************************************
@@ -763,6 +952,8 @@ void Finish_Update(void)
     Save_SystemFlags();
 
     RTC_WriteBackupRegister(RTC_BKP_DR10, 0x5000);
+
+    USB_Cable_Config(DISABLE);
 
     NVIC_SystemReset();
 }
