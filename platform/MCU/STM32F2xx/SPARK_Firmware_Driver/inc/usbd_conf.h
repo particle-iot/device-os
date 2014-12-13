@@ -34,8 +34,15 @@
 #include "usb_conf.h"
 #include "hw_config.h"
 
+/* Maximum number of supported media (Flash, sFlash & DCT) */
+#ifdef USE_SERIAL_FLASH
+#define MAX_USED_MEDIA                  3
+#else
+#define MAX_USED_MEDIA                  2
+#endif
+
 #define USBD_CFG_MAX_NUM                1
-#define USBD_ITF_MAX_NUM                3      /* MAX_USED_MEDIA */
+#define USBD_ITF_MAX_NUM                MAX_USED_MEDIA
 #define USB_MAX_STR_DESC_SIZ            255
 #define USB_SUPPORT_USER_STRING_DESC
 
@@ -46,9 +53,6 @@
 
 #define DFU_IN_EP                       0x80
 #define DFU_OUT_EP                      0x00
-
-/* Maximum number of supported media (Flash, sFlash & DCT) */
-#define MAX_USED_MEDIA                  3
 
 /* Flash memory address from where user application will be loaded 
    This address represents the DFU code protected against write and erase operations.*/
