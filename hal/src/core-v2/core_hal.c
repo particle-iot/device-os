@@ -34,6 +34,27 @@
 #include "delay_hal.h"
 #include "wiced.h"
 
+/**
+ * Start of interrupt vector table.
+ */
+extern char link_interrupt_vectors_location;
+
+extern char link_ram_interrupt_vectors_location;
+extern char link_ram_interrupt_vectors_location_end;
+
+const unsigned SysTickIndex = 15;
+
+void SysTickOverride(void); 
+
+void override_interrupts(void) {
+    
+    memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
+    uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
+    isrs[SysTickIndex] = (uint32_t)SysTickOverride;    
+    SCB->VTOR = (unsigned long)isrs;
+}
+
+
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
@@ -78,6 +99,8 @@ void HAL_Core_Config(void)
 
     Set_System();
 
+    override_interrupts();
+    
     /* Register Mode Button Interrupt Handler (WICED hack for Mode Button usage) */
     HAL_EXTI_Register_Handler(BUTTON1_EXTI_LINE, Mode_Button_EXTI_irq);
 
@@ -85,9 +108,8 @@ void HAL_Core_Config(void)
 
     /* Enable CRC clock */
     //To Do
-
     RTC_Configuration();
-
+        
     /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
     HAL_Core_Execute_Stop_Mode();
 
@@ -108,7 +130,7 @@ void HAL_Core_Config(void)
 
     /* We are duplicating the IWDG call here for compatibility with old bootloader */
     /* Set IWDG Timeout to 3 secs */
-    IWDG_Reset_Enable(3 * TIMING_IWDG_RELOAD);
+    //IWDG_Reset_Enable(3 * TIMING_IWDG_RELOAD);
 #endif
 
 #ifdef DFU_BUILD_ENABLE
@@ -214,8 +236,11 @@ void application_start() {
  * The following tick hook will only get called if configUSE_TICK_HOOK
  * is set to 1 within FreeRTOSConfig.h
  */
-void vApplicationTickHook(void)
-{
+void SysTickOverride(void)
+{    
+    void (*chain)(void) = (void (*)(void))((uint32_t*)&link_interrupt_vectors_location)[SysTickIndex];
+    chain();    
+
     System1MsTick();
 
     if (TimingDelay != 0x00)
@@ -227,6 +252,7 @@ void vApplicationTickHook(void)
     {
         HAL_SysTick_Handler();
     }
+    
 }
 
 /**
@@ -273,3 +299,4 @@ void TIM2_irq(void)
         }
     }
 }
+

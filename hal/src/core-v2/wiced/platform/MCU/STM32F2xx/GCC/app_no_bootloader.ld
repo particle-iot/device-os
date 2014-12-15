@@ -22,7 +22,10 @@ SECTIONS
     {
         link_interrupt_vectors_location = .;
         KEEP(*(*.interrupt_vector_table))
+        link_interrupt_vectors_location_end = .;
     }>APP_FLASH  AT> APP_FLASH
+
+    interrupt_vectors_length = link_interrupt_vectors_location_end - link_interrupt_vectors_location;
 
     .text :
     {
@@ -82,6 +85,13 @@ SECTIONS
         *(.ARM.extab*)
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
+
+    .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
+    {
+        link_ram_interrupt_vectors_location = .;
+        . = . + interrupt_vectors_length;
+        link_ram_interrupt_vectors_location_end = .;
+    }> SRAM
 
     .fast : /* This section contains code that is run from RAM after being loaded from flash - functions can be put in this section with the C attribute: __attribute__ ((section (".fast"))) */
     {
@@ -159,3 +169,7 @@ PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
 PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
 PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
 
+PROVIDE( VTOR_Length = interrupt_vectors_length );
+
+ASSERT( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );
+ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location ) == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
