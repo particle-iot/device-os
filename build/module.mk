@@ -129,7 +129,7 @@ size: $(TARGET_BASE).elf
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@
 	$(call,echo,)
 
-$(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ) $(LIB_DEPS)
+$(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
 	$(call,echo,'Building target: $@')
 	$(call,echo,'Invoking: ARM GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
