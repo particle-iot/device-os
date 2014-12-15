@@ -144,12 +144,17 @@ void HAL_Core_System_Reset(void)
 
 void HAL_Core_Factory_Reset(void)
 {
-    //To Do
+    system_flags.Factory_Reset_SysFlag = 0xAAAA;
+    Save_SystemFlags();
+    HAL_Core_System_Reset();
 }
 
 void HAL_Core_Enter_Bootloader(void)
 {
-    //To Do
+    RTC_WriteBackupRegister(RTC_BKP_DR10, 0xFFFF);
+    system_flags.FLASH_OTA_Update_SysFlag = 0xFFFF;
+    Save_SystemFlags();
+    HAL_Core_System_Reset();
 }
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
