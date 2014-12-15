@@ -74,6 +74,12 @@ PLATFORM_NET=BCM9WCDUSI09
 PRODUCT_DESC=PHOTON
 endif
 
+PLATFORM_DFU = 0x08020000
+ifeq ("$(PLATFORM_NAME)","core-v1")
+    PLATFORM_DFU = 0x08005000
+endif
+
+
 ifeq ("$(PLATFORM_MCU)","")
 $(error PLATFORM_MCU not defined. Check product id $(SPARK_PRODUCT_ID))
 endif

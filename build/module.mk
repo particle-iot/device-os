@@ -90,7 +90,7 @@ none:
 # in bootloader mode before invoking 'make program-dfu'
 program-dfu: $(TARGET_BASE).dfu
 	@echo Flashing using dfu:
-	$(DFU) -d 1d50:607f -a 0 -s 0x08005000:leave -D $<
+	$(DFU) -d 1d50:607f -a 0 -s $(PLATFORM_DFU):leave -D $<
 
 # Program the core using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
 # have been defined in the environment before invoking 'make program-cloud'
