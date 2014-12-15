@@ -84,7 +84,7 @@ void HAL_Core_Config(void)
     SysTick_Configuration();
 
     /* Enable CRC clock */
-    //To Do
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_CRC, ENABLE);
 
     RTC_Configuration();
 
@@ -185,8 +185,44 @@ void HAL_Core_Execute_Standby_Mode(void)
  */
 uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
 {
-    //To Do
-    return 0;
+    /* Hardware CRC32 calculation */
+    uint32_t i, j;
+    uint32_t Data;
+
+    CRC_ResetDR();
+
+    i = bufferSize >> 2;
+
+    while (i--)
+    {
+        Data = *((uint32_t *)pBuffer);
+        pBuffer += 4;
+
+        Data = __RBIT(Data);//reverse the bit order of input Data
+        CRC->DR = Data;
+    }
+
+    Data = CRC->DR;
+    Data = __RBIT(Data);//reverse the bit order of output Data
+
+    i = bufferSize & 3;
+
+    while (i--)
+    {
+        Data ^= (uint32_t)*pBuffer++;
+
+        for (j = 0 ; j < 8 ; j++)
+        {
+            if (Data & 1)
+                Data = (Data >> 1) ^ 0xEDB88320;
+            else
+                Data >>= 1;
+        }
+    }
+
+    Data ^= 0xFFFFFFFF;
+
+    return Data;
 }
 
 // todo find a technique that allows accessor functions to be inlined while still keeping
