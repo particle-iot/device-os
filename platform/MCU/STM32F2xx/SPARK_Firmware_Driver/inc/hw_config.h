@@ -148,8 +148,8 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors);
 void FLASH_Erase(void);
 void FLASH_Backup(uint32_t FLASH_Address);
 void FLASH_Restore(uint32_t FLASH_Address);
-uint32_t FLASH_PagesMask(uint32_t fileSize);
-void FLASH_Begin(uint32_t FLASH_Address, uint32_t fileSize);
+uint32_t FLASH_PagesMask(uint32_t imageSize, uint32_t pageSize);
+void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize);
 uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
 void FLASH_End(void);
 
