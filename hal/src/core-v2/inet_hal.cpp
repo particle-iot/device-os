@@ -30,8 +30,8 @@ int inet_gethostbyname(char* hostname, uint16_t hostnameLen, uint32_t* out_ip_ad
 {
     wiced_ip_address_t address;
     address.version = WICED_IPV4;
-    wiced_result_t result = wiced_hostname_lookup (hostname, &address, 1000);
-    *out_ip_addr = address.ip.v4;
+    wiced_result_t result = wiced_hostname_lookup (hostname, &address, 5000);
+    *out_ip_addr = GET_IPV4_ADDRESS(address);
     return result;
 }
 
