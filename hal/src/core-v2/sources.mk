@@ -3,13 +3,45 @@ HAL_SRC_TEMPLATE_PATH = $(TARGET_HAL_PATH)/src/template
 HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/core-v2
 
 # private includes - WICED is not exposed to the HAL clients
-# find all .h files, convert to directory and remove duplicates
-HAL_WICED_INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_COREV2_PATH)/,*.h))
-HAL_WICED_INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced
-HAL_WICED_INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced/WWD
-HAL_WICED_INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced/network/LwIP/ver1.4.0.rc1/src/include
-HAL_WICED_INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/wiced/network/LwIP/ver1.4.0.rc1/src/include/ipv4
-INCLUDE_DIRS += $(sort $(HAL_WICED_INCLUDE_DIRS))
+
+HAL_WICED_INCLUDE_DIRS +=   include
+HAL_WICED_INCLUDE_DIRS +=   platforms/$(PLATFORM_NET)			    
+HAL_WICED_INCLUDE_DIRS +=   libraries/daemons/DNS_redirect \
+			    libraries/utilities/ring_buffer
+HAL_WICED_INCLUDE_DIRS +=   wiced
+HAL_WICED_INCLUDE_DIRS +=   wiced/network/$(HAL_WICED_NETWORK) \
+			    wiced/network/$(HAL_WICED_NETWORK)/WWD \
+			    wiced/network/$(HAL_WICED_NETWORK)/WICED
+HAL_WICED_INCLUDE_DIRS +=   wiced/platform/ARM_CM3 \
+			    wiced/platform/ARM_CM3/CMSIS \
+			    wiced/platform/GCC \
+			    wiced/platform/include \
+			    wiced/platform/MCU \
+			    wiced/platform/MCU/STM32F2xx \
+			    wiced/platform/MCU/STM32F2xx/peripherals \
+			    wiced/platform/MCU/STM32F2xx/WAF
+HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/$(HAL_WICED_RTOS) \
+			    wiced/RTOS/$(HAL_WICED_RTOS)/WWD \
+			    wiced/RTOS/$(HAL_WICED_RTOS)/WICED
+HAL_WICED_INCLUDE_DIRS +=   wiced/WWD
+
+
+ifeq "$(HAL_WICED_NETWORK)" "LwIP"
+HAL_WICED_INCLUDE_DIRS += wiced/network/LwIP/ver1.4.0.rc1/src/include
+HAL_WICED_INCLUDE_DIRS += wiced/network/LwIP/ver1.4.0.rc1/src/include/ipv4
+endif
+ifeq "$(HAL_WICED_NETWORK)" "NetX"
+HAL_WICED_INCLUDE_DIRS += wiced/network/NetX/ver5.5_sp1
+endif
+ifeq "$(HAL_WICED_RTOS)" "ThreadX"
+HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/ThreadX/ver5.6 \
+			    wiced/RTOS/ThreadX/ver5.6/Cortex_M3_M4/GCC
+endif
+
+INCLUDE_DIRS += $(addprefix $(HAL_SRC_COREV2_PATH)/,$(sort $(HAL_WICED_INCLUDE_DIRS)))
+INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_COREV2_PATH)/wiced/security,*.h))
+INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_COREV2_PATH)/wiced/WWD,*.h))
+$(info "wiced inc $(INCLUDE_DIRS)")
 
 templatedir=$(HAL_SRC_TEMPLATE_PATH)
 overridedir=$(HAL_SRC_COREV2_PATH)

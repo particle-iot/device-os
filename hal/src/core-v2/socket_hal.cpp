@@ -42,6 +42,8 @@ const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
  * The info we maintain for each socket. It wraps a WICED socket. 
  */
 struct tcp_socket_t : wiced_tcp_socket_t {
+    uint32_t dummy;     // 
+
     /**
      * Any outstanding packet to retrieve data from.
      */
@@ -145,7 +147,7 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addr
         if (result==WICED_SUCCESS) {            
             const uint8_t* data = addr->sa_data;
             unsigned port = data[0]<<8 | data[1];
-            unsigned timeout = 300;
+            unsigned timeout = 300*1000;
             wiced_ip_address_t INITIALISER_IPV4_ADDRESS(ip_addr, MAKE_IPV4_ADDRESS(data[2], data[3], data[4], data[5]));
             result = wiced_tcp_connect(socket, &ip_addr, port, timeout);
         }
@@ -231,7 +233,12 @@ uint8_t socket_active_status(sock_handle_t sd)
     tcp_socket_t* socket = from_handle(sd);
     uint8_t result = 0;
     if (socket) {
+        // todo - register disconnect callback and use this to update is_bound flag
+#ifdef LWIP_TO_WICED_ERR        
         result = socket->is_bound;
+#else
+        result = 1;
+#endif
     }
     return result ? SOCKET_STATUS_ACTIVE : SOCKET_STATUS_INACTIVE;
 }
@@ -244,7 +251,7 @@ uint8_t socket_active_status(sock_handle_t sd)
 sock_result_t socket_close(sock_handle_t sock) 
 {
     sock_result_t result = WICED_SUCCESS;
-    wiced_tcp_socket_t* socket = from_handle(sock);
+    tcp_socket_t* socket = from_handle(sock);
     if (socket) {
         wiced_tcp_disconnect(socket);
         result = wiced_tcp_delete_socket(socket);        
@@ -269,8 +276,9 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol)
     sock_handle_t result = socket_init();
     if (is_valid(result)) {
         wiced_tcp_socket_t* socket = from_handle(result);        
-        if (wiced_tcp_create_socket(socket, WICED_STA_INTERFACE)!=WICED_SUCCESS) {
-            result = socket_dispose(result);
+        result = wiced_tcp_create_socket(socket, WICED_STA_INTERFACE);
+        if (result!=WICED_SUCCESS) {
+            socket_dispose(result);
         }        
     }        
     return result;
