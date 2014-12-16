@@ -91,3 +91,14 @@ void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
 { 
     copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
 }
+
+    STATIC_ASSERT(Internet_Address_is_2_bytes_c1, sizeof(Internet_Address_TypeDef)==1);
+    STATIC_ASSERT(ServerAddress_packed_c1, offsetof(ServerAddress, ip)==2);    
+
+
+
+void check() {
+    // todo - why is this static assert giving a different result?
+    STATIC_ASSERT_EXPR(Internet_Address_is_2_bytes_c, sizeof(Internet_Address_TypeDef)==2);
+    STATIC_ASSERT_EXPR(ServerAddress_packed_c, offsetof(ServerAddress, ip)==4);    
+}

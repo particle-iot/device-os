@@ -14,6 +14,7 @@ extern "C" {
 
 #include <stdint.h>    
 #include "platform_system_flags.h"  
+#include "static_assert.h"
 #include "stddef.h"     // for offsetof in C
 
 /**
@@ -39,10 +40,7 @@ typedef struct application_dct {
 #define DCT_SERVER_ADDRESS_SIZE  (sizeof(application_dct_t::server_address)) 
 
 
-
-#define STATIC_ASSERT(name, condition) typedef char assert_##name[(condition)?0:-1] 
-
-#define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT(offset_##field, offsetof(application_dct_t, field)==expected)
+#define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 
 /**
  * Assert offsets.

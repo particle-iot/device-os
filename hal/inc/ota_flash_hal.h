@@ -28,6 +28,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include "static_assert.h"
+
 
 #ifdef	__cplusplus
 extern "C" {
@@ -56,13 +59,21 @@ typedef enum
   IP_ADDRESS = 0, DOMAIN_NAME = 1, INVALID_INTERNET_ADDRESS = 0xff
 } Internet_Address_TypeDef;
 
-typedef struct ServerAddress {
+
+typedef struct __attribute__((__packed__)) ServerAddress {
   Internet_Address_TypeDef addr_type;
+  uint8_t length;
   union {
     char domain[127];
     uint32_t ip;
   };
 } ServerAddress;
+
+STATIC_ASSERT(Internet_Address_is_2_bytes, sizeof(Internet_Address_TypeDef)==1);
+STATIC_ASSERT(ServerAddress_ip_offset, offsetof(ServerAddress, ip)==2);
+STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, ip)==2);
+
+
 
 /* Length in bytes of DER-encoded 2048-bit RSA public key */
 #define EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH		(294)
