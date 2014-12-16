@@ -27,8 +27,9 @@ HAL_WICED_INCLUDE_DIRS +=   wiced/WWD
 
 
 ifeq "$(HAL_WICED_NETWORK)" "LwIP"
-HAL_WICED_INCLUDE_DIRS += wiced/network/LwIP/ver1.4.0.rc1/src/include
-HAL_WICED_INCLUDE_DIRS += wiced/network/LwIP/ver1.4.0.rc1/src/include/ipv4
+HAL_WICED_INCLUDE_DIRS +=   wiced/network/LwIP/ver1.4.0.rc1/src/include \
+			    wiced/network/LwIP/ver1.4.0.rc1/src/include/ipv4 \
+			    wiced/network/LwIP/WWD/FreeRTOS
 endif
 ifeq "$(HAL_WICED_NETWORK)" "NetX"
 HAL_WICED_INCLUDE_DIRS += wiced/network/NetX/ver5.5_sp1
@@ -37,6 +38,14 @@ ifeq "$(HAL_WICED_RTOS)" "ThreadX"
 HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/ThreadX/ver5.6 \
 			    wiced/RTOS/ThreadX/ver5.6/Cortex_M3_M4/GCC
 endif
+ifeq "$(HAL_WICED_RTOS)" "FreeRTOS"
+HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/FreeRTOS/WWD/ARM_CM3 \
+			    wiced/RTOS/FreeRTOS/ver7.5.2/Source/Include \
+			    wiced/RTOS/FreeRTOS/ver7.5.2/Source/portable/GCC/ARM_CM3
+			    
+endif
+
+
 
 INCLUDE_DIRS += $(addprefix $(HAL_SRC_COREV2_PATH)/,$(sort $(HAL_WICED_INCLUDE_DIRS)))
 INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_COREV2_PATH)/wiced/security,*.h))

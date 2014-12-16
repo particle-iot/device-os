@@ -8,6 +8,9 @@ HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/core-v2
 
 HAL_WICED_RTOS=ThreadX
 HAL_WICED_NETWORK=NetX
+#HAL_WICED_RTOS=FreeRTOS
+#HAL_WICED_NETWORK=LwIP
+
 
 # if we are being compiled with platform as a dependency, then also include
 # implementation headers.
@@ -18,11 +21,20 @@ endif
 ifneq (,$(findstring hal,$(MAKE_DEPENDENCIES)))
 # if hal is used as a make dependency (linked) then add linker commands
 
-HAL_LIB_COREV2 = $(HAL_SRC_COREV2_PATH)/lib_threadx
-#HAL_WICED_LIBS += Platform_$(PLATFORM_NET) FreeRTOS LwIP WICED SPI_Flash_Library_$(PLATFORM_NET) WWD_FreeRTOS_Interface_$(PLATFORM_NET) WICED_FreeRTOS_Interface WWD_LwIP_Interface_FreeRTOS WICED_LwIP_Interface Lib_HTTP_Server Lib_DNS_Redirect_Daemon Lib_DNS WWD_for_SDIO_FreeRTOS Lib_Wiced_RO_FS STM32F2xx Wiced_Network_LwIP_FreeRTOS Lib_DHCP_Server Lib_base64 STM32F2xx_Peripheral_Drivers Ring_Buffer STM32F2xx_Peripheral_Libraries common_GCC
-HAL_WICED_LIBS += Platform_$(PLATFORM_NET) ThreadX.ARM_CM3.release NetX WICED SPI_Flash_Library_$(PLATFORM_NET) WWD_NetX_Interface WICED_ThreadX_Interface WWD_for_SDIO_ThreadX WICED_NetX_Interface Lib_HTTP_Server Lib_DNS_Redirect_Daemon Lib_DNS Lib_Wiced_RO_FS WWD_ThreadX_Interface STM32F2xx NetX.ARM_CM3.release Lib_DHCP_Server Lib_base64 STM32F2xx_Peripheral_Drivers Ring_Buffer STM32F2xx_Peripheral_Libraries common_GCC
+HAL_LIB_COREV2 = $(HAL_SRC_COREV2_PATH)/lib
 
-HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_COREV2)/,$(addsuffix .a,$(HAL_WICED_LIBS)))
+HAL_WICED_COMMON_LIBS = Platform_$(PLATFORM_NET) WICED SPI_Flash_Library_$(PLATFORM_NET) Lib_HTTP_Server Lib_DNS_Redirect_Daemon Lib_Wiced_RO_FS Lib_base64 STM32F2xx_Peripheral_Drivers Ring_Buffer STM32F2xx_Peripheral_Libraries common_GCC
+
+HAL_SHOULD_BE_COMMON = Lib_DHCP_Server Lib_DNS STM32F2xx
+HAL_LIB_RTOS = $(HAL_LIB_COREV2)/$(HAL_WICED_RTOS)
+ifeq "$(HAL_WICED_RTOS)" "FreeRTOS")
+HAL_WICED_RTOS_LIBS = $(HAL_SHOULD_BE_COMMON) FreeRTOS LwIP WWD_FreeRTOS_Interface_$(PLATFORM_NET) WICED_FreeRTOS_Interface WWD_LwIP_Interface_FreeRTOS WICED_LwIP_Interface WWD_for_SDIO_FreeRTOS Wiced_Network_LwIP_FreeRTOS
+else
+HAL_WICED_RTOS_LIBS = $(HAL_SHOULD_BE_COMMON) ThreadX.ARM_CM3.release NetX WWD_NetX_Interface WICED_ThreadX_Interface WWD_for_SDIO_ThreadX WICED_NetX_Interface WWD_ThreadX_Interface NetX.ARM_CM3.release 
+endif
+
+HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_COREV2)/,$(addsuffix .a,$(HAL_WICED_COMMON_LIBS)))
+HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_RTOS)/,$(addsuffix .a,$(HAL_WICED_RTOS_LIBS)))
 WICED_MCU = $(HAL_SRC_COREV2_PATH)/wiced/platform/MCU/STM32F2xx/GCC
 
 LINKER_FILE=$(WICED_MCU)/app_no_bootloader.ld
