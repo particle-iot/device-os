@@ -32,16 +32,16 @@
 #include "usbd_req.h"
 #include "usb_regs.h"
 
-#define USBD_VID                        0x1D50  //Spark Vendor ID
+#define USBD_VID                        0x2B04  //Spark Vendor ID
 #define USBD_PID                        0x607D  //Spark VCP Product ID
 
 #define USBD_LANGID_STRING              0x0409  //U.S. English
 #define USBD_MANUFACTURER_STRING        "Spark Devices"
 
-#define USBD_PRODUCT_HS_STRING          "Spark Core with WiFi"
+#define USBD_PRODUCT_HS_STRING          "Spark Photon with WiFi"
 #define USBD_SERIALNUMBER_HS_STRING     "00000000050B"
 
-#define USBD_PRODUCT_FS_STRING          "Spark Core with WiFi"
+#define USBD_PRODUCT_FS_STRING          "Spark Photon with WiFi"
 #define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
 
 #define USBD_CONFIGURATION_HS_STRING    "VCP Config"
