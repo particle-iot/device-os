@@ -64,6 +64,7 @@ struct tcp_socket_t : wiced_tcp_socket_t {
         if (packet) {
             wiced_packet_delete(packet);
             packet = NULL;
+            offset = 0;
         }
     }
 };
@@ -179,6 +180,7 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
     if (socket) {   
         bytes_read = 0;
         if (!socket->packet) {
+            socket->offset = 0;
             wiced_result_t result = wiced_tcp_receive(socket, &socket->packet, _timeout);
             if (result!=WICED_SUCCESS && result!=WICED_TIMEOUT) {
                 DEBUG("Socket %d receive fail %d", (int)sd, int(result));
@@ -197,8 +199,9 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
             bytes_read = read;
             DEBUG("Socket %d receive bytes %d of %d", (int)sd, int(bytes_read), int(available));
         }        
-        if (dispose)
+        if (dispose) {            
             socket->dispose_packet();
+        }
     }
     return bytes_read;
 }
