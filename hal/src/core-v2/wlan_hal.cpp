@@ -27,6 +27,7 @@
 #include "wiced_easy_setup.h"
 #include "wlan_hal.h"
 #include "hw_config.h"
+#include "softap.h"
 #include <string.h>
 #include <algorithm>
 
@@ -214,7 +215,15 @@ int wlan_set_credentials(const char *ssid, uint16_t ssidLen, const char *passwor
     return result;    
 }
 
+softap_handle current_softap_handle;
+
 void wlan_smart_config_init() {    
+    
+    if (!current_softap_handle) {
+        softap_config config;
+        current_softap_handle = softap_start(&config);        
+    }
+    
     // todo - launch our own soft-ap daemon
     // todo - when the user has completed the soft ap setup process,
     // call HAL_WLAN_notify_simple_config_done() to exit the calling process.
@@ -222,7 +231,10 @@ void wlan_smart_config_init() {
 
 void wlan_smart_config_finalize() 
 {    
-    // dispose the soft AP daemon
+    if (current_softap_handle) {
+        softap_stop(current_softap_handle);
+        current_softap_handle = NULL;
+    }
 }
 
 void wlan_smart_config_cleanup() 

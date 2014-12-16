@@ -31,6 +31,11 @@ wiced_result_t wiced_tls_receive_packet( wiced_tcp_socket_t* socket, wiced_packe
     return WICED_SUCCESS;
 }
 
+wiced_result_t wiced_tls_reset_context( wiced_tls_simple_context_t* tls_context ) 
+{
+    return WICED_SUCCESS;
+}
+
 void host_network_process_eapol_data( /*@only@*/ wiced_buffer_t buffer, wwd_interface_t interface )
 {
 }

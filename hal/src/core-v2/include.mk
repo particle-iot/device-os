@@ -23,9 +23,9 @@ ifneq (,$(findstring hal,$(MAKE_DEPENDENCIES)))
 
 HAL_LIB_COREV2 = $(HAL_SRC_COREV2_PATH)/lib
 
-HAL_WICED_COMMON_LIBS = Platform_$(PLATFORM_NET) WICED SPI_Flash_Library_$(PLATFORM_NET) Lib_HTTP_Server Lib_DNS_Redirect_Daemon Lib_Wiced_RO_FS Lib_base64 STM32F2xx_Peripheral_Drivers Ring_Buffer STM32F2xx_Peripheral_Libraries common_GCC
+HAL_WICED_COMMON_LIBS = Platform_$(PLATFORM_NET) WICED SPI_Flash_Library_$(PLATFORM_NET) Lib_HTTP_Server Lib_Wiced_RO_FS Lib_base64 STM32F2xx_Peripheral_Drivers Ring_Buffer STM32F2xx_Peripheral_Libraries common_GCC
 
-HAL_SHOULD_BE_COMMON = Lib_DHCP_Server Lib_DNS STM32F2xx
+HAL_SHOULD_BE_COMMON = Lib_DHCP_Server Lib_DNS Lib_DNS_Redirect_Daemon STM32F2xx 
 HAL_LIB_RTOS = $(HAL_LIB_COREV2)/$(HAL_WICED_RTOS)
 ifeq "$(HAL_WICED_RTOS)" "FreeRTOS"
 HAL_WICED_RTOS_LIBS = $(HAL_SHOULD_BE_COMMON) FreeRTOS LwIP WWD_FreeRTOS_Interface_$(PLATFORM_NET) WICED_FreeRTOS_Interface WWD_LwIP_Interface_FreeRTOS WICED_LwIP_Interface WWD_for_SDIO_FreeRTOS Wiced_Network_LwIP_FreeRTOS
