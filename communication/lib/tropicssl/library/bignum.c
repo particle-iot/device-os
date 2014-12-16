@@ -848,9 +848,10 @@ int mpi_sub_int(mpi * X, const mpi * A, int b)
 }
 
 /*
- * Helper for mpi multiplication
+ * Helper for mpi multiplication.
+ * This has to be optimized else it will fail with "z7 not allowed here".
  */
-static void mpi_mul_hlp(int i, t_int * s, t_int * d, t_int b)
+__attribute__((optimize("-Os"))) static void mpi_mul_hlp(int i, t_int * s, t_int * d, t_int b)
 {
 	t_int c = 0, t = 0;
 
