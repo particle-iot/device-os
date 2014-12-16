@@ -714,7 +714,7 @@ void FLASH_Erase(void)
     FLASH_Unlock();
 
     /* Define the number of Internal Flash pages to be erased */
-    NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS) / INTERNAL_FLASH_PAGE_SIZE;
+    NbrOfPage = FLASH_PagesMask(FIRMWARE_IMAGE_SIZE, INTERNAL_FLASH_PAGE_SIZE);
 
     /* Clear All pending flags */
     FLASH_ClearFlags();
@@ -736,7 +736,7 @@ void FLASH_Backup(uint32_t FLASH_Address)
     sFLASH_Init();
 
     /* Define the number of External Flash pages to be erased */
-    NbrOfPage = EXTERNAL_FLASH_BLOCK_SIZE / sFLASH_PAGESIZE;
+    NbrOfPage = FLASH_PagesMask(EXTERNAL_FLASH_BLOCK_SIZE, sFLASH_PAGESIZE);
 
     /* Erase the SPI Flash pages */
     for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
@@ -801,26 +801,24 @@ void FLASH_Restore(uint32_t FLASH_Address)
 #endif
 }
 
-uint32_t FLASH_PagesMask(uint32_t fileSize)
+uint32_t FLASH_PagesMask(uint32_t imageSize, uint32_t pageSize)
 {
     //Calculate the number of flash pages that needs to be erased
     uint32_t numPages = 0x0;
 
-#ifdef USE_SERIAL_FLASH
-    if ((fileSize % sFLASH_PAGESIZE) != 0)
+    if ((imageSize % pageSize) != 0)
     {
-        numPages = (fileSize / sFLASH_PAGESIZE) + 1;
+        numPages = (imageSize / pageSize) + 1;
     }
     else
     {
-        numPages = fileSize / sFLASH_PAGESIZE;
+        numPages = imageSize / pageSize;
     }
-#endif
 
     return numPages;
 }
 
-void FLASH_Begin(uint32_t FLASH_Address, uint32_t fileSize)
+void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
 {
 #ifdef USE_SERIAL_FLASH
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
@@ -831,7 +829,7 @@ void FLASH_Begin(uint32_t FLASH_Address, uint32_t fileSize)
     External_Flash_Address = External_Flash_Start_Address;
 
     /* Define the number of External Flash pages to be erased */
-    NbrOfPage = FLASH_PagesMask(fileSize);
+    NbrOfPage = FLASH_PagesMask(imageSize, sFLASH_PAGESIZE);
 
     /* Erase the SPI Flash pages */
     for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)

@@ -32,6 +32,7 @@
 #include "spark_wiring.h"
 #include "spark_wlan.h"
 #include "ota_flash_hal.h"
+#include "rgbled.h"
 
 #define PACKET_SEQNO_INDEX      (1)
 #define PACKET_SEQNO_COMP_INDEX (2)

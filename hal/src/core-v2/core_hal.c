@@ -107,7 +107,7 @@ void HAL_Core_Config(void)
     SysTick_Configuration();
 
     /* Enable CRC clock */
-    //To Do
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_CRC, ENABLE);
     RTC_Configuration();
         
     /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
@@ -166,12 +166,17 @@ void HAL_Core_System_Reset(void)
 
 void HAL_Core_Factory_Reset(void)
 {
-    //To Do
+    system_flags.Factory_Reset_SysFlag = 0xAAAA;
+    Save_SystemFlags();
+    HAL_Core_System_Reset();
 }
 
 void HAL_Core_Enter_Bootloader(void)
 {
-    //To Do
+    RTC_WriteBackupRegister(RTC_BKP_DR10, 0xFFFF);
+    system_flags.FLASH_OTA_Update_SysFlag = 0xFFFF;
+    Save_SystemFlags();
+    HAL_Core_System_Reset();
 }
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
@@ -202,8 +207,44 @@ void HAL_Core_Execute_Standby_Mode(void)
  */
 uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
 {
-    //To Do
-    return 0;
+    /* Hardware CRC32 calculation */
+    uint32_t i, j;
+    uint32_t Data;
+
+    CRC_ResetDR();
+
+    i = bufferSize >> 2;
+
+    while (i--)
+    {
+        Data = *((uint32_t *)pBuffer);
+        pBuffer += 4;
+
+        Data = __RBIT(Data);//reverse the bit order of input Data
+        CRC->DR = Data;
+    }
+
+    Data = CRC->DR;
+    Data = __RBIT(Data);//reverse the bit order of output Data
+
+    i = bufferSize & 3;
+
+    while (i--)
+    {
+        Data ^= (uint32_t)*pBuffer++;
+
+        for (j = 0 ; j < 8 ; j++)
+        {
+            if (Data & 1)
+                Data = (Data >> 1) ^ 0xEDB88320;
+            else
+                Data >>= 1;
+        }
+    }
+
+    Data ^= 0xFFFFFFFF;
+
+    return Data;
 }
 
 // todo find a technique that allows accessor functions to be inlined while still keeping

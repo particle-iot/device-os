@@ -55,7 +55,7 @@ void loop()
 /*******************************************************************************
  * Function Name  : tinkerDigitalRead
  * Description    : Reads the digital value of a given pin
- * Input          : Pin 
+ * Input          : Pin
  * Output         : None.
  * Return         : Value of the pin (0 or 1) in INT type
                     Returns a negative number on failure
@@ -117,7 +117,7 @@ int tinkerDigitalWrite(String command)
 /*******************************************************************************
  * Function Name  : tinkerAnalogRead
  * Description    : Reads the analog value of a pin
- * Input          : Pin 
+ * Input          : Pin
  * Output         : None.
  * Return         : Returns the analog value in INT type (0 to 4095)
                     Returns a negative number on failure
