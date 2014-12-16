@@ -27,7 +27,7 @@ HAL_WICED_COMMON_LIBS = Platform_$(PLATFORM_NET) WICED SPI_Flash_Library_$(PLATF
 
 HAL_SHOULD_BE_COMMON = Lib_DHCP_Server Lib_DNS STM32F2xx
 HAL_LIB_RTOS = $(HAL_LIB_COREV2)/$(HAL_WICED_RTOS)
-ifeq "$(HAL_WICED_RTOS)" "FreeRTOS")
+ifeq "$(HAL_WICED_RTOS)" "FreeRTOS"
 HAL_WICED_RTOS_LIBS = $(HAL_SHOULD_BE_COMMON) FreeRTOS LwIP WWD_FreeRTOS_Interface_$(PLATFORM_NET) WICED_FreeRTOS_Interface WWD_LwIP_Interface_FreeRTOS WICED_LwIP_Interface WWD_for_SDIO_FreeRTOS Wiced_Network_LwIP_FreeRTOS
 else
 HAL_WICED_RTOS_LIBS = $(HAL_SHOULD_BE_COMMON) ThreadX.ARM_CM3.release NetX WWD_NetX_Interface WICED_ThreadX_Interface WWD_for_SDIO_ThreadX WICED_NetX_Interface WWD_ThreadX_Interface NetX.ARM_CM3.release 
