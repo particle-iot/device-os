@@ -54,7 +54,6 @@ size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
       255
 #else
       63
-#error       
 #endif
       ;
     name_data_len = strnlen(data, cap);
