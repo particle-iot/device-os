@@ -59,7 +59,7 @@ public:
   bool isEnabled(void);
 };
 
-extern USARTSerial Serial1; // USART2 on PA2/3 (Spark TX, RX)
-extern USARTSerial Serial2; // USART1 on alternate PB6/7 (Spark D1, D0)
+extern USARTSerial Serial1;
+extern USARTSerial Serial2;
 
 #endif
