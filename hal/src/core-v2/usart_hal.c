@@ -3,7 +3,7 @@
  * @file    usart_hal.c
  * @author  Satish Nair, Brett Walach
  * @version V1.0.0
- * @date    12-Sept-2014
+ * @date    17-Dec-2014
  * @brief
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
@@ -32,8 +32,8 @@
 
 /* Private typedef -----------------------------------------------------------*/
 typedef enum USART_Num_Def {
-	USART_TX_RX = 0,
-	USART_D1_D0 = 1
+	USART_TX_RX = 0,  //works on BM14 based pigtail board
+	USART_D1_D0 = 1   //not yet supported on BM14 based board
 } USART_Num_Def;
 
 /* Private macro -------------------------------------------------------------*/
