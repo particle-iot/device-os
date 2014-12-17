@@ -43,14 +43,17 @@ extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
 const unsigned SysTickIndex = 15;
+const unsigned USART1Index = 53;
 
-void SysTickOverride(void); 
+void SysTickOverride(void);
+void HAL_USART1_Handler(void);
 
 void override_interrupts(void) {
     
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
-    isrs[SysTickIndex] = (uint32_t)SysTickOverride;    
+    isrs[SysTickIndex] = (uint32_t)SysTickOverride;
+    isrs[USART1Index] = (uint32_t)HAL_USART1_Handler;
     SCB->VTOR = (unsigned long)isrs;
 }
 
