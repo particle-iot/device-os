@@ -21,6 +21,10 @@ include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),../$(module)/import.mk)
 include $(DEPS_INCLUDE_SCRIPTS)	
 	
+ifdef TEACUP
+CFLAGS += -DTEACUP
+endif
+	
 ifeq ("$(DEBUG_BUILD)","y") 
 CFLAGS += -DDEBUG_BUILD
 else
