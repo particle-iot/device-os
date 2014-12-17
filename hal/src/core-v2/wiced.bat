@@ -1,17 +1,27 @@
 set WICED=r:\sdk\spark\core\WICED\WICED-SDK-3.1.1\WICED-SDK
 
+set OPTS=
+
 pushd %WICED%
 
-.\make demo.soft_ap-BCM9WCDUSI09-ThreadX-NetX-SDIO
-.\make demo.soft_ap-BCM9WCDUSI14-ThreadX-NetX-SDIO
-.\make demo.soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO
+
+if not "%1" == "clean" goto doneclean
+.\make clean
+:doneclean
+.\make demo.soft_ap-BCM9WCDUSI09-ThreadX-NetX-SDIO %OPTS%
+.\make demo.soft_ap-BCM9WCDUSI14-ThreadX-NetX-SDIO %OPTS%
+REM .\make demo.soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO %OPTS%
 
 popd
 
-@REM update platforms (any RTOS)
-call update.bat lib %WICED%\build\demo_soft_ap-BCM9WCDUSI09-ThreadX-NetX-SDIO\libraries
+@REM update headers
+call update.bat . %WICED%
+
+
+@REM update platform libraries (any RTOS)
+call update.bat lib %WICED%\build\demo_soft_ap_scan-BCM9WCDUSI09-ThreadX-NetX-SDIO\libraries
 call update.bat lib %WICED%\build\demo_soft_ap-BCM9WCDUSI14-ThreadX-NetX-SDIO\libraries
 
-call update.bat lib\ThreadX %WICED%\build\demo_soft_ap-BCM9WCDUSI09-ThreadX-NetX-SDIO\libraries
-call update.bat lib\FreeRTOS %WICED%\build\demo_soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO\libraries
+call update.bat lib\ThreadX %WICED%\build\demo_soft_ap-BCM9WCDUSI14-ThreadX-NetX-SDIO\libraries
+REM call update.bat lib\FreeRTOS %WICED%\build\demo_soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO\libraries
 
