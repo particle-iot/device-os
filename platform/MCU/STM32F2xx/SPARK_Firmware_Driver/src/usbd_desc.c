@@ -32,7 +32,7 @@
 #include "usbd_req.h"
 #include "usb_regs.h"
 
-#define USBD_VID                        0x2B04  //Spark Vendor ID
+#define USBD_VID                        0x1D50  //Spark Vendor ID
 #define USBD_PID                        0x607D  //Spark VCP Product ID
 
 #define USBD_LANGID_STRING              0x0409  //U.S. English
