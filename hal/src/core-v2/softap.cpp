@@ -433,10 +433,12 @@ const jsmntype_t ConfigureAPCommand::TYPE[] =  { JSMN_PRIMITIVE, JSMN_STRING, JS
 class ConnectAPCommand : public JSONCommand {
     int index;
     wiced_semaphore_t* signal_complete_;
+    void (*softap_complete_)();
     int responseCode;
 public:
-    ConnectAPCommand(wiced_semaphore_t* signal_complete) {
+    ConnectAPCommand(wiced_semaphore_t* signal_complete, void (*softap_complete)()) {
         signal_complete_ = signal_complete;
+        softap_complete_ = softap_complete;
     }
 
     // todo - parse index
@@ -452,6 +454,8 @@ public:
 
     void produce_response(Writer& writer, int result) {
         write_result_code(writer, result);
+        if (softap_complete_)
+            softap_complete_();
     }
 };
 
@@ -542,8 +546,8 @@ struct AllSoftAPCommands {
     ConnectAPCommand connectAP;
     ProvisionKeysCommand provisionKeys;
 
-    AllSoftAPCommands(wiced_semaphore_t* complete) :
-        connectAP(complete) {}
+    AllSoftAPCommands(wiced_semaphore_t* complete, void (*softap_complete)()) :
+        connectAP(complete, softap_complete) {}
 };
 
 extern "C" wiced_ip_setting_t device_init_ip_settings;
@@ -983,8 +987,8 @@ class SoftAPApplication
     SerialDispatcher serial;
 
 public:
-    SoftAPApplication() :
-            commands(&softAP.complete_semaphore()),
+    SoftAPApplication(void (*complete_callback)()) :
+            commands(&softAP.complete_semaphore(), complete_callback),
 #ifdef HAL_SOFTAP_HTTPSERVER                
             http(commands),
 #endif                
@@ -1012,7 +1016,7 @@ public:
 };
 
 softap_handle softap_start(softap_config* config) {
-    SoftAPApplication* app = new SoftAPApplication();
+    SoftAPApplication* app = new SoftAPApplication(config->softap_complete);
     return app;
 }
 

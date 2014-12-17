@@ -15,7 +15,7 @@ extern "C" {
     typedef void* softap_handle;
     
     struct softap_config {
-        
+        void (*softap_complete)();
     };
     
     /**

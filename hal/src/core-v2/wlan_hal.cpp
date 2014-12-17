@@ -221,12 +221,12 @@ void wlan_smart_config_init() {
     
     if (!current_softap_handle) {
         softap_config config;
+        config.softap_complete = HAL_WLAN_notify_simple_config_done;
         current_softap_handle = softap_start(&config);        
     }
     
     // todo - launch our own soft-ap daemon
-    // todo - when the user has completed the soft ap setup process,
-    // call HAL_WLAN_notify_simple_config_done() to exit the calling process.
+    // todo - when the user has completed the soft ap setup process,    
 }
 
 void wlan_smart_config_finalize() 
