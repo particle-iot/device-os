@@ -219,6 +219,31 @@ static inline wiced_result_t wiced_framework_set_boot( uint8_t app_id, char load
  */
 static inline void wiced_framework_reboot( void );
 
+/** Initialize the applicatin for modification.
+ *
+ * Unlock the application for later modification.
+ *
+ * @warning Applications must be opened before any write or read operations.
+ *
+ * @param[in] app_id   : Application ID.
+ * @param[inout] app   : Application handler.
+ *
+ * @return Wiced reuslt code
+ */
+static inline wiced_result_t wiced_framework_app_open( uint8_t app_id, wiced_app_t* app );
+
+/** Finilaize application modification.
+ *
+ * Lock the application (flush any cached operations).
+ *
+ * @warning Applications must be closed after all write and read operations.
+ *
+ * @param[in] app_id   : Application ID.
+ * @param[inout] app   : Application handler.
+ *
+ * @return Wiced reuslt code
+ */
+static inline wiced_result_t wiced_framework_app_open( uint8_t app_id, wiced_app_t* app );
 
 /** Erases the application from external flash.
  *
@@ -226,11 +251,11 @@ static inline void wiced_framework_reboot( void );
  *
  * @warning Applications must be erased before being rewritten.
  *
- * @param[in] app_id   : Application ID.
+ * @param[inout] app   : Application handler.
  *
  * @return Wiced reuslt code
  */
-static inline wiced_result_t wiced_framework_app_erase( uint8_t app_id );
+static inline wiced_result_t wiced_framework_app_erase( wiced_app_t* app );
 
 /** Writes a piece of the application to external flash
  *
@@ -241,7 +266,7 @@ static inline wiced_result_t wiced_framework_app_erase( uint8_t app_id );
  *          erased on go by passing last_erased_sector pointer. However when erasing
  *          on the go, writing to the file must be sequential with no gaps.
  *
- * @param[in] app_id : Application ID.
+ * @param[inout] app : Application handler.
  * @param[in] offset : The offset from the start of the application in bytes
  * @param[in] data   : The data to be written
  * @param[in] size   : The number of bytes to be written
@@ -250,20 +275,20 @@ static inline wiced_result_t wiced_framework_app_erase( uint8_t app_id );
  *
  *  @return Wiced reuslt code
  */
-static inline wiced_result_t  wiced_framework_app_write_chunk( uint8_t app_id, uint32_t offset, const uint8_t* data, uint32_t size, uint32_t* last_erased_sector );
+static inline wiced_result_t  wiced_framework_app_write_chunk( wiced_app_t* app, const uint8_t* data, uint32_t size );
 
 /** Reads a piece of the application from external flash
  *
  * Reads a piece of the application from external flash.
  *
- * @param[in] app_id : Application ID.
+ * @param[inout] app : Application handler.
  * @param[in] offset : The offset from the start of the application in bytes
  * @param[in] data   : The buffer for the data to be read
  * @param[in] size   : The number of bytes to be read
  *
  *  @return Wiced reuslt code
  */
-static inline wiced_result_t  wiced_framework_app_read_chunk( uint8_t app_id, uint32_t offset, uint8_t* data, uint32_t size );
+static inline wiced_result_t  wiced_framework_app_read_chunk( wiced_app_t* app, uint32_t offset, uint8_t* data, uint32_t size );
 
 /** Returns the current size of the application.
  *
@@ -272,12 +297,12 @@ static inline wiced_result_t  wiced_framework_app_read_chunk( uint8_t app_id, ui
  * @warning The size of the application is always aligned to sector boundaries. Application
  *          size may be different from actual size on a PC.
  *
- * @param[in] app_id : Application ID.
+ * @param[inout] app : Application handler.
  * @param[out] size  : The size allocated to the application in bytes.
  *
  *  @return Wiced reuslt code
  */
-static inline wiced_result_t  wiced_framework_app_get_size( uint8_t app_id, uint32_t* size );
+static inline wiced_result_t  wiced_framework_app_get_size( wiced_app_t* app, uint32_t* size );
 
 /** Sets the current size of the application.
  *
@@ -288,12 +313,12 @@ static inline wiced_result_t  wiced_framework_app_get_size( uint8_t app_id, uint
  *          boundaries. Application size may be different from actual size on a PC. If the
  *          provided size is smaller than the current size, the current size is maintained.
  *
- * @param[in] app_id : Application ID.
+ * @param[inout] app : Application handler.
  * @param[in] size   : The new size allocated to the application in bytes.
  *
  *  @return Wiced reuslt code
  */
-static inline wiced_result_t  wiced_framework_app_set_size( uint8_t app_id, uint32_t size );
+static inline wiced_result_t  wiced_framework_app_set_size( wiced_app_t* app, uint32_t size );
 
 /** @} */
 
@@ -444,29 +469,39 @@ static inline void wiced_framework_reboot( void )
     wiced_waf_reboot( );
 }
 
-static inline wiced_result_t wiced_framework_app_erase( uint8_t app_id )
+static inline wiced_result_t wiced_framework_app_open( uint8_t app_id, wiced_app_t* app )
 {
-    return wiced_waf_app_erase( app_id );
+    return wiced_waf_app_open( app_id, app );
 }
 
-static inline wiced_result_t  wiced_framework_app_write_chunk( uint8_t app_id, uint32_t offset, const uint8_t* data, uint32_t size, uint32_t * last_erased_sector )
+static inline wiced_result_t wiced_framework_app_erase( wiced_app_t* app )
 {
-    return wiced_waf_app_write_chunk( app_id, offset, data, size, last_erased_sector);
+    return wiced_waf_app_erase( app );
 }
 
-static inline wiced_result_t  wiced_framework_app_read_chunk( uint8_t app_id, uint32_t offset, uint8_t* data, uint32_t size )
+static inline wiced_result_t  wiced_framework_app_write_chunk( wiced_app_t* app, const uint8_t* data, uint32_t size )
 {
-    return wiced_waf_app_read_chunk( app_id, offset, data, size);
+    return wiced_waf_app_write_chunk( app, data, size);
 }
 
-static inline wiced_result_t  wiced_framework_app_get_size( uint8_t app_id, uint32_t* size )
+static inline wiced_result_t  wiced_framework_app_read_chunk( wiced_app_t* app, uint32_t offset, uint8_t* data, uint32_t size )
 {
-    return wiced_waf_app_get_size( app_id, size);
+    return wiced_waf_app_read_chunk( app, offset, data, size);
 }
 
-static inline wiced_result_t  wiced_framework_app_set_size( uint8_t app_id, uint32_t size )
+static inline wiced_result_t  wiced_framework_app_get_size( wiced_app_t* app, uint32_t* size )
 {
-    return wiced_waf_app_set_size( app_id, size);
+    return wiced_waf_app_get_size( app, size);
+}
+
+static inline wiced_result_t  wiced_framework_app_set_size( wiced_app_t* app, uint32_t size )
+{
+    return wiced_waf_app_set_size( app, size);
+}
+
+static inline wiced_result_t wiced_framework_app_close( wiced_app_t* app )
+{
+    return wiced_waf_app_close( app );
 }
 
 /*****************************************************************************/

@@ -72,10 +72,11 @@ extern "C" {
     RESULT_ENUM( prefix, KEY_PARSE_FAIL,                          3036 ),   /**<   */ \
     RESULT_ENUM( prefix, ERROR_DEVICE_LIST_FIND,                  3037 ),   /**<   */ \
     RESULT_ENUM( prefix, ERROR_NO_P2P_TLV,                        3038 ),   /**<   */ \
-    RESULT_ENUM( prefix, ERROR_ALREADY_STARTED,                   3039 ),   /**<   */
-
-
-
+    RESULT_ENUM( prefix, ERROR_ALREADY_STARTED,                   3039 ),   /**<   */ \
+    RESULT_ENUM( prefix, BUFFER_ALLOC_FAIL,                       3040 ),   /**<   */ \
+    RESULT_ENUM( prefix, OTHER_ENROLLEE,                          3041 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_RECEIVED_INVALID_CREDENTIALS,      3042 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_HMAC_CHECK_FAIL,                   3043 ),   /**<   */
 
 #define TLS_RESULT_LIST( prefix ) \
     RESULT_ENUM( prefix, SUCCESS,                                0 ),   /**<   */ \
@@ -117,18 +118,39 @@ extern "C" {
     RESULT_ENUM( prefix, UNTRUSTED_CERTIFICATE,               5035 ),   /**<   */ \
     RESULT_ENUM( prefix, EXPIRED_CERTIFICATE,                 5036 ),   /**<   */ \
     RESULT_ENUM( prefix, CERTIFICATE_NAME_MISMATCH,           5037 ),   /**<   */ \
-    RESULT_ENUM( prefix, CERTIFICATE_REVOKED,                 5038 ),   /**<   */ \
-    RESULT_ENUM( prefix, NO_DATA,                             5039 ),   /**<   */ \
-    RESULT_ENUM( prefix, ERROR_UNSUPPORTED_EXTENSION,         5040 ),   /**<   */
+    RESULT_ENUM( prefix, ERROR_DECRYPTION_FAIL,               5038 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_ENCRYPTION_FAIL,               5039 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_HMAC_CHECK_FAIL,               5040 ),   /**<   */ \
+    RESULT_ENUM( prefix, CERTIFICATE_REVOKED,                 5041 ),   /**<   */ \
+    RESULT_ENUM( prefix, NO_DATA,                             5042 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_UNSUPPORTED_EXTENSION,         5043 ),   /**<   */
 
-
+#define P2P_RESULT_LIST( prefix ) \
+    RESULT_ENUM( prefix, SUCCESS,                                0 ),   /**<   */ \
+    RESULT_ENUM( prefix, TIMEOUT,                                2 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_FAIL,                          9001 ),   /**<   */ \
+    RESULT_ENUM( prefix, ACCEPT_CONNECTION,                   9002 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_INCORRECT_SSID,                9003 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_INVALID_DEVICE,                9004 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_MISSING_RSN_IE,                9005 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_INVALID_SCAN_RESULT,           9006 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_MISSING_TLV,                   9007 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_INVALID_MAC_ADDRESS,           9008 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_ASSOCIATED_DEVICE_NOT_FOUND,   9009 ),   /**<   */ \
+    RESULT_ENUM( prefix, GROUP_OWNER_WAITING_FOR_CONNECTION,  9010 ),   /**<   */ \
+    RESULT_ENUM( prefix, GROUP_OWNER_WPS_IN_PROGRESS,         9011 ),   /**<   */ \
+    RESULT_ENUM( prefix, GROUP_OWNER_WPS_FAILED,              9012 ),   /**<   */ \
+    RESULT_ENUM( prefix, GROUP_OWNER_WPS_COMPLETE,            9013 ),   /**<   */ \
+    RESULT_ENUM( prefix, GROUP_OWNER_WPS_PBC_OVERLAP,         9014 ),   /**<   */ \
+    RESULT_ENUM( prefix, GROUP_OWNER_WPS_TIMED_OUT,           9015 ),   /**<   */ \
+    RESULT_ENUM( prefix, GROUP_OWNER_WPS_ABORTED,             9016 ),   /**<   */ \
+    RESULT_ENUM( prefix, UNKNOWN,                             9017 ),   /**<   */
 
 typedef enum
 {
     WPS_BESL_RESULT_LIST( BESL_ )
-    TLS_RESULT_LIST( BESL_TLS )
-
-    BESL_RESULT_FORCE_32_BIT = 0x7FFFFFFF
+    TLS_RESULT_LIST( BESL_TLS_ )
+    P2P_RESULT_LIST( BESL_P2P_ )
 } besl_result_t;
 
 
@@ -137,6 +159,7 @@ typedef enum
  ******************************************************/
 
 typedef uint8_t   besl_bool_t;
+typedef uint32_t  besl_time_t;
 
 /******************************************************
  *                    Structures

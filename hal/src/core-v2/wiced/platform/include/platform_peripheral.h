@@ -268,12 +268,11 @@ typedef struct
  */
 typedef struct
 {
-    const void*  tx_buffer;  /* A pointer to the data to be transmitted. If NULL, the message is an RX message when 'combined' is FALSE */
-    void*        rx_buffer;  /* A pointer to the data to be transmitted. If NULL, the message is an TX message when 'combined' is FALSE */
+    const void*  tx_buffer;
+    void*        rx_buffer;
     uint16_t     tx_length;
     uint16_t     rx_length;
     uint16_t     retries;    /* Number of times to retry the message */
-    wiced_bool_t combined;
     uint8_t      flags;      /* MESSAGE_DISABLE_DMA : if set, this flag disables use of DMA for the message */
 } platform_i2c_message_t;
 

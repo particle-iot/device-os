@@ -65,8 +65,9 @@ extern void* dct2_size_loc;
 /* WAF platform functions */
 void platform_start_app         ( uint32_t entry_point );
 void platform_load_app_chunk    ( const image_location_t* app_header_location, uint32_t offset, void* physical_address, uint32_t size );
-int  platform_erase_flash       ( uint16_t start_sector, uint16_t end_sector );
-int  platform_write_flash_chunk ( uint32_t address, const void* data, uint32_t size );
+void platform_erase_app_area    ( uint32_t physical_address, uint32_t size );
+platform_result_t platform_erase_flash       ( uint16_t start_sector, uint16_t end_sector );
+platform_result_t platform_write_flash_chunk ( uint32_t address, const void* data, uint32_t size );
 
 /* Factory reset required function (defined in platform.c) */
 wiced_bool_t platform_check_factory_reset( void );

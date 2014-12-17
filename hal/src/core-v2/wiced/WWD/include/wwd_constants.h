@@ -74,8 +74,9 @@ extern int DIV_ROUND_UP (int m, /*@sef@*/ int n); /* LINT : This tells lint that
  */
 typedef enum
 {
-    WWD_STA_INTERFACE, /**< STA or Client Interface  */
-    WWD_AP_INTERFACE,  /**< softAP Interface         */
+    WWD_STA_INTERFACE = 0, /**< STA or Client Interface  */
+    WWD_AP_INTERFACE  = 1,  /**< softAP Interface         */
+    WWD_P2P_INTERFACE = 2, /**< P2P Interface         */
 } wwd_interface_t;
 
 /**
@@ -291,7 +292,8 @@ typedef enum
     RESULT_ENUM( prefix, THREAD_FINISH_FAIL,           1053 ),   /**< Error deleting a thread */ \
     RESULT_ENUM( prefix, WAIT_ABORTED,                 1054 ),   /**< Semaphore/mutex wait has been aborted */ \
     RESULT_ENUM( prefix, SET_BLOCK_ACK_WINDOW_FAIL,    1055 ),   /**< Failed to set block ack window */ \
-    RESULT_ENUM( prefix, INVALID_INTERFACE,            1056 ),   /**< Invalid interface provided */
+    RESULT_ENUM( prefix, DELAY_TOO_SHORT,              1056 ),   /**< Requested delay is too short */ \
+    RESULT_ENUM( prefix, INVALID_INTERFACE,            1057 ),   /**< Invalid interface provided */
 
 
 /* These Enum result values are returned directly from the WLAN during an ioctl or iovar call.

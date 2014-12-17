@@ -676,8 +676,9 @@ typedef struct wlc_iov_trx_s
 #define IOVAR_STR_BGRATE                 "bg_rate"
 #define IOVAR_STR_ARATE                  "a_rate"
 #define IOVAR_STR_NMODE                  "nmode"
-
+#define IOVAR_STR_MAX_ASSOC              "maxassoc"
 #define IOVAR_STR_2G_MULTICAST_RATE      "2g_mrate"
+#define IOVAR_STR_MPC                    "mpc"
 #define IOVAR_STR_AMPDU_BA_WINDOW_SIZE   "ampdu_ba_wsize"
 #define IOVAR_STR_AMPDU_MPDU             "ampdu_mpdu"
 #define IOVAR_STR_AMPDU_RX_FACTOR        "ampdu_rx_factor"

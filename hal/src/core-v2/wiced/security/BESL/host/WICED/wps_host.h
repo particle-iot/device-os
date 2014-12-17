@@ -28,8 +28,8 @@ extern "C" {
 
 typedef enum
 {
-    BESL_WPS_PBC_MODE,
-    BESL_WPS_PIN_MODE
+    BESL_WPS_PBC_MODE = 1,
+    BESL_WPS_PIN_MODE = 2
 } besl_wps_mode_t;
 
 typedef enum
@@ -65,6 +65,8 @@ typedef struct
     char*    serial_number;
     uint32_t config_methods;
     uint32_t os_version;
+    uint16_t authentication_type_flags;
+    uint16_t encryption_type_flags;
 } besl_wps_device_detail_t;
 
 typedef struct

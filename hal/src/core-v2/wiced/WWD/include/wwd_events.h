@@ -18,7 +18,7 @@
 #ifndef INCLUDED_WWD_EVENTS_H
 #define INCLUDED_WWD_EVENTS_H
 
-#include "wwd_wifi.h"
+#include "wwd_structures.h"
 
 #ifdef __cplusplus
 extern "C"

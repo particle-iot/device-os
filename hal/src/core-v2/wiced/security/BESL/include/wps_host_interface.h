@@ -66,8 +66,8 @@ extern void     wps_host_free_eapol_packet    (wps_eapol_packet_t packet);
 extern void     wps_host_send_packet          (void* workspace, wps_eapol_packet_t packet, uint16_t size);
 
 /* Association functions */
-extern wps_result_t wps_host_join ( void* workspace, wps_ap_t* ap );
-extern wps_result_t wps_host_leave( void );
+extern wps_result_t wps_host_join( void* workspace, wps_ap_t* ap, wwd_interface_t interface );
+extern wps_result_t wps_host_leave( wwd_interface_t interface );
 
 /* Timing functions */
 extern void wps_host_start_timer( void* workspace, uint32_t timeout );
@@ -78,7 +78,7 @@ extern void wps_host_add_vendor_ie   ( uint32_t interface, void* data, uint16_t 
 extern void wps_host_remove_vendor_ie( uint32_t interface, void* data, uint16_t data_length, uint32_t packet_mask );
 
 /* Scanning functions */
-extern void      wps_host_scan            ( wps_agent_t* workspace, wps_scan_handler_t result_handler );
+extern void      wps_host_scan            ( wps_agent_t* workspace, wps_scan_handler_t result_handler, wwd_interface_t interface );
 extern wps_ap_t* wps_host_store_ap        ( void* workspace, wl_escan_result_t* scan_result );
 extern wps_ap_t* wps_host_retrieve_ap     ( void* workspace );
 extern uint16_t  wps_host_get_ap_list_size( void* workspace);
@@ -99,11 +99,13 @@ extern void wps_host_deauthenticate_client( const besl_mac_t* mac, uint32_t reas
 extern wps_result_t wps_process_event( wps_agent_t* workspace, wps_event_message_t* event );
 extern void wps_init_workspace       ( wps_agent_t* workspace );
 extern void wps_deinit_workspace     ( wps_agent_t* workspace );
-extern void wps_reset_workspace      ( wps_agent_t* workspace );
+extern void wps_reset_workspace      ( wps_agent_t* workspace, wwd_interface_t interface );
 extern void wps_scan_result_handler  ( wl_escan_result_t* result, void* user_data );
 extern void wps_prepare_workspace_crypto   ( wps_agent_t* workspace );
 extern wps_result_t wps_advertise_registrar( wps_agent_t* workspace, uint8_t selected_registrar );
+extern void wps_register_result_callback( wps_agent_t* workspace, void (*wps_result_callback)(wps_result_t*) );
 
+void wps_register_internal_result_callback( wps_agent_t* workspace, void (*wps_internal_result_callback)(wps_result_t*) );
 
 #ifdef __cplusplus
 } /*extern "C" */

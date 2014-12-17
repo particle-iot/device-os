@@ -291,6 +291,7 @@ struct _wps_agent_t
 
     /* Password and derived PSK */
     const char* password;
+    uint16_t    device_password_id;
     wps_psk_t   psk[2];
 
     wps_result_t wps_result;
@@ -321,6 +322,9 @@ struct _wps_agent_t
 
     /* Event handler for all events that occur during the INITIALIZING and IN_EAP_HANDSHAKE stages */
     wps_event_handler_t event_handler;
+
+    /* Pointer to the owner of the WPS agent, for example a P2P group owner workspace */
+    void* wps_agent_owner;
 
     /* IE elements for both Enrollee and Registrar */
     union
@@ -355,6 +359,13 @@ struct _wps_agent_t
     /* Copy of M1 to be used for hashing when we receive M2 */
     uint8_t* m1_copy;
     uint16_t m1_copy_length;
+
+    /* P2P related variables */
+    uint8_t is_p2p_enrollee;
+    uint8_t is_p2p_registrar;
+
+    void (*wps_result_callback)         (wps_result_t*); /*!< WPS result callback for applications */
+    void (*wps_internal_result_callback)(wps_result_t*); /*!< WPS internal result callback for use by P2P and other BESL features */
 };
 
 #ifdef __cplusplus

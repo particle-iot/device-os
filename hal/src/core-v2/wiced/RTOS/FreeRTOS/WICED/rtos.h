@@ -58,7 +58,9 @@ extern "C" {
  *    - event queue size : larger than that of wiced_hardware_io_worker_thread because networking operation may block
  */
 
+#ifndef HARDWARE_IO_WORKER_THREAD_STACK_SIZE
 #define HARDWARE_IO_WORKER_THREAD_STACK_SIZE                                   (512)
+#endif
 #define HARDWARE_IO_WORKER_THREAD_QUEUE_SIZE                                    (10)
 #define HARDWARE_IO_WORKER_THREAD_PRIORITY       (WICED_PRIORITY_TO_NATIVE_PRIORITY(WICED_DEFAULT_LIBRARY_PRIORITY))
 #define NETWORKING_WORKER_THREAD_STACK_SIZE                               (7 * 1024)

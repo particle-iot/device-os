@@ -114,7 +114,7 @@ wiced_result_t wiced_rtos_create_thread_with_stack( wiced_thread_t* thread, uint
 wiced_result_t wiced_rtos_delete_thread( wiced_thread_t* thread );
 
 
-/** Sleep for a given period
+/** Sleep for a given period of milliseconds
  *
  * Causes the current thread to sleep for AT LEAST the
  * specified number of milliseconds. If the processor is heavily loaded
@@ -127,6 +127,21 @@ wiced_result_t wiced_rtos_delete_thread( wiced_thread_t* thread );
  */
 wiced_result_t wiced_rtos_delay_milliseconds( uint32_t milliseconds );
 
+/** Delay for a given period of microseconds
+ *
+ * Causes the current thread to block for AT LEAST the
+ * specified number of microseconds. If the processor is heavily loaded
+ * with higher priority tasks, the delay may be much longer than requested.
+ *
+ * NOTE: All threads with equal or lower priority than the current thread
+ *       will not be able to run while the delay is occurring.
+ *
+ * @param microseconds : the time to delay in microseconds
+ *
+ * @return    WICED_SUCCESS : on success.
+ * @return    WICED_ERROR   : if an error occurred
+ */
+wiced_result_t wiced_rtos_delay_microseconds( uint32_t microseconds );
 
 /** Sleeps until another thread has terminated
  *

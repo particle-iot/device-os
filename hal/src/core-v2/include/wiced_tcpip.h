@@ -246,6 +246,16 @@ wiced_result_t wiced_tls_reset_context( wiced_tls_simple_context_t* tls_context 
 wiced_result_t wiced_tcp_create_socket( wiced_tcp_socket_t* socket, wiced_interface_t interface );
 
 
+/** Sets the type of service for the indicated TCP socket
+ *
+ * @param[in,out] socket : A pointer to a TCP socket handle that has been previously created with @ref wiced_tcp_create_socket
+ * @param[in]     tos    : The type of service, where 0x00 or 0xC0 = Best effort, 0x40 or 0x80 = Background, 0x20 or 0xA0 = Video, 0x60 or 0xE0 = Voice
+ *
+ * @return void
+ */
+void wiced_tcp_set_type_of_service( wiced_tcp_socket_t* socket, uint32_t tos );
+
+
 /** Registers a callback function with the indicated TCP socket
  *
  * @param[in,out] socket              : A pointer to a TCP socket handle that has been previously created with @ref wiced_tcp_create_socket
@@ -746,6 +756,15 @@ wiced_result_t wiced_udp_register_callbacks( wiced_udp_socket_t* socket, wiced_s
  * @return @ref wiced_result_t
  */
 wiced_result_t wiced_udp_unregister_callbacks( wiced_udp_socket_t* socket );
+
+/** Sets the type of service for the indicated UDP socket
+ *
+ * @param[in,out] socket : A pointer to a UDP socket handle that has been previously created with @ref wiced_udp_create_socket
+ * @param[in]     tos    : The type of service, where 0x00 or 0xC0 = Best effort, 0x40 or 0x80 = Background, 0x20 or 0xA0 = Video, 0x60 or 0xE0 = Voice
+ *
+ * @return void
+ */
+void wiced_udp_set_type_of_service( wiced_udp_socket_t* socket, uint32_t tos );
 
 /** @} */
 

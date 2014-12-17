@@ -289,7 +289,7 @@ struct _ssl_context
 
     int32_t do_crypt;                   /*!<  en(de)cryption flag     */
     const cipher_suite_t** ciphers;     /*!<  allowed ciphersuites    */
-    int32_t pmslen;                     /*!<  premaster length        */
+    uint32_t pmslen;                    /*!<  premaster length        */
     int32_t keylen;                     /*!<  symmetric key length    */
     int32_t minlen;                     /*!<  min. ciphertext length  */
     int32_t ivlen;                      /*!<  IV length               */

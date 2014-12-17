@@ -14,7 +14,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "wwd_wifi.h"
+#include "wwd_structures.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,6 +115,23 @@ typedef struct
         uint32_t entry_point;
 } boot_detail_t;
 
+/* This is used to calculate the padding of platform_dct_header.
+ * Should always match platform_dct_header_t, except for the padding.
+ */
+struct platform_dct_header_s
+{
+        unsigned long full_size;
+        unsigned long used_size;
+        char write_incomplete;
+        char is_current_dct;
+        char app_valid;
+        char mfg_info_programmed;
+        unsigned long magic_number;
+        boot_detail_t boot_detail;
+        image_location_t apps_locations[ DCT_MAX_APP_COUNT ];
+        void (*load_app_func)( void ); /* WARNING: TEMPORARY */
+};
+
 typedef struct
 {
         unsigned long full_size;
@@ -127,6 +144,9 @@ typedef struct
         boot_detail_t boot_detail;
         image_location_t apps_locations[ DCT_MAX_APP_COUNT ];
         void (*load_app_func)( void ); /* WARNING: TEMPORARY */
+#ifdef  DCT_HEADER_ALIGN_SIZE
+        uint8_t padding[DCT_HEADER_ALIGN_SIZE - sizeof(struct platform_dct_header_s)];
+#endif
 } platform_dct_header_t;
 
 typedef struct
@@ -176,12 +196,25 @@ typedef struct
         uint8_t cooee_key[ COOEE_KEY_SIZE ];
 } platform_dct_security_t;
 
+#ifdef WICED_DCT_INCLUDE_BT_CONFIG
 typedef struct
 {
-        platform_dct_header_t dct_header;
-        platform_dct_mfg_info_t mfg_info;
-        platform_dct_security_t security_credentials;
-        platform_dct_wifi_config_t wifi_config;
+    uint8_t bluetooth_device_address[6];
+    uint8_t bluetooth_device_name[249]; /* including null termination */
+    wiced_bool_t ssp_debug_mode;
+    uint8_t padding[1];   /* to ensure 32-bit aligned size */
+} platform_dct_bt_config_t;
+#endif
+
+typedef struct
+{
+    platform_dct_header_t        dct_header;
+    platform_dct_mfg_info_t      mfg_info;
+    platform_dct_security_t      security_credentials;
+    platform_dct_wifi_config_t   wifi_config;
+#ifdef WICED_DCT_INCLUDE_BT_CONFIG
+    platform_dct_bt_config_t     bt_config;
+#endif
 } platform_dct_data_t;
 
 /******************************************************

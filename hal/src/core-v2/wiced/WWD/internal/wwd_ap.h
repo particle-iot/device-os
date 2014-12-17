@@ -24,8 +24,6 @@ extern "C" {
 
 extern wiced_bool_t wiced_wifi_ap_is_up;
 
-extern wiced_bool_t wwd_wifi_is_packet_from_ap(uint8_t flags2);
-
 #ifdef __cplusplus
 } /*extern "C" */
 #endif

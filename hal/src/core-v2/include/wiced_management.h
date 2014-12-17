@@ -279,13 +279,21 @@ extern wiced_result_t wiced_network_suspend( void );
 extern wiced_result_t wiced_network_resume( void );
 
 
-/** Checks if a network interface is up
+/** Checks if a network interface is up at the 802.11 link layer
  *
  * @param[in] interface : the interface to check
  *
  * @return @ref wiced_bool_t
  */
 extern wiced_bool_t wiced_network_is_up( wiced_interface_t interface );
+
+/** Checks if a network interface is up at the IP layer
+ *
+ * @param[in] interface : the interface to check
+ *
+ * @return @ref wiced_bool_t
+ */
+extern wiced_bool_t wiced_network_is_ip_up( wiced_interface_t interface );
 
 /** Register callback function/s that gets called when a change in network link status occurs
  *

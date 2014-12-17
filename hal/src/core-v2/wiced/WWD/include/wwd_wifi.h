@@ -85,15 +85,25 @@ extern "C"
 
 /** @endcond */
 
+#define PM1_POWERSAVE_MODE          ( 1 )
+#define PM2_POWERSAVE_MODE          ( 2 )
+#define NO_POWERSAVE_MODE           ( 0 )
+
 /******************************************************
- * Enumerations
+ *                   Enumerations
  ******************************************************/
 
 /******************************************************
- *             Structures
+ *                   Structures
  ******************************************************/
 
 typedef void (*wwd_wifi_raw_packet_processor_t)( wiced_buffer_t buffer, wwd_interface_t interface );
+
+/******************************************************
+ *                 Global Variables
+ ******************************************************/
+
+extern wiced_bool_t wwd_wifi_p2p_go_is_up;
 
 /******************************************************
  *             Function declarations
@@ -105,6 +115,7 @@ typedef void (*wwd_wifi_raw_packet_processor_t)( wiced_buffer_t buffer, wwd_inte
  *
  * @param result_ptr  : A pointer to the pointer that indicates where to put the next scan result
  * @param user_data   : User provided data
+ * @param status      : Status of scan process
  */
 typedef void (*wiced_scan_result_callback_t)( wiced_scan_result_t** result_ptr, void* user_data, wiced_scan_status_t status );
 
@@ -148,6 +159,11 @@ extern wwd_result_t wwd_wifi_scan( wiced_scan_type_t                            
                                    /*@null@*/ void*                               user_data,
                                    wwd_interface_t                                interface );
 
+/** Abort a previously issued scan
+ *
+ * @return    WICED_SUCCESS or WICED_ERROR
+ */
+extern wwd_result_t wwd_wifi_abort_scan( void );
 
 /** Abort a previously issued scan
  *
@@ -222,6 +238,7 @@ extern wwd_result_t wwd_wifi_deauth_sta( const wiced_mac_t* mac, wwd_dot11_reaso
  * @return    WWD_SUCCESS or Error code
  */
 extern wwd_result_t wwd_wifi_get_mac_address( wiced_mac_t* mac, wwd_interface_t interface );
+
 
 /** ----------------------------------------------------------------------
  *  WARNING : This function is for internal use only!
@@ -310,7 +327,7 @@ extern wwd_result_t wwd_wifi_enable_powersave( void );
  *
  * return to sleep delay must be set to a multiple of 10 and not equal to zero.
  */
-extern wwd_result_t wwd_wifi_enable_powersave_with_throughput( uint8_t return_to_sleep_delay );
+extern wwd_result_t wwd_wifi_enable_powersave_with_throughput( uint16_t return_to_sleep_delay );
 
 
 /** Disables 802.11 power save mode
@@ -514,14 +531,13 @@ extern wwd_result_t wwd_wifi_get_acparams_sta( wiced_edcf_ac_param_t *acp );
  */
 extern void wwd_wifi_prioritize_acparams( const wiced_edcf_ac_param_t *acp, int *priority );
 
-/** Find the highest available access category (AC), which is equal to or less than the given AC,
- *  which does not require admission control and map it to a type of service (TOS) value.
+/** For each traffic priority (0..7) look up the 802.11 Access Category that is mapped to this type
+ *  of service and update the TOS map with the priority that the AP actually allows
  *
- * @param ac:        Access Category which is to be mapped to a TOS value
- * @param acp:       Pointer to an array of AC parameters
- * @return tos:      Highest available type of service that the selected AC maps to
+ * @return  WICED_SUCCESS : if the
+ *          WICED_ERROR   : if the AC Parameters were not retrieved
  */
-extern int wwd_wifi_get_available_tos( wiced_qos_access_category_t ac, const wiced_edcf_ac_param_t *acp );
+extern wwd_result_t wwd_wifi_update_tos_map( void );
 
 /** Print access category parameters with their priority (1-4, where 4 is highest priority)
  *
@@ -568,6 +584,18 @@ extern wwd_result_t wwd_wifi_set_channel( wwd_interface_t interface, uint32_t ch
  *          Error code   : if the counters were not successfully read
  */
 extern wwd_result_t wwd_wifi_get_counters( wwd_interface_t interface, wiced_counters_t* counters );
+
+/** Get the maximum number of associations supported by all interfaces (STA and Soft AP)
+ *
+ * @param max_assoc  : The maximum number of associations supported by the STA and Soft AP interfaces. For example
+ *                     if the STA interface is associated then the Soft AP can support (max_assoc - 1)
+ *                     associated clients.
+ *
+ * @return  WICED_SUCCESS : if the maximum number of associated clients was successfully read
+ *          WICED_ERROR   : if the maximum number of associated clients was not successfully read
+ */
+extern wwd_result_t wwd_wifi_get_max_associations( uint32_t* max_assoc );
+
 
 /** Get the current data rate for the provided interface
  *
@@ -631,6 +659,16 @@ extern wwd_result_t wwd_wifi_set_ampdu_parameters( void );
  */
 extern wwd_result_t wwd_wifi_set_block_ack_window_size( wwd_interface_t interface );
 
+/** Get the average PHY noise detected on the antenna. This is valid only after TX.
+ *  Defined only on STA interface
+ *
+ * @param noise : reports average noise
+ *
+ * @return  WWD_SUCCESS : if success
+ *          Error code   : if Link quality was not enabled or not successful
+ */
+extern wwd_result_t wwd_wifi_get_noise( int32_t *noise );
+
 /*@+exportlocal@*/
 /** @} */
 
@@ -685,6 +723,11 @@ extern wwd_result_t wwd_wifi_get_wifi_version( char* version, uint8_t length );
 extern wwd_result_t wwd_wifi_enable_minimum_power_consumption( void );
 
 extern wwd_result_t wwd_wifi_test_credentials( wiced_scan_result_t* ap, const uint8_t* security_key, uint8_t key_length );
+
+
+/* These functions are used for link down event handling while in power save mode */
+extern uint8_t  wiced_wifi_get_powersave_mode( void );
+extern uint16_t wiced_wifi_get_return_to_sleep_delay( void );
 
 /*@+exportlocal@*/
 

@@ -46,7 +46,7 @@ extern "C"
 #define wiced_packet_pools          (NULL)
 
 
-#define IP_HANDLE(interface)   (wiced_ip_handle[(interface==WICED_STA_INTERFACE)?0:1])
+#define IP_HANDLE(interface)   (*wiced_ip_handle[(interface)&3])
 
 #define WICED_MAXIMUM_NUMBER_OF_SOCKETS_WITH_CALLBACKS    (5)
 #define WICED_MAXIMUM_NUMBER_OF_ACCEPT_SOCKETS            (5)
@@ -151,7 +151,7 @@ typedef struct
 
 /* Note: These objects are for internal use only! */
 extern xTaskHandle     wiced_thread_handle;
-extern struct netif    wiced_ip_handle[2];
+extern struct netif*   wiced_ip_handle[3];
 extern struct dhcp     wiced_dhcp_handle;
 
 /******************************************************

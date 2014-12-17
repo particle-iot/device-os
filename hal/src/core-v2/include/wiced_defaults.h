@@ -43,6 +43,10 @@ extern "C"
 //#define WPRINT_ENABLE_RTOS_DEBUG
 //#define WPRINT_ENABLE_RTOS_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+#define WPRINT_ENABLE_WPS_INFO           /* WPS stack prints */
+//#define WPRINT_ENABLE_WPS_DEBUG
+//#define WPRINT_ENABLE_WPS_ERROR
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 #define WPRINT_ENABLE_WICED_INFO         /* Wiced internal prints */
 //#define WPRINT_ENABLE_WICED_DEBUG
 //#define WPRINT_ENABLE_WICED_ERROR
@@ -123,6 +127,16 @@ extern "C"
 /************************************************************************
  * Soft AP Options */
 #define WICED_DEFAULT_SOFT_AP_DTIM_PERIOD       (1)
+
+/************************************************************************
+ * WICED Wi-Fi Direct Options */
+#define P2P_MAX_ASSOCIATED_DEVICES              (5)
+
+/************************************************************************
+ * WICED Connectivity Options */
+#define WICED_WIFI_USE_STA_INTERFACE
+#define WICED_WIFI_USE_AP_INTERFACE
+//#define WICED_WIFI_USE_P2P_INTERFACE
 
 /************************************************************************
  * Uncomment to "hide" the soft AP */

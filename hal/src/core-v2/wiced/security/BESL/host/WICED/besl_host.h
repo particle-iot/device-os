@@ -13,6 +13,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 /******************************************************
  *                      Macros
  ******************************************************/
@@ -70,6 +72,8 @@ extern "C" {
 /******************************************************
  *               Function Declarations
  ******************************************************/
+
+extern void besl_host_hex_bytes_to_chars( char* cptr, const uint8_t* bptr, uint32_t blen );
 
 #ifdef __cplusplus
 } /*extern "C" */

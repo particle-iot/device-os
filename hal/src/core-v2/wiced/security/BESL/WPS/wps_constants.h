@@ -318,6 +318,12 @@ extern "C" {
 #define ENROLLEE_ID_STRING          "WFA-SimpleConfig-Enrollee-1-0"
 #define KDK_PERSONALIZATION_STRING  (char*) "Wi-Fi Easy and Secure Key Derivation"
 
+/* Timeout and delay constants */
+#define WPS_EAPOL_PACKET_TIMEOUT       (5000) /* 5 second timeout when waiting for WPS EAPOL packets, except M2 */
+#define WPS_PUBLIC_KEY_MESSAGE_TIMEOUT (8000) /* 8 second timeout for the enrollee when it has sent M1 and is waiting for the registrar's public key in M2 */
+#define WPS_PBC_MODE_ASSERTION_DELAY   (5000) /* 5 second delay to account for enrollees that keep asserting PBC mode for some time after the handshake has completed */
+#define WPS_PBC_NOTIFICATION_DELAY     (3000) /* 3 second delay between notifications sent to the application layer that an enrollee is trying to join using PBC mode */
+
 /******************************************************
  *                   Enumerations
  ******************************************************/
@@ -361,13 +367,16 @@ typedef enum
     WPS_EVENT_RECEIVED_IDENTITY,
     WPS_EVENT_RECEIVED_WPS_START,
     WPS_EVENT_RECEIVED_EAPOL_START,
+    WPS_EVENT_PBC_OVERLAP_NOTIFY_USER,
     WPS_EVENT_WPS_COMPLETE,
 } wps_event_t;
 
 typedef enum
 {
-    WPS_PBC_MODE,
-    WPS_PIN_MODE,
+    WPS_NO_MODE  = 0,
+    WPS_PBC_MODE = 1,
+    WPS_PIN_MODE = 2,
+    WPS_NFC_MODE = 3,
 } wps_mode_t;
 
 
@@ -542,6 +551,13 @@ typedef enum
     WPS_SENDING_SECRET_NONCE2,
     WPS_SENDING_CREDENTIALS = WPS_SENDING_SECRET_NONCE2,
 } wps_state_machine_stage_t;
+
+
+/******************************************************
+ *                    Variables
+ ******************************************************/
+
+extern const uint32_t wps_m2_timeout; /* Settable timeout for the enrollee when it is waiting for WPS message M2 from the registrar */
 
 #ifdef __cplusplus
 } /*extern "C" */

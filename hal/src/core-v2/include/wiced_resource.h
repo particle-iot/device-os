@@ -39,6 +39,7 @@ extern "C" {
  */
 #define RESOURCE_RESULT_LIST( prefix )  \
     RESULT_ENUM(  prefix, SUCCESS,                         0 ),   /**< Success */                           \
+    RESULT_ENUM(  prefix, UNSUPPORTED,                     7 ),   /**< Unsupported function */              \
     RESULT_ENUM(  prefix, OFFSET_TOO_BIG,               4001 ),   /**< Offset past end of resource */       \
     RESULT_ENUM(  prefix, FILE_OPEN_FAIL,               4002 ),   /**< Failed to open resource file */      \
     RESULT_ENUM(  prefix, FILE_SEEK_FAIL,               4003 ),   /**< Failed to seek to requested offset in resource file */ \

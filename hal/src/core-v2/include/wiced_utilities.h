@@ -96,6 +96,27 @@ extern void  malloc_transfer_to_thread     ( void* block, malloc_thread_handle t
 #define malloc_transfer_to_thread( block, thread )
 #endif /* ifdef WICED_ENABLE_MALLOC_DEBUG */
 
+/* Define macros to assist operation on host MCUs that require aligned memory access */
+#ifndef WICED_HOST_REQUIRES_ALIGNED_MEMORY_ACCESS
+
+#define WICED_MEMCPY(destination, source, size)   memcpy(destination, source, size)
+
+#define WICED_WRITE_16( pointer, value )      (*((uint16_t*)pointer) = value)
+#define WICED_WRITE_32( pointer, value )      (*((uint32_t*)pointer) = value)
+#define WICED_READ_16( pointer )              *((uint16_t*)pointer)
+#define WICED_READ_32( pointer )              *((uint32_t*)pointer)
+
+#else /* WICED_HOST_REQUIRES_ALIGNED_MEMORY_ACCESS */
+
+#define WICED_MEMCPY( destination, source, size )   mem_byte_cpy( destination, source, size )
+
+#define WICED_WRITE_16( pointer, value )      do { ((uint8_t*)pointer)[0] = (uint8_t)value; ((uint8_t*)pointer)[1]=(uint8_t)(value>>8); } while(0)
+#define WICED_WRITE_32( pointer, value )      do { ((uint8_t*)pointer)[0] = (uint8_t)value; ((uint8_t*)pointer)[1]=(uint8_t)(value>>8); ((uint8_t*)pointer)[2]=(uint8_t)(value>>16); ((uint8_t*)pointer)[3]=(uint8_t)(value>>24); } while(0)
+#define WICED_READ_16( pointer )              (((uint8_t*)pointer)[0] + (((uint8_t*)pointer)[1] << 8))
+#define WICED_READ_32( pointer )              (((uint8_t*)pointer)[0] + ((((uint8_t*)pointer)[1] << 8)) + (((uint8_t*)pointer)[2] << 16) + (((uint8_t*)pointer)[3] << 24))
+
+#endif /* WICED_HOST_REQUIRES_ALIGNED_MEMORY_ACCESS */
+
 /******************************************************
  *                    Constants
  ******************************************************/
@@ -200,6 +221,16 @@ uint8_t signed_to_decimal_string( int32_t value, char* output, uint8_t min_lengt
  */
 uint8_t unsigned_to_hex_string( uint32_t value, char* output, uint8_t min_length, uint8_t max_length );
 
+
+/**
+ * Verifies the provided string is a collection of digits.
+ *
+ * @param str[in]        : The string to verify
+ *
+ * @return 1 if string is valid digits, 0 otherwise
+ *
+ */
+int is_digit_str( const char* str );
 
 /**
  ******************************************************************************

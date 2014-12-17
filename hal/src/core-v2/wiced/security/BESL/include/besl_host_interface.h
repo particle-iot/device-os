@@ -27,12 +27,14 @@ uint16_t besl_host_htol16(uint16_t intshort);
 uint16_t besl_host_ltoh16(uint16_t intshort);
 
 
-extern void besl_host_get_mac_address(besl_mac_t* address, uint32_t interface );
-extern void besl_host_set_mac_address(besl_mac_t* address, uint32_t interface );
+extern besl_result_t besl_host_get_mac_address(besl_mac_t* address, uint32_t interface );
+extern besl_result_t besl_host_set_mac_address(besl_mac_t* address, uint32_t interface );
 extern void besl_host_random_bytes(uint8_t* buffer, uint16_t buffer_length);
+extern void besl_host_get_time(besl_time_t* time);
 
 /* Memory allocation functions */
 extern void* besl_host_malloc( char* name, uint32_t size );
+extern void* besl_host_calloc( char* name, uint32_t num, uint32_t size );
 extern void  besl_host_free( void* p );
 
 #ifdef __cplusplus

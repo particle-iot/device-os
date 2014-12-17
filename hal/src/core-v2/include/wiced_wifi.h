@@ -39,17 +39,18 @@ extern "C" {
  */
 typedef enum
 {
-    WICED_STA_INTERFACE,    /**< STA or Client Interface  */
-    WICED_AP_INTERFACE,     /**< softAP Interface         */
-    WICED_CONFIG_INTERFACE, /**< config softAP Interface  */
+    WICED_STA_INTERFACE    = WWD_STA_INTERFACE,             /**< STA or Client Interface  */
+    WICED_AP_INTERFACE     = WWD_AP_INTERFACE,              /**< softAP Interface         */
+    WICED_P2P_INTERFACE    = WWD_P2P_INTERFACE,             /**< P2P Interface            */
+    WICED_CONFIG_INTERFACE = WICED_AP_INTERFACE | (1 << 7), /**< config softAP Interface  */
 } wiced_interface_t;
 
 /** WPS Connection Mode
  */
 typedef enum
 {
-    WICED_WPS_PBC_MODE,  /**< Push button mode */
-    WICED_WPS_PIN_MODE   /**< PIN mode         */
+    WICED_WPS_PBC_MODE = 1,  /**< Push button mode */
+    WICED_WPS_PIN_MODE = 2   /**< PIN mode         */
 } wiced_wps_mode_t;
 
 /** WPS Device Category from the WSC2.0 spec
@@ -118,14 +119,17 @@ typedef wiced_result_t (*wiced_scan_result_handler_t)( wiced_scan_handler_result
  */
 typedef struct
 {
-    const wiced_wps_device_category_t device_category; /**< Device category       */
-    const uint16_t sub_category;                       /**< Device sub-category   */
-    const char*    device_name;                        /**< Device name           */
-    const char*    manufacturer;                       /**< Manufacturer details  */
-    const char*    model_name;                         /**< Model name            */
-    const char*    model_number;                       /**< Model number          */
-    const char*    serial_number;                      /**< Serial number         */
-    const uint32_t config_methods;                     /**< Configuration methods */
+    const wiced_wps_device_category_t device_category; /**< Device category                */
+    const uint16_t sub_category;                       /**< Device sub-category            */
+    const char*    device_name;                        /**< Device name                    */
+    const char*    manufacturer;                       /**< Manufacturer details           */
+    const char*    model_name;                         /**< Model name                     */
+    const char*    model_number;                       /**< Model number                   */
+    const char*    serial_number;                      /**< Serial number                  */
+    const uint32_t config_methods;                     /**< Configuration methods          */
+    const uint32_t os_version;                         /**< Operating system version       */
+    const uint16_t authentication_type_flags;          /**< Supported authentication types */
+    const uint16_t encryption_type_flags;              /**< Supported encryption types     */
 } wiced_wps_device_detail_t;
 
 /** WPS Credentials
@@ -330,8 +334,8 @@ static inline wiced_result_t wiced_wifi_enable_powersave( void );
  * after receiving or sending a packet, the WLAN chip will wait for a timeout period before
  * returning to sleep
  *
- * @note return_to_sleep_delay must be set to a multiple of 10. When set to 0, the timeout period
- *       defaults to 2 beacon intervals (approximately 204ms).
+ * @note return_to_sleep_delay must be set to a multiple of 10.
+ *
  *
  * @warning An accurate 32kHz clock reference must be connected to the WLAN        \n
  *          sleep clock input pin while the WLAN chip is in powersave mode!        \n
@@ -343,7 +347,7 @@ static inline wiced_result_t wiced_wifi_enable_powersave( void );
  *
  * @return @ref wiced_result_t
  */
-static inline wiced_result_t wiced_wifi_enable_powersave_with_throughput( uint8_t return_to_sleep_delay_ms );
+static inline wiced_result_t wiced_wifi_enable_powersave_with_throughput( uint16_t return_to_sleep_delay_ms );
 
 
 /** Disable 802.11 power save mode
@@ -608,7 +612,7 @@ static inline wiced_result_t wiced_wifi_enable_powersave( void )
     return (wiced_result_t) wwd_wifi_enable_powersave( );
 }
 
-static inline wiced_result_t wiced_wifi_enable_powersave_with_throughput( uint8_t return_to_sleep_delay_ms )
+static inline wiced_result_t wiced_wifi_enable_powersave_with_throughput( uint16_t return_to_sleep_delay_ms )
 {
     return (wiced_result_t) wwd_wifi_enable_powersave_with_throughput( return_to_sleep_delay_ms );
 }

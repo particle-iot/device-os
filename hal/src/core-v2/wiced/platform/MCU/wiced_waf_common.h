@@ -28,6 +28,13 @@ extern "C" {
 /******************************************************
  *                 Type Definitions
  ******************************************************/
+typedef struct wiced_app_s
+{
+        uint8_t         app_id;
+        uint32_t        offset;
+        uint32_t        last_erased_sector;
+        image_location_t  app_header_location;
+}wiced_app_t;
 
 /******************************************************
  *                    Structures
@@ -44,11 +51,13 @@ void           wiced_waf_start_app          ( uint32_t entry_point );
 wiced_result_t wiced_waf_check_factory_reset( void );
 wiced_result_t wiced_waf_reboot             ( void );
 wiced_result_t wiced_waf_app_set_boot       ( uint8_t app_id, char load_once );
-wiced_result_t wiced_waf_app_erase          ( uint8_t app_id );
-wiced_result_t wiced_waf_app_get_size       ( uint8_t app_id, uint32_t* size );
-wiced_result_t wiced_waf_app_set_size       ( uint8_t app_id, uint32_t size );
-wiced_result_t wiced_waf_app_write_chunk    ( uint8_t app_id, uint32_t offset, const uint8_t* data, uint32_t size, uint32_t* last_erased_sector );
-wiced_result_t wiced_waf_app_read_chunk     ( uint8_t app_id, uint32_t offset, uint8_t* data, uint32_t size );
+wiced_result_t wiced_waf_app_open           ( uint8_t app_id, wiced_app_t* app );
+wiced_result_t wiced_waf_app_close          ( wiced_app_t* app );
+wiced_result_t wiced_waf_app_erase          ( wiced_app_t* app );
+wiced_result_t wiced_waf_app_get_size       ( wiced_app_t* app, uint32_t* size );
+wiced_result_t wiced_waf_app_set_size       ( wiced_app_t* app, uint32_t size );
+wiced_result_t wiced_waf_app_write_chunk    ( wiced_app_t* app, const uint8_t* data, uint32_t size );
+wiced_result_t wiced_waf_app_read_chunk     ( wiced_app_t* app, uint32_t offset, uint8_t* data, uint32_t size );
 wiced_result_t wiced_waf_app_load           ( const image_location_t* app_header_location, uint32_t* destination );
 
 #ifdef __cplusplus

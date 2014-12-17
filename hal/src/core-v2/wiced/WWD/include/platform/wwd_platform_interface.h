@@ -105,7 +105,7 @@ extern "C"
  * that is created during the application build process.
  * @param mac : A wiced_mac_t pointer to the Wi-Fi MAC address
  */
-/*@external@*/ extern void host_platform_get_mac_address( wiced_mac_t* mac );
+/*@external@*/ extern wwd_result_t host_platform_get_mac_address( wiced_mac_t* mac );
 
 /**
  * Returns the current CPU cycle count.
