@@ -31,6 +31,7 @@
 #include "interrupts_hal.h"
 #include "hw_config.h"
 #include "syshealth_hal.h"
+#include "rtc_hal.h"
 
 extern void linkme();
 
@@ -83,7 +84,7 @@ void HAL_Core_Config(void)
   /* Enable CRC clock */
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC, ENABLE);
 
-  RTC_Configuration();
+  HAL_RTC_Configuration();
 
   /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
   HAL_Core_Execute_Stop_Mode();

@@ -41,6 +41,8 @@
 extern "C" {
 #endif
 
+void HAL_RTC_Configuration(void);
+
 uint32_t HAL_RTC_Get_Counter(void);
 void HAL_RTC_Set_Counter(uint32_t value);
 void HAL_RTC_Set_Alarm(uint32_t value);
