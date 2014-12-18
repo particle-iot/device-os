@@ -114,8 +114,6 @@ void SysTick_Disable(void);
 void System1MsTick(void);
 system_tick_t GetSystem1MsTick(void);
 
-void RTC_Configuration(void);
-
 void IWDG_Reset_Enable(uint32_t msTimeout);
 
 void UI_Timer_Configure(void);
