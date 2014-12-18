@@ -657,16 +657,20 @@ void Spark_Protocol_Init(void)
 
 int Spark_Handshake(void)
 {
-  spark_protocol.reset_updating();
-  int err = spark_protocol.handshake();
+    spark_protocol.reset_updating();
+    int err = spark_protocol.handshake();
 
-  Multicast_Presence_Announcement();
-  spark_protocol.send_time_request();
+    char patchstr[8];  
+    if (!err) {
+        Multicast_Presence_Announcement();
+        spark_protocol.send_time_request();
 
-  char patchstr[8];  
-  if (!core_read_subsystem_version(patchstr, 8)) {
-      Spark.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, patchstr, 60, PRIVATE);
-  }
+        Spark.publish("spark/hardware/max_binary", "524288", 60, PRIVATE);
+        if (!core_read_subsystem_version(patchstr, 8)) {
+            Spark.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, patchstr, 60, PRIVATE);
+        }        
+    }
+
   return err;
 }
 
