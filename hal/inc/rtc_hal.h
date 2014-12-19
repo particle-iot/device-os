@@ -28,6 +28,7 @@
 #define __RTC_HAL_H
 
 #include <stdint.h>
+#include <time.h>
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -43,9 +44,9 @@ extern "C" {
 
 void HAL_RTC_Configuration(void);
 
-uint32_t HAL_RTC_Get_Counter(void);
-void HAL_RTC_Set_Counter(uint32_t value);
-void HAL_RTC_Set_Alarm(uint32_t value);
+time_t HAL_RTC_Get_UnixTime(void);
+void HAL_RTC_Set_UnixTime(time_t value);
+void HAL_RTC_Set_UnixAlarm(time_t value);
 
 void HAL_RTC_Handler(void) __attribute__ ((weak));
 void HAL_RTCAlarm_Handler(void) __attribute__ ((weak));

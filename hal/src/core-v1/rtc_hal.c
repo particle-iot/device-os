@@ -120,22 +120,22 @@ void HAL_RTC_Configuration(void)
     RTC_WaitForLastTask();
 }
 
-uint32_t HAL_RTC_Get_Counter(void)
+time_t HAL_RTC_Get_UnixTime(void)
 {
-  return RTC_GetCounter();
+  return (time_t)RTC_GetCounter();
 }
 
-void HAL_RTC_Set_Counter(uint32_t value)
+void HAL_RTC_Set_UnixTime(time_t value)
 {
   RTC_WaitForLastTask();
-  RTC_SetCounter(value);
+  RTC_SetCounter((uint32_t)value);
   RTC_WaitForLastTask();
 }
 
-void HAL_RTC_Set_Alarm(uint32_t value)
+void HAL_RTC_Set_UnixAlarm(time_t value)
 {
   /* Set the RTC Alarm */
-  RTC_SetAlarm(RTC_GetCounter() + value);
+  RTC_SetAlarm(RTC_GetCounter() + (uint32_t)value);
   /* Wait until last write operation on RTC registers has finished */
   RTC_WaitForLastTask();
 }

@@ -53,11 +53,9 @@ time_t time_zone_cache;			// a cache of the time zone that was set
 /* Time utility functions */
 static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time);
 //static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time);
-static time_t Get_UnixTime(void);
 //static struct tm Get_CalendarTime(void);
-static void Set_UnixTime(time_t unix_time);
 //static void Set_CalendarTime(struct tm t);
-//static void Refresh_UnixTime_Cache(time_t unix_time);
+static void Refresh_UnixTime_Cache(time_t unix_time);
 
 /*******************************************************************************
  * Function Name  : Time_Update_Handler (Declared as weak)
@@ -71,7 +69,7 @@ void Time_Update_Handler(void)
   // Only intervene if we have an error to correct
   if (0 != skew.error && 0 < skew.ticks)
   {
-    time_t now = Get_UnixTime();
+    time_t now = HAL_RTC_Get_UnixTime();
 
     // By default, we set the clock 1 second forward
     time_t skew_step = 1;
@@ -99,7 +97,7 @@ void Time_Update_Handler(void)
     }
 
     skew.ticks--;
-    Set_UnixTime(now + skew_step);
+    HAL_RTC_Set_UnixTime(now + skew_step);
   }
 }
 
@@ -123,35 +121,22 @@ static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time)
 }
 */
 
-/* Get Unix/RTC time */
-static time_t Get_UnixTime(void)
-{
-	time_t unix_time = (time_t)HAL_RTC_Get_Counter();
-	return unix_time;
-}
-
 /* Get converted Calendar time */
 /*
  static struct tm Get_CalendarTime(void)
 {
-	time_t unix_time = Get_UnixTime();
+	time_t unix_time = HAL_RTC_Get_UnixTime();
 	unix_time += time_zone_cache;
 	struct tm calendar_time = Convert_UnixTime_To_CalendarTime(unix_time);
 	return calendar_time;
 }
  */
 
-/* Set Unix/RTC time */
-static void Set_UnixTime(time_t unix_time)
-{
-        HAL_RTC_Set_Counter((uint32_t)unix_time);
-}
-
 /* Set Calendar time as Unix/RTC time */
 /*
 static void Set_CalendarTime(struct tm calendar_time)
 {
-	Set_UnixTime(Convert_CalendarTime_To_UnixTime(calendar_time));
+	HAL_RTC_Set_UnixTime(Convert_CalendarTime_To_UnixTime(calendar_time));
 }
 */
 
@@ -301,7 +286,7 @@ int TimeClass::year(time_t t)
 /* return the current time as seconds since Jan 1 1970 */
 time_t TimeClass::now()
 {
-	return Get_UnixTime();
+	return HAL_RTC_Get_UnixTime();
 }
 
 /* set the time zone (+/-) offset from GMT */
@@ -317,11 +302,11 @@ void TimeClass::zone(float GMT_Offset)
 /* set the given time as unix/rtc time */
 void TimeClass::setTime(time_t t)
 {
-  int32_t delta_error = Get_UnixTime() - t;
+  int32_t delta_error = HAL_RTC_Get_UnixTime() - t;
   if (delta_error > 127 || delta_error < -127)
   {
     // big delta, jump abruptly to the new time
-    Set_UnixTime(t);
+    HAL_RTC_Set_UnixTime(t);
   }
   else
   {

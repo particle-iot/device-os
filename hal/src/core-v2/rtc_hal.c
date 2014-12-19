@@ -1,9 +1,9 @@
 /**
  ******************************************************************************
  * @file    rtc_hal.c
- * @author  Satish Nair, Brett Walach
+ * @author  Satish Nair
  * @version V1.0.0
- * @date    12-Sept-2014
+ * @date    18-Dec-2014
  * @brief
  ******************************************************************************
   Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
@@ -46,7 +46,7 @@ void HAL_RTC_Configuration(void)
 	EXTI_InitTypeDef EXTI_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	__IO uint32_t AsynchPrediv = 0, SynchPrediv = 0;
+	__IO uint32_t AsynchPrediv = 0x7F, SynchPrediv = 0xFF;
 
 	/* Configure EXTI Line17(RTC Alarm) to generate an interrupt on rising edge */
 	EXTI_ClearITPendingBit(EXTI_Line17);
@@ -99,9 +99,6 @@ void HAL_RTC_Configuration(void)
 		/* Select LSE as RTC Clock Source */
 		RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
 
-		SynchPrediv = 0xFF;
-		AsynchPrediv = 0x7F;
-
 		/* Enable RTC Clock */
 		RCC_RTCCLKCmd(ENABLE);
 
@@ -119,23 +116,117 @@ void HAL_RTC_Configuration(void)
 			/* RTC Prescaler Config failed */
 		}
 	}
+}
+
+time_t HAL_RTC_Get_UnixTime(void)
+{
+	RTC_TimeTypeDef RTC_TimeStructure;
+	RTC_DateTypeDef RTC_DateStructure;
+
+	/* Get the current Time and Date */
+	RTC_GetTime(RTC_Format_BIN, &RTC_TimeStructure);
+	RTC_GetDate(RTC_Format_BIN, &RTC_DateStructure);
+
+	struct tm calendar_time;
+
+	/* Set calendar_time time struct values */
+	calendar_time.tm_hour = RTC_TimeStructure.RTC_Hours;
+	calendar_time.tm_min = RTC_TimeStructure.RTC_Minutes;
+	calendar_time.tm_sec = RTC_TimeStructure.RTC_Seconds;
+
+	/* Set calendar_time date struct values */
+	calendar_time.tm_wday = RTC_DateStructure.RTC_WeekDay;
+	calendar_time.tm_mday = RTC_DateStructure.RTC_Date;
+	calendar_time.tm_mon = RTC_DateStructure.RTC_Month;
+	calendar_time.tm_year = RTC_DateStructure.RTC_Year;
+
+	return (time_t)mktime(&calendar_time);
+}
+
+void HAL_RTC_Set_UnixTime(time_t value)
+{
+	RTC_TimeTypeDef RTC_TimeStructure;
+	RTC_DateTypeDef RTC_DateStructure;
+
+	struct tm *calendar_time;
+	calendar_time = localtime(&value);
+
+	/* Get calendar_time time struct values */
+	RTC_TimeStructure.RTC_Hours = calendar_time->tm_hour;
+	RTC_TimeStructure.RTC_Minutes = calendar_time->tm_min;
+	RTC_TimeStructure.RTC_Seconds = calendar_time->tm_sec;
+
+	/* Get calendar_time date struct values */
+	RTC_DateStructure.RTC_WeekDay = calendar_time->tm_wday;
+	RTC_DateStructure.RTC_Date = calendar_time->tm_mday;
+	RTC_DateStructure.RTC_Month = calendar_time->tm_mon;
+	RTC_DateStructure.RTC_Year = calendar_time->tm_year;
+
+	/* Configure the RTC time register */
+	if(RTC_SetTime(RTC_Format_BIN, &RTC_TimeStructure) == ERROR)
+	{
+		/* RTC Set Time failed */
+	}
+
+	/* Configure the RTC date register */
+	if(RTC_SetDate(RTC_Format_BIN, &RTC_DateStructure) == ERROR)
+	{
+		/* RTC Set Date failed */
+	}
+}
+
+void HAL_RTC_Set_UnixAlarm(time_t value)
+{
+	RTC_TimeTypeDef RTC_TimeStructure;
+	RTC_AlarmTypeDef RTC_AlarmStructure;
+
+	/* Disable the Alarm A */
+	RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
+
+	/* Get the current Time */
+	RTC_GetTime(RTC_Format_BIN, &RTC_TimeStructure);
+
+	struct tm *alarm_time;
+	alarm_time = localtime(&value);
+
+	RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours = RTC_TimeStructure.RTC_Hours + alarm_time->tm_hour;
+	RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes = RTC_TimeStructure.RTC_Minutes + alarm_time->tm_min;
+	RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds = RTC_TimeStructure.RTC_Seconds + alarm_time->tm_sec;
+
+	/* Configure the RTC Alarm A register */
+	RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);
 
 	/* Enable the RTC Alarm A Interrupt */
 	RTC_ITConfig(RTC_IT_ALRA, ENABLE);
+
+	/* Enable the Alarm  A */
+	RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
+
+	/* Clear RTC Alarm Flag */
+	RTC_ClearFlag(RTC_FLAG_ALRAF);
 }
 
-uint32_t HAL_RTC_Get_Counter(void)
+void RTC_Alarm_irq(void)
 {
-	//To Do
-	return 0;
+	if(RTC_GetITStatus(RTC_IT_ALRA) != RESET)
+	{
+		if(NULL != HAL_RTCAlarm_Handler)
+		{
+			HAL_RTCAlarm_Handler();
+		}
+
+		/* Clear EXTI line17 pending bit */
+		EXTI_ClearITPendingBit(EXTI_Line17);
+
+		/* Check if the Wake-Up flag is set */
+		if(PWR_GetFlagStatus(PWR_FLAG_WU) != RESET)
+		{
+			/* Clear Wake Up flag */
+			PWR_ClearFlag(PWR_FLAG_WU);
+		}
+
+		/* Clear RTC Alarm interrupt pending bit */
+		RTC_ClearITPendingBit(RTC_IT_ALRA);
+	}
 }
 
-void HAL_RTC_Set_Counter(uint32_t value)
-{
-	//To Do
-}
-
-void HAL_RTC_Set_Alarm(uint32_t value)
-{
-	//To Do
-}

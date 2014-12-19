@@ -370,7 +370,7 @@ void SparkClass::syncTime(void)
 
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
-    HAL_RTC_Set_Alarm((uint32_t)seconds);
+    HAL_RTC_Set_UnixAlarm((time_t)seconds);
 
     switch(sleepMode)
     {
@@ -397,7 +397,7 @@ void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
 
 void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
-    HAL_RTC_Set_Alarm((uint32_t)seconds);
+    HAL_RTC_Set_UnixAlarm((time_t)seconds);
 
     sleep(wakeUpPin, edgeTriggerMode);
 }
