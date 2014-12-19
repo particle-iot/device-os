@@ -177,21 +177,22 @@ void HAL_RTC_Set_UnixTime(time_t value)
 
 void HAL_RTC_Set_UnixAlarm(time_t value)
 {
-	RTC_TimeTypeDef RTC_TimeStructure;
 	RTC_AlarmTypeDef RTC_AlarmStructure;
+
+	time_t alarm_time = HAL_RTC_Get_UnixTime() + value;
+
+	struct tm *alarm_time_tm;
+	alarm_time_tm = localtime(&alarm_time);
 
 	/* Disable the Alarm A */
 	RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
 
-	/* Get the current Time */
-	RTC_GetTime(RTC_Format_BIN, &RTC_TimeStructure);
-
-	struct tm *alarm_time;
-	alarm_time = localtime(&value);
-
-	RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours = RTC_TimeStructure.RTC_Hours + alarm_time->tm_hour;
-	RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes = RTC_TimeStructure.RTC_Minutes + alarm_time->tm_min;
-	RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds = RTC_TimeStructure.RTC_Seconds + alarm_time->tm_sec;
+    RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours = alarm_time_tm->tm_hour;
+	RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes = alarm_time_tm->tm_min;
+	RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds = alarm_time_tm->tm_sec;
+    RTC_AlarmStructure.RTC_AlarmDateWeekDay = 0x31;
+    RTC_AlarmStructure.RTC_AlarmDateWeekDaySel = RTC_AlarmDateWeekDaySel_Date;
+    RTC_AlarmStructure.RTC_AlarmMask = RTC_AlarmMask_None;
 
 	/* Configure the RTC Alarm A register */
 	RTC_SetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);
