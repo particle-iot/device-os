@@ -113,14 +113,17 @@ int32_t HAL_ADC_Read(uint16_t pin)
         ADC_ConvertedValues[i] = 0;
     }
 
-    // Reset the number of data units in the DMA2 Stream0 channel0 transfer
-    DMA_SetCurrDataCounter(DMA2_Stream0, ADC_DMA_BUFFERSIZE);
-
-    // DMA2_Stream0 enable
+    // Enable DMA2_Stream0
     DMA_Cmd(DMA2_Stream0, ENABLE);
 
-    // Enable ADC1 DMA
-    ADC_DMACmd(ADC1, ENABLE);
+    // Enable DMA request after last transfer (Multi-ADC mode)
+    ADC_MultiModeDMARequestAfterLastTransferCmd(ENABLE);
+
+    // Enable ADC1
+    ADC_Cmd(ADC1, ENABLE);
+
+    // Enable ADC2
+    ADC_Cmd(ADC2, ENABLE);
 
     // Start ADC1 Software Conversion
     ADC_SoftwareStartConv(ADC1);
@@ -131,11 +134,17 @@ int32_t HAL_ADC_Read(uint16_t pin)
     // Clear DMA2 Stream0 DMA_FLAG_TCIF0 flag
     DMA_ClearFlag(DMA2_Stream0, DMA_FLAG_TCIF0);
 
-    // Disable ADC1 DMA
-    ADC_DMACmd(ADC1, DISABLE);
-
-    // DMA2_Stream0 disable
+    // Disable DMA2_Stream0
     DMA_Cmd(DMA2_Stream0, DISABLE);
+
+    // Disable DMA request after last transfer (Multi-ADC mode)
+    ADC_MultiModeDMARequestAfterLastTransferCmd(DISABLE);
+
+    // Disable ADC1
+    ADC_Cmd(ADC1, DISABLE);
+
+    // Disable ADC2
+    ADC_Cmd(ADC2, DISABLE);
 
     uint32_t ADC_SummatedValue = 0;
     uint16_t ADC_AveragedValue = 0;
@@ -195,8 +204,8 @@ void HAL_ADC_DMA_Init()
 
     // ADC1 configuration
     ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
-    ADC_InitStructure.ADC_ScanConvMode = DISABLE;
-    ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+    ADC_InitStructure.ADC_ScanConvMode = ENABLE;
+    ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
     ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
     ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
     ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
@@ -205,20 +214,11 @@ void HAL_ADC_DMA_Init()
 
     // ADC2 configuration
     ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
-    ADC_InitStructure.ADC_ScanConvMode = DISABLE;
-    ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+    ADC_InitStructure.ADC_ScanConvMode = ENABLE;
+    ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
     ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
     ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
     ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
     ADC_InitStructure.ADC_NbrOfConversion = 1;
     ADC_Init(ADC2, &ADC_InitStructure);
-
-    // Disable DMA request after last transfer (Multi-ADC mode)
-    ADC_MultiModeDMARequestAfterLastTransferCmd(DISABLE);
-
-    // Enable ADC1
-    ADC_Cmd(ADC1, ENABLE);
-
-    // Enable ADC2
-    ADC_Cmd(ADC2, ENABLE);
 }

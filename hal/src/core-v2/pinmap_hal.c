@@ -59,7 +59,7 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
   { GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
   { GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
   { GPIOA, GPIO_Pin_4, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 }, // need to define DAC
-  { GPIOA, GPIO_Pin_0, NONE, TIM5, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM5, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
   { GPIOA, GPIO_Pin_10, ADC_Channel_3, TIM1, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
   { GPIOA, GPIO_Pin_9, ADC_Channel_2, TIM1, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
   { GPIOC, GPIO_Pin_7, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 }
