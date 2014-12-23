@@ -248,7 +248,6 @@ void UI_Timer_Configure(void)
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 
     /* Time Base Configuration */
-    TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
     TIM_TimeBaseStructure.TIM_Period = TIM1_Autoreload;
     TIM_TimeBaseStructure.TIM_Prescaler = TIM1_Prescaler;
     TIM_TimeBaseStructure.TIM_ClockDivision = 0x0000;
