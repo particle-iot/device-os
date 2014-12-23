@@ -35,6 +35,7 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
 /*
  * gpio_peripheral (GPIOA, GPIOB or GPIOC)
  * gpio_pin (0-15)
+ * gpio_pin_source (GPIO_PinSource0 - GPIO_PinSource15)
  * adc_channel (0-15 or NONE. Note we don't define the peripheral because our chip only has one)
  * timer_peripheral (TIM1 - TIM5, or NONE)
  * timer_ch (1-3, or NONE)
@@ -42,27 +43,27 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
  * timer_ccr (0 by default, store the CCR value for TIM interrupt use)
  * user_property (0 by default, user variable storage)
  */
-  { GPIOB, GPIO_Pin_7, NONE, TIM4, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
-  { GPIOB, GPIO_Pin_6, NONE, TIM4, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
-  { GPIOB, GPIO_Pin_5, NONE, TIM3, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
-  { GPIOB, GPIO_Pin_4, NONE, TIM3, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
-  { GPIOB, GPIO_Pin_3, NONE, TIM2, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_15, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_14, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_13, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_8, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_9, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-  { GPIOC, GPIO_Pin_5, ADC_Channel_15, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-  { GPIOC, GPIO_Pin_3, ADC_Channel_13, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-  { GPIOC, GPIO_Pin_2, ADC_Channel_12, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_5, ADC_Channel_5, TIM2, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_6, ADC_Channel_6, TIM3, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_7, ADC_Channel_7, TIM3, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_4, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 }, // need to define DAC
-  { GPIOA, GPIO_Pin_0, ADC_Channel_0, TIM5, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_10, ADC_Channel_3, TIM1, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_9, ADC_Channel_2, TIM1, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
-  { GPIOC, GPIO_Pin_7, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 }
+  { GPIOB, GPIO_Pin_7, GPIO_PinSource7, NONE, TIM4, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_6, GPIO_PinSource6, NONE, TIM4, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_5, GPIO_PinSource5, NONE, TIM3, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_4, GPIO_PinSource4, NONE, TIM3, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+  { GPIOB, GPIO_Pin_3, GPIO_PinSource3, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_15, GPIO_PinSource15, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_14, GPIO_PinSource14, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_13, GPIO_PinSource13, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_8, GPIO_PinSource8, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_9, GPIO_PinSource9, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOC, GPIO_Pin_5, GPIO_PinSource5, ADC_Channel_15, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOC, GPIO_Pin_3, GPIO_PinSource3, ADC_Channel_13, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOC, GPIO_Pin_2, GPIO_PinSource2, ADC_Channel_12, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_5, GPIO_PinSource5, ADC_Channel_5, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_6, GPIO_PinSource6, ADC_Channel_6, TIM3, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_7, GPIO_PinSource7, ADC_Channel_7, TIM3, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_4, GPIO_PinSource4, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 }, // need to define DAC
+  { GPIOA, GPIO_Pin_0, GPIO_PinSource0, ADC_Channel_0, TIM5, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_10, GPIO_PinSource10, ADC_Channel_3, TIM1, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
+  { GPIOA, GPIO_Pin_9, GPIO_PinSource9, ADC_Channel_2, TIM1, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+  { GPIOC, GPIO_Pin_7, GPIO_PinSource7, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 }
 };
 
 
