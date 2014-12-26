@@ -56,6 +56,23 @@ void pinMode(uint16_t pin, PinMode setMode)
 }
 
 /*
+ * @brief Returns the mode of the selected pin as type PinMode
+ *
+ * OUTPUT = 0
+ * INPUT = 1
+ * INPUT_PULLUP = 2
+ * INPUT_PULLDOWN = 3
+ * AF_OUTPUT_PUSHPULL = 4
+ * AF_OUTPUT_DRAIN = 5
+ * AN_INPUT = 6
+ * PIN_MODE_NONE = 255  
+ */
+PinMode getPinMode(uint16_t pin)
+{
+  HAL_Get_Pin_Mode(pin);
+}
+
+/*
  * @brief Perform safety check on desired pin to see if it's already
  * being used.  Return 0 if used, otherwise return 1 if available.
  */
