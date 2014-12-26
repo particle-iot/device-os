@@ -69,7 +69,7 @@ void pinMode(uint16_t pin, PinMode setMode)
  */
 PinMode getPinMode(uint16_t pin)
 {
-  HAL_Get_Pin_Mode(pin);
+  return HAL_Get_Pin_Mode(pin);
 }
 
 /*
