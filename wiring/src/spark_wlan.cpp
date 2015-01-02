@@ -181,7 +181,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
     Spark_Protocol_Init();
 }
 
-void SPARK_WLAN_Loop(void)
+void Spark_Idle(bool force_events/*=false*/)
 {
   static int cfod_count = 0;
   HAL_Notify_WDT();
@@ -193,7 +193,7 @@ void SPARK_WLAN_Loop(void)
   {
     if (SPARK_WLAN_STARTED)
     {
-      DEBUG("Resetting CC3000!");
+      DEBUG("Resetting WLAN!");
       CLR_WLAN_WD();
       WLAN_CONNECTED = 0;
       WLAN_DHCP = 0;
@@ -373,9 +373,9 @@ void SPARK_WLAN_Loop(void)
       }
     }
 
-    if(SPARK_FLASH_UPDATE || System.mode() != MANUAL)
+    if(SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL)
     {
-      Spark.process();
+      Spark_Process_Events();
     }
   }
 }

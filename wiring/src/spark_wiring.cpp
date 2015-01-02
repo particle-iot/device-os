@@ -248,18 +248,18 @@ void delay(unsigned long ms)
       break;
     }
 
-    if (SPARK_WLAN_SLEEP)
+    if (SPARK_WLAN_SLEEP || System.mode()==MANUAL || (System.mode()==SEMI_AUTOMATIC && !Spark.connected()))
     {
-      //Do not yield for SPARK_WLAN_Loop()
+      //Do not yield for Spark_Idle()
     }
     else if ((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
     {
       spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
-      //spark_loop_total_millis is reset to 0 in SPARK_WLAN_Loop()
+      //spark_loop_total_millis is reset to 0 in Spark_Idle()
       do
       {
         //Run once if the above condition passes
-        SPARK_WLAN_Loop();
+        Spark_Idle();
       }
       while (SPARK_FLASH_UPDATE);//loop during OTA update
     }

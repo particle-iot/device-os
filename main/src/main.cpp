@@ -212,7 +212,7 @@ void app_setup_and_loop(void)
     while (1)
     {
         DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
-        SPARK_WLAN_Loop();
+        Spark_Idle();
 
         static uint8_t SPARK_WIRING_APPLICATION = 0;
         if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)

@@ -164,7 +164,7 @@ bool Spark_Communication_Loop(void);
 void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on);
 void Spark_SetTime(unsigned long dateTime);
-
+void Spark_Process_Events();
 void Spark_Prepare_To_Save_File(uint32_t sFlashAddress, uint32_t fileSize);
 void Spark_Prepare_For_Firmware_Update(void);
 void Spark_Finish_Firmware_Update(void);
