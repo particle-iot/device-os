@@ -146,6 +146,9 @@ extern SparkClass Spark;
 
 extern volatile uint8_t LED_Spark_Signal;
 
+String bytes2hex(const uint8_t* buf, unsigned len);
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif

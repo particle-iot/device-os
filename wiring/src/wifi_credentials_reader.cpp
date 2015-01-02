@@ -77,8 +77,22 @@ void WiFiCredentialsReader::read(void)
     }
     else if ('i' == c)
     {
+        print("Your core id is ");
         String id = Spark.deviceID();
         print(id.c_str());
+        print("\r\n");
+    }
+    else if ('m' == c)
+    {
+        print("Your core MAC address is\r\n");
+        WLanConfig ip_config;
+        wlan_fetch_ipconfig(&ip_config);
+        uint8_t* addr = ip_config.uaMacAddr;
+        print(bytes2hex(addr++, 1).c_str());
+        for (int i=1; i<6; i++) {
+            print(":");
+            print(bytes2hex(addr++, 1).c_str());
+        }
         print("\r\n");
     }
     else if ('f' == c)
