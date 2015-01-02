@@ -46,7 +46,7 @@ extern uint32_t wlan_watchdog;
 #define CLR_WLAN_WD() do { wlan_watchdog = 0; WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog);;}while(0)
     
 #if defined(DEBUG_WIFI)
-extern uint32_t lastEvent = 0;
+extern uint32_t lastEvent;
 
 #define SET_LAST_EVENT(x) do {lastEvent = (x);} while(0)
 #define GET_LAST_EVENT(x) do { x = lastEvent; lastEvent = 0;} while(0)
