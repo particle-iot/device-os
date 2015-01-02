@@ -187,6 +187,15 @@ void spark_disconnect(void)
 
 void spark_process(void)
 {
+    // run the background processing loop, and specifically also pump cloud events
+    Spark_Idle(true);
+}
+
+/**
+ * This is the internal function called by the background loop to pump cloud events.
+ */
+void Spark_Process_Events()
+{
     if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
     {
         SPARK_FLASH_UPDATE = 0;

@@ -183,7 +183,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
     Spark_Protocol_Init();
 }
 
-void SPARK_WLAN_Loop(void)
+void Spark_Idle(bool force_events/*=false*/)
 {
   static int cfod_count = 0;
   HAL_Notify_WDT();
@@ -195,7 +195,7 @@ void SPARK_WLAN_Loop(void)
   {
     if (SPARK_WLAN_STARTED)
     {
-      DEBUG("Resetting CC3000!");
+      DEBUG("Resetting WLAN!");
       CLR_WLAN_WD();
       WLAN_CONNECTED = 0;
       WLAN_DHCP = 0;
@@ -368,9 +368,9 @@ void SPARK_WLAN_Loop(void)
       }
     }
 
-    if(SPARK_FLASH_UPDATE || System.mode() != MANUAL)
+    if(SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL)
     {
-        spark_process();
+      Spark_Process_Events();
     }
   }
 }
@@ -504,7 +504,7 @@ void network_off()
 
         if(!SPARK_WLAN_SLEEP)//if Spark.sleep() is not called
         {
-            // Reset remaining state variables in SPARK_WLAN_Loop()
+            // Reset remaining state variables in Spark_Idle()
             SPARK_WLAN_SLEEP = 1;
 
             // Do not automatically connect to the cloud
@@ -599,16 +599,16 @@ void delay(unsigned long ms)
 
     if (SPARK_WLAN_SLEEP)
     {
-      //Do not yield for SPARK_WLAN_Loop()
+      //Do not yield for Spark_Idle()
     }
     else if ((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
     {
       spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
-      //spark_loop_total_millis is reset to 0 in SPARK_WLAN_Loop()
+      //spark_loop_total_millis is reset to 0 in Spark_Idle()
       do
       {
         //Run once if the above condition passes
-        SPARK_WLAN_Loop();
+        Spark_Idle();
       }
       while (SPARK_FLASH_UPDATE);//loop during OTA update
     }

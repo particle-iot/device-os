@@ -32,8 +32,21 @@
 
 extern "C" {
 
+uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
-void SPARK_WLAN_Loop(void);
+
+/**
+ * Run background processing. This function should be called as often as possible by user code.
+ * @param force_events when true, runs cloud event pump in addition to maintaining the wifi and cloud connection.
+ */
+void Spark_Idle(bool force_events=false);
+
+/**
+ * The old method 
+ */
+void SPARK_WLAN_Loop(void) __attribute__ ((deprecated));
+inline void SPARK_WLAN_Loop(void) { Spark_Idle(); }
+
 void SPARK_WLAN_SmartConfigProcess();
 
 /* Spark Cloud APIs */
