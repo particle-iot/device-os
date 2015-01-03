@@ -524,7 +524,7 @@ int Spark_Receive(unsigned char *buf, uint32_t buflen)
 
 void begin_flash_file(int flashType, uint32_t sFlashAddress, uint32_t fileSize) 
 {
-  RGB.control(true);
+  RGB.control(false);
   RGB.color(RGB_COLOR_MAGENTA);
   SPARK_FLASH_UPDATE = flashType;
   TimingFlashUpdateTimeout = 0;
