@@ -445,6 +445,12 @@ void SparkClass::disconnect(void)
 
 void SparkClass::process(void)
 {
+    // run the background processing loop, and specifically also pump cloud events
+    Spark_Idle(true);
+}
+
+void Spark_Process_Events()
+{
     if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
     {
         SPARK_FLASH_UPDATE = 0;

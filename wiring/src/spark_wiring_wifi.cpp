@@ -159,7 +159,7 @@ the same way.
 
             if(!SPARK_WLAN_SLEEP)//if Spark.sleep() is not called
             {
-                // Reset remaining state variables in SPARK_WLAN_Loop()
+                // Reset remaining state variables in Spark_Idle()
                 SPARK_WLAN_SLEEP = 1;
 
                 // Do not automatically connect to the cloud
