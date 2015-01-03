@@ -194,4 +194,22 @@ cd main
 make all program-dfu
 ```
 
+# Debugging
+
+To enable JTAG debugging, add this to the command line:
+
+```
+USE_SWD_JTAG=y
+```
+
+and perform a clean build.
+
+To enable SWD debugging only (freeing up 2 pins) add:
+
+```
+USE_SWD=y
+```
+
+and perform a clean build. For more details on SWD-only debugging 
+see https://github.com/spark/firmware/pull/337
 
