@@ -44,7 +44,7 @@ void Spark_Idle(bool force_events=false);
 /**
  * The old method 
  */
-void SPARK_WLAN_Loop(void) __attribute__ ((deprecated));
+void SPARK_WLAN_Loop(void) __attribute__ ((deprecated("Please use Spark.process() instead.")));
 inline void SPARK_WLAN_Loop(void) { Spark_Idle(); }
 
 void SPARK_WLAN_SmartConfigProcess();
