@@ -15,6 +15,10 @@ ifeq ("$(USE_SWD_JTAG)","y")
 CFLAGS += -DUSE_SWD_JTAG
 endif
 
+ifeq ("$(USE_SWD)","y") 
+CFLAGS += -DUSE_SWD
+endif
+
 # pull in the includes/sources corresponding to the target platform
 
 # todo - all network subsystems should be under a common folder
