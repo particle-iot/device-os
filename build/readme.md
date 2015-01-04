@@ -96,7 +96,7 @@ mylibrary.cpp
 mylibrary.h
 ```
 
-You can also add header files - the application subdirectory is part of the include path.
+You can also add header files - the application subdirectory is on the include path.
 
 To build this application, change directory to the `main/` directory and run
 
@@ -109,16 +109,18 @@ This will build your application with the resulting `.bin` file available in
 
 ## Changing the Target Directory
 
-If you prefer the output to appear in the `build/` directory
+If you prefer the output to appear somewhere else than in the `build/` directory
 you can define the `TARGET_DIR` variable:
 
 ```
-make APP=myapp TARGET_DIR=myfolder/
+make APP=myapp TARGET_DIR=my/custom/output
 ```
 
-This will place `main.bin` (and the other output files) in `build/target/main/prod-0/`.
+This will place `main.bin` (and the other output files) in `my/custom/output` relative to the current directory. 
+The directory is created if it doesn't exist.
 
-## Changing the Target File
+
+## Changing the Target File name
 
 Finally, to continue naming the output file `core-firmware.bin`, define `TARGET_FILE` 
 like this:
@@ -127,30 +129,33 @@ like this:
 make APP=myapp TARGET_FILE=core-firmware
 ```
 
-This will build the firmware with output as `core-firmware.bin` in `build/target/main/prod-0/`.
+This will build the firmware with output as `core-firmware.bin` in `build/target/main/prod-0/applications/myapp`.
 
 These can of course also be combined like so:
 
 ```
-make APP=myapp TARGET_DIR=myfolder/ TARGET_FILE=core-firmware
+make APP=myapp TARGET_DIR=myfolder TARGET_FILE=core-firmware
 ```
+
+Which will produce `myfolder/core-firmware.elf`
+
 
 ## Compiling an application outside the firmware source
 
-It's natural to want to separate application code from the firmware code, and
+If you prefer to separate application code from the firmware code,
 the build system supports this, via the `APPDIR` parameter.
 
 ```
-make APPDIR=/path/to/applications/tinker TARGET_PATH=/path/to/applications/tinker/target/ TARGET_FILE=tinker
+make APPDIR=/path/to/application/source [TARGET_DIR=/path/to/applications/output] [TARGET_FILE=basename]
 ```
 
 Parameters:
 
 - `APPDIR`: The relative or full path to the directory containing the user application
-- `TARGET_PATH`: the directory where the build output should go. Note that this *MUST* end with a final slash. In the example
-    this puts the output files under a `target` directory of the application sources.
-- `TARGET_FILE`: the basename of the files created. In the example, the resulting image file will be
-`tinker.bin` (stored in a target subdirectory of the application, as set by `TARGET_PATH`.)
+- `TARGET_DIR`: the directory where the build output should go. If not defined, 
+    output files willb e placed under a `target` directory of the application sources.
+- `TARGET_FILE`: the basename of the files created. If not defined, 
+defaults to the name of the application sources directory.
 
 
 
@@ -194,4 +199,22 @@ cd main
 make all program-dfu
 ```
 
+# Debugging
+
+To enable JTAG debugging, add this to the command line:
+
+```
+USE_SWD_JTAG=y
+```
+
+and perform a clean build.
+
+To enable SWD debugging only (freeing up 2 pins) add:
+
+```
+USE_SWD=y
+```
+
+and perform a clean build. For more details on SWD-only debugging 
+see https://github.com/spark/firmware/pull/337
 

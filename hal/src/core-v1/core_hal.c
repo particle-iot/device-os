@@ -75,6 +75,11 @@ void HAL_Core_Config(void)
 #ifdef SWD_JTAG_DISABLE
 	/* Disable the Serial Wire JTAG Debug Port SWJ-DP */
 	GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
+#else
+#ifdef SWD_ENABLE_JTAG_DISABLE
+  /* Disable JTAG, but enable SWJ-DP */
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
+#endif
 #endif
 
 	Set_System();

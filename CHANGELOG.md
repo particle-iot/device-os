@@ -12,6 +12,7 @@
 
  - loop() iteration rate increased by 1000 times - from 200 Hz to over 200 kHz!
  - Compiler: Removed all warnings from the compile (and made warnings as errors) so compiler output is pristine!
+ - Debugging: SWD Support, thanks to Elco Jacobs. [#337](https://github.com/spark/core-firmware/pull/337)
 
 ### BUGFIXES
 

@@ -2,14 +2,13 @@
 # It contains common recipes for bulding C/CPP/asm files to objects, and
 # to combine those objects into libraries or elf files.
 
-MAKEOVERRIDES:=$(filter-out TARGET_FILE%,$(MAKEOVERRIDES))
-unexport TARGET_FILE
-
 include $(COMMON_BUILD)/verbose.mk
+
+SOURCE_PATH ?= $(MODULE_PATH)
 
 # Recursive wildcard function - finds matching files in a directory tree
 rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
-target_files = $(patsubst $(MODULE_PATH)/%,%,$(call rwildcard,$(MODULE_PATH)/$1,$2))
+target_files = $(patsubst $(SOURCE_PATH)/%,%,$(call rwildcard,$(SOURCE_PATH)/$1,$2))
 
 # import this module's symbols
 include $(MODULE_PATH)/import.mk
@@ -66,18 +65,24 @@ ifeq ("$(TARGET_TYPE)","a")
 TARGET_FILE_PREFIX = lib
 endif
 
-ifneq ("$(TARGET_DIR)","")
-TARGET_DIR := $(TARGET_DIR)/
+# TARGET_FILE_NAME is the file name (minus extension) of the target produced
+# TARGET_NAME is the final filename, including any prefix
+TARGET_FILE_NAME ?= $(MODULE)
+TARGET_NAME ?= $(TARGET_FILE_PREFIX)$(TARGET_FILE_NAME)
+TARGET_PATH ?= $(BUILD_PATH)/$(TARGET_DIR_NAME)
+
+# add trailing slash
+ifneq ("$(TARGET_PATH)","$(dir $(TARGET_PATH))")
+TARGET_SEP = /
 endif
 
-ifeq ("$(TARGET_FILE)","")
-    TARGET_FILE = $(MODULE)
-endif
-TARGET_NAME ?= $(TARGET_FILE_PREFIX)$(TARGET_FILE)
-# TARGET_PATH ends with a slash, to allow TARGET_DIR to be empty
-TARGET_PATH ?= $(BUILD_PATH)/$(TARGET_DIR)
-TARGET_BASE ?= $(TARGET_PATH)$(TARGET_NAME)
+TARGET_BASE ?= $(TARGET_PATH)$(TARGET_SEP)$(TARGET_NAME)
 TARGET ?= $(TARGET_BASE).$(TARGET_TYPE)
+
+# add BUILD_PATH_EXT with a preceeding slash if not empty.
+BUILD_PATH ?= $(BUILD_PATH_BASE)/$(MODULE)$(and $(BUILD_PATH_EXT),/$(BUILD_PATH_EXT))
+
+$(info BUILD_PATH $(BUILD_PATH))
 
 # All Target
 all: $(MAKE_DEPENDENCIES) $(TARGET)
@@ -150,7 +155,7 @@ $(TARGET_BASE).a : $(ALLOBJ)
 	$(call,echo,)
 
 # C compiler to build .o from .c in $(BUILD_DIR)
-$(BUILD_PATH)/%.o : $(MODULE_PATH)/%.c
+$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.c
 	$(call,echo,'Building file: $<')
 	$(call,echo,'Invoking: ARM GCC C Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
@@ -167,7 +172,7 @@ $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
 	
 # CPP compiler to build .o from .cpp in $(BUILD_DIR)
 # Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
-$(BUILD_PATH)/%.o : $(MODULE_PATH)/%.cpp
+$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.cpp
 	$(call,echo,'Building file: $<')
 	$(call,echo,'Invoking: ARM GCC CPP Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)

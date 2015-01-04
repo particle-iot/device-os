@@ -445,7 +445,9 @@ void wlan_set_error_count(uint32_t errorCount)
 void wlan_fetch_ipconfig(WLanConfig* config) {
     // the WLanConfig and the CC3000 structure are identical
     netapp_ipconfig((void*)config);
-    fixup_ipconfig(config);    
+    // the MAC address isn't available until after the first WLAN connection is made, so fetch it from nvmem
+    nvmem_get_mac_address(config->uaMacAddr);
+    fixup_ipconfig(config);
 }
 
 void SPARK_WLAN_SmartConfigProcess()
