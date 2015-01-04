@@ -29,9 +29,10 @@ ifdef APPDIR
 USRSRC = 
 SOURCE_PATH = $(APPDIR)
 TARGET_FILE_NAME ?= $(notdir $(APPDIR))
-TARGET_DIR_NAME ?= $(APPDIR)/target
+TARGET_DIR_NAME = $(APPDIR)/target
 # do not use $(BUILD_PATH) since the TARGET_DIR specifies fully where the output should go
 TARGET_PATH ?= $(TARGET_DIR_NAME)
+BUILD_PATH = $(TARGET_PATH)/obj
 endif
 
 
