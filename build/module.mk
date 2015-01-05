@@ -78,7 +78,6 @@ TARGET ?= $(TARGET_BASE).$(TARGET_TYPE)
 # add BUILD_PATH_EXT with a preceeding slash if not empty.
 BUILD_PATH ?= $(BUILD_PATH_BASE)/$(MODULE)$(and $(BUILD_PATH_EXT),/$(BUILD_PATH_EXT))
 
-$(info BUILD_PATH $(BUILD_PATH))
 
 # All Target
 all: $(MAKE_DEPENDENCIES) $(TARGET)
