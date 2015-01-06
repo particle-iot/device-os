@@ -559,7 +559,7 @@ class SoftAPController {
     wiced_semaphore_t complete;
     dns_redirector_t dns_redirector;
 
-    void setup_soft_ap_credentials() {
+    wiced_result_t setup_soft_ap_credentials() {
         wiced_config_soft_ap_t expected;
         memset(&expected, 0, sizeof(expected));
         DeviceIDCommand::get_device_id((char*)expected.SSID.value);
@@ -573,10 +573,11 @@ class SoftAPController {
         if (result == WICED_SUCCESS)
         {
             if (memcmp(&expected, soft_ap, sizeof(expected))) {
-                wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
+                result = wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
             }
             wiced_dct_read_unlock( soft_ap, WICED_FALSE );
         }
+        return result;
     }
 
 public:
@@ -585,11 +586,14 @@ public:
         return complete;
     }
 
-    void start() {
-        wiced_rtos_init_semaphore(&complete);
-        setup_soft_ap_credentials();
-        wiced_network_up( WICED_AP_INTERFACE, WICED_USE_INTERNAL_DHCP_SERVER, &device_init_ip_settings );
-        wiced_dns_redirector_start( &dns_redirector, WICED_AP_INTERFACE );
+    wiced_result_t start() {
+        wiced_result_t result;        
+        if (!(result=wiced_rtos_init_semaphore(&complete)))
+            if (!(result=setup_soft_ap_credentials()))
+                if (!(result=wiced_network_up( WICED_AP_INTERFACE, WICED_USE_INTERNAL_DHCP_SERVER, &device_init_ip_settings )))
+                    if (!(result=wiced_dns_redirector_start( &dns_redirector, WICED_AP_INTERFACE )))
+                        result = WICED_SUCCESS;
+        return result;
     }
 
     void waitForComplete() {

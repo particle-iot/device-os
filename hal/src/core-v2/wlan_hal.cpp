@@ -31,14 +31,32 @@
 #include <string.h>
 #include <algorithm>
 
-void initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
+bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
 {
+    bool changed = false;
     if (force || wifi_config->device_configured!=WICED_TRUE) {
         memset(wifi_config, 0, sizeof(*wifi_config));            
+        wifi_config->country_code = WICED_COUNTRY_UNITED_STATES;
+        wifi_config->device_configured = WICED_TRUE;    
+        changed = true;
     }
-    wifi_config->country_code = WICED_COUNTRY_UNITED_STATES;
-    wifi_config->device_configured = WICED_TRUE;    
+    return changed;
 }
+
+wiced_result_t wlan_initialize_dct()
+{
+    // find the next available slot, or use the first
+    platform_dct_wifi_config_t* wifi_config = NULL;
+    wiced_result_t result = wiced_dct_read_lock( (void**) &wifi_config, WICED_TRUE, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
+    if (result==WICED_SUCCESS) {
+        // the storage may not have been initialized, so device_configured will be 0xFF
+        if (initialize_dct(wifi_config))
+            result = wiced_dct_write( (const void*) wifi_config, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config) );
+        wiced_dct_read_unlock(wifi_config, WICED_TRUE);
+    }    
+    return result;    
+}
+
 
 uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
 {
@@ -222,6 +240,7 @@ void wlan_smart_config_init() {
     if (!current_softap_handle) {
         softap_config config;
         config.softap_complete = HAL_WLAN_notify_simple_config_done;
+        wlan_initialize_dct();
         current_softap_handle = softap_start(&config);        
     }
     
