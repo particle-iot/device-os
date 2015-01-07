@@ -102,14 +102,23 @@ void HAL_Interrupts_Attach(uint16_t pin, voidFuncPtr handler, InterruptMode mode
   GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
 
+  if(gpio_pin == EXTI_Line0 || gpio_pin == EXTI_Line7)
+  {
+    return;//Return if EXTI Line is associated with WiFi SDIO OOB or Mode button interrupt
+  }
+
   //Select the port source
-  if (gpio_port == GPIOA )
+  if (gpio_port == GPIOA)
   {
     GPIO_PortSource = 0;
   }
-  else if (gpio_port == GPIOB )
+  else if (gpio_port == GPIOB)
   {
     GPIO_PortSource = 1;
+  }
+  else if (gpio_port == GPIOC)
+  {
+    GPIO_PortSource = 2;
   }
 
   //Find out the pin number from the mask
@@ -157,21 +166,15 @@ void HAL_Interrupts_Attach(uint16_t pin, voidFuncPtr handler, InterruptMode mode
   //send values to registers
   EXTI_Init(&EXTI_InitStructure);
 
-  if(GPIO_PinSource < 10)//Should not try changing the priority of EXTI15_10_IRQn
-  {
-    //configure NVIC
-    //select NVIC channel to configure
-    NVIC_InitStructure.NVIC_IRQChannel = GPIO_IRQn[GPIO_PinSource];
-    if(GPIO_PinSource > 4)
-      NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 14;
-    else
-      NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 13;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-    //enable IRQ channel
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    //update NVIC registers
-    NVIC_Init(&NVIC_InitStructure);
-  }
+  //configure NVIC
+  //select NVIC channel to configure
+  NVIC_InitStructure.NVIC_IRQChannel = GPIO_IRQn[GPIO_PinSource];
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 14;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  //enable IRQ channel
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  //update NVIC registers
+  NVIC_Init(&NVIC_InitStructure);
 }
 
 void HAL_Interrupts_Detach(uint16_t pin)
@@ -181,6 +184,11 @@ void HAL_Interrupts_Detach(uint16_t pin)
 
   //Map the Spark Core pin to the appropriate pin on the STM32
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
+
+  if(gpio_pin == EXTI_Line0 || gpio_pin == EXTI_Line7)
+  {
+    return;//Return if EXTI Line is associated with WiFi SDIO OOB or Mode button interrupt
+  }
 
   //Clear the pending interrupt flag for that interrupt pin
   EXTI_ClearITPendingBit(gpio_pin);
@@ -197,15 +205,12 @@ void HAL_Interrupts_Detach(uint16_t pin)
     GPIO_PinSource++;
   }
 
-  if(gpio_pin != EXTI_Line2 || gpio_pin != EXTI_Line11)
-  {
-    //Select the appropriate EXTI line
-    EXTI_InitStructure.EXTI_Line = gpio_pin;
-    //disable that EXTI line
-    EXTI_InitStructure.EXTI_LineCmd = DISABLE;
-    //send values to registers
-    EXTI_Init(&EXTI_InitStructure);
-  }
+  //Select the appropriate EXTI line
+  EXTI_InitStructure.EXTI_Line = gpio_pin;
+  //disable that EXTI line
+  EXTI_InitStructure.EXTI_LineCmd = DISABLE;
+  //send values to registers
+  EXTI_Init(&EXTI_InitStructure);
 
   //unregister the user's handler
   exti_channels[GPIO_PinSource].handler = NULL;
@@ -213,22 +218,24 @@ void HAL_Interrupts_Detach(uint16_t pin)
 
 void HAL_Interrupts_Enable_All(void)
 {
-  NVIC_EnableIRQ(EXTI0_IRQn);
+  //Enable all EXTI interrupts disabled using noInterrupts()
   NVIC_EnableIRQ(EXTI1_IRQn);
   NVIC_EnableIRQ(EXTI2_IRQn);
   NVIC_EnableIRQ(EXTI3_IRQn);
   NVIC_EnableIRQ(EXTI4_IRQn);
   NVIC_EnableIRQ(EXTI9_5_IRQn);
+  NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 void HAL_Interrupts_Disable_All(void)
 {
-  NVIC_DisableIRQ(EXTI0_IRQn);
+  //Disable all EXTI interrupts including Mode Button but excluding WiFi SDIO OOB
   NVIC_DisableIRQ(EXTI1_IRQn);
   NVIC_DisableIRQ(EXTI2_IRQn);
   NVIC_DisableIRQ(EXTI3_IRQn);
   NVIC_DisableIRQ(EXTI4_IRQn);
   NVIC_DisableIRQ(EXTI9_5_IRQn);
+  NVIC_DisableIRQ(EXTI15_10_IRQn);
 }
 
 void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, voidFuncPtr EXTI_Line_Handler)
