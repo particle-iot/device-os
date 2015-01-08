@@ -46,7 +46,8 @@ typedef enum PinMode {
   INPUT_PULLDOWN,
   AF_OUTPUT_PUSHPULL, //Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
   AF_OUTPUT_DRAIN,    //Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
-  AN_INPUT,        //Used internally for ADC Input
+  AN_INPUT,           //Used internally for ADC Input
+  AN_OUTPUT,          //Used internally for DAC Output
   PIN_MODE_NONE=0xFF          
 } PinMode;
 
@@ -54,7 +55,8 @@ typedef enum {
     PF_NONE,
     PF_DIO,
     PF_TIMER,
-    PF_ADC
+    PF_ADC,
+	PF_DAC
 } PinFunction;
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
@@ -122,6 +124,10 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
 
 #define SDA  0
 #define SCL  1
+
+// DAC pins on Photon
+#define DAC1 16
+#define DAC2 13
 
 #define TIM_PWM_COUNTER_CLOCK_FREQ 24000000 //TIM Counter clock = 24MHz
 #define TIM_PWM_FREQ 500 //500Hz
