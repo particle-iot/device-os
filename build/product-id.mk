@@ -1,3 +1,5 @@
+ifeq ($(included_productid_mk),)
+included_productid_mk := 1
 
 # defines 
 # PLATFORM_NAME - a unique name for the platform, can be used to organise sources
@@ -102,3 +104,4 @@ CFLAGS += -DSPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID)
 
 MAKE_ARGS += SPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID)
 
+endif
