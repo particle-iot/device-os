@@ -65,6 +65,7 @@ void pinMode(uint16_t pin, PinMode setMode)
  * AF_OUTPUT_PUSHPULL = 4
  * AF_OUTPUT_DRAIN = 5
  * AN_INPUT = 6
+ * AN_OUTPUT = 7
  * PIN_MODE_NONE = 255  
  */
 PinMode getPinMode(uint16_t pin)
@@ -190,28 +191,33 @@ int32_t analogRead(pin_t pin)
 }
 
 /*
- * @brief Should take an integer 0-255 and create a PWM signal with a duty cycle from 0-100%.
- * TIM_PWM_FREQ is set at 500 Hz
+ * @brief Should take an integer 0-255 and create a 500Hz PWM signal with a duty cycle from 0-100%.
+ * On Photon, DAC1 and DAC2 act as true analog outputs(values: 0 to 4095) using onchip DAC peripheral
  */
-void analogWrite(pin_t pin, uint8_t value)
+void analogWrite(pin_t pin, uint16_t value)
 {
-  if(HAL_Validate_Pin_Function(pin, PF_TIMER)!=PF_TIMER)
-  {
-    return;
-  }
+	// Safety check
+	if(!pinAvailable(pin))
+	{
+		return;
+	}
 
-  // Safety check
-  if( !pinAvailable(pin) ) {
-    return;
-  }
+	if(HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
+	{
+		PinMode mode = HAL_Get_Pin_Mode(pin);
 
-  PinMode mode = HAL_Get_Pin_Mode(pin);
-  if(mode != OUTPUT && mode != AF_OUTPUT_PUSHPULL)
-  {
-    return;
-  }
+		if(mode != OUTPUT && mode != AF_OUTPUT_PUSHPULL)
+		{
+			return;
+		}
 
-  HAL_PWM_Write(pin, value);
+		HAL_PWM_Write(pin, value);
+	}
+
+	if(HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC)
+	{
+		HAL_DAC_Write(pin, value);
+	}
 }
 
 /*

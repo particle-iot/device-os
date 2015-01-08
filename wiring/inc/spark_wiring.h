@@ -28,6 +28,7 @@
 #include "pinmap_hal.h"
 #include "gpio_hal.h"
 #include "adc_hal.h"
+#include "dac_hal.h"
 #include "pwm_hal.h"
 #include "timer_hal.h"
 #include "config.h"
@@ -61,7 +62,7 @@ PinMode getPinMode(uint16_t pin);
 bool pinAvailable(uint16_t pin);
 void digitalWrite(uint16_t pin, uint8_t value);
 int32_t digitalRead(uint16_t pin);
-void analogWrite(uint16_t pin, uint8_t value);
+void analogWrite(uint16_t pin, uint16_t value);
 
 /*
 * Timing
