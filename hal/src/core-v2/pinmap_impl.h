@@ -38,6 +38,7 @@ typedef struct STM32_Pin_Info {
   pin_t gpio_pin;
   uint8_t gpio_pin_source;
   uint8_t adc_channel;
+  uint8_t dac_channel;
   TIM_TypeDef* timer_peripheral;
   uint16_t timer_ch;
   PinMode pin_mode;
@@ -54,6 +55,7 @@ extern PinMode HAL_GPIO_Recall_Pin_Mode();
 
 #define NONE ((uint8_t)0xFF)
 #define ADC_CHANNEL_NONE NONE
+#define DAC_CHANNEL_NONE NONE
 
 #ifdef	__cplusplus
 }
