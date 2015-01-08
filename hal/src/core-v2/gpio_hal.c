@@ -59,6 +59,8 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
         return PF_NONE;
     if (pinFunction==PF_ADC && PIN_MAP[pin].adc_channel!=ADC_CHANNEL_NONE)
         return PF_ADC;
+    if (pinFunction==PF_DAC && PIN_MAP[pin].dac_channel!=DAC_CHANNEL_NONE)
+        return PF_DAC;
     if (pinFunction==PF_TIMER && PIN_MAP[pin].timer_peripheral!=NULL)
         return PF_TIMER;
     return PF_DIO;
@@ -138,6 +140,12 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
             GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
             GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
             PIN_MAP[pin].pin_mode = AN_INPUT;
+            break;
+
+        case AN_OUTPUT:       //Used internally for DAC Output
+            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
+            PIN_MAP[pin].pin_mode = AN_OUTPUT;
             break;
 
         default:
