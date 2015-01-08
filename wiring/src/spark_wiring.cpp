@@ -196,28 +196,27 @@ int32_t analogRead(pin_t pin)
  */
 void analogWrite(pin_t pin, uint16_t value)
 {
-	// Safety check
-	if(!pinAvailable(pin))
-	{
-		return;
-	}
+    // Safety check
+    if (!pinAvailable(pin))
+    {
+        return;
+    }
 
-	if(HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
-	{
-		PinMode mode = HAL_Get_Pin_Mode(pin);
+    if (HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC)
+    {
+        HAL_DAC_Write(pin, value);
+    }
+    else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
+    {
+        PinMode mode = HAL_Get_Pin_Mode(pin);
 
-		if(mode != OUTPUT && mode != AF_OUTPUT_PUSHPULL)
-		{
-			return;
-		}
+        if (mode != OUTPUT && mode != AF_OUTPUT_PUSHPULL)
+        {
+            return;
+        }
 
-		HAL_PWM_Write(pin, value);
-	}
-
-	if(HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC)
-	{
-		HAL_DAC_Write(pin, value);
-	}
+        HAL_PWM_Write(pin, value);
+    }
 }
 
 /*
