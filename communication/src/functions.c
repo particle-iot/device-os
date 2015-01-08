@@ -1,5 +1,6 @@
 
 #include "functions.h"
+#include "handshake.h"
 #include <stdlib.h>
 
 /**
@@ -24,3 +25,12 @@
 }
 #endif
 
+
+ int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* plaintext, int plaintext_len) {
+    rsa_context rsa;
+    init_rsa_context_with_private_key(&rsa, private_key);    
+    int err = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, &plaintext_len, ciphertext, plaintext, plaintext_len);
+    rsa_free(&rsa);
+    return err ? 0 : plaintext_len;
+ }
+ 
