@@ -9,6 +9,9 @@
 #include "wiced_security.h"
 #include "jsmn.h"
 #include "softap.h"
+#include "dct.h"
+#include "ota_flash_hal.h"
+#include "functions.h"
 
 /**
  * Abstraction of an input stream.
@@ -30,10 +33,17 @@ struct Reader {
         return result;
     }
 
-    char* fetch() {
-        char* buf = (char*)malloc(bytes_left);
+    /**
+     * Allocates a buffer with the remaining data as a string.
+     * It's the caller's responsibility to free the buffer with free().
+     * @return 
+     */    
+    char* fetch_as_string() {
+        char* buf = (char*)malloc(bytes_left+1);
         if (buf) {
-            read((uint8_t*)buf, bytes_left);
+            int len = bytes_left;
+            read((uint8_t*)buf, bytes_left);            
+            buf[len] = 0;            
             bytes_left = 0;
         }
         return buf;
@@ -284,6 +294,65 @@ struct ConfigureAP {
 };
 
 #define JSON_DEBUG(x)
+    
+uint8_t hex_nibble(char c) {
+    if (c<'0')
+        return 0;
+    if (c<='9')
+        return c-'0';
+    if (c<='z')
+        return c-'a'+10;
+    if (c<='Z')
+        return c-'A'+10;
+    return 0;
+}
+
+size_t hex_decode(uint8_t* buf, size_t len, const char* hex) {
+    char c = '0'; // any non-null character
+    size_t i;
+    for (i=0; i<len && c; i++) {
+        uint8_t b;
+        c = *hex++;
+        b = hex_nibble(c)<<4;
+        if (c) {
+            c = *hex++;
+            b |= hex_nibble(c);
+        }
+        *buf++ = b;
+    }
+    return i;
+}
+
+uint8_t* fetch_server_public_key()
+{
+    return (uint8_t*)dct_read_app_data(DCT_SERVER_PUBLIC_KEY_OFFSET);    
+}
+
+uint8_t* fetch_device_private_key()
+{
+    return (uint8_t*)dct_read_app_data(DCT_DEVICE_PRIVATE_KEY_OFFSET);    
+}
+
+uint8_t* fetch_device_public_key()
+{
+    return (uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);    
+}
+
+
+/**
+ * 
+ * @param hex_encoded   The hex_encoded encrypted data
+ * The plaintext is stored in hex_encoded
+ */
+int decrypt(char* plaintext, int max_plaintext_len, char* hex_encoded_ciphertext) {
+    const size_t len = 256;
+    uint8_t buf[len];    
+    hex_decode(buf, len, hex_encoded_ciphertext);
+    
+    // reuse the hex encoded buffer
+    int plaintext_len = decrypt_rsa(buf, fetch_device_private_key(), (uint8_t*)plaintext, max_plaintext_len);
+    return plaintext_len;
+}
 
 /**
  * Connects to an access point using the given credentials and signals
@@ -330,7 +399,7 @@ public:
 
     int parse_request(Reader& reader) {
 
-        char* js = reader.fetch();
+        char* js = reader.fetch_as_string();
         jsmntok_t *tokens = json_tokenise(js);
 
         enum parse_state { START, KEY, VALUE, SKIP, STOP };
@@ -384,9 +453,13 @@ public:
                         }
 
                         char *str = json_token_tostr(js, t);
-                        if ((key==2 || key==1) && t->type==JSMN_STRING) {
-                            strncpy((char*)data, str, key==1 ? sizeof(ConfigureAP::ssid) : sizeof(ConfigureAP::passcode));
+                        if (key==1 && t->type==JSMN_STRING) {
+                            strncpy((char*)data, str, sizeof(ConfigureAP::ssid));
                             JSON_DEBUG( ( "copied value %s\n", (char*)str ) );
+                        }
+                        else if (key==2 && t->type==JSMN_STRING) {
+                            decrypt((char*)data, sizeof(ConfigureAP::passcode), str);
+                            JSON_DEBUG( ( "Decrypted password %s\n", (char*)data));
                         }
                         else {
                             int32_t value = atoi(str);
@@ -459,33 +532,37 @@ public:
     }
 };
 
+static inline char ascii_nibble(uint8_t nibble) {
+    char hex_digit = nibble + 48;
+    if (57 < hex_digit)
+        hex_digit += 7;
+    return hex_digit;    
+}
+
+static inline char* concat_nibble(char* p, uint8_t nibble)
+{    
+    *p++ = ascii_nibble(nibble);
+    return p;
+}
+
+static void bytes2hex(const uint8_t* buf, unsigned len, char* out)
+{
+    unsigned i;
+    for (i = 0; i < len; ++i)
+    {
+        concat_nibble(out, (buf[i] >> 4));
+        out++;
+        concat_nibble(out, (buf[i] & 0xF));
+        out++;
+    }
+}
+
 class DeviceIDCommand : public JSONCommand {
 
     char device_id[25];
 
 public:
     DeviceIDCommand() {}
-
-    static inline char* concat_nibble(char* p, uint8_t nibble)
-    {
-        char hex_digit = nibble + 48;
-        if (57 < hex_digit)
-            hex_digit += 39;
-        *p++ = hex_digit;
-        return p;
-    }
-
-    static void bytes2hex(const uint8_t* buf, unsigned len, char* out)
-    {
-        unsigned i;
-        for (i = 0; i < len; ++i)
-        {
-            concat_nibble(out, (buf[i] >> 4));
-            out++;
-            concat_nibble(out, (buf[i] & 0xF));
-            out++;
-        }
-    }
 
     static void get_device_id(char buffer[25]) {
         bytes2hex((const uint8_t*)0x1FFF7A10, 12, buffer);
@@ -538,6 +615,38 @@ public:
     }
 };
 
+class PublicKeyCommand : public JSONCommand {
+    
+public:
+
+    int process() {        
+        return 0;
+    }
+
+    void produce_response(Writer& writer, int result) {
+        // fetch public key 
+        const int length = EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH;
+        uint8_t* data = fetch_device_public_key();
+        write_char(writer, '{');
+        if (data) {
+            writer.write("\"b\":\"");
+            for (unsigned i=length; i-->0; ) {
+                uint8_t v = *data++;
+                write_char(writer, ascii_nibble(v>>4));
+                write_char(writer, ascii_nibble(v&0xF));
+            }
+            write_char(writer, '"');
+            write_char(writer, ',');
+        }
+        else {
+            result = 1;
+        }         
+        
+        write_json_int(writer, "r", result);
+        write_char(writer, '}');
+    }    
+};
+
 struct AllSoftAPCommands {
     VersionCommand version;
     DeviceIDCommand deviceID;
@@ -545,7 +654,7 @@ struct AllSoftAPCommands {
     ConfigureAPCommand configureAP;
     ConnectAPCommand connectAP;
     ProvisionKeysCommand provisionKeys;
-
+    PublicKeyCommand publicKey;
     AllSoftAPCommands(wiced_semaphore_t* complete, void (*softap_complete)()) :
         connectAP(complete, softap_complete) {}
 };
@@ -733,6 +842,8 @@ class SimpleProtocolDispatcher
                 cmd = &commands_.connectAP;
             else if (!strcmp("provision-keys", name))
                 cmd = &commands_.provisionKeys;
+            else if (!strcmp("public-key", name))
+                cmd = &commands_.publicKey;
         }
         return cmd;
     }
