@@ -65,7 +65,7 @@ bool requestStart = false;
 bool _enterDFU = false;
 
 #ifdef SPARK_PLATFORM
-Flashee::CircularBuffer* log;
+Flashee::CircularBuffer* cblog;
 PrintTee* tee;
 #endif
 
@@ -83,9 +83,9 @@ void unit_test_setup()
     int pageSize = store.pageSize();
     int pages = 64*1024/pageSize;
     // store circular buffer at end of external flash.
-    log = Flashee::Devices::createCircularBuffer((store.pageCount()-pages)*pageSize, store.length());
+    cblog = Flashee::Devices::createCircularBuffer((store.pageCount()-pages)*pageSize, store.length());
     // direct output to Serial and to the circular buffer
-    tee = new PrintTee(*Test::out, *new CircularBufferPrint(*log, SPARK_WLAN_Loop));
+    tee = new PrintTee(*Test::out, *new CircularBufferPrint(*cblog, SPARK_WLAN_Loop));
     Test::out = tee;
 #else
     Test::out = &Serial;
@@ -143,7 +143,7 @@ int SparkTestRunner::testStatusColor() {
 int advanceLog() {
 #if SPARK_PLATFORM
     int end = sizeof(buf)-1;
-    int read = log->read_soft(buf, end);
+    int read = cblog->read_soft(buf, end);
     buf[read] = 0;  // terminate string
     if (!read && _runner.isComplete())
         read = -1;  // end of stream.
