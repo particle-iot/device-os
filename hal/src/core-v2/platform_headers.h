@@ -12,8 +12,9 @@
 extern "C" {
 #endif
 
-
-
+// These headers contain platform-specific defines.
+#include "hw_config.h"
+#include "pinmap_impl.h"
 
 #ifdef	__cplusplus
 }
