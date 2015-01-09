@@ -1287,8 +1287,6 @@ public:
 
 
 #ifdef SPARK_PLATFORM
-#include "sst25vf_spi.h"
-
 class SparkExternalFlashDevice : public FlashDevice {
 
     /**
