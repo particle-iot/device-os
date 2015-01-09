@@ -186,7 +186,7 @@ void USB_USART_Send_Data(uint8_t Data)
         }
 
         //Delay 100us to avoid losing the data
-        //HAL_Delay_Microseconds(100);//Not required when used with FreeRTOS
+        HAL_Delay_Microseconds(100);
     }
 }
 #endif
