@@ -142,7 +142,7 @@ extern "C" void HAL_SysTick_Handler(void)
 
         /* Reload WDG counter */
         HAL_Notify_WDT();
-        DECLARE_SYS_HEALTH(0xFFFF);
+        DECLARE_SYS_HEALTH(CLEARED_WATCHDOG);
     }
     else
     {
