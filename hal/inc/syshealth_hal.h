@@ -26,11 +26,13 @@
 #ifndef SYSHEALTH_HAL_H
 #define	SYSHEALTH_HAL_H
 
+#include "static_assert.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
-enum eSystemHealth {
+typedef enum eSystemHealth {    
   FIRST_RETRY = 1,
   SECOND_RETRY = 2,
   THIRD_RETRY = 3,
@@ -41,34 +43,17 @@ enum eSystemHealth {
   ENTERED_Loop,
   RAN_Loop,
   PRESERVE_APP,
-};
+    
+  CLEARED_WATCHDOG=0xFFFF
+} eSystemHealth;
 
-#if defined (STM32F10X_MD) || defined (STM32F10X_HD)
+STATIC_ASSERT(system_health_16_bits, sizeof(eSystemHealth)==2);
 
-#include "hw_config.h"
-#define SET_SYS_HEALTH(health) BKP_WriteBackupRegister(BKP_DR1, (health))
-#define GET_SYS_HEALTH() BKP_ReadBackupRegister(BKP_DR1)
+eSystemHealth HAL_Get_Sys_Health();
+void HAL_Set_Sys_Health(eSystemHealth health);
 
-extern uint16_t sys_health_cache;
-#define DECLARE_SYS_HEALTH(health)  do { if ((health) > sys_health_cache) {SET_SYS_HEALTH(sys_health_cache=(health));}} while(0)
-
-#elif defined (STM32F2XX)
-
-#include "hw_config.h"
-#define SET_SYS_HEALTH(health) RTC_WriteBackupRegister(RTC_BKP_DR1, (health))
-#define GET_SYS_HEALTH() RTC_ReadBackupRegister(RTC_BKP_DR1)
-
-extern uint16_t sys_health_cache;
-#define DECLARE_SYS_HEALTH(health)  do { if ((health) > sys_health_cache) {SET_SYS_HEALTH(sys_health_cache=(health));}} while(0)
-
-#else
-
-#define SET_SYS_HEALTH(health)
-#define GET_SYS_HEALTH()  (0)
-#define DECLARE_SYS_HEALTH(health)
-
-#endif
-
+#define GET_SYS_HEALTH() HAL_Get_Sys_Health()
+#define DECLARE_SYS_HEALTH(h) HAL_Set_Sys_Health(h)
 
 #ifdef	__cplusplus
 }
