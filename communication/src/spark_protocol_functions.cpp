@@ -4,6 +4,9 @@
 #include "handshake.h"
 #include <stdlib.h>
 
+#define DYNALIB_EXPORT
+#include "communication_dynalib.h"
+
 /**
  * Handle the cryptographically secure random seed from the cloud by using
  * it to seed the stdlib PRNG. 

@@ -63,8 +63,16 @@ class SparkProtocol
     static const int MAX_EVENT_TTL_SECONDS = 16777215;
     static int presence_announcement(unsigned char *buf, const char *id);
 
-    SparkProtocol();
-
+    /**
+     * The constructor is inlined so that an instance can be constructed statically
+     * by the client without needing to dynamically link a constructor function.
+     */
+    SparkProtocol() : QUEUE_SIZE(640), handlers({NULL}), expecting_ping_ack(false),
+                                     initialized(false), updating(false)
+    {
+        queue_init();
+    }
+    
     void init(const char *id,
               const SparkKeys &keys,
               const SparkCallbacks &callbacks,
@@ -178,7 +186,13 @@ class SparkProtocol
     const unsigned char *queue_mem_boundary;
     unsigned char *queue_front;
     unsigned char *queue_back;
-    void queue_init(void);
+    inline void queue_init()
+    {
+        queue_front = queue_back = queue;
+        queue_mem_boundary = queue + QUEUE_SIZE;
+    }
+
+    
 };
 
 #endif // __SPARK_PROTOCOL_H
