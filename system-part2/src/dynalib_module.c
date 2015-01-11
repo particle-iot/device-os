@@ -7,6 +7,7 @@
 
 #include "dynalib.h"
 
+
 DYNALIB_TABLE_EXTERN(services);
 
 void* system_part2_module[] = {

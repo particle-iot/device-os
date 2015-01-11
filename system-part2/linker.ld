@@ -12,6 +12,11 @@ MEMORY
 
 SECTIONS
 {
+    .dynalib :
+    {
+        KEEP(*(*.system_part2_module))
+    }>APP_FLASH  AT> APP_FLASH
+
 
     .vectors :
     {
@@ -28,7 +33,7 @@ SECTIONS
 
         link_code_location = .;
         KEEP(*(.text.irq ))
-        KEEP(*(.text .text.* .gnu.linkonce.t.*))
+        *(.text .text.* .gnu.linkonce.t.*)
         link_code_end = .;
 
         . = ALIGN(0x4);
