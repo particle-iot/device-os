@@ -6,6 +6,7 @@ COMMUNICATION_MODULE_PATH=.
 TARGET_TYPE = a
 BUILD_PATH_EXT=$(ARCH)
 
-DEPENDENCIES =
+# for systick_t
+DEPENDENCIES = hal
 
 include ../build/arm-tlm.mk

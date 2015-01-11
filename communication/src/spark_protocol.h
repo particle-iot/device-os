@@ -26,19 +26,17 @@
 #ifndef __SPARK_PROTOCOL_H
 #define __SPARK_PROTOCOL_H
 
-#include <time.h>
 #include "spark_descriptor.h"
 #include "coap.h"
 #include "events.h"
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
+#include "spark_protocol_functions.h"
 #include <stdint.h>
 
 #if !defined(arraySize)
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
 #endif
-
-typedef uint32_t system_tick_t; // This needs to match the definition of millis
 
 namespace ProtocolState {
   enum Enum {
@@ -52,42 +50,6 @@ namespace ChunkReceivedCode {
     BAD = 0x80
   };
 }
-
-struct SparkKeys
-{
-  unsigned char *core_private;
-  unsigned char *server_public;
-};
-
-struct SparkCallbacks
-{
-  int (*send)(const unsigned char *buf, uint32_t buflen);
-  int (*receive)(unsigned char *buf, uint32_t buflen);
-  void (*prepare_to_save_file)(uint32_t sflash_address, uint32_t file_size);
-  void (*prepare_for_firmware_update)(void);
-  void (*finish_firmware_update)(void);
-  uint32_t (*calculate_crc)(unsigned char *buf, uint32_t buflen);
-  unsigned short (*save_firmware_chunk)(unsigned char *buf, uint32_t buflen);
-  void (*signal)(bool on);
-  system_tick_t (*millis)();
-  void (*set_time)(time_t t);
-};
-
-/**
- * Application-supplied callbacks. (Deliberately distinct from the system-supplied
- * callbacks.)
- */
-typedef struct CommunicationsHandlers {
-
-    /**
-     * Handle the cryptographically secure random seed from the cloud.
-     * @param seed  A random value. This is typically used to seed a pseudo-random generator. 
-     */
-    void (*random_seed_from_cloud)(unsigned int seed);
-    
-} CommunicationsHandlers;    
-
-
 
 
 class SparkProtocol

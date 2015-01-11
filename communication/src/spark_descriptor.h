@@ -23,6 +23,8 @@
   ******************************************************************************
   */
 
+#pragma once
+
 // Deferring to ASN.1 type codes
 namespace SparkReturnType {
   enum Enum {

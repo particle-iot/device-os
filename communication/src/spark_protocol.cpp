@@ -26,6 +26,7 @@
 #include "handshake.h"
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 #ifndef SPARK_PRODUCT_ID
 #define SPARK_PRODUCT_ID (0xffff)
