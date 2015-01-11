@@ -37,12 +37,13 @@
 #include "rgbled.h"
 #include "string.h"
 #include <stdarg.h>
+#include "spark_protocol_functions.h"
 
 using namespace spark;
 
 volatile uint32_t TimingFlashUpdateTimeout;
 
-SparkProtocol spark_protocol;
+SparkProtocol sp;
 
 sock_handle_t sparkSocket = SOCKET_INVALID;
 
@@ -280,22 +281,22 @@ void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString))
 
 void SparkClass::publish(const char *eventName)
 {
-  spark_protocol.send_event(eventName, NULL, 60, EventType::PUBLIC);
+  spark_protocol_send_event(&sp, eventName, NULL, 60, EventType::PUBLIC);
 }
 
 void SparkClass::publish(const char *eventName, const char *eventData)
 {
-  spark_protocol.send_event(eventName, eventData, 60, EventType::PUBLIC);
+  spark_protocol_send_event(&sp, eventName, eventData, 60, EventType::PUBLIC);
 }
 
 void SparkClass::publish(const char *eventName, const char *eventData, int ttl)
 {
-  spark_protocol.send_event(eventName, eventData, ttl, EventType::PUBLIC);
+  spark_protocol_send_event(&sp, eventName, eventData, ttl, EventType::PUBLIC);
 }
 
 void SparkClass::publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType)
 {
-  spark_protocol.send_event(eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
+  spark_protocol_send_event(&sp, eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
 }
 
 void SparkClass::publish(String eventName)
@@ -320,30 +321,30 @@ void SparkClass::publish(String eventName, String eventData, int ttl, Spark_Even
 
 bool SparkClass::subscribe(const char *eventName, EventHandler handler)
 {
-  bool success = spark_protocol.add_event_handler(eventName, handler);
+  bool success = spark_protocol_add_event_handler(&sp, eventName, handler);
   if (success)
   {
-    success = spark_protocol.send_subscription(eventName, SubscriptionScope::FIREHOSE);
+    success = spark_protocol_send_subscription_scope(&sp, eventName, SubscriptionScope::FIREHOSE);
   }
   return success;
 }
 
 bool SparkClass::subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
 {
-  bool success = spark_protocol.add_event_handler(eventName, handler);
+  bool success = spark_protocol_add_event_handler(&sp, eventName, handler);
   if (success)
   {
-    success = spark_protocol.send_subscription(eventName, SubscriptionScope::MY_DEVICES);
+    success = spark_protocol_send_subscription_scope(&sp, eventName, SubscriptionScope::MY_DEVICES);
   }
   return success;
 }
 
 bool SparkClass::subscribe(const char *eventName, EventHandler handler, const char *deviceID)
 {
-  bool success = spark_protocol.add_event_handler(eventName, handler);
+  bool success = spark_protocol_add_event_handler(&sp, eventName, handler);
   if (success)
   {
-    success = spark_protocol.send_subscription(eventName, deviceID);
+    success = spark_protocol_send_subscription_device(&sp, eventName, deviceID);
   }
   return success;
 }
@@ -365,7 +366,7 @@ bool SparkClass::subscribe(String eventName, EventHandler handler, String device
 
 void SparkClass::syncTime(void)
 {
-  spark_protocol.send_time_request();
+  spark_protocol_send_time_request(&sp);
 }
 
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
@@ -512,7 +513,7 @@ int Spark_Receive(unsigned char *buf, uint32_t buflen)
   //no delay between successive socket_receive() calls for cloud
   //not connected or ota flash in process or on last data receipt
   if ((SPARK_CLOUD_CONNECTED != 1) || (SPARK_FLASH_UPDATE == 1)
-      || (spark_receive_last_bytes_received > 0)
+      || (&spark_receive_last_bytes_received > 0)
       || ((millis()-spark_receive_last_request_millis) > SPARK_RECEIVE_DELAY_MILLIS))
   {
     spark_receive_last_bytes_received = socket_receive(sparkSocket, buf, buflen, 0);
@@ -613,7 +614,7 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 
 void Spark_Protocol_Init(void)
 {
-  if (!spark_protocol.is_initialized())
+  if (!spark_protocol_is_initialized(&sp))
   {
     SparkCallbacks callbacks;
     callbacks.send = Spark_Send;
@@ -651,19 +652,18 @@ void Spark_Protocol_Init(void)
     uint8_t id_length = HAL_device_ID(NULL, 0);
     uint8_t id[id_length];
     HAL_device_ID(id, id_length);
-    spark_protocol.init((const char*)id, keys, callbacks, descriptor);
+    spark_protocol_init(&sp, (const char*)id, keys, callbacks, descriptor);
   }
 }
 
 int Spark_Handshake(void)
-{
-    spark_protocol.reset_updating();
-    int err = spark_protocol.handshake();
+{   
+    int err = spark_protocol_handshake(&sp);
 
     char patchstr[8];  
     if (!err) {
         Multicast_Presence_Announcement();
-        spark_protocol.send_time_request();
+        spark_protocol_send_time_request(&sp);
 
         Spark.publish("spark/hardware/max_binary", "524288", 60, PRIVATE);
         if (!core_read_subsystem_version(patchstr, 8)) {
@@ -676,9 +676,9 @@ int Spark_Handshake(void)
 
 // Returns true if all's well or
 //         false on error, meaning we're probably disconnected
-bool Spark_Communication_Loop(void)
+inline bool Spark_Communication_Loop(void)
 {
-  return spark_protocol.event_loop();
+  return spark_protocol_event_loop(&sp);
 }
 
 void Multicast_Presence_Announcement(void)
@@ -691,7 +691,7 @@ void Multicast_Presence_Announcement(void)
   uint8_t id_length = HAL_device_ID(NULL, 0);
   uint8_t id[id_length];
   HAL_device_ID(id, id_length);
-  spark_protocol.presence_announcement(announcement, (const char *)id);
+  spark_protocol_presence_announcement(&sp, announcement, (const char *)id);
 
   // create multicast address 224.0.1.187 port 5683
   sockaddr_t addr;
