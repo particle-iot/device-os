@@ -57,7 +57,6 @@ void HAL_Interrupts_Disable_All(void);
 int HAL_disable_irq();
 void HAL_enable_irq(int mask);
 
-void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, voidFuncPtr EXTI_Line_Handler);
 
 #ifdef __cplusplus
 }

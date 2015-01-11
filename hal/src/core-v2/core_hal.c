@@ -28,6 +28,7 @@
 #include "watchdog_hal.h"
 #include "gpio_hal.h"
 #include "interrupts_hal.h"
+#include "interrupts_impl.h"
 #include "hw_config.h"
 #include "syshealth_hal.h"
 #include "rtc_hal.h"
