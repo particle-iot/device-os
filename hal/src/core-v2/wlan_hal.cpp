@@ -267,11 +267,6 @@ void wlan_setup()
         wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected);
 }
 
-wlan_result_t wlan_manual_connect() 
-{
-    return 0;
-}
-
 void wlan_clear_error_count() 
 {
 }

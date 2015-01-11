@@ -419,17 +419,6 @@ void wlan_setup()
     HAL_Delay_Microseconds(100);
 }
             
-            
-/* Manual connect credentials; only used if WLAN_MANUAL_CONNECT == 1 */
-static const char* _ssid = "ssid";
-static const char* _password = "password";
-
-wlan_result_t wlan_manual_connect() 
-{
-    // Edit the below line before use
-    return wlan_connect(WLAN_SEC_WPA2, _ssid, strlen(_ssid), NULL, (unsigned char*)_password, strlen(_password));    
-}
-
 void wlan_clear_error_count() 
 {
     NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = 0;

@@ -93,10 +93,6 @@ wlan_result_t  wlan_connect_init();
  */
 wlan_result_t  wlan_connect_finalize();
 
-/**
-  * Connect to the manually configured network.
- */
-wlan_result_t  wlan_manual_connect();
 
 bool wlan_reset_credentials_store_required();
 wlan_result_t  wlan_reset_credentials_store();

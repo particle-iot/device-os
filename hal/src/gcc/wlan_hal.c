@@ -130,12 +130,6 @@ void wlan_setup()
     MSG("Virtual WLAN init");
 }
             
-            
-wlan_result_t wlan_manual_connect() 
-{
-    return 0;
-}
-
 void wlan_clear_error_count() 
 {
 }

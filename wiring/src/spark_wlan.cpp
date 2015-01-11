@@ -44,7 +44,6 @@ uint32_t wlan_watchdog;
 
 
 volatile uint8_t WLAN_DISCONNECT;
-volatile uint8_t WLAN_MANUAL_CONNECT = 0; //For Manual connection, set this to 1
 volatile uint8_t WLAN_DELETE_PROFILES;
 volatile uint8_t WLAN_SMART_CONFIG_START;
 volatile uint8_t WLAN_SMART_CONFIG_STOP;
@@ -212,7 +211,7 @@ void SPARK_WLAN_Loop(void)
   {
     if (!SPARK_WLAN_STARTED)
     {
-      if (!WLAN_MANUAL_CONNECT && !WLAN_DISCONNECT)
+      if (!WLAN_DISCONNECT)
       {
         ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
       }
@@ -224,14 +223,7 @@ void SPARK_WLAN_Loop(void)
   {
     Start_Smart_Config();
   }
-  else if (WLAN_MANUAL_CONNECT && !WLAN_DHCP)
-  {
-    CLR_WLAN_WD();
-    WiFi.disconnect();
-    wlan_manual_connect();
-    WLAN_MANUAL_CONNECT = 0;
-  }
-
+  
   // Complete Smart Config Process:
   // 1. if smart config is done
   // 2. CC3000 established AP connection
@@ -383,8 +375,7 @@ void SPARK_WLAN_Loop(void)
 void HAL_WLAN_notify_simple_config_done() 
 {       
     WLAN_SMART_CONFIG_FINISHED = 1;
-    WLAN_SMART_CONFIG_STOP = 1;
-    WLAN_MANUAL_CONNECT = 0;
+    WLAN_SMART_CONFIG_STOP = 1;    
 }
 
 void HAL_WLAN_notify_connected()

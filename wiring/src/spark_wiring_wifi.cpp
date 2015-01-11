@@ -112,12 +112,12 @@ the same way.
                 wlan_reset_credentials_store();
             }
 
-            if (!WLAN_MANUAL_CONNECT && !WiFi.hasCredentials()) {
+            if (!WiFi.hasCredentials()) {
                 WiFi.listen();
             }
             else {
                 SPARK_LED_FADE = 0;
-                    LED_SetRGBColor(RGB_COLOR_GREEN);
+                LED_SetRGBColor(RGB_COLOR_GREEN);
                 LED_On(LED_RGB);
                 wlan_connect_finalize();
             }
