@@ -30,6 +30,12 @@
 // DYNALIB_IMPORT is defined to produce a set of function stubs
 //
 
+#define DYNALIB_TABLE_EXTERN(tablename) \
+    extern const void* dynalib_##tablename[];
+
+#define DYNALIB_TABLE_NAME(tablename) \
+    dynalib_##tablename
+
 #ifdef DYNALIB_EXPORT
 
 
@@ -37,13 +43,13 @@
      * Begin the jump table definition
      */
     #define DYNALIB_BEGIN(tablename) \
-        const void* dynalib_##tablename[] {
+        const void* dynalib_##tablename[] = {
 
     #define DYNALIB_FN(tablename,name,index) \
         &name,
 
     #define DYNALIB_END(name)   \
-        NULL };
+        0 };
 
 
 #elif defined(DYNALIB_IMPORT)
@@ -75,10 +81,7 @@
         #define DYNALIB_END(name)
     #else
         #error Unknown architecture
-    #endif // __arm__    
-    
-#else
-    #error neither DYNALIB_IMPORT nor DYNALIB_EXPORT defined
+    #endif // __arm__        
 #endif
 
 
