@@ -24,7 +24,6 @@
   */
 #include "spark_protocol.h"
 #include "handshake.h"
-#include "functions.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -36,7 +35,18 @@
 #define PRODUCT_FIRMWARE_VERSION (0xffff)
 #endif
 
-SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640), expecting_ping_ack(false),
+/**
+ * Handle the cryptographically secure random seed from the cloud by using
+ * it to seed the stdlib PRNG. 
+ * @param seed  A random value from a cryptographically secure random number generator.
+ */
+inline void default_random_seed_from_cloud(unsigned int seed)
+{
+    srand(seed);
+}
+
+
+SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640), handlers({NULL}), expecting_ping_ack(false),
                                      initialized(false), updating(false)
 {
   queue_init();
@@ -1252,8 +1262,11 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
 
     unsigned int seed;
     memcpy(&seed, credentials + 35, 4);
-    random_seed_from_cloud(seed);
-
+    if (handlers.random_seed_from_cloud)
+        handlers.random_seed_from_cloud(seed);
+    else
+        default_random_seed_from_cloud(seed);
+    
     return 0;
   }
   else return 2;

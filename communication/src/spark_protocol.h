@@ -73,6 +73,23 @@ struct SparkCallbacks
   void (*set_time)(time_t t);
 };
 
+/**
+ * Application-supplied callbacks. (Deliberately distinct from the system-supplied
+ * callbacks.)
+ */
+typedef struct CommunicationsHandlers {
+
+    /**
+     * Handle the cryptographically secure random seed from the cloud.
+     * @param seed  A random value. This is typically used to seed a pseudo-random generator. 
+     */
+    void (*random_seed_from_cloud)(unsigned int seed);
+    
+} CommunicationsHandlers;    
+
+
+
+
 class SparkProtocol
 {
   public:
@@ -137,14 +154,19 @@ class SparkProtocol
     int queue_push(const char *src, int length);
     int queue_pop(char *dst, int length);
 
+    void set_handlers(CommunicationsHandlers& handlers) {
+        this->handlers = handlers;
+    }
+    
     /********** State Machine **********/
     ProtocolState::Enum state();
 
   private:
+    CommunicationsHandlers handlers;   // application callbacks
     char device_id[12];
     unsigned char server_public_key[294];
     unsigned char core_private_key[612];
-    aes_context aes;
+    aes_context aes;    
 
     int (*callback_send)(const unsigned char *buf, uint32_t buflen);
     int (*callback_receive)(unsigned char *buf, uint32_t buflen);
