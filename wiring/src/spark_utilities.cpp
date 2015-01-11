@@ -666,7 +666,7 @@ int Spark_Handshake(void)
         spark_protocol_send_time_request(&sp);
 
         Spark.publish("spark/hardware/max_binary", "524288", 60, PRIVATE);
-        if (!core_read_subsystem_version(patchstr, 8)) {
+        if (!HAL_core_subsystem_version(patchstr, 8)) {
             Spark.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, patchstr, 60, PRIVATE);
         }        
     }

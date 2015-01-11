@@ -26,7 +26,7 @@
 #include "core_subsys_hal.h"
 
 
-int core_read_subsystem_version(char* patchstr, int bufLen) {
+int HAL_core_subsystem_version(char* patchstr, int bufLen) {
     *patchstr = 0;
     return 0;    
 }

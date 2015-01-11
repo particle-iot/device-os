@@ -35,19 +35,22 @@ extern "C" {
  * Reads the subsystem version as a string into a given buffer.
  * @return 0 on success.
  */       
-int core_read_subsystem_version(char* buf, int bufLen);
+int HAL_core_subsystem_version(char* buf, int bufLen);
+
+#if PLATFORM_NAME==core-v1
+    /**
+     * The event name to publish for this subsystem type.
+     */
+    #define SPARK_SUBSYSTEM_EVENT_NAME "cc3000-patch-version"
+
+#elif PLATFORM_NAME==core-v2
+
+    #define SPARK_SUBSYSTEM_EVENT_NAME ""
+
+#else
+    #error unknown platform for SPARK_SUBSYSTEM_EVENT_NAME
+#endif
   
-// cc3000
-
-
-/**
- * The event name to publish for this subsystem type.
- */
-#define SPARK_SUBSYSTEM_EVENT_NAME "cc3000-patch-version"
-  
-
-
-
 #ifdef	__cplusplus
 }
 #endif

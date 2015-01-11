@@ -39,8 +39,7 @@
 DYNALIB_BEGIN(hal)        
 DYNALIB_FN(hal,HAL_ADC_Set_Sample_Time)
 DYNALIB_FN(hal,HAL_ADC_Read)
-
-DYNALIB_FN(hal,core_read_subsystem_version)
+DYNALIB_FN(hal,HAL_core_subsystem_version)
 DYNALIB_FN_PLACEHOLDER(hal)
 DYNALIB_FN_PLACEHOLDER(hal)
         
