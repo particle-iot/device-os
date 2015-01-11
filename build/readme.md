@@ -1,6 +1,6 @@
 This root project folder contains the top-level makefile:
 
-> One Makefile to rule them all, One Makefile to find them; One ring to bring 
+> One Makefile to rule them all, One Makefile to find them; One Makefile to bring 
 > them all and in the darkness build them.
 
 ```
@@ -57,10 +57,10 @@ make v=1
 
 The top-level makefile builds all modules. Also, each module can be built on its own 
 by executing the makefile in the module's directory. The make also builds any dependencies.
-This means the firmware can be built by running make from the `main/` directory.
+This means the firmware can be built by running make from the `user/` directory.
 
 ```
-cd main
+cd user
 make
 ```
 
@@ -79,12 +79,12 @@ Would build the bootloader and firmware for product ID 2.
 
 ## Building a User Application
 
-To build a new application, first create a subdirectory under `main/applications/`. 
+To build a new application, first create a subdirectory under `user/applications/`. 
 You'll find the Tinker app is already there. Let's say we want to create a new
 app, which we'll call `myapp/`
 
 ```
-mkdir main/applications/myapp
+mkdir user/applications/myapp
 ```
 
 Then add the files needed for your application to that directory. These can be named freely,
@@ -98,14 +98,14 @@ mylibrary.h
 
 You can also add header files - the application subdirectory is on the include path.
 
-To build this application, change directory to the `main/` directory and run
+To build this application, change directory to the `user/` directory and run
 
 ```
 make APP=myapp
 ```
 
 This will build your application with the resulting `.bin` file available in
-`build/target/main/prod-0/applications/myapp/myapp.bin`. 
+`build/target/user/prod-0/applications/myapp/myapp.bin`. 
 
 ## Changing the Target Directory
 
@@ -116,7 +116,7 @@ you can define the `TARGET_DIR` variable:
 make APP=myapp TARGET_DIR=my/custom/output
 ```
 
-This will place `main.bin` (and the other output files) in `my/custom/output` relative to the current directory. 
+This will place `user.bin` (and the other output files) in `my/custom/output` relative to the current directory. 
 The directory is created if it doesn't exist.
 
 
@@ -129,7 +129,7 @@ like this:
 make APP=myapp TARGET_FILE=core-firmware
 ```
 
-This will build the firmware with output as `core-firmware.bin` in `build/target/main/prod-0/applications/myapp`.
+This will build the firmware with output as `core-firmware.bin` in `build/target/user/prod-0/applications/myapp`.
 
 These can of course also be combined like so:
 
@@ -162,13 +162,13 @@ defaults to the name of the application sources directory.
 ## Integrated application.cpp with firmware
 
 In previous versions of the make system, the application code was integrated with the firmware code at `core-firmware/src/application.cpp`.
-This mode of building is still supported, however the location has changed to: `main/src/application.cpp` simply run `make`
+This mode of building is still supported, however the location has changed to: `user/src/application.cpp` simply run `make`
 
 ```
 make
 ```
 
-This will then build the firmware as before with the user code in `main/src/application.cpp`
+This will then build the firmware as before with the user code in `user/src/application.cpp`
 
 ## Platform Specific vs Platform Agnostic builds
 
@@ -183,19 +183,19 @@ make APP=myapp SPARK_NO_PLATFORM=y
 The build system uses an `out of source` directory for all built artifacts. The
 directory is `build/target/`. In previous versions of the build system, artifacts
 were placed under a local `build` folder. If you would prefer to maintain this style of
-working, you can create a symlink from `build/target/main/prod-0/` to `main/build/`.
-Then after building main, the artifacts will be available in the `build/` subdirectory
+working, you can create a symlink from `build/target/user/prod-0/` to `user/build/`.
+Then after building `user`, the artifacts will be available in the `build/` subdirectory
 as before.
 
 
 ## Flashing the firmware to the core
 
-The `program-dfu` target can be used when building from the `main/` directory to flash
+The `program-dfu` target can be used when building from the `user/` directory to flash
 the compiled `.bin` file to the core, using dfu-util. For this to work, `dfu-util` needs to be
 installed and in your PATH (Windows), and the core put in DFU mode (flashing yellow).
 
 ```
-cd main
+cd user
 make all program-dfu
 ```
 
