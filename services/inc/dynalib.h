@@ -45,8 +45,11 @@
     #define DYNALIB_BEGIN(tablename) \
         const void* dynalib_##tablename[] = {
 
-    #define DYNALIB_FN(tablename,name,index) \
+    #define DYNALIB_FN(tablename,name) \
         &name,
+
+    #define DYNALIB_FN_PLACEHOLDER(tablename) \
+        0,
 
     #define DYNALIB_END(name)   \
         0 };
@@ -59,13 +62,15 @@
         #define DYNALIB_BEGIN(tablename)    \
             extern const void* dynalib_location_##tablename;
 
-        #define DYNALIB_FN(tablename, name, index) \
-            const char check_index_##tablename_##index[0]={}; /* this will fail if index is already defined */ \
+        #define __S(x) #x
+        #define __SX(x) __S(x)
+
+        #define DYNALIB_FN(tablename, name) \
             const char check_name_##tablename_##name[0]={}; /* this will fail if the name is already defined */ \
             void name() __attribute__((naked)); \
             void name() { \
                 asm volatile ( \
-                    ".equ offset, (" #index " * 4)\n" \
+                    ".equ offset, ( " __SX(__COUNTER__) " * 4)\n" \
                     ".extern dynalib_location_" #tablename "\n" \
                     "push {r3, lr}\n"           /* save register we will change plus storage for sp value */ \
                                                 /* pushes highest register first, so lowest register is at lowest memory address */ \
@@ -77,6 +82,8 @@
                     "pop {r3, pc}\n"                    /* restore register and jump to function */ \
                 ); \
             };
+
+        #define DYNALIB_FN_PLACEHOLDER(tablename)
 
         #define DYNALIB_END(name)
     #else
