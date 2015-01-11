@@ -140,7 +140,6 @@ int wlan_set_credentials(const char* ssid, uint16_t ssid_len, const char* passwo
 void wlan_smart_config_init();
 void wlan_smart_config_cleanup();
 
-void wlan_clear_error_count();
 void wlan_set_error_count(uint32_t error_count);
 
 
@@ -159,7 +158,6 @@ void wlan_fetch_ipconfig(WLanConfig* config);
  */
 void wlan_setup();
 
-void wlan_clear_spark_error_count();
 void welan_set_error_count();
 
 void SPARK_WLAN_SmartConfigProcess();

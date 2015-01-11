@@ -267,10 +267,6 @@ void wlan_setup()
         wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected);
 }
 
-void wlan_clear_error_count() 
-{
-}
-
 void wlan_set_error_count(uint32_t errorCount) 
 {
 }

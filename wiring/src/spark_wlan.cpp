@@ -286,7 +286,7 @@ void SPARK_WLAN_Loop(void)
       // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
 
       // Reset Error Count
-      wlan_clear_error_count();
+      wlan_set_error_count(0);
     }
 
     SPARK_LED_FADE = 0;

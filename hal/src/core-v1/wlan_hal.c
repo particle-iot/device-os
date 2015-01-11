@@ -419,12 +419,7 @@ void wlan_setup()
     HAL_Delay_Microseconds(100);
 }
             
-void wlan_clear_error_count() 
-{
-    NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = 0;
-    nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);    
-}
-
+           
 void wlan_set_error_count(uint32_t errorCount) 
 {
     NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = errorCount;

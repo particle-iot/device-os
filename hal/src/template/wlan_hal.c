@@ -123,12 +123,7 @@ void wlan_smart_config_cleanup()
 void wlan_setup()
 {    
 }
-            
-            
-void wlan_clear_error_count() 
-{
-}
-
+                       
 void wlan_set_error_count(uint32_t errorCount) 
 {
 }

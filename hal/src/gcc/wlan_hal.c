@@ -130,10 +130,7 @@ void wlan_setup()
     MSG("Virtual WLAN init");
 }
             
-void wlan_clear_error_count() 
-{
-}
-
+           
 void wlan_set_error_count(uint32_t errorCount) 
 {
 }
