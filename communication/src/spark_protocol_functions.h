@@ -5,20 +5,33 @@
  * Created on 04 September 2014, 00:10
  */
 
-#ifndef FUNCTIONS_H
-#define	FUNCTIONS_H
+#pragma once
 
 #include <stdint.h>
+#include "spark_protocol.h"
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
-/**
- * Handle the cryptographically secure random seed from the cloud.
- * @param seed  A random value. This is typically used to seed a pseudo-random generator. 
- */
-extern void random_seed_from_cloud(unsigned int seed);
+void spark_protocol_communications_handlers(SparkProtocol* protocol, CommunicationsHandlers* handlers);
+
+void spark_protocol_init(SparkProtocol* protocol, const char *id,
+          const SparkKeys &keys,
+          const SparkCallbacks &callbacks,
+          const SparkDescriptor &descriptor);
+int spark_protocol_handshake(SparkProtocol* protocol);
+bool spark_protocol_event_loop(SparkProtocol* protocol);
+bool spark_protocol_is_initialized(SparkProtocol* protocol);
+int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char *buf, const char *id);
+bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,
+                int ttl, EventType::Enum event_type);
+bool spark_protocol_send_subscription_device(SparkProtocol* protocol, const char *event_name, const char *device_id);
+bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope);
+bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, EventHandler handler);
+bool spark_protocol_send_time_request(SparkProtocol* protocol);
+
+
 
 /**
  * Decrypt a buffer using the given public key.
@@ -34,6 +47,4 @@ extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key,
 #ifdef	__cplusplus
 }
 #endif
-
-#endif	/* FUNCTIONS_H */
 

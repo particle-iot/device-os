@@ -11,7 +11,7 @@
 #include "softap.h"
 #include "dct.h"
 #include "ota_flash_hal.h"
-#include "functions.h"
+#include "spark_protocol_functions.h"
 
 /**
  * Abstraction of an input stream.
