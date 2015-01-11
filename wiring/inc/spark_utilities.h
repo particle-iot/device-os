@@ -182,6 +182,8 @@ uint32_t loop_frequency_hz() __attribute__ ((weak));
 
 bool Ymodem_Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress) __attribute__ ((weak));;
 
+void LED_Signaling_Override(void);
+
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif

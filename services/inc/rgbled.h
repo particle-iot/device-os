@@ -35,7 +35,6 @@ void LED_SetRGBColor(uint32_t RGB_Color);
 void LED_SetSignalingColor(uint32_t RGB_Color);
 void LED_Signaling_Start(void);
 void LED_Signaling_Stop(void);
-void LED_Signaling_Override(void) __attribute__ ((weak));
 void LED_SetBrightness(uint8_t brightness); /* 0 = off, 255 = full brightness */
 void LED_RGB_Get(uint8_t* rgb);
 void LED_Init(Led_TypeDef Led);
