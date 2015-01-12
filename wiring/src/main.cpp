@@ -47,11 +47,6 @@ using namespace spark;
 static volatile uint32_t TimingLED;
 static volatile uint32_t TimingIWDGReload;
 
-#ifdef MEASURE_LOOP_FREQUENCY
-static volatile uint32_t loop_counter;
-static volatile uint32_t loop_frequency;
-#endif
-
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -152,27 +147,7 @@ extern "C" void HAL_SysTick_Handler(void)
 }
 
 /*******************************************************************************
- * Function Name  : HAL_RTC_Handler (Declared as weak in rtc_hal.h)
- * Description    : This function handles RTC global interrupt request.
- * Input          : None.
- * Output         : None.
- * Return         : None.
- *******************************************************************************/
-extern "C" void HAL_RTC_Handler(void)
-{
-#ifdef MEASURE_LOOP_FREQUENCY
-  loop_frequency = loop_counter;
-  loop_counter = 0;
-#endif
-
-  if(NULL != Time_Update_Handler)
-  {
-    Time_Update_Handler();
-  }
-}
-
-/*******************************************************************************
- * Function Name  : HAL_RTCAlarm_Handler (Declared as weak in rtc_hal.h)
+ * Function Name  : HAL_RTCAlarm_Handler
  * Description    : This function handles additional application requirements.
  * Input          : None.
  * Output         : None.
@@ -183,14 +158,6 @@ extern "C" void HAL_RTCAlarm_Handler(void)
   /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
   SPARK_WLAN_SLEEP = 0;
 }
-
-#ifdef MEASURE_LOOP_FREQUENCY
-/* Utility call declared as weak - used to return loop() frequency measured in Hz */
-uint32_t loop_frequency_hz()
-{
-  return loop_frequency;
-}
-#endif
 
 /*******************************************************************************
  * Function Name  : main.
@@ -231,9 +198,6 @@ void app_setup_and_loop(void)
                 {
                     //Execute user application loop
                     DECLARE_SYS_HEALTH(ENTERED_Loop);
-#ifdef MEASURE_LOOP_FREQUENCY
-                    loop_counter++;
-#endif
                     loop();
                     DECLARE_SYS_HEALTH(RAN_Loop);
                 }
