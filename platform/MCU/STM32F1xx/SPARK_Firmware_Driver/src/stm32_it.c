@@ -53,7 +53,6 @@ void HAL_RTCAlarm_Handler(void) __attribute__ ((weak));
 void HAL_I2C1_EV_Handler(void) __attribute__ ((weak));
 void HAL_I2C1_ER_Handler(void) __attribute__ ((weak));
 void HAL_SPI1_Handler(void) __attribute__ ((weak));
-void HAL_ADC1_2_Handler(void) __attribute__ ((weak));
 void HAL_USART1_Handler(void) __attribute__ ((weak));
 void HAL_USART2_Handler(void) __attribute__ ((weak));
 
@@ -207,21 +206,6 @@ void SysTick_Handler(void)
 /*  available peripheral interrupt handler's name please refer to the startup */
 /*  file (startup_stm32xxx.S).                                                */
 /******************************************************************************/
-
-/*******************************************************************************
- * Function Name  : ADC1_2_IRQHandler
- * Description    : This function handles ADC1 and ADC2 global interrupts requests.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void ADC1_2_IRQHandler(void)
-{
-	if(NULL != HAL_ADC1_2_Handler)
-	{
-		HAL_ADC1_2_Handler();
-	}
-}
 
 /*******************************************************************************
  * Function Name  : USART1_IRQHandler
