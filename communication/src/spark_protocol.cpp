@@ -45,20 +45,6 @@ inline void default_random_seed_from_cloud(unsigned int seed)
 {
     srand(seed);
 }
-
-
-SparkProtocol::SparkProtocol(void) : QUEUE_SIZE(640), handlers({NULL}), expecting_ping_ack(false),
-                                     initialized(false), updating(false)
-{
-  queue_init();
-}
-
-void SparkProtocol::queue_init(void)
-{
-  queue_front = queue_back = queue;
-  queue_mem_boundary = queue + QUEUE_SIZE;
-}
-
 bool SparkProtocol::is_initialized(void)
 {
   return initialized;

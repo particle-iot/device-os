@@ -16,9 +16,10 @@ CPPSRC += $(TARGET_SRC_PATH)/handshake.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_protocol.cpp
 CPPSRC += $(TARGET_SRC_PATH)/events.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_protocol_functions.cpp
+CPPSRC += $(TARGET_SRC_PATH)/communication_dynalib.cpp
 
 # ASM source files included in this build.
 ASRC +=
 
-CFLAGS += -std=gnu++11
+CPPFLAGS += -std=gnu++11
 

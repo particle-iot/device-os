@@ -43,10 +43,10 @@
      * Begin the jump table definition
      */
     #define DYNALIB_BEGIN(tablename) \
-        const void* dynalib_##tablename[] = {
+        const void* const dynalib_##tablename[] = {
 
     #define DYNALIB_FN(tablename,name) \
-        &name,
+        (const void*)&name,
 
     #define DYNALIB_FN_PLACEHOLDER(tablename) \
         0,

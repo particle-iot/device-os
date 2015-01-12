@@ -7,6 +7,6 @@ TARGET_TYPE = a
 BUILD_PATH_EXT=$(ARCH)
 
 # for systick_t
-DEPENDENCIES = hal
+DEPENDENCIES = hal services
 
 include ../build/arm-tlm.mk
