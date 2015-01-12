@@ -27,6 +27,7 @@
 #include "rtc_hal.h"
 #include "stm32f10x_rtc.h"
 #include "hw_config.h"
+#include <stdlib.h>
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -35,6 +36,11 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+static struct skew
+{
+  int8_t error;
+  uint8_t ticks;
+} skew;
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -127,9 +133,20 @@ time_t HAL_RTC_Get_UnixTime(void)
 
 void HAL_RTC_Set_UnixTime(time_t value)
 {
-  RTC_WaitForLastTask();
-  RTC_SetCounter((uint32_t)value);
-  RTC_WaitForLastTask();
+    int32_t delta_error = HAL_RTC_Get_UnixTime() - value;
+    if (delta_error > 127 || delta_error < -127)
+    {
+        // big delta, jump abruptly to the new time
+        RTC_WaitForLastTask();
+        RTC_SetCounter((uint32_t)value);
+        RTC_WaitForLastTask();
+    }
+    else
+    {
+        // small delta, gradually skew toward the new time
+        skew.error = delta_error;
+        skew.ticks = 2 * abs(delta_error);
+    }
 }
 
 void HAL_RTC_Set_UnixAlarm(time_t value)
@@ -138,4 +155,48 @@ void HAL_RTC_Set_UnixAlarm(time_t value)
   RTC_SetAlarm(RTC_GetCounter() + (uint32_t)value);
   /* Wait until last write operation on RTC registers has finished */
   RTC_WaitForLastTask();
+}
+
+/*******************************************************************************
+ * Function Name  : HAL_RTC_Handler (Declared as weak in stm32_it.h)
+ * Description    : This function handles RTC global interrupt request.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+void HAL_RTC_Handler(void)
+{
+    // Only intervene if we have an error to correct
+    if (0 != skew.error && 0 < skew.ticks)
+    {
+        time_t now = HAL_RTC_Get_UnixTime();
+
+        // By default, we set the clock 1 second forward
+        time_t skew_step = 1;
+
+        if (skew.error > 0)
+        {
+            // Error is positive, so we need to slow down
+            if (skew.ticks / skew.error < 2)
+            {
+                // Don't let time go backwards!
+                // Hold the clock still for a second
+                skew_step--;
+                skew.error--;
+            }
+        }
+        else
+        {
+            // Error is negative, so we need to speed up
+            if (skew.ticks / skew.error > -2)
+            {
+                // Skip a second forward
+                skew_step++;
+                skew.error++;
+            }
+        }
+
+        skew.ticks--;
+        HAL_RTC_Set_UnixTime(now + skew_step);
+    }
 }
