@@ -40,6 +40,8 @@
 
 /* Private function prototypes -----------------------------------------------*/
 
+extern void HAL_RTCAlarm_Handler(void);
+
 void HAL_RTC_Configuration(void)
 {
 	RTC_InitTypeDef RTC_InitStructure;
@@ -211,10 +213,7 @@ void RTC_Alarm_irq(void)
 {
 	if(RTC_GetITStatus(RTC_IT_ALRA) != RESET)
 	{
-		if(NULL != HAL_RTCAlarm_Handler)
-		{
-			HAL_RTCAlarm_Handler();
-		}
+        HAL_RTCAlarm_Handler();
 
 		/* Clear EXTI line17 pending bit */
 		EXTI_ClearITPendingBit(EXTI_Line17);
