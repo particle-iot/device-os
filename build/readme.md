@@ -157,7 +157,21 @@ Parameters:
 - `TARGET_FILE`: the basename of the files created. If not defined, 
 defaults to the name of the application sources directory.
 
+## Custom makefile
 
+(Please note this is an experimental feature and may be removed in future releases.)
+
+When using `APP` or `APPDIR` to build custom application sources, the build system
+by default will build any `.c` and `.cpp` files found in the given directory
+and it's subdirectories. You can take control of the build process by adding a file
+`build.mk` to the root of the application sources. Appending values to these variables
+allows the build process to be customized:
+
+- `CSRC`, `CPPSRC`: the c and cpp files in the build
+- `INCLUDE_DIRS`: include path
+- `LIB_DIRS`: the library search path
+- `LIBS`: libraries to link (found in the library search path). Library names are given without the `lib` prefix and `.a` suffix.
+- `LIB_DEPS`: full path of additional library files to include.
 
 ## Integrated application.cpp with firmware
 
