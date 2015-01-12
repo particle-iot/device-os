@@ -47,7 +47,6 @@ SparkProtocol sp;
 
 sock_handle_t sparkSocket = SOCKET_INVALID;
 
-
 extern uint8_t LED_RGB_BRIGHTNESS;
 
 // LED_Signaling_Override
@@ -91,6 +90,13 @@ static int str_cmp(char str1[], char str2[]);
 static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
 */
+
+ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update = NULL;
+
+void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler)
+{
+    Ymodem_Serial_Flash_Update = handler;
+}
 
 SystemClass System;
 RGBClass RGB;

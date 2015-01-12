@@ -180,7 +180,9 @@ void setup() __attribute__ ((weak));
 void loop() __attribute__ ((weak));
 uint32_t loop_frequency_hz() __attribute__ ((weak));
 
-bool Ymodem_Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress) __attribute__ ((weak));;
+typedef bool (*ymodem_serial_flash_update_handler)(Stream *serialObj, uint32_t sFlashAddress);
+extern ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update;
+void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler);
 
 void LED_Signaling_Override(void);
 
