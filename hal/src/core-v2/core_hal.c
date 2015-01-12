@@ -50,6 +50,8 @@ const unsigned USART1Index = 53;
 void SysTickOverride(void);
 void HAL_USART1_Handler(void);
 
+extern void HAL_SysTick_Handler(void);
+
 void override_interrupts(void) {
 
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
@@ -394,10 +396,7 @@ void SysTickOverride(void)
         TimingDelay--;
     }
 
-    if(HAL_SysTick_Handler)
-    {
-        HAL_SysTick_Handler();
-    }
+    HAL_SysTick_Handler();
 }
 
 /**

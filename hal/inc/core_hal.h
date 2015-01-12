@@ -102,8 +102,6 @@ int32_t HAL_Core_Backup_Register(uint32_t BKP_DR);
 void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data);
 uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR);
 
-void HAL_SysTick_Handler(void) __attribute__ ((weak));
-
 extern void app_setup_and_loop();
 
 #ifdef __cplusplus

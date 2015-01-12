@@ -53,7 +53,7 @@ static volatile uint32_t TimingIWDGReload;
 
 /* Private functions ---------------------------------------------------------*/
 /*******************************************************************************
- * Function Name  : HAL_SysTick_Handler (Declared as weak in core_hal.h)
+ * Function Name  : HAL_SysTick_Handler
  * Description    : Decrements the various Timing variables related to SysTick.
  * Input          : None
  * Output         : None.
