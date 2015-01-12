@@ -13,6 +13,8 @@ ifdef TARGET_DIR
 TARGET_PATH = $(TARGET_DIR)
 endif
 
+# SOURCE_PATH - the root of all sources. Defaults to the module dir
+# USRSRC - relative path to SOURCE_PATH for the sources to build
 
 # determine where user sources are, relative to project root
 ifdef APP
@@ -45,14 +47,16 @@ include $(MODULE_PATH)/tests/tests.mk
 -include $(MODULE_PATH)/$(USRSRC)/test.mk
 endif
 
-# user sources specified, so override application.cpp and pull in files from 
-# the user source folder
+USRSRC_SLASH = $(and $(USRSRC),$(USRSRC)/)
+usrmakefile = $(wildcard $(SOURCE_PATH)/$(USRSRC_SLASH)build.mk)
+ifeq ("$(usrmakefile)","")
 INCLUDE_DIRS += $(SOURCE_PATH)/$(USRSRC)  # add user sources to include path
 # add C and CPP files - if USRSRC is not empty, then add a slash
-USRSRC_SLASH = $(and $(USRSRC),$(USRSRC)/)
 CPPSRC += $(call target_files,$(USRSRC_SLASH),*.cpp)
 CSRC += $(call target_files,$(USRSRC_SLASH),*.c)    
-
+else
+include $(usrmakefile)
+endif
 
 INCLUDE_DIRS += $(MODULE_PATH)/libraries
 
