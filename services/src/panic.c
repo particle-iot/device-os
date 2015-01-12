@@ -43,8 +43,8 @@ void panic_(ePanicCode code)
         LED_SetRGBColor(RGB_COLOR_RED);
         LED_On(LED_RGB);
         uint16_t c;
-        int loops = 2;
-        if (debug_output_)(debug_output_("!"));
+        int loops = 2;        
+        log_direct_("!");
         LED_Off(LED_RGB);
         while(loops) {
                 // preamble

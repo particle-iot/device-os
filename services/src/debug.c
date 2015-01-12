@@ -14,41 +14,54 @@
 #include "debug.h"
 #include "timer_hal.h"
 
-uint32_t log_level_at_run_time = LOG_LEVEL_AT_RUN_TIME;
+LoggerOutputLevel log_level_at_run_time = LOG_LEVEL_AT_RUN_TIME;
+debug_output_fn debug_output_;
+
+void set_logger_output(debug_output_fn output, LoggerOutputLevel level)
+{
+    if (output)
+        debug_output_ = output;
+    if (level==DEFAULT_LEVEL)
+        level = LOG_LEVEL_AT_RUN_TIME;
+    log_level_at_run_time = level;
+}
 
 void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...)
 {
-       char _buffer[MAX_DEBUG_MESSAGE_LENGTH];
-        static char * levels[] = {
-                "",
-                "LOG  ",
-                "DEBUG",
-                "WARN ",
-                "ERROR",
-                "PANIC",
-        };
-        va_list args;
-        va_start(args, msg);
-        file = file ? strrchr(file,'/') + 1 : "";
-        int trunc = snprintf(_buffer, arraySize(_buffer), "%010u:<%s> %s %s(%d):", (unsigned)HAL_Timer_Get_Milli_Seconds(), levels[level], func, file, line);
-        if (debug_output_)
+    char _buffer[MAX_DEBUG_MESSAGE_LENGTH];
+    static char * levels[] = {
+            "",
+            "LOG  ",
+            "DEBUG",
+            "WARN ",
+            "ERROR",
+            "PANIC",
+    };
+    va_list args;
+    va_start(args, msg);
+    file = file ? strrchr(file,'/') + 1 : "";
+    int trunc = snprintf(_buffer, arraySize(_buffer), "%010u:<%s> %s %s(%d):", (unsigned)HAL_Timer_Get_Milli_Seconds(), levels[level], func, file, line);
+    if (debug_output_)
+    {
+        debug_output_(_buffer);
+        if (trunc > arraySize(_buffer))
         {
-            debug_output_(_buffer);
-          if (trunc > arraySize(_buffer))
-          {
-              debug_output_("...");
-          }
+            debug_output_("...");
         }
-        trunc = vsnprintf(_buffer,arraySize(_buffer), msg, args);
-        if (debug_output_)
+    }
+    trunc = vsnprintf(_buffer,arraySize(_buffer), msg, args);
+    if (debug_output_)
+    {
+        debug_output_(_buffer);
+        if (trunc > arraySize(_buffer))
         {
-          debug_output_(_buffer);
-          if (trunc > arraySize(_buffer))
-          {
-              debug_output_("...");
-          }
-          debug_output_("\r\n");
+            debug_output_("...");
         }
+        debug_output_("\r\n");
+    }
 }
 
-
+void log_direct_(const char* s) {
+    if (debug_output_)
+        debug_output_(s);
+}

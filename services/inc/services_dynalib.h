@@ -39,6 +39,8 @@ DYNALIB_FN(services,LED_Toggle)
 DYNALIB_FN(services,LED_Fade)
 DYNALIB_FN(services,Get_LED_Brightness)
         
+DYNALIB_FN(services,set_logger_output)
+        
 DYNALIB_END(services)        
 
 

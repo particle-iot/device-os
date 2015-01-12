@@ -35,12 +35,16 @@
 #include <stddef.h>
 #include "panic.h"
 
-// Debug Levels
-#define LOG_LEVEL       1
-#define DEBUG_LEVEL     2
-#define WARN_LEVEL      3
-#define ERROR_LEVEL     4
-#define PANIC_LEVEL     5
+typedef enum LoggerOutputLevel {    
+    DEFAULT_LEVEL   = 0,        // used to select the default logging level
+    ALL_LEVEL       = 1,
+    LOG_LEVEL       = 1,
+    DEBUG_LEVEL     = 2,
+    WARN_LEVEL      = 3,
+    ERROR_LEVEL     = 4,
+    PANIC_LEVEL     = 5,
+    NO_LOG_LEVEL    = 6,    // set to not log any messages
+} LoggerOutputLevel;
 
 #if !defined(INCLUDE_FILE_INFO_IN_DEBUG)
 #define _FILE_PATH          __FILE__
@@ -61,10 +65,23 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-// Must be provided by main if wanted as extern C definitions
-extern uint32_t log_level_at_run_time __attribute__ ((weak));;
 void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...);
-void debug_output_(const char *) __attribute__ ((weak));
+
+void log_direct_(const char* s);
+
+/**
+ * The debug output function.
+ */
+typedef void (*debug_output_fn)(const char *);
+
+/**
+ * Set the debug logger function and optionally the logging level.
+ * @param output                The output function. `NULL` to use the existing function.
+ * @param debug_output_level    The log level to output.
+ */
+void set_logger_output(debug_output_fn output, LoggerOutputLevel level);
+
+
 #ifdef __cplusplus
 }
 #endif
