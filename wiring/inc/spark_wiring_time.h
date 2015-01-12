@@ -58,8 +58,6 @@ public:
 	static String  timeStr(time_t t);			// returns string representation for the given time
 };
 
-void Time_Update_Handler(void) __attribute__ ((weak));
-
 extern TimeClass Time;	//eg. usage: Time.day();
 
 #endif
