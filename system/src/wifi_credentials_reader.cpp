@@ -25,7 +25,10 @@
 
 #include "wifi_credentials_reader.h"
 #include "delay_hal.h"
-#include "spark_utilities.h"
+#include "wlan_hal.h"
+#include "system_cloud.h"
+#include "system_update.h"
+
 
 WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 {
@@ -78,7 +81,7 @@ void WiFiCredentialsReader::read(void)
     else if ('i' == c)
     {
         print("Your core id is ");
-        String id = Spark.deviceID();
+        String id = spark_deviceID();
         print(id.c_str());
         print("\r\n");
     }
@@ -97,7 +100,7 @@ void WiFiCredentialsReader::read(void)
     }
     else if ('f' == c)
     {
-      System.serialFirmwareUpdate(&serial);
+      system_serialFirmwareUpdate(&serial);
     }
   }
 }

@@ -67,7 +67,29 @@ extern volatile system_tick_t spark_loop_total_millis;
 
 extern sock_handle_t sparkSocket;
 
-extern WLanConfig ip_config;
+const WLanConfig& network_config();
+
+void network_connect();
+bool network_connecting();
+bool network_connected();
+void network_disconnect();
+bool network_ready();
+void network_on();
+void network_off();
+void network_listen();
+bool network_listening();
+bool network_has_credentials();
+
+struct NetworkCredentials {
+    const char* ssid;
+    const char* password;
+    unsigned ssidLen;
+    unsigned passwordLen;
+    unsigned long security;    
+};
+
+void network_set_credentials(NetworkCredentials* creds);
+bool network_clear_credentials();
 
 }
 

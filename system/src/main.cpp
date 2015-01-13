@@ -28,14 +28,13 @@
   
 /* Includes ------------------------------------------------------------------*/
 #include "debug.h"
-#include "spark_utilities.h"
 #include "spark_wlan.h"
 #include "core_hal.h"
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"
+#include "system_cloud.h"
+#include "system_user.h"
 #include "rgbled.h"
-
-using namespace spark;
 
 /* Private typedef -----------------------------------------------------------*/
 
