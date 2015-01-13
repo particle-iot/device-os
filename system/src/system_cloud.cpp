@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    spark_utilities.cpp
+ * @file    system_cloud.cpp
  * @author  Satish Nair, Zachary Crockett and Mohit Bhoite
  * @version V1.0.0
  * @date    13-March-2013
@@ -24,24 +24,28 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
  */
-#include "spark_utilities.h"
+
 #include "spark_wiring.h"
 #include "spark_wiring_network.h"
 #include "spark_wlan.h"
 #include "socket_hal.h"
-#include "inet_hal.h"
+#include "core_hal.h"
 #include "core_subsys_hal.h"
 #include "deviceid_hal.h"
+#include "inet_hal.h"
+#include "rtc_hal.h"
 #include "ota_flash_hal.h"
-#include "core_hal.h"
 #include "rgbled.h"
 #include "string.h"
 #include <stdarg.h>
 #include "spark_protocol_functions.h"
+#include "spark_protocol.h"
+#include "spark_macros.h"
 
-using namespace spark;
 
-volatile uint32_t TimingFlashUpdateTimeout;
+int userVarType(const char *varKey);
+void *getUserVar(const char *varKey);
+int userFuncSchedule(const char *funcKey, const char *paramString);
 
 SparkProtocol sp;
 
@@ -91,152 +95,7 @@ static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
 */
 
-ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update = NULL;
-
-void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler)
-{
-    Ymodem_Serial_Flash_Update = handler;
-}
-
-SystemClass System;
-RGBClass RGB;
-SparkClass Spark;
-
-System_Mode_TypeDef SystemClass::_mode = AUTOMATIC;
-
-SystemClass::SystemClass()
-{
-}
-
-SystemClass::SystemClass(System_Mode_TypeDef mode)
-{
-  switch(mode)
-  {
-    case AUTOMATIC:
-      _mode = AUTOMATIC;
-      SPARK_CLOUD_CONNECT = 1;
-      break;
-
-    case SEMI_AUTOMATIC:
-      _mode = SEMI_AUTOMATIC;
-      SPARK_CLOUD_CONNECT = 0;
-      SPARK_WLAN_SLEEP = 1;
-      break;
-
-    case MANUAL:
-      _mode = MANUAL;
-      SPARK_CLOUD_CONNECT = 0;
-      SPARK_WLAN_SLEEP = 1;
-      break;
-  }
-}
-
-System_Mode_TypeDef SystemClass::mode(void)
-{
-  return _mode;
-}
-
-bool SystemClass::serialSaveFile(Stream *serialObj, uint32_t sFlashAddress)
-{
-  bool status = false;
-
-  if(NULL != Ymodem_Serial_Flash_Update)
-  {
-    status = Ymodem_Serial_Flash_Update(serialObj, sFlashAddress);
-    SPARK_FLASH_UPDATE = 0;
-    TimingFlashUpdateTimeout = 0;
-  }
-
-  return status;
-}
-
-bool SystemClass::serialFirmwareUpdate(Stream *serialObj)
-{
-    bool status = false;
-
-    if(NULL != Ymodem_Serial_Flash_Update)
-    {
-        status = Ymodem_Serial_Flash_Update(serialObj, HAL_OTA_FlashAddress());
-        if(status == true)
-        {
-            serialObj->println("Restarting system to apply firmware update...");
-            delay(100);
-            HAL_FLASH_End();
-        }
-        else
-        {
-            SPARK_FLASH_UPDATE = 0;
-            TimingFlashUpdateTimeout = 0;
-        }
-    }
-    else
-    {
-        serialObj->println("Firmware update using this terminal is not supported!");
-        serialObj->println("Add #include \"YmodemUtil\\YmodemUtil.h\" to your sketch and try again.");
-    }
-
-    return status;
-}
-
-void SystemClass::factoryReset(void)
-{
-  //This method will work only if the Core is supplied
-  //with the latest version of Bootloader
-  HAL_Core_Factory_Reset();
-}
-
-void SystemClass::bootloader(void)
-{
-  //The drawback here being it will enter bootloader mode until firmware
-  //is loaded again. Require bootloader changes for proper working.
-  HAL_Core_Enter_Bootloader();
-}
-
-void SystemClass::reset(void)
-{
-  HAL_Core_System_Reset();
-}
-
-bool RGBClass::_control = false;
-
-bool RGBClass::controlled(void)
-{
-    return _control;
-}
-
-void RGBClass::control(bool override)
-{
-    if(override == _control)
-            return;
-    else if (override)
-            LED_Signaling_Start();
-    else
-            LED_Signaling_Stop();
-
-    _control = override;
-}
-
-void RGBClass::color(uint32_t rgb) {
-    color((rgb>>16)&0xFF, (rgb>>8)&0xFF, (rgb)&0xFF);
-}
-
-void RGBClass::color(int red, int green, int blue)
-{
-    if (true != _control)
-            return;
-
-    LED_SetSignalingColor(red << 16 | green << 8 | blue);
-    LED_On(LED_RGB);
-}
-
-void RGBClass::brightness(uint8_t brightness, bool update)
-{
-    LED_SetBrightness(brightness);
-    if (_control && update)
-        LED_On(LED_RGB);
-}
-
-void SparkClass::variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
+void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
 {
   if (NULL != userVar && NULL != varKey)
   {
@@ -260,7 +119,7 @@ void SparkClass::variable(const char *varKey, void *userVar, Spark_Data_TypeDef 
   }
 }
 
-void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString))
+void spark_function(const char *funcKey, int (*pFunc)(String paramString))
 {
 	int i = 0;
 	if(NULL != pFunc && NULL != funcKey)
@@ -285,130 +144,6 @@ void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString))
 	}
 }
 
-void SparkClass::publish(const char *eventName)
-{
-  spark_protocol_send_event(&sp, eventName, NULL, 60, EventType::PUBLIC);
-}
-
-void SparkClass::publish(const char *eventName, const char *eventData)
-{
-  spark_protocol_send_event(&sp, eventName, eventData, 60, EventType::PUBLIC);
-}
-
-void SparkClass::publish(const char *eventName, const char *eventData, int ttl)
-{
-  spark_protocol_send_event(&sp, eventName, eventData, ttl, EventType::PUBLIC);
-}
-
-void SparkClass::publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType)
-{
-  spark_protocol_send_event(&sp, eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
-}
-
-void SparkClass::publish(String eventName)
-{
-  publish(eventName.c_str());
-}
-
-void SparkClass::publish(String eventName, String eventData)
-{
-  publish(eventName.c_str(), eventData.c_str());
-}
-
-void SparkClass::publish(String eventName, String eventData, int ttl)
-{
-  publish(eventName.c_str(), eventData.c_str(), ttl);
-}
-
-void SparkClass::publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType)
-{
-  publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
-}
-
-bool SparkClass::subscribe(const char *eventName, EventHandler handler)
-{
-  bool success = spark_protocol_add_event_handler(&sp, eventName, handler);
-  if (success)
-  {
-    success = spark_protocol_send_subscription_scope(&sp, eventName, SubscriptionScope::FIREHOSE);
-  }
-  return success;
-}
-
-bool SparkClass::subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
-{
-  bool success = spark_protocol_add_event_handler(&sp, eventName, handler);
-  if (success)
-  {
-    success = spark_protocol_send_subscription_scope(&sp, eventName, SubscriptionScope::MY_DEVICES);
-  }
-  return success;
-}
-
-bool SparkClass::subscribe(const char *eventName, EventHandler handler, const char *deviceID)
-{
-  bool success = spark_protocol_add_event_handler(&sp, eventName, handler);
-  if (success)
-  {
-    success = spark_protocol_send_subscription_device(&sp, eventName, deviceID);
-  }
-  return success;
-}
-
-bool SparkClass::subscribe(String eventName, EventHandler handler)
-{
-  return subscribe(eventName.c_str(), handler);
-}
-
-bool SparkClass::subscribe(String eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
-{
-  return subscribe(eventName.c_str(), handler, scope);
-}
-
-bool SparkClass::subscribe(String eventName, EventHandler handler, String deviceID)
-{
-  return subscribe(eventName.c_str(), handler, deviceID.c_str());
-}
-
-void SparkClass::syncTime(void)
-{
-  spark_protocol_send_time_request(&sp);
-}
-
-void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
-{
-    HAL_RTC_Set_UnixAlarm((time_t)seconds);
-
-    switch(sleepMode)
-    {
-        case SLEEP_MODE_WLAN:
-            SPARK_WLAN_SLEEP = 1;//Flag Wifi.off() not to disable cloud connection
-            WiFi.off();
-            break;
-
-        case SLEEP_MODE_DEEP:
-            HAL_Core_Enter_Standby_Mode();
-            break;
-    }
-}
-
-void SparkClass::sleep(long seconds)
-{
-    SparkClass::sleep(SLEEP_MODE_WLAN, seconds);
-}
-
-void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
-{
-    HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode);
-}
-
-void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
-{
-    HAL_RTC_Set_UnixAlarm((time_t)seconds);
-
-    sleep(wakeUpPin, edgeTriggerMode);
-}
-
 inline uint8_t isSocketClosed()
 {
   uint8_t closed  = socket_active_status(sparkSocket)==SOCKET_STATUS_INACTIVE;
@@ -429,7 +164,7 @@ inline uint8_t isSocketClosed()
   return closed;
 }
 
-bool SparkClass::connected(void)
+bool spark_connected(void)
 {
 	if(SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED)
 		return true;
@@ -437,20 +172,20 @@ bool SparkClass::connected(void)
 		return false;
 }
 
-void SparkClass::connect(void)
+void spark_connect(void)
 {
 	//Schedule Spark's cloud connection and handshake
-        WiFi.connect();
+    network_connect();
 	SPARK_CLOUD_CONNECT = 1;
 }
 
-void SparkClass::disconnect(void)
+void spark_disconnect(void)
 {
 	//Schedule Spark's cloud disconnection
 	SPARK_CLOUD_CONNECT = 0;
 }
 
-void SparkClass::process(void)
+void spark_process(void)
 {
     if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
     {
@@ -480,14 +215,14 @@ String bytes2hex(const uint8_t* buf, unsigned len)
 }
 
 
-String SparkClass::deviceID(void)
+String spark_deviceID(void)
 {
     unsigned len = HAL_device_ID(NULL, 0);
     uint8_t id[len];
     HAL_device_ID(id, len);
     return bytes2hex(id, len);
 }    
- 
+
 
 // Returns number of bytes sent or -1 if an error occurred
 int Spark_Send(const unsigned char *buf, uint32_t buflen)
@@ -529,48 +264,6 @@ int Spark_Receive(unsigned char *buf, uint32_t buflen)
   return spark_receive_last_bytes_received;
 }
 
-void begin_flash_file(int flashType, uint32_t sFlashAddress, uint32_t fileSize) 
-{
-  RGB.control(true);
-  RGB.color(RGB_COLOR_MAGENTA);
-  SPARK_FLASH_UPDATE = flashType;
-  TimingFlashUpdateTimeout = 0;
-  HAL_FLASH_Begin(sFlashAddress, fileSize);  
-}
-
-void Spark_Prepare_To_Save_File(uint32_t sFlashAddress, uint32_t fileSize)
-{
-    begin_flash_file(2, sFlashAddress, fileSize);
-}
-
-void Spark_Prepare_For_Firmware_Update(void)
-{
-    begin_flash_file(1, HAL_OTA_FlashAddress(), HAL_OTA_FlashLength());
-}
-
-void Spark_Finish_Firmware_Update(void)
-{
-  if (SPARK_FLASH_UPDATE == 2)
-  {
-    SPARK_FLASH_UPDATE = 0;
-    TimingFlashUpdateTimeout = 0;
-  }
-  else
-  {
-    //Reset the system to complete the OTA update
-    HAL_FLASH_End();
-  }
-  RGB.control(false);
-}
-
-uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, uint32_t buflen)
-{
-  uint16_t chunkUpdatedIndex;
-  TimingFlashUpdateTimeout = 0;
-  chunkUpdatedIndex = HAL_FLASH_Update(buf, buflen);
-  LED_Toggle(LED_RGB);
-  return chunkUpdatedIndex;
-}
 
 int numUserFunctions(void)
 {
@@ -632,7 +325,7 @@ void Spark_Protocol_Init(void)
     callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
     callbacks.signal = Spark_Signal;
     callbacks.millis = HAL_Timer_Get_Milli_Seconds;
-    callbacks.set_time = Time.setTime;
+    callbacks.set_time = HAL_RTC_Set_UnixTime;
 
     SparkDescriptor descriptor;
     descriptor.num_functions = numUserFunctions;
@@ -940,53 +633,6 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
 	return -1;
 }
 
-void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t timeout)
-{
-    char c = 0, i = 0;
-    system_tick_t last_millis = millis();
-
-    while (1)
-    {
-        if((timeout > 0) && ((millis()-last_millis) > timeout))
-        {
-            //Abort after a specified timeout
-            break;
-        }
-
-        if (0 < serialObj->available())
-        {
-            c = serialObj->read();
-
-            if (i == max_len || c == '\r' || c == '\n')
-            {
-                *dst = '\0';
-                break;
-            }
-
-            if (c == 8 || c == 127)
-            {
-                //for backspace or delete
-                if (i > 0)
-                {
-                    --dst;
-                    --i;
-                }
-                else
-                {
-                    continue;
-                }
-            }
-            else
-            {
-                *dst++ = c;
-                ++i;
-            }
-
-            serialObj->write(c);
-        }
-    }
-}
-
 // Convert unsigned integer to ASCII in decimal base
 /*
 static unsigned char uitoa(unsigned int cNum, char *cString)
@@ -1137,3 +783,8 @@ static void sub_str(char dest[], char src[], int offset, int len)
 }
 
 */
+
+SparkProtocol* spark_protocol_instance(void) 
+{
+    return &sp;
+}

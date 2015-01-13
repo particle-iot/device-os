@@ -31,10 +31,10 @@
 #include "dac_hal.h"
 #include "pwm_hal.h"
 #include "timer_hal.h"
+#include "delay_hal.h"
 #include "config.h"
 #include "spark_macros.h"
 #include "debug.h"
-#include "spark_utilities.h"
 #include "spark_wiring_constants.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_printable.h"
@@ -42,7 +42,9 @@
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_character.h"
 #include "spark_wiring_random.h"
-
+#include "spark_wiring_system.h"
+#include "spark_wiring_cloud.h"
+#include "spark_wiring_rgb.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,16 +69,19 @@ void analogWrite(uint16_t pin, uint16_t value);
 /*
 * Timing
 */
-system_tick_t millis(void);
-unsigned long micros(void);
+inline system_tick_t millis(void) { return HAL_Timer_Get_Milli_Seconds(); }
+inline unsigned long micros(void) { return HAL_Timer_Get_Micro_Seconds(); }
 void delay(unsigned long ms);
-void delayMicroseconds(unsigned int us);
-int loopFrequencyHz();
+inline void delayMicroseconds(unsigned int us) { HAL_Delay_Microseconds(us); }
 
 long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
 
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder);
+
+void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t timeout);
+
+
 
 #ifdef __cplusplus
 }

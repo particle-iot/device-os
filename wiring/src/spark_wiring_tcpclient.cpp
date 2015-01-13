@@ -29,6 +29,7 @@
 #include "spark_wlan.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
+#include "spark_macros.h"
 
 
 using namespace spark;
