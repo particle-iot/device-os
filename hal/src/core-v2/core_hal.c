@@ -32,6 +32,7 @@
 #include "hw_config.h"
 #include "syshealth_hal.h"
 #include "rtc_hal.h"
+#include "rng_hal.h"
 #include "rgbled.h"
 #include "delay_hal.h"
 #include "wiced.h"
@@ -119,6 +120,8 @@ void HAL_Core_Config(void)
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_CRC, ENABLE);
 
     HAL_RTC_Configuration();
+
+    HAL_RNG_Configuration();
 
     /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
     HAL_Core_Execute_Stop_Mode();
