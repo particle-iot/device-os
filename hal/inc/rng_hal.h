@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    rtc_hal.h
+ * @file    rng_hal.h
  * @author  Satish Nair
  * @version V1.0.0
  * @date    13-Jan-2015
