@@ -42,11 +42,7 @@ public:
   static void factoryReset(void);
   static void bootloader(void);
   static void reset(void);
-  
-    static void sleep(long seconds);
-    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
-    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
-  
+    
 };
 
 extern SystemClass System;
