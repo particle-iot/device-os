@@ -25,7 +25,7 @@ License along with this library; if not, see <http://www.gnu.org/licenses/>.
 
 #include "spark_wiring_wifi.h"
 #include "inet_hal.h"
-#include "spark_wlan.h"
+#include "system_task.h"
 #include "system_tick_hal.h"
 
 namespace spark {

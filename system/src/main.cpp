@@ -28,7 +28,7 @@
   
 /* Includes ------------------------------------------------------------------*/
 #include "debug.h"
-#include "spark_wlan.h"
+#include "system_task.h"
 #include "core_hal.h"
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"

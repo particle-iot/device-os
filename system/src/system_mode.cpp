@@ -1,7 +1,7 @@
 
 
 #include "system_mode.h"
-#include "spark_wlan.h"
+#include "system_task.h"
 
 static System_Mode_TypeDef _mode;
 

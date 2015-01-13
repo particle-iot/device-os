@@ -39,7 +39,8 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
  * Run background processing. This function should be called as often as possible by user code.
  * @param force_events when true, runs cloud event pump in addition to maintaining the wifi and cloud connection.
  */
-void Spark_Idle(bool force_events=false);
+void Spark_Idle_Events(bool force_events);
+inline void Spark_Idle() { Spark_Idle_Events(false); }
 
 /**
  * The old method 

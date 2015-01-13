@@ -2,7 +2,7 @@
 #include "spark_wiring_cloud.h"
 #include "rtc_hal.h"
 #include "core_hal.h"
-#include "spark_wlan.h"
+#include "system_task.h"
 
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {

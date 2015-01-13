@@ -49,7 +49,7 @@
 
 // this was being implicitly pulled in by some of the other headers
 // adding here for backwards compatibility.
-#include "spark_wlan.h"
+#include "system_task.h"
 
 #ifdef SPARK_PLATFORM
 #include "platform_headers.h"

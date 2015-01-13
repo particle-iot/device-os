@@ -26,7 +26,7 @@
  */
 
 #include "spark_wiring_tcpclient.h"
-#include "spark_wlan.h"
+#include "system_task.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
 #include "spark_macros.h"

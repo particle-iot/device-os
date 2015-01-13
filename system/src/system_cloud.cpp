@@ -27,7 +27,7 @@
 
 #include "spark_wiring.h"
 #include "spark_wiring_network.h"
-#include "spark_wlan.h"
+#include "system_task.h"
 #include "socket_hal.h"
 #include "core_hal.h"
 #include "core_subsys_hal.h"

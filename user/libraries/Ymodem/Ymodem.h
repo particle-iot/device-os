@@ -30,7 +30,7 @@
 #define __LIB_YMODEM_H
 
 #include "spark_wiring.h"
-#include "spark_wlan.h"
+#include "system_task.h"
 #include "ota_flash_hal.h"
 #include "rgbled.h"
 

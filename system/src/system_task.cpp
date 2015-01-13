@@ -22,7 +22,7 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
  */
-#include "spark_wlan.h"
+#include "system_task.h"
 #include "spark_macros.h"
 #include "string.h"
 #include "wifi_credentials_reader.h"
