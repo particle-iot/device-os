@@ -104,6 +104,8 @@ struct NetworkCredentials {
 void network_set_credentials(NetworkCredentials* creds);
 bool network_clear_credentials();
 
+void spark_delay_ms(unsigned long ms);
+
 }
 
 #endif  /*__SPARK_WLAN_H*/

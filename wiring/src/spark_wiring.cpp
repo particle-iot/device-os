@@ -303,3 +303,8 @@ void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t tim
         }
     }
 }
+
+void delay(unsigned long ms)
+{
+    spark_delay_ms(ms);
+}
