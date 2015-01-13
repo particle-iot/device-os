@@ -13,7 +13,14 @@
 #endif
 
 #define INVALID_CASE(c) PANIC(InvalidCase,"Invalid Case %d",(c))
-#define UNUSED(var) (void)(var)
+#ifdef UNUSED
+#elif defined(__GNUC__)
+# define UNUSED(x) UNUSED_ ## x __attribute__((unused))
+#elif defined(__LCLINT__)
+# define UNUSED(x) /*@unused@*/ x
+#else
+# define UNUSED(x) x
+#endif
 
 #define _CAT(a, b) a ## b
 #define CAT(a, b) _CAT(a, b)
