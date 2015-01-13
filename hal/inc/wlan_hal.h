@@ -41,8 +41,8 @@ extern "C" {
 #define WAN_WD_DEBUG(x,...)
 #endif
 extern uint32_t wlan_watchdog;
-#define ARM_WLAN_WD(x) do { wlan_watchdog = millis()+(x); WAN_WD_DEBUG("WD Set "#x" %d",(x));}while(0)
-#define WLAN_WD_TO() (wlan_watchdog && (millis() >= wlan_watchdog))
+#define ARM_WLAN_WD(x) do { wlan_watchdog = HAL_Timer_Get_Milli_Seconds()+(x); WAN_WD_DEBUG("WD Set "#x" %d",(x));}while(0)
+#define WLAN_WD_TO() (wlan_watchdog && (HAL_Timer_Get_Milli_Seconds() >= wlan_watchdog))
 #define CLR_WLAN_WD() do { wlan_watchdog = 0; WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog);;}while(0)
     
 #if defined(DEBUG_WIFI)

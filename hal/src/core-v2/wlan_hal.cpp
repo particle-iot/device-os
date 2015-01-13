@@ -101,7 +101,7 @@ bool is_ap_config_set(const wiced_config_ap_entry_t& ap_entry)
 
 /**
  * Determine if the DCT contains wifi credentials.
- * @return 
+ * @return 0 if the device has credentials. Non zero otherwise. (yes, it's backwards!)
  */
 int wlan_has_credentials()
 {

@@ -28,6 +28,8 @@
 
 #include "spark_wiring.h"
 #include "wlan_hal.h"
+#include "spark_wlan.h"
+#include "inet_hal.h"
 
 class IPAddress;
 
@@ -47,37 +49,104 @@ public:
     WiFiClass() {}
     ~WiFiClass() {}
 
-    uint8_t* macAddress(uint8_t* mac);
-    IPAddress localIP();
-    IPAddress subnetMask();
-    IPAddress gatewayIP();
-    const char* SSID();
-    int8_t RSSI();
-    uint32_t ping(IPAddress remoteIP);
-    uint32_t ping(IPAddress remoteIP, uint8_t nTries);
+    uint8_t* macAddress(uint8_t *mac) {
+        memcpy(mac, network_config().uaMacAddr, 6);
+        return mac;
+    }
 
-    static void connect(void);
-    static void disconnect(void);
-    static bool connecting(void);
-    static bool ready(void);
-    static void on(void);
-    static void off(void);
-    static void listen(void);
-    static bool listening(void);
-    static void setCredentials(const char *ssid);
-    static void setCredentials(const char *ssid, const char *password);
-    static void setCredentials(const char *ssid, const char *password, unsigned long security);
-    static void setCredentials(const char *ssid, unsigned int ssidLen, const char *password, unsigned int passwordLen, unsigned long security);
-    static bool hasCredentials(void);
-    static bool clearCredentials(void);
+    IPAddress localIP() {
+        return IPAddress(network_config().aucIP);
+    }
+
+    IPAddress subnetMask() {
+        return IPAddress(network_config().aucSubnetMask);
+    }
+
+    IPAddress gatewayIP() {
+        return IPAddress(network_config().aucDefaultGateway);
+    }
+
+    const char *SSID() {
+        return (const char *) network_config().uaSSID;
+    }
+
+    int8_t RSSI();
+    uint32_t ping(IPAddress remoteIP) {
+        return ping(remoteIP, 5);
+    }
+
+    uint32_t ping(IPAddress remoteIP, uint8_t nTries) {
+        return inet_ping(remoteIP.raw_address(), nTries);
+    }
+
+    void connect(void) {
+        network_connect();
+    }
+
+    void disconnect(void) {
+        network_disconnect();
+    }
+
+    bool connecting(void) {
+        return network_connecting();
+    }
+
+    bool ready(void) {
+        return network_ready();
+    }
+
+    void on(void) {
+        network_on();
+    }
+
+    void off(void) {
+        network_off();
+    }
+
+    void listen(void) {
+        network_listen();
+    }
+
+    bool listening(void) {
+        return network_listening();
+    }
+
+    void setCredentials(const char *ssid) {
+        setCredentials(ssid, NULL, UNSEC);
+    }
+
+    void setCredentials(const char *ssid, const char *password) {
+        setCredentials(ssid, password, WPA2);
+    }
+
+    void setCredentials(const char *ssid, const char *password, unsigned long security) {
+        setCredentials(ssid, strlen(ssid), password, strlen(password), security);
+    }
+
+    void setCredentials(const char *ssid, unsigned int ssidLen, const char *password,
+            unsigned int passwordLen, unsigned long security) {
+        
+        NetworkCredentials creds;
+        creds.ssid = ssid;
+        creds.ssidLen = ssidLen;
+        creds.password = password;
+        creds.passwordLen = passwordLen;
+        creds.security = security;
+        
+        network_set_credentials(&creds);
+    }
+
+    bool hasCredentials(void) {
+        return wlan_has_credentials() == 0;
+    }
+
+    bool clearCredentials(void) {
+        return wlan_clear_credentials() == 0;
+    }
 
     friend class TCPClient;
     friend class TCPServer;
 
-private:
-    uint32_t _functionStart;
-    uint8_t _loopCount;
-    int8_t _returnValue;
 };
 
 extern WiFiClass WiFi;

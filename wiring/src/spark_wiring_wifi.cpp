@@ -25,32 +25,12 @@ License along with this library; if not, see <http://www.gnu.org/licenses/>.
 
 #include "spark_wiring_wifi.h"
 #include "inet_hal.h"
-#include "rgbled.h"
 #include "spark_wlan.h"
+#include "system_tick_hal.h"
 
 namespace spark {
 
-    uint8_t *WiFiClass::macAddress(uint8_t *mac) {
-        memcpy(mac, ip_config.uaMacAddr, 6);
-        return mac;
-    }
-
-    IPAddress WiFiClass::localIP() {
-        return IPAddress(ip_config.aucIP);
-    }
-
-    IPAddress WiFiClass::subnetMask() {
-        return IPAddress(ip_config.aucSubnetMask);
-    }
-
-    IPAddress WiFiClass::gatewayIP() {
-        return IPAddress(ip_config.aucDefaultGateway);
-    }
-
-    const char *WiFiClass::SSID() {
-        return (const char *) ip_config.uaSSID;
-    }
-
+    
 /* ***********************************************
    * Network.RSSI() - @TimothyBrown - 2014.03.18 *
    ***********************************************
@@ -62,7 +42,10 @@ namespace spark {
    ----------------------------------------------- */
 
     int8_t WiFiClass::RSSI() {
-        _functionStart = millis();
+        if (!network_connected())
+            return 0;
+        
+        system_tick_t _functionStart = millis();
         while ((millis() - _functionStart) < 1000) {
             int rv = wlan_connected_rssi();
             if (rv != 0)
@@ -93,145 +76,5 @@ TI, no changes need to be made to this function, as it would be implemented
 the same way.
 *****************************************************************************/
 
-    uint32_t WiFiClass::ping(IPAddress remoteIP) {
-        return ping(remoteIP, 5);
-    }
-
-    uint32_t WiFiClass::ping(IPAddress remoteIP, uint8_t nTries) {
-        return inet_ping(remoteIP.raw_address(), nTries);
-    }
-
-    void WiFiClass::connect(void) {
-        if (!ready()) {
-            WLAN_DISCONNECT = 0;
-            wlan_connect_init();
-            SPARK_WLAN_STARTED = 1;
-            SPARK_WLAN_SLEEP = 0;
-
-            if (wlan_reset_credentials_store_required()) {
-                wlan_reset_credentials_store();
-            }
-
-            if (!WiFi.hasCredentials()) {
-                WiFi.listen();
-            }
-            else {
-                SPARK_LED_FADE = 0;
-                LED_SetRGBColor(RGB_COLOR_GREEN);
-                LED_On(LED_RGB);
-                wlan_connect_finalize();
-            }
-
-            Set_NetApp_Timeout();
-        }
-    }
-
-    void WiFiClass::disconnect(void) {
-        if (ready()) {
-            WLAN_DISCONNECT = 1;//Do not ARM_WLAN_WD() in WLAN_Async_Callback()
-            SPARK_CLOUD_CONNECT = 0;
-            wlan_disconnect_now();
-        }
-    }
-
-    bool WiFiClass::connecting(void) {
-        return (SPARK_WLAN_STARTED && !WLAN_DHCP);
-    }
-
-    bool WiFiClass::ready(void) {
-        return (SPARK_WLAN_STARTED && WLAN_DHCP);
-    }
-
-    void WiFiClass::on(void) {
-        if (!SPARK_WLAN_STARTED) {
-            wlan_activate();
-            SPARK_WLAN_STARTED = 1;
-            SPARK_WLAN_SLEEP = 0;
-            SPARK_LED_FADE = 1;
-            LED_SetRGBColor(RGB_COLOR_BLUE);
-            LED_On(LED_RGB);
-        }
-    }
-
-    void WiFiClass::off(void) {
-        if (SPARK_WLAN_STARTED) {
-            wlan_deactivate();
-
-            if(!SPARK_WLAN_SLEEP)//if Spark.sleep() is not called
-            {
-                // Reset remaining state variables in SPARK_WLAN_Loop()
-                SPARK_WLAN_SLEEP = 1;
-
-                // Do not automatically connect to the cloud
-                // the next time we connect to a Wi-Fi network
-                SPARK_CLOUD_CONNECT = 0;
-            }
-
-            SPARK_LED_FADE = 1;
-            LED_SetRGBColor(RGB_COLOR_WHITE);
-            LED_On(LED_RGB);
-        }
-    }
-
-    void WiFiClass::listen(void) {
-        WLAN_SMART_CONFIG_START = 1;
-    }
-
-    bool WiFiClass::listening(void) {
-        if (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE)) {
-            return true;
-        }
-        return false;
-    }
-
-    void WiFiClass::setCredentials(const char *ssid) {
-        setCredentials(ssid, NULL, UNSEC);
-    }
-
-    void WiFiClass::setCredentials(const char *ssid, const char *password) {
-        setCredentials(ssid, password, WPA2);
-    }
-
-    void WiFiClass::setCredentials(const char *ssid, const char *password, unsigned long security) {
-        setCredentials(ssid, strlen(ssid), password, strlen(password), security);
-    }
-
-    void WiFiClass::setCredentials(const char *ssid, unsigned int ssidLen, const char *password,
-            unsigned int passwordLen, unsigned long security) {
-        if (!SPARK_WLAN_STARTED) {
-            return;
-        }
-
-        if (0 == password[0]) {
-            security = WLAN_SEC_UNSEC;
-        }
-
-        char buf[14];
-        if (security == WLAN_SEC_WEP && !WLAN_SMART_CONFIG_FINISHED) {
-            // Get WEP key from string, needs converting
-            passwordLen = (strlen(password) / 2); // WEP key length in bytes
-            char byteStr[3];
-            byteStr[2] = '\0';
-            memset(buf, 0, sizeof(buf));
-            for (uint32_t i = 0; i < passwordLen; i++) { // Basic loop to convert text-based WEP key to byte array, can definitely be improved
-                byteStr[0] = password[2 * i];
-                byteStr[1] = password[(2 * i) + 1];
-                buf[i] = strtoul(byteStr, NULL, 16);
-            }
-            password = buf;
-        }
-
-        wlan_set_credentials(ssid, ssidLen, password, passwordLen, WLanSecurityType(security));
-    }
-
-    bool WiFiClass::hasCredentials(void) {
-        return wlan_has_credentials() == 0;
-    }
-
-    bool WiFiClass::clearCredentials(void) {
-        return wlan_clear_credentials() == 0;
-    }
-
     WiFiClass WiFi;
-
 }
