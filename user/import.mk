@@ -1,4 +1,4 @@
-USER_MODULE_PATH ?= ../main
+USER_MODULE_PATH ?= ../user
 include $(call rwildcard,$(USER_MODULE_PATH)/,include.mk)
 
 CLOUD_FLASH_URL = https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token=$(SPARK_ACCESS_TOKEN)

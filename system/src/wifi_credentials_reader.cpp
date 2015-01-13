@@ -28,7 +28,7 @@
 #include "wlan_hal.h"
 #include "system_cloud.h"
 #include "system_update.h"
-
+#include "spark_wiring.h"   // for serialReadLine
 
 WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 {
