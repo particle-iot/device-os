@@ -33,7 +33,6 @@
 #include "watchdog_hal.h"
 #include "delay_hal.h"
 #include "pinmap_hal.h"
-#include "spark_wlan.h"
 
 /*
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, 
@@ -222,89 +221,6 @@ void analogWrite(pin_t pin, uint16_t value)
 /*
  * TIMING
  */
-
-/*
- * @brief Should return the number of milliseconds since the processor started up.
- *      This is useful for measuring the passage of time.
- *      For now, let's not worry about what happens when this overflows (which should happen after 49 days).
- *      At some point we'll have to figure that out, though.
- */
-system_tick_t millis(void)
-{
-  return HAL_Timer_Get_Milli_Seconds();
-}
-
-/*
- * @brief Should return the number of microseconds since the processor started up.
- */
-unsigned long micros(void)
-{
-  return HAL_Timer_Get_Micro_Seconds();
-}
-
-/*
- * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
- */
-void delay(unsigned long ms)
-{
-  volatile system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
-  spark_loop_total_millis += ms;
-
-  volatile system_tick_t last_millis = HAL_Timer_Get_Milli_Seconds();
-
-  while (1)
-  {
-    HAL_Notify_WDT();
-
-    volatile system_tick_t current_millis = HAL_Timer_Get_Milli_Seconds();
-    volatile system_tick_t elapsed_millis = current_millis - last_millis;
-
-    //Check for wrapping
-    if (elapsed_millis >= 0x80000000)
-    {
-      elapsed_millis = last_millis + current_millis;
-    }
-
-    if (elapsed_millis >= ms)
-    {
-      break;
-    }
-
-    if (SPARK_WLAN_SLEEP)
-    {
-      //Do not yield for SPARK_WLAN_Loop()
-    }
-    else if ((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
-    {
-      spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
-      //spark_loop_total_millis is reset to 0 in SPARK_WLAN_Loop()
-      do
-      {
-        //Run once if the above condition passes
-        SPARK_WLAN_Loop();
-      }
-      while (SPARK_FLASH_UPDATE);//loop during OTA update
-    }
-  }
-}
-
-/*
- * @brief This should block for a certain number of microseconds.
- */
-void delayMicroseconds(unsigned int us)
-{
-  HAL_Delay_Microseconds(us);
-}
-
-int loopFrequencyHz()
-{
-  if(NULL != loop_frequency_hz)
-  {
-    return loop_frequency_hz();
-}
-
-  return -1;
-}
 
 long map(long value, long fromStart, long fromEnd, long toStart, long toEnd)
 {
