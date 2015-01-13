@@ -188,7 +188,7 @@ void spark_disconnect(void)
 void spark_process(void)
 {
     // run the background processing loop, and specifically also pump cloud events
-    Spark_Idle(true);
+    Spark_Idle_Events(true);
 }
 
 /**

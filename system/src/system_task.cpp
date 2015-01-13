@@ -399,7 +399,7 @@ void handle_cloud_connection(bool force_events)
   }
 }
 
-void Spark_Idle(bool force_events/*=false*/)
+void Spark_Idle_Events(bool force_events/*=false*/)
 {  
     HAL_Notify_WDT();
 
