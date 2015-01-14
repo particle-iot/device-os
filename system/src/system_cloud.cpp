@@ -375,9 +375,13 @@ int Spark_Handshake(void)
     
     if (!err) {     
         if (!HAL_Get_Claim_Code(buf, sizeof(buf)) && *buf) {
-            Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);            
+            Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);
+            // delay a second - so there's a chance of the event being received before clearing the credentials
+            // in case of reset. Ideally only clear the claim code after receiving an event from the cloud.
+            HAL_Delay_Milliseconds(1000);
             HAL_Set_Claim_Code(NULL);
         }
+                
         ultoa(HAL_OTA_FlashLength(), buf, 10);
         Spark.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
         
