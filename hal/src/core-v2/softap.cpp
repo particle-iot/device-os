@@ -553,6 +553,7 @@ protected:
         write_result_code(writer, result);
         if (softap_complete_)
             softap_complete_();
+        HAL_Core_System_Reset();
     }
 };
 
@@ -792,14 +793,14 @@ public:
     }
 
     void stop() {
-        signalComplete();
-
+        
         /* Cleanup DNS server */
         wiced_dns_redirector_stop(&dns_redirector);
 
         /* Turn off AP */
         wiced_network_down( WICED_AP_INTERFACE );
-
+        
+        signalComplete();
         wiced_rtos_deinit_semaphore(&complete);
     }
 };
