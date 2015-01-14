@@ -32,6 +32,7 @@
 #include "pwm_hal.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
+#include "rng_hal.h"
 #include "config.h"
 #include "spark_macros.h"
 #include "debug.h"
