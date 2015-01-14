@@ -225,8 +225,7 @@ int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
     return result;
 }
 
-
-int wlan_set_credentials(const char *ssid, uint16_t ssidLen, const char *password, 
+int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char *password, 
     uint16_t passwordLen, WLanSecurityType security)
 {
     int wlan_profile_index = -1;
