@@ -219,5 +219,7 @@ public:
 	StringSumHelper(unsigned long num) : String(num) {}
 };
 
+char* ultoa(unsigned long a, char* buffer, unsigned char radix);
+
 #endif  // __cplusplus
 #endif  // String_class_h

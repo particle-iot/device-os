@@ -41,6 +41,7 @@
 #include "spark_protocol_functions.h"
 #include "spark_protocol.h"
 #include "spark_macros.h"
+#include "spark_wiring_string.h"
 
 
 int userVarType(const char *varKey);
@@ -377,8 +378,9 @@ int Spark_Handshake(void)
             Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);            
             HAL_Set_Claim_Code(NULL);
         }
+        ultoa(HAL_OTA_FlashLength(), buf, 10);
+        Spark.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
         
-        Spark.publish("spark/hardware/max_binary", "524288", 60, PRIVATE);
         if (!HAL_core_subsystem_version(buf, sizeof(buf))) {
             Spark.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
         }        
