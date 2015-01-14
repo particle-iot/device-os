@@ -128,11 +128,29 @@ typedef enum {
     WLAN_SEC_UNSEC,
     WLAN_SEC_WEP,
     WLAN_SEC_WPA,
-    WLAN_SEC_WPA2    
+    WLAN_SEC_WPA2,
+    WLAN_SEC_NOT_SET
 } WLanSecurityType;
 
-int wlan_set_credentials(const char* ssid, uint16_t ssid_len, const char* password,
-        uint16_t passwordLen, WLanSecurityType security);
+typedef enum {
+    WLAN_CIPHER_NOT_SET = 0,
+    WLAN_CIPHER_AES = 1,
+    WLAN_CIPHER_TKIP = 2,
+    WLAN_CIPHER_AES_TKIP = 3   // OR of AES and TKIP
+} WLanSecurityCipher;
+
+typedef struct {
+    unsigned len;           // the size of this structure. allows older clients to work with newer HAL. 
+    const char* ssid;
+    unsigned ssid_len;
+    const char* password;
+    unsigned password_len;
+    WLanSecurityType security;
+    WLanSecurityCipher cipher;
+    unsigned channel;
+} WLanCredentials;
+
+int wlan_set_credentials(WLanCredentials* credentials);
 
 /**
  * Initialize smart config mode.

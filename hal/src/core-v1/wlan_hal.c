@@ -291,6 +291,12 @@ int wlan_set_credentials(const char *ssid, uint16_t ssidLen, const char *passwor
   return 0;
 }
 
+int wlan_set_credentials(WLanCredentials* c)
+{
+    return wlan_set_credentials_internal(c->ssid, c->ssid_len, c->password, c->password_len, c->security);
+}
+
+
 /**
  * Rebuilds the eeprom storage file.
  */

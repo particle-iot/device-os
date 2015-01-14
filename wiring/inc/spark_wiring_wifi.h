@@ -127,11 +127,13 @@ public:
             unsigned int passwordLen, unsigned long security) {
         
         NetworkCredentials creds;
+        memset(&creds, 0, sizeof(creds));
+        creds.len = sizeof(creds);
         creds.ssid = ssid;
-        creds.ssidLen = ssidLen;
+        creds.ssid_len = ssidLen;
         creds.password = password;
-        creds.passwordLen = passwordLen;
-        creds.security = security;
+        creds.password_len = passwordLen;
+        creds.security = WLanSecurityType(security);
         
         network_set_credentials(&creds);
     }

@@ -100,8 +100,7 @@ int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
 }
 
 
-int wlan_set_credentials(const char *ssid, uint16_t ssidLen, const char *password, 
-    uint16_t passwordLen, WLanSecurityType security)
+int wlan_set_credentials(WLanCredentials* c)
 {
   return -1;
 }

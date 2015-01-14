@@ -94,12 +94,8 @@ void network_listen();
 bool network_listening();
 bool network_has_credentials();
 
-struct NetworkCredentials {
-    const char* ssid;
-    const char* password;
-    unsigned ssidLen;
-    unsigned passwordLen;
-    unsigned long security;    
+struct NetworkCredentials : WLanCredentials {
+    
 };
 
 void network_set_credentials(NetworkCredentials* creds);

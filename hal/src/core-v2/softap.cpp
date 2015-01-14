@@ -457,13 +457,7 @@ class ConfigureAPCommand : public JSONRequestCommand {
     static const jsmntype_t TYPE[];
 
     int save_credentials() {
-        // Write received credentials into DCT
-        struct
-        {
-            wiced_bool_t             device_configured;
-            wiced_config_ap_entry_t  ap_entry;
-        } config;
-
+        // Write received credentials into DCT                
         WPRINT_APP_INFO( ( "saving AP credentials:\n" ) );
         WPRINT_APP_INFO( ( "index: %d\n", (int)configureAP.index ) );
         WPRINT_APP_INFO( ( "ssid: %s\n", configureAP.ssid ) );
@@ -471,17 +465,9 @@ class ConfigureAPCommand : public JSONRequestCommand {
         WPRINT_APP_INFO( ( "security: %d\n", (int)configureAP.security ) );
         WPRINT_APP_INFO( ( "channel: %d\n", (int)configureAP.channel ) );
 
-        memset(&config, 0, sizeof(config));
-        wiced_ap_info_t& details = config.ap_entry.details;
-        memcpy(&details.SSID.value, configureAP.ssid, strlen(configureAP.ssid));
-        details.SSID.length = strlen(configureAP.ssid);
-        details.security = (wiced_security_t)configureAP.security;
-        details.channel = configureAP.channel;
-        memcpy(&config.ap_entry.security_key, configureAP.passcode, sizeof(config.ap_entry.security_key));
-        config.ap_entry.security_key_length = strlen(configureAP.passcode);
-        config.device_configured = WICED_TRUE;
-        int result = wiced_dct_write( &config, DCT_WIFI_CONFIG_SECTION, 0, sizeof(config) );
-        return result;
+        return add_wiced_wifi_credentials(configureAP.ssid, strlen(configureAP.ssid),
+            configureAP.passcode, strlen(configureAP.passcode),
+                wiced_security_t(configureAP.security), configureAP.channel);
     }
 
 protected:

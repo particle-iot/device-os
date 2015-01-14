@@ -86,13 +86,17 @@ void wifi_add_profile_callback(const char *ssid,
                                unsigned long security_type)
 {
     WLAN_SERIAL_CONFIG_DONE = 1;
-    NetworkCredentials creds;
-    creds.ssid = ssid;
-    creds.password = password;
-    creds.ssidLen = strlen(ssid);
-    creds.passwordLen = strlen(password);
-    creds.security = security_type;
-    network_set_credentials(&creds);
+    if (ssid) {
+        NetworkCredentials creds;
+        memset(&creds, 0, sizeof(creds));
+        creds.len = sizeof(creds);
+        creds.ssid = ssid;
+        creds.password = password;
+        creds.ssid_len = strlen(ssid);
+        creds.password_len = strlen(password);
+        creds.security = WLanSecurityType(security_type);
+        network_set_credentials(&creds);
+    }
 }
 
 /*******************************************************************************
@@ -587,28 +591,29 @@ void network_set_credentials(NetworkCredentials* credentials) {
         return;
     }
 
-    int security = credentials->security;
+    WLanSecurityType security = credentials->security;
     
     if (0 == credentials->password[0]) {
         security = WLAN_SEC_UNSEC;
     }
 
     char buf[14];
-    if (security == WLAN_SEC_WEP && !WLAN_SMART_CONFIG_FINISHED) {
+    if (security == WLAN_SEC_WEP) {
         // Get WEP key from string, needs converting
-        credentials->passwordLen = (strlen(credentials->password) / 2); // WEP key length in bytes
+        credentials->password_len = (strlen(credentials->password) / 2); // WEP key length in bytes
         char byteStr[3];
         byteStr[2] = '\0';
         memset(buf, 0, sizeof(buf));
-        for (uint32_t i = 0; i < credentials->passwordLen; i++) { // Basic loop to convert text-based WEP key to byte array, can definitely be improved
+        for (uint32_t i = 0; i < credentials->password_len; i++) { // Basic loop to convert text-based WEP key to byte array, can definitely be improved
             byteStr[0] = credentials->password[2 * i];
             byteStr[1] = credentials->password[(2 * i) + 1];
             buf[i] = strtoul(byteStr, NULL, 16);
         }
         credentials->password = buf;
     }
+    credentials->security = security;
 
-    wlan_set_credentials(credentials->ssid, credentials->ssidLen, credentials->password, credentials->passwordLen, WLanSecurityType(security));
+    wlan_set_credentials(credentials);
 }
 
 

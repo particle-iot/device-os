@@ -29,6 +29,8 @@ extern "C" {
     
     void softap_stop(void* pv);
 
+    wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, const char *password, 
+        uint16_t passwordLen, wiced_security_t security, unsigned channel);
 
 
 #ifdef	__cplusplus

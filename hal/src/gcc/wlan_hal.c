@@ -104,8 +104,7 @@ wlan_result_t wlan_connected_rssi(char* ssid)
     return 0;
 }
 
-int wlan_set_credentials(const char *ssid, uint16_t ssidLen, const char *password, 
-    uint16_t passwordLen, WLanSecurityType security)
+int wlan_set_credentials(WLanCredentials* c)
 {
   return -1;
 }
