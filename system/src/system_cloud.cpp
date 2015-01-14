@@ -364,19 +364,27 @@ void Spark_Protocol_Init(void)
   }
 }
 
+const int CLAIM_CODE_SIZE = 64;
+
 int Spark_Handshake(void)
 {   
     int err = spark_protocol_handshake(&sp);
 
-    char patchstr[8];  
-    if (!err) {
+    char buf[64+1];
+    
+    if (!err) {     
+        if (!HAL_Get_Claim_Code(buf, sizeof(buf)) && *buf) {
+            Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);            
+            HAL_Set_Claim_Code(NULL);
+        }
+        
+        Spark.publish("spark/hardware/max_binary", "524288", 60, PRIVATE);
+        if (!HAL_core_subsystem_version(buf, sizeof(buf))) {
+            Spark.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
+        }        
+        
         Multicast_Presence_Announcement();
         spark_protocol_send_time_request(&sp);
-
-        Spark.publish("spark/hardware/max_binary", "524288", 60, PRIVATE);
-        if (!HAL_core_subsystem_version(patchstr, 8)) {
-            Spark.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, patchstr, 60, PRIVATE);
-        }        
     }
 
   return err;
