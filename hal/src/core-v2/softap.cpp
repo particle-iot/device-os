@@ -5,6 +5,7 @@
 #ifdef HAL_SOFTAP_HTTPSERVER
 #include "http_server.h"
 #endif
+#include "static_assert.h"
 #include "dns_redirect.h"
 #include "wiced_security.h"
 #include "jsmn.h"
@@ -724,6 +725,61 @@ struct AllSoftAPCommands {
         connectAP(complete, softap_complete) {}
 };
 
+/**
+ * Generates a random code.
+ * @param dest
+ * @param len   The length of the code, should be event.
+ */
+void random_code(uint8_t* dest, unsigned len) {
+    unsigned value = HAL_RNG_GetRandomNumber();
+    bytes2hex((const uint8_t*)&value, len>>1, (char*)dest);
+}
+
+const int DEVICE_ID_LEN = 6;
+
+STATIC_ASSERT(device_id_len_is_same_as_dct_storage, DEVICE_ID_LEN==DCT_DEVICE_ID_SIZE);
+
+/**
+ * Copies the device ID to the destination, generating it if necessary.
+ * @param dest      A buffer with room for at least 6 characters. The
+ *  device ID is copied here, without a null terminator.
+ * @return true if the device ID was generated.
+ */
+bool fetch_or_generate_device_id(wiced_ssid_t* SSID) {
+    const uint8_t* suffix = (const uint8_t*)dct_read_app_data(DCT_DEVICE_ID_OFFSET);
+    int8_t c = (int8_t)*suffix;    // check out first byte
+    bool generate = (!c || c<0);
+    uint8_t* dest = SSID->value+SSID->length;
+    SSID->length += DEVICE_ID_LEN;
+    if (generate) {
+        random_code(dest, DEVICE_ID_LEN);
+        dct_write_app_data(dest, DCT_DEVICE_ID_OFFSET, DEVICE_ID_LEN);
+    }
+    else {
+        memcpy(dest, suffix, DEVICE_ID_LEN);
+    }
+    return generate;
+}
+
+const int MAX_SSID_PREFIX_LEN = 25;
+
+bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
+    const uint8_t* prefix = (const uint8_t*)dct_read_app_data(DCT_SSID_PREFIX_OFFSET);
+    uint8_t len = *prefix;    
+    bool generate = (!len || len>MAX_SSID_PREFIX_LEN);
+    if (generate) {
+        strcpy((char*)SSID->value, "Photon");
+        SSID->length = 6;
+        dct_write_app_data(SSID, DCT_SSID_PREFIX_OFFSET, SSID->length+1);
+    }
+    else {
+        memcpy(SSID, prefix, DCT_SSID_PREFIX_SIZE);        
+    }
+    if (SSID->length>MAX_SSID_PREFIX_LEN)
+        SSID->length = MAX_SSID_PREFIX_LEN;
+    return generate;    
+}
+
 extern "C" wiced_ip_setting_t device_init_ip_settings;
 
 /**
@@ -732,23 +788,17 @@ extern "C" wiced_ip_setting_t device_init_ip_settings;
 class SoftAPController {
     wiced_semaphore_t complete;
     dns_redirector_t dns_redirector;
-        
-    static void random_code(char* dest, unsigned len) {
-        unsigned value = HAL_RNG_GetRandomNumber();
-        bytes2hex((const uint8_t*)&value, len>>1, dest);
-    }
-    
+           
     wiced_result_t setup_soft_ap_credentials() {
+                
+        
         wiced_config_soft_ap_t expected;
         memset(&expected, 0, sizeof(expected));
-        DeviceIDCommand::get_device_id((char*)expected.SSID.value);
-        const int random_id_len = 6;
-
-        const char* ssid_prefix = "photon-";
-        int ssid_len = strlen(ssid_prefix);
-        ssid_len = std::min(ssid_len, 32-random_id_len);        
-        memcpy(expected.SSID.value, ssid_prefix, ssid_len);
-        expected.SSID.length = ssid_len+random_id_len;
+        
+        fetch_or_generate_ssid_prefix(&expected.SSID);
+        expected.SSID.value[expected.SSID.length++] = '-';
+        fetch_or_generate_device_id(&expected.SSID);
+                
         expected.channel = 11;
         expected.details_valid = WICED_TRUE;
 
@@ -756,11 +806,7 @@ class SoftAPController {
         wiced_result_t result = wiced_dct_read_lock( (void**) &soft_ap, WICED_FALSE, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t) );
         if (result == WICED_SUCCESS)
         {
-            // read random code previously persisted
-            memcpy(expected.SSID.value+ssid_len, soft_ap->SSID.value+ssid_len, random_id_len);
-            if (memcmp(&expected, soft_ap, sizeof(expected))) {
-                // not the same generate a random code
-                random_code((char*)(expected.SSID.value+ssid_len), random_id_len);
+            if (memcmp(&expected, soft_ap, sizeof(expected))) {                
                 result = wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
             }
             wiced_dct_read_unlock( soft_ap, WICED_FALSE );
