@@ -13,6 +13,8 @@
 #include "ota_flash_hal.h"
 #include "spark_protocol_functions.h"
 #include "spark_macros.h"
+#include "core_hal.h"
+#include "rng_hal.h"
 
 /**
  * Abstraction of an input stream.
@@ -743,13 +745,23 @@ extern "C" wiced_ip_setting_t device_init_ip_settings;
 class SoftAPController {
     wiced_semaphore_t complete;
     dns_redirector_t dns_redirector;
-
+        
+    static void random_code(char* dest, unsigned len) {
+        unsigned value = HAL_RNG_GetRandomNumber();
+        bytes2hex((const uint8_t*)&value, len>>1, dest);
+    }
+    
     wiced_result_t setup_soft_ap_credentials() {
         wiced_config_soft_ap_t expected;
         memset(&expected, 0, sizeof(expected));
         DeviceIDCommand::get_device_id((char*)expected.SSID.value);
-        memcpy(expected.SSID.value, "photon-", 7);
-        expected.SSID.length = strlen((char*)expected.SSID.value);
+        const int random_id_len = 6;
+
+        const char* ssid_prefix = "photon-";
+        int ssid_len = strlen(ssid_prefix);
+        ssid_len = std::min(ssid_len, 32-random_id_len);        
+        memcpy(expected.SSID.value, ssid_prefix, ssid_len);
+        expected.SSID.length = ssid_len+random_id_len;
         expected.channel = 11;
         expected.details_valid = WICED_TRUE;
 
@@ -757,7 +769,11 @@ class SoftAPController {
         wiced_result_t result = wiced_dct_read_lock( (void**) &soft_ap, WICED_FALSE, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t) );
         if (result == WICED_SUCCESS)
         {
+            // read random code previously persisted
+            memcpy(expected.SSID.value+ssid_len, soft_ap->SSID.value+ssid_len, random_id_len);
             if (memcmp(&expected, soft_ap, sizeof(expected))) {
+                // not the same generate a random code
+                random_code((char*)(expected.SSID.value+ssid_len), random_id_len);
                 result = wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
             }
             wiced_dct_read_unlock( soft_ap, WICED_FALSE );
