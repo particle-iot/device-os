@@ -79,8 +79,6 @@ int wlan_clear_credentials()
         memset(wifi_config->stored_ap_list, 0, sizeof(wifi_config->stored_ap_list));
         result = wiced_dct_write( (const void*) wifi_config, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config) );
         wiced_dct_read_unlock(wifi_config, WICED_TRUE);
-        wiced_network_down(WICED_STA_INTERFACE);
-        // bring network up again?
     }    
     return result;
 }
