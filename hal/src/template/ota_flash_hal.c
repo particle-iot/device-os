@@ -71,4 +71,16 @@ void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
 { 
 }
 
+uint16_t HAL_Set_Claim_Code(const char* code) 
+{
+    return -1;
+}
+
+uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len) 
+{
+    if (len)
+        buffer[0] = 0;
+    return 0;
+}
+
 

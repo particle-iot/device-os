@@ -52,7 +52,20 @@ void HAL_FLASH_End(void);
 bool HAL_OTA_Flashed_GetStatus(void);
 void HAL_OTA_Flashed_ResetStatus(void);
 
+/**
+ * Set the claim code for this device.
+ * @param code  The claim code to set. If null, clears the claim code. 
+ * @return 0 on success. 
+ */
+uint16_t HAL_Set_Claim_Code(const char* code);
 
+/**
+ * Retrieves the claim code for this device.
+ * @param buffer    The buffer to recieve the claim code.
+ * @param len       The maximum size of the code to copy to the buffer, including the null terminator.
+ * @return          0 on success.
+ */
+uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len);
 
 typedef enum
 {

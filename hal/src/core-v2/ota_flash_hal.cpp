@@ -61,7 +61,7 @@ void HAL_FLASH_End(void)
 
 
 void copy_dct(void* target, uint16_t offset, uint16_t length) {
-    void* data = dct_read_app_data(offset);
+    const void* data = dct_read_app_data(offset);
     memcpy(target, data, length);
 }
 
@@ -92,8 +92,8 @@ void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
     copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
 }
 
-    STATIC_ASSERT(Internet_Address_is_2_bytes_c1, sizeof(Internet_Address_TypeDef)==1);
-    STATIC_ASSERT(ServerAddress_packed_c1, offsetof(ServerAddress, ip)==2);    
+STATIC_ASSERT(Internet_Address_is_2_bytes_c1, sizeof(Internet_Address_TypeDef)==1);
+STATIC_ASSERT(ServerAddress_packed_c1, offsetof(ServerAddress, ip)==2);    
 
 
 
@@ -102,3 +102,28 @@ void check() {
     STATIC_ASSERT_EXPR(Internet_Address_is_2_bytes_c, sizeof(Internet_Address_TypeDef)==2);
     STATIC_ASSERT_EXPR(ServerAddress_packed_c, offsetof(ServerAddress, ip)==4);    
 }
+
+
+uint16_t HAL_Set_Claim_Code(const char* code) 
+{
+    char c = '\0';
+    if (code)
+        return dct_write_app_data(code, DCT_CLAIM_CODE_OFFSET, DCT_CLAIM_CODE_SIZE);
+    else
+        return dct_write_app_data(&c, DCT_CLAIM_CODE_OFFSET, 1);
+}
+
+uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len) 
+{
+    const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_CLAIM_CODE_OFFSET);
+    uint16_t result = 0;
+    if (len>DCT_CLAIM_CODE_SIZE) {
+        memcpy(buffer, data, DCT_CLAIM_CODE_SIZE);
+        buffer[DCT_CLAIM_CODE_SIZE] = 0;
+    }
+    else {
+        result = -1;
+    }
+    return result;
+}
+
