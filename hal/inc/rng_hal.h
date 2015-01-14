@@ -27,8 +27,7 @@
 #ifndef __RNG_HAL_H
 #define __RNG_HAL_H
 
-#include "pinmap_hal.h"
-
+#include <stdint.h>
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/
@@ -39,8 +38,8 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
+#endif    
+    
 void HAL_RNG_Configuration(void);
 uint32_t HAL_RNG_GetRandomNumber(void);
 
