@@ -114,7 +114,10 @@ DYNALIB_FN(hal,HAL_RTC_Configuration)
 DYNALIB_FN(hal,HAL_RTC_Get_UnixTime)
 DYNALIB_FN(hal,HAL_RTC_Set_UnixTime)
 DYNALIB_FN(hal,HAL_RTC_Set_UnixAlarm)
-        
+
+DYNALIB_FN(hal,HAL_RNG_Configuration)
+DYNALIB_FN(hal,HAL_RNG_GetRandomNumber)
+
 DYNALIB_FN(hal,HAL_Servo_Attach)
 DYNALIB_FN(hal,HAL_Servo_Detach)
 DYNALIB_FN(hal,HAL_Servo_Write_Pulse_Width)

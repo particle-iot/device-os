@@ -42,6 +42,7 @@
 #include "ota_flash_hal.h"
 #include "pwm_hal.h"
 #include "rtc_hal.h"
+#include "rng_hal.h"
 #include "servo_hal.h"
 #include "socket_hal.h"
 #include "spi_hal.h"
