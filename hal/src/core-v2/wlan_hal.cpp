@@ -196,6 +196,7 @@ struct SnifferInfo
     unsigned ssid_len;    
     wiced_security_t security;
     int16_t rssi;
+    wiced_semaphore_t complete;
 };
 
 /*
@@ -205,21 +206,28 @@ wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
 {
     malloc_transfer_to_curr_thread( malloced_scan_result );
     
+    SnifferInfo* info = (SnifferInfo*)malloced_scan_result->user_data;
     if ( malloced_scan_result->status == WICED_SCAN_INCOMPLETE )
     {
-        SnifferInfo* info = (SnifferInfo*)malloced_scan_result->user_data;
         wiced_scan_result_t* record = &malloced_scan_result->ap_details;
         if (record->SSID.length==info->ssid_len && !memcmp(record->SSID.value, info->ssid, info->ssid_len)) {
             info->security = record->security;
             info->rssi = record->signal_strength;
         }
     }
+    else {
+        wiced_rtos_set_semaphore(&info->complete);
+    }
     free( malloced_scan_result );
     return WICED_SUCCESS;
 }
 
 wiced_result_t sniff_security(SnifferInfo* info) {
+    
+    wiced_rtos_init_semaphore(&info->complete);
     wiced_result_t result = wiced_wifi_scan_networks(sniffer, info);
+    wiced_rtos_get_semaphore(&info->complete, 30000);
+    wiced_rtos_deinit_semaphore(&info->complete);
     if (!info->rssi)
         result = WICED_NOT_FOUND;
     return result;
