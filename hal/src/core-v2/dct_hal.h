@@ -18,10 +18,11 @@ extern "C" {
     
 typedef struct complete_dct {
     platform_dct_data_t system;
+    uint8_t reserved[1024];   // just in case WICED decide to add more things in future, this won't invalidate existing data.
     application_dct_t application;     
 } complete_dct_t;
 
-STATIC_ASSERT(offset_application_dct, (offsetof(complete_dct_t, application)==7548) );
+STATIC_ASSERT(offset_application_dct, (offsetof(complete_dct_t, application)==7548+1024) );
 
 STATIC_ASSERT(size_complete_dct, (sizeof(complete_dct_t)<16384));
         
