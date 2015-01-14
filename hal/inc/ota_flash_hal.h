@@ -38,9 +38,18 @@ extern "C" {
     
 // TODO - this is temporary to get a working hal.
 // A C++ MemoryDeviceRegion will be used so that callers can incrementally
-// write to that. This decouples writing to memory    
+// write to that. This abstracts the memory regions without needing to expose
+// the addresses.    
 
 uint32_t HAL_OTA_FlashAddress();
+
+/**
+ * Retrieves the maximum user image size that can be flashed to the device.
+ * @return The maximum size of the binary image.
+ * This image size is for the user image only. (For statically lined images,
+ * the user image is the entire image. For dynamically linked images, the
+ * user image is just the user portion.
+ */
 uint32_t HAL_OTA_FlashLength();
 
 void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize);

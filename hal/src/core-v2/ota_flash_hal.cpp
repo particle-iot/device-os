@@ -37,11 +37,13 @@ uint32_t HAL_OTA_FlashAddress()
 #endif
 }
 
-#define FLASH_MAX_SIZE  (int32_t)(INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS)
+
+STATIC_ASSERT(ota_length_for_pid_6_is_less_than_512k, SPARK_PRODUCT_ID!=5 || FIRMWARE_IMAGE_SIZE<512*1024);
+
 
 uint32_t HAL_OTA_FlashLength()
 {
-    return FLASH_MAX_SIZE;
+    return FIRMWARE_IMAGE_SIZE;
 }
     
 void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize) 
