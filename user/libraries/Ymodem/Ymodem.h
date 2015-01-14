@@ -31,6 +31,7 @@
 
 #include "spark_wiring.h"
 #include "system_task.h"
+#include "system_update.h"
 #include "ota_flash_hal.h"
 #include "rgbled.h"
 
@@ -375,5 +376,18 @@ bool Ymodem_Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress)
   }
   return false;
 }
+
+class Ymodem
+{
+public:
+    Ymodem();
+};
+
+Ymodem::Ymodem()
+{
+    set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
+}
+
+Ymodem ymodem;
 
 #endif  /* __LIB_YMODEM_H */
