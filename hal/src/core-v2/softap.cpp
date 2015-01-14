@@ -12,6 +12,7 @@
 #include "dct.h"
 #include "ota_flash_hal.h"
 #include "spark_protocol_functions.h"
+#include "spark_macros.h"
 
 /**
  * Abstraction of an input stream.
@@ -128,19 +129,7 @@ protected:
         write_json_int(writer, "r", result);
         write_char(writer, '}');
     }
-
-public:
-
-    virtual int execute(Reader& reader, Writer& writer)
-    {
-        int result = parse_request(reader);
-        if (!result) {
-            result = process();
-            produce_response(writer, result);
-        }
-        return result;
-    }
-
+    
     virtual int parse_request(Reader& reader) { return 0; }
 
     virtual void produce_response(Writer& writer, int result) {
@@ -192,6 +181,107 @@ public:
         write_char(out, ':');
         out.write(int_to_ascii(value, buf, 20));
     }
+    
+public:
+
+    virtual int execute(Reader& reader, Writer& writer)
+    {
+        int result = parse_request(reader);
+        if (!result) {
+            result = process();
+            produce_response(writer, result);
+        }
+        return result;
+    }
+};
+
+
+#define JSON_DEBUG(x)
+
+/**
+ * A command that parses a JSON request. 
+ */
+
+class JSONRequestCommand : public JSONCommand {
+    
+protected:    
+    
+    virtual bool parsed_key(unsigned index)=0;
+    virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value)=0;
+    
+    int parse_json_request(Reader& reader, const char* const keys[], const jsmntype_t types[], unsigned count) {
+
+        char* js = reader.fetch_as_string();
+        if (!js)
+            return -1;
+        
+        jsmntok_t *tokens = json_tokenise(js);
+
+        enum parse_state { START, KEY, VALUE, SKIP, STOP };
+
+        parse_state state = START;
+        jsmntype_t expected_type = JSMN_OBJECT;
+        
+        int result = 0;
+        int key = -1;
+        
+        for (size_t i = 0, j = 1; j > 0; i++, j--)
+        {
+            jsmntok_t *t = &tokens[i];
+            if (t->type == JSMN_ARRAY || t->type == JSMN_OBJECT)
+                j += t->size * 2;
+
+            switch (state)
+            {
+                case START:
+                    state = KEY;
+                    break;
+
+                case KEY:
+                    state = VALUE;
+                    key = -1;
+                    for (size_t i = 0; i < count; i++)
+                    {
+                        if (json_token_streq(js, t, keys[i]))
+                        {
+                            expected_type = types[i];
+                            if (parsed_key(i)) {
+                                key = i;
+                                JSON_DEBUG( ( "key: %s %d %d\n", keys[i], i, (int)expected_type ) );
+                            }
+                        }
+                    }
+                    if (key==-1) {
+                        JSON_DEBUG( ( "unknown key: %s\n", json_token_tostr(js, t) ) );
+                        result = -1;
+                    }
+                    break;
+
+                case VALUE:
+                    if (key!=-1) {
+                        if (t->type != expected_type) {
+                            result = -1;
+                            JSON_DEBUG( ( "type mismatch\n" ) );
+                        }
+                        else {                        
+                            char *str = json_token_tostr(js, t);
+                            if (!parsed_value(key, t, str))
+                                result = -1;
+                        }
+                    }
+                    state = KEY;
+                    break;
+
+                case STOP: // Just consume the tokens
+                    break;
+
+                default:
+                    result = -1;
+            }
+        }
+        free(js);
+        return result;
+    }    
 };
 
 class VersionCommand : public JSONCommand {
@@ -293,7 +383,6 @@ struct ConfigureAP {
     int32_t channel;
 };
 
-#define JSON_DEBUG(x)
     
 uint8_t hex_nibble(char c) {
     if (c<'0')
@@ -323,19 +412,19 @@ size_t hex_decode(uint8_t* buf, size_t len, const char* hex) {
     return i;
 }
 
-uint8_t* fetch_server_public_key()
+const uint8_t* fetch_server_public_key()
 {
-    return (uint8_t*)dct_read_app_data(DCT_SERVER_PUBLIC_KEY_OFFSET);    
+    return (const uint8_t*)dct_read_app_data(DCT_SERVER_PUBLIC_KEY_OFFSET);    
 }
 
-uint8_t* fetch_device_private_key()
+const uint8_t* fetch_device_private_key()
 {
-    return (uint8_t*)dct_read_app_data(DCT_DEVICE_PRIVATE_KEY_OFFSET);    
+    return (const uint8_t*)dct_read_app_data(DCT_DEVICE_PRIVATE_KEY_OFFSET);    
 }
 
-uint8_t* fetch_device_public_key()
+const uint8_t* fetch_device_public_key()
 {
-    return (uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);    
+    return (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);    
 }
 
 
@@ -358,10 +447,10 @@ int decrypt(char* plaintext, int max_plaintext_len, char* hex_encoded_ciphertext
  * Connects to an access point using the given credentials and signals
  * soft-ap process complete.
  */
-class ConfigureAPCommand : public JSONCommand {
+class ConfigureAPCommand : public JSONRequestCommand {
     ConfigureAP configureAP;
 
-    static const char* KEYS[5];
+    static const char* KEY[5];
     static const int OFFSET[];
     static const jsmntype_t TYPE[];
 
@@ -393,93 +482,39 @@ class ConfigureAPCommand : public JSONCommand {
         return result;
     }
 
-public:
-    ConfigureAPCommand() {}
+protected:
+    
+    virtual bool parsed_key(unsigned index) {        
+        return true;
+    }
 
-
-    int parse_request(Reader& reader) {
-
-        char* js = reader.fetch_as_string();
-        jsmntok_t *tokens = json_tokenise(js);
-
-        enum parse_state { START, KEY, VALUE, SKIP, STOP };
-
-        parse_state state = START;
-        jsmntype_t expected_type = JSMN_OBJECT;
-        void* data = NULL;
-        int result = 0;
-        int key = -1;
-        memset(&configureAP, 0, sizeof(configureAP));
-
-        for (size_t i = 0, j = 1; j > 0; i++, j--)
-        {
-            jsmntok_t *t = &tokens[i];
-            if (t->type == JSMN_ARRAY || t->type == JSMN_OBJECT)
-                j += t->size * 2;
-
-            switch (state)
-            {
-                case START:
-                    state = KEY;
-                    break;
-
-                case KEY:
-                    state = VALUE;
-                    data = NULL;
-                    key = -1;
-                    for (size_t i = 0; i < sizeof(KEYS)/sizeof(KEYS[0]); i++)
-                    {
-                        if (json_token_streq(js, t, KEYS[i]))
-                        {
-                            expected_type = TYPE[i];
-                            data = ((uint8_t*)&configureAP)+OFFSET[i];
-                            key = i;
-                            JSON_DEBUG( ( "key: %s %d %d\n", KEYS[i], i, (int)expected_type ) );
-                        }
-                    }
-                    if (key==-1)
-                        JSON_DEBUG( ( "unknown key: %s\n", json_token_tostr(js, t) ) );
-                    break;
-
-                case VALUE:
-                    if (t->type != expected_type) {
-                        result = -1;
-                        JSON_DEBUG( ( "type mismatch\n" ) );
-                    }
-                    else {
-                        if (!data) {
-                            JSON_DEBUG( ( "no data\n" ) );
-                            break;
-                        }
-
-                        char *str = json_token_tostr(js, t);
-                        if (key==1 && t->type==JSMN_STRING) {
-                            strncpy((char*)data, str, sizeof(ConfigureAP::ssid));
-                            JSON_DEBUG( ( "copied value %s\n", (char*)str ) );
-                        }
-                        else if (key==2 && t->type==JSMN_STRING) {
-                            decrypt((char*)data, sizeof(ConfigureAP::passcode), str);
-                            JSON_DEBUG( ( "Decrypted password %s\n", (char*)data));
-                        }
-                        else {
-                            int32_t value = atoi(str);
-                            *((int32_t*)data) = value;
-                            JSON_DEBUG( ( "copied number %s (%d)\n", (char*)str, (int)value ) );
-                        }
-                        data = NULL;
-                    }
-                    state = KEY;
-                    break;
-
-                case STOP: // Just consume the tokens
-                    break;
-
-                default:
-                    result = -1;
-            }
+    virtual bool parsed_value(unsigned key, jsmntok_t* t, char* str) {        
+        void* data = ((uint8_t*)&configureAP)+OFFSET[key];
+        
+        if (!data) {
+            JSON_DEBUG( ( "no data\n" ) );
+            return false;
         }
-        free(js);
-        return result;
+        if (key==1 && t->type==JSMN_STRING) {
+            strncpy((char*)data, str, sizeof(ConfigureAP::ssid));
+            JSON_DEBUG( ( "copied value %s\n", (char*)str ) );
+        }
+        else if (key==2 && t->type==JSMN_STRING) {
+            decrypt((char*)data, sizeof(ConfigureAP::passcode), str);
+            JSON_DEBUG( ( "Decrypted password %s\n", (char*)data));
+        }
+        else {
+            int32_t value = atoi(str);
+            *((int32_t*)data) = value;
+            JSON_DEBUG( ( "copied number %s (%d)\n", (char*)str, (int)value ) );
+        }
+        
+        return true;
+    }
+    
+    int parse_request(Reader& reader) {
+        memset(&configureAP, 0, sizeof(configureAP));
+        return parse_json_request(reader, KEY, TYPE, arraySize(KEY));
     }
 
     /**
@@ -492,7 +527,7 @@ public:
 
 };
 
-const char* ConfigureAPCommand::KEYS[5] = {"idx","ssid","pwd","ch","sec" };
+const char* ConfigureAPCommand::KEY[5] = {"idx","ssid","pwd","ch","sec" };
 const int ConfigureAPCommand::OFFSET[] = {
                             offsetof(ConfigureAP, index),
                             offsetof(ConfigureAP, ssid),
@@ -514,6 +549,7 @@ public:
         softap_complete_ = softap_complete;
     }
 
+protected:    
     // todo - parse index
 
     int process() {
@@ -563,12 +599,13 @@ class DeviceIDCommand : public JSONCommand {
 
 public:
     DeviceIDCommand() {}
-
+    
     static void get_device_id(char buffer[25]) {
         bytes2hex((const uint8_t*)0x1FFF7A10, 12, buffer);
         buffer[24] = 0;
     }
 
+protected:    
     int process() {
         memset(device_id, 0, sizeof(device_id));
         get_device_id(device_id);
@@ -598,10 +635,7 @@ class ProvisionKeysCommand : public JSONCommand
         return( (int32_t)rand() );
     }
 
-public:
-
-    ProvisionKeysCommand() {}
-
+protected:    
     int process() {
         /*
         rsa_init(&ctx, RSA_PKCS_V15, 0, rng_func, NULL);
@@ -617,7 +651,7 @@ public:
 
 class PublicKeyCommand : public JSONCommand {
     
-public:
+protected:
 
     int process() {        
         return 0;
@@ -626,7 +660,7 @@ public:
     void produce_response(Writer& writer, int result) {
         // fetch public key 
         const int length = EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH;
-        uint8_t* data = fetch_device_public_key();
+        const uint8_t* data = fetch_device_public_key();
         write_char(writer, '{');
         if (data) {
             writer.write("\"b\":\"");
@@ -647,6 +681,47 @@ public:
     }    
 };
 
+
+class SetValueCommand  : public JSONRequestCommand {
+           
+    static const char* const KEY[2];
+    static const jsmntype_t TYPE[2];
+    
+    const char* key;
+    const char* value;
+    
+protected:            
+    
+    virtual bool parsed_key(unsigned index) {        
+        return true;
+    }
+
+    virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value) {        
+        if (index==0)     // key
+            this->key = value;
+        else
+            this->value = value;
+        return true;
+    }
+    
+    int parse_request(Reader& reader) {        
+        key = NULL; value = NULL;
+        return parse_json_request(reader, KEY, TYPE, arraySize(KEY));
+    }
+
+    int process() {
+        int result = -1;
+        if (key && value) {
+            if (!strcmp(key,"cc"))
+                result = HAL_Set_Claim_Code(value);
+        }
+        return result;
+    }    
+};
+
+const char* const SetValueCommand::KEY[2] = { "k", "v" };
+const jsmntype_t SetValueCommand::TYPE[2] = { JSMN_STRING, JSMN_STRING };
+    
 struct AllSoftAPCommands {
     VersionCommand version;
     DeviceIDCommand deviceID;
@@ -655,6 +730,7 @@ struct AllSoftAPCommands {
     ConnectAPCommand connectAP;
     ProvisionKeysCommand provisionKeys;
     PublicKeyCommand publicKey;
+    SetValueCommand setValue;
     AllSoftAPCommands(wiced_semaphore_t* complete, void (*softap_complete)()) :
         connectAP(complete, softap_complete) {}
 };
@@ -844,6 +920,8 @@ class SimpleProtocolDispatcher
                 cmd = &commands_.provisionKeys;
             else if (!strcmp("public-key", name))
                 cmd = &commands_.publicKey;
+            else if (!strcmp("set", name))
+                cmd = &commands_.setValue;
         }
         return cmd;
     }
