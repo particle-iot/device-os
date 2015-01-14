@@ -143,7 +143,7 @@ void HAL_Core_Config(void)
 
     /* We are duplicating the IWDG call here for compatibility with old bootloader */
     /* Set IWDG Timeout to 3 secs */
-    //IWDG_Reset_Enable(3 * TIMING_IWDG_RELOAD);
+    IWDG_Reset_Enable(3 * TIMING_IWDG_RELOAD);
 #endif
 
 #ifdef DFU_BUILD_ENABLE

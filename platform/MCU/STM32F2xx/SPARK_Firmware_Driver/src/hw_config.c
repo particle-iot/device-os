@@ -202,7 +202,25 @@ void SysTick_Configuration(void)
 
 void IWDG_Reset_Enable(uint32_t msTimeout)
 {
-    //To Do
+#if 0
+    /* Enable write access to IWDG_PR and IWDG_RLR registers */
+    IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+
+    /* IWDG counter clock: LSI/256 */
+    IWDG_SetPrescaler(IWDG_Prescaler_256);
+
+    /* IWDG timeout may vary due to LSI frequency dispersion */
+    msTimeout = ((msTimeout * 40) / 256); //Assuming LSI Frequency = 40000
+    if (msTimeout > 0xfff) msTimeout = 0xfff;   // 26214.4
+
+    IWDG_SetReload((uint16_t)msTimeout);
+
+    /* Reload IWDG counter */
+    IWDG_ReloadCounter();
+
+    /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
+    IWDG_Enable();
+#endif
 }
 
 void UI_Timer_Configure(void)
