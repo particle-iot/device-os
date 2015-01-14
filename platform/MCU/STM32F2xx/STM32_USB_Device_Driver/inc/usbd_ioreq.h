@@ -83,11 +83,11 @@
   */ 
 
 USBD_Status  USBD_CtlSendData (USB_OTG_CORE_HANDLE  *pdev, 
-                               uint8_t *buf,
+                               const uint8_t *buf,
                                uint16_t len);
 
 USBD_Status  USBD_CtlContinueSendData (USB_OTG_CORE_HANDLE  *pdev, 
-                               uint8_t *pbuf,
+                               const uint8_t *pbuf,
                                uint16_t len);
 
 USBD_Status USBD_CtlPrepareRx (USB_OTG_CORE_HANDLE  *pdev, 

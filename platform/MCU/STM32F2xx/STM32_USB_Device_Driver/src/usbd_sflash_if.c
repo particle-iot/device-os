@@ -23,7 +23,7 @@
 uint16_t sFLASH_If_Init(void);
 uint16_t sFLASH_If_Erase (uint32_t Add);
 uint16_t sFLASH_If_Write (uint32_t Add, uint32_t Len);
-uint8_t *sFLASH_If_Read  (uint32_t Add, uint32_t Len);
+const uint8_t *sFLASH_If_Read  (uint32_t Add, uint32_t Len);
 uint16_t sFLASH_If_DeInit(void);
 uint16_t sFLASH_If_CheckAdd(uint32_t Add);
 
@@ -99,7 +99,7 @@ uint16_t sFLASH_If_Write(uint32_t Add, uint32_t Len)
  * @param  Len: Number of data to be read (in bytes).
  * @retval Pointer to the phyisical address where data should be read.
  */
-uint8_t *sFLASH_If_Read (uint32_t Add, uint32_t Len)
+const uint8_t *sFLASH_If_Read (uint32_t Add, uint32_t Len)
 {
     sFLASH_ReadBuffer(MAL_Buffer, Add, (uint16_t)Len);
     return MAL_Buffer;

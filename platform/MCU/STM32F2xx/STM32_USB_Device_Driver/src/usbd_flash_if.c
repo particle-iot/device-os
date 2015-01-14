@@ -38,7 +38,7 @@
 uint16_t FLASH_If_Init(void);
 uint16_t FLASH_If_Erase (uint32_t Add);
 uint16_t FLASH_If_Write (uint32_t Add, uint32_t Len);
-uint8_t *FLASH_If_Read  (uint32_t Add, uint32_t Len);
+const uint8_t *FLASH_If_Read  (uint32_t Add, uint32_t Len);
 uint16_t FLASH_If_DeInit(void);
 uint16_t FLASH_If_CheckAdd(uint32_t Add);
 
@@ -215,7 +215,7 @@ uint16_t FLASH_If_Write(uint32_t Add, uint32_t Len)
   * @param  Len: Number of data to be read (in bytes).
   * @retval Pointer to the phyisical address where data should be read.
   */
-uint8_t *FLASH_If_Read (uint32_t Add, uint32_t Len)
+const uint8_t *FLASH_If_Read (uint32_t Add, uint32_t Len)
 {
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   uint32_t idx = 0;
@@ -225,7 +225,7 @@ uint8_t *FLASH_If_Read (uint32_t Add, uint32_t Len)
   }
   return (uint8_t*)(MAL_Buffer);
 #else  
-  return  (uint8_t *)(Add);
+  return  (const uint8_t *)(Add);
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 }
 

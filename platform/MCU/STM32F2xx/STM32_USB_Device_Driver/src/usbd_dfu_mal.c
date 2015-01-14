@@ -221,7 +221,7 @@ uint16_t MAL_Write (uint32_t Add, uint32_t Len)
   * @param  Len: Number of data to be written (in bytes)
   * @retval Buffer pointer
   */
-uint8_t *MAL_Read (uint32_t Add, uint32_t Len)
+const uint8_t *MAL_Read (uint32_t Add, uint32_t Len)
 {
   uint32_t memIdx = MAL_CheckAdd(Add);
   

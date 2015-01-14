@@ -728,7 +728,7 @@ static void DFU_Req_DNLOAD(void *pdev, USB_SETUP_REQ *req)
   */
 static void DFU_Req_UPLOAD(void *pdev, USB_SETUP_REQ *req)
 {
-  uint8_t *Phy_Addr = NULL;
+  const uint8_t *Phy_Addr = NULL;
   uint32_t Addr = 0;
   
   /* Data setup request */
