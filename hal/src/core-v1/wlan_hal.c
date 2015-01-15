@@ -491,6 +491,6 @@ void SPARK_WLAN_SmartConfigProcess()
             decKeyPtr++;
     }
 
-    wlan_set_credentials((const char*)ssidPtr, ssidLen, (const char*)decKeyPtr, keyLen, profileArray[profileArray[0] + 2]);
+    wlan_set_credentials_internal((const char*)ssidPtr, ssidLen, (const char*)decKeyPtr, keyLen, profileArray[profileArray[0] + 2]);
 }
 
