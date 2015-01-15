@@ -18,6 +18,7 @@ endif
 
 # determine where user sources are, relative to project root
 ifdef APP
+USER_MAKEFILE ?= $(APP).mk
 USRSRC = applications/$(APP)
 # when TARGET_FILE is defined on the command line, 
 TARGET_FILE_NAME ?= $(notdir $(APP))
