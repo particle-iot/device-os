@@ -46,7 +46,10 @@ LDFLAGS += -Wl,--whole-archive $(HAL_WICED_LIB_FILES) -Wl,--no-whole-archive
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -L$(WICED_MCU)/STM32F2x5
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=1400
+USE_PRINTF_FLOAT ?= n
+ifeq ("$(USE_PRINTF_FLOAT)","y")
 LDFLAGS += -u _printf_float
+endif
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 endif
