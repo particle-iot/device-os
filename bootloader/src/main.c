@@ -27,6 +27,7 @@
 #include "syshealth_hal.h"
 #include "core_hal.h"
 #include "dfu_hal.h"
+#include "hw_config.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);
