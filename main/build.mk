@@ -48,7 +48,8 @@ include $(MODULE_PATH)/tests/tests.mk
 endif
 
 USRSRC_SLASH = $(and $(USRSRC),$(USRSRC)/)
-usrmakefile = $(wildcard $(SOURCE_PATH)/$(USRSRC_SLASH)build.mk)
+USER_MAKEFILE ?= build.mk
+usrmakefile = $(wildcard $(SOURCE_PATH)/$(USRSRC_SLASH)$(USER_MAKEFILE))
 ifeq ("$(usrmakefile)","")
 INCLUDE_DIRS += $(SOURCE_PATH)/$(USRSRC)  # add user sources to include path
 # add C and CPP files - if USRSRC is not empty, then add a slash
