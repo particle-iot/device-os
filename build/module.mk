@@ -56,7 +56,6 @@ ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o.d)))
 
-
 ifeq ("$(TARGET_TYPE)","a") 
 TARGET_FILE_PREFIX = lib
 endif
@@ -78,6 +77,7 @@ TARGET ?= $(TARGET_BASE).$(TARGET_TYPE)
 # add BUILD_PATH_EXT with a preceeding slash if not empty.
 BUILD_PATH ?= $(BUILD_PATH_BASE)/$(MODULE)$(and $(BUILD_PATH_EXT),/$(BUILD_PATH_EXT))
 
+BUILD_TARGET_PLATFORM = platform-$(PLATFORM_ID)
 
 # All Target
 all: $(MAKE_DEPENDENCIES) $(TARGET)

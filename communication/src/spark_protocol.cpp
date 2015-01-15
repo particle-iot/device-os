@@ -28,8 +28,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifndef SPARK_PRODUCT_ID
-#define SPARK_PRODUCT_ID (0xffff)
+#ifndef PRODUCT_ID
+#define PRODUCT_ID (0xffff)
 #endif
 
 #ifndef PRODUCT_FIRMWARE_VERSION
@@ -332,8 +332,8 @@ void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
   buf[4] = 0xb1; // Uri-Path option of length 1
   buf[5] = 'h';
   buf[6] = 0xff; // payload marker
-  buf[7] = SPARK_PRODUCT_ID >> 8;
-  buf[8] = SPARK_PRODUCT_ID & 0xff;
+  buf[7] = PRODUCT_ID >> 8;
+  buf[8] = PRODUCT_ID & 0xff;
   buf[9] = PRODUCT_FIRMWARE_VERSION >> 8;
   buf[10] = PRODUCT_FIRMWARE_VERSION & 0xff;
   buf[11] = 0; // reserved flags

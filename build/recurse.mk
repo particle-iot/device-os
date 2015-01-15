@@ -5,10 +5,10 @@ CLEAN_DEPENDENCIES=$(patsubst %,clean_%,$(MAKE_DEPENDENCIES))
 	
 $(MAKE_DEPENDENCIES):
 	$(call,echo,'Making module $@')
-	$(VERBOSE)$(MAKE) -C $(PROJECT_ROOT)/$@ $(SUBDIR_GOALS) $(MAKE_ARGS)
+	$(VERBOSE)$(MAKE) -C $(PROJECT_ROOT)/$@ $(SUBDIR_GOALS) $(MAKE_ARGS) $(MAKEOVERRIDES) 
 
 $(CLEAN_DEPENDENCIES):	
-	$(VERBOSE)$(MAKE) -C $(PROJECT_ROOT)/$(patsubst clean_%,%,$@) clean $(MAKE_ARGS)
+	$(VERBOSE)$(MAKE) -C $(PROJECT_ROOT)/$(patsubst clean_%,%,$@) clean $(MAKE_ARGS) $(MAKEOVERRIDES) 
 		
 # allow recursive invocation across dependencies to make
 clean_deps: $(CLEAN_DEPENDENCIES)

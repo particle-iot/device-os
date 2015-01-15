@@ -1,11 +1,15 @@
 MODULE=main
 MAIN_MODULE_PATH=.
 
-BUILD_PATH_EXT = prod-$(SPARK_PRODUCT_ID)$(MAIN_FLAVOR)
+ifdef PRODUCT_ID
+MAIN_PRODUCT = -prod-$(PRODUCT_ID)
+endif
+
+BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(MAIN_FLAVOR)$(MAIN_PRODUCT)
 
 DEPENDENCIES = wiring services communication hal
 
-include ../build/product-id.mk
+include ../build/platform-id.mk
 
 ifeq ("","$(SPARK_NO_PLATFORM)")
 DEPENDENCIES += platform
