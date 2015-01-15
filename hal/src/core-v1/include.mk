@@ -17,7 +17,10 @@ ifneq (,$(findstring hal,$(MAKE_DEPENDENCIES)))
 
 LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_$(STM32_DEVICE_LC)_dfu.ld
 LDFLAGS += --specs=nano.specs -lc -lnosys
+USE_PRINTF_FLOAT ?= y
+ifeq ("$(USE_PRINTF_FLOAT)","y")
 LDFLAGS += -u _printf_float
+endif
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S 
