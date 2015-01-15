@@ -68,6 +68,7 @@ void spark_connect(void);
 void spark_disconnect(void);
 SparkProtocol* spark_protocol_instance(void);
 
+void parse_device_pubkey_from_privkey(unsigned char *device_pubkey);
 
 String bytes2hex(const uint8_t* buf, unsigned len);
 String spark_deviceID(void);
