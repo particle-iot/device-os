@@ -5,9 +5,19 @@ PROJECT_ROOT = .
 COMMON_BUILD=build
 BUILD_PATH_BASE=$(COMMON_BUILD)/target
 
-include $(COMMON_BUILD)/product-id.mk
+ifdef SPARK_PRODUCT_ID
+PRODUCT_ID=$(SPARK_PRODUCT_ID)
+endif
 
-$(info Building firmware for $(PRODUCT_DESC) (product id $(SPARK_PRODUCT_ID)))
+include $(COMMON_BUILD)/platform-id.mk
+
+ifdef PRODUCT_ID
+msg_ext =, product ID: $(PRODUCT_ID)
+endif
+
+msg = Building firmware for $(PRODUCT_DESC), platform ID: $(PLATFORM_ID)$(msg_ext)
+
+$(info $(msg))
 
 all: make_deps
 

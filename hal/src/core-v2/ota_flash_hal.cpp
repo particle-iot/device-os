@@ -38,7 +38,7 @@ uint32_t HAL_OTA_FlashAddress()
 }
 
 
-STATIC_ASSERT(ota_length_for_pid_6_is_less_than_512k, SPARK_PRODUCT_ID!=5 || FIRMWARE_IMAGE_SIZE<512*1024);
+STATIC_ASSERT(ota_length_for_pid_6_is_less_than_512k, PLATFORM_ID!=5 || FIRMWARE_IMAGE_SIZE<512*1024);
 
 
 uint32_t HAL_OTA_FlashLength()

@@ -1,11 +1,15 @@
 
 MODULE=system
 SYSTEM_MODULE_PATH=.
+ifdef PRODUCT_ID
+MAIN_PRODUCT = -prod-$(PRODUCT_ID)
+endif
 
-# Target this makefile is building.
-BUILD_PATH_EXT=prod-$(SPARK_PRODUCT_ID)
+BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(MAIN_FLAVOR)$(MAIN_PRODUCT)
+
 
 DEPENDENCIES = hal services communication wiring
+
 ifeq ("","$(SPARK_NO_PLATFORM)")
 DEPENDENCIES += platform
 CFLAGS += -DSPARK_PLATFORM

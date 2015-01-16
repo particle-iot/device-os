@@ -10,15 +10,15 @@ included_productid_mk := 1
 # ARCH		- architecture (ARM/GCC)
 # PRODUCT_DESC  - text description of the product ID
 
-ifndef SPARK_PRODUCT_ID
-SPARK_PRODUCT_ID=0
+ifndef PLATFORM_ID
+PLATFORM_ID=0
 endif
 
 # Determine which is the target device
 
 ARCH=arm
 
-ifeq ("$(SPARK_PRODUCT_ID)","0")
+ifeq ("$(PLATFORM_ID)","0")
 STM32_DEVICE=STM32F10X_MD
 PLATFORM_NAME=core-v1
 PLATFORM_MCU=STM32F1xx
@@ -26,7 +26,7 @@ PLATFORM_NET=CC3000
 PRODUCT_DESC=Spark core
 endif
 
-ifeq ("$(SPARK_PRODUCT_ID)","1")
+ifeq ("$(PLATFORM_ID)","1")
 STM32_DEVICE=STM32F10X_MD
 PLATFORM_NAME=core-v1
 PLATFORM_MCU=STM32F1xx
@@ -34,7 +34,7 @@ PLATFORM_NET=CC3000
 PRODUCT_DESC=Teacup Pigtail
 endif
 
-ifeq ("$(SPARK_PRODUCT_ID)","2")
+ifeq ("$(PLATFORM_ID)","2")
 STM32_DEVICE=STM32F10X_HD
 PLATFORM_NAME=core-v1
 PLATFORM_MCU=STM32F1xx
@@ -42,7 +42,7 @@ PLATFORM_NET=CC3000
 PRODUCT_DESC=Spark core-HD, 256k flash, 48k ram
 endif
 
-ifeq ("$(SPARK_PRODUCT_ID)","3")
+ifeq ("$(PLATFORM_ID)","3")
 PLATFORM_NAME=gcc
 PLATFORM_MCU=gcc
 PLATFORM_NET=gcc
@@ -52,7 +52,7 @@ PRODUCT_DESC=GCC xcompile
 SPARK_NO_PLATFORM=1
 endif
 
-ifeq ("$(SPARK_PRODUCT_ID)","4")
+ifeq ("$(PLATFORM_ID)","4")
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=core-v2
 PLATFORM_MCU=STM32F2xx
@@ -60,7 +60,7 @@ PLATFORM_NET=BCM9WCDUSI09
 PRODUCT_DESC=BM-09/WICED
 endif
 
-ifeq ("$(SPARK_PRODUCT_ID)","5")
+ifeq ("$(PLATFORM_ID)","5")
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=core-v2
 PLATFORM_MCU=STM32F2xx
@@ -68,7 +68,7 @@ PLATFORM_NET=BCM9WCDUSI14
 PRODUCT_DESC=BM-14/WICED
 endif
 
-ifeq ("$(SPARK_PRODUCT_ID)","6")
+ifeq ("$(PLATFORM_ID)","6")
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=core-v2
 PLATFORM_MCU=STM32F2xx
@@ -83,11 +83,11 @@ endif
 
 
 ifeq ("$(PLATFORM_MCU)","")
-$(error PLATFORM_MCU not defined. Check product id $(SPARK_PRODUCT_ID))
+$(error PLATFORM_MCU not defined. Check product id $(PLATFORM_ID))
 endif
 
 ifeq ("$(PLATFORM_NET)","")
-$(error PLATFORM_NET not defined. Check product id $(SPARK_PRODUCT_ID))
+$(error PLATFORM_NET not defined. Check product id $(PLATFORM_ID))
 endif
 
 # lower case version of the STM32_DEVICE string for use in filenames
@@ -100,8 +100,6 @@ CFLAGS += -DSTM32_DEVICE
 CFLAGS += -D$(STM32_DEVICE)
 endif
 
-CFLAGS += -DSPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID) -DPLATFORM_NAME=$(PLATFORM_NAME)
-
-MAKE_ARGS += SPARK_PRODUCT_ID=$(SPARK_PRODUCT_ID) PLATFORM_NAME=$(PLATFORM_NAME)
+CFLAGS += -DPLATFORM_ID=$(PLATFORM_ID) -DPLATFORM_NAME=$(PLATFORM_NAME)
 
 endif

@@ -157,9 +157,9 @@ void SysTick_Handler(void)
  * @param  None
  * @retval None
  */
-#if (SPARK_PRODUCT_ID == 4)
+#if (PLATFORM_ID == 4)
 void EXTI2_IRQHandler(void)
-#elif (SPARK_PRODUCT_ID == 5 || SPARK_PRODUCT_ID == 6)
+#elif (PLATFORM_ID == 5 || PLATFORM_ID == 6)
 void EXTI9_5_IRQHandler(void)
 #endif
 {

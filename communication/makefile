@@ -4,9 +4,15 @@ COMMUNICATION_MODULE_PATH=.
 
 # Target this makefile is building.
 TARGET_TYPE = a
-BUILD_PATH_EXT=prod-$(SPARK_PRODUCT_ID)
 
-# for systick_t
+ifdef PRODUCT_ID
+COMMUNICATION_TARGET_DIR = $(BUILD_TARGET_PLATFORM)-prod-$(PRODUCT_ID)
+else
+COMMUNICATION_TARGET_DIR = $(BUILD_TARGET_PLATFORM)
+endif
+
+BUILD_PATH_EXT=$(COMMUNICATION_TARGET_DIR)
+
 DEPENDENCIES = hal services
 
 include ../build/arm-tlm.mk

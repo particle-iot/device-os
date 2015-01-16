@@ -65,7 +65,7 @@
 
 //Push Buttons
 #define BUTTONn                             1
-#if (SPARK_PRODUCT_ID == 4)
+#if (PLATFORM_ID == 4)
 #define BUTTON1_GPIO_PIN                    GPIO_Pin_2
 #define BUTTON1_GPIO_PORT                   GPIOC
 #define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
@@ -78,7 +78,7 @@
 #define BUTTON1_EXTI_IRQn                   EXTI2_IRQn
 #define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define	BUTTON1_EXTI_TRIGGER		        EXTI_Trigger_Falling
-#elif (SPARK_PRODUCT_ID == 5 || SPARK_PRODUCT_ID == 6)
+#elif (PLATFORM_ID == 5 || PLATFORM_ID == 6)
 #define BUTTON1_GPIO_PIN                    GPIO_Pin_7
 #define BUTTON1_GPIO_PORT                   GPIOC
 #define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
@@ -96,14 +96,14 @@
 #define UI_TIMER_FREQUENCY                  100	/* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
-#if (SPARK_PRODUCT_ID == 5)
+#if (PLATFORM_ID == 5)
 //BM-14 uses USB_OTG_FS peripheral
 #define USE_USB_OTG_FS
 //BM-14 has serial flash
 #define USE_SERIAL_FLASH
 //On Pigtail board with BM-14, RGB lines are reversed
 #define RGB_LINES_REVERSED
-#elif (SPARK_PRODUCT_ID == 4 || SPARK_PRODUCT_ID == 6)
+#elif (PLATFORM_ID == 4 || PLATFORM_ID == 6)
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
 #endif
@@ -163,27 +163,27 @@
 #define SVCALL_IRQ_PRIORITY                 14      //CORTEX_M3 SVCall Interrupt
 #define PENDSV_IRQ_PRIORITY                 15      //CORTEX_M3 PendSV Interrupt
 
-#ifndef SPARK_PRODUCT_ID
-#define SPARK_PRODUCT_ID 0
-#warning "SPARK_PRODUCT_ID not defined, assuming 0"
+#ifndef PLATFORM_ID
+#define PLATFORM_ID 0
+#warning "PLATFORM_ID not defined, assuming 0"
 #endif
 
 #define PREPSTRING2(x) #x
 #define PREPSTRING(x) PREPSTRING2(x)
 
-#if SPARK_PRODUCT_ID < 2
+#if PLATFORM_ID < 2
 #define INTERNAL_FLASH_SIZE                 (0x20000)
-#elif SPARK_PRODUCT_ID == 2
+#elif PLATFORM_ID == 2
     #define INTERNAL_FLASH_SIZE             (0x40000)
-#elif SPARK_PRODUCT_ID == 4
+#elif PLATFORM_ID == 4
     #define INTERNAL_FLASH_SIZE             (0x100000)
-#elif SPARK_PRODUCT_ID == 5
+#elif PLATFORM_ID == 5
     #define INTERNAL_FLASH_SIZE             (0x100000)
-#elif SPARK_PRODUCT_ID == 6
+#elif PLATFORM_ID == 6
     #define INTERNAL_FLASH_SIZE             (0x100000)
 #else
-    #pragma message "SPARK_PRODUCT_ID is " PREPSTRING(SPARK_PRODUCT_ID)
-    #error "Unknown SPARK_PRODUCT_ID"
+    #pragma message "PLATFORM_ID is " PREPSTRING(PLATFORM_ID)
+    #error "Unknown PLATFORM_ID"
 #endif
 
 /* Exported functions ------------------------------------------------------- */

@@ -34,7 +34,7 @@
 #include "platform_config.h"
 
 /* NOTE: BM-09 uses USB_OTG_HS peripheral and BM-14 uses USB_OTG_FS peripheral */
-/* Define one of below in platform_config.h or product-id.mk - Satish */
+/* Define one of below in platform_config.h or platform-id.mk - Satish */
 //#define USE_USB_OTG_FS
 //#define USE_USB_OTG_HS
 
