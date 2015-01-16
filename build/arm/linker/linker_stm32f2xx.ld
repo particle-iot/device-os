@@ -126,6 +126,7 @@ SECTIONS
         _sbss = .;
         
         *(.bss)
+        *(.bss.*)
         *(COMMON)
         
 	    . = ALIGN(4);
