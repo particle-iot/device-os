@@ -98,6 +98,7 @@ DYNALIB_FN(hal,HAL_Interrupts_Disable_All)
         
 DYNALIB_FN(hal,HAL_OTA_FlashAddress)
 DYNALIB_FN(hal,HAL_OTA_FlashLength)
+DYNALIB_FN(hal,HAL_OTA_ChunkSize)
 
 DYNALIB_FN(hal,HAL_FLASH_Begin)
 DYNALIB_FN(hal,HAL_FLASH_Update)
