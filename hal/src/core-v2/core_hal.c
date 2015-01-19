@@ -36,6 +36,7 @@
 #include "rgbled.h"
 #include "delay_hal.h"
 #include "wiced.h"
+#include "wlan_internal.h"
 
 /**
  * Start of interrupt vector table.
@@ -84,6 +85,7 @@ extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 void HAL_Core_Init(void)
 {
     wiced_core_init();
+    wlan_initialize_dct();
 }
 
 /*******************************************************************************
@@ -153,6 +155,7 @@ void HAL_Core_Config(void)
 #ifdef USE_SERIAL_FLASH
     sFLASH_Init();
 #endif
+        
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)

@@ -30,6 +30,7 @@
 #include "softap.h"
 #include <string.h>
 #include <algorithm>
+#include "wlan_internal.h"
 
 bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
 {
@@ -43,6 +44,10 @@ bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
     return changed;
 }
 
+/**
+ * Initializes the DCT area if required.
+ * @return 
+ */
 wiced_result_t wlan_initialize_dct()
 {
     // find the next available slot, or use the first
