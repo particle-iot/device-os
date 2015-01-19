@@ -129,7 +129,7 @@ sock_handle_t socket_dispose(sock_handle_t handle) {
         delete handles[handle];
         handles[handle] = NULL;        
     }
-    return  SOCKET_INVALID;
+    return SOCKET_INVALID;
 }
 
 /**
@@ -145,7 +145,7 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addr
     wiced_tcp_socket_t* socket = from_handle(sd);
     if (socket) {
         result = wiced_tcp_bind(socket, WICED_ANY_PORT);
-        if (result==WICED_SUCCESS) {            
+        if (result==WICED_SUCCESS) {
             const uint8_t* data = addr->sa_data;
             unsigned port = data[0]<<8 | data[1];
             unsigned timeout = 300*1000;
@@ -297,12 +297,6 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
     sock_result_t result = -1;
     wiced_tcp_socket_t* socket = from_handle(sd);
     if (socket) {
-//        char buf[30];
-//        sprintf(buf, "%d", (int)len);
-//        for (unsigned i=0; i<len; i++) {
-//            ((uint8_t*)buffer)[i] = i%32+'A';
-//        }
-//        strcpy((char*)buffer, buf);
         result = wiced_tcp_send_buffer(socket, buffer, uint16_t(len)) ? -1 : len;
         DEBUG("Write %d bytes to socket %d", (int)len, (int)sd);
     }
