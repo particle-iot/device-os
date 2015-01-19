@@ -71,7 +71,7 @@ bool spark_protocol_send_subscription_device(SparkProtocol* protocol, const char
 bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope);
 bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, EventHandler handler);
 bool spark_protocol_send_time_request(SparkProtocol* protocol);
-
+void spark_protocol_send_subscriptions(SparkProtocol* protocol);
 
 
 /**

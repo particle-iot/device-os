@@ -1,6 +1,9 @@
 MODULE=bootloader
 BOOTLOADER_MODULE_PATH=.
 
+BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
+
+
 DEPENDENCIES = platform hal services
 MAKE_DEPENDENCIES = platform services
 # dependent on HAL headers, but not the library

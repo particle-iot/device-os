@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    spark_protocol.cpp
-  * @authors  Zachary Crockett
+  * @authors  Zachary Crockett, Matthew McGowan
   * @version V1.0.0
   * @date    15-Nov-2013
   * @brief   SPARK PROTOCOL
@@ -554,8 +554,81 @@ bool SparkProtocol::send_subscription(const char *event_name,
   return (0 <= blocking_send(queue, buflen + 2));
 }
 
-bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handler)
+void SparkProtocol::send_subscriptions()
 {
+  const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
+  for (int i = 0; i < NUM_HANDLERS; i++)
+  {
+    if (NULL != event_handlers[i].handler)
+    {
+        if (event_handlers[i].device_id[0]) 
+        {
+            send_subscription(event_handlers[i].filter, event_handlers[i].device_id);
+        }
+        else
+        {
+            send_subscription(event_handlers[i].filter, event_handlers[i].scope);
+        }
+    }
+  }
+}
+
+void SparkProtocol::remove_event_handlers(const char* event_name) 
+{
+    if (NULL == event_name)
+    {
+        memset(event_handlers, 0, sizeof(event_handlers));
+    }
+    else
+    {        
+        const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
+        int dest = 0;
+        for (int i = 0; i < NUM_HANDLERS; i++)
+        {
+          if (NULL != event_handlers[i].filter && !strcmp(event_name, event_handlers[i].filter))
+          {
+              memset(&event_handlers[i], 0, sizeof(event_handlers[i]));
+          }
+          else
+          {
+              if (dest!=i) {
+                memcpy(event_handlers+dest, event_handlers+i, sizeof(event_handlers[i]));
+                memset(event_handlers+i, 0, sizeof(event_handlers[i]));
+              }
+              dest++;
+          }
+        }
+    }
+}
+
+bool SparkProtocol::event_handler_exists(const char *event_name, EventHandler handler, 
+    SubscriptionScope::Enum scope, const char* id)
+{
+  const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
+  for (int i = 0; i < NUM_HANDLERS; i++)
+  {
+      if (event_handlers[i].handler==handler && event_handlers[i].scope==scope) {
+        const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
+        const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);
+        if (!strncmp(event_handlers[i].filter, event_name, FILTER_LEN)) {
+            const size_t MAX_ID_LEN = sizeof(event_handlers[i].device_id)-1;
+            const size_t id_len = id ? strnlen(id, MAX_ID_LEN) : 0;
+            if (id_len)
+                return !strncmp(event_handlers[i].device_id, id, id_len);
+            else
+                return !event_handlers[i].device_id[0];
+        }
+      }
+  }   
+  return false;
+}
+
+bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handler, 
+    SubscriptionScope::Enum scope, const char* id)
+{
+    if (event_handler_exists(event_name, handler, scope, id))
+        return true;
+    
   const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
   for (int i = 0; i < NUM_HANDLERS; i++)
   {
@@ -566,6 +639,12 @@ bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handl
       memcpy(event_handlers[i].filter, event_name, FILTER_LEN);
       memset(event_handlers[i].filter + FILTER_LEN, 0, MAX_FILTER_LEN - FILTER_LEN);
       event_handlers[i].handler = handler;
+      event_handlers[i].device_id[0] = 0;
+        const size_t MAX_ID_LEN = sizeof(event_handlers[i].device_id)-1;
+        const size_t id_len = id ? strnlen(id, MAX_ID_LEN) : 0;
+        memcpy(event_handlers[i].device_id, id, id_len);
+        event_handlers[i].device_id[id_len] = 0;
+        event_handlers[i].scope = scope;
       return true;
     }
   }
@@ -1055,15 +1134,8 @@ bool SparkProtocol::handle_received_message(void)
       callback_finish_firmware_update();
       break;
     case CoAPMessageType::EVENT:
-    {
-      const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(EventHandler);
-      for (int i = 0; i < NUM_HANDLERS; i++)
-      {
-        if (NULL == event_handlers[i].handler)
-        {
-          break;
-        }
-
+    { 
+        // fist decode the event data before looking for a handler
         unsigned char pad = queue[len - 1];
         if (0 == pad || 16 < pad)
         {
@@ -1098,8 +1170,34 @@ bool SparkProtocol::handle_received_message(void)
         }
         event_name_length = next_dst - event_name;
 
+        if (next_src < end && 0x30 == (*next_src & 0xf0))
+        {
+          // Max-Age option is next, which we ignore
+          size_t next_len = CoAP::option_decode(&next_src);
+          next_src += next_len;
+        }
+
+        unsigned char *data = NULL;
+        if (next_src < end && 0xff == *next_src)
+        {
+          // payload is next
+          data = next_src + 1;
+          // null terminate data string
+          *end = 0;
+        }
+        // null terminate event name string
+        event_name[event_name_length] = 0;
+
+      const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(EventHandler);
+      for (int i = 0; i < NUM_HANDLERS; i++)
+      {
+        if (NULL == event_handlers[i].handler)
+        {
+           break;
+        }
         const size_t MAX_FILTER_LENGTH = sizeof(event_handlers[i].filter);
         const size_t filter_length = strnlen(event_handlers[i].filter, MAX_FILTER_LENGTH);
+        
         if (event_name_length < filter_length)
         {
           // does not match this filter, try the next event handler
@@ -1108,26 +1206,9 @@ bool SparkProtocol::handle_received_message(void)
 
         const int cmp = memcmp(event_handlers[i].filter, event_name, filter_length);
         if (0 == cmp)
-        {
-          if (next_src < end && 0x30 == (*next_src & 0xf0))
-          {
-            // Max-Age option is next, which we ignore
-            size_t next_len = CoAP::option_decode(&next_src);
-            next_src += next_len;
-          }
-
-          unsigned char *data = NULL;
-          if (next_src < end && 0xff == *next_src)
-          {
-            // payload is next
-            data = next_src + 1;
-            // null terminate data string
-            *end = 0;
-          }
-          // null terminate event name string
-          event_name[event_name_length] = 0;
-          event_handlers[i].handler((char *)event_name, (char *)data);
-          break;
+        {        
+            event_handlers[i].handler((char *)event_name, (char *)data);                    
+            break;
         }
         // else continue the for loop to try the next handler
       }

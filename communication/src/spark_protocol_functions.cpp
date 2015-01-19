@@ -68,12 +68,16 @@ bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char 
     return protocol->send_subscription(event_name, scope);
 }
 
-bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, EventHandler handler) {
-    return protocol->add_event_handler(event_name, handler);
+bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, 
+    EventHandler handler, SubscriptionScope::Enum scope, const char* device_id) {
+    return protocol->add_event_handler(event_name, handler, scope, device_id);
 }
 
 bool spark_protocol_send_time_request(SparkProtocol* protocol) {
     return protocol->send_time_request();
 }
 
+void spark_protocol_send_subscriptions(SparkProtocol* protocol) {
+    protocol->send_subscriptions();
+}
 
