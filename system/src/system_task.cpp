@@ -565,6 +565,8 @@ void network_off()
             SPARK_CLOUD_CONNECT = 0;
         }
 
+        SPARK_WLAN_STARTED = 0;
+        WLAN_DHCP = 0;
         SPARK_LED_FADE = 1;
         LED_SetRGBColor(RGB_COLOR_WHITE);
         LED_On(LED_RGB);
