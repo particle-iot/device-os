@@ -384,6 +384,9 @@ int Spark_Handshake(void)
     ultoa(HAL_OTA_FlashLength(), buf, 10);
     Spark.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
 
+    ultoa(HAL_OTA_ChunkSize(), buf, 10);
+    Spark.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
+
     if (!HAL_core_subsystem_version(buf, sizeof(buf))) {
         Spark.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
     }        
