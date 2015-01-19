@@ -1137,15 +1137,8 @@ bool SparkProtocol::handle_received_message(void)
       callback_finish_firmware_update();
       break;
     case CoAPMessageType::EVENT:
-    {
-      const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(EventHandler);
-      for (int i = 0; i < NUM_HANDLERS; i++)
-      {
-        if (NULL == event_handlers[i].handler)
-        {
-          break;
-        }
-
+    { 
+        // fist decode the event data before looking for a handler
         unsigned char pad = queue[len - 1];
         if (0 == pad || 16 < pad)
         {
@@ -1180,8 +1173,34 @@ bool SparkProtocol::handle_received_message(void)
         }
         event_name_length = next_dst - event_name;
 
+        if (next_src < end && 0x30 == (*next_src & 0xf0))
+        {
+          // Max-Age option is next, which we ignore
+          size_t next_len = CoAP::option_decode(&next_src);
+          next_src += next_len;
+        }
+
+        unsigned char *data = NULL;
+        if (next_src < end && 0xff == *next_src)
+        {
+          // payload is next
+          data = next_src + 1;
+          // null terminate data string
+          *end = 0;
+        }
+        // null terminate event name string
+        event_name[event_name_length] = 0;
+
+      const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(EventHandler);
+      for (int i = 0; i < NUM_HANDLERS; i++)
+      {
+        if (NULL == event_handlers[i].handler)
+        {
+           break;
+        }
         const size_t MAX_FILTER_LENGTH = sizeof(event_handlers[i].filter);
         const size_t filter_length = strnlen(event_handlers[i].filter, MAX_FILTER_LENGTH);
+        
         if (event_name_length < filter_length)
         {
           // does not match this filter, try the next event handler
@@ -1190,26 +1209,9 @@ bool SparkProtocol::handle_received_message(void)
 
         const int cmp = memcmp(event_handlers[i].filter, event_name, filter_length);
         if (0 == cmp)
-        {
-          if (next_src < end && 0x30 == (*next_src & 0xf0))
-          {
-            // Max-Age option is next, which we ignore
-            size_t next_len = CoAP::option_decode(&next_src);
-            next_src += next_len;
-          }
-
-          unsigned char *data = NULL;
-          if (next_src < end && 0xff == *next_src)
-          {
-            // payload is next
-            data = next_src + 1;
-            // null terminate data string
-            *end = 0;
-          }
-          // null terminate event name string
-          event_name[event_name_length] = 0;
-          event_handlers[i].handler((char *)event_name, (char *)data);
-          break;
+        {        
+            event_handlers[i].handler((char *)event_name, (char *)data);                    
+            break;
         }
         // else continue the for loop to try the next handler
       }
