@@ -34,9 +34,7 @@ test(Spark_Publish_Silently_Fails_When_Not_Connected) {
 
 int not_connected_handler_count;
 void Spark_Subscribe_When_Not_Connected_Handler(const char* topic, const char* data) {
-    String deviceId = Spark.deviceID();
-    Serial.println("event ***");
-    if (data) Serial.println(data);
+    String deviceId = Spark.deviceID();        
     if (data && !strcmp(data, deviceId.c_str())) {
         not_connected_handler_count++;
     }
