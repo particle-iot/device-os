@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    spark_protocol.h
-  * @authors  Zachary Crockett
+  * @authors  Zachary Crockett, Matthew McGowan
   * @version V1.0.0
   * @date    15-Nov-2013
   * @brief   SPARK PROTOCOL
@@ -118,9 +118,14 @@ class SparkProtocol
                        const void *return_value, int length);
     bool send_event(const char *event_name, const char *data,
                     int ttl, EventType::Enum event_type);
+    bool add_event_handler(const char *event_name, EventHandler handler, 
+                        SubscriptionScope::Enum scope, const char* device_id);
+    bool event_handler_exists(const char *event_name, EventHandler handler, 
+        SubscriptionScope::Enum scope, const char* id);
+    void remove_event_handlers(const char* event_name);
+    void send_subscriptions();
     bool send_subscription(const char *event_name, const char *device_id);
     bool send_subscription(const char *event_name, SubscriptionScope::Enum scope);
-    bool add_event_handler(const char *event_name, EventHandler handler);
     size_t time_request(unsigned char *buf);
     bool send_time_request(void);
     void chunk_received(unsigned char *buf, unsigned char token,

@@ -48,6 +48,8 @@ struct FilteringEventHandler
 {
   char filter[64];
   EventHandler handler;
+  SubscriptionScope::Enum scope;
+  char device_id[13];
 };
 
 size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,

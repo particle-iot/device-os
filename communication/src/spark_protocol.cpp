@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    spark_protocol.cpp
-  * @authors  Zachary Crockett
+  * @authors  Zachary Crockett, Matthew McGowan
   * @version V1.0.0
   * @date    15-Nov-2013
   * @brief   SPARK PROTOCOL
@@ -557,8 +557,81 @@ bool SparkProtocol::send_subscription(const char *event_name,
   return (0 <= blocking_send(queue, buflen + 2));
 }
 
-bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handler)
+void SparkProtocol::send_subscriptions()
 {
+  const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
+  for (int i = 0; i < NUM_HANDLERS; i++)
+  {
+    if (NULL != event_handlers[i].handler)
+    {
+        if (event_handlers[i].device_id[0]) 
+        {
+            send_subscription(event_handlers[i].filter, event_handlers[i].device_id);
+        }
+        else
+        {
+            send_subscription(event_handlers[i].filter, event_handlers[i].scope);
+        }
+    }
+  }
+}
+
+void SparkProtocol::remove_event_handlers(const char* event_name) 
+{
+    if (NULL == event_name)
+    {
+        memset(event_handlers, 0, sizeof(event_handlers));
+    }
+    else
+    {        
+        const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
+        int dest = 0;
+        for (int i = 0; i < NUM_HANDLERS; i++)
+        {
+          if (NULL != event_handlers[i].filter && !strcmp(event_name, event_handlers[i].filter))
+          {
+              memset(&event_handlers[i], 0, sizeof(event_handlers[i]));
+          }
+          else
+          {
+              if (dest!=i) {
+                memcpy(event_handlers+dest, event_handlers+i, sizeof(event_handlers[i]));
+                memset(event_handlers+i, 0, sizeof(event_handlers[i]));
+              }
+              dest++;
+          }
+        }
+    }
+}
+
+bool SparkProtocol::event_handler_exists(const char *event_name, EventHandler handler, 
+    SubscriptionScope::Enum scope, const char* id)
+{
+  const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
+  for (int i = 0; i < NUM_HANDLERS; i++)
+  {
+      if (event_handlers[i].handler==handler && event_handlers[i].scope==scope) {
+        const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
+        const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);
+        if (!strncmp(event_handlers[i].filter, event_name, FILTER_LEN)) {
+            const size_t MAX_ID_LEN = sizeof(event_handlers[i].device_id)-1;
+            const size_t id_len = id ? strnlen(id, MAX_ID_LEN) : 0;
+            if (id_len)
+                return !strncmp(event_handlers[i].device_id, id, id_len);
+            else
+                return !event_handlers[i].device_id[0];
+        }
+      }
+  }   
+  return false;
+}
+
+bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handler, 
+    SubscriptionScope::Enum scope, const char* id)
+{
+    if (event_handler_exists(event_name, handler, scope, id))
+        return true;
+    
   const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
   for (int i = 0; i < NUM_HANDLERS; i++)
   {
@@ -569,6 +642,12 @@ bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handl
       memcpy(event_handlers[i].filter, event_name, FILTER_LEN);
       memset(event_handlers[i].filter + FILTER_LEN, 0, MAX_FILTER_LEN - FILTER_LEN);
       event_handlers[i].handler = handler;
+      event_handlers[i].device_id[0] = 0;
+        const size_t MAX_ID_LEN = sizeof(event_handlers[i].device_id)-1;
+        const size_t id_len = id ? strnlen(id, MAX_ID_LEN) : 0;
+        memcpy(event_handlers[i].device_id, id, id_len);
+        event_handlers[i].device_id[id_len] = 0;
+        event_handlers[i].scope = scope;
       return true;
     }
   }

@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file    spark_utilities.cpp
- * @author  Satish Nair, Zachary Crockett and Mohit Bhoite
+ * @author  Satish Nair, Zachary Crockett, Mohit Bhoite, Matthew McGowan
  * @version V1.0.0
  * @date    13-March-2013
  *
@@ -318,10 +318,15 @@ void SparkClass::publish(String eventName, String eventData, int ttl, Spark_Even
   publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
 }
 
+void SparkClass::unsubscribe()
+{
+    spark_protocol.remove_event_handlers(NULL);
+}
+
 bool SparkClass::subscribe(const char *eventName, EventHandler handler)
 {
-  bool success = spark_protocol.add_event_handler(eventName, handler);
-  if (success)
+  bool success = spark_protocol.add_event_handler(eventName, handler, SubscriptionScope::FIREHOSE, NULL);
+  if (success && connected())
   {
     success = spark_protocol.send_subscription(eventName, SubscriptionScope::FIREHOSE);
   }
@@ -330,8 +335,8 @@ bool SparkClass::subscribe(const char *eventName, EventHandler handler)
 
 bool SparkClass::subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
 {
-  bool success = spark_protocol.add_event_handler(eventName, handler);
-  if (success)
+  bool success = spark_protocol.add_event_handler(eventName, handler, SubscriptionScope::MY_DEVICES, NULL);
+  if (success && connected())
   {
     success = spark_protocol.send_subscription(eventName, SubscriptionScope::MY_DEVICES);
   }
@@ -340,7 +345,7 @@ bool SparkClass::subscribe(const char *eventName, EventHandler handler, Spark_Su
 
 bool SparkClass::subscribe(const char *eventName, EventHandler handler, const char *deviceID)
 {
-  bool success = spark_protocol.add_event_handler(eventName, handler);
+  bool success = spark_protocol.add_event_handler(eventName, handler, SubscriptionScope::MY_DEVICES, deviceID);
   if (success)
   {
     success = spark_protocol.send_subscription(eventName, deviceID);
@@ -659,13 +664,15 @@ int Spark_Handshake(void)
 {
   spark_protocol.reset_updating();
   int err = spark_protocol.handshake();
-
+  if (!err) {
   Multicast_Presence_Announcement();
   spark_protocol.send_time_request();
+    spark_protocol.send_subscriptions();
 
   char patchstr[8];  
   if (!core_read_subsystem_version(patchstr, 8)) {
       Spark.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, patchstr, 60, PRIVATE);
+  }
   }
   return err;
 }

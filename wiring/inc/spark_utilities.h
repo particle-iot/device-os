@@ -126,6 +126,7 @@ public:
 	static bool subscribe(String eventName, EventHandler handler);
 	static bool subscribe(String eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope);
 	static bool subscribe(String eventName, EventHandler handler, String deviceID);
+        static void unsubscribe();              
 	static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
 	static void sleep(long seconds);
 	static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
