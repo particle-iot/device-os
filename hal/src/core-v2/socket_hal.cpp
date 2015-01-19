@@ -279,10 +279,8 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol)
     sock_handle_t result = socket_init();
     if (is_valid(result)) {
         wiced_tcp_socket_t* socket = from_handle(result);        
-        result = wiced_tcp_create_socket(socket, WICED_STA_INTERFACE);
-        if (result!=WICED_SUCCESS) {
-            socket_dispose(result);
-        }        
+        if (wiced_tcp_create_socket(socket, WICED_STA_INTERFACE))        
+            socket_dispose(result);        
     }        
     return result;
 }
