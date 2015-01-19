@@ -150,7 +150,7 @@ SECTIONS
         _sbss = .;
         
         *(.bss)
-        *(.bss*)
+        *(.bss.*)
         *(COMMON)
         
 	    . = ALIGN(4);
