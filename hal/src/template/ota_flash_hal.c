@@ -35,6 +35,10 @@ uint32_t HAL_OTA_FlashLength()
     return 0;
 }
     
+uint16_t HAL_OTA_ChunkSize()
+{
+    return 0;
+}
 
 void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize) 
 {

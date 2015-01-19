@@ -33,12 +33,17 @@ uint32_t HAL_OTA_FlashAddress()
 }
 
 #define FLASH_MAX_SIZE          (int32_t)(INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS)
+#define OTA_CHUNK_SIZE          512
 
 uint32_t HAL_OTA_FlashLength()
 {
     return FLASH_MAX_SIZE;
 }
     
+uint16_t HAL_OTA_ChunkSize()
+{
+    return OTA_CHUNK_SIZE;
+}
 
 void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize) 
 {

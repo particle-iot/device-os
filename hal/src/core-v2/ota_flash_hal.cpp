@@ -28,6 +28,8 @@
 #include "dct_hal.h"
 #include <cstring>
 
+#define OTA_CHUNK_SIZE          512
+
 uint32_t HAL_OTA_FlashAddress()
 {
 #ifdef USE_SERIAL_FLASH
@@ -45,7 +47,12 @@ uint32_t HAL_OTA_FlashLength()
 {
     return FIRMWARE_IMAGE_SIZE;
 }
-    
+
+uint16_t HAL_OTA_ChunkSize()
+{
+    return OTA_CHUNK_SIZE;
+}
+
 void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize) 
 {
     FLASH_Begin(sFLASH_Address, fileSize);
