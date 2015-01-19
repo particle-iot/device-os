@@ -17,7 +17,9 @@
 ### BUGFIXES
 
 - SOS calling `Spark.publish()` in `SEMI_AUTOMATIC`/`MANUAL` mode
-
+- Subscriptions maintained when cloud disconnected. [#278](https://github.com/spark/firmware/issues/278)
+- Fix for events with composite names. [#382](https://github.com/spark/firmware/issues/382)
+- `WiFi.ready()` returning true after `WiFi.off()` in manual mode. [#378](https://github.com/spark/firmware/issues/378)
 
 ## v0.3.3
 
