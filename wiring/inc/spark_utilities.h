@@ -112,14 +112,13 @@ class SparkClass {
 public:
 	static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
 	static void function(const char *funcKey, int (*pFunc)(String paramString));
-	static void publish(const char *eventName);
-	static void publish(const char *eventName, const char *eventData);
-	static void publish(const char *eventName, const char *eventData, int ttl);
-	static void publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType);
-	static void publish(String eventName);
-	static void publish(String eventName, String eventData);
-	static void publish(String eventName, String eventData, int ttl);
-	static void publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType);
+	static void publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC);
+	static void publish(const char *eventName, const char *eventData, Spark_Event_TypeDef eventType=PUBLIC);        
+	static void publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC);	
+	static void publish(String eventName, Spark_Event_TypeDef eventType=PUBLIC);
+	static void publish(String eventName, String eventData, Spark_Event_TypeDef eventType=PUBLIC);
+	static void publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC);
+	
 	static bool subscribe(const char *eventName, EventHandler handler);
 	static bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope);
 	static bool subscribe(const char *eventName, EventHandler handler, const char *deviceID);

@@ -278,19 +278,14 @@ void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString))
 	}
 }
 
-void SparkClass::publish(const char *eventName)
+void SparkClass::publish(const char *eventName, Spark_Event_TypeDef eventType)
 {
-  spark_protocol.send_event(eventName, NULL, 60, EventType::PUBLIC);
+  publish(eventName, NULL, 60, eventType);
 }
 
-void SparkClass::publish(const char *eventName, const char *eventData)
+void SparkClass::publish(const char *eventName, const char *eventData, Spark_Event_TypeDef eventType)
 {
-  spark_protocol.send_event(eventName, eventData, 60, EventType::PUBLIC);
-}
-
-void SparkClass::publish(const char *eventName, const char *eventData, int ttl)
-{
-  spark_protocol.send_event(eventName, eventData, ttl, EventType::PUBLIC);
+  publish(eventName, eventData, 60, eventType);
 }
 
 void SparkClass::publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType)
@@ -298,19 +293,14 @@ void SparkClass::publish(const char *eventName, const char *eventData, int ttl, 
   spark_protocol.send_event(eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
 }
 
-void SparkClass::publish(String eventName)
+void SparkClass::publish(String eventName, Spark_Event_TypeDef eventType)
 {
-  publish(eventName.c_str());
+  publish(eventName.c_str(), eventType);
 }
 
-void SparkClass::publish(String eventName, String eventData)
+void SparkClass::publish(String eventName, String eventData, Spark_Event_TypeDef eventType)
 {
-  publish(eventName.c_str(), eventData.c_str());
-}
-
-void SparkClass::publish(String eventName, String eventData, int ttl)
-{
-  publish(eventName.c_str(), eventData.c_str(), ttl);
+  publish(eventName.c_str(), eventData.c_str(), eventType);
 }
 
 void SparkClass::publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType)
