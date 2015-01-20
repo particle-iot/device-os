@@ -199,7 +199,6 @@ void Spark_Process_Events()
 {
     if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
     {
-        SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
     }

@@ -117,7 +117,6 @@ void Start_Smart_Config(void)
 
 	SPARK_CLOUD_SOCKETED = 0;
 	SPARK_CLOUD_CONNECTED = 0;
-	SPARK_FLASH_UPDATE = 0;
 	SPARK_LED_FADE = 0;
 
 	LED_SetRGBColor(RGB_COLOR_BLUE);
@@ -206,7 +205,6 @@ void manage_network_connection()
       SPARK_WLAN_STARTED = 0;
       SPARK_CLOUD_SOCKETED = 0;
       SPARK_CLOUD_CONNECTED = 0;
-      SPARK_FLASH_UPDATE = 0;
       Spark_Error_Count = 0;
       cfod_count = 0;
 
@@ -453,7 +451,6 @@ void HAL_WLAN_notify_disconnected()
     WLAN_DHCP = 0;
     SPARK_CLOUD_SOCKETED = 0;
     SPARK_CLOUD_CONNECTED = 0;
-    SPARK_FLASH_UPDATE = 0;
     SPARK_LED_FADE = 1;
     LED_SetRGBColor(RGB_COLOR_BLUE);
     LED_On(LED_RGB);
@@ -482,7 +479,6 @@ void HAL_WLAN_notify_can_shutdown()
 void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
 {
     if (socket==sparkSocket) {
-        SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
     }    
