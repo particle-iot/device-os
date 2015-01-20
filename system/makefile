@@ -32,7 +32,7 @@ endif
 
 else
 TARGET_TYPE = a
-BUILD_PATH_EXT=$(ARCH)
+BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 
 
 endif
