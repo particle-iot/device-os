@@ -813,11 +813,13 @@ SparkProtocol* spark_protocol_instance(void)
     return &sp;
 }
 
-/* Usage:
+/* Sample Usage:
  * unsigned char device_public_key[162];
- * parse_device_pubkey_from_privkey(device_public_key);
+ * unsigned char device_private_key[612];
+ * HAL_FLASH_Read_CorePrivateKey(device_private_key);
+ * parse_pubkey_from_privkey(device_public_key, device_private_key);
  */
-void parse_device_pubkey_from_privkey(unsigned char *device_pubkey)
+void parse_pubkey_from_privkey(unsigned char *device_pubkey, const unsigned char *device_privkey)
 {
     unsigned char device_pubkey_header[29] = {
             0x30, 0x81, 0x9f, 0x30, 0x0d, 0x06, 0x09, 0x2a,
@@ -827,10 +829,6 @@ void parse_device_pubkey_from_privkey(unsigned char *device_pubkey)
     };
 
     unsigned char device_pubkey_exponent[5] = {0x02, 0x03, 0x01, 0x00, 0x01};
-
-    unsigned char device_privkey[612];
-
-    HAL_FLASH_Read_CorePrivateKey(device_privkey);
 
     memcpy(device_pubkey, device_pubkey_header, 29);
     memcpy(device_pubkey + 29, device_privkey + 11, 128);
