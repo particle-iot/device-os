@@ -17,7 +17,6 @@ volatile uint8_t SPARK_CLOUD_CONNECTED;
 volatile uint8_t SPARK_FLASH_UPDATE;
 volatile uint32_t TimingFlashUpdateTimeout;
 
-
 void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler)
 {
     Ymodem_Serial_Flash_Update = handler;
@@ -25,26 +24,26 @@ void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler h
 
 bool system_serialSaveFile(Stream *serialObj, uint32_t sFlashAddress)
 {
-  bool status = false;
+    bool status = false;
 
-  if(NULL != Ymodem_Serial_Flash_Update)
-  {
-    status = Ymodem_Serial_Flash_Update(serialObj, sFlashAddress);
-    SPARK_FLASH_UPDATE = 0;
-    TimingFlashUpdateTimeout = 0;
-  }
+    if (NULL != Ymodem_Serial_Flash_Update)
+    {
+        status = Ymodem_Serial_Flash_Update(serialObj, sFlashAddress);
+        SPARK_FLASH_UPDATE = 0;
+        TimingFlashUpdateTimeout = 0;
+    }
 
-  return status;
+    return status;
 }
 
 bool system_serialFirmwareUpdate(Stream *serialObj)
 {
     bool status = false;
 
-    if(NULL != Ymodem_Serial_Flash_Update)
+    if (NULL != Ymodem_Serial_Flash_Update)
     {
         status = Ymodem_Serial_Flash_Update(serialObj, HAL_OTA_FlashAddress());
-        if(status == true)
+        if (status == true)
         {
             serialObj->println("Restarting system to apply firmware update...");
             HAL_Delay_Milliseconds(100);
@@ -65,13 +64,13 @@ bool system_serialFirmwareUpdate(Stream *serialObj)
     return status;
 }
 
-void begin_flash_file(int flashType, uint32_t sFlashAddress, uint32_t fileSize) 
+void begin_flash_file(int flashType, uint32_t sFlashAddress, uint32_t fileSize)
 {
-  RGB.control(true);
-  RGB.color(RGB_COLOR_MAGENTA);
-  SPARK_FLASH_UPDATE = flashType;
-  TimingFlashUpdateTimeout = 0;
-  HAL_FLASH_Begin(sFlashAddress, fileSize);  
+    RGB.control(true);
+    RGB.color(RGB_COLOR_MAGENTA);
+    SPARK_FLASH_UPDATE = flashType;
+    TimingFlashUpdateTimeout = 0;
+    HAL_FLASH_Begin(sFlashAddress, fileSize);
 }
 
 void Spark_Prepare_To_Save_File(uint32_t sFlashAddress, uint32_t fileSize)
@@ -86,24 +85,24 @@ void Spark_Prepare_For_Firmware_Update(void)
 
 void Spark_Finish_Firmware_Update(void)
 {
-  if (SPARK_FLASH_UPDATE == 2)
-  {
-    SPARK_FLASH_UPDATE = 0;
-    TimingFlashUpdateTimeout = 0;
-  }
-  else
-  {
-    //Reset the system to complete the OTA update
-    HAL_FLASH_End();
-  }
-  RGB.control(false);
+    if (SPARK_FLASH_UPDATE == 2)
+    {
+        SPARK_FLASH_UPDATE = 0;
+        TimingFlashUpdateTimeout = 0;
+    }
+    else
+    {
+        //Reset the system to complete the OTA update
+        HAL_FLASH_End();
+    }
+    RGB.control(false);
 }
 
 uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, uint32_t buflen)
 {
-  uint16_t chunkUpdatedIndex;
-  TimingFlashUpdateTimeout = 0;
-  chunkUpdatedIndex = HAL_FLASH_Update(buf, buflen);
-  LED_Toggle(LED_RGB);
-  return chunkUpdatedIndex;
+    uint16_t chunkUpdatedIndex;
+    TimingFlashUpdateTimeout = 0;
+    chunkUpdatedIndex = HAL_FLASH_Update(buf, buflen);
+    LED_Toggle(LED_RGB);
+    return chunkUpdatedIndex;
 }
