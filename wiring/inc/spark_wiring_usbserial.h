@@ -33,7 +33,7 @@
 class USBSerial : public Stream
 {
 private:
-
+    static int     speed;
 public:
 	// public methods
 	USBSerial();

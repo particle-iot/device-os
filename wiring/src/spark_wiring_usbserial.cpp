@@ -26,6 +26,8 @@
 
 #include "spark_wiring_usbserial.h"
 
+int USBSerial::speed = 0;
+
 //
 // Constructor
 //
@@ -39,12 +41,18 @@ USBSerial::USBSerial()
 
 void USBSerial::begin(long speed)
 {
-	USB_USART_Init(speed);
+    if (this->speed!=speed) {
+        end();
+        USB_USART_Init(speed);
+        this->speed = speed;
+    }
 }
 
 void USBSerial::end()
 {
-	USB_USART_DeInit();
+    if (speed)
+        USB_USART_DeInit();
+    speed = 0;
 }
 
 
