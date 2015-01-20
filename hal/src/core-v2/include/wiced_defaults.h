@@ -23,31 +23,31 @@ extern "C"
 
 /* Select which group of functions are allowed to print */
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-#define WPRINT_ENABLE_APP_INFO           /* Application prints */
+//#define WPRINT_ENABLE_APP_INFO           /* Application prints */
 //#define WPRINT_ENABLE_APP_DEBUG
 //#define WPRINT_ENABLE_APP_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-#define WPRINT_ENABLE_LIB_INFO           /* General library prints */
+//#define WPRINT_ENABLE_LIB_INFO           /* General library prints */
 //#define WPRINT_ENABLE_LIB_DEBUG
 //#define WPRINT_ENABLE_LIB_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-#define WPRINT_ENABLE_WEBSERVER_INFO     /* Webserver prints */
+//#define WPRINT_ENABLE_WEBSERVER_INFO     /* Webserver prints */
 //#define WPRINT_ENABLE_WEBSERVER_DEBUG
 //#define WPRINT_ENABLE_WEBSERVER_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-#define WPRINT_ENABLE_NETWORK_INFO       /* Network stack prints */
+//#define WPRINT_ENABLE_NETWORK_INFO       /* Network stack prints */
 //#define WPRINT_ENABLE_NETWORK_DEBUG
 //#define WPRINT_ENABLE_NETWORK_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-#define WPRINT_ENABLE_RTOS_INFO          /* RTOS prints */
+//#define WPRINT_ENABLE_RTOS_INFO          /* RTOS prints */
 //#define WPRINT_ENABLE_RTOS_DEBUG
 //#define WPRINT_ENABLE_RTOS_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-#define WPRINT_ENABLE_WPS_INFO           /* WPS stack prints */
+//#define WPRINT_ENABLE_WPS_INFO           /* WPS stack prints */
 //#define WPRINT_ENABLE_WPS_DEBUG
 //#define WPRINT_ENABLE_WPS_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-#define WPRINT_ENABLE_WICED_INFO         /* Wiced internal prints */
+//#define WPRINT_ENABLE_WICED_INFO         /* Wiced internal prints */
 //#define WPRINT_ENABLE_WICED_DEBUG
 //#define WPRINT_ENABLE_WICED_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -55,7 +55,7 @@ extern "C"
 //#define WPRINT_ENABLE_WWD_DEBUG
 //#define WPRINT_ENABLE_WWD_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-#define WPRINT_ENABLE_PLATFORM_INFO      /* Platform prints */
+//#define WPRINT_ENABLE_PLATFORM_INFO      /* Platform prints */
 //#define WPRINT_ENABLE_PLATFORM_DEBUG
 //#define WPRINT_ENABLE_PLATFORM_ERROR
 
@@ -118,7 +118,7 @@ extern "C"
 
 /************************************************************************
  * Country code */
-#define WICED_DEFAULT_COUNTRY_CODE            WICED_COUNTRY_AUSTRALIA
+#define WICED_DEFAULT_COUNTRY_CODE            WICED_COUNTRY_UNITED_STATES
 
 /************************************************************************
  * Application thread stack size */
@@ -152,7 +152,9 @@ extern "C"
 
 /************************************************************************
  * Uncomment to disable standard IO, i.e. printf(), etc. */
-//#define WICED_DISABLE_STDIO
+#ifndef WICED_DISABLE_STDIO
+#define WICED_DISABLE_STDIO
+#endif
 
 /************************************************************************
  * Uncomment to disable MCU powersave API functions */
@@ -164,7 +166,7 @@ extern "C"
 
 /************************************************************************
  * Uncomment both to disable TLS completely*/
-//#define WICED_DISABLE_TLS
+#define WICED_DISABLE_TLS
 
 #ifdef __cplusplus
 } /*extern "C" */
