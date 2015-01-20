@@ -449,7 +449,16 @@ const uint8_t* fetch_device_private_key()
 
 const uint8_t* fetch_device_public_key()
 {
-    return (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);    
+    uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
+    memset(pubkey, 0, sizeof(pubkey));
+    parse_pubkey_from_privkey(pubkey, fetch_device_private_key());
+    
+    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
+    if (memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
+        dct_write_app_data(pubkey, DCT_DEVICE_PUBLIC_KEY_OFFSET, DCT_DEVICE_PUBLIC_KEY_SIZE);
+        flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
+    }
+    return flash_pub_key;
 }
 
 
