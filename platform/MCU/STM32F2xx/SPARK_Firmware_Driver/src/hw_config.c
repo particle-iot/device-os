@@ -920,15 +920,24 @@ void BACKUP_Flash_Reset(void)
 void OTA_Flash_Reset(void)
 {
 #ifdef USE_SERIAL_FLASH
-    //First take backup of the current application firmware to External Flash
-    //Commented now since on BM-14 there's not much external flash space.
-    //By uncommenting the below code, the crucial factory reset firmware
-    //is at risk of corruption.
-    //FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
+/*
+    First take backup of the current application firmware to External Flash
+    Commented for BM-14 since there's not much external flash space.
+    By uncommenting the below code, the crucial factory reset firmware
+    is at risk of corruption.
 
-    system_flags.FLASH_OTA_Update_SysFlag = 0x5555;
-    Save_SystemFlags();
-    RTC_WriteBackupRegister(RTC_BKP_DR10, 0x5555);
+    //FLASH_Backup(EXTERNAL_FLASH_BKP_ADDRESS);
+*/
+
+/*
+    Following code commented for BM-xx since interrupting the bootloader while it
+    is copying from external to internal flash: the copy process should be repeated.
+    Reverting to factory firmware is NOT an outcome here.
+
+    //system_flags.FLASH_OTA_Update_SysFlag = 0x5555;
+    //Save_SystemFlags();
+    //RTC_WriteBackupRegister(RTC_BKP_DR10, 0x5555);
+*/
 
     //Restore the OTA programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_OTA_ADDRESS);
