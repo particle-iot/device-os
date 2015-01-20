@@ -39,6 +39,12 @@ void parse_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* device_pri
     memcpy(device_pubkey + 157, device_pubkey_exponent, 5);
 }
 
+bool is_device_claimed()
+{
+    const uint8_t* claimed = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CLAIMED_OFFSET);
+    return (*claimed)=='1';
+}
+
 /**
  * Abstraction of an input stream.
  */
@@ -461,7 +467,6 @@ const uint8_t* fetch_device_public_key()
     return flash_pub_key;
 }
 
-
 /**
  * 
  * @param hex_encoded   The hex_encoded encrypted data
@@ -636,6 +641,8 @@ protected:
     void produce_response(Writer& writer, int result) {
         write_char(writer, '{');
         write_json_string(writer, "id", device_id);
+        write_char(writer, ',');
+        write_json_string(writer, "c", is_device_claimed() ? "1" : "0");
         write_char(writer, '}');
     }
 };

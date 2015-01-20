@@ -115,11 +115,21 @@ void check() {
 
 uint16_t HAL_Set_Claim_Code(const char* code) 
 {
-    char c = '\0';
-    if (code)
+    if (code) 
         return dct_write_app_data(code, DCT_CLAIM_CODE_OFFSET, DCT_CLAIM_CODE_SIZE);
-    else
-        return dct_write_app_data(&c, DCT_CLAIM_CODE_OFFSET, 1);
+    else // clear code
+    {
+        char c = '\0';
+        dct_write_app_data(&c, DCT_CLAIM_CODE_OFFSET, 1);
+        // now flag as claimed
+        const uint8_t* claimed = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CLAIMED_OFFSET);
+        c = '1';
+        if (*claimed!=uint8_t(c))
+        {            
+            dct_write_app_data(&c, DCT_DEVICE_CLAIMED_OFFSET, 1);
+        }
+    }
+    return 0;    
 }
 
 uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len) 

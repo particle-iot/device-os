@@ -372,14 +372,14 @@ int Spark_Handshake(void)
     int err = spark_protocol_handshake(&sp);
     if (!err)
     {
-        char buf[64 + 1];
+        char buf[CLAIM_CODE_SIZE + 1];
 
         if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && *buf)
         {
             Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);
             // delay a second - so there's a chance of the event being received before clearing the credentials
             // in case of reset. Ideally only clear the claim code after receiving an event from the cloud.
-            HAL_Delay_Milliseconds(1000);
+            HAL_Delay_Milliseconds(1000);            
             HAL_Set_Claim_Code(NULL);
         }
 
