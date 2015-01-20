@@ -66,6 +66,7 @@ void spark_function(const char *funcKey, int (*pFunc)(String paramString));
 void spark_process(void);
 void spark_connect(void);
 void spark_disconnect(void);
+bool spark_connected(void);
 SparkProtocol* spark_protocol_instance(void);
 
 String bytes2hex(const uint8_t* buf, unsigned len);

@@ -142,10 +142,10 @@ public:
     static void sleep(long seconds);
     static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
     static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
-    static bool connected(void);
-    static void connect(void);
-    static void disconnect(void);
-    static void process(void);
+    static bool connected(void) { return spark_connected(); }
+    static void connect(void) { spark_connect(); }
+    static void disconnect(void) { spark_disconnect(); }
+    static void process(void) { spark_process(); }
     static String deviceID(void);
     
 private:
