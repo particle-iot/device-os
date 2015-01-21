@@ -69,7 +69,6 @@ void override_interrupts(void) {
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-volatile uint8_t IWDG_SYSTEM_RESET;
 
 /* Private function prototypes -----------------------------------------------*/
 void Mode_Button_EXTI_irq(void);
@@ -130,23 +129,6 @@ void HAL_Core_Config(void)
 
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
-
-#ifdef IWDG_RESET_ENABLE
-    // ToDo this needs rework for new bootloader
-    /* Check if the system has resumed from IWDG reset */
-    if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
-    {
-        /* IWDGRST flag set */
-        IWDG_SYSTEM_RESET = 1;
-
-        /* Clear reset flags */
-        RCC_ClearFlag();
-    }
-
-    /* We are duplicating the IWDG call here for compatibility with old bootloader */
-    /* Set IWDG Timeout to 3 secs */
-    IWDG_Reset_Enable(3 * TIMING_IWDG_RELOAD);
-#endif
 
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
@@ -361,7 +343,9 @@ uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
 // hardware independence.
 bool HAL_watchdog_reset_flagged() 
 {
-    return IWDG_SYSTEM_RESET;
+    //IWDG is not enabled on Photon boards by default
+    //Now support true sleep modes without system reset
+    return false;
 }
 
 void HAL_Notify_WDT()
