@@ -275,12 +275,8 @@ int main(void)
             // Initialize user application's Stack Pointer
             __set_MSP(*(__IO uint32_t*) ApplicationAddress);
 
-            // Do not enable IWDG if Stop Mode Flag is set
-            if((HAL_Core_Read_Backup_Register(BKP_DR_09) >> 12) != 0xA)
-            {
-                // Set IWDG Timeout to 5 secs
-                IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
-            }
+            // Set IWDG Timeout to 5 secs based on platform specific system flags
+            IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
 
             SysTick_Disable();
             Jump_To_Application();
