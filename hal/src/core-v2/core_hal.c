@@ -268,27 +268,16 @@ void HAL_Core_Execute_Stop_Mode(void)
 
 void HAL_Core_Enter_Standby_Mode(void)
 {
-    /* Execute Standby mode on next system reset */
-    RTC_WriteBackupRegister(RTC_BKP_DR9, 0xA5A5);
-
-    /* Reset System */
-    NVIC_SystemReset();
+    HAL_Core_Execute_Standby_Mode();
 }
 
 void HAL_Core_Execute_Standby_Mode(void)
 {
-    /* Should we execute System Standby mode */
-    if(RTC_ReadBackupRegister(RTC_BKP_DR9) == 0xA5A5)
-    {
-        /* Clear Standby mode system flag */
-        RTC_WriteBackupRegister(RTC_BKP_DR9, 0xFFFF);
+    /* Request to enter STANDBY mode */
+    PWR_EnterSTANDBYMode();
 
-        /* Request to enter STANDBY mode */
-        PWR_EnterSTANDBYMode();
-
-        /* Following code will not be reached */
-        while(1);
-    }
+    /* Following code will not be reached */
+    while(1);
 }
 
 /**

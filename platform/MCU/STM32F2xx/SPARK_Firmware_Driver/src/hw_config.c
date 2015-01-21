@@ -115,21 +115,6 @@ void Set_System(void)
     /* Allow access to RTC Backup domain */
     PWR_BackupAccessCmd(ENABLE);
 
-    /* Should we execute System Standby mode */
-    // Use "HAL_Core_Execute_Standby_Mode()" defined in core_hal.c
-    // Or Use below code
-    if(RTC_ReadBackupRegister(RTC_BKP_DR9) == 0xA5A5)
-    {
-        /* Clear Standby mode system flag */
-        RTC_WriteBackupRegister(RTC_BKP_DR9, 0xFFFF);
-
-        /* Request to enter STANDBY mode */
-        PWR_EnterSTANDBYMode();
-
-        /* Following code will not be reached */
-        while(1);
-    }
-
     DWT_Init();
 
     /* NVIC configuration */
