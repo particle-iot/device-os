@@ -124,9 +124,6 @@ void HAL_Core_Config(void)
 
     HAL_RNG_Configuration();
 
-    /* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
-    HAL_Core_Execute_Stop_Mode();
-
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
 
@@ -181,89 +178,61 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
 {
     if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
     {
-        uint16_t RTC_BKP_DR9_Data = wakeUpPin;//set wakeup pin mumber
-        RTC_BKP_DR9_Data |= (edgeTriggerMode << 8);//set edge trigger mode
-        RTC_BKP_DR9_Data |= (0xA << 12);//set stop mode flag
+        PinMode wakeUpPinMode = INPUT;
 
-        /*************************************************/
-        //RTC_BKP_DR9_Data: 0xAXXX
-        //                    ||||
-        //                    ||----- octet wakeUpPin number
-        //                    |------ nibble edgeTriggerMode
-        //                    ------- nibble stop mode flag
-        /*************************************************/
+        /* Set required pinMode based on edgeTriggerMode */
+        switch(edgeTriggerMode)
+        {
+        case CHANGE:
+            wakeUpPinMode = INPUT;
+            break;
 
-        /* Execute Stop mode on next system reset */
-        RTC_WriteBackupRegister(RTC_BKP_DR9, RTC_BKP_DR9_Data);
+        case RISING:
+            wakeUpPinMode = INPUT_PULLDOWN;
+            break;
 
-        /* Reset System */
-        NVIC_SystemReset();
+        case FALLING:
+            wakeUpPinMode = INPUT_PULLUP;
+            break;
+        }
+        HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
+
+        /* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
+        HAL_Interrupts_Attach(wakeUpPin, NULL, edgeTriggerMode);
+
+        HAL_Core_Execute_Stop_Mode();
     }
 }
 
 void HAL_Core_Execute_Stop_Mode(void)
 {
-    if((RTC_ReadBackupRegister(RTC_BKP_DR9) >> 12) == 0xA)
+    /* Request to enter STOP mode with regulator in low power mode */
+    PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
+
+    /* At this stage the system has resumed from STOP mode */
+    /* Enable HSE, PLL and select PLL as system clock source after wake-up from STOP */
+
+    /* Enable HSE */
+    RCC_HSEConfig(RCC_HSE_ON);
+
+    /* Wait till HSE is ready */
+    if(RCC_WaitForHSEStartUp() != SUCCESS)
     {
-        uint16_t wakeUpPin = RTC_ReadBackupRegister(RTC_BKP_DR9) & 0xFF;
-        InterruptMode edgeTriggerMode = (InterruptMode)((RTC_ReadBackupRegister(RTC_BKP_DR9) >> 8) & 0x0F);
-
-        /* Clear Stop mode system flag */
-        RTC_WriteBackupRegister(RTC_BKP_DR9, 0xFFFF);
-
-        if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
-        {
-            PinMode wakeUpPinMode = INPUT;
-
-            /* Set required pinMode based on edgeTriggerMode */
-            switch(edgeTriggerMode)
-            {
-                case CHANGE:
-                    wakeUpPinMode = INPUT;
-                    break;
-
-                case RISING:
-                    wakeUpPinMode = INPUT_PULLDOWN;
-                    break;
-
-                case FALLING:
-                    wakeUpPinMode = INPUT_PULLUP;
-                    break;
-            }
-            HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
-
-            /* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
-            HAL_Interrupts_Attach(wakeUpPin, NULL, edgeTriggerMode);
-
-            /* Request to enter STOP mode with regulator in low power mode */
-            PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
-
-            /* At this stage the system has resumed from STOP mode */
-            /* Enable HSE, PLL and select PLL as system clock source after wake-up from STOP */
-
-            /* Enable HSE */
-            RCC_HSEConfig(RCC_HSE_ON);
-
-            /* Wait till HSE is ready */
-            if(RCC_WaitForHSEStartUp() != SUCCESS)
-            {
-                /* If HSE startup fails try to recover by system reset */
-                NVIC_SystemReset();
-            }
-
-            /* Enable PLL */
-            RCC_PLLCmd(ENABLE);
-
-            /* Wait till PLL is ready */
-            while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
-
-            /* Select PLL as system clock source */
-            RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
-
-            /* Wait till PLL is used as system clock source */
-            while(RCC_GetSYSCLKSource() != 0x08);
-        }
+        /* If HSE startup fails try to recover by system reset */
+        NVIC_SystemReset();
     }
+
+    /* Enable PLL */
+    RCC_PLLCmd(ENABLE);
+
+    /* Wait till PLL is ready */
+    while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
+
+    /* Select PLL as system clock source */
+    RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+
+    /* Wait till PLL is used as system clock source */
+    while(RCC_GetSYSCLKSource() != 0x08);
 }
 
 void HAL_Core_Enter_Standby_Mode(void)
