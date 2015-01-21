@@ -43,15 +43,14 @@ void USBSerial::begin(long speed)
 {
     if (this->speed!=speed) {
         end();
-	USB_USART_Init(speed);
+        USB_USART_Init(speed);
         this->speed = speed;
     }
 }
 
 void USBSerial::end()
 {
-    if (speed)
-        USB_USART_DeInit();
+    // no USB_USART_DeInit() yet
     speed = 0;
 }
 
