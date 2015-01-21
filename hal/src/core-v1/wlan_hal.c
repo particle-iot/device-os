@@ -68,7 +68,7 @@ uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
     return rv;
 }
 
-unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
+static unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
 void recreate_spark_nvmem_file();
 
@@ -124,6 +124,7 @@ int wlan_connect_init()
 wlan_result_t wlan_activate() {
     wlan_start(0);
     wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
+    nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
     return 0;
 }
 
