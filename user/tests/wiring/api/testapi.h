@@ -27,8 +27,10 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+extern bool runthisstuff;
+
 // compile, but do not run
-#define API_COMPILE(x) if (false) { x; }
+#define API_COMPILE(x) if (!runthisstuff) { x; }
 
 #define API_NO_COMPILE(x) 
 

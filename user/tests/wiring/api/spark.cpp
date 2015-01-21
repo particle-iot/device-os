@@ -77,7 +77,7 @@ test(api_spark_publish) {
 
 test(api_spark_subscribe) {
 
-    void (*handler)(const char *event_name, const char *data);
+    void (*handler)(const char *event_name, const char *data) = NULL;
     
     API_COMPILE(Spark.subscribe("name", handler));
     
