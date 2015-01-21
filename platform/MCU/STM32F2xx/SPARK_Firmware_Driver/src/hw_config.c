@@ -189,6 +189,14 @@ void IWDG_Reset_Enable(uint32_t msTimeout)
 {
     if(SYSTEM_FLAG(IWDG_Enable_SysFlag) == 0xD001)
     {
+        if (msTimeout == 0)
+        {
+            system_flags.IWDG_Enable_SysFlag = 0xFFFF;
+            Save_SystemFlags();
+
+            NVIC_SystemReset();
+        }
+
         /* Enable write access to IWDG_PR and IWDG_RLR registers */
         IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
 
@@ -889,6 +897,8 @@ void FACTORY_Flash_Reset(void)
 
     system_flags.Factory_Reset_SysFlag = 0xFFFF;
 
+    system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
+
     Finish_Update();
 #endif
 }
@@ -898,6 +908,8 @@ void BACKUP_Flash_Reset(void)
 #ifdef USE_SERIAL_FLASH
     //Restore the Backup programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
+
+    system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
 
     Finish_Update();
 #endif
@@ -928,7 +940,13 @@ void OTA_Flash_Reset(void)
     //Restore the OTA programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_OTA_ADDRESS);
 
+    //Set system flag if OTA firmware update is successful
+    //the same should be reset during restore operation
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0001;
+
+    //Set system flag to Enable IWDG in IWDG_Reset_Enable()
+    //called in bootloader to recover from corrupt firmware
+    system_flags.IWDG_Enable_SysFlag = 0xD001;
 
     Finish_Update();
 #endif

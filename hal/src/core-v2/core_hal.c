@@ -124,12 +124,15 @@ void HAL_Core_Config(void)
 
     HAL_RNG_Configuration();
 
-    LED_SetRGBColor(RGB_COLOR_WHITE);
-    LED_On(LED_RGB);
-
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
 #endif
+
+    /* Reset system to disable IWDG if enabled in bootloader */
+    IWDG_Reset_Enable(0);
+
+    LED_SetRGBColor(RGB_COLOR_WHITE);
+    LED_On(LED_RGB);
 
 #ifdef USE_SERIAL_FLASH
     sFLASH_Init();
