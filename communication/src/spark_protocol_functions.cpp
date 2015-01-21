@@ -81,3 +81,6 @@ void spark_protocol_send_subscriptions(SparkProtocol* protocol) {
     protocol->send_subscriptions();
 }
 
+void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char* event_name) {
+    protocol->remove_event_handlers(event_name);
+}

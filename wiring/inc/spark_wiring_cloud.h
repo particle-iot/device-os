@@ -20,6 +20,8 @@
   ******************************************************************************
  */
 
+#pragma once
+
 #include "spark_wiring_string.h"
 #include "events.h"
 #include "system_cloud.h"
@@ -89,18 +91,18 @@ public:
 
     bool subscribe(const char *eventName, EventHandler handler)
     {
-        bool success = spark_protocol_add_event_handler(sp(), eventName, handler);
-        if (success)
+        bool success = spark_protocol_add_event_handler(sp(), eventName, handler, SubscriptionScope::FIREHOSE, NULL);
+        if (success && connected())
         {
-          success = spark_protocol_send_subscription_scope(sp(), eventName, SubscriptionScope::FIREHOSE);
+            success = spark_protocol_send_subscription_scope(sp(), eventName, SubscriptionScope::FIREHOSE);
         }
         return success;
     }
 
     bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {
-        bool success = spark_protocol_add_event_handler(sp(), eventName, handler);
-        if (success)
+        bool success = spark_protocol_add_event_handler(sp(), eventName, handler, SubscriptionScope::MY_DEVICES, NULL);
+        if (success && connected())
         {
             success = spark_protocol_send_subscription_scope(sp(), eventName, SubscriptionScope::MY_DEVICES);
         }
@@ -109,8 +111,8 @@ public:
 
     bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
-        bool success = spark_protocol_add_event_handler(sp(), eventName, handler);
-        if (success)
+        bool success = spark_protocol_add_event_handler(sp(), eventName, handler, SubscriptionScope::MY_DEVICES, deviceID);
+        if (success && connected())
         {
             success = spark_protocol_send_subscription_device(sp(), eventName, deviceID);
         }
@@ -131,6 +133,11 @@ public:
     {
         return subscribe(eventName.c_str(), handler, deviceID.c_str());
     }
+    
+    void unsubscribe() 
+    {
+        spark_protocol_remove_event_handlers(sp(), NULL);
+    }
 
     void syncTime(void)
     {
@@ -146,7 +153,7 @@ public:
     static void connect(void) { spark_connect(); }
     static void disconnect(void) { spark_disconnect(); }
     static void process(void) { spark_process(); }
-    static String deviceID(void);
+    static String deviceID(void) { return spark_deviceID(); }
     
 private:
 
