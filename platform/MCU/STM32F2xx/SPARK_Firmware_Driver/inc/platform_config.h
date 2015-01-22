@@ -76,6 +76,7 @@
 #define BUTTON1_EXTI_PORT_SOURCE            EXTI_PortSourceGPIOC
 #define BUTTON1_EXTI_PIN_SOURCE             EXTI_PinSource2
 #define BUTTON1_EXTI_IRQn                   EXTI2_IRQn
+#define BUTTON1_EXTI_IRQ_HANDLER            EXTI2_IRQHandler
 #define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define	BUTTON1_EXTI_TRIGGER		        EXTI_Trigger_Falling
 #elif (PLATFORM_ID == 5 || PLATFORM_ID == 6)
@@ -89,6 +90,7 @@
 #define BUTTON1_EXTI_PORT_SOURCE            EXTI_PortSourceGPIOC
 #define BUTTON1_EXTI_PIN_SOURCE             EXTI_PinSource7
 #define BUTTON1_EXTI_IRQn                   EXTI9_5_IRQn
+#define BUTTON1_EXTI_IRQ_HANDLER            EXTI9_5_IRQHandler
 #define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define BUTTON1_EXTI_TRIGGER                EXTI_Trigger_Falling
 #endif

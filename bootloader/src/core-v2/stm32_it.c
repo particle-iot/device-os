@@ -157,11 +157,7 @@ void SysTick_Handler(void)
  * @param  None
  * @retval None
  */
-#if (PLATFORM_ID == 4)
-void EXTI2_IRQHandler(void)
-#elif (PLATFORM_ID == 5 || PLATFORM_ID == 6)
-void EXTI9_5_IRQHandler(void)
-#endif
+void BUTTON1_EXTI_IRQ_HANDLER(void)
 {
     if (EXTI_GetITStatus(BUTTON1_EXTI_LINE) != RESET)
     {
