@@ -62,6 +62,10 @@
 #define LED4_GPIO_PIN_SOURCE                GPIO_PinSource2         //GREEN Led
 #define LED4_GPIO_PORT                      GPIOA                   //GREEN Led
 #define LED4_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //GREEN Led
+#if (PLATFORM_ID == 5)
+//On Pigtail board with BM-14, RGB lines are reversed
+#define RGB_LINES_REVERSED
+#endif
 
 //Push Buttons
 #define BUTTONn                             1
@@ -79,7 +83,7 @@
 #define BUTTON1_EXTI_IRQ_HANDLER            EXTI2_IRQHandler
 #define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define	BUTTON1_EXTI_TRIGGER		        EXTI_Trigger_Falling
-#elif (PLATFORM_ID == 5 || PLATFORM_ID == 6)
+#elif (PLATFORM_ID == 5 || PLATFORM_ID == 6 || PLATFORM_ID == 7)
 #define BUTTON1_GPIO_PIN                    GPIO_Pin_7
 #define BUTTON1_GPIO_PORT                   GPIOC
 #define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
@@ -98,13 +102,12 @@
 #define UI_TIMER_FREQUENCY                  100	/* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
-#if (PLATFORM_ID == 5)
+//USB OTG Peripheral
+#if (PLATFORM_ID == 5 || PLATFORM_ID == 7)
 //BM-14 uses USB_OTG_FS peripheral
 #define USE_USB_OTG_FS
 //BM-14 has serial flash
 #define USE_SERIAL_FLASH
-//On Pigtail board with BM-14, RGB lines are reversed
-#define RGB_LINES_REVERSED
 #elif (PLATFORM_ID == 4 || PLATFORM_ID == 6)
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
@@ -182,6 +185,8 @@
 #elif PLATFORM_ID == 5
     #define INTERNAL_FLASH_SIZE             (0x100000)
 #elif PLATFORM_ID == 6
+    #define INTERNAL_FLASH_SIZE             (0x100000)
+#elif PLATFORM_ID == 7
     #define INTERNAL_FLASH_SIZE             (0x100000)
 #else
     #pragma message "PLATFORM_ID is " PREPSTRING(PLATFORM_ID)
