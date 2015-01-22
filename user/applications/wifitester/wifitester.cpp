@@ -35,26 +35,28 @@ void checkWifiSerial(char c);
 void tokenizeCommand(char *cmd, char** parts);
 void tester_connect(char *ssid, char *pass);
 
+#define USE_SERIAL1 1
 
 uint8_t notifiedAboutDHCP = 0;
 int state = 0;
 int wifi_testing = 0;
 int dhcp_notices = 0;
-int cmd_index = 0, cmd_length = 256;
-char command[256];
+unsigned cmd_index = 0;
+const unsigned cmd_length = 256;
+char command[cmd_length];
 const char cmd_CONNECT[] = "CONNECT:";
 const char cmd_RESET[] = "RESET:";
 const char cmd_DFU[] = "DFU:";
 const char cmd_LOCK[] = "LOCK:";
 const char cmd_UNLOCK[] = "UNLOCK:";
 const char cmd_REBOOT[] = "REBOOT:";
-
+const char cmd_INFO[] = "INFO:";
 
 void setup()
 {
     // mdma - this isn't implemented for the broadcom chip
     //WLAN_MANUAL_CONNECT = 1;            
-
+    cmd_index = 0;
     RGB.control(true);
     RGB.color(64, 0, 0);
 
@@ -62,8 +64,9 @@ void setup()
     digitalWrite(D2, LOW);
 
     Serial.begin(9600);
+#if USE_SERIAL1    
     Serial1.begin(9600);
-    
+#endif    
     //DONE: startup without wifi, via SEMI_AUTOMATIC mode
     //DONE: run setup/loop without wifi (ditto))
     //TODO: try to connect to manual wifi asap
@@ -93,23 +96,61 @@ void loop()
     }
 }
 
+void printItem(const char* name, const char* value) {
+    serialPrint(name);
+    serialPrint(": ");
+    serialPrintln(value);
+}
+
+// todo - this is specific to core-v2 HAL
+struct varstring_t {
+    uint8_t len;
+    char string[32];
+};
+
+extern "C" bool fetch_or_generate_device_id(varstring_t* result);
+
+void printInfo() {
+    String deviceID = Spark.deviceID();
+    
+    WLanConfig ip_config;
+    wlan_fetch_ipconfig(&ip_config);
+    uint8_t* addr = ip_config.uaMacAddr;
+    String macAddress;
+    bool first = true;
+    for (int i = 1; i < 6; i++)
+    {
+        if (!first) macAddress += ":";
+        macAddress += bytes2hex(addr++, 1);
+    }
+        
+    varstring_t serial;    
+    memset(&serial, 0, sizeof(serial));
+    fetch_or_generate_device_id(&serial);
+    
+    String rssi(WiFi.RSSI());
+    
+    printItem("DeviceID", deviceID.c_str());
+    printItem("Serial", serial.string);
+    printItem("MAC", macAddress.c_str());    
+    printItem("SSID", WiFi.SSID());
+    printItem("RSSI", rssi.c_str());
+}
 
 void checkWifiSerial(char c) {
+    if (cmd_index==0)
+        memset(command, 0, cmd_length);
+    
 	if (cmd_index < cmd_length) {
-		command[cmd_index] = c;
-		cmd_index++;
+		command[cmd_index++] = c;
 	}
 	else {
 		cmd_index = 0;
 	}
 
-	if (c == ' ') {
-		//reset the command index.
-		cmd_index = 0;
-	}
-	else if (c == ';') {
+	if (c == ';') {
+        command[cmd_index++] = 0;
 		serialPrintln("got semicolon.");
-
 		serialPrint("checking command: ");
 		serialPrintln(command);
 
@@ -117,8 +158,6 @@ void checkWifiSerial(char c) {
 		char *start;
 
         if ((start = strstr(command, cmd_CONNECT))) {
-            cmd_index = 0;
-
             serialPrintln("tokenizing...");
 
             //expecting CONNECT:SSID:PASS;
@@ -135,8 +174,6 @@ void checkWifiSerial(char c) {
             tester_connect(parts[1], parts[2]);
         }
         else if ((start = strstr(command, cmd_DFU))) {
-            cmd_index = 0;
-
             serialPrintln("DFU mode! DFU mode! DFU mode! DFU mode! DFU mode! DFU mode!");
             serialPrintln("DFU mode! DFU mode! DFU mode! DFU mode! DFU mode! DFU mode!");
             delay(100);
@@ -145,8 +182,6 @@ void checkWifiSerial(char c) {
             System.bootloader();
         }
         else if ((start = strstr(command, cmd_RESET))) {
-            cmd_index = 0;
-
             //to trigger a factory reset:
 
             serialPrintln("factory reset! factory reset! factory reset! factory reset!");
@@ -156,8 +191,6 @@ void checkWifiSerial(char c) {
             System.factoryReset();
         }
         else if ((start = strstr(command, cmd_UNLOCK))) {
-            cmd_index = 0;
-
             serialPrintln("unlocking...");
 
             //LOCK
@@ -169,8 +202,6 @@ void checkWifiSerial(char c) {
             serialPrintln("unlocking... Done unlocking! Done unlocking! Done unlocking!");
         }
         else if ((start = strstr(command, cmd_LOCK))) {
-            cmd_index = 0;
-
             serialPrintln("Locking...");
 
             //LOCK
@@ -182,49 +213,51 @@ void checkWifiSerial(char c) {
             serialPrintln("Locking... Done locking! Done locking! Done locking!");
         }
         else if ((start = strstr(command, cmd_REBOOT))) {
-            cmd_index = 0;
-
             serialPrintln("Rebooting... Rebooting... Rebooting...");
             serialPrintln("Rebooting... Rebooting... Rebooting...");
 
             delay(1000);
             System.reset();
         }
-        
-        // if we get here, clear the buffer for the next command read
-        cmd_index = 0;
-        memset(command, 0, sizeof(command));
-
+        else if ((start = strstr(command, cmd_INFO))) {
+            printInfo();
+        }        
 	}
 }
 
-
 void serialPrintln(const char * str) {
 	Serial.println(str);
-	Serial1.println(str);
-
 	Serial.flush();
+#if USE_SERIAL1
+	Serial1.println(str);
 	Serial1.flush();
+#endif    
 }
 void serialPrint(const char * str) {
 	Serial.print(str);
+	Serial.flush();
+#if USE_SERIAL1
 	Serial1.print(str);
-
-    Serial.flush();
 	Serial1.flush();
+#endif    
 }
 
 uint8_t serialAvailable() {
-	return Serial.available() | Serial1.available();
+	uint8_t result = Serial.available();
+#if USE_SERIAL1
+    result |= Serial1.available();
+#endif
+    return result;
 }
 
 int32_t serialRead() {
 	if (Serial.available()) {
 		return Serial.read();
-	}
-	else if (Serial1.available()) {
-		return Serial1.read();
-	}
+	}	
+#if USE_SERIAL1
+    if (Serial1.available())
+        return Serial1.read();
+#endif    
 	return 0;
 }
 
