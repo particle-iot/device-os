@@ -790,6 +790,9 @@ const int DEVICE_ID_LEN = 6;
 
 STATIC_ASSERT(device_id_len_is_same_as_dct_storage, DEVICE_ID_LEN==DCT_DEVICE_ID_SIZE);
 
+
+extern "C" bool fetch_or_generate_device_id(wiced_ssid_t* SSID);
+
 /**
  * Copies the device ID to the destination, generating it if necessary.
  * @param dest      A buffer with room for at least 6 characters. The
