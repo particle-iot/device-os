@@ -213,7 +213,7 @@ void SysTick_Disable() {
 void IWDG_Reset_Enable(uint32_t msTimeout)
 {
     // Do not enable IWDG if Stop Mode Flag is set
-    if((HAL_Core_Read_Backup_Register(BKP_DR_09) >> 12) != 0xA)
+    if((BKP_ReadBackupRegister(BKP_DR9) >> 12) != 0xA)
     {
         /* Enable write access to IWDG_PR and IWDG_RLR registers */
         IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);

@@ -188,7 +188,7 @@ wlan_result_t wlan_disconnect_now()
 int wlan_connected_rssi() 
 {   
     WLanConfig config;
-    netapp_ipconfig((void*)config);
+    netapp_ipconfig((void*)&config);
     
     int _returnValue = 0;
     int l;
