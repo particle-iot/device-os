@@ -488,6 +488,11 @@ void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
     }
 }
 
+const WLanConfig& network_config()
+{
+    return ip_config;
+}
+
 void network_connect()
 {
     if (!network_ready())
