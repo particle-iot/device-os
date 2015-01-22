@@ -78,7 +78,7 @@ typedef struct _WLanConfig_t {
     uint8_t aucDHCPServer[4];     // byte 0 is MSB, byte 3 is LSB
     uint8_t aucDNSServer[4];      // byte 0 is MSB, byte 3 is LSB
     uint8_t uaMacAddr[6];
-    uint8_t uaSSID[32];
+    uint8_t uaSSID[33];
 } WLanConfig;
 
 typedef int wlan_result_t;

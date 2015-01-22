@@ -31,6 +31,7 @@
 #include <string.h>
 #include <algorithm>
 #include "wlan_internal.h"
+#include "wwd_sdpcm.h"
 
 bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
 {
@@ -173,10 +174,12 @@ wlan_result_t wlan_disconnect_now()
     return wiced_network_down(WICED_STA_INTERFACE);
 }
 
-wlan_result_t wlan_connected_rssi(char* ssid) 
+int wlan_connected_rssi() 
 {        
-    // todo;
-    return 0;
+    int32_t rssi = 0;
+    if (wwd_wifi_get_rssi( &rssi ))
+        rssi = 0;
+    return rssi;
 }
 
 int find_empty_slot(platform_dct_wifi_config_t* wifi_config) {
@@ -360,7 +363,6 @@ void setAddress(wiced_ip_address_t* addr, uint8_t* target) {
 void wlan_fetch_ipconfig(WLanConfig* config) 
 {
     wiced_ip_address_t addr;
-    //wl_join_params_t* join_params;
     wiced_interface_t ifup = WICED_STA_INTERFACE;
     
     memset(config, 0, sizeof(*config));
@@ -379,12 +381,16 @@ void wlan_fetch_ipconfig(WLanConfig* config)
         if (wiced_wifi_get_mac_address( &my_mac_address)==WICED_SUCCESS) 
             memcpy(config->uaMacAddr, &my_mac_address, 6);
 
-        /*join_params = (wl_join_params_t*) wwd_sdpcm_get_ioctl_buffer( &buffer, sizeof(wl_join_params_t) );        
-        if (join_params && join_params->ssid.SSID_Len) {
-            memcpy(config->uaSSID, join_params->ssid.SSID, sizeof(config->uaSSID));
+        wl_bss_info_t ap_info;
+        wiced_security_t sec;
+
+        if ( wwd_wifi_get_ap_info( &ap_info, &sec ) == WWD_SUCCESS )
+        {
+            uint8_t len = std::min(ap_info.SSID_len, uint8_t(32));
+            memcpy(config->uaSSID, ap_info.SSID, len);
+            config->uaSSID[len] = 0;
         }
-         * */
-    }    
+    }
     // todo DNS and DHCP servers
 }
 
