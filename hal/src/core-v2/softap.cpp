@@ -325,6 +325,7 @@ public:
 
 struct ScanEntry {
     char ssid[33];
+    uint8_t done;
     int32_t rssi;
     int32_t security;
     int32_t channel;
@@ -348,19 +349,24 @@ public:
      *
      */
     int process() {
-        int result = wiced_rtos_init_queue(&queue_, NULL, sizeof(ScanEntry), 10);
-        if (!result)
+        int result = wiced_rtos_init_queue(&queue_, NULL, sizeof(ScanEntry), 5);
+        if (!result) {
             result = wiced_wifi_scan_networks(scan_handler, this);
+            if (result)
+                wiced_rtos_deinit_queue(&queue_);
+        }
         return result;
     }
 
-    void produce_response(Writer& out, int result) {
+    void produce_response(Writer& out, const int result) {
         out.write("{\"scans\":[");
         bool first = true;
         ScanEntry& entry = read_;
-        while (!wiced_rtos_pop_from_queue(&queue_, &entry, WICED_NEVER_TIMEOUT)) {
-            if (!*entry.ssid)
+        while (!result && !wiced_rtos_pop_from_queue(&queue_, &entry, WICED_NEVER_TIMEOUT)) {
+            if (entry.done)
                 break;
+            if (!*entry.ssid)
+                continue;
             if (first)
                 first = false;
             else
@@ -386,11 +392,13 @@ public:
         ScanAPCommand& cmd = *(ScanAPCommand*)malloced_scan_result->user_data;
         malloc_transfer_to_curr_thread( malloced_scan_result );
         ScanEntry& entry = cmd.write_;
+        memset(&entry, 0, sizeof(entry));
         if (malloced_scan_result->status == WICED_SCAN_INCOMPLETE)
         {
             wiced_scan_result_t& ap_details = malloced_scan_result->ap_details;
-            memcpy(entry.ssid, ap_details.SSID.value, ap_details.SSID.length);
-            entry.ssid[ap_details.SSID.length] = 0;
+            unsigned ssid_len = ap_details.SSID.length > 32 ? 32 : ap_details.SSID.length;
+            memcpy(entry.ssid, ap_details.SSID.value, ssid_len);
+            entry.ssid[ssid_len] = 0;
             entry.rssi = ap_details.signal_strength;
             entry.security = ap_details.security;
             entry.channel = ap_details.channel;
@@ -398,7 +406,7 @@ public:
         }
         else
         {
-            *entry.ssid = 0;    // end of stream sentinel
+            entry.done = 1;
         }
         wiced_rtos_push_to_queue(&cmd.queue_, &entry, WICED_WAIT_FOREVER);
         free(malloced_scan_result);
@@ -508,7 +516,7 @@ class ConfigureAPCommand : public JSONRequestCommand {
     }
 
 protected:
-    
+
     virtual bool parsed_key(unsigned index) {        
         return true;
     }
@@ -521,12 +529,17 @@ protected:
             return false;
         }
         if (key==1 && t->type==JSMN_STRING) {
-            strncpy((char*)data, str, sizeof(ConfigureAP::ssid));
+            strncpy((char*)data, str, sizeof(ConfigureAP::ssid)-1);
             JSON_DEBUG( ( "copied value %s\n", (char*)str ) );
         }
         else if (key==2 && t->type==JSMN_STRING) {
-            decrypt((char*)data, sizeof(ConfigureAP::passcode), str);
+#define USE_PWD_ENCRYPTION 1            
+#if USE_PWD_ENCRYPTION
+            decrypt((char*)data, sizeof(ConfigureAP::passcode), str);            
             JSON_DEBUG( ( "Decrypted password %s\n", (char*)data));
+#else
+            strncpy((char*)data, str, sizeof(ConfigureAP::passcode)-1);
+#endif            
         }
         else {
             int32_t value = atoi(str);
