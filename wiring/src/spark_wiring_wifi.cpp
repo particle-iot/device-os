@@ -42,7 +42,7 @@ namespace spark {
    ----------------------------------------------- */
 
     int8_t WiFiClass::RSSI() {
-        if (!network_connected())
+        if (!network_ready())
             return 0;
         
         system_tick_t _functionStart = millis();

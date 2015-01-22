@@ -185,8 +185,11 @@ wlan_result_t wlan_disconnect_now()
     return wlan_disconnect();    
 }
 
-wlan_result_t wlan_connected_rssi(char* ssid) 
-{        
+int wlan_connected_rssi() 
+{   
+    WLanConfig config;
+    netapp_ipconfig((void*)config);
+    
     int _returnValue = 0;
     int l;
     for (l=0; l<16; l++)
@@ -196,7 +199,7 @@ wlan_result_t wlan_connected_rssi(char* ssid)
             return(1);
         if (wlan_scan_results_table[0] == 0) 
             break;
-        if (!strcmp(wlan_scan_results_table+12, ssid)) {
+        if (!strcmp(wlan_scan_results_table+12, config.uaSSID)) {
             _returnValue = ((wlan_scan_results_table[8] >> 1) - 127);
             break;
         }
