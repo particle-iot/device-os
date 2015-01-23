@@ -219,6 +219,9 @@ void HAL_Core_Execute_Stop_Mode(void)
 			/* Request to enter STOP mode with regulator in low power mode */
 			PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
 
+			/* Detach the Interrupt pin */
+	        HAL_Interrupts_Detach(wakeUpPin);
+
 			/* At this stage the system has resumed from STOP mode */
 			/* Enable HSE, PLL and select PLL as system clock source after wake-up from STOP */
 

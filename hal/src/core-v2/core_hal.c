@@ -204,6 +204,9 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
         HAL_Interrupts_Attach(wakeUpPin, NULL, edgeTriggerMode);
 
         HAL_Core_Execute_Stop_Mode();
+
+        /* Detach the Interrupt pin */
+        HAL_Interrupts_Detach(wakeUpPin);
     }
 }
 
