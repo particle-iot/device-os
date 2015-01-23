@@ -3,6 +3,7 @@
 #include "rtc_hal.h"
 #include "core_hal.h"
 #include "system_task.h"
+#include "rgbled.h"
 
 void SparkClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
@@ -28,6 +29,8 @@ void SparkClass::sleep(long seconds)
 
 void SparkClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
 {
+    LED_Off(LED_RGB);
+
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode);
 }
 
