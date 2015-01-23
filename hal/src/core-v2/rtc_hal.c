@@ -192,7 +192,7 @@ void HAL_RTC_Set_UnixAlarm(time_t value)
     RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours = alarm_time_tm->tm_hour;
 	RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes = alarm_time_tm->tm_min;
 	RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds = alarm_time_tm->tm_sec;
-    RTC_AlarmStructure.RTC_AlarmDateWeekDay = 0x31;
+    RTC_AlarmStructure.RTC_AlarmDateWeekDay = alarm_time_tm->tm_mday;
     RTC_AlarmStructure.RTC_AlarmDateWeekDaySel = RTC_AlarmDateWeekDaySel_Date;
     RTC_AlarmStructure.RTC_AlarmMask = RTC_AlarmMask_None;
 
