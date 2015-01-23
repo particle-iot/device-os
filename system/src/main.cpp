@@ -28,6 +28,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "debug.h"
+#include "system_mode.h"
 #include "system_task.h"
 #include "core_hal.h"
 #include "syshealth_hal.h"
@@ -155,8 +156,11 @@ extern "C" void HAL_SysTick_Handler(void)
  *******************************************************************************/
 extern "C" void HAL_RTCAlarm_Handler(void)
 {
-    /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
-    SPARK_WLAN_SLEEP = 0;
+    if(system_mode() == AUTOMATIC)
+    {
+        /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
+        SPARK_WLAN_SLEEP = 0;
+    }
 }
 
 /*******************************************************************************
