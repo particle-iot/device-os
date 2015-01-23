@@ -107,6 +107,9 @@ void HAL_Interrupts_Attach(uint16_t pin, voidFuncPtr handler, InterruptMode mode
     return;//Return if EXTI Line is associated with WiFi SDIO OOB or Mode button interrupt
   }
 
+  //Clear pending EXTI interrupt flag for the selected pin
+  EXTI_ClearITPendingBit(gpio_pin);
+
   //Select the port source
   if (gpio_port == GPIOA)
   {

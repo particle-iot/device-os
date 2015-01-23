@@ -102,6 +102,9 @@ void HAL_Interrupts_Attach(uint16_t pin, voidFuncPtr handler, InterruptMode mode
   GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
 
+  //Clear pending EXTI interrupt flag for the selected pin
+  EXTI_ClearITPendingBit(gpio_pin);
+
   //Select the port source
   if (gpio_port == GPIOA )
   {
