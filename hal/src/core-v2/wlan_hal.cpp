@@ -32,7 +32,9 @@
 #include <string.h>
 #include <algorithm>
 #include "wlan_internal.h"
+#include "socket_internal.h"
 #include "wwd_sdpcm.h"
+#include "delay_hal.h"
 
 bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
 {
@@ -144,14 +146,20 @@ wlan_result_t wlan_connect_finalize()
 
 wlan_result_t wlan_activate() 
 {    
-    return wiced_wlan_connectivity_init();    
+    return wiced_network_resume();
 }
 
 wlan_result_t wlan_deactivate() {
-    // turn off wifi - power save?    
-    wiced_network_down(WICED_STA_INTERFACE);
-    return wiced_wlan_connectivity_deinit();
+    wlan_disconnect_now();
+    return wiced_network_suspend();
 }
+
+wlan_result_t wlan_disconnect_now() 
+{
+    socket_close_all();    
+    return wiced_network_down(WICED_STA_INTERFACE);
+}
+
 
 bool wlan_reset_credentials_store_required() 
 {
@@ -168,11 +176,6 @@ wlan_result_t wlan_reset_credentials_store()
 
 void Set_NetApp_Timeout(void)
 {
-}
-
-wlan_result_t wlan_disconnect_now() 
-{
-    return wiced_network_down(WICED_STA_INTERFACE);
 }
 
 int wlan_connected_rssi() 
@@ -318,7 +321,6 @@ void wlan_smart_config_init() {
         softap_config config;
         config.softap_complete = HAL_WLAN_notify_simple_config_done;
         wlan_disconnect_now();
-        HAL_Delay_Milliseconds(200);
         current_softap_handle = softap_start(&config);        
     }    
 }
@@ -327,6 +329,9 @@ bool wlan_smart_config_finalize()
 {    
     if (current_softap_handle) {
         softap_stop(current_softap_handle);
+        wlan_disconnect_now();  // force a full refresh
+        HAL_Delay_Milliseconds(5);
+        wlan_activate();
         current_softap_handle = NULL;
     }
     // if wifi creds changed, then indicate the system should enter listening mode on failed connect
@@ -340,8 +345,10 @@ void wlan_smart_config_cleanup()
 
 void wlan_setup()
 {    
-    if (!wiced_wlan_connectivity_init())
+    if (!wiced_wlan_connectivity_init()) {
         wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected);
+        wiced_network_suspend();
+}
 }
 
 void wlan_set_error_count(uint32_t errorCount) 

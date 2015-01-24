@@ -132,6 +132,13 @@ sock_handle_t socket_dispose(sock_handle_t handle) {
     return SOCKET_INVALID;
 }
 
+void socket_close_all()
+{    
+    for (sock_handle_t i=0; i<SOCKET_MAX; i++) {
+        socket_close(i);
+    }
+}
+
 /**
  * Connects the given socket to the address.
  * @param sd        The socket handle to connect
@@ -307,3 +314,4 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
 {
     return 0;
 }
+
