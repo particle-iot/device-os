@@ -81,12 +81,6 @@ void WiFiCredentialsReader::read(void)
         }
         else {                
             wifitester_loop(c);
-
-            //read this to completion when in testing mode whenever possible
-            while (SETUP_SERIAL.available()) {
-                c = SETUP_SERIAL.read();
-                wifitester_loop(c);
-            }
         }
     }        
 #endif    

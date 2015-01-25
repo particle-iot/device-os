@@ -36,6 +36,7 @@
 #include "system_cloud.h"
 #include "system_mode.h"
 #include "system_network.h"
+#include "spark_wiring.h"
 
 WLanConfig ip_config;
 
@@ -136,6 +137,8 @@ void Start_Smart_Config(void)
 
     WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
 
+    uint32_t start = millis();
+    
     /* Wait for SmartConfig/SerialConfig to finish */
     while (network_listening())
     {
@@ -152,8 +155,11 @@ void Start_Smart_Config(void)
         }
         else
         {
-            	LED_Toggle(LED_RGB);
-            HAL_Delay_Milliseconds(250);
+            uint32_t now = millis();
+            if ((now-start)>250) {
+                LED_Toggle(LED_RGB);
+                start = now;
+            }            
             wifi_creds_reader.read();
         }
     }
@@ -178,7 +184,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 
     wlan_setup();
 
-    /* Trigger a WLAN device */    
+    /* Trigger a WLAN device */
     if (system_mode() == AUTOMATIC || system_mode()==SAFE_MODE)
     {
         network_connect();
@@ -386,13 +392,13 @@ void establish_cloud_connection()
     {
         if (Spark_Error_Count)
             handle_cloud_errors();
-        
+
         SPARK_LED_FADE = 0;
         LED_SetRGBColor(RGB_COLOR_CYAN);
         if (in_cloud_backoff_period())
             return;
         
-        LED_On(LED_RGB);        
+        LED_On(LED_RGB);
         if (Spark_Connect() >= 0)
         {
             cfod_count = 0;
@@ -506,7 +512,7 @@ void HAL_WLAN_notify_disconnected()
     if (WLAN_CONNECTED && !WLAN_DISCONNECT)
     {
         ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
-    }
+      }
     WLAN_CONNECTED = 0;
     WLAN_DHCP = 0;
     SPARK_CLOUD_SOCKETED = 0;
@@ -628,7 +634,7 @@ void network_off(bool disconnect_cloud)
     {
         wlan_deactivate();
 
-        SPARK_WLAN_SLEEP = 1;
+            SPARK_WLAN_SLEEP = 1;
         if (disconnect_cloud) {
             // Do not automatically connect to the cloud
             // the next time we connect to a Wi-Fi network
