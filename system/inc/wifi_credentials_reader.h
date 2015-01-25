@@ -25,6 +25,14 @@
 #include <string.h>
 #include "spark_wiring_usbserial.h"
 
+#ifdef TEACUP
+#define SETUP_OVER_SERIAL1 1
+#endif
+
+#ifndef SETUP_OVER_SERIAL1
+#define SETUP_OVER_SERIAL1 0
+#endif
+
 typedef void (*ConnectCallback)(const char *ssid,
                                 const char *password,
                                 unsigned long security_type);
@@ -34,14 +42,19 @@ class WiFiCredentialsReader
   public:
     WiFiCredentialsReader(ConnectCallback connect_callback);
     void read(void);
-
-  private:
+  protected:
+      void handle(char c);
+  private:   
     USBSerial serial;
+#if SETUP_OVER_SERIAL1    
+    bool serial1Enabled;
+    uint8_t magicPos;                   // how far long the magic key we are
+#endif    
     ConnectCallback connect_callback;
     char ssid[33];
     char password[65];
     char security_type_string[2];
-
+    
     void print(const char *s);
     void read_line(char *dst, int max_len);
 };
