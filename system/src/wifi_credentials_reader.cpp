@@ -54,9 +54,9 @@ WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 }
 
 void WiFiCredentialsReader::read(void)
-{    
-    int c = -1;
-    if (SETUP_OVER_SERIAL1) {                        
+{        
+    if (SETUP_OVER_SERIAL1) {
+        int c = -1;
         if (SETUP_SERIAL.available()) {
             c = SETUP_SERIAL.read();
         }
@@ -82,8 +82,8 @@ void WiFiCredentialsReader::read(void)
             }
         }        
     }
-    else if (serial.available()) {
-        c = serial.read();
+    if (serial.available()) {
+        int c = serial.read();
         if (c>=0)
             handle((char)c);        
     }
