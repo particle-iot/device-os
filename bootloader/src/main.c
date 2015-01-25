@@ -258,6 +258,7 @@ int main(void)
     }
     else if (USB_DFU_MODE == 0)
     {
+        
         if (REFLASH_FROM_BACKUP == 1)
         {
             LED_SetRGBColor(RGB_COLOR_RED);
@@ -275,9 +276,11 @@ int main(void)
         FLASH_UpdateModules();
 #endif
 
+        bool application_signature_valid =  (((*(__IO uint32_t*)ApplicationAddress) & APP_START_MASK) == 0x20000000);
+        
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
-        if (((*(__IO uint32_t*)ApplicationAddress) & APP_START_MASK) == 0x20000000)
+        if (application_signature_valid)
         {
             // Jump to user application
             JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
@@ -291,6 +294,10 @@ int main(void)
             SysTick_Disable();
             Jump_To_Application();
         }
+        else {
+            LED_SetRGBColor(RGB_COLOR_RED);
+            FACTORY_Flash_Reset();            
+    }
     }
     // Otherwise enters DFU mode to allow user to program his application
 
