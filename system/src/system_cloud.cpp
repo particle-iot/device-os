@@ -365,7 +365,7 @@ void Spark_Protocol_Init(void)
     }
 }
 
-const int CLAIM_CODE_SIZE = 64;
+const int CLAIM_CODE_SIZE = 63;
 
 int Spark_Handshake(void)
 {
@@ -379,7 +379,7 @@ int Spark_Handshake(void)
             Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);
             // delay a second - so there's a chance of the event being received before clearing the credentials
             // in case of reset. Ideally only clear the claim code after receiving an event from the cloud.
-            HAL_Delay_Milliseconds(1000);            
+            HAL_Delay_Milliseconds(1000);
             HAL_Set_Claim_Code(NULL);
         }
 
