@@ -150,7 +150,7 @@ void Start_Smart_Config(void)
         }
         else
         {
-            LED_Toggle(LED_RGB);
+            	LED_Toggle(LED_RGB);
             HAL_Delay_Milliseconds(250);
             wifi_creds_reader.read();
         }
@@ -351,8 +351,8 @@ void establish_cloud_connection()
         else
         {
             SPARK_CLOUD_SOCKETED = 0;
-            if (!SPARK_WLAN_RESET)
-                handle_cfod();
+            //if (!SPARK_WLAN_RESET)
+            //    handle_cfod();
             wlan_set_error_count(Spark_Error_Count);
         }
     }
