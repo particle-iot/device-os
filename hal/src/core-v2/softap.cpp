@@ -545,8 +545,7 @@ protected:
             int32_t value = atoi(str);
             *((int32_t*)data) = value;
             JSON_DEBUG( ( "copied number %s (%d)\n", (char*)str, (int)value ) );
-        }
-        
+        }        
         return true;
     }
     
@@ -602,8 +601,7 @@ protected:
     void produce_response(Writer& writer, int result) {
         write_result_code(writer, result);
         if (softap_complete_)
-            softap_complete_();
-        HAL_Core_System_Reset();
+            softap_complete_();        
     }
 };
 
@@ -1127,6 +1125,7 @@ struct socket_message_t
         message,
         connect,
         disconnect,
+        quit,
     };
 
     wiced_tcp_socket_t*  socket;
@@ -1213,8 +1212,9 @@ public:
         wiced_rtos_create_thread(&thread_, WICED_DEFAULT_LIBRARY_PRIORITY, "tcp server", tcp_server_thread, 1024*6, this);
     }
 
-    void stop() {
-        quit_ = true;
+    void stop() {        
+        post_event(socket_message_t::quit, NULL);
+        
         wiced_tcp_server_stop(&server_);
         wiced_rtos_deinit_queue(&queue_);
 
@@ -1230,11 +1230,11 @@ public:
 
     void run() {
 
-        while (!quit_)
+        for (;;)
         {
             socket_message_t event;
             if (wiced_rtos_pop_from_queue(&queue_, &event, WICED_NEVER_TIMEOUT))
-                continue;
+                break;
 
             switch(event.event_type)
             {
@@ -1248,6 +1248,11 @@ public:
 
               case socket_message_t::message:
                   handle_client(*event.socket);
+                  break;
+
+              case socket_message_t::quit:
+                    break;
+                    
               default:
                   break;
               }
