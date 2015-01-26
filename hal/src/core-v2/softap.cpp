@@ -1139,8 +1139,7 @@ struct socket_message_t
 class TCPServerDispatcher
 {
     SimpleProtocolDispatcher&   dispatcher_;
-    wiced_interface_t           iface_;
-    volatile bool               quit_;
+    wiced_interface_t           iface_;    
     wiced_thread_t              thread_;
     wiced_queue_t               queue_;
     wiced_tcp_server_t          server_;
@@ -1195,7 +1194,7 @@ class TCPServerDispatcher
 public:
 
     TCPServerDispatcher(SimpleProtocolDispatcher& dispatcher, wiced_interface_t iface)
-        : dispatcher_(dispatcher), iface_(iface), quit_(false)
+        : dispatcher_(dispatcher), iface_(iface)
     {
         memset(&thread_, 0, sizeof(thread_));
     }
