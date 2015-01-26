@@ -31,7 +31,7 @@ void checkWifiSerial(char c);
 void tokenizeCommand(char *cmd, char** parts);
 void tester_connect(char *ssid, char *pass);
 
-#define USE_SERIAL1 1
+#define USE_SERIAL1 0
 
 uint8_t notifiedAboutDHCP = 0;
 int state = 0;
@@ -49,7 +49,7 @@ const char cmd_REBOOT[] = "REBOOT:";
 const char cmd_INFO[] = "INFO:";
 const char cmd_CLEAR[] = "CLEAR:";
 
-void setup()
+void setup_wifitester()
 {
     cmd_index = 0;
     RGB.control(true);
