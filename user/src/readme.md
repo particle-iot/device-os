@@ -13,7 +13,7 @@ the Tester app is active. The device will remain in testing mode until it is res
 
 ## Tester Commands
 
-### CONNECT:<ssid>:<pwd>;
+### CONNECT:&lt;ssid&gt;:&lt;pwd&gt;;
 
 Connects to the given WiFi AP. After a few seconds you'll see `DHCP` printed a few bazillion times to the console.
 
