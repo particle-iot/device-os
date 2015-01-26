@@ -109,7 +109,7 @@ SoftAPMock.prototype = {
     },
 
     cmd_configure_ap: function(sock, body) {
-        var request = this._parse_request_jaon(body);
+        var request = this._parse_request_json(body);
         // not sure what to do here - what would be useful in a mock?
         // perhaps decode the encrypted password and log that?
         this._send_response(sock, { r: 0 } );
