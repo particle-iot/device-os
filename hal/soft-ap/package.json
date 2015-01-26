@@ -1,0 +1,17 @@
+{
+    "name": "soft-ap-mock",
+    "version": "0.0.1",
+    "private": true,
+    "author": {
+        "name": "Matthew McGowan",
+        "email": "mat@spark.io",
+        "url": "https://www.spark.io/"
+    },
+
+    "scripts": {
+        "start": "node main.js"
+    },
+    "dependencies": {
+        "hashmap": "~2.0.0"
+    }
+}
