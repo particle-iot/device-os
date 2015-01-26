@@ -456,6 +456,16 @@ int SparkProtocol::variable_value(unsigned char *buf,
   return buflen;
 }
 
+inline bool is_system(const char* event_name) {
+    // if there were a strncmpi this would be easier!
+    char prefix[6];    
+    if (!*event_name || strlen(event_name)<5)
+        return false;
+    memcpy(prefix, event_name, 5);
+    prefix[5] = '\0';
+    return !strcmpi(prefix, "spark");
+}
+
 // Returns true on success, false on sending timeout or rate-limiting failure
 bool SparkProtocol::send_event(const char *event_name, const char *data,
                                int ttl, EventType::Enum event_type)
@@ -465,21 +475,39 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
     return false;
   }
 
-  static system_tick_t recent_event_ticks[5] = {
-    (system_tick_t) -1000, (system_tick_t) -1000,
-    (system_tick_t) -1000, (system_tick_t) -1000,
-    (system_tick_t) -1000 };
-  static int evt_tick_idx = 0;
-
-  system_tick_t now = recent_event_ticks[evt_tick_idx] = callback_millis();
-  evt_tick_idx++;
-  evt_tick_idx %= 5;
-  if (now - recent_event_ticks[evt_tick_idx] < 1000)
-  {
-    // exceeded allowable burst of 4 events per second
-    return false;
+  bool is_system_event = is_system(event_name);
+  
+  if (is_system_event) {
+      static uint16_t lastMinute = 0;
+      static uint8_t eventsThisMinute = 0;
+      
+      uint16_t currentMinute = uint16_t(callback_millis()>>16);
+      if (currentMinute==lastMinute) {      // == handles millis() overflow
+          if (eventsThisMinute==255)
+              return false;
+      }
+      else {
+          lastMinute = currentMinute;
+          eventsThisMinute = 0;
+      }
+      eventsThisMinute++;      
   }
+  else {
+    static system_tick_t recent_event_ticks[5] = {
+      (system_tick_t) -1000, (system_tick_t) -1000,
+      (system_tick_t) -1000, (system_tick_t) -1000,
+      (system_tick_t) -1000 };
+    static int evt_tick_idx = 0;
 
+    system_tick_t now = recent_event_ticks[evt_tick_idx] = callback_millis();
+    evt_tick_idx++;
+    evt_tick_idx %= 5;
+    if (now - recent_event_ticks[evt_tick_idx] < 1000)
+    {
+      // exceeded allowable burst of 4 events per second
+      return false;
+    }
+  }
   uint16_t msg_id = next_message_id();
   size_t msglen = event(queue + 2, msg_id, event_name, data, ttl, event_type);
   size_t wrapped_len = wrap(queue, msglen);
