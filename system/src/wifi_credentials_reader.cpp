@@ -55,33 +55,33 @@ WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 
 void WiFiCredentialsReader::read(void)
 {        
-    if (SETUP_OVER_SERIAL1) {
-        int c = -1;
-        if (SETUP_SERIAL.available()) {
-            c = SETUP_SERIAL.read();
-        }
-        if (SETUP_LISTEN_MAGIC) {
-            static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
-            //static uint8_t magic_code[] = { 'M', 'a', 't', 't', 'h', 'e', 'w' };
-            if (!serial1Enabled) {
-                if (c>=0) {
-                    if (c==magic_code[magicPos++]) {
-                        serial1Enabled = magicPos==sizeof(magic_code);
-                        if (serial1Enabled) {
-                            setup_wifitester();
-                        }
-                    }
-                    else {
-                        magicPos = 0;
-                    }
-                    c = -1;
-                }
-            }
-            else {                
-                loop_wifitester(c);
-            }
-        }        
+#if SETUP_OVER_SERIAL1
+    int c = -1;
+    if (SETUP_SERIAL.available()) {
+        c = SETUP_SERIAL.read();
     }
+    if (SETUP_LISTEN_MAGIC) {
+        static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
+        //static uint8_t magic_code[] = { 'M', 'a', 't', 't', 'h', 'e', 'w' };
+        if (!serial1Enabled) {
+            if (c>=0) {
+                if (c==magic_code[magicPos++]) {
+                    serial1Enabled = magicPos==sizeof(magic_code);
+                    if (serial1Enabled) {
+                        setup_wifitester();
+                    }
+                }
+                else {
+                    magicPos = 0;
+                }
+                c = -1;
+            }
+        }
+        else {                
+            loop_wifitester(c);
+        }
+    }        
+#endif    
     if (serial.available()) {
         int c = serial.read();
         if (c>=0)
