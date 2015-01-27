@@ -369,21 +369,21 @@ void wlan_fetch_ipconfig(WLanConfig* config)
 
         if (wiced_ip_get_gateway_address(ifup, &addr)==WICED_SUCCESS)
             setAddress(&addr, config->aucDefaultGateway);
-
-        wiced_mac_t my_mac_address;
-        if (wiced_wifi_get_mac_address( &my_mac_address)==WICED_SUCCESS) 
-            memcpy(config->uaMacAddr, &my_mac_address, 6);
-
-        wl_bss_info_t ap_info;
-        wiced_security_t sec;
-
-        if ( wwd_wifi_get_ap_info( &ap_info, &sec ) == WWD_SUCCESS )
-        {
-            uint8_t len = std::min(ap_info.SSID_len, uint8_t(32));
-            memcpy(config->uaSSID, ap_info.SSID, len);
-            config->uaSSID[len] = 0;
-        }
     }
+    
+    wiced_mac_t my_mac_address;
+    if (wiced_wifi_get_mac_address( &my_mac_address)==WICED_SUCCESS) 
+        memcpy(config->uaMacAddr, &my_mac_address, 6);
+
+    wl_bss_info_t ap_info;
+    wiced_security_t sec;
+
+    if ( wwd_wifi_get_ap_info( &ap_info, &sec ) == WWD_SUCCESS )
+    {
+        uint8_t len = std::min(ap_info.SSID_len, uint8_t(32));
+        memcpy(config->uaSSID, ap_info.SSID, len);
+        config->uaSSID[len] = 0;
+    }   
     // todo DNS and DHCP servers
 }
 
