@@ -936,35 +936,6 @@ void FLASH_End(void)
 #endif
 }
 
-//This function will be called in bootloader to perform the memory update process
-void FLASH_Update_Modules(void)
-{
-    platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];
-    uint8_t flash_module_count = 0;
-    uint8_t updateStatusFlags = 0;
-
-    //Fill the Flash modules info data read from the dct area
-    const void* dct_app_data = dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
-    memcpy(flash_modules, dct_app_data, DCT_FLASH_MODULES_SIZE);
-
-    for (flash_module_count = 0; flash_module_count < FLASH_MODULES_MAX; flash_module_count++)
-    {
-        if(flash_modules[flash_module_count].statusFlag == 0x1)
-        {
-            //To Do : Copy flash data from source to destination based on MAL ID
-
-            updateStatusFlags |= flash_modules[flash_module_count].statusFlag;
-            flash_modules[flash_module_count].statusFlag = 0; //Reset statusFlag
-        }
-    }
-
-    if(updateStatusFlags)
-    {
-        //Only update DCT if required
-        dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, DCT_FLASH_MODULES_SIZE);
-    }
-}
-
 void FACTORY_Flash_Reset(void)
 {
 #ifdef USE_SERIAL_FLASH
