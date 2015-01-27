@@ -182,22 +182,6 @@ int wlan_connected_rssi()
     return rssi;
 }
 
-int find_empty_slot(platform_dct_wifi_config_t* wifi_config) {
-    int empty = -1;      // 0 if all full
-    for (int i=0; i<CONFIG_AP_LIST_SIZE; i++) {
-        if (!is_ap_config_set(wifi_config->stored_ap_list[i])) {
-            empty = i;
-            break;
-        }
-    }        
-    // if empty == -1, write to last one, and shuffle all from index N to index N-1.
-    if (empty<0) {
-        empty = CONFIG_AP_LIST_SIZE-1;
-        memcpy(wifi_config->stored_ap_list, wifi_config->stored_ap_list+1, sizeof(wifi_config->stored_ap_list[0])*(empty));
-    }        
-    return empty;
-}
-
 struct SnifferInfo
 {
     const char* ssid;
@@ -285,8 +269,11 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
     if (!result) {        
         // the storage may not have been initialized, so device_configured will be 0xFF
         initialize_dct(wifi_config);
-        int empty = 0; //find_empty_slot(wifi_config);
-
+        
+        // shuffle all slots along
+        memcpy(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
+        
+        const int empty = 0; 
         wiced_config_ap_entry_t& entry = wifi_config->stored_ap_list[empty];
         memset(&entry, 0, sizeof(entry));        
         passwordLen = std::min(passwordLen, uint16_t(64));
