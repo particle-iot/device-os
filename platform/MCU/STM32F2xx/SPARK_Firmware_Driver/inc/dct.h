@@ -65,6 +65,7 @@ typedef struct application_dct {
 #define DCT_FLASH_MODULES_SIZE  (sizeof(application_dct_t::flash_modules))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
+#define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
 
 /**
  * Assert offsets. These ensure that the layout in flash isn't inadvertently changed.
@@ -85,7 +86,15 @@ STATIC_ASSERT_DCT_OFFSET(flash_modules, 2852 /* 2850 + 2 */);
 STATIC_ASSERT_DCT_OFFSET(reserved2, 2952 /* 2852 + 100 */);
 STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2952 + 1280 + 26 */);
 
-
+STATIC_ASSERT_FLAGS_OFFSET(CORE_FW_Version_SysFlag, 4);
+STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);
+STATIC_ASSERT_FLAGS_OFFSET(FLASH_OTA_Update_SysFlag, 8);
+STATIC_ASSERT_FLAGS_OFFSET(OTA_FLASHED_Status_SysFlag, 10);
+STATIC_ASSERT_FLAGS_OFFSET(Factory_Reset_SysFlag, 12);
+STATIC_ASSERT_FLAGS_OFFSET(IWDG_Enable_SysFlag, 14);
+STATIC_ASSERT_FLAGS_OFFSET(dfu_on_no_firmware, 16);
+STATIC_ASSERT_FLAGS_OFFSET(unused, 17);
+STATIC_ASSERT_FLAGS_OFFSET(reserved, 18);
 /**
  * Reads application data from the DCT area.
  * @param offset
