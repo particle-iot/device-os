@@ -121,6 +121,12 @@ void HAL_Core_Config(void)
 	sFLASH_Init();
 }
 
+uint16_t HAL_Core_Mode_Button_Pressed_Time()
+{
+    return BUTTON_GetDebouncedTime(BUTTON1);
+}
+
+
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 {
 	bool pressedState = false;

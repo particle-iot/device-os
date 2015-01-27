@@ -103,3 +103,8 @@ bool HAL_watchdog_reset_flagged()
 void HAL_Notify_WDT()
 {    
 }
+
+uint16_t HAL_Core_Mode_Button_Pressed_Time()
+{
+    return 0;
+}
