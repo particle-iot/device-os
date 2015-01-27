@@ -4,28 +4,24 @@
  * @authors  David Middlecamp, Matthew McGowan
  * @version V1.0.0
  ******************************************************************************
-  Copyright (c) 2013-2014 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
-  This program is free software; you can redistribute it and/or
+  This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
   License as published by the Free Software Foundation, either
   version 3 of the License, or (at your option) any later version.
 
-  This program is distributed in the hope that it will be useful,
+  This library is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
   You should have received a copy of the GNU Lesser General Public
-  License along with this program; if not, see <http://www.gnu.org/licenses/>.
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
 
-/* Includes ------------------------------------------------------------------*/  
 #include "application.h"
-#include "hw_config.h"
-
-SYSTEM_MODE(SEMI_AUTOMATIC);
 
 uint8_t serialAvailable();
 int32_t serialRead();
@@ -51,22 +47,24 @@ const char cmd_LOCK[] = "LOCK:";
 const char cmd_UNLOCK[] = "UNLOCK:";
 const char cmd_REBOOT[] = "REBOOT:";
 const char cmd_INFO[] = "INFO:";
+const char cmd_CLEAR[] = "CLEAR:";
 
 void setup()
 {
-    // mdma - this isn't implemented for the broadcom chip
-    //WLAN_MANUAL_CONNECT = 1;            
     cmd_index = 0;
     RGB.control(true);
     RGB.color(64, 0, 0);
 
     pinMode(D2, OUTPUT);
     digitalWrite(D2, LOW);
-
+    
     Serial.begin(9600);
 #if USE_SERIAL1    
     Serial1.begin(9600);
 #endif    
+    for (int i=0; i<5; i++)
+        serialPrintln(" READY READY READY ! READY READY READY ! READY READY READY !");
+    
     //DONE: startup without wifi, via SEMI_AUTOMATIC mode
     //DONE: run setup/loop without wifi (ditto))
     //TODO: try to connect to manual wifi asap
@@ -89,7 +87,7 @@ void loop()
 
 	if (serialAvailable()) {
 	    state = !state;
-	    RGB.color(0, 64, (state) ? 255 : 0);
+	    RGB.color(0, 64, (state) ? 255 : 0);		
 
 		int c = serialRead();
 		checkWifiSerial((char)c);
@@ -120,7 +118,9 @@ void printInfo() {
     bool first = true;
     for (int i = 1; i < 6; i++)
     {
-        if (!first) macAddress += ":";
+        if (!first) 
+            macAddress += ":";
+        first = false;
         macAddress += bytes2hex(addr++, 1);
     }
         
@@ -133,7 +133,7 @@ void printInfo() {
     printItem("DeviceID", deviceID.c_str());
     printItem("Serial", serial.string);
     printItem("MAC", macAddress.c_str());    
-    printItem("SSID", WiFi.SSID());
+    printItem("SSID", (const char*)ip_config.uaSSID);
     printItem("RSSI", rssi.c_str());
 }
 
@@ -147,9 +147,11 @@ void checkWifiSerial(char c) {
 	else {
 		cmd_index = 0;
 	}
-
+    if (c==' ') 
+        cmd_index = 0;
 	if (c == ';') {
         command[cmd_index++] = 0;
+        cmd_index = 0;
 		serialPrintln("got semicolon.");
 		serialPrint("checking command: ");
 		serialPrintln(command);
@@ -221,6 +223,10 @@ void checkWifiSerial(char c) {
         }
         else if ((start = strstr(command, cmd_INFO))) {
             printInfo();
+        }        
+        else if ((start = strstr(command, cmd_CLEAR))) {
+            if (WiFi.hasCredentials())
+                WiFi.clearCredentials();
         }        
 	}
 }
@@ -298,7 +304,7 @@ void tester_connect(char *ssid, char *pass) {
     WiFi.on();
     WiFi.setCredentials(ssid, pass, auth);    
     WiFi.connect();
-    
+    WiFi.clearCredentials();
 //
 //	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
 //	wlan_connect(WLAN_SEC_WPA2, ssid, strlen(ssid), NULL, pass, strlen(pass));
@@ -309,3 +315,4 @@ void tester_connect(char *ssid, char *pass) {
 	//USERLED_On(LED_RGB);
 	serialPrintln("  WIFI Connected?    ");
 }
+
