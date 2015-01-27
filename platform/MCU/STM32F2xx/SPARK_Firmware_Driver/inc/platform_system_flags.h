@@ -12,15 +12,19 @@
 extern "C" {
 #endif
 
+#include <stdint.h>    
+    
 typedef struct platform_system_flags {    
-    uint16_t header[2];
+        uint16_t header[2];
     uint16_t CORE_FW_Version_SysFlag;
     uint16_t NVMEM_SPARK_Reset_SysFlag;
     uint16_t FLASH_OTA_Update_SysFlag;
     uint16_t OTA_FLASHED_Status_SysFlag;
     uint16_t Factory_Reset_SysFlag;
     uint16_t IWDG_Enable_SysFlag;
-    uint16_t reserved[8];
+    uint8_t dfu_on_no_firmware;     // flag to enable DFU mode when no firmware is available.
+    uint8_t unused;    
+    uint16_t reserved[7];
 } platform_system_flags_t;
 
 
