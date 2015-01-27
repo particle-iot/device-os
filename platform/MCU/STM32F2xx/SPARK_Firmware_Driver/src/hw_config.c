@@ -712,27 +712,74 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
     }
 }
 
-void FLASH_Erase(void)
+int FLASH_Erase(uint32_t FLASH_Address, uint32_t Image_Size)
 {
-    FLASHStatus = FLASH_COMPLETE;
+    uint16_t FLASH_Sector;
+    uint8_t FLASH_SectorMulFactor = 8;
+    uint8_t FLASH_VoltageRange = VoltageRange_3;
+
+    if (FLASH_Address < 0x08020000)
+    {
+        return -1;
+    }
+    else if (FLASH_Address < 0x08040000)
+    {
+        FLASH_Sector = FLASH_Sector_5;
+    }
+    else if (FLASH_Address < 0x08060000)
+    {
+        FLASH_Sector = FLASH_Sector_6;
+    }
+    else if (FLASH_Address < 0x08080000)
+    {
+        FLASH_Sector = FLASH_Sector_7;
+    }
+    else if (FLASH_Address < 0x080A0000)
+    {
+        FLASH_Sector = FLASH_Sector_8;
+    }
+    else if (FLASH_Address < 0x080C0000)
+    {
+        FLASH_Sector = FLASH_Sector_9;
+    }
+    else if (FLASH_Address < 0x080E0000)
+    {
+        FLASH_Sector = FLASH_Sector_10;
+    }
+    else if (FLASH_Address < 0x08100000)
+    {
+        FLASH_Sector = FLASH_Sector_11;
+    }
+    else
+    {
+        return -1;
+    }
 
     /* Unlock the Flash Program Erase Controller */
     FLASH_Unlock();
 
     /* Define the number of Internal Flash pages to be erased */
-    NbrOfPage = FLASH_PagesMask(FIRMWARE_IMAGE_SIZE, INTERNAL_FLASH_PAGE_SIZE);
+    NbrOfPage = FLASH_PagesMask(Image_Size, INTERNAL_FLASH_PAGE_SIZE);
 
     /* Clear All pending flags */
     FLASH_ClearFlags();
 
     /* Erase the Internal Flash pages */
-    for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
+    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
     {
-        FLASHStatus = FLASH_EraseSector(FLASH_Sector_5 + (8 * EraseCounter), VoltageRange_3);
+        FLASHStatus = FLASH_EraseSector(FLASH_Sector + (FLASH_SectorMulFactor * EraseCounter), FLASH_VoltageRange);
+
+        if (FLASHStatus != FLASH_COMPLETE)
+        {
+            return -1;
+        }
     }
 
     /* Locks the FLASH Program Erase Controller */
     FLASH_Lock();
+
+    /* Return Success */
+    return 0;
 }
 
 void FLASH_Backup(uint32_t FLASH_Address)
@@ -779,7 +826,7 @@ void FLASH_Restore(uint32_t FLASH_Address)
     /* Initialize SPI Flash */
     sFLASH_Init();
 
-    FLASH_Erase();
+    FLASH_Erase(CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
 
     Internal_Flash_Address = CORE_FW_ADDRESS;
     External_Flash_Address = FLASH_Address;

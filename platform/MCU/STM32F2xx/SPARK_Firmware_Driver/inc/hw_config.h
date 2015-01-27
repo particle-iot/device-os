@@ -143,7 +143,7 @@ extern platform_system_flags_t system_flags;
 void FLASH_ClearFlags(void);
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors);
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors);
-void FLASH_Erase(void);
+int FLASH_Erase(uint32_t FLASH_Address, uint32_t Image_Size);
 void FLASH_Backup(uint32_t FLASH_Address);
 void FLASH_Restore(uint32_t FLASH_Address);
 uint32_t FLASH_PagesMask(uint32_t imageSize, uint32_t pageSize);
