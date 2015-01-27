@@ -31,7 +31,7 @@ class Stream;
 class SystemClass {
 
 public:
-  SystemClass(System_Mode_TypeDef mode=AUTOMATIC) {
+  SystemClass(System_Mode_TypeDef mode=DEFAULT) {
       set_system_mode(mode);
   }
   static System_Mode_TypeDef mode(void) {
