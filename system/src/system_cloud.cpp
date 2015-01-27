@@ -321,6 +321,15 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
     }
 }
 
+const char* CLAIM_EVENTS = "/spark/device/claim/";
+
+void SystemEvents(const char* name, const char* data)
+{
+    if (!strncmp(name, CLAIM_EVENTS, strlen(CLAIM_EVENTS))) {
+        HAL_Set_Claim_Code(NULL);
+    }
+}    
+
 void Spark_Protocol_Init(void)
 {
     if (!spark_protocol_is_initialized(&sp))
@@ -362,6 +371,8 @@ void Spark_Protocol_Init(void)
         uint8_t id[id_length];
         HAL_device_ID(id, id_length);
         spark_protocol_init(&sp, (const char*) id, keys, callbacks, descriptor);
+        
+        Spark.subscribe("spark", SystemEvents);
     }
 }
 
@@ -379,8 +390,6 @@ int Spark_Handshake(void)
             Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);
             // delay a second - so there's a chance of the event being received before clearing the credentials
             // in case of reset. Ideally only clear the claim code after receiving an event from the cloud.
-            HAL_Delay_Milliseconds(1000);
-            HAL_Set_Claim_Code(NULL);
         }
 
         ultoa(HAL_OTA_FlashLength(), buf, 10);
