@@ -332,9 +332,10 @@ void wlan_smart_config_init() {
     wlan_smart_config_start(1);    
 }
 
-void wlan_smart_config_finalize() {    
+bool wlan_smart_config_finalize() {    
     /* read count of wlan profiles stored */
     nvmem_read(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
+    return false;
 }
 
 

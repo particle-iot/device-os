@@ -276,6 +276,7 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
     return wiced_security_t(result);
 }
 
+static bool wifi_creds_changed;
 wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, const char *password, 
     uint16_t passwordLen, wiced_security_t security, unsigned channel)
 {    
@@ -297,7 +298,9 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
         entry.details.security = security;
         entry.details.channel = channel;        
         result = wiced_dct_write( (const void*) wifi_config, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config) );
-        wiced_dct_read_unlock(wifi_config, WICED_TRUE);
+        if (!result)
+            wifi_creds_changed = true;
+        wiced_dct_read_unlock(wifi_config, WICED_TRUE);        
     }    
     return result;
 }
@@ -322,6 +325,7 @@ softap_handle current_softap_handle;
 
 void wlan_smart_config_init() {    
     
+    wifi_creds_changed = false;
     if (!current_softap_handle) {
         softap_config config;
         config.softap_complete = HAL_WLAN_notify_simple_config_done;
@@ -333,12 +337,14 @@ void wlan_smart_config_init() {
     // todo - when the user has completed the soft ap setup process,    
 }
 
-void wlan_smart_config_finalize() 
+bool wlan_smart_config_finalize() 
 {    
     if (current_softap_handle) {
         softap_stop(current_softap_handle);
         current_softap_handle = NULL;
     }
+    // if wifi creds changed, then indicate the system should enter listening mode on failed connect
+    return wifi_creds_changed;
 }
 
 void wlan_smart_config_cleanup() 

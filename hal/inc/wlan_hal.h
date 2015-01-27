@@ -163,8 +163,9 @@ void wlan_set_error_count(uint32_t error_count);
 
 /**
  * Finalize after profiles established.
+ * @return true the wifi profiles were changed
  */
-void wlan_smart_config_finalize();
+bool wlan_smart_config_finalize();
 
 /**
  * Retrieve IP address info. Available after HAL_WLAN_notify_dhcp() has been callted.

@@ -53,6 +53,7 @@ volatile uint8_t WLAN_SERIAL_CONFIG_DONE = 1;
 volatile uint8_t WLAN_CONNECTED;
 volatile uint8_t WLAN_DHCP;
 volatile uint8_t WLAN_CAN_SHUTDOWN;
+volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
 
 enum eWanTimings
 {
@@ -158,7 +159,7 @@ void Start_Smart_Config(void)
 
     LED_On(LED_RGB);
 
-    wlan_smart_config_finalize();
+    WLAN_LISTEN_ON_FAILED_CONNECT = wlan_smart_config_finalize();
 
     if (WLAN_SMART_CONFIG_FINISHED)
     {
@@ -166,9 +167,8 @@ void Start_Smart_Config(void)
         SPARK_WLAN_SmartConfigProcess();
     }
 
-    network_connect();
-
     WLAN_SMART_CONFIG_START = 0;
+    network_connect();
 }
 
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
@@ -442,6 +442,7 @@ void HAL_WLAN_notify_connected()
     }
 }
 
+
 void HAL_WLAN_notify_disconnected()
 {
     if (WLAN_CONNECTED && !WLAN_DISCONNECT)
@@ -452,9 +453,6 @@ void HAL_WLAN_notify_disconnected()
     WLAN_DHCP = 0;
     SPARK_CLOUD_SOCKETED = 0;
     SPARK_CLOUD_CONNECTED = 0;
-    SPARK_LED_FADE = 1;
-    LED_SetRGBColor(RGB_COLOR_BLUE);
-    LED_On(LED_RGB);
     Spark_Error_Count = 0;
 }
 
@@ -467,10 +465,15 @@ void HAL_WLAN_notify_dhcp(bool dhcp)
         SPARK_LED_FADE = 1;
         LED_SetRGBColor(RGB_COLOR_GREEN);
         LED_On(LED_RGB);
+        WLAN_LISTEN_ON_FAILED_CONNECT = false;
     }
     else
     {
         WLAN_DHCP = 0;
+        if (WLAN_LISTEN_ON_FAILED_CONNECT)
+            network_listen();
+        else
+             ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
     }
 }
 
