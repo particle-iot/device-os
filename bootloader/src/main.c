@@ -294,7 +294,7 @@ int main(void)
             SysTick_Disable();
             Jump_To_Application();
         }
-        else if (SYSTEM_FLAG(dfu_on_no_firmware)) {
+        else if (!SYSTEM_FLAG(dfu_on_no_firmware)) {
             LED_SetRGBColor(RGB_COLOR_RED);
             FACTORY_Flash_Reset();            
     }
