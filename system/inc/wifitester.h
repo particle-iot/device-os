@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    wifitester.cpp
- * @authors  David Middlecamp, Matthew McGowan
- * @version V1.0.0
+ * @file    wifitester.h
+ * @authors mat
+ * @date    27 January 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,25 +21,11 @@
  ******************************************************************************
  */
 
-#include "application.h"
+#ifndef WIFITESTER_H
+#define	WIFITESTER_H
 
-SYSTEM_MODE(MANUAL);
+void wifitester_loop(int c);
+void wifitester_setup();
 
-void setup()
-{
-    Serial.begin(9600);
-#if USE_SERIAL1    
-    Serial1.begin(9600);
-#endif    
-    wifitester_setup();
-}
-
-void loop()
-{
-    int c = -1;
-	if (serialAvailable()) {
-        c = serialRead();
-    }
-    wifitester_loop(c);    
-}
+#endif	/* WIFITESTER_H */
 

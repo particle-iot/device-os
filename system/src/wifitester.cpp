@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
  * @file    wifitester.cpp
- * @authors Matthew McGowan, David Middlecamp
- * @date    25 January 2015
+ * @authors  David Middlecamp, Matthew McGowan
+ * @version V1.0.0
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,9 +21,14 @@
  ******************************************************************************
  */
 
-#include "application.h"
+#include "spark_wiring.h"
+#include "spark_wiring_wifi.h"
+#include "spark_wiring_usbserial.h"
+#include "spark_wiring_usartserial.h"
+#include "wifitester.h"
+#include "hw_config.h"
 
-#ifdef TEACUP
+using namespace spark;
 
 uint8_t serialAvailable();
 int32_t serialRead();
@@ -33,7 +38,7 @@ void checkWifiSerial(char c);
 void tokenizeCommand(char *cmd, char** parts);
 void tester_connect(char *ssid, char *pass);
 
-#define USE_SERIAL1 0
+#define USE_SERIAL1 1
 
 uint8_t notifiedAboutDHCP = 0;
 int state = 0;
@@ -51,8 +56,10 @@ const char cmd_REBOOT[] = "REBOOT:";
 const char cmd_INFO[] = "INFO:";
 const char cmd_CLEAR[] = "CLEAR:";
 
-void setup_wifitester()
+void wifitester_setup()
 {
+    WiFi.on();
+    
     cmd_index = 0;
     RGB.control(true);
     RGB.color(64, 0, 0);
@@ -64,11 +71,12 @@ void setup_wifitester()
     //DONE: run setup/loop without wifi (ditto))
     //TODO: try to connect to manual wifi asap
     //TODO: set the pin / report via serial
+    
 }
 
-
-void loop_wifitester(int c)
+void wifitester_loop(int c)
 {
+
     if (WiFi.ready() && (dhcp_notices < 5)) {
         serialPrintln(" DHCP DHCP DHCP ! DHCP DHCP DHCP ! DHCP DHCP DHCP !");
 		RGB.color(255, 0, 255);
@@ -79,11 +87,10 @@ void loop_wifitester(int c)
 	    state = !state;
 	    RGB.color(64, (state) ? 255 : 0, 64);
 	}
-
-	if (c>=0) {
-	    state = !state;
+    if (c!=-1) {
+        state = !state;
 	    RGB.color(0, 64, (state) ? 255 : 0);		
-		checkWifiSerial((char)c);
+        checkWifiSerial((char)c);        
     }
 }
 
@@ -96,10 +103,10 @@ void printItem(const char* name, const char* value) {
 // todo - this is specific to core-v2 HAL
 struct varstring_t {
     uint8_t len;
-    char string[32];
+    char string[33];
 };
 
-extern "C" bool fetch_or_generate_device_id(varstring_t* result);
+extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result);
 
 void printInfo() {
     String deviceID = Spark.deviceID();
@@ -119,14 +126,15 @@ void printInfo() {
         
     varstring_t serial;    
     memset(&serial, 0, sizeof(serial));
-    fetch_or_generate_device_id(&serial);
+    fetch_or_generate_setup_ssid(&serial);
+    serial.string[serial.len] = 0;
     
     String rssi(WiFi.RSSI());
     
     printItem("DeviceID", deviceID.c_str());
-    printItem("Serial", serial.string);
+    printItem("Serial", strstr((const char*)serial.string, "-")+1);
     printItem("MAC", macAddress.c_str());    
-    printItem("SSID", (const char*)ip_config.uaSSID);
+    printItem("SSID", serial.string);
     printItem("RSSI", rssi.c_str());
 }
 
@@ -308,4 +316,3 @@ void tester_connect(char *ssid, char *pass) {
 	serialPrintln("  WIFI Connected?    ");
 }
 
-#endif
