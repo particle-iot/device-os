@@ -789,7 +789,7 @@ const int DEVICE_ID_LEN = 6;
 STATIC_ASSERT(device_id_len_is_same_as_dct_storage, DEVICE_ID_LEN==DCT_DEVICE_ID_SIZE);
 
 
-extern "C" bool fetch_or_generate_device_id(wiced_ssid_t* SSID);
+extern "C" bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID);
 
 /**
  * Copies the device ID to the destination, generating it if necessary.
@@ -832,6 +832,13 @@ bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
     return generate;    
 }
 
+bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID) {
+    bool result = fetch_or_generate_ssid_prefix(SSID);
+    SSID->value[SSID->length++] = '-';
+    result |= fetch_or_generate_device_id(SSID);
+    return result;
+}
+
 extern "C" wiced_ip_setting_t device_init_ip_settings;
 
 /**
@@ -845,11 +852,8 @@ class SoftAPController {
                 
         
         wiced_config_soft_ap_t expected;
-        memset(&expected, 0, sizeof(expected));
-        
-        fetch_or_generate_ssid_prefix(&expected.SSID);
-        expected.SSID.value[expected.SSID.length++] = '-';
-        fetch_or_generate_device_id(&expected.SSID);
+        memset(&expected, 0, sizeof(expected));        
+        fetch_or_generate_setup_ssid(&expected.SSID);
                 
         expected.channel = 11;
         expected.details_valid = WICED_TRUE;
