@@ -23,7 +23,7 @@ extern "C" {
 
 typedef enum
 {
-  AUTOMATIC = 0, SEMI_AUTOMATIC = 1, MANUAL = 2
+  DEFAULT=0, AUTOMATIC = 1, SEMI_AUTOMATIC = 2, MANUAL = 3
 } System_Mode_TypeDef;
 
 void set_system_mode(System_Mode_TypeDef mode);
