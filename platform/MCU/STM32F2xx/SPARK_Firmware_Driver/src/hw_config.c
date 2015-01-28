@@ -626,6 +626,62 @@ void Save_SystemFlags()
     Save_SystemFlags_Impl(&system_flags);
 }
 
+uint16_t FLASH_SectorToErase(uint32_t address)
+{
+    uint16_t flashSector = 0xFFFF;//Invalid sector
+
+    if (address < 0x08004000)
+    {
+        flashSector = FLASH_Sector_0;
+    }
+    else if (address < 0x08008000)
+    {
+        flashSector = FLASH_Sector_1;
+    }
+    else if (address < 0x0800C000)
+    {
+        flashSector = FLASH_Sector_2;
+    }
+    else if (address < 0x08010000)
+    {
+        flashSector = FLASH_Sector_3;
+    }
+    else if (address < 0x08020000)
+    {
+        flashSector = FLASH_Sector_4;
+    }
+    else if (address < 0x08040000)
+    {
+        flashSector = FLASH_Sector_5;
+    }
+    else if (address < 0x08060000)
+    {
+        flashSector = FLASH_Sector_6;
+    }
+    else if (address < 0x08080000)
+    {
+        flashSector = FLASH_Sector_7;
+    }
+    else if (address < 0x080A0000)
+    {
+        flashSector = FLASH_Sector_8;
+    }
+    else if (address < 0x080C0000)
+    {
+        flashSector = FLASH_Sector_9;
+    }
+    else if (address < 0x080E0000)
+    {
+        flashSector = FLASH_Sector_10;
+    }
+    else if (address < 0x08100000)
+    {
+        flashSector = FLASH_Sector_11;
+    }
+
+    return flashSector;
+}
+
 bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint32_t length)
 {
     uint32_t eraseCounter = 0;
@@ -634,42 +690,15 @@ bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint
 
     if (flashDeviceID == FLASH_INTERNAL)
     {
-        uint16_t flashSector = FLASH_Sector_5;
-
-        if (address < 0x08020000)
+        if (address < 0x08020000 || endAddress >= 0x08100000)
         {
             return false;
         }
-        else if (address < 0x08040000)
-        {
-            flashSector = FLASH_Sector_5;
-        }
-        else if (address < 0x08060000)
-        {
-            flashSector = FLASH_Sector_6;
-        }
-        else if (address < 0x08080000)
-        {
-            flashSector = FLASH_Sector_7;
-        }
-        else if (address < 0x080A0000)
-        {
-            flashSector = FLASH_Sector_8;
-        }
-        else if (address < 0x080C0000)
-        {
-            flashSector = FLASH_Sector_9;
-        }
-        else if (address < 0x080E0000)
-        {
-            flashSector = FLASH_Sector_10;
-        }
-        else if (address < 0x08100000)
-        {
-            flashSector = FLASH_Sector_11;
-        }
 
-        if (endAddress >= 0x08100000)
+        /* Check which sector has to be erased */
+        uint16_t flashSector = FLASH_SectorToErase(address);
+
+        if (flashSector > FLASH_Sector_11)
         {
             return false;
         }

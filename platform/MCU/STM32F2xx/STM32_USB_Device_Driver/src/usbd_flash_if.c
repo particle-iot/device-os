@@ -59,6 +59,9 @@ DFU_MAL_Prop_TypeDef DFU_Flash_cb =
 
 /* Private functions ---------------------------------------------------------*/
 
+/* External functions --------------------------------------------------------*/
+extern uint16_t FLASH_SectorToErase(uint32_t address);
+
 /**
   * @brief  FLASH_If_Init
   *         Memory initialization routine.
@@ -103,57 +106,15 @@ uint16_t FLASH_If_Erase(uint32_t Add)
 
 #if defined (STM32F2XX) || defined (STM32F4XX)
   /* Check which sector has to be erased */
-  if (Add < 0x08004000)
+  uint16_t FLASH_Sector = FLASH_SectorToErase(Add);
+
+  if (FLASH_Sector > FLASH_Sector_11)
   {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_0, VoltageRange_3);
-  }
-  else if (Add < 0x08008000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_1, VoltageRange_3);
-  }
-  else if (Add < 0x0800C000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_2, VoltageRange_3);
-  }
-  else if (Add < 0x08010000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_3, VoltageRange_3);
-  }
-  else if (Add < 0x08020000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_4, VoltageRange_3);
-  }
-  else if (Add < 0x08040000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_5, VoltageRange_3);
-  }
-  else if (Add < 0x08060000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_6, VoltageRange_3);
-  }
-  else if (Add < 0x08080000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_7, VoltageRange_3);
-  }
-  else if (Add < 0x080A0000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_8, VoltageRange_3);
-  }
-  else if (Add < 0x080C0000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_9, VoltageRange_3);
-  }
-  else if (Add < 0x080E0000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_10, VoltageRange_3);
-  }
-  else if (Add < 0x08100000)
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector_11, VoltageRange_3);
+    return MAL_FAIL;
   }
   else
   {
-    return MAL_FAIL;    
+    FlashStatus = FLASH_EraseSector(FLASH_Sector, VoltageRange_3);
   }
 #elif defined(STM32F10X_CL)
   /* Call the standard Flash erase function */
