@@ -681,14 +681,9 @@ int FLASH_EraseInternal(uint32_t FLASH_Address, uint32_t Image_Size)
     FLASH_ClearFlags();
 
     /* Erase the Internal Flash pages */
-    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
+    for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
     {
         FLASHStatus = FLASH_EraseSector(FLASH_Sector + (FLASH_SectorMulFactor * EraseCounter), FLASH_VoltageRange);
-
-        if (FLASHStatus != FLASH_COMPLETE)
-        {
-            return -1;
-        }
     }
 
     /* Locks the FLASH Program Erase Controller */
@@ -718,6 +713,151 @@ int FLASH_EraseSerial(uint32_t FLASH_Address, uint32_t Image_Size)
 #endif
 
     /* Return Failure */
+    return -1;
+}
+
+int FLASH_CopyFromInternalToInternal(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length)
+{
+    uint32_t internalFlashData = 0;
+    uint32_t endAddress = sourceAddress + length;
+
+    if (FLASH_EraseInternal(destinationAddress, length) != 0)
+    {
+        return -1;
+    }
+
+    /* Unlock the Flash Program Erase Controller */
+    FLASH_Unlock();
+
+    /* Program Internal Flash Bank1 */
+    while ((sourceAddress < endAddress) && (FLASHStatus == FLASH_COMPLETE))
+    {
+        /* Read data from source address */
+        internalFlashData = (*(__IO uint32_t*) sourceAddress);
+        sourceAddress += 4;
+
+        /* Program data to destination address */
+        FLASHStatus = FLASH_ProgramWord(destinationAddress, internalFlashData);
+        destinationAddress += 4;
+    }
+
+    /* Locks the FLASH Program Erase Controller */
+    FLASH_Lock();
+
+    /* Return Success */
+    return 0;
+}
+
+int FLASH_CopyFromSerialToSerial(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length)
+{
+#ifdef USE_SERIAL_FLASH
+    uint8_t serialFlashData[4];
+    uint32_t endAddress = sourceAddress + length;
+
+    /* Initialize SPI Flash */
+    sFLASH_Init();
+
+    if (FLASH_EraseSerial(destinationAddress, length) != 0)
+    {
+        return -1;
+    }
+
+    /* Program External Flash */
+    while (sourceAddress < endAddress)
+    {
+        /* Read data from source address */
+        sFLASH_ReadBuffer(serialFlashData, sourceAddress, 4);
+        sourceAddress += 4;
+
+        /* Program data to destination address */
+        sFLASH_WriteBuffer(serialFlashData, destinationAddress, 4);
+        destinationAddress += 4;
+    }
+
+    /* Return Success */
+    return 0;
+#endif
+
+    /* Return Failure */
+    return -1;
+}
+
+int FLASH_CopyFromInternalToSerial(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length)
+{
+#ifdef USE_SERIAL_FLASH
+    uint8_t serialFlashData[4];
+    uint32_t internalFlashData = 0;
+    uint32_t endAddress = sourceAddress + length;
+
+    /* Initialize SPI Flash */
+    sFLASH_Init();
+
+    if (FLASH_EraseSerial(destinationAddress, length) != 0)
+    {
+        return -1;
+    }
+
+    /* Program External Flash */
+    while (sourceAddress < endAddress)
+    {
+        /* Read data from source address */
+        internalFlashData = (*(__IO uint32_t*) sourceAddress);
+        sourceAddress += 4;
+
+        serialFlashData[0] = (uint8_t)(internalFlashData & 0xFF);
+        serialFlashData[1] = (uint8_t)((internalFlashData & 0xFF00) >> 8);
+        serialFlashData[2] = (uint8_t)((internalFlashData & 0xFF0000) >> 16);
+        serialFlashData[3] = (uint8_t)((internalFlashData & 0xFF000000) >> 24);
+
+        /* Program data to destination address */
+        sFLASH_WriteBuffer(serialFlashData, destinationAddress, 4);
+        destinationAddress += 4;
+    }
+
+    return 0;
+#endif
+
+    return -1;
+}
+
+int FLASH_CopyFromSerialToInternal(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length)
+{
+#ifdef USE_SERIAL_FLASH
+    uint8_t serialFlashData[4];
+    uint32_t internalFlashData = 0;
+    uint32_t endAddress = sourceAddress + length;
+
+    /* Initialize SPI Flash */
+    sFLASH_Init();
+
+    if (FLASH_EraseInternal(destinationAddress, length) != 0)
+    {
+        return -1;
+    }
+
+    /* Unlock the Flash Program Erase Controller */
+    FLASH_Unlock();
+
+    /* Program Internal Flash Bank1 */
+    while ((sourceAddress < endAddress) && (FLASHStatus == FLASH_COMPLETE))
+    {
+        /* Read data from source address */
+        sFLASH_ReadBuffer(serialFlashData, sourceAddress, 4);
+        sourceAddress += 4;
+
+        internalFlashData = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
+
+        /* Program data to destination address */
+        FLASHStatus = FLASH_ProgramWord(destinationAddress, internalFlashData);
+        destinationAddress += 4;
+    }
+
+    /* Locks the FLASH Program Erase Controller */
+    FLASH_Lock();
+
+    return 0;
+#endif
+
     return -1;
 }
 

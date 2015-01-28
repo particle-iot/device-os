@@ -142,6 +142,10 @@ extern platform_system_flags_t system_flags;
 /* Internal/External Flash Routines */
 int FLASH_EraseInternal(uint32_t FLASH_Address, uint32_t Image_Size);
 int FLASH_EraseSerial(uint32_t FLASH_Address, uint32_t Image_Size);
+int FLASH_CopyFromInternalToInternal(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
+int FLASH_CopyFromSerialToSerial(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
+int FLASH_CopyFromInternalToSerial(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
+int FLASH_CopyFromSerialToInternal(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
 void FLASH_ClearFlags(void);
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors);
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors);
