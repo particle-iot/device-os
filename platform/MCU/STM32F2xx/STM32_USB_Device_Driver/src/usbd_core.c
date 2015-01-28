@@ -151,7 +151,10 @@ void USBD_Init(USB_OTG_CORE_HANDLE *pdev,
   DCD_Init(pdev , coreID);
   
   /* Upon Init call usr callback */
-  pdev->dev.usr_cb->Init();
+  if(pdev->dev.usr_cb)
+  {
+    pdev->dev.usr_cb->Init();
+  }
   
   /* Enable Interrupts */
   USB_OTG_BSP_EnableInterrupt(pdev);
@@ -352,7 +355,10 @@ static uint8_t USBD_Reset(USB_OTG_CORE_HANDLE  *pdev)
   
   /* Upon Reset call usr call back */
   pdev->dev.device_status = USB_OTG_DEFAULT;
-  pdev->dev.usr_cb->DeviceReset(pdev->cfg.speed);
+  if(pdev->dev.usr_cb)
+  {
+    pdev->dev.usr_cb->DeviceReset(pdev->cfg.speed);
+  }
   
   return USBD_OK;
 }
@@ -367,7 +373,10 @@ static uint8_t USBD_Reset(USB_OTG_CORE_HANDLE  *pdev)
 static uint8_t USBD_Resume(USB_OTG_CORE_HANDLE  *pdev)
 {
   /* Upon Resume call usr call back */
-  pdev->dev.usr_cb->DeviceResumed(); 
+  if(pdev->dev.usr_cb)
+  {
+    pdev->dev.usr_cb->DeviceResumed();
+  }
   pdev->dev.device_status = pdev->dev.device_old_status;  
   pdev->dev.device_status = USB_OTG_CONFIGURED;  
   return USBD_OK;
@@ -386,7 +395,10 @@ static uint8_t USBD_Suspend(USB_OTG_CORE_HANDLE  *pdev)
   pdev->dev.device_old_status = pdev->dev.device_status;
   pdev->dev.device_status  = USB_OTG_SUSPENDED;
   /* Upon Resume call usr call back */
-  pdev->dev.usr_cb->DeviceSuspended(); 
+  if(pdev->dev.usr_cb)
+  {
+    pdev->dev.usr_cb->DeviceSuspended();
+  }
   return USBD_OK;
 }
 
@@ -419,7 +431,10 @@ USBD_Status USBD_SetCfg(USB_OTG_CORE_HANDLE  *pdev, uint8_t cfgidx)
   pdev->dev.class_cb->Init(pdev, cfgidx); 
   
   /* Upon set config call usr call back */
-  pdev->dev.usr_cb->DeviceConfigured();
+  if(pdev->dev.usr_cb)
+  {
+    pdev->dev.usr_cb->DeviceConfigured();
+  }
   return USBD_OK; 
 }
 
@@ -469,7 +484,10 @@ static uint8_t USBD_IsoOUTIncomplete(USB_OTG_CORE_HANDLE  *pdev)
 */
 static uint8_t USBD_DevConnected(USB_OTG_CORE_HANDLE  *pdev)
 {
-  pdev->dev.usr_cb->DeviceConnected();
+  if(pdev->dev.usr_cb)
+  {
+    pdev->dev.usr_cb->DeviceConnected();
+  }
   pdev->dev.connection_status = 1;  
   return USBD_OK;
 }
@@ -482,7 +500,10 @@ static uint8_t USBD_DevConnected(USB_OTG_CORE_HANDLE  *pdev)
 */
 static uint8_t USBD_DevDisconnected(USB_OTG_CORE_HANDLE  *pdev)
 {
-  pdev->dev.usr_cb->DeviceDisconnected();
+  if(pdev->dev.usr_cb)
+  {
+    pdev->dev.usr_cb->DeviceDisconnected();
+  }
   pdev->dev.class_cb->DeInit(pdev, 0);
   pdev->dev.connection_status = 0;    
   return USBD_OK;
