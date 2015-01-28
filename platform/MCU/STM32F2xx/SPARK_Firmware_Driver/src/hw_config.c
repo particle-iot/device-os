@@ -1155,10 +1155,6 @@ void OTA_Flash_Reset(void)
     //the same should be reset during restore operation
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0001;
 
-    //Set system flag to Enable IWDG in IWDG_Reset_Enable()
-    //called in bootloader to recover from corrupt firmware
-    system_flags.IWDG_Enable_SysFlag = 0xD001;
-
     Finish_Update();
 #endif
 }
@@ -1185,6 +1181,10 @@ void OTA_Flashed_ResetStatus(void)
  *******************************************************************************/
 void Finish_Update(void)
 {
+    //Set system flag to Enable IWDG in IWDG_Reset_Enable()
+    //called in bootloader to recover from corrupt firmware
+    system_flags.IWDG_Enable_SysFlag = 0xD001;
+
     system_flags.FLASH_OTA_Update_SysFlag = 0x5000;
     Save_SystemFlags();
 
