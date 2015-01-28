@@ -65,8 +65,6 @@ EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER};
 uint32_t Internal_Flash_Address = 0;
 uint32_t Internal_Flash_Data = 0;
 uint16_t Flash_Update_Index = 0;
-uint32_t EraseCounter = 0;
-uint32_t NbrOfPage = 0;
 volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
 #ifdef USE_SERIAL_FLASH
 uint32_t External_Flash_Address = 0;
@@ -628,6 +626,100 @@ void Save_SystemFlags()
     Save_SystemFlags_Impl(&system_flags);
 }
 
+int FLASH_EraseInternal(uint32_t FLASH_Address, uint32_t Image_Size)
+{
+    uint16_t FLASH_Sector;
+    uint8_t FLASH_SectorMulFactor = 8;
+    uint8_t FLASH_VoltageRange = VoltageRange_3;
+    uint32_t EraseCounter = 0;
+    uint32_t NbrOfPage = 0;
+
+    if (FLASH_Address < 0x08020000)
+    {
+        return -1;
+    }
+    else if (FLASH_Address < 0x08040000)
+    {
+        FLASH_Sector = FLASH_Sector_5;
+    }
+    else if (FLASH_Address < 0x08060000)
+    {
+        FLASH_Sector = FLASH_Sector_6;
+    }
+    else if (FLASH_Address < 0x08080000)
+    {
+        FLASH_Sector = FLASH_Sector_7;
+    }
+    else if (FLASH_Address < 0x080A0000)
+    {
+        FLASH_Sector = FLASH_Sector_8;
+    }
+    else if (FLASH_Address < 0x080C0000)
+    {
+        FLASH_Sector = FLASH_Sector_9;
+    }
+    else if (FLASH_Address < 0x080E0000)
+    {
+        FLASH_Sector = FLASH_Sector_10;
+    }
+    else if (FLASH_Address < 0x08100000)
+    {
+        FLASH_Sector = FLASH_Sector_11;
+    }
+    else
+    {
+        return -1;
+    }
+
+    /* Unlock the Flash Program Erase Controller */
+    FLASH_Unlock();
+
+    /* Define the number of Internal Flash pages to be erased */
+    NbrOfPage = FLASH_PagesMask(Image_Size, INTERNAL_FLASH_PAGE_SIZE);
+
+    /* Clear All pending flags */
+    FLASH_ClearFlags();
+
+    /* Erase the Internal Flash pages */
+    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
+    {
+        FLASHStatus = FLASH_EraseSector(FLASH_Sector + (FLASH_SectorMulFactor * EraseCounter), FLASH_VoltageRange);
+
+        if (FLASHStatus != FLASH_COMPLETE)
+        {
+            return -1;
+        }
+    }
+
+    /* Locks the FLASH Program Erase Controller */
+    FLASH_Lock();
+
+    /* Return Success */
+    return 0;
+}
+
+int FLASH_EraseSerial(uint32_t FLASH_Address, uint32_t Image_Size)
+{
+#ifdef USE_SERIAL_FLASH
+    uint32_t EraseCounter = 0;
+    uint32_t NbrOfPage = 0;
+
+    /* Define the number of External Flash pages to be erased */
+    NbrOfPage = FLASH_PagesMask(Image_Size, sFLASH_PAGESIZE);
+
+    /* Erase the SPI Flash pages */
+    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
+    {
+        sFLASH_EraseSector(FLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
+    }
+
+    /* Return Success */
+    return 0;
+#endif
+
+    /* Return Failure */
+    return -1;
+}
 
 void FLASH_ClearFlags(void)
 {
@@ -712,74 +804,9 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
     }
 }
 
-int FLASH_Erase(uint32_t FLASH_Address, uint32_t Image_Size)
+void FLASH_Erase(void)
 {
-    uint16_t FLASH_Sector;
-    uint8_t FLASH_SectorMulFactor = 8;
-    uint8_t FLASH_VoltageRange = VoltageRange_3;
-
-    if (FLASH_Address < 0x08020000)
-    {
-        return -1;
-    }
-    else if (FLASH_Address < 0x08040000)
-    {
-        FLASH_Sector = FLASH_Sector_5;
-    }
-    else if (FLASH_Address < 0x08060000)
-    {
-        FLASH_Sector = FLASH_Sector_6;
-    }
-    else if (FLASH_Address < 0x08080000)
-    {
-        FLASH_Sector = FLASH_Sector_7;
-    }
-    else if (FLASH_Address < 0x080A0000)
-    {
-        FLASH_Sector = FLASH_Sector_8;
-    }
-    else if (FLASH_Address < 0x080C0000)
-    {
-        FLASH_Sector = FLASH_Sector_9;
-    }
-    else if (FLASH_Address < 0x080E0000)
-    {
-        FLASH_Sector = FLASH_Sector_10;
-    }
-    else if (FLASH_Address < 0x08100000)
-    {
-        FLASH_Sector = FLASH_Sector_11;
-    }
-    else
-    {
-        return -1;
-    }
-
-    /* Unlock the Flash Program Erase Controller */
-    FLASH_Unlock();
-
-    /* Define the number of Internal Flash pages to be erased */
-    NbrOfPage = FLASH_PagesMask(Image_Size, INTERNAL_FLASH_PAGE_SIZE);
-
-    /* Clear All pending flags */
-    FLASH_ClearFlags();
-
-    /* Erase the Internal Flash pages */
-    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
-    {
-        FLASHStatus = FLASH_EraseSector(FLASH_Sector + (FLASH_SectorMulFactor * EraseCounter), FLASH_VoltageRange);
-
-        if (FLASHStatus != FLASH_COMPLETE)
-        {
-            return -1;
-        }
-    }
-
-    /* Locks the FLASH Program Erase Controller */
-    FLASH_Lock();
-
-    /* Return Success */
-    return 0;
+    FLASH_EraseInternal(CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
 }
 
 void FLASH_Backup(uint32_t FLASH_Address)
@@ -788,14 +815,7 @@ void FLASH_Backup(uint32_t FLASH_Address)
     /* Initialize SPI Flash */
     sFLASH_Init();
 
-    /* Define the number of External Flash pages to be erased */
-    NbrOfPage = FLASH_PagesMask(EXTERNAL_FLASH_BLOCK_SIZE, sFLASH_PAGESIZE);
-
-    /* Erase the SPI Flash pages */
-    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
-    {
-        sFLASH_EraseSector(FLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
-    }
+    FLASH_EraseSerial(FLASH_Address, EXTERNAL_FLASH_BLOCK_SIZE);
 
     Internal_Flash_Address = CORE_FW_ADDRESS;
     External_Flash_Address = FLASH_Address;
@@ -826,7 +846,7 @@ void FLASH_Restore(uint32_t FLASH_Address)
     /* Initialize SPI Flash */
     sFLASH_Init();
 
-    FLASH_Erase(CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
+    FLASH_EraseInternal(CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
 
     Internal_Flash_Address = CORE_FW_ADDRESS;
     External_Flash_Address = FLASH_Address;
@@ -881,14 +901,7 @@ void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
     External_Flash_Start_Address = FLASH_Address;
     External_Flash_Address = External_Flash_Start_Address;
 
-    /* Define the number of External Flash pages to be erased */
-    NbrOfPage = FLASH_PagesMask(imageSize, sFLASH_PAGESIZE);
-
-    /* Erase the SPI Flash pages */
-    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
-    {
-        sFLASH_EraseSector(External_Flash_Start_Address + (sFLASH_PAGESIZE * EraseCounter));
-    }
+    FLASH_EraseSerial(External_Flash_Start_Address, imageSize);
 #endif
 }
 
