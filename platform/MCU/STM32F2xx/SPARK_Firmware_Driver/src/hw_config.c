@@ -625,7 +625,7 @@ void FACTORY_Flash_Reset(void)
     system_flags.Factory_Reset_SysFlag = 0xFFFF;
 
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
-
+    system_flags.dfu_on_no_firmware = 0;
     Finish_Update();
 #endif
 }
