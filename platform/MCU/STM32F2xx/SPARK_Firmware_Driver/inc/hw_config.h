@@ -54,11 +54,6 @@ typedef enum
 	BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1
 } ButtonMode_TypeDef;
 
-typedef enum
-{
-    MAL_FLASH_INTERNAL = 0, MAL_FLASH_SERIAL = 1
-} MAL_Flash_Type;
-
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros ------------------------------------------------------------*/
