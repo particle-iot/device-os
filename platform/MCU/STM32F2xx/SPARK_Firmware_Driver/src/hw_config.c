@@ -963,65 +963,14 @@ void FLASH_Erase(void)
 void FLASH_Backup(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
-    /* Initialize SPI Flash */
-    sFLASH_Init();
-
-    FLASH_EraseMemory(FLASH_SERIAL, FLASH_Address, EXTERNAL_FLASH_BLOCK_SIZE);
-
-    Internal_Flash_Address = CORE_FW_ADDRESS;
-    External_Flash_Address = FLASH_Address;
-
-    /* Program External Flash */
-    while (Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS)
-    {
-        /* Read data from Internal Flash memory */
-        Internal_Flash_Data = (*(__IO uint32_t*) Internal_Flash_Address);
-        Internal_Flash_Address += 4;
-
-        /* Program Word to SPI Flash memory */
-        External_Flash_Data[0] = (uint8_t)(Internal_Flash_Data & 0xFF);
-        External_Flash_Data[1] = (uint8_t)((Internal_Flash_Data & 0xFF00) >> 8);
-        External_Flash_Data[2] = (uint8_t)((Internal_Flash_Data & 0xFF0000) >> 16);
-        External_Flash_Data[3] = (uint8_t)((Internal_Flash_Data & 0xFF000000) >> 24);
-        //OR
-        //*((uint32_t *)External_Flash_Data) = Internal_Flash_Data;
-        sFLASH_WriteBuffer(External_Flash_Data, External_Flash_Address, 4);
-        External_Flash_Address += 4;
-    }
+    FLASH_CopyMemory(FLASH_INTERNAL, FLASH_SERIAL, CORE_FW_ADDRESS, FLASH_Address, FIRMWARE_IMAGE_SIZE);
 #endif
 }
 
 void FLASH_Restore(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
-    /* Initialize SPI Flash */
-    sFLASH_Init();
-
-    FLASH_EraseMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
-
-    Internal_Flash_Address = CORE_FW_ADDRESS;
-    External_Flash_Address = FLASH_Address;
-
-    /* Unlock the Flash Program Erase Controller */
-    FLASH_Unlock();
-
-    /* Program Internal Flash Bank1 */
-    while ((Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS) && (FLASHStatus == FLASH_COMPLETE))
-    {
-        /* Read data from SPI Flash memory */
-        sFLASH_ReadBuffer(External_Flash_Data, External_Flash_Address, 4);
-        External_Flash_Address += 4;
-
-        /* Program Word to Internal Flash memory */
-        Internal_Flash_Data = (uint32_t)(External_Flash_Data[0] | (External_Flash_Data[1] << 8) | (External_Flash_Data[2] << 16) | (External_Flash_Data[3] << 24));
-        //OR
-        //Internal_Flash_Data = *((uint32_t *)External_Flash_Data);
-        FLASHStatus = FLASH_ProgramWord(Internal_Flash_Address, Internal_Flash_Data);
-        Internal_Flash_Address += 4;
-    }
-
-    /* Locks the FLASH Program Erase Controller */
-    FLASH_Lock();
+    FLASH_CopyMemory(FLASH_SERIAL, FLASH_INTERNAL, FLASH_Address, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
 #endif
 }
 
