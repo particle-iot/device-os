@@ -22,7 +22,7 @@ CSRC += $(TARGET_SPARK_SRC_PATH)/spi_flash.c
 endif
 
 # C++ source files included in this build.
-CPPSRC +=
+CPPSRC += $(TARGET_SPARK_SRC_PATH)/hw_modules.cpp
 
 # ASM source files included in this build.
 ASRC +=
