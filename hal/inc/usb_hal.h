@@ -77,10 +77,32 @@ void Get_SerialNum(void);
 #endif
 
 #ifdef USB_CDC_ENABLE
+/**
+ * Initialize or deinitialize USB serial
+ * @param baudRate  The data rate of the connection. If 0, the connection is
+ * uninitialized.
+ */
 void USB_USART_Init(uint32_t baudRate);
-void USB_USART_DeInit();
+
+/**
+ * Retrieves the number of bytes of data available.
+ * @return 
+ */
 uint8_t USB_USART_Available_Data(void);
-int32_t USB_USART_Receive_Data(void);
+
+/**
+ * Reads data from the input buffer.
+ * @param peek  If the data should be peeked reather than fetched.
+ * The default, `false` means fetch, where data is removed from the buffer.
+ * When `true`, the data byte is left in the buffer.
+ * @return 
+ */
+int32_t USB_USART_Receive_Data(uint8_t peek);
+
+/**
+ * Sends data to the USB serial.
+ * @param Data      The data to write.
+ */
 void USB_USART_Send_Data(uint8_t Data);
 #endif
 

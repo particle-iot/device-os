@@ -39,10 +39,6 @@ void USB_USART_Init(uint32_t baudRate)
 {  
 }
 
-void USB_USART_DeInit() 
-{    
-}
-
 /*******************************************************************************
  * Function Name  : USB_USART_Available_Data.
  * Description    : Return the length of available data received from USB.
@@ -60,7 +56,7 @@ uint8_t USB_USART_Available_Data(void)
  * Input          : None
  * Return         : Data.
  *******************************************************************************/
-int32_t USB_USART_Receive_Data(void)
+int32_t USB_USART_Receive_Data(bool peek)
 {
   return -1;
 }

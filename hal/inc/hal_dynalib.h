@@ -179,7 +179,6 @@ DYNALIB_FN(hal,Get_SerialNum)
 
 #ifdef USB_CDC_ENABLE
 DYNALIB_FN(hal,USB_USART_Init)
-DYNALIB_FN(hal,USB_USART_DeInit)
 DYNALIB_FN(hal,USB_USART_Available_Data)
 DYNALIB_FN(hal,USB_USART_Receive_Data)
 DYNALIB_FN(hal,USB_USART_Send_Data)
