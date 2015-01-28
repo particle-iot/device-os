@@ -54,6 +54,11 @@ typedef enum
 	BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1
 } ButtonMode_TypeDef;
 
+typedef enum
+{
+    FLASH_INTERNAL = 0, FLASH_SERIAL = 1
+} FlashDevice_TypeDef;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros ------------------------------------------------------------*/
@@ -140,12 +145,9 @@ void Save_SystemFlags(void);
 extern platform_system_flags_t system_flags;
 
 /* Internal/External Flash Routines */
-int FLASH_EraseInternal(uint32_t FLASH_Address, uint32_t Image_Size);
-int FLASH_EraseSerial(uint32_t FLASH_Address, uint32_t Image_Size);
-int FLASH_CopyFromInternalToInternal(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
-int FLASH_CopyFromSerialToSerial(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
-int FLASH_CopyFromInternalToSerial(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
-int FLASH_CopyFromSerialToInternal(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
+bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint32_t length);
+bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint8_t destinationDeviceID,
+                         uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
 void FLASH_ClearFlags(void);
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors);
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors);

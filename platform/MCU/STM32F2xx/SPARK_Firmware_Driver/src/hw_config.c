@@ -626,239 +626,221 @@ void Save_SystemFlags()
     Save_SystemFlags_Impl(&system_flags);
 }
 
-int FLASH_EraseInternal(uint32_t FLASH_Address, uint32_t Image_Size)
+bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint32_t length)
 {
-    uint16_t FLASH_Sector;
-    uint8_t FLASH_SectorMulFactor = 8;
-    uint8_t FLASH_VoltageRange = VoltageRange_3;
-    uint32_t EraseCounter = 0;
-    uint32_t NbrOfPage = 0;
+    uint32_t eraseCounter = 0;
+    uint32_t numPages = 0;
+    uint32_t endAddress = address + length;
 
-    if (FLASH_Address < 0x08020000)
+    if (flashDeviceID == FLASH_INTERNAL)
     {
-        return -1;
-    }
-    else if (FLASH_Address < 0x08040000)
-    {
-        FLASH_Sector = FLASH_Sector_5;
-    }
-    else if (FLASH_Address < 0x08060000)
-    {
-        FLASH_Sector = FLASH_Sector_6;
-    }
-    else if (FLASH_Address < 0x08080000)
-    {
-        FLASH_Sector = FLASH_Sector_7;
-    }
-    else if (FLASH_Address < 0x080A0000)
-    {
-        FLASH_Sector = FLASH_Sector_8;
-    }
-    else if (FLASH_Address < 0x080C0000)
-    {
-        FLASH_Sector = FLASH_Sector_9;
-    }
-    else if (FLASH_Address < 0x080E0000)
-    {
-        FLASH_Sector = FLASH_Sector_10;
-    }
-    else if (FLASH_Address < 0x08100000)
-    {
-        FLASH_Sector = FLASH_Sector_11;
-    }
-    else
-    {
-        return -1;
-    }
+        uint16_t flashSector = FLASH_Sector_5;
 
-    /* Unlock the Flash Program Erase Controller */
-    FLASH_Unlock();
+        if (address < 0x08020000)
+        {
+            return false;
+        }
+        else if (address < 0x08040000)
+        {
+            flashSector = FLASH_Sector_5;
+        }
+        else if (address < 0x08060000)
+        {
+            flashSector = FLASH_Sector_6;
+        }
+        else if (address < 0x08080000)
+        {
+            flashSector = FLASH_Sector_7;
+        }
+        else if (address < 0x080A0000)
+        {
+            flashSector = FLASH_Sector_8;
+        }
+        else if (address < 0x080C0000)
+        {
+            flashSector = FLASH_Sector_9;
+        }
+        else if (address < 0x080E0000)
+        {
+            flashSector = FLASH_Sector_10;
+        }
+        else if (address < 0x08100000)
+        {
+            flashSector = FLASH_Sector_11;
+        }
 
-    /* Define the number of Internal Flash pages to be erased */
-    NbrOfPage = FLASH_PagesMask(Image_Size, INTERNAL_FLASH_PAGE_SIZE);
+        if (endAddress >= 0x08100000)
+        {
+            return false;
+        }
 
-    /* Clear All pending flags */
-    FLASH_ClearFlags();
+        /* Unlock the Flash Program Erase Controller */
+        FLASH_Unlock();
 
-    /* Erase the Internal Flash pages */
-    for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
-    {
-        FLASHStatus = FLASH_EraseSector(FLASH_Sector + (FLASH_SectorMulFactor * EraseCounter), FLASH_VoltageRange);
+        /* Define the number of Internal Flash pages to be erased */
+        numPages = FLASH_PagesMask(length, INTERNAL_FLASH_PAGE_SIZE);
+
+        /* Clear All pending flags */
+        FLASH_ClearFlags();
+
+        /* Erase the Internal Flash pages */
+        for (eraseCounter = 0; (eraseCounter < numPages); eraseCounter++)
+        {
+            FLASHStatus = FLASH_EraseSector(flashSector + (8 * eraseCounter), VoltageRange_3);
+
+            /* If erase operation fails, return Failure */
+            if (FLASHStatus != FLASH_COMPLETE)
+            {
+                return false;
+            }
+        }
+
+        /* Locks the FLASH Program Erase Controller */
+        FLASH_Lock();
+
+        return true;
     }
-
-    /* Locks the FLASH Program Erase Controller */
-    FLASH_Lock();
-
-    /* Return Success */
-    return 0;
-}
-
-int FLASH_EraseSerial(uint32_t FLASH_Address, uint32_t Image_Size)
-{
+    else if (flashDeviceID == FLASH_SERIAL)
+    {
 #ifdef USE_SERIAL_FLASH
-    uint32_t EraseCounter = 0;
-    uint32_t NbrOfPage = 0;
+        if (address < 0x4000 || endAddress >= 0x100000)
+        {
+            return false;
+        }
 
-    /* Define the number of External Flash pages to be erased */
-    NbrOfPage = FLASH_PagesMask(Image_Size, sFLASH_PAGESIZE);
+        /* Define the number of External Flash pages to be erased */
+        numPages = FLASH_PagesMask(length, sFLASH_PAGESIZE);
 
-    /* Erase the SPI Flash pages */
-    for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
-    {
-        sFLASH_EraseSector(FLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
-    }
+        /* Erase the SPI Flash pages */
+        for (eraseCounter = 0; (eraseCounter < numPages); eraseCounter++)
+        {
+            sFLASH_EraseSector(address + (sFLASH_PAGESIZE * eraseCounter));
+        }
 
-    /* Return Success */
-    return 0;
+        /* Return Success */
+        return true;
 #endif
+    }
 
     /* Return Failure */
-    return -1;
+    return false;
 }
 
-int FLASH_CopyFromInternalToInternal(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length)
-{
-    uint32_t internalFlashData = 0;
-    uint32_t endAddress = sourceAddress + length;
-
-    if (FLASH_EraseInternal(destinationAddress, length) != 0)
-    {
-        return -1;
-    }
-
-    /* Unlock the Flash Program Erase Controller */
-    FLASH_Unlock();
-
-    /* Program Internal Flash Bank1 */
-    while ((sourceAddress < endAddress) && (FLASHStatus == FLASH_COMPLETE))
-    {
-        /* Read data from source address */
-        internalFlashData = (*(__IO uint32_t*) sourceAddress);
-        sourceAddress += 4;
-
-        /* Program data to destination address */
-        FLASHStatus = FLASH_ProgramWord(destinationAddress, internalFlashData);
-        destinationAddress += 4;
-    }
-
-    /* Locks the FLASH Program Erase Controller */
-    FLASH_Lock();
-
-    /* Return Success */
-    return 0;
-}
-
-int FLASH_CopyFromSerialToSerial(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length)
+bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint8_t destinationDeviceID,
+                      uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length)
 {
 #ifdef USE_SERIAL_FLASH
     uint8_t serialFlashData[4];
+#endif
+    uint32_t internalFlashData = 0;
     uint32_t endAddress = sourceAddress + length;
 
-    /* Initialize SPI Flash */
-    sFLASH_Init();
-
-    if (FLASH_EraseSerial(destinationAddress, length) != 0)
+    if ((sourceDeviceID != FLASH_SERIAL && sourceDeviceID != FLASH_INTERNAL) ||
+        (destinationDeviceID != FLASH_SERIAL && destinationDeviceID != FLASH_INTERNAL))
     {
-        return -1;
+        //Return false for invalid FLASH ID as arguments
+        return false;
     }
 
-    /* Program External Flash */
+    if (sourceDeviceID == FLASH_INTERNAL)
+    {
+        if (sourceAddress < 0x08020000 || endAddress >= 0x08100000)
+        {
+            return false;
+        }
+    }
+#ifdef USE_SERIAL_FLASH
+    else if (sourceDeviceID == FLASH_SERIAL)
+    {
+        if (sourceAddress < 0x4000 || endAddress >= 0x100000)
+        {
+            return false;
+        }
+    }
+#endif
+
+    if (sourceDeviceID == FLASH_SERIAL || destinationDeviceID == FLASH_SERIAL)
+    {
+#ifdef USE_SERIAL_FLASH
+        /* Initialize SPI Flash */
+        sFLASH_Init();
+#else
+        return false;
+#endif
+    }
+
+    if (FLASH_EraseMemory(destinationDeviceID, destinationAddress, length) != true)
+    {
+        return false;
+    }
+
+    if (destinationDeviceID == FLASH_INTERNAL)
+    {
+        /* Unlock the internal flash program erase controller */
+        FLASH_Unlock();
+    }
+
+    /* Program source to destination */
     while (sourceAddress < endAddress)
     {
-        /* Read data from source address */
-        sFLASH_ReadBuffer(serialFlashData, sourceAddress, 4);
-        sourceAddress += 4;
-
-        /* Program data to destination address */
-        sFLASH_WriteBuffer(serialFlashData, destinationAddress, 4);
-        destinationAddress += 4;
-    }
-
-    /* Return Success */
-    return 0;
-#endif
-
-    /* Return Failure */
-    return -1;
-}
-
-int FLASH_CopyFromInternalToSerial(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length)
-{
+        if (sourceDeviceID == FLASH_INTERNAL)
+        {
+            /* Read data from internal flash source address */
+            internalFlashData = (*(__IO uint32_t*) sourceAddress);
+        }
 #ifdef USE_SERIAL_FLASH
-    uint8_t serialFlashData[4];
-    uint32_t internalFlashData = 0;
-    uint32_t endAddress = sourceAddress + length;
-
-    /* Initialize SPI Flash */
-    sFLASH_Init();
-
-    if (FLASH_EraseSerial(destinationAddress, length) != 0)
-    {
-        return -1;
-    }
-
-    /* Program External Flash */
-    while (sourceAddress < endAddress)
-    {
-        /* Read data from source address */
-        internalFlashData = (*(__IO uint32_t*) sourceAddress);
-        sourceAddress += 4;
-
-        serialFlashData[0] = (uint8_t)(internalFlashData & 0xFF);
-        serialFlashData[1] = (uint8_t)((internalFlashData & 0xFF00) >> 8);
-        serialFlashData[2] = (uint8_t)((internalFlashData & 0xFF0000) >> 16);
-        serialFlashData[3] = (uint8_t)((internalFlashData & 0xFF000000) >> 24);
-
-        /* Program data to destination address */
-        sFLASH_WriteBuffer(serialFlashData, destinationAddress, 4);
-        destinationAddress += 4;
-    }
-
-    return 0;
+        else if (sourceDeviceID == FLASH_SERIAL)
+        {
+            /* Read data from serial flash source address */
+            sFLASH_ReadBuffer(serialFlashData, sourceAddress, 4);
+        }
 #endif
 
-    return -1;
-}
-
-int FLASH_CopyFromSerialToInternal(uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length)
-{
+        if (destinationDeviceID == FLASH_INTERNAL)
+        {
 #ifdef USE_SERIAL_FLASH
-    uint8_t serialFlashData[4];
-    uint32_t internalFlashData = 0;
-    uint32_t endAddress = sourceAddress + length;
+            if (sourceDeviceID == FLASH_SERIAL)
+            {
+                internalFlashData = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
+            }
+#endif
 
-    /* Initialize SPI Flash */
-    sFLASH_Init();
+            /* Program data to internal flash destination address */
+            FLASHStatus = FLASH_ProgramWord(destinationAddress, internalFlashData);
 
-    if (FLASH_EraseInternal(destinationAddress, length) != 0)
-    {
-        return -1;
-    }
+            /* If program operation fails, return Failure */
+            if (FLASHStatus != FLASH_COMPLETE)
+            {
+                return false;
+            }
+        }
+#ifdef USE_SERIAL_FLASH
+        else if (destinationDeviceID == FLASH_SERIAL)
+        {
+            if (sourceDeviceID == FLASH_INTERNAL)
+            {
+                serialFlashData[0] = (uint8_t)(internalFlashData & 0xFF);
+                serialFlashData[1] = (uint8_t)((internalFlashData & 0xFF00) >> 8);
+                serialFlashData[2] = (uint8_t)((internalFlashData & 0xFF0000) >> 16);
+                serialFlashData[3] = (uint8_t)((internalFlashData & 0xFF000000) >> 24);
+            }
 
-    /* Unlock the Flash Program Erase Controller */
-    FLASH_Unlock();
+            /* Program data to serial flash destination address */
+            sFLASH_WriteBuffer(serialFlashData, destinationAddress, 4);
+        }
+#endif
 
-    /* Program Internal Flash Bank1 */
-    while ((sourceAddress < endAddress) && (FLASHStatus == FLASH_COMPLETE))
-    {
-        /* Read data from source address */
-        sFLASH_ReadBuffer(serialFlashData, sourceAddress, 4);
         sourceAddress += 4;
-
-        internalFlashData = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
-
-        /* Program data to destination address */
-        FLASHStatus = FLASH_ProgramWord(destinationAddress, internalFlashData);
         destinationAddress += 4;
     }
 
-    /* Locks the FLASH Program Erase Controller */
-    FLASH_Lock();
+    if (destinationDeviceID == FLASH_INTERNAL)
+    {
+        /* Locks the internal flash program erase controller */
+        FLASH_Lock();
+    }
 
-    return 0;
-#endif
-
-    return -1;
+    return true;
 }
 
 void FLASH_ClearFlags(void)
@@ -946,7 +928,7 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
 
 void FLASH_Erase(void)
 {
-    FLASH_EraseInternal(CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
+    FLASH_EraseMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
 }
 
 void FLASH_Backup(uint32_t FLASH_Address)
@@ -955,7 +937,7 @@ void FLASH_Backup(uint32_t FLASH_Address)
     /* Initialize SPI Flash */
     sFLASH_Init();
 
-    FLASH_EraseSerial(FLASH_Address, EXTERNAL_FLASH_BLOCK_SIZE);
+    FLASH_EraseMemory(FLASH_SERIAL, FLASH_Address, EXTERNAL_FLASH_BLOCK_SIZE);
 
     Internal_Flash_Address = CORE_FW_ADDRESS;
     External_Flash_Address = FLASH_Address;
@@ -986,7 +968,7 @@ void FLASH_Restore(uint32_t FLASH_Address)
     /* Initialize SPI Flash */
     sFLASH_Init();
 
-    FLASH_EraseInternal(CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
+    FLASH_EraseMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
 
     Internal_Flash_Address = CORE_FW_ADDRESS;
     External_Flash_Address = FLASH_Address;
@@ -1041,7 +1023,7 @@ void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
     External_Flash_Start_Address = FLASH_Address;
     External_Flash_Address = External_Flash_Start_Address;
 
-    FLASH_EraseSerial(External_Flash_Start_Address, imageSize);
+    FLASH_EraseMemory(FLASH_SERIAL, External_Flash_Start_Address, imageSize);
 #endif
 }
 

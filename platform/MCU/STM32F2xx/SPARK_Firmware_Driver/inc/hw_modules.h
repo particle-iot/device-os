@@ -34,10 +34,6 @@ extern "C" {
 #endif
 
 /* Exported types ------------------------------------------------------------*/
-typedef enum
-{
-    MAL_FLASH_INTERNAL = 0, MAL_FLASH_SERIAL = 1
-} MAL_Flash_Type;
 
 /* Exported constants --------------------------------------------------------*/
 
