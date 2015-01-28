@@ -50,7 +50,7 @@ void USBSerial::begin(long speed)
 
 void USBSerial::end()
 {
-    // no USB_USART_DeInit() yet
+    USB_USART_Init(0);
     speed = 0;
 }
 
@@ -58,7 +58,7 @@ void USBSerial::end()
 // Read data from buffer
 int USBSerial::read()
 {
-	return USB_USART_Receive_Data();
+	return USB_USART_Receive_Data(false);
 }
 
 int USBSerial::available()
@@ -69,18 +69,16 @@ int USBSerial::available()
 size_t USBSerial::write(uint8_t byte)
 {
 	USB_USART_Send_Data(byte);
-
 	return 1;
 }
 
 void USBSerial::flush()
-{
-	//To Do
+{	    
 }
 
 int USBSerial::peek()
 {
-	return -1;
+	return USB_USART_Receive_Data(true);
 }
 
 // Preinstantiate Objects //////////////////////////////////////////////////////

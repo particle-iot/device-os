@@ -115,7 +115,8 @@ void Get_SerialNum(void)
 void USB_USART_Init(uint32_t baudRate)
 {
   linecoding.bitrate = baudRate;
-  SPARK_USB_Setup();
+  if (baudRate)
+    SPARK_USB_Setup();      
 }
 
 /*******************************************************************************
@@ -140,24 +141,24 @@ uint8_t USB_USART_Available_Data(void)
 /*******************************************************************************
  * Function Name  : USB_USART_Receive_Data.
  * Description    : Return data sent by USB Host.
- * Input          : None
+ * Input          : peek: when true, data is not removed from the buffer.
  * Return         : Data.
  *******************************************************************************/
-int32_t USB_USART_Receive_Data(void)
+int32_t USB_USART_Receive_Data(uint8_t peek)
 {
   if(bDeviceState == CONFIGURED)
   {
     if(USB_Rx_State == 1)
     {
-      if((USB_Rx_length - USB_Rx_ptr) == 1)
+      if(!peek && (USB_Rx_length - USB_Rx_ptr) == 1)
       {
         USB_Rx_State = 0;
 
         /* Enable the receive of data on EP3 */
         SetEPRxValid(ENDP3);
       }
-
-      return USB_Rx_Buffer[USB_Rx_ptr++];
+      
+      return peek ? USB_Rx_Buffer[USB_Rx_ptr] : USB_Rx_Buffer[USB_Rx_ptr++];
     }
   }
 

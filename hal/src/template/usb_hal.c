@@ -56,7 +56,7 @@ uint8_t USB_USART_Available_Data(void)
  * Input          : None
  * Return         : Data.
  *******************************************************************************/
-int32_t USB_USART_Receive_Data(void)
+int32_t USB_USART_Receive_Data(bool peek)
 {
   return -1;
 }
