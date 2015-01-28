@@ -278,44 +278,44 @@ void SparkClass::function(const char *funcKey, int (*pFunc)(String paramString))
 	}
 }
 
-void SparkClass::publish(const char *eventName)
+bool SparkClass::publish(const char *eventName)
 {
-  spark_protocol.send_event(eventName, NULL, 60, EventType::PUBLIC);
+  return spark_protocol.send_event(eventName, NULL, 60, EventType::PUBLIC);
 }
 
-void SparkClass::publish(const char *eventName, const char *eventData)
+bool SparkClass::publish(const char *eventName, const char *eventData)
 {
-  spark_protocol.send_event(eventName, eventData, 60, EventType::PUBLIC);
+  return spark_protocol.send_event(eventName, eventData, 60, EventType::PUBLIC);
 }
 
-void SparkClass::publish(const char *eventName, const char *eventData, int ttl)
+bool SparkClass::publish(const char *eventName, const char *eventData, int ttl)
 {
-  spark_protocol.send_event(eventName, eventData, ttl, EventType::PUBLIC);
+  return spark_protocol.send_event(eventName, eventData, ttl, EventType::PUBLIC);
 }
 
-void SparkClass::publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType)
+bool SparkClass::publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType)
 {
-  spark_protocol.send_event(eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
+  return spark_protocol.send_event(eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
 }
 
-void SparkClass::publish(String eventName)
+bool SparkClass::publish(String eventName)
 {
-  publish(eventName.c_str());
+  return publish(eventName.c_str());
 }
 
-void SparkClass::publish(String eventName, String eventData)
+bool SparkClass::publish(String eventName, String eventData)
 {
-  publish(eventName.c_str(), eventData.c_str());
+  return publish(eventName.c_str(), eventData.c_str());
 }
 
-void SparkClass::publish(String eventName, String eventData, int ttl)
+bool SparkClass::publish(String eventName, String eventData, int ttl)
 {
-  publish(eventName.c_str(), eventData.c_str(), ttl);
+  return publish(eventName.c_str(), eventData.c_str(), ttl);
 }
 
-void SparkClass::publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType)
+bool SparkClass::publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType)
 {
-  publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
+  return publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
 }
 
 void SparkClass::unsubscribe()
