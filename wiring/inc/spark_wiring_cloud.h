@@ -49,44 +49,44 @@ public:
         spark_function(funcKey, pFunc);
     }
 
-    void publish(const char *eventName)
+    bool publish(const char *eventName)
     {
-        spark_protocol_send_event(sp(), eventName, NULL, 60, EventType::PUBLIC);
+        return spark_protocol_send_event(sp(), eventName, NULL, 60, EventType::PUBLIC);
     }
 
-    void publish(const char *eventName, const char *eventData)
+    bool publish(const char *eventName, const char *eventData)
     {
-        spark_protocol_send_event(sp(), eventName, eventData, 60, EventType::PUBLIC);
+        return spark_protocol_send_event(sp(), eventName, eventData, 60, EventType::PUBLIC);
     }
 
-    void publish(const char *eventName, const char *eventData, int ttl)
+    bool publish(const char *eventName, const char *eventData, int ttl)
     {
-        spark_protocol_send_event(sp(), eventName, eventData, ttl, EventType::PUBLIC);
+        return spark_protocol_send_event(sp(), eventName, eventData, ttl, EventType::PUBLIC);
     }
 
-    void publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType)
+    bool publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType)
     {
-        spark_protocol_send_event(sp(), eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
+        return spark_protocol_send_event(sp(), eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
     }
 
-    void publish(String eventName)
+    bool publish(String eventName)
     {
-        publish(eventName.c_str());
+        return publish(eventName.c_str());
     }
 
-    void publish(String eventName, String eventData)
+    bool publish(String eventName, String eventData)
     {
-        publish(eventName.c_str(), eventData.c_str());
+        return publish(eventName.c_str(), eventData.c_str());
     }
 
-    void publish(String eventName, String eventData, int ttl)
+    bool publish(String eventName, String eventData, int ttl)
     {
-        publish(eventName.c_str(), eventData.c_str(), ttl);
+        return publish(eventName.c_str(), eventData.c_str(), ttl);
     }
 
-    void publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType)
+    bool publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType)
     {
-        publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
+        return publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
     }
 
     bool subscribe(const char *eventName, EventHandler handler)
