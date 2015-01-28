@@ -23,20 +23,19 @@
 
 #include "hw_config.h"
 #include "dct.h"
-
+#include <string.h>
 
 //This function will be called in bootloader to perform the memory update process
-void FLASH_Update_Modules(void)
+void MAL_Flash_Update_Modules(void)
 {
     platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];
-    uint8_t flash_module_count = 0;
     uint8_t updateStatusFlags = 0;
 
     //Fill the Flash modules info data read from the dct area
     const void* dct_app_data = dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
     memcpy(flash_modules, dct_app_data, DCT_FLASH_MODULES_SIZE);
 
-    for (flash_module_count = 0; flash_module_count < FLASH_MODULES_MAX; flash_module_count++)
+    for (uint8_t flash_module_count = 0; flash_module_count < FLASH_MODULES_MAX; flash_module_count++)
     {
         if(flash_modules[flash_module_count].statusFlag == 0x1)
         {
