@@ -686,7 +686,7 @@ bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint
 {
     uint32_t eraseCounter = 0;
     uint32_t numPages = 0;
-    uint32_t endAddress = address + length;
+    uint32_t endAddress = address + length - 1;
 
     if (flashDeviceID == FLASH_INTERNAL)
     {
@@ -762,7 +762,7 @@ bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint8_t destinationDeviceID,
     uint8_t serialFlashData[4];
 #endif
     uint32_t internalFlashData = 0;
-    uint32_t endAddress = sourceAddress + length;
+    uint32_t endAddress = sourceAddress + length - 1;
 
     if ((sourceDeviceID != FLASH_SERIAL && sourceDeviceID != FLASH_INTERNAL) ||
         (destinationDeviceID != FLASH_SERIAL && destinationDeviceID != FLASH_INTERNAL))
