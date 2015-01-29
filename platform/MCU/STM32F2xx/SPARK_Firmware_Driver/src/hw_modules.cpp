@@ -26,10 +26,10 @@
 #include <string.h>
 
 //This function will be called in bootloader to perform the memory update process
-void MAL_Flash_Update_Modules(void)
+void FLASH_Update_Modules(void)
 {
     platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];
-    uint8_t updateStatusFlags = 0;
+    uint8_t updateStatusFlags = 0x0;
 
     //Fill the Flash modules info data read from the dct area
     const void* dct_app_data = dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
@@ -39,14 +39,22 @@ void MAL_Flash_Update_Modules(void)
     {
         if(flash_modules[flash_module_count].statusFlag == 0x1)
         {
-            //To Do : Copy flash data from source to destination based on MAL ID
+            //Copy memory from source to destination based on flash device id
+            bool copy_result = FLASH_CopyMemory(flash_modules[flash_module_count].sourceDeviceID,
+                                                flash_modules[flash_module_count].destinationDeviceID,
+                                                flash_modules[flash_module_count].sourceAddress,
+                                                flash_modules[flash_module_count].destinationAddress,
+                                                flash_modules[flash_module_count].length);
 
-            updateStatusFlags |= flash_modules[flash_module_count].statusFlag;
-            flash_modules[flash_module_count].statusFlag = 0; //Reset statusFlag
+            if(copy_result != false)
+            {
+                updateStatusFlags |= flash_modules[flash_module_count].statusFlag;
+                flash_modules[flash_module_count].statusFlag = 0x0; //Reset statusFlag
+            }
         }
     }
 
-    if(updateStatusFlags)
+    if(updateStatusFlags == 0x1)
     {
         //Only update DCT if required
         dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, DCT_FLASH_MODULES_SIZE);

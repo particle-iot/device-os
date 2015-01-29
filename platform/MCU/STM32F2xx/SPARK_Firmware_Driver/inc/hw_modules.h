@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    hw_config.h
+ * @file    hw_modules.h
  * @authors Matthew McGowan, Satish Nair
  * @version V1.0.0
  * @date    27-Jan-2015
@@ -41,7 +41,7 @@ extern "C" {
 
 /* Exported functions ------------------------------------------------------- */
 
-void MAL_Flash_Update_Modules(void);
+void FLASH_Update_Modules(void);
 
 #ifdef __cplusplus
 }
