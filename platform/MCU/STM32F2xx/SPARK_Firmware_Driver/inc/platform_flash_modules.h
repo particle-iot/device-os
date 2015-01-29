@@ -31,7 +31,7 @@
 extern "C" {
 #endif
 
-typedef struct platform_flash_modules_t {
+typedef struct platform_flash_modules {
     uint8_t reserved1;
     uint8_t statusFlag;//or magic_numer
     uint8_t sourceDeviceID;

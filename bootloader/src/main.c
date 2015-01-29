@@ -265,6 +265,9 @@ int main(void)
             BACKUP_Flash_Reset();
         }
 
+        // Update Internal/Serial Flash based on application_dct=>flash_modules settings
+        FLASH_Update_Modules();
+
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
         if (((*(__IO uint32_t*)ApplicationAddress) & APP_START_MASK) == 0x20000000)
