@@ -872,6 +872,43 @@ bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint8_t destinationDeviceID,
     return true;
 }
 
+//This function called in bootloader to perform the memory update process
+void FLASH_Update_Modules(void)
+{
+    platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];
+    uint8_t flash_module_index = 0;
+    uint8_t updateStatusFlags = 0x0;
+
+    //Fill the Flash modules info data read from the dct area
+    const void* dct_app_data = dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
+    memcpy(flash_modules, dct_app_data, sizeof(flash_modules));
+
+    for (flash_module_index = 0; flash_module_index < FLASH_MODULES_MAX; flash_module_index++)
+    {
+        if(flash_modules[flash_module_index].statusFlag == 0x1)
+        {
+            //Copy memory from source to destination based on flash device id
+            bool copy_result = FLASH_CopyMemory(flash_modules[flash_module_index].sourceDeviceID,
+                                                flash_modules[flash_module_index].destinationDeviceID,
+                                                flash_modules[flash_module_index].sourceAddress,
+                                                flash_modules[flash_module_index].destinationAddress,
+                                                flash_modules[flash_module_index].length);
+
+            if(copy_result != false)
+            {
+                updateStatusFlags |= flash_modules[flash_module_index].statusFlag;
+                flash_modules[flash_module_index].statusFlag = 0x0; //Reset statusFlag
+            }
+        }
+    }
+
+    if(updateStatusFlags == 0x1)
+    {
+        //Only update DCT if required
+        dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, sizeof(flash_modules));
+    }
+}
+
 void FLASH_ClearFlags(void)
 {
     /* Clear All pending flags */

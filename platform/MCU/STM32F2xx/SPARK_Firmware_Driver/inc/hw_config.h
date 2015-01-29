@@ -148,6 +148,7 @@ extern platform_system_flags_t system_flags;
 bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint32_t length);
 bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint8_t destinationDeviceID,
                          uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
+void FLASH_Update_Modules(void);
 void FLASH_ClearFlags(void);
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors);
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors);
