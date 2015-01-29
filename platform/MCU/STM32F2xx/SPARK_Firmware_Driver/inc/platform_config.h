@@ -108,9 +108,13 @@
 #define USE_USB_OTG_FS
 //BM-14 has serial flash
 #define USE_SERIAL_FLASH
+//BM-14 bootloader with FLASH_UPDATE_MODULES enabled DOES NOT fit in < 16KB
+//#define FLASH_UPDATE_MODULES /* Please do not uncomment this at present */
 #elif (PLATFORM_ID == 4 || PLATFORM_ID == 6)
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
+//BM-09 bootloader with FLASH_UPDATE_MODULES enabled fits in < 16KB
+#define FLASH_UPDATE_MODULES
 #endif
 
 #ifdef USE_SERIAL_FLASH
