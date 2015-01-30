@@ -25,26 +25,6 @@
 #include "dct.h"
 #include "unit-test/unit-test.h"
 
-bool Compare_Internal_Flash_Data(uint32_t sourceAddress,
-                                        uint32_t destinationAddress,
-                                        uint32_t length)
-{
-    uint32_t endAddress = sourceAddress + length - 1;
-
-    while (sourceAddress < endAddress)
-    {
-        if ((*(__IO uint32_t*) sourceAddress) != (*(__IO uint32_t*) destinationAddress))
-        {
-            return false;
-        }
-
-        sourceAddress += 4;
-        destinationAddress += 4;
-    }
-
-    return true;
-}
-
 test(FLASH_UPDATE_MODULES_Test_Passed)
 {
     bool compareResult = false;
@@ -63,9 +43,11 @@ test(FLASH_UPDATE_MODULES_Test_Passed)
     FLASH_Update_Modules();
 
     //Compare internal flash memory data
-    compareResult = Compare_Internal_Flash_Data(flash_modules[0].sourceAddress,
-                                                flash_modules[0].destinationAddress,
-                                                flash_modules[0].length);
+    compareResult = FLASH_CompareMemory(flash_modules[0].sourceDeviceID,
+                                        flash_modules[0].sourceAddress,
+                                        flash_modules[0].destinationDeviceID,
+                                        flash_modules[0].destinationAddress,
+                                        flash_modules[0].length);
 
     assertEqual(compareResult, true);
 }

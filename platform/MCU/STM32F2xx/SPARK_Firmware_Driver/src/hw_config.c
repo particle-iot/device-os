@@ -626,7 +626,7 @@ void Save_SystemFlags()
     Save_SystemFlags_Impl(&system_flags);
 }
 
-uint16_t FLASH_SectorToErase(FlashDevice_TypeDef flashDeviceID, uint32_t startAddress)
+uint16_t FLASH_SectorToErase(uint8_t flashDeviceID, uint32_t startAddress)
 {
     uint16_t flashSector = 0xFFFF;//Invalid sector
 
@@ -687,7 +687,7 @@ uint16_t FLASH_SectorToErase(FlashDevice_TypeDef flashDeviceID, uint32_t startAd
     return flashSector;
 }
 
-bool FLASH_CheckValidAddressRange(FlashDevice_TypeDef flashDeviceID, uint32_t startAddress, uint32_t length)
+bool FLASH_CheckValidAddressRange(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
     uint32_t endAddress = startAddress + length - 1;
 
@@ -717,7 +717,7 @@ bool FLASH_CheckValidAddressRange(FlashDevice_TypeDef flashDeviceID, uint32_t st
     return true;
 }
 
-bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t startAddress, uint32_t length)
+bool FLASH_EraseMemory(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
     uint32_t eraseCounter = 0;
     uint32_t numPages = 0;
@@ -807,14 +807,6 @@ bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
         return false;
     }
 
-    if (sourceDeviceID == FLASH_SERIAL || destinationDeviceID == FLASH_SERIAL)
-    {
-#ifdef USE_SERIAL_FLASH
-        /* Initialize SPI Flash */
-        sFLASH_Init();
-#endif
-    }
-
     if (FLASH_EraseMemory(destinationDeviceID, destinationAddress, length) != true)
     {
         return false;
@@ -894,6 +886,80 @@ bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
         FLASH_Lock();
     }
 
+    return true;
+}
+
+bool FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                         uint8_t destinationDeviceID, uint32_t destinationAddress,
+                         uint32_t length)
+{
+#ifdef USE_SERIAL_FLASH
+    uint8_t serialFlashData[4];
+#endif
+    uint32_t sourceDeviceData = 0;
+    uint32_t destinationDeviceData = 0;
+    uint32_t endAddress = sourceAddress + length - 1;
+
+    if (FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length) != true)
+    {
+        return false;
+    }
+
+    if (FLASH_CheckValidAddressRange(destinationDeviceID, destinationAddress, length) != true)
+    {
+        return false;
+    }
+
+    if (sourceDeviceID == FLASH_SERIAL || destinationDeviceID == FLASH_SERIAL)
+    {
+#ifdef USE_SERIAL_FLASH
+        /* Initialize SPI Flash */
+        sFLASH_Init();
+#endif
+    }
+
+    /* Program source to destination */
+    while (sourceAddress < endAddress)
+    {
+        if (sourceDeviceID == FLASH_INTERNAL)
+        {
+            /* Read data from internal flash source address */
+            sourceDeviceData = (*(__IO uint32_t*) sourceAddress);
+        }
+#ifdef USE_SERIAL_FLASH
+        else if (sourceDeviceID == FLASH_SERIAL)
+        {
+            /* Read data from serial flash source address */
+            sFLASH_ReadBuffer(serialFlashData, sourceAddress, 4);
+            sourceDeviceData = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
+        }
+#endif
+
+        if (destinationDeviceID == FLASH_INTERNAL)
+        {
+            /* Read data from internal flash destination address */
+            destinationDeviceData = (*(__IO uint32_t*) destinationAddress);
+        }
+#ifdef USE_SERIAL_FLASH
+        else if (destinationDeviceID == FLASH_SERIAL)
+        {
+            /* Read data from serial flash destination address */
+            sFLASH_ReadBuffer(serialFlashData, destinationAddress, 4);
+            destinationDeviceData = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
+        }
+#endif
+
+        if (sourceDeviceData != destinationDeviceData)
+        {
+            /* Failed comparison check */
+            return false;
+        }
+
+        sourceAddress += 4;
+        destinationAddress += 4;
+    }
+
+    /* Passed comparison check */
     return true;
 }
 
