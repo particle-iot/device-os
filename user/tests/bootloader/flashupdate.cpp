@@ -22,17 +22,50 @@
  */
 
 #include "application.h"
+#include "dct.h"
 #include "unit-test/unit-test.h"
 
-test(FLASH_UPDATE_MODULES_Test_Passed) {
-    //To Do => Set flash(Internal and Serial) data to known values
+bool Compare_Internal_Flash_Data(uint32_t sourceAddress,
+                                        uint32_t destinationAddress,
+                                        uint32_t length)
+{
+    uint32_t endAddress = sourceAddress + length - 1;
 
-    //To Do => Fill up application_dct=>flash_modules instance
+    while (sourceAddress < endAddress)
+    {
+        if ((*(__IO uint32_t*) sourceAddress) != (*(__IO uint32_t*) destinationAddress))
+        {
+            return false;
+        }
+
+        sourceAddress += 4;
+        destinationAddress += 4;
+    }
+
+    return true;
+}
+
+test(FLASH_UPDATE_MODULES_Test_Passed)
+{
+    bool compareResult = false;
+
+    //Fill up application_dct=>flash_modules instances
+    platform_flash_modules_t flash_modules[5];
+    flash_modules[0].statusFlag = 0x1;
+    flash_modules[0].sourceDeviceID = FLASH_INTERNAL;
+    flash_modules[0].destinationDeviceID = FLASH_INTERNAL;
+    flash_modules[0].sourceAddress = 0x08020000;
+    flash_modules[0].destinationAddress = 0x080C0000;
+    flash_modules[0].length = 0x20000;
+    dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, sizeof(flash_modules));
 
     //Call FLASH_Update_Modules() to start the memory copy process
     FLASH_Update_Modules();
 
-    //To Do => Test for memory data (expected == actual)
+    //Compare internal flash memory data
+    compareResult = Compare_Internal_Flash_Data(flash_modules[0].sourceAddress,
+                                                flash_modules[0].destinationAddress,
+                                                flash_modules[0].length);
 
-    assertEqual(false, true); //Fail for now
+    assertEqual(compareResult, true);
 }
