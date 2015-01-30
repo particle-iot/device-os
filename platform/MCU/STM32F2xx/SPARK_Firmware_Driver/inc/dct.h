@@ -14,8 +14,11 @@ extern "C" {
 
 #include <stdint.h>    
 #include "platform_system_flags.h"  
+#include "platform_flash_modules.h"
 #include "static_assert.h"
 #include "stddef.h"     // for offsetof in C
+
+#define FLASH_MODULES_MAX 5
 
 /**
  * Custom extensions to the DCT data stored
@@ -32,8 +35,10 @@ typedef struct application_dct {
     uint8_t claimed[1];                 // 0,0xFF, not claimed. 1 claimed. 
     uint8_t reserved1[223];             
     uint8_t server_public_key[768];     // 4096 bits
-    uint8_t reserved2[1280+128];    
-    // safe to add more data here
+    uint8_t padding[2];                 // align to 4 byte boundary
+    platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];//5x20 = 100 bytes
+    uint8_t reserved2[1280+26];    
+    // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
 
@@ -46,6 +51,7 @@ typedef struct application_dct {
 #define DCT_SSID_PREFIX_OFFSET (offsetof(application_dct_t, ssid_prefix)) 
 #define DCT_DEVICE_ID_OFFSET (offsetof(application_dct_t, device_id)) 
 #define DCT_DEVICE_CLAIMED_OFFSET (offsetof(application_dct_t, claimed)) 
+#define DCT_FLASH_MODULES_OFFSET (offsetof(application_dct_t, flash_modules))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags)) 
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key)) 
@@ -56,7 +62,7 @@ typedef struct application_dct {
 #define DCT_SSID_PREFIX_SIZE  (sizeof(application_dct_t::ssid_prefix)) 
 #define DCT_DEVICE_ID_SIZE  (sizeof(application_dct_t::device_id)) 
 #define DCT_DEVICE_CLAIMED_SIZE  (sizeof(application_dct_t::claimed)) 
-
+#define DCT_FLASH_MODULES_SIZE  (sizeof(application_dct_t::flash_modules))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 
@@ -73,9 +79,11 @@ STATIC_ASSERT_DCT_OFFSET(ssid_prefix, 1826 /* 1762 + 64 */);
 STATIC_ASSERT_DCT_OFFSET(device_id, 1852 /* 1826 + 26 */);
 STATIC_ASSERT_DCT_OFFSET(claimed, 1858 /* 1852 + 6 */ );
 STATIC_ASSERT_DCT_OFFSET(reserved1, 1859 /* 1858 + 1 */);
-STATIC_ASSERT_DCT_OFFSET(server_public_key, 2082 /* 1858 + 223 */);
-STATIC_ASSERT_DCT_OFFSET(reserved2, 2850 /* 2082 + 768 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2850 + 1280 +128 */);
+STATIC_ASSERT_DCT_OFFSET(server_public_key, 2082 /* 1859 + 223 */);
+STATIC_ASSERT_DCT_OFFSET(padding, 2850 /* 2082 + 768 */);
+STATIC_ASSERT_DCT_OFFSET(flash_modules, 2852 /* 2850 + 2 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 2952 /* 2852 + 100 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2952 + 1280 + 26 */);
 
 
 /**

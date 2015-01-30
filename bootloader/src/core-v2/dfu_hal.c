@@ -57,7 +57,7 @@ void HAL_DFU_USB_Init(void)
 #endif
             &USR_desc,
             &DFU_cb,
-            &USR_cb);
+            NULL); //Passing NULL here to reduce bootloader flash requirements
 }
 
 int32_t HAL_Core_Backup_Register(uint32_t BKP_DR)

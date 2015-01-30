@@ -265,6 +265,16 @@ int main(void)
             BACKUP_Flash_Reset();
         }
 
+#ifdef FLASH_UPDATE_MODULES
+        /*
+         * Update Internal/Serial Flash based on application_dct=>flash_modules settings
+         * BM-14 bootloader with FLASH_UPDATE_MODULES enabled DOES NOT fit in < 16KB
+         * BM-09 bootloader with FLASH_UPDATE_MODULES enabled fits in < 16KB
+         * Currently FLASH_UPDATE_MODULES support is enabled only on BM-09 bootloader
+         */
+        FLASH_UpdateModules();
+#endif
+
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
         if (((*(__IO uint32_t*)ApplicationAddress) & APP_START_MASK) == 0x20000000)
