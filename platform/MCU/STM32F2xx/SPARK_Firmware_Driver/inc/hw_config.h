@@ -145,9 +145,12 @@ void Save_SystemFlags(void);
 extern platform_system_flags_t system_flags;
 
 /* Internal/External Flash Routines */
-bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint32_t length);
-bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint8_t destinationDeviceID,
-                         uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length);
+uint16_t FLASH_SectorToErase(FlashDevice_TypeDef flashDeviceID, uint32_t startAddress);
+bool FLASH_CheckValidAddressRange(FlashDevice_TypeDef flashDeviceID, uint32_t startAddress, uint32_t length);
+bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t startAddress, uint32_t length);
+bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                      uint8_t destinationDeviceID, uint32_t destinationAddress,
+                      uint32_t length);
 void FLASH_Update_Modules(void);
 void FLASH_ClearFlags(void);
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors);

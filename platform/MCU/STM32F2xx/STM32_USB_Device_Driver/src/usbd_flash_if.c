@@ -29,6 +29,7 @@
 #include "usbd_flash_if.h"
 #include "usbd_dfu_mal.h"
 #include "usb_bsp.h"
+#include "hw_config.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -58,9 +59,6 @@ DFU_MAL_Prop_TypeDef DFU_Flash_cb =
   };
 
 /* Private functions ---------------------------------------------------------*/
-
-/* External functions --------------------------------------------------------*/
-extern uint16_t FLASH_SectorToErase(uint32_t address);
 
 /**
   * @brief  FLASH_If_Init
@@ -106,7 +104,7 @@ uint16_t FLASH_If_Erase(uint32_t Add)
 
 #if defined (STM32F2XX) || defined (STM32F4XX)
   /* Check which sector has to be erased */
-  uint16_t FLASH_Sector = FLASH_SectorToErase(Add);
+  uint16_t FLASH_Sector = FLASH_SectorToErase(FLASH_INTERNAL, Add);
 
   if (FLASH_Sector > FLASH_Sector_11)
   {

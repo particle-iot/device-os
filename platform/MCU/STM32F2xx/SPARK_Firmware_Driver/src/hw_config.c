@@ -626,55 +626,60 @@ void Save_SystemFlags()
     Save_SystemFlags_Impl(&system_flags);
 }
 
-uint16_t FLASH_SectorToErase(uint32_t address)
+uint16_t FLASH_SectorToErase(FlashDevice_TypeDef flashDeviceID, uint32_t startAddress)
 {
     uint16_t flashSector = 0xFFFF;//Invalid sector
 
-    if (address < 0x08004000)
+    if (flashDeviceID != FLASH_INTERNAL)
+    {
+        return flashSector;
+    }
+
+    if (startAddress < 0x08004000)
     {
         flashSector = FLASH_Sector_0;
     }
-    else if (address < 0x08008000)
+    else if (startAddress < 0x08008000)
     {
         flashSector = FLASH_Sector_1;
     }
-    else if (address < 0x0800C000)
+    else if (startAddress < 0x0800C000)
     {
         flashSector = FLASH_Sector_2;
     }
-    else if (address < 0x08010000)
+    else if (startAddress < 0x08010000)
     {
         flashSector = FLASH_Sector_3;
     }
-    else if (address < 0x08020000)
+    else if (startAddress < 0x08020000)
     {
         flashSector = FLASH_Sector_4;
     }
-    else if (address < 0x08040000)
+    else if (startAddress < 0x08040000)
     {
         flashSector = FLASH_Sector_5;
     }
-    else if (address < 0x08060000)
+    else if (startAddress < 0x08060000)
     {
         flashSector = FLASH_Sector_6;
     }
-    else if (address < 0x08080000)
+    else if (startAddress < 0x08080000)
     {
         flashSector = FLASH_Sector_7;
     }
-    else if (address < 0x080A0000)
+    else if (startAddress < 0x080A0000)
     {
         flashSector = FLASH_Sector_8;
     }
-    else if (address < 0x080C0000)
+    else if (startAddress < 0x080C0000)
     {
         flashSector = FLASH_Sector_9;
     }
-    else if (address < 0x080E0000)
+    else if (startAddress < 0x080E0000)
     {
         flashSector = FLASH_Sector_10;
     }
-    else if (address < 0x08100000)
+    else if (startAddress < 0x08100000)
     {
         flashSector = FLASH_Sector_11;
     }
@@ -682,21 +687,51 @@ uint16_t FLASH_SectorToErase(uint32_t address)
     return flashSector;
 }
 
-bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint32_t length)
+bool FLASH_CheckValidAddressRange(FlashDevice_TypeDef flashDeviceID, uint32_t startAddress, uint32_t length)
 {
-    uint32_t eraseCounter = 0;
-    uint32_t numPages = 0;
-    uint32_t endAddress = address + length - 1;
+    uint32_t endAddress = startAddress + length - 1;
 
     if (flashDeviceID == FLASH_INTERNAL)
     {
-        if (address < 0x08020000 || endAddress >= 0x08100000)
+        if (startAddress < 0x08020000 || endAddress >= 0x08100000)
         {
             return false;
         }
+    }
+    else if (flashDeviceID == FLASH_SERIAL)
+    {
+#ifdef USE_SERIAL_FLASH
+        if (startAddress < 0x4000 || endAddress >= 0x100000)
+        {
+            return false;
+        }
+#else
+        return false;
+#endif
+    }
+    else
+    {
+        return false;   //Invalid FLASH ID
+    }
 
+    return true;
+}
+
+bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t startAddress, uint32_t length)
+{
+    uint32_t eraseCounter = 0;
+    uint32_t numPages = 0;
+    uint32_t endAddress = startAddress + length - 1;
+
+    if (FLASH_CheckValidAddressRange(flashDeviceID, startAddress, endAddress) != true)
+    {
+        return false;
+    }
+
+    if (flashDeviceID == FLASH_INTERNAL)
+    {
         /* Check which sector has to be erased */
-        uint16_t flashSector = FLASH_SectorToErase(address);
+        uint16_t flashSector = FLASH_SectorToErase(FLASH_INTERNAL, startAddress);
 
         if (flashSector > FLASH_Sector_11)
         {
@@ -732,10 +767,8 @@ bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint
     else if (flashDeviceID == FLASH_SERIAL)
     {
 #ifdef USE_SERIAL_FLASH
-        if (address < 0x4000 || endAddress >= 0x100000)
-        {
-            return false;
-        }
+        /* Initialize SPI Flash */
+        sFLASH_Init();
 
         /* Define the number of External Flash pages to be erased */
         numPages = FLASH_PagesMask(length, sFLASH_PAGESIZE);
@@ -743,7 +776,7 @@ bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint
         /* Erase the SPI Flash pages */
         for (eraseCounter = 0; (eraseCounter < numPages); eraseCounter++)
         {
-            sFLASH_EraseSector(address + (sFLASH_PAGESIZE * eraseCounter));
+            sFLASH_EraseSector(startAddress + (sFLASH_PAGESIZE * eraseCounter));
         }
 
         /* Return Success */
@@ -755,8 +788,9 @@ bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t address, uint
     return false;
 }
 
-bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint8_t destinationDeviceID,
-                      uint32_t sourceAddress, uint32_t destinationAddress, uint32_t length)
+bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                      uint8_t destinationDeviceID, uint32_t destinationAddress,
+                      uint32_t length)
 {
 #ifdef USE_SERIAL_FLASH
     uint8_t serialFlashData[4];
@@ -764,43 +798,35 @@ bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint8_t destinationDeviceID,
     uint32_t internalFlashData = 0;
     uint32_t endAddress = sourceAddress + length - 1;
 
-    if ((sourceDeviceID != FLASH_SERIAL && sourceDeviceID != FLASH_INTERNAL) ||
-        (destinationDeviceID != FLASH_SERIAL && destinationDeviceID != FLASH_INTERNAL))
+    if (FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length) != true)
     {
-        //Return false for invalid FLASH ID as arguments
         return false;
     }
 
-    if (sourceDeviceID == FLASH_INTERNAL)
+    if (FLASH_CheckValidAddressRange(destinationDeviceID, destinationAddress, length) != true)
     {
-        if (sourceAddress < 0x08020000 || endAddress >= 0x08100000)
-        {
-            return false;
-        }
+        return false;
     }
-#ifdef USE_SERIAL_FLASH
-    else if (sourceDeviceID == FLASH_SERIAL)
-    {
-        if (sourceAddress < 0x4000 || endAddress >= 0x100000)
-        {
-            return false;
-        }
-    }
-#endif
 
     if (sourceDeviceID == FLASH_SERIAL || destinationDeviceID == FLASH_SERIAL)
     {
 #ifdef USE_SERIAL_FLASH
         /* Initialize SPI Flash */
         sFLASH_Init();
-#else
-        return false;
 #endif
     }
 
     if (FLASH_EraseMemory(destinationDeviceID, destinationAddress, length) != true)
     {
         return false;
+    }
+
+    if (sourceDeviceID == FLASH_SERIAL)
+    {
+#ifdef USE_SERIAL_FLASH
+        /* Initialize SPI Flash */
+        sFLASH_Init();
+#endif
     }
 
     if (destinationDeviceID == FLASH_INTERNAL)
@@ -889,8 +915,8 @@ void FLASH_Update_Modules(void)
         {
             //Copy memory from source to destination based on flash device id
             bool copy_result = FLASH_CopyMemory(flash_modules[flash_module_index].sourceDeviceID,
-                                                flash_modules[flash_module_index].destinationDeviceID,
                                                 flash_modules[flash_module_index].sourceAddress,
+                                                flash_modules[flash_module_index].destinationDeviceID,
                                                 flash_modules[flash_module_index].destinationAddress,
                                                 flash_modules[flash_module_index].length);
 
@@ -1000,14 +1026,14 @@ void FLASH_Erase(void)
 void FLASH_Backup(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
-    FLASH_CopyMemory(FLASH_INTERNAL, FLASH_SERIAL, CORE_FW_ADDRESS, FLASH_Address, FIRMWARE_IMAGE_SIZE);
+    FLASH_CopyMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FLASH_SERIAL, FLASH_Address, FIRMWARE_IMAGE_SIZE);
 #endif
 }
 
 void FLASH_Restore(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
-    FLASH_CopyMemory(FLASH_SERIAL, FLASH_INTERNAL, FLASH_Address, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
+    FLASH_CopyMemory(FLASH_SERIAL, FLASH_Address, FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
 #endif
 }
 
