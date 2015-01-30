@@ -272,7 +272,7 @@ int main(void)
          * BM-09 bootloader with FLASH_UPDATE_MODULES enabled fits in < 16KB
          * Currently FLASH_UPDATE_MODULES support is enabled only on BM-09 bootloader
          */
-        FLASH_Update_Modules();
+        FLASH_UpdateModules();
 #endif
 
         // ToDo add CRC check

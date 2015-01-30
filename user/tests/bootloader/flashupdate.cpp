@@ -39,8 +39,8 @@ test(FLASH_UPDATE_MODULES_Test_Passed)
     flash_modules[0].length = 0x20000;
     dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, sizeof(flash_modules));
 
-    //Call FLASH_Update_Modules() to start the memory copy process
-    FLASH_Update_Modules();
+    //Call FLASH_UpdateModules() to start the memory copy process
+    FLASH_UpdateModules();
 
     //Compare internal flash memory data
     compareResult = FLASH_CompareMemory(flash_modules[0].sourceDeviceID,
