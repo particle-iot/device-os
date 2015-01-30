@@ -721,9 +721,8 @@ bool FLASH_EraseMemory(FlashDevice_TypeDef flashDeviceID, uint32_t startAddress,
 {
     uint32_t eraseCounter = 0;
     uint32_t numPages = 0;
-    uint32_t endAddress = startAddress + length - 1;
 
-    if (FLASH_CheckValidAddressRange(flashDeviceID, startAddress, endAddress) != true)
+    if (FLASH_CheckValidAddressRange(flashDeviceID, startAddress, length) != true)
     {
         return false;
     }
