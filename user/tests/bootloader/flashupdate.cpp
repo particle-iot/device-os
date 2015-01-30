@@ -22,6 +22,7 @@
  */
 
 #include "application.h"
+#include "ota_flash_hal.h"
 #include "dct.h"
 #include "unit-test/unit-test.h"
 
@@ -39,15 +40,15 @@ test(FLASH_UPDATE_MODULES_Test_Passed)
     flash_modules[0].length = 0x20000;
     dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, sizeof(flash_modules));
 
-    //Call FLASH_UpdateModules() to start the memory copy process
-    FLASH_UpdateModules();
+    //Call HAL_FLASH_UpdateModules() to start the memory copy process
+    HAL_FLASH_UpdateModules();
 
     //Compare internal flash memory data
-    compareResult = FLASH_CompareMemory(flash_modules[0].sourceDeviceID,
-                                        flash_modules[0].sourceAddress,
-                                        flash_modules[0].destinationDeviceID,
-                                        flash_modules[0].destinationAddress,
-                                        flash_modules[0].length);
+    compareResult = HAL_FLASH_CompareMemory(flash_modules[0].sourceDeviceID,
+                                            flash_modules[0].sourceAddress,
+                                            flash_modules[0].destinationDeviceID,
+                                            flash_modules[0].destinationAddress,
+                                            flash_modules[0].length);
 
     assertEqual(compareResult, true);
 }

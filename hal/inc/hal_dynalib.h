@@ -100,12 +100,19 @@ DYNALIB_FN(hal,HAL_OTA_FlashAddress)
 DYNALIB_FN(hal,HAL_OTA_FlashLength)
 DYNALIB_FN(hal,HAL_OTA_ChunkSize)
 
+DYNALIB_FN(hal,HAL_OTA_Flashed_GetStatus)
+DYNALIB_FN(hal,HAL_OTA_Flashed_ResetStatus)
+
+#if PLATFORM_ID > 3
+DYNALIB_FN(hal,HAL_FLASH_CopyMemory)
+DYNALIB_FN(hal,HAL_FLASH_CompareMemory)
+DYNALIB_FN(hal,HAL_FLASH_UpdateModules)
+#endif
+DYNALIB_FN(hal,HAL_FLASH_WriteProtectionEnable)
+DYNALIB_FN(hal,HAL_FLASH_WriteProtectionDisable)
 DYNALIB_FN(hal,HAL_FLASH_Begin)
 DYNALIB_FN(hal,HAL_FLASH_Update)
 DYNALIB_FN(hal,HAL_FLASH_End)
-
-DYNALIB_FN(hal,HAL_OTA_Flashed_GetStatus)
-DYNALIB_FN(hal,HAL_OTA_Flashed_ResetStatus)
 
 DYNALIB_FN(hal,HAL_PWM_Write)
 DYNALIB_FN(hal,HAL_PWM_Get_Frequency)
