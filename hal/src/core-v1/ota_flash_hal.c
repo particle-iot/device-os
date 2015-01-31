@@ -39,6 +39,21 @@ uint32_t HAL_OTA_FlashLength()
     return FLASH_MAX_SIZE;
 }
     
+bool HAL_FLASH_CheckValidAddressRange(uint32_t sFLASH_Address, uint32_t fileSize)
+{
+    uint32_t endAddress = sFLASH_Address + fileSize - 1;
+
+    if (sFLASH_Address == EXTERNAL_FLASH_OTA_ADDRESS && endAddress < EXTERNAL_FLASH_USER_ADDRESS)
+    {
+        return true;
+    }
+    else if (sFLASH_Address >= EXTERNAL_FLASH_USER_ADDRESS && endAddress < 0x200000)
+    {
+        return true;
+    }
+
+    return false;
+}
 
 void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize) 
 {

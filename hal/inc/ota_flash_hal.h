@@ -40,6 +40,8 @@ extern "C" {
 uint32_t HAL_OTA_FlashAddress();
 uint32_t HAL_OTA_FlashLength();
 
+bool HAL_FLASH_CheckValidAddressRange(uint32_t sFLASH_Address, uint32_t fileSize);
+
 void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize);
 uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
 void HAL_FLASH_End(void);
