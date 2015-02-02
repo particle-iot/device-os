@@ -68,12 +68,6 @@ DFU_MAL_Prop_TypeDef DFU_Flash_cb =
   */
 uint16_t FLASH_If_Init(void)
 {
-  /* Unlock the internal flash */
-  FLASH_Unlock();
-
-  FLASH_ClearFlags();
-  USB_OTG_BSP_mDelay(10);
-  
   return MAL_OK;
 }
 
@@ -85,9 +79,6 @@ uint16_t FLASH_If_Init(void)
   */
 uint16_t FLASH_If_DeInit(void)
 {
-  /* Lock the internal flash */
-  FLASH_Lock();
-  
   return MAL_OK;
 }
 
@@ -100,32 +91,23 @@ uint16_t FLASH_If_DeInit(void)
 *******************************************************************************/
 uint16_t FLASH_If_Erase(uint32_t Add)
 {
-  FLASH_Status FlashStatus = FLASH_COMPLETE;
+  /* Unlock the internal flash */
+  FLASH_Unlock();
+
+  FLASH_ClearFlags();
 
 #if defined (STM32F2XX) || defined (STM32F4XX)
   /* Check which sector has to be erased */
   uint16_t FLASH_Sector = FLASH_SectorToErase(FLASH_INTERNAL, Add);
 
-  if (FLASH_Sector > FLASH_Sector_11)
-  {
-    return MAL_FAIL;
-  }
-  else
-  {
-    FlashStatus = FLASH_EraseSector(FLASH_Sector, VoltageRange_3);
-  }
+  FLASH_EraseSector(FLASH_Sector, VoltageRange_3);
 #elif defined(STM32F10X_CL)
   /* Call the standard Flash erase function */
-  FlashStatus = FLASH_ErasePage(Add);
+  FLASH_ErasePage(Add);
 #endif /* STM32F2XX */
   
-  /* If erase operation fails, a Flash error code is returned */
-  if (FlashStatus != FLASH_COMPLETE)
-  {
-    //return MAL_FAIL;
-    //system reset is the only way now to abort the dfu-util host program
-    NVIC_SystemReset();
-  }
+  /* Lock the internal flash */
+  FLASH_Lock();
 
   return MAL_OK;
 }
@@ -139,8 +121,6 @@ uint16_t FLASH_If_Erase(uint32_t Add)
   */
 uint16_t FLASH_If_Write(uint32_t Add, uint32_t Len)
 {
-  FLASH_Status FlashStatus = FLASH_COMPLETE;
-
   uint32_t idx = 0;
   
   if  (Len & 0x3) /* Not an aligned data */
@@ -151,19 +131,21 @@ uint16_t FLASH_If_Write(uint32_t Add, uint32_t Len)
     }
   }
   
+  /* Unlock the internal flash */
+  FLASH_Unlock();
+
+  FLASH_ClearFlags();
+
   /* Data received are Word multiple */
   for (idx = 0; idx <  Len; idx = idx + 4)
   {
-    FlashStatus = FLASH_ProgramWord(Add, *(uint32_t *)(MAL_Buffer + idx));
-    /* If program operation fails, a Flash error code is returned */
-    if (FlashStatus != FLASH_COMPLETE)
-    {
-      //return MAL_FAIL;
-      //system reset is the only way now to abort the dfu-util host program
-      NVIC_SystemReset();
-    }
+    FLASH_ProgramWord(Add, *(uint32_t *)(MAL_Buffer + idx));
     Add += 4;
   }
+
+  /* Lock the internal flash */
+  FLASH_Lock();
+
   return MAL_OK;
 }
 
