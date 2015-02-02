@@ -71,8 +71,8 @@ uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] =
         USB_OTG_MAX_EP0_SIZE,       /*bMaxPacketSize*/
         LOBYTE(USBD_VID_SPARK),     /*idVendor*/
         HIBYTE(USBD_VID_SPARK),     /*idVendor*/
-        LOBYTE(USBD_PID_CDC),       /*idVendor*/
-        HIBYTE(USBD_PID_CDC),       /*idVendor*/
+        LOBYTE(USBD_PID_CDC),       /*idProduct*/
+        HIBYTE(USBD_PID_CDC),       /*idProduct*/
         0x00,                       /*bcdDevice rel. 2.00*/
         0x02,
         USBD_IDX_MFC_STR,           /*Index of manufacturer  string*/

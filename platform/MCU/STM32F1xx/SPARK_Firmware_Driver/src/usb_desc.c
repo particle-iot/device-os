@@ -40,10 +40,10 @@ const uint8_t CDC_DeviceDescriptor[] =
     0x00,   /* bDeviceSubClass */
     0x00,   /* bDeviceProtocol */
     0x40,   /* bMaxPacketSize0 */
-    0x50,
-    0x1D,   /* idVendor = 0x1D50 */
-    0x7D,
-    0x60,   /* idProduct = 0x607D */
+    LOBYTE(USBD_VID_SPARK),   /*idVendor*/
+    HIBYTE(USBD_VID_SPARK),   /*idVendor*/
+    LOBYTE(USBD_PID_CDC),     /*idProduct*/
+    HIBYTE(USBD_PID_CDC),     /*idProduct*/
     0x00,
     0x02,   /* bcdDevice = 2.00 */
     1,      /* Index of string descriptor describing manufacturer */

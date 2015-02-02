@@ -75,6 +75,9 @@ typedef enum _FEATURE_SELECTOR
 #define RECIPIENT         0x1F  /* Mask to get recipient */
 
 /* Exported macro ------------------------------------------------------------*/
+#define LOBYTE(x)  ((uint8_t)(x & 0x00FF))
+#define HIBYTE(x)  ((uint8_t)((x & 0xFF00) >>8))
+
 /* Exported functions ------------------------------------------------------- */
 
 #endif /* __USB_DEF_H */

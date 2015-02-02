@@ -24,6 +24,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "usb_lib.h"
 #include "usb_desc.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,10 +44,10 @@ uint8_t DFU_DeviceDescriptor[DFU_SIZ_DEVICE_DESC] =
     0x00,   /* bDeviceSubClass : See interface*/
     0x00,   /* bDeviceProtocol : See interface */
     bMaxPacketSize0, /* bMaxPacketSize0 0x40 = 64 */
-    0x50,   /* idVendor		(0x1D50) DFU ViD */
-    0x1D,
-    0x7F,   /* idProduct	(0x607F) DFU PiD */
-    0x60,
+    LOBYTE(USBD_VID_SPARK),  /*idVendor*/
+    HIBYTE(USBD_VID_SPARK),  /*idVendor*/
+    LOBYTE(USBD_PID_DFU),    /*idProduct*/
+    HIBYTE(USBD_PID_DFU),    /*idProduct*/
     0x00,   /* bcdDevice*/
     0x02,
 
