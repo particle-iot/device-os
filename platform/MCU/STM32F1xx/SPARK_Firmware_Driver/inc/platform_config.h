@@ -27,6 +27,8 @@
 #ifndef __PLATFORM_CONFIG_H
 #define __PLATFORM_CONFIG_H
 
+#include "platforms.h"
+
 /* If serial flash is present on board uncomment this define for "bootloader" use */
 #define SPARK_SFLASH_ENABLE
 
@@ -194,16 +196,16 @@
 
 
 #ifndef PLATFORM_ID
-#define PLATFORM_ID 0
+#define PLATFORM_ID PLATFORM_SPARK_CORE
 #warning "PLATFORM_ID not defined, assuming 0"
 #endif
 
 #define PREPSTRING2(x) #x
 #define PREPSTRING(x) PREPSTRING2(x)
 
-#if PLATFORM_ID < 2
+#if PLATFORM_ID == PLATFORM_SPARK_CORE
 #define INTERNAL_FLASH_SIZE     (0x20000)
-#elif PLATFORM_ID == 2
+#elif PLATFORM_ID == PLATFORM_SPARK_CORE_HD
     #define INTERNAL_FLASH_SIZE (0x40000)
 #else
     #pragma message "PLATFORM_ID is " PREPSTRING(PLATFORM_ID)

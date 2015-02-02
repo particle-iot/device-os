@@ -34,11 +34,8 @@ PRODUCT_DESC=Spark core
 endif
 
 ifeq ("$(PLATFORM_ID)","1")
-STM32_DEVICE=STM32F10X_MD
-PLATFORM_NAME=core-v1
-PLATFORM_MCU=STM32F1xx
-PLATFORM_NET=CC3000
-PRODUCT_DESC=Teacup Pigtail
+# Not used. PRRODUCT_ID 1 is the original teacup pigtail - the platform
+# is the Spark Core
 endif
 
 ifeq ("$(PLATFORM_ID)","2")

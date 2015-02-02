@@ -27,6 +27,8 @@
 #ifndef __PLATFORM_CONFIG_H
 #define __PLATFORM_CONFIG_H
 
+#include "platforms.h"
+
 #define         ID1          (0x1FFF7A10)
 #define         ID2          (0x1FFF7A14)
 #define         ID3          (0x1FFF7A18)
@@ -62,14 +64,14 @@
 #define LED4_GPIO_PIN_SOURCE                GPIO_PinSource2         //GREEN Led
 #define LED4_GPIO_PORT                      GPIOA                   //GREEN Led
 #define LED4_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //GREEN Led
-#if (PLATFORM_ID == 5)
+#if (PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV)
 //On Pigtail board with BM-14, RGB lines are reversed
 #define RGB_LINES_REVERSED
 #endif
 
 //Push Buttons
 #define BUTTONn                             1
-#if (PLATFORM_ID == 4)
+#if (PLATFORM_ID == PLATFORM_PHOTON_DEV)
 #define BUTTON1_GPIO_PIN                    GPIO_Pin_2
 #define BUTTON1_GPIO_PORT                   GPIOC
 #define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
@@ -83,7 +85,7 @@
 #define BUTTON1_EXTI_IRQ_HANDLER            EXTI2_IRQHandler
 #define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define	BUTTON1_EXTI_TRIGGER		        EXTI_Trigger_Falling
-#elif (PLATFORM_ID == 5 || PLATFORM_ID == 6 || PLATFORM_ID == 7)
+#elif (PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV || PLATFORM_PHOTON_PRODUCTION == 6 || PLATFORM_TEACUP_PIGTAIL_PRODUCTION == 7)
 #define BUTTON1_GPIO_PIN                    GPIO_Pin_7
 #define BUTTON1_GPIO_PORT                   GPIOC
 #define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
@@ -103,14 +105,14 @@
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
 //USB OTG Peripheral
-#if (PLATFORM_ID == 5 || PLATFORM_ID == 7)
+#if (PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV || PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_PRODUCTION)
 //BM-14 uses USB_OTG_FS peripheral
 #define USE_USB_OTG_FS
 //BM-14 has serial flash
 #define USE_SERIAL_FLASH
 //BM-14 bootloader with FLASH_UPDATE_MODULES enabled DOES NOT fit in < 16KB
 //#define FLASH_UPDATE_MODULES /* Please do not uncomment this at present */
-#elif (PLATFORM_ID == 4 || PLATFORM_ID == 6)
+#elif (PLATFORM_PHOTON_DEV == 4 || PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION)
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
 //BM-09 bootloader with FLASH_UPDATE_MODULES enabled fits in < 16KB
@@ -173,24 +175,23 @@
 #define PENDSV_IRQ_PRIORITY                 15      //CORTEX_M3 PendSV Interrupt
 
 #ifndef PLATFORM_ID
-#define PLATFORM_ID 0
-#warning "PLATFORM_ID not defined, assuming 0"
+#error "PLATFORM_ID not defined"
 #endif
 
 #define PREPSTRING2(x) #x
 #define PREPSTRING(x) PREPSTRING2(x)
 
-#if PLATFORM_ID < 2
+#if PLATFORM_ID == PLATFORM_SPARK_CORE
 #define INTERNAL_FLASH_SIZE                 (0x20000)
-#elif PLATFORM_ID == 2
+#elif PLATFORM_ID == PLATFORM_SPARK_CORE_HD
     #define INTERNAL_FLASH_SIZE             (0x40000)
-#elif PLATFORM_ID == 4
+#elif PLATFORM_ID == PLATFORM_PHOTON_DEV
     #define INTERNAL_FLASH_SIZE             (0x100000)
-#elif PLATFORM_ID == 5
+#elif PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV
     #define INTERNAL_FLASH_SIZE             (0x100000)
-#elif PLATFORM_ID == 6
+#elif PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION
     #define INTERNAL_FLASH_SIZE             (0x100000)
-#elif PLATFORM_ID == 7
+#elif PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_PRODUCTION
     #define INTERNAL_FLASH_SIZE             (0x100000)
 #else
     #pragma message "PLATFORM_ID is " PREPSTRING(PLATFORM_ID)

@@ -19,9 +19,12 @@ ifeq ("$(USE_SWD)","y")
 CFLAGS += -DUSE_SWD
 endif
 
+
+
 # pull in the includes/sources corresponding to the target platform
 
 # todo - all network subsystems should be under a common folder
+INCLUDE_DIRS += $(PLATFORM_MODULE_PATH)/shared
 PLATFORM_MCU_PATH=$(PLATFORM_MODULE_PATH)/MCU/$(PLATFORM_MCU)
 PLATFORM_NET_PATH=$(PLATFORM_MODULE_PATH)/NET/$(PLATFORM_NET)
 include $(call rwildcard,$(PLATFORM_MCU_PATH)/,include.mk)
