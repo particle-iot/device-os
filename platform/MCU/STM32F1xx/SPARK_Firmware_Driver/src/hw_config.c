@@ -68,6 +68,7 @@ uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
 uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
 uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
 uint16_t Factory_Reset_SysFlag = 0xFFFF;
+uint16_t dfu_on_no_firmware = 0xFFFF;
 
 uint32_t WRPR_Value = 0xFFFFFFFF;
 uint32_t Flash_Pages_Protected = 0x0;
@@ -929,6 +930,9 @@ void Load_SystemFlags(void)
 
     Factory_Reset_SysFlag = (*(__IO uint16_t*) Address);
     Address += 2;
+
+    dfu_on_no_firmware = (*(__IO uint16_t*) Address);
+    Address += 2;
 }
 
 void Save_SystemFlags(void)
@@ -971,6 +975,11 @@ void Save_SystemFlags(void)
 
     /* Program Factory_Reset_SysFlag */
     FLASHStatus = FLASH_ProgramHalfWord(Address, Factory_Reset_SysFlag);
+    while(FLASHStatus != FLASH_COMPLETE);
+    Address += 2;
+
+    /* Program dfu_on_no_firmware */
+    FLASHStatus = FLASH_ProgramHalfWord(Address, dfu_on_no_firmware);
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
 
@@ -1236,6 +1245,8 @@ void FACTORY_Flash_Reset(void)
     FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
 
     Factory_Reset_SysFlag = 0xFFFF;
+    OTA_FLASHED_Status_SysFlag = 0x0000;
+    dfu_on_no_firmware = 0;
 
     Finish_Update();
 }
@@ -1244,6 +1255,9 @@ void BACKUP_Flash_Reset(void)
 {
     //Restore the Backup programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
+
+    OTA_FLASHED_Status_SysFlag = 0x0000;
+    dfu_on_no_firmware = 0;
 
     Finish_Update();
 }
