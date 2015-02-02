@@ -32,9 +32,6 @@
 #include "usbd_req.h"
 #include "usb_regs.h"
 
-#define USBD_VID                        0x1D50  //Spark Vendor ID
-#define USBD_PID                        0x607D  //Spark VCP Product ID
-
 #define USBD_LANGID_STRING              0x0409  //U.S. English
 #define USBD_MANUFACTURER_STRING        "Spark Devices"
 
@@ -71,11 +68,11 @@ uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] =
         0x02,                       /*bDeviceClass: CDC*/
         0x00,                       /*bDeviceSubClass*/
         0x00,                       /*bDeviceProtocol*/
-        USB_OTG_MAX_EP0_SIZE,      /*bMaxPacketSize*/
-        LOBYTE(USBD_VID),           /*idVendor*/
-        HIBYTE(USBD_VID),           /*idVendor*/
-        LOBYTE(USBD_PID),           /*idVendor*/
-        HIBYTE(USBD_PID),           /*idVendor*/
+        USB_OTG_MAX_EP0_SIZE,       /*bMaxPacketSize*/
+        LOBYTE(USBD_VID_SPARK),     /*idVendor*/
+        HIBYTE(USBD_VID_SPARK),     /*idVendor*/
+        LOBYTE(USBD_PID_CDC),       /*idVendor*/
+        HIBYTE(USBD_PID_CDC),       /*idVendor*/
         0x00,                       /*bcdDevice rel. 2.00*/
         0x02,
         USBD_IDX_MFC_STR,           /*Index of manufacturer  string*/

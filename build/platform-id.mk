@@ -10,6 +10,13 @@ included_productid_mk := 1
 # ARCH		- architecture (ARM/GCC)
 # PRODUCT_DESC  - text description of the product ID
 
+# Default USB Device Vendor ID for Spark Products
+USBD_VID_SPARK=0x1D50
+# Default USB Device Product ID for DFU Class
+USBD_PID_DFU=0x607F
+# Default USB Device Product ID for CDC Class
+USBD_PID_CDC=0x607D
+
 ifndef PLATFORM_ID
 PLATFORM_ID=0
 endif
@@ -74,6 +81,10 @@ PLATFORM_NAME=core-v2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=BCM9WCDUSI09
 PRODUCT_DESC=Production Photon
+# Overide default USBD VID:PID
+USBD_VID_SPARK=0x2B04
+USBD_PID_DFU=0xD006
+USBD_PID_CDC=0xC006
 endif
 
 ifeq ("$(PLATFORM_ID)","7")
@@ -109,5 +120,9 @@ CFLAGS += -D$(STM32_DEVICE)
 endif
 
 CFLAGS += -DPLATFORM_ID=$(PLATFORM_ID) -DPLATFORM_NAME=$(PLATFORM_NAME)
+
+CFLAGS += -DUSBD_VID_SPARK=$(USBD_VID_SPARK)
+CFLAGS += -DUSBD_PID_DFU=$(USBD_PID_DFU)
+CFLAGS += -DUSBD_PID_CDC=$(USBD_PID_CDC)
 
 endif
