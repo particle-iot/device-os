@@ -679,7 +679,7 @@ void OTA_Flash_Reset(void)
 
     Finish_Update();
 #else
-    //FLASH_UpdateModules() does the job copying the split firmware modules
+    //FLASH_UpdateModules() does the job of copying the split firmware modules
 #endif
 }
 
