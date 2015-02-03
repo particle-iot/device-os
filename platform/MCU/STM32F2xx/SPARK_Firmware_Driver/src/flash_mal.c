@@ -528,6 +528,8 @@ void FLASH_Backup(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
     FLASH_CopyMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FLASH_SERIAL, FLASH_Address, FIRMWARE_IMAGE_SIZE);
+#else
+    //Don't have enough space in Internal Flash to save a Backup copy of the firmware
 #endif
 }
 
@@ -535,6 +537,8 @@ void FLASH_Restore(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
     FLASH_CopyMemory(FLASH_SERIAL, FLASH_Address, FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
+#else
+    FLASH_CopyMemory(FLASH_INTERNAL, FLASH_Address, FLASH_INTERNAL, CORE_FW_ADDRESS, FLASH_Address-CORE_FW_ADDRESS);
 #endif
 }
 

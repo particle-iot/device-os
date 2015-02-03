@@ -621,13 +621,16 @@ void FACTORY_Flash_Reset(void)
 #ifdef USE_SERIAL_FLASH
     // Restore the Factory programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
+#else
+    // Restore the Factory programmed application firmware from Internal Flash
+    FLASH_Restore(INTERNAL_FLASH_FAC_ADDRESS);
+#endif
 
     system_flags.Factory_Reset_SysFlag = 0xFFFF;
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
     system_flags.dfu_on_no_firmware = 0;
 
     Finish_Update();
-#endif
 }
 
 void BACKUP_Flash_Reset(void)
@@ -640,6 +643,8 @@ void BACKUP_Flash_Reset(void)
     system_flags.dfu_on_no_firmware = 0;
 
     Finish_Update();
+#else
+    //Not supported since there is no Backup copy of the firmware in Internal Flash
 #endif
 }
 
@@ -673,6 +678,8 @@ void OTA_Flash_Reset(void)
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0001;
 
     Finish_Update();
+#else
+    //FLASH_UpdateModules() does the job copying the split firmware modules
 #endif
 }
 

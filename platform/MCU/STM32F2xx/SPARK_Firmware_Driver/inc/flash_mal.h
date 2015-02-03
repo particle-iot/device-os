@@ -65,9 +65,11 @@ typedef enum
 #define CORE_FW_ADDRESS             ((uint32_t)0x08020000)
 #define APP_START_MASK              ((uint32_t)0x2FF10000)
 
-#define INTERNAL_FLASH_END_ADDRESS  ((uint32_t)CORE_FW_ADDRESS+FIRMWARE_IMAGE_SIZE)    //For 1MB Internal Flash
+#define INTERNAL_FLASH_END_ADDRESS  ((uint32_t)CORE_FW_ADDRESS + FIRMWARE_IMAGE_SIZE)    //For 1MB Internal Flash
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x20000) //128K (7 sectors of 128K each used by main firmware)
+/* External Flash memory address where Factory programmed core firmware is located */
+#define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)CORE_FW_ADDRESS + (3 * INTERNAL_FLASH_PAGE_SIZE))
 
 #ifdef USE_SERIAL_FLASH
 /* External Flash block size allocated for firmware storage */
