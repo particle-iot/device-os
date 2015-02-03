@@ -60,7 +60,7 @@ bool HAL_FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
 bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
                              uint8_t destinationDeviceID, uint32_t destinationAddress,
                              uint32_t length);
-void HAL_FLASH_UpdateModules(void);
+void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
 void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors);
 void HAL_FLASH_WriteProtectionDisable(uint32_t FLASH_Sectors);

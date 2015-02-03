@@ -94,7 +94,7 @@ bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
 bool FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
                          uint8_t destinationDeviceID, uint32_t destinationAddress,
                          uint32_t length);
-void FLASH_UpdateModules(void);
+void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
 //Old routines with same signature both for Core and Photon
 void FLASH_ClearFlags(void);

@@ -71,9 +71,9 @@ bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
                                length);
 }
 
-void HAL_FLASH_UpdateModules(void)
+void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
-    FLASH_UpdateModules();
+    FLASH_UpdateModules(flashModulesCallback);
 }
 
 void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors)

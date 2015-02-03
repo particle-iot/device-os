@@ -382,7 +382,7 @@ bool FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
 }
 
 //This function called in bootloader to perform the memory update process
-void FLASH_UpdateModules(void)
+void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
     platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];
     uint8_t flash_module_index = 0;
@@ -396,6 +396,12 @@ void FLASH_UpdateModules(void)
     {
         if(flash_modules[flash_module_index].magicNumber == 0xABCD)
         {
+            //Turn On RGB_COLOR_MAGENTA toggling during flash updating
+            if(flashModulesCallback)
+            {
+                flashModulesCallback(true);
+            }
+
             //Copy memory from source to destination based on flash device id
             bool copyResult = FLASH_CopyMemory(flash_modules[flash_module_index].sourceDeviceID,
                                                flash_modules[flash_module_index].sourceAddress,
@@ -421,6 +427,12 @@ void FLASH_UpdateModules(void)
     {
         //Only update DCT if all the modules are successfully copied
         dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, sizeof(flash_modules));
+
+        if(flashModulesCallback)
+        {
+            //Turn Off RGB_COLOR_MAGENTA toggling
+            flashModulesCallback(false);
+        }
     }
 }
 

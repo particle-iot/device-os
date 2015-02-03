@@ -41,7 +41,7 @@ test(FLASH_UPDATE_MODULES_Test_Passed)
     dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, sizeof(flash_modules));
 
     //Call HAL_FLASH_UpdateModules() to start the memory copy process
-    HAL_FLASH_UpdateModules();
+    HAL_FLASH_UpdateModules(NULL);//No callback needed so NULL
 
     //Compare internal flash memory data
     compareResult = HAL_FLASH_CompareMemory(flash_modules[0].sourceDeviceID,

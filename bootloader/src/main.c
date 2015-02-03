@@ -53,6 +53,20 @@ volatile uint32_t TimingIWDGReload;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
+void flashModulesCallback(bool isUpdating)
+{
+    if(isUpdating)
+    {
+        OTA_FLASH_AVAILABLE = 1;
+        LED_SetRGBColor(RGB_COLOR_MAGENTA);
+    }
+    else
+    {
+        OTA_FLASH_AVAILABLE = 0;
+        LED_Off(LED_RGB);
+    }
+}
+
 /*******************************************************************************
  * Function Name  : main.
  * Description    : main routine.
@@ -273,7 +287,7 @@ int main(void)
          * BM-09 bootloader with FLASH_UPDATE_MODULES enabled fits in < 16KB
          * Currently FLASH_UPDATE_MODULES support is enabled only on BM-09 bootloader
          */
-        FLASH_UpdateModules();
+        FLASH_UpdateModules(flashModulesCallback);
 #endif
 
         bool application_signature_valid =  (((*(__IO uint32_t*)ApplicationAddress) & APP_START_MASK) == 0x20000000);
