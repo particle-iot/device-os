@@ -386,7 +386,6 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
     platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];
     uint8_t flash_module_index = 0;
-    bool updateAppDCT = false;
 
     //Fill the Flash modules info data read from the dct area
     const void* dct_app_data = dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
@@ -411,27 +410,21 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 
             if(copyResult != false)
             {
+                flash_modules[flash_module_index].sourceAddress = 0;
+                flash_modules[flash_module_index].destinationAddress = 0;
+                flash_modules[flash_module_index].length = 0;
                 flash_modules[flash_module_index].magicNumber = 0;
-                updateAppDCT = true;
-            }
-            else
-            {
-                //Executing a system reset here to restart the whole update process
-                //If not resetting, we could land with a corrupt firmware ???
-                NVIC_SystemReset();
-            }
-        }
-    }
 
-    if(updateAppDCT != false)
-    {
-        //Only update DCT if all the modules are successfully copied
-        dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, sizeof(flash_modules));
+                dct_write_app_data(&flash_modules[flash_module_index],
+                                   offsetof(application_dct_t, flash_modules[flash_module_index]),
+                                   sizeof(platform_flash_modules_t));
 
-        if(flashModulesCallback)
-        {
-            //Turn Off RGB_COLOR_MAGENTA toggling
-            flashModulesCallback(false);
+                if(flashModulesCallback)
+                {
+                    //Turn Off RGB_COLOR_MAGENTA toggling
+                    flashModulesCallback(false);
+                }
+            }
         }
     }
 }
