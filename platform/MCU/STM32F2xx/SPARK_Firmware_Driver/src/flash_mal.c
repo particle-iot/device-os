@@ -29,15 +29,17 @@
 #include <string.h>
 
 /* Private variables ---------------------------------------------------------*/
+static volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
 
-uint32_t Internal_Flash_Address = 0;
-uint32_t Internal_Flash_Data = 0;
-uint16_t Flash_Update_Index = 0;
-volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
+//Flash variables for OTA use
 #ifdef USE_SERIAL_FLASH
-uint32_t External_Flash_Address = 0;
-uint8_t External_Flash_Data[4];
 static uint32_t External_Flash_Start_Address = 0;
+static uint32_t External_Flash_Address = 0;
+static uint16_t External_Flash_Update_Index = 0;
+#else
+static uint32_t Internal_Flash_Start_Address = 0;
+static uint32_t Internal_Flash_Address = 0;
+static uint16_t Internal_Flash_Update_Index = 0;
 #endif
 
 /* Private functions ---------------------------------------------------------*/
@@ -384,7 +386,7 @@ void FLASH_UpdateModules(void)
 {
     platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];
     uint8_t flash_module_index = 0;
-    uint8_t updateStatusFlags = 0x0;
+    bool updateAppDCT = false;
 
     //Fill the Flash modules info data read from the dct area
     const void* dct_app_data = dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
@@ -392,26 +394,32 @@ void FLASH_UpdateModules(void)
 
     for (flash_module_index = 0; flash_module_index < FLASH_MODULES_MAX; flash_module_index++)
     {
-        if(flash_modules[flash_module_index].statusFlag == 0x1)
+        if(flash_modules[flash_module_index].magicNumber == 0xABCD)
         {
             //Copy memory from source to destination based on flash device id
-            bool copy_result = FLASH_CopyMemory(flash_modules[flash_module_index].sourceDeviceID,
-                                                flash_modules[flash_module_index].sourceAddress,
-                                                flash_modules[flash_module_index].destinationDeviceID,
-                                                flash_modules[flash_module_index].destinationAddress,
-                                                flash_modules[flash_module_index].length);
+            bool copyResult = FLASH_CopyMemory(flash_modules[flash_module_index].sourceDeviceID,
+                                               flash_modules[flash_module_index].sourceAddress,
+                                               flash_modules[flash_module_index].destinationDeviceID,
+                                               flash_modules[flash_module_index].destinationAddress,
+                                               flash_modules[flash_module_index].length);
 
-            if(copy_result != false)
+            if(copyResult != false)
             {
-                updateStatusFlags |= flash_modules[flash_module_index].statusFlag;
-                flash_modules[flash_module_index].statusFlag = 0x0; //Reset statusFlag
+                flash_modules[flash_module_index].magicNumber = 0;
+                updateAppDCT = true;
+            }
+            else
+            {
+                //Executing a system reset here to restart the whole update process
+                //If not resetting, we could land with a corrupt firmware ???
+                NVIC_SystemReset();
             }
         }
     }
 
-    if(updateStatusFlags == 0x1)
+    if(updateAppDCT != false)
     {
-        //Only update DCT if required
+        //Only update DCT if all the modules are successfully copied
         dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, sizeof(flash_modules));
     }
 }
@@ -541,11 +549,17 @@ void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
     Save_SystemFlags();
 
-    Flash_Update_Index = 0;
+    External_Flash_Update_Index = 0;
     External_Flash_Start_Address = FLASH_Address;
     External_Flash_Address = External_Flash_Start_Address;
 
     FLASH_EraseMemory(FLASH_SERIAL, External_Flash_Start_Address, imageSize);
+#else
+    Internal_Flash_Update_Index = 0;
+    Internal_Flash_Start_Address = FLASH_Address;
+    Internal_Flash_Address = Internal_Flash_Start_Address;
+
+    FLASH_EraseMemory(FLASH_INTERNAL, Internal_Flash_Start_Address, imageSize);
 #endif
 }
 
@@ -565,18 +579,47 @@ uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
     if (0 == memcmp(writeBuffer, readBuffer, bufferSize))
     {
         External_Flash_Address += bufferSize;
-        Flash_Update_Index += 1;
+        External_Flash_Update_Index += 1;
     }
     else
     {
         /* Erase the problematic SPI Flash pages and back off the chunk index */
         External_Flash_Address = ((uint32_t)(External_Flash_Address / sFLASH_PAGESIZE)) * sFLASH_PAGESIZE;
         sFLASH_EraseSector(External_Flash_Address);
-        Flash_Update_Index = (uint16_t)((External_Flash_Address - External_Flash_Start_Address) / bufferSize);
+        External_Flash_Update_Index = (uint16_t)((External_Flash_Address - External_Flash_Start_Address) / bufferSize);
     }
-#endif
 
-    return Flash_Update_Index;
+    return External_Flash_Update_Index;
+#else
+    uint32_t index = 0;
+
+    if (bufferSize & 0x3) /* Not an aligned data */
+    {
+        for (index = bufferSize; index < ((bufferSize & 0xFFFC) + 4); index++)
+        {
+            pBuffer[index] = 0xFF;
+        }
+    }
+
+    /* Unlock the internal flash */
+    FLASH_Unlock();
+
+    FLASH_ClearFlags();
+
+    /* Data received are Word multiple */
+    for (index = 0; index <  bufferSize; index += 4)
+    {
+        FLASH_ProgramWord(Internal_Flash_Address, *(uint32_t *)(pBuffer + index));
+        Internal_Flash_Address += 4;
+    }
+
+    /* Lock the internal flash */
+    FLASH_Lock();
+
+    Internal_Flash_Update_Index += 1;
+
+    return Internal_Flash_Update_Index;
+#endif
 }
 
 void FLASH_End(void)
@@ -586,6 +629,13 @@ void FLASH_End(void)
     Save_SystemFlags();
 
     RTC_WriteBackupRegister(RTC_BKP_DR10, 0x0005);
+
+    USB_Cable_Config(DISABLE);
+
+    NVIC_SystemReset();
+#else
+    //To Do => Assuming system code is going to update :
+    //platform_flash_modules_t flash_modules[FLASH_MODULES_MAX] dct application data
 
     USB_Cable_Config(DISABLE);
 

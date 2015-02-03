@@ -32,7 +32,7 @@ test(FLASH_UPDATE_MODULES_Test_Passed)
 
     //Fill up application_dct=>flash_modules instances
     platform_flash_modules_t flash_modules[5];
-    flash_modules[0].statusFlag = 0x1;
+    flash_modules[0].magicNumber = 0xABCD;
     flash_modules[0].sourceDeviceID = FLASH_INTERNAL;
     flash_modules[0].destinationDeviceID = FLASH_INTERNAL;
     flash_modules[0].sourceAddress = 0x08020000;
