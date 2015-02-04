@@ -14,6 +14,8 @@
  - Support for application code outside of the firmware repo. [#374](https://github.com/spark/firmware/issues/374)
  - MAC Address available in setup via 'm' key. [#352](https://github.com/spark/firmware/issues/352)
  - SoftAP setup on the Photon
+ - `Spark.sleep()` changed to `System.sleep()` and similarly for `deviceID()` [#390](https://github.com/spark/firmware/issues/390)
+ - Listening mode uses existing serial connection if already opened. [#384](https://github.com/spark/firmware/issues/384)
 
 ### BUGFIXES
 

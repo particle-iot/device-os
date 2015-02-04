@@ -52,7 +52,8 @@ WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
     Serial1.begin(9600);
 #endif    
     this->connect_callback = connect_callback;
-    serial.begin(9600);
+    if (serial.baud()==0)
+        serial.begin(9600);
 }
 
 void WiFiCredentialsReader::read(void)

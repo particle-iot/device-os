@@ -38,6 +38,8 @@ public:
 	// public methods
 	USBSerial();
 
+        int baud() { return speed; }
+        
 	void begin(long speed);
 	void end();
 	int peek();
