@@ -29,20 +29,27 @@
 class Stream;
 
 class SystemClass {
-
 public:
-  SystemClass(System_Mode_TypeDef mode=DEFAULT) {
-      set_system_mode(mode);
-  }
-  static System_Mode_TypeDef mode(void) {
-      return system_mode();
-  }
-  static bool serialSaveFile(Stream *serialObj, uint32_t sFlashAddress) { return serialSaveFile(serialObj, sFlashAddress); }
-  static bool serialFirmwareUpdate(Stream *serialObj) { return system_serialFirmwareUpdate(serialObj); }
-  static void factoryReset(void);
-  static void bootloader(void);
-  static void reset(void);
-    
+
+    SystemClass(System_Mode_TypeDef mode = DEFAULT) {
+        set_system_mode(mode);
+    }
+
+    static System_Mode_TypeDef mode(void) {
+        return system_mode();
+    }
+
+    static bool serialSaveFile(Stream *serialObj, uint32_t sFlashAddress) {
+        return serialSaveFile(serialObj, sFlashAddress);
+    }
+
+    static bool serialFirmwareUpdate(Stream *serialObj) {
+        return system_serialFirmwareUpdate(serialObj);
+    }
+    static void factoryReset(void);
+    static void bootloader(void);
+    static void reset(void);
+
 };
 
 extern SystemClass System;
