@@ -384,12 +384,9 @@ bool FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
 //This function called in bootloader to perform the memory update process
 void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
-    platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];
+    //Read the flash modules info from the dct area
+    const platform_flash_modules_t* flash_modules = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
     uint8_t flash_module_index = 0;
-
-    //Fill the Flash modules info data read from the dct area
-    const void* dct_app_data = dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
-    memcpy(flash_modules, dct_app_data, sizeof(flash_modules));
 
     for (flash_module_index = 0; flash_module_index < FLASH_MODULES_MAX; flash_module_index++)
     {
@@ -410,14 +407,19 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 
             if(copyResult != false)
             {
-                flash_modules[flash_module_index].sourceAddress = 0;
-                flash_modules[flash_module_index].destinationAddress = 0;
-                flash_modules[flash_module_index].length = 0;
-                flash_modules[flash_module_index].magicNumber = 0;
+                //Set all flash_modules[flash_module_index] elements to 0 without sector erase
+                FLASH_Unlock();
 
-                dct_write_app_data(&flash_modules[flash_module_index],
-                                   offsetof(application_dct_t, flash_modules[flash_module_index]),
-                                   sizeof(platform_flash_modules_t));
+                uint32_t address = (uint32_t)&flash_modules[flash_module_index];
+                uint32_t length = sizeof(platform_flash_modules_t) >> 2;
+
+                while(length--)
+                {
+                    FLASH_ProgramWord(address, 0);
+                    address += 4;
+                }
+
+                FLASH_Lock();
 
                 if(flashModulesCallback)
                 {
