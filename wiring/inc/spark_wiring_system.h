@@ -25,6 +25,13 @@
 
 #include "system_mode.h"
 #include "system_update.h"
+#include "system_cloud.h"
+
+typedef enum
+{
+    SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1
+} Spark_Sleep_TypeDef;
+
 
 class Stream;
 
@@ -50,6 +57,11 @@ public:
     static void bootloader(void);
     static void reset(void);
 
+    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
+    static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }    
+    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds=0);
+    static String deviceID(void) { return spark_deviceID(); }
+    
 };
 
 extern SystemClass System;

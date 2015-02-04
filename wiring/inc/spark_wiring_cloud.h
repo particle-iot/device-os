@@ -26,11 +26,7 @@
 #include "events.h"
 #include "system_cloud.h"
 #include "spark_protocol_functions.h"
-
-typedef enum
-{
-    SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1
-} Spark_Sleep_TypeDef;
+#include "spark_wiring_system.h"
 
 typedef enum
 {
@@ -143,17 +139,17 @@ public:
     {
         spark_protocol_send_time_request(sp());
     }
-
-
-    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
-    static void sleep(long seconds);
-    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
-    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
+    
+    static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))
+    { SystemClass::sleep(seconds); }    
+    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))
+    { SystemClass::sleep(wakeUpPin, edgeTriggerMode, seconds); }
+    
     static bool connected(void) { return spark_connected(); }
     static void connect(void) { spark_connect(); }
     static void disconnect(void) { spark_disconnect(); }
     static void process(void) { spark_process(); }
-    static String deviceID(void) { return spark_deviceID(); }
+    static String deviceID(void) { return SystemClass::deviceID(); }
     
 private:
 

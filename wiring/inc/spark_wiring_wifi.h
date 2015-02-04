@@ -100,7 +100,7 @@ public:
     }
 
     void off(void) {
-        network_off();
+        network_off(true);
     }
 
     void listen(void) {

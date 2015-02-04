@@ -30,6 +30,17 @@ test(system_api) {
     API_COMPILE(System.factoryReset());
     
     API_COMPILE(System.reset());
+    
+    API_COMPILE(System.sleep(60));
+
+    API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60));
+    
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60));
+
+    API_COMPILE(System.sleep(A0, CHANGE));
+    API_COMPILE(System.sleep(A0, RISING));
+    API_COMPILE(System.sleep(A0, FALLING));
+    API_COMPILE(System.sleep(A0, FALLING, 20));
         
     API_COMPILE(System.mode());
     API_COMPILE(SystemClass(AUTOMATIC));
