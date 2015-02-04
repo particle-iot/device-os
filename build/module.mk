@@ -39,7 +39,7 @@ CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
 # Removed "-fdata-sections" as firmware doesn't work as expected
-CFLAGS += -ffunction-sections -fdata-sections -Wall -Werror -Wwarn=no-switch -Wwarn=deprecated-declarations -fmessage-length=0
+CFLAGS += -ffunction-sections -fdata-sections -Wall -Werror -Wno-switch -Wno-error=deprecated-declarations -fmessage-length=0
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1
 
