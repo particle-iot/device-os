@@ -35,6 +35,12 @@ typedef enum
 
 
 class SparkClass {
+    
+    
+    inline static EventType::Enum convert(Spark_Event_TypeDef eventType) {
+        return eventType==PUBLIC ? EventType::PUBLIC : EventType::PRIVATE;
+    }
+    
 public:
     static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType) 
     {
@@ -45,42 +51,32 @@ public:
         spark_function(funcKey, pFunc);
     }
 
-    bool publish(const char *eventName)
+    bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return spark_protocol_send_event(sp(), eventName, NULL, 60, EventType::PUBLIC);
+        return spark_protocol_send_event(sp(), eventName, NULL, 60, convert(eventType));
     }
 
-    bool publish(const char *eventName, const char *eventData)
+    bool publish(const char *eventName, const char *eventData, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return spark_protocol_send_event(sp(), eventName, eventData, 60, EventType::PUBLIC);
+        return spark_protocol_send_event(sp(), eventName, eventData, 60, convert(eventType));
     }
 
-    bool publish(const char *eventName, const char *eventData, int ttl)
+    bool publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return spark_protocol_send_event(sp(), eventName, eventData, ttl, EventType::PUBLIC);
+        return spark_protocol_send_event(sp(), eventName, eventData, ttl, convert(eventType));
     }
 
-    bool publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType)
+    bool publish(String eventName, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return spark_protocol_send_event(sp(), eventName, eventData, ttl, (eventType ? EventType::PRIVATE : EventType::PUBLIC));
+        return publish(eventName.c_str(), eventType);
     }
 
-    bool publish(String eventName)
+    bool publish(String eventName, String eventData, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return publish(eventName.c_str());
+        return publish(eventName.c_str(), eventData.c_str(), eventType);
     }
 
-    bool publish(String eventName, String eventData)
-    {
-        return publish(eventName.c_str(), eventData.c_str());
-    }
-
-    bool publish(String eventName, String eventData, int ttl)
-    {
-        return publish(eventName.c_str(), eventData.c_str(), ttl);
-    }
-
-    bool publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType)
+    bool publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC)
     {
         return publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
     }

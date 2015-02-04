@@ -61,6 +61,12 @@ test(api_spark_publish) {
 
     API_COMPILE(Spark.publish("private event name", "event data", 60, PRIVATE));
 
+    API_COMPILE(Spark.publish("public event name", PRIVATE));
+    
+    API_COMPILE(Spark.publish("public event name", "event data", PRIVATE));
+    
+    API_COMPILE(Spark.publish("public event name", PUBLIC));
+
     
     API_COMPILE(Spark.publish(String("public event name")));
     
@@ -73,6 +79,13 @@ test(api_spark_publish) {
     API_COMPILE(Spark.publish(String("public event name"), String("event data"), 60, PUBLIC));
 
     API_COMPILE(Spark.publish(String("public event name"), String("event data"), 60, PRIVATE));
+    
+    API_COMPILE(Spark.publish(String("public event name"), PRIVATE));
+    
+    API_COMPILE(Spark.publish(String("public event name"), String("event data"), PRIVATE));
+    
+    API_COMPILE(Spark.publish(String("public event name"), PUBLIC));
+    
 }
 
 test(api_spark_subscribe) {

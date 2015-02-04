@@ -16,6 +16,7 @@
  - SoftAP setup on the Photon
  - `Spark.sleep()` changed to `System.sleep()` and similarly for `deviceID()` [#390](https://github.com/spark/firmware/issues/390)
  - Listening mode uses existing serial connection if already opened. [#384](https://github.com/spark/firmware/issues/384)
+ - `Spark.publish("event", PRIVATE)` shorthand - [#376](https://github.com/spark/firmware/issues/376)
 
 ### BUGFIXES
 
