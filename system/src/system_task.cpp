@@ -209,7 +209,7 @@ void manage_network_connection()
             Spark_Error_Count = 0;
             cfod_count = 0;
 
-            network_off();
+            network_off(false);
         }
     }
     else
@@ -564,17 +564,14 @@ inline bool network_has_credentials()
     return wlan_has_credentials() == 0;
 }
 
-void network_off()
+void network_off(bool disconnect_cloud)
 {
     if (SPARK_WLAN_STARTED)
     {
         wlan_deactivate();
 
-        if (!SPARK_WLAN_SLEEP)//if Spark.sleep() is not called
-        {
-            // Reset remaining state variables in Spark_Idle()
-            SPARK_WLAN_SLEEP = 1;
-
+        SPARK_WLAN_SLEEP = 1;
+        if (disconnect_cloud) {
             // Do not automatically connect to the cloud
             // the next time we connect to a Wi-Fi network
             SPARK_CLOUD_CONNECT = 0;
