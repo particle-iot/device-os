@@ -45,3 +45,10 @@ test(TIME_SetTimeResultsInCorrectUnixTimeUpdate) {
     // restore original time
     Time.setTime(current_time);
 }
+
+test(TIME_TimeStrDoesNotEndWithNewline) {
+    String t = Time.timeStr();
+    assertMore(t.length(), 0);
+    char c = t[t.length()-1];
+    assertNotEqual('\n', c);
+}

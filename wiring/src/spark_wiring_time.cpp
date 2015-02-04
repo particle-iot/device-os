@@ -268,6 +268,7 @@ String TimeClass::timeStr(time_t t)
 	t += time_zone_cache;
 	calendar_time = localtime(&t);
 	String calendar_time_string = String(asctime(calendar_time));
+    calendar_time_string[calendar_time_string.length()-1] = 0;
 	return calendar_time_string;
 }
 
