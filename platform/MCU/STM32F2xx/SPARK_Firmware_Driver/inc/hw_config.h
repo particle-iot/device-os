@@ -108,6 +108,9 @@ void OTA_Flashed_ResetStatus(void);
 
 void Finish_Update(void);
 
+uint16_t Bootloader_Get_Version(void);
+void Bootloader_Update_Version(uint16_t bootloaderVersion);
+
 /* External variables --------------------------------------------------------*/
 extern uint8_t USE_SYSTEM_FLAGS;
 

@@ -216,5 +216,7 @@ DYNALIB_FN(hal,wlan_fetch_ipconfig)
 DYNALIB_FN(hal,wlan_setup)
 
 DYNALIB_FN(hal,SPARK_WLAN_SetNetWatchDog)
-        
+
+DYNALIB_FN(hal,HAL_Bootloader_Get_Version)
+
 DYNALIB_END(hal)

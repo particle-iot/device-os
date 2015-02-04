@@ -329,6 +329,11 @@ uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
 	return Data;
 }
 
+uint16_t HAL_Bootloader_Get_Version(void)
+{
+    return Bootloader_Get_Version();
+}
+
 // todo find a technique that allows accessor functions to be inlined while still keeping
 // hardware independence.
 bool HAL_watchdog_reset_flagged() 

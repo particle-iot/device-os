@@ -719,6 +719,17 @@ void Finish_Update(void)
     NVIC_SystemReset();
 }
 
+uint16_t Bootloader_Get_Version(void)
+{
+    return system_flags.Bootloader_Version_SysFlag;
+}
+
+void Bootloader_Update_Version(uint16_t bootloaderVersion)
+{
+    system_flags.Bootloader_Version_SysFlag = bootloaderVersion;
+    Save_SystemFlags();
+}
+
 static volatile system_tick_t system_1ms_tick = 0;
 
 void System1MsTick(void)

@@ -63,7 +63,7 @@ const uint16_t BUTTON_GPIO_PIN_SOURCE[] = {BUTTON1_EXTI_PIN_SOURCE, BUTTON2_EXTI
 const uint16_t BUTTON_IRQn[] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
 
-uint16_t CORE_FW_Version_SysFlag = 0xFFFF;
+uint16_t Bootloader_Version_SysFlag = 0xFFFF;
 uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
 uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
 uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
@@ -916,7 +916,7 @@ void Load_SystemFlags(void)
     if(!USE_SYSTEM_FLAGS)
         return;
 
-    CORE_FW_Version_SysFlag = (*(__IO uint16_t*) Address);
+    Bootloader_Version_SysFlag = (*(__IO uint16_t*) Address);
     Address += 2;
 
     NVMEM_SPARK_Reset_SysFlag = (*(__IO uint16_t*) Address);
@@ -953,8 +953,8 @@ void Save_SystemFlags(void)
     FLASHStatus = FLASH_ErasePage(SYSTEM_FLAGS_ADDRESS);
     while(FLASHStatus != FLASH_COMPLETE);
 
-    /* Program CORE_FW_Version_SysFlag */
-    FLASHStatus = FLASH_ProgramHalfWord(Address, CORE_FW_Version_SysFlag);
+    /* Program Bootloader_Version_SysFlag */
+    FLASHStatus = FLASH_ProgramHalfWord(Address, Bootloader_Version_SysFlag);
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
 
@@ -1309,6 +1309,17 @@ void Finish_Update(void)
     USB_Cable_Config(DISABLE);
 
     NVIC_SystemReset();
+}
+
+uint16_t Bootloader_Get_Version(void)
+{
+    return Bootloader_Version_SysFlag;
+}
+
+void Bootloader_Update_Version(uint16_t bootloaderVersion)
+{
+    Bootloader_Version_SysFlag = bootloaderVersion;
+    Save_SystemFlags();
 }
 
 static volatile system_tick_t system_1ms_tick = 0;

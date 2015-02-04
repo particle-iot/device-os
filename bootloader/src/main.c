@@ -105,12 +105,19 @@ int main(void)
 
     //--------------------------------------------------------------------------
     //  Load the system flags saved at SYSTEM_FLAGS_ADDRESS = 0x08004C00
-    //  CORE_FW_Version_SysFlag
+    //  Bootloader_Version_SysFlag
     //  NVMEM_SPARK_Reset_SysFlag
     //  FLASH_OTA_Update_SysFlag
     //  Factory_Reset_SysFlag
     //--------------------------------------------------------------------------
     Load_SystemFlags();
+
+    //BOOTLOADER_VERSION defined in bootloader/import.mk
+    //This can also be overridden via make command line arguments
+    if (SYSTEM_FLAG(Bootloader_Version_SysFlag) != BOOTLOADER_VERSION)
+    {
+        Bootloader_Update_Version(BOOTLOADER_VERSION);
+    }
 
     //--------------------------------------------------------------------------
 
