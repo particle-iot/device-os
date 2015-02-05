@@ -49,3 +49,4 @@ ci/test-reports/
 nbproject/
 build/target/
 build/cores/
+hal/soft-ap/.idea/
