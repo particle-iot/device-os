@@ -47,8 +47,8 @@ extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
 const unsigned SysTickIndex = 15;
-const unsigned EXTI9_5Index = 39;
 const unsigned USART1Index = 53;
+const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
 
 void SysTickOverride(void);
 void Mode_Button_EXTI_irq(void);
@@ -59,8 +59,8 @@ void override_interrupts(void) {
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[SysTickIndex] = (uint32_t)SysTickOverride;
-    isrs[EXTI9_5Index] = (uint32_t)Mode_Button_EXTI_irq;
     isrs[USART1Index] = (uint32_t)HAL_USART1_Handler;
+    isrs[ButtonExtiIndex] = (uint32_t)Mode_Button_EXTI_irq;
     SCB->VTOR = (unsigned long)isrs;
 }
 
@@ -366,9 +366,7 @@ void SysTickOverride(void)
  */
 void Mode_Button_EXTI_irq(void)
 {
-    void (*chain)(void) = (void (*)(void))((uint32_t*)&link_interrupt_vectors_location)[EXTI9_5Index];
-
-    chain();
+    void (*chain)(void) = (void (*)(void))((uint32_t*)&link_interrupt_vectors_location)[ButtonExtiIndex];
 
     if (EXTI_GetITStatus(BUTTON1_EXTI_LINE) != RESET)
     {
@@ -383,6 +381,8 @@ void Mode_Button_EXTI_irq(void)
         /* Enable TIM2 CC1 Interrupt */
         TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
     }
+
+    chain();
 }
 
 /**
