@@ -357,22 +357,25 @@ void SysTickOverride(void)
 }
 
 /**
- * @brief  This function handles EXTI2_IRQ Handler.
+ * @brief  This function handles EXTI2_IRQ or EXTI_9_5_IRQ Handler.
  * @param  None
  * @retval None
  */
 void Mode_Button_EXTI_irq(void)
 {
-    /* Clear the EXTI line pending bit (cleared in WICED GPIO IRQ handler) */
-    EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE);
+    if (EXTI_GetITStatus(BUTTON1_EXTI_LINE) != RESET)
+    {
+        /* Clear the EXTI line pending bit (cleared in WICED GPIO IRQ handler) */
+        EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE);
 
-    BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
+        BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
 
-    /* Disable BUTTON1 Interrupt */
-    BUTTON_EXTI_Config(BUTTON1, DISABLE);
+        /* Disable BUTTON1 Interrupt */
+        BUTTON_EXTI_Config(BUTTON1, DISABLE);
 
-    /* Enable TIM2 CC1 Interrupt */
-    TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
+        /* Enable TIM2 CC1 Interrupt */
+        TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
+    }
 }
 
 /**
