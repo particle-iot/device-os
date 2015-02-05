@@ -95,6 +95,11 @@ lst: $(TARGET_BASE).lst
 exe: $(TARGET_BASE).exe
 	@echo Built x-compile executable at $(TARGET_BASE).exe
 none: 
+	;
+	
+stflash: $(TARGET_BASE).bin
+	@echo Flashing using stflash
+	st-flash write $< 0x8000000
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
@@ -186,7 +191,7 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-.PHONY: all none elf bin hex size program-dfu program-cloud
+.PHONY: all none elf bin hex size program-dfu program-cloud stflash
 .SECONDARY:
 
 include $(COMMON_BUILD)/recurse.mk
