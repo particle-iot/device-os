@@ -47,9 +47,11 @@ extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
 const unsigned SysTickIndex = 15;
+const unsigned EXTI9_5Index = 39;
 const unsigned USART1Index = 53;
 
 void SysTickOverride(void);
+void Mode_Button_EXTI_irq(void);
 void HAL_USART1_Handler(void);
 
 void override_interrupts(void) {
@@ -57,6 +59,7 @@ void override_interrupts(void) {
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[SysTickIndex] = (uint32_t)SysTickOverride;
+    isrs[EXTI9_5Index] = (uint32_t)Mode_Button_EXTI_irq;
     isrs[USART1Index] = (uint32_t)HAL_USART1_Handler;
     SCB->VTOR = (unsigned long)isrs;
 }
@@ -71,7 +74,6 @@ void override_interrupts(void) {
 /* Private variables ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
-void Mode_Button_EXTI_irq(void);
 void (*HAL_TIM1_Handler)(void);
 void (*HAL_TIM3_Handler)(void);
 void (*HAL_TIM4_Handler)(void);
@@ -113,7 +115,8 @@ void HAL_Core_Config(void)
     override_interrupts();
 
     /* Register Mode Button Interrupt Handler (WICED hack for Mode Button usage) */
-    HAL_EXTI_Register_Handler(BUTTON1_EXTI_LINE, Mode_Button_EXTI_irq);
+    //Commented below in favour of override_interrupts()
+    //HAL_EXTI_Register_Handler(BUTTON1_EXTI_LINE, Mode_Button_EXTI_irq);
 
     SysTick_Configuration();
 
@@ -363,6 +366,10 @@ void SysTickOverride(void)
  */
 void Mode_Button_EXTI_irq(void)
 {
+    void (*chain)(void) = (void (*)(void))((uint32_t*)&link_interrupt_vectors_location)[EXTI9_5Index];
+
+    chain();
+
     if (EXTI_GetITStatus(BUTTON1_EXTI_LINE) != RESET)
     {
         /* Clear the EXTI line pending bit (cleared in WICED GPIO IRQ handler) */
