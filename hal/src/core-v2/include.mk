@@ -38,9 +38,8 @@ HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_RTOS)/,$(addsuffix .a,$(HAL_WICED_R
 WICED_MCU = $(HAL_SRC_COREV2_PATH)/wiced/platform/MCU/STM32F2xx/GCC
 
 LINKER_FILE=$(WICED_MCU)/app_no_bootloader.ld
-LINKER_DEPS=$(LINKER_FILE)
+LINKER_DEPS=$(LINKER_FILE) $(HAL_WICED_LIB_FILES)
 
-#LDFLAGS += -Wl,--start-group $(HAL_WICED_LIB_FILES) -Wl,--end-group
 LDFLAGS += --specs=nano.specs -lc -lnosys
 LDFLAGS += -Wl,--whole-archive $(HAL_WICED_LIB_FILES) -Wl,--no-whole-archive
 LDFLAGS += -T$(LINKER_FILE)
