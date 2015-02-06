@@ -19,9 +19,10 @@ call update.bat . %WICED%
 
 
 @REM update platform libraries (any RTOS)
-call update.bat lib %WICED%\build\demo_soft_ap_scan-BCM9WCDUSI09-ThreadX-NetX-SDIO\libraries
 call update.bat lib %WICED%\build\demo_soft_ap-BCM9WCDUSI14-ThreadX-NetX-SDIO\libraries
 
 call update.bat lib\ThreadX %WICED%\build\demo_soft_ap-BCM9WCDUSI14-ThreadX-NetX-SDIO\libraries
 REM call update.bat lib\FreeRTOS %WICED%\build\demo_soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO\libraries
 
+
+call update.bat lib %WICED%\build\demo_soft_ap-BCM9WCDUSI09-ThreadX-NetX-SDIO\libraries
