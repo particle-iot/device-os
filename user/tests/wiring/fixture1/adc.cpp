@@ -28,9 +28,15 @@
 
 /*
  * ADC Test requires two 100k ohm resistors hooked up to the unit under test as follows:
+ * only on Core (PLATFORM_ID = 0)
  *
  *           R1 100k           R2 100k
  * (3V3*) ---/\/\/\--- (A5) ---/\/\/\--- (GND)
+ *
+ * On Photon, connect DAC Output to ADC input as follows:
+ *
+ *           WIRE
+ * (DAC) --==========-- (A5)
  *
  */
 
@@ -43,6 +49,7 @@ test(ADC_NoAnalogReadWhenPinSelectedIsOutOfRange) {
     //To Do : Add test for remaining pins if required
 }
 
+#if (PLATFORM_ID == 0)
 test(ADC_AnalogReadOnPinWithVoltageDividerResultsInCorrectValue) {
     pin_t pin = A5;//pin under test (Voltage divider with equal resistor values)
     // when
@@ -51,3 +58,16 @@ test(ADC_AnalogReadOnPinWithVoltageDividerResultsInCorrectValue) {
     assertTrue((ADCValue>2000)&&(ADCValue<2100));//ADCValue should be around 2048
     //To Do : Add test for remaining pins if required
 }
+#endif
+
+#if (PLATFORM_ID == 6)
+test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
+    pin_t pin = A5;//pin under test (Voltage divider with equal resistor values)
+    // when
+    analogWrite(DAC1, 2048);
+    int32_t ADCValue = analogRead(pin);
+    // then
+    assertTrue((ADCValue>2000)&&(ADCValue<2100));//ADCValue should be around 2048
+    //To Do : Add test for remaining pins if required
+}
+#endif

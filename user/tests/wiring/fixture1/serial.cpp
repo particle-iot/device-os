@@ -24,16 +24,19 @@
  */
 
 #include "application.h"
+#if (PLATFORM_ID == 0)
 #include "Serial2/Serial2.h"
+#endif
 #include "unit-test/unit-test.h"
 
 /*
  * Serial1 Test requires TX to be jumpered to RX as follows:
- *
+ * valid for both Core and Photon
  *           WIRE
  * (TX) --==========-- (RX)
  *
  * Serial2 Test requires D0 to be jumpered to D1 as follows:
+ * only on Core (PLATFORM_ID = PLATFORM_SPARK_CORE)
  *
  *           WIRE
  * (D0) --==========-- (D1)
@@ -65,6 +68,7 @@ test(SERIAL1_ReadWriteSucceedsInLoopbackWithTxRxShorted) {
     assertTrue(strncmp(test, message, 5)==0);
 }
 
+#if (PLATFORM_ID == 0)
 test(SERIAL2_ReadWriteSucceedsInLoopbackWithD0D1Shorted) {
     //The following code will test all the important USART Serial2 routines
     char test[] = "hello";
@@ -76,3 +80,4 @@ test(SERIAL2_ReadWriteSucceedsInLoopbackWithD0D1Shorted) {
     // then
     assertTrue(strncmp(test, message, 5)==0);
 }
+#endif
