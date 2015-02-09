@@ -33,10 +33,27 @@
 /* Arduino Compatibility Class -----------------------------------------------*/
 class EEPROMClass
 {
-  public:
-    EEPROMClass();
-    uint8_t read(int);
-    void write(int, uint8_t);
+public:
+    EEPROMClass()
+    {
+      HAL_EEPROM_Init();
+    }
+
+    uint8_t read(int address) const
+    {
+      return HAL_EEPROM_Read(address);
+    }
+
+    void write(int address, uint8_t value)
+    {
+      HAL_EEPROM_Write(address, value);
+    }
+
+    size_t length() const
+    {
+        return HAL_EEPROM_Length();
+    }
+    
 };
 
 extern EEPROMClass EEPROM;

@@ -29,20 +29,4 @@
 /* Includes ------------------------------------------------------------------*/
 #include "spark_wiring_eeprom.h"
 
-/* Arduino Compatibility EEPROM methods */
-EEPROMClass::EEPROMClass()
-{
-  HAL_EEPROM_Init();
-}
-
-uint8_t EEPROMClass::read(int address)
-{
-  return HAL_EEPROM_Read(address);
-}
-
-void EEPROMClass::write(int address, uint8_t value)
-{
-  HAL_EEPROM_Write(address, value);
-}
-
 EEPROMClass EEPROM;
