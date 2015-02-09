@@ -93,6 +93,11 @@ void HAL_EEPROM_Init(void)
   }
 }
 
+size_t HAL_EEPROM_Length() 
+{
+    return EEPROM_SIZE;
+}
+
 uint8_t HAL_EEPROM_Read(uint32_t address)
 {
   uint16_t data;
