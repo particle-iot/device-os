@@ -34,7 +34,7 @@
 
 #endif
 
-
+#ifdef FLASHEE_EEPROM
 namespace Flashee {    
     
 FlashDevice::~FlashDevice() { }
@@ -48,6 +48,7 @@ FlashDevice::~FlashDevice() { }
 FlashDeviceRegion Devices::userRegion(directFlash, 0x80000, 0x200000);
 
 }
+#endif
 
 /**
  * Compares data in the buffer with the data in flash.

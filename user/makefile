@@ -9,7 +9,10 @@ include ../build/platform-id.mk
 
 ifeq ("","$(SPARK_NO_PLATFORM)")
 DEPENDENCIES += platform
+ifneq ("$(PLATFORM_NET)","BCM9WCDUSI09")
 CFLAGS += -DSPARK_PLATFORM
+CFLAGS += -DFLASHEE_EEPROM
+endif
 endif
 
 MAKE_DEPENDENCIES = $(DEPENDENCIES)
