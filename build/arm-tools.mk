@@ -17,7 +17,7 @@ include $(COMMON_BUILD)/common-tools.mk
 CFLAGS +=  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb
 
 # C++ specific flags
-CPPFLAGS += -fno-exceptions -fno-rtti
+CPPFLAGS += -fno-exceptions -fno-rtti -fcheck-new
 
 CONLYFLAGS += 
 

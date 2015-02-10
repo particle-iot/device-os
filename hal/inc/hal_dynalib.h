@@ -36,7 +36,9 @@
  * but the rule above still holds.
  */
 
-#define DYNALIB_USER_FN(x,y)
+// as an option to free up space in the system-hal image, we can split the HAL
+// into the parts needed by the system, 
+#define DYNALIB_USER_FN(x,y) DYNALIB_FN(x,y)
 
 DYNALIB_BEGIN(hal)        
 DYNALIB_USER_FN(hal,HAL_ADC_Set_Sample_Time)

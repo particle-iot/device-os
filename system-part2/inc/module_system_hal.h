@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    system-wifi.h
+ * @file    system_hal_dynalib.h
  * @authors Matthew McGowan
- * @date    09 February 2015
+ * @date    10 February 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,21 +21,14 @@
  ******************************************************************************
  */
 
-#ifndef SYSTEM_WIFI_H
-#define	SYSTEM_WIFI_H
+#ifndef SYSTEM_HAL_DYNALIB_H
+#define	SYSTEM_HAL_DYNALIB_H
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+#define SYSTEM_HAL_MODULE_JUMP_TABLE_INDEX_SERVICES 0    
+#define SYSTEM_HAL_MODULE_JUMP_TABLE_INDEX_HAL 1
 
-#define SYSTEM_WIFI_MODULE_JUMP_TABLE_INDEX_COMMUNICATION 0    
-#define SYSTEM_WIFI_MODULE_JUMP_TABLE_INDEX_WIFI_RESOURCE 1
-
-extern const void* const system_part1_module[];    
+extern const void* const system_part1_module[];
     
-#ifdef	__cplusplus
-}
-#endif
 
-#endif	/* SYSTEM_WIFI_H */
+#endif	/* SYSTEM_HAL_DYNALIB_H */
 
