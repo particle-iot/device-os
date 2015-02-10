@@ -6,7 +6,7 @@ HAL_MODULE_PATH=.
 TARGET_TYPE = a
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(HAL_TEST_FLAVOR)
 
-DEPENDENCIES = platform services
+DEPENDENCIES = platform services dynalib 
 
 # ensure PLATFORM_NAME is defined
 include ../build/platform-id.mk
