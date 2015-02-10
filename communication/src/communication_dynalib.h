@@ -41,9 +41,9 @@ DYNALIB_FN(communication, spark_protocol_send_subscription_device)
 DYNALIB_FN(communication, spark_protocol_send_subscription_scope)
 DYNALIB_FN(communication, spark_protocol_add_event_handler)
 DYNALIB_FN(communication, spark_protocol_send_time_request)
-
+DYNALIB_FN(communication, spark_protocol_send_subscriptions)
 DYNALIB_FN(communication, decrypt_rsa)
-       
+        
 DYNALIB_END(communication)
         
         
