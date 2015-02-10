@@ -3,8 +3,8 @@
 /**
   ******************************************************************************
   * @file    dynalib.h
-  * @authors  Matthew McGowan
-  * @brief   User Application File Header
+  * @authors Matthew McGowan
+  * @brief   Import and Export of dynamically linked functions
   ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -36,14 +36,20 @@
 #define DYNALIB_TABLE_NAME(tablename) \
     dynalib_##tablename
 
-#ifdef DYNALIB_EXPORT
+// DYNALIB_EXETRN_C to mark symbols with C linkage
+#ifdef __cplusplus
+#define DYNALIB_EXTERN_C extern "C"
+#else
+#define DYNALIB_EXTERN_C
+#endif
 
+#ifdef DYNALIB_EXPORT
 
     /**
      * Begin the jump table definition
      */
     #define DYNALIB_BEGIN(tablename) \
-        const void* const dynalib_##tablename[] = {
+        DYNALIB_EXTERN_C const void* const dynalib_##tablename[] = {
 
     #define DYNALIB_FN(tablename,name) \
         (const void*)&name,
@@ -77,7 +83,7 @@
                                                 /* SP points to the last pushed item, which is r3. sp+4 is then the pushed lr value */ \
                     "ldr r3, =dynalib_location_" #tablename "\n" \
                     "ldr r3, [r3]\n"                    /* the address of the jump table */ \
-                    "ldr r3, [r3, #offset ]\n"    /* the address at index __COUNTER__ */ \
+                    "ldr r3, [r3, #offset]\n"    /* the address at index __COUNTER__ */ \
                     "str r3, [sp, #4]\n"                /* patch the link address on the stack */ \
                     "pop {r3, pc}\n"                    /* restore register and jump to function */ \
                 ); \

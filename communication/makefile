@@ -13,6 +13,6 @@ endif
 
 BUILD_PATH_EXT=$(COMMUNICATION_TARGET_DIR)
 
-DEPENDENCIES = hal services
+DEPENDENCIES = hal dynalib
 
 include ../build/arm-tlm.mk
