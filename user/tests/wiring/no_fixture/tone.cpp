@@ -27,6 +27,12 @@
 #include "tone_hal.h"
 #include "unit-test/unit-test.h"
 
+#if (PLATFORM_ID == 6)
+static pin_t pin = D1;//pin under test
+#else
+static pin_t pin = A1;//pin under test
+#endif
+
 test(TONE_NoGenerateWhenPinSelectedIsNotTimerChannel) {
     uint8_t pin = D5;//pin under test
     uint32_t frequency = 500;
@@ -38,19 +44,7 @@ test(TONE_NoGenerateWhenPinSelectedIsNotTimerChannel) {
     //To Do : Add test for remaining pins if required
 }
 
-test(TONE_NoGenerateWhenPinSelectedIsOutOfRange) {
-    pin_t pin = 25;//pin under test (not a valid user pin)
-    uint32_t frequency = 500;
-    uint32_t duration = 100;
-    // when
-    tone(pin, frequency, duration);
-    // then
-    assertNotEqual(HAL_Tone_Is_Stopped(pin), false);
-    //To Do : Add test for remaining pins if required
-}
-
 test(TONE_GeneratedOnPinResultsInCorrectFrequency) {
-    pin_t pin = A0;//pin under test
     uint32_t frequency = 500;
     uint32_t duration = 100;
     // when
@@ -61,7 +55,6 @@ test(TONE_GeneratedOnPinResultsInCorrectFrequency) {
 }
 
 test(TONE_GeneratedOnPinResultsInCorrectDuration) {
-    pin_t pin = A1;//pin under test
     uint32_t frequency = 500;
     uint32_t duration = 100;
     // when
@@ -76,7 +69,6 @@ test(TONE_GeneratedOnPinResultsInCorrectDuration) {
 }
 
 test(TONE_GeneratedOnPinStopsWhenStopped) {
-    pin_t pin = A1;//pin under test
     uint32_t frequency = 500;
     uint32_t duration = 100;
     // when

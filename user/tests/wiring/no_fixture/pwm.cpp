@@ -27,8 +27,13 @@
 #include "pwm_hal.h"
 #include "unit-test/unit-test.h"
 
+#if (PLATFORM_ID == 6)
+static pin_t pin = D0;//pin under test
+#else
+static pin_t pin = A0;//pin under test
+#endif
+
 test(PWM_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
-    pin_t pin = A0;//pin under test
     // when
     pinMode(pin, INPUT);//pin set to INPUT mode
     analogWrite(pin, 50);
@@ -59,7 +64,6 @@ test(PWM_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
 }
 
 test(PWM_AnalogWriteOnPinResultsInCorrectFrequency) {
-    pin_t pin = A0;//pin under test
     // when
     pinMode(pin, OUTPUT);
     analogWrite(pin, 150);
@@ -70,7 +74,6 @@ test(PWM_AnalogWriteOnPinResultsInCorrectFrequency) {
 }
 
 test(PWM_AnalogWriteOnPinResultsInCorrectAnalogValue) {
-    pin_t pin = A1;//pin under test
     // when
     pinMode(pin, OUTPUT);
     analogWrite(pin, 200);

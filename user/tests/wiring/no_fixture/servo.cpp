@@ -27,6 +27,12 @@
 #include "servo_hal.h"
 #include "unit-test/unit-test.h"
 
+#if (PLATFORM_ID == 6)
+static pin_t pin = D0;//pin under test
+#else
+static pin_t pin = A0;//pin under test
+#endif
+
 test(SERVO_CannotAttachWhenPinSelectedIsNotTimerChannel) {
     pin_t pin = D5;//pin under test (not a Timer channel)
     Servo testServo;
@@ -50,7 +56,6 @@ test(SERVO_CannotAttachWhenPinSelectedIsOutOfRange) {
 }
 
 test(SERVO_AttachedOnPinResultsInCorrectFrequency) {
-    pin_t pin = A0;//pin under test
     Servo testServo;
     // when
     testServo.attach(pin);
@@ -61,7 +66,6 @@ test(SERVO_AttachedOnPinResultsInCorrectFrequency) {
 }
 
 test(SERVO_WritePulseWidthOnPinResultsInCorrectMicroSeconds) {
-    pin_t pin = A1;//pin under test
     uint16_t pulseWidth = 1500;//value corresponding to servo's mid-point
     Servo testServo;
     // when
