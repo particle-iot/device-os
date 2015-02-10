@@ -1,9 +1,16 @@
 
+
+reset_handler = _start;
+
+ENTRY( _start );
+
 /* todo - import defines for mem layout from system module 1 */
 
 MEMORY
 {
-    APP_FLASH (rx)  : ORIGIN = 0x08060000, LENGTH = 128K
+    DCT1_FLASH                 (rx)  : ORIGIN = 0x08004000, LENGTH = 16K
+    DCT2_FLASH                 (rx)  : ORIGIN = 0x08008000, LENGTH = 16K
+    APP_FLASH (rx)  : ORIGIN = 0x08020000, LENGTH = 256K
 
     /* todo - SRAM must start also at an offset after what has been reserved for system-module 1 */
     SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
@@ -156,7 +163,21 @@ PROVIDE( __RAM_segment_used_end__ = link_stack_end );
 PROVIDE( __tx_free_memory_start = link_stack_end );
 PROVIDE( __tx_vectors = link_interrupt_vectors_location );
 
+/* Some defines to keep WICED's _start() happy */
+PROVIDE( link_run_from_ram_code_size = 0);
+PROVIDE( link_run_from_ram_code_flash_location = 0);
+PROVIDE( link_run_from_ram_code_ram_location = 0);
+PROVIDE( link_run_from_ram_code_ram_end = 0);
+
 PROVIDE( VTOR_Length = interrupt_vectors_length );
+
+PROVIDE( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH ));
+PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
+PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
+PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
+
 
 ASSERT( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );
 ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location ) == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
+
+INCLUDE wifi_export.ld

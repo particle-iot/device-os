@@ -31,7 +31,7 @@ extern "C" {
 #define SYSTEM_WIFI_MODULE_JUMP_TABLE_INDEX_COMMUNICATION 0    
 #define SYSTEM_WIFI_MODULE_JUMP_TABLE_INDEX_WIFI_RESOURCE 1
 
-    
+extern const void* const system_part1_module[];    
     
 #ifdef	__cplusplus
 }

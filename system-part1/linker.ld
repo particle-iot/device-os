@@ -4,7 +4,7 @@
 
 MEMORY
 {
-    APP_FLASH (rx)  : ORIGIN = 0x08040000, LENGTH = 256K
+    APP_FLASH (rx)  : ORIGIN = 0x08060000, LENGTH = 256K
 
     /* todo - SRAM must start also at an offset after what has been reserved for system-module 1 */
     SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
@@ -15,9 +15,10 @@ SECTIONS
 {
     .dynalib :
     {
+        link_module_jump_table_start = . ;
         KEEP(*(*.system_part1_module))
+        link_module_jump_table_end = . ;
     }>APP_FLASH  AT> APP_FLASH
-
 
     .text :
     {
@@ -78,13 +79,6 @@ SECTIONS
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
 
-    .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
-    {
-        link_ram_interrupt_vectors_location = .;
-        . = . + interrupt_vectors_length;
-        link_ram_interrupt_vectors_location_end = .;
-    }> SRAM
-
     .data : /* Contains the non-zero initialised global variables */
     {
         link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
@@ -142,3 +136,8 @@ PROVIDE( _heap = link_stack_end );
 /* End of the heap is top of RAM, aligned 8 byte */
 
 PROVIDE( _eheap = ALIGN( ORIGIN( SRAM ) + LENGTH( SRAM ) - 8, 8 ) );
+
+ASSERT( link_module_jump_table_start == ORIGIN(APP_FLASH), "module master jump table should be at start of APP FLASH" );
+ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module master jump table not linked" );
+
+INCLUDE wifi_export.ld

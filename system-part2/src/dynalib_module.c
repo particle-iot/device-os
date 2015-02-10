@@ -9,12 +9,10 @@
 
 
 DYNALIB_TABLE_EXTERN(services);
+DYNALIB_TABLE_EXTERN(hal);
 
 void* system_part2_module[] = {
-    DYNALIB_TABLE_NAME(services)    
+    DYNALIB_TABLE_NAME(services),
+    DYNALIB_TABLE_NAME(hal)
 };
-
-void app_setup_and_loop() {
-    
-}
 

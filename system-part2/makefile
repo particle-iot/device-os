@@ -2,21 +2,15 @@ MODULE=system-part2
 SYSTEM_PART2_MODULE_PATH=.
 
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
-
-DEPENDENCIES = services
+HAL_LINK := 
+	
+DEPENDENCIES = dynalib services hal platform system wiring communication-dynalib system-part1
+MAKE_DEPENDENCIES = services hal platform system wiring communication-dynalib 
 
 include ../build/platform-id.mk
 
-PLATFORM_LIB_DIR = $(BUILD_PATH_BASE)/platform/$(BUILD_PATH_EXT)
-PLATFORM_LIB_DEP = $(PLATFORM_LIB_DIR)/libplatform.a
-
-HAL_LIB_DIR = $(BUILD_PATH_BASE)/hal/$(BUILD_PATH_EXT)$(HAL_TEST_FLAVOR)
-HAL_LIB_DEP = $(HAL_LIB_DIR)/libhal.a
-
-
-MAKE_DEPENDENCIES = $(DEPENDENCIES) hal platform
 LIBS += $(MAKE_DEPENDENCIES)
-LIB_DEPS += $(SERVICES_LIB_DEP) $(PLATFORM_LIB_DEP) $(HAL_LIB_DEP)
+LIB_DEPS += $(SERVICES_LIB_DEP) $(PLATFORM_LIB_DEP) $(HAL_LIB_DEP) $(SYSTEM_LIB_DEP) $(COMMUNICATION_DYNALIB_LIB_DEP) $(WIRING_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
 
 TARGET=elf bin lst hex size 
