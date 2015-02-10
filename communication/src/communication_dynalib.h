@@ -22,6 +22,10 @@
 
 #pragma once
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+    
 #include "dynalib.h"
 
 DYNALIB_BEGIN(communication)
@@ -41,3 +45,9 @@ DYNALIB_FN(communication, spark_protocol_send_time_request)
 DYNALIB_FN(communication, decrypt_rsa)
        
 DYNALIB_END(communication)
+        
+        
+#ifdef	__cplusplus
+}
+#endif
+        

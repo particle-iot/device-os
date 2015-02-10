@@ -18,8 +18,6 @@ ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)
 endif
 
-ifneq (,$(findstring hal,$(MAKE_DEPENDENCIES)))
-# if hal is used as a make dependency (linked) then add linker commands
 
 HAL_LIB_COREV2 = $(HAL_SRC_COREV2_PATH)/lib
 
@@ -37,6 +35,11 @@ HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_COREV2)/,$(addsuffix .a,$(HAL_WICED
 HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_RTOS)/,$(addsuffix .a,$(HAL_WICED_RTOS_LIBS)))
 WICED_MCU = $(HAL_SRC_COREV2_PATH)/wiced/platform/MCU/STM32F2xx/GCC
 
+HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))
+
+# if hal is used as a make dependency (linked) then add linker commands
+ifneq (,$(HAL_LINK))
+$(info "Linking libraries using core-v2 HAL"
 LINKER_FILE=$(WICED_MCU)/app_no_bootloader.ld
 LINKER_DEPS=$(LINKER_FILE) $(HAL_WICED_LIB_FILES)
 
