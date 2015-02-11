@@ -194,6 +194,7 @@ PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
 PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
 
 
+ASSERT ( link_interrupt_vectors_location == ORIGIN(APP_FLASH), "VTOR table should be at start of flash" )
 ASSERT( link_padding_start == ORIGIN( SRAM ), "Padding start should be at start of RAM" );
 ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location ) == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
 

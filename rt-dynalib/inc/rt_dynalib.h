@@ -27,4 +27,5 @@
 DYNALIB_BEGIN(rt)
 DYNALIB_FN(rt, malloc)
 DYNALIB_FN(rt, free)
+DYNALIB_FN(rt, realloc)
 DYNALIB_END(rt)

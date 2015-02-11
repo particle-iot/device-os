@@ -26,6 +26,7 @@
 
 #define SYSTEM_HAL_MODULE_JUMP_TABLE_INDEX_SERVICES 0    
 #define SYSTEM_HAL_MODULE_JUMP_TABLE_INDEX_HAL 1
+#define SYSTEM_HAL_MODULE_JUMP_TABLE_INDEX_RT 2
 
 extern const void* const system_part1_module[];
     

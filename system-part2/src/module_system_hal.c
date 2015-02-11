@@ -4,13 +4,15 @@
 
 DYNALIB_TABLE_EXTERN(services);
 DYNALIB_TABLE_EXTERN(hal);
+DYNALIB_TABLE_EXTERN(rt);
 
 /**
  * The module export table. This lists the addresses of individual library dynalib jump tables.
  */
 const void* const system_part2_module[] = {
     DYNALIB_TABLE_NAME(services),
-    DYNALIB_TABLE_NAME(hal)
+    DYNALIB_TABLE_NAME(hal),
+    DYNALIB_TABLE_NAME(rt),
 };
 
 

@@ -6,7 +6,7 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK := 
 # HAL Dependency only for the WICED wifi resources	
 MAKE_DEPENDENCIES = communication
-DEPENDENCIES = $(MAKE_DEPENDENCIES) hal dynalib
+DEPENDENCIES = $(MAKE_DEPENDENCIES) hal dynalib rt-dynalib system-part2
 
 include ../build/platform-id.mk
 

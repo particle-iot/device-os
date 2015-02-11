@@ -4,8 +4,8 @@ SYSTEM_PART2_MODULE_PATH=.
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK := 
 	
-DEPENDENCIES = dynalib services hal platform system wiring communication-dynalib system-part1
-MAKE_DEPENDENCIES = services hal platform system wiring communication-dynalib 
+DEPENDENCIES = dynalib services hal platform system wiring communication-dynalib rt-dynalib system-part1
+MAKE_DEPENDENCIES = services hal platform system wiring communication-dynalib
 
 include ../build/platform-id.mk
 

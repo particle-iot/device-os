@@ -5,12 +5,12 @@
 
 DYNALIB_TABLE_EXTERN(communication);
 DYNALIB_TABLE_EXTERN(wifi_resource);
-DYNALIB_TABLE_EXTERN(module_part1);
+DYNALIB_TABLE_EXTERN(system_module_part1);
 
 const void* const system_part1_module[] = {
     DYNALIB_TABLE_NAME(communication),
     DYNALIB_TABLE_NAME(wifi_resource),    
-    DYNALIB_TABLE_NAME(module_part1)
+    DYNALIB_TABLE_NAME(system_module_part1),    
 };
 
 
@@ -50,5 +50,6 @@ extern constructor_ptr_t link_constructors_end;
 
 void module_system_part1_init()
 {
+    // invoke constructors
     
 }

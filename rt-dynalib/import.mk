@@ -1,4 +1,4 @@
-RT_DYNALIB_MODULE_PATH ?= ../communication-dynalib
+RT_DYNALIB_MODULE_PATH ?= ../rt-dynalib
 include $(call rwildcard,$(RT_DYNALIB_MODULE_PATH)/,include.mk)
 
 RT_DYNALIB_LIB_DIR = $(BUILD_PATH_BASE)/rt-dynalib/$(ARCH)

@@ -127,5 +127,6 @@ ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module mast
 INCLUDE module_system_wifi_export.ld
 
 ASSERT ( link_module_jump_table_start == system_part1_module_table, "Export address for module table is incorrect" );
-
 ASSERT ( link_end_of_static_ram < system_part1_module_ram_end, "static RAM use exceeds allocated space" );
+
+INCLUDE module_system_hal_export.ld
