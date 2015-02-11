@@ -33,11 +33,11 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#define PAGE_SIZE               (uint32_t)0x4000    /* Page size = 16KByte */
+#define PAGE_SIZE               ((uint32_t)0x4000)  /* Page size = 16KByte */
 /* EEPROM emulation start address in Flash (just after the DCT space) */
 #define EEPROM_START_ADDRESS    ((uint32_t)0x0800C000)
 /* EEPROM Emulation Size */
-#define EEPROM_SIZE             ((uint8_t)0x400)    /* 1KB (edit as per requirement) */
+#define EEPROM_SIZE             0x100               /* 256 bytes Max */
 
 /* Device voltage range supposed to be [2.7V to 3.6V] */
 #define VOLTAGE_RANGE           (uint8_t)VoltageRange_3

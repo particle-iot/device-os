@@ -26,9 +26,9 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-#define EEPROM_SIZE ((uint8_t)0x64) /* 100 bytes (Max 255/0xFF bytes) as per eeprom_hal.c */
-
 test(EEPROM_ReadWriteSucceedsForAllAddressWithInRange) {
+    int EEPROM_SIZE = EEPROM.length();
+
     // when
     for(int i=0;i<EEPROM_SIZE;i++)
     {
@@ -42,6 +42,8 @@ test(EEPROM_ReadWriteSucceedsForAllAddressWithInRange) {
 }
 
 test(EEPROM_ReadWriteFailsForAnyAddressOutOfRange) {
+    int EEPROM_SIZE = EEPROM.length();
+
     // when
     for(int i=EEPROM_SIZE;i<(2*EEPROM_SIZE);i++)
     {

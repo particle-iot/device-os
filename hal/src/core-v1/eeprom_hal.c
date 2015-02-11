@@ -33,11 +33,11 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#define PAGE_SIZE               (uint16_t)0x400
+#define PAGE_SIZE               ((uint16_t)0x400)
 /* EEPROM emulation start address in Flash (just after the write protected bootloader program space) */
 #define EEPROM_START_ADDRESS    ((uint32_t)0x08004000)
 /* EEPROM Emulation Size */
-#define EEPROM_SIZE             ((uint8_t)0x64)       /* 100 bytes (Max 255/0xFF bytes) */
+#define EEPROM_SIZE             0x64                /* 100 bytes (Max 256 bytes) */
 
 /* Pages 0 and 1 base and end addresses */
 #define PAGE0_BASE_ADDRESS      ((uint32_t)(EEPROM_START_ADDRESS + 0x000))
