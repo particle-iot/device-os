@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    wifi_dynalib.h
+ * @file    module_system_wifi_init.h
  * @authors Matthew McGowan
- * @date    10 February 2015
+ * @date    11 February 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,15 +21,23 @@
  ******************************************************************************
  */
 
-#ifndef WIFI_DYNALIB_H
-#define	WIFI_DYNALIB_H
+#ifndef MODULE_SYSTEM_WIFI_INIT_H
+#define	MODULE_SYSTEM_WIFI_INIT_H
 
-#include "dynalib.h"
+/*
+ * Initialize this module. This should erase the BSS area, copy initialized
+ * variables from flash to RAM.
+ * Returns a pointer to the address following the statically allocated memory.
+ */
+void* module_system_part1_pre_init();
 
-DYNALIB_BEGIN(wifi_resource)
-DYNALIB_FN(wifi_resource, wwd_firmware_image_resource)
-DYNALIB_END(wifi_resource)
+/**
+ * Called after the dynamic memory heap has been established. This function should
+ * perform any final initialization of the module, such as calling constructors on static instances.
+ */
+void module_system_part1_init();
 
 
-#endif	/* WIFI_DYNALIB_H */
+
+#endif	/* MODULE_SYSTEM_WIFI_INIT_H */
 

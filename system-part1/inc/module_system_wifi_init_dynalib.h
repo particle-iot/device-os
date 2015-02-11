@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    wifi_dynalib.h
+ * @file    module_system_wifi_init.h
  * @authors Matthew McGowan
- * @date    10 February 2015
+ * @date    11 February 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,15 +21,21 @@
  ******************************************************************************
  */
 
-#ifndef WIFI_DYNALIB_H
-#define	WIFI_DYNALIB_H
+#ifndef MODULE_SYSTEM_WIFI_INIT_DYNALIB_H
+#define	MODULE_SYSTEM_WIFI_INIT_DYNALIB_H
 
 #include "dynalib.h"
 
-DYNALIB_BEGIN(wifi_resource)
-DYNALIB_FN(wifi_resource, wwd_firmware_image_resource)
-DYNALIB_END(wifi_resource)
+/**
+    Module-management functions
+ */
+
+DYNALIB_BEGIN(system_module_part1)
+DYNALIB_FN(system_module_part1, module_system_part1_pre_init)
+DYNALIB_FN(system_module_part1, module_system_part1_init)       
+DYNALIB_END(system_module_part1)
 
 
-#endif	/* WIFI_DYNALIB_H */
+
+#endif	/* MODULE_SYSTEM_WIFI_INIT_H */
 

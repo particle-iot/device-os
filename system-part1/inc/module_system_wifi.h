@@ -43,30 +43,6 @@ extern "C" {
 extern const void* const system_part1_module[];
     
 
-/*
- * Initialize this module. This should erase the BSS area, copy initialized
- * variables from flash to RAM.
- * Returns a pointer to the address following the statically allocated memory.
- */
-void* module_pre_init();
-
-/**
- * Called after the dynamic memory heap has been established. This function should
- * perform any final initialization of the module, such as calling constructors on static instances.
- */
-void module_init();
-
-/**
-    Module-management functions
- */
-
-DYNALIB_BEGIN(module_part1)
-DYNALIB_FN(module_part1, module_pre_init)
-DYNALIB_FN(module_part1, module_init)       
-DYNALIB_END(module_part1)
-
-
-
 #ifdef	__cplusplus
 }
 #endif

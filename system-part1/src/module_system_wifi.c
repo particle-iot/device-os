@@ -1,6 +1,4 @@
 
-#define DYNALIB_EXPORT
-#include "dynalib.h"
 #include "module_system_wifi.h"
 #include <stddef.h>
 #include <string.h>
@@ -30,7 +28,7 @@ extern void* link_bss_end;
 
 extern void* link_end_of_static_ram;
 
-void* module_pre_init()
+void* module_system_part1_pre_init()
 {
     if ( (&link_global_data_start!=&link_global_data_initial_values) && (link_global_data_size != 0))
     {
@@ -50,7 +48,7 @@ typedef void  (*constructor_ptr_t)(void);
 extern constructor_ptr_t link_constructors_location[];
 extern constructor_ptr_t link_constructors_end;
 
-void module_init()
+void module_system_part1_init()
 {
     
 }
