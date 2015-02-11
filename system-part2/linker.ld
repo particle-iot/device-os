@@ -33,6 +33,7 @@ SECTIONS
     expected_dynalib_start = ORIGIN (APP_FLASH) + 0x190 ;
     .dynalib :
     {
+        /* additional space for a few extra ISRs */
         . = . + 12 ;
         link_dynalib_start = . ;
         KEEP(*(*.system_part2_module))
@@ -46,6 +47,7 @@ SECTIONS
 
         link_code_location = .;
         KEEP(*(.text.irq ))
+        KEEP (*(EXCLUDE_FILE (*module_system_hal.o) .module))
         *(.text .text.* .gnu.linkonce.t.*)
         link_code_end = .;
 
@@ -61,6 +63,9 @@ SECTIONS
         KEEP(*(.preinit_array))
         KEEP(*(.init_array))
         KEEP (*crtbegin.o(.ctors))
+        chk_system_init_start = .;
+        KEEP (*module_system_hal.o(.module))
+        chk_system_init_end = .;
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
@@ -202,3 +207,5 @@ INCLUDE module_system_hal_export.ld
 ASSERT ( link_dynalib_start == system_part2_module_table, "Dynalib location not same as exported location" );
 
 ASSERT ( link_ram_interrupt_vectors_location == system_part1_module_ram_end, "RAM vtor table should be at end of part1 static ram. " );
+
+ASSERT ( chk_system_init_start < chk_system_init_end , "system_part2_init function not included" );
