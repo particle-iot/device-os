@@ -7,7 +7,7 @@ MEMORY
     APP_FLASH (rx)  : ORIGIN = 0x08040000, LENGTH = 256K
 
     /* todo - SRAM must start also at an offset after what has been reserved for system-module 1 */
-    SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
+    SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 256
 }
 
 
@@ -96,14 +96,7 @@ SECTIONS
         *(COMMON)
         link_bss_end = .;
         . = ALIGN(., 4);
-    }> SRAM AT> SRAM
-
-    .stack : /* Contains the initial stack */
-    {
-        link_stack_location = ALIGN(., 4);
-        *(.stack)
-        . = ALIGN(MAX(link_stack_location + __STACKSIZE__ , .), 4);
-        link_stack_end = .;
+        link_end_of_static_ram = .;
     }> SRAM AT> SRAM
 
     /DISCARD/ :
@@ -126,16 +119,7 @@ SECTIONS
         *(.eh_frame)
         *(.glue*)
     }
-
 }
-
-/* Declare libc Heap to start at end of allocated RAM */
-
-PROVIDE( _heap = link_stack_end );
-
-/* End of the heap is top of RAM, aligned 8 byte */
-
-PROVIDE( _eheap = ALIGN( ORIGIN( SRAM ) + LENGTH( SRAM ) - 8, 8 ) );
 
 ASSERT( link_module_jump_table_start == ORIGIN(APP_FLASH), "module master jump table should be at start of APP FLASH" );
 ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module master jump table not linked" );
@@ -143,3 +127,5 @@ ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module mast
 INCLUDE module_system_wifi_export.ld
 
 ASSERT ( link_module_jump_table_start == system_part1_module_table, "Export address for module table is incorrect" );
+
+ASSERT ( link_end_of_static_ram < system_part1_module_ram_end, "static RAM use exceeds allocated space" );

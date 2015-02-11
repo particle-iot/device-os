@@ -31,7 +31,7 @@
 //
 
 #define DYNALIB_TABLE_EXTERN(tablename) \
-    extern const void* dynalib_##tablename[];
+    extern const void* const dynalib_##tablename[];
 
 #define DYNALIB_TABLE_NAME(tablename) \
     dynalib_##tablename

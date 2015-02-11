@@ -24,15 +24,49 @@
 #ifndef SYSTEM_WIFI_H
 #define	SYSTEM_WIFI_H
 
+#include "dynalib.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
+/**
+ * Indices into the module-level export table.
+ */    
 #define SYSTEM_WIFI_MODULE_JUMP_TABLE_INDEX_COMMUNICATION 0    
 #define SYSTEM_WIFI_MODULE_JUMP_TABLE_INDEX_WIFI_RESOURCE 1
+#define SYSTEM_WIFI_MODULE_JUMP_TABLE_INDEX_MODULE 2
 
+/**
+ * The static module-level export table of library jump table addresses.
+ */    
 extern const void* const system_part1_module[];
     
+
+/*
+ * Initialize this module. This should erase the BSS area, copy initialized
+ * variables from flash to RAM.
+ * Returns a pointer to the address following the statically allocated memory.
+ */
+void* module_pre_init();
+
+/**
+ * Called after the dynamic memory heap has been established. This function should
+ * perform any final initialization of the module, such as calling constructors on static instances.
+ */
+void module_init();
+
+/**
+    Module-management functions
+ */
+
+DYNALIB_BEGIN(module_part1)
+DYNALIB_FN(module_part1, module_pre_init)
+DYNALIB_FN(module_part1, module_init)       
+DYNALIB_END(module_part1)
+
+
+
 #ifdef	__cplusplus
 }
 #endif
