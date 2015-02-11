@@ -1,5 +1,8 @@
 
 
+/* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
+INCLUDE module_system_wifi_export.ld
+
 reset_handler = _start;
 
 ENTRY( _start );
@@ -12,7 +15,6 @@ MEMORY
     DCT2_FLASH                 (rx)  : ORIGIN = 0x08008000,     LENGTH = 16K
     APP_FLASH                  (rx)  : ORIGIN = 0x08020000,     LENGTH = 128K
 
-    /* todo - SRAM must start also at an offset after what has been reserved for system-module 1 */
     SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
 }
 
@@ -97,6 +99,12 @@ SECTIONS
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
 
+    .padding : /* 512 byte offset in SRAM */
+    {
+        link_padding_start = .;
+        . = . + 512;
+    }> SRAM
+    
     .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
     {
         link_ram_interrupt_vectors_location = .;
@@ -106,7 +114,7 @@ SECTIONS
 
     .data : /* Contains the non-zero initialised global variables */
     {
-        link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
+        link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */        
         link_global_data_start = .;
         *(.data*)
         link_global_data_end = .;
@@ -181,17 +189,16 @@ PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
 PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
 
 
-ASSERT( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );
+ASSERT( link_padding_start == ORIGIN( SRAM ), "Padding start should be at start of RAM" );
 ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location ) == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
 
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 
 ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" ); 
 
-/* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
-INCLUDE module_system_wifi_export.ld
-
 /* Include this modules static exports for validation */
 INCLUDE module_system_hal_export.ld
 
 ASSERT ( link_dynalib_start == system_part2_module_table, "Dynalib location not same as exported location" );
+
+ASSERT ( link_ram_interrupt_vectors_location == system_part1_module_ram_end, "RAM vtor table should be at end of part1 static ram. " );
