@@ -29,4 +29,24 @@
 /* Includes ------------------------------------------------------------------*/
 #include "spark_wiring_eeprom.h"
 
+EEPROMClass::EEPROMClass()
+{
+    HAL_EEPROM_Init();
+}
+
+uint8_t EEPROMClass::read(int address) const
+{
+    return HAL_EEPROM_Read(address);
+}
+
+void EEPROMClass::write(int address, uint8_t value)
+{
+    HAL_EEPROM_Write(address, value);
+}
+
+size_t EEPROMClass::length() const
+{
+    return HAL_EEPROM_Length();
+}
+
 EEPROMClass EEPROM;

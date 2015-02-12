@@ -34,26 +34,10 @@
 class EEPROMClass
 {
 public:
-    EEPROMClass()
-    {
-      HAL_EEPROM_Init();
-    }
-
-    uint8_t read(int address) const
-    {
-      return HAL_EEPROM_Read(address);
-    }
-
-    void write(int address, uint8_t value)
-    {
-      HAL_EEPROM_Write(address, value);
-    }
-
-    size_t length() const
-    {
-        return HAL_EEPROM_Length();
-    }
-    
+    EEPROMClass();
+    uint8_t read(int address) const;
+    void write(int address, uint8_t value);
+    size_t length() const;
 };
 
 extern EEPROMClass EEPROM;
