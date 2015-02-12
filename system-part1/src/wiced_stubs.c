@@ -6,7 +6,3 @@ const resource_hnd_t* wwd_firmware_image_resource(void)
 {
     return &wifi_firmware_image;
 }
-
-void _sbrk() {
-    
-}

@@ -16,8 +16,6 @@ const void* const system_part2_module[] = {
 };
 
 
-__attribute__((section(".module"))) void system_part2_init(); 
-
 /**
  * Global initialization function. Called after memory has been initialized in this module
  * but before C++ constructors are executed.
@@ -27,3 +25,4 @@ void system_part2_init() {
     module_system_part1_pre_init();
 }
 
+__attribute__((section(".module"))) const void* system_part2_fn = system_part2_init;

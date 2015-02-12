@@ -60,12 +60,12 @@ SECTIONS
         . = ALIGN(0x4);
 
         link_constructors_location = .;
-        KEEP(*(.preinit_array))
-        KEEP(*(.init_array))
-        KEEP (*crtbegin.o(.ctors))
         chk_system_init_start = .;
         KEEP (*module_system_hal.o(.module))
         chk_system_init_end = .;
+        KEEP(*(.preinit_array))
+        KEEP(*(.init_array))
+        KEEP (*crtbegin.o(.ctors))
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
