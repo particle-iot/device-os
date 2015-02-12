@@ -92,6 +92,11 @@ void Spark_Finish_Firmware_Update(void)
     }
     else
     {
+        //We are hardcoding the monolithic firmware related parameters here temporary
+        HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, HAL_OTA_FlashAddress(),
+                                                FLASH_INTERNAL, (HAL_OTA_FlashAddress() - HAL_OTA_FlashLength()),
+                                                HAL_OTA_FlashLength());
+
         //Reset the system to complete the OTA update
         HAL_FLASH_End();
     }
