@@ -28,27 +28,24 @@
 
 test(FLASH_UPDATE_MODULES_Test_Passed)
 {
-    bool compareResult = false;
+    bool result = false;
 
-    //Fill up application_dct=>flash_modules instances
-    platform_flash_modules_t flash_modules[5];
-    flash_modules[0].magicNumber = 0xABCD;
-    flash_modules[0].sourceDeviceID = FLASH_INTERNAL;
-    flash_modules[0].destinationDeviceID = FLASH_INTERNAL;
-    flash_modules[0].sourceAddress = 0x08020000;
-    flash_modules[0].destinationAddress = 0x080C0000;
-    flash_modules[0].length = 0x20000;
-    dct_write_app_data(flash_modules, DCT_FLASH_MODULES_OFFSET, sizeof(flash_modules));
+    result = HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, 0x08020000,
+                                                     FLASH_INTERNAL, 0x080C0000,
+                                                     0x20000);
 
-    //Call HAL_FLASH_UpdateModules() to start the memory copy process
-    HAL_FLASH_UpdateModules(NULL);//No callback needed so NULL
+    assertEqual(result, true);
 
-    //Compare internal flash memory data
-    compareResult = HAL_FLASH_CompareMemory(flash_modules[0].sourceDeviceID,
-                                            flash_modules[0].sourceAddress,
-                                            flash_modules[0].destinationDeviceID,
-                                            flash_modules[0].destinationAddress,
-                                            flash_modules[0].length);
+    if(result != false)
+    {
+        //Call HAL_FLASH_UpdateModules() to start the memory copy process
+        HAL_FLASH_UpdateModules(NULL);//No callback needed so NULL
 
-    assertEqual(compareResult, true);
+        //Compare internal flash memory data
+        result = HAL_FLASH_CompareMemory(FLASH_INTERNAL, 0x08020000,
+                                         FLASH_INTERNAL, 0x080C0000,
+                                         0x20000);
+    }
+
+    assertEqual(result, true);
 }
