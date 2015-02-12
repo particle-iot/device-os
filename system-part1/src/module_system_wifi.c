@@ -47,9 +47,16 @@ void* module_system_part1_pre_init()
 typedef void  (*constructor_ptr_t)(void);
 extern constructor_ptr_t link_constructors_location[];
 extern constructor_ptr_t link_constructors_end;
+#define link_constructors_size   ((unsigned long)&link_constructors_end  -  (unsigned long)&link_constructors_location )
+
 
 void module_system_part1_init()
 {
     // invoke constructors
-    
+    int ctor_num;
+    for (ctor_num=0; ctor_num < link_constructors_size/sizeof(constructor_ptr_t); ctor_num++ )
+    {
+        link_constructors_location[ctor_num]();
+    }
+
 }

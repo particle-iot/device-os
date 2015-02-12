@@ -7,8 +7,6 @@ reset_handler = _start;
 
 ENTRY( _start );
 
-/* todo - import defines for mem layout from system module 1 */
-
 MEMORY
 {
     DCT1_FLASH                 (rx)  : ORIGIN = 0x08004000,     LENGTH = 16K
@@ -61,7 +59,7 @@ SECTIONS
 
         link_constructors_location = .;
         chk_system_init_start = .;
-        KEEP (*module_system_hal.o(.module))
+        KEEP (*module_system_hal.o(.module_pre_init))
         chk_system_init_end = .;
         KEEP(*(.preinit_array))
         KEEP(*(.init_array))
