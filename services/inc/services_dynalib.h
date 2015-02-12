@@ -40,6 +40,7 @@ DYNALIB_FN(services,LED_Fade)
 DYNALIB_FN(services,Get_LED_Brightness)
         
 DYNALIB_FN(services,set_logger_output)
+DYNALIB_FN(services,panic_)
         
 DYNALIB_END(services)        
 
