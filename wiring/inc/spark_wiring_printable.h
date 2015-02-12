@@ -27,7 +27,7 @@
 #ifndef __SPARK_WIRING_PRINTABLE_H
 #define __SPARK_WIRING_PRINTABLE_H
 
-#include <cstddef>
+#include <stddef.h>
 
 class Print;
 

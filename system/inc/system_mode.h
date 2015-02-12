@@ -19,7 +19,9 @@
 #ifndef SYSTEM_MODE_H
 #define	SYSTEM_MODE_H
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 typedef enum
 {
@@ -29,7 +31,9 @@ typedef enum
 void set_system_mode(System_Mode_TypeDef mode);
 System_Mode_TypeDef system_mode();
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif	/* SYSTEM_MODE_H */
 

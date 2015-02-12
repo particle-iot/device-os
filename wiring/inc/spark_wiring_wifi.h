@@ -50,24 +50,24 @@ public:
     ~WiFiClass() {}
 
     uint8_t* macAddress(uint8_t *mac) {
-        memcpy(mac, network_config().uaMacAddr, 6);
+        memcpy(mac, network_config()->uaMacAddr, 6);
         return mac;
     }
 
     IPAddress localIP() {
-        return IPAddress(network_config().aucIP);
+        return IPAddress(network_config()->aucIP);
     }
 
     IPAddress subnetMask() {
-        return IPAddress(network_config().aucSubnetMask);
+        return IPAddress(network_config()->aucSubnetMask);
     }
 
     IPAddress gatewayIP() {
-        return IPAddress(network_config().aucDefaultGateway);
+        return IPAddress(network_config()->aucDefaultGateway);
     }
 
     const char *SSID() {
-        return (const char *) network_config().uaSSID;
+        return (const char *) network_config()->uaSSID;
     }
 
     int8_t RSSI();

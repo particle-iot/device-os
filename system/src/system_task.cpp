@@ -492,9 +492,9 @@ void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
     }
 }
 
-const WLanConfig& network_config()
+const WLanConfig* network_config()
 {
-    return ip_config;
+    return &ip_config;
 }
 
 void network_connect()
@@ -560,7 +560,7 @@ void network_on()
     }
 }
 
-inline bool network_has_credentials()
+bool network_has_credentials()
 {
     return wlan_has_credentials() == 0;
 }

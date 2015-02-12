@@ -24,11 +24,14 @@
 #ifndef SYSTEM_NETWORK_H
 #define	SYSTEM_NETWORK_H
 
-const WLanConfig& network_config();
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+const WLanConfig* network_config();
 
 void network_connect();
 bool network_connecting();
-bool network_connected();
 void network_disconnect();
 bool network_ready();
 void network_on();
@@ -37,12 +40,16 @@ void network_listen();
 bool network_listening();
 bool network_has_credentials();
 
-struct NetworkCredentials : WLanCredentials {
+typedef WLanCredentials NetworkCredentials;
     
-};
 
 void network_set_credentials(NetworkCredentials* creds);
 bool network_clear_credentials();
+
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif	/* SYSTEM_NETWORK_H */

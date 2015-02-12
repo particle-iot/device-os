@@ -30,7 +30,9 @@
 #include "socket_hal.h"
 #include "wlan_hal.h"    
 
+#ifdef __cplusplus
 extern "C" {
+#endif    
 
 uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
@@ -83,6 +85,8 @@ extern sock_handle_t sparkSocket;
 
 void spark_delay_ms(unsigned long ms);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif  /*__SPARK_WLAN_H*/

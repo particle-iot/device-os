@@ -20,11 +20,12 @@
 #ifndef CLOUD_H
 #define	CLOUD_H
 
-#include "spark_wiring_stream.h"
+typedef struct SparkProtocol SparkProtocol;
 
-class SparkProtocol;
-
+#ifdef __cplusplus
 extern "C" {
+#endif
+    
 /**
  * Functions for managing the cloud connection, performing cloud operations
  * and system upgrades.
@@ -61,6 +62,8 @@ typedef enum
 	PUBLIC = 0, PRIVATE = 1
 } Spark_Event_TypeDef;
 
+typedef struct String String;
+
 void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
 void spark_function(const char *funcKey, int (*pFunc)(String paramString));
 void spark_process(void);
@@ -92,7 +95,9 @@ String spark_deviceID(void);
 #define USER_EVENT_NAME_LENGTH		        64
 #define USER_EVENT_DATA_LENGTH		        64
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif	/* CLOUD_H */
 
