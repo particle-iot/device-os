@@ -28,7 +28,7 @@
 
 #include "spark_wiring.h"
 #include "wlan_hal.h"
-#include "system_task.h"
+#include "system_network.h"
 #include "inet_hal.h"
 
 class IPAddress;

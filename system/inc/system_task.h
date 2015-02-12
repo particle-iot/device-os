@@ -81,26 +81,6 @@ extern volatile system_tick_t spark_loop_total_millis;
 
 extern sock_handle_t sparkSocket;
 
-const WLanConfig& network_config();
-
-void network_connect();
-bool network_connecting();
-bool network_connected();
-void network_disconnect();
-bool network_ready();
-void network_on();
-void network_off(bool disconnect_cloud);
-void network_listen();
-bool network_listening();
-bool network_has_credentials();
-
-struct NetworkCredentials : WLanCredentials {
-    
-};
-
-void network_set_credentials(NetworkCredentials* creds);
-bool network_clear_credentials();
-
 void spark_delay_ms(unsigned long ms);
 
 }

@@ -35,6 +35,7 @@
 #include "spark_wiring_system.h"
 #include "system_cloud.h"
 #include "system_mode.h"
+#include "system_network.h"
 
 WLanConfig ip_config;
 

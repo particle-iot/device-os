@@ -4,6 +4,7 @@
 #include "rgbled.h"
 #include "spark_wiring_cloud.h"
 #include "system_task.h"
+#include "system_network.h"
 
 SystemClass System;
 

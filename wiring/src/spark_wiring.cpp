@@ -33,6 +33,7 @@
 #include "watchdog_hal.h"
 #include "delay_hal.h"
 #include "pinmap_hal.h"
+#include "system_task.h"
 
 /*
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, 
