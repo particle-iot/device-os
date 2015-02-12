@@ -36,6 +36,13 @@
 extern "C" {
 #endif
     
+#ifndef FLASH_INTERNAL
+#define FLASH_INTERNAL  0
+#endif
+#ifndef FLASH_SERIAL
+#define FLASH_SERIAL    1
+#endif
+
 // TODO - this is temporary to get a working hal.
 // A C++ MemoryDeviceRegion will be used so that callers can incrementally
 // write to that. This abstracts the memory regions without needing to expose
@@ -60,6 +67,9 @@ bool HAL_FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
 bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
                              uint8_t destinationDeviceID, uint32_t destinationAddress,
                              uint32_t length);
+bool HAL_FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                                             uint8_t destinationDeviceID, uint32_t destinationAddress,
+                                             uint32_t length);
 void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
 void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors);

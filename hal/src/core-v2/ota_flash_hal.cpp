@@ -35,7 +35,7 @@ uint32_t HAL_OTA_FlashAddress()
 #ifdef USE_SERIAL_FLASH
     return EXTERNAL_FLASH_OTA_ADDRESS;
 #else
-    return 0;
+    return INTERNAL_FLASH_OTA_ADDRESS;
 #endif
 }
 
@@ -69,6 +69,15 @@ bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
     return FLASH_CompareMemory(sourceDeviceID, sourceAddress,
                                destinationDeviceID, destinationAddress,
                                length);
+}
+
+bool HAL_FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                                             uint8_t destinationDeviceID, uint32_t destinationAddress,
+                                             uint32_t length)
+{
+    return FLASH_AddToNextAvailableModulesSlot(sourceDeviceID, sourceAddress,
+                                               destinationDeviceID, destinationAddress,
+                                               length);
 }
 
 void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))

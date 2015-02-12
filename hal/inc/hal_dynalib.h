@@ -111,6 +111,7 @@ DYNALIB_FN(hal,HAL_OTA_Flashed_ResetStatus)
 #if PLATFORM_ID > 3
 DYNALIB_FN(hal,HAL_FLASH_CopyMemory)
 DYNALIB_FN(hal,HAL_FLASH_CompareMemory)
+DYNALIB_FN(hal,HAL_FLASH_AddToNextAvailableModulesSlot)
 DYNALIB_FN(hal,HAL_FLASH_UpdateModules)
 #endif
 DYNALIB_FN(hal,HAL_FLASH_WriteProtectionEnable)
