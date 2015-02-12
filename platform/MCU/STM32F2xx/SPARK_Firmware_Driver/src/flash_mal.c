@@ -385,6 +385,44 @@ bool FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
     return true;
 }
 
+bool FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                                         uint8_t destinationDeviceID, uint32_t destinationAddress,
+                                         uint32_t length)
+{
+    //Read the flash modules info from the dct area
+    const platform_flash_modules_t* dct_app_data = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
+    platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];
+    uint8_t flash_module_index = 0;
+
+    memcpy(flash_modules, dct_app_data, sizeof(flash_modules));
+
+    //fill up the next available modules slot and return true else false
+    for (flash_module_index = 0; flash_module_index < FLASH_MODULES_MAX; flash_module_index++)
+    {
+        if(flash_modules[flash_module_index].magicNumber == 0xABCD)
+        {
+            continue;
+        }
+        else
+        {
+            flash_modules[flash_module_index].sourceDeviceID = sourceDeviceID;
+            flash_modules[flash_module_index].sourceAddress = sourceAddress;
+            flash_modules[flash_module_index].destinationDeviceID = destinationDeviceID;
+            flash_modules[flash_module_index].destinationAddress = destinationAddress;
+            flash_modules[flash_module_index].length = length;
+            flash_modules[flash_module_index].magicNumber = 0xABCD;
+
+            dct_write_app_data(&flash_modules[flash_module_index],
+                               offsetof(application_dct_t, flash_modules[flash_module_index]),
+                               sizeof(platform_flash_modules_t));
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 //This function called in bootloader to perform the memory update process
 void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
@@ -560,10 +598,10 @@ uint32_t FLASH_PagesMask(uint32_t imageSize, uint32_t pageSize)
 
 void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
 {
-#ifdef USE_SERIAL_FLASH
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
     Save_SystemFlags();
 
+#ifdef USE_SERIAL_FLASH
     External_Flash_Update_Index = 0;
     External_Flash_Start_Address = FLASH_Address;
     External_Flash_Address = External_Flash_Start_Address;
@@ -644,16 +682,10 @@ void FLASH_End(void)
     Save_SystemFlags();
 
     RTC_WriteBackupRegister(RTC_BKP_DR10, 0x0005);
-
-    USB_Cable_Config(DISABLE);
-
-    NVIC_SystemReset();
 #else
-    //To Do => Assuming system code is going to update :
-    //platform_flash_modules_t flash_modules[FLASH_MODULES_MAX] dct application data
-
+    //FLASH_AddToNextAvailableModulesSlot() should be called in system_update.cpp
+#endif
     USB_Cable_Config(DISABLE);
 
     NVIC_SystemReset();
-#endif
 }

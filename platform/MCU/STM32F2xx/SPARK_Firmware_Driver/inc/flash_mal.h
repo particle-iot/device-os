@@ -34,10 +34,6 @@ extern "C" {
 #endif
 
 /* Exported types ------------------------------------------------------------*/
-typedef enum
-{
-    FLASH_INTERNAL = 0, FLASH_SERIAL = 1
-} FlashDevice_TypeDef;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -47,7 +43,18 @@ typedef enum
 #endif
 
 #ifndef FIRMWARE_IMAGE_SIZE
-#define FIRMWARE_IMAGE_SIZE         (0x7E000) //504K
+#ifdef USE_SERIAL_FLASH
+#define FIRMWARE_IMAGE_SIZE     0x7E000 //504K
+#else
+#define FIRMWARE_IMAGE_SIZE     0x60000 //384K (monolithic firmware size)
+#endif
+#endif
+
+#ifndef FLASH_INTERNAL
+#define FLASH_INTERNAL  0
+#endif
+#ifndef FLASH_SERIAL
+#define FLASH_SERIAL    1
 #endif
 
 #if FIRMWARE_IMAGE_SIZE > INTERNAL_FLASH_SIZE
@@ -65,21 +72,22 @@ typedef enum
 #define CORE_FW_ADDRESS             ((uint32_t)0x08020000)
 #define APP_START_MASK              ((uint32_t)0x2FF10000)
 
-#define INTERNAL_FLASH_END_ADDRESS  ((uint32_t)CORE_FW_ADDRESS + FIRMWARE_IMAGE_SIZE)    //For 1MB Internal Flash
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x20000) //128K (7 sectors of 128K each used by main firmware)
-/* Internal Flash memory address where Factory programmed core firmware is located */
-#define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)CORE_FW_ADDRESS + (3 * INTERNAL_FLASH_PAGE_SIZE))
+/* Internal Flash memory address where Factory programmed monolithic core firmware is located */
+#define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(CORE_FW_ADDRESS + FIRMWARE_IMAGE_SIZE))
+/* Internal Flash memory address where monolithic core firmware will be saved for backup/restore */
+//#define INTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)INTERNAL_FLASH_FAC_ADDRESS)
+/* Internal Flash memory address where OTA upgraded monolithic core firmware will be saved */
+#define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)INTERNAL_FLASH_FAC_ADDRESS)
 
 #ifdef USE_SERIAL_FLASH
-/* External Flash block size allocated for firmware storage */
-#define EXTERNAL_FLASH_BLOCK_SIZE   ((uint32_t)FIRMWARE_IMAGE_SIZE)
 /* External Flash memory address where Factory programmed core firmware is located */
 #define EXTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)0x4000)
 /* External Flash memory address where core firmware will be saved for backup/restore */
-#define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)EXTERNAL_FLASH_FAC_ADDRESS)
+//#define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)EXTERNAL_FLASH_FAC_ADDRESS)
 /* External Flash memory address where OTA upgraded core firmware will be saved */
-#define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_BKP_ADDRESS))
+#define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_FAC_ADDRESS + FIRMWARE_IMAGE_SIZE))
 #endif
 
 /* Bootloader Flash regions that needs to be protected: 0x08000000 - 0x08003FFF */
@@ -96,6 +104,9 @@ bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
 bool FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
                          uint8_t destinationDeviceID, uint32_t destinationAddress,
                          uint32_t length);
+bool FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                                         uint8_t destinationDeviceID, uint32_t destinationAddress,
+                                         uint32_t length);
 void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
 //Old routines with same signature both for Core and Photon
