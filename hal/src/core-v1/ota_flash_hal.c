@@ -45,6 +45,42 @@ uint16_t HAL_OTA_ChunkSize()
     return OTA_CHUNK_SIZE;
 }
 
+bool HAL_FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                          uint8_t destinationDeviceID, uint32_t destinationAddress,
+                          uint32_t length)
+{
+    return false;
+}
+
+bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                             uint8_t destinationDeviceID, uint32_t destinationAddress,
+                             uint32_t length)
+{
+    return false;
+}
+
+bool HAL_FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                                             uint8_t destinationDeviceID, uint32_t destinationAddress,
+                                             uint32_t length)
+{
+    return false;
+}
+
+void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
+{
+    //Not Applicable
+}
+
+void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors)
+{
+    FLASH_WriteProtection_Enable(FLASH_Sectors);
+}
+
+void HAL_FLASH_WriteProtectionDisable(uint32_t FLASH_Sectors)
+{
+    FLASH_WriteProtection_Disable(FLASH_Sectors);
+}
+
 void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize) 
 {
     FLASH_Begin(sFLASH_Address, fileSize);
