@@ -3,6 +3,14 @@ USER_MODULE_PATH=.
 
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(USER_FLAVOR)
 
+ifeq (y,$(DYNALIB))
+HAL_LINK := 
+include ../user-part/import.mk
+include ../user-part/build.mk
+include ../user-part/makefile
+
+else
+
 DEPENDENCIES = wiring system services communication hal
 
 include ../build/platform-id.mk
@@ -31,4 +39,4 @@ endif
 
 include ../build/arm-tlm.mk
 
-
+endif
