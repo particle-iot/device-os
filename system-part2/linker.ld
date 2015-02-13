@@ -2,6 +2,8 @@
 
 /* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
 INCLUDE module_system_wifi_export.ld
+/* Definitions for the stack size */
+INCLUDE module_system_hal_export.ld
 
 reset_handler = _start;
 
@@ -102,10 +104,12 @@ SECTIONS
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
 
+    padding_length = ALIGN(system_part1_module_ram_end - ORIGIN(SRAM), 512);
+
     .padding : /* 512 byte offset in SRAM */
     {
         link_padding_start = .;
-        . = . + 512;
+        . = . + padding_length;
     }> SRAM
     
     .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
@@ -132,16 +136,9 @@ SECTIONS
         *(COMMON)
         link_bss_end = .;
         . = ALIGN(., 4);
+        link_heap_location = .;
     }> SRAM AT> SRAM
-
-    .stack : /* Contains the initial stack */
-    {
-        link_stack_location = ALIGN(., 4);
-        *(.stack)
-        . = ALIGN(MAX(link_stack_location + __STACKSIZE__ , .), 4);
-        link_stack_end = .;
-    }> SRAM AT> SRAM
-
+    
     /DISCARD/ :
     {
         *(.ARM.attributes*)
@@ -167,16 +164,13 @@ SECTIONS
 
 /* Declare libc Heap to start at end of allocated RAM */
 
-PROVIDE( _heap = link_stack_end );
+PROVIDE( _heap = link_heap_location );
 
 /* End of the heap is top of RAM, aligned 8 byte */
 
-PROVIDE( _eheap = ALIGN( ORIGIN( SRAM ) + LENGTH( SRAM ) - 8, 8 ) );
+PROVIDE( _eheap = ALIGN( link_stack_location - 8, 8 ) );
 
 /* ThreadX aliases */
-PROVIDE( __RAM_segment_used_end__ = link_stack_end );
-PROVIDE( __tx_free_memory_start = link_stack_end );
-PROVIDE( __tx_vectors = link_interrupt_vectors_location );
 
 /* Some defines to keep WICED's _start() happy */
 PROVIDE( link_run_from_ram_code_size = 0);
@@ -200,11 +194,24 @@ ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 
 ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" ); 
 
-/* Include this modules static exports for validation */
-INCLUDE module_system_hal_export.ld
-
 ASSERT ( link_dynalib_start == system_part2_module_table, "Dynalib location not same as exported location" );
 
-ASSERT ( link_ram_interrupt_vectors_location == system_part1_module_ram_end, "RAM vtor table should be at end of part1 static ram. " );
+ASSERT ( link_ram_interrupt_vectors_location >= system_part1_module_ram_end, "RAM vtor table should be at end of part1 static ram. " );
+ASSERT ( ( link_ram_interrupt_vectors_location % 512 ) == 0, "RAM vtor table should be 512 byte aligned. " );
 
 ASSERT ( chk_system_init_start < chk_system_init_end , "system_part2_init function not included" );
+
+expected_stack_end = ORIGIN(SRAM) + LENGTH(SRAM) ;
+
+/* place stack at the end of SRAM, but not as a section, since this will increase the BSS region to ca. 128K */
+/* Provide stack location to WICED linker symbols */
+link_stack_location = stack_start;
+link_stack_end = stack_end;
+ASSERT ( link_stack_end - link_stack_location >= stack_size, "stack is too small" );
+
+ASSERT ( link_stack_end == expected_stack_end, "stack should be at the top of SRAM" );
+
+ASSERT ( ( link_heap_location + min_heap_size ) < link_stack_location, "Insufficient room for heap" );
+
+/** for now, reserve a portion of ram so that the user module can start the offset from here. */
+ASSERT ( link_heap_location <= system_static_ram_end , "Static RAM area is too large" );

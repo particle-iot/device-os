@@ -8,7 +8,6 @@ LDFLAGS += --specs=nano.specs -lnosys
 LDFLAGS += -L$(SYSTEM_PART2_MODULE_PATH)
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
 LDFLAGS += -T$(LINKER_FILE)
-LDFLAGS += -Wl,--defsym,__STACKSIZE__=1400
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 ifeq ("$(USE_PRINTF_FLOAT)","y")

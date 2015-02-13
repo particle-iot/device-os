@@ -10,7 +10,6 @@ LDFLAGS += --specs=nano.specs -lnosys
 LDFLAGS += -Wl,--whole-archive $(HAL_WICED_LIB_FILES) -Wl,--no-whole-archive
 LDFLAGS += -L$(WIFI_SYSTEM_MODULE_PATH)
 LDFLAGS += -T$(LINKER_FILE)
-LDFLAGS += -Wl,--defsym,__STACKSIZE__=1400
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 ifeq ("$(USE_PRINTF_FLOAT)","y")

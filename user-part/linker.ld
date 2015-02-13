@@ -78,10 +78,12 @@ SECTIONS
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
 
-    .padding : /* 512 byte offset in SRAM */
+    padding_length = ALIGN( system_static_ram_end - ORIGIN(SRAM), 4) ; 
+
+    .padding : /* move location past system static RAM region */
     {
         link_padding_start = .;
-        . = . + 512;
+        . = . + padding_length;
     }> SRAM
     
     .data : /* Contains the non-zero initialised global variables */
@@ -104,11 +106,12 @@ SECTIONS
         . = ALIGN(., 4);
     }> SRAM AT> SRAM
 
+    /* This is here just to validate that there is sufficient space available for the stack allocated by the system module. */
     .stack : /* Contains the initial stack */
     {
-        link_stack_location = ALIGN(., 4);
+        link_stack_location_user = ALIGN(., 4);
         *(.stack)
-        . = ALIGN(MAX(link_stack_location + __STACKSIZE__ , .), 4);
+        . = ALIGN(MAX(link_stack_location_user + stack_size , .), 4);
         link_stack_end = .;
     }> SRAM AT> SRAM
 
