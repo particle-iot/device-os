@@ -24,8 +24,6 @@
 #ifndef USER_MODULE_H
 #define	USER_MODULE_H
 
-#include "system_user.h"
-
 /**
  * Initializes the static memory for this module.
  * 
@@ -37,6 +35,10 @@ void* module_user_pre_init();
  * Initializes the global object instances in this module. 
  */
 void module_user_init();
+
+void module_user_loop();
+
+void module_user_setup();
 
 #endif	/* USER_MODULE_H */
 

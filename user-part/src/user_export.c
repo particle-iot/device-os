@@ -1,6 +1,7 @@
 
 #define DYNALIB_EXPORT
 #include "module_user_init.h"
+#include "system_user.h"
 #include <stddef.h>
 #include <string.h>
 
@@ -59,6 +60,17 @@ void module_user_init()
     {
         link_constructors_location[ctor_num]();
     }
+}
+
+/**
+ * Export these functions with a fuller name so they don't clash with the setup/loop wrappers in the system module.
+ */
+void module_user_setup() {
+    setup();
+}
+
+void module_user_loop() {
+    loop();
 }
 
 #include "user_dynalib.h"

@@ -30,8 +30,8 @@
 DYNALIB_BEGIN(user)
 DYNALIB_FN(user, module_user_pre_init)
 DYNALIB_FN(user, module_user_init)
-DYNALIB_FN(user, setup)
-DYNALIB_FN(user, loop)
+DYNALIB_FN(user, module_user_setup)
+DYNALIB_FN(user, module_user_loop)
 DYNALIB_END(user)
 
 

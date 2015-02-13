@@ -52,4 +52,16 @@ void system_part2_pre_init() {
     sbrk_heap_top = module_user_pre_init();    
 }
 
+void setup() {
+    if (is_user_module_valid()) {
+        module_user_setup();
+    }
+}
+
+void loop() {
+    if (is_user_module_valid()) {
+        module_user_loop();
+    }    
+}
+
 __attribute__((section(".module_pre_init"))) const void* system_part2_pre_init_fn = system_part2_pre_init;
