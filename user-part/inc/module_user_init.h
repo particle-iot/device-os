@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    user_dynalib.h
+ * @file    user_module.h
  * @authors Matthew McGowan
- * @date    12 February 2015
+ * @date    13 February 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,20 +21,22 @@
  ******************************************************************************
  */
 
-#ifndef USER_DYNALIB_H
-#define	USER_DYNALIB_H
+#ifndef USER_MODULE_H
+#define	USER_MODULE_H
 
+#include "system_user.h"
 
-#include "dynalib.h"
+/**
+ * Initializes the static memory for this module.
+ * 
+ * @return The end of static memory for this module.
+ */
+void* module_user_pre_init();
 
-DYNALIB_BEGIN(user)
-DYNALIB_FN(user, module_user_pre_init)
-DYNALIB_FN(user, module_user_init)
-DYNALIB_FN(user, setup)
-DYNALIB_FN(user, loop)
-DYNALIB_END(user)
+/**
+ * Initializes the global object instances in this module. 
+ */
+void module_user_init();
 
-
-
-#endif	/* USER_DYNALIB_H */
+#endif	/* USER_MODULE_H */
 

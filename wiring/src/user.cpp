@@ -23,6 +23,10 @@
 
 #include "system_user.h"
 
+/**
+ * Declare the following function bodies as weak. They will only be used if no
+ * other strong function body is found when linking.
+ */
 void setup() __attribute((weak));
 void loop() __attribute((weak));
 

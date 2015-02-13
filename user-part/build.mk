@@ -10,9 +10,3 @@ LDFLAGS += -L$(USER_PART_MODULE_PATH)
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
-ifeq ("$(USE_PRINTF_FLOAT)","y")
-LDFLAGS += -u _printf_float
-endif
-
-CPPSRC += $(call target_files,$(USER_PART_MODULE_PATH)/src/,*.cpp)
-CSRC += $(call target_files,$(USER_PART_MODULE_PATH)/src/,*.c)

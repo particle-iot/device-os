@@ -190,7 +190,7 @@ void app_setup_and_loop(void)
         {
             if (!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
             {
-                if ((SPARK_WIRING_APPLICATION != 1) && (NULL != setup))
+                if ((SPARK_WIRING_APPLICATION != 1))
                 {
                     //Execute user application setup only once
                     DECLARE_SYS_HEALTH(ENTERED_Setup);
@@ -198,13 +198,10 @@ void app_setup_and_loop(void)
                     SPARK_WIRING_APPLICATION = 1;
                 }
 
-                if (NULL != loop)
-                {
-                    //Execute user application loop
-                    DECLARE_SYS_HEALTH(ENTERED_Loop);
-                    loop();
-                    DECLARE_SYS_HEALTH(RAN_Loop);
-                }
+                //Execute user application loop
+                DECLARE_SYS_HEALTH(ENTERED_Loop);
+                loop();
+                DECLARE_SYS_HEALTH(RAN_Loop);
             }
         }
     }

@@ -1,8 +1,9 @@
 
 #define DYNALIB_EXPORT
-#include "system_user.h"
+#include "module_user_init.h"
 #include <stddef.h>
 #include <string.h>
+
 
 extern void* link_heap_start;
 
@@ -31,7 +32,7 @@ extern constructor_ptr_t link_constructors_end;
 /**
  * Initializes this user module. Returns the start of the heap. 
  */
-void* _user_module_pre_init() {
+void* module_user_pre_init() {
     
     if ( (&link_global_data_start!=&link_global_data_initial_values) && (link_global_data_size != 0))
     {
@@ -50,7 +51,7 @@ extern constructor_ptr_t link_constructors_location[];
 extern constructor_ptr_t link_constructors_end;
 #define link_constructors_size   ((unsigned long)&link_constructors_end  -  (unsigned long)&link_constructors_location )
 
-void _user_module_init()
+void module_user_init()
 {
     // invoke constructors
     int ctor_num;
@@ -58,7 +59,6 @@ void _user_module_init()
     {
         link_constructors_location[ctor_num]();
     }
-
 }
 
 #include "user_dynalib.h"

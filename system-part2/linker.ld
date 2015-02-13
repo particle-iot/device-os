@@ -4,6 +4,8 @@
 INCLUDE module_system_wifi_export.ld
 /* Definitions for the stack size */
 INCLUDE module_system_hal_export.ld
+/* Definitions for the static parts of the user module */
+INCLUDE module_user_export.ld
 
 reset_handler = _start;
 
