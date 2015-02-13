@@ -51,6 +51,7 @@
 // this was being implicitly pulled in by some of the other headers
 // adding here for backwards compatibility.
 #include "system_task.h"
+#include "system_user.h"
 
 #ifdef SPARK_PLATFORM
 #include "platform_headers.h"

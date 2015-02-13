@@ -3,16 +3,6 @@
 # default is src in this module
 USRSRC=src
 
-# TARGET_FILE sets the file stem of the target. It's typically only specified when building applications.
-ifdef TARGET_FILE
-TARGET_FILE_NAME = $(TARGET_FILE)
-endif
-
-# TARGET_DIR is the externally specified target directory
-ifdef TARGET_DIR
-TARGET_PATH = $(TARGET_DIR)
-endif
-
 # SOURCE_PATH - the root of all sources. Defaults to the module dir
 # USRSRC - relative path to SOURCE_PATH for the sources to build
 
@@ -21,8 +11,6 @@ ifdef APP
 USER_MAKEFILE ?= $(APP).mk
 USRSRC = applications/$(APP)
 # when TARGET_FILE is defined on the command line, 
-TARGET_FILE_NAME ?= $(notdir $(APP))
-TARGET_DIR_NAME ?= $(USRSRC)
 endif
 
 ifdef APPDIR
@@ -31,19 +19,12 @@ ifdef APPDIR
 # if TARGET_FILE_NAME is not defined, defaults to the name of the $(APPDIR)
 USRSRC = 
 SOURCE_PATH = $(APPDIR)
-TARGET_FILE_NAME ?= $(notdir $(APPDIR))
-TARGET_DIR_NAME = $(APPDIR)/target
-# do not use $(BUILD_PATH) since the TARGET_DIR specifies fully where the output should go
-TARGET_PATH ?= $(TARGET_DIR_NAME)
-BUILD_PATH = $(TARGET_PATH)/obj
 endif
 
 
 ifdef TEST
 USRSRC = tests/$(TEST)
 INCLUDE_PLATFORM?=1
-TARGET_FILE_NAME ?= $(notdir $(TEST))
-TARGET_DIR_NAME ?= $(USRSRC)
 include $(MODULE_PATH)/tests/tests.mk
 -include $(MODULE_PATH)/$(USRSRC)/test.mk
 endif

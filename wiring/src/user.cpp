@@ -1,5 +1,10 @@
 /**
-  Copyright (c) 2013-2015 Spark Labs, Inc.  All rights reserved.
+ ******************************************************************************
+ * @file    user.cpp
+ * @authors Matthew McGowan
+ * @date    13 February 2015
+ ******************************************************************************
+  Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -13,23 +18,23 @@
 
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
-  ******************************************************************************
+ ******************************************************************************
  */
 
-#ifndef SYSTEM_USER_H
-#define	SYSTEM_USER_H
+#include "system_user.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+void setup() __attribute((weak));
+void loop() __attribute((weak));
+
+/**
+ * Declare weak setup/loop implementations so that they are always defined.
+ */
+
+void setup()  {
     
-void setup();
-void loop();
-
-
-#ifdef __cplusplus
 }
-#endif
 
-#endif	/* SYSTEM_USER_H */
 
+void loop() {
+    
+}
