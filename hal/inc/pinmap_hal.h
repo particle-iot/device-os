@@ -40,8 +40,8 @@ extern "C" {
 typedef uint16_t pin_t;
 
 typedef enum PinMode {
-  OUTPUT,
   INPUT,
+  OUTPUT,
   INPUT_PULLUP,
   INPUT_PULLDOWN,
   AF_OUTPUT_PUSHPULL, //Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
