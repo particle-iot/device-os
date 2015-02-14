@@ -27,22 +27,25 @@
 #ifndef SPARK_WIRING_CONSTANTS_H
 #define	SPARK_WIRING_CONSTANTS_H
 
+#include <type_traits>
 
 /*
 * Basic variables
 */
 
-template <typename T>
+template <typename T, typename U>
 static inline
-T max (T a, T b) { return ((a)>(b)?(a):(b)); }
+typename std::common_type<T, U>::type
+max (T a, U b) { return ((a)>(b)?(a):(b)); }
 
-template <typename T>
+template <typename T, typename U>
 static inline
-T min (T a, T b) { return ((a)<(b)?(a):(b)); }
+typename std::common_type<T, U>::type
+min (T a, U b) { return static_cast<typename std::common_type<T, U>::type>((a)<(b)?(a):(b)); }
 
-template <typename T>
+template <typename T, typename U, typename V>
 static inline
-T constrain (T amt, T low, T high) { return ((amt)<(low)?(low):((amt)>(high)?(high):(amt))); }
+T constrain (T amt, U low, V high) { return ((amt)<(low)?(low):((amt)>(high)?(high):(amt))); }
 
 template <typename T>
 static inline
