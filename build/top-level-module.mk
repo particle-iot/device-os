@@ -1,6 +1,7 @@
 # Makefile for building modules
 
-PROJECT_ROOT=..
+# assume project is at top level directory if PROJECT_ROOT not specified
+PROJECT_ROOT ?= ..
 MODULE_PATH=.
 COMMON_BUILD=$(PROJECT_ROOT)/build
 BUILD_PATH_BASE=$(COMMON_BUILD)/target

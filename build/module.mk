@@ -17,7 +17,7 @@ include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 
 # pull in the include.mk files from each dependency, and make them relative to
 # the dependency module directory
-DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),../$(module)/import.mk)
+DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),$(PROJECT_ROOT)/$(module)/import.mk)
 include $(DEPS_INCLUDE_SCRIPTS)	
 	
 ifdef TEACUP

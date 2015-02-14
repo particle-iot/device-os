@@ -1,4 +1,4 @@
-SERVICES_DYNALIB_MODULE_PATH ?= ../services-dynalib
+SERVICES_DYNALIB_MODULE_PATH ?= $(PROJECT_ROOT)/services-dynalib
 include $(call rwildcard,$(SERVICES_DYNALIB_MODULE_PATH)/,include.mk)
 
 

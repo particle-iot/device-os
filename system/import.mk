@@ -1,4 +1,4 @@
-SYSTEM_MODULE_PATH ?= ../system
+SYSTEM_MODULE_PATH ?= $(PROJECT_ROOT)/system
 include $(call rwildcard,$(SYSTEM_MODULE_PATH)/,include.mk)
 
 SYSTEM_LIB_DIR = $(BUILD_PATH_BASE)/system/$(BUILD_TARGET_PLATFORM)

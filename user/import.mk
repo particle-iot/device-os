@@ -1,4 +1,4 @@
-USER_MODULE_PATH ?= ../user
+USER_MODULE_PATH ?= $(PROJECT_ROOT)/user
 include $(call rwildcard,$(USER_MODULE_PATH)/,include.mk)
 
 USER_LIB_DIR = $(BUILD_PATH_BASE)/user/$(BUILD_TARGET_PLATFORM)

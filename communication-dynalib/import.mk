@@ -1,4 +1,4 @@
-COMMUNICATION_DYNALIB_MODULE_PATH ?= ../communication-dynalib
+COMMUNICATION_DYNALIB_MODULE_PATH ?= $(PROJECT_ROOT)/communication-dynalib
 include $(call rwildcard,$(COMMUNICATION_DYNALIB_MODULE_PATH)/,include.mk)
 
 COMMUNICATION_DYNALIB_LIB_DIR = $(BUILD_PATH_BASE)/communication-dynalib/$(ARCH)

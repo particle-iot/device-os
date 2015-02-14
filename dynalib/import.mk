@@ -1,4 +1,4 @@
-DYNALIB_MODULE_PATH ?= ../dynalib
+DYNALIB_MODULE_PATH ?= $(PROJECT_ROOT)/dynalib
 include $(call rwildcard,$(DYNALIB_MODULE_PATH)/,include.mk)
 
 DYNALIB_LIB_DIR = $(BUILD_PATH_BASE)/dynalib/$(BUILD_TARGET_PLATFORM)

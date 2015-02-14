@@ -1,4 +1,4 @@
-SERVICES_MODULE_PATH ?= ../services
+SERVICES_MODULE_PATH ?= $(PROJECT_ROOT)/services
 include $(call rwildcard,$(SERVICES_MODULE_PATH)/,include.mk)
 
 
