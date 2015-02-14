@@ -30,6 +30,8 @@ typedef struct resource_hnd_t {
 
 const resource_hnd_t* wwd_firmware_image_resource(void);
 
+const resource_hnd_t* wwd_nvram_image_resource(void);
+
 
 
 #endif	/* WICED_STUBS_H */
