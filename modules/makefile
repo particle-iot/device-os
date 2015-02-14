@@ -12,24 +12,23 @@ ifeq (,$(PLATFORM_DYNALIB_MODULES))
 $(error "Platform $(PLATFORM_ID) does not support dynamic modules")
 endif
 
-$(info $(current_dir))
-projects = $(wildcard $(current_dir)/$(PLATFORM_DYNALIB_MODULES)/*)
+projects = $(sort $(wildcard $(current_dir)/$(PLATFORM_DYNALIB_MODULES)/*))
 
-$(info $(projects))
 # only consider projects containing a makefile
-makefiles =$(foreach module,$(projects),$(wildcard $(module)/makefile))
+makefiles = $(foreach module,$(projects),$(wildcard $(module)/makefile))
 
-$(info $(makefiles))
-
+SUBDIR_GOALS := $(MAKECMDGOALS)
+MAKECMDGOALS := all
 
 all: make_deps
-
+	
+program-dfu:
+	
 $(makefiles):
 	$(call,echo,'Making module $@')
 	$(VERBOSE)$(MAKE) -C $(dir $@) $(SUBDIR_GOALS) $(MAKE_ARGS) $(MAKEOVERRIDES) 
 
 		
 make_deps: $(makefiles)
-	
-.PHONY: make_deps $(makefiles)
 
+.PHONY: program-dfu clean make_deps $(makefiles)
