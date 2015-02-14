@@ -217,3 +217,5 @@ ASSERT ( ( link_heap_location + min_heap_size ) < link_stack_location, "Insuffic
 
 /** for now, reserve a portion of ram so that the user module can start the offset from here. */
 ASSERT ( link_heap_location <= system_static_ram_end , "Static RAM area is too large" );
+
+ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );

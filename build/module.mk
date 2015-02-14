@@ -105,7 +105,7 @@ stflash: $(TARGET_BASE).bin
 # in bootloader mode before invoking 'make program-dfu'
 program-dfu: $(TARGET_BASE).dfu
 	@echo Flashing using dfu:
-	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU):leave -D $<
+	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $<
 
 # Program the core using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
 # have been defined in the environment before invoking 'make program-cloud'

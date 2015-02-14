@@ -2,7 +2,7 @@ MODULE=system-part1
 WIFI_SYSTEM_MODULE_PATH=.
 
 PROJECT_ROOT=../../..
-
+PLATFORM_DFU = 0x8040000
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 # don't link from hal - we link here
 HAL_LINK := 
@@ -18,7 +18,6 @@ LIB_DEPS += $(COMMUNICATION_LIB_DEP) $(HAL_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
 
 TARGET=elf bin lst hex size 
-
 
 include $(PROJECT_ROOT)/build/arm-tlm.mk
 

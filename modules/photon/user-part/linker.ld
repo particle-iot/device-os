@@ -149,4 +149,4 @@ INCLUDE module_user_export.ld
 
 ASSERT ( link_dynalib_start == user_module_table, "Dynalib location not same as exported location" );
 
-
+ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );

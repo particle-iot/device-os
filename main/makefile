@@ -1,6 +1,6 @@
 MODULE=main
 USER_MODULE_PATH=.
-
+PLATFORM_DFU_LEAVE = y
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(USER_FLAVOR)
 
 DEPENDENCIES = user wiring system services communication hal platform

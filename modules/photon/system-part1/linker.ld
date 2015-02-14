@@ -130,3 +130,5 @@ ASSERT ( link_module_jump_table_start == system_part1_module_table, "Export addr
 ASSERT ( link_end_of_static_ram < system_part1_module_ram_end, "static RAM use exceeds allocated space" );
 
 INCLUDE module_system_hal_export.ld
+
+ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );

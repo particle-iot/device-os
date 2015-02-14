@@ -3,7 +3,7 @@ SYSTEM_PART2_MODULE_PATH=.
 PROJECT_ROOT = ../../..
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK := 
-	
+PLATFORM_DFU = 0x8020000
 DEPENDENCIES = modules/photon/user-part dynalib services hal platform system wiring communication-dynalib rt-dynalib modules/photon/system-part1
 MAKE_DEPENDENCIES = services hal platform system wiring communication-dynalib
 
