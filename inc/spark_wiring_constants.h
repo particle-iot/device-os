@@ -32,18 +32,21 @@
 * Basic variables
 */
 
-#if !defined(min)
-#   define min(a,b)                ((a)<(b)?(a):(b))
-#endif
-#if !defined(max)
-#   define max(a,b)                ((a)>(b)?(a):(b))
-#endif
-#if !defined(constrain)
-#   define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
-#endif
-#if !defined(round)
-#   define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
-#endif
+template <typename T>
+static inline
+T max (T a, T b) { return ((a)>(b)?(a):(b)); }
+
+template <typename T>
+static inline
+T min (T a, T b) { return ((a)<(b)?(a):(b)); }
+
+template <typename T>
+static inline
+T constrain (T amt, T low, T high) { return ((amt)<(low)?(low):((amt)>(high)?(high):(amt))); }
+
+template <typename T>
+static inline
+T round (T x) { return ((x)>=0?(long)((x)+0.5):(long)((x)-0.5)); }
 
 #define HIGH 0x1
 #define LOW 0x0
