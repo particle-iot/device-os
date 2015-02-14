@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    spark_wiring.h
+ * @file    spark_wiring_constants.h
  * @author  Matthew McGowan
  * @version V1.0.0
  * @date    13-March-2013
@@ -50,7 +50,6 @@
 
 #define boolean bool
 
-//#define NULL ((void *)0)
 #define NONE ((uint8_t)0xFF)
 
 
