@@ -645,7 +645,7 @@ bool network_clear_credentials(void)
 /*
  * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
  */
-void spark_delay_ms(unsigned long ms)
+void system_delay_ms(unsigned long ms)
 {
     volatile system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
     spark_loop_total_millis += ms;

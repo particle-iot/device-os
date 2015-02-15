@@ -53,6 +53,7 @@ DYNALIB_FN(system, network_clear_credentials)
 DYNALIB_FN(system, set_ymodem_serial_flash_update_handler)
 DYNALIB_FN(system, system_serialSaveFile)
 DYNALIB_FN(system, system_serialFirmwareUpdate)
+DYNALIB_FN(system, system_delay_ms)
 DYNALIB_END(system)
 
 
