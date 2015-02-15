@@ -6,10 +6,10 @@
 #       based on the root of the project
 HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/core-v2
 
-#HAL_WICED_RTOS=ThreadX
-#HAL_WICED_NETWORK=NetX
-HAL_WICED_RTOS=FreeRTOS
-HAL_WICED_NETWORK=LwIP
+HAL_WICED_RTOS=ThreadX
+HAL_WICED_NETWORK=NetX
+#HAL_WICED_RTOS=FreeRTOS
+#HAL_WICED_NETWORK=LwIP
 
 
 # if we are being compiled with platform as a dependency, then also include
