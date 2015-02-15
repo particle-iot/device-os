@@ -62,15 +62,18 @@ SECTIONS
         . = ALIGN(0x4);
 
         link_constructors_location = .;
-        chk_system_init_start = .;
+        chk_system_pre_init_start = .;
         KEEP (*module_system_hal.o(.module_pre_init))
-        chk_system_init_end = .;
+        chk_system_pre_init_end = .;
         KEEP(*(.preinit_array))
         KEEP(*(.init_array))
         KEEP (*crtbegin.o(.ctors))
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
+        chk_system_init_start = .;
+        KEEP (*module_system_hal.o(.module_init))
+        chk_system_init_end = .;
         link_constructors_end = .;
 
         . = ALIGN(0x4);
@@ -204,6 +207,7 @@ ASSERT ( link_dynalib_start == system_part2_module_table, "Dynalib location not 
 ASSERT ( link_ram_interrupt_vectors_location >= system_part1_module_ram_end, "RAM vtor table should be at end of part1 static ram. " );
 ASSERT ( ( link_ram_interrupt_vectors_location % 512 ) == 0, "RAM vtor table should be 512 byte aligned. " );
 
+ASSERT ( chk_system_pre_init_start < chk_system_pre_init_end , "system_part2_pre_init function not included" );
 ASSERT ( chk_system_init_start < chk_system_init_end , "system_part2_init function not included" );
 
 expected_stack_end = ORIGIN(SRAM) + LENGTH(SRAM) ;

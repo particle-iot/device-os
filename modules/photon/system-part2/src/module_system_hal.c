@@ -44,12 +44,28 @@ extern void* sbrk_heap_top;
 
 /**
  * Global initialization function. Called after memory has been initialized in this module
- * but before C++ constructors are executed.
+ * but before C++ constructors are executed and before any dynamic memory has been allocated.
  */
 void system_part2_pre_init() {
     // initialize dependent modules
     module_system_part1_pre_init();
-    sbrk_heap_top = module_user_pre_init();    
+    if (is_user_module_valid()) {
+        void* new_heap_top = module_user_pre_init();
+        if (new_heap_top>sbrk_heap_top)
+            sbrk_heap_top = new_heap_top;
+    }
+    
+    // now call any C++ constructors in this module's dependencies
+    module_system_part1_init();
+}
+
+/*
+ * Invoked after all module-scope instances have been constructed.
+ */
+void system_part2_init() {
+    if (is_user_module_valid()) {
+        module_user_init();
+    }
 }
 
 void setup() {
@@ -65,3 +81,4 @@ void loop() {
 }
 
 __attribute__((section(".module_pre_init"))) const void* system_part2_pre_init_fn = system_part2_pre_init;
+__attribute__((section(".module_init"))) const void* system_part2_init_fn = system_part2_init;
