@@ -4,7 +4,7 @@
 
 MEMORY
 {
-    APP_FLASH (rx)  : ORIGIN = 0x08040000, LENGTH = 256K
+    APP_FLASH (rx)  : ORIGIN = 0x08060000, LENGTH = 256K
 
     /* todo - SRAM must start also at an offset after what has been reserved for system-module 1 */
     SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 256

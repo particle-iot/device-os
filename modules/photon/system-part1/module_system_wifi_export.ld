@@ -1,5 +1,5 @@
 
-system_part1_module_table = 0x8040000;
+system_part1_module_table = 0x8060000;
 
 /**
  * The end of the statically allocated region.

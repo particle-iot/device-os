@@ -15,7 +15,7 @@ MEMORY
 {
     DCT1_FLASH                 (rx)  : ORIGIN = 0x08004000,     LENGTH = 16K
     DCT2_FLASH                 (rx)  : ORIGIN = 0x08008000,     LENGTH = 16K
-    APP_FLASH                  (rx)  : ORIGIN = 0x08020000,     LENGTH = 128K
+    APP_FLASH                  (rx)  : ORIGIN = 0x08020000,     LENGTH = 256K
 
     SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
 }

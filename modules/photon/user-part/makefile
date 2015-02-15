@@ -3,7 +3,7 @@ USER_PART_MODULE_PATH=.
 PROJECT_ROOT=../../..
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK := 
-PLATFORM_DFU = 0x8080000
+PLATFORM_DFU = 0x80A0000
 PLATFORM_DFU_LEAVE = y
 # communication used only for header declarations	
 DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication modules/photon/system-part2 
