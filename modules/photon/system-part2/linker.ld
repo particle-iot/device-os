@@ -173,6 +173,9 @@ PROVIDE( _heap = link_heap_location );
 PROVIDE( _eheap = ALIGN( link_stack_location - 8, 8 ) );
 
 /* ThreadX aliases */
+PROVIDE( __RAM_segment_used_end__ = link_stack_end );
+PROVIDE( __tx_free_memory_start = link_heap_location );
+PROVIDE( __tx_vectors = link_interrupt_vectors_location );
 
 /* Some defines to keep WICED's _start() happy */
 PROVIDE( link_run_from_ram_code_size = 0);

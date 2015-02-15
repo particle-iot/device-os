@@ -6,21 +6,21 @@
 #include <string.h>
 
 
-extern void* link_heap_start;
+extern char link_heap_start;
 
 /**
  * Locations of static memory regions from linker.
  */
-extern void* link_global_data_initial_values;
-extern void* link_global_data_start;
-extern void* link_global_data_end;
-#define link_global_data_size ((size_t)&link_global_data_end - (size_t)&link_global_data_start)
+extern char link_global_data_initial_values;
+extern char link_global_data_start;
+extern char link_global_data_end;
+#define link_global_data_size (&link_global_data_end - &link_global_data_start)
 
-extern void* link_bss_location;
-extern void* link_bss_end;
-#define link_bss_size ((size_t)&link_bss_end - (size_t)&link_bss_location)
+extern char link_bss_location;
+extern char link_bss_end;
+#define link_bss_size (&link_bss_end - &link_bss_location)
 
-extern void* link_end_of_static_ram;
+extern char link_end_of_static_ram;
 
 
 /**
@@ -41,7 +41,7 @@ void* module_user_pre_init() {
     }
 
     memset(&link_bss_location, 0, link_bss_size );
-    return link_heap_start;
+    return &link_heap_start;
 }
 
 /**

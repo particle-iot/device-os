@@ -138,6 +138,8 @@ SECTIONS
 
 }
 
+sram_end = ORIGIN(SRAM) + LENGTH(SRAM);
+
 ASSERT( link_padding_start == ORIGIN( SRAM ), "Padding start should be at start of RAM" );
 
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
@@ -150,3 +152,5 @@ INCLUDE module_user_export.ld
 ASSERT ( link_dynalib_start == user_module_table, "Dynalib location not same as exported location" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
+
+ASSERT ( link_heap_start > ORIGIN(SRAM) && link_heap_start < sram_end, "link_heap_start is in the wrong memory space" );
