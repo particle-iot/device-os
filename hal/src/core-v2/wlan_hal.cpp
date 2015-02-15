@@ -25,6 +25,7 @@
 
 #include "wiced.h"
 #include "wiced_easy_setup.h"
+#include "delay_hal.h"
 #include "wlan_hal.h"
 #include "hw_config.h"
 #include "softap.h"
@@ -315,14 +316,11 @@ void wlan_smart_config_init() {
     wifi_creds_changed = false;
     if (!current_softap_handle) {
         softap_config config;
-        config.softap_complete = HAL_WLAN_notify_simple_config_done;        
+        config.softap_complete = HAL_WLAN_notify_simple_config_done;
         wlan_disconnect_now();
-        
+        HAL_Delay_Milliseconds(200);
         current_softap_handle = softap_start(&config);        
-    }
-    
-    // todo - launch our own soft-ap daemon
-    // todo - when the user has completed the soft ap setup process,    
+    }    
 }
 
 bool wlan_smart_config_finalize() 
