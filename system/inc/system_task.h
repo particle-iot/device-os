@@ -52,10 +52,6 @@ inline void SPARK_WLAN_Loop(void) { Spark_Idle(); }
 
 void SPARK_WLAN_SmartConfigProcess();
 
-/* Spark Cloud APIs */
-extern int Spark_Connect(void);
-extern int Spark_Disconnect(void);
-extern int Spark_Process_API_Response(void);
 
 extern volatile uint32_t TimingFlashUpdateTimeout;
 
@@ -83,7 +79,7 @@ extern volatile system_tick_t spark_loop_total_millis;
 
 extern sock_handle_t sparkSocket;
 
-void spark_delay_ms(unsigned long ms);
+void system_delay_ms(unsigned long ms);
 
 #ifdef __cplusplus
 }
