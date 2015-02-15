@@ -21,10 +21,6 @@
 #include <stdint.h>
 #include "../generated_mac_address.txt"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Character array of NVRAM image
  */
@@ -68,7 +64,7 @@ static const char wifi_nvram_image[] =
         "tx_tone_power_index=40"                                    "\x00"
         "tx_tone_power_index.fab.3=48"                              "\x00"
         "cckPwrOffset=0"                                            "\x00"
-        "ccode=ww"                                                   "\x00"
+        "ccode=0"                                                   "\x00"
         "rssismf2g=0xa"                                             "\x00"
         "rssismc2g=0x3"                                             "\x00"
         "rssisav2g=0x7"                                             "\x00"
@@ -87,11 +83,6 @@ static const char wifi_nvram_image[] =
         "cckPwrIdxCorr=-8"                                          "\x00"
         "spuravoid_enable2g=1"                                      "\x00"
         "\x00\x00";
-
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
 
 #else /* ifndef INCLUDED_NVRAM_IMAGE_H_ */
 

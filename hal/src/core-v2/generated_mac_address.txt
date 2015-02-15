@@ -4,4 +4,5 @@
  * Please read this document for further information.                                
  */
 
-#define NVRAM_GENERATED_MAC_ADDRESS   "macaddr=01:02:03:04:05:06"
+#define NVRAM_GENERATED_MAC_ADDRESS   "macaddr=02:0A:F7:ff:b6:97"
+#define DCT_GENERATED_MAC_ADDRESS     "\x02\x0A\xF7\x97\xff\xb6"
