@@ -315,8 +315,9 @@ void wlan_smart_config_init() {
     wifi_creds_changed = false;
     if (!current_softap_handle) {
         softap_config config;
-        config.softap_complete = HAL_WLAN_notify_simple_config_done;
-        wlan_initialize_dct();
+        config.softap_complete = HAL_WLAN_notify_simple_config_done;        
+        wlan_disconnect_now();
+        
         current_softap_handle = softap_start(&config);        
     }
     
