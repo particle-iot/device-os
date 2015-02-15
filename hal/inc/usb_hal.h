@@ -39,21 +39,7 @@
 extern "C" {
 #endif
 
-    
-/* We are temporary defining this macro over here */
-/* This could also be passed via -D option in build script */
-#define SPARK_USB_SERIAL        //Default is Virtual COM Port
-//#define SPARK_USB_MOUSE
-//#define SPARK_USB_KEYBOARD
-
-#if !defined (SPARK_USB_SERIAL) && !defined (SPARK_USB_MOUSE) && !defined (SPARK_USB_KEYBOARD)
-#define USB_CDC_ENABLE	//Use USB Serial feature by default if none is defined
-#elif defined (SPARK_USB_SERIAL)
-#define USB_CDC_ENABLE	//Enable USB CDC code
-#elif defined (SPARK_USB_MOUSE) || defined (SPARK_USB_KEYBOARD)
-#define USB_HID_ENABLE	//Enable USB HID code
-#endif
-
+#include "usb_config_hal.h"    
     
     
     /* USB Config : IMR_MSK */
