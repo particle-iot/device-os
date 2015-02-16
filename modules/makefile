@@ -24,6 +24,8 @@ all: make_deps
 	
 program-dfu:
 	
+stflash:	
+	
 $(makefiles):
 	$(call,echo,'Making module $@')
 	$(VERBOSE)$(MAKE) -C $(dir $@) $(SUBDIR_GOALS) $(MAKE_ARGS) $(MAKEOVERRIDES) 
@@ -31,4 +33,4 @@ $(makefiles):
 		
 make_deps: $(makefiles)
 
-.PHONY: program-dfu clean make_deps $(makefiles)
+.PHONY: stflash program-dfu clean make_deps $(makefiles)

@@ -104,8 +104,8 @@ none:
 	;
 	
 stflash: $(TARGET_BASE).bin
-	@echo Flashing using stflash
-	st-flash write $< 0x8000000
+	@echo Flashing $< using stflash to address $(PLATFORM_DFU)
+	st-flash write $< $(PLATFORM_DFU)
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
