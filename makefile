@@ -1,6 +1,6 @@
 
 # put deliverable products at the end
-MAKE_DEPENDENCIES=communication hal platform services wiring bootloader user
+MAKE_DEPENDENCIES=communication hal platform services wiring bootloader main
 PROJECT_ROOT = .
 COMMON_BUILD=build
 BUILD_PATH_BASE=$(COMMON_BUILD)/target
