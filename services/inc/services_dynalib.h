@@ -41,7 +41,9 @@ DYNALIB_FN(services,Get_LED_Brightness)
         
 DYNALIB_FN(services,set_logger_output)
 DYNALIB_FN(services,panic_)
-        
+
+DYNALIB_FN(services, jsmn_init)
+DYNALIB_FN(services, jsmn_parse)
 DYNALIB_END(services)        
 
 
