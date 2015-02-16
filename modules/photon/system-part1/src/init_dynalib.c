@@ -1,4 +1,4 @@
 
 #define DYNALIB_EXPORT
-#include "module_system_wifi_init.h"
-#include "module_system_wifi_init_dynalib.h"
+#include "module_system_part1_init.h"
+#include "module_system_part1_init_dynalib.h"

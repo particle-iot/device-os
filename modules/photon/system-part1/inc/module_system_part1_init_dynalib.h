@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    system-wifi.h
+ * @file    module_system_wifi_init.h
  * @authors Matthew McGowan
- * @date    09 February 2015
+ * @date    11 February 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,31 +21,21 @@
  ******************************************************************************
  */
 
-#ifndef SYSTEM_WIFI_H
-#define	SYSTEM_WIFI_H
+#ifndef MODULE_SYSTEM_PART1_INIT_DYNALIB_H
+#define	MODULE_SYSTEM_PART1_INIT_DYNALIB_H
 
 #include "dynalib.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
 /**
- * Indices into the module-level export table.
- */    
-#define SYSTEM_WIFI_MODULE_JUMP_TABLE_INDEX_COMMUNICATION 0    
-#define SYSTEM_WIFI_MODULE_JUMP_TABLE_INDEX_WIFI_RESOURCE 1
-#define SYSTEM_WIFI_MODULE_JUMP_TABLE_INDEX_MODULE 2
+    Module-management functions
+ */
 
-/**
- * The static module-level export table of library jump table addresses.
- */    
-extern const void* const system_part1_module[];
-    
+DYNALIB_BEGIN(system_module_part1)
+DYNALIB_FN(system_module_part1, module_system_part1_pre_init)
+DYNALIB_FN(system_module_part1, module_system_part1_init)       
+DYNALIB_END(system_module_part1)
 
-#ifdef	__cplusplus
-}
-#endif
 
-#endif	/* SYSTEM_WIFI_H */
+
+#endif	/* MODULE_SYSTEM_WIFI_INIT_H */
 

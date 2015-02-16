@@ -21,8 +21,8 @@
  ******************************************************************************
  */
 
-#ifndef MODULE_SYSTEM_WIFI_INIT_H
-#define	MODULE_SYSTEM_WIFI_INIT_H
+#ifndef MODULE_SYSTEM_PART1_INIT_H
+#define	MODULE_SYSTEM_PART1_INIT_H
 
 /*
  * Initialize this module. This should erase the BSS area, copy initialized

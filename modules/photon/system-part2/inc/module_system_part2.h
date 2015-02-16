@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    module_system_wifi_init.h
+ * @file    module_system_part2.h
  * @authors Matthew McGowan
- * @date    11 February 2015
+ * @date    10 February 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,21 +21,15 @@
  ******************************************************************************
  */
 
-#ifndef MODULE_SYSTEM_WIFI_INIT_DYNALIB_H
-#define	MODULE_SYSTEM_WIFI_INIT_DYNALIB_H
+#ifndef MODULE_SYSTEM_PART2_H
+#define	MODULE_SYSTEM_PART2_H
 
-#include "dynalib.h"
+#define SYSTEM_PART2_MODULE_JUMP_TABLE_INDEX_SERVICES 0    
+#define SYSTEM_PART2_MODULE_JUMP_TABLE_INDEX_HAL 1
+#define SYSTEM_PART2_MODULE_JUMP_TABLE_INDEX_RT 2
 
-/**
-    Module-management functions
- */
+extern const void* const system_part1_module[];
+    
 
-DYNALIB_BEGIN(system_module_part1)
-DYNALIB_FN(system_module_part1, module_system_part1_pre_init)
-DYNALIB_FN(system_module_part1, module_system_part1_init)       
-DYNALIB_END(system_module_part1)
-
-
-
-#endif	/* MODULE_SYSTEM_WIFI_INIT_H */
+#endif	
 

@@ -1,10 +1,10 @@
 
 WIFI_MODULE_WICED_LIB_FILES = $(HAL_LIB_COREV2)/resources.a
 
-LINKER_FILE=$(WIFI_SYSTEM_MODULE_PATH)/linker.ld
+LINKER_FILE=$(SYSTEM_PART1_MODULE_PATH)/linker.ld
 LINKER_DEPS=$(LINKER_FILE) $(WIFI_MODULE_WICED_LIB_FILES)
-LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_hal_export.ld 
-LINKER_DEPS += $(WIFI_SYSTEM_MODULE_PATH)/module_system_wifi_export.ld
+LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld 
+LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
 
 
 LDFLAGS += --specs=nano.specs -lnosys
@@ -15,7 +15,7 @@ LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 
-WIFI_SYSTEM_MODULE_SRC_PATH = $(WIFI_SYSTEM_MODULE_PATH)/src
+WIFI_SYSTEM_MODULE_SRC_PATH = $(SYSTEM_PART1_MODULE_PATH)/src
 
 CPPSRC += $(call target_files,$(WIFI_SYSTEM_MODULE_SRC_PATH),*.cpp)
 CSRC += $(call target_files,$(WIFI_SYSTEM_MODULE_SRC_PATH),*.c)    

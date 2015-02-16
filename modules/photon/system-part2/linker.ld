@@ -1,9 +1,9 @@
 
 
 /* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
-INCLUDE module_system_wifi_export.ld
+INCLUDE module_system_part1_export.ld
 /* Definitions for the stack size */
-INCLUDE module_system_hal_export.ld
+INCLUDE module_system_part2_export.ld
 /* Definitions for the static parts of the user module */
 INCLUDE module_user_export.ld
 

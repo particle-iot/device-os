@@ -124,11 +124,11 @@ SECTIONS
 ASSERT( link_module_jump_table_start == ORIGIN(APP_FLASH), "module master jump table should be at start of APP FLASH" );
 ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module master jump table not linked" );
 
-INCLUDE module_system_wifi_export.ld
+INCLUDE module_system_part1_export.ld
 
 ASSERT ( link_module_jump_table_start == system_part1_module_table, "Export address for module table is incorrect" );
 ASSERT ( link_end_of_static_ram < system_part1_module_ram_end, "static RAM use exceeds allocated space" );
 
-INCLUDE module_system_hal_export.ld
+INCLUDE module_system_part2_export.ld
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );

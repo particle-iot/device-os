@@ -1,6 +1,6 @@
 
 #include "dynalib.h"
-#include "module_system_wifi_init.h"
+#include "module_system_part1_init.h"
 #include "module_user_init.h"
 #include <stdint.h>
 #include <stddef.h>

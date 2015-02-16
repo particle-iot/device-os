@@ -1,9 +1,10 @@
 
-INCLUDE module_system_hal_export.ld
+INCLUDE module_system_part1_export.ld
+INCLUDE module_system_part2_export.ld
 
 MEMORY
 {
-    APP_FLASH                  (rx)  : ORIGIN = 0x080A0000,     LENGTH = 256K
+    APP_FLASH                  (rx)  : ORIGIN = 0x080A0000,     LENGTH = 128K
 
     SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
 }

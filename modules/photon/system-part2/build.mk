@@ -3,13 +3,13 @@
 LINKER_FILE=$(SYSTEM_PART2_MODULE_PATH)/linker.ld
 LINKER_DEPS += $(LINKER_FILE) $(HAL_WICED_LIB_FILES) 
 
-LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_hal_export.ld 
-LINKER_DEPS += $(WIFI_SYSTEM_MODULE_PATH)/module_system_wifi_export.ld
+LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld 
+LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
 LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
 
 LDFLAGS += --specs=nano.specs -lnosys
 LDFLAGS += -Wl,--whole-archive $(HAL_WICED_LIB_FILES) -Wl,--no-whole-archive
-LDFLAGS += -L$(WIFI_SYSTEM_MODULE_PATH)
+LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
