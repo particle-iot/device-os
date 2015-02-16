@@ -12,16 +12,17 @@ MEMORY
 SECTIONS
 {
     expected_dynalib_start = ORIGIN (APP_FLASH) ;
-    .dynalib :
-    {
-        link_dynalib_start = . ;
-        KEEP(*(*.user_part_module))
-        link_dynalib_end = . ;
-    }>APP_FLASH AT>APP_FLASH
-
-
+    
     .text :
     {
+        link_module_start = .;
+        link_dynalib_start = .;
+        KEEP(*(*.user_part_module))
+        link_dynalib_end = . ;
+        link_length_start = .;
+        KEEP(*(*.user_part_length))
+        link_length_end = .;
+
         . = ALIGN(4);
 
         link_code_location = .;
@@ -92,10 +93,14 @@ SECTIONS
         link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */        
         link_global_data_start = .;
         *(.data*)
-        link_global_data_end = .;
+        link_global_data_end = .;        
         . = ALIGN(., 4);
     }> SRAM AT> APP_FLASH
 
+    .module_end : 
+    {
+        link_module_end = .;
+    }> APP_FLASH AT>APP_FLASH
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
@@ -156,5 +161,7 @@ ASSERT ( USER_FIRMWARE_IMAGE_LOCATION == ORIGIN(APP_FLASH), "User firmware locat
 
 ASSERT ( USER_FIRMWARE_IMAGE_SIZE == LENGTH(APP_FLASH), "User firmware size and APP_FLASH length differ" );
 
-
 ASSERT ( link_heap_start > ORIGIN(SRAM) && link_heap_start < sram_end, "link_heap_start is in the wrong memory space" );
+
+ASSERT ( link_length_start < link_length_end, "length information not linked" );
+ASSERT ( length_info == link_length_start, "length start not where expected" );
