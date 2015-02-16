@@ -63,7 +63,7 @@ SECTIONS
 
         link_constructors_location = .;
         chk_system_pre_init_start = .;
-        KEEP (*module_system_hal.o(.module_pre_init))
+        KEEP (*module_system_part2.o(.module_pre_init))
         chk_system_pre_init_end = .;
         KEEP(*(.preinit_array))
         KEEP(*(.init_array))
@@ -72,7 +72,7 @@ SECTIONS
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
         chk_system_init_start = .;
-        KEEP (*module_system_hal.o(.module_init))
+        KEEP (*module_system_part2.o(.module_init))
         chk_system_init_end = .;
         link_constructors_end = .;
 
