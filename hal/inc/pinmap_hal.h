@@ -61,6 +61,10 @@ typedef enum {
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
 
+typedef struct STM32_Pin_Info  STM32_Pin_Info;
+
+STM32_Pin_Info* HAL_Pin_Map(void);
+
 /* Exported macros -----------------------------------------------------------*/
 
 /*
