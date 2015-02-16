@@ -29,7 +29,7 @@
 #include "core_msg.h"
 #include <string.h>
 
-uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
+uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
 {
     return 0;
 }

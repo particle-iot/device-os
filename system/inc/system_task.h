@@ -34,7 +34,7 @@
 extern "C" {
 #endif    
 
-uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
+uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
 
 /**

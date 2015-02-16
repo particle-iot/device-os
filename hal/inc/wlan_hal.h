@@ -181,7 +181,7 @@ void welan_set_error_count();
 
 void SPARK_WLAN_SmartConfigProcess();
 
-uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
+uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 
 void HAL_WLAN_notify_simple_config_done();
 

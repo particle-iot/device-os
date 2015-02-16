@@ -516,11 +516,11 @@ int Internet_Test(void)
     testSocketAddr.sa_data[4] = 8;
     testSocketAddr.sa_data[5] = 8;
 
-    uint32_t ot = SPARK_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
+    uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
     DEBUG("connect");
     testResult = socket_connect(testSocket, &testSocketAddr, sizeof (testSocketAddr));
     DEBUG("connected testResult=%d", testResult);
-    SPARK_WLAN_SetNetWatchDog(ot);
+    HAL_WLAN_SetNetWatchDog(ot);
 
 #if defined(SEND_ON_CLOSE)
     DEBUG("send");
@@ -600,11 +600,11 @@ int Spark_Connect(void)
     tSocketAddr.sa_data[4] = BYTE_N(ip_addr, 1);
     tSocketAddr.sa_data[5] = BYTE_N(ip_addr, 0);
 
-    uint32_t ot = SPARK_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
+    uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
     DEBUG("connect");
     int rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
     DEBUG("connected connect=%d", rv);
-    SPARK_WLAN_SetNetWatchDog(ot);
+    HAL_WLAN_SetNetWatchDog(ot);
     return rv;
 }
 

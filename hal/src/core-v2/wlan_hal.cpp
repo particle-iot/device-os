@@ -67,7 +67,7 @@ wiced_result_t wlan_initialize_dct()
 }
 
 
-uint32_t SPARK_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
+uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
 {
     wiced_watchdog_kick();
     return 0;
