@@ -39,7 +39,6 @@ HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))
 
 # if hal is used as a make dependency (linked) then add linker commands
 ifneq (,$(HAL_LINK))
-$(info "Linking libraries using core-v2 HAL")
 LINKER_FILE=$(WICED_MCU)/app_no_bootloader.ld
 LINKER_DEPS=$(LINKER_FILE) $(HAL_WICED_LIB_FILES)
 
