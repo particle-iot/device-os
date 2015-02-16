@@ -6,11 +6,13 @@
 DYNALIB_TABLE_EXTERN(communication);
 DYNALIB_TABLE_EXTERN(wifi_resource);
 DYNALIB_TABLE_EXTERN(system_module_part1);
+DYNALIB_TABLE_EXTERN(services);
 
 const void* const system_part1_module[] = {
     DYNALIB_TABLE_NAME(communication),
     DYNALIB_TABLE_NAME(wifi_resource),    
     DYNALIB_TABLE_NAME(system_module_part1),    
+    DYNALIB_TABLE_NAME(services),    
 };
 
 

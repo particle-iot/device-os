@@ -322,8 +322,7 @@ bool HAL_watchdog_reset_flagged()
 
 void HAL_Notify_WDT()
 {    
-    KICK_WDT();
-    wiced_watchdog_kick();
+    KICK_WDT();    
 }
 
 /**

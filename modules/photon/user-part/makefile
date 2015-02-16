@@ -6,7 +6,7 @@ HAL_LINK :=
 PLATFORM_DFU = 0x$(USER_FIRMWARE_IMAGE_LOCATION)
 PLATFORM_DFU_LEAVE = y
 # communication used only for header declarations	
-DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication modules/photon/system-part2 
+DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication modules/photon/system-part1 modules/photon/system-part2 
 MAKE_DEPENDENCIES = user hal-dynalib services-dynalib system-dynalib rt-dynalib wiring
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk

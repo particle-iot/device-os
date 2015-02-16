@@ -14,7 +14,6 @@ min_heap_size = 8K;
 
 system_static_ram_end = ORIGIN(SRAM) + 64K;
 
-PROVIDE ( dynalib_location_services = system_part2_module_table + 0 );
-PROVIDE ( dynalib_location_hal = system_part2_module_table + 4 );
-PROVIDE ( dynalib_location_rt = system_part2_module_table + 8 );
-PROVIDE ( dynalib_location_system = system_part2_module_table + 12 );
+PROVIDE ( dynalib_location_hal = system_part2_module_table + 0 );
+PROVIDE ( dynalib_location_rt = system_part2_module_table + 4 );
+PROVIDE ( dynalib_location_system = system_part2_module_table + 8 );
