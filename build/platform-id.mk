@@ -17,6 +17,41 @@ USBD_PID_DFU=0x607F
 # Default USB Device Product ID for CDC Class
 USBD_PID_CDC=0x607D
 
+ifneq (,$(PLATFORM))
+ifeq ("$(PLATFORM)","core")
+PLATFORM_ID = 0
+endif
+
+ifeq ("$(PLATFORM)","core-hd")
+PLATFORM_ID = 2
+endif
+
+ifeq ("$(PLATFORM)","gcc")
+PLATFORM_ID = 3
+endif
+
+ifeq ("$(PLATFORM)","dev-photon")
+PLATFORM_ID = 4
+endif
+
+ifeq ("$(PLATFORM)","dev-teacup-bm14")
+PLATFORM_ID = 5
+endif
+
+ifeq ("$(PLATFORM)","photon")
+PLATFORM_ID = 6
+endif
+
+ifeq ("$(PLATFORM)","teacup-bm14")
+PLATFORM_ID = 7
+endif
+
+
+ifeq (,$(PLATFORM_ID))
+$(error "Unknown platform: $(PLATFORM))
+endif
+endif
+
 ifndef PLATFORM_ID
 PLATFORM_ID=0
 endif
