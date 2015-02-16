@@ -70,6 +70,7 @@ static void HAL_DAC_Init()
  */
 void HAL_DAC_Write(pin_t pin, uint16_t value)
 {
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (HAL_Get_Pin_Mode(pin) != AN_OUTPUT)
     {
         HAL_Pin_Mode(pin, AN_OUTPUT);

@@ -54,6 +54,7 @@ void HAL_PWM_Write(uint16_t pin, uint8_t value)
     HAL_Pin_Mode(pin, AF_OUTPUT_PUSHPULL);
 
     // TIM clock enable
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_peripheral == TIM1)
     {
         TIM_CLK = SystemCoreClock;
@@ -141,7 +142,8 @@ uint16_t HAL_PWM_Get_Frequency(uint16_t pin)
 {
     uint16_t TIM_ARR = 0;
     uint16_t PWM_Frequency = 0;
-
+    
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_peripheral == TIM1)
     {
         TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
@@ -174,6 +176,7 @@ uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
     uint16_t TIM_ARR = 0;
     uint16_t PWM_AnalogValue = 0;
 
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
     {
         TIM_CCR = PIN_MAP[pin].timer_peripheral->CCR1;

@@ -99,6 +99,7 @@ void HAL_Interrupts_Attach(uint16_t pin, voidFuncPtr handler, InterruptMode mode
   NVIC_InitTypeDef NVIC_InitStructure;
 
   //Map the Spark pin to the appropriate port and pin on the STM32
+  STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
   GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
 
@@ -186,6 +187,7 @@ void HAL_Interrupts_Detach(uint16_t pin)
   uint8_t PinNumber;                              //temp variable to calculate the pin number
 
   //Map the Spark Core pin to the appropriate pin on the STM32
+  STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
 
   if(gpio_pin == EXTI_Line0 || gpio_pin == EXTI_Line7)

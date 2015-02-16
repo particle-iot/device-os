@@ -50,6 +50,7 @@ void HAL_SPI_Begin(uint16_t pin)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
 
     /* Connect SPI1 pins to AF5 */
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     GPIO_PinAFConfig(PIN_MAP[SCK].gpio_peripheral, PIN_MAP[SCK].gpio_pin_source, GPIO_AF_SPI1);
     GPIO_PinAFConfig(PIN_MAP[MOSI].gpio_peripheral, PIN_MAP[MOSI].gpio_pin_source, GPIO_AF_SPI1);
     GPIO_PinAFConfig(PIN_MAP[MISO].gpio_peripheral, PIN_MAP[MISO].gpio_pin_source, GPIO_AF_SPI1);

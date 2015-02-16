@@ -85,6 +85,7 @@ int32_t HAL_ADC_Read(uint16_t pin)
 {
 
     int i = 0;
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
     {

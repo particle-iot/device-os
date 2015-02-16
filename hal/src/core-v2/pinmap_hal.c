@@ -30,7 +30,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 
-STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
+STM32_Pin_Info __PIN_MAP[TOTAL_PINS] =
 {
 /*
  * gpio_peripheral (GPIOA, GPIOB or GPIOC)
@@ -68,3 +68,6 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
 };
 
 
+STM32_Pin_Info* HAL_Pin_Map() {
+    return __PIN_MAP;
+} 

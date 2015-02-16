@@ -50,11 +50,13 @@ inline bool is_valid_pin(pin_t pin)
 
 PinMode HAL_Get_Pin_Mode(pin_t pin) 
 {
-    return (!is_valid_pin(pin)) ? PIN_MODE_NONE : PIN_MAP[pin].pin_mode;
+    return (!is_valid_pin(pin)) ? PIN_MODE_NONE : HAL_Pin_Map()[pin].pin_mode;
 }
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
 {
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
     if (!is_valid_pin(pin))
         return PF_NONE;
     if (pinFunction==PF_ADC && PIN_MAP[pin].adc_channel!=ADC_CHANNEL_NONE)
@@ -72,6 +74,8 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
  */
 void HAL_Pin_Mode(pin_t pin, PinMode setMode)
 {
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
     GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
     pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
 
@@ -91,7 +95,7 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
     }
 
     GPIO_InitStructure.GPIO_Pin = gpio_pin;
-
+    
     switch (setMode)
     {
         case OUTPUT:
@@ -176,6 +180,7 @@ PinMode HAL_GPIO_Recall_Pin_Mode()
  */
 void HAL_GPIO_Write(uint16_t pin, uint8_t value)
 {
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     //If the pin is used by analogWrite, we need to change the mode
     if(PIN_MAP[pin].pin_mode == AF_OUTPUT_PUSHPULL)
     {
@@ -197,6 +202,7 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value)
  */
 int32_t HAL_GPIO_Read(uint16_t pin)
 {
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].pin_mode == AN_INPUT)
     {
         PinMode pm = HAL_GPIO_Recall_Pin_Mode();

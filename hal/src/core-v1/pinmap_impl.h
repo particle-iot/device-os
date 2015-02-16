@@ -46,7 +46,7 @@ typedef struct STM32_Pin_Info {
 
 /* Exported constants --------------------------------------------------------*/
 
-extern STM32_Pin_Info PIN_MAP[];
+extern const STM32_Pin_Info PIN_MAP[];
 
 extern void HAL_GPIO_Save_Pin_Mode(PinMode mode);
 extern PinMode HAL_GPIO_Recall_Pin_Mode();

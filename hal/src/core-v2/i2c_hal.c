@@ -95,6 +95,7 @@ void HAL_I2C_Stretch_Clock(bool stretch)
 
 void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
 {
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     rxBufferIndex = 0;
     rxBufferLength = 0;
 

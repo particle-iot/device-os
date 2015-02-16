@@ -71,6 +71,7 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
     // TIM clock enable
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_peripheral == TIM1)
     {
         TIM_CLK = SystemCoreClock;
@@ -168,6 +169,7 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
 
 void HAL_Tone_Stop(uint8_t pin)
 {
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
     {
         TIM_ITConfig(PIN_MAP[pin].timer_peripheral, TIM_IT_CC1, DISABLE);
@@ -197,6 +199,7 @@ uint32_t HAL_Tone_Get_Frequency(uint8_t pin)
     uint16_t TIM_CCR = 0;
     uint16_t Tone_Frequency = 0;
 
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
     {
         TIM_CCR = PIN_MAP[pin].timer_peripheral->CCR1;
@@ -225,6 +228,7 @@ uint32_t HAL_Tone_Get_Frequency(uint8_t pin)
 
 bool HAL_Tone_Is_Stopped(uint8_t pin)
 {
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_ccr > 0)
     {
         return false;
@@ -237,6 +241,7 @@ static void Tone_TIM1_Handler(void)
 {
     uint16_t capture;
 
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (TIM_GetITStatus(TIM1, TIM_IT_CC2) != RESET)
     {
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC2);
@@ -277,7 +282,8 @@ static void Tone_TIM1_Handler(void)
 static void Tone_TIM3_Handler(void)
 {
     uint16_t capture;
-
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    
     if (TIM_GetITStatus(TIM3, TIM_IT_CC1) != RESET)
     {
         TIM_ClearITPendingBit(TIM3, TIM_IT_CC1 );
@@ -318,7 +324,8 @@ static void Tone_TIM3_Handler(void)
 static void Tone_TIM4_Handler(void)
 {
     uint16_t capture;
-
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+   
     if (TIM_GetITStatus(TIM4, TIM_IT_CC1) != RESET)
     {
         TIM_ClearITPendingBit(TIM4, TIM_IT_CC1 );
@@ -360,6 +367,7 @@ static void Tone_TIM5_Handler(void)
 {
     uint16_t capture;
 
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (TIM_GetITStatus(TIM5, TIM_IT_CC1) != RESET)
     {
         TIM_ClearITPendingBit(TIM5, TIM_IT_CC1 );
