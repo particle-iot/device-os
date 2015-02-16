@@ -20,6 +20,11 @@ include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),$(PROJECT_ROOT)/$(module)/import.mk)
 include $(DEPS_INCLUDE_SCRIPTS)	
 	
+ifneq (,$(GLOBAL_DEFINES))	
+MAKE_ARGS += GLOBAL_DEFINES="$(GLOBAL_DEFINES)"	
+CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
+endif
+	
 ifdef TEACUP
 CFLAGS += -DTEACUP
 endif
@@ -29,6 +34,7 @@ CFLAGS += -DDEBUG_BUILD
 else
 CFLAGS += -DRELEASE_BUILD
 endif
+
 
 ifdef SPARK_TEST_DRIVER
 CFLAGS += -DSPARK_TEST_DRIVER=$(SPARK_TEST_DRIVER)

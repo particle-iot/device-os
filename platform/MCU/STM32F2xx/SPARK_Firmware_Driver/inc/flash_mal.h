@@ -42,25 +42,10 @@ extern "C" {
 #   error "INTERNAL_FLASH_SIZE not defined"
 #endif
 
-#ifndef FIRMWARE_IMAGE_SIZE
-#ifdef USE_SERIAL_FLASH
-#define FIRMWARE_IMAGE_SIZE     0x7E000 //504K
-#else
-#define FIRMWARE_IMAGE_SIZE     0x60000 //384K (monolithic firmware size)
-#endif
-#endif
-
-#ifndef FLASH_INTERNAL
 #define FLASH_INTERNAL  0
-#endif
-#ifndef FLASH_SERIAL
 #define FLASH_SERIAL    1
-#endif
 
-#if FIRMWARE_IMAGE_SIZE > INTERNAL_FLASH_SIZE
-#   error "FIRMWARE_IMAGE_SIZE too large to fit into internal flash"
-#endif
-
+       
 /* Internal Flash memory address where various firmwares are located */
 #ifndef INTERNAL_FLASH_START
 #define INTERNAL_FLASH_START        ((uint32_t)0x08000000)
@@ -74,22 +59,53 @@ extern "C" {
 
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x20000) //128K (7 sectors of 128K each used by main firmware)
-/* Internal Flash memory address where Factory programmed monolithic core firmware is located */
-#define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(CORE_FW_ADDRESS + FIRMWARE_IMAGE_SIZE))
-/* Internal Flash memory address where monolithic core firmware will be saved for backup/restore */
-//#define INTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)INTERNAL_FLASH_FAC_ADDRESS)
-/* Internal Flash memory address where OTA upgraded monolithic core firmware will be saved */
-#define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)INTERNAL_FLASH_FAC_ADDRESS)
+    
+#ifdef MODULAR_FIRMWARE
+    #ifndef USER_FIRMWARE_IMAGE_SIZE
+    #error USER_FIRMWARE_IMAGE_SIZE not defined
+    #else
+    #define FIRMWARE_IMAGE_SIZE  USER_FIRMWARE_IMAGE_SIZE    
+    #endif
+    
+    #ifndef USER_FIRMWARE_IMAGE_LOCATION
+    #error USER_FIRMWARE_IMAGE_LOCATION not defined
+    #endif
+    
+    #define INTERNAL_FLASH_OTA_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE)
+    #define INTERNAL_FLASH_FAC_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE+FIRMWARE_IMAGE_SIZE)
+    
+#else        
+    #define USER_FIRMWARE_IMAGE_LOCATION CORE_FW_ADDRESS
+    #ifndef FIRMWARE_IMAGE_SIZE
+    #ifdef USE_SERIAL_FLASH
+    #define FIRMWARE_IMAGE_SIZE     0x7E000 //504K
+    #else
+    #define FIRMWARE_IMAGE_SIZE     0x60000 //384K (monolithic firmware size)
+    #endif
+    #endif    
+    
+    /* Internal Flash memory address where Factory programmed monolithic core firmware is located */
+    #define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(CORE_FW_ADDRESS + FIRMWARE_IMAGE_SIZE))
+    /* Internal Flash memory address where monolithic core firmware will be saved for backup/restore */
+    //#define INTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)INTERNAL_FLASH_FAC_ADDRESS)
+    /* Internal Flash memory address where OTA upgraded monolithic core firmware will be saved */
+    #define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)INTERNAL_FLASH_FAC_ADDRESS)
 
-#ifdef USE_SERIAL_FLASH
-/* External Flash memory address where Factory programmed core firmware is located */
-#define EXTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)0x4000)
-/* External Flash memory address where core firmware will be saved for backup/restore */
-//#define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)EXTERNAL_FLASH_FAC_ADDRESS)
-/* External Flash memory address where OTA upgraded core firmware will be saved */
-#define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_FAC_ADDRESS + FIRMWARE_IMAGE_SIZE))
+    #ifdef USE_SERIAL_FLASH
+    /* External Flash memory address where Factory programmed core firmware is located */
+    #define EXTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)0x4000)
+    /* External Flash memory address where core firmware will be saved for backup/restore */
+    //#define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)EXTERNAL_FLASH_FAC_ADDRESS)
+    /* External Flash memory address where OTA upgraded core firmware will be saved */
+    #define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_FAC_ADDRESS + FIRMWARE_IMAGE_SIZE))
+    #endif
 #endif
-
+    
+#if FIRMWARE_IMAGE_SIZE > INTERNAL_FLASH_SIZE
+#   error "FIRMWARE_IMAGE_SIZE too large to fit into internal flash"
+#endif
+    
+    
 /* Bootloader Flash regions that needs to be protected: 0x08000000 - 0x08003FFF */
 #define BOOTLOADER_FLASH_PAGES      (OB_WRP_Sector_0) //Sector 0
 

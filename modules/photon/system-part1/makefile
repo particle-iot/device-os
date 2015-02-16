@@ -9,7 +9,7 @@ HAL_LINK :=
 # HAL Dependency only for the WICED wifi nvmem resource
 MAKE_DEPENDENCIES = communication hal
 DEPENDENCIES = $(MAKE_DEPENDENCIES) dynalib rt-dynalib modules/photon/system-part2
-
+include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
 
 # dependent on hal lib only for the wwd_nvmem_resource

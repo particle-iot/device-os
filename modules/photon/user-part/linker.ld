@@ -152,6 +152,9 @@ INCLUDE module_user_export.ld
 
 ASSERT ( link_dynalib_start == user_module_table, "Dynalib location not same as exported location" );
 
-ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
+ASSERT ( USER_FIRMWARE_IMAGE_LOCATION == ORIGIN(APP_FLASH), "User firmware location and APP_FLASH origin differ" );
+
+ASSERT ( USER_FIRMWARE_IMAGE_SIZE == LENGTH(APP_FLASH), "User firmware size and APP_FLASH length differ" );
+
 
 ASSERT ( link_heap_start > ORIGIN(SRAM) && link_heap_start < sram_end, "link_heap_start is in the wrong memory space" );

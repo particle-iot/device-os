@@ -29,6 +29,7 @@
 #include "debug.h"
 #include "dct.h"
 #include "usb_dcd.h"
+#include "flash_mal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -644,12 +645,16 @@ void BACKUP_Flash_Reset(void)
 
     Finish_Update();
 #else
+    
     //Not supported since there is no Backup copy of the firmware in Internal Flash
 #endif
 }
 
 void OTA_Flash_Reset(void)
 {
+    // todo - before attempting a copy, verify the integrity of the image (e.g. crc))
+    // if that fails, abort the copy and leave the existing user firmware as is.
+    
 #ifdef USE_SERIAL_FLASH
 /*
     First take backup of the current application firmware to External Flash
@@ -679,6 +684,9 @@ void OTA_Flash_Reset(void)
 
     Finish_Update();
 #else
+    #ifdef INTERNAL_FLASH_OTA_ADDRESS
+        FLASH_Restore(INTERNAL_FLASH_OTA_ADDRESS);
+    #endif    
     //FLASH_UpdateModules() does the job of copying the split firmware modules
 #endif
 }
