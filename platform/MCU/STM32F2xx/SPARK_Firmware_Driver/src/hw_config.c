@@ -684,9 +684,6 @@ void OTA_Flash_Reset(void)
 
     Finish_Update();
 #else
-    #ifdef INTERNAL_FLASH_OTA_ADDRESS
-        FLASH_Restore(INTERNAL_FLASH_OTA_ADDRESS);
-    #endif    
     //FLASH_UpdateModules() does the job of copying the split firmware modules
 #endif
 }
