@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    hal_dynalib_export.h
+ * @file    hal_peripherals_dynalib_export.c
  * @author  Matthew McGowan
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
@@ -20,27 +20,6 @@
  ******************************************************************************
  */
 
-#pragma once
+#include "hal_peripherals_dynalib_export.h"
 
-/**
- * Shared header used by implementations of hal that wish to export a dynalib.
- */
 
-#define DYNALIB_EXPORT
-
-#include "core_hal.h"
-#include "core_subsys_hal.h"
-#include "delay_hal.h"
-#include "deviceid_hal.h"
-#include "inet_hal.h"
-#include "ota_flash_hal.h"
-#include "pinmap_hal.h"
-#include "rtc_hal.h"
-#include "rng_hal.h"
-#include "socket_hal.h"
-#include "syshealth_hal.h"
-#include "timer_hal.h"
-#include "usb_hal.h"
-#include "wlan_hal.h"
-
-#include "hal_dynalib.h"

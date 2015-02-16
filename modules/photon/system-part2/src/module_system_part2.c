@@ -8,6 +8,7 @@
 DYNALIB_TABLE_EXTERN(hal);
 DYNALIB_TABLE_EXTERN(rt);
 DYNALIB_TABLE_EXTERN(system);
+DYNALIB_TABLE_EXTERN(hal_peripherals);
 
 /**
  * The module export table. This lists the addresses of individual library dynalib jump tables.
@@ -16,6 +17,7 @@ const void* const system_part2_module[] = {
     DYNALIB_TABLE_NAME(hal),
     DYNALIB_TABLE_NAME(rt),
     DYNALIB_TABLE_NAME(system),
+    DYNALIB_TABLE_NAME(hal_peripherals),
 };
 
 extern void** dynalib_location_user;
