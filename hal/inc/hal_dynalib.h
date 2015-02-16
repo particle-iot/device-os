@@ -186,11 +186,6 @@ DYNALIB_USER_FN(hal,HAL_USART_Peek_Data)
 DYNALIB_USER_FN(hal,HAL_USART_Flush_Data)
 DYNALIB_USER_FN(hal,HAL_USART_Is_Enabled)
         
-#if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)        
-DYNALIB_FN(hal,SPARK_USB_Setup)
-DYNALIB_FN(hal,Get_SerialNum)
-#endif
-
 #ifdef USB_CDC_ENABLE
 DYNALIB_FN(hal,USB_USART_Init)
 DYNALIB_FN(hal,USB_USART_Available_Data)
