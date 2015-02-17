@@ -17,6 +17,8 @@ SIZE = $(GCC_ARM_PATH)$(GCC_PREFIX)size
 DFU = dfu-util
 DFUSUFFIX = dfu-suffix
 CURL = curl
+CRC = crc32
+XXD = xxd
 
 CPPFLAGS += 
 

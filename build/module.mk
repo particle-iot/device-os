@@ -148,6 +148,9 @@ size: $(TARGET_BASE).elf
 %.bin : %.elf
 	$(call,echo,'Invoking: ARM GNU Create Flash Image')
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@
+	$(call,echo,'Appending: CRC32 to the Flash Image')
+	cp $@ $@.no_crc
+	echo $$($(CRC) $@.no_crc) | $(XXD) -r -p >> $@
 	$(call,echo,)
 
 $(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
