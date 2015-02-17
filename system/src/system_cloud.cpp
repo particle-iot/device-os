@@ -384,14 +384,13 @@ int Spark_Handshake(void)
     if (!err)
     {
         char buf[CLAIM_CODE_SIZE + 1];
-
         if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && *buf)
         {
             Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);
             // delay a second - so there's a chance of the event being received before clearing the credentials
             // in case of reset. Ideally only clear the claim code after receiving an event from the cloud.
         }
-
+        
         ultoa(HAL_OTA_FlashLength(), buf, 10);
         Spark.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
 
@@ -404,8 +403,10 @@ int Spark_Handshake(void)
         }
 
         Multicast_Presence_Announcement();
-        spark_protocol_send_time_request(&sp);
         spark_protocol_send_subscriptions(&sp);
+        // important this comes at the end since it requires a response from the cloud.
+        spark_protocol_send_time_request(&sp);
+        Spark_Process_Events();
     }
     return err;
 }
