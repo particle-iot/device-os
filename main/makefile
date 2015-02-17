@@ -3,7 +3,9 @@ USER_MODULE_PATH=.
 PLATFORM_DFU_LEAVE = y
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(USER_FLAVOR)
 
-DEPENDENCIES = dynalib wiring hal user system services communication platform
+# It's critical that user comes before wiring so that the setup()/loop() functions are linked in preference
+# to the weak functions from wiring
+DEPENDENCIES = user dynalib wiring hal system services communication platform
 
 include ../build/platform-id.mk
 
