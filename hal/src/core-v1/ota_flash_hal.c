@@ -86,12 +86,6 @@ void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize)
     FLASH_Begin(sFLASH_Address, fileSize);
 }
 
-bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length)
-{
-    //Only implemented in photon at present
-    return false;
-}
-
 uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize) 
 {
     return FLASH_Update(pBuffer, bufferSize);
@@ -102,6 +96,23 @@ void HAL_FLASH_End(void)
     FLASH_End();
 }
 
+uint32_t HAL_FLASH_ModuleAddress(uint32_t address)
+{
+    //Only implemented in photon at present
+    return 0;
+}
+
+uint32_t HAL_FLASH_ModuleLength(uint32_t address)
+{
+    //Only implemented in photon at present
+    return 0;
+}
+
+bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length)
+{
+    //Only implemented in photon at present
+    return false;
+}
 
 void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
 {

@@ -27,13 +27,10 @@
 #include "ota_flash_hal.h"
 #include "hw_config.h"
 #include "dct_hal.h"
+#include "module_info.h"
 #include <cstring>
 
 #define OTA_CHUNK_SIZE          512
-
-#if !defined USE_SERIAL_FLASH
-static uint32_t OTA_Flashed_Length = 0;//ota downloaded binary file size
-#endif
 
 uint32_t HAL_OTA_FlashAddress()
 {
@@ -100,42 +97,76 @@ void HAL_FLASH_WriteProtectionDisable(uint32_t FLASH_Sectors)
 
 void HAL_FLASH_Begin(uint32_t address, uint32_t length)
 {
-#if !defined USE_SERIAL_FLASH
-    OTA_Flashed_Length = 0;
-#endif
     FLASH_Begin(address, length);
 }
 
 uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t length)
 {
-#if !defined USE_SERIAL_FLASH
-    OTA_Flashed_Length += length;
-#endif
     return FLASH_Update(pBuffer, length);
+}
+
+void HAL_FLASH_End(void)
+{
+    FLASH_End();
+}
+
+static const module_info_t* HAL_FLASH_ModuleInfo(uint32_t address)
+{
+#ifdef USE_SERIAL_FLASH
+    return NULL;
+#else
+    if (((*(__IO uint32_t*)address) & APP_START_MASK) == 0x20000000)
+    {
+        address = 0x8020184;
+    }
+
+    const module_info_t* module_info = (const module_info_t*)address;
+
+    return module_info;
+#endif
+}
+
+uint32_t HAL_FLASH_ModuleAddress(uint32_t address)
+{
+    const module_info_t* module_info = HAL_FLASH_ModuleInfo(address);
+
+    if(module_info)
+    {
+        return (uint32_t)module_info->module_start_address;
+    }
+
+    return 0;
+}
+
+uint32_t HAL_FLASH_ModuleLength(uint32_t address)
+{
+    const module_info_t* module_info = HAL_FLASH_ModuleInfo(address);
+
+    if(module_info)
+    {
+        return ((uint32_t)module_info->module_end_address - (uint32_t)module_info->module_start_address);
+    }
+
+    return 0;
 }
 
 bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length)
 {
-#if !defined USE_SERIAL_FLASH
-    if(length >> 1)
+#ifdef USE_SERIAL_FLASH
+    return false;
+#else
+    if(length)
     {
-        uint32_t crc_offset = length - sizeof(uint32_t); //last word of binary file
-
-        uint32_t expectedCRC = __REV((*(__IO uint32_t*) (address + crc_offset)));
-        uint32_t computedCRC = HAL_Core_Compute_CRC32((uint8_t*)address, crc_offset);
+        uint32_t expectedCRC = __REV((*(__IO uint32_t*) (address + length)));
+        uint32_t computedCRC = Compute_CRC32((uint8_t*)address, length);
 
         if (expectedCRC == computedCRC)
         {
             return true;
         }
     }
-#endif
     return false;
-}
-
-void HAL_FLASH_End(void) 
-{
-    FLASH_End();
+#endif
 }
 
 void copy_dct(void* target, uint16_t offset, uint16_t length) {
@@ -146,11 +177,6 @@ void copy_dct(void* target, uint16_t offset, uint16_t length) {
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
     copy_dct(server_addr, DCT_SERVER_ADDRESS_OFFSET, DCT_SERVER_ADDRESS_SIZE);
-}
-
-uint32_t HAL_OTA_Flashed_Length(void)
-{
-    return OTA_Flashed_Length;
 }
 
 bool HAL_OTA_Flashed_GetStatus(void) 

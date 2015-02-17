@@ -111,6 +111,8 @@ void Finish_Update(void);
 uint16_t Bootloader_Get_Version(void);
 void Bootloader_Update_Version(uint16_t bootloaderVersion);
 
+uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize);
+
 /* External variables --------------------------------------------------------*/
 extern uint8_t USE_SYSTEM_FLAGS;
 

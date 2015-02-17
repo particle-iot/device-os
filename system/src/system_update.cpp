@@ -92,15 +92,14 @@ void Spark_Finish_Firmware_Update(void)
     }
     else
     {
-        //The following condition will only work on photon
-        //HAL_OTA_Flashed_Length() should return the actual bytes downloaded via OTA
-        //However HAL_OTA_Flashed_Length() returns a multiple of MAX CHUNK SIZE which fails crc verification
-        if (HAL_FLASH_VerifyCRC32(HAL_OTA_FlashAddress(), HAL_OTA_Flashed_Length()) != false)
+        //Monolithic firmware - will only work on photon
+        uint32_t moduleAddress = HAL_FLASH_ModuleAddress(HAL_OTA_FlashAddress());
+        uint32_t moduleLength = HAL_FLASH_ModuleLength(HAL_OTA_FlashAddress());
+
+        if (HAL_FLASH_VerifyCRC32(HAL_OTA_FlashAddress(), moduleLength) != false)
         {
-            //HAL_OTA_Flashed_Length() should return the actual bytes downloaded via OTA
             HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, HAL_OTA_FlashAddress(),
-                                                    FLASH_INTERNAL, (HAL_OTA_FlashAddress() - HAL_OTA_Flashed_Length()),
-                                                    HAL_OTA_Flashed_Length());
+                                                    FLASH_INTERNAL, moduleAddress, moduleLength);
         }
 
         //Reset the system to complete the OTA update

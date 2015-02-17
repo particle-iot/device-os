@@ -77,10 +77,11 @@ void HAL_FLASH_WriteProtectionDisable(uint32_t FLASH_Sectors);
 
 void HAL_FLASH_Begin(uint32_t address, uint32_t length);
 uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t length);
-bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length);
 void HAL_FLASH_End(void);
 
-uint32_t HAL_OTA_Flashed_Length(void);
+uint32_t HAL_FLASH_ModuleAddress(uint32_t address);
+uint32_t HAL_FLASH_ModuleLength(uint32_t address);
+bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length);
 
 // todo - the status is not hardware dependent. It's just the current code has
 // status updates and flash writing intermixed. No time to refactor into something cleaner.

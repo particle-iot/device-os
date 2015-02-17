@@ -735,6 +735,54 @@ void Bootloader_Update_Version(uint16_t bootloaderVersion)
     Save_SystemFlags();
 }
 
+/**
+ * @brief  Computes the 32-bit CRC of a given buffer of byte data.
+ * @param  pBuffer: pointer to the buffer containing the data to be computed
+ * @param  BufferSize: Size of the buffer to be computed
+ * @retval 32-bit CRC
+ */
+uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
+{
+    /* Hardware CRC32 calculation */
+    uint32_t i, j;
+    uint32_t Data;
+
+    CRC_ResetDR();
+
+    i = bufferSize >> 2;
+
+    while (i--)
+    {
+        Data = *((uint32_t *)pBuffer);
+        pBuffer += 4;
+
+        Data = __RBIT(Data);//reverse the bit order of input Data
+        CRC->DR = Data;
+    }
+
+    Data = CRC->DR;
+    Data = __RBIT(Data);//reverse the bit order of output Data
+
+    i = bufferSize & 3;
+
+    while (i--)
+    {
+        Data ^= (uint32_t)*pBuffer++;
+
+        for (j = 0 ; j < 8 ; j++)
+        {
+            if (Data & 1)
+                Data = (Data >> 1) ^ 0xEDB88320;
+            else
+                Data >>= 1;
+        }
+    }
+
+    Data ^= 0xFFFFFFFF;
+
+    return Data;
+}
+
 static volatile system_tick_t system_1ms_tick = 0;
 
 void System1MsTick(void)
@@ -746,3 +794,4 @@ system_tick_t GetSystem1MsTick()
 {
     return system_1ms_tick;
 }
+
