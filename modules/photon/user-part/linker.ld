@@ -11,11 +11,19 @@ MEMORY
 
 SECTIONS
 {
-    expected_dynalib_start = ORIGIN (APP_FLASH) ;
+    link_module_start = .;
     
+    .module_info :
+    {
+        . = ALIGN(4);
+        link_module_info_start = .;
+        KEEP(*module_info.o(.rodata.module_info))
+        link_module_info_end = .;
+    }>APP_FLASH AT> APP_FLASH
+
     .text :
     {
-        link_module_start = .;
+        expected_dynalib_start = ORIGIN (APP_FLASH) + 24 ;
         link_dynalib_start = .;
         KEEP(*(*.user_part_module))
         link_dynalib_end = . ;
@@ -121,6 +129,11 @@ SECTIONS
         link_stack_end = .;
     }> SRAM AT> SRAM
 
+    .module_end : 
+    {
+        link_module_end = .;
+    }> APP_FLASH AT>APP_FLASH
+
     /DISCARD/ :
     {
         *(.ARM.attributes*)
@@ -163,5 +176,6 @@ ASSERT ( USER_FIRMWARE_IMAGE_SIZE == LENGTH(APP_FLASH), "User firmware size and 
 
 ASSERT ( link_heap_start > ORIGIN(SRAM) && link_heap_start < sram_end, "link_heap_start is in the wrong memory space" );
 
-ASSERT ( link_length_start < link_length_end, "length information not linked" );
-ASSERT ( length_info == link_length_start, "length start not where expected" );
+ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
+ASSERT ( user_module_info == link_module_info_start, "module info start not where expected" ); 
+ASSERT ( user_module_info_end == link_module_info_end, "module info end not where expected" );

@@ -162,6 +162,7 @@ SECTIONS
         link_module_end = .;
     }> APP_FLASH AT>APP_FLASH
 
+    /** Todo need to allocate 4 bytes for the CRC without writing to the flash area. **/
 }
 
 /* Declare libc Heap to start at end of allocated RAM */
@@ -190,6 +191,5 @@ ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_l
 INCLUDE module_export.ld
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
-
 ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" ); 
 ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );
