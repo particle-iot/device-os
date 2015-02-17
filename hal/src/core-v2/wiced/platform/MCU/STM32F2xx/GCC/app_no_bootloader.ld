@@ -20,6 +20,7 @@ SECTIONS
 
     .vectors :
     {
+        link_module_start = .;
         link_interrupt_vectors_location = .;
         KEEP(*(*.interrupt_vector_table))
         link_interrupt_vectors_location_end = .;
@@ -27,10 +28,17 @@ SECTIONS
 
     interrupt_vectors_length = link_interrupt_vectors_location_end - link_interrupt_vectors_location;
 
+    .module_info :
+    {
+        . = ALIGN(4);
+        link_module_info_start = .;
+        KEEP(*module_info.o(.rodata.module_info))
+        link_module_info_end = .;
+    }>APP_FLASH AT> APP_FLASH
+
     .text :
     {
         . = ALIGN(4);
-
         link_code_location = .;
         KEEP(*(.text.irq ))
         *(.text .text.* .gnu.linkonce.t.*)
@@ -149,6 +157,11 @@ SECTIONS
         *(.glue*)
     }
 
+    .module_end : 
+    {
+        link_module_end = .;
+    }> APP_FLASH AT>APP_FLASH
+
 }
 
 /* Declare libc Heap to start at end of allocated RAM */
@@ -173,3 +186,10 @@ PROVIDE( VTOR_Length = interrupt_vectors_length );
 
 ASSERT( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );
 ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location ) == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
+
+INCLUDE module_export.ld
+
+ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
+
+ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" ); 
+ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );
