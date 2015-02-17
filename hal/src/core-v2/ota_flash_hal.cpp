@@ -117,7 +117,7 @@ static const module_info_t* HAL_FLASH_ModuleInfo(uint32_t address)
 #else
     if (((*(__IO uint32_t*)address) & APP_START_MASK) == 0x20000000)
     {
-        address = 0x8020184;
+        address = address + 0x184;
     }
 
     const module_info_t* module_info = (const module_info_t*)address;

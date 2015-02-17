@@ -99,7 +99,8 @@ void Spark_Finish_Firmware_Update(void)
         if (HAL_FLASH_VerifyCRC32(HAL_OTA_FlashAddress(), moduleLength) != false)
         {
             HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, HAL_OTA_FlashAddress(),
-                                                    FLASH_INTERNAL, moduleAddress, moduleLength);
+                                                    FLASH_INTERNAL, moduleAddress,
+                                                    (moduleLength + 4));//+4 to copy the CRC too
         }
 
         //Reset the system to complete the OTA update
