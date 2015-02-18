@@ -106,9 +106,6 @@ DYNALIB_FN(hal,socket_close)
 DYNALIB_FN(hal,socket_reset_blocking_call)
 DYNALIB_FN(hal,socket_create_nonblocking_server)
 DYNALIB_FN(hal,socket_accept)
-DYNALIB_FN_PLACEHOLDER(hal)
-DYNALIB_FN_PLACEHOLDER(hal)
-DYNALIB_FN_PLACEHOLDER(hal)        
 
 DYNALIB_FN(hal,HAL_Get_Sys_Health)
 DYNALIB_FN(hal,HAL_Set_Sys_Health)
@@ -122,6 +119,7 @@ DYNALIB_FN(hal,USB_USART_Init)
 DYNALIB_FN(hal,USB_USART_Available_Data)
 DYNALIB_FN(hal,USB_USART_Receive_Data)
 DYNALIB_FN(hal,USB_USART_Send_Data)
+DYNALIB_FN(hal,USB_USART_Baud_Rate)
 #endif     
         
 DYNALIB_FN(hal,HAL_watchdog_reset_flagged)
