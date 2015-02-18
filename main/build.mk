@@ -12,7 +12,7 @@ endif
 ifdef APP
 # when TARGET_FILE is defined on the command line, 
 TARGET_FILE_NAME ?= $(notdir $(APP))
-TARGET_DIR_NAME ?= $(USRSRC)
+TARGET_DIR_NAME ?= applications/$(APP)
 endif
 
 ifdef APPDIR
@@ -28,5 +28,5 @@ endif
 
 ifdef TEST
 TARGET_FILE_NAME ?= $(notdir $(TEST))
-TARGET_DIR_NAME ?= $(USRSRC)
+TARGET_DIR_NAME ?= test/$(TEST)
 endif
