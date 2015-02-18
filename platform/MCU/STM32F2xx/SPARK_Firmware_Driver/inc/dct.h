@@ -18,7 +18,9 @@ extern "C" {
 #include "static_assert.h"
 #include "stddef.h"     // for offsetof in C
 
-#define FLASH_MODULES_MAX 5
+#define MAX_MODULES_SLOT    5 //Max modules
+#define FAC_RESET_SLOT      0 //Factory reset module index
+#define GEN_START_SLOT      1 //Generic module start index
 
 /**
  * Custom extensions to the DCT data stored
@@ -36,7 +38,7 @@ typedef struct application_dct {
     uint8_t reserved1[224];  
     uint8_t server_public_key[768];     // 4096 bits
     uint8_t padding[2];                 // align to 4 byte boundary
-    platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];//slot 0 is factory reset module
+    platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];//100 bytes
     uint8_t reserved2[1280+26];    
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
