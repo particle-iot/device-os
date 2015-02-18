@@ -66,6 +66,9 @@ ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o.d)))
 
+ifeq (y,$(MODULAR_FIRMWARE))
+MODULAR_EXT = -m
+endif
 
 ifeq ("$(TARGET_TYPE)","a") 
 TARGET_FILE_PREFIX = lib

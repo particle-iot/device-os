@@ -4,7 +4,7 @@ HAL_MODULE_PATH=.
 
 # Target this makefile is building.
 TARGET_TYPE = a
-BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(HAL_TEST_FLAVOR)
+BUILD_PATH_EXT = $(HAL_BUILD_PATH_EXT)
 
 DEPENDENCIES = platform services dynalib 
 

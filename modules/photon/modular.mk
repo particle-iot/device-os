@@ -1,6 +1,8 @@
 # Makefile that included by all modules - this defines the layout of the various modules
 
 MODULAR_FIRMWARE=y
+# propagate to sub makes
+MAKE_ARGS += MODULAR_FIRMWARE=y
 USER_FIRMWARE_IMAGE_SIZE=0x20000
 USER_FIRMWARE_IMAGE_LOCATION=0x80A0000
 
