@@ -106,12 +106,23 @@ void Get_SerialNum(void)
  * Input          : baudRate.
  * Return         : None.
  *******************************************************************************/
+static uint32_t configuredBautRate;
+
 void USB_USART_Init(uint32_t baudRate)
 {
-    if (baudRate)
-        SPARK_USB_Setup();
-    else
-        SPARK_USB_Teardown();
+    if (baudRate!=configuredBautRate) {
+        if (configuredBautRate)
+            SPARK_USB_Teardown();
+        configuredBautRate = 0;
+        if (baudRate)
+            SPARK_USB_Setup();
+        configuredBautRate = baudRate;
+    }    
+}
+
+unsigned USB_USART_Baud_Rate(void) 
+{
+    return configuredBautRate;
 }
 
 

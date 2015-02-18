@@ -32,13 +32,11 @@
 
 class USBSerial : public Stream
 {
-private:
-    static int     speed;
 public:
 	// public methods
 	USBSerial();
 
-        int baud() { return speed; }
+        unsigned int baud() { return USB_USART_Baud_Rate(); }
         
 	void begin(long speed);
 	void end();

@@ -119,13 +119,18 @@ void Get_SerialNum(void)
  *******************************************************************************/
 void USB_USART_Init(uint32_t baudRate)
 {
-  linecoding.bitrate = baudRate;
-  if (baudRate)
-    SPARK_USB_Setup();      
-  else
-    SPARK_USB_Teardown();  
+    if (linecoding.bitrate!=baudRate) {
+        SPARK_USB_Teardown();
+        if (baudRate)
+            SPARK_USB_Setup();              
+        linecoding.bitrate = baudRate;
+    }        
 }
 
+unsigned int USB_USART_Baud_Rate(void) 
+{
+    linecoding.bitrate
+}
 
 /*******************************************************************************
  * Function Name  : USB_USART_Available_Data.

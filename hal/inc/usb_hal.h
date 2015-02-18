@@ -70,6 +70,8 @@ void Get_SerialNum(void);
  */
 void USB_USART_Init(uint32_t baudRate);
 
+unsigned int USB_USART_Baud_Rate(void);
+
 /**
  * Retrieves the number of bytes of data available.
  * @return 
