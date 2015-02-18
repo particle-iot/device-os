@@ -36,7 +36,7 @@ typedef struct application_dct {
     uint8_t reserved1[224];  
     uint8_t server_public_key[768];     // 4096 bits
     uint8_t padding[2];                 // align to 4 byte boundary
-    platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];//5x20 = 100 bytes
+    platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];//slot 0 is factory reset module
     uint8_t reserved2[1280+26];    
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];

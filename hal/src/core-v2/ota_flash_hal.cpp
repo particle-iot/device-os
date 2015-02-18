@@ -80,6 +80,25 @@ bool HAL_FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t so
                                                length);
 }
 
+bool HAL_FLASH_AddToFactoryResetModuleSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                                           uint8_t destinationDeviceID, uint32_t destinationAddress,
+                                           uint32_t length)
+{
+    return FLASH_AddToFactoryResetModuleSlot(sourceDeviceID, sourceAddress,
+                                             destinationDeviceID, destinationAddress,
+                                             length);
+}
+
+bool HAL_FLASH_ClearFactoryResetModuleSlot(void)
+{
+    return FLASH_ClearFactoryResetModuleSlot();
+}
+
+bool HAL_FLASH_RestoreFromFactoryResetModuleSlot(void)
+{
+    return FLASH_RestoreFromFactoryResetModuleSlot();
+}
+
 void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
     FLASH_UpdateModules(flashModulesCallback);

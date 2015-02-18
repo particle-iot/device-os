@@ -70,6 +70,11 @@ bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
 bool HAL_FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
                                              uint8_t destinationDeviceID, uint32_t destinationAddress,
                                              uint32_t length);
+bool HAL_FLASH_AddToFactoryResetModuleSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                                           uint8_t destinationDeviceID, uint32_t destinationAddress,
+                                           uint32_t length);
+bool HAL_FLASH_ClearFactoryResetModuleSlot(void);
+bool HAL_FLASH_RestoreFromFactoryResetModuleSlot(void);
 void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
 void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors);

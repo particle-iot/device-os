@@ -392,12 +392,13 @@ bool FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t source
     //Read the flash modules info from the dct area
     const platform_flash_modules_t* dct_app_data = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
     platform_flash_modules_t flash_modules[FLASH_MODULES_MAX];
-    uint8_t flash_module_index = 0;
+    uint8_t flash_module_index = FLASH_MODULES_MAX;
 
     memcpy(flash_modules, dct_app_data, sizeof(flash_modules));
 
     //fill up the next available modules slot and return true else false
-    for (flash_module_index = 0; flash_module_index < FLASH_MODULES_MAX; flash_module_index++)
+    //slot 0 is reserved for factory reset module so start from flash_module_index = 1
+    for (flash_module_index = 1; flash_module_index < FLASH_MODULES_MAX; flash_module_index++)
     {
         if(flash_modules[flash_module_index].magicNumber == 0xABCD)
         {
@@ -423,14 +424,80 @@ bool FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t source
     return false;
 }
 
+bool FLASH_AddToFactoryResetModuleSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
+                                       uint8_t destinationDeviceID, uint32_t destinationAddress,
+                                       uint32_t length)
+{
+    //Read the flash modules info from the dct area
+    const platform_flash_modules_t* dct_app_data = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
+    platform_flash_modules_t flash_modules[1];//slot 0 is factory reset module
+
+    memcpy(flash_modules, dct_app_data, sizeof(flash_modules));
+
+    flash_modules[0].sourceDeviceID = sourceDeviceID;
+    flash_modules[0].sourceAddress = sourceAddress;
+    flash_modules[0].destinationDeviceID = destinationDeviceID;
+    flash_modules[0].destinationAddress = destinationAddress;
+    flash_modules[0].length = length;
+    flash_modules[0].magicNumber = 0x0FAC;
+
+    dct_write_app_data(&flash_modules[0],
+                       offsetof(application_dct_t, flash_modules[0]),
+                       sizeof(platform_flash_modules_t));
+
+    return true;
+}
+
+bool FLASH_ClearFactoryResetModuleSlot(void)
+{
+    //Read the flash modules info from the dct area
+    const platform_flash_modules_t* flash_modules = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
+
+    //Set slot 0 factory reset module elements to 0 without sector erase
+    FLASH_Unlock();
+
+    uint32_t address = (uint32_t)&flash_modules[0];
+    uint32_t length = sizeof(platform_flash_modules_t) >> 2;
+
+    while(length--)
+    {
+        FLASH_ProgramWord(address, 0);
+        address += 4;
+    }
+
+    FLASH_Lock();
+
+    return true;
+}
+
+bool FLASH_RestoreFromFactoryResetModuleSlot(void)
+{
+    //Read the flash modules info from the dct area
+    const platform_flash_modules_t* flash_modules = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
+    bool restoreFactoryReset = false;
+
+    if(flash_modules[0].magicNumber == 0x0FAC)
+    {
+        //Restore Factory Reset Firmware (slot 0 is factory reset module)
+        restoreFactoryReset = FLASH_CopyMemory(flash_modules[0].sourceDeviceID,
+                                               flash_modules[0].sourceAddress,
+                                               flash_modules[0].destinationDeviceID,
+                                               flash_modules[0].destinationAddress,
+                                               flash_modules[0].length);
+    }
+
+    return restoreFactoryReset;
+}
+
 //This function called in bootloader to perform the memory update process
 void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
     //Read the flash modules info from the dct area
     const platform_flash_modules_t* flash_modules = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
-    uint8_t flash_module_index = 0;
+    uint8_t flash_module_index = FLASH_MODULES_MAX;
 
-    for (flash_module_index = 0; flash_module_index < FLASH_MODULES_MAX; flash_module_index++)
+    //slot 0 is reserved for factory reset module so start from flash_module_index = 1
+    for (flash_module_index = 1; flash_module_index < FLASH_MODULES_MAX; flash_module_index++)
     {
         if(flash_modules[flash_module_index].magicNumber == 0xABCD)
         {
@@ -575,7 +642,7 @@ void FLASH_Restore(uint32_t FLASH_Address)
 #ifdef USE_SERIAL_FLASH
     FLASH_CopyMemory(FLASH_SERIAL, FLASH_Address, FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
 #else
-    FLASH_CopyMemory(FLASH_INTERNAL, FLASH_Address, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FLASH_Address-USER_FIRMWARE_IMAGE_LOCATION);
+    //Not Applicable on Photon
 #endif
 }
 

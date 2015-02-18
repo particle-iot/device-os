@@ -623,8 +623,8 @@ void FACTORY_Flash_Reset(void)
     // Restore the Factory programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
 #else
-    // Restore the Factory programmed application firmware from Internal Flash
-    FLASH_Restore(INTERNAL_FLASH_FAC_ADDRESS);
+    // Restore the Factory firmware using flash_modules application dct info
+    FLASH_RestoreFromFactoryResetModuleSlot();
 #endif
 
     system_flags.Factory_Reset_SysFlag = 0xFFFF;
