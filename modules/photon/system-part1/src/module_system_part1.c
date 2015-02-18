@@ -3,6 +3,35 @@
 #include <stddef.h>
 #include <string.h>
 
+/**
+ * An empty no arg, no result function
+ */
+typedef void  (*constructor_ptr_t)(void);
+
+/**
+ * Pointer to the reset handler;
+ */
+extern void* system_part2_reset_handler_location;
+extern char stack_end;
+
+/**
+ * No register saving needed.
+ */
+__attribute__((naked)) void system_part1_reset_handler();
+
+void system_part1_reset_handler() {
+    constructor_ptr_t reset_handler = (constructor_ptr_t)*&system_part2_reset_handler_location;
+    reset_handler();
+}
+
+/**
+ * The fake interrupt vectors table that redirects to part2.
+ */
+const void* const system_part1_boot_table[97] = {
+    &stack_end,
+    &system_part1_reset_handler
+};
+
 DYNALIB_TABLE_EXTERN(communication);
 DYNALIB_TABLE_EXTERN(wifi_resource);
 DYNALIB_TABLE_EXTERN(system_module_part1);
@@ -46,7 +75,6 @@ void* module_system_part1_pre_init()
 /**
  * Array of C++ static constructors.
  */
-typedef void  (*constructor_ptr_t)(void);
 extern constructor_ptr_t link_constructors_location[];
 extern constructor_ptr_t link_constructors_end;
 #define link_constructors_size   ((unsigned long)&link_constructors_end  -  (unsigned long)&link_constructors_location )

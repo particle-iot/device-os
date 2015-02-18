@@ -15,7 +15,7 @@ MEMORY
 {
     DCT1_FLASH                 (rx)  : ORIGIN = 0x08004000,     LENGTH = 16K
     DCT2_FLASH                 (rx)  : ORIGIN = 0x08008000,     LENGTH = 16K
-    APP_FLASH                  (rx)  : ORIGIN = 0x08020000,     LENGTH = 256K
+    APP_FLASH                  (rx)  : ORIGIN = 0x08060000,     LENGTH = 256K
 
     SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
 }
@@ -23,6 +23,11 @@ MEMORY
 
 SECTIONS
 {
+    .module_start :
+    {
+        link_module_start = .;
+    } >APP_FLASH AT>APP_FLASH
+
     .vectors :
     {
         link_interrupt_vectors_location = .;
@@ -31,12 +36,19 @@ SECTIONS
     }>APP_FLASH  AT> APP_FLASH
 
     interrupt_vectors_length = link_interrupt_vectors_location_end - link_interrupt_vectors_location;
-    /* 97*4=388 is vector table size. Add 3 additional entries. */
-    expected_dynalib_start = ORIGIN (APP_FLASH) + 0x190 ;
+
+    .module_info :
+    {
+        . = ALIGN(4);
+        link_module_info_start = .;
+        KEEP(*module_info.o(.rodata.module_info))
+        link_module_info_end = .;
+    }>APP_FLASH AT> APP_FLASH
+
+    /* 97*4=388 is vector table size. */
+    expected_dynalib_start = ORIGIN (APP_FLASH) + 0x184 + 24;
     .dynalib :
     {
-        /* additional space for a few extra ISRs */
-        . = . + 12 ;
         link_dynalib_start = . ;
         KEEP(*(*.system_part2_module))
         link_dynalib_end = . ;
@@ -165,6 +177,11 @@ SECTIONS
         *(.glue*)
     }
 
+    .module_end : 
+    {
+        link_module_end = .;
+    }> APP_FLASH AT>APP_FLASH
+
 }
 
 /* Declare libc Heap to start at end of allocated RAM */
@@ -226,3 +243,7 @@ ASSERT ( ( link_heap_location + min_heap_size ) < link_stack_location, "Insuffic
 ASSERT ( link_heap_location <= system_static_ram_end , "Static RAM area is too large" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
+
+ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
+ASSERT ( system_part2_module_info_start == link_module_info_start, "part2 module info start not where expected" ); 
+ASSERT ( system_part2_module_info_end == link_module_info_end, "part2 module info end not where expected" );

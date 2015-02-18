@@ -1,5 +1,30 @@
 
-system_part2_module_table = 0x8020190;
+/**
+ * The load address of the part2 module image
+ */
+system_part2_start = 0x8060000;
+
+/**
+ * A fake VTOR table so that the bootloader can jump to this module and set up the stack,
+ * plus that the module_info resides at the correct offset.
+*/
+system_part2_vtor_table_size = 0x184;
+
+system_part2_module_info_size = 24;
+
+system_part2_vtor_table_start = system_part2_start;
+
+system_part2_module_info_start = system_part2_start + system_part2_vtor_table_size;
+
+system_part2_module_info_end = system_part2_module_info_start + system_part2_module_info_size;
+
+/**
+ * The location of the module export table.
+ */
+system_part2_module_table = system_part2_module_info_end;
+
+
+system_part2_reset_handler_location = system_part2_vtor_table_start + 4;
 
 stack_size = 1400;
 

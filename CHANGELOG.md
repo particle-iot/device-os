@@ -17,6 +17,7 @@
  - `Spark.sleep()` changed to `System.sleep()` and similarly for `deviceID()` [#390](https://github.com/spark/firmware/issues/390)
  - Listening mode uses existing serial connection if already opened. [#384](https://github.com/spark/firmware/issues/384)
  - `Spark.publish("event", PRIVATE)` shorthand - [#376](https://github.com/spark/firmware/issues/376)
+ - Improved integrity checks for firmware images
 
 ### BUGFIXES
 
@@ -35,8 +36,10 @@
  - Platform: hardware dependencies are factored out from wiring into a hardware abstraction layer
  - Repo: all 3 spark repos (core-common-lib, core-communication-lib, core-firmware) are combined into this repo. 
  - Modularization: factored common-lib into `platform`, `services` and `hal` modules. 
- - Modularization: factored core-firmware into `wiring`, `system` and `user` modules. 
- - Build system: fancy shmancy new build system - [build/readme.md](build/readme.md)
+ - Modularization: factored core-firmware into `wiring`, `system`, 'main' and `user` modules. 
+ - Modularization: user code compiled as a separate library in the 'user' module
+ - Build system: fancy new build system - [build/readme.md](build/readme.md)
+ - Modularization: modules folder containing dynamically linked modules for the Photon
 
 
 

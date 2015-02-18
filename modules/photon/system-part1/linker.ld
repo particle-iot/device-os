@@ -1,10 +1,11 @@
 
 
-/* todo - import defines for mem layout from system module 1 */
+INCLUDE module_system_part1_export.ld
+INCLUDE module_system_part2_export.ld
 
 MEMORY
 {
-    APP_FLASH (rx)  : ORIGIN = 0x08060000, LENGTH = 256K
+    APP_FLASH (rx)  : ORIGIN = 0x08020000, LENGTH = 256K
 
     /* todo - SRAM must start also at an offset after what has been reserved for system-module 1 */
     SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 256
@@ -13,6 +14,26 @@ MEMORY
 
 SECTIONS
 {
+    .module_start : {
+        link_module_start = .;
+    } >APP_FLASH AT>APP_FLASH
+
+    .boot_jump : /* immitation vector table */
+    {
+        . = ALIGN(512);
+        link_boot_table_start = .;
+        KEEP(*(*.system_part1_boot_table))
+        link_boot_table_end = .;
+    } >APP_FLASH AT> APP_FLASH
+
+    .module_info :
+    {
+        . = ALIGN(4);
+        link_module_info_start = .;
+        KEEP(*module_info.o(.rodata.module_info))
+        link_module_info_end = .;
+    }>APP_FLASH AT> APP_FLASH
+
     .dynalib :
     {
         link_module_jump_table_start = . ;
@@ -119,16 +140,34 @@ SECTIONS
         *(.eh_frame)
         *(.glue*)
     }
+
+    .module_end : 
+    {
+        link_module_end = .;
+    }> APP_FLASH AT>APP_FLASH
+
 }
 
-ASSERT( link_module_jump_table_start == ORIGIN(APP_FLASH), "module master jump table should be at start of APP FLASH" );
-ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module master jump table not linked" );
+/**
+ * These asserts verify that things are at their expected or exported location.
+ * The export linker file defines symbols in absolute terms (a hard-coded address)
+ * These asserts verify the exported symbol values match the actual values assigned during the link.
+ */
 
-INCLUDE module_system_part1_export.ld
+ASSERT( link_boot_table_start == ORIGIN(APP_FLASH), "boot table should be at start of APP FLASH" );
+ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module master jump table not linked" );
 
 ASSERT ( link_module_jump_table_start == system_part1_module_table, "Export address for module table is incorrect" );
 ASSERT ( link_end_of_static_ram < system_part1_module_ram_end, "static RAM use exceeds allocated space" );
 
-INCLUDE module_system_part2_export.ld
-
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
+
+ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
+ASSERT ( system_part1_module_info_start == link_module_info_start, "module info start not where expected" ); 
+ASSERT ( system_part1_module_info_end == link_module_info_end, "module info end not where expected" );
+
+ASSERT ( link_boot_table_start == ORIGIN(APP_FLASH), "boot table should be at start of flash region" );
+ASSERT ( system_part1_boot_table_start == link_boot_table_start, "boot table export address is not correct" );
+
+link_boot_table_size = link_boot_table_end - link_boot_table_start ;
+ASSERT ( link_boot_table_size == system_part1_boot_table_size, "boot table not linked or incorrect size" );

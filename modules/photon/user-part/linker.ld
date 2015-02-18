@@ -10,9 +10,10 @@ MEMORY
 }
 
 SECTIONS
-{
-    link_module_start = .;
-    
+{    
+    .module_start : {
+        link_module_start = .;
+    } > APP_FLASH AT>APP_FLASH
     .module_info :
     {
         . = ALIGN(4);
@@ -104,11 +105,6 @@ SECTIONS
         link_global_data_end = .;        
         . = ALIGN(., 4);
     }> SRAM AT> APP_FLASH
-
-    .module_end : 
-    {
-        link_module_end = .;
-    }> APP_FLASH AT>APP_FLASH
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
