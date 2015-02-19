@@ -232,20 +232,23 @@ int main(void)
         TimingBUTTON = 10000;
         while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
         {
-            if(TimingBUTTON == 0x00)
+            if(TimingBUTTON == 0)
             {
                 // if pressed for 10 sec, enter Factory Reset Mode
-                OTA_FLASH_AVAILABLE = 0;
-                REFLASH_FROM_BACKUP = 0;
-                USB_DFU_MODE = 0;
-                FACTORY_RESET_MODE = 1;
                 // This tells the WLAN setup to clear the WiFi user profiles on bootup
+                LED_SetRGBColor(RGB_COLOR_WHITE);
                 SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0001;
                 break;
             }
+            else if(!FACTORY_RESET_MODE && TimingBUTTON <= 3500)
+            {
+                // if pressed for > 6.5 sec, enter Safe mode
+                LED_SetRGBColor(RGB_COLOR_GREEN);
+                FACTORY_RESET_MODE = 1;
+            }
             else if(!USB_DFU_MODE && TimingBUTTON <= 7000)
             {
-                // if pressed for >= 3 sec, enter USB DFU Mode
+                // if pressed for > 3 sec, enter USB DFU Mode
                 LED_SetRGBColor(RGB_COLOR_YELLOW);
                 OTA_FLASH_AVAILABLE = 0;
                 REFLASH_FROM_BACKUP = 0;
@@ -266,8 +269,11 @@ int main(void)
     {
         if (FACTORY_RESET_MODE == 1)
         {
-            LED_SetRGBColor(RGB_COLOR_WHITE);
-            // Restore the Factory Firmware from external flash
+            if (SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) == 0x0001)
+                LED_SetRGBColor(RGB_COLOR_WHITE);
+            else
+                LED_SetRGBColor(RGB_COLOR_GREEN);
+            // Restore the Factory Firmware
             FACTORY_Flash_Reset();
         } else {
             // This else clause is only for JTAG debugging
