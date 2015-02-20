@@ -459,9 +459,13 @@ bool FLASH_AddToFactoryResetModuleSlot(uint8_t sourceDeviceID, uint32_t sourceAd
     flash_modules[FAC_RESET_SLOT].magicNumber = 0x0FAC;
     flash_modules[FAC_RESET_SLOT].sourceVerifyCRC = sourceVerifyCRC;
 
-    dct_write_app_data(&flash_modules[FAC_RESET_SLOT],
-                       offsetof(application_dct_t, flash_modules[FAC_RESET_SLOT]),
-                       sizeof(platform_flash_modules_t));
+    if(memcmp(flash_modules, dct_app_data, sizeof(flash_modules)) != 0)
+    {
+        //Only write dct app data if factory reset module slot is different
+        dct_write_app_data(&flash_modules[FAC_RESET_SLOT],
+                           offsetof(application_dct_t, flash_modules[FAC_RESET_SLOT]),
+                           sizeof(platform_flash_modules_t));
+    }
 
     return true;
 }
@@ -736,9 +740,11 @@ void FLASH_Backup(uint32_t FLASH_Address)
 void FLASH_Restore(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
+    //CRC verification Disabled by default
     FLASH_CopyMemory(FLASH_SERIAL, FLASH_Address, FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE, false);
 #else
-    FLASH_CopyMemory(FLASH_INTERNAL, FLASH_Address, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FLASH_Address-USER_FIRMWARE_IMAGE_LOCATION, true);
+    //CRC verification Enabled by default
+    FLASH_CopyMemory(FLASH_INTERNAL, FLASH_Address, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE, true);
 #endif
 }
 
