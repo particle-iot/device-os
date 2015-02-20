@@ -116,16 +116,16 @@ bool FLASH_CheckValidAddressRange(uint8_t flashDeviceID, uint32_t startAddress, 
 bool FLASH_EraseMemory(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length);
 bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
                       uint8_t destinationDeviceID, uint32_t destinationAddress,
-                      uint32_t length);
+                      uint32_t length, bool sourceVerifyCRC);
 bool FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
                          uint8_t destinationDeviceID, uint32_t destinationAddress,
                          uint32_t length);
 bool FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
                                          uint8_t destinationDeviceID, uint32_t destinationAddress,
-                                         uint32_t length);
+                                         uint32_t length, bool sourceVerifyCRC);
 bool FLASH_AddToFactoryResetModuleSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
                                        uint8_t destinationDeviceID, uint32_t destinationAddress,
-                                       uint32_t length);
+                                       uint32_t length, bool sourceVerifyCRC);
 bool FLASH_ClearFactoryResetModuleSlot(void);
 bool FLASH_RestoreFromFactoryResetModuleSlot(void);
 void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
