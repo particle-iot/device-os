@@ -85,11 +85,11 @@ extern "C" {
     #endif    
     
     /* Internal Flash memory address where Factory programmed monolithic core firmware is located */
-    #define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(CORE_FW_ADDRESS + FIRMWARE_IMAGE_SIZE))
+    #define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
     /* Internal Flash memory address where monolithic core firmware will be saved for backup/restore */
-    //#define INTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)INTERNAL_FLASH_FAC_ADDRESS)
+    //#define INTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
     /* Internal Flash memory address where OTA upgraded monolithic core firmware will be saved */
-    #define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)INTERNAL_FLASH_FAC_ADDRESS)
+    #define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
 
     #ifdef USE_SERIAL_FLASH
     /* External Flash memory address where Factory programmed core firmware is located */
