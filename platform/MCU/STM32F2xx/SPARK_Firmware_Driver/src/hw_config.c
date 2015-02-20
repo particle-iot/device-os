@@ -627,11 +627,9 @@ void FACTORY_Flash_Reset(void)
     FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
 #else
     // Restore the Factory firmware using flash_modules application dct info
-    if (!FLASH_RestoreFromFactoryResetModuleSlot())
-    {
-        // Restore the Factory programmed application firmware from Internal Flash
-        FLASH_Restore(INTERNAL_FLASH_FAC_ADDRESS);
-    }
+    FLASH_RestoreFromFactoryResetModuleSlot();
+    //FLASH_AddToFactoryResetModuleSlot() is now called in HAL_Core_Config() in core_hal.c,
+    //So FLASH_Restore(INTERNAL_FLASH_FAC_ADDRESS) is not required and hence commented
 #endif
 
     system_flags.Factory_Reset_SysFlag = 0xFFFF;
