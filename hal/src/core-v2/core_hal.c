@@ -135,9 +135,15 @@ void HAL_Core_Config(void)
     LED_On(LED_RGB);
 
 #ifdef USE_SERIAL_FLASH
+    //Initialize Serial Flash
     sFLASH_Init();
+
+    //CRC verification Disabled by default
+    FLASH_AddToFactoryResetModuleSlot(FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE, false);
+#else
+    //CRC verification Enabled by default
+    FLASH_AddToFactoryResetModuleSlot(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE, true);
 #endif
-        
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
