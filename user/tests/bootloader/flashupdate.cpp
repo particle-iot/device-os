@@ -32,7 +32,7 @@ test(FLASH_UPDATE_MODULES_Test_Passed)
 
     result = HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, 0x08020000,
                                                      FLASH_INTERNAL, 0x080C0000,
-                                                     0x20000);
+                                                     0x20000, false);
 
     assertEqual(result, true);
 
