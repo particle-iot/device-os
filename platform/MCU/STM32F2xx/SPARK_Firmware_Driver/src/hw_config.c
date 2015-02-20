@@ -109,6 +109,9 @@ void Set_System(void)
     /* NVIC configuration */
     NVIC_Configuration();
 
+    /* Enable CRC clock */
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_CRC, ENABLE);
+
     /* Enable SYSCFG clock */
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
 

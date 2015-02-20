@@ -120,9 +120,6 @@ void HAL_Core_Config(void)
 
     SysTick_Configuration();
 
-    /* Enable CRC clock */
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_CRC, ENABLE);
-
     HAL_RTC_Configuration();
 
     HAL_RNG_Configuration();
