@@ -54,11 +54,11 @@ uint16_t HAL_OTA_ChunkSize()
 
 bool HAL_FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
                           uint8_t destinationDeviceID, uint32_t destinationAddress,
-                          uint32_t length)
+                          uint32_t length, bool sourceVerifyCRC)
 {
     return FLASH_CopyMemory(sourceDeviceID, sourceAddress,
                             destinationDeviceID, destinationAddress,
-                            length);
+                            length, sourceVerifyCRC);
 }
 
 bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
@@ -72,20 +72,20 @@ bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
 
 bool HAL_FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
                                              uint8_t destinationDeviceID, uint32_t destinationAddress,
-                                             uint32_t length)
+                                             uint32_t length, bool sourceVerifyCRC)
 {
     return FLASH_AddToNextAvailableModulesSlot(sourceDeviceID, sourceAddress,
                                                destinationDeviceID, destinationAddress,
-                                               length);
+                                               length, sourceVerifyCRC);
 }
 
 bool HAL_FLASH_AddToFactoryResetModuleSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
                                            uint8_t destinationDeviceID, uint32_t destinationAddress,
-                                           uint32_t length)
+                                           uint32_t length, bool sourceVerifyCRC)
 {
     return FLASH_AddToFactoryResetModuleSlot(sourceDeviceID, sourceAddress,
                                              destinationDeviceID, destinationAddress,
-                                             length);
+                                             length, sourceVerifyCRC);
 }
 
 bool HAL_FLASH_ClearFactoryResetModuleSlot(void)
