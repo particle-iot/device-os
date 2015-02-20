@@ -18,6 +18,8 @@
  - Listening mode uses existing serial connection if already opened. [#384](https://github.com/spark/firmware/issues/384)
  - `Spark.publish("event", PRIVATE)` shorthand - [#376](https://github.com/spark/firmware/issues/376)
  - Improved integrity checks for firmware images
+ - Added additional safe/recovery mode in bootloader (> 6.5 sec : restore factory code without clearing wifi credentials)
+ - Enabled CRC verification in bootloader before restoring/copying the firmware image from factory reset, ota downloaded area etc.
 
 ### BUGFIXES
 
