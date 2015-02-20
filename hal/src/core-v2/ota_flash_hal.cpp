@@ -27,7 +27,6 @@
 #include "ota_flash_hal.h"
 #include "hw_config.h"
 #include "dct_hal.h"
-#include "module_info.h"
 #include <cstring>
 
 #define OTA_CHUNK_SIZE          512
@@ -129,44 +128,22 @@ void HAL_FLASH_End(void)
     FLASH_End();
 }
 
-static const module_info_t* HAL_FLASH_ModuleInfo(uint32_t address)
-{
-#ifdef USE_SERIAL_FLASH
-    return NULL;
-#else
-    if (((*(__IO uint32_t*)address) & APP_START_MASK) == 0x20000000)
-    {
-        address = address + 0x184;
-    }
-
-    const module_info_t* module_info = (const module_info_t*)address;
-
-    return module_info;
-#endif
-}
-
 uint32_t HAL_FLASH_ModuleAddress(uint32_t address)
 {
-    const module_info_t* module_info = HAL_FLASH_ModuleInfo(address);
-
-    if(module_info)
-    {
-        return (uint32_t)module_info->module_start_address;
-    }
-
+#ifdef USE_SERIAL_FLASH
     return 0;
+#else
+    return FLASH_ModuleAddress(FLASH_INTERNAL, address);
+#endif
 }
 
 uint32_t HAL_FLASH_ModuleLength(uint32_t address)
 {
-    const module_info_t* module_info = HAL_FLASH_ModuleInfo(address);
-
-    if(module_info)
-    {
-        return ((uint32_t)module_info->module_end_address - (uint32_t)module_info->module_start_address);
-    }
-
+#ifdef USE_SERIAL_FLASH
     return 0;
+#else
+    return FLASH_ModuleLength(FLASH_INTERNAL, address);
+#endif
 }
 
 bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length)
@@ -174,17 +151,7 @@ bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length)
 #ifdef USE_SERIAL_FLASH
     return false;
 #else
-    if(length)
-    {
-        uint32_t expectedCRC = __REV((*(__IO uint32_t*) (address + length)));
-        uint32_t computedCRC = Compute_CRC32((uint8_t*)address, length);
-
-        if (expectedCRC == computedCRC)
-        {
-            return true;
-        }
-    }
-    return false;
+    return FLASH_VerifyCRC32(FLASH_INTERNAL, address, length);
 #endif
 }
 

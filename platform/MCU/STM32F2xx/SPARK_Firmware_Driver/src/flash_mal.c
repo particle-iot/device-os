@@ -26,6 +26,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "hw_config.h"
 #include "dct.h"
+#include "module_info.h"
 #include <string.h>
 
 /* Private variables ---------------------------------------------------------*/
@@ -538,6 +539,63 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
             }
         }
     }
+}
+
+static const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress)
+{
+    if(flashDeviceID == FLASH_INTERNAL)
+    {
+        if (((*(__IO uint32_t*)startAddress) & APP_START_MASK) == 0x20000000)
+        {
+            startAddress += 0x184;
+        }
+
+        const module_info_t* module_info = (const module_info_t*)startAddress;
+
+        return module_info;
+    }
+
+    return NULL;
+}
+
+uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress)
+{
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+
+    if(module_info != NULL)
+    {
+        return (uint32_t)module_info->module_start_address;
+    }
+
+    return 0;
+}
+
+uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
+{
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+
+    if(module_info != NULL)
+    {
+        return ((uint32_t)module_info->module_end_address - (uint32_t)module_info->module_start_address);
+    }
+
+    return 0;
+}
+
+bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)
+{
+    if(flashDeviceID == FLASH_INTERNAL && length > 0)
+    {
+        uint32_t expectedCRC = __REV((*(__IO uint32_t*) (startAddress + length)));
+        uint32_t computedCRC = Compute_CRC32((uint8_t*)startAddress, length);
+
+        if (expectedCRC == computedCRC)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void FLASH_ClearFlags(void)

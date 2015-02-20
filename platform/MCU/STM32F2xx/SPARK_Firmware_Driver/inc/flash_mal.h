@@ -130,6 +130,10 @@ bool FLASH_ClearFactoryResetModuleSlot(void);
 bool FLASH_RestoreFromFactoryResetModuleSlot(void);
 void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
+uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress);
+uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress);
+bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length);
+
 //Old routines with same signature both for Core and Photon
 void FLASH_ClearFlags(void);
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors);

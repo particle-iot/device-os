@@ -38,7 +38,8 @@ typedef struct platform_flash_modules {
     uint32_t sourceAddress;
     uint32_t destinationAddress;
     uint32_t length;
-    uint8_t reserved[4];
+    uint8_t verifyCRC;
+    uint8_t reserved[3];
 } platform_flash_modules_t; //1 module instance => 20 bytes
 
 #ifdef	__cplusplus
