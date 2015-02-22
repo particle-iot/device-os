@@ -229,33 +229,43 @@ int main(void)
     //--------------------------------------------------------------------------
     if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
     {
-        TimingBUTTON = 10000;
-        while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
-        {
-            if(TimingBUTTON == 0)
+#define TIMING_DFU_MODE 3000
+#define TIMING_RESTORE_MODE 6500
+#define TIMING_RESET_MODE 10000
+#define TIMING_ALL 12000            // add a couple of seconds for visual feedback
+        
+        TimingBUTTON = TIMING_ALL;           
+        uint8_t factory_reset = 0;
+        while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED && TimingBUTTON)
+        {            
+            if(TimingBUTTON < (TIMING_ALL-TIMING_RESET_MODE))
             {
                 // if pressed for 10 sec, enter Factory Reset Mode
                 // This tells the WLAN setup to clear the WiFi user profiles on bootup
                 LED_SetRGBColor(RGB_COLOR_WHITE);
-                SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0001;
-                break;
+                SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0001;                
             }
-            else if(!FACTORY_RESET_MODE && TimingBUTTON <= 3500)
+            else if(!factory_reset && TimingBUTTON <= (TIMING_ALL-TIMING_RESTORE_MODE))
             {
                 // if pressed for > 6.5 sec, enter Safe mode
-                LED_SetRGBColor(RGB_COLOR_GREEN);
-                FACTORY_RESET_MODE = 1;
+                LED_SetRGBColor(RGB_COLOR_GREEN);                
+                SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
+                factory_reset = 1;
             }
-            else if(!USB_DFU_MODE && TimingBUTTON <= 7000)
+            else if(!USB_DFU_MODE && TimingBUTTON <= (TIMING_ALL-TIMING_DFU_MODE))
             {
                 // if pressed for > 3 sec, enter USB DFU Mode
                 LED_SetRGBColor(RGB_COLOR_YELLOW);
                 OTA_FLASH_AVAILABLE = 0;
                 REFLASH_FROM_BACKUP = 0;
                 FACTORY_RESET_MODE = 0;
-                USB_DFU_MODE = 1;
+                USB_DFU_MODE = 1;           // stay in DFU mode until the button is released so we have slow-led blinking
             }
         }
+        
+        // now set the factory reset mode (to change the LED to rapid blinking.))
+        FACTORY_RESET_MODE = factory_reset;
+        USB_DFU_MODE = !factory_reset;
     }
     //--------------------------------------------------------------------------
 
