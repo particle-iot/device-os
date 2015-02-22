@@ -138,15 +138,10 @@ void HAL_Core_Config(void)
     //Initialize Serial Flash
     sFLASH_Init();
 #else
-    //Get factory reset firmware's exact info
-    uint32_t moduleAddress = FLASH_ModuleAddress(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS);
-    uint32_t moduleLength = FLASH_ModuleLength(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS);
-
     //CRC verification Enabled by default
     FLASH_AddToFactoryResetModuleSlot(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS,
-                                      FLASH_INTERNAL, moduleAddress,
-                                      (moduleLength + 4),//+4 to copy the CRC too
-                                      true);//true to verify the CRC during copy also
+                                      FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
+                                      true); //true to verify the CRC during copy also
 #endif
 }
 

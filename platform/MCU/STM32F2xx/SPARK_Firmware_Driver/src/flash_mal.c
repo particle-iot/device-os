@@ -234,7 +234,7 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     {
         uint32_t moduleLength = FLASH_ModuleLength(sourceDeviceID, sourceAddress);
 
-        if(length != moduleLength+4)
+        if(length < moduleLength+4)
         {
             return false;
         }
