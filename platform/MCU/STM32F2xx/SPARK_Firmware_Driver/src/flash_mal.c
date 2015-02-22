@@ -497,7 +497,7 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
     //Read the flash modules info from the dct area
     const platform_flash_modules_t* flash_modules = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
     bool restoreFactoryReset = false;
-
+    
     if(flash_modules[FAC_RESET_SLOT].magicNumber == 0x0FAC)
     {
         //Restore Factory Reset Firmware (slot 0 is factory reset module)
@@ -507,14 +507,12 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
                                                flash_modules[FAC_RESET_SLOT].destinationAddress,
                                                flash_modules[FAC_RESET_SLOT].length,
                                                flash_modules[FAC_RESET_SLOT].sourceVerifyCRC);
-
-        if(restoreFactoryReset != true)
-        {
-            //Clear factory reset slot if the source is corrupt
-            FLASH_ClearFactoryResetModuleSlot();
-        }
     }
-
+    else
+    {        
+        // attempt to use the default that the bootloader was built with
+        restoreFactoryReset = FLASH_CopyMemory(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE, true);
+    }
     return restoreFactoryReset;
 }
 
