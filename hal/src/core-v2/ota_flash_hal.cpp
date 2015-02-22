@@ -52,8 +52,8 @@ uint16_t HAL_OTA_ChunkSize()
     return OTA_CHUNK_SIZE;
 }
 
-bool HAL_FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                          uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool HAL_FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
                           uint32_t length, bool sourceVerifyCRC)
 {
     return FLASH_CopyMemory(sourceDeviceID, sourceAddress,
@@ -61,8 +61,8 @@ bool HAL_FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
                             length, sourceVerifyCRC);
 }
 
-bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                             uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool HAL_FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
                              uint32_t length)
 {
     return FLASH_CompareMemory(sourceDeviceID, sourceAddress,
@@ -70,8 +70,8 @@ bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
                                length);
 }
 
-bool HAL_FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                                             uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool HAL_FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                              uint32_t length, bool sourceVerifyCRC)
 {
     return FLASH_AddToNextAvailableModulesSlot(sourceDeviceID, sourceAddress,
@@ -79,8 +79,8 @@ bool HAL_FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t so
                                                length, sourceVerifyCRC);
 }
 
-bool HAL_FLASH_AddToFactoryResetModuleSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                                           uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool HAL_FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                                           flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                            uint32_t length, bool sourceVerifyCRC)
 {
     return FLASH_AddToFactoryResetModuleSlot(sourceDeviceID, sourceAddress,

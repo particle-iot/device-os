@@ -30,19 +30,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "static_assert.h"
-
+#include "flash_device_hal.h"
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
+        
     
-#ifndef FLASH_INTERNAL
-#define FLASH_INTERNAL  0
-#endif
-#ifndef FLASH_SERIAL
-#define FLASH_SERIAL    1
-#endif
-
 // TODO - this is temporary to get a working hal.
 // A C++ MemoryDeviceRegion will be used so that callers can incrementally
 // write to that. This abstracts the memory regions without needing to expose
@@ -61,17 +55,17 @@ uint32_t HAL_OTA_FlashLength();
 
 uint16_t HAL_OTA_ChunkSize();
 
-bool HAL_FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                          uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool HAL_FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
                           uint32_t length, bool sourceVerifyCRC);
-bool HAL_FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                             uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool HAL_FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
                              uint32_t length);
-bool HAL_FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                                             uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool HAL_FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                              uint32_t length, bool sourceVerifyCRC);
-bool HAL_FLASH_AddToFactoryResetModuleSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                                           uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool HAL_FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                                           flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                            uint32_t length, bool sourceVerifyCRC);
 bool HAL_FLASH_ClearFactoryResetModuleSlot(void);
 bool HAL_FLASH_RestoreFromFactoryResetModuleSlot(void);

@@ -106,7 +106,7 @@ uint16_t FLASH_SectorToErase(uint8_t flashDeviceID, uint32_t startAddress)
     return flashSector;
 }
 
-bool FLASH_CheckValidAddressRange(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)
+bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
     uint32_t endAddress = startAddress + length - 1;
 
@@ -140,7 +140,7 @@ bool FLASH_CheckValidAddressRange(uint8_t flashDeviceID, uint32_t startAddress, 
     return true;
 }
 
-bool FLASH_EraseMemory(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)
+bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
     uint32_t eraseCounter = 0;
     uint32_t numPages = 0;
@@ -210,8 +210,8 @@ bool FLASH_EraseMemory(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
     return false;
 }
 
-bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                      uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
                       uint32_t length, bool sourceVerifyCRC)
 {
 #ifdef USE_SERIAL_FLASH
@@ -327,8 +327,8 @@ bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
     return true;
 }
 
-bool FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                         uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                         flash_device_t destinationDeviceID, uint32_t destinationAddress,
                          uint32_t length)
 {
 #ifdef USE_SERIAL_FLASH
@@ -401,8 +401,8 @@ bool FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
     return true;
 }
 
-bool FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                                         uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                                         flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                          uint32_t length, bool sourceVerifyCRC)
 {
     //Read the flash modules info from the dct area
@@ -441,8 +441,8 @@ bool FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t source
     return false;
 }
 
-bool FLASH_AddToFactoryResetModuleSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                                       uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                                       flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                        uint32_t length, bool sourceVerifyCRC)
 {
     //Read the flash modules info from the dct area

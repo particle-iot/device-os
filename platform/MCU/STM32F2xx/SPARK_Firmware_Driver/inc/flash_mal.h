@@ -27,6 +27,8 @@
 #ifndef __FLASH_MAL_H
 #define __FLASH_MAL_H
 
+#include "flash_device_hal.h"
+
 /* Includes ------------------------------------------------------------------*/
 
 #ifdef __cplusplus
@@ -41,10 +43,6 @@ extern "C" {
 #ifndef INTERNAL_FLASH_SIZE
 #   error "INTERNAL_FLASH_SIZE not defined"
 #endif
-
-#define FLASH_INTERNAL  0
-#define FLASH_SERIAL    1
-
        
 /* Internal Flash memory address where various firmwares are located */
 #ifndef INTERNAL_FLASH_START
@@ -111,28 +109,28 @@ extern "C" {
 
 /* MAL access layer for Internal/Serial Flash Routines */
 //New routines specific for BM09/BM14 flash usage
-uint16_t FLASH_SectorToErase(uint8_t flashDeviceID, uint32_t startAddress);
-bool FLASH_CheckValidAddressRange(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length);
-bool FLASH_EraseMemory(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length);
-bool FLASH_CopyMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                      uint8_t destinationDeviceID, uint32_t destinationAddress,
+uint16_t FLASH_SectorToErase(flash_device_t flashDeviceID, uint32_t startAddress);
+bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
+bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
+bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
                       uint32_t length, bool sourceVerifyCRC);
-bool FLASH_CompareMemory(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                         uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                         flash_device_t destinationDeviceID, uint32_t destinationAddress,
                          uint32_t length);
-bool FLASH_AddToNextAvailableModulesSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                                         uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                                         flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                          uint32_t length, bool sourceVerifyCRC);
-bool FLASH_AddToFactoryResetModuleSlot(uint8_t sourceDeviceID, uint32_t sourceAddress,
-                                       uint8_t destinationDeviceID, uint32_t destinationAddress,
+bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                                       flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                        uint32_t length, bool sourceVerifyCRC);
 bool FLASH_ClearFactoryResetModuleSlot(void);
 bool FLASH_RestoreFromFactoryResetModuleSlot(void);
 void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
-uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress);
-uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress);
-bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length);
+uint32_t FLASH_ModuleAddress(flash_device_t flashDeviceID, uint32_t startAddress);
+uint32_t FLASH_ModuleLength(flash_device_t flashDeviceID, uint32_t startAddress);
+bool FLASH_VerifyCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
 
 //Old routines with same signature both for Core and Photon
 void FLASH_ClearFlags(void);
