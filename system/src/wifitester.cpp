@@ -116,7 +116,7 @@ void printInfo() {
     uint8_t* addr = ip_config.uaMacAddr;
     String macAddress;
     bool first = true;
-    for (int i = 1; i < 6; i++)
+    for (int m = 0; m < 6; m++)
     {
         if (!first) 
             macAddress += ":";
