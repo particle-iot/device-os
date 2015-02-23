@@ -35,7 +35,7 @@
 
 #define ADC_CDR_ADDRESS     ((uint32_t)0x40012308)
 #define ADC_DMA_BUFFERSIZE  10
-#define ADC_SAMPLING_TIME   ADC_SampleTime_3Cycles
+#define ADC_SAMPLING_TIME   ADC_SampleTime_480Cycles
 
 /* Private macro -------------------------------------------------------------*/
 
