@@ -31,7 +31,7 @@
 #include "spark_wiring.h"   // for serialReadLine
 #include "spark_wiring_wifi.h"
 
-#ifdef TEACUP
+#if PLATFORM_ID > 2
 #define SETUP_LISTEN_MAGIC 1
 void loop_wifitester(int c);
 #include "spark_wiring_usartserial.h"
@@ -64,8 +64,7 @@ void WiFiCredentialsReader::read(void)
         c = SETUP_SERIAL.read();
     }
     if (SETUP_LISTEN_MAGIC) {
-        static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
-        //static uint8_t magic_code[] = { 'M', 'a', 't', 't', 'h', 'e', 'w' };
+        static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };        
         if (!serial1Enabled) {
             if (c>=0) {                
                 if (c==magic_code[magicPos++]) {
