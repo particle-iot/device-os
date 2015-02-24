@@ -20,8 +20,9 @@ include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),$(PROJECT_ROOT)/$(module)/import.mk)
 include $(DEPS_INCLUDE_SCRIPTS)	
 	
-ifneq (,$(GLOBAL_DEFINES))	
-MAKE_ARGS += GLOBAL_DEFINES=$(GLOBAL_DEFINES)
+QUOTE='
+ifneq (,$(GLOBAL_DEFINES))
+MAKE_ARGS+=$(QUOTE)GLOBAL_DEFINES=$(GLOBAL_DEFINES)$(QUOTE)
 CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
 endif
 	
