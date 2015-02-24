@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include "tropicssl/rsa.h"
+#include "dsakeygen.h"
 
 using namespace std;
 
