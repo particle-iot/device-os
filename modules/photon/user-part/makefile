@@ -5,17 +5,21 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK := 
 PLATFORM_DFU = $(USER_FIRMWARE_IMAGE_LOCATION)
 PLATFORM_DFU_LEAVE = y
+
+MODULE_VERSION ?= 0
+GLOBAL_DEFINES += MODULE_VERSION=$(MODULE_VERSION)
+GLOBAL_DEFINES += MODULE_FUNCTION=$(MODULE_FUNCTION_USER_PART)
+GLOBAL_DEFINES += MODULE_INDEX=1
+
 # communication used only for header declarations	
 DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication modules/photon/system-part1 modules/photon/system-part2 
-MAKE_DEPENDENCIES = user dynalib hal-dynalib services-dynalib system-dynalib rt-dynalib wiring
+MAKE_DEPENDENCIES = user hal-dynalib services-dynalib system-dynalib rt-dynalib wiring
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
 
 LIBS += $(MAKE_DEPENDENCIES)
-LIB_DEPS += $(USER_LIB_DEP) $(SERVICES_DYNALIB_LIB_DEP) $(HAL_DYNALIB_LIB_DEP) $(SYSTEM_DYNALIB_LIB_DEP) $(RT_DYNALIB_LIB_DEP) $(WIRING_LIB_DEP) $(DYNALIB_LIB_DEP)
+LIB_DEPS += $(USER_LIB_DEP) $(SERVICES_DYNALIB_LIB_DEP) $(HAL_DYNALIB_LIB_DEP) $(SYSTEM_DYNALIB_LIB_DEP) $(RT_DYNALIB_LIB_DEP) $(WIRING_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
-# This is needed for the module_info to be correctly linked.
-LIBS_EXT += -Wl,--whole-archive -ldynalib -Wl,--no-whole-archive
 
 TARGET=elf bin lst hex size 
 

@@ -67,6 +67,8 @@ _estack = 0x20020000;	/* end of 128K SRAM */
 
 SECTIONS
 {
+    INCLUDE module_start.ld
+
     /* for Cortex devices, the beginning of the startup code is stored in the .isr_vector section, which goes to FLASH */
     .isr_vector :
     {
@@ -75,6 +77,8 @@ SECTIONS
 	. = ALIGN(4);
     } >FLASH
    
+    INCLUDE module_info.ld
+
     .flashtext :
     {
 	. = ALIGN(4);
@@ -241,6 +245,8 @@ SECTIONS
     .debug_funcnames 0 : { *(.debug_funcnames) }
     .debug_typenames 0 : { *(.debug_typenames) }
     .debug_varnames  0 : { *(.debug_varnames) }
+
+    INCLUDE module_end.ld
 }
 
 
@@ -248,3 +254,5 @@ PROVIDE( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH ));
 PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
 PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
 PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
+
+INCLUDE module_asserts.ld

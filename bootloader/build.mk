@@ -5,7 +5,13 @@ ASFLAGS += -I$(COMMON_BUILD)/arm/startup
 
 # Linker flags
 LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_$(STM32_DEVICE_LC).ld
+LDFLAGS += -L$(COMMON_BUILD)/arm/linker
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map 
+
+LINKER_DEPS += $(COMMON_BUILD)/arm/linker/linker_$(STM32_DEVICE_LC).ld
+LINKER_DEPS += $(COMMON_BUILD)/arm/linker/module_start.ld
+LINKER_DEPS += $(COMMON_BUILD)/arm/linker/module_end.ld
+LINKER_DEPS += $(COMMON_BUILD)/arm/linker/module_info.ld
 
 # select sources from platform
 

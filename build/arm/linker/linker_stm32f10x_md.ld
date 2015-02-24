@@ -63,6 +63,7 @@ _estack = 0x20005000;
 
 SECTIONS
 {
+    INCLUDE module_start.ld
     /* for Cortex devices, the beginning of the startup code is stored in the .isr_vector section, which goes to FLASH */
     .isr_vector :
     {
@@ -70,7 +71,7 @@ SECTIONS
         KEEP(*(.isr_vector))            /* Startup code */
 	. = ALIGN(4);
     } >FLASH
-   
+    INCLUDE module_info.ld
     .flashtext :
     {
 	. = ALIGN(4);
@@ -237,4 +238,8 @@ SECTIONS
     .debug_funcnames 0 : { *(.debug_funcnames) }
     .debug_typenames 0 : { *(.debug_typenames) }
     .debug_varnames  0 : { *(.debug_varnames) }
+
+    INCLUDE module_end.ld
 }
+
+INCLUDE module_asserts.ld
