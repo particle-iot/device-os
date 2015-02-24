@@ -28,6 +28,7 @@
 #include "core_hal.h"
 #include "dfu_hal.h"
 #include "hw_config.h"
+#include "flash_mal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);
@@ -65,6 +66,24 @@ void flashModulesCallback(bool isUpdating)
         OTA_FLASH_AVAILABLE = 0;
         LED_Off(LED_RGB);
     }
+}
+
+/**
+ * Don't use the backup register. Both options are given here so we 
+ * can restore for any given platform if needed later.
+ */
+#if PLATFORM_ID < 0
+#define BACKUP_REGISTER(reg) HAL_Core_Read_Backup_Register(reg)
+#else
+#define BACKUP_REGISTER(reg) 
+#define
+
+uint8_t is_application_valid(uint32_t address)
+{
+    const module_info_t* module_info = FLASH_ModuleInfo(FLASH_INTERNAL, address);
+    uint8_t valid = module_info->module_start_address == address
+         && module_info->platform_id==PLATFORM_ID;
+    return valid;
 }
 
 /*******************************************************************************
@@ -121,18 +140,15 @@ int main(void)
 
     //--------------------------------------------------------------------------
 
-    // 0x5000 is written to the backup register after transferring the FW from
-    // the external flash to the STM32's internal memory
-    if((HAL_Core_Read_Backup_Register(BKP_DR_10) == 0x5000) ||
-            (SYSTEM_FLAG(FLASH_OTA_Update_SysFlag) == 0x5000))
-    {
-        ApplicationAddress = CORE_FW_ADDRESS;
-    }
+    /*
+     * Check that firmware is valid at this address.
+     */
+    ApplicationAddress = CORE_FW_ADDRESS;
 
     // 0x0005 is written to the backup register at the end of firmware update.
     // if the register reads 0x0005, it signifies that the firmware update
     // was successful
-    else if((HAL_Core_Read_Backup_Register(BKP_DR_10) == 0x0005) ||
+    if((BACKUP_REGISTER(BKP_DR_10) == 0x0005) ||
             (SYSTEM_FLAG(FLASH_OTA_Update_SysFlag) == 0x0005))
     {
         // OTA was complete and the firmware is now available to be transfered to
@@ -143,19 +159,14 @@ int main(void)
     // 0x5555 is written to the backup register at the beginning of firmware update
     // if the register still reads 0x5555, it signifies that the firmware update
     // was never completed => FAIL
-    else if((HAL_Core_Read_Backup_Register(BKP_DR_10) == 0x5555) ||
+    else if((BACKUP_REGISTER(BKP_DR_10) == 0x5555) ||
             (SYSTEM_FLAG(FLASH_OTA_Update_SysFlag) == 0x5555))
     {
         // OTA transfer failed, hence, load firmware from the backup address
         OTA_FLASH_AVAILABLE = 0;
         REFLASH_FROM_BACKUP = 1;
     }
-    // worst case: fall back on the DFU MODE
-    else
-    {
-        USB_DFU_MODE = 1;
-    }
-
+    
     // 0xAAAA is written to the Factory_Reset_SysFlag in order to trigger a factory reset
     if (0xAAAA == SYSTEM_FLAG(Factory_Reset_SysFlag))
     {
@@ -294,8 +305,7 @@ int main(void)
         }
     }
     else if (USB_DFU_MODE == 0)
-    {
-        
+    {        
         if (REFLASH_FROM_BACKUP == 1)
         {
             LED_SetRGBColor(RGB_COLOR_RED);
@@ -312,12 +322,10 @@ int main(void)
          */
         FLASH_UpdateModules(flashModulesCallback);
 #endif
-
-        bool application_signature_valid =  (((*(__IO uint32_t*)ApplicationAddress) & APP_START_MASK) == 0x20000000);
-        
+                
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
-        if (application_signature_valid)
+        if (is_application_valid(ApplicationAddress))
         {
             // Jump to user application
             JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
@@ -335,7 +343,10 @@ int main(void)
         {
             LED_SetRGBColor(RGB_COLOR_RED);
             FACTORY_Flash_Reset();
+            
         }
+        // else drop through to DFU mode
+        
     }
     // Otherwise enters DFU mode to allow user to program his application
 
