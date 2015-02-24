@@ -191,6 +191,42 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 static int cfod_count = 0;
 
 /**
+ * Time in millis of the last cloud connection attempt.
+ * The next attempt isn't made until the backoff period has elapsed.
+ */
+static int cloud_backoff_start = 0;
+
+/**
+ * The number of connection attempts.
+ */
+static uint8_t cloud_failed_connection_attempts = 0;
+
+void cloud_connection_failed()
+{
+    if (cloud_failed_connection_attempts<255)
+        cloud_failed_connection_attempts++;    
+    cloud_backoff_start = HAL_Timer_Get_Milli_Seconds();
+}
+
+/**
+ * Series is 0, 100, 300, 700, 1500, 3100, 6300... up to 409500
+ * @param connection_attempts
+ * @return 
+ */
+unsigned backoff_period(unsigned connection_attempts)
+{
+    if (cloud_failed_connection_attempts>12)
+        cloud_failed_connection_attempts = 12;
+        
+    return 100*((1<<cloud_failed_connection_attempts)-1);
+}
+
+inline uint8_t in_cloud_backoff_period()
+{
+    return (HAL_Timer_Get_Milli_Seconds()-cloud_backoff_start)<backoff_period(cloud_failed_connection_attempts);
+}
+
+/**
  * Reset or initialize the network connection as required.
  */
 void manage_network_connection()
@@ -339,11 +375,13 @@ void establish_cloud_connection()
     {
         if (Spark_Error_Count)
             handle_cloud_errors();
-
+        
         SPARK_LED_FADE = 0;
         LED_SetRGBColor(RGB_COLOR_CYAN);
-        LED_On(LED_RGB);
-
+        if (in_cloud_backoff_period())
+            return;
+        
+        LED_On(LED_RGB);        
         if (Spark_Connect() >= 0)
         {
             cfod_count = 0;
@@ -351,6 +389,7 @@ void establish_cloud_connection()
         }
         else
         {
+            cloud_connection_failed();
             SPARK_CLOUD_SOCKETED = 0;
             //if (!SPARK_WLAN_RESET)
             //    handle_cfod();
@@ -372,6 +411,7 @@ void handle_cloud_connection(bool force_events)
             int err = Spark_Handshake();
             if (err)
             {
+                cloud_connection_failed();
                 if (0 > err)
                 {
                     // Wrong key error, red
@@ -389,10 +429,14 @@ void handle_cloud_connection(bool force_events)
                 }
 
                 LED_On(LED_RGB);
+                
+                Spark_Disconnect(); // clean up the socket
+                SPARK_CLOUD_SOCKETED = 0;
             }
             else
             {
                 SPARK_CLOUD_CONNECTED = 1;
+                cloud_failed_connection_attempts = 0;
             }
         }
 

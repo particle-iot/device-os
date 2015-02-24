@@ -81,6 +81,11 @@ extern sock_handle_t sparkSocket;
 
 void system_delay_ms(unsigned long ms);
 
+/**
+ * Determines the backoff period after a number of failed connections.
+ */
+unsigned backoff_period(unsigned connection_attempts);
+
 #ifdef __cplusplus
 }
 #endif

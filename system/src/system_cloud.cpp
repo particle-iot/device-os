@@ -607,6 +607,8 @@ int Spark_Connect(void)
     int rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
     DEBUG("connected connect=%d", rv);
     HAL_WLAN_SetNetWatchDog(ot);
+    if (rv)     // error - prevent socket leaks
+        Spark_Disconnect();
     return rv;
 }
 
