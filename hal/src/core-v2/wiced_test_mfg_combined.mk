@@ -2,12 +2,14 @@
 PLATFORM_ID?=6
 CORE?=../../../..
 WICED?=$(CORE)/WICED/WICED-SDK-3.1.1/WICED-SDK
-
+SERVER_PUB_KEY=cloud_public.der
 
 FIRMWARE=$(CORE)/firmware
 FIRMWARE_BUILD=$(FIRMWARE)/build
 OUT=$(WICED)/build
 DCT_MEM=$(OUT)/dct_pad.bin
+DCT_PREP=dct_prep.bin
+ERASE_SECTOR=$(OUT)/erase_sector.bin
 BOOTLOADER_BIN=$(FIRMWARE_BUILD)/target/bootloader/platform-$(PLATFORM_ID)/bootloader.bin
 BOOTLOADER_MEM=$(OUT)/bootloader_pad.bin
 BOOTLOADER_DIR=$(FIRMWARE)/bootloader
@@ -40,10 +42,12 @@ bootloader:
 	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377" > $(BOOTLOADER_MEM)
 	dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
 
+# add the prepared dct image into the flash image
 dct: 	
 	-rm $(DCT_MEM)
 	dd if=/dev/zero ibs=1k count=112 | tr "\000" "\377" > $(DCT_MEM)
-		
+	dd if=$(DCT_PREP) of=$(DCT_MEM) conv=notrunc
+			
 $(MFG_TEST_BIN):
 	cd "$(WICED)"; "./make" $(CMD) $(OPTS)
 	@echo Appending: CRC32 to the Flash Image
@@ -64,8 +68,7 @@ firmware:
 	-rm $(FIRMWARE_MEM)
 	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=0 all
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
-	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc
-	
+	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc	
 
 combined: bootloader dct mfg_test firmware
 	-rm $(COMBINED_MEM)
@@ -74,9 +77,24 @@ combined: bootloader dct mfg_test firmware
 flash: combined
 	st-flash write $(COMBINED_MEM) 0x8000000
 
-.PHONY: mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM)
-
-
-
+.PHONY: mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM) prep_dct
+	
+	
+	
+DFU_USB_ID=2b04:d006
+DFU_DCT = dfu-util -d $(DFU_USB_ID) -a 1 --dfuse-address
+DFU_FLASH = dfu-util -d $(DFU_USB_ID) -a 0 --dfuse-address
+# Run this after doing a factory reset on the combined image and putting the
+# device in DFU mode.
+# This will create a blank DCT (with pre-generated keys)
+# The this script erases the generated keys, with 0xFF 
+# And writes the server public key to the appropriate place	
+prep_dct:
+	dd if=/dev/zero ibs=4258 count=1 | tr "\000" "\377" > $(ERASE_SECTOR)
+	$(DFU_DCT) 1:4258 -D $(ERASE_SECTOR)
+	$(DFU_DCT) 2082 -D $(SERVER_PUB_KEY)
+	#st-flash read $(DCT_PREP) 0x8004000 0x8000
+	#$(DFU_FLASH) 0x4000:0x8000 -U $(DCT_PREP)
+	
 
 
