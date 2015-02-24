@@ -3,4 +3,3 @@
 
 #define DYNALIB_EXPORT
 #include "communication_dynalib.h"
-

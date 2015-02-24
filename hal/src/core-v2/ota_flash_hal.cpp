@@ -25,8 +25,11 @@
 
 #include "core_hal.h"
 #include "ota_flash_hal.h"
+#include "rng_hal.h"
 #include "hw_config.h"
 #include "dct_hal.h"
+#include "dsakeygen.h"
+#include "softap.h"
 #include <cstring>
 
 #define OTA_CHUNK_SIZE          512
@@ -176,13 +179,27 @@ void HAL_OTA_Flashed_ResetStatus(void)
 }
 
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
-{
+{       
+    fetch_device_public_key();
     copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
 }
 
+int rsa_random(void* p) 
+{
+    return (int)HAL_RNG_GetRandomNumber();
+}
+
 void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
-{ 
+{         
     copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
+    if (*keyBuffer==0xFF) {         // uninitialized
+        if (!gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, rsa_random, NULL)) {
+            dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
+            
+            // refetch and rewrite public key to ensure it is valid
+            fetch_device_public_key();
+        }        
+    }    
 }
 
 STATIC_ASSERT(Internet_Address_is_2_bytes_c1, sizeof(Internet_Address_TypeDef)==1);

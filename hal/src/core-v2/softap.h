@@ -8,6 +8,8 @@
 #ifndef SOFTAP_H
 #define	SOFTAP_H
 
+#include "wiced.h"          // for wiced_result_t
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -32,7 +34,7 @@ extern "C" {
     wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, const char *password, 
         uint16_t passwordLen, wiced_security_t security, unsigned channel);
 
-    void parse_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* device_privkey);
+    const uint8_t* fetch_device_public_key();
 
 #ifdef	__cplusplus
 }

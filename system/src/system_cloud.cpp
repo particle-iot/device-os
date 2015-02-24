@@ -364,8 +364,9 @@ void Spark_Protocol_Init(void)
         keys.server_public = pubkey;
         keys.core_private = private_key;
 
-        HAL_FLASH_Read_ServerPublicKey(pubkey);
+        // ensure the private key is read first since the public key may be derived from it.
         HAL_FLASH_Read_CorePrivateKey(private_key);
+        HAL_FLASH_Read_ServerPublicKey(pubkey);
 
         uint8_t id_length = HAL_device_ID(NULL, 0);
         uint8_t id[id_length];

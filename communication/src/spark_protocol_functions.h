@@ -12,6 +12,7 @@
 #include "system_tick_hal.h"
 #include "spark_descriptor.h"
 #include "events.h"
+#include "dsakeygen.h"
 
 #ifdef	__cplusplus
 extern "C" {

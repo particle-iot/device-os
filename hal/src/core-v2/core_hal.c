@@ -29,14 +29,15 @@
 #include "gpio_hal.h"
 #include "interrupts_hal.h"
 #include "interrupts_impl.h"
-#include "hw_config.h"
-#include "syshealth_hal.h"
+#include "ota_flash_hal.h"
 #include "rtc_hal.h"
 #include "rng_hal.h"
+#include "syshealth_hal.h"
 #include "rgbled.h"
 #include "delay_hal.h"
 #include "wiced.h"
 #include "wlan_internal.h"
+#include "hw_config.h"
 
 /**
  * Start of interrupt vector table.
@@ -143,6 +144,16 @@ void HAL_Core_Config(void)
                                       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
                                       true); //true to verify the CRC during copy also
 #endif
+    
+    // one the key is sent to the cloud, this can be removed, since the key is fetched in 
+    // Spark_Protocol_init(). This is just a temporary measure while the key still needs
+    // to be fetched via DFU.
+    
+    // normallly allocating such a large buffer on the stack would be a bad idea, however, we are quite near the start of execution, with few levels of recursion.
+    char buf[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
+    // ensure the private key is provisioned
+    HAL_FLASH_Read_CorePrivateKey(buf);
+    
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
