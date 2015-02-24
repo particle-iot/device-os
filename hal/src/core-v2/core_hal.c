@@ -140,9 +140,10 @@ void HAL_Core_Config(void)
     sFLASH_Init();
 #else
     //CRC verification Enabled by default
+            
     FLASH_AddToFactoryResetModuleSlot(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS,
                                       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
-                                      true); //true to verify the CRC during copy also
+                                      FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
 #endif
     
     // one the key is sent to the cloud, this can be removed, since the key is fetched in 

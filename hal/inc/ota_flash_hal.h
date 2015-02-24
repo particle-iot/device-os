@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include "static_assert.h"
 #include "flash_device_hal.h"
+#include "module_info_hal.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -57,16 +58,16 @@ uint16_t HAL_OTA_ChunkSize();
 
 bool HAL_FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                           flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                          uint32_t length, bool sourceVerifyCRC);
+                          uint32_t length, uint8_t function, uint8_t flags);
 bool HAL_FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                              flash_device_t destinationDeviceID, uint32_t destinationAddress,
                              uint32_t length);
 bool HAL_FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                                              flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                             uint32_t length, bool sourceVerifyCRC);
+                                             uint32_t length, uint8_t function, uint8_t flags);
 bool HAL_FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                                            flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                           uint32_t length, bool sourceVerifyCRC);
+                                           uint32_t length, uint8_t function, uint8_t flags);
 bool HAL_FLASH_ClearFactoryResetModuleSlot(void);
 bool HAL_FLASH_RestoreFromFactoryResetModuleSlot(void);
 void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));

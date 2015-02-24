@@ -99,7 +99,7 @@ void Load_SystemFlags(void);
 void Save_SystemFlags(void);
 extern platform_system_flags_t system_flags;
 
-void FACTORY_Flash_Reset(void);
+bool FACTORY_Flash_Reset(void);
 void BACKUP_Flash_Reset(void);
 void OTA_Flash_Reset(void);
 

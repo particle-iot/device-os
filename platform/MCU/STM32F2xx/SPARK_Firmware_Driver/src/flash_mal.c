@@ -25,6 +25,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "hw_config.h"
+#include "flash_mal.h"
 #include "dct.h"
 #include "module_info.h"
 #include <string.h>
@@ -212,7 +213,7 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
 
 bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                       flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                      uint32_t length, bool sourceVerifyCRC)
+                      uint32_t length, uint8_t module_function, uint8_t flags)
 {
 #ifdef USE_SERIAL_FLASH
     uint8_t serialFlashData[4];
@@ -230,16 +231,33 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return false;
     }
 
-    if (sourceDeviceID == FLASH_INTERNAL && sourceVerifyCRC == true)
+    if ((sourceDeviceID == FLASH_INTERNAL) && (flags & MODULE_VERIFY_MASK))
     {
         uint32_t moduleLength = FLASH_ModuleLength(sourceDeviceID, sourceAddress);
 
-        if(length < moduleLength+4)
+        if((flags & (MODULE_VERIFY_LENGTH|MODULE_VERIFY_CRC)) && (length < moduleLength+4))
+        {
+            return false;
+        }
+        
+        const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress);
+        if ((info->module_function != MODULE_FUNCTION_RESOURCE) && (info->platform_id != PLATFORM_ID))
+        {
+            return false;
+        }
+        
+        // verify destination address
+        if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && (((uint32_t)info->module_start_address) != destinationAddress)) 
+        {
+            return false;
+        }
+        
+        if ((flags & MODULE_VERIFY_FUNCTION) && (info->module_function != module_function)) 
         {
             return false;
         }
 
-        if (FLASH_VerifyCRC32(sourceDeviceID, sourceAddress, moduleLength) != true)
+        if ((flags & MODULE_VERIFY_CRC) && !FLASH_VerifyCRC32(sourceDeviceID, sourceAddress, moduleLength))
         {
             return false;
         }
@@ -403,7 +421,7 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 
 bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                         uint32_t length, bool sourceVerifyCRC)
+                                         uint32_t length, uint8_t function, uint8_t flags)
 {
     //Read the flash modules info from the dct area
     const platform_flash_modules_t* dct_app_data = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
@@ -428,7 +446,8 @@ bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t
             flash_modules[flash_module_index].destinationAddress = destinationAddress;
             flash_modules[flash_module_index].length = length;
             flash_modules[flash_module_index].magicNumber = 0xABCD;
-            flash_modules[flash_module_index].sourceVerifyCRC = sourceVerifyCRC;
+            flash_modules[flash_module_index].module_function = function;
+            flash_modules[flash_module_index].flags = flags;
 
             dct_write_app_data(&flash_modules[flash_module_index],
                                offsetof(application_dct_t, flash_modules[flash_module_index]),
@@ -443,7 +462,7 @@ bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t
 
 bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                                        flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                       uint32_t length, bool sourceVerifyCRC)
+                                       uint32_t length, uint8_t function, uint8_t flags)
 {
     //Read the flash modules info from the dct area
     const platform_flash_modules_t* dct_app_data = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
@@ -457,7 +476,8 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
     flash_modules[FAC_RESET_SLOT].destinationAddress = destinationAddress;
     flash_modules[FAC_RESET_SLOT].length = length;
     flash_modules[FAC_RESET_SLOT].magicNumber = 0x0FAC;
-    flash_modules[FAC_RESET_SLOT].sourceVerifyCRC = sourceVerifyCRC;
+    flash_modules[FAC_RESET_SLOT].module_function = function;
+    flash_modules[FAC_RESET_SLOT].flags = flags;
 
     if(memcmp(flash_modules, dct_app_data, sizeof(flash_modules)) != 0)
     {
@@ -506,12 +526,15 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
                                                flash_modules[FAC_RESET_SLOT].destinationDeviceID,
                                                flash_modules[FAC_RESET_SLOT].destinationAddress,
                                                flash_modules[FAC_RESET_SLOT].length,
-                                               flash_modules[FAC_RESET_SLOT].sourceVerifyCRC);
+                                                flash_modules[FAC_RESET_SLOT].module_function,
+                                               flash_modules[FAC_RESET_SLOT].flags);
     }
     else
     {        
         // attempt to use the default that the bootloader was built with
-        restoreFactoryReset = FLASH_CopyMemory(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE, true);
+        restoreFactoryReset = FLASH_CopyMemory(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE, 
+            FACTORY_RESET_MODULE_FUNCTION,
+            MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION);
     }
     return restoreFactoryReset;
 }
@@ -540,7 +563,8 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
                              flash_modules[flash_module_index].destinationDeviceID,
                              flash_modules[flash_module_index].destinationAddress,
                              flash_modules[flash_module_index].length,
-                             flash_modules[flash_module_index].sourceVerifyCRC);
+                             flash_modules[flash_module_index].module_function,
+                             flash_modules[flash_module_index].flags);
 
             //Set all flash_modules[flash_module_index] elements to 0 without sector erase
             FLASH_Unlock();
@@ -565,7 +589,7 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
     }
 }
 
-static const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress)
+const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress)
 {
 #ifdef USE_SERIAL_FLASH
     //To Do

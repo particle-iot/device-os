@@ -1,10 +1,8 @@
 /**
  ******************************************************************************
- * @file    platform_flash_modules.h
- * @author  Satish Nair
- * @version V1.0.0
- * @date    27-Jan-2015
- * @brief   Platform specific flash module units in application dct
+ * @file    module_info_hal.h
+ * @authors mat
+ * @date    24 February 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -20,33 +18,23 @@
 
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
-  ******************************************************************************
+ ******************************************************************************
  */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __PLATFORM_FLASH_MODULES_H
-#define __PLATFORM_FLASH_MODULES_H
+#ifndef MODULE_INFO_HAL_H
+#define	MODULE_INFO_HAL_H
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+#define MODULE_VERIFY_CRC                               1<<1
+#define MODULE_VERIFY_DESTINATION_IS_START_ADDRESS      1<<2
+#define MODULE_VERIFY_FUNCTION                          1<<3
+#define MODULE_VERIFY_LENGTH                            1<<3
 
-typedef struct platform_flash_modules {
-    uint16_t magicNumber;
-    uint8_t sourceDeviceID;
-    uint8_t destinationDeviceID;
-    uint32_t sourceAddress;
-    uint32_t destinationAddress;
-    uint32_t length;
-    uint8_t flags;
-    uint8_t module_function;
-    uint8_t reserved[2];
-} platform_flash_modules_t; //1 module instance => 20 bytes
+#define MODULE_VERIFY_MASK \
+            (MODULE_VERIFY_CRC | \
+            MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | \
+            MODULE_VERIFY_FUNCTION | \
+            MODULE_VERIFY_LENGTH) 
 
 
-#ifdef	__cplusplus
-}
-#endif
-
-#endif	/* __PLATFORM_FLASH_MODULES_H */
+#endif	/* MODULE_INFO_HAL_H */
 

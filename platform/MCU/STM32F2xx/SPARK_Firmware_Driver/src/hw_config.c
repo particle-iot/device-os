@@ -620,23 +620,28 @@ void Save_SystemFlags()
     Save_SystemFlags_Impl(&system_flags);
 }
 
-void FACTORY_Flash_Reset(void)
+bool FACTORY_Flash_Reset(void)
 {
+    bool success;
 #ifdef USE_SERIAL_FLASH
     // Restore the Factory programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
+    success = 1;
 #else
     // Restore the Factory firmware using flash_modules application dct info
-    FLASH_RestoreFromFactoryResetModuleSlot();
+    success = FLASH_RestoreFromFactoryResetModuleSlot();
     //FLASH_AddToFactoryResetModuleSlot() is now called in HAL_Core_Config() in core_hal.c,
     //So FLASH_Restore(INTERNAL_FLASH_FAC_ADDRESS) is not required and hence commented
 #endif
 
-    system_flags.Factory_Reset_SysFlag = 0xFFFF;
-    system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
-    system_flags.dfu_on_no_firmware = 0;
+    if (success) {
+        system_flags.Factory_Reset_SysFlag = 0xFFFF;
+        system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
+        system_flags.dfu_on_no_firmware = 0;
 
-    Finish_Update();
+        Finish_Update();
+    }
+    return success;
 }
 
 void BACKUP_Flash_Reset(void)

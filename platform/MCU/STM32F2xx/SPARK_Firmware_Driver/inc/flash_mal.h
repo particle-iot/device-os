@@ -28,6 +28,8 @@
 #define __FLASH_MAL_H
 
 #include "flash_device_hal.h"
+#include "module_info.h"
+#include "module_info_hal.h"
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -59,6 +61,7 @@ extern "C" {
 #define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x20000) //128K (7 sectors of 128K each used by main firmware)
     
 #ifdef MODULAR_FIRMWARE
+    #define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_USER_PART
     #ifndef USER_FIRMWARE_IMAGE_SIZE
     #error USER_FIRMWARE_IMAGE_SIZE not defined
     #else
@@ -73,6 +76,7 @@ extern "C" {
     #define INTERNAL_FLASH_FAC_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE+FIRMWARE_IMAGE_SIZE)
     
 #else        
+    #define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_MONO_FIRMWARE
     #define USER_FIRMWARE_IMAGE_LOCATION CORE_FW_ADDRESS
     #ifndef FIRMWARE_IMAGE_SIZE
     #ifdef USE_SERIAL_FLASH
@@ -112,22 +116,31 @@ extern "C" {
 uint16_t FLASH_SectorToErase(flash_device_t flashDeviceID, uint32_t startAddress);
 bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
 bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
+
+/**
+ * @param validateDestinationAddress checks if the destination address corresponds with the start address in the module
+ */
 bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                       flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                      uint32_t length, bool sourceVerifyCRC);
+                      uint32_t length, uint8_t module_function, uint8_t flags);
+
 bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
                          uint32_t length);
+
 bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                         uint32_t length, bool sourceVerifyCRC);
+                                         uint32_t length, uint8_t module_function, uint8_t flags);
+
 bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                                        flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                       uint32_t length, bool sourceVerifyCRC);
+                                       uint32_t length, uint8_t module_function, uint8_t flags);
+
 bool FLASH_ClearFactoryResetModuleSlot(void);
 bool FLASH_RestoreFromFactoryResetModuleSlot(void);
 void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
+const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress);
 uint32_t FLASH_ModuleAddress(flash_device_t flashDeviceID, uint32_t startAddress);
 uint32_t FLASH_ModuleLength(flash_device_t flashDeviceID, uint32_t startAddress);
 bool FLASH_VerifyCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
@@ -143,6 +156,7 @@ uint32_t FLASH_PagesMask(uint32_t imageSize, uint32_t pageSize);
 void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize);
 uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
 void FLASH_End(void);
+
 
 #ifdef __cplusplus
 }

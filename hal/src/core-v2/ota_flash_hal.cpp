@@ -57,11 +57,11 @@ uint16_t HAL_OTA_ChunkSize()
 
 bool HAL_FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                           flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                          uint32_t length, bool sourceVerifyCRC)
+                          uint32_t length, uint8_t function, uint8_t flags)
 {
     return FLASH_CopyMemory(sourceDeviceID, sourceAddress,
                             destinationDeviceID, destinationAddress,
-                            length, sourceVerifyCRC);
+                            length, function, flags);
 }
 
 bool HAL_FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
@@ -75,20 +75,20 @@ bool HAL_FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddre
 
 bool HAL_FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                                              flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                             uint32_t length, bool sourceVerifyCRC)
+                                             uint32_t length, uint8_t function, uint8_t flags)
 {
     return FLASH_AddToNextAvailableModulesSlot(sourceDeviceID, sourceAddress,
                                                destinationDeviceID, destinationAddress,
-                                               length, sourceVerifyCRC);
+                                               length, function, flags);
 }
 
 bool HAL_FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                                            flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                           uint32_t length, bool sourceVerifyCRC)
+                                           uint32_t length, uint8_t function, uint8_t flags)
 {
     return FLASH_AddToFactoryResetModuleSlot(sourceDeviceID, sourceAddress,
                                              destinationDeviceID, destinationAddress,
-                                             length, sourceVerifyCRC);
+                                             length, function, flags);
 }
 
 bool HAL_FLASH_ClearFactoryResetModuleSlot(void)

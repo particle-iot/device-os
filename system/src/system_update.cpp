@@ -7,6 +7,7 @@
 #include "system_update.h"
 #include "system_cloud.h"
 #include "rgbled.h"
+#include "module_info.h"
 
 
 ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update = NULL;
@@ -83,6 +84,12 @@ void Spark_Prepare_For_Firmware_Update(void)
     begin_flash_file(1, HAL_OTA_FlashAddress(), HAL_OTA_FlashLength());
 }
 
+#ifdef MODULAR_FIRMWARE
+#define USER_OTA_MODULE_FUNCTION    MODULE_FUNCTION_USER_PART
+#else
+#define USER_OTA_MODULE_FUNCTION    MODULE_FUNCTION_MONO_FIRMWARE
+#endif
+
 void Spark_Finish_Firmware_Update(void)
 {
     if (SPARK_FLASH_UPDATE == 2)
@@ -100,8 +107,9 @@ void Spark_Finish_Firmware_Update(void)
         {
             HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, HAL_OTA_FlashAddress(),
                                                     FLASH_INTERNAL, moduleAddress,
-                                                    (moduleLength + 4),//+4 to copy the CRC too
-                                                    true);//true to verify the CRC during copy also
+                                                    (moduleLength + 4),//+4 to copy the CRC too                
+                                                    USER_OTA_MODULE_FUNCTION,
+                                                    MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION);//true to verify the CRC during copy also
 
             //Use "HAL_FLASH_AddToFactoryResetModuleSlot()" to reconfigure the factory reset area
         }
