@@ -634,12 +634,14 @@ bool FACTORY_Flash_Reset(void)
     //So FLASH_Restore(INTERNAL_FLASH_FAC_ADDRESS) is not required and hence commented
 #endif
 
+    system_flags.Factory_Reset_SysFlag = 0xFFFF;
     if (success) {
-        system_flags.Factory_Reset_SysFlag = 0xFFFF;
         system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
         system_flags.dfu_on_no_firmware = 0;
-
         Finish_Update();
+    }
+    else {
+        Save_SystemFlags();
     }
     return success;
 }

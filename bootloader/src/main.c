@@ -295,7 +295,14 @@ int main(void)
             else
                 LED_SetRGBColor(RGB_COLOR_GREEN);
             // Restore the Factory Firmware
-            FACTORY_Flash_Reset();
+            // On success the device will reset)
+            if (!FACTORY_Flash_Reset()) {
+                if (is_application_valid(ApplicationAddress)) {
+                    // we have a valid image to fall back to, so just reset
+                    NVIC_SystemReset();
+                }
+                // else fall through to DFU
+            }
         } else {
             // This else clause is only for JTAG debugging
             // Break and set FACTORY_RESET_MODE to 2
@@ -339,17 +346,21 @@ int main(void)
             SysTick_Disable();
             Jump_To_Application();
         }
-        else if (!SYSTEM_FLAG(dfu_on_no_firmware))
+        else
         {
             LED_SetRGBColor(RGB_COLOR_RED);
             FACTORY_Flash_Reset();
-            
+            // if we get here, the factory reset wasn't successful            
         }
         // else drop through to DFU mode
         
     }
     // Otherwise enters DFU mode to allow user to program his application
 
+    FACTORY_RESET_MODE = 0;         // ensure the LED is slow 
+    OTA_FLASH_AVAILABLE = 0;
+    REFLASH_FROM_BACKUP = 0;
+    
     LED_SetRGBColor(RGB_COLOR_YELLOW);
 
     USB_DFU_MODE = 1;
