@@ -1,7 +1,9 @@
-PLATFORM_ID=6
-CORE=../../../..
+# redefine these for your environment
+PLATFORM_ID?=6
+CORE?=../../../..
 WICED?=$(CORE)/WICED/WICED-SDK-3.1.1/WICED-SDK
-$(info WICED $(WICED))
+
+
 FIRMWARE=$(CORE)/firmware
 FIRMWARE_BUILD=$(FIRMWARE)/build
 OUT=$(WICED)/build
