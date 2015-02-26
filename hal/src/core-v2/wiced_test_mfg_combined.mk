@@ -96,5 +96,10 @@ prep_dct:
 	#st-flash read $(DCT_PREP) 0x8004000 0x8000
 	#$(DFU_FLASH) 0x4000:0x8000 -U $(DCT_PREP)
 	
-
+# Feb 24 2015 - steps to dct_prep.bin file
+# flash the combined image 
+# enter dfu mode
+# use st-flash GUI tool to erase DCT sectors 0x8004000 and 0x8008000
+# use the prep_dct goal to write the cloud public key
+# use st-flash GUI tool to save the 
 
