@@ -29,6 +29,7 @@
 #include "dfu_hal.h"
 #include "hw_config.h"
 #include "flash_mal.h"
+#include "rgbled.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);

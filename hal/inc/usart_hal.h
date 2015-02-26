@@ -27,6 +27,8 @@
 #ifndef __USART_HAL_H
 #define __USART_HAL_H
 
+#include <stdbool.h>
+
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
 

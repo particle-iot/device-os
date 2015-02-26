@@ -109,7 +109,8 @@ void wlan_smart_config_init() {
     
 }
 
-void wlan_smart_config_finalize() {    
+bool wlan_smart_config_finalize() {    
+    return false;
 }
 
 
