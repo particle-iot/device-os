@@ -48,7 +48,7 @@ bool system_serialFirmwareUpdate(Stream *serialObj)
         {
             serialObj->println("Restarting system to apply firmware update...");
             HAL_Delay_Milliseconds(100);
-            HAL_FLASH_End();
+            Spark_Finish_Firmware_Update();
         }
         else
         {
@@ -59,7 +59,7 @@ bool system_serialFirmwareUpdate(Stream *serialObj)
     else
     {
         serialObj->println("Firmware update using this terminal is not supported!");
-        serialObj->println("Add #include \"YmodemUtil\\YmodemUtil.h\" to your sketch and try again.");
+        serialObj->println("Add #include \"Ymodem/Ymodem.h\" to your sketch and try again.");
     }
 
     return status;
@@ -110,8 +110,6 @@ void Spark_Finish_Firmware_Update(void)
                                                     (moduleLength + 4),//+4 to copy the CRC too                
                                                     USER_OTA_MODULE_FUNCTION,
                                                     MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION);//true to verify the CRC during copy also
-
-            //Use "HAL_FLASH_AddToFactoryResetModuleSlot()" to reconfigure the factory reset area
         }
 
         //Reset the system to complete the OTA update
