@@ -38,6 +38,14 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+LINE_CODING linecoding =
+{
+    0x00,   /* baud rate*/
+    0x00,   /* stop bits*/
+    0x00,   /* parity*/
+    0x00    /* nb. of bits */
+};
+
 /* These are external variables imported from CDC core to be used for IN 
    transfer management. */
 extern uint8_t  APP_Rx_Buffer []; /* Write CDC received data in this buffer.
@@ -99,7 +107,59 @@ static uint16_t APP_DeInit(void)
  */
 static uint16_t APP_Ctrl (uint32_t Cmd, uint8_t* Buf, uint32_t Len)
 { 
-    //Do Nothing
+    switch (Cmd)
+    {
+    case SEND_ENCAPSULATED_COMMAND:
+        /* Not needed for this driver */
+        break;
+
+    case GET_ENCAPSULATED_RESPONSE:
+        /* Not needed for this driver */
+        break;
+
+    case SET_COMM_FEATURE:
+        /* Not needed for this driver */
+        break;
+
+    case GET_COMM_FEATURE:
+        /* Not needed for this driver */
+        break;
+
+    case CLEAR_COMM_FEATURE:
+        /* Not needed for this driver */
+        break;
+
+    case SET_LINE_CODING:
+        linecoding.bitrate = (uint32_t)(Buf[0] | (Buf[1] << 8) | (Buf[2] << 16) | (Buf[3] << 24));
+        linecoding.format = Buf[4];
+        linecoding.paritytype = Buf[5];
+        linecoding.datatype = Buf[6];
+        /* Set the new configuration */
+        //To Do - This is a good place to add a callback when the host sets a specific linecoding
+        break;
+
+    case GET_LINE_CODING:
+        Buf[0] = (uint8_t)(linecoding.bitrate);
+        Buf[1] = (uint8_t)(linecoding.bitrate >> 8);
+        Buf[2] = (uint8_t)(linecoding.bitrate >> 16);
+        Buf[3] = (uint8_t)(linecoding.bitrate >> 24);
+        Buf[4] = linecoding.format;
+        Buf[5] = linecoding.paritytype;
+        Buf[6] = linecoding.datatype;
+        break;
+
+    case SET_CONTROL_LINE_STATE:
+        /* Not needed for this driver */
+        break;
+
+    case SEND_BREAK:
+        /* Not needed for this driver */
+        break;
+
+    default:
+        break;
+    }
+
     return USBD_OK;
 }
 
