@@ -7,16 +7,83 @@ This root project folder contains the top-level makefile:
 make
 ```
 
-In the top-level directory creates build artifacts for all projects under the `build/target/` directory.
+in the top-level directory creates build artifacts for all projects under the `build/target/` directory.
+
+The top-level make is mainly a convenience to build `bootloader` and `main`. It
+supports these targets: `clean` and `all` (default). 
+
+## Build Components
+
+The build system is organized as a number of build components. Each build component
+exists in it's own directory, with it's own makefiles and is responsible for
+build the artifacts that make up that component.
+
+These are the primary components that produce executable code for a device:
+
+- bootloader
+- main
+- modules
+
+The other projects are libraries used by these main projects.
+
+# Quick Start
+
+## Targets
+
+- `all`: the default target - builds the artefact for the project
+- `clean`: deletes all artefacts so the next build runs from a clean state
+- 'program-dfu': (not bootloader) - builds and flashes the executable to a device via dfu
+- 'stflash': - builds and flashes the executable to a device via the st-link `st-flash` utility
+
+
+## Variables
+
+`make` accepts variable definitions as part of the command invocation
+
+- `v` - verbose - set to 1 to trigger verbose output
+- `PLATFORM`/`PLATFORM_ID`: specifies the target platform, either as a name or as an ID.
+- `PRODUCT_ID`: specifies the target product ID.  
+- `PRODUCT_FIRMWARE_VERSION`: specifies the firmware version that is sent to the cloud.
+    Value from 0 to 65535.
+- `GCC_PREFIX`: a prefix added to the ARM toolchain. Allows custom locations to be specified if
+    the ARM tools are not in the path.
+
+When building `main` or `modules`:
+
+- `APP`: builds the application stored in `user/applications/$(APP)`. (The default is to build
+    the application code in `user/src`
+- `APPDIR`: builds the application located in $(APPDIR). The directory specified 
+    can be outside of the firmware repo, allowing 3rd party applications to be built.
+    See `USER_MAKEFILE`.
+- `TEST` builds the test application stored in `user/tests/$(TEST)`.
+- `USER_MAKEFILE`: when `APPDIR` is used this specifies the location of the makefile
+    to include, relative to `APPDIR`. The default is `build.mk`. 
+
+When building `main`:
+
+- `TARGET_FILE`: sets the base name of the artefact file produced. E.g. setting
+    `TARGET_FILE=whereyou` would produce the target named `whereyou.bin` The default
+    is the value of `APP`.
+- `TARGET_DIR`: sets the directory where the target files are placed relative to
+    the current directory.
+
+## Platform name/IDs
+
+The Platform ID describes the target platform. 
+If you are targeting the Spark Core, you can skip this section. A list of supported
+platform IDs are listed in [platform-id.mk]((platform-id.mk).
+
+
+
+# In more detail...
 
 ## Clean Build
 
-The top-level makefile also supports the `clean` goal. It calls clean on all
-submodules before deleting the `build\target` directory, E.g.
+```
+make clean
+```
 
-```
-make clean all
-```
+This clears all output files from the build so that all sources are recompiled.
 
 
 ## Specifying custom toolchain location
@@ -34,14 +101,12 @@ GCC_PREFIX="/opt/gcc-arm-embedded-bin/bin/arm-none-eabi-" make
 The default value of `GCC_PREFIX` is `arm-none-eabi`, which uses the ARM
 version of the GCC toolchain, assumed to be in the path. 
 
-Alternatively, path for the tools can be specified separately as `GCC_ARM_PATH`,
+Alternatively, a path for the tools can be specified separately as `GCC_ARM_PATH`,
 which, if specified should end with a directory separator, e.g.
 
 ```
 GCC_ARM_PATH="/opt/gcc-arm-embedded-bin/bin/" make
 ```
-
-
 
 ## Controlling Verbosity
 
@@ -55,26 +120,30 @@ make v=1
 
 ## Building individual modules
 
-The top-level makefile builds all modules. Also, each module can be built on its own 
+The top-level makefile builds all modules. Each module can be built on its own 
 by executing the makefile in the module's directory. The make also builds any dependencies.
-This means the firmware can be built by running make from the `user/` directory.
+
+For example, executing
 
 ```
-cd user
+cd main
 make
 ```
 
-## Specifying the target Product ID
+Will build the main firmware, and all the modules the main firmware depends on.
 
-By default, the build system targets the stock Spark Core (Product ID 0). If
-your product has been given a different product ID, you should pass this on the
+
+## Product ID
+
+By default, the build system targets the Spark Core (Product ID 0). If
+your product has been assigned product ID, you should pass this on the
 command line to specifically target your product. For example:
 
 ```
-make SPARK_PRODUCT_ID=2
+make PRODUCT_ID=2
 ```
 
-Would build the bootloader and firmware for product ID 2.
+Builds the firmware for product ID 2.
 
 
 ## Building a User Application
@@ -96,16 +165,16 @@ mylibrary.cpp
 mylibrary.h
 ```
 
-You can also add header files - the application subdirectory is on the include path.
+You can also add header files - your application subdirectory is on the include path.
 
-To build this application, change directory to the `user/` directory and run
+To build this application, change directory to the `main/` directory and run
 
 ```
 make APP=myapp
 ```
 
 This will build your application with the resulting `.bin` file available in
-`build/target/user/prod-0/applications/myapp/myapp.bin`. 
+`build/target/main/platform-0/applications/myapp/myapp.bin`. 
 
 ## Changing the Target Directory
 
@@ -116,20 +185,21 @@ you can define the `TARGET_DIR` variable:
 make APP=myapp TARGET_DIR=my/custom/output
 ```
 
-This will place `user.bin` (and the other output files) in `my/custom/output` relative to the current directory. 
+This will place `main.bin` (and the other output files) in `my/custom/output` relative to the current directory. 
 The directory is created if it doesn't exist.
 
 
 ## Changing the Target File name
 
-Finally, to continue naming the output file `core-firmware.bin`, define `TARGET_FILE` 
+It's also possible to specify the name of the output file, e.g. to revert to the
+old naming convention of `core-firmware.bin`, set `TARGET_FILE` 
 like this:
 
 ```
 make APP=myapp TARGET_FILE=core-firmware
 ```
 
-This will build the firmware with output as `core-firmware.bin` in `build/target/user/prod-0/applications/myapp`.
+This will build the firmware with output as `core-firmware.bin` in `build/target/main/platform-0/applications/myapp`.
 
 These can of course also be combined like so:
 
@@ -142,7 +212,7 @@ Which will produce `myfolder/core-firmware.elf`
 
 ## Compiling an application outside the firmware source
 
-If you prefer to separate application code from the firmware code,
+If you prefer to separate your application code from the firmware code,
 the build system supports this, via the `APPDIR` parameter.
 
 ```
@@ -163,55 +233,70 @@ defaults to the name of the application sources directory.
 
 When using `APP` or `APPDIR` to build custom application sources, the build system
 by default will build any `.c` and `.cpp` files found in the given directory
-and it's subdirectories. You can take control of the build process by adding a file
-`build.mk` to the root of the application sources. Appending values to these variables
-allows the build process to be customized:
+and it's subdirectories. You can customize the build process by adding the file
+`build.mk` to the root of the application sources. The file should be a valid gnu make file.
 
-- `CSRC`, `CPPSRC`: the c and cpp files in the build
-- `INCLUDE_DIRS`: include path
+To customize the build, append values to these variables:
+
+- `CSRC`, `CPPSRC`: the c and cpp files in the build which are compiled and linked
+- `INCLUDE_DIRS`: the include path
 - `LIB_DIRS`: the library search path
 - `LIBS`: libraries to link (found in the library search path). Library names are given without the `lib` prefix and `.a` suffix.
 - `LIB_DEPS`: full path of additional library files to include.
 
+To use a different customization file other than `build.mk`, define `USER_MAKEFILE` to point to
+your custom build file, relative to the application sources. 
+
+
 ## Integrated application.cpp with firmware
 
-In previous versions of the make system, the application code was integrated with the firmware code at `core-firmware/src/application.cpp`.
-This mode of building is still supported, however the location has changed to: `user/src/application.cpp` simply run `make`
+In previous versions of the make system, the application code was integrated with the firmware code at `src/application.cpp`.
+This mode of building is still supported, however the location has changed to: `user/src/application.cpp`.
+
+To build the default application sources, simply run `make`
 
 ```
 make
 ```
 
-This will then build the firmware as before with the user code in `user/src/application.cpp`
 
 ## Platform Specific vs Platform Agnostic builds
 
-Currently the low level hardware specific details are abstracted away in the HAL (Hardware Abstraction Layer) implementation.  By default the makefile will build for the Spark Core platform which will allow you to add direct hardware calls in your application firmware.  You should however try to make use of the HAL functions and methods instead of making direct hardware calls, which will ensure your code is more future proof!  To build the firmware as platform agnostic, first run `make clean`, then simply include `SPARK_NO_PLATFORM=y` in the make command.  This is also a great way to find all of the places in your code that make hardware specific calls, as they should generate an error when building as platform agnostic.
+Currently the low level hardware specific details are abstracted away in the HAL (Hardware Abstraction Layer) implementation.  
+By default the makefile will build for the Spark Core platform which will allow you to add direct hardware calls in your application firmware.  
+You should however try to make use of the HAL functions and methods instead of making direct hardware calls, which will ensure your code is more future proof!  
+To build the firmware as platform agnostic, first run `make clean`, then simply include `SPARK_NO_PLATFORM=y` in the make command.  
+This is also a great way to find all of the places in your code that make hardware specific calls, as they should generate an error when building as platform agnostic.
 
 ```
 make APP=myapp SPARK_NO_PLATFORM=y
 ```
 
-## Build directory changes
+## Build Output Directory
 
 The build system uses an `out of source` directory for all built artifacts. The
 directory is `build/target/`. In previous versions of the build system, artifacts
 were placed under a local `build` folder. If you would prefer to maintain this style of
-working, you can create a symlink from `build/target/user/prod-0/` to `user/build/`.
-Then after building `user`, the artifacts will be available in the `build/` subdirectory
+working, you can create a symlink from `build/target/main/platform-0/` to `main/build/`.
+Then after building `main`, the artifacts will be available in the `build/` subdirectory
 as before.
 
 
-## Flashing the firmware to the core
+## Flashing the firmware to the device via DFU
 
-The `program-dfu` target can be used when building from the `user/` directory to flash
-the compiled `.bin` file to the core, using dfu-util. For this to work, `dfu-util` needs to be
+The `program-dfu` target can be used when building from `main/` to flash
+the compiled `.bin` file to the device using dfu-util. For this to work, `dfu-util` should be
 installed and in your PATH (Windows), and the core put in DFU mode (flashing yellow).
 
 ```
-cd user
-make all program-dfu
+cd main
+make program-dfu
 ```
+
+## Flashing the firmware to the device via ST-Link
+
+The `stflash` target can be used to flash all executable code (bootloader, main and modules)
+to the device. The flash uses the `st-flash` tool, which should be in your system path.
 
 # Debugging
 
