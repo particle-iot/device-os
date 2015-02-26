@@ -47,6 +47,10 @@ int HAL_core_subsystem_version(char* buf, int bufLen);
 
     #define SPARK_SUBSYSTEM_EVENT_NAME ""
 
+#elif PLATFORM_NAME==newhal
+
+    #define SPARK_SUBSYSTEM_EVENT_NAME ""
+
 #else
     #error unknown platform for SPARK_SUBSYSTEM_EVENT_NAME
 #endif

@@ -5,10 +5,12 @@ included_productid_mk := 1
 # PLATFORM_NAME - a unique name for the platform, can be used to organise sources
 #                 by platform
 # PLATFORM_MCU  - an identifier for the MCU family
-# STM32_DEVICE  - the specific device being targeted for STM32 platform builds
 # PLATFORM_NET  - the network subsystem
+# STM32_DEVICE  - the specific device being targeted for STM32 platform builds
 # ARCH		- architecture (ARM/GCC)
 # PRODUCT_DESC  - text description of the product ID
+# PLATFORM_DYNALIB_MODULES - if the device supports a modular build, the name
+#		- of the subdirectory containing 
 
 # Default USB Device Vendor ID for Spark Products
 USBD_VID_SPARK=0x1D50
@@ -46,6 +48,9 @@ ifeq ("$(PLATFORM)","teacup-bm14")
 PLATFORM_ID = 7
 endif
 
+ifeq ("$(PLATFORM)","newhal")
+PLATFORM_ID=8
+endif
 
 ifeq (,$(PLATFORM_ID))
 $(error "Unknown platform: $(PLATFORM))
@@ -62,10 +67,14 @@ ARCH=arm
 
 ifeq ("$(PLATFORM_ID)","0")
 STM32_DEVICE=STM32F10X_MD
+PLATFORM=core
 PLATFORM_NAME=core-v1
 PLATFORM_MCU=STM32F1xx
 PLATFORM_NET=CC3000
 PRODUCT_DESC=Spark core
+USBD_VID_SPARK=0x1D50
+USBD_PID_DFU=0x607F
+USBD_PID_CDC=0x607D
 endif
 
 ifeq ("$(PLATFORM_ID)","1")
@@ -74,14 +83,19 @@ ifeq ("$(PLATFORM_ID)","1")
 endif
 
 ifeq ("$(PLATFORM_ID)","2")
+PLATFORM=core-hd
 STM32_DEVICE=STM32F10X_HD
 PLATFORM_NAME=core-v1
 PLATFORM_MCU=STM32F1xx
 PLATFORM_NET=CC3000
 PRODUCT_DESC=Spark core-HD, 256k flash, 48k ram
+USBD_VID_SPARK=0x1D50
+USBD_PID_DFU=0x607F
+USBD_PID_CDC=0x607D
 endif
 
 ifeq ("$(PLATFORM_ID)","3")
+PLATFORM=gcc
 PLATFORM_NAME=gcc
 PLATFORM_MCU=gcc
 PLATFORM_NET=gcc
@@ -92,29 +106,38 @@ SPARK_NO_PLATFORM=1
 endif
 
 ifeq ("$(PLATFORM_ID)","4")
+PLATFORM=dev-photon
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=core-v2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=BCM9WCDUSI09
 PRODUCT_DESC=BM-09/WICED
 PLATFORM_DYNALIB_MODULES=photon
+USBD_VID_SPARK=0x1D50
+USBD_PID_DFU=0x607F
+USBD_PID_CDC=0x607D
 endif
 
 ifeq ("$(PLATFORM_ID)","5")
+PLATFORM=dev-teacup-bm14
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=core-v2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=BCM9WCDUSI14
 PRODUCT_DESC=BM-14/WICED
+USBD_VID_SPARK=0x1D50
+USBD_PID_DFU=0x607F
+USBD_PID_CDC=0x607D
 endif
 
 ifeq ("$(PLATFORM_ID)","6")
+PLATFORM=photon
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=core-v2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=BCM9WCDUSI09
 PRODUCT_DESC=Production Photon
-# Overide default USBD VID:PID
+# eventually want to generate the PID from the base + product ID
 USBD_VID_SPARK=0x2B04
 USBD_PID_DFU=0xD006
 USBD_PID_CDC=0xC006
@@ -122,11 +145,29 @@ PLATFORM_DYNALIB_MODULES=photon
 endif
 
 ifeq ("$(PLATFORM_ID)","7")
+PLATFORM=teacup-bm14
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=core-v2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=BCM9WCDUSI14
 PRODUCT_DESC=Production Teacup Pigtail
+USBD_VID_SPARK=0x1D50
+USBD_PID_DFU=0x607F
+USBD_PID_CDC=0x607D
+endif
+
+ifeq ("$(PLATFORM_ID)","8")
+PLATFORM=newhal
+STM32_DEVICE=newhalcpu
+# used to define the sources in hal/src/new-hal
+PLATFORM_NAME=newhal
+# define MCU-specific platform defines under platform/MCU/new-hal
+PLATFORM_MCU=newhal-mcu
+PLATFORM_NET=not-defined
+PRODUCT_DESC=Test platform for producing a new HAL implementation
+USBD_VID_SPARK=0x1D50
+USBD_PID_DFU=0x607F
+USBD_PID_CDC=0x607D
 endif
 
 
@@ -138,11 +179,11 @@ endif
 
 
 ifeq ("$(PLATFORM_MCU)","")
-$(error PLATFORM_MCU not defined. Check product id $(PLATFORM_ID))
+$(error PLATFORM_MCU not defined. Check platform id $(PLATFORM_ID))
 endif
 
 ifeq ("$(PLATFORM_NET)","")
-$(error PLATFORM_NET not defined. Check product id $(PLATFORM_ID))
+$(error PLATFORM_NET not defined. Check platform id $(PLATFORM_ID))
 endif
 
 # lower case version of the STM32_DEVICE string for use in filenames
