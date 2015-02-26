@@ -113,13 +113,13 @@ stflash: all $(TARGET_BASE).bin
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
-program-dfu: all $(TARGET_BASE).dfu
+program-dfu: $(TARGET_BASE).dfu
 	@echo Flashing using dfu:
 	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $<
 
 # Program the core using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
 # have been defined in the environment before invoking 'make program-cloud'
-program-cloud: all $(TARGET_BASE).bin
+program-cloud: $(TARGET_BASE).bin
 	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
 	$(CURL) -X PUT -F file=@$< -F file_type=binary $(CLOUD_FLASH_URL)
 
@@ -146,7 +146,7 @@ size: $(TARGET_BASE).elf
 # Create a DFU file from bin file
 %.dfu: %.bin
 	@cp $< $@
-	$(DFUSUFFIX) -v 1d50 -p 607f -a $@
+	$(DFUSUFFIX) -v $(subst 0x,,$(USBD_VID_SPARK)) -p $subst 0x,,$(USBD_PID_DFU)) -a $@:
 
 # Create a bin file from ELF file
 %.bin : %.elf
