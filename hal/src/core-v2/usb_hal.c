@@ -51,6 +51,7 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 
 /* Extern variables ----------------------------------------------------------*/
 #ifdef USB_CDC_ENABLE
+extern LINE_CODING linecoding;
 extern uint8_t USB_DEVICE_CONFIGURED;
 extern uint8_t USB_Rx_Buffer[];
 extern uint8_t APP_Rx_Buffer[];
@@ -106,23 +107,21 @@ void Get_SerialNum(void)
  * Input          : baudRate.
  * Return         : None.
  *******************************************************************************/
-static uint32_t configuredBautRate;
-
 void USB_USART_Init(uint32_t baudRate)
 {
-    if (baudRate!=configuredBautRate) {
-        if (configuredBautRate)
+    if (baudRate != linecoding.bitrate) {
+        if (linecoding.bitrate)
             SPARK_USB_Teardown();
-        configuredBautRate = 0;
+        linecoding.bitrate = 0;
         if (baudRate)
             SPARK_USB_Setup();
-        configuredBautRate = baudRate;
+        linecoding.bitrate = baudRate;
     }    
 }
 
 unsigned USB_USART_Baud_Rate(void) 
 {
-    return configuredBautRate;
+    return linecoding.bitrate;
 }
 
 
