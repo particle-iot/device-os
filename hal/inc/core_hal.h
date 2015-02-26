@@ -105,6 +105,8 @@ uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR);
 
 void HAL_SysTick_Handler(void);
 
+void HAL_Bootloader_Lock(bool lock);
+
 extern void app_setup_and_loop();
 
 #ifdef __cplusplus

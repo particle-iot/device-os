@@ -438,3 +438,12 @@ void TIM5_irq(void)
         HAL_TIM5_Handler();
     }
 }
+
+
+void HAL_Bootloader_Lock(bool lock)
+{
+    if (lock)
+        FLASH_WriteProtection_Enable(BOOTLOADER_FLASH_PAGES);
+    else
+        FLASH_WriteProtection_Disable(BOOTLOADER_FLASH_PAGES);
+}

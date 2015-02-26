@@ -24,6 +24,7 @@
 
 #include "dynalib.h"
 #include "usb_config_hal.h"
+#include "core_hal.h"
 
 /**
  * Define the dynamic exports for the current platform.
@@ -55,6 +56,7 @@ DYNALIB_FN(hal,HAL_Core_Execute_Stop_Mode)
 DYNALIB_FN(hal,HAL_Core_Enter_Standby_Mode)
 DYNALIB_FN(hal,HAL_Core_Execute_Standby_Mode)
 DYNALIB_FN(hal,HAL_Core_Compute_CRC32)
+
 DYNALIB_FN(hal,HAL_Delay_Milliseconds)
 DYNALIB_FN(hal,HAL_Delay_Microseconds)
 DYNALIB_FN(hal,HAL_device_ID)
@@ -143,6 +145,7 @@ DYNALIB_FN(hal,wlan_setup)
 DYNALIB_FN(hal,HAL_WLAN_SetNetWatchDog)
 
 DYNALIB_FN(hal,HAL_Bootloader_Get_Version)
+DYNALIB_FN(hal,HAL_Bootloader_Lock)        
 DYNALIB_FN(hal,HAL_Pin_Map)
 
 DYNALIB_END(hal)

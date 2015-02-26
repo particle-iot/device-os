@@ -108,3 +108,7 @@ uint16_t HAL_Core_Mode_Button_Pressed_Time()
 {
     return 0;
 }
+
+void HAL_Bootloader_Lock(bool lock)
+{   
+}

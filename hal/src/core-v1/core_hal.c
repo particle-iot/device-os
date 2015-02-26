@@ -350,3 +350,12 @@ int main() {
 	app_setup_and_loop();
 	return 0;
 }    
+
+
+void HAL_Bootloader_Lock(bool lock)
+{
+    if (lock)
+        FLASH_WriteProtection_Enable(BOOTLOADER_FLASH_PAGES);
+    else
+        FLASH_WriteProtection_Disable(BOOTLOADER_FLASH_PAGES);
+}

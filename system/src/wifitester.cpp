@@ -26,7 +26,7 @@
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_usartserial.h"
 #include "wifitester.h"
-#include "hw_config.h"
+#include "core_hal.h"
 
 using namespace spark;
 
@@ -195,8 +195,8 @@ void checkWifiSerial(char c) {
         else if ((start = strstr(command, cmd_UNLOCK))) {
             serialPrintln("unlocking...");
 
-            //LOCK
-            FLASH_WriteProtection_Disable(BOOTLOADER_FLASH_PAGES);
+            //UNLOCK
+            HAL_Bootloader_Lock(false);
 
             RGB.color(0, 255, 0);            
 
@@ -207,7 +207,7 @@ void checkWifiSerial(char c) {
             serialPrintln("Locking...");
 
             //LOCK
-            FLASH_WriteProtection_Enable(BOOTLOADER_FLASH_PAGES);
+            HAL_Bootloader_Lock(true);
 
             RGB.color(255, 0, 0);
             

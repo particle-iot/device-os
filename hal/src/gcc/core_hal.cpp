@@ -243,3 +243,7 @@ int main(int argc, char* argv[]) {
     app_setup_and_loop();    
     return 0;
 }
+
+void HAL_Bootloader_Lock(bool lock)
+{    
+}
