@@ -8,9 +8,11 @@
 #include "system_cloud.h"
 #include "rgbled.h"
 #include "module_info.h"
+#include "spark_wiring_usbserial.h"
+#include "system_ymodem.h"
+#include "system_task.h"
 
-
-ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update = NULL;
+ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update_Handler = NULL;
 
 volatile uint8_t SPARK_CLOUD_CONNECT = 1; //default is AUTOMATIC mode
 volatile uint8_t SPARK_CLOUD_SOCKETED;
@@ -20,16 +22,16 @@ volatile uint32_t TimingFlashUpdateTimeout;
 
 void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler)
 {
-    Ymodem_Serial_Flash_Update = handler;
+    Ymodem_Serial_Flash_Update_Handler = handler;
 }
 
 bool system_serialSaveFile(Stream *serialObj, uint32_t sFlashAddress)
 {
     bool status = false;
 
-    if (NULL != Ymodem_Serial_Flash_Update)
+    if (NULL != Ymodem_Serial_Flash_Update_Handler)
     {
-        status = Ymodem_Serial_Flash_Update(serialObj, sFlashAddress);
+        status = Ymodem_Serial_Flash_Update_Handler(serialObj, sFlashAddress);
         SPARK_FLASH_UPDATE = 0;
         TimingFlashUpdateTimeout = 0;
     }
@@ -41,9 +43,9 @@ bool system_serialFirmwareUpdate(Stream *serialObj)
 {
     bool status = false;
 
-    if (NULL != Ymodem_Serial_Flash_Update)
+    if (NULL != Ymodem_Serial_Flash_Update_Handler)
     {
-        status = Ymodem_Serial_Flash_Update(serialObj, HAL_OTA_FlashAddress());
+        status = Ymodem_Serial_Flash_Update_Handler(serialObj, HAL_OTA_FlashAddress());
         if (status == true)
         {
             serialObj->println("Restarting system to apply firmware update...");
@@ -63,6 +65,18 @@ bool system_serialFirmwareUpdate(Stream *serialObj)
     }
 
     return status;
+}
+
+void system_lineCodingBitRateHandler(uint32_t bitrate)
+{
+    if (!WLAN_SMART_CONFIG_START && bitrate == 14400)
+    {
+        set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
+        RGB.control(true);
+        RGB.color(RGB_COLOR_MAGENTA);
+        SPARK_FLASH_UPDATE = 3;
+        TimingFlashUpdateTimeout = 0;
+    }
 }
 
 void begin_flash_file(int flashType, uint32_t sFlashAddress, uint32_t fileSize)
