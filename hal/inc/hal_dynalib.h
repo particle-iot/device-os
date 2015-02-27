@@ -116,6 +116,7 @@ DYNALIB_FN(hal,USB_USART_Available_Data)
 DYNALIB_FN(hal,USB_USART_Receive_Data)
 DYNALIB_FN(hal,USB_USART_Send_Data)
 DYNALIB_FN(hal,USB_USART_Baud_Rate)
+DYNALIB_FN(hal,USB_USART_LineCoding_BitRate_Handler)
 #endif     
         
 DYNALIB_FN(hal,HAL_watchdog_reset_flagged)

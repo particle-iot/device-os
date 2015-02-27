@@ -73,6 +73,8 @@ void USB_USART_Init(uint32_t baudRate);
 
 unsigned int USB_USART_Baud_Rate(void);
 
+void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate));
+
 /**
  * Retrieves the number of bytes of data available.
  * @return 

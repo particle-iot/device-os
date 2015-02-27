@@ -79,12 +79,13 @@ void SPARK_USB_Setup(void)
 #endif
             &USR_desc,
             &USBD_CDC_cb,
-            &USR_cb);
+            NULL);
 }
 
 void SPARK_USB_Teardown()
 {
     USB_Cable_Config(DISABLE);
+    linecoding.bitrate = 0;
 }
 
 /*******************************************************************************
@@ -109,14 +110,16 @@ void Get_SerialNum(void)
  *******************************************************************************/
 void USB_USART_Init(uint32_t baudRate)
 {
-    if (baudRate != linecoding.bitrate) {
-        if (linecoding.bitrate)
-            SPARK_USB_Teardown();
-        linecoding.bitrate = 0;
-        if (baudRate)
+    if (linecoding.bitrate != baudRate)
+    {
+        if(!linecoding.bitrate)
+        {
+            //Call SPARK_USB_Setup() only once
             SPARK_USB_Setup();
+        }
+        //linecoding.bitrate will be overwritten by USB Host
         linecoding.bitrate = baudRate;
-    }    
+    }
 }
 
 unsigned USB_USART_Baud_Rate(void) 
@@ -124,6 +127,16 @@ unsigned USB_USART_Baud_Rate(void)
     return linecoding.bitrate;
 }
 
+void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
+{
+    //Init USB Serial first before calling the linecoding handler
+    USB_USART_Init(9600);
+
+    HAL_Delay_Milliseconds(1000);
+
+    //Set the system defined custom handler
+    SetLineCodingBitRateHandler(handler);
+}
 
 /*******************************************************************************
  * Function Name  : USB_USART_Available_Data.
@@ -133,12 +146,9 @@ unsigned USB_USART_Baud_Rate(void)
  *******************************************************************************/
 uint8_t USB_USART_Available_Data(void)
 {
-    if(USB_DEVICE_CONFIGURED)
+    if(USB_Rx_State == 1)
     {
-        if(USB_Rx_State == 1)
-        {
-            return (USB_Rx_length - USB_Rx_ptr);
-        }
+        return (USB_Rx_length - USB_Rx_ptr);
     }
 
     return 0;
@@ -152,23 +162,20 @@ uint8_t USB_USART_Available_Data(void)
  *******************************************************************************/
 int32_t USB_USART_Receive_Data(uint8_t peek)
 {
-    if(USB_DEVICE_CONFIGURED)
+    if(USB_Rx_State == 1)
     {
-        if(USB_Rx_State == 1)
+        if(!peek && ((USB_Rx_length - USB_Rx_ptr) == 1))
         {
-            if(!peek && ((USB_Rx_length - USB_Rx_ptr) == 1))
-            {
-                USB_Rx_State = 0;
+            USB_Rx_State = 0;
 
-                /* Prepare Out endpoint to receive next packet */
-                DCD_EP_PrepareRx(&USB_OTG_dev,
-                                 CDC_OUT_EP,
-                                 (uint8_t*)(USB_Rx_Buffer),
-                                 CDC_DATA_OUT_PACKET_SIZE);
-            }
-
-            return USB_Rx_Buffer[peek ? USB_Rx_ptr : USB_Rx_ptr++];
+            /* Prepare Out endpoint to receive next packet */
+            DCD_EP_PrepareRx(&USB_OTG_dev,
+                             CDC_OUT_EP,
+                             (uint8_t*)(USB_Rx_Buffer),
+                             CDC_DATA_OUT_PACKET_SIZE);
         }
+
+        return USB_Rx_Buffer[peek ? USB_Rx_ptr : USB_Rx_ptr++];
     }
 
     return -1;
@@ -182,21 +189,18 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
  *******************************************************************************/
 void USB_USART_Send_Data(uint8_t Data)
 {
-    if(USB_DEVICE_CONFIGURED)
+    APP_Rx_Buffer[APP_Rx_ptr_in] = Data;
+
+    APP_Rx_ptr_in++;
+
+    /* To avoid buffer overflow */
+    if(APP_Rx_ptr_in == APP_RX_DATA_SIZE)
     {
-        APP_Rx_Buffer[APP_Rx_ptr_in] = Data;
-
-        APP_Rx_ptr_in++;
-
-        /* To avoid buffer overflow */
-        if(APP_Rx_ptr_in == APP_RX_DATA_SIZE)
-        {
-            APP_Rx_ptr_in = 0;
-        }
-
-        //Delay 100us to avoid losing the data
-        HAL_Delay_Microseconds(100);
+        APP_Rx_ptr_in = 0;
     }
+
+    //Delay 100us to avoid losing the data
+    HAL_Delay_Microseconds(100);
 }
 #endif
 

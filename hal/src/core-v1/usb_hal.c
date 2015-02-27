@@ -132,6 +132,11 @@ unsigned int USB_USART_Baud_Rate(void)
     return linecoding.bitrate;
 }
 
+void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
+{
+    //To Do
+}
+
 /*******************************************************************************
  * Function Name  : USB_USART_Available_Data.
  * Description    : Return the length of available data received from USB.

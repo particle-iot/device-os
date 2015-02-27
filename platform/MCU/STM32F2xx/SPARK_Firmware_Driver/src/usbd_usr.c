@@ -42,8 +42,6 @@ USBD_Usr_cb_TypeDef USR_cb =
         USBD_USR_DeviceDisconnected,
 };
 
-uint8_t USB_DEVICE_CONFIGURED = 0;//We are just interested in "CONFIGURED" state
-
 /**
  * @brief  USBD_USR_Init
  * @param  None
@@ -52,7 +50,6 @@ uint8_t USB_DEVICE_CONFIGURED = 0;//We are just interested in "CONFIGURED" state
 void USBD_USR_Init(void)
 {
     //USB Device Init
-    USB_DEVICE_CONFIGURED = 0;
 }
 
 /**
@@ -63,7 +60,6 @@ void USBD_USR_Init(void)
 void USBD_USR_DeviceReset(uint8_t speed )
 {
     //USB Device Reset
-    USB_DEVICE_CONFIGURED = 0;
 }
 
 
@@ -75,7 +71,6 @@ void USBD_USR_DeviceReset(uint8_t speed )
 void USBD_USR_DeviceConfigured (void)
 {
     //USB Device Configured
-    USB_DEVICE_CONFIGURED = 1;
 }
 /**
  * @brief  USBD_USR_DeviceSuspended
@@ -85,7 +80,6 @@ void USBD_USR_DeviceConfigured (void)
 void USBD_USR_DeviceSuspended(void)
 {
     //USB Device in Suspend Mode
-    USB_DEVICE_CONFIGURED = 0;
 }
 
 
@@ -97,7 +91,6 @@ void USBD_USR_DeviceSuspended(void)
 void USBD_USR_DeviceResumed(void)
 {
     //USB Device in Idle Mode
-    USB_DEVICE_CONFIGURED = 0;
 }
 
 /**
@@ -108,7 +101,6 @@ void USBD_USR_DeviceResumed(void)
 void USBD_USR_DeviceConnected (void)
 {
     //USB Device Connected
-    USB_DEVICE_CONFIGURED = 0;
 }
 
 
@@ -120,5 +112,4 @@ void USBD_USR_DeviceConnected (void)
 void USBD_USR_DeviceDisconnected (void)
 {
     //USB Device Disconnected
-    USB_DEVICE_CONFIGURED = 0;
 }
