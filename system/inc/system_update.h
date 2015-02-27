@@ -16,6 +16,8 @@ bool system_serialSaveFile(Stream *serialObj, uint32_t sFlashAddress);
 
 bool system_serialFirmwareUpdate(Stream *serialObj);
 
+void system_lineCodingBitRateHandler(uint32_t bitrate);
+
 #ifdef __cplusplus
 }
 #endif

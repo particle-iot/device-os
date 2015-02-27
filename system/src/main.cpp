@@ -35,6 +35,8 @@
 #include "watchdog_hal.h"
 #include "system_cloud.h"
 #include "system_user.h"
+#include "system_update.h"
+#include "usb_hal.h"
 #include "rgbled.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -176,6 +178,8 @@ void app_setup_and_loop(void)
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
     DEBUG("Hello from Spark!");
+
+    USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
 
     SPARK_WLAN_Setup(Multicast_Presence_Announcement);
 
