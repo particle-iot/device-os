@@ -227,6 +227,17 @@ inline uint8_t in_cloud_backoff_period()
 }
 
 /**
+ * Use usb serial ymodem flasher to update firmware.
+ */
+void manage_serial_flasher()
+{
+    if(SPARK_FLASH_UPDATE == 3)
+    {
+        system_serialFirmwareUpdate(&Serial);
+    }
+}
+
+/**
  * Reset or initialize the network connection as required.
  */
 void manage_network_connection()
@@ -453,6 +464,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
     ON_EVENT_DELTA();
     spark_loop_total_millis = 0;
+
+    manage_serial_flasher();
 
     manage_network_connection();
 
