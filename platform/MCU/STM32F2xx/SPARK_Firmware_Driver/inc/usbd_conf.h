@@ -102,5 +102,8 @@ typedef struct
   uint8_t  datatype;
 } LINE_CODING;
 
+typedef void (*linecoding_bitrate_handler)(uint32_t bitrate);
+void SetLineCodingBitRateHandler(linecoding_bitrate_handler handler);
+
 #endif //__USBD_CONF__H__
 
