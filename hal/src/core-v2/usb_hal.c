@@ -114,7 +114,11 @@ void USB_USART_Init(uint32_t baudRate)
     {
         if(!linecoding.bitrate)
         {
-            //Call SPARK_USB_Setup() only once
+            //Perform a Detach-Attach operation on USB bus
+            USB_Cable_Config(DISABLE);
+            USB_Cable_Config(ENABLE);
+
+            //Initialize USB device only once (if linecoding.bitrate==0)
             SPARK_USB_Setup();
         }
         //linecoding.bitrate will be overwritten by USB Host
