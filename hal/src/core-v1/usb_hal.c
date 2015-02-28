@@ -82,7 +82,8 @@ void SPARK_USB_Setup(void)
 
 void SPARK_USB_Teardown()
 {
-    USB_Cable_Config(DISABLE);    
+    USB_Cable_Config(DISABLE);
+    linecoding.bitrate = 0;
 }
 
 /*******************************************************************************
@@ -119,12 +120,20 @@ void Get_SerialNum(void)
  *******************************************************************************/
 void USB_USART_Init(uint32_t baudRate)
 {
-    if (linecoding.bitrate!=baudRate) {
-        SPARK_USB_Teardown();
-        if (baudRate)
-            SPARK_USB_Setup();              
+    if (linecoding.bitrate != baudRate)
+    {
+        if(!linecoding.bitrate)
+        {
+            //Perform a Detach-Attach operation on USB bus
+            USB_Cable_Config(DISABLE);
+            USB_Cable_Config(ENABLE);
+
+            //Initialize USB device only once (if linecoding.bitrate==0)
+            SPARK_USB_Setup();
+        }
+        //linecoding.bitrate will be overwritten by USB Host
         linecoding.bitrate = baudRate;
-    }        
+    }
 }
 
 unsigned int USB_USART_Baud_Rate(void) 
@@ -134,7 +143,13 @@ unsigned int USB_USART_Baud_Rate(void)
 
 void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
 {
-    //To Do
+    //Init USB Serial first before calling the linecoding handler
+    USB_USART_Init(9600);
+
+    HAL_Delay_Milliseconds(1000);
+
+    //Set the system defined custom handler
+    SetLineCodingBitRateHandler(handler);
 }
 
 /*******************************************************************************
