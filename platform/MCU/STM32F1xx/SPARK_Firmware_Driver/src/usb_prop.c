@@ -39,11 +39,13 @@ uint8_t Request = 0;
 
 LINE_CODING linecoding =
   {
-    115200, /* baud rate*/
+    0x00,   /* baud rate*/
     0x00,   /* stop bits-1*/
     0x00,   /* parity - none*/
-    0x08    /* no. of bits 8*/
+    0x00    /* no. of bits */
   };
+
+static linecoding_bitrate_handler APP_LineCodingBitRateHandler = NULL;
 
 uint32_t ProtocolValue;
 
@@ -138,6 +140,12 @@ ONE_DESCRIPTOR String_Descriptor[4] =
 /* Private function prototypes -----------------------------------------------*/
 /* Extern function prototypes ------------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
+
+void SetLineCodingBitRateHandler(linecoding_bitrate_handler handler)
+{
+    APP_LineCodingBitRateHandler = handler;
+}
+
 /*******************************************************************************
 * Function Name  : USB_init.
 * Description    : USB init routine.
@@ -281,7 +289,12 @@ void USB_Status_In(void)
 #ifdef USB_CDC_ENABLE
   if (Request == SET_LINE_CODING)
   {
-    //Set Usart BaudRate here
+    //Callback handler when the host sets a specific linecoding
+    if (NULL != APP_LineCodingBitRateHandler)
+    {
+      APP_LineCodingBitRateHandler(linecoding.bitrate);
+    }
+
     Request = 0;
   }
 #endif
@@ -461,6 +474,7 @@ RESULT USB_Get_Interface_Setting(uint8_t Interface, uint8_t AlternateSetting)
   {
     return USB_UNSUPPORT;
   }
+
   return USB_SUCCESS;
 }
 
@@ -479,6 +493,7 @@ uint8_t *CDC_GetLineCoding(uint16_t Length)
     pInformation->Ctrl_Info.Usb_wLength = sizeof(linecoding);
     return NULL;
   }
+
   return(uint8_t *)&linecoding;
 }
 
@@ -496,6 +511,7 @@ uint8_t *CDC_SetLineCoding(uint16_t Length)
     pInformation->Ctrl_Info.Usb_wLength = sizeof(linecoding);
     return NULL;
   }
+
   return(uint8_t *)&linecoding;
 }
 #endif

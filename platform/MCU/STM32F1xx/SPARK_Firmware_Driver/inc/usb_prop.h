@@ -100,5 +100,8 @@ RESULT HID_SetProtocol(void);
 uint8_t *HID_GetProtocolValue(uint16_t Length);
 #endif
 
+typedef void (*linecoding_bitrate_handler)(uint32_t bitrate);
+void SetLineCodingBitRateHandler(linecoding_bitrate_handler handler);
+
 #endif /* __usb_prop_H */
 
