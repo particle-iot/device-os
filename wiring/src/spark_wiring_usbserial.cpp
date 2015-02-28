@@ -39,10 +39,7 @@ USBSerial::USBSerial()
 
 void USBSerial::begin(long speed)
 {
-    if (this->baud()!=(unsigned)speed) {
-        end();
-        USB_USART_Init((unsigned)speed);        
-    }
+    USB_USART_Init((unsigned)speed);
 }
 
 void USBSerial::end()
