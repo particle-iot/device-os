@@ -179,7 +179,9 @@ void app_setup_and_loop(void)
     DECLARE_SYS_HEALTH(ENTERED_Main);
     DEBUG("Hello from Spark!");
 
+#ifdef START_SERIAL_FLASHER_SPEED
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
+#endif
 
     SPARK_WLAN_Setup(Multicast_Presence_Announcement);
 

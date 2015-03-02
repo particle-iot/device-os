@@ -69,7 +69,8 @@ bool system_serialFirmwareUpdate(Stream *serialObj)
 
 void system_lineCodingBitRateHandler(uint32_t bitrate)
 {
-    if (!WLAN_SMART_CONFIG_START && bitrate == 14400)
+#ifdef START_SERIAL_FLASHER_SPEED
+    if (!WLAN_SMART_CONFIG_START && bitrate == START_SERIAL_FLASHER_SPEED)
     {
         set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
         RGB.control(true);
@@ -77,6 +78,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
         SPARK_FLASH_UPDATE = 3;
         TimingFlashUpdateTimeout = 0;
     }
+#endif
 }
 
 void begin_flash_file(int flashType, uint32_t sFlashAddress, uint32_t fileSize)
