@@ -88,6 +88,11 @@ extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key,
         uint8_t* plaintext, int max_plaintext_len);
 
 void parse_device_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* device_privkey);
+/**
+ * Retrieves a pointer to a statically allocated instance.
+ * @return A statically allocated instance of SparkProtocol. 
+ */
+extern SparkProtocol* spark_protocol_instance();
 
 #ifdef	__cplusplus
 }

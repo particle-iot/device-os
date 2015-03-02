@@ -29,6 +29,7 @@ extern "C" {
 #include "dynalib.h"
 
 DYNALIB_BEGIN(communication)
+DYNALIB_FN(communication, spark_protocol_instance)
 DYNALIB_FN(communication, spark_protocol_communications_handlers)
 
 DYNALIB_FN(communication, spark_protocol_init)
