@@ -35,6 +35,7 @@
 #include "inet_hal.h"
 #include "rtc_hal.h"
 #include "ota_flash_hal.h"
+#include "product_store_hal.h"
 #include "rgbled.h"
 #include "string.h"
 #include <stdarg.h>
@@ -339,11 +340,28 @@ void SystemEvents(const char* name, const char* data)
 }    
 
 void Spark_Protocol_Init(void)
-{
-    if (!spark_protocol_is_initialized(&sp))
 {    
     if (!spark_protocol_is_initialized(sp))
     {
+        product_details_t info;
+        info.size = sizeof(info);
+        spark_protocol_get_product_details(sp, &info);
+        
+        // User code was run, so persist the current values stored in the comms lib.
+        // These will either have been left as default or overridden via PRODUCT_ID/PRODUCT_VERSION macros
+        if (system_mode()!=SAFE_MODE) {
+            HAL_SetProductStore(PRODUCT_STORE_ID, info.product_id);
+            HAL_SetProductStore(PRODUCT_STORE_VERSION, info.product_version);        
+        }
+        else {      // user code was not executed, use previously persisted values
+            info.product_id = HAL_GetProductStore(PRODUCT_STORE_ID);
+            info.product_version = HAL_GetProductStore(PRODUCT_STORE_VERSION);
+            if (info.product_id!=0xFFFF)
+                spark_protocol_set_product_id(sp, info.product_id);
+            if (info.product_version!=0xFFFF)
+                spark_protocol_set_product_firmware_version(sp, info.product_version);
+        }
+        
         SparkCallbacks callbacks;
         callbacks.send = Spark_Send;
         callbacks.receive = Spark_Receive;
