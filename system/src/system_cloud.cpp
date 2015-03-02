@@ -97,7 +97,7 @@ static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
  */
 
-void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
+void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
 {
     if (NULL != userVar && NULL != varKey)
     {
@@ -121,7 +121,7 @@ void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVa
     }
 }
 
-void spark_function(const char *funcKey, int (*pFunc)(String paramString))
+void spark_function(const char *funcKey, int (*pFunc)(String paramString), void* reserved)
 {
     int i = 0;
     if (NULL != pFunc && NULL != funcKey)

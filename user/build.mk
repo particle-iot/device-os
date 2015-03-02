@@ -46,3 +46,7 @@ INCLUDE_DIRS += $(MODULE_PATH)/libraries
 CFLAGS += -DSPARK_PLATFORM_NET=$(PLATFORM_NET)
 CPPFLAGS += -std=gnu++11
 
+BUILTINS_EXCLUDE = malloc free realloc
+CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
+
+

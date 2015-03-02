@@ -35,7 +35,7 @@ static const flash_codes_t flash_codes[] = {
 * Public Functions
 ****************************************************************************/
 
-void panic_(ePanicCode code)
+void panic_(ePanicCode code, void* extraInfo)
 {
         HAL_disable_irq();
         // Flush any serial message to help the poor bugger debug this;

@@ -14,9 +14,10 @@ LDFLAGS += -L$(SYSTEM_PART2_MODULE_PATH)
 LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
-
 WIFI_SYSTEM_MODULE_SRC_PATH = $(SYSTEM_PART1_MODULE_PATH)/src
 
 CPPSRC += $(call target_files,$(WIFI_SYSTEM_MODULE_SRC_PATH),*.cpp)
 CSRC += $(call target_files,$(WIFI_SYSTEM_MODULE_SRC_PATH),*.c)    
 
+BUILTINS_EXCLUDE = malloc free
+CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
