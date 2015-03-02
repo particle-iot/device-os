@@ -43,7 +43,7 @@ typedef enum eSystemHealth {
   ENTERED_Loop,
   RAN_Loop,
   PRESERVE_APP,
-    
+  ENTER_DFU_APP_REQUEST=0xEDFA,
   CLEARED_WATCHDOG=0xFFFF
 } eSystemHealth;
 

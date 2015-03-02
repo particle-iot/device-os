@@ -179,8 +179,13 @@ int main(void)
 
     if(BKP_DR1_Value != 0xFFFF)
     {
-        // Check if the system has resumed from IWDG reset
-        if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
+        // Check if application requested to enter DFU mode
+        if (BKP_DR1_Value == ENTER_DFU_APP_REQUEST)
+        {
+            USB_DFU_MODE = 1;
+        }
+        // Else check if the system has resumed from IWDG reset
+        else if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
         {
             REFLASH_FROM_BACKUP = 0;
             OTA_FLASH_AVAILABLE = 0;
