@@ -35,6 +35,7 @@
 #include "watchdog_hal.h"
 #include "system_cloud.h"
 #include "system_user.h"
+#include "system_mode.h"
 #include "rgbled.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -194,13 +195,15 @@ void app_setup_and_loop(void)
                 {
                     //Execute user application setup only once
                     DECLARE_SYS_HEALTH(ENTERED_Setup);
-                    setup();
+                    if (system_mode()!=SAFE_MODE)
+                        setup();
                     SPARK_WIRING_APPLICATION = 1;
                 }
 
                 //Execute user application loop
                 DECLARE_SYS_HEALTH(ENTERED_Loop);
-                loop();
+                if (system_mode()!=SAFE_MODE)
+                    loop();
                 DECLARE_SYS_HEALTH(RAN_Loop);
             }
         }

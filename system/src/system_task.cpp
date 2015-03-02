@@ -178,8 +178,8 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 
     wlan_setup();
 
-    /* Trigger a WLAN device */
-    if (system_mode() == AUTOMATIC)
+    /* Trigger a WLAN device */    
+    if (system_mode() == AUTOMATIC || system_mode()==SAFE_MODE)
     {
         network_connect();
     }
