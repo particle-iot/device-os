@@ -57,6 +57,15 @@ typedef struct CommunicationsHandlers {
 } CommunicationsHandlers;    
     
 
+typedef uint16_t product_id_t;
+typedef uint16_t product_firmware_version_t;
+
+typedef struct {
+    uint16_t size;
+    product_id_t product_id;    
+    product_firmware_version_t product_version;
+} product_details_t;
+
 void spark_protocol_communications_handlers(SparkProtocol* protocol, CommunicationsHandlers* handlers);
 
 void spark_protocol_init(SparkProtocol* protocol, const char *id,
@@ -75,6 +84,9 @@ bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event
 bool spark_protocol_send_time_request(SparkProtocol* protocol);
 void spark_protocol_send_subscriptions(SparkProtocol* protocol);
 void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char *event_name);
+void spark_protocol_set_product_id(SparkProtocol* protocol, product_id_t product_id);
+void spark_protocol_set_product_firmware_version(SparkProtocol* protocol, product_firmware_version_t product_firmware_version);
+void spark_protocol_get_product_details(SparkProtocol* protocol, product_details_t* product_details);
 
 /**
  * Decrypt a buffer using the given public key.

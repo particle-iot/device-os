@@ -30,8 +30,10 @@ extern "C" {
 
 DYNALIB_BEGIN(communication)
 DYNALIB_FN(communication, spark_protocol_instance)
+DYNALIB_FN(communication, spark_protocol_set_product_id)
+DYNALIB_FN(communication, spark_protocol_set_product_firmware_version)
+DYNALIB_FN(communication, spark_protocol_get_product_details)
 DYNALIB_FN(communication, spark_protocol_communications_handlers)
-
 DYNALIB_FN(communication, spark_protocol_init)
 DYNALIB_FN(communication, spark_protocol_handshake)
 DYNALIB_FN(communication, spark_protocol_event_loop)

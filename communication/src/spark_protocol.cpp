@@ -56,6 +56,13 @@ void SparkProtocol::reset_updating(void)
   updating = false;
 }
 
+SparkProtocol::SparkProtocol() : QUEUE_SIZE(640), handlers({NULL}), expecting_ping_ack(false),
+                                     initialized(false), updating(false), product_id(PRODUCT_ID), product_firmware_version(PRODUCT_FIRMWARE_VERSION)
+{
+    queue_init();
+}
+
+
 void SparkProtocol::init(const char *id,
                          const SparkKeys &keys,
                          const SparkCallbacks &callbacks,
@@ -332,10 +339,10 @@ void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
   buf[4] = 0xb1; // Uri-Path option of length 1
   buf[5] = 'h';
   buf[6] = 0xff; // payload marker
-  buf[7] = PRODUCT_ID >> 8;
-  buf[8] = PRODUCT_ID & 0xff;
-  buf[9] = PRODUCT_FIRMWARE_VERSION >> 8;
-  buf[10] = PRODUCT_FIRMWARE_VERSION & 0xff;
+  buf[7] = product_id >> 8;
+  buf[8] = product_id & 0xff;
+  buf[9] = product_firmware_version >> 8;
+  buf[10] = product_firmware_version & 0xff;
   buf[11] = 0; // reserved flags
   buf[12] = newly_upgraded ? 1 : 0;
 
