@@ -22,9 +22,10 @@ extern "C" {
 class SparkProtocol;    
     
 struct SparkKeys
-{
+{    
   unsigned char *core_private;
   unsigned char *server_public;
+  unsigned char *core_public;
 };
 
 struct SparkCallbacks
@@ -85,6 +86,8 @@ void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char *e
  */
 extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, 
         uint8_t* plaintext, int max_plaintext_len);
+
+void parse_device_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* device_privkey);
 
 #ifdef	__cplusplus
 }

@@ -32,7 +32,9 @@
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
 #include "spark_protocol_functions.h"
+#include "device_keys.h"
 #include <stdint.h>
+
 
 #if !defined(arraySize)
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
@@ -139,8 +141,8 @@ class SparkProtocol
   private:
     CommunicationsHandlers handlers;   // application callbacks
     char device_id[12];
-    unsigned char server_public_key[294];
-    unsigned char core_private_key[612];
+    unsigned char server_public_key[MAX_SERVER_PUBLIC_KEY_LENGTH];
+    unsigned char core_private_key[MAX_DEVICE_PRIVATE_KEY_LENGTH];    
     aes_context aes;    
 
     int (*callback_send)(const unsigned char *buf, uint32_t buflen);

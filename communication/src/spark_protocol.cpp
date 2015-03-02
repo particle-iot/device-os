@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include "device_keys.h"
 
 #ifndef PRODUCT_ID
 #define PRODUCT_ID (0xffff)
@@ -60,8 +61,8 @@ void SparkProtocol::init(const char *id,
                          const SparkCallbacks &callbacks,
                          const SparkDescriptor &descriptor)
 {
-  memcpy(server_public_key, keys.server_public, 294);
-  memcpy(core_private_key, keys.core_private, 612);
+  memcpy(server_public_key, keys.server_public, MAX_SERVER_PUBLIC_KEY_LENGTH);
+  memcpy(core_private_key, keys.core_private, MAX_DEVICE_PRIVATE_KEY_LENGTH);
   memcpy(device_id, id, 12);
 
   // when using this lib in C, constructor is never called
@@ -99,14 +100,16 @@ int SparkProtocol::handshake(void)
   int err = blocking_receive(queue, 40);
   if (0 > err) return err;
 
+  parse_device_pubkey_from_privkey(queue+52, core_private_key);
+  
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, server_public_key);
-  err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, 52, queue, queue + 52);
+  err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, 52, queue, queue + 52 + MAX_DEVICE_PUBLIC_KEY_LENGTH);
   rsa_free(&rsa);
 
   if (err) return err;
 
-  blocking_send(queue + 52, 256);
+  blocking_send(queue + 52 + MAX_DEVICE_PUBLIC_KEY_LENGTH, 256);
   err = blocking_receive(queue, 384);
   if (0 > err) return err;
 
