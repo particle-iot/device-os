@@ -123,8 +123,8 @@ program-cloud: $(TARGET_BASE).bin
 	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
 	$(CURL) -X PUT -F file=@$< -F file_type=binary $(CLOUD_FLASH_URL)
 
-# Comment this to disable serial flasher in code
-START_SERIAL_FLASHER_SPEED=14400
+# Uncomment this to enable serial flasher in code
+# START_SERIAL_FLASHER_SPEED=14400
 
 ifdef START_SERIAL_FLASHER_SPEED
 CFLAGS += -DSTART_SERIAL_FLASHER_SPEED=$(START_SERIAL_FLASHER_SPEED)
