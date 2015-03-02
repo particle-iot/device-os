@@ -20,6 +20,8 @@
  - Improved integrity checks for firmware images
  - Added additional safe/recovery mode in bootloader (> 6.5 sec : restore factory code without clearing wifi credentials)
  - Enabled CRC verification in bootloader before restoring/copying the firmware image from factory reset, ota downloaded area etc.
+ - Added 'program-serial' to build target to enter serial ymodem protocol for flashing user firmware (Testing pending...)
+ - Added System.modeDFU() to briefly enter Bootloader mode and not persisting the bootloader flag inbetween system reset or power on-off
 
 ### BUGFIXES
 
