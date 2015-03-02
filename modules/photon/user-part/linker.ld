@@ -6,11 +6,14 @@ MEMORY
 {
     APP_FLASH                  (rx)  : ORIGIN = 0x080A0000,     LENGTH = 128K
 
-    SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
+    SRAM      (rwx) : ORIGIN = 0x20000200, LENGTH = 76288
 }
 
 SECTIONS
 {    
+    sram_start = ORIGIN(SRAM);
+    sram_end = sram_start + LENGTH(SRAM);
+
     .module_start : {
         link_module_start = .;
     } > APP_FLASH AT>APP_FLASH
@@ -88,14 +91,6 @@ SECTIONS
         *(.ARM.extab*)
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
-
-    padding_length = ALIGN( system_static_ram_end - ORIGIN(SRAM), 4) ; 
-
-    .padding : /* move location past system static RAM region */
-    {
-        link_padding_start = .;
-        . = . + padding_length;
-    }> SRAM
     
     .data : /* Contains the non-zero initialised global variables */
     {
@@ -114,15 +109,6 @@ SECTIONS
         link_bss_end = .;
         link_heap_start = .;
         . = ALIGN(., 4);
-    }> SRAM AT> SRAM
-
-    /* This is here just to validate that there is sufficient space available for the stack allocated by the system module. */
-    .stack : /* Contains the initial stack */
-    {
-        link_stack_location_user = ALIGN(., 4);
-        *(.stack)
-        . = ALIGN(MAX(link_stack_location_user + stack_size , .), 4);
-        link_stack_end = .;
     }> SRAM AT> SRAM
 
     .module_end : 
@@ -153,9 +139,10 @@ SECTIONS
 
 }
 
-sram_end = ORIGIN(SRAM) + LENGTH(SRAM);
+ASSERT ( ORIGIN(SRAM) == system_part1_module_ram_end, "Origin of SRAM should be at system_part1_module_ram_end" );
 
-ASSERT( link_padding_start == ORIGIN( SRAM ), "Padding start should be at start of RAM" );
+min_heap_end = link_heap_start + min_heap_size;
+ASSERT ( min_heap_end <= system_static_ram_start, "Insufficient room for heap." );
 
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 
@@ -170,7 +157,7 @@ ASSERT ( USER_FIRMWARE_IMAGE_LOCATION == ORIGIN(APP_FLASH), "User firmware locat
 
 ASSERT ( USER_FIRMWARE_IMAGE_SIZE == LENGTH(APP_FLASH), "User firmware size and APP_FLASH length differ" );
 
-ASSERT ( link_heap_start > ORIGIN(SRAM) && link_heap_start < sram_end, "link_heap_start is in the wrong memory space" );
+ASSERT ( sram_start <= link_heap_start && link_heap_start < sram_end, "link_heap_start is in the wrong memory space" );
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( user_module_info == link_module_info_start, "module info start not where expected" ); 

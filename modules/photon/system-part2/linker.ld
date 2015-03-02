@@ -17,7 +17,9 @@ MEMORY
     DCT2_FLASH                 (rx)  : ORIGIN = 0x08008000,     LENGTH = 16K
     APP_FLASH                  (rx)  : ORIGIN = 0x08060000,     LENGTH = 256K
 
-    SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
+    /* The SRAM area is offset to include the stack and static ram allocated at the end of the SRAM area.
+       This is done so that the build outputs meaningful values for BSS and Data section sizes. */      
+    SRAM      (rwx) : ORIGIN = 0x20020000 - 53K, LENGTH = 53K
 }
 
 
@@ -101,6 +103,43 @@ SECTIONS
 
     }>APP_FLASH  AT> APP_FLASH
 
+    /* Heap comes immediately after system-part1 */
+    link_heap_location = ALIGN(system_part1_module_ram_end, 4);
+    
+    padding_length = ALIGN(system_static_ram_start - ORIGIN(SRAM), 512);
+
+    .padding : /* 512 byte offset in SRAM */
+    {
+        link_padding_start = .;
+        . = . + padding_length;
+        link_static_ram_start = .;
+    }> SRAM
+    
+    .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
+    {
+        link_ram_interrupt_vectors_location = .;
+        . = . + interrupt_vectors_length;
+        link_ram_interrupt_vectors_location_end = .;
+    }> SRAM
+   
+    .data : /* Contains the non-zero initialised global variables */
+    {
+        link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */        
+        link_global_data_start = .;
+        *(.data*)
+        link_global_data_end = .;
+        . = ALIGN(., 4);
+    }> SRAM AT> APP_FLASH
+
+
+    .bss : /* Zero initialised memory used for zero initialised variables */
+    {
+        link_bss_location = ALIGN(., 4);
+        *(.bss*)
+        *(COMMON)
+        link_bss_end = .;
+    }> SRAM AT> SRAM
+    
     /*
      * The .ARM.exidx and .ARM.extab sections are used for C++ exception handling.
      * It is located here for completeness. Bare-metal ARM projects
@@ -121,41 +160,8 @@ SECTIONS
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
 
-    padding_length = ALIGN(system_part1_module_ram_end - ORIGIN(SRAM), 512);
-
-    .padding : /* 512 byte offset in SRAM */
-    {
-        link_padding_start = .;
-        . = . + padding_length;
-    }> SRAM
-    
-    .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
-    {
-        link_ram_interrupt_vectors_location = .;
-        . = . + interrupt_vectors_length;
-        link_ram_interrupt_vectors_location_end = .;
-    }> SRAM
-
-    .data : /* Contains the non-zero initialised global variables */
-    {
-        link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */        
-        link_global_data_start = .;
-        *(.data*)
-        link_global_data_end = .;
-        . = ALIGN(., 4);
-    }> SRAM AT> APP_FLASH
 
 
-    .bss : /* Zero initialised memory used for zero initialised variables */
-    {
-        link_bss_location = ALIGN(., 4);
-        *(.bss*)
-        *(COMMON)
-        link_bss_end = .;
-        . = ALIGN(., 4);
-        link_heap_location = .;
-    }> SRAM AT> SRAM
-    
     /DISCARD/ :
     {
         *(.ARM.attributes*)
@@ -188,9 +194,9 @@ SECTIONS
 
 PROVIDE( _heap = link_heap_location );
 
-/* End of the heap is top of RAM, aligned 8 byte */
+/* End of the heap before static RAM, aligned 8 byte */
 
-PROVIDE( _eheap = ALIGN( link_stack_location - 8, 8 ) );
+PROVIDE( _eheap = ALIGN( link_static_ram_start - 8, 8 ) );
 
 /* ThreadX aliases */
 PROVIDE( __RAM_segment_used_end__ = link_stack_end );
@@ -235,15 +241,17 @@ link_stack_location = stack_start;
 link_stack_end = stack_end;
 ASSERT ( link_stack_end - link_stack_location >= stack_size, "stack is too small" );
 
-ASSERT ( link_stack_end == expected_stack_end, "stack should be at the top of SRAM" );
+ASSERT ( link_stack_end == expected_stack_end, "stack should be at the top of SRAM" ); 
 
-ASSERT ( ( link_heap_location + min_heap_size ) < link_stack_location, "Insufficient room for heap" );
-
-/** for now, reserve a portion of ram so that the user module can start the offset from here. */
-ASSERT ( link_heap_location <= system_static_ram_end , "Static RAM area is too large" );
+min_end_of_heap = link_heap_location + min_heap_size ;
+ASSERT ( min_end_of_heap < link_static_ram_start, "Insufficient room for heap" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
+ASSERT ( system_static_ram_start == link_static_ram_start, "exported SRAM start different from linked SRAM start." );
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( system_part2_module_info_start == link_module_info_start, "part2 module info start not where expected" ); 
 ASSERT ( system_part2_module_info_end == link_module_info_end, "part2 module info end not where expected" );
+
+ASSERT ( ORIGIN(SRAM) == system_static_ram_start, "ORIGIN of SRAM should be equal to system_static_ram_start. Adjust by hand to obtain the correct address and length. ");
+

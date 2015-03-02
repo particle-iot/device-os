@@ -23,8 +23,6 @@
 #pragma once
 
 #include "dynalib.h"
-#include "usb_config_hal.h"
-#include "core_hal.h"
 
 /**
  * Define the dynamic exports for the current platform.
