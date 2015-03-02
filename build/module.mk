@@ -123,6 +123,22 @@ program-cloud: $(TARGET_BASE).bin
 	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
 	$(CURL) -X PUT -F file=@$< -F file_type=binary $(CLOUD_FLASH_URL)
 
+# Comment this to disable serial flasher in code
+START_SERIAL_FLASHER_SPEED=14400
+
+ifdef START_SERIAL_FLASHER_SPEED
+CFLAGS += -DSTART_SERIAL_FLASHER_SPEED=$(START_SERIAL_FLASHER_SPEED)
+# Following not tested yet. (Dependent on 'stty' and 'sz' commands for proper working)
+# Install 'sz' tool using: 'brew install lrzsz' on MAC OS X
+# Before calling program-serial, DEV should be set something like /dev/tty.usbxxxx
+# Program core/photon using serial ymodem flasher.
+program-serial: $(TARGET_BASE).bin
+	@echo Entering serial programmer mode:
+	stty -f $(DEV) $(START_SERIAL_FLASHER_SPEED)
+	@echo Flashing using serial ymodem protocol:
+	sz -b -v --ymodem $< > $(DEV) < $(DEV)
+endif
+
 # Display size
 size: $(TARGET_BASE).elf
 	$(call,echo,'Invoking: ARM GNU Print Size')
