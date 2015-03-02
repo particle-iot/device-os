@@ -34,6 +34,25 @@
 
 #define OTA_CHUNK_SIZE          512
 
+bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
+{
+    uint32_t endAddress = startAddress + length - 1;
+
+#ifdef USE_SERIAL_FLASH
+    if (startAddress == EXTERNAL_FLASH_OTA_ADDRESS && endAddress < 0x100000)
+    {
+        return true;
+    }
+#else
+    if (startAddress == INTERNAL_FLASH_OTA_ADDRESS && endAddress < 0x100000)
+    {
+        return true;
+    }
+#endif
+
+    return false;
+}
+
 uint32_t HAL_OTA_FlashAddress()
 {
 #ifdef USE_SERIAL_FLASH

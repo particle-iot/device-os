@@ -37,7 +37,8 @@
 extern "C" {
 #endif
         
-    
+bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length);
+
 // TODO - this is temporary to get a working hal.
 // A C++ MemoryDeviceRegion will be used so that callers can incrementally
 // write to that. This abstracts the memory regions without needing to expose

@@ -250,8 +250,7 @@ static int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t
                     size = strtoul((const char *)file_size, NULL, 10);
 
                     /* Test the size of the image to be sent */
-                    /* Image size is greater than Flash max size */
-                    if (size > HAL_OTA_FlashLength())
+                    if (HAL_OTA_CheckValidAddressRange(sFlashAddress, size) != true)
                     {
                       /* End session */
                       Send_Byte(serialObj, CA);

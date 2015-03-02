@@ -27,6 +27,22 @@
 #include "hw_config.h"
 #include <string.h>
 
+bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
+{
+    uint32_t endAddress = startAddress + length - 1;
+
+    if (startAddress == EXTERNAL_FLASH_OTA_ADDRESS && endAddress < EXTERNAL_FLASH_USER_ADDRESS)
+    {
+        return true;
+    }
+    else if (startAddress >= EXTERNAL_FLASH_USER_ADDRESS && endAddress < 0x200000)
+    {
+        return true;
+    }
+
+    return false;
+}
+
 uint32_t HAL_OTA_FlashAddress()
 {
     return EXTERNAL_FLASH_OTA_ADDRESS;
