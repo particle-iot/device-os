@@ -35,6 +35,7 @@
 #include "inet_hal.h"
 #include "rtc_hal.h"
 #include "ota_flash_hal.h"
+#include "product_store_hal.h"
 #include "rgbled.h"
 #include "string.h"
 #include <stdarg.h>
@@ -48,7 +49,15 @@ int userVarType(const char *varKey);
 void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString);
 
-SparkProtocol sp;
+SparkProtocol* sp;
+
+// initialize the sp value so we have a local copy of it in this module
+struct SystemCloudStartup {
+    SystemCloudStartup() {
+        sp = spark_protocol_instance();
+    }
+};
+SystemCloudStartup system_cloud_startup;
 
 sock_handle_t sparkSocket = SOCKET_INVALID;
 
@@ -97,7 +106,7 @@ static int str_len(char str[]);
 static void sub_str(char dest[], char src[], int offset, int len);
  */
 
-void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType)
+void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
 {
     if (NULL != userVar && NULL != varKey)
     {
@@ -121,7 +130,7 @@ void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVa
     }
 }
 
-void spark_function(const char *funcKey, int (*pFunc)(String paramString))
+void spark_function(const char *funcKey, int (*pFunc)(String paramString), void* reserved)
 {
     int i = 0;
     if (NULL != pFunc && NULL != funcKey)
@@ -331,9 +340,28 @@ void SystemEvents(const char* name, const char* data)
 }    
 
 void Spark_Protocol_Init(void)
-{
-    if (!spark_protocol_is_initialized(&sp))
+{    
+    if (!spark_protocol_is_initialized(sp))
     {
+        product_details_t info;
+        info.size = sizeof(info);
+        spark_protocol_get_product_details(sp, &info);
+        
+        // User code was run, so persist the current values stored in the comms lib.
+        // These will either have been left as default or overridden via PRODUCT_ID/PRODUCT_VERSION macros
+        if (system_mode()!=SAFE_MODE) {
+            HAL_SetProductStore(PRODUCT_STORE_ID, info.product_id);
+            HAL_SetProductStore(PRODUCT_STORE_VERSION, info.product_version);        
+        }
+        else {      // user code was not executed, use previously persisted values
+            info.product_id = HAL_GetProductStore(PRODUCT_STORE_ID);
+            info.product_version = HAL_GetProductStore(PRODUCT_STORE_VERSION);
+            if (info.product_id!=0xFFFF)
+                spark_protocol_set_product_id(sp, info.product_id);
+            if (info.product_version!=0xFFFF)
+                spark_protocol_set_product_firmware_version(sp, info.product_version);
+        }
+        
         SparkCallbacks callbacks;
         callbacks.send = Spark_Send;
         callbacks.receive = Spark_Receive;
@@ -371,7 +399,7 @@ void Spark_Protocol_Init(void)
         uint8_t id_length = HAL_device_ID(NULL, 0);
         uint8_t id[id_length];
         HAL_device_ID(id, id_length);
-        spark_protocol_init(&sp, (const char*) id, keys, callbacks, descriptor);
+        spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
         
         Spark.subscribe("spark", SystemEvents);
     }
@@ -381,7 +409,7 @@ const int CLAIM_CODE_SIZE = 63;
 
 int Spark_Handshake(void)
 {
-    int err = spark_protocol_handshake(&sp);
+    int err = spark_protocol_handshake(sp);
     if (!err)
     {
         char buf[CLAIM_CODE_SIZE + 1];
@@ -404,9 +432,9 @@ int Spark_Handshake(void)
         }
 
         Multicast_Presence_Announcement();
-        spark_protocol_send_subscriptions(&sp);
+        spark_protocol_send_subscriptions(sp);
         // important this comes at the end since it requires a response from the cloud.
-        spark_protocol_send_time_request(&sp);
+        spark_protocol_send_time_request(sp);
         Spark_Process_Events();
     }
     return err;
@@ -417,7 +445,7 @@ int Spark_Handshake(void)
 
 inline bool Spark_Communication_Loop(void)
 {
-    return spark_protocol_event_loop(&sp);
+    return spark_protocol_event_loop(sp);
 }
 
 void Multicast_Presence_Announcement(void)
@@ -430,7 +458,7 @@ void Multicast_Presence_Announcement(void)
     uint8_t id_length = HAL_device_ID(NULL, 0);
     uint8_t id[id_length];
     HAL_device_ID(id, id_length);
-    spark_protocol_presence_announcement(&sp, announcement, (const char *) id);
+    spark_protocol_presence_announcement(sp, announcement, (const char *) id);
 
     // create multicast address 224.0.1.187 port 5683
     sockaddr_t addr;
@@ -674,9 +702,4 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
         }
     }
     return -1;
-}
-
-SparkProtocol* spark_protocol_instance(void)
-{
-    return &sp;
 }

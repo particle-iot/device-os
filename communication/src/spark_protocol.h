@@ -32,7 +32,9 @@
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
 #include "spark_protocol_functions.h"
+#include "device_keys.h"
 #include <stdint.h>
+
 
 #if !defined(arraySize)
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
@@ -63,15 +65,7 @@ class SparkProtocol
     static const int MAX_EVENT_TTL_SECONDS = 16777215;
     static int presence_announcement(unsigned char *buf, const char *id);
 
-    /**
-     * The constructor is inlined so that an instance can be constructed statically
-     * by the client without needing to dynamically link a constructor function.
-     */
-    SparkProtocol() : QUEUE_SIZE(640), handlers({NULL}), expecting_ping_ack(false),
-                                     initialized(false), updating(false)
-    {
-        queue_init();
-    }
+    SparkProtocol();
     
     void init(const char *id,
               const SparkKeys &keys,
@@ -82,6 +76,14 @@ class SparkProtocol
     bool is_initialized(void);
     void reset_updating(void);
 
+    void set_product_id(product_id_t product_id) { this->product_id=product_id; }
+    void set_product_firmware_version(product_firmware_version_t version) { this->product_firmware_version = version; }
+    void get_product_details(product_details_t& details) {
+        if (details.size>=4) {
+            details.product_id = this->product_id;
+            details.product_version = this->product_firmware_version;
+        }
+    }
     int set_key(const unsigned char *signed_encrypted_credentials);
     int blocking_send(const unsigned char *buf, int length);
     int blocking_receive(unsigned char *buf, int length);
@@ -139,8 +141,8 @@ class SparkProtocol
   private:
     CommunicationsHandlers handlers;   // application callbacks
     char device_id[12];
-    unsigned char server_public_key[294];
-    unsigned char core_private_key[612];
+    unsigned char server_public_key[MAX_SERVER_PUBLIC_KEY_LENGTH];
+    unsigned char core_private_key[MAX_DEVICE_PRIVATE_KEY_LENGTH];    
     aes_context aes;    
 
     int (*callback_send)(const unsigned char *buf, uint32_t buflen);
@@ -191,6 +193,8 @@ class SparkProtocol
     const unsigned char *queue_mem_boundary;
     unsigned char *queue_front;
     unsigned char *queue_back;
+    product_id_t product_id;
+    product_firmware_version_t product_firmware_version;
     inline void queue_init()
     {
         queue_front = queue_back = queue;

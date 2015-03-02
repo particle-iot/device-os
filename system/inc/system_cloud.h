@@ -64,8 +64,8 @@ typedef enum
 
 typedef struct String String;
 
-void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType);
-void spark_function(const char *funcKey, int (*pFunc)(String paramString));
+void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType, void* reserved);
+void spark_function(const char *funcKey, int (*pFunc)(String paramString), void* reserved);
 void spark_process(void);
 void spark_connect(void);
 void spark_disconnect(void);

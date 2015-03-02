@@ -1,6 +1,7 @@
 
 #include "dynalib.h"
 #include "module_system_part1_init.h"
+#include "system_mode.h"
 #include "module_user_init.h"
 #include <stdint.h>
 #include <stddef.h>
@@ -54,7 +55,10 @@ void system_part2_pre_init() {
         if (new_heap_top>sbrk_heap_top)
             sbrk_heap_top = new_heap_top;
     }
-    
+    else {
+        // indicate to the system that it shouldn't run user code
+        set_system_mode(SAFE_MODE);
+    }
     // now call any C++ constructors in this module's dependencies
     module_system_part1_init();
 }

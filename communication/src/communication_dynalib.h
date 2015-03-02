@@ -29,8 +29,11 @@ extern "C" {
 #include "dynalib.h"
 
 DYNALIB_BEGIN(communication)
+DYNALIB_FN(communication, spark_protocol_instance)
+DYNALIB_FN(communication, spark_protocol_set_product_id)
+DYNALIB_FN(communication, spark_protocol_set_product_firmware_version)
+DYNALIB_FN(communication, spark_protocol_get_product_details)
 DYNALIB_FN(communication, spark_protocol_communications_handlers)
-
 DYNALIB_FN(communication, spark_protocol_init)
 DYNALIB_FN(communication, spark_protocol_handshake)
 DYNALIB_FN(communication, spark_protocol_event_loop)
@@ -44,7 +47,7 @@ DYNALIB_FN(communication, spark_protocol_send_time_request)
 DYNALIB_FN(communication, spark_protocol_send_subscriptions)
 DYNALIB_FN(communication, decrypt_rsa)
 DYNALIB_FN(communication, gen_rsa_key)
-        
+DYNALIB_FN(communication, parse_device_pubkey_from_privkey)
 DYNALIB_END(communication)
         
         

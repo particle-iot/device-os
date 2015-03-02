@@ -109,12 +109,14 @@ void WiFiCredentialsReader::handle(char c)
         }
         while ('0' > security_type_string[0] || '3' < security_type_string[0]);
 
+#if PLATFORM_ID<3        
         if ('1' == security_type_string[0])
         {
             print("\r\n ** Even though the CC3000 supposedly supports WEP,");
             print("\r\n ** we at Spark have never seen it work.");
             print("\r\n ** If you control the network, we recommend changing it to WPA2.\r\n");
         }
+#endif        
 
         unsigned long security_type = security_type_string[0] - '0';
         if (0 < security_type)
@@ -123,12 +125,22 @@ void WiFiCredentialsReader::handle(char c)
             read_line(password, 64);
         }
 
-        print("Thanks! Wait about 7 seconds while I save those credentials...\r\n\r\n");
+        print("Thanks! Wait " 
+#if PLATFORM_ID<3
+    "about 7 seconds "    
+#endif            
+            "while I save those credentials...\r\n\r\n");
 
         connect_callback(ssid, password, security_type);
 
         print("Awesome. Now we'll connect!\r\n\r\n");
-        print("If you see a pulsing cyan light, your Spark Core\r\n");
+        print("If you see a pulsing cyan light, your "
+#if PLATFORM_ID==0            
+            "Spark Core"
+#else
+            "device"
+#endif            
+            "\r\n");
         print("has connected to the Cloud and is ready to go!\r\n\r\n");
         print("If your LED flashes red or you encounter any other problems,\r\n");
         print("visit https://www.spark.io/support to debug.\r\n\r\n");
@@ -136,7 +148,11 @@ void WiFiCredentialsReader::handle(char c)
     }
     else if ('i' == c)
     {
+#if PLATFORM_ID<3        
         print("Your core id is ");
+#else
+        print("Your device id is ");
+#endif        
         String id = spark_deviceID();
         print(id.c_str());
         print("\r\n");

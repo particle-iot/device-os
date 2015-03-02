@@ -84,3 +84,15 @@ void spark_protocol_send_subscriptions(SparkProtocol* protocol) {
 void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char* event_name) {
     protocol->remove_event_handlers(event_name);
 }
+
+void spark_protocol_set_product_id(SparkProtocol* protocol, product_id_t product_id) {
+    protocol->set_product_id(product_id);
+}
+
+void spark_protocol_set_product_firmware_version(SparkProtocol* protocol, product_firmware_version_t product_firmware_version) {
+    protocol->set_product_firmware_version(product_firmware_version);
+}
+
+void spark_protocol_get_product_details(SparkProtocol* protocol, product_details_t* details) {
+    protocol->get_product_details(*details);
+}

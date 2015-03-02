@@ -170,3 +170,27 @@ void init_rsa_context_with_private_key(rsa_context *rsa,
 
   mpi_read_binary(&rsa->QP, private_key + i, 64);
 }
+
+
+/* Sample Usage:
+ * uint8_t device_public_key[162];
+ * uint8_t device_private_key[612];
+ * HAL_FLASH_Read_CorePrivateKey(device_private_key);
+ * parse_device_pubkey_from_privkey(device_public_key, device_private_key);
+ */
+void parse_device_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* device_privkey)
+{
+    uint8_t device_pubkey_header[29] = {
+            0x30, 0x81, 0x9f, 0x30, 0x0d, 0x06, 0x09, 0x2a,
+            0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01,
+            0x05, 0x00, 0x03, 0x81, 0x8d, 0x00, 0x30, 0x81,
+            0x89, 0x02, 0x81, 0x81, 0x00
+    };
+
+    uint8_t device_pubkey_exponent[5] = {0x02, 0x03, 0x01, 0x00, 0x01};
+
+    memcpy(device_pubkey, device_pubkey_header, 29);
+    memcpy(device_pubkey + 29, device_privkey + 11, 128);
+    memcpy(device_pubkey + 157, device_pubkey_exponent, 5);
+}
+

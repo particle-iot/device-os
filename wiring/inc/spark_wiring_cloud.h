@@ -44,11 +44,11 @@ class SparkClass {
 public:
     static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType) 
     {
-        spark_variable(varKey, userVar, userVarType);
+        spark_variable(varKey, userVar, userVarType, NULL);
     }
     static void function(const char *funcKey, int (*pFunc)(String paramString)) 
     {
-        spark_function(funcKey, pFunc);
+        spark_function(funcKey, pFunc, NULL);
     }
 
     bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)

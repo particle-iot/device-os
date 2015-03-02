@@ -75,11 +75,13 @@ PRODUCT_DESC=Spark core
 USBD_VID_SPARK=0x1D50
 USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
+DEFAULT_PRODUCT_ID=0
 endif
 
 ifeq ("$(PLATFORM_ID)","1")
 # Not used. PRRODUCT_ID 1 is the original teacup pigtail - the platform
 # is the Spark Core
+DEFAULT_PRODUCT_ID=1
 endif
 
 ifeq ("$(PLATFORM_ID)","2")
@@ -92,6 +94,7 @@ PRODUCT_DESC=Spark core-HD, 256k flash, 48k ram
 USBD_VID_SPARK=0x1D50
 USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
+DEFAULT_PRODUCT_ID=2
 endif
 
 ifeq ("$(PLATFORM_ID)","3")
@@ -103,6 +106,7 @@ ARCH=gcc
 PRODUCT_DESC=GCC xcompile
 # explicitly exclude platform headers
 SPARK_NO_PLATFORM=1
+DEFAULT_PRODUCT_ID=3
 endif
 
 ifeq ("$(PLATFORM_ID)","4")
@@ -116,6 +120,7 @@ PLATFORM_DYNALIB_MODULES=photon
 USBD_VID_SPARK=0x1D50
 USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
+DEFAULT_PRODUCT_ID=4
 endif
 
 ifeq ("$(PLATFORM_ID)","5")
@@ -128,6 +133,7 @@ PRODUCT_DESC=BM-14/WICED
 USBD_VID_SPARK=0x1D50
 USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
+DEFAULT_PRODUCT_ID=5
 endif
 
 ifeq ("$(PLATFORM_ID)","6")
@@ -142,6 +148,7 @@ USBD_VID_SPARK=0x2B04
 USBD_PID_DFU=0xD006
 USBD_PID_CDC=0xC006
 PLATFORM_DYNALIB_MODULES=photon
+DEFAULT_PRODUCT_ID=6
 endif
 
 ifeq ("$(PLATFORM_ID)","7")
@@ -154,6 +161,7 @@ PRODUCT_DESC=Production Teacup Pigtail
 USBD_VID_SPARK=0x1D50
 USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
+DEFAULT_PRODUCT_ID=5
 endif
 
 ifeq ("$(PLATFORM_ID)","8")
@@ -168,6 +176,7 @@ PRODUCT_DESC=Test platform for producing a new HAL implementation
 USBD_VID_SPARK=0x1D50
 USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
+DEFAULT_PRODUCT_ID=8
 endif
 
 
@@ -194,6 +203,13 @@ ifdef STM32_DEVICE
 CFLAGS += -DSTM32_DEVICE
 # needed for conditional compilation of some stm32 specific files
 CFLAGS += -D$(STM32_DEVICE)
+endif
+
+ifeq ("$(PRODUCT_ID)","")
+ifeq (,$(submake))
+$(info PRODUCT_ID not defined - using default: $(DEFAULT_PRODUCT_ID))
+endif
+PRODUCT_ID = $(DEFAULT_PRODUCT_ID)
 endif
 
 CFLAGS += -DPLATFORM_ID=$(PLATFORM_ID) -DPLATFORM_NAME=$(PLATFORM_NAME)
