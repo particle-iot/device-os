@@ -39,7 +39,8 @@ typedef struct application_dct {
     uint8_t server_public_key[768];     // 4096 bits
     uint8_t padding[2];                 // align to 4 byte boundary
     platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];//100 bytes
-    uint8_t reserved2[1280+26];    
+    uint16_t product_store[12];
+    uint8_t reserved2[1282];    
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -54,6 +55,7 @@ typedef struct application_dct {
 #define DCT_DEVICE_ID_OFFSET (offsetof(application_dct_t, device_id)) 
 #define DCT_DEVICE_CLAIMED_OFFSET (offsetof(application_dct_t, claimed)) 
 #define DCT_FLASH_MODULES_OFFSET (offsetof(application_dct_t, flash_modules))
+#define DCT_PRODUCT_STORE_OFFSET (offsetof(application_dct_t, product_store))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags)) 
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key)) 
@@ -65,6 +67,7 @@ typedef struct application_dct {
 #define DCT_DEVICE_ID_SIZE  (sizeof(application_dct_t::device_id)) 
 #define DCT_DEVICE_CLAIMED_SIZE  (sizeof(application_dct_t::claimed)) 
 #define DCT_FLASH_MODULES_SIZE  (sizeof(application_dct_t::flash_modules))
+#define DCT_PRODUCT_STORE_SIZE  (sizeof(application_dct_t::product_store))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -85,8 +88,9 @@ STATIC_ASSERT_DCT_OFFSET(reserved1, 1858 /* 1852 + 6 */);
 STATIC_ASSERT_DCT_OFFSET(server_public_key, 2082 /* 1858 + 224 */);
 STATIC_ASSERT_DCT_OFFSET(padding, 2850 /* 2082 + 768 */);
 STATIC_ASSERT_DCT_OFFSET(flash_modules, 2852 /* 2850 + 2 */);
-STATIC_ASSERT_DCT_OFFSET(reserved2, 2952 /* 2852 + 100 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2952 + 1280 + 26 */);
+STATIC_ASSERT_DCT_OFFSET(product_store, 2952 /* 2852 + 100 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 2976 /* 2952 + 24 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2952 + 1282 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);
