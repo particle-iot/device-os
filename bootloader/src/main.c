@@ -28,7 +28,6 @@
 #include "core_hal.h"
 #include "dfu_hal.h"
 #include "hw_config.h"
-#include "flash_mal.h"
 #include "rgbled.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -183,6 +182,8 @@ int main(void)
         if (BKP_DR1_Value == ENTER_DFU_APP_REQUEST)
         {
             USB_DFU_MODE = 1;
+            //Subsequent system reset or power on-off should execute normal firmware
+            HAL_Core_Write_Backup_Register(BKP_DR_01, 0xFFFF);
         }
         // Else check if the system has resumed from IWDG reset
         else if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)

@@ -55,6 +55,7 @@ public:
     }
     static void factoryReset(void);
     static void bootloader(void);
+    static void modeDFU(void);
     static void reset(void);
 
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);

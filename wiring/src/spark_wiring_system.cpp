@@ -17,9 +17,15 @@ void SystemClass::factoryReset(void)
 
 void SystemClass::bootloader(void)
 {
-    //The drawback here being it will enter bootloader mode until firmware
-    //is loaded again. Require bootloader changes for proper working.
-    HAL_Core_Enter_Bootloader();
+    //DFU mode persist if firmware upgrade is not completed
+    HAL_Core_Enter_Bootloader(true);
+}
+
+void SystemClass::modeDFU(void)
+{
+    //Briefly enter DFU bootloader mode (works with latest bootloader only )
+    //Subsequent reset or power off-on will execute normal firmware
+    HAL_Core_Enter_Bootloader(false);
 }
 
 void SystemClass::reset(void)

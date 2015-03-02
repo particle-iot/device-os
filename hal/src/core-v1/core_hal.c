@@ -156,12 +156,20 @@ void HAL_Core_Factory_Reset(void)
 	HAL_Core_System_Reset();
 }
 
-void HAL_Core_Enter_Bootloader(void)
+void HAL_Core_Enter_Bootloader(bool persist)
 {
-	BKP_WriteBackupRegister(BKP_DR10, 0xFFFF);
-	FLASH_OTA_Update_SysFlag = 0xFFFF;
-	Save_SystemFlags();
-	HAL_Core_System_Reset();
+    if (persist)
+    {
+        BKP_WriteBackupRegister(BKP_DR10, 0xFFFF);
+        FLASH_OTA_Update_SysFlag = 0xFFFF;
+        Save_SystemFlags();
+    }
+    else
+    {
+        BKP_WriteBackupRegister(BKP_DR1, ENTER_DFU_APP_REQUEST);
+    }
+
+    HAL_Core_System_Reset();
 }
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)

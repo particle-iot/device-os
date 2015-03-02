@@ -89,7 +89,7 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration);
 void HAL_Core_Mode_Button_Reset(void);
 void HAL_Core_System_Reset(void);
 void HAL_Core_Factory_Reset(void);
-void HAL_Core_Enter_Bootloader(void);
+void HAL_Core_Enter_Bootloader(bool persist);
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
 void HAL_Core_Execute_Stop_Mode(void);
 void HAL_Core_Enter_Standby_Mode(void);

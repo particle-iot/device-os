@@ -186,11 +186,19 @@ void HAL_Core_Factory_Reset(void)
     HAL_Core_System_Reset();
 }
 
-void HAL_Core_Enter_Bootloader(void)
+void HAL_Core_Enter_Bootloader(bool persist)
 {
-    RTC_WriteBackupRegister(RTC_BKP_DR10, 0xFFFF);
-    system_flags.FLASH_OTA_Update_SysFlag = 0xFFFF;
-    Save_SystemFlags();
+    if (persist)
+    {
+        RTC_WriteBackupRegister(RTC_BKP_DR10, 0xFFFF);
+        system_flags.FLASH_OTA_Update_SysFlag = 0xFFFF;
+        Save_SystemFlags();
+    }
+    else
+    {
+        RTC_WriteBackupRegister(RTC_BKP_DR1, ENTER_DFU_APP_REQUEST);
+    }
+
     HAL_Core_System_Reset();
 }
 
