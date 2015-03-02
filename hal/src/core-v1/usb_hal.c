@@ -80,12 +80,6 @@ void SPARK_USB_Setup(void)
   USB_Init();
 }
 
-void SPARK_USB_Teardown()
-{
-    USB_Cable_Config(DISABLE);
-    linecoding.bitrate = 0;
-}
-
 /*******************************************************************************
  * Function Name  : Get_SerialNum.
  * Description    : Create the serial number string descriptor.
@@ -115,14 +109,18 @@ void Get_SerialNum(void)
 /*******************************************************************************
  * Function Name  : USB_USART_Init
  * Description    : Start USB-USART protocol.
- * Input          : baudRate.
+ * Input          : baudRate (0 : disconnect usb else init usb only once).
  * Return         : None.
  *******************************************************************************/
 void USB_USART_Init(uint32_t baudRate)
 {
     if (linecoding.bitrate != baudRate)
     {
-        if(!linecoding.bitrate)
+        if (!baudRate)
+        {
+            USB_Cable_Config(DISABLE);
+        }
+        else if (!linecoding.bitrate)
         {
             //Perform a Detach-Attach operation on USB bus
             USB_Cable_Config(DISABLE);
