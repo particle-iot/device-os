@@ -89,6 +89,8 @@ extern char link_module_end;
     #endif
 #endif
 
+#define MODULE_DEPENDENCY1 { 0,0,0}
+#define MODULE_DEPENDENCY2 { 0,0,0}
 
 const module_info_t module_info = {
     &link_module_start,         /* start address */
@@ -96,7 +98,7 @@ const module_info_t module_info = {
     MODULE_VERSION,             /* module version */
     (uint16_t)(PLATFORM_ID),    /* platform ID */
     (uint8_t)(MODULE_FUNCTION), /* module function */
-    (uint8_t)(MODULE_INDEX),     /* module index (part1 part2 etc..) */
-    0,                          /* reserved */    
-    0
+    (uint8_t)(MODULE_INDEX),    /* module index (part1 part2 etc..) */        
+    { MODULE_DEPENDENCY1,
+    MODULE_DEPENDENCY2 }
 };

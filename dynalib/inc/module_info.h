@@ -30,6 +30,12 @@ extern "C" {
 
 #include <stdint.h>
 
+typedef struct module_dependency_t {
+    uint8_t module_function;        // module function, lowest 4 bits
+    uint8_t module_index;           // moudle index, lowest 4 bits.
+    uint16_t module_version;        // version/release number of the module. 
+} module_dependency_t;
+    
 /**
  * Describes the module info struct placed at the start of 
  */
@@ -40,8 +46,7 @@ typedef struct module_info_t {
     uint16_t platform_id;               /* The platform this module was compiled for. */
     uint8_t  module_function;           /* The module function */
     uint8_t  module_index;
-    uint32_t reserved1;                 /* reserved - all 0 by default. */
-    uint32_t reserved2;
+    module_dependency_t depenencies[2]; 
 } module_info_t;
 
 /**
