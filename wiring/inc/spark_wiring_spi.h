@@ -48,6 +48,8 @@ public:
   static bool isEnabled(void);
 };
 
+#ifndef SPARK_WIRING_NO_SPI
 extern SPIClass SPI;
+#endif
 
 #endif

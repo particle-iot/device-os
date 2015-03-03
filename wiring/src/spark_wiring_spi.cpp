@@ -26,8 +26,9 @@
 
 #include "spark_wiring_spi.h"
 
+#ifndef SPARK_WIRING_NO_SPI
 SPIClass SPI;
-
+#endif
 void SPIClass::begin()
 {
   begin(SS);

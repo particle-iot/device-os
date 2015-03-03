@@ -80,11 +80,12 @@ PinMode getPinMode(uint16_t pin)
 bool pinAvailable(uint16_t pin) {
 
   // SPI safety check
+#ifndef SPARK_WIRING_NO_SPI    
   if(SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
   {
     return 0; // 'pin' is used
   }
-
+#endif
   // I2C safety check
 #ifndef SPARK_WIRING_NO_I2C  
   if(Wire.isEnabled() == true && (pin == SCL || pin == SDA))
