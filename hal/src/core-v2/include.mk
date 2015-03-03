@@ -18,6 +18,8 @@ ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)
 endif
 
+# implementation defined details for the platform that can vary
+INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/api
 
 HAL_LIB_COREV2 = $(HAL_SRC_COREV2_PATH)/lib
 

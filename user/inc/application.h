@@ -48,6 +48,7 @@
 #include "spark_wiring_tone.h"
 #include "spark_wiring_eeprom.h"
 #include "spark_wiring_version.h"
+#include "spark_wiring_thread.h"
 
 // this was being implicitly pulled in by some of the other headers
 // adding here for backwards compatibility.
