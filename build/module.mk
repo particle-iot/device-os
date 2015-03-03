@@ -107,8 +107,8 @@ exe: $(TARGET_BASE).exe
 none: 
 	;
 	
-stflash: all $(TARGET_BASE).bin
-	@echo Flashing $< using stflash to address $(PLATFORM_DFU)
+st-flash: all $(TARGET_BASE).bin
+	@echo Flashing $< using st-flash to address $(PLATFORM_DFU)
 	st-flash write $< $(PLATFORM_DFU)
 
 # Program the core using dfu-util. The core should have been placed
@@ -220,7 +220,7 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-.PHONY: all none elf bin hex size program-dfu program-cloud stflash
+.PHONY: all none elf bin hex size program-dfu program-cloud st-flash
 .SECONDARY:
 
 include $(COMMON_BUILD)/recurse.mk
