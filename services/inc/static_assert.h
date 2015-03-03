@@ -14,8 +14,11 @@ extern "C" {
 
 #define STATIC_ASSERT_EXPR(name, condition) ((void)sizeof(char[1 - 2*!!(condition)]))
     
+#if defined(__cplusplus) && __cplusplus >= 201103L 
+#define STATIC_ASSERT(name,condition) static_assert(condition,#name)
+#else    
 #define STATIC_ASSERT(name,condition) typedef char assert_##name[(condition)?0:-1]   
-
+#endif
 
 
 #ifdef	__cplusplus
