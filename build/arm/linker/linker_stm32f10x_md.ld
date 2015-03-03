@@ -242,4 +242,7 @@ SECTIONS
     INCLUDE module_end.ld
 }
 
-INCLUDE module_asserts.ld
+/*
+ * Not using module_info currently on “Core” product lines 
+ * INCLUDE module_asserts.ld
+ */

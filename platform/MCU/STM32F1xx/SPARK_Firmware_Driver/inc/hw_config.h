@@ -206,7 +206,7 @@ void FLASH_Read_ServerAddress_Data(void *server_addr);
 void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
 void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
 
-void FACTORY_Flash_Reset(void);
+bool FACTORY_Flash_Reset(void);
 void BACKUP_Flash_Reset(void);
 void OTA_Flash_Reset(void);
 

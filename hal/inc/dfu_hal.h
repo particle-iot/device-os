@@ -33,6 +33,7 @@
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 
+uint8_t is_application_valid(uint32_t address);
 void HAL_DFU_USB_Init(void);
 
 #endif /* __DFU_HAL_H */

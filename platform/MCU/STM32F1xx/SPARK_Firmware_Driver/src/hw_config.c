@@ -1239,7 +1239,7 @@ void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
             EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
 }
 
-void FACTORY_Flash_Reset(void)
+bool FACTORY_Flash_Reset(void)
 {
     // Restore the Factory programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
@@ -1249,6 +1249,8 @@ void FACTORY_Flash_Reset(void)
     dfu_on_no_firmware = 0;
 
     Finish_Update();
+
+    return true;//This won't be reached
 }
 
 void BACKUP_Flash_Reset(void)

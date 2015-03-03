@@ -46,6 +46,11 @@ static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 
 /* Private functions ---------------------------------------------------------*/
 
+uint8_t is_application_valid(uint32_t address)
+{
+    return (((*(__IO uint32_t*)address) & APP_START_MASK) == 0x20000000);
+}
+
 /*******************************************************************************
  * Function Name  : HAL_DFU_USB_Init.
  * Description    : Initialize USB for DFU class.
