@@ -65,7 +65,13 @@ public:
   static bool isEnabled(void);
 };
 
+/**
+ * This global instance cannot be gc-ed by the linker because of the virtual functions.
+ * So we provide a conditional compile to exclude it.
+ */
+#ifndef SPARK_WIRING_NO_I2C
 extern TwoWire Wire;
+#endif
 
 #endif
 

@@ -86,11 +86,12 @@ bool pinAvailable(uint16_t pin) {
   }
 
   // I2C safety check
+#ifndef SPARK_WIRING_NO_I2C  
   if(Wire.isEnabled() == true && (pin == SCL || pin == SDA))
   {
     return 0; // 'pin' is used
   }
-
+#endif
   // Serial1 safety check
   if(Serial1.isEnabled() == true && (pin == RX || pin == TX))
   {
