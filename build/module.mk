@@ -162,7 +162,7 @@ size: $(TARGET_BASE).elf
 # Create a DFU file from bin file
 %.dfu: %.bin
 	@cp $< $@
-	$(DFUSUFFIX) -v $(subst 0x,,$(USBD_VID_SPARK)) -p $(subst 0x,,$(USBD_PID_DFU)) -a $@:
+	$(DFUSUFFIX) -v $(subst 0x,,$(USBD_VID_SPARK)) -p $(subst 0x,,$(USBD_PID_DFU)) -a $@
 
 # Create a bin file from ELF file
 %.bin : %.elf
