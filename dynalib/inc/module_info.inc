@@ -74,7 +74,7 @@ extern char link_module_start;
 extern char link_module_end;
 
 #ifndef MODULE_VERSION
-    #define MODULE_VERSION 0
+    #error MODULE_VERSION not defined
 #endif
 
 #ifndef MODULE_FUNCTION
@@ -89,16 +89,20 @@ extern char link_module_end;
     #endif
 #endif
 
-#define MODULE_DEPENDENCY1 { 0,0,0}
-#define MODULE_DEPENDENCY2 { 0,0,0}
+#ifndef MODULE_DEPENDENCY
+#error MODULE_DEPENDENCY not defined
+#endif
+
+#define MODULE_DEPENDENCY2 0,0,0
 
 const module_info_t module_info = {
     &link_module_start,         /* start address */
     &link_module_end,           /* end address */
+    0, 0,                       /* reserved, reserved2 */
     MODULE_VERSION,             /* module version */
     (uint16_t)(PLATFORM_ID),    /* platform ID */
     (uint8_t)(MODULE_FUNCTION), /* module function */
     (uint8_t)(MODULE_INDEX),    /* module index (part1 part2 etc..) */        
-    { MODULE_DEPENDENCY1,
-    MODULE_DEPENDENCY2 }
+    { MODULE_DEPENDENCY },
+    0
 };

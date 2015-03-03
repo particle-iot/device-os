@@ -13,6 +13,11 @@ LINKER_DEPS += $(COMMON_BUILD)/arm/linker/module_start.ld
 LINKER_DEPS += $(COMMON_BUILD)/arm/linker/module_end.ld
 LINKER_DEPS += $(COMMON_BUILD)/arm/linker/module_info.ld
 
+GLOBAL_DEFINES += BOOTLOADER_VERSION=$(BOOTLOADER_VERSION)
+GLOBAL_DEFINES += MODULE_VERSION=$(BOOTLOADER_VERSION)
+GLOBAL_DEFINES += MODULE_FUNCTION=$(MODULE_FUNCTION_BOOTLOADER)
+GLOBAL_DEFINES += MODULE_DEPENDENCY=0,0,0
+
 # select sources from platform
 
 # import common main.c under bootloader/src

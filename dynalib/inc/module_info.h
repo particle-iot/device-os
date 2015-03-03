@@ -42,11 +42,14 @@ typedef struct module_dependency_t {
 typedef struct module_info_t {
     const void* module_start_address;   /* the first byte of this module in flash */
     const void* module_end_address;     /* the last byte (exclusive) of this smodule in flash. 4 byte crc starts here. */
-    uint32_t module_version;            /* 32 bit version */
+    uint8_t reserved;                  
+    uint8_t reserved2;                  
+    uint16_t module_version;            /* 16 bit version */
     uint16_t platform_id;               /* The platform this module was compiled for. */
     uint8_t  module_function;           /* The module function */
     uint8_t  module_index;
-    module_dependency_t depenencies[2]; 
+    module_dependency_t depenency; 
+    uint32_t reserved3;
 } module_info_t;
 
 /**

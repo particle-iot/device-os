@@ -3,10 +3,6 @@ MAIN_MODULE_PATH=.
 PLATFORM_DFU_LEAVE = y
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(USER_FLAVOR)
 
-MODULE_VERSION ?= 0
-GLOBAL_DEFINES += MODULE_VERSION=$(MODULE_VERSION)
-GLOBAL_DEFINES += MODULE_FUNCTION=$(MODULE_FUNCTION_MONO_FIRMWARE)
-
 # It's critical that user comes before wiring so that the setup()/loop() functions are linked in preference
 # to the weak functions from wiring
 MAKE_DEPENDENCIES = user wiring hal system services communication platform

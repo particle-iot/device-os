@@ -6,11 +6,6 @@ HAL_LINK :=
 PLATFORM_DFU = $(USER_FIRMWARE_IMAGE_LOCATION)
 PLATFORM_DFU_LEAVE = y
 
-MODULE_VERSION ?= 0
-GLOBAL_DEFINES += MODULE_VERSION=$(MODULE_VERSION)
-GLOBAL_DEFINES += MODULE_FUNCTION=$(MODULE_FUNCTION_USER_PART)
-GLOBAL_DEFINES += MODULE_INDEX=1
-
 # communication used only for header declarations	
 DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication modules/photon/system-part1 modules/photon/system-part2 
 MAKE_DEPENDENCIES = user hal-dynalib services-dynalib system-dynalib rt-dynalib wiring

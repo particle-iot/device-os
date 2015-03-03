@@ -5,13 +5,7 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK := 
 PLATFORM_DFU = 0x8060000
 
-MODULE_VERSION ?= 0
-GLOBAL_DEFINES += MODULE_VERSION=$(MODULE_VERSION)
-GLOBAL_DEFINES += MODULE_FUNCTION=$(MODULE_FUNCTION_SYSTEM_PART)
-GLOBAL_DEFINES += MODULE_INDEX=2
-
-
-DEPENDENCIES = modules/photon/user-part dynalib services services-dynalib hal platform system wiring communication-dynalib rt-dynalib modules/photon/system-part1
+DEPENDENCIES = modules/photon/user-part modules/photon/system-part1 dynalib services services-dynalib hal platform system wiring communication-dynalib rt-dynalib
 MAKE_DEPENDENCIES = services-dynalib system wiring communication-dynalib hal platform
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk

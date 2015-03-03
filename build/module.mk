@@ -13,12 +13,13 @@ target_files = $(patsubst $(SOURCE_PATH)/%,%,$(call rwildcard,$(SOURCE_PATH)/$1,
 # import this module's symbols
 include $(MODULE_PATH)/import.mk
 
-include $(call rwildcard,$(MODULE_PATH)/,build.mk)
-
 # pull in the include.mk files from each dependency, and make them relative to
 # the dependency module directory
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),$(PROJECT_ROOT)/$(module)/import.mk)
 include $(DEPS_INCLUDE_SCRIPTS)	
+
+include $(call rwildcard,$(MODULE_PATH)/,build.mk)
+
 	
 QUOTE='
 ifneq (,$(GLOBAL_DEFINES))
