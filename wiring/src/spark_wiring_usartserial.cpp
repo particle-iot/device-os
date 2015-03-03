@@ -86,9 +86,12 @@ bool USARTSerial::isEnabled() {
   return HAL_USART_Is_Enabled(_serial);
 }
 
+#ifndef SPARK_WIRING_NO_USART_SERIAL
 // Preinstantiate Objects //////////////////////////////////////////////////////
 static Ring_Buffer serial1_rx_buffer;
 static Ring_Buffer serial1_tx_buffer;
 
+
 USARTSerial Serial1(HAL_USART_SERIAL1, &serial1_rx_buffer, &serial1_tx_buffer);
 // optional Serial2 is instantiated from libraries/Serial2/Serial2.h
+#endif

@@ -59,7 +59,9 @@ public:
   bool isEnabled(void);
 };
 
+#ifndef SPARK_WIRING_NO_USART_SERIAL
 extern USARTSerial Serial1;
 extern USARTSerial Serial2;
+#endif
 
 #endif

@@ -93,12 +93,13 @@ bool pinAvailable(uint16_t pin) {
     return 0; // 'pin' is used
   }
 #endif
+#ifndef SPARK_WIRING_NO_USART_SERIAL  
   // Serial1 safety check
   if(Serial1.isEnabled() == true && (pin == RX || pin == TX))
   {
     return 0; // 'pin' is used
   }
-
+#endif
   return 1; // 'pin' is available
 }
 
