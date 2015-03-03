@@ -206,9 +206,9 @@ CFLAGS += -D$(STM32_DEVICE)
 endif
 
 ifeq ("$(PRODUCT_ID)","")
-ifeq (,$(submake))
-$(info PRODUCT_ID not defined - using default: $(DEFAULT_PRODUCT_ID))
-endif
+# ifeq (,$(submake))
+# $(info PRODUCT_ID not defined - using default: $(DEFAULT_PRODUCT_ID))
+# endif
 PRODUCT_ID = $(DEFAULT_PRODUCT_ID)
 endif
 
