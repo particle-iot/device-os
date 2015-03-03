@@ -111,7 +111,8 @@ int SparkProtocol::handshake(void)
   
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, server_public_key);
-  err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, 52, queue, queue + 52 + MAX_DEVICE_PUBLIC_KEY_LENGTH);
+  const int len = 52+MAX_DEVICE_PUBLIC_KEY_LENGTH;
+  err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, len, queue, queue + len);
   rsa_free(&rsa);
 
   if (err) return err;
