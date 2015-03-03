@@ -4,3 +4,5 @@
 # softAP is uses RSA functions from the communication lib
 
 DEPENDENCIES += communication
+
+CPPFLAGS += -std=gnu++11
