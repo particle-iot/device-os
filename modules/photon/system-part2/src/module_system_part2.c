@@ -3,6 +3,7 @@
 #include "module_system_part1_init.h"
 #include "system_mode.h"
 #include "module_user_init.h"
+#include "hw_config.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -43,17 +44,36 @@ extern void** dynalib_location_user;
 
 uint8_t is_user_function_valid(uint8_t index) {
     size_t fn = (size_t)dynalib_location_user[index];
-    return fn > (size_t)&dynalib_location_user && fn <= (size_t)0x80A00000;
+    return fn > (size_t)&dynalib_location_user && fn <= (size_t)USER_FIRMWARE_IMAGE_LOCATION;
+}
+
+static bool module_user_part_validated = true;
+
+void module_user_part_restore_and_validation_check(void)
+{
+    //CRC verification Enabled by default
+    FLASH_AddToFactoryResetModuleSlot(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS,
+                                      FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
+                                      FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
+
+    if(!FLASH_isModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION)
+    && FLASH_isModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+    {
+        FLASH_RestoreFromFactoryResetModuleSlot();
+    }
+
+    //CRC check the user module and set to module_user_part_validated
+    module_user_part_validated = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
+                                 FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION));
 }
 
 /**
  * Determines if the user module is present and valid.
  * @return 
  */
-uint8_t is_user_module_valid()
+bool is_user_module_valid()
 {
-    // todo - CRC check the user module
-    return is_user_function_valid(0) && is_user_function_valid(1);
+    return module_user_part_validated;
 }
 
 /**
@@ -68,6 +88,9 @@ extern void* sbrk_heap_top;
 void system_part2_pre_init() {
     // initialize dependent modules
     module_system_part1_pre_init();
+
+    module_user_part_restore_and_validation_check();
+
     if (is_user_module_valid()) {
         void* new_heap_top = module_user_pre_init();
         if (new_heap_top>sbrk_heap_top)
@@ -77,6 +100,7 @@ void system_part2_pre_init() {
         // indicate to the system that it shouldn't run user code
         set_system_mode(SAFE_MODE);
     }
+
     // now call any C++ constructors in this module's dependencies
     module_system_part1_init();
 }

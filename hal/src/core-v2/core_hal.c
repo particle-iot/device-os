@@ -143,16 +143,6 @@ void HAL_Core_Config(void)
     FLASH_AddToFactoryResetModuleSlot(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS,
                                       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
                                       FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
-
-#if MODULAR_FIRMWARE
-    uint8_t executeModularFactoryFirmwareReset = !FLASH_isModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION)
-                                                 && FLASH_isModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION);
-    if (executeModularFactoryFirmwareReset)
-    {
-        FLASH_RestoreFromFactoryResetModuleSlot();
-        HAL_Core_System_Reset();
-    }
-#endif
 #endif
     
     // one the key is sent to the cloud, this can be removed, since the key is fetched in 
