@@ -12,13 +12,3 @@ DYNALIB_TABLE_EXTERN(user);
 const void* const user_part_module[] = {
     DYNALIB_TABLE_NAME(user),
 };
-
-extern char link_module_start;
-extern char link_module_end;
-
-const void* const user_part_length[] = {
-    &link_module_start,
-    &link_module_end,
-    0,                      // version?
-};
-
