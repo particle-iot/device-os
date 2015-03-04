@@ -4,6 +4,7 @@
 #include "system_mode.h"
 #include "module_user_init.h"
 #include "hw_config.h"
+#include "core_hal.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -59,7 +60,10 @@ void module_user_part_restore_and_validation_check(void)
     if(!FLASH_isModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION)
     && FLASH_isModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
     {
-        FLASH_RestoreFromFactoryResetModuleSlot();
+        //Reset and let bootloader perform the user module factory reset
+        //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
+        //saves precious system_part2 flash size i.e. fits in < 128KB
+        HAL_Core_Factory_Reset();
     }
 
     //CRC check the user module and set to module_user_part_validated
@@ -73,10 +77,6 @@ void module_user_part_restore_and_validation_check(void)
  */
 bool is_user_module_valid()
 {
-    if (!module_user_part_validated)
-    {
-        module_user_part_validated = is_user_function_valid(0) && is_user_function_valid(1);
-    }
     return module_user_part_validated;
 }
 
@@ -93,7 +93,7 @@ void system_part2_pre_init() {
     // initialize dependent modules
     module_system_part1_pre_init();
 
-    //module_user_part_restore_and_validation_check();
+    module_user_part_restore_and_validation_check();
 
     if (is_user_module_valid()) {
         void* new_heap_top = module_user_pre_init();
