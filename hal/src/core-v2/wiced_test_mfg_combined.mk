@@ -1,12 +1,12 @@
 # redefine these for your environment
 PLATFORM_ID?=6
 CORE?=../../../..
-WICED?=$(CORE)/WICED/WICED-SDK-3.1.1/WICED-SDK
+WICED_SDK?=$(CORE)/WICED/WICED-SDK-3.1.1/WICED-SDK
 SERVER_PUB_KEY=cloud_public.der
 
 FIRMWARE=$(CORE)/firmware
 FIRMWARE_BUILD=$(FIRMWARE)/build
-OUT=$(WICED)/build
+OUT=$(WICED_SDK)/build
 DCT_MEM=$(OUT)/dct_pad.bin
 DCT_PREP=dct_prep.bin
 ERASE_SECTOR=$(OUT)/erase_sector.bin
@@ -19,9 +19,13 @@ FIRMWARE_MEM=$(OUT)/main_pad.bin
 FIRMWARE_DIR=$(FIRMWARE)/main
 COMBINED_MEM=$(OUT)/combined.bin
 
+USER_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)/user-part.bin
+USER_MEM=$(OUT)/user-part.bin
+USER_DIR=$(FIRMWARE)/modules/photon/user-part
+
 CMD=test.mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
 BUILD_NAME=test_mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
-MFG_TEST_BIN=$(WICED)/build/$(BUILD_NAME)/binary/$(BUILD_NAME).bin
+MFG_TEST_BIN=$(WICED_SDK)/build/$(BUILD_NAME)/binary/$(BUILD_NAME).bin
 MFG_TEST_MEM=$(OUT)/mfg_test_pad.bin
 
 CRC=crc32
@@ -31,7 +35,7 @@ OPTS=
 all: combined
 		
 clean:
-	cd "$(WICED)"; "$(WICED)/make" clean
+	cd "$(WICED_SDK)"; "$(WICED_SDK)/make" clean
 	-rm $(MFG_TEST_BIN)
 	-rm $(BOOTLOADER)
 	-rm $(DCT)
@@ -49,7 +53,7 @@ dct:
 	dd if=$(DCT_PREP) of=$(DCT_MEM) conv=notrunc
 			
 $(MFG_TEST_BIN):
-	cd "$(WICED)"; "./make" $(CMD) $(OPTS)
+	cd "$(WICED_SDK)"; "./make" $(CMD) $(OPTS)
 	@echo Appending: CRC32 to the Flash Image
 	cp $@ $@.no_crc	
 	$(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p >> $@	
@@ -66,13 +70,19 @@ mfg_test: $(MFG_TEST_MEM)
 firmware:
 	@echo building $(FIRMWARE_MEM)
 	-rm $(FIRMWARE_MEM)
-	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=0 all
+	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=$(VERSION) all
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
 	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc	
 
-combined: bootloader dct mfg_test firmware
+user:
+	@echo building $(USER_MEM)
+	-rm $(USER_MEM)
+	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=$(VERSION) all
+	cp $(USER_BIN) $(USER_MEM)
+
+combined: bootloader dct mfg_test firmware user
 	-rm $(COMBINED_MEM)
-	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(FIRMWARE_MEM) > $(COMBINED_MEM)	
+	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(FIRMWARE_MEM) $(USER_MEM) > $(COMBINED_MEM)
 
 flash: combined
 	st-flash write $(COMBINED_MEM) 0x8000000
