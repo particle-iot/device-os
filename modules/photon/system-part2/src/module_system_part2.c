@@ -47,7 +47,7 @@ uint8_t is_user_function_valid(uint8_t index) {
     return fn > (size_t)&dynalib_location_user && fn <= (size_t)USER_FIRMWARE_IMAGE_LOCATION;
 }
 
-static bool module_user_part_validated = true;
+static bool module_user_part_validated = false;
 
 void module_user_part_restore_and_validation_check(void)
 {
@@ -73,6 +73,10 @@ void module_user_part_restore_and_validation_check(void)
  */
 bool is_user_module_valid()
 {
+    if (!module_user_part_validated)
+    {
+        module_user_part_validated = is_user_function_valid(0) && is_user_function_valid(1);
+    }
     return module_user_part_validated;
 }
 
@@ -89,7 +93,7 @@ void system_part2_pre_init() {
     // initialize dependent modules
     module_system_part1_pre_init();
 
-    module_user_part_restore_and_validation_check();
+    //module_user_part_restore_and_validation_check();
 
     if (is_user_module_valid()) {
         void* new_heap_top = module_user_pre_init();
