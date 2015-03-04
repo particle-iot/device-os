@@ -33,3 +33,8 @@ unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
         *dest = 0;
     return 0;
 }
+
+unsigned HAL_Platform_ID()
+{
+    return PLATFORM_ID;
+}

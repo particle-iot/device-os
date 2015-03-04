@@ -37,3 +37,8 @@ unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
         memcpy(dest, (char*)ID1, std::min(destLen, device_id_len));
     return device_id_len;
 }
+
+unsigned HAL_Platform_ID()
+{
+    return PLATFORM_ID;
+}
