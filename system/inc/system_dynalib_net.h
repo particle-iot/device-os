@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    system_dynalib.h
- * @authors Matthew McGowan
- * @date    12 February 2015
+ * @file    system_dynalib_network.h
+ * @authors mat
+ * @date    04 March 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,27 +21,30 @@
  ******************************************************************************
  */
 
-#ifndef SYSTEM_DYNALIB_H
-#define	SYSTEM_DYNALIB_H
+#ifndef SYSTEM_DYNALIB_NETWORK_H
+#define	SYSTEM_DYNALIB_NETWORK_H
 
 #include "dynalib.h"
 
 #ifdef DYNALIB_EXPORT
-#include "system_mode.h"
-#include "system_task.h"
-#include "system_update.h"
+#include "system_network.h"
 #endif
 
-DYNALIB_BEGIN(system)
-DYNALIB_FN(system, system_mode)
-DYNALIB_FN(system, set_system_mode)
-        
-DYNALIB_FN(system, set_ymodem_serial_flash_update_handler)
-DYNALIB_FN(system, system_serialSaveFile)
-DYNALIB_FN(system, system_serialFirmwareUpdate)
-DYNALIB_FN(system, system_delay_ms)
-DYNALIB_END(system)
+DYNALIB_BEGIN(system_net)
+DYNALIB_FN(system_net, network_config)
+DYNALIB_FN(system_net, network_connect)
+DYNALIB_FN(system_net, network_connecting)
+DYNALIB_FN(system_net, network_disconnect)
+DYNALIB_FN(system_net, network_ready)
+DYNALIB_FN(system_net, network_on)
+DYNALIB_FN(system_net, network_off)
+DYNALIB_FN(system_net, network_listen)
+DYNALIB_FN(system_net, network_listening)
+DYNALIB_FN(system_net, network_has_credentials)
+DYNALIB_FN(system_net, network_set_credentials)
+DYNALIB_FN(system_net, network_clear_credentials)        
+DYNALIB_END(system_net)
 
 
-#endif	/* SYSTEM_DYNALIB_H */
+#endif	/* SYSTEM_DYNALIB_NETWORK_H */
 

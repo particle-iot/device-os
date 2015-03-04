@@ -9,6 +9,8 @@
 DYNALIB_TABLE_EXTERN(hal);
 DYNALIB_TABLE_EXTERN(rt);
 DYNALIB_TABLE_EXTERN(system);
+DYNALIB_TABLE_EXTERN(system_net);
+DYNALIB_TABLE_EXTERN(system_cloud);
 DYNALIB_TABLE_EXTERN(hal_peripherals);
 DYNALIB_TABLE_EXTERN(hal_i2c);
 DYNALIB_TABLE_EXTERN(hal_gpio);
@@ -33,6 +35,8 @@ const void* const system_part2_module[] = {
     DYNALIB_TABLE_NAME(hal_socket),
     DYNALIB_TABLE_NAME(hal_wlan),
     DYNALIB_TABLE_NAME(hal_usart),
+    DYNALIB_TABLE_NAME(system_net),
+    DYNALIB_TABLE_NAME(system_cloud),
 };
 
 extern void** dynalib_location_user;

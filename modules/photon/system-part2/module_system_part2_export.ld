@@ -60,3 +60,5 @@ PROVIDE ( dynalib_location_hal_core = system_part2_module_table + 28 );
 PROVIDE ( dynalib_location_hal_socket = system_part2_module_table + 32 );
 PROVIDE ( dynalib_location_hal_wlan = system_part2_module_table + 36 );
 PROVIDE ( dynalib_location_hal_usart = system_part2_module_table + 40 );
+PROVIDE ( dynalib_location_system_net = system_part2_module_table + 48 );
+PROVIDE ( dynalib_location_system_cloud = system_part2_module_table + 52 );

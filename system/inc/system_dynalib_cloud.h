@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    system_dynalib.h
- * @authors Matthew McGowan
- * @date    12 February 2015
+ * @file    system_dynalib_cloud.h
+ * @authors mat
+ * @date    04 March 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,27 +21,26 @@
  ******************************************************************************
  */
 
-#ifndef SYSTEM_DYNALIB_H
-#define	SYSTEM_DYNALIB_H
+#ifndef SYSTEM_DYNALIB_CLOUD_H
+#define	SYSTEM_DYNALIB_CLOUD_H
 
 #include "dynalib.h"
 
 #ifdef DYNALIB_EXPORT
-#include "system_mode.h"
-#include "system_task.h"
-#include "system_update.h"
+#include "system_cloud.h"
 #endif
 
-DYNALIB_BEGIN(system)
-DYNALIB_FN(system, system_mode)
-DYNALIB_FN(system, set_system_mode)
-        
-DYNALIB_FN(system, set_ymodem_serial_flash_update_handler)
-DYNALIB_FN(system, system_serialSaveFile)
-DYNALIB_FN(system, system_serialFirmwareUpdate)
-DYNALIB_FN(system, system_delay_ms)
-DYNALIB_END(system)
 
+DYNALIB_BEGIN(system_cloud)
+DYNALIB_FN(system_cloud, spark_variable)
+DYNALIB_FN(system_cloud, spark_function)
+DYNALIB_FN(system_cloud, spark_process)
+DYNALIB_FN(system_cloud, spark_connect)
+DYNALIB_FN(system_cloud, spark_disconnect)
+DYNALIB_FN(system_cloud, spark_connected)
+DYNALIB_FN(system_cloud, spark_protocol_instance)
+DYNALIB_FN(system_cloud, spark_deviceID)
+DYNALIB_END(system_cloud)
 
-#endif	/* SYSTEM_DYNALIB_H */
+#endif	/* SYSTEM_DYNALIB_CLOUD_H */
 
