@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file    flash_mal.c
- * @author  Satish Nair
+ * @author  Satish Nair, Matthew McGowan
  * @version V1.0.0
  * @date    30-Jan-2015
  * @brief   Media access layer for platform dependent flash interfaces
@@ -591,9 +591,6 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress)
 {
-#ifdef USE_SERIAL_FLASH
-    //To Do
-#else
     if(flashDeviceID == FLASH_INTERNAL)
     {
         if (((*(__IO uint32_t*)startAddress) & APP_START_MASK) == 0x20000000)
@@ -605,48 +602,48 @@ const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddre
 
         return module_info;
     }
-#endif
 
     return NULL;
 }
 
 uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress)
 {
-#ifdef USE_SERIAL_FLASH
-    //To Do
-#else
     const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
 
-    if(module_info != NULL)
+    if (module_info != NULL)
     {
         return (uint32_t)module_info->module_start_address;
     }
-#endif
 
     return 0;
 }
 
 uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
 {
-#ifdef USE_SERIAL_FLASH
-    //To Do
-#else
     const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
 
-    if(module_info != NULL)
+    if (module_info != NULL)
     {
         return ((uint32_t)module_info->module_end_address - (uint32_t)module_info->module_start_address);
     }
-#endif
 
     return 0;
 }
 
+bool FLASH_isModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress)
+{
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+
+    if (module_info != NULL)
+    {
+        return (((uint32_t)module_info->module_start_address == expectedAddress) && (module_info->platform_id == PLATFORM_ID));
+    }
+
+    return false;
+}
+
 bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
-#ifdef USE_SERIAL_FLASH
-    //To Do
-#else
     if(flashDeviceID == FLASH_INTERNAL && length > 0)
     {
         uint32_t expectedCRC = __REV((*(__IO uint32_t*) (startAddress + length)));
@@ -657,7 +654,6 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
             return true;
         }
     }
-#endif
 
     return false;
 }

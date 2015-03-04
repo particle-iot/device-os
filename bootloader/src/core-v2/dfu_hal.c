@@ -42,10 +42,7 @@ USB_OTG_CORE_HANDLE USB_OTG_dev;
 
 uint8_t is_application_valid(uint32_t address)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(FLASH_INTERNAL, address);
-    uint8_t valid = ((uint32_t)module_info->module_start_address)    == address
-         && module_info->platform_id==PLATFORM_ID;
-    return valid;
+    return FLASH_isModuleInfoValid(FLASH_INTERNAL, address, address);
 }
 
 /*******************************************************************************
