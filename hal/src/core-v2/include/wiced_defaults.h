@@ -152,9 +152,7 @@ extern "C"
 
 /************************************************************************
  * Uncomment to disable standard IO, i.e. printf(), etc. */
-#ifndef WICED_DISABLE_STDIO
-#define WICED_DISABLE_STDIO
-#endif
+//#define WICED_DISABLE_STDIO
 
 /************************************************************************
  * Uncomment to disable MCU powersave API functions */
