@@ -1,7 +1,8 @@
 /**
  ******************************************************************************
- * @file    hal_dynalib_export.c
- * @author  Matthew McGowan
+ * @file    hal_dynalib_ota.h
+ * @authors Matthew McGowan
+ * @date    04 March 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -20,16 +21,32 @@
  ******************************************************************************
  */
 
-#define DYNALIB_EXPORT
-#include "hal_dynalib.h"
-#include "hal_dynalib_core.h"
-#include "hal_dynalib_gpio.h"
-#include "hal_dynalib_i2c.h"
-#include "hal_dynalib_ota.h"
-#include "hal_dynalib_peripherals.h"
-#include "hal_dynalib_socket.h"
-#include "hal_dynalib_spi.h"
-#include "hal_dynalib_usart.h"
-#include "hal_dynalib_wlan.h"
+#ifndef HAL_DYNALIB_OTA_H
+#define	HAL_DYNALIB_OTA_H
 
+#include "dynalib.h"
+
+#ifdef DYNALIB_EXPORT
+#include "ota_flash_hal.h"
+#endif
+
+DYNALIB_BEGIN(hal_ota)
+#if PLATFORM_ID > 3
+DYNALIB_FN(hal_ota,HAL_FLASH_AddToNextAvailableModulesSlot)
+#endif
+DYNALIB_FN(hal_ota,HAL_OTA_FlashAddress)
+DYNALIB_FN(hal_ota,HAL_OTA_FlashLength)
+DYNALIB_FN(hal_ota,HAL_OTA_ChunkSize)
+
+DYNALIB_FN(hal_ota,HAL_OTA_Flashed_GetStatus)
+DYNALIB_FN(hal_ota,HAL_OTA_Flashed_ResetStatus)
+
+DYNALIB_FN(hal_ota,HAL_FLASH_WriteProtectionEnable)
+DYNALIB_FN(hal_ota,HAL_FLASH_WriteProtectionDisable)
+DYNALIB_FN(hal_ota,HAL_FLASH_Begin)
+DYNALIB_FN(hal_ota,HAL_FLASH_Update)
+DYNALIB_FN(hal_ota,HAL_FLASH_End)        
+DYNALIB_END(hal_ota)        
+
+#endif	/* HAL_DYNALIB_OTA_H */
 

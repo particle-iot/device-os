@@ -1,7 +1,8 @@
 /**
  ******************************************************************************
- * @file    hal_dynalib_export.c
- * @author  Matthew McGowan
+ * @file    hal_dynalib_socket.h
+ * @authors mat
+ * @date    04 March 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -20,16 +21,30 @@
  ******************************************************************************
  */
 
-#define DYNALIB_EXPORT
-#include "hal_dynalib.h"
-#include "hal_dynalib_core.h"
-#include "hal_dynalib_gpio.h"
-#include "hal_dynalib_i2c.h"
-#include "hal_dynalib_ota.h"
-#include "hal_dynalib_peripherals.h"
-#include "hal_dynalib_socket.h"
-#include "hal_dynalib_spi.h"
-#include "hal_dynalib_usart.h"
-#include "hal_dynalib_wlan.h"
+#ifndef HAL_DYNALIB_SOCKET_H
+#define	HAL_DYNALIB_SOCKET_H
 
+#include "dynalib.h"
+
+#ifdef DYNALIB_EXPORT
+#include "socket_hal.h"
+#endif
+
+DYNALIB_BEGIN(hal_socket)
+DYNALIB_FN(hal_socket,socket_active_status)
+DYNALIB_FN(hal_socket,socket_handle_valid)
+DYNALIB_FN(hal_socket,socket_create)
+DYNALIB_FN(hal_socket,socket_connect)
+DYNALIB_FN(hal_socket,socket_receive)
+DYNALIB_FN(hal_socket,socket_receivefrom)
+DYNALIB_FN(hal_socket,socket_send)
+DYNALIB_FN(hal_socket,socket_bind)
+DYNALIB_FN(hal_socket,socket_sendto)
+DYNALIB_FN(hal_socket,socket_close)
+DYNALIB_FN(hal_socket,socket_reset_blocking_call)
+DYNALIB_FN(hal_socket,socket_create_nonblocking_server)
+DYNALIB_FN(hal_socket,socket_accept)        
+DYNALIB_END(hal_socket)
+
+#endif	/* HAL_DYNALIB_SOCKET_H */
 

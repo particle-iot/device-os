@@ -1,7 +1,8 @@
 /**
  ******************************************************************************
- * @file    hal_dynalib_export.h
- * @author  Matthew McGowan
+ * @file    hal_dynalib_spi.h
+ * @authors Matthew McGowan
+ * @date    04 March 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -20,27 +21,25 @@
  ******************************************************************************
  */
 
-#pragma once
+#ifndef HAL_DYNALIB_SPI_H
+#define	HAL_DYNALIB_SPI_H
 
-/**
- * Shared header used by implementations of hal that wish to export a dynalib.
- */
+#include "dynalib.h"
 
-#define DYNALIB_EXPORT
+#ifdef DYNALIB_EXPORT
+#include "spi_hal.h"
+#endif
 
-#include "core_hal.h"
-#include "core_subsys_hal.h"
-#include "delay_hal.h"
-#include "deviceid_hal.h"
-#include "inet_hal.h"
-#include "ota_flash_hal.h"
-#include "pinmap_hal.h"
-#include "rtc_hal.h"
-#include "rng_hal.h"
-#include "socket_hal.h"
-#include "syshealth_hal.h"
-#include "timer_hal.h"
-#include "usb_hal.h"
-#include "wlan_hal.h"
+DYNALIB_BEGIN(hal_spi)
+DYNALIB_FN(hal_spi,HAL_SPI_Begin)
+DYNALIB_FN(hal_spi,HAL_SPI_End)
+DYNALIB_FN(hal_spi,HAL_SPI_Set_Bit_Order)
+DYNALIB_FN(hal_spi,HAL_SPI_Set_Data_Mode)
+DYNALIB_FN(hal_spi,HAL_SPI_Set_Clock_Divider)
+DYNALIB_FN(hal_spi,HAL_SPI_Send_Receive_Data)
+DYNALIB_FN(hal_spi,HAL_SPI_Is_Enabled)
+DYNALIB_END(hal_spi)
 
-#include "hal_dynalib.h"
+
+#endif	/* HAL_DYNALIB_SPI_H */
+

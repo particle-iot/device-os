@@ -1,7 +1,8 @@
 /**
  ******************************************************************************
- * @file    hal_dynalib_export.c
- * @author  Matthew McGowan
+ * @file    hal_dynalib_i2c.h
+ * @authors Matthew McGowan
+ * @date    04 March 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -20,16 +21,33 @@
  ******************************************************************************
  */
 
-#define DYNALIB_EXPORT
-#include "hal_dynalib.h"
-#include "hal_dynalib_core.h"
-#include "hal_dynalib_gpio.h"
-#include "hal_dynalib_i2c.h"
-#include "hal_dynalib_ota.h"
-#include "hal_dynalib_peripherals.h"
-#include "hal_dynalib_socket.h"
-#include "hal_dynalib_spi.h"
-#include "hal_dynalib_usart.h"
-#include "hal_dynalib_wlan.h"
+#ifndef HAL_DYNALIB_I2C_H
+#define	HAL_DYNALIB_I2C_H
 
+#include "dynalib.h"
+
+#ifdef DYNALIB_EXPORT
+#include "i2c_hal.h"
+#endif
+
+DYNALIB_BEGIN(hal_i2c)
+DYNALIB_FN(hal_i2c,HAL_I2C_Set_Speed)
+DYNALIB_FN(hal_i2c,HAL_I2C_Enable_DMA_Mode)
+DYNALIB_FN(hal_i2c,HAL_I2C_Stretch_Clock)
+DYNALIB_FN(hal_i2c,HAL_I2C_Begin)
+DYNALIB_FN(hal_i2c,HAL_I2C_End)
+DYNALIB_FN(hal_i2c,HAL_I2C_Request_Data)
+DYNALIB_FN(hal_i2c,HAL_I2C_Begin_Transmission)
+DYNALIB_FN(hal_i2c,HAL_I2C_End_Transmission)
+DYNALIB_FN(hal_i2c,HAL_I2C_Write_Data)
+DYNALIB_FN(hal_i2c,HAL_I2C_Available_Data)
+DYNALIB_FN(hal_i2c,HAL_I2C_Read_Data)
+DYNALIB_FN(hal_i2c,HAL_I2C_Peek_Data)
+DYNALIB_FN(hal_i2c,HAL_I2C_Flush_Data)
+DYNALIB_FN(hal_i2c,HAL_I2C_Is_Enabled)
+DYNALIB_FN(hal_i2c,HAL_I2C_Set_Callback_On_Receive)
+DYNALIB_FN(hal_i2c,HAL_I2C_Set_Callback_On_Request)
+DYNALIB_END(hal_i2c)
+
+#endif	/* HAL_DYNALIB_I2C_H */
 
