@@ -152,7 +152,15 @@ void HAL_Core_Config(void)
     // normallly allocating such a large buffer on the stack would be a bad idea, however, we are quite near the start of execution, with few levels of recursion.
     char buf[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
     // ensure the private key is provisioned
-    HAL_FLASH_Read_CorePrivateKey(buf);
+    
+    // Reset the system after generating the key - reports of Serial not being available in listening mode
+    // after generating the key. 
+    private_key_generation_t genspec;
+    genspec.size = sizeof(genspec);
+    genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
+    HAL_FLASH_Read_CorePrivateKey(buf, &genspec);
+    if (genspec.generated_key)
+        HAL_Core_System_Reset();
     
 }
 

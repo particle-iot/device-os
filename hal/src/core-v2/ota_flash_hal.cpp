@@ -208,17 +208,26 @@ int rsa_random(void* p)
     return (int)HAL_RNG_GetRandomNumber();
 }
 
-void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
+/**
+ * Reads and generates the device's private key.
+ * @param keyBuffer
+ * @return 
+ */
+int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* genspec)
 {         
+    bool generated = false;
     copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
-    if (*keyBuffer==0xFF) {         // uninitialized
+    genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
+    if (genspec->gen==PRIVATE_KEY_GENERATE_ALWAYS || (!genspec->had_key && genspec->gen!=PRIVATE_KEY_GENERATE_NEVER)) {
         if (!gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, rsa_random, NULL)) {
             dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
-            
             // refetch and rewrite public key to ensure it is valid
             fetch_device_public_key();
+            generated = true;            
         }        
-    }    
+    }
+    genspec->generated_key = generated;
+    return 0;
 }
 
 STATIC_ASSERT(Internet_Address_is_2_bytes_c1, sizeof(Internet_Address_TypeDef)==1);

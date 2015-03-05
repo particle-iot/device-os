@@ -208,9 +208,12 @@ void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
     FLASH_Read_ServerPublicKey(keyBuffer);
 }
 
-void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
+int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* genspec)
 {
-    FLASH_Read_CorePrivateKey(keyBuffer);    
+    FLASH_Read_CorePrivateKey(keyBuffer);
+    genspec->generated_key = false;
+    genspec->had_key = *keyBuffer!=0xFF;
+    return 0;
 }
 
 uint16_t HAL_Set_Claim_Code(const char* code) 

@@ -132,7 +132,43 @@ STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, ip)==2);
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress *server_addr);
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
-void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
+
+typedef enum {
+    /**
+     * Retrieve the private key data if it exists but do not generate a new one.
+     */
+    PRIVATE_KEY_GENERATE_NEVER,
+            
+    /**
+     * Generates the private key if it is missing.
+     */
+    PRIVATE_KEY_GENERATE_MISSING,
+    
+    /*
+     * Generate a new private key even if one is already present.
+     */
+    PRIVATE_KEY_GENERATE_ALWAYS
+    
+} PrivateKeyGeneration;
+
+typedef struct {
+    /*[in]*/ size_t size;
+    /*[in]*/ PrivateKeyGeneration gen;
+    /**
+     * Set if a key was found.
+     */
+    /*[out]*/ bool had_key;
+    /*[out]*/ bool generated_key;
+    
+} private_key_generation_t;
+
+/**
+ * Reads and optionally generates the private key for this device.
+ * @param keyBuffer The key buffer. Should be at least 162 bytes in size.
+ * @param generation Describes if the key should be generated.
+ * @return {@code true} if the key was generated.
+ */
+int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* generation);
 
 
 #ifdef	__cplusplus

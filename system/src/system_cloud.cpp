@@ -393,7 +393,10 @@ void Spark_Protocol_Init(void)
         keys.core_private = private_key;
 
         // ensure the private key is read first since the public key may be derived from it.
-        HAL_FLASH_Read_CorePrivateKey(private_key);
+        private_key_generation_t genspec;
+        genspec.size = sizeof(genspec);
+        genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
+        HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
         HAL_FLASH_Read_ServerPublicKey(pubkey);
 
         uint8_t id_length = HAL_device_ID(NULL, 0);
@@ -623,6 +626,7 @@ int Spark_Connect(void)
     {
         // final fallback
         ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
+        //ip_addr = (52<<24) | (0<<16) | (3<<8) | 40;
     }
 
     tSocketAddr.sa_data[2] = BYTE_N(ip_addr, 3);
