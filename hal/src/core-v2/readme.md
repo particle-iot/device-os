@@ -141,13 +141,13 @@ You should see output similar to:
 Using st-link, the bootloader can be flashed using the `st-flash` goal:
 
 ```
-make PLATFORM=photon st-all flash
+make PLATFORM=photon st-flash
 ```
 
 or with the command:
 
 ```
-st-flash write ../build/target/bootloader/platform-6/bootloader.elf 0x8000000
+st-flash write ../build/target/bootloader/platform-6/bootloader.bin 0x8000000
 ```
 
 
