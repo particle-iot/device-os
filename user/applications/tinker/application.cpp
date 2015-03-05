@@ -1,9 +1,9 @@
 /**
  ******************************************************************************
  * @file    application.cpp
- * @authors  Satish Nair, Zachary Crockett and Mohit Bhoite
- * @version V1.0.0
- * @date    05-November-2013
+ * @authors Satish Nair, Zachary Crockett, Mohit Bhoite and Brett Walach
+ * @version V1.0.1
+ * @date    27-February-2015
  * @brief   Tinker application
  ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
@@ -133,12 +133,10 @@ int tinkerAnalogRead(String pin)
 
 	if(pin.startsWith("D"))
 	{
-		pinMode(pinNumber, INPUT);
-		return analogRead(pinNumber);
+		return -3;
 	}
 	else if (pin.startsWith("A"))
 	{
-		pinMode(pinNumber+10, INPUT);
 		return analogRead(pinNumber+10);
 	}
 	return -2;
