@@ -20,6 +20,10 @@ include $(DEPS_INCLUDE_SCRIPTS)
 
 include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 
+# Uncomment the following to enable serial bitrate specific dfu/ymodem flasher in code
+# START_DFU_FLASHER_SERIAL_SPEED=14400
+# Uncommenting this increase the size of the firmware image because of ymodem addition
+# START_YMODEM_FLASHER_SERIAL_SPEED=28800
 	
 QUOTE='
 ifneq (,$(GLOBAL_DEFINES))
@@ -37,7 +41,6 @@ else
 CFLAGS += -DRELEASE_BUILD
 endif
 
-
 ifdef SPARK_TEST_DRIVER
 CFLAGS += -DSPARK_TEST_DRIVER=$(SPARK_TEST_DRIVER)
 endif
@@ -50,6 +53,13 @@ CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -ffunction-sections -fdata-sections -Wall -Werror -Wno-switch -Wno-error=deprecated-declarations -fmessage-length=0
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1
+
+ifdef START_DFU_FLASHER_SERIAL_SPEED
+CFLAGS += -DSTART_DFU_FLASHER_SERIAL_SPEED=$(START_DFU_FLASHER_SERIAL_SPEED)
+endif
+ifdef START_YMODEM_FLASHER_SERIAL_SPEED
+CFLAGS += -DSTART_YMODEM_FLASHER_SERIAL_SPEED=$(START_YMODEM_FLASHER_SERIAL_SPEED)
+endif
 
 CONLYFLAGS += -Wno-pointer-sign
 
@@ -115,6 +125,16 @@ st-flash: all $(TARGET_BASE).bin
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
 program-dfu: $(TARGET_BASE).dfu
+ifdef START_DFU_FLASHER_SERIAL_SPEED
+# SPARK_SERIAL_DEV should be set something like /dev/tty.usbxxxx and exported
+ifndef SPARK_SERIAL_DEV
+	@echo Serial device 'SPARK_SERIAL_DEV' not defined
+else
+	@echo Entering dfu bootloader mode:
+	stty -f $(SPARK_SERIAL_DEV) $(START_DFU_FLASHER_SERIAL_SPEED)
+	sleep 1
+endif
+endif
 	@echo Flashing using dfu:
 	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $<
 
@@ -124,20 +144,21 @@ program-cloud: $(TARGET_BASE).bin
 	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
 	$(CURL) -X PUT -F file=@$< -F file_type=binary $(CLOUD_FLASH_URL)
 
-# Uncomment this to enable serial flasher in code
-# START_SERIAL_FLASHER_SPEED=14400
-
-ifdef START_SERIAL_FLASHER_SPEED
-CFLAGS += -DSTART_SERIAL_FLASHER_SPEED=$(START_SERIAL_FLASHER_SPEED)
-# Following not tested yet. (Dependent on 'stty' and 'sz' commands for proper working)
-# Install 'sz' tool using: 'brew install lrzsz' on MAC OS X
-# Before calling program-serial, DEV should be set something like /dev/tty.usbxxxx
-# Program core/photon using serial ymodem flasher.
 program-serial: $(TARGET_BASE).bin
+ifdef START_YMODEM_FLASHER_SERIAL_SPEED
+# Program core/photon using serial ymodem flasher.
+# Install 'sz' tool using: 'brew install lrzsz' on MAC OS X
+# SPARK_SERIAL_DEV should be set something like /dev/tty.usbxxxx and exported
+ifndef SPARK_SERIAL_DEV
+	@echo Serial device 'SPARK_SERIAL_DEV' not defined
+else
 	@echo Entering serial programmer mode:
-	stty -f $(DEV) $(START_SERIAL_FLASHER_SPEED)
+	stty -f $(SPARK_SERIAL_DEV) $(START_YMODEM_FLASHER_SERIAL_SPEED)
+	sleep 1
 	@echo Flashing using serial ymodem protocol:
-	sz -b -v --ymodem $< > $(DEV) < $(DEV)
+# Got some issue currently in getting 'sz' working
+	sz -b -v --ymodem $< > $(SPARK_SERIAL_DEV) < $(SPARK_SERIAL_DEV)
+endif
 endif
 
 # Display size
@@ -221,7 +242,7 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-.PHONY: all none elf bin hex size program-dfu program-cloud st-flash
+.PHONY: all none elf bin hex size program-dfu program-cloud st-flash program-serial
 .SECONDARY:
 
 include $(COMMON_BUILD)/recurse.mk
