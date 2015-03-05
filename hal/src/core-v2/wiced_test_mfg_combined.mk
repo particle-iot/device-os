@@ -3,9 +3,9 @@ PLATFORM_ID?=6
 CORE?=../../../..
 WICED_SDK?=$(CORE)/WICED/WICED-SDK-3.1.1/WICED-SDK
 SERVER_PUB_KEY=cloud_public.der
-
 FIRMWARE=$(CORE)/firmware
 FIRMWARE_BUILD=$(FIRMWARE)/build
+TARGET=$(FIRMWARE_BUILD)/target/photon-rc2
 OUT=$(WICED_SDK)/build
 DCT_MEM=$(OUT)/dct_pad.bin
 DCT_PREP=dct_prep.bin
@@ -18,6 +18,11 @@ FIRMWARE_BIN=$(FIRMWARE_BUILD)/target/main/platform-$(PLATFORM_ID)/main.bin
 FIRMWARE_MEM=$(OUT)/main_pad.bin
 FIRMWARE_DIR=$(FIRMWARE)/main
 COMBINED_MEM=$(OUT)/combined.bin
+
+MODULAR_DIR=$(FIRMWARE)/modules
+SYSTEM_PART1_BIN=$(FIRMWARE_BUILD)/target/system-part1/platform-$(PLATFORM_ID)/system-part1.bin
+SYSTEM_PART2_BIN=$(FIRMWARE_BUILD)/target/system-part2/platform-$(PLATFORM_ID)/system-part2.bin
+SYSTEM_MEM=$(OUT)/system_pad.bin
 
 USER_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)/user-part.bin
 USER_MEM=$(OUT)/user-part.bin
@@ -33,6 +38,9 @@ XXD=xxd
 OPTS=
 
 all: combined
+	mkdir -p $(TARGET)
+	cp $(COMBINED_MEM) $(TARGET)
+	cp $(SYSTEM_MEM) $(TARGET)
 		
 clean:
 	cd "$(WICED_SDK)"; "$(WICED_SDK)/make" clean
@@ -80,7 +88,20 @@ user:
 	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=$(VERSION) all
 	cp $(USER_BIN) $(USER_MEM)
 
-combined: bootloader dct mfg_test firmware user
+system:
+	# The system module is composed of part1 and part2 concatenated together
+	# adjust the module_info end address and the final CRC
+	@echo building $(SYSTEM_MEM)
+	-rm $(SYSTEM_MEM)
+	$(MAKE) -C $(MODULAR_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=$(VERSION) all
+	dd if=/dev/zero ibs=1 count=393212 | tr "\000" "\377" > $(SYSTEM_MEM)
+	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc	
+	dd if=$(SYSTEM_PART2_BIN) bs=1k of=$(SYSTEM_MEM) seek=256 conv=notrunc
+	# 5FFFC is the maximum length (384k-4 bytes). Place in end address in module_info struct
+	echo 0807fffc | $(XXD) -r -p | dd bs=1 of=$(SYSTEM_MEM) seek=392 conv=notrunc
+	$(CRC) $(SYSTEM_MEM) | cut -c 1-10 | $(XXD) -r -p >> $(SYSTEM_MEM)
+
+combined: bootloader dct mfg_test firmware user system
 	-rm $(COMBINED_MEM)
 	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(FIRMWARE_MEM) $(USER_MEM) > $(COMBINED_MEM)
 
