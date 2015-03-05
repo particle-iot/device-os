@@ -21,11 +21,18 @@ void SystemClass::bootloader(void)
     HAL_Core_Enter_Bootloader(true);
 }
 
-void SystemClass::modeDFU(void)
+void SystemClass::dfu(void)
 {
-    //Briefly enter DFU bootloader mode (works with latest bootloader only )
-    //Subsequent reset or power off-on will execute normal firmware
+    // default to non-persistent DFU mode
     HAL_Core_Enter_Bootloader(false);
+}
+
+void SystemClass::dfu(bool persist)
+{
+    // true  - DFU mode persist if firmware upgrade is not completed
+    // false - Briefly enter DFU bootloader mode (works with latest bootloader only )
+    //         Subsequent reset or power off-on will execute normal firmware
+    HAL_Core_Enter_Bootloader(persist);
 }
 
 void SystemClass::reset(void)

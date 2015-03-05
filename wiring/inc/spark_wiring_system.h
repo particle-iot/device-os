@@ -54,8 +54,9 @@ public:
         return system_serialFirmwareUpdate(serialObj);
     }
     static void factoryReset(void);
-    static void bootloader(void);
-    static void modeDFU(void);
+    static void bootloader(void) __attribute__((deprecated("Please use System.dfu(true) instead")));
+    static void dfu(void);
+    static void dfu(bool persist);
     static void reset(void);
 
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
