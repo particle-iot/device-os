@@ -180,7 +180,7 @@ void app_setup_and_loop(void)
     DECLARE_SYS_HEALTH(ENTERED_Main);
     DEBUG("Hello from Spark!");
 
-#ifdef START_SERIAL_FLASHER_SPEED
+#if defined (START_DFU_FLASHER_SERIAL_SPEED) || defined (START_YMODEM_FLASHER_SERIAL_SPEED)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
 #endif
 

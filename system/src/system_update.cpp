@@ -11,6 +11,14 @@
 #include "spark_wiring_usbserial.h"
 #include "system_ymodem.h"
 #include "system_task.h"
+#include "spark_wiring_system.h"
+
+#ifdef START_DFU_FLASHER_SERIAL_SPEED
+static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
+#endif
+#ifdef START_YMODEM_FLASHER_SERIAL_SPEED
+static uint32_t start_ymodem_flasher_serial_speed = START_YMODEM_FLASHER_SERIAL_SPEED;
+#endif
 
 ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update_Handler = NULL;
 
@@ -23,6 +31,20 @@ volatile uint32_t TimingFlashUpdateTimeout;
 void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler)
 {
     Ymodem_Serial_Flash_Update_Handler = handler;
+}
+
+void set_start_dfu_flasher_serial_speed(uint32_t speed)
+{
+#ifdef START_DFU_FLASHER_SERIAL_SPEED
+    start_dfu_flasher_serial_speed = speed;
+#endif
+}
+
+void set_start_ymodem_flasher_serial_speed(uint32_t speed)
+{
+#ifdef START_YMODEM_FLASHER_SERIAL_SPEED
+    start_ymodem_flasher_serial_speed = speed;
+#endif
 }
 
 bool system_serialSaveFile(Stream *serialObj, uint32_t sFlashAddress)
@@ -69,9 +91,17 @@ bool system_serialFirmwareUpdate(Stream *serialObj)
 
 void system_lineCodingBitRateHandler(uint32_t bitrate)
 {
-#ifdef START_SERIAL_FLASHER_SPEED
-    if (!WLAN_SMART_CONFIG_START && bitrate == START_SERIAL_FLASHER_SPEED)
+#ifdef START_DFU_FLASHER_SERIAL_SPEED
+    if (bitrate == start_dfu_flasher_serial_speed)
     {
+        //Reset device and briefly enter DFU bootloader mode
+        System.dfu(false);
+    }
+#endif
+#ifdef START_YMODEM_FLASHER_SERIAL_SPEED
+    else if (!WLAN_SMART_CONFIG_START && bitrate == start_ymodem_flasher_serial_speed)
+    {
+        //Set the Ymodem flasher flag to execute system_serialFirmwareUpdate()
         set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
         RGB.control(true);
         RGB.color(RGB_COLOR_MAGENTA);

@@ -12,6 +12,9 @@ typedef struct Stream Stream;
 typedef bool (*ymodem_serial_flash_update_handler)(Stream *serialObj, uint32_t sFlashAddress);
 void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler);
 
+void set_start_dfu_flasher_serial_speed(uint32_t speed);
+void set_start_ymodem_flasher_serial_speed(uint32_t speed);
+
 bool system_serialSaveFile(Stream *serialObj, uint32_t sFlashAddress);
 
 bool system_serialFirmwareUpdate(Stream *serialObj);
