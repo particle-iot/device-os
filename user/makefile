@@ -1,7 +1,7 @@
 MODULE=user
 USER_MODULE_PATH=.
 
-BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(USER_FLAVOR)
+BUILD_PATH_EXT = $(USER_BUILD_PATH_EXT)
 
 DEPENDENCIES = wiring system services communication hal
 

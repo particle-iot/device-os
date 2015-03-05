@@ -1,15 +1,10 @@
 
-# USRSRC is location of source files relative to SOURCE_PATH
-# default is src in this module
-USRSRC=src
-
 # SOURCE_PATH - the root of all sources. Defaults to the module dir
 # USRSRC - relative path to SOURCE_PATH for the sources to build
 
 # determine where user sources are, relative to project root
 ifdef APP
 USER_MAKEFILE ?= $(APP).mk
-USRSRC = applications/$(APP)
 # when TARGET_FILE is defined on the command line, 
 endif
 
@@ -17,13 +12,11 @@ ifdef APPDIR
 # APPDIR is where the sources are found
 # if TARGET_DIR is not defined defaults to $(APPDIR)/target
 # if TARGET_FILE_NAME is not defined, defaults to the name of the $(APPDIR)
-USRSRC = 
 SOURCE_PATH = $(APPDIR)
 endif
 
 
 ifdef TEST
-USRSRC = tests/$(TEST)
 INCLUDE_PLATFORM?=1
 include $(MODULE_PATH)/tests/tests.mk
 -include $(MODULE_PATH)/$(USRSRC)/test.mk
@@ -48,5 +41,3 @@ CPPFLAGS += -std=gnu++11
 
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
-
-
