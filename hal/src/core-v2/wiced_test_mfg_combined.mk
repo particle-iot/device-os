@@ -98,7 +98,9 @@ system:
 	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc	
 	dd if=$(SYSTEM_PART2_BIN) bs=1k of=$(SYSTEM_MEM) seek=256 conv=notrunc
 	# 5FFFC is the maximum length (384k-4 bytes). Place in end address in module_info struct
-	echo 0807fffc | $(XXD) -r -p | dd bs=1 of=$(SYSTEM_MEM) seek=392 conv=notrunc
+	echo fcff0708 | $(XXD) -r -p | dd bs=1 of=$(SYSTEM_MEM) seek=392 conv=notrunc
+	# change the module function from system-part modular (04) to monolithic (03 since that's what the factory reset is expecting.
+	echo 03 | $(XXD) -r -p | dd bs=1 of=$(SYSTEM_MEM) seek=402 conv=notrunc
 	$(CRC) $(SYSTEM_MEM) | cut -c 1-10 | $(XXD) -r -p >> $(SYSTEM_MEM)
 
 combined: bootloader dct mfg_test firmware user system
@@ -110,8 +112,7 @@ flash: combined
 
 .PHONY: mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM) prep_dct
 	
-	
-	
+		
 DFU_USB_ID=2b04:d006
 DFU_DCT = dfu-util -d $(DFU_USB_ID) -a 1 --dfuse-address
 DFU_FLASH = dfu-util -d $(DFU_USB_ID) -a 0 --dfuse-address
