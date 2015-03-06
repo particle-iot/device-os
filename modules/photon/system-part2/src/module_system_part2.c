@@ -45,7 +45,7 @@ extern void** dynalib_location_user;
 
 uint8_t is_user_function_valid(uint8_t index) {
     size_t fn = (size_t)dynalib_location_user[index];
-    return fn > (size_t)&dynalib_location_user && fn <= (size_t)USER_FIRMWARE_IMAGE_LOCATION;
+    return fn > (size_t)&dynalib_location_user && fn <= (size_t)0x80A00000;
 }
 
 static bool module_user_part_validated = false;
@@ -69,6 +69,9 @@ void module_user_part_restore_and_validation_check(void)
     //CRC check the user module and set to module_user_part_validated
     module_user_part_validated = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
                                  FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION));
+
+    //Double check : Validate user_function after verifying CRC
+    module_user_part_validated &= (is_user_function_valid(0) && is_user_function_valid(1));
 }
 
 /**
