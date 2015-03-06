@@ -42,6 +42,10 @@ In order for the Core to show up on the dfu list, you need to replace the USB dr
 
 Download and install Git: http://git-scm.com/
 
+#### 6. Command line tools
+
+- crc32 - available by default on OS X
+
 ## 2. Download and Build Repositories
 
 The entire Spark Core firmware is contained in this repository. 

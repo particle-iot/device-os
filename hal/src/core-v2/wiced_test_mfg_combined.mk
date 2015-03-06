@@ -1,9 +1,19 @@
+#
+## Building the combined Image
+# edit WICED_SDK to point to the directory containing the photon-wiced repo, with the
+# `feature/combined-fw` branch checked out
+# edit FIRMWARE to point to the directory containing the firmware-private repo with the 
+# `feature/hal` branch checked out
+# run make -f wiced_test_mfg_combined.mk
+# This will build the artefacts to $(FIRMEARE)/build/target/photon-rc2/
+
 # redefine these for your environment
-PLATFORM_ID?=6
 CORE?=../../../..
 WICED_SDK?=$(CORE)/WICED/WICED-SDK-3.1.1/WICED-SDK
-SERVER_PUB_KEY=cloud_public.der
 FIRMWARE=$(CORE)/firmware
+
+PLATFORM_ID?=6
+SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
 TARGET=$(FIRMWARE_BUILD)/target/photon-rc2
 OUT=$(WICED_SDK)/build
