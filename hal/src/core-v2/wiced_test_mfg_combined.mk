@@ -15,6 +15,7 @@ FIRMWARE=$(CORE)/firmware
 #FIRMWARE=$(CORE)/firmware-private
 
 PLATFORM_ID?=6
+VERSION=0
 SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
 TARGET=$(FIRMWARE_BUILD)/target/photon-rc2
