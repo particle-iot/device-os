@@ -179,7 +179,18 @@ void WiFiCredentialsReader::handle(char c)
     {
         // exit without changes
         connect_callback(NULL, NULL, 0);
-    }    
+    }
+    else if ('s' == c) 
+    {
+        print("modular: ");
+#ifdef MODULAR_FIRMWARE        
+        print("yes");
+#else
+        print("no");
+#endif        
+        print("\r\n");
+    }
+    
 }
 
 /* private methods */
