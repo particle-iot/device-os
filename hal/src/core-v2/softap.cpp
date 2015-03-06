@@ -722,18 +722,32 @@ struct AllSoftAPCommands {
 };
 
 /**
+ * Converts a given 32-bit value to a alphanumeric code
+ * @param value     The value to convert
+ * @param dest      The number of charactres
+ * @param len
+ */
+void bytesToCode(uint32_t value, char* dest, unsigned len) {
+    static const char* symbols = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+    while (len --> 0) {
+        *dest++ = symbols[value % 32];
+        value /= 32;
+    }
+}
+
+/**
  * Generates a random code.
  * @param dest
  * @param len   The length of the code, should be event.
  */
 void random_code(uint8_t* dest, unsigned len) {
     unsigned value = HAL_RNG_GetRandomNumber();
-    bytes2hex((const uint8_t*)&value, len>>1, (char*)dest);
+    bytesToCode(value, (char*)dest, len);
 }
 
-const int DEVICE_ID_LEN = 6;
+const int DEVICE_ID_LEN = 4;
 
-STATIC_ASSERT(device_id_len_is_same_as_dct_storage, DEVICE_ID_LEN==DCT_DEVICE_ID_SIZE);
+STATIC_ASSERT(device_id_len_is_same_as_dct_storage, DEVICE_ID_LEN<=DCT_DEVICE_ID_SIZE);
 
 
 extern "C" bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID);
