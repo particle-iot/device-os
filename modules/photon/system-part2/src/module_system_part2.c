@@ -57,21 +57,21 @@ void module_user_part_restore_and_validation_check(void)
                                       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
                                       FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
 
-    if(!FLASH_isModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION)
-    && FLASH_isModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+    if (FLASH_isModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
+    {
+        //CRC check the user module and set to module_user_part_validated
+        module_user_part_validated = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
+                                     FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION));
+    }
+    else if(FLASH_isModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
     {
         //Reset and let bootloader perform the user module factory reset
         //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
         //saves precious system_part2 flash size i.e. fits in < 128KB
         HAL_Core_Factory_Reset();
+
+        while(1);//Device should reset before reaching this line
     }
-
-    //CRC check the user module and set to module_user_part_validated
-    module_user_part_validated = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
-                                 FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION));
-
-    //Double check : Validate user_function after verifying CRC
-    module_user_part_validated &= (is_user_function_valid(0) && is_user_function_valid(1));
 }
 
 /**
