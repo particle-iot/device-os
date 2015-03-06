@@ -636,36 +636,6 @@ protected:
     }
 };
 
-struct ProvisionKeys {
-    uint32_t salt;
-    bool force;
-};
-
-class ProvisionKeysCommand : public JSONCommand
-{
-    ProvisionKeys request;
-
-    rsa_context ctx;
-
-    static int32_t rng_func(void* rng_state)
-    {
-        return( (int32_t)rand() );
-    }
-
-protected:    
-    int process() {
-        /*
-        rsa_init(&ctx, RSA_PKCS_V15, 0, rng_func, NULL);
-        int result = rsa_gen_key(&ctx, 1024, 65537);
-        rsa_free(&ctx);
-        return result;
-         * */
-        return 0;
-        // todo - to create a DER format, encode the values from the rsa_context structure
-        // according to the RSA DER format. https://polarssl.org/kb/cryptography/asn1-key-structures-in-der-and-pem
-    }
-};
-
 class PublicKeyCommand : public JSONCommand {
     
 protected:
@@ -745,7 +715,6 @@ struct AllSoftAPCommands {
     ScanAPCommand scanAP;
     ConfigureAPCommand configureAP;
     ConnectAPCommand connectAP;
-    ProvisionKeysCommand provisionKeys;
     PublicKeyCommand publicKey;
     SetValueCommand setValue;
     AllSoftAPCommands(wiced_semaphore_t* complete, void (*softap_complete)()) :
@@ -946,7 +915,6 @@ public:
         setCommand(4, commands.scanAP);
         setCommand(5, commands.configureAP);
         setCommand(6, commands.connectAP);
-        setCommand(7, commands.provisionKeys);
     }
 
     void start() {
@@ -999,8 +967,6 @@ class SimpleProtocolDispatcher
                 cmd = &commands_.configureAP;
             else if (!strcmp("connect-ap", name))
                 cmd = &commands_.connectAP;
-            else if (!strcmp("provision-keys", name))
-                cmd = &commands_.provisionKeys;
             else if (!strcmp("public-key", name))
                 cmd = &commands_.publicKey;
             else if (!strcmp("set", name))
