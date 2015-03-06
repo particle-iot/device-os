@@ -474,7 +474,7 @@ inline bool is_system(const char* event_name) {
         return false;
     memcpy(prefix, event_name, 5);
     prefix[5] = '\0';
-    return !strcmpi(prefix, "spark");
+    return !strcasecmp(prefix, "spark");
 }
 
 // Returns true on success, false on sending timeout or rate-limiting failure
