@@ -19,7 +19,7 @@ VERSION=0
 SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
 TARGET=$(FIRMWARE_BUILD)/target/photon-rc2
-OUT=$(WICED_SDK)/build
+OUT=$(TARGET)
 DCT_MEM=$(OUT)/dct_pad.bin
 DCT_PREP=dct_prep.bin
 ERASE_SECTOR=$(OUT)/erase_sector.bin
@@ -33,11 +33,11 @@ FIRMWARE_DIR=$(FIRMWARE)/main
 COMBINED_MEM=$(OUT)/combined.bin
 
 MODULAR_DIR=$(FIRMWARE)/modules
-SYSTEM_PART1_BIN=$(FIRMWARE_BUILD)/target/system-part1/platform-$(PLATFORM_ID)/system-part1.bin
-SYSTEM_PART2_BIN=$(FIRMWARE_BUILD)/target/system-part2/platform-$(PLATFORM_ID)/system-part2.bin
+SYSTEM_PART1_BIN=$(FIRMWARE_BUILD)/target/system-part1/platform-$(PLATFORM_ID)-m/system-part1.bin
+SYSTEM_PART2_BIN=$(FIRMWARE_BUILD)/target/system-part2/platform-$(PLATFORM_ID)-m/system-part2.bin
 SYSTEM_MEM=$(OUT)/system_pad.bin
 
-USER_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)/user-part.bin
+USER_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)-m/user-part.bin
 USER_MEM=$(OUT)/user-part.bin
 USER_DIR=$(FIRMWARE)/modules/photon/user-part
 
@@ -64,15 +64,15 @@ clean:
 bootloader:
 	@echo building $(BOOTLOADER_MEM)
 	$(MAKE) -C $(BOOTLOADER_DIR) PLATFORM_ID=$(PLATFORM_ID) all 
-#	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377" > $(BOOTLOADER_MEM)
-	tr "\000" "\377" < /dev/zero | dd of=$(BOOTLOADER_MEM) ibs=1k count=16
+	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377" > $(BOOTLOADER_MEM)
+#	tr "\000" "\377" < /dev/zero | dd of=$(BOOTLOADER_MEM) ibs=1k count=16
 	dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
 
 # add the prepared dct image into the flash image
 dct: 	
 	-rm $(DCT_MEM)
-#	dd if=/dev/zero ibs=1k count=112 | tr "\000" "\377" > $(DCT_MEM)
-	tr "\000" "\377" < /dev/zero | dd of=$(DCT_MEM) ibs=1k count=112
+	dd if=/dev/zero ibs=1k count=112 | tr "\000" "\377" > $(DCT_MEM)
+#	tr "\000" "\377" < /dev/zero | dd of=$(DCT_MEM) ibs=1k count=112
 	dd if=$(DCT_PREP) of=$(DCT_MEM) conv=notrunc
 			
 $(MFG_TEST_BIN):
@@ -83,21 +83,21 @@ $(MFG_TEST_BIN):
 
 $(MFG_TEST_MEM): $(MFG_TEST_BIN)
 	-rm $(MFG_TEST_MEM)
-#	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(MFG_TEST_MEM)
-	tr "\000" "\377" < /dev/zero | dd of=$(MFG_TEST_MEM) ibs=1k count=384
+	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(MFG_TEST_MEM)
+#	tr "\000" "\377" < /dev/zero | dd of=$(MFG_TEST_MEM) ibs=1k count=384
 	dd if=$(MFG_TEST_BIN) of=$(MFG_TEST_MEM) conv=notrunc
 
 mfg_test: $(MFG_TEST_MEM)
-#	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377" > $(BOOTLOADER_MEM)
-	tr "\000" "\377" < /dev/zero | dd of=$(BOOTLOADER_MEM) ibs=1k count=16
+	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377" > $(BOOTLOADER_MEM)
+#	tr "\000" "\377" < /dev/zero | dd of=$(BOOTLOADER_MEM) ibs=1k count=16
 	dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
 			
 firmware:
 	@echo building $(FIRMWARE_MEM)
 	-rm $(FIRMWARE_MEM)
 	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=$(VERSION) all
-#	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
-	tr "\000" "\377" < /dev/zero | dd of=$(FIRMWARE_MEM) ibs=1k count=384
+	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
+#	tr "\000" "\377" < /dev/zero | dd of=$(FIRMWARE_MEM) ibs=1k count=384
 	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc	
 
 user:
@@ -112,8 +112,8 @@ system:
 	@echo building $(SYSTEM_MEM)
 	-rm $(SYSTEM_MEM)
 	$(MAKE) -C $(MODULAR_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=$(VERSION) all
-#	dd if=/dev/zero ibs=1 count=393212 | tr "\000" "\377" > $(SYSTEM_MEM)
-	tr "\000" "\377" < /dev/zero | dd of=$(SYSTEM_MEM) ibs=1 count=393212
+	dd if=/dev/zero ibs=1 count=393212 | tr "\000" "\377" > $(SYSTEM_MEM)
+#	tr "\000" "\377" < /dev/zero | dd of=$(SYSTEM_MEM) ibs=1 count=393212
 	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc	
 	dd if=$(SYSTEM_PART2_BIN) bs=1k of=$(SYSTEM_MEM) seek=256 conv=notrunc
 	# 5FFFC is the maximum length (384k-4 bytes). Place in end address in module_info struct
@@ -141,8 +141,8 @@ DFU_FLASH = dfu-util -d $(DFU_USB_ID) -a 0 --dfuse-address
 # The this script erases the generated keys, with 0xFF 
 # And writes the server public key to the appropriate place	
 prep_dct:
-#	dd if=/dev/zero ibs=4258 count=1 | tr "\000" "\377" > $(ERASE_SECTOR)
-	tr "\000" "\377" < /dev/zero | dd of=$(ERASE_SECTOR) ibs=4258 count=1
+	dd if=/dev/zero ibs=4258 count=1 | tr "\000" "\377" > $(ERASE_SECTOR)
+#	tr "\000" "\377" < /dev/zero | dd of=$(ERASE_SECTOR) ibs=4258 count=1
 	$(DFU_DCT) 1:4258 -D $(ERASE_SECTOR)
 	$(DFU_DCT) 2082 -D $(SERVER_PUB_KEY)
 	#st-flash read $(DCT_PREP) 0x8004000 0x8000
