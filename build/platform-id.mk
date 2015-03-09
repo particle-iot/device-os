@@ -182,9 +182,11 @@ endif
 
 ifeq ("$(PLATFORM_NAME)","core-v1")
     PLATFORM_DFU ?= 0x08005000
-else
-    PLATFORM_DFU ?= 0x08020000
-    PLATFORM_THREADING=1
+else 
+    ifeq ("$(PLATFORM_NAME)","core-v2")
+	PLATFORM_DFU ?= 0x08020000
+	PLATFORM_THREADING=1
+    endif
 endif
 
 

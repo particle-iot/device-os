@@ -1,5 +1,5 @@
 
-#include "productstore_hal.h"
+#include "product_store_hal.h"
 
 /**
  * Sets the value at a specific product store index.

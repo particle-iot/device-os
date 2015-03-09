@@ -44,7 +44,7 @@ boost::asio::io_service io_service;
 boost::system::error_code ec;
 
 boost::array<ip::tcp::socket, 8> handles = {
-    ip::tcp::socket({io_service}),
+    ip::tcp::socket(io_service),
     ip::tcp::socket(io_service),
     ip::tcp::socket(io_service),
     ip::tcp::socket(io_service),

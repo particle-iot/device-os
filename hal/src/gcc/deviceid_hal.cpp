@@ -44,14 +44,13 @@ uint8_t hex2dec(char c) {
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {    
     char text[24];
-    read_file("id", text, 24);
-    uint8_t id[12];
-    int idx=0;
-    for (int i=0; i<sizeof(text); i+=2) {
+    read_file("id", text, 24);    
+    unsigned idx = 0;
+    for (unsigned i=0; i<sizeof(text) && idx<destLen; i+=2) {
         char c1 = text[i];
         char c2 = text[i+1];
         uint8_t b = hex2dec(c1) << 4 | hex2dec(c2);
-        id[idx++] = b;
+        dest[idx++] = b;
     }
     return 12;
 }

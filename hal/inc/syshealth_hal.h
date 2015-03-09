@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-typedef enum eSystemHealth {    
+typedef enum eSystemHealth_ {
   FIRST_RETRY = 1,
   SECOND_RETRY = 2,
   THIRD_RETRY = 3,
@@ -47,7 +47,10 @@ typedef enum eSystemHealth {
   CLEARED_WATCHDOG=0xFFFF
 } eSystemHealth;
 
+#if PLATFORM_ID!=3
+// gcc enums are at least an int wide
 STATIC_ASSERT(system_health_16_bits, sizeof(eSystemHealth)==2);
+#endif
 
 eSystemHealth HAL_Get_Sys_Health();
 void HAL_Set_Sys_Health(eSystemHealth health);

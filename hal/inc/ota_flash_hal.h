@@ -110,19 +110,17 @@ typedef enum
 } Internet_Address_TypeDef;
 
 
-typedef struct __attribute__((__packed__)) ServerAddress {
-  Internet_Address_TypeDef addr_type;
+typedef struct __attribute__ ((__packed__)) ServerAddress_ {
+  uint8_t addr_type;
   uint8_t length;
-  union {
+  union __attribute__ ((__packed__)) {
     char domain[127];
     uint32_t ip;
   };
 } ServerAddress;
 
-STATIC_ASSERT(Internet_Address_is_2_bytes, sizeof(Internet_Address_TypeDef)==1);
 STATIC_ASSERT(ServerAddress_ip_offset, offsetof(ServerAddress, ip)==2);
-STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, ip)==2);
-
+STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, domain)==2);
 
 
 /* Length in bytes of DER-encoded 2048-bit RSA public key */
