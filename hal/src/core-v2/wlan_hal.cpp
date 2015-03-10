@@ -39,9 +39,10 @@
 bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
 {
     bool changed = false;
-    if (force || wifi_config->device_configured!=WICED_TRUE) {
+    wiced_country_code_t country = WICED_COUNTRY_JAPAN;
+    if (force || wifi_config->device_configured!=WICED_TRUE || wifi_config->country_code!=country) {
         memset(wifi_config, 0, sizeof(*wifi_config));            
-        wifi_config->country_code = WICED_COUNTRY_UNITED_STATES;
+        wifi_config->country_code = country;
         wifi_config->device_configured = WICED_TRUE;    
         changed = true;
     }
