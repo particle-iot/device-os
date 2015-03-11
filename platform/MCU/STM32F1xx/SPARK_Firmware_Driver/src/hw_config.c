@@ -127,6 +127,9 @@ void Set_System(void)
     /* Enable write access to Backup domain */
     PWR_BackupAccessCmd(ENABLE);
 
+    /* Enable WKUP pin */
+    PWR_WakeUpPinCmd(ENABLE);
+
     /* Should we execute System Standby mode */
     // Use "HAL_Core_Execute_Standby_Mode()" defined in core_hal.c
     // Or Use below code
