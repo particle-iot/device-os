@@ -8,6 +8,7 @@
 # This will build the artefacts to $(FIRMEARE)/build/target/photon-rc2/
 
 # redefine these for your environment
+TOOLCHAIN_PREFIX=arm-none-eabi-
 CORE?=../../../..
 WICED_SDK?=$(CORE)/WICED/WICED-SDK-3.1.1/WICED-SDK
 FIRMWARE=$(CORE)/firmware
@@ -31,6 +32,7 @@ FIRMWARE_BIN=$(FIRMWARE_BUILD)/target/main/platform-$(PLATFORM_ID)/main.bin
 FIRMWARE_MEM=$(OUT)/main_pad.bin
 FIRMWARE_DIR=$(FIRMWARE)/main
 COMBINED_MEM=$(OUT)/combined.bin
+COMBINED_ELF=$(OUT)/combined.elf
 
 MODULAR_DIR=$(FIRMWARE)/modules
 SYSTEM_PART1_BIN=$(FIRMWARE_BUILD)/target/system-part1/platform-$(PLATFORM_ID)-m/system-part1.bin
@@ -125,6 +127,12 @@ system:
 combined: bootloader dct mfg_test firmware user system
 	-rm $(COMBINED_MEM)
 	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(FIRMWARE_MEM) $(USER_MEM) > $(COMBINED_MEM)
+	# Generate combined.elf from combined.bin
+	${TOOLCHAIN_PREFIX}ld -b binary -r -o $(OUT)/temp.elf $(COMBINED_MEM)
+	${TOOLCHAIN_PREFIX}objcopy --rename-section .data=.text --set-section-flags .data=alloc,code,load $(OUT)/temp.elf
+	${TOOLCHAIN_PREFIX}ld $(OUT)/temp.elf -T combined_bin_to_elf.ld -o $(COMBINED_ELF)
+	${TOOLCHAIN_PREFIX}strip -s $(COMBINED_ELF)
+	-rm -rf $(OUT)/temp.elf
 
 flash: combined
 	st-flash write $(COMBINED_MEM) 0x8000000
