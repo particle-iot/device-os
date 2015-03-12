@@ -107,11 +107,11 @@ int SparkProtocol::handshake(void)
   int err = blocking_receive(queue, 40);
   if (0 > err) return err;
 
-  //parse_device_pubkey_from_privkey(queue+52, core_private_key);
+  parse_device_pubkey_from_privkey(queue+52, core_private_key);
   
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, server_public_key);
-  const int len = 52; //+MAX_DEVICE_PUBLIC_KEY_LENGTH;
+  const int len = 52+MAX_DEVICE_PUBLIC_KEY_LENGTH;
   err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, len, queue, queue + len);
   rsa_free(&rsa);
 
