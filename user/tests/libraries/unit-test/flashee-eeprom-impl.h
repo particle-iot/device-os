@@ -1286,7 +1286,7 @@ public:
 };
 
 
-#ifdef SPARK_PLATFORM
+#ifdef FLASHEE_EEPROM
 class SparkExternalFlashDevice : public FlashDevice {
 
     /**

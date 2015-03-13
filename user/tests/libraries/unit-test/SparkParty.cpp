@@ -2,7 +2,7 @@
 #include "unit-test.h"
 #include "rgbled.h"
 
-#ifdef SPARK_PLATFORM
+#ifdef FLASHEE_EEPROM
 #include "flashee-eeprom.h"
 
 typedef void (*BufferFullCallback)();
@@ -64,7 +64,7 @@ SparkTestRunner _runner;
 bool requestStart = false;
 bool _enterDFU = false;
 
-#ifdef SPARK_PLATFORM
+#ifdef FLASHEE_EEPROM
 Flashee::CircularBuffer* cblog;
 PrintTee* tee;
 #endif
@@ -77,7 +77,7 @@ uint8_t buf[601];
 void unit_test_setup()
 {
     Serial.begin(9600);    
-#ifdef SPARK_PLATFORM
+#ifdef FLASHEE_EEPROM
     Flashee::FlashDevice& store = Flashee::Devices::userFlash();
     // 64k should be plenty for anyone.
     int pageSize = store.pageSize();
@@ -141,7 +141,7 @@ int SparkTestRunner::testStatusColor() {
  * Returns the number of bytes of data available in the variable
  */
 int advanceLog() {
-#if SPARK_PLATFORM
+#if FLASHEE_EEPROM
     int end = sizeof(buf)-1;
     int read = cblog->read_soft(buf, end);
     buf[read] = 0;  // terminate string
