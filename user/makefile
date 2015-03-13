@@ -8,12 +8,14 @@ DEPENDENCIES = wiring system services communication hal
 include ../build/platform-id.mk
 
 ifeq ("","$(SPARK_NO_PLATFORM)")
-DEPENDENCIES += platform
-ifneq ("$(PLATFORM_NET)","BCM9WCDUSI09")
+DEPENDENCIES += platform dynalib
 CFLAGS += -DSPARK_PLATFORM
+endif
+
+ifneq ("$(PLATFORM_NET)","BCM9WCDUSI09")
 CFLAGS += -DFLASHEE_EEPROM
 endif
-endif
+
 
 TARGET_TYPE = a
 
