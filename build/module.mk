@@ -63,8 +63,9 @@ endif
 
 CONLYFLAGS += -Wno-pointer-sign
 
+LDFLAGS += $(LIBS_EXT)
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
-LDFLAGS += -Wl,--start-group $(patsubst %,-l%,$(LIBS)) -Wl,--end-group $(LIBS_EXT)
+LDFLAGS += -Wl,--start-group $(patsubst %,-l%,$(LIBS)) -Wl,--end-group
 
 # Assembler flags
 ASFLAGS += -x assembler-with-cpp -fmessage-length=0
