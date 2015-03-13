@@ -19,7 +19,8 @@ PLATFORM_ID?=6
 VERSION=0
 SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
-TARGET=$(FIRMWARE_BUILD)/target/photon-rc2
+TARGET_PARENT=$(FIRMWARE_BUILD)/target
+TARGET=$(TARGET_PARENT)/photon-rc2
 OUT=$(TARGET)
 DCT_MEM=$(OUT)/dct_pad.bin
 DCT_PREP=dct_prep.bin
@@ -47,21 +48,27 @@ CMD=test.mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
 BUILD_NAME=test_mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
 MFG_TEST_BIN=$(WICED_SDK)/build/$(BUILD_NAME)/binary/$(BUILD_NAME).bin
 MFG_TEST_MEM=$(OUT)/mfg_test_pad.bin
+MFG_TEST_DIR=Apps/test/mfg_test
 
 CRC=crc32
 XXD=xxd
 OPTS=
 
-all: combined
-	mkdir -p $(TARGET)
+all: setup combined
 	cp $(COMBINED_MEM) $(TARGET)
 	cp $(SYSTEM_MEM) $(TARGET)
+
+setup:
+	-mkdir $(TARGET_PARENT)
+	-mkdir $(TARGET)
+
 		
 clean:
-	cd "$(WICED_SDK)"; "$(WICED_SDK)/make" clean
+	cd "$(WICED_SDK)"; "./make.exe" clean	
+	-rm -rf $(TARGET_PARENT)
 	-rm $(MFG_TEST_BIN)
-	-rm $(BOOTLOADER)
-	-rm $(DCT)
+	-rm $(BOOTLOADER_MEM)
+	-rm $(DCT_MEM)
 		
 bootloader:
 	@echo building $(BOOTLOADER_MEM)
@@ -124,7 +131,11 @@ system:
 	echo 03 | $(XXD) -r -p | dd bs=1 of=$(SYSTEM_MEM) seek=402 conv=notrunc
 	$(CRC) $(SYSTEM_MEM) | cut -c 1-10 | $(XXD) -r -p >> $(SYSTEM_MEM)
 
-combined: bootloader dct mfg_test firmware user system
+wl:
+	cd "$(WICED_SDK)/$(MFG_TEST_DIR)"; make
+	cp $(WICED_SDK)/$(MFG_TEST_DIR)/wl43362A2.exe $(TARGET)/wl.exe
+
+combined: bootloader dct mfg_test firmware user system wl
 	-rm $(COMBINED_MEM)
 	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(FIRMWARE_MEM) $(USER_MEM) > $(COMBINED_MEM)
 	# Generate combined.elf from combined.bin
@@ -137,8 +148,7 @@ combined: bootloader dct mfg_test firmware user system
 flash: combined
 	st-flash write $(COMBINED_MEM) 0x8000000
 
-.PHONY: mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM) prep_dct
-	
+.PHONY: wl mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM) prep_dct
 		
 DFU_USB_ID=2b04:d006
 DFU_DCT = dfu-util -d $(DFU_USB_ID) -a 1 --dfuse-address
@@ -156,10 +166,10 @@ prep_dct:
 	#st-flash read $(DCT_PREP) 0x8004000 0x8000
 	#$(DFU_FLASH) 0x4000:0x8000 -U $(DCT_PREP)
 	
-# Feb 24 2015 - steps to dct_prep.bin file
+# Feb 24 2015 - steps to build dct_prep.bin file
 # flash the combined image 
 # enter dfu mode
 # use st-flash GUI tool to erase DCT sectors 0x8004000 and 0x8008000
 # use the prep_dct goal to write the cloud public key
-# use st-flash GUI tool to save the 
+# use st-flash GUI tool to save the memory contents of sectors 0x8004000-0x800C0000 (32K)
 
