@@ -39,6 +39,7 @@
 #include "usb_hal.h"
 #include "system_mode.h"
 #include "rgbled.h"
+#include "ledcontrol.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
