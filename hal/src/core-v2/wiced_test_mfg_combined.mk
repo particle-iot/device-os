@@ -15,8 +15,10 @@ FIRMWARE=$(CORE)/firmware
 #WICED_SDK?=$(CORE)/photon-wiced
 #FIRMWARE=$(CORE)/firmware-private
 
+
 PLATFORM_ID?=6
 VERSION=0
+VERSION_STRING=$(VERSION).RC3
 SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
 TARGET_PARENT=$(FIRMWARE_BUILD)/target
@@ -83,6 +85,8 @@ dct:
 	dd if=/dev/zero ibs=1k count=112 | tr "\000" "\377" > $(DCT_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(DCT_MEM) ibs=1k count=112
 	dd if=$(DCT_PREP) of=$(DCT_MEM) conv=notrunc
+	dd if=/dev/zero bs=1 count=32 of=$(DCT_MEM) seek=9406 conv=notrunc
+	echo -n $(VERSION_STRING) | dd bs=1 of=$(DCT_MEM) seek=9406 conv=notrunc
 			
 $(MFG_TEST_BIN):
 	cd "$(WICED_SDK)"; "./make" $(CMD) $(OPTS)
@@ -148,7 +152,7 @@ combined: bootloader dct mfg_test firmware user system wl
 flash: combined
 	st-flash write $(COMBINED_MEM) 0x8000000
 
-.PHONY: wl mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM) prep_dct
+.PHONY: wl mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM) prep_dct write_version
 		
 DFU_USB_ID=2b04:d006
 DFU_DCT = dfu-util -d $(DFU_USB_ID) -a 1 --dfuse-address

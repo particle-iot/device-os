@@ -36,7 +36,8 @@ typedef struct application_dct {
     uint8_t claimed[1];                 // 0,0xFF, not claimed. 1 claimed.     
     uint8_t ssid_prefix[26];            // SSID prefix (25 chars max). First byte is length.
     uint8_t device_id[6];               // 6 suffix characters (not null terminated))
-    uint8_t reserved1[224];  
+    uint8_t version_string[32];         // version string including date
+    uint8_t reserved1[192];  
     uint8_t server_public_key[768];     // 4096 bits
     uint8_t padding[2];                 // align to 4 byte boundary
     platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];//100 bytes
@@ -85,8 +86,9 @@ STATIC_ASSERT_DCT_OFFSET(claim_code, 1762 /* 1634 + 128 */);
 STATIC_ASSERT_DCT_OFFSET(claimed, 1825 /* 1762 + 63 */ );
 STATIC_ASSERT_DCT_OFFSET(ssid_prefix, 1826 /* 1825 + 1 */);
 STATIC_ASSERT_DCT_OFFSET(device_id, 1852 /* 1826 + 26 */);
-STATIC_ASSERT_DCT_OFFSET(reserved1, 1858 /* 1852 + 6 */);
-STATIC_ASSERT_DCT_OFFSET(server_public_key, 2082 /* 1858 + 224 */);
+STATIC_ASSERT_DCT_OFFSET(version_string, 1858 /* 1852 + 6 */);
+STATIC_ASSERT_DCT_OFFSET(reserved1, 1890 /* 1868 + 32 */);
+STATIC_ASSERT_DCT_OFFSET(server_public_key, 2082 /* 1890 + 192 */);
 STATIC_ASSERT_DCT_OFFSET(padding, 2850 /* 2082 + 768 */);
 STATIC_ASSERT_DCT_OFFSET(flash_modules, 2852 /* 2850 + 2 */);
 STATIC_ASSERT_DCT_OFFSET(product_store, 2952 /* 2852 + 100 */);
