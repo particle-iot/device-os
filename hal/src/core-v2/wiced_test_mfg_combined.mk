@@ -17,39 +17,48 @@ FIRMWARE=$(CORE)/firmware
 
 
 PLATFORM_ID?=6
+
+ifeq (6,$(PLATFORM_ID))
+CMD=test.mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
+BUILD_NAME=test_mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
+SUFFIX=_BM-09
+else
+CMD=test.mfg_test-BCM9WCDUSI14-ThreadX-NetX-SDIO
+BUILD_NAME=test_mfg_test-BCM9WCDUSI14-ThreadX-NetX-SDIO
+SUFFIX=_BM-14
+endif
+
 VERSION=0
 VERSION_STRING=$(VERSION).RC3
 SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
 TARGET_PARENT=$(FIRMWARE_BUILD)/target
-TARGET=$(TARGET_PARENT)/photon-rc2
+TARGET=$(TARGET_PARENT)/photon-rc3
 OUT=$(TARGET)
 DCT_MEM=$(OUT)/dct_pad.bin
 DCT_PREP=dct_prep.bin
 ERASE_SECTOR=$(OUT)/erase_sector.bin
 BOOTLOADER_BIN=$(FIRMWARE_BUILD)/target/bootloader/platform-$(PLATFORM_ID)/bootloader.bin
-BOOTLOADER_MEM=$(OUT)/bootloader_pad.bin
+BOOTLOADER_MEM=$(OUT)/bootloader_pad$(SUFFIX).bin
 BOOTLOADER_DIR=$(FIRMWARE)/bootloader
 
 FIRMWARE_BIN=$(FIRMWARE_BUILD)/target/main/platform-$(PLATFORM_ID)/main.bin
-FIRMWARE_MEM=$(OUT)/main_pad.bin
+FIRMWARE_MEM=$(OUT)/main_pad$(SUFFIX).bin
 FIRMWARE_DIR=$(FIRMWARE)/main
-COMBINED_MEM=$(OUT)/combined.bin
-COMBINED_ELF=$(OUT)/combined.elf
+COMBINED_MEM=$(OUT)/combined$(SUFFIX).bin
+COMBINED_ELF=$(OUT)/combined$(SUFFIX).elf
 
 MODULAR_DIR=$(FIRMWARE)/modules
 SYSTEM_PART1_BIN=$(FIRMWARE_BUILD)/target/system-part1/platform-$(PLATFORM_ID)-m/system-part1.bin
 SYSTEM_PART2_BIN=$(FIRMWARE_BUILD)/target/system-part2/platform-$(PLATFORM_ID)-m/system-part2.bin
-SYSTEM_MEM=$(OUT)/system_pad.bin
+SYSTEM_MEM=$(OUT)/system_pad$(SUFFIX).bin
 
 USER_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)-m/user-part.bin
 USER_MEM=$(OUT)/user-part.bin
 USER_DIR=$(FIRMWARE)/modules/photon/user-part
 
-CMD=test.mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
-BUILD_NAME=test_mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
 MFG_TEST_BIN=$(WICED_SDK)/build/$(BUILD_NAME)/binary/$(BUILD_NAME).bin
-MFG_TEST_MEM=$(OUT)/mfg_test_pad.bin
+MFG_TEST_MEM=$(OUT)/mfg_test_pad$(SUFFIX).bin
 MFG_TEST_DIR=Apps/test/mfg_test
 
 CRC=crc32
@@ -108,7 +117,7 @@ mfg_test: $(MFG_TEST_MEM)
 firmware:
 	@echo building $(FIRMWARE_MEM)
 	-rm $(FIRMWARE_MEM)
-	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=$(VERSION) all
+	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(FIRMWARE_MEM) ibs=1k count=384
 	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc	
@@ -116,7 +125,7 @@ firmware:
 user:
 	@echo building $(USER_MEM)
 	-rm $(USER_MEM)
-	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=$(VERSION) all
+	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
 	cp $(USER_BIN) $(USER_MEM)
 
 system:
@@ -124,7 +133,7 @@ system:
 	# adjust the module_info end address and the final CRC
 	@echo building $(SYSTEM_MEM)
 	-rm $(SYSTEM_MEM)
-	$(MAKE) -C $(MODULAR_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_REVISION=$(VERSION) all
+	$(MAKE) -C $(MODULAR_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
 	dd if=/dev/zero ibs=1 count=393212 | tr "\000" "\377" > $(SYSTEM_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(SYSTEM_MEM) ibs=1 count=393212
 	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc	
