@@ -29,15 +29,19 @@
 test(EEPROM_ReadWriteSucceedsForAllAddressWithInRange) {
     int EEPROM_SIZE = EEPROM.length();
 
+    uint8_t data_seed = Time.second(); //simple data seed initialized with current second
+
     // when
-    for(int i=0;i<EEPROM_SIZE;i++)
+    for(uint16_t address=0, data=data_seed; address < EEPROM_SIZE; address++, data--)
     {
-        EEPROM.write(i, i);
+        EEPROM.write(address, data);
+        if(data == 0) data=0xFF;
     }
     // then
-    for(int i=0;i<EEPROM_SIZE;i++)
+    for(uint16_t address=0, data=data_seed; address < EEPROM_SIZE; address++, data--)
     {
-        assertEqual(EEPROM.read(i), i);
+        assertEqual(EEPROM.read(address), data);
+        if(data == 0) data=0xFF;
     }
 }
 
@@ -45,14 +49,14 @@ test(EEPROM_ReadWriteFailsForAnyAddressOutOfRange) {
     int EEPROM_SIZE = EEPROM.length();
 
     // when
-    for(int i=EEPROM_SIZE;i<(2*EEPROM_SIZE);i++)
+    for(uint16_t address=EEPROM_SIZE, data=0; address < EEPROM_SIZE+10; address++, data++)
     {
-        EEPROM.write(i, i);
+        EEPROM.write(address, data);
     }
     // then
-    for(int i=EEPROM_SIZE;i<(2*EEPROM_SIZE);i++)
+    for(uint16_t address=EEPROM_SIZE, data=0; address < EEPROM_SIZE+10; address++, data++)
     {
-        assertNotEqual(EEPROM.read(i), i);
+        assertNotEqual(EEPROM.read(address), data);
     }
 }
 
