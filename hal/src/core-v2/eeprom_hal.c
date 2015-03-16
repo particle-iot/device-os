@@ -37,7 +37,7 @@
 /* EEPROM emulation start address in Flash (just after the DCT space) */
 #define EEPROM_START_ADDRESS    ((uint32_t)0x0800C000)
 /* EEPROM Emulation Size */
-#define EEPROM_SIZE             0x100               /* 256 bytes Max */
+#define EEPROM_SIZE             1024               /* Default 1KB Max */
 
 /* Device voltage range supposed to be [2.7V to 3.6V] */
 #define VOLTAGE_RANGE           (uint8_t)VoltageRange_3
