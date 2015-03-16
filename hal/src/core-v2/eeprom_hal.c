@@ -28,7 +28,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "eeprom_hal.h"
-#include "stm32f2xx.h"
+#include "hw_config.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -409,6 +409,9 @@ static uint16_t EEPROM_Init(void)
     /* Unlock the Flash Program Erase controller */
     FLASH_Unlock();
 
+    /* Calling this is here is critical on STM32F2 Devices Else Flash Operation Fails */
+    FLASH_ClearFlags();
+
     /* Get Page0 status */
     PageStatus0 = (*(__IO uint16_t*)PAGE0_BASE_ADDRESS);
     /* Get Page1 status */
@@ -681,6 +684,9 @@ static uint16_t EEPROM_WriteVariable(uint16_t EepromAddress, uint16_t EepromData
 
     /* Unlock the Flash Program Erase controller */
     FLASH_Unlock();
+
+    /* Calling this is here is critical on STM32F2 Devices Else Flash Operation Fails */
+    FLASH_ClearFlags();
 
     /* Write the variable virtual address and value in the EEPROM */
     Status = EEPROM_VerifyPageFullWriteVariable(EepromAddress, EepromData);
