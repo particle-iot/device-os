@@ -903,6 +903,7 @@ int Spark_Connect(void)
       while (!ip_addr && 0 < --attempts)
       {
         gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr);
+        Delay(1);
       }
   }
 
