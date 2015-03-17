@@ -67,6 +67,51 @@ extern STM32_USART_Info USART_MAP[TOTAL_USARTS];
 
 extern STM32_Pin_Info PIN_MAP[];
 
+/* configuration masks to specify USART_InitTypeDef using Serial.begin(baud, config) 
+ *
+ * Bit mask allocation [Bit 8 (MSB) .. 1 (LSB)]
+ * Bit 8: unused (could enable/disable rx/tx in the future)
+ * Bit 7: Word Length (Data bits + Parity Bit) [0 = 8 bits, 1 = 9 bits]
+ * Bits 5-6: Hardware Flow Control [0(0b00) = None, 1(0b01) = RTS, 2(0b10) = CTS, 3(0b11) = RTS + CTS]
+ * Bits 3-4: Parity Bits [0(0b00) = None, 1(0b01) = Even, 2(0b10) = Odd]
+ * Bits 1-2: Stop Bits [0(0b00) = 1 stop bit, 1(0b01) = 0.5 stop bits, 2(0b10) = 2 stop bits, 3(0b11) = 1.5 stop bits]
+
+ * Note: The STM32 only supports 8-bit and 9-bit word lengths.  Word lengths includes a parity bit if even/odd parity is used (e.g. 8 data bits + odd parity requires 9-bit word lengths)
+*/
+
+// stop bit masks
+const uint16_t USARTSerial_StopBits[4] = {USART_StopBits_1, USART_StopBits_0_5, USART_StopBits_2, USART_StopBits_1};
+#define SB_MASK(config) (config & 0x03)
+#define SB_1    0
+#define SB_0_5  1
+#define SB_2    2
+#define SB_1_5  3
+
+// parity bit masks
+const uint16_t USARTSerial_Parity[3] = {USART_Parity_No, USART_Parity_Even, USART_Parity_Odd};
+#define PAR_MASK(config) ((config & 0x0C)>>2)
+#define PAR_NONE  (0 << 2)
+#define PAR_EVEN  (1 << 2)
+#define PAR_ODD   (2 << 2)
+
+// control flow masks
+const uint16_t USARTSerial_FlowControl[4] = {USART_HardwareFlowControl_None, USART_HardwareFlowControl_RTS, USART_HardwareFlowControl_CTS, USART_HardwareFlowControl_RTS_CTS};
+#define FLOW_MASK(config) ((config & 0x30) >> 4)
+#define FLOW_NONE     (0 << 4)
+#define FLOW_RTS      (1 << 4)
+#define FLOW_CTS      (2 << 4)
+#define FLOW_RTS_CTS  (3 << 4)
+
+// word lengths masks
+const uint16_t USARTSerial_WordLength[2] = {USART_WordLength_8b, USART_WordLength_9b};
+#define WL_MASK(config) ((config & 0x40) >> 6)
+#define WL_8  (0 << 6)
+#define WL_9  (1 << 6)
+
+// some commond configurations
+#define SERIAL_8N1 ((uint8_t) (FLOW_NONE | WL_8 | PAR_NONE | SB_1))
+#define SERIAL_8N2 ((uint8_t) (FLOW_NONE | WL_8 | PAR_NONE | SB_2))
+
 class USARTSerial : public Stream
 {
   private:
@@ -80,7 +125,7 @@ class USARTSerial : public Stream
   public:
     USARTSerial(STM32_USART_Info *usartMapPtr);
     virtual ~USARTSerial() {};
-    void begin(unsigned long);
+    void begin(unsigned long baud) {begin(baud, SERIAL_8N1);}
     void begin(unsigned long, uint8_t);
     void end();
 
