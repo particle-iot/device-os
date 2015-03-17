@@ -44,11 +44,11 @@
 
 //LEDs
 #define LEDn                                4
-#define LED1_GPIO_AF_TIM                    0                       //To Decide
-#define LED1_GPIO_PIN                       0                       //To Decide
-#define LED1_GPIO_PIN_SOURCE                0                       //To Decide
-#define LED1_GPIO_PORT                      0                       //To Decide
-#define LED1_GPIO_CLK                       0                       //To Decide
+#define LED1_GPIO_AF_TIM                    0                       //User Led
+#define LED1_GPIO_PIN                       GPIO_Pin_13             //User Led
+#define LED1_GPIO_PIN_SOURCE                GPIO_PinSource13        //User Led
+#define LED1_GPIO_PORT                      GPIOA                   //User Led
+#define LED1_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //User Led
 #define LED2_GPIO_AF_TIM                    GPIO_AF_TIM2            //BLUE Led
 #define LED2_GPIO_PIN                       GPIO_Pin_3              //BLUE Led
 #define LED2_GPIO_PIN_SOURCE                GPIO_PinSource3         //BLUE Led
