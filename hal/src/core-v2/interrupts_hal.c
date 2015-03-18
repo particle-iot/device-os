@@ -103,11 +103,6 @@ void HAL_Interrupts_Attach(uint16_t pin, voidFuncPtr handler, InterruptMode mode
   GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
 
-  if(gpio_pin == EXTI_Line0 || gpio_pin == EXTI_Line7)
-  {
-    return;//Return if EXTI Line is associated with WiFi SDIO OOB or Mode button interrupt
-  }
-
   //Clear pending EXTI interrupt flag for the selected pin
   EXTI_ClearITPendingBit(gpio_pin);
 
@@ -189,11 +184,6 @@ void HAL_Interrupts_Detach(uint16_t pin)
   //Map the Spark Core pin to the appropriate pin on the STM32
   STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
-
-  if(gpio_pin == EXTI_Line0 || gpio_pin == EXTI_Line7)
-  {
-    return;//Return if EXTI Line is associated with WiFi SDIO OOB or Mode button interrupt
-  }
 
   //Clear the pending interrupt flag for that interrupt pin
   EXTI_ClearITPendingBit(gpio_pin);
