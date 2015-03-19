@@ -74,6 +74,14 @@ The cloud requires the keys in PEM format. The pubic key is converted with:
 openssl rsa -pubin -in photon_public.der -inform DER -outform PEM -out photon.pub.pem
 ```
 
+*Note:* If openssl has trouble reading the DER public key, you can pull the private key off the device and extract the public PEM with:
+
+```
+dfu-util -d 2b04:d006 -a 1 -s 34:624 -U photon_private.der
+openssl rsa -in photon_private.der -inform DER -outform PEM -pubout -out photon.pub.pem
+```
+
+
 ### Upload the Server public Key to the Device
 
 Download the server public key from https://s3.amazonaws.com/spark-website/cloud_public.der 
