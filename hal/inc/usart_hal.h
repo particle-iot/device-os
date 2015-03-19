@@ -50,8 +50,6 @@ typedef enum HAL_USART_Serial {
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
-// IS_USART_CONFIG_VALID (return true for 8 data bit, no flow control, any parity, any stop byte configurations
-#define IS_USART_CONFIG_VALID(CONFIG) ( ((CONFIG>>2) != 0b11) && ((CONFIG>>4)==0b11) && ((CONFIG >> 6)==0b00) )
 
 /* Exported functions --------------------------------------------------------*/
 
