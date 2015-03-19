@@ -332,13 +332,13 @@ void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
 void Get_RGB_LED_Values(uint16_t* values)
 {
 #ifdef RGB_LINES_REVERSED
-    values[0] = TIM2->CCR2;
-    values[1] = TIM2->CCR3;
-    values[2] = TIM2->CCR4;
-#else
     values[0] = TIM2->CCR4;
     values[1] = TIM2->CCR3;
     values[2] = TIM2->CCR2;
+#else
+    values[0] = TIM2->CCR2;
+    values[1] = TIM2->CCR3;
+    values[2] = TIM2->CCR4;
 #endif
 }
 
