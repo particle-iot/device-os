@@ -97,7 +97,7 @@ extern "C" {
     /* External Flash memory address where Factory programmed core firmware is located */
     #define EXTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)0x4000)
     /* External Flash memory address where core firmware will be saved for backup/restore */
-    //#define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)EXTERNAL_FLASH_FAC_ADDRESS)
+    #define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)EXTERNAL_FLASH_FAC_ADDRESS)
     /* External Flash memory address where OTA upgraded core firmware will be saved */
     #define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_FAC_ADDRESS + FIRMWARE_IMAGE_SIZE))
     #endif

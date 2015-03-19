@@ -25,6 +25,9 @@
 
 #include "memory_hal.h"
 #include "hw_config.h"
+#include "flash_mal.h"
+
+#if 0
 
 class ExternalFlashDevice : public MemoryDevice {
 
@@ -120,3 +123,5 @@ void MemoryDevices::OTAFlashFirmware(MemoryDeviceRegion& region)
     region.set(externalFlash, EXTERNAL_FLASH_OTA_ADDRESS, EXTERNAL_FLASH_OTA_ADDRESS+EXTERNAL_FLASH_BLOCK_SIZE);
 #endif
 }
+
+#endif
