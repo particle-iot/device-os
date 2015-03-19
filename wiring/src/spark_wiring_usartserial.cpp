@@ -39,13 +39,12 @@ USARTSerial::USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_B
 
 void USARTSerial::begin(unsigned long baud)
 {
-  HAL_USART_Begin(_serial, baud);
+  begin(baud, SERIAL_8N1);
 }
 
-// TODO
-void USARTSerial::begin(unsigned long baud, byte config)
+void USARTSerial::begin(unsigned long baud, uint8_t config)
 {
-
+  HAL_USART_Begin(_serial, baud, config);
 }
 
 void USARTSerial::end()
