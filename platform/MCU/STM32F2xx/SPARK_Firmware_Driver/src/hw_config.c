@@ -120,8 +120,11 @@ void Set_System(void)
 
     /* Configure the LEDs and set the default states */
     int LEDx;
-    for(LEDx = 0; LEDx < LEDn; ++LEDx)
+    for(LEDx = 1; LEDx < LEDn; ++LEDx)
     {
+        //LED_USER initialization is skipped during system setup
+        //since PA13 pin is also JTMS-SWDIO. Initializing LED_USER
+        //here will boycott JTAG programmer hence avoided.
         LED_Init(LEDx);
     }
 
