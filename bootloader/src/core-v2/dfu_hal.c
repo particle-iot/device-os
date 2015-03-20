@@ -42,7 +42,11 @@ USB_OTG_CORE_HANDLE USB_OTG_dev;
 
 uint8_t is_application_valid(uint32_t address)
 {
+#ifdef FLASH_UPDATE_MODULES
     return FLASH_isModuleInfoValid(FLASH_INTERNAL, address, address);
+#else
+    return (((*(__IO uint32_t*)address) & APP_START_MASK) == 0x20000000);
+#endif
 }
 
 /*******************************************************************************
@@ -70,14 +74,6 @@ int32_t HAL_Core_Backup_Register(uint32_t BKP_DR)
     switch(BKP_DR)
     {
         case BKP_DR_01: return RTC_BKP_DR1;  break;
-        case BKP_DR_02: return RTC_BKP_DR2;  break;
-        case BKP_DR_03: return RTC_BKP_DR3;  break;
-        case BKP_DR_04: return RTC_BKP_DR4;  break;
-        case BKP_DR_05: return RTC_BKP_DR5;  break;
-        case BKP_DR_06: return RTC_BKP_DR6;  break;
-        case BKP_DR_07: return RTC_BKP_DR7;  break;
-        case BKP_DR_08: return RTC_BKP_DR8;  break;
-        case BKP_DR_09: return RTC_BKP_DR9;  break;
         case BKP_DR_10: return RTC_BKP_DR10; break;
     }
     return -1;

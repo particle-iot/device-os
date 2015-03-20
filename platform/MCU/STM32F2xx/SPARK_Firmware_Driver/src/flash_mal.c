@@ -231,6 +231,7 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return false;
     }
 
+#ifndef USE_SERIAL_FLASH
     if ((sourceDeviceID == FLASH_INTERNAL) && (flags & MODULE_VERIFY_MASK))
     {
         uint32_t moduleLength = FLASH_ModuleLength(sourceDeviceID, sourceAddress);
@@ -262,6 +263,7 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
             return false;
         }
     }
+#endif
 
     if (FLASH_EraseMemory(destinationDeviceID, destinationAddress, length) != true)
     {

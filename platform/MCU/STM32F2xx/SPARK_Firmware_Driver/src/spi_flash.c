@@ -59,34 +59,26 @@ static uint8_t sFLASH_SendByte(uint8_t byte);
  */
 void sFLASH_Init(void)
 {
-    uint32_t Device_ID = 0;
-
     /* Initializes the peripherals used by the SPI FLASH driver */
     sFLASH_SPI_Init();
 
     /* Disable the write access to the FLASH */
     sFLASH_WriteDisable();
 
-    /* Read FLASH identification */
-    Device_ID = sFLASH_ReadID();
+    /* Select the FLASH: Chip Select low */
+    sFLASH_CS_LOW();
+    /* Send "Write Enable Status" instruction */
+    sFLASH_SendByte(sFLASH_CMD_EWSR);
+    /* Deselect the FLASH: Chip Select high */
+    sFLASH_CS_HIGH();
 
-    if(Device_ID == sFLASH_MX25L8006E_ID)
-    {
-        /* Select the FLASH: Chip Select low */
-        sFLASH_CS_LOW();
-        /* Send "Write Enable Status" instruction */
-        sFLASH_SendByte(sFLASH_CMD_EWSR);
-        /* Deselect the FLASH: Chip Select high */
-        sFLASH_CS_HIGH();
-
-        /* Select the FLASH: Chip Select low */
-        sFLASH_CS_LOW();
-        /* Send "Write Status Register" instruction */
-        sFLASH_SendByte(sFLASH_CMD_WRSR);
-        sFLASH_SendByte(0);
-        /* Deselect the FLASH: Chip Select high */
-        sFLASH_CS_HIGH();
-    }
+    /* Select the FLASH: Chip Select low */
+    sFLASH_CS_LOW();
+    /* Send "Write Status Register" instruction */
+    sFLASH_SendByte(sFLASH_CMD_WRSR);
+    sFLASH_SendByte(0);
+    /* Deselect the FLASH: Chip Select high */
+    sFLASH_CS_HIGH();
 }
 
 /**

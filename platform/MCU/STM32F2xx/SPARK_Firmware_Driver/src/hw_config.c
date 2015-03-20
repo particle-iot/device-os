@@ -232,8 +232,6 @@ void UI_Timer_Configure(void)
     uint16_t TIM2_Prescaler = (uint16_t)((SystemCoreClock / 2) / 1000000) - 1;
     uint16_t TIM2_Autoreload = (uint16_t)(1000000 / UI_TIMER_FREQUENCY) - 1;
 
-    TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
-
     /* Time Base Configuration */
     TIM_TimeBaseStructure.TIM_Period = TIM2_Autoreload;
     TIM_TimeBaseStructure.TIM_Prescaler = TIM2_Prescaler;
@@ -241,8 +239,6 @@ void UI_Timer_Configure(void)
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 
     TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
-
-    TIM_OCStructInit(&TIM_OCInitStructure);
 
     /* Output Compare Timing Mode configuration: Channel 1 */
     TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
