@@ -6,7 +6,7 @@ the commands needed to build and flash firmware.
 The guide covers these points:
 
 - [Environment Setup]()
-- [Provisioning Keys]()
+- [Provisioning Device]()
 - [Building and flashing the bootloader]()
 - [Building and flashing firmware]()
 
@@ -55,32 +55,7 @@ This is pre-installed on linux and OS X - windows users can find it here - https
 ## Provisioning Keys
 
 Before the device can connect to the cloud the server public key needs to be installed
-and the device public key registered with the cloud.
-
-### Extracting Generated Keys
-
-The Photon generates a keypair for communicating cloud. In production versions,
-this will be sent to the cloud automatically. For this alpha version, the keys are extracted
-and sent to the cloud by hand. 
-
-With the Photon in dfu mode, extract the public keys:
-```
-dfu-util -d 2b04:d006 -a 1 -s 1250:294 -v -U photon_public.der
-```
-
-The cloud requires the keys in PEM format. The pubic key is converted with:
-
-```
-openssl rsa -pubin -in photon_public.der -inform DER -outform PEM -out photon.pub.pem
-```
-
-*Note:* If openssl has trouble reading the DER public key, you can pull the private key off the device and extract the public PEM with:
-
-```
-dfu-util -d 2b04:d006 -a 1 -s 34:624 -U photon_private.der
-openssl rsa -in photon_private.der -inform DER -outform PEM -pubout -out photon.pub.pem
-```
-
+and the device registered with the cloud.
 
 ### Upload the Server public Key to the Device
 
@@ -92,9 +67,9 @@ and upload this to the device:
 dfu-util -d 2b04:d006 -a 1 -s 2082 -D cloud_public.der
 ```
 
-### Registering your Photon's Public Key
+### Registering your Photon
 
-To register the public key, we need the device ID. First reset the device - it will start by entering setup mode (flashing blue LED.)
+To register the device, we need the device ID. First reset the device - it will start by entering setup mode (flashing blue LED.)
 
 Then fetch the device ID, either using
 
@@ -104,7 +79,7 @@ spark serial identify
 
 or by connecting to the device using a serial terminal, and typing 'i'.
 
-Then email the device ID and the `photon.pub.pem` file to `mat _at_ spark.io` to register the device.
+Then email the device ID to `mat _at_ spark.io` to register the device.
 
 ### Enter WiFi Details
 
