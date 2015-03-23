@@ -45,7 +45,6 @@
 static I2C_InitTypeDef I2C_InitStructure;
 
 static uint32_t I2C_ClockSpeed = CLOCK_SPEED_100KHZ;
-static bool I2C_EnableDMAMode = false;
 static bool I2C_Enabled = false;
 
 static uint8_t rxBuffer[BUFFER_LENGTH];
@@ -65,12 +64,6 @@ static uint8_t transmitting = 0;
 static void (*callback_onRequest)(void);
 static void (*callback_onReceive)(int);
 
-//Initializes DMA channel used by the I2C1 peripheral based on Direction
-//static void TwoWire_DMAConfig(uint8_t *pBuffer, uint32_t BufferSize, uint32_t Direction)
-//{
-//    To Do - Slave mode
-//}
-
 void HAL_I2C_Set_Speed(uint32_t speed)
 {
     I2C_ClockSpeed = speed;
@@ -78,7 +71,7 @@ void HAL_I2C_Set_Speed(uint32_t speed)
 
 void HAL_I2C_Enable_DMA_Mode(bool enable)
 {
-    I2C_EnableDMAMode = enable;
+    /* Presently I2C Master mode uses polling and I2C Slave mode uses Interrupt */
 }
 
 void HAL_I2C_Stretch_Clock(bool stretch)
@@ -105,11 +98,6 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
     /* Enable I2C1 clock */
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
 
-    if(I2C_EnableDMAMode)
-    {
-        //To Do - Slave mode Enable DMA clock
-    }
-
     /* Connect I2C1 pins to AF4 */
     GPIO_PinAFConfig(PIN_MAP[SCL].gpio_peripheral, PIN_MAP[SCL].gpio_pin_source, GPIO_AF_I2C1);
     GPIO_PinAFConfig(PIN_MAP[SDA].gpio_peripheral, PIN_MAP[SDA].gpio_pin_source, GPIO_AF_I2C1);
@@ -119,7 +107,16 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
 
     if(mode != I2C_MODE_MASTER)
     {
-        //To Do - Slave mode NVIC Init
+        NVIC_InitTypeDef  NVIC_InitStructure;
+
+        NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQn;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+        NVIC_Init(&NVIC_InitStructure);
+
+        NVIC_InitStructure.NVIC_IRQChannel = I2C1_ER_IRQn;
+        NVIC_Init(&NVIC_InitStructure);
     }
 
     I2C_DeInit(I2C1);
@@ -136,7 +133,7 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
 
     if(mode != I2C_MODE_MASTER)
     {
-        //To Do - Slave mode I2C_ITConfig()
+        I2C_ITConfig(I2C1, I2C_IT_ERR | I2C_IT_EVT | I2C_IT_BUF, ENABLE);
     }
 
     I2C_Enabled = true;
@@ -181,45 +178,38 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
         if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
     }
 
-    if(I2C_EnableDMAMode)
-    {
-        //To Do - Slave mode
-    }
-    else
-    {
-        /* perform blocking read into buffer */
-        uint8_t *pBuffer = rxBuffer;
-        uint8_t numByteToRead = quantity;
+    /* perform blocking read into buffer */
+    uint8_t *pBuffer = rxBuffer;
+    uint8_t numByteToRead = quantity;
 
-        /* While there is data to be read */
-        _millis = HAL_Timer_Get_Milli_Seconds();
-        while(numByteToRead && (EVENT_TIMEOUT > (HAL_Timer_Get_Milli_Seconds() - _millis)))
+    /* While there is data to be read */
+    _millis = HAL_Timer_Get_Milli_Seconds();
+    while(numByteToRead && (EVENT_TIMEOUT > (HAL_Timer_Get_Milli_Seconds() - _millis)))
+    {
+        if(numByteToRead == 1 && stop == true)
         {
-            if(numByteToRead == 1 && stop == true)
-            {
-                /* Disable Acknowledgement */
-                I2C_AcknowledgeConfig(I2C1, DISABLE);
+            /* Disable Acknowledgement */
+            I2C_AcknowledgeConfig(I2C1, DISABLE);
 
-                /* Send STOP Condition */
-                I2C_GenerateSTOP(I2C1, ENABLE);
-            }
+            /* Send STOP Condition */
+            I2C_GenerateSTOP(I2C1, ENABLE);
+        }
 
-            if(I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED))
-            {
-                /* Read a byte from the Slave */
-                *pBuffer = I2C_ReceiveData(I2C1);
+        if(I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED))
+        {
+            /* Read a byte from the Slave */
+            *pBuffer = I2C_ReceiveData(I2C1);
 
-                bytesRead++;
+            bytesRead++;
 
-                /* Point to the next location where the byte read will be saved */
-                pBuffer++;
+            /* Point to the next location where the byte read will be saved */
+            pBuffer++;
 
-                /* Decrement the read bytes counter */
-                numByteToRead--;
+            /* Decrement the read bytes counter */
+            numByteToRead--;
 
-                /* Reset timeout to our last read */
-                _millis = HAL_Timer_Get_Milli_Seconds();
-            }
+            /* Reset timeout to our last read */
+            _millis = HAL_Timer_Get_Milli_Seconds();
         }
     }
 
@@ -266,29 +256,22 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
         if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
     }
 
-    if(I2C_EnableDMAMode)
-    {
-        //To Do - Slave mode
-    }
-    else
-    {
-        uint8_t *pBuffer = txBuffer;
-        uint8_t NumByteToWrite = txBufferLength;
+    uint8_t *pBuffer = txBuffer;
+    uint8_t NumByteToWrite = txBufferLength;
 
-        /* While there is data to be written */
-        while(NumByteToWrite--)
+    /* While there is data to be written */
+    while(NumByteToWrite--)
+    {
+        /* Send the current byte to slave */
+        I2C_SendData(I2C1, *pBuffer);
+
+        /* Point to the next byte to be written */
+        pBuffer++;
+
+        _millis = HAL_Timer_Get_Milli_Seconds();
+        while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
         {
-            /* Send the current byte to slave */
-            I2C_SendData(I2C1, *pBuffer);
-
-            /* Point to the next byte to be written */
-            pBuffer++;
-
-            _millis = HAL_Timer_Get_Milli_Seconds();
-            while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
-            {
-                if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
-            }
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
         }
     }
 
@@ -376,4 +359,90 @@ void HAL_I2C_Set_Callback_On_Receive(void (*function)(int))
 void HAL_I2C_Set_Callback_On_Request(void (*function)(void))
 {
     callback_onRequest = function;
+}
+
+/**
+ * @brief  This function handles I2C1 Error interrupt request.
+ * @param  None
+ * @retval None
+ */
+void I2C1_ER_irq(void)
+{
+    /* Read SR1 register to get I2C error */
+    if ((I2C_ReadRegister(I2C1, I2C_Register_SR1) & 0xFF00) != 0x00)
+    {
+        /* Clears error flags */
+        I2C1->SR1 &= 0x00FF;
+    }
+}
+
+/**
+ * @brief  This function handles I2C1 event interrupt request.
+ * @param  None
+ * @retval None
+ */
+void I2C1_EV_irq(void)
+{
+    /* Process Last I2C Event */
+    switch (I2C_GetLastEvent(I2C1))
+    {
+    /********** Slave Transmitter Events ************/
+
+    /* Check on EV1 */
+    case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED:
+        transmitting = 1;
+        txBufferIndex = 0;
+        txBufferLength = 0;
+
+        if(NULL != callback_onRequest)
+        {
+            // alert user program
+            callback_onRequest();
+        }
+
+        txBufferIndex = 0;
+        break;
+
+    /* Check on EV3 */
+    case I2C_EVENT_SLAVE_BYTE_TRANSMITTING:
+    case I2C_EVENT_SLAVE_BYTE_TRANSMITTED:
+        if (txBufferIndex < txBufferLength)
+        {
+            I2C_SendData(I2C1, txBuffer[txBufferIndex++]);
+        }
+        break;
+
+    /*********** Slave Receiver Events *************/
+
+    /* check on EV1*/
+    case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED:
+        rxBufferIndex = 0;
+        rxBufferLength = 0;
+        break;
+
+    /* Check on EV2*/
+    case I2C_EVENT_SLAVE_BYTE_RECEIVED:
+    case (I2C_EVENT_SLAVE_BYTE_RECEIVED | I2C_SR1_BTF):
+        rxBuffer[rxBufferIndex++] = I2C_ReceiveData(I2C1);
+        break;
+
+    /* Check on EV4 */
+    case I2C_EVENT_SLAVE_STOP_DETECTED:
+        /* software sequence to clear STOPF */
+        I2C_GetFlagStatus(I2C1, I2C_FLAG_STOPF);
+        I2C_Cmd(I2C1, ENABLE);
+
+        rxBufferLength = rxBufferIndex;
+        rxBufferIndex = 0;
+
+        if(NULL != callback_onReceive)
+        {
+            // alert user program
+            callback_onReceive(rxBufferLength);
+        }
+        break;
+
+    default:
+        break;
+    }
 }
