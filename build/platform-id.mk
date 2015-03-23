@@ -48,8 +48,17 @@ ifeq ("$(PLATFORM)","teacup-bm14")
 PLATFORM_ID = 7
 endif
 
+ifeq ("$(PLATFORM)","P1")
+PLATFORM_ID = 8
+endif
+
+ifeq ("$(PLATFORM)","ethernet")
+PLATFORM_ID = 9
+endif
+
+
 ifeq ("$(PLATFORM)","newhal")
-PLATFORM_ID=8
+PLATFORM_ID=60000
 endif
 
 ifeq (,$(PLATFORM_ID))
@@ -178,6 +187,18 @@ PLATFORM_DYNALIB_MODULES=photon
 DEFAULT_PRODUCT_ID=8
 endif
 
+ifeq ("$(PLATFORM_ID)","9")
+PLATFORM=ethernet
+STM32_DEVICE=STM32F2XX
+PLATFORM_NAME=core-v2
+PLATFORM_MCU=STM32F2xx
+PLATFORM_NET=STM32F2xx
+PRODUCT_DESC=Proto Wired Ethernet
+USBD_VID_SPARK=0x2B04
+USBD_PID_DFU=0xD009
+USBD_PID_CDC=0xC009
+DEFAULT_PRODUCT_ID=9
+endif
 
 ifeq ("$(PLATFORM_ID)","60000")
 PLATFORM=newhal
