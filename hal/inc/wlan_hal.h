@@ -69,7 +69,10 @@ extern uint32_t lastEvent;
 #define ON_EVENT_DELTA()
 #endif
 
-
+typedef enum
+{
+  ANT_INTERNAL = 0, ANT_EXTERNAL = 1, ANT_AUTO = 3
+} WLanSelectAntenna_TypeDef;
         
 typedef struct _WLanConfig_t {    
     uint8_t aucIP[4];             // byte 0 is MSB, byte 3 is LSB
@@ -204,6 +207,10 @@ void HAL_WLAN_notify_can_shutdown();
  */
 void HAL_WLAN_notify_socket_closed(sock_handle_t socket);
 
+/**
+ * Select the Wi-Fi antenna.
+ */
+int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna);
 
 #ifdef	__cplusplus
 }

@@ -146,6 +146,10 @@ public:
         return wlan_clear_credentials() == 0;
     }
 
+    int selectAntenna(WLanSelectAntenna_TypeDef antenna) {
+        return wlan_select_antenna(antenna);
+    }
+
     friend class TCPClient;
     friend class TCPServer;
 

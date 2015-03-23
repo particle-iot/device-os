@@ -397,3 +397,29 @@ void wlan_fetch_ipconfig(WLanConfig* config)
 void SPARK_WLAN_SmartConfigProcess()
 {
 }
+
+/** Select the Wi-Fi antenna
+ * WICED_ANTENNA_1    = 0, selects Chip Antenna
+ * WICED_ANTENNA_2    = 1, selects u.FL Antenna
+ * WICED_ANTENNA_AUTO = 3, enables auto antenna selection ie. automatic diversity
+ *
+ * @param antenna: The antenna configuration to use
+ *
+ * @return   0 : if the antenna selection was successfully set
+ *          -1 : if the antenna selection was not set
+ *          
+ */
+int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna) {
+    
+    wwd_result_t result;
+    switch(antenna) {
+        case ANT_INTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_1); break;
+        case ANT_EXTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_2); break;
+        case ANT_AUTO: result = wwd_wifi_select_antenna(WICED_ANTENNA_AUTO); break;
+        default: result = WWD_DOES_NOT_EXIST; break;
+    }
+    if (result == WWD_SUCCESS)
+        return 0;
+    else
+        return -1;
+}
