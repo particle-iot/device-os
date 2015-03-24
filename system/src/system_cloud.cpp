@@ -330,7 +330,7 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
     }
 }
 
-const char* CLAIM_EVENTS = "/spark/device/claim/";
+const char* CLAIM_EVENTS = "spark/device/claim/";
 
 void SystemEvents(const char* name, const char* data)
 {
@@ -419,8 +419,6 @@ int Spark_Handshake(void)
         if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && *buf)
         {
             Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);
-            // delay a second - so there's a chance of the event being received before clearing the credentials
-            // in case of reset. Ideally only clear the claim code after receiving an event from the cloud.
         }
         
         ultoa(HAL_OTA_FlashLength(), buf, 10);
