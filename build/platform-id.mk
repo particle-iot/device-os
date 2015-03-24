@@ -56,7 +56,6 @@ ifeq ("$(PLATFORM)","ethernet")
 PLATFORM_ID = 9
 endif
 
-
 ifeq ("$(PLATFORM)","newhal")
 PLATFORM_ID=60000
 endif
@@ -212,7 +211,7 @@ PRODUCT_DESC=Test platform for producing a new HAL implementation
 USBD_VID_SPARK=0x1D50
 USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
-DEFAULT_PRODUCT_ID=8
+DEFAULT_PRODUCT_ID=60000
 endif
 
 
