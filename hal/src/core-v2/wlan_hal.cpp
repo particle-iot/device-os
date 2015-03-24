@@ -35,6 +35,7 @@
 #include "socket_internal.h"
 #include "wwd_sdpcm.h"
 #include "delay_hal.h"
+#include "wlan_scan.h"
 
 bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
 {
@@ -194,6 +195,7 @@ struct SnifferInfo
     wiced_security_t security;
     int16_t rssi;
     wiced_semaphore_t complete;
+    scan_ap_callback callback;
 };
 
 /*
@@ -207,9 +209,14 @@ wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
     if ( malloced_scan_result->status == WICED_SCAN_INCOMPLETE )
     {
         wiced_scan_result_t* record = &malloced_scan_result->ap_details;
-        if (record->SSID.length==info->ssid_len && !memcmp(record->SSID.value, info->ssid, info->ssid_len)) {
-            info->security = record->security;
-            info->rssi = record->signal_strength;
+        if (!info->callback) {
+            if (record->SSID.length==info->ssid_len && !memcmp(record->SSID.value, info->ssid, info->ssid_len)) {
+                info->security = record->security;
+                info->rssi = record->signal_strength;
+            }
+        }
+        else {
+            info->callback(record->SSID.value, record->SSID.length, record->signal_strength);
         }
     }
     else {
@@ -228,6 +235,13 @@ wiced_result_t sniff_security(SnifferInfo* info) {
     if (!info->rssi)
         result = WICED_NOT_FOUND;
     return result;
+}
+
+
+void wlan_scan_aps(scan_ap_callback callback) {    
+    SnifferInfo info;
+    info.callback = callback;
+    sniff_security(&info);
 }
 
 wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityType sec, WLanSecurityCipher cipher)
@@ -257,6 +271,7 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
             ((result & (WPA_SECURITY | WPA2_SECURITY) && (cipher==WLAN_CIPHER_NOT_SET)))) {
         SnifferInfo info;
         info.ssid = ssid;
+        info.callback = NULL;
         info.ssid_len = ssid_len;
         if (!sniff_security(&info)) {
             result = info.security;

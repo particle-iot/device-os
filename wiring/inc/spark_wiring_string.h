@@ -220,6 +220,8 @@ public:
 };
 
 char* ultoa(unsigned long a, char* buffer, unsigned char radix);
+char* itoa(int a, char* buffer, unsigned char radix);
+
 
 #endif  // __cplusplus
 #endif  // String_class_h
