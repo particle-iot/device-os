@@ -33,6 +33,8 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+//Commented I2C DMA code since Polling+Interrupt is sufficient to get Wire library working.
+//#define I2C_ENABLE_DMA_USE
 
 /* Private macro -------------------------------------------------------------*/
 #define BUFFER_LENGTH   32
@@ -45,7 +47,9 @@
 static I2C_InitTypeDef I2C_InitStructure;
 
 static uint32_t I2C_ClockSpeed = CLOCK_SPEED_100KHZ;
+#ifdef I2C_ENABLE_DMA_USE
 static bool I2C_EnableDMAMode = false;
+#endif
 static bool I2C_Enabled = false;
 
 static uint8_t rxBuffer[BUFFER_LENGTH];
@@ -65,6 +69,7 @@ static uint8_t transmitting = 0;
 static void (*callback_onRequest)(void);
 static void (*callback_onReceive)(int);
 
+#ifdef I2C_ENABLE_DMA_USE
 //Initializes DMA channel used by the I2C1 peripheral based on Direction
 static void TwoWire_DMAConfig(uint8_t *pBuffer, uint32_t BufferSize, uint32_t Direction)
 {
@@ -99,6 +104,7 @@ static void TwoWire_DMAConfig(uint8_t *pBuffer, uint32_t BufferSize, uint32_t Di
     DMA_Init(DMA1_Channel7, &DMA_InitStructure);
   }
 }
+#endif
 
 void HAL_I2C_Set_Speed(uint32_t speed)
 {
@@ -107,7 +113,10 @@ void HAL_I2C_Set_Speed(uint32_t speed)
 
 void HAL_I2C_Enable_DMA_Mode(bool enable)
 {
+#ifdef I2C_ENABLE_DMA_USE
   I2C_EnableDMAMode = enable;
+#endif
+  /* Presently I2C Master mode uses polling and I2C Slave mode uses Interrupt */
 }
 
 void HAL_I2C_Stretch_Clock(bool stretch)
@@ -133,11 +142,13 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
   /* Enable I2C1 clock */
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
 
+#ifdef I2C_ENABLE_DMA_USE
   if(I2C_EnableDMAMode)
   {
     /* Enable DMA1 clock */
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
   }
+#endif
 
   HAL_Pin_Mode(SCL, AF_OUTPUT_DRAIN);
   HAL_Pin_Mode(SDA, AF_OUTPUT_DRAIN);
@@ -170,7 +181,7 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
 
   if(mode != I2C_MODE_MASTER)
   {
-    I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_ERR, ENABLE);
+    I2C_ITConfig(I2C1, I2C_IT_ERR | I2C_IT_EVT | I2C_IT_BUF, ENABLE);
   }
 
   I2C_Enabled = true;
@@ -215,6 +226,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
   }
 
+#ifdef I2C_ENABLE_DMA_USE
   if(I2C_EnableDMAMode)
   {
     TwoWire_DMAConfig(rxBuffer, quantity, RECEIVER);
@@ -254,6 +266,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     bytesRead = quantity - DMA_GetCurrDataCounter(DMA1_Channel7);
   }
   else
+#endif
   {
     /* perform blocking read into buffer */
     uint8_t *pBuffer = rxBuffer;
@@ -334,6 +347,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
   }
 
+#ifdef I2C_ENABLE_DMA_USE
   if(I2C_EnableDMAMode)
   {
     TwoWire_DMAConfig(txBuffer, txBufferLength+1, TRANSMITTER);
@@ -364,6 +378,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     DMA_ClearFlag(DMA1_FLAG_TC6);
   }
   else
+#endif
   {
     uint8_t *pBuffer = txBuffer;
     uint8_t NumByteToWrite = txBufferLength;
@@ -480,76 +495,146 @@ void HAL_I2C_Set_Callback_On_Request(void (*function)(void))
  *******************************************************************************/
 void HAL_I2C1_EV_Handler(void)
 {
-  //Slave Event Handler
-  __IO uint32_t SR1Register = 0;
-  __IO uint32_t SR2Register = 0;
-
-  /* Read the I2C1 SR1 and SR2 status registers */
-  SR1Register = I2C1->SR1;
-  SR2Register = I2C1->SR2;
-
-  /* If I2C1 is slave (MSL flag = 0) */
-  if ((SR2Register &0x0001) != 0x0001)
-  {
-    /* If ADDR = 1: EV1 */
-    if ((SR1Register & 0x0002) == 0x0002)
+#ifdef I2C_ENABLE_DMA_USE
+    if(I2C_EnableDMAMode)
     {
-      /* Clear SR1Register and SR2Register variables to prepare for next IT */
-      SR1Register = 0;
-      SR2Register = 0;
+        //Slave Event Handler
+        __IO uint32_t SR1Register = 0;
+        __IO uint32_t SR2Register = 0;
 
-      // indicate that we are transmitting
-      transmitting = 1;
-      // reset tx buffer iterator vars
-      txBufferIndex = 0;
-      txBufferLength = 0;
-      // set rx buffer iterator vars
-      rxBufferIndex = 0;
-      rxBufferLength = 0;
+        /* Read the I2C1 SR1 and SR2 status registers */
+        SR1Register = I2C1->SR1;
+        SR2Register = I2C1->SR2;
 
-      if(NULL != callback_onRequest)
-      {
-        // alert user program
-        callback_onRequest();
-      }
+        /* If I2C1 is slave (MSL flag = 0) */
+        if ((SR2Register &0x0001) != 0x0001)
+        {
+            /* If ADDR = 1: EV1 */
+            if ((SR1Register & 0x0002) == 0x0002)
+            {
+                /* Clear SR1Register and SR2Register variables to prepare for next IT */
+                SR1Register = 0;
+                SR2Register = 0;
 
-      TwoWire_DMAConfig(txBuffer, txBufferLength+1, TRANSMITTER);
-      /* Enable DMA NACK automatic generation */
-      I2C_DMALastTransferCmd(I2C1, ENABLE);
-      /* Enable I2C DMA request */
-      I2C_DMACmd(I2C1, ENABLE);
-      /* Enable DMA TX Channel */
-      DMA_Cmd(DMA1_Channel6, ENABLE);
+                // indicate that we are transmitting
+                transmitting = 1;
+                // reset tx buffer iterator vars
+                txBufferIndex = 0;
+                txBufferLength = 0;
+                // set rx buffer iterator vars
+                rxBufferIndex = 0;
+                rxBufferLength = 0;
 
-      TwoWire_DMAConfig(rxBuffer, BUFFER_LENGTH, RECEIVER);
-      /* Enable DMA NACK automatic generation */
-      I2C_DMALastTransferCmd(I2C1, ENABLE);
-      /* Enable I2C DMA request */
-      I2C_DMACmd(I2C1, ENABLE);
-      /* Enable DMA RX Channel */
-      DMA_Cmd(DMA1_Channel7, ENABLE);
+                if(NULL != callback_onRequest)
+                {
+                    // alert user program
+                    callback_onRequest();
+                }
+
+                TwoWire_DMAConfig(txBuffer, txBufferLength+1, TRANSMITTER);
+                /* Enable DMA NACK automatic generation */
+                I2C_DMALastTransferCmd(I2C1, ENABLE);
+                /* Enable I2C DMA request */
+                I2C_DMACmd(I2C1, ENABLE);
+                /* Enable DMA TX Channel */
+                DMA_Cmd(DMA1_Channel6, ENABLE);
+
+                TwoWire_DMAConfig(rxBuffer, BUFFER_LENGTH, RECEIVER);
+                /* Enable DMA NACK automatic generation */
+                I2C_DMALastTransferCmd(I2C1, ENABLE);
+                /* Enable I2C DMA request */
+                I2C_DMACmd(I2C1, ENABLE);
+                /* Enable DMA RX Channel */
+                DMA_Cmd(DMA1_Channel7, ENABLE);
+            }
+
+            /* If STOPF = 1: EV4 (Slave has detected a STOP condition on the bus */
+            if (( SR1Register & 0x0010) == 0x0010)
+            {
+                I2C1->CR1 |= ((uint16_t)0x0001);
+                SR1Register = 0;
+                SR2Register = 0;
+
+                // indicate that we are done transmitting
+                transmitting = 0;
+                // set rx buffer iterator vars
+                rxBufferIndex = 0;
+                rxBufferLength = BUFFER_LENGTH - DMA_GetCurrDataCounter(DMA1_Channel7);
+
+                if(NULL != callback_onReceive)
+                {
+                    // alert user program
+                    callback_onReceive(rxBufferLength);
+                }
+            }
+        }
     }
-
-    /* If STOPF = 1: EV4 (Slave has detected a STOP condition on the bus */
-    if (( SR1Register & 0x0010) == 0x0010)
+    else
+#endif
     {
-      I2C1->CR1 |= ((uint16_t)0x0001);
-      SR1Register = 0;
-      SR2Register = 0;
+        /* Process Last I2C Event */
+        switch (I2C_GetLastEvent(I2C1))
+        {
+        /********** Slave Transmitter Events ************/
 
-      // indicate that we are done transmitting
-      transmitting = 0;
-      // set rx buffer iterator vars
-      rxBufferIndex = 0;
-      rxBufferLength = BUFFER_LENGTH - DMA_GetCurrDataCounter(DMA1_Channel7);
+        /* Check on EV1 */
+        case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED:
+            transmitting = 1;
+            txBufferIndex = 0;
+            txBufferLength = 0;
 
-      if(NULL != callback_onReceive)
-      {
-        // alert user program
-        callback_onReceive(rxBufferLength);
-      }
+            if(NULL != callback_onRequest)
+            {
+                // alert user program
+                callback_onRequest();
+            }
+
+            txBufferIndex = 0;
+            break;
+
+        /* Check on EV3 */
+        case I2C_EVENT_SLAVE_BYTE_TRANSMITTING:
+        case I2C_EVENT_SLAVE_BYTE_TRANSMITTED:
+            if (txBufferIndex < txBufferLength)
+            {
+                I2C_SendData(I2C1, txBuffer[txBufferIndex++]);
+            }
+            break;
+
+        /*********** Slave Receiver Events *************/
+
+        /* check on EV1*/
+        case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED:
+            rxBufferIndex = 0;
+            rxBufferLength = 0;
+            break;
+
+        /* Check on EV2*/
+        case I2C_EVENT_SLAVE_BYTE_RECEIVED:
+        case (I2C_EVENT_SLAVE_BYTE_RECEIVED | I2C_SR1_BTF):
+            rxBuffer[rxBufferIndex++] = I2C_ReceiveData(I2C1);
+            break;
+
+        /* Check on EV4 */
+        case I2C_EVENT_SLAVE_STOP_DETECTED:
+            /* software sequence to clear STOPF */
+            I2C_GetFlagStatus(I2C1, I2C_FLAG_STOPF);
+            I2C_Cmd(I2C1, ENABLE);
+
+            rxBufferLength = rxBufferIndex;
+            rxBufferIndex = 0;
+
+            if(NULL != callback_onReceive)
+            {
+                // alert user program
+                callback_onReceive(rxBufferLength);
+            }
+            break;
+
+        default:
+            break;
+        }
     }
-  }
 }
 
 /*******************************************************************************
@@ -561,36 +646,50 @@ void HAL_I2C1_EV_Handler(void)
  *******************************************************************************/
 void HAL_I2C1_ER_Handler(void)
 {
-  __IO uint32_t SR1Register = 0;
+#ifdef I2C_ENABLE_DMA_USE
+    if(I2C_EnableDMAMode)
+    {
+        __IO uint32_t SR1Register = 0;
 
-  /* Read the I2C1 status register */
-  SR1Register = I2C1->SR1;
+        /* Read the I2C1 status register */
+        SR1Register = I2C1->SR1;
 
-  /* If AF = 1 */
-  if ((SR1Register & 0x0400) == 0x0400)
-  {
-    I2C1->SR1 &= 0xFBFF;
-    SR1Register = 0;
-  }
+        /* If AF = 1 */
+        if ((SR1Register & 0x0400) == 0x0400)
+        {
+            I2C1->SR1 &= 0xFBFF;
+            SR1Register = 0;
+        }
 
-  /* If ARLO = 1 */
-  if ((SR1Register & 0x0200) == 0x0200)
-  {
-    I2C1->SR1 &= 0xFBFF;
-    SR1Register = 0;
-  }
+        /* If ARLO = 1 */
+        if ((SR1Register & 0x0200) == 0x0200)
+        {
+            I2C1->SR1 &= 0xFBFF;
+            SR1Register = 0;
+        }
 
-  /* If BERR = 1 */
-  if ((SR1Register & 0x0100) == 0x0100)
-  {
-    I2C1->SR1 &= 0xFEFF;
-    SR1Register = 0;
-  }
+        /* If BERR = 1 */
+        if ((SR1Register & 0x0100) == 0x0100)
+        {
+            I2C1->SR1 &= 0xFEFF;
+            SR1Register = 0;
+        }
 
-  /* If OVR = 1 */
-  if ((SR1Register & 0x0800) == 0x0800)
-  {
-    I2C1->SR1 &= 0xF7FF;
-    SR1Register = 0;
-  }
+        /* If OVR = 1 */
+        if ((SR1Register & 0x0800) == 0x0800)
+        {
+            I2C1->SR1 &= 0xF7FF;
+            SR1Register = 0;
+        }
+    }
+    else
+#endif
+    {
+        /* Read SR1 register to get I2C error */
+        if ((I2C_ReadRegister(I2C1, I2C_Register_SR1) & 0xFF00) != 0x00)
+        {
+            /* Clears error flags */
+            I2C1->SR1 &= 0x00FF;
+        }
+    }
 }
