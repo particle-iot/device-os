@@ -31,24 +31,24 @@ static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 
 void setup()
 {
     Serial.begin(9600);
-    Serial1.begin(9600);    
-
-    Serial1.write(magic_code, sizeof(magic_code));
+    Serial1.begin(9600);  
 }
 
 void loop()
 {    
-    if (Serial.available())
-    {
-        char c = Serial.read();
-        if (c!='i')
-            Serial1.write(c);
-        else
-            Serial1.println("INFO:;");
-    }
-    
-    if (Serial1.available()) {
-        char c = Serial1.read();
-        Serial.write(c);
+    for (;;) {
+        if (Serial.available())
+        {
+            char c = Serial.read();
+            if (c=='@')
+                Serial1.write(magic_code, sizeof(magic_code));
+            else
+                Serial1.write(c);    
+        }
+
+        if (Serial1.available()) {
+            char c = Serial1.read();
+            Serial.write(c);
+        }
     }
 }
