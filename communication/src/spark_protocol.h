@@ -179,6 +179,9 @@ class SparkProtocol
     unsigned char next_token();
     void encrypt(unsigned char *buf, int length);
     void separate_response(unsigned char *buf, unsigned char token, unsigned char code);
+    void separate_response_with_payload(unsigned char *buf, unsigned char token,
+        unsigned char code, unsigned char* payload, unsigned payload_len);
+
     inline void empty_ack(unsigned char *buf,
                           unsigned char message_id_msb,
                           unsigned char message_id_lsb);

@@ -49,6 +49,11 @@ void setup()
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
+    RGB.control(true);
+    RGB.color(255, 255, 255);
+    delay(500);
+    RGB.color(64, 0, 64);
+    delay(500);
     //This will run in a loop
 }
 

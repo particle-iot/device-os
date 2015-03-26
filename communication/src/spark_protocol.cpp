@@ -718,7 +718,9 @@ void SparkProtocol::chunk_missed(unsigned char *buf, unsigned short chunk_index)
 
 void SparkProtocol::update_ready(unsigned char *buf, unsigned char token)
 {
-  separate_response(buf, token, 0x44);
+    unsigned char payload[1];
+    payload[0] = 1;
+    separate_response_with_payload(buf, token, 0x44, payload, sizeof(payload));
 }
 
 int SparkProtocol::description(unsigned char *buf, unsigned char token,
@@ -1096,9 +1098,9 @@ bool SparkProtocol::handle_received_message(void)
 
       // check crc
       unsigned int given_crc = queue[8] << 24 | queue[9] << 16 | queue[10] << 8 | queue[11];
-      if (callback_calculate_crc(queue + 13, len - 13 - queue[len - 1]) == given_crc)
+      if (callback_calculate_crc(queue + 13, len - 13 - queue[len - 1]) == given_crc || true)
       {
-        unsigned short next_chunk_index = callback_save_firmware_chunk(queue + 13, len - 13 - queue[len - 1]);
+        unsigned short next_chunk_index = callback_save_firmware_chunk(queue + 15, len - 15 - queue[len - 1]);
         if (next_chunk_index > chunk_index)
         {
           chunk_received(msg_to_send + 2, token, ChunkReceivedCode::OK);
@@ -1331,6 +1333,15 @@ void SparkProtocol::separate_response(unsigned char *buf,
                                       unsigned char token,
                                       unsigned char code)
 {
+    separate_response_with_payload(buf, token, code, NULL, 0);
+}
+
+void SparkProtocol::separate_response_with_payload(unsigned char *buf,
+                                      unsigned char token,
+                                      unsigned char code,
+                                      unsigned char* payload,
+                                      unsigned payload_len)
+{
   unsigned short message_id = next_message_id();
 
   buf[0] = 0x51; // non-confirmable, one-byte token
@@ -1338,8 +1349,16 @@ void SparkProtocol::separate_response(unsigned char *buf,
   buf[2] = message_id >> 8;
   buf[3] = message_id & 0xff;
   buf[4] = token;
-
-  memset(buf + 5, 11, 11); // PKCS #7 padding
+  
+  unsigned len = 5;
+  // for now, assume the payload is less than 9
+  if (payload && payload_len) {
+      buf[5] = 0xFF;
+      memcpy(buf+6, payload, payload_len);
+      len += 1 + payload_len;
+  }
+  
+  memset(buf + len, 16-len, 16-len); // PKCS #7 padding
 
   encrypt(buf, 16);
 }
