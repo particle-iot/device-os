@@ -119,7 +119,7 @@ exe: $(TARGET_BASE).exe
 none: 
 	;
 	
-st-flash: all $(TARGET_BASE).bin
+st-flash: $(TARGET_BASE).bin
 	@echo Flashing $< using st-flash to address $(PLATFORM_DFU)
 	st-flash write $< $(PLATFORM_DFU)
 
