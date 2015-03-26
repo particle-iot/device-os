@@ -157,12 +157,27 @@ SECTIONS
         *(.glue*)
     }
 
+    .module_info_suffix :
+    {
+        . = ALIGN(., 4) ;
+        link_module_info_suffix_start = .;
+        KEEP(*module_info.o(.modinfo.module_info_suffix))
+        link_module_info_suffix_end = .;
+    }>APP_FLASH AT> APP_FLASH
+
     .module_end : 
     {
         link_module_end = .;
     }> APP_FLASH AT>APP_FLASH
 
-    /** Todo need to allocate 4 bytes for the CRC without writing to the flash area. **/
+    .module_info_crc :
+    {
+        link_module_info_crc_start = .;
+        KEEP(*module_info.o(.modinfo.module_info_crc))
+        link_module_info_crc_end = .;
+    }>APP_FLASH AT> APP_FLASH
+
+
 }
 
 /* Declare libc Heap to start at end of allocated RAM */
@@ -191,5 +206,8 @@ ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_l
 INCLUDE module_export.ld
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
+ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
+ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
+
 ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" ); 
 ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );

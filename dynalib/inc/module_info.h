@@ -106,15 +106,25 @@ module_scheme_t module_scheme(const module_info_t* mi);
  */
 uint8_t module_info_matches_platform(const module_info_t* mi);
 
+/*
+ * The structure is a suffix to the module, placed before the end symbol
+ */
+typedef struct module_info_suffix_t {
+    uint8_t sha[32];
+    //uint16_t reserved;
+    uint16_t size;
+} __attribute__((packed)) module_info_suffix_t;
 
 /**
  * The structure appended to the end of the module.
  */
-typedef struct module_info_end_t {
-    uint32_t crc32;     
-} module_info_end_t;
+typedef struct module_info_crc_t {    
+    uint32_t crc32;
+} __attribute__((packed)) module_info_crc_t;
 
 extern const module_info_t module_info;
+extern const module_info_suffix_t module_info_suffix;
+extern const module_info_crc_t module_info_crc;
 
 
 #ifdef __cplusplus
