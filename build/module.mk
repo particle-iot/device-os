@@ -1,7 +1,7 @@
 # This is the common makefile used to build all top-level modules
 # It contains common recipes for bulding C/CPP/asm files to objects, and
 # to combine those objects into libraries or elf files.
-
+include $(COMMON_BUILD)/os.mk
 include $(COMMON_BUILD)/verbose.mk
 
 SOURCE_PATH ?= $(MODULE_PATH)
@@ -196,22 +196,35 @@ MOD_INFO_SUFFIX_LEN = 2200
 MOD_INFO_SUFFIX = $(DEFAULT_SHA_256)$(MOD_INFO_SUFFIX_LEN)
 CRC_BLOCK_CONTENTS = $(MOD_INFO_SUFFIX)78563412
 
+ifeq (OSX,$(MAKE_OS)) 
 SHA_256 = shasum -a 256
+else
+SHA_256 = $(COMMON_BUILD)/bin/win32/sha256sum
+endif
+
+ifneq (OSX,$(MAKE_OS))
+filesize=`stat --print %s $1`
+else
+filesize=`stat -f%z $1`
+endif
+
 # Create a bin file from ELF file
 %.bin : %.elf
 	$(call,echo,'Invoking: ARM GNU Create Flash Image')
-	$(VERBOSE)$(OBJCOPY) -O binary $< $@
+	$(VERBOSE)$(OBJCOPY) -O binary $< $@.pre_crc
 ifneq ($(MODULE),bootloader)	
 	$(call,echo,'Injecting CRC32 to the Flash Image')
-	$(VERBOSE)head -c $$((`stat -f%z $@` - $(CRC_BLOCK_LEN))) $@ > $@.no_crc
+	$(VERBOSE)head -c $$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) $@.pre_crc > $@.no_crc
 	# remove the crc block and validate it matches
-	$(VERBOSE)tail -c $(CRC_BLOCK_LEN) $@ > $@.crc_block
+	$(VERBOSE)tail -c $(CRC_BLOCK_LEN) $@.pre_crc > $@.crc_block
 	$(VERBOSE)[[ "$(CRC_BLOCK_CONTENTS)" == `xxd -p -c 500 $@.crc_block` ]]
 	
-	$(VERBOSE)$(SHA_256) $@.no_crc | cut -c 1-65 | $(XXD) -r -p | dd bs=1 of=$@ seek=$$((`stat -f%z $@` - $(CRC_BLOCK_LEN))) conv=notrunc
-	$(VERBOSE)head -c $$((`stat -f%z $@` - $(CRC_LEN))) $@ > $@.no_crc
-	$(VERBOSE) $(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p | dd bs=1 of=$@ seek=$$((`stat -f%z $@` - $(CRC_LEN))) conv=notrunc
+	$(VERBOSE)$(SHA_256) $@.no_crc | cut -c 1-65 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) conv=notrunc
+	$(VERBOSE)head -c $$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) $@.pre_crc > $@.no_crc
+	$(VERBOSE) $(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) conv=notrunc
 endif
+	rm $@
+	mv $@.pre_crc $@
 	$(call,echo,)
 	
 
