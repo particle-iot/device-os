@@ -1015,7 +1015,7 @@ bool SparkProtocol::handle_chunk(msg& message)
     if (0xFF==queue[payload-1])
     {           
         const uint8_t* chunk = queue+payload;
-        file.chunk_size = message.len - payload - queue[message.len - 1];   // remove length added due to pkcs #7 padding∂
+        file.chunk_size = message.len - payload - queue[message.len - 1];   // remove length added due to pkcs #7 padding?
         file.chunk_address  = file.file_address + (chunk_index * chunk_size);
         
         uint32_t crc = callbacks.calculate_crc(chunk, file.chunk_size);
