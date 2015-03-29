@@ -21,6 +21,12 @@ bool system_serialFirmwareUpdate(Stream *serialObj);
 
 void system_lineCodingBitRateHandler(uint32_t bitrate);
 
+
+void Spark_Prepare_To_Save_File(uint32_t sFlashAddress, uint32_t fileSize);
+void Spark_Prepare_For_Firmware_Update(void);
+void Spark_Finish_Firmware_Update(void);
+uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, uint32_t bufLen);
+
 #ifdef __cplusplus
 }
 #endif
