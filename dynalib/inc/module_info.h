@@ -110,9 +110,9 @@ uint8_t module_info_matches_platform(const module_info_t* mi);
  * The structure is a suffix to the module, placed before the end symbol
  */
 typedef struct module_info_suffix_t {
+    uint16_t reserved;
     uint8_t sha[32];
-    //uint16_t reserved;
-    uint16_t size;
+    uint16_t size;    
 } __attribute__((packed)) module_info_suffix_t;
 
 /**

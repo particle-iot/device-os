@@ -192,7 +192,7 @@ MOD_INFO_SUFFIX_LEN = 34
 CRC_LEN = 4
 CRC_BLOCK_LEN = 38
 DEFAULT_SHA_256 = 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
-MOD_INFO_SUFFIX_LEN = 2200
+MOD_INFO_SUFFIX_LEN = 2400
 MOD_INFO_SUFFIX = $(DEFAULT_SHA_256)$(MOD_INFO_SUFFIX_LEN)
 CRC_BLOCK_CONTENTS = $(MOD_INFO_SUFFIX)78563412
 
@@ -223,7 +223,7 @@ ifneq ($(MODULE),bootloader)
 	$(VERBOSE)head -c $$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) $@.pre_crc > $@.no_crc
 	$(VERBOSE) $(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) conv=notrunc
 endif
-	rm $@
+	-rm $@
 	mv $@.pre_crc $@
 	$(call,echo,)
 	
