@@ -149,7 +149,7 @@ class SparkProtocol
     int (*callback_receive)(unsigned char *buf, uint32_t buflen);
     void (*callback_prepare_to_save_file)(uint32_t sflash_address, uint32_t file_size);
     void (*callback_prepare_for_firmware_update)(void);
-    void (*callback_finish_firmware_update)(void);
+    void (*callback_finish_firmware_update)(bool);
     uint32_t (*callback_calculate_crc)(unsigned char *buf, uint32_t buflen);
     unsigned short (*callback_save_firmware_chunk)(unsigned char *buf, uint32_t buflen);
     void (*callback_signal)(bool on);

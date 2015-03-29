@@ -34,7 +34,7 @@ struct SparkCallbacks
   int (*receive)(unsigned char *buf, uint32_t buflen);
   void (*prepare_to_save_file)(uint32_t sflash_address, uint32_t file_size);
   void (*prepare_for_firmware_update)(void);
-  void (*finish_firmware_update)(void);
+  void (*finish_firmware_update)(bool);
   uint32_t (*calculate_crc)(unsigned char *buf, uint32_t buflen);
   unsigned short (*save_firmware_chunk)(unsigned char *buf, uint32_t buflen);
   void (*signal)(bool on);

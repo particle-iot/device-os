@@ -1,6 +1,7 @@
 
 #include <stddef.h>
 #include "ota_flash_hal.h"
+#include "core_hal.h"
 #include "delay_hal.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_rgb.h"
@@ -72,7 +73,7 @@ bool system_serialFirmwareUpdate(Stream *serialObj)
         {
             serialObj->println("Restarting system to apply firmware update...");
             HAL_Delay_Milliseconds(100);
-            Spark_Finish_Firmware_Update();
+            Spark_Finish_Firmware_Update(true);
         }
         else
         {
@@ -136,7 +137,7 @@ void Spark_Prepare_For_Firmware_Update(void)
 #define USER_OTA_MODULE_FUNCTION    MODULE_FUNCTION_MONO_FIRMWARE
 #endif
 
-void Spark_Finish_Firmware_Update(void)
+void Spark_Finish_Firmware_Update(bool reset)
 {
     if (SPARK_FLASH_UPDATE == 2)
     {
@@ -158,8 +159,9 @@ void Spark_Finish_Firmware_Update(void)
                                                     MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION);//true to verify the CRC during copy also
         }
 
-        //Reset the system to complete the OTA update
         HAL_FLASH_End();
+        if (reset)
+            HAL_Core_System_Reset();
     }
     RGB.control(false);
 }

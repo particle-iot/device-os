@@ -1213,10 +1213,6 @@ void FLASH_End(void)
     Save_SystemFlags();
 
     BKP_WriteBackupRegister(BKP_DR10, 0x0005);
-
-    USB_Cable_Config(DISABLE);
-
-    NVIC_SystemReset();
 }
 
 void FLASH_Read_ServerAddress_Data(void *buf)

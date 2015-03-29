@@ -1172,7 +1172,7 @@ bool SparkProtocol::handle_received_message(void)
       }
 
       updating = false;
-      callback_finish_firmware_update();
+      callback_finish_firmware_update(true);
       break;
     case CoAPMessageType::EVENT:
     { 

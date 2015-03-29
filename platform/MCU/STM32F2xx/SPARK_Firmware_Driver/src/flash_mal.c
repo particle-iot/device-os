@@ -875,7 +875,4 @@ void FLASH_End(void)
 #else
     //FLASH_AddToNextAvailableModulesSlot() should be called in system_update.cpp
 #endif
-    USB_Cable_Config(DISABLE);
-
-    NVIC_SystemReset();
 }
