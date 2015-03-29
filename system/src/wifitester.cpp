@@ -80,6 +80,7 @@ void wifitester_setup() {
     pinMode(D2, OUTPUT);
     digitalWrite(D2, LOW);
 
+    serialPrintln("GOOD DAY, WIFI TESTER AT YOUR SERVICE!!!");
     //DONE: startup without wifi, via SEMI_AUTOMATIC mode
     //DONE: run setup/loop without wifi (ditto))
     //TODO: try to connect to manual wifi asap
@@ -118,7 +119,15 @@ struct varstring_t {
     char string[33];
 };
 
+#if PLATFORM_ID>2
 extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result);
+#else
+bool fetch_or_generate_setup_ssid(varstring_t* result) {
+    result->len = 4;
+    strcpy(result->string, "CORE-1234");
+    return true;
+}
+#endif
 
 void printInfo() {
     String deviceID = Spark.deviceID();
