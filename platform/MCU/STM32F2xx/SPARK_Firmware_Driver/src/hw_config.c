@@ -637,6 +637,7 @@ bool FACTORY_Flash_Reset(void)
     if (success) {
         system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
         system_flags.dfu_on_no_firmware = 0;
+        SYSTEM_FLAG(Factory_Reset_Done_SysFlag) = 0x5A;
         Finish_Update();
     }
     else {

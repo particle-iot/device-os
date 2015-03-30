@@ -1251,7 +1251,7 @@ bool FACTORY_Flash_Reset(void)
     Factory_Reset_SysFlag = 0xFFFF;
     OTA_FLASHED_Status_SysFlag = 0x0000;
     dfu_on_no_firmware = 0;
-
+    Factory_Reset_Done_SysFlag = 0x5A;
     Finish_Update();
 
     return true;//This won't be reached

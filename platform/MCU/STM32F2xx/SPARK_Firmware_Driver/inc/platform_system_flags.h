@@ -27,8 +27,13 @@ typedef struct platform_system_flags {
      * Set to 0x5A to indicate that the bootloader just performed a factory reset.
      * The application should clear this flag.
      */
-    uint8_t Factory_Reset_Done_SysFlag;    
-    uint16_t reserved[7];
+    uint8_t Factory_Reset_Done_SysFlag;
+    /**
+     * This is a placeholder for when the bootloader can influence how the system module executes.     
+     */
+    uint8_t StartupMode_SysFlag;
+    uint8_t unused;
+    uint16_t reserved[6];
 } platform_system_flags_t;
 
 
