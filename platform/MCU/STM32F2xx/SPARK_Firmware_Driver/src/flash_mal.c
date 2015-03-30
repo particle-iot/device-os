@@ -220,6 +220,7 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 #endif
     uint32_t internalFlashData = 0;
     uint32_t endAddress = sourceAddress + length - 1;
+    uint8_t  writeProtectModuleFunction = MOD_FUNC_NONE;
 
     if (FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length) != true)
     {
@@ -261,6 +262,18 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         if ((flags & MODULE_VERIFY_CRC) && !FLASH_VerifyCRC32(sourceDeviceID, sourceAddress, moduleLength))
         {
             return false;
+        }
+
+        if (info->module_function == MODULE_FUNCTION_BOOTLOADER)
+        {
+            FLASH_WriteProtection_Disable(BOOTLOADER_FLASH_PAGES);
+            writeProtectModuleFunction = MOD_FUNC_BOOTLOADER;
+        }
+
+        if (info->module_function == MODULE_FUNCTION_SYSTEM_PART)
+        {
+            FLASH_WriteProtection_Disable(SYSTEM_MODULES_FLASH_PAGES);
+            writeProtectModuleFunction = MOD_FUNC_SYSTEM_PART;
         }
     }
 #endif
@@ -342,6 +355,16 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     {
         /* Locks the internal flash program erase controller */
         FLASH_Lock();
+    }
+
+    if (writeProtectModuleFunction == MOD_FUNC_BOOTLOADER)
+    {
+        FLASH_WriteProtection_Enable(BOOTLOADER_FLASH_PAGES);
+    }
+
+    if (writeProtectModuleFunction == MOD_FUNC_SYSTEM_PART)
+    {
+        FLASH_WriteProtection_Enable(SYSTEM_MODULES_FLASH_PAGES);
     }
 
     return true;
@@ -679,6 +702,9 @@ void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors)
         /* Enable the Flash option control register access */
         FLASH_OB_Unlock();
 
+        /* Clear All pending flags */
+        FLASH_ClearFlags();
+
         /* Enable FLASH_Sectors write protection */
         FLASH_OB_WRPConfig(FLASH_Sectors, ENABLE);
 
@@ -699,9 +725,6 @@ void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors)
         {
             //Write Protection Enable Operation is done correctly
         }
-
-        /* Generate System Reset (not mandatory on F2 series ???) */
-        NVIC_SystemReset();
     }
 }
 
@@ -716,6 +739,9 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
 
         /* Enable the Flash option control register access */
         FLASH_OB_Unlock();
+
+        /* Clear All pending flags */
+        FLASH_ClearFlags();
 
         /* Disable FLASH_Sectors write protection */
         FLASH_OB_WRPConfig(FLASH_Sectors, DISABLE);
@@ -737,9 +763,6 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
         {
             //Write Protection Disable Operation is done correctly
         }
-
-        /* Generate System Reset (not mandatory on F2 series ???) */
-        NVIC_SystemReset();
     }
 }
 
