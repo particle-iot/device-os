@@ -68,7 +68,8 @@ uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
 uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
 uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
 uint16_t Factory_Reset_SysFlag = 0xFFFF;
-uint16_t dfu_on_no_firmware = 0xFFFF;
+uint8_t dfu_on_no_firmware = 0xFF;
+uint8_t Factory_Reset_Done_SysFlag = 0xFF;
 
 uint32_t WRPR_Value = 0xFFFFFFFF;
 uint32_t Flash_Pages_Protected = 0x0;
@@ -934,8 +935,9 @@ void Load_SystemFlags(void)
     Factory_Reset_SysFlag = (*(__IO uint16_t*) Address);
     Address += 2;
 
-    dfu_on_no_firmware = (*(__IO uint16_t*) Address);
-    Address += 2;
+    dfu_on_no_firmware = (*(__IO uint8_t*) Address++);
+    Factory_Reset_Done_SysFlag = (*(__IO uint8_t*) Address++);
+    
 }
 
 void Save_SystemFlags(void)
@@ -980,9 +982,8 @@ void Save_SystemFlags(void)
     FLASHStatus = FLASH_ProgramHalfWord(Address, Factory_Reset_SysFlag);
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
-
-    /* Program dfu_on_no_firmware */
-    FLASHStatus = FLASH_ProgramHalfWord(Address, dfu_on_no_firmware);
+    
+    FLASHStatus = FLASH_ProgramHalfWord(Address,  Factory_Reset_Done_SysFlag<<8 | dfu_on_no_firmware);
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
 

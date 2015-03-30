@@ -102,7 +102,7 @@ STATIC_ASSERT_FLAGS_OFFSET(OTA_FLASHED_Status_SysFlag, 10);
 STATIC_ASSERT_FLAGS_OFFSET(Factory_Reset_SysFlag, 12);
 STATIC_ASSERT_FLAGS_OFFSET(IWDG_Enable_SysFlag, 14);
 STATIC_ASSERT_FLAGS_OFFSET(dfu_on_no_firmware, 16);
-STATIC_ASSERT_FLAGS_OFFSET(unused, 17);
+STATIC_ASSERT_FLAGS_OFFSET(Factory_Reset_Done_SysFlag, 17);
 STATIC_ASSERT_FLAGS_OFFSET(reserved, 18);
 /**
  * Reads application data from the DCT area.

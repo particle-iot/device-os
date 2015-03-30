@@ -295,8 +295,10 @@ int main(void)
                 LED_SetRGBColor(RGB_COLOR_GREEN);
             // Restore the Factory Firmware
             // On success the device will reset)
-            if (!FACTORY_Flash_Reset()) {
+            if (!FACTORY_Flash_Reset()) {                
                 if (is_application_valid(ApplicationAddress)) {
+                    SYSTEM_FLAG(Factory_Reset_Done_SysFlag) = 0x5A;
+                    Save_SystemFlags();
                     // we have a valid image to fall back to, so just reset
                     NVIC_SystemReset();
                 }
