@@ -278,9 +278,11 @@ int main(void)
             }
         }
         
-        // now set the factory reset mode (to change the LED to rapid blinking.))
-        FACTORY_RESET_MODE = factory_reset;
-        USB_DFU_MODE = !factory_reset;
+        if (factory_reset || USB_DFU_MODE) {
+            // now set the factory reset mode (to change the LED to rapid blinking.))
+            FACTORY_RESET_MODE = factory_reset;
+            USB_DFU_MODE = !factory_reset;
+        }
     }
     //--------------------------------------------------------------------------
 
