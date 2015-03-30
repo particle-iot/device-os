@@ -111,10 +111,25 @@ SECTIONS
         . = ALIGN(., 4);
     }> SRAM AT> SRAM
 
+    .module_info_suffix :
+    {
+        . = ALIGN(., 4) ;
+        link_module_info_suffix_start = .;
+        KEEP(*module_info.o(.modinfo.module_info_suffix))
+        link_module_info_suffix_end = .;
+    }>APP_FLASH AT> APP_FLASH
+
     .module_end : 
     {
         link_module_end = .;
     }> APP_FLASH AT>APP_FLASH
+
+    .module_info_crc :
+    {
+        link_module_info_crc_start = .;
+        KEEP(*module_info.o(.modinfo.module_info_crc))
+        link_module_info_crc_end = .;
+    }>APP_FLASH AT> APP_FLASH
 
     /DISCARD/ :
     {
@@ -160,5 +175,8 @@ ASSERT ( USER_FIRMWARE_IMAGE_SIZE == LENGTH(APP_FLASH), "User firmware size and 
 ASSERT ( sram_start <= link_heap_start && link_heap_start < sram_end, "link_heap_start is in the wrong memory space" );
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
+ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
+ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
+
 ASSERT ( user_module_info == link_module_info_start, "module info start not where expected" ); 
 ASSERT ( user_module_info_end == link_module_info_end, "module info end not where expected" );

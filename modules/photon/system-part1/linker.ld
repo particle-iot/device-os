@@ -141,10 +141,25 @@ SECTIONS
         *(.glue*)
     }
 
+    .module_info_suffix :
+    {
+        . = ALIGN(., 4) ;
+        link_module_info_suffix_start = .;
+        KEEP(*module_info.o(.modinfo.module_info_suffix))
+        link_module_info_suffix_end = .;
+    }>APP_FLASH AT> APP_FLASH
+
     .module_end : 
     {
         link_module_end = .;
     }> APP_FLASH AT>APP_FLASH
+
+    .module_info_crc :
+    {
+        link_module_info_crc_start = .;
+        KEEP(*module_info.o(.modinfo.module_info_crc))
+        link_module_info_crc_end = .;
+    }>APP_FLASH AT> APP_FLASH
 
 }
 
@@ -163,6 +178,9 @@ ASSERT ( link_end_of_static_ram < system_part1_module_ram_end, "static RAM use e
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
+ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
+ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
+
 ASSERT ( system_part1_module_info_start == link_module_info_start, "module info start not where expected" ); 
 ASSERT ( system_part1_module_info_end == link_module_info_end, "module info end not where expected" );
 
