@@ -129,6 +129,11 @@ int main(void)
     {
         Bootloader_Update_Version(BOOTLOADER_VERSION);
     }
+    
+    if (SYSTEM_FLAG(StartupMode_SysFlag) != 0) {
+        SYSTEM_FLAG(StartupMode_SysFlag) = 0;
+        Save_SystemFlags();
+    }
 
     //--------------------------------------------------------------------------
 

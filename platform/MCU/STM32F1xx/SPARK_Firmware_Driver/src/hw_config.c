@@ -70,6 +70,7 @@ uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
 uint16_t Factory_Reset_SysFlag = 0xFFFF;
 uint8_t dfu_on_no_firmware = 0xFF;
 uint8_t Factory_Reset_Done_SysFlag = 0xFF;
+uint8_t StartupMode_SysFlag = 0xFF;
 
 uint32_t WRPR_Value = 0xFFFFFFFF;
 uint32_t Flash_Pages_Protected = 0x0;
@@ -937,7 +938,7 @@ void Load_SystemFlags(void)
 
     dfu_on_no_firmware = (*(__IO uint8_t*) Address++);
     Factory_Reset_Done_SysFlag = (*(__IO uint8_t*) Address++);
-    
+    StartupMode_SysFlag = (*(__IO uint8_t*) Address++);    
 }
 
 void Save_SystemFlags(void)
@@ -986,6 +987,12 @@ void Save_SystemFlags(void)
     FLASHStatus = FLASH_ProgramHalfWord(Address,  Factory_Reset_Done_SysFlag<<8 | dfu_on_no_firmware);
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
+
+    // the flag that comes after this will be added here, shifted 8 places.
+    FLASHStatus = FLASH_ProgramHalfWord(Address, StartupMode_SysFlag);
+    while(FLASHStatus != FLASH_COMPLETE);
+    Address += 2;
+
 
     /* Locks the FLASH Program Erase Controller */
     FLASH_Lock();
