@@ -809,28 +809,11 @@ void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
 uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
 {
 #ifdef USE_SERIAL_FLASH
-    uint8_t *writeBuffer = pBuffer;
-    uint8_t readBuffer[bufferSize];
-
     /* Write Data Buffer to SPI Flash memory */
-    sFLASH_WriteBuffer(writeBuffer, External_Flash_Address, bufferSize);
+    sFLASH_WriteBuffer(pBuffer, External_Flash_Address, bufferSize);
 
-    /* Read Data Buffer from SPI Flash memory */
-    sFLASH_ReadBuffer(readBuffer, External_Flash_Address, bufferSize);
-
-    /* Is the Data Buffer successfully programmed to SPI Flash memory */
-    if (0 == memcmp(writeBuffer, readBuffer, bufferSize))
-    {
-        External_Flash_Address += bufferSize;
-        External_Flash_Update_Index += 1;
-    }
-    else
-    {
-        /* Erase the problematic SPI Flash pages and back off the chunk index */
-        External_Flash_Address = ((uint32_t)(External_Flash_Address / sFLASH_PAGESIZE)) * sFLASH_PAGESIZE;
-        sFLASH_EraseSector(External_Flash_Address);
-        External_Flash_Update_Index = (uint16_t)((External_Flash_Address - External_Flash_Start_Address) / bufferSize);
-    }
+    External_Flash_Address += bufferSize;
+    External_Flash_Update_Index += 1;
 
     return External_Flash_Update_Index;
 #else
