@@ -106,10 +106,9 @@ extern "C" {
 #if FIRMWARE_IMAGE_SIZE > INTERNAL_FLASH_SIZE
 #   error "FIRMWARE_IMAGE_SIZE too large to fit into internal flash"
 #endif
-    
-    
+
 /* Bootloader Flash regions that needs to be protected: 0x08000000 - 0x08003FFF */
-#define BOOTLOADER_FLASH_PAGES      (OB_WRP_Sector_0) //Sector 0
+#define BOOTLOADER_FLASH_PAGES      (OB_WRP_Sector_0)
 
 /* MAL access layer for Internal/Serial Flash Routines */
 //New routines specific for BM09/BM14 flash usage

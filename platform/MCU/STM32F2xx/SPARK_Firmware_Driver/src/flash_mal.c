@@ -665,6 +665,9 @@ void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors)
         /* Enable the Flash option control register access */
         FLASH_OB_Unlock();
 
+        /* Clear All pending flags */
+        FLASH_ClearFlags();
+
         /* Enable FLASH_Sectors write protection */
         FLASH_OB_WRPConfig(FLASH_Sectors, ENABLE);
 
@@ -685,9 +688,6 @@ void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors)
         {
             //Write Protection Enable Operation is done correctly
         }
-
-        /* Generate System Reset (not mandatory on F2 series ???) */
-        NVIC_SystemReset();
     }
 }
 
@@ -702,6 +702,9 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
 
         /* Enable the Flash option control register access */
         FLASH_OB_Unlock();
+
+        /* Clear All pending flags */
+        FLASH_ClearFlags();
 
         /* Disable FLASH_Sectors write protection */
         FLASH_OB_WRPConfig(FLASH_Sectors, DISABLE);
@@ -723,9 +726,6 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
         {
             //Write Protection Disable Operation is done correctly
         }
-
-        /* Generate System Reset (not mandatory on F2 series ???) */
-        NVIC_SystemReset();
     }
 }
 
