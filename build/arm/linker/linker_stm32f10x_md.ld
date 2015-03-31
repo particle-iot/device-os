@@ -70,14 +70,14 @@ SECTIONS
 	. = ALIGN(4);
         KEEP(*(.isr_vector))            /* Startup code */
 	. = ALIGN(4);
-    } >FLASH
+    } >FLASH AT>FLASH
     INCLUDE module_info.ld
     .flashtext :
     {
 	. = ALIGN(4);
         *(.flashtext)            /* Startup code */
 	. = ALIGN(4);
-    } >FLASH
+    } >FLASH AT>FLASH
      
     /* the program code is stored in the .text section, which goes to Flash */
     .text :
@@ -94,15 +94,16 @@ SECTIONS
 	    . = ALIGN(4);
    	 _etext = .;
 	    /* This is used by the startup in order to initialize the .data secion */
-   	 _sidata = _etext;
-    } >FLASH
+    } >FLASH AT>FLASH
 
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
     but the loader puts the initial values in the FLASH (inidata).
     It is one task of the startup to copy the initial values from FLASH to RAM. */
-    .data  : AT ( _sidata )
+    .data :
     {
+        _sidata = LOADADDR(.data);
+
 	    . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
@@ -113,7 +114,7 @@ SECTIONS
 	    . = ALIGN(4);
 	    /* This is used by the startup in order to initialize the .data secion */
    	 _edata = . ;
-    } >RAM
+    } >RAM AT>FLASH
     
     /* This is the uninitialized data section */
     .bss :
@@ -242,7 +243,4 @@ SECTIONS
     INCLUDE module_end.ld
 }
 
-/*
- * Not using module_info currently on “Core” product lines 
- * INCLUDE module_asserts.ld
- */
+INCLUDE module_asserts.ld

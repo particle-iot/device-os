@@ -15,7 +15,8 @@ endif
 
 ifneq (,$(findstring hal,$(MAKE_DEPENDENCIES)))
 
-LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_$(STM32_DEVICE_LC)_dfu.ld
+LDFLAGS += -Tlinker_$(STM32_DEVICE_LC)_dfu.ld
+LDFLAGS += -L$(COMMON_BUILD)/arm/linker
 LDFLAGS += --specs=nano.specs -lc -lnosys
 USE_PRINTF_FLOAT ?= y
 ifeq ("$(USE_PRINTF_FLOAT)","y")

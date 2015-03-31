@@ -63,6 +63,8 @@ _estack = 0x20005000;
 
 SECTIONS
 {
+    INCLUDE module_start.ld
+
     /* for Cortex devices, the beginning of the startup code is stored in the .isr_vector section, which goes to FLASH */
     .isr_vector :
     {
@@ -71,6 +73,8 @@ SECTIONS
 	. = ALIGN(4);
     } >FLASH
    
+    INCLUDE module_info.ld
+
     .flashtext :
     {
 	. = ALIGN(4);
@@ -120,16 +124,17 @@ SECTIONS
         KEEP (*(SORT(.fini_array.*)))
         PROVIDE_HIDDEN (__fini_array_end = .);
     } >FLASH
-
-    /* This is used by the startup to initialize .data  section */
-    _sidata = .;
  
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
     but the loader puts the initial values in the FLASH (inidata).
     It is one task of the startup to copy the initial values from FLASH to RAM. */
-    .data  : AT ( _sidata )
+    .data  :
     {
+        /* This is used by the startup to initialize .data  section */
+        _sidata = LOADADDR(.data);
+
+
 	    . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
@@ -140,7 +145,7 @@ SECTIONS
 	    . = ALIGN(4);
 	    /* This is used by the startup in order to initialize the .data secion */
    	 _edata = . ;
-    } >RAM
+    } >RAM AT>FLASH
     
     /* This is the uninitialized data section */
     .bss :
@@ -176,52 +181,6 @@ SECTIONS
         _eusrstack = . ;
     } >RAM
    
-    /* this is the FLASH Bank1 */
-    /* the C or assembly source must explicitly place the code or data there
-    using the "section" attribute */
-    .b1text :
-    {
-        *(.b1text)                   /* remaining code */
-        *(.b1rodata)                 /* read-only data (constants) */
-        *(.b1rodata*)
-    } >FLASHB1
-    
-    /* this is the EXTMEM */
-    /* the C or assembly source must explicitly place the code or data there
-    using the "section" attribute */
-    
-    /* EXTMEM Bank0 */
-    .eb0text :
-    {
-        *(.eb0text)                   /* remaining code */
-        *(.eb0rodata)                 /* read-only data (constants) */
-        *(.eb0rodata*)
-    } >EXTMEMB0
-    
-    /* EXTMEM Bank1 */
-    .eb1text :
-    {
-        *(.eb1text)                   /* remaining code */
-        *(.eb1rodata)                 /* read-only data (constants) */
-        *(.eb1rodata*)
-    } >EXTMEMB1
-    
-    /* EXTMEM Bank2 */
-    .eb2text :
-    {
-        *(.eb2text)                   /* remaining code */
-        *(.eb2rodata)                 /* read-only data (constants) */
-        *(.eb2rodata*)
-    } >EXTMEMB2
-    
-    /* EXTMEM Bank0 */
-    .eb3text :
-    {
-        *(.eb3text)                   /* remaining code */
-        *(.eb3rodata)                 /* read-only data (constants) */
-        *(.eb3rodata*)
-    } >EXTMEMB3
-       
     /* after that it's only debugging information. */
     
     /* remove the debugging information from the standard libraries */
@@ -265,5 +224,9 @@ SECTIONS
     .debug_funcnames 0 : { *(.debug_funcnames) }
     .debug_typenames 0 : { *(.debug_typenames) }
     .debug_varnames  0 : { *(.debug_varnames) }
+    
+    INCLUDE module_end.ld
 }
+
+INCLUDE module_asserts.ld
 

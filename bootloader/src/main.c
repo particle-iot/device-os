@@ -129,6 +129,11 @@ int main(void)
     {
         Bootloader_Update_Version(BOOTLOADER_VERSION);
     }
+    
+    if (SYSTEM_FLAG(StartupMode_SysFlag) != 0) {
+        SYSTEM_FLAG(StartupMode_SysFlag) = 0;
+        Save_SystemFlags();
+    }
 
     //--------------------------------------------------------------------------
 
@@ -295,7 +300,7 @@ int main(void)
                 LED_SetRGBColor(RGB_COLOR_GREEN);
             // Restore the Factory Firmware
             // On success the device will reset)
-            if (!FACTORY_Flash_Reset()) {
+            if (!FACTORY_Flash_Reset()) {                
                 if (is_application_valid(ApplicationAddress)) {
                     // we have a valid image to fall back to, so just reset
                     NVIC_SystemReset();

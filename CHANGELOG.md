@@ -22,6 +22,7 @@
  - Enabled CRC verification in bootloader before restoring/copying the firmware image from factory reset, ota downloaded area etc.
  - Added 'program-serial' to build target to enter serial ymodem protocol for flashing user firmware (Testing pending...)
  - Added System.modeDFU() to briefly enter Bootloader mode and not persisting the bootloader flag inbetween system reset or power on-off
+ - Added new feature to select between internal (chip) and external (u.FL) antenna on Photon: `int WiFi.selectAntenna(ANT_INTERNAL | ANT_EXTERNAL | ANT_AUTO);` [commit](https://github.com/spark/firmware-private/commit/b18555d3be95c23009a8e03a04ac645de3b1b31e) and [#394](https://github.com/spark/firmware/issues/394)
 
 ### BUGFIXES
 

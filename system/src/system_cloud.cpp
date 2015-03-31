@@ -43,7 +43,7 @@
 #include "spark_protocol.h"
 #include "spark_macros.h"
 #include "spark_wiring_string.h"
-
+#include "spark_wiring_cloud.h"
 
 int userVarType(const char *varKey);
 void *getUserVar(const char *varKey);

@@ -101,15 +101,16 @@ SECTIONS
 	    . = ALIGN(4);
    	 _etext = .;
 	    /* This is used by the startup in order to initialize the .data secion */
-   	 _sidata = _etext;
+   	 
     } >FLASH
 
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
     but the loader puts the initial values in the FLASH (inidata).
     It is one task of the startup to copy the initial values from FLASH to RAM. */
-    .data  : AT ( _sidata )
+    .data  :
     {
+        _sidata = LOADADDR(.data);
 	    . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
@@ -120,7 +121,7 @@ SECTIONS
 	    . = ALIGN(4);
 	    /* This is used by the startup in order to initialize the .data secion */
    	 _edata = . ;
-    } >RAM
+    } >RAM AT>FLASH
     
     /* This is the uninitialized data section */
     .bss :
@@ -255,4 +256,7 @@ PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
 PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
 PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
 
-INCLUDE module_asserts.ld
+ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
+ASSERT ( link_module_info_start - ORIGIN(FLASH) == 0x184,  "module info not where expected" ) 
+ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
+ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
