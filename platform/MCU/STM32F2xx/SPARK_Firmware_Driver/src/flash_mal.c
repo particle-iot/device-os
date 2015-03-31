@@ -220,7 +220,6 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 #endif
     uint32_t internalFlashData = 0;
     uint32_t endAddress = sourceAddress + length - 1;
-    uint8_t  writeProtectModuleFunction = MOD_FUNC_NONE;
 
     if (FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length) != true)
     {
@@ -262,18 +261,6 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         if ((flags & MODULE_VERIFY_CRC) && !FLASH_VerifyCRC32(sourceDeviceID, sourceAddress, moduleLength))
         {
             return false;
-        }
-
-        if (info->module_function == MODULE_FUNCTION_BOOTLOADER)
-        {
-            FLASH_WriteProtection_Disable(BOOTLOADER_FLASH_PAGES);
-            writeProtectModuleFunction = MOD_FUNC_BOOTLOADER;
-        }
-
-        if (info->module_function == MODULE_FUNCTION_SYSTEM_PART)
-        {
-            FLASH_WriteProtection_Disable(SYSTEM_MODULES_FLASH_PAGES);
-            writeProtectModuleFunction = MOD_FUNC_SYSTEM_PART;
         }
     }
 #endif
@@ -355,16 +342,6 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     {
         /* Locks the internal flash program erase controller */
         FLASH_Lock();
-    }
-
-    if (writeProtectModuleFunction == MOD_FUNC_BOOTLOADER)
-    {
-        FLASH_WriteProtection_Enable(BOOTLOADER_FLASH_PAGES);
-    }
-
-    if (writeProtectModuleFunction == MOD_FUNC_SYSTEM_PART)
-    {
-        FLASH_WriteProtection_Enable(SYSTEM_MODULES_FLASH_PAGES);
     }
 
     return true;
