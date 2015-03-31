@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    system_dynalib.h
- * @authors Matthew McGowan
- * @date    12 February 2015
+ * @file    export_system.cpp
+ * @authors mat
+ * @date    31 March 2015
  ******************************************************************************
   Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
 
@@ -21,28 +21,8 @@
  ******************************************************************************
  */
 
-#ifndef SYSTEM_DYNALIB_H
-#define	SYSTEM_DYNALIB_H
+#define DYNALIB_EXPORT
 
-#include "dynalib.h"
-
-#ifdef DYNALIB_EXPORT
-#include "system_mode.h"
-#include "system_task.h"
-#include "system_update.h"
-#endif
-
-DYNALIB_BEGIN(system)
-DYNALIB_FN(system, system_mode)
-DYNALIB_FN(system, set_system_mode)
-        
-DYNALIB_FN(system, set_ymodem_serial_flash_update_handler)
-DYNALIB_FN(system, system_serialFirmwareUpdate)
-DYNALIB_FN(system, system_serialFileTransfer)
-        
-DYNALIB_FN(system, system_delay_ms)
-DYNALIB_END(system)
-
-
-#endif	/* SYSTEM_DYNALIB_H */
-
+#include "system_dynalib.h"
+#include "system_dynalib_net.h"
+#include "system_dynalib_cloud.h"

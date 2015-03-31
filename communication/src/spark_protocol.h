@@ -209,8 +209,21 @@ class SparkProtocol
         queue_mem_boundary = queue + QUEUE_SIZE;
     }
     
+    unsigned chunk_bitmap_size()
+    {
+        return file.chunk_count()+7/8;
+    }
+
+    uint8_t* chunk_bitmap() 
+    {
+        return &queue[QUEUE_SIZE-chunk_bitmap_size()];
+    }
+    
+    void clear_chunks_received();
     void flag_chunk_received(chunk_index_t index);
     int next_chunk_missing(chunk_index_t index);
+    int send_missing_chunks();
+    void notify_update_done(uint8_t* buf);
 };
 
 #endif // __SPARK_PROTOCOL_H

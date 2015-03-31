@@ -111,12 +111,14 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
 {    
     if (file.store==FileTransfer::Store::FIRMWARE) 
     {
-        if (file.chunk_size==0)
-        {
-            file.file_address = HAL_OTA_FlashAddress();
-            file.file_length = HAL_OTA_FlashLength();
+        // address is relative to the OTA region. Normally will be 0.
+        file.file_address = HAL_OTA_FlashAddress() + file.chunk_address;
+        
+        // chunk_size 0 indicates defaults.
+        if (file.chunk_size==0) {
             file.chunk_size = HAL_OTA_ChunkSize();
-        }
+            file.file_length = HAL_OTA_FlashLength();
+        }        
     }
     int result = 0;
     if (flags & 1) {

@@ -2,7 +2,7 @@
 #ifndef SYSTEM_UPDATE_H
 #define	SYSTEM_UPDATE_H
 
-#include "spark_protocol.h"
+#include "file_transfer.h"
 
 #ifdef __cplusplus
 extern "C" {

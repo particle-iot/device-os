@@ -144,17 +144,23 @@ bool SparkProtocol::event_loop(void)
       system_tick_t millis_since_last_chunk = callbacks.millis() - last_chunk_millis;
 
       if (3000 < millis_since_last_chunk)
-      {
-        queue[0] = 0;
-        queue[1] = 16;
-        chunk_missed(queue + 2, chunk_index);
-        if (0 > blocking_send(queue, 18))
-        {
-          // error
-          return false;
-        }
-
-        last_chunk_millis = callbacks.millis();
+      {          
+          if (updating==2) {    // send missing chunks
+              if (!send_missing_chunks())
+                  return false;
+          }
+          else
+          {
+            queue[0] = 0;
+            queue[1] = 16;
+            chunk_missed(queue + 2, chunk_index);
+            if (0 > blocking_send(queue, 18))
+            {
+              // error
+              return false;
+            }
+          }
+          last_chunk_millis = callbacks.millis();
       }
     }
     else
@@ -336,6 +342,21 @@ void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
   memset(buf + 15, 1, 1); // PKCS #7 padding
 
   encrypt(buf, 16);
+}
+
+void SparkProtocol::notify_update_done(uint8_t* buf)
+{
+    unsigned short message_id = next_message_id();
+
+    buf[0] = 0x50; // non-confirmable, no token
+    buf[1] = 0x02; // POST
+    buf[2] = message_id >> 8;
+    buf[3] = message_id & 0xff;
+    buf[4] = 0xb1; // Uri-Path option of length 1
+    buf[5] = 'u';
+
+    memset(buf + 6, 10, 10); // PKCS #7 padding
+    encrypt(buf, 16);
 }
 
 void SparkProtocol::key_changed(unsigned char *buf, unsigned char token)
@@ -944,17 +965,19 @@ bool SparkProtocol::handle_update_begin(msg& message)
     uint8_t flags = 0;
     int actual_len = message.len - queue[message.len-1];
     if (actual_len>=20 && queue[7]==0xFF) {
-        flags = decode_uint8(queue+8);          
+        flags = decode_uint8(queue+8);
         file.chunk_size = decode_uint16(queue+9);
         file.file_length = decode_uint32(queue+11);
         file.store = FileTransfer::Store::Enum(decode_uint8(queue+15));
         file.file_address = decode_uint32(queue+16);
+        file.chunk_address = file.file_address;
     }
     else {
         file.chunk_size = 0;
         file.file_length = 0;
         file.store = FileTransfer::Store::FIRMWARE;
         file.file_address = 0;
+        file.chunk_address = 0;
     }    
     
     // check the parameters only
@@ -974,7 +997,8 @@ bool SparkProtocol::handle_update_begin(msg& message)
             chunk_index = 0;
             chunk_size = file.chunk_size;   // save chunk size since the descriptor size is overwritten
             updating = true;
-
+            clear_chunks_received();
+            
             // send update_reaady - use fast OTA if available
             update_ready(msg_to_send + 2, message.token, (flags & 0x1));
             if (0 > blocking_send(msg_to_send, 18))
@@ -989,27 +1013,32 @@ bool SparkProtocol::handle_update_begin(msg& message)
 }
 
 bool SparkProtocol::handle_chunk(msg& message)
-{
+{        
     last_chunk_millis = callbacks.millis();
     
     uint8_t* msg_to_send = message.response;
     // send ACK
     *msg_to_send = 0;
-    *(msg_to_send + 1) = 16;
+    *(msg_to_send + 1) = 16;    
     empty_ack(msg_to_send + 2, queue[2], queue[3]);
     if (0 > blocking_send(msg_to_send, 18))
     {
       // error
       return false;
     }
+    
+    if (!updating)
+        return true;
 
     uint32_t given_crc = decode_uint32(queue+8);
 
     uint8_t option_len = queue[7] & 0xF;
     uint8_t payload = 13;
+    bool fast_ota = false;
     if (option_len>=6) {
         chunk_index = decode_uint16(queue+12);
         payload = 15;
+        fast_ota = true;
     }
             
     if (0xFF==queue[payload-1])
@@ -1021,12 +1050,20 @@ bool SparkProtocol::handle_chunk(msg& message)
         uint32_t crc = callbacks.calculate_crc(chunk, file.chunk_size);
         if (crc == given_crc)
         {            
-            callbacks.save_firmware_chunk(file, chunk);            
-            chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::OK);
+            callbacks.save_firmware_chunk(file, chunk);
+            if (!fast_ota)
+                chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::OK);
             flag_chunk_received(chunk_index);
+            if (updating==2 && next_chunk_missing(0)<0) {       // no more chunks remaining
+                updating = false;
+                callbacks.finish_firmware_update(file);
+                notify_update_done(msg_to_send+2);
+                if (0 > blocking_send(msg_to_send, 18))
+                  return false;                
+            }
             chunk_index++;
         }
-        else if (payload==13)
+        else if (!fast_ota)
         {
             chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::BAD);
         }
@@ -1036,23 +1073,64 @@ bool SparkProtocol::handle_chunk(msg& message)
         {
           // error
           return false;
-        }
-                
+        }                
     }
     
     return true;
 }
 
-void SparkProtocol::flag_chunk_received(chunk_index_t idx)
+
+inline void SparkProtocol::flag_chunk_received(chunk_index_t idx)
 {
-    
+    chunk_bitmap()[idx>>3] |= 1<<(idx&7);
 }
 
-int SparkProtocol::next_chunk_missing(chunk_index_t idx) {
-    return -1;
+inline bool SparkProtocol::is_chunk_received(chunk_index_t idx)
+{
+    return (chunk_bitmap()[idx>>3] & 1<<(idx&7));
 }
 
+int SparkProtocol::next_chunk_missing(chunk_index_t idx) 
+{
+    // for now just iterate and test
+    int chunk = -1;
+    unsigned chunks = file.chunk_count();
+    for (;idx<chunks; idx++) 
+    {
+        if (!is_chunk_received(idx))
+        {
+            chunk = idx;
+            break;
+        }
+    }
+    return chunk;
+}
+
+void SparkProtocol::clear_chunks_received()
+{    
+    int bytes = chunk_bitmap_size();
+    memset(queue+QUEUE_SIZE-bytes, 0, bytes);
+}
+
+int SparkProtocol::send_missing_chunks()
+{
+    int sent = 0;
+    int idx = -1;
     
+    while ((idx=next_chunk_missing(chunk_index_t(idx+1)))>=0)
+    {
+        queue[0] = 0;
+        queue[1] = 16;
+        chunk_missed(queue + 2, idx);
+        if (0 > blocking_send(queue, 18))
+        {
+            sent = -1;
+            break;
+        }
+    }    
+    return sent;
+}
+
 bool SparkProtocol::handle_update_done(msg& message)
 {
     // send ACK 2.04
@@ -1065,8 +1143,8 @@ bool SparkProtocol::handle_update_done(msg& message)
     coded_ack(msg_to_send + 2, message.token, missing ? ChunkReceivedCode::BAD : ChunkReceivedCode::OK, queue[2], queue[3]);
     if (0 > blocking_send(msg_to_send, 18))
     {
-      // error
-      return false;
+        // error
+        return false;
     }
 
     if (!missing) {
@@ -1075,6 +1153,8 @@ bool SparkProtocol::handle_update_done(msg& message)
     }
     else {
         updating = 2;       // flag that we are sending missing chunks.
+        send_missing_chunks();
+        last_chunk_millis = callbacks.millis();
     }
     return true;    
 }
