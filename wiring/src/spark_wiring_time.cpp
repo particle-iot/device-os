@@ -158,11 +158,8 @@ static void Set_CalendarTime(struct tm calendar_time)
 /* Refresh Unix/RTC time cache */
 static void Refresh_UnixTime_Cache(time_t unix_time)
 {
-	if(unix_time != unix_time_cache)
-	{
 		calendar_time_cache = Convert_UnixTime_To_CalendarTime(unix_time);
 		unix_time_cache = unix_time;
-	}
 }
 
 /* current hour */
