@@ -46,6 +46,67 @@ static uint16_t Internal_Flash_Update_Index = 0;
 
 /* Private functions ---------------------------------------------------------*/
 
+uint16_t FLASH_SectorToWriteProtect(uint8_t flashDeviceID, uint32_t startAddress)
+{
+    uint16_t OB_WRP_Sector = 0;//Invalid write protection
+
+    if (flashDeviceID != FLASH_INTERNAL)
+    {
+        return OB_WRP_Sector;
+    }
+
+    if (startAddress < 0x08004000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_0;
+    }
+    else if (startAddress < 0x08008000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_1;
+    }
+    else if (startAddress < 0x0800C000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_2;
+    }
+    else if (startAddress < 0x08010000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_3;
+    }
+    else if (startAddress < 0x08020000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_4;
+    }
+    else if (startAddress < 0x08040000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_5;
+    }
+    else if (startAddress < 0x08060000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_6;
+    }
+    else if (startAddress < 0x08080000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_7;
+    }
+    else if (startAddress < 0x080A0000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_8;
+    }
+    else if (startAddress < 0x080C0000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_9;
+    }
+    else if (startAddress < 0x080E0000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_10;
+    }
+    else if (startAddress < 0x08100000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_11;
+    }
+
+    return OB_WRP_Sector;
+}
+
 uint16_t FLASH_SectorToErase(uint8_t flashDeviceID, uint32_t startAddress)
 {
     uint16_t flashSector = 0xFFFF;//Invalid sector
@@ -153,6 +214,9 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
 
     if (flashDeviceID == FLASH_INTERNAL)
     {
+        /* Check which sector's write protection needs to be disabled */
+        uint16_t OB_WRP_Sector = FLASH_SectorToWriteProtect(FLASH_INTERNAL, startAddress);
+
         /* Check which sector has to be erased */
         uint16_t flashSector = FLASH_SectorToErase(FLASH_INTERNAL, startAddress);
 
@@ -173,6 +237,10 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
         /* Erase the Internal Flash pages */
         for (eraseCounter = 0; (eraseCounter < numPages); eraseCounter++)
         {
+            /* Disable sector write protection */
+            FLASH_WriteProtection_Disable(OB_WRP_Sector);
+            OB_WRP_Sector = OB_WRP_Sector << 1;
+
             FLASHStatus = FLASH_EraseSector(flashSector + (8 * eraseCounter), VoltageRange_3);
 
             /* If erase operation fails, return Failure */

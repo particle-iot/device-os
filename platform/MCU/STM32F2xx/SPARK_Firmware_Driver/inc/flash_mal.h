@@ -112,6 +112,7 @@ extern "C" {
 
 /* MAL access layer for Internal/Serial Flash Routines */
 //New routines specific for BM09/BM14 flash usage
+uint16_t FLASH_SectorToWriteProtect(uint8_t flashDeviceID, uint32_t startAddress);
 uint16_t FLASH_SectorToErase(flash_device_t flashDeviceID, uint32_t startAddress);
 bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
 bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
