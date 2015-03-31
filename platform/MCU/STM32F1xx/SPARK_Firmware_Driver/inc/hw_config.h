@@ -186,8 +186,8 @@ void Save_SystemFlags(void);
 /* Internal Flash Clear Flags : used before calling Flash Erase/Program operations */
 void FLASH_ClearFlags(void);
 /* Internal Flash Write Protection routines */
-void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages);
-void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages);
+FLASH_Status FLASH_WriteProtection_Enable(uint32_t FLASH_Pages);
+FLASH_Status FLASH_WriteProtection_Disable(uint32_t FLASH_Pages);
 /* Internal Flash Backup to sFlash and Restore from sFlash Helper routines */
 void FLASH_Erase(void);
 void FLASH_Backup(uint32_t sFLASH_Address);
@@ -195,7 +195,7 @@ void FLASH_Restore(uint32_t sFLASH_Address);
 /* External Flash Helper routines */
 uint32_t FLASH_PagesMask(uint32_t fileSize);
 void FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize);
-uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
+int FLASH_Update(const uint8_t *pBuffer, uint32_t sFLASH_Address, uint32_t bufferSize);
 void FLASH_End(void);
 
 /** 

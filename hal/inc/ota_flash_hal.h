@@ -57,6 +57,9 @@ uint32_t HAL_OTA_FlashLength();
 
 uint16_t HAL_OTA_ChunkSize();
 
+flash_device_t HAL_OTA_FlashDevice();
+
+
 bool HAL_FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                           flash_device_t destinationDeviceID, uint32_t destinationAddress,
                           uint32_t length, uint8_t function, uint8_t flags);
@@ -76,8 +79,13 @@ void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors);
 void HAL_FLASH_WriteProtectionDisable(uint32_t FLASH_Sectors);
 
+/**
+ * Erase a region of flash in preparation for flashing content.
+ * @param address   The start address to erase. Must be on a flash boundary.
+ * @param length
+ */
 void HAL_FLASH_Begin(uint32_t address, uint32_t length);
-uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t length);
+int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length);
 void HAL_FLASH_End(void);
 
 uint32_t HAL_FLASH_ModuleAddress(uint32_t address);

@@ -2,6 +2,8 @@
 #ifndef SYSTEM_UPDATE_H
 #define	SYSTEM_UPDATE_H
 
+#include "spark_protocol.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif    
@@ -9,23 +11,20 @@ extern "C" {
 typedef struct Stream Stream;
 #include <stdint.h>
 
-typedef bool (*ymodem_serial_flash_update_handler)(Stream *serialObj, uint32_t sFlashAddress);
+typedef bool (*ymodem_serial_flash_update_handler)(Stream *serialObj, FileTransfer::Descriptor& file);
 void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler);
 
 void set_start_dfu_flasher_serial_speed(uint32_t speed);
 void set_start_ymodem_flasher_serial_speed(uint32_t speed);
 
-bool system_serialSaveFile(Stream *serialObj, uint32_t sFlashAddress);
-
-bool system_serialFirmwareUpdate(Stream *serialObj);
+bool system_serialFirmwareUpdate(Stream* stream);
+bool system_serialFileTransfer(Stream* stream, FileTransfer::Descriptor& file);
 
 void system_lineCodingBitRateHandler(uint32_t bitrate);
 
-
-void Spark_Prepare_To_Save_File(uint32_t sFlashAddress, uint32_t fileSize);
-void Spark_Prepare_For_Firmware_Update(void);
-void Spark_Finish_Firmware_Update(bool reset);
-uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, uint32_t bufLen);
+int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags);
+int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file);
+int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk);
 
 #ifdef __cplusplus
 }

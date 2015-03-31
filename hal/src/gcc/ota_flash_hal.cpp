@@ -23,7 +23,7 @@ void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize)
 {    
 }
 
-uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize) 
+uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t address, uint32_t bufferSize) 
 {
     return 0;
 }

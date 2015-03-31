@@ -30,20 +30,6 @@
 #include "module_info.h"
 #include <string.h>
 
-/* Private variables ---------------------------------------------------------*/
-static volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
-
-//Flash variables for OTA use
-#ifdef USE_SERIAL_FLASH
-static uint32_t External_Flash_Start_Address = 0;
-static uint32_t External_Flash_Address = 0;
-static uint16_t External_Flash_Update_Index = 0;
-#else
-static uint32_t Internal_Flash_Start_Address = 0;
-static uint32_t Internal_Flash_Address = 0;
-static uint16_t Internal_Flash_Update_Index = 0;
-#endif
-
 /* Private functions ---------------------------------------------------------*/
 
 uint16_t FLASH_SectorToErase(uint8_t flashDeviceID, uint32_t startAddress)
@@ -173,10 +159,10 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
         /* Erase the Internal Flash pages */
         for (eraseCounter = 0; (eraseCounter < numPages); eraseCounter++)
         {
-            FLASHStatus = FLASH_EraseSector(flashSector + (8 * eraseCounter), VoltageRange_3);
+            FLASH_Status status = FLASH_EraseSector(flashSector + (8 * eraseCounter), VoltageRange_3);
 
             /* If erase operation fails, return Failure */
-            if (FLASHStatus != FLASH_COMPLETE)
+            if (status != FLASH_COMPLETE)
             {
                 return false;
             }
@@ -310,10 +296,10 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 #endif
 
             /* Program data to internal flash destination address */
-            FLASHStatus = FLASH_ProgramWord(destinationAddress, internalFlashData);
+            FLASH_Status status = FLASH_ProgramWord(destinationAddress, internalFlashData);
 
             /* If program operation fails, return Failure */
-            if (FLASHStatus != FLASH_COMPLETE)
+            if (status != FLASH_COMPLETE)
             {
                 return false;
             }
@@ -745,7 +731,8 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
 
 void FLASH_Erase(void)
 {
-    FLASH_EraseMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
+    // This is too dangerous. 
+    //FLASH_EraseMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
 }
 
 void FLASH_Backup(uint32_t FLASH_Address)
@@ -792,57 +779,33 @@ void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
     Save_SystemFlags();
 
 #ifdef USE_SERIAL_FLASH
-    External_Flash_Update_Index = 0;
-    External_Flash_Start_Address = FLASH_Address;
-    External_Flash_Address = External_Flash_Start_Address;
-
-    FLASH_EraseMemory(FLASH_SERIAL, External_Flash_Start_Address, imageSize);
+    FLASH_EraseMemory(FLASH_SERIAL, FLASH_Address, imageSize);
 #else
-    Internal_Flash_Update_Index = 0;
-    Internal_Flash_Start_Address = FLASH_Address;
-    Internal_Flash_Address = Internal_Flash_Start_Address;
-
-    FLASH_EraseMemory(FLASH_INTERNAL, Internal_Flash_Start_Address, imageSize);
+    FLASH_EraseMemory(FLASH_INTERNAL, FLASH_Address, imageSize);
 #endif
 }
 
-uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
+int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
 {
 #ifdef USE_SERIAL_FLASH
-    uint8_t *writeBuffer = pBuffer;
+    const uint8_t *writeBuffer = pBuffer;
     uint8_t readBuffer[bufferSize];
 
-    /* Write Data Buffer to SPI Flash memory */
-    sFLASH_WriteBuffer(writeBuffer, External_Flash_Address, bufferSize);
-
-    /* Read Data Buffer from SPI Flash memory */
-    sFLASH_ReadBuffer(readBuffer, External_Flash_Address, bufferSize);
-
-    /* Is the Data Buffer successfully programmed to SPI Flash memory */
-    if (0 == memcmp(writeBuffer, readBuffer, bufferSize))
+    readBuffer[0] = writeBuffer[0]+1;       // ensure different
+    int i;
+    
+    for (i=50; i-->0 && memcmp(writeBuffer, readBuffer, bufferSize); ) 
     {
-        External_Flash_Address += bufferSize;
-        External_Flash_Update_Index += 1;
-    }
-    else
-    {
-        /* Erase the problematic SPI Flash pages and back off the chunk index */
-        External_Flash_Address = ((uint32_t)(External_Flash_Address / sFLASH_PAGESIZE)) * sFLASH_PAGESIZE;
-        sFLASH_EraseSector(External_Flash_Address);
-        External_Flash_Update_Index = (uint16_t)((External_Flash_Address - External_Flash_Start_Address) / bufferSize);
+        /* Write Data Buffer to SPI Flash memory */
+        sFLASH_WriteBuffer(writeBuffer, address, bufferSize);
+
+        /* Read Data Buffer from SPI Flash memory */
+        sFLASH_ReadBuffer(readBuffer, address, bufferSize);        
     }
 
-    return External_Flash_Update_Index;
+    return !i;
 #else
     uint32_t index = 0;
-
-    if (bufferSize & 0x3) /* Not an aligned data */
-    {
-        for (index = bufferSize; index < ((bufferSize & 0xFFFC) + 4); index++)
-        {
-            pBuffer[index] = 0xFF;
-        }
-    }
 
     /* Unlock the internal flash */
     FLASH_Unlock();
@@ -850,18 +813,29 @@ uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
     FLASH_ClearFlags();
 
     /* Data received are Word multiple */
-    for (index = 0; index <  bufferSize; index += 4)
+    for (index = 0; index < (bufferSize & 0xFFFC); index += 4)
     {
-        FLASH_ProgramWord(Internal_Flash_Address, *(uint32_t *)(pBuffer + index));
-        Internal_Flash_Address += 4;
+        FLASH_ProgramWord(address, *(uint32_t *)(pBuffer + index));
+        address += 4;
+    }
+    
+    if (bufferSize & 0x3) /* Not an aligned data */
+    {
+        char buf[4];
+        memset(buf, 0xFF, 4);
+                
+        for (index = bufferSize&3; index -->0; )
+        {
+            buf[index] = pBuffer[ (bufferSize & 0xFFFC)+index ];
+        }
+        FLASH_ProgramWord(address, *(uint32_t *)(pBuffer + index));
+        
     }
 
     /* Lock the internal flash */
     FLASH_Lock();
-
-    Internal_Flash_Update_Index += 1;
-
-    return Internal_Flash_Update_Index;
+    
+    return 0;
 #endif
 }
 

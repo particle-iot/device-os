@@ -94,7 +94,7 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
 void HAL_Core_Execute_Stop_Mode(void);
 void HAL_Core_Enter_Standby_Mode(void);
 void HAL_Core_Execute_Standby_Mode(void);
-uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize);
+uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 uint16_t HAL_Bootloader_Get_Version(void);
 
 //Following is currently defined in bootloader/src/core-vx/dfu_hal.c

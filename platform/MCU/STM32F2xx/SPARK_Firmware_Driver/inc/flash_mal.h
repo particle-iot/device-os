@@ -155,7 +155,7 @@ void FLASH_Backup(uint32_t FLASH_Address);
 void FLASH_Restore(uint32_t FLASH_Address);
 uint32_t FLASH_PagesMask(uint32_t imageSize, uint32_t pageSize);
 void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize);
-uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize);
+int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize);
 void FLASH_End(void);
 
 

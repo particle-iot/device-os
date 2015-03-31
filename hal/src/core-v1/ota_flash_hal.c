@@ -119,9 +119,9 @@ void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize)
     FLASH_Begin(sFLASH_Address, fileSize);
 }
 
-uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize) 
+int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize) 
 {
-    return FLASH_Update(pBuffer, bufferSize);
+    return FLASH_Update(pBuffer, address, bufferSize);
 }
 
 void HAL_FLASH_End(void) 

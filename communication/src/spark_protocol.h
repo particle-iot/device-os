@@ -33,6 +33,7 @@
 #include "tropicssl/aes.h"
 #include "spark_protocol_functions.h"
 #include "device_keys.h"
+#include "file_transfer.h"
 #include <stdint.h>
 
 
@@ -53,9 +54,10 @@ namespace ChunkReceivedCode {
   };
 }
 
-
 class SparkProtocol
 {
+    typedef uint16_t chunk_index_t;
+    
   public:
     static const int MAX_FUNCTION_ARG_LENGTH = 64;
     static const int MAX_FUNCTION_KEY_LENGTH = 12;
@@ -120,13 +122,13 @@ class SparkProtocol
     void chunk_received(unsigned char *buf, unsigned char token,
                         ChunkReceivedCode::Enum code);
     void chunk_missed(unsigned char *buf, unsigned short chunk_index);
-    void update_ready(unsigned char *buf, unsigned char token);
+    void update_ready(unsigned char *buf, unsigned char token, uint8_t flags);
     int description(unsigned char *buf, unsigned char token,
                     unsigned char message_id_msb, unsigned char message_id_lsb);
     void ping(unsigned char *buf);
 
     /********** Queue **********/
-    const int QUEUE_SIZE;
+    const size_t QUEUE_SIZE;
     int queue_bytes_available();
     int queue_push(const char *src, int length);
     int queue_pop(char *dst, int length);
@@ -139,24 +141,21 @@ class SparkProtocol
     ProtocolState::Enum state();
 
   private:
+    struct msg {
+        uint8_t token;
+        size_t len;
+        uint8_t* response;
+        size_t response_len;
+    };
+      
     CommunicationsHandlers handlers;   // application callbacks
     char device_id[12];
     unsigned char server_public_key[MAX_SERVER_PUBLIC_KEY_LENGTH];
     unsigned char core_private_key[MAX_DEVICE_PRIVATE_KEY_LENGTH];    
     aes_context aes;    
 
-    int (*callback_send)(const unsigned char *buf, uint32_t buflen);
-    int (*callback_receive)(unsigned char *buf, uint32_t buflen);
-    void (*callback_prepare_to_save_file)(uint32_t sflash_address, uint32_t file_size);
-    void (*callback_prepare_for_firmware_update)(void);
-    void (*callback_finish_firmware_update)(bool);
-    uint32_t (*callback_calculate_crc)(unsigned char *buf, uint32_t buflen);
-    unsigned short (*callback_save_firmware_chunk)(unsigned char *buf, uint32_t buflen);
-    void (*callback_signal)(bool on);
-    system_tick_t (*callback_millis)();
-    void (*callback_set_time)(time_t t);
-    FilteringEventHandler event_handlers[4];
-
+    FilteringEventHandler event_handlers[4];    
+    SparkCallbacks callbacks;
     SparkDescriptor descriptor;
 
     unsigned char key[16];
@@ -168,9 +167,10 @@ class SparkProtocol
     system_tick_t last_message_millis;
     system_tick_t last_chunk_millis;
     unsigned short chunk_index;
+    unsigned short chunk_size;
     bool expecting_ping_ack;
     bool initialized;
-    bool updating;
+    uint8_t updating;
     char function_arg[MAX_FUNCTION_ARG_LENGTH];
 
     size_t wrap(unsigned char *buf, size_t msglen);
@@ -191,6 +191,10 @@ class SparkProtocol
                           unsigned char message_id_msb,
                           unsigned char message_id_lsb);
 
+    bool handle_update_begin(msg& m);
+    bool handle_chunk(msg& m);
+    bool handle_update_done(msg& m);
+    
     /********** Queue **********/
     unsigned char queue[640];
     const unsigned char *queue_mem_boundary;
@@ -198,13 +202,15 @@ class SparkProtocol
     unsigned char *queue_back;
     product_id_t product_id;
     product_firmware_version_t product_firmware_version;
+    FileTransfer::Descriptor file;
     inline void queue_init()
     {
         queue_front = queue_back = queue;
         queue_mem_boundary = queue + QUEUE_SIZE;
     }
-
     
+    void flag_chunk_received(chunk_index_t index);
+    int next_chunk_missing(chunk_index_t index);
 };
 
 #endif // __SPARK_PROTOCOL_H
