@@ -204,8 +204,8 @@ int main(void)
 
                 case THIRD_RETRY:	// On 3rd retry attempt, try to recover using USB DFU Mode (Final attempt)
                     USB_DFU_MODE = 1;
-                    FLASH_Erase();	// Erase the invalid firmware from internal flash
                     // fall through - No break at the end of case
+
                 default:
                     BKP_DR1_Value = 0xFFFF;
                     break;
