@@ -961,7 +961,7 @@ bool SparkProtocol::handle_update_begin(msg& message)
     uint8_t* msg_to_send = message.response;
     *msg_to_send = 0;
     *(msg_to_send + 1) = 16;
-
+    
     uint8_t flags = 0;
     int actual_len = message.len - queue[message.len-1];
     if (actual_len>=20 && queue[7]==0xFF) {
@@ -983,7 +983,8 @@ bool SparkProtocol::handle_update_begin(msg& message)
     // check the parameters only
     bool success = !callbacks.prepare_for_firmware_update(file, 1);
         
-    coded_ack(msg_to_send + 2, message.token, success ? 0 : RESPONSE_CODE(4,00), queue[2], queue[3]);
+    //coded_ack(msg_to_send + 2, message.token, success ? 0 : RESPONSE_CODE(4,00), queue[2], queue[3]);
+    empty_ack(msg_to_send+2, queue[2], queue[3]);
     if (0 > blocking_send(msg_to_send, 18))
     {
       // error
@@ -996,7 +997,7 @@ bool SparkProtocol::handle_update_begin(msg& message)
             last_chunk_millis = callbacks.millis();
             chunk_index = 0;
             chunk_size = file.chunk_size;   // save chunk size since the descriptor size is overwritten
-            updating = true;
+            this->updating = 1;
             clear_chunks_received();
             
             // send update_reaady - use fast OTA if available
@@ -1027,35 +1028,45 @@ bool SparkProtocol::handle_chunk(msg& message)
       return false;
     }
     
-    if (!updating)
+    if (!this->updating)
         return true;
 
-    uint32_t given_crc = decode_uint32(queue+8);
 
-    uint8_t option_len = queue[7] & 0xF;
-    uint8_t payload = 13;
     bool fast_ota = false;
-    if (option_len>=6) {
-        chunk_index = decode_uint16(queue+12);
-        payload = 15;
-        fast_ota = true;
+    uint8_t payload = 7;
+    
+    unsigned option = 0;    
+    uint32_t given_crc = 0;
+    while (queue[payload]!=0xFF) {
+        switch (option) {
+            case 0:
+                given_crc = decode_uint32(queue+payload+1);
+                break;
+            case 1:
+                this->chunk_index = decode_uint16(queue+payload+1);
+                fast_ota = true;
+                break; 
+        }
+        option++;
+        payload += (queue[payload]&0xF)+1;  // increase by the size. todo handle > 11        
     }
-            
-    if (0xFF==queue[payload-1])
+                    
+    if (0xFF==queue[payload])
     {           
+        payload++;
         const uint8_t* chunk = queue+payload;
         file.chunk_size = message.len - payload - queue[message.len - 1];   // remove length added due to pkcs #7 padding?
         file.chunk_address  = file.file_address + (chunk_index * chunk_size);
         
         uint32_t crc = callbacks.calculate_crc(chunk, file.chunk_size);
-        if (crc == given_crc)
+        if (crc == given_crc && (!fast_ota || updating==2 || chunk_index&1))
         {            
             callbacks.save_firmware_chunk(file, chunk);
             if (!fast_ota)
                 chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::OK);
             flag_chunk_received(chunk_index);
             if (updating==2 && next_chunk_missing(0)<0) {       // no more chunks remaining
-                updating = false;
+                reset_updating();
                 callbacks.finish_firmware_update(file);
                 notify_update_done(msg_to_send+2);
                 if (0 > blocking_send(msg_to_send, 18))
@@ -1082,19 +1093,19 @@ bool SparkProtocol::handle_chunk(msg& message)
 
 inline void SparkProtocol::flag_chunk_received(chunk_index_t idx)
 {
-    chunk_bitmap()[idx>>3] |= 1<<(idx&7);
+    chunk_bitmap()[idx>>3] |= uint8_t(1<<(idx&7));
 }
 
 inline bool SparkProtocol::is_chunk_received(chunk_index_t idx)
 {
-    return (chunk_bitmap()[idx>>3] & 1<<(idx&7));
+    return (chunk_bitmap()[idx>>3] & uint8_t(1<<(idx&7)));
 }
 
 int SparkProtocol::next_chunk_missing(chunk_index_t idx) 
 {
     // for now just iterate and test
     int chunk = -1;
-    unsigned chunks = file.chunk_count();
+    unsigned chunks = file.chunk_count(chunk_size);
     for (;idx<chunks; idx++) 
     {
         if (!is_chunk_received(idx))
@@ -1148,7 +1159,7 @@ bool SparkProtocol::handle_update_done(msg& message)
     }
 
     if (!missing) {
-        updating = false;
+        reset_updating();
         callbacks.finish_firmware_update(file);
     }
     else {

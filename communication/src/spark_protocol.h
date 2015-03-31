@@ -41,6 +41,14 @@
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
 #endif
 
+#ifndef PROTOCOL_BUFFER_SIZE
+    #if PLATFORM_ID<2
+        #define PROTOCOL_BUFFER_SIZE 640
+    #else
+        #define PROTOCOL_BUFFER_SIZE 800
+    #endif
+#endif
+
 namespace ProtocolState {
   enum Enum {
     READ_NONCE
@@ -196,7 +204,7 @@ class SparkProtocol
     bool handle_update_done(msg& m);
     
     /********** Queue **********/
-    unsigned char queue[640];
+    unsigned char queue[PROTOCOL_BUFFER_SIZE];
     const unsigned char *queue_mem_boundary;
     unsigned char *queue_front;
     unsigned char *queue_back;
@@ -211,7 +219,7 @@ class SparkProtocol
     
     unsigned chunk_bitmap_size()
     {
-        return file.chunk_count()+7/8;
+        return (file.chunk_count(chunk_size)+7)/8;
     }
 
     uint8_t* chunk_bitmap() 
@@ -220,10 +228,12 @@ class SparkProtocol
     }
     
     void clear_chunks_received();
+    bool is_chunk_received(chunk_index_t idx);
     void flag_chunk_received(chunk_index_t index);
     int next_chunk_missing(chunk_index_t index);
     int send_missing_chunks();
     void notify_update_done(uint8_t* buf);
+    
 };
 
 #endif // __SPARK_PROTOCOL_H

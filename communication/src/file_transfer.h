@@ -45,7 +45,7 @@ namespace FileTransfer {
         
         uint32_t file_address;
         
-        unsigned chunk_count() {            
+        unsigned chunk_count(unsigned chunk_size) {            
             return chunk_size ? (file_length+chunk_size-1)/chunk_size : 0;
         }
     };
