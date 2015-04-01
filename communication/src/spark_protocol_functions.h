@@ -39,20 +39,20 @@ struct SparkCallbacks
    * @param flags 1 dry run only. 
    * Return 0 on success. 
    */
-  int (*prepare_for_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags);
+  int (*prepare_for_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
   
   /**
    * 
    * @return 0 on success
    */
-  int (*save_firmware_chunk)(FileTransfer::Descriptor& descriptor, const unsigned char* chunk);
+  int (*save_firmware_chunk)(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void*);
   
   /**
    * Finalize the data storage. 
    * #param reset - if the device should be reset to apply the changes.
    * #return 0 on success. Other values indicate an issue with the file.
    */
-  int (*finish_firmware_update)(FileTransfer::Descriptor& data);
+  int (*finish_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
   
   uint32_t (*calculate_crc)(const unsigned char *buf, uint32_t buflen);
   

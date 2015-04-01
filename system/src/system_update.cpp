@@ -107,7 +107,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
 #endif
 }
 
-int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags)
+int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {    
     if (file.store==FileTransfer::Store::FIRMWARE) 
     {
@@ -140,36 +140,38 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
 #define USER_OTA_MODULE_FUNCTION    MODULE_FUNCTION_MONO_FIRMWARE
 #endif
 
-int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file)
+int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {
     SPARK_FLASH_UPDATE = 0;
     TimingFlashUpdateTimeout = 0;
 
-    if (file.store==FileTransfer::Store::FIRMWARE)
-    {        
-        // todo - VerifyCRC should also take a device (FLASH_INTERNAL | FLASH_EXTERNAL)
-        uint32_t moduleAddress = HAL_FLASH_ModuleAddress(HAL_OTA_FlashAddress());
-        uint32_t moduleLength = HAL_FLASH_ModuleLength(HAL_OTA_FlashAddress());
+    if (flags & 1) {    // update successful
+        if (file.store==FileTransfer::Store::FIRMWARE)
+        {        
+            // todo - VerifyCRC should also take a device (FLASH_INTERNAL | FLASH_EXTERNAL)
+            uint32_t moduleAddress = HAL_FLASH_ModuleAddress(HAL_OTA_FlashAddress());
+            uint32_t moduleLength = HAL_FLASH_ModuleLength(HAL_OTA_FlashAddress());
 
-        if (HAL_FLASH_VerifyCRC32(HAL_OTA_FlashAddress(), moduleLength) != false)
-        {
-            HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, HAL_OTA_FlashAddress(),
-                                                    FLASH_INTERNAL, moduleAddress,
-                                                    (moduleLength + 4),//+4 to copy the CRC too                
-                                                    USER_OTA_MODULE_FUNCTION,
-                                                    MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION);//true to verify the CRC during copy also
-            
-            HAL_FLASH_End();
+            if (HAL_FLASH_VerifyCRC32(HAL_OTA_FlashAddress(), moduleLength) != false)
+            {
+                HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, HAL_OTA_FlashAddress(),
+                                                        FLASH_INTERNAL, moduleAddress,
+                                                        (moduleLength + 4),//+4 to copy the CRC too                
+                                                        USER_OTA_MODULE_FUNCTION,
+                                                        MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION);//true to verify the CRC during copy also
 
+                HAL_FLASH_End();
+
+            }
+            // todo - talk with application and see if now is a good time to reset
+            HAL_Core_System_Reset();        
         }
-        // todo - talk with application and see if now is a good time to reset
-        HAL_Core_System_Reset();        
     }
     RGB.control(false);
     return 0;
 }
 
-int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk)
+int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved)
 {    
     TimingFlashUpdateTimeout = 0;
     int result = -1;

@@ -231,9 +231,13 @@ class SparkProtocol
     bool is_chunk_received(chunk_index_t idx);
     void flag_chunk_received(chunk_index_t index);
     int next_chunk_missing(chunk_index_t index);
-    int send_missing_chunks();
+    int send_missing_chunks(int count);
     void notify_update_done(uint8_t* buf);
     
+    /**
+     * Marks the indices of missed chunks not yet requested.
+     */
+    chunk_index_t missed_chunk_index;
 };
 
 #endif // __SPARK_PROTOCOL_H
