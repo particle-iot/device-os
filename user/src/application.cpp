@@ -25,6 +25,7 @@
 
 /* Includes ------------------------------------------------------------------*/  
 #include "application.h"
+#include "stdarg.h"
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
@@ -34,9 +35,27 @@ int tinkerAnalogWrite(String command);
 
 SYSTEM_MODE(AUTOMATIC);
 
+bool initialized = false;
+
+void serial_dump(const char* msg, ...)
+{
+    if (!initialized) {
+        return;
+    }
+    char buf[128];
+    va_list vl;
+    va_start(vl,msg);
+    vsprintf(buf, msg, vl);    
+    Serial.println(buf);
+    va_end(vl);
+}
+
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
+    Serial.begin(9600);
+    //initialized = true;
+    
     //Setup the Tinker application here
     //Register all the Tinker functions
     Spark.function("digitalread", tinkerDigitalRead);
@@ -50,7 +69,7 @@ void setup()
 void loop()
 {
     RGB.control(true);
-    RGB.color(255, 255, 255);
+    RGB.color(255, 0, 0);
     delay(500);
     RGB.color(64, 0, 64);
     delay(500);
