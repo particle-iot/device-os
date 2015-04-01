@@ -202,6 +202,50 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
     return true;
 }
 
+bool FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length, bool protect)
+{
+    uint32_t pageCounter = 0;
+    uint32_t numPages = 0;
+
+    if (FLASH_CheckValidAddressRange(flashDeviceID, startAddress, length) != true)
+    {
+        return false;
+    }
+
+    if (flashDeviceID == FLASH_INTERNAL)
+    {
+        /* Get the first OB_WRP_Sector */
+        uint16_t OB_WRP_Sector = FLASH_SectorToWriteProtect(FLASH_INTERNAL, startAddress);
+
+        if (OB_WRP_Sector < OB_WRP_Sector_0)
+        {
+            return false;
+        }
+
+        /* Get the number of Internal Flash Sectors from length info */
+        numPages = FLASH_PagesMask(length, INTERNAL_FLASH_PAGE_SIZE);
+
+        /* Enable/Disable Sector Write Protection */
+        for (pageCounter = 0; (pageCounter < numPages); pageCounter++)
+        {
+            if (protect)
+            {
+                FLASH_WriteProtection_Enable(OB_WRP_Sector);
+            }
+            else
+            {
+                FLASH_WriteProtection_Disable(OB_WRP_Sector);
+            }
+
+            OB_WRP_Sector = OB_WRP_Sector << 1;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
 bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
     uint32_t eraseCounter = 0;
@@ -214,9 +258,6 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
 
     if (flashDeviceID == FLASH_INTERNAL)
     {
-        /* Check which sector's write protection needs to be disabled */
-        uint16_t OB_WRP_Sector = FLASH_SectorToWriteProtect(FLASH_INTERNAL, startAddress);
-
         /* Check which sector has to be erased */
         uint16_t flashSector = FLASH_SectorToErase(FLASH_INTERNAL, startAddress);
 
@@ -224,6 +265,9 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
         {
             return false;
         }
+
+        /* Disable memory write protection if any */
+        FLASH_WriteProtectMemory(FLASH_INTERNAL, startAddress, length, false);
 
         /* Unlock the Flash Program Erase Controller */
         FLASH_Unlock();
@@ -237,10 +281,6 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
         /* Erase the Internal Flash pages */
         for (eraseCounter = 0; (eraseCounter < numPages); eraseCounter++)
         {
-            /* Disable sector write protection */
-            FLASH_WriteProtection_Disable(OB_WRP_Sector);
-            OB_WRP_Sector = OB_WRP_Sector << 1;
-
             FLASHStatus = FLASH_EraseSector(flashSector + (8 * eraseCounter), VoltageRange_3);
 
             /* If erase operation fails, return Failure */
