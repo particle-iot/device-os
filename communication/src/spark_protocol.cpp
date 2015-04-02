@@ -1094,9 +1094,10 @@ bool SparkProtocol::handle_chunk(msg& message)
         if (crc_valid)
         {            
             callbacks.save_firmware_chunk(file, chunk, NULL);
-            if (true || !fast_ota || (chunk_index & 32)==0)
+            if (!fast_ota || (updating!=2 && (true || (chunk_index & 32)==0))) {
                 chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::OK);
-            has_response = true;
+                has_response = true;
+            }            
             flag_chunk_received(chunk_index);           
             if (updating==2) {                      // clearing up missed chunks at the end of fast OTA
                 chunk_index_t next_missed = next_chunk_missing(0);
@@ -1108,7 +1109,11 @@ bool SparkProtocol::handle_chunk(msg& message)
                     has_response = true;
                 } 
                 else {                                        
+                    if (has_response && 0 > blocking_send(msg_to_send, 18))
+                      return false;
+                    
                     send_missing_chunks(MISSED_CHUNKS_TO_SEND);
+                    has_response = false;
                 }
             }
             chunk_index++;
