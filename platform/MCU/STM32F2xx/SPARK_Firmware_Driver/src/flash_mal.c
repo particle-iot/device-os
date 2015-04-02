@@ -32,6 +32,67 @@
 
 /* Private functions ---------------------------------------------------------*/
 
+uint16_t FLASH_SectorToWriteProtect(uint8_t flashDeviceID, uint32_t startAddress)
+{
+    uint16_t OB_WRP_Sector = 0;//Invalid write protection
+
+    if (flashDeviceID != FLASH_INTERNAL)
+    {
+        return OB_WRP_Sector;
+    }
+
+    if (startAddress < 0x08004000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_0;
+    }
+    else if (startAddress < 0x08008000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_1;
+    }
+    else if (startAddress < 0x0800C000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_2;
+    }
+    else if (startAddress < 0x08010000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_3;
+    }
+    else if (startAddress < 0x08020000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_4;
+    }
+    else if (startAddress < 0x08040000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_5;
+    }
+    else if (startAddress < 0x08060000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_6;
+    }
+    else if (startAddress < 0x08080000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_7;
+    }
+    else if (startAddress < 0x080A0000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_8;
+    }
+    else if (startAddress < 0x080C0000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_9;
+    }
+    else if (startAddress < 0x080E0000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_10;
+    }
+    else if (startAddress < 0x08100000)
+    {
+        OB_WRP_Sector = OB_WRP_Sector_11;
+    }
+
+    return OB_WRP_Sector;
+}
+
 uint16_t FLASH_SectorToErase(uint8_t flashDeviceID, uint32_t startAddress)
 {
     uint16_t flashSector = 0xFFFF;//Invalid sector
@@ -127,6 +188,50 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
     return true;
 }
 
+bool FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length, bool protect)
+{
+    uint32_t pageCounter = 0;
+    uint32_t numPages = 0;
+
+    if (FLASH_CheckValidAddressRange(flashDeviceID, startAddress, length) != true)
+    {
+        return false;
+    }
+
+    if (flashDeviceID == FLASH_INTERNAL)
+    {
+        /* Get the first OB_WRP_Sector */
+        uint16_t OB_WRP_Sector = FLASH_SectorToWriteProtect(FLASH_INTERNAL, startAddress);
+
+        if (OB_WRP_Sector < OB_WRP_Sector_0)
+        {
+            return false;
+        }
+
+        /* Get the number of Internal Flash Sectors from length info */
+        numPages = FLASH_PagesMask(length, INTERNAL_FLASH_PAGE_SIZE);
+
+        /* Enable/Disable Sector Write Protection */
+        for (pageCounter = 0; (pageCounter < numPages); pageCounter++)
+        {
+            if (protect)
+            {
+                FLASH_WriteProtection_Enable(OB_WRP_Sector);
+            }
+            else
+            {
+                FLASH_WriteProtection_Disable(OB_WRP_Sector);
+            }
+
+            OB_WRP_Sector = OB_WRP_Sector << 1;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
 bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
     uint32_t eraseCounter = 0;
@@ -146,6 +251,9 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
         {
             return false;
         }
+
+        /* Disable memory write protection if any */
+        FLASH_WriteProtectMemory(FLASH_INTERNAL, startAddress, length, false);
 
         /* Unlock the Flash Program Erase Controller */
         FLASH_Unlock();

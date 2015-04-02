@@ -98,6 +98,9 @@ void system_part2_pre_init() {
 
     module_user_part_restore_and_validation_check();
 
+    // write protect system module parts if not already protected
+    FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
+
     if (is_user_module_valid()) {
         void* new_heap_top = module_user_pre_init();
         if (new_heap_top>sbrk_heap_top)

@@ -97,10 +97,14 @@ uint16_t FLASH_If_Erase(uint32_t Add)
   FLASH_ClearFlags();
 
 #if defined (STM32F2XX) || defined (STM32F4XX)
+  /* Disable sector write protection if it's already protected */
+  uint16_t OB_WRP_Sector = FLASH_SectorToWriteProtect(FLASH_INTERNAL, Add);
+  FLASH_WriteProtection_Disable(OB_WRP_Sector);
+
   /* Check which sector has to be erased */
   uint16_t FLASH_Sector = FLASH_SectorToErase(FLASH_INTERNAL, Add);
-
   FLASH_EraseSector(FLASH_Sector, VoltageRange_3);
+
 #elif defined(STM32F10X_CL)
   /* Call the standard Flash erase function */
   FLASH_ErasePage(Add);
