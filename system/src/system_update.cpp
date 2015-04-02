@@ -149,12 +149,14 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
         if (file.store==FileTransfer::Store::FIRMWARE)
         {        
             // todo - VerifyCRC should also take a device (FLASH_INTERNAL | FLASH_EXTERNAL)
-            uint32_t moduleAddress = HAL_FLASH_ModuleAddress(HAL_OTA_FlashAddress());
-            uint32_t moduleLength = HAL_FLASH_ModuleLength(HAL_OTA_FlashAddress());
-
-            if (HAL_FLASH_VerifyCRC32(HAL_OTA_FlashAddress(), moduleLength) != false)
+            // and must verify that the address/length is within range
+            uint32_t ota_address = HAL_OTA_FlashAddress();
+            uint32_t moduleAddress = HAL_FLASH_ModuleAddress(ota_address);            
+            uint32_t moduleLength = HAL_FLASH_ModuleLength(ota_address);
+            
+            if (HAL_FLASH_VerifyCRC32(ota_address, moduleLength))
             {
-                HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, HAL_OTA_FlashAddress(),
+                HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, ota_address,
                                                         FLASH_INTERNAL, moduleAddress,
                                                         (moduleLength + 4),//+4 to copy the CRC too                
                                                         USER_OTA_MODULE_FUNCTION,
@@ -164,6 +166,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
 
             }
             // todo - talk with application and see if now is a good time to reset
+            // if update not applied, do we need to reset?
             HAL_Core_System_Reset();        
         }
     }
@@ -175,7 +178,7 @@ int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chu
 {    
     TimingFlashUpdateTimeout = 0;
     int result = -1;
-    if (file.store==FileTransfer::Store::FIRMWARE) 
+    if (file.store==FileTransfer::Store::FIRMWARE)
     {
         result = HAL_FLASH_Update(chunk, file.chunk_address, file.chunk_size);
         LED_Toggle(LED_RGB);

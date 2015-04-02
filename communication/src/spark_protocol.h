@@ -230,7 +230,9 @@ class SparkProtocol
     void clear_chunks_received();
     bool is_chunk_received(chunk_index_t idx);
     void flag_chunk_received(chunk_index_t index);
-    int next_chunk_missing(chunk_index_t index);
+    chunk_index_t next_chunk_missing(chunk_index_t index);
+    const chunk_index_t NO_CHUNKS_MISSING = 65535;
+    const chunk_index_t MAX_CHUNKS = 65535;
     int send_missing_chunks(int count);
     void notify_update_done(uint8_t* buf);
     

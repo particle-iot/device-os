@@ -54,7 +54,7 @@ void serial_dump(const char* msg, ...)
 void setup()
 {
     Serial.begin(9600);
-    //initialized = true;
+    initialized = true;
     
     //Setup the Tinker application here
     //Register all the Tinker functions
@@ -65,11 +65,15 @@ void setup()
     Spark.function("analogwrite", tinkerAnalogWrite);
 }
 
+void doing_fast_ota() {
+    RGB.color(255,255,255);
+}
+
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
     RGB.control(true);
-    RGB.color(255, 0, 0);
+    RGB.color(255, 255, 0);
     delay(500);
     RGB.color(64, 0, 64);
     delay(500);
