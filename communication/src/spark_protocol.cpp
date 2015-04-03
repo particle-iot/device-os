@@ -39,11 +39,13 @@
 
 #define RESPONSE_CODE(x,y)  (x<<5 || y)
 
+#if 0
 extern void serial_dump(const char* msg, ...);
 extern void doing_fast_ota();
-
-//#define doing_fast_ota()
-//#define serial_dump(x, ...)
+#else
+#define doing_fast_ota()
+#define serial_dump(x, ...)
+#endif
 
 /**
  * Handle the cryptographically secure random seed from the cloud by using
@@ -1130,7 +1132,7 @@ bool SparkProtocol::handle_chunk(msg& message)
         }
         uint32_t crc = callbacks.calculate_crc(chunk, file.chunk_size);
         bool has_response = false;
-        bool crc_valid = (crc == given_crc && !(rand()&3));
+        bool crc_valid = (crc == given_crc);
         serial_dump("chunk idx=%d crc=%d fast=%d updating=%d", chunk_index, crc_valid, fast_ota, updating);
         if (crc_valid)
         {            

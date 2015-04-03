@@ -146,7 +146,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
 {
     SPARK_FLASH_UPDATE = 0;
     TimingFlashUpdateTimeout = 0;
-    serial_dump("update finished flags=%d store=%d", flags, file.store);
+    //serial_dump("update finished flags=%d store=%d", flags, file.store);
     
     if (flags & 1) {    // update successful
         if (file.store==FileTransfer::Store::FIRMWARE)
@@ -168,7 +168,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
                 HAL_FLASH_End();
 
             }
-            serial_dump("resetting");            
+            //serial_dump("resetting");            
             // todo - talk with application and see if now is a good time to reset
             // if update not applied, do we need to reset?
             HAL_Core_System_Reset();        

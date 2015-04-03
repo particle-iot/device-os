@@ -35,30 +35,9 @@ int tinkerAnalogWrite(String command);
 
 SYSTEM_MODE(AUTOMATIC);
 
-bool initialized = false;
-
-void serial_dump(const char* msg, ...)
-{
-    if (!initialized) {
-        return;
-    }
-    char buf[128];
-    va_list vl;
-    va_start(vl,msg);
-    vsprintf(buf, msg, vl);    
-    Serial1.println(buf);
-    Serial1.flush();
-    va_end(vl);    
-}
-
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
-    Serial1.begin(9600);
-    initialized = true;
-    
-    serial_dump("setup done");
-    
     //Setup the Tinker application here
     //Register all the Tinker functions
     Spark.function("digitalread", tinkerDigitalRead);
@@ -68,26 +47,9 @@ void setup()
     Spark.function("analogwrite", tinkerAnalogWrite);
 }
 
-void doing_fast_ota() {
-    RGB.color(255,255,255);
-}
-
-uint32_t last_loop = 0;
-
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-    if (millis()-last_loop>5000) {
-        last_loop = millis();
-        serial_dump("loop");
-    }
-    RGB.control(true);
-    for (int i=0; i<1; i++) {
-        RGB.color(255, 255, 0);    
-        delay(500);
-        RGB.color(64, 0, 64);
-        delay(500);
-    }
     //This will run in a loop
 }
 
