@@ -36,6 +36,8 @@ extern "C" {
 
     const uint8_t* fetch_device_public_key();
 
+    size_t hex_decode(uint8_t* buf, size_t len, const char* hex);
+    
 #ifdef	__cplusplus
 }
 #endif

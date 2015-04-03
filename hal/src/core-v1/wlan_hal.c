@@ -249,7 +249,23 @@ int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char
 
   case WLAN_SEC_WEP://WEP
     {
-      wlan_profile_index = wlan_add_profile(WLAN_SEC_WEP,    // Security type
+        char buf[32];
+
+        // Get WEP key from string, needs converting
+        passwordLen = passwordLen / 2;
+        char byteStr[3];
+        byteStr[2] = '\0';
+        memset(buf, 0, sizeof (buf));
+        unsigned i;
+        for (i = 0; i < passwordLen; i++)
+        { // Basic loop to convert text-based WEP key to byte array, can definitely be improved
+            byteStr[0] = password[2 * i];
+            byteStr[1] = password[(2 * i) + 1];
+            buf[i] = strtoul(byteStr, NULL, 16);
+        }
+        password = buf;
+        
+     wlan_profile_index = wlan_add_profile(WLAN_SEC_WEP,    // Security type
         (unsigned char *)ssid,                                // SSID
         ssidLen,                                              // SSID length
         NULL,                                                 // BSSID

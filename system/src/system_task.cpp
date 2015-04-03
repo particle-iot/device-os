@@ -679,22 +679,6 @@ void network_set_credentials(NetworkCredentials* credentials)
         security = WLAN_SEC_UNSEC;
     }
 
-    char buf[14];
-    if (security == WLAN_SEC_WEP)
-    {
-        // Get WEP key from string, needs converting
-        credentials->password_len = (strlen(credentials->password) / 2); // WEP key length in bytes
-        char byteStr[3];
-        byteStr[2] = '\0';
-        memset(buf, 0, sizeof (buf));
-        for (uint32_t i = 0; i < credentials->password_len; i++)
-        { // Basic loop to convert text-based WEP key to byte array, can definitely be improved
-            byteStr[0] = credentials->password[2 * i];
-            byteStr[1] = credentials->password[(2 * i) + 1];
-            buf[i] = strtoul(byteStr, NULL, 16);
-        }
-        credentials->password = buf;
-    }
     credentials->security = security;
 
     wlan_set_credentials(credentials);
