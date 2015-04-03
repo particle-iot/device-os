@@ -297,7 +297,7 @@ class VersionCommand : public JSONCommand {
 
 public:
     void produce_response(Writer& out, int result) {
-        out.write("{\"v\":1}");
+        out.write("{\"v\":2}");
     }
 };
 
