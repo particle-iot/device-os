@@ -212,6 +212,12 @@ void HAL_WLAN_notify_socket_closed(sock_handle_t socket);
  */
 int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna);
 
+/**
+ * Cancel a previous call to any blocking wifi connect method.
+ * @param called_from_isr - set to true if this is being called from an ISR.
+ */
+void wlan_connect_cancel(bool called_from_isr);
+
 #ifdef	__cplusplus
 }
 #endif

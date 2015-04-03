@@ -135,3 +135,6 @@ void SPARK_WLAN_SmartConfigProcess()
 {
 }
 
+void wlan_connect_cancel(bool called_from_isr
+{    
+}

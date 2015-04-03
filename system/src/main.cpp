@@ -124,6 +124,7 @@ extern "C" void HAL_SysTick_Handler(void)
 
         if (!SPARK_WLAN_SLEEP)
         {
+            wlan_connect_cancel(true);
             WLAN_SMART_CONFIG_START = 1;
         }
     }

@@ -729,6 +729,9 @@ extern wwd_result_t wwd_wifi_test_credentials( wiced_scan_result_t* ap, const ui
 extern uint8_t  wiced_wifi_get_powersave_mode( void );
 extern uint16_t wiced_wifi_get_return_to_sleep_delay( void );
 
+
+void wwd_wifi_join_cancel(wiced_bool_t called_from_isr);
+
 /*@+exportlocal@*/
 
 #ifdef __cplusplus

@@ -444,3 +444,9 @@ int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna) {
     else
         return -1;
 }
+
+
+void wlan_connect_cancel(bool called_from_isr)
+{
+    wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
+}

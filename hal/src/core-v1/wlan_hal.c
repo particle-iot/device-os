@@ -514,3 +514,7 @@ void SPARK_WLAN_SmartConfigProcess()
     wlan_set_credentials_internal((const char*)ssidPtr, ssidLen, (const char*)decKeyPtr, keyLen, profileArray[profileArray[0] + 2]);
 }
 
+void wlan_connect_cancel(bool called_from_isr)
+{
+    // no-op cc3000 connection is asynchronous
+}
