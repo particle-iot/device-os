@@ -401,24 +401,25 @@ struct ConfigureAP {
 };
 
     
-uint8_t hex_nibble(char c) {
+uint8_t hex_nibble(unsigned char c) {
     if (c<'0')
         return 0;
     if (c<='9')
         return c-'0';
-    if (c<='z')
-        return c-'a'+10;
     if (c<='Z')
         return c-'A'+10;
+    if (c<='z')
+        return c-'a'+10;
     return 0;
 }
 
 size_t hex_decode(uint8_t* buf, size_t len, const char* hex) {
-    char c = '0'; // any non-null character
+    unsigned char c = '0'; // any non-null character
     size_t i;
     for (i=0; i<len && c; i++) {
         uint8_t b;
-        c = *hex++;
+        if (!(c = *hex++))
+            break;
         b = hex_nibble(c)<<4;
         if (c) {
             c = *hex++;

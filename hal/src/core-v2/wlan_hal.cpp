@@ -302,7 +302,7 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
         entry.details.SSID.length = ssidLen;
         if (security==WICED_SECURITY_WEP_PSK) {
             // convert from hex to binary
-            entry.security_key_length = hex_decode((uint8_t*)entry.security_key, std::min(uint16_t(32), passwordLen), password);
+            entry.security_key_length = hex_decode((uint8_t*)entry.security_key, sizeof(entry.security_key), password);
         }
         else {
             memcpy(entry.security_key, password, passwordLen);        
