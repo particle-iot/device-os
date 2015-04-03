@@ -123,7 +123,7 @@ int SparkProtocol::handshake(void)
   return 0;
 }
 
-const int MISSED_CHUNKS_TO_SEND = 1;
+const int MISSED_CHUNKS_TO_SEND = 50;
 
 // Returns true if no errors and still connected.
 // Returns false if there was an error, and we are probably disconnected.
@@ -258,7 +258,7 @@ int SparkProtocol::blocking_receive(unsigned char *buf, int length)
     if (0 > bytes_or_error)
     {
       // error, disconnected
-        serial_dump("receive error %d", bytes_or_error);
+      serial_dump("receive error %d", bytes_or_error);
       return bytes_or_error;
     }
     else if (0 < bytes_or_error)
@@ -723,6 +723,43 @@ void SparkProtocol::chunk_received(unsigned char *buf,
   separate_response(buf, token, code);
 }
 
+
+int SparkProtocol::send_missing_chunks(int count)
+{
+    int sent = 0;
+    chunk_index_t idx = 0;
+
+    uint8_t* buf = queue+2;
+    unsigned short message_id = next_message_id();
+    buf[0] = 0x40; // confirmable, no token
+    buf[1] = 0x01; // code 0.01 GET
+    buf[2] = message_id >> 8;
+    buf[3] = message_id & 0xff;
+    buf[4] = 0xb1; // one-byte Uri-Path option
+    buf[5] = 'c';
+    buf[6] = 0xff; // payload marker
+
+    while ((idx=next_chunk_missing(chunk_index_t(idx)))!=NO_CHUNKS_MISSING && sent<count)
+    {
+        buf[(sent*2)+7] = idx >> 8;
+        buf[(sent*2)+8] = idx & 0xFF;
+
+        serial_dump("Sent missing chunk %d", idx);
+
+        missed_chunk_index = idx;
+        idx++;
+        sent++;
+    }   
+    
+    if (sent>0) {
+        size_t message_size = 7+(sent*2);
+        message_size = wrap(queue, message_size);
+        if (0 > blocking_send(queue, message_size))
+            return -1;
+    }    
+    return sent;
+}
+
 void SparkProtocol::chunk_missed(unsigned char *buf, unsigned short chunk_index)
 {
   unsigned short message_id = next_message_id();
@@ -736,7 +773,7 @@ void SparkProtocol::chunk_missed(unsigned char *buf, unsigned short chunk_index)
   buf[6] = 0xff; // payload marker
   buf[7] = chunk_index >> 8;
   buf[8] = chunk_index & 0xff;
-
+  
   memset(buf + 9, 7, 7); // PKCS #7 padding
 
   encrypt(buf, 16);
@@ -1004,9 +1041,8 @@ bool SparkProtocol::handle_update_begin(msg& message)
     if (success) {
         success = file.chunk_count(file.chunk_size) < MAX_CHUNKS;
     }
-    
-    //coded_ack(msg_to_send + 2, message.token, success ? 0 : RESPONSE_CODE(4,00), queue[2], queue[3]);
-    empty_ack(msg_to_send+2, queue[2], queue[3]);
+        
+    coded_ack(msg_to_send+2, success ? 0x00 : RESPONSE_CODE(4,00), queue[2], queue[3]);    
     if (0 > blocking_send(msg_to_send, 18))
     {
       // error
@@ -1111,9 +1147,10 @@ bool SparkProtocol::handle_chunk(msg& message)
                 else {                                        
                     if (has_response && 0 > blocking_send(msg_to_send, 18))
                       return false;
-                    
-                    send_missing_chunks(MISSED_CHUNKS_TO_SEND);
                     has_response = false;
+
+                    if (next_missed>missed_chunk_index)
+                        send_missing_chunks(MISSED_CHUNKS_TO_SEND);
                 }
             }
             chunk_index++;
@@ -1171,30 +1208,6 @@ void SparkProtocol::clear_chunks_received()
     memset(queue+QUEUE_SIZE-bytes, 0, bytes);
 }
 
-int SparkProtocol::send_missing_chunks(int count)
-{
-    int sent = 0;
-    chunk_index_t idx = 0;
-    
-    while ((idx=next_chunk_missing(chunk_index_t(idx)))!=NO_CHUNKS_MISSING && sent<count)
-    {
-        queue[0] = 0;
-        queue[1] = 16;
-        chunk_missed(queue + 2, idx);
-        if (0 > blocking_send(queue, 18))
-        {
-            sent = -1;
-            break;
-        }
-        serial_dump("Sent missing chunk %d", idx);
-
-        missed_chunk_index = idx;
-        idx++;
-        sent++;
-    }    
-    return sent;
-}
-
 bool SparkProtocol::handle_update_done(msg& message)
 {
     // send ACK 2.04
@@ -1218,8 +1231,7 @@ bool SparkProtocol::handle_update_done(msg& message)
         callbacks.finish_firmware_update(file, 1, NULL);
     }
     else {
-        updating = 2;       // flag that we are sending missing chunks.
-        missed_chunk_index = index;
+        updating = 2;       // flag that we are sending missing chunks.        
         serial_dump("update done - missing chunks starting at %d", index);
         send_missing_chunks(MISSED_CHUNKS_TO_SEND);
         last_chunk_millis = callbacks.millis();
@@ -1615,12 +1627,14 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
   else return 2;
 }
 
-inline void SparkProtocol::empty_ack(unsigned char *buf,
+inline void SparkProtocol::coded_ack(unsigned char *buf,
+                                     unsigned char code,
                                      unsigned char message_id_msb,
-                                     unsigned char message_id_lsb)
+                                     unsigned char message_id_lsb
+                                     )
 {
   buf[0] = 0x60; // acknowledgment, no token
-  buf[1] = 0x00; // code signifying empty message
+  buf[1] = code;
   buf[2] = message_id_msb;
   buf[3] = message_id_lsb;
 

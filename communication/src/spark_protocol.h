@@ -190,10 +190,19 @@ class SparkProtocol
     void separate_response_with_payload(unsigned char *buf, unsigned char token,
         unsigned char code, unsigned char* payload, unsigned payload_len);
 
-    inline void empty_ack(unsigned char *buf,
+    void coded_ack(unsigned char *buf,
+                      unsigned char code,
+                      unsigned char message_id_msb,
+                      unsigned char message_id_lsb);
+
+    void empty_ack(unsigned char *buf,
                           unsigned char message_id_msb,
-                          unsigned char message_id_lsb);
-    inline void coded_ack(unsigned char *buf,
+                          unsigned char message_id_lsb) {
+        coded_ack(buf, message_id_msb, message_id_lsb, 0x00);
+    };
+    
+    
+    void coded_ack(unsigned char *buf,
                           unsigned char token,
                           unsigned char code,
                           unsigned char message_id_msb,
