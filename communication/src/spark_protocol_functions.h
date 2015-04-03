@@ -13,6 +13,7 @@
 #include "spark_descriptor.h"
 #include "events.h"
 #include "dsakeygen.h"
+#include "file_transfer.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -28,17 +29,39 @@ struct SparkKeys
   unsigned char *core_public;
 };
 
+    
 struct SparkCallbacks
 {
   int (*send)(const unsigned char *buf, uint32_t buflen);
   int (*receive)(unsigned char *buf, uint32_t buflen);
-  void (*prepare_to_save_file)(uint32_t sflash_address, uint32_t file_size);
-  void (*prepare_for_firmware_update)(void);
-  void (*finish_firmware_update)(void);
-  uint32_t (*calculate_crc)(unsigned char *buf, uint32_t buflen);
-  unsigned short (*save_firmware_chunk)(unsigned char *buf, uint32_t buflen);
+  
+  /**
+   * @param flags 1 dry run only. 
+   * Return 0 on success. 
+   */
+  int (*prepare_for_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
+  
+  /**
+   * 
+   * @return 0 on success
+   */
+  int (*save_firmware_chunk)(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void*);
+  
+  /**
+   * Finalize the data storage. 
+   * #param reset - if the device should be reset to apply the changes.
+   * #return 0 on success. Other values indicate an issue with the file.
+   */
+  int (*finish_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
+  
+  uint32_t (*calculate_crc)(const unsigned char *buf, uint32_t buflen);
+  
   void (*signal)(bool on);
   system_tick_t (*millis)();
+  
+  /**
+   * Sets the time. Time is given in milliseconds since the epoch, UCT.
+   */
   void (*set_time)(time_t t);
 };
 

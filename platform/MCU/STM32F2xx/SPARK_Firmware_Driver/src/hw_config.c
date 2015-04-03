@@ -753,7 +753,7 @@ void Bootloader_Update_Version(uint16_t bootloaderVersion)
  * @param  BufferSize: Size of the buffer to be computed
  * @retval 32-bit CRC
  */
-uint32_t Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
+uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
 {
     /* Hardware CRC32 calculation */
     uint32_t i, j;

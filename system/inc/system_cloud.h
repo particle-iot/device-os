@@ -43,10 +43,6 @@ void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on);
 void Spark_SetTime(unsigned long dateTime);
 void Spark_Process_Events();
-void Spark_Prepare_To_Save_File(uint32_t sFlashAddress, uint32_t fileSize);
-void Spark_Prepare_For_Firmware_Update(void);
-void Spark_Finish_Firmware_Update(void);
-uint16_t Spark_Save_Firmware_Chunk(unsigned char *buf, uint32_t bufLen);
 
 extern volatile uint8_t LED_Spark_Signal;
 void LED_Signaling_Override(void);

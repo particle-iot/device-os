@@ -299,7 +299,7 @@ void HAL_Core_Execute_Standby_Mode(void)
  * @param  BufferSize: Size of the buffer to be computed
  * @retval 32-bit CRC
  */
-uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
+uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
 {
     return Compute_CRC32(pBuffer, bufferSize);
 }

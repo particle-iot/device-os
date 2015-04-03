@@ -46,12 +46,8 @@ public:
         return system_mode();
     }
 
-    static bool serialSaveFile(Stream *serialObj, uint32_t sFlashAddress) {
-        return serialSaveFile(serialObj, sFlashAddress);
-    }
-
-    static bool serialFirmwareUpdate(Stream *serialObj) {
-        return system_serialFirmwareUpdate(serialObj);
+    static bool serialFileTransfer(Stream *serialObj, FileTransfer::Descriptor& file) {
+        return system_serialFileTransfer(serialObj, file);
     }
     static void factoryReset(void);
     static void bootloader(void);

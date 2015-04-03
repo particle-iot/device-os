@@ -34,6 +34,7 @@
 #include "system_update.h"
 #include "ota_flash_hal.h"
 #include "rgbled.h"
+#include "file_transfer.h"
 
 #define PACKET_SEQNO_INDEX      (1)
 #define PACKET_SEQNO_COMP_INDEX (2)
@@ -202,8 +203,10 @@ static int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t
   uint8_t packet_data[PACKET_1K_SIZE + PACKET_OVERHEAD], file_size[FILE_SIZE_LENGTH], *file_ptr, *buf_ptr;
   int32_t i, packet_length, session_done, file_done, packets_received, errors, session_begin;
   uint32_t size = 0;
-  uint16_t current_index = 0, saved_index = 0;
-
+  uint32_t current_address = 0;
+  
+  FileTransfer::Descriptor tx;  
+  
   for (session_done = 0, errors = 0, session_begin = 0; ;)
   {
     for (packets_received = 0, file_done = 0, buf_ptr = buf; ;)
@@ -249,6 +252,8 @@ static int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t
                     file_size[i++] = '\0';
                     size = strtoul((const char *)file_size, NULL, 10);
 
+                    
+                    
                     /* Test the size of the image to be sent */
                     if (HAL_OTA_CheckValidAddressRange(sFlashAddress, size) != true)
                     {
@@ -263,7 +268,7 @@ static int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t
                     SPARK_FLASH_UPDATE = 1;
                     TimingFlashUpdateTimeout = 0;
                     HAL_FLASH_Begin(sFlashAddress, size);
-
+                    current_address = sFlashAddress;
                     Send_Byte(serialObj, ACK);
                     Send_Byte(serialObj, CRC16);
                   }
@@ -281,12 +286,12 @@ static int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t
                 {
                   memcpy(buf_ptr, packet_data + PACKET_HEADER, packet_length);
                   TimingFlashUpdateTimeout = 0;
-                  saved_index = HAL_FLASH_Update(buf, packet_length);
+                  uint16_t status = HAL_FLASH_Update(buf, current_address, packet_length);
                   LED_Toggle(LED_RGB);
-                  if(saved_index > current_index)
-                  {
-                    current_index = saved_index;
+                  if(!status)
+                  {                    
                     Send_Byte(serialObj, ACK);
+                    current_address += packet_length;
                   }
                   else
                   {

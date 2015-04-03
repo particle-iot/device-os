@@ -74,15 +74,6 @@ uint8_t StartupMode_SysFlag = 0xFF;
 
 uint32_t WRPR_Value = 0xFFFFFFFF;
 uint32_t Flash_Pages_Protected = 0x0;
-uint32_t Internal_Flash_Address = 0;
-uint32_t External_Flash_Address = 0;
-uint32_t Internal_Flash_Data = 0;
-uint8_t External_Flash_Data[4];
-uint16_t Flash_Update_Index = 0;
-uint32_t EraseCounter = 0;
-uint32_t NbrOfPage = 0;
-volatile FLASH_Status FLASHStatus = FLASH_COMPLETE;
-static uint32_t External_Flash_Start_Address = 0;
 
 __IO uint16_t CC3000_SPI_CR;
 __IO uint16_t sFLASH_SPI_CR;
@@ -1004,11 +995,13 @@ void FLASH_ClearFlags(void)
     FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
 }
 
-void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages)
+FLASH_Status FLASH_WriteProtection_Enable(uint32_t FLASH_Pages)
 {
     /* Get pages write protection status */
     WRPR_Value = FLASH_GetWriteProtectionOptionByte();
 
+    FLASH_Status status = FLASH_COMPLETE;
+    
     /* Check if desired pages are not yet write protected */
     if(((~WRPR_Value) & FLASH_Pages ) != FLASH_Pages)
     {
@@ -1021,18 +1014,21 @@ void FLASH_WriteProtection_Enable(uint32_t FLASH_Pages)
         /* Erase all the option Bytes because if a program operation is
 	      performed on a protected page, the Flash memory returns a
 	      protection error */
-        FLASHStatus = FLASH_EraseOptionBytes();
+        status = FLASH_EraseOptionBytes();
 
         /* Enable the pages write protection */
-        FLASHStatus = FLASH_EnableWriteProtection(Flash_Pages_Protected);
+        status = FLASH_EnableWriteProtection(Flash_Pages_Protected);
 
         /* Generate System Reset to load the new option byte values */
         NVIC_SystemReset();
     }
+    return status;
 }
 
-void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages)
+FLASH_Status FLASH_WriteProtection_Disable(uint32_t FLASH_Pages)
 {
+    FLASH_Status status = FLASH_COMPLETE;
+    
     /* Get pages write protection status */
     WRPR_Value = FLASH_GetWriteProtectionOptionByte();
 
@@ -1046,41 +1042,48 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Pages)
         FLASH_Unlock();
 
         /* Erase all the option Bytes */
-        FLASHStatus = FLASH_EraseOptionBytes();
+        status = FLASH_EraseOptionBytes();
 
         /* Check if there is write protected pages */
-        if(Flash_Pages_Protected != 0x0)
+        if(Flash_Pages_Protected != 0x0 && status==FLASH_COMPLETE)
         {
             /* Restore write protected pages */
-            FLASHStatus = FLASH_EnableWriteProtection(Flash_Pages_Protected);
+            status = FLASH_EnableWriteProtection(Flash_Pages_Protected);
         }
 
         /* Generate System Reset to load the new option byte values */
         NVIC_SystemReset();
     }
+    return status;
 }
 
-void FLASH_Erase(void)
+void FLASH_Erase_Impl(uint32_t address, uint32_t length)
 {
-    FLASHStatus = FLASH_COMPLETE;
+    FLASH_Status status = FLASH_COMPLETE;
 
     /* Unlock the Flash Program Erase Controller */
     FLASH_Unlock();
 
+    unsigned EraseCounter;
     /* Define the number of Internal Flash pages to be erased */
-    NbrOfPage = (INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS) / INTERNAL_FLASH_PAGE_SIZE;
+    unsigned NbrOfPage = length / INTERNAL_FLASH_PAGE_SIZE;
 
     /* Clear All pending flags */
     FLASH_ClearFlags();
 
     /* Erase the Internal Flash pages */
-    for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE); EraseCounter++)
+    for (EraseCounter = 0; (EraseCounter < NbrOfPage) && (status == FLASH_COMPLETE); EraseCounter++)
     {
-        FLASHStatus = FLASH_ErasePage(CORE_FW_ADDRESS + (INTERNAL_FLASH_PAGE_SIZE * EraseCounter));
+        status = FLASH_ErasePage(CORE_FW_ADDRESS + (INTERNAL_FLASH_PAGE_SIZE * EraseCounter));
     }
 
     /* Locks the FLASH Program Erase Controller */
     FLASH_Lock();
+}
+
+void FLASH_Erase()
+{
+    FLASH_Erase_Impl(CORE_FW_ADDRESS, (INTERNAL_FLASH_END_ADDRESS - CORE_FW_ADDRESS));
 }
 
 void FLASH_Backup(uint32_t sFLASH_Address)
@@ -1089,22 +1092,23 @@ void FLASH_Backup(uint32_t sFLASH_Address)
     sFLASH_Init();
 
     /* Define the number of External Flash pages to be erased */
-    NbrOfPage = EXTERNAL_FLASH_BLOCK_SIZE / sFLASH_PAGESIZE;
-
+    unsigned NbrOfPage = EXTERNAL_FLASH_BLOCK_SIZE / sFLASH_PAGESIZE;
+    unsigned EraseCounter;
+    
     /* Erase the SPI Flash pages */
     for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
     {
         sFLASH_EraseSector(sFLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
     }
 
-    Internal_Flash_Address = CORE_FW_ADDRESS;
-    External_Flash_Address = sFLASH_Address;
-
+    uint32_t Internal_Flash_Address = CORE_FW_ADDRESS;
+    uint32_t External_Flash_Address = sFLASH_Address;
+    uint8_t External_Flash_Data[4];
     /* Program External Flash */
     while (Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS)
     {
         /* Read data from Internal Flash memory */
-        Internal_Flash_Data = (*(__IO uint32_t*) Internal_Flash_Address);
+        uint32_t Internal_Flash_Data = (*(__IO uint32_t*) Internal_Flash_Address);
         Internal_Flash_Address += 4;
 
         /* Program Word to SPI Flash memory */
@@ -1126,24 +1130,26 @@ void FLASH_Restore(uint32_t sFLASH_Address)
 
     FLASH_Erase();
 
-    Internal_Flash_Address = CORE_FW_ADDRESS;
-    External_Flash_Address = sFLASH_Address;
+    uint32_t Internal_Flash_Address = CORE_FW_ADDRESS;
+    uint32_t External_Flash_Address = sFLASH_Address;
 
     /* Unlock the Flash Program Erase Controller */
     FLASH_Unlock();
 
+    FLASH_Status status = FLASH_COMPLETE;
+    uint8_t External_Flash_Data[4];
     /* Program Internal Flash Bank1 */
-    while ((Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS) && (FLASHStatus == FLASH_COMPLETE))
+    while ((Internal_Flash_Address < INTERNAL_FLASH_END_ADDRESS) && (status == FLASH_COMPLETE))
     {
         /* Read data from SPI Flash memory */
         sFLASH_ReadBuffer(External_Flash_Data, External_Flash_Address, 4);
         External_Flash_Address += 4;
 
         /* Program Word to Internal Flash memory */
-        Internal_Flash_Data = (uint32_t)(External_Flash_Data[0] | (External_Flash_Data[1] << 8) | (External_Flash_Data[2] << 16) | (External_Flash_Data[3] << 24));
+        uint32_t Internal_Flash_Data = (uint32_t)(External_Flash_Data[0] | (External_Flash_Data[1] << 8) | (External_Flash_Data[2] << 16) | (External_Flash_Data[3] << 24));
         //OR
         //Internal_Flash_Data = *((uint32_t *)External_Flash_Data);
-        FLASHStatus = FLASH_ProgramWord(Internal_Flash_Address, Internal_Flash_Data);
+        status = FLASH_ProgramWord(Internal_Flash_Address, Internal_Flash_Data);
         Internal_Flash_Address += 4;
     }
 
@@ -1153,19 +1159,8 @@ void FLASH_Restore(uint32_t sFLASH_Address)
 
 uint32_t FLASH_PagesMask(uint32_t fileSize)
 {
-    //Calculate the number of flash pages that needs to be erased
-    uint32_t numPages = 0x0;
-
-    if ((fileSize % sFLASH_PAGESIZE) != 0)
-    {
-        numPages = (fileSize / sFLASH_PAGESIZE) + 1;
-    }
-    else
-    {
-        numPages = fileSize / sFLASH_PAGESIZE;
-    }
-
-    return numPages;
+    //Calculate the number of flash pages that needs to be erased    
+    return (fileSize+sFLASH_PAGESIZE-1)/sFLASH_PAGESIZE;    
 }
 
 void FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize)
@@ -1173,46 +1168,33 @@ void FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize)
     OTA_FLASHED_Status_SysFlag = 0x0000;
     Save_SystemFlags();
 
-    Flash_Update_Index = 0;
-    External_Flash_Start_Address = sFLASH_Address;
-    External_Flash_Address = External_Flash_Start_Address;
-
     /* Define the number of External Flash pages to be erased */
-    NbrOfPage = FLASH_PagesMask(fileSize);
-
+    unsigned NbrOfPage = FLASH_PagesMask(fileSize);
+    unsigned EraseCounter;
     /* Erase the SPI Flash pages */
     for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
     {
-        sFLASH_EraseSector(External_Flash_Start_Address + (sFLASH_PAGESIZE * EraseCounter));
+        sFLASH_EraseSector(sFLASH_Address + (sFLASH_PAGESIZE * EraseCounter));
     }
 }
 
-uint16_t FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize)
+int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
 {
-    uint8_t *writeBuffer = pBuffer;
+    const uint8_t *writeBuffer = pBuffer;
     uint8_t readBuffer[bufferSize];
 
-    /* Write Data Buffer to SPI Flash memory */
-    sFLASH_WriteBuffer(writeBuffer, External_Flash_Address, bufferSize);
-
-    /* Read Data Buffer from SPI Flash memory */
-    sFLASH_ReadBuffer(readBuffer, External_Flash_Address, bufferSize);
-
-    /* Is the Data Buffer successfully programmed to SPI Flash memory */
-    if (0 == memcmp(writeBuffer, readBuffer, bufferSize))
+    // ensure different for first write
+    readBuffer[0] = writeBuffer[0]+1;
+    unsigned i;
+    for (i=50; i-->0 && memcmp(writeBuffer, readBuffer, bufferSize); i++) 
     {
-        External_Flash_Address += bufferSize;
-        Flash_Update_Index += 1;
-    }
-    else
-    {
-        /* Erase the problematic SPI Flash pages and back off the chunk index */
-        External_Flash_Address = ((uint32_t)(External_Flash_Address / sFLASH_PAGESIZE)) * sFLASH_PAGESIZE;
-        sFLASH_EraseSector(External_Flash_Address);
-        Flash_Update_Index = (uint16_t)((External_Flash_Address - External_Flash_Start_Address) / bufferSize);
-    }
+        /* Write Data Buffer to SPI Flash memory */
+        sFLASH_WriteBuffer(writeBuffer, address, bufferSize);
 
-    return Flash_Update_Index;
+        /* Read Data Buffer from SPI Flash memory */
+        sFLASH_ReadBuffer(readBuffer, address, bufferSize);        
+    }
+    return !i;  // return 0 (success) if i!=0
 }
 
 void FLASH_End(void)
@@ -1221,10 +1203,6 @@ void FLASH_End(void)
     Save_SystemFlags();
 
     BKP_WriteBackupRegister(BKP_DR10, 0x0005);
-
-    USB_Cable_Config(DISABLE);
-
-    NVIC_SystemReset();
 }
 
 void FLASH_Read_ServerAddress_Data(void *buf)

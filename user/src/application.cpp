@@ -25,6 +25,7 @@
 
 /* Includes ------------------------------------------------------------------*/  
 #include "application.h"
+#include "stdarg.h"
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
