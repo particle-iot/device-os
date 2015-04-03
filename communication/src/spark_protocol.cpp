@@ -136,6 +136,7 @@ bool SparkProtocol::event_loop(void)
     if (!success)
     {
         if (updating) {      // eas updating but had an error, inform the client
+            serial_dump("handle received message failed - aborting transfer");
             callbacks.finish_firmware_update(file, 0, NULL);
             updating = false;
         }
@@ -744,14 +745,14 @@ int SparkProtocol::send_missing_chunks(int count)
         buf[(sent*2)+7] = idx >> 8;
         buf[(sent*2)+8] = idx & 0xFF;
 
-        serial_dump("Sent missing chunk %d", idx);
-
         missed_chunk_index = idx;
         idx++;
         sent++;
     }   
     
     if (sent>0) {
+        serial_dump("Sent %d missing chunks", sent);
+
         size_t message_size = 7+(sent*2);
         message_size = wrap(queue, message_size);
         if (0 > blocking_send(queue, message_size))
@@ -1058,7 +1059,10 @@ bool SparkProtocol::handle_update_begin(msg& message)
             chunk_index = 0;
             chunk_size = file.chunk_size;   // save chunk size since the descriptor size is overwritten
             this->updating = 1;
-            clear_chunks_received();
+            // when not in fast OTA mode, the chunk missing buffer is set to 1 since the protocol
+            // handles missing chunks one by one. Also we don't know the actual size of the file to
+            // know the correct size of the bitmap.
+            set_chunks_received(flags & 1 ? 0 : 0xFF);
             
             // send update_reaady - use fast OTA if available
             update_ready(msg_to_send + 2, message.token, (flags & 0x1));
@@ -1121,11 +1125,12 @@ bool SparkProtocol::handle_chunk(msg& message)
         file.chunk_size = message.len - payload - queue[message.len - 1];   // remove length added due to pkcs #7 padding?
         file.chunk_address  = file.file_address + (chunk_index * chunk_size);
         if (chunk_index>=MAX_CHUNKS) {
+            serial_dump("invalid chunk index %d", chunk_index);
             return false;
         }
         uint32_t crc = callbacks.calculate_crc(chunk, file.chunk_size);
         bool has_response = false;
-        bool crc_valid = (crc == given_crc && (!fast_ota || updating==2 || (chunk_index>=10)));
+        bool crc_valid = (crc == given_crc && !(rand()&3));
         serial_dump("chunk idx=%d crc=%d fast=%d updating=%d", chunk_index, crc_valid, fast_ota, updating);
         if (crc_valid)
         {            
@@ -1145,8 +1150,11 @@ bool SparkProtocol::handle_chunk(msg& message)
                     has_response = true;
                 } 
                 else {                                        
-                    if (has_response && 0 > blocking_send(msg_to_send, 18))
-                      return false;
+                    if (has_response && 0 > blocking_send(msg_to_send, 18)) {
+                        
+                        serial_dump("send chunk response failed");
+                        return false;
+                    }
                     has_response = false;
 
                     if (next_missed>missed_chunk_index)
@@ -1176,7 +1184,7 @@ bool SparkProtocol::handle_chunk(msg& message)
 
 inline void SparkProtocol::flag_chunk_received(chunk_index_t idx)
 {
-    serial_dump("flagged chunk %d", idx);
+//    serial_dump("flagged chunk %d", idx);
     chunk_bitmap()[idx>>3] |= uint8_t(1<<(idx&7));
 }
 
@@ -1194,7 +1202,7 @@ SparkProtocol::chunk_index_t SparkProtocol::next_chunk_missing(chunk_index_t sta
     {
         if (!is_chunk_received(idx))
         {
-            serial_dump("next missing chunk %d from %d", idx, start);
+            //serial_dump("next missing chunk %d from %d", idx, start);
             chunk = idx;
             break;
         }
@@ -1202,10 +1210,10 @@ SparkProtocol::chunk_index_t SparkProtocol::next_chunk_missing(chunk_index_t sta
     return chunk;
 }
 
-void SparkProtocol::clear_chunks_received()
+void SparkProtocol::set_chunks_received(uint8_t value)
 {    
     int bytes = chunk_bitmap_size();
-    memset(queue+QUEUE_SIZE-bytes, 0, bytes);
+    memset(queue+QUEUE_SIZE-bytes, value, bytes);
 }
 
 bool SparkProtocol::handle_update_done(msg& message)

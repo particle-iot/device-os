@@ -236,7 +236,7 @@ class SparkProtocol
         return &queue[QUEUE_SIZE-chunk_bitmap_size()];
     }
     
-    void clear_chunks_received();
+    void set_chunks_received(uint8_t value);
     bool is_chunk_received(chunk_index_t idx);
     void flag_chunk_received(chunk_index_t index);
     chunk_index_t next_chunk_missing(chunk_index_t index);
