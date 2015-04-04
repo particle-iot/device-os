@@ -127,6 +127,11 @@ void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
     FLASH_UpdateModules(flashModulesCallback);
 }
 
+bool HAL_FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length, bool protect)
+{
+    return FLASH_WriteProtectMemory(flashDeviceID, startAddress, length, protect);
+}
+
 void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors)
 {
     FLASH_WriteProtection_Enable(FLASH_Sectors);

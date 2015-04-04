@@ -76,6 +76,7 @@ bool HAL_FLASH_ClearFactoryResetModuleSlot(void);
 bool HAL_FLASH_RestoreFromFactoryResetModuleSlot(void);
 void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
+bool HAL_FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length, bool protect);
 void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors);
 void HAL_FLASH_WriteProtectionDisable(uint32_t FLASH_Sectors);
 

@@ -46,6 +46,7 @@ DYNALIB_FN(hal_ota,HAL_FLASH_WriteProtectionDisable)
 DYNALIB_FN(hal_ota,HAL_FLASH_Begin)
 DYNALIB_FN(hal_ota,HAL_FLASH_Update)
 DYNALIB_FN(hal_ota,HAL_FLASH_End)        
+DYNALIB_FN(hal_ota,HAL_FLASH_WriteProtectMemory)
 DYNALIB_END(hal_ota)        
 
 #endif	/* HAL_DYNALIB_OTA_H */
