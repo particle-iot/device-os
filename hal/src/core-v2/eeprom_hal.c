@@ -70,9 +70,9 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* Virtual Address: Use on-chip backup SRAM instead of system SRAM variable */
-#define EepromAddressTab(index) (*(__IO uint32_t *) (BKPSRAM_BASE + 4*index))
-/* EEPROM Emulation Max Size : 4KB backup SRAM = 4096/4 = 1024 bytes */
-#define EEPROM_SIZE             1024
+#define EepromAddressTab(index) (*(__IO uint16_t *) (BKPSRAM_BASE + 2*index))
+/* EEPROM Emulation Max Size : 4KB backup SRAM = 4096/2 = 2048 bytes */
+#define EEPROM_SIZE             2048    //Max possible using 4KB BKP SRAM as virtual address cache
 
 /* Private variables ---------------------------------------------------------*/
 
