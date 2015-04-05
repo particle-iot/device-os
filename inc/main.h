@@ -88,17 +88,8 @@ extern "C" {
  */
 //#define RGB_NOTIFICATIONS_CONNECTING_ONLY
 
-#define USART_RX_DATA_SIZE			256
-
 /* Exported functions ------------------------------------------------------- */
 void Timing_Decrement(void);
-
-void USB_USART_Init(uint32_t baudRate);
-uint8_t USB_USART_Available_Data(void);
-int32_t USB_USART_Receive_Data(void);
-void USB_USART_Send_Data(uint8_t Data);
-void Handle_USBAsynchXfer(void);
-void Get_SerialNum(void);
 
 }
 

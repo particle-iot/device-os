@@ -101,11 +101,11 @@ INCLUDE_DIRS += $(LIB_CORE_LIBRARIES_PATH)Serial2
 # Additional include directories, applied to objects built for this target.
 # todo - delegate this to a include.mk file in each repo so include dirs are better
 # encapsulated by their owning repo
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)CMSIS/Include
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)CMSIS/Device/ST/STM32F10x/Include
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)STM32F10x_StdPeriph_Driver/inc
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)STM32_USB-FS-Device_Driver/inc
-INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)CC3000_Host_Driver
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/CMSIS/Include
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/CMSIS/Device/ST/STM32F10x/Include
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/STM32F10x_StdPeriph_Driver/inc
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/MCU/STM32F1xx/STM32_USB-FS-Device_Driver/inc
+INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Platform/WLAN/CC3000/CC3000_Host_Driver
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Firmware_Driver/inc
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
 INCLUDE_DIRS += $(LIB_CORE_COMMUNICATION_PATH)lib/tropicssl/include

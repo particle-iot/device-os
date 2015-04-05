@@ -30,8 +30,10 @@
 #include "debug.h"
 #include "stm32_it.h"
 #include "main.h"
+extern "C" {
 #include "usb_lib.h"
 #include "usb_istr.h"
+}
 
 /* Private typedef -----------------------------------------------------------*/
 
