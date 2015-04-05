@@ -199,6 +199,7 @@ int main(void)
 
                 case SECOND_RETRY:	// On 2nd retry attempt, try to recover using sFlash - Factory Reset
                     FACTORY_RESET_MODE = 1;
+                    SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) == 0x0000;
                     BKP_DR1_Value += 1;
                     break;
 
