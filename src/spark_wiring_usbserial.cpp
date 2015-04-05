@@ -77,5 +77,6 @@ int USBSerial::peek()
 }
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
-
+#ifdef SPARK_USB_SERIAL
 USBSerial Serial;
+#endif
