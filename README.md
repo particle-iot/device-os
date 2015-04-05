@@ -169,7 +169,7 @@ Unless stated elsewhere, file headers or otherwise, all files herein are license
 
 ### CONTRIBUTE
 
-Want to contribute to the Spark Core project? Follow [this link]() to find out how.
+Want to contribute to the Spark Core project? Follow [this link](http://spark.github.io/) to find out how.
 
 ### CONNECT
 
