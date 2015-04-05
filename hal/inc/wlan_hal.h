@@ -35,6 +35,9 @@
 extern "C" {
 #endif
 
+//#define DEBUG_WIFI    // Define to show all the flags in debug output
+//#define DEBUG_WAN_WD  // Define to show all SW WD activity in debug output
+    
 #if defined(DEBUG_WAN_WD)
 #define WAN_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
 #else
