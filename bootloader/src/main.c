@@ -277,7 +277,7 @@ int main(void)
                 OTA_FLASH_AVAILABLE = 0;
                 REFLASH_FROM_BACKUP = 0;
                 FACTORY_RESET_MODE = 0;
-                USB_DFU_MODE = 1;           // stay in DFU mode until the button is released so we have slow-led blinking
+                USB_DFU_MODE = 1;           // stay in DFU mode until the button is released so we have slow-led blinking                
             }
             else if(!SAFE_MODE && TimingBUTTON <= TIMING_ALL-TIMING_SAFE_MODE)
             {
@@ -287,10 +287,11 @@ int main(void)
             }
         }
         
-        if (factory_reset || USB_DFU_MODE) {
+        if (factory_reset || USB_DFU_MODE || SAFE_MODE) {
             // now set the factory reset mode (to change the LED to rapid blinking.))
             FACTORY_RESET_MODE = factory_reset;
-            USB_DFU_MODE = !factory_reset;
+            USB_DFU_MODE &= !factory_reset;
+            SAFE_MODE &= !USB_DFU_MODE;
         }
         else if (SAFE_MODE)
         {
@@ -298,6 +299,12 @@ int main(void)
             Save_SystemFlags();
         }
     }
+    
+    if (SAFE_MODE) {
+        SYSTEM_FLAG(StartupMode_SysFlag) = 0x0001;
+        Save_SystemFlags();        
+    }
+    
     //--------------------------------------------------------------------------
 
     if (OTA_FLASH_AVAILABLE == 1)
