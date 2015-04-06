@@ -58,12 +58,14 @@ int TCPClient::connect(const char* host, uint16_t port)
 
         uint32_t ip_addr = 0;
 
-        if(inet_gethostbyname((char*)host, strlen(host), &ip_addr) > 0)
+        if(inet_gethostbyname((char*)host, strlen(host), &ip_addr) == 0)
         {
                 IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
 
                 return connect(remote_addr, port);
         }
+        else
+            DEBUG("unable to get IP for hostname");
       }
       return rv;
 }
@@ -94,7 +96,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
 
             uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
             DEBUG("_sock %d connect",_sock);
-            connected = (socket_connect(_sock, &tSocketAddr, sizeof(tSocketAddr)) >= 0 ? 1 : 0);
+            connected = (socket_connect(_sock, &tSocketAddr, sizeof(tSocketAddr)) == 0 ? 1 : 0);
             DEBUG("_sock %d connected=%d",_sock, connected);
             HAL_WLAN_SetNetWatchDog(ot);
 
