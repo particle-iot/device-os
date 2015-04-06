@@ -41,6 +41,7 @@ uint8_t REFLASH_FROM_BACKUP = 0;	//0, 1
 uint8_t OTA_FLASH_AVAILABLE = 0;	//0, 1
 uint8_t USB_DFU_MODE = 0;		//0, 1
 uint8_t FACTORY_RESET_MODE = 0;		//0, 1
+uint8_t SAFE_MODE = 0;
 
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
@@ -199,7 +200,7 @@ int main(void)
 
                 case SECOND_RETRY:	// On 2nd retry attempt, try to recover using sFlash - Factory Reset
                     FACTORY_RESET_MODE = 1;
-                    SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) == 0x0000;
+                    SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
                     BKP_DR1_Value += 1;
                     break;
 
@@ -229,7 +230,7 @@ int main(void)
             OTA_Flashed_ResetStatus();
 
             // Clear reset flags
-            RCC_ClearFlag();
+            //RCC_ClearFlag();
         }
     }
     else
@@ -245,6 +246,7 @@ int main(void)
     //--------------------------------------------------------------------------
     if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
     {
+#define TIMING_SAFE_MODE 1000
 #define TIMING_DFU_MODE 3000
 #define TIMING_RESTORE_MODE 6500
 #define TIMING_RESET_MODE 10000
@@ -276,6 +278,14 @@ int main(void)
                 REFLASH_FROM_BACKUP = 0;
                 FACTORY_RESET_MODE = 0;
                 USB_DFU_MODE = 1;           // stay in DFU mode until the button is released so we have slow-led blinking
+            }
+            else if(!SAFE_MODE && TimingBUTTON <= TIMING_ALL-TIMING_SAFE_MODE)
+            {
+                // if pressed for > 1 sec, enter Safe Mode
+                LED_SetRGBColor(RGB_COLOR_CYAN);
+                SAFE_MODE = 1;
+                SYSTEM_FLAG(StartupMode_SysFlag) = 0x0001;
+                Save_SystemFlags();
             }
         }
         
@@ -320,13 +330,6 @@ int main(void)
     }
     else if (USB_DFU_MODE == 0)
     {        
-        if (REFLASH_FROM_BACKUP == 1)
-        {
-            LED_SetRGBColor(RGB_COLOR_RED);
-            // Restore the Backup Firmware from external flash
-            BACKUP_Flash_Reset();
-        }
-
 #ifdef FLASH_UPDATE_MODULES
         /*
          * Update Internal/Serial Flash based on application_dct=>flash_modules settings
@@ -335,6 +338,13 @@ int main(void)
          * Currently FLASH_UPDATE_MODULES support is enabled only on BM-09 bootloader
          */
         FLASH_UpdateModules(flashModulesCallback);
+#else
+        if (REFLASH_FROM_BACKUP == 1)
+        {
+            LED_SetRGBColor(RGB_COLOR_RED);
+            // Restore the Backup Firmware from external flash
+            BACKUP_Flash_Reset();
+        }
 #endif
                 
         // ToDo add CRC check
@@ -405,7 +415,7 @@ void Timing_Decrement(void)
         LED_Toggle(LED_RGB);
         TimingLED = 50;
     }
-    else if(USB_DFU_MODE)
+    else if(SAFE_MODE || USB_DFU_MODE)
     {
         LED_Toggle(LED_RGB);
         TimingLED = 100;
