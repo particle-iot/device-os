@@ -211,14 +211,14 @@ u8_t ip4_addr_netmask_valid(u32_t netmask);
 #define ip_addr_islinklocal(addr1) (((addr1)->addr & PP_HTONL(0xffff0000UL)) == PP_HTONL(0xa9fe0000UL))
 
 #define ip_addr_debug_print(debug, ipaddr) \
-  LWIP_DEBUGF(debug, ("%"U16_F".%"U16_F".%"U16_F".%"U16_F,             \
+  LWIP_DEBUGF(debug, ("%" U16_F ".%" U16_F ".% " U16_F ".%" U16_F,             \
                       ipaddr != NULL ? ip4_addr1_16(ipaddr) : 0,       \
                       ipaddr != NULL ? ip4_addr2_16(ipaddr) : 0,       \
                       ipaddr != NULL ? ip4_addr3_16(ipaddr) : 0,       \
                       ipaddr != NULL ? ip4_addr4_16(ipaddr) : 0))
 
 #define ip_addr_debug_print_no_check(debug, ipaddr) \
-  LWIP_DEBUGF(debug, ("%"U16_F".%"U16_F".%"U16_F".%"U16_F,             \
+  LWIP_DEBUGF(debug, ("%" U16_F ".%" U16_F ".%" U16_F ".%" U16_F,             \
                       ip4_addr1_16(ipaddr),       \
                       ip4_addr2_16(ipaddr),       \
                       ip4_addr3_16(ipaddr),       \
