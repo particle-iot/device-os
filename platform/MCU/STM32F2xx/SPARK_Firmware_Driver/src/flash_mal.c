@@ -32,64 +32,41 @@
 
 /* Private functions ---------------------------------------------------------*/
 
+static const uint32_t sectorAddressesEnd[] = { 
+    0x8004000, 0x8008000, 0x800C000, 0x8010000, 0x8020000
+};
+static const uint8_t flashSectors[] = {
+    FLASH_Sector_0, FLASH_Sector_1, FLASH_Sector_2, FLASH_Sector_3, FLASH_Sector_4,
+    FLASH_Sector_5, FLASH_Sector_6, FLASH_Sector_7, FLASH_Sector_8, FLASH_Sector_9,
+    FLASH_Sector_10, FLASH_Sector_11
+};
+
+uint16_t sectorIndexForAddress(uint32_t address)
+{
+    int i;
+    if (address<sectorAddressesEnd[4]) 
+    {
+        for (i=0; i<5; i++) {
+            if (i<sectorAddressesEnd[i])
+                return i;
+        }
+        return 4;       // just to keep the compiler happy - the data is such
+                        // this can never be reached in practice
+    }
+    else 
+    {
+        return ((address-0x8020000)>>18)+5;
+    }
+}
+
 uint16_t FLASH_SectorToWriteProtect(uint8_t flashDeviceID, uint32_t startAddress)
 {
     uint16_t OB_WRP_Sector = 0;//Invalid write protection
 
-    if (flashDeviceID != FLASH_INTERNAL)
+    if (flashDeviceID == FLASH_INTERNAL)
     {
-        return OB_WRP_Sector;
+        OB_WRP_Sector = 1<<sectorIndexForAddress(startAddress);
     }
-
-    if (startAddress < 0x08004000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_0;
-    }
-    else if (startAddress < 0x08008000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_1;
-    }
-    else if (startAddress < 0x0800C000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_2;
-    }
-    else if (startAddress < 0x08010000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_3;
-    }
-    else if (startAddress < 0x08020000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_4;
-    }
-    else if (startAddress < 0x08040000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_5;
-    }
-    else if (startAddress < 0x08060000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_6;
-    }
-    else if (startAddress < 0x08080000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_7;
-    }
-    else if (startAddress < 0x080A0000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_8;
-    }
-    else if (startAddress < 0x080C0000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_9;
-    }
-    else if (startAddress < 0x080E0000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_10;
-    }
-    else if (startAddress < 0x08100000)
-    {
-        OB_WRP_Sector = OB_WRP_Sector_11;
-    }
-
     return OB_WRP_Sector;
 }
 
@@ -97,60 +74,11 @@ uint16_t FLASH_SectorToErase(uint8_t flashDeviceID, uint32_t startAddress)
 {
     uint16_t flashSector = 0xFFFF;//Invalid sector
 
-    if (flashDeviceID != FLASH_INTERNAL)
+    if (flashDeviceID == FLASH_INTERNAL)
     {
-        return flashSector;
+        flashSector = flashSectors[sectorIndexForAddress(startAddress)];
     }
-
-    if (startAddress < 0x08004000)
-    {
-        flashSector = FLASH_Sector_0;
-    }
-    else if (startAddress < 0x08008000)
-    {
-        flashSector = FLASH_Sector_1;
-    }
-    else if (startAddress < 0x0800C000)
-    {
-        flashSector = FLASH_Sector_2;
-    }
-    else if (startAddress < 0x08010000)
-    {
-        flashSector = FLASH_Sector_3;
-    }
-    else if (startAddress < 0x08020000)
-    {
-        flashSector = FLASH_Sector_4;
-    }
-    else if (startAddress < 0x08040000)
-    {
-        flashSector = FLASH_Sector_5;
-    }
-    else if (startAddress < 0x08060000)
-    {
-        flashSector = FLASH_Sector_6;
-    }
-    else if (startAddress < 0x08080000)
-    {
-        flashSector = FLASH_Sector_7;
-    }
-    else if (startAddress < 0x080A0000)
-    {
-        flashSector = FLASH_Sector_8;
-    }
-    else if (startAddress < 0x080C0000)
-    {
-        flashSector = FLASH_Sector_9;
-    }
-    else if (startAddress < 0x080E0000)
-    {
-        flashSector = FLASH_Sector_10;
-    }
-    else if (startAddress < 0x08100000)
-    {
-        flashSector = FLASH_Sector_11;
-    }
-
+    
     return flashSector;
 }
 
