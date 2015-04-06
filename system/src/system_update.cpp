@@ -14,6 +14,7 @@
 #include "system_task.h"
 #include "spark_wiring_system.h"
 #include "spark_protocol_functions.h"
+#include "hw_config.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -150,14 +151,16 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
     
     if (flags & 1) {    // update successful
         if (file.store==FileTransfer::Store::FIRMWARE)
-        {        
+        {
+#ifdef FLASH_UPDATE_MODULES
             // todo - VerifyCRC should also take a device (FLASH_INTERNAL | FLASH_EXTERNAL)
             // and must verify that the address/length is within range
             uint32_t ota_address = HAL_OTA_FlashAddress();
             uint32_t moduleAddress = HAL_FLASH_ModuleAddress(ota_address);            
             uint32_t moduleLength = HAL_FLASH_ModuleLength(ota_address);
             
-            if (HAL_FLASH_VerifyCRC32(ota_address, moduleLength))
+            if (FLASH_CheckValidAddressRange(FLASH_INTERNAL, moduleAddress, moduleLength + 4) &&
+                HAL_FLASH_VerifyCRC32(ota_address, moduleLength))
             {
                 HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, ota_address,
                                                         FLASH_INTERNAL, moduleAddress,
@@ -168,6 +171,9 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
                 HAL_FLASH_End();
 
             }
+#else
+            HAL_FLASH_End();
+#endif
             //serial_dump("resetting");            
             // todo - talk with application and see if now is a good time to reset
             // if update not applied, do we need to reset?
