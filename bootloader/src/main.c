@@ -293,11 +293,6 @@ int main(void)
             USB_DFU_MODE &= !factory_reset;
             SAFE_MODE &= !USB_DFU_MODE;
         }
-        else if (SAFE_MODE)
-        {
-            SYSTEM_FLAG(StartupMode_SysFlag) = 0x0001;
-            Save_SystemFlags();
-        }
     }
     
     if (SAFE_MODE) {
