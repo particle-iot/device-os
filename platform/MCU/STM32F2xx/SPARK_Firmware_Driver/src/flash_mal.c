@@ -44,19 +44,11 @@ static const uint8_t flashSectors[] = {
 uint16_t sectorIndexForAddress(uint32_t address)
 {
     int i;
-    if (address<sectorAddressesEnd[4]) 
-    {
-        for (i=0; i<5; i++) {
-            if (i<sectorAddressesEnd[i])
-                return i;
-        }
-        return 4;       // just to keep the compiler happy - the data is such
-                        // this can never be reached in practice
+    for (i=0; i<5; i++) {
+        if (i<sectorAddressesEnd[i])
+            return i;
     }
-    else 
-    {
-        return ((address-0x8020000)>>18)+5;
-    }
+    return ((address-0x8020000)>>17)+5;    
 }
 
 uint16_t FLASH_SectorToWriteProtect(uint8_t flashDeviceID, uint32_t startAddress)
