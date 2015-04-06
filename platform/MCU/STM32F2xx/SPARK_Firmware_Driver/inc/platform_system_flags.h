@@ -33,7 +33,8 @@ typedef struct platform_system_flags {
      */
     uint8_t StartupMode_SysFlag;
     uint8_t unused;
-    uint16_t reserved[6];
+    uint32_t RCC_CSR_SysFlag;
+    uint16_t reserved[4];
 } platform_system_flags_t;
 
 

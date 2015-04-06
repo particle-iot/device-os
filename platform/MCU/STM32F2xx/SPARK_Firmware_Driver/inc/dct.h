@@ -105,7 +105,8 @@ STATIC_ASSERT_FLAGS_OFFSET(dfu_on_no_firmware, 16);
 STATIC_ASSERT_FLAGS_OFFSET(Factory_Reset_Done_SysFlag, 17);
 STATIC_ASSERT_FLAGS_OFFSET(StartupMode_SysFlag, 18);
 STATIC_ASSERT_FLAGS_OFFSET(unused, 19);
-STATIC_ASSERT_FLAGS_OFFSET(reserved, 20);
+STATIC_ASSERT_FLAGS_OFFSET(RCC_CSR_SysFlag, 20);
+STATIC_ASSERT_FLAGS_OFFSET(reserved, 24);
 /**
  * Reads application data from the DCT area.
  * @param offset
