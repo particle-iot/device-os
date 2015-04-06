@@ -22,9 +22,7 @@ MAKECMDGOALS := all
 
 all: make_deps
 	
-program-dfu:
-	
-stflash:	
+clean program-dfu stflash: $(makefiles)
 	
 $(makefiles):
 	$(call,echo,'Making module $@')
