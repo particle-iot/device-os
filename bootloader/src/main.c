@@ -124,6 +124,13 @@ int main(void)
     //--------------------------------------------------------------------------
     Load_SystemFlags();
 
+    //Save RCC clock control & status register
+    if (SYSTEM_FLAG(RCC_CSR_SysFlag) != RCC_CSR_Flags)
+    {
+        SYSTEM_FLAG(RCC_CSR_SysFlag) = RCC_CSR_Flags;
+        Save_SystemFlags();
+    }
+
     //BOOTLOADER_VERSION defined in bootloader/import.mk
     //This can also be overridden via make command line arguments
     if (SYSTEM_FLAG(Bootloader_Version_SysFlag) != BOOTLOADER_VERSION)
@@ -230,7 +237,7 @@ int main(void)
             OTA_Flashed_ResetStatus();
 
             // Clear reset flags
-            //RCC_ClearFlag();
+            RCC_ClearFlag();
         }
     }
     else

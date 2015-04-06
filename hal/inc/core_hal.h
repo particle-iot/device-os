@@ -45,9 +45,19 @@ typedef enum
     BKP_DR_10 = 0x10
 } BKP_DR_TypeDef;
 
+typedef enum
+{
+    PIN_RESET = 0x01,
+    SOFTWARE_RESET = 0x02,
+    WATCHDOG_RESET = 0x03,
+    LOW_POWER_RESET = 0x04
+} RESET_TypeDef;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
+#define RCC_CSR_Flags RCC->CSR
+
 //Following is normally defined via "CFLAGS += -DDFU_BUILD_ENABLE" in makefile
 #ifndef DFU_BUILD_ENABLE
 #define DFU_BUILD_ENABLE
@@ -106,6 +116,8 @@ uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR);
 void HAL_SysTick_Handler(void);
 
 void HAL_Bootloader_Lock(bool lock);
+
+bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType);
 
 extern void app_setup_and_loop();
 
