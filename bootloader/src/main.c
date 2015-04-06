@@ -284,8 +284,6 @@ int main(void)
                 // if pressed for > 1 sec, enter Safe Mode
                 LED_SetRGBColor(RGB_COLOR_CYAN);
                 SAFE_MODE = 1;
-                SYSTEM_FLAG(StartupMode_SysFlag) = 0x0001;
-                Save_SystemFlags();
             }
         }
         
@@ -293,6 +291,11 @@ int main(void)
             // now set the factory reset mode (to change the LED to rapid blinking.))
             FACTORY_RESET_MODE = factory_reset;
             USB_DFU_MODE = !factory_reset;
+        }
+        else if (SAFE_MODE)
+        {
+            SYSTEM_FLAG(StartupMode_SysFlag) = 0x0001;
+            Save_SystemFlags();
         }
     }
     //--------------------------------------------------------------------------
