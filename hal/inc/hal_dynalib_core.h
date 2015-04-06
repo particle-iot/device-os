@@ -54,6 +54,7 @@ DYNALIB_FN(hal_core,HAL_watchdog_reset_flagged)
 DYNALIB_FN(hal_core,HAL_Notify_WDT)
 DYNALIB_FN(hal_core,HAL_Bootloader_Get_Version)
 DYNALIB_FN(hal_core,HAL_Bootloader_Lock)
+DYNALIB_FN(hal_core,HAL_Core_System_Reset_FlagSet)
 
 DYNALIB_END(hal_core)
         

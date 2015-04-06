@@ -468,3 +468,35 @@ void HAL_Bootloader_Lock(bool lock)
     else
         FLASH_WriteProtection_Disable(BOOTLOADER_FLASH_PAGES);
 }
+
+bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
+{
+    uint8_t FLAG_Mask = 0x1F;
+    uint8_t RCC_Flag = 0;
+
+    switch(resetType)
+    {
+    case PIN_RESET:
+        RCC_Flag = RCC_FLAG_PINRST;
+        break;
+
+    case SOFTWARE_RESET:
+        RCC_Flag = RCC_FLAG_SFTRST;
+        break;
+
+    case WATCHDOG_RESET:
+        RCC_Flag = RCC_FLAG_IWDGRST;
+        break;
+
+    case LOW_POWER_RESET:
+        RCC_Flag = RCC_FLAG_LPWRRST;
+        break;
+    }
+
+    if ((RCC_Flag != 0) && (SYSTEM_FLAG(RCC_CSR_SysFlag) & ((uint32_t)1 << (RCC_Flag & FLAG_Mask))))
+    {
+        return true;
+    }
+
+    return false;
+}
