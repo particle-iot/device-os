@@ -141,6 +141,8 @@ wlan_result_t wlan_connect_finalize()
 {
     // enable connection from stored profiles
     wlan_result_t result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);        
+    if (!result)
+        HAL_WLAN_notify_connected();
     // DHCP happens synchronously
     HAL_WLAN_notify_dhcp(!result);
     return result;
@@ -159,7 +161,9 @@ wlan_result_t wlan_deactivate() {
 wlan_result_t wlan_disconnect_now() 
 {
     socket_close_all();    
-    return wiced_network_down(WICED_STA_INTERFACE);
+    wiced_result_t result = wiced_network_down(WICED_STA_INTERFACE);
+    HAL_WLAN_notify_disconnected();    
+    return result;
 }
 
 
