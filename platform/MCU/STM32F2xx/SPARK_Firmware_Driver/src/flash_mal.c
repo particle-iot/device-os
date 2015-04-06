@@ -45,7 +45,7 @@ uint16_t sectorIndexForAddress(uint32_t address)
 {
     int i;
     for (i=0; i<5; i++) {
-        if (i<sectorAddressesEnd[i])
+        if (address<sectorAddressesEnd[i])
             return i;
     }
     return ((address-0x8020000)>>17)+5;    
