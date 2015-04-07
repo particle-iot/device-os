@@ -231,6 +231,7 @@ extern uint16_t Factory_Reset_SysFlag;
 extern uint8_t dfu_on_no_firmware;
 extern uint8_t Factory_Reset_Done_SysFlag;
 extern uint8_t StartupMode_SysFlag;
+extern uint32_t RCC_CSR_SysFlag;
 
 extern unsigned char wlan_rx_buffer[];
 extern unsigned char wlan_tx_buffer[];

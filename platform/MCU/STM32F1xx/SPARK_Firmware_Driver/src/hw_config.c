@@ -71,6 +71,7 @@ uint16_t Factory_Reset_SysFlag = 0xFFFF;
 uint8_t dfu_on_no_firmware = 0xFF;
 uint8_t Factory_Reset_Done_SysFlag = 0xFF;
 uint8_t StartupMode_SysFlag = 0xFF;
+uint32_t RCC_CSR_SysFlag = !0x0;
 
 uint32_t WRPR_Value = 0xFFFFFFFF;
 uint32_t Flash_Pages_Protected = 0x0;
@@ -929,7 +930,11 @@ void Load_SystemFlags(void)
 
     dfu_on_no_firmware = (*(__IO uint8_t*) Address++);
     Factory_Reset_Done_SysFlag = (*(__IO uint8_t*) Address++);
-    StartupMode_SysFlag = (*(__IO uint8_t*) Address++);    
+    StartupMode_SysFlag = (*(__IO uint8_t*) Address);
+    Address += 2;
+
+    RCC_CSR_SysFlag = (*(__IO uint32_t*) Address);
+    Address += 4;
 }
 
 void Save_SystemFlags(void)
@@ -984,6 +989,10 @@ void Save_SystemFlags(void)
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
 
+    //Note: using ProgramWord here.
+    FLASHStatus = FLASH_ProgramWord(Address, RCC_CSR_SysFlag);
+    while(FLASHStatus != FLASH_COMPLETE);
+    Address += 4;
 
     /* Locks the FLASH Program Erase Controller */
     FLASH_Lock();
