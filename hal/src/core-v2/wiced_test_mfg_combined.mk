@@ -68,8 +68,6 @@ XXD=xxd
 OPTS=
 
 all: setup combined
-	cp $(COMBINED_MEM) $(TARGET)
-	cp $(SYSTEM_MEM) $(TARGET)
 
 setup:
 	-mkdir $(TARGET_PARENT)
@@ -84,7 +82,7 @@ clean:
 	-rm $(DCT_MEM)
 		
 bootloader:
-	@echo building $(BOOTLOADER_MEM)
+	@echo building bootloader to $(BOOTLOADER_MEM)
 	$(MAKE) -C $(BOOTLOADER_DIR) PLATFORM_ID=$(PLATFORM_ID) all 
 	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377" > $(BOOTLOADER_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(BOOTLOADER_MEM) ibs=1k count=16
@@ -93,6 +91,7 @@ bootloader:
 
 # add the prepared dct image into the flash image
 dct: 	
+	@echo building DCT to $(DCT_MEM)
 	-rm $(DCT_MEM)
 	dd if=/dev/zero ibs=1k count=112 | tr "\000" "\377" > $(DCT_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(DCT_MEM) ibs=1k count=112
@@ -108,6 +107,7 @@ $(MFG_TEST_BIN):
 	$(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p >> $@	
 
 $(MFG_TEST_MEM): $(MFG_TEST_BIN)
+	@echo building WICED test tool to $(MFT_TEST_MEM)
 	-rm $(MFG_TEST_MEM)
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(MFG_TEST_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(MFG_TEST_MEM) ibs=1k count=384
@@ -115,10 +115,9 @@ $(MFG_TEST_MEM): $(MFG_TEST_BIN)
 	$(call assert_filesize,$(MFG_TEST_MEM),393216)
 
 mfg_test: $(MFG_TEST_MEM)
-	;
 	
 firmware:
-	@echo building $(FIRMWARE_MEM)
+	@echo building main firmware $(FIRMWARE_MEM)
 	-rm $(FIRMWARE_MEM)
 	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
@@ -127,19 +126,17 @@ firmware:
 	$(call assert_filesize,$(FIRMWARE_MEM),393216)
 	
 user:
-	@echo building $(USER_MEM)
+	@echo building factory default modular user app to $(USER_MEM)
 	-rm $(USER_MEM)
-	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
-	dd if=/dev/zero ibs=1k count=128 | tr "\000" "\377" > $(USER_MEM)
-	dd if=$(USER_BIN) of=$(USER_MEM) conv=notrunc	
-	$(call assert_filesize,$(USER_MEM),131072)
+	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION_NEXT) all	
+	cp $(USER_BIN) $(USER_MEM)
 
 system:
 	# The system module is composed of part1 and part2 concatenated together
 	# adjust the module_info end address and the final CRC
-	@echo building $(SYSTEM_MEM)
+	@echo building modular system firmware to $(SYSTEM_MEM)
 	-rm $(SYSTEM_MEM)
-	$(MAKE) -C $(MODULAR_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
+	$(MAKE) -C $(MODULAR_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION_NEXT) all
 	dd if=/dev/zero ibs=1 count=393212 | tr "\000" "\377" > $(SYSTEM_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(SYSTEM_MEM) ibs=1 count=393212
 	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc	
@@ -156,10 +153,10 @@ wl:
 	cp $(WICED_SDK)/$(MFG_TEST_DIR)/wl43362A2.exe $(TARGET)/wl.exe
 
 combined: bootloader dct mfg_test firmware user system wl
+	@echo Building combined image to $(COMBINED_MEM)
 	-rm $(COMBINED_MEM)
 	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(FIRMWARE_MEM) $(USER_MEM) > $(COMBINED_MEM)
-	$(call assert_filesize,$(COMBINED_MEM),1048576)
-
+	
 	# Generate combined.elf from combined.bin
 	${TOOLCHAIN_PREFIX}ld -b binary -r -o $(OUT)/temp.elf $(COMBINED_MEM)
 	${TOOLCHAIN_PREFIX}objcopy --rename-section .data=.text --set-section-flags .data=alloc,code,load $(OUT)/temp.elf
