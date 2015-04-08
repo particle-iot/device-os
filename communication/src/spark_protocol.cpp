@@ -120,8 +120,12 @@ int SparkProtocol::handshake(void)
   queue[1] = 0x10;
   hello(queue + 2, descriptor.was_ota_upgrade_successful());
 
-  blocking_send(queue, 18);
+  err = blocking_send(queue, 18);
+  if (0 > err) return err;
 
+  if (!event_loop())        // read the hello message from the server
+      return -1;
+  
   return 0;
 }
 
@@ -137,7 +141,7 @@ bool SparkProtocol::event_loop(void)
     bool success = handle_received_message();
     if (!success)
     {
-        if (updating) {      // eas updating but had an error, inform the client
+        if (updating) {      // was updating but had an error, inform the client
             serial_dump("handle received message failed - aborting transfer");
             callbacks.finish_firmware_update(file, 0, NULL);
             updating = false;
