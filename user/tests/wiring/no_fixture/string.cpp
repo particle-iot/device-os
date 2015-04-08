@@ -21,7 +21,9 @@
  ******************************************************************************
  */
 
-#inclue "spark_wiring_string.h"
+#include "application.h"
+#include "unit-test/unit-test.h"
+#include "spark_wiring_string.h"
 
 test(String_float_conversion) {
     String one(1);
