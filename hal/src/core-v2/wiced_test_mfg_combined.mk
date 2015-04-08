@@ -12,9 +12,11 @@ TOOLCHAIN_PREFIX=arm-none-eabi-
 CORE?=../../../..
 WICED_SDK?=$(CORE)/WICED/WICED-SDK-3.1.1/WICED-SDK
 FIRMWARE=$(CORE)/firmware
+COMMON_BUILD=$(FIRMWARE)/build
 #WICED_SDK?=$(CORE)/photon-wiced
 #FIRMWARE=$(CORE)/firmware-private
 
+include $(COMMON_BUILD)/macros.mk
 
 PLATFORM_ID?=6
 
@@ -87,6 +89,7 @@ bootloader:
 	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377" > $(BOOTLOADER_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(BOOTLOADER_MEM) ibs=1k count=16
 	dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
+	$(call assert_filesize,$(BOOTLOADER_MEM),16384)
 
 # add the prepared dct image into the flash image
 dct: 	
@@ -96,6 +99,7 @@ dct:
 	dd if=$(DCT_PREP) of=$(DCT_MEM) conv=notrunc
 	dd if=/dev/zero bs=1 count=32 of=$(DCT_MEM) seek=9406 conv=notrunc
 	echo -n $(VERSION_STRING) | dd bs=1 of=$(DCT_MEM) seek=9406 conv=notrunc
+	$(call assert_filesize,$(DCT_MEM),114688)
 			
 $(MFG_TEST_BIN):
 	cd "$(WICED_SDK)"; "./make" $(CMD) $(OPTS)
@@ -108,12 +112,11 @@ $(MFG_TEST_MEM): $(MFG_TEST_BIN)
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(MFG_TEST_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(MFG_TEST_MEM) ibs=1k count=384
 	dd if=$(MFG_TEST_BIN) of=$(MFG_TEST_MEM) conv=notrunc
+	$(call assert_filesize,$(MFG_TEST_MEM),393216)
 
 mfg_test: $(MFG_TEST_MEM)
-	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377" > $(BOOTLOADER_MEM)
-#	tr "\000" "\377" < /dev/zero | dd of=$(BOOTLOADER_MEM) ibs=1k count=16
-	dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
-			
+	;
+	
 firmware:
 	@echo building $(FIRMWARE_MEM)
 	-rm $(FIRMWARE_MEM)
@@ -121,12 +124,15 @@ firmware:
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(FIRMWARE_MEM) ibs=1k count=384
 	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc	
-
+	$(call assert_filesize,$(FIRMWARE_MEM),393216)
+	
 user:
 	@echo building $(USER_MEM)
 	-rm $(USER_MEM)
 	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
-	cp $(USER_BIN) $(USER_MEM)
+	dd if=/dev/zero ibs=1k count=128 | tr "\000" "\377" > $(USER_MEM)
+	dd if=$(USER_BIN) of=$(USER_MEM) conv=notrunc	
+	$(call assert_filesize,$(USER_MEM),131072)
 
 system:
 	# The system module is composed of part1 and part2 concatenated together
@@ -143,6 +149,7 @@ system:
 	# change the module function from system-part modular (04) to monolithic (03 since that's what the factory reset is expecting.
 	echo 03 | $(XXD) -r -p | dd bs=1 of=$(SYSTEM_MEM) seek=402 conv=notrunc
 	$(CRC) $(SYSTEM_MEM) | cut -c 1-10 | $(XXD) -r -p >> $(SYSTEM_MEM)
+	$(call assert_filesize,$(SYSTEM_MEM),393216)
 
 wl:
 	cd "$(WICED_SDK)/$(MFG_TEST_DIR)"; make
@@ -151,12 +158,14 @@ wl:
 combined: bootloader dct mfg_test firmware user system wl
 	-rm $(COMBINED_MEM)
 	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(FIRMWARE_MEM) $(USER_MEM) > $(COMBINED_MEM)
+	$(call assert_filesize,$(COMBINED_MEM),1048576)
+
 	# Generate combined.elf from combined.bin
 	${TOOLCHAIN_PREFIX}ld -b binary -r -o $(OUT)/temp.elf $(COMBINED_MEM)
 	${TOOLCHAIN_PREFIX}objcopy --rename-section .data=.text --set-section-flags .data=alloc,code,load $(OUT)/temp.elf
 	${TOOLCHAIN_PREFIX}ld $(OUT)/temp.elf -T combined_bin_to_elf.ld -o $(COMBINED_ELF)
 	${TOOLCHAIN_PREFIX}strip -s $(COMBINED_ELF)
-	-rm -rf $(OUT)/temp.elf
+	-rm -rf $(OUT)/temp.elf	
 
 flash: combined
 	st-flash write $(COMBINED_MEM) 0x8000000

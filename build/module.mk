@@ -1,13 +1,11 @@
 # This is the common makefile used to build all top-level modules
 # It contains common recipes for bulding C/CPP/asm files to objects, and
 # to combine those objects into libraries or elf files.
-include $(COMMON_BUILD)/os.mk
-include $(COMMON_BUILD)/verbose.mk
+include $(COMMON_BUILD)/macros.mk
 
 SOURCE_PATH ?= $(MODULE_PATH)
 
 # Recursive wildcard function - finds matching files in a directory tree
-rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 target_files = $(patsubst $(SOURCE_PATH)/%,%,$(call rwildcard,$(SOURCE_PATH)/$1,$2))
 
 # import this module's symbols
@@ -200,12 +198,6 @@ ifeq (OSX,$(MAKE_OS))
 SHA_256 = shasum -a 256
 else
 SHA_256 = $(COMMON_BUILD)/bin/win32/sha256sum
-endif
-
-ifneq (OSX,$(MAKE_OS))
-filesize=`stat --print %s $1`
-else
-filesize=`stat -f%z $1`
 endif
 
 # Create a bin file from ELF file
