@@ -202,7 +202,7 @@ endif
 
 # Create a bin file from ELF file
 %.bin : %.elf
-	$(call,echo,'Invoking: ARM GNU Create Flash Image')
+	$(call echo,'Invoking: ARM GNU Create Flash Image')
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@.pre_crc
 ifneq ($(MODULE),bootloader)	
 	$(call,echo,'Injecting CRC32 to the Flash Image')
@@ -217,49 +217,49 @@ ifneq ($(MODULE),bootloader)
 endif
 	-rm $@
 	mv $@.pre_crc $@
-	$(call,echo,)
+	$(call echo,)
 	
 
 $(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
-	$(call,echo,'Building target: $@')
-	$(call,echo,'Invoking: ARM GCC C++ Linker')
+	$(call echo,'Building target: $@')
+	$(call echo,'Invoking: ARM GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
-	$(call,echo,)	
+	$(call echo,)	
 
 
 # Tool invocations
 $(TARGET_BASE).a : $(ALLOBJ)
-	$(call,echo,'Building target: $@')
-	$(call,echo,'Invoking: ARM GCC Archiver')
+	$(call echo,'Building target: $@')
+	$(call echo,'Invoking: ARM GCC Archiver')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(AR) -cr $@ $^
-	$(call,echo,)
+	$(call echo,)
 
 # C compiler to build .o from .c in $(BUILD_DIR)
 $(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.c
-	$(call,echo,'Building file: $<')
-	$(call,echo,'Invoking: ARM GCC C Compiler')
+	$(call echo,'Building file: $<')
+	$(call echo,'Invoking: ARM GCC C Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CC) $(CFLAGS) $(CONLYFLAGS) -c -o $@ $<
-	$(call,echo,)
+	$(call echo,)
 
 # Assember to build .o from .S in $(BUILD_DIR)
 $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
-	$(call,echo,'Building file: $<')
-	$(call,echo,'Invoking: ARM GCC Assembler')
+	$(call echo,'Building file: $<')
+	$(call echo,'Invoking: ARM GCC Assembler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CC) $(ASFLAGS) -c -o $@ $<
-	$(call,echo,)
+	$(call echo,)
 	
 # CPP compiler to build .o from .cpp in $(BUILD_DIR)
 # Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
-$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.cpp
-	$(call,echo,'Building file: $<')
-	$(call,echo,'Invoking: ARM GCC CPP Compiler')
+$(BUILD_PATH)/%.o : ./$(SOURCE_PATH)/%.cpp
+	$(call echo,'Building file: $<')
+	$(call echo,'Invoking: ARM GCC CPP Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-	$(call,echo,)
+	$(call echo,)
 
 # Other Targets
 clean: clean_deps

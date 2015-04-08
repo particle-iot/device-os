@@ -12,4 +12,4 @@ VERBOSE=@
 MAKE_ARGS += -s
 endif
 
-echo=$(ECHO $1)
+echo=@$(ECHO) $1
