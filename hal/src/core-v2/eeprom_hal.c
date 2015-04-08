@@ -69,10 +69,7 @@
 #define PAGE_FULL               ((uint8_t)0x80)
 
 /* Private macro -------------------------------------------------------------*/
-/* Virtual Address: Use on-chip backup SRAM instead of system SRAM variable */
-#define EepromAddressTab(index) (*(__IO uint16_t *) (BKPSRAM_BASE + 2*index))
-/* EEPROM Emulation Max Size : 4KB backup SRAM = 4096/2 = 2048 bytes */
-#define EEPROM_SIZE             2048    //Max possible using 4KB BKP SRAM as virtual address cache
+#define EEPROM_SIZE             2048
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -89,15 +86,6 @@ static uint16_t EEPROM_WriteVariable(uint16_t EepromAddress, uint16_t EepromData
 
 void HAL_EEPROM_Init(void)
 {
-    /* Enable BKPRAM Clock */
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_BKPSRAM, ENABLE);
-
-    uint16_t i;
-    for (i = 0 ; i < EEPROM_SIZE ; i++)
-    {
-        EepromAddressTab(i) = i;
-    }
-
     EEPROM_Init();
 }
 
@@ -110,7 +98,7 @@ uint8_t HAL_EEPROM_Read(uint32_t address)
 {
     uint16_t data;
 
-    if ((address < EEPROM_SIZE) && (EEPROM_ReadVariable(EepromAddressTab(address), &data) == 0))
+    if ((address < EEPROM_SIZE) && (EEPROM_ReadVariable(address, &data) == 0))
     {
         return data;
     }
@@ -122,7 +110,7 @@ void HAL_EEPROM_Write(uint32_t address, uint8_t data)
 {
     if (address < EEPROM_SIZE)
     {
-        EEPROM_WriteVariable(EepromAddressTab(address), data);
+        EEPROM_WriteVariable(address, data);
     }
 }
 
@@ -308,7 +296,7 @@ static uint16_t EEPROM_PageTransfer(uint16_t EepromAddress, uint16_t EepromData)
     FLASH_Status FlashStatus = FLASH_COMPLETE;
     uint32_t NewPageAddress = PAGE0_BASE_ADDRESS;
     uint16_t OldPageId=0;
-    uint16_t ValidPage = PAGE0, EepromAddressIdx = 0;
+    uint16_t ValidPage = PAGE0, virtualAddress = 0;
     uint16_t EepromStatus = 0, ReadStatus = 0;
     uint16_t EepromDataVar = 0;
 
@@ -353,17 +341,17 @@ static uint16_t EEPROM_PageTransfer(uint16_t EepromAddress, uint16_t EepromData)
     }
 
     /* Transfer process: transfer variables from old to the new active page */
-    for (EepromAddressIdx = 0; EepromAddressIdx < EEPROM_SIZE; EepromAddressIdx++)
+    for (virtualAddress = 0; virtualAddress < EEPROM_SIZE; virtualAddress++)
     {
-        if (EepromAddressTab(EepromAddressIdx) != EepromAddress)  /* Check each variable except the one passed as parameter */
+        if (virtualAddress != EepromAddress)  /* Check each variable except the one passed as parameter */
         {
             /* Read the other last variable updates */
-            ReadStatus = EEPROM_ReadVariable(EepromAddressTab(EepromAddressIdx), &EepromDataVar);
+            ReadStatus = EEPROM_ReadVariable(virtualAddress, &EepromDataVar);
             /* In case variable corresponding to the virtual address was found */
             if (ReadStatus != 0x1)
             {
                 /* Transfer the variable to the new active page */
-                EepromStatus = EEPROM_VerifyPageFullWriteVariable(EepromAddressTab(EepromAddressIdx), EepromDataVar);
+                EepromStatus = EEPROM_VerifyPageFullWriteVariable(virtualAddress, EepromDataVar);
                 /* If program operation was failed, a Flash error code is returned */
                 if (EepromStatus != FLASH_COMPLETE)
                 {
@@ -403,7 +391,7 @@ static uint16_t EEPROM_PageTransfer(uint16_t EepromAddress, uint16_t EepromData)
 static uint16_t EEPROM_Init(void)
 {
     uint16_t PageStatus0 = 6, PageStatus1 = 6;
-    uint16_t EepromAddressIdx = 0;
+    uint16_t virtualAddress = 0;
     uint16_t EepromStatus = 0, ReadStatus = 0;
     int16_t x = -1;
     uint16_t  FlashStatus;
@@ -467,21 +455,21 @@ static uint16_t EEPROM_Init(void)
             if (PageStatus1 == VALID_PAGE) /* Page0 receive, Page1 valid */
             {
                 /* Transfer data from Page1 to Page0 */
-                for (EepromAddressIdx = 0; EepromAddressIdx < EEPROM_SIZE; EepromAddressIdx++)
+                for (virtualAddress = 0; virtualAddress < EEPROM_SIZE; virtualAddress++)
                 {
-                    if (( *(__IO uint16_t*)(PAGE0_BASE_ADDRESS + 6)) == EepromAddressTab(EepromAddressIdx))
+                    if (( *(__IO uint16_t*)(PAGE0_BASE_ADDRESS + 6)) == virtualAddress)
                     {
-                        x = EepromAddressIdx;
+                        x = virtualAddress;
                     }
-                    if (EepromAddressIdx != x)
+                    if (virtualAddress != x)
                     {
                         /* Read the last variables' updates */
-                        ReadStatus = EEPROM_ReadVariable(EepromAddressTab(EepromAddressIdx), &EepromDataVar);
+                        ReadStatus = EEPROM_ReadVariable(virtualAddress, &EepromDataVar);
                         /* In case variable corresponding to the virtual address was found */
                         if (ReadStatus != 0x1)
                         {
                             /* Transfer the variable to the Page0 */
-                            EepromStatus = EEPROM_VerifyPageFullWriteVariable(EepromAddressTab(EepromAddressIdx), EepromDataVar);
+                            EepromStatus = EEPROM_VerifyPageFullWriteVariable(virtualAddress, EepromDataVar);
                             /* If program operation was failed, a Flash error code is returned */
                             if (EepromStatus != FLASH_COMPLETE)
                             {
@@ -558,21 +546,21 @@ static uint16_t EEPROM_Init(void)
             else /* Page0 valid, Page1 receive */
             {
                 /* Transfer data from Page0 to Page1 */
-                for (EepromAddressIdx = 0; EepromAddressIdx < EEPROM_SIZE; EepromAddressIdx++)
+                for (virtualAddress = 0; virtualAddress < EEPROM_SIZE; virtualAddress++)
                 {
-                    if ((*(__IO uint16_t*)(PAGE1_BASE_ADDRESS + 6)) == EepromAddressTab(EepromAddressIdx))
+                    if ((*(__IO uint16_t*)(PAGE1_BASE_ADDRESS + 6)) == virtualAddress)
                     {
-                        x = EepromAddressIdx;
+                        x = virtualAddress;
                     }
-                    if (EepromAddressIdx != x)
+                    if (virtualAddress != x)
                     {
                         /* Read the last variables' updates */
-                        ReadStatus = EEPROM_ReadVariable(EepromAddressTab(EepromAddressIdx), &EepromDataVar);
+                        ReadStatus = EEPROM_ReadVariable(virtualAddress, &EepromDataVar);
                         /* In case variable corresponding to the virtual address was found */
                         if (ReadStatus != 0x1)
                         {
                             /* Transfer the variable to the Page1 */
-                            EepromStatus = EEPROM_VerifyPageFullWriteVariable(EepromAddressTab(EepromAddressIdx), EepromDataVar);
+                            EepromStatus = EEPROM_VerifyPageFullWriteVariable(virtualAddress, EepromDataVar);
                             /* If program operation was failed, a Flash error code is returned */
                             if (EepromStatus != FLASH_COMPLETE)
                             {
