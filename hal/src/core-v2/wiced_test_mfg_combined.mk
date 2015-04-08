@@ -104,7 +104,7 @@ $(MFG_TEST_BIN):
 	cd "$(WICED_SDK)"; "./make" $(CMD) $(OPTS)
 	@echo Appending: CRC32 to the Flash Image
 	cp $@ $@.no_crc	
-	$(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p >> $@	
+	$(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p >> $@
 
 $(MFG_TEST_MEM): $(MFG_TEST_BIN)
 	@echo building WICED test tool to $(MFT_TEST_MEM)
@@ -113,6 +113,7 @@ $(MFG_TEST_MEM): $(MFG_TEST_BIN)
 #	tr "\000" "\377" < /dev/zero | dd of=$(MFG_TEST_MEM) ibs=1k count=384
 	dd if=$(MFG_TEST_BIN) of=$(MFG_TEST_MEM) conv=notrunc
 	$(call assert_filesize,$(MFG_TEST_MEM),393216)
+	$(call assert_filebyte,$(MFG_TEST_MEM),400,0$(PLATFORM_ID))
 
 mfg_test: $(MFG_TEST_MEM)
 	
@@ -124,12 +125,14 @@ firmware:
 #	tr "\000" "\377" < /dev/zero | dd of=$(FIRMWARE_MEM) ibs=1k count=384
 	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc	
 	$(call assert_filesize,$(FIRMWARE_MEM),393216)
+	$(call assert_filebyte,$(MFG_TEST_MEM),400,0$(PLATFORM_ID))
 	
-user:
+user:	system
 	@echo building factory default modular user app to $(USER_MEM)
 	-rm $(USER_MEM)
 	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION_NEXT) all	
 	cp $(USER_BIN) $(USER_MEM)
+	$(call assert_filebyte,$(MFG_TEST_MEM),400,0$(PLATFORM_ID))
 
 system:
 	# The system module is composed of part1 and part2 concatenated together
@@ -147,6 +150,7 @@ system:
 	echo 03 | $(XXD) -r -p | dd bs=1 of=$(SYSTEM_MEM) seek=402 conv=notrunc
 	$(CRC) $(SYSTEM_MEM) | cut -c 1-10 | $(XXD) -r -p >> $(SYSTEM_MEM)
 	$(call assert_filesize,$(SYSTEM_MEM),393216)
+	$(call assert_filebyte,$(SYSTEM_MEM),400,0$(PLATFORM_ID))
 
 wl:
 	cd "$(WICED_SDK)/$(MFG_TEST_DIR)"; make
