@@ -7,6 +7,11 @@
 # run make -f wiced_test_mfg_combined.mk
 # This will build the artefacts to $(FIRMEARE)/build/target/photon-rc2/
 
+ifeq (,$(PLATFORM_ID))
+$(error PLATFORM_ID not defined!)
+endif
+
+
 # redefine these for your environment
 TOOLCHAIN_PREFIX=arm-none-eabi-
 CORE?=../../../..
@@ -17,8 +22,6 @@ COMMON_BUILD=$(FIRMWARE)/build
 #FIRMWARE=$(CORE)/firmware-private
 
 include $(COMMON_BUILD)/macros.mk
-
-PLATFORM_ID?=6
 
 ifeq (6,$(PLATFORM_ID))
 CMD=test.mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
@@ -75,20 +78,19 @@ setup:
 
 		
 clean:
-	cd "$(WICED_SDK)"; "./make.exe" clean	
 	-rm -rf $(TARGET_PARENT)
 	-rm $(MFG_TEST_BIN)
 	-rm $(BOOTLOADER_MEM)
 	-rm $(DCT_MEM)
+	cd "$(WICED_SDK)"; "./make" clean	
 		
 bootloader:
 	@echo building bootloader to $(BOOTLOADER_MEM)
+	-rm $(BOOTLOADER_MEM)
 	$(MAKE) -C $(BOOTLOADER_DIR) PLATFORM_ID=$(PLATFORM_ID) all 
-	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377" > $(BOOTLOADER_MEM)
-#	tr "\000" "\377" < /dev/zero | dd of=$(BOOTLOADER_MEM) ibs=1k count=16
+	dd if=/dev/zero ibs=1k count=16 | tr "\x0" "\xFF") > $(BOOTLOADER_MEM)
 	dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
-	$(call assert_filesize,$(BOOTLOADER_MEM),16384)
-
+	
 # add the prepared dct image into the flash image
 dct: 	
 	@echo building DCT to $(DCT_MEM)
@@ -98,7 +100,6 @@ dct:
 	dd if=$(DCT_PREP) of=$(DCT_MEM) conv=notrunc
 	dd if=/dev/zero bs=1 count=32 of=$(DCT_MEM) seek=9406 conv=notrunc
 	echo -n $(VERSION_STRING) | dd bs=1 of=$(DCT_MEM) seek=9406 conv=notrunc
-	$(call assert_filesize,$(DCT_MEM),114688)
 			
 $(MFG_TEST_BIN):
 	cd "$(WICED_SDK)"; "./make" $(CMD) $(OPTS)
@@ -112,8 +113,6 @@ $(MFG_TEST_MEM): $(MFG_TEST_BIN)
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(MFG_TEST_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(MFG_TEST_MEM) ibs=1k count=384
 	dd if=$(MFG_TEST_BIN) of=$(MFG_TEST_MEM) conv=notrunc
-	$(call assert_filesize,$(MFG_TEST_MEM),393216)
-	$(call assert_filebyte,$(MFG_TEST_MEM),400,0$(PLATFORM_ID))
 
 mfg_test: $(MFG_TEST_MEM)
 	
@@ -124,15 +123,12 @@ firmware:
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(FIRMWARE_MEM) ibs=1k count=384
 	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc	
-	$(call assert_filesize,$(FIRMWARE_MEM),393216)
-	$(call assert_filebyte,$(MFG_TEST_MEM),400,0$(PLATFORM_ID))
 	
 user:	system
 	@echo building factory default modular user app to $(USER_MEM)
 	-rm $(USER_MEM)
 	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION_NEXT) all	
 	cp $(USER_BIN) $(USER_MEM)
-	$(call assert_filebyte,$(MFG_TEST_MEM),400,0$(PLATFORM_ID))
 
 system:
 	# The system module is composed of part1 and part2 concatenated together
@@ -149,14 +145,12 @@ system:
 	# change the module function from system-part modular (04) to monolithic (03 since that's what the factory reset is expecting.
 	echo 03 | $(XXD) -r -p | dd bs=1 of=$(SYSTEM_MEM) seek=402 conv=notrunc
 	$(CRC) $(SYSTEM_MEM) | cut -c 1-10 | $(XXD) -r -p >> $(SYSTEM_MEM)
-	$(call assert_filesize,$(SYSTEM_MEM),393216)
-	$(call assert_filebyte,$(SYSTEM_MEM),400,0$(PLATFORM_ID))
 
 wl:
 	cd "$(WICED_SDK)/$(MFG_TEST_DIR)"; make
 	cp $(WICED_SDK)/$(MFG_TEST_DIR)/wl43362A2.exe $(TARGET)/wl.exe
 
-combined: bootloader dct mfg_test firmware user system wl
+combined: bootloader dct mfg_test firmware user system wl checks
 	@echo Building combined image to $(COMBINED_MEM)
 	-rm $(COMBINED_MEM)
 	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(FIRMWARE_MEM) $(USER_MEM) > $(COMBINED_MEM)
@@ -171,7 +165,19 @@ combined: bootloader dct mfg_test firmware user system wl
 flash: combined
 	st-flash write $(COMBINED_MEM) 0x8000000
 
-.PHONY: wl mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM) prep_dct write_version
+checks:
+	$(call assert_filebyte,$(FIRMWARE_MEM),400,0$(PLATFORM_ID))
+	$(call assert_filesize,$(BOOTLOADER_MEM),16384)
+	$(call assert_filebyte,$(BOOTLOADER_MEM),400,0$(PLATFORM_ID))
+	$(call assert_filesize,$(DCT_MEM),114688)
+	$(call assert_filesize,$(MFG_TEST_MEM),393216)
+	$(call assert_filebyte,$(MFG_TEST_MEM),400,0$(PLATFORM_ID))
+	$(call assert_filesize,$(FIRMWARE_MEM),393216)
+	$(call assert_filesize,$(SYSTEM_MEM),393216)
+	$(call assert_filebyte,$(SYSTEM_MEM),400,0$(PLATFORM_ID))
+
+
+.PHONY: wl mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM) prep_dct write_version checks
 		
 DFU_USB_ID=2b04:d006
 DFU_DCT = dfu-util -d $(DFU_USB_ID) -a 1 --dfuse-address
