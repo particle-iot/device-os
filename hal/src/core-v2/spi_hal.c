@@ -28,158 +28,205 @@
 #include "gpio_hal.h"
 #include "pinmap_impl.h"
 
-/* Private typedef -----------------------------------------------------------*/
-
 /* Private define ------------------------------------------------------------*/
+#define TOTAL_SPI   2
 
-/* Private macro -------------------------------------------------------------*/
+/* Private typedef -----------------------------------------------------------*/
+typedef enum SPI_Num_Def {
+    SPI_1 = 0,
+    SPI_3 = 1
+} SPI_Num_Def;
 
 /* Private variables ---------------------------------------------------------*/
-static SPI_InitTypeDef SPI_InitStructure;
-static bool SPI_Bit_Order_Set = false;
-static bool SPI_Data_Mode_Set = false;
-static bool SPI_Clock_Divider_Set = false;
-static bool SPI_Enabled = false;
+typedef struct STM32_SPI_Info {
+    SPI_TypeDef* SPI_Peripheral;
+
+    __IO uint32_t* SPI_RCC_APBRegister;
+    uint32_t SPI_RCC_APBClockEnable;
+
+    uint16_t SPI_SCK_Pin;
+    uint16_t SPI_MISO_Pin;
+    uint16_t SPI_MOSI_Pin;
+
+    uint8_t SPI_AF_Mapping;
+
+    SPI_InitTypeDef SPI_InitStructure;
+
+    bool SPI_Bit_Order_Set;
+    bool SPI_Data_Mode_Set;
+    bool SPI_Clock_Divider_Set;
+    bool SPI_Enabled;
+} STM32_SPI_Info;
+
+/*
+ * SPI mapping
+ */
+STM32_SPI_Info SPI_MAP[TOTAL_SPI] =
+{
+        { SPI1, &RCC->APB2ENR, RCC_APB2Periph_SPI1, SCK, MISO, MOSI, GPIO_AF_SPI1 },
+        { SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, D4, D3, D2, GPIO_AF_SPI3 }
+};
+
+static STM32_SPI_Info *spiMap[TOTAL_SPI]; // pointer to SPI_MAP[] containing SPI peripheral info
 
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
 
-void HAL_SPI_Begin(uint16_t pin)
+void HAL_SPI_Init(HAL_SPI_Interface spi)
 {
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+    if(spi == HAL_SPI_INTERFACE1)
+    {
+        spiMap[spi] = &SPI_MAP[SPI_1];
+    }
+    else if(spi == HAL_SPI_INTERFACE2)
+    {
+        spiMap[spi] = &SPI_MAP[SPI_3];
+    }
 
-    /* Connect SPI1 pins to AF5 */
+    spiMap[spi]->SPI_Bit_Order_Set = false;
+    spiMap[spi]->SPI_Data_Mode_Set = false;
+    spiMap[spi]->SPI_Clock_Divider_Set = false;
+    spiMap[spi]->SPI_Enabled = false;
+}
+
+void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
+{
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    GPIO_PinAFConfig(PIN_MAP[SCK].gpio_peripheral, PIN_MAP[SCK].gpio_pin_source, GPIO_AF_SPI1);
-    GPIO_PinAFConfig(PIN_MAP[MOSI].gpio_peripheral, PIN_MAP[MOSI].gpio_pin_source, GPIO_AF_SPI1);
-    GPIO_PinAFConfig(PIN_MAP[MISO].gpio_peripheral, PIN_MAP[MISO].gpio_pin_source, GPIO_AF_SPI1);
 
-    HAL_Pin_Mode(SCK, AF_OUTPUT_PUSHPULL);
-    HAL_Pin_Mode(MOSI, AF_OUTPUT_PUSHPULL);
-    HAL_Pin_Mode(MISO, AF_OUTPUT_PUSHPULL);
+    /* Enable SPI Clock */
+    *spiMap[spi]->SPI_RCC_APBRegister |= spiMap[spi]->SPI_RCC_APBClockEnable;
+
+    /* Connect SPI pins to AF */
+    GPIO_PinAFConfig(PIN_MAP[spiMap[spi]->SPI_SCK_Pin].gpio_peripheral, PIN_MAP[spiMap[spi]->SPI_SCK_Pin].gpio_pin_source, spiMap[spi]->SPI_AF_Mapping);
+    GPIO_PinAFConfig(PIN_MAP[spiMap[spi]->SPI_MISO_Pin].gpio_peripheral, PIN_MAP[spiMap[spi]->SPI_MISO_Pin].gpio_pin_source, spiMap[spi]->SPI_AF_Mapping);
+    GPIO_PinAFConfig(PIN_MAP[spiMap[spi]->SPI_MOSI_Pin].gpio_peripheral, PIN_MAP[spiMap[spi]->SPI_MOSI_Pin].gpio_pin_source, spiMap[spi]->SPI_AF_Mapping);
+
+    HAL_Pin_Mode(spiMap[spi]->SPI_SCK_Pin, AF_OUTPUT_PUSHPULL);
+    HAL_Pin_Mode(spiMap[spi]->SPI_MISO_Pin, AF_OUTPUT_PUSHPULL);
+    HAL_Pin_Mode(spiMap[spi]->SPI_MOSI_Pin, AF_OUTPUT_PUSHPULL);
 
     HAL_Pin_Mode(pin, OUTPUT);
     HAL_GPIO_Write(pin, Bit_SET);//HIGH
 
     /* SPI configuration */
-    SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
-    SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
-    SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
-    if(SPI_Data_Mode_Set != true)
+    spiMap[spi]->SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+    spiMap[spi]->SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+    spiMap[spi]->SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+    if(spiMap[spi]->SPI_Data_Mode_Set != true)
     {
         //Default: SPI_MODE3
-        SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-        SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+        spiMap[spi]->SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+        spiMap[spi]->SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
     }
-    SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-    if(SPI_Clock_Divider_Set != true)
+    spiMap[spi]->SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+    if(spiMap[spi]->SPI_Clock_Divider_Set != true)
     {
-        SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;
+        spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;
     }
-    if(SPI_Bit_Order_Set != true)
+    if(spiMap[spi]->SPI_Bit_Order_Set != true)
     {
         //Default: MSBFIRST
-        SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+        spiMap[spi]->SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
     }
-    SPI_InitStructure.SPI_CRCPolynomial = 7;
+    spiMap[spi]->SPI_InitStructure.SPI_CRCPolynomial = 7;
 
-    SPI_Init(SPI1, &SPI_InitStructure);
+    SPI_Init(spiMap[spi]->SPI_Peripheral, &spiMap[spi]->SPI_InitStructure);
 
-    SPI_Cmd(SPI1, ENABLE);
+    SPI_Cmd(spiMap[spi]->SPI_Peripheral, ENABLE);
 
-    SPI_Enabled = true;
+    spiMap[spi]->SPI_Enabled = true;
 }
 
-void HAL_SPI_End(void)
+void HAL_SPI_End(HAL_SPI_Interface spi)
 {
-    if(SPI_Enabled != false)
+    if(spiMap[spi]->SPI_Enabled != false)
     {
-        SPI_Cmd(SPI1, DISABLE);
+        SPI_Cmd(spiMap[spi]->SPI_Peripheral, DISABLE);
 
-        SPI_Enabled = false;
+        spiMap[spi]->SPI_Enabled = false;
     }
 }
 
-void HAL_SPI_Set_Bit_Order(uint8_t order)
+void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order)
 {
     if(order == LSBFIRST)
     {
-        SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_LSB;
+        spiMap[spi]->SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_LSB;
     }
     else
     {
-        SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+        spiMap[spi]->SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
     }
 
-    SPI_Init(SPI1, &SPI_InitStructure);
+    SPI_Init(spiMap[spi]->SPI_Peripheral, &spiMap[spi]->SPI_InitStructure);
 
-    SPI_Bit_Order_Set = true;
+    spiMap[spi]->SPI_Bit_Order_Set = true;
 }
 
-void HAL_SPI_Set_Data_Mode(uint8_t mode)
+void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
 {
-    if(SPI_Enabled != false)
+    if(spiMap[spi]->SPI_Enabled != false)
     {
-        SPI_Cmd(SPI1, DISABLE);
+        SPI_Cmd(spiMap[spi]->SPI_Peripheral, DISABLE);
     }
 
     switch(mode)
     {
         case SPI_MODE0:
-            SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
-            SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+            spiMap[spi]->SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+            spiMap[spi]->SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
             break;
 
         case SPI_MODE1:
-            SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
-            SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+            spiMap[spi]->SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+            spiMap[spi]->SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
             break;
 
         case SPI_MODE2:
-            SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-            SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+            spiMap[spi]->SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+            spiMap[spi]->SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
             break;
 
         case SPI_MODE3:
-            SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-            SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+            spiMap[spi]->SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+            spiMap[spi]->SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
             break;
     }
 
-    SPI_Init(SPI1, &SPI_InitStructure);
+    SPI_Init(spiMap[spi]->SPI_Peripheral, &spiMap[spi]->SPI_InitStructure);
 
-    if(SPI_Enabled != false)
+    if(spiMap[spi]->SPI_Enabled != false)
     {
-        SPI_Cmd(SPI1, ENABLE);
+        SPI_Cmd(spiMap[spi]->SPI_Peripheral, ENABLE);
     }
 
-    SPI_Data_Mode_Set = true;
+    spiMap[spi]->SPI_Data_Mode_Set = true;
 }
 
-void HAL_SPI_Set_Clock_Divider(uint8_t rate)
+void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate)
 {
-    SPI_InitStructure.SPI_BaudRatePrescaler = rate;
+    spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = rate;
 
-    SPI_Init(SPI1, &SPI_InitStructure);
+    SPI_Init(spiMap[spi]->SPI_Peripheral, &spiMap[spi]->SPI_InitStructure);
 
-    SPI_Clock_Divider_Set = true;
+    spiMap[spi]->SPI_Clock_Divider_Set = true;
 }
 
-uint16_t HAL_SPI_Send_Receive_Data(uint16_t data)
+uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
 {
-    /* Wait for SPI1 Tx buffer empty */
-    while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET);
+    /* Wait for SPI Tx buffer empty */
+    while (SPI_I2S_GetFlagStatus(spiMap[spi]->SPI_Peripheral, SPI_I2S_FLAG_TXE) == RESET);
     /* Send SPI1 data */
-    SPI_I2S_SendData(SPI1, data);
+    SPI_I2S_SendData(spiMap[spi]->SPI_Peripheral, data);
 
-    /* Wait for SPI1 data reception */
-    while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);
-    /* Read and return SPI1 received data */
-    return SPI_I2S_ReceiveData(SPI1);
+    /* Wait for SPI data reception */
+    while (SPI_I2S_GetFlagStatus(spiMap[spi]->SPI_Peripheral, SPI_I2S_FLAG_RXNE) == RESET);
+    /* Read and return SPI received data */
+    return SPI_I2S_ReceiveData(spiMap[spi]->SPI_Peripheral);
 }
 
-bool HAL_SPI_Is_Enabled(void)
+bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 {
-    return SPI_Enabled;
+    return spiMap[spi]->SPI_Enabled;
 }

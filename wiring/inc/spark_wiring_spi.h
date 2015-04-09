@@ -31,25 +31,32 @@
 #include "spi_hal.h"
 
 class SPIClass {
+private:
+  HAL_SPI_Interface _spi;
+
 public:
-  static void begin();
-  static void begin(uint16_t);
-  static void end();
+  SPIClass(HAL_SPI_Interface spi);
+  virtual ~SPIClass() {};
 
-  static void setBitOrder(uint8_t);
-  static void setDataMode(uint8_t);
-  static void setClockDivider(uint8_t);
+  void begin();
+  void begin(uint16_t);
+  void end();
 
-  static byte transfer(byte _data);
+  void setBitOrder(uint8_t);
+  void setDataMode(uint8_t);
+  void setClockDivider(uint8_t);
 
-  static void attachInterrupt();
-  static void detachInterrupt();
+  byte transfer(byte _data);
 
-  static bool isEnabled(void);
+  void attachInterrupt();
+  void detachInterrupt();
+
+  bool isEnabled(void);
 };
 
 #ifndef SPARK_WIRING_NO_SPI
 extern SPIClass SPI;
+extern SPIClass SPI1;
 #endif
 
 #endif

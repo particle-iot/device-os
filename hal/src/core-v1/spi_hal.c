@@ -45,7 +45,13 @@ static bool SPI_Enabled = false;
 
 /* Private function prototypes -----------------------------------------------*/
 
-void HAL_SPI_Begin(uint16_t pin)
+void HAL_SPI_Init(HAL_SPI_Interface spi)
+{
+    //There's only one SPI interface available on Core.
+    //HAL_SPI_Interface as argument in Core HAL APIs has no effect.
+}
+
+void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
 {
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
 
@@ -85,7 +91,7 @@ void HAL_SPI_Begin(uint16_t pin)
   SPI_Enabled = true;
 }
 
-void HAL_SPI_End(void)
+void HAL_SPI_End(HAL_SPI_Interface spi)
 {
   if(SPI_Enabled != false)
   {
@@ -95,7 +101,7 @@ void HAL_SPI_End(void)
   }
 }
 
-void HAL_SPI_Set_Bit_Order(uint8_t order)
+void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order)
 {
   if(order == LSBFIRST)
   {
@@ -111,7 +117,7 @@ void HAL_SPI_Set_Bit_Order(uint8_t order)
   SPI_Bit_Order_Set = true;
 }
 
-void HAL_SPI_Set_Data_Mode(uint8_t mode)
+void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
 {
   if(SPI_Enabled != false)
   {
@@ -151,7 +157,7 @@ void HAL_SPI_Set_Data_Mode(uint8_t mode)
   SPI_Data_Mode_Set = true;
 }
 
-void HAL_SPI_Set_Clock_Divider(uint8_t rate)
+void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate)
 {
   SPI_InitStructure.SPI_BaudRatePrescaler = rate;
 
@@ -160,7 +166,7 @@ void HAL_SPI_Set_Clock_Divider(uint8_t rate)
   SPI_Clock_Divider_Set = true;
 }
 
-uint16_t HAL_SPI_Send_Receive_Data(uint16_t data)
+uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
 {
   /* Wait for SPI1 Tx buffer empty */
   while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET);
@@ -173,7 +179,7 @@ uint16_t HAL_SPI_Send_Receive_Data(uint16_t data)
   return SPI_I2S_ReceiveData(SPI1);
 }
 
-bool HAL_SPI_Is_Enabled(void)
+bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 {
   return SPI_Enabled;
 }

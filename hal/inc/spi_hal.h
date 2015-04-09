@@ -31,6 +31,10 @@
 #include "pinmap_hal.h"
 
 /* Exported types ------------------------------------------------------------*/
+typedef enum HAL_SPI_Interface {
+    HAL_SPI_INTERFACE1 = 0,    //maps to SPI1
+    HAL_SPI_INTERFACE2 = 1     //maps to SPI3
+} HAL_SPI_Interface;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -55,13 +59,14 @@
 extern "C" {
 #endif
 
-void HAL_SPI_Begin(uint16_t pin);
-void HAL_SPI_End(void);
-void HAL_SPI_Set_Bit_Order(uint8_t order);
-void HAL_SPI_Set_Data_Mode(uint8_t mode);
-void HAL_SPI_Set_Clock_Divider(uint8_t rate);
-uint16_t HAL_SPI_Send_Receive_Data(uint16_t data);
-bool HAL_SPI_Is_Enabled(void);
+void HAL_SPI_Init(HAL_SPI_Interface spi);
+void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin);
+void HAL_SPI_End(HAL_SPI_Interface spi);
+void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order);
+void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode);
+void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate);
+uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data);
+bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi);
 
 #ifdef __cplusplus
 }

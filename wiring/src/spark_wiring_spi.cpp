@@ -27,8 +27,16 @@
 #include "spark_wiring_spi.h"
 
 #ifndef SPARK_WIRING_NO_SPI
-SPIClass SPI;
+SPIClass SPI(HAL_SPI_INTERFACE1);
+// optional SPI1 is instantiated from libraries/SPI1/SPI1.h
 #endif
+
+SPIClass::SPIClass(HAL_SPI_Interface spi)
+{
+  _spi = spi;
+  HAL_SPI_Init(_spi);
+}
+
 void SPIClass::begin()
 {
   begin(SS);
@@ -36,37 +44,37 @@ void SPIClass::begin()
 
 void SPIClass::begin(uint16_t ss_pin)
 {
-  if (ss_pin >= TOTAL_PINS )
+  if (ss_pin >= TOTAL_PINS)
   {
     return;
   }
 
-  HAL_SPI_Begin(ss_pin);
+  HAL_SPI_Begin(_spi, ss_pin);
 }
 
 void SPIClass::end()
 {
-  HAL_SPI_End();
+  HAL_SPI_End(_spi);
 }
 
 void SPIClass::setBitOrder(uint8_t bitOrder)
 {
-  HAL_SPI_Set_Bit_Order(bitOrder);
+  HAL_SPI_Set_Bit_Order(_spi, bitOrder);
 }
 
 void SPIClass::setDataMode(uint8_t mode)
 {
-  HAL_SPI_Set_Data_Mode(mode);
+  HAL_SPI_Set_Data_Mode(_spi, mode);
 }
 
 void SPIClass::setClockDivider(uint8_t rate)
 {
-  HAL_SPI_Set_Clock_Divider(rate);
+  HAL_SPI_Set_Clock_Divider(_spi, rate);
 }
 
 byte SPIClass::transfer(byte _data)
 {
-  return HAL_SPI_Send_Receive_Data(_data);
+  return HAL_SPI_Send_Receive_Data(_spi, _data);
 }
 
 void SPIClass::attachInterrupt()
@@ -81,5 +89,5 @@ void SPIClass::detachInterrupt()
 
 bool SPIClass::isEnabled()
 {
-  return HAL_SPI_Is_Enabled();
+  return HAL_SPI_Is_Enabled(_spi);
 }
