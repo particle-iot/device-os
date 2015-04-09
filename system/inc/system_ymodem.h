@@ -28,7 +28,7 @@ extern "C" {
 typedef struct Stream Stream;
 #include <stdint.h>
 
-bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor* desc);
+bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& desc, void*);
 
 #ifdef __cplusplus
 }

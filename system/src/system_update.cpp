@@ -52,8 +52,13 @@ void set_start_ymodem_flasher_serial_speed(uint32_t speed)
 
 bool system_serialFirmwareUpdate(Stream* stream) 
 {
-    FileTransfer::Descriptor desc;
-    desc.chunk_size = 0;
+#if PLATFORM_ID>2    
+    set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
+#endif    
+    FileTransfer::Descriptor desc;    
+    desc.chunk_size = 0;    
+    desc.file_address = HAL_OTA_FlashAddress();
+    desc.file_length = HAL_OTA_FlashLength();
     desc.store = FileTransfer::Store::FIRMWARE;
     return system_serialFileTransfer(stream, desc);
 }
@@ -62,10 +67,10 @@ bool system_serialFirmwareUpdate(Stream* stream)
 bool system_serialFileTransfer(Stream *serialObj, FileTransfer::Descriptor& file)
 {
     bool status = false;
-
+    
     if (NULL != Ymodem_Serial_Flash_Update_Handler)
     {        
-        status = Ymodem_Serial_Flash_Update_Handler(serialObj, file);
+        status = Ymodem_Serial_Flash_Update_Handler(serialObj, file, NULL);
         SPARK_FLASH_UPDATE = 0;
         TimingFlashUpdateTimeout = 0;
 
@@ -96,7 +101,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
     }
 #endif
 #ifdef START_YMODEM_FLASHER_SERIAL_SPEED
-    else if (!WLAN_SMART_CONFIG_START && bitrate == start_ymodem_flasher_serial_speed)
+    if (!WLAN_SMART_CONFIG_START && bitrate == start_ymodem_flasher_serial_speed)
     {
         //Set the Ymodem flasher flag to execute system_serialFirmwareUpdate()
         set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);

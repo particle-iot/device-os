@@ -32,6 +32,7 @@
 #include "spark_wiring.h"
 #include "system_task.h"
 #include "system_update.h"
+#include "system_ymodem.h"
 #include "ota_flash_hal.h"
 #include "rgbled.h"
 #include "file_transfer.h"
@@ -342,14 +343,14 @@ static int32_t Ymodem_Receive(Stream *serialObj, uint32_t sFlashAddress, uint8_t
  * @param  serialObj (Possible values : &Serial, &Serial1 or &Serial2)
  * @retval true on success
  */
-extern "C" bool Ymodem_Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress)
+extern "C" bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& file, void* reserved)
 {
   int32_t Size = 0;
   uint8_t fileName[FILE_NAME_LENGTH] = {0};
   uint8_t buffer[1024] = {0};
 
   serialObj->println("Waiting for the binary file to be sent ... (press 'a' to abort)");
-  Size = Ymodem_Receive(serialObj, sFlashAddress, &buffer[0], fileName);
+  Size = Ymodem_Receive(serialObj, file.file_address, &buffer[0], fileName);
   RGB.control(false);
   if (Size > 0)
   {

@@ -11,7 +11,7 @@ extern "C" {
 typedef struct Stream Stream;
 #include <stdint.h>
 
-typedef bool (*ymodem_serial_flash_update_handler)(Stream *serialObj, FileTransfer::Descriptor& file);
+typedef bool (*ymodem_serial_flash_update_handler)(Stream *serialObj, FileTransfer::Descriptor& file, void*);
 void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler);
 
 void set_start_dfu_flasher_serial_speed(uint32_t speed);
