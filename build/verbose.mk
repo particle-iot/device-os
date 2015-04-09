@@ -7,7 +7,7 @@ ifdef v
 ECHO=echo
 VERBOSE=
 else
-ECHO = #
+ECHO = true
 VERBOSE=@
 MAKE_ARGS += -s
 endif
