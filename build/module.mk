@@ -105,6 +105,7 @@ BUILD_PATH ?= $(BUILD_PATH_BASE)/$(MODULE)$(and $(BUILD_PATH_EXT),/$(BUILD_PATH_
 BUILD_TARGET_PLATFORM = platform-$(PLATFORM_ID)$(MODULAR_EXT)
 BUILD_PATH_EXT ?= $(BUILD_TARGET_PLATFORM)
 
+
 # All Target
 all: $(MAKE_DEPENDENCIES) $(TARGET)
 
@@ -254,7 +255,7 @@ $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
 	
 # CPP compiler to build .o from .cpp in $(BUILD_DIR)
 # Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
-$(BUILD_PATH)/%.o : ./$(SOURCE_PATH)/%.cpp
+$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.cpp
 	$(call echo,'Building file: $<')
 	$(call echo,'Invoking: ARM GCC CPP Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
