@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    spark_wiring.h
+ * @file    spark_wiring_constants.h
  * @author  Matthew McGowan
  * @version V1.0.0
  * @date    13-March-2013
@@ -27,30 +27,35 @@
 #ifndef SPARK_WIRING_CONSTANTS_H
 #define	SPARK_WIRING_CONSTANTS_H
 
+#include <type_traits>
 
 /*
 * Basic variables
 */
 
-#if !defined(min)
-#   define min(a,b)                ((a)<(b)?(a):(b))
-#endif
-#if !defined(max)
-#   define max(a,b)                ((a)>(b)?(a):(b))
-#endif
-#if !defined(constrain)
-#   define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
-#endif
-#if !defined(round)
-#   define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
-#endif
+template <typename T, typename U>
+static inline
+typename std::common_type<T, U>::type
+max (T a, U b) { return ((a)>(b)?(a):(b)); }
+
+template <typename T, typename U>
+static inline
+typename std::common_type<T, U>::type
+min (T a, U b) { return static_cast<typename std::common_type<T, U>::type>((a)<(b)?(a):(b)); }
+
+template <typename T, typename U, typename V>
+static inline
+T constrain (T amt, U low, V high) { return ((amt)<(low)?(low):((amt)>(high)?(high):(amt))); }
+
+template <typename T>
+static inline
+T round (T x) { return ((x)>=0?(long)((x)+0.5):(long)((x)-0.5)); }
 
 #define HIGH 0x1
 #define LOW 0x0
 
 #define boolean bool
 
-//#define NULL ((void *)0)
 #define NONE ((uint8_t)0xFF)
 
 
