@@ -40,7 +40,7 @@ void TCPServer::begin()
 		return;
 	}
 
-	int sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, _port);
 
 	if (sock < 0)
 	{

@@ -450,8 +450,8 @@ inline bool Spark_Communication_Loop(void)
 
 void Multicast_Presence_Announcement(void)
 {
-    long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (0 > multicast_socket)
+    long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0);
+    if (!socket_handle_valid(multicast_socket))
         return;
 
     unsigned char announcement[19];
@@ -524,7 +524,7 @@ int Internet_Test(void)
     sockaddr_t testSocketAddr;
     int testResult = 0;
     DEBUG("socket");
-    testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, 53);
     DEBUG("socketed testSocket=%d", testSocket);
 
 
@@ -575,7 +575,7 @@ int Spark_Connect(void)
 
     Spark_Disconnect();
 
-    sparkSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    sparkSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, SPARK_SERVER_PORT);
     DEBUG("socketed sparkSocket=%d", sparkSocket);
 
     if (!socket_handle_valid(sparkSocket))

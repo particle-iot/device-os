@@ -52,7 +52,7 @@ uint8_t socket_active_status(sock_handle_t socket);
 
 uint8_t socket_handle_valid(sock_handle_t handle);
 
-sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol);
+sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port);
 
 sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen);
 

@@ -48,20 +48,13 @@ uint8_t UDP::begin(uint16_t port)
     bool bound = 0;
 	if(WiFi.ready())
 	{
-	   _sock = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        DEBUG("socket=%d",_sock);
-        if (socket_handle_valid(_sock))
-        {
-            flush();
-            _port = port;
-            bound = socket_bind(_sock, port) >= 0;
-            DEBUG("socket=%d bound=%d",_sock,bound);
-
-            if(!bound)
+	   _sock = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, port);
+            DEBUG("socket=%d",_sock);
+            if (socket_handle_valid(_sock))
             {
-                stop();
+                flush();
+                _port = port;
             }
-        }
 	}
     return bound;
 }
