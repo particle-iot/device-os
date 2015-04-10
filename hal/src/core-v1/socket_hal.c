@@ -150,17 +150,17 @@ sock_result_t socket_close(sock_handle_t sock)
 
 sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port) 
 {
-    sock_handle_t socket = socket(family, type, protocol);
-    if (socket_handle_valid(socket)) {
-        bool bound = socket_bind(socket, port) >= 0;
-        DEBUG("socket=%d bound=%d",_sock,bound);
+    sock_handle_t sock = socket(family, type, protocol);
+    if (socket_handle_valid(sock)) {
+        bool bound = socket_bind(sock, port) >= 0;
+        DEBUG("socket=%d bound=%d",sock,bound);
         if(!bound)
         {
-            socket_dispose(socket);
-            socket = SOCKET_INVALID;
+            socket_close(sock);
+            sock = SOCKET_INVALID;
         }
     }
-    return socket;
+    return sock;
 }
 
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len) 
