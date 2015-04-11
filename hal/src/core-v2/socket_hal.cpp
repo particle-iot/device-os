@@ -405,10 +405,12 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLe
 {
     socket_t* socket = from_handle(sd);
     sock_result_t result = -1;
+    uint16_t read_len = 0;
     if (is_udp(socket)) {        
         wiced_packet_t* packet = NULL;
-        if ((result=wiced_udp_receive(udp(socket), &packet, WICED_NEVER_TIMEOUT))==WICED_SUCCESS) {            
-            if ((result=read_packet(packet, (uint8_t*)buffer, bufLen, NULL))==WICED_SUCCESS) {
+        // UDP receive timeout changed to 0 sec so as not to block
+        if ((result=wiced_udp_receive(udp(socket), &packet, WICED_NO_WAIT))==WICED_SUCCESS) {
+            if ((result=read_packet(packet, (uint8_t*)buffer, bufLen, &read_len))==WICED_SUCCESS) {
                 wiced_ip_address_t wiced_ip_addr;
                 uint16_t port;              
                 if ((result=wiced_udp_packet_get_info(packet, &wiced_ip_addr, &port)==WICED_SUCCESS)) {
@@ -424,5 +426,6 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLe
             wiced_packet_delete(packet);
         }
     }   
-    return result;
+    //Return the number of bytes received, or -1 if an error
+    return (read_len > 0)?read_len:result;
 }
