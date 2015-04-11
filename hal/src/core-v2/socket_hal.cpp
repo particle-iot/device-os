@@ -391,7 +391,10 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
         wiced_packet_t* packet = NULL;
         uint8_t* data;
         if ((result=wiced_packet_create_udp(udp(socket), len, &packet, &data, &available))==WICED_SUCCESS) {
-            memcpy(data, buffer, std::min(available, uint16_t(len)));
+            size_t size = std::min(available, uint16_t(len));
+            memcpy(data, buffer, size);
+            /* Set the end of the data portion */
+            wiced_packet_set_data_end(packet, (uint8_t*) data + size);
             result = wiced_udp_send(udp(socket), &ip_addr, port, packet);
         }                       
     }
