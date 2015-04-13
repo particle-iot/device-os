@@ -427,5 +427,6 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLe
         }
     }   
     //Return the number of bytes received, or -1 if an error
+    result = (result == WICED_SUCCESS)?result:-1;
     return (read_len > 0)?read_len:result;
 }
