@@ -35,55 +35,48 @@ TCPServer::TCPServer(uint16_t port) : _port(port), _sock(SOCKET_INVALID), _clien
 
 void TCPServer::begin()
 {
-	if(!WiFi.ready())
-	{
-		return;
-	}
+    if(!WiFi.ready())
+    {
+        return;
+    }
 
-	int sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, _port);
-
-	if (sock < 0)
-	{
-		return;
-	}
-
-	_sock = socket_create_nonblocking_server(sock, _port);
+    _sock = socket_create_tcp_server(_port);	
 }
 
 TCPClient TCPServer::available()
 {
-	if(_sock == SOCKET_INVALID)
-	{
-		begin();
-	}
+    if(_sock == SOCKET_INVALID)
+    {
+        begin();
+    }
 
-	if((!WiFi.ready()) || (_sock == SOCKET_INVALID))
-	{
-		_sock = SOCKET_INVALID;
-		_client = TCPClient(SOCKET_INVALID);
-		return _client;
-	}
+    if((!WiFi.ready()) || (_sock == SOCKET_INVALID))
+    {
+        _sock = SOCKET_INVALID;
+        _client = TCPClient(SOCKET_INVALID);
+        return _client;
+    }
 
-	int sock = socket_accept(_sock);
+    int sock = socket_accept(_sock);
 
-	if (sock < 0)
-	{
-		_client = TCPClient(SOCKET_INVALID);
-	}
-	else
-	{
-		_client = TCPClient(sock);
-	}
+    if (sock < 0)
+    {
+        _client = TCPClient(SOCKET_INVALID);
+    }
+    else
+    {
+        _client = TCPClient(sock);
+    }
 
-	return _client;
+    return _client;
 }
 
 size_t TCPServer::write(uint8_t b) 
 {
-	return write(&b, 1);
+    return write(&b, 1);
 }
 
 size_t TCPServer::write(const uint8_t *buffer, size_t size) 
 {
-	return _client.write(buffer, size);
+    return _client.write(buffer, size);
 }
