@@ -90,21 +90,14 @@ struct User_Func_Lookup_Table_t
     bool userFuncSchedule;
 } User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
 
-/*
-static unsigned char uitoa(unsigned int cNum, char *cString);
-static unsigned int atoui(char *cString);
-static uint8_t atoc(char data);
- */
+inline EventType::Enum convert(Spark_Event_TypeDef eventType) {
+    return eventType==PUBLIC ? EventType::PUBLIC : EventType::PRIVATE;
+}
 
-/*
-static uint16_t atoshort(char b1, char b2);
-static unsigned char ascii_to_char(char b1, char b2);
-
-static void str_cpy(char dest[], char src[]);
-static int str_cmp(char str1[], char str2[]);
-static int str_len(char str[]);
-static void sub_str(char dest[], char src[], int offset, int len);
- */
+bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved)
+{
+    return spark_protocol_send_event(sp, name, data, ttl, convert(eventType));
+}
 
 void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
 {

@@ -36,11 +36,7 @@ typedef enum
 
 class SparkClass {
     
-    
-    inline static EventType::Enum convert(Spark_Event_TypeDef eventType) {
-        return eventType==PUBLIC ? EventType::PUBLIC : EventType::PRIVATE;
-    }
-    
+        
 public:
     static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType) 
     {
@@ -53,17 +49,17 @@ public:
 
     bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return spark_protocol_send_event(sp(), eventName, NULL, 60, convert(eventType));
+        return spark_send_event(eventName, NULL, 60, eventType, NULL);
     }
 
     bool publish(const char *eventName, const char *eventData, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return spark_protocol_send_event(sp(), eventName, eventData, 60, convert(eventType));
+        return spark_send_event(eventName, eventData, 60, eventType, NULL);
     }
 
     bool publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return spark_protocol_send_event(sp(), eventName, eventData, ttl, convert(eventType));
+        return spark_send_event(eventName, eventData, ttl, eventType, NULL);
     }
 
     bool publish(String eventName, Spark_Event_TypeDef eventType=PUBLIC)
