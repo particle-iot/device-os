@@ -276,7 +276,9 @@ struct socket_t
         ~all() {}
     } s;    
     
-    socket_t() {}
+    socket_t() {
+        memset(this, 0, sizeof(*this));
+    }
     
     void set_server(tcp_server_t* server) {
         type = TCP_SERVER;
@@ -439,17 +441,20 @@ socket_t* from_handle(sock_handle_t handle) {
  * @return SOCKET_INVALID always.
  */
 sock_handle_t socket_dispose(sock_handle_t handle) {
-    if (socket_handle_valid(handle))
+    if (socket_handle_valid(handle)) {        
         delete from_handle(handle);
+    }
     return SOCKET_INVALID;
 }
 
-void close_all_list(socket_t* list)
+void close_all_list(socket_t*& list)
 {
-    while (list) {
-        list->close();
-        list = list->next;
+    socket_t* current = list;
+    while (current) {
+        current->close();
+        current = current->next;
     }
+    list = NULL;    // clear the list.
 }
 
 void socket_close_all()
@@ -648,7 +653,7 @@ sock_result_t socket_create_tcp_server(uint16_t port)
     }
     else {
         handle->set_server(server);
-        add_list(servers, handle);
+        add(handle);
     }
     
     return handle ? as_sock_result(handle) : as_sock_result(result);
@@ -669,7 +674,7 @@ sock_result_t socket_accept(sock_handle_t sock)
         if (client) {
             socket_t* socket = new socket_t();
             socket->set_client(client);
-            add_list(clients, socket);
+            add(socket);
             result = (sock_result_t)socket;
         }        
     }
@@ -701,6 +706,7 @@ sock_result_t socket_close(sock_handle_t sock)
     sock_result_t result = WICED_SUCCESS;
     socket_t* socket = from_handle(sock);
     if (socket) {
+        remove(socket);
         socket_dispose(sock);
         DEBUG("socket closed %x", int(sock));
     }
@@ -722,19 +728,21 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
     sock_handle_t result = SOCKET_INVALID;
     socket_t* socket = new socket_t();
     if (socket) {
-        socket->type = (protocol==IPPROTO_UDP ? socket_t::UDP : socket_t::TCP);
         wiced_result_t wiced_result;
-        if (is_tcp(socket)) {
+        socket->type = (protocol==IPPROTO_UDP ? socket_t::UDP : socket_t::TCP);
+        if (type==socket_t::TCP) {
             wiced_result = wiced_tcp_create_socket(tcp(socket), WICED_STA_INTERFACE);
         }
         else {
             wiced_result = wiced_udp_create_socket(udp(socket), port, WICED_STA_INTERFACE);            
         }
         if (wiced_result!=WICED_SUCCESS) {
+            socket->type = socket_t::NONE;  // don't try to destruct the wiced resource since it was never created.
             socket_dispose(result);
             result = as_sock_result(wiced_result);
         }        
         else {
+            add(socket);
             result = as_sock_result(socket);
         }
     }        
