@@ -90,6 +90,27 @@ struct User_Func_Lookup_Table_t
     bool userFuncSchedule;
 } User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
 
+SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
+{
+    return(subscription_type==MY_DEVICES) ? SubscriptionScope::MY_DEVICES : SubscriptionScope::FIREHOSE;
+}
+
+bool system_subscribe(const char *eventName, EventHandler handler, 
+        Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
+{        
+    auto event_scope = convert(scope);
+    bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, NULL);
+    if (success && spark_connected())
+    {
+        if (deviceID)
+            success = spark_protocol_send_subscription_device(sp, eventName, deviceID);
+        else
+            success = spark_protocol_send_subscription_scope(sp, eventName, event_scope);
+    }
+    return success;
+}
+
+
 inline EventType::Enum convert(Spark_Event_TypeDef eventType) {
     return eventType==PUBLIC ? EventType::PUBLIC : EventType::PRIVATE;
 }

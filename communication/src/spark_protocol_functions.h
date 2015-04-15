@@ -103,7 +103,7 @@ bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, 
                 int ttl, EventType::Enum event_type);
 bool spark_protocol_send_subscription_device(SparkProtocol* protocol, const char *event_name, const char *device_id);
 bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope);
-bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, EventHandler handler, SubscriptionScope::Enum scope, const char* id);
+bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, EventHandler handler, SubscriptionScope::Enum scope, const char* id, void* reserved);
 bool spark_protocol_send_time_request(SparkProtocol* protocol);
 void spark_protocol_send_subscriptions(SparkProtocol* protocol);
 void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char *event_name);

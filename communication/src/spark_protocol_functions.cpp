@@ -69,7 +69,7 @@ bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char 
 }
 
 bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, 
-    EventHandler handler, SubscriptionScope::Enum scope, const char* device_id) {
+    EventHandler handler, SubscriptionScope::Enum scope, const char* device_id, void* reserved) {
     return protocol->add_event_handler(event_name, handler, scope, device_id);
 }
 

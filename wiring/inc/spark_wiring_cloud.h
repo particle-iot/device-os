@@ -28,11 +28,6 @@
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
 
-typedef enum
-{
-  MY_DEVICES
-} Spark_Subscription_Scope_TypeDef;
-
 
 class SparkClass {
     
@@ -76,35 +71,15 @@ public:
     {
         return publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
     }
-
-    bool subscribe(const char *eventName, EventHandler handler)
+    
+    bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
-        bool success = spark_protocol_add_event_handler(sp(), eventName, handler, SubscriptionScope::FIREHOSE, NULL);
-        if (success && connected())
-        {
-            success = spark_protocol_send_subscription_scope(sp(), eventName, SubscriptionScope::FIREHOSE);
-        }
-        return success;
-    }
-
-    bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
-    {
-        bool success = spark_protocol_add_event_handler(sp(), eventName, handler, SubscriptionScope::MY_DEVICES, NULL);
-        if (success && connected())
-        {
-            success = spark_protocol_send_subscription_scope(sp(), eventName, SubscriptionScope::MY_DEVICES);
-        }
-        return success;
+        return system_subscribe(eventName, handler, scope, NULL, NULL);
     }
 
     bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
-        bool success = spark_protocol_add_event_handler(sp(), eventName, handler, SubscriptionScope::MY_DEVICES, deviceID);
-        if (success && connected())
-        {
-            success = spark_protocol_send_subscription_device(sp(), eventName, deviceID);
-        }
-        return success;
+        return system_subscribe(eventName, handler, MY_DEVICES, deviceID, NULL);
     }
 
     bool subscribe(String eventName, EventHandler handler)
