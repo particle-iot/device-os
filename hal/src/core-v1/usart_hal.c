@@ -39,6 +39,8 @@ typedef enum USART_Num_Def {
 #define GPIO_Remap_None 0
 
 /* Private macro -------------------------------------------------------------*/
+// IS_USART_CONFIG_VALID(config) - returns true for 8 data bit, any flow control, any parity, any stop byte configurations
+#define IS_USART_CONFIG_VALID(CONFIG) ( (((CONFIG & 0b00001100)>>2) != 0b11) && (((CONFIG & 0b00110000)>>4)==0b11) )
 
 /* Private variables ---------------------------------------------------------*/
 typedef struct STM32_USART_Info {
@@ -122,8 +124,14 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
   usartMap[serial]->usart_transmitting = false;
 }
 
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
+void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud, uint8_t config)
 {
+  // check to see if USART configuration is valid, if not, exit
+  if (!IS_USART_CONFIG_VALID(config)) {
+    usartMap[serial]->usart_enabled = false;
+    return;
+  }
+
   // AFIO clock enable
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
@@ -149,20 +157,42 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
   // Remap USARTn to alternate pins EG. USART1 to pins TX/PB6, RX/PB7
   GPIO_PinRemapConfig(usartMap[serial]->usart_pin_remap, ENABLE);
 
-  // USART default configuration
-  // USART configured as follow:
-  // - BaudRate = (set baudRate as 9600 baud)
-  // - Word Length = 8 Bits
-  // - One Stop Bit
-  // - No parity
-  // - Hardware flow control disabled (RTS and CTS signals)
-  // - Receive and transmit enabled
+  // USART configuration
   USART_InitStructure.USART_BaudRate = baud;
-  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-  USART_InitStructure.USART_StopBits = USART_StopBits_1;
-  USART_InitStructure.USART_Parity = USART_Parity_No;
   USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
   USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+  
+  // stop bits
+  switch (config & 0b00000011) {
+    case 0: // 1 stop bit
+      USART_InitStructure.USART_StopBits = USART_StopBits_1;
+      break;
+    case 1: // 2 stop bits
+      USART_InitStructure.USART_StopBits = USART_StopBits_2;
+      break;
+    case 2: // 0.5 stop bits
+      USART_InitStructure.USART_StopBits = USART_StopBits_0_5;
+      break;
+    case 3: // 1.5 stop bits
+      USART_InitStructure.USART_StopBits = USART_StopBits_1_5;
+      break;
+  }
+  
+  // parity configuration (impacts word length)
+  switch ((config & 0b00001100) >> 2) {
+    case 0: // none
+      USART_InitStructure.USART_Parity = USART_Parity_No;
+      USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+      break;
+    case 1: // even
+      USART_InitStructure.USART_Parity = USART_Parity_Even;
+      USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+      break;
+    case 2: // odd
+      USART_InitStructure.USART_Parity = USART_Parity_Odd;
+      USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+      break;    
+  }
 
   // Configure USART
   USART_Init(usartMap[serial]->usart_peripheral, &USART_InitStructure);
