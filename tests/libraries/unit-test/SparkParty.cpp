@@ -60,7 +60,7 @@ SparkTestRunner _runner;
 bool requestStart = false;
 bool _enterDFU = false;
 
-Flashee::CircularBuffer* log;
+Flashee::CircularBuffer* logbuf;
 PrintTee* tee;
 uint8_t buf[601];
 
@@ -75,11 +75,11 @@ void unit_test_setup()
     int pageSize = store.pageSize();
     int pages = 64*1024/pageSize;
     // store circular buffer at end of external flash.
-    log = Flashee::Devices::createCircularBuffer((store.pageCount()-pages)*pageSize, store.length());
+    logbuf = Flashee::Devices::createCircularBuffer((store.pageCount()-pages)*pageSize, store.length());
     // direct output to Serial and to the circular buffer
-    tee = new PrintTee(*Test::out, *new CircularBufferPrint(*log, SPARK_WLAN_Loop));
+    tee = new PrintTee(*Test::out, *new CircularBufferPrint(*logbuf, SPARK_WLAN_Loop));
     Test::out = tee;
-    Spark.variable("log", buf, STRING);
+    Spark.variable("logbuf", buf, STRING);
     _runner.begin();
 }
 
@@ -126,12 +126,12 @@ int SparkTestRunner::testStatusColor() {
 }
 
 /**
- * Advances the log to the next block of data.
+ * Advances the logbuf to the next block of data.
  * Returns the number of bytes of data available in the variable
  */
 int advanceLog() {
     int end = sizeof(buf)-1;
-    int read = log->read_soft(buf, end);
+    int read = logbuf->read_soft(buf, end);
     buf[read] = 0;  // terminate string
     if (!read && _runner.isComplete())
         read = -1;  // end of stream.
@@ -140,7 +140,7 @@ int advanceLog() {
 
 int testCmd(String arg) {
     int result = 0;
-    if (arg.equals("log")) {
+    if (arg.equals("logbuf")) {
         result = advanceLog();
     }
     else if (arg.equals("start")) {

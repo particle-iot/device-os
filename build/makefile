@@ -48,10 +48,12 @@ SRC_PATH = $(PROJECT_DIR)
 # ensure defined
 USRSRC += ""
 
+# The entire firmware is gnu+11 safe
+CPPFLAGS += -std=gnu++11
+
 # determine where user sources are, relative to project root
 ifdef APP
 USRSRC = applications/$(APP)/
-CPPFLAGS += -std=gnu++11
 
 ifndef TARGET
 TARGET ?= $(notdir $(APP))
@@ -61,13 +63,16 @@ endif
 
 ifdef TEST
 USRSRC = tests/$(TEST)/
-CPPFLAGS += -std=gnu++11
+CPPFLAGS += -fexceptions
 ifndef TARGET
 TARGET ?= $(notdir $(TEST))
 TARGETDIR ?= $(USRSRC)
 endif
 include $(PROJECT_DIR)tests/tests.mk
 -include $(PROJECT_DIR)$(USRSRC)test.mk
+else
+# We only want exceptions for a TEST build which uses them in catch
+CPPFLAGS += -fno-exceptions
 endif
 
 # user sources specified, so override application.cpp and pull in files from 
@@ -139,7 +144,7 @@ CFLAGS += -DRELEASE_BUILD
 endif
 
 # C++ specific flags
-CPPFLAGS += -fno-rtti -fno-exceptions
+CPPFLAGS += -fno-rtti
 
 # Linker flags
 LDFLAGS += -T$(PROJECT_DIR)linker/linker_stm32f10x_md_dfu.ld -nostartfiles -Xlinker --gc-sections 
@@ -254,7 +259,6 @@ $(BUILD_PATH)%.o : $(SRC_PATH)%.cpp
 
 # Other Targets
 clean:
-	
 	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGETDIR)$(TARGET).elf $(TARGETDIR)$(TARGET).bin $(TARGETDIR)$(TARGET).hex $(TARGETDIR)$(TARGET).map
 	$(RMDIR) $(BUILD_PATH)
 	@echo

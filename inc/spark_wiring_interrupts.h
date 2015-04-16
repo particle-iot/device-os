@@ -28,6 +28,7 @@
 #ifndef __SPARK_WIRING_INTERRUPTS_H
 #define __SPARK_WIRING_INTERRUPTS_H
 
+#include <functional>
 #include "spark_wiring.h"
 
 /*
@@ -40,7 +41,7 @@ typedef enum InterruptMode {
   FALLING
 } InterruptMode;
 
-typedef void (*voidFuncPtr)(void);
+typedef  std::function<void()> voidFuncPtr;
 
 void attachInterrupt(uint16_t pin, voidFuncPtr handler, InterruptMode mode);
 void detachInterrupt(uint16_t pin);
