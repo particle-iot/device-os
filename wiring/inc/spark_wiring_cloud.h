@@ -74,12 +74,12 @@ public:
     
     bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
-        return system_subscribe(eventName, handler, scope, NULL, NULL);
+        return spark_subscribe(eventName, handler, scope, NULL, NULL);
     }
 
     bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
-        return system_subscribe(eventName, handler, MY_DEVICES, deviceID, NULL);
+        return spark_subscribe(eventName, handler, MY_DEVICES, deviceID, NULL);
     }
 
     bool subscribe(String eventName, EventHandler handler)
