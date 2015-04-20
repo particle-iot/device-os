@@ -986,6 +986,10 @@ class SimpleProtocolDispatcher
                 cmd = &commands_.publicKey;
             else if (!strcmp("set", name))
                 cmd = &commands_.setValue;
+            else if (!strcmp("ant-internal", name))
+                wwd_wifi_select_antenna(WICED_ANTENNA_1);
+            else if (!strcmp("ant-external", name))
+                wwd_wifi_select_antenna(WICED_ANTENNA_2);
         }
         return cmd;
     }
