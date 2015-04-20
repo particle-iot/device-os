@@ -32,7 +32,7 @@
 #include "softap.h"
 #include <cstring>
 #include "ledcontrol.h"
-
+#include "parse_server_address.h"
 
 #define OTA_CHUNK_SIZE          512
 
@@ -189,9 +189,11 @@ void copy_dct(void* target, uint16_t offset, uint16_t length) {
     memcpy(target, data, length);
 }
 
+
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
-    copy_dct(server_addr, DCT_SERVER_ADDRESS_OFFSET, DCT_SERVER_ADDRESS_SIZE);
+    const void* data = dct_read_app_data(DCT_SERVER_ADDRESS_OFFSET);
+    parseServerAddressData(server_addr, (const uint8_t*)data, DCT_SERVER_ADDRESS_SIZE);
 }
 
 bool HAL_OTA_Flashed_GetStatus(void) 

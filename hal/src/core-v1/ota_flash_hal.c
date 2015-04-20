@@ -26,6 +26,7 @@
 #include "ota_flash_hal.h"
 #include "hw_config.h"
 #include <string.h>
+#include "parse_server_address.h"
 
 bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
 {
@@ -147,45 +148,12 @@ bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length)
     return false;
 }
 
-void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
-{
-  // Internet address stored on external flash may be
-  // either a domain name or an IP address.
-  // It's stored in a type-length-value encoding.
-  // First byte is type, second byte is length, the rest is value.
-
-  switch (buf[0])
-  {
-    case IP_ADDRESS:
-      server_addr->addr_type = IP_ADDRESS;
-      server_addr->ip = (buf[2] << 24) | (buf[3] << 16) |
-                        (buf[4] << 8)  |  buf[5];
-      break;
-
-    case DOMAIN_NAME:
-      if (buf[1] <= EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH - 2)
-      {
-        server_addr->addr_type = DOMAIN_NAME;
-        memcpy(server_addr->domain, buf + 2, buf[1]);
-
-        // null terminate string
-        char *p = server_addr->domain + buf[1];
-        *p = 0;
-        break;
-      }
-      // else fall through to default
-
-    default:
-      server_addr->addr_type = INVALID_INTERNET_ADDRESS;
-  }
-
-}
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
     uint8_t buf[EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH];
     FLASH_Read_ServerAddress_Data(buf);
-    parseServerAddressData(server_addr, buf);
+    parseServerAddressData(server_addr, buf, EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH);
 }
 
 uint32_t HAL_OTA_Flashed_Length(void)
