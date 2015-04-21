@@ -127,19 +127,23 @@ void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVa
         if (User_Var_Count == USER_VAR_MAX_COUNT)
             return;
 
+        int index = User_Var_Count;
         for (int i = 0; i < User_Var_Count; i++)
         {
-            if (User_Var_Lookup_Table[i].userVar == userVar &&
-                (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH)))
+            if ((0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH)))
             {
-                return;
+                if (userVarType!=User_Var_Lookup_Table[i].userVarType)
+                    return;
+                index = i;
+                User_Var_Count--;
+                break;
             }
         }
 
-        User_Var_Lookup_Table[User_Var_Count].userVar = userVar;
-        User_Var_Lookup_Table[User_Var_Count].userVarType = userVarType;
-        memset(User_Var_Lookup_Table[User_Var_Count].userVarKey, 0, USER_VAR_KEY_LENGTH);
-        memcpy(User_Var_Lookup_Table[User_Var_Count].userVarKey, varKey, USER_VAR_KEY_LENGTH);
+        User_Var_Lookup_Table[index].userVar = userVar;
+        User_Var_Lookup_Table[index].userVarType = userVarType;
+        memset(User_Var_Lookup_Table[index].userVarKey, 0, USER_VAR_KEY_LENGTH);
+        memcpy(User_Var_Lookup_Table[index].userVarKey, varKey, USER_VAR_KEY_LENGTH);
         User_Var_Count++;
     }
 }
