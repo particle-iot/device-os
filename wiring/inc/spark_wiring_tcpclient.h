@@ -49,6 +49,7 @@ public:
 	virtual int read(uint8_t *buffer, size_t size);
 	virtual int peek();
 	virtual void flush();
+        void flush_buffer();
 	virtual void stop();
 	virtual uint8_t connected();
 	virtual operator bool();
