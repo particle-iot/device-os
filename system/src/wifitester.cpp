@@ -236,7 +236,7 @@ void checkWifiSerial(char c) {
             delay(100);
             serialPrintln("resetting into DFU mode!");
 
-            System.bootloader();
+            System.dfu();
         } else if ((start = strstr(command, cmd_RESET))) {
             //to trigger a factory reset:
 

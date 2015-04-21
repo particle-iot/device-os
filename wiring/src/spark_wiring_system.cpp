@@ -15,18 +15,6 @@ void SystemClass::factoryReset(void)
     HAL_Core_Factory_Reset();
 }
 
-void SystemClass::bootloader(void)
-{
-    //DFU mode persist if firmware upgrade is not completed
-    HAL_Core_Enter_Bootloader(true);
-}
-
-void SystemClass::dfu(void)
-{
-    // default to non-persistent DFU mode
-    HAL_Core_Enter_Bootloader(false);
-}
-
 void SystemClass::dfu(bool persist)
 {
     // true  - DFU mode persist if firmware upgrade is not completed
