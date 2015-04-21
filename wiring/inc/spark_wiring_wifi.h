@@ -149,6 +149,14 @@ public:
     int selectAntenna(WLanSelectAntenna_TypeDef antenna) {
         return wlan_select_antenna(antenna);
     }
+    
+    IPAddress resolve(const char* name) 
+    {
+        uint32_t ip;
+        if (inet_gethostbyname(name, strlen(name), &ip)<0)
+            ip = 0;
+        return IPAddress(ip);
+    }
 
     friend class TCPClient;
     friend class TCPServer;

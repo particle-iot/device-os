@@ -474,7 +474,7 @@ INT32 listen(INT32 sd, INT32 backlog)
 //*****************************************************************************
 
 #ifndef CC3000_TINY_DRIVER
-INT16 gethostbyname(CHAR * hostname, UINT16 usNameLen, 
+INT16 gethostbyname(const CHAR * hostname, UINT16 usNameLen, 
 		UINT32* out_ip_addr)
 {
 	tBsdGethostbynameParams ret;

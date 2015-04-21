@@ -355,7 +355,7 @@ extern INT32 listen(INT32 sd, INT32 backlog);
 //
 //*****************************************************************************
 #ifndef CC3000_TINY_DRIVER 
-extern INT16 gethostbyname(CHAR * hostname, UINT16 usNameLen, UINT32* out_ip_addr);
+extern INT16 gethostbyname(const CHAR * hostname, UINT16 usNameLen, UINT32* out_ip_addr);
 #endif
 
 
