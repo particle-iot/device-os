@@ -46,7 +46,7 @@
 #include "spark_wiring_cloud.h"
 
 int userVarType(const char *varKey);
-void *getUserVar(const char *varKey);
+const void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString);
 
 SparkProtocol* sp;
@@ -76,7 +76,7 @@ uint8_t User_Func_Count;
 
 struct User_Var_Lookup_Table_t
 {
-    void *userVar;
+    const void *userVar;
     char userVarKey[USER_VAR_KEY_LENGTH];
     Spark_Data_TypeDef userVarType;
 } User_Var_Lookup_Table[USER_VAR_MAX_COUNT];
@@ -120,7 +120,7 @@ bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_T
     return spark_protocol_send_event(sp, name, data, ttl, convert(eventType));
 }
 
-void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
+void spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
 {
     if (NULL != userVar && NULL != varKey)
     {
@@ -303,11 +303,9 @@ int numUserFunctions(void)
     return User_Func_Count;
 }
 
-void copyUserFunctionKey(char *destination, int function_index)
-{
-    memcpy(destination,
-        User_Func_Lookup_Table[function_index].userFuncKey,
-        USER_FUNC_KEY_LENGTH);
+const char* getUserFunctionKey(int function_index)
+{    
+    return User_Func_Lookup_Table[function_index].userFuncKey;    
 }
 
 int numUserVariables(void)
@@ -315,11 +313,9 @@ int numUserVariables(void)
     return User_Var_Count;
 }
 
-void copyUserVariableKey(char *destination, int variable_index)
+const char* getUserVariableKey(int variable_index)
 {
-    memcpy(destination,
-        User_Var_Lookup_Table[variable_index].userVarKey,
-        USER_VAR_KEY_LENGTH);
+    return User_Var_Lookup_Table[variable_index].userVarKey;
 }
 
 SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
@@ -389,10 +385,10 @@ void Spark_Protocol_Init(void)
 
         SparkDescriptor descriptor;
         descriptor.num_functions = numUserFunctions;
-        descriptor.copy_function_key = copyUserFunctionKey;
+        descriptor.get_function_key = getUserFunctionKey;
         descriptor.call_function = userFuncSchedule;
         descriptor.num_variables = numUserVariables;
-        descriptor.copy_variable_key = copyUserVariableKey;
+        descriptor.get_variable_key = getUserVariableKey;
         descriptor.variable_type = wrapVarTypeInEnum;
         descriptor.get_variable = getUserVar;
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
@@ -607,6 +603,7 @@ int Spark_Connect(void)
     ServerAddress server_addr;
     HAL_FLASH_Read_ServerAddress(&server_addr);
 
+    bool ip_resolve_failed = false;
     uint32_t ip_addr = 0;
 
     switch (server_addr.addr_type)
@@ -631,25 +628,30 @@ int Spark_Connect(void)
             {
                 inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr);
             }
+            ip_resolve_failed = !ip_addr;
     }
 
-    if (!ip_addr)
+    int rv = -1;
+    if (!ip_resolve_failed) 
     {
-        // final fallback
-        ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
-        //ip_addr = (52<<24) | (0<<16) | (3<<8) | 40;
+        if (!ip_addr)
+        {
+            // final fallback in case where flash invalid
+            ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
+            //ip_addr = (52<<24) | (0<<16) | (3<<8) | 40;
+        }
+    
+        tSocketAddr.sa_data[2] = BYTE_N(ip_addr, 3);
+        tSocketAddr.sa_data[3] = BYTE_N(ip_addr, 2);
+        tSocketAddr.sa_data[4] = BYTE_N(ip_addr, 1);
+        tSocketAddr.sa_data[5] = BYTE_N(ip_addr, 0);
+
+        uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
+        DEBUG("connect");
+        rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
+        DEBUG("connected connect=%d", rv);
+        HAL_WLAN_SetNetWatchDog(ot);
     }
-
-    tSocketAddr.sa_data[2] = BYTE_N(ip_addr, 3);
-    tSocketAddr.sa_data[3] = BYTE_N(ip_addr, 2);
-    tSocketAddr.sa_data[4] = BYTE_N(ip_addr, 1);
-    tSocketAddr.sa_data[5] = BYTE_N(ip_addr, 0);
-
-    uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
-    DEBUG("connect");
-    int rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
-    DEBUG("connected connect=%d", rv);
-    HAL_WLAN_SetNetWatchDog(ot);
     if (rv)     // error - prevent socket leaks
         Spark_Disconnect();
     return rv;
@@ -687,7 +689,7 @@ int userVarType(const char *varKey)
     return -1;
 }
 
-void *getUserVar(const char *varKey)
+const void *getUserVar(const char *varKey)
 {
     for (int i = 0; i < User_Var_Count; ++i)
     {

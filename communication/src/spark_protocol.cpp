@@ -801,66 +801,61 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
   buf[4] = token;
   buf[5] = 0xff; // payload marker
 
-  memcpy(buf + 6, "{\"f\":[", 6);
-
-  char *buf_ptr = (char *)buf + 12;
-
+  BufferAppender appender(buf+6, QUEUE_SIZE-8);
+  appender.append("{\"f\":[");
+      
   int num_keys = descriptor.num_functions();
   int i;
   for (i = 0; i < num_keys; ++i)
   {
     if (i)
     {
-      *buf_ptr = ',';
-      ++buf_ptr;
+        appender.append(',');
     }
-    *buf_ptr = '"';
-    ++buf_ptr;
-    descriptor.copy_function_key(buf_ptr, i);
-    int function_name_length = strlen(buf_ptr);
+    appender.append('"');
+    
+    const char* key = descriptor.get_function_key(i);
+    int function_name_length = strlen(key);
     if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
     {
       function_name_length = MAX_FUNCTION_KEY_LENGTH;
     }
-    buf_ptr += function_name_length;
-    *buf_ptr = '"';
-    ++buf_ptr;
+    appender.append((const uint8_t*)key, function_name_length);
+    appender.append('"');
   }
 
-  memcpy(buf_ptr, "],\"v\":{", 7);
-  buf_ptr += 7;
-
+  appender.append("],\"v\":{");
+  
   num_keys = descriptor.num_variables();
   for (i = 0; i < num_keys; ++i)
   {
     if (i)
     {
-      *buf_ptr = ',';
-      ++buf_ptr;
+        appender.append(',');
     }
-    *buf_ptr = '"';
-    ++buf_ptr;
-    descriptor.copy_variable_key(buf_ptr, i);
-    int variable_name_length = strlen(buf_ptr);
-    SparkReturnType::Enum t = descriptor.variable_type(buf_ptr);
+    appender.append('"');
+    const char* key = descriptor.get_variable_key(i);
+    int variable_name_length = strlen(key);
+    SparkReturnType::Enum t = descriptor.variable_type(key);
     if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
     {
       variable_name_length = MAX_VARIABLE_KEY_LENGTH;
     }
-    buf_ptr += variable_name_length;
-    memcpy(buf_ptr, "\":", 2);
-    buf_ptr += 2;
-    *buf_ptr = '0' + (char)t;
-    ++buf_ptr;
+    appender.append((const uint8_t*)key, variable_name_length);
+    appender.append("\":");
+    appender.append('0' + (char)t);    
   }
-
-  memcpy(buf_ptr, "}}", 2);
-  buf_ptr += 2;
-
-  int msglen = buf_ptr - (char *)buf;
+  
+  if (descriptor.append_system_info) {
+    appender.append("],");
+    descriptor.append_system_info(append_instance, &appender, NULL);
+  }    
+  appender.append('}');
+  
+  int msglen = appender.next() - (uint8_t *)buf;
   int buflen = (msglen & ~15) + 16;
   char pad = buflen - msglen;
-  memset(buf_ptr, pad, pad); // PKCS #7 padding
+  memset(buf+msglen, pad, pad); // PKCS #7 padding
 
   encrypt(buf, buflen);
   return buflen;

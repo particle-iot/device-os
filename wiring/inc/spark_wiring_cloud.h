@@ -33,7 +33,7 @@ class SparkClass {
     
         
 public:
-    static void variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType) 
+    static void variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType) 
     {
         spark_variable(varKey, userVar, userVarType, NULL);
     }
