@@ -122,7 +122,7 @@ bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_T
 
 void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
 {
-    if (NULL != userVar && NULL != varKey)
+    if (NULL != userVar && NULL != varKey && strlen(varKey)<=USER_VAR_KEY_LENGTH)
     {
         if (User_Var_Count == USER_VAR_MAX_COUNT)
             return;
@@ -147,7 +147,7 @@ void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVa
 void spark_function(const char *funcKey, int (*pFunc)(String paramString), void* reserved)
 {
     int i = 0;
-    if (NULL != pFunc && NULL != funcKey)
+    if (NULL != pFunc && NULL != funcKey && strlen(funcKey)<=USER_FUNC_KEY_LENGTH)
     {
         if (User_Func_Count == USER_FUNC_MAX_COUNT)
             return;
