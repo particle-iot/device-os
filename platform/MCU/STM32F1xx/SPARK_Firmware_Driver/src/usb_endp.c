@@ -40,12 +40,12 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 
-extern uint8_t USART_Rx_Buffer[];
-extern uint32_t USART_Rx_ptr_in;
+extern volatile uint8_t USART_Rx_Buffer[];
+extern volatile uint32_t USART_Rx_ptr_in;
 extern uint32_t USART_Rx_ptr_out;
-extern uint32_t USART_Rx_length;
+extern volatile uint32_t USART_Rx_length;
 
-extern uint8_t USB_Rx_Buffer[];
+extern volatile uint8_t USB_Rx_Buffer[];
 extern uint16_t USB_Rx_length;
 extern uint16_t USB_Rx_ptr;
 
@@ -69,7 +69,7 @@ void EP1_IN_Callback (void)
 {
   uint16_t USB_Tx_ptr;
   uint16_t USB_Tx_length;
-  
+  int mask = HAL_disable_irq();
   if (USB_Tx_State == 1)
   {
     if (USART_Rx_length == 0) 
@@ -78,26 +78,18 @@ void EP1_IN_Callback (void)
     }
     else 
     {
-      if (USART_Rx_length > CDC_DATA_SIZE){
+        int tx_len = (USART_Rx_length > CDC_DATA_SIZE) ? CDC_DATA_SIZE : USART_Rx_length;        
         USB_Tx_ptr = USART_Rx_ptr_out;
-        USB_Tx_length = CDC_DATA_SIZE;
-        
-        USART_Rx_ptr_out += CDC_DATA_SIZE;
-        USART_Rx_length -= CDC_DATA_SIZE;
-      }
-      else 
-      {
-        USB_Tx_ptr = USART_Rx_ptr_out;
-        USB_Tx_length = USART_Rx_length;
-        
-        USART_Rx_ptr_out += USART_Rx_length;
-        USART_Rx_length = 0;
-      }
-      UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
-      SetEPTxCount(ENDP1, USB_Tx_length);
-      SetEPTxValid(ENDP1); 
+        USB_Tx_length = tx_len;        
+        USART_Rx_ptr_out += tx_len;
+        USART_Rx_length -= tx_len;
+
+        UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
+        SetEPTxCount(ENDP1, USB_Tx_length);
+        SetEPTxValid(ENDP1); 
     }
   }
+  HAL_enable_irq(mask);
 }
 
 /*******************************************************************************
@@ -109,7 +101,6 @@ void EP1_IN_Callback (void)
 *******************************************************************************/
 void EP3_OUT_Callback(void)
 {
-  USB_Rx_State = 1;
 
   USB_Rx_ptr = 0;
 
@@ -118,6 +109,8 @@ void EP3_OUT_Callback(void)
 
   /* Use the memory interface function to write to the selected endpoint */
   PMAToUserBufferCopy(USB_Rx_Buffer, ENDP3_RXADDR, USB_Rx_length);
+
+  USB_Rx_State = 1;
 
   /* USB data should be immediately processed, this allow next USB traffic being
   NAKed till the end of the processing */

@@ -40,12 +40,24 @@
 
 /* Private variables ---------------------------------------------------------*/
 #ifdef USB_CDC_ENABLE
-uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
-uint32_t USART_Rx_ptr_in = 0;
+
+/**
+ * Holds the data to be sent via USB.
+ */
+volatile uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
+/**
+ * The write pointer in the circular buffer. Points to the location where the next
+ * data item will be written.
+ */
+volatile uint32_t USART_Rx_ptr_in = 0;
+/**
+ * The read pointer in the circular buffer. Points to the location where the next
+ * data item can be read from.
+ */
 uint32_t USART_Rx_ptr_out = 0;
 uint32_t USART_Rx_length  = 0;
 
-uint8_t USB_Rx_Buffer[CDC_DATA_SIZE];
+volatile uint8_t USB_Rx_Buffer[CDC_DATA_SIZE];
 uint16_t USB_Rx_length = 0;
 uint16_t USB_Rx_ptr = 0;
 
@@ -181,7 +193,9 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
   {
     if(USB_Rx_State == 1)
     {
-      if(!peek && (USB_Rx_length - USB_Rx_ptr) == 1)
+      int32_t result = peek ? USB_Rx_Buffer[USB_Rx_ptr] : USB_Rx_Buffer[USB_Rx_ptr++];
+        
+      if(!peek && (USB_Rx_length - USB_Rx_ptr) == 0)
       {
         USB_Rx_State = 0;
 
@@ -189,7 +203,7 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
         SetEPRxValid(ENDP3);
       }
       
-      return peek ? USB_Rx_Buffer[USB_Rx_ptr] : USB_Rx_Buffer[USB_Rx_ptr++];
+      return result;
     }
   }
 
@@ -205,7 +219,7 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
 void USB_USART_Send_Data(uint8_t Data)
 {
   if(bDeviceState == CONFIGURED)
-  {
+  {      
     USART_Rx_Buffer[USART_Rx_ptr_in] = Data;
 
     USART_Rx_ptr_in++;

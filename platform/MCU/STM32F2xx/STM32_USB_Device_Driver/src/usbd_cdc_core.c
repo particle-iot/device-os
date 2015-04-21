@@ -178,15 +178,15 @@ __ALIGN_BEGIN uint8_t APP_Rx_Buffer   [APP_RX_DATA_SIZE] __ALIGN_END ;
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 __ALIGN_BEGIN uint8_t CmdBuff[CDC_CMD_PACKET_SZE] __ALIGN_END ;
 
-uint32_t APP_Rx_ptr_in  = 0;
-uint32_t APP_Rx_ptr_out = 0;
-uint32_t APP_Rx_length  = 0;
+volatile uint32_t APP_Rx_ptr_in  = 0;
+volatile uint32_t APP_Rx_ptr_out = 0;
+volatile uint32_t APP_Rx_length  = 0;
 
-uint16_t USB_Rx_length = 0;
-uint16_t USB_Rx_ptr = 0;
+volatile uint16_t USB_Rx_length = 0;
+volatile uint16_t USB_Rx_ptr = 0;
 
-uint8_t  USB_Tx_State = 0;
-uint8_t  USB_Rx_State = 0;
+volatile uint8_t  USB_Tx_State = 0;
+volatile uint8_t  USB_Rx_State = 0;
 
 static uint32_t cdcCmd = 0xFF;
 static uint32_t cdcLen = 0;
@@ -597,6 +597,8 @@ static uint8_t  usbd_cdc_Setup (void  *pdev,
   return USBD_OK;
 }
 
+#include "interrupts_hal.h"
+
 /**
   * @brief  usbd_cdc_EP0_RxReady
   *         Data received on control endpoint
@@ -629,6 +631,8 @@ static uint8_t  usbd_cdc_DataIn (void *pdev, uint8_t epnum)
   uint16_t USB_Tx_ptr;
   uint16_t USB_Tx_length;
 
+  int irq = HAL_disable_irq();
+  
   if (USB_Tx_State == 1)
   {
     if (APP_Rx_length == 0) 
@@ -637,29 +641,24 @@ static uint8_t  usbd_cdc_DataIn (void *pdev, uint8_t epnum)
     }
     else 
     {
-      if (APP_Rx_length > CDC_DATA_IN_PACKET_SIZE){
+        int to_tx = (APP_Rx_length > CDC_DATA_IN_PACKET_SIZE) ? CDC_DATA_IN_PACKET_SIZE : APP_Rx_length;
         USB_Tx_ptr = APP_Rx_ptr_out;
-        USB_Tx_length = CDC_DATA_IN_PACKET_SIZE;
+        USB_Tx_length = to_tx;
         
-        APP_Rx_ptr_out += CDC_DATA_IN_PACKET_SIZE;
-        APP_Rx_length -= CDC_DATA_IN_PACKET_SIZE;    
-      }
-      else 
-      {
-        USB_Tx_ptr = APP_Rx_ptr_out;
-        USB_Tx_length = APP_Rx_length;
-        
-        APP_Rx_ptr_out += APP_Rx_length;
-        APP_Rx_length = 0;
-      }
       
       /* Prepare the available data buffer to be sent on IN endpoint */
       DCD_EP_Tx (pdev,
                  CDC_IN_EP,
                  (uint8_t*)&APP_Rx_Buffer[USB_Tx_ptr],
                  USB_Tx_length);
+
+       APP_Rx_ptr_out += to_tx;
+       APP_Rx_length -= to_tx;    
+
     }
   }  
+
+  HAL_enable_irq(irq);
   
   return USBD_OK;
 }
@@ -673,7 +672,6 @@ static uint8_t  usbd_cdc_DataIn (void *pdev, uint8_t epnum)
   */
 static uint8_t  usbd_cdc_DataOut (void *pdev, uint8_t epnum)
 {      
-  USB_Rx_State = 1;
   USB_Rx_ptr = 0;
 
   /* Get the received data buffer and update the counter */
@@ -685,6 +683,7 @@ static uint8_t  usbd_cdc_DataOut (void *pdev, uint8_t epnum)
   
   /* Prepare Out endpoint to receive next packet */
   //DCD_EP_PrepareRx() is now called in USB_USART_Receive_Data() in usb_hal.c
+  USB_Rx_State = 1;
 
   return USBD_OK;
 }
@@ -766,12 +765,13 @@ static void Handle_USBAsynchXfer (void *pdev)
       APP_Rx_ptr_out += APP_Rx_length;
       APP_Rx_length = 0;
     }
-    USB_Tx_State = 1; 
 
     DCD_EP_Tx (pdev,
                CDC_IN_EP,
                (uint8_t*)&APP_Rx_Buffer[USB_Tx_ptr],
                USB_Tx_length);
+    USB_Tx_State = 1; 
+
   }  
   
 }

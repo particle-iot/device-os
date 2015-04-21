@@ -265,7 +265,7 @@ USB_OTG_STS USB_OTG_SelectCore(USB_OTG_CORE_HANDLE *pdev,
 #endif      
     
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED    
-    pdev->cfg.dma_enable       = 1;    
+    pdev->cfg.dma_enable       = 0;    
 #endif
     
 #ifdef USB_OTG_HS_SOF_OUTPUT_ENABLED    
@@ -273,7 +273,7 @@ USB_OTG_STS USB_OTG_SelectCore(USB_OTG_CORE_HANDLE *pdev,
 #endif 
     
 #ifdef USB_OTG_HS_LOW_PWR_MGMT_SUPPORT    
-    pdev->cfg.low_power        = 1;    
+    pdev->cfg.low_power        = 0;    
 #endif 
     
   }

@@ -373,12 +373,6 @@ static uint8_t USBD_Reset(USB_OTG_CORE_HANDLE  *pdev)
 static uint8_t USBD_Resume(USB_OTG_CORE_HANDLE  *pdev)
 {
   /* Upon Resume call usr call back */
-  if(pdev->dev.usr_cb)
-  {
-    pdev->dev.usr_cb->DeviceResumed();
-  }
-  pdev->dev.device_status = pdev->dev.device_old_status;  
-  pdev->dev.device_status = USB_OTG_CONFIGURED;  
   return USBD_OK;
 }
 
@@ -392,13 +386,6 @@ static uint8_t USBD_Resume(USB_OTG_CORE_HANDLE  *pdev)
 
 static uint8_t USBD_Suspend(USB_OTG_CORE_HANDLE  *pdev)
 {
-  pdev->dev.device_old_status = pdev->dev.device_status;
-  pdev->dev.device_status  = USB_OTG_SUSPENDED;
-  /* Upon Resume call usr call back */
-  if(pdev->dev.usr_cb)
-  {
-    pdev->dev.usr_cb->DeviceSuspended();
-  }
   return USBD_OK;
 }
 

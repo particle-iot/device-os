@@ -33,6 +33,7 @@
 #include "usb_conf.h"
 #include "usbd_desc.h"
 #include "delay_hal.h"
+#include "interrupts_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -52,14 +53,15 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 /* Extern variables ----------------------------------------------------------*/
 #ifdef USB_CDC_ENABLE
 extern LINE_CODING linecoding;
-extern uint8_t USB_DEVICE_CONFIGURED;
-extern uint8_t USB_Rx_Buffer[];
-extern uint8_t APP_Rx_Buffer[];
-extern uint32_t APP_Rx_ptr_in;
-extern uint16_t USB_Rx_length;
-extern uint16_t USB_Rx_ptr;
-extern uint8_t  USB_Tx_State;
-extern uint8_t  USB_Rx_State;
+extern volatile uint8_t USB_DEVICE_CONFIGURED;
+extern volatile uint8_t USB_Rx_Buffer[];
+extern volatile uint8_t APP_Rx_Buffer[];
+extern volatile uint32_t APP_Rx_ptr_in;
+extern volatile uint32_t APP_Rx_ptr_out;
+extern volatile uint16_t USB_Rx_length;
+extern volatile uint16_t USB_Rx_ptr;
+extern volatile uint8_t  USB_Tx_State;
+extern volatile uint8_t  USB_Rx_State;
 #endif
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
@@ -166,7 +168,8 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
 {
     if(USB_Rx_State == 1)
     {
-        if(!peek && ((USB_Rx_length - USB_Rx_ptr) == 1))
+        int result = USB_Rx_Buffer[peek ? USB_Rx_ptr : USB_Rx_ptr++];
+        if(!peek && ((USB_Rx_length - USB_Rx_ptr) == 0))
         {
             USB_Rx_State = 0;
 
@@ -176,12 +179,13 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
                              (uint8_t*)(USB_Rx_Buffer),
                              CDC_DATA_OUT_PACKET_SIZE);
         }
-
-        return USB_Rx_Buffer[peek ? USB_Rx_ptr : USB_Rx_ptr++];
+        return result;
     }
 
     return -1;
 }
+
+void USB_OTG_BSP_EnableInterrupt(USB_OTG_CORE_HANDLE *pdev);
 
 /*******************************************************************************
  * Function Name  : USB_USART_Send_Data.
@@ -191,18 +195,17 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
  *******************************************************************************/
 void USB_USART_Send_Data(uint8_t Data)
 {
+    USB_OTG_BSP_EnableInterrupt(&USB_OTG_dev);
     APP_Rx_Buffer[APP_Rx_ptr_in] = Data;
 
-    APP_Rx_ptr_in++;
-
-    /* To avoid buffer overflow */
-    if(APP_Rx_ptr_in == APP_RX_DATA_SIZE)
-    {
-        APP_Rx_ptr_in = 0;
+    int next = (APP_Rx_ptr_in+1) & (APP_RX_DATA_SIZE-1);
+    
+    while (next == APP_Rx_ptr_out) {
+        HAL_Delay_Milliseconds(1);
     }
+    
+    APP_Rx_ptr_in = next;
 
-    //Delay 100us to avoid losing the data
-    HAL_Delay_Microseconds(100);
 }
 #endif
 
@@ -262,7 +265,9 @@ void OTG_HS_WKUP_irq(void)
  */
 void OTG_FS_irq(void)
 {
+    int mask = HAL_disable_irq();
     USBD_OTG_ISR_Handler(&USB_OTG_dev);
+    HAL_enable_irq(mask);
 }
 #elif defined USE_USB_OTG_HS
 /**
@@ -272,7 +277,9 @@ void OTG_FS_irq(void)
  */
 void OTG_HS_irq(void)
 {
+    int mask = HAL_disable_irq();
     USBD_OTG_ISR_Handler(&USB_OTG_dev);
+    HAL_enable_irq(mask);
 }
 #endif
 
@@ -284,7 +291,9 @@ void OTG_HS_irq(void)
  */
 void OTG_HS_EP1_IN_irq(void)
 {
+    int mask = HAL_disable_irq();
     USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
+    HAL_enable_irq(mask);
 }
 
 /**
@@ -294,6 +303,8 @@ void OTG_HS_EP1_IN_irq(void)
  */
 void OTG_HS_EP1_OUT_irq(void)
 {
+    int mask = HAL_disable_irq();
     USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
+    HAL_enable_irq(mask);
 }
 #endif

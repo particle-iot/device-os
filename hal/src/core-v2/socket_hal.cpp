@@ -302,7 +302,7 @@ uint8_t socket_active_status(sock_handle_t sd)
     if (socket) {
         // todo - register disconnect callback and use this to update is_bound flag
 #ifdef LWIP_TO_WICED_ERR        
-        result = socket->is_bound;
+        result = is_tcp(socket) && tcp(socket)->is_bound;
 #else
         result = 1;
 #endif

@@ -39,10 +39,7 @@
 
 void test_get_semaphore_breaks_serial_printing(void)
 {
-    wiced_semaphore_t complete;
-    wiced_rtos_init_semaphore(&complete);
-    wiced_rtos_get_semaphore(&complete, 100);
-    wiced_rtos_deinit_semaphore(&complete);
+    wiced_rtos_delay_milliseconds(10);
 }
 
 bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)

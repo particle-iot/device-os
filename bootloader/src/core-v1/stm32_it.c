@@ -239,7 +239,9 @@ void TIM1_CC_IRQHandler(void)
 *******************************************************************************/
 void USB_LP_CAN1_RX0_IRQHandler(void)
 {
+    int mask = HAL_disable_irq();
 	USB_Istr();
+        HAL_enable_irq(mask);
 }
 
 /*******************************************************************************
