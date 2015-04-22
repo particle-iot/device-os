@@ -33,17 +33,17 @@ void spark_protocol_communications_handlers(SparkProtocol* protocol, Communicati
 void spark_protocol_init(SparkProtocol* protocol, const char *id,
           const SparkKeys &keys,
           const SparkCallbacks &callbacks,
-          const SparkDescriptor &descriptor)
+          const SparkDescriptor &descriptor, void* reserved)
 {
     protocol->init(id, keys, callbacks, descriptor);
 }
 
-int spark_protocol_handshake(SparkProtocol* protocol) { 
+int spark_protocol_handshake(SparkProtocol* protocol, void* reserved) { 
     protocol->reset_updating();
     return protocol->handshake(); 
 }
 
-bool spark_protocol_event_loop(SparkProtocol* protocol) { 
+bool spark_protocol_event_loop(SparkProtocol* protocol, void* reserved) { 
     return protocol->event_loop(); 
 }
 
@@ -60,11 +60,11 @@ bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, 
     return protocol->send_event(event_name, data, ttl, event_type);
 }
 
-bool spark_protocol_send_subscription_device(SparkProtocol* protocol, const char *event_name, const char *device_id) {
+bool spark_protocol_send_subscription_device(SparkProtocol* protocol, const char *event_name, const char *device_id, void* reserved) {
     return protocol->send_subscription(event_name, device_id);
 }
 
-bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope) {
+bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope, void* reserved) {
     return protocol->send_subscription(event_name, scope);
 }
 
@@ -73,15 +73,15 @@ bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event
     return protocol->add_event_handler(event_name, handler, scope, device_id);
 }
 
-bool spark_protocol_send_time_request(SparkProtocol* protocol) {
+bool spark_protocol_send_time_request(SparkProtocol* protocol, void* reserved) {
     return protocol->send_time_request();
 }
 
-void spark_protocol_send_subscriptions(SparkProtocol* protocol) {
+void spark_protocol_send_subscriptions(SparkProtocol* protocol, void* reserved) {
     protocol->send_subscriptions();
 }
 
-void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char* event_name) {
+void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char* event_name, void* reserved) {
     protocol->remove_event_handlers(event_name);
 }
 
@@ -93,6 +93,6 @@ void spark_protocol_set_product_firmware_version(SparkProtocol* protocol, produc
     protocol->set_product_firmware_version(product_firmware_version);
 }
 
-void spark_protocol_get_product_details(SparkProtocol* protocol, product_details_t* details) {
+void spark_protocol_get_product_details(SparkProtocol* protocol, product_details_t* details, void* reserved) {
     protocol->get_product_details(*details);
 }

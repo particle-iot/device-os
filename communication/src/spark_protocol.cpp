@@ -66,7 +66,7 @@ void SparkProtocol::reset_updating(void)
   updating = false;
 }
 
-SparkProtocol::SparkProtocol() : QUEUE_SIZE(sizeof(queue)), handlers({NULL}), expecting_ping_ack(false),
+SparkProtocol::SparkProtocol() : QUEUE_SIZE(sizeof(queue)), handlers({sizeof(handlers), NULL}), expecting_ping_ack(false),
                                      initialized(false), updating(false), product_id(PRODUCT_ID), product_firmware_version(PRODUCT_FIRMWARE_VERSION)
 {
     queue_init();
