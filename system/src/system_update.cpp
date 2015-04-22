@@ -15,6 +15,8 @@
 #include "spark_wiring_system.h"
 #include "spark_protocol_functions.h"
 #include "hw_config.h"
+#include "string_convert.h"
+#include "appender.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -200,3 +202,123 @@ int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chu
     }
     return result;
 }
+
+class AppendJson
+{
+    appender_fn fn;
+    void* data;
+    
+public:
+
+    AppendJson(appender_fn fn, void* data) {
+        this->fn = fn; this->data = data;
+    }
+    
+    bool write_quoted(const char* value) {
+        return write('"') &&
+               write(value) &&
+               write('"');
+    }
+    
+    bool write_attribute(const char* name) {
+        return 
+                write_quoted(name) &&
+                write(':');
+    }
+    
+    bool write_string(const char* name, const char* value) {
+        return write_attribute(name) &&
+               write_quoted(value) &&
+               next();
+    }
+    
+    bool newline() { return write("\r\n"); }
+    
+    bool write_value(const char* name, int value) {
+        char buf[10];
+        itoa(value, buf, 10);
+        return write_attribute(name) &&
+               write(buf) &&
+               next();
+    }
+    
+    bool end_list() {
+        return write_attribute("_") &&
+               write_quoted("");
+    }
+    
+    bool write(char c) {
+        return fn(data, (const uint8_t*)&c, 1);
+    }
+    
+    bool write(const char* string) {
+        return fn(data, (const uint8_t*)string, strlen(string));
+    }
+    
+    bool next() { return write(',') && newline(); }
+};
+
+const char* module_function_string(module_function_t func) {
+    switch (func) {
+        case MODULE_FUNCTION_NONE: return "none";
+        case MODULE_FUNCTION_RESOURCE: return "res";
+        case MODULE_FUNCTION_BOOTLOADER: return "boot";
+        case MODULE_FUNCTION_MONO_FIRMWARE: return "mono";
+        case MODULE_FUNCTION_SYSTEM_PART: return "system";
+        case MODULE_FUNCTION_USER_PART: return "user";
+        default: return "unknown";
+    }    
+}
+
+const char* module_name(uint8_t index, char* buf)
+{
+    return itoa(index, buf, 10);
+}
+
+bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_t& system)
+{
+    AppendJson json(append, append_data);
+    bool result = true;
+    result &= json.write_value("p", system.platform_id)  
+        && json.write_attribute("m")
+        && json.write('[');
+    char buf[65];
+    for (unsigned i=0; i<system.module_count; i++) {        
+        if (i) result &= json.write(',');
+        const hal_module_t& module = system.modules[i];
+        const module_info_t* info = module.info;
+        buf[64] = 0;
+        result &= json.write('{') && json.write_value("s", module.bounds.maximum_size)
+          && json.write_string("u", bytes2hexbuf(module.suffix->sha, 32, buf))
+          && json.write_string("f", module_function_string(module_function(info)))
+          && json.write_string("n", module_name(module_index(info), buf))
+          && json.write_value("v", info->module_version)
+        // on the photon we have just one dependency, this will need generalizing for other platforms
+          && json.write_attribute("d")
+          && json.write('[');
+          for (unsigned int d=0; d<1; d++) {
+              const module_dependency_t& dependency = info->dependency;
+              if (d) result &= json.write(',');
+              result &= json.write('{') 
+                && json.write_string("f", module_function_string(module_function_t(dependency.module_function)))
+                && json.write_string("n", module_name(dependency.module_index, buf))
+                && json.write_value("v", dependency.module_version)
+                 && json.end_list() && json.write('}');
+          }          
+          result &= json.write("]}");
+    }
+    
+    result &= json.write(']');
+    return result;
+}
+
+
+bool system_module_info(appender_fn append, void* append_data, void* reserved)
+{
+    hal_system_info_t info;    
+    HAL_System_Info(&info, true, NULL);
+    bool result = system_info_to_json(append, append_data, info);
+    HAL_System_Info(&info, false, NULL);
+    return result;
+}
+

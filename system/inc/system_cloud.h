@@ -82,6 +82,7 @@ void spark_disconnect(void);
 bool spark_connected(void);
 SparkProtocol* spark_protocol_instance(void);
 
+char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* output);
 String bytes2hex(const uint8_t* buf, unsigned len);
 String spark_deviceID(void);
 

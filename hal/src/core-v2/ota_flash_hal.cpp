@@ -27,14 +27,72 @@
 #include "ota_flash_hal.h"
 #include "rng_hal.h"
 #include "hw_config.h"
+#include "flash_mal.h"
 #include "dct_hal.h"
 #include "dsakeygen.h"
 #include "softap.h"
 #include <cstring>
 #include "ledcontrol.h"
 #include "parse_server_address.h"
+#include "spark_macros.h"
+
 
 #define OTA_CHUNK_SIZE          512
+
+const module_info_t* locate_module(module_bounds_t* bounds) {
+    return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
+}
+
+void fetch_module(hal_module_t* target, module_bounds_t* bounds)
+{
+    target->bounds = *bounds;
+    target->info = locate_module(bounds);
+    const uint8_t* module_end = (const uint8_t*)target->info->module_end_address;
+    // the suffix ends at module_end, and the crc starts
+    
+    target->crc = (module_info_crc_t*)module_end;
+    target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
+    target->validity_flags = 0;
+}
+
+#if MODULAR_FIRMWARE
+
+module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000 };
+module_bounds_t module_system_part1 = { 0x40000, 0x8020000, 0x8060000 };
+module_bounds_t module_system_part2 = { 0x40000, 0x8060000, 0x80A0000 };
+module_bounds_t module_user = { 0x20000, 0x80A0000, 0x80C0000 };
+module_bounds_t module_factory = { 0x20000, 0x80E0000, 0x8100000 };
+// don't include factory module since we cannot distinguish it externally from a user module
+module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_user };
+
+#else
+module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000 };
+module_bounds_t module_user = { 0x20000, 0x8020000, 0x8080000 };
+module_bounds_t module_factory = { 0x20000, 0x8080000, 0x80E0000 };
+module_bounds_t* module_bounds[] = { &module_bootloader, &module_user, &module_factory };
+#endif
+
+void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
+{
+    if (construct) {
+        info->platform_id = PLATFORM_ID;
+        // bootloader, system 1, system 2, optional user code and factory restore    
+        uint8_t count = arraySize(module_bounds);
+        info->modules = new hal_module_t[count];
+        if (info->modules) {
+            info->module_count = count;
+            for (unsigned i=0; i<count; i++) {
+                fetch_module(info->modules+i, module_bounds[i]);
+            }
+        }    
+    }
+    else
+    {
+        delete info->modules;
+        info->modules = NULL;
+    }
+}
+
 
 bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
 {

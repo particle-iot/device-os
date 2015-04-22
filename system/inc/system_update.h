@@ -3,7 +3,7 @@
 #define	SYSTEM_UPDATE_H
 
 #include "file_transfer.h"
-
+#include "appender.h"
 #ifdef __cplusplus
 extern "C" {
 #endif    
@@ -21,6 +21,8 @@ bool system_serialFirmwareUpdate(Stream* stream);
 bool system_serialFileTransfer(Stream* stream, FileTransfer::Descriptor& file);
 
 void system_lineCodingBitRateHandler(uint32_t bitrate);
+
+bool system_module_info(appender_fn appender, void* append_data, void* reserved=NULL);
 
 /**
  * 

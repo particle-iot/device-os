@@ -44,6 +44,18 @@ void loop_wifitester(int c);
 
 #define SETUP_SERIAL Serial1
 
+class StreamAppender : public Appender
+{
+    Stream& stream_;
+    
+public:
+    StreamAppender(Stream& stream) : stream_(stream) {}
+    
+    bool append(const uint8_t* data, size_t length) {
+        return stream_.write(data, length)==length;
+    }
+};
+
 WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 {
 #if SETUP_OVER_SERIAL1    
@@ -194,13 +206,9 @@ void WiFiCredentialsReader::handle(char c)
     }
     else if ('s' == c) 
     {
-        print("modular: ");
-#ifdef MODULAR_FIRMWARE        
-        print("yes");
-#else
-        print("no");
-#endif        
-        print("\r\n");
+        StreamAppender appender(serial);
+        system_module_info(append_instance, &appender);
+        print("\r\n");        
     }
     
 }
