@@ -42,8 +42,9 @@
 #include "spark_protocol_functions.h"
 #include "spark_protocol.h"
 #include "spark_macros.h"
-#include "spark_wiring_string.h"
 #include "spark_wiring_cloud.h"
+#include "system_update.h"
+#include "string_convert.h"
 
 int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
@@ -377,6 +378,8 @@ void Spark_Protocol_Init(void)
         }
         
         SparkCallbacks callbacks;
+        memset(&callbacks, 0, sizeof(callbacks));
+        callbacks.size = sizeof(callbacks);
         callbacks.send = Spark_Send;
         callbacks.receive = Spark_Receive;
         callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
@@ -388,6 +391,8 @@ void Spark_Protocol_Init(void)
         callbacks.set_time = HAL_RTC_Set_UnixTime;
 
         SparkDescriptor descriptor;
+        memset(&descriptor, 0, sizeof(descriptor));
+        descriptor.size = sizeof(descriptor);
         descriptor.num_functions = numUserFunctions;
         descriptor.get_function_key = getUserFunctionKey;
         descriptor.call_function = userFuncSchedule;
@@ -397,11 +402,13 @@ void Spark_Protocol_Init(void)
         descriptor.get_variable = getUserVar;
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
+        descriptor.append_system_info = system_module_info;
 
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
 
         SparkKeys keys;
+        keys.size = sizeof(keys);
         keys.server_public = pubkey;
         keys.core_private = private_key;
 
@@ -723,4 +730,31 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
         }
     }
     return -1;
+}
+
+static inline char ascii_nibble(uint8_t nibble) {
+    char hex_digit = nibble + 48;
+    if (57 < hex_digit)
+        hex_digit += 7;
+    return hex_digit;    
+}
+
+static inline char* concat_nibble(char* p, uint8_t nibble)
+{    
+    *p++ = ascii_nibble(nibble);
+    return p;
+}
+
+char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out)
+{
+    unsigned i;
+    char* result = out;
+    for (i = 0; i < len; ++i)
+    {
+        concat_nibble(out, (buf[i] >> 4));
+        out++;
+        concat_nibble(out, (buf[i] & 0xF));
+        out++;
+    }
+    return result;
 }

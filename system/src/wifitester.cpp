@@ -28,6 +28,7 @@
 #include "wifitester.h"
 #include "core_hal.h"
 #include "spark_wiring_version.h"
+#include "string_convert.h"
 
 #if PLATFORM_ID==4 || PLATFORM_ID==5 || PLATFORM_ID==6 || PLATFORM_ID==8
 #define WIFI_SCAN 1

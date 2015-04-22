@@ -591,23 +591,8 @@ static inline char ascii_nibble(uint8_t nibble) {
     return hex_digit;    
 }
 
-static inline char* concat_nibble(char* p, uint8_t nibble)
-{    
-    *p++ = ascii_nibble(nibble);
-    return p;
-}
 
-static void bytes2hex(const uint8_t* buf, unsigned len, char* out)
-{
-    unsigned i;
-    for (i = 0; i < len; ++i)
-    {
-        concat_nibble(out, (buf[i] >> 4));
-        out++;
-        concat_nibble(out, (buf[i] & 0xF));
-        out++;
-    }
-}
+extern "C" char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
 
 class DeviceIDCommand : public JSONCommand {
 
@@ -617,7 +602,7 @@ public:
     DeviceIDCommand() {}
     
     static void get_device_id(char buffer[25]) {
-        bytes2hex((const uint8_t*)0x1FFF7A10, 12, buffer);
+        bytes2hexbuf((const uint8_t*)0x1FFF7A10, 12, buffer);
         buffer[24] = 0;
     }
 
