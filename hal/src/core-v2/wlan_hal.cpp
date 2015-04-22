@@ -200,6 +200,7 @@ struct SnifferInfo
     int16_t rssi;
     wiced_semaphore_t complete;
     scan_ap_callback callback;
+    void* callback_data;
 };
 
 /*
@@ -220,7 +221,7 @@ wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
             }
         }
         else {
-            info->callback(record->SSID.value, record->SSID.length, record->signal_strength);
+            info->callback(info->callback_data, record->SSID.value, record->SSID.length, record->signal_strength);
         }
     }
     else {
@@ -242,9 +243,10 @@ wiced_result_t sniff_security(SnifferInfo* info) {
 }
 
 
-void wlan_scan_aps(scan_ap_callback callback) {    
+void wlan_scan_aps(scan_ap_callback callback, void *data) {    
     SnifferInfo info;
     info.callback = callback;
+    info.callback_data = data;
     sniff_security(&info);
 }
 

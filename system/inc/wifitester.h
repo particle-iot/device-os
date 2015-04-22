@@ -24,8 +24,40 @@
 #ifndef WIFITESTER_H
 #define	WIFITESTER_H
 
-void wifitester_loop(int c);
-void wifitester_setup();
+class WiFiTester
+{
+    bool useSerial1;
+
+    uint8_t notifiedAboutDHCP;
+    int state;
+    int wifi_testing;
+    int dhcp_notices;
+    unsigned cmd_index;
+    static const unsigned cmd_length = 256;
+    char command[cmd_length];
+
+        
+    void checkWifiSerial(char c);
+    void wifiScan();
+    void printInfo();
+    void printItem(const char* name, const char* value);
+    void tester_connect(char *ssid, char *pass);
+    void tokenizeCommand(char *cmd, char* parts[], unsigned max_parts);
+    
+public:    
+    WiFiTester() {
+        memset(this, 0, sizeof(*this));        
+    }
+    
+    void setup(bool useSerial1);
+    void loop(int c);
+
+    uint8_t serialAvailable();
+    int32_t serialRead();
+    void serialPrintln(const char* s);
+    void serialPrint(const char* s);    
+};
+
 
 #endif	/* WIFITESTER_H */
 

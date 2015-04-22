@@ -50,10 +50,19 @@ WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
     serial1Enabled = false;
     magicPos = 0;
     Serial1.begin(9600);
+    this->tester = NULL;
 #endif    
     this->connect_callback = connect_callback;
     if (serial.baud()==0)
         serial.begin(9600);
+    
+}
+
+WiFiCredentialsReader::~WiFiCredentialsReader() 
+{
+#if SETUP_OVER_SERIAL1    
+    delete this->tester;
+#endif    
 }
 
 void WiFiCredentialsReader::read(void)
@@ -70,7 +79,9 @@ void WiFiCredentialsReader::read(void)
                 if (c==magic_code[magicPos++]) {
                     serial1Enabled = magicPos==sizeof(magic_code);
                     if (serial1Enabled) {
-                        wifitester_setup();
+                        if (tester==NULL)
+                            tester = new WiFiTester();
+                        tester->setup(SETUP_OVER_SERIAL1);
                     }
                 }
                 else {
@@ -80,7 +91,8 @@ void WiFiCredentialsReader::read(void)
             }
         }
         else {                
-            wifitester_loop(c);
+            if (tester)
+                tester->loop(c);
         }
     }        
 #endif    
