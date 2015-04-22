@@ -26,13 +26,13 @@
 #include "inet_hal.h"
 #include "wiced_tcpip.h"
 
-int inet_gethostbyname(char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr)
+int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr)
 {
     wiced_ip_address_t address;
     address.version = WICED_IPV4;
     wiced_result_t result = wiced_hostname_lookup (hostname, &address, 5000);
     *out_ip_addr = GET_IPV4_ADDRESS(address);
-    return result;
+    return -result;
 }
 
 int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {

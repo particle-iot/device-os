@@ -50,9 +50,7 @@ public:
         return system_serialFileTransfer(serialObj, file);
     }
     static void factoryReset(void);
-    static void bootloader(void);
-    static void dfu(void);
-    static void dfu(bool persist);
+    static void dfu(bool persist=false);
     static void reset(void);
 
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);

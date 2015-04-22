@@ -22,24 +22,37 @@
  */
 
 #include "application.h"
+#include "wifitester.h"
 
 SYSTEM_MODE(MANUAL);
+
+#define USE_SERIAL1 1
+
+#ifndef USE_SERIAL1
+#define USE_SERIAL1 0
+#endif
+
+WiFiTester tester;
 
 void setup()
 {
     Serial.begin(9600);
 #if USE_SERIAL1    
-    Serial1.begin(9600);
+    Serial1.begin(9600);    
 #endif    
-    wifitester_setup();
+    tester.setup(USE_SERIAL1);
 }
 
 void loop()
 {
     int c = -1;
-	if (serialAvailable()) {
-        c = serialRead();
+	if (tester.serialAvailable()) {
+            c = tester.serialRead();
+            char s[2];
+            s[0] = c;
+            s[1] = 0;
+            tester.serialPrint(s);
     }
-    wifitester_loop(c);    
+    tester.loop(c);
 }
 

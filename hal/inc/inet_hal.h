@@ -39,7 +39,7 @@ extern "C" {
  * @param out_ip_addr   The ip address in network byte order.
  * @return 
  */
-int inet_gethostbyname(char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr);
+int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr);
 
 
 /**
