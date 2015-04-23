@@ -36,7 +36,6 @@
 #include "parse_server_address.h"
 #include "spark_macros.h"
 
-
 #define OTA_CHUNK_SIZE          512
 
 const module_info_t* locate_module(module_bounds_t* bounds) {
@@ -56,15 +55,12 @@ void fetch_module(hal_module_t* target, module_bounds_t* bounds)
 }
 
 #if MODULAR_FIRMWARE
-
 module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000 };
 module_bounds_t module_system_part1 = { 0x40000, 0x8020000, 0x8060000 };
 module_bounds_t module_system_part2 = { 0x40000, 0x8060000, 0x80A0000 };
 module_bounds_t module_user = { 0x20000, 0x80A0000, 0x80C0000 };
 module_bounds_t module_factory = { 0x20000, 0x80E0000, 0x8100000 };
-// don't include factory module since we cannot distinguish it externally from a user module
-module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_user };
-
+module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_user, &module_factory };
 #else
 module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000 };
 module_bounds_t module_user = { 0x20000, 0x8020000, 0x8080000 };
