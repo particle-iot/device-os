@@ -22,6 +22,7 @@ COMMON_BUILD=$(FIRMWARE)/build
 #FIRMWARE=$(CORE)/firmware-private
 
 include $(COMMON_BUILD)/macros.mk
+include $(COMMON_BUILD)/os.mk
 
 ifeq (6,$(PLATFORM_ID))
 CMD=test.mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
@@ -34,6 +35,7 @@ SUFFIX=_BM-14
 endif
 
 VERSION=0
+VERSION_NEXT=1
 VERSION_STRING=$(VERSION).RC4
 SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
@@ -66,6 +68,11 @@ MFG_TEST_BIN=$(WICED_SDK)/build/$(BUILD_NAME)/binary/$(BUILD_NAME).bin
 MFG_TEST_MEM=$(OUT)/mfg_test_pad$(SUFFIX).bin
 MFG_TEST_DIR=Apps/test/mfg_test
 
+WL_DEP=
+ifneq ("$(MAKE_OS)","OSX")
+  WL_DEP=wl
+endif
+
 CRC=crc32
 XXD=xxd
 OPTS=
@@ -88,8 +95,8 @@ bootloader:
 	@echo building bootloader to $(BOOTLOADER_MEM)
 	-rm $(BOOTLOADER_MEM)
 	$(MAKE) -C $(BOOTLOADER_DIR) PLATFORM_ID=$(PLATFORM_ID) all 
-	dd if=/dev/zero ibs=1k count=16 | tr "\x0" "\xFF") > $(BOOTLOADER_MEM)
-	dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
+	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377"  > $(BOOTLOADER_MEM)
+	#dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
 	
 # add the prepared dct image into the flash image
 dct: 	
@@ -150,7 +157,7 @@ wl:
 	cd "$(WICED_SDK)/$(MFG_TEST_DIR)"; make
 	cp $(WICED_SDK)/$(MFG_TEST_DIR)/wl43362A2.exe $(TARGET)/wl.exe
 
-combined: bootloader dct mfg_test firmware user system wl checks
+combined: bootloader dct mfg_test firmware user system $(WL_DEP) checks
 	@echo Building combined image to $(COMBINED_MEM)
 	-rm $(COMBINED_MEM)
 	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(FIRMWARE_MEM) $(USER_MEM) > $(COMBINED_MEM)
