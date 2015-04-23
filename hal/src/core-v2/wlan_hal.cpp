@@ -37,9 +37,143 @@
 #include "delay_hal.h"
 #include "wlan_scan.h"
 
+#define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "StackMacros.h"
+
+
+
+/*
+ * Task control block.  A task control block (TCB) is allocated for each task,
+ * and stores task state information, including a pointer to the task's context
+ * (the task's run time environment, including register values)
+ */
+typedef struct tskTaskControlBlock
+{
+	volatile portSTACK_TYPE	*pxTopOfStack;		/*< Points to the location of the last item placed on the tasks stack.  THIS MUST BE THE FIRST MEMBER OF THE TCB STRUCT. */
+
+	#if ( portUSING_MPU_WRAPPERS == 1 )
+		xMPU_SETTINGS xMPUSettings;				/*< The MPU settings are defined as part of the port layer.  THIS MUST BE THE SECOND MEMBER OF THE TCB STRUCT. */
+	#endif
+
+	xListItem				xGenericListItem;	/*< The list that the state list item of a task is reference from denotes the state of that task (Ready, Blocked, Suspended ). */
+	xListItem				xEventListItem;		/*< Used to reference a task from an event list. */
+	unsigned portBASE_TYPE	uxPriority;			/*< The priority of the task.  0 is the lowest priority. */
+	portSTACK_TYPE			*pxStack;			/*< Points to the start of the stack. */
+	signed char				pcTaskName[ configMAX_TASK_NAME_LEN ];/*< Descriptive name given to the task when created.  Facilitates debugging only. */
+
+	#if ( portSTACK_GROWTH > 0 )
+		portSTACK_TYPE *pxEndOfStack;			/*< Points to the end of the stack on architectures where the stack grows up from low memory. */
+	#endif
+
+	#if ( portCRITICAL_NESTING_IN_TCB == 1 )
+		unsigned portBASE_TYPE uxCriticalNesting; /*< Holds the critical section nesting depth for ports that do not maintain their own count in the port layer. */
+	#endif
+
+	#if ( configUSE_TRACE_FACILITY == 1 )
+		unsigned portBASE_TYPE	uxTCBNumber;	/*< Stores a number that increments each time a TCB is created.  It allows debuggers to determine when a task has been deleted and then recreated. */
+		unsigned portBASE_TYPE  uxTaskNumber;	/*< Stores a number specifically for use by third party trace code. */
+	#endif
+
+	#if ( configUSE_MUTEXES == 1 )
+		unsigned portBASE_TYPE uxBasePriority;	/*< The priority last assigned to the task - used by the priority inheritance mechanism. */
+	#endif
+
+	#if ( configUSE_APPLICATION_TASK_TAG == 1 )
+		pdTASK_HOOK_CODE pxTaskTag;
+	#endif
+
+	#if ( configGENERATE_RUN_TIME_STATS == 1 )
+		unsigned long ulRunTimeCounter;			/*< Stores the amount of time the task has spent in the Running state. */
+	#endif
+
+	#if ( configUSE_NEWLIB_REENTRANT == 1 )
+		/* Allocate a Newlib reent structure that is specific to this task.
+		Note Newlib support has been included by popular demand, but is not
+		used by the FreeRTOS maintainers themselves.  FreeRTOS is not
+		responsible for resulting newlib operation.  User must be familiar with
+		newlib and must provide system-wide implementations of the necessary
+		stubs. Be warned that (at the time of writing) the current newlib design
+		implements a system-wide malloc() that must be provided with locks. */
+		struct _reent xNewLib_reent;
+	#endif
+	portBASE_TYPE forceAwakePending;
+
+} tskTCB;
+
+extern "C" PRIVILEGED_DATA volatile portTickType xTickCount;
+extern "C" PRIVILEGED_DATA tskTCB * volatile pxCurrentTCB;
+extern "C" PRIVILEGED_DATA volatile unsigned portBASE_TYPE uxTopReadyPriority;
+
+extern "C" PRIVILEGED_DATA xList pxReadyTasksLists[ configMAX_PRIORITIES ];	/*< Prioritised ready tasks. */
+
+	#define taskRESET_READY_PRIORITY( uxPriority )
+	#define portRESET_READY_PRIORITY( uxPriority, uxTopReadyPriority )
+
+#define prvAddTaskToReadyList( pxTCB ) \
+	vListInsertEnd( &( pxReadyTasksLists[ ( pxTCB )->uxPriority ] ), &( ( pxTCB )->xGenericListItem ) )
+
+ extern "C" void prvAddCurrentTaskToDelayedList( portTickType xTimeToWake );
+
+void myvTaskDelay( portTickType xTicksToDelay )
+	{
+	//signed portBASE_TYPE xAlreadyYielded = pdFALSE;
+
+		/* A delay time of zero just forces a reschedule. */
+		if( xTicksToDelay > ( portTickType ) 0U )
+		{
+			vTaskSuspendAll();
+			if (1) {
+				traceTASK_DELAY();
+
+                                
+                                
+				/* A task that is removed from the event list while the
+				scheduler is suspended will not get placed in the ready
+				list or removed from the blocked list until the scheduler
+				is resumed.
+
+				This task cannot be in an event list as it is the currently
+				executing task. */
+
+				/* Calculate the time to wake - this may overflow but this is
+				not a problem. */
+
+                        	portTickType xTimeToWake;
+				xTimeToWake = xTickCount + 1;
+
+				/* We must remove ourselves from the ready list before adding
+				ourselves to the blocked list as the same list item is used for
+				both lists. */
+
+				if(uxListRemove( &( pxCurrentTCB->xGenericListItem ) ) == ( unsigned portBASE_TYPE ) 0 )
+				{
+					/* The current task must be in a ready list, so there is
+					no need to check, and the port reset macro can be called
+					directly. */
+					portRESET_READY_PRIORITY( pxCurrentTCB->uxPriority, uxTopReadyPriority );
+				}
+				prvAddCurrentTaskToDelayedList( xTimeToWake );
+                                //prvAddTaskToReadyList( pxCurrentTCB );
+
+			}
+			xTaskResumeAll();
+		}
+//HAL_Delay_Microseconds(2500);
+		/* Force a reschedule if xTaskResumeAll has not already done so, we may
+		have put ourselves to sleep. */                
+                portYIELD_WITHIN_API();
+                
+
+}
+
 void test_get_semaphore_breaks_serial_printing(void)
 {
-    wiced_rtos_delay_milliseconds(10);
+    //wiced_rtos_delay_milliseconds(10);
+    myvTaskDelay(500);
+    //vPortYield();
 }
 
 bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
