@@ -72,6 +72,7 @@ typedef struct {
  * the string being parsed now and current position in that string
  */
 typedef struct {
+    unsigned size;
     unsigned int pos; /* offset in the JSON string */
     unsigned int toknext; /* next token to allocate */
     int toksuper; /* superior token node, e.g parent object or array */
@@ -80,14 +81,14 @@ typedef struct {
 /**
  * Create JSON parser over an array of tokens
  */
-void jsmn_init(jsmn_parser *parser);
+void jsmn_init(jsmn_parser *parser, void* reserved);
 
 /**
  * Run JSON parser. It parses a JSON data string into and array of tokens, each describing
  * a single JSON object.
  */
 jsmnerr_t jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
-        jsmntok_t *tokens, unsigned int num_tokens);
+        jsmntok_t *tokens, unsigned int num_tokens, void* reserved);
 
 #ifdef __cplusplus
 }

@@ -107,16 +107,17 @@ protected:
     jsmntok_t * json_tokenise(char *js)
     {
         jsmn_parser parser;
-        jsmn_init(&parser);
+        parser.size = sizeof(parser);
+        jsmn_init(&parser, NULL);
 
         unsigned int n = 64;
         jsmntok_t* tokens = (jsmntok_t*)malloc(sizeof(jsmntok_t) * n);
-        int ret = jsmn_parse(&parser, js, strlen(js), tokens, n);
+        int ret = jsmn_parse(&parser, js, strlen(js), tokens, n, NULL);
         while (ret==JSMN_ERROR_NOMEM)
         {
             n = n * 2 + 1;
             tokens = (jsmntok_t*)realloc(tokens, sizeof(jsmntok_t) * n);
-            ret = jsmn_parse(&parser, js, strlen(js), tokens, n);
+            ret = jsmn_parse(&parser, js, strlen(js), tokens, n, NULL);
         }
         return tokens;
     }

@@ -173,7 +173,7 @@ static jsmnerr_t jsmn_parse_string(jsmn_parser *parser, const char *js,
  * Parse JSON string and fill tokens.
  */
 jsmnerr_t jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
-        jsmntok_t *tokens, unsigned int num_tokens) {
+        jsmntok_t *tokens, unsigned int num_tokens, void* reserved) {
     jsmnerr_t r;
     int i;
     jsmntok_t *token;
@@ -325,7 +325,7 @@ jsmnerr_t jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
  * Creates a new parser based over a given  buffer with an array of tokens
  * available.
  */
-void jsmn_init(jsmn_parser *parser) {
+void jsmn_init(jsmn_parser *parser, void* reserved) {
     parser->pos = 0;
     parser->toknext = 0;
     parser->toksuper = -1;
