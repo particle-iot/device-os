@@ -32,11 +32,42 @@
 #include "static_assert.h"
 #include "flash_device_hal.h"
 #include "module_info_hal.h"
+#include "module_info.h"
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
-        
+    
+typedef struct {
+    uint32_t maximum_size;      // the maximum allowable size for the entire module image
+    uint32_t start_address;     // the designated start address for the module
+    uint32_t end_address;       // 
+} module_bounds_t;    
+    
+typedef struct {    
+    module_bounds_t bounds;
+    const module_info_t* info;      // pointer to the module info in the module, may be NULL
+    const module_info_crc_t* crc;
+    const module_info_suffix_t* suffix;
+    uint16_t validity_flags;    // check the validity of the module    
+} hal_module_t;
+    
+typedef struct {
+    uint16_t size;
+    uint16_t platform_id;
+    hal_module_t* modules;      // allocated by HAL_System_Info
+    uint16_t module_count;      // number of modules in the array    
+} hal_system_info_t;    
+
+/**
+ * 
+ * @param info          The buffer to fill with system info or to reclaim
+ * @param construct     {#code true} to fill the buffer, {@code false} to reclaim.
+ * @param reserved      set to 0
+ */
+void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved);
+
+
 bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length);
 
 // TODO - this is temporary to get a working hal.

@@ -10,8 +10,8 @@
 
 #include <stdint.h>
 
-typedef void (*scan_ap_callback)(const uint8_t* ssid, unsigned ssid_len, int rssi);
-void wlan_scan_aps(scan_ap_callback callback);
+typedef void (*scan_ap_callback)(void* callback_data, const uint8_t* ssid, unsigned ssid_len, int rssi);
+void wlan_scan_aps(scan_ap_callback callback, void* callback_data);
 
 
 #endif	/* WLAN_SCAN_H */

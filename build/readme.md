@@ -61,8 +61,8 @@ When building `main` or `modules`:
 
 When building `main`:
 
-- `TARGET_FILE`: sets the base name of the artefact file produced. E.g. setting
-    `TARGET_FILE=whereyou` would produce the target named `whereyou.bin` The default
+- `TARGET_NAME`: sets the base name of the artefact file produced. E.g. setting
+    `TARGET_NAME=whereyou` would produce the target named `whereyou.bin` The default
     is the value of `APP`.
 - `TARGET_DIR`: sets the directory where the target files are placed relative to
     the current directory.

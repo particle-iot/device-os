@@ -47,7 +47,7 @@ TCPClient::TCPClient() : TCPClient(SOCKET_INVALID)
 
 TCPClient::TCPClient(sock_handle_t sock) : _sock(sock) 
 {
-  flush();
+  flush_buffer();
 }
 
 int TCPClient::connect(const char* host, uint16_t port) 
@@ -81,7 +81,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
 
           if (socket_handle_valid(_sock))
           {
-            flush();
+            flush_buffer();
 
             tSocketAddr.sa_family = AF_INET;
 
@@ -131,7 +131,7 @@ int TCPClient::available()
     // At EOB => Flush it
     if (_total && (_offset == _total))
     {
-      flush();
+        flush_buffer();
     }
 
     if(WiFi.ready() && isOpen(_sock))
@@ -154,7 +154,6 @@ int TCPClient::available()
 
 int TCPClient::read() 
 {
-
   return (bufferCount() || available()) ? _buffer[_offset++] : -1;
 }
 
@@ -175,10 +174,16 @@ int TCPClient::peek()
   return  (bufferCount() || available()) ? _buffer[_offset] : -1;
 }
 
-void TCPClient::flush() 
+void TCPClient::flush_buffer() 
 {
   _offset = 0;
   _total = 0;
+}
+
+void TCPClient::flush()
+{
+  while (available())
+    read();
 }
 
 

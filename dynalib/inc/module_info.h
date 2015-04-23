@@ -48,7 +48,7 @@ typedef struct module_info_t {
     uint16_t platform_id;               /* The platform this module was compiled for. */
     uint8_t  module_function;           /* The module function */
     uint8_t  module_index;
-    module_dependency_t depenency; 
+    module_dependency_t dependency; 
     uint32_t reserved3;
 } module_info_t;
 
@@ -84,6 +84,8 @@ typedef enum module_function_t {
 } module_function_t;
 
 
+
+
 module_function_t  module_function(const module_info_t* mi);
 
 
@@ -110,9 +112,11 @@ uint8_t module_info_matches_platform(const module_info_t* mi);
  * The structure is a suffix to the module, placed before the end symbol
  */
 typedef struct module_info_suffix_t {
+    // NB: NB: NB: add new members here
     uint16_t reserved;
     uint8_t sha[32];
     uint16_t size;    
+    // NB: NB: NB: add new members to the start of this module definition, not the end!!
 } __attribute__((packed)) module_info_suffix_t;
 
 /**

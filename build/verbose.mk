@@ -6,10 +6,12 @@
 ifdef v
 ECHO=echo
 VERBOSE=
+VERBOSE_REDIRECT=
 else
 ECHO = true
 VERBOSE=@
 MAKE_ARGS += -s
+VERBOSE_REDIRECT= > /dev/null
 endif
 
 echo=@$(ECHO) $1

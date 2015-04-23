@@ -25,6 +25,8 @@
 
 #pragma once
 
+#include "appender.h"
+
 // Deferring to ASN.1 type codes
 namespace SparkReturnType {
   enum Enum {
@@ -37,15 +39,18 @@ namespace SparkReturnType {
 
 struct SparkDescriptor
 {
-  int (*num_functions)(void);
-  void (*copy_function_key)(char *destination, int function_index);
-  int (*call_function)(const char *function_key, const char *arg);
+    size_t size;
+    int (*num_functions)(void);
+    const char* (*get_function_key)(int function_index);
+    int (*call_function)(const char *function_key, const char *arg);
 
-  int (*num_variables)(void);
-  void (*copy_variable_key)(char *destination, int variable_index);
-  SparkReturnType::Enum (*variable_type)(const char *variable_key);
-  void *(*get_variable)(const char *variable_key);
+    int (*num_variables)(void);
+    const char* (*get_variable_key)(int variable_index);
+    SparkReturnType::Enum (*variable_type)(const char *variable_key);
+    const void *(*get_variable)(const char *variable_key);
 
-  bool (*was_ota_upgrade_successful)(void);
-  void (*ota_upgrade_status_sent)(void);
+    bool (*was_ota_upgrade_successful)(void);
+    void (*ota_upgrade_status_sent)(void);
+  
+    bool (*append_system_info)(appender_fn appender, void* append, void* reserved);
 };

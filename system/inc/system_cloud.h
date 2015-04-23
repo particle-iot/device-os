@@ -60,14 +60,29 @@ typedef enum
 
 typedef struct String String;
 
-void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType, void* reserved);
+typedef void (*EventHandler)(const char* name, const char* data);
+
+typedef enum
+{
+  MY_DEVICES,
+  ALL_DEVICES
+} Spark_Subscription_Scope_TypeDef;
+
+
+void spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved);
 void spark_function(const char *funcKey, int (*pFunc)(String paramString), void* reserved);
+bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved);
+bool spark_subscribe(const char *eventName, EventHandler handler, 
+        Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
+
+
 void spark_process(void);
 void spark_connect(void);
 void spark_disconnect(void);
 bool spark_connected(void);
 SparkProtocol* spark_protocol_instance(void);
 
+char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* output);
 String bytes2hex(const uint8_t* buf, unsigned len);
 String spark_deviceID(void);
 

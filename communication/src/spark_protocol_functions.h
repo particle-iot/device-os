@@ -24,6 +24,7 @@ class SparkProtocol;
     
 struct SparkKeys
 {    
+    uint16_t size;
   unsigned char *core_private;
   unsigned char *server_public;
   unsigned char *core_public;
@@ -32,6 +33,7 @@ struct SparkKeys
     
 struct SparkCallbacks
 {
+    uint16_t size;
   int (*send)(const unsigned char *buf, uint32_t buflen);
   int (*receive)(unsigned char *buf, uint32_t buflen);
   
@@ -70,7 +72,8 @@ struct SparkCallbacks
  * callbacks.)
  */
 typedef struct CommunicationsHandlers {
-
+    uint16_t size;
+    
     /**
      * Handle the cryptographically secure random seed from the cloud.
      * @param seed  A random value. This is typically used to seed a pseudo-random generator. 
@@ -94,22 +97,22 @@ void spark_protocol_communications_handlers(SparkProtocol* protocol, Communicati
 void spark_protocol_init(SparkProtocol* protocol, const char *id,
           const SparkKeys &keys,
           const SparkCallbacks &callbacks,
-          const SparkDescriptor &descriptor);
-int spark_protocol_handshake(SparkProtocol* protocol);
-bool spark_protocol_event_loop(SparkProtocol* protocol);
+          const SparkDescriptor &descriptor, void* reserved=NULL);
+int spark_protocol_handshake(SparkProtocol* protocol, void* reserved=NULL);
+bool spark_protocol_event_loop(SparkProtocol* protocol, void* reserved=NULL);
 bool spark_protocol_is_initialized(SparkProtocol* protocol);
 int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char *buf, const char *id);
 bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,
                 int ttl, EventType::Enum event_type);
-bool spark_protocol_send_subscription_device(SparkProtocol* protocol, const char *event_name, const char *device_id);
-bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope);
-bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, EventHandler handler, SubscriptionScope::Enum scope, const char* id);
-bool spark_protocol_send_time_request(SparkProtocol* protocol);
-void spark_protocol_send_subscriptions(SparkProtocol* protocol);
+bool spark_protocol_send_subscription_device(SparkProtocol* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
+bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope, void* reserved=NULL);
+bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, EventHandler handler, SubscriptionScope::Enum scope, const char* id, void* reserved=NULL);
+bool spark_protocol_send_time_request(SparkProtocol* protocol, void* reserved=NULL);
+void spark_protocol_send_subscriptions(SparkProtocol* protocol, void* reserved=NULL);
 void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char *event_name);
 void spark_protocol_set_product_id(SparkProtocol* protocol, product_id_t product_id);
 void spark_protocol_set_product_firmware_version(SparkProtocol* protocol, product_firmware_version_t product_firmware_version);
-void spark_protocol_get_product_details(SparkProtocol* protocol, product_details_t* product_details);
+void spark_protocol_get_product_details(SparkProtocol* protocol, product_details_t* product_details, void* reserved=NULL);
 
 /**
  * Decrypt a buffer using the given public key.

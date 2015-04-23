@@ -44,16 +44,37 @@ void loop_wifitester(int c);
 
 #define SETUP_SERIAL Serial1
 
+class StreamAppender : public Appender
+{
+    Stream& stream_;
+    
+public:
+    StreamAppender(Stream& stream) : stream_(stream) {}
+    
+    bool append(const uint8_t* data, size_t length) {
+        return stream_.write(data, length)==length;
+    }
+};
+
 WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 {
 #if SETUP_OVER_SERIAL1    
     serial1Enabled = false;
     magicPos = 0;
     Serial1.begin(9600);
+    this->tester = NULL;
 #endif    
     this->connect_callback = connect_callback;
     if (serial.baud()==0)
         serial.begin(9600);
+    
+}
+
+WiFiCredentialsReader::~WiFiCredentialsReader() 
+{
+#if SETUP_OVER_SERIAL1    
+    delete this->tester;
+#endif    
 }
 
 void WiFiCredentialsReader::read(void)
@@ -70,7 +91,9 @@ void WiFiCredentialsReader::read(void)
                 if (c==magic_code[magicPos++]) {
                     serial1Enabled = magicPos==sizeof(magic_code);
                     if (serial1Enabled) {
-                        wifitester_setup();
+                        if (tester==NULL)
+                            tester = new WiFiTester();
+                        tester->setup(SETUP_OVER_SERIAL1);
                     }
                 }
                 else {
@@ -80,7 +103,8 @@ void WiFiCredentialsReader::read(void)
             }
         }
         else {                
-            wifitester_loop(c);
+            if (tester)
+                tester->loop(c);
         }
     }        
 #endif    
@@ -182,13 +206,9 @@ void WiFiCredentialsReader::handle(char c)
     }
     else if ('s' == c) 
     {
-        print("modular: ");
-#ifdef MODULAR_FIRMWARE        
-        print("yes");
-#else
-        print("no");
-#endif        
-        print("\r\n");
+        StreamAppender appender(serial);
+        system_module_info(append_instance, &appender);
+        print("\r\n");        
     }
     
 }

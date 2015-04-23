@@ -591,23 +591,8 @@ static inline char ascii_nibble(uint8_t nibble) {
     return hex_digit;    
 }
 
-static inline char* concat_nibble(char* p, uint8_t nibble)
-{    
-    *p++ = ascii_nibble(nibble);
-    return p;
-}
 
-static void bytes2hex(const uint8_t* buf, unsigned len, char* out)
-{
-    unsigned i;
-    for (i = 0; i < len; ++i)
-    {
-        concat_nibble(out, (buf[i] >> 4));
-        out++;
-        concat_nibble(out, (buf[i] & 0xF));
-        out++;
-    }
-}
+extern "C" char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
 
 class DeviceIDCommand : public JSONCommand {
 
@@ -617,7 +602,7 @@ public:
     DeviceIDCommand() {}
     
     static void get_device_id(char buffer[25]) {
-        bytes2hex((const uint8_t*)0x1FFF7A10, 12, buffer);
+        bytes2hexbuf((const uint8_t*)0x1FFF7A10, 12, buffer);
         buffer[24] = 0;
     }
 
@@ -986,6 +971,10 @@ class SimpleProtocolDispatcher
                 cmd = &commands_.publicKey;
             else if (!strcmp("set", name))
                 cmd = &commands_.setValue;
+            else if (!strcmp("ant-internal", name))
+                wwd_wifi_select_antenna(WICED_ANTENNA_1);
+            else if (!strcmp("ant-external", name))
+                wwd_wifi_select_antenna(WICED_ANTENNA_2);
         }
         return cmd;
     }
@@ -1174,11 +1163,8 @@ public:
         wiced_rtos_create_thread(&thread_, WICED_DEFAULT_LIBRARY_PRIORITY, "tcp server", tcp_server_thread, 1024*6, this);
     }
 
-    void stop() {        
-        post_event(socket_message_t::quit, NULL);
-        
-        wiced_tcp_server_stop(&server_);
-        wiced_rtos_deinit_queue(&queue_);
+    void stop() {                
+        post_event(socket_message_t::quit, &server_);
 
         if ( wiced_rtos_is_current_thread( &thread_ ) != WICED_SUCCESS )
         {
@@ -1186,13 +1172,14 @@ public:
             wiced_rtos_thread_join( &thread_);
             wiced_rtos_delete_thread( &thread_ );
         }
+        wiced_rtos_deinit_queue(&queue_);
         static_server = NULL;
         WPRINT_APP_INFO( ( "TCP client done\n" ) );
     }
 
     void run() {
-
-        for (;;)
+        bool quit = false;
+        for (;!quit;)
         {
             socket_message_t event;
             if (wiced_rtos_pop_from_queue(&queue_, &event, WICED_NEVER_TIMEOUT))
@@ -1213,7 +1200,9 @@ public:
                   break;
 
               case socket_message_t::quit:
-                    break;
+                  quit = true;
+                  wiced_tcp_server_stop((wiced_tcp_server_t*)event.socket);
+                  break;
                     
               default:
                   break;

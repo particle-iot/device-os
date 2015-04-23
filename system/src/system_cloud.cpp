@@ -42,11 +42,12 @@
 #include "spark_protocol_functions.h"
 #include "spark_protocol.h"
 #include "spark_macros.h"
-#include "spark_wiring_string.h"
 #include "spark_wiring_cloud.h"
+#include "system_update.h"
+#include "string_convert.h"
 
 int userVarType(const char *varKey);
-void *getUserVar(const char *varKey);
+const void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString);
 
 SparkProtocol* sp;
@@ -76,7 +77,7 @@ uint8_t User_Func_Count;
 
 struct User_Var_Lookup_Table_t
 {
-    void *userVar;
+    const void *userVar;
     char userVarKey[USER_VAR_KEY_LENGTH];
     Spark_Data_TypeDef userVarType;
 } User_Var_Lookup_Table[USER_VAR_MAX_COUNT];
@@ -90,42 +91,60 @@ struct User_Func_Lookup_Table_t
     bool userFuncSchedule;
 } User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
 
-/*
-static unsigned char uitoa(unsigned int cNum, char *cString);
-static unsigned int atoui(char *cString);
-static uint8_t atoc(char data);
- */
-
-/*
-static uint16_t atoshort(char b1, char b2);
-static unsigned char ascii_to_char(char b1, char b2);
-
-static void str_cpy(char dest[], char src[]);
-static int str_cmp(char str1[], char str2[]);
-static int str_len(char str[]);
-static void sub_str(char dest[], char src[], int offset, int len);
- */
-
-void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
+SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
 {
-    if (NULL != userVar && NULL != varKey)
+    return(subscription_type==MY_DEVICES) ? SubscriptionScope::MY_DEVICES : SubscriptionScope::FIREHOSE;
+}
+
+bool spark_subscribe(const char *eventName, EventHandler handler, 
+        Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
+{        
+    auto event_scope = convert(scope);
+    bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, NULL);
+    if (success && spark_connected())
+    {
+        if (deviceID)
+            success = spark_protocol_send_subscription_device(sp, eventName, deviceID);
+        else
+            success = spark_protocol_send_subscription_scope(sp, eventName, event_scope);
+    }
+    return success;
+}
+
+
+inline EventType::Enum convert(Spark_Event_TypeDef eventType) {
+    return eventType==PUBLIC ? EventType::PUBLIC : EventType::PRIVATE;
+}
+
+bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved)
+{
+    return spark_protocol_send_event(sp, name, data, ttl, convert(eventType));
+}
+
+void spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
+{
+    if (NULL != userVar && NULL != varKey && strlen(varKey)<=USER_VAR_KEY_LENGTH)
     {
         if (User_Var_Count == USER_VAR_MAX_COUNT)
             return;
 
+        int index = User_Var_Count;
         for (int i = 0; i < User_Var_Count; i++)
         {
-            if (User_Var_Lookup_Table[i].userVar == userVar &&
-                (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH)))
+            if ((0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH)))
             {
-                return;
+                if (userVarType!=User_Var_Lookup_Table[i].userVarType)
+                    return;
+                index = i;
+                User_Var_Count--;
+                break;
             }
         }
 
-        User_Var_Lookup_Table[User_Var_Count].userVar = userVar;
-        User_Var_Lookup_Table[User_Var_Count].userVarType = userVarType;
-        memset(User_Var_Lookup_Table[User_Var_Count].userVarKey, 0, USER_VAR_KEY_LENGTH);
-        memcpy(User_Var_Lookup_Table[User_Var_Count].userVarKey, varKey, USER_VAR_KEY_LENGTH);
+        User_Var_Lookup_Table[index].userVar = userVar;
+        User_Var_Lookup_Table[index].userVarType = userVarType;
+        memset(User_Var_Lookup_Table[index].userVarKey, 0, USER_VAR_KEY_LENGTH);
+        memcpy(User_Var_Lookup_Table[index].userVarKey, varKey, USER_VAR_KEY_LENGTH);
         User_Var_Count++;
     }
 }
@@ -133,7 +152,7 @@ void spark_variable(const char *varKey, void *userVar, Spark_Data_TypeDef userVa
 void spark_function(const char *funcKey, int (*pFunc)(String paramString), void* reserved)
 {
     int i = 0;
-    if (NULL != pFunc && NULL != funcKey)
+    if (NULL != pFunc && NULL != funcKey && strlen(funcKey)<=USER_FUNC_KEY_LENGTH)
     {
         if (User_Func_Count == USER_FUNC_MAX_COUNT)
             return;
@@ -289,11 +308,9 @@ int numUserFunctions(void)
     return User_Func_Count;
 }
 
-void copyUserFunctionKey(char *destination, int function_index)
-{
-    memcpy(destination,
-        User_Func_Lookup_Table[function_index].userFuncKey,
-        USER_FUNC_KEY_LENGTH);
+const char* getUserFunctionKey(int function_index)
+{    
+    return User_Func_Lookup_Table[function_index].userFuncKey;    
 }
 
 int numUserVariables(void)
@@ -301,11 +318,9 @@ int numUserVariables(void)
     return User_Var_Count;
 }
 
-void copyUserVariableKey(char *destination, int variable_index)
+const char* getUserVariableKey(int variable_index)
 {
-    memcpy(destination,
-        User_Var_Lookup_Table[variable_index].userVarKey,
-        USER_VAR_KEY_LENGTH);
+    return User_Var_Lookup_Table[variable_index].userVarKey;
 }
 
 SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
@@ -363,6 +378,8 @@ void Spark_Protocol_Init(void)
         }
         
         SparkCallbacks callbacks;
+        memset(&callbacks, 0, sizeof(callbacks));
+        callbacks.size = sizeof(callbacks);
         callbacks.send = Spark_Send;
         callbacks.receive = Spark_Receive;
         callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
@@ -374,20 +391,24 @@ void Spark_Protocol_Init(void)
         callbacks.set_time = HAL_RTC_Set_UnixTime;
 
         SparkDescriptor descriptor;
+        memset(&descriptor, 0, sizeof(descriptor));
+        descriptor.size = sizeof(descriptor);
         descriptor.num_functions = numUserFunctions;
-        descriptor.copy_function_key = copyUserFunctionKey;
+        descriptor.get_function_key = getUserFunctionKey;
         descriptor.call_function = userFuncSchedule;
         descriptor.num_variables = numUserVariables;
-        descriptor.copy_variable_key = copyUserVariableKey;
+        descriptor.get_variable_key = getUserVariableKey;
         descriptor.variable_type = wrapVarTypeInEnum;
         descriptor.get_variable = getUserVar;
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
+        descriptor.append_system_info = system_module_info;
 
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
 
         SparkKeys keys;
+        keys.size = sizeof(keys);
         keys.server_public = pubkey;
         keys.core_private = private_key;
 
@@ -593,6 +614,7 @@ int Spark_Connect(void)
     ServerAddress server_addr;
     HAL_FLASH_Read_ServerAddress(&server_addr);
 
+    bool ip_resolve_failed = false;
     uint32_t ip_addr = 0;
 
     switch (server_addr.addr_type)
@@ -617,25 +639,30 @@ int Spark_Connect(void)
             {
                 inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr);
             }
+            ip_resolve_failed = !ip_addr;
     }
 
-    if (!ip_addr)
+    int rv = -1;
+    if (!ip_resolve_failed) 
     {
-        // final fallback
-        ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
-        //ip_addr = (52<<24) | (0<<16) | (3<<8) | 40;
+        if (!ip_addr)
+        {
+            // final fallback in case where flash invalid
+            ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
+            //ip_addr = (52<<24) | (0<<16) | (3<<8) | 40;
+        }
+    
+        tSocketAddr.sa_data[2] = BYTE_N(ip_addr, 3);
+        tSocketAddr.sa_data[3] = BYTE_N(ip_addr, 2);
+        tSocketAddr.sa_data[4] = BYTE_N(ip_addr, 1);
+        tSocketAddr.sa_data[5] = BYTE_N(ip_addr, 0);
+
+        uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
+        DEBUG("connect");
+        rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
+        DEBUG("connected connect=%d", rv);
+        HAL_WLAN_SetNetWatchDog(ot);
     }
-
-    tSocketAddr.sa_data[2] = BYTE_N(ip_addr, 3);
-    tSocketAddr.sa_data[3] = BYTE_N(ip_addr, 2);
-    tSocketAddr.sa_data[4] = BYTE_N(ip_addr, 1);
-    tSocketAddr.sa_data[5] = BYTE_N(ip_addr, 0);
-
-    uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
-    DEBUG("connect");
-    int rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
-    DEBUG("connected connect=%d", rv);
-    HAL_WLAN_SetNetWatchDog(ot);
     if (rv)     // error - prevent socket leaks
         Spark_Disconnect();
     return rv;
@@ -673,7 +700,7 @@ int userVarType(const char *varKey)
     return -1;
 }
 
-void *getUserVar(const char *varKey)
+const void *getUserVar(const char *varKey)
 {
     for (int i = 0; i < User_Var_Count; ++i)
     {
@@ -703,4 +730,31 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
         }
     }
     return -1;
+}
+
+static inline char ascii_nibble(uint8_t nibble) {
+    char hex_digit = nibble + 48;
+    if (57 < hex_digit)
+        hex_digit += 7;
+    return hex_digit;    
+}
+
+static inline char* concat_nibble(char* p, uint8_t nibble)
+{    
+    *p++ = ascii_nibble(nibble);
+    return p;
+}
+
+char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out)
+{
+    unsigned i;
+    char* result = out;
+    for (i = 0; i < len; ++i)
+    {
+        concat_nibble(out, (buf[i] >> 4));
+        out++;
+        concat_nibble(out, (buf[i] & 0xF));
+        out++;
+    }
+    return result;
 }

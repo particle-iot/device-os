@@ -32,10 +32,6 @@
 
 #include "spark_wiring_print.h" // for HEX, DEC ... constants
 
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
 // When compiling programs with this class, the following gcc parameters
 // dramatically increase performance and memory (RAM) efficiency, typically
 // with little or no increase in code size.
@@ -218,9 +214,6 @@ public:
 	StringSumHelper(long num) : String(num) {}
 	StringSumHelper(unsigned long num) : String(num) {}
 };
-
-char* ultoa(unsigned long a, char* buffer, unsigned char radix);
-char* itoa(int a, char* buffer, unsigned char radix);
 
 
 #endif  // __cplusplus

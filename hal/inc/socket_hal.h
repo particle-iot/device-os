@@ -73,23 +73,11 @@ sock_result_t socket_close(sock_handle_t sd);
 
 sock_result_t socket_reset_blocking_call();
 
-sock_result_t socket_create_nonblocking_server(sock_handle_t handle, uint16_t port);
+sock_result_t socket_create_tcp_server(uint16_t port);
 sock_result_t socket_accept(sock_handle_t sd);
-
-/**
- * Binds a client socket.
- */
-sock_result_t socket_bind(sock_handle_t sd, uint16_t port);
+void socket_dispose_tcp_server(sock_handle_t sock);
 
 
-
-//sock_result_t bind(sock_handle_t sd, const sockaddr_t *addr, int32_t addrlen);
-//sock_result_t listen(int32_t sd, int32_t backlog);
-//sock_result_t setsockopt(sock_handle_t sd, int32_t level, int32_t optname, const void *optval, socklen_t optlen);
-
-
-
-extern const sock_handle_t SOCKET_MAX;
 extern const sock_handle_t SOCKET_INVALID;
 
 

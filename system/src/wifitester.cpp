@@ -28,6 +28,7 @@
 #include "wifitester.h"
 #include "core_hal.h"
 #include "spark_wiring_version.h"
+#include "string_convert.h"
 
 #if PLATFORM_ID==4 || PLATFORM_ID==5 || PLATFORM_ID==6 || PLATFORM_ID==8
 #define WIFI_SCAN 1
@@ -51,13 +52,6 @@ void tester_connect(char *ssid, char *pass);
 
 #define USE_SERIAL1 1
 
-uint8_t notifiedAboutDHCP = 0;
-int state = 0;
-int wifi_testing = 0;
-int dhcp_notices = 0;
-unsigned cmd_index = 0;
-const unsigned cmd_length = 256;
-char command[cmd_length];
 const char cmd_CONNECT[] = "CONNECT:";
 const char cmd_RESET[] = "RESET:";
 const char cmd_DFU[] = "DFU:";
@@ -69,8 +63,11 @@ const char cmd_CLEAR[] = "CLEAR:";
 const char cmd_WIFI_SCAN[] = "WIFI_SCAN:";
 const char cmd_SET_PIN[] = "SET_PIN:";
 const char cmd_SET_PRODUCT[] = "SET_PRODUCT:";
+const char cmd_ANT[] = "ANT";
 
-void wifitester_setup() {
+
+void WiFiTester::setup(bool useSerial1) {
+    this->useSerial1 = useSerial1;
     WiFi.on();
 
     cmd_index = 0;
@@ -85,10 +82,9 @@ void wifitester_setup() {
     //DONE: run setup/loop without wifi (ditto))
     //TODO: try to connect to manual wifi asap
     //TODO: set the pin / report via serial
-
 }
 
-void wifitester_loop(int c) {
+void WiFiTester::loop(int c) {
 
     if (WiFi.ready() && (dhcp_notices < 5)) {
         serialPrintln(" DHCP DHCP DHCP ! DHCP DHCP DHCP ! DHCP DHCP DHCP !");
@@ -106,7 +102,7 @@ void wifitester_loop(int c) {
     }
 }
 
-void printItem(const char* name, const char* value) {
+void WiFiTester::printItem(const char* name, const char* value) {
     serialPrint(name);
     serialPrint(": ");
     serialPrintln(value);
@@ -129,7 +125,7 @@ bool fetch_or_generate_setup_ssid(varstring_t* result) {
 }
 #endif
 
-void printInfo() {
+void WiFiTester::printInfo() {
     String deviceID = Spark.deviceID();
 
     WLanConfig ip_config;
@@ -159,21 +155,22 @@ void printInfo() {
 }
 
 #if WIFI_SCAN
-void wlan_scan_callback(const uint8_t* ssid, unsigned ssid_len, int rssi)
+void wlan_scan_callback(void* data, const uint8_t* ssid, unsigned ssid_len, int rssi)
 {
+    WiFiTester& tester = *(WiFiTester*)data;
     char str_ssid[33];
     memcpy(str_ssid, ssid, ssid_len);
     str_ssid[ssid_len] = 0;
-    serialPrint(str_ssid);
-    serialPrint(",");
+    tester.serialPrint(str_ssid);
+    tester.serialPrint(",");
     itoa(rssi, str_ssid, 10);
-    serialPrintln(str_ssid);
+    tester.serialPrintln(str_ssid);
 }
 
-void wifiScan() {
+void WiFiTester::wifiScan() {
     WiFi.on();
     serialPrintln("SCAN_START");
-    wlan_scan_aps(wlan_scan_callback);
+    wlan_scan_aps(wlan_scan_callback, this);
     serialPrintln("SCAN_STOP");    
 }
 #endif
@@ -195,7 +192,20 @@ bool is_digit(char c) {
     return c>='0' && c<='9';
 }
 
-void checkWifiSerial(char c) {
+const char* parseAntennaSelect(const char* c, WLanSelectAntenna_TypeDef& select) {
+    static const char* names[] = {
+        "INTERNAL", "EXTERNAL", "", "AUTO"
+    };
+    for (unsigned i=0; i<arraySize(names); i++) {
+        if (!strncmp(names[i], c, strlen(c))) {
+            select = WLanSelectAntenna_TypeDef(i);
+            return names[i];
+        }            
+    }
+    return NULL;
+}
+
+void WiFiTester::checkWifiSerial(char c) {
     if (cmd_index == 0)
         memset(command, 0, cmd_length);
 
@@ -208,7 +218,6 @@ void checkWifiSerial(char c) {
     if (c == ';') {
         command[cmd_index++] = 0;
         cmd_index = 0;
-        serialPrintln("got semicolon.");
         serialPrint("checking command: ");
         serialPrintln(command);
 
@@ -236,7 +245,7 @@ void checkWifiSerial(char c) {
             delay(100);
             serialPrintln("resetting into DFU mode!");
 
-            System.bootloader();
+            System.dfu();
         } else if ((start = strstr(command, cmd_RESET))) {
             //to trigger a factory reset:
 
@@ -334,47 +343,78 @@ void checkWifiSerial(char c) {
             }
             
         }
+        else if ((start=strstr(command, cmd_ANT))) {
+            tokenizeCommand(start, parts, 5);
+            if (!parts[1]) {
+                WiFi.on();
+                serialPrintln("ANTENNA TEST");
+                serialPrintln("");
+                serialPrintln("Internal");
+                serialPrintln("--------");
+                WiFi.selectAntenna(ANT_INTERNAL);
+                wifiScan();
+                serialPrintln("");
+                serialPrintln("External");
+                serialPrintln("--------");
+                WiFi.selectAntenna(ANT_EXTERNAL);
+                wifiScan();
+                serialPrintln("ANTENNA TEST COMPLETE");
+            }
+            else {                
+                WLanSelectAntenna_TypeDef selectAntenna;
+                const char* name;
+                if ((name=parseAntennaSelect(parts[1], selectAntenna))!=NULL) {
+                    serialPrint("Selected antenna ");
+                    serialPrintln(name);
+                    WiFi.selectAntenna(selectAntenna);
+                }
+            }
+        }
     }
 }
 
-void serialPrintln(const char * str) {
+void WiFiTester::serialPrintln(const char * str) {
     Serial.println(str);
     Serial.flush();
 #if USE_SERIAL1
-    Serial1.println(str);
-    Serial1.flush();
+    if (useSerial1) {
+        Serial1.println(str);
+        Serial1.flush();
+    }
 #endif    
 }
 
-void serialPrint(const char * str) {
+void WiFiTester::serialPrint(const char * str) {
     Serial.print(str);
     Serial.flush();
 #if USE_SERIAL1
-    Serial1.print(str);
-    Serial1.flush();
+    if (useSerial1) {
+        Serial1.print(str);
+        Serial1.flush();
+    }
 #endif    
 }
 
-uint8_t serialAvailable() {
+uint8_t WiFiTester::serialAvailable() {
     uint8_t result = Serial.available();
 #if USE_SERIAL1
-    result |= Serial1.available();
+    result |= (useSerial1 && Serial1.available());
 #endif
     return result;
 }
 
-int32_t serialRead() {
+int32_t WiFiTester::serialRead() {
     if (Serial.available()) {
         return Serial.read();
     }
 #if USE_SERIAL1
-    if (Serial1.available())
+    if (useSerial1 && Serial1.available())
         return Serial1.read();
 #endif    
     return 0;
 }
 
-void tokenizeCommand(char *cmd, char* parts[], unsigned max_parts) {
+void WiFiTester::tokenizeCommand(char *cmd, char* parts[], unsigned max_parts) {
     char * pch;
     unsigned idx = 0;
 
@@ -391,7 +431,7 @@ void tokenizeCommand(char *cmd, char* parts[], unsigned max_parts) {
     }
 }
 
-void tester_connect(char *ssid, char *pass) {
+void WiFiTester::tester_connect(char *ssid, char *pass) {
 
     RGB.color(64, 64, 0);
 

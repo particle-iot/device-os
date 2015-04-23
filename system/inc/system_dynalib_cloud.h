@@ -40,6 +40,8 @@ DYNALIB_FN(system_cloud, spark_disconnect)
 DYNALIB_FN(system_cloud, spark_connected)
 DYNALIB_FN(system_cloud, spark_protocol_instance)
 DYNALIB_FN(system_cloud, spark_deviceID)
+DYNALIB_FN(system_cloud, spark_send_event)
+DYNALIB_FN(system_cloud, spark_subscribe)
 DYNALIB_END(system_cloud)
 
 #endif	/* SYSTEM_DYNALIB_CLOUD_H */

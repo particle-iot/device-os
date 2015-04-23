@@ -7,6 +7,6 @@ TARGET_TYPE = a
 
 BUILD_PATH_EXT=$(COMMUNICATION_BUILD_PATH_EXT)
 
-DEPENDENCIES = hal dynalib
+DEPENDENCIES = hal dynalib services
 
 include ../build/arm-tlm.mk

@@ -28,6 +28,8 @@
 #include "evnt_handler.h"
 #include "socket.h"
 
+const sock_handle_t SOCKET_MAX = (sock_handle_t)8;
+const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
 
 int32_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen)
 {
@@ -177,6 +179,3 @@ uint8_t socket_handle_valid(sock_handle_t handle)
 {
     return handle<SOCKET_MAX;
 }
-
-const sock_handle_t SOCKET_MAX = (sock_handle_t)8;
-const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;

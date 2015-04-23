@@ -23,6 +23,9 @@
  - Added 'program-serial' to build target to enter serial ymodem protocol for flashing user firmware (Testing pending...)
  - Added System.modeDFU() to briefly enter Bootloader mode and not persisting the bootloader flag inbetween system reset or power on-off
  - Added new feature to select between internal (chip) and external (u.FL) antenna on Photon: `int WiFi.selectAntenna(ANT_INTERNAL | ANT_EXTERNAL | ANT_AUTO);` [commit](https://github.com/spark/firmware-private/commit/b18555d3be95c23009a8e03a04ac645de3b1b31e) and [#394](https://github.com/spark/firmware/issues/394)
+ - `WiFi.resolve()` to look up an IP address from a domain name. [#91](https://github.com/spark/firmware/issues/91) 
+ - Cloud string variables can be re-defined [#241](https://github.com/spark/firmware/issues/241)
+ - 
 
 ### BUGFIXES
 
@@ -35,6 +38,8 @@
 - `Time.timeStr()` had a newline at the end. [#336](https://github.com/spark/firmware/issues/336)
 - `WiFi.RSSI()` caused panic in some cases. [#377](https://github.com/spark/firmware/issues/377)
 - `Spark.publish()` caused SOS when cloud disconnected. [#322](https://github.com/spark/firmware/issues/332)
+- `TCPClient.flush()` discards data in the socket layer also. [#416](https://github.com/spark/firmware/issues/416)
+
 
 ### UNDER THE HOOD
 

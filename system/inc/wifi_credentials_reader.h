@@ -37,11 +37,14 @@ typedef void (*ConnectCallback)(const char *ssid,
                                 const char *password,
                                 unsigned long security_type);
 
+class WiFiTester;
+
 class WiFiCredentialsReader
 {
   public:
     WiFiCredentialsReader(ConnectCallback connect_callback);
     void read(void);
+    ~WiFiCredentialsReader();
   protected:
       void handle(char c);
   private:   
@@ -49,6 +52,7 @@ class WiFiCredentialsReader
 #if SETUP_OVER_SERIAL1    
     bool serial1Enabled;
     uint8_t magicPos;                   // how far long the magic key we are
+    WiFiTester* tester;
 #endif    
     ConnectCallback connect_callback;
     char ssid[33];
