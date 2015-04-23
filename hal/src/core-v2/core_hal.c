@@ -100,20 +100,14 @@ void HAL_Core_Init(void)
 void HAL_Core_Config(void)
 {
     DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
+    
 #ifdef DFU_BUILD_ENABLE
     //Currently this is done through WICED library API so commented.
     //NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x20000);
     USE_SYSTEM_FLAGS = 1;
 #endif
 
-#ifdef SWD_JTAG_DISABLE
-    /* Disable the Serial Wire JTAG Debug Port SWJ-DP */
-    //To Do
-#endif
-
     Set_System();
-
-    override_interrupts();
 
     /* Register Mode Button Interrupt Handler (WICED hack for Mode Button usage) */
     //Commented below in favour of override_interrupts()
@@ -129,11 +123,18 @@ void HAL_Core_Config(void)
     Load_SystemFlags();
 #endif
 
-    /* Reset system to disable IWDG if enabled in bootloader */
-    IWDG_Reset_Enable(0);
-
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
+
+    override_interrupts();
+}
+
+void HAL_Core_Setup(void) {
+    
+    // for some readon, putting this at the end of HAL_Core_Config causes the device to stall.
+    // 
+    /* Reset system to disable IWDG if enabled in bootloader */
+    IWDG_Reset_Enable(0);
 
 #ifdef USE_SERIAL_FLASH
     //Initialize Serial Flash
@@ -144,25 +145,10 @@ void HAL_Core_Config(void)
                                       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
                                       FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
 #endif
-    
-    // one the key is sent to the cloud, this can be removed, since the key is fetched in 
-    // Spark_Protocol_init(). This is just a temporary measure while the key still needs
-    // to be fetched via DFU.
-    
-    // normallly allocating such a large buffer on the stack would be a bad idea, however, we are quite near the start of execution, with few levels of recursion.
-    char buf[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
-    // ensure the private key is provisioned
-    
-    // Reset the system after generating the key - reports of Serial not being available in listening mode
-    // after generating the key. 
-    private_key_generation_t genspec;
-    genspec.size = sizeof(genspec);
-    genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
-    HAL_FLASH_Read_CorePrivateKey(buf, &genspec);
-    if (genspec.generated_key)
-        HAL_Core_System_Reset();
-    
+       
 }
+
+__attribute__((section(".early_startup.HAL_Core_Config"))) uint32_t startup = (uint32_t)&HAL_Core_Config;
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 {
@@ -327,11 +313,27 @@ void HAL_Notify_WDT()
  * The entrypoint from FreeRTOS to our application.
  * 
  */
-void application_start() {
+void application_start() 
+{
+    // one the key is sent to the cloud, this can be removed, since the key is fetched in 
+    // Spark_Protocol_init(). This is just a temporary measure while the key still needs
+    // to be fetched via DFU.
+    
+    HAL_Core_Setup();
+    
+    // normallly allocating such a large buffer on the stack would be a bad idea, however, we are quite near the start of execution, with few levels of recursion.
+    char buf[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
+    // ensure the private key is provisioned
+    
+    // Reset the system after generating the key - reports of Serial not being available in listening mode
+    // after generating the key. 
+    private_key_generation_t genspec;
+    genspec.size = sizeof(genspec);
+    genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
+    HAL_FLASH_Read_CorePrivateKey(buf, &genspec);
+    if (genspec.generated_key)
+        HAL_Core_System_Reset();
 
-    // while this is linked as a single image, assume c'tors are handled by the
-    // WICED startup scripts.
-    HAL_Core_Config();
 
     app_setup_and_loop();
 }

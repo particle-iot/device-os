@@ -56,6 +56,9 @@ SECTIONS
         KEEP(*(.preinit_array))
         KEEP(*(.init_array))
         KEEP (*crtbegin.o(.ctors))
+        link_early_startup_begin = .;
+        KEEP(*(.early_startup.*))
+        link_early_startup_end = .;
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
@@ -211,3 +214,5 @@ ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc
 
 ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" ); 
 ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );
+
+ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );
