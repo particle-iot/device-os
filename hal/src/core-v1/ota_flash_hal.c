@@ -28,6 +28,13 @@
 #include <string.h>
 #include "parse_server_address.h"
 
+void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
+{
+    info->platform_id = PLATFORM_ID;
+    info->module_count = 0;
+    info->modules = NULL;
+}
+
 bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
 {
     uint32_t endAddress = startAddress + length - 1;
