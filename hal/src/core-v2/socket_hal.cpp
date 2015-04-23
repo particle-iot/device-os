@@ -56,6 +56,19 @@ const sock_handle_t SOCKET_MAX = 0x7FFFFFFF;
  */
 const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
 
+/* Normalize differences between LwIP and NetX */
+
+#ifndef WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS
+// the name of the array of sockets in wiced_tcp_server_t
+#define WICED_SOCKET_ARRAY accept_socket
+
+// the number of sockets in the above array
+#define WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS WICED_MAXIMUM_NUMBER_OF_ACCEPT_SOCKETS
+#else
+#define WICED_SOCKET_ARRAY socket
+#endif
+
+
 /**
  * Manages reading from a tcp packet. 
  */
@@ -165,7 +178,8 @@ struct tcp_server_t : wiced_tcp_server_t
      * @return The index of the socket (>=0) or -1 if not found.
      */       
     int index(wiced_tcp_socket_t* socket) {
-        return (is_client(socket)) ? socket-this->socket : -1;
+        
+        return (is_client(socket)) ? socket-this->WICED_SOCKET_ARRAY : -1;
     }
     
     /**
@@ -176,7 +190,7 @@ struct tcp_server_t : wiced_tcp_server_t
      */
     bool is_client(wiced_tcp_socket_t* socket) {
         // see if the address corresponds to the socket array
-        return this->socket<=socket && socket<this->socket+arraySize(this->socket);
+        return this->WICED_SOCKET_ARRAY<=socket && socket<this->WICED_SOCKET_ARRAY+arraySize(this->WICED_SOCKET_ARRAY);
     }
     
     wiced_result_t accept(wiced_tcp_socket_t* socket) {
