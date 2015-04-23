@@ -481,6 +481,8 @@ class ConfigureAPCommand : public JSONRequestCommand {
     static const int OFFSET[];
     static const jsmntype_t TYPE[];
 
+    int decrypt_result;
+    
     int save_credentials() {
         // Write received credentials into DCT                
         WPRINT_APP_INFO( ( "saving AP credentials:\n" ) );
@@ -489,10 +491,11 @@ class ConfigureAPCommand : public JSONRequestCommand {
         WPRINT_APP_INFO( ( "passcode: %s\n", configureAP.passcode ) );
         WPRINT_APP_INFO( ( "security: %d\n", (int)configureAP.security ) );
         WPRINT_APP_INFO( ( "channel: %d\n", (int)configureAP.channel ) );
-
-        return add_wiced_wifi_credentials(configureAP.ssid, strlen(configureAP.ssid),
-            configureAP.passcode, strlen(configureAP.passcode),
-                wiced_security_t(configureAP.security), configureAP.channel);
+        
+        return decrypt_result<0 ? decrypt_result : 
+            add_wiced_wifi_credentials(configureAP.ssid, strlen(configureAP.ssid),
+                configureAP.passcode, strlen(configureAP.passcode),
+                    wiced_security_t(configureAP.security), configureAP.channel);
     }
 
 protected:
@@ -515,7 +518,7 @@ protected:
         else if (key==2 && t->type==JSMN_STRING) {
 #define USE_PWD_ENCRYPTION 1            
 #if USE_PWD_ENCRYPTION
-            decrypt((char*)data, sizeof(ConfigureAP::passcode), str);            
+            decrypt_result = decrypt((char*)data, sizeof(ConfigureAP::passcode), str);            
             JSON_DEBUG( ( "Decrypted password %s\n", (char*)data));
 #else
             strncpy((char*)data, str, sizeof(ConfigureAP::passcode)-1);
@@ -530,6 +533,7 @@ protected:
     }
     
     int parse_request(Reader& reader) {
+        decrypt_result = 0;
         memset(&configureAP, 0, sizeof(configureAP));
         return parse_json_request(reader, KEY, TYPE, arraySize(KEY));
     }

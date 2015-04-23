@@ -120,7 +120,7 @@ void spark_protocol_get_product_details(SparkProtocol* protocol, product_details
  * @param private_key       The private key (in DER format).
  * @param plaintext         buffer to hold the resulting plaintext
  * @param max_plaintext_len The size of the plaintext buffer
- * @return The number of plaintext bytes in the plain text buffer, or 0 on error.
+ * @return The number of plaintext bytes in the plain text buffer, or <0 on error.
  */
 extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, 
         uint8_t* plaintext, int max_plaintext_len);
