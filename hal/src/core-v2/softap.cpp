@@ -1163,11 +1163,8 @@ public:
         wiced_rtos_create_thread(&thread_, WICED_DEFAULT_LIBRARY_PRIORITY, "tcp server", tcp_server_thread, 1024*6, this);
     }
 
-    void stop() {        
-        post_event(socket_message_t::quit, NULL);
-        
-        wiced_tcp_server_stop(&server_);
-        wiced_rtos_deinit_queue(&queue_);
+    void stop() {                
+        post_event(socket_message_t::quit, &server_);
 
         if ( wiced_rtos_is_current_thread( &thread_ ) != WICED_SUCCESS )
         {
@@ -1175,13 +1172,14 @@ public:
             wiced_rtos_thread_join( &thread_);
             wiced_rtos_delete_thread( &thread_ );
         }
+        wiced_rtos_deinit_queue(&queue_);
         static_server = NULL;
         WPRINT_APP_INFO( ( "TCP client done\n" ) );
     }
 
     void run() {
-
-        for (;;)
+        bool quit = false;
+        for (;!quit;)
         {
             socket_message_t event;
             if (wiced_rtos_pop_from_queue(&queue_, &event, WICED_NEVER_TIMEOUT))
@@ -1202,7 +1200,9 @@ public:
                   break;
 
               case socket_message_t::quit:
-                    break;
+                  quit = true;
+                  wiced_tcp_server_stop((wiced_tcp_server_t*)event.socket);
+                  break;
                     
               default:
                   break;
