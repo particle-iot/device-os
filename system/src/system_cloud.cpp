@@ -78,18 +78,20 @@ uint8_t User_Func_Count;
 struct User_Var_Lookup_Table_t
 {
     const void *userVar;
-    char userVarKey[USER_VAR_KEY_LENGTH];
     Spark_Data_TypeDef userVarType;
-} User_Var_Lookup_Table[USER_VAR_MAX_COUNT];
+    char userVarKey[USER_VAR_KEY_LENGTH];
+};
+
+ User_Var_Lookup_Table_t User_Var_Lookup_Table[USER_VAR_MAX_COUNT];
 
 struct User_Func_Lookup_Table_t
-{
-    int (*pUserFunc)(String userArg);
+{    
+    void* pUserFuncData;
+    cloud_function_t pUserFunc;    
     char userFuncKey[USER_FUNC_KEY_LENGTH];
-    char userFuncArg[USER_FUNC_ARG_LENGTH];
-    int userFuncRet;
-    bool userFuncSchedule;
-} User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
+};
+
+User_Func_Lookup_Table_t User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
 
 SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
 {
@@ -149,29 +151,32 @@ void spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
     }
 }
 
-void spark_function(const char *funcKey, int (*pFunc)(String paramString), void* reserved)
+bool spark_function(const cloud_function_descriptor* desc, void* reserved)
 {
+    const char* funcKey = desc->funcKey;
+    cloud_function_t pFunc = desc->fn;
+    
     int i = 0;
-    if (NULL != pFunc && NULL != funcKey && strlen(funcKey)<=USER_FUNC_KEY_LENGTH)
+    bool success = false;
+    if (User_Func_Count < USER_FUNC_MAX_COUNT && NULL != pFunc && NULL != funcKey && strlen(funcKey)<=USER_FUNC_KEY_LENGTH)
     {
-        if (User_Func_Count == USER_FUNC_MAX_COUNT)
-            return;
-
+        int idx = User_Func_Count++;
         for (i = 0; i < User_Func_Count; i++)
         {
-            if (User_Func_Lookup_Table[i].pUserFunc == pFunc && (0 == strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH)))
+            if (0 == strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH))
             {
-                return;
+                idx = i;
+                User_Func_Count--;
             }
         }
 
-        User_Func_Lookup_Table[User_Func_Count].pUserFunc = pFunc;
-        memset(User_Func_Lookup_Table[User_Func_Count].userFuncArg, 0, USER_FUNC_ARG_LENGTH);
-        memset(User_Func_Lookup_Table[User_Func_Count].userFuncKey, 0, USER_FUNC_KEY_LENGTH);
-        memcpy(User_Func_Lookup_Table[User_Func_Count].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH);
-        User_Func_Lookup_Table[User_Func_Count].userFuncSchedule = false;
-        User_Func_Count++;
-    }
+        User_Func_Lookup_Table[idx].pUserFunc = pFunc;
+        User_Func_Lookup_Table[idx].pUserFuncData = desc->data;
+        memset(User_Func_Lookup_Table[idx].userFuncKey, 0, USER_FUNC_KEY_LENGTH);
+        memcpy(User_Func_Lookup_Table[idx].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH);        
+        success = true;
+    }    
+    return success;
 }
 
 inline uint8_t isSocketClosed()
@@ -719,14 +724,8 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
     for (i = 0; i < User_Func_Count; i++)
     {
         if (NULL != paramString && (0 == strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH)))
-        {
-            size_t paramLength = strlen(paramString);
-            if (paramLength > USER_FUNC_ARG_LENGTH)
-                paramLength = USER_FUNC_ARG_LENGTH;
-            memcpy(User_Func_Lookup_Table[i].userFuncArg, paramString, paramLength);
-            User_Func_Lookup_Table[i].userFuncSchedule = true;
-            //return User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].userFuncArg);
-            return User_Func_Lookup_Table[i].pUserFunc(pString);
+        {            
+            return User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].pUserFuncData, paramString, NULL);
         }
     }
     return -1;

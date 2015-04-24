@@ -68,9 +68,17 @@ typedef enum
   ALL_DEVICES
 } Spark_Subscription_Scope_TypeDef;
 
+typedef int (*cloud_function_t)(void* data, const char* param, void* reserved);
+
+typedef struct {
+    uint16_t size;
+    const char *funcKey;
+    cloud_function_t fn;
+    void* data; 
+} cloud_function_descriptor;
 
 void spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved);
-void spark_function(const char *funcKey, int (*pFunc)(String paramString), void* reserved);
+bool spark_function(const cloud_function_descriptor* desc, void* reserved);
 bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved);
 bool spark_subscribe(const char *eventName, EventHandler handler, 
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);

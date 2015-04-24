@@ -27,7 +27,11 @@
 #include "system_cloud.h"
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
+#include <functional>
 
+
+typedef int (*user_function_t)(String paramString);
+typedef std::function<int(String)> user_std_function_t;
 
 class SparkClass {
     
@@ -37,9 +41,15 @@ public:
     {
         spark_variable(varKey, userVar, userVarType, NULL);
     }
-    static void function(const char *funcKey, int (*pFunc)(String paramString)) 
+    
+    static bool function(const char *funcKey, user_function_t func) 
     {
-        spark_function(funcKey, pFunc, NULL);
+        return register_function(call_raw_user_function, &func, funcKey);
+    }
+    
+    static bool function(const char *funcKey, user_std_function_t& func)
+    {
+        return register_function(call_std_user_function, &func, funcKey);
     }
 
     bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)
@@ -120,6 +130,10 @@ public:
     
 private:
 
+    static bool register_function(cloud_function_t fn, void* data, const char* funcKey);
+    static int call_raw_user_function(void* data, const char* param, void* reserved);
+    static int call_std_user_function(void* data, const char* param, void* reserved);
+    
     SparkProtocol* sp() { return spark_protocol_instance(); }
 };
 
