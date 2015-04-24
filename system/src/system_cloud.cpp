@@ -45,6 +45,7 @@
 #include "spark_wiring_cloud.h"
 #include "system_update.h"
 #include "string_convert.h"
+#include "append_list.h"
 
 int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
@@ -72,9 +73,6 @@ const uint32_t VIBGYOR_Colors[] = {
 const int VIBGYOR_Size = sizeof (VIBGYOR_Colors) / sizeof (uint32_t);
 int VIBGYOR_Index;
 
-uint8_t User_Var_Count;
-uint8_t User_Func_Count;
-
 struct User_Var_Lookup_Table_t
 {
     const void *userVar;
@@ -82,7 +80,7 @@ struct User_Var_Lookup_Table_t
     char userVarKey[USER_VAR_KEY_LENGTH];
 };
 
- User_Var_Lookup_Table_t User_Var_Lookup_Table[USER_VAR_MAX_COUNT];
+static append_list<User_Var_Lookup_Table_t> vars(5); 
 
 struct User_Func_Lookup_Table_t
 {    
@@ -91,14 +89,15 @@ struct User_Func_Lookup_Table_t
     char userFuncKey[USER_FUNC_KEY_LENGTH];
 };
 
-User_Func_Lookup_Table_t User_Func_Lookup_Table[USER_FUNC_MAX_COUNT];
+static append_list<User_Func_Lookup_Table_t> funcs(5);
+
 
 SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
 {
     return(subscription_type==MY_DEVICES) ? SubscriptionScope::MY_DEVICES : SubscriptionScope::FIREHOSE;
 }
 
-bool spark_subscribe(const char *eventName, EventHandler handler, 
+bool spark_subscribe(const char *eventName, EventHandler handler, void* data, 
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
 {        
     auto event_scope = convert(scope);
@@ -123,60 +122,60 @@ bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_T
     return spark_protocol_send_event(sp, name, data, ttl, convert(eventType));
 }
 
-void spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
+User_Var_Lookup_Table_t* find_var_by_key(const char* varKey)
+{    
+    for (int i = vars.size(); i-->0; )
+    {            
+        if (0 == strncmp(vars[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
+        {
+            return &vars[i];
+        }
+    }
+    return NULL;
+}
+
+bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
 {
+    User_Var_Lookup_Table_t* item = NULL;
     if (NULL != userVar && NULL != varKey && strlen(varKey)<=USER_VAR_KEY_LENGTH)
     {
-        if (User_Var_Count == USER_VAR_MAX_COUNT)
-            return;
-
-        int index = User_Var_Count;
-        for (int i = 0; i < User_Var_Count; i++)
+        if ((item=find_var_by_key(varKey)) || (item=vars.add()))
         {
-            if ((0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH)))
-            {
-                if (userVarType!=User_Var_Lookup_Table[i].userVarType)
-                    return;
-                index = i;
-                User_Var_Count--;
-                break;
-            }
+            item->userVar = userVar;
+            item->userVarType = userVarType;
+            memset(item->userVarKey, 0, USER_VAR_KEY_LENGTH);
+            memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);            
         }
-
-        User_Var_Lookup_Table[index].userVar = userVar;
-        User_Var_Lookup_Table[index].userVarType = userVarType;
-        memset(User_Var_Lookup_Table[index].userVarKey, 0, USER_VAR_KEY_LENGTH);
-        memcpy(User_Var_Lookup_Table[index].userVarKey, varKey, USER_VAR_KEY_LENGTH);
-        User_Var_Count++;
     }
+    return item!=NULL;
+}
+
+User_Func_Lookup_Table_t* find_func_by_key(const char* funcKey)
+{    
+    for (int i = funcs.size(); i-->0; )
+    {            
+        if (0 == strncmp(funcs[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH))
+        {
+            return &funcs[i];
+        }
+    }
+    return NULL;
 }
 
 bool spark_function(const cloud_function_descriptor* desc, void* reserved)
-{
-    const char* funcKey = desc->funcKey;
-    cloud_function_t pFunc = desc->fn;
-    
-    int i = 0;
-    bool success = false;
-    if (User_Func_Count < USER_FUNC_MAX_COUNT && NULL != pFunc && NULL != funcKey && strlen(funcKey)<=USER_FUNC_KEY_LENGTH)
-    {
-        int idx = User_Func_Count++;
-        for (i = 0; i < User_Func_Count; i++)
+{    
+    User_Func_Lookup_Table_t* item = NULL;    
+    if (NULL != desc->fn && NULL != desc->funcKey && strlen(desc->funcKey)<=USER_FUNC_KEY_LENGTH)
+    {                                
+        if ((item=find_func_by_key(desc->funcKey)) || (item = funcs.add()))
         {
-            if (0 == strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH))
-            {
-                idx = i;
-                User_Func_Count--;
-            }
+            item->pUserFunc = desc->fn;
+            item->pUserFuncData = desc->data;
+            memset(item->userFuncKey, 0, USER_FUNC_KEY_LENGTH);
+            memcpy(item->userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);            
         }
-
-        User_Func_Lookup_Table[idx].pUserFunc = pFunc;
-        User_Func_Lookup_Table[idx].pUserFuncData = desc->data;
-        memset(User_Func_Lookup_Table[idx].userFuncKey, 0, USER_FUNC_KEY_LENGTH);
-        memcpy(User_Func_Lookup_Table[idx].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH);        
-        success = true;
     }    
-    return success;
+    return item!=NULL;
 }
 
 inline uint8_t isSocketClosed()
@@ -310,22 +309,22 @@ int Spark_Receive(unsigned char *buf, uint32_t buflen)
 
 int numUserFunctions(void)
 {
-    return User_Func_Count;
+    return funcs.size();
 }
 
 const char* getUserFunctionKey(int function_index)
 {    
-    return User_Func_Lookup_Table[function_index].userFuncKey;    
+    return funcs[function_index].userFuncKey;    
 }
 
 int numUserVariables(void)
 {
-    return User_Var_Count;
+    return vars.size();
 }
 
 const char* getUserVariableKey(int variable_index)
 {
-    return User_Var_Lookup_Table[variable_index].userVarKey;
+    return vars[variable_index].userVarKey;
 }
 
 SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
@@ -334,16 +333,10 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
     {
         case 1:
             return SparkReturnType::BOOLEAN;
-            break;
-
         case 4:
             return SparkReturnType::STRING;
-            break;
-
         case 9:
             return SparkReturnType::DOUBLE;
-            break;
-
         case 2:
         default:
             return SparkReturnType::INT;
@@ -695,40 +688,20 @@ int Spark_Disconnect(void)
 
 int userVarType(const char *varKey)
 {
-    for (int i = 0; i < User_Var_Count; ++i)
-    {
-        if (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
-        {
-            return User_Var_Lookup_Table[i].userVarType;
-        }
-    }
-    return -1;
+    User_Var_Lookup_Table_t* item = find_var_by_key(varKey);
+    return item ? item->userVarType : -1;
 }
 
 const void *getUserVar(const char *varKey)
 {
-    for (int i = 0; i < User_Var_Count; ++i)
-    {
-        if (0 == strncmp(User_Var_Lookup_Table[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
-        {
-            return User_Var_Lookup_Table[i].userVar;
-        }
-    }
-    return NULL;
+    User_Var_Lookup_Table_t* item = find_var_by_key(varKey);
+    return item ? item->userVar : NULL;
 }
 
 int userFuncSchedule(const char *funcKey, const char *paramString)
 {
-    String pString(paramString);
-    int i = 0;
-    for (i = 0; i < User_Func_Count; i++)
-    {
-        if (NULL != paramString && (0 == strncmp(User_Func_Lookup_Table[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH)))
-        {            
-            return User_Func_Lookup_Table[i].pUserFunc(User_Func_Lookup_Table[i].pUserFuncData, paramString, NULL);
-        }
-    }
-    return -1;
+    User_Func_Lookup_Table_t* item = find_func_by_key(funcKey);    
+    return item ? item->pUserFunc(item->pUserFuncData, paramString, NULL) : -1;
 }
 
 static inline char ascii_nibble(uint8_t nibble) {

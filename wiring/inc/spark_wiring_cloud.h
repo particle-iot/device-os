@@ -47,9 +47,10 @@ public:
         return register_function(call_raw_user_function, &func, funcKey);
     }
     
-    static bool function(const char *funcKey, user_std_function_t& func)
+    static bool function(const char *funcKey, user_std_function_t func)
     {
-        return register_function(call_std_user_function, &func, funcKey);
+        auto fn = new user_std_function_t(func);        
+        return fn ? register_function(call_std_user_function, fn, funcKey) : false;
     }
 
     bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)
@@ -67,31 +68,32 @@ public:
         return spark_send_event(eventName, eventData, ttl, eventType, NULL);
     }
 
-    bool publish(String eventName, Spark_Event_TypeDef eventType=PUBLIC)
+    bool publish(const String& eventName, Spark_Event_TypeDef eventType=PUBLIC)
     {
         return publish(eventName.c_str(), eventType);
     }
 
-    bool publish(String eventName, String eventData, Spark_Event_TypeDef eventType=PUBLIC)
+    bool publish(const String& eventName, const String& eventData, Spark_Event_TypeDef eventType=PUBLIC)
     {
         return publish(eventName.c_str(), eventData.c_str(), eventType);
     }
 
-    bool publish(String eventName, String eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC)
+    bool publish(const String& eventName, const String& eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC)
     {
         return publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
     }
     
     bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
-        return spark_subscribe(eventName, handler, scope, NULL, NULL);
+        return spark_subscribe(eventName, handler, NULL, scope, NULL, NULL);
     }
 
     bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
-        return spark_subscribe(eventName, handler, MY_DEVICES, deviceID, NULL);
+        return spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL);
     }
 
+#if 0    
     bool subscribe(String eventName, EventHandler handler)
     {
         return subscribe(eventName.c_str(), handler);
@@ -106,6 +108,7 @@ public:
     {
         return subscribe(eventName.c_str(), handler, deviceID.c_str());
     }
+#endif    
     
     void unsubscribe() 
     {
