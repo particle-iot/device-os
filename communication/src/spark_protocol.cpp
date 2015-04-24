@@ -845,11 +845,12 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
     appender.append("\":");
     appender.append('0' + (char)t);    
   }
+  appender.append('}');
   
   if (descriptor.append_system_info) {
-    appender.append("],");
+    appender.append(',');
     descriptor.append_system_info(append_instance, &appender, NULL);
-  }    
+  }   
   appender.append('}');
   
   int msglen = appender.next() - (uint8_t *)buf;
