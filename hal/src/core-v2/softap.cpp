@@ -1100,7 +1100,7 @@ class TCPServerDispatcher
     wiced_thread_t              thread_;
     wiced_queue_t               queue_;
     wiced_tcp_server_t          server_;
-
+    
     /**
      * The callbacks from the tcp_server don't take a data argument, so we're forced to
      * resort to globals. No biggie - we don't need more than one tcp server.
@@ -1154,11 +1154,13 @@ public:
         : dispatcher_(dispatcher), iface_(iface)
     {
         memset(&thread_, 0, sizeof(thread_));
+        memset(&server_, 0, sizeof(server_));
     }
 
     void start()
     {
         static_server = this;
+        
         if (wiced_rtos_init_queue(&queue_, NULL, sizeof(socket_message_t), 10))
             return;
 
@@ -1169,7 +1171,7 @@ public:
     }
 
     void stop() {                
-        post_event(socket_message_t::quit, &server_);
+        post_event(socket_message_t::quit, NULL);
 
         if ( wiced_rtos_is_current_thread( &thread_ ) != WICED_SUCCESS )
         {
@@ -1177,11 +1179,37 @@ public:
             wiced_rtos_thread_join( &thread_);
             wiced_rtos_delete_thread( &thread_ );
         }
+
+        wiced_tcp_server_stop(&server_);
         wiced_rtos_deinit_queue(&queue_);
         static_server = NULL;
         WPRINT_APP_INFO( ( "TCP client done\n" ) );
     }
 
+    bool handle_message(socket_message_t& event)
+    {
+        bool quit = false;
+        switch(event.event_type)
+        {
+          case socket_message_t::disconnect:
+              wiced_tcp_server_disconnect_socket(&server_, event.socket);
+              break;
+
+          case socket_message_t::connect:
+              wiced_tcp_server_accept(&server_, event.socket);
+              break;
+
+          case socket_message_t::message:              
+              handle_client(*event.socket);
+              break;
+              
+          case socket_message_t::quit:
+              quit = true;
+              break;              
+          }
+        return quit;
+    }
+    
     void run() {
         bool quit = false;
         for (;!quit;)
@@ -1189,29 +1217,8 @@ public:
             socket_message_t event;
             if (wiced_rtos_pop_from_queue(&queue_, &event, WICED_NEVER_TIMEOUT))
                 break;
-
-            switch(event.event_type)
-            {
-              case socket_message_t::disconnect:
-                  wiced_tcp_server_disconnect_socket(&server_, event.socket);
-                  break;
-
-              case socket_message_t::connect:
-                  wiced_tcp_server_accept(&server_, event.socket);
-                  break;
-
-              case socket_message_t::message:
-                  handle_client(*event.socket);
-                  break;
-
-              case socket_message_t::quit:
-                  quit = true;
-                  wiced_tcp_server_stop((wiced_tcp_server_t*)event.socket);
-                  break;
-                    
-              default:
-                  break;
-              }
+            
+            handle_message(event);
         }
         WPRINT_APP_INFO( ( "TCP server exiting\n" ) );
     }
