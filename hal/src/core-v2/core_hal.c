@@ -60,11 +60,9 @@ void override_interrupts(void) {
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[SysTickIndex] = (uint32_t)SysTickOverride;
-    isrs[USART1Index] = (uint32_t)HAL_USART1_Handler;
     isrs[ButtonExtiIndex] = (uint32_t)Mode_Button_EXTI_irq;
     SCB->VTOR = (unsigned long)isrs;
 }
-
 
 /* Private typedef -----------------------------------------------------------*/
 
