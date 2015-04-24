@@ -228,7 +228,7 @@ void HAL_Core_Execute_Stop_Mode(void)
 			HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
 
 			/* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
-			HAL_Interrupts_Attach(wakeUpPin, NULL, edgeTriggerMode);
+			HAL_Interrupts_Attach(wakeUpPin, NULL, NULL, edgeTriggerMode, NULL);
 
 			/* Request to enter STOP mode with regulator in low power mode */
 			PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);

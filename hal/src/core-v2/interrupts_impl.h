@@ -23,7 +23,7 @@
 #ifndef INTERRUPTS_IMPL_H
 #define	INTERRUPTS_IMPL_H
 
-void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, voidFuncPtr EXTI_Line_Handler);
+void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, HAL_InterruptHandler EXTI_Line_Handler);
 
 
 #endif	/* INTERRUPTS_IMPL_H */

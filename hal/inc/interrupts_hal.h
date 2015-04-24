@@ -37,7 +37,7 @@ typedef enum InterruptMode {
   FALLING
 } InterruptMode;
 
-typedef void (*voidFuncPtr)(void);
+typedef void (*HAL_InterruptHandler)(void* data);
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -49,7 +49,7 @@ typedef void (*voidFuncPtr)(void);
 extern "C" {
 #endif
 
-void HAL_Interrupts_Attach(uint16_t pin, voidFuncPtr handler, InterruptMode mode);
+void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, void* reserved);
 void HAL_Interrupts_Detach(uint16_t pin);
 void HAL_Interrupts_Enable_All(void);
 void HAL_Interrupts_Disable_All(void);

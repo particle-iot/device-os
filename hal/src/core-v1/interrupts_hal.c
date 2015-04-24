@@ -59,34 +59,17 @@ const uint8_t GPIO_IRQn[] = {
 
 // Create a structure for user ISR function pointers
 typedef struct exti_channel {
-  void (*handler)();
+    HAL_InterruptHandler fn;
+    void* data;
 } exti_channel;
 
 //Array to hold user ISR function pointers
-static exti_channel exti_channels[] = {
-    { .handler = NULL },  // EXTI0
-    { .handler = NULL },  // EXTI1
-    { .handler = NULL },  // EXTI2
-    { .handler = NULL },  // EXTI3
-    { .handler = NULL },  // EXTI4
-    { .handler = NULL },  // EXTI5
-    { .handler = NULL },  // EXTI6
-    { .handler = NULL },  // EXTI7
-    { .handler = NULL },  // EXTI8
-    { .handler = NULL },  // EXTI9
-    { .handler = NULL },  // EXTI10
-    { .handler = NULL },  // EXTI11
-    { .handler = NULL },  // EXTI12
-    { .handler = NULL },  // EXTI13
-    { .handler = NULL },  // EXTI14
-    { .handler = NULL }  // EXTI15
-};
-
+static exti_channel exti_channels[16];
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
 
-void HAL_Interrupts_Attach(uint16_t pin, voidFuncPtr handler, InterruptMode mode)
+void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, void* reserved)
 {
   uint8_t GPIO_PortSource = 0;    //variable to hold the port number
   uint8_t GPIO_PinSource = 0;     //variable to hold the pin number
@@ -125,7 +108,8 @@ void HAL_Interrupts_Attach(uint16_t pin, voidFuncPtr handler, InterruptMode mode
   }
 
   // Register the handler for the user function name
-  exti_channels[GPIO_PinSource].handler = handler;
+  exti_channels[GPIO_PinSource].fn = handler;
+  exti_channels[GPIO_PinSource].data = data;
 
   //Connect EXTI Line to appropriate Pin
   GPIO_EXTILineConfig(GPIO_PortSource, GPIO_PinSource);
@@ -211,7 +195,8 @@ void HAL_Interrupts_Detach(uint16_t pin)
   }
 
   //unregister the user's handler
-  exti_channels[GPIO_PinSource].handler = NULL;
+  exti_channels[GPIO_PinSource].fn = NULL;
+  exti_channels[GPIO_PinSource].data = NULL;
 }
 
 void HAL_Interrupts_Enable_All(void)
@@ -232,7 +217,7 @@ void HAL_Interrupts_Disable_All(void)
   NVIC_DisableIRQ(EXTI9_5_IRQn);
 }
 
-void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, voidFuncPtr EXTI_Line_Handler)
+void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, HAL_InterruptHandler fn, void* data)
 {
     uint8_t GPIO_PinSource = 0;     //variable to hold the pin number
     uint8_t PinNumber;              //temp variable to calculate the pin number
@@ -247,7 +232,8 @@ void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, voidFuncPtr EXTI_Line_Handler
     }
 
     // Register the handler for the user function name
-    exti_channels[GPIO_PinSource].handler = EXTI_Line_Handler;
+    exti_channels[GPIO_PinSource].fn = fn;
+    exti_channels[GPIO_PinSource].fn = data;
 }
 
 /*******************************************************************************
@@ -262,15 +248,11 @@ void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, voidFuncPtr EXTI_Line_Handler
 void HAL_EXTI_Handler(uint8_t EXTI_Line)
 {
   //fetch the user function pointer from the array
-  voidFuncPtr userISR_Handle = exti_channels[EXTI_Line].handler;
+    void* data = exti_channels[EXTI_Line].data;
+    HAL_InterruptHandler userISR_Handle = exti_channels[EXTI_Line].fn;
 
-  //Check to see if the user handle is NULL
-  if (!userISR_Handle)
-  {
-    return;
-  }
-  //This is the call to the actual user ISR function
-  userISR_Handle();
+  if (userISR_Handle)
+      userISR_Handle(data);
 }
 
 

@@ -26,6 +26,27 @@
  ******************************************************************************
  */
 #include "spark_wiring_interrupts.h"
+#include "parameterized_fn.h"
+
+wiring_interrupt_handler_t* handlers[16];
+
+wiring_interrupt_handler_t* allocate_handler(uint16_t pin, wiring_interrupt_handler_t& fn)
+{
+    delete handlers[pin];    
+    return handlers[pin] = new wiring_interrupt_handler_t(fn);        
+}
+
+void call_wiring_interrupt_handler(void* data)
+{
+    wiring_interrupt_handler_t* handler = (wiring_interrupt_handler_t*)data;    
+    (*handler)();
+}
+
+void call_raw_interrupt_handler(void* data)
+{
+    raw_interrupt_handler_t handler = raw_interrupt_handler_t(data);
+    handler();
+}
 
 /*******************************************************************************
  * Function Name  : attachInterrupt
@@ -36,9 +57,20 @@
  * Return         : None.
  *******************************************************************************/
 
-void attachInterrupt(uint16_t pin, voidFuncPtr handler, InterruptMode mode)
+bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode mode)
 {
-  HAL_Interrupts_Attach(pin, handler, mode);
+  wiring_interrupt_handler_t* handler = allocate_handler(pin, fn);
+  if (handler) {
+      HAL_Interrupts_Attach(pin, call_wiring_interrupt_handler, handler, mode, NULL);
+  }
+  return handler!=NULL;
+}
+
+bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode)
+{
+    detachInterrupt(pin);
+    HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, &handler, mode, NULL);
+    return true;
 }
 
 
@@ -52,7 +84,9 @@ void attachInterrupt(uint16_t pin, voidFuncPtr handler, InterruptMode mode)
  *******************************************************************************/
 void detachInterrupt(uint16_t pin)
 {
-  HAL_Interrupts_Detach(pin);
+    HAL_Interrupts_Detach(pin);
+    delete handlers[pin];
+    handlers[pin] = NULL;
 }
 
 /*******************************************************************************

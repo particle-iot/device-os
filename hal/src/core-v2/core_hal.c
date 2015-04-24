@@ -234,7 +234,7 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
         HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
 
         /* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
-        HAL_Interrupts_Attach(wakeUpPin, NULL, edgeTriggerMode);
+        HAL_Interrupts_Attach(wakeUpPin, NULL, NULL, edgeTriggerMode, NULL);
 
         HAL_Core_Execute_Stop_Mode();
 
