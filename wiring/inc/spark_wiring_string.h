@@ -47,7 +47,7 @@ class StringSumHelper;
 
 // The string class
 class String
-{
+{    
 	// use a function pointer to allow for "if (s)" without the
 	// complications of an operator bool(). for more information, see:
 	// http://www.artima.com/cppsource/safebool.html
@@ -93,6 +93,8 @@ public:
 	String & operator = (StringSumHelper &&rval);
 	#endif
 
+        operator const char*() const { return c_str(); }
+        
 	// concatenate (works w/ built-in types)
 	
 	// returns true on success, false on failure (in which case, the string

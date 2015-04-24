@@ -68,21 +68,6 @@ public:
         return spark_send_event(eventName, eventData, ttl, eventType, NULL);
     }
 
-    bool publish(const String& eventName, Spark_Event_TypeDef eventType=PUBLIC)
-    {
-        return publish(eventName.c_str(), eventType);
-    }
-
-    bool publish(const String& eventName, const String& eventData, Spark_Event_TypeDef eventType=PUBLIC)
-    {
-        return publish(eventName.c_str(), eventData.c_str(), eventType);
-    }
-
-    bool publish(const String& eventName, const String& eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC)
-    {
-        return publish(eventName.c_str(), eventData.c_str(), ttl, eventType);
-    }
-    
     bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
         return spark_subscribe(eventName, handler, NULL, scope, NULL, NULL);
@@ -92,23 +77,6 @@ public:
     {
         return spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL);
     }
-
-#if 0    
-    bool subscribe(String eventName, EventHandler handler)
-    {
-        return subscribe(eventName.c_str(), handler);
-    }
-
-    bool subscribe(String eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
-    {
-        return subscribe(eventName.c_str(), handler, scope);
-    }
-
-    bool subscribe(String eventName, EventHandler handler, String deviceID)
-    {
-        return subscribe(eventName.c_str(), handler, deviceID.c_str());
-    }
-#endif    
     
     void unsubscribe() 
     {
