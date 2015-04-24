@@ -31,7 +31,6 @@
 #include "spark_wiring.h"
 #include "interrupts_hal.h"
 #include <functional>
-#include "parameterized_fn.h"
 
 typedef std::function<void()> wiring_interrupt_handler_t;
 typedef void (*raw_interrupt_handler_t)(void);

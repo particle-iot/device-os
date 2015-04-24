@@ -26,7 +26,6 @@
  ******************************************************************************
  */
 #include "spark_wiring_interrupts.h"
-#include "parameterized_fn.h"
 
 wiring_interrupt_handler_t* handlers[16];
 
