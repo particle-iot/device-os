@@ -77,7 +77,6 @@ extern volatile uint8_t Cloud_Handshake_Error_Count;
 
 extern volatile system_tick_t spark_loop_total_millis;
 
-extern sock_handle_t sparkSocket;
 
 void system_delay_ms(unsigned long ms);
 

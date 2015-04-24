@@ -61,7 +61,7 @@ struct SystemCloudStartup {
 };
 SystemCloudStartup system_cloud_startup;
 
-sock_handle_t sparkSocket = SOCKET_INVALID;
+static sock_handle_t sparkSocket = SOCKET_INVALID;
 
 extern uint8_t LED_RGB_BRIGHTNESS;
 
@@ -729,4 +729,14 @@ char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out)
         out++;
     }
     return result;
+}
+
+
+void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
+{
+    if (sparkSocket==socket)
+    {
+        SPARK_CLOUD_CONNECTED = 0;
+        SPARK_CLOUD_SOCKETED = 0;
+    }
 }

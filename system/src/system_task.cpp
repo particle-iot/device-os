@@ -563,15 +563,6 @@ void HAL_WLAN_notify_can_shutdown()
     WLAN_CAN_SHUTDOWN = 1;
 }
 
-void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
-{
-    if (socket == sparkSocket)
-    {
-        SPARK_CLOUD_CONNECTED = 0;
-        SPARK_CLOUD_SOCKETED = 0;
-    }
-}
-
 const WLanConfig* network_config()
 {
     return &ip_config;
