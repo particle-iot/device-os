@@ -28,31 +28,35 @@
 #define	SPARK_WIRING_CONSTANTS_H
 
 #include <stdint.h>
-
-/*
-* Basic variables
-*/
-
-#if !defined(min)
-#   define min(a,b)                ((a)<(b)?(a):(b))
-#endif
-#if !defined(max)
-#   define max(a,b)                ((a)>(b)?(a):(b))
-#endif
-#if !defined(constrain)
-#   define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
-#endif
-#if !defined(round)
-#   define round(x)                ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
-#endif
+#include <type_traits>
 
 enum PinState {
     LOW = 0,
     HIGH = 1
 };
 
+template <typename T, typename U>
+static inline
+typename std::common_type<T, U>::type
+max (T a, U b) { return ((a)>(b)?(a):(b)); }
+
+template <typename T, typename U>
+static inline
+typename std::common_type<T, U>::type
+min (T a, U b) { return static_cast<typename std::common_type<T, U>::type>((a)<(b)?(a):(b)); }
+
+template <typename T, typename U, typename V>
+static inline
+T constrain (T amt, U low, V high) { return ((amt)<(low)?(low):((amt)>(high)?(high):(amt))); }
+
+template <typename T>
+static inline
+T round (T x) { return ((x)>=0?(long)((x)+0.5):(long)((x)-0.5)); }
+
 typedef bool boolean;
 typedef uint8_t byte;
+
+ const uint8_t NONE = ((uint8_t)0xFF);
 
 
 #endif	/* SPARK_WIRING_CONSTANTS_H */
