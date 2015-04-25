@@ -346,8 +346,8 @@ struct socket_t
  * Singly linked lists for servers and clients. Ensures we can completely shutdown
  * the socket layer when entering listening mode. 
  */
-socket_t* servers = NULL;
-socket_t* clients = NULL;
+static socket_t* servers = NULL;
+static socket_t* clients = NULL;
 
 /**
  * Adds an item to the linked list.
