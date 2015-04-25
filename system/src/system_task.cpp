@@ -218,11 +218,8 @@ void cloud_connection_failed()
  * @return 
  */
 unsigned backoff_period(unsigned connection_attempts)
-{
-    if (cloud_failed_connection_attempts>12)
-        cloud_failed_connection_attempts = 12;
-        
-    return 100*((1<<cloud_failed_connection_attempts)-1);
+{        
+    return 500*((1<<min(9,cloud_failed_connection_attempts))-1);
 }
 
 inline uint8_t in_cloud_backoff_period()
