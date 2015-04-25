@@ -33,7 +33,7 @@
 typedef int (*user_function_t)(String paramString);
 typedef std::function<int(String)> user_std_function_t;
 
-class SparkClass {
+class CloudClass {
     
         
 public:
@@ -109,4 +109,5 @@ private:
 };
 
 
-extern SparkClass Spark;
+extern CloudClass Spark;
+extern CloudClass Cloud;
