@@ -52,12 +52,12 @@ uint8_t Get_LED_Brightness();
 void Set_RGB_LED(uint16_t* data);
 bool LED_RGB_IsOverRidden(void);
 
-// This is the low-level api to the LED
-void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b);
-void Get_RGB_LED_Values(uint16_t* rgb);
-void Set_User_LED(uint8_t state);
-void Toggle_User_LED();
-uint16_t Get_RGB_LED_Max_Value();
+/**
+ * The function that handles notifications of changes to the RGB led.
+ */
+typedef void (*led_update_handler_fn)(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
+
+void set_rgb_led_change_handler(led_update_handler_fn fn, void* data);
 
 
 #ifdef __cplusplus

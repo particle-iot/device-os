@@ -31,6 +31,7 @@
 #include "spi_bus.h"
 #include "debug.h"
 #include "cc3000_spi.h"
+#include "rgbled_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 

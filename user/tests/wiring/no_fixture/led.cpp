@@ -3,6 +3,25 @@
 #include "unit-test/unit-test.h"
 #include "rgbled.h"
 
+/**
+ * Handles the notification of LED change
+ */
+uint8_t rgbNotify[3];
+volatile uint32_t rgbNotifyCount;
+void onChangeRGBLED(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved) {
+    rgbNotify[0] = r;
+    rgbNotify[1] = g;
+    rgbNotify[2] = b;
+    rgbNotifyCount++;
+}
+
+void assertLEDNotify(uint8_t r, uint8_t g, uint8_t b) {
+    assertEqual(rgbNotify[0], r);
+    assertEqual(rgbNotify[1], g);
+    assertEqual(rgbNotify[2], b);
+}
+
+
 void assertLEDColor(uint8_t r, uint8_t g, uint8_t b, bool equal) {
     uint8_t rgb[3];
     LED_RGB_Get(rgb);
@@ -40,6 +59,15 @@ void assertLEDColorIsNot(int rgb) {
 uint8_t ledAdjust(uint8_t value, uint8_t brightness=255) {
     return (value*brightness)>>8;
 }
+
+test(LED_Updated) {
+    RGB.control(false);
+    uint32_t start = rgbNotifyCount;
+    delay(500);
+    uint32_t end = rgbNotifyCount;
+    assertMore((end-start), uint32_t(20)); // I think it's meant to be 100Hz, but this is fine as a smoke test
+}
+
 
 test(LED_ControlledReturnsFalseWhenNoControl) {
     // when
@@ -87,7 +115,10 @@ test(LED_StaticWhenControlled) {
         assertEqual(rgbInitial[i], rgbExpected[i]);    
     
     for (int i=0; i<3; i++)
-        assertEqual(rgbInitial[i], rgbChanged[i]);    
+        assertEqual(rgbInitial[i], rgbChanged[i]);
+    
+    for (int i=0; i<3; i++)
+        assertEqual(rgbInitial[i], rgbNotify[i]);    
 }
 
 test(LED_SettingRGBAfterOverrideShouldChangeLED) {

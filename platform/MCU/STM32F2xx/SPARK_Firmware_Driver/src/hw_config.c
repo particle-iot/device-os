@@ -30,6 +30,7 @@
 #include "dct.h"
 #include "usb_dcd.h"
 #include "flash_mal.h"
+#include "rgbled_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
