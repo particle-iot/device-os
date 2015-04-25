@@ -3,6 +3,7 @@
 ### NEW PLATFORMS
 - PHOTON!!!!
 
+
 ### ENHANCEMENTS
 
  - `loop()` iteration rate increased by 1000 times - from 200 Hz to over 200 kHz!
@@ -21,12 +22,15 @@
  - Added additional safe/recovery mode in bootloader (> 6.5 sec : restore factory code without clearing wifi credentials)
  - Enabled CRC verification in bootloader before restoring/copying the firmware image from factory reset, ota downloaded area etc.
  - Added 'program-serial' to build target to enter serial ymodem protocol for flashing user firmware (Testing pending...)
- - Added System.modeDFU() to briefly enter Bootloader mode and not persisting the bootloader flag inbetween system reset or power on-off
- - Added new feature to select between internal (chip) and external (u.FL) antenna on Photon: `int WiFi.selectAntenna(ANT_INTERNAL | ANT_EXTERNAL | ANT_AUTO);` [commit](https://github.com/spark/firmware-private/commit/b18555d3be95c23009a8e03a04ac645de3b1b31e) and [#394](https://github.com/spark/firmware/issues/394)
- - `WiFi.resolve()` to look up an IP address from a domain name. [#91](https://github.com/spark/firmware/issues/91) 
  - Cloud string variables can be re-defined [#241](https://github.com/spark/firmware/issues/241)
  - Removed hard-coded limit on number of functions and variables [#111](https://github.com/spark/firmware/issues/111)
  - Parameterized function callbacks, lambda support for functions [#311](https://github.com/spark/firmware/issues/313) 
+ - C++ STL headers supported
+- Can duplicate the onboard RGB LED color in firmware. [#302](https://github.com/spark/firmware/issues/302)
+- `WiFi.selectAntenna()` - select between internal (chip) and external (u.FL) antenna on Photon: [#394](https://github.com/spark/firmware/issues/394)
+- `WiFi.resolve()` to look up an IP address from a domain name. [#91](https://github.com/spark/firmware/issues/91) 
+- `System.dfu()` to reboot the core in dfu mode, until next reset or next DFU update is received. 
+ 
 
 ### BUGFIXES
 
