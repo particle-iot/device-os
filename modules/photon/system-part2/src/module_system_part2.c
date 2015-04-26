@@ -3,7 +3,6 @@
 #include "module_system_part1_init.h"
 #include "system_mode.h"
 #include "module_user_init.h"
-#include "hw_config.h"
 #include "core_hal.h"
 #include <stdint.h>
 #include <stddef.h>
@@ -43,36 +42,7 @@ const void* const system_part2_module[] = {
 
 extern void** dynalib_location_user;
 
-uint8_t is_user_function_valid(uint8_t index) {
-    size_t fn = (size_t)dynalib_location_user[index];
-    return fn > (size_t)&dynalib_location_user && fn <= (size_t)0x80A00000;
-}
-
 static bool module_user_part_validated = false;
-
-void module_user_part_restore_and_validation_check(void)
-{
-    //CRC verification Enabled by default
-    FLASH_AddToFactoryResetModuleSlot(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS,
-                                      FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
-                                      FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
-
-    if (FLASH_isModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
-    {
-        //CRC check the user module and set to module_user_part_validated
-        module_user_part_validated = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
-                                     FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION));
-    }
-    else if(FLASH_isModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
-    {
-        //Reset and let bootloader perform the user module factory reset
-        //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
-        //saves precious system_part2 flash size i.e. fits in < 128KB
-        HAL_Core_Factory_Reset();
-
-        while(1);//Device should reset before reaching this line
-    }
-}
 
 /**
  * Determines if the user module is present and valid.
@@ -95,11 +65,10 @@ extern void* sbrk_heap_top;
 void system_part2_pre_init() {
     // initialize dependent modules
     module_system_part1_pre_init();
-
-    module_user_part_restore_and_validation_check();
-
-    // write protect system module parts if not already protected
-    FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
+    
+    HAL_Core_Config();
+    
+    module_user_part_validated = HAL_Core_Validate_User_Module();
 
     if (is_user_module_valid()) {
         void* new_heap_top = module_user_pre_init();

@@ -39,6 +39,7 @@
 #include "wlan_internal.h"
 #include "hw_config.h"
 #include "service_debug.h"
+#include "flash_mal.h"
 
 /**
  * Start of interrupt vector table.
@@ -142,28 +143,64 @@ void HAL_Core_Config(void)
     LED_On(LED_RGB);
 
     override_interrupts();
+
+#if MODULAR_FIRMWARE    
+    // write protect system module parts if not already protected
+    FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);            
+#endif    
+    
+#ifdef USE_SERIAL_FLASH
+    //Initialize Serial Flash
+    sFLASH_Init();
+#else
+    FLASH_AddToFactoryResetModuleSlot(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS,
+                                      FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
+                                      FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also    
+#endif
 }
+
+#if !MODULAR_FIRMWARE
+__attribute__((section(".early_startup.HAL_Core_Config"))) uint32_t startup = (uint32_t)&HAL_Core_Config;
+#endif
 
 void HAL_Core_Setup(void) {
     
     // for some readon, putting this at the end of HAL_Core_Config causes the device to stall.
     // 
     /* Reset system to disable IWDG if enabled in bootloader */
-    IWDG_Reset_Enable(0);
-
-#ifdef USE_SERIAL_FLASH
-    //Initialize Serial Flash
-    sFLASH_Init();
-#else
-    //CRC verification Enabled by default
-    FLASH_AddToFactoryResetModuleSlot(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS,
-                                      FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
-                                      FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
-#endif
-       
+    IWDG_Reset_Enable(0);   
 }
 
-__attribute__((section(".early_startup.HAL_Core_Config"))) uint32_t startup = (uint32_t)&HAL_Core_Config;
+#if MODULAR_FIRMWARE
+
+bool HAL_Core_Validate_User_Module(void)
+{
+    bool valid = false;
+    
+    if (!SYSTEM_FLAG(StartupMode_SysFlag)) 
+    {    
+        //CRC verification Enabled by default
+        if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
+        {
+            //CRC check the user module and set to module_user_part_validated
+            valid = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
+                                         FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
+                    && HAL_Verify_User_Dependencies();
+        }
+        else if(FLASH_isUserModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+        {
+            //Reset and let bootloader perform the user module factory reset
+            //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
+            //saves precious system_part2 flash size i.e. fits in < 128KB
+            HAL_Core_Factory_Reset();
+
+            while(1);//Device should reset before reaching this line
+        }
+    }
+    return valid;
+}
+#endif        
+
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 {

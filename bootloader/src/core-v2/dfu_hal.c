@@ -43,7 +43,7 @@ USB_OTG_CORE_HANDLE USB_OTG_dev;
 uint8_t is_application_valid(uint32_t address)
 {
 #ifdef FLASH_UPDATE_MODULES
-    return FLASH_isModuleInfoValid(FLASH_INTERNAL, address, address);
+    return FLASH_isUserModuleInfoValid(FLASH_INTERNAL, address, address);
 #else
     return (((*(__IO uint32_t*)address) & APP_START_MASK) == 0x20000000);
 #endif

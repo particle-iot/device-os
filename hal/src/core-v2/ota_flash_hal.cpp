@@ -38,11 +38,11 @@
 
 #define OTA_CHUNK_SIZE          512
 
-const module_info_t* locate_module(module_bounds_t* bounds) {
+const module_info_t* locate_module(const module_bounds_t* bounds) {
     return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
 }
 
-void fetch_module(hal_module_t* target, module_bounds_t* bounds)
+void fetch_module(hal_module_t* target, const module_bounds_t* bounds)
 {
     target->bounds = *bounds;
     target->info = locate_module(bounds);
@@ -68,6 +68,15 @@ module_bounds_t module_factory = { 0x20000, 0x8080000, 0x80E0000 };
 module_bounds_t* module_bounds[] = { &module_bootloader, &module_user, &module_factory };
 #endif
 
+module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index)
+{
+    for (unsigned i=0; i<arraySize(module_bounds); i++) {
+        if (module_bounds[i]->module_function==module_function && module_bounds[i]->module_index==module_index)
+            return module_bounds[i];
+    }
+    return NULL;
+}
+
 void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
@@ -89,6 +98,32 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     }
 }
 
+bool validate_module_dependencies(const module_bounds_t* bounds)
+{
+    bool valid = false;
+    const module_info_t* module = locate_module(bounds);
+    if (module)
+    {
+        if (module->dependency.module_function == MODULE_FUNCTION_NONE) {
+            valid = true;
+        }                
+        else {
+            // deliberately not transitive, so we only check the first dependency
+            // so only user->system_part_2 is checked
+            const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index);
+            const module_info_t* dependency = locate_module(dependency_bounds);
+            valid = dependency && (dependency->module_version>=module->dependency.module_version);
+        }
+    }
+    return valid;
+}
+
+
+bool HAL_Verify_User_Dependencies()
+{
+    module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 0);    
+    return validate_module_dependencies(bounds);
+}
 
 bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
 {
@@ -282,6 +317,7 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
     copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
     genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
     if (genspec->gen==PRIVATE_KEY_GENERATE_ALWAYS || (!genspec->had_key && genspec->gen!=PRIVATE_KEY_GENERATE_NEVER)) {
+        // todo - this couples the HAL with the system. Use events instead.
         SPARK_LED_FADE = false;
         if (!gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, rsa_random, NULL)) {
             dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);

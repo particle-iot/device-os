@@ -42,6 +42,9 @@ typedef struct {
     uint32_t maximum_size;      // the maximum allowable size for the entire module image
     uint32_t start_address;     // the designated start address for the module
     uint32_t end_address;       // 
+    uint8_t module_function;    
+    uint8_t module_index;
+    
 } module_bounds_t;    
     
 typedef struct {    
@@ -67,6 +70,7 @@ typedef struct {
  */
 void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved);
 
+bool HAL_Verify_User_Dependencies();
 
 bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length);
 

@@ -646,16 +646,15 @@ uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
     return 0;
 }
 
-bool FLASH_isModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress)
+bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress)
 {
     const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
 
-    if (module_info != NULL)
-    {
-        return (((uint32_t)module_info->module_start_address == expectedAddress) && (module_info->platform_id == PLATFORM_ID));
-    }
-
-    return false;
+    return (module_info != NULL 
+            && ((uint32_t)(module_info->module_start_address) == expectedAddress)
+            && ((uint32_t)(module_info->module_end_address)<=0x8100000)
+            && (module_function(module_info)==MODULE_FUNCTION_USER_PART)
+            && (module_info->platform_id==PLATFORM_ID));
 }
 
 bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)
