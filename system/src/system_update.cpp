@@ -166,8 +166,9 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
             uint32_t moduleAddress = HAL_FLASH_ModuleAddress(ota_address);            
             uint32_t moduleLength = HAL_FLASH_ModuleLength(ota_address);
             
-            if (FLASH_CheckValidAddressRange(FLASH_INTERNAL, moduleAddress, moduleLength + 4) &&
-                HAL_FLASH_VerifyCRC32(ota_address, moduleLength))
+            if (FLASH_CheckValidAddressRange(FLASH_INTERNAL, moduleAddress, moduleLength + 4) 
+                && FLASH_isUserModuleInfoValid(FLASH_INTERNAL, ota_address, moduleAddress)
+                && HAL_FLASH_VerifyCRC32(ota_address, moduleLength))
             {
                 HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, ota_address,
                                                         FLASH_INTERNAL, moduleAddress,
