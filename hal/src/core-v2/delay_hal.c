@@ -27,6 +27,7 @@
 #include "stm32f2xx.h"
 #include "hw_config.h"
 #include <limits.h>
+#include "wiced.h"
 
 /**
  * Updated by interrupt in stm32_it.c
@@ -45,7 +46,9 @@ void HAL_Delay_Milliseconds(uint32_t nTime)
 {
     TimingDelay = nTime;
 
-    while (TimingDelay != 0x00);
+    while (TimingDelay != 0x00) {
+        platform_watchdog_kick();
+    }
 }
 
 /*******************************************************************************
@@ -58,7 +61,6 @@ void HAL_Delay_Milliseconds(uint32_t nTime)
 void HAL_Delay_Microseconds(uint32_t uSec)
 {
   volatile uint32_t DWT_START = DWT->CYCCNT;
-
   // keep DWT_TOTAL from overflowing (max 59.652323s w/72MHz SystemCoreClock)
   if (uSec > (UINT_MAX / SYSTEM_US_TICKS))
   {
