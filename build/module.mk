@@ -64,6 +64,7 @@ CONLYFLAGS += -Wno-pointer-sign
 LDFLAGS += $(LIBS_EXT)
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
 LDFLAGS += -Wl,--start-group $(patsubst %,-l%,$(LIBS)) -Wl,--end-group
+LDFLAGS += -L$(COMMON_BUILD)/arm/linker
 
 # Assembler flags
 ASFLAGS += -x assembler-with-cpp -fmessage-length=0
