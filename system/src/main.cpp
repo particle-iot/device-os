@@ -23,9 +23,9 @@
 
   You should have received a copy of the GNU Lesser General Public
   License along with this program; if not, see <http://www.gnu.org/licenses/>.
- ******************************************************************************
+  ******************************************************************************
  */
-
+  
 /* Includes ------------------------------------------------------------------*/
 #include "debug.h"
 #include "system_mode.h"
@@ -68,25 +68,27 @@ extern "C" void HAL_SysTick_Handler(void)
 {
     if (LED_RGB_IsOverRidden())
     {
+#ifndef SPARK_NO_CLOUD
         if (LED_Spark_Signal != 0)
         {
             LED_Signaling_Override();
         }
+#endif        
     }
     else if (TimingLED != 0x00)
     {
         TimingLED--;
     }
-    else if (WLAN_SMART_CONFIG_START || SPARK_FLASH_UPDATE || Spark_Error_Count)
+    else if(WLAN_SMART_CONFIG_START || SPARK_FLASH_UPDATE || Spark_Error_Count)
     {
         //Do nothing
     }
-    else if (SPARK_LED_FADE)
+    else if(SPARK_LED_FADE)
     {
         LED_Fade(LED_RGB);
-        TimingLED = 20; //Breathing frequency kept constant
+        TimingLED = 20;//Breathing frequency kept constant
     }
-    else if (SPARK_CLOUD_CONNECTED)
+    else if(SPARK_CLOUD_CONNECTED)
     {
         LED_SetRGBColor(RGB_COLOR_CYAN);
         LED_On(LED_RGB);
@@ -95,18 +97,19 @@ extern "C" void HAL_SysTick_Handler(void)
     else
     {
         LED_Toggle(LED_RGB);
-        if (SPARK_CLOUD_SOCKETED)
-            TimingLED = 50; //50ms
+        if(SPARK_CLOUD_SOCKETED)
+            TimingLED = 50;         //50ms
         else
-            TimingLED = 100; //100ms
+            TimingLED = 100;        //100ms
     }
 
-    if (SPARK_WLAN_SLEEP)
+    if(SPARK_WLAN_SLEEP)
     {
         //Do nothing
     }
-    else if (SPARK_FLASH_UPDATE)
+    else if(SPARK_FLASH_UPDATE)
     {
+#ifndef SPARK_NO_CLOUD        
         if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
         {
             //Reset is the only way now to recover from stuck OTA update
@@ -116,19 +119,20 @@ extern "C" void HAL_SysTick_Handler(void)
         {
             TimingFlashUpdateTimeout++;
         }
+#endif        
     }
-    else if (!WLAN_SMART_CONFIG_START && HAL_Core_Mode_Button_Pressed(3000))
+    else if(!WLAN_SMART_CONFIG_START && HAL_Core_Mode_Button_Pressed(3000))
     {
         //reset button debounce state if mode button is pressed for 3 seconds
         HAL_Core_Mode_Button_Reset();
 
-        if (!SPARK_WLAN_SLEEP)
+        if(!SPARK_WLAN_SLEEP)
         {
             wlan_connect_cancel(true);
             WLAN_SMART_CONFIG_START = 1;
         }
     }
-    else if (HAL_Core_Mode_Button_Pressed(7000))
+    else if(HAL_Core_Mode_Button_Pressed(7000))
     {
         //reset button debounce state if mode button is pressed for 3+7=10 seconds
         HAL_Core_Mode_Button_Reset();
@@ -163,9 +167,9 @@ extern "C" void HAL_RTCAlarm_Handler(void)
 {
     if(system_mode() == AUTOMATIC)
     {
-        /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
-        SPARK_WLAN_SLEEP = 0;
-    }
+  /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
+  SPARK_WLAN_SLEEP = 0;
+}
 }
 
 /*******************************************************************************
@@ -195,28 +199,28 @@ void app_setup_and_loop(void)
         Spark_Idle();
 
         static uint8_t SPARK_WIRING_APPLICATION = 0;
-        if (SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
+        if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
         {
-            if (!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
+            if(!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
             {
                 if ((SPARK_WIRING_APPLICATION != 1))
                 {
                     //Execute user application setup only once
                     DECLARE_SYS_HEALTH(ENTERED_Setup);
                     if (system_mode()!=SAFE_MODE)
-                        setup();
+                    setup();
                     SPARK_WIRING_APPLICATION = 1;
                 }
 
-                //Execute user application loop
-                DECLARE_SYS_HEALTH(ENTERED_Loop);
+                    //Execute user application loop
+                    DECLARE_SYS_HEALTH(ENTERED_Loop);
                 if (system_mode()!=SAFE_MODE)
                     loop();
-                DECLARE_SYS_HEALTH(RAN_Loop);
+                    DECLARE_SYS_HEALTH(RAN_Loop);
+                }
             }
         }
     }
-}
 
 #ifdef USE_FULL_ASSERT
 
@@ -231,12 +235,12 @@ void app_setup_and_loop(void)
  *******************************************************************************/
 void assert_failed(uint8_t* file, uint32_t line)
 {
-    /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+	/* User can add his own implementation to report the file name and line number,
+	 ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
 
-    /* Infinite loop */
-    while (1)
-    {
-    }
+	/* Infinite loop */
+	while (1)
+	{
+	}
 }
 #endif

@@ -47,6 +47,8 @@
 #include "string_convert.h"
 #include "append_list.h"
 
+#ifndef SPARK_NO_CLOUD
+
 int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString);
@@ -236,34 +238,6 @@ void Spark_Process_Events()
         SPARK_CLOUD_SOCKETED = 0;
     }
 }
-
-inline void concat_nibble(String& result, uint8_t nibble)
-{
-    char hex_digit = nibble + 48;
-    if (57 < hex_digit)
-        hex_digit += 39;
-    result.concat(hex_digit);
-}
-
-String bytes2hex(const uint8_t* buf, unsigned len)
-{
-    String result;
-    for (unsigned i = 0; i < len; ++i)
-    {
-        concat_nibble(result, (buf[i] >> 4));
-        concat_nibble(result, (buf[i] & 0xF));
-    }
-    return result;
-}
-
-String spark_deviceID(void)
-{
-    unsigned len = HAL_device_ID(NULL, 0);
-    uint8_t id[len];
-    HAL_device_ID(id, len);
-    return bytes2hex(id, len);
-}
-
 
 // Returns number of bytes sent or -1 if an error occurred
 
@@ -465,37 +439,6 @@ int Spark_Handshake(void)
 inline bool Spark_Communication_Loop(void)
 {
     return spark_protocol_event_loop(sp);
-}
-
-void Multicast_Presence_Announcement(void)
-{
-    long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0);
-    if (!socket_handle_valid(multicast_socket))
-        return;
-
-    unsigned char announcement[19];
-    uint8_t id_length = HAL_device_ID(NULL, 0);
-    uint8_t id[id_length];
-    HAL_device_ID(id, id_length);
-    spark_protocol_presence_announcement(sp, announcement, (const char *) id);
-
-    // create multicast address 224.0.1.187 port 5683
-    sockaddr_t addr;
-    addr.sa_family = AF_INET;
-    addr.sa_data[0] = 0x16; // port MSB
-    addr.sa_data[1] = 0x33; // port LSB
-    addr.sa_data[2] = 0xe0; // IP MSB
-    addr.sa_data[3] = 0x00;
-    addr.sa_data[4] = 0x01;
-    addr.sa_data[5] = 0xbb; // IP LSB
-
-    //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
-    //for (int i = 3; i > 0; i--)
-    {
-        socket_sendto(multicast_socket, announcement, 19, 0, &addr, sizeof (sockaddr_t));
-    }
-
-    socket_close(multicast_socket);
 }
 
 /* This function MUST NOT BlOCK!
@@ -704,6 +647,52 @@ int userFuncSchedule(const char *funcKey, const char *paramString)
     return item ? item->pUserFunc(item->pUserFuncData, paramString, NULL) : -1;
 }
 
+void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
+{
+    if (sparkSocket==socket)
+    {
+        SPARK_CLOUD_CONNECTED = 0;
+        SPARK_CLOUD_SOCKETED = 0;
+    }
+}
+
+#else
+
+void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
+{    
+}
+
+#endif
+
+
+inline void concat_nibble(String& result, uint8_t nibble)
+{
+    char hex_digit = nibble + 48;
+    if (57 < hex_digit)
+        hex_digit += 39;
+    result.concat(hex_digit);
+}
+
+String bytes2hex(const uint8_t* buf, unsigned len)
+{
+    String result;
+    for (unsigned i = 0; i < len; ++i)
+    {
+        concat_nibble(result, (buf[i] >> 4));
+        concat_nibble(result, (buf[i] & 0xF));
+    }
+    return result;
+}
+
+String spark_deviceID(void)
+{
+    unsigned len = HAL_device_ID(NULL, 0);
+    uint8_t id[len];
+    HAL_device_ID(id, len);
+    return bytes2hex(id, len);
+}
+
+
 static inline char ascii_nibble(uint8_t nibble) {
     char hex_digit = nibble + 48;
     if (57 < hex_digit)
@@ -731,12 +720,35 @@ char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out)
     return result;
 }
 
-
-void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
+void Multicast_Presence_Announcement(void)
 {
-    if (sparkSocket==socket)
+#ifndef SPARK_NO_CLOUD    
+    long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0);
+    if (!socket_handle_valid(multicast_socket))
+        return;
+
+    unsigned char announcement[19];
+    uint8_t id_length = HAL_device_ID(NULL, 0);
+    uint8_t id[id_length];
+    HAL_device_ID(id, id_length);
+    spark_protocol_presence_announcement(sp, announcement, (const char *) id);
+
+    // create multicast address 224.0.1.187 port 5683
+    sockaddr_t addr;
+    addr.sa_family = AF_INET;
+    addr.sa_data[0] = 0x16; // port MSB
+    addr.sa_data[1] = 0x33; // port LSB
+    addr.sa_data[2] = 0xe0; // IP MSB
+    addr.sa_data[3] = 0x00;
+    addr.sa_data[4] = 0x01;
+    addr.sa_data[5] = 0xbb; // IP LSB
+
+    //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
+    //for (int i = 3; i > 0; i--)
     {
-        SPARK_CLOUD_CONNECTED = 0;
-        SPARK_CLOUD_SOCKETED = 0;
+        socket_sendto(multicast_socket, announcement, 19, 0, &addr, sizeof (sockaddr_t));
     }
+
+    socket_close(multicast_socket);
+#endif
 }

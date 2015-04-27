@@ -33,7 +33,7 @@
 /* Arduino Compatibility Class -----------------------------------------------*/
 class EEPROMClass
 {
-public:
+  public:
     EEPROMClass();
     uint8_t read(int address) const;
     void write(int address, uint8_t value);
