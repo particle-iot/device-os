@@ -56,7 +56,7 @@ typedef enum {
     PF_DIO,
     PF_TIMER,
     PF_ADC,
-	PF_DAC
+  PF_DAC
 } PinFunction;
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
@@ -95,12 +95,21 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define A4 14
 #define A5 15
 #define A6 16
+
+// WKP pin is also an ADC on Photon
 #define A7 17
+
+// RX and TX pins are also ADCs on Photon
+#define A8 18
+#define A9 19
 
 #define RX 18
 #define TX 19
 
 #define BTN 20
+
+// WKP pin on Photon
+#define WKP 17
 
 // Timer pins
 
