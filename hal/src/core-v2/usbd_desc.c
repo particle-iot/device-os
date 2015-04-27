@@ -81,6 +81,7 @@ uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] =
         USBD_CFG_MAX_NUM            /*bNumConfigurations*/
 } ; /* USB_DeviceDescriptor */
 
+
 /* USB Standard Device Descriptor */
 uint8_t USBD_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] =
 {
