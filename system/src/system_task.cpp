@@ -463,7 +463,7 @@ void handle_cloud_connection(bool force_events)
     }
 }
 
-void manage_cloud_connection() 
+void manage_cloud_connection(bool force_events) 
 {    
     if (SPARK_CLOUD_CONNECT == 0)
     {
@@ -493,7 +493,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
     manage_ip_config();
 
-    CLOUD_FN(manage_cloud_connection(), (void)0);
+    CLOUD_FN(manage_cloud_connection(force_events), (void)0);
 }
 
 void HAL_WLAN_notify_simple_config_done()
