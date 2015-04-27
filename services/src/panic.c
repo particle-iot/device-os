@@ -35,7 +35,7 @@ static const flash_codes_t flash_codes[] = {
 * Public Functions
 ****************************************************************************/
 
-void panic_(ePanicCode code, void* extraInfo)
+void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uint32_t))
 {
         HAL_disable_irq();
         // Flush any serial message to help the poor bugger debug this;
@@ -47,8 +47,7 @@ void panic_(ePanicCode code, void* extraInfo)
         log_direct_("!");
         LED_Off(LED_RGB);
         while(loops) {
-                // preamble
-            HAL_Notify_WDT();
+                // preamble            
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
                 LED_On(LED_RGB);
@@ -75,20 +74,20 @@ void panic_(ePanicCode code, void* extraInfo)
                 HAL_Delay_Microseconds(MS2u(100));
             }
 
-                // pause
-                HAL_Delay_Microseconds(MS2u(900));
-                // play code
-                for (c = code; c; c--) {
-                    LED_SetRGBColor(pcd.led);
-                    LED_On(LED_RGB);
-                    HAL_Delay_Microseconds(MS2u(300));
-                    LED_Off(LED_RGB);
-                    HAL_Delay_Microseconds(MS2u(300));
-                }
-                // pause
-                HAL_Delay_Microseconds(MS2u(800));
+            // pause
+            HAL_Delay_Microseconds(MS2u(900));
+            // play code
+            for (c = code; c; c--) {
+                LED_SetRGBColor(pcd.led);
+                LED_On(LED_RGB);
+                HAL_Delay_Microseconds(MS2u(300));
+                LED_Off(LED_RGB);
+                HAL_Delay_Microseconds(MS2u(300));
+            }
+            // pause
+            HAL_Delay_Microseconds(MS2u(800));
 #ifdef RELEASE_BUILD
-                if (--loops == 0) HAL_Core_System_Reset();
+            if (--loops == 0) HAL_Core_System_Reset();
 #endif
         }
 

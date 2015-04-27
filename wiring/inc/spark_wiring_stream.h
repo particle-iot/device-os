@@ -27,9 +27,6 @@
 #ifndef __SPARK_WIRING_STREAM_H
 #define __SPARK_WIRING_STREAM_H
 
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
 #include "spark_wiring_string.h"
 #include "spark_wiring_print.h"
 #include "system_tick_hal.h"

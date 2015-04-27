@@ -28,6 +28,9 @@
 #include "sst25vf_spi.h"
 #include "hw_config.h"
 
+MemoryDevice::~MemoryDevice()
+{
+}    
 
 class ExternalFlashDevice : public MemoryDevice {
 

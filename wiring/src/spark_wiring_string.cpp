@@ -30,6 +30,8 @@
 #include "string_convert.h"
 #include <stdio.h>
 #include <limits.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 //These are very crude implementations - will refine later
 //------------------------------------------------------------------------------------------

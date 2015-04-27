@@ -27,7 +27,7 @@ void system_part1_reset_handler() {
 /**
  * The fake interrupt vectors table that redirects to part2.
  */
-const void* const system_part1_boot_table[97] = {
+__attribute__((externally_visible)) const void* const system_part1_boot_table[97] = {
     &stack_end,
     &system_part1_reset_handler
 };
@@ -37,7 +37,7 @@ DYNALIB_TABLE_EXTERN(wifi_resource);
 DYNALIB_TABLE_EXTERN(system_module_part1);
 DYNALIB_TABLE_EXTERN(services);
 
-const void* const system_part1_module[] = {
+__attribute__((externally_visible)) const void* const system_part1_module[] = {
     DYNALIB_TABLE_NAME(communication),
     DYNALIB_TABLE_NAME(wifi_resource),    
     DYNALIB_TABLE_NAME(system_module_part1),    

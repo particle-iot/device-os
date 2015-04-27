@@ -95,7 +95,7 @@ extern char link_module_end;
 
 #define MODULE_DEPENDENCY2 0,0,0
 
-const module_info_t module_info = {
+__attribute__((externally_visible, section(".modinfo.module_info"))) const module_info_t module_info = {
     &link_module_start,         /* start address */
     &link_module_end,           /* end address */
     0, 0,                       /* reserved, reserved2 */
@@ -110,10 +110,10 @@ const module_info_t module_info = {
 // These are placed in a non-default (.rodata) section because they come after all the .rodata is included in the linker scripts.
 // Doing it like this is simpler than setting up exclusion rules.
 
-__attribute__((section(".modinfo.module_info_suffix"))) const module_info_suffix_t module_info_suffix = {
+__attribute__((externally_visible, section(".modinfo.module_info_suffix"))) const module_info_suffix_t module_info_suffix = {
     0, { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 }, sizeof(module_info_suffix_t)
 };
 
-__attribute__((section(".modinfo.module_info_crc"))) const module_info_crc_t module_info_crc = {
+__attribute__((externally_visible, section(".modinfo.module_info_crc"))) const module_info_crc_t module_info_crc = {
     0x12345678
 };

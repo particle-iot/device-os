@@ -25,10 +25,7 @@ MEMORY
 
 SECTIONS
 {
-    .module_start :
-    {
-        link_module_start = .;
-    } >APP_FLASH AT>APP_FLASH
+    INCLUDE module_start.ld
 
     .vectors :
     {
@@ -39,13 +36,7 @@ SECTIONS
 
     interrupt_vectors_length = link_interrupt_vectors_location_end - link_interrupt_vectors_location;
 
-    .module_info :
-    {
-        . = ALIGN(4);
-        link_module_info_start = .;
-        KEEP(*module_info.o(.rodata.module_info))
-        link_module_info_end = .;
-    }>APP_FLASH AT> APP_FLASH
+    INCLUDE module_info.ld
 
     /* 97*4=388 is vector table size. */
     expected_dynalib_start = ORIGIN (APP_FLASH) + 0x184 + 24;
@@ -77,7 +68,7 @@ SECTIONS
 
         link_constructors_location = .;
         chk_system_pre_init_start = .;
-        KEEP (*module_system_part2.o(.module_pre_init))
+        KEEP (*(.module_pre_init))
         chk_system_pre_init_end = .;
         KEEP(*(.preinit_array))
         KEEP(*(.init_array))
@@ -86,7 +77,7 @@ SECTIONS
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
         chk_system_init_start = .;
-        KEEP (*module_system_part2.o(.module_init))
+        KEEP (*(.module_init))
         chk_system_init_end = .;
         link_constructors_end = .;
 
@@ -183,26 +174,7 @@ SECTIONS
         *(.glue*)
     }
 
-    .module_info_suffix :
-    {
-        . = ALIGN(., 4) ;
-        link_module_info_suffix_start = .;
-        KEEP(*module_info.o(.modinfo.module_info_suffix))
-        link_module_info_suffix_end = .;
-    }>APP_FLASH AT> APP_FLASH
-
-    .module_end : 
-    {
-        link_module_end = .;
-    }> APP_FLASH AT>APP_FLASH
-
-    .module_info_crc :
-    {
-        link_module_info_crc_start = .;
-        KEEP(*module_info.o(.modinfo.module_info_crc))
-        link_module_info_crc_end = .;
-    }>APP_FLASH AT> APP_FLASH
-
+    INCLUDE module_end.ld
 }
 
 /* Declare libc Heap to start at end of allocated RAM */

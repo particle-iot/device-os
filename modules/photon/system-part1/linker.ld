@@ -26,13 +26,7 @@ SECTIONS
         link_boot_table_end = .;
     } >APP_FLASH AT> APP_FLASH
 
-    .module_info :
-    {
-        . = ALIGN(4);
-        link_module_info_start = .;
-        KEEP(*module_info.o(.rodata.module_info))
-        link_module_info_end = .;
-    }>APP_FLASH AT> APP_FLASH
+    INCLUDE module_info.ld
 
     .dynalib :
     {
@@ -140,27 +134,8 @@ SECTIONS
         *(.eh_frame)
         *(.glue*)
     }
-
-    .module_info_suffix :
-    {
-        . = ALIGN(., 4) ;
-        link_module_info_suffix_start = .;
-        KEEP(*module_info.o(.modinfo.module_info_suffix))
-        link_module_info_suffix_end = .;
-    }>APP_FLASH AT> APP_FLASH
-
-    .module_end : 
-    {
-        link_module_end = .;
-    }> APP_FLASH AT>APP_FLASH
-
-    .module_info_crc :
-    {
-        link_module_info_crc_start = .;
-        KEEP(*module_info.o(.modinfo.module_info_crc))
-        link_module_info_crc_end = .;
-    }>APP_FLASH AT> APP_FLASH
-
+    
+    INCLUDE module_end.ld
 }
 
 /**
@@ -181,7 +156,7 @@ ASSERT ( link_module_info_start < link_module_info_end, "module info not linked"
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
-ASSERT ( system_part1_module_info_start == link_module_info_start, "module info start not where expected" ); 
+ASSERT ( system_part1_module_info_start == link_module_info_start, "module info start not where expected" );  
 ASSERT ( system_part1_module_info_end == link_module_info_end, "module info end not where expected" );
 
 ASSERT ( link_boot_table_start == ORIGIN(APP_FLASH), "boot table should be at start of flash region" );

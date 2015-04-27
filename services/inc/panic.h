@@ -22,7 +22,7 @@ typedef enum {
 } ePanicCode;
 #undef def_panic_codes
 
-void panic_(ePanicCode code, void* extraInfo);
+void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uint32_t));
 
 #ifdef __cplusplus
 }
