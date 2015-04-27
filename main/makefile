@@ -15,7 +15,6 @@ include ../build/platform-id.mk
 LIBS += $(MAKE_DEPENDENCIES)
 LIB_DEPS += $(USER_LIB_DEP) $(WIRING_LIB_DEP) $(SYSTEM_LIB_DEP) $(SERVICES_LIB_DEP) $(COMMUNICATION_LIB_DEP) $(HAL_LIB_DEP) $(PLATFORM_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
-LIBS_EXT += -Wl,--whole-archive $(USER_LIB_DEP) -Wl,--no-whole-archive 
 
 # Target this makefile is building.
 ifeq ("$(ARCH)","gcc")
