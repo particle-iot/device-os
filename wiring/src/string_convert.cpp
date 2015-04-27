@@ -95,7 +95,6 @@ char* ultoa(unsigned long a, char* buffer, int radix){
 	return buffer;
 }
 
-char* utoa(unsigned a, char* buffer, int radix){
 char* itoa(int a, char* buffer, int radix){
 	if(a<0){
 		*buffer = '-';
