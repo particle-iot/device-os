@@ -2,4 +2,4 @@
 .module_start :
 {
     link_module_start = .;
-} > FLASH
+} >APP_FLASH

@@ -46,12 +46,7 @@ Linker subscript for STM32F10x definitions with 128K Flash and 20K RAM */
 MEMORY
 {
   RAM (xrw)     : ORIGIN = 0x20000000, LENGTH = 20K
-  FLASH (rx)    : ORIGIN = 0x08005000, LENGTH = 128K-0x5000
-  FLASHB1 (rx)  : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB0 (rx) : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB1 (rx) : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB2 (rx) : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB3 (rx) : ORIGIN = 0x00000000, LENGTH = 0
+  APP_FLASH (rx)    : ORIGIN = 0x08005000, LENGTH = 128K-0x5000
 }
 
 /* higher address of the user mode stack */
@@ -71,7 +66,7 @@ SECTIONS
 	. = ALIGN(4);
         KEEP(*(.isr_vector))            /* Startup code */
 	. = ALIGN(4);
-    } >FLASH
+    } >APP_FLASH
    
     INCLUDE module_info.ld
 
@@ -80,7 +75,7 @@ SECTIONS
 	. = ALIGN(4);
         *(.flashtext)            /* Startup code */
 	. = ALIGN(4);
-    } >FLASH
+    } >APP_FLASH
      
     /* the program code is stored in the .text section, which goes to Flash */
     .text :
@@ -96,34 +91,34 @@ SECTIONS
 
 	    . = ALIGN(4);
    	  _etext = .;
-    } >FLASH
+    } >APP_FLASH
  
-    .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH
+    .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >APP_FLASH
     .ARM : {
         __exidx_start = .;
         *(.ARM.exidx*)
         __exidx_end = .;
-    } >FLASH
+    } >APP_FLASH
  
     .preinit_array : {
         PROVIDE_HIDDEN (__preinit_array_start = .);
         KEEP (*(.preinit_array*))
         PROVIDE_HIDDEN (__preinit_array_end = .);
-    } >FLASH
+    } >APP_FLASH
 
     .init_array : {
         PROVIDE_HIDDEN (__init_array_start = .);
         KEEP (*(SORT(.init_array.*)))
         KEEP (*(.init_array*))
         PROVIDE_HIDDEN (__init_array_end = .);
-    } >FLASH
+    } >APP_FLASH
 
     .fini_array : {
         PROVIDE_HIDDEN (__fini_array_start = .);
         KEEP (*(.fini_array*))
         KEEP (*(SORT(.fini_array.*)))
         PROVIDE_HIDDEN (__fini_array_end = .);
-    } >FLASH
+    } >APP_FLASH
  
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
@@ -145,7 +140,7 @@ SECTIONS
 	    . = ALIGN(4);
 	    /* This is used by the startup in order to initialize the .data secion */
    	 _edata = . ;
-    } >RAM AT>FLASH
+    } >RAM AT>APP_FLASH
     
     /* This is the uninitialized data section */
     .bss :
@@ -229,4 +224,3 @@ SECTIONS
 }
 
 INCLUDE module_asserts.ld
-

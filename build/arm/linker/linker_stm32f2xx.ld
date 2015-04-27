@@ -47,15 +47,9 @@ Linker subscript for STM32F205xx definitions with 1024K Flash and 128K RAM
 MEMORY
 {
   RAM (xrw)     : ORIGIN = 0x20000000, LENGTH = 128K
-  FLASH (rx)    : ORIGIN = 0x08000000, LENGTH = 16K
+  APP_FLASH (rx)    : ORIGIN = 0x08000000, LENGTH = 16K
   DCT1_FLASH (rx) : ORIGIN = 0x08004000, LENGTH = 16K
   DCT2_FLASH (rx) : ORIGIN = 0x08008000, LENGTH = 16K
-
-  FLASHB1 (rx)  : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB0 (rx) : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB1 (rx) : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB2 (rx) : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB3 (rx) : ORIGIN = 0x00000000, LENGTH = 0
 }
 
 /* higher address of the user mode stack */
@@ -75,7 +69,7 @@ SECTIONS
 	. = ALIGN(4);
         KEEP(*(.isr_vector))            /* Startup code */
 	. = ALIGN(4);
-    } >FLASH
+    } >APP_FLASH
    
     INCLUDE module_info.ld
 
@@ -84,7 +78,7 @@ SECTIONS
 	. = ALIGN(4);
         *(.flashtext)            /* Startup code */
 	. = ALIGN(4);
-    } >FLASH
+    } >APP_FLASH
      
     /* the program code is stored in the .text section, which goes to Flash */
     .text :
@@ -102,7 +96,7 @@ SECTIONS
    	 _etext = .;
 	    /* This is used by the startup in order to initialize the .data secion */
    	 
-    } >FLASH
+    } >APP_FLASH
 
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
@@ -121,7 +115,7 @@ SECTIONS
 	    . = ALIGN(4);
 	    /* This is used by the startup in order to initialize the .data secion */
    	 _edata = . ;
-    } >RAM AT>FLASH
+    } >RAM AT>APP_FLASH
     
     /* This is the uninitialized data section */
     .bss :
@@ -156,52 +150,6 @@ SECTIONS
 	    . = ALIGN(4);
         _eusrstack = . ;
     } >RAM
-   
-    /* this is the FLASH Bank1 */
-    /* the C or assembly source must explicitly place the code or data there
-    using the "section" attribute */
-    .b1text :
-    {
-        *(.b1text)                   /* remaining code */
-        *(.b1rodata)                 /* read-only data (constants) */
-        *(.b1rodata*)
-    } >FLASHB1
-    
-    /* this is the EXTMEM */
-    /* the C or assembly source must explicitly place the code or data there
-    using the "section" attribute */
-    
-    /* EXTMEM Bank0 */
-    .eb0text :
-    {
-        *(.eb0text)                   /* remaining code */
-        *(.eb0rodata)                 /* read-only data (constants) */
-        *(.eb0rodata*)
-    } >EXTMEMB0
-    
-    /* EXTMEM Bank1 */
-    .eb1text :
-    {
-        *(.eb1text)                   /* remaining code */
-        *(.eb1rodata)                 /* read-only data (constants) */
-        *(.eb1rodata*)
-    } >EXTMEMB1
-    
-    /* EXTMEM Bank2 */
-    .eb2text :
-    {
-        *(.eb2text)                   /* remaining code */
-        *(.eb2rodata)                 /* read-only data (constants) */
-        *(.eb2rodata*)
-    } >EXTMEMB2
-    
-    /* EXTMEM Bank0 */
-    .eb3text :
-    {
-        *(.eb3text)                   /* remaining code */
-        *(.eb3rodata)                 /* read-only data (constants) */
-        *(.eb3rodata*)
-    } >EXTMEMB3
        
     /* after that it's only debugging information. */
     
@@ -257,6 +205,6 @@ PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
 PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
-ASSERT ( link_module_info_start - ORIGIN(FLASH) == 0x184,  "module info not where expected" ) 
+ASSERT ( link_module_info_start - ORIGIN(APP_FLASH) == 0x184,  "module info not where expected" ) 
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
