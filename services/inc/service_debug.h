@@ -81,7 +81,7 @@ typedef void (*debug_output_fn)(const char *);
  */
 void set_logger_output(debug_output_fn output, LoggerOutputLevel level);
 
-extern void HAL_Delay_Milliseconds(uint32_t delay);
+extern void HAL_Delay_Microseconds(uint32_t delay);
 
 // Short Cuts
 #define __LOG_LEVEL_TEST(level) (level >= LOG_LEVEL_AT_COMPILE_TIME && level >= LOG_LEVEL_AT_RUN_TIME)
@@ -91,7 +91,7 @@ extern void HAL_Delay_Milliseconds(uint32_t delay);
 #define DEBUG(fmt, ...)
 #define WARN(fmt, ...)
 #define ERROR(fmt, ...)
-#define PANIC(code,fmt, ...) do {panic_(code, NULL, HAL_Delay_Milliseconds);}while(0)
+#define PANIC(code,fmt, ...) do {panic_(code, NULL, HAL_Delay_Microseconds);}while(0)
 #else
 // Macros to use
 #define LOG(fmt, ...)    do { if ( __LOG_LEVEL_TEST(LOG_LEVEL)  )  {log_print_(LOG_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt, ##__VA_ARGS__);}}while(0)
