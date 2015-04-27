@@ -33,59 +33,69 @@
 typedef int (*user_function_t)(String paramString);
 typedef std::function<int(String)> user_std_function_t;
 
+#ifdef SPARK_NO_CLOUD
+#define CLOUD_FN(x,y) (y)
+#else
+#define CLOUD_FN(x,y) (x)
+#endif
+
 class CloudClass {
     
         
 public:
-    static void variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType) 
+    static bool variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType) 
     {
-        spark_variable(varKey, userVar, userVarType, NULL);
+        return CLOUD_FN(spark_variable(varKey, userVar, userVarType, NULL), false);
     }
     
     static bool function(const char *funcKey, user_function_t func) 
     {
-        return register_function(call_raw_user_function, &func, funcKey);
+        return CLOUD_FN(register_function(call_raw_user_function, &func, funcKey), false);
     }
     
     static bool function(const char *funcKey, user_std_function_t func)
     {
+#ifndef SPARK_NO_CLOUD
+        return false;
+#else
         auto fn = new user_std_function_t(func);        
         return fn ? register_function(call_std_user_function, fn, funcKey) : false;
+#endif        
     }
 
     bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return spark_send_event(eventName, NULL, 60, eventType, NULL);
+        return CLOUD_FN(spark_send_event(eventName, NULL, 60, eventType, NULL), false);
     }
 
     bool publish(const char *eventName, const char *eventData, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return spark_send_event(eventName, eventData, 60, eventType, NULL);
+        return CLOUD_FN(spark_send_event(eventName, eventData, 60, eventType, NULL), false);
     }
 
     bool publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC)
     {
-        return spark_send_event(eventName, eventData, ttl, eventType, NULL);
+        return CLOUD_FN(spark_send_event(eventName, eventData, ttl, eventType, NULL), false);
     }
 
     bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
-        return spark_subscribe(eventName, handler, NULL, scope, NULL, NULL);
+        return CLOUD_FN(spark_subscribe(eventName, handler, NULL, scope, NULL, NULL), false);
     }
 
     bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
-        return spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL);
+        return CLOUD_FN(spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL), false);
     }
     
     void unsubscribe() 
     {
-        spark_protocol_remove_event_handlers(sp(), NULL);
+        CLOUD_FN(spark_protocol_remove_event_handlers(sp(), NULL), (void)0);
     }
 
     void syncTime(void)
     {
-        spark_protocol_send_time_request(sp());
+        CLOUD_FN(spark_protocol_send_time_request(sp()),(void)0);
     }
     
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))

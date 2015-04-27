@@ -188,44 +188,13 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
         network_connect();
     }
 
+#ifndef SPARK_NO_CLOUD    
     //Initialize spark protocol callbacks for all System modes
     Spark_Protocol_Init();
+#endif    
 }
 
 static int cfod_count = 0;
-
-/**
- * Time in millis of the last cloud connection attempt.
- * The next attempt isn't made until the backoff period has elapsed.
- */
-static int cloud_backoff_start = 0;
-
-/**
- * The number of connection attempts.
- */
-static uint8_t cloud_failed_connection_attempts = 0;
-
-void cloud_connection_failed()
-{
-    if (cloud_failed_connection_attempts<255)
-        cloud_failed_connection_attempts++;    
-    cloud_backoff_start = HAL_Timer_Get_Milli_Seconds();
-}
-
-/**
- * Series is 0, 100, 300, 700, 1500, 3100, 6300... up to 409500
- * @param connection_attempts
- * @return 
- */
-unsigned backoff_period(unsigned connection_attempts)
-{        
-    return 500*((1<<min(9,cloud_failed_connection_attempts))-1);
-}
-
-inline uint8_t in_cloud_backoff_period()
-{
-    return (HAL_Timer_Get_Milli_Seconds()-cloud_backoff_start)<backoff_period(cloud_failed_connection_attempts);
-}
 
 /**
  * Use usb serial ymodem flasher to update firmware.
@@ -307,6 +276,41 @@ void manage_ip_config()
     {
         memset(&ip_config, 0, sizeof (ip_config));
     }
+}
+
+#ifndef SPARK_NO_CLOUD
+
+/**
+ * Time in millis of the last cloud connection attempt.
+ * The next attempt isn't made until the backoff period has elapsed.
+ */
+static int cloud_backoff_start = 0;
+
+/**
+ * The number of connection attempts.
+ */
+static uint8_t cloud_failed_connection_attempts = 0;
+
+void cloud_connection_failed()
+{
+    if (cloud_failed_connection_attempts<255)
+        cloud_failed_connection_attempts++;    
+    cloud_backoff_start = HAL_Timer_Get_Milli_Seconds();
+}
+
+/**
+ * Series is 0, 100, 300, 700, 1500, 3100, 6300... up to 409500
+ * @param connection_attempts
+ * @return 
+ */
+unsigned backoff_period(unsigned connection_attempts)
+{        
+    return 500*((1<<min(9,cloud_failed_connection_attempts))-1);
+}
+
+inline uint8_t in_cloud_backoff_period()
+{
+    return (HAL_Timer_Get_Milli_Seconds()-cloud_backoff_start)<backoff_period(cloud_failed_connection_attempts);
 }
 
 void disconnect_cloud()
@@ -459,6 +463,21 @@ void handle_cloud_connection(bool force_events)
     }
 }
 
+void manage_cloud_connection() 
+{    
+    if (SPARK_CLOUD_CONNECT == 0)
+    {
+        disconnect_cloud();
+    }
+    else // cloud connection is wanted
+    {
+        establish_cloud_connection();
+
+        handle_cloud_connection(force_events);
+    }   
+}
+#endif
+
 void Spark_Idle_Events(bool force_events/*=false*/)
 {
     HAL_Notify_WDT();
@@ -474,16 +493,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
     manage_ip_config();
 
-    if (SPARK_CLOUD_CONNECT == 0)
-    {
-        disconnect_cloud();
-    }
-    else // cloud connection is wanted
-    {
-        establish_cloud_connection();
-
-        handle_cloud_connection(force_events);
-    }
+    CLOUD_FN(manage_cloud_connection(), (void)0);
 }
 
 void HAL_WLAN_notify_simple_config_done()

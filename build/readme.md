@@ -317,3 +317,11 @@ USE_SWD=y
 and perform a clean build. For more details on SWD-only debugging 
 see https://github.com/spark/firmware/pull/337
 
+
+## Compilation without Cloud Support
+
+To release more resources for applications that don't use the cloud, add
+SPARK_CLOUD=n to the make command line. This requires a clean build.
+
+After compiling, you should see ca 3000 bytes reduction in statically allocated
+RAM and, ca 35k reduction in flash use.
