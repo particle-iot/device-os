@@ -28,6 +28,7 @@
 #include "hw_config.h"
 #include <limits.h>
 #include "wiced.h"
+#include <stdatomic.h>
 
 /**
  * Updated by interrupt in stm32_it.c
@@ -44,7 +45,7 @@ volatile uint32_t TimingDelay;
 *******************************************************************************/
 void HAL_Delay_Milliseconds(uint32_t nTime)
 {
-    TimingDelay = nTime;
+    __sync_lock_test_and_set(&TimingDelay, nTime);
 
     while (TimingDelay != 0x00) {
         platform_watchdog_kick();
