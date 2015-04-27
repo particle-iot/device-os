@@ -14,7 +14,7 @@ include $(COMMON_BUILD)/common-tools.mk
 #
 
 # C compiler flags
-CFLAGS +=  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb
+CFLAGS +=  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb -flto 
 
 # C++ specific flags
 CPPFLAGS += -fno-exceptions -fno-rtti -fcheck-new
@@ -23,6 +23,6 @@ CONLYFLAGS +=
 
 ASFLAGS +=  -g3 -gdwarf-2 -mcpu=cortex-m3 -mthumb 
 
-LDFLAGS += -nostartfiles -Xlinker --gc-sections
+LDFLAGS += -nostartfiles -Xlinker --gc-sections -flto -Os -fuse-linker-plugin
 
 
