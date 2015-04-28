@@ -19,9 +19,9 @@ include $(DEPS_INCLUDE_SCRIPTS)
 include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 
 # Uncomment the following to enable serial bitrate specific dfu/ymodem flasher in code
-# START_DFU_FLASHER_SERIAL_SPEED=14400
+START_DFU_FLASHER_SERIAL_SPEED=14400
 # Uncommenting this increase the size of the firmware image because of ymodem addition
-# START_YMODEM_FLASHER_SERIAL_SPEED=28800
+START_YMODEM_FLASHER_SERIAL_SPEED=28800
 	
 QUOTE='
 ifneq (,$(GLOBAL_DEFINES))
