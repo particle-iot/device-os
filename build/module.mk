@@ -212,7 +212,7 @@ endif
 %.bin : %.elf
 	$(call echo,'Invoking: ARM GNU Create Flash Image')
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@.pre_crc
-ifneq ($(MODULE),bootloader)	
+
 	$(call,echo,'Injecting CRC32 to the Flash Image')
 	$(VERBOSE)head -c $$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) $@.pre_crc > $@.no_crc
 	# remove the crc block and validate it matches
@@ -222,7 +222,7 @@ ifneq ($(MODULE),bootloader)
 	$(VERBOSE)$(SHA_256) $@.no_crc | cut -c 1-65 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) conv=notrunc
 	$(VERBOSE)head -c $$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) $@.pre_crc > $@.no_crc
 	$(VERBOSE) $(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) conv=notrunc
-endif
+
 	-rm $@
 	mv $@.pre_crc $@
 	$(call echo,)
