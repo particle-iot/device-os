@@ -6,7 +6,7 @@ MEMORY
 {
     APP_FLASH                  (rx)  : ORIGIN = 0x080A0000,     LENGTH = 128K
 
-    SRAM      (rwx) : ORIGIN = 0x20000200, LENGTH = 76288
+    SRAM      (rwx) : ORIGIN = 0x20000300, LENGTH = 176288
 }
 
 SECTIONS
@@ -14,16 +14,8 @@ SECTIONS
     sram_start = ORIGIN(SRAM);
     sram_end = sram_start + LENGTH(SRAM);
 
-    .module_start : {
-        link_module_start = .;
-    } > APP_FLASH AT>APP_FLASH
-    .module_info :
-    {
-        . = ALIGN(4);
-        link_module_info_start = .;
-        KEEP(*module_info.o(.rodata.module_info))
-        link_module_info_end = .;
-    }>APP_FLASH AT> APP_FLASH
+    INCLUDE module_start.ld
+    INCLUDE module_info.ld
 
     .text :
     {
@@ -111,25 +103,7 @@ SECTIONS
         . = ALIGN(., 4);
     }> SRAM AT> SRAM
 
-    .module_info_suffix :
-    {
-        . = ALIGN(., 4) ;
-        link_module_info_suffix_start = .;
-        KEEP(*module_info.o(.modinfo.module_info_suffix))
-        link_module_info_suffix_end = .;
-    }>APP_FLASH AT> APP_FLASH
-
-    .module_end : 
-    {
-        link_module_end = .;
-    }> APP_FLASH AT>APP_FLASH
-
-    .module_info_crc :
-    {
-        link_module_info_crc_start = .;
-        KEEP(*module_info.o(.modinfo.module_info_crc))
-        link_module_info_crc_end = .;
-    }>APP_FLASH AT> APP_FLASH
+    INCLUDE module_end.ld
 
     /DISCARD/ :
     {

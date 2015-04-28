@@ -18,8 +18,11 @@ MEMORY
     APP_FLASH                  (rx)  : ORIGIN = 0x08060000,     LENGTH = 128K
 
     /* The SRAM area is offset to include the stack and static ram allocated at the end of the SRAM area.
-       This is done so that the build outputs meaningful values for BSS and Data section sizes. */      
-    SRAM      (rwx) : ORIGIN = 0x20020000 - 53K, LENGTH = 53K
+       This is done so that the build outputs meaningful values for BSS and Data section sizes. 
+
+       The value given here is the sum of system_static_ram_size and stack_size
+    */      
+    SRAM      (rwx) : ORIGIN = 0x20020000 - 38K, LENGTH = 38K
 }
 
 
@@ -243,4 +246,4 @@ ASSERT ( system_part2_module_info_start == link_module_info_start, "part2 module
 ASSERT ( system_part2_module_info_end == link_module_info_end, "part2 module info end not where expected" );
 
 ASSERT ( ORIGIN(SRAM) == system_static_ram_start, "ORIGIN of SRAM should be equal to system_static_ram_start. Adjust by hand to obtain the correct address and length. ");
-
+ASSERT ( LENGTH(SRAM) == ( system_static_ram_size + stack_size ), "LENGTH of SRAM should be equal to system_static_ram_size plus stack_size. Adjust by hand to obtain the correct address and length. ");
