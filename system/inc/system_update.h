@@ -29,7 +29,7 @@ bool system_module_info(appender_fn appender, void* append_data, void* reserved=
  * @param file
  * @param flags bit 0 set (1) means it's a dry run to check parameters. bit 0 cleared means it's the real thing.
  * @param reserved NULL
- * @return 
+ * @return 0 on success. 
  */
 int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
 
@@ -38,7 +38,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
  * @param file
  * @param flags 1 if the image was successfully received. 0 if there was interruption or other error.
  * @param reserved NULL
- * @return 
+ * @return 0 on success.
  */
 int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
 
