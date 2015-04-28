@@ -202,10 +202,20 @@ MOD_INFO_SUFFIX_LEN = 2400
 MOD_INFO_SUFFIX = $(DEFAULT_SHA_256)$(MOD_INFO_SUFFIX_LEN)
 CRC_BLOCK_CONTENTS = $(MOD_INFO_SUFFIX)78563412
 
-ifeq (OSX,$(MAKE_OS)) 
+ifneq (WINDOWS,$(MAKE_OS)) 
 SHA_256 = shasum -a 256
 else
 SHA_256 = $(COMMON_BUILD)/bin/win32/sha256sum
+endif
+
+ifeq (WINDOWS,$(MAKE_OS))
+filesize=`stat --print %s $1`
+else
+ifeq (LINUX, $(MAKE_OS))
+filesize=`stat -c %s $1`
+else
+filesize=`stat -f%z $1`
+endif
 endif
 
 # Create a bin file from ELF file
@@ -217,7 +227,7 @@ endif
 	$(VERBOSE)head -c $$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) $@.pre_crc > $@.no_crc
 	# remove the crc block and validate it matches
 	$(VERBOSE)tail -c $(CRC_BLOCK_LEN) $@.pre_crc > $@.crc_block
-	$(VERBOSE)[[ "$(CRC_BLOCK_CONTENTS)" == `xxd -p -c 500 $@.crc_block` ]]
+	$(VERBOSE)test "$(CRC_BLOCK_CONTENTS)" = `xxd -p -c 500 $@.crc_block`
 	
 	$(VERBOSE)$(SHA_256) $@.no_crc | cut -c 1-65 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) conv=notrunc
 	$(VERBOSE)head -c $$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) $@.pre_crc > $@.no_crc
