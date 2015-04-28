@@ -137,7 +137,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
         RGB.color(RGB_COLOR_MAGENTA);
         SPARK_FLASH_UPDATE = 1;
         TimingFlashUpdateTimeout = 0;
-        HAL_FLASH_Begin(file.file_address, file.file_length);
+        HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
     }
     return result;
 }
@@ -159,30 +159,8 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
     if (flags & 1) {    // update successful
         if (file.store==FileTransfer::Store::FIRMWARE)
         {
-#ifdef FLASH_UPDATE_MODULES
-            // todo - VerifyCRC should also take a device (FLASH_INTERNAL | FLASH_EXTERNAL)
-            // and must verify that the address/length is within range
-            uint32_t ota_address = HAL_OTA_FlashAddress();
-            uint32_t moduleAddress = HAL_FLASH_ModuleAddress(ota_address);            
-            uint32_t moduleLength = HAL_FLASH_ModuleLength(ota_address);
-            
-            if (FLASH_CheckValidAddressRange(FLASH_INTERNAL, moduleAddress, moduleLength + 4) 
-                && FLASH_isUserModuleInfoValid(FLASH_INTERNAL, ota_address, moduleAddress)
-                && HAL_FLASH_VerifyCRC32(ota_address, moduleLength))
-            {
-                HAL_FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, ota_address,
-                                                        FLASH_INTERNAL, moduleAddress,
-                                                        (moduleLength + 4),//+4 to copy the CRC too                
-                                                        USER_OTA_MODULE_FUNCTION,
-                                                        MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION);//true to verify the CRC during copy also
-
-                HAL_FLASH_End();
-
-            }
-#else
-            HAL_FLASH_End();
-#endif
-            //serial_dump("resetting");            
+            /*hal_update_complete_t result = */HAL_FLASH_End(NULL);
+                     
             // todo - talk with application and see if now is a good time to reset
             // if update not applied, do we need to reset?
             HAL_Core_System_Reset();        
@@ -198,7 +176,7 @@ int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chu
     int result = -1;
     if (file.store==FileTransfer::Store::FIRMWARE)
     {
-        result = HAL_FLASH_Update(chunk, file.chunk_address, file.chunk_size);
+        result = HAL_FLASH_Update(chunk, file.chunk_address, file.chunk_size, NULL);
         LED_Toggle(LED_RGB);
     }
     return result;
@@ -261,14 +239,24 @@ public:
 
 const char* module_function_string(module_function_t func) {
     switch (func) {
-        case MODULE_FUNCTION_NONE: return "none";
-        case MODULE_FUNCTION_RESOURCE: return "res";
-        case MODULE_FUNCTION_BOOTLOADER: return "boot";
-        case MODULE_FUNCTION_MONO_FIRMWARE: return "mono";
-        case MODULE_FUNCTION_SYSTEM_PART: return "system";
-        case MODULE_FUNCTION_USER_PART: return "user";
-        default: return "unknown";
+        case MODULE_FUNCTION_NONE: return "n";
+        case MODULE_FUNCTION_RESOURCE: return "r";
+        case MODULE_FUNCTION_BOOTLOADER: return "b";
+        case MODULE_FUNCTION_MONO_FIRMWARE: return "m";
+        case MODULE_FUNCTION_SYSTEM_PART: return "s";
+        case MODULE_FUNCTION_USER_PART: return "u";
+        default: return "_";
     }    
+}
+
+const char* module_store_string(module_store_t store) {
+    switch (store) {
+        case MODULE_STORE_MAIN: return "m";
+        case MODULE_STORE_BACKUP: return "b";
+        case MODULE_STORE_FACTORY: return "f";
+        case MODULE_STORE_SCRATCHPAD: return "t";
+        default: return "_";
+    }
 }
 
 const char* module_name(uint8_t index, char* buf)
@@ -289,24 +277,28 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
         const hal_module_t& module = system.modules[i];
         const module_info_t* info = module.info;
         buf[64] = 0;
-        result &= json.write('{') && json.write_value("s", module.bounds.maximum_size)
-          && json.write_string("u", bytes2hexbuf(module.suffix->sha, 32, buf))
-          && json.write_string("f", module_function_string(module_function(info)))
-          && json.write_string("n", module_name(module_index(info), buf))
-          && json.write_value("v", info->module_version)
+        result &= json.write('{') && json.write_value("s", module.bounds.maximum_size) && json.write_string("l", module_store_string(module.bounds.store))
+                && json.write_value("vc",module.validity_checked) && json.write_value("vv", module.validity_result)
+          && (!module.suffix || json.write_string("u", bytes2hexbuf(module.suffix->sha, 32, buf)))
+          && (!info || (json.write_string("f", module_function_string(module_function(info)))
+                        && json.write_string("n", module_name(module_index(info), buf))
+                        && json.write_value("v", info->module_version)))
         // on the photon we have just one dependency, this will need generalizing for other platforms
-          && json.write_attribute("d")
-          && json.write('[');
-          for (unsigned int d=0; d<1; d++) {
-              const module_dependency_t& dependency = info->dependency;
-              if (d) result &= json.write(',');
-              result &= json.write('{') 
-                && json.write_string("f", module_function_string(module_function_t(dependency.module_function)))
-                && json.write_string("n", module_name(dependency.module_index, buf))
-                && json.write_value("v", dependency.module_version)
-                 && json.end_list() && json.write('}');
-          }          
-          result &= json.write("]}");
+          && json.write_attribute("d") && json.write('[');
+          
+        for (unsigned int d=0; d<1 && info; d++) {
+            const module_dependency_t& dependency = info->dependency;
+            module_function_t function = module_function_t(dependency.module_function);
+            if (function==MODULE_FUNCTION_NONE) // skip empty dependents
+                continue;
+            if (d) result &= json.write(',');
+            result &= json.write('{') 
+              && json.write_string("f", module_function_string(function))
+              && json.write_string("n", module_name(dependency.module_index, buf))
+              && json.write_value("v", dependency.module_version)
+               && json.end_list() && json.write('}');
+        }          
+        result &= json.write("]}");
     }
     
     result &= json.write(']');

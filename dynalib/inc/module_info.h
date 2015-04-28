@@ -62,7 +62,7 @@ typedef struct module_info_t {
 #define MOD_FUNC_MONO_FIRMWARE   3
 #define MOD_FUNC_SYSTEM_PART     4
 #define MOD_FUNC_USER_PART       5
-
+#define MOD_FUNC_SETTINGS        6
 
 typedef enum module_function_t {
     MODULE_FUNCTION_NONE = MOD_FUNC_NONE,
@@ -80,19 +80,45 @@ typedef enum module_function_t {
     MODULE_FUNCTION_SYSTEM_PART = MOD_FUNC_SYSTEM_PART,
             
     /* The module is a user part */        
-    MODULE_FUNCTION_USER_PART = MOD_FUNC_USER_PART                     
+    MODULE_FUNCTION_USER_PART = MOD_FUNC_USER_PART,
+    
+    /* Rewrite persisted settings */
+    MODULE_FUNCTION_SETTINGS = MOD_FUNC_SETTINGS
 } module_function_t;
 
+typedef enum {
+    
+    MODULE_STORE_MAIN = 0,
+    /**
+     * Factory restore module.
+     */
+    MODULE_STORE_FACTORY = 1,
+            
+    /**
+     * An area that saves a copy of modules.
+     */
+    MODULE_STORE_BACKUP = 2,
+            
+    /**
+     * Temporary area used to store the module before transferring to it's
+     * target.
+     */
+    MODULE_STORE_SCRATCHPAD = 3,
+    
+} module_store_t;
 
 
-
+/**
+ * Fetches the module function for the given module.
+ */
 module_function_t  module_function(const module_info_t* mi);
-
-
+module_store_t module_store(const module_info_t* mi);
+uint32_t module_length(const module_info_t* mi);
 uint8_t module_index(const module_info_t* mi);
 
 uint16_t module_platform_id(const module_info_t* mi);
 
+uint8_t module_funcion_store(module_function_t function, module_store_t store);
 
 typedef enum module_scheme_t {
     MODULE_SCHEME_MONO,                           /* monolithic firmware */

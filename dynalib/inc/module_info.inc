@@ -45,6 +45,10 @@ uint16_t module_platform_id(const module_info_t* mi) {
     return mi ? mi->platform_id : 0xFFFF;
 }
 
+uint32_t module_length(const module_info_t* mi) {
+    return mi->module_end_address-mi->module_start_address;
+}
+
 module_scheme_t module_scheme(const module_info_t* mi) {
     switch (module_function(mi)) {
         case MODULE_FUNCTION_BOOTLOADER:

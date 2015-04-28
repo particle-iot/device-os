@@ -38,36 +38,94 @@
 
 #define OTA_CHUNK_SIZE          512
 
-const module_info_t* locate_module(const module_bounds_t* bounds) {
+/**
+ * Checks if the minimum required dependencies for the given module are satisfied.
+ * @param bounds    The bounds of the module to check.
+ * @return {@code true} if the dependencies are satisfied, {@code false} otherwise.
+ */
+bool validate_module_dependencies(const module_bounds_t* bounds);
+
+/**
+ * Find the module_info at a given address. No validation is done so the data
+ * pointed to should not be trusted.
+ * @param bounds
+ * @return 
+ */
+inline const module_info_t* locate_module(const module_bounds_t* bounds) {
     return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
 }
 
-void fetch_module(hal_module_t* target, const module_bounds_t* bounds)
+/**
+ * Determines if a given address is in range. 
+ * @param test      The address to test
+ * @param start     The start range (inclusive)
+ * @param end       The end range (inclusive)
+ * @return {@code true} if the address is within range.
+ */
+inline bool in_range(uint32_t test, uint32_t start, uint32_t end)
 {
+    return test>=start && test<=end;
+}
+
+/**
+ * Fetches and validates the module info found at a given location.
+ * @param target        Receives the module into
+ * @param bounds        The location where to retrieve the module from.
+ * 
+ * @return {@code true} if the module info can be read via the info, crc, suffix pointers.
+ */
+bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, uint16_t check_flags=0)
+{
+    memset(target, 0, sizeof(*target));
+
     target->bounds = *bounds;
-    target->info = locate_module(bounds);
-    const uint8_t* module_end = (const uint8_t*)target->info->module_end_address;
-    // the suffix ends at module_end, and the crc starts
-    
-    target->crc = (module_info_crc_t*)module_end;
-    target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
-    target->validity_flags = 0;
+    if (NULL!=(target->info = locate_module(bounds)))
+    {
+        target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
+        target->validity_result = 0;
+        const uint8_t* module_end = (const uint8_t*)target->info->module_end_address;
+        if (in_range(uint32_t(module_end), bounds->start_address, bounds->end_address)) {
+            target->validity_result |= MODULE_VALIDATION_RANGE;
+            target->validity_result |= (PRODUCT_ID==module_platform_id(target->info)) ? MODULE_VALIDATION_PLATFORM : 0;
+            // the suffix ends at module_end, and the crc starts after module end
+            target->crc = (module_info_crc_t*)module_end;
+            target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));            
+            if (validate_module_dependencies(bounds))
+                target->validity_result |= MODULE_VALIDATION_DEPENDENCIES;
+            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && HAL_FLASH_VerifyCRC32(bounds->start_address, module_length(target->info)))
+                target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+        }
+        else
+            target->info = NULL;
+    }           
+    return target->info!=NULL;
 }
 
 #if MODULAR_FIRMWARE
-module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000 };
-module_bounds_t module_system_part1 = { 0x40000, 0x8020000, 0x8060000 };
-module_bounds_t module_system_part2 = { 0x40000, 0x8060000, 0x80A0000 };
-module_bounds_t module_user = { 0x20000, 0x80A0000, 0x80C0000 };
-module_bounds_t module_factory = { 0x20000, 0x80E0000, 0x8100000 };
+module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN };
+module_bounds_t module_system_part1 = { 0x40000, 0x8020000, 0x8060000, MODULE_FUNCTION_SYSTEM_PART, 1, MODULE_STORE_MAIN };
+module_bounds_t module_system_part2 = { 0x40000, 0x8060000, 0x80A0000, MODULE_FUNCTION_SYSTEM_PART, 2, MODULE_STORE_MAIN};
+module_bounds_t module_user = { 0x20000, 0x80A0000, 0x80C0000, MODULE_FUNCTION_USER, 0, MODULE_STORE_MAIN};
+module_bounds_t module_factory = { 0x20000, 0x80E0000, 0x8100000, MODULE_FUNCTINO_USER, 0, MODULE_STORE_FACTORY};
 module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_user, &module_factory };
+
+module_bounds_t module_ota = { 0x40000, 0x80C0000, 0x8100000, MODULE_FUNCTINO_NONE, 0, MODULE_STORE_SCRACHPAD};
 #else
-module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000 };
-module_bounds_t module_user = { 0x20000, 0x8020000, 0x8080000 };
-module_bounds_t module_factory = { 0x20000, 0x8080000, 0x80E0000 };
+module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN};
+module_bounds_t module_user = { 0x60000, 0x8020000, 0x8080000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_MAIN};
+module_bounds_t module_factory = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_FACTORY};
 module_bounds_t* module_bounds[] = { &module_bootloader, &module_user, &module_factory };
+
+module_bounds_t module_ota = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_SCRATCHPAD};
 #endif
 
+/**
+ * Finds the location where a given module is stored. The module is identified
+ * by it's funciton and index.
+ * @param module_function   The function of the module to find.
+ * @param module_index      The function index of the module to find.
+ * @return the module_bounds corresponding to the module, NULL when not found.
+ */
 module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index)
 {
     for (unsigned i=0; i<arraySize(module_bounds); i++) {
@@ -83,11 +141,11 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         info->platform_id = PLATFORM_ID;
         // bootloader, system 1, system 2, optional user code and factory restore    
         uint8_t count = arraySize(module_bounds);
-        info->modules = new hal_module_t[count];
+        info->modules = new hal_module_t[count];        
         if (info->modules) {
             info->module_count = count;
             for (unsigned i=0; i<count; i++) {
-                fetch_module(info->modules+i, module_bounds[i]);
+                fetch_module(info->modules+i, module_bounds[i], MODULE_VALIDATION_INTEGRITY);
             }
         }    
     }
@@ -127,15 +185,15 @@ bool HAL_Verify_User_Dependencies()
 
 bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
 {
-    uint32_t endAddress = startAddress + length - 1;
+    uint32_t endAddress = startAddress + length;
 
 #ifdef USE_SERIAL_FLASH
-    if (startAddress == EXTERNAL_FLASH_OTA_ADDRESS && endAddress < 0x100000)
+    if (startAddress == EXTERNAL_FLASH_OTA_ADDRESS && endAddress <= 0x100000)
     {
         return true;
     }
 #else
-    if (startAddress == INTERNAL_FLASH_OTA_ADDRESS && endAddress < 0x100000)
+    if (startAddress == INTERNAL_FLASH_OTA_ADDRESS && endAddress < 0x8100000)
     {
         return true;
     }
@@ -149,7 +207,7 @@ uint32_t HAL_OTA_FlashAddress()
 #ifdef USE_SERIAL_FLASH
     return EXTERNAL_FLASH_OTA_ADDRESS;
 #else
-    return INTERNAL_FLASH_OTA_ADDRESS;
+    return module_ota.start_address;
 #endif
 }
 
@@ -157,7 +215,7 @@ STATIC_ASSERT(ota_length_for_pid_6_is_less_than_512k, PLATFORM_ID!=5 || FIRMWARE
 
 uint32_t HAL_OTA_FlashLength()
 {
-    return FIRMWARE_IMAGE_SIZE;
+    return module_ota.maximum_size;
 }
 
 uint16_t HAL_OTA_ChunkSize()
@@ -165,85 +223,48 @@ uint16_t HAL_OTA_ChunkSize()
     return OTA_CHUNK_SIZE;
 }
 
-bool HAL_FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                          uint32_t length, uint8_t function, uint8_t flags)
-{
-    return FLASH_CopyMemory(sourceDeviceID, sourceAddress,
-                            destinationDeviceID, destinationAddress,
-                            length, function, flags);
-}
-
-bool HAL_FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                             uint32_t length)
-{
-    return FLASH_CompareMemory(sourceDeviceID, sourceAddress,
-                               destinationDeviceID, destinationAddress,
-                               length);
-}
-
-bool HAL_FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                             uint32_t length, uint8_t function, uint8_t flags)
-{
-    return FLASH_AddToNextAvailableModulesSlot(sourceDeviceID, sourceAddress,
-                                               destinationDeviceID, destinationAddress,
-                                               length, function, flags);
-}
-
-bool HAL_FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                                           flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                           uint32_t length, uint8_t function, uint8_t flags)
-{
-    return FLASH_AddToFactoryResetModuleSlot(sourceDeviceID, sourceAddress,
-                                             destinationDeviceID, destinationAddress,
-                                             length, function, flags);
-}
-
-bool HAL_FLASH_ClearFactoryResetModuleSlot(void)
-{
-    return FLASH_ClearFactoryResetModuleSlot();
-}
-
-bool HAL_FLASH_RestoreFromFactoryResetModuleSlot(void)
-{
-    return FLASH_RestoreFromFactoryResetModuleSlot();
-}
-
-void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
-{
-    FLASH_UpdateModules(flashModulesCallback);
-}
-
-bool HAL_FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length, bool protect)
-{
-    return FLASH_WriteProtectMemory(flashDeviceID, startAddress, length, protect);
-}
-
-void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors)
-{
-    FLASH_WriteProtection_Enable(FLASH_Sectors);
-}
-
-void HAL_FLASH_WriteProtectionDisable(uint32_t FLASH_Sectors)
-{
-    FLASH_WriteProtection_Disable(FLASH_Sectors);
-}
-
-void HAL_FLASH_Begin(uint32_t address, uint32_t length)
+bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved)
 {
     FLASH_Begin(address, length);
+    return true;
 }
 
-int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length)
+int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved)
 {
     return FLASH_Update(pBuffer, address, length);
 }
 
-void HAL_FLASH_End(void)
-{
-    FLASH_End();
+hal_update_complete_t HAL_FLASH_End(void* reserved)
+{    
+    hal_module_t module;
+    hal_update_complete_t result = HAL_UPDATE_ERROR;
+    if (fetch_module(&module, &module_ota, MODULE_VALIDATION_INTEGRITY)) 
+    {
+        uint32_t moduleLength = module_length(module.info);
+        module_function_t function = module_function(module.info);
+                    
+        // bootloader is copied directly
+        if (function==MODULE_FUNCTION_BOOTLOADER) {
+
+            if (FLASH_CopyMemory(FLASH_INTERNAL, module_ota.start_address, 
+                FLASH_INTERNAL, uint32_t(module.info->module_start_address),
+                moduleLength+4, function, 
+                MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION))
+                result = HAL_UPDATE_APPLIED;
+        }
+        else
+        {
+            if (FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, module_ota.start_address,
+                FLASH_INTERNAL, uint32_t(module.info->module_start_address),
+                (moduleLength + 4),//+4 to copy the CRC too     
+                function,
+                MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION))//true to verify the CRC during copy also
+                    result = HAL_UPDATE_APPLIED_PENDING_RESTART;
+        }
+        
+        FLASH_End();
+    }
+    return result;
 }
 
 uint32_t HAL_FLASH_ModuleAddress(uint32_t address)

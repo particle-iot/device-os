@@ -42,17 +42,28 @@ typedef struct {
     uint32_t maximum_size;      // the maximum allowable size for the entire module image
     uint32_t start_address;     // the designated start address for the module
     uint32_t end_address;       // 
-    uint8_t module_function;    
+    module_function_t module_function;    
     uint8_t module_index;
+    module_store_t store;
     
 } module_bounds_t;    
-    
+
+typedef enum {
+    MODULE_VALIDATION_INTEGRITY        = 1<<1,
+    MODULE_VALIDATION_DEPENDENCIES     = 1<<2,
+    MODULE_VALIDATION_RANGE            = 1<<3,
+    MODULE_VALIDATION_PLATFORM         = 1<<4,
+    MODULE_VALIDATION_PRODUCT          = 1<<5,
+    MODULE_VALIDATION_END = 0x7FFF
+} module_validation_flags_t;
+
 typedef struct {    
     module_bounds_t bounds;
     const module_info_t* info;      // pointer to the module info in the module, may be NULL
     const module_info_crc_t* crc;
     const module_info_suffix_t* suffix;
-    uint16_t validity_flags;    // check the validity of the module    
+    uint16_t validity_checked;    // the flags that were checked
+    uint16_t validity_result;     // the result of the checks    
 } hal_module_t;
     
 typedef struct {
@@ -61,6 +72,7 @@ typedef struct {
     hal_module_t* modules;      // allocated by HAL_System_Info
     uint16_t module_count;      // number of modules in the array    
 } hal_system_info_t;    
+
 
 /**
  * 
@@ -94,35 +106,21 @@ uint16_t HAL_OTA_ChunkSize();
 
 flash_device_t HAL_OTA_FlashDevice();
 
-
-bool HAL_FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                          uint32_t length, uint8_t function, uint8_t flags);
-bool HAL_FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                             uint32_t length);
-bool HAL_FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                             uint32_t length, uint8_t function, uint8_t flags);
-bool HAL_FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                                           flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                           uint32_t length, uint8_t function, uint8_t flags);
-bool HAL_FLASH_ClearFactoryResetModuleSlot(void);
-bool HAL_FLASH_RestoreFromFactoryResetModuleSlot(void);
-void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
-
-bool HAL_FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length, bool protect);
-void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors);
-void HAL_FLASH_WriteProtectionDisable(uint32_t FLASH_Sectors);
-
 /**
  * Erase a region of flash in preparation for flashing content.
  * @param address   The start address to erase. Must be on a flash boundary.
  * @param length
  */
-void HAL_FLASH_Begin(uint32_t address, uint32_t length);
-int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length);
-void HAL_FLASH_End(void);
+bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved);
+int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved);
+
+typedef enum {
+    HAL_UPDATE_ERROR,
+    HAL_UPDATE_APPLIED_PENDING_RESTART,
+    HAL_UPDATE_APPLIED
+} hal_update_complete_t;
+
+hal_update_complete_t HAL_FLASH_End(void* reserved);
 
 uint32_t HAL_FLASH_ModuleAddress(uint32_t address);
 uint32_t HAL_FLASH_ModuleLength(uint32_t address);

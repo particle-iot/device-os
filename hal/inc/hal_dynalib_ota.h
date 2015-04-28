@@ -31,9 +31,6 @@
 #endif
 
 DYNALIB_BEGIN(hal_ota)
-#if PLATFORM_ID > 3
-DYNALIB_FN(hal_ota,HAL_FLASH_AddToNextAvailableModulesSlot)
-#endif
 DYNALIB_FN(hal_ota,HAL_OTA_FlashAddress)
 DYNALIB_FN(hal_ota,HAL_OTA_FlashLength)
 DYNALIB_FN(hal_ota,HAL_OTA_ChunkSize)
@@ -41,12 +38,9 @@ DYNALIB_FN(hal_ota,HAL_OTA_ChunkSize)
 DYNALIB_FN(hal_ota,HAL_OTA_Flashed_GetStatus)
 DYNALIB_FN(hal_ota,HAL_OTA_Flashed_ResetStatus)
 
-DYNALIB_FN(hal_ota,HAL_FLASH_WriteProtectionEnable)
-DYNALIB_FN(hal_ota,HAL_FLASH_WriteProtectionDisable)
 DYNALIB_FN(hal_ota,HAL_FLASH_Begin)
 DYNALIB_FN(hal_ota,HAL_FLASH_Update)
 DYNALIB_FN(hal_ota,HAL_FLASH_End)        
-DYNALIB_FN(hal_ota,HAL_FLASH_WriteProtectMemory)
 DYNALIB_END(hal_ota)        
 
 #endif	/* HAL_DYNALIB_OTA_H */
