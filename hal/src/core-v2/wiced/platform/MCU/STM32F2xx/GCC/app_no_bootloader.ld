@@ -53,12 +53,12 @@ SECTIONS
         . = ALIGN(0x4);
 
         link_constructors_location = .;
-        KEEP(*(.preinit_array))
-        KEEP(*(.init_array))
-        KEEP (*crtbegin.o(.ctors))
         link_early_startup_begin = .;
         KEEP(*.o(.early_startup.*))
         link_early_startup_end = .;
+        KEEP(*(.preinit_array))
+        KEEP(*(.init_array))
+        KEEP (*crtbegin.o(.ctors))
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
