@@ -73,6 +73,7 @@ extern volatile uint8_t  USB_Rx_State;
  *******************************************************************************/
 void SPARK_USB_Setup(void)
 {
+    
     USBD_Init(&USB_OTG_dev,
 #ifdef USE_USB_OTG_FS
             USB_OTG_FS_CORE_ID,
@@ -194,18 +195,22 @@ void USB_OTG_BSP_EnableInterrupt(USB_OTG_CORE_HANDLE *pdev);
  * Return         : None.
  *******************************************************************************/
 void USB_USART_Send_Data(uint8_t Data)
-{
+{        
     USB_OTG_BSP_EnableInterrupt(&USB_OTG_dev);
-    APP_Rx_Buffer[APP_Rx_ptr_in] = Data;
+    int mask = HAL_disable_irq();
 
     int next = (APP_Rx_ptr_in+1) & (APP_RX_DATA_SIZE-1);
     
     while (next == APP_Rx_ptr_out) {
+        HAL_enable_irq(mask);    
+        USB_OTG_BSP_EnableInterrupt(&USB_OTG_dev);
         HAL_Delay_Milliseconds(1);
+        mask = HAL_disable_irq();
     }
-    
-    APP_Rx_ptr_in = next;
 
+    APP_Rx_Buffer[APP_Rx_ptr_in] = Data;    
+    APP_Rx_ptr_in = next;
+    HAL_enable_irq(mask);
 }
 #endif
 

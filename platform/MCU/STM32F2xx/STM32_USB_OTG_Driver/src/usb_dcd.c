@@ -340,7 +340,7 @@ uint32_t  DCD_EP_ClrStall (USB_OTG_CORE_HANDLE *pdev, uint8_t epnum)
   return (0);
 }
 
-
+#include "interrupts_hal.h"
 /**
 * @brief  This Function flushes the FIFOs.
 * @param pdev: device instance
@@ -349,7 +349,7 @@ uint32_t  DCD_EP_ClrStall (USB_OTG_CORE_HANDLE *pdev, uint8_t epnum)
 */
 uint32_t  DCD_EP_Flush (USB_OTG_CORE_HANDLE *pdev , uint8_t epnum)
 {
-
+int mask = HAL_disable_irq();    
   if ((epnum & 0x80) == 0x80)
   {
     USB_OTG_FlushTxFifo(pdev, epnum & 0x7F);
@@ -358,7 +358,7 @@ uint32_t  DCD_EP_Flush (USB_OTG_CORE_HANDLE *pdev , uint8_t epnum)
   {
     USB_OTG_FlushRxFifo(pdev);
   }
-
+HAL_enable_irq(mask);
   return (0);
 }
 

@@ -35,6 +35,7 @@ void setup()
 {
     pinMode(D7, OUTPUT);
     Serial.begin(9600);
+    while (!Serial.available());
 }
 
 bool passed(uint32_t modulo, uint32_t& last) {
@@ -47,7 +48,7 @@ bool passed(uint32_t modulo, uint32_t& last) {
 
 /* This function loops forever --------------------------------------------*/
 void loop()
-{
+{    
     //This will run in a loop
     char c = 0;
     if(Serial.available())

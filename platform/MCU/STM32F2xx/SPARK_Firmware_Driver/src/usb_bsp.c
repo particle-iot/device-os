@@ -106,13 +106,13 @@ void USB_OTG_BSP_EnableInterrupt(USB_OTG_CORE_HANDLE *pdev)
 
 #ifdef USE_USB_OTG_FS
     NVIC_InitStructure.NVIC_IRQChannel = OTG_FS_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =2;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 #elif defined USE_USB_OTG_HS
     NVIC_InitStructure.NVIC_IRQChannel = OTG_HS_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
@@ -133,6 +133,8 @@ void USB_OTG_BSP_EnableInterrupt(USB_OTG_CORE_HANDLE *pdev)
 #endif
 }
 
+#include "interrupts_hal.h"
+
 /**
  * @brief  USB_OTG_BSP_uDelay
  *         This function provides delay time in micro sec
@@ -140,7 +142,7 @@ void USB_OTG_BSP_EnableInterrupt(USB_OTG_CORE_HANDLE *pdev)
  * @retval None
  */
 void USB_OTG_BSP_uDelay (const uint32_t usec)
-{
+{    
     uint32_t count = 0;
     const uint32_t utime = (120 * usec / 7);
     do
@@ -160,6 +162,6 @@ void USB_OTG_BSP_uDelay (const uint32_t usec)
  * @retval None
  */
 void USB_OTG_BSP_mDelay (const uint32_t msec)
-{
+{    
     USB_OTG_BSP_uDelay(msec * 1000);
 }

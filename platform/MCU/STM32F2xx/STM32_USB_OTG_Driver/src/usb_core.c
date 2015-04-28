@@ -122,6 +122,7 @@ static void USB_OTG_EnableCommonInt(USB_OTG_CORE_HANDLE *pdev)
 */
 static USB_OTG_STS USB_OTG_CoreReset(USB_OTG_CORE_HANDLE *pdev)
 {
+    
   USB_OTG_STS status = USB_OTG_OK;
   __IO USB_OTG_GRSTCTL_TypeDef  greset;
   uint32_t count = 0;
@@ -156,6 +157,7 @@ static USB_OTG_STS USB_OTG_CoreReset(USB_OTG_CORE_HANDLE *pdev)
   return status;
 }
 
+#include "interrupts_hal.h"
 /**
 * @brief  USB_OTG_WritePacket : Writes a packet into the Tx FIFO associated 
 *         with the EP
@@ -173,6 +175,7 @@ USB_OTG_STS USB_OTG_WritePacket(USB_OTG_CORE_HANDLE *pdev,
   USB_OTG_STS status = USB_OTG_OK;
   if (pdev->cfg.dma_enable == 0)
   {
+      int mask = HAL_disable_irq();
     uint32_t count32b= 0 , i= 0;
     __IO uint32_t *fifo;
     
@@ -182,6 +185,8 @@ USB_OTG_STS USB_OTG_WritePacket(USB_OTG_CORE_HANDLE *pdev,
     {
       USB_OTG_WRITE_REG32( fifo, *((__packed uint32_t *)src) );
     }
+    
+    HAL_enable_irq(mask);
   }
   return status;
 }
@@ -200,7 +205,7 @@ void *USB_OTG_ReadPacket(USB_OTG_CORE_HANDLE *pdev,
 {
   uint32_t i=0;
   uint32_t count32b = (len + 3) / 4;
-  
+  int mask = HAL_disable_irq();
   __IO uint32_t *fifo = pdev->regs.DFIFO[0];
   
   for ( i = 0; i < count32b; i++, dest += 4 )
@@ -208,6 +213,7 @@ void *USB_OTG_ReadPacket(USB_OTG_CORE_HANDLE *pdev,
     *(__packed uint32_t *)dest = USB_OTG_READ_REG32(fifo);
     
   }
+  HAL_enable_irq(mask);
   return ((void *)dest);
 }
 
@@ -331,8 +337,7 @@ USB_OTG_STS USB_OTG_CoreInit(USB_OTG_CORE_HANDLE *pdev)
   gccfg.d32 = 0;
   ahbcfg.d32 = 0;
   
-  
-  
+    
   if (pdev->cfg.phy_itface == USB_OTG_ULPI_PHY)
   {
     gccfg.d32 = USB_OTG_READ_REG32(&pdev->regs.GREGS->GCCFG);

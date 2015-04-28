@@ -628,22 +628,20 @@ static uint8_t  usbd_cdc_EP0_RxReady (void  *pdev)
   */
 static uint8_t  usbd_cdc_DataIn (void *pdev, uint8_t epnum)
 {
-  uint16_t USB_Tx_ptr;
-  uint16_t USB_Tx_length;
-
   int irq = HAL_disable_irq();
   
-  if (USB_Tx_State == 1)
+  if (USB_Tx_State == 1)            // still flagged as transmitting
   {
-    if (APP_Rx_length == 0) 
+    if (APP_Rx_length == 0)         // no data to send
     {
-      USB_Tx_State = 0;
+      USB_Tx_State = 0;             // end transmit
     }
     else 
     {
+        // maximum amount to sent
         int to_tx = (APP_Rx_length > CDC_DATA_IN_PACKET_SIZE) ? CDC_DATA_IN_PACKET_SIZE : APP_Rx_length;
-        USB_Tx_ptr = APP_Rx_ptr_out;
-        USB_Tx_length = to_tx;
+        uint16_t USB_Tx_ptr = APP_Rx_ptr_out;
+        uint16_t USB_Tx_length = to_tx;
         
       
       /* Prepare the available data buffer to be sent on IN endpoint */
@@ -672,7 +670,9 @@ static uint8_t  usbd_cdc_DataIn (void *pdev, uint8_t epnum)
   */
 static uint8_t  usbd_cdc_DataOut (void *pdev, uint8_t epnum)
 {      
-  USB_Rx_ptr = 0;
+  int irq = HAL_disable_irq();
+
+    USB_Rx_ptr = 0;
 
   /* Get the received data buffer and update the counter */
   USB_Rx_length = ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].xfer_count;
@@ -684,6 +684,7 @@ static uint8_t  usbd_cdc_DataOut (void *pdev, uint8_t epnum)
   /* Prepare Out endpoint to receive next packet */
   //DCD_EP_PrepareRx() is now called in USB_USART_Receive_Data() in usb_hal.c
   USB_Rx_State = 1;
+  HAL_enable_irq(irq);
 
   return USBD_OK;
 }
@@ -722,6 +723,8 @@ static void Handle_USBAsynchXfer (void *pdev)
   uint16_t USB_Tx_ptr;
   uint16_t USB_Tx_length;
   
+  int irq = HAL_disable_irq();
+
   if(USB_Tx_State != 1)
   {
     if (APP_Rx_ptr_out == APP_RX_DATA_SIZE)
@@ -742,8 +745,7 @@ static void Handle_USBAsynchXfer (void *pdev)
     }
     else 
     {
-      APP_Rx_length = APP_Rx_ptr_in - APP_Rx_ptr_out;
-     
+      APP_Rx_length = APP_Rx_ptr_in - APP_Rx_ptr_out;     
     }
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
      APP_Rx_length &= ~0x03;
@@ -770,9 +772,12 @@ static void Handle_USBAsynchXfer (void *pdev)
                CDC_IN_EP,
                (uint8_t*)&APP_Rx_Buffer[USB_Tx_ptr],
                USB_Tx_length);
-    USB_Tx_State = 1; 
+     
+    USB_Tx_State = 1;
+    
 
   }  
+  HAL_enable_irq(irq);
   
 }
 

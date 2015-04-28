@@ -171,8 +171,8 @@ void myvTaskDelay( portTickType xTicksToDelay )
 
 void test_get_semaphore_breaks_serial_printing(void)
 {
-    //wiced_rtos_delay_milliseconds(10);
-    myvTaskDelay(500);
+    wiced_rtos_delay_milliseconds(10);
+    //myvTaskDelay(500);
     //vPortYield();
 }
 
