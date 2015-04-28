@@ -79,15 +79,8 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
     uint32_t endAddress = startAddress + length - 1;
 
     if (flashDeviceID == FLASH_INTERNAL)
-    {
-        if (startAddress == 0x08000000 && endAddress >= 0x08004000)
-        {
-            return false;
-        }
-        else if (startAddress < 0x08020000 || endAddress >= 0x08100000)
-        {
-            return false;
-        }
+    {        
+        return startAddress>=0x8000000 && endAddress<=0x8100000;
     }
     else if (flashDeviceID == FLASH_SERIAL)
     {

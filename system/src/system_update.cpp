@@ -58,9 +58,7 @@ bool system_serialFirmwareUpdate(Stream* stream)
     set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
 #endif    
     FileTransfer::Descriptor desc;    
-    desc.chunk_size = 0;    
-    desc.file_address = HAL_OTA_FlashAddress();
-    desc.file_length = HAL_OTA_FlashLength();
+    memset(&desc, 0, sizeof(desc));    
     desc.store = FileTransfer::Store::FIRMWARE;
     return system_serialFileTransfer(stream, desc);
 }

@@ -44,6 +44,7 @@
  * @return {@code true} if the dependencies are satisfied, {@code false} otherwise.
  */
 bool validate_module_dependencies(const module_bounds_t* bounds);
+const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index);
 
 /**
  * Find the module_info at a given address. No validation is done so the data
@@ -84,7 +85,8 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, uint16_t 
         target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
         target->validity_result = 0;
         const uint8_t* module_end = (const uint8_t*)target->info->module_end_address;
-        if (in_range(uint32_t(module_end), bounds->start_address, bounds->end_address)) {
+        const module_bounds_t* expected_bounds = find_module_bounds(module_function(target->info), module_index(target->info));        
+        if (expected_bounds && in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
             target->validity_result |= MODULE_VALIDATION_RANGE;
             target->validity_result |= (PRODUCT_ID==module_platform_id(target->info)) ? MODULE_VALIDATION_PLATFORM : 0;
             // the suffix ends at module_end, and the crc starts after module end
@@ -92,7 +94,7 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, uint16_t 
             target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));            
             if (validate_module_dependencies(bounds))
                 target->validity_result |= MODULE_VALIDATION_DEPENDENCIES;
-            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && HAL_FLASH_VerifyCRC32(bounds->start_address, module_length(target->info)))
+            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
                 target->validity_result |= MODULE_VALIDATION_INTEGRITY;
         }
         else
@@ -102,21 +104,21 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, uint16_t 
 }
 
 #if MODULAR_FIRMWARE
-module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN };
-module_bounds_t module_system_part1 = { 0x40000, 0x8020000, 0x8060000, MODULE_FUNCTION_SYSTEM_PART, 1, MODULE_STORE_MAIN };
-module_bounds_t module_system_part2 = { 0x40000, 0x8060000, 0x80A0000, MODULE_FUNCTION_SYSTEM_PART, 2, MODULE_STORE_MAIN};
-module_bounds_t module_user = { 0x20000, 0x80A0000, 0x80C0000, MODULE_FUNCTION_USER, 0, MODULE_STORE_MAIN};
-module_bounds_t module_factory = { 0x20000, 0x80E0000, 0x8100000, MODULE_FUNCTINO_USER, 0, MODULE_STORE_FACTORY};
-module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_user, &module_factory };
+const module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN };
+const module_bounds_t module_system_part1 = { 0x40000, 0x8020000, 0x8060000, MODULE_FUNCTION_SYSTEM_PART, 1, MODULE_STORE_MAIN };
+const module_bounds_t module_system_part2 = { 0x40000, 0x8060000, 0x80A0000, MODULE_FUNCTION_SYSTEM_PART, 2, MODULE_STORE_MAIN};
+const module_bounds_t module_user = { 0x20000, 0x80A0000, 0x80C0000, MODULE_FUNCTION_USER, 0, MODULE_STORE_MAIN};
+const module_bounds_t module_factory = { 0x20000, 0x80E0000, 0x8100000, MODULE_FUNCTINO_USER, 0, MODULE_STORE_FACTORY};
+const module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_user, &module_factory };
 
-module_bounds_t module_ota = { 0x40000, 0x80C0000, 0x8100000, MODULE_FUNCTINO_NONE, 0, MODULE_STORE_SCRACHPAD};
+const module_bounds_t module_ota = { 0x40000, 0x80C0000, 0x8100000, MODULE_FUNCTINO_NONE, 0, MODULE_STORE_SCRACHPAD};
 #else
-module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN};
-module_bounds_t module_user = { 0x60000, 0x8020000, 0x8080000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_MAIN};
-module_bounds_t module_factory = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_FACTORY};
-module_bounds_t* module_bounds[] = { &module_bootloader, &module_user, &module_factory };
+const module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN};
+const module_bounds_t module_user = { 0x60000, 0x8020000, 0x8080000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_MAIN};
+const module_bounds_t module_factory = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_FACTORY};
+const module_bounds_t* module_bounds[] = { &module_bootloader, &module_user, &module_factory };
 
-module_bounds_t module_ota = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_SCRATCHPAD};
+const module_bounds_t module_ota = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_SCRATCHPAD};
 #endif
 
 /**
@@ -126,7 +128,7 @@ module_bounds_t module_ota = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MO
  * @param module_index      The function index of the module to find.
  * @return the module_bounds corresponding to the module, NULL when not found.
  */
-module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index)
+const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index)
 {
     for (unsigned i=0; i<arraySize(module_bounds); i++) {
         if (module_bounds[i]->module_function==module_function && module_bounds[i]->module_index==module_index)
@@ -179,7 +181,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds)
 
 bool HAL_Verify_User_Dependencies()
 {
-    module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 0);    
+    const module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 0);    
     return validate_module_dependencies(bounds);
 }
 
@@ -265,33 +267,6 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
         FLASH_End();
     }
     return result;
-}
-
-uint32_t HAL_FLASH_ModuleAddress(uint32_t address)
-{
-#ifdef USE_SERIAL_FLASH
-    return 0;
-#else
-    return FLASH_ModuleAddress(FLASH_INTERNAL, address);
-#endif
-}
-
-uint32_t HAL_FLASH_ModuleLength(uint32_t address)
-{
-#ifdef USE_SERIAL_FLASH
-    return 0;
-#else
-    return FLASH_ModuleLength(FLASH_INTERNAL, address);
-#endif
-}
-
-bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length)
-{
-#ifdef USE_SERIAL_FLASH
-    return false;
-#else
-    return FLASH_VerifyCRC32(FLASH_INTERNAL, address, length);
-#endif
 }
 
 void copy_dct(void* target, uint16_t offset, uint16_t length) {
