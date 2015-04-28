@@ -35,22 +35,6 @@ void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
     info->modules = NULL;
 }
 
-bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
-{
-    uint32_t endAddress = startAddress + length - 1;
-
-    if (startAddress == EXTERNAL_FLASH_OTA_ADDRESS && endAddress < EXTERNAL_FLASH_USER_ADDRESS)
-    {
-        return true;
-    }
-    else if (startAddress >= EXTERNAL_FLASH_USER_ADDRESS && endAddress < 0x200000)
-    {
-        return true;
-    }
-
-    return false;
-}
-
 uint32_t HAL_OTA_FlashAddress()
 {
     return EXTERNAL_FLASH_OTA_ADDRESS;
@@ -69,92 +53,22 @@ uint16_t HAL_OTA_ChunkSize()
     return OTA_CHUNK_SIZE;
 }
 
-bool HAL_FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                          uint32_t length, uint8_t function, uint8_t flags)
-{
-    return false;
-}
-
-bool HAL_FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                             uint32_t length)
-{
-    return false;
-}
-
-bool HAL_FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                             uint32_t length, uint8_t function, uint8_t flags)
-{
-    return false;
-}
-
-bool HAL_FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                                           flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                           uint32_t length, uint8_t function, uint8_t flags)
-{
-    return false;
-}
-
-bool HAL_FLASH_ClearFactoryResetModuleSlot(void)
-{
-    return false;
-}
-
-bool HAL_FLASH_RestoreFromFactoryResetModuleSlot(void)
-{
-    return false;
-}
-
-void HAL_FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
-{
-    //Not Applicable
-}
-
-void HAL_FLASH_WriteProtectionEnable(uint32_t FLASH_Sectors)
-{
-    FLASH_WriteProtection_Enable(FLASH_Sectors);
-}
-
-void HAL_FLASH_WriteProtectionDisable(uint32_t FLASH_Sectors)
-{
-    FLASH_WriteProtection_Disable(FLASH_Sectors);
-}
-
-void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize) 
+bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved) 
 {
     FLASH_Begin(sFLASH_Address, fileSize);
+    return true;
 }
 
-int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize) 
+int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize,  void* reserved) 
 {
     return FLASH_Update(pBuffer, address, bufferSize);
 }
 
-void HAL_FLASH_End(void) 
+hal_update_complete_t HAL_FLASH_End( void* reserved) 
 {
     FLASH_End();
+    return HAL_UPDATE_APPLIED_PENDING_RESTART;
 }
-
-uint32_t HAL_FLASH_ModuleAddress(uint32_t address)
-{
-    //Only implemented in photon at present
-    return 0;
-}
-
-uint32_t HAL_FLASH_ModuleLength(uint32_t address)
-{
-    //Only implemented in photon at present
-    return 0;
-}
-
-bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length)
-{
-    //Only implemented in photon at present
-    return false;
-}
-
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {

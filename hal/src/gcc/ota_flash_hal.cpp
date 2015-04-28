@@ -19,17 +19,19 @@ uint16_t HAL_OTA_ChunkSize()
     return 0;
 }
 
-void HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize) 
+bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved) 
 {    
+    return false;
 }
 
-uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t address, uint32_t bufferSize) 
+uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t address, uint32_t bufferSize, void* reserved) 
 {
     return 0;
 }
 
-void HAL_FLASH_End(void) 
+ hal_update_complete_t HAL_FLASH_End(void* reserved) 
 {    
+     return HAL_UPDATE_ERROR;
 }
 
 #define EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH 128
