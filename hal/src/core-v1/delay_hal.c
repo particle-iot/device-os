@@ -44,8 +44,10 @@ volatile uint32_t TimingDelay;
 void HAL_Delay_Milliseconds(uint32_t nTime)
 {
     TimingDelay = nTime;
-
-    while (TimingDelay != 0x00);
+    
+    while (TimingDelay != 0x00) {
+        KICK_WDT();
+    };
 }
 
 /*******************************************************************************

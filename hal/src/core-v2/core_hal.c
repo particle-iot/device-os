@@ -40,6 +40,7 @@
 #include "hw_config.h"
 #include "service_debug.h"
 #include "flash_mal.h"
+#include <stdatomic.h>
 
 /**
  * Start of interrupt vector table.
@@ -203,7 +204,7 @@ void HAL_Core_Config(void)
 }
 
 #if !MODULAR_FIRMWARE
-__attribute__((section(".early_startup.HAL_Core_Config"))) uint32_t startup = (uint32_t)&HAL_Core_Config;
+__attribute__((externally_visible, section(".early_startup.HAL_Core_Config"))) uint32_t startup = (uint32_t)&HAL_Core_Config;
 #endif
 
 void HAL_Core_Setup(void) {
@@ -447,7 +448,7 @@ void SysTickOverride(void)
 
     if (TimingDelay != 0x00)
     {
-        TimingDelay--;
+        __sync_sub_and_fetch(&TimingDelay, 1);        
     }
 
     HAL_SysTick_Handler();

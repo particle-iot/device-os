@@ -1,29 +1,9 @@
-/*
-*****************************************************************************
-**
-**  File        : linker_stm32f2xx.ld
-**
-**  Abstract    : Linker script for STM32F205xx Device with
-**                1MByte FLASH, 128KByte SRAM
-**
-**                Set heap size, stack size and stack location according
-**                to application requirements.
-**
-**                Set memory bank area and size if external memory is used.
-**
-**  Target      : STMicroelectronics STM32
-**
-**  Environment : Eclipse-CDT and GNU Tools ARM Embedded. 
-**
-*****************************************************************************
-*/
-
 /* default stack sizes. 
 
 These are used by the startup in order to allocate stacks for the different modes.
 */
 
-__Stack_Size = 1024 ;
+__Stack_Size = 2048 ;
 
 PROVIDE ( _Stack_Size = __Stack_Size ) ;
 
@@ -35,25 +15,17 @@ PROVIDE ( _Stack_Init = __Stack_Init ) ;
 /*
 There will be a link error if there is not this amount of RAM free at the end.
 */
-_Minimum_Stack_Size = 0x100 ;
+_Minimum_Stack_Size = 0x1400;
 
 /* include the memory spaces definitions sub-script */
 /*
-Linker subscript for STM32F205xx definitions with 1024K Flash and 128K RAM
-*/
+Linker subscript for STM32F10x definitions with 128K Flash and 20K RAM */
 
 /* Memory Spaces Definitions */
 
-MEMORY
-{
-  RAM (xrw)     : ORIGIN = 0x20000000, LENGTH = 128K
-  APP_FLASH (rx)    : ORIGIN = 0x08000000, LENGTH = 16K
-  DCT1_FLASH (rx) : ORIGIN = 0x08004000, LENGTH = 16K
-  DCT2_FLASH (rx) : ORIGIN = 0x08008000, LENGTH = 16K
-}
 
 /* higher address of the user mode stack */
-_estack = 0x20020000;	/* end of 128K SRAM */
+_estack = ORIGIN(RAM)+LENGTH(RAM);
 
 /* include the sections management sub-script for FLASH mode */
 
@@ -93,18 +65,46 @@ SECTIONS
         *(.glue_7t)
 
 	    . = ALIGN(4);
-   	 _etext = .;
-	    /* This is used by the startup in order to initialize the .data secion */
-   	 
+   	  _etext = .;
+    } >APP_FLASH
+ 
+    .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >APP_FLASH
+    .ARM : {
+        __exidx_start = .;
+        *(.ARM.exidx*)
+        __exidx_end = .;
+    } >APP_FLASH
+ 
+    .preinit_array : {
+        PROVIDE_HIDDEN (__preinit_array_start = .);
+        KEEP (*(.preinit_array*))
+        PROVIDE_HIDDEN (__preinit_array_end = .);
     } >APP_FLASH
 
+    .init_array : {
+        PROVIDE_HIDDEN (__init_array_start = .);
+        KEEP (*(SORT(.init_array.*)))
+        KEEP (*(.init_array*))
+        PROVIDE_HIDDEN (__init_array_end = .);
+    } >APP_FLASH
+
+    .fini_array : {
+        PROVIDE_HIDDEN (__fini_array_start = .);
+        KEEP (*(.fini_array*))
+        KEEP (*(SORT(.fini_array.*)))
+        PROVIDE_HIDDEN (__fini_array_end = .);
+    } >APP_FLASH
+ 
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
     but the loader puts the initial values in the FLASH (inidata).
     It is one task of the startup to copy the initial values from FLASH to RAM. */
     .data  :
     {
+        /* This is used by the startup to initialize .data  section */
         _sidata = LOADADDR(.data);
+
+
 	    . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
@@ -150,7 +150,7 @@ SECTIONS
 	    . = ALIGN(4);
         _eusrstack = . ;
     } >RAM
-       
+   
     /* after that it's only debugging information. */
     
     /* remove the debugging information from the standard libraries */
@@ -194,17 +194,8 @@ SECTIONS
     .debug_funcnames 0 : { *(.debug_funcnames) }
     .debug_typenames 0 : { *(.debug_typenames) }
     .debug_varnames  0 : { *(.debug_varnames) }
-
+    
     INCLUDE module_end.ld
 }
 
-
-PROVIDE( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH ));
-PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
-PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
-PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
-
-ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
-ASSERT ( link_module_info_start - ORIGIN(APP_FLASH) == 0x184,  "module info not where expected" ) 
-ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
-ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
+INCLUDE module_asserts.ld

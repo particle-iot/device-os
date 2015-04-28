@@ -2,6 +2,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "rgbled.h"
+#include <stdio.h>
 
 /**
  * Handles the notification of LED change

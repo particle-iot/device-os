@@ -32,7 +32,7 @@ SECTIONS
     {
         . = ALIGN(4);
         link_module_info_start = .;
-        KEEP(*module_info.o(.rodata.module_info))
+        KEEP(*.o(.modinfo.module_info))
         link_module_info_end = .;
     }>APP_FLASH AT> APP_FLASH
 
@@ -57,7 +57,7 @@ SECTIONS
         KEEP(*(.init_array))
         KEEP (*crtbegin.o(.ctors))
         link_early_startup_begin = .;
-        KEEP(*(.early_startup.*))
+        KEEP(*.o(.early_startup.*))
         link_early_startup_end = .;
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
@@ -164,7 +164,7 @@ SECTIONS
     {
         . = ALIGN(., 4) ;
         link_module_info_suffix_start = .;
-        KEEP(*module_info.o(.modinfo.module_info_suffix))
+        KEEP(*.o(.modinfo.module_info_suffix))
         link_module_info_suffix_end = .;
     }>APP_FLASH AT> APP_FLASH
 
@@ -176,7 +176,7 @@ SECTIONS
     .module_info_crc :
     {
         link_module_info_crc_start = .;
-        KEEP(*module_info.o(.modinfo.module_info_crc))
+        KEEP(*.o(.modinfo.module_info_crc))
         link_module_info_crc_end = .;
     }>APP_FLASH AT> APP_FLASH
 

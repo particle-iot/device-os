@@ -27,10 +27,8 @@
 #ifndef __SPARK_WIRING_PRINT_
 #define __SPARK_WIRING_PRINT_
 
-#include <stdio.h> // for size_t
-#include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
-#include <ctype.h>
 #include <stdint.h> // for uint8_t
 
 #include "spark_wiring_string.h"

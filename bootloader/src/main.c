@@ -39,9 +39,9 @@ typedef  void (*pFunction)(void);
 
 uint8_t REFLASH_FROM_BACKUP = 0;	//0, 1
 uint8_t OTA_FLASH_AVAILABLE = 0;	//0, 1
-uint8_t USB_DFU_MODE = 0;		//0, 1
-uint8_t FACTORY_RESET_MODE = 0;		//0, 1
-uint8_t SAFE_MODE = 0;
+volatile uint8_t USB_DFU_MODE = 0;		//0, 1
+volatile uint8_t FACTORY_RESET_MODE = 0;		//0, 1
+volatile uint8_t SAFE_MODE = 0;
 
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
@@ -361,7 +361,7 @@ int main(void)
                 
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
-        if (is_application_valid(ApplicationAddress))
+            if (is_application_valid(ApplicationAddress))
         {
             // Jump to user application
             JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);

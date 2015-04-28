@@ -4,10 +4,10 @@
 #include "rgbled_hal.h"
 
 
-uint8_t LED_RGB_OVERRIDE = 0;
-uint8_t LED_RGB_BRIGHTNESS = 96;
-uint32_t lastSignalColor = 0;
-uint32_t lastRGBColor = 0;
+volatile uint8_t LED_RGB_OVERRIDE = 0;
+volatile uint8_t LED_RGB_BRIGHTNESS = 96;
+volatile uint32_t lastSignalColor = 0;
+volatile uint32_t lastRGBColor = 0;
 
 /* Led Fading. */
 #define NUM_LED_FADE_STEPS 100 /* Called at 100Hz, fade over 1 second. */

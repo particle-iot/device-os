@@ -94,14 +94,14 @@ CCASSERT(SPI_HEADER_SIZE == sizeof(spi_readCommand));
 
 
 typedef uint32_t intState;
-inline intState DISABLE_INT()
+inline static intState DISABLE_INT()
 {
   intState is = __get_PRIMASK();
   __disable_irq();
   return is;
 }
 
-inline  int ENABLE_INT(intState is)
+inline static int ENABLE_INT(intState is)
 {
     int rv = ((is & 1) == 0);
     if ((is & 1) == 0) {
