@@ -6,7 +6,9 @@ MEMORY
 {
     APP_FLASH                  (rx)  : ORIGIN = 0x080A0000,     LENGTH = 128K
 
-    SRAM      (rwx) : ORIGIN = 0x20000300, LENGTH = 176288
+     /* The SRAM Origin is system_part1_module_ram_end, and extends to
+        system_static_ram_start */
+    SRAM      (rwx) : ORIGIN = 0x20000300, LENGTH = 0x20000 - 0x300 - 40K
 }
 
 SECTIONS
@@ -128,6 +130,8 @@ SECTIONS
 
 }
 
+PROVIDE ( end = system_heap_end );
+
 ASSERT ( ORIGIN(SRAM) == system_part1_module_ram_end, "Origin of SRAM should be at system_part1_module_ram_end" );
 
 min_heap_end = link_heap_start + min_heap_size;
@@ -154,3 +158,8 @@ ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc
 
 ASSERT ( user_module_info == link_module_info_start, "module info start not where expected" ); 
 ASSERT ( user_module_info_end == link_module_info_end, "module info end not where expected" );
+
+ASSERT ( ORIGIN(SRAM) == system_part1_module_ram_end, "ORIGIN of user SRAM should equal system_part1_module_ram_end" );
+
+user_sram_end =  ( ORIGIN(SRAM) + LENGTH(SRAM) );
+ASSERT ( user_sram_end == system_static_ram_start, "end of user SRAM should be at the start of system sram" );
