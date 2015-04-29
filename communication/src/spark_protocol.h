@@ -183,6 +183,7 @@ class SparkProtocol
 
     size_t wrap(unsigned char *buf, size_t msglen);
     bool handle_received_message(void);
+    bool handle_function_call(msg& message);
     unsigned short next_message_id();
     unsigned char next_token();
     void encrypt(unsigned char *buf, int length);

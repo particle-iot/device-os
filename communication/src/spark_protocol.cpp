@@ -1249,6 +1249,67 @@ bool SparkProtocol::handle_update_done(msg& message)
     return true;    
 }
 
+bool SparkProtocol::handle_function_call(msg& message) 
+{
+    uint8_t* msg_to_send = message.response;
+    // send ACK    
+    *msg_to_send = 0;
+    *(msg_to_send + 1) = 16;
+    empty_ack(msg_to_send + 2, queue[2], queue[3]);
+    if (0 > blocking_send(msg_to_send, 18))
+    {
+      // error
+      return false;
+    }
+
+    // copy the function key
+    char function_key[13];
+    memset(function_key, 0, 13);
+    int function_key_length = queue[7] & 0x0F;
+    memcpy(function_key, queue + 8, function_key_length);
+
+    // How long is the argument?
+    int q_index = 8 + function_key_length;
+    int query_length = queue[q_index] & 0x0F;
+    if (13 == query_length)
+    {
+      ++q_index;
+      query_length = 13 + queue[q_index];
+    }
+    else if (14 == query_length)
+    {
+      ++q_index;
+      query_length = queue[q_index] << 8;
+      ++q_index;
+      query_length |= queue[q_index];
+      query_length += 269;
+    }
+
+    // allocated memory bounds check
+    if (MAX_FUNCTION_ARG_LENGTH <= query_length)
+    {
+      return false;
+    }
+
+    // save a copy of the argument
+    memcpy(function_arg, queue + q_index + 1, query_length);
+    function_arg[query_length] = 0; // null terminate string
+
+    // call the given user function
+    int return_value = descriptor.call_function(function_key, function_arg);
+
+    // send return value
+    *msg_to_send = 0;
+    *(msg_to_send + 1) = 16;
+    function_return(msg_to_send + 2, message.token, return_value);
+    if (0 > blocking_send(msg_to_send, 18))
+    {
+      // error
+      return false;
+    }
+    return true;
+}
+
 bool SparkProtocol::handle_received_message(void)
 {    
   last_message_millis = callbacks.millis();
@@ -1288,64 +1349,9 @@ bool SparkProtocol::handle_received_message(void)
       break;
     }
     case CoAPMessageType::FUNCTION_CALL:
-    {
-      // send ACK
-      *msg_to_send = 0;
-      *(msg_to_send + 1) = 16;
-      empty_ack(msg_to_send + 2, queue[2], queue[3]);
-      if (0 > blocking_send(msg_to_send, 18))
-      {
-        // error
-        return false;
-      }
-
-      // copy the function key
-      char function_key[13];
-      memset(function_key, 0, 13);
-      int function_key_length = queue[7] & 0x0F;
-      memcpy(function_key, queue + 8, function_key_length);
-
-      // How long is the argument?
-      int q_index = 8 + function_key_length;
-      int query_length = queue[q_index] & 0x0F;
-      if (13 == query_length)
-      {
-        ++q_index;
-        query_length = 13 + queue[q_index];
-      }
-      else if (14 == query_length)
-      {
-        ++q_index;
-        query_length = queue[q_index] << 8;
-        ++q_index;
-        query_length |= queue[q_index];
-        query_length += 269;
-      }
-
-      // allocated memory bounds check
-      if (MAX_FUNCTION_ARG_LENGTH <= query_length)
-      {
-        return false;
-      }
-
-      // save a copy of the argument
-      memcpy(function_arg, queue + q_index + 1, query_length);
-      function_arg[query_length] = 0; // null terminate string
-
-      // call the given user function
-      int return_value = descriptor.call_function(function_key, function_arg);
-
-      // send return value
-      *msg_to_send = 0;
-      *(msg_to_send + 1) = 16;
-      function_return(msg_to_send + 2, token, return_value);
-      if (0 > blocking_send(msg_to_send, 18))
-      {
-        // error
-        return false;
-      }
-      break;
-    }
+        if (!handle_function_call(message))
+            return false;
+        break;
     case CoAPMessageType::VARIABLE_REQUEST:
     {
       // copy the variable key
