@@ -1251,17 +1251,6 @@ bool SparkProtocol::handle_update_done(msg& message)
 
 bool SparkProtocol::handle_function_call(msg& message) 
 {
-    uint8_t* msg_to_send = message.response;
-    // send ACK    
-    *msg_to_send = 0;
-    *(msg_to_send + 1) = 16;
-    empty_ack(msg_to_send + 2, queue[2], queue[3]);
-    if (0 > blocking_send(msg_to_send, 18))
-    {
-      // error
-      return false;
-    }
-
     // copy the function key
     char function_key[13];
     memset(function_key, 0, 13);
@@ -1285,16 +1274,28 @@ bool SparkProtocol::handle_function_call(msg& message)
       query_length += 269;
     }
 
+    bool has_function = false;
+    
     // allocated memory bounds check
-    if (MAX_FUNCTION_ARG_LENGTH <= query_length)
+    if (MAX_FUNCTION_ARG_LENGTH > query_length)
     {
+        // save a copy of the argument
+        memcpy(function_arg, queue + q_index + 1, query_length);
+        function_arg[query_length] = 0; // null terminate string
+        has_function = true;
+    }
+    
+    uint8_t* msg_to_send = message.response;
+    // send ACK    
+    msg_to_send[0] = 0;
+    msg_to_send[1] = 16;    
+    coded_ack(msg_to_send + 2, has_function ? 0x00 : RESPONSE_CODE(4,00), queue[2], queue[3]);
+    if (0 > blocking_send(msg_to_send, 18))
+    {
+      // error
       return false;
     }
-
-    // save a copy of the argument
-    memcpy(function_arg, queue + q_index + 1, query_length);
-    function_arg[query_length] = 0; // null terminate string
-
+    
     // call the given user function
     int return_value = descriptor.call_function(function_key, function_arg);
 
