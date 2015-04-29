@@ -30,7 +30,8 @@ void SystemClass::reset(void)
 
 void SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
-    HAL_RTC_Set_UnixAlarm((time_t) seconds);
+    if (seconds)
+        HAL_RTC_Set_UnixAlarm((time_t) seconds);
 
     switch (sleepMode)
     {

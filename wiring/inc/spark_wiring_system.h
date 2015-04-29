@@ -53,7 +53,7 @@ public:
     static void dfu(bool persist=false);
     static void reset(void);
 
-    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds);
+    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0);
     static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }    
     static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds=0);
     static String deviceID(void) { return spark_deviceID(); }
