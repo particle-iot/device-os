@@ -31,8 +31,6 @@ LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 ifeq ("$(USE_PRINTF_FLOAT)","y")
 LDFLAGS += -u _printf_float
 endif
-LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
-
 
 SYSTEM_PART2_SRC_PATH = $(SYSTEM_PART2_MODULE_PATH)/src
 

@@ -22,7 +22,7 @@ MEMORY
 
        The value given here is the sum of system_static_ram_size and stack_size
     */      
-    SRAM      (rwx) : ORIGIN = 0x20020000 - 38K, LENGTH = 38K
+    SRAM      (rwx) : ORIGIN = 0x20020000 - 40K, LENGTH = 40K
 }
 
 
@@ -99,6 +99,8 @@ SECTIONS
 
     /* Heap comes immediately after system-part1 */
     link_heap_location = ALIGN(system_part1_module_ram_end, 4);
+
+    link_heap_location_end = ORIGIN(SRAM);
     
     padding_length = ALIGN(system_static_ram_start - ORIGIN(SRAM), 512);
 
@@ -247,3 +249,4 @@ ASSERT ( system_part2_module_info_end == link_module_info_end, "part2 module inf
 
 ASSERT ( ORIGIN(SRAM) == system_static_ram_start, "ORIGIN of SRAM should be equal to system_static_ram_start. Adjust by hand to obtain the correct address and length. ");
 ASSERT ( LENGTH(SRAM) == ( system_static_ram_size + stack_size ), "LENGTH of SRAM should be equal to system_static_ram_size plus stack_size. Adjust by hand to obtain the correct address and length. ");
+ASSERT ( system_heap_end == link_heap_location_end , "heap end locations differ" );
