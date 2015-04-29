@@ -184,9 +184,6 @@ void HAL_Core_Config(void)
     Load_SystemFlags();
 #endif
 
-    /* Reset system to disable IWDG if enabled in bootloader */
-    IWDG_Reset_Enable(0);   
-
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
     
@@ -208,6 +205,8 @@ void HAL_Core_Config(void)
                                       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
                                       FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also    
 #endif
+    
+    
 }
 
 #if !MODULAR_FIRMWARE
@@ -215,11 +214,16 @@ __attribute__((externally_visible, section(".early_startup.HAL_Core_Config"))) u
 #endif
 
 void HAL_Core_Setup(void) {
-        
+    
+    
     // Now that main() has been executed, we can plug in the original WICED ISR in the
     // ISR chain.)
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[SysTickIndex] = (uint32_t)SysTickChain;
+    
+    /* Reset system to disable IWDG if enabled in bootloader */
+    IWDG_Reset_Enable(0);   
+
 }
 
 #if MODULAR_FIRMWARE
