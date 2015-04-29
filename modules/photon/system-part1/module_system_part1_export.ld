@@ -9,7 +9,7 @@ system_part1_start = 0x8020000;
  * This is much more than we need but ensures the RAM vtor table in part2 is
  * 512-byte aligned.
  */
-system_part1_module_ram_end = 0x20000200;
+system_part1_module_ram_end = 0x20000300;
 
 /**
  * A fake VTOR table so that the bootloader can jump to this module and set up the stack,
