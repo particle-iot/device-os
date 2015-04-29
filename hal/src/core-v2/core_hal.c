@@ -56,6 +56,7 @@ const unsigned USART1Index = 53;
 const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
 
 void SysTickOverride(void);
+void SysTickChain(void);
 void Mode_Button_EXTI_irq(void);
 void HAL_USART1_Handler(void);
 void HardFault_Handler(void);
@@ -183,11 +184,17 @@ void HAL_Core_Config(void)
     Load_SystemFlags();
 #endif
 
+    /* Reset system to disable IWDG if enabled in bootloader */
+    IWDG_Reset_Enable(0);   
+
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
-
-    override_interrupts();
-
+    
+    // override the WICED interrupts, specifically SysTick - there is a bug
+    // where WICED isn't ready for a SysTick until after main() has been called to
+    // fully intialize the RTOS.
+    override_interrupts();   
+    
 #if MODULAR_FIRMWARE    
     // write protect system module parts if not already protected
     FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);            
@@ -208,11 +215,11 @@ __attribute__((externally_visible, section(".early_startup.HAL_Core_Config"))) u
 #endif
 
 void HAL_Core_Setup(void) {
-    
-    // for some readon, putting this at the end of HAL_Core_Config causes the device to stall.
-    // 
-    /* Reset system to disable IWDG if enabled in bootloader */
-    IWDG_Reset_Enable(0);   
+        
+    // Now that main() has been executed, we can plug in the original WICED ISR in the
+    // ISR chain.)
+    uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
+    isrs[SysTickIndex] = (uint32_t)SysTickChain;
 }
 
 #if MODULAR_FIRMWARE
@@ -434,16 +441,21 @@ void application_start()
     app_setup_and_loop();
 }
 
+void SysTickChain()
+{
+    void (*chain)(void) = (void (*)(void))((uint32_t*)&link_interrupt_vectors_location)[SysTickIndex];
+
+    chain();
+
+    SysTickOverride();
+}
+
 /**
  * The following tick hook will only get called if configUSE_TICK_HOOK
  * is set to 1 within FreeRTOSConfig.h
  */
 void SysTickOverride(void)
 {    
-    void (*chain)(void) = (void (*)(void))((uint32_t*)&link_interrupt_vectors_location)[SysTickIndex];
-
-    chain();
-
     System1MsTick();
 
     if (TimingDelay != 0x00)
