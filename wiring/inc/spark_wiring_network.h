@@ -46,7 +46,7 @@ public:
     static void connect(void) __attribute__((deprecated("Please use WiFi.connect() instead")));
     static void disconnect(void) __attribute__((deprecated("Please use WiFi.disconnect() instead")));
     static bool connecting(void) __attribute__((deprecated("Please use WiFi.connecting() instead")));
-    static bool ready(void) __attribute__((deprecated("Please use WiFi.ready() instead")));
+    virtual bool ready(void);
 };
 
 // Defined as the primary network
