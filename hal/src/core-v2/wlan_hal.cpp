@@ -383,8 +383,8 @@ void wlan_set_error_count(uint32_t errorCount)
 {
 }
 
-void setAddress(wiced_ip_address_t* addr, uint8_t* target) {
-    memcpy(target, (void*)&addr->ip.v4, 4);
+void setAddress(wiced_ip_address_t* addr, HAL_IPAddress& target) {
+    memcpy(target.ipv4, (void*)&addr->ip.v4, 4);
 }
 
 void wlan_fetch_ipconfig(WLanConfig* config) 
@@ -396,18 +396,18 @@ void wlan_fetch_ipconfig(WLanConfig* config)
     if (wiced_network_is_up(ifup)) {
     
         if (wiced_ip_get_ipv4_address(ifup, &addr)==WICED_SUCCESS)
-            setAddress(&addr, config->aucIP);
+            setAddress(&addr, config->nw.aucIP);
 
         if (wiced_ip_get_netmask(ifup, &addr)==WICED_SUCCESS)
-            setAddress(&addr, config->aucSubnetMask);
+            setAddress(&addr, config->nw.aucSubnetMask);
 
         if (wiced_ip_get_gateway_address(ifup, &addr)==WICED_SUCCESS)
-            setAddress(&addr, config->aucDefaultGateway);
+            setAddress(&addr, config->nw.aucDefaultGateway);
     }
     
     wiced_mac_t my_mac_address;
     if (wiced_wifi_get_mac_address( &my_mac_address)==WICED_SUCCESS) 
-        memcpy(config->uaMacAddr, &my_mac_address, 6);
+        memcpy(config->nw.uaMacAddr, &my_mac_address, 6);
 
     wl_bss_info_t ap_info;
     wiced_security_t sec;

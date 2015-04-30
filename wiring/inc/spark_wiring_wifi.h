@@ -42,32 +42,45 @@ enum SecurityType {
     WPA2 = WLAN_SEC_WPA2        
 };
     
-class WiFiClass
+class WiFiClass : public NetworkClass
 {
     
 public:
     WiFiClass() {}
     ~WiFiClass() {}
 
+    operator network_handle_t() {
+        return 0;
+    }
+    
+    WLanConfig* wifi_config() {
+        return (WLanConfig*)network_config(*this, 0, NULL);
+    }
+    
+    /**
+     * Retrieves a 6-octet MAC address
+     * @param mac
+     * @return 
+     */
     uint8_t* macAddress(uint8_t *mac) {
-        memcpy(mac, network_config()->uaMacAddr, 6);
+        memcpy(mac, wifi_config()->nw.uaMacAddr, 6);
         return mac;
     }
 
     IPAddress localIP() {
-        return IPAddress(network_config()->aucIP);
+        return IPAddress(wifi_config()->nw.aucIP);
     }
 
     IPAddress subnetMask() {
-        return IPAddress(network_config()->aucSubnetMask);
+        return IPAddress(wifi_config()->nw.aucSubnetMask);
     }
 
     IPAddress gatewayIP() {
-        return IPAddress(network_config()->aucDefaultGateway);
+        return IPAddress(wifi_config()->nw.aucDefaultGateway);
     }
 
     const char *SSID() {
-        return (const char *) network_config()->uaSSID;
+        return (const char *) wifi_config()->uaSSID;
     }
 
     int8_t RSSI();
@@ -76,7 +89,7 @@ public:
     }
 
     uint32_t ping(IPAddress remoteIP, uint8_t nTries) {
-        return inet_ping(remoteIP.raw_address(), nTries);
+        return inet_ping(&remoteIP.raw(), nTries, NULL);
     }
 
     void connect(void) {

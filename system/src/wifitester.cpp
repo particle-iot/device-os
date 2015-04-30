@@ -129,8 +129,9 @@ void WiFiTester::printInfo() {
     String deviceID = Spark.deviceID();
 
     WLanConfig ip_config;
+    ip_config.size = sizeof(ip_config);
     wlan_fetch_ipconfig(&ip_config);
-    uint8_t* addr = ip_config.uaMacAddr;
+    uint8_t* addr = ip_config.nw.uaMacAddr;
     String macAddress;
     bool first = true;
     for (int m = 0; m < 6; m++) {

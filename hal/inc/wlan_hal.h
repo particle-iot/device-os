@@ -29,7 +29,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "debug.h"
+#include "inet_hal.h"
 #include "socket_hal.h"
+
 
 #ifdef	__cplusplus
 extern "C" {
@@ -76,14 +78,10 @@ typedef enum
 {
   ANT_INTERNAL = 0, ANT_EXTERNAL = 1, ANT_AUTO = 3
 } WLanSelectAntenna_TypeDef;
-        
+
 typedef struct _WLanConfig_t {    
-    uint8_t aucIP[4];             // byte 0 is MSB, byte 3 is LSB
-    uint8_t aucSubnetMask[4];     // byte 0 is MSB, byte 3 is LSB
-    uint8_t aucDefaultGateway[4]; // byte 0 is MSB, byte 3 is LSB
-    uint8_t aucDHCPServer[4];     // byte 0 is MSB, byte 3 is LSB
-    uint8_t aucDNSServer[4];      // byte 0 is MSB, byte 3 is LSB
-    uint8_t uaMacAddr[6];
+    uint16_t size;
+    NetworkConfig nw;
     uint8_t uaSSID[33];
 } WLanConfig;
 

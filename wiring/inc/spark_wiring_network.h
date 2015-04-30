@@ -26,7 +26,9 @@
 #ifndef __SPARK_WIRING_NETWORK_H
 #define __SPARK_WIRING_NETWORK_H
 
-#include "spark_wiring.h"
+#include "spark_wiring_ipaddress.h"
+
+namespace spark {
 
 //Retained for compatibility and to flag compiler warnings as build errors
 class NetworkClass
@@ -47,6 +49,9 @@ public:
     static bool ready(void) __attribute__((deprecated("Please use WiFi.ready() instead")));
 };
 
-extern NetworkClass Network;
+// Defined as the primary network
+extern NetworkClass& Network;
+
+}
 
 #endif

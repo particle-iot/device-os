@@ -32,6 +32,40 @@ extern "C" {
 
 #include <stdint.h>
 
+#if PLATFORM_ID<4
+#define HAL_IPv6 0
+#else
+#define HAL_IPv6 1
+#endif
+
+#if HAL_IPv6
+typedef struct _HAL_IPAddress_t {
+    uint8_t v;              // 4 for Ipv4, 6 for Ipv6
+    union {
+        uint8_t ipv4[4];    // in network order (big-endian)        
+        uint32_t u32;       // convenient access (is reversed)
+        uint8_t ipv6[16];  
+    };
+} HAL_IPAddress;
+#else
+typedef struct _HAL_IPAddress_t {
+    union {
+        uint8_t ipv4[4];    
+        uint32_t u32;
+    };
+} HAL_IPAddress;
+#endif
+
+typedef struct _NetworkConfig_t {
+    HAL_IPAddress aucIP;             // byte 0 is MSB, byte 3 is LSB
+    HAL_IPAddress aucSubnetMask;     // byte 0 is MSB, byte 3 is LSB
+    HAL_IPAddress aucDefaultGateway; // byte 0 is MSB, byte 3 is LSB
+    HAL_IPAddress aucDHCPServer;     // byte 0 is MSB, byte 3 is LSB
+    HAL_IPAddress aucDNSServer;      // byte 0 is MSB, byte 3 is LSB
+    uint8_t uaMacAddr[6];
+} NetworkConfig;
+
+    
 /**
  * 
  * @param hostname      buffer to receive the hostname
@@ -39,7 +73,7 @@ extern "C" {
  * @param out_ip_addr   The ip address in network byte order.
  * @return 
  */
-int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr);
+int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr, void* reserved);
 
 
 /**
@@ -48,7 +82,7 @@ int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, uint32_t* out
  * @param nTries
  * @return >0 on success. 0 on timeout? <0 on error.
  */
-int inet_ping(uint8_t remoteIP[4], uint8_t nTries);
+int inet_ping(const HAL_IPAddress* address, uint8_t nTries, void* reserved);
 
 
 #ifdef	__cplusplus

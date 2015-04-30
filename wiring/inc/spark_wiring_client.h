@@ -39,8 +39,6 @@ public:
   virtual void stop() = 0;
   virtual uint8_t connected() = 0;
   virtual operator bool() = 0;
-protected:
-  const uint8_t* rawIPAddress(IPAddress& addr) { return addr.raw_address(); };
 };
 
 #endif

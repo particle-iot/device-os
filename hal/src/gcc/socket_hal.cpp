@@ -80,7 +80,7 @@ bool is_valid(ip::tcp::socket& handle) {
     return &handle!=&invalid();
 }
 
-int inet_gethostbyname(char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr)
+int inet_gethostbyname(char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr)
 {
     *out_ip_addr = 0;
     ip::tcp::resolver resolver(io_service);

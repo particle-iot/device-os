@@ -105,14 +105,6 @@ void reverseIP(uint8_t* ip) {
     swap(ip, 1, 2);
 }
 
-void fixup_ipconfig(WLanConfig* config) {
-    reverseIP(config->aucIP);
-    reverseIP(config->aucSubnetMask);
-    reverseIP(config->aucDefaultGateway);
-    reverseIP(config->aucDHCPServer);
-    reverseIP(config->aucDNSServer);
-}
-
 int wlan_connect_init() 
 {
     wlan_start(0);//No other option to connect other than wlan_start()
@@ -156,7 +148,6 @@ wlan_result_t wlan_connect_finalize()
     // enable connection from stored profiles
     return wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);//Enable auto connect    
 }
-
 
 void Set_NetApp_Timeout(void)
 {
@@ -210,9 +201,9 @@ int wlan_connected_rssi()
 netapp_pingreport_args_t ping_report;
 uint8_t ping_report_num;
 
-int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
+int inet_ping(const HAL_IPAddress* ip, uint8_t nTries, void* reserved) {
     int result = 0;
-    uint32_t pingIPAddr = remoteIP[3] << 24 | remoteIP[2] << 16 | remoteIP[1] << 8 | remoteIP[0];
+    uint32_t pingIPAddr = ip->u32;
     unsigned long pingSize = 32UL;
     unsigned long pingTimeout = 500UL; // in milliseconds
 
@@ -455,8 +446,7 @@ void wlan_fetch_ipconfig(WLanConfig* config) {
     // the WLanConfig and the CC3000 structure are identical
     netapp_ipconfig((void*)config);
     // the MAC address isn't available until after the first WLAN connection is made, so fetch it from nvmem
-    nvmem_get_mac_address(config->uaMacAddr);
-    fixup_ipconfig(config);
+    nvmem_get_mac_address(config->nw.uaMacAddr);    
 }
 
 void SPARK_WLAN_SmartConfigProcess()

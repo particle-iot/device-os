@@ -30,6 +30,7 @@
 #include "socket_hal.h"
 #include "inet_hal.h"
 #include "spark_macros.h"
+#include "spark_wiring_network.h"
 
 using namespace spark;
 
@@ -46,7 +47,7 @@ UDP::UDP() : _sock(SOCKET_INVALID)
 uint8_t UDP::begin(uint16_t port) 
 {
     bool bound = 0;
-	if(WiFi.ready())
+	if(Network.ready())
 	{
 	   _sock = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, port);
             DEBUG("socket=%d",_sock);
@@ -76,14 +77,13 @@ void UDP::stop()
 
 int UDP::beginPacket(const char *host, uint16_t port)
 {
-    if(WiFi.ready())
+    if(Network.ready())
     {
-        uint32_t ip_addr = 0;
+        HAL_IPAddress ip_addr;
 
-        if(inet_gethostbyname((char*)host, strlen(host), &ip_addr) == 0)
+        if(inet_gethostbyname((char*)host, strlen(host), &ip_addr, NULL) == 0)
         {
-            IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
-
+            IPAddress remote_addr(ip_addr);
             return beginPacket(remote_addr, port);
         }
     }
@@ -100,10 +100,10 @@ int UDP::beginPacket(IPAddress ip, uint16_t port)
 	_remoteSockAddr.sa_data[0] = (_remotePort & 0xFF00) >> 8;
 	_remoteSockAddr.sa_data[1] = (_remotePort & 0x00FF);
 
-	_remoteSockAddr.sa_data[2] = _remoteIP._address[0];
-	_remoteSockAddr.sa_data[3] = _remoteIP._address[1];
-	_remoteSockAddr.sa_data[4] = _remoteIP._address[2];
-	_remoteSockAddr.sa_data[5] = _remoteIP._address[3];
+	_remoteSockAddr.sa_data[2] = _remoteIP.address.ipv4[0];
+	_remoteSockAddr.sa_data[3] = _remoteIP.address.ipv4[1];
+	_remoteSockAddr.sa_data[4] = _remoteIP.address.ipv4[2];
+	_remoteSockAddr.sa_data[5] = _remoteIP.address.ipv4[3];
 
 	_remoteSockAddrLen = sizeof(_remoteSockAddr);
 
@@ -130,17 +130,17 @@ size_t UDP::write(const uint8_t *buffer, size_t size)
 int UDP::parsePacket()
 {
   // No data buffered
-    if(available() == 0 && WiFi.ready() && isOpen(_sock))
+    if(available() == 0 && Network.ready() && isOpen(_sock))
     {
         int ret = socket_receivefrom(_sock, _buffer, arraySize(_buffer), 0, &_remoteSockAddr, &_remoteSockAddrLen);
         if (ret > 0)
         {
             _remotePort = _remoteSockAddr.sa_data[0] << 8 | _remoteSockAddr.sa_data[1];
 
-            _remoteIP._address[0] = _remoteSockAddr.sa_data[2];
-            _remoteIP._address[1] = _remoteSockAddr.sa_data[3];
-            _remoteIP._address[2] = _remoteSockAddr.sa_data[4];
-            _remoteIP._address[3] = _remoteSockAddr.sa_data[5];
+            _remoteIP.address.ipv4[0] = _remoteSockAddr.sa_data[2];
+            _remoteIP.address.ipv4[1] = _remoteSockAddr.sa_data[3];
+            _remoteIP.address.ipv4[2] = _remoteSockAddr.sa_data[4];
+            _remoteIP.address.ipv4[3] = _remoteSockAddr.sa_data[5];
 
             _offset = 0;
             _total = ret;

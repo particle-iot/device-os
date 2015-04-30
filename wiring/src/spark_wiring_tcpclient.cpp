@@ -26,6 +26,7 @@
  */
 
 #include "spark_wiring_tcpclient.h"
+#include "spark_wiring_network.h"
 #include "system_task.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
@@ -53,15 +54,13 @@ TCPClient::TCPClient(sock_handle_t sock) : _sock(sock)
 int TCPClient::connect(const char* host, uint16_t port) 
 {
       int rv = 0;
-      if(WiFi.ready())
+      if(Network.ready())
       {
+        HAL_IPAddress ip_addr;
 
-        uint32_t ip_addr = 0;
-
-        if(inet_gethostbyname((char*)host, strlen(host), &ip_addr) == 0)
+        if(inet_gethostbyname(host, strlen(host), &ip_addr, NULL) == 0)
         {
-                IPAddress remote_addr(BYTE_N(ip_addr, 3), BYTE_N(ip_addr, 2), BYTE_N(ip_addr, 1), BYTE_N(ip_addr, 0));
-
+                IPAddress remote_addr(ip_addr);
                 return connect(remote_addr, port);
         }
         else
@@ -73,7 +72,7 @@ int TCPClient::connect(const char* host, uint16_t port)
 int TCPClient::connect(IPAddress ip, uint16_t port) 
 {
         int connected = 0;
-        if(WiFi.ready())
+        if(Network.ready())
         {
           sockaddr_t tSocketAddr;
           _sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, port);
@@ -88,10 +87,10 @@ int TCPClient::connect(IPAddress ip, uint16_t port)
             tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
             tSocketAddr.sa_data[1] = (port & 0x00FF);
 
-            tSocketAddr.sa_data[2] = ip._address[0];
-            tSocketAddr.sa_data[3] = ip._address[1];
-            tSocketAddr.sa_data[4] = ip._address[2];
-            tSocketAddr.sa_data[5] = ip._address[3];
+            tSocketAddr.sa_data[2] = ip.address.ipv4[0];        // Todo IPv6
+            tSocketAddr.sa_data[3] = ip.address.ipv4[1];
+            tSocketAddr.sa_data[4] = ip.address.ipv4[2];
+            tSocketAddr.sa_data[5] = ip.address.ipv4[3];
 
 
             uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
@@ -134,7 +133,7 @@ int TCPClient::available()
         flush_buffer();
     }
 
-    if(WiFi.ready() && isOpen(_sock))
+    if(Network.ready() && isOpen(_sock))
     {
         // Have room
         if ( _total < arraySize(_buffer))
@@ -214,7 +213,7 @@ uint8_t TCPClient::connected()
 
 uint8_t TCPClient::status()
 {
-  return (isOpen(_sock) && WiFi.ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(_sock)) ? 1 : 0);
+  return (isOpen(_sock) && Network.ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(_sock)) ? 1 : 0);
 }
 
 TCPClient::operator bool()

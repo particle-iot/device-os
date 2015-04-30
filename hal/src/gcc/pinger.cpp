@@ -248,13 +248,13 @@ private:
   std::size_t num_replies_;
 };
 
-int inet_ping(uint8_t remoteIP[4], uint8_t nTries)
+int inet_ping(const HAL_IPAddress* address, uint8_t nTries)
 { 
     MSG("pinging");
     int count = 0;
     try {
         boost::asio::io_service io_service;
-        Pinger p(io_service, remoteIP, nTries);
+        Pinger p(io_service, address->ipv4, nTries);
         io_service.run();
         count = p.replies();
     }

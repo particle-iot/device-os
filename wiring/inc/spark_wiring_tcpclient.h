@@ -27,7 +27,8 @@
 #define __SPARK_WIRING_TCPCLIENT_H
 
 #include "spark_wiring_client.h"
-#include "spark_wiring.h"
+#include "spark_wiring_ipaddress.h"
+#include "spark_wiring_print.h"
 #include "socket_hal.h"
 
 #define TCPCLIENT_BUF_MAX_SIZE	128

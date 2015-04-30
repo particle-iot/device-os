@@ -27,10 +27,11 @@
 #include "inet_hal.h"
 #include "socket.h"
 
-int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, uint32_t* out_ip_addr)
+int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr,
+    void* reserved)
 {
     // > 0 means success, which is zero.
-    return gethostbyname(hostname, hostnameLen, out_ip_addr)<0;
+    return gethostbyname(hostname, hostnameLen, &out_ip_addr->u32)<0;
 }
 
 // inet_ping in wlan_hal.c

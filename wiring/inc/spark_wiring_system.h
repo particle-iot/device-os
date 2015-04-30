@@ -23,6 +23,7 @@
 #ifndef SPARK_WIRING_SYSTEM_H
 #define	SPARK_WIRING_SYSTEM_H
 
+#include "spark_wiring_string.h"
 #include "system_mode.h"
 #include "system_update.h"
 #include "system_cloud.h"

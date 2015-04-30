@@ -25,6 +25,7 @@
 
 #include "spark_wiring_tcpclient.h"
 #include "spark_wiring_tcpserver.h"
+#include "spark_wiring_network.h"
 
 using namespace spark;
 
@@ -35,7 +36,7 @@ TCPServer::TCPServer(uint16_t port) : _port(port), _sock(SOCKET_INVALID), _clien
 
 void TCPServer::begin()
 {
-    if(!WiFi.ready())
+    if(!Network.ready())
     {
         return;
     }
@@ -50,7 +51,7 @@ TCPClient TCPServer::available()
         begin();
     }
 
-    if((!WiFi.ready()) || (_sock == SOCKET_INVALID))
+    if((!Network.ready()) || (_sock == SOCKET_INVALID))
     {
         _sock = SOCKET_INVALID;
         _client = TCPClient(SOCKET_INVALID);

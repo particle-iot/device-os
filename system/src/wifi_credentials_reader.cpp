@@ -185,8 +185,9 @@ void WiFiCredentialsReader::handle(char c)
     {
         print("Your core MAC address is\r\n");
         WLanConfig ip_config;
+        ip_config.size = sizeof(ip_config);
         wlan_fetch_ipconfig(&ip_config);
-        uint8_t* addr = ip_config.uaMacAddr;
+        uint8_t* addr = ip_config.nw.uaMacAddr;
         print(bytes2hex(addr++, 1).c_str());
         for (int i = 1; i < 6; i++)
         {
