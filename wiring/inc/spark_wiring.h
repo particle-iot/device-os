@@ -30,8 +30,6 @@
 #include "adc_hal.h"
 #include "dac_hal.h"
 #include "pwm_hal.h"
-#include "timer_hal.h"
-#include "delay_hal.h"
 #include "rng_hal.h"
 #include "config.h"
 #include "spark_macros.h"
@@ -46,11 +44,12 @@
 #include "spark_wiring_system.h"
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_rgb.h"
+#include "spark_wiring_ticks.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+    
 /*
 * ADC
 */
@@ -67,13 +66,6 @@ void digitalWrite(uint16_t pin, uint8_t value);
 int32_t digitalRead(uint16_t pin);
 void analogWrite(uint16_t pin, uint16_t value);
 
-/*
-* Timing
-*/
-inline system_tick_t millis(void) { return HAL_Timer_Get_Milli_Seconds(); }
-inline unsigned long micros(void) { return HAL_Timer_Get_Micro_Seconds(); }
-void delay(unsigned long ms);
-inline void delayMicroseconds(unsigned int us) { HAL_Delay_Microseconds(us); }
 
 long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
 
