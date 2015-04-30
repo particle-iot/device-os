@@ -26,10 +26,15 @@
 #ifndef __SPARK_WIRING_WIFI_H
 #define __SPARK_WIRING_WIFI_H
 
-#include "spark_wiring.h"
+#include "spark_wiring_platform.h"
+
+#if Wiring_WiFi
+
+#include "spark_wiring_network.h"
 #include "wlan_hal.h"
 #include "system_network.h"
 #include "inet_hal.h"
+#include <string.h>
 
 class IPAddress;
 
@@ -88,40 +93,40 @@ public:
         return ping(remoteIP, 5);
     }
 
-    uint32_t ping(IPAddress remoteIP, uint8_t nTries) {
+    uint32_t ping(IPAddress remoteIP, uint8_t nTries) {        
         return inet_ping(&remoteIP.raw(), nTries, NULL);
     }
 
     void connect(void) {
-        network_connect();
+        network_connect(*this, 0, 0, NULL);
     }
 
     void disconnect(void) {
-        network_disconnect();
+        network_disconnect(*this, 0, NULL);
     }
 
     bool connecting(void) {
-        return network_connecting();
+        return network_connecting(*this, 0, NULL);
     }
 
     bool ready(void) {
-        return network_ready();
+        return network_ready(*this, 0, NULL);
     }
 
     void on(void) {
-        network_on();
+        network_on(*this, 0, 0, NULL);
     }
 
-    void off(void) {
-        network_off(true);
+    void off(void) {        
+        network_off(*this, 0, 0, NULL);
     }
 
     void listen(void) {
-        network_listen();
+        network_listen(*this, 0, NULL);
     }
 
     bool listening(void) {
-        return network_listening();
+        return network_listening(*this, 0, NULL);
     }
 
     void setCredentials(const char *ssid) {
@@ -139,7 +144,7 @@ public:
     void setCredentials(const char *ssid, unsigned int ssidLen, const char *password,
             unsigned int passwordLen, unsigned long security) {
         
-        NetworkCredentials creds;
+        WLanCredentials creds;
         memset(&creds, 0, sizeof(creds));
         creds.len = sizeof(creds);
         creds.ssid = ssid;
@@ -148,15 +153,15 @@ public:
         creds.password_len = passwordLen;
         creds.security = WLanSecurityType(security);
         
-        network_set_credentials(&creds);
+        network_set_credentials(*this, 0, &creds, NULL);
     }
 
     bool hasCredentials(void) {
-        return wlan_has_credentials() == 0;
+        return network_has_credentials(*this, 0, NULL);
     }
 
     bool clearCredentials(void) {
-        return wlan_clear_credentials() == 0;
+        return network_clear_credentials(*this, 0, NULL, NULL);                
     }
 
     int selectAntenna(WLanSelectAntenna_TypeDef antenna) {
@@ -165,10 +170,9 @@ public:
     
     IPAddress resolve(const char* name) 
     {
-        uint32_t ip;
-        if (inet_gethostbyname(name, strlen(name), &ip)<0)
-            ip = 0;
-        return IPAddress(ip);
+        HAL_IPAddress ip;
+        return (inet_gethostbyname(name, strlen(name), &ip, NULL)<0) ?
+                IPAddress(uint32_t(0)) : IPAddress(ip);        
     }
 
     friend class TCPClient;
@@ -179,5 +183,7 @@ public:
 extern WiFiClass WiFi;
 
 }   // namespace Spark
+
+#endif // Wiring_WiFi
 
 #endif

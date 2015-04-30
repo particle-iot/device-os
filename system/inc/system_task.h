@@ -52,6 +52,7 @@ inline void SPARK_WLAN_Loop(void) { Spark_Idle(); }
 
 void SPARK_WLAN_SmartConfigProcess();
 
+void disconnect_cloud();
 
 extern volatile uint32_t TimingFlashUpdateTimeout;
 
@@ -64,19 +65,10 @@ extern volatile uint8_t SPARK_CLOUD_CONNECTED;
 extern volatile uint8_t SPARK_FLASH_UPDATE;
 extern volatile uint8_t SPARK_LED_FADE;
 
-extern volatile uint8_t WLAN_DISCONNECT;
-extern volatile uint8_t WLAN_DHCP;
-extern volatile uint8_t WLAN_MANUAL_CONNECT;
-extern volatile uint8_t WLAN_DELETE_PROFILES;
-extern volatile uint8_t WLAN_SMART_CONFIG_START;
-extern volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
-extern volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
-
 extern volatile uint8_t Spark_Error_Count;
 extern volatile uint8_t Cloud_Handshake_Error_Count;
 
 extern volatile system_tick_t spark_loop_total_millis;
-
 
 void system_delay_ms(unsigned long ms);
 
@@ -84,6 +76,7 @@ void system_delay_ms(unsigned long ms);
  * Determines the backoff period after a number of failed connections.
  */
 unsigned backoff_period(unsigned connection_attempts);
+
 
 #ifdef __cplusplus
 }

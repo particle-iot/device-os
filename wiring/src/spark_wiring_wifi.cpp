@@ -28,6 +28,9 @@ License along with this library; if not, see <http://www.gnu.org/licenses/>.
 #include "inet_hal.h"
 #include "system_task.h"
 #include "system_tick_hal.h"
+#include <string.h>
+
+#if Wiring_WiFi
 
 namespace spark {
 
@@ -43,7 +46,7 @@ namespace spark {
    ----------------------------------------------- */
 
     int8_t WiFiClass::RSSI() {
-        if (!network_ready())
+        if (!network_ready(*this, 0, NULL))
             return 0;
         
         system_tick_t _functionStart = millis();
@@ -78,4 +81,7 @@ the same way.
 *****************************************************************************/
 
     WiFiClass WiFi;
+    NetworkClass& Network = WiFi;
 }
+
+#endif

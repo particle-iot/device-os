@@ -36,6 +36,8 @@ test(system_api) {
     API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60));
     
     API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60));
+    
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP));
 
     API_COMPILE(System.sleep(A0, CHANGE));
     API_COMPILE(System.sleep(A0, RISING));

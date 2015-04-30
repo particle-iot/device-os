@@ -27,7 +27,13 @@
 
 #include "spark_wiring.h"
 #include "spark_wiring_network.h"
+#include "spark_wiring_cloud.h"
+#include "system_network.h"
 #include "system_task.h"
+#include "system_update.h"
+#include "string_convert.h"
+#include "spark_protocol_functions.h"
+#include "spark_protocol.h"
 #include "socket_hal.h"
 #include "core_hal.h"
 #include "core_subsys_hal.h"
@@ -37,14 +43,9 @@
 #include "ota_flash_hal.h"
 #include "product_store_hal.h"
 #include "rgbled.h"
+#include "spark_macros.h"
 #include "string.h"
 #include <stdarg.h>
-#include "spark_protocol_functions.h"
-#include "spark_protocol.h"
-#include "spark_macros.h"
-#include "spark_wiring_cloud.h"
-#include "system_update.h"
-#include "string_convert.h"
 #include "append_list.h"
 
 #ifndef SPARK_NO_CLOUD
@@ -211,7 +212,7 @@ bool spark_connected(void)
 void spark_connect(void)
 {
     //Schedule Spark's cloud connection and handshake
-    network_connect();
+    SPARK_WLAN_SLEEP = 0;
     SPARK_CLOUD_CONNECT = 1;
 }
 
@@ -556,7 +557,7 @@ int Spark_Connect(void)
     HAL_FLASH_Read_ServerAddress(&server_addr);
 
     bool ip_resolve_failed = false;
-    uint32_t ip_addr = 0;
+    IPAddress ip_addr;
 
     switch (server_addr.addr_type)
     {
@@ -578,7 +579,7 @@ int Spark_Connect(void)
             int attempts = 10;
             while (!ip_addr && 0 < --attempts)
             {
-                inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr);
+                inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr.raw(), NULL);
             }
             ip_resolve_failed = !ip_addr;
     }

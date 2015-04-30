@@ -16,9 +16,7 @@
   ******************************************************************************
  */
 
-
-#ifndef CLOUD_H
-#define	CLOUD_H
+#pragma once
 
 typedef struct SparkProtocol SparkProtocol;
 
@@ -26,6 +24,8 @@ typedef struct SparkProtocol SparkProtocol;
 extern "C" {
 #endif
     
+void cloud_disconnect(void);
+
 /**
  * Functions for managing the cloud connection, performing cloud operations
  * and system upgrades.
@@ -86,7 +86,7 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
 
 void spark_process(void);
 void spark_connect(void);
-void spark_disconnect(void);
+void spark_disconnect(void);    // should be set connected since it manages the connection state)
 bool spark_connected(void);
 SparkProtocol* spark_protocol_instance(void);
 
@@ -117,6 +117,3 @@ String spark_deviceID(void);
 #ifdef __cplusplus
 }
 #endif
-
-#endif	/* CLOUD_H */
-

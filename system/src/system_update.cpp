@@ -1,18 +1,19 @@
 
 #include <stddef.h>
+#include "spark_wiring_system.h"
+#include "spark_wiring_stream.h"
+#include "spark_wiring_rgb.h"
+#include "spark_wiring_usbserial.h"
 #include "ota_flash_hal.h"
 #include "core_hal.h"
 #include "delay_hal.h"
-#include "spark_wiring_stream.h"
-#include "spark_wiring_rgb.h"
 #include "system_update.h"
 #include "system_cloud.h"
 #include "rgbled.h"
 #include "module_info.h"
-#include "spark_wiring_usbserial.h"
+#include "system_network.h"
 #include "system_ymodem.h"
 #include "system_task.h"
-#include "spark_wiring_system.h"
 #include "spark_protocol_functions.h"
 #include "hw_config.h"
 #include "string_convert.h"
@@ -101,7 +102,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
     }
 #endif
 #ifdef START_YMODEM_FLASHER_SERIAL_SPEED
-    if (!WLAN_SMART_CONFIG_START && bitrate == start_ymodem_flasher_serial_speed)
+    if (!network_listening(0, 0, NULL) && bitrate == start_ymodem_flasher_serial_speed)
     {
         //Set the Ymodem flasher flag to execute system_serialFirmwareUpdate()
         set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
