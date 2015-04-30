@@ -26,12 +26,8 @@
 #include "spark_wiring_string.h"
 #include "system_mode.h"
 #include "system_update.h"
+#include "system_sleep.h"
 #include "system_cloud.h"
-
-typedef enum
-{
-    SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1
-} Spark_Sleep_TypeDef;
 
 
 class Stream;

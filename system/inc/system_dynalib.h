@@ -28,6 +28,7 @@
 
 #ifdef DYNALIB_EXPORT
 #include "system_mode.h"
+#include "system_sleep.h"
 #include "system_task.h"
 #include "system_update.h"
 #endif
@@ -41,6 +42,8 @@ DYNALIB_FN(system, system_serialFirmwareUpdate)
 DYNALIB_FN(system, system_serialFileTransfer)
         
 DYNALIB_FN(system, system_delay_ms)
+DYNALIB_FN(system, system_sleep)
+DYNALIB_FN(system, system_sleep_pin)
 DYNALIB_END(system)
 
 

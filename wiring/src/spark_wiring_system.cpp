@@ -2,9 +2,11 @@
 #include "core_hal.h"
 #include "rtc_hal.h"
 #include "rgbled.h"
+#include "spark_wiring_wifi.h"
 #include "spark_wiring_cloud.h"
 #include "system_task.h"
 #include "system_network.h"
+
 
 SystemClass System;
 
@@ -30,26 +32,10 @@ void SystemClass::reset(void)
 
 void SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
 {
-    if (seconds)
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-
-    switch (sleepMode)
-    {
-        case SLEEP_MODE_WLAN:
-            network_off(false);
-            break;
-
-        case SLEEP_MODE_DEEP:
-            HAL_Core_Enter_Standby_Mode();
-            break;
-    }
+    system_sleep(sleepMode, seconds, 0, NULL);
 }
 
 void SystemClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
-    if (seconds>0)
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-
-    LED_Off(LED_RGB);
-    HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode);
+    system_sleep_pin(wakeUpPin, edgeTriggerMode, seconds, 0, NULL);
 }
