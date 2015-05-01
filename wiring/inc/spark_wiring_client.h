@@ -20,15 +20,18 @@
 #ifndef client_h
 #define client_h
 
+#include "system_network.h"
 #include "spark_wiring_print.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_ipaddress.h"
 
 class Client : public Stream {
-
+protected:    
+    network_interface_t nif;
+    
 public:
-  virtual int connect(IPAddress ip, uint16_t port) =0;
-  virtual int connect(const char *host, uint16_t port) =0;
+  virtual int connect(IPAddress ip, uint16_t port, network_interface_t=0) =0;
+  virtual int connect(const char *host, uint16_t port, network_interface_t=0) =0;
   virtual size_t write(uint8_t) =0;
   virtual size_t write(const uint8_t *buf, size_t size) =0;
   virtual int available() = 0;

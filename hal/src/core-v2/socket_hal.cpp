@@ -652,7 +652,7 @@ wiced_result_t server_disconnected(void* socket)
     return result;
 }
 
-sock_result_t socket_create_tcp_server(uint16_t port)
+sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif)
 {           
     socket_t* handle = new socket_t();
     tcp_server_t* server = new tcp_server_t();    
@@ -734,7 +734,7 @@ sock_result_t socket_close(sock_handle_t sock)
  * @param protocol  Either IPPROTO_UDP or IPPROTO_TCP
  * @return 
  */
-sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port) 
+sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port, network_interface_t nif) 
 {
     if (family!=AF_INET || !((type==SOCK_DGRAM && protocol==IPPROTO_UDP) || (type==SOCK_STREAM && protocol==IPPROTO_TCP)))
         return SOCKET_INVALID;

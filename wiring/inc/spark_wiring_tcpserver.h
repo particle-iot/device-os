@@ -27,17 +27,19 @@
 #define __SPARK_WIRING_TCPSERVER_H
 
 #include "spark_wiring.h"
+#include "system_network.h"
 
 class TCPClient;
 
 class TCPServer : public Print {
 private:
 	uint16_t _port;
+        network_interface_t _nif;
 	sock_handle_t _sock;
 	TCPClient _client;
 
 public:
-	TCPServer(uint16_t);
+	TCPServer(uint16_t, network_interface_t nif=0);
 
 	TCPClient available();
 	virtual void begin();

@@ -32,10 +32,10 @@ extern "C" {
 
 #include <stdint.h>
 
-#if PLATFORM_ID<4
-#define HAL_IPv6 0
-#else
+#if PLATFORM_ID>=4 && PLATFORM_ID<=8
 #define HAL_IPv6 1
+#else    
+#define HAL_IPv6 0
 #endif
 
 #if HAL_IPv6
@@ -65,7 +65,8 @@ typedef struct _NetworkConfig_t {
     uint8_t uaMacAddr[6];
 } NetworkConfig;
 
-    
+typedef uint32_t network_interface_t;
+
 /**
  * 
  * @param hostname      buffer to receive the hostname
@@ -73,7 +74,8 @@ typedef struct _NetworkConfig_t {
  * @param out_ip_addr   The ip address in network byte order.
  * @return 
  */
-int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr, void* reserved);
+int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr, 
+        network_interface_t nif, void* reserved);
 
 
 /**
@@ -82,7 +84,8 @@ int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress
  * @param nTries
  * @return >0 on success. 0 on timeout? <0 on error.
  */
-int inet_ping(const HAL_IPAddress* address, uint8_t nTries, void* reserved);
+int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries,
+        void* reserved);
 
 
 #ifdef	__cplusplus

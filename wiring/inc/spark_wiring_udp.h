@@ -43,10 +43,11 @@ private:
 	uint8_t _buffer[RX_BUF_MAX_SIZE];
 	uint16_t _offset;
         uint16_t _total;
+        network_interface_t _nif;
 public:
 	UDP();
 
-	virtual uint8_t begin(uint16_t);
+	virtual uint8_t begin(uint16_t, network_interface_t nif=0);
 	virtual void stop();
 	virtual int beginPacket(IPAddress ip, uint16_t port);
 	virtual int beginPacket(const char *host, uint16_t port);

@@ -26,7 +26,7 @@
 #include "inet_hal.h"
 #include "wiced_tcpip.h"
 
-int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr, void* reserved)
+int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr, network_interface_t nif, void* reserved)
 {
     wiced_ip_address_t address;
     address.version = WICED_IPV4;
@@ -35,7 +35,7 @@ int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress
     return -result;
 }
 
-int inet_ping(const HAL_IPAddress* address, uint8_t nTries, void* reserved) {
+int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries, void* reserved) {
     
     const uint32_t     ping_timeout = 1000;
     uint32_t           elapsed_ms;    

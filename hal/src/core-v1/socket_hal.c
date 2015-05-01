@@ -150,7 +150,7 @@ sock_result_t socket_close(sock_handle_t sock)
     return closesocket(sock);
 }
 
-sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port) 
+sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port, network_interface_t nif) 
 {
     sock_handle_t sock = socket(family, type, protocol);
     if (socket_handle_valid(sock)) {

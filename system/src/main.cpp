@@ -31,6 +31,7 @@
 #include "system_mode.h"
 #include "system_task.h"
 #include "system_network.h"
+#include "system_network_internal.h"
 #include "core_hal.h"
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"

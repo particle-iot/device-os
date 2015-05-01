@@ -26,11 +26,11 @@
 
 #include "inet_hal.h"
 #include "socket.h"
+#include "delay_hal.h"
 
 int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr,
-    void* reserved)
-{
-    // > 0 means success, which is zero.
+    network_interface_t nif, void* reserved)
+{    
     return gethostbyname(hostname, hostnameLen, &out_ip_addr->u32)<0;
 }
 

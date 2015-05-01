@@ -29,19 +29,19 @@
 
 using namespace spark;
 
-TCPServer::TCPServer(uint16_t port) : _port(port), _sock(SOCKET_INVALID), _client(SOCKET_INVALID)
+TCPServer::TCPServer(uint16_t port, network_interface_t nif) : _port(port), _nif(nif), _sock(SOCKET_INVALID), _client(SOCKET_INVALID)
 {
 
 }
 
 void TCPServer::begin()
 {
-    if(!Network.ready())
+    if(!Network.from(_nif).ready())
     {
         return;
     }
 
-    _sock = socket_create_tcp_server(_port);	
+    _sock = socket_create_tcp_server(_port, _nif);
 }
 
 TCPClient TCPServer::available()

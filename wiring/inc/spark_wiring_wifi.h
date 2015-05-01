@@ -94,7 +94,7 @@ public:
     }
 
     uint32_t ping(IPAddress remoteIP, uint8_t nTries) {        
-        return inet_ping(&remoteIP.raw(), nTries, NULL);
+        return inet_ping(&remoteIP.raw(), *this, nTries, NULL);
     }
 
     void connect(void) {
@@ -171,7 +171,7 @@ public:
     IPAddress resolve(const char* name) 
     {
         HAL_IPAddress ip;
-        return (inet_gethostbyname(name, strlen(name), &ip, NULL)<0) ?
+        return (inet_gethostbyname(name, strlen(name), &ip, *this, NULL)<0) ?
                 IPAddress(uint32_t(0)) : IPAddress(ip);        
     }
 

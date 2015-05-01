@@ -44,17 +44,18 @@ UDP::UDP() : _sock(SOCKET_INVALID)
 
 }
 
-uint8_t UDP::begin(uint16_t port) 
+uint8_t UDP::begin(uint16_t port, network_interface_t nif) 
 {
     bool bound = 0;
-	if(Network.ready())
+	if(Network.from(nif).ready())
 	{
-	   _sock = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, port);
+	   _sock = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, port, nif);
             DEBUG("socket=%d",_sock);
             if (socket_handle_valid(_sock))
             {
                 flush();
                 _port = port;
+                _nif = nif;
             }
 	}
     return bound;
@@ -77,11 +78,11 @@ void UDP::stop()
 
 int UDP::beginPacket(const char *host, uint16_t port)
 {
-    if(Network.ready())
+    if(Network.from(_nif).ready())
     {
         HAL_IPAddress ip_addr;
 
-        if(inet_gethostbyname((char*)host, strlen(host), &ip_addr, NULL) == 0)
+        if(inet_gethostbyname((char*)host, strlen(host), &ip_addr, _nif, NULL) == 0)
         {
             IPAddress remote_addr(ip_addr);
             return beginPacket(remote_addr, port);
@@ -130,7 +131,7 @@ size_t UDP::write(const uint8_t *buffer, size_t size)
 int UDP::parsePacket()
 {
   // No data buffered
-    if(available() == 0 && Network.ready() && isOpen(_sock))
+    if(available() == 0 && Network.from(_nif).ready() && isOpen(_sock))
     {
         int ret = socket_receivefrom(_sock, _buffer, arraySize(_buffer), 0, &_remoteSockAddr, &_remoteSockAddrLen);
         if (ret > 0)

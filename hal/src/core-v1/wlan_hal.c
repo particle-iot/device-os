@@ -201,7 +201,7 @@ int wlan_connected_rssi()
 netapp_pingreport_args_t ping_report;
 uint8_t ping_report_num;
 
-int inet_ping(const HAL_IPAddress* ip, uint8_t nTries, void* reserved) {
+int inet_ping(const HAL_IPAddress* ip, network_interface_t nif, uint8_t nTries, void* reserved) {
     int result = 0;
     uint32_t pingIPAddr = ip->u32;
     unsigned long pingSize = 32UL;

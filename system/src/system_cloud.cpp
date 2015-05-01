@@ -487,7 +487,7 @@ int Internet_Test(void)
     sockaddr_t testSocketAddr;
     int testResult = 0;
     DEBUG("socket");
-    testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, 53);
+    testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, 53, NIF_DEFAULT);
     DEBUG("socketed testSocket=%d", testSocket);
 
 
@@ -538,7 +538,7 @@ int Spark_Connect(void)
 
     Spark_Disconnect();
 
-    sparkSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, SPARK_SERVER_PORT);
+    sparkSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, SPARK_SERVER_PORT, NIF_DEFAULT);
     DEBUG("socketed sparkSocket=%d", sparkSocket);
 
     if (!socket_handle_valid(sparkSocket))
@@ -579,7 +579,8 @@ int Spark_Connect(void)
             int attempts = 10;
             while (!ip_addr && 0 < --attempts)
             {
-                inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr.raw(), NULL);
+                inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr.raw(), NIF_DEFAULT, NULL);
+                HAL_Delay_Milliseconds(1);                
             }
             ip_resolve_failed = !ip_addr;
     }
@@ -724,7 +725,7 @@ char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out)
 void Multicast_Presence_Announcement(void)
 {
 #ifndef SPARK_NO_CLOUD    
-    long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0);
+    long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NIF_DEFAULT);
     if (!socket_handle_valid(multicast_socket))
         return;
 

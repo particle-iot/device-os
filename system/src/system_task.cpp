@@ -28,6 +28,7 @@
 #include "system_cloud.h"
 #include "system_mode.h"
 #include "system_network.h"
+#include "system_network_internal.h"
 #include "spark_macros.h"
 #include "string.h"
 #include "system_tick_hal.h"

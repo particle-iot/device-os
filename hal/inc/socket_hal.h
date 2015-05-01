@@ -34,6 +34,7 @@ extern "C" {
 #include "debug.h"
 #include <stdint.h>
 #include "system_tick_hal.h"
+#include "inet_hal.h"
     
 typedef struct _sockaddr_t
 {
@@ -52,7 +53,7 @@ uint8_t socket_active_status(sock_handle_t socket);
 
 uint8_t socket_handle_valid(sock_handle_t handle);
 
-sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port);
+sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port, network_interface_t nif);
 
 sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen);
 
@@ -73,7 +74,7 @@ sock_result_t socket_close(sock_handle_t sd);
 
 sock_result_t socket_reset_blocking_call();
 
-sock_result_t socket_create_tcp_server(uint16_t port);
+sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif);
 sock_result_t socket_accept(sock_handle_t sd);
 void socket_dispose_tcp_server(sock_handle_t sock);
 

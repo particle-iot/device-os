@@ -26,6 +26,7 @@
 #ifndef __SPARK_WIRING_TCPCLIENT_H
 #define __SPARK_WIRING_TCPCLIENT_H
 
+#include "system_network.h"
 #include "spark_wiring_client.h"
 #include "spark_wiring_ipaddress.h"
 #include "spark_wiring_print.h"
@@ -40,9 +41,9 @@ public:
 	TCPClient(sock_handle_t sock);
         virtual ~TCPClient() {};
 
-  uint8_t status();
-	virtual int connect(IPAddress ip, uint16_t port);
-	virtual int connect(const char *host, uint16_t port);
+        uint8_t status();
+	virtual int connect(IPAddress ip, uint16_t port, network_interface_t=0);
+	virtual int connect(const char *host, uint16_t port, network_interface_t=0);
 	virtual size_t write(uint8_t);
 	virtual size_t write(const uint8_t *buffer, size_t size);
 	virtual int available();

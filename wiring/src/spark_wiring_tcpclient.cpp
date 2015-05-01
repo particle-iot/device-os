@@ -51,17 +51,17 @@ TCPClient::TCPClient(sock_handle_t sock) : _sock(sock)
   flush_buffer();
 }
 
-int TCPClient::connect(const char* host, uint16_t port) 
+int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif) 
 {
       int rv = 0;
       if(Network.ready())
       {
         HAL_IPAddress ip_addr;
 
-        if(inet_gethostbyname(host, strlen(host), &ip_addr, NULL) == 0)
+        if(inet_gethostbyname(host, strlen(host), &ip_addr, nif, NULL) == 0)
         {
                 IPAddress remote_addr(ip_addr);
-                return connect(remote_addr, port);
+                return connect(remote_addr, port, nif);
         }
         else
             DEBUG("unable to get IP for hostname");
@@ -69,13 +69,13 @@ int TCPClient::connect(const char* host, uint16_t port)
       return rv;
 }
 
-int TCPClient::connect(IPAddress ip, uint16_t port) 
+int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif) 
 {
-        int connected = 0;
-        if(Network.ready())
+        int connected = 0;        
+        if(Network.from(nif).ready())
         {
           sockaddr_t tSocketAddr;
-          _sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, port);
+          _sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, port, nif);
           DEBUG("socket=%d",_sock);
 
           if (socket_handle_valid(_sock))
@@ -133,7 +133,7 @@ int TCPClient::available()
         flush_buffer();
     }
 
-    if(Network.ready() && isOpen(_sock))
+    if(Network.from(nif).ready() && isOpen(_sock))
     {
         // Have room
         if ( _total < arraySize(_buffer))
@@ -213,7 +213,7 @@ uint8_t TCPClient::connected()
 
 uint8_t TCPClient::status()
 {
-  return (isOpen(_sock) && Network.ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(_sock)) ? 1 : 0);
+  return (isOpen(_sock) && Network.from(nif).ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(_sock)) ? 1 : 0);
 }
 
 TCPClient::operator bool()
