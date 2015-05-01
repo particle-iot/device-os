@@ -101,10 +101,10 @@ int UDP::beginPacket(IPAddress ip, uint16_t port)
 	_remoteSockAddr.sa_data[0] = (_remotePort & 0xFF00) >> 8;
 	_remoteSockAddr.sa_data[1] = (_remotePort & 0x00FF);
 
-	_remoteSockAddr.sa_data[2] = _remoteIP.address.ipv4[0];
-	_remoteSockAddr.sa_data[3] = _remoteIP.address.ipv4[1];
-	_remoteSockAddr.sa_data[4] = _remoteIP.address.ipv4[2];
-	_remoteSockAddr.sa_data[5] = _remoteIP.address.ipv4[3];
+	_remoteSockAddr.sa_data[2] = _remoteIP[0];
+	_remoteSockAddr.sa_data[3] = _remoteIP[1];
+	_remoteSockAddr.sa_data[4] = _remoteIP[2];
+	_remoteSockAddr.sa_data[5] = _remoteIP[3];
 
 	_remoteSockAddrLen = sizeof(_remoteSockAddr);
 
@@ -137,11 +137,11 @@ int UDP::parsePacket()
         if (ret > 0)
         {
             _remotePort = _remoteSockAddr.sa_data[0] << 8 | _remoteSockAddr.sa_data[1];
-
-            _remoteIP.address.ipv4[0] = _remoteSockAddr.sa_data[2];
-            _remoteIP.address.ipv4[1] = _remoteSockAddr.sa_data[3];
-            _remoteIP.address.ipv4[2] = _remoteSockAddr.sa_data[4];
-            _remoteIP.address.ipv4[3] = _remoteSockAddr.sa_data[5];
+                        
+            _remoteIP[0] = _remoteSockAddr.sa_data[2];
+            _remoteIP[1] = _remoteSockAddr.sa_data[3];
+            _remoteIP[2] = _remoteSockAddr.sa_data[4];
+            _remoteIP[3] = _remoteSockAddr.sa_data[5];
 
             _offset = 0;
             _total = ret;

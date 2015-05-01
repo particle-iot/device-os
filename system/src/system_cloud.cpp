@@ -595,10 +595,10 @@ int Spark_Connect(void)
             //ip_addr = (52<<24) | (0<<16) | (3<<8) | 40;
         }
     
-        tSocketAddr.sa_data[2] = BYTE_N(ip_addr, 3);
-        tSocketAddr.sa_data[3] = BYTE_N(ip_addr, 2);
-        tSocketAddr.sa_data[4] = BYTE_N(ip_addr, 1);
-        tSocketAddr.sa_data[5] = BYTE_N(ip_addr, 0);
+        tSocketAddr.sa_data[2] = ip_addr[0];
+        tSocketAddr.sa_data[3] = ip_addr[1];
+        tSocketAddr.sa_data[4] = ip_addr[2];
+        tSocketAddr.sa_data[5] = ip_addr[3];
 
         uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
         DEBUG("connect");

@@ -53,18 +53,14 @@ IPAddress::operator bool()
 #if Wiring_IPv6
 #error handle me!    
 #else
-    return address.u32!=0;
+    return address.ipv4!=0;
 #endif    
 }
 
 void IPAddress::set_ipv4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3)
 {
-    address.ipv4[0] = b0;
-    address.ipv4[1] = b1;
-    address.ipv4[2] = b2;
-    address.ipv4[3] = b3;
+    address.ipv4 = b0<<24 | b1 << 16 | b2 << 8 | b3;
 }
-
 
 IPAddress& IPAddress::operator=(const uint8_t* address)
 {
@@ -72,15 +68,15 @@ IPAddress& IPAddress::operator=(const uint8_t* address)
     return *this;
 }
 
-IPAddress& IPAddress::operator=(uint32_t address)
+IPAddress& IPAddress::operator=(uint32_t ipv4)
 {
-    set_ipv4(address & 0x000f, (address >> 8) & 0x000f, (address >> 16) & 0x000f, (address >> 24) & 0x000f);    
+    address.ipv4 = ipv4;
     return *this;
 }
 
-bool IPAddress::operator==(uint32_t address)
+bool IPAddress::operator==(uint32_t ipv4)
 {
-    return IPAddress(address)==*this;
+    return ipv4==address.ipv4;
 }
 
 bool IPAddress::operator==(const uint8_t* address)

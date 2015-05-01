@@ -34,14 +34,20 @@ TCPServer::TCPServer(uint16_t port, network_interface_t nif) : _port(port), _nif
 
 }
 
-void TCPServer::begin()
+bool TCPServer::begin()
 {
     if(!Network.from(_nif).ready())
     {
-        return;
+        return false;
     }
 
-    _sock = socket_create_tcp_server(_port, _nif);
+    sock_result_t result = socket_create_tcp_server(_port, _nif);
+    if (socket_handle_valid(result)) {
+        _sock = result;
+        return true;
+    }
+    _sock = socket_handle_invalid();
+    return false;
 }
 
 TCPClient TCPServer::available()
@@ -53,7 +59,7 @@ TCPClient TCPServer::available()
         begin();
     }
 
-    if((!Network.ready()) || (_sock == SOCKET_INVALID))
+    if((!Network.from(_nif).ready()) || (_sock == SOCKET_INVALID))
     {
         _sock = SOCKET_INVALID;
         _client = TCPClient(SOCKET_INVALID);

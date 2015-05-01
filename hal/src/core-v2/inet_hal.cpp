@@ -31,7 +31,7 @@ int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress
     wiced_ip_address_t address;
     address.version = WICED_IPV4;
     wiced_result_t result = wiced_hostname_lookup (hostname, &address, 5000);
-    out_ip_addr->u32 = GET_IPV4_ADDRESS(address);
+    out_ip_addr->ipv4 = GET_IPV4_ADDRESS(address);
     return -result;
 }
 
@@ -40,9 +40,8 @@ int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTr
     const uint32_t     ping_timeout = 1000;
     uint32_t           elapsed_ms;    
     wiced_ip_address_t ping_target_ip;
-    
-    const uint8_t* remoteIP = address->ipv4;
-    SET_IPV4_ADDRESS(ping_target_ip, MAKE_IPV4_ADDRESS(remoteIP[0], remoteIP[1], remoteIP[2], remoteIP[3]));
+        
+    SET_IPV4_ADDRESS(ping_target_ip, address->ipv4);
     
     int count = 0;
     for (int i=0; i<nTries; i++) {

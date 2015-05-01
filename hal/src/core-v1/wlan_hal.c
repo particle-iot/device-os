@@ -93,18 +93,6 @@ int wlan_has_credentials()
     return 1;    
 }
 
-
-void swap(uint8_t* array, uint8_t idx1, uint8_t idx2) {
-    uint8_t tmp = array[idx1];
-    array[idx1] = array[idx2];
-    array[idx2] = tmp;
-}
-
-void reverseIP(uint8_t* ip) {
-    swap(ip, 0, 3);
-    swap(ip, 1, 2);
-}
-
 int wlan_connect_init() 
 {
     wlan_start(0);//No other option to connect other than wlan_start()
@@ -203,7 +191,7 @@ uint8_t ping_report_num;
 
 int inet_ping(const HAL_IPAddress* ip, network_interface_t nif, uint8_t nTries, void* reserved) {
     int result = 0;
-    uint32_t pingIPAddr = ip->u32;
+    uint32_t pingIPAddr = ip->ipv4;
     unsigned long pingSize = 32UL;
     unsigned long pingTimeout = 500UL; // in milliseconds
 
@@ -443,6 +431,8 @@ void wlan_set_error_count(uint32_t errorCount)
 }
 
 void wlan_fetch_ipconfig(WLanConfig* config) {
+    HAL_Delay_Milliseconds(100);
+
     // the WLanConfig and the CC3000 structure are identical
     netapp_ipconfig((void*)config);
     // the MAC address isn't available until after the first WLAN connection is made, so fetch it from nvmem

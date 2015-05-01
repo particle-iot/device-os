@@ -42,7 +42,7 @@ public:
 	TCPServer(uint16_t, network_interface_t nif=0);
 
 	TCPClient available();
-	virtual void begin();
+	virtual bool begin();
 	virtual size_t write(uint8_t);
 	virtual size_t write(const uint8_t *buf, size_t size);
 

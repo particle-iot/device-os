@@ -353,15 +353,15 @@ void manage_smart_config()
 
 void manage_ip_config()
 {
+    bool fetched_config = ip_config.nw.aucIP.ipv4!=0;
     if (WLAN_DHCP && !SPARK_WLAN_SLEEP)
     {        
-        if (ip_config.nw.aucIP.ipv4[0] == 0)
+        if (!fetched_config)
         {
-            HAL_Delay_Milliseconds(100);
             wlan_fetch_ipconfig(&ip_config);
         }
     }
-    else if (ip_config.nw.aucIP.ipv4[0] != 0)
+    else if (fetched_config)
     {
         memset(&ip_config, 0, sizeof (ip_config));
     }

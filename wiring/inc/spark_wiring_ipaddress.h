@@ -31,7 +31,12 @@
 
 #include "spark_wiring_printable.h"
 #include "inet_hal.h"
+#include "spark_macros.h"
 
+/**
+ * The IP address stored in host order. 
+ * 
+ */
 class IPAddress : public Printable {
 private:
     
@@ -41,60 +46,67 @@ private:
         return &address;
     }
 
+    void set_ipv4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
     
 public:
-	// Access the raw byte array containing the address.  Because this returns a pointer
-	// to the internal structure rather than a copy of the address this function should only
-	// be used when you know that the usage of the returned uint8_t* will be transient and not
-	// stored.
-	const uint8_t* raw_address() const { return address.ipv4; };
-	// Constructors
-	IPAddress();
-	IPAddress(uint8_t first_octet, uint8_t second_octet, uint8_t third_octet, uint8_t fourth_octet);
-	IPAddress(uint32_t address);
-	IPAddress(const uint8_t* address);
-        
-        IPAddress(HAL_IPAddress);
+    // Constructors
+    IPAddress();
+    IPAddress(uint8_t first_octet, uint8_t second_octet, uint8_t third_octet, uint8_t fourth_octet);
+    IPAddress(uint32_t address);
+    IPAddress(const uint8_t* address);
 
-        virtual ~IPAddress() {}
-        
-        operator bool();
+    IPAddress(HAL_IPAddress);
 
-	// Overloaded cast operator to allow IPAddress objects to be used where a pointer
-	// to a four-byte uint8_t array, uint32_t or another IPAddress object is expected.
-	bool operator==(uint32_t address);
-	bool operator==(const uint8_t* address);
-	bool operator==(const IPAddress& address);
+    virtual ~IPAddress() {}
 
-	// Overloaded index operator to allow getting and setting individual octets of the address
-	uint8_t operator[](int index) const { return address.ipv4[index]; };
-	uint8_t& operator[](int index) { return address.ipv4[index]; };
+    /**
+     * @return true when this address is not zero.
+     */        
+    operator bool();
 
-	// Overloaded copy operators to allow initialisation of IPAddress objects from other types
-	IPAddress& operator=(const uint8_t* address);
-	IPAddress& operator=(uint32_t address);
+    // Overloaded cast operator to allow IPAddress objects to be used where a pointer
+    // to a four-byte uint8_t array, uint32_t or another IPAddress object is expected.
+    bool operator==(uint32_t address);
+    bool operator==(const uint8_t* address);
+    bool operator==(const IPAddress& address);
 
-        operator const HAL_IPAddress& () {
-            return address;
-        }
-        
-        const HAL_IPAddress& raw() const {
-            return address;
-        }
-                
-        HAL_IPAddress& raw() {
-            return address;
-        }
+    // Overloaded index operator to allow getting and setting individual octets of the address
+    uint8_t operator[](int index) const { return (((uint8_t*)(&address.ipv4))[3-index]); }
+    uint8_t& operator[](int index) { return (((uint8_t*)(&address.ipv4))[3-index]); }
+
+    // Overloaded copy operators to allow initialisation of IPAddress objects from other types
+    /**
+     * 
+     * @param address 4 bytes defining the IP address in network order
+     * @return *this
+     */        
+    IPAddress& operator=(const uint8_t* address);
+
+    /**
+     * 
+     * @param address   A 32-byte defining the 4 IPv4 octets, in host order.
+     * @return 
+     */
+    IPAddress& operator=(uint32_t address);
+
+    operator const HAL_IPAddress& () {
+        return address;
+    }
+
+    const HAL_IPAddress& raw() const {
+        return address;
+    }
+
+    HAL_IPAddress& raw() {
+        return address;
+    }
+
+    virtual size_t printTo(Print& p) const;
 
 
-        void set_ipv4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
-        
-	virtual size_t printTo(Print& p) const;
-       
-
-	friend class TCPClient;
-	friend class TCPServer;
-	friend class UDP;
+    friend class TCPClient;
+    friend class TCPServer;
+    friend class UDP;
 };
 
 extern const IPAddress INADDR_NONE;

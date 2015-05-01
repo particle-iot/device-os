@@ -86,10 +86,10 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
             tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
             tSocketAddr.sa_data[1] = (port & 0x00FF);
 
-            tSocketAddr.sa_data[2] = ip.address.ipv4[0];        // Todo IPv6
-            tSocketAddr.sa_data[3] = ip.address.ipv4[1];
-            tSocketAddr.sa_data[4] = ip.address.ipv4[2];
-            tSocketAddr.sa_data[5] = ip.address.ipv4[3];
+            tSocketAddr.sa_data[2] = ip[0];        // Todo IPv6
+            tSocketAddr.sa_data[3] = ip[1];
+            tSocketAddr.sa_data[4] = ip[2];
+            tSocketAddr.sa_data[5] = ip[3];
 
 
             uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
