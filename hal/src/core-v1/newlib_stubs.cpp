@@ -287,3 +287,12 @@ void __cxa_guard_release (__guard *g) {*(char *)g = 1;};
 void __cxa_guard_abort (__guard *) {};
 
 } /* extern "C" */
+
+namespace __gnu_cxx {
+
+void __verbose_terminate_handler()
+{
+  abort();
+}
+
+}
