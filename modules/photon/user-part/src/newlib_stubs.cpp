@@ -57,6 +57,26 @@ void operator delete[](void *p)
 }
 
 
+/* Bare metal, no processes, so error */
+int _kill(int pid, int sig)
+{
+	return -1;
+}
+
+/* Bare metal, no processes, so always process id 1 */
+int _getpid(void)
+{
+	return 1;
+}
+
+void _exit(int status) {
+    PANIC(Exit,"Exit Called");
+
+    while (1) {
+        ;
+    }
+}
+
 /* Default implementation for call made to pure virtual function. */
 void __cxa_pure_virtual() {
   PANIC(PureVirtualCall,"Call on pure virtual");
@@ -70,5 +90,14 @@ __extension__ typedef int __guard __attribute__((mode (__DI__)));
 int __cxa_guard_acquire(__guard *g) {return !*(char *)(g);};
 void __cxa_guard_release (__guard *g) {*(char *)g = 1;};
 void __cxa_guard_abort (__guard *) {};
+
+}
+
+namespace __gnu_cxx {
+
+void __verbose_terminate_handler()
+{
+  abort();
+}
 
 }

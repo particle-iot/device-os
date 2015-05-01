@@ -155,6 +155,16 @@ int _getpid(void)
 	return 1;
 }
 
+void _exit(int status) {
+    
+    PANIC(Exit,"Exit Called");
+
+    while (1) {
+        ;
+    }
+}
+
+
 
 #ifdef __CS_SOURCERYGXX_REV__
 #if USE_UART_FOR_STDIO
