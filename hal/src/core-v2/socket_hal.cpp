@@ -129,25 +129,29 @@ struct tcp_server_t;
  */
 struct tcp_server_client_t
 {
-    wiced_tcp_stream_t* stream;
+    wiced_tcp_stream_t stream;
     wiced_tcp_socket_t* socket;
     tcp_server_t* server;
     
     tcp_server_client_t(tcp_server_t* server, wiced_tcp_socket_t* socket) {
         this->socket = socket;
         this->server = server;
-        this->stream = NULL;
+        memset(&stream, 0, sizeof(stream));
+        wiced_tcp_stream_init(&stream, socket);
     }
     
     int read(void* buffer, size_t len, system_tick_t timeout) {
-        if (socket) {
-            
-        }
-        return 0;   // todo
+        return socket ? wiced_tcp_stream_read(&stream, buffer, len, timeout) : WICED_TCPIP_INVALID_PACKET;
     }
     
-    int write(void* buffer, size_t len) {
-        return 0; //todo
+    int write(const void* buffer, size_t len, bool flush=false) {
+        int result = WICED_TCPIP_INVALID_SOCKET;
+        if (socket) {
+            result = wiced_tcp_stream_write(&stream, buffer, len);
+            if (!result && flush)
+                result = wiced_tcp_stream_flush(&stream);
+        }
+        return result;
     }
     
     void close();
@@ -156,6 +160,7 @@ struct tcp_server_client_t
     {
         socket = NULL;
         server = NULL;
+        wiced_tcp_stream_deinit(&stream);
     }
     
     ~tcp_server_client_t();
@@ -165,6 +170,7 @@ struct tcp_server_t : wiced_tcp_server_t
 {
     tcp_server_t() {
         wiced_rtos_init_semaphore(&accept_lock);
+        wiced_rtos_set_semaphore(&accept_lock);
         memset(clients, 0, sizeof(clients));
     }
     
@@ -257,18 +263,13 @@ void tcp_server_client_t::close() {
     if (socket && server) {
         server->disconnect(socket);
     }
+    notify_disconnected();
 }
 
 
 tcp_server_client_t::~tcp_server_client_t() {
-    if (server) {
-        server->disconnect(socket);
-    }
-    if (stream) {
-
-    }
+    close();    
 }
-
 
 struct socket_t
 {
@@ -773,12 +774,19 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len) 
 {
     sock_result_t result = SOCKET_INVALID;
-    socket_t* socket = from_handle(sd);
-    wiced_tcp_socket_t* tcp_socket = as_wiced_tcp_socket(socket);
-    if (is_open(socket) && tcp_socket) {
-        wiced_result_t wiced_result = wiced_tcp_send_buffer(tcp_socket, buffer, uint16_t(len));
-        result = wiced_result ? as_sock_result(wiced_result) : len;        
-        DEBUG("Write %d bytes to socket %d", (int)len, (int)sd);
+    socket_t* socket = from_handle(sd);    
+    if (is_open(socket)) {
+        wiced_result_t wiced_result = WICED_TCPIP_INVALID_SOCKET;
+        if (is_tcp(socket)) {
+            wiced_result = wiced_tcp_send_buffer(tcp(socket), buffer, uint16_t(len));            
+        }
+        else if (is_client(socket)) {
+            tcp_server_client_t* server_client = client(socket);            
+            result = server_client->write(buffer, len);            
+        }
+        if (!wiced_result)
+            DEBUG("Write %d bytes to socket %d result=%d", (int)len, (int)sd, wiced_result);
+        result = wiced_result ? as_sock_result(wiced_result) : len;
     }
     return result;
 }

@@ -42,16 +42,14 @@ extern "C" {
 typedef struct _HAL_IPAddress_t {
     uint8_t v;              // 4 for Ipv4, 6 for Ipv6
     union {
-        uint8_t ipv4[4];    // in network order (big-endian)        
-        uint32_t u32;       // convenient access (is reversed)
-        uint8_t ipv6[16];  
+        uint32_t ipv4;
+        uint32_t ipv6[4];
     };
 } HAL_IPAddress;
 #else
 typedef struct _HAL_IPAddress_t {
     union {
-        uint8_t ipv4[4];    
-        uint32_t u32;
+        uint32_t ipv4;
     };
 } HAL_IPAddress;
 #endif
