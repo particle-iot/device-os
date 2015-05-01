@@ -103,14 +103,6 @@ extern "C" {
  * System call reference with suggested stubs:
  * http://sourceware.org/newlib/libc.html#Syscalls
  *****************************************************/
-#ifndef __CS_SOURCERYGXX_REV__
-
-void _exit(int status)
-{
-        PANIC(Exit,"Exit Called");
-	while(1);
-}
-#endif
 /*
  * _sbrk() -  allocate incr bytes of memory from the heap.
  *
