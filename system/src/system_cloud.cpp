@@ -64,7 +64,7 @@ struct SystemCloudStartup {
 };
 SystemCloudStartup system_cloud_startup;
 
-static sock_handle_t sparkSocket = SOCKET_INVALID;
+static sock_handle_t sparkSocket = socket_handle_invalid();
 
 extern uint8_t LED_RGB_BRIGHTNESS;
 
@@ -189,13 +189,13 @@ inline uint8_t isSocketClosed()
     {
         DEBUG("get_socket_active_status(sparkSocket=%d)==SOCKET_STATUS_INACTIVE", sparkSocket);
     }
-    if (closed && sparkSocket != SOCKET_INVALID)
+    if (closed && sparkSocket != socket_handle_invalid())
     {
         DEBUG("!!!!!!closed && sparkSocket(%d) != SOCKET_INVALID", sparkSocket);
     }
-    if (sparkSocket == SOCKET_INVALID)
+    if (!socket_handle_valid(sparkSocket))
     {
-        DEBUG("sparkSocket == SOCKET_INVALID");
+        DEBUG("sparkSocket is not valid");
         closed = true;
     }
     return closed;
@@ -626,7 +626,7 @@ int Spark_Disconnect(void)
         DEBUG("Close");
         retVal = socket_close(sparkSocket);
         DEBUG("Closed retVal=%d", retVal);
-        sparkSocket = SOCKET_INVALID;
+        sparkSocket = socket_handle_invalid();
     }
     return retVal;
 }

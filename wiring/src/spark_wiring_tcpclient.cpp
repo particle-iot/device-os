@@ -39,10 +39,10 @@ uint16_t TCPClient::_srcport = 1024;
 
 static bool inline isOpen(sock_handle_t sd)
 {
-   return sd != SOCKET_INVALID;
+   return socket_handle_valid(sd);
 }
 
-TCPClient::TCPClient() : TCPClient(SOCKET_INVALID)
+TCPClient::TCPClient() : TCPClient(socket_handle_invalid())
 {
 }
 
@@ -56,12 +56,11 @@ int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
       int rv = 0;
       if(Network.ready())
       {
-        HAL_IPAddress ip_addr;
+        IPAddress ip_addr;
 
-        if(inet_gethostbyname(host, strlen(host), &ip_addr, nif, NULL) == 0)
-        {
-                IPAddress remote_addr(ip_addr);
-                return connect(remote_addr, port, nif);
+        if(inet_gethostbyname(host, strlen(host), ip_addr, nif, NULL) == 0)
+        {                
+                return connect(ip_addr, port, nif);
         }
         else
             DEBUG("unable to get IP for hostname");
@@ -192,7 +191,7 @@ void TCPClient::stop()
 
   if (isOpen(_sock))
       socket_close(_sock);
- _sock = SOCKET_INVALID;
+ _sock = socket_handle_invalid();
 }
 
 uint8_t TCPClient::connected() 

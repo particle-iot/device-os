@@ -36,10 +36,10 @@ using namespace spark;
 
 static bool inline isOpen(sock_handle_t sd)
 {
-   return sd != SOCKET_INVALID;
+   return sd != socket_handle_invalid();
 }
 
-UDP::UDP() : _sock(SOCKET_INVALID)
+UDP::UDP() : _sock(socket_handle_invalid())
 {
 
 }
@@ -73,7 +73,7 @@ void UDP::stop()
     {
         socket_close(_sock);        
     }
-    _sock = SOCKET_INVALID;
+    _sock = socket_handle_invalid();
 }
 
 int UDP::beginPacket(const char *host, uint16_t port)

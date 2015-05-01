@@ -78,8 +78,11 @@ sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif);
 sock_result_t socket_accept(sock_handle_t sd);
 void socket_dispose_tcp_server(sock_handle_t sock);
 
+/**
+ * Retrieves the handle of an invalid socket.
+ */
+sock_handle_t socket_handle_invalid();
 
-extern const sock_handle_t SOCKET_INVALID;
 
 
 //--------- Address Families --------

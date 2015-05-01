@@ -831,3 +831,9 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLe
     }       
     return result ? as_sock_result(result) : sock_result_t(read_len);
 }
+
+
+sock_handle_t socket_handle_invalid() 
+{
+    return SOCKET_INVALID;
+}

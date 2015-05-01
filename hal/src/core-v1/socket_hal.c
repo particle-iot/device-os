@@ -179,3 +179,8 @@ uint8_t socket_handle_valid(sock_handle_t handle)
 {
     return handle<SOCKET_MAX;
 }
+
+sock_handle_t socket_handle_invalid() 
+{
+    return SOCKET_INVALID;
+}

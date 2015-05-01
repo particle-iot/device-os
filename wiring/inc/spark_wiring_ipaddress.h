@@ -36,6 +36,11 @@ class IPAddress : public Printable {
 private:
     
     HAL_IPAddress address;
+
+    operator HAL_IPAddress* () {
+        return &address;
+    }
+
     
 public:
 	// Access the raw byte array containing the address.  Because this returns a pointer

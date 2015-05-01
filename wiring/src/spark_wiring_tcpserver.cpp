@@ -29,7 +29,7 @@
 
 using namespace spark;
 
-TCPServer::TCPServer(uint16_t port, network_interface_t nif) : _port(port), _nif(nif), _sock(SOCKET_INVALID), _client(SOCKET_INVALID)
+TCPServer::TCPServer(uint16_t port, network_interface_t nif) : _port(port), _nif(nif), _sock(socket_handle_invalid()), _client(socket_handle_invalid())
 {
 
 }
@@ -46,6 +46,8 @@ void TCPServer::begin()
 
 TCPClient TCPServer::available()
 {
+    sock_handle_t SOCKET_INVALID = socket_handle_invalid();
+
     if(_sock == SOCKET_INVALID)
     {
         begin();
