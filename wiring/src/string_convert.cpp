@@ -64,32 +64,31 @@ char *ltoa(long N, char *str, int base)
 }
 
 //convert unsigned long to string
-char* ultoa(unsigned long a, char* buffer, int radix){
+char* ultoa(unsigned long a, char* buffer, int radix, char pad){
 	if(radix<2 || radix>36){
 		return NULL;
 	}
 	char* ptr=buffer;
-	div_t result;
-	if(a==0){
-		ptr[0] = '0';
-		ptr[1] = '\0';
-		return buffer;
-	}
+        
+	div_t result;	
 	while(a){
-		/* toolchain bug??
-		result = div(a, radix);
-		*/
-		result.quot = a/radix;
-		result.rem = a%radix;
-		*ptr = result.rem;
-		if(result.rem<10){
-			*ptr += '0';
-		}else{
-			*ptr += 'a'-10;
-		}
-		++ptr;
-		a = result.quot;
-	}
+            /* toolchain bug??
+            result = div(a, radix);
+            */
+            result.quot = a/radix;
+            result.rem = a%radix;
+            *ptr = result.rem;
+            if(result.rem<10){
+                *ptr += '0';
+            }else{
+                *ptr += 'a'-10;
+            }
+            ++ptr;
+            a = result.quot;
+	}                
+        while (ptr < buffer+pad)
+            *ptr++ = '0';
+        
 	*ptr = '\0';
 	str_reverse(buffer);
 	return buffer;
@@ -104,6 +103,10 @@ char* itoa(int a, char* buffer, int radix){
 		ultoa(a, buffer, radix);
 	}
 	return buffer;
+}
+
+__attribute__((weak)) char* utoa(unsigned a, char* buffer, int radix) {
+    return ultoa(a, buffer, radix);
 }
 
 

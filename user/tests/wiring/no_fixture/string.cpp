@@ -27,5 +27,33 @@
 
 test(String_float_conversion) {
     String one(1);
-    assertTrue(!strcmp("1.0000000000", one.c_str()));
+    assertTrue(!strcmp("1.0000000000", one));
 }
+
+test(String_float_negative) {
+    String test(-123.456, 3);
+    assertTrue(!strcmp("-123.456", test));
+}
+
+test(String_float_no_decimals_rounding_up) {
+    String test(123.9, 0);
+    assertTrue(!strcmp("124", test));
+}
+
+test(String_float_no_decimals_round_down) {
+    String test(123.2, 0);
+    assertTrue(!strcmp("123", test));
+}
+
+test(String_float_negative_no_decimals_rounding_up) {
+    String test(-123.9, 0);
+    assertTrue(!strcmp("-124", test));
+}
+
+test(String_float_negative_no_decimals_round_down) {
+    String test(-123.2, 0);
+    assertTrue(!strcmp("-123", test));
+}
+
+
+

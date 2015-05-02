@@ -27,21 +27,38 @@
  */
 
 #include "spark_wiring_string.h"
-#include "string_convert.h"
 #include <stdio.h>
 #include <limits.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include "string_convert.h"
 
 //These are very crude implementations - will refine later
 //------------------------------------------------------------------------------------------
 
-//convert double to ascii
-char *dtostrf (double val, signed char width, unsigned char prec, char *sout) {
-  char fmt[20];
-  sprintf(fmt, "%%%d.%df", width, prec);
-  sprintf(sout, fmt, val);
-  return sout;
+void dtoa (double val, unsigned char prec, char *sout) {
+    bool negative = val<0;
+    if (negative) {
+        val = -val;
+        *sout++ = '-';
+    }    
+    long scale = 1;
+    for (uint8_t i=0; i<prec; i++)
+        scale *= 10;    
+    val *= scale;   // capture all the significant digits
+    long fixed = long(val);
+    if ((val-fixed)>=0.5)    // round last digit
+        fixed++;
+    
+    long first = fixed / scale;
+    long second = fixed % scale;
+    
+    ultoa(first, sout, 10, 1);
+    if (prec) {
+        sout += strlen(sout);
+        *sout++ = '.';
+        ultoa(second, sout, 10, prec);
+    }
 }
 
 
@@ -127,14 +144,16 @@ String::String(float value, int decimalPlaces)
 {
 	init();
 	char buf[33];
-	*this = dtostrf(value, (decimalPlaces + 2), decimalPlaces, buf);
+	dtoa(value, decimalPlaces, buf);
+        *this = buf;
 }
 
 String::String(double value, int decimalPlaces)
 {
 	init();
 	char buf[33];
-	*this = dtostrf(value, (decimalPlaces + 2), decimalPlaces, buf);
+	dtoa(value, decimalPlaces, buf);
+        *this = buf;
 }
 String::~String()
 {
@@ -322,15 +341,15 @@ unsigned char String::concat(unsigned long num)
 unsigned char String::concat(float num)
 {
 	char buf[20];
-	char* string = dtostrf(num, 8, 6, buf);
-	return concat(string, strlen(string));
+	dtoa(num, 6, buf);
+	return concat(buf, strlen(buf));
 }
 
 unsigned char String::concat(double num)
 {
 	char buf[20];
-	char* string = dtostrf(num, 8, 6, buf);
-	return concat(string, strlen(string));
+	dtoa(num, 6, buf);
+	return concat(buf, strlen(buf));
 }
 
 /*********************************************/
