@@ -145,6 +145,7 @@ void HAL_WLAN_notify_connected()
 
 void HAL_WLAN_notify_disconnected()
 {
+    cloud_disconnect();
     if (WLAN_CONNECTED)     /// unsolicited disconnect
     {
       //Breathe blue if established connection gets disconnected
@@ -167,14 +168,16 @@ void HAL_WLAN_notify_disconnected()
       LED_On(LED_RGB);
     }
     WLAN_CONNECTED = 0;
-    WLAN_DHCP = 0;
-    cloud_disconnect();    
+    WLAN_DHCP = 0;    
 }
 
 void HAL_WLAN_notify_dhcp(bool dhcp)
 {
-    LED_SetRGBColor(RGB_COLOR_GREEN);
-    LED_On(LED_RGB);
+    if (!WLAN_SMART_CONFIG_START) 
+    {
+        LED_SetRGBColor(RGB_COLOR_GREEN);
+        LED_On(LED_RGB);        
+    }
     if (dhcp)
     {
         CLR_WLAN_WD();
@@ -278,9 +281,9 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
         cloud_disconnect();
         wlan_deactivate();
 
-            SPARK_WLAN_SLEEP = 1;
+        SPARK_WLAN_SLEEP = 1;
         if (flags & 1) {
-            
+            spark_disconnect();
         }
 
         SPARK_WLAN_STARTED = 0;

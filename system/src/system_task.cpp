@@ -378,7 +378,7 @@ void cloud_disconnect()
         SPARK_CLOUD_SOCKETED = 0;
         Spark_Error_Count = 0;    
         
-        if (!WLAN_DISCONNECT)
+        if (!WLAN_DISCONNECT && !WLAN_SMART_CONFIG_START)
         {
             LED_SetRGBColor(RGB_COLOR_GREEN);
             LED_On(LED_RGB);
