@@ -14,8 +14,9 @@ MKDIR = mkdir -p
 SRC_ROOT=../../../
 
 # location of this folder relative to the root
-SRC_PATH=main/tests/unit/
+SRC_PATH=user/tests/unit/
 WIRING=wiring/
+SYSTEM=system/
 HAL=hal/
 WIRING_SRC=$(WIRING)src/
 
@@ -39,7 +40,9 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_random.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_string.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_ipaddress.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_print.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
 
+$(info $(CPPSRC))
 
 # Paths to dependent projects, referenced from root of this project
 LIB_SERVICES = services/
@@ -52,7 +55,9 @@ CSRC += $(call target_files,$(LIB_SERVICES)src,rgbled.c)
 # encapsulated by their owning repo
 INCLUDE_DIRS += $(LIB_SERVICES)inc
 INCLUDE_DIRS += $(WIRING)inc
+INCLUDE_DIRS += $(SYSTEM)inc
 INCLUDE_DIRS += $(HAL)shared
+INCLUDE_DIRS += $(HAL)inc
 
 CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -Wall
@@ -66,8 +71,7 @@ CFLAGS += -DSPARK=1
 CFLAGS += -DDEBUG_BUILD
 
 CPPFLAGS += -std=gnu++11
-
-LDFLAGS +=  -Wl,--gc-sections 
+CPPFLAGS += -DCATCH_CONFIG_SFINAE
 
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o))

@@ -7,7 +7,7 @@
 
 TEST_CASE("Can use HEX radix with String numeric conversion constructors") {
     
-    REQUIRE(String(32, HEX)=="20");
+    REQUIRE(!strcmp(String(32, HEX),"20"));
 }
 
 TEST_CASE("Can use DEC radix with String numeric conversion constructors") {    
@@ -42,11 +42,36 @@ TEST_CASE("Can print UINT_MAX in binary") {
     REQUIRE(String(UINT_MAX, BIN)=="11111111111111111111111111111111");
 }
 
-// add String printing function 
+TEST_CASE("Can convert float to string with default precision of 6") {
+    REQUIRE(String(1.0)=="1.000000");
+}
+
+TEST_CASE("Can convert long float to string with default precision of 6") {
+    REQUIRE(String(123456789.0,3)=="123456789.000");
+}
+
+TEST_CASE("Can convert negative float to string") {
+    REQUIRE(String(-123.123, 3)=="-123.123");
+}
+
+TEST_CASE("Can convert float no decimals rounding up") {
+    REQUIRE(String(123.5, 0)=="124");
+}
+
+TEST_CASE("Can convert float no decimals rounding down") {
+    REQUIRE(String(123.2, 0)=="123");
+}
+
+TEST_CASE("Can convert negative float no decimals rounding down") {
+    REQUIRE(String(-123.5, 0)=="-124");
+}
+
+TEST_CASE("Can convert negative float no decimals rounding up") {
+    REQUIRE(String(-123.2, 0)=="-123");
+}
+
 namespace Catch {
-
-    std::string toString( String const& value ) {
+    std::string toString( const String& value ) {
         return std::string(value.c_str());
-    }
-
+    }    
 }
