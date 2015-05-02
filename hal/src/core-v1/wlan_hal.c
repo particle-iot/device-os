@@ -434,7 +434,7 @@ void wlan_fetch_ipconfig(WLanConfig* config) {
     HAL_Delay_Milliseconds(100);
 
     // the WLanConfig and the CC3000 structure are identical
-    netapp_ipconfig((void*)config);
+    netapp_ipconfig((void*)&config->nw);
     // the MAC address isn't available until after the first WLAN connection is made, so fetch it from nvmem
     nvmem_get_mac_address(config->nw.uaMacAddr);    
 }

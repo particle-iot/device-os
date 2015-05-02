@@ -39,7 +39,7 @@ extern "C" {
 #endif
 
 #if HAL_IPv6
-typedef struct _HAL_IPAddress_t {
+typedef struct __attribute__((__packed__)) _HAL_IPAddress_t  {
     uint8_t v;              // 4 for Ipv4, 6 for Ipv6
     union {
         uint32_t ipv4;
@@ -47,14 +47,14 @@ typedef struct _HAL_IPAddress_t {
     };
 } HAL_IPAddress;
 #else
-typedef struct _HAL_IPAddress_t {
+typedef struct __attribute__((__packed__)) _HAL_IPAddress_t {
     union {
         uint32_t ipv4;
     };
 } HAL_IPAddress;
 #endif
 
-typedef struct _NetworkConfig_t {
+typedef struct __attribute__((__packed__)) _NetworkConfig_t {
     HAL_IPAddress aucIP;             // byte 0 is MSB, byte 3 is LSB
     HAL_IPAddress aucSubnetMask;     // byte 0 is MSB, byte 3 is LSB
     HAL_IPAddress aucDefaultGateway; // byte 0 is MSB, byte 3 is LSB
