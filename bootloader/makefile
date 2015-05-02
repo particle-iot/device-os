@@ -10,6 +10,8 @@ LIBS += $(MAKE_DEPENDENCIES)
 LIB_DEPS += $(PLATFORM_LIB_DEP) $(SERVICES_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
 
+COMPILE_LTO=y
+
 include ../build/platform-id.mk
 
 # Target this makefile is building.
