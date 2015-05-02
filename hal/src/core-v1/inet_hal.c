@@ -31,7 +31,14 @@
 int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr,
     network_interface_t nif, void* reserved)
 {    
-    return gethostbyname(hostname, hostnameLen, &out_ip_addr->ipv4)<0;
+    int attempts = 5;
+    out_ip_addr->ipv4 = 0;
+    int result = 0;
+    while (!out_ip_addr->ipv4 && attempts --> 0) {
+        HAL_Delay_Milliseconds(1);
+        result = gethostbyname(hostname, hostnameLen, &out_ip_addr->ipv4)<0;        
+    }    
+    return result;
 }
 
 // inet_ping in wlan_hal.c

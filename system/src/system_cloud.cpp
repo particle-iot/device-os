@@ -575,7 +575,6 @@ int Spark_Connect(void)
         }
 
         case DOMAIN_NAME:
-            // CC3000 unreliability workaround, usually takes 2 or 3 attempts
             int attempts = 10;
             while (!ip_addr && 0 < --attempts)
             {
