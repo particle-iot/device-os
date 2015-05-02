@@ -33,6 +33,12 @@ IPAddress::IPAddress()
     memset(&address, 0, sizeof (address));
 }
 
+IPAddress::IPAddress(const HAL_IPAddress& address)
+{
+    memcpy(&this->address, &address, sizeof(address));
+}
+
+
 IPAddress::IPAddress(uint8_t first_octet, uint8_t second_octet, uint8_t third_octet, uint8_t fourth_octet)
 {
     set_ipv4(first_octet, second_octet, third_octet, fourth_octet);        
