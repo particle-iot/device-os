@@ -174,6 +174,14 @@ extern "C" void HAL_RTCAlarm_Handler(void)
 }
 }
 
+void manage_safe_mode()
+{
+    uint16_t flag = (HAL_Bootloader_Get_Flag(BOOTLOADER_FLAG_STARTUP_MODE));
+    if (flag & 1) {
+        set_system_mode(SAFE_MODE);
+    }
+}
+
 /*******************************************************************************
  * Function Name  : main.
  * Description    : main routine.
@@ -182,11 +190,13 @@ extern "C" void HAL_RTCAlarm_Handler(void)
  * Return         : None.
  *******************************************************************************/
 void app_setup_and_loop(void)
-{
+{    
     HAL_Core_Init();
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
     DEBUG("Hello from Spark!");
+    
+    manage_safe_mode();
 
 #if defined (START_DFU_FLASHER_SERIAL_SPEED) || defined (START_YMODEM_FLASHER_SERIAL_SPEED)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);

@@ -24,8 +24,10 @@ void set_system_mode(System_Mode_TypeDef mode)
     _mode = mode;    
     switch (mode)
     {
+        case SAFE_MODE:
         case AUTOMATIC:
             SPARK_CLOUD_CONNECT = 1;
+            SPARK_WLAN_SLEEP = 0;
             break;
 
         case SEMI_AUTOMATIC:
