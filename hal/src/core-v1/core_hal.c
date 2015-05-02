@@ -337,10 +337,17 @@ uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
 	return Data;
 }
 
-uint16_t HAL_Bootloader_Get_Version(void)
+uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 {
-    return Bootloader_Get_Version();
+    switch (flag) {
+        case BOOTLOADER_FLAG_VERSION:
+            return SYSTEM_FLAG(Bootloader_Version_SysFlag);
+        case BOOTLOADER_FLAG_STARTUP_MODE:
+            return SYSTEM_FLAG(StartupMode_SysFlag);
+    }
+    return 0;
 }
+
 
 // todo find a technique that allows accessor functions to be inlined while still keeping
 // hardware independence.
