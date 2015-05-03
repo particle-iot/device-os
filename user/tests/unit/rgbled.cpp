@@ -3,6 +3,7 @@
 
 extern "C" {
     #include "rgbled.h"
+    #include "rgbled_hal.h"
 };
 
 
