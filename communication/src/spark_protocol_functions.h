@@ -24,12 +24,13 @@ class SparkProtocol;
     
 struct SparkKeys
 {    
-    uint16_t size;
+  uint16_t size;
   unsigned char *core_private;
   unsigned char *server_public;
   unsigned char *core_public;
 };
 
+STATIC_ASSERT(SparkKeys_size, sizeof(SparkKeys)==16);
     
 struct SparkCallbacks
 {
@@ -67,6 +68,8 @@ struct SparkCallbacks
   void (*set_time)(time_t t);
 };
 
+STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==40);
+
 /**
  * Application-supplied callbacks. (Deliberately distinct from the system-supplied
  * callbacks.)
@@ -83,6 +86,8 @@ typedef struct CommunicationsHandlers {
 } CommunicationsHandlers;    
     
 
+STATIC_ASSERT(CommunicationHandlers_size, sizeof(CommunicationsHandlers)==8);
+
 typedef uint16_t product_id_t;
 typedef uint16_t product_firmware_version_t;
 
@@ -90,7 +95,11 @@ typedef struct {
     uint16_t size;
     product_id_t product_id;    
     product_firmware_version_t product_version;
+    uint16_t reserved;  // make the padding explicit
 } product_details_t;
+
+STATIC_ASSERT(product_details_size, sizeof(product_details_t)==8); 
+
 
 void spark_protocol_communications_handlers(SparkProtocol* protocol, CommunicationsHandlers* handlers);
 

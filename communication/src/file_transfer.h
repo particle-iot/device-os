@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "static_assert.h"
 
 namespace FileTransfer {
     
@@ -15,6 +16,7 @@ namespace FileTransfer {
     struct Chunk
     {
         uint16_t size;
+        uint16_t reserved2;         // padding - reuse if possible.
 
         /**
          * For memory devices, represents the offset in the memory where the file data should be stored.
@@ -36,6 +38,8 @@ namespace FileTransfer {
         uint8_t reserved;       // padding    
     };
     
+    STATIC_ASSERT(Chunk_size, sizeof(Chunk)==12);
+    
     struct Descriptor : public Chunk
     {
         Descriptor() { size = sizeof(*this); }
@@ -52,4 +56,7 @@ namespace FileTransfer {
         }
     };
 
+    STATIC_ASSERT(Descriptor_size, sizeof(Descriptor)==20);
+        
 };
+

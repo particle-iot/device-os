@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "static_assert.h"
 
 #if PLATFORM_ID>=4 && PLATFORM_ID<=8
 #define HAL_IPv6 1
@@ -40,18 +41,20 @@ extern "C" {
 
 #if HAL_IPv6
 typedef struct __attribute__((__packed__)) _HAL_IPAddress_t  {
-    uint8_t v;              // 4 for Ipv4, 6 for Ipv6
     union {
         uint32_t ipv4;
         uint32_t ipv6[4];
     };
+    uint8_t v;              // 4 for Ipv4, 6 for Ipv6    
 } HAL_IPAddress;
+STATIC_ASSERT(HAL_IPAddress_size, sizeof(HAL_IPAddress)==17);
 #else
 typedef struct __attribute__((__packed__)) _HAL_IPAddress_t {
     union {
         uint32_t ipv4;
     };
 } HAL_IPAddress;
+STATIC_ASSERT(HAL_IPAddress_size, sizeof(HAL_IPAddress)==4);
 #endif
 
 typedef struct __attribute__((__packed__)) _NetworkConfig_t {
@@ -62,6 +65,7 @@ typedef struct __attribute__((__packed__)) _NetworkConfig_t {
     HAL_IPAddress aucDNSServer;      // byte 0 is MSB, byte 3 is LSB
     uint8_t uaMacAddr[6];
 } NetworkConfig;
+STATIC_ASSERT(NetworkConfig_size, sizeof(HAL_IPAddress)*5+6);
 
 typedef uint32_t network_interface_t;
 

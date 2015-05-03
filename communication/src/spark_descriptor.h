@@ -26,6 +26,7 @@
 #pragma once
 
 #include "appender.h"
+#include "static_assert.h"
 
 // Deferring to ASN.1 type codes
 namespace SparkReturnType {
@@ -53,4 +54,8 @@ struct SparkDescriptor
     void (*ota_upgrade_status_sent)(void);
   
     bool (*append_system_info)(appender_fn appender, void* append, void* reserved);
+    
+    void* reserved[4];      // add a few additional pointers
 };
+
+STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60);

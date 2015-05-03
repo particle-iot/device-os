@@ -3,6 +3,7 @@
 #define	SYSTEM_UPDATE_H
 
 #include "file_transfer.h"
+#include "static_assert.h"
 #include "appender.h"
 #ifdef __cplusplus
 extern "C" {
@@ -32,10 +33,13 @@ struct system_file_transfer_t {
     }
     
     uint16_t size;
+    uint16_t padding;   // reuse if possible
     Stream* stream;
     FileTransfer::Descriptor descriptor;
 };
 
+STATIC_ASSERT(system_file_transfer_size, sizeof(system_file_transfer_t)==sizeof(FileTransfer::Descriptor)+8);
+        
 bool system_fileTransfer(system_file_transfer_t* transfer, void* reserved=NULL);
 
 void system_lineCodingBitRateHandler(uint32_t bitrate);
