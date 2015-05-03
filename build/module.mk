@@ -35,6 +35,7 @@ endif
 	
 ifeq ("$(DEBUG_BUILD)","y") 
 CFLAGS += -DDEBUG_BUILD
+COMPILE_LTO ?= n
 else
 CFLAGS += -DRELEASE_BUILD
 endif
@@ -47,6 +48,15 @@ ifeq ("$(SPARK_CLOUD)","n")
 CFLAGS += -DSPARK_NO_CLOUD
 endif
 
+# disable COMPILE_LTO when JTAG is enabled since it obfuscates the symbol mapping
+# breaking step debugging
+ifeq ($(USE_SWD),y)
+COMPILE_LTO ?= n
+endif
+
+ifeq ($(USE_SWD_JTAG),y)
+COMPILE_LTO ?= n
+endif
 
 
 # add include directories
