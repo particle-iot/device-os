@@ -198,7 +198,7 @@ void WiFiCredentialsReader::handle(char c)
     }
     else if ('f' == c)
     {
-        system_serialFirmwareUpdate(&serial);
+        system_firmwareUpdate(&serial);
     }
     else if ('x' == c)
     {

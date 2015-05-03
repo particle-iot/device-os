@@ -43,9 +43,10 @@ public:
         return system_mode();
     }
 
-    static bool serialFileTransfer(Stream *serialObj, FileTransfer::Descriptor& file) {
-        return system_serialFileTransfer(serialObj, file);
+    static bool firmwareUpdate(Stream *serialObj) {
+        return system_firmwareUpdate(serialObj);
     }
+    
     static void factoryReset(void);
     static void dfu(bool persist=false);
     static void reset(void);

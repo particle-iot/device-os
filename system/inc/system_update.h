@@ -17,8 +17,26 @@ void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler h
 void set_start_dfu_flasher_serial_speed(uint32_t speed);
 void set_start_ymodem_flasher_serial_speed(uint32_t speed);
 
-bool system_serialFirmwareUpdate(Stream* stream);
-bool system_serialFileTransfer(Stream* stream, FileTransfer::Descriptor& file);
+/**
+ * Updates firmware via ymodem from a given stream.
+ * @param stream
+ * @return true on successful update.
+ */
+bool system_firmwareUpdate(Stream* stream, void* reserved=NULL);
+
+
+struct system_file_transfer_t {
+    system_file_transfer_t() {
+        memset(this, 0, sizeof(*this));
+        size = sizeof(*this);
+    }
+    
+    uint16_t size;
+    Stream* stream;
+    FileTransfer::Descriptor descriptor;
+};
+
+bool system_fileTransfer(system_file_transfer_t* transfer, void* reserved=NULL);
 
 void system_lineCodingBitRateHandler(uint32_t bitrate);
 

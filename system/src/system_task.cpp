@@ -84,7 +84,7 @@ void manage_serial_flasher()
 {
     if(SPARK_FLASH_UPDATE == 3)
     {
-        system_serialFirmwareUpdate(&Serial);
+        system_firmwareUpdate(&Serial);
     }
 }
 

@@ -53,31 +53,30 @@ void set_start_ymodem_flasher_serial_speed(uint32_t speed)
 #endif
 }
 
-bool system_serialFirmwareUpdate(Stream* stream) 
+bool system_firmwareUpdate(Stream* stream, void* reserved) 
 {
 #if PLATFORM_ID>2    
     set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
 #endif    
-    FileTransfer::Descriptor desc;    
-    memset(&desc, 0, sizeof(desc));    
-    desc.store = FileTransfer::Store::FIRMWARE;
-    return system_serialFileTransfer(stream, desc);
+    system_file_transfer_t tx;            
+    tx.descriptor.store = FileTransfer::Store::FIRMWARE;    
+    return system_fileTransfer(&tx);
 }
 
-
-bool system_serialFileTransfer(Stream *serialObj, FileTransfer::Descriptor& file)
+bool system_fileTransfer(system_file_transfer_t* tx, void* reserved)
 {
     bool status = false;
+    Stream* serialObj = tx->stream;
     
     if (NULL != Ymodem_Serial_Flash_Update_Handler)
     {        
-        status = Ymodem_Serial_Flash_Update_Handler(serialObj, file, NULL);
+        status = Ymodem_Serial_Flash_Update_Handler(serialObj, tx->descriptor, NULL);
         SPARK_FLASH_UPDATE = 0;
         TimingFlashUpdateTimeout = 0;
 
         if (status == true)
         {
-            if (file.store==FileTransfer::Store::FIRMWARE) {
+            if (tx->descriptor.store==FileTransfer::Store::FIRMWARE) {
                 serialObj->println("Restarting system to apply firmware update...");
                 HAL_Delay_Milliseconds(100);
                 HAL_Core_System_Reset();
