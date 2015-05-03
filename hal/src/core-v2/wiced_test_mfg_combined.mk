@@ -50,6 +50,7 @@ BOOTLOADER_MEM=$(OUT)/bootloader_pad$(SUFFIX).bin
 BOOTLOADER_DIR=$(FIRMWARE)/bootloader
 
 FIRMWARE_BIN=$(FIRMWARE_BUILD)/target/main/platform-$(PLATFORM_ID)/main.bin
+FIRMWARE_ELF=$(FIRMWARE_BUILD)/target/main/platform-$(PLATFORM_ID)/main.bin
 FIRMWARE_MEM=$(OUT)/main_pad$(SUFFIX).bin
 FIRMWARE_DIR=$(FIRMWARE)/main
 COMBINED_MEM=$(OUT)/combined$(SUFFIX).bin
@@ -129,7 +130,8 @@ firmware:
 	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(FIRMWARE_MEM) ibs=1k count=384
-	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc	
+	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc
+	cp $(FIRMWARE_ELF) $(OUT)
 	
 user:	system
 	@echo building factory default modular user app to $(USER_MEM)
