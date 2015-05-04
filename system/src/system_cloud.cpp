@@ -52,7 +52,7 @@
 
 int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
-int userFuncSchedule(const char *funcKey, const char *paramString);
+int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
 
 SparkProtocol* sp;
 
@@ -642,10 +642,13 @@ const void *getUserVar(const char *varKey)
     return item ? item->userVar : NULL;
 }
 
-int userFuncSchedule(const char *funcKey, const char *paramString)
+int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved)
 {
+    // for now, we invoke the function directly and return the result via the callback    
     User_Func_Lookup_Table_t* item = find_func_by_key(funcKey);    
-    return item ? item->pUserFunc(item->pUserFuncData, paramString, NULL) : -1;
+    int result = item ? item->pUserFunc(item->pUserFuncData, paramString, NULL) : -1;
+    callback((const void*)result, SparkReturnType::INT);
+    return 0;
 }
 
 void HAL_WLAN_notify_socket_closed(sock_handle_t socket)

@@ -135,6 +135,8 @@ class SparkProtocol
                     unsigned char message_id_msb, unsigned char message_id_lsb);
     void ping(unsigned char *buf);
 
+    bool function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token);
+    
     /********** Queue **********/
     const size_t QUEUE_SIZE;
     int queue_bytes_available();

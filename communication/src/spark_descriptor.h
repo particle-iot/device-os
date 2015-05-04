@@ -27,6 +27,7 @@
 
 #include "appender.h"
 #include "static_assert.h"
+#include <functional>
 
 // Deferring to ASN.1 type codes
 namespace SparkReturnType {
@@ -40,10 +41,12 @@ namespace SparkReturnType {
 
 struct SparkDescriptor
 {
+    typedef std::function<bool(const void*, SparkReturnType::Enum)> FunctionResultCallback;
+    
     size_t size;
     int (*num_functions)(void);
     const char* (*get_function_key)(int function_index);
-    int (*call_function)(const char *function_key, const char *arg);
+    int (*call_function)(const char *function_key, const char *arg, FunctionResultCallback callback, void* reserved);
 
     int (*num_variables)(void);
     const char* (*get_variable_key)(int variable_index);

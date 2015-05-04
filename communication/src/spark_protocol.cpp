@@ -1249,6 +1249,20 @@ bool SparkProtocol::handle_update_done(msg& message)
     return true;    
 }
 
+bool SparkProtocol::function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token)
+{    
+    // send return value
+    queue[0] = 0;
+    queue[1] = 16;    
+    function_return(queue + 2, token, int(result));
+    if (0 > blocking_send(queue, 18))
+    {
+      // error
+      return false;
+    }
+    return true;
+}
+
 bool SparkProtocol::handle_function_call(msg& message) 
 {
     // copy the function key
@@ -1297,17 +1311,8 @@ bool SparkProtocol::handle_function_call(msg& message)
     }
     
     // call the given user function
-    int return_value = descriptor.call_function(function_key, function_arg);
-
-    // send return value
-    *msg_to_send = 0;
-    *(msg_to_send + 1) = 16;
-    function_return(msg_to_send + 2, message.token, return_value);
-    if (0 > blocking_send(msg_to_send, 18))
-    {
-      // error
-      return false;
-    }
+    auto callback = [=] (const void* result, SparkReturnType::Enum resultType ) { return this->function_result(result, resultType, message.token); };
+    descriptor.call_function(function_key, function_arg, callback, NULL);
     return true;
 }
 

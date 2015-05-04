@@ -30,8 +30,8 @@
 #include <functional>
 
 
-typedef int (*user_function_t)(String paramString);
-typedef std::function<int(String)> user_std_function_t;
+typedef int (user_function_int_str_t)(String paramString);
+typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
 
 #ifdef SPARK_NO_CLOUD
 #define CLOUD_FN(x,y) (y)
@@ -47,19 +47,26 @@ public:
     {
         return CLOUD_FN(spark_variable(varKey, userVar, userVarType, NULL), false);
     }
-    
-    static bool function(const char *funcKey, user_function_t func) 
+
+    static bool function(const char *funcKey, user_function_int_str_t* func)
     {
-        return CLOUD_FN(register_function(call_raw_user_function, &func, funcKey), false);
+        return CLOUD_FN(register_function(call_raw_user_function, (void*)func, funcKey), false);        
     }
     
-    static bool function(const char *funcKey, user_std_function_t func)
+    static bool function(const char *funcKey, user_std_function_int_str_t func, void* reserved=NULL)
     {
-#ifndef SPARK_NO_CLOUD
+#ifdef SPARK_NO_CLOUD
         return false;
 #else
-        auto fn = new user_std_function_t(func);        
-        return fn ? register_function(call_std_user_function, fn, funcKey) : false;
+        bool success = false;
+        if (func) // if the call-wrapper has wrapped a callable object
+        {            
+            auto wrapper = new user_std_function_int_str_t(func);
+            if (wrapper) {
+                success = register_function(call_std_user_function, wrapper, funcKey);                    
+            }
+        }
+        return success;       
 #endif        
     }
 

@@ -18,11 +18,14 @@
 
 #pragma once
 
+#include "static_assert.h"
+
 typedef struct SparkProtocol SparkProtocol;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+        
     
 void cloud_disconnect(void);
 
@@ -72,10 +75,13 @@ typedef int (*cloud_function_t)(void* data, const char* param, void* reserved);
 
 typedef struct {
     uint16_t size;
+    uint16_t padding;
     const char *funcKey;
     cloud_function_t fn;
     void* data; 
 } cloud_function_descriptor;
+
+STATIC_ASSERT(cloud_function_descriptor_size, sizeof(cloud_function_descriptor)==16);
 
 bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved);
 bool spark_function(const cloud_function_descriptor* desc, void* reserved);
