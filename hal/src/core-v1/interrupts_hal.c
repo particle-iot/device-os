@@ -69,6 +69,8 @@ static exti_channel exti_channels[16];
 
 /* Private function prototypes -----------------------------------------------*/
 
+
+
 void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, void* reserved)
 {
   uint8_t GPIO_PortSource = 0;    //variable to hold the port number
@@ -233,7 +235,7 @@ void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, HAL_InterruptHandler fn, void
 
     // Register the handler for the user function name
     exti_channels[GPIO_PinSource].fn = fn;
-    exti_channels[GPIO_PinSource].fn = data;
+    exti_channels[GPIO_PinSource].data = data;
 }
 
 /*******************************************************************************
@@ -247,14 +249,17 @@ void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, HAL_InterruptHandler fn, void
  *******************************************************************************/
 void HAL_EXTI_Handler(uint8_t EXTI_Line)
 {
-  //fetch the user function pointer from the array
+    HAL_Interrupts_Trigger(EXTI_Line, NULL);
+}
+
+void HAL_Interrupts_Trigger(uint16_t EXTI_Line, void* reserved)
+{
     void* data = exti_channels[EXTI_Line].data;
     HAL_InterruptHandler userISR_Handle = exti_channels[EXTI_Line].fn;
 
-  if (userISR_Handle)
-      userISR_Handle(data);
+    if (userISR_Handle)
+        userISR_Handle(data);    
 }
-
 
 int HAL_disable_irq()
 {        

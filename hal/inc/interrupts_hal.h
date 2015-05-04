@@ -54,6 +54,8 @@ void HAL_Interrupts_Detach(uint16_t pin);
 void HAL_Interrupts_Enable_All(void);
 void HAL_Interrupts_Disable_All(void);
 
+void HAL_Interrupts_Trigger(uint16_t pin, void* reserved);
+
 int HAL_disable_irq();
 void HAL_enable_irq(int mask);
 
