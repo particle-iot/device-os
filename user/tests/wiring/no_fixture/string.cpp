@@ -31,28 +31,28 @@ test(String_float_conversion) {
 }
 
 test(String_float_negative) {
-    String test(-123.456, 3);
-    assertTrue(!strcmp("-123.456", test));
+    String s(-123.456, 3);
+    assertTrue(!strcmp("-123.456", s));
 }
 
 test(String_float_no_decimals_rounding_up) {
-    String test(123.9, 0);
-    assertTrue(!strcmp("124", test));
+    String s(123.9, 0);
+    assertTrue(!strcmp("124", s));
 }
 
 test(String_float_no_decimals_round_down) {
-    String test(123.2, 0);
-    assertTrue(!strcmp("123", test));
+    String s(123.2, 0);
+    assertTrue(!strcmp("123", s));
 }
 
 test(String_float_negative_no_decimals_rounding_up) {
-    String test(-123.9, 0);
-    assertTrue(!strcmp("-124", test));
+    String s(-123.9, 0);
+    assertTrue(!strcmp("-124", s));
 }
 
 test(String_float_negative_no_decimals_round_down) {
-    String test(-123.2, 0);
-    assertTrue(!strcmp("-123", test));
+    String s(-123.2, 0);
+    assertTrue(!strcmp("-123", s));
 }
 
 
