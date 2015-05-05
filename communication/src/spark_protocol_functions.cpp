@@ -51,12 +51,12 @@ bool spark_protocol_is_initialized(SparkProtocol* protocol) {
     return protocol->is_initialized(); 
 }
 
-int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char *buf, const char *id) {
+int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char *buf, const char *id, void*) {
     return protocol->presence_announcement(buf, id);
 }
 
 bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,
-                int ttl, EventType::Enum event_type) {
+                int ttl, EventType::Enum event_type, void*) {
     return protocol->send_event(event_name, data, ttl, event_type);
 }
 
@@ -85,11 +85,11 @@ void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char* e
     protocol->remove_event_handlers(event_name);
 }
 
-void spark_protocol_set_product_id(SparkProtocol* protocol, product_id_t product_id) {
+void spark_protocol_set_product_id(SparkProtocol* protocol, product_id_t product_id, unsigned, void*) {
     protocol->set_product_id(product_id);
 }
 
-void spark_protocol_set_product_firmware_version(SparkProtocol* protocol, product_firmware_version_t product_firmware_version) {
+void spark_protocol_set_product_firmware_version(SparkProtocol* protocol, product_firmware_version_t product_firmware_version, unsigned, void*) {
     protocol->set_product_firmware_version(product_firmware_version);
 }
 

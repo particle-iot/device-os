@@ -1519,7 +1519,7 @@ bool SparkProtocol::handle_received_message(void)
         return false;
       }
 
-      callbacks.signal(true);
+      callbacks.signal(true, 0, NULL);
       break;
     case CoAPMessageType::SIGNAL_STOP:
       queue[0] = 0;
@@ -1531,7 +1531,7 @@ bool SparkProtocol::handle_received_message(void)
         return false;
       }
 
-      callbacks.signal(false);
+      callbacks.signal(false, 0, NULL);
       break;
 
     case CoAPMessageType::HELLO:
@@ -1539,7 +1539,7 @@ bool SparkProtocol::handle_received_message(void)
       break;
 
     case CoAPMessageType::TIME:
-      callbacks.set_time(queue[6] << 24 | queue[7] << 16 | queue[8] << 8 | queue[9]);
+      callbacks.set_time(queue[6] << 24 | queue[7] << 16 | queue[8] << 8 | queue[9],0,NULL);
       break;
 
     case CoAPMessageType::PING:

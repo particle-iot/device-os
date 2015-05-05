@@ -122,7 +122,7 @@ inline EventType::Enum convert(Spark_Event_TypeDef eventType) {
 
 bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved)
 {
-    return spark_protocol_send_event(sp, name, data, ttl, convert(eventType));
+    return spark_protocol_send_event(sp, name, data, ttl, convert(eventType), NULL);
 }
 
 User_Var_Lookup_Table_t* find_var_by_key(const char* varKey)
@@ -388,7 +388,7 @@ void Spark_Protocol_Init(void)
         callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
         callbacks.signal = Spark_Signal;
         callbacks.millis = HAL_Timer_Get_Milli_Seconds;
-        callbacks.set_time = HAL_RTC_Set_UnixTime;
+        callbacks.set_time = system_set_time;
 
         SparkDescriptor descriptor;
         memset(&descriptor, 0, sizeof(descriptor));
@@ -426,6 +426,11 @@ void Spark_Protocol_Init(void)
         
         Spark.subscribe("spark", SystemEvents);
     }
+}
+
+void system_set_time(time_t time, unsigned, void*)
+{
+    HAL_RTC_Set_UnixTime(time);
 }
 
 const int CLAIM_CODE_SIZE = 63;
@@ -494,7 +499,7 @@ void LED_Signaling_Override(void)
     }
 }
 
-void Spark_Signal(bool on)
+void Spark_Signal(bool on, unsigned, void*)
 {
     if (on)
     {

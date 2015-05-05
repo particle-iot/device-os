@@ -27,7 +27,7 @@ struct SparkKeys
   uint16_t size;
   unsigned char *core_private;
   unsigned char *server_public;
-  unsigned char *core_public;
+  unsigned char *core_public;  
 };
 
 STATIC_ASSERT(SparkKeys_size, sizeof(SparkKeys)==16);
@@ -59,13 +59,13 @@ struct SparkCallbacks
   
   uint32_t (*calculate_crc)(const unsigned char *buf, uint32_t buflen);
   
-  void (*signal)(bool on);
+  void (*signal)(bool on, unsigned int param, void* reserved);
   system_tick_t (*millis)();
   
   /**
    * Sets the time. Time is given in milliseconds since the epoch, UCT.
    */
-  void (*set_time)(time_t t);
+  void (*set_time)(time_t t, unsigned int param, void* reserved);
 };
 
 STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==40);
@@ -110,17 +110,17 @@ void spark_protocol_init(SparkProtocol* protocol, const char *id,
 int spark_protocol_handshake(SparkProtocol* protocol, void* reserved=NULL);
 bool spark_protocol_event_loop(SparkProtocol* protocol, void* reserved=NULL);
 bool spark_protocol_is_initialized(SparkProtocol* protocol);
-int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char *buf, const char *id);
+int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char *buf, const char *id, void* reserved=NULL);
 bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,
-                int ttl, EventType::Enum event_type);
+                int ttl, EventType::Enum event_type, void* reserved);
 bool spark_protocol_send_subscription_device(SparkProtocol* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
 bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope, void* reserved=NULL);
 bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, EventHandler handler, SubscriptionScope::Enum scope, const char* id, void* reserved=NULL);
 bool spark_protocol_send_time_request(SparkProtocol* protocol, void* reserved=NULL);
 void spark_protocol_send_subscriptions(SparkProtocol* protocol, void* reserved=NULL);
-void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char *event_name);
-void spark_protocol_set_product_id(SparkProtocol* protocol, product_id_t product_id);
-void spark_protocol_set_product_firmware_version(SparkProtocol* protocol, product_firmware_version_t product_firmware_version);
+void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char *event_name, void* reserved=NULL);
+void spark_protocol_set_product_id(SparkProtocol* protocol, product_id_t product_id, unsigned int param = 0, void* reserved = NULL);
+void spark_protocol_set_product_firmware_version(SparkProtocol* protocol, product_firmware_version_t product_firmware_version, unsigned int param=0, void* reserved = NULL);
 void spark_protocol_get_product_details(SparkProtocol* protocol, product_details_t* product_details, void* reserved=NULL);
 
 /**

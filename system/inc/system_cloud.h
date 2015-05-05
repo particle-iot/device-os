@@ -20,6 +20,7 @@
 
 #include "static_assert.h"
 #include <string.h>
+#include <time.h>
 
 typedef struct SparkProtocol SparkProtocol;
 
@@ -44,13 +45,14 @@ void Spark_Protocol_Init(void);
 int Spark_Handshake(void);
 bool Spark_Communication_Loop(void);
 void Multicast_Presence_Announcement(void);
-void Spark_Signal(bool on);
+void Spark_Signal(bool on, unsigned, void*);
 void Spark_SetTime(unsigned long dateTime);
 void Spark_Process_Events();
 
 extern volatile uint8_t LED_Spark_Signal;
 void LED_Signaling_Override(void);
 
+void system_set_time(time_t time, unsigned param, void* reserved);
 
 typedef enum
 {
