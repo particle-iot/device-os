@@ -236,7 +236,7 @@ bool HAL_Core_Validate_User_Module(void)
 {
     bool valid = false;
     
-    if (!SYSTEM_FLAG(StartupMode_SysFlag)) 
+    if (!SYSTEM_FLAG(StartupMode_SysFlag) & 1)
     {    
         //CRC verification Enabled by default
         if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
