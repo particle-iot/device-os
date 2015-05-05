@@ -249,15 +249,19 @@ void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, HAL_InterruptHandler EXTI_Lin
  *******************************************************************************/
 void HAL_EXTI_Handler(uint8_t EXTI_Line)
 {
+    HAL_Interrupts_Trigger(EXTI_Line, NULL);
+}
+
+void HAL_Interrupts_Trigger(uint16_t EXTI_Line, void* reserved)
+{
   //fetch the user function pointer from the array
-    void* data = exti_channels[EXTI_Line].data;
+  void* data = exti_channels[EXTI_Line].data;
   HAL_InterruptHandler userISR_Handle = exti_channels[EXTI_Line].fn;
 
   if (userISR_Handle)
   {
     userISR_Handle(data);
-  }
-  
+  }    
 }
 
 
