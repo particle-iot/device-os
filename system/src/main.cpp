@@ -177,8 +177,10 @@ extern "C" void HAL_RTCAlarm_Handler(void)
 void manage_safe_mode()
 {
     uint16_t flag = (HAL_Bootloader_Get_Flag(BOOTLOADER_FLAG_STARTUP_MODE));
-    if (flag & 1) {
-        set_system_mode(SAFE_MODE);
+    if (flag != 0xFFFF) { // old bootloader
+        if (flag & 1) {
+            set_system_mode(SAFE_MODE);
+        }
     }
 }
 
@@ -220,12 +222,12 @@ void app_setup_and_loop(void)
                     //Execute user application setup only once
                     DECLARE_SYS_HEALTH(ENTERED_Setup);
                     if (system_mode()!=SAFE_MODE)
-                    setup();
+                     setup();
                     SPARK_WIRING_APPLICATION = 1;
                 }
 
-                    //Execute user application loop
-                    DECLARE_SYS_HEALTH(ENTERED_Loop);
+                //Execute user application loop
+                DECLARE_SYS_HEALTH(ENTERED_Loop);
                 if (system_mode()!=SAFE_MODE)
                     loop();
                     DECLARE_SYS_HEALTH(RAN_Loop);
