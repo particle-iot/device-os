@@ -38,8 +38,8 @@ DYNALIB_FN(system, system_mode)
 DYNALIB_FN(system, set_system_mode)
         
 DYNALIB_FN(system, set_ymodem_serial_flash_update_handler)
-DYNALIB_FN(system, system_serialFirmwareUpdate)
-DYNALIB_FN(system, system_serialFileTransfer)
+DYNALIB_FN(system, system_firmwareUpdate)
+DYNALIB_FN(system, system_fileTransfer)
         
 DYNALIB_FN(system, system_delay_ms)
 DYNALIB_FN(system, system_sleep)
