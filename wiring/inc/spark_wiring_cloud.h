@@ -29,8 +29,6 @@
 #include "spark_wiring_system.h"
 #include <functional>
 
-
-typedef int (user_function_int_str_t)(String paramString);
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
 
 #ifdef SPARK_NO_CLOUD

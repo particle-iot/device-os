@@ -165,7 +165,14 @@ User_Func_Lookup_Table_t* find_func_by_key(const char* funcKey)
     return NULL;
 }
 
-bool spark_function(const cloud_function_descriptor* desc, void* reserved)
+int call_raw_user_function(void* data, const char* param, void* reserved)
+{
+    user_function_int_str_t* fn = (user_function_int_str_t*)(data);
+    String p(param);
+    return (*fn)(p);
+}
+
+bool spark_function2(const cloud_function_descriptor* desc, void* reserved)
 {    
     User_Func_Lookup_Table_t* item = NULL;    
     if (NULL != desc->fn && NULL != desc->funcKey && strlen(desc->funcKey)<=USER_FUNC_KEY_LENGTH)
@@ -179,6 +186,26 @@ bool spark_function(const cloud_function_descriptor* desc, void* reserved)
         }
     }    
     return item!=NULL;
+}
+
+/**
+ * This is the original released signature for firmware version 0 and needs to remain like this.
+ * (The original returned void - we can safely change to 
+ */
+bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved)
+{
+    bool result;
+    if (funcKey) {
+        cloud_function_descriptor desc;
+        desc.funcKey = funcKey;
+        desc.fn = call_raw_user_function;
+        desc.data = (void*)pFunc;
+        result = spark_function2(&desc, NULL);
+    }
+    else {
+        result = spark_function2((cloud_function_descriptor*)pFunc, reserved);
+    }        
+    return result;
 }
 
 inline uint8_t isSocketClosed()
@@ -575,7 +602,7 @@ int Spark_Connect(void)
         }
 
         case DOMAIN_NAME:
-            int attempts = 10;
+            int attempts = 3;
             while (!ip_addr && 0 < --attempts)
             {
                 inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr.raw(), NIF_DEFAULT, NULL);
@@ -645,7 +672,7 @@ const void *getUserVar(const char *varKey)
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved)
 {
     // for now, we invoke the function directly and return the result via the callback    
-    User_Func_Lookup_Table_t* item = find_func_by_key(funcKey);    
+    User_Func_Lookup_Table_t* item = find_func_by_key(funcKey);
     int result = item ? item->pUserFunc(item->pUserFuncData, paramString, NULL) : -1;
     callback((const void*)result, SparkReturnType::INT);
     return 0;
