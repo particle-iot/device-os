@@ -177,7 +177,7 @@ extern "C" void HAL_RTCAlarm_Handler(void)
 void manage_safe_mode()
 {
     uint16_t flag = (HAL_Bootloader_Get_Flag(BOOTLOADER_FLAG_STARTUP_MODE));
-    if (flag != 0xFFFF) { // old bootloader
+    if (flag != 0xFF) { // old bootloader
         if (flag & 1) {
             set_system_mode(SAFE_MODE);
         }
