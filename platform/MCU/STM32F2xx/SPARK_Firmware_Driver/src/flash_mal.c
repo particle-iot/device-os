@@ -103,9 +103,6 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
 
 bool FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length, bool protect)
 {
-    uint32_t pageCounter = 0;
-    uint32_t numPages = 0;
-
     if (FLASH_CheckValidAddressRange(flashDeviceID, startAddress, length) != true)
     {
         return false;
@@ -115,17 +112,14 @@ bool FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddres
     {
         /* Get the first OB_WRP_Sector */
         uint16_t OB_WRP_Sector = FLASH_SectorToWriteProtect(FLASH_INTERNAL, startAddress);
-
+        uint16_t end = FLASH_SectorToWriteProtect(FLASH_INTERNAL, startAddress+length-1)<<1;
+        
         if (OB_WRP_Sector < OB_WRP_Sector_0)
         {
             return false;
         }
 
-        /* Get the number of Internal Flash Sectors from length info */
-        numPages = FLASH_PagesMask(length, INTERNAL_FLASH_PAGE_SIZE);
-
-        /* Enable/Disable Sector Write Protection */
-        for (pageCounter = 0; (pageCounter < numPages); pageCounter++)
+        while (!(OB_WRP_Sector & end))
         {
             if (protect)
             {
@@ -135,8 +129,7 @@ bool FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddres
             {
                 FLASH_WriteProtection_Disable(OB_WRP_Sector);
             }
-
-            OB_WRP_Sector = OB_WRP_Sector << 1;
+            OB_WRP_Sector <<= 1;
         }
 
         return true;
