@@ -98,12 +98,13 @@ void manage_network_connection()
         if (SPARK_WLAN_STARTED)
         {
             DEBUG("Resetting WLAN!");
+            auto was_sleeping = SPARK_WLAN_SLEEP;
             cloud_disconnect();
             network_off(WiFi, 0, 0, NULL);
             CLR_WLAN_WD();
             SPARK_WLAN_RESET = 0;
             SPARK_WLAN_STARTED = 0;
-            SPARK_WLAN_SLEEP = 0;
+            SPARK_WLAN_SLEEP = was_sleeping;
             cfod_count = 0;
         }
     }
