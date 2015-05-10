@@ -27,6 +27,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+#include "platform_config.h"
 #include "usb_hal.h"
 #include "usbd_cdc_core.h"
 #include "usbd_usr.h"
@@ -34,6 +35,7 @@
 #include "usbd_desc.h"
 #include "delay_hal.h"
 #include "interrupts_hal.h"
+#include "usb_hal_impl.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -282,9 +284,7 @@ void OTG_FS_irq(void)
  */
 void OTG_HS_irq(void)
 {
-    int mask = HAL_disable_irq();
     USBD_OTG_ISR_Handler(&USB_OTG_dev);
-    HAL_enable_irq(mask);
 }
 #endif
 
@@ -294,7 +294,7 @@ void OTG_HS_irq(void)
  * @param  None
  * @retval None
  */
-void OTG_HS_EP1_IN_irq(void)
+void OTG_HS_EP1_IN_irq2(void)
 {
     int mask = HAL_disable_irq();
     USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
@@ -306,7 +306,7 @@ void OTG_HS_EP1_IN_irq(void)
  * @param  None
  * @retval None
  */
-void OTG_HS_EP1_OUT_irq(void)
+void OTG_HS_EP1_OUT_irq2(void)
 {
     int mask = HAL_disable_irq();
     USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);

@@ -38,6 +38,7 @@
 #include "wiced.h"
 #include "wlan_internal.h"
 #include "hw_config.h"
+#include "usb_hal_impl.h"
 
 /**
  * Start of interrupt vector table.
@@ -50,6 +51,7 @@ extern char link_ram_interrupt_vectors_location_end;
 const unsigned SysTickIndex = 15;
 const unsigned USART1Index = 53;
 const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
+const unsigned OTG_HS_EP1_IN_irq_Index = 91;
 
 void SysTickOverride(void);
 void Mode_Button_EXTI_irq(void);
@@ -61,6 +63,8 @@ void override_interrupts(void) {
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[SysTickIndex] = (uint32_t)SysTickOverride;
     isrs[ButtonExtiIndex] = (uint32_t)Mode_Button_EXTI_irq;
+    //isrs[OTG_HS_EP1_IN_irq_Index] = (uint32_t)OTG_HS_EP1_IN_irq;
+    isrs[73] = (uint32_t)OTG_HS_irq;
     SCB->VTOR = (unsigned long)isrs;
 }
 

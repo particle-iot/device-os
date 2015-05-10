@@ -117,19 +117,18 @@ extern "C" PRIVILEGED_DATA xList pxReadyTasksLists[ configMAX_PRIORITIES ];	/*< 
 
  extern "C" void prvAddCurrentTaskToDelayedList( portTickType xTimeToWake );
 
-void myvTaskDelay( portTickType xTicksToDelay )
+	void myvTaskDelay( portTickType xTicksToDelay )
 	{
-	//signed portBASE_TYPE xAlreadyYielded = pdFALSE;
+	portTickType xTimeToWake;
+	signed portBASE_TYPE xAlreadyYielded = pdFALSE;
 
 		/* A delay time of zero just forces a reschedule. */
 		if( xTicksToDelay > ( portTickType ) 0U )
 		{
 			vTaskSuspendAll();
-			if (1) {
+			{
 				traceTASK_DELAY();
 
-                                
-                                
 				/* A task that is removed from the event list while the
 				scheduler is suspended will not get placed in the ready
 				list or removed from the blocked list until the scheduler
@@ -140,15 +139,12 @@ void myvTaskDelay( portTickType xTicksToDelay )
 
 				/* Calculate the time to wake - this may overflow but this is
 				not a problem. */
-
-                        	portTickType xTimeToWake;
-				xTimeToWake = xTickCount + 1;
+				xTimeToWake = xTickCount + xTicksToDelay;
 
 				/* We must remove ourselves from the ready list before adding
 				ourselves to the blocked list as the same list item is used for
 				both lists. */
-
-				if(uxListRemove( &( pxCurrentTCB->xGenericListItem ) ) == ( unsigned portBASE_TYPE ) 0 )
+				if( uxListRemove( &( pxCurrentTCB->xGenericListItem ) ) == ( unsigned portBASE_TYPE ) 0 )
 				{
 					/* The current task must be in a ready list, so there is
 					no need to check, and the port reset macro can be called
@@ -156,18 +152,18 @@ void myvTaskDelay( portTickType xTicksToDelay )
 					portRESET_READY_PRIORITY( pxCurrentTCB->uxPriority, uxTopReadyPriority );
 				}
 				prvAddCurrentTaskToDelayedList( xTimeToWake );
-                                //prvAddTaskToReadyList( pxCurrentTCB );
-
 			}
-			xTaskResumeAll();
+			xAlreadyYielded = xTaskResumeAll();
 		}
-//HAL_Delay_Microseconds(2500);
-		/* Force a reschedule if xTaskResumeAll has not already done so, we may
-		have put ourselves to sleep. */                
-                portYIELD_WITHIN_API();
-                
 
-}
+		/* Force a reschedule if xTaskResumeAll has not already done so, we may
+		have put ourselves to sleep. */
+		if( xAlreadyYielded == pdFALSE )
+		{
+		//	portYIELD_WITHIN_API();
+                       
+		}
+	}
 
 void test_get_semaphore_breaks_serial_printing(void)
 {
