@@ -102,7 +102,8 @@ void manage_network_connection()
             network_off(WiFi, 0, 0, NULL);
             CLR_WLAN_WD();
             SPARK_WLAN_RESET = 0;
-            SPARK_WLAN_STARTED = 0;            
+            SPARK_WLAN_STARTED = 0;
+            SPARK_WLAN_SLEEP = 0;
             cfod_count = 0;
         }
     }
