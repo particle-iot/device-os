@@ -171,8 +171,8 @@ void HAL_Core_Config(void)
     Set_System();
 
     //Wiring pins default to inputs
-    pin_t pin = 0;
-    while (pin++ < 20) HAL_Pin_Mode(pin, INPUT);
+    for (pin_t pin=0; pin<20; pin++) 
+        HAL_Pin_Mode(pin, INPUT);
 
     /* Register Mode Button Interrupt Handler (WICED hack for Mode Button usage) */
     //Commented below in favour of override_interrupts()
