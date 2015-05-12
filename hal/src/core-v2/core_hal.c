@@ -171,8 +171,10 @@ void HAL_Core_Config(void)
     Set_System();
 
     //Wiring pins default to inputs
+#if !defined(SWD_JTAG_DISABLE) && !defined(SWD_ENABLE_JTAG_DISABLE)
     for (pin_t pin=0; pin<20; pin++) 
         HAL_Pin_Mode(pin, INPUT);
+#endif
 
     /* Register Mode Button Interrupt Handler (WICED hack for Mode Button usage) */
     //Commented below in favour of override_interrupts()
