@@ -209,7 +209,7 @@ public:
                next();
     }
     
-    bool newline() { return write("\r\n"); }
+    bool newline() { return true; /*return write("\r\n");*/ }
     
     bool write_value(const char* name, int value) {
         char buf[10];
