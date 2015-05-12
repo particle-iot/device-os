@@ -188,8 +188,8 @@ typedef enum
 
 typedef enum
 {
-    WICED_SPI_NONE = 0xFF,
-    WICED_SPI_MAX, /* Denotes the total number of SPI port aliases. Not a valid SPI alias */
+	 WICED_SPI_1,
+	WICED_SPI_MAX, /* Denotes the total number of SPI port aliases. Not a valid SPI alias */
     WICED_SPI_32BIT = 0x7FFFFFFF,
 } wiced_spi_t;
 
