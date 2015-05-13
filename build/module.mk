@@ -58,13 +58,17 @@ ifeq ($(USE_SWD_JTAG),y)
 COMPILE_LTO ?= n
 endif
 
+WARNINGS_AS_ERRORS ?= y
+ifeq ($(WARNINGS_AS_ERRORS),y)
+CFLAGS += -Werror
+endif
 
 # add include directories
 CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
 # Removed "-fdata-sections" as firmware doesn't work as expected
-CFLAGS += -ffunction-sections -fdata-sections -Wall -Werror -Wno-switch -Wno-error=deprecated-declarations -fmessage-length=0
+CFLAGS += -ffunction-sections -fdata-sections -Wall -Wno-switch -Wno-error=deprecated-declarations -fmessage-length=0
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1
 
