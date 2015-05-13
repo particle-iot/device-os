@@ -43,7 +43,7 @@
  * @param bounds    The bounds of the module to check.
  * @return {@code true} if the dependencies are satisfied, {@code false} otherwise.
  */
-bool validate_module_dependencies(const module_bounds_t* bounds);
+bool validate_module_dependencies(const module_bounds_t* bounds, bool userPartOptional);
 const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index);
 
 /**
@@ -72,10 +72,10 @@ inline bool in_range(uint32_t test, uint32_t start, uint32_t end)
  * Fetches and validates the module info found at a given location.
  * @param target        Receives the module into
  * @param bounds        The location where to retrieve the module from.
- * 
+ * @param userDepsOptional
  * @return {@code true} if the module info can be read via the info, crc, suffix pointers.
  */
-bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, uint16_t check_flags=0)
+bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags=0)
 {
     memset(target, 0, sizeof(*target));
 
@@ -92,7 +92,7 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, uint16_t 
             // the suffix ends at module_end, and the crc starts after module end
             target->crc = (module_info_crc_t*)module_end;
             target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));            
-            if (validate_module_dependencies(bounds))
+            if (validate_module_dependencies(bounds, userDepsOptional))
                 target->validity_result |= MODULE_VALIDATION_DEPENDENCIES;
             if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
                 target->validity_result |= MODULE_VALIDATION_INTEGRITY;
@@ -147,7 +147,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         if (info->modules) {
             info->module_count = count;
             for (unsigned i=0; i<count; i++) {
-                fetch_module(info->modules+i, module_bounds[i], MODULE_VALIDATION_INTEGRITY);
+                fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
             }
         }    
     }
@@ -158,13 +158,13 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     }
 }
 
-bool validate_module_dependencies(const module_bounds_t* bounds)
+bool validate_module_dependencies(const module_bounds_t* bounds, bool userOptional)
 {
     bool valid = false;
     const module_info_t* module = locate_module(bounds);
     if (module)
     {
-        if (module->dependency.module_function == MODULE_FUNCTION_NONE) {
+        if (module->dependency.module_function == MODULE_FUNCTION_NONE || (userOptional && module_function(module)==MODULE_FUNCTION_USER_PART)) {
             valid = true;
         }                
         else {
@@ -182,7 +182,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds)
 bool HAL_Verify_User_Dependencies()
 {
     const module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 1);    
-    return validate_module_dependencies(bounds);
+    return validate_module_dependencies(bounds, false);
 }
 
 bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
@@ -240,7 +240,7 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
 {    
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
-    if (fetch_module(&module, &module_ota, MODULE_VALIDATION_INTEGRITY)) 
+    if (fetch_module(&module, &module_ota, true, MODULE_VALIDATION_INTEGRITY) && (module.validity_checked==module.validity_result)) 
     {
         uint32_t moduleLength = module_length(module.info);
         module_function_t function = module_function(module.info);
