@@ -275,9 +275,10 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
         const hal_module_t& module = system.modules[i];
         const module_info_t* info = module.info;
         buf[64] = 0;
+        bool output_uuid = module.suffix && module_function(info)==MODULE_FUNCTION_USER_PART;
         result &= json.write('{') && json.write_value("s", module.bounds.maximum_size) && json.write_string("l", module_store_string(module.bounds.store))
                 && json.write_value("vc",module.validity_checked) && json.write_value("vv", module.validity_result)
-          && (!module.suffix || json.write_string("u", bytes2hexbuf(module.suffix->sha, 32, buf)))
+          && (!output_uuid || json.write_string("u", bytes2hexbuf(module.suffix->sha, 32, buf)))
           && (!info || (json.write_string("f", module_function_string(module_function(info)))
                         && json.write_string("n", module_name(module_index(info), buf))
                         && json.write_value("v", info->module_version)))
