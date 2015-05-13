@@ -58,5 +58,11 @@ typedef uint8_t byte;
 
  const uint8_t NONE = ((uint8_t)0xFF);
 
+#ifndef FALSE
+#define FALSE					(0x00)
+#endif
+#ifndef TRUE
+#define TRUE					(!FALSE)
+#endif
 
 #endif	/* SPARK_WIRING_CONSTANTS_H */
