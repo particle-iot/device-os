@@ -127,7 +127,7 @@ mfg_test: $(MFG_TEST_MEM)
 firmware:
 	@echo building main firmware $(FIRMWARE_MEM)
 	-rm $(FIRMWARE_MEM)
-	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
+	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) MODULAR=n all
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(FIRMWARE_MEM) ibs=1k count=384
 	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc
