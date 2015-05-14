@@ -167,11 +167,11 @@ void HAL_Core_Config(void)
     //NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x20000);
     USE_SYSTEM_FLAGS = 1;
 #endif
-
+    
     Set_System();
 
     //Wiring pins default to inputs
-#if !defined(SWD_JTAG_DISABLE) && !defined(SWD_ENABLE_JTAG_DISABLE)
+#if !defined(USE_SWD_JTAG) && !defined(USE_SWD)
     for (pin_t pin=0; pin<20; pin++) 
         HAL_Pin_Mode(pin, INPUT);
 #endif
