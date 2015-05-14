@@ -45,7 +45,7 @@ OUT=$(TARGET)
 DCT_MEM=$(OUT)/dct_pad.bin
 DCT_PREP=dct_prep.bin
 ERASE_SECTOR=$(OUT)/erase_sector.bin
-BOOTLOADER_BIN=$(FIRMWARE_BUILD)/target/bootloader/platform-$(PLATFORM_ID)/bootloader.bin
+BOOTLOADER_BIN=$(FIRMWARE_BUILD)/target/bootloader/platform-$(PLATFORM_ID)-lto/bootloader.bin
 BOOTLOADER_MEM=$(OUT)/bootloader_pad$(SUFFIX).bin
 BOOTLOADER_DIR=$(FIRMWARE)/bootloader
 
@@ -97,7 +97,7 @@ bootloader:
 	-rm $(BOOTLOADER_MEM)
 	$(MAKE) -C $(BOOTLOADER_DIR) PLATFORM_ID=$(PLATFORM_ID) all 
 	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377"  > $(BOOTLOADER_MEM)
-	#dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
+	dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
 	
 # add the prepared dct image into the flash image
 dct: 	
