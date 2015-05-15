@@ -66,6 +66,7 @@ void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order);
 void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode);
 void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate);
 uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data);
+bool HAL_SPI_Is_Enabled_Old();
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi);
 
 #ifdef __cplusplus

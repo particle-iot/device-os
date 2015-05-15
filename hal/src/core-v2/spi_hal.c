@@ -230,3 +230,12 @@ bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 {
     return spiMap[spi]->SPI_Enabled;
 }
+
+
+/**
+ * Compatibility for the RC4 release of tinker, which used the no-arg version.
+ */
+bool HAL_SPI_Is_Enabled_Old()
+{
+    return false;
+}
