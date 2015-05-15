@@ -25,12 +25,12 @@ include $(COMMON_BUILD)/macros.mk
 include $(COMMON_BUILD)/os.mk
 
 ifeq (6,$(PLATFORM_ID))
-CMD=test.mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
-BUILD_NAME=test_mfg_test-BCM9WCDUSI09-ThreadX-NetX-SDIO
+CMD=test.mfg_test-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO
+BUILD_NAME=test_mfg_test-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO
 SUFFIX=_BM-09
 else
-CMD=test.mfg_test-BCM9WCDUSI14-ThreadX-NetX-SDIO
-BUILD_NAME=test_mfg_test-BCM9WCDUSI14-ThreadX-NetX-SDIO
+CMD=test.mfg_test-BCM9WCDUSI14-FreeRTOS-LwIP-SDIO
+BUILD_NAME=test_mfg_test-BCM9WCDUSI14-FreeRTOS-LwIP-SDIO
 SUFFIX=_BM-14
 endif
 
