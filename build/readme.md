@@ -233,13 +233,19 @@ defaults to the name of the application sources directory.
 
 When using `APP` or `APPDIR` to build custom application sources, the build system
 by default will build any `.c` and `.cpp` files found in the given directory
-and it's subdirectories. You can customize the build process by adding the file
+and it's subdirectories. You can override this and customize the build process by adding the file
 `build.mk` to the root of the application sources. The file should be a valid gnu make file.
 
 To customize the build, append values to these variables:
 
-- `CSRC`, `CPPSRC`: the c and cpp files in the build which are compiled and linked
-- `INCLUDE_DIRS`: the include path
+- `CSRC`, `CPPSRC`: the c and cpp files in the build which are compiled and linked, e.g.
+```
+SRC += $(call target_files,,*.c)
+CPPSRC += $(call target_files,,*.cpp)
+```
+To add all files in the application directory and subdirectories.
+
+- `INCLUDE_DIRS`: the include path. Paths are relative to the APPDIR folder. 
 - `LIB_DIRS`: the library search path
 - `LIBS`: libraries to link (found in the library search path). Library names are given without the `lib` prefix and `.a` suffix.
 - `LIB_DEPS`: full path of additional library files to include.
