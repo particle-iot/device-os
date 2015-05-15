@@ -59,6 +59,8 @@
 #include "platform_headers.h"
 #endif
 
+#include "stdio.h"
+
 using namespace spark;
 
 #endif /* APPLICATION_H_ */
