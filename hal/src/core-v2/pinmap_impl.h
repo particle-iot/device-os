@@ -49,8 +49,6 @@ typedef struct STM32_Pin_Info {
 
 STM32_Pin_Info* HAL_Pin_Map(void);
 
-#define PIN_MAP HAL_Pin_Map()
-
 extern void HAL_GPIO_Save_Pin_Mode(PinMode mode);
 extern PinMode HAL_GPIO_Recall_Pin_Mode();
 

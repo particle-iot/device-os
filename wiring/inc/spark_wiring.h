@@ -49,6 +49,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#if PLATFORM_ID==6    
+ #define PIN_MAP HAL_Pin_Map()
+#endif   
     
 /*
 * ADC
