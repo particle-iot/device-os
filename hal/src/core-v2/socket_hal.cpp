@@ -129,27 +129,20 @@ struct tcp_server_t;
  */
 struct tcp_server_client_t
 {
-    wiced_tcp_stream_t stream;
+    tcp_packet_t packet;
     wiced_tcp_socket_t* socket;
     tcp_server_t* server;
     
     tcp_server_client_t(tcp_server_t* server, wiced_tcp_socket_t* socket) {
         this->socket = socket;
         this->server = server;
-        memset(&stream, 0, sizeof(stream));
-        wiced_tcp_stream_init(&stream, socket);
+        memset(&packet, 0, sizeof(packet));
     }
-    
-    int read(void* buffer, size_t len, system_tick_t timeout) {
-        return socket ? wiced_tcp_stream_read(&stream, buffer, len, timeout) : WICED_TCPIP_INVALID_PACKET;
-    }
-    
+        
     int write(const void* buffer, size_t len, bool flush=false) {
         int result = WICED_TCPIP_INVALID_SOCKET;
         if (socket) {
-            result = wiced_tcp_stream_write(&stream, buffer, len);
-            if (!result && flush)
-                result = wiced_tcp_stream_flush(&stream);
+            result = wiced_tcp_send_buffer(socket, buffer, uint16_t(len));            
         }
         return result;
     }
@@ -160,7 +153,7 @@ struct tcp_server_client_t
     {
         socket = NULL;
         server = NULL;
-        wiced_tcp_stream_deinit(&stream);
+        packet.dispose_packet();
     }
     
     ~tcp_server_client_t();
@@ -400,7 +393,6 @@ void remove(socket_t* socket) {
     }
 }
 
-
 inline bool is_udp(socket_t* socket) { return socket && socket->type==socket_t::UDP; }
 inline bool is_tcp(socket_t* socket) { return socket && socket->type==socket_t::TCP; }
 inline bool is_client(socket_t* socket) { return socket && socket->type==socket_t::TCP_CLIENT; }
@@ -478,8 +470,6 @@ void socket_close_all()
     close_all_list(servers);
 }
 
-
-
 #define SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr) \
     const uint8_t* addr_data = addr->sa_data; \
     unsigned port = addr_data[0]<<8 | addr_data[1]; \
@@ -546,6 +536,35 @@ wiced_result_t read_packet(wiced_packet_t* packet, uint8_t* target, uint16_t tar
     return result;
 }
 
+int read_packet_and_dispose(tcp_packet_t& packet, void* buffer, int len, wiced_tcp_socket_t* tcp_socket, int _timeout)
+{
+    int bytes_read = 0;
+    if (!packet.packet) {
+        packet.offset = 0;
+        wiced_result_t result = wiced_tcp_receive(tcp_socket, &packet.packet, _timeout);
+        if (result!=WICED_SUCCESS && result!=WICED_TIMEOUT) {
+            DEBUG("Socket %d receive fail %d", (int)sd, int(result));
+            return -result;
+        }
+    }        
+    uint8_t* data;
+    uint16_t available;
+    uint16_t total;    
+    bool dispose = true;
+    if (packet.packet && (wiced_packet_get_data(packet.packet, packet.offset, &data, &available, &total)==WICED_SUCCESS)) {
+        int read = std::min(uint16_t(len), available);
+        packet.offset += read;
+        memcpy(buffer, data, read);            
+        dispose = (total==read);
+        bytes_read = read;
+        DEBUG("Socket %d receive bytes %d of %d", (int)sd, int(bytes_read), int(available));
+    }        
+    if (dispose) {            
+        packet.dispose_packet();
+    }    
+    return bytes_read;
+}
+
 /**
  * Receives data from a socket. 
  * @param sd
@@ -560,35 +579,12 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
     socket_t* socket = from_handle(sd);
     if (is_tcp(socket)) {
         tcp_socket_t* tcp_socket = tcp(socket);
-        bytes_read = 0;
         tcp_packet_t& packet = tcp_socket->packet;
-        if (!packet.packet) {
-            packet.offset = 0;
-            wiced_result_t result = wiced_tcp_receive(tcp_socket, &packet.packet, _timeout);
-            if (result!=WICED_SUCCESS && result!=WICED_TIMEOUT) {
-                DEBUG("Socket %d receive fail %d", (int)sd, int(result));
-                return -result;
-            }
-        }        
-        uint8_t* data;
-        uint16_t available;
-        uint16_t total;    
-        bool dispose = true;
-        if (packet.packet && (wiced_packet_get_data(packet.packet, packet.offset, &data, &available, &total)==WICED_SUCCESS)) {
-            int read = std::min(uint16_t(len), available);
-            packet.offset += read;
-            memcpy(buffer, data, read);            
-            dispose = (total==read);
-            bytes_read = read;
-            DEBUG("Socket %d receive bytes %d of %d", (int)sd, int(bytes_read), int(available));
-        }        
-        if (dispose) {            
-            packet.dispose_packet();
-        }
+        bytes_read = read_packet_and_dispose(packet, buffer, len, tcp_socket, _timeout);       
     }
     else if (is_client(socket)) {
         tcp_server_client_t* server_client = client(socket);
-        bytes_read = server_client->read(buffer, len, _timeout);
+        bytes_read = read_packet_and_dispose(server_client->packet, buffer, len, server_client->socket, _timeout);
     }
     return bytes_read;
 }
