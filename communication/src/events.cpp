@@ -49,14 +49,7 @@ size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
 
   if (NULL != data)
   {
-      const unsigned cap = 
-#ifdef TEACUP
-      255
-#else
-      63
-#endif
-      ;
-    name_data_len = strnlen(data, cap);
+    name_data_len = strnlen(data, 255);
 
     *p++ = 0xff;
     memcpy(p, data, name_data_len);
