@@ -28,6 +28,7 @@
 #define __SPARK_WIRING_SPI_H
 
 #include "spark_wiring.h"
+#include "spark_wiring_platform.h"
 #include "spi_hal.h"
 
 class SPIClass {
@@ -55,8 +56,16 @@ public:
 };
 
 #ifndef SPARK_WIRING_NO_SPI
+
 extern SPIClass SPI;
+
+#if Wiring_SPI1
+#ifdef SPI1
+#undef SPI1
+#endif  // SPI1
+
 extern SPIClass SPI1;
-#endif
+#endif  // Wiring_SPI1
+#endif  // SPARK_WIRING_NO_SPI
 
 #endif

@@ -26,6 +26,11 @@
 #ifndef APPLICATION_H_
 #define APPLICATION_H_
 
+#ifdef SPARK_PLATFORM
+#include "platform_headers.h"
+#endif
+
+
 #include "spark_wiring.h"
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_interrupts.h"
@@ -54,10 +59,6 @@
 // adding here for backwards compatibility.
 #include "system_task.h"
 #include "system_user.h"
-
-#ifdef SPARK_PLATFORM
-#include "platform_headers.h"
-#endif
 
 #include "stdio.h"
 

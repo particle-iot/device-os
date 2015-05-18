@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 // These headers contain platform-specific defines.
+#include "gpio_hal.h"
 #include "hw_config.h"
 #include "pinmap_impl.h"
 

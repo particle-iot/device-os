@@ -28,7 +28,11 @@
 
 #ifndef SPARK_WIRING_NO_SPI
 SPIClass SPI(HAL_SPI_INTERFACE1);
-// optional SPI1 is instantiated from libraries/SPI1/SPI1.h
+
+#if Wiring_SPI1
+SPIClass SPI1(HAL_SPI_INTERFACE2);
+#endif
+
 #endif
 
 SPIClass::SPIClass(HAL_SPI_Interface spi)
