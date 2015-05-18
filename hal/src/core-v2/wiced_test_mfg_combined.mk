@@ -69,6 +69,8 @@ MFG_TEST_BIN=$(WICED_SDK)/build/$(BUILD_NAME)/binary/$(BUILD_NAME).bin
 MFG_TEST_MEM=$(OUT)/mfg_test_pad$(SUFFIX).bin
 MFG_TEST_DIR=Apps/test/mfg_test
 
+PRODUCT_ID?=$(PLATFORM_ID)
+
 WL_DEP=
 ifneq ("$(MAKE_OS)","OSX")
   WL_DEP=wl
@@ -127,7 +129,7 @@ mfg_test: $(MFG_TEST_MEM)
 firmware:
 	@echo building main firmware $(FIRMWARE_MEM)
 	-rm $(FIRMWARE_MEM)
-	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) MODULAR=n all
+	$(MAKE) -C $(FIRMWARE_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) PRODUCT_ID=$(PRODUCT_ID) MODULAR=n all
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(FIRMWARE_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(FIRMWARE_MEM) ibs=1k count=384
 	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc
@@ -136,7 +138,7 @@ firmware:
 user:	system
 	@echo building factory default modular user app to $(USER_MEM)
 	-rm $(USER_MEM)
-	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION_NEXT) all	
+	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID)  PRODUCT_ID=$(PRODUCT_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION_NEXT) all	
 	cp $(USER_BIN) $(USER_MEM)
 
 system:
@@ -144,7 +146,7 @@ system:
 	# adjust the module_info end address and the final CRC
 	@echo building modular system firmware to $(SYSTEM_MEM)
 	-rm $(SYSTEM_MEM)
-	$(MAKE) -C $(MODULAR_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION_NEXT) all
+	$(MAKE) -C $(MODULAR_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION_NEXT)  PRODUCT_ID=$(PRODUCT_ID) all
 	dd if=/dev/zero ibs=1 count=393212 | tr "\000" "\377" > $(SYSTEM_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(SYSTEM_MEM) ibs=1 count=393212
 	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc	
