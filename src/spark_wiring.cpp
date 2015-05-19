@@ -32,7 +32,7 @@
 /*
  * Globals
  */
-__IO uint32_t ADC_DualConvertedValues[ADC_DMA_BUFFERSIZE];
+__IO uint16_t ADC_ConvertedValue;
 uint8_t adcInitFirstTime = true;
 uint8_t adcChannelConfigured = NONE;
 static uint8_t ADC_Sample_Time = ADC_SAMPLING_TIME;
@@ -271,8 +271,6 @@ int32_t digitalRead(uint16_t pin)
  */
 void ADC_DMA_Init()
 {
-	//Using "Dual Slow Interleaved ADC Mode" to achieve higher input impedance
-
 	ADC_InitTypeDef ADC_InitStructure;
 	DMA_InitTypeDef DMA_InitStructure;
 
@@ -282,41 +280,32 @@ void ADC_DMA_Init()
 	// Enable DMA1 clock
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
-	// Enable ADC1 and ADC2 clock
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 | RCC_APB2Periph_ADC2, ENABLE);
+	// Enable ADC1 clock
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 
 	// DMA1 channel1 configuration
 	DMA_DeInit(DMA1_Channel1);
-	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)ADC1_DR_ADDRESS;
-	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)&ADC_DualConvertedValues;
+	DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_ADDRESS;
+	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)&ADC_ConvertedValue;
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
-	DMA_InitStructure.DMA_BufferSize = ADC_DMA_BUFFERSIZE;
+	DMA_InitStructure.DMA_BufferSize = 1;
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Word;
-	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;
-	DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
 	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
 	DMA_Init(DMA1_Channel1, &DMA_InitStructure);
 
 	// ADC1 configuration
-	ADC_InitStructure.ADC_Mode = ADC_Mode_SlowInterl;
+	ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
 	ADC_InitStructure.ADC_ScanConvMode = DISABLE;
 	ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
 	ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
 	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
 	ADC_InitStructure.ADC_NbrOfChannel = 1;
 	ADC_Init(ADC1, &ADC_InitStructure);
-
-	// ADC2 configuration
-	ADC_InitStructure.ADC_Mode = ADC_Mode_SlowInterl;
-	ADC_InitStructure.ADC_ScanConvMode = DISABLE;
-	ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
-	ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
-	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
-	ADC_InitStructure.ADC_NbrOfChannel = 1;
-	ADC_Init(ADC2, &ADC_InitStructure);
 
 	// Enable ADC1
 	ADC_Cmd(ADC1, ENABLE);
@@ -332,21 +321,6 @@ void ADC_DMA_Init()
 
 	// Check the end of ADC1 calibration
 	while(ADC_GetCalibrationStatus(ADC1));
-
-	// Enable ADC2
-	ADC_Cmd(ADC2, ENABLE);
-
-	// Enable ADC2 reset calibration register
-	ADC_ResetCalibration(ADC2);
-
-	// Check the end of ADC2 reset calibration register
-	while(ADC_GetResetCalibrationStatus(ADC2));
-
-	// Start ADC2 calibration
-	ADC_StartCalibration(ADC2);
-
-	// Check the end of ADC2 calibration
-	while(ADC_GetCalibrationStatus(ADC2));
 }
 
 /*
@@ -411,8 +385,6 @@ int32_t analogRead(uint16_t pin)
 		return LOW;
 	}
 
-	int i = 0;
-
 	if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
 	{
 		digitalPinModeSaved = PIN_MAP[pin].pin_mode;
@@ -429,22 +401,9 @@ int32_t analogRead(uint16_t pin)
 	{
 		// ADC1 regular channel configuration
 		ADC_RegularChannelConfig(ADC1, PIN_MAP[pin].adc_channel, 1, ADC_Sample_Time);
-		// ADC2 regular channel configuration
-		ADC_RegularChannelConfig(ADC2, PIN_MAP[pin].adc_channel, 1, ADC_Sample_Time);
 		// Save the ADC configured channel
 		adcChannelConfigured = PIN_MAP[pin].adc_channel;
 	}
-
-	for(i = 0 ; i < ADC_DMA_BUFFERSIZE ; i++)
-	{
-		ADC_DualConvertedValues[i] = 0;
-	}
-
-	// Reset the number of data units in the DMA1 Channel1 transfer
-	DMA_SetCurrDataCounter(DMA1_Channel1, ADC_DMA_BUFFERSIZE);
-
-	// Enable ADC2 external trigger conversion
-	ADC_ExternalTrigConvCmd(ADC2, ENABLE);
 
 	// Enable DMA1 Channel1
 	DMA_Cmd(DMA1_Channel1, ENABLE);
@@ -467,26 +426,7 @@ int32_t analogRead(uint16_t pin)
 	// Disable DMA1 Channel1
 	DMA_Cmd(DMA1_Channel1, DISABLE);
 
-	uint16_t ADC1_ConvertedValue = 0;
-	uint16_t ADC2_ConvertedValue = 0;
-	uint32_t ADC_SummatedValue = 0;
-	uint16_t ADC_AveragedValue = 0;
-
-	for(int i = 0 ; i < ADC_DMA_BUFFERSIZE ; i++)
-	{
-		// Retrieve the ADC2 converted value and add to ADC_SummatedValue
-		ADC2_ConvertedValue = ADC_DualConvertedValues[i] >> 16;
-		ADC_SummatedValue += ADC2_ConvertedValue;
-
-		// Retrieve the ADC1 converted value and add to ADC_SummatedValue
-		ADC1_ConvertedValue = ADC_DualConvertedValues[i] & 0xFFFF;
-		ADC_SummatedValue += ADC1_ConvertedValue;
-	}
-
-	ADC_AveragedValue = (uint16_t)(ADC_SummatedValue / (ADC_DMA_BUFFERSIZE * 2));
-
-	// Return ADC averaged value
-	return ADC_AveragedValue;
+	return ADC_ConvertedValue;
 }
 
 /*
