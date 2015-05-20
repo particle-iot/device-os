@@ -30,7 +30,7 @@
 #include "spark_wiring_version.h"
 #include "string_convert.h"
 
-#if PLATFORM_ID==4 || PLATFORM_ID==5 || PLATFORM_ID==6 || PLATFORM_ID==8
+#if PLATFORM_ID==4 || PLATFORM_ID==5 || PLATFORM_ID==6 || PLATFORM_ID==7 || PLATFORM_ID==8
 #define WIFI_SCAN 1
 #else
 #define WIFI_SCAN 0
