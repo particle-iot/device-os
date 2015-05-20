@@ -13,8 +13,8 @@ if [ "$1" == "clean" ]; then
   ./make clean
 fi
 
-./make demo.soft_ap-BCM9WCDUSI09-ThreadX-NetX-SDIO $OPTS
-./make demo.soft_ap-BCM9WCDUSI14-ThreadX-NetX-SDIO $OPTS
+# ./make demo.soft_ap-BCM9WCDUSI09-ThreadX-NetX-SDIO $OPTS
+# ./make demo.soft_ap-BCM9WCDUSI14-ThreadX-NetX-SDIO $OPTS
 ./make demo.soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO $OPTS
 ./make demo.soft_ap-BCM9WCDUSI14-FreeRTOS-LwIP-SDIO $OPTS
 
@@ -25,9 +25,9 @@ update . $WICED
 
 
 # update platform libraries (any RTOS)
-update lib $WICED/build/demo_soft_ap-BCM9WCDUSI14-ThreadX-NetX-SDIO/libraries
-update lib $WICED/build/demo_soft_ap-BCM9WCDUSI09-ThreadX-NetX-SDIO/libraries
-update lib/ThreadX $WICED/build/demo_soft_ap-BCM9WCDUSI14-ThreadX-NetX-SDIO/libraries
+update lib $WICED/build/demo_soft_ap-BCM9WCDUSI14-FreeRTOS-LwIP-SDIO/libraries
+update lib $WICED/build/demo_soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO/libraries
+update lib/FreeRTOS $WICED/build/demo_soft_ap-BCM9WCDUSI14-FreeRTOS-LwIP-SDIO/libraries
 update lib/FreeRTOS $WICED/build/demo_soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO/libraries
 
 
