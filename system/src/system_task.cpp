@@ -56,19 +56,21 @@ volatile uint8_t SPARK_LED_FADE = 1;
 
 volatile uint8_t Spark_Error_Count;
 
-
 void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 {
     announce_presence = presence_announcement_callback;
 
+#if !SPARK_NO_WIFI    
+#error
     wlan_setup();
 
     /* Trigger a WLAN device */
     if (system_mode() == AUTOMATIC || system_mode()==SAFE_MODE)
     {
         network_connect(WiFi, 0, 0, NULL);
-    }
-
+    }    
+#endif
+    
 #ifndef SPARK_NO_CLOUD    
     //Initialize spark protocol callbacks for all System modes
     Spark_Protocol_Init();

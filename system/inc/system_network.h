@@ -31,6 +31,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#ifndef SPARK_NO_WIFI
+#define SPARK_NO_WIFI 0
+#endif    
+    
+#if SPARK_NO_WIFI
+#undef SPARK_NO_CLOUD
+#define SPARK_NO_CLOUD 1    
+#endif
     
 typedef network_interface_t    network_handle_t;
 const network_interface_t NIF_DEFAULT = 0;

@@ -48,6 +48,11 @@ ifeq ("$(SPARK_CLOUD)","n")
 CFLAGS += -DSPARK_NO_CLOUD
 endif
 
+ifeq ("$(SPARK_WIFI)","n") 
+CFLAGS += -DSPARK_NO_WIFI
+endif
+
+
 # disable COMPILE_LTO when JTAG is enabled since it obfuscates the symbol mapping
 # breaking step debugging
 ifeq ($(USE_SWD),y)

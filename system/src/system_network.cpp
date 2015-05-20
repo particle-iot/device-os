@@ -282,10 +282,11 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
         wlan_deactivate();
 
         SPARK_WLAN_SLEEP = 1;
+#if !SPARK_NO_CLOUD       
         if (flags & 1) {
             spark_disconnect();
         }
-
+#endif
         SPARK_WLAN_STARTED = 0;
         WLAN_DHCP = 0;
         WLAN_CONNECTED = 0;
