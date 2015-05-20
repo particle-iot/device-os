@@ -14,7 +14,7 @@ extern "C" {
 
 
 // These headers contain platform-specific defines.
-    
+#include "pinmap_hal.h" 
 #include "hw_config.h"
 #include "pinmap_impl.h"
 
