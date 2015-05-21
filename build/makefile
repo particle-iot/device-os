@@ -138,6 +138,8 @@ else
 CFLAGS += -DRELEASE_BUILD
 endif
 
+CFLAGS += $(EXTRA_CFLAGS)
+
 # C++ specific flags
 CPPFLAGS += -fno-rtti -fno-exceptions
 
