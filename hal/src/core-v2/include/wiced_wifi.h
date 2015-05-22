@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 /** @file
@@ -16,6 +41,7 @@
 
 #include "wiced_utilities.h"
 #include "wwd_wifi.h"
+#include "wwd_debug.h"
 #include "wiced_rtos.h"
 
 #ifdef __cplusplus
@@ -33,17 +59,6 @@ extern "C" {
 /******************************************************
  *                   Enumerations
  ******************************************************/
-
-/** Enumeration of WICED interfaces. \n
- * @note The config interface is a virtual interface that shares the softAP interface
- */
-typedef enum
-{
-    WICED_STA_INTERFACE    = WWD_STA_INTERFACE,             /**< STA or Client Interface  */
-    WICED_AP_INTERFACE     = WWD_AP_INTERFACE,              /**< softAP Interface         */
-    WICED_P2P_INTERFACE    = WWD_P2P_INTERFACE,             /**< P2P Interface            */
-    WICED_CONFIG_INTERFACE = WICED_AP_INTERFACE | (1 << 7), /**< config softAP Interface  */
-} wiced_interface_t;
 
 /** WPS Connection Mode
  */
@@ -90,9 +105,20 @@ typedef enum
     WPS_CONFIG_PHYSICAL_DISPLAY_PIN  = 0x4008   /**< PHYSICAL_DISPLAY_PIN */
 } wiced_wps_configuration_method_t;
 
+/** WICED SoftAP events */
+typedef enum
+{
+    WICED_AP_UNKNOWN_EVENT,
+    WICED_AP_STA_JOINED_EVENT,
+    WICED_AP_STA_LEAVE_EVENT,
+} wiced_wifi_softap_event_t;
+
 /******************************************************
  *                 Type Definitions
  ******************************************************/
+
+/** Soft AP event handler */
+typedef void (*wiced_wifi_softap_event_handler_t)( wiced_wifi_softap_event_t event, const wiced_mac_t* mac_address );
 
 /******************************************************
  *                    Structures
@@ -130,6 +156,7 @@ typedef struct
     const uint32_t os_version;                         /**< Operating system version       */
     const uint16_t authentication_type_flags;          /**< Supported authentication types */
     const uint16_t encryption_type_flags;              /**< Supported encryption types     */
+    const uint8_t  add_config_methods_to_probe_resp;   /**< Add configuration methods to probe response for Windows enrollees (this is non-WPS 2.0 compliant) */
 } wiced_wps_device_detail_t;
 
 /** WPS Credentials
@@ -141,6 +168,17 @@ typedef struct
     uint8_t          passphrase[64];     /**< AP passphrase        */
     uint8_t          passphrase_length;  /**< AP passphrase length */
 } wiced_wps_credential_t;
+
+/** Vendor IE details
+ */
+typedef struct
+{
+    uint8_t         oui[WIFI_IE_OUI_LENGTH];     /**< Unique identifier for the IE */
+    uint8_t         subtype;                            /**< Sub-type of the IE */
+    void*           data;                               /**< Pointer to IE data */
+    uint16_t        length;                             /**< IE data length */
+    uint16_t        which_packets;                      /**< Mask of the packet in which this IE details to be included */
+} wiced_custom_ie_info_t;
 
 /******************************************************
  *               Global Variables
@@ -206,15 +244,44 @@ extern wiced_result_t wiced_wps_registrar( wiced_wps_mode_t mode, const wiced_wp
  */
 extern wiced_result_t wiced_wifi_scan_networks( wiced_scan_result_handler_t results_handler, void* user_data );
 
+/** Add Wi-Fi custom IE
+ *
+ * @param[in] interface : Interface to add custom IE
+ * @param[in] ie_info   : Pointer to the structure which contains custom IE information
+ *
+ * @return @ref wiced_result_t
+ */
+extern wiced_result_t wiced_wifi_add_custom_ie( wiced_interface_t interface, const wiced_custom_ie_info_t* ie_info );
+
+/** Remove Wi-Fi custom IE
+ *
+ * @param[in] interface : Interface to remove custom IE
+ * @param[in] ie_info   : Pointer to the structure which contains custom IE information
+ *
+ * @return @ref wiced_result_t
+ */
+extern wiced_result_t wiced_wifi_remove_custom_ie( wiced_interface_t interface, const wiced_custom_ie_info_t* ie_info );
 
 /** Set roam trigger level
  *
  * @param[in] trigger_level : Trigger level in dBm. The Wi-Fi device will search for a new AP to connect to once the \n
- *                            signal from the AP (it is currently associated with) drops below the roam trigger level
- *
+ *                            signal from the AP (it is currently associated with) drops below the roam trigger level.
+ *                            Valid value range: 2 to -100
+ *                                      0 : Default roaming trigger
+ *                                      1 : Optimize for bandwidth roaming trigger
+ *                                      2 : Optimize for distance roaming trigger
+ *                              -1 to -100: Roaming will be triggered based on the specified RSSI value
  * @return @ref wiced_result_t
  */
 static inline wiced_result_t wiced_wifi_set_roam_trigger( int32_t trigger_level );
+
+
+/** Get roam trigger level
+ *
+ * @param trigger_level  : Trigger level in dBm. Pointer to store current roam trigger level value
+ * @return  @ref wiced_result_t
+ */
+static inline wiced_result_t wiced_wifi_get_roam_trigger( int32_t* trigger_level );
 
 
 /** Get the current channel on STA interface
@@ -298,6 +365,16 @@ static inline wiced_result_t wiced_wifi_set_listen_interval_assoc( uint16_t list
  * @return @ref wiced_result_t
  */
 static inline wiced_result_t wiced_wifi_get_listen_interval( wiced_listen_interval_t* li );
+
+
+/** Register soft AP event handler
+ *
+ * @param[in] softap_event_handler  : A function pointer to the event handler
+  *
+ * @return @ref wiced_result_t
+ */
+extern wiced_result_t wiced_wifi_register_softap_event_handler( wiced_wifi_softap_event_handler_t softap_event_handler );
+
 
 /*****************************************************************************/
 /** @addtogroup wifipower       WLAN Power Saving functions
@@ -545,6 +622,24 @@ static inline wiced_result_t wiced_wifi_get_associated_client_list( void* client
  */
 static inline wiced_result_t wiced_wifi_get_ap_info( wiced_bss_info_t* ap_info, wiced_security_t* security );
 
+/** Sets the HT mode for the given interface
+ *
+ * @param[in]   ht_mode     : HT mode to be set for the given interface
+ * @param[in]   interface   : Interface for which HT Mode to be set
+ *
+ * @return @ref wiced_result_t
+ */
+static inline wiced_result_t wiced_wifi_set_ht_mode( wiced_interface_t interface, wiced_ht_mode_t ht_mode );
+
+/** Gets the HT mode for the given interface
+ *
+ * @param[out]  ht_mode     : Pointer to the enum to store the currently used HT mode of the given interface.
+ * @param[in]   interface   : Interface for which HT mode to be identified.
+ *
+ * @return @ref wiced_result_t
+ */
+static inline wiced_result_t wiced_wifi_get_ht_mode( wiced_interface_t interface, wiced_ht_mode_t* ht_mode );
+
 /** @} */
 
 /*****************************************************************************/
@@ -575,6 +670,11 @@ void print_scan_result( wiced_scan_result_t* record );
 static inline wiced_result_t wiced_wifi_set_roam_trigger( int32_t trigger_level )
 {
     return (wiced_result_t) wwd_wifi_set_roam_trigger( trigger_level );
+}
+
+static inline wiced_result_t wiced_wifi_get_roam_trigger( int32_t* trigger_level )
+{
+    return (wiced_result_t) wwd_wifi_get_roam_trigger( trigger_level );
 }
 
 static inline wiced_result_t wiced_wifi_get_channel( uint32_t* channel )
@@ -696,6 +796,33 @@ static inline wiced_result_t wiced_wifi_get_ap_info( wiced_bss_info_t* ap_info, 
 {
     return (wiced_result_t) wwd_wifi_get_ap_info( ap_info, security );
 }
+
+static inline wiced_result_t wiced_wifi_set_ht_mode( wiced_interface_t interface, wiced_ht_mode_t ht_mode )
+{
+    return (wiced_result_t) wwd_wifi_set_ht_mode( (wwd_interface_t)interface, ht_mode );
+}
+
+static inline wiced_result_t wiced_wifi_get_ht_mode( wiced_interface_t interface, wiced_ht_mode_t* ht_mode )
+{
+    return (wiced_result_t) wwd_wifi_get_ht_mode( (wwd_interface_t)interface, ht_mode );
+}
+
+/**
+ * Helper function to print a given MAC address
+ *
+ * @param[in]  mac    A pointer to the @ref wiced_mac_t address
+ */
+static inline void print_mac_address( const wiced_mac_t* mac )
+{
+    UNUSED_PARAMETER(mac);
+    WPRINT_APP_INFO( ( "%02X:%02X:%02X:%02X:%02X:%02X", mac->octet[0],
+                                                        mac->octet[1],
+                                                        mac->octet[2],
+                                                        mac->octet[3],
+                                                        mac->octet[4],
+                                                        mac->octet[5] ) );
+}
+
 
 #ifdef __cplusplus
 } /*extern "C" */

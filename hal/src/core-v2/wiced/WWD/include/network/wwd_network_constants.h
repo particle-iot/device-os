@@ -1,24 +1,65 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 /** @file
  *  Provides packet size constants which are useful for implementations of the
  *  network interface and buffer interface.
  */
+#pragma once
 
 
-#ifndef INCLUDED_WWD_NETWORK_CONSTANTS_H_
-#define INCLUDED_WWD_NETWORK_CONSTANTS_H_
+#ifdef PLATFORM_L1_CACHE_SHIFT
+#include "platform_cache_def.h"
+#else
+#ifndef PLATFORM_L1_CACHE_BYTES
+#define PLATFORM_L1_CACHE_BYTES                0
+#endif
+#ifndef PLATFORM_L1_CACHE_ROUND_UP
+#define PLATFORM_L1_CACHE_ROUND_UP(a)          (a)
+#endif
+#ifndef PLATFORM_L1_CACHE_ROUND_DOWN
+#define PLATFORM_L1_CACHE_ROUND_DOWN(a)        (a)
+#endif
+#ifndef PLATFORM_L1_CACHE_PTR_ROUND_UP
+#define PLATFORM_L1_CACHE_PTR_ROUND_UP(a)      (a)
+#endif
+#endif /* PLATFORM_L1_CACHE_SHIFT */
 
-#include "wwd_buffer_interface.h"
-#include "wwd_bus_protocol.h"
+#ifndef MAX
+#define MAX(a, b)   (((a) > (b)) ? (a) : (b))
+#endif /* MAX */
 
 #ifdef __cplusplus
 extern "C"
@@ -42,11 +83,6 @@ extern "C"
  * 4 bytes  - offset for one extra BDC reserved long int.
  */
 #define MAX_SDPCM_HEADER_LENGTH (22)
-
-/**
- * The space in bytes required for headers in front of the Ethernet header.
- */
-#define WICED_LINK_OVERHEAD_BELOW_ETHERNET_FRAME ( sizeof(wwd_buffer_header_t) + WWD_SDPCM_HEADER_RESERVED_LENGTH )
 
 /**
  * The maximum space in bytes required for headers in front of the Ethernet header.
@@ -85,8 +121,14 @@ extern "C"
 /**
  * The maximum size in bytes of a packet used within Wiced
  */
-#define WICED_LINK_MTU              (WICED_PAYLOAD_MTU + WICED_PHYSICAL_HEADER + WICED_PHYSICAL_TRAILER)
+#define WICED_WIFI_BUFFER_SIZE            (WICED_PAYLOAD_MTU + WICED_PHYSICAL_HEADER + WICED_PHYSICAL_TRAILER)
 
+#ifndef WICED_ETHERNET_BUFFER_SIZE
+#define WICED_ETHERNET_BUFFER_SIZE        0
+#endif
+
+#define WICED_LINK_MTU              MAX( WICED_WIFI_BUFFER_SIZE, WICED_ETHERNET_BUFFER_SIZE )
+#define WICED_LINK_MTU_ALIGNED      PLATFORM_L1_CACHE_ROUND_UP(WICED_LINK_MTU)
 
 /**
  * Ethernet Ethertypes
@@ -103,4 +145,3 @@ extern "C"
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-#endif /* ifndef INCLUDED_WWD_NETWORK_CONSTANTS_H_ */

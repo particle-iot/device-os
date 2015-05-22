@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 /** @file
@@ -15,11 +40,13 @@
 #pragma once
 #include "stdint.h"
 #include "platform_mcu_peripheral.h" /* Include MCU-specific types */
+#include "platform_toolchain.h"
 #include "ring_buffer.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 /*
 ------------------------------------------------------------------------------------------------------------
 Porting Notes
@@ -64,8 +91,8 @@ Porting Notes
 
 /* I2C flags constants */
 #define I2C_DEVICE_DMA_MASK_POSN ( 0 )
-#define I2C_DEVICE_NO_DMA        ( 0 << I2C_DEVICE_DMA_MASK_POSN )
-#define I2C_DEVICE_USE_DMA       ( 1 << I2C_DEVICE_DMA_MASK_POSN )
+#define I2C_DEVICE_NO_DMA        ( 1 << I2C_DEVICE_DMA_MASK_POSN )
+#define I2C_DEVICE_USE_DMA       ( 0 << I2C_DEVICE_DMA_MASK_POSN )
 
 /******************************************************
  *                   Enumerations
@@ -92,6 +119,8 @@ typedef enum
     IRQ_TRIGGER_RISING_EDGE  = 0x1, /* Interrupt triggered at input signal's rising edge  */
     IRQ_TRIGGER_FALLING_EDGE = 0x2, /* Interrupt triggered at input signal's falling edge */
     IRQ_TRIGGER_BOTH_EDGES   = IRQ_TRIGGER_RISING_EDGE | IRQ_TRIGGER_FALLING_EDGE,
+    IRQ_TRIGGER_LEVEL_HIGH   = 0x4, /* Interrupt triggered when input signal's level is high */
+    IRQ_TRIGGER_LEVEL_LOW    = 0x8, /* Interrupt triggered when input signal's level is low  */
 } platform_gpio_irq_trigger_t;
 
 /**
@@ -275,7 +304,6 @@ typedef struct
     uint16_t     retries;    /* Number of times to retry the message */
     uint8_t      flags;      /* MESSAGE_DISABLE_DMA : if set, this flag disables use of DMA for the message */
 } platform_i2c_message_t;
-
 /**
  * RTC time
  */
@@ -301,8 +329,7 @@ typedef struct
 /**
  * performs complete reset operation
  */
-
-void platform_mcu_reset( void );
+void platform_mcu_reset( void ) NORETURN;
 
 
 /**
@@ -766,6 +793,72 @@ void platform_reset_nanosecond_clock( void );
  */
 void platform_init_nanosecond_clock( void );
 
+/**
+ * Enter hibernation
+ *
+ * @param[in] ticks_to_wakeup : how many ticks to spend in hibernation
+ *
+ * @return @ref platform_result_t
+ */
+platform_result_t platform_hibernation_start( uint32_t ticks_to_wakeup );
+
+/**
+ * Return WICED_TRUE if returned from hibernation
+ *
+ * @return @ref wiced_bool_t
+ */
+wiced_bool_t platform_hibernation_is_returned_from( void );
+
+/**
+ * Return number of ticks system spent in hibernation mode
+ *
+ * @return @ref uint32_t
+ */
+uint32_t platform_hibernation_get_ticks_spent( void );
+
+/**
+ * Return hibernation timer frequency
+ *
+ * @return @ref uint32_t
+ */
+uint32_t platform_hibernation_get_clock_freq( void );
+
+/**
+ * Return maximum ticks number hibernation timer can use
+ *
+ * @return @ref uint32_t
+ */
+uint32_t platform_hibernation_get_max_ticks( void );
+
+/**
+ * Enable the 802.1AS time functionality.
+ *
+ * @return    WICED_SUCCESS : on success.
+ * @return    WICED_ERROR   : if an error occurred with any step
+ */
+wiced_result_t platform_time_enable_8021as(void);
+
+
+/**
+ * Disable the 802.1AS time functionality.
+ *
+ * @return    WICED_SUCCESS : on success.
+ * @return    WICED_ERROR   : if an error occurred with any step
+ */
+wiced_result_t platform_time_disable_8021as(void);
+
+
+/**
+ * Read the 802.1AS time.
+ *
+ * Retrieve the origin timestamp in the last sync message, correct for the
+ * intervening interval and return the corrected time in seconds + nanoseconds.
+ *
+ * @return    WICED_SUCCESS : on success.
+ * @return    WICED_ERROR   : if an error occurred with any step
+ */
+wiced_result_t platform_time_read_8021as(uint32_t *master_secs, uint32_t *master_nanosecs,
+                                         uint32_t *local_secs, uint32_t *local_nanosecs);
 #ifdef __cplusplus
 } /*"C" */
 #endif

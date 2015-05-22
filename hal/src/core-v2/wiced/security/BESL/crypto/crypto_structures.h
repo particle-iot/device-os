@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
 
@@ -41,6 +66,28 @@ typedef enum
     AES_ENCRYPT = 1,
 } aes_mode_type_t;
 
+typedef enum
+{
+    DES_ENCRYPT     = 1,
+    DES_DECRYPT     = 0,
+} des_mode_t;
+
+/*
+ * PKCS#1 constants
+ */
+typedef enum
+{
+    RSA_RAW         =  0,
+    RSA_MD2         =  2,
+    RSA_MD4         =  3,
+    RSA_MD5         =  4,
+    RSA_SHA1        =  5,
+    RSA_SHA224      = 10,
+    RSA_SHA256      = 11,
+    RSA_SHA384      = 12,
+    RSA_SHA512      = 13,
+} rsa_hash_id_t;
+
 /******************************************************
  *                 Type Definitions
  ******************************************************/
@@ -62,31 +109,6 @@ typedef struct
     int32_t n;
     uint32_t *p;
 } mpi;
-
-typedef struct bignum_st
-{
-    unsigned long* d;
-    int top;
-    int dmax;
-    int neg;
-    int flags;
-} BIGNUM;
-
-typedef struct dh_st
-{
-    BIGNUM *p;
-    BIGNUM *g;
-    long length;
-    BIGNUM *pub_key;
-    BIGNUM *priv_key;
-    int flags;
-    char *method_mont_p;
-    BIGNUM *q;
-    BIGNUM *j;
-    unsigned char *seed;
-    int seedlen;
-    BIGNUM *counter;
-} DH;
 
 typedef struct
 {
@@ -122,12 +144,18 @@ typedef struct
     uint32_t num[48];
 } wps_NN_t;
 
+typedef enum
+{
+    RSA_PKCS_V15    = 0,
+    RSA_PKCS_V21    = 1,
+} rsa_pkcs_padding_t;
+
 typedef struct
 {
     int32_t ver;
     int32_t len;
 
-    mpi nN;
+    mpi N;
     mpi E;
 
     mpi D;
@@ -141,11 +169,17 @@ typedef struct
     mpi RP;
     mpi RQ;
 
-    int32_t padding;
+    rsa_pkcs_padding_t padding;
     int32_t hash_id;
     int32_t (*f_rng)( void * );
     void *p_rng;
 } rsa_context;
+
+typedef enum
+{
+    RSA_PUBLIC      = 0,
+    RSA_PRIVATE     = 1,
+} rsa_mode_t;
 
 typedef struct _x509_buf
 {
@@ -319,7 +353,7 @@ typedef struct
 
 typedef struct {
     int nr;         /*!<  number of rounds  */
-    unsigned long rk[68];   /*!<  CAMELLIA round keys    */
+    uint32_t rk[68];   /*!<  CAMELLIA round keys    */
 } camellia_context;
 
 typedef struct {

@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
 
@@ -22,6 +47,8 @@ extern "C" {
 /******************************************************
  *                    Constants
  ******************************************************/
+
+#define BESL_ETHERNET_ADDRESS_LENGTH      (6)
 
 /******************************************************
  *                   Enumerations
@@ -73,10 +100,11 @@ extern "C" {
     RESULT_ENUM( prefix, ERROR_DEVICE_LIST_FIND,                  3037 ),   /**<   */ \
     RESULT_ENUM( prefix, ERROR_NO_P2P_TLV,                        3038 ),   /**<   */ \
     RESULT_ENUM( prefix, ERROR_ALREADY_STARTED,                   3039 ),   /**<   */ \
-    RESULT_ENUM( prefix, BUFFER_ALLOC_FAIL,                       3040 ),   /**<   */ \
-    RESULT_ENUM( prefix, OTHER_ENROLLEE,                          3041 ),   /**<   */ \
-    RESULT_ENUM( prefix, ERROR_RECEIVED_INVALID_CREDENTIALS,      3042 ),   /**<   */ \
-    RESULT_ENUM( prefix, ERROR_HMAC_CHECK_FAIL,                   3043 ),   /**<   */
+    RESULT_ENUM( prefix, ERROR_HANDLER_ALREADY_REGISTERED,        3040 ),   /**<   */ \
+    RESULT_ENUM( prefix, BUFFER_ALLOC_FAIL,                       3041 ),   /**<   */ \
+    RESULT_ENUM( prefix, OTHER_ENROLLEE,                          3042 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_RECEIVED_INVALID_CREDENTIALS,      3043 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_HMAC_CHECK_FAIL,                   3044 ),   /**<   */
 
 #define TLS_RESULT_LIST( prefix ) \
     RESULT_ENUM( prefix, SUCCESS,                                0 ),   /**<   */ \
@@ -125,6 +153,22 @@ extern "C" {
     RESULT_ENUM( prefix, NO_DATA,                             5042 ),   /**<   */ \
     RESULT_ENUM( prefix, ERROR_UNSUPPORTED_EXTENSION,         5043 ),   /**<   */
 
+
+    #define SUPPLICANT_RESULT_LIST( prefix ) \
+    RESULT_ENUM( prefix, SUCCESS,                                0 ),   /**<   */ \
+    RESULT_ENUM( prefix, TIMEOUT,                                2 ),   /**<   */ \
+    RESULT_ENUM( prefix, IN_PROGRESS,                         6001 ),   /**<   */ \
+    RESULT_ENUM( prefix, ABORTED,                             6002 ),   /**<   */ \
+    RESULT_ENUM( prefix, NOT_STARTED,                         6003 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_STACK_MALLOC_FAIL,             6004 ),   /**<   */ \
+    RESULT_ENUM( prefix, OUT_OF_HEAP_SPACE,                   6005 ),   /**<   */ \
+    RESULT_ENUM( prefix, COMPLETE,                            6006 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_AT_THREAD_START,               6007 ),   /**<   */ \
+    RESULT_ENUM( prefix, UNPROCESSED,                         6008 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_CREATING_EAPOL_PACKET,         6009 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_READING_BSSID,                 6010 ),   /**<   */ \
+    RESULT_ENUM( prefix, FAIL,                                6011 ),   /**<   */
+
 #define P2P_RESULT_LIST( prefix ) \
     RESULT_ENUM( prefix, SUCCESS,                                0 ),   /**<   */ \
     RESULT_ENUM( prefix, TIMEOUT,                                2 ),   /**<   */ \
@@ -150,6 +194,7 @@ typedef enum
 {
     WPS_BESL_RESULT_LIST( BESL_ )
     TLS_RESULT_LIST( BESL_TLS_ )
+    SUPPLICANT_RESULT_LIST( SUPPLICANT_ )
     P2P_RESULT_LIST( BESL_P2P_ )
 } besl_result_t;
 
@@ -162,22 +207,88 @@ typedef uint8_t   besl_bool_t;
 typedef uint32_t  besl_time_t;
 
 /******************************************************
- *                    Structures
+ *                 Packed Structures
  ******************************************************/
 
 #pragma pack(1)
 
 typedef struct
 {
-    uint8_t octet[6];
+    uint8_t octet[BESL_ETHERNET_ADDRESS_LENGTH];
 } besl_mac_t;
 
 typedef struct
 {
     uint8_t* data;
-    uint32_t length;
+    uint16_t length;
     uint32_t packet_mask;
 } besl_ie_t;
+
+typedef struct
+{
+    uint8_t   ether_dhost[BESL_ETHERNET_ADDRESS_LENGTH];
+    uint8_t   ether_shost[BESL_ETHERNET_ADDRESS_LENGTH];
+    uint16_t  ether_type;
+} ether_header_t;
+
+typedef struct
+{
+    uint8_t  version;
+    uint8_t  type;
+    uint16_t length;
+} eapol_header_t;
+
+typedef struct
+{
+    ether_header_t  ethernet;
+    eapol_header_t  eapol;
+} eapol_packet_header_t;
+
+typedef struct
+{
+    ether_header_t  ethernet;
+    eapol_header_t  eapol;
+    uint8_t         data[1];
+} eapol_packet_t;
+
+typedef struct
+{
+    uint8_t  code;
+    uint8_t  id;
+    uint16_t length;
+    uint8_t  type;
+} eap_header_t;
+
+typedef struct
+{
+    ether_header_t  ethernet;
+    eapol_header_t  eapol;
+    eap_header_t    eap;
+    uint8_t         data[1];
+} eap_packet_t;
+
+typedef struct
+{
+    uint8_t  vendor_id[3];
+    uint32_t vendor_type;
+    uint8_t  op_code;
+    uint8_t  flags;
+} eap_expanded_header_t;
+
+typedef struct
+{
+    uint8_t  flags;
+} eap_tls_header_t;
+
+typedef struct
+{
+    ether_header_t        ethernet;
+    eapol_header_t        eapol;
+    eap_header_t          eap;
+    eap_tls_header_t      eap_tls;
+    uint8_t               data[1]; // Data starts with a length of TLS data field or TLS data depending on the flags field
+} eap_tls_packet_t;
+
 
 #pragma pack()
 

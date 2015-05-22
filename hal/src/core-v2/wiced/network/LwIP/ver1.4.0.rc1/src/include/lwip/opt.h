@@ -1092,6 +1092,15 @@
 #endif
 
 /**
+ * LWIP_NETIF_IP_CHANGE_CALLBACK==1: Support a callback function whenever an interface
+ * changes its IP address
+ */
+#ifndef LWIP_NETIF_IP_CHANGE_CALLBACK
+#define LWIP_NETIF_IP_CHANGE_CALLBACK      0
+#endif
+
+
+/**
  * LWIP_NETIF_LINK_CALLBACK==1: Support a callback function from an interface
  * whenever the link changes (i.e., link down)
  */

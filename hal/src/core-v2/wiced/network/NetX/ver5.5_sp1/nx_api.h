@@ -511,7 +511,7 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 #define NX_IP_MULTICAST_UPPER       ((ULONG) 0x00000100)    /* Upper two bytes of multicast Ethernet  */ 
 #define NX_IP_MULTICAST_LOWER       ((ULONG) 0x5E000000)    /* Lower 23 bits of address are from IP   */ 
 #define NX_IP_MULTICAST_MASK        ((ULONG) 0x007FFFFF)    /* Mask to pickup the lower 23 bits of IP */ 
-
+#define NX_IP_AUTOIP_MASK           ((ULONG) 0xA9FE0000)    /* mask for AUTOIP address range 169.254.0.0 */
 
 /* Define the constants that determine how big the hash table is for destination IP 
    addresses.  The value must be a power of two, so subtracting one gives us 

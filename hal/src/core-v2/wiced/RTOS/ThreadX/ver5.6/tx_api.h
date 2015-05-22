@@ -149,7 +149,7 @@ extern   "C" {
 #define TX_NO_ACTIVATE                  0
 #define TX_TRUE                         1
 #define TX_FALSE                        0
-#define TX_NULL                         0
+#define TX_NULL                         (void *) 0
 #define TX_LOOP_FOREVER                 1
 #define TX_INHERIT                      1
 #define TX_NO_INHERIT                   0

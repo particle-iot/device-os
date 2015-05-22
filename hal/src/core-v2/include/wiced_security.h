@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 /** @file
@@ -18,6 +43,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "crypto_structures.h"
+#include "besl_structures.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,12 +56,6 @@ extern "C" {
 /******************************************************
  *                    Constants
  ******************************************************/
-
-#define AES_ENCRYPT     1
-#define AES_DECRYPT     0
-
-#define DES_ENCRYPT     1
-#define DES_DECRYPT     0
 
 #define RSA_RAW         0
 #define RSA_MD2         2
@@ -97,7 +117,7 @@ extern "C" {
  * @param key           encryption key
  * @param keysize_bits  must be 128, 192 or 256
  */
-void aes_setkey_enc( aes_context_t *ctx, const unsigned char *key, int32_t keysize_bits );
+void aes_setkey_enc( aes_context_t *ctx, const unsigned char *key, uint32_t keysize_bits );
 
 /**
  * @brief               AES key schedule (decryption)
@@ -106,7 +126,7 @@ void aes_setkey_enc( aes_context_t *ctx, const unsigned char *key, int32_t keysi
  * @param key           decryption key
  * @param keysize_bits  must be 128, 192 or 256
  */
-void aes_setkey_dec( aes_context_t *ctx, const unsigned char *key, int32_t keysize_bits );
+void aes_setkey_dec( aes_context_t *ctx, const unsigned char *key, uint32_t keysize_bits );
 
 /**
  * @brief          AES-ECB block encryption/decryption
@@ -128,7 +148,7 @@ void aes_crypt_ecb( aes_context_t *ctx, aes_mode_type_t mode, const unsigned cha
  * @param input    buffer holding the input data
  * @param output   buffer receiving the output data
  */
-void aes_crypt_cbc( aes_context_t *ctx, aes_mode_type_t mode, int32_t length, unsigned char iv[16], const unsigned char *input, unsigned char *output );
+void aes_crypt_cbc( aes_context_t *ctx, aes_mode_type_t mode, uint32_t length, unsigned char iv[16], const unsigned char *input, unsigned char *output );
 
 /**
  * @brief          AES-CBC buffer encryption/decryption with partial block padding
@@ -153,7 +173,7 @@ int aes_cbc_crypt_pad_length_padding( aes_context_t *ctx, aes_mode_type_t mode, 
  * @param input    buffer holding the input data
  * @param output   buffer receiving the output data
  */
-void aes_crypt_cfb128( aes_context_t *ctx, int32_t mode, int32_t length, int32_t *iv_off, unsigned char iv[16], const unsigned char *input, unsigned char *output );
+void aes_crypt_cfb128( aes_context_t *ctx, aes_mode_type_t mode, uint32_t length, uint32_t* iv_off, unsigned char iv[16], const unsigned char *input, unsigned char *output );
 
 /**
  * @brief          AES-CTR buffer encryption/decryption
@@ -286,7 +306,7 @@ void des_crypt_ecb( des_context *ctx, const unsigned char input[8], unsigned cha
  * @param input    buffer holding the input data
  * @param output   buffer holding the output data
  */
-void des_crypt_cbc( des_context *ctx, int32_t mode, int32_t length, unsigned char iv[8], const unsigned char *input, unsigned char *output );
+void des_crypt_cbc( des_context *ctx, des_mode_t mode, int32_t length, unsigned char iv[8], const unsigned char *input, unsigned char *output );
 
 /**
  * @brief          3DES-ECB block encryption/decryption
@@ -307,7 +327,7 @@ void des3_crypt_ecb( des3_context *ctx, const unsigned char input[8], unsigned c
  * @param input    buffer holding the input data
  * @param output   buffer holding the output data
  */
-void des3_crypt_cbc( des3_context *ctx, int32_t mode, int32_t length, unsigned char iv[8], const unsigned char *input, unsigned char *output );
+void des3_crypt_cbc( des3_context *ctx, des_mode_t mode, int32_t length, unsigned char iv[8], const unsigned char *input, unsigned char *output );
 
 /** @} */
 
@@ -786,7 +806,7 @@ extern void chacha20_block_function( const uint8_t key[32],
 
 
 /**
- * Encrypt / Decrypt using ChaCha20-Poly1305 AEAD  (IETF CFRG version)
+ * Decrypt using ChaCha20-Poly1305 AEAD  (IETF CFRG version)
  *
  * @param key                                    The 256 bit key
  * @param fixed_common_value                     32 bit fixed value for nonce
@@ -800,7 +820,33 @@ extern void chacha20_block_function( const uint8_t key[32],
  * @param output_crypt_data                      The output encrypted or decrypted data.
  * @param output_tag                             The authentication tag calculated for the data
  */
-extern void chacha20_poly1305_aead_irtf_cfrg(
+extern void chacha20_poly1305_aead_irtf_cfrg_encrypt(
+        const uint8_t                       key[32],
+        const uint8_t                       fixed_common_value[4],
+        const uint8_t                       non_repeating_initial_value[8],
+        const uint8_t*                      additional_authenticated_data,
+        uint64_t                            additional_authenticated_data_length,
+        const uint8_t*                      input_crypt_data,
+        uint64_t                            crypt_data_length,
+        uint8_t*                            output_crypt_data,
+        uint8_t                             output_tag[16] );
+
+/**
+ * Decrypt using ChaCha20-Poly1305 AEAD  (IETF CFRG version)
+ *
+ * @param key                                    The 256 bit key
+ * @param fixed_common_value                     32 bit fixed value for nonce
+ * @param non_repeating_initial_value            initial value for nonce
+ *                                               THIS VALUE MUST *NEVER* BE REPEATED FOR THE SAME
+ *                                               KEY. USE A COUNTER IF POSSIBLE.
+ * @param additional_authenticated_data          Additional data (non encrypted) to be authenticated in tag
+ * @param additional_authenticated_data_length   The length of the additional data in bytes
+ * @param input_crypt_data                       The data to be encrypted/decrypted
+ * @param crypt_data_length                      Length of the data being encrypted/decrypted
+ * @param output_crypt_data                      The output encrypted or decrypted data.
+ * @param output_tag                             The authentication tag calculated for the data
+ */
+extern void chacha20_poly1305_aead_irtf_cfrg_decrypt(
         const uint8_t                       key[32],
         const uint8_t                       fixed_common_value[4],
         const uint8_t                       non_repeating_initial_value[8],
@@ -1038,7 +1084,7 @@ void arc4_setup( arc4_context *ctx, const unsigned char *key, int32_t keylen_bit
  * @param buf      buffer to be processed
  * @param buflen   amount of data in buf
  */
-void arc4_crypt( arc4_context *ctx, unsigned char *buf, int32_t buflen );
+void arc4_crypt(arc4_context *ctx, int32_t buflen, unsigned char *input_output);
 
 /** @} */
 
@@ -1186,7 +1232,7 @@ int32_t rsa_pkcs1_sign( const rsa_context *ctx, int32_t mode, int32_t hash_id, i
  *
  * @note           The "sig" buffer must be as large as the size of ctx->N (eg. 128 bytes if RSA-1024 is used).
  */
-int32_t rsa_pkcs1_verify( const rsa_context *ctx, int32_t mode, int32_t hash_id, int32_t hashlen, const unsigned char *hash, const unsigned char *sig );
+int32_t rsa_pkcs1_verify( const rsa_context *ctx, rsa_mode_t mode, rsa_hash_id_t hash_id, int32_t hashlen, const unsigned char *hash, const unsigned char *sig );
 
 /**
  * @brief          Free the components of an RSA key
@@ -1322,6 +1368,129 @@ void seed_cbc_decrypt(const seed_context_t* ctx, uint8_t ivec[16], const uint8_t
 
 /** @} */
 
+/*****************************************************************************/
+/** @addtogroup x509       x509
+ *  @ingroup crypto
+ *
+ * x509 functions
+ *
+ *  @{
+ */
+/*****************************************************************************/
+
+/**
+ * @brief          Parse one or more certificates and add them to the chained list
+ *
+ * @param chain    points to the start of the chain
+ * @param buf      buffer holding the certificate data
+ * @param buflen   size of the buffer
+ *
+ * @return         0 if successful, or a specific X509 error code
+ */
+int32_t x509parse_crt( x509_cert *chain, const unsigned char *buf, uint32_t buflen );
+
+/**
+ * @brief          Load one or more certificates and add them to the chained list
+ *
+ * @param chain    points to the start of the chain
+ * @param path     filename to read the certificates from
+ *
+ * @return         0 if successful, or a specific X509 error code
+ */
+int32_t x509parse_crtfile( x509_cert *chain, const char *path );
+
+/**
+ * @brief          Parse a public RSA key
+ *
+ * @param rsa      RSA context to be initialized
+ * @param buf      input buffer
+ * @param buflen   size of the buffer
+ * @param pwd      password for decryption (optional)
+ * @param pwdlen   size of the password
+ *
+ * @return         0 if successful, or a specific X509 error code
+ */
+int32_t x509parse_pubkey( rsa_context *rsa,
+                   unsigned char *buf, int32_t buflen,
+                   unsigned char *pwd, int32_t pwdlen );
+
+
+/**
+ * @brief          Parse a private RSA key
+ *
+ * @param rsa      RSA context to be initialized
+ * @param buf      input buffer
+ * @param buflen   size of the buffer
+ * @param pwd      password for decryption (optional)
+ * @param pwdlen   size of the password
+ *
+ * @return         0 if successful, or a specific X509 error code
+ */
+int32_t x509parse_key( rsa_context *rsa,
+                       const unsigned char *buf, uint32_t buflen,
+                       const unsigned char *pwd, uint32_t pwdlen );
+
+/**
+ * @brief          Load and parse a private RSA key
+ *
+ * @param rsa      RSA context to be initialized
+ * @param path     filename to read the private key from
+ * @param pwd      password to decrypt the file (can be NULL)
+ *
+ * @return         0 if successful, or a specific X509 error code
+ */
+int32_t x509parse_keyfile( rsa_context *rsa, const char *path, const char *pwd);
+
+/**
+ * @brief          Store the certificate DN in printable form into buf;
+ *                 no more than (end - buf) characters will be written.
+ */
+int32_t x509parse_dn_gets( char *buf, const char *end, const x509_name *dn );
+
+/**
+ * @brief          Returns an informational string about the
+ *                 certificate.
+ */
+char *x509parse_cert_info(char *buf, size_t buf_size,
+              const char *prefix, const x509_cert * crt);
+
+/**
+ * @brief          Return 0 if the certificate is still valid,
+ *                 or BADCERT_EXPIRED
+ */
+int32_t x509parse_expired( const x509_cert *crt );
+
+
+/**
+ * @brief          Verify the certificate signature
+ *
+ * @param crt      a certificate to be verified
+ * @param trust_ca the trusted CA chain
+ * @param cn       expected Common Name (can be set to
+ *                 NULL if the CN must not be verified)
+ * @param flags    result of the verification
+ *
+ * @return         0 if successful or MYKROSSL_ERR_X509_SIG_VERIFY_FAILED,
+ *                 in which case *flags will have one or more of
+ *                 the following values set:
+ *                      BADCERT_EXPIRED --
+ *                      BADCERT_REVOKED --
+ *                      BADCERT_CN_MISMATCH --
+ *                      BADCERT_NOT_TRUSTED
+ *
+ * @note           TODO: add two arguments, depth and crl
+ */
+int32_t x509parse_verify( const x509_cert *crt,
+                          const x509_cert *trust_ca,
+                          const char *cn,
+                          int32_t *flags );
+
+/**
+ * @brief          Unallocate all certificate data
+ */
+void x509_free( x509_cert *crt );
+
+/** @} */
 
 extern besl_result_t besl_802_11_generate_pmk              ( const char* password, const unsigned char* ssid, int ssid_length, unsigned char* output );
 extern besl_result_t besl_802_11_generate_random_passphrase( char* passphrase, const int passphrase_length );

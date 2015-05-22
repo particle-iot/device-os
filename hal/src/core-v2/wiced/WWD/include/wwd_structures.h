@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 /** @file
@@ -25,6 +50,8 @@ extern "C" {
 /******************************************************
  *                      Macros
  ******************************************************/
+
+#define SSID_NAME_SIZE        (32)
 
 /******************************************************
  *                    Constants
@@ -108,8 +135,8 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t length;     /**< SSID length */
-    uint8_t value[32]; /**< SSID name (AP name)  */
+    uint8_t length;                  /**< SSID length */
+    uint8_t value[ SSID_NAME_SIZE ]; /**< SSID name (AP name)  */
 } wiced_ssid_t;
 
 /**
@@ -119,8 +146,6 @@ typedef struct
 {
     uint8_t octet[6]; /**< Unique 6-byte MAC address */
 } wiced_mac_t;
-
-
 
 /**
  * Structure for storing extended scan parameters
@@ -133,6 +158,15 @@ typedef struct
     int32_t scan_home_channel_dwell_time_between_channels_ms; /**< Period of time to wait on the home channel when scanning. Only relevant if associated. */
 } wiced_scan_extended_params_t;
 
+/**
+ * Structure for storing radio band list information
+ */
+typedef struct
+{
+    int32_t number_of_bands; /**< Number of bands supported, currently 1 or 2      */
+    int32_t current_band;    /**< Current band type : WLC_BAND_2G or WLC_BAND_5G   */
+    int32_t other_band;      /**< If number of bands is 2 then the other band type */
+} wiced_band_list_t;
 
 /**
  * Structure for storing AP information

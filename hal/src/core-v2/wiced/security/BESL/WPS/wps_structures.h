@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
 #include "wps_constants.h"
@@ -14,7 +39,9 @@
 #include "crypto_constants.h"
 #include "crypto_structures.h"
 #include "wps_host.h"
+#include "besl_host.h"
 #include "besl_structures.h"
+#include "wwd_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -148,57 +175,6 @@ typedef struct
 
 typedef struct
 {
-    uint8_t   ether_dhost[ETHERNET_ADDRESS_LENGTH];
-    uint8_t   ether_shost[ETHERNET_ADDRESS_LENGTH];
-    uint16_t  ether_type;
-} ether_header_t;
-
-typedef struct
-{
-    uint8_t  code;
-    uint8_t  id;
-    uint16_t length;
-    uint8_t  type;
-} eap_header_t;
-
-typedef struct
-{
-    uint8_t  version;
-    uint8_t  type;
-    uint16_t length;
-} eapol_header_t;
-
-typedef struct
-{
-    ether_header_t  ethernet;
-    eapol_header_t  eapol;
-    uint8_t         data[1];
-} eapol_packet_t;
-
-typedef struct
-{
-    ether_header_t  ethernet;
-    eapol_header_t  eapol;
-} eapol_packet_header_t;
-
-typedef struct
-{
-    ether_header_t  ethernet;
-    eapol_header_t  eapol;
-    eap_header_t    eap;
-    uint8_t         data[1];
-} eap_packet_t;
-
-typedef struct
-{
-    uint8_t  vendor_id[3];
-    uint32_t vendor_type;
-    uint8_t  op_code;
-    uint8_t  flags;
-} eap_expanded_header_t;
-
-typedef struct
-{
     ether_header_t        ethernet;
     eapol_header_t        eapol;
     eap_header_t          eap;
@@ -234,24 +210,21 @@ typedef struct
     wps_nonce_t  secret_nonce[2];
     wps_hash_t   secret_hash[2];
     besl_mac_t   mac_address;
-    uint32_t     supported_version;
+    uint8_t      supported_version;
     uint16_t     authTypeFlags;
     uint16_t     encrTypeFlags;
 } wps_agent_data_t;
 
+
 typedef struct
 {
-    wps_event_t event_type;
-    union
-    {
-        wps_eapol_packet_t  packet;
-        uint32_t            value;
-    } data;
-} wps_event_message_t;
+        wiced_scan_result_t scan_result;
+        wps_uuid_t          uuid;
+} wps_ap_t;
 
 typedef struct _wps_agent_t wps_agent_t;
 
-typedef wps_result_t (*wps_event_handler_t)(wps_agent_t* workspace, wps_event_message_t* message);
+typedef wps_result_t (*wps_event_handler_t)(wps_agent_t* workspace, besl_event_message_t* message);
 
 struct _wps_agent_t
 {
@@ -267,7 +240,7 @@ struct _wps_agent_t
     wps_mode_t       wps_mode;
     wps_agent_type_t agent_type;
     void*            wps_host_workspace;
-    uint32_t         interface;
+    wwd_interface_t  interface;
 
     /* Variables that need to be refactored */
     uint8_t   connTypeFlags;
@@ -351,10 +324,11 @@ struct _wps_agent_t
      * Enrollee only variables
      */
     /* Current target AP */
-    wps_ap_t* ap;
-    uint32_t  directed_wps_max_attempts;
-    uint8_t   ap_join_attempts;
-    uint8_t   identity_request_received_count;
+    wps_ap_t*         ap;
+    uint32_t          directed_wps_max_attempts;
+    uint8_t           ap_join_attempts;
+    uint8_t           identity_request_received_count;
+    wiced_band_list_t band_list;
 
     /* Copy of M1 to be used for hashing when we receive M2 */
     uint8_t* m1_copy;

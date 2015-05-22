@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 /** @file
@@ -19,7 +44,6 @@
 #include "wiced_network.h"
 #include <limits.h>
 #include "wiced_resource.h"
-#include "wiced_wifi.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -108,8 +132,6 @@ typedef struct
     uint8_t*            tx_packet_data;
     uint16_t            tx_packet_space_available;
     wiced_packet_t*     rx_packet;
-    wiced_bool_t                      use_custom_tcp_stream;
-    wiced_tcp_stream_write_callback_t tcp_stream_write_callback;
 } wiced_tcp_stream_t;
 
 /**
@@ -259,13 +281,14 @@ void wiced_tcp_set_type_of_service( wiced_tcp_socket_t* socket, uint32_t tos );
 /** Registers a callback function with the indicated TCP socket
  *
  * @param[in,out] socket              : A pointer to a TCP socket handle that has been previously created with @ref wiced_tcp_create_socket
- * @param[in]     connect_callback    :
- * @param[in]     receive_callback    :
- * @param[in]     disconnect_callback :
+ * @param[in]     connect_callback    : The function that will be called when the TCP socket is connected
+ * @param[in]     receive_callback    : The function that will be called when a new packet is received by the TCP socket
+ * @param[in]     disconnect_callback : The function that will be called when the TCP socket is disconnected
+ * @param[in]     arg                 : The argument that will be passed to the callbacks
  *
  * @return @ref wiced_result_t
  */
-wiced_result_t wiced_tcp_register_callbacks( wiced_tcp_socket_t* socket, wiced_socket_callback_t connect_callback, wiced_socket_callback_t receive_callback, wiced_socket_callback_t disconnect_callback);
+wiced_result_t wiced_tcp_register_callbacks( wiced_tcp_socket_t* socket, wiced_tcp_socket_callback_t connect_callback, wiced_tcp_socket_callback_t receive_callback, wiced_tcp_socket_callback_t disconnect_callback, void* arg );
 
 
 /** Un-registers all callback functions associated with the indicated TCP socket
@@ -396,7 +419,8 @@ wiced_result_t wiced_tcp_start_tls( wiced_tcp_socket_t* socket, wiced_tls_endpoi
  *
  * Start Transport Layer Security (successor to SSL) on a TCP Connection
  *
- * @param[in,out] socket       : The TCP socket to use for TLS
+ * @param[in,out] tls_context  : The tls context to work with
+ * @param[in,out] referee      : Transport reference - e.g. TCP socket or EAP context
  * @param[in]     type         : Identifies whether the device will be TLS client or server
  * @param[in]     verification : Indicates whether to verify the certificate chain against a root server.
  * @param[in]     cipher_list  : a list of cipher suites. Null terminated.
@@ -407,10 +431,11 @@ wiced_result_t wiced_tcp_start_tls( wiced_tcp_socket_t* socket, wiced_tls_endpoi
  *                                          &TLS_RSA_WITH_AES_256_CBC_SHA,
  *                                          0
  *                                    };
+ * @param[in]     transport_protocol : Which type of transport to use - e.g. TCP, UDP, EAP
  *
  * @return @ref wiced_result_t
  */
-wiced_result_t wiced_tcp_start_tls_with_ciphers( wiced_tcp_socket_t* socket, wiced_tls_endpoint_type_t type, wiced_tls_certificate_verification_t verification, const cipher_suite_t* cipher_list[] );
+wiced_result_t wiced_generic_start_tls_with_ciphers( wiced_tls_simple_context_t* tls_context, void* referee, wiced_tls_endpoint_type_t type, wiced_tls_certificate_verification_t verification, const cipher_suite_t* cipher_list[], tls_transport_protocol_t transport_protocol );
 
 
 /*****************************************************************************/
@@ -556,6 +581,19 @@ wiced_result_t wiced_tcp_stream_write_resource( wiced_tcp_stream_t* tcp_stream, 
 wiced_result_t wiced_tcp_stream_read( wiced_tcp_stream_t* tcp_stream, void* buffer, uint16_t buffer_length, uint32_t timeout );
 
 
+/** Read data from a TCP stream and returns actual number of bytes read
+ *
+ * @param[in,out] tcp_stream    : A pointer to a stream handle where data will be written
+ * @param[out]    buffer        : The memory buffer to write data into
+ * @param[in]     buffer_length : The number of bytes to read into the buffer
+ * @param[in]     timeout       : Timeout value in milliseconds or WICED_NEVER_TIMEOUT
+ * @param[out]    read_count    : A pointer to an integer to store the actual number of bytes read
+ *
+ * @return @ref wiced_result_t
+ */
+wiced_result_t wiced_tcp_stream_read_with_count( wiced_tcp_stream_t* tcp_stream, void* buffer, uint16_t buffer_length, uint32_t timeout, uint32_t* read_count );
+
+
 /** Flush pending TCP stream data out to remote host
  *
  *  Flushes any pending data in the TCP stream out to the remote host
@@ -579,6 +617,7 @@ wiced_result_t wiced_tcp_stream_flush( wiced_tcp_stream_t* tcp_stream );
 wiced_result_t wiced_tcp_enable_keepalive(wiced_tcp_socket_t* socket, uint16_t interval, uint16_t probes, uint16_t _time );
 
 /** @} */
+
 /*****************************************************************************/
 /** @addtogroup tcpserver       TCP server comms
  *  @ingroup tcp
@@ -594,13 +633,15 @@ wiced_result_t wiced_tcp_enable_keepalive(wiced_tcp_socket_t* socket, uint16_t i
  * @param[in] tcp_server         : pointer to TCP server structure
  * @param[in] interface          : The interface (AP or STA) for which the socket should be created
  * @param[in] port               : TCP server listening port
+ * @param[in] max_sockets        : Specify maximum number of sockets server should support. Unused parameter in FreeRTOS-LwIP
  * @param[in] connect_callback   : listening socket connect callback
  * @param[in] receive_callback   : listening socket receive callback
  * @param[in] disconnect_callback: listening socket disconnect callback
+ * @param[in] arg                : argument that will be passed to the callbacks
  *
  * @return @ref wiced_result_t
  */
-wiced_result_t wiced_tcp_server_start( wiced_tcp_server_t* tcp_server, wiced_interface_t interface, uint16_t port, wiced_socket_callback_t connect_callback, wiced_socket_callback_t receive_callback, wiced_socket_callback_t disconnect_callback);
+wiced_result_t wiced_tcp_server_start( wiced_tcp_server_t* tcp_server, wiced_interface_t interface, uint16_t port, uint16_t max_sockets, wiced_tcp_socket_callback_t connect_callback, wiced_tcp_socket_callback_t receive_callback, wiced_tcp_socket_callback_t disconnect_callback, void* arg );
 
 /** Server accepts incoming connection on specified socket
  *
@@ -663,6 +704,19 @@ wiced_result_t wiced_tcp_server_disconnect_socket( wiced_tcp_server_t* tcp_serve
  * @return @ref wiced_result_t
  */
 wiced_result_t wiced_udp_create_socket( wiced_udp_socket_t* socket, uint16_t port, wiced_interface_t interface );
+
+
+/** Update the backlog on an existing UDP socket
+ *
+ *  Update the backlog on an existing UDP socket
+ *  If successful, the socket backlog is updated
+ *
+ * @param[out] socket    : A pointer to a UDP socket
+ * @param[in]  backlog   : Number of UDP packets the socket should be able to queue up
+ *
+ * @return @ref wiced_result_t
+ */
+wiced_result_t wiced_udp_update_socket_backlog( wiced_udp_socket_t* socket, uint32_t backlog );
 
 
 /** Send a UDP data packet
@@ -743,10 +797,11 @@ wiced_result_t wiced_udp_packet_get_info( wiced_packet_t* packet, wiced_ip_addre
  *
  * @param[in,out] socket           : A pointer to a TCP socket handle that has been previously created with @ref wiced_udp_create_socket
  * @param[in]     receive_callback : The callback function that will be called when a UDP packet is received
+ * @param[in]     arg              : The argument that will be passed to the callback
  *
  * @return @ref wiced_result_t
  */
-wiced_result_t wiced_udp_register_callbacks( wiced_udp_socket_t* socket, wiced_socket_callback_t receive_callback );
+wiced_result_t wiced_udp_register_callbacks( wiced_udp_socket_t* socket, wiced_udp_socket_callback_t receive_callback, void* arg );
 
 
 /** Un-registers all callback functions associated with the indicated UDP socket
@@ -1094,6 +1149,17 @@ wiced_result_t wiced_ip_register_address_change_callback( wiced_ip_address_chang
 wiced_result_t wiced_ip_deregister_address_change_callback( wiced_ip_address_change_callback_t callback );
 
 /** @} */
+
+/*
+ ******************************************************************************
+ * Convert an ipv4 string to a uint32_t.
+ *
+ * @param     arg  The string containing the value.
+ * @param     arg  The structure which will receive the IP address
+ *
+ * @return    0 if read successfully
+ */
+int str_to_ip( const char* arg, wiced_ip_address_t* address );
 
 #ifdef __cplusplus
 } /*extern "C" */

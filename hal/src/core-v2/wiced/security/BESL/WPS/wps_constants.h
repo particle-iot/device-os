@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
 
@@ -355,21 +380,6 @@ typedef enum
     WPS_DEVICE_TYPE_CAT_AUDIO_DEVICES = 11, /* WSC 2.0 */
 } wps_device_category_t;
 
-typedef enum
-{
-    WPS_EVENT_NO_EVENT,
-    WPS_EVENT_TIMER_TIMEOUT,
-    WPS_EVENT_ABORT_REQUESTED,
-    WPS_EVENT_EAPOL_PACKET_RECEIVED,
-    WPS_EVENT_DISCOVER_COMPLETE,
-    WPS_EVENT_ENROLLEE_ASSOCIATED,
-    WPS_EVENT_RECEIVED_IDENTITY_REQUEST,
-    WPS_EVENT_RECEIVED_IDENTITY,
-    WPS_EVENT_RECEIVED_WPS_START,
-    WPS_EVENT_RECEIVED_EAPOL_START,
-    WPS_EVENT_PBC_OVERLAP_NOTIFY_USER,
-    WPS_EVENT_WPS_COMPLETE,
-} wps_event_t;
 
 typedef enum
 {
@@ -417,15 +427,6 @@ typedef enum
     VIRTUAL_DISPLAY_PIN   = 0x2008,
     PHYSICAL_DISPLAY_PIN  = 0x4008
 } wps_configuration_method_t;
-
-typedef enum
-{
-    EAP_PACKET   = 0,
-    EAPOL_START  = 1,
-    EAPOL_LOGOFF = 2,
-    EAPOL_KEY    = 3,
-    EAPOL_ENCAPSULATED_ASF_ALERT = 4
-} eapol_packet_type_t;
 
 typedef enum
 {

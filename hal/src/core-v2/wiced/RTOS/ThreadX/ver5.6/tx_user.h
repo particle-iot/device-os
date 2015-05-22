@@ -206,7 +206,21 @@
    code size and overhead, but provides the ability to generate system trace information which 
    is available for viewing in TraceX.  */
 
-//#undef TX_ENABLE_EVENT_TRACE
+#ifdef TX_ENABLE_EVENT_TRACE
+
+#undef TX_TRACE_OBJECT_REGISTRY_NAME   /* Use default object name length */
+#undef TX_TRACE_PORT_EXTENSION         /* Do not use extension to tracing */
+
+#include "tx_port.h" /* to pick up TX_TRACE_TIME_SOURCE and TX_TRACE_TIME_MASK */
+
+#else
+
+#undef TX_TRACE_OBJECT_REGISTRY_NAME
+#undef TX_TRACE_PORT_EXTENSION
+#undef TX_TRACE_TIME_MASK
+#undef TX_TRACE_TIME_SOURCE
+#endif /* ifdef TX_ENABLE_EVENT_TRACE */
+
 
 
 /* Determine if block pool performance gathering is required by the application. When the following is
@@ -250,8 +264,6 @@
 #undef TX_TIMER_ENABLE_PERFORMANCE_INFO
 
 
-
-
 /* These are all the other defines that are used in ThreadX #if statements
  * This prevents users changing NetX values to become incompatible with
  * the prebuilt libraries.
@@ -285,10 +297,6 @@
 #undef TX_THREAD_SET_CURRENT
 #undef TX_THREAD_STACK_CHECK
 #undef TX_THREAD_STATE_CHANGE
-#undef TX_TRACE_OBJECT_REGISTRY_NAME
-#undef TX_TRACE_PORT_EXTENSION
-#undef TX_TRACE_TIME_MASK
-#undef TX_TRACE_TIME_SOURCE
 
 /* Defined by toolchain
  * __cplusplus

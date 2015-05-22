@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
 
@@ -42,10 +67,18 @@ extern "C"
 //#define WPRINT_ENABLE_RTOS_INFO          /* RTOS prints */
 //#define WPRINT_ENABLE_RTOS_DEBUG
 //#define WPRINT_ENABLE_RTOS_ERROR
+
+//#define WPRINT_ENABLE_SECURITY_INFO    /* Security stack prints */
+//#define WPRINT_ENABLE_SECURITY_DEBUG
+//#define WPRINT_ENABLE_SECURITY_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 //#define WPRINT_ENABLE_WPS_INFO           /* WPS stack prints */
 //#define WPRINT_ENABLE_WPS_DEBUG
 //#define WPRINT_ENABLE_WPS_ERROR
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+//#define WPRINT_ENABLE_SUPPLICANT_INFO    /* Supplicant stack prints */
+//#define WPRINT_ENABLE_SUPPLICANT_DEBUG
+//#define WPRINT_ENABLE_SUPPLICANT_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 //#define WPRINT_ENABLE_WICED_INFO         /* Wiced internal prints */
 //#define WPRINT_ENABLE_WICED_DEBUG
@@ -72,6 +105,7 @@ extern "C"
 #define WICED_TLS_RECEIVE_TIMEOUT                 (5000)
 #define WICED_TLS_TRANSMIT_TIMEOUT                (5000)
 #define WICED_DHCP_IP_ADDRESS_RESOLUTION_TIMEOUT (15000)
+#define WICED_AUTO_IP_ADDRESS_RESOLUTION_TIMEOUT (15000)
 
 
 /************************************************************************
@@ -103,9 +137,13 @@ extern "C"
  * WICED TCP Options */
 #define WICED_TCP_WINDOW_SIZE                 (7 * 1024)
 #define WICED_DEFAULT_TCP_LISTEN_QUEUE_SIZE   (5)
-#define WICED_DEFAULT_TCP_TX_DEPTH_QUEUE      (5)
-#define WICED_DEFAULT_TCP_RX_DEPTH_QUEUE      (5)
+#define WICED_DEFAULT_TCP_TX_DEPTH_QUEUE      (3)
+#define WICED_DEFAULT_TCP_RX_DEPTH_QUEUE      (3)
 #define WICED_DEFAULT_TCP_TX_RETRIES          (10)
+
+/************************************************************************
+ * WICED UDP Options */
+#define WICED_DEFAULT_UDP_QUEUE_SIZE          (5)
 
 /************************************************************************
  * WICED Join Options */
@@ -134,9 +172,17 @@ extern "C"
 
 /************************************************************************
  * WICED Connectivity Options */
-#define WICED_WIFI_USE_STA_INTERFACE
-#define WICED_WIFI_USE_AP_INTERFACE
-//#define WICED_WIFI_USE_P2P_INTERFACE
+#define WICED_USE_WIFI_STA_INTERFACE
+#define WICED_USE_WIFI_AP_INTERFACE
+//#define WICED_USE_WIFI_P2P_INTERFACE
+//#define WICED_USE_ETHERNET_INTERFACE
+
+/************************************************************************
+ * WICED WiFi Roaming related options (for STA interface)
+ * See wiced_wifi_set_roam_trigger() for details */
+#define WICED_WIFI_ROAMING_TRIGGER_MODE             ( WICED_WIFI_OPTIMIZE_BANDWIDTH_ROAMING_TRIGGER )
+#define WICED_WIFI_ROAMING_TRIGGER_DELTA_IN_DBM     ( 5 )
+#define WICED_WIFI_ROAMING_SCAN_PERIOD_IN_SECONDS   ( 10 )
 
 /************************************************************************
  * Uncomment to "hide" the soft AP */

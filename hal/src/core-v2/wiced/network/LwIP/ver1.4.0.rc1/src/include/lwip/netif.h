@@ -126,6 +126,8 @@ typedef err_t (*netif_output_fn)(struct netif *netif, struct pbuf *p,
 typedef err_t (*netif_linkoutput_fn)(struct netif *netif, /*@only@*/ struct pbuf *p);
 /** Function prototype for netif status- or link-callback functions. */
 typedef void (*netif_status_callback_fn)(struct netif *netif);
+/** Function prototype for netif address change-callback functions. */
+typedef void (*netif_ipchange_callback_fn)( struct netif *netif, ip_addr_t *new_ip );
 /** Function prototype for netif igmp_mac_filter functions */
 typedef err_t (*netif_igmp_mac_filter_fn)(struct netif *netif,
        ip_addr_t *group, u8_t action);
@@ -158,6 +160,11 @@ struct netif {
    */
   netif_status_callback_fn status_callback;
 #endif /* LWIP_NETIF_STATUS_CALLBACK */
+#if LWIP_NETIF_IP_CHANGE_CALLBACK
+  /** This function is called when the netif changes IP address
+   */
+  netif_ipchange_callback_fn ipchange_callback;
+#endif /* LWIP_NETIF_IP_CHANGE_CALLBACK */
 #if LWIP_NETIF_LINK_CALLBACK
   /** This function is called when the netif link is set to up or down
    */
@@ -282,6 +289,10 @@ void netif_set_down(struct netif *netif);
 void netif_set_status_callback(struct netif *netif, netif_status_callback_fn status_callback);
 #endif /* LWIP_NETIF_STATUS_CALLBACK */
 
+#if LWIP_NETIF_IP_CHANGE_CALLBACK
+void netif_set_ipchange_callback(struct netif *netif, netif_ipchange_callback_fn ipchange_callback);
+#endif /* LWIP_NETIF_IP_CHANGE_CALLBACK */
+
 void netif_set_link_up(struct netif *netif);
 void netif_set_link_down(struct netif *netif);
 /** Ask if a link is up */ 
@@ -292,6 +303,8 @@ void netif_set_link_callback(struct netif *netif, netif_status_callback_fn link_
 #endif /* LWIP_NETIF_LINK_CALLBACK */
 
 #if LWIP_NETIF_HOSTNAME
+  /* defined in WICED/LwIP/wiced_network.c, used in LwIP/WWD/wwd_network.c */
+extern  char*  lwip_hostname_ptr;
 #define netif_set_hostname(netif, name) do { if((netif) != NULL) { (netif)->hostname = name; }}while(0==1)
 #define netif_get_hostname(netif) (((netif) != NULL) ? ((netif)->hostname) : NULL)
 #endif /* LWIP_NETIF_HOSTNAME */

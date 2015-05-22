@@ -156,19 +156,10 @@ typedef unsigned short                          USHORT;
 /* Define the clock source for trace event entry time stamp. The following two item are port specific.  
    For example, if the time source is at the address 0x0a800024 and is 16-bits in size, the clock 
    source constants would be:
-
-#define TX_TRACE_TIME_SOURCE                    *((ULONG *) 0x0a800024)
-#define TX_TRACE_TIME_MASK                      0x0000FFFFUL
-
 */
-
-#ifndef TX_TRACE_TIME_SOURCE
-#define TX_TRACE_TIME_SOURCE                    *((ULONG *) 0xE0001004)  
-#endif
-#ifndef TX_TRACE_TIME_MASK
+/* Read the trace time from the CYCCNT register */
+#define TX_TRACE_TIME_SOURCE                    *((ULONG *) 0xE0001004)
 #define TX_TRACE_TIME_MASK                      0xFFFFFFFFUL
-#endif
-
 
 /* Define the port specific options for the _tx_build_options variable. This variable indicates
    how the ThreadX library was built.  */

@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 /** @file
@@ -19,7 +44,7 @@
 #include "security/BESL/include/besl_structures.h"
 #include "platform_constants.h"
 #include "wiced_constants.h"
-#include "../libraries/bluetooth/include/wiced_bt_constants.h"
+//#include "../libraries/drivers/bluetooth/include/wiced_bt_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,7 +92,8 @@ extern "C" {
     RESULT_ENUM( prefix, CORRUPT_PACKET_BUFFER,         27 ),   /**< Packet buffer is corrupted */     \
     RESULT_ENUM( prefix, UNKNOWN_NETWORK_STACK_ERROR,   28 ),   /**< Unknown network stack error */    \
     RESULT_ENUM( prefix, NO_STORED_AP_IN_DCT,           29 ),   /**< DCT contains no AP credentials */ \
-    RESULT_ENUM( prefix, STA_JOIN_FAILED,               30 ),   /**< Join failed */
+    RESULT_ENUM( prefix, STA_JOIN_FAILED,               30 ),   /**< Join failed */ \
+    RESULT_ENUM( prefix, PACKET_BUFFER_OVERFLOW,        31 ),   /**< Packet buffer overflow */
 
 /******************************************************
  * @endcond    Enumerations
@@ -86,8 +112,8 @@ typedef enum
     TLS_RESULT_LIST     (  WICED_TLS_      )  /* 5000 - 5999 */
     PLATFORM_RESULT_LIST(  WICED_PLATFORM_ )  /* 6000 - 6999 */
     TCPIP_RESULT_LIST   (  WICED_TCPIP_    )  /* 7000 - 7999 */
-    BT_RESULT_LIST      (  WICED_BT_       )  /* 8000 - 8999 */
-    P2P_RESULT_LIST     (  WICED_P2P_      )  /* 9000 - 9999 */
+ //   BT_RESULT_LIST      (  WICED_BT_       )  /* 8000 - 8999 */
+ //   P2P_RESULT_LIST     (  WICED_P2P_      )  /* 9000 - 9999 */
 } wiced_result_t;
 
 /******************************************************

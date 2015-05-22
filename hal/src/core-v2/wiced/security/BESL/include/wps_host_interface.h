@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
 
@@ -58,13 +83,6 @@ typedef struct
  *          WPS to Host Function Declarations
  ******************************************************/
 
-/* Packet functions */
-extern void     wps_host_create_eapol_packet  (wps_eapol_packet_t* packet, uint16_t size);
-extern uint8_t* wps_host_get_eapol_data       (wps_eapol_packet_t packet);
-extern uint16_t wps_host_get_eapol_packet_size(wps_eapol_packet_t packet);
-extern void     wps_host_free_eapol_packet    (wps_eapol_packet_t packet);
-extern void     wps_host_send_packet          (void* workspace, wps_eapol_packet_t packet, uint16_t size);
-
 /* Association functions */
 extern wps_result_t wps_host_join( void* workspace, wps_ap_t* ap, wwd_interface_t interface );
 extern wps_result_t wps_host_leave( wwd_interface_t interface );
@@ -78,10 +96,11 @@ extern void wps_host_add_vendor_ie   ( uint32_t interface, void* data, uint16_t 
 extern void wps_host_remove_vendor_ie( uint32_t interface, void* data, uint16_t data_length, uint32_t packet_mask );
 
 /* Scanning functions */
-extern void      wps_host_scan            ( wps_agent_t* workspace, wps_scan_handler_t result_handler, wwd_interface_t interface );
-extern wps_ap_t* wps_host_store_ap        ( void* workspace, wl_escan_result_t* scan_result );
-extern wps_ap_t* wps_host_retrieve_ap     ( void* workspace );
-extern uint16_t  wps_host_get_ap_list_size( void* workspace);
+extern void         wps_host_scan                 ( wps_agent_t* workspace, wps_scan_handler_t result_handler, wwd_interface_t interface );
+extern wps_ap_t*    wps_host_store_ap             ( void* workspace, wl_escan_result_t* scan_result, wps_uuid_t* uuid );
+extern wps_ap_t*    wps_host_retrieve_ap          ( void* workspace );
+extern uint16_t     wps_host_get_ap_list_size     ( void* workspace);
+extern wps_result_t wps_enrollee_pbc_overlap_check( wps_agent_t* workspace );
 
 /* Credential management functions */
 extern void wps_host_store_credential   ( void* workspace, wps_credential_t* credential );
@@ -90,13 +109,11 @@ extern void wps_host_retrieve_credential( void* workspace, wps_credential_t* cre
 /* Authorized MACs API */
 extern void wps_host_get_authorized_macs( void* workspace, besl_mac_t** mac_list, uint8_t* mac_list_length );
 
-extern void wps_host_deauthenticate_client( const besl_mac_t* mac, uint32_t reason );
-
 /******************************************************
  *          Host to WPS Function Declarations
  ******************************************************/
 
-extern wps_result_t wps_process_event( wps_agent_t* workspace, wps_event_message_t* event );
+extern wps_result_t wps_process_event( wps_agent_t* workspace, besl_event_message_t* event );
 extern void wps_init_workspace       ( wps_agent_t* workspace );
 extern void wps_deinit_workspace     ( wps_agent_t* workspace );
 extern void wps_reset_workspace      ( wps_agent_t* workspace, wwd_interface_t interface );

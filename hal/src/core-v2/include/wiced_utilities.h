@@ -1,11 +1,36 @@
 /*
- * Copyright 2014, Broadcom Corporation
- * All Rights Reserved.
+ * Copyright (c) 2015 Broadcom
+ * All rights reserved.
  *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
+ * without specific prior written permission.
+ *
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
 
@@ -27,15 +52,19 @@ extern uint32_t htobe32(uint32_t v);
 
 #else /* ifdef LINT */
 
+#ifndef htobe16   /* This is defined in POSIX platforms */
 static inline uint16_t htobe16(uint16_t v)
 {
     return (uint16_t)(((v&0x00FF) << 8) | ((v&0xFF00)>>8));
 }
+#endif /* ifndef htobe16 */
 
+#ifndef htobe32   /* This is defined in POSIX platforms */
 static inline uint32_t htobe32(uint32_t v)
 {
     return (uint32_t)(((v&0x000000FF) << 24) | ((v&0x0000FF00) << 8) | ((v&0x00FF0000) >> 8) | ((v&0xFF000000) >> 24));
 }
+#endif /* ifndef htobe32 */
 
 #endif /* ifdef LINT */
 
@@ -63,6 +92,47 @@ static inline uint32_t htobe32(uint32_t v)
 
 #define OFFSET(type, member)                          ((uint32_t)&((type *)0)->member)
 
+/* Macros for comparing MAC addresses */
+#define CMP_MAC( a, b )  (((((unsigned char*)a)[0])==(((unsigned char*)b)[0]))&& \
+                          ((((unsigned char*)a)[1])==(((unsigned char*)b)[1]))&& \
+                          ((((unsigned char*)a)[2])==(((unsigned char*)b)[2]))&& \
+                          ((((unsigned char*)a)[3])==(((unsigned char*)b)[3]))&& \
+                          ((((unsigned char*)a)[4])==(((unsigned char*)b)[4]))&& \
+                          ((((unsigned char*)a)[5])==(((unsigned char*)b)[5])))
+
+#define NULL_MAC( a )  (((((unsigned char*)a)[0])==0)&& \
+                        ((((unsigned char*)a)[1])==0)&& \
+                        ((((unsigned char*)a)[2])==0)&& \
+                        ((((unsigned char*)a)[3])==0)&& \
+                        ((((unsigned char*)a)[4])==0)&& \
+                        ((((unsigned char*)a)[5])==0))
+
+
+#define MEMORY_BARRIER_AGAINST_COMPILER_REORDERING()  __asm__ __volatile__ ("" : : : "memory") /* assume registers are Device memory, so have implicit CPU memory barriers */
+
+#define REGISTER_WRITE_WITH_BARRIER( type, address, value ) do {*(volatile type *)(address) = (type)(value); MEMORY_BARRIER_AGAINST_COMPILER_REORDERING();} while (0)
+#define REGISTER_READ( type, address )                      (*(volatile type *)(address))
+
+#define wiced_jump_when_not_true( condition, label ) \
+    do \
+    { \
+        if( ( condition ) == 0 ) \
+        { \
+            goto label; \
+        } \
+    } while(0)
+
+#define wiced_action_jump_when_not_true( condition, jump_label, action ) \
+    do \
+    { \
+        if( ( condition ) == 0 ) \
+        { \
+            { action; } \
+            goto jump_label; \
+        } \
+    } while(0)
+
+
 typedef enum
 {
     LEAK_CHECK_THREAD,
@@ -70,18 +140,7 @@ typedef enum
 } leak_check_scope_t;
 
 #ifdef WICED_ENABLE_MALLOC_DEBUG
-#include <stddef.h>
-#include "wwd_rtos.h"
-extern void* calloc_named                  ( const char* name, size_t nelems, size_t elemsize );
-extern void * calloc_named_hideleak        ( const char* name, size_t nelem, size_t elsize );
-extern void* malloc_named                  ( const char* name, size_t size );
-extern void* malloc_named_hideleak         ( const char* name, size_t size );
-extern void  malloc_set_name               ( const char* name );
-extern void  malloc_leak_set_ignored       ( leak_check_scope_t global_flag );
-extern void  malloc_leak_set_base          ( leak_check_scope_t global_flag );
-extern void  malloc_leak_check             ( malloc_thread_handle thread, leak_check_scope_t global_flag );
-extern void  malloc_transfer_to_curr_thread( void* block );
-extern void  malloc_transfer_to_thread     ( void* block, malloc_thread_handle thread );
+#include "malloc_debug.h"
 #else
 #define calloc_named( name, nelems, elemsize) calloc ( nelems, elemsize )
 #define calloc_named_hideleak( name, nelems, elemsize )  calloc ( nelems, elemsize )
@@ -129,6 +188,12 @@ extern void  malloc_transfer_to_thread     ( void* block, malloc_thread_handle t
  *                   Enumerations
  ******************************************************/
 
+typedef enum
+{
+    WEP_KEY_ASCII_FORMAT,
+    WEP_KEY_HEX_FORMAT,
+} wep_key_format_t;
+
 /******************************************************
  *                 Type Definitions
  ******************************************************/
@@ -175,6 +240,40 @@ uint8_t string_to_unsigned( const char* string, uint8_t str_length, uint32_t* va
  */
 uint8_t unsigned_to_decimal_string( uint32_t value, char* output, uint8_t min_length, uint8_t max_length );
 
+/*!
+ ******************************************************************************
+ * Convert a decimal or hexidecimal string to an integer.
+ *
+ * @param[in] str  The string containing the value.
+ *
+ * @return    The value represented by the string.
+ */
+
+/**
+ * Converts a unsigned long int to a decimal string
+ *
+ * @param value[in]      : The unsigned long to be converted
+ * @param output[out]    : The buffer which will receive the decimal string
+ * @param min_length[in] : the minimum number of characters to output (zero padding will apply if required)
+ * @param max_length[in] : the maximum number of characters to output (up to 10 )
+ *
+ * @note: No trailing null is added.
+ *
+ * @return the number of characters returned.
+ *
+ */
+uint8_t unsigned_to_decimal_string( uint32_t value, char* output, uint8_t min_length, uint8_t max_length );
+
+/*!
+ ******************************************************************************
+ * Convert a decimal or hexidecimal string to an integer.
+ *
+ * @param[in] str  The string containing the value.
+ *
+ * @return    The value represented by the string.
+ */
+
+uint32_t generic_string_to_unsigned( const char* str );
 
 /**
  * Converts a decimal/hexidecimal string (with optional sign) to a signed long int
@@ -300,6 +399,10 @@ static inline char* string_append_two_digit_hex_byte( char* string, uint8_t byte
     string++;
     return string;
 }
+
+
+
+void format_wep_keys( char* wep_key_ouput, const char* wep_key_data, uint8_t* wep_key_length, wep_key_format_t wep_key_format );
 
 #ifdef __cplusplus
 } /*extern "C" */

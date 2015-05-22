@@ -100,7 +100,7 @@ extern   "C" {
 #endif
 
 #ifndef NX_AUTO_IP_MAX_CONFLICTS
-#define NX_AUTO_IP_MAX_CONFLICTS            10
+#define NX_AUTO_IP_MAX_CONFLICTS            100
 #endif
 
 #ifndef NX_AUTO_IP_RATE_LIMIT_INTERVAL
@@ -112,7 +112,7 @@ extern   "C" {
 #endif
 
 #ifndef NX_AUTO_IP_ANNOUNCE_NUM
-#define NX_AUTO_IP_ANNOUNCE_NUM             2
+#define NX_AUTO_IP_ANNOUNCE_NUM             1
 #endif
 
 #ifndef NX_AUTO_IP_ANNOUNCE_INTERVAL

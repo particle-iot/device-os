@@ -5,7 +5,7 @@ HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/core-v2
 # private includes - WICED is not exposed to the HAL clients
 
 HAL_WICED_INCLUDE_DIRS +=   include
-HAL_WICED_INCLUDE_DIRS +=   platforms/$(PLATFORM_NET)			    
+HAL_WICED_INCLUDE_DIRS +=   platforms/$(PLATFORM_NET)   
 HAL_WICED_INCLUDE_DIRS +=   libraries/daemons/DNS_redirect \
 			    libraries/utilities/ring_buffer
 HAL_WICED_INCLUDE_DIRS +=   wiced
