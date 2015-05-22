@@ -374,7 +374,7 @@ void wlan_smart_config_cleanup()
 void wlan_setup()
 {    
     if (!wiced_wlan_connectivity_init()) {
-        wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected);
+        wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
         wiced_network_suspend();
 }
 }

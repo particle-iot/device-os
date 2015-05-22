@@ -23,7 +23,7 @@ INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/api
 
 HAL_LIB_COREV2 = $(HAL_SRC_COREV2_PATH)/lib
 
-HAL_WICED_COMMON_LIBS = SPI_Flash_Library_$(PLATFORM_NET) Lib_HTTP_Server Lib_Wiced_RO_FS Lib_base64 Ring_Buffer STM32F2xx_Peripheral_Libraries common_GCC
+HAL_WICED_COMMON_LIBS = Lib_SPI_Flash_Library_$(PLATFORM_NET) Lib_HTTP_Server Lib_Wiced_RO_FS Lib_base64 Lib_Ring_Buffer Lib_TLV STM32F2xx_Peripheral_Libraries common_GCC
 
 HAL_SHOULD_BE_COMMON = WICED Platform_$(PLATFORM_NET) Lib_DHCP_Server Lib_DNS Lib_DNS_Redirect_Daemon STM32F2xx STM32F2xx_Peripheral_Drivers
 HAL_LIB_RTOS = $(HAL_LIB_COREV2)/$(HAL_WICED_RTOS)

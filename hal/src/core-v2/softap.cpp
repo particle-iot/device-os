@@ -1126,22 +1126,22 @@ class TCPServerDispatcher
         }
     }
 
-    static wiced_result_t connect_callback(void* socket) {
+    static wiced_result_t connect_callback(wiced_tcp_socket_t* socket, void* data) {
         return post_event(socket_message_t::connect, socket);
     }
 
-    static wiced_result_t disconnect_callback(void* socket) {
+    static wiced_result_t disconnect_callback(wiced_tcp_socket_t* socket, void* data) {
         return post_event(socket_message_t::disconnect, socket);
     }
 
-    static wiced_result_t receive_callback(void* socket) {
+    static wiced_result_t receive_callback(wiced_tcp_socket_t* socket, void* data) {
         return post_event(socket_message_t::message, socket);
     }
 
-    static wiced_result_t post_event(socket_message_t::event event_type, void* socket)
+    static wiced_result_t post_event(socket_message_t::event event_type, wiced_tcp_socket_t* socket)
     {
         socket_message_t message;
-        message.socket = (wiced_tcp_socket_t*)socket;
+        message.socket = socket;
         message.event_type = event_type;
         if (static_server)
             wiced_rtos_push_to_queue(&static_server->queue_, &message, WICED_NO_WAIT);
@@ -1164,7 +1164,7 @@ public:
         if (wiced_rtos_init_queue(&queue_, NULL, sizeof(socket_message_t), 10))
             return;
 
-        if (wiced_tcp_server_start(&server_, iface_, 5609, connect_callback, receive_callback, disconnect_callback))
+        if (wiced_tcp_server_start(&server_, iface_, 5609, 5, connect_callback, receive_callback, disconnect_callback, NULL))
             return;
 
         wiced_rtos_create_thread(&thread_, WICED_DEFAULT_LIBRARY_PRIORITY, "tcp server", tcp_server_thread, 1024*6, this);

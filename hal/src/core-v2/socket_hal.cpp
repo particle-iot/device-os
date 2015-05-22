@@ -612,9 +612,8 @@ tcp_server_t* server_for_socket(wiced_tcp_socket_t* client)
  * to the server.
  * @param socket
  */
-wiced_result_t server_connected(void* socket)
+wiced_result_t server_connected(wiced_tcp_socket_t* s, void* pv)
 {
-    wiced_tcp_socket_t* s = (wiced_tcp_socket_t*)socket;
     tcp_server_t* server = server_for_socket(s);    
     wiced_result_t result = WICED_ERROR;
     if (server) {
@@ -627,7 +626,7 @@ wiced_result_t server_connected(void* socket)
  * Notification that the client socket has data. 
  * @param socket
  */
-wiced_result_t server_received(void* socket)
+wiced_result_t server_received(wiced_tcp_socket_t* socket, void* pv)
 {   
     return WICED_SUCCESS;
 }
@@ -636,9 +635,8 @@ wiced_result_t server_received(void* socket)
  * Notification that the client socket closed the connection.
  * @param socket
  */
-wiced_result_t server_disconnected(void* socket)
-{
-    wiced_tcp_socket_t* s = (wiced_tcp_socket_t*)socket;
+wiced_result_t server_disconnected(wiced_tcp_socket_t* s, void* pv)
+{    
     tcp_server_t* server = server_for_socket(s);
     wiced_result_t result = WICED_ERROR;
     if (server) {
@@ -656,7 +654,7 @@ sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif)
     wiced_result_t result = WICED_OUT_OF_HEAP_SPACE;
     if (handle && server) {
         result = wiced_tcp_server_start(server, WICED_STA_INTERFACE,
-            port, server_connected, server_received, server_disconnected);        
+            port, WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS, server_connected, server_received, server_disconnected, NULL);        
     }
     if (result!=WICED_SUCCESS) {
         delete handle; handle = NULL;
