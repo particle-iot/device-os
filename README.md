@@ -1,10 +1,9 @@
 <!---
-[![Backlog](https://badge.waffle.io/spark/core-firmware.png?label=backlog&title=backlog)](https://waffle.io/spark/firmware)
 -->
 
-# Spark Firmware [![Build Status](https://travis-ci.org/spark/firmware.svg)](https://travis-ci.org/spark/firmware)
+# Particle Firmware for the Core and Photon 
 
-This is the main source code repository of the Spark firmware libraries.
+This is the main source code repository of the Particle firmware libraries.
 
 1. [Download and Install Dependencies](#1-download-and-install-dependencies)
 2. [Download and Build Repositories](#2-download-and-build-repositories)
@@ -21,7 +20,7 @@ This is the main source code repository of the Spark firmware libraries.
 
 
 #### 1. GCC for ARM Cortex processors
-The Spark Core uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.  
+The Particle Core uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.  
 
 Download and install the latest version from: https://launchpad.net/gcc-arm-embedded
 
@@ -48,7 +47,7 @@ Download and install Git: http://git-scm.com/
 
 ## 2. Download and Build Repositories
 
-The entire Spark Core firmware is contained in this repository. 
+The entire Particle Core firmware is contained in this repository. 
 The main firmware is located under the `main/` directory, while the supporting 
 libraries are located in `platform/` and `communication/` subdirectories.
 
@@ -106,7 +105,7 @@ The compiled `.bin` and `.hex` files appear under `build/target/main/prod-N/`
 
 ## 3. Edit and Rebuild
 
-Now that you have your hands on the entire Spark Core firmware, its time to start hacking!
+Now that you have your hands on the entire Particle Core firmware, its time to start hacking!
 
 ### What to edit and what not to edit?
 
@@ -117,7 +116,7 @@ If you have made changes to any of the other directories, make automatically det
 
 ## 4. Flash It!
 
-Its now time to transfer your code to the Spark Core! You can always do this using the Over The Air update feature or, if you like wires, do it over the USB.
+Its now time to transfer your code to the Particle Core! You can always do this using the Over The Air update feature or, if you like wires, do it over the USB.
 
 *Make sure you have the `dfu-util` command installed and available through the command line*
 
@@ -152,7 +151,7 @@ the `dfu-util` command. You can ignore this message for now.  We're not sure wha
 
 ### CREDITS AND ATTRIBUTIONS
 
-The Spark application team: Zachary Crockett, Satish Nair, Zach Supalla, David Middlecamp and Mohit Bhoite.
+The Particle application team: Zachary Crockett, Satish Nair, Zach Supalla, David Middlecamp and Mohit Bhoite.
 
 The firmware uses the GNU GCC toolchain for ARM Cortex-M processors, ARM's CMSIS libraries, TI's CC3000 host driver libraries, STM32 standard peripheral libraries and Arduino's implementation of Wiring.
 
@@ -162,7 +161,7 @@ Unless stated elsewhere, file headers or otherwise, all files herein are license
 
 ### CONTRIBUTE
 
-Want to contribute to the Spark Core project? Follow [this link](http://spark.github.io/#contributions) to find out how.
+Want to contribute to the Particle Core project? Follow [this link](http://spark.github.io/#contributions) to find out how.
 
 ### CONNECT
 
