@@ -26,6 +26,10 @@
 #ifndef SPARK_WIRING_TICKS_H
 #define	SPARK_WIRING_TICKS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "timer_hal.h"
 #include "delay_hal.h"
 
@@ -34,6 +38,9 @@ inline unsigned long micros(void) { return HAL_Timer_Get_Micro_Seconds(); }
 void delay(unsigned long ms);
 inline void delayMicroseconds(unsigned int us) { HAL_Delay_Microseconds(us); }
 
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif	/* SPARK_WIRING_TICKS_H */
