@@ -4,7 +4,7 @@
 # Define the prefix to this directory. 
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
-HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/core-v2
+HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/photon
 
 #HAL_WICED_RTOS=ThreadX
 #HAL_WICED_NETWORK=NetX

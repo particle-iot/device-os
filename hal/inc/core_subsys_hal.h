@@ -37,13 +37,13 @@ extern "C" {
  */       
 int HAL_core_subsystem_version(char* buf, int bufLen);
 
-#if PLATFORM_NAME==core-v1
+#if PLATFORM_NAME==core
     /**
      * The event name to publish for this subsystem type.
      */
     #define SPARK_SUBSYSTEM_EVENT_NAME "cc3000-patch-version"
 
-#elif PLATFORM_NAME==core-v2
+#elif PLATFORM_NAME==photon
 
     #define SPARK_SUBSYSTEM_EVENT_NAME ""
 

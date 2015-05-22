@@ -36,7 +36,7 @@ uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t address, uint32_t bufferSiz
 
 #define EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH 128
 
-// todo - duplicate from core-v1, factor this down into a common area
+// todo - duplicate from core, factor this down into a common area
 void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
 {
   // Internet address stored on external flash may be

@@ -1,6 +1,6 @@
 
 HAL_SRC_TEMPLATE_PATH = $(TARGET_HAL_PATH)/src/template
-HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/core-v2
+HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/photon
 
 # private includes - WICED is not exposed to the HAL clients
 
@@ -56,7 +56,7 @@ overridedir=$(HAL_SRC_COREV2_PATH)
 
 # C source files included in this build.
 # Use files from the template unless they are overridden by files in the 
-# core-v2 folder. Also manually exclude some files that have changed from c->cpp.
+# photon folder. Also manually exclude some files that have changed from c->cpp.
 
 CSRC += $(call target_files,$(templatedir)/,*.c)
 CPPSRC += $(call target_files,$(templatedir)/,*.cpp)

@@ -60,8 +60,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
 {
     announce_presence = presence_announcement_callback;
 
-#if !SPARK_NO_WIFI    
-#error
+#if !SPARK_NO_WIFI
     wlan_setup();
 
     /* Trigger a WLAN device */

@@ -108,7 +108,7 @@ void WiFiTester::printItem(const char* name, const char* value) {
     serialPrintln(value);
 }
 
-// todo - this is specific to core-v2 HAL
+// todo - this is specific to photon HAL
 
 struct varstring_t {
     uint8_t len;
