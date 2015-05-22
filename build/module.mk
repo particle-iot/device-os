@@ -107,6 +107,7 @@ ifeq (y,$(MODULAR_FIRMWARE))
 MODULAR_EXT = -m
 endif
 
+COMPILE_LTO ?= y
 ifeq (y,$(COMPILE_LTO))
 LTO_EXT = -lto
 MAKE_ARGS += COMPILE_LTO=$(COMPILE_LTO)
