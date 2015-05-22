@@ -56,8 +56,6 @@ T round (T x) { return ((x)>=0?(long)((x)+0.5):(long)((x)-0.5)); }
 typedef bool boolean;
 typedef uint8_t byte;
 
- const uint8_t CHANNEL_NONE = ((uint8_t)0xFF);
-
 #ifndef FALSE
 #define FALSE					(0x00)
 #endif
