@@ -26,7 +26,7 @@
 
 SYSTEM_MODE(MANUAL);
 
-#define USE_SERIAL1 1
+#define USE_SERIAL1 0
 
 #ifndef USE_SERIAL1
 #define USE_SERIAL1 0
@@ -37,9 +37,9 @@ WiFiTester tester;
 void setup()
 {
     Serial.begin(9600);
-#if USE_SERIAL1    
-    Serial1.begin(9600);    
-#endif    
+#if USE_SERIAL1
+    Serial1.begin(9600);
+#endif
     tester.setup(USE_SERIAL1);
 }
 
@@ -55,4 +55,3 @@ void loop()
     }
     tester.loop(c);
 }
-

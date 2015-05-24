@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   wlan_scan.h
  * Author: mat1
  *
@@ -10,9 +10,8 @@
 
 #include <stdint.h>
 
-typedef void (*scan_ap_callback)(void* callback_data, const uint8_t* ssid, unsigned ssid_len, int rssi);
+typedef void (*scan_ap_callback)(void* callback_data, const uint8_t* ssid, unsigned ssid_len, int rssi, const uint8_t* bssid);
 void wlan_scan_aps(scan_ap_callback callback, void* callback_data);
 
 
 #endif	/* WLAN_SCAN_H */
-

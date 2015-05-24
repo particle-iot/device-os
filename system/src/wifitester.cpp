@@ -156,7 +156,7 @@ void WiFiTester::printInfo() {
 }
 
 #if WIFI_SCAN
-void wlan_scan_callback(void* data, const uint8_t* ssid, unsigned ssid_len, int rssi)
+void wlan_scan_callback(void* data, const uint8_t* ssid, unsigned ssid_len, int rssi,const uint8_t* bssid)
 {
     WiFiTester& tester = *(WiFiTester*)data;
     char str_ssid[33];
@@ -165,14 +165,24 @@ void wlan_scan_callback(void* data, const uint8_t* ssid, unsigned ssid_len, int 
     tester.serialPrint(str_ssid);
     tester.serialPrint(",");
     itoa(rssi, str_ssid, 10);
-    tester.serialPrintln(str_ssid);
+    tester.serialPrint(str_ssid);
+    tester.serialPrint(",");
+
+    char str_bssid[6];
+    memcpy(str_bssid,bssid,6);
+    for(uint8_t i=0;i<6;i++){
+      Serial.print("0x");
+      Serial.print(str_bssid[i],HEX);
+      if(i!=5) Serial.print(":");
+    }
+    tester.serialPrintln("");
 }
 
 void WiFiTester::wifiScan() {
     WiFi.on();
     serialPrintln("SCAN_START");
     wlan_scan_aps(wlan_scan_callback, this);
-    serialPrintln("SCAN_STOP");    
+    serialPrintln("SCAN_STOP");
 }
 #endif
 
@@ -201,7 +211,7 @@ const char* parseAntennaSelect(const char* c, WLanSelectAntenna_TypeDef& select)
         if (!strncmp(names[i], c, strlen(c))) {
             select = WLanSelectAntenna_TypeDef(i);
             return names[i];
-        }            
+        }
     }
     return NULL;
 }
@@ -288,11 +298,11 @@ void WiFiTester::checkWifiSerial(char c) {
             if (WiFi.hasCredentials())
                 WiFi.clearCredentials();
         }
-#if WIFI_SCAN        
+#if WIFI_SCAN
         else if ((start = strstr(command, cmd_WIFI_SCAN))) {
             wifiScan();
         }
-#endif        
+#endif
         else if ((start = strstr(command, cmd_SET_PIN))) {
             tokenizeCommand(start, parts, 5);
             bool ok = parts[1] && parts[2];
@@ -320,7 +330,7 @@ void WiFiTester::checkWifiSerial(char c) {
                     setPinOutput(A0 + (parts[1][1]-'0'), pinValue);
                 }
                 else {
-                    ok = false;                
+                    ok = false;
                 }
             }
             if (ok) {
@@ -342,7 +352,7 @@ void WiFiTester::checkWifiSerial(char c) {
                 String id(details.product_id);
                 serialPrintln(id.c_str());
             }
-            
+
         }
         else if ((start=strstr(command, cmd_ANT))) {
             tokenizeCommand(start, parts, 5);
@@ -361,7 +371,7 @@ void WiFiTester::checkWifiSerial(char c) {
                 wifiScan();
                 serialPrintln("ANTENNA TEST COMPLETE");
             }
-            else {                
+            else {
                 WLanSelectAntenna_TypeDef selectAntenna;
                 const char* name;
                 if ((name=parseAntennaSelect(parts[1], selectAntenna))!=NULL) {
@@ -382,7 +392,7 @@ void WiFiTester::serialPrintln(const char * str) {
         Serial1.println(str);
         Serial1.flush();
     }
-#endif    
+#endif
 }
 
 void WiFiTester::serialPrint(const char * str) {
@@ -393,7 +403,7 @@ void WiFiTester::serialPrint(const char * str) {
         Serial1.print(str);
         Serial1.flush();
     }
-#endif    
+#endif
 }
 
 uint8_t WiFiTester::serialAvailable() {
@@ -411,7 +421,7 @@ int32_t WiFiTester::serialRead() {
 #if USE_SERIAL1
     if (useSerial1 && Serial1.available())
         return Serial1.read();
-#endif    
+#endif
     return 0;
 }
 
@@ -461,4 +471,3 @@ void WiFiTester::tester_connect(char *ssid, char *pass) {
     //USERLED_On(LED_RGB);
     serialPrintln("  WIFI Connected?    ");
 }
-
