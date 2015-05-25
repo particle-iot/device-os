@@ -77,6 +77,8 @@ STM32_SPI_Info SPI_MAP[TOTAL_SPI] =
 
 static STM32_SPI_Info *spiMap[TOTAL_SPI]; // pointer to SPI_MAP[] containing SPI peripheral info
 
+static void (*SPI_DMA_userFunctionCallback)(void);
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -138,6 +140,9 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     }
     DMA_Init(spiMap[spi]->SPI_RX_DMA_Stream, &DMA_InitStructure);
 
+    /* Enable SPI TX DMA Stream Interrupt */
+    DMA_ITConfig(spiMap[spi]->SPI_TX_DMA_Stream, DMA_IT_TCIF5, ENABLE);
+
     /* Enable the DMA Tx/Rx Stream */
     DMA_Cmd(spiMap[spi]->SPI_TX_DMA_Stream, ENABLE);
     DMA_Cmd(spiMap[spi]->SPI_RX_DMA_Stream, ENABLE);
@@ -145,6 +150,19 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     /* Enable the SPI Rx/Tx DMA request */
     SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Rx, ENABLE);
     SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Tx, ENABLE);
+}
+
+static void HAL_SPI_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
+{
+    DMA_ClearITPendingBit(spiMap[spi]->SPI_TX_DMA_Stream, DMA_IT_TCIF5);
+    SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Tx, DISABLE);
+    DMA_Cmd(spiMap[spi]->SPI_TX_DMA_Stream, DISABLE);
+
+    if (SPI_DMA_userFunctionCallback)
+    {
+        // alert user program
+        SPI_DMA_userFunctionCallback();
+    }
 }
 
 void HAL_SPI_Init(HAL_SPI_Interface spi)
@@ -303,6 +321,7 @@ uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
 void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback)
 {
     HAL_SPI_DMA_Config(spi, tx_buffer, rx_buffer, length);
+    SPI_DMA_userFunctionCallback = userCallback;
 }
 
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
@@ -310,11 +329,31 @@ bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
     return spiMap[spi]->SPI_Enabled;
 }
 
-
 /**
  * Compatibility for the RC4 release of tinker, which used the no-arg version.
  */
 bool HAL_SPI_Is_Enabled_Old()
 {
     return false;
+}
+
+/**
+ * @brief  This function handles DMA1 Stream 5 interrupt request.
+ * @param  None
+ * @retval None
+ */
+//Uncommenting the below for SPI3 results in multiple definition linker error
+//void DMA1_Stream5_irq(void)
+//{
+//    HAL_SPI_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
+//}
+
+/**
+ * @brief  This function handles DMA2 Stream 5 interrupt request.
+ * @param  None
+ * @retval None
+ */
+void DMA2_Stream5_irq(void)
+{
+    HAL_SPI_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE1);
 }
