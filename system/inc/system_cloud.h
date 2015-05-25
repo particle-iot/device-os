@@ -112,7 +112,7 @@ void spark_process(void);
 void spark_connect(void);
 void spark_disconnect(void);    // should be set connected since it manages the connection state)
 bool spark_connected(void);
-SparkProtocol* spark_protocol_instance(void);
+SparkProtocol* system_cloud_protocol_instance(void);
 
 char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* output);
 String bytes2hex(const uint8_t* buf, unsigned len);

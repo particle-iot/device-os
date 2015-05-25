@@ -76,6 +76,18 @@ const uint32_t VIBGYOR_Colors[] = {
 const int VIBGYOR_Size = sizeof (VIBGYOR_Colors) / sizeof (uint32_t);
 int VIBGYOR_Index;
 
+/**
+ * This is necessary since spark_protocol_instance() was defined in both system_cloud
+ * and communication dynalibs. (Not sure why - just an oversight.)
+ * Renaming this method, but keeping in the dynalib for backwards compatibility with wiring code
+ * version 1. Wiring code compiled against version 2 will not use this function, since the
+ * code will be linked to spark_protocol_instance() in comms lib.
+ */
+SparkProtocol* system_cloud_protocol_instance(void)
+{
+    return sp;
+}
+
 struct User_Var_Lookup_Table_t
 {
     const void *userVar;
