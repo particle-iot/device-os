@@ -31,6 +31,8 @@
 #include "spark_wiring_platform.h"
 #include "spi_hal.h"
 
+typedef std::function<void(void)> wiring_spi_dma_usercallback_t;
+
 class SPIClass {
 private:
   HAL_SPI_Interface _spi;
@@ -48,6 +50,7 @@ public:
   void setClockDivider(uint8_t);
 
   byte transfer(byte _data);
+  void transfer(void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_usercallback_t user_callback);
 
   void attachInterrupt();
   void detachInterrupt();

@@ -226,6 +226,10 @@ uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
     return SPI_I2S_ReceiveData(spiMap[spi]->SPI_Peripheral);
 }
 
+void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback)
+{
+}
+
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 {
     return spiMap[spi]->SPI_Enabled;
