@@ -38,6 +38,8 @@ public:
 
         unsigned int baud() { return USB_USART_Baud_Rate(); }
         
+        operator bool() { return baud()!=0; }
+        
 	void begin(long speed);
 	void end();
 	int peek();
