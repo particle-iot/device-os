@@ -156,7 +156,7 @@ void WiFiTester::printInfo() {
 }
 
 #if WIFI_SCAN
-void wlan_scan_callback(void* data, const uint8_t* ssid, unsigned ssid_len, int rssi,const uint8_t* bssid)
+void wlan_scan_callback(void* data, const uint8_t* ssid, unsigned ssid_len, int rssi, const uint8_t* bssid)
 {
     WiFiTester& tester = *(WiFiTester*)data;
     if(ssid != NULL){
