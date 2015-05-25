@@ -44,6 +44,14 @@ typedef struct STM32_SPI_Info {
     __IO uint32_t* SPI_RCC_APBRegister;
     uint32_t SPI_RCC_APBClockEnable;
 
+    __IO uint32_t* SPI_RCC_AHBRegister;
+    uint32_t SPI_RCC_AHBClockEnable;
+
+    uint32_t SPI_DMA_Channel;
+
+    DMA_Stream_TypeDef* SPI_TX_DMA_Stream;
+    DMA_Stream_TypeDef* SPI_RX_DMA_Stream;
+
     uint16_t SPI_SCK_Pin;
     uint16_t SPI_MISO_Pin;
     uint16_t SPI_MOSI_Pin;
@@ -63,8 +71,8 @@ typedef struct STM32_SPI_Info {
  */
 STM32_SPI_Info SPI_MAP[TOTAL_SPI] =
 {
-        { SPI1, &RCC->APB2ENR, RCC_APB2Periph_SPI1, SCK, MISO, MOSI, GPIO_AF_SPI1 },
-        { SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, D4, D3, D2, GPIO_AF_SPI3 }
+        { SPI1, &RCC->APB2ENR, RCC_APB2Periph_SPI1, &RCC->AHB1ENR, RCC_AHB1Periph_DMA2, DMA_Channel_3, DMA2_Stream5, DMA2_Stream2, SCK, MISO, MOSI, GPIO_AF_SPI1 },
+        { SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0, DMA1_Stream5, DMA1_Stream2, D4, D3, D2, GPIO_AF_SPI3 }
 };
 
 static STM32_SPI_Info *spiMap[TOTAL_SPI]; // pointer to SPI_MAP[] containing SPI peripheral info
