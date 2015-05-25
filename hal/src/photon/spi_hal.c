@@ -81,6 +81,72 @@ static STM32_SPI_Info *spiMap[TOTAL_SPI]; // pointer to SPI_MAP[] containing SPI
 
 /* Private function prototypes -----------------------------------------------*/
 
+static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length)
+{
+    DMA_InitTypeDef DMA_InitStructure;
+
+    /* Enable DMA Clock */
+    *spiMap[spi]->SPI_RCC_AHBRegister |= spiMap[spi]->SPI_RCC_AHBClockEnable;
+
+    /* Deinitialize DMA Streams */
+    DMA_DeInit(spiMap[spi]->SPI_TX_DMA_Stream);
+    DMA_DeInit(spiMap[spi]->SPI_RX_DMA_Stream);
+
+    DMA_InitStructure.DMA_BufferSize = length;
+    DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
+    DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
+    DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&spiMap[spi]->SPI_Peripheral->DR;
+    DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+    DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+
+    DMA_InitStructure.DMA_Channel = spiMap[spi]->SPI_DMA_Channel;
+
+    uint8_t tempMemory = 0xFF;
+
+    /* Configure Tx DMA Stream */
+    DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
+    if (tx_buffer)
+    {
+        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)tx_buffer;
+        DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    }
+    else
+    {
+        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)(&tempMemory);
+        DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+    }
+    DMA_Init(spiMap[spi]->SPI_TX_DMA_Stream, &DMA_InitStructure);
+
+    /* Configure Rx DMA Stream */
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+    if (rx_buffer)
+    {
+        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)rx_buffer;
+        DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    }
+    else
+    {
+        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&tempMemory;
+        DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+    }
+    DMA_Init(spiMap[spi]->SPI_RX_DMA_Stream, &DMA_InitStructure);
+
+    /* Enable the DMA Tx/Rx Stream */
+    DMA_Cmd(spiMap[spi]->SPI_TX_DMA_Stream, ENABLE);
+    DMA_Cmd(spiMap[spi]->SPI_RX_DMA_Stream, ENABLE);
+
+    /* Enable the SPI Rx/Tx DMA request */
+    SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Rx, ENABLE);
+    SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Tx, ENABLE);
+}
+
 void HAL_SPI_Init(HAL_SPI_Interface spi)
 {
     if(spi == HAL_SPI_INTERFACE1)
@@ -236,6 +302,7 @@ uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
 
 void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback)
 {
+    HAL_SPI_DMA_Config(spi, tx_buffer, rx_buffer, length);
 }
 
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
