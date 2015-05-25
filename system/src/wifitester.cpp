@@ -159,23 +159,26 @@ void WiFiTester::printInfo() {
 void wlan_scan_callback(void* data, const uint8_t* ssid, unsigned ssid_len, int rssi,const uint8_t* bssid)
 {
     WiFiTester& tester = *(WiFiTester*)data;
-    char str_ssid[33];
-    memcpy(str_ssid, ssid, ssid_len);
-    str_ssid[ssid_len] = 0;
-    tester.serialPrint(str_ssid);
-    tester.serialPrint(",");
-    itoa(rssi, str_ssid, 10);
-    tester.serialPrint(str_ssid);
-    tester.serialPrint(",");
+    if(ssid != NULL){
+      char str_bssid[6];
+      memcpy(str_bssid,bssid,6);
+      for(uint8_t i=0;i<6;i++){
+        Serial.print(str_bssid[i],HEX);
+        if(i!=5) Serial.print(":");
+      }
+      tester.serialPrint(",");
 
-    char str_bssid[6];
-    memcpy(str_bssid,bssid,6);
-    for(uint8_t i=0;i<6;i++){
-      Serial.print("0x");
-      Serial.print(str_bssid[i],HEX);
-      if(i!=5) Serial.print(":");
+      char str_ssid[33];
+      memcpy(str_ssid, ssid, ssid_len);
+      str_ssid[ssid_len] = 0;
+      tester.serialPrint(str_ssid);
+      tester.serialPrint(",");
+      itoa(rssi, str_ssid, 10);
+      tester.serialPrintln(str_ssid);
     }
-    tester.serialPrintln("");
+    else
+      tester.serialPrintln("No SSID detected");
+
 }
 
 void WiFiTester::wifiScan() {
