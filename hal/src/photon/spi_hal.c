@@ -48,9 +48,10 @@ typedef struct STM32_SPI_Info {
     uint32_t SPI_RCC_AHBClockEnable;
 
     uint32_t SPI_DMA_Channel;
-
     DMA_Stream_TypeDef* SPI_TX_DMA_Stream;
+    uint32_t TX_DMA_TC_Event;
     DMA_Stream_TypeDef* SPI_RX_DMA_Stream;
+    uint32_t RX_DMA_TC_Event;
 
     uint16_t SPI_SCK_Pin;
     uint16_t SPI_MISO_Pin;
@@ -64,6 +65,8 @@ typedef struct STM32_SPI_Info {
     bool SPI_Data_Mode_Set;
     bool SPI_Clock_Divider_Set;
     bool SPI_Enabled;
+
+    HAL_SPI_DMA_UserCallback SPI_DMA_UserCallback;
 } STM32_SPI_Info;
 
 /*
@@ -71,13 +74,13 @@ typedef struct STM32_SPI_Info {
  */
 STM32_SPI_Info SPI_MAP[TOTAL_SPI] =
 {
-        { SPI1, &RCC->APB2ENR, RCC_APB2Periph_SPI1, &RCC->AHB1ENR, RCC_AHB1Periph_DMA2, DMA_Channel_3, DMA2_Stream5, DMA2_Stream2, SCK, MISO, MOSI, GPIO_AF_SPI1 },
-        { SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0, DMA1_Stream5, DMA1_Stream2, D4, D3, D2, GPIO_AF_SPI3 }
+        { SPI1, &RCC->APB2ENR, RCC_APB2Periph_SPI1, &RCC->AHB1ENR, RCC_AHB1Periph_DMA2, DMA_Channel_3,
+          DMA2_Stream5, DMA_IT_TCIF5, DMA2_Stream2, DMA_IT_TCIF2, SCK, MISO, MOSI, GPIO_AF_SPI1 },
+        { SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0,
+          DMA1_Stream7, DMA_IT_TCIF7, DMA1_Stream2, DMA_IT_TCIF2, D4, D3, D2, GPIO_AF_SPI3 }
 };
 
 static STM32_SPI_Info *spiMap[TOTAL_SPI]; // pointer to SPI_MAP[] containing SPI peripheral info
-
-static void (*SPI_DMA_userFunctionCallback)(void);
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -141,7 +144,7 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     DMA_Init(spiMap[spi]->SPI_RX_DMA_Stream, &DMA_InitStructure);
 
     /* Enable SPI TX DMA Stream Interrupt */
-    DMA_ITConfig(spiMap[spi]->SPI_TX_DMA_Stream, DMA_IT_TCIF5, ENABLE);
+    DMA_ITConfig(spiMap[spi]->SPI_TX_DMA_Stream, spiMap[spi]->TX_DMA_TC_Event, ENABLE);
 
     /* Enable the DMA Tx/Rx Stream */
     DMA_Cmd(spiMap[spi]->SPI_TX_DMA_Stream, ENABLE);
@@ -154,14 +157,17 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
 
 static void HAL_SPI_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
 {
-    DMA_ClearITPendingBit(spiMap[spi]->SPI_TX_DMA_Stream, DMA_IT_TCIF5);
-    SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Tx, DISABLE);
-    DMA_Cmd(spiMap[spi]->SPI_TX_DMA_Stream, DISABLE);
-
-    if (SPI_DMA_userFunctionCallback)
+    if (DMA_GetITStatus(spiMap[spi]->SPI_TX_DMA_Stream, spiMap[spi]->TX_DMA_TC_Event) == SET)
     {
-        // alert user program
-        SPI_DMA_userFunctionCallback();
+        DMA_ClearITPendingBit(spiMap[spi]->SPI_TX_DMA_Stream, spiMap[spi]->TX_DMA_TC_Event);
+        SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Tx, DISABLE);
+        DMA_Cmd(spiMap[spi]->SPI_TX_DMA_Stream, DISABLE);
+
+        if (spiMap[spi]->SPI_DMA_UserCallback)
+        {
+            // notify user program about transfer completion
+            spiMap[spi]->SPI_DMA_UserCallback();
+        }
     }
 }
 
@@ -320,8 +326,9 @@ uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
 
 void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback)
 {
+    spiMap[spi]->SPI_DMA_UserCallback = userCallback;
+    /* Config and initiate DMA transfer */
     HAL_SPI_DMA_Config(spi, tx_buffer, rx_buffer, length);
-    SPI_DMA_userFunctionCallback = userCallback;
 }
 
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
@@ -338,15 +345,14 @@ bool HAL_SPI_Is_Enabled_Old()
 }
 
 /**
- * @brief  This function handles DMA1 Stream 5 interrupt request.
+ * @brief  This function handles DMA1 Stream 7 interrupt request.
  * @param  None
  * @retval None
  */
-//Uncommenting the below for SPI3 results in multiple definition linker error
-//void DMA1_Stream5_irq(void)
-//{
-//    HAL_SPI_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
-//}
+void DMA1_Stream7_irq(void)
+{
+    HAL_SPI_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
+}
 
 /**
  * @brief  This function handles DMA2 Stream 5 interrupt request.
