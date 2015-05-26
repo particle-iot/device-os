@@ -1,18 +1,23 @@
 
+THe firmware and bootloader are built by running the `make` command. 
+
+Running
 
 ```
 make
 ```
 
-in the top-level directory creates build artifacts for all projects under the `build/target/` directory.
+in the top-level directory creates the bootloader and firmware binaries, which are output to subdirectories of the `build/target/` directory.
 
-The top-level make is mainly a convenience to build `bootloader` and `main`. It
-supports these targets: `clean` and `all` (default). 
+The top-level make is mainly a convenience to build `bootloader` and `main` projects. It
+supports these targets: 
+- `clean`  - force the next build to be a full rebuild, and
+- `all` (default), build the artefact. 
 
 By default, the Core is the target platform. To build for the Photon, run
 
 ```
-make PLATFORM_ID=6
+make PLATFORM=photon
 ```
 
 
