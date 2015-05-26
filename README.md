@@ -2,7 +2,8 @@
 
 This is the main source code repository of the Spark Core firmware libraries.
 
-*Photon users:* This firmware library is _not_ yet updated for the Photon; following these instructions with the Photon will not work. DO NOT program your Photon with this firmware. We are waiting for legal approval from Broadcom on some open source libraries, at which point we will be publishing the open source firmware for the Photon; we hope that will be available in the next couple of weeks.
+*Photon users:* This firmware branch is _not_ yet updated for the Photon; For the latest (0.4.0) firmware that is compatible with the Photon, please switch to the [develop branch](https://github.com/spark/firmware/tree/develop).
+
 
 This firmware depends on two other libraries: the [Spark Common Library](http://www.github.com/spark/core-common-lib) and the [Spark Communication Library](http://www.github.com/spark/core-communication-lib)
 
