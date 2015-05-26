@@ -23,8 +23,6 @@
 
 #include "testapi.h"
 
-#include "Ymodem/Ymodem.h"
-
 test(api_spark_variable) {
     
     int valueInt = 0;

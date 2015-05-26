@@ -23,12 +23,18 @@
 
 #include "testapi.h"
 
-#include "Ymodem/Ymodem.h"
-
 test(api_wifi_resolve) {
     
     API_COMPILE(WiFi.resolve(String("abc.def.com")));
     API_COMPILE(WiFi.resolve("abc.def.com"));
+}
+
+test(api_wifi_selectantennt) {
+    
+    API_COMPILE(WiFi.selectAntenna(ANT_AUTO));
+    API_COMPILE(WiFi.selectAntenna(ANT_INTERNAL));
+    API_COMPILE(WiFi.selectAntenna(ANT_EXTERNAL));
+    
 }
     
 
