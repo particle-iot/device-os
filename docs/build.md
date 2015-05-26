@@ -1,7 +1,4 @@
-This root project folder contains the top-level makefile:
 
-> One Makefile to rule them all, One Makefile to find them; One Makefile to bring 
-> them all and in the darkness build them.
 
 ```
 make
@@ -11,6 +8,13 @@ in the top-level directory creates build artifacts for all projects under the `b
 
 The top-level make is mainly a convenience to build `bootloader` and `main`. It
 supports these targets: `clean` and `all` (default). 
+
+By default, the Core is the target platform. To build for the Photon, run
+
+```
+make PLATFORM_ID=6
+```
+
 
 ## Build Components
 
@@ -24,7 +28,11 @@ These are the primary components that produce executable code for a device:
 - main
 - modules
 
-The other projects are libraries used by these main projects.
+The other projects are libraries used by these main projects. 
+
+When building firmware, it's a good idea to build from `main`, since this offers
+additional features compared to building in the root directory.
+
 
 # Quick Start
 
@@ -32,8 +40,8 @@ The other projects are libraries used by these main projects.
 
 - `all`: the default target - builds the artefact for the project
 - `clean`: deletes all artefacts so the next build runs from a clean state
-- 'program-dfu': (not bootloader) - builds and flashes the executable to a device via dfu
-- 'stflash': - builds and flashes the executable to a device via the st-link `st-flash` utility
+- 'all program-dfu': (not bootloader) - builds and flashes the executable to a device via dfu
+- 'all st-flash': flashes the executable to a device via the st-link `st-flash` utility
 
 
 ## Variables
@@ -71,11 +79,52 @@ When building `main`:
 
 The Platform ID describes the target platform. 
 If you are targeting the Spark Core, you can skip this section. A list of supported
-platform IDs are listed in [platform-id.mk]((platform-id.mk).
+platform IDs are listed in [platform-id.mk]((../build/platform-id.mk). The most
+common are listed here:
 
+| Name     | PLATFORM_ID |
+|----------|:-----------:|
+| core     | 0           |
+| photon   | 6           |
+| P1       | 8           |
 
+The platform is specified on the command line as
 
-# In more detail...
+```
+PLATFORM_ID=<id>
+```
+
+or as
+
+```
+PLATFORM=name
+```
+
+For example
+
+```
+make PLATFORM=photon
+```
+Would build the firmware for the Photon / P0.
+
+To avoid repeatedly specifying the platform on the command line, it can be set
+as an environment variable. 
+
+Linux/OS X:
+
+```
+export PLATFORM=photon
+```
+
+Windows
+
+```
+set PLATFORM=photon
+```
+
+In the commands that follow, we avoid listing the PLATFORM explicitly to keep
+the examples concise. 
+
 
 ## Clean Build
 
@@ -145,6 +194,20 @@ make PRODUCT_ID=2
 
 Builds the firmware for product ID 2.
 
+Note that this method works only for the Core. On later platforms, the PRODUCT ID and version
+is specified in your application code via the macros:
+
+```
+PRODUCT_ID(id);
+```
+
+and
+
+```
+PRODUCT_VERSION(version)
+```
+
+
 
 ## Building a User Application
 
@@ -167,7 +230,7 @@ mylibrary.h
 
 You can also add header files - your application subdirectory is on the include path.
 
-To build this application, change directory to the `main/` directory and run
+To build this application, change directory to  `main` directory and run
 
 ```
 make APP=myapp
@@ -301,7 +364,7 @@ make program-dfu
 
 ## Flashing the firmware to the device via ST-Link
 
-The `stflash` target can be used to flash all executable code (bootloader, main and modules)
+The `st-flash` target can be used to flash all executable code (bootloader, main and modules)
 to the device. The flash uses the `st-flash` tool, which should be in your system path.
 
 # Debugging
@@ -325,6 +388,8 @@ see https://github.com/spark/firmware/pull/337
 
 
 ## Compilation without Cloud Support
+
+[Core only]
 
 To release more resources for applications that don't use the cloud, add
 SPARK_CLOUD=n to the make command line. This requires a clean build.
