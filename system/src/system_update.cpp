@@ -19,10 +19,6 @@
 #include "string_convert.h"
 #include "appender.h"
 
-#ifndef STM32F2XX
-#include "Ymodem/Ymodem.h"
-#endif
-
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
 #endif
