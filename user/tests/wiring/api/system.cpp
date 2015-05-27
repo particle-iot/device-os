@@ -25,7 +25,8 @@
 
 test(system_api) {
     
-    API_COMPILE(System.bootloader());
+    API_COMPILE(System.dfu());
+    API_COMPILE(System.dfu(true));
     
     API_COMPILE(System.factoryReset());
     

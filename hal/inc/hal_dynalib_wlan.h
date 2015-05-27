@@ -56,6 +56,7 @@ DYNALIB_FN(hal_wlan,wlan_setup)
 DYNALIB_FN(hal_wlan,HAL_WLAN_SetNetWatchDog)
 DYNALIB_FN(hal_wlan,inet_gethostbyname)
 DYNALIB_FN(hal_wlan,inet_ping)
+DYNALIB_FN(hal_wlan,wlan_select_antenna)
 DYNALIB_END(hal_wlan)
 
 #endif	/* HAL_DYNALIB_WLAN_H */

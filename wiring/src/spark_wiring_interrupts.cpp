@@ -27,7 +27,7 @@
  */
 #include "spark_wiring_interrupts.h"
 
-wiring_interrupt_handler_t* handlers[16];
+static wiring_interrupt_handler_t* handlers[16];
 
 wiring_interrupt_handler_t* allocate_handler(uint16_t pin, wiring_interrupt_handler_t& fn)
 {

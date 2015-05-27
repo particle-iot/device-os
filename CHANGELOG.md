@@ -1,3 +1,11 @@
+
+## v0.4.1
+
+### BUGFIXES:
+
+ - `Spark.syncTime()` was not compilable. [#426](https://github.com/spark/firmware/issues/426)
+ - 
+
 ## v0.4.0
 
 ### NEW PLATFORMS
