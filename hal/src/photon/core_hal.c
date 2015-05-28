@@ -41,6 +41,8 @@
 #include "service_debug.h"
 #include "flash_mal.h"
 #include <stdatomic.h>
+#include "stm32f2xx.h"
+#include "core_cm3.h"
 
 /**
  * Start of interrupt vector table.
@@ -51,6 +53,7 @@ extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
 const unsigned HardFaultIndex = 3;
+const unsigned UsageFaultIndex = 6;
 const unsigned SysTickIndex = 15;
 const unsigned USART1Index = 53;
 const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
@@ -60,12 +63,14 @@ void SysTickChain(void);
 void Mode_Button_EXTI_irq(void);
 void HAL_USART1_Handler(void);
 void HardFault_Handler(void);
+void UsageFault_Handler(void);
 
 void override_interrupts(void) {
 
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[HardFaultIndex] = (uint32_t)HardFault_Handler;
+    isrs[UsageFaultIndex] = (uint32_t)UsageFault_Handler;
     isrs[SysTickIndex] = (uint32_t)SysTickOverride;
     isrs[USART1Index] = (uint32_t)HAL_USART1_Handler;
     isrs[ButtonExtiIndex] = (uint32_t)Mode_Button_EXTI_irq;
@@ -102,11 +107,18 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
     if (false)
         r0++; r1++; r2++; r3++; r12++; lr++; pc++; psr++;
     
-    PANIC(HardFault,"HardFault");
+        
+    if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
+        // stay consistent with the core and cause 5 flashes
+        UsageFault_Handler();
+    }
+    else {        
+        PANIC(HardFault,"HardFault");
 
-    /* Go to infinite loop when Hard Fault exception occurs */
-    while (1)
-    {
+        /* Go to infinite loop when Hard Fault exception occurs */
+        while (1)
+        {
+        }
     }
 }
 
@@ -126,6 +138,24 @@ void HardFault_Handler(void)
         " handler2_address_const: .word prvGetRegistersFromStack    \n"
     );
 }
+
+/*******************************************************************************
+ * Function Name  : UsageFault_Handler
+ * Description    : This function handles Usage Fault exception.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void UsageFault_Handler(void)
+{
+	/* Go to infinite loop when Usage Fault exception occurs */
+        PANIC(UsageFault,"UsageFault");
+	while (1)
+	{
+	}
+}
+
+
 
 /* Private typedef -----------------------------------------------------------*/
 

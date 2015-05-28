@@ -98,6 +98,9 @@ void Set_System(void)
 	 To reconfigure the default setting of SystemInit() function, refer to
 	 system_stm32f2xx.c file
      */
+    
+    uint32_t* SCB_CCR = (uint32_t*)(0xE000ED14);
+    *SCB_CCR |= SCB_CCR_DIV_0_TRP_Msk;
 
     /* Enable the PWR clock */
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
