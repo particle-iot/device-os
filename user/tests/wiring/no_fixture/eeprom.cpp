@@ -26,6 +26,12 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+struct EEPROMCustomObject{
+  float fValue;
+  byte bValue;
+  char sValue[10];
+};
+
 test(EEPROM_ReadWriteSucceedsForAllAddressWithInRange) {
     int EEPROM_SIZE = EEPROM.length();
     uint16_t address = 0;
@@ -59,5 +65,17 @@ test(EEPROM_ReadWriteFailsForAnyAddressOutOfRange) {
     {
         assertNotEqual(EEPROM.read(address), data);
     }
+}
+
+test(EEPROM_PutGetSucceedsForCustomDataType) {
+    // when
+    EEPROMCustomObject putCustomData = { 123.456f, 100, "Success" };
+    EEPROM.put(0, putCustomData);
+    // then
+    EEPROMCustomObject getCustomData;
+    EEPROM.get(0, getCustomData);
+    assertEqual(putCustomData.fValue, getCustomData.fValue);
+    assertEqual(putCustomData.bValue, getCustomData.bValue);
+    assertEqual(strcmp(putCustomData.sValue, getCustomData.sValue), 0);
 }
 
