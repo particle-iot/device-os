@@ -98,7 +98,19 @@ void Start_Smart_Config(void)
                 LED_Toggle(LED_RGB);
                 HAL_Delay_Milliseconds(50);
             }
-            network_clear_credentials(0, 0, NULL, NULL);
+            if (!network_clear_credentials(0, 0, NULL, NULL) || network_has_credentials(0, 0, NULL)) {
+                LED_SetRGBColor(RGB_COLOR_RED);
+                LED_On(LED_RGB);                
+
+                int toggle = 25;
+                while (toggle--)
+                {
+                    LED_Toggle(LED_RGB);
+                    HAL_Delay_Milliseconds(50);
+                }
+                LED_SetRGBColor(RGB_COLOR_BLUE);
+                LED_On(LED_RGB);                
+            }
             WLAN_DELETE_PROFILES = 0;
         }
         else
@@ -271,7 +283,7 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
 
 bool network_has_credentials(network_handle_t network, uint32_t param, void* reserved)
 {
-    return wlan_has_credentials() == 0;
+    return wlan_has_credentials()==0;
 }
 
 void network_off(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)

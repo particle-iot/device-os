@@ -96,21 +96,24 @@ int wlan_clear_credentials()
 
 int is_set(const unsigned char* pv, unsigned length) {
     int result = 0;
+    int result2 = 0xFF;
     while (length-->0) {
         result |= *pv;
+        result2 &= *pv;
     }
-    return result;
+    return result && result2!=0xFF;
 }
 
 bool is_ap_config_set(const wiced_config_ap_entry_t& ap_entry)
 {
-    return ap_entry.details.SSID.length>0
+    bool set = ((ap_entry.details.SSID.length>0 && ap_entry.details.SSID.length<33))
       || is_set(ap_entry.details.BSSID.octet, sizeof(ap_entry.details.BSSID));
+    return set;
 }
 
 /**
  * Determine if the DCT contains wifi credentials.
- * @return 0 if the device has credentials. Non zero otherwise. (yes, it's backwards!)
+ * @return 0 if the device has credentials. 1 otherwise. (yes, it's backwards! The intent is that negative values indicate some kind of error.)
  */
 int wlan_has_credentials()
 {
@@ -118,10 +121,10 @@ int wlan_has_credentials()
     platform_dct_wifi_config_t* wifi_config = NULL;
     wiced_result_t result = wiced_dct_read_lock( (void**) &wifi_config, WICED_FALSE, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
     if (result==WICED_SUCCESS) {
-        has_credentials = wifi_config->device_configured!=WICED_TRUE || !is_ap_config_set(wifi_config->stored_ap_list[0]);
+        has_credentials = wifi_config->device_configured==WICED_TRUE && is_ap_config_set(wifi_config->stored_ap_list[0]);
     }
     wiced_dct_read_unlock(wifi_config, WICED_FALSE);
-    return has_credentials;
+    return !has_credentials;
 }
 
 /**
