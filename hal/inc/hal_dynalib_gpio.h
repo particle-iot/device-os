@@ -53,7 +53,10 @@ DYNALIB_FN(hal_gpio,HAL_ADC_Read)
 DYNALIB_FN(hal_gpio,HAL_PWM_Write)
 DYNALIB_FN(hal_gpio,HAL_PWM_Get_Frequency)
 DYNALIB_FN(hal_gpio,HAL_PWM_Get_AnalogValue)        
-        
+
+DYNALIB_FN(hal_gpio, HAL_Set_System_Interrupt_Handler)
+DYNALIB_FN(hal_gpio, HAL_Get_System_Interrupt_Handler)
+DYNALIB_FN(hal_gpio, HAL_Sysetm_Interrupt_Trigger)
 DYNALIB_END(hal_gpio)
 
 #endif	/* HAL_DYNALIB_GPIO_H */

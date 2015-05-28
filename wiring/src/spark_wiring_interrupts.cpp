@@ -32,7 +32,7 @@ static wiring_interrupt_handler_t* handlers[16];
 wiring_interrupt_handler_t* allocate_handler(uint16_t pin, wiring_interrupt_handler_t& fn)
 {
     delete handlers[pin];    
-    return handlers[pin] = new wiring_interrupt_handler_t(fn);        
+    return handlers[pin] = new wiring_interrupt_handler_t(fn);
 }
 
 void call_wiring_interrupt_handler(void* data)
@@ -112,4 +112,25 @@ void interrupts(void)
 {
   //Only enable the interrupts that are exposed to the user
   HAL_Interrupts_Enable_All();
+}
+
+/*  
+ * System Interrupts
+ */
+bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
+{
+    HAL_InterruptCallback callback;
+    callback.handler = call_wiring_interrupt_handler;
+    callback.data = &handler;
+    return HAL_Set_System_Interrupt_Handler(irq, &callback, NULL, NULL);    
+}
+
+/**
+ * Removes all registered handlers from the given system interrupt.
+ * @param irq   The interrupt from which all handlers are removed.
+ * @return {@code true} if handlers were removed. 
+ */
+bool detachSystemInterrupt(hal_irq_t irq)
+{
+    return HAL_Set_System_Interrupt_Handler(irq, NULL, NULL, NULL);
 }
