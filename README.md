@@ -1,5 +1,13 @@
 # Spark Core Firmware [![Build Status](https://travis-ci.org/spark/firmware.svg)](https://travis-ci.org/spark/firmware)
 
+
+****
+## The New Hardware Abstraction Layer (HAL) Firmware
+With the Photon just around the corner, the firmware for both the Core and the Photon is growing up. In order to do that, the Spark Team has created a new Hardware Abstraction Layer or HAL) to separate the hardware layer from the rest of the firmware.
+
+The familiar firmware "master" branch has been the mainstay. It is now time to move to the [feature/HAL](https://github.com/spark/firmware/tree/feature/hal) branch to make the move to the future platform for new Spark hardware. Sooner than later, the HAL branch will become the new master and ultimately get released to the production servers. Until then, the more HAL is tested, the better it will be!
+****
+
 This is the main source code repository of the Spark Core firmware libraries.
 
 *Photon users:* This firmware branch is _not_ yet updated for the Photon; For the latest (0.4.0) firmware that is compatible with the Photon, please switch to the [develop branch](https://github.com/spark/firmware/tree/develop).
