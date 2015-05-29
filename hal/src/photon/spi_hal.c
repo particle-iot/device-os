@@ -48,10 +48,12 @@ typedef struct STM32_SPI_Info {
     uint32_t SPI_RCC_AHBClockEnable;
 
     uint32_t SPI_DMA_Channel;
+
     DMA_Stream_TypeDef* SPI_TX_DMA_Stream;
-    uint32_t TX_DMA_TC_Event;
     DMA_Stream_TypeDef* SPI_RX_DMA_Stream;
-    uint32_t RX_DMA_TC_Event;
+
+    uint8_t SPI_TX_DMA_Stream_IRQn;
+    uint32_t SPI_TX_DMA_Stream_TC_Event;
 
     uint16_t SPI_SCK_Pin;
     uint16_t SPI_MISO_Pin;
@@ -75,9 +77,9 @@ typedef struct STM32_SPI_Info {
 STM32_SPI_Info SPI_MAP[TOTAL_SPI] =
 {
         { SPI1, &RCC->APB2ENR, RCC_APB2Periph_SPI1, &RCC->AHB1ENR, RCC_AHB1Periph_DMA2, DMA_Channel_3,
-          DMA2_Stream5, DMA_IT_TCIF5, DMA2_Stream2, DMA_IT_TCIF2, SCK, MISO, MOSI, GPIO_AF_SPI1 },
+          DMA2_Stream5, DMA2_Stream2, DMA2_Stream5_IRQn, DMA_IT_TCIF5, SCK, MISO, MOSI, GPIO_AF_SPI1 },
         { SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0,
-          DMA1_Stream7, DMA_IT_TCIF7, DMA1_Stream2, DMA_IT_TCIF2, D4, D3, D2, GPIO_AF_SPI3 }
+          DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA_IT_TCIF7, D4, D3, D2, GPIO_AF_SPI3 }
 };
 
 static STM32_SPI_Info *spiMap[TOTAL_SPI]; // pointer to SPI_MAP[] containing SPI peripheral info
@@ -89,6 +91,7 @@ static STM32_SPI_Info *spiMap[TOTAL_SPI]; // pointer to SPI_MAP[] containing SPI
 static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length)
 {
     DMA_InitTypeDef DMA_InitStructure;
+    NVIC_InitTypeDef NVIC_InitStructure;
 
     /* Enable DMA Clock */
     *spiMap[spi]->SPI_RCC_AHBRegister |= spiMap[spi]->SPI_RCC_AHBClockEnable;
@@ -144,7 +147,13 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     DMA_Init(spiMap[spi]->SPI_RX_DMA_Stream, &DMA_InitStructure);
 
     /* Enable SPI TX DMA Stream Interrupt */
-    DMA_ITConfig(spiMap[spi]->SPI_TX_DMA_Stream, spiMap[spi]->TX_DMA_TC_Event, ENABLE);
+    DMA_ITConfig(spiMap[spi]->SPI_TX_DMA_Stream, DMA_IT_TC, ENABLE);
+
+    NVIC_InitStructure.NVIC_IRQChannel = spiMap[spi]->SPI_TX_DMA_Stream_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
 
     /* Enable the DMA Tx/Rx Stream */
     DMA_Cmd(spiMap[spi]->SPI_TX_DMA_Stream, ENABLE);
@@ -155,11 +164,11 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Tx, ENABLE);
 }
 
-static void HAL_SPI_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
+static void HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
 {
-    if (DMA_GetITStatus(spiMap[spi]->SPI_TX_DMA_Stream, spiMap[spi]->TX_DMA_TC_Event) == SET)
+    if (DMA_GetITStatus(spiMap[spi]->SPI_TX_DMA_Stream, spiMap[spi]->SPI_TX_DMA_Stream_TC_Event) == SET)
     {
-        DMA_ClearITPendingBit(spiMap[spi]->SPI_TX_DMA_Stream, spiMap[spi]->TX_DMA_TC_Event);
+        DMA_ClearITPendingBit(spiMap[spi]->SPI_TX_DMA_Stream, spiMap[spi]->SPI_TX_DMA_Stream_TC_Event);
         SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Tx, DISABLE);
         DMA_Cmd(spiMap[spi]->SPI_TX_DMA_Stream, DISABLE);
 
@@ -351,7 +360,7 @@ bool HAL_SPI_Is_Enabled_Old()
  */
 void DMA1_Stream7_irq(void)
 {
-    HAL_SPI_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
+    HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
 }
 
 /**
@@ -361,5 +370,5 @@ void DMA1_Stream7_irq(void)
  */
 void DMA2_Stream5_irq(void)
 {
-    HAL_SPI_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE1);
+    HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE1);
 }
