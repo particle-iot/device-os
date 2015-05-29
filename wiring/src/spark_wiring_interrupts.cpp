@@ -121,7 +121,8 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
 {
     HAL_InterruptCallback callback;
     callback.handler = call_wiring_interrupt_handler;
-    callback.data = &handler;
+    wiring_interrupt_handler_t& h = handler;
+    callback.data = new wiring_interrupt_handler_t(h);
     return HAL_Set_System_Interrupt_Handler(irq, &callback, NULL, NULL);    
 }
 
