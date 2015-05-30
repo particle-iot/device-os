@@ -12,7 +12,7 @@ DriverVer=01/10/2014,5.2.0.0
 CatalogFile=spark_core.cat
 
 [Manufacturer] 
-%DEVICE_DESCRIPTION%=DeviceList, NTx86, NTia64, NTamd64
+%DEVICE_DESCRIPTION%=DeviceList, NTx86, NTia64, NTamd64, NTARM
 
 [DeviceList.NTx86] 
 %DEVICE_DESCRIPTION%=DriverInstall, USB\VID_1D50&PID_607D
@@ -22,6 +22,10 @@ CatalogFile=spark_core.cat
 
 [DeviceList.NTamd64] 
 %DEVICE_DESCRIPTION%=DriverInstall, USB\VID_1D50&PID_607D
+
+[DeviceList.NTARM] 
+%DEVICE_DESCRIPTION%=DriverInstall, USB\VID_1D50&PID_607D
+
 
 [DriverCopyFiles]
 usbser.sys,,,0x20

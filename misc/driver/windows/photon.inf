@@ -9,10 +9,10 @@ ClassGuid={4D36E978-E325-11CE-BFC1-08002BE10318}
 Provider=%PROVIDER% 
 LayoutFile=layout.inf
 DriverVer=01/10/2014,5.2.0.0
-CatalogFile=spark_core.cat
+CatalogFile=photon.cat
 
 [Manufacturer] 
-%DEVICE_DESCRIPTION%=DeviceList, NTx86, NTia64, NTamd64
+%DEVICE_DESCRIPTION%=DeviceList, NTx86, NTia64, NTamd64, NTARM
 
 [DeviceList.NTx86] 
 %DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C006
@@ -22,6 +22,10 @@ CatalogFile=spark_core.cat
 
 [DeviceList.NTamd64] 
 %DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C006
+
+[DeviceList.NTARM] 
+%DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C006
+
 
 [DriverCopyFiles]
 usbser.sys,,,0x20
@@ -81,7 +85,7 @@ LoadOrderGroup = PNP Filter
 ;------------------------------------------------------------------------------
 
 [Strings] 
-PROVIDER="Spark Devices"
-DEVICE_DESCRIPTION ="Spark Photon with Wifi and Arduino Compatibility"
+PROVIDER="Particle IO"
+DEVICE_DESCRIPTION ="Particle Photon with Wifi and Arduino Compatibility"
 USBSER.DESC = "USB Serial Driver"
 SERENUM.DESC = "Serenum Filter Driver"
