@@ -29,7 +29,7 @@ test(api_wifi_resolve) {
     API_COMPILE(WiFi.resolve("abc.def.com"));
 }
 
-test(api_wifi_selectantennt) {
+test(api_wifi_selectantenna) {
     
     API_COMPILE(WiFi.selectAntenna(ANT_AUTO));
     API_COMPILE(WiFi.selectAntenna(ANT_INTERNAL));
