@@ -103,7 +103,7 @@ void HAL_Core_Config(void)
 	if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
 	{
 		/* IWDGRST flag set */
-		IWDG_SYSTEM_RESET = 1;
+		IWDG_SYSTEM_RESET = 0;
 
 		/* Clear reset flags */
 		RCC_ClearFlag();
