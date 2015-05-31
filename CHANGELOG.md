@@ -1,10 +1,16 @@
 
 ## v0.4.1
 
-### BUGFIXES:
+### ENHANCEMENTS
 
- - `Spark.syncTime()` was not compilable. [#426](https://github.com/spark/firmware/issues/426)
- - 
+- Signed Photon USB Driver for use with Windows 8.1
+
+
+### BUGFIXES
+
+ - `Spark.syncTime()` was not linked. [#426](https://github.com/spark/firmware/issues/426)
+ - Wire.setSpeed(CLOCK_SPEED_100KHZ) was not linked. [#432](https://github.com/spark/firmware/issues/432)
+ - WiFi.selectAntenna() was not linked. 
 
 ## v0.4.0
 

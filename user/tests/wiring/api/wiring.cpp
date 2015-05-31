@@ -12,3 +12,8 @@ test(api_wiring_pinMode) {
     API_COMPILE(pinMode(D0, mode));
     
 }
+
+test(api_wiring_wire_setSpeed)
+{
+    API_COMPILE(Wire.setSpeed(CLOCK_SPEED_100KHZ));
+}

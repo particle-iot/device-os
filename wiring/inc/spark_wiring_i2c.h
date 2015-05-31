@@ -28,6 +28,8 @@
 #define __SPARK_WIRING_I2C_H
 
 #include "spark_wiring_stream.h"
+#include "i2c_hal.h"
+
 
 class TwoWire : public Stream
 {
