@@ -86,6 +86,6 @@ LoadOrderGroup = PNP Filter
 
 [Strings] 
 PROVIDER="Spark Devices"
-DEVICE_DESCRIPTION ="Spark Core with Wifi and Arduino Compatibility"
+DEVICE_DESCRIPTION ="Spark Core"
 USBSER.DESC = "USB Serial Driver"
 SERENUM.DESC = "Serenum Filter Driver"

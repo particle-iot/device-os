@@ -86,6 +86,6 @@ LoadOrderGroup = PNP Filter
 
 [Strings] 
 PROVIDER="Particle IO"
-DEVICE_DESCRIPTION ="Particle Photon with Wifi and Arduino Compatibility"
+DEVICE_DESCRIPTION ="Photon"
 USBSER.DESC = "USB Serial Driver"
 SERENUM.DESC = "Serenum Filter Driver"
