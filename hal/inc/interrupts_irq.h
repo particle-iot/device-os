@@ -20,7 +20,7 @@ typedef enum hal_irq_t {
     SysInterrupt_TIM2 = 3,
     SysInterrupt_TIM3 = 4,
     SysInterrupt_TIM4 = 5,
-    __Last_irq = 4
+    __Last_irq = 6
 #endif
     
 #if defined(STM32F2XX)
@@ -33,7 +33,7 @@ typedef enum hal_irq_t {
     SysInterrupt_TIM5 = 6,
     SysInterrupt_TIM6 = 7,
     SysInterrupt_TIM7 = 8,
-    __Last_irq = 7
+    __Last_irq = 9
 #endif    
             
     
