@@ -25,7 +25,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "interrupts_hal.h"
-void HAL_Interrupts_Attach(uint16_t pin, voidFuncPtr handler, InterruptMode mode)
+void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, void* reserved)
 {
 }
 
@@ -41,7 +41,7 @@ void HAL_Interrupts_Disable_All(void)
 {
 }
 
-void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, voidFuncPtr EXTI_Line_Handler)
+void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, HAL_InterruptHandler EXTI_Line_Handler)
 {
 }
 

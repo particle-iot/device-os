@@ -26,32 +26,32 @@
 /* Includes ------------------------------------------------------------------*/
 #include "spi_hal.h"
 
-void HAL_SPI_Begin(uint16_t pin)
+void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
 {
 }
 
-void HAL_SPI_End(void)
+void HAL_SPI_End(HAL_SPI_Interface spi)
 {
 }
 
-void HAL_SPI_Set_Bit_Order(uint8_t order)
+void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order)
 {
 }
 
-void HAL_SPI_Set_Data_Mode(uint8_t mode)
+void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
 {
 }
 
-void HAL_SPI_Set_Clock_Divider(uint8_t rate)
+void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate)
 {
 }
 
-uint16_t HAL_SPI_Send_Receive_Data(uint16_t data)
+uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
 {
     return 0;
 }
 
-bool HAL_SPI_Is_Enabled(void)
+bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 {
     return false;
 }

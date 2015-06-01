@@ -71,7 +71,7 @@ sock_result_t socket_close(sock_handle_t sock)
     return 0;
 }
 
-sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol) 
+sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port, network_interface_t nif) 
 {
     return 0;
 }

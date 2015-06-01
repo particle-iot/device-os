@@ -40,12 +40,12 @@ uint16_t HAL_OTA_ChunkSize()
     return 0;
 }
 
-bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* ) 
+bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved) 
 {
     return false;
 }
 
-uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t bufferSize, void* reserved) 
+int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved)
 {
     return 0;
 }
@@ -73,8 +73,9 @@ void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {
 }
 
-void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
+int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* generation)
 { 
+    return 1;
 }
 
 uint16_t HAL_Set_Claim_Code(const char* code) 

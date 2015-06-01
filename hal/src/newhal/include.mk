@@ -2,7 +2,7 @@
 # Define the prefix to this directory. 
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
-HAL_SRC_NEWHAL_PATH = $(TARGET_HAL_PATH)/src/new-hal
+HAL_SRC_NEWHAL_PATH = $(TARGET_HAL_PATH)/src/newhal
 
 # if we are being compiled with platform as a dependency, then also include
 # implementation headers.

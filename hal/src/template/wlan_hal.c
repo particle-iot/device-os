@@ -95,7 +95,9 @@ wlan_result_t wlan_connected_rssi(char* ssid)
     return 0;
 }
 
-int inet_ping(uint8_t remoteIP[4], uint8_t nTries) {
+int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries,
+        void* reserved)
+{
     return 0;
 }
 
@@ -135,6 +137,6 @@ void SPARK_WLAN_SmartConfigProcess()
 {
 }
 
-void wlan_connect_cancel(bool called_from_isr
+void wlan_connect_cancel(bool called_from_isr)
 {    
 }
