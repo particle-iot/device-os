@@ -12,18 +12,17 @@
 extern "C" {
 #endif
 
+    
 typedef enum hal_irq_t {
-#if defined(STM32F1XX)
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD)
     __All_irq = 0,
     SysInterrupt_SysTick = 1,
     SysInterrupt_TIM1_CC = 2,
     SysInterrupt_TIM2 = 3,
     SysInterrupt_TIM3 = 4,
     SysInterrupt_TIM4 = 5,
-    __Last_irq = 6
-#endif
-    
-#if defined(STM32F2XX)
+    __Last_irq = 6    
+#elif defined(STM32F2XX)
     __All_irq = 0,
     SysInterrupt_SysTick = 1,
     SysInterrupt_TIM1_CC = 2,
@@ -34,9 +33,9 @@ typedef enum hal_irq_t {
     SysInterrupt_TIM6 = 7,
     SysInterrupt_TIM7 = 8,
     __Last_irq = 9
-#endif    
-            
-    
+#else
+    __Last_irq = 0
+#endif            
 } hal_irq_t;
 
 #ifdef	__cplusplus
