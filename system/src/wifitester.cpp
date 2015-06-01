@@ -40,6 +40,7 @@
 #include "wlan_scan.h"
 #endif
 
+#if Wiring_WiFi
 using namespace spark;
 
 uint8_t serialAvailable();
@@ -462,3 +463,4 @@ void WiFiTester::tester_connect(char *ssid, char *pass) {
     serialPrintln("  WIFI Connected?    ");
 }
 
+#endif

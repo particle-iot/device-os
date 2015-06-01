@@ -38,10 +38,11 @@
 #include "timer_hal.h"
 #include "rgbled.h"
 
-#include "spark_wiring.h"
+#include "spark_wiring_network.h"
+#include "spark_wiring_constants.h"
+#include "spark_wiring_cloud.h"
 
-using spark::WiFi;
-
+using spark::Network;
 
 volatile system_tick_t spark_loop_total_millis = 0;
 
@@ -66,7 +67,7 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
     /* Trigger a WLAN device */
     if (system_mode() == AUTOMATIC || system_mode()==SAFE_MODE)
     {
-        network_connect(WiFi, 0, 0, NULL);
+        network_connect(Network, 0, 0, NULL);
     }    
 #endif
     
@@ -101,7 +102,7 @@ void manage_network_connection()
             DEBUG("Resetting WLAN!");
             auto was_sleeping = SPARK_WLAN_SLEEP;
             cloud_disconnect();
-            network_off(WiFi, 0, 0, NULL);
+            network_off(Network, 0, 0, NULL);
             CLR_WLAN_WD();
             SPARK_WLAN_RESET = 0;
             SPARK_WLAN_STARTED = 0;
@@ -117,7 +118,7 @@ void manage_network_connection()
             {
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
             }
-            network_connect(WiFi, 0, 0, NULL);
+            network_connect(Network, 0, 0, NULL);
         }
     }
 }

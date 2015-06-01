@@ -54,6 +54,11 @@ public:
     static bool connecting(void) __attribute__((deprecated("Please use WiFi.connecting() instead")));
     virtual bool ready(void);
     
+    operator network_interface_t() {
+        return 0;   // the default
+    }
+
+    
     static NetworkClass& from(network_interface_t nif) {
         // hard-code for now until multiple-networks are implemented.
         return Network;
