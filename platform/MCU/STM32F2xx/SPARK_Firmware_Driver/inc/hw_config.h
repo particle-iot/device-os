@@ -119,6 +119,8 @@ extern uint8_t USE_SYSTEM_FLAGS;
 extern volatile uint32_t TimingDelay;
 
 #define KICK_WDT() IWDG_ReloadCounter()
+void Save_Reset_Syndrome();
+
 
 #ifdef __cplusplus
 }

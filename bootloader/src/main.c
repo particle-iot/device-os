@@ -124,13 +124,8 @@ int main(void)
     //--------------------------------------------------------------------------
     Load_SystemFlags();
 
-    //Save RCC clock control & status register
-    if (SYSTEM_FLAG(RCC_CSR_SysFlag) != RCC_CSR_Flags)
-    {
-        SYSTEM_FLAG(RCC_CSR_SysFlag) = RCC_CSR_Flags;
-        Save_SystemFlags();
-    }
-
+    Save_Reset_Syndrome();
+    
     //BOOTLOADER_VERSION defined in bootloader/import.mk
     //This can also be overridden via make command line arguments
     if (SYSTEM_FLAG(Bootloader_Version_SysFlag) != BOOTLOADER_VERSION)
@@ -289,7 +284,7 @@ int main(void)
             else if(!SAFE_MODE && TimingBUTTON <= TIMING_ALL-TIMING_SAFE_MODE)
             {
                 // if pressed for > 1 sec, enter Safe Mode
-                LED_SetRGBColor(RGB_COLOR_MAGENTA);
+                LED_SetRGBColor(RGB_COLOR_BLUE);
                 SAFE_MODE = 1;
             }
         }

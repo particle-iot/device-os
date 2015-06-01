@@ -58,3 +58,5 @@ inline int BUTTON_GetState(int button) { return 0; }
 inline void __set_MSP(uint32_t v) {}
 inline void IWDG_Reset_Enable(int count) {}
 inline void SysTick_Disable() {}
+
+inline void Save_Reset_Syndrome() {}

@@ -55,9 +55,6 @@ typedef enum
 
 /* Exported constants --------------------------------------------------------*/
 
-/* Exported macros -----------------------------------------------------------*/
-#define RCC_CSR_Flags RCC->CSR
-
 //Following is normally defined via "CFLAGS += -DDFU_BUILD_ENABLE" in makefile
 #ifndef DFU_BUILD_ENABLE
 #define DFU_BUILD_ENABLE
