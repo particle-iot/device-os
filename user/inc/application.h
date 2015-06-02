@@ -26,6 +26,8 @@
 #ifndef APPLICATION_H_
 #define APPLICATION_H_
 
+#include "version.h"
+
 #ifdef SPARK_PLATFORM
 #include "platform_headers.h"
 #endif
