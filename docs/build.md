@@ -53,7 +53,7 @@ additional features compared to building in the root directory.
 
 `make` accepts variable definitions as part of the command invocation
 
-- `v` - verbose - set to 1 to trigger verbose output.
+- `v` - verbose - set to 1 to trigger verbose output
 - `PLATFORM`/`PLATFORM_ID`: specifies the target platform, either as a name or as an ID.
 - `PRODUCT_ID`: specifies the target product ID.  
 - `PRODUCT_FIRMWARE_VERSION`: specifies the firmware version that is sent to the cloud.
@@ -399,5 +399,4 @@ see https://github.com/spark/firmware/pull/337
 To release more resources for applications that don't use the cloud, add
 SPARK_CLOUD=n to the make command line. This requires a clean build.
 
-After compiling, you should see a 3000 bytes reduction in statically allocated
-RAM and 35k reduction in flash use.
+After compiling, you should see a 3000 bytes reduction in statically allocated RAM and 35k reduction in flash use.
