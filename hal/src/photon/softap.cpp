@@ -2,9 +2,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include "wiced.h"
-#ifdef HAL_SOFTAP_HTTPSERVER
 #include "http_server.h"
-#endif
 #include "static_assert.h"
 #include "dns_redirect.h"
 #include "wiced_security.h"
@@ -899,8 +897,18 @@ void reader_from_buffer(Reader* r, const uint8_t* buffer, size_t length) {
 }
 
 
-#ifdef HAL_SOFTAP_HTTPSERVER
 extern "C" wiced_http_page_t soft_ap_http_pages[];
+
+
+static void http_write(Writer* w, const uint8_t *buf, size_t count) {
+    wiced_http_response_stream_t* stream = (wiced_http_response_stream_t*)w->state;
+    wiced_http_response_stream_write(stream, buf, count);    
+}
+
+static void http_stream_writer(Writer& w, wiced_http_response_stream_t* stream) {
+    w.callback = http_write;
+    w.state = stream;
+}
 
 class HTTPDispatcher {
     wiced_http_server_t server;
@@ -920,29 +928,30 @@ public:
         setCommand(4, commands.scanAP);
         setCommand(5, commands.configureAP);
         setCommand(6, commands.connectAP);
+        setCommand(7, commands.publicKey);
+        setCommand(8, commands.setValue);
     }
 
     void start() {
-        wiced_http_server_start(&server, 80, page, WICED_AP_INTERFACE );
+        wiced_http_server_start(&server, 80, 4, page, WICED_AP_INTERFACE, 1024);
     }
 
     void stop() {
         wiced_http_server_stop(&server);
     }
 
-    static int32_t handle_command(const char* url, wiced_tcp_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
+    static int32_t handle_command(const char* url, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
         Command* cmd = (Command*)arg;
         Reader r;
         reader_from_buffer(&r, (uint8_t*)http_data->data, http_data->message_data_length);
 
         Writer w;
-        tcp_stream_writer(w, stream);
+        http_stream_writer(w, stream);
         int result = cmd->execute(r, w);
         return result;
     }
 
 };
-#endif
 
 /**
  * Parses a very simple protocol for sending command requests over a stream
@@ -1243,9 +1252,7 @@ class SoftAPApplication
 {
     SoftAPController softAP;
     AllSoftAPCommands commands;
-#ifdef HAL_SOFTAP_HTTPSERVER    
     HTTPDispatcher http;
-#endif    
     SimpleProtocolDispatcher simpleProtocol;
     TCPServerDispatcher tcpServer;
     SerialDispatcher serial;
@@ -1253,9 +1260,7 @@ class SoftAPApplication
 public:
     SoftAPApplication(void (*complete_callback)()) :
             commands(&softAP.complete_semaphore(), complete_callback),
-#ifdef HAL_SOFTAP_HTTPSERVER                
             http(commands),
-#endif                
             simpleProtocol(commands),
             tcpServer(simpleProtocol, WICED_AP_INTERFACE),
             serial(simpleProtocol)
@@ -1263,16 +1268,12 @@ public:
         softAP.start();
         serial.start();
         tcpServer.start();
-#ifdef HAL_SOFTAP_HTTPSERVER
         http.start();
-#endif
     }
 
     ~SoftAPApplication()
     {
-#ifdef HAL_SOFTAP_HTTPSERVER
         http.stop();
-#endif        
         tcpServer.stop();
         serial.stop();
         softAP.stop();
