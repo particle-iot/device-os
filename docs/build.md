@@ -45,15 +45,15 @@ additional features compared to building in the root directory.
 
 - `all`: the default target - builds the artefact for the project
 - `clean`: deletes all artefacts so the next build runs from a clean state
-- 'all program-dfu': (not bootloader) - builds and flashes the executable to a device via dfu
-- 'all st-flash': flashes the executable to a device via the st-link `st-flash` utility
+- `all program-dfu`: (not bootloader) - builds and flashes the executable to a device via dfu
+- `all st-flash`: flashes the executable to a device via the st-link `st-flash` utility
 
 
 ## Variables
 
 `make` accepts variable definitions as part of the command invocation
 
-- `v` - verbose - set to 1 to trigger verbose output
+- `v` - verbose - set to 1 to trigger verbose output.
 - `PLATFORM`/`PLATFORM_ID`: specifies the target platform, either as a name or as an ID.
 - `PRODUCT_ID`: specifies the target product ID.  
 - `PRODUCT_FIRMWARE_VERSION`: specifies the firmware version that is sent to the cloud.
@@ -399,5 +399,5 @@ see https://github.com/spark/firmware/pull/337
 To release more resources for applications that don't use the cloud, add
 SPARK_CLOUD=n to the make command line. This requires a clean build.
 
-After compiling, you should see ca 3000 bytes reduction in statically allocated
-RAM and, ca 35k reduction in flash use.
+After compiling, you should see a 3000 bytes reduction in statically allocated
+RAM and 35k reduction in flash use.
