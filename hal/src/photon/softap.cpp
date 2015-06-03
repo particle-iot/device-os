@@ -922,6 +922,7 @@ class HTTPDispatcher {
 
 public:
     HTTPDispatcher(AllSoftAPCommands& commands) {
+        memset(&server, 0, sizeof(server));
         memcpy(page, soft_ap_http_pages, sizeof(page));
         setCommand(2, commands.version);
         setCommand(3, commands.deviceID);
