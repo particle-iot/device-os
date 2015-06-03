@@ -128,6 +128,13 @@ int wlan_connected_rssi();
 int wlan_clear_credentials();
 int wlan_has_credentials();
 
+// Provide compatibility with the original cc3000 headers.
+#ifdef WLAN_SEC_UNSEC
+#undef WLAN_SEC_UNSEC
+#undef WLAN_SEC_WEP
+#undef WLAN_SEC_WPA
+#undef WLAN_SEC_WPA2
+#endif
 typedef enum {
     WLAN_SEC_UNSEC,
     WLAN_SEC_WEP,
@@ -135,6 +142,7 @@ typedef enum {
     WLAN_SEC_WPA2,
     WLAN_SEC_NOT_SET
 } WLanSecurityType;
+
 
 typedef enum {
     WLAN_CIPHER_NOT_SET = 0,
