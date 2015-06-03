@@ -140,15 +140,15 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 	// Enable USART Clock
 	*usartMap[serial]->usart_apbReg |=  usartMap[serial]->usart_clock_en;
 
-	NVIC_InitTypeDef NVIC_InitStructure;
+	// NVIC_InitTypeDef NVIC_InitStructure;
 
-	// Enable the USART Interrupt
-	NVIC_InitStructure.NVIC_IRQChannel = usartMap[serial]->usart_int_n;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7; //USARTx_IRQ_PRIORITY;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	// // Enable the USART Interrupt
+	// NVIC_InitStructure.NVIC_IRQChannel = usartMap[serial]->usart_int_n;
+	// NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7; //USARTx_IRQ_PRIORITY;
+	// NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	// NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
-	NVIC_Init(&NVIC_InitStructure);
+	// NVIC_Init(&NVIC_InitStructure);
 
 	// Configure USART Rx and Tx as alternate function push-pull
 	HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, AF_OUTPUT_PUSHPULL);
@@ -171,7 +171,7 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 
 	// Configure USART
 	USART_Init(usartMap[serial]->usart_peripheral, &USART_InitStructure);
-
+	
 	// Enable USART Receive and Transmit interrupts
 	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, ENABLE);
 	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, ENABLE);
@@ -305,6 +305,7 @@ bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
 // WARNING: This function MUST remain reentrance compliant -- no local static variables etc.
 static void HAL_USART_Handler(HAL_USART_Serial serial)
 {
+	/*
 	if(USART_GetITStatus(usartMap[serial]->usart_peripheral, USART_IT_RXNE) != RESET)
 	{
 		// Read byte from the receive data register
@@ -327,6 +328,7 @@ static void HAL_USART_Handler(HAL_USART_Serial serial)
 			usartMap[serial]->usart_tx_buffer->tail %= SERIAL_BUFFER_SIZE;
 		}
 	}
+	*/
 }
 
 // Serial1 interrupt handler
