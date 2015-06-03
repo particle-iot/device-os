@@ -28,6 +28,7 @@
 #define __SPARK_WLAN_H
 
 #include "socket_hal.h"
+#include "system_cloud.h"
 #include "wlan_hal.h"    
 
 #ifdef __cplusplus
@@ -48,7 +49,7 @@ inline void Spark_Idle() { Spark_Idle_Events(false); }
  * The old method 
  */
 void SPARK_WLAN_Loop(void) __attribute__ ((deprecated("Please use Spark.process() instead.")));
-inline void SPARK_WLAN_Loop(void) { Spark_Idle(); }
+inline void SPARK_WLAN_Loop(void) { spark_process(); }
 
 void SPARK_WLAN_SmartConfigProcess();
 
