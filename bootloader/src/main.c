@@ -284,7 +284,7 @@ int main(void)
             else if(!SAFE_MODE && TimingBUTTON <= TIMING_ALL-TIMING_SAFE_MODE)
             {
                 // if pressed for > 1 sec, enter Safe Mode
-                LED_SetRGBColor(RGB_COLOR_BLUE);
+                LED_SetRGBColor(RGB_COLOR_MAGENTA);
                 SAFE_MODE = 1;
             }
         }
