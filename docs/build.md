@@ -38,6 +38,22 @@ The other projects are libraries used by these main projects.
 When building firmware, it's a good idea to build from `main`, since this offers
 additional features compared to building in the root directory.
 
+## Updating System Firmware (Photon)
+
+When building locally on the photon from the develop branch, it is necessary
+to update the system firware to the latest version:
+
+- put the Photon in DFU mode
+- `cd modules`
+- `make PLATFORM=photon all program-dfu`
+- You can optionally add `APP`/`APPDIR`/`TEST` values to the command above to build a specific user app.
+
+This will flash the latest system modules and the default user application to your device.
+
+A key indicator that this is necessary is that the Photon doesn't run your application
+after flashing, due to a version mis-match. (A future release will turn the LED purple 
+to indicate Safe Mode when the user firmware isn't run.)
+
 
 # Quick Start
 
