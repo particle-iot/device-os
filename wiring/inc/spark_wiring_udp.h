@@ -32,25 +32,100 @@
 #include "spark_wiring_stream.h"
 #include "socket_hal.h"
 
-#define RX_BUF_MAX_SIZE	512
-
 class UDP : public Stream, public Printable {
 private:
+        /**
+         * The underlying socket handle from the HAL.
+         */
 	sock_handle_t _sock;
+        
+        /**
+         * The local port this UDP socket is bound to.
+         */
 	uint16_t _port;
+        
+        /**
+         * The IP address of the peer that sent the received packet. 
+         * Available after parsePacket().
+         */
 	IPAddress _remoteIP;
+        
+        /**
+         * The port of the peer that send the received packet.
+         * Available after parsePacket().
+         */
 	uint16_t _remotePort;
-	sockaddr_t _remoteSockAddr;
-	socklen_t _remoteSockAddrLen;
-	uint8_t _buffer[RX_BUF_MAX_SIZE];
+        	
+        /**
+         * The current read/write offset in the buffer. Set to 0 after 
+         * parsePacket(), incremented during write()
+         */
 	uint16_t _offset;
+        
+        /**
+         * The number of bytes in the buffer. Available after parsePacket()
+         */
         uint16_t _total;
+        
+        /**
+         * The dynamically allocated buffer to store the packet that has been read or
+         * the packet that is being written.
+         */
+        uint8_t* _buffer;
+              
+        /**
+         * The size of the buffer.
+         */
+        size_t _buffer_size;
+        
+        /**
+         * The network interface this UDP socket should bind to.
+         */
         network_interface_t _nif;
+        
+        /**
+         * Set to non-zero if the buffer was dynamically allocated by this class.
+         */
+        uint8_t _buffer_allocated;
+        
+        
+        
 public:
 	UDP();
 
-	virtual uint8_t begin(uint16_t, network_interface_t nif=0);
+        /**
+         * 
+         * @param port
+         * @param nif
+         * @param buffer_size The size of the read/write buffer. Can be 0 if
+         * only `readPacket()` and `sendPacket()` are used, as these methods 
+         * use client-provided buffers.
+         * @param buffer    A pre-allocated buffer. This is optional, and if not specified
+         *  the UDP class will allocate the buffer dynamically. 
+         * @return non-zero on success
+         */
+	virtual uint8_t begin(uint16_t port, network_interface_t nif=0, size_t buffer_size=512, uint8_t* buffer=NULL); 
+        
 	virtual void stop();
+
+        
+        virtual int sendPacket(const uint8_t* buffer, size_t buffer_size, IPAddress ip, uint16_t port);
+#if 0        
+        virtual int sendPacket(const uint8_t* buffer, size_t size, IPAddress destination, uint16_t port);
+        virtual int sendPacket(const uint8_t* buffer, size_t size, const char*, uint16_t port);
+        
+        /**
+         * Retrieves a whole packet to a buffer. If the buffer is not large enough
+         * for the packet, the remainder that doesn't fit is discarded.
+         * 
+         * The size of the packet can be determined via available()
+         * @param buffer
+         * @param buf_size
+         * @return 
+         */
+        virtual int readPacket(uint8_t* buffer, size_t buf_size);
+#endif
+        
 	virtual int beginPacket(IPAddress ip, uint16_t port);
 	virtual int beginPacket(const char *host, uint16_t port);
 	virtual int endPacket();
@@ -58,11 +133,19 @@ public:
 	virtual size_t write(const uint8_t *buffer, size_t size);
 	virtual int parsePacket();
 	virtual int available();
+        
+        /**
+         * Read a single byte from the read buffer. Available after parsePacket(). 
+         * @return 
+         */
 	virtual int read();
 	virtual int read(unsigned char* buffer, size_t len);
+	                
 	virtual int read(char* buffer, size_t len) { return read((unsigned char*)buffer, len); };
 	virtual int peek();
 	virtual void flush();
+        
+        
 	virtual IPAddress remoteIP() { return _remoteIP; };
 	virtual uint16_t remotePort() { return _remotePort; };
 
