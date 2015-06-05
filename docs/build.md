@@ -45,7 +45,7 @@ to update the system firware to the latest version:
 
 - put the Photon in DFU mode
 - `cd modules`
-- `make PLATFORM=photon all program-dfu`
+- `make PLATFORM=photon clean all program-dfu`
 - You can optionally add `APP`/`APPDIR`/`TEST` values to the command above to build a specific user app.
 
 This will flash the latest system modules and the default user application to your device.
