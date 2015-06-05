@@ -37,7 +37,7 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-LINE_CODING linecoding =
+volatile LINE_CODING linecoding =
 {
     0x00,   /* baud rate*/
     0x00,   /* stop bits*/
@@ -49,10 +49,10 @@ static linecoding_bitrate_handler APP_LineCodingBitRateHandler = NULL;
 
 /* These are external variables imported from CDC core to be used for IN 
    transfer management. */
-extern uint8_t  APP_Rx_Buffer []; /* Write CDC received data in this buffer.
+extern volatile uint8_t  APP_Rx_Buffer []; /* Write CDC received data in this buffer.
                                      These data will be sent over USB IN endpoint
                                      in the CDC core functions. */
-extern uint32_t APP_Rx_ptr_in;    /* Increment this pointer or roll it back to
+extern volatile uint32_t APP_Rx_ptr_in;    /* Increment this pointer or roll it back to
                                      start address when writing received data
                                      in the buffer APP_Rx_Buffer. */
 

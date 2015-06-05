@@ -17,6 +17,12 @@ extern "C" {
 #include "pinmap_hal.h" 
 #include "hw_config.h"
 #include "pinmap_impl.h"
+#include "cc3000_common.h"
+#include "hci.h"
+#include "wlan.h"
+#include "socket.h"
+#include "nvmem.h"
+#include "netapp.h"
 
 
 #ifdef	__cplusplus

@@ -34,13 +34,13 @@ BUILD_NAME=test_mfg_test-BCM9WCDUSI14-FreeRTOS-LwIP-SDIO
 SUFFIX=_BM-14
 endif
 
-VERSION=0
+VERSION=2
 VERSION_NEXT=2
-VERSION_STRING=$(VERSION).RC4
+VERSION_STRING=0.4.1
 SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
 TARGET_PARENT=$(FIRMWARE_BUILD)/target
-TARGET=$(TARGET_PARENT)/photon-rc4
+TARGET=$(TARGET_PARENT)/release-$(VERSION_STRING)
 OUT=$(TARGET)
 DCT_MEM=$(OUT)/dct_pad.bin
 DCT_PREP=dct_prep.bin
@@ -50,18 +50,18 @@ BOOTLOADER_MEM=$(OUT)/bootloader_pad$(SUFFIX).bin
 BOOTLOADER_DIR=$(FIRMWARE)/bootloader
 
 FIRMWARE_BIN=$(FIRMWARE_BUILD)/target/main/platform-$(PLATFORM_ID)/main.bin
-FIRMWARE_ELF=$(FIRMWARE_BUILD)/target/main/platform-$(PLATFORM_ID)/main.bin
+FIRMWARE_ELF=$(FIRMWARE_BUILD)/target/main/platform-$(PLATFORM_ID)/main.elf
 FIRMWARE_MEM=$(OUT)/main_pad$(SUFFIX).bin
 FIRMWARE_DIR=$(FIRMWARE)/main
 COMBINED_MEM=$(OUT)/combined$(SUFFIX).bin
 COMBINED_ELF=$(OUT)/combined$(SUFFIX).elf
 
 MODULAR_DIR=$(FIRMWARE)/modules
-SYSTEM_PART1_BIN=$(FIRMWARE_BUILD)/target/system-part1/platform-$(PLATFORM_ID)-m/system-part1.bin
-SYSTEM_PART2_BIN=$(FIRMWARE_BUILD)/target/system-part2/platform-$(PLATFORM_ID)-m/system-part2.bin
+SYSTEM_PART1_BIN=$(FIRMWARE_BUILD)/target/system-part1/platform-$(PLATFORM_ID)-m-lto/system-part1.bin
+SYSTEM_PART2_BIN=$(FIRMWARE_BUILD)/target/system-part2/platform-$(PLATFORM_ID)-m-lto/system-part2.bin
 SYSTEM_MEM=$(OUT)/system_pad$(SUFFIX).bin
 
-USER_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)-m/user-part.bin
+USER_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)-m-lto/user-part.bin
 USER_MEM=$(OUT)/user-part.bin
 USER_DIR=$(FIRMWARE)/modules/photon/user-part
 
@@ -80,7 +80,7 @@ CRC=crc32
 XXD=xxd
 OPTS=
 
-all: setup combined
+all: combined
 
 setup:
 	-mkdir $(TARGET_PARENT)
@@ -138,7 +138,7 @@ firmware:
 user:	system
 	@echo building factory default modular user app to $(USER_MEM)
 	-rm $(USER_MEM)
-	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID)  PRODUCT_ID=$(PRODUCT_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION_NEXT) all	
+	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID)  PRODUCT_ID=$(PRODUCT_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all	
 	cp $(USER_BIN) $(USER_MEM)
 
 system:
@@ -146,7 +146,7 @@ system:
 	# adjust the module_info end address and the final CRC
 	@echo building modular system firmware to $(SYSTEM_MEM)
 	-rm $(SYSTEM_MEM)
-	$(MAKE) -C $(MODULAR_DIR) PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION_NEXT)  PRODUCT_ID=$(PRODUCT_ID) all
+	$(MAKE) -C $(MODULAR_DIR) COMPILE_LTO=y PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) PRODUCT_ID=$(PRODUCT_ID) all
 	dd if=/dev/zero ibs=1 count=393212 | tr "\000" "\377" > $(SYSTEM_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(SYSTEM_MEM) ibs=1 count=393212
 	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc	
@@ -161,10 +161,10 @@ wl:
 	cd "$(WICED_SDK)/$(MFG_TEST_DIR)"; make
 	cp $(WICED_SDK)/$(MFG_TEST_DIR)/wl43362A2.exe $(TARGET)/wl.exe
 
-combined: bootloader dct mfg_test firmware user system $(WL_DEP) checks
+combined: setup bootloader dct mfg_test user system $(WL_DEP) checks
 	@echo Building combined image to $(COMBINED_MEM)
 	-rm $(COMBINED_MEM)
-	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(FIRMWARE_MEM) $(USER_MEM) > $(COMBINED_MEM)
+	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(SYSTEM_MEM) $(USER_MEM) > $(COMBINED_MEM)
 	
 	# Generate combined.elf from combined.bin
 	${TOOLCHAIN_PREFIX}ld -b binary -r -o $(OUT)/temp.elf $(COMBINED_MEM)
@@ -182,8 +182,7 @@ checks:
 	$(call assert_filebyte,$(BOOTLOADER_MEM),400,0$(PLATFORM_ID))
 	$(call assert_filesize,$(DCT_MEM),114688)
 	$(call assert_filesize,$(MFG_TEST_MEM),393216)
-	$(call assert_filebyte,$(MFG_TEST_MEM),400,0$(PLATFORM_ID))
-	$(call assert_filesize,$(FIRMWARE_MEM),393216)
+	$(call assert_filebyte,$(MFG_TEST_MEM),400,0$(PLATFORM_ID))	
 	$(call assert_filesize,$(SYSTEM_MEM),393216)
 	$(call assert_filebyte,$(SYSTEM_MEM),400,0$(PLATFORM_ID))
 

@@ -38,6 +38,22 @@ The other projects are libraries used by these main projects.
 When building firmware, it's a good idea to build from `main`, since this offers
 additional features compared to building in the root directory.
 
+## Updating System Firmware (Photon)
+
+When building locally on the photon from the develop branch, it is necessary
+to update the system firware to the latest version:
+
+- put the Photon in DFU mode
+- `cd modules`
+- `make PLATFORM=photon clean all program-dfu`
+- You can optionally add `APP`/`APPDIR`/`TEST` values to the command above to build a specific user app.
+
+This will flash the latest system modules and the default user application to your device.
+
+A key indicator that this is necessary is that the Photon doesn't run your application
+after flashing, due to a version mis-match. (A future release will turn the LED purple 
+to indicate Safe Mode when the user firmware isn't run.)
+
 
 # Quick Start
 
@@ -45,8 +61,8 @@ additional features compared to building in the root directory.
 
 - `all`: the default target - builds the artefact for the project
 - `clean`: deletes all artefacts so the next build runs from a clean state
-- 'all program-dfu': (not bootloader) - builds and flashes the executable to a device via dfu
-- 'all st-flash': flashes the executable to a device via the st-link `st-flash` utility
+- `all program-dfu`: (not bootloader) - builds and flashes the executable to a device via dfu
+- `all st-flash`: flashes the executable to a device via the st-link `st-flash` utility
 
 
 ## Variables
@@ -399,5 +415,4 @@ see https://github.com/spark/firmware/pull/337
 To release more resources for applications that don't use the cloud, add
 SPARK_CLOUD=n to the make command line. This requires a clean build.
 
-After compiling, you should see ca 3000 bytes reduction in statically allocated
-RAM and, ca 35k reduction in flash use.
+After compiling, you should see a 3000 bytes reduction in statically allocated RAM and 35k reduction in flash use.

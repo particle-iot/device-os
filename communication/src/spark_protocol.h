@@ -201,7 +201,7 @@ class SparkProtocol
     void empty_ack(unsigned char *buf,
                           unsigned char message_id_msb,
                           unsigned char message_id_lsb) {
-        coded_ack(buf, message_id_msb, message_id_lsb, 0x00);
+        coded_ack(buf, 0, message_id_msb, message_id_lsb);
     };
     
     
