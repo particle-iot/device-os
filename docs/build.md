@@ -41,7 +41,7 @@ additional features compared to building in the root directory.
 ## Updating System Firmware (Photon)
 
 When building locally on the photon from the develop branch, it is necessary
-to update the system firware to the latest version:
+to update the system firmware to the latest version:
 
 - put the Photon in DFU mode
 - `cd modules`
