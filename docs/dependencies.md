@@ -12,11 +12,8 @@ Building the firmware locally requires these dependencies ot be installed:
 #### 1. GCC for ARM Cortex processors
 The Core/Photon uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.  
 
-Linux And Windows
+All platforms:
 - Download and install version 4.9.x from: https://launchpad.net/gcc-arm-embedded
-
-OS X:
- - `brew install gcc-arm-none-eabi-49`
 
 #### 2. Make 
 In order to turn your source code into binaries, you will need a tool called `make`. Windows users need to explicitly install `make` on their machines. Make sure you can use it from the terminal window.
