@@ -38,7 +38,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 //Interrupts
-const uint8_t GPIO_IRQn[] = {
+static const uint8_t GPIO_IRQn[] = {
     EXTI0_IRQn,     //0
     EXTI1_IRQn,     //1
     EXTI2_IRQn,     //2
