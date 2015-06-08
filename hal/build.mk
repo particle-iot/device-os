@@ -4,5 +4,5 @@
 # pulling in the required sources.
 # (Include files are selected in import.mk)
 
-HAL_PRODUCT_SRC_PATH = $(HAL_MODULE_PATH)/src/$(PLATFORM_NAME)
-include $(call rwildcard,$(HAL_PRODUCT_SRC_PATH)/,sources.mk)
+HAL_PLATFORM_SRC_PATH = $(HAL_MODULE_PATH)/src/$(PLATFORM_NAME)
+include $(call rwildcard,$(HAL_PLATFORM_SRC_PATH)/,sources.mk)
