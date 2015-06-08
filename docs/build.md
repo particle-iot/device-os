@@ -1,5 +1,5 @@
 
-THe firmware and bootloader are built by running the `make` command. 
+The firmware and bootloader are built by running the `make` command. 
 
 Running
 
