@@ -27,6 +27,7 @@
 #ifndef __FLASH_MAL_H
 #define __FLASH_MAL_H
 
+#include "hw_config.h"
 #include "flash_device_hal.h"
 #include "module_info.h"
 #include "module_info_hal.h"

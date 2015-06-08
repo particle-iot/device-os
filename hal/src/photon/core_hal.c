@@ -43,6 +43,7 @@
 #include <stdatomic.h>
 #include "stm32f2xx.h"
 #include "core_cm3.h"
+#include "bootloader.h"
 
 /**
  * Start of interrupt vector table.
@@ -222,7 +223,7 @@ void HAL_Core_Config(void)
 
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
-    
+        
     // override the WICED interrupts, specifically SysTick - there is a bug
     // where WICED isn't ready for a SysTick until after main() has been called to
     // fully intialize the RTOS.
@@ -259,6 +260,8 @@ void HAL_Core_Setup(void) {
     
     /* Reset system to disable IWDG if enabled in bootloader */
     IWDG_Reset_Enable(0);   
+
+    bootloader_update_if_needed();
 
 }
 

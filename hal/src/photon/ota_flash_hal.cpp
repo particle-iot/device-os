@@ -35,6 +35,7 @@
 #include "ledcontrol.h"
 #include "parse_server_address.h"
 #include "spark_macros.h"
+#include "bootloader.h"
 
 #define OTA_CHUNK_SIZE          512
 
@@ -247,11 +248,7 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
                     
         // bootloader is copied directly
         if (function==MODULE_FUNCTION_BOOTLOADER) {
-
-            if (FLASH_CopyMemory(FLASH_INTERNAL, module_ota.start_address, 
-                FLASH_INTERNAL, uint32_t(module.info->module_start_address),
-                moduleLength+4, function, 
-                MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION))
+            if (bootloader_update((const void*)module_ota.start_address, moduleLength+4))
                 result = HAL_UPDATE_APPLIED;
         }
         else

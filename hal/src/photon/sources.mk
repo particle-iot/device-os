@@ -86,3 +86,6 @@ ASRC +=
 
 
 
+# Uncomment this to build the bootloader source file. 
+#$(HAL_PLATFORM_SRC_PATH)/bootloader_platform_$(PLATFORM_ID).cc $(COMMON_BUILD)/target/bootloader/platform-$(PLATFORM_ID)-lto/bootloader.bin
+#	xxd -i $< > $@
