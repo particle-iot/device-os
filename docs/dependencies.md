@@ -28,9 +28,6 @@ If you are upgrading an existing installation you will have to unlink and link y
 - `brew link --overwrite gcc-arm-none-eabi-49` (example) 
 - `arm-none-eabi-gcc --version` (should now say v4.9.x)
 
-#### 1. GCC for ARM Cortex processors
-The Spark Core uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.
-
 #### 2. Make 
 In order to turn your source code into binaries, you will need a tool called `make`. Windows users need to explicitly install `make` on their machines. Make sure you can use it from the terminal window.
 
