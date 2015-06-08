@@ -913,7 +913,7 @@ static void http_stream_writer(Writer& w, wiced_http_response_stream_t* stream) 
 class HTTPDispatcher {
     wiced_http_server_t server;
 
-    wiced_http_page_t page[6];
+    wiced_http_page_t page[9];
 
     void setCommand(unsigned index, Command& cmd) {
         page[index].url_content.dynamic_data.generator = handle_command;

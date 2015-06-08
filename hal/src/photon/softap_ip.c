@@ -20,6 +20,8 @@ START_OF_HTTP_PAGE_DATABASE(soft_ap_http_pages)
     { "/scan-ap", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
     { "/configure-ap", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
     { "/connect-ap", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
+    { "/public-key", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
+    { "/set", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
 END_OF_HTTP_PAGE_DATABASE();
 
 
