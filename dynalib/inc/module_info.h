@@ -28,6 +28,8 @@
 extern "C" {
 #endif
 
+#include "static_assert.h"        
+#include "stddef.h"
 #include <stdint.h>
 
 typedef struct module_dependency_t {
@@ -51,6 +53,20 @@ typedef struct module_info_t {
     module_dependency_t dependency; 
     uint32_t reserved3;
 } module_info_t;
+
+#define STATIC_ASSERT_MODULE_INFO_OFFSET(field, expected) STATIC_ASSERT( module_info_##field, offsetof(module_info_t, field)==expected)
+
+STATIC_ASSERT_MODULE_INFO_OFFSET(module_start_address, 0);
+STATIC_ASSERT_MODULE_INFO_OFFSET(module_end_address, 4);
+STATIC_ASSERT_MODULE_INFO_OFFSET(reserved, 8);
+STATIC_ASSERT_MODULE_INFO_OFFSET(reserved2, 9);
+STATIC_ASSERT_MODULE_INFO_OFFSET(module_version, 10);
+STATIC_ASSERT_MODULE_INFO_OFFSET(platform_id, 12);
+STATIC_ASSERT_MODULE_INFO_OFFSET(module_function, 14);
+STATIC_ASSERT_MODULE_INFO_OFFSET(module_index, 15);
+STATIC_ASSERT_MODULE_INFO_OFFSET(dependency, 16);
+STATIC_ASSERT_MODULE_INFO_OFFSET(reserved3, 20);
+
 
 /**
  * Define the module function enum also as preprocessor symbols so we can 
