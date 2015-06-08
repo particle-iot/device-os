@@ -92,7 +92,7 @@ extern "C" void HAL_SysTick_Handler(void)
     }
     else if(SPARK_CLOUD_CONNECTED)
     {
-        LED_SetRGBColor(RGB_COLOR_CYAN);
+        LED_SetRGBColor(system_mode()==SAFE_MODE ? RGB_COLOR_MAGENTA : RGB_COLOR_CYAN);
         LED_On(LED_RGB);
         SPARK_LED_FADE = 1;
     }
