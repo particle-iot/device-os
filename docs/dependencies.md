@@ -16,7 +16,13 @@ The Core/Photon uses an ARM Cortex M3 CPU based microcontroller. All of the code
 - Download and install version 4.9.x from: https://launchpad.net/gcc-arm-embedded
 
 **OS X** users can install the toolchain with [Homebrew](http://brew.sh/):
- - `brew install gcc-arm-none-eabi-49`
+- `brew tap PX4/homebrew-px4`
+- `brew update`
+- `brew install gcc-arm-none-eabi-49`
+
+or upgrade an existing installation with:
+- `brew update`
+- `brew upgrade gcc-arm-none-eabi-49`
 
 #### 1. GCC for ARM Cortex processors
 The Spark Core uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.
