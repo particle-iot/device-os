@@ -12,7 +12,7 @@ DriverVer=01/10/2014,5.2.0.0
 CatalogFile=photon.cat
 
 [Manufacturer] 
-%DEVICE_DESCRIPTION%=DeviceList, NTx86, NTia64, NTamd64, NTARM
+%PROVIDER%=DeviceList, NTx86, NTia64, NTamd64, NTARM
 
 [DeviceList.NTx86] 
 %DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C006

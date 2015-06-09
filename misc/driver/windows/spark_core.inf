@@ -12,7 +12,7 @@ DriverVer=01/10/2014,5.2.0.0
 CatalogFile=spark_core.cat
 
 [Manufacturer] 
-%DEVICE_DESCRIPTION%=DeviceList, NTx86, NTia64, NTamd64, NTARM
+%PROVIDER%=DeviceList, NTx86, NTia64, NTamd64, NTARM
 
 [DeviceList.NTx86] 
 %DEVICE_DESCRIPTION%=DriverInstall, USB\VID_1D50&PID_607D
@@ -85,7 +85,7 @@ LoadOrderGroup = PNP Filter
 ;------------------------------------------------------------------------------
 
 [Strings] 
-PROVIDER="Spark Devices"
+PROVIDER="Particle IO"
 DEVICE_DESCRIPTION ="Spark Core"
 USBSER.DESC = "USB Serial Driver"
 SERENUM.DESC = "Serenum Filter Driver"
