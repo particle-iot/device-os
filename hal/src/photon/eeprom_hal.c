@@ -6,7 +6,7 @@
  * @date    18-Nov-2014
  * @brief
  ******************************************************************************
-  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   Copyright 2012 STMicroelectronics
   http://www.st.com/software_license_agreement_liberty_v2

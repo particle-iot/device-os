@@ -6,7 +6,7 @@
   * @date    30-April-2013
   * @brief   Header for flash_if.c file.
   ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public

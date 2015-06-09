@@ -6,7 +6,7 @@
  * @date    26-Feb-2015
  * @brief   Generic media access Layer.
  ******************************************************************************
-  Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
   Copyright (c) 2012 STMicroelectronics
 
   This library is free software; you can redistribute it and/or

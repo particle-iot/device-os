@@ -6,7 +6,7 @@
  * @date    10-April-2014
  * @brief   Functions/Class prototypes for the EEPROM emulation library.
  ******************************************************************************
-  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   Original Copyright (c) 2006 David A. Mellis.  All right reserved.
   New version by Christopher Andrews 2015.
 
@@ -149,7 +149,7 @@ struct EEPROMClass{
     }
 };
 
-static EEPROMClass EEPROM;
+extern EEPROMClass EEPROM;
 
 class EEPROMInitClass
 {

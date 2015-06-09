@@ -6,7 +6,7 @@
  * @date    13-March-2013
  * @brief   Wrapper for wiring interrupts
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   Copyright (c) 2004-05 Hernando Barragan
   Modified 24 November 2006 by David A. Mellis
   Modified 1 August 2010 by Mark Sproul
