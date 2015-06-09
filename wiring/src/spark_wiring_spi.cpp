@@ -81,6 +81,11 @@ byte SPIClass::transfer(byte _data)
   return HAL_SPI_Send_Receive_Data(_spi, _data);
 }
 
+void SPIClass::transfer(void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback)
+{
+  HAL_SPI_DMA_Transfer(_spi, tx_buffer, rx_buffer, length, user_callback);
+}
+
 void SPIClass::attachInterrupt()
 {
   //To Do

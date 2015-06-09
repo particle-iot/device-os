@@ -56,6 +56,13 @@
     #define arraySize(a)     (sizeof((a))/sizeof((a[0])))
 #endif
 
+static volatile bool SPI_DMA_TransferCompleted = false;
+
+void FRAM_SPI_DMA_TransferComplete_Callback(void)
+{
+    SPI_DMA_TransferCompleted = true;
+}
+
 /*
  * Write to FRAM
  * cs_pin: chip select pin used for FRAM
@@ -84,7 +91,13 @@ int8_t FRAMWrite(uint16_t cs_pin, uint16_t addr, uint8_t* buf, uint16_t count=1)
     SPI.transfer(addrMSB);
     SPI.transfer(addrLSB);
 
-    for (uint16_t i=0; i<count; i++) SPI.transfer(buf[i]);
+    /* Commented old method of single byte transfer */
+    //for (uint16_t i=0; i<count; i++) SPI.transfer(buf[i]);
+
+    /* Using SPI DMA transfer method to transfer buffer */
+    SPI_DMA_TransferCompleted = false;
+    SPI.transfer(buf, NULL, count, FRAM_SPI_DMA_TransferComplete_Callback);
+    while(!SPI_DMA_TransferCompleted);
 
     digitalWrite(cs_pin, HIGH);
 
@@ -116,7 +129,13 @@ int8_t FRAMRead(uint16_t cs_pin, uint16_t addr, uint8_t* buf, uint16_t count=1)
     SPI.transfer(addrMSB);
     SPI.transfer(addrLSB);
 
-    for (uint16_t i=0; i<count; i++) buf[i] = SPI.transfer(0x7e);
+    /* Commented old method of single byte transfer */
+    //for (uint16_t i=0; i<count; i++) buf[i] = SPI.transfer(0x7e);
+
+    /* Using SPI DMA transfer method to transfer buffer */
+    SPI_DMA_TransferCompleted = false;
+    SPI.transfer(NULL, buf, count, FRAM_SPI_DMA_TransferComplete_Callback);
+    while(!SPI_DMA_TransferCompleted);
 
     digitalWrite(cs_pin, HIGH);
 
