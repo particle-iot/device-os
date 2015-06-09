@@ -181,35 +181,41 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 
 void HAL_USART_End(HAL_USART_Serial serial)
 {
-	// wait for transmission of outgoing data
-	while (usartMap[serial]->usart_tx_buffer->head != usartMap[serial]->usart_tx_buffer->tail);
+    // wait for transmission of outgoing data
+    while (usartMap[serial]->usart_tx_buffer->head != usartMap[serial]->usart_tx_buffer->tail);
 
-	// Disable USART Receive and Transmit interrupts
-	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, DISABLE);
-	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, DISABLE);
+    // Disable the USART
+    USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
 
-	// Disable the USART
-	USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
+    // Deinitialise USART
+    USART_DeInit(usartMap[serial]->usart_peripheral);
 
-	NVIC_InitTypeDef NVIC_InitStructure;
+    // Disable USART Receive and Transmit interrupts
+    USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, DISABLE);
+    USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, DISABLE);
 
-	// Disable the USART Interrupt
-	NVIC_InitStructure.NVIC_IRQChannel = usartMap[serial]->usart_int_n;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+    NVIC_InitTypeDef NVIC_InitStructure;
 
-	NVIC_Init(&NVIC_InitStructure);
+    // Disable the USART Interrupt
+    NVIC_InitStructure.NVIC_IRQChannel = usartMap[serial]->usart_int_n;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
 
-	// clear any received data
-	usartMap[serial]->usart_rx_buffer->head = usartMap[serial]->usart_rx_buffer->tail;
+    NVIC_Init(&NVIC_InitStructure);
 
-	// null ring buffer pointers
-	usartMap[serial]->usart_tx_buffer = NULL;
-	usartMap[serial]->usart_rx_buffer = NULL;
+    // Disable USART Clock
+    *usartMap[serial]->usart_apbReg &= ~usartMap[serial]->usart_clock_en;
 
-	// Undo any pin re-mapping done for this USART
-	// ...
+    // clear any received data
+    usartMap[serial]->usart_rx_buffer->head = usartMap[serial]->usart_rx_buffer->tail;
 
-	usartMap[serial]->usart_enabled = false;
+    // Undo any pin re-mapping done for this USART
+    // ...
+
+    memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
+    memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
+
+    usartMap[serial]->usart_enabled = false;
+    usartMap[serial]->usart_transmitting = false;
 }
 
 uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
