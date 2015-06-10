@@ -6,7 +6,7 @@
  * @date    13-March-2013
  * @brief   Header for spark_wiring_string.c module
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   ...mostly rewritten by Paul Stoffregen...
   Copyright (c) 2009-10 Hernando Barragan.  All rights reserved.
   Copyright 2011, Paul Stoffregen, paul@pjrc.com

@@ -1,8 +1,7 @@
 /**
  ******************************************************************************
- * @file    user_module.h
+ * @file    eeprom.cpp
  * @authors Matthew McGowan
- * @date    13 February 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
@@ -21,24 +20,42 @@
  ******************************************************************************
  */
 
-#ifndef USER_MODULE_H
-#define	USER_MODULE_H
 
-/**
- * Initializes the static memory for this module.
- * 
- * @return The end of static memory for this module.
- */
-void* module_user_pre_init();
+#include "testapi.h"
 
-/**
- * Initializes the global object instances in this module. 
- */
-void module_user_init();
+test(api_eeprom_read_write) {
 
-void module_user_loop();
+    uint8_t value;
+    API_COMPILE(value=EEPROM.read(10));
+    API_COMPILE(EEPROM.write(10, value));
 
-void module_user_setup();
+}
 
-#endif	/* USER_MODULE_H */
 
+class MyClass
+{
+    int a;
+    int b;
+public:
+};
+
+test(api_eeprom_get_put) {
+
+    MyClass cls;
+    API_COMPILE(EEPROM.get(10, cls));
+    API_COMPILE(EEPROM.put(10, cls));
+}
+
+test(api_eeprom_begin_end_length) {
+
+    EEPtr e(0);
+    uint16_t length;
+    API_COMPILE(e = EEPROM.begin());
+    API_COMPILE(e = EEPROM.end());
+    API_COMPILE(length = EEPROM.length());
+}
+
+test(api_eeprom_eeptr)
+{
+
+}

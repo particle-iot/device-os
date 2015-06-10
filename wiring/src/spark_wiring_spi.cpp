@@ -6,7 +6,7 @@
  * @date    13-March-2013
  * @brief   Wrapper for wiring SPI module
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   Copyright (c) 2010 by Cristian Maglie <c.maglie@bug.st>
 
   This library is free software; you can redistribute it and/or
@@ -79,6 +79,11 @@ void SPIClass::setClockDivider(uint8_t rate)
 byte SPIClass::transfer(byte _data)
 {
   return HAL_SPI_Send_Receive_Data(_spi, _data);
+}
+
+void SPIClass::transfer(void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback)
+{
+  HAL_SPI_DMA_Transfer(_spi, tx_buffer, rx_buffer, length, user_callback);
 }
 
 void SPIClass::attachInterrupt()

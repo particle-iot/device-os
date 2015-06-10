@@ -4,7 +4,7 @@
 #include "bootloader.h"
 #include "module_info.h"
 
-#if PLATFORM_ID==6
+#if PLATFORM_ID==6 && !defined(HAL_MINIMAL)
 
 /**
  * Manages upgrading the bootloader.

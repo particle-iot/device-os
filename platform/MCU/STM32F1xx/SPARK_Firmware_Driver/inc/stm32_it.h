@@ -6,7 +6,7 @@
  * @date    13-March-2013
  * @brief   This file contains the headers of the interrupt handlers.
  ******************************************************************************
-   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
