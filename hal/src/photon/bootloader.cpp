@@ -4,7 +4,7 @@
 #include "bootloader.h"
 #include "module_info.h"
 
-#if PLATFORM_ID==6 && !defined(HAL_MINIMAL)
+#if PLATFORM_ID==6 && !defined(SYSTEM_MINIMAL)
 
 /**
  * Manages upgrading the bootloader.
@@ -22,18 +22,18 @@ extern "C" const unsigned char BOOTLOADER_IMAGE[];
 bool bootloader_requires_update()
 {
     const uint32_t VERSION_OFFSET = 0x184+10;
-    
+
     uint16_t current_version = *(uint16_t*)(0x8000000+VERSION_OFFSET);
     uint16_t available_version = *(uint16_t*)(BOOTLOADER_IMAGE+VERSION_OFFSET);
-    
-    bool requires_update = current_version<available_version;    
+
+    bool requires_update = current_version<available_version;
     return requires_update;
 }
 
 bool bootloader_update(const void* bootloader_image, unsigned length)
 {
-    return (FLASH_CopyMemory(FLASH_INTERNAL, (uint32_t)bootloader_image, 
-        FLASH_INTERNAL, 0x8000000, length, MODULE_FUNCTION_BOOTLOADER, 
+    return (FLASH_CopyMemory(FLASH_INTERNAL, (uint32_t)bootloader_image,
+        FLASH_INTERNAL, 0x8000000, length, MODULE_FUNCTION_BOOTLOADER,
         MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION));
 }
 

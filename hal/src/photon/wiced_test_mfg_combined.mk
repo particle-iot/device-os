@@ -147,7 +147,7 @@ system:
 	# adjust the module_info end address and the final CRC
 	@echo building modular system firmware to $(SYSTEM_MEM)
 	-rm $(SYSTEM_MEM)
-	$(MAKE) -C $(MODULAR_DIR) COMPILE_LTO=y PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) PRODUCT_ID=$(PRODUCT_ID) all
+	$(MAKE) -C $(MODULAR_DIR) COMPILE_LTO=y MINIMAL=y PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) PRODUCT_ID=$(PRODUCT_ID) all
 	dd if=/dev/zero ibs=1 count=393212 | tr "\000" "\377" > $(SYSTEM_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(SYSTEM_MEM) ibs=1 count=393212
 	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc
