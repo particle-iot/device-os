@@ -27,14 +27,20 @@
 #include "spark_protocol_functions.h"
 
 
-struct ApplicationProductID {
-    ApplicationProductID(product_id_t id) { 
+#define __STARTUP(code, __startup_name) \
+    struct __startup_name {  __startup_name() { code; }; __startup_name __instance##__startup_name;
+
+#define STARTUP(x)  __STARTUP(x, __startup##)
+
+
+struct __ApplicationProductID {
+    __ApplicationProductID(product_id_t id) {
         spark_protocol_set_product_id(spark_protocol_instance(), id);
     }
 };
 
-struct ApplicationProductVersion {
-    ApplicationProductVersion(product_firmware_version_t version) { 
+struct __ApplicationProductVersion {
+    __ApplicationProductVersion(product_firmware_version_t version) {
         spark_protocol_set_product_firmware_version(spark_protocol_instance(), version);
     }
 };
@@ -43,8 +49,8 @@ struct ApplicationProductVersion {
 #undef PRODUCT_ID
 #endif
 
-#define PRODUCT_ID(x)           ApplicationProductID __appProductID(x);
-#define PRODUCT_VERSION(x)       ApplicationProductVersion __appProductVersion(x);
+#define PRODUCT_ID(x)           __ApplicationProductID __appProductID(x); __attribute__((externally_visible, section(".modinfo.product_id"))) uint16_t __system_product_id = (x);
+#define PRODUCT_VERSION(x)       __ApplicationProductVersion __appProductVersion(x); __attribute__((externally_visible, section(".modinfo.product_version"))) uint16_t __system_product_version = (x);
 
 
 #endif	/* SPARK_WIRING_VERSION_H */
