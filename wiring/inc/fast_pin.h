@@ -35,12 +35,12 @@ extern "C" {
 
 #ifdef STM32F10X
 
-inline void fastPinSet(pin_t _pin)
+inline void pinSetFast(pin_t _pin)
 {
     PIN_MAP[_pin].gpio_peripheral->BSRR = PIN_MAP[_pin].gpio_pin;
 }
 
-inline void fastPinReset(pin_t _pin)
+inline void pinResetFast(pin_t _pin)
 {
     PIN_MAP[_pin].gpio_peripheral->BRR = PIN_MAP[_pin].gpio_pin;
 }
@@ -48,12 +48,12 @@ inline void fastPinReset(pin_t _pin)
 #elif defined(STM32F2XX)
 static STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-inline void fastPinSet(pin_t _pin)
+inline void pinSetFast(pin_t _pin)
 {
     PIN_MAP[_pin].gpio_peripheral->BSRRL = PIN_MAP[_pin].gpio_pin;
 }
 
-inline void fastPinReset(pin_t _pin)
+inline void pinResetFast(pin_t _pin)
 {
     PIN_MAP[_pin].gpio_peripheral->BSRRH = PIN_MAP[_pin].gpio_pin;
 }
@@ -64,12 +64,12 @@ inline void fastPinReset(pin_t _pin)
 #endif
 
 
-inline void fastDigitalWrite(pin_t pin, uint8_t value)
+inline void digitalWriteFast(pin_t pin, uint8_t value)
 {
     if (value)
-        fastPinSet(pin);
+        pinSetFast(pin);
     else
-        fastPinReset(pin);
+        pinResetFast(pin);
 }
 
 
