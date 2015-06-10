@@ -44,7 +44,6 @@ DYNALIB_FN(hal_socket,socket_reset_blocking_call)
 DYNALIB_FN(hal_socket,socket_create_tcp_server)
 DYNALIB_FN(hal_socket,socket_accept)
 DYNALIB_FN(hal_socket,socket_handle_invalid)
-DYNALIB_FN(hal_socket,socket_dispose_tcp_server)
 DYNALIB_END(hal_socket)
 
 #endif	/* HAL_DYNALIB_SOCKET_H */

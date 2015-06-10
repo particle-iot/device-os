@@ -52,7 +52,7 @@ bool TCPServer::begin()
 
 void TCPServer::stop()
 {
-    socket_dispose_tcp_server(_sock);
+    socket_close(_sock);
     _sock = socket_handle_invalid();
 }
 
