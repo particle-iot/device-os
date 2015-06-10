@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   version.h
  * Author: mat1
  *
@@ -14,8 +14,9 @@ extern "C" {
 
 const int PARTICLE_v040 = 0x00040000;
 const int PARTICLE_v041 = 0x00040000;
-    
-const int PARTICLE = PARTICLE_v040;
+const int PARTICLE_v042 = 0x00040000;
+
+const int PARTICLE = PARTICLE_v042;
 
 
 #ifdef	__cplusplus
