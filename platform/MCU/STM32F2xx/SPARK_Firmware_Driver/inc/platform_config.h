@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file    platform_config.h
- * @author  Satish Nair
+ * @authors Satish Nair, Brett Walach
  * @version V1.0.0
  * @date    22-Oct-2014
  * @brief   Board specific configuration file.
@@ -32,6 +32,10 @@
 #define         ID1          (0x1FFF7A10)
 #define         ID2          (0x1FFF7A14)
 #define         ID3          (0x1FFF7A18)
+
+#ifndef PLATFORM_ID
+#error "PLATFORM_ID not defined"
+#endif
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f2xx.h"
@@ -64,14 +68,14 @@
 #define LED4_GPIO_PIN_SOURCE                GPIO_PinSource2         //GREEN Led
 #define LED4_GPIO_PORT                      GPIOA                   //GREEN Led
 #define LED4_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //GREEN Led
-#if (PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV)
+#if   PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID
 //On Pigtail board with BM-14, RGB lines are reversed
 #define RGB_LINES_REVERSED
 #endif
 
 //Push Buttons
 #define BUTTONn                             1
-#if (PLATFORM_ID == PLATFORM_PHOTON_DEV)
+#if   PLATFORM_ID == PLATFORM_PHOTON_DEV
 #define BUTTON1_GPIO_PIN                    GPIO_Pin_2
 #define BUTTON1_GPIO_PORT                   GPIOC
 #define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
@@ -86,7 +90,11 @@
 #define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define BUTTON1_EXTI_IRQ_INDEX              24
 #define	BUTTON1_EXTI_TRIGGER		        EXTI_Trigger_Falling
-#elif (PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV || PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID || PLATFORM_TEACUP_PIGTAIL_PRODUCTION == PLATFORM_ID || PLATFORM_P1==PLATFORM_ID)
+#elif PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID || \
+      PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID || \
+      PLATFORM_TEACUP_PIGTAIL_PRODUCTION == PLATFORM_ID || \
+      PLATFORM_P1 == PLATFORM_ID || \
+      PLATFORM_ELECTRON_PRODUCTION == PLATFORM_ID
 #define BUTTON1_GPIO_PIN                    GPIO_Pin_7
 #define BUTTON1_GPIO_PORT                   GPIOC
 #define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
@@ -107,18 +115,23 @@
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
 //USB OTG Peripheral
-#if (PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV || PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_PRODUCTION || PLATFORM_ID==PLATFORM_P1)
+#if   PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID || \
+      PLATFORM_TEACUP_PIGTAIL_PRODUCTION == PLATFORM_ID || \
+      PLATFORM_P1 == PLATFORM_ID
 //BM-14 uses USB_OTG_FS peripheral
 #define USE_USB_OTG_FS
 //BM-14 has serial flash
-#if PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV || PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_PRODUCTION
+#if   PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID || \
+      PLATFORM_TEACUP_PIGTAIL_PRODUCTION == PLATFORM_ID
 #define USE_SERIAL_FLASH
 #else
 #define FLASH_UPDATE_MODULES
 #endif
 //BM-14 bootloader with FLASH_UPDATE_MODULES enabled DOES NOT fit in < 16KB
 //#define FLASH_UPDATE_MODULES /* Please do not uncomment this at present */
-#elif (PLATFORM_PHOTON_DEV == PLATFORM_ID || PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION)
+#elif   PLATFORM_PHOTON_DEV == PLATFORM_ID || \
+        PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID || \
+        PLATFORM_ELECTRON_PRODUCTION == PLATFORM_ID
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
 //BM-09 bootloader with FLASH_UPDATE_MODULES enabled fits in < 16KB
@@ -180,10 +193,6 @@
 #define SVCALL_IRQ_PRIORITY                 14      //CORTEX_M3 SVCall Interrupt
 #define PENDSV_IRQ_PRIORITY                 15      //CORTEX_M3 PendSV Interrupt
 
-#ifndef PLATFORM_ID
-#error "PLATFORM_ID not defined"
-#endif
-
 #define PREPSTRING2(x) #x
 #define PREPSTRING(x) PREPSTRING2(x)
 
@@ -195,7 +204,9 @@
     #define INTERNAL_FLASH_SIZE             (0x100000)
 #elif PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV
     #define INTERNAL_FLASH_SIZE             (0x100000)
-#elif PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID==PLATFORM_P1
+#elif   PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || \
+        PLATFORM_ID == PLATFORM_P1 || \
+        PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     #define INTERNAL_FLASH_SIZE             (0x100000)
 #elif PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_PRODUCTION
     #define INTERNAL_FLASH_SIZE             (0x100000)
