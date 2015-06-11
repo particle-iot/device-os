@@ -3,12 +3,14 @@ This folder contains the sources to bootstrap development of a new HAL implement
 ### Bootstrapping a new HAL:
 
 - test build an empty HAL: `make PLATFORM_ID=60000` this creates empty elf files for the bootloader and main. (They are empty because the linker scripts are empty, so no sections are output.)
-- get a new product ID from Particle (or assign the next free one yourself temporarily until one is assigned to you). Product IDs are listed in `build/platform-id.mk`
+- get a new Platform ID from Particle (or assign the next free one yourself temporarily until one is assigned to you). Platform IDs are listed in `build/platform-id.mk`
 - duplicate all the parts in platform-id.mk referring to `newhal` and rename to your product
 - duplicate this directory (`hal/src/newehal/`), and rename to match `PLATFORM_NAME` as defined for your product (in platform-id.mk)
-- duplicate `platform/MCU/newhal-mcu` to a new folder and rename to match the `PLATFORM_MCU` value for your product (in product-id.mk)
+- duplicate `platform/MCU/newhal-mcu` to a new folder and rename to match the `PLATFORM_MCU` value for your product (in product-id.mk), unless you are duplicating an existing platform with your new device; in that case just use an existing platform such as `platform/MCU/STM32F2xx`.
 - duplicate `build/arm/linker/linker_newhalcpu.ld` and rename, substituting newhalcpu for the value of `STM32_DEVICE` for your product.
 - duplicate `build/arm/startup/linker_newhalcpu.S` and rename, substituting newhalcpu for the value of `STM32_DEVICE` for your product.
+- create a new symbolic reference for your new platform in `firmware/platform/shared/platforms.h` that uses the same PLATFORM_ID you created earlier (e.g. `#define PLATFORM_ELECTRON_PRODUCTION 10`).
+- add your new symbolic reference to `platform_config.h` to keep this from throwing an error, optionally add it in the appropriate places and configure all of the pin/port/interrupt mapping.
 - test build - `make v=1 PLATFORM_ID=<your platform id> clean all` should now build the empty bootloader and firmware.
 
 Development typically starts off without a bootloader, focusing initially
