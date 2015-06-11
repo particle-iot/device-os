@@ -40,17 +40,17 @@
 
 /* Private variables ---------------------------------------------------------*/
 #ifdef USB_CDC_ENABLE
-uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
-uint32_t USART_Rx_ptr_in = 0;
-uint32_t USART_Rx_ptr_out = 0;
-uint32_t USART_Rx_length  = 0;
+volatile uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
+volatile uint32_t USART_Rx_ptr_in = 0;
+volatile uint32_t USART_Rx_ptr_out = 0;
+volatile uint32_t USART_Rx_length  = 0;
 
-uint8_t USB_Rx_Buffer[CDC_DATA_SIZE];
-uint16_t USB_Rx_length = 0;
-uint16_t USB_Rx_ptr = 0;
+volatile uint8_t USB_Rx_Buffer[CDC_DATA_SIZE];
+volatile uint16_t USB_Rx_length = 0;
+volatile uint16_t USB_Rx_ptr = 0;
 
-uint8_t  USB_Tx_State = 0;
-uint8_t  USB_Rx_State = 0;
+volatile uint8_t  USB_Tx_State = 0;
+volatile uint8_t  USB_Rx_State = 0;
 
 uint32_t USB_USART_BaudRate = 9600;
 

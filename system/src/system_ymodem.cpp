@@ -63,7 +63,7 @@ static uint32_t Serial_KeyPressed(Stream *serialObj, uint8_t *key)
  */
 static void Serial_PrintCharArray(Stream *serialObj, char *s)
 {
-    serialObj->print(s);    
+    serialObj->print(s);
 }
 
 class YModem
@@ -82,11 +82,11 @@ public:
         PACKET_SIZE = 128,
         PACKET_1K_SIZE = 1024,
         FILE_NAME_LENGTH = 256,
-        FILE_SIZE_LENGTH = 16,        
+        FILE_SIZE_LENGTH = 16,
         MAX_ERRORS = (5)
     };
-    
-    const uint32_t NAK_TIMEOUT = (0x100000);
+
+    const uint32_t NAK_TIMEOUT = (0x10000000);
 
     enum protocol_msg_t
     {
@@ -110,11 +110,11 @@ public:
 
     YModem(Stream& stream_) : stream(stream_) { }
 
-    
+
     int32_t receive_file(FileTransfer::Descriptor& tx, file_desc_t& file_info);
 
-    
-private:    
+
+private:
     uint8_t packet_data[YModem::PACKET_1K_SIZE + YModem::PACKET_OVERHEAD];
     int32_t session_done, file_done, packets_received, errors, session_begin;
 
@@ -149,12 +149,12 @@ private:
     }
 
     /* Constants used by Serial Command Line Mode */
-    //#define CMD_STRING_SIZE         128   
-    
+    //#define CMD_STRING_SIZE         128
+
     int32_t receive_packet(uint8_t* data, int32_t& length, uint32_t timeout);
     int32_t handle_packet(uint8_t* packet_data, int32_t packet_length, FileTransfer::Descriptor& tx, file_desc_t& desc);
     void parse_file_packet(FileTransfer::Descriptor& tx, file_desc_t& desc, uint8_t* packet_data);
-    
+
 };
 
 /**
@@ -238,10 +238,10 @@ void YModem::parse_file_packet(FileTransfer::Descriptor& tx, YModem::file_desc_t
     }
     file_size[i++] = '\0';
     tx.file_length = strtoul((const char *) file_size, NULL, 10);
-    tx.chunk_size = 1024;                    
+    tx.chunk_size = 1024;
 }
 
-int32_t YModem::handle_packet(uint8_t* packet_data, int32_t packet_length, 
+int32_t YModem::handle_packet(uint8_t* packet_data, int32_t packet_length,
                               FileTransfer::Descriptor& tx, YModem::file_desc_t& desc)
 {
     switch (packet_length)
@@ -276,7 +276,8 @@ int32_t YModem::handle_packet(uint8_t* packet_data, int32_t packet_length,
                     send_byte(CA);
                     send_byte(CA);
                     return -1;
-                }                
+                }
+                tx.chunk_address = tx.file_address;
                 send_byte(ACK);
                 send_byte(CRC16);
             } /* Filename packet is empty, end session */
@@ -284,20 +285,20 @@ int32_t YModem::handle_packet(uint8_t* packet_data, int32_t packet_length,
             {
                 send_byte(ACK);
                 file_done = 1;
-                session_done = 1;                
+                session_done = 1;
             }
         } /* Data packet */
         else
-        {   
+        {
             tx.chunk_size = packet_length;
-            if (Spark_Save_Firmware_Chunk(tx, packet_data + PACKET_HEADER, NULL)) 
+            if (Spark_Save_Firmware_Chunk(tx, packet_data + PACKET_HEADER, NULL))
             {
                 /* End session if Spark_Save_Firmware_Chunk() fails */
                 send_byte(CA);
                 send_byte(CA);
-                return -2;                
-            }            
-            tx.file_address += tx.chunk_size;
+                return -2;
+            }
+            tx.chunk_address += tx.chunk_size;
             send_byte(ACK);
         }
         packets_received++;
@@ -313,7 +314,7 @@ int32_t YModem::receive_file(FileTransfer::Descriptor& tx, YModem::file_desc_t& 
     session_done = 0;
     errors = 0;
     session_begin = 0;
-    
+
     for (;;)
     {
         for (packets_received = 0, file_done = 0;;)
@@ -368,31 +369,33 @@ int32_t YModem::receive_file(FileTransfer::Descriptor& tx, YModem::file_desc_t& 
  */
 bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& file, void* reserved)
 {
-    serialObj->println("Waiting for the binary file to be sent ... (press 'a' to abort)");
     YModem::file_desc_t desc;
     YModem* ymodem = new YModem(*serialObj);
-    int32_t Size = ymodem->receive_file(file, desc);
+    int32_t size = ymodem->receive_file(file, desc);
     delete ymodem;
-    if (Size > 0)
+    if (size > 0)
     {
         serialObj->println("\r\nDownloaded file successfully!");
         serialObj->print("Name: ");
         Serial_PrintCharArray(serialObj, desc.file_name);
         serialObj->println("");
         serialObj->print("Size: ");
-        serialObj->print(Size);
+        serialObj->print(size);
         serialObj->println(" bytes");
+        serialObj->flush();
+        delay(1000);
+        Spark_Finish_Firmware_Update(file, size>0 ? 1 : 0, NULL);
         return true;
     }
-    else if (Size == -1)
+    else if (size == -1)
     {
         serialObj->println("The file size is higher than the allowed space memory!");
     }
-    else if (Size == -2)
+    else if (size == -2)
     {
         serialObj->println("Verification failed!");
     }
-    else if (Size == -3)
+    else if (size == -3)
     {
         serialObj->println("Aborted by user.");
     }
