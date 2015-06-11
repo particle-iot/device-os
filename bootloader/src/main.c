@@ -6,7 +6,7 @@
  * @date    30-April-2013
  * @brief   main file
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -284,7 +284,7 @@ int main(void)
             else if(!SAFE_MODE && TimingBUTTON <= TIMING_ALL-TIMING_SAFE_MODE)
             {
                 // if pressed for > 1 sec, enter Safe Mode
-                LED_SetRGBColor(RGB_COLOR_BLUE);
+                LED_SetRGBColor(RGB_COLOR_MAGENTA);
                 SAFE_MODE = 1;
             }
         }

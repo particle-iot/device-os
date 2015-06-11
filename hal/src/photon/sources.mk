@@ -7,6 +7,7 @@ HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/photon
 HAL_WICED_INCLUDE_DIRS +=   include
 HAL_WICED_INCLUDE_DIRS +=   platforms/$(PLATFORM_NET)   
 HAL_WICED_INCLUDE_DIRS +=   libraries/daemons/DNS_redirect \
+			    libraries/daemons/HTTP_server \
 			    libraries/utilities/ring_buffer
 HAL_WICED_INCLUDE_DIRS +=   wiced
 HAL_WICED_INCLUDE_DIRS +=   wiced/network/$(HAL_WICED_NETWORK) \
@@ -85,3 +86,6 @@ ASRC +=
 
 
 
+# Uncomment this to build the bootloader source file. 
+#$(HAL_PLATFORM_SRC_PATH)/bootloader_platform_$(PLATFORM_ID).cc $(COMMON_BUILD)/target/bootloader/platform-$(PLATFORM_ID)-lto/bootloader.bin
+#	xxd -i $< > $@

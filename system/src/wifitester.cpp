@@ -4,7 +4,7 @@
  * @authors  David Middlecamp, Matthew McGowan
  * @version V1.0.0
  ******************************************************************************
-  Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -173,7 +173,7 @@ void WiFiTester::wifiScan() {
     WiFi.on();
     serialPrintln("SCAN_START");
     wlan_scan_aps(wlan_scan_callback, this);
-    serialPrintln("SCAN_STOP");    
+    serialPrintln("SCAN_STOP");
 }
 #endif
 
@@ -202,7 +202,7 @@ const char* parseAntennaSelect(const char* c, WLanSelectAntenna_TypeDef& select)
         if (!strncmp(names[i], c, strlen(c))) {
             select = WLanSelectAntenna_TypeDef(i);
             return names[i];
-        }            
+        }
     }
     return NULL;
 }
@@ -289,11 +289,11 @@ void WiFiTester::checkWifiSerial(char c) {
             if (WiFi.hasCredentials())
                 WiFi.clearCredentials();
         }
-#if WIFI_SCAN        
+#if WIFI_SCAN
         else if ((start = strstr(command, cmd_WIFI_SCAN))) {
             wifiScan();
         }
-#endif        
+#endif
         else if ((start = strstr(command, cmd_SET_PIN))) {
             tokenizeCommand(start, parts, 5);
             bool ok = parts[1] && parts[2];
@@ -321,7 +321,7 @@ void WiFiTester::checkWifiSerial(char c) {
                     setPinOutput(A0 + (parts[1][1]-'0'), pinValue);
                 }
                 else {
-                    ok = false;                
+                    ok = false;
                 }
             }
             if (ok) {
@@ -335,7 +335,7 @@ void WiFiTester::checkWifiSerial(char c) {
             tokenizeCommand(start, parts, 5);
             long productID = strtoul(parts[1], NULL, 10);
             if (productID) {
-                ApplicationProductID set(productID);
+                spark_protocol_set_product_id(spark_protocol_instance(), productID);
                 product_details_t details;
                 details.size = sizeof(details);
                 spark_protocol_get_product_details(spark_protocol_instance(), &details);
@@ -343,7 +343,7 @@ void WiFiTester::checkWifiSerial(char c) {
                 String id(details.product_id);
                 serialPrintln(id.c_str());
             }
-            
+
         }
         else if ((start=strstr(command, cmd_ANT))) {
             tokenizeCommand(start, parts, 5);
@@ -362,7 +362,7 @@ void WiFiTester::checkWifiSerial(char c) {
                 wifiScan();
                 serialPrintln("ANTENNA TEST COMPLETE");
             }
-            else {                
+            else {
                 WLanSelectAntenna_TypeDef selectAntenna;
                 const char* name;
                 if ((name=parseAntennaSelect(parts[1], selectAntenna))!=NULL) {
@@ -383,7 +383,7 @@ void WiFiTester::serialPrintln(const char * str) {
         Serial1.println(str);
         Serial1.flush();
     }
-#endif    
+#endif
 }
 
 void WiFiTester::serialPrint(const char * str) {
@@ -394,7 +394,7 @@ void WiFiTester::serialPrint(const char * str) {
         Serial1.print(str);
         Serial1.flush();
     }
-#endif    
+#endif
 }
 
 uint8_t WiFiTester::serialAvailable() {
@@ -412,7 +412,7 @@ int32_t WiFiTester::serialRead() {
 #if USE_SERIAL1
     if (useSerial1 && Serial1.available())
         return Serial1.read();
-#endif    
+#endif
     return 0;
 }
 

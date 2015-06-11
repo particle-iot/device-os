@@ -6,7 +6,7 @@
  * @date    13-March-2013
  * @brief   Header for spark_wiring_tcpserver.cpp module
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -40,12 +40,13 @@ private:
 
 public:
 	TCPServer(uint16_t, network_interface_t nif=0);
+        ~TCPServer() { stop(); }
 
 	TCPClient available();
 	virtual bool begin();
 	virtual size_t write(uint8_t);
 	virtual size_t write(const uint8_t *buf, size_t size);
-
+        void stop();
 	using Print::write;
 };
 

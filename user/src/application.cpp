@@ -6,7 +6,7 @@
  * @date    05-November-2013
  * @brief   Tinker application
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -23,7 +23,7 @@
  ******************************************************************************
  */
 
-/* Includes ------------------------------------------------------------------*/  
+/* Includes ------------------------------------------------------------------*/
 #include "application.h"
 #include "stdarg.h"
 
@@ -45,12 +45,28 @@ void setup()
 
     Spark.function("analogread", tinkerAnalogRead);
     Spark.function("analogwrite", tinkerAnalogWrite);
+
+    Serial1.begin(38400);  // open Serial1 over TX and RX pins 38400 baud
+    delay(100);
+    Serial1.println("38400");
+
+    Serial1.end();  // close Serial1
+    delay(100);
+
+    Serial1.begin(57600);   // open Serial1 over TX and RX pins 57600 baud
+    delay(100);
+    Serial1.println("57600");
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-    //This will run in a loop
+    RGB.control(true);
+    RGB.color(255, 255, 0);
+    delay(1000);
+
+    Serial1.println("test");
+
 }
 
 /*******************************************************************************

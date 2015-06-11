@@ -6,7 +6,7 @@
  * @date    25-Sept-2014
  * @brief
  ******************************************************************************
-  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -35,7 +35,7 @@ extern "C" {
 #include <stdint.h>
 #include "system_tick_hal.h"
 #include "inet_hal.h"
-    
+
 typedef struct _sockaddr_t
 {
     uint16_t   sa_family;
@@ -76,7 +76,6 @@ sock_result_t socket_reset_blocking_call();
 
 sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif);
 sock_result_t socket_accept(sock_handle_t sd);
-void socket_dispose_tcp_server(sock_handle_t sock);
 
 /**
  * Retrieves the handle of an invalid socket.

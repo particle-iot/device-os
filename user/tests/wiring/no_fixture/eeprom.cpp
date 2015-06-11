@@ -6,7 +6,7 @@
  * @date    7-Oct-2014
  * @brief   EEPROM test application
  ******************************************************************************
-  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -25,6 +25,12 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+
+struct EEPROMCustomObject{
+  float fValue;
+  byte bValue;
+  char sValue[10];
+};
 
 test(EEPROM_ReadWriteSucceedsForAllAddressWithInRange) {
     int EEPROM_SIZE = EEPROM.length();
@@ -59,5 +65,17 @@ test(EEPROM_ReadWriteFailsForAnyAddressOutOfRange) {
     {
         assertNotEqual(EEPROM.read(address), data);
     }
+}
+
+test(EEPROM_PutGetSucceedsForCustomDataType) {
+    // when
+    EEPROMCustomObject putCustomData = { 123.456f, 100, "Success" };
+    EEPROM.put(0, putCustomData);
+    // then
+    EEPROMCustomObject getCustomData;
+    EEPROM.get(0, getCustomData);
+    assertEqual(putCustomData.fValue, getCustomData.fValue);
+    assertEqual(putCustomData.bValue, getCustomData.bValue);
+    assertEqual(strcmp(putCustomData.sValue, getCustomData.sValue), 0);
 }
 

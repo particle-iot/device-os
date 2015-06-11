@@ -6,7 +6,7 @@
   * @date    15-Nov-2013
   * @brief   SPARK PROTOCOL
   ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -201,7 +201,7 @@ class SparkProtocol
     void empty_ack(unsigned char *buf,
                           unsigned char message_id_msb,
                           unsigned char message_id_lsb) {
-        coded_ack(buf, message_id_msb, message_id_lsb, 0x00);
+        coded_ack(buf, 0, message_id_msb, message_id_lsb);
     };
     
     

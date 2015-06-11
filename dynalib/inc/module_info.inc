@@ -5,7 +5,7 @@
  * @date    16-February-2015
  * @brief
  ******************************************************************************
- Copyright (c) 2013-15 Spark Labs, Inc.  All rights reserved.
+ Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Lesser General Public
@@ -61,7 +61,7 @@ module_scheme_t module_scheme(const module_info_t* mi) {
 /**
  * Verifies the module platform ID matches the current system platform ID.
  * @param mi
- * @return 
+ * @return
  */
 uint8_t module_info_matches_platform(const module_info_t* mi) {
     return module_platform_id(mi) == PLATFORM_ID;
@@ -70,7 +70,7 @@ uint8_t module_info_matches_platform(const module_info_t* mi) {
 
 
 /**
- * Defines the module info block that appears at the start of the module, or after the VTOR table 
+ * Defines the module info block that appears at the start of the module, or after the VTOR table
  * in modules that have that.
  */
 
@@ -106,16 +106,26 @@ __attribute__((externally_visible, section(".modinfo.module_info"))) const modul
     MODULE_VERSION,             /* module version */
     (uint16_t)(PLATFORM_ID),    /* platform ID */
     (uint8_t)(MODULE_FUNCTION), /* module function */
-    (uint8_t)(MODULE_INDEX),    /* module index (part1 part2 etc..) */        
+    (uint8_t)(MODULE_INDEX),    /* module index (part1 part2 etc..) */
     { MODULE_DEPENDENCY },
     0
 };
+
+
+/**
+ * 4 additional bytes for the product_id and product_version values.
+ */
+#define MODULE_INFO_SUFFIX_EXTRA 4
+
+__attribute__((weak, externally_visible, section(".modinfo.product_id"))) uint16_t __system_product_id = -1;
+__attribute__((weak, externally_visible, section(".modinfo.product_version"))) uint16_t __system_product_version = -1;
+
 
 // These are placed in a non-default (.rodata) section because they come after all the .rodata is included in the linker scripts.
 // Doing it like this is simpler than setting up exclusion rules.
 
 __attribute__((externally_visible, section(".modinfo.module_info_suffix"))) const module_info_suffix_t module_info_suffix = {
-    0, { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 }, sizeof(module_info_suffix_t)
+    0, { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 }, sizeof(module_info_suffix_t)+MODULE_INFO_SUFFIX_EXTRA
 };
 
 __attribute__((externally_visible, section(".modinfo.module_info_crc"))) const module_info_crc_t module_info_crc = {

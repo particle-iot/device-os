@@ -6,7 +6,7 @@
  * @date    13-March-2013
  * @brief   Header for spark_wiring_spi.c module
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   Copyright (c) 2010 by Cristian Maglie <c.maglie@bug.st>
 
   This library is free software; you can redistribute it and/or
@@ -31,6 +31,8 @@
 #include "spark_wiring_platform.h"
 #include "spi_hal.h"
 
+typedef void (*wiring_spi_dma_transfercomplete_callback_t)(void);
+
 class SPIClass {
 private:
   HAL_SPI_Interface _spi;
@@ -48,6 +50,7 @@ public:
   void setClockDivider(uint8_t);
 
   byte transfer(byte _data);
+  void transfer(void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback);
 
   void attachInterrupt();
   void detachInterrupt();

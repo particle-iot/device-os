@@ -6,7 +6,7 @@
  * @date    25-Sept-2014
  * @brief
  ******************************************************************************
-  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -128,6 +128,13 @@ int wlan_connected_rssi();
 int wlan_clear_credentials();
 int wlan_has_credentials();
 
+// Provide compatibility with the original cc3000 headers.
+#ifdef WLAN_SEC_UNSEC
+#undef WLAN_SEC_UNSEC
+#undef WLAN_SEC_WEP
+#undef WLAN_SEC_WPA
+#undef WLAN_SEC_WPA2
+#endif
 typedef enum {
     WLAN_SEC_UNSEC,
     WLAN_SEC_WEP,
@@ -135,6 +142,7 @@ typedef enum {
     WLAN_SEC_WPA2,
     WLAN_SEC_NOT_SET
 } WLanSecurityType;
+
 
 typedef enum {
     WLAN_CIPHER_NOT_SET = 0,

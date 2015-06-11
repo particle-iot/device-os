@@ -6,7 +6,7 @@
  * @date    05-Nov-2014
  * @brief   USB Virtual COM Port and HID device HAL
  ******************************************************************************
-  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   Copyright 2012 STMicroelectronics
   http://www.st.com/software_license_agreement_liberty_v2
@@ -51,15 +51,15 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 
 /* Extern variables ----------------------------------------------------------*/
 #ifdef USB_CDC_ENABLE
-extern LINE_CODING linecoding;
-extern uint8_t USB_DEVICE_CONFIGURED;
-extern uint8_t USB_Rx_Buffer[];
-extern uint8_t APP_Rx_Buffer[];
-extern uint32_t APP_Rx_ptr_in;
-extern uint16_t USB_Rx_length;
-extern uint16_t USB_Rx_ptr;
-extern uint8_t  USB_Tx_State;
-extern uint8_t  USB_Rx_State;
+extern volatile LINE_CODING linecoding;
+extern volatile uint8_t USB_DEVICE_CONFIGURED;
+extern volatile uint8_t USB_Rx_Buffer[];
+extern volatile uint8_t APP_Rx_Buffer[];
+extern volatile uint32_t APP_Rx_ptr_in;
+extern volatile uint16_t USB_Rx_length;
+extern volatile uint16_t USB_Rx_ptr;
+extern volatile uint8_t  USB_Tx_State;
+extern volatile uint8_t  USB_Rx_State;
 #endif
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)

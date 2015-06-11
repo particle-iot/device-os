@@ -9,7 +9,7 @@
  * 			http://www.st.com/st-web-ui/static/active/en/resource/
  * 			technical/document/application_note/CD00165693.pdf
  ******************************************************************************
-  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -29,24 +29,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "spark_wiring_eeprom.h"
 
-EEPROMClass::EEPROMClass()
+EEPROMInitClass::EEPROMInitClass()
 {
     HAL_EEPROM_Init();
+    //Calling the below here just to get rid of compiler error: 'EEPROM' defined but not used
+    EEPROM.length();
 }
 
-uint8_t EEPROMClass::read(int address) const
-{
-    return HAL_EEPROM_Read(address);
-}
-
-void EEPROMClass::write(int address, uint8_t value)
-{
-    HAL_EEPROM_Write(address, value);
-}
-
-size_t EEPROMClass::length() const
-{
-    return HAL_EEPROM_Length();
-}
-
-EEPROMClass EEPROM;
+EEPROMInitClass EEPROMInit;

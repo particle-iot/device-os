@@ -5,8 +5,8 @@ This folder contains the sources to bootstrap development of a new HAL implement
 - test build an empty HAL: `make PLATFORM_ID=60000` this creates empty elf files for the bootloader and main. (They are empty because the linker scripts are empty, so no sections are output.)
 - get a new Platform ID from Particle (or assign the next free one yourself temporarily until one is assigned to you). Platform IDs are listed in `build/platform-id.mk`
 - duplicate all the parts in platform-id.mk referring to `newhal` and rename to your product
-- duplicate this directory (`hal/src/newehal/`), and rename to match `PLATFORM_NAME` as defined for your product (in platform-id.mk)
-- duplicate `platform/MCU/newhal-mcu` to a new folder and rename to match the `PLATFORM_MCU` value for your product (in product-id.mk), unless you are duplicating an existing platform with your new device; in that case just use an existing platform such as `platform/MCU/STM32F2xx`.
+- duplicate this directory (`hal/src/newhal/`), and rename to match `PLATFORM_NAME` as defined for your product (in platform-id.mk)
+- duplicate `platform/MCU/newhal-mcu` to a new folder and rename to match the `PLATFORM_MCU` value for your product (in product-id.mk)
 - duplicate `build/arm/linker/linker_newhalcpu.ld` and rename, substituting newhalcpu for the value of `STM32_DEVICE` for your product.
 - duplicate `build/arm/startup/linker_newhalcpu.S` and rename, substituting newhalcpu for the value of `STM32_DEVICE` for your product.
 - create a new symbolic reference for your new platform in `firmware/platform/shared/platforms.h` that uses the same PLATFORM_ID you created earlier (e.g. `#define PLATFORM_ELECTRON_PRODUCTION 10`).

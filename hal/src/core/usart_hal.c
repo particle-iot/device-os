@@ -6,7 +6,7 @@
  * @date    12-Sept-2014
  * @brief
  ******************************************************************************
-  Copyright (c) 2013-14 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -183,12 +183,15 @@ void HAL_USART_End(HAL_USART_Serial serial)
   // wait for transmission of outgoing data
   while (usartMap[serial]->usart_tx_buffer->head != usartMap[serial]->usart_tx_buffer->tail);
 
+  // Disable the USART
+  USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
+
+  // Deinitialise USART
+  USART_DeInit(usartMap[serial]->usart_peripheral);
+
   // Disable USART Receive and Transmit interrupts
   USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, DISABLE);
   USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, DISABLE);
-
-  // Disable the USART
-  USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
 
   NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -198,17 +201,20 @@ void HAL_USART_End(HAL_USART_Serial serial)
 
   NVIC_Init(&NVIC_InitStructure);
 
+  // Disable USART Clock
+  *usartMap[serial]->usart_apbReg &= ~usartMap[serial]->usart_clock_en;
+
   // clear any received data
   usartMap[serial]->usart_rx_buffer->head = usartMap[serial]->usart_rx_buffer->tail;
-
-  // null ring buffer pointers
-  usartMap[serial]->usart_tx_buffer = NULL;
-  usartMap[serial]->usart_rx_buffer = NULL;
 
   // Undo any pin re-mapping done for this USART
   GPIO_PinRemapConfig(usartMap[serial]->usart_pin_remap, DISABLE);
 
+  memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
+  memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
+
   usartMap[serial]->usart_enabled = false;
+  usartMap[serial]->usart_transmitting = false;
 }
 
 uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)

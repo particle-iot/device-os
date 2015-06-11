@@ -4,7 +4,7 @@
  * @authors mat
  * @date    04 March 2015
  ******************************************************************************
-  Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -43,7 +43,7 @@ DYNALIB_FN(hal_socket,socket_close)
 DYNALIB_FN(hal_socket,socket_reset_blocking_call)
 DYNALIB_FN(hal_socket,socket_create_tcp_server)
 DYNALIB_FN(hal_socket,socket_accept)
-DYNALIB_FN(hal_socket,socket_handle_invalid)        
+DYNALIB_FN(hal_socket,socket_handle_invalid)
 DYNALIB_END(hal_socket)
 
 #endif	/* HAL_DYNALIB_SOCKET_H */

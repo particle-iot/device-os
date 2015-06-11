@@ -4,9 +4,9 @@
  * @author  Satish Nair
  * @version V1.0.0
  * @date    13-Nov-2013
- * @brief   
+ * @brief
  ******************************************************************************
-  Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -46,8 +46,14 @@ bool TCPServer::begin()
         _sock = result;
         return true;
     }
-    _sock = socket_handle_invalid();
+    stop();
     return false;
+}
+
+void TCPServer::stop()
+{
+    socket_close(_sock);
+    _sock = socket_handle_invalid();
 }
 
 TCPClient TCPServer::available()
@@ -80,12 +86,12 @@ TCPClient TCPServer::available()
     return _client;
 }
 
-size_t TCPServer::write(uint8_t b) 
+size_t TCPServer::write(uint8_t b)
 {
     return write(&b, 1);
 }
 
-size_t TCPServer::write(const uint8_t *buffer, size_t size) 
+size_t TCPServer::write(const uint8_t *buffer, size_t size)
 {
     return _client.write(buffer, size);
 }

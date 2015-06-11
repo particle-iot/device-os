@@ -6,7 +6,7 @@
  * @date    30-Jan-2015
  * @brief   Header for flash media access layer
  ******************************************************************************
-  Copyright (c) 2015 Spark Labs, Inc.  All rights reserved.
+  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -27,6 +27,7 @@
 #ifndef __FLASH_MAL_H
 #define __FLASH_MAL_H
 
+#include "hw_config.h"
 #include "flash_device_hal.h"
 #include "module_info.h"
 #include "module_info_hal.h"
