@@ -502,6 +502,22 @@ void SysTickChain()
     SysTickOverride();
 }
 
+#ifdef UNUSED
+#undef UNUSED
+#endif
+#define UNUSED(x) (void)(x)
+
+uint8_t handle_timer(TIM_TypeDef* TIMx, uint16_t TIM_IT, hal_irq_t irq)
+{
+    uint8_t result = (TIM_GetITStatus(TIMx, TIM_IT)!=RESET);
+    if (result) {
+        HAL_System_Interrupt_Trigger(irq, NULL);
+        TIM_ClearITPendingBit(TIMx, TIM_IT);
+    }
+    return result;
+}
+
+
 /**
  * The following tick hook will only get called if configUSE_TICK_HOOK
  * is set to 1 within FreeRTOSConfig.h
@@ -546,6 +562,13 @@ void Mode_Button_EXTI_irq(void)
     chain();
 }
 
+
+
+void ADC_irq()
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_ADC_IRQ, NULL);
+}
+
 /**
  * @brief  This function handles TIM1_CC_IRQ Handler.
  * @param  None
@@ -558,7 +581,14 @@ void TIM1_CC_irq(void)
         HAL_TIM1_Handler();
     }
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_CC, NULL);
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_CC_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM1, TIM_IT_CC1, SysInterrupt_TIM1_Compare1) ||
+    handle_timer(TIM1, TIM_IT_CC2, SysInterrupt_TIM1_Compare2) ||
+    handle_timer(TIM1, TIM_IT_CC3, SysInterrupt_TIM1_Compare3) ||
+    handle_timer(TIM1, TIM_IT_CC4, SysInterrupt_TIM1_Compare4);
+    UNUSED(result);
+
 }
 
 /**
@@ -570,8 +600,6 @@ void TIM2_irq(void)
 {
     if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)
     {
-        TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
-
         if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
         {
             BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
@@ -586,7 +614,15 @@ void TIM2_irq(void)
         }
     }
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM2, NULL);
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM2_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM2, TIM_IT_CC1, SysInterrupt_TIM2_Compare1) ||
+    handle_timer(TIM2, TIM_IT_CC2, SysInterrupt_TIM2_Compare2) ||
+    handle_timer(TIM2, TIM_IT_CC3, SysInterrupt_TIM2_Compare4) ||
+    handle_timer(TIM2, TIM_IT_CC4, SysInterrupt_TIM2_Compare3) ||
+    handle_timer(TIM2, TIM_IT_Update, SysInterrupt_TIM2_Update) ||
+    handle_timer(TIM2, TIM_IT_Trigger, SysInterrupt_TIM2_Trigger);
+    UNUSED(result);
 }
 
 /**
@@ -601,7 +637,15 @@ void TIM3_irq(void)
         HAL_TIM3_Handler();
     }
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM3, NULL);
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM3_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM3, TIM_IT_CC1, SysInterrupt_TIM3_Compare1) ||
+    handle_timer(TIM3, TIM_IT_CC2, SysInterrupt_TIM3_Compare2) ||
+    handle_timer(TIM3, TIM_IT_CC3, SysInterrupt_TIM3_Compare4) ||
+    handle_timer(TIM3, TIM_IT_CC4, SysInterrupt_TIM3_Compare3) ||
+    handle_timer(TIM3, TIM_IT_Update, SysInterrupt_TIM3_Update) ||
+    handle_timer(TIM3, TIM_IT_Trigger, SysInterrupt_TIM3_Trigger);
+    UNUSED(result);
 }
 
 /**
@@ -616,22 +660,16 @@ void TIM4_irq(void)
         HAL_TIM4_Handler();
     }
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM4, NULL);
-}
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM4_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM4, TIM_IT_CC1, SysInterrupt_TIM4_Compare1) ||
+    handle_timer(TIM4, TIM_IT_CC2, SysInterrupt_TIM4_Compare2) ||
+    handle_timer(TIM4, TIM_IT_CC3, SysInterrupt_TIM4_Compare4) ||
+    handle_timer(TIM4, TIM_IT_CC4, SysInterrupt_TIM4_Compare3) ||
+    handle_timer(TIM4, TIM_IT_Update, SysInterrupt_TIM4_Update) ||
+    handle_timer(TIM4, TIM_IT_Trigger, SysInterrupt_TIM4_Trigger);
+    UNUSED(result);
 
-#ifdef UNUSED
-#undef UNUSED
-#endif
-#define UNUSED(x) (void)(x)
-
-uint8_t handle_timer(TIM_TypeDef* TIMx, uint16_t TIM_IT, hal_irq_t irq)
-{
-    uint8_t result = (TIM_GetITStatus(TIMx, TIM_IT)!=RESET);
-    if (result) {
-        HAL_System_Interrupt_Trigger(irq, NULL);
-        TIM_ClearITPendingBit(TIMx, TIM_IT);
-    }
-    return result;
 }
 
 /**
@@ -646,19 +684,27 @@ void TIM5_irq(void)
         HAL_TIM5_Handler();
     }
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM5, NULL);
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM5_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM5, TIM_IT_CC1, SysInterrupt_TIM5_Compare1) ||
+    handle_timer(TIM5, TIM_IT_CC2, SysInterrupt_TIM5_Compare2) ||
+    handle_timer(TIM5, TIM_IT_CC3, SysInterrupt_TIM5_Compare4) ||
+    handle_timer(TIM5, TIM_IT_CC4, SysInterrupt_TIM5_Compare3) ||
+    handle_timer(TIM5, TIM_IT_Update, SysInterrupt_TIM5_Update) ||
+    handle_timer(TIM5, TIM_IT_Trigger, SysInterrupt_TIM5_Trigger);
+    UNUSED(result);
 }
 
 void TIM6_DAC_irq(void)
 {
     HAL_System_Interrupt_Trigger(SysInterrupt_TIM6_DAC_IRQ, NULL);
-
     handle_timer(TIM6, TIM_IT_Update, SysInterrupt_TIM6_Update);
 }
 
 void TIM7_override(void)
 {
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM7, NULL);
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM7_IRQ, NULL);
+    handle_timer(TIM7, TIM_IT_Update, SysInterrupt_TIM7_Update);
 }
 
 void TIM8_BRK_TIM12_irq(void) {
@@ -740,6 +786,25 @@ void TIM1_TRG_COM_TIM11_irq(void) {
     UNUSED(result);
 }
 
+void CAN2_TX_irq()
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_TX_IRQ, NULL);
+}
+
+void CAN2_RX0_irq()
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX0_IRQ, NULL);
+}
+
+void CAN2_RX1_irq()
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX1_IRQ, NULL);
+}
+
+void CAN2_SCE_irq()
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_SCE_IRQ, NULL);
+}
 
 void HAL_Bootloader_Lock(bool lock)
 {
