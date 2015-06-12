@@ -37,6 +37,12 @@
 #include "wwd_sdpcm.h"
 #include "delay_hal.h"
 #include "wlan_scan.h"
+#include "dct_hal.h"
+
+// dns.h includes a class member, which doesn't compile in C++
+#define class clazz
+#include "dns.h"
+#undef class
 
 bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
 {
@@ -69,6 +75,10 @@ wiced_result_t wlan_initialize_dct()
     return result;
 }
 
+const static_ip_config_t* wlan_fetch_saved_ip_config()
+{
+    return (const static_ip_config_t*)dct_read_app_data(DCT_IP_CONFIG_OFFSET);
+}
 
 uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
 {
@@ -138,17 +148,46 @@ int wlan_connect_init()
     return 0;
 }
 
+bool to_wiced_ip_address(wiced_ip_address_t& wiced, const dct_ip_address_v4_t& dct)
+{
+	if (dct!=0) {
+		wiced.ip.v4 = dct;
+		wiced.version = WICED_IPV4;
+	}
+    return (dct!=0);
+}
+
 /**
  * Do what is needed to finalize the connection.
  * @return
  */
 wlan_result_t wlan_connect_finalize()
 {
+    const static_ip_config_t& ip_config = *wlan_fetch_saved_ip_config();
+
     // enable connection from stored profiles
     wlan_result_t result = wiced_interface_up(WICED_STA_INTERFACE);
     if (!result) {
         HAL_WLAN_notify_connected();
-        result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);
+        wiced_ip_setting_t settings;
+        wiced_ip_address_t dns;
+
+        switch (IPAddressSource(ip_config.config_mode)) {
+            case STATIC_IP:
+                to_wiced_ip_address(settings.ip_address, ip_config.host);
+                to_wiced_ip_address(settings.netmask, ip_config.netmask);
+                to_wiced_ip_address(settings.gateway, ip_config.gateway);
+                result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_STATIC_IP, &settings);
+                if (!result) {
+                    if (to_wiced_ip_address(dns, ip_config.dns1))
+                        dns_client_add_server_address(dns);
+                    if (to_wiced_ip_address(dns, ip_config.dns2))
+                        dns_client_add_server_address(dns);
+                }
+            default:
+                result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);
+                break;
+        }
     }
     // DHCP happens synchronously
     HAL_WLAN_notify_dhcp(!result);
@@ -482,4 +521,44 @@ void wlan_connect_cancel(bool called_from_isr)
 {
     wiced_network_up_cancel = 1;
     wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
+}
+
+
+/**
+ * Sets the IP source - static or dynamic.
+ */
+void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reserved)
+{
+    char c = source;
+    dct_write_app_data(&c, DCT_IP_CONFIG_OFFSET+offsetof(static_ip_config_t, config_mode), 1);
+}
+
+
+void assign_if_set(dct_ip_address_v4_t& dct_address, const HAL_IPAddress* address)
+{
+    if (address && is_ipv4(address)) {
+            dct_address = address->ipv4;
+    }
+}
+
+/**
+ * Sets the IP Addresses to use when the device is in static IP mode.
+ * @param host
+ * @param netmask
+ * @param gateway
+ * @param dns1
+ * @param dns2
+ * @param reserved
+ */
+void wlan_set_ipaddress(const HAL_IPAddress* host, const HAL_IPAddress* netmask, const HAL_IPAddress* gateway, const HAL_IPAddress* dns1, const HAL_IPAddress* dns2, void* reserved)
+{
+    const static_ip_config_t* pconfig = wlan_fetch_saved_ip_config();
+    static_ip_config_t config;
+    memcpy(&config, pconfig, sizeof(config));
+    assign_if_set(config.host, host);
+    assign_if_set(config.netmask, netmask);
+    assign_if_set(config.gateway, gateway);
+    assign_if_set(config.dns1, dns1);
+    assign_if_set(config.dns2, dns2);
+    dct_write_app_data(&config, DCT_IP_CONFIG_OFFSET, sizeof(config));
 }
