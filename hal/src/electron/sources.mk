@@ -1,12 +1,15 @@
 
 HAL_SRC_TEMPLATE_PATH = $(TARGET_HAL_PATH)/src/template
+HAL_SRC_ELECTRON_PATH = $(TARGET_HAL_PATH)/src/electron
 
 templatedir=$(HAL_SRC_TEMPLATE_PATH)
-overridedir=$(HAL_SRC_NEWHAL_PATH)
+overridedir=$(HAL_SRC_ELECTRON_PATH)
+
+INCLUDE_DIRS += $(HAL_SRC_ELECTRON_PATH)
 
 # C source files included in this build.
 # Use files from the template unless they are overridden by files in the 
-# core-v2 folder. Also manually exclude some files that have changed from c->cpp.
+# electron folder. Also manually exclude some files that have changed from c->cpp.
 
 CSRC += $(call target_files,$(templatedir)/,*.c)
 CPPSRC += $(call target_files,$(templatedir)/,*.cpp)
