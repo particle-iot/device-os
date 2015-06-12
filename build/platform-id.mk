@@ -205,7 +205,8 @@ endif
 
 ifeq ("$(PLATFORM_ID)","10")
 PLATFORM=electron
-STM32_DEVICE=STM32F2XX_ELECTRON
+#assembler startup target: 'startup_stm32f2xx_electron.S'
+STM32_DEVICE=stm32f2xx_electron
 PLATFORM_NAME=electron
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=UBLOXSARA
@@ -218,6 +219,7 @@ endif
 
 ifeq ("$(PLATFORM_ID)","60000")
 PLATFORM=newhal
+#assembler startup target: 'startup_newhalcpu.S'
 STM32_DEVICE=newhalcpu
 # used to define the sources in hal/src/new-hal
 PLATFORM_NAME=newhal
