@@ -45,28 +45,11 @@ void setup()
 
     Spark.function("analogread", tinkerAnalogRead);
     Spark.function("analogwrite", tinkerAnalogWrite);
-
-    Serial1.begin(38400);  // open Serial1 over TX and RX pins 38400 baud
-    delay(100);
-    Serial1.println("38400");
-
-    Serial1.end();  // close Serial1
-    delay(100);
-
-    Serial1.begin(57600);   // open Serial1 over TX and RX pins 57600 baud
-    delay(100);
-    Serial1.println("57600");
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-    RGB.control(true);
-    RGB.color(255, 255, 0);
-    delay(1000);
-
-    Serial1.println("test");
-
 }
 
 /*******************************************************************************
