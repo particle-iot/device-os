@@ -4,7 +4,13 @@
 #include "bootloader.h"
 #include "module_info.h"
 
-#if PLATFORM_ID==6 && !defined(SYSTEM_MINIMAL)
+#if !defined(SYSTEM_MINIMAL)
+#if PLATFORM_ID==6 || PLATFORM_ID==8
+#define HAL_REPLACE_BOOTLOADER
+#endif
+#endif
+
+#ifdef HAL_REPLACE_BOOTLOADER
 
 /**
  * Manages upgrading the bootloader.
@@ -45,6 +51,8 @@ bool bootloader_update_if_needed()
     }
     return updated;
 }
+
+
 
 #else
 
