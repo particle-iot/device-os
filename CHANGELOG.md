@@ -1,26 +1,35 @@
 
 ## v0.4.2
 
+### FEATURES
+ - EEPROM storage of custom data types via `EEPROM.put()` and `EEPROM.get()'
+ - When the device is in safe mode, the LED breathes magenta
+ - `attachSystemInterrupt()` allows hooking key system interrupts in user code.
+ - [DMA-driven SPI master](https://github.com/spark/docs/pull/49)
+ - `UDP.sendPacket()` method avoids buffering data when the user can supply the entire buffer at once.
+ - [Photon] SoftAP setup can be done over HTTP
+ - platform-neutral fast pin access [449](https://github.com/spark/firmware/pull/449)
+ - [P1] Serial2 support
+
 ### ENHANCEMENTS
 
- - On the Photon, the system updates the bootloader to latest version
- - When the device is in safe mode, the LED breathes magenta
- - SoftAP setup over HTTP
+ - [Photon] The system firmware updates the bootloader to latest version
+ - [Photon] The system write protects the bootloader region.
  - UDP uses dynamically allocated buffers
- - `UDP.sendPacket()` method avoids buffering data when the user can supply the entire buffer at once.
- - [DMA-driven SPI master](https://github.com/spark/docs/pull/49)
- - EEPROM storage of custom data types via `EEPROM.put()` and `EEPROM.get()'
- -
+ - `PRODUCT_ID` and `PRODUCT_VERSION` place these details at a known place in the firmware image
+ - DFU mode and serial firmware update can be triggered by setting the line rate.
+
 
 ### BUGFIXES
 
  - `Serial1.end()` [hangs the system](https://community.particle.io/t/changing-serial-baud-rate-inside-setup-code-causes-core-freezing-afterwards/10314/6)
  - Malformed CoAP acknowledgement message in cloud protocol.
- - DCT could become unmodifiable from time to time
  - `SPARK_WLAN_Loop()` was not linked. (Workaround was to use `Spark.process()`)
  - UDP doesn't send anything to the device until `UDP.write()` [#407](https://github.com/spark/firmware/issues/407)
-
-
+ - Divide by zero now caught and causes a SOS.
+ - Floating-point support for `sprintf()` reinstated
+ - Fixed WICED DCT becoming unmodifiable
+ 
 ## v0.4.1
 
 ### ENHANCEMENTS
