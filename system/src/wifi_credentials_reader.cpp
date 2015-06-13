@@ -183,7 +183,7 @@ void WiFiCredentialsReader::handle(char c)
     }
     else if ('m' == c)
     {
-        print("Your core MAC address is\r\n");
+        print("Your device MAC address is\r\n");
         WLanConfig ip_config;
         ip_config.size = sizeof(ip_config);
         wlan_fetch_ipconfig(&ip_config);
