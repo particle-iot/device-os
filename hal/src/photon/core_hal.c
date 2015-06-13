@@ -58,6 +58,7 @@ const unsigned UsageFaultIndex = 6;
 const unsigned SysTickIndex = 15;
 const unsigned USART1Index = 53;
 const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
+const unsigned TIM7Index = 71;
 
 void SysTickOverride(void);
 void SysTickChain(void);
@@ -65,6 +66,7 @@ void Mode_Button_EXTI_irq(void);
 void HAL_USART1_Handler(void);
 void HardFault_Handler(void);
 void UsageFault_Handler(void);
+void TIM7_override(void);
 
 void override_interrupts(void) {
 
@@ -75,6 +77,7 @@ void override_interrupts(void) {
     isrs[SysTickIndex] = (uint32_t)SysTickOverride;
     isrs[USART1Index] = (uint32_t)HAL_USART1_Handler;
     isrs[ButtonExtiIndex] = (uint32_t)Mode_Button_EXTI_irq;
+    isrs[TIM7Index] = (uint32_t)TIM7_override;  // WICED uses this for a JTAG watchdog handler
     SCB->VTOR = (unsigned long)isrs;
 }
 
@@ -107,20 +110,20 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
 
     if (false)
         r0++; r1++; r2++; r3++; r12++; lr++; pc++; psr++;
-    
-        
+
+
     if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
         // stay consistent with the core and cause 5 flashes
         UsageFault_Handler();
     }
-    else {        
-        PANIC(HardFault,"HardFault");
+    else {
+    PANIC(HardFault,"HardFault");
 
-        /* Go to infinite loop when Hard Fault exception occurs */
-        while (1)
-        {
-        }
+    /* Go to infinite loop when Hard Fault exception occurs */
+    while (1)
+    {
     }
+}
 }
 
 
@@ -192,18 +195,18 @@ void HAL_Core_Init(void)
 void HAL_Core_Config(void)
 {
     DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
-    
+
 #ifdef DFU_BUILD_ENABLE
     //Currently this is done through WICED library API so commented.
     //NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x20000);
     USE_SYSTEM_FLAGS = 1;
 #endif
-    
+
     Set_System();
 
     //Wiring pins default to inputs
 #if !defined(USE_SWD_JTAG) && !defined(USE_SWD)
-    for (pin_t pin=0; pin<20; pin++) 
+    for (pin_t pin=0; pin<20; pin++)
         HAL_Pin_Mode(pin, INPUT);
 #endif
 
@@ -223,27 +226,27 @@ void HAL_Core_Config(void)
 
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
-        
+
     // override the WICED interrupts, specifically SysTick - there is a bug
     // where WICED isn't ready for a SysTick until after main() has been called to
     // fully intialize the RTOS.
-    override_interrupts();   
-    
-#if MODULAR_FIRMWARE    
+    override_interrupts();
+
+#if MODULAR_FIRMWARE
     // write protect system module parts if not already protected
-    FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);            
-#endif    
-    
+    FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
+#endif
+
 #ifdef USE_SERIAL_FLASH
     //Initialize Serial Flash
     sFLASH_Init();
 #else
     FLASH_AddToFactoryResetModuleSlot(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS,
                                       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
-                                      FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also    
+                                      FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
 #endif
-    
-    
+
+
 }
 
 #if !MODULAR_FIRMWARE
@@ -251,15 +254,15 @@ __attribute__((externally_visible, section(".early_startup.HAL_Core_Config"))) u
 #endif
 
 void HAL_Core_Setup(void) {
-    
-    
+
+
     // Now that main() has been executed, we can plug in the original WICED ISR in the
     // ISR chain.)
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[SysTickIndex] = (uint32_t)SysTickChain;
-    
+
     /* Reset system to disable IWDG if enabled in bootloader */
-    IWDG_Reset_Enable(0);   
+    IWDG_Reset_Enable(0);
 
     bootloader_update_if_needed();
 
@@ -270,9 +273,9 @@ void HAL_Core_Setup(void) {
 bool HAL_Core_Validate_User_Module(void)
 {
     bool valid = false;
-    
+
     if (!SYSTEM_FLAG(StartupMode_SysFlag) & 1)
-    {    
+    {
         //CRC verification Enabled by default
         if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
         {
@@ -293,7 +296,7 @@ bool HAL_Core_Validate_User_Module(void)
     }
     return valid;
 }
-#endif        
+#endif
 
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
@@ -309,12 +312,12 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 }
 
 void HAL_Core_Mode_Button_Reset(void)
-{    
+{
     BUTTON_ResetDebouncedState(BUTTON1);
 }
 
 void HAL_Core_System_Reset(void)
-{  
+{
     NVIC_SystemReset();
 }
 
@@ -449,7 +452,7 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 
 // todo find a technique that allows accessor functions to be inlined while still keeping
 // hardware independence.
-bool HAL_watchdog_reset_flagged() 
+bool HAL_watchdog_reset_flagged()
 {
     //IWDG is not enabled on Photon boards by default
     //Now support true sleep modes without system reset
@@ -457,28 +460,28 @@ bool HAL_watchdog_reset_flagged()
 }
 
 void HAL_Notify_WDT()
-{    
-    KICK_WDT();    
+{
+    KICK_WDT();
 }
 
 /**
  * The entrypoint from FreeRTOS to our application.
- * 
+ *
  */
-void application_start() 
+void application_start()
 {
-    // one the key is sent to the cloud, this can be removed, since the key is fetched in 
+    // one the key is sent to the cloud, this can be removed, since the key is fetched in
     // Spark_Protocol_init(). This is just a temporary measure while the key still needs
     // to be fetched via DFU.
-    
+
     HAL_Core_Setup();
-    
+
     // normallly allocating such a large buffer on the stack would be a bad idea, however, we are quite near the start of execution, with few levels of recursion.
     char buf[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
     // ensure the private key is provisioned
-    
+
     // Reset the system after generating the key - reports of Serial not being available in listening mode
-    // after generating the key. 
+    // after generating the key.
     private_key_generation_t genspec;
     genspec.size = sizeof(genspec);
     genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
@@ -499,20 +502,38 @@ void SysTickChain()
     SysTickOverride();
 }
 
+#ifdef UNUSED
+#undef UNUSED
+#endif
+#define UNUSED(x) (void)(x)
+
+uint8_t handle_timer(TIM_TypeDef* TIMx, uint16_t TIM_IT, hal_irq_t irq)
+{
+    uint8_t result = (TIM_GetITStatus(TIMx, TIM_IT)!=RESET);
+    if (result) {
+        HAL_System_Interrupt_Trigger(irq, NULL);
+        TIM_ClearITPendingBit(TIMx, TIM_IT);
+    }
+    return result;
+}
+
+
 /**
  * The following tick hook will only get called if configUSE_TICK_HOOK
  * is set to 1 within FreeRTOSConfig.h
  */
 void SysTickOverride(void)
-{    
+{
     System1MsTick();
 
     if (TimingDelay != 0x00)
     {
-        __sync_sub_and_fetch(&TimingDelay, 1);        
+        __sync_sub_and_fetch(&TimingDelay, 1);
     }
 
     HAL_SysTick_Handler();
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_SysTick, NULL);
 }
 
 /**
@@ -541,6 +562,13 @@ void Mode_Button_EXTI_irq(void)
     chain();
 }
 
+
+
+void ADC_irq()
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_ADC_IRQ, NULL);
+}
+
 /**
  * @brief  This function handles TIM1_CC_IRQ Handler.
  * @param  None
@@ -552,6 +580,15 @@ void TIM1_CC_irq(void)
     {
         HAL_TIM1_Handler();
     }
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_CC_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM1, TIM_IT_CC1, SysInterrupt_TIM1_Compare1) ||
+    handle_timer(TIM1, TIM_IT_CC2, SysInterrupt_TIM1_Compare2) ||
+    handle_timer(TIM1, TIM_IT_CC3, SysInterrupt_TIM1_Compare3) ||
+    handle_timer(TIM1, TIM_IT_CC4, SysInterrupt_TIM1_Compare4);
+    UNUSED(result);
+
 }
 
 /**
@@ -563,8 +600,6 @@ void TIM2_irq(void)
 {
     if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)
     {
-        TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
-
         if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
         {
             BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
@@ -578,6 +613,16 @@ void TIM2_irq(void)
             BUTTON_EXTI_Config(BUTTON1, ENABLE);
         }
     }
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM2_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM2, TIM_IT_CC1, SysInterrupt_TIM2_Compare1) ||
+    handle_timer(TIM2, TIM_IT_CC2, SysInterrupt_TIM2_Compare2) ||
+    handle_timer(TIM2, TIM_IT_CC3, SysInterrupt_TIM2_Compare4) ||
+    handle_timer(TIM2, TIM_IT_CC4, SysInterrupt_TIM2_Compare3) ||
+    handle_timer(TIM2, TIM_IT_Update, SysInterrupt_TIM2_Update) ||
+    handle_timer(TIM2, TIM_IT_Trigger, SysInterrupt_TIM2_Trigger);
+    UNUSED(result);
 }
 
 /**
@@ -591,6 +636,16 @@ void TIM3_irq(void)
     {
         HAL_TIM3_Handler();
     }
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM3_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM3, TIM_IT_CC1, SysInterrupt_TIM3_Compare1) ||
+    handle_timer(TIM3, TIM_IT_CC2, SysInterrupt_TIM3_Compare2) ||
+    handle_timer(TIM3, TIM_IT_CC3, SysInterrupt_TIM3_Compare4) ||
+    handle_timer(TIM3, TIM_IT_CC4, SysInterrupt_TIM3_Compare3) ||
+    handle_timer(TIM3, TIM_IT_Update, SysInterrupt_TIM3_Update) ||
+    handle_timer(TIM3, TIM_IT_Trigger, SysInterrupt_TIM3_Trigger);
+    UNUSED(result);
 }
 
 /**
@@ -604,6 +659,17 @@ void TIM4_irq(void)
     {
         HAL_TIM4_Handler();
     }
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM4_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM4, TIM_IT_CC1, SysInterrupt_TIM4_Compare1) ||
+    handle_timer(TIM4, TIM_IT_CC2, SysInterrupt_TIM4_Compare2) ||
+    handle_timer(TIM4, TIM_IT_CC3, SysInterrupt_TIM4_Compare4) ||
+    handle_timer(TIM4, TIM_IT_CC4, SysInterrupt_TIM4_Compare3) ||
+    handle_timer(TIM4, TIM_IT_Update, SysInterrupt_TIM4_Update) ||
+    handle_timer(TIM4, TIM_IT_Trigger, SysInterrupt_TIM4_Trigger);
+    UNUSED(result);
+
 }
 
 /**
@@ -617,8 +683,128 @@ void TIM5_irq(void)
     {
         HAL_TIM5_Handler();
     }
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM5_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM5, TIM_IT_CC1, SysInterrupt_TIM5_Compare1) ||
+    handle_timer(TIM5, TIM_IT_CC2, SysInterrupt_TIM5_Compare2) ||
+    handle_timer(TIM5, TIM_IT_CC3, SysInterrupt_TIM5_Compare4) ||
+    handle_timer(TIM5, TIM_IT_CC4, SysInterrupt_TIM5_Compare3) ||
+    handle_timer(TIM5, TIM_IT_Update, SysInterrupt_TIM5_Update) ||
+    handle_timer(TIM5, TIM_IT_Trigger, SysInterrupt_TIM5_Trigger);
+    UNUSED(result);
 }
 
+void TIM6_DAC_irq(void)
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM6_DAC_IRQ, NULL);
+    handle_timer(TIM6, TIM_IT_Update, SysInterrupt_TIM6_Update);
+}
+
+void TIM7_override(void)
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM7_IRQ, NULL);
+    handle_timer(TIM7, TIM_IT_Update, SysInterrupt_TIM7_Update);
+}
+
+void TIM8_BRK_TIM12_irq(void) {
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_BRK_TIM12_IRQ, NULL);
+
+    uint8_t result =
+    handle_timer(TIM8, TIM_IT_Break, SysInterrupt_TIM8_Break) ||
+    handle_timer(TIM12, TIM_IT_CC1, SysInterrupt_TIM12_Compare1) ||
+    handle_timer(TIM12, TIM_IT_CC2, SysInterrupt_TIM12_Compare2) ||
+    handle_timer(TIM12, TIM_IT_Update, SysInterrupt_TIM12_Update) ||
+    handle_timer(TIM12, TIM_IT_Trigger, SysInterrupt_TIM12_Trigger);
+    UNUSED(result);
+}
+
+void TIM8_UP_TIM13_irq(void) {
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_UP_TIM13_IRQ, NULL);
+
+    uint8_t result =
+    handle_timer(TIM8, TIM_IT_Update, SysInterrupt_TIM8_Update) ||
+    handle_timer(TIM13, TIM_IT_CC1, SysInterrupt_TIM13_Compare) ||
+    handle_timer(TIM13, TIM_IT_Update, SysInterrupt_TIM13_Update);
+    UNUSED(result);
+}
+
+void TIM8_TRG_COM_TIM14_irq(void) {
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_TRG_COM_TIM14_IRQ, NULL);
+
+    uint8_t result =
+    handle_timer(TIM8, TIM_IT_Trigger, SysInterrupt_TIM8_Trigger) ||
+    handle_timer(TIM14, TIM_IT_COM, SysInterrupt_TIM14_COM) ||
+    handle_timer(TIM14, TIM_IT_CC1, SysInterrupt_TIM14_Compare);
+    handle_timer(TIM14, TIM_IT_Update, SysInterrupt_TIM14_Update);
+    UNUSED(result);
+}
+
+void TIM8_CC_irq(void) {
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_IRQ, NULL);
+
+    uint8_t result =
+    handle_timer(TIM8, TIM_IT_CC1, SysInterrupt_TIM8_Compare1) ||
+    handle_timer(TIM8, TIM_IT_CC2, SysInterrupt_TIM8_Compare2) ||
+    handle_timer(TIM8, TIM_IT_CC3, SysInterrupt_TIM8_Compare3);
+    UNUSED(result);
+}
+
+void TIM1_BRK_TIM9_irq(void) {
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_BRK_TIM9_IRQ, NULL);
+
+    uint8_t result =
+    handle_timer(TIM1, TIM_IT_Break, SysInterrupt_TIM1_Break) ||
+    handle_timer(TIM9, TIM_IT_CC1, SysInterrupt_TIM9_Compare1) ||
+    handle_timer(TIM9, TIM_IT_CC2, SysInterrupt_TIM9_Compare2) ||
+    handle_timer(TIM9, TIM_IT_Update, SysInterrupt_TIM9_Update) ||
+    handle_timer(TIM9, TIM_IT_Trigger, SysInterrupt_TIM9_Trigger);
+    UNUSED(result);
+}
+
+void TIM1_UP_TIM10_irq(void) {
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_UP_TIM10_IRQ, NULL);
+
+    uint8_t result =
+    handle_timer(TIM1, TIM_IT_Update, SysInterrupt_TIM1_Update) ||
+    handle_timer(TIM10, TIM_IT_CC1, SysInterrupt_TIM10_Compare) ||
+    handle_timer(TIM10, TIM_IT_Update, SysInterrupt_TIM10_Update);
+    UNUSED(result);
+}
+
+
+void TIM1_TRG_COM_TIM11_irq(void) {
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_TRG_COM_TIM11_IRQ, NULL);
+
+    uint8_t result =
+    handle_timer(TIM1, TIM_IT_Trigger, SysInterrupt_TIM1_Trigger) ||
+    handle_timer(TIM1, TIM_IT_COM, SysInterrupt_TIM1_COM) ||
+    handle_timer(TIM11, TIM_IT_CC1, SysInterrupt_TIM11_Compare) ||
+    handle_timer(TIM11, TIM_IT_Update, SysInterrupt_TIM11_Update);
+    UNUSED(result);
+}
+
+void CAN2_TX_irq()
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_TX_IRQ, NULL);
+}
+
+void CAN2_RX0_irq()
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX0_IRQ, NULL);
+}
+
+void CAN2_RX1_irq()
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX1_IRQ, NULL);
+}
+
+void CAN2_SCE_irq()
+{
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_SCE_IRQ, NULL);
+}
 
 void HAL_Bootloader_Lock(bool lock)
 {

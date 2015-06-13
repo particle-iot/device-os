@@ -29,6 +29,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
+#include "interrupts_irq.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum InterruptMode {
@@ -45,6 +46,11 @@ typedef void (*HAL_InterruptHandler)(void* data);
 
 /* Exported functions --------------------------------------------------------*/
 
+typedef struct HAL_InterruptCallback {
+    HAL_InterruptHandler handler;
+    void* data;
+} HAL_InterruptCallback;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -55,6 +61,11 @@ void HAL_Interrupts_Enable_All(void);
 void HAL_Interrupts_Disable_All(void);
 
 void HAL_Interrupts_Trigger(uint16_t pin, void* reserved);
+
+
+uint8_t HAL_Set_System_Interrupt_Handler(hal_irq_t irq, const HAL_InterruptCallback* callback, HAL_InterruptCallback* previous, void* reserved);
+uint8_t HAL_Get_System_Interrupt_Handler(hal_irq_t irq, HAL_InterruptCallback* callback, void* reserved);
+void HAL_System_Interrupt_Trigger(hal_irq_t irq, void* reserved);
 
 int HAL_disable_irq();
 void HAL_enable_irq(int mask);
