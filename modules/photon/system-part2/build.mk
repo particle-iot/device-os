@@ -1,4 +1,9 @@
 
+# we use wiring (mostly for Stream, String, USBSerial) but we don't want
+# I2C and SPI objects
+GLOBAL_DEFINES += SPARK_WIRING_NO_I2C SPARK_WIRING_NO_SPI
+
+
 ifeq (,$(SYSTEM_PART1_MODULE_VERSION))
 $(error SYSTEM_PART1_MODULE_VERSION not defined)
 endif
