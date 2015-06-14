@@ -104,7 +104,7 @@ extern SystemClass System;
 
 #define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
 
-#define SYSTEM_THREAD(state) STARTUP(system_thread_set_enabled(Spark::Feature::state));
+#define SYSTEM_THREAD(state) STARTUP(system_thread_set_state(spark::feature::state, NULL));
 
 #define waitUntil(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
 #define waitFor(condition) System.waitCondition([]{ return (condition)(); })

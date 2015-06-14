@@ -52,10 +52,15 @@ test(system_api) {
 }
 
 test(system_mode) {
+    // braces are required since the macro evaluates to a declaration
     API_COMPILE({ SYSTEM_MODE(AUTOMATIC) });
     API_COMPILE({ SYSTEM_MODE(SEMI_AUTOMATIC) });
     API_COMPILE({ SYSTEM_MODE(MANUAL) });
+}
 
+test(system_thread_setting) {
+    API_COMPILE({SYSTEM_THREAD(ENABLE)});
+    API_COMPILE({SYSTEM_THREAD(DISABLE)});
 }
 
 test(system_version) {
