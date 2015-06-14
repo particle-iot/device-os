@@ -24,31 +24,22 @@
 #ifndef USER_MODULE_H
 #define	USER_MODULE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
+#include "dynalib.h"
 /**
  * Initializes the static memory for this module.
- *
+ * 
  * @return The end of static memory for this module.
  */
-void* module_user_pre_init();
+DYNALIB_EXTERN_C void* module_user_pre_init();
 
 /**
- * Initializes the global object instances in this module.
+ * Initializes the global object instances in this module. 
  */
-void module_user_init();
+DYNALIB_EXTERN_C void module_user_init();
 
-void module_user_loop();
+DYNALIB_EXTERN_C void module_user_loop();
 
-void module_user_setup();
-
-#ifdef __cplusplus
-}
-#endif
-
+DYNALIB_EXTERN_C void module_user_setup();
 
 #endif	/* USER_MODULE_H */
 
