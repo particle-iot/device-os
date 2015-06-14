@@ -31,6 +31,21 @@ typedef enum
 void set_system_mode(System_Mode_TypeDef mode);
 System_Mode_TypeDef system_mode();
 
+
+
+namespace spark {
+    namespace feature {
+        enum Enum {
+            DISABLE,
+            ENABLE
+        };
+    }
+
+}
+
+void system_thread_set_enabled(spark::feature::Enum feature);
+
+
 #ifdef __cplusplus
 }
 #endif

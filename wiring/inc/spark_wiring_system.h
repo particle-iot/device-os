@@ -24,6 +24,7 @@
 #define	SPARK_WIRING_SYSTEM_H
 #include "spark_wiring_ticks.h"
 #include "spark_wiring_string.h"
+#include "spark_wiring_version.h"
 #include "system_mode.h"
 #include "system_update.h"
 #include "system_sleep.h"
@@ -47,16 +48,16 @@ public:
     static bool firmwareUpdate(Stream *serialObj) {
         return system_firmwareUpdate(serialObj);
     }
-
+    
     static void factoryReset(void);
     static void dfu(bool persist=false);
     static void reset(void);
 
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0);
-    static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }
+    static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }    
     static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0);
     static String deviceID(void) { return spark_deviceID(); }
-
+    
     static bool on(system_event_t events, void(*handler)(system_event_t, uint32_t,void*)) {
         return !system_subscribe_event(events, handler, nullptr);
     }
@@ -103,6 +104,7 @@ extern SystemClass System;
 
 #define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
 
+#define SYSTEM_THREAD(state) STARTUP(system_thread_set_enabled(Spark::Feature::state));
 
 #define waitUntil(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
 #define waitFor(condition) System.waitCondition([]{ return (condition)(); })
