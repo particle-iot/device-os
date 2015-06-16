@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file      startup_stm32f2xx.s
+  * @file      startup_stm32f2xx_electron.s
   * @author    MCD Application Team
   * @version   V1.1.3
   * @date      05-March-2012
