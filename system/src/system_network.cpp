@@ -1,7 +1,26 @@
+/**
+  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************
+ */
+
 #include "spark_wiring_ticks.h"
 #include "system_setup.h"
 #include "system_network.h"
 #include "system_network_internal.h"
+#include "system_threading.h"
 #include "system_cloud.h"
 #include "system_event.h"
 #include "watchdog_hal.h"
@@ -96,7 +115,7 @@ void Start_Smart_Config(void)
     const uint32_t start = millis();
     uint32_t loop = start;
     system_notify_event(wifi_listen_begin, start);
-
+    
     /* Wait for SmartConfig/SerialConfig to finish */
     while (network_listening(0, 0, NULL))
     {
@@ -110,7 +129,7 @@ void Start_Smart_Config(void)
             }
             if (!network_clear_credentials(0, 0, NULL, NULL) || network_has_credentials(0, 0, NULL)) {
                 LED_SetRGBColor(RGB_COLOR_RED);
-                LED_On(LED_RGB);
+                LED_On(LED_RGB);                
 
                 int toggle = 25;
                 while (toggle--)
@@ -119,7 +138,7 @@ void Start_Smart_Config(void)
                     HAL_Delay_Milliseconds(50);
                 }
                 LED_SetRGBColor(RGB_COLOR_BLUE);
-                LED_On(LED_RGB);
+                LED_On(LED_RGB);                
             }
             system_notify_event(wifi_credentials_cleared);
             WLAN_DELETE_PROFILES = 0;
@@ -131,7 +150,7 @@ void Start_Smart_Config(void)
                 LED_Toggle(LED_RGB);
                 loop = now;
                 system_notify_event(wifi_listen_update, now-start);
-            }
+            }            
             console.loop();
         }
     }
@@ -184,7 +203,7 @@ void HAL_WLAN_notify_disconnected()
         ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
       }
       SPARK_LED_FADE = 1;
-          LED_SetRGBColor(RGB_COLOR_BLUE);
+      LED_SetRGBColor(RGB_COLOR_BLUE);
       LED_On(LED_RGB);
     }
     else if (!WLAN_SMART_CONFIG_START)
@@ -192,7 +211,7 @@ void HAL_WLAN_notify_disconnected()
       //Do not enter if smart config related disconnection happens
       //Blink green if connection fails because of wrong password
         if (!WLAN_DISCONNECT) {
-            ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+      ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
         }
       SPARK_LED_FADE = 0;
       LED_SetRGBColor(RGB_COLOR_GREEN);
@@ -200,16 +219,16 @@ void HAL_WLAN_notify_disconnected()
     }
     WLAN_CONNECTED = 0;
     WLAN_CONNECTING = 0;
-    WLAN_DHCP = 0;
+    WLAN_DHCP = 0;    
 }
 
 void HAL_WLAN_notify_dhcp(bool dhcp)
 {
     WLAN_CONNECTING = 0;
-    if (!WLAN_SMART_CONFIG_START)
+    if (!WLAN_SMART_CONFIG_START) 
     {
         LED_SetRGBColor(RGB_COLOR_GREEN);
-        LED_On(LED_RGB);
+        LED_On(LED_RGB);        
     }
     if (dhcp)
     {
@@ -266,8 +285,8 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
         if (!network_has_credentials(0, 0, NULL))
         {
             if ((flags && WIFI_CONNECT_SKIP_LISTEN)==0) {
-                network_listen(0, 0, NULL);
-            }
+            network_listen(0, 0, NULL);
+        }
             else {
                 if (was_sleeping) {
                     network_disconnect(network, 0, NULL);
@@ -291,7 +310,7 @@ void network_disconnect(network_handle_t network, uint32_t param, void* reserved
 {
     if (SPARK_WLAN_STARTED)
     {
-        WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()
+        WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()        
         WLAN_CONNECTING = 0;
         cloud_disconnect();
         wlan_disconnect_now();
@@ -326,10 +345,10 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
         SPARK_WLAN_SLEEP = 0;
         SPARK_LED_FADE = 1;
         if (!(flags & 1)) {
-            LED_SetRGBColor(RGB_COLOR_BLUE);
-            LED_On(LED_RGB);
-        }
+        LED_SetRGBColor(RGB_COLOR_BLUE);
+        LED_On(LED_RGB);
     }
+}
 }
 
 bool network_has_credentials(network_handle_t network, uint32_t param, void* reserved)
@@ -347,7 +366,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
         wlan_deactivate();
 
         SPARK_WLAN_SLEEP = 1;
-#if !SPARK_NO_CLOUD
+#if !SPARK_NO_CLOUD       
         if (flags & 1) {
             spark_disconnect();
         }
@@ -373,7 +392,7 @@ void network_listen(network_handle_t, uint32_t flags, void*)
 bool network_listening(network_handle_t, uint32_t, void*)
 {
     return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
-}
+    }
 
 void network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* credentials, void*)
 {
@@ -424,7 +443,7 @@ void manage_ip_config()
 {
     bool fetched_config = ip_config.nw.aucIP.ipv4!=0;
     if (WLAN_DHCP && !SPARK_WLAN_SLEEP)
-    {
+    {        
         if (!fetched_config)
         {
             wlan_fetch_ipconfig(&ip_config);

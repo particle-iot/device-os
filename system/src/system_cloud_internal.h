@@ -73,3 +73,4 @@ User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey);
 extern SparkProtocol* sp;
 
 #endif	/* SYSTEM_CLOUD_INTERNAL_H */
+

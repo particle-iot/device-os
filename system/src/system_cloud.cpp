@@ -6,7 +6,7 @@
  * @date    13-March-2013
  *
  * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
- * @brief
+ * @brief   
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -25,30 +25,20 @@
  ******************************************************************************
  */
 
-#include "spark_wiring.h"
-#include "spark_wiring_network.h"
-#include "spark_wiring_cloud.h"
-#include "system_network.h"
+#include "spark_wiring_string.h"
+#include "system_cloud.h"
+#include "system_cloud_internal.h"
 #include "system_task.h"
 #include "system_update.h"
 #include "system_cloud_internal.h"
 #include "string_convert.h"
 #include "spark_protocol_functions.h"
 #include "spark_protocol.h"
-#include "socket_hal.h"
-#include "core_hal.h"
-#include "core_subsys_hal.h"
+#include "events.h"
 #include "deviceid_hal.h"
-#include "inet_hal.h"
-#include "rtc_hal.h"
-#include "ota_flash_hal.h"
-#include "product_store_hal.h"
-#include "rgbled.h"
-#include "spark_macros.h"
-#include "string.h"
-#include <stdarg.h>
-#include "append_list.h"
 
+
+#ifndef SPARK_NO_CLOUD
 
 SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
 {
@@ -57,7 +47,9 @@ SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_ty
 
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
-{
+{        
+    SYSTEM_THREAD_CONTEXT_SYNC();
+
     auto event_scope = convert(scope);
     bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
     if (success && spark_connected())
@@ -82,15 +74,16 @@ bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_T
 
 bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
 {
+    SYSTEM_THREAD_CONTEXT_SYNC();
     User_Var_Lookup_Table_t* item = NULL;
     if (NULL != userVar && NULL != varKey && strlen(varKey)<=USER_VAR_KEY_LENGTH)
     {
-        if ((item=find_var_by_key_or_add(varKey)))
+        if ((item=find_var_by_key_or_add(varKey))!=NULL)
         {
             item->userVar = userVar;
             item->userVarType = userVarType;
             memset(item->userVarKey, 0, USER_VAR_KEY_LENGTH);
-            memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);
+            memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);            
         }
     }
     return item!=NULL;
@@ -98,7 +91,7 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
 
 /**
  * This is the original released signature for firmware version 0 and needs to remain like this.
- * (The original returned void - we can safely change to
+ * (The original returned void - we can safely change to bool.)
  */
 bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved)
 {
@@ -112,7 +105,7 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
     }
     else {
         result = spark_function_internal((cloud_function_descriptor*)pFunc, reserved);
-    }
+    }        
     return result;
 }
 
@@ -126,6 +119,8 @@ bool spark_connected(void)
 
 void spark_connect(void)
 {
+    SYSTEM_THREAD_CONTEXT();
+
     //Schedule Spark's cloud connection and handshake
     SPARK_WLAN_SLEEP = 0;
     SPARK_CLOUD_CONNECT = 1;
@@ -133,16 +128,18 @@ void spark_connect(void)
 
 void spark_disconnect(void)
 {
+    SYSTEM_THREAD_CONTEXT();
+
     //Schedule Spark's cloud disconnection
     SPARK_CLOUD_CONNECT = 0;
 }
 
 void spark_process(void)
 {
+    if (SystemThread.isCurrentThread()) {
     // run the background processing loop, and specifically also pump cloud events
     Spark_Idle_Events(true);
 }
-
 String spark_deviceID(void)
 {
     unsigned len = HAL_device_ID(NULL, 0);
@@ -150,5 +147,4 @@ String spark_deviceID(void)
     HAL_device_ID(id, len);
     return bytes2hex(id, len);
 }
-
 

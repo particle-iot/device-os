@@ -26,7 +26,7 @@
 #include "system_setup.h"
 #include "delay_hal.h"
 #include "wlan_hal.h"
-#include "system_cloud.h"
+#include "system_cloud_internal.h"
 #include "system_update.h"
 #include "spark_wiring.h"   // for serialReadLine
 #include "spark_wiring_wifi.h"
