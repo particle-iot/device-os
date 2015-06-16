@@ -26,6 +26,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "spi_hal.h"
 
+void HAL_SPI_Init(HAL_SPI_Interface spi)
+{
+}
+
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
 {
 }
