@@ -33,12 +33,41 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*** REMOVED - WE ARE USING startup_stm32f2xx_electron.S
 reset_handler = _start;
 
 ENTRY( _start );
+*/
 
 /* Include memory map */
 INCLUDE memory_no_bootloader.ld
+
+/* default stack sizes. 
+ + These are used by the startup in order to allocate stacks for the different modes.
+ */
+
+__Stack_Size = 2048 ;
+
+PROVIDE ( _Stack_Size = __Stack_Size ) ;
+
+__Stack_Init = _estack - __Stack_Size ;
+
+/* "PROVIDE" allows to easily override these values from an object file or the commmand line.
+ */
+PROVIDE ( _Stack_Init = __Stack_Init ) ;
+
+/*
+There will be a link error if there is not this amount of RAM free at the end.
+*/
+_Minimum_Stack_Size = 0x1400;
+
+/* include the memory spaces definitions sub-script */
+/* Linker subscript for STM32F20x definitions with 1024K Flash and 128K RAM */
+
+/* Memory Spaces Definitions */
+
+/* higher address of the user mode stack */
+_estack = ORIGIN(SRAM)+LENGTH(SRAM);
 
 SECTIONS
 {
@@ -47,7 +76,7 @@ SECTIONS
     {
         link_module_start = .;
         link_interrupt_vectors_location = .;
-        KEEP(*(*.interrupt_vector_table))
+        KEEP(*(.isr_vector))            /* interrupt vector table */
         link_interrupt_vectors_location_end = .;
     }>APP_FLASH  AT> APP_FLASH
 
@@ -64,42 +93,13 @@ SECTIONS
     .text :
     {
         . = ALIGN(4);
-        link_code_location = .;
         KEEP(*(.text.irq ))
         *(.text .text.* .gnu.linkonce.t.*)
-        link_code_end = .;
-
-        . = ALIGN(0x4);
-
-        link_const_variable_data_location = .;
         *(.rodata .rodata.* .gnu.linkonce.r.*)
-        link_const_variable_data_end = .;
-
-        . = ALIGN(0x4);
-
-        link_constructors_location = .;
-        link_early_startup_begin = .;
-        KEEP(*.o(.early_startup.*))
-        link_early_startup_end = .;
-        KEEP(*(.preinit_array))
-        KEEP(*(.init_array))
-        KEEP (*crtbegin.o(.ctors))
-        KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
-        KEEP (*(SORT(.ctors.*)))
-        KEEP (*crtend.o(.ctors))
-        link_constructors_end = .;
-
-        . = ALIGN(0x4);
-
-        link_destructors_location = .;
-        KEEP (*crtbegin.o(.dtors))
-        KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
-        KEEP (*(SORT(.dtors.*)))
-        KEEP (*crtend.o(.dtors))
-        link_destructors_end = .;
-
-        . = ALIGN(16);
-
+        *(.glue_7)
+        *(.glue_7t)
+        . = ALIGN(4);
+        _etext = .;
     }>APP_FLASH  AT> APP_FLASH
 
     /*
@@ -137,24 +137,51 @@ SECTIONS
         link_run_from_ram_code_ram_end = .;
     }> SRAM AT> APP_FLASH
 
+    .preinit_array : {
+        PROVIDE_HIDDEN (__preinit_array_start = .);
+        KEEP (*(.preinit_array*))
+        PROVIDE_HIDDEN (__preinit_array_end = .);
+    } >APP_FLASH
+
+    .init_array : {
+        PROVIDE_HIDDEN (__init_array_start = .);
+        KEEP (*(SORT(.init_array.*)))
+        KEEP (*(.init_array*))
+        PROVIDE_HIDDEN (__init_array_end = .);
+    } >APP_FLASH
+
+    .fini_array : {
+        PROVIDE_HIDDEN (__fini_array_start = .);
+        KEEP (*(.fini_array*))
+        KEEP (*(SORT(.fini_array.*)))
+        PROVIDE_HIDDEN (__fini_array_end = .);
+    } >APP_FLASH
+
     .data : /* Contains the non-zero initialised global variables */
     {
-        link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
-        link_global_data_start = .;
+        _sidata = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
+        . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .data secion */
+        _sdata = . ;
         *(.data*)
-        link_global_data_end = .;
-        . = ALIGN(., 4);
+        . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .data secion */
+        _edata = . ;
     }> SRAM AT> APP_FLASH
 
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
-        link_bss_location = ALIGN(., 4);
+        _sbss = ALIGN(., 4);
         *(.bss*)
         *(COMMON)
-        link_bss_end = .;
-        . = ALIGN(., 4);
+        . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .bss secion */
+        _ebss = . ;
     }> SRAM AT> SRAM
+
+    PROVIDE ( end = _ebss );
+    PROVIDE ( _end = _ebss );
 
     .stack : /* Contains the initial stack */
     {
@@ -240,4 +267,4 @@ ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc
 ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" ); 
 ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );
 
-ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );
+/*ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );*/

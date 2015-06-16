@@ -43,7 +43,7 @@ LDFLAGS += --specs=nano.specs -lc -lnosys
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=1400
 # support for external linker file
-# LDFLAGS += -L/some/directory
+LDFLAGS += -L$(HAL_SRC_ELECTRON_INCL_PATH)
 USE_PRINTF_FLOAT ?= n
 ifeq ("$(USE_PRINTF_FLOAT)","y")
 LDFLAGS += -u _printf_float
