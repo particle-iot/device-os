@@ -115,7 +115,7 @@ void Start_Smart_Config(void)
     const uint32_t start = millis();
     uint32_t loop = start;
     system_notify_event(wifi_listen_begin, start);
-    
+
     /* Wait for SmartConfig/SerialConfig to finish */
     while (network_listening(0, 0, NULL))
     {
@@ -129,7 +129,7 @@ void Start_Smart_Config(void)
             }
             if (!network_clear_credentials(0, 0, NULL, NULL) || network_has_credentials(0, 0, NULL)) {
                 LED_SetRGBColor(RGB_COLOR_RED);
-                LED_On(LED_RGB);                
+                LED_On(LED_RGB);
 
                 int toggle = 25;
                 while (toggle--)
@@ -138,7 +138,7 @@ void Start_Smart_Config(void)
                     HAL_Delay_Milliseconds(50);
                 }
                 LED_SetRGBColor(RGB_COLOR_BLUE);
-                LED_On(LED_RGB);                
+                LED_On(LED_RGB);
             }
             system_notify_event(wifi_credentials_cleared);
             WLAN_DELETE_PROFILES = 0;
@@ -150,7 +150,7 @@ void Start_Smart_Config(void)
                 LED_Toggle(LED_RGB);
                 loop = now;
                 system_notify_event(wifi_listen_update, now-start);
-            }            
+            }
             console.loop();
         }
     }
@@ -219,16 +219,16 @@ void HAL_WLAN_notify_disconnected()
     }
     WLAN_CONNECTED = 0;
     WLAN_CONNECTING = 0;
-    WLAN_DHCP = 0;    
+    WLAN_DHCP = 0;
 }
 
 void HAL_WLAN_notify_dhcp(bool dhcp)
 {
     WLAN_CONNECTING = 0;
-    if (!WLAN_SMART_CONFIG_START) 
+    if (!WLAN_SMART_CONFIG_START)
     {
         LED_SetRGBColor(RGB_COLOR_GREEN);
-        LED_On(LED_RGB);        
+        LED_On(LED_RGB);
     }
     if (dhcp)
     {
@@ -265,7 +265,8 @@ void network_config_clear()
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    if (!network_ready(network, flags, reserved) && !WLAN_CONNECTING && !network_listening(network, flags, NULL))
+    YSTEM_THREAD_CONTEXT();
+	if (!network_ready(network, flags, reserved) && !WLAN_CONNECTING && !network_listening(network, flags, NULL))
     {
         bool was_sleeping = SPARK_WLAN_SLEEP;
 
@@ -308,9 +309,10 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 
 void network_disconnect(network_handle_t network, uint32_t param, void* reserved)
 {
+	SYSTEM_THREAD_CONTEXT();
     if (SPARK_WLAN_STARTED)
     {
-        WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()        
+        WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()
         WLAN_CONNECTING = 0;
         cloud_disconnect();
         wlan_disconnect_now();
@@ -337,6 +339,8 @@ bool network_connecting(network_handle_t network, uint32_t param, void* reserved
  */
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
+    SYSTEM_THREAD_CONTEXT();
+
     if (!SPARK_WLAN_STARTED)
     {
         network_config_clear();
@@ -358,6 +362,8 @@ bool network_has_credentials(network_handle_t network, uint32_t param, void* res
 
 void network_off(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
+    SYSTEM_THREAD_CONTEXT();
+
     if (SPARK_WLAN_STARTED)
     {
         network_config_clear();
@@ -366,7 +372,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
         wlan_deactivate();
 
         SPARK_WLAN_SLEEP = 1;
-#if !SPARK_NO_CLOUD       
+#if !SPARK_NO_CLOUD
         if (flags & 1) {
             spark_disconnect();
         }
@@ -384,6 +390,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 
 void network_listen(network_handle_t, uint32_t flags, void*)
 {
+	SYSTEM_THREAD_CONTEXT();
     WLAN_SMART_CONFIG_START = !(flags & 1);
     if (!WLAN_SMART_CONFIG_START)
         WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
@@ -394,9 +401,13 @@ bool network_listening(network_handle_t, uint32_t, void*)
     return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
     }
 
+void network_set_credentials_async(NetworkCredentials* credentials)
+{
+    SYSTEM_THREAD_CONTEXT_FN1(wlan_set_credentials, credentials, credentials->len);
+}
+
 void network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* credentials, void*)
 {
-
     if (!SPARK_WLAN_STARTED || !credentials)
     {
         return;
@@ -411,12 +422,14 @@ void network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* cre
 
     credentials->security = security;
 
-    wlan_set_credentials(credentials);
+    wlan_set_credentials_async(credentials);
     system_notify_event(wifi_credentials_add, 0, credentials);
 }
 
 bool network_clear_credentials(network_handle_t, uint32_t, NetworkCredentials* creds, void*)
 {
+    // todo - run this on the system thread
+
     return wlan_clear_credentials() == 0;
 }
 
@@ -443,7 +456,7 @@ void manage_ip_config()
 {
     bool fetched_config = ip_config.nw.aucIP.ipv4!=0;
     if (WLAN_DHCP && !SPARK_WLAN_SLEEP)
-    {        
+    {
         if (!fetched_config)
         {
             wlan_fetch_ipconfig(&ip_config);

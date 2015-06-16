@@ -19,32 +19,65 @@
 #ifndef SYSTEM_THREADING_H
 #define	SYSTEM_THREADING_H
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+#include <stddef.h>
+#include "concurrent_hal.h"
+#include "channel.h"
 
-// execute async on the system thread
-#define SYSTEM_THREAD_CONTEXT()
-
-
-// execute synchornously on the system thread
-#define SYSTEM_THREAD_CONTEXT_SYNC()
 
 
 class ActiveObject
 {
-public:
-    bool isCurrentThread();
+    struct Item
+    {
+        void* function;
+        void* arg;          // the argument is dynamically allocated
+    };
 
+
+    void invoke_impl(void* fn, const void* data, size_t len);
+
+    std::thread _thread;
+    cpp::channel<Item> _channel;
+
+
+public:
+    ActiveObject();
+
+    bool isCurrentThread() {
+        return _thread.native_handle()==__gthread_self();
+    }
+
+    template<typename arg, typename r> inline void invoke(r (*fn)(arg* a), arg* value, size_t size) {
+        invoke_impl((void*)fn, value, size);
+    }
+    void invoke(void (*fn)());
 };
 
 extern ActiveObject SystemThread;
 extern ActiveObject AppThread;
 
 
-#ifdef	__cplusplus
-}
-#endif
+// execute the enclosing void function async on the system thread
+#define SYSTEM_THREAD_CONTEXT_RESULT(result) \
+    if (SystemThread.isCurrentThread()) {\
+        SYSTEM_THREAD_CONTEXT_FN0(__func__); \
+        return result; \
+    }
+
+#define SYSTEM_THREAD_CONTEXT(result)
+
+
+#define SYSTEM_THREAD_CONTEXT_FN0(fn) \
+    SystemThread.invoke(fn);
+
+
+#define SYSTEM_THREAD_CONTEXT_FN1(fn, arg, sz) \
+    SystemThread.invoke(fn, arg, sz)
+
+// execute synchornously on the system thread
+#define SYSTEM_THREAD_CONTEXT_SYNC()
+
+
 
 #endif	/* SYSTEM_THREADING_H */
 

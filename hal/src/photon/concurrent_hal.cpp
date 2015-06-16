@@ -24,6 +24,18 @@
 #include "concurrent_hal.h"
 #include "wiced.h"
 #include "static_assert.h"
+#include "task.h"
+#include <mutex>
+
+// use the newer name
+typedef xTaskHandle TaskHandle_t;
+typedef xQueueHandle QueueHandle_t;
+typedef xSemaphoreHandle SemaphoreHandle_t;
+typedef portTickType TicksType_t;
+
+typedef unsigned portBASE_TYPE UBaseType_t;
+
+static_assert(sizeof(TaskHandle_t)==sizeof(__gthread_t), "__gthread_t should be the same size as TaskHandle_t");
 
 static_assert(sizeof(uint32_t)==sizeof(void*), "Requires uint32_t to be same size as void* for function cast to wiced_thread_function_t");
 
@@ -118,7 +130,145 @@ os_result_t os_thread_cleanup(os_thread_t* thread)
     return wiced_rtos_delete_thread((wiced_thread_t*)thread);
 }
 
+/**
+ * Map gthread handles to FreeRTOS task handles.
+ */
+typedef TaskHandle_t __gthread_t;
 
 
+class ThreadQueue
+{
+    QueueHandle_t queue;
+
+public:
+
+    ThreadQueue(UBaseType_t max_size) {
+        queue = xQueueCreate(max_size, sizeof(TaskHandle_t));
+    }
+
+    ~ThreadQueue() {
+        vQueueDelete(queue);
+    }
+
+
+    void enqueue(TicksType_t ticks=portMAX_DELAY) {
+        TaskHandle_t current = xTaskGetCurrentTaskHandle();
+        xQueueSend(queue, &current, ticks);
+    }
+
+    void sleep() {
+        enqueue();
+        vTaskSuspend(NULL);
+    }
+
+    bool wake() {
+        TaskHandle_t next;
+        if (xQueueReceive(queue, &next, 0)==pdTRUE) {
+            vTaskResume(next);
+            return true;
+        }
+        return false;
+    }
+
+    void wakeAll()
+    {
+        while (wake()) {}
+    }
+};
+
+
+class Lock
+{
+    SemaphoreHandle_t semaphore;
+
+public:
+
+    Lock() {
+        semaphore = xSemaphoreCreateMutex();
+    }
+
+    void acquire() {
+        while (xSemaphoreTake(semaphore, portMAX_DELAY)==pdFALSE);
+    }
+
+    void release() {
+        xSemaphoreGive(semaphore);
+    }
+
+    ~Lock() {
+        vSemaphoreDelete(semaphore);
+    }
+};
+
+
+class ConditionVariable
+{
+    ThreadQueue queue;
+
+    typedef std::unique_lock<std::mutex> lock_t;
+public:
+    ConditionVariable(UBaseType_t max_size) : queue(max_size) {}
+
+    void wait(lock_t* lock)
+    {
+        taskENTER_CRITICAL();
+        lock->unlock();
+        queue.enqueue();
+        taskEXIT_CRITICAL();
+        vTaskSuspend(NULL);
+        lock->lock();
+    }
+
+    void signal()
+    {
+        taskENTER_CRITICAL();
+        queue.wake();
+        taskEXIT_CRITICAL();
+    }
+
+    void broadcast()
+    {
+        taskENTER_CRITICAL();
+        queue.wakeAll();
+        taskEXIT_CRITICAL();
+    }
+};
+
+static_assert(sizeof(__gthread_cond_t)==sizeof(ConditionVariable), "__gthread_cond_t must be the same size as ConditionVariable");
+
+
+bool __gthread_equal(__gthread_t t1, __gthread_t t2)
+{
+    return t1==t2;
+}
+
+__gthread_t __gthread_self()
+{
+    return xTaskGetCurrentTaskHandle();
+}
+
+void os_condition_variable_create(condition_variable_t* cond)
+{
+    new(cond) ConditionVariable(10);
+}
+
+void os_condition_variable_dispose(condition_variable_t* cond)
+{
+    ConditionVariable* cv = (ConditionVariable*)cond;
+    cv->~ConditionVariable();
+}
+
+void os_condition_variable_wait(condition_variable_t* cond, void* v)
+{
+    std::unique_lock<std::mutex>* lock = (std::unique_lock<std::mutex>*)v;
+    ConditionVariable* cv = (ConditionVariable*)cond;
+    cv->wait(lock);
+}
+
+void os_condition_variable_notify_one(condition_variable_t* cond)
+{
+    ConditionVariable* cv = (ConditionVariable*)cond;
+    cv->signal();
+}
 
 

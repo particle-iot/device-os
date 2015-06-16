@@ -6,7 +6,7 @@
  * @date    13-March-2013
  *
  * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
- * @brief   
+ * @brief
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -45,19 +45,24 @@ SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_ty
     return(subscription_type==MY_DEVICES) ? SubscriptionScope::MY_DEVICES : SubscriptionScope::FIREHOSE;
 }
 
+bool register_event(const char* eventName, SubscriptionScope::Enum event_scope, const char* deviceID)
+{
+    bool success;
+    if (deviceID)
+        success = spark_protocol_send_subscription_device(sp, eventName, deviceID);
+    else
+        success = spark_protocol_send_subscription_scope(sp, eventName, event_scope);
+    return success;
+}
+
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
-{        
-    SYSTEM_THREAD_CONTEXT_SYNC();
-
+{
     auto event_scope = convert(scope);
     bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
     if (success && spark_connected())
     {
-        if (deviceID)
-            success = spark_protocol_send_subscription_device(sp, eventName, deviceID);
-        else
-            success = spark_protocol_send_subscription_scope(sp, eventName, event_scope);
+        register_event(eventName, event_scope, deviceID);
     }
     return success;
 }
@@ -83,7 +88,7 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
             item->userVar = userVar;
             item->userVarType = userVarType;
             memset(item->userVarKey, 0, USER_VAR_KEY_LENGTH);
-            memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);            
+            memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);
         }
     }
     return item!=NULL;
@@ -105,7 +110,7 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
     }
     else {
         result = spark_function_internal((cloud_function_descriptor*)pFunc, reserved);
-    }        
+    }
     return result;
 }
 
@@ -137,9 +142,9 @@ void spark_disconnect(void)
 void spark_process(void)
 {
     if (SystemThread.isCurrentThread()) {
-    // run the background processing loop, and specifically also pump cloud events
-    Spark_Idle_Events(true);
-}
+        // run the background processing loop, and specifically also pump cloud events
+        Spark_Idle_Events(true);
+    }
 String spark_deviceID(void)
 {
     unsigned len = HAL_device_ID(NULL, 0);

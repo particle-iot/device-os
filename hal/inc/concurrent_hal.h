@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+
 /**
  * Allow specific HAL implementations to export key symbols:
  * - thread priority limits and type.
@@ -36,8 +37,6 @@
  */
 #include "concurrent_hal_impl.h"
 
-
-typedef void* os_thread_t;
 
 const os_thread_t OS_THREAD_INVALID_HANDLE = NULL;
 
@@ -109,6 +108,19 @@ os_result_t os_thread_join(os_thread_t thread);
  * @return 0 on success.
  */
 os_result_t os_thread_cleanup(os_thread_t thread);
+
+
+
+
+void os_condition_variable_create(condition_variable_t* var);
+void os_condition_variable_dispose(condition_variable_t* var);
+
+// something spooky going on here...adding #include <mutex> to the top of this file
+// causes 'mutex' is not a member of 'std'. and errors in other classes using mutext also occur
+// the workaround is to use a void* then cast to a mutex in the implementation. <<shrug>>
+
+void os_condition_variable_wait(condition_variable_t* var, void* lock);
+void os_condition_variable_notify_one(condition_variable_t* var);
 
 #endif
 
