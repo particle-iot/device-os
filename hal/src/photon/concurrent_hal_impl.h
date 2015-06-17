@@ -19,6 +19,10 @@ typedef uint8_t os_thread_prio_t;
 const os_thread_prio_t OS_THREAD_PRIORITY_DEFAULT = 0;
 const size_t OS_THREAD_STACK_SIZE_DEFAULT = 512;
 
+/**
+ * Alias for a queue handle in FreeRTOS - all handles are pointers.
+ */
+typedef void* os_queue_t;
 
 typedef struct timespec __gthread_time_t;
 

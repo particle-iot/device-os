@@ -26,6 +26,7 @@
 
 #if PLATFORM_THREADING
 
+#include "system_tick_hal.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -121,6 +122,14 @@ void os_condition_variable_dispose(condition_variable_t* var);
 
 void os_condition_variable_wait(condition_variable_t* var, void* lock);
 void os_condition_variable_notify_one(condition_variable_t* var);
+
+const system_tick_t CONCURRENT_WAIT_FOREVER = (system_tick_t)-1;
+
+bool os_queue_create(os_queue_t* queue, size_t item_count, size_t item_size);
+bool os_queue_put(os_queue_t queue, const void* item, system_tick_t delay);
+bool os_queue_take(os_queue_t queue, void* item, system_tick_t delay);
+void os_queue_destroy(os_queue_t queue);
+
 
 #endif
 

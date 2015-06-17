@@ -33,6 +33,7 @@
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_cloud_internal.h"
+#include "system_threading.h"
 #include "system_user.h"
 #include "system_update.h"
 #include "core_hal.h"
@@ -185,11 +186,16 @@ void app_setup_and_loop(void)
 
     SPARK_WLAN_Setup(Multicast_Presence_Announcement);
 
+    bool threaded = system_thread_get_state(NULL)!=0 && (system_mode()!=SAFE_MODE);
+    if (threaded)
+        SystemThread.start();
+
     /* Main loop */
     while (1)
     {
         DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
-        Spark_Idle();
+        if (!threaded)
+            Spark_Idle();
 
         static uint8_t SPARK_WIRING_APPLICATION = 0;
         if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)

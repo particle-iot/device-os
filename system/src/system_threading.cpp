@@ -1,11 +1,16 @@
 
 
 #include "system_threading.h"
+#include "system_task.h"
 #include <time.h>
-
 #include <string.h>
 
-ActiveObject SystemThread;
+void system_thread_idle()
+{
+    Spark_Idle_Events(true);
+}
+
+ActiveObject SystemThread(system_thread_idle);
 
 namespace std {
     condition_variable::~condition_variable()
@@ -28,6 +33,11 @@ namespace std {
         os_condition_variable_notify_one(&_M_cond);
     }
 
+    /**
+     * static Startup function for threads.
+     * @param ptr   A pointer to the _Impl_base value which exposes the virtual
+     *  run() method.
+     */
     void invoke_thread(void* ptr)
     {
         thread::_Impl_base* call = (thread::_Impl_base*)ptr;
@@ -36,38 +46,46 @@ namespace std {
 
     void thread::_M_start_thread(thread::__shared_base_type base)
     {
-        os_thread_create(&_M_id._M_thread, "", 0, invoke_thread, base.get(), 600);
+        if (os_thread_create(&_M_id._M_thread, "", 0, invoke_thread, base.get(), 2048)) {
+            PANIC(AssertionFailure, "%s %", __FILE__, __LINE__);
+        }
     }
-
 }
 
-void ActiveObject::invoke_impl(void* fn, const void* data, size_t len)
+void ActiveObjectBase::run()
 {
-    // allocate storage for the message
-    void* copy = NULL;
-    if (data && len) {
-        copy = malloc(len);
-        memcpy(copy, data, len);
+    Item item;
+    for (;;)
+    {
+        if (take(item))
+        {
+            item.invoke();
+            item.dispose();
+        }
+        else
+        {
+            background_task();
+        }
     }
-
-
 }
 
-
-void f()
+void ActiveObjectBase::invoke_impl(void* fn, void* data, size_t len)
 {
-    cpp::channel<char> c;
-    c.send('c');
-    c.recv_ptr();
-    char ch;
-    c.recv(ch);
-
+    if (isCurrentThread()) {        // run synchronously since we are already on the thread
+        Item(Item::active_fn_t(fn), data).invoke();
+    }
+    else {
+        // allocate storage for the message
+        void* copy = NULL;
+        if (data && len) {
+            copy = malloc(len);
+            memcpy(copy, data, len);
+        }
+        put(Item(Item::active_fn_t(fn), copy));
+    }
 }
 
-ActiveObject::ActiveObject()
+void ActiveObjectBase::run_active_object(ActiveObjectBase* object)
 {
-    std::thread t1(f);
-    f();
-
+    object->run();
 }
-
