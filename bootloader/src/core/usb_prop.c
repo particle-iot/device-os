@@ -40,13 +40,13 @@ uint32_t wBlockNum = 0, wlength = 0;
 uint32_t Manifest_State = Manifest_complete;
 uint32_t Pointer = CORE_FW_ADDRESS;  /* Base Address to Erase, Program or Read */
 
-DEVICE Device_Table =
+const DEVICE Device_Table =
   {
     EP_NUM,
     1
   };
 
-DEVICE_PROP Device_Property =
+const DEVICE_PROP Device_Property =
   {
     DFU_init,
     DFU_Reset,
@@ -62,7 +62,7 @@ DEVICE_PROP Device_Property =
     bMaxPacketSize0       /*Max Packet size*/
   };
 
-USER_STANDARD_REQUESTS User_Standard_Requests =
+const USER_STANDARD_REQUESTS User_Standard_Requests =
   {
     DFU_GetConfiguration,
     DFU_SetConfiguration,
@@ -75,13 +75,13 @@ USER_STANDARD_REQUESTS User_Standard_Requests =
     DFU_SetDeviceAddress
   };
 
-ONE_DESCRIPTOR Device_Descriptor =
+const ONE_DESCRIPTOR Device_Descriptor =
   {
     (uint8_t*)DFU_DeviceDescriptor,
     DFU_SIZ_DEVICE_DESC
   };
 
-ONE_DESCRIPTOR Config_Descriptor =
+const ONE_DESCRIPTOR Config_Descriptor =
   {
     (uint8_t*)DFU_ConfigDescriptor,
     DFU_SIZ_CONFIG_DESC
