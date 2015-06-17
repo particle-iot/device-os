@@ -40,12 +40,12 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 
-extern uint8_t USART_Rx_Buffer[];
+extern volatile uint8_t USART_Rx_Buffer[];
 extern volatile uint32_t USART_Rx_ptr_in;
 extern volatile uint32_t USART_Rx_ptr_out;
 extern volatile uint32_t USART_Rx_length;
 
-extern uint8_t USB_Rx_Buffer[];
+extern volatile uint8_t USB_Rx_Buffer[];
 extern volatile uint16_t USB_Rx_length;
 extern volatile uint16_t USB_Rx_ptr;
 
@@ -109,10 +109,6 @@ void EP1_IN_Callback (void)
 *******************************************************************************/
 void EP3_OUT_Callback(void)
 {
-  USB_Rx_State = 1;
-
-  USB_Rx_ptr = 0;
-
   /* Get the number of received data on the selected Endpoint */
   USB_Rx_length = GetEPRxCount(ENDP3);
 
@@ -121,6 +117,11 @@ void EP3_OUT_Callback(void)
 
   /* USB data should be immediately processed, this allow next USB traffic being
   NAKed till the end of the processing */
+  USB_Rx_State = 1;
+
+  USB_Rx_ptr = 0;
+
+
 }
 
 /*******************************************************************************
@@ -172,10 +173,10 @@ void Handle_USBAsynchXfer (void)
 			USART_Rx_ptr_out += USART_Rx_length;
 			USART_Rx_length = 0;
 		}
-		USB_Tx_State = 1;
 		UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
 		SetEPTxCount(ENDP1, USB_Tx_length);
 		SetEPTxValid(ENDP1);
+		USB_Tx_State = 1;
 	}
 }
 

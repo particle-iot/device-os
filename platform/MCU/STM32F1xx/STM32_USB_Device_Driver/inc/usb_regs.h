@@ -7,16 +7,16 @@
   * @brief   Interface prototype functions to USB cell registers
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   *
   ******************************************************************************
@@ -69,21 +69,21 @@ enum EP_BUF_NUM
 #define EP0REG  ((__IO unsigned *)(RegBase)) /* endpoint 0 register address */
 
 /* Endpoint Addresses (w/direction) */
-#define EP0_OUT     ((uint8_t)0x00)  
-#define EP0_IN      ((uint8_t)0x80) 
-#define EP1_OUT     ((uint8_t)0x01)  
-#define EP1_IN      ((uint8_t)0x81)  
-#define EP2_OUT     ((uint8_t)0x02)  
-#define EP2_IN      ((uint8_t)0x82)  
-#define EP3_OUT     ((uint8_t)0x03)  
-#define EP3_IN      ((uint8_t)0x83) 
-#define EP4_OUT     ((uint8_t)0x04)  
+#define EP0_OUT     ((uint8_t)0x00)
+#define EP0_IN      ((uint8_t)0x80)
+#define EP1_OUT     ((uint8_t)0x01)
+#define EP1_IN      ((uint8_t)0x81)
+#define EP2_OUT     ((uint8_t)0x02)
+#define EP2_IN      ((uint8_t)0x82)
+#define EP3_OUT     ((uint8_t)0x03)
+#define EP3_IN      ((uint8_t)0x83)
+#define EP4_OUT     ((uint8_t)0x04)
 #define EP4_IN      ((uint8_t)0x84)
-#define EP5_OUT     ((uint8_t)0x05)  
+#define EP5_OUT     ((uint8_t)0x05)
 #define EP5_IN      ((uint8_t)0x85)
-#define EP6_OUT     ((uint8_t)0x06)  
+#define EP6_OUT     ((uint8_t)0x06)
 #define EP6_IN      ((uint8_t)0x86)
-#define EP7_OUT     ((uint8_t)0x07)  
+#define EP7_OUT     ((uint8_t)0x07)
 #define EP7_IN      ((uint8_t)0x87)
 
 /* endpoints enumeration */
@@ -238,8 +238,8 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : SetEPType
 * Description    : sets the type in the endpoint register(bits EP_TYPE[1:0])
-* Input          : bEpNum: Endpoint Number. 
-*                  wType											 
+* Input          : bEpNum: Endpoint Number.
+*                  wType
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
@@ -248,8 +248,8 @@ enum EP_BUF_NUM
 
 /*******************************************************************************
 * Macro Name     : GetEPType
-* Description    : gets the type in the endpoint register(bits EP_TYPE[1:0]) 
-* Input          : bEpNum: Endpoint Number. 
+* Description    : gets the type in the endpoint register(bits EP_TYPE[1:0])
+* Input          : bEpNum: Endpoint Number.
 * Output         : None.
 * Return         : Endpoint Type
 *******************************************************************************/
@@ -258,7 +258,7 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : SetEPTxStatus
 * Description    : sets the status for tx transfer (bits STAT_TX[1:0]).
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 *                  wState: new state
 * Output         : None.
 * Return         : None.
@@ -278,7 +278,7 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : SetEPRxStatus
 * Description    : sets the status for rx transfer (bits STAT_TX[1:0])
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 *                  wState: new state.
 * Output         : None.
 * Return         : None.
@@ -299,7 +299,7 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : SetEPRxTxStatus
 * Description    : sets the status for rx & tx (bits STAT_TX[1:0] & STAT_RX[1:0])
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 *                  wStaterx: new state.
 *                  wStatetx: new state.
 * Output         : None.
@@ -324,10 +324,10 @@ enum EP_BUF_NUM
     _SetENDPOINT(bEpNum, _wRegVal | EP_CTR_RX|EP_CTR_TX);    \
   } /* _SetEPRxTxStatus */
 /*******************************************************************************
-* Macro Name     : GetEPTxStatus / GetEPRxStatus 
+* Macro Name     : GetEPTxStatus / GetEPRxStatus
 * Description    : gets the status for tx/rx transfer (bits STAT_TX[1:0]
 *                  /STAT_RX[1:0])
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 * Output         : None.
 * Return         : status .
 *******************************************************************************/
@@ -336,9 +336,9 @@ enum EP_BUF_NUM
 #define _GetEPRxStatus(bEpNum) ((uint16_t)_GetENDPOINT(bEpNum) & EPRX_STAT)
 
 /*******************************************************************************
-* Macro Name     : SetEPTxValid / SetEPRxValid 
+* Macro Name     : SetEPTxValid / SetEPRxValid
 * Description    : sets directly the VALID tx/rx-status into the enpoint register
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
@@ -349,7 +349,7 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : GetTxStallStatus / GetRxStallStatus.
 * Description    : checks stall condition in an endpoint.
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 * Output         : None.
 * Return         : TRUE = endpoint in stall condition.
 *******************************************************************************/
@@ -361,7 +361,7 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : SetEP_KIND / ClearEP_KIND.
 * Description    : set & clear EP_KIND bit.
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
@@ -373,7 +373,7 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : Set_Status_Out / Clear_Status_Out.
 * Description    : Sets/clears directly STATUS_OUT bit in the endpoint register.
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
@@ -383,7 +383,7 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : SetEPDoubleBuff / ClearEPDoubleBuff.
 * Description    : Sets/clears directly EP_KIND bit in the endpoint register.
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
@@ -393,7 +393,7 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : ClearEP_CTR_RX / ClearEP_CTR_TX.
 * Description    : Clears bit CTR_RX / CTR_TX in the endpoint register.
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
@@ -405,7 +405,7 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : ToggleDTOG_RX / ToggleDTOG_TX .
 * Description    : Toggles DTOG_RX / DTOG_TX bit in the endpoint register.
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
@@ -417,7 +417,7 @@ enum EP_BUF_NUM
 /*******************************************************************************
 * Macro Name     : ClearDTOG_RX / ClearDTOG_TX.
 * Description    : Clears DTOG_RX / DTOG_TX bit in the endpoint register.
-* Input          : bEpNum: Endpoint Number. 
+* Input          : bEpNum: Endpoint Number.
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
@@ -429,7 +429,7 @@ enum EP_BUF_NUM
 * Macro Name     : SetEPAddress.
 * Description    : Sets address in an endpoint register.
 * Input          : bEpNum: Endpoint Number.
-*                  bAddr: Address. 
+*                  bAddr: Address.
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
@@ -445,10 +445,10 @@ enum EP_BUF_NUM
 *******************************************************************************/
 #define _GetEPAddress(bEpNum) ((uint8_t)(_GetENDPOINT(bEpNum) & EPADDR_FIELD))
 
-#define _pEPTxAddr(bEpNum) ((uint32_t *)((_GetBTABLE()+bEpNum*8  )*2 + PMAAddr))
-#define _pEPTxCount(bEpNum) ((uint32_t *)((_GetBTABLE()+bEpNum*8+2)*2 + PMAAddr))
-#define _pEPRxAddr(bEpNum) ((uint32_t *)((_GetBTABLE()+bEpNum*8+4)*2 + PMAAddr))
-#define _pEPRxCount(bEpNum) ((uint32_t *)((_GetBTABLE()+bEpNum*8+6)*2 + PMAAddr))
+#define _pEPTxAddr(bEpNum) ((volatile uint32_t *)((_GetBTABLE()+bEpNum*8  )*2 + PMAAddr))
+#define _pEPTxCount(bEpNum) ((volatile uint32_t *)((_GetBTABLE()+bEpNum*8+2)*2 + PMAAddr))
+#define _pEPRxAddr(bEpNum) ((volatile uint32_t *)((_GetBTABLE()+bEpNum*8+4)*2 + PMAAddr))
+#define _pEPRxCount(bEpNum) ((volatile uint32_t *)((_GetBTABLE()+bEpNum*8+6)*2 + PMAAddr))
 
 /*******************************************************************************
 * Macro Name     : SetEPTxAddr / SetEPRxAddr.
@@ -502,7 +502,7 @@ enum EP_BUF_NUM
 
 
 #define _SetEPRxDblBuf0Count(bEpNum,wCount) {\
-    uint32_t *pdwReg = _pEPTxCount(bEpNum); \
+    volatile uint32_t *pdwReg = _pEPTxCount(bEpNum); \
     _SetEPCountRxReg(pdwReg, wCount);\
   }
 /*******************************************************************************
@@ -515,7 +515,7 @@ enum EP_BUF_NUM
 *******************************************************************************/
 #define _SetEPTxCount(bEpNum,wCount) (*_pEPTxCount(bEpNum) = wCount)
 #define _SetEPRxCount(bEpNum,wCount) {\
-    uint32_t *pdwReg = _pEPRxCount(bEpNum); \
+    volatile uint32_t *pdwReg = _pEPRxCount(bEpNum); \
     _SetEPCountRxReg(pdwReg, wCount);\
   }
 /*******************************************************************************
@@ -567,9 +567,9 @@ enum EP_BUF_NUM
 * Macro Name     : SetEPDblBuffCount / SetEPDblBuf0Count / SetEPDblBuf1Count.
 * Description    : Gets buffer 0/1 address of a double buffer endpoint.
 * Input          : bEpNum: endpoint number.
-*                : bDir: endpoint dir  EP_DBUF_OUT = OUT 
-*                                      EP_DBUF_IN  = IN 
-*                : wCount: Counter value    
+*                : bDir: endpoint dir  EP_DBUF_OUT = OUT
+*                                      EP_DBUF_IN  = IN
+*                : wCount: Counter value
 * Output         : None.
 * Return         : None.
 *******************************************************************************/

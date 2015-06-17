@@ -23,6 +23,7 @@
  ******************************************************************************
  */
 
+
 /* Includes ------------------------------------------------------------------*/
 #include "usb_hal.h"
 #include "usb_conf.h"
@@ -58,7 +59,7 @@ __IO uint8_t PrevXferComplete;
 #endif
 
 /* Extern variables ----------------------------------------------------------*/
-extern LINE_CODING linecoding;
+extern volatile LINE_CODING linecoding;
 
 /* Private function prototypes -----------------------------------------------*/
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
@@ -134,7 +135,7 @@ void USB_USART_Init(uint32_t baudRate)
     }
 }
 
-unsigned int USB_USART_Baud_Rate(void) 
+unsigned int USB_USART_Baud_Rate(void)
 {
     return linecoding.bitrate;
 }
@@ -188,7 +189,7 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
         /* Enable the receive of data on EP3 */
         SetEPRxValid(ENDP3);
       }
-      
+
       return peek ? USB_Rx_Buffer[USB_Rx_ptr] : USB_Rx_Buffer[USB_Rx_ptr++];
     }
   }
