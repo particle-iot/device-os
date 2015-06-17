@@ -43,21 +43,21 @@ static void call_constructors(unsigned long *start, unsigned long *end) __attrib
 
 static void call_constructors(unsigned long *start, unsigned long *end)
 {
-  unsigned long *i;
-  void (*funcptr)();
-  for (i = start; i < end; i++)
-  {
-    funcptr=(void (*)())(*i);
-    funcptr();
-  }
+	unsigned long *i;
+	void (*funcptr)();
+	for (i = start; i < end; i++)
+	{
+		funcptr=(void (*)())(*i);
+		funcptr();
+	}
 }
 
 extern "C" {
 void CallConstructors(void)
 {
-  call_constructors(&__preinit_array_start, &__preinit_array_end);
-  call_constructors(&__init_array_start, &__init_array_end);
-  call_constructors(&__fini_array_start, &__fini_array_end);
+	call_constructors(&__preinit_array_start, &__preinit_array_end);
+	call_constructors(&__init_array_start, &__init_array_end);
+	call_constructors(&__fini_array_start, &__fini_array_end);
 }
 } /* extern "C" */
 
@@ -71,22 +71,22 @@ void *__dso_handle = NULL;
 
 void *operator new(size_t size)
 {
-  return malloc(size);
+	return malloc(size);
 }
 
 void *operator new[](size_t size)
 {
-  return malloc(size);
+	return malloc(size);
 }
 
 void operator delete(void *p)
 {
-  free(p);
+	free(p);
 }
 
 void operator delete[](void *p)
 {
-  free(p);
+	free(p);
 }
 
 extern "C" {
@@ -112,41 +112,41 @@ extern "C" {
  */
 caddr_t _sbrk(int incr)
 {
-  extern char _end, __Stack_Init;
-  static char *heap_end = &_end;
-  char *prev_heap_end = heap_end;
+	extern char _end, __Stack_Init;
+	static char *heap_end = &_end;
+	char *prev_heap_end = heap_end;
 
-  heap_end += incr;
+	heap_end += incr;
 
-  if (heap_end > &__Stack_Init) {
-    PANIC(OutOfHeap,"Out Of Heap");
-    abort();
-  }
+	if (heap_end > &__Stack_Init) {
+		PANIC(OutOfHeap,"Out Of Heap");
+		abort();
+	}
 
-  return (caddr_t) prev_heap_end;
+	return (caddr_t) prev_heap_end;
 }
 
 /* Bare metal, no processes, so error */
 int _kill(int pid, int sig)
 {
-  return -1;
+	return -1;
 }
 
 /* Bare metal, no processes, so always process id 1 */
 int _getpid(void)
 {
-  return 1;
+	return 1;
 }
 
 void _exit(int status) {  
-  PANIC(Exit,"Exit Called");
-  while (1);
+	PANIC(Exit,"Exit Called");
+	while (1);
 }
 
 /* Default implementation for call made to pure virtual function. */
 void __cxa_pure_virtual() {
-  PANIC(PureVirtualCall,"Call on pure virtual");
-  while (1);
+	PANIC(PureVirtualCall,"Call on pure virtual");
+	while (1);
 }
 
 /* Provide default implemenation for __cxa_guard_acquire() and
@@ -163,7 +163,7 @@ namespace __gnu_cxx {
 
 void __verbose_terminate_handler()
 {
-  abort();
+	abort();
 }
 
 } /* namespace __gnu_cxx */
