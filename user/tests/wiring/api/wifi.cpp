@@ -24,17 +24,18 @@
 #include "testapi.h"
 
 test(api_wifi_resolve) {
-    
+
     API_COMPILE(WiFi.resolve(String("abc.def.com")));
     API_COMPILE(WiFi.resolve("abc.def.com"));
 }
 
+#if PLATFORM_ID>=4
 test(api_wifi_selectantenna) {
-    
+
     API_COMPILE(WiFi.selectAntenna(ANT_AUTO));
     API_COMPILE(WiFi.selectAntenna(ANT_INTERNAL));
     API_COMPILE(WiFi.selectAntenna(ANT_EXTERNAL));
-    
+
 }
-    
+#endif
 
