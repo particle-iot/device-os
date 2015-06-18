@@ -40,17 +40,17 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 
-extern uint8_t USART_Rx_Buffer[];
-extern uint32_t USART_Rx_ptr_in;
-extern uint32_t USART_Rx_ptr_out;
-extern uint32_t USART_Rx_length;
+extern volatile uint8_t USART_Rx_Buffer[];
+extern volatile uint32_t USART_Rx_ptr_in;
+extern volatile uint32_t USART_Rx_ptr_out;
+extern volatile uint32_t USART_Rx_length;
 
-extern uint8_t USB_Rx_Buffer[];
-extern uint16_t USB_Rx_length;
-extern uint16_t USB_Rx_ptr;
+extern volatile uint8_t USB_Rx_Buffer[];
+extern volatile uint16_t USB_Rx_length;
+extern volatile uint16_t USB_Rx_ptr;
 
-extern uint8_t  USB_Tx_State;
-extern uint8_t  USB_Rx_State;
+extern volatile uint8_t  USB_Tx_State;
+extern volatile uint8_t  USB_Rx_State;
 
 extern __IO uint8_t PrevXferComplete;
 
@@ -69,33 +69,33 @@ void EP1_IN_Callback (void)
 {
   uint16_t USB_Tx_ptr;
   uint16_t USB_Tx_length;
-  
+
   if (USB_Tx_State == 1)
   {
-    if (USART_Rx_length == 0) 
+    if (USART_Rx_length == 0)
     {
       USB_Tx_State = 0;
     }
-    else 
+    else
     {
       if (USART_Rx_length > CDC_DATA_SIZE){
         USB_Tx_ptr = USART_Rx_ptr_out;
         USB_Tx_length = CDC_DATA_SIZE;
-        
+
         USART_Rx_ptr_out += CDC_DATA_SIZE;
         USART_Rx_length -= CDC_DATA_SIZE;
       }
-      else 
+      else
       {
         USB_Tx_ptr = USART_Rx_ptr_out;
         USB_Tx_length = USART_Rx_length;
-        
+
         USART_Rx_ptr_out += USART_Rx_length;
         USART_Rx_length = 0;
       }
       UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
       SetEPTxCount(ENDP1, USB_Tx_length);
-      SetEPTxValid(ENDP1); 
+      SetEPTxValid(ENDP1);
     }
   }
 }
@@ -109,10 +109,6 @@ void EP1_IN_Callback (void)
 *******************************************************************************/
 void EP3_OUT_Callback(void)
 {
-  USB_Rx_State = 1;
-
-  USB_Rx_ptr = 0;
-
   /* Get the number of received data on the selected Endpoint */
   USB_Rx_length = GetEPRxCount(ENDP3);
 
@@ -121,6 +117,11 @@ void EP3_OUT_Callback(void)
 
   /* USB data should be immediately processed, this allow next USB traffic being
   NAKed till the end of the processing */
+  USB_Rx_State = 1;
+
+  USB_Rx_ptr = 0;
+
+
 }
 
 /*******************************************************************************
@@ -172,10 +173,10 @@ void Handle_USBAsynchXfer (void)
 			USART_Rx_ptr_out += USART_Rx_length;
 			USART_Rx_length = 0;
 		}
-		USB_Tx_State = 1;
 		UserToPMABufferCopy(&USART_Rx_Buffer[USB_Tx_ptr], ENDP1_TXADDR, USB_Tx_length);
 		SetEPTxCount(ENDP1, USB_Tx_length);
 		SetEPTxValid(ENDP1);
+		USB_Tx_State = 1;
 	}
 }
 
@@ -189,18 +190,18 @@ void Handle_USBAsynchXfer (void)
 void SOF_Callback(void)
 {
   static uint32_t FrameCount = 0;
-  
+
   if(bDeviceState == CONFIGURED)
   {
     if (FrameCount++ == CDC_IN_FRAME_INTERVAL)
     {
       /* Reset the frame counter */
       FrameCount = 0;
-      
+
       /* Check the data to be sent through IN pipe */
       Handle_USBAsynchXfer();
     }
-  }  
+  }
 }
 #endif
 

@@ -38,19 +38,19 @@ typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
 #endif
 
 class CloudClass {
-    
-        
+
+
 public:
-    static bool variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType) 
+    static bool variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType)
     {
         return CLOUD_FN(spark_variable(varKey, userVar, userVarType, NULL), false);
     }
 
     static bool function(const char *funcKey, user_function_int_str_t* func)
     {
-        return CLOUD_FN(register_function(call_raw_user_function, (void*)func, funcKey), false);        
+        return CLOUD_FN(register_function(call_raw_user_function, (void*)func, funcKey), false);
     }
-    
+
     static bool function(const char *funcKey, user_std_function_int_str_t func, void* reserved=NULL)
     {
 #ifdef SPARK_NO_CLOUD
@@ -58,14 +58,14 @@ public:
 #else
         bool success = false;
         if (func) // if the call-wrapper has wrapped a callable object
-        {            
+        {
             auto wrapper = new user_std_function_int_str_t(func);
             if (wrapper) {
-                success = register_function(call_std_user_function, wrapper, funcKey);                    
+                success = register_function(call_std_user_function, wrapper, funcKey);
             }
         }
-        return success;       
-#endif        
+        return success;
+#endif
     }
 
     bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)
@@ -92,34 +92,34 @@ public:
     {
         return CLOUD_FN(spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL), false);
     }
-    
-    void unsubscribe() 
+
+    void unsubscribe()
     {
         CLOUD_FN(spark_protocol_remove_event_handlers(sp(), NULL), (void)0);
     }
 
-    void syncTime(void)
+    bool syncTime(void)
     {
-        CLOUD_FN(spark_protocol_send_time_request(sp()),(void)0);
+        return CLOUD_FN(spark_protocol_send_time_request(sp()),false);
     }
-    
+
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))
-    { SystemClass::sleep(seconds); }    
+    { SystemClass::sleep(seconds); }
     static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))
     { SystemClass::sleep(wakeUpPin, edgeTriggerMode, seconds); }
-    
+
     static bool connected(void) { return spark_connected(); }
     static void connect(void) { spark_connect(); }
     static void disconnect(void) { spark_disconnect(); }
     static void process(void) { spark_process(); }
     static String deviceID(void) { return SystemClass::deviceID(); }
-    
+
 private:
 
     static bool register_function(cloud_function_t fn, void* data, const char* funcKey);
     static int call_raw_user_function(void* data, const char* param, void* reserved);
     static int call_std_user_function(void* data, const char* param, void* reserved);
-    
+
     SparkProtocol* sp() { return spark_protocol_instance(); }
 };
 

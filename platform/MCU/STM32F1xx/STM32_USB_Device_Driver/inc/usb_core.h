@@ -1,16 +1,16 @@
 /**
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   ******************************************************************************
   */
@@ -176,10 +176,10 @@ typedef struct _DEVICE_PROP
   uint8_t* (*GetConfigDescriptor)(uint16_t Length);
   uint8_t* (*GetStringDescriptor)(uint16_t Length);
 
-  /* This field is not used in current library version. It is kept only for 
+  /* This field is not used in current library version. It is kept only for
    compatibility with previous versions */
   void* RxEP_buffer;
-   
+
   uint8_t MaxPacketSize;
 
 }DEVICE_PROP;
@@ -228,16 +228,16 @@ uint8_t *Standard_GetConfiguration(uint16_t Length);
 RESULT Standard_SetConfiguration(void);
 uint8_t *Standard_GetInterface(uint16_t Length);
 RESULT Standard_SetInterface(void);
-uint8_t *Standard_GetDescriptorData(uint16_t Length, PONE_DESCRIPTOR pDesc);
+uint8_t *Standard_GetDescriptorData(uint16_t Length, const ONE_DESCRIPTOR* pDesc);
 
 uint8_t *Standard_GetStatus(uint16_t Length);
 RESULT Standard_ClearFeature(void);
 void SetDeviceAddress(uint8_t);
 void NOP_Process(void);
 
-extern DEVICE_PROP Device_Property;
-extern  USER_STANDARD_REQUESTS User_Standard_Requests;
-extern  DEVICE  Device_Table;
+extern const DEVICE_PROP Device_Property;
+extern const USER_STANDARD_REQUESTS User_Standard_Requests;
+extern const DEVICE  Device_Table;
 extern DEVICE_INFO Device_Info;
 
 /* cells saving status during interrupt servicing */

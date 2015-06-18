@@ -33,7 +33,7 @@
 DYNALIB_BEGIN(hal_i2c)
 // I2C has to be included because the original tinker app was linked with some I2C calls
 // such as HAL_I2C_Is_Enabled
-#if !defined(SYSTEM_MINIMAL) && 0
+#if !defined(SYSTEM_MINIMAL)
 DYNALIB_FN(hal_i2c,HAL_I2C_Set_Speed)
 DYNALIB_FN(hal_i2c,HAL_I2C_Enable_DMA_Mode)
 DYNALIB_FN(hal_i2c,HAL_I2C_Stretch_Clock)

@@ -28,11 +28,13 @@
 #define __SPARK_WIRING_UDP_H
 
 #include "spark_wiring.h"
+#include "spark_wiring_printable.h"
+#include "spark_wiring_stream.h"
 #include "socket_hal.h"
 
 #define RX_BUF_MAX_SIZE	512
 
-class UDP : public Stream {
+class UDP : public Stream, public Printable {
 private:
 	sock_handle_t _sock;
 	uint16_t _port;
@@ -63,6 +65,13 @@ public:
 	virtual void flush();
 	virtual IPAddress remoteIP() { return _remoteIP; };
 	virtual uint16_t remotePort() { return _remotePort; };
+
+        /**
+         * Prints the current read parsed packet to the given output.
+         * @param p
+         * @return
+         */
+        virtual size_t printTo(Print& p) const;
 
 	using Print::write;
 };

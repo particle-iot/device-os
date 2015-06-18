@@ -7,16 +7,16 @@
   * @brief   Standard protocol processing (USB v2.0)
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   *
   ******************************************************************************
@@ -189,7 +189,7 @@ uint8_t *Standard_GetStatus(uint16_t Length)
     else
     {
       ClrBit(StatusInfo0, 1);
-    }      
+    }
 
     /* Bus-powered */
     if (ValBit(Feature, 6))
@@ -260,7 +260,7 @@ RESULT Standard_ClearFeature(void)
   }
   else if (Type_Rec == (STANDARD_REQUEST | ENDPOINT_RECIPIENT))
   {/*EndPoint Clear Feature*/
-    DEVICE* pDev;
+    const DEVICE* pDev;
     uint32_t Related_Endpoint;
     uint32_t wIndex0;
     uint32_t rEP;
@@ -416,7 +416,7 @@ RESULT Standard_SetDeviceFeature(void)
 *                  wOffset The buffer pointed by this address contains at least
 *                  Length bytes.
 *******************************************************************************/
-uint8_t *Standard_GetDescriptorData(uint16_t Length, ONE_DESCRIPTOR *pDesc)
+uint8_t *Standard_GetDescriptorData(uint16_t Length, const ONE_DESCRIPTOR *pDesc)
 {
   uint32_t  wOffset;
 
@@ -512,14 +512,14 @@ void DataStageIn(void)
       ControlState = LAST_IN_DATA;
       Data_Mul_MaxPacketSize = false;
     }
-    else 
+    else
     {
       /* No more data to send so STALL the TX Status*/
       ControlState = WAIT_STATUS_OUT;
       vSetEPTxStatus(EP_TX_STALL);
- 
+
     }
-    
+
     goto Expect_Status_Out;
   }
 
@@ -532,7 +532,7 @@ void DataStageIn(void)
   }
 
   DataBuffer = (*pEPinfo->CopyData)(Length);
-  
+
   UserToPMABufferCopy(DataBuffer, GetEPTxAddr(ENDP0), Length);
 
   SetEPTxCount(ENDP0, Length);
@@ -780,7 +780,7 @@ void Data_Setup0(void)
     }
 
   }
-  
+
   if (CopyRoutine)
   {
     pInformation->Ctrl_Info.Usb_wOffset = wOffset;
@@ -818,13 +818,13 @@ void Data_Setup0(void)
   {
     /* Device ==> Host */
     __IO uint32_t wLength = pInformation->USBwLength;
-     
+
     /* Restrict the data length to be the one host asks for */
     if (pInformation->Ctrl_Info.Usb_wLength > wLength)
     {
       pInformation->Ctrl_Info.Usb_wLength = wLength;
     }
-    
+
     else if (pInformation->Ctrl_Info.Usb_wLength < pInformation->USBwLength)
     {
       if (pInformation->Ctrl_Info.Usb_wLength < pProperty->MaxPacketSize)
@@ -835,7 +835,7 @@ void Data_Setup0(void)
       {
         Data_Mul_MaxPacketSize = true;
       }
-    }   
+    }
 
     pInformation->Ctrl_Info.PacketSize = pProperty->MaxPacketSize;
     DataStageIn();
@@ -865,7 +865,7 @@ uint8_t Setup0_Process(void)
     uint16_t* w;
   } pBuf;
   uint16_t offset = 1;
-  
+
   pBuf.b = PMAAddr + (uint8_t *)(_GetEPRxAddr(ENDP0) * 2); /* *2 for 32 bits addr */
 
   if (pInformation->ControlState != PAUSE)
@@ -984,7 +984,7 @@ uint8_t Out0_Process(void)
 *******************************************************************************/
 uint8_t Post0_Process(void)
 {
-   
+
   SetEPRxCount(ENDP0, Device_Property.MaxPacketSize);
 
   if (pInformation->ControlState == STALLED)
@@ -1013,7 +1013,7 @@ void SetDeviceAddress(uint8_t Val)
   {
     _SetEPAddress((uint8_t)i, (uint8_t)i);
   } /* for */
-  _SetDADDR(Val | DADDR_EF); /* set device address and enable function */ 
+  _SetDADDR(Val | DADDR_EF); /* set device address and enable function */
 }
 
 /*******************************************************************************

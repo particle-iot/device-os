@@ -4,7 +4,13 @@
 #include "bootloader.h"
 #include "module_info.h"
 
-#if PLATFORM_ID==6 && !defined(SYSTEM_MINIMAL)
+#if !defined(SYSTEM_MINIMAL)
+#if PLATFORM_ID==6 || PLATFORM_ID==8
+#define HAL_REPLACE_BOOTLOADER
+#endif
+#endif
+
+#ifdef HAL_REPLACE_BOOTLOADER
 
 /**
  * Manages upgrading the bootloader.
@@ -13,8 +19,8 @@
 #define CAT2(a,b) a##b
 #define CAT(a,b) CAT2(a,b)
 
-#define BOOTLOADER_IMAGE CAT(___build_target_bootloader_platform_, CAT(PLATFORM_ID,_lto_bootloader_bin))
-#define BOOTLOADER_IMAGE_LEN CAT(___build_target_bootloader_platform_, CAT(PLATFORM_ID,_lto_bootloader_bin_len))
+#define BOOTLOADER_IMAGE CAT(bootloader_platform_, CAT(PLATFORM_ID,_bin))
+#define BOOTLOADER_IMAGE_LEN CAT(bootloader_platform_, CAT(PLATFORM_ID,_bin_len))
 
 extern "C" const unsigned int BOOTLOADER_IMAGE_LEN;
 extern "C" const unsigned char BOOTLOADER_IMAGE[];
@@ -45,6 +51,8 @@ bool bootloader_update_if_needed()
     }
     return updated;
 }
+
+
 
 #else
 

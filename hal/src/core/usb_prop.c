@@ -37,7 +37,7 @@
 /* Private variables ---------------------------------------------------------*/
 uint8_t Request = 0;
 
-LINE_CODING linecoding =
+volatile LINE_CODING linecoding =
   {
     0x00,   /* baud rate*/
     0x00,   /* stop bits-1*/
@@ -47,19 +47,19 @@ LINE_CODING linecoding =
 
 static linecoding_bitrate_handler APP_LineCodingBitRateHandler = NULL;
 
-uint32_t ProtocolValue;
+volatile uint32_t ProtocolValue;
 
 /* -------------------------------------------------------------------------- */
 /*  Structures initializations */
 /* -------------------------------------------------------------------------- */
 
-DEVICE Device_Table =
+const DEVICE Device_Table =
   {
     EP_NUM,
     1
   };
 
-DEVICE_PROP Device_Property =
+const DEVICE_PROP Device_Property =
   {
     USB_init,
     USB_Reset,
@@ -75,7 +75,7 @@ DEVICE_PROP Device_Property =
     0x40 /*MAX PACKET SIZE*/
   };
 
-USER_STANDARD_REQUESTS User_Standard_Requests =
+const USER_STANDARD_REQUESTS User_Standard_Requests =
   {
     USB_GetConfiguration,
     USB_SetConfiguration,
@@ -89,13 +89,13 @@ USER_STANDARD_REQUESTS User_Standard_Requests =
   };
 
 #ifdef USB_CDC_ENABLE
-ONE_DESCRIPTOR Device_Descriptor =
+const ONE_DESCRIPTOR Device_Descriptor =
   {
     (uint8_t*)CDC_DeviceDescriptor,
     CDC_SIZ_DEVICE_DESC
   };
 
-ONE_DESCRIPTOR Config_Descriptor =
+const ONE_DESCRIPTOR Config_Descriptor =
   {
     (uint8_t*)CDC_ConfigDescriptor,
     CDC_SIZ_CONFIG_DESC
@@ -103,32 +103,32 @@ ONE_DESCRIPTOR Config_Descriptor =
 #endif
 
 #ifdef USB_HID_ENABLE
-ONE_DESCRIPTOR Device_Descriptor =
+const ONE_DESCRIPTOR Device_Descriptor =
   {
     (uint8_t*)HID_DeviceDescriptor,
     HID_SIZ_DEVICE_DESC
   };
 
-ONE_DESCRIPTOR Config_Descriptor =
+const ONE_DESCRIPTOR Config_Descriptor =
   {
     (uint8_t*)HID_ConfigDescriptor,
     HID_SIZ_CONFIG_DESC
   };
 
-ONE_DESCRIPTOR HID_Report_Descriptor =
+const ONE_DESCRIPTOR HID_Report_Descriptor =
   {
     (uint8_t *)HID_ReportDescriptor,
     HID_SIZ_REPORT_DESC
   };
 
-ONE_DESCRIPTOR HID_Descriptor =
+const ONE_DESCRIPTOR HID_Descriptor =
   {
     (uint8_t*)HID_ConfigDescriptor + HID_OFF_HID_DESC,
     HID_SIZ_HID_DESC
   };
 #endif
 
-ONE_DESCRIPTOR String_Descriptor[4] =
+const ONE_DESCRIPTOR String_Descriptor[4] =
   {
     {(uint8_t*)USB_StringLangID, USB_SIZ_STRING_LANGID},
     {(uint8_t*)USB_StringVendor, USB_SIZ_STRING_VENDOR},
@@ -243,7 +243,7 @@ void USB_Reset(void)
 
   /* Set this device to response on default address */
   SetDeviceAddress(0);
-  
+
   bDeviceState = ATTACHED;
 }
 
@@ -256,7 +256,7 @@ void USB_Reset(void)
 *******************************************************************************/
 void USB_SetConfiguration(void)
 {
-  DEVICE_INFO *pInfo = &Device_Info;
+  const DEVICE_INFO *pInfo = &Device_Info;
 
   if (pInfo->Current_Configuration != 0)
   {

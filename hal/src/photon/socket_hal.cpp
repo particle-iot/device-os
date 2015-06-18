@@ -526,11 +526,15 @@ wiced_result_t read_packet(wiced_packet_t* packet, uint8_t* target, uint16_t tar
     uint16_t fragment;
     uint16_t available;
     uint8_t* data;
+
     while (target_len!=0 && (result = wiced_packet_get_data(packet, read, &data, &fragment, &available))==WICED_SUCCESS && available!=0) {
         uint16_t to_read = std::min(fragment, target_len);
         memcpy(target+read, data, to_read);
         read += to_read;
         target_len -= to_read;
+        available -= to_read;
+        if (!available)
+            break;
     }
     if (read_len!=NULL)
         *read_len = read;
@@ -810,29 +814,28 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
 sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
 {
     socket_t* socket = from_handle(sd);
-    wiced_result_t result = WICED_INVALID_SOCKET;
+    volatile wiced_result_t result = WICED_INVALID_SOCKET;
     uint16_t read_len = 0;
     if (is_open(socket) && is_udp(socket)) {
         wiced_packet_t* packet = NULL;
         // UDP receive timeout changed to 0 sec so as not to block
         if ((result=wiced_udp_receive(udp(socket), &packet, WICED_NO_WAIT))==WICED_SUCCESS) {
-            if ((result=read_packet(packet, (uint8_t*)buffer, bufLen, &read_len))==WICED_SUCCESS) {
-                wiced_ip_address_t wiced_ip_addr;
-                uint16_t port;
-                if ((result=wiced_udp_packet_get_info(packet, &wiced_ip_addr, &port))==WICED_SUCCESS) {
-                    uint32_t ipv4 = GET_IPV4_ADDRESS(wiced_ip_addr);
-                    addr->sa_data[0] = (port>>8) & 0xFF;
-                    addr->sa_data[1] = port & 0xFF;
-                    addr->sa_data[2] = (ipv4 >> 24) & 0xFF;
-                    addr->sa_data[3] = (ipv4 >> 16) & 0xFF;
-                    addr->sa_data[4] = (ipv4 >> 8) & 0xFF;
-                    addr->sa_data[5] = ipv4 & 0xFF;
-                }
+            wiced_ip_address_t wiced_ip_addr;
+            uint16_t port;
+            if ((result=wiced_udp_packet_get_info(packet, &wiced_ip_addr, &port))==WICED_SUCCESS) {
+                uint32_t ipv4 = GET_IPV4_ADDRESS(wiced_ip_addr);
+                addr->sa_data[0] = (port>>8) & 0xFF;
+                addr->sa_data[1] = port & 0xFF;
+                addr->sa_data[2] = (ipv4 >> 24) & 0xFF;
+                addr->sa_data[3] = (ipv4 >> 16) & 0xFF;
+                addr->sa_data[4] = (ipv4 >> 8) & 0xFF;
+                addr->sa_data[5] = ipv4 & 0xFF;
+                result=read_packet(packet, (uint8_t*)buffer, bufLen, &read_len);
             }
             wiced_packet_delete(packet);
         }
     }
-    return result ? as_sock_result(result) : sock_result_t(read_len);
+    return result!=WICED_SUCCESS ? as_sock_result(result) : sock_result_t(read_len);
 }
 
 

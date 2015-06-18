@@ -24,30 +24,36 @@
 #include "testapi.h"
 
 test(system_api) {
-    
+
     API_COMPILE(System.dfu());
     API_COMPILE(System.dfu(true));
-    
+
     API_COMPILE(System.factoryReset());
-    
+
     API_COMPILE(System.reset());
-    
+
     API_COMPILE(System.sleep(60));
 
     API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60));
-    
+
     API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60));
-    
+
     API_COMPILE(System.sleep(SLEEP_MODE_DEEP));
 
     API_COMPILE(System.sleep(A0, CHANGE));
     API_COMPILE(System.sleep(A0, RISING));
     API_COMPILE(System.sleep(A0, FALLING));
     API_COMPILE(System.sleep(A0, FALLING, 20));
-        
+
     API_COMPILE(System.mode());
     API_COMPILE(SystemClass(AUTOMATIC));
     API_COMPILE(SystemClass(SEMI_AUTOMATIC));
-    API_COMPILE(SystemClass(MANUAL));    
+    API_COMPILE(SystemClass(MANUAL));
 }
 
+test(system_mode) {
+    API_COMPILE({ SYSTEM_MODE(AUTOMATIC) });
+    API_COMPILE({ SYSTEM_MODE(SEMI_AUTOMATIC) });
+    API_COMPILE({ SYSTEM_MODE(MANUAL) });
+
+}

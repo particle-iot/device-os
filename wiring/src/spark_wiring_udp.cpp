@@ -6,7 +6,7 @@
  * @date    13-Nov-2013
  *
  * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
- * @brief   
+ * @brief
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   Copyright (c) 2008 Bjoern Hartmann
@@ -44,7 +44,7 @@ UDP::UDP() : _sock(socket_handle_invalid())
 
 }
 
-uint8_t UDP::begin(uint16_t port, network_interface_t nif) 
+uint8_t UDP::begin(uint16_t port, network_interface_t nif)
 {
     bool bound = 0;
 	if(Network.from(nif).ready())
@@ -61,7 +61,7 @@ uint8_t UDP::begin(uint16_t port, network_interface_t nif)
     return bound;
 }
 
-int UDP::available() 
+int UDP::available()
 {
     return _total - _offset;
 }
@@ -71,7 +71,7 @@ void UDP::stop()
     DEBUG("_sock %d closesocket", _sock);
     if (isOpen(_sock))
     {
-        socket_close(_sock);        
+        socket_close(_sock);
     }
     _sock = socket_handle_invalid();
 }
@@ -137,7 +137,7 @@ int UDP::parsePacket()
         if (ret > 0)
         {
             _remotePort = _remoteSockAddr.sa_data[0] << 8 | _remoteSockAddr.sa_data[1];
-                        
+
             _remoteIP[0] = _remoteSockAddr.sa_data[2];
             _remoteIP[1] = _remoteSockAddr.sa_data[3];
             _remoteIP[2] = _remoteSockAddr.sa_data[4];
@@ -145,7 +145,7 @@ int UDP::parsePacket()
 
             _offset = 0;
             _total = ret;
-        }      
+        }
     }
     return available();
 }
@@ -177,4 +177,11 @@ void UDP::flush()
   _offset = 0;
   _total = 0;
 
+}
+
+size_t UDP::printTo(Print& p) const
+{
+    // can't use available() since this is a `const` method, and available is part of the Stream interface, and is non-const.
+    int size = _total - _offset;
+    return p.write(_buffer+_offset, size);
 }

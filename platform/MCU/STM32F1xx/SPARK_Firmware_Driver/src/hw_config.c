@@ -324,7 +324,7 @@ void LED_Init(Led_TypeDef Led)
 void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b) {
     TIM1->CCR2 = r;
     TIM1->CCR3 = g;
-    TIM1->CCR1 = b;   
+    TIM1->CCR1 = b;
 }
 
 void Get_RGB_LED_Values(uint16_t* values) {
@@ -857,7 +857,7 @@ void Enter_LowPowerMode(void)
  *******************************************************************************/
 void Leave_LowPowerMode(void)
 {
-    DEVICE_INFO *pInfo = &Device_Info;
+    const DEVICE_INFO *pInfo = &Device_Info;
 
     /* Set the device state to the correct state */
     if (pInfo->Current_Configuration != 0)
@@ -980,7 +980,7 @@ void Save_SystemFlags(void)
     FLASHStatus = FLASH_ProgramHalfWord(Address, Factory_Reset_SysFlag);
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
-    
+
     FLASHStatus = FLASH_ProgramHalfWord(Address,  Factory_Reset_Done_SysFlag<<8 | dfu_on_no_firmware);
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
@@ -1011,7 +1011,7 @@ FLASH_Status FLASH_WriteProtection_Enable(uint32_t FLASH_Pages)
     WRPR_Value = FLASH_GetWriteProtectionOptionByte();
 
     FLASH_Status status = FLASH_COMPLETE;
-    
+
     /* Check if desired pages are not yet write protected */
     if(((~WRPR_Value) & FLASH_Pages ) != FLASH_Pages)
     {
@@ -1038,7 +1038,7 @@ FLASH_Status FLASH_WriteProtection_Enable(uint32_t FLASH_Pages)
 FLASH_Status FLASH_WriteProtection_Disable(uint32_t FLASH_Pages)
 {
     FLASH_Status status = FLASH_COMPLETE;
-    
+
     /* Get pages write protection status */
     WRPR_Value = FLASH_GetWriteProtectionOptionByte();
 
@@ -1104,7 +1104,7 @@ void FLASH_Backup(uint32_t sFLASH_Address)
     /* Define the number of External Flash pages to be erased */
     unsigned NbrOfPage = EXTERNAL_FLASH_BLOCK_SIZE / sFLASH_PAGESIZE;
     unsigned EraseCounter;
-    
+
     /* Erase the SPI Flash pages */
     for (EraseCounter = 0; (EraseCounter < NbrOfPage); EraseCounter++)
     {
@@ -1169,8 +1169,8 @@ void FLASH_Restore(uint32_t sFLASH_Address)
 
 uint32_t FLASH_PagesMask(uint32_t fileSize)
 {
-    //Calculate the number of flash pages that needs to be erased    
-    return (fileSize+sFLASH_PAGESIZE-1)/sFLASH_PAGESIZE;    
+    //Calculate the number of flash pages that needs to be erased
+    return (fileSize+sFLASH_PAGESIZE-1)/sFLASH_PAGESIZE;
 }
 
 void FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize)
@@ -1196,13 +1196,13 @@ int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
     // ensure different for first write
     readBuffer[0] = writeBuffer[0]+1;
     unsigned i;
-    for (i=50; i-->0 && memcmp(writeBuffer, readBuffer, bufferSize); i++) 
+    for (i=50; i-->0 && memcmp(writeBuffer, readBuffer, bufferSize); i++)
     {
         /* Write Data Buffer to SPI Flash memory */
         sFLASH_WriteBuffer(writeBuffer, address, bufferSize);
 
         /* Read Data Buffer from SPI Flash memory */
-        sFLASH_ReadBuffer(readBuffer, address, bufferSize);        
+        sFLASH_ReadBuffer(readBuffer, address, bufferSize);
     }
     return !i;  // return 0 (success) if i!=0
 }
@@ -1335,9 +1335,9 @@ system_tick_t GetSystem1MsTick()
     return system_1ms_tick;
 }
 
-void Save_Reset_Syndrome() 
+void Save_Reset_Syndrome()
 {
-    //Save RCC clock control & status register   
+    //Save RCC clock control & status register
     uint32_t flags = RCC->CSR;
     if (SYSTEM_FLAG(RCC_CSR_SysFlag) != flags)
     {

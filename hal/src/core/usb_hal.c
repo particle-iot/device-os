@@ -23,6 +23,7 @@
  ******************************************************************************
  */
 
+
 /* Includes ------------------------------------------------------------------*/
 #include "usb_hal.h"
 #include "usb_conf.h"
@@ -40,17 +41,17 @@
 
 /* Private variables ---------------------------------------------------------*/
 #ifdef USB_CDC_ENABLE
-uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
-uint32_t USART_Rx_ptr_in = 0;
-uint32_t USART_Rx_ptr_out = 0;
-uint32_t USART_Rx_length  = 0;
+volatile uint8_t  USART_Rx_Buffer[USART_RX_DATA_SIZE];
+volatile uint32_t USART_Rx_ptr_in = 0;
+volatile uint32_t USART_Rx_ptr_out = 0;
+volatile uint32_t USART_Rx_length  = 0;
 
-uint8_t USB_Rx_Buffer[CDC_DATA_SIZE];
-uint16_t USB_Rx_length = 0;
-uint16_t USB_Rx_ptr = 0;
+volatile uint8_t USB_Rx_Buffer[CDC_DATA_SIZE];
+volatile uint16_t USB_Rx_length = 0;
+volatile uint16_t USB_Rx_ptr = 0;
 
-uint8_t  USB_Tx_State = 0;
-uint8_t  USB_Rx_State = 0;
+volatile uint8_t  USB_Tx_State = 0;
+volatile uint8_t  USB_Rx_State = 0;
 
 uint32_t USB_USART_BaudRate = 9600;
 
@@ -58,7 +59,7 @@ __IO uint8_t PrevXferComplete;
 #endif
 
 /* Extern variables ----------------------------------------------------------*/
-extern LINE_CODING linecoding;
+extern volatile LINE_CODING linecoding;
 
 /* Private function prototypes -----------------------------------------------*/
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
@@ -134,7 +135,7 @@ void USB_USART_Init(uint32_t baudRate)
     }
 }
 
-unsigned int USB_USART_Baud_Rate(void) 
+unsigned int USB_USART_Baud_Rate(void)
 {
     return linecoding.bitrate;
 }
@@ -188,7 +189,7 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
         /* Enable the receive of data on EP3 */
         SetEPRxValid(ENDP3);
       }
-      
+
       return peek ? USB_Rx_Buffer[USB_Rx_ptr] : USB_Rx_Buffer[USB_Rx_ptr++];
     }
   }
