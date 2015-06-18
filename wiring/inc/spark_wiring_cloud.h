@@ -100,7 +100,7 @@ public:
 
     bool syncTime(void)
     {
-        return CLOUD_FN(spark_protocol_send_time_request(sp()),(void)0);
+        return CLOUD_FN(spark_protocol_send_time_request(sp()), false);
     }
 
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))
