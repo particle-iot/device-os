@@ -12,6 +12,9 @@ TCPClient client;
 
 char myIpString[24];
 
+// allow us to use itoa() in this scope
+extern char* itoa(int a, char* buffer, unsigned char radix);
+
 enum tnetState {DISCONNECTED, CONNECTED};
 int telnetState = DISCONNECTED;
 
@@ -33,10 +36,20 @@ void setup() {
 
     server.begin(); // begin listening for TCP connections
 
-    IPAddress myIP = WiFi.localIP();
-    sprintf(myIpString, "%d.%d.%d.%d", myIP[0], myIP[1], myIP[2], myIP[3]);
+    IPAddress myIp = WiFi.localIP();
+    //sprintf(myIpString, "%d.%d.%d.%d", myIp[0], myIp[1], myIp[2], myIp[3]);
+    char num[4];
+    itoa(myIp[0],num,10);
+    strcat(myIpString,num); strcat(myIpString,".");
+    itoa(myIp[1],num,10);
+    strcat(myIpString,num); strcat(myIpString,".");
+    itoa(myIp[2],num,10);
+    strcat(myIpString,num); strcat(myIpString,".");
+    itoa(myIp[3],num,10);
+    strcat(myIpString,num);
+
     Spark.variable("devIP", myIpString, STRING);
-    Serial.println(myIP);
+    Serial.println(myIp);
 }
 
 void loop() {
