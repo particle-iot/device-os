@@ -104,7 +104,7 @@ struct tcp_packet_t
  * The info we maintain for each socket. It wraps a WICED socket.
  *
  */
-struct tcp_socket_t : wiced_tcp_socket_t {
+struct tcp_socket_t : public wiced_tcp_socket_t {
     tcp_packet_t packet;
 
     void close()
@@ -127,17 +127,21 @@ struct tcp_server_t;
 /**
  * The handle that we provide to external clients. This ensures
  */
-struct tcp_server_client_t
-{
+class tcp_server_client_t {
+
+    wiced_tcp_socket_t* volatile socket;
+    tcp_server_t* volatile server;
+
+public:
     tcp_packet_t packet;
-    wiced_tcp_socket_t* socket;
-    tcp_server_t* server;
 
     tcp_server_client_t(tcp_server_t* server, wiced_tcp_socket_t* socket) {
         this->socket = socket;
         this->server = server;
         memset(&packet, 0, sizeof(packet));
     }
+
+    wiced_tcp_socket_t* get_socket() { return socket; }
 
     int write(const void* buffer, size_t len, bool flush=false) {
         int result = WICED_TCPIP_INVALID_SOCKET;
@@ -147,19 +151,25 @@ struct tcp_server_client_t
         return result;
     }
 
-    void close();
+    bool isClosed() {
+        return socket==NULL;
+    }
 
+    void close(bool from_server=false);
+
+    /**
+     * Notification from the server that this socket has been disconnected. The server is
+     * already in the process of cleaning up the socket.
+     */
     void notify_disconnected()
     {
-        socket = NULL;
-        server = NULL;
-        packet.dispose_packet();
+        close(true);
     }
 
     ~tcp_server_client_t();
 };
 
-struct tcp_server_t : wiced_tcp_server_t
+struct tcp_server_t : public wiced_tcp_server_t
 {
     tcp_server_t() {
         wiced_rtos_init_semaphore(&accept_lock);
@@ -253,11 +263,15 @@ private:
     std::vector<int> to_accept;
 };
 
-void tcp_server_client_t::close() {
+void tcp_server_client_t::close(bool from_server) {
     if (socket && server) {
-        server->disconnect(socket);
+        if (!from_server) {
+            server->disconnect(socket);
+        }
+        server = NULL;
+        socket = NULL;
     }
-    notify_disconnected();
+    packet.dispose_packet();
 }
 
 
@@ -265,15 +279,12 @@ tcp_server_client_t::~tcp_server_client_t() {
     close();
 }
 
-struct socket_t
+class socket_t
 {
-    enum socket_type_t {
-        NONE, TCP, UDP, TCP_SERVER, TCP_CLIENT
-    };
-
     uint8_t type;
     bool closed;
-    socket_t* next;
+
+public:
 
     union all {
         tcp_socket_t tcp;
@@ -285,11 +296,20 @@ struct socket_t
         ~all() {}
     } s;
 
+    socket_t* next;
+    enum socket_type_t {
+        NONE, TCP, UDP, TCP_SERVER, TCP_CLIENT
+    };
+
     socket_t() {
         memset(this, 0, sizeof(*this));
     }
 
-    void set_server(tcp_server_t* server) {
+    uint8_t get_type() { return type; }
+    bool is_type(socket_type_t t) { return t==type; }
+    void set_type(socket_type_t t) { type = t; }
+
+   void set_server(tcp_server_t* server) {
         type = TCP_SERVER;
         s.tcp_server = server;
     }
@@ -316,6 +336,7 @@ struct socket_t
                delete s.tcp_client;
                break;
        }
+       type = NONE;
    }
 
    void close() {
@@ -350,7 +371,12 @@ struct socket_t
        return WICED_SUCCESS;
    }
 
-   bool isOpen() { return !closed; }
+   bool is_inner_open() {
+       // TCP_SERVER closes this outer instance, and UDP is not connection based.
+       return type==TCP_CLIENT ? !s.tcp_client->isClosed() : true;
+   }
+
+   bool isOpen() { return !closed && is_inner_open(); }
 };
 
 /**
@@ -395,7 +421,7 @@ void remove_list(socket_t* item, socket_t*& list)
 
 
 socket_t*& list_for_socket(socket_t* socket) {
-    return (socket->type==socket_t::TCP_SERVER) ? servers : clients;
+    return (socket->get_type()==socket_t::TCP_SERVER) ? servers : clients;
 }
 
 void add(socket_t* socket) {
@@ -410,11 +436,11 @@ void remove(socket_t* socket) {
     }
 }
 
-inline bool is_udp(socket_t* socket) { return socket && socket->type==socket_t::UDP; }
-inline bool is_tcp(socket_t* socket) { return socket && socket->type==socket_t::TCP; }
-inline bool is_client(socket_t* socket) { return socket && socket->type==socket_t::TCP_CLIENT; }
-inline bool is_server(socket_t* socket) { return socket && socket->type==socket_t::TCP_SERVER; }
-inline bool is_open(socket_t* socket) { return socket && !socket->closed; }
+inline bool is_udp(socket_t* socket) { return socket && socket->is_type(socket_t::UDP); }
+inline bool is_tcp(socket_t* socket) { return socket && socket->is_type(socket_t::TCP); }
+inline bool is_client(socket_t* socket) { return socket && socket->is_type(socket_t::TCP_CLIENT); }
+inline bool is_server(socket_t* socket) { return socket && socket->is_type(socket_t::TCP_SERVER); }
+inline bool is_open(socket_t* socket) { return socket && socket->isOpen(); }
 inline tcp_socket_t* tcp(socket_t* socket) { return is_tcp(socket) ? &socket->s.tcp : NULL; }
 inline udp_socket_t* udp(socket_t* socket) { return is_udp(socket) ? &socket->s.udp : NULL; }
 inline tcp_server_client_t* client(socket_t* socket) { return is_client(socket) ? socket->s.tcp_client : NULL; }
@@ -426,7 +452,7 @@ wiced_tcp_socket_t* as_wiced_tcp_socket(socket_t* socket)
         return tcp(socket);
     }
     else if (is_client(socket)) {
-        return socket->s.tcp_client->socket;
+        return socket->s.tcp_client->get_socket();
     }
     return NULL;
 }
@@ -599,14 +625,16 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
 {
     sock_result_t bytes_read = -1;
     socket_t* socket = from_handle(sd);
-    if (is_tcp(socket)) {
-        tcp_socket_t* tcp_socket = tcp(socket);
-        tcp_packet_t& packet = tcp_socket->packet;
-        bytes_read = read_packet_and_dispose(packet, buffer, len, tcp_socket, _timeout);
-    }
-    else if (is_client(socket)) {
-        tcp_server_client_t* server_client = client(socket);
-        bytes_read = read_packet_and_dispose(server_client->packet, buffer, len, server_client->socket, _timeout);
+    if (is_open(socket)) {
+        if (is_tcp(socket)) {
+            tcp_socket_t* tcp_socket = tcp(socket);
+            tcp_packet_t& packet = tcp_socket->packet;
+            bytes_read = read_packet_and_dispose(packet, buffer, len, tcp_socket, _timeout);
+        }
+        else if (is_client(socket)) {
+            tcp_server_client_t* server_client = client(socket);
+            bytes_read = read_packet_and_dispose(server_client->packet, buffer, len, server_client->get_socket(), _timeout);
+        }
     }
     return bytes_read;
 }
@@ -720,11 +748,7 @@ sock_result_t socket_accept(sock_handle_t sock)
 uint8_t socket_active_status(sock_handle_t sd)
 {
     socket_t* socket = from_handle(sd);
-    uint8_t result = 0;
-    if (socket) {
-        result = socket->isOpen();
-    }
-    return result ? SOCKET_STATUS_ACTIVE : SOCKET_STATUS_INACTIVE;
+    return (socket && socket->isOpen()) ? SOCKET_STATUS_ACTIVE : SOCKET_STATUS_INACTIVE;
 }
 
 /**
@@ -760,7 +784,7 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
     socket_t* socket = new socket_t();
     if (socket) {
         wiced_result_t wiced_result;
-        socket->type = (protocol==IPPROTO_UDP ? socket_t::UDP : socket_t::TCP);
+        socket->set_type((protocol==IPPROTO_UDP ? socket_t::UDP : socket_t::TCP));
         if (type==socket_t::TCP) {
             wiced_result = wiced_tcp_create_socket(tcp(socket), WICED_STA_INTERFACE);
         }
@@ -768,7 +792,7 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
             wiced_result = wiced_udp_create_socket(udp(socket), port, WICED_STA_INTERFACE);
         }
         if (wiced_result!=WICED_SUCCESS) {
-            socket->type = socket_t::NONE;  // don't try to destruct the wiced resource since it was never created.
+            socket->set_type(socket_t::NONE);  // don't try to destruct the wiced resource since it was never created.
             socket_dispose(result);
             result = as_sock_result(wiced_result);
         }

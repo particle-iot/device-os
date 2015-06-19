@@ -74,7 +74,7 @@ TCPClient TCPServer::available()
 
     int sock = socket_accept(_sock);
 
-    if (sock < 0)
+    if (!socket_handle_valid(sock))
     {
         _client = TCPClient(SOCKET_INVALID);
     }
