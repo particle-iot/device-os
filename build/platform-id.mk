@@ -1,7 +1,7 @@
 ifeq ($(included_productid_mk),)
 included_productid_mk := 1
 
-# defines 
+# defines
 # PLATFORM_NAME - a unique name for the platform, can be used to organise sources
 #                 by platform
 # PLATFORM_MCU  - an identifier for the MCU family
@@ -10,7 +10,7 @@ included_productid_mk := 1
 # ARCH		- architecture (ARM/GCC)
 # PRODUCT_DESC  - text description of the product ID
 # PLATFORM_DYNALIB_MODULES - if the device supports a modular build, the name
-#		- of the subdirectory containing 
+#		- of the subdirectory containing
 
 # Default USB Device Vendor ID for Spark Products
 USBD_VID_SPARK=0x1D50
@@ -129,6 +129,7 @@ USBD_VID_SPARK=0x1D50
 USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
 DEFAULT_PRODUCT_ID=4
+PLATFORM_STM32_STDPERIPH_EXCLUDE=y
 endif
 
 ifeq ("$(PLATFORM_ID)","5")
@@ -142,6 +143,7 @@ USBD_VID_SPARK=0x1D50
 USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
 DEFAULT_PRODUCT_ID=5
+PLATFORM_STM32_STDPERIPH_EXCLUDE=y
 endif
 
 ifeq ("$(PLATFORM_ID)","6")
@@ -157,6 +159,7 @@ USBD_PID_DFU=0xD006
 USBD_PID_CDC=0xC006
 PLATFORM_DYNALIB_MODULES=photon
 DEFAULT_PRODUCT_ID=6
+PLATFORM_STM32_STDPERIPH_EXCLUDE=y
 endif
 
 ifeq ("$(PLATFORM_ID)","7")
@@ -170,6 +173,7 @@ USBD_VID_SPARK=0x1D50
 USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
 DEFAULT_PRODUCT_ID=5
+PLATFORM_STM32_STDPERIPH_EXCLUDE=y
 endif
 
 ifeq ("$(PLATFORM_ID)","8")
@@ -184,6 +188,7 @@ USBD_PID_DFU=0xD008
 USBD_PID_CDC=0xC008
 PLATFORM_DYNALIB_MODULES=photon
 DEFAULT_PRODUCT_ID=8
+PLATFORM_STM32_STDPERIPH_EXCLUDE=y
 endif
 
 ifeq ("$(PLATFORM_ID)","9")
@@ -217,7 +222,7 @@ endif
 
 ifeq ("$(PLATFORM_NAME)","core")
     PLATFORM_DFU ?= 0x08005000
-else 
+else
     ifeq ("$(PLATFORM_NAME)","photon")
 	PLATFORM_DFU ?= 0x08020000
 	PLATFORM_THREADING=1

@@ -6,3 +6,4 @@
 DEPENDENCIES += communication
 
 CPPFLAGS += -std=gnu++11
+
