@@ -5,6 +5,7 @@
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
 HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/photon
+HAL_INCL_STM32F2XX_PATH = $(TARGET_HAL_PATH)/src/stm32f2xx
 
 #HAL_WICED_RTOS=ThreadX
 #HAL_WICED_NETWORK=NetX
@@ -16,6 +17,7 @@ HAL_WICED_NETWORK=LwIP
 # implementation headers.
 ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)
+INCLUDE_DIRS += $(HAL_INCL_STM32F2XX_PATH)
 endif
 
 # implementation defined details for the platform that can vary
