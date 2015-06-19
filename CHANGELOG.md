@@ -29,7 +29,8 @@
  - Divide by zero now caught and causes a SOS.
  - Floating-point support for `sprintf()` reinstated
  - Fixed WICED DCT becoming unmodifiable
- 
+ - Fix UDP.parsePacket() not receiving any data on the Photon
+
 ## v0.4.1
 
 ### ENHANCEMENTS
