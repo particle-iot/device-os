@@ -42,7 +42,8 @@
  - Floating-point support for `sprintf()` reinstated
  - Fixed WICED DCT becoming unmodifiable
  - Fix UDP.parsePacket() not receiving any data on the Photon
-
+ - Fix #440 : Removed WICED RTC init code that resets to default preset time in platform_mcu_powersave_init() within photon-wiced repo
+ 
 ## v0.4.1
 
 ### ENHANCEMENTS
