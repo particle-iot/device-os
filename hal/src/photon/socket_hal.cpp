@@ -335,6 +335,22 @@ struct socket_t
        }
        closed = true;
    }
+
+   static wiced_result_t notify_connected(wiced_tcp_socket_t*, void* socket) {
+       return WICED_SUCCESS;
+   }
+
+   static wiced_result_t notify_received(wiced_tcp_socket_t*, void* socket) {
+       return WICED_SUCCESS;
+   }
+
+   static wiced_result_t notify_disconnected(wiced_tcp_socket_t*, void* socket) {
+       if (socket)
+           ((socket_t*)socket)->close();
+       return WICED_SUCCESS;
+   }
+
+   bool isOpen() { return !closed; }
 };
 
 /**
@@ -500,11 +516,12 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addr
     if (is_tcp(socket)) {
         wiced_result_t wiced_result = wiced_tcp_bind(tcp(socket), WICED_ANY_PORT);
         if (wiced_result==WICED_SUCCESS) {
+            wiced_tcp_register_callbacks(tcp(socket), socket_t::notify_connected, socket_t::notify_received, socket_t::notify_disconnected, (void*)socket);
             SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr);
             unsigned timeout = 5*1000;
             result = wiced_tcp_connect(tcp(socket), &ip_addr, port, timeout);
         }
-        else
+        if (result!=WICED_SUCCESS)
             result = as_sock_result(wiced_result);
     }
     return result;
@@ -705,7 +722,7 @@ uint8_t socket_active_status(sock_handle_t sd)
     socket_t* socket = from_handle(sd);
     uint8_t result = 0;
     if (socket) {
-        result = !socket->closed;
+        result = socket->isOpen();
     }
     return result ? SOCKET_STATUS_ACTIVE : SOCKET_STATUS_INACTIVE;
 }
