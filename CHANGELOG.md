@@ -1,4 +1,16 @@
 
+## v0.4.3
+
+
+### FEATURES
+
+### ENHANCEMENTS
+
+### BUGFIXES
+
+ - [Photon/TCPServer] - `TCPClient.connected()` was not returning `false` when the socket was asynchronously disconnected.
+
+
 ## v0.4.2
 
 ### FEATURES
@@ -29,6 +41,8 @@
  - Divide by zero now caught and causes a SOS.
  - Floating-point support for `sprintf()` reinstated
  - Fixed WICED DCT becoming unmodifiable
+ - Fix UDP.parsePacket() not receiving any data on the Photon
+ - Fix #440 : Removed WICED RTC init code that resets to default preset time in platform_mcu_powersave_init() within photon-wiced repo
  
 ## v0.4.1
 

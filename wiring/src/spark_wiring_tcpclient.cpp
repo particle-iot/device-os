@@ -6,7 +6,7 @@
  * @date    10-Nov-2013
  *
  * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
- * @brief   
+ * @brief
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -46,12 +46,12 @@ TCPClient::TCPClient() : TCPClient(socket_handle_invalid())
 {
 }
 
-TCPClient::TCPClient(sock_handle_t sock) : _sock(sock) 
+TCPClient::TCPClient(sock_handle_t sock) : _sock(sock)
 {
   flush_buffer();
 }
 
-int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif) 
+int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
 {
       int rv = 0;
       if(Network.ready())
@@ -59,7 +59,7 @@ int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
         IPAddress ip_addr;
 
         if(inet_gethostbyname(host, strlen(host), ip_addr, nif, NULL) == 0)
-        {                
+        {
                 return connect(ip_addr, port, nif);
         }
         else
@@ -68,9 +68,9 @@ int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
       return rv;
 }
 
-int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif) 
+int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
 {
-        int connected = 0;        
+        int connected = 0;
         if(Network.from(nif).ready())
         {
           sockaddr_t tSocketAddr;
@@ -107,7 +107,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
         return connected;
 }
 
-size_t TCPClient::write(uint8_t b) 
+size_t TCPClient::write(uint8_t b)
 {
         return write(&b, 1);
 }
@@ -122,7 +122,7 @@ int TCPClient::bufferCount()
   return _total - _offset;
 }
 
-int TCPClient::available() 
+int TCPClient::available()
 {
     int avail = 0;
 
@@ -150,7 +150,7 @@ int TCPClient::available()
     return avail;
 }
 
-int TCPClient::read() 
+int TCPClient::read()
 {
   return (bufferCount() || available()) ? _buffer[_offset++] : -1;
 }
@@ -167,12 +167,12 @@ int TCPClient::read(uint8_t *buffer, size_t size)
         return read;
 }
 
-int TCPClient::peek() 
+int TCPClient::peek()
 {
   return  (bufferCount() || available()) ? _buffer[_offset] : -1;
 }
 
-void TCPClient::flush_buffer() 
+void TCPClient::flush_buffer()
 {
   _offset = 0;
   _total = 0;
@@ -185,7 +185,7 @@ void TCPClient::flush()
 }
 
 
-void TCPClient::stop() 
+void TCPClient::stop()
 {
   DEBUG("_sock %d closesocket", _sock);
 
@@ -194,10 +194,10 @@ void TCPClient::stop()
  _sock = socket_handle_invalid();
 }
 
-uint8_t TCPClient::connected() 
+uint8_t TCPClient::connected()
 {
   // Wlan up, open and not in CLOSE_WAIT or data still in the local buffer
-  bool rv = ( 1 == status() || bufferCount()) ? true : false;
+  bool rv = (status() || bufferCount());
   // no data in the local buffer, Socket open but my be in CLOSE_WAIT yet the CC3000 may have data in its buffer
   if(!rv && isOpen(_sock) && (SOCKET_STATUS_INACTIVE == socket_active_status(_sock)))
     {
@@ -212,10 +212,10 @@ uint8_t TCPClient::connected()
 
 uint8_t TCPClient::status()
 {
-  return (isOpen(_sock) && Network.from(nif).ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(_sock)) ? 1 : 0);
+  return (isOpen(_sock) && Network.from(nif).ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(_sock)));
 }
 
 TCPClient::operator bool()
 {
-   return (status() ? 1 : 0);
+   return (status()!=0);
 }
