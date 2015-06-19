@@ -1,4 +1,16 @@
 
+## v0.4.3
+
+
+### FEATURES
+
+### ENHANCEMENTS
+
+### BUGFIXES
+
+ - [Photon/TCPServer] - `TCPClient.connected()` was not returning `false` when the socket was asynchronously disconnected.
+
+
 ## v0.4.2
 
 ### FEATURES
