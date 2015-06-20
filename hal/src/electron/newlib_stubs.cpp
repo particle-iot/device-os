@@ -59,11 +59,8 @@ void CallConstructors(void)
 	call_constructors(&__init_array_start, &__init_array_end);
 	call_constructors(&__fini_array_start, &__fini_array_end);
 }
-} /* extern "C" */
 
-extern "C" {
 void *__dso_handle = NULL;
-} /* extern "C" */
 
 /*
  * Implement C++ new/delete operators using the heap
@@ -89,7 +86,6 @@ void operator delete[](void *p)
 	free(p);
 }
 
-extern "C" {
 /******************************************************
  * System call reference with suggested stubs:
  * http://sourceware.org/newlib/libc.html#Syscalls
