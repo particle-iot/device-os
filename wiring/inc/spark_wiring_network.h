@@ -35,7 +35,7 @@ class NetworkClass;
 // Defined as the primary network
 extern NetworkClass& Network;
 
-    
+
 //Retained for compatibility and to flag compiler warnings as build errors
 class NetworkClass
 {
@@ -52,13 +52,13 @@ public:
     static void connect(void) __attribute__((deprecated("Please use WiFi.connect() instead")));
     static void disconnect(void) __attribute__((deprecated("Please use WiFi.disconnect() instead")));
     static bool connecting(void) __attribute__((deprecated("Please use WiFi.connecting() instead")));
-    virtual bool ready(void);
-    
+    virtual bool ready(void)=0;
+
     operator network_interface_t() {
         return 0;   // the default
     }
 
-    
+
     static NetworkClass& from(network_interface_t nif) {
         // hard-code for now until multiple-networks are implemented.
         return Network;

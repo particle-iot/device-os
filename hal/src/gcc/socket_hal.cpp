@@ -64,7 +64,7 @@ ip::tcp::socket& from(sock_handle_t sd)
 {
     if (sd>=SOCKET_MAX)
         return invalid();
-    return handles[sd];    
+    return handles[sd];
 }
 
 sock_handle_t next_unused()
@@ -82,7 +82,7 @@ bool is_valid(ip::tcp::socket& handle) {
 
 int inet_gethostbyname(char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr)
 {
-    *out_ip_addr = 0;
+    out_ip_addr->ipv4 = 0;
     ip::tcp::resolver resolver(io_service);
     ip::tcp::resolver::query query(hostname, "");
     for(ip::tcp::resolver::iterator i = resolver.resolve(query);
@@ -93,22 +93,22 @@ int inet_gethostbyname(char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_
         ip::address addr = end.address();
         if (addr.is_v4()) {
             ip::address_v4 addr_v4 = addr.to_v4();
-            *out_ip_addr = addr_v4.to_ulong();
+            out_ip_addr->ipv4 = addr_v4.to_ulong();
         }
     }
     return 0;
 }
 
 int32_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen)
-{       
+{
     auto& handle = from(sd);
     if (!is_valid(handle))
         return -1;
-    
+
     unsigned port = addr->sa_data[0] << 8 | addr->sa_data[1];
     // 2-5 are IP address in network byte order
     const uint8_t* dest = addr->sa_data+2;
-    
+
     ip::address_v4::bytes_type address = {{ dest[0], dest[1], dest[2], dest[3] }};
     ip::tcp::endpoint endpoint(boost::asio::ip::address_v4(address),port);
 
@@ -117,29 +117,29 @@ int32_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen)
     return ec.value();
 }
 
-sock_result_t socket_reset_blocking_call() 
+sock_result_t socket_reset_blocking_call()
 {
     return 0;
 }
 
 sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, system_tick_t _timeout)
-{  
+{
     auto& handle = from(sd);
     if (!is_valid(handle))
         return -1;
     boost::asio::socket_base::bytes_readable command(true);
     handle.io_control(command);
-    std::size_t available = command.get();    
+    std::size_t available = command.get();
     sock_result_t result = 0;
     if (available) {
         available = handle.read_some(boost::asio::buffer(buffer, len), ec);
         result = ec.value() ? -1 : available;
-    }    
+    }
     return result;
 }
 
 
-sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len) 
+sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
 {
     auto& socket = from(sd);
     if (!is_valid(socket))
@@ -149,56 +149,56 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
 }
 
 
-sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port) 
+sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port)
 {
     NOT_IMPLEMENTED("create nonblocking server");
     return 0;
 }
 
-sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize) 
+sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
 {
     NOT_IMPLEMENTED("socket_receivefrom");
     return 0;
 }
 
-sock_result_t socket_bind(sock_handle_t sock, uint16_t port) 
-{           
+sock_result_t socket_bind(sock_handle_t sock, uint16_t port)
+{
     NOT_IMPLEMENTED("socket_bind");
     return 0;
 }
 
-sock_result_t socket_accept(sock_handle_t sock) 
-{    
+sock_result_t socket_accept(sock_handle_t sock)
+{
     NOT_IMPLEMENTED("socket_accept");
     return 0;
 }
 
-uint8_t socket_active_status(sock_handle_t socket) 
+uint8_t socket_active_status(sock_handle_t socket)
 {
     bool open = from(socket).is_open();
     return open ? SOCKET_STATUS_ACTIVE : SOCKET_STATUS_INACTIVE;
 }
 
-sock_result_t socket_close(sock_handle_t sock) 
+sock_result_t socket_close(sock_handle_t sock)
 {
     auto& handle = from(sock);
     handle.close();
     return 0;
 }
 
-sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol) 
-{   
+sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port, network_interface_t nif)
+{
     sock_handle_t handle = next_unused();
-    if (handle==SOCKET_INVALID) 
+    if (handle==SOCKET_INVALID)
         return -1;
-    
+
     auto& socket = from(handle);
     socket.open(::ip::tcp::v4(), ec);
     sock_handle_t result = ec.value();
     return result ? result : handle;
 }
 
-sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size) 
+sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size)
 {
     //NOT_IMPLEMENTED("socket_sendto");
     return 0;
@@ -209,3 +209,7 @@ uint8_t socket_handle_valid(sock_handle_t handle) {
 }
 
 
+sock_handle_t socket_handle_invalid()
+{
+    return SOCKET_INVALID;
+}

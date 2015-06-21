@@ -26,6 +26,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "spi_hal.h"
 
+void HAL_SPI_Init(HAL_SPI_Interface spi)
+{
+}
+
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
 {
 }
@@ -54,4 +58,8 @@ uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 {
     return false;
+}
+
+void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback)
+{
 }

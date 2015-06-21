@@ -57,8 +57,11 @@ inline void pinResetFast(pin_t _pin)
 {
     PIN_MAP[_pin].gpio_peripheral->BSRRH = PIN_MAP[_pin].gpio_pin;
 }
+#elif PLATFORM_ID==3
 
-
+// make them unresolved symbols so attempted use will result in a linker error
+void pinResetFast(pin_t _pin);
+void pinSetFast(pin_t _pin);
 #else
     #error "*** MCU architecture not supported by this library. ***"
 #endif

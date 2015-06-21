@@ -24,8 +24,16 @@
 
 #include "module_info.h"
 
+#if PLATFORM_ID==3
+#define _ARM_SECTION(x)
+char link_module_start;
+char link_module_end;
+#else
+#define _ARM_SECTION(x) ,x
+#endif
 
-inline module_function_t module_function_(uint8_t f) {
+
+module_function_t module_function_(uint8_t f) {
     return (module_function_t)f;
 }
 
@@ -33,7 +41,7 @@ module_function_t  module_function(const module_info_t* mi) {
     return mi ? module_function_(mi->module_function) : MODULE_FUNCTION_NONE;
 }
 
-inline uint8_t module_index_(uint8_t value) {
+uint8_t module_index_(uint8_t value) {
     return value;
 }
 
@@ -99,7 +107,7 @@ extern char link_module_end;
 
 #define MODULE_DEPENDENCY2 0,0,0
 
-__attribute__((externally_visible, section(".modinfo.module_info"))) const module_info_t module_info = {
+__attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info")))) const module_info_t module_info = {
     &link_module_start,         /* start address */
     &link_module_end,           /* end address */
     0, 0,                       /* reserved, reserved2 */
@@ -117,17 +125,17 @@ __attribute__((externally_visible, section(".modinfo.module_info"))) const modul
  */
 #define MODULE_INFO_SUFFIX_EXTRA 4
 
-__attribute__((weak, externally_visible, section(".modinfo.product_id"))) uint16_t __system_product_id = -1;
-__attribute__((weak, externally_visible, section(".modinfo.product_version"))) uint16_t __system_product_version = -1;
+__attribute__((weak, externally_visible _ARM_SECTION(section(".modinfo.product_id")))) uint16_t __system_product_id = -1;
+__attribute__((weak, externally_visible _ARM_SECTION(section(".modinfo.product_version")))) uint16_t __system_product_version = -1;
 
 
 // These are placed in a non-default (.rodata) section because they come after all the .rodata is included in the linker scripts.
 // Doing it like this is simpler than setting up exclusion rules.
 
-__attribute__((externally_visible, section(".modinfo.module_info_suffix"))) const module_info_suffix_t module_info_suffix = {
+__attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info_suffix")))) const module_info_suffix_t module_info_suffix = {
     0, { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 }, sizeof(module_info_suffix_t)+MODULE_INFO_SUFFIX_EXTRA
 };
 
-__attribute__((externally_visible, section(".modinfo.module_info_crc"))) const module_info_crc_t module_info_crc = {
+__attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info_crc")))) const module_info_crc_t module_info_crc = {
     0x12345678
 };

@@ -160,7 +160,7 @@ private:
   void start_send()
   {
     std::string body("\"Hello!\" from Asio ping.");
-    
+
     // Create an ICMP header for an echo request.
     icmp_header echo_request;
     echo_request.type(icmp_header::echo_request);
@@ -222,7 +222,7 @@ private:
     {
       // If this is the first reply, interrupt the five second timeout.
       if (num_replies_++ == 0)
-        timer_.cancel();      
+        timer_.cancel();
     }
 
     start_receive();
@@ -236,8 +236,8 @@ private:
     return static_cast<unsigned short>(::getpid());
 #endif
   }
-  
-  
+
+
   icmp::resolver resolver_;
   icmp::endpoint destination_;
   icmp::socket socket_;
@@ -249,17 +249,17 @@ private:
 };
 
 int inet_ping(const HAL_IPAddress* address, uint8_t nTries)
-{ 
+{
     MSG("pinging");
     int count = 0;
     try {
         boost::asio::io_service io_service;
-        Pinger p(io_service, address->ipv4, nTries);
+        Pinger p(io_service, (const uint8_t*)&address->ipv4, nTries);
         io_service.run();
         count = p.replies();
     }
     catch (std::exception& e)
-    {      
+    {
     }
     return count;
 }

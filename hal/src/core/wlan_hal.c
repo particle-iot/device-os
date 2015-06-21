@@ -73,7 +73,7 @@ unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 void recreate_spark_nvmem_file();
 
 
-int wlan_clear_credentials() 
+int wlan_clear_credentials()
 {
     if(wlan_ioctl_del_profile(255) == 0)
     {
@@ -90,10 +90,10 @@ int wlan_has_credentials()
     {
         return 0;
     }
-    return 1;    
+    return 1;
 }
 
-int wlan_connect_init() 
+int wlan_connect_init()
 {
     wlan_start(0);//No other option to connect other than wlan_start()
     /* Mask out all non-required events from CC3000 */
@@ -112,7 +112,7 @@ wlan_result_t wlan_deactivate() {
     return 0;
 }
 
-bool wlan_reset_credentials_store_required() 
+bool wlan_reset_credentials_store_required()
 {
     return (NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE);
 }
@@ -128,13 +128,13 @@ wlan_result_t wlan_reset_credentials_store()
 
 
 /**
- * Do what is needed to finalize the connection. 
- * @return 
+ * Do what is needed to finalize the connection.
+ * @return
  */
-wlan_result_t wlan_connect_finalize() 
+wlan_result_t wlan_connect_finalize()
 {
     // enable connection from stored profiles
-    return wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);//Enable auto connect    
+    return wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);//Enable auto connect
 }
 
 void Set_NetApp_Timeout(void)
@@ -158,31 +158,31 @@ void Clear_NetApp_Dhcp(void)
     netapp_dhcp(&pucIP_Addr, &pucSubnetMask, &pucIP_DefaultGWAddr, &pucDNS);
 }
 
-wlan_result_t wlan_disconnect_now() 
+wlan_result_t wlan_disconnect_now()
 {
     wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);//Disable auto connect
-    return wlan_disconnect();    
+    return wlan_disconnect();
 }
 
-int wlan_connected_rssi() 
-{   
+int wlan_connected_rssi()
+{
     tNetappIpconfigRetArgs config;
     netapp_ipconfig((void*)&config);
-    
+
     int _returnValue = 0;
     int l;
     for (l=0; l<16; l++)
     {
         char wlan_scan_results_table[50];
-        if(wlan_ioctl_get_scan_results(0, (unsigned char*)wlan_scan_results_table) != 0) 
+        if(wlan_ioctl_get_scan_results(0, (unsigned char*)wlan_scan_results_table) != 0)
             return(1);
-        if (wlan_scan_results_table[0] == 0) 
+        if (wlan_scan_results_table[0] == 0)
             break;
         if (!strcmp(wlan_scan_results_table+12, config.uaSSID)) {
             _returnValue = ((wlan_scan_results_table[8] >> 1) - 127);
             break;
         }
-    }       
+    }
     return _returnValue;
 }
 
@@ -207,7 +207,7 @@ int inet_ping(const HAL_IPAddress* ip, network_interface_t nif, uint8_t nTries, 
     return result;
 }
 
-int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char *password, 
+int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char *password,
     uint16_t passwordLen, WLanSecurityType security)
 {
     int wlan_profile_index = -1;
@@ -243,7 +243,7 @@ int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char
             buf[i] = strtoul(byteStr, NULL, 16);
         }
         password = buf;
-        
+
      wlan_profile_index = wlan_add_profile(WLAN_SEC_WEP,    // Security type
         (unsigned char *)ssid,                                // SSID
         ssidLen,                                              // SSID length
@@ -314,7 +314,7 @@ void recreate_spark_nvmem_file(void)
 }
 
 void wlan_smart_config_init() {
-    
+
     /* Create new entry for AES encryption key */
     nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
 
@@ -324,10 +324,10 @@ void wlan_smart_config_init() {
     wlan_smart_config_set_prefix((char*)aucCC3000_prefix);
 
     /* Start the SmartConfig start process */
-    wlan_smart_config_start(1);    
+    wlan_smart_config_start(1);
 }
 
-bool wlan_smart_config_finalize() {    
+bool wlan_smart_config_finalize() {
     /* read count of wlan profiles stored */
     nvmem_read(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
     return false;
@@ -396,7 +396,7 @@ char *WLAN_BootLoader_Patch(unsigned long *length)
 	return NULL;
 }
 
-void wlan_smart_config_cleanup() 
+void wlan_smart_config_cleanup()
 {
     unsigned char loop_index = 0;
 
@@ -409,7 +409,7 @@ void wlan_smart_config_cleanup()
 
 
 void wlan_setup()
-{    
+{
     /* Initialize CC3000's CS, EN and INT pins to their default states */
     CC3000_WIFI_Init();
 
@@ -422,9 +422,9 @@ void wlan_setup()
 
     HAL_Delay_Microseconds(100);
 }
-            
-           
-void wlan_set_error_count(uint32_t errorCount) 
+
+
+void wlan_set_error_count(uint32_t errorCount)
 {
     NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = errorCount;
     nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
@@ -436,7 +436,7 @@ void wlan_fetch_ipconfig(WLanConfig* config) {
     // the WLanConfig and the CC3000 structure are identical
     netapp_ipconfig((void*)&config->nw);
     // the MAC address isn't available until after the first WLAN connection is made, so fetch it from nvmem
-    nvmem_get_mac_address(config->nw.uaMacAddr);    
+    nvmem_get_mac_address(config->nw.uaMacAddr);
 }
 
 void SPARK_WLAN_SmartConfigProcess()

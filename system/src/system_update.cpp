@@ -15,7 +15,6 @@
 #include "system_ymodem.h"
 #include "system_task.h"
 #include "spark_protocol_functions.h"
-#include "hw_config.h"
 #include "string_convert.h"
 #include "appender.h"
 

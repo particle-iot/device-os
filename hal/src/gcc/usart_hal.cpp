@@ -3,19 +3,21 @@
 #include "socket_hal.h"
 
 struct Usart {
-    virtual void init(Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)=0;    
+    virtual void init(Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)=0;
     virtual void begin(uint32_t baud)=0;
-    virtual void end()=0;    
+    virtual void end()=0;
     virtual int32_t available()=0;
     virtual int32_t read()=0;
     virtual int32_t peek()=0;
     virtual uint32_t write(uint8_t byte)=0;
     virtual void flush()=0;
-    
+
     bool enabled() { return true; }
 };
 
-class SocketUsartBase : public Usart 
+const sock_handle_t SOCKET_INVALID = sock_handle_t(-1);
+
+class SocketUsartBase : public Usart
 {
     private:
         Ring_Buffer* rx;
@@ -24,9 +26,9 @@ class SocketUsartBase : public Usart
     protected:
         sock_handle_t socket;
 
-    
+
         SocketUsartBase() : socket(SOCKET_INVALID) {}
-        
+
         virtual bool initSocket()=0;
 
         inline int32_t read_char(bool peek=false)
@@ -39,7 +41,7 @@ class SocketUsartBase : public Usart
                 rx->tail = (rx->tail+1) % SERIAL_BUFFER_SIZE;
             return c;
         }
-        
+
         inline void write_char(unsigned char c)
         {
             unsigned i = (unsigned int)(tx->head + 1) % SERIAL_BUFFER_SIZE;
@@ -49,7 +51,7 @@ class SocketUsartBase : public Usart
                 tx->head = i;
             }
         }
-        
+
         void fillFromSocketIfNeeded() {
             int space;
             if (rx->head>rx->tail) {    // head after tail, so can fill up to end of buffer
@@ -58,29 +60,28 @@ class SocketUsartBase : public Usart
             else {
                 space = rx->tail-rx->head;  // may be 0
             }
-            if (socket!=SOCKET_INVALID && space>0) {                
+            if (socket!=SOCKET_INVALID && space>0) {
                 socket_receive(socket, rx->buffer+rx->head, space, 0);
             }
         }
-        
 
-        
+
     public:
         virtual void init(Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer) {
             this->rx = rx_buffer;
             this->tx = tx_buffer;
         }
-                
+
         virtual void end() {
             socket_close(socket);
         }
         virtual void flush() {
-            // todo 
+            // todo
         }
-        
-        virtual int32_t available() {            
+
+        virtual int32_t available() {
             fillFromSocketIfNeeded();
-            return (rx->head-rx->tail) % SERIAL_BUFFER_SIZE;            
+            return (rx->head-rx->tail) % SERIAL_BUFFER_SIZE;
         }
         virtual int32_t read() {
             fillFromSocketIfNeeded();
@@ -101,11 +102,11 @@ class SocketUsartBase : public Usart
  * Client that provides data to/from the server when connected.
  */
 class SocketUsartClient : public SocketUsartBase {
-    
+
     virtual bool initSocket() {
         if (socket==SOCKET_INVALID) {
-            socket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        
+            socket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, 54, 0);
+
             sockaddr_t socketAddr;
             int testResult = 0;
 
@@ -121,35 +122,35 @@ class SocketUsartClient : public SocketUsartBase {
             socketAddr.sa_data[4] = 0;
             socketAddr.sa_data[5] = 1;
 
-            testResult = socket_connect(socket, &socketAddr, sizeof(socketAddr));            
+            testResult = socket_connect(socket, &socketAddr, sizeof(socketAddr));
             if (testResult) {
                 socket_close(socket);
-                socket = SOCKET_INVALID;                
+                socket = SOCKET_INVALID;
             }
-        }                
+        }
         return socket!=SOCKET_INVALID;
     }
-    
+
     public:
-        
+
         virtual void begin(uint32_t baud) {}
-    
+
 };
 
 /**
  * Client that provides data to/from the server when connected.
  */
 class SocketUsartServer : public SocketUsartBase {
-    
+
     protected:
-    
+
         virtual bool initSocket() {
             return socket!=SOCKET_INVALID;
         }
-    
+
     public:
-        
-        virtual void begin(uint32_t baud) {}    
+
+        virtual void begin(uint32_t baud) {}
 };
 
 
@@ -165,12 +166,12 @@ Usart& usartMap(unsigned index) {
     switch (index) {
         case 0: return usart1;
         default: return usart2;
-        
+
     }
 }
 
 void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
-{    
+{
     usartMap(serial).init(rx_buffer, tx_buffer);
 }
 
@@ -205,7 +206,7 @@ int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial)
 }
 
 void HAL_USART_Flush_Data(HAL_USART_Serial serial)
-{  
+{
     usartMap(serial).flush();
 }
 

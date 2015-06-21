@@ -116,7 +116,7 @@ struct varstring_t {
     char string[33];
 };
 
-#if PLATFORM_ID>2
+#if PLATFORM_ID>3
 extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result);
 #else
 bool fetch_or_generate_setup_ssid(varstring_t* result) {
@@ -345,6 +345,7 @@ void WiFiTester::checkWifiSerial(char c) {
             }
 
         }
+#if WIFI_SCAN
         else if ((start=strstr(command, cmd_ANT))) {
             tokenizeCommand(start, parts, 5);
             if (!parts[1]) {
@@ -372,6 +373,7 @@ void WiFiTester::checkWifiSerial(char c) {
                 }
             }
         }
+#endif
     }
 }
 

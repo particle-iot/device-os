@@ -27,7 +27,7 @@
 #include "usart_hal.h"
 
 void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
-{    
+{
 }
 void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 {
@@ -58,11 +58,10 @@ int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial)
 }
 
 void HAL_USART_Flush_Data(HAL_USART_Serial serial)
-{  
+{
 }
 
 bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
 {
     return false;
 }
-

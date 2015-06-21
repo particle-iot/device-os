@@ -1,6 +1,7 @@
 CPPFLAGS += -DBOOST_ASIO_SEPARATE_COMPILATION
 
 # use the boost libraries
+$(info "BOOST $(BOOST_ROOT)")
 INCLUDE_DIRS += $(BOOST_ROOT)
 INCLUDE_DIRS += $(BOOST_ROOT)/libs/asio/include
 
@@ -11,7 +12,7 @@ templatedir=$(HAL_SRC_TEMPLATE_PATH)
 overridedir=$(HAL_SRC_GCC_PATH)
 
 # C source files included in this build.
-# Use files from the template unless they are overridden by files in the 
+# Use files from the template unless they are overridden by files in the
 # gcc folder. Also manually exclude some files that have changed from c->cpp.
 
 CSRC += $(call target_files,$(templatedir)/,*.c)

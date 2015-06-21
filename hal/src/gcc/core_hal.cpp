@@ -66,17 +66,17 @@ class GCCStartup {
 
 static GCCStartup startup;
 
-inline char* concat_nibble(char* result, uint8_t nibble) 
+inline char* concat_nibble(char* result, uint8_t nibble)
 {
     char hex_digit = nibble + 48;
     if (57 < hex_digit)
         hex_digit += 39;
-    *result++ = hex_digit;    
+    *result++ = hex_digit;
     return result;
 }
 
-char* bytes2hex(const uint8_t* buf, char* result, unsigned len) 
-{        
+char* bytes2hex(const uint8_t* buf, char* result, unsigned len)
+{
     for (unsigned i = 0; i < len; ++i)
     {
         result = concat_nibble(result, (buf[i] >> 4));
@@ -101,8 +101,8 @@ void HAL_Core_Config(void)
     char hex[len*2+1];
     HAL_device_ID(id, len);
     *bytes2hex(id, hex, len)=0;
-    
-    MSG("Core device id %s", hex);    
+
+    MSG("Core device id %s", hex);
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
@@ -111,11 +111,11 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 }
 
 void HAL_Core_Mode_Button_Reset(void)
-{    
+{
 }
 
 void HAL_Core_System_Reset(void)
-{      
+{
     // todo - terminate the process, or throw an exception to have the top level loop unwind.
     MSG("System reset not implemented.");
 }
@@ -222,28 +222,42 @@ uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
 
 // todo find a technique that allows accessor functions to be inlined while still keeping
 // hardware independence.
-bool HAL_watchdog_reset_flagged() 
+bool HAL_watchdog_reset_flagged()
 {
     return false;
 }
 
 void HAL_Notify_WDT()
-{    
+{
 }
 
 void HAL_Core_Init(void)
-{    
+{
 }
 
-int main(int argc, char* argv[]) {
+extern "C" int main(int argc, char* argv[]) {
     if (argc>1) {
         printf("set keys folder to %s\n", argv[1]);
         set_root_dir(argv[1]);
     }
-    app_setup_and_loop();    
+    app_setup_and_loop();
     return 0;
 }
 
 void HAL_Bootloader_Lock(bool lock)
-{    
+{
+}
+
+uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
+{
+    return 0;
+}
+
+uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
+{
+    return 0xFFFF;
+}
+
+void HAL_Core_Enter_Bootloader(bool persist)
+{
 }
