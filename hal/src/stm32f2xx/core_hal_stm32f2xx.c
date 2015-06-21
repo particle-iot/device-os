@@ -402,20 +402,6 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
     return 0;
 }
 
-// todo find a technique that allows accessor functions to be inlined while still keeping
-// hardware independence.
-bool HAL_watchdog_reset_flagged()
-{
-    //IWDG is not enabled on Photon boards by default
-    //Now support true sleep modes without system reset
-    return false;
-}
-
-void HAL_Notify_WDT()
-{
-    KICK_WDT();
-}
-
 /**
  * The entrypoint to our application.
  * This should be called from the RTOS main thread once initialization has been
