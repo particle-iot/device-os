@@ -43,7 +43,7 @@
 
 inline system_tick_t isr_safe_micros()
 {
-    return HAL_Timer_Micro_Seconds();
+    return HAL_Timer_Get_Micro_Seconds();
 }
 
 /* Private variables ---------------------------------------------------------*/
