@@ -56,6 +56,8 @@ volatile uint8_t SPARK_WLAN_STARTED;
  * @param ssid
  * @param password
  * @param security_type
+ *
+ * Like all of setup mode, this runs on the system thread.
  */
 void wifi_add_profile_callback(const char *ssid,
     const char *password,
@@ -76,13 +78,10 @@ void wifi_add_profile_callback(const char *ssid,
     }
 }
 
-/*******************************************************************************
- * Function Name  : Start_Smart_Config.
- * Description    : The function triggers a smart configuration process on CC3000.
- * Input          : None.
- * Output         : None.
- * Return         : None.
- *******************************************************************************/
+/**
+ *
+ * Runs during setup mode, on the system thread.
+ */
 void Start_Smart_Config(void)
 {
     WLAN_SMART_CONFIG_FINISHED = 0;
@@ -173,7 +172,9 @@ void Start_Smart_Config(void)
     network_connect(0, 0, 0, NULL);
 }
 
-
+/**
+ * Notification that setup mode is complete. Called on a worker thread.
+ */
 void HAL_WLAN_notify_simple_config_done()
 {
     WLAN_SMART_CONFIG_FINISHED = 1;
@@ -263,16 +264,66 @@ void network_config_clear()
     memset(&ip_config, 0, sizeof(ip_config));
 }
 
+typedef void (*network_fn_t)(network_handle_t network, uint32_t flags, uint32_t param, void* reserved);
+
+struct NetworkParams {
+
+    struct NetworkParamsInner {
+        network_handle_t network;
+        uint32_t flags;
+        uint32_t param;
+
+        NetworkParamsInner(network_handle_t network, uint32_t flags, uint32_t param) {
+            this->network = network;
+            this->flags = flags;
+            this->param = param;
+        }
+    };
+
+    network_fn_t target;
+    NetworkParamsInner params;
+    size_t reserved;
+
+    static void* marshal(network_fn_t target, network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
+        size_t size = sizeof(NetworkParamsInner);
+        size_t reserved_size = 0;
+        if (reserved) {
+            reserved_size = *(uint32_t*)reserved;
+        }
+        NetworkParams* result = static_cast<NetworkParams*>(malloc(size+reserved_size));
+        result->target = target;
+        result->params = NetworkParamsInner(network, flags, param);
+        result->reserved = reserved_size;
+        if (reserved_size) {
+            memcpy(&result->reserved, reserved, reserved_size);
+        }
+        return result;
+    }
+
+    static void invoke(void* data)
+    {
+        NetworkParams* np = static_cast<NetworkParams*>(data);
+        np->target(np->params.network, np->params.flags, np->params.param, &np->reserved);
+    }
+};
+
+
+#define NETWORK_ASYNC(fn, network, flags, param, reserved) \
+    if (!SystemThread.isCurrentThread()) { \
+        void* pointer = NetworkParams::marshal(fn, network, flags, param, reserved); \
+        SystemThread.invoke(NetworkParams::invoke, pointer); \
+    }
+
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    YSTEM_THREAD_CONTEXT();
-	if (!network_ready(network, flags, reserved) && !WLAN_CONNECTING && !network_listening(network, flags, NULL))
+    NETWORK_ASYNC(network_connect, network, flags, param, reserved);
+
+    if (!network_ready(network, flags, reserved) && !WLAN_CONNECTING && !network_listening(network, flags, NULL))
     {
         bool was_sleeping = SPARK_WLAN_SLEEP;
 
         // activate WiFi, don't set LED since that happens later.
         network_on(network, flags | 1, param, NULL);
-
         WLAN_DISCONNECT = 0;
         wlan_connect_init();
         SPARK_WLAN_STARTED = 1;
@@ -309,7 +360,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 
 void network_disconnect(network_handle_t network, uint32_t param, void* reserved)
 {
-	SYSTEM_THREAD_CONTEXT();
+    NETWORK_ASYNC(network_connect, network, 0, param, reserved);
     if (SPARK_WLAN_STARTED)
     {
         WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()
@@ -339,7 +390,7 @@ bool network_connecting(network_handle_t network, uint32_t param, void* reserved
  */
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT();
+    NETWORK_ASYNC(network_on, network, flags, param, reserved);
 
     if (!SPARK_WLAN_STARTED)
     {
@@ -357,12 +408,14 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
 
 bool network_has_credentials(network_handle_t network, uint32_t param, void* reserved)
 {
+    // todo - this should run on the system thread unless we use a critical section around
+    // the wlan credentials store.
     return wlan_has_credentials()==0;
 }
 
 void network_off(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT();
+    NETWORK_ASYNC(network_off, network, flags, param, reserved);
 
     if (SPARK_WLAN_STARTED)
     {
@@ -390,7 +443,6 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 
 void network_listen(network_handle_t, uint32_t flags, void*)
 {
-	SYSTEM_THREAD_CONTEXT();
     WLAN_SMART_CONFIG_START = !(flags & 1);
     if (!WLAN_SMART_CONFIG_START)
         WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
@@ -426,10 +478,13 @@ void network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* cre
     system_notify_event(wifi_credentials_add, 0, credentials);
 }
 
-bool network_clear_credentials(network_handle_t, uint32_t, NetworkCredentials* creds, void*)
-{
-    // todo - run this on the system thread
 
+
+bool network_clear_credentials(network_handle_t network, uint32_t param, NetworkCredentials* creds, void* reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC(network_clear_credentials(network, param, creds, reserved));
+
+    // todo - run this on the system thread. Should this be synchronous or asynchornous?
     return wlan_clear_credentials() == 0;
 }
 

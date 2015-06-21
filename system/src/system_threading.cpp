@@ -33,6 +33,12 @@ namespace std {
         os_condition_variable_notify_one(&_M_cond);
     }
 
+    void condition_variable::notify_all()
+    {
+        os_condition_variable_notify_all(&_M_cond);
+    }
+
+
     /**
      * static Startup function for threads.
      * @param ptr   A pointer to the _Impl_base value which exposes the virtual
@@ -76,7 +82,7 @@ void ActiveObjectBase::invoke_impl(void* fn, void* data, size_t len)
     }
     else {
         // allocate storage for the message
-        void* copy = NULL;
+        void* copy = data;
         if (data && len) {
             copy = malloc(len);
             memcpy(copy, data, len);

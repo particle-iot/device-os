@@ -122,6 +122,7 @@ void os_condition_variable_dispose(condition_variable_t* var);
 
 void os_condition_variable_wait(condition_variable_t* var, void* lock);
 void os_condition_variable_notify_one(condition_variable_t* var);
+void os_condition_variable_notify_all(condition_variable_t* var);
 
 const system_tick_t CONCURRENT_WAIT_FOREVER = (system_tick_t)-1;
 

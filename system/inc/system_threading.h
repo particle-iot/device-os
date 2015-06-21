@@ -23,6 +23,7 @@
 #include "channel.h"
 #include <stddef.h>
 #include <functional>
+#include <future>
 
 class ActiveObjectBase
 {
@@ -35,9 +36,10 @@ public:
 
 protected:
 
+    /**
+     * The function to run when there is nothing else to do.
+     */
     background_task_t background_task;
-
-    void invoke_impl(void* fn, void* data, size_t len);
 
     /**
      * The thread that runs this active object.
@@ -49,6 +51,9 @@ protected:
      */
     void run();
 
+
+    void invoke_impl(void* fn, void* data, size_t len=0);
+
 protected:
 
     /**
@@ -57,12 +62,17 @@ protected:
     struct Item
     {
         typedef void (*active_fn_t)(void*);
+        typedef std::function<void(void)> task_t;
 
         active_fn_t function;
         void* arg;              // the argument is dynamically allocated
 
+        task_t task;
+
         Item() : function(NULL), arg(NULL){}
         Item(active_fn_t f, void* a) : function(f), arg(a){}
+        Item(task_t&& _task, void* _arg=NULL) : arg(_arg), task(_task) {}
+
 
         void invoke()
         {
@@ -110,10 +120,22 @@ public:
         invoke_impl((void*)fn, value, size);
     }
 
+
+    template<typename arg, typename r> inline void invoke(r (*fn)(arg* a), arg* value) {
+        invoke_impl((void*)fn, value);
+    }
+
     void invoke(void (*fn)()) {
         invoke_impl((void*)fn, NULL, 0);
     }
 
+
+
+    template<typename R> std::future<R> invoke_future(std::function<R(void)> fn) {
+        std::packaged_task<R(void)> task(fn);
+        //put(Item(task));
+        return task.get_future();
+    }
 
 };
 
@@ -177,6 +199,7 @@ public:
         os_queue_create(&queue, sizeof(Item), 50);
         start_thread();
     }
+
 };
 
 typedef ActiveObjectQueue ActiveObject;
@@ -187,7 +210,7 @@ extern ActiveObject AppThread;
 
 // execute the enclosing void function async on the system thread
 #define SYSTEM_THREAD_CONTEXT_RESULT(result) \
-    if (SystemThread.isCurrentThread()) {\
+    if (!SystemThread.isCurrentThread()) {\
         SYSTEM_THREAD_CONTEXT_FN0(__func__); \
         return result; \
     }
@@ -202,8 +225,37 @@ extern ActiveObject AppThread;
 #define SYSTEM_THREAD_CONTEXT_FN1(fn, arg, sz) \
     SystemThread.invoke(fn, arg, sz)
 
-// execute synchornously on the system thread
-#define SYSTEM_THREAD_CONTEXT_SYNC()
+
+template<typename T>
+struct memfun_type
+{
+    using type = void;
+};
+
+template<typename Ret, typename Class, typename... Args>
+struct memfun_type<Ret(Class::*)(Args...) const>
+{
+    using type = std::function<Ret(Args...)>;
+};
+
+template<typename F>
+typename memfun_type<decltype(&F::operator())>::type
+FFL(F const &func)
+{ // Function from lambda !
+    return func;
+}
+
+
+// execute synchrnously on the system thread
+#define SYSTEM_THREAD_CONTEXT_SYNC(fn) \
+    if (!SystemThread.isCurrentThread()) { \
+        auto lambda = [=]() { return fn; }; \
+        auto future = SystemThread.invoke_future(FFL(lambda)); \
+        future.wait(); \
+        return future.get(); \
+    }
+
+
 
 
 

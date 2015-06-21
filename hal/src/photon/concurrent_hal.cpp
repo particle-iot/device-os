@@ -249,6 +249,13 @@ void os_condition_variable_notify_one(condition_variable_t* cond)
     cv->signal();
 }
 
+void os_condition_variable_notify_all(condition_variable_t* cond)
+{
+    ConditionVariable* cv = (ConditionVariable*)cond;
+    cv->broadcast();
+}
+
+
 bool os_queue_create(os_queue_t* queue, size_t item_count, size_t item_size)
 {
     *queue = xQueueCreate(item_count, item_size);
