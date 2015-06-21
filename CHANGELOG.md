@@ -13,7 +13,7 @@
  - [Photon/TCPServer] - `TCPClient.connected()` was not returning `false` when the socket was asynchronously disconnected.
  - Fix time being reset on wakeup. (removed WICED RTC init code that resets to default preset time in platform_mcu_powersave_init() within photon-wiced repo.) [#440](https://github.com/spark/firmware/issues/440)
  - `TCPClient.connected()` was not returning `false` when the socket was disconnected from the other end.
-
+ - `strdup()` was returning garbage [#457](https://github.com/spark/firmware/issues/457)
 
 
 ## v0.4.2
