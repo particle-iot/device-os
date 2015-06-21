@@ -6,7 +6,7 @@
  * @date    13-March-2013
  *
  * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
- * @brief   
+ * @brief
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -95,12 +95,12 @@ struct User_Var_Lookup_Table_t
     char userVarKey[USER_VAR_KEY_LENGTH];
 };
 
-static append_list<User_Var_Lookup_Table_t> vars(5); 
+static append_list<User_Var_Lookup_Table_t> vars(5);
 
 struct User_Func_Lookup_Table_t
-{    
+{
     void* pUserFuncData;
-    cloud_function_t pUserFunc;    
+    cloud_function_t pUserFunc;
     char userFuncKey[USER_FUNC_KEY_LENGTH];
 };
 
@@ -112,9 +112,9 @@ SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_ty
     return(subscription_type==MY_DEVICES) ? SubscriptionScope::MY_DEVICES : SubscriptionScope::FIREHOSE;
 }
 
-bool spark_subscribe(const char *eventName, EventHandler handler, void* data, 
+bool spark_subscribe(const char *eventName, EventHandler handler, void* data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
-{        
+{
     auto event_scope = convert(scope);
     bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, NULL);
     if (success && spark_connected())
@@ -138,9 +138,9 @@ bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_T
 }
 
 User_Var_Lookup_Table_t* find_var_by_key(const char* varKey)
-{    
+{
     for (int i = vars.size(); i-->0; )
-    {            
+    {
         if (0 == strncmp(vars[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
         {
             return &vars[i];
@@ -159,16 +159,16 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
             item->userVar = userVar;
             item->userVarType = userVarType;
             memset(item->userVarKey, 0, USER_VAR_KEY_LENGTH);
-            memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);            
+            memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);
         }
     }
     return item!=NULL;
 }
 
 User_Func_Lookup_Table_t* find_func_by_key(const char* funcKey)
-{    
+{
     for (int i = funcs.size(); i-->0; )
-    {            
+    {
         if (0 == strncmp(funcs[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH))
         {
             return &funcs[i];
@@ -185,24 +185,24 @@ int call_raw_user_function(void* data, const char* param, void* reserved)
 }
 
 bool spark_function2(const cloud_function_descriptor* desc, void* reserved)
-{    
-    User_Func_Lookup_Table_t* item = NULL;    
+{
+    User_Func_Lookup_Table_t* item = NULL;
     if (NULL != desc->fn && NULL != desc->funcKey && strlen(desc->funcKey)<=USER_FUNC_KEY_LENGTH)
-    {                                
+    {
         if ((item=find_func_by_key(desc->funcKey)) || (item = funcs.add()))
         {
             item->pUserFunc = desc->fn;
             item->pUserFuncData = desc->data;
             memset(item->userFuncKey, 0, USER_FUNC_KEY_LENGTH);
-            memcpy(item->userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);            
+            memcpy(item->userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);
         }
-    }    
+    }
     return item!=NULL;
 }
 
 /**
  * This is the original released signature for firmware version 0 and needs to remain like this.
- * (The original returned void - we can safely change to 
+ * (The original returned void - we can safely change to
  */
 bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved)
 {
@@ -216,7 +216,7 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
     }
     else {
         result = spark_function2((cloud_function_descriptor*)pFunc, reserved);
-    }        
+    }
     return result;
 }
 
@@ -327,8 +327,8 @@ int numUserFunctions(void)
 }
 
 const char* getUserFunctionKey(int function_index)
-{    
-    return funcs[function_index].userFuncKey;    
+{
+    return funcs[function_index].userFuncKey;
 }
 
 int numUserVariables(void)
@@ -364,21 +364,21 @@ void SystemEvents(const char* name, const char* data)
     if (!strncmp(name, CLAIM_EVENTS, strlen(CLAIM_EVENTS))) {
         HAL_Set_Claim_Code(NULL);
     }
-}    
+}
 
 void Spark_Protocol_Init(void)
-{    
+{
     if (!spark_protocol_is_initialized(sp))
     {
         product_details_t info;
         info.size = sizeof(info);
         spark_protocol_get_product_details(sp, &info);
-        
+
         // User code was run, so persist the current values stored in the comms lib.
         // These will either have been left as default or overridden via PRODUCT_ID/PRODUCT_VERSION macros
         if (system_mode()!=SAFE_MODE) {
             HAL_SetProductStore(PRODUCT_STORE_ID, info.product_id);
-            HAL_SetProductStore(PRODUCT_STORE_VERSION, info.product_version);        
+            HAL_SetProductStore(PRODUCT_STORE_VERSION, info.product_version);
         }
         else {      // user code was not executed, use previously persisted values
             info.product_id = HAL_GetProductStore(PRODUCT_STORE_ID);
@@ -388,7 +388,7 @@ void Spark_Protocol_Init(void)
             if (info.product_version!=0xFFFF)
                 spark_protocol_set_product_firmware_version(sp, info.product_version);
         }
-        
+
         SparkCallbacks callbacks;
         memset(&callbacks, 0, sizeof(callbacks));
         callbacks.size = sizeof(callbacks);
@@ -435,7 +435,7 @@ void Spark_Protocol_Init(void)
         uint8_t id[id_length];
         HAL_device_ID(id, id_length);
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
-        
+
         Spark.subscribe("spark", SystemEvents);
     }
 }
@@ -457,7 +457,7 @@ int Spark_Handshake(void)
         {
             Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);
         }
-        
+
         ultoa(HAL_OTA_FlashLength(), buf, 10);
         Spark.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
 
@@ -623,13 +623,13 @@ int Spark_Connect(void)
             while (!ip_addr && 0 < --attempts)
             {
                 inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr.raw(), NIF_DEFAULT, NULL);
-                HAL_Delay_Milliseconds(1);                
+                HAL_Delay_Milliseconds(1);
             }
             ip_resolve_failed = !ip_addr;
     }
 
     int rv = -1;
-    if (!ip_resolve_failed) 
+    if (!ip_resolve_failed)
     {
         if (!ip_addr)
         {
@@ -637,7 +637,7 @@ int Spark_Connect(void)
             ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
             //ip_addr = (52<<24) | (0<<16) | (3<<8) | 40;
         }
-    
+
         tSocketAddr.sa_data[2] = ip_addr[0];
         tSocketAddr.sa_data[3] = ip_addr[1];
         tSocketAddr.sa_data[4] = ip_addr[2];
@@ -688,9 +688,9 @@ const void *getUserVar(const char *varKey)
 
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved)
 {
-    // for now, we invoke the function directly and return the result via the callback    
+    // for now, we invoke the function directly and return the result via the callback
     User_Func_Lookup_Table_t* item = find_func_by_key(funcKey);
-    int result = item ? item->pUserFunc(item->pUserFuncData, paramString, NULL) : -1;
+    long result = item ? item->pUserFunc(item->pUserFuncData, paramString, NULL) : -1;
     callback((const void*)result, SparkReturnType::INT);
     return 0;
 }
@@ -707,7 +707,7 @@ void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
 #else
 
 void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
-{    
+{
 }
 
 #endif
@@ -745,11 +745,11 @@ static inline char ascii_nibble(uint8_t nibble) {
     char hex_digit = nibble + 48;
     if (57 < hex_digit)
         hex_digit += 7;
-    return hex_digit;    
+    return hex_digit;
 }
 
 static inline char* concat_nibble(char* p, uint8_t nibble)
-{    
+{
     *p++ = ascii_nibble(nibble);
     return p;
 }
@@ -770,7 +770,7 @@ char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out)
 
 void Multicast_Presence_Announcement(void)
 {
-#ifndef SPARK_NO_CLOUD    
+#ifndef SPARK_NO_CLOUD
     long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NIF_DEFAULT);
     if (!socket_handle_valid(multicast_socket))
         return;

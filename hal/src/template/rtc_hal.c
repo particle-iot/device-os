@@ -50,3 +50,12 @@ void HAL_RTC_Set_Counter(uint32_t value)
 void HAL_RTC_Set_Alarm(uint32_t value)
 {
 }
+
+void HAL_RTC_Set_UnixAlarm(time_t value)
+{
+
+}
+
+void HAL_RTC_Set_UnixTime(time_t value)
+{
+}

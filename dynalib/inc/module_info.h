@@ -28,33 +28,33 @@
 extern "C" {
 #endif
 
-#include "static_assert.h"        
+#include "static_assert.h"
 #include "stddef.h"
 #include <stdint.h>
 
 typedef struct module_dependency_t {
     uint8_t module_function;        // module function, lowest 4 bits
     uint8_t module_index;           // moudle index, lowest 4 bits.
-    uint16_t module_version;        // version/release number of the module. 
+    uint16_t module_version;        // version/release number of the module.
 } module_dependency_t;
-    
+
 /**
- * Describes the module info struct placed at the start of 
+ * Describes the module info struct placed at the start of
  */
 typedef struct module_info_t {
     const void* module_start_address;   /* the first byte of this module in flash */
     const void* module_end_address;     /* the last byte (exclusive) of this smodule in flash. 4 byte crc starts here. */
-    uint8_t reserved;                  
-    uint8_t reserved2;                  
+    uint8_t reserved;
+    uint8_t reserved2;
     uint16_t module_version;            /* 16 bit version */
     uint16_t platform_id;               /* The platform this module was compiled for. */
     uint8_t  module_function;           /* The module function */
     uint8_t  module_index;
-    module_dependency_t dependency; 
+    module_dependency_t dependency;
     uint32_t reserved3;
 } module_info_t;
 
-#define STATIC_ASSERT_MODULE_INFO_OFFSET(field, expected) STATIC_ASSERT( module_info_##field, offsetof(module_info_t, field)==expected)
+#define STATIC_ASSERT_MODULE_INFO_OFFSET(field, expected) STATIC_ASSERT( module_info_##field, offsetof(module_info_t, field)==expected || sizeof(void*)!=4)
 
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_start_address, 0);
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_end_address, 4);
@@ -69,7 +69,7 @@ STATIC_ASSERT_MODULE_INFO_OFFSET(reserved3, 20);
 
 
 /**
- * Define the module function enum also as preprocessor symbols so we can 
+ * Define the module function enum also as preprocessor symbols so we can
  * set some defaults in the preprocessor.
  */
 #define MOD_FUNC_NONE            0
@@ -82,45 +82,45 @@ STATIC_ASSERT_MODULE_INFO_OFFSET(reserved3, 20);
 
 typedef enum module_function_t {
     MODULE_FUNCTION_NONE = MOD_FUNC_NONE,
-            
+
     /* The module_info and CRC is not part of the resource. */
-    MODULE_FUNCTION_RESOURCE = MOD_FUNC_RESOURCE,      
-    
-    /* The module is the bootloader */        
-    MODULE_FUNCTION_BOOTLOADER = MOD_FUNC_BOOTLOADER,  
-    
-    /* The module is complete system and user firmware */        
-    MODULE_FUNCTION_MONO_FIRMWARE = MOD_FUNC_MONO_FIRMWARE,                  
-    
-    /* The module is a system part */        
+    MODULE_FUNCTION_RESOURCE = MOD_FUNC_RESOURCE,
+
+    /* The module is the bootloader */
+    MODULE_FUNCTION_BOOTLOADER = MOD_FUNC_BOOTLOADER,
+
+    /* The module is complete system and user firmware */
+    MODULE_FUNCTION_MONO_FIRMWARE = MOD_FUNC_MONO_FIRMWARE,
+
+    /* The module is a system part */
     MODULE_FUNCTION_SYSTEM_PART = MOD_FUNC_SYSTEM_PART,
-            
-    /* The module is a user part */        
+
+    /* The module is a user part */
     MODULE_FUNCTION_USER_PART = MOD_FUNC_USER_PART,
-    
+
     /* Rewrite persisted settings */
     MODULE_FUNCTION_SETTINGS = MOD_FUNC_SETTINGS
 } module_function_t;
 
 typedef enum {
-    
+
     MODULE_STORE_MAIN = 0,
     /**
      * Factory restore module.
      */
     MODULE_STORE_FACTORY = 1,
-            
+
     /**
      * An area that saves a copy of modules.
      */
     MODULE_STORE_BACKUP = 2,
-            
+
     /**
      * Temporary area used to store the module before transferring to it's
      * target.
      */
     MODULE_STORE_SCRATCHPAD = 3,
-    
+
 } module_store_t;
 
 
@@ -138,7 +138,7 @@ uint8_t module_funcion_store(module_function_t function, module_store_t store);
 
 typedef enum module_scheme_t {
     MODULE_SCHEME_MONO,                           /* monolithic firmware */
-    MODULE_SCHEME_SPLIT,                          /* modular - called it split to make the names more distinct and less confusable. */        
+    MODULE_SCHEME_SPLIT,                          /* modular - called it split to make the names more distinct and less confusable. */
 } module_scheme_t;
 
 module_scheme_t module_scheme(const module_info_t* mi);
@@ -146,7 +146,7 @@ module_scheme_t module_scheme(const module_info_t* mi);
 /**
  * Verifies the module platform ID matches the current system platform ID.
  * @param mi
- * @return 
+ * @return
  */
 uint8_t module_info_matches_platform(const module_info_t* mi);
 
@@ -157,14 +157,14 @@ typedef struct module_info_suffix_t {
     // NB: NB: NB: add new members here
     uint16_t reserved;
     uint8_t sha[32];
-    uint16_t size;    
+    uint16_t size;
     // NB: NB: NB: add new members to the start of this module definition, not the end!!
 } __attribute__((packed)) module_info_suffix_t;
 
 /**
  * The structure appended to the end of the module.
  */
-typedef struct module_info_crc_t {    
+typedef struct module_info_crc_t {
     uint32_t crc32;
 } __attribute__((packed)) module_info_crc_t;
 

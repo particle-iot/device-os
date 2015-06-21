@@ -8,12 +8,12 @@ include $(COMMON_BUILD)/common-tools.mk
 #
 
 # C compiler flags
-CFLAGS +=  -g3 -m32
+CFLAGS +=  -g3 -m64
 
 ASFLAGS +=  -g3
 
 
-LDFLAGS += -Xlinker --gc-sections
+#LDFLAGS += -Xlinker --gc-sections
 
 
 

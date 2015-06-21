@@ -1,14 +1,24 @@
 - clone boost and build
 ```
 git clone --recursive http://github.com/boostorg/boost.git boost
+export BOOST_ROOT=/path/to/boost-dir/boost
 cd boost
 ./bootstrap.sh
+./b2
+
+```
+alternatively:
 sudo ./bjam --install --link=static --runtime-link=static --layout=tagged --with-system threading=single architecture=x86
+```
+
+
+
+```
 ```
 
 - clone firmware repo https://github.com/spark/firmware
 - build
 ```
-make PRODUCT_ID=3 v=1 
+make PRODUCT_ID=3 v=1
 ```
 

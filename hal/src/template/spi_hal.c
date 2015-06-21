@@ -59,3 +59,7 @@ bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 {
     return false;
 }
+
+void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback)
+{
+}

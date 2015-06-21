@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   functions.h
  * Author: mat
  *
@@ -18,57 +18,57 @@
 #ifdef	__cplusplus
 extern "C" {
 #endif
-    
-    
-class SparkProtocol;    
-    
+
+
+class SparkProtocol;
+
 struct SparkKeys
-{    
+{
   uint16_t size;
   unsigned char *core_private;
   unsigned char *server_public;
-  unsigned char *core_public;  
+  unsigned char *core_public;
 };
 
-STATIC_ASSERT(SparkKeys_size, sizeof(SparkKeys)==16);
-    
+STATIC_ASSERT(SparkKeys_size, sizeof(SparkKeys)==16 || sizeof(void*)!=4);
+
 struct SparkCallbacks
 {
     uint16_t size;
   int (*send)(const unsigned char *buf, uint32_t buflen);
   int (*receive)(unsigned char *buf, uint32_t buflen);
-  
+
   /**
-   * @param flags 1 dry run only. 
-   * Return 0 on success. 
+   * @param flags 1 dry run only.
+   * Return 0 on success.
    */
   int (*prepare_for_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
-  
+
   /**
-   * 
+   *
    * @return 0 on success
    */
   int (*save_firmware_chunk)(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void*);
-  
+
   /**
-   * Finalize the data storage. 
+   * Finalize the data storage.
    * #param reset - if the device should be reset to apply the changes.
    * #return 0 on success. Other values indicate an issue with the file.
    */
   int (*finish_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
-  
+
   uint32_t (*calculate_crc)(const unsigned char *buf, uint32_t buflen);
-  
+
   void (*signal)(bool on, unsigned int param, void* reserved);
   system_tick_t (*millis)();
-  
+
   /**
    * Sets the time. Time is given in milliseconds since the epoch, UCT.
    */
   void (*set_time)(time_t t, unsigned int param, void* reserved);
 };
 
-STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==40);
+STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*10));
 
 /**
  * Application-supplied callbacks. (Deliberately distinct from the system-supplied
@@ -76,29 +76,29 @@ STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==40);
  */
 typedef struct CommunicationsHandlers {
     uint16_t size;
-    
+
     /**
      * Handle the cryptographically secure random seed from the cloud.
-     * @param seed  A random value. This is typically used to seed a pseudo-random generator. 
+     * @param seed  A random value. This is typically used to seed a pseudo-random generator.
      */
     void (*random_seed_from_cloud)(unsigned int seed);
-    
-} CommunicationsHandlers;    
-    
 
-STATIC_ASSERT(CommunicationHandlers_size, sizeof(CommunicationsHandlers)==8);
+} CommunicationsHandlers;
+
+
+STATIC_ASSERT(CommunicationHandlers_size, sizeof(CommunicationsHandlers)==8 || sizeof(void*)!=4);
 
 typedef uint16_t product_id_t;
 typedef uint16_t product_firmware_version_t;
 
 typedef struct {
     uint16_t size;
-    product_id_t product_id;    
+    product_id_t product_id;
     product_firmware_version_t product_version;
     uint16_t reserved;  // make the padding explicit
 } product_details_t;
 
-STATIC_ASSERT(product_details_size, sizeof(product_details_t)==8); 
+STATIC_ASSERT(product_details_size, sizeof(product_details_t)==8);
 
 
 void spark_protocol_communications_handlers(SparkProtocol* protocol, CommunicationsHandlers* handlers);
@@ -131,13 +131,13 @@ void spark_protocol_get_product_details(SparkProtocol* protocol, product_details
  * @param max_plaintext_len The size of the plaintext buffer
  * @return The number of plaintext bytes in the plain text buffer, or <0 on error.
  */
-extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, 
+extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key,
         uint8_t* plaintext, int max_plaintext_len);
 
 void parse_device_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* device_privkey);
 /**
  * Retrieves a pointer to a statically allocated instance.
- * @return A statically allocated instance of SparkProtocol. 
+ * @return A statically allocated instance of SparkProtocol.
  */
 extern SparkProtocol* spark_protocol_instance();
 

@@ -34,17 +34,17 @@ uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
     return 0;
 }
 
-int wlan_clear_credentials() 
+int wlan_clear_credentials()
 {
     return 0;
 }
 
 int wlan_has_credentials()
 {
-    return 0;    
+    return 0;
 }
 
-int wlan_connect_init() 
+int wlan_connect_init()
 {
     MSG("Virtual WLAN connecting");
     return 0;
@@ -60,7 +60,7 @@ wlan_result_t wlan_deactivate() {
     return 0;
 }
 
-bool wlan_reset_credentials_store_required() 
+bool wlan_reset_credentials_store_required()
 {
     return false;
 }
@@ -71,10 +71,10 @@ wlan_result_t wlan_reset_credentials_store()
 }
 
 /**
- * Do what is needed to finalize the connection. 
- * @return 
+ * Do what is needed to finalize the connection.
+ * @return
  */
-wlan_result_t wlan_connect_finalize() 
+wlan_result_t wlan_connect_finalize()
 {
     // enable connection from stored profiles
     HAL_Delay_Milliseconds(1000);
@@ -93,14 +93,14 @@ void Clear_NetApp_Dhcp(void)
 {
 }
 
-wlan_result_t wlan_disconnect_now() 
+wlan_result_t wlan_disconnect_now()
 {
     MSG("Virtual WLAN disconnected");
     return 0;
 }
 
-wlan_result_t wlan_connected_rssi(char* ssid) 
-{        
+wlan_result_t wlan_connected_rssi(char* ssid)
+{
     return 0;
 }
 
@@ -110,42 +110,58 @@ int wlan_set_credentials(WLanCredentials* c)
 }
 
 void wlan_smart_config_init() {
-    
+
 }
 
-bool wlan_smart_config_finalize() {    
+bool wlan_smart_config_finalize() {
     return false;
 }
 
 
 
-void wlan_smart_config_cleanup() 
+void wlan_smart_config_cleanup()
 {
 }
 
 
 void wlan_setup()
-{   
+{
     MSG("Virtual WLAN init");
 }
-            
-           
-void wlan_set_error_count(uint32_t errorCount) 
+
+
+void wlan_set_error_count(uint32_t errorCount)
 {
 }
 
-void wlan_fetch_ipconfig(WLanConfig* config) 
+void wlan_fetch_ipconfig(WLanConfig* config)
 {
-    memcpy(config->aucIP, "\xC0\x0\x1\x68", 4);
-    memcpy(config->aucSubnetMask, "\xFF\xFF\xFF\x0", 4);
-    memcpy(config->aucDefaultGateway, "\xC0\x0\x1\x1", 4);
-    memcpy(config->aucDHCPServer, "\xC0\x0\x1\x1", 4);
-    memcpy(config->aucDNSServer, "\xC0\x0\x1\x1", 4);
-    memcpy(config->uaMacAddr, "\x08\x00\x27\x00\x7C\xAC", 6);
+
+/*
+    memcpy(config->nw.aucIP, "\xC0\x0\x1\x68", 4);
+    memcpy(config->nw.aucSubnetMask, "\xFF\xFF\xFF\x0", 4);
+    memcpy(config->nw.aucDefaultGateway, "\xC0\x0\x1\x1", 4);
+    memcpy(config->nw.aucDHCPServer, "\xC0\x0\x1\x1", 4);
+    memcpy(config->nw.aucDNSServer, "\xC0\x0\x1\x1", 4);
+    memcpy(config->nw.uaMacAddr, "\x08\x00\x27\x00\x7C\xAC", 6);
     memcpy(config->uaSSID, "WLAN", 5);
+ */
 }
 
 void SPARK_WLAN_SmartConfigProcess()
 {
 }
 
+void wlan_connect_cancel(bool called_from_isr)
+{
+}
+
+int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
+{
+    return 0;
+}
+
+bool fetch_or_generate_setup_ssid(void* SSID)
+{
+    return false;
+}

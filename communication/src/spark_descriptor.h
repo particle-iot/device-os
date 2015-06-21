@@ -42,7 +42,7 @@ namespace SparkReturnType {
 struct SparkDescriptor
 {
     typedef std::function<bool(const void*, SparkReturnType::Enum)> FunctionResultCallback;
-    
+
     size_t size;
     int (*num_functions)(void);
     const char* (*get_function_key)(int function_index);
@@ -55,10 +55,10 @@ struct SparkDescriptor
 
     bool (*was_ota_upgrade_successful)(void);
     void (*ota_upgrade_status_sent)(void);
-  
+
     bool (*append_system_info)(appender_fn appender, void* append, void* reserved);
-    
+
     void* reserved[4];      // add a few additional pointers
 };
 
-STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60);
+STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60 || sizeof(void*)!=4);

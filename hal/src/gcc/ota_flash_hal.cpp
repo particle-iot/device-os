@@ -4,6 +4,15 @@
 
 #include "filesystem.h"
 
+void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
+{
+    info->platform_id = PLATFORM_ID;
+    info->module_count = 0;
+    info->modules = NULL;
+}
+
+
+
 uint32_t HAL_OTA_FlashAddress()
 {
     return 0;
@@ -13,25 +22,49 @@ uint32_t HAL_OTA_FlashLength()
 {
     return 0;
 }
-    
+
 uint16_t HAL_OTA_ChunkSize()
 {
     return 0;
 }
 
-bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved) 
-{    
+bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved)
+{
     return false;
 }
 
-uint16_t HAL_FLASH_Update(uint8_t *pBuffer, uint32_t address, uint32_t bufferSize, void* reserved) 
+int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved)
 {
     return 0;
 }
 
- hal_update_complete_t HAL_FLASH_End(void* reserved) 
-{    
+ hal_update_complete_t HAL_FLASH_End(void* reserved)
+{
      return HAL_UPDATE_ERROR;
+}
+
+
+
+/**
+ * Set the claim code for this device.
+ * @param code  The claim code to set. If null, clears the claim code.
+ * @return 0 on success.
+ */
+uint16_t HAL_Set_Claim_Code(const char* code)
+{
+    return 0;
+}
+
+/**
+ * Retrieves the claim code for this device.
+ * @param buffer    The buffer to recieve the claim code.
+ * @param len       The maximum size of the code to copy to the buffer, including the null terminator.
+ * @return          0 on success.
+ */
+uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
+{
+    *buffer = 0;
+    return 0;
 }
 
 #define EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH 128
@@ -75,17 +108,17 @@ void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
     uint8_t buf[EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH];
-    read_file("server_address", buf, EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH);    
+    read_file("server_address", buf, EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH);
     parseServerAddressData(server_addr, buf);
 }
 
-bool HAL_OTA_Flashed_GetStatus(void) 
+bool HAL_OTA_Flashed_GetStatus(void)
 {
     return false;
 }
 
 void HAL_OTA_Flashed_ResetStatus(void)
-{    
+{
 }
 
 #define PUBLIC_KEY_LEN 294
@@ -96,9 +129,10 @@ void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
     read_file("public_key", keyBuffer, PUBLIC_KEY_LEN);
 }
 
-void HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)
+int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* generation)
 {
     read_file("private_key", keyBuffer, PRIVATE_KEY_LEN);
+    return 0;
 }
 
 
