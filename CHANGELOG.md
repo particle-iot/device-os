@@ -5,11 +5,14 @@
 ### FEATURES
 
 ### ENHANCEMENTS
+ - I2C methods now use `micros()` for timeouts rather than `millis()`, so I2C functions can be used in an interrupt handler. [#460](https://github.com/spark/firmware/issues/460)
+
 
 ### BUGFIXES
 
  - [Photon/TCPServer] - `TCPClient.connected()` was not returning `false` when the socket was asynchronously disconnected.
-
+ - Fix time being reset on wakeup. (removed WICED RTC init code that resets to default preset time in platform_mcu_powersave_init() within photon-wiced repo.) [#440](https://github.com/spark/firmware/issues/440)
+ 
 
 ## v0.4.2
 
@@ -31,7 +34,6 @@
  - `PRODUCT_ID` and `PRODUCT_VERSION` place these details at a known place in the firmware image
  - DFU mode and serial firmware update can be triggered by setting the line rate.
 
-
 ### BUGFIXES
 
  - `Serial1.end()` [hangs the system](https://community.particle.io/t/changing-serial-baud-rate-inside-setup-code-causes-core-freezing-afterwards/10314/6)
@@ -42,8 +44,7 @@
  - Floating-point support for `sprintf()` reinstated
  - Fixed WICED DCT becoming unmodifiable
  - Fix UDP.parsePacket() not receiving any data on the Photon
- - Fix #440 : Removed WICED RTC init code that resets to default preset time in platform_mcu_powersave_init() within photon-wiced repo
- 
+
 ## v0.4.1
 
 ### ENHANCEMENTS
