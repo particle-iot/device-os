@@ -81,8 +81,6 @@ void HAL_Core_Setup_finalize(void)
     isrs[SysTickIndex] = (uint32_t)SysTickChain;
 }
 
-
-
 /**
  * @brief  This function handles EXTI2_IRQ or EXTI_9_5_IRQ Handler.
  * @param  None
