@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    delay_hal.h
+ * @file    delay_hal_stm32f2xx.h
  * @author  Matthew McGowan
  * @version V1.0.0
  * @date    25-Sept-2014
@@ -23,8 +23,8 @@
  ******************************************************************************
  */
 
-#ifndef DELAY_HAL_H
-#define	DELAY_HAL_H
+#ifndef DELAY_HAL_STM32F2XX_H
+#define	DELAY_HAL_STM32F2XX_H
 
 #include <stdint.h>
 
@@ -32,12 +32,12 @@
 extern "C" {
 #endif
 
-    void HAL_Delay_Milliseconds(uint32_t millis);
+    void HAL_Delay_Microseconds(uint32_t micros);
 
 
 #ifdef	__cplusplus
 }
 #endif
 
-#endif	/* DELAY_HAL_H */
+#endif	/* DELAY_HAL_STM32F2XX_H */
 
