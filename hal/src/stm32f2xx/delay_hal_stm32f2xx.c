@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    delay_hal.h
+ * @file    delay_hal.c
  * @author  Matthew McGowan
  * @version V1.0.0
  * @date    25-Sept-2014
@@ -23,21 +23,32 @@
  ******************************************************************************
  */
 
-#ifndef DELAY_HAL_H
-#define	DELAY_HAL_H
+#include "delay_hal.h"
+#include "stm32f2xx.h"
+#include "hw_config.h"
+#include <limits.h>
 
-#include <stdint.h>
+/*******************************************************************************
+ * Function Name  : Delay_Microsecond
+ * Description    : Inserts a delay time in microseconds using 32-bit DWT->CYCCNT
+ * Input          : uSec: specifies the delay time length, in microseconds.
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void HAL_Delay_Microseconds(uint32_t uSec)
+{
+  volatile uint32_t DWT_START = DWT->CYCCNT;
+  // keep DWT_TOTAL from overflowing (max 59.652323s w/72MHz SystemCoreClock)
+  if (uSec > (UINT_MAX / SYSTEM_US_TICKS))
+  {
+    uSec = (UINT_MAX / SYSTEM_US_TICKS);
+  }
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+  volatile uint32_t DWT_TOTAL = (SYSTEM_US_TICKS * uSec);
 
-    void HAL_Delay_Milliseconds(uint32_t millis);
-
-
-#ifdef	__cplusplus
+  while((DWT->CYCCNT - DWT_START) < DWT_TOTAL)
+  {
+    HAL_Notify_WDT();
+  }
 }
-#endif
-
-#endif	/* DELAY_HAL_H */
 
