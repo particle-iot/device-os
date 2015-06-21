@@ -69,8 +69,8 @@ char* ultoa(unsigned long a, char* buffer, int radix, char pad){
 		return NULL;
 	}
 	char* ptr=buffer;
-        
-	div_t result;	
+
+	div_t result;
 	while(a){
             /* toolchain bug??
             result = div(a, radix);
@@ -85,10 +85,10 @@ char* ultoa(unsigned long a, char* buffer, int radix, char pad){
             }
             ++ptr;
             a = result.quot;
-	}                
+	}
         while (ptr < buffer+pad)
             *ptr++ = '0';
-        
+
 	*ptr = '\0';
 	str_reverse(buffer);
 	return buffer;
@@ -97,7 +97,7 @@ char* ultoa(unsigned long a, char* buffer, int radix, char pad){
 char* itoa(int a, char* buffer, int radix){
 	if(a<0){
 		*buffer = '-';
-		unsigned v = a==INT_MIN ? ((unsigned)INT_MAX+1) : -a;        
+		unsigned v = a==INT_MIN ? ((unsigned)INT_MAX+1) : -a;
 		ultoa((unsigned)v, buffer + 1, radix);
 	}else{
 		ultoa(a, buffer, radix);
@@ -141,3 +141,13 @@ __attribute__((weak)) char* utoa(unsigned a, char* buffer, int radix) {
 //------------------------------------------------------------------------------------------
 
 
+char* strdup(const char* s)
+{
+    if (!s)
+        return NULL;
+    size_t len = strlen(s);
+    char* result = (char*)malloc(len+1);
+    if (result)
+       strcpy(result, s);
+    return result;
+}
