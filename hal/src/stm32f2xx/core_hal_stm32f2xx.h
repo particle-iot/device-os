@@ -60,5 +60,8 @@ void CAN2_SCE_irq();
  */
 void Handle_Mode_Button_EXTI_irq(void);
 
-
+/**
+ * Handle short and generic tasks for the device HAL on 1ms ticks
+ */
+void HAL_1Ms_Tick(void);
 

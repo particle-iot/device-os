@@ -44,6 +44,11 @@ const unsigned USART1Index = 53;
 const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
 const unsigned TIM7Index = 71;
 
+/**
+ * Updated by HAL_1Ms_Tick()
+ */
+volatile uint32_t TimingDelay;
+
 void HAL_Core_Setup_override_interrupts(void) {
 
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
@@ -71,6 +76,14 @@ void SysTickChain()
     chain();
 
     SysTickOverride();
+}
+
+void HAL_1Ms_Tick()
+{
+    if (TimingDelay != 0x00)
+    {
+        __sync_sub_and_fetch(&TimingDelay, 1);
+    }
 }
 
 void HAL_Core_Setup_finalize(void)
