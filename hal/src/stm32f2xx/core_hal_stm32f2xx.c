@@ -457,10 +457,8 @@ void SysTickOverride(void)
 {
     System1MsTick();
 
-    if (TimingDelay != 0x00)
-    {
-        __sync_sub_and_fetch(&TimingDelay, 1);
-    }
+    /* Handle short and generic tasks for the device HAL on 1ms ticks */
+    HAL_1Ms_Tick();
 
     HAL_SysTick_Handler();
 
