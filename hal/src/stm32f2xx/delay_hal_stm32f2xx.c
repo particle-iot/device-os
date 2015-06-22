@@ -26,7 +26,7 @@
 #include "delay_hal.h"
 #include "stm32f2xx.h"
 #include "hw_config.h"
-#include <limits.h>
+#include "watchdog_hal.h"
 
 /*******************************************************************************
  * Function Name  : Delay_Microsecond

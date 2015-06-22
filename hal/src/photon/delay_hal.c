@@ -24,9 +24,6 @@
  */
 
 #include "delay_hal.h"
-#include "stm32f2xx.h"
-#include "hw_config.h"
-#include <limits.h>
 #include "wiced.h"
 
 

@@ -23,6 +23,22 @@
  ******************************************************************************
  */
 
+/* Includes -----------------------------------------------------------------*/
+#include "watchdog_hal.h"
+#include "wiced.h"
+ 
+/* Private typedef ----------------------------------------------------------*/
+
+/* Private define -----------------------------------------------------------*/
+
+/* Private macro ------------------------------------------------------------*/
+
+/* Private variables --------------------------------------------------------*/
+
+/* Extern variables ---------------------------------------------------------*/
+
+/* Private function prototypes ----------------------------------------------*/
+
 // todo find a technique that allows accessor functions to be inlined while still keeping
 // hardware independence.
 bool HAL_watchdog_reset_flagged()
