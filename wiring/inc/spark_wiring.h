@@ -46,6 +46,10 @@
 #include "spark_wiring_rgb.h"
 #include "spark_wiring_ticks.h"
 
+/* To prevent build error, we are undefining and redefining DAC here */
+#undef DAC
+#define DAC DAC1
+
 #ifdef __cplusplus
 extern "C" {
 #endif
