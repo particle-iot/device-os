@@ -162,13 +162,13 @@ st-flash: $(TARGET_BASE).bin
 # in bootloader mode before invoking 'make program-dfu'
 program-dfu: $(TARGET_BASE).dfu
 ifdef START_DFU_FLASHER_SERIAL_SPEED
-# SPARK_SERIAL_DEV should be set something like /dev/tty.usbxxxx and exported
-#ifndef SPARK_SERIAL_DEV
-ifeq ("$(wildcard $(SPARK_SERIAL_DEV))","")
-	@echo Serial device SPARK_SERIAL_DEV : $(SPARK_SERIAL_DEV) not available
+# PARTICLE_SERIAL_DEV should be set something like /dev/tty.usbxxxx and exported
+#ifndef PARTICLE_SERIAL_DEV
+ifeq ("$(wildcard $(PARTICLE_SERIAL_DEV))","")
+	@echo Serial device PARTICLE_SERIAL_DEV : $(PARTICLE_SERIAL_DEV) not available
 else
 	@echo Entering dfu bootloader mode:
-	stty -f $(SPARK_SERIAL_DEV) $(START_DFU_FLASHER_SERIAL_SPEED)
+	stty -f $(PARTICLE_SERIAL_DEV) $(START_DFU_FLASHER_SERIAL_SPEED)
 	sleep 1
 endif
 endif
@@ -185,16 +185,16 @@ program-serial: $(TARGET_BASE).bin
 ifdef START_YMODEM_FLASHER_SERIAL_SPEED
 # Program core/photon using serial ymodem flasher.
 # Install 'sz' tool using: 'brew install lrzsz' on MAC OS X
-# SPARK_SERIAL_DEV should be set something like /dev/tty.usbxxxx and exported
-ifeq ("$(wildcard $(SPARK_SERIAL_DEV))","")
-	@echo Serial device SPARK_SERIAL_DEV : $(SPARK_SERIAL_DEV) not available
+# PARTICLE_SERIAL_DEV should be set something like /dev/tty.usbxxxx and exported
+ifeq ("$(wildcard $(PARTICLE_SERIAL_DEV))","")
+	@echo Serial device PARTICLE_SERIAL_DEV : $(PARTICLE_SERIAL_DEV) not available
 else
 	@echo Entering serial programmer mode:
-	stty -f $(SPARK_SERIAL_DEV) $(START_YMODEM_FLASHER_SERIAL_SPEED)
+	stty -f $(PARTICLE_SERIAL_DEV) $(START_YMODEM_FLASHER_SERIAL_SPEED)
 	sleep 1
 	@echo Flashing using serial ymodem protocol:
 # Got some issue currently in getting 'sz' working
-	sz -b -v --ymodem $< > $(SPARK_SERIAL_DEV) < $(SPARK_SERIAL_DEV)
+	sz -b -v --ymodem $< > $(PARTICLE_SERIAL_DEV) < $(PARTICLE_SERIAL_DEV)
 endif
 endif
 
