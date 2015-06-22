@@ -33,6 +33,7 @@ extern "C" {
 #endif
 
     void HAL_Delay_Milliseconds(uint32_t millis);
+    void HAL_Delay_Microseconds(uint32_t micros);
 
 
 #ifdef	__cplusplus
