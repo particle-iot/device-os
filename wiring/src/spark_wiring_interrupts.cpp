@@ -58,7 +58,7 @@ void call_raw_interrupt_handler(void* data)
 
 bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode mode)
 {
-    detachInterrupt(pin);
+    HAL_Interrupts_Detach(pin);
     wiring_interrupt_handler_t* handler = allocate_handler(pin, fn);
     if (handler) {      
         HAL_Interrupts_Attach(pin, call_wiring_interrupt_handler, handler, mode, NULL);
@@ -68,7 +68,7 @@ bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode 
 
 bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode)
 {
-    detachInterrupt(pin);
+    HAL_Interrupts_Detach(pin);
     HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, NULL);
     return true;
 }
