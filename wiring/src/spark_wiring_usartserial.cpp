@@ -34,6 +34,12 @@ USARTSerial::USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_B
   _serial = serial;
   HAL_USART_Init(serial, rx_buffer, tx_buffer);
 }
+void USARTSerial::beginonewire(unsigned long baud)
+{
+    USARTSerial::begin(baud);
+//    pinMode(usartMap->usart_tx_pin, AF_OUTPUT_DRAIN);
+    USART_HalfDuplexCmd(usartMap->usart_peripheral, ENABLE);
+}
 
 // Public Methods //////////////////////////////////////////////////////////////
 
