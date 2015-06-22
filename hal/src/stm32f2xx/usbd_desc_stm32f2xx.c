@@ -29,10 +29,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_core.h"
 #include "usbd_desc.h"
+#include "usbd_desc_device.h"
 #include "usbd_req.h"
 #include "usb_regs.h"
 
-/* USB Device String Definitions - in device HAL usbd_desc.c -----------------*/
+/* USB Device String Definitions - in device HAL usbd_desc_device.h ----------*/
 /*
 #define USBD_LANGID_STRING              0x0409  //U.S. English
 #define USBD_MANUFACTURER_STRING        "Spark Devices"
