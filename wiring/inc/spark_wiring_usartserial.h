@@ -39,6 +39,7 @@ public:
   virtual ~USARTSerial() {};
   void begin(unsigned long);
   void begin(unsigned long, uint8_t);
+  void halfduplex(bool);
   void end();
 
   virtual int available(void);

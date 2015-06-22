@@ -302,6 +302,11 @@ bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
   return usartMap[serial]->usart_enabled;
 }
 
+void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
+{
+    USART_HalfDuplexCmd(usartMap[serial]->usart_peripheral, ENABLE); //Enable ? ENABLE : DISABLE);
+}
+
 // Shared Interrupt Handler for USART2/Serial1 and USART1/Serial2
 // WARNING: This function MUST remain reentrance compliant -- no local static variables etc.
 static void HAL_USART_Handler(HAL_USART_Serial serial)
