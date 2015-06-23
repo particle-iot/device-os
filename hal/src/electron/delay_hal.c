@@ -18,8 +18,9 @@
  */
 
 /* Includes -----------------------------------------------------------------*/
-#include <stdint.h>
+#include "delay_hal.h"
 #include <stdatomic.h>
+#include "watchdog_hal.h"
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -28,43 +29,28 @@
 /* Private macro ------------------------------------------------------------*/
 
 /* Private variables --------------------------------------------------------*/
-
-/* Extern variables ---------------------------------------------------------*/
 /**
  * Updated by HAL_1Ms_Tick()
  */
-extern volatile uint32_t TimingDelay;
+volatile uint32_t TimingDelay;
+
+/* Extern variables ---------------------------------------------------------*/
 
 /* Private function prototypes ----------------------------------------------*/
 
-/**
- * Called by HAL_Core_Config() to allow the HAL implementation to override
- * the interrupt table if required.
- */
-void HAL_Core_Setup_override_interrupts(void) 
+/*******************************************************************************
+* Function Name  : Delay
+* Description    : Inserts a delay time.
+* Input          : nTime: specifies the delay time length, in milliseconds.
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void HAL_Delay_Milliseconds(uint32_t nTime)
 {
-}
+    __sync_lock_test_and_set(&TimingDelay, nTime);
 
-/**
- * Called at the beginning of app_setup_and_loop() from main.cpp to 
- * pre-initialize any low level hardware before the main loop runs.
- */
-void HAL_Core_Init(void)
-{
-}
-
-void HAL_1Ms_Tick()
-{
-    if (TimingDelay != 0x00)
-    {
-        __sync_sub_and_fetch(&TimingDelay, 1);
+    while (TimingDelay != 0x00) {
+        HAL_Notify_WDT();
     }
 }
 
-/**
- * Called by HAL_Core_Setup() to perform any post-setup config after the
- * watchdog has been disabled.
- */
-void HAL_Core_Setup_finalize(void) 
-{
-}

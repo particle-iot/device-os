@@ -18,9 +18,9 @@
  */
 
 /* Includes -----------------------------------------------------------------*/
-#include <stdint.h>
-#include <stdatomic.h>
-
+#include "watchdog_hal.h"
+#include "hw_config.h"
+ 
 /* Private typedef ----------------------------------------------------------*/
 
 /* Private define -----------------------------------------------------------*/
@@ -30,41 +30,19 @@
 /* Private variables --------------------------------------------------------*/
 
 /* Extern variables ---------------------------------------------------------*/
-/**
- * Updated by HAL_1Ms_Tick()
- */
-extern volatile uint32_t TimingDelay;
 
 /* Private function prototypes ----------------------------------------------*/
 
-/**
- * Called by HAL_Core_Config() to allow the HAL implementation to override
- * the interrupt table if required.
- */
-void HAL_Core_Setup_override_interrupts(void) 
+// todo find a technique that allows accessor functions to be inlined 
+// while still keeping hardware independence.
+bool HAL_watchdog_reset_flagged() 
 {
+	// IWDG is not enabled on Electron boards by default
+    // Now support true sleep modes without system reset
+    return false;
 }
 
-/**
- * Called at the beginning of app_setup_and_loop() from main.cpp to 
- * pre-initialize any low level hardware before the main loop runs.
- */
-void HAL_Core_Init(void)
+void HAL_Notify_WDT()
 {
-}
-
-void HAL_1Ms_Tick()
-{
-    if (TimingDelay != 0x00)
-    {
-        __sync_sub_and_fetch(&TimingDelay, 1);
-    }
-}
-
-/**
- * Called by HAL_Core_Setup() to perform any post-setup config after the
- * watchdog has been disabled.
- */
-void HAL_Core_Setup_finalize(void) 
-{
+    KICK_WDT();
 }
