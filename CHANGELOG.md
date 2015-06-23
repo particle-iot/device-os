@@ -14,6 +14,7 @@
  - Fix time being reset on wakeup. (removed WICED RTC init code that resets to default preset time in platform_mcu_powersave_init() within photon-wiced repo.) [#440](https://github.com/spark/firmware/issues/440)
  - `TCPClient.connected()` was not returning `false` when the socket was disconnected from the other end.
  - `strdup()` was returning garbage [#457](https://github.com/spark/firmware/issues/457)
+ - `attachInterrupt()` should work on all interrupt pins now except D0 & A5. Please note there are shared lines as per the following issue comment : [#443] (https://github.com/spark/firmware/issues/443#issuecomment-114389744)
 
 
 ## v0.4.2
