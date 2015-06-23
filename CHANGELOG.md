@@ -15,6 +15,7 @@
  - `TCPClient.connected()` was not returning `false` when the socket was disconnected from the other end.
  - `strdup()` was returning garbage [#457](https://github.com/spark/firmware/issues/457)
  - `attachInterrupt()` should work on all interrupt pins now except D0 & A5. Please note there are shared lines as per the following issue comment : [#443] (https://github.com/spark/firmware/issues/443#issuecomment-114389744)
+ - Fix I2C bus lockup when no slave devices are present by issuing a STOP condition after sLave send address fails.
 
 
 ## v0.4.2
