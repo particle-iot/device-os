@@ -55,6 +55,5 @@ mv ../build/target/main/platform-10/main.bin.pre_crc ../build/target/main/platfo
 - rtc_hal
 - servo_hal
 - spi_hal
-- timer_hal
 - tone_hal
 - usart_hal
