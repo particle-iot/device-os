@@ -48,6 +48,7 @@ of the core system, these are all optional and are only used from user code:
 - rtc_hal
 - servo_hal
 - spi_hal
-- timertone_hal
+- timer_hal
+- tone_hal
 - usart_hal
 
