@@ -73,9 +73,6 @@ static exti_channel exti_channels[16];
 void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, void* reserved)
 {
   uint8_t GPIO_PortSource = 0;    //variable to hold the port number
-  uint8_t GPIO_PinSource = 0;     //variable to hold the pin number
-  uint8_t PinNumber;                              //temp variable to calculate the pin number
-
 
   //EXTI structure to init EXT
   EXTI_InitTypeDef EXTI_InitStructure;
@@ -86,6 +83,7 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
   GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
+  uint8_t GPIO_PinSource = PIN_MAP[pin].gpio_pin_source;
 
   //Clear pending EXTI interrupt flag for the selected pin
   EXTI_ClearITPendingBit(gpio_pin);
@@ -102,15 +100,6 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   else if (gpio_port == GPIOC)
   {
     GPIO_PortSource = 2;
-  }
-
-  //Find out the pin number from the mask
-  PinNumber = gpio_pin;
-  PinNumber = PinNumber >> 1;
-  while(PinNumber)
-  {
-    PinNumber = PinNumber >> 1;
-    GPIO_PinSource++;
   }
 
   // Register the handler for the user function name
@@ -163,27 +152,16 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
 
 void HAL_Interrupts_Detach(uint16_t pin)
 {
-  uint8_t GPIO_PinSource = 0;     //variable to hold the pin number
-  uint8_t PinNumber;                              //temp variable to calculate the pin number
-
   //Map the Spark Core pin to the appropriate pin on the STM32
   STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
+  uint8_t GPIO_PinSource = PIN_MAP[pin].gpio_pin_source;
 
   //Clear the pending interrupt flag for that interrupt pin
   EXTI_ClearITPendingBit(gpio_pin);
 
   //EXTI structure to init EXT
   EXTI_InitTypeDef EXTI_InitStructure;
-
-  //Find out the pin number from the mask
-  PinNumber = gpio_pin;
-  PinNumber = PinNumber >> 1;
-  while(PinNumber)
-  {
-    PinNumber = PinNumber >> 1;
-    GPIO_PinSource++;
-  }
 
   //Select the appropriate EXTI line
   EXTI_InitStructure.EXTI_Line = gpio_pin;
@@ -217,25 +195,6 @@ void HAL_Interrupts_Disable_All(void)
   NVIC_DisableIRQ(EXTI4_IRQn);
   NVIC_DisableIRQ(EXTI9_5_IRQn);
   NVIC_DisableIRQ(EXTI15_10_IRQn);
-}
-
-void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, HAL_InterruptHandler EXTI_Line_Handler)
-{
-    uint8_t GPIO_PinSource = 0;     //variable to hold the pin number
-    uint8_t PinNumber;              //temp variable to calculate the pin number
-
-    //Find out the pin number from the mask
-    PinNumber = EXTI_Line;
-    PinNumber = PinNumber >> 1;
-    while(PinNumber)
-    {
-      PinNumber = PinNumber >> 1;
-      GPIO_PinSource++;
-    }
-
-    // Register the handler for the user function name
-    exti_channels[GPIO_PinSource].fn = EXTI_Line_Handler;
-    exti_channels[GPIO_PinSource].data = NULL;
 }
 
 /*******************************************************************************
