@@ -35,6 +35,11 @@ USARTSerial::USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_B
   HAL_USART_Init(serial, rx_buffer, tx_buffer);
 }
 
+void USARTSerial::halfduplex(bool Enable)
+{
+    HAL_USART_Half_Duplex(_serial, Enable);
+}
+
 // Public Methods //////////////////////////////////////////////////////////////
 
 void USARTSerial::begin(unsigned long baud)

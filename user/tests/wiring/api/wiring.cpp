@@ -28,6 +28,13 @@ test(api_wiring_interrupt) {
 
 }
 
+test(api_wiring_usartserial) {
+
+    API_COMPILE(Serial1.halfduplex(true));
+    API_COMPILE(Serial1.halfduplex(false));
+
+}
+
 void TIM3_callback()
 {
 }
