@@ -3,6 +3,7 @@
 
 
 ### FEATURES
+ - Half-duplex mode on Serial1 via `Serial1.halfdupliex()`. Thanks to @prices.
 
 ### ENHANCEMENTS
  - I2C methods now use `micros()` for timeouts rather than `millis()`, so I2C functions can be used in an interrupt handler. [#460](https://github.com/spark/firmware/issues/460)
