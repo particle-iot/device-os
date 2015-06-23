@@ -24,7 +24,7 @@
 #ifndef CONCURRENCY_HAL_H
 #define	CONCURRENCY_HAL_H
 
-//#if PLATFORM_THREADING
+#if PLATFORM_THREADING
 
 #include "system_tick_hal.h"
 #include <stdint.h>
@@ -146,6 +146,6 @@ int os_mutex_recursive_unlock(os_mutex_recursive_t mutex);
 #define _GLIBCXX_HAS_GTHREADS
 #include <bits/gthr.h>
 
+#endif
 
 #endif	/* CONCURRENCY_HAL_H */
-

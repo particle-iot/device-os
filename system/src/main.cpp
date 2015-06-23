@@ -202,7 +202,7 @@ void app_setup_and_loop(void)
 
     bool threaded = system_thread_get_state(NULL)!=0 && (system_mode()!=SAFE_MODE);
     if (threaded)
-        SystemThread.start();
+        SYSTEM_THREAD_START();
 
     /* Main loop */
     while (1)

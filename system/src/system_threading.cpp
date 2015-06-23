@@ -5,12 +5,15 @@
 #include <time.h>
 #include <string.h>
 
+
+#if PLATFORM_THREADING
 void system_thread_idle()
 {
     Spark_Idle_Events(true);
 }
 
 ActiveObject SystemThread(ActiveObjectConfiguration(system_thread_idle, 1024*3));
+
 
 namespace std {
     condition_variable::~condition_variable()
@@ -79,53 +82,4 @@ namespace std {
     }
 }
 
-void ActiveObjectBase::start_thread()
-{
-    // prevent the started thread from running until the thread id has been assigned
-    // so that calls to isCurrentThread() work correctly
-    std::lock_guard<std::mutex> lck (_start);
-    set_thread(std::thread(run_active_object, this));
-}
-
-
-void ActiveObjectBase::run()
-{
-    std::lock_guard<std::mutex> lck (_start);
-    started = true;
-
-    Item item;
-    for (;;)
-    {
-        if (take(item))
-        {
-            item.invoke();
-            item.dispose();
-        }
-        else
-        {
-            configuration.background_task();
-        }
-    }
-
-}
-
-void ActiveObjectBase::invoke_impl(void* fn, void* data, size_t len)
-{
-    if (isCurrentThread()) {        // run synchronously since we are already on the thread
-        Item(Item::active_fn_t(fn), data).invoke();
-    }
-    else {
-        // allocate storage for the message
-        void* copy = data;
-        if (data && len) {
-            copy = malloc(len);
-            memcpy(copy, data, len);
-        }
-        put(Item(Item::active_fn_t(fn), copy));
-    }
-}
-
-void ActiveObjectBase::run_active_object(ActiveObjectBase* object)
-{
-    object->run();
-}
+#endif

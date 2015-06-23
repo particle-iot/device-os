@@ -59,8 +59,10 @@ test(system_mode) {
 }
 
 test(system_thread_setting) {
-    API_COMPILE({SYSTEM_THREAD(ENABLE)});
-    API_COMPILE({SYSTEM_THREAD(DISABLE)});
+#if PLATFORM_THREADING
+    API_COMPILE({SYSTEM_THREAD(ENABLED)});
+#endif
+    API_COMPILE({SYSTEM_THREAD(DISABLED)});
 }
 
 test(system_version) {
