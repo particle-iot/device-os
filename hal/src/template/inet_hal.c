@@ -33,4 +33,8 @@ int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress
     return 1;
 }
 
-// inet_ping in wlan_hal.c
+int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries,
+        void* reserved)
+{
+    return 0;
+}
