@@ -28,6 +28,8 @@
 #include "task.h"
 #include <mutex>
 
+
+
 // use the newer name
 typedef xTaskHandle TaskHandle_t;
 typedef xQueueHandle QueueHandle_t;
@@ -54,7 +56,6 @@ os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_pr
 {
     *thread = NULL;
     signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (const signed char*)name, (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) (configMAX_PRIORITIES-1)-priority, thread);
-    taskYIELD();
     return ( result != (signed portBASE_TYPE) pdPASS );
 }
 
@@ -225,12 +226,12 @@ __gthread_t __gthread_self()
     return xTaskGetCurrentTaskHandle();
 }
 
-void os_condition_variable_create(condition_variable_t* cond)
+int os_condition_variable_create(condition_variable_t* cond)
 {
-    new(cond) ConditionVariable(10);
+    return (*cond = new ConditionVariable(10))==NULL;
 }
 
-void os_condition_variable_dispose(condition_variable_t* cond)
+void os_condition_variable_destroy(condition_variable_t* cond)
 {
     ConditionVariable* cv = (ConditionVariable*)cond;
     cv->~ConditionVariable();
@@ -256,25 +257,83 @@ void os_condition_variable_notify_all(condition_variable_t* cond)
 }
 
 
-bool os_queue_create(os_queue_t* queue, size_t item_count, size_t item_size)
+int os_queue_create(os_queue_t* queue, size_t item_count, size_t item_size)
 {
     *queue = xQueueCreate(item_count, item_size);
-    return *queue;
+    return *queue==NULL;
 }
 
 static_assert(portMAX_DELAY==CONCURRENT_WAIT_FOREVER, "expected portMAX_DELAY==CONCURRENT_WAIT_FOREVER");
 
-bool os_queue_put(os_queue_t queue, const void* item, system_tick_t delay)
+int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay)
 {
-    return xQueueSend(queue, item, delay)==pdTRUE;
+    return xQueueSend(queue, item, delay)!=pdTRUE;
 }
 
-bool os_queue_take(os_queue_t queue, void* item, system_tick_t delay)
+int os_queue_take(os_queue_t queue, void* item, system_tick_t delay)
 {
-    return xQueueReceive(queue, item, delay)==pdTRUE;
+    return xQueueReceive(queue, item, delay)!=pdTRUE;
 }
 
 void os_queue_destroy(os_queue_t queue)
 {
     vQueueDelete(queue);
 }
+
+
+int os_mutex_create(os_mutex_t* mutex)
+{
+    return (*mutex = xSemaphoreCreateMutex())==NULL;
+}
+
+int os_mutex_destroy(os_mutex_t mutex)
+{
+    vSemaphoreDelete(mutex);
+    return 0;
+}
+
+int os_mutex_lock(os_mutex_t mutex)
+{
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    return 0;
+}
+
+int os_mutex_trylock(os_mutex_t mutex)
+{
+    return xSemaphoreTake(mutex, 0)==pdFALSE;
+}
+
+
+int os_mutex_unlock(os_mutex_t mutex)
+{
+    xSemaphoreGive(mutex);
+    return 0;
+}
+
+int os_mutex_recursive_create(os_mutex_recursive_t* mutex)
+{
+    return (*mutex = xSemaphoreCreateRecursiveMutex())==NULL;
+}
+
+int os_mutex_recursive_destroy(os_mutex_recursive_t mutex)
+{
+    vSemaphoreDelete(mutex);
+    return 0;
+}
+
+int os_mutex_recursive_lock(os_mutex_recursive_t mutex)
+{
+    xSemaphoreTakeRecursive(mutex, portMAX_DELAY);
+    return 0;
+}
+
+int os_mutex_recursive_trylock(os_mutex_recursive_t mutex)
+{
+    return (xSemaphoreTakeRecursive(mutex, 0)!=pdTRUE);
+}
+
+int os_mutex_recursive_unlock(os_mutex_recursive_t mutex)
+{
+    return xSemaphoreGiveRecursive(mutex)!=pdTRUE;
+}
+

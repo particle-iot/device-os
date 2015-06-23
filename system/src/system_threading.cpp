@@ -10,12 +10,12 @@ void system_thread_idle()
     Spark_Idle_Events(true);
 }
 
-ActiveObject SystemThread(system_thread_idle);
+ActiveObject SystemThread(ActiveObjectConfiguration(system_thread_idle, 1024*3));
 
 namespace std {
     condition_variable::~condition_variable()
     {
-        os_condition_variable_dispose(&_M_cond);
+        os_condition_variable_destroy(&_M_cond);
     }
 
     condition_variable::condition_variable()
@@ -38,6 +38,16 @@ namespace std {
         os_condition_variable_notify_all(&_M_cond);
     }
 
+    mutex& __get_once_mutex() {
+        static mutex __once;
+        return __once;
+    }
+
+    function<void()> __once_functor;
+
+    __future_base::_Result_base::_Result_base() = default;
+    __future_base::_Result_base::~_Result_base() = default;
+    //__future_base::_State_base::~_State_base() = default;
 
     /**
      * static Startup function for threads.
@@ -52,14 +62,37 @@ namespace std {
 
     void thread::_M_start_thread(thread::__shared_base_type base)
     {
-        if (os_thread_create(&_M_id._M_thread, "", 0, invoke_thread, base.get(), 2048)) {
+        if (os_thread_create(&_M_id._M_thread, "", 0, invoke_thread, base.get(), 1024*20)) {
             PANIC(AssertionFailure, "%s %", __FILE__, __LINE__);
         }
     }
+
+    inline std::unique_lock<std::mutex>*& __get_once_functor_lock_ptr()
+    {
+      static std::unique_lock<std::mutex>* __once_functor_lock_ptr = 0;
+      return __once_functor_lock_ptr;
+    }
+
+    void __set_once_functor_lock_ptr(unique_lock<mutex>* __ptr)
+    {
+        __get_once_functor_lock_ptr() = __ptr;
+    }
 }
+
+void ActiveObjectBase::start_thread()
+{
+    // prevent the started thread from running until the thread id has been assigned
+    // so that calls to isCurrentThread() work correctly
+    std::lock_guard<std::mutex> lck (_start);
+    set_thread(std::thread(run_active_object, this));
+}
+
 
 void ActiveObjectBase::run()
 {
+    std::lock_guard<std::mutex> lck (_start);
+    started = true;
+
     Item item;
     for (;;)
     {
@@ -70,9 +103,10 @@ void ActiveObjectBase::run()
         }
         else
         {
-            background_task();
+            configuration.background_task();
         }
     }
+
 }
 
 void ActiveObjectBase::invoke_impl(void* fn, void* data, size_t len)

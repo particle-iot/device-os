@@ -82,7 +82,7 @@ void wifi_add_profile_callback(const char *ssid,
  *
  * Runs during setup mode, on the system thread.
  */
-void Start_Smart_Config(void)
+ void Start_Smart_Config(void)
 {
     WLAN_SMART_CONFIG_FINISHED = 0;
     WLAN_SMART_CONFIG_STOP = 0;
@@ -171,6 +171,8 @@ void Start_Smart_Config(void)
     WLAN_SMART_CONFIG_START = 0;
     network_connect(0, 0, 0, NULL);
 }
+
+ // TODO - should the HAL_WLAN_notify_xxx() events be marshaled to the networking thread? or handled concurrently?)
 
 /**
  * Notification that setup mode is complete. Called on a worker thread.
@@ -280,10 +282,30 @@ struct NetworkParams {
         }
     };
 
+    /**
+     * The target function to call
+     */
     network_fn_t target;
+    /**
+     * The parameters to invoke the function with.
+     */
     NetworkParamsInner params;
-    size_t reserved;
 
+    /**
+     * The size of the reserved parameters.
+     */
+    uint32_t reserved;
+
+    /**
+     * Marshalls the given function parameters to a dynamically allocated instance.
+     * @param target
+     * @param network
+     * @param flags
+     * @param param
+     * @param reserved
+     * @return  The data dynamically allocated. It can be safely cast to a NetworkParams pointer, although the memory region
+     *   may be larger than the default size of NetworkParams.
+     */
     static void* marshal(network_fn_t target, network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
         size_t size = sizeof(NetworkParamsInner);
         size_t reserved_size = 0;
@@ -291,15 +313,21 @@ struct NetworkParams {
             reserved_size = *(uint32_t*)reserved;
         }
         NetworkParams* result = static_cast<NetworkParams*>(malloc(size+reserved_size));
+        if (result) {
         result->target = target;
         result->params = NetworkParamsInner(network, flags, param);
         result->reserved = reserved_size;
         if (reserved_size) {
             memcpy(&result->reserved, reserved, reserved_size);
         }
+        }
         return result;
     }
 
+    /**
+     * Invokes the function call marsh
+     * @param data
+     */
     static void invoke(void* data)
     {
         NetworkParams* np = static_cast<NetworkParams*>(data);
@@ -309,9 +337,10 @@ struct NetworkParams {
 
 
 #define NETWORK_ASYNC(fn, network, flags, param, reserved) \
-    if (!SystemThread.isCurrentThread()) { \
+    if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
         void* pointer = NetworkParams::marshal(fn, network, flags, param, reserved); \
         SystemThread.invoke(NetworkParams::invoke, pointer); \
+        return; \
     }
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
@@ -358,9 +387,9 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
     }
 }
 
-void network_disconnect(network_handle_t network, uint32_t param, void* reserved)
+void network_disconnect_impl(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    NETWORK_ASYNC(network_connect, network, 0, param, reserved);
+    NETWORK_ASYNC(network_disconnect_impl, network, flags, param, reserved);
     if (SPARK_WLAN_STARTED)
     {
         WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()
@@ -370,6 +399,13 @@ void network_disconnect(network_handle_t network, uint32_t param, void* reserved
         network_config_clear();
     }
 }
+
+// standardize on 4-parameter signature internally to make marshalling consistent
+void network_disconnect(network_handle_t network, uint32_t param, void* reserved)
+{
+    network_disconnect_impl(network, 0, param, reserved);
+}
+
 
 bool network_ready(network_handle_t network, uint32_t param, void* reserved)
 {
@@ -451,7 +487,7 @@ void network_listen(network_handle_t, uint32_t flags, void*)
 bool network_listening(network_handle_t, uint32_t, void*)
 {
     return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
-    }
+}
 
 void network_set_credentials_async(NetworkCredentials* credentials)
 {
@@ -477,7 +513,6 @@ void network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* cre
     wlan_set_credentials_async(credentials);
     system_notify_event(wifi_credentials_add, 0, credentials);
 }
-
 
 
 bool network_clear_credentials(network_handle_t network, uint32_t param, NetworkCredentials* creds, void* reserved)

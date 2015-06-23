@@ -24,7 +24,7 @@
 #ifndef CONCURRENCY_HAL_H
 #define	CONCURRENCY_HAL_H
 
-#if PLATFORM_THREADING
+//#if PLATFORM_THREADING
 
 #include "system_tick_hal.h"
 #include <stdint.h>
@@ -112,9 +112,8 @@ os_result_t os_thread_cleanup(os_thread_t thread);
 
 
 
-
-void os_condition_variable_create(condition_variable_t* var);
-void os_condition_variable_dispose(condition_variable_t* var);
+int os_condition_variable_create(condition_variable_t* var);
+void os_condition_variable_destroy(condition_variable_t* var);
 
 // something spooky going on here...adding #include <mutex> to the top of this file
 // causes 'mutex' is not a member of 'std'. and errors in other classes using mutext also occur
@@ -126,13 +125,27 @@ void os_condition_variable_notify_all(condition_variable_t* var);
 
 const system_tick_t CONCURRENT_WAIT_FOREVER = (system_tick_t)-1;
 
-bool os_queue_create(os_queue_t* queue, size_t item_count, size_t item_size);
-bool os_queue_put(os_queue_t queue, const void* item, system_tick_t delay);
-bool os_queue_take(os_queue_t queue, void* item, system_tick_t delay);
+int os_queue_create(os_queue_t* queue, size_t item_count, size_t item_size);
+int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay);
+int os_queue_take(os_queue_t queue, void* item, system_tick_t delay);
 void os_queue_destroy(os_queue_t queue);
 
+int os_mutex_create(os_mutex_t* mutex);
+int os_mutex_destroy(os_mutex_t mutex);
+int os_mutex_lock(os_mutex_t mutex);
+int os_mutex_trylock(os_mutex_t mutex);
+int os_mutex_unlock(os_mutex_t mutex);
 
-#endif
+int os_mutex_recursive_create(os_mutex_recursive_t* mutex);
+int os_mutex_recursive_destroy(os_mutex_recursive_t mutex);
+int os_mutex_recursive_lock(os_mutex_recursive_t mutex);
+int os_mutex_recursive_trylock(os_mutex_recursive_t mutex);
+int os_mutex_recursive_unlock(os_mutex_recursive_t mutex);
+
+
+#define _GLIBCXX_HAS_GTHREADS
+#include <bits/gthr.h>
+
 
 #endif	/* CONCURRENCY_HAL_H */
 

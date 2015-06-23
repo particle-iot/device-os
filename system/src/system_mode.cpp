@@ -47,7 +47,7 @@ System_Mode_TypeDef system_mode()
     return _mode;
 }
 
-static spark::feature::State system_thread_enable = spark::feature::ENABLE;
+static spark::feature::State system_thread_enable = spark::feature::ENABLED;
 
 void system_thread_set_state(spark::feature::State state, void*)
 {

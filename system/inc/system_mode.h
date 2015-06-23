@@ -34,8 +34,8 @@ System_Mode_TypeDef system_mode();
 namespace spark {
     namespace feature {
         enum State {
-            DISABLE,
-            ENABLE
+            DISABLED,
+            ENABLED
         };
     }
 

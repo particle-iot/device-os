@@ -19,6 +19,14 @@ typedef uint8_t os_thread_prio_t;
 const os_thread_prio_t OS_THREAD_PRIORITY_DEFAULT = 0;
 const size_t OS_THREAD_STACK_SIZE_DEFAULT = 512;
 
+typedef void* os_mutex_t;
+typedef void* os_mutex_recursive_t;
+typedef void* condition_variable_t;
+
+typedef os_mutex_t __gthread_mutex_t;
+typedef os_mutex_recursive_t __gthread_recursive_mutex_t;
+
+
 /**
  * Alias for a queue handle in FreeRTOS - all handles are pointers.
  */
@@ -26,19 +34,17 @@ typedef void* os_queue_t;
 
 typedef struct timespec __gthread_time_t;
 
-#define _GLIBCXX_HAS_GTHREADS
-#include <bits/gthr.h>
-
 bool __gthread_equal(__gthread_t t1, __gthread_t t2);
 __gthread_t __gthread_self();
 
-typedef struct { uint8_t tmp[4]; } __gthread_cond_t;
-typedef __gthread_cond_t condition_variable_t;
+typedef condition_variable_t __gthread_cond_t;
 
 int __gthread_cond_timedwait (__gthread_cond_t *cond,
                                    __gthread_mutex_t *mutex,
                                    const __gthread_time_t *abs_timeout);
 
+
+int __gthread_mutex_timedlock (__gthread_mutex_t* mutex, const __gthread_time_t* timeout);
 
 #ifdef	__cplusplus
 }

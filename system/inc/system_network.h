@@ -58,7 +58,7 @@ bool network_ready(network_handle_t network, uint32_t param1, void* reserved);
 void network_on(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 void network_off(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 
-void network_listen(network_handle_t network, uint32_t flags, void* reserved);
+void network_listen(network_handle_t network, uint32_t param1, void* reserved);
 bool network_listening(network_handle_t network, uint32_t param1, void* reserved);
 
 

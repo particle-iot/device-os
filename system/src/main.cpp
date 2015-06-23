@@ -184,7 +184,21 @@ void app_setup_and_loop(void)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
 #endif
 
-    SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+#ifndef SPARK_NO_CLOUD
+    //Initialize spark protocol callbacks for all System modes
+    Spark_Protocol_Init();
+
+#if !SPARK_NO_WIFI
+    wlan_setup();
+
+    /* Trigger a WLAN device */
+    if (system_mode() == AUTOMATIC || system_mode()==SAFE_MODE)
+    {
+        network_connect(0, 0, 0, NULL);
+    }
+#endif  // SPARK_NO_WIFI
+
+#endif  // SPARK_NO_CLOUD
 
     bool threaded = system_thread_get_state(NULL)!=0 && (system_mode()!=SAFE_MODE);
     if (threaded)

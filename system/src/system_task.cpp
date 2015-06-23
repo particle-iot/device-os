@@ -36,12 +36,11 @@
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
 #include "spark_wiring_cloud.h"
+#include "system_threading.h"
 
 using spark::Network;
 
 volatile system_tick_t spark_loop_total_millis = 0;
-
-void (*announce_presence)(void);
 
 // Auth options are WLAN_SEC_UNSEC, WLAN_SEC_WPA, WLAN_SEC_WEP, and WLAN_SEC_WPA2
 unsigned char _auth = WLAN_SEC_WPA2;
@@ -51,26 +50,6 @@ unsigned char wlan_profile_index;
 volatile uint8_t SPARK_LED_FADE = 1;
 
 volatile uint8_t Spark_Error_Count;
-
-void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
-{
-    announce_presence = presence_announcement_callback;
-
-#if !SPARK_NO_WIFI
-    wlan_setup();
-
-    /* Trigger a WLAN device */
-    if (system_mode() == AUTOMATIC || system_mode()==SAFE_MODE)
-    {
-        network_connect(Network, 0, 0, NULL);
-    }    
-#endif
-    
-#ifndef SPARK_NO_CLOUD    
-    //Initialize spark protocol callbacks for all System modes
-    Spark_Protocol_Init();
-#endif    
-}
 
 static int cfod_count = 0;
 
@@ -134,7 +113,7 @@ static uint8_t cloud_failed_connection_attempts = 0;
 void cloud_connection_failed()
 {
     if (cloud_failed_connection_attempts<255)
-        cloud_failed_connection_attempts++;    
+        cloud_failed_connection_attempts++;
     cloud_backoff_start = HAL_Timer_Get_Milli_Seconds();
 }
 
@@ -193,7 +172,7 @@ void handle_cfod()
  * - handles previous connection errors by flashing the LED
  * - attempts to open a socket to the cloud
  * - handles the CFOD
- * 
+ *
  * On return, SPARK_CLOUD_SOCKETED is set to true if the socket connection was successful.
  */
 
@@ -208,7 +187,7 @@ void establish_cloud_connection()
         LED_SetRGBColor(RGB_COLOR_CYAN);
         if (in_cloud_backoff_period())
             return;
-        
+
         LED_On(LED_RGB);
         if (Spark_Connect() >= 0)
         {
@@ -282,8 +261,8 @@ void handle_cloud_connection(bool force_events)
     }
 }
 
-void manage_cloud_connection(bool force_events) 
-{    
+void manage_cloud_connection(bool force_events)
+{
     if (SPARK_CLOUD_CONNECT == 0)
     {
         cloud_disconnect();
@@ -293,7 +272,7 @@ void manage_cloud_connection(bool force_events)
         establish_cloud_connection();
 
         handle_cloud_connection(force_events);
-    }   
+    }
 }
 #endif
 
@@ -364,7 +343,7 @@ void system_delay_ms(unsigned long ms)
 
 void cloud_disconnect()
 {
-#ifndef SPARK_NO_CLOUD    
+#ifndef SPARK_NO_CLOUD
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
         Spark_Disconnect();
@@ -372,13 +351,13 @@ void cloud_disconnect()
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
-        Spark_Error_Count = 0;    
-        
+        Spark_Error_Count = 0;
+
         if (!WLAN_DISCONNECT && !WLAN_SMART_CONFIG_START)
         {
             LED_SetRGBColor(RGB_COLOR_GREEN);
             LED_On(LED_RGB);
         }
     }
-#endif    
+#endif
 }
