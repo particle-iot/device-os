@@ -23,7 +23,6 @@
  ******************************************************************************
  */
 
-
 #include "wlan_hal.h"
 
 uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
@@ -31,31 +30,32 @@ uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
     return 0;
 }
 
-
-int wlan_clear_credentials() 
+int wlan_clear_credentials()
 {
     return 1;
 }
 
 int wlan_has_credentials()
 {
-    return 1;    
+    return 1;
 }
 
-int wlan_connect_init() 
+int wlan_connect_init()
 {
     return 0;
 }
 
-wlan_result_t wlan_activate() {
+wlan_result_t wlan_activate()
+{
     return 0;
 }
 
-wlan_result_t wlan_deactivate() {
+wlan_result_t wlan_deactivate()
+{
     return 0;
 }
 
-bool wlan_reset_credentials_store_required() 
+bool wlan_reset_credentials_store_required()
 {
     return false;
 }
@@ -65,17 +65,15 @@ wlan_result_t wlan_reset_credentials_store()
     return 0;
 }
 
-
 /**
  * Do what is needed to finalize the connection. 
  * @return 
  */
-wlan_result_t wlan_connect_finalize() 
+wlan_result_t wlan_connect_finalize()
 {
     // enable connection from stored profiles
     return 0;
 }
-
 
 void Set_NetApp_Timeout(void)
 {
@@ -85,52 +83,44 @@ void Clear_NetApp_Dhcp(void)
 {
 }
 
-wlan_result_t wlan_disconnect_now() 
+wlan_result_t wlan_disconnect_now()
 {
     return 0;
 }
 
-wlan_result_t wlan_connected_rssi(char* ssid) 
-{        
-    return 0;
-}
-
-int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries,
-        void* reserved)
+wlan_result_t wlan_connected_rssi(char* ssid)
 {
     return 0;
 }
-
 
 int wlan_set_credentials(WLanCredentials* c)
 {
-  return -1;
+    return -1;
 }
 
-void wlan_smart_config_init() {
-    
+void wlan_smart_config_init()
+{
 }
 
-bool wlan_smart_config_finalize() {    
+bool wlan_smart_config_finalize()
+{
     return false;
 }
 
-
-
-void wlan_smart_config_cleanup() 
+void wlan_smart_config_cleanup()
 {
 }
-
 
 void wlan_setup()
-{    
-}
-                       
-void wlan_set_error_count(uint32_t errorCount) 
 {
 }
 
-void wlan_fetch_ipconfig(WLanConfig* config) {
+void wlan_set_error_count(uint32_t errorCount)
+{
+}
+
+void wlan_fetch_ipconfig(WLanConfig* config)
+{
 }
 
 void SPARK_WLAN_SmartConfigProcess()
@@ -138,5 +128,5 @@ void SPARK_WLAN_SmartConfigProcess()
 }
 
 void wlan_connect_cancel(bool called_from_isr)
-{    
+{
 }
