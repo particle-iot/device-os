@@ -61,10 +61,13 @@ uint8_t Get_LED_Brightness()
 static void* data;
 static led_update_handler_fn handler;
 
+void set_rgb_led_change_handler(led_update_handler_fn fn, void* data) {
+    handler = fn;
+}
+
 uint8_t asRGBComponent(uint16_t ccr) {
     return (uint8_t)((ccr<<8)/Get_RGB_LED_Max_Value());
 }
-
 
 void Change_RGB_LED(uint16_t* ccr) {
     Set_RGB_LED(ccr);

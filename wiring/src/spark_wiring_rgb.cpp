@@ -20,7 +20,6 @@
 
 
 #include "spark_wiring_rgb.h"
-#include "rgbled.h"
 
 bool RGBClass::_control = false;
 
@@ -61,4 +60,10 @@ void RGBClass::brightness(uint8_t brightness, bool update)
         LED_On(LED_RGB);
 }
 
+void RGBClass::attachHandler(led_update_handler_fn fn)
+{
+    if (!fn)
+        return;
 
+    set_rgb_led_change_handler(fn, 0);
+}
