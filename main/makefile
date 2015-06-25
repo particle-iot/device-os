@@ -16,6 +16,17 @@ ifeq ($(MODULAR),y)
 PROJECT_ROOT = ..
 COMMON_BUILD=../build
 BUILD_PATH_BASE=$(COMMON_BUILD)/target
+
+# This is required to redefine the value of TARGET_DIR on the command line, since we are changing directories, so the relative path
+# must also change
+ifdef TARGET_DIR
+ifneq ("$(TARGET_DIR)","$(abspath $(TARGET_DIR))")
+override TARGET_DIR := $(abspath $(TARGET_DIR))
+export TARGET_DIR
+MAKEOVERRIDES := $(patsubst TARGET_FILE=%,,$(MAKE_OVERRIDES))
+endif
+endif
+
 MAKE_DEPENDENCIES = modules/photon/user-part
 
 SUBDIR_GOALS := $(MAKECMDGOALS)
@@ -52,7 +63,7 @@ LIB_DIRS += $(dir $(LIB_DEPS))
 ifeq ("$(ARCH)","gcc")
 TARGET=exe
 else
-TARGET=elf bin lst hex size 
+TARGET=elf bin lst hex size
 endif
 
 include ../build/arm-tlm.mk

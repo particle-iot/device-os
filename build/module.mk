@@ -25,8 +25,8 @@ START_YMODEM_FLASHER_SERIAL_SPEED=28800
 
 QUOTE='
 ifneq (,$(GLOBAL_DEFINES))
-MAKE_ARGS+=$(QUOTE)GLOBAL_DEFINES=$(GLOBAL_DEFINES)$(QUOTE)
 CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
+export GLOBAL_DEFINES
 endif
 
 ifdef TEACUP
@@ -114,7 +114,6 @@ endif
 COMPILE_LTO ?= y
 ifeq (y,$(COMPILE_LTO))
 LTO_EXT = -lto
-MAKE_ARGS += COMPILE_LTO=$(COMPILE_LTO)
 endif
 
 ifeq ("$(TARGET_TYPE)","a")
@@ -125,7 +124,7 @@ endif
 # TARGET_NAME is the final filename, including any prefix
 TARGET_FILE_NAME ?= $(MODULE)
 TARGET_NAME ?= $(TARGET_FILE_PREFIX)$(TARGET_FILE_NAME)
-TARGET_PATH ?= $(BUILD_PATH)/$(TARGET_DIR_NAME)
+TARGET_PATH ?= $(BUILD_PATH)/$(call sanitize,$(TARGET_DIR_NAME))
 
 # add trailing slash
 ifneq ("$(TARGET_PATH)","$(dir $(TARGET_PATH))")
