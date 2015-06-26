@@ -250,16 +250,16 @@ endif
 %.bin : %.elf
 	$(call echo,'Invoking: ARM GNU Create Flash Image')
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@.pre_crc
-	if [ -s $@.pre_crc ]; then \
+	$(VERBOSE)if [ -s $@.pre_crc ]; then \
 	head -c $$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) $@.pre_crc > $@.no_crc && \
 	tail -c $(CRC_BLOCK_LEN) $@.pre_crc > $@.crc_block && \
 	test "$(CRC_BLOCK_CONTENTS)" = `xxd -p -c 500 $@.crc_block` && \
-	$(SHA_256) $@.no_crc | cut -c 1-65 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) conv=notrunc && \
+	$(SHA_256) $@.no_crc | cut -c 1-65 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) conv=notrunc $(VERBOSE_REDIRECT) && \
 	head -c $$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) $@.pre_crc > $@.no_crc && \
-	 $(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) conv=notrunc;\
+	 $(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) conv=notrunc $(VERBOSE_REDIRECT);\
 	fi
-	-rm $@
-	mv $@.pre_crc $@
+	$(VERBOSE)[ ! -f $@ ] || rm $@
+	$(VERBOSE)mv $@.pre_crc $@
 	$(call echo,)
 
 
