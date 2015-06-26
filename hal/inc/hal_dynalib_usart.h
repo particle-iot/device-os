@@ -41,7 +41,7 @@ DYNALIB_FN(hal_usart,USB_USART_Receive_Data)
 DYNALIB_FN(hal_usart,USB_USART_Send_Data)
 DYNALIB_FN(hal_usart,USB_USART_Baud_Rate)
 DYNALIB_FN(hal_usart,USB_USART_LineCoding_BitRate_Handler)
-#endif     
+#endif
 
 DYNALIB_FN(hal_usart,HAL_USART_Init)
 DYNALIB_FN(hal_usart,HAL_USART_Begin)
