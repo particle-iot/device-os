@@ -8,8 +8,7 @@ function setup()
 }
 
 function force_clean() {
-#   rm -rf build/target
-    true
+   rm -rf build/target
 }
 
 
