@@ -3,15 +3,20 @@
 # $(VERBOSE) expands to empty or @ to suppress echoing commands in recipes
 # $(call,echo,text) conditionally outputs text if verbose is enabled
 
-ifdef v
+ifeq ("$(subst s,,$(MAKEFLAGS))","$(MAKEFLAGS)")
+v=1
+else
+v=0
+endif
+
+ifeq ("$(v)","1")
 ECHO=echo
 VERBOSE=
 VERBOSE_REDIRECT=
 else
 ECHO = true
 VERBOSE=@
-MAKE_ARGS += -s
-VERBOSE_REDIRECT= > /dev/null
+VERBOSE_REDIRECT= &> /dev/null
 endif
 
 echo=@$(ECHO) $1
