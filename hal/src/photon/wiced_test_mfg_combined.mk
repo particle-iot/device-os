@@ -35,9 +35,9 @@ SUFFIX=_BM-14
 endif
 
 # the PRODUCT_FIRMWARE_VERSION that is reported by default for system firmware and tinker.
-VERSION=1
+VERSION=3
 # The VERSION_STRING that is exported by the wl.exe tool (this is stored in the database of module details that is provided by USI.)
-VERSION_STRING=0.4.2
+VERSION_STRING=0.4.3
 SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
 TARGET_PARENT=$(FIRMWARE_BUILD)/target
@@ -57,12 +57,13 @@ FIRMWARE_DIR=$(FIRMWARE)/main
 COMBINED_MEM=$(OUT)/combined$(SUFFIX).bin
 COMBINED_ELF=$(OUT)/combined$(SUFFIX).elf
 
+#LTO=-lto
 MODULAR_DIR=$(FIRMWARE)/modules
-SYSTEM_PART1_BIN=$(FIRMWARE_BUILD)/target/system-part1/platform-$(PLATFORM_ID)-m-lto/system-part1.bin
-SYSTEM_PART2_BIN=$(FIRMWARE_BUILD)/target/system-part2/platform-$(PLATFORM_ID)-m-lto/system-part2.bin
+SYSTEM_PART1_BIN=$(FIRMWARE_BUILD)/target/system-part1/platform-$(PLATFORM_ID)-m$(LTO)/system-part1.bin
+SYSTEM_PART2_BIN=$(FIRMWARE_BUILD)/target/system-part2/platform-$(PLATFORM_ID)-m$(LTO)/system-part2.bin
 SYSTEM_MEM=$(OUT)/system_pad$(SUFFIX).bin
 
-USER_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)-m-lto/user-part.bin
+USER_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)-m$(LTO)/user-part.bin
 USER_MEM=$(OUT)/user-part.bin
 USER_DIR=$(FIRMWARE)/modules/photon/user-part
 
@@ -147,7 +148,7 @@ system:
 	# adjust the module_info end address and the final CRC
 	@echo building modular system firmware to $(SYSTEM_MEM)
 	-rm $(SYSTEM_MEM)
-	$(MAKE) -C $(MODULAR_DIR) COMPILE_LTO=y MINIMAL=y PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) PRODUCT_ID=$(PRODUCT_ID) all
+	$(MAKE) -C $(MODULAR_DIR) COMPILE_LTO=n MINIMAL=y PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) PRODUCT_ID=$(PRODUCT_ID) all
 	dd if=/dev/zero ibs=1 count=393212 | tr "\000" "\377" > $(SYSTEM_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(SYSTEM_MEM) ibs=1 count=393212
 	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc

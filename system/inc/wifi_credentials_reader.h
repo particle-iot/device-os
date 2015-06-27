@@ -25,7 +25,7 @@
 #include <string.h>
 #include "spark_wiring_usbserial.h"
 
-#if PLATFORM_ID > 2
+#if PLATFORM_ID > 2 && !defined(SYSTEM_MINIMAL)
 #define SETUP_OVER_SERIAL1 1
 #endif
 
@@ -47,18 +47,18 @@ class WiFiCredentialsReader
     ~WiFiCredentialsReader();
   protected:
       void handle(char c);
-  private:   
+  private:
     USBSerial serial;
-#if SETUP_OVER_SERIAL1    
+#if SETUP_OVER_SERIAL1
     bool serial1Enabled;
     uint8_t magicPos;                   // how far long the magic key we are
     WiFiTester* tester;
-#endif    
+#endif
     ConnectCallback connect_callback;
     char ssid[33];
     char password[65];
     char security_type_string[2];
-    
+
     void print(const char *s);
     void read_line(char *dst, int max_len);
 };
