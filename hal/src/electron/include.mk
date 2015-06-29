@@ -3,6 +3,7 @@
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
 HAL_SRC_ELECTRON_INCL_PATH = $(TARGET_HAL_PATH)/src/electron
+HAL_INCL_STM32F2XX_PATH = $(TARGET_HAL_PATH)/src/stm32f2xx
 
 #---------------------------
 # ADD FREERTOS BACK IN LATER
@@ -15,6 +16,7 @@ HAL_SRC_ELECTRON_INCL_PATH = $(TARGET_HAL_PATH)/src/electron
 # implementation headers.
 ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_ELECTRON_INCL_PATH)
+INCLUDE_DIRS += $(HAL_INCL_STM32F2XX_PATH)
 endif
 
 # implementation defined details for the platform that can vary
