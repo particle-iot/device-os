@@ -89,6 +89,14 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
 const sock_handle_t SOCKET_MAX = (sock_handle_t)0xFFFE;
 const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
 
+inline bool is_valid(sock_handle_t handle) {
+    return handle<SOCKET_MAX;
+}
+
+uint8_t socket_handle_valid(sock_handle_t handle) {
+    return is_valid(handle);
+}
+
 sock_handle_t socket_handle_invalid()
 {
     return SOCKET_INVALID;
