@@ -41,10 +41,6 @@ void HAL_Interrupts_Disable_All(void)
 {
 }
 
-void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, HAL_InterruptHandler EXTI_Line_Handler)
-{
-}
-
 /*******************************************************************************
  * Function Name  : HAL_EXTI_Handler (Declared as weak in stm32_it.cpp)
  * Description    : This function is called by any of the interrupt handlers. It

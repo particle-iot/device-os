@@ -163,12 +163,14 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
 {
     sock_handle_t sock = socket(family, type, protocol);
     if (socket_handle_valid(sock)) {
-        bool bound = socket_bind(sock, port) >= 0;
-        DEBUG("socket=%d bound=%d",sock,bound);
-        if(!bound)
-        {
-            socket_close(sock);
-            sock = SOCKET_INVALID;
+        if (IPPROTO_UDP==protocol) {
+            bool bound = socket_bind(sock, port) >= 0;
+            DEBUG("socket=%d bound=%d",sock,bound);
+            if(!bound)
+            {
+                socket_close(sock);
+                sock = SOCKET_INVALID;
+            }
         }
     }
     return sock;

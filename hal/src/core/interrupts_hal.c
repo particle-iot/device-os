@@ -219,25 +219,6 @@ void HAL_Interrupts_Disable_All(void)
   NVIC_DisableIRQ(EXTI9_5_IRQn);
 }
 
-void HAL_EXTI_Register_Handler(uint32_t EXTI_Line, HAL_InterruptHandler fn, void* data)
-{
-    uint8_t GPIO_PinSource = 0;     //variable to hold the pin number
-    uint8_t PinNumber;              //temp variable to calculate the pin number
-
-    //Find out the pin number from the mask
-    PinNumber = EXTI_Line;
-    PinNumber = PinNumber >> 1;
-    while(PinNumber)
-    {
-      PinNumber = PinNumber >> 1;
-      GPIO_PinSource++;
-    }
-
-    // Register the handler for the user function name
-    exti_channels[GPIO_PinSource].fn = fn;
-    exti_channels[GPIO_PinSource].data = data;
-}
-
 /*******************************************************************************
  * Function Name  : HAL_EXTI_Handler (Declared as weak in stm32_it.cpp)
  * Description    : This function is called by any of the interrupt handlers. It

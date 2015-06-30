@@ -68,6 +68,7 @@ int32_t HAL_USART_Read_Data(HAL_USART_Serial serial);
 int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial);
 void HAL_USART_Flush_Data(HAL_USART_Serial serial);
 bool HAL_USART_Is_Enabled(HAL_USART_Serial serial);
+void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable);
 
 #ifdef __cplusplus
 }

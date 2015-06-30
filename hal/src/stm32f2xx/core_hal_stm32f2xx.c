@@ -166,10 +166,6 @@ void HAL_Core_Config(void)
         HAL_Pin_Mode(pin, INPUT);
 #endif
 
-    /* Register Mode Button Interrupt Handler (WICED hack for Mode Button usage) */
-    //Commented below in favour of override_interrupts()
-    //HAL_EXTI_Register_Handler(BUTTON1_EXTI_LINE, Mode_Button_EXTI_irq);
-
     SysTick_Configuration();
 
     HAL_RTC_Configuration();

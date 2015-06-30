@@ -6,19 +6,18 @@ cd boost
 ./bootstrap.sh
 ./b2
 
+
+alternatively (for windows?):
 ```
-alternatively:
 sudo ./bjam --install --link=static --runtime-link=static --layout=tagged --with-system threading=single architecture=x86
 ```
 
 
 
 ```
-```
-
-- clone firmware repo https://github.com/spark/firmware
-- build
-```
+git clone repo https://github.com/spark/firmware
+git checkout develop
+cd main
 make PRODUCT_ID=3 v=1
 ```
 

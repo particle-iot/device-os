@@ -2,7 +2,6 @@
 #include <cstdlib>
 #include <algorithm>
 #include "wiced.h"
-#include "http_server.h"
 #include "static_assert.h"
 #include "dns_redirect.h"
 #include "wiced_security.h"
@@ -14,6 +13,13 @@
 #include "spark_macros.h"
 #include "core_hal.h"
 #include "rng_hal.h"
+
+#if defined(SYSTEM_MINIMAL)
+#define SOFTAP_HTTP 0
+#else
+#define SOFTAP_HTTP 1
+#include "http_server.h"
+#endif
 
 bool is_device_claimed()
 {
@@ -44,14 +50,14 @@ struct Reader {
     /**
      * Allocates a buffer with the remaining data as a string.
      * It's the caller's responsibility to free the buffer with free().
-     * @return 
-     */    
+     * @return
+     */
     char* fetch_as_string() {
         char* buf = (char*)malloc(bytes_left+1);
         if (buf) {
             int len = bytes_left;
-            read((uint8_t*)buf, bytes_left);            
-            buf[len] = 0;            
+            read((uint8_t*)buf, bytes_left);
+            buf[len] = 0;
             bytes_left = 0;
         }
         return buf;
@@ -137,7 +143,7 @@ protected:
         write_json_int(writer, "r", result);
         write_char(writer, '}');
     }
-    
+
     virtual int parse_request(Reader& reader) { return 0; }
 
     virtual void produce_response(Writer& writer, int result) {
@@ -189,7 +195,7 @@ protected:
         write_char(out, ':');
         out.write(int_to_ascii(value, buf, 20));
     }
-    
+
 public:
 
     virtual int execute(Reader& reader, Writer& writer)
@@ -207,32 +213,32 @@ public:
 #define JSON_DEBUG(x)
 
 /**
- * A command that parses a JSON request. 
+ * A command that parses a JSON request.
  */
 
 class JSONRequestCommand : public JSONCommand {
-    
-protected:    
-    
+
+protected:
+
     virtual bool parsed_key(unsigned index)=0;
     virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value)=0;
-    
+
     int parse_json_request(Reader& reader, const char* const keys[], const jsmntype_t types[], unsigned count) {
 
         char* js = reader.fetch_as_string();
         if (!js)
             return -1;
-        
+
         jsmntok_t *tokens = json_tokenise(js);
 
         enum parse_state { START, KEY, VALUE, SKIP, STOP };
 
         parse_state state = START;
         jsmntype_t expected_type = JSMN_OBJECT;
-        
+
         int result = 0;
         int key = -1;
-        
+
         for (size_t i = 0, j = 1; j > 0; i++, j--)
         {
             jsmntok_t *t = &tokens[i];
@@ -271,7 +277,7 @@ protected:
                             result = -1;
                             JSON_DEBUG( ( "type mismatch\n" ) );
                         }
-                        else {                        
+                        else {
                             char *str = json_token_tostr(js, t);
                             if (!parsed_value(key, t, str))
                                 result = -1;
@@ -289,7 +295,7 @@ protected:
         }
         free(js);
         return result;
-    }    
+    }
 };
 
 class VersionCommand : public JSONCommand {
@@ -399,7 +405,7 @@ struct ConfigureAP {
     int32_t channel;
 };
 
-    
+
 uint8_t hex_nibble(unsigned char c) {
     if (c<'0')
         return 0;
@@ -431,12 +437,12 @@ size_t hex_decode(uint8_t* buf, size_t len, const char* hex) {
 
 const uint8_t* fetch_server_public_key()
 {
-    return (const uint8_t*)dct_read_app_data(DCT_SERVER_PUBLIC_KEY_OFFSET);    
+    return (const uint8_t*)dct_read_app_data(DCT_SERVER_PUBLIC_KEY_OFFSET);
 }
 
 const uint8_t* fetch_device_private_key()
 {
-    return (const uint8_t*)dct_read_app_data(DCT_DEVICE_PRIVATE_KEY_OFFSET);    
+    return (const uint8_t*)dct_read_app_data(DCT_DEVICE_PRIVATE_KEY_OFFSET);
 }
 
 const uint8_t* fetch_device_public_key()
@@ -444,7 +450,7 @@ const uint8_t* fetch_device_public_key()
     uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
     memset(pubkey, 0, sizeof(pubkey));
     parse_device_pubkey_from_privkey(pubkey, fetch_device_private_key());
-    
+
     const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
     if (memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
         dct_write_app_data(pubkey, DCT_DEVICE_PUBLIC_KEY_OFFSET, DCT_DEVICE_PUBLIC_KEY_SIZE);
@@ -454,15 +460,15 @@ const uint8_t* fetch_device_public_key()
 }
 
 /**
- * 
+ *
  * @param hex_encoded   The hex_encoded encrypted data
  * The plaintext is stored in hex_encoded
  */
 int decrypt(char* plaintext, int max_plaintext_len, char* hex_encoded_ciphertext) {
     const size_t len = 256;
-    uint8_t buf[len];    
+    uint8_t buf[len];
     hex_decode(buf, len, hex_encoded_ciphertext);
-    
+
     // reuse the hex encoded buffer
     int plaintext_len = decrypt_rsa(buf, fetch_device_private_key(), (uint8_t*)plaintext, max_plaintext_len);
     return plaintext_len;
@@ -480,17 +486,17 @@ class ConfigureAPCommand : public JSONRequestCommand {
     static const jsmntype_t TYPE[];
 
     int decrypt_result;
-    
+
     int save_credentials() {
-        // Write received credentials into DCT                
+        // Write received credentials into DCT
         WPRINT_APP_INFO( ( "saving AP credentials:\n" ) );
         WPRINT_APP_INFO( ( "index: %d\n", (int)configureAP.index ) );
         WPRINT_APP_INFO( ( "ssid: %s\n", configureAP.ssid ) );
         WPRINT_APP_INFO( ( "passcode: %s\n", configureAP.passcode ) );
         WPRINT_APP_INFO( ( "security: %d\n", (int)configureAP.security ) );
         WPRINT_APP_INFO( ( "channel: %d\n", (int)configureAP.channel ) );
-        
-        return decrypt_result<0 ? decrypt_result : 
+
+        return decrypt_result<0 ? decrypt_result :
             add_wiced_wifi_credentials(configureAP.ssid, strlen(configureAP.ssid),
                 configureAP.passcode, strlen(configureAP.passcode),
                     wiced_security_t(configureAP.security), configureAP.channel);
@@ -498,13 +504,13 @@ class ConfigureAPCommand : public JSONRequestCommand {
 
 protected:
 
-    virtual bool parsed_key(unsigned index) {        
+    virtual bool parsed_key(unsigned index) {
         return true;
     }
 
-    virtual bool parsed_value(unsigned key, jsmntok_t* t, char* str) {        
+    virtual bool parsed_value(unsigned key, jsmntok_t* t, char* str) {
         void* data = ((uint8_t*)&configureAP)+OFFSET[key];
-        
+
         if (!data) {
             JSON_DEBUG( ( "no data\n" ) );
             return false;
@@ -514,22 +520,22 @@ protected:
             JSON_DEBUG( ( "copied value %s\n", (char*)str ) );
         }
         else if (key==2 && t->type==JSMN_STRING) {
-#define USE_PWD_ENCRYPTION 1            
+#define USE_PWD_ENCRYPTION 1
 #if USE_PWD_ENCRYPTION
-            decrypt_result = decrypt((char*)data, sizeof(ConfigureAP::passcode), str);            
+            decrypt_result = decrypt((char*)data, sizeof(ConfigureAP::passcode), str);
             JSON_DEBUG( ( "Decrypted password %s\n", (char*)data));
 #else
             strncpy((char*)data, str, sizeof(ConfigureAP::passcode)-1);
-#endif            
+#endif
         }
         else {
             int32_t value = atoi(str);
             *((int32_t*)data) = value;
             JSON_DEBUG( ( "copied number %s (%d)\n", (char*)str, (int)value ) );
-        }        
+        }
         return true;
     }
-    
+
     int parse_request(Reader& reader) {
         decrypt_result = 0;
         memset(&configureAP, 0, sizeof(configureAP));
@@ -568,7 +574,7 @@ public:
         softap_complete_ = softap_complete;
     }
 
-protected:    
+protected:
     // todo - parse index
 
     int process() {
@@ -583,7 +589,7 @@ protected:
     void produce_response(Writer& writer, int result) {
         write_result_code(writer, result);
         if (softap_complete_)
-            softap_complete_();        
+            softap_complete_();
     }
 };
 
@@ -591,7 +597,7 @@ static inline char ascii_nibble(uint8_t nibble) {
     char hex_digit = nibble + 48;
     if (57 < hex_digit)
         hex_digit += 7;
-    return hex_digit;    
+    return hex_digit;
 }
 
 
@@ -603,13 +609,13 @@ class DeviceIDCommand : public JSONCommand {
 
 public:
     DeviceIDCommand() {}
-    
+
     static void get_device_id(char buffer[25]) {
         bytes2hexbuf((const uint8_t*)0x1FFF7A10, 12, buffer);
         buffer[24] = 0;
     }
 
-protected:    
+protected:
     int process() {
         memset(device_id, 0, sizeof(device_id));
         get_device_id(device_id);
@@ -626,15 +632,15 @@ protected:
 };
 
 class PublicKeyCommand : public JSONCommand {
-    
+
 protected:
 
-    int process() {        
+    int process() {
         return 0;
     }
 
     void produce_response(Writer& writer, int result) {
-        // fetch public key 
+        // fetch public key
         const int length = EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH;
         const uint8_t* data = fetch_device_public_key();
         write_char(writer, '{');
@@ -650,37 +656,37 @@ protected:
         }
         else {
             result = 1;
-        }         
-        
+        }
+
         write_json_int(writer, "r", result);
         write_char(writer, '}');
-    }    
+    }
 };
 
 
 class SetValueCommand  : public JSONRequestCommand {
-           
+
     static const char* const KEY[2];
     static const jsmntype_t TYPE[2];
-    
+
     const char* key;
     const char* value;
-    
-protected:            
-    
-    virtual bool parsed_key(unsigned index) {        
+
+protected:
+
+    virtual bool parsed_key(unsigned index) {
         return true;
     }
 
-    virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value) {        
+    virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value) {
         if (index==0)     // key
             this->key = value;
         else
             this->value = value;
         return true;
     }
-    
-    int parse_request(Reader& reader) {        
+
+    int parse_request(Reader& reader) {
         key = NULL; value = NULL;
         return parse_json_request(reader, KEY, TYPE, arraySize(KEY));
     }
@@ -692,12 +698,12 @@ protected:
                 result = HAL_Set_Claim_Code(value);
         }
         return result;
-    }    
+    }
 };
 
 const char* const SetValueCommand::KEY[2] = { "k", "v" };
 const jsmntype_t SetValueCommand::TYPE[2] = { JSMN_STRING, JSMN_STRING };
-    
+
 struct AllSoftAPCommands {
     VersionCommand version;
     DeviceIDCommand deviceID;
@@ -767,7 +773,7 @@ const int MAX_SSID_PREFIX_LEN = 25;
 
 bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
     const uint8_t* prefix = (const uint8_t*)dct_read_app_data(DCT_SSID_PREFIX_OFFSET);
-    uint8_t len = *prefix;    
+    uint8_t len = *prefix;
     bool generate = (!len || len>MAX_SSID_PREFIX_LEN);
     if (generate) {
         strcpy((char*)SSID->value, "Photon");
@@ -775,11 +781,11 @@ bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
         dct_write_app_data(SSID, DCT_SSID_PREFIX_OFFSET, SSID->length+1);
     }
     else {
-        memcpy(SSID, prefix, DCT_SSID_PREFIX_SIZE);        
+        memcpy(SSID, prefix, DCT_SSID_PREFIX_SIZE);
     }
     if (SSID->length>MAX_SSID_PREFIX_LEN)
         SSID->length = MAX_SSID_PREFIX_LEN;
-    return generate;    
+    return generate;
 }
 
 bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID) {
@@ -797,14 +803,14 @@ extern "C" wiced_ip_setting_t device_init_ip_settings;
 class SoftAPController {
     wiced_semaphore_t complete;
     dns_redirector_t dns_redirector;
-           
+
     wiced_result_t setup_soft_ap_credentials() {
-                
-        
+
+
         wiced_config_soft_ap_t expected;
-        memset(&expected, 0, sizeof(expected));        
+        memset(&expected, 0, sizeof(expected));
         fetch_or_generate_setup_ssid(&expected.SSID);
-                
+
         expected.channel = 11;
         expected.details_valid = WICED_TRUE;
 
@@ -812,7 +818,7 @@ class SoftAPController {
         wiced_result_t result = wiced_dct_read_lock( (void**) &soft_ap, WICED_FALSE, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t) );
         if (result == WICED_SUCCESS)
         {
-            if (memcmp(&expected, soft_ap, sizeof(expected))) {                
+            if (memcmp(&expected, soft_ap, sizeof(expected))) {
                 result = wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
             }
             wiced_dct_read_unlock( soft_ap, WICED_FALSE );
@@ -827,7 +833,7 @@ public:
     }
 
     wiced_result_t start() {
-        wiced_result_t result;        
+        wiced_result_t result;
         if (!(result=wiced_rtos_init_semaphore(&complete)))
             if (!(result=setup_soft_ap_credentials()))
                 if (!(result=wiced_network_up( WICED_AP_INTERFACE, WICED_USE_INTERNAL_DHCP_SERVER, &device_init_ip_settings )))
@@ -845,13 +851,13 @@ public:
     }
 
     void stop() {
-        
+
         /* Cleanup DNS server */
         wiced_dns_redirector_stop(&dns_redirector);
 
         /* Turn off AP */
         wiced_network_down( WICED_AP_INTERFACE );
-        
+
         signalComplete();
         wiced_rtos_deinit_semaphore(&complete);
     }
@@ -897,12 +903,13 @@ void reader_from_buffer(Reader* r, const uint8_t* buffer, size_t length) {
 }
 
 
+#if SOFTAP_HTTP
 extern "C" wiced_http_page_t soft_ap_http_pages[];
 
 
 static void http_write(Writer* w, const uint8_t *buf, size_t count) {
     wiced_http_response_stream_t* stream = (wiced_http_response_stream_t*)w->state;
-    wiced_http_response_stream_write(stream, buf, count);    
+    wiced_http_response_stream_write(stream, buf, count);
 }
 
 static void http_stream_writer(Writer& w, wiced_http_response_stream_t* stream) {
@@ -953,6 +960,7 @@ public:
     }
 
 };
+#endif
 
 /**
  * Parses a very simple protocol for sending command requests over a stream
@@ -1106,11 +1114,11 @@ struct socket_message_t
 class TCPServerDispatcher
 {
     SimpleProtocolDispatcher&   dispatcher_;
-    wiced_interface_t           iface_;    
+    wiced_interface_t           iface_;
     wiced_thread_t              thread_;
     wiced_queue_t               queue_;
     wiced_tcp_server_t          server_;
-    
+
     /**
      * The callbacks from the tcp_server don't take a data argument, so we're forced to
      * resort to globals. No biggie - we don't need more than one tcp server.
@@ -1170,7 +1178,7 @@ public:
     void start()
     {
         static_server = this;
-        
+
         if (wiced_rtos_init_queue(&queue_, NULL, sizeof(socket_message_t), 10))
             return;
 
@@ -1180,7 +1188,7 @@ public:
         wiced_rtos_create_thread(&thread_, WICED_DEFAULT_LIBRARY_PRIORITY, "tcp server", tcp_server_thread, 1024*6, this);
     }
 
-    void stop() {                
+    void stop() {
         post_event(socket_message_t::quit, NULL);
 
         if ( wiced_rtos_is_current_thread( &thread_ ) != WICED_SUCCESS )
@@ -1209,17 +1217,17 @@ public:
               wiced_tcp_server_accept(&server_, event.socket);
               break;
 
-          case socket_message_t::message:              
+          case socket_message_t::message:
               handle_client(*event.socket);
               break;
-              
+
           case socket_message_t::quit:
               quit = true;
-              break;              
+              break;
           }
         return quit;
     }
-    
+
     void run() {
         bool quit = false;
         for (;!quit;)
@@ -1227,7 +1235,7 @@ public:
             socket_message_t event;
             if (wiced_rtos_pop_from_queue(&queue_, &event, WICED_NEVER_TIMEOUT))
                 break;
-            
+
             handle_message(event);
         }
         WPRINT_APP_INFO( ( "TCP server exiting\n" ) );
@@ -1253,7 +1261,9 @@ class SoftAPApplication
 {
     SoftAPController softAP;
     AllSoftAPCommands commands;
+#if SOFTAP_HTTP
     HTTPDispatcher http;
+#endif
     SimpleProtocolDispatcher simpleProtocol;
     TCPServerDispatcher tcpServer;
     SerialDispatcher serial;
@@ -1261,7 +1271,9 @@ class SoftAPApplication
 public:
     SoftAPApplication(void (*complete_callback)()) :
             commands(&softAP.complete_semaphore(), complete_callback),
-            http(commands),
+#if SOFTAP_HTTP
+                    http(commands),
+#endif
             simpleProtocol(commands),
             tcpServer(simpleProtocol, WICED_AP_INTERFACE),
             serial(simpleProtocol)
@@ -1269,12 +1281,16 @@ public:
         softAP.start();
         serial.start();
         tcpServer.start();
+#if SOFTAP_HTTP
         http.start();
+#endif
     }
 
     ~SoftAPApplication()
     {
+#if SOFTAP_HTTP
         http.stop();
+#endif
         tcpServer.stop();
         serial.stop();
         softAP.stop();
