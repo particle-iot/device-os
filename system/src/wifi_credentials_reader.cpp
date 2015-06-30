@@ -31,7 +31,7 @@
 #include "spark_wiring.h"   // for serialReadLine
 #include "spark_wiring_wifi.h"
 
-#if PLATFORM_ID > 2 && !defined(SYSTEM_MINIMAL)
+#if PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
 #define SETUP_LISTEN_MAGIC 1
 void loop_wifitester(int c);
 #include "spark_wiring_usartserial.h"
