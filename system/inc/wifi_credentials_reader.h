@@ -25,7 +25,7 @@
 #include <string.h>
 #include "spark_wiring_usbserial.h"
 
-#if PLATFORM_ID > 2 && !defined(SYSTEM_MINIMAL)
+#if PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
 #define SETUP_OVER_SERIAL1 1
 #endif
 
