@@ -240,11 +240,16 @@ endif
 
 ifeq ("$(PLATFORM_NAME)","core")
     PLATFORM_DFU ?= 0x08005000
-else
-    ifeq ("$(PLATFORM_NAME)","photon")
+endif
+
+ifeq ("$(PLATFORM_NAME)","photon")
 	PLATFORM_DFU ?= 0x08020000
 	PLATFORM_THREADING=1
-    endif
+endif
+
+ifeq ("$(PLATFORM_NAME)","electron")
+	PLATFORM_DFU ?= 0x08020000
+	PLATFORM_THREADING=1
 endif
 
 
