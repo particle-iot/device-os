@@ -249,7 +249,7 @@ endif
 
 ifeq ("$(PLATFORM_NAME)","electron")
 	PLATFORM_DFU ?= 0x08020000
-	PLATFORM_THREADING=1
+	PLATFORM_THREADING=0
 endif
 
 
