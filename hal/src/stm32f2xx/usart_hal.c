@@ -32,8 +32,8 @@
 
 /* Private typedef -----------------------------------------------------------*/
 typedef enum USART_Num_Def {
-	USART_TX_RX = 0,  //works on BM14 based pigtail board
-	USART_D1_D0 = 1   //not yet supported on BM14 based board
+	USART_TX_RX = 0,
+	USART_RGBG_RGBB = 1
 } USART_Num_Def;
 
 /* Private macro -------------------------------------------------------------*/
@@ -84,7 +84,11 @@ STM32_USART_Info USART_MAP[TOTAL_USARTS] =
 		 * <usart transmitting> used internally and does not appear below
 		 */
 		{ USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, USART1_IRQn, TX, RX, GPIO_PinSource9, GPIO_PinSource10, GPIO_AF_USART1 },
+#if PLATFORM_ID == 8 // P1		
+		{ USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, RGBG, RGBB, GPIO_PinSource2, GPIO_PinSource3, GPIO_AF_USART2 }
+#else 	// not supported on Photon
 		{ 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#endif
 };
 
 static USART_InitTypeDef USART_InitStructure;
@@ -113,7 +117,7 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
 	}
 	else if(serial == HAL_USART_SERIAL2)
 	{
-		usartMap[serial] = &USART_MAP[USART_D1_D0];
+		usartMap[serial] = &USART_MAP[USART_RGBG_RGBB];
 	}
 
 	usartMap[serial]->usart_rx_buffer = rx_buffer;
@@ -127,28 +131,29 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
 }
 
 void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
-{
-	/* Connect USART pins to AFx */
-        STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_rx_pin].gpio_peripheral, usartMap[serial]->usart_rx_pinsource, usartMap[serial]->usart_af_map);
-	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_peripheral, usartMap[serial]->usart_tx_pinsource, usartMap[serial]->usart_af_map);
+{	
+	USART_DeInit(usartMap[serial]->usart_peripheral);
+	
+	// Configure USART Rx and Tx as alternate function push-pull, and enable GPIOA clock
+	HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, AF_OUTPUT_PUSHPULL);
+	HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
 
 	// Enable USART Clock
 	*usartMap[serial]->usart_apbReg |=  usartMap[serial]->usart_clock_en;
 
+	// Connect USART pins to AFx
+	STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_rx_pin].gpio_peripheral, usartMap[serial]->usart_rx_pinsource, usartMap[serial]->usart_af_map);
+	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_peripheral, usartMap[serial]->usart_tx_pinsource, usartMap[serial]->usart_af_map);
+
+	// NVIC Configuration
 	NVIC_InitTypeDef NVIC_InitStructure;
-
-	// Enable the USART Interrupt
-	NVIC_InitStructure.NVIC_IRQChannel = usartMap[serial]->usart_int_n;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;//USARTx_IRQ_PRIORITY;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-
+    // Enable the USART Interrupt
+    NVIC_InitStructure.NVIC_IRQChannel = usartMap[serial]->usart_int_n;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
-
-	// Configure USART Rx and Tx as alternate function push-pull
-	HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, AF_OUTPUT_PUSHPULL);
-	HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
 
 	// USART default configuration
 	// USART configured as follow:
@@ -168,15 +173,15 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 	// Configure USART
 	USART_Init(usartMap[serial]->usart_peripheral, &USART_InitStructure);
 
-	// Enable USART Receive and Transmit interrupts
-	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, ENABLE);
-	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, ENABLE);
-
 	// Enable the USART
 	USART_Cmd(usartMap[serial]->usart_peripheral, ENABLE);
 
 	usartMap[serial]->usart_enabled = true;
 	usartMap[serial]->usart_transmitting = false;
+
+	// Enable USART Receive and Transmit interrupts
+	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, ENABLE);
+	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, ENABLE);
 }
 
 void HAL_USART_End(HAL_USART_Serial serial)
@@ -334,6 +339,13 @@ static void HAL_USART_Handler(HAL_USART_Serial serial)
 			usartMap[serial]->usart_tx_buffer->tail %= SERIAL_BUFFER_SIZE;
 		}
 	}
+
+	// // If Overrun occurs, clear the OVR condition
+	// if (USART_GetFlagStatus(usartMap[serial]->usart_peripheral, USART_FLAG_ORE) != RESET)
+	// {
+	// 	(void)USART_ReceiveData(usartMap[serial]->usart_peripheral);
+	// 	USART_ClearITPendingBit (usartMap[serial]->usart_peripheral, USART_IT_ORE);
+	// }
 }
 
 // Serial1 interrupt handler

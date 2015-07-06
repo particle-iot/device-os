@@ -46,7 +46,7 @@ typedef struct Ring_Buffer
 
 typedef enum HAL_USART_Serial {
   HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
-  HAL_USART_SERIAL2 = 1     //maps to USART_D1_D0
+  HAL_USART_SERIAL2 = 1     //maps to USART_RGBG_RGBB
 } HAL_USART_Serial;
 
 /* Exported constants --------------------------------------------------------*/
