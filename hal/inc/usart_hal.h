@@ -33,7 +33,7 @@
 #include "pinmap_hal.h"
 
 /* Exported defines ----------------------------------------------------------*/
-#define TOTAL_USARTS            2
+#define TOTAL_USARTS            3
 #define SERIAL_BUFFER_SIZE      64
 
 /* Exported types ------------------------------------------------------------*/
@@ -46,7 +46,8 @@ typedef struct Ring_Buffer
 
 typedef enum HAL_USART_Serial {
   HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
-  HAL_USART_SERIAL2 = 1     //maps to USART_RGBG_RGBB
+  HAL_USART_SERIAL2 = 1,    //maps to USART_RGBG_RGBB
+  HAL_USART_SERIAL3 = 2     //maps to USART_TXD_UC_RXD_UC
 } HAL_USART_Serial;
 
 /* Exported constants --------------------------------------------------------*/

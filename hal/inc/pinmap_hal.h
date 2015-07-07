@@ -71,7 +71,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 * Pin mapping. Borrowed from Wiring
 */
 
-#define TOTAL_PINS 24
+#define TOTAL_PINS 31
 #define TOTAL_ANALOG_PINS 8
 #define FIRST_ANALOG_PIN 10
 
@@ -144,6 +144,15 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define RGBR 21
 #define RGBG 22
 #define RGBB 23
+
+// ELECTRON pins
+#define TXD_UC    24
+#define RXD_UC    25
+#define RI_UC     26
+#define CTS_UC    27
+#define RTS_UC    28
+#define PWR_UC    29
+#define RESET_UC  30
 
 #define TIM_PWM_COUNTER_CLOCK_FREQ 24000000 //TIM Counter clock = 24MHz
 #define TIM_PWM_FREQ 500 //500Hz

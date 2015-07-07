@@ -42,6 +42,7 @@ const unsigned UsageFaultIndex = 6;
 const unsigned SysTickIndex = 15;
 const unsigned USART1Index = 53;
 const unsigned USART2Index = 54;
+const unsigned USART3Index = 55;
 const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
 const unsigned TIM7Index = 71;
 
@@ -59,6 +60,7 @@ void HAL_Core_Setup_override_interrupts(void) {
     isrs[SysTickIndex] = (uint32_t)SysTickOverride;
     isrs[USART1Index] = (uint32_t)HAL_USART1_Handler;
     isrs[USART2Index] = (uint32_t)HAL_USART2_Handler;
+    isrs[USART3Index] = (uint32_t)HAL_USART3_Handler;
     isrs[ButtonExtiIndex] = (uint32_t)Mode_Button_EXTI_irq;
     isrs[TIM7Index] = (uint32_t)TIM7_override;  // WICED uses this for a JTAG watchdog handler
     SCB->VTOR = (unsigned long)isrs;

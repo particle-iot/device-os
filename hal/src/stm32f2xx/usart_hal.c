@@ -33,7 +33,8 @@
 /* Private typedef -----------------------------------------------------------*/
 typedef enum USART_Num_Def {
 	USART_TX_RX = 0,
-	USART_RGBG_RGBB = 1
+	USART_RGBG_RGBB = 1,
+	USART_TXD_UC_RXD_UC = 2
 } USART_Num_Def;
 
 /* Private macro -------------------------------------------------------------*/
@@ -85,7 +86,8 @@ STM32_USART_Info USART_MAP[TOTAL_USARTS] =
 		 */
 		{ USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, USART1_IRQn, TX, RX, GPIO_PinSource9, GPIO_PinSource10, GPIO_AF_USART1 },
 #if PLATFORM_ID == 8 // P1		
-		{ USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, RGBG, RGBB, GPIO_PinSource2, GPIO_PinSource3, GPIO_AF_USART2 }
+		{ USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, RGBG, RGBB, GPIO_PinSource2, GPIO_PinSource3, GPIO_AF_USART2 }, // USART 2
+		{ USART3, &RCC->APB1ENR, RCC_APB1Periph_USART3, USART3_IRQn, TXD_UC, RXD_UC, GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_USART3 } // USART 3
 #else 	// not supported on Photon
 		{ 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 #endif
@@ -118,6 +120,10 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
 	else if(serial == HAL_USART_SERIAL2)
 	{
 		usartMap[serial] = &USART_MAP[USART_RGBG_RGBB];
+	}
+	else if(serial == HAL_USART_SERIAL3)
+	{
+		usartMap[serial] = &USART_MAP[USART_TXD_UC_RXD_UC];
 	}
 
 	usartMap[serial]->usart_rx_buffer = rx_buffer;
@@ -350,7 +356,7 @@ static void HAL_USART_Handler(HAL_USART_Serial serial)
 
 // Serial1 interrupt handler
 /*******************************************************************************
- * Function Name  : HAL_USART1_Handler (Declared as weak in stm32_it.cpp)
+ * Function Name  : HAL_USART1_Handler
  * Description    : This function handles USART1 global interrupt request.
  * Input          : None.
  * Output         : None.
@@ -363,7 +369,7 @@ void HAL_USART1_Handler(void)
 
 // Serial2 interrupt handler
 /*******************************************************************************
- * Function Name  : HAL_USART2_Handler (Declared as weak in stm32_it.cpp)
+ * Function Name  : HAL_USART2_Handler
  * Description    : This function handles USART2 global interrupt request.
  * Input          : None.
  * Output         : None.
@@ -372,4 +378,17 @@ void HAL_USART1_Handler(void)
 void HAL_USART2_Handler(void)
 {
 	HAL_USART_Handler(HAL_USART_SERIAL2);
+}
+
+// Serial3 interrupt handler
+/*******************************************************************************
+ * Function Name  : HAL_USART3_Handler
+ * Description    : This function handles USART3 global interrupt request.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+void HAL_USART3_Handler(void)
+{
+	HAL_USART_Handler(HAL_USART_SERIAL3);
 }
