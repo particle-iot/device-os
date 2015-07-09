@@ -222,6 +222,8 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 {
     if (!network_ready(0, 0, NULL))
     {
+        bool was_sleeping = SPARK_WLAN_SLEEP;
+
         WLAN_DISCONNECT = 0;
         wlan_connect_init();
         SPARK_WLAN_STARTED = 1;
@@ -234,7 +236,14 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 
         if (!network_has_credentials(0, 0, NULL))
         {
-            network_listen(0, 0, NULL);
+            if ((flags && WIFI_CONNECT_SKIP_LISTEN)==0) {
+                network_listen(0, 0, NULL);
+            }
+            else {
+                if (was_sleeping) {
+                    network_disconnect(network, 0, NULL);
+                }
+            }
         }
         else
         {
