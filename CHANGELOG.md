@@ -3,6 +3,9 @@
 
 ### FEATURES
  - `WiFi.connect(WIFI_CONNECT_SKIP_LISTEN)` allows application firmware to skip listen mode when there is no credentials.
+ - System events
+
+
 ### ENHANCEMENTS
 
  - `WiFi.listen(false)` to programmatically exit WiFi listening mode.
