@@ -56,6 +56,10 @@ ifeq ("$(PLATFORM)","ethernet")
 PLATFORM_ID = 9
 endif
 
+ifeq ("$(PLATFORM)","electron")
+PLATFORM_ID=10
+endif
+
 ifeq ("$(PLATFORM)","newhal")
 PLATFORM_ID=60000
 endif
@@ -204,8 +208,22 @@ USBD_PID_CDC=0xC009
 DEFAULT_PRODUCT_ID=9
 endif
 
+ifeq ("$(PLATFORM_ID)","10")
+PLATFORM=electron
+STM32_DEVICE=STM32F2XX
+PLATFORM_NAME=electron
+PLATFORM_MCU=STM32F2xx
+PLATFORM_NET=UBLOXSARA
+PRODUCT_DESC=Production Electron
+USBD_VID_SPARK=0x2B04
+USBD_PID_DFU=0xD006
+USBD_PID_CDC=0xC006
+DEFAULT_PRODUCT_ID=10
+endif
+
 ifeq ("$(PLATFORM_ID)","60000")
 PLATFORM=newhal
+# needed for conditional compilation of some stm32 specific files
 STM32_DEVICE=newhalcpu
 # used to define the sources in hal/src/new-hal
 PLATFORM_NAME=newhal
@@ -223,10 +241,15 @@ endif
 ifeq ("$(PLATFORM_NAME)","core")
     PLATFORM_DFU ?= 0x08005000
 else
-    ifeq ("$(PLATFORM_NAME)","photon")
-	PLATFORM_DFU ?= 0x08020000
-	PLATFORM_THREADING=1
-    endif
+	ifeq ("$(PLATFORM_NAME)","photon")
+		PLATFORM_DFU ?= 0x08020000
+		PLATFORM_THREADING=1
+	else
+		ifeq ("$(PLATFORM_NAME)","electron")
+			PLATFORM_DFU ?= 0x08020000
+			PLATFORM_THREADING=0
+		endif
+	endif
 endif
 
 
