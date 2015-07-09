@@ -7,10 +7,10 @@ included_productid_mk := 1
 # PLATFORM_MCU  - an identifier for the MCU family
 # PLATFORM_NET  - the network subsystem
 # STM32_DEVICE  - the specific device being targeted for STM32 platform builds
-# ARCH		- architecture (ARM/GCC)
+# ARCH          - architecture (ARM/GCC)
 # PRODUCT_DESC  - text description of the product ID
 # PLATFORM_DYNALIB_MODULES - if the device supports a modular build, the name
-#		- of the subdirectory containing
+#               - of the subdirectory containing
 
 # Default USB Device Vendor ID for Spark Products
 USBD_VID_SPARK=0x1D50
@@ -240,16 +240,16 @@ endif
 
 ifeq ("$(PLATFORM_NAME)","core")
     PLATFORM_DFU ?= 0x08005000
-else
-	ifeq ("$(PLATFORM_NAME)","photon")
-		PLATFORM_DFU ?= 0x08020000
-		PLATFORM_THREADING=1
-	else
-		ifeq ("$(PLATFORM_NAME)","electron")
-			PLATFORM_DFU ?= 0x08020000
-			PLATFORM_THREADING=0
-		endif
-	endif
+endif
+
+ifeq ("$(PLATFORM_NAME)","photon")
+    PLATFORM_DFU ?= 0x08020000
+    PLATFORM_THREADING=1
+endif
+
+ifeq ("$(PLATFORM_NAME)","electron")
+    PLATFORM_DFU ?= 0x08020000
+    PLATFORM_THREADING=0
 endif
 
 
