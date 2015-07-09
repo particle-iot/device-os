@@ -29,6 +29,14 @@ test(api_wifi_resolve) {
     API_COMPILE(WiFi.resolve("abc.def.com"));
 }
 
+test (api_wifi_connect) {
+
+    bool UNUSED(result);
+    API_COMPILE(WiFi.connect());
+    API_COMPILE(WiFi.connect(WIFI_CONNECT_SKIP_LISTEN));
+    API_COMPILE(WiFi.connecting());
+}
+
 #if PLATFORM_ID>=4
 test(api_wifi_selectantenna) {
 
