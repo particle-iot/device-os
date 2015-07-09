@@ -318,9 +318,9 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 
 }
 
-void network_listen(network_handle_t, uint32_t, void*)
+void network_listen(network_handle_t, uint32_t flags, void*)
 {
-    WLAN_SMART_CONFIG_START = 1;
+    WLAN_SMART_CONFIG_START = !(flags & 1);
 }
 
 bool network_listening(network_handle_t, uint32_t, void*)

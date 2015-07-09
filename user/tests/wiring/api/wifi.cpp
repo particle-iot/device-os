@@ -37,6 +37,13 @@ test (api_wifi_connect) {
     API_COMPILE(WiFi.connecting());
 }
 
+test (wifi_api_listen) {
+    bool UNUSED(result);
+    API_COMPILE(WiFi.listen());
+    API_COMPILE(WiFi.listen(false));
+    API_COMPILE(WiFi.listening());
+}
+
 #if PLATFORM_ID>=4
 test(api_wifi_selectantenna) {
 
