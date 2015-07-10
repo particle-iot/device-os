@@ -4,7 +4,7 @@
 
 enum eWanTimings
 {
-    CONNECT_TO_ADDRESS_MAX = S2M(10),
+    CONNECT_TO_ADDRESS_MAX = S2M(30),
     DISCONNECT_TO_RECONNECT = S2M(2),
 };
 
