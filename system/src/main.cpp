@@ -99,7 +99,7 @@ extern "C" void HAL_SysTick_Handler(void)
     else
     {
         LED_Toggle(LED_RGB);
-        if(SPARK_CLOUD_SOCKETED)
+        if(SPARK_CLOUD_SOCKETED || (WLAN_CONNECTED && !WLAN_DHCP))
             TimingLED = 50;         //50ms
         else
             TimingLED = 100;        //100ms

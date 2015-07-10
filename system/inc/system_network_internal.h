@@ -7,8 +7,8 @@ enum eWanTimings
     CONNECT_TO_ADDRESS_MAX = S2M(10),
     DISCONNECT_TO_RECONNECT = S2M(2),
 };
-    
-    
+
+extern volatile uint8_t WLAN_CONNECTED;
 extern volatile uint8_t WLAN_DISCONNECT;
 extern volatile uint8_t WLAN_DHCP;
 extern volatile uint8_t WLAN_MANUAL_CONNECT;
