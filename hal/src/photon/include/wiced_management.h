@@ -281,6 +281,9 @@ extern wiced_result_t wiced_network_get_hostname( char *name, int size );
 extern wiced_result_t wiced_network_up( wiced_interface_t interface, wiced_network_config_t config, const wiced_ip_setting_t* ip_settings );
 
 
+extern wiced_result_t wiced_interface_up( wiced_interface_t interface );
+
+
 /** Creates a network packet pool from a chunk of memory
  *
  * @param[in] memory_pointer : pointer to a chunk of memory

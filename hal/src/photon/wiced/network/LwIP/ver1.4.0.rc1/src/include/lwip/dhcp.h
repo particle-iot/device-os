@@ -50,9 +50,9 @@ struct dhcp
   u16_t t1_timeout;  /* #ticks with period DHCP_COARSE_TIMER_SECS for renewal time */
   u16_t t2_timeout;  /* #ticks with period DHCP_COARSE_TIMER_SECS for rebind time */
   ip_addr_t server_ip_addr; /* dhcp server address that offered this lease */
-  volatile ip_addr_t offered_ip_addr;
-  volatile ip_addr_t offered_sn_mask;
-  volatile ip_addr_t offered_gw_addr;
+  ip_addr_t offered_ip_addr;
+  ip_addr_t offered_sn_mask;
+  ip_addr_t offered_gw_addr;
  
   u32_t offered_t0_lease; /* lease period (in seconds) */
   u32_t offered_t1_renew; /* recommended renew time (usually 50% of lease period) */
