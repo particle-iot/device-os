@@ -166,7 +166,7 @@ void HAL_Core_Config(void)
         HAL_Pin_Mode(pin, INPUT);
 #endif
 
-    SysTick_Configuration();
+    //SysTick_Configuration(); This causes the Photon to sometimes hang on startup. See FIRM-123. 
 
     HAL_RTC_Configuration();
 
