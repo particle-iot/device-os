@@ -4,7 +4,7 @@
   * @author  Zachary Crockett
   * @version V1.0.0
   * @date    24-April-2013
-  * @brief   
+  * @brief
   ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -148,7 +148,7 @@ int _getpid(void)
 }
 
 void _exit(int status) {
-    
+
     PANIC(Exit,"Exit Called");
 
     while (1) {
@@ -288,13 +288,22 @@ int __cxa_guard_acquire(__guard *g) {return !*(char *)(g);};
 void __cxa_guard_release (__guard *g) {*(char *)g = 1;};
 void __cxa_guard_abort (__guard *) {};
 
+/*
+int _write(int file, char *ptr, int len) { return 0; }
+int _read(int file, char *ptr, int len) { return 0; }
+int _close(int file) { return 0; }
+int _lseek(int file, int ptr, int dir) { return 0; }
+int _fstat(int file, void *sbuf) { return 0; }
+int _isatty(int file) { return 0; }
+*/
+
 } /* extern "C" */
 
 namespace __gnu_cxx {
 
 void __verbose_terminate_handler()
 {
-  abort();
+    abort();
 }
 
 }

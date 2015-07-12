@@ -215,4 +215,9 @@ bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
     return usartMap(serial).enabled();
 }
 
+void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
+{
+    USART_HalfDuplexCmd(usartMap[serial]->usart_peripheral, Enable ? ENABLE : DISABLE);
+}
+
 

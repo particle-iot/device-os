@@ -41,6 +41,9 @@ bool TCPServer::begin()
         return false;
     }
 
+    if (socket_handle_valid(_sock)) {
+        return true;
+    }
     sock_result_t result = socket_create_tcp_server(_port, _nif);
     if (socket_handle_valid(result)) {
         _sock = result;

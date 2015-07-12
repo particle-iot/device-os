@@ -28,6 +28,7 @@
 #include "system_update.h"
 #include "system_sleep.h"
 #include "system_cloud.h"
+#include "system_event.h"
 
 
 class Stream;
@@ -46,16 +47,37 @@ public:
     static bool firmwareUpdate(Stream *serialObj) {
         return system_firmwareUpdate(serialObj);
     }
-    
+
     static void factoryReset(void);
     static void dfu(bool persist=false);
     static void reset(void);
 
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0);
-    static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }    
+    static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }
     static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds=0);
     static String deviceID(void) { return spark_deviceID(); }
-    
+
+    static bool on(system_event_t events, void(*handler)(system_event_t, uint32_t,void*)) {
+        return !system_subscribe_event(events, handler, nullptr);
+    }
+
+    /* Contemplating allowing the callback to be a subset of the parameters
+    static bool on(system_event_t events, void(*handler)(system_event_t, uint32_t)) {
+        return system_subscribe_event(events, (system_event_handler_t*)handler, NULL);
+    }
+
+    static bool on(system_event_t events, void(*handler)(system_event_t)) {
+        return system_subscribe_event(events, (system_event_handler_t*)handler, NULL);
+    }
+
+    static bool on(system_event_t events, void(*handler)()) {
+        return system_subscribe_event(events, (system_event_handler_t*)handler, NULL);
+    }
+    */
+
+    static void off(void(*handler)(system_event_t, uint32_t,void*)) {
+        system_unsubscribe_event(all_events, handler, nullptr);
+    }
 };
 
 extern SystemClass System;

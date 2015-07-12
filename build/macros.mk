@@ -6,6 +6,10 @@ include $(COMMON_BUILD)/verbose.mk
 # $2 is the wildcard specifying the files to find
 rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 
+appendir = $(and $1,/$1)
+# remove up directories so that we don't jump up levels
+sanitize = $(pathsubst ..,.,$1)
+
 ifneq (OSX,$(MAKE_OS))
 filesize=`stat --print %s $1`
 else
@@ -15,7 +19,7 @@ endif
 # fetches the byte at a given offset in a file
 # $1 the file to fetch the byte from
 # $2 the offset in the file of the byte to fetch
-# 
+#
 filebyte=`dd if=$1 skip=$2 bs=1 count=1 | xxd -p`
 
 test=$(strip $(shell if test $1 $2 $3; then echo 1; fi))
