@@ -13,10 +13,11 @@ extern "C" {
 #endif
 
 const int PARTICLE_v040 = 0x00040000;
-const int PARTICLE_v041 = 0x00040000;
-const int PARTICLE_v042 = 0x00040000;
+const int PARTICLE_v041 = 0x00040100;
+const int PARTICLE_v042 = 0x00040200;
+const int PARTICLE_v043 = 0x00040300;
 
-const int PARTICLE = PARTICLE_v042;
+const int PARTICLE_VERSION = PARTICLE_v043;
 
 
 #ifdef	__cplusplus
