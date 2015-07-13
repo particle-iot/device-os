@@ -60,10 +60,10 @@ void RGBClass::brightness(uint8_t brightness, bool update)
         LED_On(LED_RGB);
 }
 
-void RGBClass::attachHandler(led_update_handler_fn fn)
+void RGBClass::attachHandler(led_update_handler_fn fn, void* data)
 {
     if (!fn)
         return;
 
-    set_rgb_led_change_handler(fn, 0);
+    set_rgb_led_change_handler(fn, data);
 }

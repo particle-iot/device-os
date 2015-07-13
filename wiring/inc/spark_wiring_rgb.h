@@ -32,7 +32,7 @@ public:
     static void color(int, int, int);
     static void color(uint32_t rgb);
     static void brightness(uint8_t, bool update=true);
-    static void attachHandler(led_update_handler_fn fn);
+    static void attachHandler(led_update_handler_fn fn, void* data);
 };
 
 extern RGBClass RGB;
