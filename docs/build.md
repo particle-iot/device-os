@@ -432,3 +432,18 @@ To release more resources for applications that don't use the cloud, add
 SPARK_CLOUD=n to the make command line. This requires a clean build.
 
 After compiling, you should see a 3000 bytes reduction in statically allocated RAM and 35k reduction in flash use.
+
+
+## Building the `develop` branch
+
+Before the 0.4.0 firmware was released, we recommended the develop branch for early adopters
+to obtain the code. This is still fine for early adopters, and people that want the bleeding edge,
+although please keep in mind the code is untested and unreleased.
+
+The released code is available in the `latest` branch. This will eventually become the `master`
+branch once 0.4.4 is released for the Core.
+
+To build the develop branch, follow these guidelines:
+
+1. export the environment variable PARTICLE_DEVELOP=1
+2. after pulling from the develop branch, be sure to build and flash the system firmware
