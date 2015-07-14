@@ -36,6 +36,8 @@
 #include "file_transfer.h"
 #include <stdint.h>
 
+const product_id_t UNDEFINED_PRODUCT_ID = product_id_t(-1);
+const product_firmware_version_t UNDEFINED_PRODUCT_VERSION = product_firmware_version_t(-1);
 
 #if !defined(arraySize)
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
@@ -65,7 +67,7 @@ namespace ChunkReceivedCode {
 class SparkProtocol
 {
     typedef uint16_t chunk_index_t;
-    
+
   public:
     static const int MAX_FUNCTION_ARG_LENGTH = 64;
     static const int MAX_FUNCTION_KEY_LENGTH = 12;
@@ -76,7 +78,7 @@ class SparkProtocol
     static int presence_announcement(unsigned char *buf, const char *id);
 
     SparkProtocol();
-    
+
     void init(const char *id,
               const SparkKeys &keys,
               const SparkCallbacks &callbacks,
@@ -86,8 +88,8 @@ class SparkProtocol
     bool is_initialized(void);
     void reset_updating(void);
 
-    void set_product_id(product_id_t product_id) { this->product_id=product_id; }
-    void set_product_firmware_version(product_firmware_version_t version) { this->product_firmware_version = version; }
+    void set_product_id(product_id_t product_id) { if (product_id!=UNDEFINED_PRODUCT_ID) this->product_id=product_id; }
+    void set_product_firmware_version(product_firmware_version_t version) { if (version!=UNDEFINED_PRODUCT_VERSION) this->product_firmware_version = version; }
     void get_product_details(product_details_t& details) {
         if (details.size>=4) {
             details.product_id = this->product_id;
@@ -117,9 +119,9 @@ class SparkProtocol
                        const void *return_value, int length);
     bool send_event(const char *event_name, const char *data,
                     int ttl, EventType::Enum event_type);
-    bool add_event_handler(const char *event_name, EventHandler handler, 
+    bool add_event_handler(const char *event_name, EventHandler handler,
                         SubscriptionScope::Enum scope, const char* device_id);
-    bool event_handler_exists(const char *event_name, EventHandler handler, 
+    bool event_handler_exists(const char *event_name, EventHandler handler,
         SubscriptionScope::Enum scope, const char* id);
     void remove_event_handlers(const char* event_name);
     void send_subscriptions();
@@ -136,7 +138,7 @@ class SparkProtocol
     void ping(unsigned char *buf);
 
     bool function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token);
-    
+
     /********** Queue **********/
     const size_t QUEUE_SIZE;
     int queue_bytes_available();
@@ -146,7 +148,7 @@ class SparkProtocol
     void set_handlers(CommunicationsHandlers& handlers) {
         this->handlers = handlers;
     }
-    
+
     /********** State Machine **********/
     ProtocolState::Enum state();
 
@@ -157,14 +159,14 @@ class SparkProtocol
         uint8_t* response;
         size_t response_len;
     };
-      
+
     CommunicationsHandlers handlers;   // application callbacks
     char device_id[12];
     unsigned char server_public_key[MAX_SERVER_PUBLIC_KEY_LENGTH];
-    unsigned char core_private_key[MAX_DEVICE_PRIVATE_KEY_LENGTH];    
-    aes_context aes;    
+    unsigned char core_private_key[MAX_DEVICE_PRIVATE_KEY_LENGTH];
+    aes_context aes;
 
-    FilteringEventHandler event_handlers[4];    
+    FilteringEventHandler event_handlers[4];
     SparkCallbacks callbacks;
     SparkDescriptor descriptor;
 
@@ -203,8 +205,8 @@ class SparkProtocol
                           unsigned char message_id_lsb) {
         coded_ack(buf, 0, message_id_msb, message_id_lsb);
     };
-    
-    
+
+
     void coded_ack(unsigned char *buf,
                           unsigned char token,
                           unsigned char code,
@@ -214,7 +216,7 @@ class SparkProtocol
     bool handle_update_begin(msg& m);
     bool handle_chunk(msg& m);
     bool handle_update_done(msg& m);
-    
+
     /********** Queue **********/
     unsigned char queue[PROTOCOL_BUFFER_SIZE];
     const unsigned char *queue_mem_boundary;
@@ -228,17 +230,17 @@ class SparkProtocol
         queue_front = queue_back = queue;
         queue_mem_boundary = queue + QUEUE_SIZE;
     }
-    
+
     unsigned chunk_bitmap_size()
     {
         return (file.chunk_count(chunk_size)+7)/8;
     }
 
-    uint8_t* chunk_bitmap() 
+    uint8_t* chunk_bitmap()
     {
         return &queue[QUEUE_SIZE-chunk_bitmap_size()];
     }
-    
+
     void set_chunks_received(uint8_t value);
     bool is_chunk_received(chunk_index_t idx);
     void flag_chunk_received(chunk_index_t index);
@@ -247,7 +249,7 @@ class SparkProtocol
     const chunk_index_t MAX_CHUNKS = 65535;
     int send_missing_chunks(int count);
     void notify_update_done(uint8_t* buf);
-    
+
     /**
      * Marks the indices of missed chunks not yet requested.
      */
