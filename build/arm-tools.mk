@@ -33,7 +33,7 @@ endif
 # Check if the compiler version is the minimum required
 arm_gcc_version:=$(shell $(CC) --version | head -n 1)
 arm_gcc_version:=$(strip $(subst arm-none-eabi-gcc (GNU Tools for ARM Embedded Processors),,$(arm_gcc_version)))
-expected_version:=4.9.3 20150528
+expected_version:=4.9.3 20150529
 quote="
 lt=\<
 dollar=$$
