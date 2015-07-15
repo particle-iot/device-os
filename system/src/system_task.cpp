@@ -148,9 +148,9 @@ void cloud_connection_failed()
  * @param connection_attempts
  * @return
  */
-unsigned backoff_period(unsigned connection_attempts)
+unsigned backoff_period(uint8_t connection_attempts)
 {
-    return 500*((1<<min(9,connection_attempts))-1);
+    return 500*((1<<min(9u,connection_attempts))-1);
 }
 
 inline uint8_t in_cloud_backoff_period()
