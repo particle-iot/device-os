@@ -7,8 +7,8 @@ ifdef APP
 USRSRC := applications/$(APP)
 endif
 ifdef APPDIR
-USRSRC := 
-USER_BUILD_DIR=$(notdir $(APPDIR))
+USRSRC :=
+USER_BUILD_DIR=$(patsubst ..,.,$(notdir $(APPDIR))$(call appendir,$(APP)))
 endif
 
 ifdef TEST
@@ -20,7 +20,7 @@ USER_MODULE_PATH ?= $(PROJECT_ROOT)/user
 USER_BUILD_PATH_EXT=$(BUILD_TARGET_PLATFORM)$(USER_FLAVOR)/$(USER_BUILD_DIR)
 USER_LIB_DIR = $(BUILD_PATH_BASE)/user/$(USER_BUILD_PATH_EXT)
 USER_LIB_DEP = $(USER_LIB_DIR)/libuser.a
-	
+
 CFLAGS += -DINCLUDE_PLATFORM=1
 
 # gcc HAL is different for test driver and test subject

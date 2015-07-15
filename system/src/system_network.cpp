@@ -3,6 +3,7 @@
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_cloud.h"
+#include "system_event.h"
 #include "watchdog_hal.h"
 #include "wlan_hal.h"
 #include "delay_hal.h"
@@ -85,7 +86,9 @@ void Start_Smart_Config(void)
 
     WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
 
-    uint32_t start = millis();
+    const uint32_t start = millis();
+    uint32_t loop = start;
+    system_notify_event(wifi_listen_begin, start);
 
     /* Wait for SmartConfig/SerialConfig to finish */
     while (network_listening(0, 0, NULL))
@@ -111,14 +114,16 @@ void Start_Smart_Config(void)
                 LED_SetRGBColor(RGB_COLOR_BLUE);
                 LED_On(LED_RGB);
             }
+            system_notify_event(wifi_credentials_cleared);
             WLAN_DELETE_PROFILES = 0;
         }
         else
         {
             uint32_t now = millis();
-            if ((now-start)>250) {
+            if ((now-loop)>250) {
                 LED_Toggle(LED_RGB);
-                start = now;
+                loop = now;
+                system_notify_event(wifi_listen_update, now-start);
             }
             wifi_creds_reader.read();
         }
@@ -133,6 +138,8 @@ void Start_Smart_Config(void)
         /* Decrypt configuration information and add profile */
         SPARK_WLAN_SmartConfigProcess();
     }
+
+    system_notify_event(wifi_listen_end, millis()-start);
 
     WLAN_SMART_CONFIG_START = 0;
     network_connect(0, 0, 0, NULL);
@@ -222,6 +229,8 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 {
     if (!network_ready(0, 0, NULL))
     {
+        bool was_sleeping = SPARK_WLAN_SLEEP;
+
         WLAN_DISCONNECT = 0;
         wlan_connect_init();
         SPARK_WLAN_STARTED = 1;
@@ -234,7 +243,14 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 
         if (!network_has_credentials(0, 0, NULL))
         {
-            network_listen(0, 0, NULL);
+            if ((flags && WIFI_CONNECT_SKIP_LISTEN)==0) {
+                network_listen(0, 0, NULL);
+            }
+            else {
+                if (was_sleeping) {
+                    network_disconnect(network, 0, NULL);
+                }
+            }
         }
         else
         {
@@ -309,18 +325,14 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 
 }
 
-void network_listen(network_handle_t, uint32_t, void*)
+void network_listen(network_handle_t, uint32_t flags, void*)
 {
-    WLAN_SMART_CONFIG_START = 1;
+    WLAN_SMART_CONFIG_START = !(flags & 1);
 }
 
 bool network_listening(network_handle_t, uint32_t, void*)
 {
-    if (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE))
-    {
-        return true;
-    }
-    return false;
+    return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
 }
 
 void network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* credentials, void*)
@@ -341,6 +353,7 @@ void network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* cre
     credentials->security = security;
 
     wlan_set_credentials(credentials);
+    system_notify_event(wifi_credentials_add, 0, credentials);
 }
 
 bool network_clear_credentials(network_handle_t, uint32_t, NetworkCredentials* creds, void*)

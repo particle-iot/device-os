@@ -4,9 +4,9 @@
  * @author  Satish Nair, Zachary Crockett, Zach Supalla and Mohit Bhoite
  * @version V1.0.0
  * @date    13-March-2013
- * 
+ *
  * Updated: 14-Feb-2014 David Sidrane <david_s5@usa.net>
- * 
+ *
  * @brief   Main program body.
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
@@ -25,7 +25,7 @@
   License along with this program; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
  */
-  
+
 /* Includes ------------------------------------------------------------------*/
 #include "debug.h"
 #include "system_mode.h"
@@ -75,7 +75,7 @@ extern "C" void HAL_SysTick_Handler(void)
         {
             LED_Signaling_Override();
         }
-#endif        
+#endif
     }
     else if (TimingLED != 0x00)
     {
@@ -105,13 +105,9 @@ extern "C" void HAL_SysTick_Handler(void)
             TimingLED = 100;        //100ms
     }
 
-    if(SPARK_WLAN_SLEEP)
+    if(SPARK_FLASH_UPDATE)
     {
-        //Do nothing
-    }
-    else if(SPARK_FLASH_UPDATE)
-    {
-#ifndef SPARK_NO_CLOUD        
+#ifndef SPARK_NO_CLOUD
         if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
         {
             //Reset is the only way now to recover from stuck OTA update
@@ -121,18 +117,17 @@ extern "C" void HAL_SysTick_Handler(void)
         {
             TimingFlashUpdateTimeout++;
         }
-#endif        
+#endif
     }
     else if(!WLAN_SMART_CONFIG_START && HAL_Core_Mode_Button_Pressed(3000))
     {
         //reset button debounce state if mode button is pressed for 3 seconds
         HAL_Core_Mode_Button_Reset();
 
-        if(!SPARK_WLAN_SLEEP)
-        {
+        if (SPARK_WLAN_STARTED) {
             wlan_connect_cancel(true);
-            WLAN_SMART_CONFIG_START = 1;
         }
+        WLAN_SMART_CONFIG_START = 1;
     }
     else if(HAL_Core_Mode_Button_Pressed(7000))
     {
@@ -192,12 +187,12 @@ void manage_safe_mode()
  * Return         : None.
  *******************************************************************************/
 void app_setup_and_loop(void)
-{    
+{
     HAL_Core_Init();
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
     DEBUG("Hello from Spark!");
-    
+
     manage_safe_mode();
 
 #if defined (START_DFU_FLASHER_SERIAL_SPEED) || defined (START_YMODEM_FLASHER_SERIAL_SPEED)

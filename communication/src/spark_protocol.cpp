@@ -1500,7 +1500,6 @@ bool SparkProtocol::handle_received_message(void)
         if (0 == cmp)
         {
             event_handlers[i].handler((char *)event_name, (char *)data);
-            break;
         }
         // else continue the for loop to try the next handler
       }

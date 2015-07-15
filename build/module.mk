@@ -25,8 +25,8 @@ START_YMODEM_FLASHER_SERIAL_SPEED=28800
 
 QUOTE='
 ifneq (,$(GLOBAL_DEFINES))
-MAKE_ARGS+=$(QUOTE)GLOBAL_DEFINES=$(GLOBAL_DEFINES)$(QUOTE)
 CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
+export GLOBAL_DEFINES
 endif
 
 ifdef TEACUP
@@ -114,7 +114,6 @@ endif
 COMPILE_LTO ?= y
 ifeq (y,$(COMPILE_LTO))
 LTO_EXT = -lto
-MAKE_ARGS += COMPILE_LTO=$(COMPILE_LTO)
 endif
 
 ifeq ("$(TARGET_TYPE)","a")
@@ -125,7 +124,7 @@ endif
 # TARGET_NAME is the final filename, including any prefix
 TARGET_FILE_NAME ?= $(MODULE)
 TARGET_NAME ?= $(TARGET_FILE_PREFIX)$(TARGET_FILE_NAME)
-TARGET_PATH ?= $(BUILD_PATH)/$(TARGET_DIR_NAME)
+TARGET_PATH ?= $(BUILD_PATH)/$(call sanitize,$(TARGET_DIR_NAME))
 
 # add trailing slash
 ifneq ("$(TARGET_PATH)","$(dir $(TARGET_PATH))")
@@ -251,16 +250,16 @@ endif
 %.bin : %.elf
 	$(call echo,'Invoking: ARM GNU Create Flash Image')
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@.pre_crc
-	if [ -s $@.pre_crc ]; then \
+	$(VERBOSE)if [ -s $@.pre_crc ]; then \
 	head -c $$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) $@.pre_crc > $@.no_crc && \
 	tail -c $(CRC_BLOCK_LEN) $@.pre_crc > $@.crc_block && \
 	test "$(CRC_BLOCK_CONTENTS)" = `xxd -p -c 500 $@.crc_block` && \
-	$(SHA_256) $@.no_crc | cut -c 1-65 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) conv=notrunc && \
+	$(SHA_256) $@.no_crc | cut -c 1-65 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) conv=notrunc $(VERBOSE_REDIRECT) && \
 	head -c $$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) $@.pre_crc > $@.no_crc && \
-	 $(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) conv=notrunc;\
+	 $(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) conv=notrunc $(VERBOSE_REDIRECT);\
 	fi
-	-rm $@
-	mv $@.pre_crc $@
+	$(VERBOSE)[ ! -f $@ ] || rm $@
+	$(VERBOSE)mv $@.pre_crc $@
 	$(call echo,)
 
 

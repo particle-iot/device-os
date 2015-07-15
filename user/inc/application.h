@@ -57,6 +57,7 @@
 #include "spark_wiring_version.h"
 #include "spark_wiring_thread.h"
 #include "fast_pin.h"
+#include "string_convert.h"
 
 
 // this was being implicitly pulled in by some of the other headers

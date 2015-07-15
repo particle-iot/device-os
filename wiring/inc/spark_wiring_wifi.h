@@ -38,18 +38,18 @@
 
 class IPAddress;
 
-namespace spark { 
-        
+namespace spark {
+
 enum SecurityType {
     UNSEC = WLAN_SEC_UNSEC,
     WEP = WLAN_SEC_WEP,
     WPA = WLAN_SEC_WPA,
-    WPA2 = WLAN_SEC_WPA2        
+    WPA2 = WLAN_SEC_WPA2
 };
-    
+
 class WiFiClass : public NetworkClass
 {
-    
+
 public:
     WiFiClass() {}
     ~WiFiClass() {}
@@ -57,15 +57,15 @@ public:
     operator network_handle_t() {
         return 0;
     }
-    
+
     WLanConfig* wifi_config() {
         return (WLanConfig*)network_config(*this, 0, NULL);
     }
-    
+
     /**
      * Retrieves a 6-octet MAC address
      * @param mac
-     * @return 
+     * @return
      */
     uint8_t* macAddress(uint8_t *mac) {
         memcpy(mac, wifi_config()->nw.uaMacAddr, 6);
@@ -93,12 +93,12 @@ public:
         return ping(remoteIP, 5);
     }
 
-    uint32_t ping(IPAddress remoteIP, uint8_t nTries) {        
+    uint32_t ping(IPAddress remoteIP, uint8_t nTries) {
         return inet_ping(&remoteIP.raw(), *this, nTries, NULL);
     }
 
-    void connect(void) {
-        network_connect(*this, 0, 0, NULL);
+    void connect(unsigned flags=0) {
+        network_connect(*this, flags, 0, NULL);
     }
 
     void disconnect(void) {
@@ -117,12 +117,12 @@ public:
         network_on(*this, 0, 0, NULL);
     }
 
-    void off(void) {        
+    void off(void) {
         network_off(*this, 0, 0, NULL);
     }
 
-    void listen(void) {
-        network_listen(*this, 0, NULL);
+    void listen(bool begin=true) {
+        network_listen(*this, begin ? 0 : 1, NULL);
     }
 
     bool listening(void) {
@@ -143,7 +143,7 @@ public:
 
     void setCredentials(const char *ssid, unsigned int ssidLen, const char *password,
             unsigned int passwordLen, unsigned long security) {
-        
+
         WLanCredentials creds;
         memset(&creds, 0, sizeof(creds));
         creds.len = sizeof(creds);
@@ -152,7 +152,7 @@ public:
         creds.password = password;
         creds.password_len = passwordLen;
         creds.security = WLanSecurityType(security);
-        
+
         network_set_credentials(*this, 0, &creds, NULL);
     }
 
@@ -161,18 +161,18 @@ public:
     }
 
     bool clearCredentials(void) {
-        return network_clear_credentials(*this, 0, NULL, NULL);                
+        return network_clear_credentials(*this, 0, NULL, NULL);
     }
 
     int selectAntenna(WLanSelectAntenna_TypeDef antenna) {
         return wlan_select_antenna(antenna);
     }
-    
-    IPAddress resolve(const char* name) 
+
+    IPAddress resolve(const char* name)
     {
         HAL_IPAddress ip;
         return (inet_gethostbyname(name, strlen(name), &ip, *this, NULL)<0) ?
-                IPAddress(uint32_t(0)) : IPAddress(ip);        
+                IPAddress(uint32_t(0)) : IPAddress(ip);
     }
 
     friend class TCPClient;

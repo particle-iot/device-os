@@ -31,19 +31,22 @@
 #include "system_sleep.h"
 #include "system_task.h"
 #include "system_update.h"
+#include "system_event.h"
 #endif
 
 DYNALIB_BEGIN(system)
 DYNALIB_FN(system, system_mode)
 DYNALIB_FN(system, set_system_mode)
-        
+
 DYNALIB_FN(system, set_ymodem_serial_flash_update_handler)
 DYNALIB_FN(system, system_firmwareUpdate)
 DYNALIB_FN(system, system_fileTransfer)
-        
+
 DYNALIB_FN(system, system_delay_ms)
 DYNALIB_FN(system, system_sleep)
 DYNALIB_FN(system, system_sleep_pin)
+DYNALIB_FN(system, system_subscribe_event)
+DYNALIB_FN(system, system_unsubscribe_event)
 DYNALIB_END(system)
 
 
