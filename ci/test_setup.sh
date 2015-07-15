@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# provides the script interface for communicating with a core running 
+# provides the script interface for communicating with a core running
 # a test suite
 
 export ci_dir=$(dirname $BASH_SOURCE)
@@ -9,20 +9,21 @@ export ci_dir=$(dirname $BASH_SOURCE)
 
 export build=$ci_dir/../build
 export main=$ci_dir/../main
+export user=$ci_dir/../user
 export target_dir=$build/target
 export target=core-firmware.bin
 export events=$ci_dir/events.log
-export target_file=$target_dir/main/prod-0/tests/$platform/$suite/main.bin
-export testDir=$main/tests
+export target_file=$target_dir/main/platform-0/tests/$platform/$suite/main.bin
+export testDir=$user/tests
 
 # directory for the test reports
 export log_dir=${target_dir}/test-reports
 mkdir -p ${log_dir}
 
 
-# background task to pull down events from the core and write to file 
+# background task to pull down events from the core and write to file
 function start_listening() {
-  spark subscribe state $core_name > $events & 
+  spark subscribe state $core_name > $events &
 }
 
 # terminate the most recently started background process
@@ -31,10 +32,10 @@ function stop_listening() {
 }
 
 # Converts from a state number to a state name
-# $1 the state number to convert 
+# $1 the state number to convert
 function stateName() {
   local state=$1
-  local result="" 
+  local result=""
   case $state in
     0)
       result="initializing"
@@ -53,19 +54,19 @@ function stateName() {
 
 # reads the current test suite execution state from the core
 function readState() {
-#  cat $events | grep "\"name\":\"state\",\"data\":\"$state\"" >> /dev/null 
+#  cat $events | grep "\"name\":\"state\",\"data\":\"$state\"" >> /dev/null
 # I had originaly planned to monitor state by parsing the event logs, but this
 # requires a background process. Polling the "state" variable is easier.
   local state=$(readVar state)
-  stateName $state   
+  stateName $state
 }
 
 # test if the current test has reached a given state
 # $1 the state to look for
 function testState() {
   local state=$1
-  local currentState=$(readState)   
-  [ "$currentState" == "$state" ] 
+  local currentState=$(readState)
+  [ "$currentState" == "$state" ]
 }
 
 # waits for the test harness to reach a given state with timeout
@@ -81,9 +82,9 @@ function waitForState() {
   # which we wait for. The interrupt trap terminates this process.
   # Without this, it's not possible to interrupt the timeout.
   (timeout $timeout bash << EOT
-  source $ci_dir/test_setup.sh 
+  source $ci_dir/test_setup.sh
   while ! testState $state; do
-    sleep 5 || die 
+    sleep 5 || die
   done
   echo "0" > success  # flag success
 EOT
@@ -114,7 +115,7 @@ function excludeTests() {
 # $1 the command string to send
 function sendCommand() {
   r=$(spark function call $core_name cmd $1)
-  echo $r 
+  echo $r
 }
 
 function parseFlags() {
@@ -128,8 +129,8 @@ function parseFlags() {
     "-")
       echo "excludeTests $regex"
       ;;
-    esac 
-  done  
+    esac
+  done
 }
 
 # reads the log from the test suite. This is done by calling the
@@ -140,15 +141,15 @@ function readTestLog() {
   local len
   local val
   while len=$(sendCommand log) && [ -n "$len" ] && [ "$len" -gt "-1" ] && val=$(readVar log) ; do
-    echo -n "${val:0:$len}"     
-  done  
+    echo -n "${val:0:$len}"
+  done
 }
 
 function readTestResult() {
   echoVar passed &&
   echoVar failed &&
   echoVar skipped &&
-  echoVar count 
+  echoVar count
 }
 
 function echoVar {
@@ -156,7 +157,7 @@ function echoVar {
 }
 
 function readVar() {
-  spark variable get $core_name $1 
+  spark variable get $core_name $1
 }
 
 function sparkFlash() {
@@ -168,7 +169,7 @@ function sparkFlash() {
         spark flash $2 $3 > otaflash
         [[ $? -eq 0 ]] && grep -q -v ECONN otaflash && break
     done
-    
+
     [ $n -lt $count ]
     return $?
 }
