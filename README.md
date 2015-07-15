@@ -2,7 +2,9 @@
 
 This is the main source code repository of the Spark Core firmware libraries.
 
-*Photon users:* This firmware branch is _not_ yet updated for the Photon; For the latest (0.4.0) firmware that is compatible with the Photon, please switch to the [develop branch](https://github.com/spark/firmware/tree/develop).
+*Photon users:* This firmware branch is _not_ yet updated for the Photon;
+For the latest (0.4.3) firmware that is compatible with the Photon,
+please switch to the [latest branch](https://github.com/spark/firmware/tree/latest).
 
 
 This firmware depends on two other libraries: the [Spark Common Library](http://www.github.com/spark/core-common-lib) and the [Spark Communication Library](http://www.github.com/spark/core-communication-lib)
@@ -11,8 +13,8 @@ This firmware depends on two other libraries: the [Spark Common Library](http://
 2. [Download and Build Repositories](#2-download-and-build-repositories)
 3. [Edit and Rebuild](#3-edit-and-rebuild)
 4. [Flash It!](#4-flash-it)
- 
-## 1. Download and Install Dependencies 
+
+## 1. Download and Install Dependencies
 
 1. [GCC for ARM Cortex processors](#1-gcc-for-arm-cortex-processors)
 2. [Make](#2-make)
@@ -22,7 +24,7 @@ This firmware depends on two other libraries: the [Spark Common Library](http://
 
 
 #### 1. GCC for ARM Cortex processors
-The Spark Core uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.  
+The Spark Core uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.
 
 Download and install the latest version from: https://launchpad.net/gcc-arm-embedded
 
@@ -33,7 +35,7 @@ brew update
 brew install gcc-arm-none-eabi
 ```
 
-#### 2. Make 
+#### 2. Make
 In order to turn your source code into binaries, you will need a tool called `make`. Windows users need to explicitly install `make` on their machines. Make sure you can use it from the terminal window.
 
 Download and install the latest version from: http://gnuwin32.sourceforge.net/packages/make.htm
@@ -63,15 +65,15 @@ D:\Spark\core-common-lib
 D:\Spark\core-communication-lib
 ```
 
-*Method 1: Through the git command line interface.*  
+*Method 1: Through the git command line interface.*
 
 Open up a terminal window, navigate to your destination directory and type the following commands:
 
 (Make sure you have git installed on your machine!)
 
 * `git clone https://github.com/spark/firmware.git`
-* `git clone https://github.com/spark/core-common-lib.git`  
-* `git clone https://github.com/spark/core-communication-lib.git`  
+* `git clone https://github.com/spark/core-common-lib.git`
+* `git clone https://github.com/spark/core-communication-lib.git`
 
 *Method 2: Download the zipped files directly from the Spark's GitHub website*
 
@@ -130,12 +132,12 @@ Its now time to transfer your code to the Spark Core! You can always do this usi
 #### Steps:
 1. Put your Core into the DFU mode by holding down the MODE button on the Core and then tapping on the RESET button once. Release the MODE button after you start to see the RGB LED flashing in yellow. It's easy to get this one wrong: Make sure you don't let go of the left button until you see flashing yellow, about 3 seconds after you release the right/RESET button. A flash of white then flashing green can happen when you get this wrong. You want flashing yellow.
 
-2. Open up a terminal window on your computer and type this command to find out if the Core indeed being detected correctly. 
+2. Open up a terminal window on your computer and type this command to find out if the Core indeed being detected correctly.
 
-   `dfu-util -l`   
+   `dfu-util -l`
    you should get the following in return:
    ```
-   Found DFU: [1d50:607f] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/20*001Ka,108*001Kg" 
+   Found DFU: [1d50:607f] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/20*001Ka,108*001Kg"
    Found DFU: [1d50:607f] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
    ```
 
@@ -153,7 +155,7 @@ D:\Spark\firmware\build [master]> dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave
 Upon successful transfer, the Core will automatically reset and start the running the program.
 
 ##### Common Errors
-* As of 12/4/13, you will likely see `Error during download get_status` as the last line from 
+* As of 12/4/13, you will likely see `Error during download get_status` as the last line from
 the `dfu-util` command. You can ignore this message for now.  We're not sure what this error is all about.
 
 * If you are having trouble with dfu-util, (like invalid dfuse address), try a newer version of dfu-util. v0.8 works well.
