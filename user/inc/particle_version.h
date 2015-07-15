@@ -16,8 +16,9 @@ const int PARTICLE_v040 = 0x00040000;
 const int PARTICLE_v041 = 0x00040100;
 const int PARTICLE_v042 = 0x00040200;
 const int PARTICLE_v043 = 0x00040300;
+const int PARTICLE_v044 = 0x00040400;
 
-const int PARTICLE_VERSION = PARTICLE_v043;
+const int PARTICLE_VERSION = PARTICLE_v044;
 
 
 #ifdef	__cplusplus

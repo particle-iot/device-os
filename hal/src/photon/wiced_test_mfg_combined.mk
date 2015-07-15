@@ -35,9 +35,9 @@ SUFFIX=_BM-14
 endif
 
 # the PRODUCT_FIRMWARE_VERSION that is reported by default for system firmware and tinker.
-VERSION=3
+VERSION=4
 # The VERSION_STRING that is exported by the wl.exe tool (this is stored in the database of module details that is provided by USI.)
-VERSION_STRING=0.4.3
+VERSION_STRING=0.4.4
 SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
 TARGET_PARENT=$(FIRMWARE_BUILD)/target
