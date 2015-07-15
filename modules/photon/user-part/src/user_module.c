@@ -13,8 +13,3 @@ __attribute__((externally_visible)) const void* const user_part_module[] = {
     DYNALIB_TABLE_NAME(user),
 };
 
-
-void* _sbrk( int incr )
-{
-    return 0;
-}
