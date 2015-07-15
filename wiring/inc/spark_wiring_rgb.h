@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    spark_wiring_system.h
+ * @file    spark_wiring_rgb.h
  * @author  Satish Nair, Zachary Crockett, Matthew McGowan
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
@@ -21,17 +21,18 @@
  */
 
 #include <stdint.h>
-
+#include "rgbled.h"
 
 class RGBClass {
 private:
-	static bool _control;
+    static bool _control;
 public:
-	static bool controlled(void);
-	static void control(bool);
-	static void color(int, int, int);
-	static void color(uint32_t rgb);
-	static void brightness(uint8_t, bool update=true);
+    static bool controlled(void);
+    static void control(bool);
+    static void color(int, int, int);
+    static void color(uint32_t rgb);
+    static void brightness(uint8_t, bool update=true);
+    static void attachHandler(led_update_handler_fn fn, void* data);
 };
 
 extern RGBClass RGB;

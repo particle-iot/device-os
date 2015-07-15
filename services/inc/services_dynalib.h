@@ -44,6 +44,8 @@ DYNALIB_FN(services,panic_)
 
 DYNALIB_FN(services, jsmn_init)
 DYNALIB_FN(services, jsmn_parse)
+
+DYNALIB_FN(services,set_rgb_led_change_handler)
 DYNALIB_END(services)        
 
 
