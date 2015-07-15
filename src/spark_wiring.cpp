@@ -75,7 +75,7 @@ STM32_Pin_Info PIN_MAP[TOTAL_PINS] =
   { GPIOB, GPIO_Pin_1, ADC_Channel_9, TIM3, TIM_Channel_4, (PinMode)NONE, 0, 0 },
   { GPIOA, GPIO_Pin_3, ADC_Channel_3, TIM2, TIM_Channel_4, (PinMode)NONE, 0, 0 },
   { GPIOA, GPIO_Pin_2, ADC_Channel_2, TIM2, TIM_Channel_3, (PinMode)NONE, 0, 0 },
-  { GPIOA, GPIO_Pin_10, NONE, NULL, NONE, (PinMode)NONE, 0, 0 }
+  { GPIOB, GPIO_Pin_2, NONE, NULL, NONE, (PinMode)NONE, 0, 0 }
 };
 
 /*
