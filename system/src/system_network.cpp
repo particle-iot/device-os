@@ -21,6 +21,7 @@ volatile uint8_t WLAN_SMART_CONFIG_STOP;
 volatile uint8_t WLAN_SMART_CONFIG_FINISHED = 1;
 volatile uint8_t WLAN_SERIAL_CONFIG_DONE = 1;
 volatile uint8_t WLAN_CONNECTED;
+volatile uint8_t WLAN_CONNECTING;
 volatile uint8_t WLAN_DHCP;
 volatile uint8_t WLAN_CAN_SHUTDOWN;
 volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
@@ -68,6 +69,7 @@ void Start_Smart_Config(void)
     WLAN_SMART_CONFIG_STOP = 0;
     WLAN_SERIAL_CONFIG_DONE = 0;
     WLAN_CONNECTED = 0;
+    WLAN_CONNECTING = 0;
     WLAN_DHCP = 0;
     WLAN_CAN_SHUTDOWN = 0;
 
@@ -155,6 +157,7 @@ void HAL_WLAN_notify_simple_config_done()
 void HAL_WLAN_notify_connected()
 {
     WLAN_CONNECTED = 1;
+    WLAN_CONNECTING = 0;
     if (!WLAN_DISCONNECT)
     {
         ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
@@ -187,11 +190,13 @@ void HAL_WLAN_notify_disconnected()
       LED_On(LED_RGB);
     }
     WLAN_CONNECTED = 0;
+    WLAN_CONNECTING = 0;
     WLAN_DHCP = 0;
 }
 
 void HAL_WLAN_notify_dhcp(bool dhcp)
 {
+    WLAN_CONNECTING = 0;
     if (!WLAN_SMART_CONFIG_START)
     {
         LED_SetRGBColor(RGB_COLOR_GREEN);
@@ -227,9 +232,11 @@ const WLanConfig* network_config(network_handle_t network, uint32_t param, void*
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    if (!network_ready(0, 0, NULL))
+    if (!WLAN_CONNECTING && !network_listening(network, flags, NULL))
     {
         bool was_sleeping = SPARK_WLAN_SLEEP;
+
+        network_on(network, flags, param, NULL);
 
         WLAN_DISCONNECT = 0;
         wlan_connect_init();
@@ -255,6 +262,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
         else
         {
             SPARK_LED_FADE = 0;
+            WLAN_CONNECTING = 1;
             LED_SetRGBColor(RGB_COLOR_GREEN);
             LED_On(LED_RGB);
             wlan_connect_finalize();
@@ -266,9 +274,10 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 
 void network_disconnect(network_handle_t network, uint32_t param, void* reserved)
 {
-    if (network_ready(0, 0, NULL))
+    if (SPARK_WLAN_STARTED)
     {
         WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()
+        WLAN_CONNECTING = 0;
         cloud_disconnect();
         wlan_disconnect_now();
     }
@@ -281,7 +290,7 @@ bool network_ready(network_handle_t network, uint32_t param, void* reserved)
 
 bool network_connecting(network_handle_t network, uint32_t param, void* reserved)
 {
-    return (SPARK_WLAN_STARTED && !WLAN_DHCP);
+    return (SPARK_WLAN_STARTED && WLAN_CONNECTING);
 }
 
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
@@ -318,6 +327,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
         SPARK_WLAN_STARTED = 0;
         WLAN_DHCP = 0;
         WLAN_CONNECTED = 0;
+        WLAN_CONNECTING = 0;
         SPARK_LED_FADE = 1;
         LED_SetRGBColor(RGB_COLOR_WHITE);
         LED_On(LED_RGB);
