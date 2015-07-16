@@ -112,7 +112,7 @@ void manage_network_connection()
     }
     else
     {
-        if (!SPARK_WLAN_STARTED)
+        if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !WLAN_CONNECTED))
         {
             if (!WLAN_DISCONNECT)
             {

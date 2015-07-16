@@ -35,6 +35,13 @@ Set when the wlan subsystem is active, and when not set, is a trigger to automat
 - checked in wlan loop, and when reset calls `WiFi.connect()`
 - ?? not cleared in `WiFi.off()`
 
+## 'WLAN_CONNECTING'
+
+Set when the wlan subsystem is attempting to conenct to an AP. Cleared once finally conencted.
+
+This is used to prevent re-entrant calls to WiFi.connect(). 
+
+
 ## `WLAN_CONNECTED`
 Flag set when the WiFi module has made a successful connection to the WAP.
 
@@ -66,8 +73,8 @@ Flags that wifi has been connected and a IP address received via DHCP.
 - checked in the wlan loop as a necessary condition to perform smart config cleanup.
 - checked in the wlan loop as a necessary condition to fetch the IP config details.
 - checked in the wlan loop as a necessary condition to connect to the cloud
-- ?? not cleared in `WiFi.disconnect()` or `WiFi.off()`? 
-- ?? could be repaced with a function that checks preconditions - e.g. SPARK_WLAN_STARTED, WLAN_CONNECTED so the value of WLAN_DHCP is only used when relevant? 
+- ?? not cleared in `WiFi.disconnect()` or `WiFi.off()`?
+- ?? could be repaced with a function that checks preconditions - e.g. SPARK_WLAN_STARTED, WLAN_CONNECTED so the value of WLAN_DHCP is only used when relevant?
 - ?? could be replaced with a wifi state enum - OFF, DISCONNECTED, CONNECTED, READY
 
 ## `SPARK_CLOUD_CONNECT`
@@ -78,7 +85,7 @@ Flags the desired state of the cloud connection. When set, the wlan loop will ma
 - cleared in `Wifi.disconnect()`
 - cleared in `WiFi.off()` if not being called as part of `Spark.sleep()`.
 - checked in main as a necessary negated condition to run user code (so user code runs when the cloud is not required)
-- checked in the wlan loop - when false disconnects the cloud if connected and exits, when true, continues 
+- checked in the wlan loop - when false disconnects the cloud if connected and exits, when true, continues
 - ?? clearing this flag in WiFi.disconnect() seems to break the intent of AUTOMATIC mode?
 
 ## `SPARK_CLOUD_SOCKETED`
@@ -121,12 +128,12 @@ Flag to indicate if serial config is done and listening mode should exit
 
 # Network States
 
-Here's a state machine. Arcs between each number and the next largest. A/B are two separate branches. 
-To transition from a state in one branch to another, must backtrack to 2 and then up the target branch. 
+Here's a state machine. Arcs between each number and the next largest. A/B are two separate branches.
+To transition from a state in one branch to another, must backtrack to 2 and then up the target branch.
 (E.g. to get from State B4 to A3: B4, B3, 2, A3.)
 
 - 1. Network Off, white breathing LED
-- 2- Network hardware initializing. (white flashing LED - to be consistent, this should be blue flashing LED, 
+- 2- Network hardware initializing. (white flashing LED - to be consistent, this should be blue flashing LED,
 - since the flashing indicates an "about to happen" action resolving in a breathing LED of the same color.)
 - 2. Network On (but not connected), blue breathing LED. Why blue? That's confusing with listening mode.
 - A3. Network setup, blue flashing LED
@@ -142,7 +149,7 @@ States with a -/+ after are transient states moving forward or backwards. They a
 For maximum flexibility, we may define -/+ transitions for every state, since some network types may require them.
 
 Rather than maintaining many state flags (WLAN_DISCONNECT, SPARK_WLAN_SLEEP, WLAN_CONNECTED etc..) it's less error prone
-to have a single state. And have the system manage how to get to that state. 
+to have a single state. And have the system manage how to get to that state.
 
 The implementation of these methods make a transition to the desired connectivity state() if the current state is less
 than or equal the desired state.
@@ -154,6 +161,6 @@ than or equal the desired state.
  - this is consistent with Network.disconnect() strict version
  - Spark.disconnect(): - transition to network connected if on, otherwise no-op if off?
  - Spark.connect(): exit listening, network on, network connect, cloud connect
- 
+
 This needs working through a bit more. Are the original Network.xxx() methods states or actions?
 
