@@ -82,7 +82,7 @@ When building `main` or `modules`:
 - `APP`: builds the application stored in `user/applications/$(APP)`. (The default is to build
     the application code in `user/src`
 - `APPDIR`: builds the application located in $(APPDIR). The directory specified
-    can be outside of the firmware repo, allowing 3rd party applications to be built.
+    should be outside of the firmware repo working directory, allowing 3rd party applications to be built.
     See `USER_MAKEFILE`.
 - `TEST` builds the test application stored in `user/tests/$(TEST)`.
 - `USER_MAKEFILE`: when `APPDIR` is used this specifies the location of the makefile
@@ -313,12 +313,17 @@ defaults to the name of the application sources directory.
 
 ## Custom makefile
 
-(Please note this is an experimental feature and may be removed in future releases.)
-
 When using `APP` or `APPDIR` to build custom application sources, the build system
 by default will build any `.c` and `.cpp` files found in the given directory
 and it's subdirectories. You can override this and customize the build process by adding the file
-`build.mk` to the root of the application sources. The file should be a valid gnu make file.
+a makefile to the root of the application sources.
+
+The makefile should be placed in the root of the application folder. The default name for the file is:
+
+- when building with `APP=myapp` the default name is `myapp.mk`
+- when building with `APPDIR=` the default name is `build.mk`
+
+The file should be a valid gnu make file.
 
 To customize the build, append values to these variables:
 
@@ -334,8 +339,8 @@ To add all files in the application directory and subdirectories.
 - `LIBS`: libraries to link (found in the library search path). Library names are given without the `lib` prefix and `.a` suffix.
 - `LIB_DEPS`: full path of additional library files to include.
 
-To use a different customization file other than `build.mk`, define `USER_MAKEFILE` to point to
-your custom build file, relative to the application sources.
+To use a different name/location for customization makefile file other than `build.mk`, define `USER_MAKEFILE` to point to
+your custom build file. The value of `USER_MAKEFILE` is the location of your custom makefile relative to the application sources.
 
 
 ## Integrated application.cpp with firmware
