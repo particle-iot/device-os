@@ -24,6 +24,7 @@
 #include "core_hal.h"
 #include "stm32f2xx.h"
 #include <string.h>
+#include "hw_config.h"
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -54,6 +55,10 @@ const unsigned USART1Index = 53;
 extern volatile uint32_t TimingDelay;
 
 /* Private function prototypes ----------------------------------------------*/
+
+void HAL_Core_Config_systick_configuration(void) {
+    SysTick_Configuration();
+}
 
 /**
  * Called by HAL_Core_Config() to allow the HAL implementation to override
