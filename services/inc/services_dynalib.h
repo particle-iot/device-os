@@ -38,13 +38,14 @@ DYNALIB_FN(services,LED_Off)
 DYNALIB_FN(services,LED_Toggle)
 DYNALIB_FN(services,LED_Fade)
 DYNALIB_FN(services,Get_LED_Brightness)
-        
+
 DYNALIB_FN(services,set_logger_output)
 DYNALIB_FN(services,panic_)
 
 DYNALIB_FN(services, jsmn_init)
 DYNALIB_FN(services, jsmn_parse)
-DYNALIB_END(services)        
+DYNALIB_FN(services, log_print_)
+DYNALIB_END(services)
 
 
 

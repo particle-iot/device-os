@@ -640,7 +640,7 @@ int read_packet_and_dispose(tcp_packet_t& packet, void* buffer, int len, wiced_t
         packet.offset = 0;
         wiced_result_t result = wiced_tcp_receive(tcp_socket, &packet.packet, _timeout);
         if (result!=WICED_SUCCESS && result!=WICED_TIMEOUT) {
-            DEBUG("Socket %d receive fail %d", (int)sd, int(result));
+            DEBUG("Socket %d receive fail %d", (int)(int)tcp_socket->socket, int(result));
             return -result;
         }
     }
@@ -654,7 +654,7 @@ int read_packet_and_dispose(tcp_packet_t& packet, void* buffer, int len, wiced_t
         memcpy(buffer, data, read);
         dispose = (total==read);
         bytes_read = read;
-        DEBUG("Socket %d receive bytes %d of %d", (int)sd, int(bytes_read), int(available));
+        DEBUG("Socket %d receive bytes %d of %d", (int)(int)tcp_socket->socket, int(bytes_read), int(available));
     }
     if (dispose) {
         packet.dispose_packet();

@@ -1,4 +1,4 @@
-## 1. Download and Install Dependencies 
+## 1. Download and Install Dependencies
 
 Building the firmware locally requires these dependencies ot be installed:
 
@@ -10,7 +10,11 @@ Building the firmware locally requires these dependencies ot be installed:
 
 
 #### 1. GCC for ARM Cortex processors
-The Core/Photon uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.  
+The Core/Photon uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.
+
+The build requires version 4.9.3 20150529 or newer of ARM GCC and will print an error
+message if the version is older than this.
+
 
 **Linux and Windows**:
 - Download and install version 4.9.x from: https://launchpad.net/gcc-arm-embedded
@@ -21,14 +25,14 @@ The Core/Photon uses an ARM Cortex M3 CPU based microcontroller. All of the code
 - `brew install gcc-arm-none-eabi-49`
 - `arm-none-eabi-gcc --version` (should now say v4.9.x)
 
-If you are upgrading an existing installation you will have to unlink and link your sim links:
+If you are upgrading an existing installation you will have to unlink and link your symblinks:
 - `brew update`
 - `brew install gcc-arm-none-eabi-49` (when you run this, it will tell you the following commands)
 - `brew unlink gcc-arm-none-eabi-48` (example)
-- `brew link --overwrite gcc-arm-none-eabi-49` (example) 
+- `brew link --overwrite gcc-arm-none-eabi-49` (example)
 - `arm-none-eabi-gcc --version` (should now say v4.9.x)
 
-#### 2. Make 
+#### 2. Make
 In order to turn your source code into binaries, you will need a tool called `make`. Windows users need to explicitly install `make` on their machines. Make sure you can use it from the terminal window.
 
 Download and install the latest version from: http://gnuwin32.sourceforge.net/packages/make.htm
@@ -46,7 +50,7 @@ Download and install Git: http://git-scm.com/
 #### 6. Command line tools
 
 - crc32
- - available in MinGW on Windows 
+ - available in MinGW on Windows
  - available by default on OS X
  - linux users, please check with your package manager
 

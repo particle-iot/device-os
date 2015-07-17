@@ -35,7 +35,7 @@ struct dhcp
   /** incoming msg */
   struct dhcp_msg *msg_in;
   /** current DHCP state machine state */
-  u8_t state;
+  volatile u8_t state;
   /** retries of current request */
   u8_t tries;
 #if LWIP_DHCP_AUTOIP_COOP

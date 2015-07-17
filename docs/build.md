@@ -82,7 +82,7 @@ When building `main` or `modules`:
 - `APP`: builds the application stored in `user/applications/$(APP)`. (The default is to build
     the application code in `user/src`
 - `APPDIR`: builds the application located in $(APPDIR). The directory specified
-    can be outside of the firmware repo, allowing 3rd party applications to be built.
+    should be outside of the firmware repo working directory, allowing 3rd party applications to be built.
     See `USER_MAKEFILE`.
 - `TEST` builds the test application stored in `user/tests/$(TEST)`.
 - `USER_MAKEFILE`: when `APPDIR` is used this specifies the location of the makefile
@@ -313,12 +313,17 @@ defaults to the name of the application sources directory.
 
 ## Custom makefile
 
-(Please note this is an experimental feature and may be removed in future releases.)
-
 When using `APP` or `APPDIR` to build custom application sources, the build system
 by default will build any `.c` and `.cpp` files found in the given directory
 and it's subdirectories. You can override this and customize the build process by adding the file
-`build.mk` to the root of the application sources. The file should be a valid gnu make file.
+a makefile to the root of the application sources.
+
+The makefile should be placed in the root of the application folder. The default name for the file is:
+
+- when building with `APP=myapp` the default name is `myapp.mk`
+- when building with `APPDIR=` the default name is `build.mk`
+
+The file should be a valid gnu make file.
 
 To customize the build, append values to these variables:
 
@@ -334,8 +339,8 @@ To add all files in the application directory and subdirectories.
 - `LIBS`: libraries to link (found in the library search path). Library names are given without the `lib` prefix and `.a` suffix.
 - `LIB_DEPS`: full path of additional library files to include.
 
-To use a different customization file other than `build.mk`, define `USER_MAKEFILE` to point to
-your custom build file, relative to the application sources.
+To use a different name/location for customization makefile file other than `build.mk`, define `USER_MAKEFILE` to point to
+your custom build file. The value of `USER_MAKEFILE` is the location of your custom makefile relative to the application sources.
 
 
 ## Integrated application.cpp with firmware
@@ -432,3 +437,18 @@ To release more resources for applications that don't use the cloud, add
 SPARK_CLOUD=n to the make command line. This requires a clean build.
 
 After compiling, you should see a 3000 bytes reduction in statically allocated RAM and 35k reduction in flash use.
+
+
+## Building the `develop` branch
+
+Before the 0.4.0 firmware was released, we recommended the develop branch for early adopters
+to obtain the code. This is still fine for early adopters, and people that want the bleeding edge,
+although please keep in mind the code is untested and unreleased.
+
+The released code is available in the `latest` branch. This will eventually become the `master`
+branch once 0.4.4 is released for the Core.
+
+To build the develop branch, follow these guidelines:
+
+1. export the environment variable PARTICLE_DEVELOP=1
+2. after pulling from the develop branch, be sure to build and flash the system firmware

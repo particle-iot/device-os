@@ -143,9 +143,11 @@ int wlan_connect_init()
 wlan_result_t wlan_connect_finalize() 
 {
     // enable connection from stored profiles
-    wlan_result_t result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);        
-    if (!result)
+    wlan_result_t result = wiced_interface_up(WICED_STA_INTERFACE);
+    if (!result) {
         HAL_WLAN_notify_connected();
+        result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);
+    }
     // DHCP happens synchronously
     HAL_WLAN_notify_dhcp(!result);
     return result;
@@ -158,7 +160,7 @@ wlan_result_t wlan_activate()
 
 wlan_result_t wlan_deactivate() {
     wlan_disconnect_now();
-    return wiced_network_suspend();
+    return 0; //wiced_network_suspend();
 }
 
 wlan_result_t wlan_disconnect_now() 
@@ -378,7 +380,7 @@ void wlan_setup()
 {    
     if (!wiced_wlan_connectivity_init()) {
         wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
-        wiced_network_suspend();
+        //wiced_network_suspend();
 }
 }
 

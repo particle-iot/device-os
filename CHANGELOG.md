@@ -2,22 +2,31 @@
 ## v0.4.4
 
 ### FEATURES
- - `WiFi.connect(WIFI_CONNECT_SKIP_LISTEN)` allows application firmware to skip listen mode when there is no credentials.
- - System events
 
 
 ### ENHANCEMENTS
 
- - `WiFi.listen(false)` to programmatically exit WiFi listening mode.
+
+### BUGFIXES
+
+ - [Regression] System connects WiFi when Spark.connect() is called after WiFi.on() [#484](https://github.com/spark/firmware/issues/484)
 
 
 ## v0.4.3
 
 ### FEATURES
  - Half-duplex mode on Serial1 via `Serial1.halfdupliex()`. Thanks to @prices.
+ - `WiFi.connect(WIFI_CONNECT_SKIP_LISTEN)` allows application firmware to skip listen mode when there is no credentials.
+ - System events
 
 ### ENHANCEMENTS
  - I2C methods now use `micros()` for timeouts rather than `millis()`, so I2C functions can be used in an interrupt handler. [#460](https://github.com/spark/firmware/issues/460)
+ - `WiFi.listen(false)` to programmatically exit WiFi listening mode.
+ - make is verbose by default. To silence, add `-s` to the command line.
+ - `WiFi.connect(WIFI_CONNECT_SKIP_LISTEN)` starts connection but does not enter listening mode if no credentials are found.
+ - Setup/Mode button now starts listening mode when WiFi is off.
+ - `WiFi.listen(false)` can be used to exit listening mode (from an interrupt.)
+ - LED flashes high-speed green when requesting an IP address via DHCP.
 
 ### BUGFIXES
 
@@ -26,8 +35,11 @@
  - `TCPClient.connected()` was not returning `false` when the socket was disconnected from the other end.
  - `strdup()` was returning garbage [#457](https://github.com/spark/firmware/issues/457)
  - `attachInterrupt()` should work on all interrupt pins now except D0 & A5. Please note there are shared lines as per the following issue comment : [#443] (https://github.com/spark/firmware/issues/443#issuecomment-114389744)
- - Fix I2C bus lockup when no slave devices are present by issuing a STOP condition after sLave send address fails.
-
+ - I2C bus lockup when no slave devices are present by issuing a STOP condition after sLave send address fails.
+ - `spark/` events not propagated to application handlers. [#481](https://github.com/spark/firmware/issues/481)
+ - `sprintf` calls not linking correctly. [#471](https://github.com/spark/firmware/issues/471)
+ - Photon/P1 sometimes did not start without hitting reset after a cold boot.
+ - Disable LTO compile for user firmware since it causes linking problems (see `sprintf` above.)
 
 ## v0.4.2
 
@@ -58,7 +70,7 @@
  - Divide by zero now caught and causes a SOS.
  - Floating-point support for `sprintf()` reinstated
  - Fixed WICED DCT becoming unmodifiable
- - Fix UDP.parsePacket() not receiving any data on the Photon
+ - Fix UDP.parsePacket() not receiving any data on the Photon [#468](https://github.com/spark/firmware/issues/468)
 
 ## v0.4.1
 
