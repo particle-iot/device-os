@@ -49,6 +49,10 @@ const unsigned TIM7Index = 71;
  */
 volatile uint32_t TimingDelay;
 
+void HAL_Core_Config_systick_configuration(void) {
+    //SysTick_Configuration(); This causes the Photon to sometimes hang on startup. See FIRM-123.
+}
+
 void HAL_Core_Setup_override_interrupts(void) {
 
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);

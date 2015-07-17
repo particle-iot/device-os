@@ -1,5 +1,9 @@
 #pragma once
 
+/**
+ * Called by HAL_Core_Config() to setup SysTick_Configuration() if necessary.
+ */
+void HAL_Core_Config_systick_configuration();
 
 /**
  * Called by HAL_Core_Config() to allow the HAL implementation to override
