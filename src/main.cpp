@@ -291,8 +291,6 @@ void Timing_Decrement(void)
 	}
 	else if(!WLAN_SMART_CONFIG_START && BUTTON_GetDebouncedTime(BUTTON1) >= 3000)
 	{
-		BUTTON_ResetDebouncedState(BUTTON1);
-
 		if(!SPARK_WLAN_SLEEP)
 		{
 			WiFi.listen();
@@ -300,8 +298,6 @@ void Timing_Decrement(void)
 	}
 	else if(BUTTON_GetDebouncedTime(BUTTON1) >= 7000)
 	{
-		BUTTON_ResetDebouncedState(BUTTON1);
-
 		WLAN_DELETE_PROFILES = 1;
 	}
 #endif
