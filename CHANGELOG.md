@@ -2,7 +2,7 @@
 ## v0.4.4
 
 ### FEATURES
-
+ - logging output [documentation](docs/debugging.md)
 
 ### ENHANCEMENTS
 

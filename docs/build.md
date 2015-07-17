@@ -87,6 +87,7 @@ When building `main` or `modules`:
 - `TEST` builds the test application stored in `user/tests/$(TEST)`.
 - `USER_MAKEFILE`: when `APPDIR` is used this specifies the location of the makefile
     to include, relative to `APPDIR`. The default is `build.mk`.
+- `DEBUG_BUILD` described in [debugging](debugging.md)
 
 When building `main`:
 
