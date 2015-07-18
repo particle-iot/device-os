@@ -141,12 +141,6 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
     return result;
 }
 
-#ifdef MODULAR_FIRMWARE
-#define USER_OTA_MODULE_FUNCTION    MODULE_FUNCTION_USER_PART
-#else
-#define USER_OTA_MODULE_FUNCTION    MODULE_FUNCTION_MONO_FIRMWARE
-#endif
-
 void serial_dump(const char* msg, ...);
 
 int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
