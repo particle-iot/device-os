@@ -212,7 +212,12 @@ void WiFiCredentialsReader::handle(char c)
         system_module_info(append_instance, &appender);
         print("\r\n");
     }
-
+    else if ('v' == c)
+    {
+        StreamAppender appender(serial);
+        system_version_info(&appender);
+        print("\r\n");
+    }
 }
 
 /* private methods */

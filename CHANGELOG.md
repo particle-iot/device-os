@@ -3,6 +3,7 @@
 
 ### FEATURES
  - logging output [documentation](docs/debugging.md)
+ - pressing 'v' in SoftAP mode displays the system version. FIRM-128
 
 ### ENHANCEMENTS
 

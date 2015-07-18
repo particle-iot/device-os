@@ -26,7 +26,7 @@
 #ifndef APPLICATION_H_
 #define APPLICATION_H_
 
-#include "particle_version.h"
+#include "system_version.h"
 
 #ifdef SPARK_PLATFORM
 #include "platform_headers.h"
