@@ -13,11 +13,11 @@ PLATFORM_LIB_DEP = $(PLATFORM_LIB_DIR)/lib$(PLATFORM_MODULE_NAME).a
 CFLAGS += -DUSE_STDPERIPH_DRIVER
 CFLAGS += -DDFU_BUILD_ENABLE
 
-ifeq ("$(USE_SWD_JTAG)","y") 
+ifeq ("$(USE_SWD_JTAG)","y")
 CFLAGS += -DUSE_SWD_JTAG
 endif
 
-ifeq ("$(USE_SWD)","y") 
+ifeq ("$(USE_SWD)","y")
 CFLAGS += -DUSE_SWD
 endif
 
@@ -25,8 +25,7 @@ endif
 
 # pull in the includes/sources corresponding to the target platform
 
-# todo - all network subsystems should be under a common folder
-INCLUDE_DIRS += $(PLATFORM_MODULE_PATH)/shared
+INCLUDE_DIRS += $(PLATFORM_MODULE_PATH)/shared/inc
 PLATFORM_MCU_PATH=$(PLATFORM_MODULE_PATH)/MCU/$(PLATFORM_MCU)
 PLATFORM_NET_PATH=$(PLATFORM_MODULE_PATH)/NET/$(PLATFORM_NET)
 include $(call rwildcard,$(PLATFORM_MCU_PATH)/,include.mk)
