@@ -7,12 +7,12 @@ This is the main source code repository of the Particle firmware libraries.
 
 # Getting Started
 
-To get started building firmware locally, see [Getting Started](docs/gettingstarted.md.)
+To get started building firmware locally, see [Getting Started](docs/gettingstarted.md).
 
 
 # Resources
 
-- [Latest Release - 0.4.3](releases/tag/0.4.3-rc2)
+- [Latest Release - 0.4.3](http://github.com/spark/firmware/releases/tag/0.4.3-rc2)
 - [Changelog](CHANGELOG.md)
 
 
@@ -22,7 +22,7 @@ To get started building firmware locally, see [Getting Started](docs/gettingstar
 
 ## Application Firmware Development
 
-- [Debugging support](debugging.md)
+- [Debugging support](docs/debugging.md)
 - [make command syntax](docs/build.md)
 - [Firmware API](http://docs.particle.io/photon/firmware/)
 
@@ -34,8 +34,8 @@ To get started building firmware locally, see [Getting Started](docs/gettingstar
 - [Photon SoftAP Protocol](hal/src/photon/soft-ap.md)
 - [WiFi Tester Firmware](user/applications/wifitester/readme.md)
 - [Testing](user/tests/readme.md)
-- [API Changes Checklist](wiki/Firmware-API-Changes-Checklist)
-- [Firmware Release Checklist](wiki/Firmware-Release-Checklist)
+- [API Changes Checklist](http://github.com/spark/firmware/wiki/Firmware-API-Changes-Checklist)
+- [Firmware Release Checklist](http://github.com/spark/firmware/wiki/Firmware-Release-Checklist)
 - [System describe message](https://github.com/spark/firmware/wiki/Module-descriptor-format)
 - [build test suite](build/test/readme.md)
 
