@@ -168,7 +168,7 @@ void HAL_Core_Config(void)
 
     //SysTick_Configuration(); This causes the Photon to sometimes hang on startup. See FIRM-123. 
 
-    HAL_RTC_Configuration();
+    //HAL_RTC_Configuration();
 
     HAL_RNG_Configuration();
 
