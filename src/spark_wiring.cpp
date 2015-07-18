@@ -626,28 +626,33 @@ unsigned long micros(void)
  */
 void delay(unsigned long ms)
 {
+        volatile uint32_t DWT_START = DWT->CYCCNT;
+        volatile uint32_t DWT_END = (SYSTEM_US_TICKS * ms * 1000) + DWT_START;
+
 #ifdef SPARK_WLAN_ENABLE
 	volatile system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
 	spark_loop_total_millis += ms;
 #endif
-
+        
 	volatile system_tick_t last_millis = GetSystem1MsTick();
-
 	while (1)
 	{
 	        KICK_WDT();
 
 		volatile system_tick_t current_millis = GetSystem1MsTick();
-		volatile long elapsed_millis = current_millis - last_millis;
-
-		//Check for wrapping
-		if (elapsed_millis < 0)
+		volatile unsigned long elapsed_millis = current_millis - last_millis;
+                                
+		if (elapsed_millis > ms)
+                {
+                        break;
+                }
+		if (elapsed_millis == ms)
 		{
-			elapsed_millis = last_millis + current_millis;
-		}
-
-		if (elapsed_millis >= ms)
-		{
+                        while (DWT->CYCCNT < DWT_END)
+                        {
+                                if ((GetSystem1MsTick() - last_millis) > ms) break;
+                                KICK_WDT();
+                        }
 			break;
 		}
 
@@ -669,6 +674,7 @@ void delay(unsigned long ms)
 		}
 #endif
 	}
+    
 }
 
 /*
