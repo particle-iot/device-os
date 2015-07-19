@@ -197,7 +197,7 @@ void HAL_Core_Config(void)
     FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
 #endif
 
-#ifdef USE_SERIAL_FLASH
+#ifdef HAS_SERIAL_FLASH
     //Initialize Serial Flash
     sFLASH_Init();
 #else

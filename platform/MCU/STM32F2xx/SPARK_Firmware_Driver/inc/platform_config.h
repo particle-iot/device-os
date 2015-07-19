@@ -122,23 +122,23 @@
 //BM-14 and ELECTRON uses USB_OTG_FS peripheral
 #define USE_USB_OTG_FS
 //BM-14 has serial flash
-#if   PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID || \
-      PLATFORM_TEACUP_PIGTAIL_PRODUCTION == PLATFORM_ID
-#define USE_SERIAL_FLASH
-#else
-#define FLASH_UPDATE_MODULES
-#endif
-//BM-14 bootloader with FLASH_UPDATE_MODULES enabled DOES NOT fit in < 16KB
-//#define FLASH_UPDATE_MODULES /* Please do not uncomment this at present */
 #elif   PLATFORM_PHOTON_DEV == PLATFORM_ID || \
         PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
-//BM-09 bootloader with FLASH_UPDATE_MODULES enabled fits in < 16KB
-#define FLASH_UPDATE_MODULES
 #endif
 
-#ifdef USE_SERIAL_FLASH
+#if   PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID || \
+      PLATFORM_TEACUP_PIGTAIL_PRODUCTION == PLATFORM_ID || \
+      PLATFORM_P1 == PLATFORM_ID
+	#define HAS_SERIAL_FLASH
+    #define sFLASH_PAGESIZE     0x1000 /* 4096 bytes sector size that needs to be erased */
+    #define sFLASH_PAGECOUNT    256    /* 1MByte storage */
+#endif
+
+#define FLASH_UPDATE_MODULES
+
+#ifdef HAS_SERIAL_FLASH
 //SPI FLASH Interface pins
 #define sFLASH_SPI                          SPI2
 #define sFLASH_SPI_CLK                      RCC_APB1Periph_SPI2
