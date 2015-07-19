@@ -29,6 +29,7 @@
 #include "timer_hal.h"
 #include "pinmap_impl.h"
 #include <stddef.h>
+#include "hw_config.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -36,15 +37,17 @@
 
 /* Private macro -------------------------------------------------------------*/
 #define BUFFER_LENGTH   32
-#define EVENT_TIMEOUT   100*1000
+const uint32_t EVENT_TIMEOUT  = (100*1000*120);
 
 #define TRANSMITTER     0x00
 #define RECEIVER        0x01
 
-inline system_tick_t isr_safe_micros()
+inline uint8_t timeout(uint32_t start)
 {
-    return HAL_Timer_Get_Micro_Seconds();
+    return (DWT->CYCCNT-start)>EVENT_TIMEOUT;
 }
+
+inline uint32_t timeout_start() { return DWT->CYCCNT; }
 
 /* Private variables ---------------------------------------------------------*/
 static I2C_InitTypeDef I2C_InitStructure;
@@ -156,7 +159,7 @@ void HAL_I2C_End(void)
 
 uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
 {
-    uint32_t _micros;
+    uint32_t _ticks;
     uint8_t bytesRead = 0;
 
     // clamp to buffer length
@@ -168,19 +171,19 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
 
-    _micros = isr_safe_micros();
+    _ticks = timeout_start();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
     {
-        if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) return 0;
+        if(timeout(_ticks)) return 0;
     }
 
     /* Send Slave address for read */
     I2C_Send7bitAddress(I2C1, address << 1, I2C_Direction_Receiver);
 
-    _micros = isr_safe_micros();
+    _ticks = timeout_start();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (isr_safe_micros() - _micros))
+        if(timeout(_ticks))
         {
             /* Send STOP Condition */
             I2C_GenerateSTOP(I2C1, ENABLE);
@@ -193,8 +196,8 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     uint8_t numByteToRead = quantity;
 
     /* While there is data to be read */
-    _micros = isr_safe_micros();
-    while(numByteToRead && (EVENT_TIMEOUT > (isr_safe_micros() - _micros)))
+    _ticks = timeout_start();
+    while(numByteToRead && (timeout(_ticks)))
     {
         if(numByteToRead == 1 && stop == true)
         {
@@ -219,7 +222,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
             numByteToRead--;
 
             /* Reset timeout to our last read */
-            _micros = isr_safe_micros();
+            _ticks = timeout_start();
         }
     }
 
@@ -246,24 +249,23 @@ void HAL_I2C_Begin_Transmission(uint8_t address)
 
 uint8_t HAL_I2C_End_Transmission(uint8_t stop)
 {
-    uint32_t _micros;
 
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
 
-    _micros = isr_safe_micros();
+    uint32_t _ticks = timeout_start();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
     {
-        if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) return 4;
+        if(timeout(_ticks)) return 4;
     }
 
     /* Send Slave address for write */
     I2C_Send7bitAddress(I2C1, txAddress, I2C_Direction_Transmitter);
 
-    _micros = isr_safe_micros();
+    _ticks = timeout_start();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (isr_safe_micros() - _micros))
+        if(timeout(_ticks))
         {
             /* Send STOP Condition */
             I2C_GenerateSTOP(I2C1, ENABLE);
@@ -283,10 +285,10 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
         /* Point to the next byte to be written */
         pBuffer++;
 
-        _micros = isr_safe_micros();
+        _ticks = timeout_start();
         while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
         {
-            if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) return 4;
+            if(timeout(_ticks)) return 4;
         }
     }
 
