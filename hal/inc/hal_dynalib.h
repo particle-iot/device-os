@@ -56,6 +56,8 @@ DYNALIB_FN(hal,HAL_Delay_Milliseconds)
 DYNALIB_FN(hal,HAL_Delay_Microseconds)
 DYNALIB_FN(hal,HAL_Timer_Get_Micro_Seconds)
 DYNALIB_FN(hal,HAL_Timer_Get_Milli_Seconds)
+DYNALIB_FN(hal,HAL_Timer_Start)
+DYNALIB_FN(hal,HAL_Timer_Stop)
 
 DYNALIB_FN(hal,HAL_RTC_Configuration)
 DYNALIB_FN(hal,HAL_RTC_Get_UnixTime)
