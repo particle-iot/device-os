@@ -21,7 +21,7 @@
  */
 
 #include <stdint.h>
-
+#include "rgbled.h"
 
 class RGBClass {
 private:
@@ -32,6 +32,10 @@ public:
 	static void color(int, int, int);
 	static void color(uint32_t rgb);
 	static void brightness(uint8_t, bool update=true);
+
+        static uint8_t brightness() {
+            return Get_LED_Brightness();
+        }
 };
 
 extern RGBClass RGB;

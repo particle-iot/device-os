@@ -47,3 +47,15 @@ test(api_wiring_system_interrupt) {
     API_COMPILE(detachSystemInterrupt(SysInterrupt_TIM3_IRQ));
 }
 #endif
+
+test(api_rgb) {
+    bool flag; uint8_t value;
+    API_COMPILE(RGB.brightness(50));
+    API_COMPILE(RGB.brightness(50, false));
+    API_COMPILE(flag=RGB.controlled());
+    API_COMPILE(RGB.control(true));
+    API_COMPILE(RGB.color(255,255,255));
+    API_COMPILE(RGB.color(RGB_COLOR_WHITE));
+    API_COMPILE(flag=RGB.brightness());
+
+}

@@ -6,7 +6,7 @@
  - pressing 'v' in SoftAP mode displays the system version. FIRM-128
 
 ### ENHANCEMENTS
-
+ - Retrieve the LED brightness via `RGB.brightness()`
 
 ### BUGFIXES
 
