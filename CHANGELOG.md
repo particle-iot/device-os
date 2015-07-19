@@ -11,6 +11,7 @@
 ### BUGFIXES
 
  - [Regression] System connects WiFi when Spark.connect() is called after WiFi.on() [#484](https://github.com/spark/firmware/issues/484)
+ - Debug build now working.
 
 
 ## v0.4.3
