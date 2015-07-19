@@ -8,6 +8,8 @@
 ### ENHANCEMENTS
  - Retrieve the LED brightness via `RGB.brightness()`
  - More prominent color change on the RGB LED when there is a cloud connection error.
+ - System.sleep() - 2nd parameter changed to `InterruptMode` from uint16_t to
+ ensure the correct types are used. [#499](https://github.com/spark/firmware/pull/499)
 
 ### BUGFIXES
 
