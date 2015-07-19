@@ -27,6 +27,7 @@
 #include "system_cloud.h"
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
+#include "interrupts_hal.h"
 #include <functional>
 
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
@@ -105,7 +106,9 @@ public:
 
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))
     { SystemClass::sleep(seconds); }
-    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))
+    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))
+    { SystemClass::sleep(sleepMode, seconds); }
+    static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))
     { SystemClass::sleep(wakeUpPin, edgeTriggerMode, seconds); }
 
     static bool connected(void) { return spark_connected(); }

@@ -29,7 +29,7 @@
 #include "system_sleep.h"
 #include "system_cloud.h"
 #include "system_event.h"
-
+#include "interrupts_hal.h"
 
 class Stream;
 
@@ -54,7 +54,7 @@ public:
 
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0);
     static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }
-    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds=0);
+    static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0);
     static String deviceID(void) { return spark_deviceID(); }
 
     static bool on(system_event_t events, void(*handler)(system_event_t, uint32_t,void*)) {
