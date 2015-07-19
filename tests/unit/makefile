@@ -1,3 +1,4 @@
+## Copyright (c) 2014 Spark Labs, Inc.  All rights reserved.
 ## -*- Makefile -*-
 
 CCC = gcc
@@ -14,7 +15,7 @@ MKDIR = mkdir -p
 SRC_ROOT=../../
 
 # location of this folder relative to the root
-SRC_PATH=/tests/unit
+SRC_PATH=tests/unit/
 
 
 TARGETDIR=obj/
@@ -32,13 +33,13 @@ rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2
 # $2 the pattern to match, e.g. *.cpp
 target_files = $(patsubst $(SRC_ROOT)%,%,$(call rwildcard,$(SRC_ROOT)$1,$2))
 
+CSRC += $(call target_files,$(LIB_CORE_COMMON_PATH)SPARK_Services/src,*.c)
 CPPSRC += $(call target_files,tests/unit/,*.cpp)
 CPPSRC += $(call target_files,src,spark_wiring_random.cpp)
-CPPSRC += src/spark_wiring_string.cpp
+CPPSRC += $(call target_files,src,spark_wiring_string.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_CORE_COMMON_PATH = ../core-common-lib/
-CSRC += $(call target_files,$(LIB_CORE_COMMON_PATH)SPARK_Services/src,*.c)
 
 
 # Additional include directories, applied to objects built for this target.
@@ -46,6 +47,7 @@ CSRC += $(call target_files,$(LIB_CORE_COMMON_PATH)SPARK_Services/src,*.c)
 # encapsulated by their owning repo
 INCLUDE_DIRS += $(LIB_CORE_COMMON_PATH)SPARK_Services/inc
 INCLUDE_DIRS += inc
+INCLUDE_DIRS += $(SRC_PATH)/include
 
 CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -Wall
@@ -60,11 +62,13 @@ CFLAGS += -DDEBUG_BUILD
 
 CPPFLAGS += -std=gnu++11
 
-LDFLAGS +=  -Wl,--gc-sections 
+LDFLAGS +=  -Wl,--gc-sections
 
-# Collect all object and dep files
-ALLOBJ += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o))
+# Collect all object and dep files. 
+# For the weak symbols in core-common-lib to be overridden by local code, the
+# cpp objs have to be on the path first
 ALLOBJ += $(addprefix $(BUILD_PATH), $(CPPSRC:.cpp=.o))
+ALLOBJ += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o))
 
 ALLDEPS += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH), $(CPPSRC:.cpp=.o.d))
