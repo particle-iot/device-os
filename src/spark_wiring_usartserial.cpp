@@ -79,13 +79,13 @@ USARTSerial::USARTSerial(STM32_USART_Info *usartMapPtr)
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-void USARTSerial::begin(unsigned long baud)
+void USARTSerial::begin(unsigned long baud, byte config)
 {
 	// AFIO clock enable
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
 	// Enable USART Clock
-        *usartMap->usart_apbReg |=  usartMap->usart_clock_en;
+  *usartMap->usart_apbReg |=  usartMap->usart_clock_en;
 
 	NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -97,28 +97,21 @@ void USARTSerial::begin(unsigned long baud)
 
 	NVIC_Init(&NVIC_InitStructure);
 
-        // Configure USART Rx as input floating
-        pinMode(usartMap->usart_rx_pin, INPUT);
+  // Configure USART Rx as input floating
+  pinMode(usartMap->usart_rx_pin, INPUT);
 
-        // Configure USART Tx as alternate function push-pull
-        pinMode(usartMap->usart_tx_pin, AF_OUTPUT_PUSHPULL);
+  // Configure USART Tx as alternate function push-pull
+  pinMode(usartMap->usart_tx_pin, AF_OUTPUT_PUSHPULL);
 
-        // Remap USARTn to alternate pins EG. USART1 to pins TX/PB6, RX/PB7
-        GPIO_PinRemapConfig(usartMap->usart_pin_remap, ENABLE);
+  // Remap USARTn to alternate pins EG. USART1 to pins TX/PB6, RX/PB7
+  GPIO_PinRemapConfig(usartMap->usart_pin_remap, ENABLE);
 
-	// USART default configuration
-	// USART configured as follow:
-	// - BaudRate = (set baudRate as 9600 baud)
-	// - Word Length = 8 Bits
-	// - One Stop Bit
-	// - No parity
-	// - Hardware flow control disabled (RTS and CTS signals)
-	// - Receive and transmit enabled
+	// USART configuration	
 	USART_InitStructure.USART_BaudRate = baud;
-	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	USART_InitStructure.USART_Parity = USART_Parity_No;
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_WordLength = USARTSerial_WordLength[WL_MASK(config)];
+	USART_InitStructure.USART_StopBits = USARTSerial_StopBits[SB_MASK(config)];
+	USART_InitStructure.USART_Parity = USARTSerial_Parity[PAR_MASK(config)];
+	USART_InitStructure.USART_HardwareFlowControl = USARTSerial_FlowControl[FLOW_MASK(config)];
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 
 	// Configure USART
@@ -133,12 +126,6 @@ void USARTSerial::begin(unsigned long baud)
 
 	USARTSerial_Enabled = true;
 	transmitting = false;
-}
-
-// TODO
-void USARTSerial::begin(unsigned long baud, byte config)
-{
-
 }
 
 void USARTSerial::end()
