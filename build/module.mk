@@ -111,7 +111,7 @@ ifeq (y,$(MODULAR_FIRMWARE))
 MODULAR_EXT = -m
 endif
 
-COMPILE_LTO ?= y
+COMPILE_LTO ?= n
 ifeq (y,$(COMPILE_LTO))
 LTO_EXT = -lto
 endif
