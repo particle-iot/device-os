@@ -162,11 +162,8 @@ extern "C" void HAL_SysTick_Handler(void)
  *******************************************************************************/
 extern "C" void HAL_RTCAlarm_Handler(void)
 {
-    if(system_mode() == AUTOMATIC)
-    {
-  /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
-  SPARK_WLAN_SLEEP = 0;
-}
+    /* Wake up from Spark.sleep mode(SLEEP_MODE_WLAN) */
+    SPARK_WLAN_SLEEP = 0;
 }
 
 void manage_safe_mode()
