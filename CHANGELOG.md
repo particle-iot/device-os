@@ -7,6 +7,7 @@
 
 ### ENHANCEMENTS
  - Retrieve the LED brightness via `RGB.brightness()`
+ - More prominent color change on the RGB LED when there is a cloud connection error.
 
 ### BUGFIXES
 
