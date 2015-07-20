@@ -34,6 +34,8 @@ void application_start();
 void SysTickOverride(void);
 void Mode_Button_EXTI_irq(void);
 void HAL_USART1_Handler(void);
+void HAL_USART2_Handler(void);
+void HAL_USART3_Handler(void);
 void HardFault_Handler(void);
 void UsageFault_Handler(void);
 void ADC_irq();

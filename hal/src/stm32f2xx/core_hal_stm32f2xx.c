@@ -168,7 +168,7 @@ void HAL_Core_Config(void)
 
     HAL_Core_Config_systick_configuration();
 
-    HAL_RTC_Configuration();
+    //HAL_RTC_Configuration();
 
     HAL_RNG_Configuration();
 
