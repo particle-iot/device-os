@@ -272,9 +272,14 @@ void handle_cloud_connection(bool force_events)
                 }
 
                 LED_On(LED_RGB);
-
+                // delay a little to be sure the user sees the LED color, since
+                // the socket may quickly disconnect and the connection retried, turning
+                // the LED back to cyan
+                system_tick_t start = HAL_Timer_Get_Milli_Seconds();
                 Spark_Disconnect(); // clean up the socket
+                while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
                 SPARK_CLOUD_SOCKETED = 0;
+
             }
             else
             {
