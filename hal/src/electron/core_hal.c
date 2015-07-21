@@ -45,8 +45,10 @@ const unsigned HardFaultIndex = 3;
 const unsigned UsageFaultIndex = 6;
 const unsigned SysTickIndex = 15;
 const unsigned USART1Index = 53;
-//const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
-//const unsigned TIM7Index = 71;
+const unsigned USART2Index = 54;
+const unsigned USART3Index = 55;
+// const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
+// const unsigned TIM7Index = 71;
 
 /* Extern variables ---------------------------------------------------------*/
 /**
@@ -64,21 +66,23 @@ void HAL_Core_Config_systick_configuration(void) {
  * Called by HAL_Core_Config() to allow the HAL implementation to override
  * the interrupt table if required.
  */
-void HAL_Core_Setup_override_interrupts(void) 
+void HAL_Core_Setup_override_interrupts(void)
 {
-	memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
+    memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
-    // isrs[HardFaultIndex] = (uint32_t)HardFault_Handler;
-    // isrs[UsageFaultIndex] = (uint32_t)UsageFault_Handler;
+    isrs[HardFaultIndex] = (uint32_t)HardFault_Handler;
+    isrs[UsageFaultIndex] = (uint32_t)UsageFault_Handler;
     isrs[SysTickIndex] = (uint32_t)SysTickOverride;
-    // isrs[USART1Index] = (uint32_t)HAL_USART1_Handler;
-    // isrs[ButtonExtiIndex] = (uint32_t)Mode_Button_EXTI_irq;
-    // isrs[TIM7Index] = (uint32_t)TIM7_override;  // WICED uses this for a JTAG watchdog handler
+    isrs[USART1Index] = (uint32_t)HAL_USART1_Handler;
+    isrs[USART2Index] = (uint32_t)HAL_USART2_Handler;
+    isrs[USART3Index] = (uint32_t)HAL_USART3_Handler;
+    isrs[ButtonExtiIndex] = (uint32_t)Handle_Mode_Button_EXTI_irq;
+    //isrs[TIM7Index] = (uint32_t)TIM7_override;  // WICED uses this for a JTAG watchdog handler
     SCB->VTOR = (unsigned long)isrs;
 }
 
 /**
- * Called at the beginning of app_setup_and_loop() from main.cpp to 
+ * Called at the beginning of app_setup_and_loop() from main.cpp to
  * pre-initialize any low level hardware before the main loop runs.
  */
 void HAL_Core_Init(void)
@@ -97,6 +101,6 @@ void HAL_1Ms_Tick()
  * Called by HAL_Core_Setup() to perform any post-setup config after the
  * watchdog has been disabled.
  */
-void HAL_Core_Setup_finalize(void) 
+void HAL_Core_Setup_finalize(void)
 {
 }
