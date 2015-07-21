@@ -32,15 +32,17 @@ export MINIMAL=y
 export PRODUCT_FIRMWARE_VERSION=$(VERSION)
 export COMPILE_LTO=n
 SUBDIR_GOALS = all APP=tinker
+else
+SUBDIR_GOALS := $(MAKECMDGOALS)
 endif
 
+MAKECMDGOALS := all
+
+$(info $(SUBDIR_GOALS))
 MODULE=combined
 
 # only consider projects containing a makefile
 makefiles = $(foreach module,$(projects),$(wildcard $(module)/makefile))
-
-SUBDIR_GOALS ?= $(MAKECMDGOALS)
-MAKECMDGOALS := all
 
 all: make_deps
 
