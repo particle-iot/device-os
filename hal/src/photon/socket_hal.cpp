@@ -27,9 +27,10 @@
 #include "wiced.h"
 #include "service_debug.h"
 #include "spark_macros.h"
+#include "delay_hal.h"
 #include <algorithm>
-
 #include <vector>
+#include "lwip/api.h"
 
 /**
  * Socket handles
@@ -106,37 +107,39 @@ struct tcp_packet_t
  */
 struct tcp_socket_t : public wiced_tcp_socket_t {
     tcp_packet_t packet;
-    volatile bool closed;
+    bool open;
+    volatile bool closed_externally;
 
-    tcp_socket_t() : closed(false) {}
+    tcp_socket_t() : open(false), closed_externally(false) {}
+
+    ~tcp_socket_t() { wiced_tcp_delete_socket(this); }
+
+    void connected() { open = true; }
 
     bool isClosed() {
-        if (closed) {
-            close();
-        }
-        return closed;
+        return !open || closed_externally;
     }
 
     void notify_disconnected()
     {
-        closed = true;
+        closed_externally = true;
     }
 
     void close()
     {
-        if (this->arg) {
+        if (open) {
             wiced_tcp_disconnect(this);
-            wiced_tcp_delete_socket(this);
-            this->arg = NULL;
+            open = false;
         }
     }
 };
 
 struct udp_socket_t : wiced_udp_socket_t
 {
+    ~udp_socket_t() { wiced_udp_delete_socket(this); }
+
     void close()
     {
-        wiced_udp_delete_socket(this);
     }
 };
 
@@ -343,6 +346,10 @@ public:
         memset(this, 0, sizeof(*this));
     }
 
+    ~socket_t() {
+        dispose();
+    }
+
     uint8_t get_type() { return type; }
     bool is_type(socket_type_t t) { return t==type; }
     void set_type(socket_type_t t) { type = t; }
@@ -357,9 +364,8 @@ public:
         s.tcp_client = client;
     }
 
-   ~socket_t() {
-       if (!closed)
-            close();
+   void dispose() {
+       close();
        switch (type) {
            case TCP:
                s.tcp.~tcp_socket_t();
@@ -378,21 +384,23 @@ public:
    }
 
    void close() {
-       switch (type) {
-           case TCP:
-               s.tcp.close();
-               break;
-            case UDP:
-               s.udp.close();
-               break;
-           case TCP_SERVER:
-               s.tcp_server->close();
-               break;
-           case TCP_CLIENT:
-               s.tcp_client->close();
-               break;
+       if (!closed) {
+         switch (type) {
+            case TCP:
+                s.tcp.close();
+                break;
+             case UDP:
+                s.udp.close();
+                break;
+            case TCP_SERVER:
+                s.tcp_server->close();
+                break;
+            case TCP_CLIENT:
+                s.tcp_client->close();
+                break;
+        }
+        closed = true;
        }
-       closed = true;
    }
 
    static wiced_result_t notify_connected(wiced_tcp_socket_t*, void* socket) {
@@ -405,6 +413,10 @@ public:
 
    static wiced_result_t notify_disconnected(wiced_tcp_socket_t*, void* socket);
 
+   /**
+    * Determines if the socket implementation is still open.
+    * @return
+    */
    bool is_inner_open() {
        // TCP_SERVER closes this outer instance, and UDP is not connection based.
        switch (type) {
@@ -541,17 +553,32 @@ socket_t* from_handle(sock_handle_t handle) {
  */
 sock_handle_t socket_dispose(sock_handle_t handle) {
     if (socket_handle_valid(handle)) {
-        delete from_handle(handle);
+        from_handle(handle)->dispose();
     }
     return SOCKET_INVALID;
 }
 
+
+// todo - this doesn't free up memory used by each socket_t instance
 void close_all_list(socket_t*& list)
 {
     socket_t* current = list;
     while (current) {
         current->close();
         current = current->next;
+    }
+}
+
+void remove_disposed_list(socket_t*& list)
+{
+    socket_t* current = list;
+    while (current) {
+        socket_t* next = current->next;
+        if (current->get_type()==socket_t::NONE)
+        {
+            delete current;
+        }
+        current = next;
     }
     list = NULL;    // clear the list.
 }
@@ -588,13 +615,16 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addr
 {
     sock_result_t result = SOCKET_INVALID;
     socket_t* socket = from_handle(sd);
-    if (is_tcp(socket)) {
-        wiced_result_t wiced_result = wiced_tcp_bind(tcp(socket), WICED_ANY_PORT);
+    tcp_socket_t* tcp_socket = tcp(socket);
+    if (tcp_socket) {
+        wiced_result_t wiced_result = wiced_tcp_bind(tcp_socket, WICED_ANY_PORT);
         if (wiced_result==WICED_SUCCESS) {
             wiced_tcp_register_callbacks(tcp(socket), socket_t::notify_connected, socket_t::notify_received, socket_t::notify_disconnected, (void*)socket);
             SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr);
             unsigned timeout = 5*1000;
-            result = wiced_tcp_connect(tcp(socket), &ip_addr, port, timeout);
+            result = wiced_tcp_connect(tcp_socket, &ip_addr, port, timeout);
+            if (result==WICED_SUCCESS)
+                tcp_socket->connected();
         }
         if (result!=WICED_SUCCESS)
             result = as_sock_result(wiced_result);
@@ -811,7 +841,6 @@ sock_result_t socket_close(sock_handle_t sock)
     socket_t* socket = from_handle(sock);
     if (socket) {
         socket->close();
-        remove(socket);
         socket_dispose(sock);
         DEBUG("socket closed %x", int(sock));
     }
@@ -835,14 +864,14 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
     if (socket) {
         wiced_result_t wiced_result;
         socket->set_type((protocol==IPPROTO_UDP ? socket_t::UDP : socket_t::TCP));
-        if (type==socket_t::TCP) {
+        if (protocol==IPPROTO_TCP) {
             wiced_result = wiced_tcp_create_socket(tcp(socket), WICED_STA_INTERFACE);
         }
         else {
             wiced_result = wiced_udp_create_socket(udp(socket), port, WICED_STA_INTERFACE);
         }
         if (wiced_result!=WICED_SUCCESS) {
-            socket->set_type(socket_t::NONE);  // don't try to destruct the wiced resource since it was never created.
+            socket->set_type(socket_t::NONE);
             socket_dispose(result);
             result = as_sock_result(wiced_result);
         }
