@@ -6,7 +6,6 @@ GLOBAL_DEFINES += MODULE_DEPENDENCY=0,0,0
 
 # This is specific to the photon. Include the WICED WIFI
 WIFI_MODULE_WICED_LIB_FILES = $(HAL_LIB_COREV2)/resources.a $(HAL_LIB_DIR)/src/photon/resources.o
-$(info $(WIFI_MODULE_WICED_LIB_FILES))
 LINKER_FILE=$(SYSTEM_PART1_MODULE_PATH)/linker.ld
 LINKER_DEPS=$(LINKER_FILE) $(WIFI_MODULE_WICED_LIB_FILES)
 LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld
