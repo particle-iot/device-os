@@ -92,6 +92,9 @@
 #define A6 16
 #define A7 17
 
+#define DAC 16
+#define WKP 17
+
 #define RX 18
 #define TX 19
 
