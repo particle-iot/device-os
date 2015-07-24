@@ -31,6 +31,8 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#define SERVO_TIM_PWM_COUNTER_CLOCK 1000000 //TIM Counter clock = 1MHz
+
 #define SERVO_TIM_PRESCALER     (uint16_t)(SystemCoreClock / SERVO_TIM_PWM_COUNTER_CLOCK) - 1      //To get TIM counter clock = 1MHz
 #define SERVO_TIM_ARR           (uint16_t)(SERVO_TIM_PWM_COUNTER_CLOCK / SERVO_TIM_PWM_FREQ) - 1   //To get PWM period = 20ms
 
