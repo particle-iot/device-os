@@ -177,6 +177,12 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
 
     // TIM enable counter
     TIM_Cmd(PIN_MAP[pin].timer_peripheral, ENABLE);
+
+    if(PIN_MAP[pin].timer_peripheral == TIM1)
+    {
+        /* TIM1 Main Output Enable - required for TIM1 PWM output */
+        TIM_CtrlPWMOutputs(TIM1, ENABLE);
+    }
 }
 
 void HAL_Tone_Stop(uint8_t pin)
