@@ -136,6 +136,12 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
 
     if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
     {
+        //Since A4 and D3 share the same TIM3->Channel1, only one can work at a time
+        if(pin == 14)
+            PIN_MAP[3].timer_ccr = 0;
+        else if(pin == 3)
+            PIN_MAP[14].timer_ccr = 0;
+
         // Channel1 configuration
         TIM_OC1Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
         TIM_OC1PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Disable);
@@ -143,6 +149,12 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
     }
     else if(PIN_MAP[pin].timer_ch == TIM_Channel_2)
     {
+        //Since A5 and D2 share the same TIM3->Channel2, only one can work at a time
+        if(pin == 15)
+            PIN_MAP[2].timer_ccr = 0;
+        else if(pin == 2)
+            PIN_MAP[15].timer_ccr = 0;
+
         // Channel2 configuration
         TIM_OC2Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
         TIM_OC2PreloadConfig(PIN_MAP[pin].timer_peripheral, TIM_OCPreload_Disable);
@@ -288,16 +300,35 @@ static void Tone_TIM3_Handler(void)
     {
         TIM_ClearITPendingBit(TIM3, TIM_IT_CC1 );
         capture = TIM_GetCapture1(TIM3);
-        TIM_SetCompare1(TIM3, capture + PIN_MAP[14].timer_ccr);
-        if(PIN_MAP[14].user_property != -1)
+        //Since A4 and D3 share the same TIM3->Channel1, only one can work at a time
+        if(PIN_MAP[14].timer_ccr)
         {
-            if (PIN_MAP[14].user_property > 0)
+            TIM_SetCompare1(TIM3, capture + PIN_MAP[14].timer_ccr);
+            if(PIN_MAP[14].user_property != -1)
             {
-                PIN_MAP[14].user_property -= 1;
+                if (PIN_MAP[14].user_property > 0)
+                {
+                    PIN_MAP[14].user_property -= 1;
+                }
+                else
+                {
+                    HAL_Tone_Stop(14);
+                }
             }
-            else
+        }
+        else if(PIN_MAP[3].timer_ccr)
+        {
+            TIM_SetCompare1(TIM3, capture + PIN_MAP[3].timer_ccr);
+            if(PIN_MAP[3].user_property != -1)
             {
-                HAL_Tone_Stop(14);
+                if (PIN_MAP[3].user_property > 0)
+                {
+                    PIN_MAP[3].user_property -= 1;
+                }
+                else
+                {
+                    HAL_Tone_Stop(3);
+                }
             }
         }
     }
@@ -306,16 +337,35 @@ static void Tone_TIM3_Handler(void)
     {
         TIM_ClearITPendingBit(TIM3, TIM_IT_CC2);
         capture = TIM_GetCapture2(TIM3);
-        TIM_SetCompare2(TIM3, capture + PIN_MAP[15].timer_ccr);
-        if(PIN_MAP[15].user_property != -1)
+        //Since A5 and D2 share the same TIM3->Channel2, only one can work at a time
+        if(PIN_MAP[15].timer_ccr)
         {
-            if (PIN_MAP[15].user_property > 0)
+            TIM_SetCompare2(TIM3, capture + PIN_MAP[15].timer_ccr);
+            if(PIN_MAP[15].user_property != -1)
             {
-                PIN_MAP[15].user_property -= 1;
+                if (PIN_MAP[15].user_property > 0)
+                {
+                    PIN_MAP[15].user_property -= 1;
+                }
+                else
+                {
+                    HAL_Tone_Stop(15);
+                }
             }
-            else
+        }
+        else if(PIN_MAP[2].timer_ccr)
+        {
+            TIM_SetCompare2(TIM3, capture + PIN_MAP[2].timer_ccr);
+            if(PIN_MAP[2].user_property != -1)
             {
-                HAL_Tone_Stop(15);
+                if (PIN_MAP[2].user_property > 0)
+                {
+                    PIN_MAP[2].user_property -= 1;
+                }
+                else
+                {
+                    HAL_Tone_Stop(2);
+                }
             }
         }
     }
