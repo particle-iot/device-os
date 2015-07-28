@@ -47,7 +47,7 @@ const unsigned SysTickIndex = 15;
 const unsigned USART1Index = 53;
 const unsigned USART2Index = 54;
 const unsigned USART3Index = 55;
-// const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
+const unsigned ButtonExtiIndex = BUTTON1_EXTI_IRQ_INDEX;
 // const unsigned TIM7Index = 71;
 
 /* Extern variables ---------------------------------------------------------*/
