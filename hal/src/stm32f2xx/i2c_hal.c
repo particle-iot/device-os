@@ -178,6 +178,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
         if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
         {
             /* Send STOP Condition */
+            //Adding a STOP here is not helping because of STM32 limitation mentioned in ERRATA
             //I2C_GenerateSTOP(I2C1, ENABLE);
             return 0;
         }
@@ -261,6 +262,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
         if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
         {
             /* Send STOP Condition */
+            //Adding a STOP here is not helping because of STM32 limitation mentioned in ERRATA
             //I2C_GenerateSTOP(I2C1, ENABLE);
             return 4;
         }
