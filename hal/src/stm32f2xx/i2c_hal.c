@@ -36,15 +36,10 @@
 
 /* Private macro -------------------------------------------------------------*/
 #define BUFFER_LENGTH   32
-#define EVENT_TIMEOUT   100*1000
+#define EVENT_TIMEOUT   100
 
 #define TRANSMITTER     0x00
 #define RECEIVER        0x01
-
-inline system_tick_t isr_safe_micros()
-{
-    return HAL_Timer_Get_Micro_Seconds();
-}
 
 /* Private variables ---------------------------------------------------------*/
 static I2C_InitTypeDef I2C_InitStructure;
@@ -156,7 +151,7 @@ void HAL_I2C_End(void)
 
 uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
 {
-    uint32_t _micros;
+    uint32_t _millis;
     uint8_t bytesRead = 0;
 
     // clamp to buffer length
@@ -168,22 +163,22 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
 
-    _micros = isr_safe_micros();
+    _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
     {
-        if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) return 0;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
     }
 
     /* Send Slave address for read */
     I2C_Send7bitAddress(I2C1, address << 1, I2C_Direction_Receiver);
 
-    _micros = isr_safe_micros();
+    _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (isr_safe_micros() - _micros))
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
         {
             /* Send STOP Condition */
-            I2C_GenerateSTOP(I2C1, ENABLE);
+            //I2C_GenerateSTOP(I2C1, ENABLE);
             return 0;
         }
     }
@@ -193,8 +188,8 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     uint8_t numByteToRead = quantity;
 
     /* While there is data to be read */
-    _micros = isr_safe_micros();
-    while(numByteToRead && (EVENT_TIMEOUT > (isr_safe_micros() - _micros)))
+    _millis = HAL_Timer_Get_Milli_Seconds();
+    while(numByteToRead && (EVENT_TIMEOUT > (HAL_Timer_Get_Milli_Seconds() - _millis)))
     {
         if(numByteToRead == 1 && stop == true)
         {
@@ -219,7 +214,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
             numByteToRead--;
 
             /* Reset timeout to our last read */
-            _micros = isr_safe_micros();
+            _millis = HAL_Timer_Get_Milli_Seconds();
         }
     }
 
@@ -246,27 +241,27 @@ void HAL_I2C_Begin_Transmission(uint8_t address)
 
 uint8_t HAL_I2C_End_Transmission(uint8_t stop)
 {
-    uint32_t _micros;
+    uint32_t _millis;
 
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
 
-    _micros = isr_safe_micros();
+    _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
     {
-        if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) return 4;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
     }
 
     /* Send Slave address for write */
     I2C_Send7bitAddress(I2C1, txAddress, I2C_Direction_Transmitter);
 
-    _micros = isr_safe_micros();
+    _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (isr_safe_micros() - _micros))
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
         {
             /* Send STOP Condition */
-            I2C_GenerateSTOP(I2C1, ENABLE);
+            //I2C_GenerateSTOP(I2C1, ENABLE);
             return 4;
         }
     }
@@ -283,10 +278,10 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
         /* Point to the next byte to be written */
         pBuffer++;
 
-        _micros = isr_safe_micros();
+        _millis = HAL_Timer_Get_Milli_Seconds();
         while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
         {
-            if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) return 4;
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
         }
     }
 
