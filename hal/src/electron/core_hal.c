@@ -104,3 +104,62 @@ void HAL_1Ms_Tick()
 void HAL_Core_Setup_finalize(void)
 {
 }
+
+/*
+void WWDG_IRQHandler(void)
+{
+}
+
+void USART6_IRQHandler(void)
+{
+}
+
+void USART3_IRQHandler(void)
+{
+}
+
+void USART2_IRQHandler(void)
+{
+}
+
+void USART1_IRQHandler(void)
+{
+}
+
+void UART5_IRQHandler(void)
+{
+}
+
+void UART4_IRQHandler(void)
+{
+}
+
+void TIM8_UP_TIM13_IRQHandler(void)
+{
+}
+*/
+
+#if 0
+extern void Default_Handler( void );
+
+__attribute__(( interrupt, used, section( IRQ_SECTION ) )) void Default_Handler(void)
+{
+    uint32_t active_interrupt_vector = (uint32_t) ( SCB->ICSR & 0x3fU );
+
+    /* This variable tells you which interrupt vector is currently active */
+    (void)active_interrupt_vector;
+    __ASM("bkpt 0");
+
+    /* reset the processor immeditly if not debug */
+    //platform_mcu_reset( );
+
+    while( 1 )
+    {
+    }
+}
+
+#define PLATFORM_SET_DEFAULT_ISR( irq_handler, default_handler ) \
+        __attribute__(( weak, alias( #default_handler ))) void irq_handler ( void );
+
+PLATFORM_SET_DEFAULT_ISR(Default_Handler, WWDG_IRQHandler)
+#endif
