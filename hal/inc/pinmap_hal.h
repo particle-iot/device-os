@@ -72,6 +72,8 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 */
 #if PLATFORM_ID == 10 // Electron
 #define TOTAL_PINS 31
+#else if PLATFORM_ID == 8 // P1
+#define TOTAL_PINS 30
 #else
 #define TOTAL_PINS 24
 #endif
@@ -104,6 +106,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define A7 17
 
 // RX and TX pins are also ADCs on Photon
+//MAY BE INCORRECT FOR THE PHOTON AND P1
 #define A8 18
 #define A9 19
 
@@ -147,6 +150,16 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define RGBR 21
 #define RGBG 22
 #define RGBB 23
+
+#if PLATFORM_ID == 8 // P1
+// P1 SPARE pins
+#define B0    24
+#define B1    25
+#define B2    26
+#define B3    27
+#define B4    28
+#define B5    29
+#endif
 
 #if PLATFORM_ID == 10 // Electron
 // ELECTRON pins
