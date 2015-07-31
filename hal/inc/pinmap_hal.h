@@ -33,8 +33,8 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif    
-    
+#endif
+
 /* Exported types ------------------------------------------------------------*/
 
 typedef uint16_t pin_t;
@@ -48,7 +48,7 @@ typedef enum PinMode {
   AF_OUTPUT_DRAIN,    //Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
   AN_INPUT,           //Used internally for ADC Input
   AN_OUTPUT,          //Used internally for DAC Output
-  PIN_MODE_NONE=0xFF          
+  PIN_MODE_NONE=0xFF
 } PinMode;
 
 typedef enum {
@@ -70,8 +70,12 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 /*
 * Pin mapping. Borrowed from Wiring
 */
+#if PLATFORM_ID == 10 // Electron
+#define TOTAL_PINS 31
+#else
+#define TOTAL_PINS 24
+#endif
 
-#define TOTAL_PINS 21
 #define TOTAL_ANALOG_PINS 8
 #define FIRST_ANALOG_PIN 10
 
@@ -112,7 +116,6 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define WKP 17
 
 // Timer pins
-
 #define TIMER2_CH1 10
 #define TIMER2_CH2 11
 #define TIMER2_CH3 18
@@ -127,20 +130,34 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define TIMER4_CH2 0
 
 // SPI pins
-
 #define SS   12
 #define SCK  13
 #define MISO 14
 #define MOSI 15
 
 // I2C pins
-
 #define SDA  0
 #define SCL  1
 
 // DAC pins on Photon
 #define DAC1 16
 #define DAC2 13
+
+// RGB LED pins
+#define RGBR 21
+#define RGBG 22
+#define RGBB 23
+
+#if PLATFORM_ID == 10 // Electron
+// ELECTRON pins
+#define TXD_UC    24
+#define RXD_UC    25
+#define RI_UC     26
+#define CTS_UC    27
+#define RTS_UC    28
+#define PWR_UC    29
+#define RESET_UC  30
+#endif
 
 #define TIM_PWM_FREQ 500 //500Hz
 
