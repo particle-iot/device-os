@@ -20,7 +20,7 @@ void   sendSMS(const char * msg);
 
 void setup()
 {
-    //RGB.control(true);
+    RGB.control(true);
     // TEST RGB LED
     // FAIL_RED();
     // delay(500);
@@ -42,12 +42,12 @@ void setup()
     digitalWrite(RTS_UC, LOW); // VERY IMPORTANT FOR CORRECT OPERATION!!
 
     //_BKPT;
-    while(1) {
-        // FAIL_RED();
-        // delay(500);
-        // FAIL_BLUE();
-        // delay(500);
-    }
+    // while(1) {
+    //     FAIL_RED();
+    //     delay(500);
+    //     FAIL_BLUE();
+    //     delay(500);
+    // }
 
 	Serial.begin(9600);
 	Serial3.begin(9600);
@@ -132,6 +132,16 @@ void loop()
             // Send a test SMS
             sendSMS("Hello from Particle!");
         }
+        else if (c == '1') {
+            // Check the CPIN
+            Serial.println("Check the CPIN...");
+            sendATcommand("AT+CPIN?", "OK", 500);
+        }
+        else if (c == '2') {
+            // Check is SIM is 3G
+            Serial.println("Is SIM 3G?");
+            sendATcommand("AT+UUICC?", "OK", 500);
+        }
 	}
 
 	// if (Serial.available()) {
@@ -139,10 +149,10 @@ void loop()
 	// 	Serial3.write(c);
 	// }
 
-	// if (Serial3.available()) {
-	// 	char c = Serial3.read();
-	// 	Serial.write(c);
-	// }
+	if (Serial3.available()) {
+		char c = Serial3.read();
+		Serial.write(c);
+	}
 }
 
 void clearUbloxBuffer() {
@@ -233,8 +243,9 @@ void sendSMS(const char * msg)
 
     Serial3.print("AT+CMGF=1\r");
     delay(500);
-    Serial3.println("AT+CMGS=\"+15555555555\"");
+    Serial3.print("AT+CMGS=\"+16308906252\"\r");
     delay(1500);
-    Serial3.println(msg);
-    Serial3.println((char)26); // End AT command with a ^Z, ASCII code 26
+    Serial3.print(msg);
+    Serial3.print((char)26); // End AT command with a ^Z, ASCII code 26
+    Serial3.print("\r");
 }
