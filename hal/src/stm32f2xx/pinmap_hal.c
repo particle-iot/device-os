@@ -70,6 +70,14 @@ STM32_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* RGBR          */ { GPIOA, GPIO_Pin_1, GPIO_PinSource1, NONE, NONE, TIM2, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
 /* RGBG          */ { GPIOA, GPIO_Pin_2, GPIO_PinSource2, NONE, NONE, TIM2, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
 /* RGBB          */ { GPIOA, GPIO_Pin_3, GPIO_PinSource3, NONE, NONE, TIM2, TIM_Channel_4, PIN_MODE_NONE, 0, 0 }
+#if PLATFORM_ID == 8 // P1
+/* B0        */,{ GPIOB, GPIO_Pin_0, GPIO_PinSource0, ADC_Channel_8, NONE, TIM3, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
+/* B1        */ { GPIOB, GPIO_Pin_1, GPIO_PinSource1, ADC_Channel_9, NONE, TIM3, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
+/* B2        */ { GPIOC, GPIO_Pin_0, GPIO_PinSource0, ADC_Channel_12, NONE, NONE, NONE, PIN_MODE_NONE, 0, 0 },
+/* B3        */ { GPIOC, GPIO_Pin_4, GPIO_PinSource4, ADC_Channel_14, NONE, NONE, NONE, PIN_MODE_NONE, 0, 0 },
+/* B4        */ { GPIOC, GPIO_Pin_13, GPIO_PinSource13, NONE, NONE, NONE, NONE, PIN_MODE_NONE, 0, 0 },
+/* B5        */ { GPIOC, GPIO_Pin_1, GPIO_PinSource1, ADC_Channel_11, NONE, NONE, NONE, PIN_MODE_NONE, 0, 0 }
+#endif
 #if PLATFORM_ID == 10 // Electron
 /* TXD_UC        */,{ GPIOB, GPIO_Pin_10, GPIO_PinSource10, NONE, NONE, TIM2, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
 /* RXD_UC        */ { GPIOB, GPIO_Pin_11, GPIO_PinSource11, NONE, NONE, TIM2, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
