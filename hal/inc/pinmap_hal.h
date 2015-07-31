@@ -153,12 +153,12 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 
 #if PLATFORM_ID == 8 // P1
 // P1 SPARE pins
-#define B0    24
-#define B1    25
-#define B2    26
-#define B3    27
-#define B4    28
-#define B5    29
+#define P1S0    24
+#define P1S1    25
+#define P1S2    26
+#define P1S3    27
+#define P1S4    28
+#define P1S5    29
 #endif
 
 #if PLATFORM_ID == 10 // Electron
