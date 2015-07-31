@@ -1,15 +1,16 @@
 # Integration Tests for the makefile build
 
-# Setup
+## Setup
 
 Install BATS.
 
-# Running
+## Running
 
 ```
 cd build/test
 bats build.bats
 ```
 
+That's it. :-)
 
 

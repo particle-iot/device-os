@@ -1,5 +1,7 @@
 
-The firmware and bootloader are built by running the `make` command.
+# The Build System
+
+## Quick Start
 
 Running
 
@@ -30,13 +32,14 @@ build the artifacts that make up that component.
 These are the primary components that produce executable code for a device:
 
 - bootloader
-- main
-- modules
+- main (builds application firmware)
+- modules (builds system+application firmware)
 
-The other projects are libraries used by these main projects.
+The other projects are libraries used by these primary projects.
 
 When building firmware, it's a good idea to build from `main`, since this offers
-additional features compared to building in the root directory.
+additional features compared to building in the root directory, such as `program-dfu` to flash
+the produced firmware to the device.
 
 ## Updating System Firmware (Photon)
 
@@ -46,16 +49,15 @@ to update the system firmware to the latest version:
 - put the Photon in DFU mode
 - `cd modules`
 - `make PLATFORM=photon clean all program-dfu`
-- You can optionally add `APP`/`APPDIR`/`TEST` values to the command above to build a specific user app.
+- You can optionally add `APP`/`APPDIR`/`TEST` values to the command above to build a specific application as you would when building `main`.
 
-This will flash the latest system modules and the default user application to your device.
+This will flash the latest system modules and the application to your device.
 
 A key indicator that this is necessary is that the Photon doesn't run your application
-after flashing, due to a version mis-match. (A future release will turn the LED purple
-to indicate Safe Mode when the user firmware isn't run.)
+after flashing, due to a version mismatch. The onboard LED will breathe magenta
+to indicate Safe Mode when the application firmware isn't run.
 
-
-# Quick Start
+# Overview
 
 ## Targets
 
@@ -87,6 +89,7 @@ When building `main` or `modules`:
 - `TEST` builds the test application stored in `user/tests/$(TEST)`.
 - `USER_MAKEFILE`: when `APPDIR` is used this specifies the location of the makefile
     to include, relative to `APPDIR`. The default is `build.mk`.
+- `DEBUG_BUILD` described in [debugging](debugging.md)
 
 When building `main`:
 
@@ -229,8 +232,7 @@ PRODUCT_VERSION(version)
 ```
 
 
-
-## Building a User Application
+## Building an Application
 
 To build a new application, first create a subdirectory under `user/applications/`.
 You'll find the Tinker app is already there. Let's say we want to create a new
@@ -259,6 +261,19 @@ make APP=myapp
 
 This will build your application with the resulting `.bin` file available in
 `build/target/main/platform-0/applications/myapp/myapp.bin`.
+
+### Including Libraries in your Application
+
+To include libraries in your application, copy or symblink the library sources
+into your application folder.
+
+To importing libraries from the WebIDE:
+ - rename the `firmware` folder to the same name as the library
+ - remove the examples folder
+
+The library should then compile successfully
+
+
 
 ## Changing the Target Directory
 

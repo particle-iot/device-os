@@ -38,7 +38,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 #define BUFFER_LENGTH   32
-#define EVENT_TIMEOUT   100*1000 // micros
+#define EVENT_TIMEOUT   100
 
 #define TRANSMITTER     0x00
 #define RECEIVER        0x01
@@ -68,11 +68,6 @@ static uint8_t transmitting = 0;
 /* Private function prototypes -----------------------------------------------*/
 static void (*callback_onRequest)(void);
 static void (*callback_onReceive)(int);
-
-inline system_tick_t isr_safe_micros()
-{
-    return HAL_Timer_Get_Micro_Seconds();
-}
 
 #ifdef I2C_ENABLE_DMA_USE
 //Initializes DMA channel used by the I2C1 peripheral based on Direction
@@ -204,7 +199,7 @@ void HAL_I2C_End(void)
 
 uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
 {
-  uint32_t _micros;
+  uint32_t _millis;
   uint8_t bytesRead = 0;
 
   // clamp to buffer length
@@ -216,22 +211,23 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
   /* Send START condition */
   I2C_GenerateSTART(I2C1, ENABLE);
 
-  _micros = isr_safe_micros();
+  _millis = HAL_Timer_Get_Milli_Seconds();
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
   {
-    if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) return 0;
+    if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
   }
 
   /* Send Slave address for read */
   I2C_Send7bitAddress(I2C1, address, I2C_Direction_Receiver);
 
-  _micros = isr_safe_micros();
+  _millis = HAL_Timer_Get_Milli_Seconds();
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
   {
-    if(EVENT_TIMEOUT < (isr_safe_micros() - _micros))
+    if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
     {
       /* Send STOP Condition */
-      I2C_GenerateSTOP(I2C1, ENABLE);
+      //Adding a STOP here is not helping because of STM32 limitation mentioned in ERRATA
+      //I2C_GenerateSTOP(I2C1, ENABLE);
       return 0;
     }
   }
@@ -251,10 +247,10 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     DMA_Cmd(DMA1_Channel7, ENABLE);
 
     /* Wait until DMA Transfer Complete */
-    _micros = isr_safe_micros();
+    _millis = HAL_Timer_Get_Milli_Seconds();
     while(!DMA_GetFlagStatus(DMA1_FLAG_TC7))
     {
-      if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) break;
+      if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) break;
     }
 
     /* Disable DMA RX Channel */
@@ -283,8 +279,8 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     uint8_t numByteToRead = quantity;
 
     /* While there is data to be read */
-    _micros = isr_safe_micros();
-    while(numByteToRead && (EVENT_TIMEOUT > (isr_safe_micros() - _micros)))
+    _millis = HAL_Timer_Get_Milli_Seconds();
+    while(numByteToRead && (EVENT_TIMEOUT > (HAL_Timer_Get_Milli_Seconds() - _millis)))
     {
       if(numByteToRead == 1 && stop == true)
       {
@@ -309,7 +305,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
         numByteToRead--;
 
         /* Reset timeout to our last read */
-        _micros = isr_safe_micros();
+        _millis = HAL_Timer_Get_Milli_Seconds();
       }
     }
   }
@@ -337,27 +333,28 @@ void HAL_I2C_Begin_Transmission(uint8_t address)
 
 uint8_t HAL_I2C_End_Transmission(uint8_t stop)
 {
-  uint32_t _micros;
+  uint32_t _millis;
 
   /* Send START condition */
   I2C_GenerateSTART(I2C1, ENABLE);
 
-  _micros = isr_safe_micros();
+  _millis = HAL_Timer_Get_Milli_Seconds();
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
   {
-    if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) return 4;
+    if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
   }
 
   /* Send Slave address for write */
   I2C_Send7bitAddress(I2C1, txAddress, I2C_Direction_Transmitter);
 
-  _micros = isr_safe_micros();
+  _millis = HAL_Timer_Get_Milli_Seconds();
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
   {
-    if(EVENT_TIMEOUT < (isr_safe_micros() - _micros))
+    if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
     {
       /* Send STOP condition */
-      I2C_GenerateSTOP(I2C1, ENABLE);
+      //Adding a STOP here is not helping because of STM32 limitation mentioned in ERRATA
+      //I2C_GenerateSTOP(I2C1, ENABLE);
       return 4;
     }
   }
@@ -377,10 +374,10 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     DMA_Cmd(DMA1_Channel6, ENABLE);
 
     /* Wait until DMA Transfer Complete */
-    _micros = isr_safe_micros();
+    _millis = HAL_Timer_Get_Milli_Seconds();
     while(!DMA_GetFlagStatus(DMA1_FLAG_TC6))
     {
-      if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) return 4;
+      if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
     }
 
     /* Disable DMA TX Channel */
@@ -407,10 +404,10 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
       /* Point to the next byte to be written */
       pBuffer++;
 
-      _micros = isr_safe_micros();
+      _millis = HAL_Timer_Get_Milli_Seconds();
       while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
       {
-        if(EVENT_TIMEOUT < (isr_safe_micros() - _micros)) return 4;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
       }
     }
   }

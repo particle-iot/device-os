@@ -7,15 +7,16 @@ PLATFORM_DFU = 0x8020000
 
 # HAL Dependency only for the WICED wifi nvmem resource
 # Platform dependency is for the LED implementation used by rgbled.c in services.
-MAKE_DEPENDENCIES = communication hal services platform
+MAKE_DEPENDENCIES = communication hal-dynalib services platform hal
 DEPENDENCIES = $(MAKE_DEPENDENCIES) dynalib rt-dynalib modules/photon/system-part2
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
 
-# dependent on hal lib only for the wwd_nvmem_resource
-LIBS += $(MAKE_DEPENDENCIES)
-LIB_DEPS += $(COMMUNICATION_LIB_DEP) $(HAL_LIB_DEP) $(SERVICES_LIB_DEP) $(PLATFORM_LIB_DEP)
+# dependent on hal lib only for the wwd_nvmem_resource, which is managed specifically in build.mk
+LIBS += $(filter-out hal,$(MAKE_DEPENDENCIES))
+LIB_DEPS += $(COMMUNICATION_LIB_DEP) $(HAL_DYNALIB_LIB_DEP) $(SERVICES_LIB_DEP) $(PLATFORM_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
+
 
 TARGET=elf bin lst hex size
 

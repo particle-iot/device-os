@@ -2,14 +2,19 @@
 ## v0.4.4
 
 ### FEATURES
-
+ - logging output [documentation](docs/debugging.md)
+ - pressing 'v' in SoftAP mode displays the system version. FIRM-128
 
 ### ENHANCEMENTS
-
+ - Retrieve the LED brightness via `RGB.brightness()`
+ - More prominent color change on the RGB LED when there is a cloud connection error.
 
 ### BUGFIXES
 
  - [Regression] System connects WiFi when Spark.connect() is called after WiFi.on() [#484](https://github.com/spark/firmware/issues/484)
+ - Debug build now working.
+ - PWM issue fixed - 500Hz output on all channels [#492](https://github.com/spark/firmware/issues/492)
+ - Tone issue fixed on D2,D3,RX,TX [#483](https://github.com/spark/firmware/issues/483)
 
 
 ## v0.4.3

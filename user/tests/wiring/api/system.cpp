@@ -57,3 +57,9 @@ test(system_mode) {
     API_COMPILE({ SYSTEM_MODE(MANUAL) });
 
 }
+
+test(system_version) {
+
+    API_COMPILE(Serial.println(SYSTEM_VERSION_STRING));
+    API_COMPILE(Serial.println(SYSTEM_VERSION));
+}

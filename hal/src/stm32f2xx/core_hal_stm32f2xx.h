@@ -31,13 +31,20 @@ void application_start();
  * to their appropriate interrupt sources.
  */
 
+void NMI_Handler(void);
+void HardFault_Handler(void);
+void UsageFault_Handler(void);
+void MemManage_Handler(void);
+void BusFault_Handler(void);
+void SVC_Handler(void);
+void DebugMon_Handler(void);
+void PendSV_Handler(void);
 void SysTickOverride(void);
+
 void Mode_Button_EXTI_irq(void);
 void HAL_USART1_Handler(void);
 void HAL_USART2_Handler(void);
 void HAL_USART3_Handler(void);
-void HardFault_Handler(void);
-void UsageFault_Handler(void);
 void ADC_irq();
 void TIM1_CC_irq(void);
 void TIM2_irq(void);
@@ -60,6 +67,8 @@ void CAN2_SCE_irq();
 // etc... all ISRs ending _irq()). These are named after the values they had in WICED
 // but they could easily be renamed using #defines if they need to conform to a different
 // naming scheme.
+
+
 
 /**
  * A shared handler for the EXTI interrupt to process presses of the mode button.

@@ -17,6 +17,7 @@
 #include "spark_protocol_functions.h"
 #include "string_convert.h"
 #include "appender.h"
+#include "system_version.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -139,12 +140,6 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
     }
     return result;
 }
-
-#ifdef MODULAR_FIRMWARE
-#define USER_OTA_MODULE_FUNCTION    MODULE_FUNCTION_USER_PART
-#else
-#define USER_OTA_MODULE_FUNCTION    MODULE_FUNCTION_MONO_FIRMWARE
-#endif
 
 void serial_dump(const char* msg, ...);
 
@@ -314,3 +309,13 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
     return result;
 }
 
+bool system_version_info(Appender* appender)
+{
+    bool result = appender->append("system firmware version: " SYSTEM_VERSION_STRING
+#if  defined(SYSTEM_MINIMAL)
+" minimal"
+#endif
+    "\n");
+
+    return result;
+}

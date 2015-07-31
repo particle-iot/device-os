@@ -234,8 +234,10 @@ void establish_cloud_connection()
         {
             cloud_connection_failed();
             SPARK_CLOUD_SOCKETED = 0;
-            //if (!SPARK_WLAN_RESET)
-            //    handle_cfod();
+#if PLATFORM_ID<3
+            if (!SPARK_WLAN_RESET)
+                handle_cfod();
+#endif
             wlan_set_error_count(Spark_Error_Count);
         }
     }
@@ -272,9 +274,14 @@ void handle_cloud_connection(bool force_events)
                 }
 
                 LED_On(LED_RGB);
-
+                // delay a little to be sure the user sees the LED color, since
+                // the socket may quickly disconnect and the connection retried, turning
+                // the LED back to cyan
+                system_tick_t start = HAL_Timer_Get_Milli_Seconds();
                 Spark_Disconnect(); // clean up the socket
+                while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
                 SPARK_CLOUD_SOCKETED = 0;
+
             }
             else
             {

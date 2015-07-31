@@ -33,8 +33,8 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif    
-    
+#endif
+
 /* Exported types ------------------------------------------------------------*/
 
 typedef uint16_t pin_t;
@@ -48,7 +48,7 @@ typedef enum PinMode {
   AF_OUTPUT_DRAIN,    //Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
   AN_INPUT,           //Used internally for ADC Input
   AN_OUTPUT,          //Used internally for DAC Output
-  PIN_MODE_NONE=0xFF          
+  PIN_MODE_NONE=0xFF
 } PinMode;
 
 typedef enum {
@@ -70,8 +70,12 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 /*
 * Pin mapping. Borrowed from Wiring
 */
-
+#if PLATFORM_ID == 10 // Electron
 #define TOTAL_PINS 31
+#else
+#define TOTAL_PINS 24
+#endif
+
 #define TOTAL_ANALOG_PINS 8
 #define FIRST_ANALOG_PIN 10
 
@@ -145,6 +149,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define RGBG 22
 #define RGBB 23
 
+#if PLATFORM_ID == 10 // Electron
 // ELECTRON pins
 #define TXD_UC    24
 #define RXD_UC    25
@@ -153,11 +158,10 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define RTS_UC    28
 #define PWR_UC    29
 #define RESET_UC  30
+#endif
 
-#define TIM_PWM_COUNTER_CLOCK_FREQ 24000000 //TIM Counter clock = 24MHz
 #define TIM_PWM_FREQ 500 //500Hz
 
-#define SERVO_TIM_PWM_COUNTER_CLOCK 1000000 //TIM Counter clock = 1MHz
 #define SERVO_TIM_PWM_FREQ 50//50Hz                                                                                      //20ms = 50Hz
 
 #define LSBFIRST 0

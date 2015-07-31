@@ -10,7 +10,7 @@ LIBS += $(MAKE_DEPENDENCIES)
 LIB_DEPS += $(PLATFORM_LIB_DEP) $(SERVICES_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
 
-COMPILE_LTO=y
+export COMPILE_LTO=y
 
 include ../build/platform-id.mk
 
@@ -18,7 +18,7 @@ include ../build/platform-id.mk
 ifeq ("$(ARCH)","gcc")
 TARGET=none
 else
-TARGET=elf bin hex size 
+TARGET=elf bin hex size
 endif
 
 
