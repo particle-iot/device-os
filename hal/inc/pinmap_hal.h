@@ -71,14 +71,20 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 * Pin mapping. Borrowed from Wiring
 */
 #if PLATFORM_ID == 10 // Electron
-#define TOTAL_PINS 31
-#else if PLATFORM_ID == 8 // P1
+#define TOTAL_PINS 47
+#elif PLATFORM_ID == 8 // P1
 #define TOTAL_PINS 30
-#else
+#else // Must be Photon
 #define TOTAL_PINS 24
 #endif
 
+#if PLATFORM_ID == 10 // Electron
+#define TOTAL_ANALOG_PINS 8 /* NOT USED IN CODE, BUT UPDATE THIS LATER ANYWAY! */
+#elif PLATFORM_ID == 8 // P1
+#define TOTAL_ANALOG_PINS 13
+#else // Must be Photon
 #define TOTAL_ANALOG_PINS 8
+#endif
 #define FIRST_ANALOG_PIN 10
 
 #define D0 0
@@ -104,11 +110,6 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 
 // WKP pin is also an ADC on Photon
 #define A7 17
-
-// RX and TX pins are also ADCs on Photon
-//MAY BE INCORRECT FOR THE PHOTON AND P1
-#define A8 18
-#define A9 19
 
 #define RX 18
 #define TX 19
@@ -163,13 +164,32 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 
 #if PLATFORM_ID == 10 // Electron
 // ELECTRON pins
-#define TXD_UC    24
-#define RXD_UC    25
-#define RI_UC     26
-#define CTS_UC    27
-#define RTS_UC    28
-#define PWR_UC    29
-#define RESET_UC  30
+#define B0        24
+#define B1        25
+#define B2        26
+#define B3        27
+#define B4        28
+#define B5        29
+#define C0        30
+#define C1        31
+#define C2        32
+#define C3        33
+#define C4        34
+#define C5        35
+// The following pins are only defined for easy access during development.
+// Will be removed later as they are internal I/O and users
+// should not have too easy of access or bad code could do harm.
+#define TXD_UC      36
+#define RXD_UC      37
+#define RI_UC       38
+#define CTS_UC      39
+#define RTS_UC      40
+#define PWR_UC      41
+#define RESET_UC    42
+#define LVLOE_UC    43
+#define PM_SDA_UC   44
+#define PM_SCL_UC   45
+#define LOW_BAT_UC  46
 #endif
 
 #define TIM_PWM_FREQ 500 //500Hz
