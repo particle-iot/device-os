@@ -1,8 +1,9 @@
 {
-"axes":{
-"DEBUG_BUILD":["y","n"],
-"PLATFORM":["core","photon","p1"],
-"COMPILE_LTO":["y","n"],
-"SPARK_CLOUD":["y","n"]
-}
+  "axes":{
+    "DEBUG_BUILD":["y","n"],
+    "PLATFORM":["core","photon", "P1"],
+    "COMPILE_LTO":["y","n"],
+    "SPARK_CLOUD":["y","n"],
+    "APP": [null, "tinker", "blank"]
+  }
 }
