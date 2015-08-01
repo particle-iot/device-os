@@ -230,11 +230,14 @@ MOD_INFO_SUFFIX_LEN ?= 2800
 MOD_INFO_SUFFIX = $(DEFAULT_SHA_256)$(MOD_INFO_SUFFIX_LEN)
 CRC_BLOCK_CONTENTS = $(MOD_INFO_SUFFIX)78563412
 
-ifneq (WINDOWS,$(MAKE_OS))
-# this is for CentOS/RHEL
+# OS X + debian systems have shasum, RHEL + windows have sha256sum
+SHASUM_COMMAND_VERSION := $(shell shasum --version 2>/dev/null)
+SHA256SUM_COMMAND_VERSION := $(shell sha256sum --version 2>/dev/null)
+ifdef SHASUM_COMMAND_VERSION
+SHA_256 = shasum -a 256
+else ifdef SHA256SUM_COMMAND_VERSION
 SHA_256 = sha256sum
-# TODO: add if clause for OS X: they use `shasum -a 256`
-else
+else ifeq (WINDOWS,$(MAKE_OS))
 SHA_256 = $(COMMON_BUILD)/bin/win32/sha256sum
 endif
 
