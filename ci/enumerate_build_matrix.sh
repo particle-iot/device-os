@@ -1,11 +1,17 @@
 #!/bin/bash
-# Build matrix enumeration in bash, barf!
-# This is meant to be executed in the `main` dir as pwd
+############
+# About
+# ===
+# Build matrix enumeration in bash.
+# Stops executing and returns exit 1 if any of them fail
+############
 
-# set pwd
+
+# set current working dir
 cd main
 
 # define build matrix dimensions
+# "" means execute execute the make command without that var specified
 DEBUG_BUILD=( y n )
 PLATFORM=( core photon P1 )
 COMPILE_LTO=( y n )
