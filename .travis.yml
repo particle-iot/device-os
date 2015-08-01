@@ -4,14 +4,13 @@ before_install:
 install:
   - npm install -g spark-cli
   - ./ci/install_arm_gcc.sh && ./ci/install_gcc.sh
-  - ./ci/create_spark_cli_json.sh
+  # TODO: switch to particle-cli instead of spark-cli - ./ci/create_spark_cli_json.sh
 
 script:
-  - make all
   - ./ci/unit_tests.sh
   - ./ci/enumerate_build_matrix.sh
-  # - ./ci/integration_tests.sh
-  #  - ./ci/test_memory_available_with_real_core.sh
+  # TODO - ./ci/integration_tests.sh
+  # TODO  - ./ci/test_memory_available_with_real_core.sh
 
 #after_success: ./ci/update-gh-pages.sh
 
