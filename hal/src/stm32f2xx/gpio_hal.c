@@ -93,6 +93,10 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
     {
         RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
     }
+    else if (gpio_port == GPIOD)
+    {
+        RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+    }
 
     GPIO_InitStructure.GPIO_Pin = gpio_pin;
     
