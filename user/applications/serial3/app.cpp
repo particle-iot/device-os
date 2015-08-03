@@ -11,6 +11,9 @@ uint32_t lastFlash = now();
 #define FAIL_BLUE() RGB.color(0,0,255)
 #define RGB_OFF() RGB.color(0,0,0)
 #define _BKPT __ASM("bkpt 0")
+#ifndef UBLOX_PHONE_NUM
+    #define UBLOX_PHONE_NUM "5555555555"
+#endif
 
 int8_t ensureUbloxIsReset();
 void   clearUbloxBuffer();
@@ -52,6 +55,7 @@ void setup()
 	Serial.begin(9600);
 	Serial3.begin(9600);
 	Serial.println("Hi, I'm Serial USB!");
+    Serial.println(UBLOX_PHONE_NUM);
 
     // TEST RGB LED
     FAIL_RED();
@@ -132,6 +136,11 @@ void loop()
             // Send a test SMS
             sendSMS("Hello from Particle!");
         }
+        else if (c == '0') {
+            // Check if the module is registered on the network
+            Serial.println("Check Network Registration...");
+            sendATcommand("AT+CREG=?", "OK", 500);
+        }
         else if (c == '1') {
             // Check the CPIN
             Serial.println("Check the CPIN...");
@@ -141,6 +150,11 @@ void loop()
             // Check is SIM is 3G
             Serial.println("Is SIM 3G?");
             sendATcommand("AT+UUICC?", "OK", 500);
+        }
+        else if (c == '3') {
+            // Check signal strength
+            Serial.println("Checking Signal Strength...");
+            sendATcommand("AT+CSQ", "OK", 500);
         }
 	}
 
@@ -243,7 +257,9 @@ void sendSMS(const char * msg)
 
     Serial3.print("AT+CMGF=1\r");
     delay(500);
-    Serial3.print("AT+CMGS=\"+16308906252\"\r");
+    Serial3.print("AT+CMGS=\"+1");
+    Serial3.print(UBLOX_PHONE_NUM);
+    Serial3.print("\"\r");
     delay(1500);
     Serial3.print(msg);
     Serial3.print((char)26); // End AT command with a ^Z, ASCII code 26

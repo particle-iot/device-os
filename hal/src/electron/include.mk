@@ -1,5 +1,5 @@
 
-# Define the prefix to this directory. 
+# Define the prefix to this directory.
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
 HAL_SRC_ELECTRON_INCL_PATH = $(TARGET_HAL_PATH)/src/electron
@@ -11,6 +11,12 @@ HAL_INCL_STM32F2XX_PATH = $(TARGET_HAL_PATH)/src/stm32f2xx
 #HAL_RTOS=FreeRTOS
 #HAL_NETWORK=LwIP
 #---------------------------
+
+# Keeps phone numbers private
+# Simply add UBLOX_PHONE_NUM=2223334444 on the command line
+ifdef UBLOX_PHONE_NUM
+CFLAGS += -DUBLOX_PHONE_NUM='"$(UBLOX_PHONE_NUM)"'
+endif
 
 # if we are being compiled with platform as a dependency, then also include
 # implementation headers.
@@ -53,7 +59,7 @@ endif
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 #
 # assembler startup script
-ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S 
+ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup
 ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=1
 #
