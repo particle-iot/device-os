@@ -20,6 +20,7 @@ void   clearUbloxBuffer();
 int8_t sendATcommand(const char* ATcommand, const char* expected_answer1, system_tick_t timeout);
 int8_t ensureATReturnsOK();
 void   sendSMS(const char * msg);
+void   executeCommand(char c);
 
 void setup()
 {
@@ -84,10 +85,24 @@ void loop()
 	// 	lastFlash = now();
 	// 	digitalWrite(D7, !digitalRead(D7));
 	// }
-
+    static String com;
 	if ( Serial.available() ) {
 		char c = Serial.read();
+        com += c;
+        Serial.write(c); //echo input
+        if (c == '\r') {
+            if (com.charAt(0)=='~') {
+                // ~a<ENTER> = AT OK test, ~3<ENTER> = signal strentgh test
+                executeCommand(com.charAt(1));
+            }
+            else {
+                // Anything not preceeded by ~ will be sent as plain text
+                Serial3.print(com);
+            }
+            com = "";
+        }
 
+#if 0
 		if (c == 'a') {
             sendATcommand("AT", "OK", 500);
         }
@@ -156,6 +171,7 @@ void loop()
             Serial.println("Checking Signal Strength...");
             sendATcommand("AT+CSQ", "OK", 500);
         }
+#endif
 	}
 
 	// if (Serial.available()) {
@@ -167,6 +183,77 @@ void loop()
 		char c = Serial3.read();
 		Serial.write(c);
 	}
+}
+
+void executeCommand(char c) {
+    if (c == 'a') {
+        sendATcommand("AT", "OK", 500);
+    }
+    else if (c == 'p') {
+        digitalWrite(PWR_UC, !digitalRead(PWR_UC));
+        Serial.print("Power is: ");
+        Serial.println(digitalRead(PWR_UC));
+    }
+    else if (c == 'r') {
+        digitalWrite(RESET_UC, !digitalRead(RESET_UC));
+        Serial.print("Reset is: ");
+        Serial.println(digitalRead(RESET_UC));
+    }
+    else if (c == 'i') {
+        Serial.println("What's the IMEI number?");
+        sendATcommand("AT+CGSN", "OK", 500);
+    }
+    else if (c == 'o') {
+        // Power to the 3V8 input measures 34uA after this is called
+        Serial.println("Power Off...");
+        sendATcommand("AT+CPWROFF", "OK", 500);
+    }
+    else if (c == 'f') {
+        Serial.println("What's the FUN level?");
+        sendATcommand("AT+CFUN?", "OK", 500);
+    }
+    else if (c == 'd') {
+        // Power to the 3V8 input measures 2.8mA constantly after this is called
+        Serial.println("Minimum Fun Level...");
+        sendATcommand("AT+CFUN=0,0", "OK", 500);
+    }
+    else if (c == 'D') {
+        // Power to the 3V8 input measures 2.8mA for >10s, then 56mA for 4s, repeating
+        // after this is called.
+        Serial.println("Standard Fun Level...");
+        sendATcommand("AT+CFUN=1,0", "OK", 500);
+    }
+    else if (c == 's') {
+        // Power to the 3V8 input measures 2.8mA for >10s, then 56mA for 4s, repeating
+        // after this is called.
+        Serial.println("STM32 Deep Sleep for 10 seconds...");
+        System.sleep(SLEEP_MODE_DEEP, 10);
+        // Does not currently wake up after 10 seconds, press reset or HIGH on WKP.
+    }
+    else if (c == 'm') {
+        // Send a test SMS
+        sendSMS("Hello from Particle!");
+    }
+    else if (c == '0') {
+        // Check if the module is registered on the network
+        Serial.println("Check Network Registration...");
+        sendATcommand("AT+CREG=?", "OK", 500);
+    }
+    else if (c == '1') {
+        // Check the CPIN
+        Serial.println("Check the CPIN...");
+        sendATcommand("AT+CPIN?", "OK", 500);
+    }
+    else if (c == '2') {
+        // Check is SIM is 3G
+        Serial.println("Is SIM 3G?");
+        sendATcommand("AT+UUICC?", "OK", 500);
+    }
+    else if (c == '3') {
+        // Check signal strength
+        Serial.println("Checking Signal Strength...");
+        sendATcommand("AT+CSQ", "OK", 500);
+    }
 }
 
 void clearUbloxBuffer() {
