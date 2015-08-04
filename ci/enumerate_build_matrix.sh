@@ -16,7 +16,8 @@ DEBUG_BUILD=( y n )
 PLATFORM=( core photon P1 )
 COMPILE_LTO=( y n )
 SPARK_CLOUD=( y n )
-APP=( "" tinker blank product_id_and_version )
+# TODO: Once FIRM-161 is fixed, change APP to this: APP=( "" tinker blank product_id_and_version )
+APP=( "" tinker blank )
 
 # enumerate the matrix, exit 1 if anything fails
 for db in "${DEBUG_BUILD[@]}"
