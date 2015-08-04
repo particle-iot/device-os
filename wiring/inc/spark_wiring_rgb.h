@@ -21,7 +21,11 @@
  */
 
 #include <stdint.h>
+#include <functional>
 #include "rgbled.h"
+
+typedef void (raw_rgb_change_handler_t)(uint8_t, uint8_t, uint8_t);
+typedef std::function<raw_rgb_change_handler_t> wiring_rgb_change_handler_t;
 
 class RGBClass {
 private:
@@ -33,9 +37,16 @@ public:
 	static void color(uint32_t rgb);
 	static void brightness(uint8_t, bool update=true);
 
-        static uint8_t brightness() {
-            return Get_LED_Brightness();
-        }
+	static uint8_t brightness() {
+		return Get_LED_Brightness();
+	}
+
+	static void onChange(wiring_rgb_change_handler_t handler);
+	static void onChange(raw_rgb_change_handler_t *handler);
+
+private:
+	static void call_raw_change_handler(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
+	static void call_std_change_handler(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
 };
 
 extern RGBClass RGB;
