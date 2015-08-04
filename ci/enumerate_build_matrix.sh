@@ -16,7 +16,7 @@ DEBUG_BUILD=( y n )
 PLATFORM=( core photon P1 )
 COMPILE_LTO=( y n )
 SPARK_CLOUD=( y n )
-APP=( "" tinker blank )
+APP=( "" tinker blank product_id_and_version )
 
 # enumerate the matrix, exit 1 if anything fails
 for db in "${DEBUG_BUILD[@]}"
