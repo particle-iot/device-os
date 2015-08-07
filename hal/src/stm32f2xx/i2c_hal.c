@@ -64,6 +64,22 @@ static uint8_t transmitting = 0;
 static void (*callback_onRequest)(void);
 static void (*callback_onReceive)(int);
 
+static void HAL_I2C_SoftwareReset(void)
+{
+    /* Disable the I2C peripheral */
+    I2C_Cmd(I2C1, DISABLE);
+
+    /* Reset all I2C registers */
+    I2C_SoftwareResetCmd(I2C1, ENABLE);
+    I2C_SoftwareResetCmd(I2C1, DISABLE);
+
+    /* Configure the I2C peripheral */
+    I2C_Init(I2C1, &I2C_InitStructure);
+
+    /* Enable the I2C peripheral */
+    I2C_Cmd(I2C1, ENABLE);
+}
+
 void HAL_I2C_Set_Speed(uint32_t speed)
 {
     I2C_ClockSpeed = speed;
@@ -160,6 +176,8 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
         quantity = BUFFER_LENGTH;
     }
 
+    HAL_I2C_SoftwareReset();
+
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
 
@@ -243,6 +261,8 @@ void HAL_I2C_Begin_Transmission(uint8_t address)
 uint8_t HAL_I2C_End_Transmission(uint8_t stop)
 {
     uint32_t _millis;
+
+    HAL_I2C_SoftwareReset();
 
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
