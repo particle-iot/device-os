@@ -236,7 +236,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
     {
         bool was_sleeping = SPARK_WLAN_SLEEP;
 
-        network_on(network, flags, param, NULL);
+        // network_on(network, flags, param, NULL); // This was causing OTA to stall.
 
         WLAN_DISCONNECT = 0;
         wlan_connect_init();
@@ -297,7 +297,7 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
 {
     if (!SPARK_WLAN_STARTED)
     {
-        wlan_activate();
+        // wlan_activate(); // Does not seem to be needed at all, deepsleep even works and resumes without this.
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
         SPARK_LED_FADE = 1;
