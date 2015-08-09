@@ -209,8 +209,9 @@ void WiFiCredentialsReader::handle(char c)
     else if ('s' == c)
     {
         StreamAppender appender(serial);
+        print("{");
         system_module_info(append_instance, &appender);
-        print("\r\n");
+        print("}\r\n");
     }
     else if ('v' == c)
     {
