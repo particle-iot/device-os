@@ -58,7 +58,7 @@ int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
       {
         IPAddress ip_addr;
 
-        if(inet_gethostbyname(host, strlen(host), ip_addr, nif, NULL) == 0)
+        if((rv = inet_gethostbyname(host, strlen(host), ip_addr, nif, NULL)) == 0)
         {
                 return connect(ip_addr, port, nif);
         }
