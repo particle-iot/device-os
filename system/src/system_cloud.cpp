@@ -602,6 +602,7 @@ int Spark_Connect(void)
 
     bool ip_resolve_failed = false;
     IPAddress ip_addr;
+    int rv = -1;
 
     switch (server_addr.addr_type)
     {
@@ -622,13 +623,12 @@ int Spark_Connect(void)
             int attempts = 3;
             while (!ip_addr && 0 < --attempts)
             {
-                inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr.raw(), NIF_DEFAULT, NULL);
+                rv = inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr.raw(), NIF_DEFAULT, NULL);
                 HAL_Delay_Milliseconds(1);
             }
-            ip_resolve_failed = !ip_addr;
+            ip_resolve_failed = rv;
     }
 
-    int rv = -1;
     if (!ip_resolve_failed)
     {
         if (!ip_addr)
