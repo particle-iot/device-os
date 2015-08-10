@@ -121,7 +121,10 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
     NVIC_Init(&NVIC_InitStructure);
 
     // Time base configuration
-    TIM_TimeBaseStructure.TIM_Period = 65535;
+    if (PIN_MAP[pin].timer_peripheral == TIM5)
+        TIM_TimeBaseStructure.TIM_Period = 0xFFFFFFFF;  //32-bit timer
+    else
+        TIM_TimeBaseStructure.TIM_Period = 0xFFFF;      //16-bit timer
     TIM_TimeBaseStructure.TIM_Prescaler = TIM_Prescaler;
     TIM_TimeBaseStructure.TIM_ClockDivision = 0;
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
@@ -421,7 +424,7 @@ static void Tone_TIM4_Handler(void)
 
 static void Tone_TIM5_Handler(void)
 {
-    uint16_t capture;
+    uint32_t capture;
 
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (TIM_GetITStatus(TIM5, TIM_IT_CC1) != RESET)
