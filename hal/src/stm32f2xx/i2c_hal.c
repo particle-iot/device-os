@@ -35,7 +35,7 @@
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define BUFFER_LENGTH   32
+#define BUFFER_LENGTH   (I2C_BUFFER_LENGTH)
 #define EVENT_TIMEOUT   100
 
 #define TRANSMITTER     0x00
