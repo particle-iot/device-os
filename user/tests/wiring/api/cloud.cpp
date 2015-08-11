@@ -118,6 +118,8 @@ test(api_spark_sleep) {
     API_COMPILE(Spark.sleep(A0, FALLING));
     API_COMPILE(Spark.sleep(A0, FALLING, 20));
 
+    API_COMPILE(Spark.sleep(SLEEP_MODE_DEEP));
+
 }
 
 test(api_spark_connection) {
