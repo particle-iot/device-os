@@ -47,16 +47,16 @@ static I2C_InitTypeDef I2C_InitStructure;
 static uint32_t I2C_ClockSpeed = CLOCK_SPEED_100KHZ;
 static bool I2C_Enabled = false;
 
-static uint8_t rxBuffer[BUFFER_LENGTH];
-static uint8_t rxBufferIndex = 0;
-static uint8_t rxBufferLength = 0;
+volatile uint8_t rxBuffer[BUFFER_LENGTH];
+volatile uint8_t rxBufferIndex = 0;
+volatile uint8_t rxBufferLength = 0;
 
-static uint8_t txAddress = 0;
-static uint8_t txBuffer[BUFFER_LENGTH];
-static uint8_t txBufferIndex = 0;
-static uint8_t txBufferLength = 0;
+volatile uint8_t txAddress = 0;
+volatile uint8_t txBuffer[BUFFER_LENGTH];
+volatile uint8_t txBufferIndex = 0;
+volatile uint8_t txBufferLength = 0;
 
-static uint8_t transmitting = 0;
+volatile uint8_t transmitting = 0;
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -221,8 +221,8 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     }
 
     /* perform blocking read into buffer */
-    uint8_t *pBuffer = rxBuffer;
-    uint8_t numByteToRead = quantity;
+    volatile uint8_t *pBuffer = rxBuffer;
+    volatile uint8_t numByteToRead = quantity;
 
     /* While there is data to be read */
     _millis = HAL_Timer_Get_Milli_Seconds();
@@ -318,8 +318,8 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
         }
     }
 
-    uint8_t *pBuffer = txBuffer;
-    uint8_t NumByteToWrite = txBufferLength;
+    volatile uint8_t *pBuffer = txBuffer;
+    volatile uint8_t NumByteToWrite = txBufferLength;
 
     /* While there is data to be written */
     while(NumByteToWrite--)
