@@ -79,7 +79,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 #if PLATFORM_ID == 10 // Electron
-#define TOTAL_ANALOG_PINS 8 /* NOT USED IN CODE, BUT UPDATE THIS LATER ANYWAY! */
+#define TOTAL_ANALOG_PINS 12
 #elif PLATFORM_ID == 8 // P1
 #define TOTAL_ANALOG_PINS 13
 #else // Must be Photon
