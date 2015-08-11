@@ -40,6 +40,7 @@ typedef enum USART_Num_Def {
 } USART_Num_Def;
 
 /* Private macro -------------------------------------------------------------*/
+#define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 0  //Enabling this => 1 is not working at present
 
 /* Private variables ---------------------------------------------------------*/
 typedef struct STM32_USART_Info {
@@ -145,6 +146,14 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 	// Configure USART Rx and Tx as alternate function push-pull, and enable GPIOA clock
 	HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, AF_OUTPUT_PUSHPULL);
 	HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
+#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
+	if (serial == HAL_USART_SERIAL3)
+	{
+	    // Configure USART RTS and CTS as alternate function push-pull
+	    HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
+	    HAL_Pin_Mode(CTS_UC, AF_OUTPUT_PUSHPULL);
+	}
+#endif
 
 	// Enable USART Clock
 	*usartMap[serial]->usart_apbReg |=  usartMap[serial]->usart_clock_en;
@@ -153,6 +162,13 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 	STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_rx_pin].gpio_peripheral, usartMap[serial]->usart_rx_pinsource, usartMap[serial]->usart_af_map);
 	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_peripheral, usartMap[serial]->usart_tx_pinsource, usartMap[serial]->usart_af_map);
+#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
+    if (serial == HAL_USART_SERIAL3)
+    {
+        GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, usartMap[serial]->usart_af_map);
+        GPIO_PinAFConfig(PIN_MAP[CTS_UC].gpio_peripheral, PIN_MAP[CTS_UC].gpio_pin_source, usartMap[serial]->usart_af_map);
+    }
+#endif
 
 	// NVIC Configuration
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -169,14 +185,21 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 	// - Word Length = 8 Bits
 	// - One Stop Bit
 	// - No parity
-	// - Hardware flow control disabled (RTS and CTS signals)
+	// - Hardware flow control disabled for Serial1 and Serial2
+    // - Hardware flow control enabled (RTS and CTS signals) for Serial3
 	// - Receive and transmit enabled
 	USART_InitStructure.USART_BaudRate = baud;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
 	USART_InitStructure.USART_Parity = USART_Parity_No;
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
+    if (serial == HAL_USART_SERIAL3)
+    {
+        USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
+    }
+#endif
 
 	// Configure USART
 	USART_Init(usartMap[serial]->usart_peripheral, &USART_InitStructure);
