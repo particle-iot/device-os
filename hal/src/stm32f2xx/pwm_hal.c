@@ -80,6 +80,14 @@ void HAL_PWM_Write(uint16_t pin, uint8_t value)
         GPIO_PinAFConfig(PIN_MAP[pin].gpio_peripheral, PIN_MAP[pin].gpio_pin_source, GPIO_AF_TIM5);
         RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
     }
+#if PLATFORM_ID == 10 // Electron
+    else if(PIN_MAP[pin].timer_peripheral == TIM8)
+    {
+        TIM_CLK = SystemCoreClock;
+        GPIO_PinAFConfig(PIN_MAP[pin].gpio_peripheral, PIN_MAP[pin].gpio_pin_source, GPIO_AF_TIM8);
+        RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+    }
+#endif
 
     //PWM Frequency : 500 Hz
     uint16_t TIM_Prescaler = (uint16_t)(TIM_CLK / TIM_PWM_COUNTER_CLOCK_FREQ) - 1;
@@ -132,10 +140,10 @@ void HAL_PWM_Write(uint16_t pin, uint8_t value)
     // TIM enable counter
     TIM_Cmd(PIN_MAP[pin].timer_peripheral, ENABLE);
 
-    if(PIN_MAP[pin].timer_peripheral == TIM1)
+    if((PIN_MAP[pin].timer_peripheral == TIM1) || (PIN_MAP[pin].timer_peripheral == TIM8))
     {
-        /* TIM1 Main Output Enable - required for TIM1 PWM output */
-        TIM_CtrlPWMOutputs(TIM1, ENABLE);
+        /* TIM Main Output Enable - required for TIM1/TIM8 PWM output */
+        TIM_CtrlPWMOutputs(PIN_MAP[pin].timer_peripheral, ENABLE);
     }
 }
 
@@ -161,6 +169,12 @@ uint16_t HAL_PWM_Get_Frequency(uint16_t pin)
     {
         TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
     }
+#if PLATFORM_ID == 10 // Electron
+    else if(PIN_MAP[pin].timer_peripheral == TIM8)
+    {
+        TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
+    }
+#endif
     else
     {
         return PWM_Frequency;
