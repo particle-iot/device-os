@@ -47,7 +47,8 @@ bool MPL3115A2::begin()
 {
 	// Only join the I2C bus as master if needed
 	if(! Wire.isEnabled()) {
-		// Wire.setSpeed(100000);
+		// Wire.setSpeed(100000);   // Tried lower frequencies, did not help
+		// Wire.stretchClock(true); // Did not help
 		Wire.begin();
 	}
 
