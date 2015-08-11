@@ -36,7 +36,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 #define BUFFER_LENGTH   32
-#define EVENT_TIMEOUT   100
+#define EVENT_TIMEOUT   500
 
 #define TRANSMITTER     0x00
 #define RECEIVER        0x01
@@ -102,6 +102,15 @@ void HAL_I2C_Stretch_Clock(bool stretch)
     }
 }
 
+/* DEBUGGING CODE FOR LOGIC ANALYZER */
+void pulsePin(pin_t pin, int8_t num) {
+    do {
+        HAL_GPIO_Write(pin, 1);
+        HAL_GPIO_Write(pin, 0);
+    }
+    while (--num != 0);
+}
+
 void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
 {
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
@@ -120,6 +129,8 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
 
     HAL_Pin_Mode(SCL, AF_OUTPUT_DRAIN);
     HAL_Pin_Mode(SDA, AF_OUTPUT_DRAIN);
+    HAL_Pin_Mode(D6, OUTPUT); /* DEBUG endTransmission */
+    HAL_Pin_Mode(D7, OUTPUT); /* DEBUG requestData */
 
     if(mode != I2C_MODE_MASTER)
     {
@@ -176,7 +187,9 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
         quantity = BUFFER_LENGTH;
     }
 
-    HAL_I2C_SoftwareReset();
+    //HAL_I2C_SoftwareReset();
+
+    pulsePin(D7, 1);
 
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
@@ -184,7 +197,11 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) {
+            pulsePin(D7, 2);
+            HAL_I2C_SoftwareReset();
+            return 0;
+        }
     }
 
     /* Send Slave address for read */
@@ -198,6 +215,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
             /* Send STOP Condition */
             //Adding a STOP here is not helping because of STM32 limitation mentioned in ERRATA
             //I2C_GenerateSTOP(I2C1, ENABLE);
+            pulsePin(D7, 3);
             return 0;
         }
     }
@@ -214,6 +232,8 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
         {
             /* Disable Acknowledgement */
             I2C_AcknowledgeConfig(I2C1, DISABLE);
+
+            pulsePin(D7, 5);
 
             /* Send STOP Condition */
             I2C_GenerateSTOP(I2C1, ENABLE);
@@ -244,6 +264,10 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     rxBufferIndex = 0;
     rxBufferLength = bytesRead;
 
+    if (quantity != bytesRead) {
+        pulsePin(D7, 4);
+    }
+
     return bytesRead;
 }
 
@@ -262,7 +286,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
 {
     uint32_t _millis;
 
-    HAL_I2C_SoftwareReset();
+    pulsePin(D6, 1);
 
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
@@ -270,7 +294,11 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) {
+            pulsePin(D6, 2);
+            HAL_I2C_SoftwareReset();
+            return 4;
+        }
     }
 
     /* Send Slave address for write */
@@ -284,6 +312,8 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
             /* Send STOP Condition */
             //Adding a STOP here is not helping because of STM32 limitation mentioned in ERRATA
             //I2C_GenerateSTOP(I2C1, ENABLE);
+            //HAL_I2C_SoftwareReset();
+            pulsePin(D6, 3);
             return 4;
         }
     }
@@ -303,7 +333,11 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
         _millis = HAL_Timer_Get_Milli_Seconds();
         while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
         {
-            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) {
+                //HAL_I2C_SoftwareReset();
+                pulsePin(D6, 4);
+                return 4;
+            }
         }
     }
 
@@ -311,6 +345,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     if(stop == true)
     {
         /* Send STOP condition */
+        pulsePin(D6, 5);
         I2C_GenerateSTOP(I2C1, ENABLE);
     }
 
