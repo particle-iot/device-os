@@ -613,12 +613,13 @@ sock_result_t as_sock_result(socket_t* socket)
  */
 sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen)
 {
-    sock_result_t result = SOCKET_INVALID;
+    wiced_result_t result = WICED_INVALID_SOCKET;
     socket_t* socket = from_handle(sd);
     tcp_socket_t* tcp_socket = tcp(socket);
     if (tcp_socket) {
-        wiced_result_t wiced_result = wiced_tcp_bind(tcp_socket, WICED_ANY_PORT);
-        if (wiced_result==WICED_SUCCESS) {
+        result = wiced_tcp_bind(tcp_socket, WICED_ANY_PORT);
+        if (result==WICED_SUCCESS) {
+            // This must be commented out as the disconnect callback is called after wiced_tcp_socket_delete is called
             //wiced_tcp_register_callbacks(tcp(socket), socket_t::notify_connected, socket_t::notify_received, socket_t::notify_disconnected, (void*)socket);
             SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr);
             unsigned timeout = 5*1000;
@@ -626,10 +627,8 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addr
             if (result==WICED_SUCCESS)
                 tcp_socket->connected();
         }
-        if (result!=WICED_SUCCESS)
-            result = as_sock_result(wiced_result);
     }
-    return result;
+    return as_sock_result(result);
 }
 
 /**
