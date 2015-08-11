@@ -622,12 +622,11 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addr
             //wiced_tcp_register_callbacks(tcp(socket), socket_t::notify_connected, socket_t::notify_received, socket_t::notify_disconnected, (void*)socket);
             SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr);
             unsigned timeout = 5*1000;
-            result = wiced_tcp_connect(tcp_socket, &ip_addr, port, timeout);
-            if (result==WICED_SUCCESS)
+            wiced_result = wiced_tcp_connect(tcp_socket, &ip_addr, port, timeout);
+            if (wiced_result==WICED_SUCCESS)
                 tcp_socket->connected();
         }
-        if (result!=WICED_SUCCESS)
-            result = as_sock_result(wiced_result);
+        result = as_sock_result(wiced_result);
     }
     return result;
 }
