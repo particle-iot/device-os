@@ -45,11 +45,13 @@ extern void (*HAL_TIM1_Handler)(void);
 extern void (*HAL_TIM3_Handler)(void);
 extern void (*HAL_TIM4_Handler)(void);
 extern void (*HAL_TIM5_Handler)(void);
+extern void (*HAL_TIM8_Handler)(void);
 
 static void Tone_TIM1_Handler(void);
 static void Tone_TIM3_Handler(void);
 static void Tone_TIM4_Handler(void);
 static void Tone_TIM5_Handler(void);
+static void Tone_TIM8_Handler(void);
 
 void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
 {
@@ -104,6 +106,16 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
         NVIC_InitStructure.NVIC_IRQChannel = TIM5_IRQn;
         HAL_TIM5_Handler = Tone_TIM5_Handler;
     }
+#if PLATFORM_ID == 10 // Electron
+    else if(PIN_MAP[pin].timer_peripheral == TIM8)
+    {
+        TIM_CLK = SystemCoreClock;
+        GPIO_PinAFConfig(PIN_MAP[pin].gpio_peripheral, PIN_MAP[pin].gpio_pin_source, GPIO_AF_TIM8);
+        RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+        NVIC_InitStructure.NVIC_IRQChannel = TIM8_CC_IRQn;
+        HAL_TIM8_Handler = Tone_TIM8_Handler;
+    }
+#endif
 
     uint16_t TIM_Prescaler = (uint16_t)(TIM_CLK / TONE_TIM_COUNTER_CLOCK_FREQ) - 1;
     uint16_t TIM_CCR = (uint16_t)(TONE_TIM_COUNTER_CLOCK_FREQ / (2 * frequency));
@@ -121,7 +133,10 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
     NVIC_Init(&NVIC_InitStructure);
 
     // Time base configuration
-    TIM_TimeBaseStructure.TIM_Period = 65535;
+    if (PIN_MAP[pin].timer_peripheral == TIM5)
+        TIM_TimeBaseStructure.TIM_Period = 0xFFFFFFFF;  //32-bit timer
+    else
+        TIM_TimeBaseStructure.TIM_Period = 0xFFFF;      //16-bit timer
     TIM_TimeBaseStructure.TIM_Prescaler = TIM_Prescaler;
     TIM_TimeBaseStructure.TIM_ClockDivision = 0;
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
@@ -178,10 +193,10 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
     // TIM enable counter
     TIM_Cmd(PIN_MAP[pin].timer_peripheral, ENABLE);
 
-    if(PIN_MAP[pin].timer_peripheral == TIM1)
+    if((PIN_MAP[pin].timer_peripheral == TIM1) || (PIN_MAP[pin].timer_peripheral == TIM8))
     {
-        /* TIM1 Main Output Enable - required for TIM1 PWM output */
-        TIM_CtrlPWMOutputs(TIM1, ENABLE);
+        /* TIM Main Output Enable - required for TIM1/TIM8 PWM output */
+        TIM_CtrlPWMOutputs(PIN_MAP[pin].timer_peripheral, ENABLE);
     }
 }
 
@@ -260,6 +275,7 @@ static void Tone_TIM1_Handler(void)
     uint16_t capture;
 
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
     if (TIM_GetITStatus(TIM1, TIM_IT_CC2) != RESET)
     {
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC2);
@@ -300,6 +316,7 @@ static void Tone_TIM1_Handler(void)
 static void Tone_TIM3_Handler(void)
 {
     uint16_t capture;
+
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     
     if (TIM_GetITStatus(TIM3, TIM_IT_CC1) != RESET)
@@ -375,11 +392,50 @@ static void Tone_TIM3_Handler(void)
             }
         }
     }
+
+#if PLATFORM_ID == 10 // Electron
+    if (TIM_GetITStatus(TIM3, TIM_IT_CC3) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM3, TIM_IT_CC3);
+        capture = TIM_GetCapture3(TIM3);
+        TIM_SetCompare3(TIM3, capture + PIN_MAP[26].timer_ccr);
+        if(PIN_MAP[26].user_property != -1)
+        {
+            if (PIN_MAP[26].user_property > 0)
+            {
+                PIN_MAP[26].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(26);
+            }
+        }
+    }
+
+    if (TIM_GetITStatus(TIM3, TIM_IT_CC4) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM3, TIM_IT_CC4);
+        capture = TIM_GetCapture4(TIM3);
+        TIM_SetCompare4(TIM3, capture + PIN_MAP[27].timer_ccr);
+        if(PIN_MAP[27].user_property != -1)
+        {
+            if (PIN_MAP[27].user_property > 0)
+            {
+                PIN_MAP[27].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(27);
+            }
+        }
+    }
+#endif
 }
 
 static void Tone_TIM4_Handler(void)
 {
     uint16_t capture;
+
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
    
     if (TIM_GetITStatus(TIM4, TIM_IT_CC1) != RESET)
@@ -417,13 +473,52 @@ static void Tone_TIM4_Handler(void)
             }
         }
     }
+
+#if PLATFORM_ID == 10 // Electron
+    if (TIM_GetITStatus(TIM4, TIM_IT_CC3) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM4, TIM_IT_CC3);
+        capture = TIM_GetCapture3(TIM4);
+        TIM_SetCompare3(TIM4, capture + PIN_MAP[35].timer_ccr);
+        if(PIN_MAP[35].user_property != -1)
+        {
+            if (PIN_MAP[35].user_property > 0)
+            {
+                PIN_MAP[35].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(35);
+            }
+        }
+    }
+
+    if (TIM_GetITStatus(TIM4, TIM_IT_CC4) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM4, TIM_IT_CC4);
+        capture = TIM_GetCapture4(TIM4);
+        TIM_SetCompare4(TIM4, capture + PIN_MAP[34].timer_ccr);
+        if(PIN_MAP[34].user_property != -1)
+        {
+            if (PIN_MAP[34].user_property > 0)
+            {
+                PIN_MAP[34].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(34);
+            }
+        }
+    }
+#endif
 }
 
 static void Tone_TIM5_Handler(void)
 {
-    uint16_t capture;
+    uint32_t capture;
 
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
     if (TIM_GetITStatus(TIM5, TIM_IT_CC1) != RESET)
     {
         TIM_ClearITPendingBit(TIM5, TIM_IT_CC1 );
@@ -442,3 +537,48 @@ static void Tone_TIM5_Handler(void)
         }
     }
 }
+
+#if PLATFORM_ID == 10 // Electron
+static void Tone_TIM8_Handler(void)
+{
+    uint16_t capture;
+
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    if (TIM_GetITStatus(TIM8, TIM_IT_CC1) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM8, TIM_IT_CC1);
+        capture = TIM_GetCapture1(TIM8);
+        TIM_SetCompare1(TIM8, capture + PIN_MAP[25].timer_ccr);
+        if(PIN_MAP[25].user_property != -1)
+        {
+            if (PIN_MAP[25].user_property > 0)
+            {
+                PIN_MAP[25].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(25);
+            }
+        }
+    }
+
+    if (TIM_GetITStatus(TIM8, TIM_IT_CC3) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM8, TIM_IT_CC3);
+        capture = TIM_GetCapture3(TIM8);
+        TIM_SetCompare3(TIM8, capture + PIN_MAP[24].timer_ccr);
+        if(PIN_MAP[24].user_property != -1)
+        {
+            if (PIN_MAP[24].user_property > 0)
+            {
+                PIN_MAP[24].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(24);
+            }
+        }
+    }
+}
+#endif
