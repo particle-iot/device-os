@@ -76,6 +76,14 @@ void HAL_Servo_Attach(uint16_t pin)
         GPIO_PinAFConfig(PIN_MAP[pin].gpio_peripheral, PIN_MAP[pin].gpio_pin_source, GPIO_AF_TIM5);
         RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
     }
+#if PLATFORM_ID == 10 // Electron
+    else if(PIN_MAP[pin].timer_peripheral == TIM8)
+    {
+        TIM_CLK = SystemCoreClock;
+        GPIO_PinAFConfig(PIN_MAP[pin].gpio_peripheral, PIN_MAP[pin].gpio_pin_source, GPIO_AF_TIM8);
+        RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+    }
+#endif
 
     uint16_t TIM_Prescaler = (uint16_t)(TIM_CLK / SERVO_TIM_PWM_COUNTER_CLOCK) - 1;       //To get TIM counter clock = 1MHz
     uint16_t TIM_ARR = (uint16_t)(SERVO_TIM_PWM_COUNTER_CLOCK / SERVO_TIM_PWM_FREQ) - 1;  //To get PWM period = 20ms
@@ -125,7 +133,11 @@ void HAL_Servo_Attach(uint16_t pin)
     TIM_Cmd(PIN_MAP[pin].timer_peripheral, ENABLE);
 
     // Main Output Enable
-    TIM_CtrlPWMOutputs(PIN_MAP[pin].timer_peripheral, ENABLE);
+    if((PIN_MAP[pin].timer_peripheral == TIM1) || (PIN_MAP[pin].timer_peripheral == TIM8))
+    {
+        /* TIM Main Output Enable - required for TIM1/TIM8 PWM output */
+        TIM_CtrlPWMOutputs(PIN_MAP[pin].timer_peripheral, ENABLE);
+    }
 }
 
 void HAL_Servo_Detach(uint16_t pin)
@@ -204,6 +216,12 @@ uint16_t HAL_Servo_Read_Frequency(uint16_t pin)
     {
         TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
     }
+#if PLATFORM_ID == 10 // Electron
+    else if(PIN_MAP[pin].timer_peripheral == TIM8)
+    {
+        TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;
+    }
+#endif
     else
     {
         return Servo_Frequency;
