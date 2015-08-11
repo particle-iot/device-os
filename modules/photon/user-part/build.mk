@@ -19,7 +19,7 @@ endif
 
 
 ifdef APP
-# when TARGET_FILE is defined on the command line, 
+# when TARGET_FILE is defined on the command line,
 TARGET_FILE_NAME ?= $(notdir $(APP))
 TARGET_DIR_NAME ?= applications/$(APP)
 endif
@@ -40,6 +40,9 @@ TARGET_FILE_NAME ?= $(notdir $(TEST))
 TARGET_DIR_NAME ?= test/$(TEST)
 endif
 
+# to allow _malloc_r to be overridden we have to remove it from the libg_nano.a library
+# this symbol is the target for the library
+LIBG_TWEAK = $(TARGET_BASE_DIR)libg_tweak.a
 
 GLOBAL_DEFINES += MODULE_VERSION=$(USER_PART_MODULE_VERSION)
 GLOBAL_DEFINES += MODULE_FUNCTION=$(MODULE_FUNCTION_USER_PART)
@@ -48,10 +51,11 @@ GLOBAL_DEFINES += MODULE_DEPENDENCY=${MODULE_FUNCTION_SYSTEM_PART},2,${SYSTEM_PA
 
 LINKER_FILE=$(USER_PART_MODULE_PATH)/linker.ld
 LINKER_DEPS += $(LINKER_FILE)
-LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld 
-LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld 
+LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld
+LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
+LINKER_DEPS += $(LIBG_TWEAK)
 
-LDFLAGS += --specs=nano.specs -lnosys
+LDFLAGS += -lnosys -nostdlib
 LDFLAGS += -L$(SYSTEM_PART2_MODULE_PATH)
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
@@ -59,6 +63,16 @@ LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_SIZE=$(USER_FIRMWARE_IMAGE_SIZE)
 LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_LOCATION=$(USER_FIRMWARE_IMAGE_LOCATION)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
+LDFLAGS += $(LIBG_TWEAK)
 
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
+
+# remove *malloc*.o from the standard library
+$(LIBG_TWEAK) :
+	$(VERBOSE)-rm $(LIBG_TWEAK)
+	$(VERBOSE)-rm $(LIBG_TWEAK).tmp
+	$(VERBOSE)cp `$(CPP) -print-sysroot`/lib/armv7-m/libg_nano.a $(LIBG_TWEAK).tmp
+	$(VERBOSE)$(AR) d $(LIBG_TWEAK).tmp lib_a-nano-mallocr.o
+	$(VERBOSE)cp $(LIBG_TWEAK).tmp $(LIBG_TWEAK)
+

@@ -16,9 +16,9 @@ include $(MODULE_PATH)/import.mk
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),$(PROJECT_ROOT)/$(module)/import.mk)
 include $(DEPS_INCLUDE_SCRIPTS)
 
-include $(call rwildcard,$(MODULE_PATH)/,build.mk)
-
 include $(COMMON_BUILD)/module-defaults.mk
+
+include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
