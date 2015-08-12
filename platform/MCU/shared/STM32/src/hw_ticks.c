@@ -82,4 +82,8 @@ void __advance_system1MsTick(system_tick_t millis, system_tick_t micros_from_rol
     system_millis = millis;
 }
 
+void SysTick_Disable() {
+    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
+}
+
 

@@ -61,6 +61,10 @@ system_tick_t GetSystem1UsTick();
  */
 void __advance_system1MsTick(system_tick_t millis, system_tick_t micros_from_rollover);
 
+void SysTick_Disable();
+
+
+
 #ifdef	__cplusplus
 }
 #endif

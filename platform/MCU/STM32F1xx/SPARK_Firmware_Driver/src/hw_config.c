@@ -205,10 +205,6 @@ void SysTick_Configuration(void)
     NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);	//OLD: NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00)
 }
 
-void SysTick_Disable() {
-    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
-}
-
 void IWDG_Reset_Enable(uint32_t msTimeout)
 {
     // Do not enable IWDG if Stop Mode Flag is set
