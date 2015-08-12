@@ -139,7 +139,7 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
         case AF_OUTPUT_DRAIN:   //Used internally for Alternate Function Output Drain(I2C etc)
             GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
             GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-            GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+            GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
             GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
             PIN_MAP[pin].pin_mode = AF_OUTPUT_DRAIN;
             break;

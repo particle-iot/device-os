@@ -29,6 +29,7 @@
 #include "timer_hal.h"
 #include "pinmap_impl.h"
 #include <stddef.h>
+#include "delay_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -107,6 +108,7 @@ void pulsePin(pin_t pin, int8_t num) {
     do {
         HAL_GPIO_Write(pin, 1);
         HAL_GPIO_Write(pin, 0);
+        HAL_Delay_Milliseconds(2);
     }
     while (--num != 0);
 }
@@ -215,6 +217,8 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
         }
     }
 
+    pulsePin(D7, 1);
+
     /* Send Slave address for read */
     I2C_Send7bitAddress(I2C1, address << 1, I2C_Direction_Receiver);
 
@@ -311,6 +315,8 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
             return 4;
         }
     }
+
+    pulsePin(D6, 1);
 
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
