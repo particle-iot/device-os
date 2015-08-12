@@ -64,6 +64,7 @@ typedef enum
 void Set_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
+void SysTick_Disable(void);
 
 void IWDG_Reset_Enable(uint32_t msTimeout);
 
