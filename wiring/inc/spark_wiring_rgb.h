@@ -44,6 +44,12 @@ public:
 	static void onChange(wiring_rgb_change_handler_t handler);
 	static void onChange(raw_rgb_change_handler_t *handler);
 
+    template <typename T>
+    static void onChange(void (T::*handler)(uint8_t, uint8_t, uint8_t), T *instance) {
+      using namespace std::placeholders;
+      onChange(std::bind(handler, instance, _1, _2, _3));
+    }
+
 private:
 	static void call_raw_change_handler(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
 	static void call_std_change_handler(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
