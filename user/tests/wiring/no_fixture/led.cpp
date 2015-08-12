@@ -171,3 +171,29 @@ test(LED_BrightnessIsPersisted) {
     
     assertLEDColorIs(ledAdjust(255,128),ledAdjust(255,128),0);
 }
+
+uint8_t rgbUser[3];
+void userLEDChangeHandler(uint8_t r, uint8_t g, uint8_t b) {
+    rgbUser[0] = r;
+    rgbUser[1] = g;
+    rgbUser[2] = b;
+}
+
+void assertChangeHandlerCalledWith(uint8_t r, uint8_t g, uint8_t b) {
+    assertEqual(rgbUser[0], r);
+    assertEqual(rgbUser[1], g);
+    assertEqual(rgbUser[2], b);
+}
+
+test(LED_ChangeHandlerCalled) {
+    // given
+    RGB.onChange(userLEDChangeHandler);
+
+    // when
+    RGB.control(true);
+    RGB.brightness(255);
+    RGB.color(10, 20, 30);
+
+    // then
+    assertChangeHandlerCalledWith(ledAdjust(10),ledAdjust(20),ledAdjust(30));
+}
