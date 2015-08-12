@@ -3,10 +3,12 @@
 
 #include "Serial3/Serial3.h"
 #include "pmic.h"
+#include "fuelgauge.h"
 
 SYSTEM_MODE(MANUAL);
 
 PMIC PMIC;
+FuelGauge fuel;
 
 #define now() millis()
 uint32_t lastFlash = now();
@@ -25,13 +27,13 @@ void setup()
 {
     RGB.control(true);
     // TEST RGB LED
-    // FAIL_RED();
-    // delay(500);
-    // PASS_GREEN();
-    // delay(500);
-    // FAIL_BLUE();
-    // delay(500);
-    // RGB_OFF();
+    FAIL_RED();
+    delay(500);
+    PASS_GREEN();
+    delay(500);
+    FAIL_BLUE();
+    delay(500);
+    RGB_OFF();
     delay(500);
 
     pinMode(LVLOE_UC, OUTPUT);
@@ -49,8 +51,6 @@ void setup()
     digitalWrite(RTS_UC, LOW); // VERY IMPORTANT FOR CORRECT OPERATION!!
     
 
-
-
 	Serial.begin(9600);
 	Serial3.begin(9600);
 	Serial.println("Hi, I'm Serial USB!");
@@ -65,6 +65,12 @@ void setup()
     RGB_OFF();
     delay(500);
 
+    PMIC.begin(); 
+    delay(500);
+    
+    fuel.quickStart();
+    delay(100);
+
     // TEST UBLOX
     if ( ensureUbloxIsReset() )
     {
@@ -73,13 +79,11 @@ void setup()
     else {
         FAIL_BLUE();
     }
+
 }
 
 void loop()
 {
-    PMIC.begin(); 
-    delay(500);
-
     byte pmicVersion = PMIC.getVersion();
     delay(50);
     Serial.print("Version Number: ");
@@ -91,6 +95,10 @@ void loop()
 
     Serial.print("Fault Status: ");
     Serial.println(PMIC.getFault(),BIN);
+    
+    // Send the Voltage and SoC readings over serial
+    Serial.println(fuel.getVCell());
+    Serial.println(fuel.getSoC());
 
     delay(1000);
 
