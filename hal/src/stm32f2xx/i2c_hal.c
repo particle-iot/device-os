@@ -98,6 +98,15 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
     /* Enable I2C1 clock */
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
 
+    /* Enable SYSCFG clock */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+
+    /* Reset I2C IP */
+    RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1, ENABLE);
+
+    /* Release reset signal of I2C IP */
+    RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1, DISABLE);
+
     /* Connect I2C1 pins to AF4 */
     GPIO_PinAFConfig(PIN_MAP[SCL].gpio_peripheral, PIN_MAP[SCL].gpio_pin_source, GPIO_AF_I2C1);
     GPIO_PinAFConfig(PIN_MAP[SDA].gpio_peripheral, PIN_MAP[SDA].gpio_pin_source, GPIO_AF_I2C1);
@@ -127,9 +136,11 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
     I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
     I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
     I2C_InitStructure.I2C_ClockSpeed = I2C_ClockSpeed;
-    I2C_Init(I2C1, &I2C_InitStructure);
 
     I2C_Cmd(I2C1, ENABLE);
+
+    /* Apply I2C configuration after enabling it */
+    I2C_Init(I2C1, &I2C_InitStructure);
 
     if(mode != I2C_MODE_MASTER)
     {
@@ -175,13 +186,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
-        {
-            /* Send STOP Condition */
-            //Adding a STOP here is not helping because of STM32 limitation mentioned in ERRATA
-            //I2C_GenerateSTOP(I2C1, ENABLE);
-            return 0;
-        }
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
     }
 
     /* perform blocking read into buffer */
@@ -244,6 +249,13 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
 {
     uint32_t _millis;
 
+    _millis = HAL_Timer_Get_Milli_Seconds();
+    /* While the I2C Bus is busy */
+    while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY))
+    {
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+    }
+
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
 
@@ -259,13 +271,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
-        {
-            /* Send STOP Condition */
-            //Adding a STOP here is not helping because of STM32 limitation mentioned in ERRATA
-            //I2C_GenerateSTOP(I2C1, ENABLE);
-            return 4;
-        }
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
     }
 
     uint8_t *pBuffer = txBuffer;
@@ -281,7 +287,13 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
         pBuffer++;
 
         _millis = HAL_Timer_Get_Milli_Seconds();
-        while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+        while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTING))
+        {
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+        }
+
+        _millis = HAL_Timer_Get_Milli_Seconds();
+        while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BTF) == RESET)
         {
             if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
         }
