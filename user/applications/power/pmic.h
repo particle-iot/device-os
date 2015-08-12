@@ -1,4 +1,30 @@
+/**
+ ******************************************************************************
+ * @file    pmic.h
+ * @author  Mohit Bhoite
+ * @version V1.0.0
+ * @date    11-August-2015
+ * @brief   Header for pmic.c module
+ ******************************************************************************
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************
+ */
 #include "application.h"
+#include "i2c3_hal.h"
 
 #ifndef _PMIC_H
 #define _PMIC_H
@@ -25,58 +51,65 @@ class PMIC {
 
 	public:
 	    PMIC();
-		boolean begin();
+		bool begin();
 		byte getVersion();
 		byte getSystemStatus();
 		byte getFault();
 
-		boolean setInputCurrentLimit();
+		// Input source control register
+		bool setInputCurrentLimit(uint16_t current);
 		byte getInputCurrentLimit();
-		boolean setInputVoltageLimit();
+		bool setInputVoltageLimit();
 		byte getInputVoltageLimit();
 
-		boolean enableCharging();
-		boolean disableCharging();
-		boolean setMinimumSystemVolatge();
+		// Power ON configuration register
+		bool enableCharging();
+		bool disableCharging();
+		bool setMinimumSystemVolatge();
 		byte getMinimumSystemVolatge();
 
-		boolean setChargeCurrent();
+		// Charge current control register
+		bool setChargeCurrent();
 		byte getChargeCurrent();
 
-		boolean setPreChargeCurrent();
+		//PreCharge/ Termination Current Control Register
+		bool setPreChargeCurrent();
 		byte getPreChargeCurrent();
-		boolean setTermChargeCurrent();
+		bool setTermChargeCurrent();
 		byte getTermChargeCurrent();
 
-		boolean setChargeVoltage();
+		//Charge Voltage Control Register
+		bool setChargeVoltage();
 		byte getChargeVoltage();
 
-		boolean setThermalRegulation();
+		//Thermal Regulation Control Register
+		bool setThermalRegulation();
 		byte getThermalRegulation();
 
-		boolean enableDPDM();
-		boolean disableDPDM();
-		boolean enableBATFET();
-		boolean disableBATFET();
-		boolean safetyTimer(); //slow/ normal
+		//Misc Operation Control Register
+		bool enableDPDM();
+		bool disableDPDM();
+		bool enableBATFET();
+		bool disableBATFET();
+		bool safetyTimer(); //slow/ normal
 
-		boolean enableChargeFaultINT();
-		boolean disableChargeFaultINT();
-		boolean enableBatFaultINT();
-		boolean disableBatFaultINT();
+		bool enableChargeFaultINT();
+		bool disableChargeFaultINT();
+		bool enableBatFaultINT();
+		bool disableBatFaultINT();
 
-		// State Register
+		//System Status Register
 		byte getVbusStat();
 		byte getChargingStat();
-		boolean getDPMStat();
-		boolean isPowerGood();
-		boolean isHot();
-		boolean getVsysStat();
+		bool getDPMStat();
+		bool isPowerGood();
+		bool isHot();
+		bool getVsysStat();
 
 		//Fault Register
-		boolean isWatchdogFault();
+		bool isWatchdogFault();
 		byte getChargeFault();
-		boolean isBatFault();
+		bool isBatFault();
 		byte getNTCFault();
 
 
@@ -95,7 +128,7 @@ class PMIC {
 // List of functions to write
 
 //-----------------------------------------------------------------------------
-//Input source control register
+// Input source control register
 //-----------------------------------------------------------------------------
 
 REG00
@@ -108,7 +141,7 @@ BIT
 3 : VINDPM[0] 80mV	|
 --- input current limit
 2 : INLIM[2]  000: 100mA, 001: 150mA, 010: 500mA,	| Default: 100mA when OTG pin is LOW and
-1 : INLIM[1]  100: 1.2A,  011: 900mA, 101: 1.5A 	| 500mA when OTG pin is HIGH 
+1 : INLIM[1]  011: 900mA, 100: 1.2A,   101: 1.5A 	| 500mA when OTG pin is HIGH 
 0 : INLIM[0]  110: 2.0A,  111: 3.0A   				| when charging port detected, 1.5A
 
 

@@ -1,7 +1,8 @@
 #include "application.h"
 
+
 #include "Serial3/Serial3.h"
-#include "PMIC.h"
+#include "pmic.h"
 
 SYSTEM_MODE(MANUAL);
 
@@ -33,10 +34,10 @@ void setup()
     // RGB_OFF();
     delay(500);
 
-    pinMode(BUFF_EN, OUTPUT);
-    digitalWrite(BUFF_EN, HIGH);
+    pinMode(LVLOE_UC, OUTPUT);
+    digitalWrite(LVLOE_UC, HIGH);
     delay(500);
-    digitalWrite(BUFF_EN, LOW);
+    digitalWrite(LVLOE_UC, LOW);
     delay(50);
 
 	pinMode(D7, OUTPUT);
@@ -46,6 +47,7 @@ void setup()
 	digitalWrite(RESET_UC, HIGH);
     pinMode(RTS_UC, OUTPUT);
     digitalWrite(RTS_UC, LOW); // VERY IMPORTANT FOR CORRECT OPERATION!!
+    
 
 
 
