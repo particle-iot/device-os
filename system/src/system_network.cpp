@@ -338,6 +338,8 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 void network_listen(network_handle_t, uint32_t flags, void*)
 {
     WLAN_SMART_CONFIG_START = !(flags & 1);
+    if (!WLAN_SMART_CONFIG_START)
+        WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
 }
 
 bool network_listening(network_handle_t, uint32_t, void*)
