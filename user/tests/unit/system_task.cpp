@@ -21,43 +21,29 @@
  ******************************************************************************
  */
 
-#if 0
-
+#include "catch.hpp"
 #include "system_task.h"
 
-unsigned backoff_period(uint8_t connection_attempts);
+#include <algorithm>
+
+using std::min;
 
 SCENARIO("Backoff period after 0 attempts should be 0", "[system_task]") {
-    
+
     REQUIRE(backoff_period(0)==0);
-    
 }
 
-SCENARIO("Backoff period should increase exponentially to a point where the backoff period is at least 5 minutes, and no more than 10 minutes.", "[system_task]") {
-    
-    unsigned sum = 0;
+SCENARIO("Backoff period should increase exponentially from 1s to 128s", "[system_task]") {
+
     unsigned previous = 0;
-    for (int i=1; i<13; i++) {
+    for (int i=0; i<1000; i++) {
+        INFO("connection attempts " << i);
         unsigned period = backoff_period(i);
-        REQUIRE(period > previous);
-        REQUIRE(period > sum);
-        sum += period;
+        REQUIRE(period >= previous);
+        int exponent = min(7,  ((i-1)/5));
+        unsigned expected = i==0 ? 0 : ((1<<exponent)*1000);
+        REQUIRE(period == expected);
         previous = period;
-    }    
-}
-
-
-SCENARIO("Backoff period has a maximum of 5 minutes, and no more than 10 minutes.", "[system_task]") {
-        
-    unsigned previous = 0;
-    for (int i=1; i<200; i++) {
-        unsigned period = backoff_period(i);
-        REQUIRE(period >= prevoius);
-        previous = period;        
     }
-    
-    REQUIRE(previous > 5*60*1000);
-    REQUIRE(previous < 10*60*1000);
 }
 
-#endif
