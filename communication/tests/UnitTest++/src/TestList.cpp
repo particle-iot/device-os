@@ -5,7 +5,7 @@
 
 namespace UnitTest {
 
-TestList::TestList() 
+TestList::TestList()
     : m_head(0)
     , m_tail(0)
 {

@@ -43,30 +43,30 @@ enum RunnerState {
 };
 
 class SparkTestRunner {
-    
+
 private:
     int _state;
-    
+
 public:
     SparkTestRunner() : _state(INIT) {
-        
+
     }
-    
-    void begin();        
-    
+
+    void begin();
+
     bool isStarted() {
         return _state>=RUNNING;
     }
-    
+
     bool isComplete() {
         return _state==COMPLETE;
     }
-    
+
     void start() {
         if (!isStarted())
             setState(RUNNING);
     }
-    
+
     const char* nameForState(RunnerState state) {
         switch (state) {
             case INIT: return "init";
@@ -77,19 +77,19 @@ public:
                 return "";
         }
     }
-        
+
     int testStatusColor();
-    
+
     void updateLEDStatus() {
         int rgb = testStatusColor();
         RGB.control(true);
         RGB.color(rgb);
     }
-    
+
     RunnerState state() const { return (RunnerState)_state; }
 
     void setState(RunnerState newState) {
-        if (newState!=_state) {            
+        if (newState!=_state) {
             _state = newState;
             const char* stateName = nameForState((RunnerState)_state);
             if (isStarted())
@@ -97,9 +97,9 @@ public:
             Spark.publish("state", stateName);
         }
     }
-    
-    void testDone() {        
-        updateLEDStatus();        
+
+    void testDone() {
+        updateLEDStatus();
     }
 };
 
@@ -450,7 +450,7 @@ Variables you might want to adjust:
 class Test
 {
     friend class SparkTestRunner;
-    
+
  private:
   // allows for both ram/progmem based names
   class TestString : public Printable {
@@ -852,10 +852,10 @@ void unit_test_setup();
 /*
  * A convenience method to run tests as part of the main loop after a character
  * is received over serial.
- * 
- * @param runImmediately    When true, the test runner is started on first call to this function. 
+ *
+ * @param runImmediately    When true, the test runner is started on first call to this function.
  *  Otherwise the test runner is only started when an external start signal is received.
- * @param 
+ * @param
  **/
 void unit_test_loop(bool runImmediately=false, bool runTest=true);
 

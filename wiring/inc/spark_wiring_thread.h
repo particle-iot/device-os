@@ -31,36 +31,36 @@
 
 class thread
 {
-private:    
+private:
     mutable os_thread_t handle;
-    
+
     friend class ThreadFactory;
-    
-    thread(os_thread_t handle_) 
+
+    thread(os_thread_t handle_)
         : handle(handle_)
     {
     }
-    
-public:    
-    
+
+public:
+
     thread() : handle(OS_THREAD_INVALID_HANDLE) {}
-    
+
     void dispose()
     {
         os_thread_cleanup(handle);
         handle = OS_THREAD_INVALID_HANDLE;
     }
-        
-    bool join() 
+
+    bool join()
     {
         return os_thread_join(handle)==0;
     }
-    
-    bool is_valid() 
+
+    bool is_valid()
     {
         return handle!=OS_THREAD_INVALID_HANDLE;
     }
-    
+
     bool is_current()
     {
         return os_thread_is_current(handle);
@@ -79,8 +79,8 @@ public:
 
 class ThreadFactory
 {
-public:    
-    thread create(const char* name, os_thread_fn_t function, void* function_param=NULL, 
+public:
+    thread create(const char* name, os_thread_fn_t function, void* function_param=NULL,
         os_thread_prio_t priority=OS_THREAD_PRIORITY_DEFAULT, size_t stack_size=OS_THREAD_STACK_SIZE_DEFAULT, void* stack=NULL)
     {
         os_thread_t handle;
@@ -90,7 +90,7 @@ public:
             os_thread_create(&handle, name, priority, function, function_param, stack_size);
         return thread(handle);
     }
-        
+
 };
 
 extern ThreadFactory Thread;

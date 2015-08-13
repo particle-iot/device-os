@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -35,16 +35,16 @@
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
   */
-  
+
 /** @defgroup USBD_HID
   * @brief This file is the Header file for USBD_msc.c
   * @{
-  */ 
+  */
 
 
 /** @defgroup USBD_HID_Exported_Defines
   * @{
-  */ 
+  */
 #define USB_HID_CONFIG_DESC_SIZ       34
 #define USB_HID_DESC_SIZ              9
 #define HID_MOUSE_REPORT_DESC_SIZE    74
@@ -63,7 +63,7 @@
 #define HID_REQ_GET_REPORT            0x01
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USBD_CORE_Exported_TypesDefinitions
@@ -73,44 +73,44 @@
 
 /**
   * @}
-  */ 
+  */
 
 
 
 /** @defgroup USBD_CORE_Exported_Macros
   * @{
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBD_CORE_Exported_Variables
   * @{
-  */ 
+  */
 
 extern USBD_Class_cb_TypeDef  USBD_HID_cb;
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USB_CORE_Exported_Functions
   * @{
-  */ 
-uint8_t USBD_HID_SendReport (USB_OTG_CORE_HANDLE  *pdev, 
+  */
+uint8_t USBD_HID_SendReport (USB_OTG_CORE_HANDLE  *pdev,
                                  uint8_t *report,
                                  uint16_t len);
 /**
   * @}
-  */ 
+  */
 
 #endif  // __USB_HID_CORE_H_
 /**
   * @}
-  */ 
+  */
 
 /**
   * @}
-  */ 
-  
+  */
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

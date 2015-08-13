@@ -37,16 +37,16 @@
 #ifdef	__cplusplus
 extern "C" {
 #endif
-    
+
 typedef struct {
     uint32_t maximum_size;      // the maximum allowable size for the entire module image
     uint32_t start_address;     // the designated start address for the module
-    uint32_t end_address;       // 
-    module_function_t module_function;    
+    uint32_t end_address;       //
+    module_function_t module_function;
     uint8_t module_index;
     module_store_t store;
-    
-} module_bounds_t;    
+
+} module_bounds_t;
 
 typedef enum {
     MODULE_VALIDATION_INTEGRITY        = 1<<1,
@@ -57,25 +57,25 @@ typedef enum {
     MODULE_VALIDATION_END = 0x7FFF
 } module_validation_flags_t;
 
-typedef struct {    
+typedef struct {
     module_bounds_t bounds;
     const module_info_t* info;      // pointer to the module info in the module, may be NULL
     const module_info_crc_t* crc;
     const module_info_suffix_t* suffix;
     uint16_t validity_checked;    // the flags that were checked
-    uint16_t validity_result;     // the result of the checks    
+    uint16_t validity_result;     // the result of the checks
 } hal_module_t;
-    
+
 typedef struct {
     uint16_t size;
     uint16_t platform_id;
     hal_module_t* modules;      // allocated by HAL_System_Info
-    uint16_t module_count;      // number of modules in the array    
-} hal_system_info_t;    
+    uint16_t module_count;      // number of modules in the array
+} hal_system_info_t;
 
 
 /**
- * 
+ *
  * @param info          The buffer to fill with system info or to reclaim
  * @param construct     {#code true} to fill the buffer, {@code false} to reclaim.
  * @param reserved      set to 0
@@ -87,7 +87,7 @@ bool HAL_Verify_User_Dependencies();
 // TODO - this is temporary to get a working hal.
 // A C++ MemoryDeviceRegion will be used so that callers can incrementally
 // write to that. This abstracts the memory regions without needing to expose
-// the addresses.    
+// the addresses.
 
 uint32_t HAL_OTA_FlashAddress();
 
@@ -131,8 +131,8 @@ void HAL_OTA_Flashed_ResetStatus(void);
 
 /**
  * Set the claim code for this device.
- * @param code  The claim code to set. If null, clears the claim code. 
- * @return 0 on success. 
+ * @param code  The claim code to set. If null, clears the claim code.
+ * @return 0 on success.
  */
 uint16_t HAL_Set_Claim_Code(const char* code);
 
@@ -176,17 +176,17 @@ typedef enum {
      * Retrieve the private key data if it exists but do not generate a new one.
      */
     PRIVATE_KEY_GENERATE_NEVER,
-            
+
     /**
      * Generates the private key if it is missing.
      */
     PRIVATE_KEY_GENERATE_MISSING,
-    
+
     /*
      * Generate a new private key even if one is already present.
      */
     PRIVATE_KEY_GENERATE_ALWAYS
-    
+
 } PrivateKeyGeneration;
 
 typedef struct {
@@ -197,7 +197,7 @@ typedef struct {
      */
     /*[out]*/ bool had_key;
     /*[out]*/ bool generated_key;
-    
+
 } private_key_generation_t;
 
 /**

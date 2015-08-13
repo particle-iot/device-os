@@ -28,7 +28,7 @@
 
 /*
  * SPI Test requires Spark MicroSD Shield with FM25CL64B-G or MB85RS64A FRAM populated for U3,
- * 
+ *
  * or you may wire it up directly as follows:
  *
  *              8-Pin DIP FM25CL64B-G or MB85RS64A (8Ki)
@@ -68,7 +68,7 @@ void FRAM_SPI_DMA_TransferComplete_Callback(void)
  * cs_pin: chip select pin used for FRAM
  * addr: starting address
  * buf: pointer to data
- * count: data length. 
+ * count: data length.
  *        If this parameter is omitted, it is defaulted to one byte.
  * returns: 0 operation is successful
  *          -1 address out of range
@@ -82,8 +82,8 @@ int8_t FRAMWrite(uint16_t cs_pin, uint16_t addr, uint8_t* buf, uint16_t count=1)
     uint8_t addrMSB = (addr >> 8) & 0xff;
     uint8_t addrLSB = addr & 0xff;
 
-    digitalWrite(cs_pin, LOW);   
-    SPI.transfer(CMD_WREN);  //write enable 
+    digitalWrite(cs_pin, LOW);
+    SPI.transfer(CMD_WREN);  //write enable
     digitalWrite(cs_pin, HIGH);
 
     digitalWrite(cs_pin, LOW);
@@ -109,7 +109,7 @@ int8_t FRAMWrite(uint16_t cs_pin, uint16_t addr, uint8_t* buf, uint16_t count=1)
  * cs_pin: chip select pin used for FRAM
  * addr: starting address
  * buf: pointer to data
- * count: data length. 
+ * count: data length.
  *        If this parameter is omitted, it is defaulted to one byte.
  * returns: 0 operation is successful
  *          -1 address out of range
@@ -169,7 +169,7 @@ test(SPI_Test2_MODE0_MSBFIRST_ReadWriteSucceedsWithoutUserIntervention) {
     digitalWrite(D2, HIGH);
 
     // When - Setting up the SPI bus
-    SPI.setDataMode(SPI_MODE0);  
+    SPI.setDataMode(SPI_MODE0);
     SPI.setBitOrder(MSBFIRST);
     SPI.setClockDivider(SPI_CLOCK_DIV4);  // 72MHz / 4MHz = 18MHz
     SPI.begin(); // Chip Select line will default to init A2 as OUTPUT, however we're manually using D2
@@ -232,7 +232,7 @@ test(SPI_Test2_MODE0_MSBFIRST_ReadWriteSucceedsWithoutUserIntervention) {
     // Then - Read 256 values back into buf2 and test for equality
     status = FRAMRead(D2, 0x00, (uint8_t*)buf2, arraySize(buf1));
     assertTrue(status == 0);
-    
+
     for (uint16_t i=0; i<arraySize(buf1); i++)
     {
         assertEqual(buf1[i], buf2[i]);
@@ -251,7 +251,7 @@ test(SPI_Test3_MODE3_MSBFIRST_ReadWriteSucceedsWithoutUserIntervention) {
     // MODE3, with Chip Select forced to D2
 
     // When - Setting up the SPI bus
-    SPI.setDataMode(SPI_MODE3);  
+    SPI.setDataMode(SPI_MODE3);
     SPI.setBitOrder(MSBFIRST);
     SPI.setClockDivider(SPI_CLOCK_DIV4);  // 72MHz / 4MHz = 18MHz
     SPI.begin(D2); // Chip Select forced to D2
@@ -314,7 +314,7 @@ test(SPI_Test3_MODE3_MSBFIRST_ReadWriteSucceedsWithoutUserIntervention) {
     // Then - Read 256 values back into buf2 and test for equality
     status = FRAMRead(D2, 0x00, (uint8_t*)buf2, arraySize(buf1));
     assertTrue(status == 0);
-    
+
     for (uint16_t i=0; i<arraySize(buf1); i++)
     {
         assertEqual(buf1[i], buf2[i]);

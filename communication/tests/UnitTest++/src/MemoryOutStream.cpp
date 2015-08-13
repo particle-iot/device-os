@@ -99,19 +99,19 @@ MemoryOutStream& MemoryOutStream::operator << (unsigned long const n)
 MemoryOutStream& MemoryOutStream::operator << (float const f)
 {
     FormatToStream(*this, "%ff", f);
-    return *this;    
+    return *this;
 }
 
 MemoryOutStream& MemoryOutStream::operator << (void const* p)
 {
     FormatToStream(*this, "%p", p);
-    return *this;    
+    return *this;
 }
 
 MemoryOutStream& MemoryOutStream::operator << (unsigned int const s)
 {
     FormatToStream(*this, "%u", s);
-    return *this;    
+    return *this;
 }
 
 MemoryOutStream& MemoryOutStream::operator <<(double const d)

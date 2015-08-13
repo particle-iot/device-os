@@ -35,7 +35,7 @@ typedef uint32_t mem_page_count_t;
  */
 class MemoryDevice
 {
-public:    
+public:
     virtual ~MemoryDevice();
 
     /**
@@ -49,17 +49,17 @@ public:
     virtual mem_page_count_t pageCount() const = 0;
 
     virtual bool write(const void* data, mem_addr_t address, mem_page_size_t length)=0;
-        
+
     virtual bool read(void* data, mem_addr_t address, mem_page_size_t length) const=0;
-    
+
     virtual bool erasePage(mem_addr_t address) = 0;
 
-    
+
     mem_addr_t length() const {
         return pageAddress(pageCount());
     }
 
-    
+
     /**
      * Converts a page index [0,N) into the corresponding read/write address.
      * @param page  The page to convert to an address.
@@ -68,7 +68,7 @@ public:
     mem_addr_t pageAddress(mem_page_count_t page) const {
         return mem_addr_t(page) * pageSize();
     }
-    
+
     mem_page_count_t addressPage(mem_addr_t address) const {
         return address/pageSize();
     }
@@ -83,7 +83,7 @@ public:
     inline bool isValidAddress(mem_addr_t address, mem_page_size_t extent) const {
         return address + extent <= length() && (extent==0 || (addressPage(address)==addressPage(address+extent-1)));
     }
-    
+
     bool eraseAll() {
         mem_addr_t end = length();
         mem_addr_t size = pageSize();
@@ -99,12 +99,12 @@ public:
 /**
  * Describes a target device and an address region.
  */
-struct MemoryDeviceRegion {    
+struct MemoryDeviceRegion {
     MemoryDevice& memory;
     mem_addr_t start;
     mem_addr_t end;
-    
-    void set(MemoryDevice& memory, mem_addr_t start, mem_addr_t end) 
+
+    void set(MemoryDevice& memory, mem_addr_t start, mem_addr_t end)
     {
         this->memory = memory;
         this->start = start;
@@ -113,22 +113,22 @@ struct MemoryDeviceRegion {
 };
 
 class MemoryDeviceWriter : public MemoryDeviceRegion {
-    
-    
+
+
     void begin(mem_addr_t offset, mem_addr_t length)
     {
         start += offset;
         end = start + length;
     }
-    
-    void write(void* buffer, mem_addr_t length) 
+
+    void write(void* buffer, mem_addr_t length)
     {
-        
+
     }
 };
 
 /**
- * Access the various memory store regions in the system. 
+ * Access the various memory store regions in the system.
  */
 class MemoryDevices
 {
@@ -136,13 +136,13 @@ public:
 
     /**
      * Retrieves the store for the internal program.
-     * @return 
+     * @return
      */
-    static void internalFirmware(MemoryDeviceRegion& region);    
+    static void internalFirmware(MemoryDeviceRegion& region);
     static void factoryDefaultFirmware(MemoryDeviceRegion& region);
     static void backupFirmware(MemoryDeviceRegion& region);
     static void OTAFlashFirmware(MemoryDeviceRegion& region);
-    
+
 };
 
 

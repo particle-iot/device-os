@@ -43,11 +43,11 @@ void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uin
         LED_SetRGBColor(RGB_COLOR_RED);
         LED_On(LED_RGB);
         uint16_t c;
-        int loops = 2;        
+        int loops = 2;
         log_direct_("!");
         LED_Off(LED_RGB);
         while(loops) {
-                // preamble            
+                // preamble
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
                 LED_On(LED_RGB);

@@ -38,7 +38,7 @@ stack_start = ALIGN(stack_end - stack_size, 4);
 min_heap_size = 16K;
 
 /*
- * Adjust this as the static RAM needs of this module change. 
+ * Adjust this as the static RAM needs of this module change.
  * Can be expanded or reduced as necessary. The heap dynamically expands from
  * it's static base to the heap top, which is the bottom of this module's static ram.
  */

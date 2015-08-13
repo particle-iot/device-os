@@ -13,12 +13,12 @@
 **
 **  Target      : STMicroelectronics STM32
 **
-**  Environment : Eclipse-CDT and GNU Tools ARM Embedded. 
+**  Environment : Eclipse-CDT and GNU Tools ARM Embedded.
 **
 *****************************************************************************
 */
 
-MEMORY 
+MEMORY
 {
   RAM (xrw)     : ORIGIN = 0x20000000, LENGTH = 20K
   APP_FLASH (rx)    : ORIGIN = 0x08000000, LENGTH = 128K

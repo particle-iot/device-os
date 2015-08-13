@@ -66,8 +66,8 @@ wlan_result_t wlan_reset_credentials_store()
 }
 
 /**
- * Do what is needed to finalize the connection. 
- * @return 
+ * Do what is needed to finalize the connection.
+ * @return
  */
 wlan_result_t wlan_connect_finalize()
 {

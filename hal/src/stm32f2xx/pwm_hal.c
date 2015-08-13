@@ -143,7 +143,7 @@ uint16_t HAL_PWM_Get_Frequency(uint16_t pin)
 {
     uint16_t TIM_ARR = 0;
     uint16_t PWM_Frequency = 0;
-    
+
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_peripheral == TIM1)
     {

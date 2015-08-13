@@ -4,7 +4,7 @@
   * @author  MCD Application Team
   * @version V1.1.0
   * @date    19-March-2012
-  * @brief   general defines for the usb device library 
+  * @brief   general defines for the usb device library
   ******************************************************************************
   * @attention
   *
@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 
@@ -36,15 +36,15 @@
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
   */
-  
+
 /** @defgroup USB_DEF
   * @brief general defines for the usb device library file
   * @{
-  */ 
+  */
 
 /** @defgroup USB_DEF_Exported_Defines
   * @{
-  */ 
+  */
 
 #ifndef NULL
 #define NULL    0
@@ -57,12 +57,12 @@
 #define  USB_LEN_EP_DESC                                0x07
 #define  USB_LEN_OTG_DESC                               0x03
 
-#define  USBD_IDX_LANGID_STR                            0x00 
-#define  USBD_IDX_MFC_STR                               0x01 
+#define  USBD_IDX_LANGID_STR                            0x00
+#define  USBD_IDX_MFC_STR                               0x01
 #define  USBD_IDX_PRODUCT_STR                           0x02
-#define  USBD_IDX_SERIAL_STR                            0x03 
-#define  USBD_IDX_CONFIG_STR                            0x04 
-#define  USBD_IDX_INTERFACE_STR                         0x05 
+#define  USBD_IDX_SERIAL_STR                            0x03
+#define  USBD_IDX_CONFIG_STR                            0x04
+#define  USBD_IDX_INTERFACE_STR                         0x05
 
 #define  USB_REQ_TYPE_STANDARD                          0x00
 #define  USB_REQ_TYPE_CLASS                             0x20
@@ -104,7 +104,7 @@
 
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USBD_DEF_Exported_TypesDefinitions
@@ -112,13 +112,13 @@
   */
 /**
   * @}
-  */ 
+  */
 
 
 
 /** @defgroup USBD_DEF_Exported_Macros
   * @{
-  */ 
+  */
 #define  SWAPBYTE(addr)        (((uint16_t)(*((uint8_t *)(addr)))) + \
                                (((uint16_t)(*(((uint8_t *)(addr)) + 1))) << 8))
 
@@ -126,31 +126,31 @@
 #define HIBYTE(x)  ((uint8_t)((x & 0xFF00) >>8))
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBD_DEF_Exported_Variables
   * @{
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBD_DEF_Exported_FunctionsPrototype
   * @{
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 
 #endif /* __USBD_DEF_H */
 
 /**
   * @}
-  */ 
+  */
 
 /**
 * @}
-*/ 
+*/
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

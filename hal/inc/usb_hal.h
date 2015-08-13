@@ -40,9 +40,9 @@
 extern "C" {
 #endif
 
-#include "usb_config_hal.h"    
-    
-    
+#include "usb_config_hal.h"
+
+
     /* USB Config : IMR_MSK */
 /* mask defining which events has to be handled */
 /* by the device application software */
@@ -77,7 +77,7 @@ void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate));
 
 /**
  * Retrieves the number of bytes of data available.
- * @return 
+ * @return
  */
 uint8_t USB_USART_Available_Data(void);
 
@@ -86,7 +86,7 @@ uint8_t USB_USART_Available_Data(void);
  * @param peek  If the data should be peeked reather than fetched.
  * The default, `false` means fetch, where data is removed from the buffer.
  * When `true`, the data byte is left in the buffer.
- * @return 
+ * @return
  */
 int32_t USB_USART_Receive_Data(uint8_t peek);
 

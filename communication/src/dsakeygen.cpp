@@ -29,13 +29,13 @@
 using namespace std;
 
 class RSADERCommon {
-    
+
     uint8_t* buffer;
     int length;
-    
-protected:    
-    
-    void write_mpi(const mpi* data) {        
+
+protected:
+
+    void write_mpi(const mpi* data) {
         int size = mpi_size(data);
         if (length>=size) {
             mpi_write_binary(data, buffer, size);
@@ -43,7 +43,7 @@ protected:
             buffer += size;
         }
     }
-    
+
     void write_integer_1024(const mpi* data) {
         uint8_t header[] = { 0x02, 0x81, 0x81, 0 };  // padded with an extra 0 byte to ensure number is positive
         write(header, sizeof(header));
@@ -55,12 +55,12 @@ protected:
         write(header, sizeof(header));
         write_mpi(data);
     }
-    
+
     void write_public_exponent() {
         uint8_t data[] = { 2, 3, 1, 0, 1 };
         write(data, 5);
     }
-    
+
     void write(const uint8_t* data, size_t length) {
         while (length && this->length) {
             *this->buffer++ = *data++;
@@ -73,17 +73,17 @@ protected:
         this->buffer = (uint8_t*)buffer;
         this->length = size;
     }
-    
+
 };
 
 class RSAPrivateKeyWriter : RSADERCommon {
-    
+
     void write_sequence_header() {
         // sequence tag and version
         uint8_t header[] = { 0x30, 0x82, 0x2, 0x5F, 2, 1, 0 };
         write(header, sizeof(header));
     }
-    
+
 public:
 
     /**
@@ -100,10 +100,10 @@ public:
         set_buffer(buf, length);
         write_sequence_header();
         write_integer_1024(&ctx.N);
-        write_public_exponent();        // 5    
+        write_public_exponent();        // 5
         write_integer_1024(&ctx.D);      // 132 * 2
         write_integer_512(&ctx.P);       // 67 * 5
-        write_integer_512(&ctx.Q);       
+        write_integer_512(&ctx.Q);
         write_integer_512(&ctx.DP);
         write_integer_512(&ctx.DQ);
         write_integer_512(&ctx.QP);      // total is 604 bytes, 0x25C
@@ -115,7 +115,7 @@ public:
  * Returns 0 on success.
  * @param f_rng     The random number generator function.
  * @param p_rng     The argument to the RNG function.
- * @return 
+ * @return
  */
 int gen_rsa_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *), void *p_rng)
 {
@@ -125,11 +125,11 @@ int gen_rsa_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *), void 
 
     int failure = rsa_gen_key(&rsa, 1024, 65537);
     if (!failure)
-    {         
+    {
         RSAPrivateKeyWriter().write_private_key(buffer, max_length, rsa);
     }
 
     rsa_free(&rsa);
     return failure;
-}    
+}
 

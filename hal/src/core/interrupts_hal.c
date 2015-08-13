@@ -239,11 +239,11 @@ void HAL_Interrupts_Trigger(uint16_t EXTI_Line, void* reserved)
     HAL_InterruptHandler userISR_Handle = exti_channels[EXTI_Line].fn;
 
     if (userISR_Handle)
-        userISR_Handle(data);    
+        userISR_Handle(data);
 }
 
 int HAL_disable_irq()
-{        
+{
   int is = __get_PRIMASK();
   __disable_irq();
   return is;

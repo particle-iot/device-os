@@ -4,20 +4,20 @@
   * @author  MCD Application Team
   * @version V3.6.1
   * @date    05-March-2012
-  * @brief   This file contains all the functions prototypes for the DMA firmware 
+  * @brief   This file contains all the functions prototypes for the DMA firmware
   *          library.
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   *
   ******************************************************************************
@@ -46,7 +46,7 @@
   * @{
   */
 
-/** 
+/**
   * @brief  DMA Init structure definition
   */
 
@@ -59,7 +59,7 @@ typedef struct
   uint32_t DMA_DIR;                /*!< Specifies if the peripheral is the source or destination.
                                         This parameter can be a value of @ref DMA_data_transfer_direction */
 
-  uint32_t DMA_BufferSize;         /*!< Specifies the buffer size, in data unit, of the specified Channel. 
+  uint32_t DMA_BufferSize;         /*!< Specifies the buffer size, in data unit, of the specified Channel.
                                         The data unit is equal to the configuration set in DMA_PeripheralDataSize
                                         or DMA_MemoryDataSize members depending in the transfer direction. */
 
@@ -108,7 +108,7 @@ typedef struct
                                    ((PERIPH) == DMA2_Channel4) || \
                                    ((PERIPH) == DMA2_Channel5))
 
-/** @defgroup DMA_data_transfer_direction 
+/** @defgroup DMA_data_transfer_direction
   * @{
   */
 
@@ -120,7 +120,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup DMA_peripheral_incremented_mode 
+/** @defgroup DMA_peripheral_incremented_mode
   * @{
   */
 
@@ -132,7 +132,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup DMA_memory_incremented_mode 
+/** @defgroup DMA_memory_incremented_mode
   * @{
   */
 
@@ -144,7 +144,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup DMA_peripheral_data_size 
+/** @defgroup DMA_peripheral_data_size
   * @{
   */
 
@@ -158,7 +158,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup DMA_memory_data_size 
+/** @defgroup DMA_memory_data_size
   * @{
   */
 
@@ -172,7 +172,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup DMA_circular_normal_mode 
+/** @defgroup DMA_circular_normal_mode
   * @{
   */
 
@@ -183,7 +183,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup DMA_priority_level 
+/** @defgroup DMA_priority_level
   * @{
   */
 
@@ -199,7 +199,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup DMA_memory_to_memory 
+/** @defgroup DMA_memory_to_memory
   * @{
   */
 
@@ -211,7 +211,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup DMA_interrupts_definition 
+/** @defgroup DMA_interrupts_definition
   * @{
   */
 
@@ -301,7 +301,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup DMA_flags_definition 
+/** @defgroup DMA_flags_definition
   * @{
   */
 #define DMA1_FLAG_GL1                      ((uint32_t)0x00000001)
@@ -384,7 +384,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup DMA_Buffer_Size 
+/** @defgroup DMA_Buffer_Size
   * @{
   */
 
@@ -415,7 +415,7 @@ void DMA_Init(DMA_Channel_TypeDef* DMAy_Channelx, DMA_InitTypeDef* DMA_InitStruc
 void DMA_StructInit(DMA_InitTypeDef* DMA_InitStruct);
 void DMA_Cmd(DMA_Channel_TypeDef* DMAy_Channelx, FunctionalState NewState);
 void DMA_ITConfig(DMA_Channel_TypeDef* DMAy_Channelx, uint32_t DMA_IT, FunctionalState NewState);
-void DMA_SetCurrDataCounter(DMA_Channel_TypeDef* DMAy_Channelx, uint16_t DataNumber); 
+void DMA_SetCurrDataCounter(DMA_Channel_TypeDef* DMAy_Channelx, uint16_t DataNumber);
 uint16_t DMA_GetCurrDataCounter(DMA_Channel_TypeDef* DMAy_Channelx);
 FlagStatus DMA_GetFlagStatus(uint32_t DMAy_FLAG);
 void DMA_ClearFlag(uint32_t DMAy_FLAG);

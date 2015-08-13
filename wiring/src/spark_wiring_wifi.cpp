@@ -34,7 +34,7 @@ License along with this library; if not, see <http://www.gnu.org/licenses/>.
 
 namespace spark {
 
-    
+
 /* ***********************************************
    * Network.RSSI() - @TimothyBrown - 2014.03.18 *
    ***********************************************
@@ -48,7 +48,7 @@ namespace spark {
     int8_t WiFiClass::RSSI() {
         if (!network_ready(*this, 0, NULL))
             return 0;
-        
+
         system_tick_t _functionStart = millis();
         while ((millis() - _functionStart) < 1000) {
             int rv = wlan_connected_rssi();

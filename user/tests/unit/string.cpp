@@ -6,15 +6,15 @@
 #include "spark_wiring_string.h"
 
 TEST_CASE("Can use HEX radix with String numeric conversion constructors") {
-    
+
     REQUIRE(!strcmp(String(32, HEX),"20"));
 }
 
-TEST_CASE("Can use DEC radix with String numeric conversion constructors") {    
+TEST_CASE("Can use DEC radix with String numeric conversion constructors") {
     REQUIRE(String(32,DEC)=="32");
 }
 
-TEST_CASE("Can use BIN radix with String numeric conversion constructors") {    
+TEST_CASE("Can use BIN radix with String numeric conversion constructors") {
     REQUIRE(String(32, BIN)=="100000");
 }
 
@@ -73,5 +73,5 @@ TEST_CASE("Can convert negative float no decimals rounding up") {
 namespace Catch {
     std::string toString( const String& value ) {
         return std::string(value.c_str());
-    }    
+    }
 }

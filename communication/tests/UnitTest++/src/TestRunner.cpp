@@ -35,11 +35,11 @@ TestRunner::~TestRunner()
 int TestRunner::Finish() const
 {
     float const secondsElapsed = static_cast<float>(m_timer->GetTimeInMs() / 1000.0);
-    m_reporter->ReportSummary(m_result->GetTotalTestCount(), 
-							  m_result->GetFailedTestCount(), 
-							  m_result->GetFailureCount(), 
+    m_reporter->ReportSummary(m_result->GetTotalTestCount(),
+							  m_result->GetFailedTestCount(),
+							  m_result->GetFailureCount(),
 							  secondsElapsed);
-    
+
 	return m_result->GetFailureCount();
 }
 

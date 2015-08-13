@@ -26,7 +26,7 @@ string XmlEscape(string const& value)
     ReplaceChar(escaped, '>', "&gt;");
     ReplaceChar(escaped, '\'', "&apos;");
     ReplaceChar(escaped, '\"', "&quot;");
- 
+
     return escaped;
 }
 
@@ -77,13 +77,13 @@ void XmlTestReporter::AddXmlElement(ostream& os, char const* encoding)
     os << "?>";
 }
 
-void XmlTestReporter::BeginResults(std::ostream& os, int totalTestCount, int failedTestCount, 
+void XmlTestReporter::BeginResults(std::ostream& os, int totalTestCount, int failedTestCount,
                                    int failureCount, float secondsElapsed)
 {
    os << "<unittest-results"
-       << " tests=\"" << totalTestCount << "\"" 
-       << " failedtests=\"" << failedTestCount << "\"" 
-       << " failures=\"" << failureCount << "\"" 
+       << " tests=\"" << totalTestCount << "\""
+       << " failedtests=\"" << failedTestCount << "\""
+       << " failures=\"" << failureCount << "\""
        << " time=\"" << secondsElapsed << "\""
        << ">";
 }
@@ -96,7 +96,7 @@ void XmlTestReporter::EndResults(std::ostream& os)
 void XmlTestReporter::BeginTest(std::ostream& os, DeferredTestResult const& result)
 {
     os << "<test"
-        << " suite=\"" << result.suiteName << "\"" 
+        << " suite=\"" << result.suiteName << "\""
         << " name=\"" << result.testName << "\""
         << " time=\"" << result.timeElapsed << "\"";
 }
@@ -113,8 +113,8 @@ void XmlTestReporter::AddFailure(std::ostream& os, DeferredTestResult const& res
 {
     os << ">"; // close <test> element
 
-    for (DeferredTestResult::FailureVec::const_iterator it = result.failures.begin(); 
-         it != result.failures.end(); 
+    for (DeferredTestResult::FailureVec::const_iterator it = result.failures.begin();
+         it != result.failures.end();
          ++it)
     {
         string const escapedMessage = XmlEscape(it->second);

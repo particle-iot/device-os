@@ -7,16 +7,16 @@
   * @brief   This file provides all the WWDG firmware functions.
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   ******************************************************************************
   */
@@ -29,7 +29,7 @@
   * @{
   */
 
-/** @defgroup WWDG 
+/** @defgroup WWDG
   * @brief WWDG driver modules
   * @{
   */
@@ -179,7 +179,7 @@ void WWDG_SetCounter(uint8_t Counter)
 }
 
 /**
-  * @brief  Enables WWDG and load the counter value.                  
+  * @brief  Enables WWDG and load the counter value.
   * @param  Counter: specifies the watchdog counter value.
   *   This parameter must be a number between 0x40 and 0x7F.
   * @retval None

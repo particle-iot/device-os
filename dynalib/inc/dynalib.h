@@ -63,7 +63,7 @@
 
 #elif defined(DYNALIB_IMPORT)
 
-    #ifdef __arm__ 
+    #ifdef __arm__
 
         #define DYNALIB_BEGIN(tablename)    \
             extern const void* dynalib_location_##tablename;
@@ -94,7 +94,7 @@
         #define DYNALIB_END(name)
     #else
         #error Unknown architecture
-    #endif // __arm__        
+    #endif // __arm__
 #endif
 
 

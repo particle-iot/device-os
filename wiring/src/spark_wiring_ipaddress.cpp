@@ -4,7 +4,7 @@
  * @authors Satish Nair, Technobly
  * @version V1.0.0
  * @date    10-Nov-2013
- * @brief   
+ * @brief
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   Copyright (c) 2011 Adrian McEwen
@@ -41,7 +41,7 @@ IPAddress::IPAddress(const HAL_IPAddress& address)
 
 IPAddress::IPAddress(uint8_t first_octet, uint8_t second_octet, uint8_t third_octet, uint8_t fourth_octet)
 {
-    set_ipv4(first_octet, second_octet, third_octet, fourth_octet);        
+    set_ipv4(first_octet, second_octet, third_octet, fourth_octet);
 }
 
 IPAddress::IPAddress(uint32_t address)
@@ -50,17 +50,17 @@ IPAddress::IPAddress(uint32_t address)
 }
 
 IPAddress::IPAddress(const uint8_t* address)
-{    
+{
     *this = address;
 }
 
 IPAddress::operator bool()
 {
 #if Wiring_IPv6
-#error handle me!    
+#error handle me!
 #else
     return address.ipv4!=0;
-#endif    
+#endif
 }
 
 void IPAddress::set_ipv4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3)
@@ -103,7 +103,7 @@ size_t IPAddress::printTo(Print& p) const
         if (n)
             n += p.print('.');
         n += p.print((*this)[i], DEC);
-    }    
+    }
     return n;
 }
 

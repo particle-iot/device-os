@@ -169,7 +169,7 @@ typedef void (*tmrTIMER_CALLBACK)( xTimerHandle xTimer );
  *
  * 	   // Optionally do something if the pxTimer parameter is NULL.
  * 	   configASSERT( pxTimer );
- * 	
+ *
  *     // Which timer expired?
  *     lArrayIndex = ( long ) pvTimerGetTimerID( pxTimer );
  *
@@ -292,7 +292,7 @@ void *pvTimerGetTimerID( xTimerHandle xTimer ) PRIVILEGED_FUNCTION;
 portBASE_TYPE xTimerIsTimerActive( xTimerHandle xTimer ) PRIVILEGED_FUNCTION;
 
 /**
- * xTimerGetTimerDaemonTaskHandle() is only available if 
+ * xTimerGetTimerDaemonTaskHandle() is only available if
  * INCLUDE_xTimerGetTimerDaemonTaskHandle is set to 1 in FreeRTOSConfig.h.
  *
  * Simply returns the handle of the timer service/daemon task.  It it not valid

@@ -53,13 +53,13 @@
 #include <stdlib.h>
 
 
-//Enable this flag if and only if you must comply with BSD socket 
+//Enable this flag if and only if you must comply with BSD socket
 //close() function
 #ifdef _API_USE_BSD_CLOSE
 #define close(sd) closesocket(sd)
 #endif
 
-//Enable this flag if and only if you must comply with BSD socket read() and 
+//Enable this flag if and only if you must comply with BSD socket read() and
 //write() functions
 #ifdef _API_USE_BSD_READ_WRITE
 #define read(sd, buf, len, flags) recv(sd, buf, len, flags)
@@ -81,7 +81,7 @@
 #define SOCKET_MDNS_ADVERTISE_PARAMS_LEN	(12)
 #define SOCKET_GET_MSS_VALUE_PARAMS_LEN		(4)
 
-// The legnth of arguments for the SEND command: sd + buff_offset + len + flags, 
+// The legnth of arguments for the SEND command: sd + buff_offset + len + flags,
 // while size of each parameter is 32 bit - so the total length is 16 bytes;
 
 #define HCI_CMND_SEND_ARG_LENGTH	(16)
@@ -102,13 +102,13 @@
 //!
 //!  @param  sd  socket descriptor
 //!
-//!  @return 0 in case there are buffers available, 
+//!  @return 0 in case there are buffers available,
 //!          -1 in case of bad socket
-//!          -2 if there are no free buffers present (only when 
+//!          -2 if there are no free buffers present (only when
 //!          SEND_NON_BLOCKING is enabled)
 //!
-//!  @brief  if SEND_NON_BLOCKING not define - block until have free buffer 
-//!          becomes available, else return immediately  with correct status 
+//!  @brief  if SEND_NON_BLOCKING not define - block until have free buffer
+//!          becomes available, else return immediately  with correct status
 //!          regarding the buffers available.
 //
 //*****************************************************************************
@@ -121,7 +121,7 @@ INT16 HostFlowControlConsumeBuff(INT16 sd)
 	bool stop = false;
 	do
 	{
-		// In case last transmission failed then we will return the last failure 
+		// In case last transmission failed then we will return the last failure
 		// reason here.
 		// Note that the buffer will not be allocated in this case
 		if (tSLInformation.slTransmitDataError != 0)
@@ -154,7 +154,7 @@ INT16 HostFlowControlConsumeBuff(INT16 sd)
 	return 0;
 #else
 
-	// In case last transmission failed then we will return the last failure 
+	// In case last transmission failed then we will return the last failure
 	// reason here.
 	// Note that the buffer will not be allocated in this case
 	if (tSLInformation.slTransmitDataError != 0)
@@ -166,7 +166,7 @@ INT16 HostFlowControlConsumeBuff(INT16 sd)
 	if(SOCKET_STATUS_ACTIVE != get_socket_active_status(sd))
 		return -1;
 
-	//If there are no available buffers, return -2. It is recommended to use  
+	//If there are no available buffers, return -2. It is recommended to use
 	// select or receive to see if there is any buffer occupied with received data
 	// If so, call receive() to release the buffer.
 	if(0 == tSLInformation.usNumberOfFreeBuffers)
@@ -185,20 +185,20 @@ INT16 HostFlowControlConsumeBuff(INT16 sd)
 //
 //! socket
 //!
-//!  @param  domain    selects the protocol family which will be used for 
+//!  @param  domain    selects the protocol family which will be used for
 //!                    communication. On this version only AF_INET is supported
-//!  @param  type      specifies the communication semantics. On this version 
+//!  @param  type      specifies the communication semantics. On this version
 //!                    only SOCK_STREAM, SOCK_DGRAM, SOCK_RAW are supported
-//!  @param  protocol  specifies a particular protocol to be used with the 
-//!                    socket IPPROTO_TCP, IPPROTO_UDP or IPPROTO_RAW are 
+//!  @param  protocol  specifies a particular protocol to be used with the
+//!                    socket IPPROTO_TCP, IPPROTO_UDP or IPPROTO_RAW are
 //!                    supported.
 //!
-//!  @return  On success, socket handle that is used for consequent socket 
+//!  @return  On success, socket handle that is used for consequent socket
 //!           operations. On error, -1 is returned.
 //!
 //!  @brief  create an endpoint for communication
-//!          The socket function creates a socket that is bound to a specific 
-//!          transport service provider. This function is called by the 
+//!          The socket function creates a socket that is bound to a specific
+//!          transport service provider. This function is called by the
 //!          application layer to obtain a socket handle.
 //
 //*****************************************************************************
@@ -223,7 +223,7 @@ INT16 socket(INT32 domain, INT32 type, INT32 protocol)
 	// Since we are in blocking state - wait for event complete
 	SimpleLinkWaitEvent(HCI_CMND_SOCKET, &ret);
 
-	// Process the event 
+	// Process the event
 	errno = ret;
 
 	set_socket_active_status(ret, SOCKET_STATUS_ACTIVE);
@@ -263,8 +263,8 @@ INT32 closesocket(INT32 sd)
 	SimpleLinkWaitEvent(HCI_CMND_CLOSE_SOCKET, &ret);
 	errno = ret;
 
-	// since 'close' call may result in either OK (and then it closed) or error 
-	// mark this socket as invalid 
+	// since 'close' call may result in either OK (and then it closed) or error
+	// mark this socket as invalid
 	set_socket_active_status(sd, SOCKET_STATUS_INACTIVE);
 
 	return(ret);
@@ -274,15 +274,15 @@ INT32 closesocket(INT32 sd)
 //
 //! accept
 //!
-//!  @param[in]   sd      socket descriptor (handle)              
+//!  @param[in]   sd      socket descriptor (handle)
 //!  @param[out]  addr    the argument addr is a pointer to a sockaddr structure
-//!                       This structure is filled in with the address of the  
-//!                       peer socket, as known to the communications layer.        
-//!                       determined. The exact format of the address returned             
-//!                       addr is by the socket's address sockaddr. 
+//!                       This structure is filled in with the address of the
+//!                       peer socket, as known to the communications layer.
+//!                       determined. The exact format of the address returned
+//!                       addr is by the socket's address sockaddr.
 //!                       On this version only AF_INET is supported.
 //!                       This argument returns in network order.
-//!  @param[out] addrlen  the addrlen argument is a value-result argument: 
+//!  @param[out] addrlen  the addrlen argument is a value-result argument:
 //!                       it should initially contain the size of the structure
 //!                       pointed to by addr.
 //!
@@ -294,21 +294,21 @@ INT32 closesocket(INT32 sd)
 //!			       - On failure, SOC_ERROR	(-1)
 //!
 //!  @brief  accept a connection on a socket:
-//!          This function is used with connection-based socket types 
-//!          (SOCK_STREAM). It extracts the first connection request on the 
+//!          This function is used with connection-based socket types
+//!          (SOCK_STREAM). It extracts the first connection request on the
 //!          queue of pending connections, creates a new connected socket, and
 //!          returns a new file descriptor referring to that socket.
-//!          The newly created socket is not in the listening state. 
-//!          The original socket sd is unaffected by this call. 
+//!          The newly created socket is not in the listening state.
+//!          The original socket sd is unaffected by this call.
 //!          The argument sd is a socket that has been created with socket(),
-//!          bound to a local address with bind(), and is  listening for 
-//!          connections after a listen(). The argument addr is a pointer 
-//!          to a sockaddr structure. This structure is filled in with the 
+//!          bound to a local address with bind(), and is  listening for
+//!          connections after a listen(). The argument addr is a pointer
+//!          to a sockaddr structure. This structure is filled in with the
 //!          address of the peer socket, as known to the communications layer.
-//!          The exact format of the address returned addr is determined by the 
+//!          The exact format of the address returned addr is determined by the
 //!          socket's address family. The addrlen argument is a value-result
 //!          argument: it should initially contain the size of the structure
-//!          pointed to by addr, on return it will contain the actual 
+//!          pointed to by addr, on return it will contain the actual
 //!          length (in bytes) of the address returned.
 //!
 //! @sa     socket ; bind ; listen
@@ -339,10 +339,10 @@ INT32 accept(INT32 sd, sockaddr *addr, socklen_t *addrlen)
 	// need specify return parameters!!!
 	memcpy(addr, &tAcceptReturnArguments.tSocketAddress, ASIC_ADDR_LEN);
 	*addrlen = ASIC_ADDR_LEN;
-	errno = tAcceptReturnArguments.iStatus; 
+	errno = tAcceptReturnArguments.iStatus;
 	ret = errno;
 
-	// if succeeded, iStatus = new socket descriptor. otherwise - error number 
+	// if succeeded, iStatus = new socket descriptor. otherwise - error number
 	if(M_IS_VALID_SD(ret))
 	{
 		set_socket_active_status(ret, SOCKET_STATUS_ACTIVE);
@@ -359,8 +359,8 @@ INT32 accept(INT32 sd, sockaddr *addr, socklen_t *addrlen)
 //
 //! bind
 //!
-//!  @param[in]   sd      socket descriptor (handle)              
-//!  @param[out]  addr    specifies the destination address. On this version 
+//!  @param[in]   sd      socket descriptor (handle)
+//!  @param[out]  addr    specifies the destination address. On this version
 //!                       only AF_INET is supported.
 //!  @param[out] addrlen  contains the size of the structure pointed to by addr.
 //!
@@ -368,8 +368,8 @@ INT32 accept(INT32 sd, sockaddr *addr, socklen_t *addrlen)
 //!
 //!  @brief  assign a name to a socket
 //!          This function gives the socket the local address addr.
-//!          addr is addrlen bytes long. Traditionally, this is called when a 
-//!          socket is created with socket, it exists in a name space (address 
+//!          addr is addrlen bytes long. Traditionally, this is called when a
+//!          socket is created with socket, it exists in a name space (address
 //!          family) but has no name assigned.
 //!          It is necessary to assign a local address before a SOCK_STREAM
 //!          socket may receive connections.
@@ -411,7 +411,7 @@ INT32 bind(INT32 sd, const sockaddr *addr, INT32 addrlen)
 //
 //! listen
 //!
-//!  @param[in]   sd      socket descriptor (handle)              
+//!  @param[in]   sd      socket descriptor (handle)
 //!  @param[in]  backlog  specifies the listen queue depth. On this version
 //!                       backlog is not supported.
 //!  @return  	On success, zero is returned. On error, -1 is returned.
@@ -422,7 +422,7 @@ INT32 bind(INT32 sd, const sockaddr *addr, INT32 addrlen)
 //!          and then the connections are accepted with accept.
 //!          The listen() call applies only to sockets of type SOCK_STREAM
 //!          The backlog parameter defines the maximum length the queue of
-//!          pending connections may grow to. 
+//!          pending connections may grow to.
 //!
 //! @sa     socket ; accept ; bind
 //!
@@ -458,14 +458,14 @@ INT32 listen(INT32 sd, INT32 backlog)
 //
 //! gethostbyname
 //!
-//!  @param[in]   hostname     host name              
-//!  @param[in]   usNameLen    name length 
-//!  @param[out]  out_ip_addr  This parameter is filled in with host IP address. 
-//!                            In case that host name is not resolved, 
-//!                            out_ip_addr is zero.                  
+//!  @param[in]   hostname     host name
+//!  @param[in]   usNameLen    name length
+//!  @param[out]  out_ip_addr  This parameter is filled in with host IP address.
+//!                            In case that host name is not resolved,
+//!                            out_ip_addr is zero.
 //!  @return  	On success, positive is returned. On error, negative is returned
 //!
-//!  @brief  Get host IP by name. Obtain the IP Address of machine on network, 
+//!  @brief  Get host IP by name. Obtain the IP Address of machine on network,
 //!          by its name.
 //!
 //!  @note  On this version, only blocking mode is supported. Also note that
@@ -474,7 +474,7 @@ INT32 listen(INT32 sd, INT32 backlog)
 //*****************************************************************************
 
 #ifndef CC3000_TINY_DRIVER
-INT16 gethostbyname(const CHAR * hostname, UINT16 usNameLen, 
+INT16 gethostbyname(const CHAR * hostname, UINT16 usNameLen,
 		UINT32* out_ip_addr)
 {
 	tBsdGethostbynameParams ret;
@@ -515,25 +515,25 @@ INT16 gethostbyname(const CHAR * hostname, UINT16 usNameLen,
 //
 //! connect
 //!
-//!  @param[in]   sd       socket descriptor (handle)         
+//!  @param[in]   sd       socket descriptor (handle)
 //!  @param[in]   addr     specifies the destination addr. On this version
 //!                        only AF_INET is supported.
-//!  @param[out]  addrlen  contains the size of the structure pointed to by addr    
+//!  @param[out]  addrlen  contains the size of the structure pointed to by addr
 //!  @return  	On success, zero is returned. On error, -1 is returned
 //!
-//!  @brief  initiate a connection on a socket 
-//!          Function connects the socket referred to by the socket descriptor 
-//!          sd, to the address specified by addr. The addrlen argument 
-//!          specifies the size of addr. The format of the address in addr is 
-//!          determined by the address space of the socket. If it is of type 
-//!          SOCK_DGRAM, this call specifies the peer with which the socket is 
+//!  @brief  initiate a connection on a socket
+//!          Function connects the socket referred to by the socket descriptor
+//!          sd, to the address specified by addr. The addrlen argument
+//!          specifies the size of addr. The format of the address in addr is
+//!          determined by the address space of the socket. If it is of type
+//!          SOCK_DGRAM, this call specifies the peer with which the socket is
 //!          to be associated; this address is that to which datagrams are to be
-//!          sent, and the only address from which datagrams are to be received.  
-//!          If the socket is of type SOCK_STREAM, this call attempts to make a 
-//!          connection to another socket. The other socket is specified  by 
+//!          sent, and the only address from which datagrams are to be received.
+//!          If the socket is of type SOCK_STREAM, this call attempts to make a
+//!          connection to another socket. The other socket is specified  by
 //!          address, which is an address in the communications space of the
-//!          socket. Note that the function implements only blocking behavior 
-//!          thus the caller will be waiting either for the connection 
+//!          socket. Note that the function implements only blocking behavior
+//!          thus the caller will be waiting either for the connection
 //!          establishment or for the connection establishment failure.
 //!
 //!  @sa socket
@@ -574,12 +574,12 @@ INT32 connect(INT32 sd, const sockaddr *addr, INT32 addrlen)
 //! select
 //!
 //!  @param[in]   nfds       the highest-numbered file descriptor in any of the
-//!                           three sets, plus 1.     
+//!                           three sets, plus 1.
 //!  @param[out]   writesds   socket descriptors list for write monitoring
-//!  @param[out]   readsds    socket descriptors list for read monitoring  
+//!  @param[out]   readsds    socket descriptors list for read monitoring
 //!  @param[out]   exceptsds  socket descriptors list for exception monitoring
 //!  @param[in]   timeout     is an upper bound on the amount of time elapsed
-//!                           before select() returns. Null means infinity 
+//!                           before select() returns. Null means infinity
 //!                           timeout. The minimum timeout is 5 milliseconds,
 //!                          less than 5 milliseconds will be set
 //!                           automatically to 5 milliseconds.
@@ -591,14 +591,14 @@ INT32 connect(INT32 sd, const sockaddr *addr, INT32 addrlen)
 //!             On error, -1 is returned.
 //!                   *readsds - return the sockets on which Read request will
 //!                              return without delay with valid data.
-//!                   *writesds - return the sockets on which Write request 
+//!                   *writesds - return the sockets on which Write request
 //!                                 will return without delay.
 //!                   *exceptsds - return the sockets which closed recently.
 //!
-//!  @brief  Monitor socket activity  
+//!  @brief  Monitor socket activity
 //!          Select allow a program to monitor multiple file descriptors,
-//!          waiting until one or more of the file descriptors become 
-//!         "ready" for some class of I/O operation 
+//!          waiting until one or more of the file descriptors become
+//!         "ready" for some class of I/O operation
 //!
 //!  @Note   If the timeout value set to less than 5ms it will automatically set
 //!          to 5ms to prevent overload of the system
@@ -607,7 +607,7 @@ INT32 connect(INT32 sd, const sockaddr *addr, INT32 addrlen)
 //
 //*****************************************************************************
 
-INT16 select(INT32 nfds, fd_set *readsds, fd_set *writesds, fd_set *exceptsds, 
+INT16 select(INT32 nfds, fd_set *readsds, fd_set *writesds, fd_set *exceptsds,
 		struct timeval *timeout)
 {
 	UINT8 *ptr, *args;
@@ -640,7 +640,7 @@ INT16 select(INT32 nfds, fd_set *readsds, fd_set *writesds, fd_set *exceptsds,
 
 	if (timeout)
 	{
-		if ( 0 == timeout->tv_sec && timeout->tv_usec < 
+		if ( 0 == timeout->tv_sec && timeout->tv_usec <
 				SELECT_TIMEOUT_MIN_MICRO_SECONDS)
 		{
 			timeout->tv_usec = SELECT_TIMEOUT_MIN_MICRO_SECONDS;
@@ -665,12 +665,12 @@ INT16 select(INT32 nfds, fd_set *readsds, fd_set *writesds, fd_set *exceptsds,
 
 		if (writesds)
 		{
-			memcpy(writesds, &tParams.uiWrfd, sizeof(tParams.uiWrfd)); 
+			memcpy(writesds, &tParams.uiWrfd, sizeof(tParams.uiWrfd));
 		}
 
 		if (exceptsds)
 		{
-			memcpy(exceptsds, &tParams.uiExfd, sizeof(tParams.uiExfd)); 
+			memcpy(exceptsds, &tParams.uiExfd, sizeof(tParams.uiExfd));
 		}
 
 		return(tParams.iStatus);
@@ -698,31 +698,31 @@ INT16 select(INT32 nfds, fd_set *readsds, fd_set *writesds, fd_set *exceptsds,
 //!          This function manipulate the options associated with a socket.
 //!          Options may exist at multiple protocol levels; they are always
 //!          present at the uppermost socket level.
-//!          When manipulating socket options the level at which the option 
-//!          resides and the name of the option must be specified.  
-//!          To manipulate options at the socket level, level is specified as 
-//!          SOL_SOCKET. To manipulate options at any other level the protocol 
-//!          number of the appropriate protocol controlling the option is 
-//!          supplied. For example, to indicate that an option is to be 
-//!          interpreted by the TCP protocol, level should be set to the 
-//!          protocol number of TCP; 
-//!          The parameters optval and optlen are used to access optval - 
+//!          When manipulating socket options the level at which the option
+//!          resides and the name of the option must be specified.
+//!          To manipulate options at the socket level, level is specified as
+//!          SOL_SOCKET. To manipulate options at any other level the protocol
+//!          number of the appropriate protocol controlling the option is
+//!          supplied. For example, to indicate that an option is to be
+//!          interpreted by the TCP protocol, level should be set to the
+//!          protocol number of TCP;
+//!          The parameters optval and optlen are used to access optval -
 //!          use for setsockopt(). For getsockopt() they identify a buffer
-//!          in which the value for the requested option(s) are to 
-//!          be returned. For getsockopt(), optlen is a value-result 
-//!          parameter, initially containing the size of the buffer 
-//!          pointed to by option_value, and modified on return to 
-//!          indicate the actual size of the value returned. If no option 
+//!          in which the value for the requested option(s) are to
+//!          be returned. For getsockopt(), optlen is a value-result
+//!          parameter, initially containing the size of the buffer
+//!          pointed to by option_value, and modified on return to
+//!          indicate the actual size of the value returned. If no option
 //!          value is to be supplied or returned, option_value may be NULL.
 //!
 //!  @Note   On this version the following two socket options are enabled:
 //!    			 The only protocol level supported in this version
 //!          is SOL_SOCKET (level).
 //!		       1. SOCKOPT_RECV_TIMEOUT (optname)
-//!			      SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout 
+//!			      SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout
 //!           in milliseconds.
 //!		        In that case optval should be pointer to UINT32.
-//!		       2. SOCKOPT_NONBLOCK (optname). sets the socket non-blocking mode on 
+//!		       2. SOCKOPT_NONBLOCK (optname). sets the socket non-blocking mode on
 //!           or off.
 //!		        In that case optval should be SOCK_ON or SOCK_OFF (optval).
 //!
@@ -782,31 +782,31 @@ INT16 setsockopt(INT32 sd, INT32 level, INT32 optname, const void *optval,
 //!          This function manipulate the options associated with a socket.
 //!          Options may exist at multiple protocol levels; they are always
 //!          present at the uppermost socket level.
-//!          When manipulating socket options the level at which the option 
-//!          resides and the name of the option must be specified.  
-//!          To manipulate options at the socket level, level is specified as 
-//!          SOL_SOCKET. To manipulate options at any other level the protocol 
-//!          number of the appropriate protocol controlling the option is 
-//!          supplied. For example, to indicate that an option is to be 
-//!          interpreted by the TCP protocol, level should be set to the 
-//!          protocol number of TCP; 
-//!          The parameters optval and optlen are used to access optval - 
+//!          When manipulating socket options the level at which the option
+//!          resides and the name of the option must be specified.
+//!          To manipulate options at the socket level, level is specified as
+//!          SOL_SOCKET. To manipulate options at any other level the protocol
+//!          number of the appropriate protocol controlling the option is
+//!          supplied. For example, to indicate that an option is to be
+//!          interpreted by the TCP protocol, level should be set to the
+//!          protocol number of TCP;
+//!          The parameters optval and optlen are used to access optval -
 //!          use for setsockopt(). For getsockopt() they identify a buffer
-//!          in which the value for the requested option(s) are to 
-//!          be returned. For getsockopt(), optlen is a value-result 
-//!          parameter, initially containing the size of the buffer 
-//!          pointed to by option_value, and modified on return to 
-//!          indicate the actual size of the value returned. If no option 
+//!          in which the value for the requested option(s) are to
+//!          be returned. For getsockopt(), optlen is a value-result
+//!          parameter, initially containing the size of the buffer
+//!          pointed to by option_value, and modified on return to
+//!          indicate the actual size of the value returned. If no option
 //!          value is to be supplied or returned, option_value may be NULL.
 //!
 //!  @Note   On this version the following two socket options are enabled:
 //!    			 The only protocol level supported in this version
 //!          is SOL_SOCKET (level).
 //!		       1. SOCKOPT_RECV_TIMEOUT (optname)
-//!			      SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout 
+//!			      SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout
 //!           in milliseconds.
 //!		        In that case optval should be pointer to UINT32.
-//!		       2. SOCKOPT_NONBLOCK (optname). sets the socket non-blocking mode on 
+//!		       2. SOCKOPT_NONBLOCK (optname). sets the socket non-blocking mode on
 //!           or off.
 //!		        In that case optval should be SOCK_ON or SOCK_OFF (optval).
 //!
@@ -882,7 +882,7 @@ INT16 simple_link_recv(INT32 sd, void *buf, INT32 len, INT32 flags, sockaddr *fr
 	args = UINT32_TO_STREAM(args, len);
 	args = UINT32_TO_STREAM(args, flags);
 
-	// Generate the read command, and wait for the 
+	// Generate the read command, and wait for the
 	hci_command_send(opcode,  ptr, SOCKET_RECV_FROM_PARAMS_LEN);
 
 	// Since we are in blocking state - wait for event complete
@@ -891,7 +891,7 @@ INT16 simple_link_recv(INT32 sd, void *buf, INT32 len, INT32 flags, sockaddr *fr
 	// In case the number of bytes is more then zero - read data
 	if (tSocketReadEvent.iNumberOfBytes > 0)
 	{
-		// Wait for the data in a synchronous way. Here we assume that the bug is 
+		// Wait for the data in a synchronous way. Here we assume that the bug is
 		// big enough to store also parameters of receive from too....
 		long lenRead; // Let's look at length
 		SimpleLinkWaitData(buf, (unsigned char *)from, &lenRead);
@@ -917,9 +917,9 @@ INT16 simple_link_recv(INT32 sd, void *buf, INT32 len, INT32 flags, sockaddr *fr
 //!
 //!  @param[in]  sd     socket handle
 //!  @param[out] buf    Points to the buffer where the message should be stored
-//!  @param[in]  len    Specifies the length in bytes of the buffer pointed to 
+//!  @param[in]  len    Specifies the length in bytes of the buffer pointed to
 //!                     by the buffer argument.
-//!  @param[in] flags   Specifies the type of message reception. 
+//!  @param[in] flags   Specifies the type of message reception.
 //!                     On this version, this parameter is not supported.
 //!
 //!  @return         Return the number of bytes received, or -1 if an error
@@ -944,9 +944,9 @@ INT16 recv(INT32 sd, void *buf, INT32 len, INT32 flags)
 //!
 //!  @param[in]  sd     socket handle
 //!  @param[out] buf    Points to the buffer where the message should be stored
-//!  @param[in]  len    Specifies the length in bytes of the buffer pointed to 
+//!  @param[in]  len    Specifies the length in bytes of the buffer pointed to
 //!                     by the buffer argument.
-//!  @param[in] flags   Specifies the type of message reception. 
+//!  @param[in] flags   Specifies the type of message reception.
 //!                     On this version, this parameter is not supported.
 //!  @param[in] from   pointer to an address structure indicating the source
 //!                    address: sockaddr. On this version only AF_INET is
@@ -995,7 +995,7 @@ INT16 recvfrom(INT32 sd, void *buf, INT32 len, INT32 flags, sockaddr *from,
 //*****************************************************************************
 INT16 simple_link_send(INT32 sd, const void *buf, INT32 len, INT32 flags,
 		const sockaddr *to, INT32 tolen, INT32 opcode)
-{    
+{
 	UINT8 uArgSize=0,  addrlen;
 	UINT8 *ptr, *pDataPtr = NULL, *args;
 	UINT32 addr_offset = 0;
@@ -1017,7 +1017,7 @@ INT16 simple_link_send(INT32 sd, const void *buf, INT32 len, INT32 flags,
 
 	// Update the offset of data and parameters according to the command
 	switch(opcode)
-	{ 
+	{
 	case HCI_CMND_SENDTO:
 	{
 		addr_offset = len + sizeof(len) + sizeof(len);
@@ -1059,7 +1059,7 @@ INT16 simple_link_send(INT32 sd, const void *buf, INT32 len, INT32 flags,
 
 	// In case we are using SendTo, copy the to parameters
 	if (opcode == HCI_CMND_SENDTO)
-	{	
+	{
 		ARRAY_TO_STREAM(pDataPtr, ((UINT8 *)to), tolen);
 	}
 
@@ -1088,7 +1088,7 @@ INT16 simple_link_send(INT32 sd, const void *buf, INT32 len, INT32 flags,
 //!                  error occurred
 //!
 //!  @brief          Write data to TCP socket
-//!                  This function is used to transmit a message to another 
+//!                  This function is used to transmit a message to another
 //!                  socket.
 //!
 //!  @Note           On this version, only blocking mode is supported.
@@ -1119,7 +1119,7 @@ INT16 send(INT32 sd, const void *buf, INT32 len, INT32 flags)
 //!                  error occurred
 //!
 //!  @brief          Write data to TCP socket
-//!                  This function is used to transmit a message to another 
+//!                  This function is used to transmit a message to another
 //!                  socket.
 //!
 //!  @Note           On this version, only blocking mode is supported.
@@ -1142,9 +1142,9 @@ INT16 sendto(INT32 sd, const void *buf, INT32 len, INT32 flags, const sockaddr *
 //!  @param[in] deviceServiceName   Service name as part of the published
 //!                                 canonical domain name
 //!  @param[in] deviceServiceNameLength   Length of the service name - up to 32 chars
-//!  
 //!
-//!  @return   On success, zero is returned, return SOC_ERROR if socket was not 
+//!
+//!  @return   On success, zero is returned, return SOC_ERROR if socket was not
 //!            opened successfully, or if an error occurred.
 //!
 //!  @brief    Set CC3000 in mDNS advertiser mode in order to advertise itself.

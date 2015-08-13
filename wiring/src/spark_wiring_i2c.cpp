@@ -4,7 +4,7 @@
  * @author  Satish Nair
  * @version V1.0.0
  * @date    13-March-2013
- * @brief   
+ * @brief
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
@@ -101,8 +101,8 @@ void TwoWire::beginTransmission(int address)
 //	Originally, 'endTransmission' was an f(void) function.
 //	It has been modified to take one parameter indicating
 //	whether or not a STOP should be performed on the bus.
-//	Calling endTransmission(false) allows a sketch to 
-//	perform a repeated start. 
+//	Calling endTransmission(false) allows a sketch to
+//	perform a repeated start.
 //
 //	WARNING: Nothing in the library keeps track of whether
 //	the bus tenure has been properly ended with a STOP. It

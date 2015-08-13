@@ -28,8 +28,8 @@
 #include "stdio.h"
 
 
-inline void core_read_subsystem_version_impl(char* patchstr, int bufLen, unsigned char patchver[2]) {      
-    snprintf(patchstr, bufLen, "%d.%d", patchver[0], patchver[1]);    
+inline void core_read_subsystem_version_impl(char* patchstr, int bufLen, unsigned char patchver[2]) {
+    snprintf(patchstr, bufLen, "%d.%d", patchver[0], patchver[1]);
 }
 
 int HAL_core_subsystem_version(char* patchstr, int bufLen) {

@@ -43,5 +43,5 @@ int32_t HAL_ADC_Read(uint16_t pin)
  * @brief Initialize the ADC peripheral.
  */
 void HAL_ADC_DMA_Init()
-{    
+{
 }

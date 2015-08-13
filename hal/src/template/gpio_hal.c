@@ -38,7 +38,7 @@
 
 /* Private function prototypes ----------------------------------------------*/
 
-PinMode HAL_Get_Pin_Mode(pin_t pin) 
+PinMode HAL_Get_Pin_Mode(pin_t pin)
 {
     return PIN_MODE_NONE;
 }
@@ -49,7 +49,7 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
 }
 
 /*
- * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, 
+ * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP,
  * or INPUT_PULLDOWN
  */
 void HAL_Pin_Mode(pin_t pin, PinMode setMode)

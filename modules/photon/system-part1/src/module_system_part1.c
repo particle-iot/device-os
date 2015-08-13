@@ -39,9 +39,9 @@ DYNALIB_TABLE_EXTERN(services);
 
 __attribute__((externally_visible)) const void* const system_part1_module[] = {
     DYNALIB_TABLE_NAME(communication),
-    DYNALIB_TABLE_NAME(wifi_resource),    
-    DYNALIB_TABLE_NAME(system_module_part1),    
-    DYNALIB_TABLE_NAME(services),    
+    DYNALIB_TABLE_NAME(wifi_resource),
+    DYNALIB_TABLE_NAME(system_module_part1),
+    DYNALIB_TABLE_NAME(services),
 };
 
 
@@ -67,7 +67,7 @@ void* module_system_part1_pre_init()
     }
 
     memset(&link_bss_location, 0, link_bss_size );
-    
+
     return link_end_of_static_ram;
 }
 

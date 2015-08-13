@@ -4,20 +4,20 @@
   * @author  MCD Application Team
   * @version V3.6.1
   * @date    05-March-2012
-  * @brief   This file contains all the functions prototypes for the RCC firmware 
+  * @brief   This file contains all the functions prototypes for the RCC firmware
   *          library.
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   *
   ******************************************************************************
@@ -63,7 +63,7 @@ typedef struct
   * @{
   */
 
-/** @defgroup HSE_configuration 
+/** @defgroup HSE_configuration
   * @{
   */
 
@@ -75,9 +75,9 @@ typedef struct
 
 /**
   * @}
-  */ 
+  */
 
-/** @defgroup PLL_entry_clock_source 
+/** @defgroup PLL_entry_clock_source
   * @{
   */
 
@@ -93,13 +93,13 @@ typedef struct
  #define RCC_PLLSource_PREDIV1            ((uint32_t)0x00010000)
  #define IS_RCC_PLL_SOURCE(SOURCE) (((SOURCE) == RCC_PLLSource_HSI_Div2) || \
                                    ((SOURCE) == RCC_PLLSource_PREDIV1))
-#endif /* STM32F10X_CL */ 
+#endif /* STM32F10X_CL */
 
 /**
   * @}
-  */ 
+  */
 
-/** @defgroup PLL_multiplication_factor 
+/** @defgroup PLL_multiplication_factor
   * @{
   */
 #ifndef STM32F10X_CL
@@ -140,7 +140,7 @@ typedef struct
                               ((MUL) == RCC_PLLMul_6) || ((MUL) == RCC_PLLMul_7) || \
                               ((MUL) == RCC_PLLMul_8) || ((MUL) == RCC_PLLMul_9) || \
                               ((MUL) == RCC_PLLMul_6_5))
-#endif /* STM32F10X_CL */                              
+#endif /* STM32F10X_CL */
 /**
   * @}
   */
@@ -185,16 +185,16 @@ typedef struct
   */
 #ifdef STM32F10X_CL
 /* PREDIV1 clock source (for STM32 connectivity line devices) */
- #define  RCC_PREDIV1_Source_HSE         ((uint32_t)0x00000000) 
- #define  RCC_PREDIV1_Source_PLL2        ((uint32_t)0x00010000) 
+ #define  RCC_PREDIV1_Source_HSE         ((uint32_t)0x00000000)
+ #define  RCC_PREDIV1_Source_PLL2        ((uint32_t)0x00010000)
 
  #define IS_RCC_PREDIV1_SOURCE(SOURCE) (((SOURCE) == RCC_PREDIV1_Source_HSE) || \
-                                        ((SOURCE) == RCC_PREDIV1_Source_PLL2)) 
+                                        ((SOURCE) == RCC_PREDIV1_Source_PLL2))
 #elif defined (STM32F10X_LD_VL) || defined (STM32F10X_MD_VL) || defined (STM32F10X_HD_VL)
 /* PREDIV1 clock source (for STM32 Value line devices) */
- #define  RCC_PREDIV1_Source_HSE         ((uint32_t)0x00000000) 
+ #define  RCC_PREDIV1_Source_HSE         ((uint32_t)0x00000000)
 
- #define IS_RCC_PREDIV1_SOURCE(SOURCE) (((SOURCE) == RCC_PREDIV1_Source_HSE)) 
+ #define IS_RCC_PREDIV1_SOURCE(SOURCE) (((SOURCE) == RCC_PREDIV1_Source_HSE))
 #endif
 /**
   * @}
@@ -204,7 +204,7 @@ typedef struct
 /** @defgroup PREDIV2_division_factor
   * @{
   */
-  
+
  #define  RCC_PREDIV2_Div1               ((uint32_t)0x00000000)
  #define  RCC_PREDIV2_Div2               ((uint32_t)0x00000010)
  #define  RCC_PREDIV2_Div3               ((uint32_t)0x00000020)
@@ -238,7 +238,7 @@ typedef struct
 /** @defgroup PLL2_multiplication_factor
   * @{
   */
-  
+
  #define  RCC_PLL2Mul_8                  ((uint32_t)0x00000600)
  #define  RCC_PLL2Mul_9                  ((uint32_t)0x00000700)
  #define  RCC_PLL2Mul_10                 ((uint32_t)0x00000800)
@@ -285,7 +285,7 @@ typedef struct
 #endif /* STM32F10X_CL */
 
 
-/** @defgroup System_clock_source 
+/** @defgroup System_clock_source
   * @{
   */
 
@@ -299,7 +299,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup AHB_clock_source 
+/** @defgroup AHB_clock_source
   * @{
   */
 
@@ -319,9 +319,9 @@ typedef struct
                            ((HCLK) == RCC_SYSCLK_Div512))
 /**
   * @}
-  */ 
+  */
 
-/** @defgroup APB1_APB2_clock_source 
+/** @defgroup APB1_APB2_clock_source
   * @{
   */
 
@@ -337,7 +337,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup RCC_Interrupt_source 
+/** @defgroup RCC_Interrupt_source
   * @{
   */
 
@@ -363,7 +363,7 @@ typedef struct
                             ((IT) == RCC_IT_PLLRDY) || ((IT) == RCC_IT_CSS) || \
                             ((IT) == RCC_IT_PLL2RDY) || ((IT) == RCC_IT_PLL3RDY))
  #define IS_RCC_CLEAR_IT(IT) ((IT) != 0x00)
-#endif /* STM32F10X_CL */ 
+#endif /* STM32F10X_CL */
 
 
 /**
@@ -371,7 +371,7 @@ typedef struct
   */
 
 #ifndef STM32F10X_CL
-/** @defgroup USB_Device_clock_source 
+/** @defgroup USB_Device_clock_source
   * @{
   */
 
@@ -384,7 +384,7 @@ typedef struct
   * @}
   */
 #else
-/** @defgroup USB_OTG_FS_clock_source 
+/** @defgroup USB_OTG_FS_clock_source
   * @{
   */
  #define RCC_OTGFSCLKSource_PLLVCO_Div3    ((uint8_t)0x00)
@@ -395,11 +395,11 @@ typedef struct
 /**
   * @}
   */
-#endif /* STM32F10X_CL */ 
+#endif /* STM32F10X_CL */
 
 
 #ifdef STM32F10X_CL
-/** @defgroup I2S2_clock_source 
+/** @defgroup I2S2_clock_source
   * @{
   */
  #define RCC_I2S2CLKSource_SYSCLK        ((uint8_t)0x00)
@@ -411,21 +411,21 @@ typedef struct
   * @}
   */
 
-/** @defgroup I2S3_clock_source 
+/** @defgroup I2S3_clock_source
   * @{
   */
  #define RCC_I2S3CLKSource_SYSCLK        ((uint8_t)0x00)
  #define RCC_I2S3CLKSource_PLL3_VCO      ((uint8_t)0x01)
 
  #define IS_RCC_I2S3CLK_SOURCE(SOURCE) (((SOURCE) == RCC_I2S3CLKSource_SYSCLK) || \
-                                        ((SOURCE) == RCC_I2S3CLKSource_PLL3_VCO))    
+                                        ((SOURCE) == RCC_I2S3CLKSource_PLL3_VCO))
 /**
   * @}
   */
-#endif /* STM32F10X_CL */  
-  
+#endif /* STM32F10X_CL */
 
-/** @defgroup ADC_clock_source 
+
+/** @defgroup ADC_clock_source
   * @{
   */
 
@@ -439,7 +439,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup LSE_configuration 
+/** @defgroup LSE_configuration
   * @{
   */
 
@@ -452,7 +452,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup RTC_clock_source 
+/** @defgroup RTC_clock_source
   * @{
   */
 
@@ -466,7 +466,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup AHB_peripheral 
+/** @defgroup AHB_peripheral
   * @{
   */
 
@@ -493,7 +493,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup APB2_peripheral 
+/** @defgroup APB2_peripheral
   * @{
   */
 
@@ -522,9 +522,9 @@ typedef struct
 #define IS_RCC_APB2_PERIPH(PERIPH) ((((PERIPH) & 0xFFC00002) == 0x00) && ((PERIPH) != 0x00))
 /**
   * @}
-  */ 
+  */
 
-/** @defgroup APB1_peripheral 
+/** @defgroup APB1_peripheral
   * @{
   */
 
@@ -553,14 +553,14 @@ typedef struct
 #define RCC_APB1Periph_PWR               ((uint32_t)0x10000000)
 #define RCC_APB1Periph_DAC               ((uint32_t)0x20000000)
 #define RCC_APB1Periph_CEC               ((uint32_t)0x40000000)
- 
+
 #define IS_RCC_APB1_PERIPH(PERIPH) ((((PERIPH) & 0x81013600) == 0x00) && ((PERIPH) != 0x00))
 
 /**
   * @}
   */
 
-/** @defgroup Clock_source_to_output_on_MCO_pin 
+/** @defgroup Clock_source_to_output_on_MCO_pin
   * @{
   */
 
@@ -585,13 +585,13 @@ typedef struct
                           ((MCO) == RCC_MCO_PLLCLK_Div2) || ((MCO) == RCC_MCO_PLL2CLK) || \
                           ((MCO) == RCC_MCO_PLL3CLK_Div2) || ((MCO) == RCC_MCO_XT1) || \
                           ((MCO) == RCC_MCO_PLL3CLK))
-#endif /* STM32F10X_CL */ 
+#endif /* STM32F10X_CL */
 
 /**
   * @}
   */
 
-/** @defgroup RCC_Flag 
+/** @defgroup RCC_Flag
   * @{
   */
 
@@ -615,8 +615,8 @@ typedef struct
                             ((FLAG) == RCC_FLAG_IWDGRST)|| ((FLAG) == RCC_FLAG_WWDGRST)|| \
                             ((FLAG) == RCC_FLAG_LPWRRST))
 #else
- #define RCC_FLAG_PLL2RDY                ((uint8_t)0x3B) 
- #define RCC_FLAG_PLL3RDY                ((uint8_t)0x3D) 
+ #define RCC_FLAG_PLL2RDY                ((uint8_t)0x3B)
+ #define RCC_FLAG_PLL3RDY                ((uint8_t)0x3D)
  #define IS_RCC_FLAG(FLAG) (((FLAG) == RCC_FLAG_HSIRDY) || ((FLAG) == RCC_FLAG_HSERDY) || \
                             ((FLAG) == RCC_FLAG_PLLRDY) || ((FLAG) == RCC_FLAG_LSERDY) || \
                             ((FLAG) == RCC_FLAG_PLL2RDY) || ((FLAG) == RCC_FLAG_PLL3RDY) || \
@@ -624,7 +624,7 @@ typedef struct
                             ((FLAG) == RCC_FLAG_PORRST) || ((FLAG) == RCC_FLAG_SFTRST) || \
                             ((FLAG) == RCC_FLAG_IWDGRST)|| ((FLAG) == RCC_FLAG_WWDGRST)|| \
                             ((FLAG) == RCC_FLAG_LPWRRST))
-#endif /* STM32F10X_CL */ 
+#endif /* STM32F10X_CL */
 
 #define IS_RCC_CALIBRATION_VALUE(VALUE) ((VALUE) <= 0x1F)
 /**
@@ -665,7 +665,7 @@ void RCC_PLLCmd(FunctionalState NewState);
  void RCC_PLL2Cmd(FunctionalState NewState);
  void RCC_PLL3Config(uint32_t RCC_PLL3Mul);
  void RCC_PLL3Cmd(FunctionalState NewState);
-#endif /* STM32F10X_CL */ 
+#endif /* STM32F10X_CL */
 
 void RCC_SYSCLKConfig(uint32_t RCC_SYSCLKSource);
 uint8_t RCC_GetSYSCLKSource(void);
@@ -678,14 +678,14 @@ void RCC_ITConfig(uint8_t RCC_IT, FunctionalState NewState);
  void RCC_USBCLKConfig(uint32_t RCC_USBCLKSource);
 #else
  void RCC_OTGFSCLKConfig(uint32_t RCC_OTGFSCLKSource);
-#endif /* STM32F10X_CL */ 
+#endif /* STM32F10X_CL */
 
 void RCC_ADCCLKConfig(uint32_t RCC_PCLK2);
 
 #ifdef STM32F10X_CL
- void RCC_I2S2CLKConfig(uint32_t RCC_I2S2CLKSource);                                  
+ void RCC_I2S2CLKConfig(uint32_t RCC_I2S2CLKSource);
  void RCC_I2S3CLKConfig(uint32_t RCC_I2S3CLKSource);
-#endif /* STM32F10X_CL */ 
+#endif /* STM32F10X_CL */
 
 void RCC_LSEConfig(uint8_t RCC_LSE);
 void RCC_LSICmd(FunctionalState NewState);
@@ -698,7 +698,7 @@ void RCC_APB1PeriphClockCmd(uint32_t RCC_APB1Periph, FunctionalState NewState);
 
 #ifdef STM32F10X_CL
 void RCC_AHBPeriphResetCmd(uint32_t RCC_AHBPeriph, FunctionalState NewState);
-#endif /* STM32F10X_CL */ 
+#endif /* STM32F10X_CL */
 
 void RCC_APB2PeriphResetCmd(uint32_t RCC_APB2Periph, FunctionalState NewState);
 void RCC_APB1PeriphResetCmd(uint32_t RCC_APB1Periph, FunctionalState NewState);
@@ -725,5 +725,5 @@ void RCC_ClearITPendingBit(uint8_t RCC_IT);
 
 /**
   * @}
-  */ 
+  */
 

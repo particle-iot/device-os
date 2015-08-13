@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_flash_if.h"
@@ -109,7 +109,7 @@ uint16_t FLASH_If_Erase(uint32_t Add)
   /* Call the standard Flash erase function */
   FLASH_ErasePage(Add);
 #endif /* STM32F2XX */
-  
+
   /* Lock the internal flash */
   FLASH_Lock();
 
@@ -126,7 +126,7 @@ uint16_t FLASH_If_Erase(uint32_t Add)
 uint16_t FLASH_If_Write(uint32_t Add, uint32_t Len)
 {
   uint32_t idx = 0;
-  
+
   if  (Len & 0x3) /* Not an aligned data */
   {
     for (idx = Len; idx < ((Len & 0xFFFC) + 4); idx++)
@@ -134,7 +134,7 @@ uint16_t FLASH_If_Write(uint32_t Add, uint32_t Len)
       MAL_Buffer[idx] = 0xFF;
     }
   }
-  
+
   /* Unlock the internal flash */
   FLASH_Unlock();
 
@@ -169,7 +169,7 @@ const uint8_t *FLASH_If_Read (uint32_t Add, uint32_t Len)
     *(uint32_t*)(MAL_Buffer + idx) = *(uint32_t *)(Add + idx);
   }
   return (uint8_t*)(MAL_Buffer);
-#else  
+#else
   return  (const uint8_t *)(Add);
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 }

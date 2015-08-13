@@ -26,13 +26,13 @@
 
 /**
  * Initializes the static memory for this module.
- * 
+ *
  * @return The end of static memory for this module.
  */
 void* module_user_pre_init();
 
 /**
- * Initializes the global object instances in this module. 
+ * Initializes the global object instances in this module.
  */
 void module_user_init();
 

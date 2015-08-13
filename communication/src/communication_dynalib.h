@@ -25,7 +25,7 @@
 #ifdef	__cplusplus
 extern "C" {
 #endif
-    
+
 #include "dynalib.h"
 
 DYNALIB_BEGIN(communication)
@@ -49,9 +49,9 @@ DYNALIB_FN(communication, decrypt_rsa)
 DYNALIB_FN(communication, gen_rsa_key)
 DYNALIB_FN(communication, parse_device_pubkey_from_privkey)
 DYNALIB_END(communication)
-        
-        
+
+
 #ifdef	__cplusplus
 }
 #endif
-        
+

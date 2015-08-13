@@ -12,12 +12,12 @@
 # list of conditions and the following disclaimer in the documentation and/or
 # other materials provided with the distribution.
 #
-# 3. Neither the name of Broadcom nor the names of other contributors to this 
-# software may be used to endorse or promote products derived from this software 
+# 3. Neither the name of Broadcom nor the names of other contributors to this
+# software may be used to endorse or promote products derived from this software
 # without specific prior written permission.
 #
-# 4. This software may not be used as a standalone product, and may only be used as 
-# incorporated in your product or device that incorporates Broadcom wireless connectivity 
+# 4. This software may not be used as a standalone product, and may only be used as
+# incorporated in your product or device that incorporates Broadcom wireless connectivity
 # products and solely for the purpose of enabling the functionalities of such Broadcom products.
 #
 #

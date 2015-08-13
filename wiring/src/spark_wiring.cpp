@@ -5,7 +5,7 @@
  *          Brett Walach
  * @version V1.0.0
  * @date    13-March-2013
- * @brief   
+ * @brief
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -36,7 +36,7 @@
 #include "system_task.h"
 
 /*
- * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, 
+ * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP,
  * or INPUT_PULLDOWN
  */
 void pinMode(uint16_t pin, PinMode setMode)
@@ -66,7 +66,7 @@ void pinMode(uint16_t pin, PinMode setMode)
  * AF_OUTPUT_DRAIN = 5
  * AN_INPUT = 6
  * AN_OUTPUT = 7
- * PIN_MODE_NONE = 255  
+ * PIN_MODE_NONE = 255
  */
 PinMode getPinMode(uint16_t pin)
 {
@@ -80,20 +80,20 @@ PinMode getPinMode(uint16_t pin)
 bool pinAvailable(uint16_t pin) {
 
   // SPI safety check
-#ifndef SPARK_WIRING_NO_SPI    
+#ifndef SPARK_WIRING_NO_SPI
   if(SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
   {
     return 0; // 'pin' is used
   }
 #endif
   // I2C safety check
-#ifndef SPARK_WIRING_NO_I2C  
+#ifndef SPARK_WIRING_NO_I2C
   if(Wire.isEnabled() == true && (pin == SCL || pin == SDA))
   {
     return 0; // 'pin' is used
   }
 #endif
-#ifndef SPARK_WIRING_NO_USART_SERIAL  
+#ifndef SPARK_WIRING_NO_USART_SERIAL
   // Serial1 safety check
   if(Serial1.isEnabled() == true && (pin == RX || pin == TX))
   {
@@ -104,10 +104,10 @@ bool pinAvailable(uint16_t pin) {
 }
 
 inline bool is_input_mode(PinMode mode) {
-    return  mode == INPUT || 
-            mode == INPUT_PULLUP || 
-            mode == INPUT_PULLDOWN || 
-            mode == AN_INPUT;            
+    return  mode == INPUT ||
+            mode == INPUT_PULLUP ||
+            mode == INPUT_PULLDOWN ||
+            mode == AN_INPUT;
 }
 
 /*
@@ -126,8 +126,8 @@ void digitalWrite(pin_t pin, uint8_t value)
   HAL_GPIO_Write(pin, value);
 }
 
-inline bool is_af_output_mode(PinMode mode) {    
-    return mode == AF_OUTPUT_PUSHPULL || 
+inline bool is_af_output_mode(PinMode mode) {
+    return mode == AF_OUTPUT_PUSHPULL ||
            mode == AF_OUTPUT_DRAIN;
 }
 

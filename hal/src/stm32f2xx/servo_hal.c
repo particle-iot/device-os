@@ -186,7 +186,7 @@ uint16_t HAL_Servo_Read_Frequency(uint16_t pin)
 {
     uint16_t TIM_ARR = 0;
     uint16_t Servo_Frequency = 0;
-    
+
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_peripheral == TIM1)
     {

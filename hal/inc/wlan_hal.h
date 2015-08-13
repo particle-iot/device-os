@@ -39,7 +39,7 @@ extern "C" {
 
 //#define DEBUG_WIFI    // Define to show all the flags in debug output
 //#define DEBUG_WAN_WD  // Define to show all SW WD activity in debug output
-    
+
 #if defined(DEBUG_WAN_WD)
 #define WAN_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
 #else
@@ -49,7 +49,7 @@ extern uint32_t wlan_watchdog;
 #define ARM_WLAN_WD(x) do { wlan_watchdog = HAL_Timer_Get_Milli_Seconds()+(x); WAN_WD_DEBUG("WD Set "#x" %d",(x));}while(0)
 #define WLAN_WD_TO() (wlan_watchdog && (HAL_Timer_Get_Milli_Seconds() >= wlan_watchdog))
 #define CLR_WLAN_WD() do { wlan_watchdog = 0; WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog);;}while(0)
-    
+
 #if defined(DEBUG_WIFI)
 extern uint32_t lastEvent;
 
@@ -79,7 +79,7 @@ typedef enum
   ANT_INTERNAL = 0, ANT_EXTERNAL = 1, ANT_AUTO = 3
 } WLanSelectAntenna_TypeDef;
 
-typedef struct __attribute__((__packed__))  _WLanConfig_t {    
+typedef struct __attribute__((__packed__))  _WLanConfig_t {
     uint16_t size;
     NetworkConfig nw;
     uint8_t uaSSID[33];
@@ -119,7 +119,7 @@ wlan_result_t wlan_deactivate();
 
 
 /**
- * @return <0 for a valid signal strength, in db. 
+ * @return <0 for a valid signal strength, in db.
  *         0 for rssi not found (caller could retry)
  *         >0 for an error
  */
@@ -152,7 +152,7 @@ typedef enum {
 } WLanSecurityCipher;
 
 typedef struct {
-    unsigned len;           // the size of this structure. allows older clients to work with newer HAL. 
+    unsigned len;           // the size of this structure. allows older clients to work with newer HAL.
     const char* ssid;
     unsigned ssid_len;
     const char* password;
@@ -198,9 +198,9 @@ uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
 void HAL_WLAN_notify_simple_config_done();
 
 /**
- * Notification that the wifi network has been connected to. 
+ * Notification that the wifi network has been connected to.
  */
-void HAL_WLAN_notify_connected();   
+void HAL_WLAN_notify_connected();
 void HAL_WLAN_notify_disconnected();
 
 /**

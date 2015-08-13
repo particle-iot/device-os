@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   bootloader.h
  * Author: mat1
  *
@@ -11,7 +11,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 
 bool bootloader_requires_update();
 bool bootloader_update_if_needed();

@@ -85,7 +85,7 @@ void HAL_EEPROM_Init(void)
     EEPROM_Init();
 }
 
-size_t HAL_EEPROM_Length() 
+size_t HAL_EEPROM_Length()
 {
     return EEPROM_SIZE;
 }

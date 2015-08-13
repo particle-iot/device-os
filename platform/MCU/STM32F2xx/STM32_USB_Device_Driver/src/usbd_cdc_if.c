@@ -24,8 +24,8 @@
  ******************************************************************************
  */
 
-#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED 
-#pragma     data_alignment = 4 
+#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
+#pragma     data_alignment = 4
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 
 /* Includes ------------------------------------------------------------------*/
@@ -47,7 +47,7 @@ volatile LINE_CODING linecoding =
 
 static linecoding_bitrate_handler APP_LineCodingBitRateHandler = NULL;
 
-/* These are external variables imported from CDC core to be used for IN 
+/* These are external variables imported from CDC core to be used for IN
    transfer management. */
 extern volatile uint8_t  APP_Rx_Buffer []; /* Write CDC received data in this buffer.
                                      These data will be sent over USB IN endpoint
@@ -112,7 +112,7 @@ static uint16_t APP_DeInit(void)
  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
  */
 static uint16_t APP_Ctrl (uint32_t Cmd, uint8_t* Buf, uint32_t Len)
-{ 
+{
     switch (Cmd)
     {
     case SEND_ENCAPSULATED_COMMAND:

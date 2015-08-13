@@ -39,7 +39,7 @@ Set when the wlan subsystem is active, and when not set, is a trigger to automat
 
 Set when the wlan subsystem is attempting to conenct to an AP. Cleared once finally conencted.
 
-This is used to prevent re-entrant calls to WiFi.connect(). 
+This is used to prevent re-entrant calls to WiFi.connect().
 
 
 ## `WLAN_CONNECTED`

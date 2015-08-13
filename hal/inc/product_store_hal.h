@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   appstore_hal.h
  * Author: mat
  *
@@ -13,20 +13,20 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-    
+
 typedef enum ProductStoreIndex
 {
     /**
      * The persisted Product ID, 0xFFFF if none set.
      */
     PRODUCT_STORE_ID = 0,
-            
+
     /**
      * The persisted product version. 0xFFFF if none set.
      */
     PRODUCT_STORE_VERSION = 1
-                
-                
+
+
 } ProductStoreIndex;
 
 /**
@@ -38,7 +38,7 @@ uint16_t HAL_SetProductStore(ProductStoreIndex index, uint16_t value);
 /**
  * Fetches the value at a given index in the product store.
  * @param index
- * @return 
+ * @return
  */
 uint16_t HAL_GetProductStore(ProductStoreIndex index);
 

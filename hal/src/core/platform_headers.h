@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   platform_headers.h
  * Author: mat
  *
@@ -14,7 +14,7 @@ extern "C" {
 
 
 // These headers contain platform-specific defines.
-#include "pinmap_hal.h" 
+#include "pinmap_hal.h"
 #include "hw_config.h"
 #include "pinmap_impl.h"
 #include "cc3000_common.h"

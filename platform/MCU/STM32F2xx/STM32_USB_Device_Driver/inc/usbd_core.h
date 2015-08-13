@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __USBD_CORE_H
@@ -37,16 +37,16 @@
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
   */
-  
+
 /** @defgroup USBD_CORE
   * @brief This file is the Header file for usbd_core.c file
   * @{
-  */ 
+  */
 
 
 /** @defgroup USBD_CORE_Exported_Defines
   * @{
-  */ 
+  */
 
 typedef enum {
   USBD_OK   = 0,
@@ -55,43 +55,43 @@ typedef enum {
 }USBD_Status;
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USBD_CORE_Exported_TypesDefinitions
   * @{
   */
- 
+
 
 /**
   * @}
-  */ 
+  */
 
 
 
 /** @defgroup USBD_CORE_Exported_Macros
   * @{
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBD_CORE_Exported_Variables
   * @{
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBD_CORE_Exported_FunctionsPrototype
   * @{
-  */ 
+  */
 void USBD_Init(USB_OTG_CORE_HANDLE *pdev,
-               USB_OTG_CORE_ID_TypeDef coreID, 
-               USBD_DEVICE *pDevice,                  
-               USBD_Class_cb_TypeDef *class_cb, 
+               USB_OTG_CORE_ID_TypeDef coreID,
+               USBD_DEVICE *pDevice,
+               USBD_Class_cb_TypeDef *class_cb,
                USBD_Usr_cb_TypeDef *usr_cb);
 
 USBD_Status USBD_DeInit(USB_OTG_CORE_HANDLE *pdev);
@@ -102,17 +102,17 @@ USBD_Status USBD_SetCfg(USB_OTG_CORE_HANDLE  *pdev, uint8_t cfgidx);
 
 /**
   * @}
-  */ 
+  */
 
 #endif /* __USBD_CORE_H */
 
 /**
   * @}
-  */ 
+  */
 
 /**
 * @}
-*/ 
+*/
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 

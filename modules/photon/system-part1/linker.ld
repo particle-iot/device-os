@@ -134,7 +134,7 @@ SECTIONS
         *(.eh_frame)
         *(.glue*)
     }
-    
+
     INCLUDE module_end.ld
 }
 
@@ -156,7 +156,7 @@ ASSERT ( link_module_info_start < link_module_info_end, "module info not linked"
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
-ASSERT ( system_part1_module_info_start == link_module_info_start, "module info start not where expected" );  
+ASSERT ( system_part1_module_info_start == link_module_info_start, "module info start not where expected" );
 ASSERT ( system_part1_module_info_end == link_module_info_end, "module info end not where expected" );
 
 ASSERT ( link_boot_table_start == ORIGIN(APP_FLASH), "boot table should be at start of flash region" );

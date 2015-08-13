@@ -15,7 +15,7 @@ endif
 
 
 ifdef APP
-# when TARGET_FILE is defined on the command line, 
+# when TARGET_FILE is defined on the command line,
 TARGET_FILE_NAME ?= $(notdir $(APP))
 TARGET_DIR_NAME ?= applications/$(APP)
 endif

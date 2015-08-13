@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   softap.h
  * Author: mat
  *
@@ -15,29 +15,29 @@ extern "C" {
 #endif
 
     typedef void* softap_handle;
-    
+
     struct softap_config {
         void (*softap_complete)();
     };
-    
+
     /**
-     * Starts the soft ap setup process. 
+     * Starts the soft ap setup process.
      * @param config The soft ap configuration details.
      * @return The softap handle, or NULL if soft ap could not be started.
-     * 
+     *
      * The softap config runs asynchronously.
      */
     softap_handle softap_start(softap_config* config);
-    
+
     void softap_stop(void* pv);
 
-    wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, const char *password, 
+    wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, const char *password,
         uint16_t passwordLen, wiced_security_t security, unsigned channel);
 
     const uint8_t* fetch_device_public_key();
 
     size_t hex_decode(uint8_t* buf, size_t len, const char* hex);
-    
+
 #ifdef	__cplusplus
 }
 #endif

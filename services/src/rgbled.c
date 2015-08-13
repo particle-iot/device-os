@@ -53,7 +53,7 @@ void LED_SetBrightness(uint8_t brightness)
     LED_RGB_BRIGHTNESS = brightness;
 }
 
-uint8_t Get_LED_Brightness() 
+uint8_t Get_LED_Brightness()
 {
     return LED_RGB_BRIGHTNESS;
 }
@@ -119,7 +119,7 @@ void LED_On(Led_TypeDef Led)
         Set_User_LED(1);
         break;
 
-    case LED_RGB:	//LED_SetRGBColor() should be called first for this Case        
+    case LED_RGB:	//LED_SetRGBColor() should be called first for this Case
         Set_RGB_LED_Color(LED_RGB_OVERRIDE ? lastSignalColor : lastRGBColor);
         led_fade_step = NUM_LED_FADE_STEPS - 1;
         led_fade_direction = -1; /* next fade is falling */
@@ -175,14 +175,14 @@ void LED_Toggle(Led_TypeDef Led)
     default:
         break;
 
-    case LED_RGB://LED_SetRGBColor() and LED_On() should be called first for this Case        
-        
+    case LED_RGB://LED_SetRGBColor() and LED_On() should be called first for this Case
+
         color = LED_RGB_OVERRIDE ? lastSignalColor : lastRGBColor;
         Get_RGB_LED_Values(rgb);
         if (rgb[0] | rgb[1] | rgb[2])
             Set_RGB_LED_Color(0);
         else
-            Set_RGB_LED_Color(color);        
+            Set_RGB_LED_Color(color);
         break;
     }
 }

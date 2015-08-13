@@ -3,7 +3,7 @@
 
 ### Upload the Server public Key to the Device
 
-Download the server public key from https://s3.amazonaws.com/spark-website/cloud_public.der 
+Download the server public key from https://s3.amazonaws.com/spark-website/cloud_public.der
 
 and upload this to the device.
 

@@ -10,10 +10,10 @@ class Timer
 public:
     Timer();
     void Start();
-    double GetTimeInMs() const;    
+    double GetTimeInMs() const;
 
 private:
-    struct timeval m_startTime;    
+    struct timeval m_startTime;
 };
 
 

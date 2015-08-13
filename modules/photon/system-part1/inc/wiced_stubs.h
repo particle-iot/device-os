@@ -25,7 +25,7 @@
 #define	WICED_STUBS_H
 
 typedef struct resource_hnd_t {
-    
+
 } resource_hnd_t;
 
 const resource_hnd_t* wwd_firmware_image_resource(void);

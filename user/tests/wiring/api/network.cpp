@@ -40,5 +40,5 @@ test(api_tcpserver) {
     API_COMPILE(server.begin());
     API_COMPILE(available = server.available());
     API_COMPILE(server.stop());
-    
+
 }

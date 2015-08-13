@@ -15,7 +15,7 @@ public:
     ~TimeConstraint();
 
 private:
-    void operator=(TimeConstraint const&); 
+    void operator=(TimeConstraint const&);
 	TimeConstraint(TimeConstraint const&);
 
 	Timer m_timer;

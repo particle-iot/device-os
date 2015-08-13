@@ -124,7 +124,7 @@ void USB_USART_Init(uint32_t baudRate)
     }
 }
 
-unsigned USB_USART_Baud_Rate(void) 
+unsigned USB_USART_Baud_Rate(void)
 {
     return linecoding.bitrate;
 }

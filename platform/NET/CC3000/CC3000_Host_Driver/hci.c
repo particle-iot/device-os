@@ -63,7 +63,7 @@
 //
 //*****************************************************************************
 UINT16 hci_command_send(UINT16 usOpcode, UINT8 *pucBuff, UINT8 ucArgsLength)
-{ 
+{
 	UINT8 *stream;
 
 	stream = (pucBuff + SPI_HEADER_SIZE);
@@ -93,7 +93,7 @@ UINT16 hci_command_send(UINT16 usOpcode, UINT8 *pucBuff, UINT8 ucArgsLength)
 //!  @brief              Initiate an HCI data write operation
 //
 //*****************************************************************************
-INT32 hci_data_send(UINT8 ucOpcode, 
+INT32 hci_data_send(UINT8 ucOpcode,
 		UINT8 *ucArgs,
 		UINT16 usArgsLength,
 		UINT16 usDataLength,
@@ -131,7 +131,7 @@ INT32 hci_data_send(UINT8 ucOpcode,
 //
 //*****************************************************************************
 void hci_data_command_send(UINT16 usOpcode, UINT8 *pucBuff, UINT8 ucArgsLength,UINT16 ucDataLength)
-{ 
+{
 	UINT8 *stream = (pucBuff + SPI_HEADER_SIZE);
 
 	UINT8_TO_STREAM(stream, HCI_TYPE_DATA);
@@ -151,7 +151,7 @@ void hci_data_command_send(UINT16 usOpcode, UINT8 *pucBuff, UINT8 ucArgsLength,U
 //!
 //!  @param  usOpcode      command operation code
 //!  @param  pucBuff       pointer to the command's arguments buffer
-//!  @param  patch         pointer to patch content buffer 
+//!  @param  patch         pointer to patch content buffer
 //!  @param  usDataLength  data length
 //!
 //!  @return              none
@@ -160,7 +160,7 @@ void hci_data_command_send(UINT16 usOpcode, UINT8 *pucBuff, UINT8 ucArgsLength,U
 //
 //*****************************************************************************
 void hci_patch_send(UINT8 ucOpcode, UINT8 *pucBuff, CHAR *patch, UINT16 usDataLength)
-{ 
+{
 	UINT8 *data_ptr = (pucBuff + SPI_HEADER_SIZE);
 	UINT16 usTransLength;
 	UINT8 *stream = (pucBuff + SPI_HEADER_SIZE);

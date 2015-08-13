@@ -27,23 +27,23 @@
 #include "memory_hal.h"
 
 
-void MemoryDevices::internalFirmware(MemoryDeviceRegion& region)  
+void MemoryDevices::internalFirmware(MemoryDeviceRegion& region)
 {
     // todo
 }
 
-void MemoryDevices::factoryDefaultFirmware(MemoryDeviceRegion& region) 
+void MemoryDevices::factoryDefaultFirmware(MemoryDeviceRegion& region)
 {
-    
+
 }
 
-void MemoryDevices::backupFirmware(MemoryDeviceRegion& region) 
+void MemoryDevices::backupFirmware(MemoryDeviceRegion& region)
 {
-    
+
 }
 
-void MemoryDevices::OTAFlashFirmware(MemoryDeviceRegion& region) 
+void MemoryDevices::OTAFlashFirmware(MemoryDeviceRegion& region)
 {
-    
+
 }
 #endif

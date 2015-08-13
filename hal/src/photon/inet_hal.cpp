@@ -38,13 +38,13 @@ int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress
 }
 
 int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries, void* reserved) {
-    
+
     const uint32_t     ping_timeout = 1000;
-    uint32_t           elapsed_ms;    
+    uint32_t           elapsed_ms;
     wiced_ip_address_t ping_target_ip;
-        
+
     SET_IPV4_ADDRESS(ping_target_ip, address->ipv4);
-    
+
     int count = 0;
     for (int i=0; i<nTries; i++) {
         wiced_result_t     status = wiced_ping(WICED_STA_INTERFACE, &ping_target_ip, ping_timeout, &elapsed_ms);

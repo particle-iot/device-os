@@ -30,7 +30,7 @@
 
 MemoryDevice::~MemoryDevice()
 {
-}    
+}
 
 class ExternalFlashDevice : public MemoryDevice {
 
@@ -79,7 +79,7 @@ class ExternalFlashDevice : public MemoryDevice {
 };
 
 /*
- * The external flash. 
+ * The external flash.
  */
 static ExternalFlashDevice externalFlash;
 
@@ -90,14 +90,14 @@ static ExternalFlashDevice externalFlash;
 /* External Flash memory address where OTA upgraded core firmware will be saved */
 #define EXTERNAL_FLASH_OTA_ADDRESS	((uint32_t)(EXTERNAL_FLASH_BLOCK_SIZE + EXTERNAL_FLASH_BKP_ADDRESS))
 
-void MemoryDevices::internalFirmware(MemoryDeviceRegion& region) 
+void MemoryDevices::internalFirmware(MemoryDeviceRegion& region)
 {
     // todo
 }
 
 void MemoryDevices::factoryDefaultFirmware(MemoryDeviceRegion& region)
 {
-    region.set(externalFlash, EXTERNAL_FLASH_FAC_ADDRESS, EXTERNAL_FLASH_FAC_ADDRESS+EXTERNAL_FLASH_BLOCK_SIZE);    
+    region.set(externalFlash, EXTERNAL_FLASH_FAC_ADDRESS, EXTERNAL_FLASH_FAC_ADDRESS+EXTERNAL_FLASH_BLOCK_SIZE);
 }
 
 void MemoryDevices::backupFirmware(MemoryDeviceRegion& region)

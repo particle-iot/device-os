@@ -12,14 +12,14 @@ class CircularBufferPrint : public Print {
     Flashee::CircularBuffer& buffer;
     BufferFullCallback callback;
 public:
-    
-    CircularBufferPrint(Flashee::CircularBuffer& _buffer, BufferFullCallback _callback) 
+
+    CircularBufferPrint(Flashee::CircularBuffer& _buffer, BufferFullCallback _callback)
     : buffer(_buffer), callback(_callback) {}
-    
+
     virtual size_t write(uint8_t w) {
         return write(&w, 1);
     }
-    
+
     virtual size_t write(const uint8_t *data, size_t size) {
         // all or nothing write. Here we are assuming the buffer is much larger than
         // individual writes, and that the callback will help flush the buffer.
@@ -27,8 +27,8 @@ public:
             callback();
         }
         return size;
-    }    
-    
+    }
+
 };
 #endif
 
@@ -49,12 +49,12 @@ public:
         p2.write(w);
         return 1;
     }
-    
+
     virtual size_t write(const uint8_t *buffer, size_t size) {
         p1.write(buffer, size);
         p2.write(buffer, size);
         return size;
-    }    
+    }
 };
 
 
@@ -76,7 +76,7 @@ uint8_t buf[601];
  */
 void unit_test_setup()
 {
-    Serial.begin(9600);    
+    Serial.begin(9600);
 #ifdef FLASHEE_EEPROM
     Flashee::FlashDevice& store = Flashee::Devices::userFlash();
     // 64k should be plenty for anyone.
@@ -89,7 +89,7 @@ void unit_test_setup()
     Test::out = tee;
 #else
     Test::out = &Serial;
-#endif    
+#endif
     Spark.variable("log", buf, STRING);
     _runner.begin();
 }
@@ -104,7 +104,7 @@ bool isStartRequested(bool runImmediately) {
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -113,18 +113,18 @@ bool isStartRequested(bool runImmediately) {
  * is received over serial.
  **/
 void unit_test_loop(bool runImmediately, bool runTest)
-{       
+{
     if (_enterDFU)
         System.dfu();
-    
+
     if (!_runner.isStarted() && isStartRequested(runImmediately)) {
         Serial.println("Running tests");
         _runner.start();
     }
-    
+
     if (runTest && _runner.isStarted()) {
         Test::run();
-    }    
+    }
 }
 
 int SparkTestRunner::testStatusColor() {
@@ -150,7 +150,7 @@ int advanceLog() {
     return read;
 #else
     return -1;
-#endif    
+#endif
 }
 
 int testCmd(String arg) {
@@ -172,12 +172,12 @@ int testCmd(String arg) {
     else if (arg.equals("enterDFU")) {
         _enterDFU = true;
     }
-    else 
+    else
         result = -1;
     return result;
 }
 
-void SparkTestRunner::begin() {    
+void SparkTestRunner::begin() {
     Spark.variable("passed", &Test::passed, INT);
     Spark.variable("failed", &Test::failed, INT);
     Spark.variable("skipped", &Test::skipped, INT);

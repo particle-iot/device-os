@@ -11,7 +11,7 @@ Test applications are built from the parent directory `main` using make with add
 parameters:
 
 ```
-make TEST=<platform>/<testappname> 
+make TEST=<platform>/<testappname>
 ```
 
 For example, to build `testapp1` in `core-v1`, you would write
@@ -33,7 +33,7 @@ with the test runner.
 The unit tests are run on the host gcc platform and are compiled using regular
 gcc. (So gcc should be in the path.)
 
-They are built by running 
+They are built by running
 
 ```
 make

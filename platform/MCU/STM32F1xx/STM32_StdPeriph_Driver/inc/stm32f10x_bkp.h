@@ -4,20 +4,20 @@
   * @author  MCD Application Team
   * @version V3.6.1
   * @date    05-March-2012
-  * @brief   This file contains all the functions prototypes for the BKP firmware 
+  * @brief   This file contains all the functions prototypes for the BKP firmware
   *          library.
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   *
   ******************************************************************************
@@ -54,7 +54,7 @@
   * @{
   */
 
-/** @defgroup Tamper_Pin_active_level 
+/** @defgroup Tamper_Pin_active_level
   * @{
   */
 
@@ -66,7 +66,7 @@
   * @}
   */
 
-/** @defgroup RTC_output_source_to_output_on_the_Tamper_pin 
+/** @defgroup RTC_output_source_to_output_on_the_Tamper_pin
   * @{
   */
 
@@ -82,7 +82,7 @@
   * @}
   */
 
-/** @defgroup Data_Backup_Register 
+/** @defgroup Data_Backup_Register
   * @{
   */
 

@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Define to prevent recursive  ----------------------------------------------*/
 #ifndef __USBH_MSC_SCSI_H__
@@ -44,16 +44,16 @@
 /** @addtogroup USBH_MSC_CLASS
   * @{
   */
-  
+
 /** @defgroup USBH_MSC_SCSI
   * @brief This file is the Header file for usbh_msc_scsi.c
   * @{
-  */ 
+  */
 
 
 /** @defgroup USBH_MSC_SCSI_Exported_Types
   * @{
-  */ 
+  */
 typedef enum {
   USBH_MSC_OK = 0,
   USBH_MSC_FAIL = 1,
@@ -65,14 +65,14 @@ typedef enum {
   CMD_UNINITIALIZED_STATE =0,
   CMD_SEND_STATE,
   CMD_WAIT_STATUS
-} CMD_STATES_TypeDef;  
+} CMD_STATES_TypeDef;
 
 
 
 typedef struct __MassStorageParameter
 {
   uint32_t MSCapacity;
-  uint32_t MSSenseKey; 
+  uint32_t MSSenseKey;
   uint16_t MSPageLength;
   uint8_t MSBulkOutEp;
   uint8_t MSBulkInEp;
@@ -80,13 +80,13 @@ typedef struct __MassStorageParameter
 } MassStorageParameter_TypeDef;
 /**
   * @}
-  */ 
+  */
 
 
 
 /** @defgroup USBH_MSC_SCSI_Exported_Defines
   * @{
-  */ 
+  */
 
 
 
@@ -98,7 +98,7 @@ typedef struct __MassStorageParameter
 #define OPCODE_REQUEST_SENSE              0x03
 
 #define DESC_REQUEST_SENSE                0X00
-#define ALLOCATION_LENGTH_REQUEST_SENSE   63 
+#define ALLOCATION_LENGTH_REQUEST_SENSE   63
 #define XFER_LEN_READ_CAPACITY10           8
 #define XFER_LEN_MODE_SENSE6              63
 
@@ -108,26 +108,26 @@ typedef struct __MassStorageParameter
 #define DISK_WRITE_PROTECTED              0x01
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_MSC_SCSI_Exported_Macros
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup _Exported_Variables
   * @{
-  */ 
+  */
 extern MassStorageParameter_TypeDef USBH_MSC_Param;
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_MSC_SCSI_Exported_FunctionsPrototype
   * @{
-  */ 
+  */
 uint8_t USBH_MSC_TestUnitReady(USB_OTG_CORE_HANDLE *pdev);
 uint8_t USBH_MSC_ReadCapacity10(USB_OTG_CORE_HANDLE *pdev);
 uint8_t USBH_MSC_ModeSense6(USB_OTG_CORE_HANDLE *pdev);
@@ -144,22 +144,22 @@ void USBH_MSC_StateMachine(USB_OTG_CORE_HANDLE *pdev);
 
 /**
   * @}
-  */ 
+  */
 
 #endif  //__USBH_MSC_SCSI_H__
 
 
 /**
   * @}
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 
 /**
   * @}

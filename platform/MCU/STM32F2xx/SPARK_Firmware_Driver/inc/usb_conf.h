@@ -144,11 +144,11 @@
                                                  use DMA for writing/reading to/from Flash/OTP memories
                                                  because the USB HS DMA is not connected (at product level)
                                                  to these memories (refer to RM0033 or RM0090 reference manual
-                                                 for more details). 
-                                                 If DMA mode is enabled, an intermediate buffer is used to 
+                                                 for more details).
+                                                 If DMA mode is enabled, an intermediate buffer is used to
                                                  interface between memory and DMA controller. This may result
-                                                 in performance degradation for transfers relative to these 
-                                                 memories in High Speed mode. It is advised to disable DMA 
+                                                 in performance degradation for transfers relative to these
+                                                 memories in High Speed mode. It is advised to disable DMA
                                                  mode if it is not used for other interfaces. */
 #define USB_OTG_HS_DEDICATED_EP1_ENABLED
 #endif

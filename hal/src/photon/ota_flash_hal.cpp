@@ -51,14 +51,14 @@ const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t modul
  * Find the module_info at a given address. No validation is done so the data
  * pointed to should not be trusted.
  * @param bounds
- * @return 
+ * @return
  */
 inline const module_info_t* locate_module(const module_bounds_t* bounds) {
     return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
 }
 
 /**
- * Determines if a given address is in range. 
+ * Determines if a given address is in range.
  * @param test      The address to test
  * @param start     The start range (inclusive)
  * @param end       The end range (inclusive)
@@ -86,13 +86,13 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
         target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
         target->validity_result = 0;
         const uint8_t* module_end = (const uint8_t*)target->info->module_end_address;
-        const module_bounds_t* expected_bounds = find_module_bounds(module_function(target->info), module_index(target->info));        
+        const module_bounds_t* expected_bounds = find_module_bounds(module_function(target->info), module_index(target->info));
         if (expected_bounds && in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
             target->validity_result |= MODULE_VALIDATION_RANGE;
             target->validity_result |= (PRODUCT_ID==module_platform_id(target->info)) ? MODULE_VALIDATION_PLATFORM : 0;
             // the suffix ends at module_end, and the crc starts after module end
             target->crc = (module_info_crc_t*)module_end;
-            target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));            
+            target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
             if (validate_module_dependencies(bounds, userDepsOptional))
                 target->validity_result |= MODULE_VALIDATION_DEPENDENCIES;
             if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
@@ -100,7 +100,7 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
         }
         else
             target->info = NULL;
-    }           
+    }
     return target->info!=NULL;
 }
 
@@ -142,15 +142,15 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
         info->platform_id = PLATFORM_ID;
-        // bootloader, system 1, system 2, optional user code and factory restore    
+        // bootloader, system 1, system 2, optional user code and factory restore
         uint8_t count = arraySize(module_bounds);
-        info->modules = new hal_module_t[count];        
+        info->modules = new hal_module_t[count];
         if (info->modules) {
             info->module_count = count;
             for (unsigned i=0; i<count; i++) {
                 fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
             }
-        }    
+        }
     }
     else
     {
@@ -167,7 +167,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
     {
         if (module->dependency.module_function == MODULE_FUNCTION_NONE || (userOptional && module_function(module)==MODULE_FUNCTION_USER_PART)) {
             valid = true;
-        }                
+        }
         else {
             // deliberately not transitive, so we only check the first dependency
             // so only user->system_part_2 is checked
@@ -182,7 +182,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
 
 bool HAL_Verify_User_Dependencies()
 {
-    const module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 1);    
+    const module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 1);
     return validate_module_dependencies(bounds, false);
 }
 
@@ -238,14 +238,14 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
 }
 
 hal_update_complete_t HAL_FLASH_End(void* reserved)
-{    
+{
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
-    if (fetch_module(&module, &module_ota, true, MODULE_VALIDATION_INTEGRITY) && (module.validity_checked==module.validity_result)) 
+    if (fetch_module(&module, &module_ota, true, MODULE_VALIDATION_INTEGRITY) && (module.validity_checked==module.validity_result))
     {
         uint32_t moduleLength = module_length(module.info);
         module_function_t function = module_function(module.info);
-                    
+
         // bootloader is copied directly
         if (function==MODULE_FUNCTION_BOOTLOADER) {
             if (bootloader_update((const void*)module_ota.start_address, moduleLength+4))
@@ -255,13 +255,13 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
         {
             if (FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, module_ota.start_address,
                 FLASH_INTERNAL, uint32_t(module.info->module_start_address),
-                (moduleLength + 4),//+4 to copy the CRC too     
+                (moduleLength + 4),//+4 to copy the CRC too
                 function,
                 MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION))//true to verify the CRC during copy also
                     result = HAL_UPDATE_APPLIED_PENDING_RESTART;
-           
+
         }
-        
+
         FLASH_End();
     }
     return result;
@@ -279,23 +279,23 @@ void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
     parseServerAddressData(server_addr, (const uint8_t*)data, DCT_SERVER_ADDRESS_SIZE);
 }
 
-bool HAL_OTA_Flashed_GetStatus(void) 
+bool HAL_OTA_Flashed_GetStatus(void)
 {
     return OTA_Flashed_GetStatus();
 }
 
 void HAL_OTA_Flashed_ResetStatus(void)
-{    
+{
     OTA_Flashed_ResetStatus();
 }
 
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
-{       
+{
     fetch_device_public_key();
     copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
 }
 
-int rsa_random(void* p) 
+int rsa_random(void* p)
 {
     return (int)HAL_RNG_GetRandomNumber();
 }
@@ -303,10 +303,10 @@ int rsa_random(void* p)
 /**
  * Reads and generates the device's private key.
  * @param keyBuffer
- * @return 
+ * @return
  */
 int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* genspec)
-{         
+{
     bool generated = false;
     copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
     genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
@@ -317,28 +317,28 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
             dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
             // refetch and rewrite public key to ensure it is valid
             fetch_device_public_key();
-            generated = true;            
-        }        
+            generated = true;
+        }
     }
     genspec->generated_key = generated;
     return 0;
 }
 
 STATIC_ASSERT(Internet_Address_is_2_bytes_c1, sizeof(Internet_Address_TypeDef)==1);
-STATIC_ASSERT(ServerAddress_packed_c1, offsetof(ServerAddress, ip)==2);    
+STATIC_ASSERT(ServerAddress_packed_c1, offsetof(ServerAddress, ip)==2);
 
 
 
 void check() {
     // todo - why is this static assert giving a different result?
     STATIC_ASSERT_EXPR(Internet_Address_is_2_bytes_c, sizeof(Internet_Address_TypeDef)==2);
-    STATIC_ASSERT_EXPR(ServerAddress_packed_c, offsetof(ServerAddress, ip)==4);    
+    STATIC_ASSERT_EXPR(ServerAddress_packed_c, offsetof(ServerAddress, ip)==4);
 }
 
 
-uint16_t HAL_Set_Claim_Code(const char* code) 
+uint16_t HAL_Set_Claim_Code(const char* code)
 {
-    if (code) 
+    if (code)
         return dct_write_app_data(code, DCT_CLAIM_CODE_OFFSET, DCT_CLAIM_CODE_SIZE);
     else // clear code
     {
@@ -348,14 +348,14 @@ uint16_t HAL_Set_Claim_Code(const char* code)
         const uint8_t* claimed = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CLAIMED_OFFSET);
         c = '1';
         if (*claimed!=uint8_t(c))
-        {            
+        {
             dct_write_app_data(&c, DCT_DEVICE_CLAIMED_OFFSET, 1);
         }
     }
-    return 0;    
+    return 0;
 }
 
-uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len) 
+uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
 {
     const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_CLAIM_CODE_OFFSET);
     uint16_t result = 0;

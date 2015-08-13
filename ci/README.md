@@ -37,13 +37,13 @@ The unit tests are also built and executed. These are found under
    tests/unit/
 ```
 
-These tests are compiled under regular gcc (not the ARM version) and executed on 
+These tests are compiled under regular gcc (not the ARM version) and executed on
 the build server locally.
 
 Only one test runner is built since all tests can be compiled together.
 
 Adding a new test done by creating a new `.cpp` file named after the functional
-area the tests will cover, and then coding tests using the 
+area the tests will cover, and then coding tests using the
 [Catch](https://github.com/philsquared/Catch) framework.
-        
+
 

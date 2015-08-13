@@ -28,7 +28,7 @@ uint16_t HAL_SetProductStore(ProductStoreIndex index, uint16_t value)
 /**
  * Fetches the value at a given index in the product store.
  * @param index
- * @return 
+ * @return
  */
 uint16_t HAL_GetProductStore(ProductStoreIndex index)
 {

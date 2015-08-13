@@ -63,7 +63,7 @@ SUITE(Queue)
     int popped = spark_protocol.queue_pop(buf, 300);
     CHECK_EQUAL(300, popped);
   }
-  
+
   TEST(QueueCanCopyOversizeInStages)
   {
     SparkProtocol spark_protocol;

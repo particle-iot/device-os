@@ -17,14 +17,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_bsp.h"
@@ -36,22 +36,22 @@
 /** @defgroup USB_BSP
   * @brief This file is responsible to offer board support package
   * @{
-  */ 
+  */
 
 /** @defgroup USB_BSP_Private_Defines
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USB_BSP_Private_TypesDefinitions
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 
 
@@ -59,29 +59,29 @@
 
 /** @defgroup USB_BSP_Private_Macros
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_BSP_Private_Variables
   * @{
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_BSP_Private_FunctionPrototypes
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USB_BSP_Private_Functions
   * @{
-  */ 
+  */
 
 
 /**
@@ -109,7 +109,7 @@ void USB_OTG_BSP_EnableInterrupt(void)
 /**
   * @brief  BSP_Drive_VBUS
   *         Drives the Vbus signal through IO
-  * @param  speed : Full, Low 
+  * @param  speed : Full, Low
   * @param  state : VBUS states
   * @retval None
   */
@@ -122,7 +122,7 @@ void USB_OTG_BSP_DriveVBUS(uint32_t speed, uint8_t state)
 /**
   * @brief  USB_OTG_BSP_ConfigVBUS
   *         Configures the IO for the Vbus and OverCurrent
-  * @param  Speed : Full, Low 
+  * @param  Speed : Full, Low
   * @retval None
   */
 
@@ -160,8 +160,8 @@ void USB_OTG_BSP_uDelay (const uint32_t usec)
       return ;
     }
   }
-  while (1); 
-  
+  while (1);
+
 }
 
 
@@ -174,7 +174,7 @@ void USB_OTG_BSP_uDelay (const uint32_t usec)
 void USB_OTG_BSP_mDelay (const uint32_t msec)
 {
 
-    USB_OTG_BSP_uDelay(msec * 1000);    
+    USB_OTG_BSP_uDelay(msec * 1000);
 
 }
 
@@ -189,15 +189,15 @@ void USB_OTG_BSP_mDelay (const uint32_t msec)
 void USB_OTG_BSP_TimerIRQ (void)
 {
 
-} 
+}
 
 /**
 * @}
-*/ 
+*/
 
 /**
 * @}
-*/ 
+*/
 
 /**
 * @}

@@ -24,9 +24,9 @@
 #include "testapi.h"
 
 test(delay) {
-    
+
     API_COMPILE(delay(100));
-    API_COMPILE(delayMicroseconds(100));    
+    API_COMPILE(delayMicroseconds(100));
 }
 
 test(ticks) {

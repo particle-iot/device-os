@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   platform_headers.h
  * Author: mat
  *

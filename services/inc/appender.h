@@ -31,7 +31,7 @@
 extern "C" {
 #endif
 
-    
+
 typedef bool (*appender_fn)(void* appender, const uint8_t* data, size_t length);
 
 
@@ -43,9 +43,9 @@ typedef bool (*appender_fn)(void* appender, const uint8_t* data, size_t length);
  * OO version of the appender function.
  */
 class Appender {
-public:    
+public:
     virtual bool append(const uint8_t* data, size_t length)=0;
-    
+
     bool append(const char* data) {
         return append((const uint8_t*)data, strlen(data));
     }
@@ -62,14 +62,14 @@ inline bool append_instance(void* appender, const uint8_t* data, size_t length) 
 class BufferAppender : public Appender {
     uint8_t* buffer;
     uint8_t* end;
-    
+
 public:
 
     BufferAppender(uint8_t* start, size_t length) {
         this->buffer = start;
         this->end = start + length;
     }
-    
+
     bool append(const uint8_t* data, size_t length) {
         bool has_space = (size_t(end-buffer)>=length);
         if (has_space) {
@@ -86,7 +86,7 @@ public:
         return Appender::append(c);
     }
 
-    
+
     const uint8_t* next() { return buffer; }
 };
 

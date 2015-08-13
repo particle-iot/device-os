@@ -44,4 +44,4 @@
 
 #define USBD_CONFIGURATION_FS_STRING    "VCP Config"
 #define USBD_INTERFACE_FS_STRING        "VCP Interface"
- 
+

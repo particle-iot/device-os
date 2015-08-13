@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   wlan_scan.h
  * Author: mat1
  *

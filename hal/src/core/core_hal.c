@@ -49,7 +49,7 @@ volatile uint8_t IWDG_SYSTEM_RESET;
 /* Private function prototypes -----------------------------------------------*/
 
 void HAL_Core_Init(void)
-{    
+{
 }
 
 /*******************************************************************************
@@ -351,7 +351,7 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 
 // todo find a technique that allows accessor functions to be inlined while still keeping
 // hardware independence.
-bool HAL_watchdog_reset_flagged() 
+bool HAL_watchdog_reset_flagged()
 {
 	return IWDG_SYSTEM_RESET;
 }
@@ -364,7 +364,7 @@ void HAL_Notify_WDT()
 int main() {
 	app_setup_and_loop();
 	return 0;
-}    
+}
 
 
 void HAL_Bootloader_Lock(bool lock)

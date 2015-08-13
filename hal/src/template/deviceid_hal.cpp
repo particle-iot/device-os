@@ -28,7 +28,7 @@
 #include <stddef.h>
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
-{    
+{
     if (dest!=NULL && destLen>0)
         *dest = 0;
     return 0;

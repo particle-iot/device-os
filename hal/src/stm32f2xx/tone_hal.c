@@ -304,7 +304,7 @@ static void Tone_TIM3_Handler(void)
 {
     uint16_t capture;
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    
+
     if (TIM_GetITStatus(TIM3, TIM_IT_CC1) != RESET)
     {
         TIM_ClearITPendingBit(TIM3, TIM_IT_CC1 );
@@ -384,7 +384,7 @@ static void Tone_TIM4_Handler(void)
 {
     uint16_t capture;
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
-   
+
     if (TIM_GetITStatus(TIM4, TIM_IT_CC1) != RESET)
     {
         TIM_ClearITPendingBit(TIM4, TIM_IT_CC1 );

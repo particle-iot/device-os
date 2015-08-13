@@ -5,7 +5,7 @@ templatedir=$(HAL_SRC_TEMPLATE_PATH)
 overridedir=$(HAL_SRC_NEWHAL_PATH)
 
 # C source files included in this build.
-# Use files from the template unless they are overridden by files in the 
+# Use files from the template unless they are overridden by files in the
 # core-v2 folder. Also manually exclude some files that have changed from c->cpp.
 
 CSRC += $(call target_files,$(templatedir)/,*.c)

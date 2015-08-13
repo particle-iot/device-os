@@ -43,8 +43,8 @@ void USBSerial::begin(long speed)
 }
 
 void USBSerial::end()
-{    
-    USB_USART_Init(0); 
+{
+    USB_USART_Init(0);
 }
 
 

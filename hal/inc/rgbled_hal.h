@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-#include <stdint.h>    
+#include <stdint.h>
 
 // This is the low-level api to the LED
 void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b);

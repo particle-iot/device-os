@@ -70,7 +70,7 @@ void flashModulesCallback(bool isUpdating)
 }
 
 /**
- * Don't use the backup register. Both options are given here so we 
+ * Don't use the backup register. Both options are given here so we
  * can restore for any given platform if needed later.
  */
 #if PLATFORM_ID < 0
@@ -89,7 +89,7 @@ void flashModulesCallback(bool isUpdating)
 int main(void)
 {
     /*
-        At this stage the microcontroller clock setting is already configured, 
+        At this stage the microcontroller clock setting is already configured,
         this is done through SystemInit() function which is called from startup
         file (startup_stm32f10x_md.s) before to branch to application main.
         To reconfigure the default setting of SystemInit() function, refer to
@@ -125,14 +125,14 @@ int main(void)
     Load_SystemFlags();
 
     Save_Reset_Syndrome();
-    
+
     //BOOTLOADER_VERSION defined in bootloader/import.mk
     //This can also be overridden via make command line arguments
     if (SYSTEM_FLAG(Bootloader_Version_SysFlag) != BOOTLOADER_VERSION)
     {
         Bootloader_Update_Version(BOOTLOADER_VERSION);
     }
-    
+
     if (SYSTEM_FLAG(StartupMode_SysFlag) != 0) {
         SYSTEM_FLAG(StartupMode_SysFlag) = 0;
         Save_SystemFlags();
@@ -166,7 +166,7 @@ int main(void)
         OTA_FLASH_AVAILABLE = 0;
         REFLASH_FROM_BACKUP = 1;
     }
-    
+
     // 0xAAAA is written to the Factory_Reset_SysFlag in order to trigger a factory reset
     if (0xAAAA == SYSTEM_FLAG(Factory_Reset_SysFlag))
     {
@@ -253,22 +253,22 @@ int main(void)
 #define TIMING_RESTORE_MODE 6500
 #define TIMING_RESET_MODE 10000
 #define TIMING_ALL 12000            // add a couple of seconds for visual feedback
-        
-        TimingBUTTON = TIMING_ALL;           
+
+        TimingBUTTON = TIMING_ALL;
         uint8_t factory_reset = 0;
         while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED && TimingBUTTON)
-        {            
+        {
             if(TimingBUTTON < (TIMING_ALL-TIMING_RESET_MODE))
             {
                 // if pressed for 10 sec, enter Factory Reset Mode
                 // This tells the WLAN setup to clear the WiFi user profiles on bootup
                 LED_SetRGBColor(RGB_COLOR_WHITE);
-                SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0001;                
+                SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0001;
             }
             else if(!factory_reset && TimingBUTTON <= (TIMING_ALL-TIMING_RESTORE_MODE))
             {
                 // if pressed for > 6.5 sec, enter Safe mode
-                LED_SetRGBColor(RGB_COLOR_GREEN);                
+                LED_SetRGBColor(RGB_COLOR_GREEN);
                 SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
                 factory_reset = 1;
             }
@@ -279,7 +279,7 @@ int main(void)
                 OTA_FLASH_AVAILABLE = 0;
                 REFLASH_FROM_BACKUP = 0;
                 FACTORY_RESET_MODE = 0;
-                USB_DFU_MODE = 1;           // stay in DFU mode until the button is released so we have slow-led blinking                
+                USB_DFU_MODE = 1;           // stay in DFU mode until the button is released so we have slow-led blinking
             }
             else if(!SAFE_MODE && TimingBUTTON <= TIMING_ALL-TIMING_SAFE_MODE)
             {
@@ -288,7 +288,7 @@ int main(void)
                 SAFE_MODE = 1;
             }
         }
-        
+
         if (factory_reset || USB_DFU_MODE || SAFE_MODE) {
             // now set the factory reset mode (to change the LED to rapid blinking.))
             FACTORY_RESET_MODE = factory_reset;
@@ -296,12 +296,12 @@ int main(void)
             SAFE_MODE &= !USB_DFU_MODE;
         }
     }
-    
+
     if (SAFE_MODE) {
         SYSTEM_FLAG(StartupMode_SysFlag) = 0x0001;
-        Save_SystemFlags();        
+        Save_SystemFlags();
     }
-    
+
     //--------------------------------------------------------------------------
 
     if (OTA_FLASH_AVAILABLE == 1)
@@ -320,7 +320,7 @@ int main(void)
                 LED_SetRGBColor(RGB_COLOR_GREEN);
             // Restore the Factory Firmware
             // On success the device will reset)
-            if (!FACTORY_Flash_Reset()) {                
+            if (!FACTORY_Flash_Reset()) {
                 if (is_application_valid(ApplicationAddress)) {
                     // we have a valid image to fall back to, so just reset
                     NVIC_SystemReset();
@@ -336,7 +336,7 @@ int main(void)
         }
     }
     else if (USB_DFU_MODE == 0)
-    {        
+    {
 #ifdef FLASH_UPDATE_MODULES
         /*
          * Update Internal/Serial Flash based on application_dct=>flash_modules settings
@@ -353,7 +353,7 @@ int main(void)
             BACKUP_Flash_Reset();
         }
 #endif
-                
+
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
             if (is_application_valid(ApplicationAddress))
@@ -374,17 +374,17 @@ int main(void)
         {
             LED_SetRGBColor(RGB_COLOR_RED);
             FACTORY_Flash_Reset();
-            // if we get here, the factory reset wasn't successful            
+            // if we get here, the factory reset wasn't successful
         }
         // else drop through to DFU mode
-        
+
     }
     // Otherwise enters DFU mode to allow user to program his application
 
-    FACTORY_RESET_MODE = 0;         // ensure the LED is slow 
+    FACTORY_RESET_MODE = 0;         // ensure the LED is slow
     OTA_FLASH_AVAILABLE = 0;
     REFLASH_FROM_BACKUP = 0;
-    
+
     LED_SetRGBColor(RGB_COLOR_YELLOW);
 
     USB_DFU_MODE = 1;

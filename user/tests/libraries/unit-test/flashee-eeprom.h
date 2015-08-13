@@ -36,7 +36,7 @@
 #endif
 
 namespace Flashee {
-      
+
 typedef uint32_t flash_addr_t;
 typedef uint32_t page_size_t;
 typedef uint32_t page_count_t;
@@ -88,7 +88,7 @@ public:
     flash_addr_t pageAddress(page_count_t page) const {
         return flash_addr_t(page) * pageSize();
     }
-    
+
     page_count_t addressPage(flash_addr_t address) const {
         return address/pageSize();
     }
@@ -345,20 +345,20 @@ public:
 // writing threads block until there is space.
 class CircularBufferThreadSafe {
 
-    
+
     CircularBuffer* forward;
     std::mutex  mutex;
-    
-public:    
+
+public:
     CircularBufferThreadSafe(CircularBuffer* buffer) : forward(buffer) {]
-    
+
     ~CircularBufferThreadSafe() {
         delete forward;
     }
-    
-        
+
+
     (page_size_t write(const void* buf, page_size_t length) {
-        
+
         return write(buf, length);
     }
 
@@ -386,7 +386,7 @@ public:
     page_size_t free() const {
         return 0;
     }
-    
+
 };
 #endif
 
@@ -581,22 +581,22 @@ public:
         return device ? new CircularBuffer(*device) : NULL;
     }
 
-#if FLASHEE_FATFS_SUPPORT    
-    /** 
+#if FLASHEE_FATFS_SUPPORT
+    /**
      * Allocates a region of flash for storing a FAT filesystem. If an existing filesystem
      * has alredy been created elsewhere, that volume is closed. (Only one volume can be
      * accessed at a time.)
-     * 
+     *
      * @param startAddress  The starting address for the allocated region.
      * @param endAddress    The ending address (exclusive) for the allocated region.
-     * @param pfs           The address of the FATFS structure for this filesystem. 
+     * @param pfs           The address of the FATFS structure for this filesystem.
      *  This is typically statically allocated.
      * @param format        When true, the storage will be formatted.
      */
-    static FRESULT createFATRegion(flash_addr_t startAddress, flash_addr_t endAddress, 
+    static FRESULT createFATRegion(flash_addr_t startAddress, flash_addr_t endAddress,
         FATFS* pfs, FormatCmd formatCmd=FORMAT_CMD_FORMAT_IF_NEEDED);
-#endif        
-    
+#endif
+
 };
 
 } // namespace

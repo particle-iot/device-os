@@ -17,7 +17,7 @@ on building the firmware by porting the HAL to your target device.
 Your hal implementation directory is  `hal/src/<yourproduct>`.
 
 These are the outline steps to implement a new HAL:
-- add memory regions, linker sections, entry  function etc. to the `linker.ld` script 
+- add memory regions, linker sections, entry  function etc. to the `linker.ld` script
 - copy individual files from `hal/src/template` to your hal implementation folder. It's ok to rename the file from .c to .cpp and vice-versa.
 - implement the function bodies in the chosen file
 

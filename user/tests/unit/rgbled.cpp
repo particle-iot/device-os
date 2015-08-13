@@ -13,8 +13,8 @@ extern "C" {
 // TODO - want to use Fake-It but get compiler errors - waiting to hear back from author.
 // For now, just save last passed values.
 
-uint16_t Get_RGB_LED_Max_Value() { 
-    return 2048; 
+uint16_t Get_RGB_LED_Max_Value() {
+    return 2048;
 }
 
 static uint16_t rgb_values[3];
@@ -31,10 +31,10 @@ void Get_RGB_LED_Values(uint16_t* rgb) {
 }
 
 
-void Toggle_User_LED() {        
+void Toggle_User_LED() {
 }
 
-void Set_User_LED(uint8_t state) {    
+void Set_User_LED(uint8_t state) {
 }
 
 /**
@@ -58,10 +58,10 @@ void assertLEDRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness, uint8_t f
     actual[1] = g;
     actual[2] = b;
     for (int i=0; i<3; i++) {
-        actual[i] = (uint32_t(actual[i])*brightness*Get_RGB_LED_Max_Value())>>16;                
-        actual[i] = actual[i]*fade/99;      
+        actual[i] = (uint32_t(actual[i])*brightness*Get_RGB_LED_Max_Value())>>16;
+        actual[i] = actual[i]*fade/99;
         REQUIRE((actual[i]>>8) == (rgb_values[i]>>8) );
-    }    
+    }
 }
 
 void assertLEDRGB(uint8_t r, uint8_t g, uint8_t b) {
@@ -105,13 +105,13 @@ SCENARIO("Led can be toggled off then on again") {
             LED_Toggle(LED_RGB);
             THEN("The rgb values of the LED should be (0,0,0)") {
                 assertLEDRGB(0,0,0);
-            }        
+            }
             AND_WHEN ("The LED is toggled again") {
                 LED_Toggle(LED_RGB);
                 THEN("The rgb values match the original") {
                     assertLEDRGB(0xFE,0xDC,0xBA);
                 }
-            }                    
+            }
         }
     }
 }
@@ -131,7 +131,7 @@ SCENARIO("Led can be toggled on") {
                 LED_Toggle(LED_RGB);
                 THEN("The rgb values of the LED should be (0,0,0)") {
                     assertLEDRGB(0,0,0);
-                }        
+                }
             }
         }
     }
@@ -141,15 +141,15 @@ SCENARIO("LED Brightness can be set") {
     GIVEN("The RGB led is in override mode, on, and a color set") {
         LED_Signaling_Start();
         LED_SetSignalingColor(0xFEDCBA);
-        
+
         WHEN("The brightness is set to 48 (50%)") {
-            LED_SetBrightness(48);            
+            LED_SetBrightness(48);
             LED_On(LED_RGB);
             THEN("The RGB values are half of the original") {
                 assertLEDRGB(0xFE,0xDC,0xBA, 48);
             }
         }
-    }    
+    }
 }
 
 SCENARIO("LED can fade to half brightness in 50 steps", "[led]") {
@@ -167,14 +167,14 @@ SCENARIO("LED can fade to half brightness in 50 steps", "[led]") {
         THEN("The LED values are 1/2 of the original") {
             assertLEDRGB(0xFE,0xDC,0xBA,96, 49);
         }
-    }    
+    }
 }
 
 SCENARIO("LED_RGB_Get can retrieve correct 8-bit values from 16-bit CCR counters") {
     GIVEN("The RGB Led setup with a color") {
         LED_Signaling_Start();
         LED_SetBrightness(96);
-        LED_SetSignalingColor(0xFEDCBA);        
+        LED_SetSignalingColor(0xFEDCBA);
     }
     WHEN ("The LED is turned on and values fetched") {
         LED_On(LED_RGB);

@@ -21,7 +21,7 @@ extern uint8_t USE_SYSTEM_FLAGS;
 extern uint16_t tempFlag;
 
 /**
- * Access to named system flags. 
+ * Access to named system flags.
  */
 #define SYSTEM_FLAG(flag)       tempFlag
 

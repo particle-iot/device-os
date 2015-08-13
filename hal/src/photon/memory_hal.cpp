@@ -94,11 +94,11 @@ class ExternalFlashDevice : public MemoryDevice {
 };
 
 /*
- * The external flash. 
+ * The external flash.
  */
 static ExternalFlashDevice externalFlash;
 
-void MemoryDevices::internalFirmware(MemoryDeviceRegion& region) 
+void MemoryDevices::internalFirmware(MemoryDeviceRegion& region)
 {
     // todo
 }

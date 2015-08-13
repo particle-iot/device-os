@@ -40,8 +40,8 @@ DYNALIB_FN(hal_ota,HAL_OTA_Flashed_ResetStatus)
 
 DYNALIB_FN(hal_ota,HAL_FLASH_Begin)
 DYNALIB_FN(hal_ota,HAL_FLASH_Update)
-DYNALIB_FN(hal_ota,HAL_FLASH_End)        
-DYNALIB_END(hal_ota)        
+DYNALIB_FN(hal_ota,HAL_FLASH_End)
+DYNALIB_END(hal_ota)
 
 #endif	/* HAL_DYNALIB_OTA_H */
 

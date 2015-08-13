@@ -47,24 +47,24 @@ uint32_t HAL_OTA_FlashLength()
 {
     return FLASH_MAX_SIZE;
 }
-    
+
 uint16_t HAL_OTA_ChunkSize()
 {
     return OTA_CHUNK_SIZE;
 }
 
-bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved) 
+bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved)
 {
     FLASH_Begin(sFLASH_Address, fileSize);
     return true;
 }
 
-int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize,  void* reserved) 
+int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize,  void* reserved)
 {
     return FLASH_Update(pBuffer, address, bufferSize);
 }
 
-hal_update_complete_t HAL_FLASH_End( void* reserved) 
+hal_update_complete_t HAL_FLASH_End( void* reserved)
 {
     FLASH_End();
     return HAL_UPDATE_APPLIED_PENDING_RESTART;
@@ -82,7 +82,7 @@ uint32_t HAL_OTA_Flashed_Length(void)
     return 0;
 }
 
-bool HAL_OTA_Flashed_GetStatus(void) 
+bool HAL_OTA_Flashed_GetStatus(void)
 {
     return OTA_Flashed_GetStatus();
 }
@@ -105,12 +105,12 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
     return 0;
 }
 
-uint16_t HAL_Set_Claim_Code(const char* code) 
+uint16_t HAL_Set_Claim_Code(const char* code)
 {
     return -1;
 }
 
-uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len) 
+uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
 {
     if (len)
         buffer[0] = 0;

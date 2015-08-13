@@ -42,7 +42,7 @@ DYNALIB_FN(system_net, network_listen)
 DYNALIB_FN(system_net, network_listening)
 DYNALIB_FN(system_net, network_has_credentials)
 DYNALIB_FN(system_net, network_set_credentials)
-DYNALIB_FN(system_net, network_clear_credentials)        
+DYNALIB_FN(system_net, network_clear_credentials)
 DYNALIB_END(system_net)
 
 

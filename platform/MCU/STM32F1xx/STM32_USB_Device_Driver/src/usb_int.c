@@ -7,16 +7,16 @@
   * @brief   Endpoint CTR (Low and High) interrupt's service routines
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   *
   ******************************************************************************
@@ -63,10 +63,10 @@ void CTR_LP(void)
 
       /* save RX & TX status */
       /* and set both to NAK */
-      
+
 	    SaveRState = _GetENDPOINT(ENDP0);
 	    SaveTState = SaveRState & EPTX_STAT;
-	    SaveRState &=  EPRX_STAT;	
+	    SaveRState &=  EPRX_STAT;
 
 	    _SetEPRxTxStatus(ENDP0,EP_RX_NAK,EP_TX_NAK);
 
@@ -95,7 +95,7 @@ void CTR_LP(void)
         /* DIR = 1 & (CTR_TX | CTR_RX) => 2 int pending */
 
         wEPVal = _GetENDPOINT(ENDP0);
-        
+
         if ((wEPVal &EP_SETUP) != 0)
         {
           _ClearEP_CTR_RX(ENDP0); /* SETUP bit kept frozen while CTR_RX = 1 */
@@ -111,7 +111,7 @@ void CTR_LP(void)
           _ClearEP_CTR_RX(ENDP0);
           Out0_Process();
           /* before terminate set Tx & Rx status */
-     
+
 		     _SetEPRxTxStatus(ENDP0,SaveRState,SaveTState);
           return;
         }
@@ -149,7 +149,7 @@ void CTR_LP(void)
 
 /*******************************************************************************
 * Function Name  : CTR_HP.
-* Description    : High Priority Endpoint Correct Transfer interrupt's service 
+* Description    : High Priority Endpoint Correct Transfer interrupt's service
 *                  routine.
 * Input          : None.
 * Output         : None.

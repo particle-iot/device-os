@@ -7,16 +7,16 @@
   * @brief   This file provides all the PWR firmware functions.
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   ******************************************************************************
   */
@@ -29,10 +29,10 @@
   * @{
   */
 
-/** @defgroup PWR 
+/** @defgroup PWR
   * @brief PWR driver modules
   * @{
-  */ 
+  */
 
 /** @defgroup PWR_Private_TypesDefinitions
   * @{
@@ -202,7 +202,7 @@ void PWR_EnterSTOPMode(uint32_t PWR_Regulator, uint8_t PWR_STOPEntry)
   /* Check the parameters */
   assert_param(IS_PWR_REGULATOR(PWR_Regulator));
   assert_param(IS_PWR_STOP_ENTRY(PWR_STOPEntry));
-  
+
   /* Select the regulator state in STOP mode ---------------------------------*/
   tmpreg = PWR->CR;
   /* Clear PDDS and LPDS bits */
@@ -213,10 +213,10 @@ void PWR_EnterSTOPMode(uint32_t PWR_Regulator, uint8_t PWR_STOPEntry)
   PWR->CR = tmpreg;
   /* Set SLEEPDEEP bit of Cortex System Control Register */
   SCB->SCR |= SCB_SCR_SLEEPDEEP;
-  
+
   /* Select STOP mode entry --------------------------------------------------*/
   if(PWR_STOPEntry == PWR_STOPEntry_WFI)
-  {   
+  {
     /* Request Wait For Interrupt */
     __WFI();
   }
@@ -225,9 +225,9 @@ void PWR_EnterSTOPMode(uint32_t PWR_Regulator, uint8_t PWR_STOPEntry)
     /* Request Wait For Event */
     __WFE();
   }
-  
+
   /* Reset SLEEPDEEP bit of Cortex System Control Register */
-  SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP);  
+  SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP);
 }
 
 /**
@@ -265,7 +265,7 @@ FlagStatus PWR_GetFlagStatus(uint32_t PWR_FLAG)
   FlagStatus bitstatus = RESET;
   /* Check the parameters */
   assert_param(IS_PWR_GET_FLAG(PWR_FLAG));
-  
+
   if ((PWR->CSR & PWR_FLAG) != (uint32_t)RESET)
   {
     bitstatus = SET;
@@ -290,7 +290,7 @@ void PWR_ClearFlag(uint32_t PWR_FLAG)
 {
   /* Check the parameters */
   assert_param(IS_PWR_CLEAR_FLAG(PWR_FLAG));
-         
+
   PWR->CR |=  PWR_FLAG << 2;
 }
 

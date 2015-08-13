@@ -34,20 +34,20 @@ extern "C" {
 
 /**
  * Fetches the unique ID for this device.
- * 
+ *
  * @param dest      The buffer to receive the device ID
  * @param destLen   The maximum length of the buffer. Can be 0.
- * @return          The number of bytes in the device ID. This is independent 
- *                  of the buffer size. 
- * 
- * To find out the size of the device ID, call this method with 
+ * @return          The number of bytes in the device ID. This is independent
+ *                  of the buffer size.
+ *
+ * To find out the size of the device ID, call this method with
  * {@code destLen}==0.
- */        
+ */
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen);
 
 /**
  * Retrievse the platform ID of this device. This allows libraries above HAL
- * to not be compile-time dependent on the PRODUCT_ID symbol. 
+ * to not be compile-time dependent on the PRODUCT_ID symbol.
  */
 unsigned HAL_Platform_ID();
 

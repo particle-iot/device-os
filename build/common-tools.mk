@@ -5,7 +5,7 @@ MKDIR = mkdir -p
 
 # GCC_ARM_PATH can be defined to be the path of the GCC ARM compiler,
 # It must include a final slash! Default is empty
-# GCC_PREFIX can be set to the prefix added to GCC ARM names. 
+# GCC_PREFIX can be set to the prefix added to GCC ARM names.
 # Default is arm-none-eabi-
 
 CC = $(GCC_ARM_PATH)$(GCC_PREFIX)gcc
@@ -20,5 +20,5 @@ CURL = curl
 CRC = crc32
 XXD = xxd
 
-CPPFLAGS += 
+CPPFLAGS +=
 

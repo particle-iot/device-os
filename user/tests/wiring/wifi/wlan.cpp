@@ -21,26 +21,26 @@ test(WLAN_Test2_Ping_To_Symmetrical_Address)
 {
     WiFi.connect();
     const int tries = 5;
-    int count = WiFi.ping(IPAddress(8,8,8,8), tries);    
+    int count = WiFi.ping(IPAddress(8,8,8,8), tries);
     assertEqual(count, tries);
 }
 
 test(WLAN_Test3_Ping_To_Asymmetrical_Address)
 {
     WiFi.connect();
-    const int tries = 5;        
-    int count = WiFi.ping(IPAddress(62, 116, 130, 8), tries);    
+    const int tries = 5;
+    int count = WiFi.ping(IPAddress(62, 116, 130, 8), tries);
     assertEqual(count, tries);
 }
 
 // todo - duplicated test, determine if this is necessary... ping by hostname doesn't appear to be supported
 #if 0
 test(WLAN_Test4_Ping_By_Hostname)
-{    
+{
     WiFi.connect();
-    const int tries = 5;        
+    const int tries = 5;
     int count = WiFi.ping(IPAddress(62, 116, 130, 8), tries);
-    assertEqual(count, tries);    
+    assertEqual(count, tries);
 }
 #endif
 
@@ -70,17 +70,17 @@ test(WLAN_Test5_IPAddress_Construct_From_Octets)
 test(WLAN_Test6_IPAddress_Construct_Octets_Equal_Uint32)
 {
     IPAddress ip(1,2,3,4);
-    
-    assertTrue(ip==0x01020304);    
+
+    assertTrue(ip==0x01020304);
 }
 
 test(WLAN_Test7_IPAddress_Construct_Uin32_Equal_Octets)
 {
     IPAddress ip(0x01020304);
-    
+
     assertEqual(ip[0], 1);
     assertEqual(ip[1], 2);
     assertEqual(ip[2], 3);
-    assertEqual(ip[3], 4);    
+    assertEqual(ip[3], 4);
 }
 

@@ -49,7 +49,7 @@
 /* Exported macro ------------------------------------------------------------*/
 #define SET_POLLING_TIMING(x)   buffer[1] = _1st_BYTE(x);\
                                 buffer[2] = _2nd_BYTE(x);\
-                                buffer[3] = _3rd_BYTE(x);  
+                                buffer[3] = _3rd_BYTE(x);
 
 /* Exported functions ------------------------------------------------------- */
 

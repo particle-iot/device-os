@@ -19,11 +19,11 @@ uint8_t HAL_Set_System_Interrupt_Handler(hal_irq_t irq, const HAL_InterruptCallb
     HAL_InterruptCallback& cb = SystemInterruptHandlers[irq];
     if (previous)
         *previous = cb;
-    if (callback) 
+    if (callback)
         cb = *callback;
     else
         cb.handler = 0;
-    
+
     return true;
 }
 
@@ -31,12 +31,12 @@ uint8_t HAL_Get_System_Interrupt_Handler(hal_irq_t irq, HAL_InterruptCallback* c
 {
     if (!is_valid_irq(irq))
         return false;
-    
+
     if (callback) {
         HAL_InterruptCallback& cb = SystemInterruptHandlers[irq];
         *callback = cb;
     }
-    
+
     return true;
 }
 

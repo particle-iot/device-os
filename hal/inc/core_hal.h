@@ -67,10 +67,10 @@ typedef enum
  */
 
 #ifdef USE_SWD_JTAG
-#define SWD_JTAG_ENABLE    
-#else 
+#define SWD_JTAG_ENABLE
+#else
 #ifdef USE_SWD
-#define SWD_ENABLE_JTAG_DISABLE    
+#define SWD_ENABLE_JTAG_DISABLE
 #else
 #define SWD_JTAG_DISABLE
 #endif
@@ -89,7 +89,7 @@ typedef enum
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 void HAL_Core_Init(void);
 void HAL_Core_Config(void);
 bool HAL_Core_Validate_User_Module(void);

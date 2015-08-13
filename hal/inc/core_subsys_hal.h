@@ -34,7 +34,7 @@ extern "C" {
 /**
  * Reads the subsystem version as a string into a given buffer.
  * @return 0 on success.
- */       
+ */
 int HAL_core_subsystem_version(char* buf, int bufLen);
 
 #if PLATFORM_NAME==core
@@ -54,7 +54,7 @@ int HAL_core_subsystem_version(char* buf, int bufLen);
 #else
     #error unknown platform for SPARK_SUBSYSTEM_EVENT_NAME
 #endif
-  
+
 #ifdef	__cplusplus
 }
 #endif

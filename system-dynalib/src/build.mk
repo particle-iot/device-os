@@ -1,5 +1,5 @@
 TARGET_SYSTEM_DYNALIB_SRC_PATH = $(SYSTEM_DYNALIB_MODULE_PATH)/src
 
 CPPSRC += $(call target_files,$(TARGET_SYSTEM_DYNALIB_SRC_PATH),*.cpp)
-CSRC += $(call target_files,$(TARGET_SYSTEM_DYNALIB_SRC_PATH),*.c)    
+CSRC += $(call target_files,$(TARGET_SYSTEM_DYNALIB_SRC_PATH),*.c)
 

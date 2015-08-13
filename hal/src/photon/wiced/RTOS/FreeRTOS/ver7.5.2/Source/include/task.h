@@ -1033,7 +1033,7 @@ signed portBASE_TYPE xTaskIsTaskFinished( xTaskHandle xTask ) PRIVILEGED_FUNCTIO
  * task. h
  * <pre>void vTaskForceAwake( xTaskHandle xTask );</pre>
  *
- * Awakens a task suspended on a Mutex / Semaphore / Queue. 
+ * Awakens a task suspended on a Mutex / Semaphore / Queue.
  * Wait period is cancelled, and the waiting function returns as though
  * a timeout occurred
  *
@@ -1195,8 +1195,8 @@ xTaskHandle xTaskGetIdleTaskHandle( void );
  * the scheduler remaining suspended for an extended period.
  *
  * @param pxTaskStatusArray A pointer to an array of xTaskStatusType structures.
- * The array must contain at least one xTaskStatusType structure for each task 
- * that is under the control of the RTOS.  The number of tasks under the control 
+ * The array must contain at least one xTaskStatusType structure for each task
+ * that is under the control of the RTOS.  The number of tasks under the control
  * of the RTOS can be determined using the uxTaskGetNumberOfTasks() API function.
  *
  * @param uxArraySize The size of the array pointed to by the pxTaskStatusArray

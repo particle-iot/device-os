@@ -23,5 +23,5 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
     desc.fn = fn;
     desc.data = (void*)data;
     desc.funcKey = funcKey;
-    return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);    
+    return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);
 }
