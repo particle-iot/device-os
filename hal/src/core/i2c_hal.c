@@ -238,7 +238,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
   }
 
   /* Send Slave address for read */
-  I2C_Send7bitAddress(I2C1, address, I2C_Direction_Receiver);
+  I2C_Send7bitAddress(I2C1, address << 1, I2C_Direction_Receiver);
 
   _millis = HAL_Timer_Get_Milli_Seconds();
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
@@ -347,7 +347,7 @@ void HAL_I2C_Begin_Transmission(uint8_t address)
   // indicate that we are transmitting
   transmitting = 1;
   // set address of targeted slave
-  txAddress = address;
+  txAddress = address << 1;
   // reset tx buffer iterator vars
   txBufferIndex = 0;
   txBufferLength = 0;
