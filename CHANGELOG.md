@@ -6,6 +6,7 @@
  - pressing 'v' in SoftAP mode displays the system version. FIRM-128
  - P1: API (compatible with Core) to access the 1MByte external flash. [#498](https://github.com/spark/firmware/pull/498)
  - Arduino compatibility macros for PROGMEM.
+ - `RGB.onChange` handler receives notification of the current LED color when it changes. Can be used to match an external LED to the onboard led. [#518](https://github.com/spark/firmware/pull/518)
 
 ### ENHANCEMENTS
  - Retrieve the LED brightness via `RGB.brightness()`
