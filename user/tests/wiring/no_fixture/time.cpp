@@ -52,3 +52,11 @@ test(TIME_TimeStrDoesNotEndWithNewline) {
     char c = t[t.length()-1];
     assertNotEqual('\n', c);
 }
+
+test(TIME_ChangingTimeZoneWorksImmediately) {
+    int currentHour = Time.hour();
+    Time.zone(4);
+    int newHour = Time.hour();
+    assertMoreOrEqual(4, (newHour-currentHour)%12);
+
+}

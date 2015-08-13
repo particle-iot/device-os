@@ -17,7 +17,8 @@
  - Debug build now working.
  - PWM issue fixed - 500Hz output on all channels [#492](https://github.com/spark/firmware/issues/492)
  - Tone issue fixed on D2,D3,RX,TX [#483](https://github.com/spark/firmware/issues/483)
- - SOS when registering more than 2 subscription handlers, and allow 4 subscription handlers to be successfully registered. [#504](https://github.com/spark/firmware/issues/504)
+ - SOS when registering more than 2 subscription handlers, and allow 4 subscription handlers to be successfully registered. [#531](https://github.com/spark/firmware/issues/531)
+ - SOS on TCPClient.connect() when DNS resolution failed or when connection fails [#490](https://github.com/spark/firmware/issues/490)
 
 ## v0.4.3
 
