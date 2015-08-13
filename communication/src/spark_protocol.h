@@ -133,8 +133,14 @@ class SparkProtocol
                         ChunkReceivedCode::Enum code);
     void chunk_missed(unsigned char *buf, unsigned short chunk_index);
     void update_ready(unsigned char *buf, unsigned char token, uint8_t flags);
+
+    enum DescriptionType {
+        DESCRIBE_SYSTEM = 1<<1,            // modules
+        DESCRIBE_APPLICATION = 1<<2,       // functions and variables
+    };
+
     int description(unsigned char *buf, unsigned char token,
-                    unsigned char message_id_msb, unsigned char message_id_lsb);
+                    unsigned char message_id_msb, unsigned char message_id_lsb, int description_flags);
     void ping(unsigned char *buf);
 
     bool function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token);
@@ -250,6 +256,14 @@ class SparkProtocol
     const chunk_index_t MAX_CHUNKS = 65535;
     int send_missing_chunks(int count);
     void notify_update_done(uint8_t* buf);
+
+    /**
+     * Send a particular type of describe message.
+     * @param description_flags A combination of DescriptionType enum values.
+     * @param message
+     * @return true on success
+     */
+    bool send_description(int description_flags, msg& message);
 
     /**
      * Marks the indices of missed chunks not yet requested.

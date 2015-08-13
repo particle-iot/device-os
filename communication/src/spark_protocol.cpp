@@ -792,74 +792,81 @@ void SparkProtocol::update_ready(unsigned char *buf, unsigned char token, uint8_
 }
 
 int SparkProtocol::description(unsigned char *buf, unsigned char token,
-                               unsigned char message_id_msb, unsigned char message_id_lsb)
+                               unsigned char message_id_msb, unsigned char message_id_lsb, int desc_flags)
 {
-  buf[0] = 0x61; // acknowledgment, one-byte token
-  buf[1] = 0x45; // response code 2.05 CONTENT
-  buf[2] = message_id_msb;
-  buf[3] = message_id_lsb;
-  buf[4] = token;
-  buf[5] = 0xff; // payload marker
+    buf[0] = 0x61; // acknowledgment, one-byte token
+    buf[1] = 0x45; // response code 2.05 CONTENT
+    buf[2] = message_id_msb;
+    buf[3] = message_id_lsb;
+    buf[4] = token;
+    buf[5] = 0xff; // payload marker
 
-  BufferAppender appender(buf+6, QUEUE_SIZE-8);
-  appender.append("{\"f\":[");
+    BufferAppender appender(buf+6, QUEUE_SIZE-8);
+    appender.append("{");
+    bool has_content = false;
 
-  int num_keys = descriptor.num_functions();
-  int i;
-  for (i = 0; i < num_keys; ++i)
-  {
-    if (i)
-    {
+    if (desc_flags && DESCRIBE_APPLICATION) {
+        has_content = true;
+      appender.append("\"f\":[");
+
+      int num_keys = descriptor.num_functions();
+      int i;
+      for (i = 0; i < num_keys; ++i)
+      {
+        if (i)
+        {
+            appender.append(',');
+        }
+        appender.append('"');
+
+        const char* key = descriptor.get_function_key(i);
+        int function_name_length = strlen(key);
+        if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
+        {
+          function_name_length = MAX_FUNCTION_KEY_LENGTH;
+        }
+        appender.append((const uint8_t*)key, function_name_length);
+        appender.append('"');
+      }
+
+      appender.append("],\"v\":{");
+
+      num_keys = descriptor.num_variables();
+      for (i = 0; i < num_keys; ++i)
+      {
+        if (i)
+        {
+            appender.append(',');
+        }
+        appender.append('"');
+        const char* key = descriptor.get_variable_key(i);
+        int variable_name_length = strlen(key);
+        SparkReturnType::Enum t = descriptor.variable_type(key);
+        if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
+        {
+          variable_name_length = MAX_VARIABLE_KEY_LENGTH;
+        }
+        appender.append((const uint8_t*)key, variable_name_length);
+        appender.append("\":");
+        appender.append('0' + (char)t);
+      }
+      appender.append('}');
+    }
+
+    if (descriptor.append_system_info && (desc_flags&DESCRIBE_SYSTEM)) {
+      if (has_content)
         appender.append(',');
+      descriptor.append_system_info(append_instance, &appender, NULL);
     }
-    appender.append('"');
+    appender.append('}');
 
-    const char* key = descriptor.get_function_key(i);
-    int function_name_length = strlen(key);
-    if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
-    {
-      function_name_length = MAX_FUNCTION_KEY_LENGTH;
-    }
-    appender.append((const uint8_t*)key, function_name_length);
-    appender.append('"');
-  }
+    int msglen = appender.next() - (uint8_t *)buf;
+    int buflen = (msglen & ~15) + 16;
+    char pad = buflen - msglen;
+    memset(buf+msglen, pad, pad); // PKCS #7 padding
 
-  appender.append("],\"v\":{");
-
-  num_keys = descriptor.num_variables();
-  for (i = 0; i < num_keys; ++i)
-  {
-    if (i)
-    {
-        appender.append(',');
-    }
-    appender.append('"');
-    const char* key = descriptor.get_variable_key(i);
-    int variable_name_length = strlen(key);
-    SparkReturnType::Enum t = descriptor.variable_type(key);
-    if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
-    {
-      variable_name_length = MAX_VARIABLE_KEY_LENGTH;
-    }
-    appender.append((const uint8_t*)key, variable_name_length);
-    appender.append("\":");
-    appender.append('0' + (char)t);
-  }
-  appender.append('}');
-
-  if (descriptor.append_system_info) {
-    appender.append(',');
-    descriptor.append_system_info(append_instance, &appender, NULL);
-  }
-  appender.append('}');
-
-  int msglen = appender.next() - (uint8_t *)buf;
-  int buflen = (msglen & ~15) + 16;
-  char pad = buflen - msglen;
-  memset(buf+msglen, pad, pad); // PKCS #7 padding
-
-  encrypt(buf, buflen);
-  return buflen;
+    encrypt(buf, buflen);
+    return buflen;
 }
 
 void SparkProtocol::ping(unsigned char *buf)
@@ -1398,6 +1405,14 @@ void SparkProtocol::handle_event(msg& message)
   }
 }
 
+bool SparkProtocol::send_description(int description_flags, msg& message)
+{
+    int desc_len = description(queue + 2, message.token, queue[2], queue[3], description_flags);
+    queue[0] = (desc_len >> 8) & 0xff;
+    queue[1] = desc_len & 0xff;
+    return blocking_send(queue, desc_len + 2)>=0;
+}
+
 bool SparkProtocol::handle_received_message(void)
 {
   last_message_millis = callbacks.millis();
@@ -1426,15 +1441,10 @@ bool SparkProtocol::handle_received_message(void)
   {
     case CoAPMessageType::DESCRIBE:
     {
-      int desc_len = description(queue + 2, token, queue[2], queue[3]);
-      queue[0] = (desc_len >> 8) & 0xff;
-      queue[1] = desc_len & 0xff;
-      if (0 > blocking_send(queue, desc_len + 2))
-      {
-        // error
-        return false;
-      }
-      break;
+        if (!send_description(DESCRIBE_SYSTEM, message) || !send_description(DESCRIBE_APPLICATION, message)) {
+            return false;
+        }
+        break;
     }
     case CoAPMessageType::FUNCTION_CALL:
         if (!handle_function_call(message))
