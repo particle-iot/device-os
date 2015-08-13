@@ -48,10 +48,10 @@ DYNALIB_FN(communication, spark_protocol_send_subscriptions)
 DYNALIB_FN(communication, decrypt_rsa)
 DYNALIB_FN(communication, gen_rsa_key)
 DYNALIB_FN(communication, parse_device_pubkey_from_privkey)
+DYNALIB_FN(communication, spark_protocol_remove_event_handlers)
 DYNALIB_END(communication)
 
 
 #ifdef	__cplusplus
 }
 #endif
-
