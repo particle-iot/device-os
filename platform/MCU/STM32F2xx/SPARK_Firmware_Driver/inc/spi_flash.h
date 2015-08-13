@@ -29,8 +29,6 @@
 
 #include <stdint.h>
 
-#define sFLASH_PAGESIZE     0x1000 /* 4096 bytes sector size that needs to be erased */
-
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */

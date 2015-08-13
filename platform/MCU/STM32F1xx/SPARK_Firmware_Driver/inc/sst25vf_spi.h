@@ -31,6 +31,7 @@
 #include <stdint.h>
 
 #define sFLASH_PAGESIZE					0x1000		/* 4096 bytes */
+#define sFLASH_PAGECOUNT                                512             /* 2MByte storage */
 
 
 #ifdef __cplusplus

@@ -35,7 +35,7 @@
 #include "hw_config.h"
 
 /* Maximum number of supported media (Flash, sFlash & DCT) */
-#ifdef USE_SERIAL_FLASH
+#ifdef HAS_SERIAL_FLASH
 #define MAX_USED_MEDIA                  3
 #else
 #define MAX_USED_MEDIA                  2
@@ -46,7 +46,7 @@
 #define USB_MAX_STR_DESC_SIZ            255
 #define USB_SUPPORT_USER_STRING_DESC
 
-#define USBD_SELF_POWERED               
+#define USBD_SELF_POWERED
 
 /* USB DFU Class Layer Parameter */
 #define XFERSIZE                        4096   /* Max DFU Packet Size   = 16384 bytes */
@@ -54,7 +54,7 @@
 #define DFU_IN_EP                       0x80
 #define DFU_OUT_EP                      0x00
 
-/* Flash memory address from where user application will be loaded 
+/* Flash memory address from where user application will be loaded
    This address represents the DFU code protected against write and erase operations.*/
 #define APP_DEFAULT_ADD                 CORE_FW_ADDRESS
 
