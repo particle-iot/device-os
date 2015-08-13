@@ -169,3 +169,33 @@ test(Spark_Second_Event_Handler_Not_Matched) {
 
     assertEqual(not_connected_handler_count, 1);
 }
+
+class Subscriber {
+  public:
+    void subscribe() {
+      Particle.subscribe("test/event3", &Subscriber::handler, this);
+      receivedCount = 0;
+    }
+    void handler(const char *eventName, const char *data) {
+      receivedCount++;
+    }
+    int receivedCount;
+} subscriber;
+
+test(Subscribe_With_Object) {
+    disconnect();
+    Particle.unsubscribe();
+    connect();
+
+    subscriber.subscribe();
+
+    String deviceID = Spark.deviceID();
+    Particle.publish("test/event3");
+
+    // now wait for published event to be received
+    long start = millis();
+    while ((millis()-start)<30000 && !subscriber.receivedCount)
+        idle();
+
+    assertEqual(subscriber.receivedCount, 1);
+}

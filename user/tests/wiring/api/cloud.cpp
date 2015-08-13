@@ -43,6 +43,12 @@ test(api_spark_variable) {
 test(api_spark_function) {
     int (*handler)(String) = NULL;
     API_COMPILE(Particle.function("name", handler));
+
+    class MyClass {
+      public:
+        int handler(String arg) { return 0; }
+    } myObj;
+    API_COMPILE(Particle.function("name", &MyClass::handler, &myObj));
 }
 
 test(api_spark_publish) {
@@ -102,6 +108,17 @@ test(api_spark_subscribe) {
     API_COMPILE(Particle.subscribe(String("name"), handler, MY_DEVICES));
 
     API_COMPILE(Particle.subscribe(String("name"), handler, "1234"));
+
+    class MyClass {
+      public:
+        void handler(const char *event_name, const char *data) { }
+    } myObj;
+
+    API_COMPILE(Particle.subscribe("name", &MyClass::handler, &myObj));
+
+    API_COMPILE(Particle.subscribe("name", &MyClass::handler, &myObj, MY_DEVICES));
+
+    API_COMPILE(Particle.subscribe("name", &MyClass::handler, &myObj, "1234"));
 
 }
 

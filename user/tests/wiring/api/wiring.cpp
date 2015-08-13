@@ -32,6 +32,13 @@ test(api_wiring_interrupt) {
     API_COMPILE(attachInterrupt(D0, D0_callback, RISING));
     API_COMPILE(detachInterrupt(D0));
 
+    class MyClass {
+      public:
+        void handler() { }
+    } myObj;
+
+    API_COMPILE(attachInterrupt(D0, &MyClass::handler, &myObj, RISING));
+
 }
 
 test(api_wiring_usartserial) {
