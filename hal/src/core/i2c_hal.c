@@ -142,6 +142,12 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
   /* Enable I2C1 clock */
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
 
+  /* Enable I2C1 reset state */
+  RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1, ENABLE);
+
+  /* Release I2C1 from reset state */
+  RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1, DISABLE);
+
 #ifdef I2C_ENABLE_DMA_USE
   if(I2C_EnableDMAMode)
   {
@@ -153,21 +159,22 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
   HAL_Pin_Mode(SCL, AF_OUTPUT_DRAIN);
   HAL_Pin_Mode(SDA, AF_OUTPUT_DRAIN);
 
+  NVIC_InitTypeDef  NVIC_InitStructure;
+
+  NVIC_InitStructure.NVIC_IRQChannel = I2C1_ER_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
   if(mode != I2C_MODE_MASTER)
   {
-    NVIC_InitTypeDef  NVIC_InitStructure;
-
-    NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    NVIC_Init(&NVIC_InitStructure);
-
-    NVIC_InitStructure.NVIC_IRQChannel = I2C1_ER_IRQn;
-    NVIC_Init(&NVIC_InitStructure);
+      NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQn;
+      NVIC_Init(&NVIC_InitStructure);
   }
 
-  I2C_DeInit(I2C1);
+  /* Commented I2C_DeInit() since Enable/Release I2C Reset State is done above */
+  //I2C_DeInit(I2C1);
 
   I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
   I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2;
@@ -175,14 +182,27 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
   I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
   I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
   I2C_InitStructure.I2C_ClockSpeed = I2C_ClockSpeed;
-  I2C_Init(I2C1, &I2C_InitStructure);
 
-  I2C_Cmd(I2C1, ENABLE);
+  /*
+      From STM32 peripheral library notes:
+      ====================================
+      If an error occurs (ie. I2C error flags are set besides to the monitored
+      flags), the I2C_CheckEvent() function may return SUCCESS despite
+      the communication hold or corrupted real state.
+      In this case, it is advised to use error interrupts to monitor
+      the error events and handle them in the interrupt IRQ handler.
+   */
+  I2C_ITConfig(I2C1, I2C_IT_ERR, ENABLE);
 
   if(mode != I2C_MODE_MASTER)
   {
-    I2C_ITConfig(I2C1, I2C_IT_ERR | I2C_IT_EVT | I2C_IT_BUF, ENABLE);
+      I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF, ENABLE);
   }
+
+  I2C_Cmd(I2C1, ENABLE);
+
+  /* Apply I2C configuration after enabling it */
+  I2C_Init(I2C1, &I2C_InitStructure);
 
   I2C_Enabled = true;
 }
@@ -223,13 +243,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
   _millis = HAL_Timer_Get_Milli_Seconds();
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
   {
-    if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
-    {
-      /* Send STOP Condition */
-      //Adding a STOP here is not helping because of STM32 limitation mentioned in ERRATA
-      //I2C_GenerateSTOP(I2C1, ENABLE);
-      return 0;
-    }
+      if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
   }
 
 #ifdef I2C_ENABLE_DMA_USE
@@ -274,40 +288,48 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
   else
 #endif
   {
-    /* perform blocking read into buffer */
-    uint8_t *pBuffer = rxBuffer;
-    uint8_t numByteToRead = quantity;
+      /* perform blocking read into buffer */
+      uint8_t *pBuffer = rxBuffer;
+      uint8_t numByteToRead = quantity;
 
-    /* While there is data to be read */
-    _millis = HAL_Timer_Get_Milli_Seconds();
-    while(numByteToRead && (EVENT_TIMEOUT > (HAL_Timer_Get_Milli_Seconds() - _millis)))
-    {
-      if(numByteToRead == 1 && stop == true)
+      /* While there is data to be read */
+      while(numByteToRead)
       {
-        /* Disable Acknowledgement */
-        I2C_AcknowledgeConfig(I2C1, DISABLE);
+          if(numByteToRead < 2 && stop == true)
+          {
+              /* Disable Acknowledgement */
+              I2C_AcknowledgeConfig(I2C1, DISABLE);
 
-        /* Send STOP Condition */
-        I2C_GenerateSTOP(I2C1, ENABLE);
+              /* Send STOP Condition */
+              I2C_GenerateSTOP(I2C1, ENABLE);
+          }
+
+          /* Wait for the byte to be received */
+          _millis = HAL_Timer_Get_Milli_Seconds();
+          //while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED))
+          while(I2C_GetFlagStatus(I2C1, I2C_FLAG_RXNE) == RESET)
+          {
+              if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
+          }
+
+          /* Read the byte from the Slave */
+          *pBuffer = I2C_ReceiveData(I2C1);
+
+          bytesRead++;
+
+          /* Point to the next location where the byte read will be saved */
+          pBuffer++;
+
+          /* Decrement the read bytes counter */
+          numByteToRead--;
+
+          /* Wait to make sure that STOP control bit has been cleared */
+          _millis = HAL_Timer_Get_Milli_Seconds();
+          while(I2C1->CR1 & I2C_CR1_STOP)
+          {
+              if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
+          }
       }
-
-      if(I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED))
-      {
-        /* Read a byte from the Slave */
-        *pBuffer = I2C_ReceiveData(I2C1);
-
-        bytesRead++;
-
-        /* Point to the next location where the byte read will be saved */
-        pBuffer++;
-
-        /* Decrement the read bytes counter */
-        numByteToRead--;
-
-        /* Reset timeout to our last read */
-        _millis = HAL_Timer_Get_Milli_Seconds();
-      }
-    }
   }
 
   /* Enable Acknowledgement to be ready for another reception */
@@ -335,6 +357,13 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
 {
   uint32_t _millis;
 
+  _millis = HAL_Timer_Get_Milli_Seconds();
+  /* While the I2C Bus is busy */
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY))
+  {
+      if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+  }
+
   /* Send START condition */
   I2C_GenerateSTART(I2C1, ENABLE);
 
@@ -350,13 +379,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
   _millis = HAL_Timer_Get_Milli_Seconds();
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
   {
-    if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
-    {
-      /* Send STOP condition */
-      //Adding a STOP here is not helping because of STM32 limitation mentioned in ERRATA
-      //I2C_GenerateSTOP(I2C1, ENABLE);
-      return 4;
-    }
+      if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
   }
 
 #ifdef I2C_ENABLE_DMA_USE
@@ -405,9 +428,15 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
       pBuffer++;
 
       _millis = HAL_Timer_Get_Milli_Seconds();
-      while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+      while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTING))
       {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+          if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+      }
+
+      _millis = HAL_Timer_Get_Milli_Seconds();
+      while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BTF) == RESET)
+      {
+          if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
       }
     }
   }
@@ -696,12 +725,44 @@ void HAL_I2C1_ER_Handler(void)
     }
     else
 #endif
+#if 0 //Checks whether specified I2C interrupt has occurred and clear IT pending bit.
+    /* Check on I2C Time out flag and clear it */
+    if (I2C_GetITStatus(I2C1, I2C_IT_TIMEOUT))
     {
-        /* Read SR1 register to get I2C error */
-        if ((I2C_ReadRegister(I2C1, I2C_Register_SR1) & 0xFF00) != 0x00)
-        {
-            /* Clears error flags */
-            I2C1->SR1 &= 0x00FF;
-        }
+      I2C_ClearITPendingBit(I2C1, I2C_IT_TIMEOUT);
     }
+
+    /* Check on I2C Arbitration Lost flag and clear it */
+    if (I2C_GetITStatus(I2C1, I2C_IT_ARLO))
+    {
+      I2C_ClearITPendingBit(I2C1, I2C_IT_ARLO);
+    }
+
+    /* Check on I2C Overrun/Underrun error flag and clear it */
+    if (I2C_GetITStatus(I2C1, I2C_IT_OVR))
+    {
+      I2C_ClearITPendingBit(I2C1, I2C_IT_OVR);
+    }
+
+    /* Check on I2C Acknowledge failure error flag and clear it */
+    if (I2C_GetITStatus(I2C1, I2C_IT_AF))
+    {
+      I2C_ClearITPendingBit(I2C1, I2C_IT_AF);
+    }
+
+    /* Check on I2C Bus error flag and clear it */
+    if (I2C_GetITStatus(I2C1, I2C_IT_BERR))
+    {
+      I2C_ClearITPendingBit(I2C1, I2C_IT_BERR);
+    }
+#else //Clear all error pending bits without worrying about specific error interrupt bit
+    /* Read SR1 register to get I2C error */
+    if ((I2C_ReadRegister(I2C1, I2C_Register_SR1) & 0xFF00) != 0x00)
+    {
+        /* Clear I2C error flags */
+        I2C1->SR1 &= 0x00FF;
+
+        //I2C_SoftwareResetCmd() and/or I2C_GenerateStop() ???
+    }
+#endif
 }
