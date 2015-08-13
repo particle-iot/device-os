@@ -61,6 +61,11 @@ uint8_t Get_LED_Brightness()
 static void* data;
 static led_update_handler_fn handler;
 
+void LED_RGB_SetChangeHandler(led_update_handler_fn fn, void* fn_data) {
+  handler = fn;
+  data = fn_data;
+}
+
 uint8_t asRGBComponent(uint16_t ccr) {
     return (uint8_t)((ccr<<8)/Get_RGB_LED_Max_Value());
 }
@@ -140,7 +145,7 @@ void LED_Off(Led_TypeDef Led)
         break;
 
     case LED_RGB:
-        Set_RGB_LED_Values(0,0,0);
+        Set_RGB_LED_Color(0);
         led_fade_step = 0;
         led_fade_direction = 1; /* next fade is rising. */
         break;
@@ -175,7 +180,7 @@ void LED_Toggle(Led_TypeDef Led)
         color = LED_RGB_OVERRIDE ? lastSignalColor : lastRGBColor;
         Get_RGB_LED_Values(rgb);
         if (rgb[0] | rgb[1] | rgb[2])
-            Set_RGB_LED_Values(0,0,0);
+            Set_RGB_LED_Color(0);
         else
             Set_RGB_LED_Color(color);        
         break;
