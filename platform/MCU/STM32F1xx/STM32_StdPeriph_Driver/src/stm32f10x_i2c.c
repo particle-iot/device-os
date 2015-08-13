@@ -608,15 +608,11 @@ void I2C_Send7bitAddress(I2C_TypeDef* I2Cx, uint8_t Address, uint8_t I2C_Directi
   /* Test on the direction to set/reset the read/write bit */
   if (I2C_Direction != I2C_Direction_Transmitter)
   {
-	/* Shift the address one bit to the left */
-	Address = Address << 1;
 	/* Set the address bit0 for read */
 	Address |= OAR1_ADD0_Set;
   }
   else
   {
-	/* Shift the address one bit to the left */
-	Address = Address << 1;
 	/* Reset the address bit0 for write */
 	Address &= OAR1_ADD0_Reset;
   }
@@ -1280,7 +1276,7 @@ ITStatus I2C_GetITStatus(I2C_TypeDef* I2Cx, uint32_t I2C_IT)
 }
 
 /**
-  * @brief  Clears the I2Cx’s interrupt pending bits.
+  * @brief  Clears the I2Cxï¿½s interrupt pending bits.
   * @param  I2Cx: where x can be 1 or 2 to select the I2C peripheral.
   * @param  I2C_IT: specifies the interrupt pending bit to clear. 
   *   This parameter can be any combination of the following values:
