@@ -10,9 +10,6 @@ claim_code = "MDMAMDMAMDMAMDMAMDMAMDMAMDMAMDMAMDMAMDMAMDMAMDMAMDMAMDMAMDMAMDM"
 claimed_result = "0"
 expected_version = "2"
 
-#client = TCPSoftAPClient()
-client = HTTPSoftAPClient()
-
 
 class Object(object):
     pass
@@ -145,7 +142,7 @@ class HTTPSoftAPClient(BaseClient):
         client = httplib.HTTPConnection('192.168.0.1', timeout=10)
         body = None if not request_obj else json.dumps(request_obj)
         if body is None:
-        client.request("GET", name)
+            client.request("GET", name)
         else:
             client.request("POST", name, body)
 
@@ -217,6 +214,9 @@ class TCPSoftAPClient(BaseClient):
         obj = json.loads(msg) if i else Object()
         return obj
 
+
+#client = TCPSoftAPClient()
+client = HTTPSoftAPClient()
 
 
 # class EncryptionTestCase(unittest.TestCase):
