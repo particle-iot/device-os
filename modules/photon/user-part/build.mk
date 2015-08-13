@@ -55,7 +55,7 @@ LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
 LINKER_DEPS += $(LIBG_TWEAK)
 
-LDFLAGS += -lnosys -nostdlib
+LDFLAGS += -lnosys
 LDFLAGS += -L$(SYSTEM_PART2_MODULE_PATH)
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
@@ -64,8 +64,8 @@ LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_SIZE=$(USER_FIRMWARE_IMAGE_SIZE)
 LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_LOCATION=$(USER_FIRMWARE_IMAGE_LOCATION)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 LDFLAGS += $(LIBG_TWEAK)
-LDFLAGS += $(shell $(CPP) -print-sysroot)/lib/armv7-m/libstdc++_nano.a
-LDFLAGS += $(shell $(CPP) -print-sysroot)/lib/armv7-m/libm.a
+#LDFLAGS += $(shell $(CPP) -print-sysroot)/lib/armv7-m/libstdc++_nano.a
+#LDFLAGS += $(shell $(CPP) -print-sysroot)/lib/armv7-m/libm.a
 
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
