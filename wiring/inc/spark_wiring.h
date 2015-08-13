@@ -34,6 +34,7 @@
 #include "config.h"
 #include "spark_macros.h"
 #include "debug.h"
+#include "spark_wiring_arduino.h"
 #include "spark_wiring_constants.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_printable.h"
@@ -53,7 +54,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 /*
 * ADC
 */
