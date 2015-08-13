@@ -206,10 +206,9 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     uint8_t numByteToRead = quantity;
 
     /* While there is data to be read */
-    _millis = HAL_Timer_Get_Milli_Seconds();
-    while(numByteToRead && (EVENT_TIMEOUT > (HAL_Timer_Get_Milli_Seconds() - _millis)))
+    while(numByteToRead)
     {
-        if(numByteToRead == 1 && stop == true)
+        if(numByteToRead < 2 && stop == true)
         {
             /* Disable Acknowledgement */
             I2C_AcknowledgeConfig(I2C1, DISABLE);
@@ -218,21 +217,30 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
             I2C_GenerateSTOP(I2C1, ENABLE);
         }
 
-        if(I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED))
+        /* Wait for the byte to be received */
+        _millis = HAL_Timer_Get_Milli_Seconds();
+        //while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED))
+        while(I2C_GetFlagStatus(I2C1, I2C_FLAG_RXNE) == RESET)
         {
-            /* Read a byte from the Slave */
-            *pBuffer = I2C_ReceiveData(I2C1);
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
+        }
 
-            bytesRead++;
+        /* Read the byte from the Slave */
+        *pBuffer = I2C_ReceiveData(I2C1);
 
-            /* Point to the next location where the byte read will be saved */
-            pBuffer++;
+        bytesRead++;
 
-            /* Decrement the read bytes counter */
-            numByteToRead--;
+        /* Point to the next location where the byte read will be saved */
+        pBuffer++;
 
-            /* Reset timeout to our last read */
-            _millis = HAL_Timer_Get_Milli_Seconds();
+        /* Decrement the read bytes counter */
+        numByteToRead--;
+
+        /* Wait to make sure that STOP control bit has been cleared */
+        _millis = HAL_Timer_Get_Milli_Seconds();
+        while(I2C1->CR1 & I2C_CR1_STOP)
+        {
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
         }
     }
 
