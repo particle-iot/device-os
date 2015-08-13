@@ -65,21 +65,21 @@ volatile uint8_t transmitting = 0;
 static void (*callback_onRequest)(void);
 static void (*callback_onReceive)(int);
 
-static void HAL_I2C_SoftwareReset(void)
-{
-    /* Disable the I2C peripheral */
-    I2C_Cmd(I2C1, DISABLE);
+// static void HAL_I2C_SoftwareReset(void)
+// {
+//     /* Disable the I2C peripheral */
+//     I2C_Cmd(I2C1, DISABLE);
 
-    /* Reset all I2C registers */
-    I2C_SoftwareResetCmd(I2C1, ENABLE);
-    I2C_SoftwareResetCmd(I2C1, DISABLE);
+//     /* Reset all I2C registers */
+//     I2C_SoftwareResetCmd(I2C1, ENABLE);
+//     I2C_SoftwareResetCmd(I2C1, DISABLE);
 
-    /* Configure the I2C peripheral */
-    I2C_Init(I2C1, &I2C_InitStructure);
+//     /* Configure the I2C peripheral */
+//     I2C_Init(I2C1, &I2C_InitStructure);
 
-    /* Enable the I2C peripheral */
-    I2C_Cmd(I2C1, ENABLE);
-}
+//     /* Enable the I2C peripheral */
+//     I2C_Cmd(I2C1, ENABLE);
+// }
 
 void HAL_I2C_Set_Speed(uint32_t speed)
 {
@@ -108,9 +108,9 @@ void pulsePin(pin_t pin, int8_t num) {
     do {
         HAL_GPIO_Write(pin, 1);
         HAL_GPIO_Write(pin, 0);
-        HAL_Delay_Milliseconds(2);
     }
     while (--num != 0);
+    HAL_Delay_Microseconds(2);
 }
 
 void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
@@ -212,7 +212,7 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     {
         if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) {
             pulsePin(D7, 4);
-            HAL_I2C_SoftwareReset();
+            //HAL_I2C_SoftwareReset();
             return 0;
         }
     }
@@ -317,6 +317,9 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     }
 
     pulsePin(D6, 1);
+
+    /* Prevent immediate STOP Condition after START Condition */
+    I2C_GenerateSTOP(I2C1, DISABLE);
 
     /* Send START condition */
     I2C_GenerateSTART(I2C1, ENABLE);
