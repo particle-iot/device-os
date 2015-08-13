@@ -166,7 +166,7 @@ class SparkProtocol
     unsigned char core_private_key[MAX_DEVICE_PRIVATE_KEY_LENGTH];
     aes_context aes;
 
-    FilteringEventHandler event_handlers[4];
+    FilteringEventHandler event_handlers[5];    // 1 system event listener + 4 application event listeners
     SparkCallbacks callbacks;
     SparkDescriptor descriptor;
 
