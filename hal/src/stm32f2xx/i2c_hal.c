@@ -101,10 +101,10 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
     /* Enable SYSCFG clock */
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
 
-    /* Reset I2C IP */
+    /* Enable I2C1 reset state */
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1, ENABLE);
 
-    /* Release reset signal of I2C IP */
+    /* Release I2C1 from reset state */
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1, DISABLE);
 
     /* Connect I2C1 pins to AF4 */
@@ -114,21 +114,22 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
     HAL_Pin_Mode(SCL, AF_OUTPUT_DRAIN);
     HAL_Pin_Mode(SDA, AF_OUTPUT_DRAIN);
 
+    NVIC_InitTypeDef  NVIC_InitStructure;
+
+    NVIC_InitStructure.NVIC_IRQChannel = I2C1_ER_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
     if(mode != I2C_MODE_MASTER)
     {
-        NVIC_InitTypeDef  NVIC_InitStructure;
-
         NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQn;
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-        NVIC_Init(&NVIC_InitStructure);
-
-        NVIC_InitStructure.NVIC_IRQChannel = I2C1_ER_IRQn;
         NVIC_Init(&NVIC_InitStructure);
     }
 
-    I2C_DeInit(I2C1);
+    /* Commented I2C_DeInit() since Enable/Release I2C Reset State is done above */
+    //I2C_DeInit(I2C1);
 
     I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
     I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2;
@@ -137,15 +138,26 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
     I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
     I2C_InitStructure.I2C_ClockSpeed = I2C_ClockSpeed;
 
+    /*
+        From STM32 peripheral library notes:
+        ====================================
+        If an error occurs (ie. I2C error flags are set besides to the monitored
+        flags), the I2C_CheckEvent() function may return SUCCESS despite
+        the communication hold or corrupted real state.
+        In this case, it is advised to use error interrupts to monitor
+        the error events and handle them in the interrupt IRQ handler.
+     */
+    I2C_ITConfig(I2C1, I2C_IT_ERR, ENABLE);
+
+    if(mode != I2C_MODE_MASTER)
+    {
+        I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF, ENABLE);
+    }
+
     I2C_Cmd(I2C1, ENABLE);
 
     /* Apply I2C configuration after enabling it */
     I2C_Init(I2C1, &I2C_InitStructure);
-
-    if(mode != I2C_MODE_MASTER)
-    {
-        I2C_ITConfig(I2C1, I2C_IT_ERR | I2C_IT_EVT | I2C_IT_BUF, ENABLE);
-    }
 
     I2C_Enabled = true;
 }
@@ -392,12 +404,46 @@ void HAL_I2C_Set_Callback_On_Request(void (*function)(void))
  */
 void I2C1_ER_irq(void)
 {
+#if 0 //Checks whether specified I2C interrupt has occurred and clear IT pending bit.
+    /* Check on I2C Time out flag and clear it */
+    if (I2C_GetITStatus(I2C1, I2C_IT_TIMEOUT))
+    {
+      I2C_ClearITPendingBit(I2C1, I2C_IT_TIMEOUT);
+    }
+
+    /* Check on I2C Arbitration Lost flag and clear it */
+    if (I2C_GetITStatus(I2C1, I2C_IT_ARLO))
+    {
+      I2C_ClearITPendingBit(I2C1, I2C_IT_ARLO);
+    }
+
+    /* Check on I2C Overrun/Underrun error flag and clear it */
+    if (I2C_GetITStatus(I2C1, I2C_IT_OVR))
+    {
+      I2C_ClearITPendingBit(I2C1, I2C_IT_OVR);
+    }
+
+    /* Check on I2C Acknowledge failure error flag and clear it */
+    if (I2C_GetITStatus(I2C1, I2C_IT_AF))
+    {
+      I2C_ClearITPendingBit(I2C1, I2C_IT_AF);
+    }
+
+    /* Check on I2C Bus error flag and clear it */
+    if (I2C_GetITStatus(I2C1, I2C_IT_BERR))
+    {
+      I2C_ClearITPendingBit(I2C1, I2C_IT_BERR);
+    }
+#else //Clear all error pending bits without worrying about specific error interrupt bit
     /* Read SR1 register to get I2C error */
     if ((I2C_ReadRegister(I2C1, I2C_Register_SR1) & 0xFF00) != 0x00)
     {
-        /* Clears error flags */
+        /* Clear I2C error flags */
         I2C1->SR1 &= 0x00FF;
+
+        //I2C_SoftwareResetCmd() and/or I2C_GenerateStop() ???
     }
+#endif
 }
 
 /**
