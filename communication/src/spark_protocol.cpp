@@ -696,7 +696,7 @@ bool SparkProtocol::event_handler_exists(const char *event_name, EventHandler ha
 }
 
 bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handler,
-    SubscriptionScope::Enum scope, const char* id)
+    void *handler_data, SubscriptionScope::Enum scope, const char* id)
 {
     if (event_handler_exists(event_name, handler, scope, id))
         return true;
@@ -711,6 +711,7 @@ bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handl
       memcpy(event_handlers[i].filter, event_name, FILTER_LEN);
       memset(event_handlers[i].filter + FILTER_LEN, 0, MAX_FILTER_LEN - FILTER_LEN);
       event_handlers[i].handler = handler;
+      event_handlers[i].handler_data = handler_data;
       event_handlers[i].device_id[0] = 0;
         const size_t MAX_ID_LEN = sizeof(event_handlers[i].device_id)-1;
         const size_t id_len = id ? strnlen(id, MAX_ID_LEN) : 0;
@@ -1399,7 +1400,15 @@ void SparkProtocol::handle_event(msg& message)
     const int cmp = memcmp(event_handlers[i].filter, event_name, filter_length);
     if (0 == cmp)
     {
-        event_handlers[i].handler((char *)event_name, (char *)data);
+        if(event_handlers[i].handler_data)
+        {
+            EventHandlerWithData handler = (EventHandlerWithData) event_handlers[i].handler;
+            handler(event_handlers[i].handler_data, (char *)event_name, (char *)data);
+        }
+        else
+        {
+            event_handlers[i].handler((char *)event_name, (char *)data);
+        }
     }
     // else continue the for loop to try the next handler
   }

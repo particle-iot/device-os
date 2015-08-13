@@ -112,11 +112,11 @@ SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_ty
     return(subscription_type==MY_DEVICES) ? SubscriptionScope::MY_DEVICES : SubscriptionScope::FIREHOSE;
 }
 
-bool spark_subscribe(const char *eventName, EventHandler handler, void* data,
+bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
 {
     auto event_scope = convert(scope);
-    bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, NULL);
+    bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
     if (success && spark_connected())
     {
         if (deviceID)
