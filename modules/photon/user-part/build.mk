@@ -72,9 +72,9 @@ CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
 
 # remove *malloc*.o from the standard library
 $(LIBG_TWEAK) :
-	$(VERBOSE)-rm $(LIBG_TWEAK)
-	$(VERBOSE)-rm $(LIBG_TWEAK).tmp
-	$(VERBOSE)cp `$(CPP) -print-sysroot`/lib/armv7-m/libg_nano.a $(LIBG_TWEAK).tmp
-	$(VERBOSE)$(AR) d $(LIBG_TWEAK).tmp lib_a-nano-mallocr.o
-	$(VERBOSE)cp $(LIBG_TWEAK).tmp $(LIBG_TWEAK)
+	$(VERBOSE)-rm "$(LIBG_TWEAK)"
+	$(VERBOSE)-rm "$(LIBG_TWEAK).tmp"
+	$(VERBOSE)cp "`$(CPP) -print-sysroot`/lib/armv7-m/libg_nano.a" $(LIBG_TWEAK).tmp
+	$(VERBOSE)$(AR) d "$(LIBG_TWEAK).tmp" lib_a-nano-mallocr.o
+	$(VERBOSE)cp "$(LIBG_TWEAK).tmp" "$(LIBG_TWEAK)"
 
