@@ -64,6 +64,7 @@ LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_SIZE=$(USER_FIRMWARE_IMAGE_SIZE)
 LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_LOCATION=$(USER_FIRMWARE_IMAGE_LOCATION)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 LDFLAGS += $(LIBG_TWEAK)
+LDFLAGS += $(shell $(CPP) -print-sysroot)/lib/armv7-m/libstdc++_nano.a
 
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
