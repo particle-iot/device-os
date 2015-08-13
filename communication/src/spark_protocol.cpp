@@ -1316,6 +1316,88 @@ bool SparkProtocol::handle_function_call(msg& message)
     return true;
 }
 
+void SparkProtocol::handle_event(msg& message)
+{
+    const unsigned len = message.len;
+
+    // fist decode the event data before looking for a handler
+    unsigned char pad = queue[len - 1];
+    if (0 == pad || 16 < pad)
+    {
+        // ignore bad message, PKCS #7 padding must be 1-16
+        return;
+    }
+    // end of CoAP message
+    unsigned char *end = queue + len - pad;
+
+    unsigned char *event_name = queue + 6;
+    size_t event_name_length = CoAP::option_decode(&event_name);
+    if (0 == event_name_length)
+    {
+        // error, malformed CoAP option
+        return;
+    }
+
+    unsigned char *next_src = event_name + event_name_length;
+    unsigned char *next_dst = next_src;
+    while (next_src < end && 0x00 == (*next_src & 0xf0))
+    {
+      // there's another Uri-Path option, i.e., event name with slashes
+      size_t option_len = CoAP::option_decode(&next_src);
+      *next_dst++ = '/';
+      if (next_dst != next_src)
+      {
+        // at least one extra byte has been used to encode a CoAP Uri-Path option length
+        memmove(next_dst, next_src, option_len);
+      }
+      next_src += option_len;
+      next_dst += option_len;
+    }
+    event_name_length = next_dst - event_name;
+
+    if (next_src < end && 0x30 == (*next_src & 0xf0))
+    {
+      // Max-Age option is next, which we ignore
+      size_t next_len = CoAP::option_decode(&next_src);
+      next_src += next_len;
+    }
+
+    unsigned char *data = NULL;
+    if (next_src < end && 0xff == *next_src)
+    {
+      // payload is next
+      data = next_src + 1;
+      // null terminate data string
+      *end = 0;
+    }
+    // null terminate event name string
+    event_name[event_name_length] = 0;
+
+  const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
+  for (int i = 0; i < NUM_HANDLERS; i++)
+  {
+    if (NULL == event_handlers[i].handler)
+    {
+       break;
+    }
+    const size_t MAX_FILTER_LENGTH = sizeof(event_handlers[i].filter);
+    const size_t filter_length = strnlen(event_handlers[i].filter, MAX_FILTER_LENGTH);
+
+    if (event_name_length < filter_length)
+    {
+      // does not match this filter, try the next event handler
+      continue;
+    }
+
+    const int cmp = memcmp(event_handlers[i].filter, event_name, filter_length);
+    if (0 == cmp)
+    {
+        event_handlers[i].handler((char *)event_name, (char *)data);
+    }
+    // else continue the for loop to try the next handler
+  }
+}
+
 bool SparkProtocol::handle_received_message(void)
 {
   last_message_millis = callbacks.millis();
@@ -1426,85 +1508,8 @@ bool SparkProtocol::handle_received_message(void)
         return handle_update_done(message);
 
     case CoAPMessageType::EVENT:
-    {
-        // fist decode the event data before looking for a handler
-        unsigned char pad = queue[len - 1];
-        if (0 == pad || 16 < pad)
-        {
-          // ignore bad message, PKCS #7 padding must be 1-16
+        handle_event(message);
           break;
-        }
-        // end of CoAP message
-        unsigned char *end = queue + len - pad;
-
-        unsigned char *event_name = queue + 6;
-        size_t event_name_length = CoAP::option_decode(&event_name);
-        if (0 == event_name_length)
-        {
-          // error, malformed CoAP option
-          break;
-        }
-
-        unsigned char *next_src = event_name + event_name_length;
-        unsigned char *next_dst = next_src;
-        while (next_src < end && 0x00 == (*next_src & 0xf0))
-        {
-          // there's another Uri-Path option, i.e., event name with slashes
-          size_t option_len = CoAP::option_decode(&next_src);
-          *next_dst++ = '/';
-          if (next_dst != next_src)
-          {
-            // at least one extra byte has been used to encode a CoAP Uri-Path option length
-            memmove(next_dst, next_src, option_len);
-          }
-          next_src += option_len;
-          next_dst += option_len;
-        }
-        event_name_length = next_dst - event_name;
-
-        if (next_src < end && 0x30 == (*next_src & 0xf0))
-        {
-          // Max-Age option is next, which we ignore
-          size_t next_len = CoAP::option_decode(&next_src);
-          next_src += next_len;
-        }
-
-        unsigned char *data = NULL;
-        if (next_src < end && 0xff == *next_src)
-        {
-          // payload is next
-          data = next_src + 1;
-          // null terminate data string
-          *end = 0;
-        }
-        // null terminate event name string
-        event_name[event_name_length] = 0;
-
-      const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(EventHandler);
-      for (int i = 0; i < NUM_HANDLERS; i++)
-      {
-        if (NULL == event_handlers[i].handler)
-        {
-           break;
-        }
-        const size_t MAX_FILTER_LENGTH = sizeof(event_handlers[i].filter);
-        const size_t filter_length = strnlen(event_handlers[i].filter, MAX_FILTER_LENGTH);
-
-        if (event_name_length < filter_length)
-        {
-          // does not match this filter, try the next event handler
-          continue;
-        }
-
-        const int cmp = memcmp(event_handlers[i].filter, event_name, filter_length);
-        if (0 == cmp)
-        {
-            event_handlers[i].handler((char *)event_name, (char *)data);
-        }
-        // else continue the for loop to try the next handler
-      }
-      break;
-    }
     case CoAPMessageType::KEY_CHANGE:
       // TODO
       break;
