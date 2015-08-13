@@ -20,6 +20,12 @@ include $(COMMON_BUILD)/module-defaults.mk
 
 include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 
+ifneq (,$(GLOBAL_DEFINES))
+CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
+export GLOBAL_DEFINES
+endif
+
+
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
