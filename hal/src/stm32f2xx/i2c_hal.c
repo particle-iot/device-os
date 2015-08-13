@@ -273,7 +273,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     /* While the I2C Bus is busy */
     while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 1;
     }
 
     /* Send START condition */
@@ -282,7 +282,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 2;
     }
 
     /* Send Slave address for write */
@@ -291,7 +291,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 3;
     }
 
     uint8_t *pBuffer = txBuffer;
@@ -315,7 +315,7 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
         _millis = HAL_Timer_Get_Milli_Seconds();
         while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BTF) == RESET)
         {
-            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 5;
         }
     }
 
