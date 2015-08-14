@@ -5,8 +5,9 @@
  - logging output [documentation](docs/debugging.md)
  - pressing 'v' in SoftAP mode displays the system version. FIRM-128
  - P1: API (compatible with Core) to access the 1MByte external flash. [#498](https://github.com/spark/firmware/pull/498)
- - Arduino compatibility macros for PROGMEM.
- - `RGB.onChange` handler receives notification of the current LED color when it changes. Can be used to match an external LED to the onboard led. [#518](https://github.com/spark/firmware/pull/518)
+ - Arduino compatibility macros for PROGMEM and more.
+ - `RGB.onChange` handler receives notification of the current LED color when it changes. Can be used to match an external LED to the onboard led. [#518](https://github.com/spark/firmware/pull/518) Thanks to @monkbroc!
+ - Serial2 available on P1 and Photon (note: this also requires above RGB.onChange handler and two resistors would need to be removed on the Photon)
 
 ### ENHANCEMENTS
  - Retrieve the LED brightness via `RGB.brightness()`
@@ -14,6 +15,9 @@
  - System.sleep() - 2nd parameter changed to `InterruptMode` from uint16_t to
  ensure the correct types are used. [#499](https://github.com/spark/firmware/pull/499)
  - Less aggressive exponential backoff when the re-establishing the cloud connection. [FIRM-177]
+ - I2C Wire.endTransmission() returns unique values and [I2C docs updated](https://docs.particle.io/reference/firmware/photon/#endtransmission-)
+ - Generate I2C STOP after slave addr NACK, I2C software reset all timeouts -  [commit](https://github.com/spark/firmware/commit/53914d809cc17a3802b879fbb4fddcaa7d264680)
+ - Improved I2C Master receive method and implemented error handler - [commit](https://github.com/spark/firmware/commit/1bc00ea480ef1fcdbd8ef9ba3df12b121183aeae) -  [commit](https://github.com/spark/firmware/commit/5359f19985756182ff6511217cbcb588b3341a87)
 
 ### BUGFIXES
 
