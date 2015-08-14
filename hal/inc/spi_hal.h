@@ -32,8 +32,11 @@
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum HAL_SPI_Interface {
-    HAL_SPI_INTERFACE1 = 0,    //maps to SPI1
-    HAL_SPI_INTERFACE2 = 1     //maps to SPI3
+    HAL_SPI_INTERFACE1 = 0,    //maps to SPI1 (pins: A3, A4, A5)
+    HAL_SPI_INTERFACE2 = 1     //maps to SPI3 (pins: D4, D3, D2)
+#if PLATFORM_ID == 10 // Electron
+   ,HAL_SPI_INTERFACE3 = 2     //maps to SPI3 (pins: C3, C2, C1)
+#endif
 } HAL_SPI_Interface;
 
 typedef void (*HAL_SPI_DMA_UserCallback)(void);

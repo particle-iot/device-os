@@ -62,10 +62,18 @@
 #define Wiring_IPv6 1
 #endif    
 
+#if PLATFORM_ID==10      // electron
+#define Wiring_SPI1 1
+#define Wiring_SPI2 1
+#endif
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif
 
+#ifndef Wiring_SPI2
+#define Wiring_SPI2 0
+#endif
     
 #endif	/* SPARK_WIRING_PLATFORM_H */
 
