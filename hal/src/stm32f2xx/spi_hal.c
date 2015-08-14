@@ -29,7 +29,11 @@
 #include "pinmap_impl.h"
 
 /* Private define ------------------------------------------------------------*/
+#if PLATFORM_ID == 10 // Electron
 #define TOTAL_SPI   3
+#else
+#define TOTAL_SPI   2
+#endif
 
 /* Private typedef -----------------------------------------------------------*/
 typedef enum SPI_Num_Def {
