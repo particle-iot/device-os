@@ -122,8 +122,8 @@ IDX[x] = added IRQ handler
 65 [ ] SDIO_IRQHandler                   // SDIO
 66 [x] TIM5_IRQHandler                   // TIM5
 67 [ ] SPI3_IRQHandler                   // SPI3
-68 [ ] UART4_IRQHandler                  // UART4
-69 [ ] UART5_IRQHandler                  // UART5
+68 [x] UART4_IRQHandler                  // UART4
+69 [x] UART5_IRQHandler                  // UART5
 70 [x] TIM6_DAC_IRQHandler               // TIM6 and DAC1&2 underrun errors
 71 [x] TIM7_IRQHandler                   // TIM7
 72 [ ] DMA2_Stream0_IRQHandler           // DMA2 Stream 0
@@ -181,6 +181,8 @@ const unsigned TIM8_UP_TIM13_IRQHandler_Idx         = 60;
 const unsigned TIM8_TRG_COM_TIM14_IRQHandler_Idx    = 61;
 const unsigned TIM8_CC_IRQHandler_Idx               = 62;
 const unsigned TIM5_IRQHandler_Idx                  = 66;
+const unsigned UART4_IRQHandler_Idx                 = 68;
+const unsigned UART5_IRQHandler_Idx                 = 69;
 const unsigned TIM6_DAC_IRQHandler_Idx              = 70;
 const unsigned TIM7_IRQHandler_Idx                  = 71;
 const unsigned CAN2_TX_IRQHandler_Idx               = 79;
@@ -242,6 +244,8 @@ void HAL_Core_Setup_override_interrupts(void)
     isrs[TIM8_TRG_COM_TIM14_IRQHandler_Idx] = (uint32_t)TIM8_TRG_COM_TIM14_irq;
     isrs[TIM8_CC_IRQHandler_Idx]            = (uint32_t)TIM8_CC_irq;
     isrs[TIM5_IRQHandler_Idx]               = (uint32_t)TIM5_irq;
+    isrs[UART4_IRQHandler_Idx]              = (uint32_t)HAL_USART4_Handler;
+    isrs[UART5_IRQHandler_Idx]              = (uint32_t)HAL_USART5_Handler;
     isrs[TIM6_DAC_IRQHandler_Idx]           = (uint32_t)TIM6_DAC_irq;
     isrs[TIM7_IRQHandler_Idx]               = (uint32_t)TIM7_override;  // WICED uses this for a JTAG watchdog handler
     isrs[CAN2_TX_IRQHandler_Idx]            = (uint32_t)CAN2_TX_irq;
@@ -360,8 +364,6 @@ void DMA1_Stream7_IRQHandler(void)  {__ASM("bkpt 0");}
 void FSMC_IRQHandler(void)          {__ASM("bkpt 0");}
 void SDIO_IRQHandler(void)          {__ASM("bkpt 0");}
 void SPI3_IRQHandler(void)          {__ASM("bkpt 0");}
-void UART4_IRQHandler(void)         {__ASM("bkpt 0");}
-void UART5_IRQHandler(void)         {__ASM("bkpt 0");}
 void DMA2_Stream0_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA2_Stream1_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA2_Stream2_IRQHandler(void)  {__ASM("bkpt 0");}

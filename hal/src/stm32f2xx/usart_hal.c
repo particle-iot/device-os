@@ -36,6 +36,8 @@ typedef enum USART_Num_Def {
 	USART_RGBG_RGBB = 1
 #if PLATFORM_ID == 10 // Electron
 	,USART_TXD_UC_RXD_UC = 2
+	,USART_C3_C2 = 3
+    ,USART_C1_C0 = 4
 #endif
 } USART_Num_Def;
 
@@ -73,15 +75,15 @@ typedef struct STM32_USART_Info {
 STM32_USART_Info USART_MAP[TOTAL_USARTS] =
 {
 		/*
-		 * USART_peripheral (USART1-USART3; not using others)
-		 * clock control register (APB2ENR or APB1ENR)
-		 * clock enable bit value (RCC_APB2Periph_USART1 or RCC_APB1Periph_USART2)
-		 * interrupt number (USART1_IRQn or USART2_IRQn or USART3_IRQn)
+		 * USART_peripheral (USARTx/UARTx; not using others)
+		 * clock control register (APBxENR)
+		 * clock enable bit value (RCC_APBxPeriph_USARTx/RCC_APBxPeriph_UARTx)
+		 * interrupt number (USARTx_IRQn/UARTx_IRQn)
 		 * TX pin
 		 * RX pin
 		 * TX pin source
 		 * RX pin source
-		 * GPIO AF map (GPIO_AF_USART1 or GPIO_AF_USART2 or GPIO_AF_USART3)
+		 * GPIO AF map (GPIO_AF_USARTx/GPIO_AF_UARTx)
 		 * <tx_buffer pointer> used internally and does not appear below
 		 * <rx_buffer pointer> used internally and does not appear below
 		 * <usart enabled> used internally and does not appear below
@@ -91,6 +93,8 @@ STM32_USART_Info USART_MAP[TOTAL_USARTS] =
 		{ USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, RGBG, RGBB, GPIO_PinSource2, GPIO_PinSource3, GPIO_AF_USART2 } // USART 2
 #if PLATFORM_ID == 10 // Electron
 		,{ USART3, &RCC->APB1ENR, RCC_APB1Periph_USART3, USART3_IRQn, TXD_UC, RXD_UC, GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_USART3 } // USART 3
+        ,{ UART4, &RCC->APB1ENR, RCC_APB1Periph_UART4, UART4_IRQn, C3, C2, GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_UART4 } // UART 4
+        ,{ UART5, &RCC->APB1ENR, RCC_APB1Periph_UART5, UART5_IRQn, C1, C0, GPIO_PinSource12, GPIO_PinSource2, GPIO_AF_UART5 } // UART 5
 #endif
 };
 
@@ -127,6 +131,14 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
 	{
 		usartMap[serial] = &USART_MAP[USART_TXD_UC_RXD_UC];
 	}
+    else if(serial == HAL_USART_SERIAL4)
+    {
+        usartMap[serial] = &USART_MAP[USART_C3_C2];
+    }
+    else if(serial == HAL_USART_SERIAL5)
+    {
+        usartMap[serial] = &USART_MAP[USART_C1_C0];
+    }
 #endif
 
 	usartMap[serial]->usart_rx_buffer = rx_buffer;
@@ -185,7 +197,7 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 	// - Word Length = 8 Bits
 	// - One Stop Bit
 	// - No parity
-	// - Hardware flow control disabled for Serial1 and Serial2
+	// - Hardware flow control disabled for Serial1/2/4/5
     // - Hardware flow control enabled (RTS and CTS signals) for Serial3
 	// - Receive and transmit enabled
 	USART_InitStructure.USART_BaudRate = baud;
@@ -417,5 +429,31 @@ void HAL_USART2_Handler(void)
 void HAL_USART3_Handler(void)
 {
 	HAL_USART_Handler(HAL_USART_SERIAL3);
+}
+
+// Serial4 interrupt handler
+/*******************************************************************************
+ * Function Name  : HAL_USART4_Handler
+ * Description    : This function handles UART4 global interrupt request.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+void HAL_USART4_Handler(void)
+{
+    HAL_USART_Handler(HAL_USART_SERIAL4);
+}
+
+// Serial5 interrupt handler
+/*******************************************************************************
+ * Function Name  : HAL_USART5_Handler
+ * Description    : This function handles UART5 global interrupt request.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+void HAL_USART5_Handler(void)
+{
+    HAL_USART_Handler(HAL_USART_SERIAL5);
 }
 #endif
