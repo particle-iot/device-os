@@ -1,6 +1,6 @@
 # Getting Started
 
-1. [Download and Install Dependencies](docs/dependencies.md#1-download-and-install-dependencies)
+1. [Download and Install Dependencies](dependencies.md#1-download-and-install-dependencies)
 2. [Download and Build Repositories](#2-download-and-build-repositories)
 3. [Edit and Rebuild](#3-edit-and-rebuild)
 4. [Flash It!](#4-flash-it)
