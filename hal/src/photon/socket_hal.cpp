@@ -107,20 +107,14 @@ struct tcp_packet_t
  */
 struct tcp_socket_t : public wiced_tcp_socket_t {
     tcp_packet_t packet;
-    bool open; bool opened;
+    bool open;
     volatile bool closed_externally;
 
-    tcp_socket_t() : open(false), opened(false), closed_externally(false) {}
+    tcp_socket_t() : open(false), closed_externally(false) {}
 
-    ~tcp_socket_t()
-    {
-        // calling wiced_tcp_delete_socket when the socket didn't connect causes a hard fault.
-        // connected is only called after successful connection, setting opened to true.
-        if (opened)
-            wiced_tcp_delete_socket(this);
-    }
+    ~tcp_socket_t() { wiced_tcp_delete_socket(this); }
 
-    void connected() { open = true; opened = true; }
+    void connected() { open = true; }
 
     bool isClosed() {
         return !open || closed_externally;
@@ -630,8 +624,14 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addr
             SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr);
             unsigned timeout = 5*1000;
             result = wiced_tcp_connect(tcp_socket, &ip_addr, port, timeout);
-            if (result==WICED_SUCCESS)
+            if (result==WICED_SUCCESS) {
                 tcp_socket->connected();
+            } else {
+              // Work around WICED bug that doesn't set connection handler to NULL after deleting
+              // it, leading to deleting the same memory twice and a crash
+              // WICED/network/LwIP/WICED/tcpip.c:920
+              tcp_socket->conn_handler = NULL;
+            }
         }
     }
     return as_sock_result(result);
