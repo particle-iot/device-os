@@ -674,12 +674,14 @@ void SparkProtocol::remove_event_handlers(const char* event_name)
 }
 
 bool SparkProtocol::event_handler_exists(const char *event_name, EventHandler handler,
-    SubscriptionScope::Enum scope, const char* id)
+    void *handler_data, SubscriptionScope::Enum scope, const char* id)
 {
   const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
   for (int i = 0; i < NUM_HANDLERS; i++)
   {
-      if (event_handlers[i].handler==handler && event_handlers[i].scope==scope) {
+      if (event_handlers[i].handler==handler &&
+          event_handlers[i].handler_data==handler_data &&
+          event_handlers[i].scope==scope) {
         const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
         const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);
         if (!strncmp(event_handlers[i].filter, event_name, FILTER_LEN)) {
@@ -698,7 +700,7 @@ bool SparkProtocol::event_handler_exists(const char *event_name, EventHandler ha
 bool SparkProtocol::add_event_handler(const char *event_name, EventHandler handler,
     void *handler_data, SubscriptionScope::Enum scope, const char* id)
 {
-    if (event_handler_exists(event_name, handler, scope, id))
+    if (event_handler_exists(event_name, handler, handler_data, scope, id))
         return true;
 
   const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);

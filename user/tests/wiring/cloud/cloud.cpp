@@ -173,10 +173,15 @@ test(Spark_Second_Event_Handler_Not_Matched) {
 class Subscriber {
   public:
     void subscribe() {
-      Particle.subscribe("test/event3", &Subscriber::handler, this);
+      assertTrue(Particle.subscribe("test/event3", &Subscriber::handler, this));
+      // To make sure calling subscribe with a different handler is not a no op
+      assertTrue(Particle.subscribe("test/event3", &Subscriber::handler2, this));
       receivedCount = 0;
     }
     void handler(const char *eventName, const char *data) {
+      receivedCount++;
+    }
+    void handler2(const char *eventName, const char *data) {
       receivedCount++;
     }
     int receivedCount;
@@ -197,5 +202,5 @@ test(Subscribe_With_Object) {
     while ((millis()-start)<30000 && !subscriber.receivedCount)
         idle();
 
-    assertEqual(subscriber.receivedCount, 1);
+    assertEqual(subscriber.receivedCount, 2);
 }
