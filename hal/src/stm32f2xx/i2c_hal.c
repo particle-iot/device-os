@@ -64,6 +64,22 @@ static uint8_t transmitting = 0;
 static void (*callback_onRequest)(void);
 static void (*callback_onReceive)(int);
 
+static void HAL_I2C_SoftwareReset(void)
+{
+    /* Disable the I2C peripheral */
+    I2C_Cmd(I2C1, DISABLE);
+
+    /* Reset all I2C registers */
+    I2C_SoftwareResetCmd(I2C1, ENABLE);
+    I2C_SoftwareResetCmd(I2C1, DISABLE);
+
+    /* Enable the I2C peripheral */
+    I2C_Cmd(I2C1, ENABLE);
+
+    /* Apply I2C configuration after enabling it */
+    I2C_Init(I2C1, &I2C_InitStructure);
+}
+
 void HAL_I2C_Set_Speed(uint32_t speed)
 {
     I2C_ClockSpeed = speed;
@@ -154,6 +170,7 @@ void HAL_I2C_Begin(I2C_Mode mode, uint8_t address)
         I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF, ENABLE);
     }
 
+    /* Enable the I2C peripheral */
     I2C_Cmd(I2C1, ENABLE);
 
     /* Apply I2C configuration after enabling it */
@@ -189,7 +206,13 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+        {
+            /* SW Reset the I2C Peripheral */
+            HAL_I2C_SoftwareReset();
+
+            return 0;
+        }
     }
 
     /* Send Slave address for read */
@@ -198,7 +221,16 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+        {
+            /* Send STOP Condition */
+            I2C_GenerateSTOP(I2C1, ENABLE);
+
+            /* SW Reset the I2C Peripheral */
+            HAL_I2C_SoftwareReset();
+
+            return 0;
+        }
     }
 
     /* perform blocking read into buffer */
@@ -222,7 +254,13 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
         //while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED))
         while(I2C_GetFlagStatus(I2C1, I2C_FLAG_RXNE) == RESET)
         {
-            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+            {
+                /* SW Reset the I2C Peripheral */
+                HAL_I2C_SoftwareReset();
+
+                return 0;
+            }
         }
 
         /* Read the byte from the Slave */
@@ -240,7 +278,13 @@ uint32_t HAL_I2C_Request_Data(uint8_t address, uint8_t quantity, uint8_t stop)
         _millis = HAL_Timer_Get_Milli_Seconds();
         while(I2C1->CR1 & I2C_CR1_STOP)
         {
-            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 0;
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+            {
+                /* SW Reset the I2C Peripheral */
+                HAL_I2C_SoftwareReset();
+
+                return 0;
+            }
         }
     }
 
@@ -273,7 +317,13 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     /* While the I2C Bus is busy */
     while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 1;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+        {
+            /* SW Reset the I2C Peripheral */
+            HAL_I2C_SoftwareReset();
+
+            return 1;
+        }
     }
 
     /* Send START condition */
@@ -282,7 +332,13 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 2;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+        {
+            /* SW Reset the I2C Peripheral */
+            HAL_I2C_SoftwareReset();
+
+            return 2;
+        }
     }
 
     /* Send Slave address for write */
@@ -291,7 +347,16 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 3;
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+        {
+            /* Send STOP Condition */
+            I2C_GenerateSTOP(I2C1, ENABLE);
+
+            /* SW Reset the I2C Peripheral */
+            HAL_I2C_SoftwareReset();
+
+            return 3;
+        }
     }
 
     uint8_t *pBuffer = txBuffer;
@@ -309,13 +374,25 @@ uint8_t HAL_I2C_End_Transmission(uint8_t stop)
         _millis = HAL_Timer_Get_Milli_Seconds();
         while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTING))
         {
-            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 4;
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+            {
+                /* SW Reset the I2C Peripheral */
+                HAL_I2C_SoftwareReset();
+
+                return 4;
+            }
         }
 
         _millis = HAL_Timer_Get_Milli_Seconds();
         while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BTF) == RESET)
         {
-            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis)) return 5;
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+            {
+                /* SW Reset the I2C Peripheral */
+                HAL_I2C_SoftwareReset();
+
+                return 5;
+            }
         }
     }
 
