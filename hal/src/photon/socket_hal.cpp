@@ -451,7 +451,6 @@ void add_list(socket_t* item, socket_t*& list) {
  * @param item
  * @param list
  */
-
 void remove_list(socket_t* item, socket_t*& list)
 {
     if (list==item) {
@@ -483,6 +482,7 @@ void add(socket_t* socket) {
 void remove(socket_t* socket) {
     if (socket) {
         remove_list(socket, list_for_socket(socket));
+        delete socket;
     }
 }
 
@@ -504,8 +504,6 @@ wiced_result_t socket_t::notify_disconnected(wiced_tcp_socket_t*, void* socket) 
     }
     return WICED_SUCCESS;
 }
-
-
 
 wiced_tcp_socket_t* as_wiced_tcp_socket(socket_t* socket)
 {
@@ -553,34 +551,20 @@ socket_t* from_handle(sock_handle_t handle) {
  */
 sock_handle_t socket_dispose(sock_handle_t handle) {
     if (socket_handle_valid(handle)) {
-        from_handle(handle)->dispose();
+        remove(from_handle(handle));
     }
     return SOCKET_INVALID;
 }
 
-
-// todo - this doesn't free up memory used by each socket_t instance
 void close_all_list(socket_t*& list)
 {
     socket_t* current = list;
     while (current) {
-        current->close();
-        current = current->next;
-    }
-}
-
-void remove_disposed_list(socket_t*& list)
-{
-    socket_t* current = list;
-    while (current) {
         socket_t* next = current->next;
-        if (current->get_type()==socket_t::NONE)
-        {
-            delete current;
-        }
+        delete current;
         current = next;
     }
-    list = NULL;    // clear the list.
+    list = NULL;
 }
 
 void socket_close_all()
@@ -877,7 +861,7 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
         }
         if (wiced_result!=WICED_SUCCESS) {
             socket->set_type(socket_t::NONE);
-            socket_dispose(result);
+            delete socket;
             result = as_sock_result(wiced_result);
         }
         else {
