@@ -91,7 +91,7 @@ void HAL_Core_Config(void)
 
 	HAL_RTC_Configuration();
 
-	/* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
+	/* Execute Stop mode if STOP mode flag is set via System.sleep(pin, mode) */
 	HAL_Core_Execute_Stop_Mode();
 
 	LED_SetRGBColor(RGB_COLOR_WHITE);

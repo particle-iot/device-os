@@ -90,7 +90,7 @@ void unit_test_setup()
 #else
     Test::out = &Serial;
 #endif
-    Spark.variable("log", buf, STRING);
+    Particle.variable("log", buf, STRING);
     _runner.begin();
 }
 
@@ -178,12 +178,12 @@ int testCmd(String arg) {
 }
 
 void SparkTestRunner::begin() {
-    Spark.variable("passed", &Test::passed, INT);
-    Spark.variable("failed", &Test::failed, INT);
-    Spark.variable("skipped", &Test::skipped, INT);
-    Spark.variable("count", &Test::count, INT);
-    Spark.variable("state", &_state, INT);
-    Spark.function("cmd", testCmd);
+    Particle.variable("passed", &Test::passed, INT);
+    Particle.variable("failed", &Test::failed, INT);
+    Particle.variable("skipped", &Test::skipped, INT);
+    Particle.variable("count", &Test::count, INT);
+    Particle.variable("state", &_state, INT);
+    Particle.function("cmd", testCmd);
     setState(WAITING);
 }
 

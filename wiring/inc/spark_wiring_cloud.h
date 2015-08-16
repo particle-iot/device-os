@@ -128,5 +128,4 @@ private:
 
 
 extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));
-extern CloudClass Cloud;
 extern CloudClass Particle;

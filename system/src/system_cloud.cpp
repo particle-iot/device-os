@@ -436,7 +436,7 @@ void Spark_Protocol_Init(void)
         HAL_device_ID(id, id_length);
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
-        Spark.subscribe("spark", SystemEvents);
+        Particle.subscribe("spark", SystemEvents);
     }
 }
 
@@ -455,18 +455,18 @@ int Spark_Handshake(void)
         char buf[CLAIM_CODE_SIZE + 1];
         if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && *buf)
         {
-            Spark.publish("spark/device/claim/code", buf, 60, PRIVATE);
+            Particle.publish("spark/device/claim/code", buf, 60, PRIVATE);
         }
 
         ultoa(HAL_OTA_FlashLength(), buf, 10);
-        Spark.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
+        Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
 
         ultoa(HAL_OTA_ChunkSize(), buf, 10);
-        Spark.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
+        Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
 
         if (!HAL_core_subsystem_version(buf, sizeof (buf)))
         {
-            Spark.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
+            Particle.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
         }
 
         Multicast_Presence_Announcement();

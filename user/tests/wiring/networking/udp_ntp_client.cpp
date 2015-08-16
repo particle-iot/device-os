@@ -112,7 +112,7 @@ unsigned long getNTPClientTime(void)
 test(UDP_NTPClientTimeApproximatesSparkCloudTime)
 {
     // Request time synchronization from the Spark Cloud
-    Spark.syncTime();
+    Particle.syncTime();
 
     // get NTP time
     unsigned long ntpEpochTime = getNTPClientTime();

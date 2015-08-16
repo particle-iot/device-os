@@ -127,7 +127,7 @@ bool fetch_or_generate_setup_ssid(varstring_t* result) {
 #endif
 
 void WiFiTester::printInfo() {
-    String deviceID = Spark.deviceID();
+    String deviceID = Particle.deviceID();
 
     WLanConfig ip_config;
     ip_config.size = sizeof(ip_config);
