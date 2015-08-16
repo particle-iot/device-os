@@ -133,7 +133,7 @@ int wlan_has_credentials()
  */
 int wlan_connect_init()
 {
-    return wiced_wlan_connectivity_init();
+    return 0;
 }
 
 /**
@@ -153,9 +153,22 @@ wlan_result_t wlan_connect_finalize()
     return result;
 }
 
+int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna);
+static WLanSelectAntenna_TypeDef antennaSelection = ANT_INTERNAL;
+inline int wlan_refresh_antenna() { return wlan_select_antenna_impl(antennaSelection); }
+
+int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
+{
+    antennaSelection = antenna;
+    return wlan_refresh_antenna();
+}
+
+
 wlan_result_t wlan_activate()
 {
-    return wiced_wlan_connectivity_init();
+    wlan_result_t result = wiced_wlan_connectivity_init();
+    wlan_refresh_antenna();
+    return result;
 }
 
 wlan_result_t wlan_deactivate() {
@@ -441,7 +454,7 @@ void SPARK_WLAN_SmartConfigProcess()
  *          -1 : if the antenna selection was not set
  *
  */
-int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna) {
+int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna) {
 
     wwd_result_t result;
     switch(antenna) {
@@ -455,7 +468,6 @@ int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna) {
     else
         return -1;
 }
-
 
 void wlan_connect_cancel(bool called_from_isr)
 {

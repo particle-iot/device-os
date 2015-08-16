@@ -29,9 +29,13 @@ ifdef APPDIR
 # if TARGET_DIR is not defined defaults to $(APPDIR)/target
 # if TARGET_FILE_NAME is not defined, defaults to the name of the $(APPDIR)
 TARGET_FILE_NAME ?= $(notdir $(APPDIR))
-TARGET_DIR_NAME = $(APPDIR)/target
+TARGET_DIR_NAME ?= $(APPDIR)/target
 # do not use $(BUILD_PATH) since the TARGET_DIR specifies fully where the output should go
-TARGET_PATH ?= $(TARGET_DIR_NAME)
+ifdef TARGET_DIR
+TARGET_PATH = $(TARGET_DIR)
+else
+TARGET_PATH = $(TARGET_DIR_NAME)/
+endif
 BUILD_PATH = $(TARGET_PATH)/obj
 endif
 
@@ -39,6 +43,7 @@ ifdef TEST
 TARGET_FILE_NAME ?= $(notdir $(TEST))
 TARGET_DIR_NAME ?= test/$(TEST)
 endif
+
 
 # to allow _malloc_r to be overridden we have to remove it from the libg_nano.a library
 # this symbol is the target for the library
@@ -72,6 +77,8 @@ LDFLAGS += -lstdc++_nano -lm -Wl,--start-group -lgcc -lg_nano -lc_nano -Wl,--end
 
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
+
+all:
 
 # remove *malloc*.o from the standard library. No longer used.
 $(LIBG_TWEAK) :
