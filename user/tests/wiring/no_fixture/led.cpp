@@ -9,7 +9,7 @@
  */
 uint8_t rgbNotify[3];
 volatile uint32_t rgbNotifyCount;
-void onChangeRGBLED(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved) {
+void onChangeRGBLED(uint8_t r, uint8_t g, uint8_t b) {
     rgbNotify[0] = r;
     rgbNotify[1] = g;
     rgbNotify[2] = b;
@@ -63,9 +63,12 @@ uint8_t ledAdjust(uint8_t value, uint8_t brightness=255) {
 
 test(LED_Updated) {
     RGB.control(false);
+    RGB.onChange(onChangeRGBLED);
     uint32_t start = rgbNotifyCount;
     delay(500);
     uint32_t end = rgbNotifyCount;
+    RGB.onChange(NULL);
+
     assertMore((end-start), uint32_t(20)); // I think it's meant to be 100Hz, but this is fine as a smoke test
 }
 
@@ -101,10 +104,10 @@ test(LED_StaticWhenControlled) {
     // given
     RGB.control(true);
     RGB.brightness(255);
+    RGB.onChange(onChangeRGBLED);
 
     // when
     RGB.color(30,60,90);
-
     // then
     uint8_t rgbExpected[3] = {ledAdjust(30), ledAdjust(60), ledAdjust(90)};
     uint8_t rgbInitial[3];

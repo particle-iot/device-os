@@ -68,10 +68,13 @@ void RGBClass::onChange(wiring_rgb_change_handler_t handler) {
       LED_RGB_SetChangeHandler(call_std_change_handler, wrapper);
     }
   }
+  else {
+      LED_RGB_SetChangeHandler(NULL, NULL);
+  }
 }
 
 void RGBClass::onChange(raw_rgb_change_handler_t *handler) {
-  LED_RGB_SetChangeHandler(call_raw_change_handler, (void *)handler);
+    LED_RGB_SetChangeHandler(handler ? call_raw_change_handler : NULL, (void*)handler);
 }
 
 void RGBClass::call_raw_change_handler(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved)
