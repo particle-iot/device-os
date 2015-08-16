@@ -25,10 +25,10 @@
 
 test(api_eeprom_read_write) {
 
-    uint8_t value;
+    uint8_t value = 0;
     API_COMPILE(value=EEPROM.read(10));
     API_COMPILE(EEPROM.write(10, value));
-
+    (void)value++; // avoid compiler warning about assigned but unused `length`
 }
 
 
@@ -53,9 +53,6 @@ test(api_eeprom_begin_end_length) {
     API_COMPILE(e = EEPROM.begin());
     API_COMPILE(e = EEPROM.end());
     API_COMPILE(length = EEPROM.length());
+    (void)length++;  // avoid compiler warning about assigned but unused `length`
 }
 
-test(api_eeprom_eeptr)
-{
-
-}

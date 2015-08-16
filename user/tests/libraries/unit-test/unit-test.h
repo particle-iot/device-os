@@ -22,16 +22,6 @@
 */
 
 
-#define strcpy_P strcpy
-#define strlcpy_P strncpy
-#define sprintf_P sprintf
-#define strcmp_P strcmp
-#define memcpy_P memcpy
-#define vsnprintf_P vsnprintf
-#define PROGMEM
-#define PSTR
-
-
 #include "FakeStream.h"
 #include "FakeStreamBuffer.h"
 
@@ -94,7 +84,7 @@ public:
             const char* stateName = nameForState((RunnerState)_state);
             if (isStarted())
                 updateLEDStatus();
-            Spark.publish("state", stateName);
+            Particle.publish("state", stateName);
         }
     }
 
