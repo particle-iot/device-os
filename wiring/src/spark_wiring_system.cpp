@@ -39,3 +39,12 @@ void SystemClass::sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long 
 {
     system_sleep_pin(wakeUpPin, edgeTriggerMode, seconds, 0, NULL);
 }
+
+uint32_t SystemClass::freeMemory()
+{
+    runtime_info_t info;
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
+    HAL_Core_Runtime_Info(&info, NULL);
+    return info.freeheap;
+}

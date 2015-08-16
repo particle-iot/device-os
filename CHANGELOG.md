@@ -9,6 +9,7 @@
  - `RGB.onChange` handler receives notification of the current LED color when it changes. Can be used to match an external LED to the onboard led. [#518](https://github.com/spark/firmware/pull/518) Thanks to @monkbroc!
  - Serial2 available on P1 and Photon (note: this also requires above RGB.onChange handler and two resistors would need to be removed on the Photon)
  - `Spark.connected()` et al. is now `Particle.connected()`. The former `Spark` library is still available but is deprecated.
+ - `System.freeMemory()` API to determine the amount of available RAM. 
 
 ### ENHANCEMENTS
  - Retrieve the LED brightness via `RGB.brightness()`

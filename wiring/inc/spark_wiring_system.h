@@ -78,6 +78,8 @@ public:
     static void off(void(*handler)(system_event_t, uint32_t,void*)) {
         system_unsubscribe_event(all_events, handler, nullptr);
     }
+
+    static uint32_t freeMemory();
 };
 
 extern SystemClass System;

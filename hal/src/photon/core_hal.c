@@ -113,3 +113,13 @@ void Mode_Button_EXTI_irq(void)
 
     chain();
 }
+
+
+uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
+{
+    extern unsigned char _eheap[];
+    extern unsigned char *sbrk_heap_top;
+
+    info->freeheap = _eheap-sbrk_heap_top;
+    return 0;
+}

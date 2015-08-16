@@ -63,3 +63,9 @@ test(system_version) {
     API_COMPILE(Serial.println(SYSTEM_VERSION_STRING));
     API_COMPILE(Serial.println(SYSTEM_VERSION));
 }
+
+
+test(system_freememory) {
+    uint32_t f;
+    API_COMPILE(f=System.freeMemory());
+}

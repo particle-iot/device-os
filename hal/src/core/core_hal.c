@@ -374,3 +374,11 @@ void HAL_Bootloader_Lock(bool lock)
     else
         FLASH_WriteProtection_Disable(BOOTLOADER_FLASH_PAGES);
 }
+
+uint32_t freeheap();
+
+uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
+{
+    info->freeheap = freeheap();
+    return 0;
+}
