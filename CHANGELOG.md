@@ -9,7 +9,8 @@
  - `RGB.onChange` handler receives notification of the current LED color when it changes. Can be used to match an external LED to the onboard led. [#518](https://github.com/spark/firmware/pull/518) Thanks to @monkbroc!
  - Serial2 available on P1 and Photon (note: this also requires above RGB.onChange handler and two resistors would need to be removed on the Photon)
  - `Spark.connected()` et al. is now `Particle.connected()`. The former `Spark` library is still available but is deprecated.
- - `System.freeMemory()` API to determine the amount of available RAM. 
+ - `System.freeMemory()` API to determine the amount of available RAM.
+ - `STARTUP()` macro to define blocks of code that execute at startup.
 
 ### ENHANCEMENTS
  - Retrieve the LED brightness via `RGB.brightness()`
@@ -20,6 +21,8 @@
  - I2C Wire.endTransmission() returns unique values and [I2C docs updated](https://docs.particle.io/reference/firmware/photon/#endtransmission-)
  - Generate I2C STOP after slave addr NACK, I2C software reset all timeouts -  [commit](https://github.com/spark/firmware/commit/53914d809cc17a3802b879fbb4fddcaa7d264680)
  - Improved I2C Master receive method and implemented error handler - [commit](https://github.com/spark/firmware/commit/1bc00ea480ef1fcdbd8ef9ba3df12b121183aeae) -  [commit](https://github.com/spark/firmware/commit/5359f19985756182ff6511217cbcb588b3341a87)
+ - `WiFi.selectAntenna()` default antenna is now INTERNAL. Can be called at startup (before WiFi is initialized to select the desired antenna.
+
 
 ### BUGFIXES
 

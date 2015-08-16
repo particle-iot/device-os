@@ -48,6 +48,7 @@
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_network.h"
 #include "spark_wiring_client.h"
+#include "spark_wiring_startup.h"
 #include "spark_wiring_tcpclient.h"
 #include "spark_wiring_tcpserver.h"
 #include "spark_wiring_udp.h"
