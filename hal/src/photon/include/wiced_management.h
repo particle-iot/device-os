@@ -1,285 +1,286 @@
-/*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+	/*
+	 * Copyright (c) 2015 Broadcom
+	 * All rights reserved.
+	 *
+	 * Redistribution and use in source and binary forms, with or without modification,
+	 * are permitted provided that the following conditions are met:
+	 *
+	 * 1. Redistributions of source code must retain the above copyright notice, this
+	 * list of conditions and the following disclaimer.
+	 *
+	 * 2. Redistributions in binary form must reproduce the above copyright notice, this
+	 * list of conditions and the following disclaimer in the documentation and/or
+	 * other materials provided with the distribution.
+	 *
+	 * 3. Neither the name of Broadcom nor the names of other contributors to this
+	 * software may be used to endorse or promote products derived from this software
+	 * without specific prior written permission.
+	 *
+	 * 4. This software may not be used as a standalone product, and may only be used as
+	 * incorporated in your product or device that incorporates Broadcom wireless connectivity
+	 * products and solely for the purpose of enabling the functionalities of such Broadcom products.
+	 *
+	 *
+	 * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+	 * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+	 * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
+	 * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+	 * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+	 * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+	 * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+	 * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+	 * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+	 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+	 */
 
-/** @file
- *  Defines functions to manage the WICED system
- */
+	/** @file
+	 *  Defines functions to manage the WICED system
+	 */
 
-#pragma once
+	#pragma once
 
-#include "wwd_network_interface.h"
-#include "wiced_tcpip.h"
-#include "wiced_wifi.h"
+	#include "wwd_network_interface.h"
+	#include "wiced_tcpip.h"
+	#include "wiced_wifi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	#ifdef __cplusplus
+	extern "C" {
+	#endif
 
-/******************************************************
- *                     Macros
- ******************************************************/
+	/******************************************************
+	 *                     Macros
+	 ******************************************************/
 
-/******************************************************
- *                    Constants
- ******************************************************/
+	/******************************************************
+	 *                    Constants
+	 ******************************************************/
 
-/******************************************************
- *                   Enumerations
- ******************************************************/
+	/******************************************************
+	 *                   Enumerations
+	 ******************************************************/
 
-/** IP address configuration options */
-typedef enum
-{
-    WICED_USE_EXTERNAL_DHCP_SERVER, /**< Client interface: use an external DHCP server  */
-    WICED_USE_STATIC_IP,            /**< Client interface: use a fixed IP address       */
-    WICED_USE_INTERNAL_DHCP_SERVER  /**< softAP interface: use the internal DHCP server */
-} wiced_network_config_t;
-
-
-/** DCT app section configuration item data type */
-typedef enum
-{
-    CONFIG_STRING_DATA,       /**< String data type */
-    CONFIG_UINT8_DATA,        /**< uint8 data type  */
-    CONFIG_UINT16_DATA,       /**< uint16 data type */
-    CONFIG_UINT32_DATA        /**< uint32 data type */
-} configuration_data_type_t;
+	/** IP address configuration options */
+	typedef enum
+	{
+		WICED_USE_EXTERNAL_DHCP_SERVER, /**< Client interface: use an external DHCP server  */
+		WICED_USE_STATIC_IP,            /**< Client interface: use a fixed IP address       */
+		WICED_USE_INTERNAL_DHCP_SERVER  /**< softAP interface: use the internal DHCP server */
+	} wiced_network_config_t;
 
 
-/** WICED Network link subscription types denote whether
- *  to subscribe for link up or link down events */
-typedef enum
-{
-    WICED_LINK_UP_SUBSCRIPTION,     /**< Link up event subscription   */
-    WICED_LINK_DOWN_SUBSCRIPTION    /**< Link down event subscription */
-} wiced_link_subscription_t;
-
-/** WICED Network link status */
-typedef enum
-{
-    WICED_LINK_UP,   /**< Link status up   */
-    WICED_LINK_DOWN  /**< Link status down */
-} wiced_link_status_t;
-
-typedef enum
-{
-    WICED_NETWORK_PACKET_TX,     /**< Network packet for data transmission */
-    WICED_NETWORK_PACKET_RX      /**< Network packet for data reception    */
-} wiced_network_packet_dir_t;
-
-/******************************************************
- *                 Type Definitions
- ******************************************************/
-
-/** Network link callback */
-typedef void (*wiced_network_link_callback_t)(void);
-
-/******************************************************
- *                    Structures
- ******************************************************/
-
-/** IP address settings */
-typedef struct
-{
-    wiced_ip_address_t ip_address;  /**< IP address      */
-    wiced_ip_address_t gateway;     /**< Gateway address */
-    wiced_ip_address_t netmask;     /**< Netmask         */
-} wiced_ip_setting_t;
+	/** DCT app section configuration item data type */
+	typedef enum
+	{
+		CONFIG_STRING_DATA,       /**< String data type */
+		CONFIG_UINT8_DATA,        /**< uint8 data type  */
+		CONFIG_UINT16_DATA,       /**< uint16 data type */
+		CONFIG_UINT32_DATA        /**< uint32 data type */
+	} configuration_data_type_t;
 
 
-/** DCT app section configuration item entry */
-typedef struct
-{
-    char*                     name;        /**< Name of the entry              */
-    uint32_t                  dct_offset;  /**< Offset of the entry in the DCT */
-    uint32_t                  data_size;   /**< Size of the entry              */
-    configuration_data_type_t data_type;   /**< Type of the entry              */
-} configuration_entry_t;
+	/** WICED Network link subscription types denote whether
+	 *  to subscribe for link up or link down events */
+	typedef enum
+	{
+		WICED_LINK_UP_SUBSCRIPTION,     /**< Link up event subscription   */
+		WICED_LINK_DOWN_SUBSCRIPTION    /**< Link down event subscription */
+	} wiced_link_subscription_t;
+
+	/** WICED Network link status */
+	typedef enum
+	{
+		WICED_LINK_UP,   /**< Link status up   */
+		WICED_LINK_DOWN  /**< Link status down */
+	} wiced_link_status_t;
+
+	typedef enum
+	{
+		WICED_NETWORK_PACKET_TX,     /**< Network packet for data transmission */
+		WICED_NETWORK_PACKET_RX      /**< Network packet for data reception    */
+	} wiced_network_packet_dir_t;
+
+	/******************************************************
+	 *                 Type Definitions
+	 ******************************************************/
+
+	/** Network link callback */
+	typedef void (*wiced_network_link_callback_t)(void);
+
+	/******************************************************
+	 *                    Structures
+	 ******************************************************/
+
+	/** IP address settings */
+	typedef struct
+	{
+		wiced_ip_address_t ip_address;  /**< IP address      */
+		wiced_ip_address_t gateway;     /**< Gateway address */
+		wiced_ip_address_t netmask;     /**< Netmask         */
+	} wiced_ip_setting_t;
 
 
-/** Structure to hold information about a system monitor item */
-typedef struct
-{
-    uint32_t last_update;              /**< Time of the last system monitor update */
-    uint32_t longest_permitted_delay;  /**< Longest permitted delay between checkins with the system monitor */
-} wiced_system_monitor_t;
-
-/******************************************************
- *                 Global Variables
- ******************************************************/
-
-/******************************************************
- *               Function Declarations
- *
- ******************************************************/
-
-/*****************************************************************************/
-/** @defgroup mgmt       Management
- *
- *  WICED Management Functions
- */
-/*****************************************************************************/
+	/** DCT app section configuration item entry */
+	typedef struct
+	{
+		char*                     name;        /**< Name of the entry              */
+		uint32_t                  dct_offset;  /**< Offset of the entry in the DCT */
+		uint32_t                  data_size;   /**< Size of the entry              */
+		configuration_data_type_t data_type;   /**< Type of the entry              */
+	} configuration_entry_t;
 
 
-/*****************************************************************************/
-/** @addtogroup initconf       Initialisation & configuration
- *  @ingroup mgmt
- *
- * Initialisation/Deinitialisation of WICED and device configuration functions
- *
- *  @{
- */
-/*****************************************************************************/
+	/** Structure to hold information about a system monitor item */
+	typedef struct
+	{
+		uint32_t last_update;              /**< Time of the last system monitor update */
+		uint32_t longest_permitted_delay;  /**< Longest permitted delay between checkins with the system monitor */
+	} wiced_system_monitor_t;
+
+	/******************************************************
+	 *                 Global Variables
+	 ******************************************************/
+
+	/******************************************************
+	 *               Function Declarations
+	 *
+	 ******************************************************/
+
+	/*****************************************************************************/
+	/** @defgroup mgmt       Management
+	 *
+	 *  WICED Management Functions
+	 */
+	/*****************************************************************************/
 
 
-/** Initialises the WICED system
- *
- * This function sets up the system by :
- *  \li initialising the platform interface
- *  \li initialising the RTOS & Network Stack
- *  \li initialising the WLAN driver and chip
- *  \li starting the event processing thread
- *
- * @return @ref wiced_result_t
- */
-extern wiced_result_t wiced_init( void );
+	/*****************************************************************************/
+	/** @addtogroup initconf       Initialisation & configuration
+	 *  @ingroup mgmt
+	 *
+	 * Initialisation/Deinitialisation of WICED and device configuration functions
+	 *
+	 *  @{
+	 */
+	/*****************************************************************************/
 
 
-/** De-initialises the WICED system
- *
- * This function de-initialises the WICED system by :
- *  \li bringing down all network interfaces
- *  \li deleting all packet pools
- *  \li tearing down the event thread
- *  \li powering down the WLAN chip
- *
- * @return @ref wiced_result_t
- */
-extern wiced_result_t wiced_deinit( void );
+	/** Initialises the WICED system
+	 *
+	 * This function sets up the system by :
+	 *  \li initialising the platform interface
+	 *  \li initialising the RTOS & Network Stack
+	 *  \li initialising the WLAN driver and chip
+	 *  \li starting the event processing thread
+	 *
+	 * @return @ref wiced_result_t
+	 */
+	extern wiced_result_t wiced_init( void );
 
 
-/** Enables all powersave features
- *
- *  This is a convenience function that calls each of the powersave related functions listed below \n
- *  Please review the documentation for each function for further information
- *  \li @ref wiced_platform_mcu_enable_powersave()
- *  \li @ref wiced_wifi_enable_powersave()
- *  \li @ref wiced_network_suspend()
- *
- * @return @ref wiced_result_t
- */
-extern wiced_result_t wiced_enable_powersave( void );
+	/** De-initialises the WICED system
+	 *
+	 * This function de-initialises the WICED system by :
+	 *  \li bringing down all network interfaces
+	 *  \li deleting all packet pools
+	 *  \li tearing down the event thread
+	 *  \li powering down the WLAN chip
+	 *
+	 * @return @ref wiced_result_t
+	 */
+	extern wiced_result_t wiced_deinit( void );
 
 
-/** Disables all powersave features
- *
- *  This is a convenience functions that calls each of the powersave related functions listed below \n
- *  Please review the documentation for each function for further information
- *  \li @ref wiced_platform_mcu_disable_powersave()
- *  \li @ref wiced_wifi_disable_powersave()
- *  \li @ref wiced_network_resume()
- *
- * @return WICED_SUCCESS
- */
-extern wiced_result_t wiced_disable_powersave( void );
+	/** Enables all powersave features
+	 *
+	 *  This is a convenience function that calls each of the powersave related functions listed below \n
+	 *  Please review the documentation for each function for further information
+	 *  \li @ref wiced_platform_mcu_enable_powersave()
+	 *  \li @ref wiced_wifi_enable_powersave()
+	 *  \li @ref wiced_network_suspend()
+	 *
+	 * @return @ref wiced_result_t
+	 */
+	extern wiced_result_t wiced_enable_powersave( void );
 
 
-/** Runs device configuration (if required)
- *
- * @param[in] config  : an array of user configurable variables in configuration_entry_t format.
- *                      The array must be terminated with a "null" entry {0,0,0,0}
- *
- * @return    WICED_SUCCESS
- */
-extern wiced_result_t wiced_configure_device( const configuration_entry_t* config );
+	/** Disables all powersave features
+	 *
+	 *  This is a convenience functions that calls each of the powersave related functions listed below \n
+	 *  Please review the documentation for each function for further information
+	 *  \li @ref wiced_platform_mcu_disable_powersave()
+	 *  \li @ref wiced_wifi_disable_powersave()
+	 *  \li @ref wiced_network_resume()
+	 *
+	 * @return WICED_SUCCESS
+	 */
+	extern wiced_result_t wiced_disable_powersave( void );
 
 
-/** Re-runs device configuration
- *
- * @param[in] config  : an array of user configurable variables in configuration_entry_t format.
- *                      The array must be terminated with a "null" entry {0,0,0,0}
- *
- * @return    WICED_SUCCESS
- */
-extern wiced_result_t wiced_reconfigure_device( const configuration_entry_t* config );
-
-/** @} */
+	/** Runs device configuration (if required)
+	 *
+	 * @param[in] config  : an array of user configurable variables in configuration_entry_t format.
+	 *                      The array must be terminated with a "null" entry {0,0,0,0}
+	 *
+	 * @return    WICED_SUCCESS
+	 */
+	extern wiced_result_t wiced_configure_device( const configuration_entry_t* config );
 
 
+	/** Re-runs device configuration
+	 *
+	 * @param[in] config  : an array of user configurable variables in configuration_entry_t format.
+	 *                      The array must be terminated with a "null" entry {0,0,0,0}
+	 *
+	 * @return    WICED_SUCCESS
+	 */
+	extern wiced_result_t wiced_reconfigure_device( const configuration_entry_t* config );
 
-/*****************************************************************************/
-/** @addtogroup netmgmt       Network management
- *  @ingroup mgmt
- *
- * Functions to manage the network interfaces
- *
- *  @{
- */
-/*****************************************************************************/
+	/** @} */
 
-/** Set Network Hostname
- *
- *  NOTE: This function will change the DCT.
- *
- * @param[in] name          : a null terminated string (max: 32 characters + null terminator).
- *
- * @return    @ref wiced_result_t
- */
-extern wiced_result_t wiced_network_set_hostname( const char* name );
 
-/** Get Network Hostname
- *
- * @param[in] name          : ptr to store hostname (min: HOSTNAME_SIZE)
- * @param[in] size          : size of storage
- *
- * @return    @ref wiced_result_t
- */
-extern wiced_result_t wiced_network_get_hostname( char *name, int size );
 
-/** Brings up a network interface
- *
- *
- * @param[in] interface     : the interface to bring up
- * @param[in] config        : the network IP configuration
- * @param[in] ip_settings   : static IP settings that are mandatory for the AP interface,
- *                        but are optional for the STA interface
- *
- * @return @ref wiced_result_t
- */
-extern wiced_result_t wiced_network_up( wiced_interface_t interface, wiced_network_config_t config, const wiced_ip_setting_t* ip_settings );
+	/*****************************************************************************/
+	/** @addtogroup netmgmt       Network management
+	 *  @ingroup mgmt
+	 *
+	 * Functions to manage the network interfaces
+	 *
+	 *  @{
+	 */
+	/*****************************************************************************/
 
+	/** Set Network Hostname
+	 *
+	 *  NOTE: This function will change the DCT.
+	 *
+	 * @param[in] name          : a null terminated string (max: 32 characters + null terminator).
+	 *
+	 * @return    @ref wiced_result_t
+	 */
+	extern wiced_result_t wiced_network_set_hostname( const char* name );
+
+	/** Get Network Hostname
+	 *
+	 * @param[in] name          : ptr to store hostname (min: HOSTNAME_SIZE)
+	 * @param[in] size          : size of storage
+	 *
+	 * @return    @ref wiced_result_t
+	 */
+	extern wiced_result_t wiced_network_get_hostname( char *name, int size );
+
+	/** Brings up a network interface
+	 *
+	 *
+	 * @param[in] interface     : the interface to bring up
+	 * @param[in] config        : the network IP configuration
+	 * @param[in] ip_settings   : static IP settings that are mandatory for the AP interface,
+	 *                        but are optional for the STA interface
+	 *
+	 * @return @ref wiced_result_t
+	 */
+	extern wiced_result_t wiced_network_up( wiced_interface_t interface, wiced_network_config_t config, const wiced_ip_setting_t* ip_settings );
+
+	extern volatile uint8_t wiced_network_up_cencel;
 
 extern wiced_result_t wiced_interface_up( wiced_interface_t interface );
 
@@ -463,6 +464,8 @@ wiced_result_t wiced_wlan_connectivity_init  ( void );
  * @return @ref wiced_result_t
  */
 wiced_result_t wiced_wlan_connectivity_deinit( void );
+
+wiced_bool_t wiced_wlan_connectivity_initialized( void );
 
 /** @} */
 

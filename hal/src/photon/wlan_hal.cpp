@@ -25,6 +25,7 @@
 
 #include "wiced.h"
 #include "wiced_easy_setup.h"
+#include "wiced_internal_api.h"
 #include "delay_hal.h"
 #include "wlan_hal.h"
 #include "hw_config.h"
@@ -160,7 +161,7 @@ inline int wlan_refresh_antenna() { return wlan_select_antenna_impl(antennaSelec
 int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
 {
     antennaSelection = antenna;
-    return wlan_refresh_antenna();
+    return wiced_wlan_connectivity_initialized() ? wlan_refresh_antenna() : 0;
 }
 
 
