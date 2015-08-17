@@ -101,6 +101,10 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   {
     GPIO_PortSource = 2;
   }
+  else if (gpio_port == GPIOD)
+  {
+    GPIO_PortSource = 3;
+  }
 
   // Register the handler for the user function name
   exti_channels[GPIO_PinSource].fn = handler;
