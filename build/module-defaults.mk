@@ -51,7 +51,7 @@ CFLAGS += -MD -MP -MF $@.d
 # Removed "-fdata-sections" as firmware doesn't work as expected
 CFLAGS += -ffunction-sections -fdata-sections -Wall -Wno-switch -Wno-error=deprecated-declarations -fmessage-length=0
 CFLAGS += -fno-strict-aliasing
-CFLAGS += -DSPARK=1
+CFLAGS += -DSPARK=1 -DPARTICLE=1
 
 ifdef START_DFU_FLASHER_SERIAL_SPEED
 CFLAGS += -DSTART_DFU_FLASHER_SERIAL_SPEED=$(START_DFU_FLASHER_SERIAL_SPEED)
