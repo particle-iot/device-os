@@ -9,7 +9,7 @@ HAL_WICED_INCLUDE_DIRS +=   platforms/$(PLATFORM_NET)
 HAL_WICED_INCLUDE_DIRS +=   libraries/daemons/DNS_redirect \
 			    libraries/daemons/HTTP_server \
 			    libraries/utilities/ring_buffer
-HAL_WICED_INCLUDE_DIRS +=   wiced
+HAL_WICED_INCLUDE_DIRS +=   wiced wiced/internal
 HAL_WICED_INCLUDE_DIRS +=   wiced/network/$(HAL_WICED_NETWORK) \
 			    wiced/network/$(HAL_WICED_NETWORK)/WWD \
 			    wiced/network/$(HAL_WICED_NETWORK)/WICED
