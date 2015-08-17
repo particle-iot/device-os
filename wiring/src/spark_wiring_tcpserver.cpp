@@ -36,6 +36,7 @@ TCPServer::TCPServer(uint16_t port, network_interface_t nif) : _port(port), _nif
 
 bool TCPServer::begin()
 {
+    stop();
     if(!Network.from(_nif).ready())
     {
         return false;
