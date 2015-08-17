@@ -36,7 +36,14 @@ size_t Print::write(const uint8_t *buffer, size_t size)
 {
   size_t n = 0;
   while (size--) {
-    n += write(*buffer++);
+     size_t chunk = write(*buffer++);
+     if (chunk>=0)
+         n += chunk;
+     else {
+         if (n==0)
+             n = chunk;
+         break;
+     }
   }
   return n;
 }
