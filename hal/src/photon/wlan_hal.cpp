@@ -460,8 +460,13 @@ int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna) {
 
     wwd_result_t result;
     switch(antenna) {
+#if PLATFORM_ID == 6 // Photon
         case ANT_EXTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_1); break;
         case ANT_INTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_2); break;
+#else
+        case ANT_INTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_1); break;
+        case ANT_EXTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_2); break;
+#endif
         case ANT_AUTO: result = wwd_wifi_select_antenna(WICED_ANTENNA_AUTO); break;
         default: result = WWD_DOES_NOT_EXIST; break;
     }
