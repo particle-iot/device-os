@@ -629,7 +629,7 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addr
     if (tcp_socket) {
         result = wiced_tcp_bind(tcp_socket, WICED_ANY_PORT);
         if (result==WICED_SUCCESS) {
-            wiced_tcp_register_callbacks(tcp(socket), socket_t::notify_connected, socket_t::notify_received, socket_t::notify_disconnected, (void*)socket);
+            //wiced_tcp_register_callbacks(tcp(socket), socket_t::notify_connected, socket_t::notify_received, socket_t::notify_disconnected, (void*)socket);
             SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr);
             unsigned timeout = 5*1000;
             result = wiced_tcp_connect(tcp_socket, &ip_addr, port, timeout);
