@@ -451,10 +451,12 @@ void add_list(socket_t* item, socket_t*& list) {
  * @param item
  * @param list
  */
-void remove_list(socket_t* item, socket_t*& list)
+bool remove_list(socket_t* item, socket_t*& list)
 {
+    bool removed = false;
     if (list==item) {
         list = item->next;
+        removed = true;
     }
     else
     {
@@ -462,10 +464,12 @@ void remove_list(socket_t* item, socket_t*& list)
         while (current) {
             if (current->next==item) {
                 current->next = item->next;
+                removed = true;
                 break;
             }
         }
     }
+    return removed;
 }
 
 
@@ -481,8 +485,8 @@ void add(socket_t* socket) {
 
 void remove(socket_t* socket) {
     if (socket) {
-        remove_list(socket, list_for_socket(socket));
-        delete socket;
+        if (remove_list(socket, list_for_socket(socket)))
+            delete socket;
     }
 }
 
@@ -829,7 +833,6 @@ sock_result_t socket_close(sock_handle_t sock)
     sock_result_t result = WICED_SUCCESS;
     socket_t* socket = from_handle(sock);
     if (socket) {
-        socket->close();
         socket_dispose(sock);
         DEBUG("socket closed %x", int(sock));
     }
