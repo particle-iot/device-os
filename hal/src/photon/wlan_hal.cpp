@@ -151,6 +151,7 @@ wlan_result_t wlan_connect_finalize()
     }
     // DHCP happens synchronously
     HAL_WLAN_notify_dhcp(!result);
+    wiced_network_up_cancel = 0;
     return result;
 }
 
@@ -472,5 +473,6 @@ int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna) {
 
 void wlan_connect_cancel(bool called_from_isr)
 {
+    wiced_network_up_cancel = 1;
     wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
 }
