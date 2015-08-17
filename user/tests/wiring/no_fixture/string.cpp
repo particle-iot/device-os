@@ -27,7 +27,7 @@
 
 test(String_float_conversion) {
     String one(1);
-    assertEqual(String("1.000000"), one);
+    assertEqual(String(1.000000, 0), one);
 }
 
 test(String_float_negative) {

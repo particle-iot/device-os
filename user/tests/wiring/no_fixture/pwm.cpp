@@ -54,7 +54,7 @@ test(PWM_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
 }
 
 test(PWM_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
-    pin_t pin = 21;//pin under test (not a valid user pin)
+    pin_t pin = 51;//pin under test (not a valid user pin)
     // when
     pinMode(pin, OUTPUT);//21 is not a user pin
     analogWrite(pin, 100);
