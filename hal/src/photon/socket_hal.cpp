@@ -281,6 +281,7 @@ struct tcp_server_t : public wiced_tcp_server_t
      * @return
      */
     wiced_result_t disconnect(wiced_tcp_socket_t* socket) {
+        wiced_tcp_disconnect(socket);
         wiced_result_t result = wiced_tcp_server_disconnect_socket(this, socket);
         return result;
     }
