@@ -57,6 +57,9 @@ class PMIC {
 		byte getFault();
 
 		// Input source control register
+		byte readInputSourceRegister(void);
+		bool enableBuck(void);
+		bool disableBuck(void);
 		bool setInputCurrentLimit(uint16_t current);
 		byte getInputCurrentLimit();
 		bool setInputVoltageLimit();
@@ -102,8 +105,8 @@ class PMIC {
 		byte getVbusStat();
 		byte getChargingStat();
 		bool getDPMStat();
-		bool isPowerGood();
-		bool isHot();
+		bool isPowerGood(void);
+		bool isHot(void);
 		bool getVsysStat();
 
 		//Fault Register
@@ -133,7 +136,7 @@ class PMIC {
 
 REG00
 BIT
-7 : 0:DISABLE 1:ENABLE
+7 : 0:Enable Buck regulator 1:disable buck regulator (powered only from a LiPo)
 --- input volatge limit. this is used to determine if USB source is overloaded
 6 : VINDPM[3] 640mV | offset is 3.88V, Range is 3.88 to 5.08
 5 : VINDPM[2] 320mV	| enabling bits 3 to 6 adds the volatges to 3.88 base value

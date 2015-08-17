@@ -54,6 +54,58 @@ byte PMIC::getVersion() {
 	return DATA;
 }
 
+/*
+//-----------------------------------------------------------------------------
+//System Status Register
+//-----------------------------------------------------------------------------
+//NOTE: This is a read-only register
+
+REG08
+BIT
+--- VBUS status
+7: VBUS_STAT[1]	| 00: Unknown (no input, or DPDM detection incomplete), 01: USB host
+6: VBUS_STAT[0]	| 10: Adapter port, 11: OTG
+--- Charging status
+5: CHRG_STAT[1] | 00: Not Charging,  01: Pre-charge (<VBATLOWV)
+4: CHRG_STAT[0] | 10: Fast Charging, 11: Charge termination done
+3: DPM_STAT		0: Not DPM
+				1: VINDPM or IINDPM
+2: PG_STAT		0: Power NO Good :( 
+				1: Power Good :)
+1: THERM_STAT	0: Normal
+				1: In Thermal Regulation (HOT)
+0: VSYS_STAT	0: Not in VSYSMIN regulation (BAT > VSYSMIN)
+				1: In VSYSMIN regulation (BAT < VSYSMIN)
+*/
+
+/*******************************************************************************
+ * Function Name  : 
+ * Description    : 
+ * Input          : 
+ * Return         : 
+ *******************************************************************************/
+bool PMIC::isPowerGood(void) {
+
+	byte DATA = 0;
+	DATA = readRegister(SYSTEM_STATUS_REGISTER);
+	if(DATA & 0b00000100) return 1;
+	else return 0;
+}
+
+/*******************************************************************************
+ * Function Name  : 
+ * Description    : 
+ * Input          : 
+ * Return         : 
+ *******************************************************************************/
+bool PMIC::isHot(void) {
+
+	byte DATA = 0;
+	DATA = readRegister(SYSTEM_STATUS_REGISTER);
+	if(DATA & 0b00000010) return 1;
+	else return 0;
+}
+
 /*******************************************************************************
  * Function Name  : 
  * Description    : 
@@ -88,7 +140,7 @@ byte PMIC::getFault() {
 
 REG00
 BIT
-7 : 0:DISABLE 1:ENABLE
+7 : 0:Enable Buck regulator 1:disable buck regulator (powered only from a LiPo)
 --- input volatge limit. this is used to determine if USB source is overloaded
 6 : VINDPM[3] 640mV | offset is 3.88V, Range is 3.88 to 5.08
 5 : VINDPM[2] 320mV	| enabling bits 3 to 6 adds the volatges to 3.88 base value
@@ -155,6 +207,47 @@ bool PMIC::setInputCurrentLimit(uint16_t current) {
 	}
 
 	return 1; // value was written successfully
+}
+
+/*******************************************************************************
+ * Function Name  : readInputSourceRegister
+ * Description    : 
+ * Input          : NONE
+ * Return         :
+ *******************************************************************************/
+
+byte PMIC::readInputSourceRegister(void) {
+
+
+	return readRegister(INPUT_SOURCE_REGISTER);
+}
+
+/*******************************************************************************
+ * Function Name  : enableBuck
+ * Description    : 
+ * Input          : NONE
+ * Return         :
+ *******************************************************************************/
+
+bool PMIC::enableBuck(void) {
+
+	byte DATA = readRegister(INPUT_SOURCE_REGISTER);
+	writeRegister(INPUT_SOURCE_REGISTER, (DATA & 0b01111111));
+	return 1;
+}
+
+/*******************************************************************************
+ * Function Name  : disableBuck
+ * Description    : 
+ * Input          : NONE
+ * Return         :
+ *******************************************************************************/
+
+bool PMIC::disableBuck(void) {
+
+	byte DATA = readRegister(INPUT_SOURCE_REGISTER);
+	writeRegister(INPUT_SOURCE_REGISTER, (DATA | 0b10000000));
+	return 1;
 }
 
 /*******************************************************************************
