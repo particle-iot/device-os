@@ -53,6 +53,7 @@ TCPClient::TCPClient(sock_handle_t sock) : _sock(sock)
 
 int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
 {
+    stop();
       int rv = 0;
       if(Network.ready())
       {
@@ -70,6 +71,7 @@ int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
 
 int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
 {
+    stop();
         int connected = 0;
         if(Network.from(nif).ready())
         {
