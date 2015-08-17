@@ -33,6 +33,8 @@
 #include "lwip/api.h"
 #include "network_interface.h"
 
+wiced_result_t wiced_last_error( wiced_tcp_socket_t* socket);
+
 /**
  * Socket handles
  * --------------
@@ -118,7 +120,11 @@ struct tcp_socket_t : public wiced_tcp_socket_t {
     void connected() { open = true; }
 
     bool isClosed() {
-        return !open || closed_externally;
+        wiced_result_t last_err = wiced_last_error(this);
+        return !open ||
+            closed_externally ||
+            last_err == WICED_CONNECTION_RESET ||
+            last_err == WICED_CONNECTION_CLOSED;
     }
 
     void notify_disconnected()
@@ -992,4 +998,18 @@ sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_inter
     wiced_ip_address_t multicast_address;
     SET_IPV4_ADDRESS(multicast_address, address->ipv4);
     return as_sock_result(wiced_multicast_leave(wiced_wlan_interface(nif), &multicast_address));
+}
+
+/* WICED extension */
+wiced_result_t wiced_last_error( wiced_tcp_socket_t* socket)
+{
+    wiced_assert("Bad args", (socket != NULL));
+    if ( socket->conn_handler == NULL )
+    {
+        return WICED_NOT_CONNECTED;
+    }
+    else
+    {
+        return LWIP_TO_WICED_ERR( netconn_err(socket->conn_handler) );
+    }
 }
