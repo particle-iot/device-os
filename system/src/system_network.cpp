@@ -232,7 +232,7 @@ const WLanConfig* network_config(network_handle_t network, uint32_t param, void*
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    if (!WLAN_CONNECTING && !network_listening(network, flags, NULL))
+    if (!network_ready(network, flags, reserved) && !WLAN_CONNECTING && !network_listening(network, flags, NULL))
     {
         bool was_sleeping = SPARK_WLAN_SLEEP;
 
