@@ -181,6 +181,7 @@ wlan_result_t wlan_deactivate() {
 wlan_result_t wlan_disconnect_now()
 {
     socket_close_all();
+    wlan_connect_cancel(false);
     wiced_result_t result = wiced_network_down(WICED_STA_INTERFACE);
     HAL_WLAN_notify_disconnected();
     return result;
