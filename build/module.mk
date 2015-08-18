@@ -20,6 +20,8 @@ include $(COMMON_BUILD)/module-defaults.mk
 
 include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 
+TARGET_FILE_NAME ?= $(MODULE)
+
 ifneq (,$(GLOBAL_DEFINES))
 CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
 export GLOBAL_DEFINES

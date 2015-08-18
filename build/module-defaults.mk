@@ -89,7 +89,6 @@ endif
 
 # TARGET_FILE_NAME is the file name (minus extension) of the target produced
 # TARGET_NAME is the final filename, including any prefix
-TARGET_FILE_NAME ?= $(MODULE)
 TARGET_NAME ?= $(TARGET_FILE_PREFIX)$(TARGET_FILE_NAME)
 TARGET_PATH ?= $(BUILD_PATH)/$(call sanitize,$(TARGET_DIR_NAME))
 
