@@ -15,13 +15,13 @@ const char SOFT_AP_MSG[] = "Soft AP Setup";
 START_OF_HTTP_PAGE_DATABASE(soft_ap_http_pages)
     ROOT_HTTP_PAGE_REDIRECT("/hello"),
     { "/hello", "text/plain", WICED_STATIC_URL_CONTENT, .url_content.static_data = {SOFT_AP_MSG, sizeof(SOFT_AP_MSG) }},
-    { "/version", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
-    { "/device-id", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
-    { "/scan-ap", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
-    { "/configure-ap", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
-    { "/connect-ap", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
-    { "/public-key", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
-    { "/set", "application/octet-stream", WICED_DYNAMIC_URL_CONTENT },
+    { "/version", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
+    { "/device-id", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
+    { "/scan-ap", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
+    { "/configure-ap", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
+    { "/connect-ap", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
+    { "/public-key", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
+    { "/set", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
 END_OF_HTTP_PAGE_DATABASE();
 
 

@@ -12,12 +12,12 @@
  * list of conditions and the following disclaimer in the documentation and/or
  * other materials provided with the distribution.
  *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
  * without specific prior written permission.
  *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
  * products and solely for the purpose of enabling the functionalities of such Broadcom products.
  *
  *
@@ -157,6 +157,7 @@ extern "C" {
 #define HTTP_HEADER_LOCATION              "Location: "
 #define HTTP_HEADER_ACCEPT                "Accept: "
 #define HTTP_HEADER_KEEP_ALIVE            "Connection: Keep-Alive"
+#define HTTP_HEADER_XHR					  "Access-Control-Allow-Origin: *"
 #define HTTP_HEADER_CLOSE                 "Connection: close"
 #define NO_CACHE_HEADER                   "Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0\r\n"\
                                           "Pragma: no-cache"
@@ -254,6 +255,7 @@ typedef struct
 {
     wiced_tcp_stream_t tcp_stream;
     wiced_bool_t       chunked_transfer_enabled;
+    wiced_bool_t	cross_host_requests_enabled;
 } wiced_http_response_stream_t;
 
 /**
