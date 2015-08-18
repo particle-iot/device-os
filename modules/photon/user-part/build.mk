@@ -32,7 +32,7 @@ TARGET_FILE_NAME ?= $(notdir $(APPDIR))
 TARGET_DIR_NAME ?= $(APPDIR)/target
 # do not use $(BUILD_PATH) since the TARGET_DIR specifies fully where the output should go
 ifdef TARGET_DIR
-TARGET_PATH = $(TARGET_DIR)
+TARGET_PATH = $(TARGET_DIR)/
 else
 TARGET_PATH = $(TARGET_DIR_NAME)/
 endif
