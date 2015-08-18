@@ -2,6 +2,7 @@
 
 
 #include "Serial3/Serial3.h"
+#include "core_hal.h"
 #include "pmic.h"
 #include "fuelgauge.h"
 
@@ -12,22 +13,45 @@ FuelGauge fuel;
 
 #define now() millis()
 uint32_t lastFlash = now();
+String com = "";
 #define PASS_GREEN() RGB.color(0,255,0)
 #define FAIL_RED() RGB.color(255,0,0)
 #define FAIL_BLUE() RGB.color(0,0,255)
 #define RGB_OFF() RGB.color(0,0,0)
+#define RGB_WHITE RGB.color(255,255,255)
+#define _BKPT __ASM("bkpt 0")
+#ifndef UBLOX_PHONE_NUM
+    #define UBLOX_PHONE_NUM "+16129997293"
+#endif
 
-int8_t ensureUbloxIsReset();
+int8_t testUbloxIsReset();
 void   clearUbloxBuffer();
 int8_t sendATcommand(const char* ATcommand, const char* expected_answer1, system_tick_t timeout);
-int8_t ensureATReturnsOK();
-void   sendSMS(const char * msg);
+int8_t testATOK(system_tick_t timeout);
+void   sendSMS(const char * msg, char* num);
+void   executeCommand(char c);
+int8_t testEchoOff(system_tick_t timeout);
+int8_t testSIMReady(system_tick_t timeout);
+int8_t testSIM3G(system_tick_t timeout);
+int8_t testNetworkRegistration(system_tick_t timeout);
+int8_t testDefinePDP1(system_tick_t timeout);
+int8_t testDefineQoSPDP1(system_tick_t timeout);
+int8_t testActivatePDP1(system_tick_t timeout);
+int8_t testPDP1nonZeroIP(system_tick_t timeout);
+int8_t testReadPDP1params(system_tick_t timeout);
+int8_t testReadPDP1QoSprofile(system_tick_t timeout);
+int8_t testCreateSocketZero(system_tick_t timeout);
+int8_t testDNSLookupServer(system_tick_t timeout);
+int8_t testSocketConnectZero(system_tick_t timeout);
+int8_t testSocketReadZero(system_tick_t timeout);
+
 void intialize_IO(void);
 void runIOTEST(void);
 void allHIGH(void);
 void allLOW(void);
 
 bool testSTATUS=1;
+bool testRunning = 0;
 
 void setup()
 {
@@ -70,12 +94,13 @@ void setup()
 
 void loop()
 {
-    
-
     // Begin the testing if the START button is pressed (active low)
     // The START button is connected between TX pin and GND
     if(1 == digitalRead(TX))
     {
+        testSTATUS = 1;
+        Serial.println("Button press detected, starting test now...");
+        RGB.color(0,0,0);
         allLOW();
 
         runIOTEST();
@@ -92,23 +117,40 @@ void loop()
         delay(1000);
             
         // TEST UBLOX
-        if ( ensureUbloxIsReset() )
-        {
-            if( ensureATReturnsOK() == 1 ) {
-                PASS_GREEN();
-                Serial.println("Ublox test: PASS");
-            }
-            else {
-                testSTATUS = 0;
-                Serial.println("Ublox test: FAIL");
-            }  
-                
-        }
-        else {
-            //FAIL_BLUE();
-            Serial.println("Ublox test: FAIL");
+        testUbloxIsReset();
+        // Test for AK OK
+        Serial.println("Test if AT == OK...");
+        if ( !testATOK(500) ) { 
             testSTATUS = 0;
+            Serial.println("Ublox test: FAIL");
         }
+        else Serial.println("Ublox test: PASS"); 
+        Serial.println("--");
+        delay(1000);
+
+        //Serial.println("Ublox test: PASS");
+        Serial.println("Test if SIM card is inserted...");
+        // This will require a power cycle if user hotswapping the card
+        if ( !testSIMReady(2000) ) { 
+            testSTATUS = 0;
+            Serial.println("SIM card Test: FAIL");
+        } 
+        else Serial.println("SIM card Test: PASS");
+        Serial.println("--");
+        delay(1000);
+
+        Serial.println("Test if SIM card is 3G...");
+        // This will require a power cycle if user hotswapping the card
+        if ( !testSIM3G(2000) ) { 
+            //testSTATUS = 0; 
+        } 
+        Serial.println("--");
+        delay(1000);
+
+        //FAIL_BLUE();
+        //Serial.println("Ublox test: FAIL");
+        //testSTATUS = 0;
+
 
         Serial.println("--");
 
@@ -163,30 +205,36 @@ void loop()
         Serial.println("- - - - - - - - - - - - - - - - - - - - ");
         Serial.println("");
 
-        
-
+        testRunning = 1;
     } 
+
+    else {
+        if(!testRunning) {
+            RGB.color(0,0,0);
+            delay(100);
+            RGB.color(255,255,255);
+            delay(20); 
+        }
+        
+    }
 
 }
 
 
 void intialize_IO(void) {
 
-    // Initialize the buffer chip enable pin
-    pinMode(LVLOE_UC, OUTPUT);
-    digitalWrite(LVLOE_UC, HIGH);
-    delay(500);
-    digitalWrite(LVLOE_UC, LOW);
-    delay(50);
-
-    // Initialize IO relevant to Ublox-uC comm
+#ifndef USE_SWD_JTAG
     pinMode(D7, OUTPUT);
+#endif
+
     pinMode(PWR_UC, OUTPUT);
     pinMode(RESET_UC, OUTPUT);
     digitalWrite(PWR_UC, HIGH);
     digitalWrite(RESET_UC, HIGH);
     pinMode(RTS_UC, OUTPUT);
     digitalWrite(RTS_UC, LOW); // VERY IMPORTANT FOR CORRECT OPERATION!!
+    pinMode(LVLOE_UC, OUTPUT);
+    digitalWrite(LVLOE_UC, LOW); // VERY IMPORTANT FOR CORRECT OPERATION!!
 
     // Initialize the user accessible GPIOs
     pinMode(D0,OUTPUT);
@@ -333,13 +381,97 @@ void allLOW(void) {
     
 }
 
+void executeCommand(char c) {
+    if (c == 'a') {
+        sendATcommand("AT", "OK", 500);
+    }
+    else if (c == 'p') {
+        digitalWrite(PWR_UC, !digitalRead(PWR_UC));
+        Serial.print("Power is: ");
+        Serial.println(digitalRead(PWR_UC));
+    }
+    else if (c == 'r') {
+        digitalWrite(RESET_UC, !digitalRead(RESET_UC));
+        Serial.print("Reset is: ");
+        Serial.println(digitalRead(RESET_UC));
+    }
+    else if (c == 'i') {
+        Serial.println("What's the IMEI number?");
+        sendATcommand("AT+CGSN", "OK", 500);
+    }
+    else if (c == 'o') {
+        // Power to the 3V8 input measures 34uA after this is called
+        Serial.println("Power Off...");
+        sendATcommand("AT+CPWROFF", "OK", 500);
+    }
+    else if (c == 'f') {
+        Serial.println("What's the FUN level?");
+        sendATcommand("AT+CFUN?", "OK", 500);
+    }
+    else if (c == 'd') {
+        // Power to the 3V8 input measures 2.8mA constantly after this is called
+        Serial.println("Minimum Fun Level...");
+        sendATcommand("AT+CFUN=0,0", "OK", 500);
+    }
+    else if (c == 'D') {
+        // Power to the 3V8 input measures 2.8mA for >10s, then 56mA for 4s, repeating
+        // after this is called.
+        Serial.println("Standard Fun Level...");
+        sendATcommand("AT+CFUN=1,0", "OK", 500);
+    }
+    else if (c == 's') {
+        // Power to the 3V8 input measures 2.8mA for >10s, then 56mA for 4s, repeating
+        // after this is called.
+        Serial.println("STM32 Deep Sleep for 10 seconds...");
+        System.sleep(SLEEP_MODE_DEEP, 10);
+        // Does not currently wake up after 10 seconds, press reset or HIGH on WKP.
+    }
+    else if (c == 'm') {
+        // Send a test SMS
+        String temp = UBLOX_PHONE_NUM;
+        char temp2[15] = "";
+        temp.toCharArray(temp2, temp.length());
+        sendSMS("Hello from Particle!", temp2);
+    }
+    else if (c == '0') {
+        // Check if the module is registered on the network
+        Serial.println("Check Network Registration...");
+        sendATcommand("AT+CREG?", "OK", 500);
+    }
+    else if (c == '1') {
+        // Check the CPIN
+        Serial.println("Check the CPIN...");
+        sendATcommand("AT+CPIN?", "OK", 500);
+    }
+    else if (c == '2') {
+        // Check is SIM is 3G
+        Serial.println("Is SIM 3G?");
+        sendATcommand("AT+UUICC?", "OK", 500);
+    }
+    else if (c == '3') {
+        // Check signal strength
+        Serial.println("Checking Signal Strength...");
+        sendATcommand("AT+CSQ", "OK", 500);
+    }
+    else if (c == 'E') {
+        // Turn UBLOX UART Echo ON
+        Serial.println("Turn UBLOX UART Echo ON...");
+        sendATcommand("AT E1", "OK", 500);
+    }
+    else if (c == 'e') {
+        // Turn UBLOX UART Echo OFF
+        Serial.println("Turn UBLOX UART Echo OFF...");
+        sendATcommand("AT E0", "OK", 500);
+    }
+}
+
 void clearUbloxBuffer() {
   while (Serial3.available()) {
     Serial3.read();
   }
 }
 
-int8_t ensureUbloxIsReset() {
+int8_t testUbloxIsReset() {
     clearUbloxBuffer();
 
     Serial3.println("AT");
@@ -404,25 +536,104 @@ int8_t sendATcommand(const char* ATcommand, const char* expected_answer1, system
             }
         }
     } while ((rv == 0) && ((now() - previous) < timeout));
-
-  Serial.println(response);
-  return rv;
-}
-
-int8_t ensureATReturnsOK() {
-    int8_t rv = sendATcommand("AT", "OK", 500);
+    Serial.println(response);
     return rv;
 }
 
-void sendSMS(const char * msg)
+int8_t testATOK(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT", "OK", timeout);
+    return rv;
+}
+
+int8_t testEchoOff(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT E0", "OK", timeout);
+    return rv;
+}
+
+int8_t testSIMReady(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+CPIN?", "READY", timeout);
+    return rv;
+}
+
+int8_t testSIM3G(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+UUICC?", "UUICC: 1", timeout);
+    return rv;
+}
+
+int8_t testNetworkRegistration(system_tick_t timeout) {
+    // CREG: x,0: not registered, the MT is not currently searching a new operator to register to
+    // CREG: x,1: registered, home network
+    // CREG: x,2: not registered, but the MT is currently searching a new operator to register to
+    // CREG: x,3: registration denied
+    int8_t rv = sendATcommand("AT+CREG?", "CREG: 0,1", timeout);
+    return rv;
+}
+
+int8_t testDefinePDP1(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+CGDCONT=1,\"IP\",\"broadband\"", "OK", timeout);
+    return rv;
+}
+
+int8_t testDefineQoSPDP1(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+CGEQREQ=1,3,64,64,,,0,320,\"1E4\",\"1E5\",1,,3", "OK", timeout);
+    return rv;
+}
+
+int8_t testActivatePDP1(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+CGACT=1,1", "OK", timeout);
+    return rv;
+}
+
+int8_t testPDP1nonZeroIP(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+CGPADDR=1", "+CGPADDR: 1,\"0.0.0.0\"", timeout);
+    if (rv == 0) rv = 1; // if IP is non-zero, return true
+    else (rv = 0);
+    return rv;
+}
+
+int8_t testReadPDP1params(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+CGDCONT?", "OK", timeout);
+    return rv;
+}
+
+int8_t testReadPDP1QoSprofile(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+CGEQNEG=1", "OK", timeout);
+    return rv;
+}
+
+int8_t testCreateSocketZero(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+USOCR=6", "+USOCR: 0", timeout);
+    return rv;
+}
+
+int8_t testDNSLookupServer(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+UDNSRN=0,\"device.spark.io\"", "OK", timeout);
+    return rv;
+}
+
+int8_t testSocketConnectZero(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+USOCO=0,\"52.0.31.156\",5683", "+UUSORD: 0,40", timeout);
+    return rv;
+}
+
+int8_t testSocketReadZero(system_tick_t timeout) {
+    int8_t rv = sendATcommand("AT+USORD=0,40", "+USORD: 0,40", timeout);
+    return rv;
+}
+
+void sendSMS(const char * msg, char* num)
 {
-    Serial.print("Sending SMS: ");
+    Serial.print("\e[0;32mSending SMS: ");
     Serial.println(msg);
+    Serial.print("\e[0;35m");
 
     Serial3.print("AT+CMGF=1\r");
     delay(500);
-    Serial3.println("AT+CMGS=\"+15555555555\"");
+    Serial3.print("AT+CMGS=\"+1");
+    Serial3.print(num);
+    Serial3.print("\"\r");
     delay(1500);
-    Serial3.println(msg);
-    Serial3.println((char)26); // End AT command with a ^Z, ASCII code 26
+    Serial3.print(msg);
+    Serial3.print((char)26); // End AT command with a ^Z, ASCII code 26
+    Serial3.print("\r");
 }
