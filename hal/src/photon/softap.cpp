@@ -941,7 +941,7 @@ public:
     }
 
     void start() {
-        wiced_http_server_start(&server, 80, 4, page, WICED_AP_INTERFACE, 1024);
+        wiced_http_server_start(&server, 80, 1, page, WICED_AP_INTERFACE, 1024*4);
     }
 
     void stop() {
