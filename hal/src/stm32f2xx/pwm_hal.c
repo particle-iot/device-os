@@ -48,7 +48,8 @@
 void HAL_PWM_Write(uint16_t pin, uint8_t value)
 {
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-    TIM_OCInitTypeDef  TIM_OCInitStructure;
+    /* Initialize all 8 struct params to 0, fixes randomly inverted RX, TX PWM */
+    TIM_OCInitTypeDef  TIM_OCInitStructure = {0};
 
     uint32_t TIM_CLK = SystemCoreClock;
 
