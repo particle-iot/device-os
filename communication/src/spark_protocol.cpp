@@ -162,7 +162,6 @@ bool SparkProtocol::event_loop(void)
     if (updating)
     {
       system_tick_t millis_since_last_chunk = callbacks.millis() - last_chunk_millis;
-
       if (3000 < millis_since_last_chunk)
       {
           if (updating==2) {    // send missing chunks
@@ -170,6 +169,7 @@ bool SparkProtocol::event_loop(void)
               if (!send_missing_chunks(MISSED_CHUNKS_TO_SEND))
                   return false;
           }
+          /* Do not resend chunks since this can cause duplicates on the server.
           else
           {
             queue[0] = 0;
@@ -181,6 +181,7 @@ bool SparkProtocol::event_loop(void)
               return false;
             }
           }
+          */
           last_chunk_millis = callbacks.millis();
       }
     }
