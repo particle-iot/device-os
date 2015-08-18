@@ -86,7 +86,7 @@ void flashModulesCallback(bool isUpdating)
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-int main(void)
+int application_start(void)
 {
     /*
         At this stage the microcontroller clock setting is already configured, 
