@@ -638,8 +638,8 @@ bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, u
 
     return (module_info != NULL 
             && ((uint32_t)(module_info->module_start_address) == expectedAddress)
-            && ((uint32_t)(module_info->module_end_address)<=0x8100000)            
-            && (module_info->platform_id==PLATFORM_ID));
+            && ((uint32_t)(module_info->module_end_address)<=0x8100000));
+            /*&& (module_info->platform_id==10));*/ /* easiest way to make an electron bootloader on the spot */
 }
 
 bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)

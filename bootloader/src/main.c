@@ -257,7 +257,8 @@ int main(void)
         TimingBUTTON = TIMING_ALL;           
         uint8_t factory_reset = 0;
         while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED && TimingBUTTON)
-        {            
+        {
+            /*
             if(TimingBUTTON < (TIMING_ALL-TIMING_RESET_MODE))
             {
                 // if pressed for 10 sec, enter Factory Reset Mode
@@ -272,7 +273,7 @@ int main(void)
                 SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
                 factory_reset = 1;
             }
-            else if(!USB_DFU_MODE && TimingBUTTON <= (TIMING_ALL-TIMING_DFU_MODE))
+            else*/ if(!USB_DFU_MODE && TimingBUTTON <= (TIMING_ALL-TIMING_DFU_MODE))
             {
                 // if pressed for > 3 sec, enter USB DFU Mode
                 LED_SetRGBColor(RGB_COLOR_YELLOW);
