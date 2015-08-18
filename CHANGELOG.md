@@ -34,6 +34,7 @@
  - SOS on TCPClient.connect() when DNS resolution failed or when connection fails [#490](https://github.com/spark/firmware/issues/490)
  - `TCPClient::stop()` does not work on first connection [#536](https://github.com/spark/firmware/issues/536)
  - `TCPClient::connect()` does not close an existing socket. [#538](https://github.com/spark/firmware/issues/538)
+ - TX/RX PWM randomly inverted [#545](https://github.com/spark/firmware/issues/545)
 
 ## v0.4.3
 
