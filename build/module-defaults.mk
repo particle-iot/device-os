@@ -3,6 +3,8 @@ START_DFU_FLASHER_SERIAL_SPEED=14400
 # Uncommenting this increase the size of the firmware image because of ymodem addition
 START_YMODEM_FLASHER_SERIAL_SPEED=28800
 
+include $(COMMON_BUILD)/version.mk
+
 QUOTE='
 
 ifdef TEACUP

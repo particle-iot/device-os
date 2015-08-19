@@ -19,7 +19,7 @@
 #include "string_convert.h"
 #include "appender.h"
 #include "system_version.h"
-
+#include "spark_macros.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -322,7 +322,7 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
 
 bool system_version_info(Appender* appender)
 {
-    bool result = appender->append("system firmware version: " SYSTEM_VERSION_STRING
+    bool result = appender->append("system firmware version: " stringify(SYSTEM_VERSION_STRING)
 #if  defined(SYSTEM_MINIMAL)
 " minimal"
 #endif
