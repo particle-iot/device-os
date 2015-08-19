@@ -183,7 +183,8 @@ wlan_result_t wlan_connect_finalize()
         result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);
     }
     if (result) {
-        if (antennaSelection==ANT_AUTO && connection_failures & 2) {   // in auto mode, switch to auto after 2 connects
+        connection_failures++;
+        if (antennaSelection==ANT_AUTO && (connection_failures & 2)) {   // in auto mode, switch to auto after 2 connects
                     // time to flip antenna? (start flipping after 2 failures)) and on each 2nd failure
             wwd_selected_antenna = (wwd_selected_antenna==ANT_INTERNAL) ? ANT_EXTERNAL : ANT_INTERNAL;
             wlan_select_antenna_impl(wwd_selected_antenna);
@@ -512,7 +513,7 @@ int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna) {
         if (result==WWD_SUCCESS)
             wwd_selected_antenna = antenna;
     }
-    return result;
+    return -result; // WICED results are all positive non-zero errors.
 }
 
 void wlan_connect_cancel(bool called_from_isr)
