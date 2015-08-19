@@ -137,6 +137,39 @@ int wlan_connect_init()
     return 0;
 }
 
+static uint8_t connection_failures = 0;
+
+int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna);
+
+/**
+ * Maintains the desired antenna state set by the API. AUTO means that we implement our own
+ * auto switching between wifi connection failures.
+ */
+static WLanSelectAntenna_TypeDef antennaSelection = ANT_AUTO;
+
+/**
+ * The last antenna selection sent to the WICED layer.
+ */
+static WLanSelectAntenna_TypeDef wwd_selected_antenna = ANT_AUTO;
+inline int wlan_refresh_antenna()
+{
+    // if "unset" use internal initially.
+    if (wwd_selected_antenna==ANT_AUTO)
+        wwd_selected_antenna = ANT_INTERNAL;
+    return wlan_select_antenna_impl(wwd_selected_antenna);
+}
+
+/**
+ * Public API to set the antenna.
+ */
+int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
+{
+    antennaSelection = antenna;
+    if (antennaSelection!=ANT_AUTO)         // pass through selection. Passing AUTO leaves it in the current setting
+        wwd_selected_antenna = antennaSelection;
+    return wiced_wlan_connectivity_initialized() ? wlan_refresh_antenna() : 0;
+}
+
 /**
  * Do what is needed to finalize the connection.
  * @return
@@ -149,21 +182,22 @@ wlan_result_t wlan_connect_finalize()
         HAL_WLAN_notify_connected();
         result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);
     }
+    if (result) {
+        if (antennaSelection==ANT_AUTO && connection_failures & 2) {   // in auto mode, switch to auto after 2 connects
+                    // time to flip antenna? (start flipping after 2 failures)) and on each 2nd failure
+            wwd_selected_antenna = (wwd_selected_antenna==ANT_INTERNAL) ? ANT_EXTERNAL : ANT_INTERNAL;
+            wlan_select_antenna_impl(wwd_selected_antenna);
+        }
+    }
+    else {
+        connection_failures = 0;
+    }
     // DHCP happens synchronously
     HAL_WLAN_notify_dhcp(!result);
     wiced_network_up_cancel = 0;
     return result;
 }
 
-int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna);
-static WLanSelectAntenna_TypeDef antennaSelection = ANT_AUTO;
-inline int wlan_refresh_antenna() { return wlan_select_antenna_impl(antennaSelection); }
-
-int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
-{
-    antennaSelection = antenna;
-    return wiced_wlan_connectivity_initialized() ? wlan_refresh_antenna() : 0;
-}
 
 
 wlan_result_t wlan_activate()
@@ -459,22 +493,26 @@ void SPARK_WLAN_SmartConfigProcess()
  */
 int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna) {
 
-    wwd_result_t result;
+    wwd_result_t result = WWD_SUCCESS;
+    wiced_antenna_t wwd_antenna;
     switch(antenna) {
-#if PLATFORM_ID == 6 // Photon
-        case ANT_EXTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_1); break;
-        case ANT_INTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_2); break;
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION
+        case ANT_EXTERNAL: wwd_antenna = WICED_ANTENNA_1; break;
+        case ANT_INTERNAL: wwd_antenna = WICED_ANTENNA_2; break;
 #else
-        case ANT_INTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_1); break;
-        case ANT_EXTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_2); break;
+        case ANT_EXTERNAL: wwd_antenna = WICED_ANTENNA_2; break;
+        case ANT_INTERNAL: wwd_antenna = WICED_ANTENNA_1; break;
 #endif
-        case ANT_AUTO: result = wwd_wifi_select_antenna(WICED_ANTENNA_AUTO); break;
+        case ANT_AUTO: wwd_antenna = WICED_ANTENNA_AUTO; break;
         default: result = WWD_DOES_NOT_EXIST; break;
     }
     if (result == WWD_SUCCESS)
-        return 0;
-    else
-        return -1;
+    {
+        result = wwd_wifi_select_antenna(wwd_antenna);
+        if (result==WWD_SUCCESS)
+            wwd_selected_antenna = antenna;
+    }
+    return result;
 }
 
 void wlan_connect_cancel(bool called_from_isr)
