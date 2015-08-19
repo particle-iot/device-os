@@ -156,7 +156,7 @@ wlan_result_t wlan_connect_finalize()
 }
 
 int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna);
-static WLanSelectAntenna_TypeDef antennaSelection = ANT_INTERNAL;
+static WLanSelectAntenna_TypeDef antennaSelection = ANT_AUTO;
 inline int wlan_refresh_antenna() { return wlan_select_antenna_impl(antennaSelection); }
 
 int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
