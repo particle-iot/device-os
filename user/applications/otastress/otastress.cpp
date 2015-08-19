@@ -1,7 +1,7 @@
 
 #include "application.h"
 
-STARTUP(WiFi.selectAntenna(ANT_EXTERNAL));
+//STARTUP(WiFi.selectAntenna(ANT_EXTERNAL));
 
 struct Stats : Printable {
 
