@@ -307,15 +307,12 @@ int Spark_Receive(unsigned char *buf, uint32_t buflen)
     }
 
     static int spark_receive_last_bytes_received = 0;
-    static volatile system_tick_t spark_receive_last_request_millis = 0;
+//    static volatile system_tick_t spark_receive_last_request_millis = 0;
     //no delay between successive socket_receive() calls for cloud
     //not connected or ota flash in process or on last data receipt
-    if ((SPARK_CLOUD_CONNECTED != 1) || (SPARK_FLASH_UPDATE == 1)
-        || (&spark_receive_last_bytes_received > 0)
-        || ((millis() - spark_receive_last_request_millis) > SPARK_RECEIVE_DELAY_MILLIS))
     {
         spark_receive_last_bytes_received = socket_receive(sparkSocket, buf, buflen, 0);
-        spark_receive_last_request_millis = millis();
+        //spark_receive_last_request_millis = millis();
     }
 
     return spark_receive_last_bytes_received;

@@ -7,6 +7,7 @@
 #include "ota_flash_hal.h"
 #include "core_hal.h"
 #include "delay_hal.h"
+#include "system_event.h"
 #include "system_update.h"
 #include "system_cloud.h"
 #include "rgbled.h"
@@ -18,6 +19,7 @@
 #include "string_convert.h"
 #include "appender.h"
 #include "system_version.h"
+
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -136,6 +138,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
         RGB.color(RGB_COLOR_MAGENTA);
         SPARK_FLASH_UPDATE = 1;
         TimingFlashUpdateTimeout = 0;
+        system_notify_event(firmware_update, firmware_update_begin, &file);
         HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
     }
     return result;
@@ -149,15 +152,22 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
     TimingFlashUpdateTimeout = 0;
     //serial_dump("update finished flags=%d store=%d", flags, file.store);
 
+
     if (flags & 1) {    // update successful
         if (file.store==FileTransfer::Store::FIRMWARE)
         {
-            /*hal_update_complete_t result = */HAL_FLASH_End(NULL);
+            hal_update_complete_t result = HAL_FLASH_End(NULL);
+
+            system_notify_event(firmware_update, result!=HAL_UPDATE_ERROR ? firmware_update_complete : firmware_update_failed, &file);
 
             // todo - talk with application and see if now is a good time to reset
             // if update not applied, do we need to reset?
             HAL_Core_System_Reset();
         }
+    }
+    else
+    {
+        system_notify_event(firmware_update, firmware_update_failed, &file);
     }
     RGB.control(false);
     return 0;
@@ -167,6 +177,7 @@ int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chu
 {
     TimingFlashUpdateTimeout = 0;
     int result = -1;
+    system_notify_event(firmware_update, firmware_update_progress, &file);
     if (file.store==FileTransfer::Store::FIRMWARE)
     {
         result = HAL_FLASH_Update(chunk, file.chunk_address, file.chunk_size, NULL);

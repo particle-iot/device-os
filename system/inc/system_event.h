@@ -45,14 +45,19 @@ enum SystemEvents {
     wifi_connecting = 1<<5,
     wifi_connect = 1<<6,
     wifi_disconnect = 1<<7,
+    firmware_update = 1<<8,          // parameter is 0 for begin, 1 for OTA complete, -1 for error.
+
 
     all_events = 0x7FFFFFFF
 };
 
 enum SystemEventsParam {
     wifi_credentials_add = 1,
-    wifi_credentials_clear = 2
-
+    wifi_credentials_clear = 2,
+    firmware_update_failed = -1,
+    firmware_update_begin = 0,
+    firmware_update_complete = 1,
+    firmware_update_progress = 2
 };
 
 
