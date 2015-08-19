@@ -40,7 +40,7 @@ extern "C" {
 #define SYSTEM_VERSION_043
 #define SYSTEM_VERSION_044
 
-#define SYSTEM_VERSION_STRING "0.4.4"
+#define SYSTEM_VERSION_STRING "0.4.4-rc.5"
 
 
 #ifdef	__cplusplus
