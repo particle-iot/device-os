@@ -35,7 +35,7 @@ The debug output variable can take two optional parameters
 ```
 SerialDebugOutput debugOutput;          // default is 9600 and log everything
 SerialDebugOutput debugOutput(57600);   // use a faster baudrate and log everything
-SerialDebugOUtput debugOutput(57600, WARN_LEVEL); // use a faster baudrate and log only warnings or more severe
+SerialDebugOutput debugOutput(57600, WARN_LEVEL); // use a faster baudrate and log only warnings or more severe
 
 ```
 
