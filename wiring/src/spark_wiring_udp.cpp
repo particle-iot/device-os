@@ -187,7 +187,7 @@ size_t UDP::printTo(Print& p) const
     return p.write(_buffer+_offset, size);
 }
 
-int UDP::join_multicast(const IPAddress& ip)
+int UDP::joinMulticast(const IPAddress& ip)
 {
     sockaddr_t addr;
 	addr.sa_family = AF_INET;
@@ -201,7 +201,7 @@ int UDP::join_multicast(const IPAddress& ip)
     return socket_join_multicast(&addr);
 }
 
-int UDP::leave_multicast(const IPAddress& ip)
+int UDP::leaveMulticast(const IPAddress& ip)
 {
     sockaddr_t addr;
 	addr.sa_family = AF_INET;

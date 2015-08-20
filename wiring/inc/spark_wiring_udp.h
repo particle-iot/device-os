@@ -80,14 +80,14 @@ public:
 	 * @param addr IP multicast address to join
 	 * @return Return the result of the join operation
 	 */
-	static int join_multicast(const IPAddress& ip);
+	static int joinMulticast(const IPAddress& ip);
 
 	/*
 	 * Leave a multicast address previously joined with socket_join_multicast.
 	 * @param addr IP multicast address to leave
 	 * @return Return the result of the leave operation
 	 */
-	static int leave_multicast(const IPAddress& ip);
+	static int leaveMulticast(const IPAddress& ip);
 
 	using Print::write;
 };
