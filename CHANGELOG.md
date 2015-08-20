@@ -27,7 +27,7 @@
 ### BUGFIXES
 
  - [Regression] System connects WiFi when Spark.connect() is called after WiFi.on() [#484](https://github.com/spark/firmware/issues/484)
- - Debug build now working.
+ - [Debug build](https://github.com/spark/firmware/blob/develop/docs/debugging.md) now working.
  - PWM issue fixed - 500Hz output on all channels [#492](https://github.com/spark/firmware/issues/492)
  - Tone issue fixed on D2,D3,RX,TX [#483](https://github.com/spark/firmware/issues/483)
  - SOS when registering more than 2 subscription handlers, and allow 4 subscription handlers to be successfully registered. [#531](https://github.com/spark/firmware/issues/531)
