@@ -37,6 +37,7 @@ extern "C" {
 
 inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
+inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
 
 inline void pinSetFast(pin_t _pin)
 {
@@ -48,27 +49,37 @@ inline void pinResetFast(pin_t _pin)
     PIN_MAP[_pin].gpio_peripheral->BRR = PIN_MAP[_pin].gpio_pin;
 }
 
+inline int32_t pinReadFast(pin_t _pin)
+{
+	return ((PIN_MAP[_pin].gpio_peripheral->IDR & PIN_MAP[_pin].gpio_pin) == 0 ? LOW : HIGH);
+}
 #elif defined(STM32F2XX)
 static STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
+inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
 
 inline void pinSetFast(pin_t _pin)
 {
     PIN_MAP[_pin].gpio_peripheral->BSRRL = PIN_MAP[_pin].gpio_pin;
 }
 
-
 inline void pinResetFast(pin_t _pin)
 {
     PIN_MAP[_pin].gpio_peripheral->BSRRH = PIN_MAP[_pin].gpio_pin;
+}
+
+inline int32_t pinReadFast(pin_t _pin)
+{
+	return ((PIN_MAP[_pin].gpio_peripheral->IDR & PIN_MAP[_pin].gpio_pin) == 0 ? LOW : HIGH);
 }
 #elif PLATFORM_ID==3
 
 // make them unresolved symbols so attempted use will result in a linker error
 void pinResetFast(pin_t _pin);
 void pinSetFast(pin_t _pin);
+void pinReadFast(pin_t _pin);
 #else
     #error "*** MCU architecture not supported by this library. ***"
 #endif
