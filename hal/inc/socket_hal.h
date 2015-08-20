@@ -96,17 +96,21 @@ sock_handle_t socket_handle_invalid();
  * Join a multicast address for all UDP sockets. This will allow reception of multicast packets
  * sent to the given address on all UDP sockets which have bound the port to which the multicast
  * packet was sent.
- * @param addr IP multicast address to join
+ * @param address IP multicast address to join
+ * @param nif Network interface to join the multicast address on
+ * @param reserved Reserved for future use
  * @return Return the result of the join operation
  */
-sock_result_t socket_join_multicast(const sockaddr_t *addr);
+sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t nif, void *reserved);
 
 /*
  * Leave a multicast address previously joined with socket_join_multicast.
- * @param addr IP multicast address to leave
+ * @param address IP multicast address to leave
+ * @param nif Network interface to join the multicast address on
+ * @param reserved Reserved for future use
  * @return Return the result of the leave operation
  */
-sock_result_t socket_leave_multicast(const sockaddr_t *addr);
+sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t nif, void *reserved);
 
 //--------- Address Families --------
 

@@ -189,28 +189,16 @@ size_t UDP::printTo(Print& p) const
 
 int UDP::joinMulticast(const IPAddress& ip)
 {
-    sockaddr_t addr;
-	addr.sa_family = AF_INET;
-	addr.sa_data[0] = 0;
-	addr.sa_data[1] = 0;
-	addr.sa_data[2] = ip[0];
-	addr.sa_data[3] = ip[1];
-	addr.sa_data[4] = ip[2];
-	addr.sa_data[5] = ip[3];
-
-    return socket_join_multicast(&addr);
+    if (_sock == socket_handle_invalid())
+        return -1;
+    HAL_IPAddress address = ip.raw();
+    return socket_join_multicast(&address, _nif, 0);
 }
 
 int UDP::leaveMulticast(const IPAddress& ip)
 {
-    sockaddr_t addr;
-	addr.sa_family = AF_INET;
-	addr.sa_data[0] = 0;
-	addr.sa_data[1] = 0;
-	addr.sa_data[2] = ip[0];
-	addr.sa_data[3] = ip[1];
-	addr.sa_data[4] = ip[2];
-	addr.sa_data[5] = ip[3];
-
-    return socket_leave_multicast(&addr);
+    if (_sock == socket_handle_invalid())
+        return -1;
+    HAL_IPAddress address = ip.raw();
+    return socket_leave_multicast(&address, _nif, 0);
 }
