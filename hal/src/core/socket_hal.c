@@ -198,12 +198,12 @@ sock_handle_t socket_handle_invalid()
 
 sock_result_t socket_join_multicast(const sockaddr_t *addr)
 {
-    /* Not supported on Spark */
+    /* Not supported on Core */
     return -1;
 }
 
 sock_result_t socket_leave_multicast(const sockaddr_t *addr)
 {
-    /* Not supported on Spark */
+    /* Not supported on Core */
     return -1;
 }
