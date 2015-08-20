@@ -68,6 +68,16 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t len, 
 
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len);
 
+/**
+ *
+ * @param sd        The socket handle to send
+ * @param buffer
+ * @param len
+ * @param flags
+ * @param addr
+ * @param addr_size
+ * @return Return the number of bytes sent or a negative value on error.
+ */
 sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size);
 
 sock_result_t socket_close(sock_handle_t sd);

@@ -939,9 +939,11 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
             /* Set the end of the data portion */
             wiced_packet_set_data_end(packet, (uint8_t*) data + size);
             result = wiced_udp_send(udp(socket), &ip_addr, port, packet);
+            len = size;
         }
     }
-    return as_sock_result(result);
+    // return negative value on error, or length if successful.
+    return result ? -result : len;
 }
 
 sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
