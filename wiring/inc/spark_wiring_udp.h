@@ -73,6 +73,22 @@ public:
          */
         virtual size_t printTo(Print& p) const;
 
+	/*
+	 * Join a multicast address for all UDP sockets. This will allow reception of multicast packets
+	 * sent to the given address for on UDP sockets which have bound the port to which the multicast
+	 * packet was sent.
+	 * @param addr IP multicast address to join
+	 * @return Return the result of the join operation
+	 */
+	static int join_multicast(const IPAddress& ip);
+
+	/*
+	 * Leave a multicast address previously joined with socket_join_multicast.
+	 * @param addr IP multicast address to leave
+	 * @return Return the result of the leave operation
+	 */
+	static int leave_multicast(const IPAddress& ip);
+
 	using Print::write;
 };
 

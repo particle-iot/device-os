@@ -978,3 +978,17 @@ sock_handle_t socket_handle_invalid()
 {
     return SOCKET_INVALID;
 }
+
+sock_result_t socket_join_multicast(const sockaddr_t *addr)
+{
+    const uint8_t* addr_data = addr->sa_data;
+    wiced_ip_address_t INITIALISER_IPV4_ADDRESS(ip_addr, MAKE_IPV4_ADDRESS(addr_data[2], addr_data[3], addr_data[4], addr_data[5]));
+    return as_sock_result(wiced_multicast_join(WICED_STA_INTERFACE, &ip_addr));
+}
+
+sock_result_t socket_leave_multicast(const sockaddr_t *addr)
+{
+    const uint8_t* addr_data = addr->sa_data;
+    wiced_ip_address_t INITIALISER_IPV4_ADDRESS(ip_addr, MAKE_IPV4_ADDRESS(addr_data[2], addr_data[3], addr_data[4], addr_data[5]));
+    return as_sock_result(wiced_multicast_leave(WICED_STA_INTERFACE, &ip_addr));
+}
