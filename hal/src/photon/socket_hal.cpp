@@ -979,16 +979,16 @@ sock_handle_t socket_handle_invalid()
     return SOCKET_INVALID;
 }
 
-sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t /*nif*/, void * /*reserved*/)
+sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t nif, void * /*reserved*/)
 {
     wiced_ip_address_t multicast_address;
     SET_IPV4_ADDRESS(multicast_address, address->ipv4);
-    return as_sock_result(wiced_multicast_join(WICED_STA_INTERFACE, &multicast_address));
+    return as_sock_result(wiced_multicast_join(wiced_interface_t(nif), &multicast_address));
 }
 
-sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t /*nif*/, void * /*reserved*/)
+sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t nif, void * /*reserved*/)
 {
     wiced_ip_address_t multicast_address;
     SET_IPV4_ADDRESS(multicast_address, address->ipv4);
-    return as_sock_result(wiced_multicast_leave(WICED_STA_INTERFACE, &multicast_address));
+    return as_sock_result(wiced_multicast_leave(wiced_interface_t(nif), &multicast_address));
 }

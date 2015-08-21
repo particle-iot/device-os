@@ -99,7 +99,7 @@ sock_handle_t socket_handle_invalid();
  * @param address IP multicast address to join
  * @param nif Network interface to join the multicast address on
  * @param reserved Reserved for future use
- * @return Return the result of the join operation
+ * @return Return the result of the join operation, 0 for success, other values for errors
  */
 sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t nif, void *reserved);
 
@@ -108,7 +108,7 @@ sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interf
  * @param address IP multicast address to leave
  * @param nif Network interface to join the multicast address on
  * @param reserved Reserved for future use
- * @return Return the result of the leave operation
+ * @return Return the result of the leave operation, 0 for success, other values for errors
  */
 sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t nif, void *reserved);
 

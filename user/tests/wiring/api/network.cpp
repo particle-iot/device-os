@@ -42,3 +42,11 @@ test(api_tcpserver) {
     API_COMPILE(server.stop());
 
 }
+
+test(api_udp_multicast) {
+    UDP udp;
+    udp.begin(10000);
+    int result = 0;
+    API_COMPILE(result = udp.joinMulticast(IPAddress(224, 1, 2, 3)));
+    API_COMPILE(result = udp.leaveMulticast(IPAddress(224, 1, 2, 3)));
+}
