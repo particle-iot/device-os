@@ -4,6 +4,8 @@
 ### FEATURES
 
 ### ENHANCEMENTS
+ - [Recipes and Tips](docs/build.md#Recipes-and-Tips) section in the build documentation.
+- `Particle.function`, `Particle.subscribe` and `attachInterrupt` can take a C++ method and instance pointer. [#534](https://github.com/spark/firmware/pull/534) Thanks to @monkbroc!
 
 ### BUGFIXES
 
@@ -22,7 +24,6 @@
  - `Spark.connected()` et al. is now `Particle.connected()`. The former `Spark` library is still available but is deprecated.
  - `System.freeMemory()` API to determine the amount of available RAM.
  - `STARTUP()` macro to define blocks of code that execute at startup.
- - `Particle.function`, `Particle.subscribe` and `attachInterrupt` can take a C++ method and instance pointer. [#534](https://github.com/spark/firmware/pull/534) Thanks to @monkbroc!
 
 ### ENHANCEMENTS
  - Retrieve the LED brightness via `RGB.brightness()`

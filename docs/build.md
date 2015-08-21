@@ -8,20 +8,19 @@ Running
 ```
 make
 ```
+For the core, or
 
-in the top-level directory creates the bootloader and firmware binaries, which are output to subdirectories of the `build/target/` directory.
+```
+make PLATFORM=photon
+```
+for the Photon, in the top-level directory creates the bootloader and firmware binaries for your device, which are output to subdirectories of the `build/target/` directory.
 
 The top-level make is mainly a convenience to build `bootloader` and `main` projects. It
 supports these targets:
 - `clean`  - force the next build to be a full rebuild, and
 - `all` (default), build the artefact.
 
-By default, the Core is the target platform. To build for the Photon, run
-
-```
-make PLATFORM=photon
-```
-
+The [Recipes and Tips](#Recipes-and-Tips) section describes the most frequently used commands. The remaining sections describe the build system in detail.
 
 ## Build Components
 
@@ -467,3 +466,44 @@ To build the develop branch, follow these guidelines:
 
 1. export the environment variable PARTICLE_DEVELOP=1
 2. after pulling from the develop branch, be sure to build and flash the system firmware
+
+
+## Recipes and Tips
+
+- The variables passed to make can also be provided as environment variables,
+so you avoid having to type them out for each build. The environment variable value can be overridden
+by passing the variable on the command line.
+ - `PARTICLE_DEVELOP` can be set in the environment when building from the `develop` branch. (Caveats apply that this is bleeding edge!)
+ - `PLATFORM` set in the environment if you mainly build for one platform, e.g. the Photon.
+
+### Photon
+
+Here are some common recipes when working with the photon. Note that `PLATFORM=photon` doesn't need to be present if you have `PLATFORM=photon` already defined in your environment.
+
+```
+# Complete rebuild and DFU flash of latest system and application firmware
+firmware/modules$ make clean all program-dfu PLATFORM=photon
+
+# Incremental build and flash of latest system and application firmware
+firmware/modules$ make all program-dfu PLATFORM=photon
+
+# Build system and application for use with debugger (Programmer Shield)
+# APP/APPDIR can also be specified here to build the non-default application
+firmware/modules$ make clean all program-dfu PLATFORM=photon USE_SWD_JTAG=y
+
+# Incremental build and flash user application.cpp only (note the directory)
+firmware/main$ make all program-dfu PLATFORM=photon
+
+# Build an external application
+firmware/modules$ make all PLATFORM=photon APPDIR=~/my_app
+``
+
+For system firmware developers:
+
+```
+# Rebuild and flash the primary unit test application
+firmware/main$ make clean all program-dfu TEST=wiring/no_fixture PLATFORM=photon
+
+# Build the compilation test (don't flash on device)
+firmware/main$ make TEST=wiring/api PLATFORM=photon
+```
