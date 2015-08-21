@@ -496,7 +496,7 @@ firmware/main$ make all program-dfu PLATFORM=photon
 
 # Build an external application
 firmware/modules$ make all PLATFORM=photon APPDIR=~/my_app
-``
+```
 
 For system firmware developers:
 
