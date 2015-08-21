@@ -20,7 +20,7 @@ supports these targets:
 - `clean`  - force the next build to be a full rebuild, and
 - `all` (default), build the artefact.
 
-The [Recipes and Tips](#Recipes-and-Tips) section describes the most frequently used commands. The remaining sections describe the build system in detail.
+The [Recipes and Tips](#recipes-and-tips) section describes the most frequently used commands. The remaining sections describe the build system in detail.
 
 ## Build Components
 

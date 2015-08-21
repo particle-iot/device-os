@@ -4,7 +4,7 @@
 ### FEATURES
 
 ### ENHANCEMENTS
- - [Recipes and Tips](docs/build.md#Recipes-and-Tips) section in the build documentation.
+- [Recipes and Tips](docs/build.md#recipes-and-tips) section in the build documentation.
 - `Particle.function`, `Particle.subscribe` and `attachInterrupt` can take a C++ method and instance pointer. [#534](https://github.com/spark/firmware/pull/534) Thanks to @monkbroc!
 
 ### BUGFIXES
