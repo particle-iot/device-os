@@ -134,6 +134,7 @@ int wlan_has_credentials()
  */
 int wlan_connect_init()
 {
+    wiced_network_up_cancel = 0;
     return 0;
 }
 

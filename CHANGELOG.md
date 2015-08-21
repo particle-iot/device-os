@@ -1,4 +1,15 @@
 
+## v0.4.5
+
+### FEATURES
+
+### ENHANCEMENTS
+
+### BUGFIXES
+
+- Listening mode re-enters listening mode after credentials are given. [#558](https://github.com/spark/firmware/pull/558)
+
+
 ## v0.4.4
 
 ### FEATURES
