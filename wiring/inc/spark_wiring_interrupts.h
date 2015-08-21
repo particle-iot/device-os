@@ -40,6 +40,11 @@ typedef void (*raw_interrupt_handler_t)(void);
  */
 bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t handler, InterruptMode mode);
 bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode);
+template <typename T>
+bool attachInterrupt(uint16_t pin, void (T::*handler)(), T *instance, InterruptMode mode) {
+    using namespace std::placeholders;
+    return attachInterrupt(pin, std::bind(handler, instance), mode);
+}
 void detachInterrupt(uint16_t pin);
 void interrupts(void);
 void noInterrupts(void);

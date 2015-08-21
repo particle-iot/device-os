@@ -230,6 +230,11 @@ const WLanConfig* network_config(network_handle_t network, uint32_t param, void*
     return &ip_config;
 }
 
+void network_config_clear()
+{
+    memset(&ip_config, 0, sizeof(ip_config));
+}
+
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
     if (!network_ready(network, flags, reserved) && !WLAN_CONNECTING && !network_listening(network, flags, NULL))
@@ -280,6 +285,7 @@ void network_disconnect(network_handle_t network, uint32_t param, void* reserved
         WLAN_CONNECTING = 0;
         cloud_disconnect();
         wlan_disconnect_now();
+        network_config_clear();
     }
 }
 
@@ -297,6 +303,7 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
 {
     if (!SPARK_WLAN_STARTED)
     {
+        network_config_clear();
         wlan_activate();
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
@@ -315,6 +322,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 {
     if (SPARK_WLAN_STARTED)
     {
+        network_config_clear();
         cloud_disconnect();
         wlan_deactivate();
 

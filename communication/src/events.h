@@ -43,11 +43,13 @@ namespace SubscriptionScope {
 }
 
 typedef void (*EventHandler)(const char *event_name, const char *data);
+typedef void (*EventHandlerWithData)(void *handler_data, const char *event_name, const char *data);
 
 struct FilteringEventHandler
 {
   char filter[64];
   EventHandler handler;
+  void *handler_data;
   SubscriptionScope::Enum scope;
   char device_id[13];
 };

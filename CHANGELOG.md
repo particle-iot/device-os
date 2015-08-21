@@ -1,4 +1,15 @@
 
+## v0.4.5
+
+### FEATURES
+
+### ENHANCEMENTS
+
+### BUGFIXES
+
+- Listening mode re-enters listening mode after credentials are given. [#558](https://github.com/spark/firmware/pull/558)
+- String function dtoa() has problems with larger numbers. [#563](https://github.com/spark/firmware/pull/563)
+
 ## v0.4.4
 
 ### FEATURES
@@ -11,6 +22,7 @@
  - `Spark.connected()` et al. is now `Particle.connected()`. The former `Spark` library is still available but is deprecated.
  - `System.freeMemory()` API to determine the amount of available RAM.
  - `STARTUP()` macro to define blocks of code that execute at startup.
+ - `Particle.function`, `Particle.subscribe` and `attachInterrupt` can take a C++ method and instance pointer. [#534](https://github.com/spark/firmware/pull/534) Thanks to @monkbroc!
 
 ### ENHANCEMENTS
  - Retrieve the LED brightness via `RGB.brightness()`
