@@ -55,5 +55,9 @@ test(String_float_negative_no_decimals_round_down) {
     assertTrue(!strcmp("-123", s));
 }
 
+test(String_bug_563_integer_overflow) {
+    String s(-5000.0);
+    assertTrue(!strcmp("-5000.000000", s));
+}
 
 

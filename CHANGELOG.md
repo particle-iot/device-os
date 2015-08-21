@@ -8,7 +8,7 @@
 ### BUGFIXES
 
 - Listening mode re-enters listening mode after credentials are given. [#558](https://github.com/spark/firmware/pull/558)
-
+- String function dtoa() has problems with larger numbers. [#563](https://github.com/spark/firmware/pull/563)
 
 ## v0.4.4
 

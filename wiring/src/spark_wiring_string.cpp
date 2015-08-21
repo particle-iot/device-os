@@ -46,12 +46,12 @@ void dtoa (double val, unsigned char prec, char *sout) {
     for (uint8_t i=0; i<prec; i++)
         scale *= 10;
     val *= scale;   // capture all the significant digits
-    long fixed = long(val);
+    uint64_t fixed = uint64_t(val);
     if ((val-fixed)>=0.5)    // round last digit
         fixed++;
 
-    long first = fixed / scale;
-    long second = fixed % scale;
+    unsigned long first = (unsigned long)(fixed / scale);
+    unsigned long second = (unsigned long)(fixed % scale);
 
     ultoa(first, sout, 10, 1);
     if (prec) {
