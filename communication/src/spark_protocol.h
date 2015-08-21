@@ -120,9 +120,10 @@ class SparkProtocol
     bool send_event(const char *event_name, const char *data,
                     int ttl, EventType::Enum event_type);
     bool add_event_handler(const char *event_name, EventHandler handler,
-                        SubscriptionScope::Enum scope, const char* device_id);
+                        void *handler_data, SubscriptionScope::Enum scope,
+                        const char* device_id);
     bool event_handler_exists(const char *event_name, EventHandler handler,
-        SubscriptionScope::Enum scope, const char* id);
+        void *handler_data, SubscriptionScope::Enum scope, const char* id);
     void remove_event_handlers(const char* event_name);
     void send_subscriptions();
     bool send_subscription(const char *event_name, const char *device_id);
