@@ -66,6 +66,7 @@ IPAddress::operator bool()
 void IPAddress::set_ipv4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3)
 {
     address.ipv4 = b0<<24 | b1 << 16 | b2 << 8 | b3;
+    setVersion(4);
 }
 
 IPAddress& IPAddress::operator=(const uint8_t* address)
@@ -77,6 +78,7 @@ IPAddress& IPAddress::operator=(const uint8_t* address)
 IPAddress& IPAddress::operator=(uint32_t ipv4)
 {
     address.ipv4 = ipv4;
+    setVersion(4);
     return *this;
 }
 
