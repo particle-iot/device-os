@@ -5,7 +5,7 @@
 test(api_i2c)
 {
     int buffer;
-    API_COMPILE(buffer==I2C_BUFFER_LENGTH);
+    API_COMPILE((void)(buffer==I2C_BUFFER_LENGTH));
 }
 
 test(api_wiring_pinMode) {
@@ -81,4 +81,5 @@ test(api_rgb) {
     API_COMPILE(flag=RGB.brightness());
     API_COMPILE(RGB.onChange(externalLEDHandler));
     API_COMPILE(RGB.onChange(&ExternalLed::handler, &externalLed));
+    (void)flag; (void)value; // unused
 }
