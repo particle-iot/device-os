@@ -248,7 +248,6 @@ size_t UDP::printTo(Print& p) const
     // can't use available() since this is a `const` method, and available is part of the Stream interface, and is non-const.
     int size = _total - _offset;
     return p.write(_buffer+_offset, size);
-<<<<<<< HEAD
 }
 
 int UDP::joinMulticast(const IPAddress& ip)
@@ -266,6 +265,3 @@ int UDP::leaveMulticast(const IPAddress& ip)
     HAL_IPAddress address = ip.raw();
     return socket_leave_multicast(&address, _nif, 0);
 }
-=======
-}
->>>>>>> spark/develop
