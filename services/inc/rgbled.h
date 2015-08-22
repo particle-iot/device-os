@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+#define DEFAULT_LED_RGB_BRIGHTNESS (96)
 
 typedef enum
 {

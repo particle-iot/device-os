@@ -153,22 +153,6 @@ extern "C" void HAL_SysTick_Handler(void)
 #endif
 }
 
-/*******************************************************************************
- * Function Name  : HAL_RTCAlarm_Handler
- * Description    : This function handles additional application requirements.
- * Input          : None.
- * Output         : None.
- * Return         : None.
- *******************************************************************************/
-extern "C" void HAL_RTCAlarm_Handler(void)
-{
-    if(system_mode() == AUTOMATIC)
-    {
-  /* Wake up from System.sleep mode(SLEEP_MODE_WLAN) */
-  SPARK_WLAN_SLEEP = 0;
-}
-}
-
 void manage_safe_mode()
 {
     uint16_t flag = (HAL_Bootloader_Get_Flag(BOOTLOADER_FLAG_STARTUP_MODE));

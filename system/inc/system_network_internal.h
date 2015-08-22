@@ -27,6 +27,30 @@ extern volatile uint8_t SPARK_LED_FADE;
 void manage_smart_config();
 void manage_ip_config();
 
+extern uint32_t wlan_watchdog_duration;
+extern uint32_t wlan_watchdog_base;
+
+#if defined(DEBUG_WAN_WD)
+#define WAN_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
+#else
+#define WAN_WD_DEBUG(x,...)
+#endif
+
+
+inline void ARM_WLAN_WD(uint32_t x) {
+    wlan_watchdog_base = HAL_Timer_Get_Milli_Seconds();
+    wlan_watchdog_duration = x;
+    WAN_WD_DEBUG("WD Set %d",(x));
+}
+inline bool WLAN_WD_TO() {
+    return wlan_watchdog_duration && ((HAL_Timer_Get_Milli_Seconds()-wlan_watchdog_base)>wlan_watchdog_duration);
+}
+
+inline void CLR_WLAN_WD() {
+    wlan_watchdog_duration = 0;
+    WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog_duration);
+}
+
 
 
 #endif	/* SYSTEM_NETWORK_INTERNAL_H */

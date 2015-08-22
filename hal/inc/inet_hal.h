@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "static_assert.h"
 
 #if PLATFORM_ID>=4 && PLATFORM_ID<=8
@@ -56,6 +57,15 @@ typedef struct __attribute__((__packed__)) _HAL_IPAddress_t {
 } HAL_IPAddress;
 STATIC_ASSERT(HAL_IPAddress_size, sizeof(HAL_IPAddress)==4);
 #endif
+
+inline bool is_ipv4(const HAL_IPAddress* address)
+{
+#if HAL_IPv6
+	return address->v==4;
+#else
+	return true;
+#endif
+}
 
 typedef struct __attribute__((__packed__)) _NetworkConfig_t {
     HAL_IPAddress aucIP;             // byte 0 is MSB, byte 3 is LSB

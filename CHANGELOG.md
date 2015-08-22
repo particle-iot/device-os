@@ -2,13 +2,21 @@
 ## v0.4.5
 
 ### FEATURES
+ - `UDP.sendPacket`/`UDP.receivePacket` to send/receive a packet directly to an application-supplied buffer. [#452](https://github.com/spark/firmware/pull/452)
+ - Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)
 
 ### ENHANCEMENTS
+- [Recipes and Tips](docs/build.md#recipes-and-tips) section in the build documentation.
+- `Particle.function`, `Particle.subscribe` and `attachInterrupt` can take a C++ method and instance pointer. [#534](https://github.com/spark/firmware/pull/534) Thanks to @monkbroc!
+- `UDP.setBuffer` to set the buffer a UDP instance uses for `read`/`write`. [#224](https://github.com/spark/firmware/pull/224) and [#452](https://github.com/spark/firmware/pull/452)
 
 ### BUGFIXES
 
 - Listening mode re-enters listening mode after credentials are given. [#558](https://github.com/spark/firmware/pull/558)
 - String function dtoa() has problems with larger numbers. [#563](https://github.com/spark/firmware/pull/563)
+- System doesn't set color of RGB LED when `RGB.control(true)` is called. [#362](https://github.com/spark/firmware/pull/362), [#472](https://github.com/spark/firmware/pull/472) and [#544](https://github.com/spark/firmware/pull/544)
+- WiFi.SSID() may not returns previous network when switching. [#560](https://github.com/spark/firmware/pull/560)
+- Photon: System.sleep(5) not turning Wi-Fi back on after 5 seconds. [#480](https://github.com/spark/firmware/pull/480)
 
 ## v0.4.4
 
@@ -22,7 +30,6 @@
  - `Spark.connected()` et al. is now `Particle.connected()`. The former `Spark` library is still available but is deprecated.
  - `System.freeMemory()` API to determine the amount of available RAM.
  - `STARTUP()` macro to define blocks of code that execute at startup.
- - `Particle.function`, `Particle.subscribe` and `attachInterrupt` can take a C++ method and instance pointer. [#534](https://github.com/spark/firmware/pull/534) Thanks to @monkbroc!
 
 ### ENHANCEMENTS
  - Retrieve the LED brightness via `RGB.brightness()`

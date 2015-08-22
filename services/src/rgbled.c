@@ -5,7 +5,7 @@
 
 
 volatile uint8_t LED_RGB_OVERRIDE = 0;
-volatile uint8_t LED_RGB_BRIGHTNESS = 96;
+volatile uint8_t LED_RGB_BRIGHTNESS = DEFAULT_LED_RGB_BRIGHTNESS;
 volatile uint32_t lastSignalColor = 0;
 volatile uint32_t lastRGBColor = 0;
 

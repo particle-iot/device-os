@@ -1,5 +1,5 @@
 #include "spark_wiring_ticks.h"
-#include "wifi_credentials_reader.h"
+#include "system_setup.h"
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_cloud.h"
@@ -12,7 +12,8 @@
 
 WLanConfig ip_config;
 
-uint32_t wlan_watchdog;
+uint32_t wlan_watchdog_base;
+uint32_t wlan_watchdog_duration;
 
 volatile uint8_t WLAN_DISCONNECT;
 volatile uint8_t WLAN_DELETE_PROFILES;
@@ -75,7 +76,9 @@ void Start_Smart_Config(void)
 
     cloud_disconnect();
     SPARK_LED_FADE = 0;
+    bool signaling = LED_RGB_IsOverRidden();
     LED_SetRGBColor(RGB_COLOR_BLUE);
+    LED_Signaling_Stop();
     LED_On(LED_RGB);
 
     /* If WiFi module is connected, disconnect it */
@@ -86,7 +89,9 @@ void Start_Smart_Config(void)
 
     wlan_smart_config_init();
 
-    WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
+    WiFiSetupConsoleConfig config;
+    config.connect_callback = wifi_add_profile_callback;
+    WiFiSetupConsole console(config);
 
     const uint32_t start = millis();
     uint32_t loop = start;
@@ -127,11 +132,13 @@ void Start_Smart_Config(void)
                 loop = now;
                 system_notify_event(wifi_listen_update, now-start);
             }
-            wifi_creds_reader.read();
+            console.loop();
         }
     }
 
     LED_On(LED_RGB);
+    if (signaling)
+        LED_Signaling_Start();
 
     WLAN_LISTEN_ON_FAILED_CONNECT = wlan_smart_config_finalize();
 
@@ -184,7 +191,9 @@ void HAL_WLAN_notify_disconnected()
     {
       //Do not enter if smart config related disconnection happens
       //Blink green if connection fails because of wrong password
-      ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+        if (!WLAN_DISCONNECT) {
+            ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+        }
       SPARK_LED_FADE = 0;
       LED_SetRGBColor(RGB_COLOR_GREEN);
       LED_On(LED_RGB);
@@ -324,6 +333,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
     {
         network_config_clear();
         cloud_disconnect();
+        network_disconnect(network, param, reserved);
         wlan_deactivate();
 
         SPARK_WLAN_SLEEP = 1;
