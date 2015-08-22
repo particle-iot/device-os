@@ -522,7 +522,49 @@ void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmas
 {
 }
 
+typedef struct CC3000ScanResult {
+    uint32_t networks;
+    uint32_t status;
+    uint8_t rssi;
+    uint8_t security_ssidlen;
+    uint16_t time;
+    uint8_t ssid[32];
+    uint8_t bssid[6];
+} CC3000ScanResult;
+
+
 int wlan_scan(wlan_scan_result_t callback, void* cookie)
 {
-    return -1;
+   unsigned long intervalTime[16] = { 2000, 2000, 2000, 2000,  2000,
+        2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000 };
+
+    wlan_ioctl_set_scan_params(4000, 20, 100, 5, 0x7FF, -120, 0, 300, intervalTime);
+
+    CC3000ScanResult result;
+    memset(&result, 0, sizeof(result));
+
+    int count = 0;
+    int err = wlan_ioctl_get_scan_results(0, (uint8_t*)&result);
+    while (!err) {
+        int sum = 0;
+        for (int i=0; i<6; i++) {
+            sum += result.bssid[i];
+        }
+        if (sum==0) // bssid not set
+            break;
+
+        WiFiAccessPoint out;
+        out.security = result.security_ssidlen & 3;
+        out.ssid_size = result.security_ssidlen >> 2;
+        out.rssi = result.rssi >> 1;
+        memcpy(out.ssid, result.ssid, out.ssid_size);
+        out.ssid[out.ssid_size] = 0;
+        memcpy(out.bssid, result.bssid, sizeof(out.bssid));
+        callback(&out, cookie);
+        count++;
+        memset(result.bssid, 0, sizeof(result.bssid));
+        err = wlan_ioctl_get_scan_results(0, (uint8_t*)&result);
+    }
+    return err < 0 ? err : count;
 }
+
