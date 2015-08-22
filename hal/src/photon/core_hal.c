@@ -38,6 +38,8 @@ extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
 const unsigned HardFaultIndex = 3;
+const unsigned MemManageIndex = 4;
+const unsigned BusFaultIndex = 5;
 const unsigned UsageFaultIndex = 6;
 const unsigned SysTickIndex = 15;
 const unsigned USART1Index = 53;
@@ -59,6 +61,8 @@ void HAL_Core_Setup_override_interrupts(void) {
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[HardFaultIndex] = (uint32_t)HardFault_Handler;
+    isrs[MemManageIndex] = (uint32_t)MemManage_Handler;
+    isrs[BusFaultIndex] = (uint32_t)BusFault_Handler;
     isrs[UsageFaultIndex] = (uint32_t)UsageFault_Handler;
     isrs[SysTickIndex] = (uint32_t)SysTickOverride;
     isrs[USART1Index] = (uint32_t)HAL_USART1_Handler;
@@ -67,6 +71,7 @@ void HAL_Core_Setup_override_interrupts(void) {
     isrs[TIM7Index] = (uint32_t)TIM7_override;  // WICED uses this for a JTAG watchdog handler
     SCB->VTOR = (unsigned long)isrs;
 }
+
 
 /* Extern function prototypes ------------------------------------------------*/
 void HAL_Core_Init(void)
