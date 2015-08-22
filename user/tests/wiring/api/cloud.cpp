@@ -124,18 +124,18 @@ test(api_spark_subscribe) {
 
 test(api_spark_sleep) {
 
-    API_COMPILE(Particle.sleep(60));
+    API_COMPILE(System.sleep(60));
 
-    API_COMPILE(Particle.sleep(SLEEP_MODE_WLAN, 60));
+    API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60));
 
-    API_COMPILE(Particle.sleep(SLEEP_MODE_DEEP, 60));
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60));
 
-    API_COMPILE(Particle.sleep(A0, CHANGE));
-    API_COMPILE(Particle.sleep(A0, RISING));
-    API_COMPILE(Particle.sleep(A0, FALLING));
-    API_COMPILE(Particle.sleep(A0, FALLING, 20));
+    API_COMPILE(System.sleep(A0, CHANGE));
+    API_COMPILE(System.sleep(A0, RISING));
+    API_COMPILE(System.sleep(A0, FALLING));
+    API_COMPILE(System.sleep(A0, FALLING, 20));
 
-    API_COMPILE(Particle.sleep(SLEEP_MODE_DEEP));
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP));
 
 }
 
