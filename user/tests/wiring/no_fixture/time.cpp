@@ -60,3 +60,19 @@ test(TIME_ChangingTimeZoneWorksImmediately) {
     assertMoreOrEqual(4, (newHour-currentHour)%12);
 
 }
+
+test(TIME_Format) {
+
+    Time.zone(-5);
+    time_t t = 1024*1024*1024;
+
+    assertEqual(Time.timeStr(t).c_str(),(const char*)"Sat Jan 10 08:37:04 2004");
+    assertEqual(Time.timeStr(t, TIME_FORMAT_DEFAULT).c_str(), (const char*)("Sat Jan 10 08:37:04 2004"));
+    assertEqual(Time.timeStr(t, TIME_FORMAT_ISO8601_FULL).c_str(), (const char*)"2004-01-10T08:37:04-05:00");
+    Time.setFormat(TIME_FORMAT_ISO8601_FULL);
+    assertEqual(Time.timeStr(t).c_str(), (const char*)("2004-01-10T08:37:04-05:00"));
+    Time.zone(0);
+    assertEqual(Time.timeStr(t).c_str(), (const char*)("2004-01-10T13:37:04Z"));
+
+
+}
