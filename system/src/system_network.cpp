@@ -86,7 +86,9 @@ void Start_Smart_Config(void)
 
     wlan_smart_config_init();
 
-    SystemSetupConsole wifi_creds_reader(wifi_add_profile_callback);
+    WiFiSetupConsoleConfig config;
+    config.connect_callback = wifi_add_profile_callback;
+    WiFiSetupConsole console(config);
 
     const uint32_t start = millis();
     uint32_t loop = start;
@@ -127,7 +129,7 @@ void Start_Smart_Config(void)
                 loop = now;
                 system_notify_event(wifi_listen_update, now-start);
             }
-            wifi_creds_reader.read();
+            console.loop();
         }
     }
 

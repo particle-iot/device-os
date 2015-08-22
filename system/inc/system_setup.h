@@ -24,8 +24,9 @@
 */
 #include <string.h>
 #include "spark_wiring_usbserial.h"
+#include "spark_wiring_platform.h"
 
-#if PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
+#if Wiring_WiFi && PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
 #define SETUP_OVER_SERIAL1 1
 #endif
 
@@ -39,26 +40,58 @@ typedef void (*ConnectCallback)(const char *ssid,
 
 class WiFiTester;
 
-class SystemSetupConsole
+struct SystemSetupConsoleConfig
 {
-  public:
-    SystemSetupConsole(ConnectCallback connect_callback);
-    void read(void);
+
+};
+
+
+#if Wiring_WiFi
+struct WiFiSetupConsoleConfig : SystemSetupConsoleConfig
+{
+    ConnectCallback connect_callback;
+};
+#endif
+
+template<typename Config> class SystemSetupConsole
+{
+public:
+    SystemSetupConsole(Config& config);
     ~SystemSetupConsole();
-  protected:
-      void handle(char c);
-  private:
+    virtual void loop(void);
+protected:
+    virtual void exit()=0;
+    virtual void handle(char c);
+    Config& config;
+    void print(const char *s);
+    void read_line(char *dst, int max_len);
+
+private:
     USBSerial serial;
+
+};
+
+#if Wiring_WiFi
+class WiFiSetupConsole : public SystemSetupConsole<WiFiSetupConsoleConfig>
+{
+    using super = SystemSetupConsole<WiFiSetupConsoleConfig>;
+
+public:
+    WiFiSetupConsole(WiFiSetupConsoleConfig& config);
+    ~WiFiSetupConsole();
+    virtual void loop() override;
+
+protected:
+    virtual void handle(char c) override;
+    virtual void exit() override;
+private:
 #if SETUP_OVER_SERIAL1
     bool serial1Enabled;
     uint8_t magicPos;                   // how far long the magic key we are
     WiFiTester* tester;
 #endif
-    ConnectCallback connect_callback;
     char ssid[33];
     char password[65];
     char security_type_string[2];
-
-    void print(const char *s);
-    void read_line(char *dst, int max_len);
 };
+#endif
