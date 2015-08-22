@@ -12,7 +12,8 @@
 
 WLanConfig ip_config;
 
-uint32_t wlan_watchdog;
+uint32_t wlan_watchdog_base;
+uint32_t wlan_watchdog_duration;
 
 volatile uint8_t WLAN_DISCONNECT;
 volatile uint8_t WLAN_DELETE_PROFILES;
@@ -190,7 +191,9 @@ void HAL_WLAN_notify_disconnected()
     {
       //Do not enter if smart config related disconnection happens
       //Blink green if connection fails because of wrong password
-      ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+        if (!WLAN_DISCONNECT) {
+            ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+        }
       SPARK_LED_FADE = 0;
       LED_SetRGBColor(RGB_COLOR_GREEN);
       LED_On(LED_RGB);
@@ -330,6 +333,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
     {
         network_config_clear();
         cloud_disconnect();
+        network_disconnect(network, param, reserved);
         wlan_deactivate();
 
         SPARK_WLAN_SLEEP = 1;

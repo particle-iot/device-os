@@ -31,6 +31,7 @@
 #include "debug.h"
 #include "inet_hal.h"
 #include "socket_hal.h"
+#include "timer_hal.h"
 
 
 #ifdef	__cplusplus
@@ -39,16 +40,6 @@ extern "C" {
 
 //#define DEBUG_WIFI    // Define to show all the flags in debug output
 //#define DEBUG_WAN_WD  // Define to show all SW WD activity in debug output
-
-#if defined(DEBUG_WAN_WD)
-#define WAN_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
-#else
-#define WAN_WD_DEBUG(x,...)
-#endif
-extern uint32_t wlan_watchdog;
-#define ARM_WLAN_WD(x) do { wlan_watchdog = HAL_Timer_Get_Milli_Seconds()+(x); WAN_WD_DEBUG("WD Set "#x" %d",(x));}while(0)
-#define WLAN_WD_TO() (wlan_watchdog && (HAL_Timer_Get_Milli_Seconds() >= wlan_watchdog))
-#define CLR_WLAN_WD() do { wlan_watchdog = 0; WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog);;}while(0)
 
 #if defined(DEBUG_WIFI)
 extern uint32_t lastEvent;

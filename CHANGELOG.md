@@ -16,6 +16,7 @@
 - String function dtoa() has problems with larger numbers. [#563](https://github.com/spark/firmware/pull/563)
 - System doesn't set color of RGB LED when `RGB.control(true)` is called. [#362](https://github.com/spark/firmware/pull/362), [#472](https://github.com/spark/firmware/pull/472) and [#544](https://github.com/spark/firmware/pull/544)
 - WiFi.SSID() may not returns previous network when switching. [#560](https://github.com/spark/firmware/pull/560)
+- Photon: System.sleep(5) not turning Wi-Fi back on after 5 seconds. [#480](https://github.com/spark/firmware/pull/480)
 
 ## v0.4.4
 
