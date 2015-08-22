@@ -554,9 +554,10 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie)
             break;
 
         WiFiAccessPoint out;
+        memset(&out, 0, sizeof(out));
         out.security = result.security_ssidlen & 3;
         out.ssid_size = result.security_ssidlen >> 2;
-        out.rssi = result.rssi >> 1;
+        out.rssi = -(result.rssi >> 1);
         memcpy(out.ssid, result.ssid, out.ssid_size);
         out.ssid[out.ssid_size] = 0;
         memcpy(out.bssid, result.bssid, sizeof(out.bssid));
