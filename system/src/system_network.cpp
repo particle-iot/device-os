@@ -1,5 +1,5 @@
 #include "spark_wiring_ticks.h"
-#include "wifi_credentials_reader.h"
+#include "system_setup.h"
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_cloud.h"
@@ -86,7 +86,7 @@ void Start_Smart_Config(void)
 
     wlan_smart_config_init();
 
-    WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
+    SystemSetupConsole wifi_creds_reader(wifi_add_profile_callback);
 
     const uint32_t start = millis();
     uint32_t loop = start;

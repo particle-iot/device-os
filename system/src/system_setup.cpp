@@ -23,7 +23,7 @@
  ******************************************************************************
  */
 
-#include "wifi_credentials_reader.h"
+#include "system_setup.h"
 #include "delay_hal.h"
 #include "wlan_hal.h"
 #include "system_cloud.h"
@@ -56,7 +56,7 @@ public:
     }
 };
 
-WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
+SystemSetupConsole::SystemSetupConsole(ConnectCallback connect_callback)
 {
 #if SETUP_OVER_SERIAL1
     serial1Enabled = false;
@@ -70,14 +70,14 @@ WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 
 }
 
-WiFiCredentialsReader::~WiFiCredentialsReader()
+SystemSetupConsole::~SystemSetupConsole()
 {
 #if SETUP_OVER_SERIAL1
     delete this->tester;
 #endif
 }
 
-void WiFiCredentialsReader::read(void)
+void SystemSetupConsole::read(void)
 {
 #if SETUP_OVER_SERIAL1
     int c = -1;
@@ -115,7 +115,7 @@ void WiFiCredentialsReader::read(void)
     }
 }
 
-void WiFiCredentialsReader::handle(char c)
+void SystemSetupConsole::handle(char c)
 {
     if ('w' == c)
     {
@@ -223,7 +223,7 @@ void WiFiCredentialsReader::handle(char c)
 
 /* private methods */
 
-void WiFiCredentialsReader::print(const char *s)
+void SystemSetupConsole::print(const char *s)
 {
     for (size_t i = 0; i < strlen(s); ++i)
     {
@@ -232,7 +232,7 @@ void WiFiCredentialsReader::print(const char *s)
     }
 }
 
-void WiFiCredentialsReader::read_line(char *dst, int max_len)
+void SystemSetupConsole::read_line(char *dst, int max_len)
 {
     serialReadLine(&serial, dst, max_len, 0); //no timeout
     print("\r\n");

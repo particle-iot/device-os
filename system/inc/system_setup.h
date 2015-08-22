@@ -39,12 +39,12 @@ typedef void (*ConnectCallback)(const char *ssid,
 
 class WiFiTester;
 
-class WiFiCredentialsReader
+class SystemSetupConsole
 {
   public:
-    WiFiCredentialsReader(ConnectCallback connect_callback);
+    SystemSetupConsole(ConnectCallback connect_callback);
     void read(void);
-    ~WiFiCredentialsReader();
+    ~SystemSetupConsole();
   protected:
       void handle(char c);
   private:
