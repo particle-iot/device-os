@@ -9,7 +9,7 @@
 - [Recipes and Tips](docs/build.md#recipes-and-tips) section in the build documentation.
 - `Particle.function`, `Particle.subscribe` and `attachInterrupt` can take a C++ method and instance pointer. [#534](https://github.com/spark/firmware/pull/534) Thanks to @monkbroc!
 - `UDP.setBuffer` to set the buffer a UDP instance uses for `read`/`write`. [#224](https://github.com/spark/firmware/pull/224) and [#452](https://github.com/spark/firmware/pull/452)
-
+- `WiFi.setCredentials()` can take a Cipher type to allow full specification of an AP's credentials. [#574](https://github.com/spark/firmware/pull/574)
 ### BUGFIXES
 
 - Listening mode re-enters listening mode after credentials are given. [#558](https://github.com/spark/firmware/pull/558)
