@@ -498,3 +498,31 @@ void wlan_connect_cancel(bool called_from_isr)
 {
     // no-op cc3000 connection is asynchronous
 }
+
+
+
+/**
+ * Sets the IP source - static or dynamic.
+ */
+void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reserved)
+{
+}
+
+/**
+ * Sets the IP Addresses to use when the device is in static IP mode.
+ * @param device
+ * @param netmask
+ * @param gateway
+ * @param dns1
+ * @param dns2
+ * @param reserved
+ */
+void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmask,
+        const HAL_IPAddress* gateway, const HAL_IPAddress* dns1, const HAL_IPAddress* dns2, void* reserved)
+{
+}
+
+int wlan_scan(wlan_scan_result_t callback, void* cookie)
+{
+    return -1;
+}

@@ -37,7 +37,7 @@
 #endif
 
 #if WIFI_SCAN
-#include "wlan_scan.h"
+#include "wlan_hal.h"
 #endif
 
 #if Wiring_WiFi
@@ -157,22 +157,22 @@ void WiFiTester::printInfo() {
 }
 
 #if WIFI_SCAN
-void wlan_scan_callback(void* data, const uint8_t* ssid, unsigned ssid_len, int rssi)
+void wlan_scan_callback(WiFiAccessPoint* ap, void* data)
 {
     WiFiTester& tester = *(WiFiTester*)data;
     char str_ssid[33];
-    memcpy(str_ssid, ssid, ssid_len);
-    str_ssid[ssid_len] = 0;
+    memcpy(str_ssid, ap->ssid, ap->ssid_size);
+    str_ssid[ap->ssid_size] = 0;
     tester.serialPrint(str_ssid);
     tester.serialPrint(",");
-    itoa(rssi, str_ssid, 10);
+    itoa(ap->rssi, str_ssid, 10);
     tester.serialPrintln(str_ssid);
 }
 
 void WiFiTester::wifiScan() {
     WiFi.on();
     serialPrintln("SCAN_START");
-    wlan_scan_aps(wlan_scan_callback, this);
+    wlan_scan(wlan_scan_callback, this);
     serialPrintln("SCAN_STOP");
 }
 #endif

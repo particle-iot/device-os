@@ -127,11 +127,11 @@ int wlan_has_credentials();
 #undef WLAN_SEC_WPA2
 #endif
 typedef enum {
-    WLAN_SEC_UNSEC,
+    WLAN_SEC_UNSEC = 0,
     WLAN_SEC_WEP,
     WLAN_SEC_WPA,
     WLAN_SEC_WPA2,
-    WLAN_SEC_NOT_SET
+    WLAN_SEC_NOT_SET = 0xFF
 } WLanSecurityType;
 
 
@@ -152,6 +152,7 @@ typedef struct {
     WLanSecurityCipher cipher;
     unsigned channel;
 } WLanCredentials;
+
 
 int wlan_set_credentials(WLanCredentials* credentials);
 
@@ -239,6 +240,30 @@ void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reser
  */
 void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmask,
         const HAL_IPAddress* gateway, const HAL_IPAddress* dns1, const HAL_IPAddress* dns2, void* reserved);
+
+
+
+typedef struct WiFiAccessPoint {
+   size_t size;
+   char ssid[33];
+   uint8_t ssid_size;
+   uint8_t bssid[6];
+   int security;
+   uint8_t channel;
+   int max_data_rate;
+   int rssi;        // when scanning
+
+} WiFiAccessPoint;
+
+typedef void (*wlan_scan_result_t)(WiFiAccessPoint* ap, void* cookie);
+
+
+/**
+ * @param callback  The callback that receives each scanned AP
+ * @param cookie    An opaque handle that is passed to the callback.
+ * @return negative on error.
+ */
+int wlan_scan(wlan_scan_result_t callback, void* cookie);
 
 #ifdef	__cplusplus
 }
