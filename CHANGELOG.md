@@ -11,6 +11,7 @@
 
 - Listening mode re-enters listening mode after credentials are given. [#558](https://github.com/spark/firmware/pull/558)
 - String function dtoa() has problems with larger numbers. [#563](https://github.com/spark/firmware/pull/563)
+- System doesn't set color of RGB LED when `RGB.control(true)` is called. [#544](https://github.com/spark/firmware/pull/544) and [#472](https://github.com/spark/firmware/pull/472) [#362](https://github.com/spark/firmware/pull/362)
 
 ## v0.4.4
 

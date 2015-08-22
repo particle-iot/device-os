@@ -75,7 +75,9 @@ void Start_Smart_Config(void)
 
     cloud_disconnect();
     SPARK_LED_FADE = 0;
+    bool signaling = LED_RGB_IsOverRidden();
     LED_SetRGBColor(RGB_COLOR_BLUE);
+    LED_Signaling_Stop();
     LED_On(LED_RGB);
 
     /* If WiFi module is connected, disconnect it */
@@ -134,6 +136,8 @@ void Start_Smart_Config(void)
     }
 
     LED_On(LED_RGB);
+    if (signaling)
+        LED_Signaling_Start();
 
     WLAN_LISTEN_ON_FAILED_CONNECT = wlan_smart_config_finalize();
 
