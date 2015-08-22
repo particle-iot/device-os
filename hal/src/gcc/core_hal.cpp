@@ -261,3 +261,8 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 void HAL_Core_Enter_Bootloader(bool persist)
 {
 }
+
+unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
+{
+    return 1;
+}

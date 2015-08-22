@@ -56,7 +56,7 @@ DYNALIB_FN(hal_core,HAL_Bootloader_Get_Flag)
 DYNALIB_FN(hal_core,HAL_Bootloader_Lock)
 DYNALIB_FN(hal_core,HAL_Core_System_Reset_FlagSet)
 DYNALIB_FN(hal_core,HAL_Core_Runtime_Info)
-
+DYNALIB_FN(hal_core,HAL_Core_System_Clock)
 DYNALIB_END(hal_core)
 
 

@@ -823,3 +823,7 @@ bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
     return false;
 }
 
+unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
+{
+    return SystemCoreClock;
+}

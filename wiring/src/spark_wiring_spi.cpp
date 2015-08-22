@@ -25,6 +25,8 @@
  */
 
 #include "spark_wiring_spi.h"
+#include "core_hal.h"
+#include "spark_macros.h"
 
 #ifndef SPARK_WIRING_NO_SPI
 
@@ -44,6 +46,7 @@ SPIClass::SPIClass(HAL_SPI_Interface spi)
 {
   _spi = spi;
   HAL_SPI_Init(_spi);
+  dividerReference = SYSTEM;     // 0 indicates the system clock
 }
 
 void SPIClass::begin()
@@ -76,9 +79,65 @@ void SPIClass::setDataMode(uint8_t mode)
   HAL_SPI_Set_Data_Mode(_spi, mode);
 }
 
+void SPIClass::setClockDividerReference(unsigned value, unsigned scale)
+{
+    dividerReference = value*scale;
+}
+
+/**
+ * The divisors. The index+1 is the power of 2 of the divisor.
+ */
+static uint8_t clock_divisors[] = {
+    SPI_CLOCK_DIV2,
+    SPI_CLOCK_DIV4,
+    SPI_CLOCK_DIV8,
+    SPI_CLOCK_DIV16,
+    SPI_CLOCK_DIV32,
+    SPI_CLOCK_DIV64,
+    SPI_CLOCK_DIV128,
+    SPI_CLOCK_DIV256,
+    SPI_CLOCK_DIV256        // additional element so no match results in 256 being returned
+};
+
+uint8_t divisorShiftScale(uint8_t divider)
+{
+    unsigned result = 0;
+    for (; result<arraySize(clock_divisors)-1; result++)
+    {
+        if (clock_divisors[result]==divider)
+            break;
+    }
+    return result;
+}
+
 void SPIClass::setClockDivider(uint8_t rate)
 {
-  HAL_SPI_Set_Clock_Divider(_spi, rate);
+    if (dividerReference)
+    {
+        // determine the clock speed
+        uint8_t scale = divisorShiftScale(rate);
+        unsigned targetSpeed = dividerReference>>scale;
+        setClockSpeed(targetSpeed);
+    }
+    else
+    {
+        HAL_SPI_Set_Clock_Divider(_spi, rate);
+    }
+}
+
+unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
+{
+    // actual speed is the system clock divided by some scalar
+    unsigned targetSpeed = value*value_scale;
+    unsigned clock = HAL_Core_System_Clock(SYSTEMCLOCK_SPI, NULL);
+    uint8_t scale = 0;
+    while (clock > targetSpeed) {
+        clock >>= 1;
+        scale++;
+    }
+    uint8_t rate = clock_divisors[scale-1];
+    HAL_SPI_Set_Clock_Divider(_spi, rate);
+    return clock;
 }
 
 byte SPIClass::transfer(byte _data)
