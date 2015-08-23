@@ -1,12 +1,12 @@
-#include "UnitTest++.h"
-#include "spark_protocol.h"
+Parti#include "UnitTest++.h"
+#include "particle_protocol.h"
 
 struct CoAPFixture
 {
   static uint8_t private_key[613];
   static uint8_t pubkey[295];
   static const uint8_t signed_encrypted_credentials[385];
-  SparkProtocol spark_protocol;
+  ParticleProtocol particle_protocol;
   CoAPMessageType::Enum message_type;
 
   void init();
@@ -148,24 +148,24 @@ void mock_copy_variable_key(char *dst, int)
   memcpy(dst, "temperature", 12);
 }
 
-SparkReturnType::Enum mock_variable_type(const char *)
+ParticleReturnType::Enum mock_variable_type(const char *)
 {
-  return SparkReturnType::INT;
+  return ParticleReturnType::INT;
 }
 
 void CoAPFixture::init()
 {
   const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
-  SparkKeys keys;
+  ParticleKeys keys;
   keys.server_public = pubkey;
   keys.core_private = private_key;
 
-  SparkCallbacks callbacks;
+  ParticleCallbacks callbacks;
   callbacks.send = mock_send;
   callbacks.receive = mock_receive;
   callbacks.millis = mock_millis;
 
-  SparkDescriptor descriptor;
+  ParticleDescriptor descriptor;
   descriptor.call_function = mock_call_function;
   descriptor.num_functions = mock_num_functions;
   descriptor.copy_function_key = mock_copy_function_key;
@@ -173,8 +173,8 @@ void CoAPFixture::init()
   descriptor.copy_variable_key = mock_copy_variable_key;
   descriptor.variable_type = mock_variable_type;
 
-  spark_protocol.init(id, keys, callbacks, descriptor);
-  spark_protocol.set_key(signed_encrypted_credentials);
+  particle_protocol.init(id, keys, callbacks, descriptor);
+  particle_protocol.set_key(signed_encrypted_credentials);
 }
 
 
@@ -188,7 +188,7 @@ SUITE(CoAP)
       0x17, 0x00, 0x0f, 0xcf, 0xb2, 0x58, 0x85, 0x2d,
       0xdb, 0x2d, 0xf7, 0xf8, 0x15, 0x61, 0x25, 0x9b };
     init();
-    message_type = spark_protocol.received_message(ciphertext, 32);
+    message_type = particle_protocol.received_message(ciphertext, 32);
     CHECK_EQUAL(CoAPMessageType::FUNCTION_CALL, message_type);
   }
 
@@ -200,7 +200,7 @@ SUITE(CoAP)
       0xf8, 0x73, 0x98, 0xc3, 0xe6, 0x8e, 0x7c, 0x34,
       0xea, 0xb8, 0x8c, 0xec, 0x2b, 0xd5, 0x25, 0xb0 };
     init();
-    message_type = spark_protocol.received_message(ciphertext, 32);
+    message_type = particle_protocol.received_message(ciphertext, 32);
     CHECK_EQUAL(CoAPMessageType::VARIABLE_REQUEST, message_type);
   }
 
@@ -274,7 +274,7 @@ SUITE(CoAP)
       0xF2, 0x52, 0x8B, 0x73, 0xE0, 0xEC, 0xA2, 0x5E,
       0xAB, 0x0B, 0x54, 0x0E, 0x0D, 0xA8, 0x5A, 0x6F };
     init();
-    message_type = spark_protocol.received_message(ciphertext, 528);
+    message_type = particle_protocol.received_message(ciphertext, 528);
     CHECK_EQUAL(CoAPMessageType::KEY_CHANGE, message_type);
   }
 
@@ -284,7 +284,7 @@ SUITE(CoAP)
       0x32, 0x28, 0x65, 0x77, 0x5B, 0xEE, 0xA8, 0x08,
       0xA9, 0xC6, 0x2F, 0x76, 0x44, 0x1A, 0xFF, 0x91 };
     init();
-    message_type = spark_protocol.received_message(ciphertext, 16);
+    message_type = particle_protocol.received_message(ciphertext, 16);
     CHECK_EQUAL(CoAPMessageType::UPDATE_BEGIN, message_type);
   }
 
@@ -304,7 +304,7 @@ SUITE(CoAP)
       0xA2, 0x08, 0x1C, 0xB1, 0x99, 0xDE, 0xF1, 0x63,
       0x5A, 0x33, 0x92, 0xDB, 0xE3, 0xC5, 0xDF, 0x6D };
     init();
-    message_type = spark_protocol.received_message(ciphertext, 96);
+    message_type = particle_protocol.received_message(ciphertext, 96);
     CHECK_EQUAL(CoAPMessageType::CHUNK, message_type);
   }
 
@@ -314,7 +314,7 @@ SUITE(CoAP)
       0x5C, 0xC2, 0x80, 0x64, 0xAC, 0x11, 0xF4, 0x33,
       0x32, 0x82, 0x05, 0x7A, 0x9E, 0x8F, 0xAD, 0x2A };
     init();
-    message_type = spark_protocol.received_message(ciphertext, 16);
+    message_type = particle_protocol.received_message(ciphertext, 16);
     CHECK_EQUAL(CoAPMessageType::UPDATE_DONE, message_type);
   }
 
@@ -324,7 +324,7 @@ SUITE(CoAP)
       0xd5, 0xb7, 0xf7, 0xfe, 0x9f, 0x2d, 0xca, 0xac,
       0xda, 0x15, 0x10, 0xa3, 0x27, 0x8b, 0xa7, 0xa9 };
     init();
-    message_type = spark_protocol.received_message(ciphertext, 16);
+    message_type = particle_protocol.received_message(ciphertext, 16);
     CHECK_EQUAL(CoAPMessageType::DESCRIBE, message_type);
   }
 
@@ -334,7 +334,7 @@ SUITE(CoAP)
       0x89, 0x5f, 0xeb, 0x18, 0x07, 0xba, 0x1d, 0xbf,
       0x11, 0x26, 0x55, 0x04, 0x75, 0x28, 0x2a, 0xef };
     init();
-    message_type = spark_protocol.received_message(ciphertext, 16);
+    message_type = particle_protocol.received_message(ciphertext, 16);
     CHECK_EQUAL(CoAPMessageType::HELLO, message_type);
   }
 
@@ -346,7 +346,7 @@ SUITE(CoAP)
     unsigned char buf[16];
     memset(buf, 0, 16);
     init();
-    spark_protocol.hello(buf, false);
+    particle_protocol.hello(buf, false);
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
@@ -358,7 +358,7 @@ SUITE(CoAP)
     unsigned char buf[16];
     memset(buf, 0, 16);
     init();
-    spark_protocol.key_changed(buf, 0x99);
+    particle_protocol.key_changed(buf, 0x99);
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
@@ -370,7 +370,7 @@ SUITE(CoAP)
     unsigned char buf[16];
     memset(buf, 0, 16);
     init();
-    spark_protocol.function_return(buf, 0xc3, 42);
+    particle_protocol.function_return(buf, 0xc3, 42);
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
@@ -382,7 +382,7 @@ SUITE(CoAP)
     unsigned char buf[16];
     memset(buf, 0, 16);
     init();
-    spark_protocol.variable_value(buf, 0x5f, 0xf6, 0x49, false);
+    particle_protocol.variable_value(buf, 0x5f, 0xf6, 0x49, false);
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
@@ -394,7 +394,7 @@ SUITE(CoAP)
     unsigned char buf[16];
     memset(buf, 0, 16);
     init();
-    spark_protocol.variable_value(buf, 0x88, 0x97, 0xb2, -98765);
+    particle_protocol.variable_value(buf, 0x88, 0x97, 0xb2, -98765);
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
@@ -406,7 +406,7 @@ SUITE(CoAP)
     unsigned char buf[16];
     memset(buf, 0, 16);
     init();
-    spark_protocol.variable_value(buf, 0x5d, 0xab, 0xce,-104.858);
+    particle_protocol.variable_value(buf, 0x5d, 0xab, 0xce,-104.858);
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
@@ -418,7 +418,7 @@ SUITE(CoAP)
     unsigned char buf[16];
     memset(buf, 0, 16);
     init();
-    spark_protocol.variable_value(buf, 0x5c, 0xf6, 0x49, "woot", 4);
+    particle_protocol.variable_value(buf, 0x5c, 0xf6, 0x49, "woot", 4);
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
@@ -459,7 +459,7 @@ SUITE(CoAP)
     memset(buf, 0, 240);
     init();
     const char *the_string = "Hey, wow, this is like a super long string. It just goes on and on and on... I just like don't know why anyone tries to send things like this in a constrained environment, but whatevs. Peeps be thinkin' outside the box.";
-    int buffer_length = spark_protocol.variable_value(buf, 0x5c, 0xf6, 0x49, the_string, strlen(the_string));
+    int buffer_length = particle_protocol.variable_value(buf, 0x5c, 0xf6, 0x49, the_string, strlen(the_string));
     CHECK_ARRAY_EQUAL(expected, buf, buffer_length);
   }
 
@@ -471,7 +471,7 @@ SUITE(CoAP)
     unsigned char buf[16];
     memset(buf, 0, 16);
     init();
-    spark_protocol.chunk_received(buf, 0x01, ChunkReceivedCode::OK);
+    particle_protocol.chunk_received(buf, 0x01, ChunkReceivedCode::OK);
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
@@ -483,7 +483,7 @@ SUITE(CoAP)
     unsigned char buf[16];
     memset(buf, 0, 16);
     init();
-    spark_protocol.update_ready(buf, 0x10);
+    particle_protocol.update_ready(buf, 0x10);
     CHECK_ARRAY_EQUAL(expected, buf, 16);
   }
 
@@ -499,7 +499,7 @@ SUITE(CoAP)
     unsigned char buf[48];
     memset(buf, 0, 48);
     init();
-    spark_protocol.description(buf, 0x66, 0xf6, 0x49);
+    particle_protocol.description(buf, 0x66, 0xf6, 0x49);
     CHECK_ARRAY_EQUAL(expected, buf, 48);
   }
 
@@ -508,7 +508,7 @@ SUITE(CoAP)
     const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
     unsigned char buf[19];
     init();
-    int len = spark_protocol.presence_announcement(buf, id);
+    int len = particle_protocol.presence_announcement(buf, id);
     CHECK_EQUAL(19, len);
   }
 
@@ -521,7 +521,7 @@ SUITE(CoAP)
     unsigned char buf[19];
     memset(buf, 0, 19);
     init();
-    spark_protocol.presence_announcement(buf, id);
+    particle_protocol.presence_announcement(buf, id);
     CHECK_ARRAY_EQUAL(expected, buf, 19);
   }
 

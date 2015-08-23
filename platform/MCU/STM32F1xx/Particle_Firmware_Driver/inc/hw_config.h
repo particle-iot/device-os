@@ -222,7 +222,7 @@ extern uint8_t USE_SYSTEM_FLAGS;
 extern volatile uint32_t TimingDelay;
 
 extern uint16_t Bootloader_Version_SysFlag;
-extern uint16_t NVMEM_SPARK_Reset_SysFlag;
+extern uint16_t NVMEM_PARTICLE_Reset_SysFlag;
 extern uint16_t FLASH_OTA_Update_SysFlag;
 extern uint16_t OTA_FLASHED_Status_SysFlag;
 extern uint16_t Factory_Reset_SysFlag;

@@ -19,11 +19,11 @@ extern volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
 extern volatile uint8_t WLAN_SMART_CONFIG_STOP;
 extern volatile uint8_t WLAN_CAN_SHUTDOWN;
 
-extern volatile uint8_t SPARK_WLAN_RESET;
-extern volatile uint8_t SPARK_WLAN_SLEEP;
-extern volatile uint8_t SPARK_WLAN_STARTED;
+extern volatile uint8_t PARTICLE_WLAN_RESET;
+extern volatile uint8_t PARTICLE_WLAN_SLEEP;
+extern volatile uint8_t PARTICLE_WLAN_STARTED;
 
-extern volatile uint8_t SPARK_LED_FADE;
+extern volatile uint8_t PARTICLE_LED_FADE;
 void manage_smart_config();
 void manage_ip_config();
 

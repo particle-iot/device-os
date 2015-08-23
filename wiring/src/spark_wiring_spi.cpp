@@ -26,7 +26,7 @@
 
 #include "spark_wiring_spi.h"
 
-#ifndef SPARK_WIRING_NO_SPI
+#ifndef PARTICLE_WIRING_NO_SPI
 SPIClass SPI(HAL_SPI_INTERFACE1);
 
 #if Wiring_SPI1

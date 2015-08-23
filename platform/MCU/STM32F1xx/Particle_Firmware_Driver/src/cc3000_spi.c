@@ -388,7 +388,7 @@ void SPI_DMA_IntHandler(void)
                        /* Read the whole payload in at the beginning of the buffer
                         * Will it fit?
                         */
-                       SPARK_ASSERT(data_to_recv <= arraySize(wlan_rx_buffer));
+                       PARTICLE_ASSERT(data_to_recv <= arraySize(wlan_rx_buffer));
                        SpiIO(eRead,sSpiInformation.pRxPacket,data_to_recv, FALSE);
                      }
           }

@@ -44,7 +44,7 @@
 
 using spark::Network;
 
-volatile system_tick_t spark_loop_total_millis = 0;
+volatile system_tick_t system_loop_total_millis = 0;
 
 void (*announce_presence)(void);
 
@@ -53,15 +53,15 @@ unsigned char _auth = WLAN_SEC_WPA2;
 
 unsigned char wlan_profile_index;
 
-volatile uint8_t SPARK_LED_FADE = 1;
+volatile uint8_t PARTICLE_LED_FADE = 1;
 
-volatile uint8_t Spark_Error_Count;
+volatile uint8_t Particle_Error_Count;
 
-void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
+void PARTICLE_WLAN_Setup(void (*presence_announcement_callback)(void))
 {
     announce_presence = presence_announcement_callback;
 
-#if !SPARK_NO_WIFI
+#if !PARTICLE_NO_WIFI
     wlan_setup();
 
     /* Trigger a WLAN device */
@@ -71,9 +71,9 @@ void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
     }
 #endif
 
-#ifndef SPARK_NO_CLOUD
+#ifndef PARTICLE_NO_CLOUD
     //Initialize spark protocol callbacks for all System modes
-    Spark_Protocol_Init();
+    Particle_Protocol_Init();
 #endif
 }
 
@@ -84,7 +84,7 @@ static int cfod_count = 0;
  */
 void manage_serial_flasher()
 {
-    if(SPARK_FLASH_UPDATE == 3)
+    if(PARTICLE_FLASH_UPDATE == 3)
     {
         system_firmwareUpdate(&Serial);
     }
@@ -95,24 +95,24 @@ void manage_serial_flasher()
  */
 void manage_network_connection()
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || WLAN_WD_TO())
+    if (PARTICLE_WLAN_RESET || PARTICLE_WLAN_SLEEP || WLAN_WD_TO())
     {
-        if (SPARK_WLAN_STARTED)
+        if (PARTICLE_WLAN_STARTED)
         {
             DEBUG("Resetting WLAN!");
-            auto was_sleeping = SPARK_WLAN_SLEEP;
+            auto was_sleeping = PARTICLE_WLAN_SLEEP;
             cloud_disconnect();
             network_off(Network, 0, 0, NULL);
             CLR_WLAN_WD();
-            SPARK_WLAN_RESET = 0;
-            SPARK_WLAN_STARTED = 0;
-            SPARK_WLAN_SLEEP = was_sleeping;
+            PARTICLE_WLAN_RESET = 0;
+            PARTICLE_WLAN_STARTED = 0;
+            PARTICLE_WLAN_SLEEP = was_sleeping;
             cfod_count = 0;
         }
     }
     else
     {
-        if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !WLAN_CONNECTED))
+        if (!PARTICLE_WLAN_STARTED || (PARTICLE_CLOUD_CONNECT && !WLAN_CONNECTED))
         {
             if (!WLAN_DISCONNECT)
             {
@@ -123,7 +123,7 @@ void manage_network_connection()
     }
 }
 
-#ifndef SPARK_NO_CLOUD
+#ifndef PARTICLE_NO_CLOUD
 
 /**
  * Time in millis of the last cloud connection attempt.
@@ -152,16 +152,16 @@ void handle_cloud_errors()
 {
     LED_SetRGBColor(RGB_COLOR_RED);
 
-    while (Spark_Error_Count != 0)
+    while (Particle_Error_Count != 0)
     {
         LED_On(LED_RGB);
         HAL_Delay_Milliseconds(500);
         LED_Off(LED_RGB);
         HAL_Delay_Milliseconds(500);
-        Spark_Error_Count--;
+        Particle_Error_Count--;
     }
 
-    // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
+    // TODO Send the Error Count to Cloud: NVMEM_Particle_File_Data[ERROR_COUNT_FILE_OFFSET]
 
     // Reset Error Count
     wlan_set_error_count(0);
@@ -171,7 +171,7 @@ void handle_cfod()
 {
     if ((cfod_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
     {
-        SPARK_WLAN_RESET = RESET_ON_CFOD;
+        PARTICLE_WLAN_RESET = RESET_ON_CFOD;
         ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
     }
 
@@ -180,16 +180,16 @@ void handle_cfod()
         // No Internet Connection
         if ((cfod_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
         {
-            SPARK_WLAN_RESET = RESET_ON_CFOD;
+            PARTICLE_WLAN_RESET = RESET_ON_CFOD;
             ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
         }
 
-        Spark_Error_Count = 2;
+        Particle_Error_Count = 2;
     }
     else
     {
         // Cloud not Reachable
-        Spark_Error_Count = 3;
+        Particle_Error_Count = 3;
     }
 }
 
@@ -199,36 +199,36 @@ void handle_cfod()
  * - attempts to open a socket to the cloud
  * - handles the CFOD
  *
- * On return, SPARK_CLOUD_SOCKETED is set to true if the socket connection was successful.
+ * On return, PARTICLE_CLOUD_SOCKETED is set to true if the socket connection was successful.
  */
 
 void establish_cloud_connection()
 {
-    if (WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
+    if (WLAN_DHCP && !PARTICLE_WLAN_SLEEP && !PARTICLE_CLOUD_SOCKETED)
     {
-        if (Spark_Error_Count)
+        if (Particle_Error_Count)
             handle_cloud_errors();
 
-        SPARK_LED_FADE = 0;
+        PARTICLE_LED_FADE = 0;
         LED_SetRGBColor(RGB_COLOR_CYAN);
         if (in_cloud_backoff_period())
             return;
 
         LED_On(LED_RGB);
-        if (Spark_Connect() >= 0)
+        if (Particle_Connect() >= 0)
         {
             cfod_count = 0;
-            SPARK_CLOUD_SOCKETED = 1;
+            PARTICLE_CLOUD_SOCKETED = 1;
         }
         else
         {
             cloud_connection_failed();
-            SPARK_CLOUD_SOCKETED = 0;
+            PARTICLE_CLOUD_SOCKETED = 0;
 #if PLATFORM_ID<3
-            if (!SPARK_WLAN_RESET)
+            if (!PARTICLE_WLAN_RESET)
                 handle_cfod();
 #endif
-            wlan_set_error_count(Spark_Error_Count);
+            wlan_set_error_count(Particle_Error_Count);
         }
     }
 }
@@ -239,11 +239,11 @@ void establish_cloud_connection()
  */
 void handle_cloud_connection(bool force_events)
 {
-    if (SPARK_CLOUD_SOCKETED)
+    if (PARTICLE_CLOUD_SOCKETED)
     {
-        if (!SPARK_CLOUD_CONNECTED)
+        if (!PARTICLE_CLOUD_CONNECTED)
         {
-            int err = Spark_Handshake();
+            int err = Particle_Handshake();
             if (err)
             {
                 cloud_connection_failed();
@@ -268,28 +268,28 @@ void handle_cloud_connection(bool force_events)
                 // the socket may quickly disconnect and the connection retried, turning
                 // the LED back to cyan
                 system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-                Spark_Disconnect(); // clean up the socket
+                Particle_Disconnect(); // clean up the socket
                 while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
-                SPARK_CLOUD_SOCKETED = 0;
+                PARTICLE_CLOUD_SOCKETED = 0;
 
             }
             else
             {
-                SPARK_CLOUD_CONNECTED = 1;
+                PARTICLE_CLOUD_CONNECTED = 1;
                 cloud_failed_connection_attempts = 0;
             }
         }
 
-        if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL)
+        if (PARTICLE_FLASH_UPDATE || force_events || System.mode() != MANUAL)
         {
-            Spark_Process_Events();
+            Particle_Process_Events();
         }
     }
 }
 
 void manage_cloud_connection(bool force_events)
 {
-    if (SPARK_CLOUD_CONNECT == 0)
+    if (PARTICLE_CLOUD_CONNECT == 0)
     {
         cloud_disconnect();
     }
@@ -302,12 +302,12 @@ void manage_cloud_connection(bool force_events)
 }
 #endif
 
-void Spark_Idle_Events(bool force_events/*=false*/)
+void Particle_Idle_Events(bool force_events/*=false*/)
 {
     HAL_Notify_WDT();
 
     ON_EVENT_DELTA();
-    spark_loop_total_millis = 0;
+    system_loop_total_millis = 0;
 
     manage_serial_flasher();
 
@@ -322,21 +322,21 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
 
 /*
- * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
+ * @brief This should block for a certain number of milliseconds and also execute system_idle_loop
  */
 void system_delay_ms(unsigned long ms)
 {
-    volatile system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
-    spark_loop_total_millis += ms;
+    system_tick_t system_loop_elapsed_millis = PARTICLE_LOOP_DELAY_MILLIS;
+    system_loop_total_millis += ms;
 
-    volatile system_tick_t last_millis = HAL_Timer_Get_Milli_Seconds();
+    system_tick_t last_millis = HAL_Timer_Get_Milli_Seconds();
 
     while (1)
     {
         HAL_Notify_WDT();
 
-        volatile system_tick_t current_millis = HAL_Timer_Get_Milli_Seconds();
-        volatile system_tick_t elapsed_millis = current_millis - last_millis;
+        system_tick_t current_millis = HAL_Timer_Get_Milli_Seconds();
+        system_tick_t elapsed_millis = current_millis - last_millis;
 
         //Check for wrapping
         if (elapsed_millis >= 0x80000000)
@@ -349,35 +349,35 @@ void system_delay_ms(unsigned long ms)
             break;
         }
 
-        if (SPARK_WLAN_SLEEP)
+        if (PARTICLE_WLAN_SLEEP)
         {
-            //Do not yield for Spark_Idle()
+            //Do not yield for Particle_Idle()
         }
-        else if ((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
+        else if ((elapsed_millis >= system_loop_elapsed_millis) || (system_loop_total_millis >= PARTICLE_LOOP_DELAY_MILLIS))
         {
-            spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
-            //spark_loop_total_millis is reset to 0 in Spark_Idle()
+            system_loop_elapsed_millis = elapsed_millis + PARTICLE_LOOP_DELAY_MILLIS;
+            //system_loop_total_millis is reset to 0 in Particle_Idle()
             do
             {
                 //Run once if the above condition passes
-                Spark_Idle();
+                Particle_Idle();
             }
-            while (SPARK_FLASH_UPDATE); //loop during OTA update
+            while (PARTICLE_FLASH_UPDATE); //loop during OTA update
         }
     }
 }
 
 void cloud_disconnect()
 {
-#ifndef SPARK_NO_CLOUD
-    if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
+#ifndef PARTICLE_NO_CLOUD
+    if (PARTICLE_CLOUD_SOCKETED || PARTICLE_CLOUD_CONNECTED)
     {
-        Spark_Disconnect();
+        Particle_Disconnect();
 
-        SPARK_FLASH_UPDATE = 0;
-        SPARK_CLOUD_CONNECTED = 0;
-        SPARK_CLOUD_SOCKETED = 0;
-        Spark_Error_Count = 0;
+        PARTICLE_FLASH_UPDATE = 0;
+        PARTICLE_CLOUD_CONNECTED = 0;
+        PARTICLE_CLOUD_SOCKETED = 0;
+        Particle_Error_Count = 0;
 
         if (!WLAN_DISCONNECT && !WLAN_SMART_CONFIG_START)
         {

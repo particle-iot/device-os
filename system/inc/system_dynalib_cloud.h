@@ -32,16 +32,16 @@
 
 
 DYNALIB_BEGIN(system_cloud)
-DYNALIB_FN(system_cloud, spark_variable)
-DYNALIB_FN(system_cloud, spark_function)
-DYNALIB_FN(system_cloud, spark_process)
-DYNALIB_FN(system_cloud, spark_connect)
-DYNALIB_FN(system_cloud, spark_disconnect)
-DYNALIB_FN(system_cloud, spark_connected)
+DYNALIB_FN(system_cloud, particle_variable)
+DYNALIB_FN(system_cloud, particle_function)
+DYNALIB_FN(system_cloud, particle_process)
+DYNALIB_FN(system_cloud, particle_connect)
+DYNALIB_FN(system_cloud, particle_disconnect)
+DYNALIB_FN(system_cloud, particle_connected)
 DYNALIB_FN(system_cloud, system_cloud_protocol_instance)
-DYNALIB_FN(system_cloud, spark_deviceID)
-DYNALIB_FN(system_cloud, spark_send_event)
-DYNALIB_FN(system_cloud, spark_subscribe)
+DYNALIB_FN(system_cloud, particle_deviceID)
+DYNALIB_FN(system_cloud, particle_send_event)
+DYNALIB_FN(system_cloud, particle_subscribe)
 DYNALIB_END(system_cloud)
 
 #endif	/* SYSTEM_DYNALIB_CLOUD_H */

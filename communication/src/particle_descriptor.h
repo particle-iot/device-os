@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file    spark_descriptor.h
+  * @file    particle_descriptor.h
   * @authors  Zachary Crockett
   * @version V1.0.0
   * @date    15-Nov-2013
@@ -30,7 +30,7 @@
 #include <functional>
 
 // Deferring to ASN.1 type codes
-namespace SparkReturnType {
+namespace ParticleReturnType {
   enum Enum {
     BOOLEAN = 1,
     INT     = 2,
@@ -39,9 +39,9 @@ namespace SparkReturnType {
   };
 }
 
-struct SparkDescriptor
+struct ParticleDescriptor
 {
-    typedef std::function<bool(const void*, SparkReturnType::Enum)> FunctionResultCallback;
+    typedef std::function<bool(const void*, ParticleReturnType::Enum)> FunctionResultCallback;
 
     size_t size;
     int (*num_functions)(void);
@@ -50,7 +50,7 @@ struct SparkDescriptor
 
     int (*num_variables)(void);
     const char* (*get_variable_key)(int variable_index);
-    SparkReturnType::Enum (*variable_type)(const char *variable_key);
+    ParticleReturnType::Enum (*variable_type)(const char *variable_key);
     const void *(*get_variable)(const char *variable_key);
 
     bool (*was_ota_upgrade_successful)(void);
@@ -61,4 +61,4 @@ struct SparkDescriptor
     void* reserved[4];      // add a few additional pointers
 };
 
-STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60 || sizeof(void*)!=4);
+STATIC_ASSERT(ParticleDescriptor_size, sizeof(ParticleDescriptor)==60 || sizeof(void*)!=4);

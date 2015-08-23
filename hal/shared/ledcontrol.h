@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 
-extern volatile uint8_t SPARK_LED_FADE;
+extern volatile uint8_t PARTICLE_LED_FADE;
 
 
 #ifdef	__cplusplus

@@ -59,7 +59,7 @@ extern "C" {
 
 /* Exported functions ------------------------------------------------------- */
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
-void SPARK_USB_Setup(void);
+void PARTICLE_USB_Setup(void);
 void Get_SerialNum(void);
 #endif
 

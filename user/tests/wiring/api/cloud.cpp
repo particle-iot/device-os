@@ -23,7 +23,7 @@
 
 #include "testapi.h"
 
-test(api_spark_variable) {
+test(api_particle_variable) {
 
     int valueInt = 0;
     double valueDouble = 0;
@@ -40,7 +40,7 @@ test(api_spark_variable) {
     API_NO_COMPILE(Particle.variable("mystring", constValueString, STRING));
 }
 
-test(api_spark_function) {
+test(api_particle_function) {
     int (*handler)(String) = NULL;
     API_COMPILE(Particle.function("name", handler));
 
@@ -51,7 +51,7 @@ test(api_spark_function) {
     API_COMPILE(Particle.function("name", &MyClass::handler, &myObj));
 }
 
-test(api_spark_publish) {
+test(api_particle_publish) {
 
     API_COMPILE(Particle.publish("public event name"));
 
@@ -92,7 +92,7 @@ test(api_spark_publish) {
 
 }
 
-test(api_spark_subscribe) {
+test(api_particle_subscribe) {
 
     void (*handler)(const char *event_name, const char *data) = NULL;
 
@@ -122,7 +122,7 @@ test(api_spark_subscribe) {
 
 }
 
-test(api_spark_sleep) {
+test(api_particle_sleep) {
 
     API_COMPILE(System.sleep(60));
 
@@ -139,7 +139,7 @@ test(api_spark_sleep) {
 
 }
 
-test(api_spark_connection) {
+test(api_particle_connection) {
     bool connected = false;
     API_COMPILE(connected=Particle.connected());
     connected++;
@@ -148,11 +148,11 @@ test(api_spark_connection) {
     API_COMPILE(Particle.process());
 }
 
-test(api_spark_deviceID) {
+test(api_particle_deviceID) {
     String id;
     API_COMPILE(id = Particle.deviceID());
 }
 
-test(api_spark_syncTime) {
+test(api_particle_syncTime) {
     API_COMPILE(Particle.syncTime());
 }

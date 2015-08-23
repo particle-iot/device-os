@@ -169,7 +169,7 @@ USBKeyboard::USBKeyboard(void)
 
 void USBKeyboard::begin(void)
 {
-	SPARK_USB_Setup();
+	PARTICLE_USB_Setup();
 }
 
 void USBKeyboard::end(void)

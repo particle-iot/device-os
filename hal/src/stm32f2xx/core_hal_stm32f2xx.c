@@ -447,7 +447,7 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 void application_start()
 {
     // one the key is sent to the cloud, this can be removed, since the key is fetched in
-    // Spark_Protocol_init(). This is just a temporary measure while the key still needs
+    // Particle_Protocol_init(). This is just a temporary measure while the key still needs
     // to be fetched via DFU.
 
     HAL_Core_Setup();

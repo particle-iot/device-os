@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file    spark_protocol.h
+  * @file    particle_protocol.h
   * @authors  Zachary Crockett, Matthew McGowan
   * @version V1.0.0
   * @date    15-Nov-2013
@@ -23,15 +23,15 @@
   ******************************************************************************
   */
 
-#ifndef __SPARK_PROTOCOL_H
-#define __SPARK_PROTOCOL_H
+#ifndef __PARTICLE_PROTOCOL_H
+#define __PARTICLE_PROTOCOL_H
 
-#include "spark_descriptor.h"
+#include "particle_descriptor.h"
 #include "coap.h"
 #include "events.h"
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
-#include "spark_protocol_functions.h"
+#include "particle_protocol_functions.h"
 #include "device_keys.h"
 #include "file_transfer.h"
 #include <stdint.h>
@@ -64,7 +64,7 @@ namespace ChunkReceivedCode {
   };
 }
 
-class SparkProtocol
+class ParticleProtocol
 {
     typedef uint16_t chunk_index_t;
 
@@ -77,12 +77,12 @@ class SparkProtocol
     static const int MAX_EVENT_TTL_SECONDS = 16777215;
     static int presence_announcement(unsigned char *buf, const char *id);
 
-    SparkProtocol();
+    ParticleProtocol();
 
     void init(const char *id,
-              const SparkKeys &keys,
-              const SparkCallbacks &callbacks,
-              const SparkDescriptor &descriptor);
+              const ParticleKeys &keys,
+              const ParticleCallbacks &callbacks,
+              const ParticleDescriptor &descriptor);
     int handshake(void);
     bool event_loop(void);
     bool is_initialized(void);
@@ -144,7 +144,7 @@ class SparkProtocol
                     unsigned char message_id_msb, unsigned char message_id_lsb, int description_flags);
     void ping(unsigned char *buf);
 
-    bool function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token);
+    bool function_result(const void* result, ParticleReturnType::Enum resultType, uint8_t token);
 
     /********** Queue **********/
     const size_t QUEUE_SIZE;
@@ -174,8 +174,8 @@ class SparkProtocol
     aes_context aes;
 
     FilteringEventHandler event_handlers[5];    // 1 system event listener + 4 application event listeners
-    SparkCallbacks callbacks;
-    SparkDescriptor descriptor;
+    ParticleCallbacks callbacks;
+    ParticleDescriptor descriptor;
 
     unsigned char key[16];
     unsigned char iv_send[16];
@@ -272,4 +272,4 @@ class SparkProtocol
     chunk_index_t missed_chunk_index;
 };
 
-#endif // __SPARK_PROTOCOL_H
+#endif // __PARTICLE_PROTOCOL_H

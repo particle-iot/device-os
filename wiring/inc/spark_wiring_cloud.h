@@ -26,7 +26,7 @@
 #include "events.h"
 #include "system_cloud.h"
 #include "system_sleep.h"
-#include "spark_protocol_functions.h"
+#include "particle_protocol_functions.h"
 #include "spark_wiring_system.h"
 #include "interrupts_hal.h"
 #include <functional>
@@ -34,7 +34,7 @@
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
 typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
 
-#ifdef SPARK_NO_CLOUD
+#ifdef PARTICLE_NO_CLOUD
 #define CLOUD_FN(x,y) (y)
 #else
 #define CLOUD_FN(x,y) (x)
@@ -44,9 +44,9 @@ class CloudClass {
 
 
 public:
-    static bool variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType)
+    static bool variable(const char *varKey, const void *userVar, Particle_Data_TypeDef userVarType)
     {
-        return CLOUD_FN(spark_variable(varKey, userVar, userVarType, NULL), false);
+        return CLOUD_FN(particle_variable(varKey, userVar, userVarType, NULL), false);
     }
 
     static bool function(const char *funcKey, user_function_int_str_t* func)
@@ -56,7 +56,7 @@ public:
 
     static bool function(const char *funcKey, user_std_function_int_str_t func, void* reserved=NULL)
     {
-#ifdef SPARK_NO_CLOUD
+#ifdef PARTICLE_NO_CLOUD
         return false;
 #else
         bool success = false;
@@ -77,32 +77,32 @@ public:
       function(funcKey, std::bind(func, instance, _1));
     }
 
-    bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)
+    bool publish(const char *eventName, Particle_Event_TypeDef eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, NULL, 60, eventType, NULL), false);
+        return CLOUD_FN(particle_send_event(eventName, NULL, 60, eventType, NULL), false);
     }
 
-    bool publish(const char *eventName, const char *eventData, Spark_Event_TypeDef eventType=PUBLIC)
+    bool publish(const char *eventName, const char *eventData, Particle_Event_TypeDef eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, 60, eventType, NULL), false);
+        return CLOUD_FN(particle_send_event(eventName, eventData, 60, eventType, NULL), false);
     }
 
-    bool publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC)
+    bool publish(const char *eventName, const char *eventData, int ttl, Particle_Event_TypeDef eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, ttl, eventType, NULL), false);
+        return CLOUD_FN(particle_send_event(eventName, eventData, ttl, eventType, NULL), false);
     }
 
-    bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
+    bool subscribe(const char *eventName, EventHandler handler, Particle_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
-        return CLOUD_FN(spark_subscribe(eventName, handler, NULL, scope, NULL, NULL), false);
+        return CLOUD_FN(particle_subscribe(eventName, handler, NULL, scope, NULL, NULL), false);
     }
 
     bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
-        return CLOUD_FN(spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL), false);
+        return CLOUD_FN(particle_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL), false);
     }
 
-    bool subscribe(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
+    bool subscribe(const char *eventName, wiring_event_handler_t handler, Particle_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
         return subscribe_wiring(eventName, handler, scope);
     }
@@ -113,7 +113,7 @@ public:
     }
 
     template <typename T>
-    bool subscribe(const char *eventName, void (T::*handler)(const char *, const char *), T *instance, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
+    bool subscribe(const char *eventName, void (T::*handler)(const char *, const char *), T *instance, Particle_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
         using namespace std::placeholders;
         return subscribe(eventName, std::bind(handler, instance, _1, _2), scope);
@@ -128,25 +128,25 @@ public:
 
     void unsubscribe()
     {
-        CLOUD_FN(spark_protocol_remove_event_handlers(sp(), NULL), (void)0);
+        CLOUD_FN(particle_protocol_remove_event_handlers(pp(), NULL), (void)0);
     }
 
     bool syncTime(void)
     {
-        return CLOUD_FN(spark_protocol_send_time_request(sp()),false);
+        return CLOUD_FN(particle_protocol_send_time_request(pp()),false);
     }
 
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))
     { SystemClass::sleep(seconds); }
-    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))
+    static void sleep(Particle_Sleep_TypeDef sleepMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))
     { SystemClass::sleep(sleepMode, seconds); }
     static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))
     { SystemClass::sleep(wakeUpPin, edgeTriggerMode, seconds); }
 
-    static bool connected(void) { return spark_connected(); }
-    static void connect(void) { spark_connect(); }
-    static void disconnect(void) { spark_disconnect(); }
-    static void process(void) { spark_process(); }
+    static bool connected(void) { return particle_connected(); }
+    static void connect(void) { particle_connect(); }
+    static void disconnect(void) { particle_disconnect(); }
+    static void process(void) { particle_process(); }
     static String deviceID(void) { return SystemClass::deviceID(); }
 
 private:
@@ -157,11 +157,11 @@ private:
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
 
-    SparkProtocol* sp() { return spark_protocol_instance(); }
+    ParticleProtocol* pp() { return particle_protocol_instance(); }
 
-    bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
+    bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Particle_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
     {
-#ifdef SPARK_NO_CLOUD
+#ifdef PARTICLE_NO_CLOUD
         return false;
 #else
         bool success = false;
@@ -169,7 +169,7 @@ private:
         {
             auto wrapper = new wiring_event_handler_t(handler);
             if (wrapper) {
-                success = spark_subscribe(eventName, (EventHandler)call_wiring_event_handler, wrapper, scope, deviceID, NULL);
+                success = particle_subscribe(eventName, (EventHandler)call_wiring_event_handler, wrapper, scope, deviceID, NULL);
             }
         }
         return success;

@@ -13,9 +13,9 @@ CSRC +=
 # C++ source files included in this build.
 CPPSRC += $(TARGET_SRC_PATH)/coap.cpp
 CPPSRC += $(TARGET_SRC_PATH)/handshake.cpp
-CPPSRC += $(TARGET_SRC_PATH)/spark_protocol.cpp
+CPPSRC += $(TARGET_SRC_PATH)/particle_protocol.cpp
 CPPSRC += $(TARGET_SRC_PATH)/events.cpp
-CPPSRC += $(TARGET_SRC_PATH)/spark_protocol_functions.cpp
+CPPSRC += $(TARGET_SRC_PATH)/particle_protocol_functions.cpp
 CPPSRC += $(TARGET_SRC_PATH)/communication_dynalib.cpp
 CPPSRC += $(TARGET_SRC_PATH)/dsakeygen.cpp
 

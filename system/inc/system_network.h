@@ -32,13 +32,13 @@
 extern "C" {
 #endif
 
-#ifndef SPARK_NO_WIFI
-#define SPARK_NO_WIFI 0
+#ifndef PARTICLE_NO_WIFI
+#define PARTICLE_NO_WIFI 0
 #endif
 
-#if SPARK_NO_WIFI
-#undef SPARK_NO_CLOUD
-#define SPARK_NO_CLOUD 1
+#if PARTICLE_NO_WIFI
+#undef PARTICLE_NO_CLOUD
+#define PARTICLE_NO_CLOUD 1
 #endif
 
 typedef network_interface_t    network_handle_t;

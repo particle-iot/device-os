@@ -98,7 +98,7 @@ LoopFillZerobss:
   bcc  FillZerobss
 /* Call the clock system intitialization function.*/
   bl  SystemInit
-  .include "spark_init.S"
+  .include "particle_init.S"
 /* Call the application's entry point.*/
   bl  main
   bx  lr

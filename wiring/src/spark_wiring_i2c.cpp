@@ -192,7 +192,7 @@ bool TwoWire::isEnabled()
 }
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
-#ifndef SPARK_WIRING_NO_I2C
+#ifndef PARTICLE_WIRING_NO_I2C
 TwoWire Wire = TwoWire();
 #endif
 

@@ -335,10 +335,10 @@ void WiFiTester::checkWifiSerial(char c) {
             tokenizeCommand(start, parts, 5);
             long productID = strtoul(parts[1], NULL, 10);
             if (productID) {
-                spark_protocol_set_product_id(spark_protocol_instance(), productID);
+                particle_protocol_set_product_id(particle_protocol_instance(), productID);
                 product_details_t details;
                 details.size = sizeof(details);
-                spark_protocol_get_product_details(spark_protocol_instance(), &details);
+                particle_protocol_get_product_details(particle_protocol_instance(), &details);
                 serialPrint("PRODUCT_ID IS NOW ");
                 String id(details.product_id);
                 serialPrintln(id.c_str());
@@ -446,7 +446,7 @@ void WiFiTester::tester_connect(char *ssid, char *pass) {
     }
 
 
-    //SPARK_MANUAL_CREDS(ssid, pass, auth);
+    //PARTICLE_MANUAL_CREDS(ssid, pass, auth);
 
     RGB.color(0, 0, 64);
 

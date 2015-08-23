@@ -65,7 +65,7 @@ const uint16_t BUTTON_IRQn[] = {BUTTON1_EXTI_IRQn, BUTTON2_EXTI_IRQn};
 EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER, BUTTON2_EXTI_TRIGGER};
 
 uint16_t Bootloader_Version_SysFlag = 0xFFFF;
-uint16_t NVMEM_SPARK_Reset_SysFlag = 0xFFFF;
+uint16_t NVMEM_PARTICLE_Reset_SysFlag = 0xFFFF;
 uint16_t FLASH_OTA_Update_SysFlag = 0xFFFF;
 uint16_t OTA_FLASHED_Status_SysFlag = 0xFFFF;
 uint16_t Factory_Reset_SysFlag = 0xFFFF;
@@ -913,7 +913,7 @@ void Load_SystemFlags(void)
     Bootloader_Version_SysFlag = (*(__IO uint16_t*) Address);
     Address += 2;
 
-    NVMEM_SPARK_Reset_SysFlag = (*(__IO uint16_t*) Address);
+    NVMEM_PARTICLE_Reset_SysFlag = (*(__IO uint16_t*) Address);
     Address += 2;
 
     FLASH_OTA_Update_SysFlag = (*(__IO uint16_t*) Address);
@@ -957,8 +957,8 @@ void Save_SystemFlags(void)
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
 
-    /* Program NVMEM_SPARK_Reset_SysFlag */
-    FLASHStatus = FLASH_ProgramHalfWord(Address, NVMEM_SPARK_Reset_SysFlag);
+    /* Program NVMEM_PARTICLE_Reset_SysFlag */
+    FLASHStatus = FLASH_ProgramHalfWord(Address, NVMEM_PARTICLE_Reset_SysFlag);
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
 

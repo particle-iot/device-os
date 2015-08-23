@@ -16,8 +16,8 @@
  ******************************************************************************
  */
 
-#ifndef SPARK_MACROS_H_
-#define SPARK_MACROS_H_
+#ifndef PARTICLE_MACROS_H_
+#define PARTICLE_MACROS_H_
 
 #if !defined(arraySize)
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
@@ -52,4 +52,4 @@
 
 #define BYTE_N(x,n)			        (((x) >> ((n)*8) & 0x000000FF)
 
-#endif /* SPARK_MACROS_H_ */
+#endif /* PARTICLE_MACROS_H_ */

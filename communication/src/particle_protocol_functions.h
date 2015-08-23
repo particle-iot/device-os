@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <time.h>
 #include "system_tick_hal.h"
-#include "spark_descriptor.h"
+#include "particle_descriptor.h"
 #include "events.h"
 #include "dsakeygen.h"
 #include "file_transfer.h"
@@ -20,9 +20,9 @@ extern "C" {
 #endif
 
 
-class SparkProtocol;
+class ParticleProtocol;
 
-struct SparkKeys
+struct ParticleKeys
 {
   uint16_t size;
   unsigned char *core_private;
@@ -30,9 +30,9 @@ struct SparkKeys
   unsigned char *core_public;
 };
 
-STATIC_ASSERT(SparkKeys_size, sizeof(SparkKeys)==16 || sizeof(void*)!=4);
+STATIC_ASSERT(ParticleKeys_size, sizeof(ParticleKeys)==16 || sizeof(void*)!=4);
 
-struct SparkCallbacks
+struct ParticleCallbacks
 {
     uint16_t size;
   int (*send)(const unsigned char *buf, uint32_t buflen);
@@ -68,7 +68,7 @@ struct SparkCallbacks
   void (*set_time)(time_t t, unsigned int param, void* reserved);
 };
 
-STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*10));
+STATIC_ASSERT(ParticleCallbacks_size, sizeof(ParticleCallbacks)==(sizeof(void*)*10));
 
 /**
  * Application-supplied callbacks. (Deliberately distinct from the system-supplied
@@ -101,27 +101,27 @@ typedef struct {
 STATIC_ASSERT(product_details_size, sizeof(product_details_t)==8);
 
 
-void spark_protocol_communications_handlers(SparkProtocol* protocol, CommunicationsHandlers* handlers);
+void particle_protocol_communications_handlers(ParticleProtocol* protocol, CommunicationsHandlers* handlers);
 
-void spark_protocol_init(SparkProtocol* protocol, const char *id,
-          const SparkKeys &keys,
-          const SparkCallbacks &callbacks,
-          const SparkDescriptor &descriptor, void* reserved=NULL);
-int spark_protocol_handshake(SparkProtocol* protocol, void* reserved=NULL);
-bool spark_protocol_event_loop(SparkProtocol* protocol, void* reserved=NULL);
-bool spark_protocol_is_initialized(SparkProtocol* protocol);
-int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char *buf, const char *id, void* reserved=NULL);
-bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,
+void particle_protocol_init(ParticleProtocol* protocol, const char *id,
+          const ParticleKeys &keys,
+          const ParticleCallbacks &callbacks,
+          const ParticleDescriptor &descriptor, void* reserved=NULL);
+int particle_protocol_handshake(ParticleProtocol* protocol, void* reserved=NULL);
+bool particle_protocol_event_loop(ParticleProtocol* protocol, void* reserved=NULL);
+bool particle_protocol_is_initialized(ParticleProtocol* protocol);
+int particle_protocol_presence_announcement(ParticleProtocol* protocol, unsigned char *buf, const char *id, void* reserved=NULL);
+bool particle_protocol_send_event(ParticleProtocol* protocol, const char *event_name, const char *data,
                 int ttl, EventType::Enum event_type, void* reserved);
-bool spark_protocol_send_subscription_device(SparkProtocol* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
-bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope, void* reserved=NULL);
-bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, EventHandler handler, SubscriptionScope::Enum scope, const char* id, void* handler_data=NULL);
-bool spark_protocol_send_time_request(SparkProtocol* protocol, void* reserved=NULL);
-void spark_protocol_send_subscriptions(SparkProtocol* protocol, void* reserved=NULL);
-void spark_protocol_remove_event_handlers(SparkProtocol* protocol, const char *event_name, void* reserved=NULL);
-void spark_protocol_set_product_id(SparkProtocol* protocol, product_id_t product_id, unsigned int param = 0, void* reserved = NULL);
-void spark_protocol_set_product_firmware_version(SparkProtocol* protocol, product_firmware_version_t product_firmware_version, unsigned int param=0, void* reserved = NULL);
-void spark_protocol_get_product_details(SparkProtocol* protocol, product_details_t* product_details, void* reserved=NULL);
+bool particle_protocol_send_subscription_device(ParticleProtocol* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
+bool particle_protocol_send_subscription_scope(ParticleProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope, void* reserved=NULL);
+bool particle_protocol_add_event_handler(ParticleProtocol* protocol, const char *event_name, EventHandler handler, SubscriptionScope::Enum scope, const char* id, void* handler_data=NULL);
+bool particle_protocol_send_time_request(ParticleProtocol* protocol, void* reserved=NULL);
+void particle_protocol_send_subscriptions(ParticleProtocol* protocol, void* reserved=NULL);
+void particle_protocol_remove_event_handlers(ParticleProtocol* protocol, const char *event_name, void* reserved=NULL);
+void particle_protocol_set_product_id(ParticleProtocol* protocol, product_id_t product_id, unsigned int param = 0, void* reserved = NULL);
+void particle_protocol_set_product_firmware_version(ParticleProtocol* protocol, product_firmware_version_t product_firmware_version, unsigned int param=0, void* reserved = NULL);
+void particle_protocol_get_product_details(ParticleProtocol* protocol, product_details_t* product_details, void* reserved=NULL);
 
 /**
  * Decrypt a buffer using the given public key.
@@ -137,9 +137,9 @@ extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key,
 void parse_device_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* device_privkey);
 /**
  * Retrieves a pointer to a statically allocated instance.
- * @return A statically allocated instance of SparkProtocol.
+ * @return A statically allocated instance of ParticleProtocol.
  */
-extern SparkProtocol* spark_protocol_instance();
+extern ParticleProtocol* particle_protocol_instance();
 
 #ifdef	__cplusplus
 }

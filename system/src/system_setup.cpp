@@ -85,7 +85,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
 #else
         print("Your device id is ");
 #endif
-        String id = spark_deviceID();
+        String id = particle_deviceID();
         print(id.c_str());
         print("\r\n");
     }

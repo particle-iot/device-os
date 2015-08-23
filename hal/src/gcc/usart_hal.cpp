@@ -154,7 +154,7 @@ class SocketUsartServer : public SocketUsartBase {
 };
 
 
-#if SPARK_TEST_DRIVER==1
+#if PARTICLE_TEST_DRIVER==1
 SocketUsartServer usart1 = SocketUsartServer();
 SocketUsartServer usart2 = SocketUsartServer();
 #else

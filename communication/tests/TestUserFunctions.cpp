@@ -24,7 +24,7 @@
   */
 
 #include "UnitTest++.h"
-#include "spark_protocol.h"
+#include "particle_protocol.h"
 #include "ConstructorFixture.h"
 
 SUITE(UserFunctions)
@@ -44,9 +44,9 @@ SUITE(UserFunctions)
       0x30, 0x80, 0x6C, 0xD8, 0xF9, 0x0D, 0x15, 0x6F,
       0xFD, 0x5E, 0xCE, 0xB2, 0xFE, 0x57, 0xE8, 0xE3 };
     memcpy(message_to_receive, function_call, 82);
-    spark_protocol.handshake();
+    particle_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    bool success = spark_protocol.event_loop();
+    bool success = particle_protocol.event_loop();
     CHECK(success);
   }
 
@@ -65,9 +65,9 @@ SUITE(UserFunctions)
       0x82, 0x89, 0xD0, 0xC2, 0xB9, 0x8E, 0x1C, 0xE2,
       0x6E, 0xE3, 0x5E, 0x20, 0xC2, 0x7B, 0x19, 0x1D };
     memcpy(message_to_receive, function_call, 82);
-    spark_protocol.handshake();
+    particle_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    bool success = spark_protocol.event_loop();
+    bool success = particle_protocol.event_loop();
     CHECK(!success);
   }
 }

@@ -17,7 +17,7 @@ extern "C" {
 typedef struct platform_system_flags {
     uint16_t header[2];
     uint16_t Bootloader_Version_SysFlag;
-    uint16_t NVMEM_SPARK_Reset_SysFlag;
+    uint16_t NVMEM_PARTICLE_Reset_SysFlag;
     uint16_t FLASH_OTA_Update_SysFlag;
     uint16_t OTA_FLASHED_Status_SysFlag;
     uint16_t Factory_Reset_SysFlag;

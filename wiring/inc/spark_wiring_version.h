@@ -24,18 +24,18 @@
 #ifndef SPARK_WIRING_VERSION_H
 #define	SPARK_WIRING_VERSION_H
 
-#include "spark_protocol_functions.h"
+#include "particle_protocol_functions.h"
 
 
 struct __ApplicationProductID {
     __ApplicationProductID(product_id_t id) {
-        spark_protocol_set_product_id(spark_protocol_instance(), id);
+        particle_protocol_set_product_id(particle_protocol_instance(), id);
     }
 };
 
 struct __ApplicationProductVersion {
     __ApplicationProductVersion(product_firmware_version_t version) {
-        spark_protocol_set_product_firmware_version(spark_protocol_instance(), version);
+        particle_protocol_set_product_firmware_version(particle_protocol_instance(), version);
     }
 };
 

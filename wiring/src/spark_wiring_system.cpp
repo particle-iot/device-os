@@ -30,7 +30,7 @@ void SystemClass::reset(void)
     HAL_Core_System_Reset();
 }
 
-void SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
+void SystemClass::sleep(Particle_Sleep_TypeDef sleepMode, long seconds)
 {
     system_sleep(sleepMode, seconds, 0, NULL);
 }

@@ -54,7 +54,7 @@ bool system_version_info(Appender* appender);
  * @param reserved NULL
  * @return 0 on success.
  */
-int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
+int Particle_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
 
 /**
  *
@@ -63,7 +63,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
  * @param reserved NULL
  * @return 0 on success.
  */
-int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
+int Particle_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
 
 /**
  * Provides a chunk of the file data.
@@ -72,7 +72,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
  * @param reserved
  * @return
  */
-int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved);
+int Particle_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved);
 
 #ifdef __cplusplus
 }

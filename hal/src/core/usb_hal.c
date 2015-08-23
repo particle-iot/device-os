@@ -66,12 +66,12 @@ static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
 /*******************************************************************************
- * Function Name  : SPARK_USB_Setup
+ * Function Name  : PARTICLE_USB_Setup
  * Description    : Spark USB Setup.
  * Input          : None.
  * Return         : None.
  *******************************************************************************/
-void SPARK_USB_Setup(void)
+void PARTICLE_USB_Setup(void)
 {
   USB_Disconnect_Config();
   USB_Cable_Config(DISABLE);
@@ -128,7 +128,7 @@ void USB_USART_Init(uint32_t baudRate)
             USB_Cable_Config(ENABLE);
 
             //Initialize USB device only once (if linecoding.bitrate==0)
-            SPARK_USB_Setup();
+            PARTICLE_USB_Setup();
         }
         //linecoding.bitrate will be overwritten by USB Host
         linecoding.bitrate = baudRate;

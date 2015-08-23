@@ -118,7 +118,7 @@ int main(void)
     //--------------------------------------------------------------------------
     //  Load the system flags saved at SYSTEM_FLAGS_ADDRESS = 0x08004C00
     //  Bootloader_Version_SysFlag
-    //  NVMEM_SPARK_Reset_SysFlag
+    //  NVMEM_PARTICLE_Reset_SysFlag
     //  FLASH_OTA_Update_SysFlag
     //  Factory_Reset_SysFlag
     //--------------------------------------------------------------------------
@@ -202,7 +202,7 @@ int main(void)
 
                 case SECOND_RETRY:	// On 2nd retry attempt, try to recover using sFlash - Factory Reset
                     FACTORY_RESET_MODE = 1;
-                    SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
+                    SYSTEM_FLAG(NVMEM_PARTICLE_Reset_SysFlag) = 0x0000;
                     BKP_DR1_Value += 1;
                     break;
 
@@ -263,13 +263,13 @@ int main(void)
                 // if pressed for 10 sec, enter Factory Reset Mode
                 // This tells the WLAN setup to clear the WiFi user profiles on bootup
                 LED_SetRGBColor(RGB_COLOR_WHITE);
-                SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0001;
+                SYSTEM_FLAG(NVMEM_PARTICLE_Reset_SysFlag) = 0x0001;
             }
             else if(!factory_reset && TimingBUTTON <= (TIMING_ALL-TIMING_RESTORE_MODE))
             {
                 // if pressed for > 6.5 sec, enter Safe mode
                 LED_SetRGBColor(RGB_COLOR_GREEN);
-                SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
+                SYSTEM_FLAG(NVMEM_PARTICLE_Reset_SysFlag) = 0x0000;
                 factory_reset = 1;
             }
             else if(!USB_DFU_MODE && TimingBUTTON <= (TIMING_ALL-TIMING_DFU_MODE))
@@ -314,7 +314,7 @@ int main(void)
     {
         if (FACTORY_RESET_MODE == 1)
         {
-            if (SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) == 0x0001)
+            if (SYSTEM_FLAG(NVMEM_PARTICLE_Reset_SysFlag) == 0x0001)
                 LED_SetRGBColor(RGB_COLOR_WHITE);
             else
                 LED_SetRGBColor(RGB_COLOR_GREEN);
