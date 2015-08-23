@@ -249,3 +249,19 @@ size_t UDP::printTo(Print& p) const
     int size = _total - _offset;
     return p.write(_buffer+_offset, size);
 }
+
+int UDP::joinMulticast(const IPAddress& ip)
+{
+    if (_sock == socket_handle_invalid())
+        return -1;
+    HAL_IPAddress address = ip.raw();
+    return socket_join_multicast(&address, _nif, 0);
+}
+
+int UDP::leaveMulticast(const IPAddress& ip)
+{
+    if (_sock == socket_handle_invalid())
+        return -1;
+    HAL_IPAddress address = ip.raw();
+    return socket_leave_multicast(&address, _nif, 0);
+}
