@@ -1,7 +1,7 @@
 
 #include "catch.hpp"
 
-#include "spark_wiring_ipaddress.h"
+#include "particle_wiring_ipaddress.h"
 
 TEST_CASE("Can Construct From Uint32") {
 

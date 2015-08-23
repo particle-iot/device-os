@@ -1,9 +1,9 @@
 
 #include <stddef.h>
-#include "spark_wiring_system.h"
-#include "spark_wiring_stream.h"
-#include "spark_wiring_rgb.h"
-#include "spark_wiring_usbserial.h"
+#include "particle_wiring_system.h"
+#include "particle_wiring_stream.h"
+#include "particle_wiring_rgb.h"
+#include "particle_wiring_usbserial.h"
 #include "ota_flash_hal.h"
 #include "core_hal.h"
 #include "delay_hal.h"

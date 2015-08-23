@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    spark_wiring_wlan.cpp
+ * @file    particle_wiring_wlan.cpp
  * @author  Satish Nair and Zachary Crockett
  * @version V1.0.0
  * @date    13-March-2013
@@ -22,8 +22,8 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
-#include "spark_wiring_system.h"
-#include "spark_wiring_usbserial.h"
+#include "particle_wiring_system.h"
+#include "particle_wiring_usbserial.h"
 #include "system_task.h"
 #include "system_cloud.h"
 #include "system_mode.h"
@@ -38,11 +38,11 @@
 #include "timer_hal.h"
 #include "rgbled.h"
 
-#include "spark_wiring_network.h"
-#include "spark_wiring_constants.h"
-#include "spark_wiring_cloud.h"
+#include "particle_wiring_network.h"
+#include "particle_wiring_constants.h"
+#include "particle_wiring_cloud.h"
 
-using spark::Network;
+using particle::Network;
 
 volatile system_tick_t system_loop_total_millis = 0;
 
@@ -72,7 +72,7 @@ void PARTICLE_WLAN_Setup(void (*presence_announcement_callback)(void))
 #endif
 
 #ifndef PARTICLE_NO_CLOUD
-    //Initialize spark protocol callbacks for all System modes
+    //Initialize particle protocol callbacks for all System modes
     Particle_Protocol_Init();
 #endif
 }

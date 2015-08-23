@@ -194,7 +194,7 @@ test(Subscribe_With_Object) {
 
     subscriber.subscribe();
 
-    String deviceID = Spark.deviceID();
+    String deviceID = Particle.deviceID();
     Particle.publish("test/event3");
 
     // now wait for published event to be received

@@ -1,7 +1,7 @@
 
 #include "catch.hpp"
 
-#include "spark_wiring_character.h"
+#include "particle_wiring_character.h"
 
 // smoke tests for character APIs
 

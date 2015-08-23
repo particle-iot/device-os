@@ -1,7 +1,7 @@
 #ifndef __LIB_SERIAL2_H
 #define __LIB_SERIAL2_H
 
-#include "spark_wiring_usartserial.h"
+#include "particle_wiring_usartserial.h"
 
 // instantiate Serial2
 static Ring_Buffer serial2_rx_buffer;

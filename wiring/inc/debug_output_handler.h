@@ -20,8 +20,8 @@
 #ifndef DEBUG_OUTPUT_HANDLER_H
 #define	DEBUG_OUTPUT_HANDLER_H
 
-#include "spark_wiring_usartserial.h"
-#include "spark_wiring_usbserial.h"
+#include "particle_wiring_usartserial.h"
+#include "particle_wiring_usbserial.h"
 #include "service_debug.h"
 #include "delay_hal.h"
 

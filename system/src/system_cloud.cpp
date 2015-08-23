@@ -25,9 +25,9 @@
  ******************************************************************************
  */
 
-#include "spark_wiring.h"
-#include "spark_wiring_network.h"
-#include "spark_wiring_cloud.h"
+#include "particle_wiring.h"
+#include "particle_wiring_network.h"
+#include "particle_wiring_cloud.h"
 #include "system_network.h"
 #include "system_task.h"
 #include "system_update.h"

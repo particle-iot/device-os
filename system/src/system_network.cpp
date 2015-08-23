@@ -1,4 +1,4 @@
-#include "spark_wiring_ticks.h"
+#include "particle_wiring_ticks.h"
 #include "system_setup.h"
 #include "system_network.h"
 #include "system_network_internal.h"

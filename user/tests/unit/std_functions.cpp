@@ -1,7 +1,7 @@
 
 #include "catch.hpp"
 
-#include "spark_wiring_constants.h"
+#include "particle_wiring_constants.h"
 
 TEST_CASE("Can use min() in main namespace in an application") {
     REQUIRE(min(10l, 5)==5);

@@ -21,13 +21,13 @@
  ******************************************************************************
  */
 
-#include "spark_wiring.h"
-#include "spark_wiring_wifi.h"
-#include "spark_wiring_usbserial.h"
-#include "spark_wiring_usartserial.h"
+#include "particle_wiring.h"
+#include "particle_wiring_wifi.h"
+#include "particle_wiring_usbserial.h"
+#include "particle_wiring_usartserial.h"
 #include "wifitester.h"
 #include "core_hal.h"
-#include "spark_wiring_version.h"
+#include "particle_wiring_version.h"
 #include "string_convert.h"
 
 #if PLATFORM_ID==4 || PLATFORM_ID==5 || PLATFORM_ID==6 || PLATFORM_ID==7 || PLATFORM_ID==8
@@ -41,7 +41,7 @@
 #endif
 
 #if Wiring_WiFi
-using namespace spark;
+using namespace particle;
 
 uint8_t serialAvailable();
 int32_t serialRead();

@@ -10,6 +10,7 @@ include ../build/platform-id.mk
 ifeq ("","$(SPARK_NO_PLATFORM)")
 DEPENDENCIES += platform dynalib
 CFLAGS += -DSPARK_PLATFORM
+CFLAGS += -DPARTICLE_PLATFORM
 endif
 
 ifneq ("$(PLATFORM_NET)","BCM9WCDUSI09")
