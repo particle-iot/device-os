@@ -25,6 +25,7 @@
 #include "spark_wiring_string.h"
 #include "events.h"
 #include "system_cloud.h"
+#include "system_sleep.h"
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
 #include "interrupts_hal.h"
