@@ -10,7 +10,7 @@
 #include "dct.h"
 #include "ota_flash_hal.h"
 #include "spark_protocol_functions.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "core_hal.h"
 #include "rng_hal.h"
 

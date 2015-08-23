@@ -29,7 +29,7 @@
 #include "spark_wiring_udp.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "spark_wiring_network.h"
 
 using namespace spark;

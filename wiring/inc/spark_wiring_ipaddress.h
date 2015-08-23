@@ -31,7 +31,7 @@
 
 #include "spark_wiring_printable.h"
 #include "inet_hal.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 
 /**
  * The IP address stored in host order. 

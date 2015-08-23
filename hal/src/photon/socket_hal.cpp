@@ -26,7 +26,7 @@
 #include "socket_hal.h"
 #include "wiced.h"
 #include "service_debug.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "delay_hal.h"
 #include <algorithm>
 #include <vector>

@@ -43,7 +43,7 @@
 #include "ota_flash_hal.h"
 #include "product_store_hal.h"
 #include "rgbled.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "string.h"
 #include <stdarg.h>
 #include "append_list.h"

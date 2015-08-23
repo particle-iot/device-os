@@ -34,7 +34,7 @@
 #include <cstring>
 #include "ledcontrol.h"
 #include "parse_server_address.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "bootloader.h"
 
 #define OTA_CHUNK_SIZE          512

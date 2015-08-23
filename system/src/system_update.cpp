@@ -19,7 +19,7 @@
 #include "string_convert.h"
 #include "appender.h"
 #include "system_version.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;

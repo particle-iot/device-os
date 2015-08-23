@@ -34,7 +34,7 @@
 #include "cc3000_spi.h"
 #include "nvmem.h"
 #include "hw_config.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "security.h"
 #include "evnt_handler.h"
 

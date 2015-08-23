@@ -32,7 +32,7 @@
 #include "pwm_hal.h"
 #include "rng_hal.h"
 #include "config.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "debug.h"
 #include "spark_wiring_arduino.h"
 #include "spark_wiring_constants.h"

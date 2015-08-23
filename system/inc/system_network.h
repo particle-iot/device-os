@@ -26,7 +26,7 @@
 
 #include "inet_hal.h"
 #include "wlan_hal.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 
 #ifdef __cplusplus
 extern "C" {

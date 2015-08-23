@@ -30,7 +30,7 @@
 #include "system_task.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 
 
 using namespace spark;

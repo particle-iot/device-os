@@ -29,7 +29,7 @@
 #include "system_mode.h"
 #include "system_network.h"
 #include "system_network_internal.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "string.h"
 #include "system_tick_hal.h"
 #include "watchdog_hal.h"
