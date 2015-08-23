@@ -2,15 +2,18 @@
 ## v0.4.5
 
 ### FEATURES
+
  - `UDP.sendPacket`/`UDP.receivePacket` to send/receive a packet directly to an application-supplied buffer. [#452](https://github.com/spark/firmware/pull/452)
  - Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)
  - [photon] UDP multicast support via `UDP.joinMulticast`/`UDP.leaveMulticast`. Many thanks @stevie67!
 
 ### ENHANCEMENTS
+
 - [Recipes and Tips](docs/build.md#recipes-and-tips) section in the build documentation.
 - `Particle.function`, `Particle.subscribe` and `attachInterrupt` can take a C++ method and instance pointer. [#534](https://github.com/spark/firmware/pull/534) Thanks to @monkbroc!
 - `UDP.setBuffer` to set the buffer a UDP instance uses for `read`/`write`. [#224](https://github.com/spark/firmware/pull/224) and [#452](https://github.com/spark/firmware/pull/452)
 - `WiFi.setCredentials()` can take a Cipher type to allow full specification of an AP's credentials. [#574](https://github.com/spark/firmware/pull/574)
+
 ### BUGFIXES
 
 - Listening mode re-enters listening mode after credentials are given. [#558](https://github.com/spark/firmware/pull/558)
@@ -18,6 +21,7 @@
 - System doesn't set color of RGB LED when `RGB.control(true)` is called. [#362](https://github.com/spark/firmware/pull/362), [#472](https://github.com/spark/firmware/pull/472) and [#544](https://github.com/spark/firmware/pull/544)
 - WiFi.SSID() may not returns previous network when switching. [#560](https://github.com/spark/firmware/pull/560)
 - Photon: System.sleep(5) not turning Wi-Fi back on after 5 seconds. [#480](https://github.com/spark/firmware/pull/480)
+- regression: floating point support in sprintf not compiled in. [#576](https://github.com/spark/firmware/issues/576)
 
 ## v0.4.4
 

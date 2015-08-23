@@ -60,4 +60,9 @@ test(String_bug_563_integer_overflow) {
     assertTrue(!strcmp("-5000.000000", s));
 }
 
-
+test(String_sprintf) {
+    char buf[20];
+    sprintf(buf, "%f", 1.0f);
+    assertMore(strlen(buf), 0);
+    assertEqual((const char*)buf, (const char*)"1.000000");
+}
