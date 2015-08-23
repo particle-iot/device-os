@@ -123,7 +123,7 @@ void wlan_fetch_ipconfig(WLanConfig* config)
 {
 }
 
-void SPARK_WLAN_SmartConfigProcess()
+void PARTICLE_WLAN_SmartConfigProcess()
 {
 }
 

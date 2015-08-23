@@ -57,7 +57,7 @@
 #include "spi.h"
 #include "hw_config.h"
 #include "debug.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include <stdatomic.h>
 
 //*****************************************************************************

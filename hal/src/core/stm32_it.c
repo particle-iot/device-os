@@ -26,7 +26,6 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include "spark_macros.h"
 #include "debug.h"
 #include "stm32_it.h"
 #include "usb_lib.h"

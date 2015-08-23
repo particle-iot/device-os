@@ -3,17 +3,17 @@
 
 #include "inet_hal.h"
 
-const uint32_t spark_io = (62u<<24) | (116u << 16) | (130u<<8) | 8;
-const uint32_t device_spark_io = (54u<<24) | (208u << 16) | (229u<<8) | 4u;
-const char* spark_io_str = "spark.io";
+const uint32_t particle_io = (62u<<24) | (116u << 16) | (130u<<8) | 8;
+const uint32_t device_particle_io = (54u<<24) | (208u << 16) | (229u<<8) | 4u;
+const char* particle_io_str = "spark.io";
 
 test(WLAN_Test1_Lookup_IP_From_Hostname)
 {
     char hostname[25];
-    strcpy(hostname, spark_io_str);
+    strcpy(hostname, particle_io_str);
     uint32_t ip;
     int result = inet_gethostbyname(hostname, 25, &ip);
-    assertEqual(ip, spark_io);
+    assertEqual(ip, particle_io);
     assertMoreOrEqual(result, 0); // cc3000 returns >=0 on success
 }
 
@@ -48,7 +48,7 @@ test(WLAN_Test4_Ping_By_Hostname)
 #if 0
 test(IPAddress_Construct_From_Uint32)
 {
-    IPAddress ip(device_spark_io);
+    IPAddress ip(device_particle_io);
 
     assertEqual(ip[3], 4);
     assertEqual(ip[2], 229);

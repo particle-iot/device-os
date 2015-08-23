@@ -29,9 +29,9 @@ extern "C" {
 typedef enum
 {
     SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1
-} Spark_Sleep_TypeDef;
+} Particle_Sleep_TypeDef;
 
-void system_sleep(Spark_Sleep_TypeDef mode, long seconds, uint32_t param, void* reserved);
+void system_sleep(Particle_Sleep_TypeDef mode, long seconds, uint32_t param, void* reserved);
 void system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param, void* reserved);
 
 #ifdef __cplusplus

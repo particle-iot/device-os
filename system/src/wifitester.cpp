@@ -21,13 +21,13 @@
  ******************************************************************************
  */
 
-#include "spark_wiring.h"
-#include "spark_wiring_wifi.h"
-#include "spark_wiring_usbserial.h"
-#include "spark_wiring_usartserial.h"
+#include "particle_wiring.h"
+#include "particle_wiring_wifi.h"
+#include "particle_wiring_usbserial.h"
+#include "particle_wiring_usartserial.h"
 #include "wifitester.h"
 #include "core_hal.h"
-#include "spark_wiring_version.h"
+#include "particle_wiring_version.h"
 #include "string_convert.h"
 
 #if PLATFORM_ID==4 || PLATFORM_ID==5 || PLATFORM_ID==6 || PLATFORM_ID==7 || PLATFORM_ID==8
@@ -41,7 +41,7 @@
 #endif
 
 #if Wiring_WiFi
-using namespace spark;
+using namespace particle;
 
 uint8_t serialAvailable();
 int32_t serialRead();
@@ -335,10 +335,10 @@ void WiFiTester::checkWifiSerial(char c) {
             tokenizeCommand(start, parts, 5);
             long productID = strtoul(parts[1], NULL, 10);
             if (productID) {
-                spark_protocol_set_product_id(spark_protocol_instance(), productID);
+                particle_protocol_set_product_id(particle_protocol_instance(), productID);
                 product_details_t details;
                 details.size = sizeof(details);
-                spark_protocol_get_product_details(spark_protocol_instance(), &details);
+                particle_protocol_get_product_details(particle_protocol_instance(), &details);
                 serialPrint("PRODUCT_ID IS NOW ");
                 String id(details.product_id);
                 serialPrintln(id.c_str());
@@ -446,7 +446,7 @@ void WiFiTester::tester_connect(char *ssid, char *pass) {
     }
 
 
-    //SPARK_MANUAL_CREDS(ssid, pass, auth);
+    //PARTICLE_MANUAL_CREDS(ssid, pass, auth);
 
     RGB.color(0, 0, 64);
 

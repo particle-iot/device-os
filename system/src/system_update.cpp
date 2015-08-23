@@ -1,9 +1,9 @@
 
 #include <stddef.h>
-#include "spark_wiring_system.h"
-#include "spark_wiring_stream.h"
-#include "spark_wiring_rgb.h"
-#include "spark_wiring_usbserial.h"
+#include "particle_wiring_system.h"
+#include "particle_wiring_stream.h"
+#include "particle_wiring_rgb.h"
+#include "particle_wiring_usbserial.h"
 #include "ota_flash_hal.h"
 #include "core_hal.h"
 #include "delay_hal.h"
@@ -15,11 +15,11 @@
 #include "system_network.h"
 #include "system_ymodem.h"
 #include "system_task.h"
-#include "spark_protocol_functions.h"
+#include "particle_protocol_functions.h"
 #include "string_convert.h"
 #include "appender.h"
 #include "system_version.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -30,10 +30,10 @@ static uint32_t start_ymodem_flasher_serial_speed = START_YMODEM_FLASHER_SERIAL_
 
 ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update_Handler = NULL;
 
-volatile uint8_t SPARK_CLOUD_CONNECT = 1; //default is AUTOMATIC mode
-volatile uint8_t SPARK_CLOUD_SOCKETED;
-volatile uint8_t SPARK_CLOUD_CONNECTED;
-volatile uint8_t SPARK_FLASH_UPDATE;
+volatile uint8_t PARTICLE_CLOUD_CONNECT = 1; //default is AUTOMATIC mode
+volatile uint8_t PARTICLE_CLOUD_SOCKETED;
+volatile uint8_t PARTICLE_CLOUD_CONNECTED;
+volatile uint8_t PARTICLE_FLASH_UPDATE;
 volatile uint32_t TimingFlashUpdateTimeout;
 
 void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler)
@@ -74,7 +74,7 @@ bool system_fileTransfer(system_file_transfer_t* tx, void* reserved)
     if (NULL != Ymodem_Serial_Flash_Update_Handler)
     {
         status = Ymodem_Serial_Flash_Update_Handler(serialObj, tx->descriptor, NULL);
-        SPARK_FLASH_UPDATE = 0;
+        PARTICLE_FLASH_UPDATE = 0;
         TimingFlashUpdateTimeout = 0;
 
         if (status == true)
@@ -110,13 +110,13 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
         set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
         RGB.control(true);
         RGB.color(RGB_COLOR_MAGENTA);
-        SPARK_FLASH_UPDATE = 3;
+        PARTICLE_FLASH_UPDATE = 3;
         TimingFlashUpdateTimeout = 0;
     }
 #endif
 }
 
-int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
+int Particle_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {
     if (file.store==FileTransfer::Store::FIRMWARE)
     {
@@ -136,7 +136,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
     else {
         RGB.control(true);
         RGB.color(RGB_COLOR_MAGENTA);
-        SPARK_FLASH_UPDATE = 1;
+        PARTICLE_FLASH_UPDATE = 1;
         TimingFlashUpdateTimeout = 0;
         system_notify_event(firmware_update, firmware_update_begin, &file);
         HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
@@ -146,9 +146,9 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
 
 void serial_dump(const char* msg, ...);
 
-int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
+int Particle_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {
-    SPARK_FLASH_UPDATE = 0;
+    PARTICLE_FLASH_UPDATE = 0;
     TimingFlashUpdateTimeout = 0;
     //serial_dump("update finished flags=%d store=%d", flags, file.store);
 
@@ -173,7 +173,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
     return 0;
 }
 
-int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved)
+int Particle_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved)
 {
     TimingFlashUpdateTimeout = 0;
     int result = -1;

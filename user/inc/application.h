@@ -28,35 +28,35 @@
 
 #include "system_version.h"
 
-#ifdef SPARK_PLATFORM
+#ifdef PARTICLE_PLATFORM
 #include "platform_headers.h"
 #endif
 
 
-#include "spark_wiring.h"
-#include "spark_wiring_cloud.h"
-#include "spark_wiring_interrupts.h"
-#include "spark_wiring_string.h"
-#include "spark_wiring_print.h"
-#include "spark_wiring_usartserial.h"
-#include "spark_wiring_usbserial.h"
-#include "spark_wiring_usbmouse.h"
-#include "spark_wiring_usbkeyboard.h"
-#include "spark_wiring_spi.h"
-#include "spark_wiring_i2c.h"
-#include "spark_wiring_servo.h"
-#include "spark_wiring_wifi.h"
-#include "spark_wiring_network.h"
-#include "spark_wiring_client.h"
-#include "spark_wiring_startup.h"
-#include "spark_wiring_tcpclient.h"
-#include "spark_wiring_tcpserver.h"
-#include "spark_wiring_udp.h"
-#include "spark_wiring_time.h"
-#include "spark_wiring_tone.h"
-#include "spark_wiring_eeprom.h"
-#include "spark_wiring_version.h"
-#include "spark_wiring_thread.h"
+#include "particle_wiring.h"
+#include "particle_wiring_cloud.h"
+#include "particle_wiring_interrupts.h"
+#include "particle_wiring_string.h"
+#include "particle_wiring_print.h"
+#include "particle_wiring_usartserial.h"
+#include "particle_wiring_usbserial.h"
+#include "particle_wiring_usbmouse.h"
+#include "particle_wiring_usbkeyboard.h"
+#include "particle_wiring_spi.h"
+#include "particle_wiring_i2c.h"
+#include "particle_wiring_servo.h"
+#include "particle_wiring_wifi.h"
+#include "particle_wiring_network.h"
+#include "particle_wiring_client.h"
+#include "particle_wiring_startup.h"
+#include "particle_wiring_tcpclient.h"
+#include "particle_wiring_tcpserver.h"
+#include "particle_wiring_udp.h"
+#include "particle_wiring_time.h"
+#include "particle_wiring_tone.h"
+#include "particle_wiring_eeprom.h"
+#include "particle_wiring_version.h"
+#include "particle_wiring_thread.h"
 #include "fast_pin.h"
 #include "string_convert.h"
 #include "debug_output_handler.h"
@@ -68,6 +68,6 @@
 
 #include "stdio.h"
 
-using namespace spark;
+using namespace particle;
 
 #endif /* APPLICATION_H_ */

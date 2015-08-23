@@ -34,7 +34,7 @@
 #include "cc3000_spi.h"
 #include "nvmem.h"
 #include "hw_config.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "security.h"
 #include "evnt_handler.h"
 
@@ -53,8 +53,8 @@ uint32_t lastEvent = 0;
 #define SMART_CONFIG_PROFILE_SIZE       67
 
 /* CC3000 EEPROM - Spark File Data Storage */
-#define NVMEM_SPARK_FILE_ID		14	//Do not change this ID
-#define NVMEM_SPARK_FILE_SIZE		16	//Change according to requirement
+#define NVMEM_PARTICLE_FILE_ID		14	//Do not change this ID
+#define NVMEM_PARTICLE_FILE_SIZE		16	//Change according to requirement
 #define WLAN_PROFILE_FILE_OFFSET	0
 #define WLAN_POLICY_FILE_OFFSET		1       //Not used henceforth
 #define WLAN_TIMEOUT_FILE_OFFSET	2
@@ -68,16 +68,16 @@ uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
     return rv;
 }
 
-unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
+unsigned char NVMEM_Particle_File_Data[NVMEM_PARTICLE_FILE_SIZE];
 
-void recreate_spark_nvmem_file();
+void recreate_particle_nvmem_file();
 
 
 int wlan_clear_credentials()
 {
     if(wlan_ioctl_del_profile(255) == 0)
     {
-        recreate_spark_nvmem_file();
+        recreate_particle_nvmem_file();
         Clear_NetApp_Dhcp();
         return 0;
     }
@@ -86,7 +86,7 @@ int wlan_clear_credentials()
 
 int wlan_has_credentials()
 {
-    if(NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] != 0)
+    if(NVMEM_Particle_File_Data[WLAN_PROFILE_FILE_OFFSET] != 0)
     {
         return 0;
     }
@@ -114,14 +114,14 @@ wlan_result_t wlan_deactivate() {
 
 bool wlan_reset_credentials_store_required()
 {
-    return (NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE);
+    return (NVMEM_PARTICLE_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_PARTICLE_FILE_ID, NVMEM_PARTICLE_FILE_SIZE, 0, NVMEM_Particle_File_Data) != NVMEM_PARTICLE_FILE_SIZE);
 }
 
 wlan_result_t wlan_reset_credentials_store()
 {
     /* Delete all previously stored wlan profiles */
     wlan_clear_credentials();
-    NVMEM_SPARK_Reset_SysFlag = 0x0000;
+    NVMEM_PARTICLE_Reset_SysFlag = 0x0000;
     Save_SystemFlags();
     return 0;
 }
@@ -280,11 +280,11 @@ int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char
 
   if(wlan_profile_index != -1)
   {
-    NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET] = wlan_profile_index + 1;
+    NVMEM_Particle_File_Data[WLAN_PROFILE_FILE_OFFSET] = wlan_profile_index + 1;
   }
 
   /* write count of wlan profiles stored */
-  nvmem_write(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
+  nvmem_write(NVMEM_PARTICLE_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Particle_File_Data[WLAN_PROFILE_FILE_OFFSET]);
   return 0;
 }
 
@@ -297,20 +297,20 @@ int wlan_set_credentials(WLanCredentials* c)
 /**
  * Rebuilds the eeprom storage file.
  */
-void recreate_spark_nvmem_file(void)
+void recreate_particle_nvmem_file(void)
 {
     // Spark file IO on old TI Driver was corrupting nvmem
     // so remove the entry for Spark file in CC3000 EEPROM
-    nvmem_create_entry(NVMEM_SPARK_FILE_ID, 0);
+    nvmem_create_entry(NVMEM_PARTICLE_FILE_ID, 0);
 
     // Create new entry for Spark File in CC3000 EEPROM
-    nvmem_create_entry(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE);
+    nvmem_create_entry(NVMEM_PARTICLE_FILE_ID, NVMEM_PARTICLE_FILE_SIZE);
 
     // Zero out our array copy of the EEPROM
-    memset(NVMEM_Spark_File_Data, 0, NVMEM_SPARK_FILE_SIZE);
+    memset(NVMEM_Particle_File_Data, 0, NVMEM_PARTICLE_FILE_SIZE);
 
     // Write zeroed-out array into the EEPROM
-    nvmem_write(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data);
+    nvmem_write(NVMEM_PARTICLE_FILE_ID, NVMEM_PARTICLE_FILE_SIZE, 0, NVMEM_Particle_File_Data);
 }
 
 void wlan_smart_config_init() {
@@ -329,7 +329,7 @@ void wlan_smart_config_init() {
 
 bool wlan_smart_config_finalize() {
     /* read count of wlan profiles stored */
-    nvmem_read(NVMEM_SPARK_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Spark_File_Data[WLAN_PROFILE_FILE_OFFSET]);
+    nvmem_read(NVMEM_PARTICLE_FILE_ID, 1, WLAN_PROFILE_FILE_OFFSET, &NVMEM_Particle_File_Data[WLAN_PROFILE_FILE_OFFSET]);
     return false;
 }
 
@@ -426,8 +426,8 @@ void wlan_setup()
 
 void wlan_set_error_count(uint32_t errorCount)
 {
-    NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET] = errorCount;
-    nvmem_write(NVMEM_SPARK_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]);
+    NVMEM_Particle_File_Data[ERROR_COUNT_FILE_OFFSET] = errorCount;
+    nvmem_write(NVMEM_PARTICLE_FILE_ID, 1, ERROR_COUNT_FILE_OFFSET, &NVMEM_Particle_File_Data[ERROR_COUNT_FILE_OFFSET]);
 }
 
 void wlan_fetch_ipconfig(WLanConfig* config) {
@@ -439,7 +439,7 @@ void wlan_fetch_ipconfig(WLanConfig* config) {
     nvmem_get_mac_address(config->nw.uaMacAddr);
 }
 
-void SPARK_WLAN_SmartConfigProcess()
+void PARTICLE_WLAN_SmartConfigProcess()
 {
     unsigned int ssidLen, keyLen;
     unsigned char *decKeyPtr;

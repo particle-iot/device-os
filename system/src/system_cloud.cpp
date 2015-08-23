@@ -25,15 +25,15 @@
  ******************************************************************************
  */
 
-#include "spark_wiring.h"
-#include "spark_wiring_network.h"
-#include "spark_wiring_cloud.h"
+#include "particle_wiring.h"
+#include "particle_wiring_network.h"
+#include "particle_wiring_cloud.h"
 #include "system_network.h"
 #include "system_task.h"
 #include "system_update.h"
 #include "string_convert.h"
-#include "spark_protocol_functions.h"
-#include "spark_protocol.h"
+#include "particle_protocol_functions.h"
+#include "particle_protocol.h"
 #include "socket_hal.h"
 #include "core_hal.h"
 #include "core_subsys_hal.h"
@@ -43,33 +43,33 @@
 #include "ota_flash_hal.h"
 #include "product_store_hal.h"
 #include "rgbled.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "string.h"
 #include <stdarg.h>
 #include "append_list.h"
 
-#ifndef SPARK_NO_CLOUD
+#ifndef PARTICLE_NO_CLOUD
 
 int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
-int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
+int userFuncSchedule(const char *funcKey, const char *paramString, ParticleDescriptor::FunctionResultCallback callback, void* reserved);
 
-SparkProtocol* sp;
+ParticleProtocol* sp;
 
 // initialize the sp value so we have a local copy of it in this module
 struct SystemCloudStartup {
     SystemCloudStartup() {
-        sp = spark_protocol_instance();
+        sp = particle_protocol_instance();
     }
 };
 SystemCloudStartup system_cloud_startup;
 
-static sock_handle_t sparkSocket = socket_handle_invalid();
+static sock_handle_t particleSocket = socket_handle_invalid();
 
 extern uint8_t LED_RGB_BRIGHTNESS;
 
 // LED_Signaling_Override
-volatile uint8_t LED_Spark_Signal;
+volatile uint8_t LED_Particle_Signal;
 const uint32_t VIBGYOR_Colors[] = {
     0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000
 };
@@ -77,13 +77,13 @@ const int VIBGYOR_Size = sizeof (VIBGYOR_Colors) / sizeof (uint32_t);
 int VIBGYOR_Index;
 
 /**
- * This is necessary since spark_protocol_instance() was defined in both system_cloud
+ * This is necessary since particle_protocol_instance() was defined in both system_cloud
  * and communication dynalibs. (Not sure why - just an oversight.)
  * Renaming this method, but keeping in the dynalib for backwards compatibility with wiring code
  * version 1. Wiring code compiled against version 2 will not use this function, since the
- * code will be linked to spark_protocol_instance() in comms lib.
+ * code will be linked to particle_protocol_instance() in comms lib.
  */
-SparkProtocol* system_cloud_protocol_instance(void)
+ParticleProtocol* system_cloud_protocol_instance(void)
 {
     return sp;
 }
@@ -91,7 +91,7 @@ SparkProtocol* system_cloud_protocol_instance(void)
 struct User_Var_Lookup_Table_t
 {
     const void *userVar;
-    Spark_Data_TypeDef userVarType;
+    Particle_Data_TypeDef userVarType;
     char userVarKey[USER_VAR_KEY_LENGTH];
 };
 
@@ -107,34 +107,34 @@ struct User_Func_Lookup_Table_t
 static append_list<User_Func_Lookup_Table_t> funcs(5);
 
 
-SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
+SubscriptionScope::Enum convert(Particle_Subscription_Scope_TypeDef subscription_type)
 {
     return(subscription_type==MY_DEVICES) ? SubscriptionScope::MY_DEVICES : SubscriptionScope::FIREHOSE;
 }
 
-bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
-        Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
+bool particle_subscribe(const char *eventName, EventHandler handler, void* handler_data,
+        Particle_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
 {
     auto event_scope = convert(scope);
-    bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
-    if (success && spark_connected())
+    bool success = particle_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
+    if (success && particle_connected())
     {
         if (deviceID)
-            success = spark_protocol_send_subscription_device(sp, eventName, deviceID);
+            success = particle_protocol_send_subscription_device(sp, eventName, deviceID);
         else
-            success = spark_protocol_send_subscription_scope(sp, eventName, event_scope);
+            success = particle_protocol_send_subscription_scope(sp, eventName, event_scope);
     }
     return success;
 }
 
 
-inline EventType::Enum convert(Spark_Event_TypeDef eventType) {
+inline EventType::Enum convert(Particle_Event_TypeDef eventType) {
     return eventType==PUBLIC ? EventType::PUBLIC : EventType::PRIVATE;
 }
 
-bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved)
+bool particle_send_event(const char* name, const char* data, int ttl, Particle_Event_TypeDef eventType, void* reserved)
 {
-    return spark_protocol_send_event(sp, name, data, ttl, convert(eventType), NULL);
+    return particle_protocol_send_event(sp, name, data, ttl, convert(eventType), NULL);
 }
 
 User_Var_Lookup_Table_t* find_var_by_key(const char* varKey)
@@ -149,7 +149,7 @@ User_Var_Lookup_Table_t* find_var_by_key(const char* varKey)
     return NULL;
 }
 
-bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
+bool particle_variable(const char *varKey, const void *userVar, Particle_Data_TypeDef userVarType, void* reserved)
 {
     User_Var_Lookup_Table_t* item = NULL;
     if (NULL != userVar && NULL != varKey && strlen(varKey)<=USER_VAR_KEY_LENGTH)
@@ -184,7 +184,7 @@ int call_raw_user_function(void* data, const char* param, void* reserved)
     return (*fn)(p);
 }
 
-bool spark_function2(const cloud_function_descriptor* desc, void* reserved)
+bool particle_function2(const cloud_function_descriptor* desc, void* reserved)
 {
     User_Func_Lookup_Table_t* item = NULL;
     if (NULL != desc->fn && NULL != desc->funcKey && strlen(desc->funcKey)<=USER_FUNC_KEY_LENGTH)
@@ -204,7 +204,7 @@ bool spark_function2(const cloud_function_descriptor* desc, void* reserved)
  * This is the original released signature for firmware version 0 and needs to remain like this.
  * (The original returned void - we can safely change to
  */
-bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved)
+bool particle_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved)
 {
     bool result;
     if (funcKey) {
@@ -212,110 +212,110 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
         desc.funcKey = funcKey;
         desc.fn = call_raw_user_function;
         desc.data = (void*)pFunc;
-        result = spark_function2(&desc, NULL);
+        result = particle_function2(&desc, NULL);
     }
     else {
-        result = spark_function2((cloud_function_descriptor*)pFunc, reserved);
+        result = particle_function2((cloud_function_descriptor*)pFunc, reserved);
     }
     return result;
 }
 
 inline uint8_t isSocketClosed()
 {
-    uint8_t closed = socket_active_status(sparkSocket) == SOCKET_STATUS_INACTIVE;
+    uint8_t closed = socket_active_status(particleSocket) == SOCKET_STATUS_INACTIVE;
 
     if (closed)
     {
-        DEBUG("get_socket_active_status(sparkSocket=%d)==SOCKET_STATUS_INACTIVE", sparkSocket);
+        DEBUG("get_socket_active_status(particleSocket=%d)==SOCKET_STATUS_INACTIVE", particleSocket);
     }
-    if (closed && sparkSocket != socket_handle_invalid())
+    if (closed && particleSocket != socket_handle_invalid())
     {
-        DEBUG("!!!!!!closed && sparkSocket(%d) != SOCKET_INVALID", sparkSocket);
+        DEBUG("!!!!!!closed && particleSocket(%d) != SOCKET_INVALID", particleSocket);
     }
-    if (!socket_handle_valid(sparkSocket))
+    if (!socket_handle_valid(particleSocket))
     {
-        DEBUG("sparkSocket is not valid");
+        DEBUG("particleSocket is not valid");
         closed = true;
     }
     return closed;
 }
 
-bool spark_connected(void)
+bool particle_connected(void)
 {
-    if (SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED)
+    if (PARTICLE_CLOUD_SOCKETED && PARTICLE_CLOUD_CONNECTED)
         return true;
     else
         return false;
 }
 
-void spark_connect(void)
+void particle_connect(void)
 {
-    //Schedule Spark's cloud connection and handshake
-    SPARK_WLAN_SLEEP = 0;
-    SPARK_CLOUD_CONNECT = 1;
+    //Schedule Particle's cloud connection and handshake
+    PARTICLE_WLAN_SLEEP = 0;
+    PARTICLE_CLOUD_CONNECT = 1;
 }
 
-void spark_disconnect(void)
+void particle_disconnect(void)
 {
-    //Schedule Spark's cloud disconnection
-    SPARK_CLOUD_CONNECT = 0;
+    //Schedule Particle's cloud disconnection
+    PARTICLE_CLOUD_CONNECT = 0;
 }
 
-void spark_process(void)
+void particle_process(void)
 {
     // run the background processing loop, and specifically also pump cloud events
-    Spark_Idle_Events(true);
+    Particle_Idle_Events(true);
 }
 
 /**
  * This is the internal function called by the background loop to pump cloud events.
  */
-void Spark_Process_Events()
+void Particle_Process_Events()
 {
-    if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
+    if (PARTICLE_CLOUD_SOCKETED && !Particle_Communication_Loop())
     {
-        SPARK_CLOUD_CONNECTED = 0;
-        SPARK_CLOUD_SOCKETED = 0;
+        PARTICLE_CLOUD_CONNECTED = 0;
+        PARTICLE_CLOUD_SOCKETED = 0;
     }
 }
 
 // Returns number of bytes sent or -1 if an error occurred
 
-int Spark_Send(const unsigned char *buf, uint32_t buflen)
+int Particle_Send(const unsigned char *buf, uint32_t buflen)
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed())
+    if (PARTICLE_WLAN_RESET || PARTICLE_WLAN_SLEEP || isSocketClosed())
     {
-        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
+        DEBUG("PARTICLE_WLAN_RESET || PARTICLE_WLAN_SLEEP || isSocketClosed()");
         //break from any blocking loop
         return -1;
     }
 
     // send returns negative numbers on error
-    int bytes_sent = socket_send(sparkSocket, buf, buflen);
+    int bytes_sent = socket_send(particleSocket, buf, buflen);
     return bytes_sent;
 }
 
 // Returns number of bytes received or -1 if an error occurred
 
-int Spark_Receive(unsigned char *buf, uint32_t buflen)
+int Particle_Receive(unsigned char *buf, uint32_t buflen)
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed())
+    if (PARTICLE_WLAN_RESET || PARTICLE_WLAN_SLEEP || isSocketClosed())
     {
         //break from any blocking loop
-        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
+        DEBUG("PARTICLE_WLAN_RESET || PARTICLE_WLAN_SLEEP || isSocketClosed()");
         return -1;
     }
 
-    static int spark_receive_last_bytes_received = 0;
-//    static volatile system_tick_t spark_receive_last_request_millis = 0;
+    static int particle_receive_last_bytes_received = 0;
+//    static volatile system_tick_t particle_receive_last_request_millis = 0;
     //no delay between successive socket_receive() calls for cloud
     //not connected or ota flash in process or on last data receipt
     {
-        spark_receive_last_bytes_received = socket_receive(sparkSocket, buf, buflen, 0);
-        //spark_receive_last_request_millis = millis();
+        particle_receive_last_bytes_received = socket_receive(particleSocket, buf, buflen, 0);
+        //particle_receive_last_request_millis = millis();
     }
 
-    return spark_receive_last_bytes_received;
+    return particle_receive_last_bytes_received;
 }
 
 int numUserFunctions(void)
@@ -338,19 +338,19 @@ const char* getUserVariableKey(int variable_index)
     return vars[variable_index].userVarKey;
 }
 
-SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
+ParticleReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 {
     switch (userVarType(varKey))
     {
         case 1:
-            return SparkReturnType::BOOLEAN;
+            return ParticleReturnType::BOOLEAN;
         case 4:
-            return SparkReturnType::STRING;
+            return ParticleReturnType::STRING;
         case 9:
-            return SparkReturnType::DOUBLE;
+            return ParticleReturnType::DOUBLE;
         case 2:
         default:
-            return SparkReturnType::INT;
+            return ParticleReturnType::INT;
     }
 }
 
@@ -363,13 +363,13 @@ void SystemEvents(const char* name, const char* data)
     }
 }
 
-void Spark_Protocol_Init(void)
+void Particle_Protocol_Init(void)
 {
-    if (!spark_protocol_is_initialized(sp))
+    if (!particle_protocol_is_initialized(sp))
     {
         product_details_t info;
         info.size = sizeof(info);
-        spark_protocol_get_product_details(sp, &info);
+        particle_protocol_get_product_details(sp, &info);
 
         // User code was run, so persist the current values stored in the comms lib.
         // These will either have been left as default or overridden via PRODUCT_ID/PRODUCT_VERSION macros
@@ -381,25 +381,25 @@ void Spark_Protocol_Init(void)
             info.product_id = HAL_GetProductStore(PRODUCT_STORE_ID);
             info.product_version = HAL_GetProductStore(PRODUCT_STORE_VERSION);
             if (info.product_id!=0xFFFF)
-                spark_protocol_set_product_id(sp, info.product_id);
+                particle_protocol_set_product_id(sp, info.product_id);
             if (info.product_version!=0xFFFF)
-                spark_protocol_set_product_firmware_version(sp, info.product_version);
+                particle_protocol_set_product_firmware_version(sp, info.product_version);
         }
 
-        SparkCallbacks callbacks;
+        ParticleCallbacks callbacks;
         memset(&callbacks, 0, sizeof(callbacks));
         callbacks.size = sizeof(callbacks);
-        callbacks.send = Spark_Send;
-        callbacks.receive = Spark_Receive;
-        callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
-        callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
+        callbacks.send = Particle_Send;
+        callbacks.receive = Particle_Receive;
+        callbacks.prepare_for_firmware_update = Particle_Prepare_For_Firmware_Update;
+        callbacks.finish_firmware_update = Particle_Finish_Firmware_Update;
         callbacks.calculate_crc = HAL_Core_Compute_CRC32;
-        callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
-        callbacks.signal = Spark_Signal;
+        callbacks.save_firmware_chunk = Particle_Save_Firmware_Chunk;
+        callbacks.signal = Particle_Signal;
         callbacks.millis = HAL_Timer_Get_Milli_Seconds;
         callbacks.set_time = system_set_time;
 
-        SparkDescriptor descriptor;
+        ParticleDescriptor descriptor;
         memset(&descriptor, 0, sizeof(descriptor));
         descriptor.size = sizeof(descriptor);
         descriptor.num_functions = numUserFunctions;
@@ -416,7 +416,7 @@ void Spark_Protocol_Init(void)
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
 
-        SparkKeys keys;
+        ParticleKeys keys;
         keys.size = sizeof(keys);
         keys.server_public = pubkey;
         keys.core_private = private_key;
@@ -431,7 +431,7 @@ void Spark_Protocol_Init(void)
         uint8_t id_length = HAL_device_ID(NULL, 0);
         uint8_t id[id_length];
         HAL_device_ID(id, id_length);
-        spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
+        particle_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
         Particle.subscribe("spark", SystemEvents);
     }
@@ -444,9 +444,9 @@ void system_set_time(time_t time, unsigned, void*)
 
 const int CLAIM_CODE_SIZE = 63;
 
-int Spark_Handshake(void)
+int Particle_Handshake(void)
 {
-    int err = spark_protocol_handshake(sp);
+    int err = particle_protocol_handshake(sp);
     if (!err)
     {
         char buf[CLAIM_CODE_SIZE + 1];
@@ -463,14 +463,14 @@ int Spark_Handshake(void)
 
         if (!HAL_core_subsystem_version(buf, sizeof (buf)))
         {
-            Particle.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
+            Particle.publish("spark/" PARTICLE_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
         }
 
         Multicast_Presence_Announcement();
-        spark_protocol_send_subscriptions(sp);
+        particle_protocol_send_subscriptions(sp);
         // important this comes at the end since it requires a response from the cloud.
-        spark_protocol_send_time_request(sp);
-        Spark_Process_Events();
+        particle_protocol_send_time_request(sp);
+        Particle_Process_Events();
     }
     return err;
 }
@@ -478,9 +478,9 @@ int Spark_Handshake(void)
 // Returns true if all's well or
 //         false on error, meaning we're probably disconnected
 
-inline bool Spark_Communication_Loop(void)
+inline bool Particle_Communication_Loop(void)
 {
-    return spark_protocol_event_loop(sp);
+    return particle_protocol_event_loop(sp);
 }
 
 /* This function MUST NOT BlOCK!
@@ -508,17 +508,17 @@ void LED_Signaling_Override(void)
     }
 }
 
-void Spark_Signal(bool on, unsigned, void*)
+void Particle_Signal(bool on, unsigned, void*)
 {
     if (on)
     {
         LED_Signaling_Start();
-        LED_Spark_Signal = 1;
+        LED_Particle_Signal = 1;
     }
     else
     {
         LED_Signaling_Stop();
-        LED_Spark_Signal = 0;
+        LED_Particle_Signal = 0;
     }
 }
 
@@ -571,18 +571,18 @@ int Internet_Test(void)
 
 // Same return value as connect(), -1 on error
 
-int Spark_Connect(void)
+int Particle_Connect(void)
 {
-    DEBUG("sparkSocket Now =%d", sparkSocket);
+    DEBUG("particleSocket Now =%d", particleSocket);
 
     // Close Original
 
-    Spark_Disconnect();
+    Particle_Disconnect();
 
-    sparkSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, SPARK_SERVER_PORT, NIF_DEFAULT);
-    DEBUG("socketed sparkSocket=%d", sparkSocket);
+    particleSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, PARTICLE_SERVER_PORT, NIF_DEFAULT);
+    DEBUG("socketed particleSocket=%d", particleSocket);
 
-    if (!socket_handle_valid(sparkSocket))
+    if (!socket_handle_valid(particleSocket))
     {
         return -1;
     }
@@ -591,8 +591,8 @@ int Spark_Connect(void)
     tSocketAddr.sa_family = AF_INET;
 
     // the destination port
-    tSocketAddr.sa_data[0] = (SPARK_SERVER_PORT & 0xFF00) >> 8;
-    tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
+    tSocketAddr.sa_data[0] = (PARTICLE_SERVER_PORT & 0xFF00) >> 8;
+    tSocketAddr.sa_data[1] = (PARTICLE_SERVER_PORT & 0x00FF);
 
     ServerAddress server_addr;
     HAL_FLASH_Read_ServerAddress(&server_addr);
@@ -610,7 +610,7 @@ int Spark_Connect(void)
         default:
         case INVALID_INTERNET_ADDRESS:
         {
-            const char default_domain[] = "device.spark.io";
+            const char default_domain[] = "device.particle.io";
             // Make sure we copy the NULL terminator, so subsequent strlen() calls on server_addr.domain return the correct length
             memcpy(server_addr.domain, default_domain, strlen(default_domain) + 1);
             // and fall through to domain name case
@@ -642,31 +642,31 @@ int Spark_Connect(void)
 
         uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
         DEBUG("connect");
-        rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
+        rv = socket_connect(particleSocket, &tSocketAddr, sizeof (tSocketAddr));
         DEBUG("connected connect=%d", rv);
         HAL_WLAN_SetNetWatchDog(ot);
     }
     if (rv)     // error - prevent socket leaks
-        Spark_Disconnect();
+        Particle_Disconnect();
     return rv;
 }
 
-int Spark_Disconnect(void)
+int Particle_Disconnect(void)
 {
     int retVal = 0;
     DEBUG("");
-    if (socket_handle_valid(sparkSocket))
+    if (socket_handle_valid(particleSocket))
     {
 #if defined(SEND_ON_CLOSE)
         DEBUG("send");
         char c = 0;
-        int rc = send(sparkSocket, &c, 1, 0);
+        int rc = send(particleSocket, &c, 1, 0);
         DEBUG("send %d", rc);
 #endif
         DEBUG("Close");
-        retVal = socket_close(sparkSocket);
+        retVal = socket_close(particleSocket);
         DEBUG("Closed retVal=%d", retVal);
-        sparkSocket = socket_handle_invalid();
+        particleSocket = socket_handle_invalid();
     }
     return retVal;
 }
@@ -683,21 +683,21 @@ const void *getUserVar(const char *varKey)
     return item ? item->userVar : NULL;
 }
 
-int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved)
+int userFuncSchedule(const char *funcKey, const char *paramString, ParticleDescriptor::FunctionResultCallback callback, void* reserved)
 {
     // for now, we invoke the function directly and return the result via the callback
     User_Func_Lookup_Table_t* item = find_func_by_key(funcKey);
     long result = item ? item->pUserFunc(item->pUserFuncData, paramString, NULL) : -1;
-    callback((const void*)result, SparkReturnType::INT);
+    callback((const void*)result, ParticleReturnType::INT);
     return 0;
 }
 
 void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
 {
-    if (sparkSocket==socket)
+    if (particleSocket==socket)
     {
-        SPARK_CLOUD_CONNECTED = 0;
-        SPARK_CLOUD_SOCKETED = 0;
+        PARTICLE_CLOUD_CONNECTED = 0;
+        PARTICLE_CLOUD_SOCKETED = 0;
     }
 }
 
@@ -729,7 +729,7 @@ String bytes2hex(const uint8_t* buf, unsigned len)
     return result;
 }
 
-String spark_deviceID(void)
+String particle_deviceID(void)
 {
     unsigned len = HAL_device_ID(NULL, 0);
     uint8_t id[len];
@@ -767,7 +767,7 @@ char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out)
 
 void Multicast_Presence_Announcement(void)
 {
-#ifndef SPARK_NO_CLOUD
+#ifndef PARTICLE_NO_CLOUD
     long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NIF_DEFAULT);
     if (!socket_handle_valid(multicast_socket))
         return;
@@ -776,7 +776,7 @@ void Multicast_Presence_Announcement(void)
     uint8_t id_length = HAL_device_ID(NULL, 0);
     uint8_t id[id_length];
     HAL_device_ID(id, id_length);
-    spark_protocol_presence_announcement(sp, announcement, (const char *) id);
+    particle_protocol_presence_announcement(sp, announcement, (const char *) id);
 
     // create multicast address 224.0.1.187 port 5683
     sockaddr_t addr;

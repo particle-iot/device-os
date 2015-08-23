@@ -26,6 +26,6 @@ LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup
-ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=1
+ASFLAGS +=  -Wa,--defsym -Wa,PARTICLE_INIT_STARTUP=1
 
 endif

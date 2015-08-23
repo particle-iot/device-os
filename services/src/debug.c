@@ -10,7 +10,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include "config.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "debug.h"
 #include "timer_hal.h"
 

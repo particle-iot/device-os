@@ -26,18 +26,18 @@ void set_system_mode(System_Mode_TypeDef mode)
     {
         case SAFE_MODE:
         case AUTOMATIC:
-            SPARK_CLOUD_CONNECT = 1;
-            SPARK_WLAN_SLEEP = 0;
+            PARTICLE_CLOUD_CONNECT = 1;
+            PARTICLE_WLAN_SLEEP = 0;
             break;
 
         case SEMI_AUTOMATIC:
-            SPARK_CLOUD_CONNECT = 0;
-            SPARK_WLAN_SLEEP = 1;
+            PARTICLE_CLOUD_CONNECT = 0;
+            PARTICLE_WLAN_SLEEP = 1;
             break;
 
         case MANUAL:
-            SPARK_CLOUD_CONNECT = 0;
-            SPARK_WLAN_SLEEP = 1;
+            PARTICLE_CLOUD_CONNECT = 0;
+            PARTICLE_WLAN_SLEEP = 1;
             break;
     }
 }

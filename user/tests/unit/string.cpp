@@ -3,7 +3,7 @@
 #include <limits.h>
 #include "catch.hpp"
 
-#include "spark_wiring_string.h"
+#include "particle_wiring_string.h"
 
 TEST_CASE("Can use HEX radix with String numeric conversion constructors") {
 

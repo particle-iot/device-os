@@ -70,8 +70,8 @@ extern "C" void HAL_SysTick_Handler(void)
 {
     if (LED_RGB_IsOverRidden())
     {
-#ifndef SPARK_NO_CLOUD
-        if (LED_Spark_Signal != 0)
+#ifndef PARTICLE_NO_CLOUD
+        if (LED_Particle_Signal != 0)
         {
             LED_Signaling_Override();
         }
@@ -81,33 +81,33 @@ extern "C" void HAL_SysTick_Handler(void)
     {
         TimingLED--;
     }
-    else if(WLAN_SMART_CONFIG_START || SPARK_FLASH_UPDATE || Spark_Error_Count)
+    else if(WLAN_SMART_CONFIG_START || PARTICLE_FLASH_UPDATE || Particle_Error_Count)
     {
         //Do nothing
     }
-    else if(SPARK_LED_FADE)
+    else if(PARTICLE_LED_FADE)
     {
         LED_Fade(LED_RGB);
         TimingLED = 20;//Breathing frequency kept constant
     }
-    else if(SPARK_CLOUD_CONNECTED)
+    else if(PARTICLE_CLOUD_CONNECTED)
     {
         LED_SetRGBColor(system_mode()==SAFE_MODE ? RGB_COLOR_MAGENTA : RGB_COLOR_CYAN);
         LED_On(LED_RGB);
-        SPARK_LED_FADE = 1;
+        PARTICLE_LED_FADE = 1;
     }
     else
     {
         LED_Toggle(LED_RGB);
-        if(SPARK_CLOUD_SOCKETED || (WLAN_CONNECTED && !WLAN_DHCP))
+        if(PARTICLE_CLOUD_SOCKETED || (WLAN_CONNECTED && !WLAN_DHCP))
             TimingLED = 50;         //50ms
         else
             TimingLED = 100;        //100ms
     }
 
-    if(SPARK_FLASH_UPDATE)
+    if(PARTICLE_FLASH_UPDATE)
     {
-#ifndef SPARK_NO_CLOUD
+#ifndef PARTICLE_NO_CLOUD
         if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
         {
             //Reset is the only way now to recover from stuck OTA update
@@ -124,7 +124,7 @@ extern "C" void HAL_SysTick_Handler(void)
         //reset button debounce state if mode button is pressed for 3 seconds
         HAL_Core_Mode_Button_Reset();
 
-        if (SPARK_WLAN_STARTED) {
+        if (PARTICLE_WLAN_STARTED) {
             wlan_connect_cancel(true);
         }
         WLAN_SMART_CONFIG_START = 1;
@@ -175,7 +175,7 @@ void app_setup_and_loop(void)
     HAL_Core_Init();
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
-    DEBUG("Hello from Spark!");
+    DEBUG("Hello from Particle!");
 
     manage_safe_mode();
 
@@ -183,26 +183,26 @@ void app_setup_and_loop(void)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
 #endif
 
-    SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+    PARTICLE_WLAN_Setup(Multicast_Presence_Announcement);
 
     /* Main loop */
     while (1)
     {
         DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
-        Spark_Idle();
+        Particle_Idle();
 
-        static uint8_t SPARK_WIRING_APPLICATION = 0;
-        if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
+        static uint8_t PARTICLE_WIRING_APPLICATION = 0;
+        if(PARTICLE_WLAN_SLEEP || !PARTICLE_CLOUD_CONNECT || PARTICLE_CLOUD_CONNECTED || PARTICLE_WIRING_APPLICATION)
         {
-            if(!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
+            if(!PARTICLE_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
             {
-                if ((SPARK_WIRING_APPLICATION != 1))
+                if ((PARTICLE_WIRING_APPLICATION != 1))
                 {
                     //Execute user application setup only once
                     DECLARE_SYS_HEALTH(ENTERED_Setup);
                     if (system_mode()!=SAFE_MODE)
                      setup();
-                    SPARK_WIRING_APPLICATION = 1;
+                    PARTICLE_WIRING_APPLICATION = 1;
                 }
 
                 //Execute user application loop

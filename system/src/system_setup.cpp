@@ -28,13 +28,13 @@
 #include "wlan_hal.h"
 #include "system_cloud.h"
 #include "system_update.h"
-#include "spark_wiring.h"   // for serialReadLine
-#include "spark_wiring_wifi.h"
+#include "particle_wiring.h"   // for serialReadLine
+#include "particle_wiring_wifi.h"
 
 #if Wiring_WiFi && PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
 #define SETUP_LISTEN_MAGIC 1
 void loop_wifitester(int c);
-#include "spark_wiring_usartserial.h"
+#include "particle_wiring_usartserial.h"
 #include "wifitester.h"
 #endif
 
@@ -85,7 +85,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
 #else
         print("Your device id is ");
 #endif
-        String id = spark_deviceID();
+        String id = particle_deviceID();
         print(id.c_str());
         print("\r\n");
     }
@@ -223,7 +223,7 @@ void WiFiSetupConsole::handle(char c)
         if ('1' == security_type_string[0])
         {
             print("\r\n ** Even though the CC3000 supposedly supports WEP,");
-            print("\r\n ** we at Spark have never seen it work.");
+            print("\r\n ** we at Particle have never seen it work.");
             print("\r\n ** If you control the network, we recommend changing it to WPA2.\r\n");
         }
 #endif
@@ -253,8 +253,8 @@ void WiFiSetupConsole::handle(char c)
             "\r\n");
         print("has connected to the Cloud and is ready to go!\r\n\r\n");
         print("If your LED flashes red or you encounter any other problems,\r\n");
-        print("visit https://www.spark.io/support to debug.\r\n\r\n");
-        print("    Spark <3 you!\r\n\r\n");
+        print("visit https://www.particle.io/support to debug.\r\n\r\n");
+        print("    Particle <3 you!\r\n\r\n");
     }
     else {
         super::handle(c);

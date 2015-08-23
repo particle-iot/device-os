@@ -4,7 +4,7 @@
   * @authors  Zachary Crockett
   * @version V1.0.0
   * @date    10-Jan-2014
-  * @brief   Fixture for testing SparkProtocol
+  * @brief   Fixture for testing ParticleProtocol
   ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -171,7 +171,7 @@ ConstructorFixture::ConstructorFixture()
   nothing_to_receive = false;
   function_called = false;
   variable_to_get = -98765;
-  spark_protocol.init(id, keys, callbacks, descriptor);
+  particle_protocol.init(id, keys, callbacks, descriptor);
 }
 
 int ConstructorFixture::mock_send(const unsigned char *buf, int buflen)
@@ -302,7 +302,7 @@ int ConstructorFixture::mock_num_functions(void)
 void ConstructorFixture::mock_copy_function_key(char *dst, int i)
 {
   const char *funcs[1] = { "brew\0\0\0\0\0\0\0\0" };
-  memcpy(dst, funcs[i], SparkProtocol::MAX_FUNCTION_KEY_LENGTH);
+  memcpy(dst, funcs[i], ParticleProtocol::MAX_FUNCTION_KEY_LENGTH);
 }
 
 int ConstructorFixture::mock_call_function(const char *function_key,
@@ -323,7 +323,7 @@ int ConstructorFixture::mock_num_variables(void)
 void ConstructorFixture::mock_copy_variable_key(char *dst, int i)
 {
   const char *vars[1] = { "temperature\0" };
-  memcpy(dst, vars[i], SparkProtocol::MAX_VARIABLE_KEY_LENGTH);
+  memcpy(dst, vars[i], ParticleProtocol::MAX_VARIABLE_KEY_LENGTH);
 }
 
 void *ConstructorFixture::mock_get_variable(const char *variable_key)
@@ -350,11 +350,11 @@ bool ConstructorFixture::mock_ota_status_check(void)
   return false;
 }
 
-SparkReturnType::Enum ConstructorFixture::mock_variable_type(const char *variable_key)
+ParticleReturnType::Enum ConstructorFixture::mock_variable_type(const char *variable_key)
 {
   const char *prevent_warning;
   prevent_warning = variable_key;
-  return SparkReturnType::INT;
+  return ParticleReturnType::INT;
 }
 
 void ConstructorFixture::mock_set_time(time_t t)

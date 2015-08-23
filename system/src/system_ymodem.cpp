@@ -29,7 +29,7 @@
 #ifndef __LIB_YMODEM_H
 #define __LIB_YMODEM_H
 
-#include "spark_wiring.h"
+#include "particle_wiring.h"
 #include "system_task.h"
 #include "system_update.h"
 #include "system_ymodem.h"
@@ -270,7 +270,7 @@ int32_t YModem::handle_packet(uint8_t* packet_data, int32_t packet_length,
             if (packet_data[PACKET_HEADER] != 0)
             {
                 parse_file_packet(tx, desc, packet_data);
-                if (Spark_Prepare_For_Firmware_Update(tx, 0, NULL))
+                if (Particle_Prepare_For_Firmware_Update(tx, 0, NULL))
                 {
                     /* End session */
                     send_byte(CA);
@@ -291,9 +291,9 @@ int32_t YModem::handle_packet(uint8_t* packet_data, int32_t packet_length,
         else
         {
             tx.chunk_size = packet_length;
-            if (Spark_Save_Firmware_Chunk(tx, packet_data + PACKET_HEADER, NULL))
+            if (Particle_Save_Firmware_Chunk(tx, packet_data + PACKET_HEADER, NULL))
             {
-                /* End session if Spark_Save_Firmware_Chunk() fails */
+                /* End session if Particle_Save_Firmware_Chunk() fails */
                 send_byte(CA);
                 send_byte(CA);
                 return -2;
@@ -384,7 +384,7 @@ bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& fil
         serialObj->println(" bytes");
         serialObj->flush();
         delay(1000);
-        Spark_Finish_Firmware_Update(file, size>0 ? 1 : 0, NULL);
+        Particle_Finish_Firmware_Update(file, size>0 ? 1 : 0, NULL);
         return true;
     }
     else if (size == -1)

@@ -17,7 +17,7 @@ ssllib      = $(ssllibdir)/libtropicssl.a
 
 objects = src/handshake.o \
           src/coap.o \
-          src/spark_protocol.o \
+          src/particle_protocol.o \
           src/events.o \
           src/functions.o
 

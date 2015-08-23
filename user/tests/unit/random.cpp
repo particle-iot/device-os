@@ -1,5 +1,5 @@
 #include "catch.hpp"
-#include "spark_wiring_random.h"
+#include "particle_wiring_random.h"
 
 #include <cstring>
 #include <array>

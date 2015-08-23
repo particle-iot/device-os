@@ -109,31 +109,31 @@ unsigned long getNTPClientTime(void)
     return ntpEpochTime;
 }
 
-test(UDP_NTPClientTimeApproximatesSparkCloudTime)
+test(UDP_NTPClientTimeApproximatesParticleCloudTime)
 {
-    // Request time synchronization from the Spark Cloud
+    // Request time synchronization from the Particle Cloud
     Particle.syncTime();
 
     // get NTP time
     unsigned long ntpEpochTime = getNTPClientTime();
 
-    // get spark time
-    unsigned long sparkEpochTime = Time.now();
+    // get particle time
+    unsigned long particleEpochTime = Time.now();
 
     // print time received from both the methods:
     //Serial.println(ntpEpochTime);
     //Serial.println(Time.timeStr(ntpEpochTime));
 
-    //Serial.println(sparkEpochTime);
-    //Serial.println(Time.timeStr(sparkEpochTime));
+    //Serial.println(particleEpochTime);
+    //Serial.println(Time.timeStr(particleEpochTime));
 
     //Test passes if the time difference is < 100 sec
-    if (ntpEpochTime > sparkEpochTime)
+    if (ntpEpochTime > particleEpochTime)
     {
-        assertTrue((ntpEpochTime - sparkEpochTime) < 100);
+        assertTrue((ntpEpochTime - particleEpochTime) < 100);
     }
     else
     {
-        assertTrue((sparkEpochTime - ntpEpochTime) < 100);
+        assertTrue((particleEpochTime - ntpEpochTime) < 100);
     }
 }

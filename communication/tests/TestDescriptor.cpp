@@ -1,6 +1,6 @@
 #include <string.h>
 #include "UnitTest++.h"
-#include "spark_descriptor.h"
+#include "particle_descriptor.h"
 
 struct FunctionFixture {
   static int execute_a_function(const char *func_key, const char *arg);
@@ -33,14 +33,14 @@ SUITE(Descriptor)
 {
   TEST_FIXTURE(FunctionFixture, DescriptorKnowsNumberOfRegisteredFunctions)
   {
-    SparkDescriptor descriptor;
+    ParticleDescriptor descriptor;
     descriptor.num_functions = get_number_of_funcs;
     CHECK_EQUAL(3, descriptor.num_functions());
   }
 
   TEST_FIXTURE(FunctionFixture, DescriptorCanAccessArrayOfFunctionKeys)
   {
-    SparkDescriptor descriptor;
+    ParticleDescriptor descriptor;
     descriptor.copy_function_key = copy_a_function_key;
     char buf[12];
     descriptor.copy_function_key(buf, 2);
@@ -49,7 +49,7 @@ SUITE(Descriptor)
 
   TEST_FIXTURE(FunctionFixture, DescriptorCanCallRegisteredFunction)
   {
-    SparkDescriptor descriptor;
+    ParticleDescriptor descriptor;
     descriptor.call_function = execute_a_function;
     const char *function_key = "brew";
     const char *arg = "32,240";

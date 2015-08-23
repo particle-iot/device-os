@@ -230,13 +230,13 @@ wlan_result_t wlan_disconnect_now()
 
 bool wlan_reset_credentials_store_required()
 {
-    return system_flags.NVMEM_SPARK_Reset_SysFlag == 0x0001;
+    return system_flags.NVMEM_PARTICLE_Reset_SysFlag == 0x0001;
 }
 
 wlan_result_t wlan_reset_credentials_store()
 {
     wlan_clear_credentials();
-    system_flags.NVMEM_SPARK_Reset_SysFlag = 0x0000;
+    system_flags.NVMEM_PARTICLE_Reset_SysFlag = 0x0000;
     Save_SystemFlags();
     return 0;
 }
@@ -482,7 +482,7 @@ void wlan_fetch_ipconfig(WLanConfig* config)
     // todo DNS and DHCP servers
 }
 
-void SPARK_WLAN_SmartConfigProcess()
+void PARTICLE_WLAN_SmartConfigProcess()
 {
 }
 

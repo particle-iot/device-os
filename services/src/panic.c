@@ -6,7 +6,7 @@
  */
 
 #include <stdint.h>
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "panic.h"
 #include "debug.h"
 #include "rgbled.h"

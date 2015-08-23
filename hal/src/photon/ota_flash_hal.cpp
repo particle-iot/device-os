@@ -34,7 +34,7 @@
 #include <cstring>
 #include "ledcontrol.h"
 #include "parse_server_address.h"
-#include "spark_macros.h"
+#include "particle_macros.h"
 #include "bootloader.h"
 
 #define OTA_CHUNK_SIZE          512
@@ -312,7 +312,7 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
     genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
     if (genspec->gen==PRIVATE_KEY_GENERATE_ALWAYS || (!genspec->had_key && genspec->gen!=PRIVATE_KEY_GENERATE_NEVER)) {
         // todo - this couples the HAL with the system. Use events instead.
-        SPARK_LED_FADE = false;
+        PARTICLE_LED_FADE = false;
         if (!gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, rsa_random, NULL)) {
             dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
             // refetch and rewrite public key to ensure it is valid
