@@ -94,3 +94,14 @@ sock_handle_t socket_handle_invalid()
 {
     return SOCKET_INVALID;
 }
+
+
+sock_result_t socket_join_multicast(const HAL_IPAddress* addr, network_interface_t nif, void* reserved)
+{
+    return -1;
+}
+
+sock_result_t socket_leave_multicast(const HAL_IPAddress* addr, network_interface_t nif, void* reserved)
+{
+    return -1;
+}
