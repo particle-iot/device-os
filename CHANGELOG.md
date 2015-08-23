@@ -4,6 +4,7 @@
 ### FEATURES
  - `UDP.sendPacket`/`UDP.receivePacket` to send/receive a packet directly to an application-supplied buffer. [#452](https://github.com/spark/firmware/pull/452)
  - Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)
+ - [photon] UDP multicast support via `UDP.joinMulticast`/`UDP.leaveMulticast`. Many thanks @stevie67!
 
 ### ENHANCEMENTS
 - [Recipes and Tips](docs/build.md#recipes-and-tips) section in the build documentation.
