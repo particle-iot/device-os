@@ -1,4 +1,5 @@
 BOOTLOADER_SRC_COREV2_PATH = $(BOOTLOADER_MODULE_PATH)/src/photon
+include $(BOOTLOADER_MODULE_PATH)/src/stm32f2xx/sources.mk
 
 CSRC += $(call target_files,$(BOOTLOADER_SRC_COREV2_PATH)/,*.c)
 
