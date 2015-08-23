@@ -287,9 +287,10 @@ String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time
 {
     if (!format)
     {
-	String calendar_time_string = String(asctime(calendar_time));
-        calendar_time_string[calendar_time_string.length()-1] = 0;
-	return calendar_time_string;
+        char* ascstr = asctime(calendar_time);
+        int len = strlen(ascstr);
+        ascstr[len-1] = 0; // remove final newline
+	return String(ascstr);
     }
     else
     {
