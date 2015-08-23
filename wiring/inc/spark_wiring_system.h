@@ -22,7 +22,7 @@
 
 #ifndef SPARK_WIRING_SYSTEM_H
 #define	SPARK_WIRING_SYSTEM_H
-
+#include "spark_wiring_ticks.h"
 #include "spark_wiring_string.h"
 #include "system_mode.h"
 #include "system_update.h"
@@ -80,12 +80,32 @@ public:
     }
 
     static uint32_t freeMemory();
+
+    template<typename Condition, typename While> static bool waitConditionWhile(Condition _condition, While _while) {
+        while (_while() && !_condition()) {
+            spark_process();
+        }
+        return _condition();
+    }
+
+    template<typename Condition> static bool waitCondition(Condition _condition) {
+        return waitConditionWhile(_condition, []{ return true; });
+    }
+
+    template<typename Condition> static bool waitCondition(Condition _condition, system_tick_t timeout) {
+        const system_tick_t start = millis();
+        return waitConditionWhile(_condition, [=]{ return (millis()-start)<timeout; });
+    }
+
 };
 
 extern SystemClass System;
 
 #define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
 
+
+#define wait_for(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
+#define wait_until(condition) System.waitCondition([]{ return (condition)(); })
 
 #endif	/* SPARK_WIRING_SYSTEM_H */
 
