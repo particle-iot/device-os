@@ -64,11 +64,11 @@ IDX[x] = added IRQ handler
 08 [ ] 0
 09 [ ] 0
 10 [ ] 0
-11 [x] SVC_Handler
+11 [ ] SVC_Handler
 12 [x] DebugMon_Handler
 13 [ ] 0
-14 [x] PendSV_Handler
-15 [x] SysTick_Handler
+14 [ ] PendSV_Handler
+15 [ ] SysTick_Handler
                                          // External Interrupts ----------------
 16 [ ] WWDG_IRQHandler                   // Window WatchDog
 17 [ ] PVD_IRQHandler                    // PVD through EXTI Line detection
@@ -159,9 +159,7 @@ const unsigned HardFault_Handler_Idx                = 3;
 const unsigned MemManage_Handler_Idx                = 4;
 const unsigned BusFault_Handler_Idx                 = 5;
 const unsigned UsageFault_Handler_Idx               = 6;
-const unsigned SVC_Handler_Idx                      = 11;
 const unsigned DebugMon_Handler_Idx                 = 12;
-const unsigned PendSV_Handler_Idx                   = 14;
 const unsigned SysTick_Handler_Idx                  = 15;
 const unsigned ADC_IRQHandler_Idx                   = 34;
 const unsigned EXTI9_5_IRQHandler_Idx               = 39;
@@ -221,9 +219,7 @@ void HAL_Core_Setup_override_interrupts(void)
     isrs[MemManage_Handler_Idx]             = (uint32_t)MemManage_Handler;
     isrs[BusFault_Handler_Idx]              = (uint32_t)BusFault_Handler;
     isrs[UsageFault_Handler_Idx]            = (uint32_t)UsageFault_Handler;
-    isrs[SVC_Handler_Idx]                   = (uint32_t)SVC_Handler;
     isrs[DebugMon_Handler_Idx]              = (uint32_t)DebugMon_Handler;
-    isrs[PendSV_Handler_Idx]                = (uint32_t)PendSV_Handler;
     isrs[SysTick_Handler_Idx]               = (uint32_t)SysTickOverride;
     isrs[ADC_IRQHandler_Idx]                = (uint32_t)ADC_irq;
     isrs[EXTI9_5_IRQHandler_Idx]            = (uint32_t)Handle_Mode_Button_EXTI_irq;
@@ -319,15 +315,7 @@ void BusFault_Handler(void)
     }
 }
 
-void SVC_Handler(void)
-{
-}
-
 void DebugMon_Handler(void)
-{
-}
-
-void PendSV_Handler(void)
 {
 }
 
