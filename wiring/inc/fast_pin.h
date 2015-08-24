@@ -27,7 +27,9 @@ extern "C" {
 
 #include "pinmap_hal.h"
 
-#define USE_BIT_BAND 1
+/* Disabling USE_BIT_BAND since bitbanding is much slower! as per comment
+ * by @pkourany on PR: https://github.com/spark/firmware/pull/556 */
+#define USE_BIT_BAND 0
 
 #if USE_BIT_BAND
 /* Use CortexM3 Bit-Band access to perform GPIO atomic read-modify-write */
