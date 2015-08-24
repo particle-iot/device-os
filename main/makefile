@@ -52,11 +52,11 @@ USE_PRINTF_FLOAT ?= y
 
 # It's critical that user comes before wiring so that the setup()/loop() functions are linked in preference
 # to the weak functions from wiring
-MAKE_DEPENDENCIES = user wiring hal system services communication platform
+MAKE_DEPENDENCIES = user wiring hal system services communication platform rtos
 DEPENDENCIES = $(MAKE_DEPENDENCIES) dynalib
 
 LIBS += $(MAKE_DEPENDENCIES)
-LIB_DEPS += $(USER_LIB_DEP) $(WIRING_LIB_DEP) $(SYSTEM_LIB_DEP) $(SERVICES_LIB_DEP) $(COMMUNICATION_LIB_DEP) $(HAL_LIB_DEP) $(PLATFORM_LIB_DEP)
+LIB_DEPS += $(USER_LIB_DEP) $(WIRING_LIB_DEP) $(SYSTEM_LIB_DEP) $(SERVICES_LIB_DEP) $(COMMUNICATION_LIB_DEP) $(HAL_LIB_DEP) $(PLATFORM_LIB_DEP) $(RTOS_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
 
 # Target this makefile is building.
