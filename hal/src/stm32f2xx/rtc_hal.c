@@ -116,16 +116,15 @@ void HAL_RTC_Configuration(void)
 		    RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
 
 		    /* Check on RTC init */
-		    if (RTC_Init(&RTC_InitStructure) == ERROR)
+		    if (RTC_Init(&RTC_InitStructure) != ERROR)
 		    {
-		        /* RTC Prescaler Config failed */
-		    }
-		    /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
-		    /* Set Date/Time to Epoch 0 (Thu, 01 Jan 1970 00:00:00 GMT) */
-		    HAL_RTC_Set_UnixTime(0);
+	            /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
+	            /* Set Date/Time to Epoch 0 (Thu, 01 Jan 1970 00:00:00 GMT) */
+	            HAL_RTC_Set_UnixTime(0);
 
-		    /* Indicator for the RTC configuration */
-		    RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
+	            /* Indicator for the RTC configuration */
+	            RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
+		    }
 		}
 	}
 }
