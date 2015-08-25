@@ -203,7 +203,7 @@ extern volatile uint32_t TimingDelay;
 
 void HAL_Core_Config_systick_configuration(void) {
     //Systick would be enabled by FreeRTOS so below call is commented
-    //SysTick_Configuration();
+    SysTick_Configuration();
 }
 
 /**
@@ -287,8 +287,17 @@ void HAL_1Ms_Tick()
 
 void HAL_Core_Setup_finalize(void)
 {
-    uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
-    isrs[SysTick_Handler_Idx] = (uint32_t)SysTickChain;
+//    uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
+//    isrs[SysTick_Handler_Idx] = (uint32_t)SysTickChain;
+}
+
+void vApplicationTickHook( void )
+{
+    /* This function will be called by each tick interrupt if
+    configUSE_TICK_HOOK is set to 1 in FreeRTOSConfig.h.  User code can be
+    added here, but the tick hook is called from an interrupt context, so
+    code must not attempt to block, and only the interrupt safe FreeRTOS API
+    functions can be used (those that end in FromISR()). */
 }
 
 /******************************************************************************/
