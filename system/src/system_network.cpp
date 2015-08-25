@@ -184,7 +184,7 @@ void HAL_WLAN_notify_disconnected()
         ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
       }
       SPARK_LED_FADE = 1;
-      LED_SetRGBColor(RGB_COLOR_BLUE);
+          LED_SetRGBColor(RGB_COLOR_BLUE);
       LED_On(LED_RGB);
     }
     else if (!WLAN_SMART_CONFIG_START)
@@ -250,7 +250,8 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
     {
         bool was_sleeping = SPARK_WLAN_SLEEP;
 
-        network_on(network, flags, param, NULL);
+        // activate WiFi, don't set LED since that happens later.
+        network_on(network, flags | 1, param, NULL);
 
         WLAN_DISCONNECT = 0;
         wlan_connect_init();
@@ -308,6 +309,13 @@ bool network_connecting(network_handle_t network, uint32_t param, void* reserved
     return (SPARK_WLAN_STARTED && WLAN_CONNECTING);
 }
 
+/**
+ *
+ * @param network
+ * @param flags    1 - don't change the LED color
+ * @param param
+ * @param reserved
+ */
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
     if (!SPARK_WLAN_STARTED)
@@ -317,8 +325,10 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
         SPARK_LED_FADE = 1;
-        LED_SetRGBColor(RGB_COLOR_BLUE);
-        LED_On(LED_RGB);
+        if (!(flags & 1)) {
+            LED_SetRGBColor(RGB_COLOR_BLUE);
+            LED_On(LED_RGB);
+        }
     }
 }
 
