@@ -246,11 +246,11 @@ void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmas
 typedef struct WiFiAccessPoint {
    size_t size;
    char ssid[33];
-   uint8_t ssid_size;
+   uint8_t ssidLength;
    uint8_t bssid[6];
    int security;
    uint8_t channel;
-   int max_data_rate;
+   int maxDataRate;   // the mdr in bits/s
    int rssi;        // when scanning
 
 } WiFiAccessPoint;

@@ -300,11 +300,12 @@ wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
             WiFiAccessPoint data;
             memcpy(data.ssid, record->SSID.value, record->SSID.length);
             memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
-            data.ssid_size = record->SSID.length;
-            data.ssid[data.ssid_size] = 0;
+            data.ssidLength = record->SSID.length;
+            data.ssid[data.ssidLength] = 0;
             data.security = toSecurityType(record->security);
             data.rssi = record->signal_strength;
             data.channel = record->channel;
+            data.maxDataRate = record->max_data_rate;
             info->callback(&data, info->callback_data);
         }
     }

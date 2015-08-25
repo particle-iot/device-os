@@ -161,8 +161,8 @@ void wlan_scan_callback(WiFiAccessPoint* ap, void* data)
 {
     WiFiTester& tester = *(WiFiTester*)data;
     char str_ssid[33];
-    memcpy(str_ssid, ap->ssid, ap->ssid_size);
-    str_ssid[ap->ssid_size] = 0;
+    memcpy(str_ssid, ap->ssid, ap->ssidLength);
+    str_ssid[ap->ssidLength] = 0;
     tester.serialPrint(str_ssid);
     tester.serialPrint(",");
     itoa(ap->rssi, str_ssid, 10);
