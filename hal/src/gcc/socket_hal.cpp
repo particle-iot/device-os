@@ -221,5 +221,10 @@ sock_result_t socket_join_multicast(const HAL_IPAddress* addr, network_interface
 
 sock_result_t socket_leave_multicast(const HAL_IPAddress* addr, network_interface_t nif, void* reserved)
 {
+	return -1;
+}
+
+sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved)
+{
     return -1;
 }

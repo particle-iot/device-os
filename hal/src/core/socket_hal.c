@@ -207,3 +207,8 @@ sock_result_t socket_leave_multicast(const HAL_IPAddress* addr, network_interfac
     /* Not supported on Core */
     return -1;
 }
+
+sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved)
+{
+    return -1;
+}

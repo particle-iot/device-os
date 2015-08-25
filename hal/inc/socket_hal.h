@@ -103,6 +103,7 @@ sock_handle_t socket_handle_invalid();
  */
 sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t nif, void *reserved);
 
+
 /*
  * Leave a multicast address previously joined with socket_join_multicast.
  * @param address IP multicast address to leave
@@ -111,6 +112,14 @@ sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interf
  * @return Return the result of the leave operation, 0 for success, other values for errors
  */
 sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t nif, void *reserved);
+
+
+typedef struct sock_peer_t {
+    uint16_t size;
+    HAL_IPAddress address;
+    uint16_t port;
+} sock_peer_t;
+sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved);
 
 //--------- Address Families --------
 
