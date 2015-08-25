@@ -3,10 +3,11 @@
 
 ### FEATURES
 - `WiFi.scan` function to retrieve details of local access points. [#567](https://github.com/spark/firmware/pull/567)
-
- - `UDP.sendPacket`/`UDP.receivePacket` to send/receive a packet directly to an application-supplied buffer. [#452](https://github.com/spark/firmware/pull/452)
- - Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)
- - [photon] UDP multicast support via `UDP.joinMulticast`/`UDP.leaveMulticast`. Many thanks @stevie67!
+- `UDP.sendPacket`/`UDP.receivePacket` to send/receive a packet directly to an application-supplied buffer. [#452](https://github.com/spark/firmware/pull/452)
+- Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)
+- [photon] UDP multicast support via `UDP.joinMulticast`/`UDP.leaveMulticast`. Many thanks @stevie67!
+- `waitFor(WiFi.ready)` syntax to make it easier to wait for system events. [#415](https://github.com/spark/firmware/issues/415)
+- ISO8601 as an alternative `Time.timeStr()` format, and flexible time output with `Time.format()` [#572](https://github.com/spark/firmware/issues/572)
 
 ### ENHANCEMENTS
 
@@ -16,6 +17,7 @@
 - `WiFi.setCredentials()` can take a Cipher type to allow full specification of an AP's credentials. [#574](https://github.com/spark/firmware/pull/574)
 - TCPClient (from TCPServer) reports remote IP address. [#551](https://github.com/spark/firmware/pull/551)
 - Configurable format in `Time.timeStr()`, including ISO 8601. [#455](https://github.com/spark/firmware/issues/455)
+- `Servo.trim(adjust)` to allow small adjustments to the stationary point. [#120](https://github.com/spark/firmware/issues/120)
 
 ### BUGFIXES
 
