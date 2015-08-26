@@ -26,7 +26,6 @@
  */
 
 #include "application.h"
- #include "i2c3_hal.h"
 
 #ifndef _FuelGauge_H
 #define _FuelGauge_H

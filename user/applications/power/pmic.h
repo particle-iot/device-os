@@ -24,7 +24,6 @@
  ******************************************************************************
  */
 #include "application.h"
-#include "i2c3_hal.h"
 
 #ifndef _PMIC_H
 #define _PMIC_H
