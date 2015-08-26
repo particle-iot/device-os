@@ -40,7 +40,7 @@ PMIC::PMIC()
  *******************************************************************************/
 bool PMIC::begin()
 {
-	HAL_I2C3_Begin(0, 0x00); //0 equates to Master Mode, 0x00 is the default address
+    Wire3.begin();
 	return 1;
 }
 
@@ -259,12 +259,12 @@ bool PMIC::disableBuck(void) {
 byte PMIC::readRegister(byte startAddress) {
 
 	byte DATA = 0;
-	HAL_I2C3_Begin_Transmission(PMIC_ADDRESS);
-	HAL_I2C3_Write_Data(startAddress);
-	HAL_I2C3_End_Transmission(true);
+	Wire3.beginTransmission(PMIC_ADDRESS);
+	Wire3.write(startAddress);
+	Wire3.endTransmission(true);
 	
-	HAL_I2C3_Request_Data(PMIC_ADDRESS, 1, true);
-	DATA = HAL_I2C3_Read_Data();
+	Wire3.requestFrom(PMIC_ADDRESS, 1, true);
+	DATA = Wire3.read();
 	return DATA;
 }
 
@@ -277,8 +277,8 @@ byte PMIC::readRegister(byte startAddress) {
  *******************************************************************************/
 void PMIC::writeRegister(byte address, byte DATA) {
 
-	HAL_I2C3_Begin_Transmission(PMIC_ADDRESS);
-	HAL_I2C3_Write_Data(address);
-	HAL_I2C3_Write_Data(DATA);
-	HAL_I2C3_End_Transmission(true);
+    Wire3.beginTransmission(PMIC_ADDRESS);
+    Wire3.write(address);
+    Wire3.write(DATA);
+    Wire3.endTransmission(true);
 }
