@@ -64,6 +64,7 @@ bool SparkProtocol::is_initialized(void)
 void SparkProtocol::reset_updating(void)
 {
   updating = false;
+  last_chunk_millis = 0;    // this is used for the time latency also
 }
 
 SparkProtocol::SparkProtocol() : QUEUE_SIZE(sizeof(queue)), handlers({sizeof(handlers), NULL}), expecting_ping_ack(false),
@@ -588,6 +589,7 @@ bool SparkProtocol::send_time_request(void)
 
   size_t msglen = time_request(queue + 2);
   size_t wrapped_len = wrap(queue, msglen);
+  last_chunk_millis = callbacks.millis();
 
   return (0 <= blocking_send(queue, wrapped_len));
 }
@@ -1565,7 +1567,7 @@ bool SparkProtocol::handle_received_message(void)
       break;
 
     case CoAPMessageType::TIME:
-      callbacks.set_time(queue[6] << 24 | queue[7] << 16 | queue[8] << 8 | queue[9],0,NULL);
+      handle_time_response(queue[6] << 24 | queue[7] << 16 | queue[8] << 8 | queue[9]);
       break;
 
     case CoAPMessageType::PING:
@@ -1587,6 +1589,14 @@ bool SparkProtocol::handle_received_message(void)
 
   // all's well
   return true;
+}
+
+void SparkProtocol::handle_time_response(uint32_t time)
+{
+    // deduct latency
+    uint32_t latency = last_chunk_millis ? (callbacks.millis()-last_chunk_millis)/2000 : 0;
+    last_chunk_millis = 0;
+    callbacks.set_time(time-latency,0,NULL);
 }
 
 unsigned short SparkProtocol::next_message_id()

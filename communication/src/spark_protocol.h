@@ -184,7 +184,7 @@ class SparkProtocol
     unsigned short _message_id;
     unsigned char _token;
     system_tick_t last_message_millis;
-    system_tick_t last_chunk_millis;
+    system_tick_t last_chunk_millis;    // NB: also used to synchronize time
     unsigned short chunk_index;
     unsigned short chunk_size;
     bool expecting_ping_ack;
@@ -224,6 +224,7 @@ class SparkProtocol
     bool handle_update_begin(msg& m);
     bool handle_chunk(msg& m);
     bool handle_update_done(msg& m);
+    void handle_time_response(uint32_t time);
 
     /********** Queue **********/
     unsigned char queue[PROTOCOL_BUFFER_SIZE];
