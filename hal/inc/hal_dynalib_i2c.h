@@ -49,6 +49,7 @@ DYNALIB_FN(hal_i2c,HAL_I2C_Flush_Data)
 DYNALIB_FN(hal_i2c,HAL_I2C_Is_Enabled)
 DYNALIB_FN(hal_i2c,HAL_I2C_Set_Callback_On_Receive)
 DYNALIB_FN(hal_i2c,HAL_I2C_Set_Callback_On_Request)
+DYNALIB_FN(hal_i2c,HAL_I2C_Init)
 DYNALIB_END(hal_i2c)
 
 #endif	/* HAL_DYNALIB_I2C_H */
