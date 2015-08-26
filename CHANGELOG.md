@@ -18,6 +18,7 @@
 - TCPClient (from TCPServer) reports remote IP address. [#551](https://github.com/spark/firmware/pull/551)
 - Configurable format in `Time.timeStr()`, including ISO 8601. [#455](https://github.com/spark/firmware/issues/455)
 - `Servo.trim(adjust)` to allow small adjustments to the stationary point. [#120](https://github.com/spark/firmware/issues/120)
+- Time set from the cloud accounts for network latency. [#581](https://github.com/spark/firmware/issues/581)
 
 ### BUGFIXES
 
