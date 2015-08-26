@@ -137,20 +137,20 @@ void FuelGauge::readConfigRegister(byte &MSB, byte &LSB) {
 
 void FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
 
-	HAL_I2C3_Begin_Transmission(MAX17043_ADDRESS);
-	HAL_I2C3_Write_Data(startAddress);
-	HAL_I2C3_End_Transmission(true);
+    Wire3.beginTransmission(MAX17043_ADDRESS);
+    Wire3.write(startAddress);
+    Wire3.endTransmission(true);
 	
-	HAL_I2C3_Request_Data(MAX17043_ADDRESS, 2, true);
-	MSB = HAL_I2C3_Read_Data();
-	LSB = HAL_I2C3_Read_Data();
+    Wire3.requestFrom(MAX17043_ADDRESS, 2, true);
+	MSB = Wire3.read();
+	LSB = Wire3.read();
 }
 
 void FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
 
-	HAL_I2C3_Begin_Transmission(MAX17043_ADDRESS);
-	HAL_I2C3_Write_Data(address);
-	HAL_I2C3_Write_Data(MSB);
-	HAL_I2C3_Write_Data(LSB);
-	HAL_I2C3_End_Transmission(true);
+    Wire3.beginTransmission(MAX17043_ADDRESS);
+    Wire3.write(address);
+    Wire3.write(MSB);
+    Wire3.write(LSB);
+    Wire3.endTransmission(true);
 }
