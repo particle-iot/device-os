@@ -179,15 +179,27 @@ public:
         wlan_set_ipaddress_source(source, true, NULL);
     }
 
-    void setIPAddress(const IPAddress& host, const IPAddress& netmask,
+    void useStaticIP(const IPAddress& host, const IPAddress& netmask,
         const IPAddress& gateway, const IPAddress& dns)
     {
         wlan_set_ipaddress(host, netmask, gateway, dns, NULL, NULL);
+        setIPAddressSource(STATIC_IP);
     }
 
-    friend class TCPClient;
-    friend class TCPServer;
+    void useStaticIP()
+    {
+        setIPAddressSource(STATIC_IP);
+    }
 
+    void useDynamicIP()
+    {
+        setIPAddressSource(DYNAMIC_IP);
+    }
+
+    int scan(wlan_scan_result_t callback, void* cookie) {
+        return wlan_scan(callback, cookie);
+    }
+    int scan(WiFiAccessPoint* results, size_t result_count);
 };
 
 extern WiFiClass WiFi;

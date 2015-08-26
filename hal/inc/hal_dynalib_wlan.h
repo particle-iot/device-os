@@ -59,6 +59,7 @@ DYNALIB_FN(hal_wlan,inet_ping)
 DYNALIB_FN(hal_wlan,wlan_select_antenna)
 DYNALIB_FN(hal_wlan,wlan_set_ipaddress)
 DYNALIB_FN(hal_wlan,wlan_set_ipaddress_source)
+DYNALIB_FN(hal_wlan,wlan_scan)
 DYNALIB_END(hal_wlan)
 
 #endif	/* HAL_DYNALIB_WLAN_H */

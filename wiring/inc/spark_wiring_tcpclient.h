@@ -56,9 +56,14 @@ public:
 	virtual uint8_t connected();
 	virtual operator bool();
 
+        virtual IPAddress remoteIP();
+
 	friend class TCPServer;
 
 	using Print::write;
+
+protected:
+        inline sock_handle_t sock_handle() { return _sock; }
 
 private:
 	static uint16_t _srcport;
@@ -66,7 +71,9 @@ private:
 	uint8_t _buffer[TCPCLIENT_BUF_MAX_SIZE];
 	uint16_t _offset;
 	uint16_t _total;
+        IPAddress _remoteIP;
 	inline int bufferCount();
+
 };
 
 #endif

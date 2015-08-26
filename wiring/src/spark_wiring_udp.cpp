@@ -158,7 +158,7 @@ int UDP::sendPacket(const uint8_t* buffer, size_t buffer_size, IPAddress remoteI
     remoteSockAddr.sa_data[5] = remoteIP[3];
 
     int rv = socket_sendto(_sock, buffer, buffer_size, 0, &remoteSockAddr, sizeof(remoteSockAddr));
-    DEBUG("sendto(buffer=%lx, size=%d)=%d",buffer, size , rv);
+    DEBUG("sendto(buffer=%lx, size=%d)=%d",buffer, buffer_size , rv);
     return rv;
 }
 
