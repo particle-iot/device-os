@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+extern "C" {
+
 DYNALIB_TABLE_EXTERN(hal);
 DYNALIB_TABLE_EXTERN(rt);
 DYNALIB_TABLE_EXTERN(system);
@@ -24,7 +26,7 @@ DYNALIB_TABLE_EXTERN(hal_usart);
 /**
  * The module export table. This lists the addresses of individual library dynalib jump tables.
  */
-__attribute__((externally_visible)) const void* const system_part2_module[] = {
+extern "C" __attribute__((externally_visible)) const void* const system_part2_module[] = {
     DYNALIB_TABLE_NAME(hal),
     DYNALIB_TABLE_NAME(rt),
     DYNALIB_TABLE_NAME(system),
@@ -105,5 +107,7 @@ void loop() {
     }
 }
 
-__attribute__((externally_visible, section(".module_pre_init"))) const void* system_part2_pre_init_fn = system_part2_pre_init;
-__attribute__((externally_visible, section(".module_init"))) const void* system_part2_init_fn = system_part2_init;
+__attribute__((externally_visible, section(".module_pre_init"))) const void* system_part2_pre_init_fn = (const void*)system_part2_pre_init;
+__attribute__((externally_visible, section(".module_init"))) const void* system_part2_init_fn = (const void*)system_part2_init;
+
+}
