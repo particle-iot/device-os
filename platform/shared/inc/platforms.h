@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file    platforms.h
- * @authors Matthew McGowan
+ * @authors Matthew McGowan, Brett Walach
  * @date    02 February 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
@@ -33,7 +33,7 @@
 #define PLATFORM_TEACUP_PIGTAIL_PRODUCTION  7
 #define PLATFORM_P1                         8
 #define PLATFORM_ETHERNET_PROTO             9
-#define PLATFORM_ELECTRON                   10
+#define PLATFORM_ELECTRON_PRODUCTION        10
 
 
 #endif	/* PLATFORMS_H */

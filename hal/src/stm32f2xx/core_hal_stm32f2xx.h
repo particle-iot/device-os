@@ -17,6 +17,10 @@ void HAL_Core_Setup_override_interrupts();
  */
 void HAL_Core_Setup_finalize();
 
+/**
+ * The entrypoint called from startup_stm32f2xx.s
+ */
+int main(void);
 
 /**
  * The entrypoint to start system firmware and the application.
@@ -45,6 +49,8 @@ void Mode_Button_EXTI_irq(void);
 void HAL_USART1_Handler(void);
 void HAL_USART2_Handler(void);
 void HAL_USART3_Handler(void);
+void HAL_USART4_Handler(void);
+void HAL_USART5_Handler(void);
 void ADC_irq();
 void TIM1_CC_irq(void);
 void TIM2_irq(void);
@@ -64,6 +70,22 @@ void CAN2_TX_irq();
 void CAN2_RX0_irq();
 void CAN2_RX1_irq();
 void CAN2_SCE_irq();
+void I2C1_EV_irq(void);
+void I2C1_ER_irq(void);
+void I2C3_EV_irq(void);
+void I2C3_ER_irq(void);
+void DMA1_Stream7_irq(void);
+void DMA2_Stream5_irq(void);
+
+void EXTI0_IRQHandler(void);
+void EXTI1_IRQHandler(void);
+void EXTI2_IRQHandler(void);
+void EXTI3_IRQHandler(void);
+void EXTI4_IRQHandler(void);
+void EXTI9_5_IRQHandler(void);
+void EXTI15_10_IRQHandler(void);
+
+
 // etc... all ISRs ending _irq()). These are named after the values they had in WICED
 // but they could easily be renamed using #defines if they need to conform to a different
 // naming scheme.
@@ -80,3 +102,4 @@ void Handle_Mode_Button_EXTI_irq(void);
  */
 void HAL_1Ms_Tick(void);
 
+void HAL_EXTI_Handler(uint8_t EXTI_Line);

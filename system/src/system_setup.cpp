@@ -30,6 +30,7 @@
 #include "system_update.h"
 #include "spark_wiring.h"   // for serialReadLine
 #include "spark_wiring_wifi.h"
+#include "system_network.h"
 
 #if Wiring_WiFi && PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
 #define SETUP_LISTEN_MAGIC 1
@@ -61,10 +62,6 @@ template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config
 {
     if (serial.baud()==0)
         serial.begin(9600);
-}
-
-template <typename Config> SystemSetupConsole<Config>::~SystemSetupConsole()
-{
 }
 
 template<typename Config> void SystemSetupConsole<Config>::loop(void)
@@ -148,6 +145,7 @@ template<typename Config> void SystemSetupConsole<Config>::read_line(char *dst, 
 }
 
 
+#if Wiring_WiFi
 
 WiFiSetupConsole::WiFiSetupConsole(WiFiSetupConsoleConfig& config)
  : SystemSetupConsole(config)
@@ -266,3 +264,21 @@ void WiFiSetupConsole::exit()
 {
     config.connect_callback(NULL, NULL, 0);
 }
+
+#endif
+
+
+#if Wiring_Cellular
+
+CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
+ : SystemSetupConsole(config)
+{
+}
+
+void CellularSetupConsole::exit()
+{
+    network_listen(0, 1, NULL);
+}
+
+
+#endif
