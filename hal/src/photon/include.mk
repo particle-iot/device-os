@@ -1,7 +1,7 @@
 # This file is a makefile included from the top level makefile which
 # defines the sources built for the target.
 
-# Define the prefix to this directory. 
+# Define the prefix to this directory.
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
 HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/photon
@@ -14,13 +14,9 @@ HAL_WICED_RTOS=FreeRTOS
 HAL_WICED_NETWORK=LwIP
 
 
-# if we are being compiled with platform as a dependency, then also include
-# implementation headers.
-ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)
 INCLUDE_DIRS += $(HAL_INCL_STM32F2XX_PATH)
 INCLUDE_DIRS += $(HAL_INCL_STM32_PATH)
-endif
 
 # implementation defined details for the platform that can vary
 INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/api
@@ -34,7 +30,7 @@ HAL_LIB_RTOS = $(HAL_LIB_COREV2)/$(HAL_WICED_RTOS)
 ifeq "$(HAL_WICED_RTOS)" "FreeRTOS"
 HAL_WICED_RTOS_LIBS = $(HAL_SHOULD_BE_COMMON) FreeRTOS LwIP WWD_FreeRTOS_Interface_$(PLATFORM_NET) WICED_FreeRTOS_Interface WWD_LwIP_Interface_FreeRTOS WICED_LwIP_Interface WWD_for_SDIO_FreeRTOS Wiced_Network_LwIP_FreeRTOS
 else
-HAL_WICED_RTOS_LIBS = $(HAL_SHOULD_BE_COMMON) ThreadX.ARM_CM3.release NetX WWD_NetX_Interface WICED_ThreadX_Interface WWD_for_SDIO_ThreadX WICED_NetX_Interface WWD_ThreadX_Interface NetX.ARM_CM3.release 
+HAL_WICED_RTOS_LIBS = $(HAL_SHOULD_BE_COMMON) ThreadX.ARM_CM3.release NetX WWD_NetX_Interface WICED_ThreadX_Interface WWD_for_SDIO_ThreadX WICED_NetX_Interface WWD_ThreadX_Interface NetX.ARM_CM3.release
 endif
 
 HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_COREV2)/,$(addsuffix .a,$(HAL_WICED_COMMON_LIBS)))
