@@ -57,7 +57,7 @@ template<typename Config> class SystemSetupConsole
 {
 public:
     SystemSetupConsole(Config& config);
-    ~SystemSetupConsole();
+    ~SystemSetupConsole() = default;
     virtual void loop(void);
 protected:
     virtual void exit()=0;
@@ -94,4 +94,23 @@ private:
     char password[65];
     char security_type_string[2];
 };
+#endif
+
+#if Wiring_Cellular
+class CellularSetupConsoleConfig : SystemSetupConsoleConfig
+{
+
+};
+
+class CellularSetupConsole : public SystemSetupConsole<CellularSetupConsoleConfig>
+{
+    using super = SystemSetupConsole<CellularSetupConsoleConfig>;
+
+public:
+    CellularSetupConsole(CellularSetupConsoleConfig& config);
+    ~CellularSetupConsole() = default;
+
+    virtual void exit() override;
+};
+
 #endif
