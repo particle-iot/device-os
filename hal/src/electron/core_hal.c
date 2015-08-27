@@ -101,8 +101,8 @@ IDX[x] = added IRQ handler
 44 [x] TIM2_IRQHandler                   // TIM2
 45 [x] TIM3_IRQHandler                   // TIM3
 46 [x] TIM4_IRQHandler                   // TIM4
-47 [ ] I2C1_EV_IRQHandler                // I2C1 Event
-48 [ ] I2C1_ER_IRQHandler                // I2C1 Error
+47 [x] I2C1_EV_IRQHandler                // I2C1 Event
+48 [x] I2C1_ER_IRQHandler                // I2C1 Error
 49 [ ] I2C2_EV_IRQHandler                // I2C2 Event
 50 [ ] I2C2_ER_IRQHandler                // I2C2 Error
 51 [ ] SPI1_IRQHandler                   // SPI1
@@ -117,7 +117,7 @@ IDX[x] = added IRQ handler
 60 [x] TIM8_UP_TIM13_IRQHandler          // TIM8 Update and TIM13
 61 [x] TIM8_TRG_COM_TIM14_IRQHandler     // TIM8 Trigger and Commutation and TIM14
 62 [x] TIM8_CC_IRQHandler                // TIM8 Capture Compare
-63 [ ] DMA1_Stream7_IRQHandler           // DMA1 Stream7
+63 [x] DMA1_Stream7_IRQHandler           // DMA1 Stream7
 64 [ ] FSMC_IRQHandler                   // FSMC
 65 [ ] SDIO_IRQHandler                   // SDIO
 66 [x] TIM5_IRQHandler                   // TIM5
@@ -138,12 +138,12 @@ IDX[x] = added IRQ handler
 81 [x] CAN2_RX1_IRQHandler               // CAN2 RX1
 82 [x] CAN2_SCE_IRQHandler               // CAN2 SCE
 83 [x] OTG_FS_IRQHandler                 // USB OTG FS
-84 [ ] DMA2_Stream5_IRQHandler           // DMA2 Stream 5
+84 [x] DMA2_Stream5_IRQHandler           // DMA2 Stream 5
 85 [ ] DMA2_Stream6_IRQHandler           // DMA2 Stream 6
 86 [ ] DMA2_Stream7_IRQHandler           // DMA2 Stream 7
 87 [ ] USART6_IRQHandler                 // USART6
-88 [ ] I2C3_EV_IRQHandler                // I2C3 event
-89 [ ] I2C3_ER_IRQHandler                // I2C3 error
+88 [x] I2C3_EV_IRQHandler                // I2C3 event
+89 [x] I2C3_ER_IRQHandler                // I2C3 error
 90 [x] OTG_HS_EP1_OUT_IRQHandler         // USB OTG HS End Point 1 Out
 91 [x] OTG_HS_EP1_IN_IRQHandler          // USB OTG HS End Point 1 In
 92 [x] OTG_HS_WKUP_IRQHandler            // USB OTG HS Wakeup through EXTI
@@ -163,6 +163,11 @@ const unsigned SVC_Handler_Idx                      = 11;
 const unsigned DebugMon_Handler_Idx                 = 12;
 const unsigned PendSV_Handler_Idx                   = 14;
 const unsigned SysTick_Handler_Idx                  = 15;
+const unsigned EXTI0_IRQHandler_Idx                 = 22;
+const unsigned EXTI1_IRQHandler_Idx                 = 23;
+const unsigned EXTI2_IRQHandler_Idx                 = 24;
+const unsigned EXTI3_IRQHandler_Idx                 = 25;
+const unsigned EXTI4_IRQHandler_Idx                 = 26;
 const unsigned ADC_IRQHandler_Idx                   = 34;
 const unsigned EXTI9_5_IRQHandler_Idx               = 39;
 const unsigned TIM1_BRK_TIM9_IRQHandler_Idx         = 40;
@@ -172,14 +177,18 @@ const unsigned TIM1_CC_IRQHandler_Idx               = 43;
 const unsigned TIM2_IRQHandler_Idx                  = 44;
 const unsigned TIM3_IRQHandler_Idx                  = 45;
 const unsigned TIM4_IRQHandler_Idx                  = 46;
+const unsigned I2C1_EV_IRQHandler_Idx               = 47;
+const unsigned I2C1_ER_IRQHandler_Idx               = 48;
 const unsigned USART1_IRQHandler_Idx                = 53;
 const unsigned USART2_IRQHandler_Idx                = 54;
 const unsigned USART3_IRQHandler_Idx                = 55;
+const unsigned EXTI15_10_IRQHandler_Idx             = 56;
 const unsigned OTG_FS_WKUP_IRQHandler_Idx           = 58;
 const unsigned TIM8_BRK_TIM12_IRQHandler_Idx        = 59;
 const unsigned TIM8_UP_TIM13_IRQHandler_Idx         = 60;
 const unsigned TIM8_TRG_COM_TIM14_IRQHandler_Idx    = 61;
 const unsigned TIM8_CC_IRQHandler_Idx               = 62;
+const unsigned DMA1_Stream7_IRQHandler_Idx          = 63;
 const unsigned TIM5_IRQHandler_Idx                  = 66;
 const unsigned UART4_IRQHandler_Idx                 = 68;
 const unsigned UART5_IRQHandler_Idx                 = 69;
@@ -190,6 +199,9 @@ const unsigned CAN2_RX0_IRQHandler_Idx              = 80;
 const unsigned CAN2_RX1_IRQHandler_Idx              = 81;
 const unsigned CAN2_SCE_IRQHandler_Idx              = 82;
 const unsigned OTG_FS_IRQHandler_Idx                = 83;
+const unsigned DMA2_Stream5_IRQHandler_Idx          = 84;
+const unsigned I2C3_EV_IRQHandler_Idx               = 88;
+const unsigned I2C3_ER_IRQHandler_Idx               = 89;
 const unsigned OTG_HS_EP1_OUT_IRQHandler_Idx        = 90;
 const unsigned OTG_HS_EP1_IN_IRQHandler_Idx         = 91;
 const unsigned OTG_HS_WKUP_IRQHandler_Idx           = 92;
@@ -224,8 +236,13 @@ void HAL_Core_Setup_override_interrupts(void)
     isrs[DebugMon_Handler_Idx]              = (uint32_t)DebugMon_Handler;
     isrs[PendSV_Handler_Idx]                = (uint32_t)PendSV_Handler;
     isrs[SysTick_Handler_Idx]               = (uint32_t)SysTickOverride;
+    isrs[EXTI0_IRQHandler_Idx]              = (uint32_t)EXTI0_IRQHandler;
+    isrs[EXTI1_IRQHandler_Idx]              = (uint32_t)EXTI1_IRQHandler;
+    isrs[EXTI2_IRQHandler_Idx]              = (uint32_t)EXTI2_IRQHandler;
+    isrs[EXTI3_IRQHandler_Idx]              = (uint32_t)EXTI3_IRQHandler;
+    isrs[EXTI4_IRQHandler_Idx]              = (uint32_t)EXTI4_IRQHandler;
     isrs[ADC_IRQHandler_Idx]                = (uint32_t)ADC_irq;
-    isrs[EXTI9_5_IRQHandler_Idx]            = (uint32_t)Handle_Mode_Button_EXTI_irq;
+    isrs[EXTI9_5_IRQHandler_Idx]            = (uint32_t)EXTI9_5_IRQHandler;
     isrs[TIM1_BRK_TIM9_IRQHandler_Idx]      = (uint32_t)TIM1_BRK_TIM9_irq;
     isrs[TIM1_UP_TIM10_IRQHandler_Idx]      = (uint32_t)TIM1_UP_TIM10_irq;
     isrs[TIM1_TRG_COM_TIM11_IRQHandler_Idx] = (uint32_t)TIM1_TRG_COM_TIM11_irq;
@@ -260,6 +277,13 @@ void HAL_Core_Setup_override_interrupts(void)
     isrs[OTG_HS_WKUP_IRQHandler_Idx]        = (uint32_t)OTG_HS_WKUP_irq;
     isrs[OTG_HS_IRQHandler_Idx]             = (uint32_t)OTG_HS_irq;
 #endif
+    isrs[EXTI15_10_IRQHandler_Idx]          = (uint32_t)EXTI15_10_IRQHandler;
+    isrs[I2C1_EV_IRQHandler_Idx]            = (uint32_t)I2C1_EV_irq;
+    isrs[I2C1_ER_IRQHandler_Idx]            = (uint32_t)I2C1_ER_irq;
+    isrs[I2C3_EV_IRQHandler_Idx]            = (uint32_t)I2C3_EV_irq;
+    isrs[I2C3_ER_IRQHandler_Idx]            = (uint32_t)I2C3_ER_irq;
+    isrs[DMA1_Stream7_IRQHandler_Idx]       = (uint32_t)DMA1_Stream7_irq;
+    isrs[DMA2_Stream5_IRQHandler_Idx]       = (uint32_t)DMA2_Stream5_irq;
     SCB->VTOR = (unsigned long)isrs;
 }
 
@@ -323,6 +347,201 @@ void PendSV_Handler(void)
 {
 }
 
+/*******************************************************************************
+ * Function Name  : EXTI0_IRQHandler
+ * Description    : This function handles EXTI0 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI0_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_Line0) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line0);
+
+        HAL_EXTI_Handler(0);
+    }
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI1_IRQHandler
+ * Description    : This function handles EXTI1 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI1_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_Line1) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line1);
+
+        HAL_EXTI_Handler(1);
+    }
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI2_IRQHandler
+ * Description    : This function handles EXTI2 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI2_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_Line2) != RESET)//BUTTON1_EXTI_LINE
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line2);//BUTTON1_EXTI_LINE
+
+        HAL_EXTI_Handler(2);
+    }
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI3_IRQHandler
+ * Description    : This function handles EXTI3 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI3_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_Line3) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line3);
+
+        HAL_EXTI_Handler(3);
+    }
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI4_IRQHandler
+ * Description    : This function handles EXTI4 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI4_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_Line4) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line4);
+
+        HAL_EXTI_Handler(4);
+    }
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI9_5_IRQHandler
+ * Description    : This function handles EXTI9_5 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI9_5_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_Line5) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line5);
+
+        HAL_EXTI_Handler(5);
+    }
+
+    if (EXTI_GetITStatus(EXTI_Line6) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line6);
+
+        HAL_EXTI_Handler(6);
+    }
+
+    if (EXTI_GetITStatus(EXTI_Line7) != RESET)
+    {
+        Handle_Mode_Button_EXTI_irq();
+    }
+
+    if (EXTI_GetITStatus(EXTI_Line8) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line8);
+
+        HAL_EXTI_Handler(8);
+    }
+
+    if (EXTI_GetITStatus(EXTI_Line9) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line9);
+
+        HAL_EXTI_Handler(9);
+    }
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI15_10_IRQHandler
+ * Description    : This function handles EXTI15_10 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI15_10_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_Line10) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line10);
+
+        HAL_EXTI_Handler(10);
+    }
+
+    if (EXTI_GetITStatus(EXTI_Line11) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line11);
+
+        HAL_EXTI_Handler(11);
+    }
+
+    if (EXTI_GetITStatus(EXTI_Line12) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line12);
+
+        HAL_EXTI_Handler(12);
+    }
+
+    if (EXTI_GetITStatus(EXTI_Line13) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line13);
+
+        HAL_EXTI_Handler(13);
+    }
+
+    if (EXTI_GetITStatus(EXTI_Line14) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line14);
+
+        HAL_EXTI_Handler(14);
+    }
+
+    if (EXTI_GetITStatus(EXTI_Line15) != RESET)
+    {
+        /* Clear the EXTI line pending bit */
+        EXTI_ClearITPendingBit(EXTI_Line15);
+
+        HAL_EXTI_Handler(15);
+    }
+}
+
 /*** * * *
  * Typically without the following function definitions
  * these interrupts would be un-handled and default to Default_Handler
@@ -336,11 +555,6 @@ void TAMP_STAMP_IRQHandler(void)    {__ASM("bkpt 0");}
 void RTC_WKUP_IRQHandler(void)      {__ASM("bkpt 0");}
 void FLASH_IRQHandler(void)         {__ASM("bkpt 0");}
 void RCC_IRQHandler(void)           {__ASM("bkpt 0");}
-void EXTI0_IRQHandler(void)         {__ASM("bkpt 0");}
-void EXTI1_IRQHandler(void)         {__ASM("bkpt 0");}
-void EXTI2_IRQHandler(void)         {__ASM("bkpt 0");}
-void EXTI3_IRQHandler(void)         {__ASM("bkpt 0");}
-void EXTI4_IRQHandler(void)         {__ASM("bkpt 0");}
 void DMA1_Stream0_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA1_Stream1_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA1_Stream2_IRQHandler(void)  {__ASM("bkpt 0");}
@@ -352,15 +566,11 @@ void CAN1_TX_IRQHandler(void)       {__ASM("bkpt 0");}
 void CAN1_RX0_IRQHandler(void)      {__ASM("bkpt 0");}
 void CAN1_RX1_IRQHandler(void)      {__ASM("bkpt 0");}
 void CAN1_SCE_IRQHandler(void)      {__ASM("bkpt 0");}
-void I2C1_EV_IRQHandler(void)       {__ASM("bkpt 0");}
-void I2C1_ER_IRQHandler(void)       {__ASM("bkpt 0");}
 void I2C2_EV_IRQHandler(void)       {__ASM("bkpt 0");}
 void I2C2_ER_IRQHandler(void)       {__ASM("bkpt 0");}
 void SPI1_IRQHandler(void)          {__ASM("bkpt 0");}
 void SPI2_IRQHandler(void)          {__ASM("bkpt 0");}
-void EXTI15_10_IRQHandler(void)     {__ASM("bkpt 0");}
 void RTC_Alarm_IRQHandler(void)     {__ASM("bkpt 0");}
-void DMA1_Stream7_IRQHandler(void)  {__ASM("bkpt 0");}
 void FSMC_IRQHandler(void)          {__ASM("bkpt 0");}
 void SDIO_IRQHandler(void)          {__ASM("bkpt 0");}
 void SPI3_IRQHandler(void)          {__ASM("bkpt 0");}
@@ -371,12 +581,9 @@ void DMA2_Stream3_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA2_Stream4_IRQHandler(void)  {__ASM("bkpt 0");}
 void ETH_IRQHandler(void)           {__ASM("bkpt 0");}
 void ETH_WKUP_IRQHandler(void)      {__ASM("bkpt 0");}
-void DMA2_Stream5_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA2_Stream6_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA2_Stream7_IRQHandler(void)  {__ASM("bkpt 0");}
 void USART6_IRQHandler(void)        {__ASM("bkpt 0");}
-void I2C3_EV_IRQHandler(void)       {__ASM("bkpt 0");}
-void I2C3_ER_IRQHandler(void)       {__ASM("bkpt 0");}
 void DCMI_IRQHandler(void)          {__ASM("bkpt 0");}
 void CRYP_IRQHandler(void)          {__ASM("bkpt 0");}
 void HASH_RNG_IRQHandler(void)      {__ASM("bkpt 0");}

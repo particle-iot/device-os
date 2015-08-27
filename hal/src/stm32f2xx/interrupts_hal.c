@@ -182,6 +182,9 @@ void HAL_Interrupts_Detach(uint16_t pin)
 void HAL_Interrupts_Enable_All(void)
 {
   //Enable all EXTI interrupts disabled using noInterrupts()
+#if PLATFORM_ID == 10 // Electron
+  NVIC_EnableIRQ(EXTI0_IRQn);
+#endif
   NVIC_EnableIRQ(EXTI1_IRQn);
   NVIC_EnableIRQ(EXTI2_IRQn);
   NVIC_EnableIRQ(EXTI3_IRQn);
@@ -192,7 +195,9 @@ void HAL_Interrupts_Enable_All(void)
 
 void HAL_Interrupts_Disable_All(void)
 {
-  //Disable all EXTI interrupts including Mode Button but excluding WiFi SDIO OOB
+#if PLATFORM_ID == 10 // Electron
+  NVIC_DisableIRQ(EXTI0_IRQn);
+#endif
   NVIC_DisableIRQ(EXTI1_IRQn);
   NVIC_DisableIRQ(EXTI2_IRQn);
   NVIC_DisableIRQ(EXTI3_IRQn);
