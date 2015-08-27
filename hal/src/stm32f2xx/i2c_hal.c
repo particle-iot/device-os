@@ -126,7 +126,7 @@ static void HAL_I2C_SoftwareReset(HAL_I2C_Interface i2c)
     I2C_Init(i2cMap[i2c]->I2C_Peripheral, &i2cMap[i2c]->I2C_InitStructure);
 }
 
-void HAL_I2C_Init(HAL_I2C_Interface i2c)
+void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
 {
     if(i2c == HAL_I2C_INTERFACE1)
     {
@@ -156,17 +156,17 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c)
     i2cMap[i2c]->transmitting = 0;
 }
 
-void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed)
+void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved)
 {
     i2cMap[i2c]->I2C_ClockSpeed = speed;
 }
 
-void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable)
+void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable, void* reserved)
 {
     /* Presently I2C Master mode uses polling and I2C Slave mode uses Interrupt */
 }
 
-void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch)
+void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved)
 {
     if(stretch == true)
     {
@@ -178,7 +178,7 @@ void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch)
     }
 }
 
-void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address)
+void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved)
 {
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
@@ -247,7 +247,7 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address)
     i2cMap[i2c]->I2C_Enabled = true;
 }
 
-void HAL_I2C_End(HAL_I2C_Interface i2c)
+void HAL_I2C_End(HAL_I2C_Interface i2c, void* reserved)
 {
     if(i2cMap[i2c]->I2C_Enabled != false)
     {
@@ -257,7 +257,7 @@ void HAL_I2C_End(HAL_I2C_Interface i2c)
     }
 }
 
-uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop)
+uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved)
 {
     uint32_t _millis;
     uint8_t bytesRead = 0;
@@ -366,7 +366,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
     return bytesRead;
 }
 
-void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address)
+void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, void* reserved)
 {
     // indicate that we are transmitting
     i2cMap[i2c]->transmitting = 1;
@@ -377,7 +377,7 @@ void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address)
     i2cMap[i2c]->txBufferLength = 0;
 }
 
-uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop)
+uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* reserved)
 {
     uint32_t _millis;
 
@@ -481,7 +481,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop)
     return 0;
 }
 
-uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data)
+uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved)
 {
     if(i2cMap[i2c]->transmitting)
     {
@@ -500,12 +500,12 @@ uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data)
     return 1;
 }
 
-int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c)
+int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c, void* reserved)
 {
     return i2cMap[i2c]->rxBufferLength - i2cMap[i2c]->rxBufferIndex;
 }
 
-int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c)
+int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c, void* reserved)
 {
     int value = -1;
 
@@ -518,7 +518,7 @@ int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c)
     return value;
 }
 
-int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c)
+int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c, void* reserved)
 {
     int value = -1;
 
@@ -530,22 +530,22 @@ int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c)
     return value;
 }
 
-void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c)
+void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c, void* reserved)
 {
     // XXX: to be implemented.
 }
 
-bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c)
+bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c, void* reserved)
 {
     return i2cMap[i2c]->I2C_Enabled;
 }
 
-void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int))
+void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int), void* reserved)
 {
     i2cMap[i2c]->callback_onReceive = function;
 }
 
-void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void))
+void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void), void* reserved)
 {
     i2cMap[i2c]->callback_onRequest = function;
 }
@@ -703,4 +703,24 @@ void I2C3_EV_irq(void)
     HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE3);
 }
 #endif
+
+// On the Photon/P1 the I2C interface selector was added after the first release.
+// So these compatibility functions are needed for older firmware
+
+void HAL_I2C_Set_Speed_v1(uint32_t speed) { HAL_I2C_Set_Speed(HAL_I2C_INTERFACE1, speed, NULL); }
+void HAL_I2C_Enable_DMA_Mode_v1(bool enable) { HAL_I2C_Enable_DMA_Mode(HAL_I2C_INTERFACE1, enable, NULL); }
+void HAL_I2C_Stretch_Clock_v1(bool stretch) { HAL_I2C_Stretch_Clock(HAL_I2C_INTERFACE1, stretch, NULL); }
+void HAL_I2C_Begin_v1(I2C_Mode mode, uint8_t address) { HAL_I2C_Begin(HAL_I2C_INTERFACE1, mode, address, NULL); }
+void HAL_I2C_End_v1() { HAL_I2C_End(HAL_I2C_INTERFACE1, NULL); }
+uint32_t HAL_I2C_Request_Data_v1(uint8_t address, uint8_t quantity, uint8_t stop) { return HAL_I2C_Request_Data(HAL_I2C_INTERFACE1, address, quantity, stop, NULL); }
+void HAL_I2C_Begin_Transmission_v1(uint8_t address) { HAL_I2C_Begin_Transmission(HAL_I2C_INTERFACE1, address, NULL); }
+uint8_t HAL_I2C_End_Transmission_v1(uint8_t stop) { return HAL_I2C_End_Transmission(HAL_I2C_INTERFACE1, stop, NULL); }
+uint32_t HAL_I2C_Write_Data_v1(uint8_t data) { return HAL_I2C_Write_Data(HAL_I2C_INTERFACE1, data, NULL); }
+int32_t HAL_I2C_Available_Data_v1(void) { return HAL_I2C_Available_Data(HAL_I2C_INTERFACE1, NULL); }
+int32_t HAL_I2C_Read_Data_v1(void) { return HAL_I2C_Read_Data(HAL_I2C_INTERFACE1, NULL); }
+int32_t HAL_I2C_Peek_Data_v1(void) { return HAL_I2C_Peek_Data(HAL_I2C_INTERFACE1, NULL); }
+void HAL_I2C_Flush_Data_v1(void) { HAL_I2C_Flush_Data(HAL_I2C_INTERFACE1, NULL); }
+bool HAL_I2C_Is_Enabled_v1(void) { return HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL); }
+void HAL_I2C_Set_Callback_On_Receive_v1(void (*function)(int)) { HAL_I2C_Set_Callback_On_Receive(HAL_I2C_INTERFACE1, function, NULL); }
+void HAL_I2C_Set_Callback_On_Request_v1(void (*function)(void)) { HAL_I2C_Set_Callback_On_Request(HAL_I2C_INTERFACE1, function, NULL); }
 

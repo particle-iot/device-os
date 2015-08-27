@@ -47,7 +47,7 @@ TwoWire Wire3(HAL_I2C_INTERFACE3);
 TwoWire::TwoWire(HAL_I2C_Interface i2c)
 {
   _i2c = i2c;
-  HAL_I2C_Init(_i2c);
+  HAL_I2C_Init(_i2c, NULL);
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
@@ -55,28 +55,28 @@ TwoWire::TwoWire(HAL_I2C_Interface i2c)
 //setSpeed() should be called before begin() else default to 100KHz
 void TwoWire::setSpeed(uint32_t clockSpeed)
 {
-  HAL_I2C_Set_Speed(_i2c, clockSpeed);
+  HAL_I2C_Set_Speed(_i2c, clockSpeed, NULL);
 }
 
 //enableDMAMode(true) should be called before begin() else default polling mode used
 void TwoWire::enableDMAMode(bool enableDMAMode)
 {
-  HAL_I2C_Enable_DMA_Mode(_i2c, enableDMAMode);
+  HAL_I2C_Enable_DMA_Mode(_i2c, enableDMAMode, NULL);
 }
 
 void TwoWire::stretchClock(bool stretch)
 {
-  HAL_I2C_Stretch_Clock(_i2c, stretch);
+  HAL_I2C_Stretch_Clock(_i2c, stretch, NULL);
 }
 
 void TwoWire::begin(void)
 {
-  HAL_I2C_Begin(_i2c, I2C_MODE_MASTER, 0x00);
+  HAL_I2C_Begin(_i2c, I2C_MODE_MASTER, 0x00, NULL);
 }
 
 void TwoWire::begin(uint8_t address)
 {
-  HAL_I2C_Begin(_i2c, I2C_MODE_SLAVE, address);
+  HAL_I2C_Begin(_i2c, I2C_MODE_SLAVE, address, NULL);
 }
 
 void TwoWire::begin(int address)
@@ -86,7 +86,7 @@ void TwoWire::begin(int address)
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
 {
-  return HAL_I2C_Request_Data(_i2c, address, quantity, sendStop);
+  return HAL_I2C_Request_Data(_i2c, address, quantity, sendStop, NULL);
 }
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity)
@@ -106,7 +106,7 @@ uint8_t TwoWire::requestFrom(int address, int quantity, int sendStop)
 
 void TwoWire::beginTransmission(uint8_t address)
 {
-  HAL_I2C_Begin_Transmission(_i2c, address);
+  HAL_I2C_Begin_Transmission(_i2c, address, NULL);
 }
 
 void TwoWire::beginTransmission(int address)
@@ -129,7 +129,7 @@ void TwoWire::beginTransmission(int address)
 //
 uint8_t TwoWire::endTransmission(uint8_t sendStop)
 {
-  return HAL_I2C_End_Transmission(_i2c, sendStop);
+  return HAL_I2C_End_Transmission(_i2c, sendStop, NULL);
 }
 
 //	This provides backwards compatibility with the original
@@ -145,7 +145,7 @@ uint8_t TwoWire::endTransmission(void)
 // or after beginTransmission(address)
 size_t TwoWire::write(uint8_t data)
 {
-  return HAL_I2C_Write_Data(_i2c, data);
+  return HAL_I2C_Write_Data(_i2c, data, NULL);
 }
 
 // must be called in:
@@ -167,7 +167,7 @@ size_t TwoWire::write(const uint8_t *data, size_t quantity)
 // or after requestFrom(address, numBytes)
 int TwoWire::available(void)
 {
-  return HAL_I2C_Available_Data(_i2c);
+  return HAL_I2C_Available_Data(_i2c, NULL);
 }
 
 // must be called in:
@@ -175,7 +175,7 @@ int TwoWire::available(void)
 // or after requestFrom(address, numBytes)
 int TwoWire::read(void)
 {
-  return HAL_I2C_Read_Data(_i2c);
+  return HAL_I2C_Read_Data(_i2c, NULL);
 }
 
 // must be called in:
@@ -183,28 +183,28 @@ int TwoWire::read(void)
 // or after requestFrom(address, numBytes)
 int TwoWire::peek(void)
 {
-  return HAL_I2C_Peek_Data(_i2c);
+  return HAL_I2C_Peek_Data(_i2c, NULL);
 }
 
 void TwoWire::flush(void)
 {
-  HAL_I2C_Flush_Data(_i2c);
+  HAL_I2C_Flush_Data(_i2c, NULL);
 }
 
 // sets function called on slave write
 void TwoWire::onReceive( void (*function)(int) )
 {
-  HAL_I2C_Set_Callback_On_Receive(_i2c, function);
+  HAL_I2C_Set_Callback_On_Receive(_i2c, function, NULL);
 }
 
 // sets function called on slave read
 void TwoWire::onRequest( void (*function)(void) )
 {
-  HAL_I2C_Set_Callback_On_Request(_i2c, function);
+  HAL_I2C_Set_Callback_On_Request(_i2c, function, NULL);
 }
 
 bool TwoWire::isEnabled()
 {
-  return HAL_I2C_Is_Enabled(_i2c);
+  return HAL_I2C_Is_Enabled(_i2c, NULL);
 }
 
