@@ -144,7 +144,6 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define SCL  1
 
 // DAC pins on Photon
-//#define DAC  16 // Would like to define this, but already defined in low level stm32f2xx.h
 #define DAC1 16
 #define DAC2 13
 
