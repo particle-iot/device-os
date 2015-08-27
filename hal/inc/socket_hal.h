@@ -35,6 +35,7 @@ extern "C" {
 #include <stdint.h>
 #include "system_tick_hal.h"
 #include "inet_hal.h"
+#include <stdbool.h>
 
 typedef struct _sockaddr_t
 {

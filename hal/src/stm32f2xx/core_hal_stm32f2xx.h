@@ -45,6 +45,8 @@ void Mode_Button_EXTI_irq(void);
 void HAL_USART1_Handler(void);
 void HAL_USART2_Handler(void);
 void HAL_USART3_Handler(void);
+void HAL_USART4_Handler(void);
+void HAL_USART5_Handler(void);
 void ADC_irq();
 void TIM1_CC_irq(void);
 void TIM2_irq(void);
