@@ -40,9 +40,14 @@ struct ActiveObjectConfiguration
     background_task_t background_task;
     size_t stack_size;
 
+    /**
+     * Time to wait for a message in the queue.
+     */
+    unsigned take_wait;
+
 
 public:
-    ActiveObjectConfiguration(background_task_t task, size_t stack_size_) : background_task(task), stack_size(stack_size_) {}
+    ActiveObjectConfiguration(background_task_t task, unsigned take_wait_, size_t stack_size_ =0) : background_task(task), stack_size(stack_size_), take_wait(take_wait_) {}
 
 };
 
@@ -59,6 +64,8 @@ protected:
      * The thread that runs this active object.
      */
     std::thread _thread;
+
+    std::thread::id _thread_id;
 
     std::mutex _start;
 
@@ -80,7 +87,7 @@ protected:
     struct Item
     {
         typedef void (*active_fn_t)(void*);
-        typedef std::function<void(void)> task_t;
+        typedef std::packaged_task<void()> task_t;
 
         active_fn_t function;
         void* arg;              // the argument is dynamically allocated
@@ -89,13 +96,15 @@ protected:
 
         Item() : function(NULL), arg(NULL){}
         Item(active_fn_t f, void* a) : function(f), arg(a){}
-        Item(task_t&& _task, void* _arg=NULL) : arg(_arg), task(_task) {}
-
+        Item(task_t&& _task) : function(NULL), arg(NULL), task(std::move(_task)) {}
 
         void invoke()
         {
             if (function) {
                 function(arg);
+            }
+            else {
+                task();
             }
         }
 
@@ -114,6 +123,7 @@ protected:
     void set_thread(std::thread&& thread)
     {
         this->_thread.swap(thread);
+        _thread_id = _thread.get_id();
     }
 
     /**
@@ -129,9 +139,7 @@ public:
     ActiveObjectBase(const ActiveObjectConfiguration& config) : configuration(config), started(false) {}
 
     bool isCurrentThread() {
-        __gthread_t thread_handle = _thread.native_handle();
-        __gthread_t current = __gthread_self();
-        return __gthread_equal(thread_handle, current);
+        return _thread_id == std::this_thread::get_id();
     }
 
     bool isStarted() {
@@ -151,9 +159,9 @@ public:
     }
 
     template<typename R> std::future<R> invoke_future(std::function<R(void)> fn) {
-        std::packaged_task<R(void)> task(fn);
-        //put(Item(task));
-        return task.get_future();
+        auto task = std::make_shared<std::packaged_task<R()>>(fn);
+        //put(Item(std::packaged_task<void()>([=]{ (*task)(); })));
+        return (*task).get_future();
     }
 
 };
@@ -192,7 +200,6 @@ public:
 
 };
 
-
 class ActiveObjectQueue : public ActiveObjectBase
 {
     os_queue_t  queue;
@@ -201,12 +208,17 @@ protected:
 
     virtual bool take(Item& item)
     {
-        return os_queue_take(queue, &item, 100)==0;
+        return os_queue_take(queue, &item, configuration.take_wait)==0;
     }
 
     virtual void put(const Item& item)
     {
         while (!os_queue_put(queue, &item, CONCURRENT_WAIT_FOREVER)) {}
+    }
+
+    void createQueue(int size=50)
+    {
+        os_queue_create(&queue, sizeof(Item), size);
     }
 
 public:
@@ -215,10 +227,40 @@ public:
 
     void start()
     {
-        os_queue_create(&queue, sizeof(Item), 50);
+        createQueue();
+    }
+};
+
+
+class ActiveObjectCurrentThreadQueue : ActiveObjectQueue
+{
+public:
+    ActiveObjectCurrentThreadQueue(const ActiveObjectConfiguration& config) : ActiveObjectQueue(config) {}
+
+    void start()
+    {
+        createQueue();
+        _thread_id = std::this_thread::get_id();
+        run();
+    }
+};
+
+class ActiveObjectThreadQueue : public ActiveObjectQueue
+{
+
+public:
+
+    ActiveObjectThreadQueue(const ActiveObjectConfiguration& config) : ActiveObjectQueue(config) {}
+
+    void start()
+    {
+        createQueue();
         start_thread();
     }
 
+
 };
+
+
 
 #endif

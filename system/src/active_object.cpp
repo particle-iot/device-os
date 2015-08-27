@@ -19,8 +19,9 @@
 
 #if PLATFORM_THREADING
 
+#include <string.h>
 #include "active_object.h"
-#include "string.h"
+
 
 void ActiveObjectBase::start_thread()
 {

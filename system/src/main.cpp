@@ -164,6 +164,51 @@ void manage_safe_mode()
     }
 }
 
+
+void app_loop(bool threaded)
+{
+    DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
+    if (!threaded)
+        Spark_Idle();
+
+    static uint8_t SPARK_WIRING_APPLICATION = 0;
+    if(threaded || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
+    {
+        if(threaded || (!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged()))
+        {
+            if ((SPARK_WIRING_APPLICATION != 1))
+            {
+                //Execute user application setup only once
+                DECLARE_SYS_HEALTH(ENTERED_Setup);
+                if (system_mode()!=SAFE_MODE)
+                 setup();
+                SPARK_WIRING_APPLICATION = 1;
+            }
+
+            //Execute user application loop
+            DECLARE_SYS_HEALTH(ENTERED_Loop);
+            if (system_mode()!=SAFE_MODE) {
+                loop();
+                DECLARE_SYS_HEALTH(RAN_Loop);
+            }
+        }
+    }
+}
+
+
+#if PLATFORM_THREADING
+
+// This is the application loop ActiveObject.
+
+void app_thread_idle()
+{
+    app_loop(true);
+}
+
+ActiveObjectCurrentThreadQueue AppThread(ActiveObjectConfiguration(app_thread_idle, 0));
+
+#endif
+
 /*******************************************************************************
  * Function Name  : main.
  * Description    : main routine.
@@ -191,8 +236,10 @@ void app_setup_and_loop(void)
 #if !SPARK_NO_WIFI
     wlan_setup();
 
+    bool threaded = system_thread_get_state(NULL)!=0 && (system_mode()!=SAFE_MODE);
+
     /* Trigger a WLAN device */
-    if (system_mode() == AUTOMATIC || system_mode()==SAFE_MODE)
+    if ((!threaded && system_mode() == AUTOMATIC) || system_mode()==SAFE_MODE)
     {
         network_connect(0, 0, 0, NULL);
     }
@@ -200,40 +247,23 @@ void app_setup_and_loop(void)
 
 #endif  // SPARK_NO_CLOUD
 
-    bool threaded = system_thread_get_state(NULL)!=0 && (system_mode()!=SAFE_MODE);
+#if PLATFORM_THREADING
     if (threaded)
-        SYSTEM_THREAD_START();
-
-    /* Main loop */
-    while (1)
     {
-        DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
-        if (!threaded)
-            Spark_Idle();
+        SYSTEM_THREAD_START();
+        AppThread.start();
+        // create a queue handler for this thread.
 
-        static uint8_t SPARK_WIRING_APPLICATION = 0;
-        if(threaded || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
-        {
-            if(threaded || (!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged()))
-            {
-                if ((SPARK_WIRING_APPLICATION != 1))
-                {
-                    //Execute user application setup only once
-                    DECLARE_SYS_HEALTH(ENTERED_Setup);
-                    if (system_mode()!=SAFE_MODE)
-                     setup();
-                    SPARK_WIRING_APPLICATION = 1;
-                }
-
-                //Execute user application loop
-                DECLARE_SYS_HEALTH(ENTERED_Loop);
-                if (system_mode()!=SAFE_MODE)
-                    loop();
-                    DECLARE_SYS_HEALTH(RAN_Loop);
-                }
-            }
+    }
+    else
+#endif
+    {
+        /* Main loop */
+        while (1) {
+            app_loop(false);
         }
     }
+}
 
 #ifdef USE_FULL_ASSERT
 

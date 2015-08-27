@@ -19,12 +19,12 @@
 #ifndef SYSTEM_THREADING_H
 #define	SYSTEM_THREADING_H
 
-#include <functional>
-
 #if PLATFORM_THREADING
+
 #include "concurrent_hal.h"
 #include "active_object.h"
 #include <stddef.h>
+#include <functional>
 #include <mutex>
 #include <future>
 
@@ -32,10 +32,15 @@
 #error "GTHREAD header not included. This is required for correct mutex implementation on embedded platforms."
 #endif
 
-typedef ActiveObjectQueue ActiveObject;
+/**
+ * System thread runs on a separate thread
+ */
+extern ActiveObjectThreadQueue SystemThread;
 
-extern ActiveObject SystemThread;
-extern ActiveObject AppThread;
+/**
+ * Application queue runs on the calling thread (main)
+ */
+extern ActiveObjectCurrentThreadQueue AppThread;
 
 #endif
 
@@ -65,6 +70,11 @@ extern ActiveObject AppThread;
 #define SYSTEM_THREAD_CONTEXT_FN1(fn, arg, sz)
 #endif
 
+// execute synchronously on the system thread. Since the parameter lifetime is
+// assumed to be bound by the caller, the parameters don't need marshalling
+// fn: the function call to perform. This is textually substitued into a lambda, with the
+// parameters passed by copy.
+#if PLATFORM_THREADING
 
 template<typename T>
 struct memfun_type
@@ -86,21 +96,26 @@ FFL(F const &func)
 }
 
 
-// execute synchrnously on the system thread. Since the parameter lifetime is
-// assumed to be bound by the caller, the parameters don't need marshalling
-// fn: the function call to perform. This is textually substitued into a lambda, with the
-// parameters passed by copy.
-#if PLATFORM_THREADING
 #define SYSTEM_THREAD_CONTEXT_SYNC(fn) \
     if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
         auto lambda = [=]() { return (fn); }; \
         auto future = SystemThread.invoke_future(FFL(lambda)); \
-        future.wait(); \
-        return future.get(); \
+        return 0;  \
     }
+
+#define SYSTEM_THREAD_CONTEXT_ASYNC(fn) \
+    if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
+        auto lambda = [=]() { (fn); }; \
+        SystemThread.invoke_future(FFL(lambda)); \
+    }
+
 #else
+
 #define SYSTEM_THREAD_CONTEXT_SYNC(fn)
+#define SYSTEM_THREAD_CONTEXT_ASYNC(fn)
 #endif
+
+
 
 #if PLATFORM_THREADING
 #define SYSTEM_THREAD_START()  SystemThread.start()

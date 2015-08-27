@@ -29,6 +29,7 @@
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
 #include "system_task.h"
+#include "system_threading.h"
 #include "system_update.h"
 #include "system_cloud_internal.h"
 #include "string_convert.h"
@@ -58,6 +59,7 @@ bool register_event(const char* eventName, SubscriptionScope::Enum event_scope, 
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
 {
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_subscribe(eventName, handler, handler_data, scope, deviceID, reserved));
     auto event_scope = convert(scope);
     bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
     if (success && spark_connected())
@@ -74,12 +76,15 @@ inline EventType::Enum convert(Spark_Event_TypeDef eventType) {
 
 bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved)
 {
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, eventType, reserved));
+
     return spark_protocol_send_event(sp, name, data, ttl, convert(eventType), NULL);
 }
 
 bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC();
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_variable(varKey, userVar, userVarType, reserved));
+
     User_Var_Lookup_Table_t* item = NULL;
     if (NULL != userVar && NULL != varKey && strlen(varKey)<=USER_VAR_KEY_LENGTH)
     {
@@ -100,6 +105,8 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
  */
 bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved)
 {
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_function(funcKey, pFunc, reserved));
+
     bool result;
     if (funcKey) {
         cloud_function_descriptor desc;
@@ -139,8 +146,9 @@ void spark_process(void)
     if (!SYSTEM_THREAD_CURRENT())
         return;
 
-        // run the background processing loop, and specifically also pump cloud events
-        Spark_Idle_Events(true);
+    // run the background processing loop, and specifically also pump cloud events
+    Spark_Idle_Events(true);
+}
 
 String spark_deviceID(void)
 {
@@ -150,3 +158,4 @@ String spark_deviceID(void)
     return bytes2hex(id, len);
 }
 
+#endif

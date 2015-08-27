@@ -315,12 +315,12 @@ struct NetworkParams {
         }
         NetworkParams* result = static_cast<NetworkParams*>(malloc(size+reserved_size));
         if (result) {
-        result->target = target;
-        result->params = NetworkParamsInner(network, flags, param);
-        result->reserved = reserved_size;
-        if (reserved_size) {
-            memcpy(&result->reserved, reserved, reserved_size);
-        }
+            result->target = target;
+            result->params = NetworkParamsInner(network, flags, param);
+            result->reserved = reserved_size;
+            if (reserved_size) {
+                memcpy(&result->reserved, reserved, reserved_size);
+            }
         }
         return result;
     }
@@ -347,9 +347,13 @@ struct NetworkParams {
     #define NETWORK_ASYNC(fn, network, flags, param, reserved)
 #endif
 
-void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
+int network_connect2(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    NETWORK_ASYNC(network_connect, network, flags, param, reserved);
+    //NETWORK_ASYNC(network_connect, network, flags, param, reserved);
+    SYSTEM_THREAD_CONTEXT_SYNC(network_connect2(network, flags, param, reserved));
+
+    if (SPARK_WLAN_STARTED == 1)
+        return 0;
 
     if (!network_ready(network, flags, reserved) && !WLAN_CONNECTING && !network_listening(network, flags, NULL))
     {
@@ -370,12 +374,12 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
         if (!network_has_credentials(0, 0, NULL))
         {
             if ((flags && WIFI_CONNECT_SKIP_LISTEN)==0) {
-            network_listen(0, 0, NULL);
-        }
+                network_listen(0, 0, NULL);
+            }
             else {
                 if (was_sleeping) {
                     network_disconnect(network, 0, NULL);
-                }
+               }
             }
         }
         else
@@ -389,11 +393,19 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 
         Set_NetApp_Timeout();
     }
+    return 0;
 }
 
-void network_disconnect_impl(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
+void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    NETWORK_ASYNC(network_disconnect_impl, network, flags, param, reserved);
+    network_connect2(network, flags, param, reserved);
+}
+
+int network_disconnect_impl(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC(network_disconnect_impl(network, flags, param, reserved));
+
+   // NETWORK_ASYNC(network_disconnect_impl, network, flags, param, reserved);
     if (SPARK_WLAN_STARTED)
     {
         WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()
@@ -402,6 +414,7 @@ void network_disconnect_impl(network_handle_t network, uint32_t flags, uint32_t 
         wlan_disconnect_now();
         network_config_clear();
     }
+    return 0;
 }
 
 // standardize on 4-parameter signature internally to make marshalling consistent
@@ -455,10 +468,10 @@ bool network_has_credentials(network_handle_t network, uint32_t param, void* res
 
 void network_off(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    NETWORK_ASYNC(network_off, network, flags, param, reserved);
-
     if (SPARK_WLAN_STARTED)
     {
+        SYSTEM_THREAD_CONTEXT_ASYNC(network_off(network, flags, param, reserved));
+
         network_config_clear();
         cloud_disconnect();
         network_disconnect(network, param, reserved);
@@ -490,20 +503,18 @@ void network_listen(network_handle_t, uint32_t flags, void*)
 
 bool network_listening(network_handle_t, uint32_t, void*)
 {
+    // todo - thread unsafe - unguarded updates?
     return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
 }
 
-void network_set_credentials_async(NetworkCredentials* credentials)
-{
-    SYSTEM_THREAD_CONTEXT_FN1(wlan_set_credentials, credentials, credentials->len);
-}
-
-void network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* credentials, void*)
+int network_set_credentials(network_handle_t nif, uint32_t flags, NetworkCredentials* credentials, void* reserved)
 {
     if (!SPARK_WLAN_STARTED || !credentials)
     {
-        return;
+        return -1;
     }
+
+    SYSTEM_THREAD_CONTEXT_SYNC(network_set_credentials(nif, flags, credentials, reserved));
 
     WLanSecurityType security = credentials->security;
 
@@ -513,9 +524,9 @@ void network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* cre
     }
 
     credentials->security = security;
-
-    wlan_set_credentials_async(credentials);
+    int result = wlan_set_credentials(credentials);
     system_notify_event(wifi_credentials_add, 0, credentials);
+    return result;
 }
 
 

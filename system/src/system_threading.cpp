@@ -12,7 +12,7 @@ void system_thread_idle()
     Spark_Idle_Events(true);
 }
 
-ActiveObject SystemThread(ActiveObjectConfiguration(system_thread_idle, 1024*3));
+ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idle, 1024*3, 100));
 
 
 namespace std {
@@ -50,7 +50,7 @@ namespace std {
 
     __future_base::_Result_base::_Result_base() = default;
     __future_base::_Result_base::~_Result_base() = default;
-    //__future_base::_State_base::~_State_base() = default;
+    __future_base::_State_base::~_State_base() = default;
 
     /**
      * static Startup function for threads.

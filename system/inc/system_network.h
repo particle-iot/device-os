@@ -66,7 +66,7 @@ bool network_has_credentials(network_handle_t network, uint32_t param1, void* re
 
 typedef WLanCredentials NetworkCredentials;
 
-void network_set_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
+int network_set_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
 bool network_clear_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
 
 
