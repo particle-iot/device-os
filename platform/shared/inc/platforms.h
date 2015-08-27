@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file    platforms.h
- * @authors Matthew McGowan
+ * @authors Matthew McGowan, Brett Walach
  * @date    02 February 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.

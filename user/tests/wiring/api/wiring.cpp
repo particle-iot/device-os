@@ -5,7 +5,7 @@
 test(api_i2c)
 {
     int buffer;
-    API_COMPILE((void)(buffer==I2C_BUFFER_LENGTH));
+    API_COMPILE(buffer==I2C_BUFFER_LENGTH);
 }
 
 test(api_wiring_pinMode) {

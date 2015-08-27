@@ -28,13 +28,19 @@
 #define __SPARK_WIRING_I2C_H
 
 #include "spark_wiring_stream.h"
+#include "spark_wiring_platform.h"
 #include "i2c_hal.h"
 
 
 class TwoWire : public Stream
 {
+private:
+  HAL_I2C_Interface _i2c;
+
 public:
-  TwoWire();
+  TwoWire(HAL_I2C_Interface i2c);
+  virtual ~TwoWire() {};
+
   void setSpeed(uint32_t);
   void enableDMAMode(bool);
   void stretchClock(bool);
@@ -64,7 +70,7 @@ public:
   inline size_t write(int n) { return write((uint8_t)n); }
   using Print::write;
 
-  static bool isEnabled(void);
+  bool isEnabled(void);
 };
 
 /**
@@ -72,7 +78,26 @@ public:
  * So we provide a conditional compile to exclude it.
  */
 #ifndef SPARK_WIRING_NO_I2C
+
 extern TwoWire Wire;
+
+#if Wiring_Wire1
+#ifdef Wire1
+#undef Wire1
+#endif  // Wire1
+
+extern TwoWire Wire1;
+#endif  // Wiring_Wire1
+
+/* System PMIC and Fuel Guage I2C3 */
+#if Wiring_Wire3
+#ifdef Wire3
+#undef Wire3
+#endif  // Wire3
+
+extern TwoWire Wire3;
+#endif  // Wiring_Wire3
+
 #endif
 
 #endif

@@ -112,3 +112,8 @@ uint16_t HAL_Core_Mode_Button_Pressed_Time()
 void HAL_Bootloader_Lock(bool lock)
 {
 }
+
+int main() 
+{
+    while(1);
+}
