@@ -8,7 +8,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
+#define DEFAULT_LED_RGB_BRIGHTNESS (96)
 
 typedef enum
 {
@@ -57,7 +58,7 @@ bool LED_RGB_IsOverRidden(void);
  */
 typedef void (*led_update_handler_fn)(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
 
-void set_rgb_led_change_handler(led_update_handler_fn fn, void* data);
+void LED_RGB_SetChangeHandler(led_update_handler_fn fn, void* data);
 
 
 #ifdef __cplusplus

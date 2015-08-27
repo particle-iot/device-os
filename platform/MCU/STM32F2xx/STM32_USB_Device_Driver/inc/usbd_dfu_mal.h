@@ -16,8 +16,8 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
@@ -39,8 +39,8 @@
 typedef struct _DFU_MAL_PROP
 {
   const uint8_t* pStrDesc;
-  uint16_t (*pMAL_Init)     (void);   
-  uint16_t (*pMAL_DeInit)   (void);   
+  uint16_t (*pMAL_Init)     (void);
+  uint16_t (*pMAL_DeInit)   (void);
   uint16_t (*pMAL_Erase)    (uint32_t Add);
   uint16_t (*pMAL_Write)    (uint32_t Add, uint32_t Len);
   const uint8_t  *(*pMAL_Read)    (uint32_t Add, uint32_t Len);
@@ -64,7 +64,7 @@ DFU_MAL_Prop_TypeDef;
 /* Exported macro ------------------------------------------------------------*/
 #define SET_POLLING_TIMING(x)   buffer[1] = _1st_BYTE(x);\
                                 buffer[2] = _2nd_BYTE(x);\
-                                buffer[3] = _3rd_BYTE(x);  
+                                buffer[3] = _3rd_BYTE(x);
 
 /* Exported functions ------------------------------------------------------- */
 

@@ -66,8 +66,8 @@ wlan_result_t wlan_reset_credentials_store()
 }
 
 /**
- * Do what is needed to finalize the connection. 
- * @return 
+ * Do what is needed to finalize the connection.
+ * @return
  */
 wlan_result_t wlan_connect_finalize()
 {
@@ -129,4 +129,30 @@ void SPARK_WLAN_SmartConfigProcess()
 
 void wlan_connect_cancel(bool called_from_isr)
 {
+}
+
+/**
+ * Sets the IP source - static or dynamic.
+ */
+void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reserved)
+{
+}
+
+/**
+ * Sets the IP Addresses to use when the device is in static IP mode.
+ * @param device
+ * @param netmask
+ * @param gateway
+ * @param dns1
+ * @param dns2
+ * @param reserved
+ */
+void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmask,
+        const HAL_IPAddress* gateway, const HAL_IPAddress* dns1, const HAL_IPAddress* dns2, void* reserved)
+{
+}
+
+int wlan_scan(wlan_scan_result_t callback, void* cookie)
+{
+    return -1;
 }

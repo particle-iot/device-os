@@ -53,12 +53,13 @@ TCPClient::TCPClient(sock_handle_t sock) : _sock(sock)
 
 int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
 {
+    stop();
       int rv = 0;
       if(Network.ready())
       {
         IPAddress ip_addr;
 
-        if(inet_gethostbyname(host, strlen(host), ip_addr, nif, NULL) == 0)
+        if((rv = inet_gethostbyname(host, strlen(host), ip_addr, nif, NULL)) == 0)
         {
                 return connect(ip_addr, port, nif);
         }
@@ -70,6 +71,7 @@ int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
 
 int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
 {
+    stop();
         int connected = 0;
         if(Network.from(nif).ready())
         {
@@ -97,7 +99,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
             connected = (socket_connect(_sock, &tSocketAddr, sizeof(tSocketAddr)) == 0 ? 1 : 0);
             DEBUG("_sock %d connected=%d",_sock, connected);
             HAL_WLAN_SetNetWatchDog(ot);
-
+            _remoteIP = ip;
             if(!connected)
             {
                 stop();
@@ -192,6 +194,7 @@ void TCPClient::stop()
   if (isOpen(_sock))
       socket_close(_sock);
  _sock = socket_handle_invalid();
+ memset(&_remoteIP, 0, sizeof(_remoteIP));
 }
 
 uint8_t TCPClient::connected()
@@ -218,4 +221,9 @@ uint8_t TCPClient::status()
 TCPClient::operator bool()
 {
    return (status()!=0);
+}
+
+IPAddress TCPClient::remoteIP()
+{
+    return _remoteIP;
 }

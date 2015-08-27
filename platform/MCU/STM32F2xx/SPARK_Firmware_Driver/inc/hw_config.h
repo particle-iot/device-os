@@ -36,7 +36,8 @@
 #include "system_tick_hal.h"
 #include "usb_hal.h"
 #include "platform_system_flags.h"
-#ifdef USE_SERIAL_FLASH
+#include "hw_ticks.h"
+#if defined(HAS_SERIAL_FLASH)
 #include "spi_flash.h"
 #endif
 
@@ -59,20 +60,10 @@ typedef enum
 
 /* Exported macros ------------------------------------------------------------*/
 
-#define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
-
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
-
-/**
- * Disable the system timer.
- */
-void SysTick_Disable(void);
-
-void System1MsTick(void);
-system_tick_t GetSystem1MsTick(void);
 
 void IWDG_Reset_Enable(uint32_t msTimeout);
 
@@ -84,7 +75,7 @@ uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
 void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
-#ifdef USE_SERIAL_FLASH
+#ifdef HAS_SERIAL_FLASH
 /* Serial Flash Hardware related methods */
 void sFLASH_SPI_DeInit(void);
 void sFLASH_SPI_Init(void);

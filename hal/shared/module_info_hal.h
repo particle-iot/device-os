@@ -33,7 +33,7 @@
             (MODULE_VERIFY_CRC | \
             MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | \
             MODULE_VERIFY_FUNCTION | \
-            MODULE_VERIFY_LENGTH) 
+            MODULE_VERIFY_LENGTH)
 
 
 #endif	/* MODULE_INFO_HAL_H */

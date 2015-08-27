@@ -7,16 +7,16 @@
   * @brief   This file provides all the CRC firmware functions.
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   ******************************************************************************
   */
@@ -28,7 +28,7 @@
   * @{
   */
 
-/** @defgroup CRC 
+/** @defgroup CRC
   * @brief CRC driver modules
   * @{
   */
@@ -96,20 +96,20 @@ void CRC_ResetDR(void)
 uint32_t CRC_CalcCRC(uint32_t Data)
 {
   CRC->DR = Data;
-  
+
   return (CRC->DR);
 }
 
 /**
   * @brief  Computes the 32-bit CRC of a given buffer of data word(32-bit).
   * @param  pBuffer: pointer to the buffer containing the data to be computed
-  * @param  BufferLength: length of the buffer to be computed					
+  * @param  BufferLength: length of the buffer to be computed
   * @retval 32-bit CRC
   */
 uint32_t CRC_CalcBlockCRC(uint32_t pBuffer[], uint32_t BufferLength)
 {
   uint32_t index = 0;
-  
+
   for(index = 0; index < BufferLength; index++)
   {
     CRC->DR = pBuffer[index];
@@ -129,7 +129,7 @@ uint32_t CRC_GetCRC(void)
 
 /**
   * @brief  Stores a 8-bit data in the Independent Data(ID) register.
-  * @param  IDValue: 8-bit value to be stored in the ID register 					
+  * @param  IDValue: 8-bit value to be stored in the ID register
   * @retval None
   */
 void CRC_SetIDRegister(uint8_t IDValue)
@@ -140,7 +140,7 @@ void CRC_SetIDRegister(uint8_t IDValue)
 /**
   * @brief  Returns the 8-bit data stored in the Independent Data(ID) register
   * @param  None
-  * @retval 8-bit value of the ID register 
+  * @retval 8-bit value of the ID register
   */
 uint8_t CRC_GetIDRegister(void)
 {

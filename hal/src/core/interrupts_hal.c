@@ -74,9 +74,6 @@ static exti_channel exti_channels[16];
 void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, void* reserved)
 {
   uint8_t GPIO_PortSource = 0;    //variable to hold the port number
-  uint8_t GPIO_PinSource = 0;     //variable to hold the pin number
-  uint8_t PinNumber;                              //temp variable to calculate the pin number
-
 
   //EXTI structure to init EXT
   EXTI_InitTypeDef EXTI_InitStructure;
@@ -86,6 +83,7 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   //Map the Spark pin to the appropriate port and pin on the STM32
   GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
+  uint8_t GPIO_PinSource = PIN_MAP[pin].gpio_pin_source;
 
   //Clear pending EXTI interrupt flag for the selected pin
   EXTI_ClearITPendingBit(gpio_pin);
@@ -98,15 +96,6 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   else if (gpio_port == GPIOB )
   {
     GPIO_PortSource = 1;
-  }
-
-  //Find out the pin number from the mask
-  PinNumber = gpio_pin;
-  PinNumber = PinNumber >> 1;
-  while(PinNumber)
-  {
-    PinNumber = PinNumber >> 1;
-    GPIO_PinSource++;
   }
 
   // Register the handler for the user function name
@@ -165,26 +154,15 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
 
 void HAL_Interrupts_Detach(uint16_t pin)
 {
-  uint8_t GPIO_PinSource = 0;     //variable to hold the pin number
-  uint8_t PinNumber;                              //temp variable to calculate the pin number
-
   //Map the Spark Core pin to the appropriate pin on the STM32
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
+  uint8_t GPIO_PinSource = PIN_MAP[pin].gpio_pin_source;
 
   //Clear the pending interrupt flag for that interrupt pin
   EXTI_ClearITPendingBit(gpio_pin);
 
   //EXTI structure to init EXT
   EXTI_InitTypeDef EXTI_InitStructure;
-
-  //Find out the pin number from the mask
-  PinNumber = gpio_pin;
-  PinNumber = PinNumber >> 1;
-  while(PinNumber)
-  {
-    PinNumber = PinNumber >> 1;
-    GPIO_PinSource++;
-  }
 
   if(gpio_pin != EXTI_Line2 || gpio_pin != EXTI_Line11)
   {
@@ -239,11 +217,11 @@ void HAL_Interrupts_Trigger(uint16_t EXTI_Line, void* reserved)
     HAL_InterruptHandler userISR_Handle = exti_channels[EXTI_Line].fn;
 
     if (userISR_Handle)
-        userISR_Handle(data);    
+        userISR_Handle(data);
 }
 
 int HAL_disable_irq()
-{        
+{
   int is = __get_PRIMASK();
   __disable_irq();
   return is;

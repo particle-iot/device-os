@@ -131,7 +131,7 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
     if(i2c == HAL_I2C_INTERFACE1)
     {
         i2cMap[i2c] = &I2C_MAP[I2C1_D0_D1];
-    }
+}
 #if PLATFORM_ID == 10 // Electron
     else if(i2c == HAL_I2C_INTERFACE2)
     {
@@ -201,13 +201,13 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     HAL_Pin_Mode(i2cMap[i2c]->I2C_SCL_Pin, AF_OUTPUT_DRAIN);
     HAL_Pin_Mode(i2cMap[i2c]->I2C_SDA_Pin, AF_OUTPUT_DRAIN);
 
-    NVIC_InitTypeDef  NVIC_InitStructure;
+        NVIC_InitTypeDef  NVIC_InitStructure;
 
     NVIC_InitStructure.NVIC_IRQChannel = i2cMap[i2c]->I2C_ER_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    NVIC_Init(&NVIC_InitStructure);
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+        NVIC_Init(&NVIC_InitStructure);
 
     if(mode != I2C_MODE_MASTER)
     {
@@ -323,7 +323,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         while(I2C_GetFlagStatus(i2cMap[i2c]->I2C_Peripheral, I2C_FLAG_RXNE) == RESET)
         {
             if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
-            {
+        {
                 /* SW Reset the I2C Peripheral */
                 HAL_I2C_SoftwareReset(i2c);
 
@@ -334,16 +334,16 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         /* Read the byte from the Slave */
         *pBuffer = I2C_ReceiveData(i2cMap[i2c]->I2C_Peripheral);
 
-        bytesRead++;
+            bytesRead++;
 
-        /* Point to the next location where the byte read will be saved */
-        pBuffer++;
+            /* Point to the next location where the byte read will be saved */
+            pBuffer++;
 
-        /* Decrement the read bytes counter */
-        numByteToRead--;
+            /* Decrement the read bytes counter */
+            numByteToRead--;
 
         /* Wait to make sure that STOP control bit has been cleared */
-        _millis = HAL_Timer_Get_Milli_Seconds();
+            _millis = HAL_Timer_Get_Milli_Seconds();
         while(i2cMap[i2c]->I2C_Peripheral->CR1 & I2C_CR1_STOP)
         {
             if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
@@ -352,8 +352,8 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
                 HAL_I2C_SoftwareReset(i2c);
 
                 return 0;
-            }
         }
+    }
     }
 
     /* Enable Acknowledgement to be ready for another reception */
@@ -455,7 +455,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
         while(I2C_GetFlagStatus(i2cMap[i2c]->I2C_Peripheral, I2C_FLAG_BTF) == RESET)
         {
             if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
-            {
+        {
                 /* SW Reset the I2C Peripheral */
                 HAL_I2C_SoftwareReset(i2c);
 

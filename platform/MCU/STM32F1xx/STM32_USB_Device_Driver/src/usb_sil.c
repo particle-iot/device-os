@@ -8,16 +8,16 @@
   *          Rea/Write operations.
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   *
   ******************************************************************************
@@ -70,7 +70,7 @@ uint32_t USB_SIL_Write(uint8_t bEpAddr, uint8_t* pBufferPointer, uint32_t wBuffe
 
   /* Update the data length in the control register */
   SetEPTxCount((bEpAddr & 0x7F), wBufferSize);
-  
+
   return 0;
 }
 
@@ -78,7 +78,7 @@ uint32_t USB_SIL_Write(uint8_t bEpAddr, uint8_t* pBufferPointer, uint32_t wBuffe
 * Function Name  : USB_SIL_Read
 * Description    : Write a buffer of data to a selected endpoint.
 * Input          : - bEpAddr: The address of the non control endpoint.
-*                  - pBufferPointer: The pointer to which will be saved the 
+*                  - pBufferPointer: The pointer to which will be saved the
 *                     received data buffer.
 * Output         : None.
 * Return         : Number of received data (in Bytes).
@@ -89,7 +89,7 @@ uint32_t USB_SIL_Read(uint8_t bEpAddr, uint8_t* pBufferPointer)
 
   /* Get the number of received data on the selected Endpoint */
   DataLength = GetEPRxCount(bEpAddr & 0x7F);
-  
+
   /* Use the memory interface function to write to the selected endpoint */
   PMAToUserBufferCopy(pBufferPointer, GetEPRxAddr(bEpAddr & 0x7F), DataLength);
 

@@ -41,13 +41,14 @@ void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uin
         // Flush any serial message to help the poor bugger debug this;
         flash_codes_t pcd = flash_codes[code];
         LED_SetRGBColor(RGB_COLOR_RED);
-        LED_On(LED_RGB);
+        LED_SetBrightness(DEFAULT_LED_RGB_BRIGHTNESS);
+        LED_Signaling_Stop();
         uint16_t c;
-        int loops = 2;        
+        int loops = 2;
         log_direct_("!");
         LED_Off(LED_RGB);
         while(loops) {
-                // preamble            
+                // preamble
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
                 LED_On(LED_RGB);

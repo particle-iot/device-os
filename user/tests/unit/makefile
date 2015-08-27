@@ -41,6 +41,7 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_string.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_ipaddress.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_print.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
+CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 
 $(info $(CPPSRC))
 
@@ -92,7 +93,7 @@ $(TARGETDIR)$(TARGET) : $(BUILD_PATH) $(ALLOBJ)
 	$(LD) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
 	@echo
 
-$(BUILD_PATH): 
+$(BUILD_PATH):
 	$(MKDIR) $(BUILD_PATH)
 
 # Tool invocations
@@ -115,7 +116,7 @@ $(BUILD_PATH)%.o : $(SRC_ROOT)%.cpp
 	@echo
 
 # Other Targets
-clean:	
+clean:
 	$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGETDIR)$(TARGET)
 	$(RMDIR) $(TARGETDIR)
 	@echo

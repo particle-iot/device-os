@@ -139,15 +139,3 @@ __attribute__((weak)) char* utoa(unsigned a, char* buffer, int radix) {
 // }
 
 //------------------------------------------------------------------------------------------
-
-
-char* strdup(const char* s)
-{
-    if (!s)
-        return NULL;
-    size_t len = strlen(s);
-    char* result = (char*)malloc(len+1);
-    if (result)
-       strcpy(result, s);
-    return result;
-}

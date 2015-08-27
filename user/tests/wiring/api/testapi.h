@@ -32,7 +32,7 @@ extern bool runthisstuff;
 // compile, but do not run
 #define API_COMPILE(x) if (!runthisstuff) { x; }
 
-#define API_NO_COMPILE(x) 
+#define API_NO_COMPILE(x)
 
 #endif	/* TESTAPI_H */
 

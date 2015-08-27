@@ -4,7 +4,7 @@
  * @author  Mohit Bhoite
  * @version V1.0.0
  * @date    13-March-2013
- * @brief   
+ * @brief
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   ...mostly rewritten by Paul Stoffregen...
@@ -41,18 +41,18 @@ void dtoa (double val, unsigned char prec, char *sout) {
     if (negative) {
         val = -val;
         *sout++ = '-';
-    }    
+    }
     long scale = 1;
     for (uint8_t i=0; i<prec; i++)
-        scale *= 10;    
+        scale *= 10;
     val *= scale;   // capture all the significant digits
-    long fixed = long(val);
+    uint64_t fixed = uint64_t(val);
     if ((val-fixed)>=0.5)    // round last digit
         fixed++;
-    
-    long first = fixed / scale;
-    long second = fixed % scale;
-    
+
+    unsigned long first = (unsigned long)(fixed / scale);
+    unsigned long second = (unsigned long)(fixed % scale);
+
     ultoa(first, sout, 10, 1);
     if (prec) {
         sout += strlen(sout);
@@ -240,10 +240,10 @@ void String::move(String &rhs)
 String & String::operator = (const String &rhs)
 {
 	if (this == &rhs) return *this;
-	
+
 	if (rhs.buffer) copy(rhs.buffer, rhs.len);
 	else invalidate();
-	
+
 	return *this;
 }
 
@@ -265,7 +265,7 @@ String & String::operator = (const char *cstr)
 {
 	if (cstr) copy(cstr, strlen(cstr));
 	else invalidate();
-	
+
 	return *this;
 }
 
@@ -480,7 +480,7 @@ unsigned char String::equalsIgnoreCase( const String &s2 ) const
 	const char *p2 = s2.buffer;
 	while (*p1) {
 		if (tolower(*p1++) != tolower(*p2++)) return 0;
-	} 
+	}
 	return 1;
 }
 
@@ -511,7 +511,7 @@ char String::charAt(unsigned int loc) const
 	return operator[](loc);
 }
 
-void String::setCharAt(unsigned int loc, char c) 
+void String::setCharAt(unsigned int loc, char c)
 {
 	if (loc < len) buffer[loc] = c;
 }
@@ -625,7 +625,7 @@ String String::substring(unsigned int left, unsigned int right) const
 	if (left > len) return out;
 	if (right > len) right = len;
 	char temp = buffer[right];  // save the replaced character
-	buffer[right] = '\0';	
+	buffer[right] = '\0';
 	out = buffer + left;  // pointer arithmetic
 	buffer[right] = temp;  //restore character
 	return out;

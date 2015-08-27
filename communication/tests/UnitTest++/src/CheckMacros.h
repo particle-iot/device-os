@@ -1,4 +1,4 @@
-#ifndef UNITTEST_CHECKMACROS_H 
+#ifndef UNITTEST_CHECKMACROS_H
 #define UNITTEST_CHECKMACROS_H
 
 #include "Checks.h"

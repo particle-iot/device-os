@@ -142,7 +142,7 @@ public:
     }
 
     void setCredentials(const char *ssid, unsigned int ssidLen, const char *password,
-            unsigned int passwordLen, unsigned long security) {
+            unsigned int passwordLen, unsigned long security=WLAN_SEC_UNSEC, unsigned long cipher=WLAN_CIPHER_NOT_SET) {
 
         WLanCredentials creds;
         memset(&creds, 0, sizeof(creds));
@@ -152,7 +152,7 @@ public:
         creds.password = password;
         creds.password_len = passwordLen;
         creds.security = WLanSecurityType(security);
-
+        creds.cipher = WLanSecurityCipher(cipher);
         network_set_credentials(*this, 0, &creds, NULL);
     }
 
@@ -175,9 +175,31 @@ public:
                 IPAddress(uint32_t(0)) : IPAddress(ip);
     }
 
-    friend class TCPClient;
-    friend class TCPServer;
+    void setIPAddressSource(IPAddressSource source) {
+        wlan_set_ipaddress_source(source, true, NULL);
+    }
 
+    void useStaticIP(const IPAddress& host, const IPAddress& netmask,
+        const IPAddress& gateway, const IPAddress& dns)
+    {
+        wlan_set_ipaddress(host, netmask, gateway, dns, NULL, NULL);
+        setIPAddressSource(STATIC_IP);
+    }
+
+    void useStaticIP()
+    {
+        setIPAddressSource(STATIC_IP);
+    }
+
+    void useDynamicIP()
+    {
+        setIPAddressSource(DYNAMIC_IP);
+    }
+
+    int scan(wlan_scan_result_t callback, void* cookie) {
+        return wlan_scan(callback, cookie);
+    }
+    int scan(WiFiAccessPoint* results, size_t result_count);
 };
 
 extern WiFiClass WiFi;

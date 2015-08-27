@@ -42,7 +42,7 @@
 extern "C" {
 #endif
 
-     
+
 system_tick_t HAL_Timer_Get_Micro_Seconds(void);
 system_tick_t HAL_Timer_Get_Milli_Seconds(void);
 

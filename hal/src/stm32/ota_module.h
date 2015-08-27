@@ -1,9 +1,4 @@
 /**
- ******************************************************************************
- * @file    platforms.h
- * @authors Matthew McGowan, Brett Walach
- * @date    02 February 2015
- ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
@@ -21,19 +16,17 @@
  ******************************************************************************
  */
 
-#ifndef PLATFORMS_H
-#define	PLATFORMS_H
 
-#define PLATFORM_SPARK_CORE         0
-#define PLATFORM_SPARK_CORE_HD      2
-#define PLATFORM_GCC                3
-#define PLATFORM_PHOTON_DEV         4
-#define PLATFORM_TEACUP_PIGTAIL_DEV 5
-#define PLATFORM_PHOTON_PRODUCTION  6
-#define PLATFORM_TEACUP_PIGTAIL_PRODUCTION 7
-#define PLATFORM_P1 8
-#define PLATFORM_ELECTRON_PRODUCTION 10
+#pragma once
 
+#include "ota_flash_hal.h"
 
-#endif	/* PLATFORMS_H */
-
+/**
+ * Checks if the minimum required dependencies for the given module are satisfied.
+ * @param bounds    The bounds of the module to check.
+ * @return {@code true} if the dependencies are satisfied, {@code false} otherwise.
+ */
+bool validate_module_dependencies(const module_bounds_t* bounds, bool userPartOptional);
+const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index);
+bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags=0);
+const module_info_t* locate_module(const module_bounds_t* bounds);

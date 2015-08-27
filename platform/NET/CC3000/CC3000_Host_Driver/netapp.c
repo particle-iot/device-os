@@ -56,13 +56,13 @@
 //
 //!  netapp_config_mac_adrress
 //!
-//!  @param  mac   device mac address, 6 bytes. Saved: yes 
+//!  @param  mac   device mac address, 6 bytes. Saved: yes
 //!
 //!  @return       return on success 0, otherwise error.
 //!
-//!  @brief        Configure device MAC address and store it in NVMEM. 
+//!  @brief        Configure device MAC address and store it in NVMEM.
 //!                The value of the MAC address configured through the API will
-//!		             be stored in CC3000 non volatile memory, thus preserved 
+//!		             be stored in CC3000 non volatile memory, thus preserved
 //!                over resets.
 //
 //*****************************************************************************
@@ -75,26 +75,26 @@ INT32 netapp_config_mac_adrress(UINT8 * mac)
 //
 //!  netapp_dhcp
 //!
-//!  @param  aucIP               device mac address, 6 bytes. Saved: yes 
-//!  @param  aucSubnetMask       device mac address, 6 bytes. Saved: yes 
-//!  @param  aucDefaultGateway   device mac address, 6 bytes. Saved: yes 
-//!  @param  aucDNSServer        device mac address, 6 bytes. Saved: yes 
+//!  @param  aucIP               device mac address, 6 bytes. Saved: yes
+//!  @param  aucSubnetMask       device mac address, 6 bytes. Saved: yes
+//!  @param  aucDefaultGateway   device mac address, 6 bytes. Saved: yes
+//!  @param  aucDNSServer        device mac address, 6 bytes. Saved: yes
 //!
 //!  @return       return on success 0, otherwise error.
 //!
-//!  @brief       netapp_dhcp is used to configure the network interface, 
-//!               static or dynamic (DHCP).\n In order to activate DHCP mode, 
+//!  @brief       netapp_dhcp is used to configure the network interface,
+//!               static or dynamic (DHCP).\n In order to activate DHCP mode,
 //!               aucIP, aucSubnetMask, aucDefaultGateway must be 0.
 //!               The default mode of CC3000 is DHCP mode.
 //!               Note that the configuration is saved in non volatile memory
 //!               and thus preserved over resets.
-//!	 
-//! @note         If the mode is altered a reset of CC3000 device is required 
-//!               in order to apply changes.\nAlso note that asynchronous event 
-//!               of DHCP_EVENT, which is generated when an IP address is 
-//!               allocated either by the DHCP server or due to static 
-//!               allocation is generated only upon a connection to the 
-//!               AP was established. 
+//!
+//! @note         If the mode is altered a reset of CC3000 device is required
+//!               in order to apply changes.\nAlso note that asynchronous event
+//!               of DHCP_EVENT, which is generated when an IP address is
+//!               allocated either by the DHCP server or due to static
+//!               allocation is generated only upon a connection to the
+//!               AP was established.
 //!
 //*****************************************************************************
 INT32 netapp_dhcp(UINT32 *aucIP, UINT32 *aucSubnetMask,UINT32 *aucDefaultGateway, UINT32 *aucDNSServer)
@@ -128,22 +128,22 @@ INT32 netapp_dhcp(UINT32 *aucIP, UINT32 *aucSubnetMask,UINT32 *aucDefaultGateway
 //
 //!  netapp_timeout_values
 //!
-//!  @param  aucDHCP    DHCP lease time request, also impact 
+//!  @param  aucDHCP    DHCP lease time request, also impact
 //!                     the DHCP renew timeout. Range: [0-0xffffffff] seconds,
 //!                     0 or 0xffffffff == infinity lease timeout.
-//!                     Resolution:10 seconds. Influence: only after 
-//!                     reconnecting to the AP. 
+//!                     Resolution:10 seconds. Influence: only after
+//!                     reconnecting to the AP.
 //!                     Minimal bound value: MIN_TIMER_VAL_SECONDS - 10 seconds.
-//!                     The parameter is saved into the CC3000 NVMEM. 
+//!                     The parameter is saved into the CC3000 NVMEM.
 //!                     The default value on CC3000 is 14400 seconds.
-//!	 
+//!
 //!  @param  aucARP     ARP refresh timeout, if ARP entry is not updated by
 //!                     incoming packet, the ARP entry will be  deleted by
-//!                     the end of the timeout. 
+//!                     the end of the timeout.
 //!                     Range: [0-0xffffffff] seconds, 0 == infinity ARP timeout
 //!                     Resolution: 10 seconds. Influence: on runtime.
 //!                     Minimal bound value: MIN_TIMER_VAL_SECONDS - 10 seconds
-//!                     The parameter is saved into the CC3000 NVMEM. 
+//!                     The parameter is saved into the CC3000 NVMEM.
 //!	                    The default value on CC3000 is 3600 seconds.
 //!
 //!  @param  aucKeepalive   Keepalive event sent by the end of keepalive timeout
@@ -151,7 +151,7 @@ INT32 netapp_dhcp(UINT32 *aucIP, UINT32 *aucSubnetMask,UINT32 *aucDefaultGateway
 //!                         Resolution: 10 seconds.
 //!                         Influence: on runtime.
 //!                         Minimal bound value: MIN_TIMER_VAL_SECONDS - 10 sec
-//!                         The parameter is saved into the CC3000 NVMEM. 
+//!                         The parameter is saved into the CC3000 NVMEM.
 //!                         The default value on CC3000 is 10 seconds.
 //!
 //!  @param  aucInactivity   Socket inactivity timeout, socket timeout is
@@ -160,15 +160,15 @@ INT32 netapp_dhcp(UINT32 *aucIP, UINT32 *aucSubnetMask,UINT32 *aucDefaultGateway
 //!                          Range: [0-0xffffffff] sec, 0 == infinity timeout.
 //!                          Resolution: 10 seconds. Influence: on runtime.
 //!                          Minimal bound value: MIN_TIMER_VAL_SECONDS - 10 sec
-//!                          The parameter is saved into the CC3000 NVMEM. 
+//!                          The parameter is saved into the CC3000 NVMEM.
 //!	                         The default value on CC3000 is 60 seconds.
 //!
 //!  @return       return on success 0, otherwise error.
 //!
-//!  @brief       Set new timeout values. Function set new timeout values for: 
-//!               DHCP lease timeout, ARP  refresh timeout, keepalive event 
-//!               timeout and socket inactivity timeout 
-//!	 
+//!  @brief       Set new timeout values. Function set new timeout values for:
+//!               DHCP lease timeout, ARP  refresh timeout, keepalive event
+//!               timeout and socket inactivity timeout
+//!
 //! @note         If a parameter set to non zero value which is less than 10s,
 //!               it will be set automatically to 10s.
 //!
@@ -185,7 +185,7 @@ INT32 netapp_timeout_values(UINT32 *aucDHCP, UINT32 *aucARP,UINT32 *aucKeepalive
 	ptr = tSLInformation.pucTxCommandBuffer;
 	args = (ptr + HEADERS_SIZE_CMD);
 
-	// Set minimal values of timers 
+	// Set minimal values of timers
 	MIN_TIMER_SET(*aucDHCP)
 	MIN_TIMER_SET(*aucARP)
 	MIN_TIMER_SET(*aucKeepalive)
@@ -214,18 +214,18 @@ INT32 netapp_timeout_values(UINT32 *aucDHCP, UINT32 *aucARP,UINT32 *aucKeepalive
 //!
 //!  @param  ip              destination IP address
 //!  @param  pingAttempts    number of echo requests to send
-//!  @param  pingSize        send buffer size which may be up to 1400 bytes 
+//!  @param  pingSize        send buffer size which may be up to 1400 bytes
 //!  @param  pingTimeout     Time to wait for a response,in milliseconds.
 //!
 //!  @return       return on success 0, otherwise error.
 //!
-//!  @brief       send ICMP ECHO_REQUEST to network hosts 
-//!	 
-//! @note         If an operation finished successfully asynchronous ping report 
+//!  @brief       send ICMP ECHO_REQUEST to network hosts
+//!
+//! @note         If an operation finished successfully asynchronous ping report
 //!               event will be generated. The report structure is as defined
 //!               by structure netapp_pingreport_args_t.
 //!
-//! @warning      Calling this function while a previous Ping Requests are in 
+//! @warning      Calling this function while a previous Ping Requests are in
 //!               progress will stop the previous ping request.
 //*****************************************************************************
 
@@ -264,7 +264,7 @@ netapp_ping_send(UINT32 *ip, UINT32 ulPingAttempts, UINT32 ulPingSize, UINT32 ul
 //!
 //!  @return  none
 //!
-//!  @brief   Request for ping status. This API triggers the CC3000 to send 
+//!  @brief   Request for ping status. This API triggers the CC3000 to send
 //!           asynchronous events: HCI_EVNT_WLAN_ASYNC_PING_REPORT.
 //!           This event will carry  the report structure:
 //!           netapp_pingreport_args_t. This structure is filled in with ping
@@ -273,8 +273,8 @@ netapp_ping_send(UINT32 *ip, UINT32 ulPingAttempts, UINT32 ulPingSize, UINT32 ul
 //!           packets_received - echo reply, min_round_time - minimum
 //!           round time, max_round_time - max round time,
 //!           avg_round_time - average round time
-//!	 
-//! @note     When a ping operation is not active, the returned structure 
+//!
+//! @note     When a ping operation is not active, the returned structure
 //!           fields are 0.
 //!
 //*****************************************************************************
@@ -293,7 +293,7 @@ void netapp_ping_report()
 	hci_command_send(HCI_NETAPP_PING_REPORT, ptr, 0);
 
 	// Wait for command complete event
-	SimpleLinkWaitEvent(HCI_NETAPP_PING_REPORT, &scRet); 
+	SimpleLinkWaitEvent(HCI_NETAPP_PING_REPORT, &scRet);
 }
 #endif
 
@@ -303,10 +303,10 @@ void netapp_ping_report()
 //!
 //!  @param  none
 //!
-//!  @return  On success, zero is returned. On error, -1 is returned.      
+//!  @return  On success, zero is returned. On error, -1 is returned.
 //!
 //!  @brief   Stop any ping request.
-//!	 
+//!
 //!
 //*****************************************************************************
 
@@ -333,7 +333,7 @@ INT32 netapp_ping_stop()
 //
 //!  netapp_ipconfig
 //!
-//!  @param[out]  ipconfig  This argument is a pointer to a 
+//!  @param[out]  ipconfig  This argument is a pointer to a
 //!                         tNetappIpconfigRetArgs structure. This structure is
 //!                         filled in with the network interface configuration.
 //!                         tNetappIpconfigRetArgs:\n aucIP - ip address,
@@ -348,7 +348,7 @@ INT32 netapp_ping_stop()
 //!           Note that the information is available only after the WLAN
 //!       		connection was established. Calling this function before
 //!           associated, will cause non-defined values to be returned.
-//!	 
+//!
 //! @note     The function is useful for figuring out the IP Configuration of
 //!       		the device when DHCP is used and for figuring out the SSID of
 //!       		the Wireless network the device is associated with.
@@ -429,7 +429,7 @@ INT32 netapp_arp_flush(void)
 #ifndef CC3000_TINY_DRIVER
 INT32 netapp_set_debug_level(UINT32 ulLevel)
 {
-	INT8 scRet;    
+	INT8 scRet;
 	UINT8 *ptr, *args;
 
 	scRet = EFAIL;

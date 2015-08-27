@@ -25,6 +25,15 @@
 
 #include "spark_wiring_time.h"
 #include "rtc_hal.h"
+#include "stdio.h"
+
+// these follow the same order as the time_format_t constants
+static const char* time_formats[] = {
+    NULL,                                       // DEFAULT - means use asctime()
+    "%FT%T",                                   // ISO8601_FULL
+    "%Y-%m-%dT%H:%M:%S%z"
+                                        //
+};
 
 /* The calendar "tm" structure from the standard libray "time.h" has the following definition: */
 //struct tm
@@ -55,7 +64,6 @@ static void Refresh_UnixTime_Cache(time_t unix_time);
 static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time)
 {
 	struct tm *calendar_time;
-	unix_time += time_zone_cache;
 	calendar_time = localtime(&unix_time);
 	calendar_time->tm_year += 1900;
 	return *calendar_time;
@@ -93,12 +101,15 @@ static void Set_CalendarTime(struct tm calendar_time)
 /* Refresh Unix/RTC time cache */
 static void Refresh_UnixTime_Cache(time_t unix_time)
 {
-	if(unix_time != unix_time_cache)
-	{
-		calendar_time_cache = Convert_UnixTime_To_CalendarTime(unix_time);
-		unix_time_cache = unix_time;
-	}
+    unix_time += time_zone_cache;
+    if(unix_time != unix_time_cache)
+    {
+            calendar_time_cache = Convert_UnixTime_To_CalendarTime(unix_time);
+            unix_time_cache = unix_time;
+    }
 }
+
+time_format_t TimeClass::format_spec = TIME_FORMAT_DEFAULT;
 
 /* current hour */
 int TimeClass::hour()
@@ -255,21 +266,45 @@ void TimeClass::setTime(time_t t)
     HAL_RTC_Set_UnixTime(t);
 }
 
-/* return string representation of the current time */
-String TimeClass::timeStr()
+/* return string representation for the given time */
+String TimeClass::timeStr(time_t t, time_format_t format)
 {
-	return timeStr(now());
+	t += time_zone_cache;
+	tm* calendar_time = localtime(&t);
+
+        const char* format_string = time_formats[format];
+        return timeFormatImpl(calendar_time, format_string, time_zone_cache);
 }
 
-/* return string representation for the given time */
-String TimeClass::timeStr(time_t t)
+String TimeClass::format(time_t t, const char* format_spec)
 {
-	struct tm *calendar_time;
-	t += time_zone_cache;
-	calendar_time = localtime(&t);
-	String calendar_time_string = String(asctime(calendar_time));
-    calendar_time_string[calendar_time_string.length()-1] = 0;
-	return calendar_time_string;
+    t += time_zone_cache;
+    tm* calendar_time = localtime(&t);
+    return timeFormatImpl(calendar_time, format_spec, time_zone_cache);
+}
+
+String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time_zone)
+{
+    if (!format)
+    {
+        char* ascstr = asctime(calendar_time);
+        int len = strlen(ascstr);
+        ascstr[len-1] = 0; // remove final newline
+	return String(ascstr);
+    }
+    else
+    {
+        char buf[50];
+        strftime(buf, 50, format, calendar_time);
+        char* e = buf+strlen(buf);
+        // while we are not using stdlib for managing the timezone, we have to do this manually
+        if (!time_zone)
+            strcpy(e, "Z");
+        else {
+            snprintf(e, sizeof(buf)-(e-buf), "%+03d:%02u", time_zone/3600, time_zone%3600);
+        }
+        return String(buf);
+    }
 }
 
 TimeClass Time;

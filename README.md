@@ -1,5 +1,4 @@
-<!---
--->
+[![Build Status](https://travis-ci.org/spark/firmware.svg?branch=develop)](https://travis-ci.org/spark/firmware)
 
 # Particle Firmware for the Core and Photon
 

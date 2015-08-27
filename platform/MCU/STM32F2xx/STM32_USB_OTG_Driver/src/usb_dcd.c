@@ -16,8 +16,8 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
@@ -34,7 +34,7 @@
 * @{
 */
 
-/** @defgroup USB_DCD 
+/** @defgroup USB_DCD
 * @brief This file is the interface between EFSL ans Host mass-storage class
 * @{
 */
@@ -42,63 +42,63 @@
 
 /** @defgroup USB_DCD_Private_Defines
 * @{
-*/ 
+*/
 /**
 * @}
-*/ 
+*/
 
 
 /** @defgroup USB_DCD_Private_TypesDefinitions
 * @{
-*/ 
+*/
 /**
 * @}
-*/ 
+*/
 
 
 
 /** @defgroup USB_DCD_Private_Macros
 * @{
-*/ 
+*/
 /**
 * @}
-*/ 
+*/
 
 
 /** @defgroup USB_DCD_Private_Variables
 * @{
-*/ 
+*/
 /**
 * @}
-*/ 
+*/
 
 
 /** @defgroup USB_DCD_Private_FunctionPrototypes
 * @{
-*/ 
+*/
 
 /**
 * @}
-*/ 
+*/
 
 
 /** @defgroup USB_DCD_Private_Functions
 * @{
-*/ 
+*/
 
 
 
-void DCD_Init(USB_OTG_CORE_HANDLE *pdev , 
+void DCD_Init(USB_OTG_CORE_HANDLE *pdev ,
               USB_OTG_CORE_ID_TypeDef coreID)
 {
   uint32_t i;
   USB_OTG_EP *ep;
-  
+
   USB_OTG_SelectCore (pdev , coreID);
-  
+
   pdev->dev.device_status = USB_OTG_DEFAULT;
   pdev->dev.device_address = 0;
-  
+
   /* Init ep structure */
   for (i = 0; i < pdev->cfg.dev_endpoints ; i++)
   {
@@ -113,7 +113,7 @@ void DCD_Init(USB_OTG_CORE_HANDLE *pdev ,
     ep->xfer_buff = 0;
     ep->xfer_len = 0;
   }
-  
+
   for (i = 0; i < pdev->cfg.dev_endpoints; i++)
   {
     ep = &pdev->dev.out_ep[i];
@@ -127,20 +127,20 @@ void DCD_Init(USB_OTG_CORE_HANDLE *pdev ,
     ep->xfer_buff = 0;
     ep->xfer_len = 0;
   }
-  
+
   USB_OTG_DisableGlobalInt(pdev);
-  
+
   /*Init the Core (common init.) */
   USB_OTG_CoreInit(pdev);
 
 
   /* Force Device Mode*/
   USB_OTG_SetCurrentMode(pdev, DEVICE_MODE);
-  
+
   /* Init Device */
   USB_OTG_CoreInitDev(pdev);
-  
-  
+
+
   /* Enable USB Global interrupt */
   USB_OTG_EnableGlobalInt(pdev);
 }
@@ -152,13 +152,13 @@ void DCD_Init(USB_OTG_CORE_HANDLE *pdev ,
 * @param epdesc : Endpoint Descriptor
 * @retval : status
 */
-uint32_t DCD_EP_Open(USB_OTG_CORE_HANDLE *pdev , 
+uint32_t DCD_EP_Open(USB_OTG_CORE_HANDLE *pdev ,
                      uint8_t ep_addr,
                      uint16_t ep_mps,
                      uint8_t ep_type)
 {
   USB_OTG_EP *ep;
-  
+
   if ((ep_addr & 0x80) == 0x80)
   {
     ep = &pdev->dev.in_ep[ep_addr & 0x7F];
@@ -168,7 +168,7 @@ uint32_t DCD_EP_Open(USB_OTG_CORE_HANDLE *pdev ,
     ep = &pdev->dev.out_ep[ep_addr & 0x7F];
   }
   ep->num   = ep_addr & 0x7F;
-  
+
   ep->is_in = (0x80 & ep_addr) != 0;
   ep->maxpacket = ep_mps;
   ep->type = ep_type;
@@ -194,7 +194,7 @@ uint32_t DCD_EP_Open(USB_OTG_CORE_HANDLE *pdev ,
 uint32_t DCD_EP_Close(USB_OTG_CORE_HANDLE *pdev , uint8_t  ep_addr)
 {
   USB_OTG_EP *ep;
-  
+
   if ((ep_addr&0x80) == 0x80)
   {
     ep = &pdev->dev.in_ep[ep_addr & 0x7F];
@@ -220,25 +220,25 @@ uint32_t DCD_EP_Close(USB_OTG_CORE_HANDLE *pdev , uint8_t  ep_addr)
 */
 uint32_t   DCD_EP_PrepareRx( USB_OTG_CORE_HANDLE *pdev,
                             uint8_t   ep_addr,
-                            uint8_t *pbuf,                        
+                            uint8_t *pbuf,
                             uint16_t  buf_len)
 {
   USB_OTG_EP *ep;
-  
+
   ep = &pdev->dev.out_ep[ep_addr & 0x7F];
-  
+
   /*setup and start the Xfer */
-  ep->xfer_buff = pbuf;  
+  ep->xfer_buff = pbuf;
   ep->xfer_len = buf_len;
   ep->xfer_count = 0;
   ep->is_in = 0;
   ep->num = ep_addr & 0x7F;
-  
+
   if (pdev->cfg.dma_enable == 1)
   {
-    ep->dma_addr = (uint32_t)pbuf;  
+    ep->dma_addr = (uint32_t)pbuf;
   }
-  
+
   if ( ep->num == 0 )
   {
     USB_OTG_EP0StartXfer(pdev , ep);
@@ -264,17 +264,17 @@ uint32_t  DCD_EP_Tx ( USB_OTG_CORE_HANDLE *pdev,
                      uint32_t   buf_len)
 {
   USB_OTG_EP *ep;
-  
+
   ep = &pdev->dev.in_ep[ep_addr & 0x7F];
-  
+
   /* Setup and start the Transfer */
   ep->is_in = 1;
-  ep->num = ep_addr & 0x7F;  
+  ep->num = ep_addr & 0x7F;
   ep->xfer_buff = (uint8_t*)pbuf;
-  ep->dma_addr = (uint32_t)pbuf;  
+  ep->dma_addr = (uint32_t)pbuf;
   ep->xfer_count = 0;
   ep->xfer_len  = buf_len;
-  
+
   if ( ep->num == 0 )
   {
     USB_OTG_EP0StartXfer(pdev , ep);
@@ -308,7 +308,7 @@ uint32_t  DCD_EP_Stall (USB_OTG_CORE_HANDLE *pdev, uint8_t   epnum)
   ep->is_stall = 1;
   ep->num   = epnum & 0x7F;
   ep->is_in = ((epnum & 0x80) == 0x80);
-  
+
   USB_OTG_EPSetStall(pdev , ep);
   return (0);
 }
@@ -325,17 +325,17 @@ uint32_t  DCD_EP_ClrStall (USB_OTG_CORE_HANDLE *pdev, uint8_t epnum)
   USB_OTG_EP *ep;
   if ((0x80 & epnum) == 0x80)
   {
-    ep = &pdev->dev.in_ep[epnum & 0x7F];    
+    ep = &pdev->dev.in_ep[epnum & 0x7F];
   }
   else
   {
     ep = &pdev->dev.out_ep[epnum];
   }
-  
-  ep->is_stall = 0;  
+
+  ep->is_stall = 0;
   ep->num   = epnum & 0x7F;
   ep->is_in = ((epnum & 0x80) == 0x80);
-  
+
   USB_OTG_EPClearStall(pdev , ep);
   return (0);
 }
@@ -423,17 +423,17 @@ void  DCD_DevDisconnect (USB_OTG_CORE_HANDLE *pdev)
 uint32_t DCD_GetEPStatus(USB_OTG_CORE_HANDLE *pdev ,uint8_t epnum)
 {
   USB_OTG_EP *ep;
-  uint32_t Status = 0;  
-  
+  uint32_t Status = 0;
+
   if ((0x80 & epnum) == 0x80)
   {
-    ep = &pdev->dev.in_ep[epnum & 0x7F];    
+    ep = &pdev->dev.in_ep[epnum & 0x7F];
   }
   else
   {
     ep = &pdev->dev.out_ep[epnum];
   }
-  
+
   Status = USB_OTG_GetEPStatus(pdev ,ep);
 
   /* Return the current status */
@@ -450,26 +450,26 @@ uint32_t DCD_GetEPStatus(USB_OTG_CORE_HANDLE *pdev ,uint8_t epnum)
 void DCD_SetEPStatus (USB_OTG_CORE_HANDLE *pdev , uint8_t epnum , uint32_t Status)
 {
   USB_OTG_EP *ep;
-  
+
   if ((0x80 & epnum) == 0x80)
   {
-    ep = &pdev->dev.in_ep[epnum & 0x7F];    
+    ep = &pdev->dev.in_ep[epnum & 0x7F];
   }
   else
   {
     ep = &pdev->dev.out_ep[epnum];
   }
-  
+
    USB_OTG_SetEPStatus(pdev ,ep , Status);
 }
 
 /**
 * @}
-*/ 
+*/
 
 /**
 * @}
-*/ 
+*/
 
 /**
 * @}

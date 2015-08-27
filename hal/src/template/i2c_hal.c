@@ -89,12 +89,12 @@ bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c)
 
 void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int))
 {
-  
+
 }
 
 void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void))
 {
-  
+
 }
 
 /*******************************************************************************

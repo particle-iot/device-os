@@ -18,7 +18,7 @@ void read_file(const char* filename, void* data, size_t length)
         strcat(buf, "/");
     }
     strcat(buf, filename);
-    FILE *f = fopen(buf, "rb");    
+    FILE *f = fopen(buf, "rb");
     if (f!=NULL) {
         fread(data, length, 1, f);
         fclose(f);

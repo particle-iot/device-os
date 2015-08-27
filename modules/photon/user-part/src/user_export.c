@@ -31,10 +31,10 @@ extern constructor_ptr_t link_constructors_location[];
 extern constructor_ptr_t link_constructors_end;
 
 /**
- * Initializes this user module. Returns the start of the heap. 
+ * Initializes this user module. Returns the start of the heap.
  */
 void* module_user_pre_init() {
-    
+
     if ( (&link_global_data_start!=&link_global_data_initial_values) && (link_global_data_size != 0))
     {
         memcpy(&link_global_data_start, &link_global_data_initial_values, link_global_data_size);

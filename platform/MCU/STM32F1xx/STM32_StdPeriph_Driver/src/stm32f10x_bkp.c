@@ -7,16 +7,16 @@
   * @brief   This file provides all the BKP firmware functions.
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   ******************************************************************************
   */
@@ -29,7 +29,7 @@
   * @{
   */
 
-/** @defgroup BKP 
+/** @defgroup BKP
   * @brief BKP driver modules
   * @{
   */
@@ -83,7 +83,7 @@
 
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup BKP_Private_Macros
@@ -176,7 +176,7 @@ void BKP_ITConfig(FunctionalState NewState)
   *     @arg BKP_RTCOutputSource_Alarm: output the RTC Alarm pulse signal on
   *                                     the Tamper pin.
   *     @arg BKP_RTCOutputSource_Second: output the RTC Second pulse signal on
-  *                                      the Tamper pin.  
+  *                                      the Tamper pin.
   * @retval None
   */
 void BKP_RTCOutputConfig(uint16_t BKP_RTCOutputSource)
@@ -187,7 +187,7 @@ void BKP_RTCOutputConfig(uint16_t BKP_RTCOutputSource)
   tmpreg = BKP->RTCCR;
   /* Clear CCO, ASOE and ASOS bits */
   tmpreg &= RTCCR_MASK;
-  
+
   /* Set CCO, ASOE and ASOS bits according to BKP_RTCOutputSource value */
   tmpreg |= BKP_RTCOutputSource;
   /* Store the new value */
@@ -228,7 +228,7 @@ void BKP_WriteBackupRegister(uint16_t BKP_DR, uint16_t Data)
   /* Check the parameters */
   assert_param(IS_BKP_DR(BKP_DR));
 
-  tmp = (uint32_t)BKP_BASE; 
+  tmp = (uint32_t)BKP_BASE;
   tmp += BKP_DR;
 
   *(__IO uint32_t *) tmp = Data;
@@ -247,7 +247,7 @@ uint16_t BKP_ReadBackupRegister(uint16_t BKP_DR)
   /* Check the parameters */
   assert_param(IS_BKP_DR(BKP_DR));
 
-  tmp = (uint32_t)BKP_BASE; 
+  tmp = (uint32_t)BKP_BASE;
   tmp += BKP_DR;
 
   return (*(__IO uint16_t *) tmp);

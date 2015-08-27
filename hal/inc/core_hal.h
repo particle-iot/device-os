@@ -67,10 +67,10 @@ typedef enum
  */
 
 #ifdef USE_SWD_JTAG
-#define SWD_JTAG_ENABLE    
-#else 
+#define SWD_JTAG_ENABLE
+#else
 #ifdef USE_SWD
-#define SWD_ENABLE_JTAG_DISABLE    
+#define SWD_ENABLE_JTAG_DISABLE
 #else
 #define SWD_JTAG_DISABLE
 #endif
@@ -89,7 +89,7 @@ typedef enum
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 void HAL_Core_Init(void);
 void HAL_Core_Config(void);
 bool HAL_Core_Validate_User_Module(void);
@@ -122,6 +122,16 @@ void HAL_SysTick_Handler(void);
 void HAL_Bootloader_Lock(bool lock);
 
 bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType);
+
+
+typedef struct runtime_info_t {
+    uint16_t size;              /* Size of this struct. */
+    uint16_t flags;             /* reserved, set to 0. */
+    uint32_t freeheap;          /* Amount of guaranteed heap memory available. */
+    uint32_t system_version;
+} runtime_info_t;
+
+uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved);
 
 extern void app_setup_and_loop();
 

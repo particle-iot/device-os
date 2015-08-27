@@ -205,10 +205,6 @@ void SysTick_Configuration(void)
     NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);	//OLD: NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00)
 }
 
-void SysTick_Disable() {
-    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
-}
-
 void IWDG_Reset_Enable(uint32_t msTimeout)
 {
     // Do not enable IWDG if Stop Mode Flag is set
@@ -1321,27 +1317,4 @@ void Bootloader_Update_Version(uint16_t bootloaderVersion)
 {
     Bootloader_Version_SysFlag = bootloaderVersion;
     Save_SystemFlags();
-}
-
-static volatile system_tick_t system_1ms_tick = 0;
-
-void System1MsTick(void)
-{
-    system_1ms_tick++;
-}
-
-system_tick_t GetSystem1MsTick()
-{
-    return system_1ms_tick;
-}
-
-void Save_Reset_Syndrome()
-{
-    //Save RCC clock control & status register
-    uint32_t flags = RCC->CSR;
-    if (SYSTEM_FLAG(RCC_CSR_SysFlag) != flags)
-    {
-        SYSTEM_FLAG(RCC_CSR_SysFlag) = flags;
-        Save_SystemFlags();
-    }
 }

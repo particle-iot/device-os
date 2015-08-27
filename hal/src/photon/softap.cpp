@@ -941,7 +941,7 @@ public:
     }
 
     void start() {
-        wiced_http_server_start(&server, 80, 4, page, WICED_AP_INTERFACE, 1024);
+        wiced_http_server_start(&server, 80, 1, page, WICED_AP_INTERFACE, 1024*4);
     }
 
     void stop() {
@@ -953,6 +953,9 @@ public:
         Reader r;
         reader_from_buffer(&r, (uint8_t*)http_data->data, http_data->message_data_length);
 
+        wiced_http_response_stream_enable_chunked_transfer( stream );
+        stream->cross_host_requests_enabled = WICED_TRUE;
+        wiced_http_response_stream_write_header( stream, HTTP_200_TYPE, CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, MIME_TYPE_JSON );
         Writer w;
         http_stream_writer(w, stream);
         int result = cmd->execute(r, w);

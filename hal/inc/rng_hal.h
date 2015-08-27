@@ -38,8 +38,8 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif    
-    
+#endif
+
 void HAL_RNG_Configuration(void);
 uint32_t HAL_RNG_GetRandomNumber(void);
 

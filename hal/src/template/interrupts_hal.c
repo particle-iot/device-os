@@ -56,11 +56,11 @@ void HAL_EXTI_Handler(uint8_t EXTI_Line)
 
 
 int HAL_disable_irq()
-{        
+{
     return 0;
 }
 
-void HAL_enable_irq(int is) 
+void HAL_enable_irq(int is)
 {
 }
 

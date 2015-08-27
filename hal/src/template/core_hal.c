@@ -51,11 +51,11 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 }
 
 void HAL_Core_Mode_Button_Reset(void)
-{    
+{
 }
 
 void HAL_Core_System_Reset(void)
-{  
+{
 }
 
 void HAL_Core_Factory_Reset(void)
@@ -95,13 +95,13 @@ uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
 
 // todo find a technique that allows accessor functions to be inlined while still keeping
 // hardware independence.
-bool HAL_watchdog_reset_flagged() 
+bool HAL_watchdog_reset_flagged()
 {
     return false;
 }
 
 void HAL_Notify_WDT()
-{    
+{
 }
 
 uint16_t HAL_Core_Mode_Button_Pressed_Time()
@@ -110,7 +110,7 @@ uint16_t HAL_Core_Mode_Button_Pressed_Time()
 }
 
 void HAL_Bootloader_Lock(bool lock)
-{   
+{
 }
 
 int main() 

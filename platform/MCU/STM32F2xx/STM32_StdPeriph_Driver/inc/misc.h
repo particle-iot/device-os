@@ -3,7 +3,7 @@
   * @file    misc.h
   * @author  MCD Application Team
   * @version V1.1.2
-  * @date    05-March-2012 
+  * @date    05-March-2012
   * @brief   This file contains all the functions prototypes for the miscellaneous
   *          firmware library functions (add-on to CMSIS functions).
   ******************************************************************************
@@ -17,8 +17,8 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
@@ -47,14 +47,14 @@
 
 /* Exported types ------------------------------------------------------------*/
 
-/** 
-  * @brief  NVIC Init Structure definition  
+/**
+  * @brief  NVIC Init Structure definition
   */
 
 typedef struct
 {
   uint8_t NVIC_IRQChannel;                    /*!< Specifies the IRQ channel to be enabled or disabled.
-                                                   This parameter can be an enumerator of @ref IRQn_Type 
+                                                   This parameter can be an enumerator of @ref IRQn_Type
                                                    enumeration (For the complete STM32 Devices IRQ Channels
                                                    list, please refer to stm32f2xx.h file) */
 
@@ -69,17 +69,17 @@ typedef struct
                                                    A lower priority value indicates a higher priority */
 
   FunctionalState NVIC_IRQChannelCmd;         /*!< Specifies whether the IRQ channel defined in NVIC_IRQChannel
-                                                   will be enabled or disabled. 
-                                                   This parameter can be set either to ENABLE or DISABLE */   
+                                                   will be enabled or disabled.
+                                                   This parameter can be set either to ENABLE or DISABLE */
 } NVIC_InitTypeDef;
- 
+
 /* Exported constants --------------------------------------------------------*/
 
 /** @defgroup MISC_Exported_Constants
   * @{
   */
 
-/** @defgroup MISC_Vector_Table_Base 
+/** @defgroup MISC_Vector_Table_Base
   * @{
   */
 
@@ -91,7 +91,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup MISC_System_Low_Power 
+/** @defgroup MISC_System_Low_Power
   * @{
   */
 
@@ -105,7 +105,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup MISC_Preemption_Priority_Group 
+/** @defgroup MISC_Preemption_Priority_Group
   * @{
   */
 
@@ -136,7 +136,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup MISC_SysTick_clock_source 
+/** @defgroup MISC_SysTick_clock_source
   * @{
   */
 

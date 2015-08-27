@@ -48,6 +48,12 @@ private:
 
     void set_ipv4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
     
+    inline void setVersion(uint8_t version) {
+#if HAL_IPv6
+        address.v = version;
+#endif
+    }
+
 public:
     // Constructors
     IPAddress();
@@ -88,9 +94,14 @@ public:
      */
     IPAddress& operator=(uint32_t address);
 
-    operator const HAL_IPAddress& () {
+    operator const HAL_IPAddress& () const {
         return address;
     }
+
+    operator const HAL_IPAddress* () const {
+        return &address;
+    }
+
 
     const HAL_IPAddress& raw() const {
         return address;

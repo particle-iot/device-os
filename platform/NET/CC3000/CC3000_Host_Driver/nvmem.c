@@ -69,16 +69,16 @@
 //!                     NVMEM_IP_CONFIG_FILEID, NVMEM_IP_CONFIG_SHADOW_FILEID,
 //!                     NVMEM_BOOTLOADER_SP_FILEID, NVMEM_RM_FILEID,
 //!                     and user files 12-15.
-//!  @param  ulLength    number of bytes to read 
-//!  @param  ulOffset    ulOffset in file from where to read  
+//!  @param  ulLength    number of bytes to read
+//!  @param  ulOffset    ulOffset in file from where to read
 //!  @param  buff        output buffer pointer
 //!
 //!  @return       number of bytes read, otherwise error.
 //!
-//!  @brief       Reads data from the file referred by the ulFileId parameter. 
+//!  @brief       Reads data from the file referred by the ulFileId parameter.
 //!               Reads data from file ulOffset till length. Err if the file can't
-//!               be used, is invalid, or if the read is out of bounds. 
-//!	 
+//!               be used, is invalid, or if the read is out of bounds.
+//!
 //*****************************************************************************
 
 INT32 nvmem_read(UINT32 ulFileId, UINT32 ulLength, UINT32 ulOffset, UINT8 *buff)
@@ -102,7 +102,7 @@ INT32 nvmem_read(UINT32 ulFileId, UINT32 ulLength, UINT32 ulOffset, UINT8 *buff)
 	// In case there is data - read it - even if an error code is returned
 	// Note: It is the user responsibility to ignore the data in case of an error code
 
-	// Wait for the data in a synchronous way. Here we assume that the buffer is 
+	// Wait for the data in a synchronous way. Here we assume that the buffer is
 	// big enough to store also parameters of nvmem
 
 	INT32 length;
@@ -119,18 +119,18 @@ INT32 nvmem_read(UINT32 ulFileId, UINT32 ulLength, UINT32 ulOffset, UINT8 *buff)
 //!                   NVMEM_WLAN_DRIVER_SP_FILEID, NVMEM_WLAN_FW_SP_FILEID,
 //!                   NVMEM_MAC_FILEID, NVMEM_BOOTLOADER_SP_FILEID,
 //!                   and user files 12-15.
-//!  @param  ulLength       number of bytes to write  
-//!  @param  ulEntryOffset  offset in file to start write operation from 
+//!  @param  ulLength       number of bytes to write
+//!  @param  ulEntryOffset  offset in file to start write operation from
 //!  @param  buff           data to write
 //!
 //!  @return       on success 0, error otherwise.
 //!
 //!  @brief       Write data to nvmem.
-//!               writes data to file referred by the ulFileId parameter. 
-//!               Writes data to file ulOffset till ulLength.The file id will be 
+//!               writes data to file referred by the ulFileId parameter.
+//!               Writes data to file ulOffset till ulLength.The file id will be
 //!               marked invalid till the write is done. The file entry doesn't
 //!               need to be valid - only allocated.
-//!	 
+//!
 //*****************************************************************************
 
 INT32 nvmem_write(UINT32 ulFileId, UINT32 ulLength, UINT32 ulEntryOffset, UINT8 *buff)
@@ -150,7 +150,7 @@ INT32 nvmem_write(UINT32 ulFileId, UINT32 ulLength, UINT32 ulEntryOffset, UINT8 
 	args = UINT32_TO_STREAM(args, ulLength);
 	args = UINT32_TO_STREAM(args, ulEntryOffset);
 
-	memcpy((ptr + SPI_HEADER_SIZE + HCI_DATA_CMD_HEADER_SIZE + 
+	memcpy((ptr + SPI_HEADER_SIZE + HCI_DATA_CMD_HEADER_SIZE +
 			NVMEM_WRITE_PARAMS_LEN),buff,ulLength);
 
 	// Initiate a HCI command but it will come on data channel
@@ -171,9 +171,9 @@ INT32 nvmem_write(UINT32 ulFileId, UINT32 ulLength, UINT32 ulEntryOffset, UINT8 
 //!
 //!  @return       on success 0, error otherwise.
 //!
-//!  @brief       Write MAC address to EEPROM. 
+//!  @brief       Write MAC address to EEPROM.
 //!               mac address as appears over the air (OUI first)
-//!	 
+//!
 //*****************************************************************************
 
 UINT8 nvmem_set_mac_address(UINT8 *mac)
@@ -185,13 +185,13 @@ UINT8 nvmem_set_mac_address(UINT8 *mac)
 //
 //!  nvmem_get_mac_address
 //!
-//!  @param[out]  mac   mac address  
+//!  @param[out]  mac   mac address
 //!
 //!  @return       on success 0, error otherwise.
 //!
-//!  @brief       Read MAC address from EEPROM. 
+//!  @brief       Read MAC address from EEPROM.
 //!               mac address as appears over the air (OUI first)
-//!	 
+//!
 //*****************************************************************************
 
 UINT8 nvmem_get_mac_address(UINT8 *mac)
@@ -205,16 +205,16 @@ UINT8 nvmem_get_mac_address(UINT8 *mac)
 //!
 //!  @param  ulFileId   nvmem file id:\n
 //!                     NVMEM_WLAN_DRIVER_SP_FILEID, NVMEM_WLAN_FW_SP_FILEID,
-//!  @param  spLength   number of bytes to write 
+//!  @param  spLength   number of bytes to write
 //!  @param  spData     SP data to write
 //!
 //!  @return       on success 0, error otherwise.
 //!
-//!  @brief      program a patch to a specific file ID. 
+//!  @brief      program a patch to a specific file ID.
 //!              The SP data is assumed to be organized in 2-dimensional.
-//!              Each line is SP_PORTION_SIZE bytes long. Actual programming is 
+//!              Each line is SP_PORTION_SIZE bytes long. Actual programming is
 //!              applied in SP_PORTION_SIZE bytes portions.
-//!	 
+//!
 //*****************************************************************************
 
 UINT8 nvmem_write_patch(UINT32 ulFileId, UINT32 spLength, const UINT8 *spData)
@@ -250,14 +250,14 @@ UINT8 nvmem_write_patch(UINT32 ulFileId, UINT32 spLength, const UINT8 *spData)
 //
 //!  nvmem_read_sp_version
 //!
-//!  @param[out]  patchVer    first number indicates package ID and the second 
-//!                           number indicates package build number   
+//!  @param[out]  patchVer    first number indicates package ID and the second
+//!                           number indicates package build number
 //!
 //!  @return       on success  0, error otherwise.
 //!
-//!  @brief      Read patch version. read package version (WiFi FW patch, 
+//!  @brief      Read patch version. read package version (WiFi FW patch,
 //!              driver-supplicant-NS patch, bootloader patch)
-//!	 
+//!
 //*****************************************************************************
 
 #ifndef CC3000_TINY_DRIVER
@@ -265,18 +265,18 @@ UINT8 nvmem_read_sp_version(UINT8* patchVer)
 {
 	UINT8 *ptr;
 	// 1st byte is the status and the rest is the SP version
-	UINT8	retBuf[5];	
+	UINT8	retBuf[5];
 
 	ptr = tSLInformation.pucTxCommandBuffer;
 
 	// Initiate a HCI command, no args are required
-	hci_command_send(HCI_CMND_READ_SP_VERSION, ptr, 0);	
+	hci_command_send(HCI_CMND_READ_SP_VERSION, ptr, 0);
 	SimpleLinkWaitEvent(HCI_CMND_READ_SP_VERSION, retBuf);
 
 	// package ID
-	*patchVer = retBuf[3];			
+	*patchVer = retBuf[3];
 	// package build number
-	*(patchVer+1) = retBuf[4];		
+	*(patchVer+1) = retBuf[4];
 
 	return(retBuf[0]);
 }
@@ -290,24 +290,24 @@ UINT8 nvmem_read_sp_version(UINT8* patchVer)
 //!                           * NVMEM_AES128_KEY_FILEID: 12
 //!                           * NVMEM_SHARED_MEM_FILEID: 13
 //!                           * and fileIDs 14 and 15
-//!  @param       ulNewLen    entry ulLength  
+//!  @param       ulNewLen    entry ulLength
 //!
 //!  @return       on success 0, error otherwise.
 //!
-//!  @brief      Create new file entry and allocate space on the NVMEM. 
+//!  @brief      Create new file entry and allocate space on the NVMEM.
 //!              Applies only to user files.
 //!              Modify the size of file.
-//!              If the entry is unallocated - allocate it to size 
+//!              If the entry is unallocated - allocate it to size
 //!              ulNewLen (marked invalid).
 //!              If it is allocated then deallocate it first.
-//!              To just mark the file as invalid without resizing - 
+//!              To just mark the file as invalid without resizing -
 //!              set ulNewLen=0.
-//!	 
+//!
 //*****************************************************************************
 
 INT32 nvmem_create_entry(UINT32 ulFileId, UINT32 ulNewLen)
 {
-	UINT8 *ptr; 
+	UINT8 *ptr;
 	UINT8 *args;
 	UINT8 retval;
 

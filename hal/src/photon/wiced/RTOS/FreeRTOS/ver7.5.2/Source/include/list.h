@@ -114,8 +114,8 @@
  * complete and obvious failure of the scheduler.  If this is ever experienced
  * then the volatile qualifier can be inserted in the relevant places within the
  * list structures by simply defining configLIST_VOLATILE to volatile in
- * FreeRTOSConfig.h (as per the example at the bottom of this comment block).  
- * If configLIST_VOLATILE is not defined then the preprocessor directives below 
+ * FreeRTOSConfig.h (as per the example at the bottom of this comment block).
+ * If configLIST_VOLATILE is not defined then the preprocessor directives below
  * will simply #define configLIST_VOLATILE away completely.
  *
  * To use volatile list structure members then add the following line to

@@ -24,6 +24,10 @@
 #ifndef MODULE_SYSTEM_PART1_INIT_H
 #define	MODULE_SYSTEM_PART1_INIT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Initialize this module. This should erase the BSS area, copy initialized
  * variables from flash to RAM.
@@ -37,7 +41,9 @@ void* module_system_part1_pre_init();
  */
 void module_system_part1_init();
 
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* MODULE_SYSTEM_WIFI_INIT_H */
 

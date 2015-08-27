@@ -50,7 +50,7 @@ class FakeFlashDevice : public FlashDevice {
     page_size_t pageSize_;
     uint8_t* data_;
     bool allowPageSpan;
-    
+
 public:
 
     FakeFlashDevice(page_count_t pageCount, page_size_t pageSize, bool pageSpan=false) :
@@ -521,7 +521,7 @@ public:
  * This exists so that we can easily test the internal parts of the page mapper,
  * without having to resort to friend classes or including gtest in production
  * code.
- * 
+ *
  * @param page_index_t  The size needed to store the range of physical pages.
  */
 template <class page_index_t = uint8_t>
@@ -672,7 +672,7 @@ public:
         page_index_t free = nextFreePage(randomPage() % maxPage());
         if (readHeader(free) != 0xFFFF) // if the header is clean the rest will be.
             flash.erasePage(flash.pageAddress(free));
-        assignLogicalPage(page, free);        
+        assignLogicalPage(page, free);
         setPageInUse(free, true);
         if (persistInUse) {
             writeHeader(free, uint16_t(page) | 0x7F00); // bit 15 clear means in use.
@@ -794,7 +794,7 @@ public:
                     setPageInUse(physicalPage, false);
 #if PAGE_MAPPER_PRE_ALLOCATE_PAGES
                     allocateLogicalPage(page);
-#endif                    
+#endif
                     success = true;
                 }
             }
@@ -802,7 +802,7 @@ public:
         return success;
     }
 
-    inline bool writePage(const void* data, flash_addr_t address, page_size_t length) {        
+    inline bool writePage(const void* data, flash_addr_t address, page_size_t length) {
         // assume for now that it's within a single block. will deal with multiple blocks later
         return flash.writePage(data, physicalAddress(address, pageSize()), length);
     }
@@ -844,12 +844,12 @@ public:
         // bring new page online now that it is completely written
         this->writeHeader(newPage, uint16_t(logicalPage) | 0x7F00); // bit 15 clear means in use.)
         // a power failure here would mean either the new or the old page are found, depending upon their order in flash
-        this->writeHeader(oldPage, 0);          
+        this->writeHeader(oldPage, 0);
         // now the old page is discarded
         this->setPageInUse(oldPage, false);
         return offset == size;
     }
-        
+
 };
 
 /**
@@ -936,7 +936,7 @@ public:
      * @return
      */
     bool writeErasePage(const void* data, flash_addr_t address, page_size_t length) {
-        uint8_t buf[STACK_BUFFER_SIZE];        
+        uint8_t buf[STACK_BUFFER_SIZE];
         return isValidAddress(address, length) ? TranslatingFlashDevice::writeErasePageBuf(data, address, length, buf, sizeof(buf)) : false;
     }
 
@@ -961,7 +961,7 @@ public:
         uint8_t bitmap = *slot;
         if (!bitmap)
             return 0;
-        
+
         // NB: this also works for the special case when the bitmap is 0xFF,
         // meaning, uninitialised. The resulting index will be 0, which returns the bitmap, 0xFF
         int index = 0; // find the last used index.
@@ -981,7 +981,7 @@ public:
         }
         return index;
     }
-    
+
     /**
      * Writes a byte value to the slot. The byte is written in the current slot.
      * A slot is 8 bytes wide. The first byte is a bitmap, and subsequent 7 bytes

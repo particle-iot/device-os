@@ -16,8 +16,8 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
@@ -36,16 +36,16 @@
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
   */
-  
+
 /** @defgroup MSC_BOT
   * @brief This file is the Header file for usbd_bot.c
   * @{
-  */ 
+  */
 
 
 /** @defgroup USBD_CORE_Exported_Defines
   * @{
-  */ 
+  */
 #define BOT_IDLE                      0       /* Idle state */
 #define BOT_DATA_OUT                  1       /* Data Out state */
 #define BOT_DATA_IN                   2       /* Data In state */
@@ -74,11 +74,11 @@
 
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup MSC_CORE_Private_TypesDefinitions
   * @{
-  */ 
+  */
 
 typedef struct _MSC_BOT_CBW
 {
@@ -104,7 +104,7 @@ MSC_BOT_CSW_TypeDef;
 
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USBD_CORE_Exported_Types
@@ -119,35 +119,35 @@ extern MSC_BOT_CBW_TypeDef  MSC_BOT_cbw;
 extern MSC_BOT_CSW_TypeDef  MSC_BOT_csw;
 /**
   * @}
-  */ 
+  */
 /** @defgroup USBD_CORE_Exported_FunctionsPrototypes
   * @{
-  */ 
+  */
 void MSC_BOT_Init (USB_OTG_CORE_HANDLE  *pdev);
 void MSC_BOT_Reset (USB_OTG_CORE_HANDLE  *pdev);
 void MSC_BOT_DeInit (USB_OTG_CORE_HANDLE  *pdev);
-void MSC_BOT_DataIn (USB_OTG_CORE_HANDLE  *pdev, 
+void MSC_BOT_DataIn (USB_OTG_CORE_HANDLE  *pdev,
                      uint8_t epnum);
 
-void MSC_BOT_DataOut (USB_OTG_CORE_HANDLE  *pdev, 
+void MSC_BOT_DataOut (USB_OTG_CORE_HANDLE  *pdev,
                       uint8_t epnum);
 
 void MSC_BOT_SendCSW (USB_OTG_CORE_HANDLE  *pdev,
                              uint8_t CSW_Status);
 
-void  MSC_BOT_CplClrFeature (USB_OTG_CORE_HANDLE  *pdev, 
+void  MSC_BOT_CplClrFeature (USB_OTG_CORE_HANDLE  *pdev,
                              uint8_t epnum);
 /**
   * @}
-  */ 
+  */
 
 #endif /* __USBD_MSC_BOT_H */
 /**
   * @}
-  */ 
+  */
 
 /**
 * @}
-*/ 
+*/
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 

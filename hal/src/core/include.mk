@@ -1,7 +1,7 @@
 # This file is a makefile included from the top level makefile which
 # defines the sources built for the target.
 
-# Define the prefix to this directory. 
+# Define the prefix to this directory.
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
 HAL_SRC_COREV1_PATH = $(TARGET_HAL_PATH)/src/core
@@ -24,7 +24,7 @@ LDFLAGS += -u _printf_float
 endif
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
-ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S 
+ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup
 ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=1
 

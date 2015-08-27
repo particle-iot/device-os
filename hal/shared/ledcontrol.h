@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   ledcontrol.h
  * Author: mat
  *
@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-    
+
 extern volatile uint8_t SPARK_LED_FADE;
 
 

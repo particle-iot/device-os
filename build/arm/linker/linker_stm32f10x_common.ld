@@ -1,4 +1,4 @@
-/* default stack sizes. 
+/* default stack sizes.
 
 These are used by the startup in order to allocate stacks for the different modes.
 */
@@ -42,7 +42,7 @@ SECTIONS
         KEEP(*(.isr_vector))            /* Startup code */
 	. = ALIGN(4);
     } >APP_FLASH
-   
+
     INCLUDE module_info.ld
 
     .flashtext :
@@ -51,12 +51,12 @@ SECTIONS
         *(.flashtext)            /* Startup code */
 	. = ALIGN(4);
     } >APP_FLASH
-     
+
     /* the program code is stored in the .text section, which goes to Flash */
     .text :
     {
 	    . = ALIGN(4);
-	    
+
         *(.text)                   /* remaining code */
         *(.text.*)                   /* remaining code */
         *(.rodata)                 /* read-only data (constants) */
@@ -67,14 +67,14 @@ SECTIONS
 	    . = ALIGN(4);
    	  _etext = .;
     } >APP_FLASH
- 
+
     .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >APP_FLASH
     .ARM : {
         __exidx_start = .;
         *(.ARM.exidx*)
         __exidx_end = .;
     } >APP_FLASH
- 
+
     .preinit_array : {
         PROVIDE_HIDDEN (__preinit_array_start = .);
         KEEP (*(.preinit_array*))
@@ -94,7 +94,7 @@ SECTIONS
         KEEP (*(SORT(.fini_array.*)))
         PROVIDE_HIDDEN (__fini_array_end = .);
     } >APP_FLASH
- 
+
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
     but the loader puts the initial values in the FLASH (inidata).
@@ -108,7 +108,7 @@ SECTIONS
 	    . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
-        
+
         *(.data)
         *(.data.*)
 
@@ -116,27 +116,27 @@ SECTIONS
 	    /* This is used by the startup in order to initialize the .data secion */
    	 _edata = . ;
     } >RAM AT>APP_FLASH
-    
+
     /* This is the uninitialized data section */
     .bss :
     {
 	    . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
         _sbss = .;
-        
+
         *(.bss)
         *(.bss.*)
         *(COMMON)
-        
+
 	    . = ALIGN(4);
 	    /* This is used by the startup in order to initialize the .bss secion */
    	 _ebss = . ;
     } >RAM
-    
+
     PROVIDE ( end = _ebss );
     PROVIDE ( _end = _ebss );
-    
-    /* This is the user stack section 
+
+    /* This is the user stack section
     This is just to check that there is enough RAM left for the User mode stack
     It should generate an error if it's full.
      */
@@ -144,15 +144,15 @@ SECTIONS
     {
 	    . = ALIGN(4);
         _susrstack = . ;
-        
+
         . = . + _Minimum_Stack_Size ;
-        
+
 	    . = ALIGN(4);
         _eusrstack = . ;
     } >RAM
-   
+
     /* after that it's only debugging information. */
-    
+
     /* remove the debugging information from the standard libraries */
     DISCARD :
     {
@@ -194,7 +194,7 @@ SECTIONS
     .debug_funcnames 0 : { *(.debug_funcnames) }
     .debug_typenames 0 : { *(.debug_typenames) }
     .debug_varnames  0 : { *(.debug_varnames) }
-    
+
     INCLUDE module_end.ld
 }
 

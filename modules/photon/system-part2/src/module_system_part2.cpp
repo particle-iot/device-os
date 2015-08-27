@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+extern "C" {
+
 DYNALIB_TABLE_EXTERN(hal);
 DYNALIB_TABLE_EXTERN(rt);
 DYNALIB_TABLE_EXTERN(system);
@@ -24,7 +26,7 @@ DYNALIB_TABLE_EXTERN(hal_usart);
 /**
  * The module export table. This lists the addresses of individual library dynalib jump tables.
  */
-__attribute__((externally_visible)) const void* const system_part2_module[] = {
+extern "C" __attribute__((externally_visible)) const void* const system_part2_module[] = {
     DYNALIB_TABLE_NAME(hal),
     DYNALIB_TABLE_NAME(rt),
     DYNALIB_TABLE_NAME(system),
@@ -46,7 +48,7 @@ static bool module_user_part_validated = false;
 
 /**
  * Determines if the user module is present and valid.
- * @return 
+ * @return
  */
 bool is_user_module_valid()
 {
@@ -65,9 +67,9 @@ extern void* sbrk_heap_top;
 void system_part2_pre_init() {
     // initialize dependent modules
     module_system_part1_pre_init();
-    
+
     HAL_Core_Config();
-    
+
     module_user_part_validated = HAL_Core_Validate_User_Module();
 
     if (is_user_module_valid()) {
@@ -102,8 +104,10 @@ void setup() {
 void loop() {
     if (is_user_module_valid()) {
         module_user_loop();
-    }    
+    }
 }
 
-__attribute__((externally_visible, section(".module_pre_init"))) const void* system_part2_pre_init_fn = system_part2_pre_init;
-__attribute__((externally_visible, section(".module_init"))) const void* system_part2_init_fn = system_part2_init;
+__attribute__((externally_visible, section(".module_pre_init"))) const void* system_part2_pre_init_fn = (const void*)system_part2_pre_init;
+__attribute__((externally_visible, section(".module_init"))) const void* system_part2_init_fn = (const void*)system_part2_init;
+
+}

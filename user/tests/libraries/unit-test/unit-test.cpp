@@ -116,7 +116,7 @@ void Test::resolve()
     if (pass) ++Test::passed;
     if (fail) ++Test::failed;
     if (skip) ++Test::skipped;
-    
+
     _runner.testDone();
 
 #if TEST_VERBOSITY_EXISTS(TESTS_SKIPPED) || TEST_VERBOSITY_EXISTS(TESTS_PASSED) || TEST_VERBOSITY_EXISTS(TESTS_FAILED)
@@ -155,7 +155,7 @@ void Test::resolve()
     out->print(F(" skipped, out of "));
     out->print(count);
     out->println(F(" test(s)."));
-  }  
+  }
 #endif
 }
 
@@ -199,7 +199,7 @@ void Test::setup() {};
 void Test::run()
 {
   _runner.setState(root ? RUNNING : COMPLETE);
-  
+
   for (Test **p = &root; (*p) != 0; ) {
     current = *p;
 

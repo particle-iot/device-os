@@ -29,7 +29,7 @@
 #include "spark_wiring_constants.h"
 #include <cctype>
 
-inline boolean toBoolean(int value) 
+inline boolean toBoolean(int value)
 {
     return !value ? false : true;
 }
@@ -39,7 +39,7 @@ inline boolean isAlpha(int c)
     return toBoolean(isalpha(c));
 }
 
-inline boolean isAlphaNumeric(int c) 
+inline boolean isAlphaNumeric(int c)
 {
     return toBoolean(isalnum(c));
 }

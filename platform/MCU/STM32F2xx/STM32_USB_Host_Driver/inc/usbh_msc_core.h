@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Define to prevent recursive  ----------------------------------------------*/
 #ifndef __USBH_MSC_CORE_H
@@ -50,23 +50,23 @@
 /** @addtogroup USBH_MSC_CLASS
   * @{
   */
-  
+
 /** @defgroup USBH_MSC_CORE
   * @brief This file is the Header file for usbh_msc_core.c
   * @{
-  */ 
+  */
 
 
 /** @defgroup USBH_MSC_CORE_Exported_Types
   * @{
-  */ 
+  */
 
 
 /* Structure for MSC process */
 typedef struct _MSC_Process
 {
-  uint8_t              hc_num_in; 
-  uint8_t              hc_num_out; 
+  uint8_t              hc_num_in;
+  uint8_t              hc_num_out;
   uint8_t              MSBulkOutEp;
   uint8_t              MSBulkInEp;
   uint16_t             MSBulkInEpSize;
@@ -74,12 +74,12 @@ typedef struct _MSC_Process
   uint8_t              buff[USBH_MSC_MPS_SIZE];
   uint8_t              maxLun;
 }
-MSC_Machine_TypeDef; 
+MSC_Machine_TypeDef;
 
 
 /**
   * @}
-  */ 
+  */
 
 
 
@@ -89,46 +89,42 @@ MSC_Machine_TypeDef;
 
 #define USB_REQ_BOT_RESET                0xFF
 #define USB_REQ_GET_MAX_LUN              0xFE
-    
+
 
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_MSC_CORE_Exported_Macros
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_MSC_CORE_Exported_Variables
   * @{
-  */ 
+  */
 extern USBH_Class_cb_TypeDef  USBH_MSC_cb;
 extern MSC_Machine_TypeDef    MSC_Machine;
 extern uint8_t MSCErrorCount;
 
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_MSC_CORE_Exported_FunctionsPrototype
   * @{
-  */ 
+  */
 
 
 
 /**
   * @}
-  */ 
+  */
 
 #endif  /* __USBH_MSC_CORE_H */
 
-
-/**
-  * @}
-  */ 
 
 /**
   * @}
@@ -136,7 +132,11 @@ extern uint8_t MSCErrorCount;
 
 /**
   * @}
-  */ 
+  */
+
+/**
+  * @}
+  */
 
 /**
   * @}

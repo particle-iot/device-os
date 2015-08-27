@@ -32,7 +32,7 @@
  * Allow specific HAL implementations to export key symbols:
  * - thread priority limits and type.
  * - default stack size
- * 
+ *
  */
 #include "concurrent_hal_impl.h"
 
@@ -52,31 +52,31 @@ typedef void os_thread_return_t;
 typedef os_thread_return_t (*os_thread_fn_t)(void* param);
 
 /**
- * Creates a new thread. 
+ * Creates a new thread.
  * @param result            Receives the created thread handle. Will be set to NULL if the thread cannot be created.
  * @param name              The name of the thread. May be used if the underlying RTOS supports it. Can be null.
  * @param priority          The thread priority. It's best to stick to a small range of priorities, e.g. +/- 7.
  * @param fun               The function to execute in a separate thread.
  * @param thread_param      The parameter to pass to the thread function.
- * @param stack_size        The size of the stack to create. The stack is allocated on the heap. 
+ * @param stack_size        The size of the stack to create. The stack is allocated on the heap.
  * @return an error code. 0 if the thread was successfully created.
  */
-os_result_t os_thread_create(os_thread_t* result, const char* name, 
-        os_thread_prio_t priority, os_thread_fn_t fun, void* thread_param, 
+os_result_t os_thread_create(os_thread_t* result, const char* name,
+        os_thread_prio_t priority, os_thread_fn_t fun, void* thread_param,
         size_t stack_size);
 
 /**
- * 
+ *
  * @param result            Receives the created thread handle. Will be set to NULL if the thread cannot be created.
  * @param name              The name of the thread. May be used if the underlying RTOS supports it.
  * @param priority          The thread priority. It's best to stick to a small range of priorities, e.g. +/- 7.
  * @param fun               The function to execute in a separate thread.
  * @param thread_param      The parameter to pass to the thread function.
- * @param stack_size        The size of the stack to create. The stack is allocated on the heap. 
+ * @param stack_size        The size of the stack to create. The stack is allocated on the heap.
  * @param stack             The location of the bottom of the stack. The top of the stack is at location stack + stack_size.
  */
-os_result_t os_thread_create_with_stack(os_thread_t* result, const char* name, 
-        os_thread_prio_t priority, os_thread_fn_t fun, void* thread_param, 
+os_result_t os_thread_create_with_stack(os_thread_t* result, const char* name,
+        os_thread_prio_t priority, os_thread_fn_t fun, void* thread_param,
         size_t stack_size, void* stack);
 
 /**

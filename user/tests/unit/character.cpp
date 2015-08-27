@@ -22,7 +22,7 @@ TEST_CASE("isAscii") {
     CHECK(isAscii('a'));
     CHECK(isAscii('Z'));
     CHECK(isAscii('~'));
-    CHECK(!isAscii(0x80));    
+    CHECK(!isAscii(0x80));
 }
 
 TEST_CASE("isControl") {
@@ -48,7 +48,7 @@ TEST_CASE("isHexadecimalDigit") {
     CHECK(isHexadecimalDigit('A'));
     CHECK(isHexadecimalDigit('f'));
     CHECK(!isHexadecimalDigit('G'));
-    CHECK(isHexadecimalDigit('9'));    
+    CHECK(isHexadecimalDigit('9'));
 }
 
 TEST_CASE("isLowerCase") {

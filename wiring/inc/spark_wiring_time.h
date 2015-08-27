@@ -29,6 +29,12 @@
 #include "spark_wiring_string.h"
 #include <time.h>
 
+enum time_format_t
+{
+    TIME_FORMAT_DEFAULT = 0,
+    TIME_FORMAT_ISO8601_FULL = 1
+};
+
 class TimeClass {
 public:
 	// Arduino time and date functions
@@ -55,8 +61,39 @@ public:
 	static time_t  now();              			// return the current time as seconds since Jan 1 1970
 	static void    zone(float GMT_Offset);		// set the time zone (+/-) offset from GMT
 	static void    setTime(time_t t);			// set the given time as unix/rtc time
-	static String  timeStr();			// returns string representation for the current time
-	static String  timeStr(time_t t);			// returns string representation for the given time
+
+
+        /* return string representation of the current time */
+        inline String timeStr()
+        {
+                return timeStr(now(), format_spec);
+        }
+
+        inline String timeStr(time_format_t format_spec)
+        {
+                return timeStr(now(), format_spec);
+        }
+
+        /* return string representation for the given time */
+        inline String timeStr(time_t t)
+        {
+            return timeStr(t, format_spec);
+        }
+
+        static String timeStr(time_t t, time_format_t format_spec);
+
+        static String format(time_t t, const char* format_spec);
+
+        void setFormat(time_format_t format) {
+            this->format_spec = format;
+        }
+
+        time_format_t getFormat() const { return format_spec; }
+
+private:
+    static time_format_t format_spec;
+    static String timeFormatImpl(tm* calendar_time, const char* format, int time_zone);
+
 };
 
 extern TimeClass Time;	//eg. usage: Time.day();

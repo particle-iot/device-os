@@ -1119,7 +1119,7 @@ void vQueueDelete( /*@only@*/ xQueueHandle xQueue ) PRIVILEGED_FUNCTION;
    <pre>
 
  xQueueHandle xQueue;
- 
+
  void vFunction( void *pvParameters )
  {
  	// Create a queue to hold one unsigned long value.  It is strongly
@@ -1148,7 +1148,7 @@ unsigned long ulVarToSend, ulValReceived;
 	// Reading from the queue will now return 100.
 
 	// ...
-	
+
 	if( xHigherPrioritytaskWoken == pdTRUE )
 	{
 		// Writing to the queue caused a task to unblock and the unblocked task

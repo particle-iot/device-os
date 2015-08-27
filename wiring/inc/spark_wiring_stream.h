@@ -30,7 +30,7 @@
 #include "spark_wiring_string.h"
 #include "spark_wiring_print.h"
 #include "system_tick_hal.h"
-  
+
 // compatability macros for testing
 /*
 #define   getInt()            parseInt()

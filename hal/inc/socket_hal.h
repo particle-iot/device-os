@@ -69,6 +69,16 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t len, 
 
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len);
 
+/**
+ *
+ * @param sd        The socket handle to send
+ * @param buffer
+ * @param len
+ * @param flags
+ * @param addr
+ * @param addr_size
+ * @return Return the number of bytes sent or a negative value on error.
+ */
 sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size);
 
 sock_result_t socket_close(sock_handle_t sd);
@@ -83,7 +93,34 @@ sock_result_t socket_accept(sock_handle_t sd);
  */
 sock_handle_t socket_handle_invalid();
 
+/*
+ * Join a multicast address for all UDP sockets. This will allow reception of multicast packets
+ * sent to the given address on all UDP sockets which have bound the port to which the multicast
+ * packet was sent.
+ * @param address IP multicast address to join
+ * @param nif Network interface to join the multicast address on
+ * @param reserved Reserved for future use
+ * @return Return the result of the join operation, 0 for success, other values for errors
+ */
+sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t nif, void *reserved);
 
+
+/*
+ * Leave a multicast address previously joined with socket_join_multicast.
+ * @param address IP multicast address to leave
+ * @param nif Network interface to join the multicast address on
+ * @param reserved Reserved for future use
+ * @return Return the result of the leave operation, 0 for success, other values for errors
+ */
+sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t nif, void *reserved);
+
+
+typedef struct sock_peer_t {
+    uint16_t size;
+    HAL_IPAddress address;
+    uint16_t port;
+} sock_peer_t;
+sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved);
 
 //--------- Address Families --------
 
@@ -116,4 +153,3 @@ sock_handle_t socket_handle_invalid();
 #endif
 
 #endif	/* SOCKET_H */
-

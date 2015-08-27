@@ -49,7 +49,7 @@ volatile uint8_t IWDG_SYSTEM_RESET;
 /* Private function prototypes -----------------------------------------------*/
 
 void HAL_Core_Init(void)
-{    
+{
 }
 
 /*******************************************************************************
@@ -91,7 +91,7 @@ void HAL_Core_Config(void)
 
 	HAL_RTC_Configuration();
 
-	/* Execute Stop mode if STOP mode flag is set via Spark.sleep(pin, mode) */
+	/* Execute Stop mode if STOP mode flag is set via System.sleep(pin, mode) */
 	HAL_Core_Execute_Stop_Mode();
 
 	LED_SetRGBColor(RGB_COLOR_WHITE);
@@ -351,7 +351,7 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 
 // todo find a technique that allows accessor functions to be inlined while still keeping
 // hardware independence.
-bool HAL_watchdog_reset_flagged() 
+bool HAL_watchdog_reset_flagged()
 {
 	return IWDG_SYSTEM_RESET;
 }
@@ -364,7 +364,7 @@ void HAL_Notify_WDT()
 int main() {
 	app_setup_and_loop();
 	return 0;
-}    
+}
 
 
 void HAL_Bootloader_Lock(bool lock)
@@ -373,4 +373,12 @@ void HAL_Bootloader_Lock(bool lock)
         FLASH_WriteProtection_Enable(BOOTLOADER_FLASH_PAGES);
     else
         FLASH_WriteProtection_Disable(BOOTLOADER_FLASH_PAGES);
+}
+
+uint32_t freeheap();
+
+uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
+{
+    info->freeheap = freeheap();
+    return 0;
 }

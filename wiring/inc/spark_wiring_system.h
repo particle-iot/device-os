@@ -22,14 +22,14 @@
 
 #ifndef SPARK_WIRING_SYSTEM_H
 #define	SPARK_WIRING_SYSTEM_H
-
+#include "spark_wiring_ticks.h"
 #include "spark_wiring_string.h"
 #include "system_mode.h"
 #include "system_update.h"
 #include "system_sleep.h"
 #include "system_cloud.h"
 #include "system_event.h"
-
+#include "interrupts_hal.h"
 
 class Stream;
 
@@ -54,7 +54,7 @@ public:
 
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0);
     static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }
-    static void sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds=0);
+    static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0);
     static String deviceID(void) { return spark_deviceID(); }
 
     static bool on(system_event_t events, void(*handler)(system_event_t, uint32_t,void*)) {
@@ -78,12 +78,34 @@ public:
     static void off(void(*handler)(system_event_t, uint32_t,void*)) {
         system_unsubscribe_event(all_events, handler, nullptr);
     }
+
+    static uint32_t freeMemory();
+
+    template<typename Condition, typename While> static bool waitConditionWhile(Condition _condition, While _while) {
+        while (_while() && !_condition()) {
+            spark_process();
+        }
+        return _condition();
+    }
+
+    template<typename Condition> static bool waitCondition(Condition _condition) {
+        return waitConditionWhile(_condition, []{ return true; });
+    }
+
+    template<typename Condition> static bool waitCondition(Condition _condition, system_tick_t timeout) {
+        const system_tick_t start = millis();
+        return waitConditionWhile(_condition, [=]{ return (millis()-start)<timeout; });
+    }
+
 };
 
 extern SystemClass System;
 
 #define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
 
+
+#define waitUntil(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
+#define waitFor(condition) System.waitCondition([]{ return (condition)(); })
 
 #endif	/* SPARK_WIRING_SYSTEM_H */
 

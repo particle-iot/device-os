@@ -10,7 +10,7 @@
  * Allocate an instance of the SparkProtocol. By doing it here rather than in system
  * we ensure the structure is allocated the correct amount of memory, cf. a system
  * module using a newer version of comms lib where the size has grown.
- * 
+ *
  * @return A pointer to the static instance.
  */
 SparkProtocol* spark_protocol_instance()

@@ -135,6 +135,14 @@ caddr_t _sbrk(int incr)
 	return (caddr_t) prev_heap_end;
 }
 
+uint32_t freeheap()
+{
+    extern char _end, __Stack_Init;
+    static char *heap_end = &_end;
+
+    return &__Stack_Init-heap_end;
+}
+
 /* Bare metal, no processes, so error */
 int _kill(int pid, int sig)
 {

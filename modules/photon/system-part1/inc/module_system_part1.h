@@ -32,17 +32,17 @@ extern "C" {
 
 /**
  * Indices into the module-level export table.
- */    
-#define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_COMMUNICATION 0    
+ */
+#define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_COMMUNICATION 0
 #define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_PART1RESOURCE 1
 #define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_MODULE 2
 #define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_SERVICES 3
 
 /**
  * The static module-level export table of library jump table addresses.
- */    
+ */
 extern const void* const system_part1_module[];
-    
+
 
 #ifdef	__cplusplus
 }

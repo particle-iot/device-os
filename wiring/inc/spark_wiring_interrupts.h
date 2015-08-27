@@ -40,11 +40,16 @@ typedef void (*raw_interrupt_handler_t)(void);
  */
 bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t handler, InterruptMode mode);
 bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode);
+template <typename T>
+bool attachInterrupt(uint16_t pin, void (T::*handler)(), T *instance, InterruptMode mode) {
+    using namespace std::placeholders;
+    return attachInterrupt(pin, std::bind(handler, instance), mode);
+}
 void detachInterrupt(uint16_t pin);
 void interrupts(void);
 void noInterrupts(void);
 
-/*  
+/*
  * System Interrupts
  */
 bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler);
@@ -52,7 +57,7 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler);
 /**
  * Removes all registered handlers from the given system interrupt.
  * @param irq   The interrupt from which all handlers are removed.
- * @return {@code true} if handlers were removed. 
+ * @return {@code true} if handlers were removed.
  */
 bool detachSystemInterrupt(hal_irq_t irq);
 

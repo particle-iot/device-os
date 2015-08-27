@@ -6,9 +6,9 @@ The testing app is available out of the box when compiled as the user applicatio
 The manufacturing/testing app is also built into the system firmware on the Photon
 and later devices.
 
-- Testing mode is available from listening/setup mode. For a freshly flashed device, this will enter listening mode automatically. 
+- Testing mode is available from listening/setup mode. For a freshly flashed device, this will enter listening mode automatically.
 - Once in listening mode, send these bytes over Serial1 to enable testing mode:
- 
+
 ```
 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0
 ```
@@ -52,7 +52,7 @@ Unlocks the bootloader region.
 
 Resets the device.
 
-### INFO:; 
+### INFO:;
 
 Requests device info. Print a block of data to the console like this:
 
@@ -106,14 +106,14 @@ antenna and performing a wifi scan.
 
 ### ANT:antenna;
 
-Toggles the RF switch to select the named antenna. 
+Toggles the RF switch to select the named antenna.
 
 The `antenna` parameter can be one of:
 - AUTO: auto select
 - INTERNAL: the internal ceramic antenna
 - EXTERNAL: the uFL antenna
 
-The antenna parameter can be abbreviated down to a single letter if desired. 
+The antenna parameter can be abbreviated down to a single letter if desired.
 
 ```
 ANT:INT;

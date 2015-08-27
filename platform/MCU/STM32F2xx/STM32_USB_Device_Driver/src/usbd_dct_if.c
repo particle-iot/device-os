@@ -5,7 +5,7 @@
   * @version V1.1.0
   * @brief   Specific media access Layer for DCT interface.
   ******************************************************************************
-  */ 
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_dct_if.h"
@@ -47,7 +47,7 @@ uint16_t DCT_If_Erase (uint32_t Add) {
 }
 
 uint16_t DCT_If_Write (uint32_t Add, uint32_t Len) {
-    return dct_write_app_data(MAL_Buffer, Add, Len) ? MAL_FAIL : MAL_OK;    
+    return dct_write_app_data(MAL_Buffer, Add, Len) ? MAL_FAIL : MAL_OK;
 }
 
 const uint8_t *DCT_If_Read  (uint32_t Add, uint32_t Len) {

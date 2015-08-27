@@ -17,7 +17,7 @@ class Timer
 public:
     Timer();
 	void Start();
-	double GetTimeInMs() const;    
+	double GetTimeInMs() const;
 
 private:
     __int64 GetTime() const;

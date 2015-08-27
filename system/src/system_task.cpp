@@ -143,16 +143,6 @@ void cloud_connection_failed()
     cloud_backoff_start = HAL_Timer_Get_Milli_Seconds();
 }
 
-/**
- * Series is 0, 100, 300, 700, 1500, 3100, 6300... up to 409500
- * @param connection_attempts
- * @return
- */
-unsigned backoff_period(uint8_t connection_attempts)
-{
-    return 500*((1<<min(9u,connection_attempts))-1);
-}
-
 inline uint8_t in_cloud_backoff_period()
 {
     return (HAL_Timer_Get_Milli_Seconds()-cloud_backoff_start)<backoff_period(cloud_failed_connection_attempts);

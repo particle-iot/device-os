@@ -88,12 +88,12 @@ bool Servo::detach()
 void Servo::write(int degrees)
 {
   degrees = constrain(degrees, this->minAngle, this->maxAngle);
-  this->writeMicroseconds(ANGLE_TO_US(degrees));
+  this->writeMicroseconds(ANGLE_TO_US(degrees)+trim);
 }
 
 int Servo::read() const
 {
-  int a = US_TO_ANGLE(this->readMicroseconds());
+  int a = US_TO_ANGLE(this->readMicroseconds()-trim);
   // map() round-trips in a weird way we mostly correct for here;
   // the round-trip is still sometimes off-by-one for write(1) and
   // write(179).
@@ -130,4 +130,5 @@ void Servo::resetFields(void)
   this->maxAngle = SERVO_DEFAULT_MAX_ANGLE;
   this->minPW = SERVO_DEFAULT_MIN_PW;
   this->maxPW = SERVO_DEFAULT_MAX_PW;
+  this->trim = 0;
 }

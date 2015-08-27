@@ -44,7 +44,7 @@
 
 #ifndef CC3000_UNENCRYPTED_SMART_CONFIG
 // foreward sbox
-const UINT8 sbox[256] =   { 
+const UINT8 sbox[256] =   {
 		//0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
 		0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76, //0
 		0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, //1
@@ -163,11 +163,11 @@ UINT8 galois_mul2(UINT8 value)
 //!          - subbytes
 //!          - shiftrows
 //!          - mixcolums
-//!          is executed 9 times, after this addroundkey to finish the 9th 
+//!          is executed 9 times, after this addroundkey to finish the 9th
 //!          round, after that the 10th round without mixcolums
 //!          no further subfunctions to save cycles for function calls
 //!          no structuring with "for (....)" to save cycles.
-//!	 
+//!
 //!
 //*****************************************************************************
 
@@ -274,7 +274,7 @@ void aes_encr(UINT8 *state, UINT8 *expandedKey)
 	state[13]^=expandedKey[173];
 	state[14]^=expandedKey[174];
 	state[15]^=expandedKey[175];
-} 
+}
 
 //*****************************************************************************
 //
@@ -422,7 +422,7 @@ void aes_decr(UINT8 *state, UINT8 *expandedKey)
 		state[15]  = buf1;
 	}
 
-} 
+}
 
 //*****************************************************************************
 //
@@ -435,16 +435,16 @@ void aes_decr(UINT8 *state, UINT8 *expandedKey)
 //!
 //!  @brief   AES128 encryption:
 //!           Given AES128 key and  16 bytes plain text, cipher text of 16 bytes
-//!           is computed. The AES implementation is in mode ECB (Electronic 
-//!           Code Book). 
-//!	 
+//!           is computed. The AES implementation is in mode ECB (Electronic
+//!           Code Book).
+//!
 //!
 //*****************************************************************************
 
 void aes_encrypt(UINT8 *state, UINT8 *key, UINT8 expandedKey[176])
 {
 	// expand the key into 176 bytes
-	expandKey(expandedKey, key);       
+	expandKey(expandedKey, key);
 	aes_encr(state, expandedKey);
 }
 
@@ -459,9 +459,9 @@ void aes_encrypt(UINT8 *state, UINT8 *key, UINT8 expandedKey[176])
 //!
 //!  @brief   AES128 decryption:
 //!           Given AES128 key and  16 bytes cipher text, plain text of 16 bytes
-//!           is computed The AES implementation is in mode ECB 
+//!           is computed The AES implementation is in mode ECB
 //!           (Electronic Code Book).
-//!	 
+//!
 //!
 //*****************************************************************************
 
@@ -481,8 +481,8 @@ void aes_decrypt(UINT8 *state, UINT8 *key, UINT8 expandedKey[176])
 //!
 //!  @brief   Reads AES128 key from EEPROM
 //!           Reads the AES128 key from fileID #12 in EEPROM
-//!           returns an error if the key does not exist. 
-//!	 
+//!           returns an error if the key does not exist.
+//!
 //!
 //*****************************************************************************
 
@@ -505,7 +505,7 @@ INT32 aes_read_key(UINT8 *key)
 //!
 //!  @brief   writes AES128 key from EEPROM
 //!           Writes the AES128 key to fileID #12 in EEPROM
-//!	 
+//!
 //!
 //*****************************************************************************
 

@@ -7,16 +7,16 @@
   * @brief   This file provides all the EXTI firmware functions.
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
   ******************************************************************************
   */
@@ -28,7 +28,7 @@
   * @{
   */
 
-/** @defgroup EXTI 
+/** @defgroup EXTI
   * @brief EXTI driver modules
   * @{
   */
@@ -88,8 +88,8 @@ void EXTI_DeInit(void)
 {
   EXTI->IMR = 0x00000000;
   EXTI->EMR = 0x00000000;
-  EXTI->RTSR = 0x00000000; 
-  EXTI->FTSR = 0x00000000; 
+  EXTI->RTSR = 0x00000000;
+  EXTI->FTSR = 0x00000000;
   EXTI->PR = 0x000FFFFF;
 }
 
@@ -107,17 +107,17 @@ void EXTI_Init(EXTI_InitTypeDef* EXTI_InitStruct)
   /* Check the parameters */
   assert_param(IS_EXTI_MODE(EXTI_InitStruct->EXTI_Mode));
   assert_param(IS_EXTI_TRIGGER(EXTI_InitStruct->EXTI_Trigger));
-  assert_param(IS_EXTI_LINE(EXTI_InitStruct->EXTI_Line));  
+  assert_param(IS_EXTI_LINE(EXTI_InitStruct->EXTI_Line));
   assert_param(IS_FUNCTIONAL_STATE(EXTI_InitStruct->EXTI_LineCmd));
 
   tmp = (uint32_t)EXTI_BASE;
-     
+
   if (EXTI_InitStruct->EXTI_LineCmd != DISABLE)
   {
     /* Clear EXTI line configuration */
     EXTI->IMR &= ~EXTI_InitStruct->EXTI_Line;
     EXTI->EMR &= ~EXTI_InitStruct->EXTI_Line;
-    
+
     tmp += EXTI_InitStruct->EXTI_Mode;
 
     *(__IO uint32_t *) tmp |= EXTI_InitStruct->EXTI_Line;
@@ -125,7 +125,7 @@ void EXTI_Init(EXTI_InitTypeDef* EXTI_InitStruct)
     /* Clear Rising Falling edge configuration */
     EXTI->RTSR &= ~EXTI_InitStruct->EXTI_Line;
     EXTI->FTSR &= ~EXTI_InitStruct->EXTI_Line;
-    
+
     /* Select the trigger for the selected external interrupts */
     if (EXTI_InitStruct->EXTI_Trigger == EXTI_Trigger_Rising_Falling)
     {
@@ -174,7 +174,7 @@ void EXTI_GenerateSWInterrupt(uint32_t EXTI_Line)
 {
   /* Check the parameters */
   assert_param(IS_EXTI_LINE(EXTI_Line));
-  
+
   EXTI->SWIER |= EXTI_Line;
 }
 
@@ -190,7 +190,7 @@ FlagStatus EXTI_GetFlagStatus(uint32_t EXTI_Line)
   FlagStatus bitstatus = RESET;
   /* Check the parameters */
   assert_param(IS_GET_EXTI_LINE(EXTI_Line));
-  
+
   if ((EXTI->PR & EXTI_Line) != (uint32_t)RESET)
   {
     bitstatus = SET;
@@ -212,7 +212,7 @@ void EXTI_ClearFlag(uint32_t EXTI_Line)
 {
   /* Check the parameters */
   assert_param(IS_EXTI_LINE(EXTI_Line));
-  
+
   EXTI->PR = EXTI_Line;
 }
 
@@ -229,7 +229,7 @@ ITStatus EXTI_GetITStatus(uint32_t EXTI_Line)
   uint32_t enablestatus = 0;
   /* Check the parameters */
   assert_param(IS_GET_EXTI_LINE(EXTI_Line));
-  
+
   enablestatus =  EXTI->IMR & EXTI_Line;
   if (((EXTI->PR & EXTI_Line) != (uint32_t)RESET) && (enablestatus != (uint32_t)RESET))
   {
@@ -252,7 +252,7 @@ void EXTI_ClearITPendingBit(uint32_t EXTI_Line)
 {
   /* Check the parameters */
   assert_param(IS_EXTI_LINE(EXTI_Line));
-  
+
   EXTI->PR = EXTI_Line;
 }
 
@@ -268,4 +268,4 @@ void EXTI_ClearITPendingBit(uint32_t EXTI_Line)
   * @}
   */
 
- 
+

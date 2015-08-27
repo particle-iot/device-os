@@ -48,7 +48,7 @@
  */
 system_tick_t HAL_Timer_Get_Micro_Seconds(void)
 {
-    return (DWT->CYCCNT / SYSTEM_US_TICKS);
+    return GetSystem1UsTick();
 }
 
 /*

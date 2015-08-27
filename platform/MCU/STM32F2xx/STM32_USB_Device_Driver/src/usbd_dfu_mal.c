@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_dfu_mal.h"
@@ -69,7 +69,7 @@ DFU_MAL_Prop_TypeDef* tMALTab[MAX_USED_MEDIA] = {
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
+    #pragma data_alignment=4
   #endif
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 
@@ -89,11 +89,11 @@ __ALIGN_BEGIN const uint8_t* usbd_dfu_StringDesc[MAX_USED_MEDIA] __ALIGN_END  = 
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
+    #pragma data_alignment=4
   #endif
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 /* RAM Buffer for Downloaded Data */
-__ALIGN_BEGIN uint8_t  MAL_Buffer[XFERSIZE] __ALIGN_END ; 
+__ALIGN_BEGIN uint8_t  MAL_Buffer[XFERSIZE] __ALIGN_END ;
 
 /* Private function prototypes -----------------------------------------------*/
 static uint8_t  MAL_CheckAdd  (uint32_t Add);
@@ -108,7 +108,7 @@ static uint8_t  MAL_CheckAdd  (uint32_t Add);
 uint16_t MAL_Init(void)
 {
   uint32_t memIdx = 0;
-  
+
   /* Init all supported memories */
   for(memIdx = 0; memIdx < MAX_USED_MEDIA; memIdx++)
   {
@@ -131,7 +131,7 @@ uint16_t MAL_Init(void)
 uint16_t MAL_DeInit(void)
 {
   uint32_t memIdx = 0;
-  
+
   /* Init all supported memories */
   for(memIdx = 0; memIdx < MAX_USED_MEDIA; memIdx++)
   {
@@ -154,13 +154,13 @@ uint16_t MAL_DeInit(void)
 uint16_t MAL_Erase(uint32_t Add)
 {
   uint32_t memIdx = MAL_CheckAdd(Add);
- 
+
   /* Check if the area is protected */
   if (DFU_MAL_IS_PROTECTED_AREA(Add))
   {
     return MAL_FAIL;
-  }    
-  
+  }
+
   if (memIdx < MAX_USED_MEDIA)
   {
     /* Check if the command is supported */
@@ -189,13 +189,13 @@ uint16_t MAL_Erase(uint32_t Add)
 uint16_t MAL_Write (uint32_t Add, uint32_t Len)
 {
   uint32_t memIdx = MAL_CheckAdd(Add);
- 
+
   /* Check if the area is protected */
   if (DFU_MAL_IS_PROTECTED_AREA(Add))
   {
     return MAL_FAIL;
-  }   
-  
+  }
+
   if (memIdx < MAX_USED_MEDIA)
   {
     /* Check if the command is supported */
@@ -206,7 +206,7 @@ uint16_t MAL_Write (uint32_t Add, uint32_t Len)
     else
     {
       return MAL_FAIL;
-    }    
+    }
   }
   else
   {
@@ -224,7 +224,7 @@ uint16_t MAL_Write (uint32_t Add, uint32_t Len)
 const uint8_t *MAL_Read (uint32_t Add, uint32_t Len)
 {
   uint32_t memIdx = MAL_CheckAdd(Add);
-  
+
   if (memIdx < MAX_USED_MEDIA)
   {
     /* Check if the command is supported */
@@ -235,7 +235,7 @@ const uint8_t *MAL_Read (uint32_t Add, uint32_t Len)
     else
     {
       return MAL_Buffer;
-    }     
+    }
   }
   else
   {
@@ -254,7 +254,7 @@ const uint8_t *MAL_Read (uint32_t Add, uint32_t Len)
 uint16_t MAL_GetStatus(uint32_t Add , uint8_t Cmd, uint8_t *buffer)
 {
   uint32_t memIdx = MAL_CheckAdd(Add);
-  
+
   if (memIdx < MAX_USED_MEDIA)
   {
     if (Cmd & 0x01)
@@ -265,7 +265,7 @@ uint16_t MAL_GetStatus(uint32_t Add , uint8_t Cmd, uint8_t *buffer)
     {
       SET_POLLING_TIMING(tMALTab[memIdx]->WriteTiming);
     }
-    
+
     return MAL_OK;
   }
   else
@@ -283,7 +283,7 @@ uint16_t MAL_GetStatus(uint32_t Add , uint8_t Cmd, uint8_t *buffer)
 static uint8_t  MAL_CheckAdd(uint32_t Add)
 {
   uint32_t memIdx = 0;
-  
+
   /* Check with all supported memories */
   for(memIdx = 0; memIdx < MAX_USED_MEDIA; memIdx++)
   {

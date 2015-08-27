@@ -9,28 +9,28 @@
   *                - Set the initial SP
   *                - Set the initial PC == Reset_Handler,
   *                - Set the vector table entries with the exceptions ISR address
-  *                - Configure the clock system 
+  *                - Configure the clock system
   *                - Branches to main in the C library (which eventually
   *                  calls main()).
   *            After Reset the Cortex-M3 processor is in Thread mode,
   *            priority is Privileged, and the Stack is set to Main.
   ******************************************************************************
   Released into the public domain.
-  This work is free: you can redistribute it and/or modify it under the terms of 
+  This work is free: you can redistribute it and/or modify it under the terms of
   Creative Commons Zero license v1.0
 
-  This work is licensed under the Creative Commons Zero 1.0 United States License. 
-  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/ 
-  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, 
+  This work is licensed under the Creative Commons Zero 1.0 United States License.
+  To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0/
+  or send a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco,
   California, 94105, USA.
 
-  This program is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
   or FITNESS FOR A PARTICULAR PURPOSE.
 
   ******************************************************************************
   */
-    
+
   .syntax unified
 	.cpu cortex-m3
 	.fpu softvfp
@@ -40,10 +40,10 @@
 .global	Default_Handler
 
 
-/* start address for the initialization values of the .data section. 
+/* start address for the initialization values of the .data section.
 defined in linker script */
 .word	_sidata
-/* start address for the .data section. defined in linker script */  
+/* start address for the .data section. defined in linker script */
 .word	_sdata
 /* end address for the .data section. defined in linker script */
 .word	_edata
@@ -57,7 +57,7 @@ defined in linker script */
  * @brief  This is the code that gets called when the processor first
  *          starts execution following a reset event. Only the absolutely
  *          necessary set is performed, after which the application
- *          supplied main() routine is called. 
+ *          supplied main() routine is called.
  * @param  None
  * @retval : None
 */
@@ -65,9 +65,9 @@ defined in linker script */
     .section	.text.Reset_Handler
 	.weak	Reset_Handler
 	.type	Reset_Handler, %function
-Reset_Handler:	
+Reset_Handler:
 
-/* Copy the data segment initializers from flash to SRAM */  
+/* Copy the data segment initializers from flash to SRAM */
   movs	r1, #0
   b	LoopCopyDataInit
 
@@ -76,7 +76,7 @@ CopyDataInit:
 	ldr	r3, [r3, r1]
 	str	r3, [r0, r1]
 	adds	r1, r1, #4
-    
+
 LoopCopyDataInit:
 	ldr	r0, =_sdata
 	ldr	r3, =_edata
@@ -85,11 +85,11 @@ LoopCopyDataInit:
 	bcc	CopyDataInit
 	ldr	r2, =_sbss
 	b	LoopFillZerobss
-/* Zero fill the bss segment. */  
+/* Zero fill the bss segment. */
 FillZerobss:
 	movs	r3, #0
 	str	r3, [r2], #4
-    
+
 LoopFillZerobss:
 	ldr	r3, = _ebss
 	cmp	r2, r3
@@ -99,15 +99,15 @@ LoopFillZerobss:
         .include "spark_init.S"
 /* Call the application's entry point. */
 	bl	main
-	bx	lr    
+	bx	lr
 .size	Reset_Handler, .-Reset_Handler
 
 /**
- * @brief  This is the code that gets called when the processor receives an 
+ * @brief  This is the code that gets called when the processor receives an
  *         unexpected interrupt. This simply enters an infinite loop, preserving
  *         the system state for examination by a debugger.
- * @param  None     
- * @retval None       
+ * @param  None
+ * @retval None
 */
     .section	.text.Default_Handler,"ax",%progbits
 Default_Handler:
@@ -120,12 +120,12 @@ Infinite_Loop:
 * must be placed on this to ensure that it ends up at physical address
 * 0x0000.0000.
 *
-******************************************************************************/    
+******************************************************************************/
  	.section	.isr_vector,"a",%progbits
 	.type	g_pfnVectors, %object
 	.size	g_pfnVectors, .-g_pfnVectors
-    
-    
+
+
 g_pfnVectors:
 	.word	_estack
 	.word	Reset_Handler
@@ -185,7 +185,7 @@ g_pfnVectors:
 	.word	USART3_IRQHandler
 	.word	EXTI15_10_IRQHandler
 	.word	RTCAlarm_IRQHandler
-	.word	USBWakeUp_IRQHandler	
+	.word	USBWakeUp_IRQHandler
   .word	0
 	.word	0
 	.word	0
@@ -193,26 +193,26 @@ g_pfnVectors:
 	.word	0
 	.word	0
 	.word	0
-	.word	BootRAM          /* @0x108. This is for boot in RAM mode for 
+	.word	BootRAM          /* @0x108. This is for boot in RAM mode for
                             STM32F10x Medium Density devices. */
-   
+
 /*******************************************************************************
 *
-* Provide weak aliases for each Exception handler to the Default_Handler. 
-* As they are weak aliases, any function with the same name will override 
+* Provide weak aliases for each Exception handler to the Default_Handler.
+* As they are weak aliases, any function with the same name will override
 * this definition.
 *
 *******************************************************************************/
-    
+
   .weak	NMI_Handler
 	.thumb_set NMI_Handler,Default_Handler
-	
+
   .weak	HardFault_Handler
 	.thumb_set HardFault_Handler,Default_Handler
-	
+
   .weak	MemManage_Handler
 	.thumb_set MemManage_Handler,Default_Handler
-	
+
   .weak	BusFault_Handler
 	.thumb_set BusFault_Handler,Default_Handler
 

@@ -78,27 +78,27 @@ uint16_t FLASH_If_Erase(uint32_t SectorAddress)
 uint16_t FLASH_If_Write(uint32_t SectorAddress, uint32_t DataLength)
 {
   uint32_t idx = 0;
-  
+
   if  (DataLength & 0x3) /* Not an aligned data */
   {
     for (idx = DataLength; idx < ((DataLength & 0xFFFC) + 4); idx++)
     {
       MAL_Buffer[idx] = 0xFF;
     }
-  } 
-  
+  }
+
   /* Unlock the internal flash */
   FLASH_Unlock();
 
   FLASH_ClearFlags();
 
-  /* Data received are Word multiple */    
+  /* Data received are Word multiple */
   for (idx = 0; idx <  DataLength; idx = idx + 4)
   {
     FLASH_ProgramWord(SectorAddress, *(uint32_t *)(MAL_Buffer + idx));
     SectorAddress += 4;
-  } 
- 
+  }
+
   /* Lock the internal flash */
   FLASH_Lock();
 

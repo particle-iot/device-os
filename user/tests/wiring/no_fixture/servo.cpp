@@ -45,7 +45,7 @@ test(SERVO_CannotAttachWhenPinSelectedIsNotTimerChannel) {
 }
 
 test(SERVO_CannotAttachWhenPinSelectedIsOutOfRange) {
-    pin_t pin = 21;//pin under test (not a valid user pin)
+    pin_t pin = 51;//pin under test (not a valid user pin)
     Servo testServo;
     // when
     testServo.attach(pin);

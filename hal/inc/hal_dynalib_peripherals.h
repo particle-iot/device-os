@@ -29,10 +29,12 @@
 #define	HAL_PERIPHERALS_DYNALIB_H
 
 #include "dynalib.h"
+#include "platform_config.h"    // for HAS_SERIAL_FLASH
 
 #ifdef DYNALIB_EXPORT
 #include "tone_hal.h"
 #include "servo_hal.h"
+#include "hw_config.h"
 #endif
 
 DYNALIB_BEGIN(hal_peripherals)
@@ -45,9 +47,16 @@ DYNALIB_FN(hal_peripherals,HAL_Servo_Attach)
 DYNALIB_FN(hal_peripherals,HAL_Servo_Detach)
 DYNALIB_FN(hal_peripherals,HAL_Servo_Write_Pulse_Width)
 DYNALIB_FN(hal_peripherals,HAL_Servo_Read_Pulse_Width)
-DYNALIB_FN(hal_peripherals,HAL_Servo_Read_Frequency)        
-                
-DYNALIB_END(hal_peripherals)        
-        
+DYNALIB_FN(hal_peripherals,HAL_Servo_Read_Frequency)
+
+#if defined(HAS_SERIAL_FLASH) && 0
+DYNALIB_FN(hal_peripherals,sFLASH_EraseSector)
+DYNALIB_FN(hal_peripherals,sFLASH_EraseBulk)
+DYNALIB_FN(hal_peripherals,sFLASH_WriteBuffer)
+DYNALIB_FN(hal_peripherals,sFLASH_ReadBuffer)
+DYNALIB_FN(hal_peripherals,sFLASH_ReadID)
+#endif
+DYNALIB_END(hal_peripherals)
+
 #endif	/* HAL_PERIPHERALS_DYNALIB_H */
 

@@ -125,10 +125,6 @@ __attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info")))
  */
 #define MODULE_INFO_SUFFIX_EXTRA 4
 
-__attribute__((weak, externally_visible _ARM_SECTION(section(".modinfo.product_id")))) uint16_t __system_product_id = -1;
-__attribute__((weak, externally_visible _ARM_SECTION(section(".modinfo.product_version")))) uint16_t __system_product_version = -1;
-
-
 // These are placed in a non-default (.rodata) section because they come after all the .rodata is included in the linker scripts.
 // Doing it like this is simpler than setting up exclusion rules.
 

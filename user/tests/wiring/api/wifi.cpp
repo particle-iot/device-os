@@ -54,3 +54,11 @@ test(api_wifi_selectantenna) {
 }
 #endif
 
+
+test(api_wifi_set_credentials) {
+
+    API_COMPILE(WiFi.setCredentials("ssid)",4,"password", 8, WPA2));
+
+    API_COMPILE(WiFi.setCredentials("ssid)",4,"password", 8, WPA2, WLAN_CIPHER_AES));
+
+}

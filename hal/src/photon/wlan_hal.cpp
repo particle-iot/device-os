@@ -25,6 +25,7 @@
 
 #include "wiced.h"
 #include "wiced_easy_setup.h"
+#include "wiced_internal_api.h"
 #include "delay_hal.h"
 #include "wlan_hal.h"
 #include "hw_config.h"
@@ -35,16 +36,21 @@
 #include "socket_internal.h"
 #include "wwd_sdpcm.h"
 #include "delay_hal.h"
-#include "wlan_scan.h"
+#include "dct_hal.h"
+
+// dns.h includes a class member, which doesn't compile in C++
+#define class clazz
+#include "dns.h"
+#undef class
 
 bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
 {
     bool changed = false;
     wiced_country_code_t country = WICED_COUNTRY_JAPAN;
     if (force || wifi_config->device_configured!=WICED_TRUE || wifi_config->country_code!=country) {
-        memset(wifi_config, 0, sizeof(*wifi_config));            
+        memset(wifi_config, 0, sizeof(*wifi_config));
         wifi_config->country_code = country;
-        wifi_config->device_configured = WICED_TRUE;    
+        wifi_config->device_configured = WICED_TRUE;
         changed = true;
     }
     return changed;
@@ -52,7 +58,7 @@ bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
 
 /**
  * Initializes the DCT area if required.
- * @return 
+ * @return
  */
 wiced_result_t wlan_initialize_dct()
 {
@@ -64,10 +70,14 @@ wiced_result_t wlan_initialize_dct()
         if (initialize_dct(wifi_config))
             result = wiced_dct_write( (const void*) wifi_config, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config) );
         wiced_dct_read_unlock(wifi_config, WICED_TRUE);
-    }    
-    return result;    
+    }
+    return result;
 }
 
+const static_ip_config_t* wlan_fetch_saved_ip_config()
+{
+    return (const static_ip_config_t*)dct_read_app_data(DCT_IP_CONFIG_OFFSET);
+}
 
 uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
 {
@@ -78,19 +88,19 @@ uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
 /**
  * Clears the WLAN credentials by erasing the DCT data and taking down the STA
  * network interface.
- * @return 
+ * @return
  */
-int wlan_clear_credentials() 
+int wlan_clear_credentials()
 {
     // write to DCT credentials
     // clear current IP
     platform_dct_wifi_config_t* wifi_config = NULL;
     wiced_result_t result = wiced_dct_read_lock( (void**) &wifi_config, WICED_TRUE, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
-    if (!result) {        
+    if (!result) {
         memset(wifi_config->stored_ap_list, 0, sizeof(wifi_config->stored_ap_list));
         result = wiced_dct_write( (const void*) wifi_config, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config) );
         wiced_dct_read_unlock(wifi_config, WICED_TRUE);
-    }    
+    }
     return result;
 }
 
@@ -129,50 +139,95 @@ int wlan_has_credentials()
 
 /**
  * Enable wlan and connect to a network.
- * @return 
+ * @return
  */
-int wlan_connect_init() 
-{   
-    return wiced_wlan_connectivity_init();    
+int wlan_connect_init()
+{
+    wiced_network_up_cancel = 0;
+    return 0;
+}
+
+bool to_wiced_ip_address(wiced_ip_address_t& wiced, const dct_ip_address_v4_t& dct)
+{
+	if (dct!=0) {
+		wiced.ip.v4 = dct;
+		wiced.version = WICED_IPV4;
+	}
+    return (dct!=0);
 }
 
 /**
- * Do what is needed to finalize the connection. 
- * @return 
+ * Do what is needed to finalize the connection.
+ * @return
  */
-wlan_result_t wlan_connect_finalize() 
+wlan_result_t wlan_connect_finalize()
 {
+    const static_ip_config_t& ip_config = *wlan_fetch_saved_ip_config();
+
     // enable connection from stored profiles
     wlan_result_t result = wiced_interface_up(WICED_STA_INTERFACE);
     if (!result) {
         HAL_WLAN_notify_connected();
-        result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);
+        wiced_ip_setting_t settings;
+        wiced_ip_address_t dns;
+
+        switch (IPAddressSource(ip_config.config_mode)) {
+            case STATIC_IP:
+                to_wiced_ip_address(settings.ip_address, ip_config.host);
+                to_wiced_ip_address(settings.netmask, ip_config.netmask);
+                to_wiced_ip_address(settings.gateway, ip_config.gateway);
+                result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_STATIC_IP, &settings);
+                if (!result) {
+                    if (to_wiced_ip_address(dns, ip_config.dns1))
+                        dns_client_add_server_address(dns);
+                    if (to_wiced_ip_address(dns, ip_config.dns2))
+                        dns_client_add_server_address(dns);
+                }
+            default:
+                result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);
+                break;
+        }
     }
     // DHCP happens synchronously
     HAL_WLAN_notify_dhcp(!result);
+    wiced_network_up_cancel = 0;
     return result;
 }
 
-wlan_result_t wlan_activate() 
-{    
-    return wiced_network_resume();
+int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna);
+static WLanSelectAntenna_TypeDef antennaSelection = ANT_INTERNAL;
+inline int wlan_refresh_antenna() { return wlan_select_antenna_impl(antennaSelection); }
+
+int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
+{
+    antennaSelection = antenna;
+    return wiced_wlan_connectivity_initialized() ? wlan_refresh_antenna() : 0;
+}
+
+
+wlan_result_t wlan_activate()
+{
+    wlan_result_t result = wiced_wlan_connectivity_init();
+    wlan_refresh_antenna();
+    return result;
 }
 
 wlan_result_t wlan_deactivate() {
     wlan_disconnect_now();
-    return 0; //wiced_network_suspend();
+    return 0;
 }
 
-wlan_result_t wlan_disconnect_now() 
+wlan_result_t wlan_disconnect_now()
 {
-    socket_close_all();    
+    socket_close_all();
+    wlan_connect_cancel(false);
     wiced_result_t result = wiced_network_down(WICED_STA_INTERFACE);
-    HAL_WLAN_notify_disconnected();    
+    HAL_WLAN_notify_disconnected();
     return result;
 }
 
 
-bool wlan_reset_credentials_store_required() 
+bool wlan_reset_credentials_store_required()
 {
     return system_flags.NVMEM_SPARK_Reset_SysFlag == 0x0001;
 }
@@ -181,7 +236,7 @@ wlan_result_t wlan_reset_credentials_store()
 {
     wlan_clear_credentials();
     system_flags.NVMEM_SPARK_Reset_SysFlag = 0x0000;
-    Save_SystemFlags();    
+    Save_SystemFlags();
     return 0;
 }
 
@@ -189,8 +244,8 @@ void Set_NetApp_Timeout(void)
 {
 }
 
-int wlan_connected_rssi() 
-{        
+int wlan_connected_rssi()
+{
     int32_t rssi = 0;
     if (wwd_wifi_get_rssi( &rssi ))
         rssi = 0;
@@ -200,13 +255,28 @@ int wlan_connected_rssi()
 struct SnifferInfo
 {
     const char* ssid;
-    unsigned ssid_len;    
+    unsigned ssid_len;
     wiced_security_t security;
     int16_t rssi;
     wiced_semaphore_t complete;
-    scan_ap_callback callback;
+    wlan_scan_result_t callback;
     void* callback_data;
+    int count;
 };
+
+
+WLanSecurityType toSecurityType(wiced_security_t sec)
+{
+    if (sec==WICED_SECURITY_OPEN)
+        return WLAN_SEC_UNSEC;
+    if (sec & WEP_ENABLED)
+        return WLAN_SEC_WEP;
+    if (sec & WPA_SECURITY)
+        return WLAN_SEC_WPA;
+    if (sec & WPA2_SECURITY)
+        return WLAN_SEC_WPA2;
+    return WLAN_SEC_NOT_SET;
+}
 
 /*
  * Callback function to handle scan results
@@ -214,11 +284,12 @@ struct SnifferInfo
 wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
 {
     malloc_transfer_to_curr_thread( malloced_scan_result );
-    
+
     SnifferInfo* info = (SnifferInfo*)malloced_scan_result->user_data;
     if ( malloced_scan_result->status == WICED_SCAN_INCOMPLETE )
     {
         wiced_scan_result_t* record = &malloced_scan_result->ap_details;
+        info->count++;
         if (!info->callback) {
             if (record->SSID.length==info->ssid_len && !memcmp(record->SSID.value, info->ssid, info->ssid_len)) {
                 info->security = record->security;
@@ -226,7 +297,16 @@ wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
             }
         }
         else {
-            info->callback(info->callback_data, record->SSID.value, record->SSID.length, record->signal_strength);
+            WiFiAccessPoint data;
+            memcpy(data.ssid, record->SSID.value, record->SSID.length);
+            memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
+            data.ssidLength = record->SSID.length;
+            data.ssid[data.ssidLength] = 0;
+            data.security = toSecurityType(record->security);
+            data.rssi = record->signal_strength;
+            data.channel = record->channel;
+            data.maxDataRate = record->max_data_rate;
+            info->callback(&data, info->callback_data);
         }
     }
     else {
@@ -237,22 +317,17 @@ wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
 }
 
 wiced_result_t sniff_security(SnifferInfo* info) {
-    
-    wiced_rtos_init_semaphore(&info->complete);
-    wiced_result_t result = wiced_wifi_scan_networks(sniffer, info);
-    wiced_rtos_get_semaphore(&info->complete, 30000);
+
+    wiced_result_t result = wiced_rtos_init_semaphore(&info->complete);
+    if (result!=WICED_SUCCESS) return result;
+    result = wiced_wifi_scan_networks(sniffer, info);
+    if (result==WICED_SUCCESS) {
+        wiced_rtos_get_semaphore(&info->complete, 30000);
+    }
     wiced_rtos_deinit_semaphore(&info->complete);
     if (!info->rssi)
         result = WICED_NOT_FOUND;
     return result;
-}
-
-
-void wlan_scan_aps(scan_ap_callback callback, void *data) {    
-    SnifferInfo info;
-    info.callback = callback;
-    info.callback_data = data;
-    sniff_security(&info);
 }
 
 wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityType sec, WLanSecurityCipher cipher)
@@ -271,7 +346,7 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
         case WLAN_SEC_WPA2:
             result = WPA2_SECURITY;
             break;
-    }        
+    }
 
     if (cipher & WLAN_CIPHER_AES)
         result |= AES_ENABLED;
@@ -292,21 +367,21 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
 }
 
 static bool wifi_creds_changed;
-wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, const char *password, 
+wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, const char *password,
     uint16_t passwordLen, wiced_security_t security, unsigned channel)
-{    
+{
     platform_dct_wifi_config_t* wifi_config = NULL;
-    wiced_result_t result = wiced_dct_read_lock( (void**) &wifi_config, WICED_TRUE, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));    
-    if (!result) {        
+    wiced_result_t result = wiced_dct_read_lock( (void**) &wifi_config, WICED_TRUE, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
+    if (!result) {
         // the storage may not have been initialized, so device_configured will be 0xFF
         initialize_dct(wifi_config);
-        
+
         // shuffle all slots along
         memcpy(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
-        
-        const int empty = 0; 
+
+        const int empty = 0;
         wiced_config_ap_entry_t& entry = wifi_config->stored_ap_list[empty];
-        memset(&entry, 0, sizeof(entry));        
+        memset(&entry, 0, sizeof(entry));
         passwordLen = std::min(passwordLen, uint16_t(64));
         ssidLen = std::min(ssidLen, uint16_t(32));
         memcpy(entry.details.SSID.value, ssid, ssidLen);
@@ -316,28 +391,28 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
             entry.security_key_length = hex_decode((uint8_t*)entry.security_key, sizeof(entry.security_key), password);
         }
         else {
-            memcpy(entry.security_key, password, passwordLen);        
+            memcpy(entry.security_key, password, passwordLen);
             entry.security_key_length = passwordLen;
         }
         entry.details.security = security;
-        entry.details.channel = channel;        
+        entry.details.channel = channel;
         result = wiced_dct_write( (const void*) wifi_config, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config) );
         if (!result)
             wifi_creds_changed = true;
-        wiced_dct_read_unlock(wifi_config, WICED_TRUE);        
-    }    
+        wiced_dct_read_unlock(wifi_config, WICED_TRUE);
+    }
     return result;
 }
-    
-int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char *password, 
+
+int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char *password,
     uint16_t passwordLen, WLanSecurityType security, WLanSecurityCipher cipher, unsigned channel)
 {
     wiced_result_t result = WICED_ERROR;
     if (ssidLen>0 && ssid) {
         wiced_security_t wiced_security = toSecurity(ssid, ssidLen, security, cipher);
-        result = add_wiced_wifi_credentials(ssid, ssidLen, password, passwordLen, wiced_security, channel);        
+        result = add_wiced_wifi_credentials(ssid, ssidLen, password, passwordLen, wiced_security, channel);
     }
-    return result;    
+    return result;
 }
 
 int wlan_set_credentials(WLanCredentials* c)
@@ -347,19 +422,19 @@ int wlan_set_credentials(WLanCredentials* c)
 
 softap_handle current_softap_handle;
 
-void wlan_smart_config_init() {    
-    
+void wlan_smart_config_init() {
+
     wifi_creds_changed = false;
     if (!current_softap_handle) {
         softap_config config;
         config.softap_complete = HAL_WLAN_notify_simple_config_done;
         wlan_disconnect_now();
-        current_softap_handle = softap_start(&config);        
-    }    
+        current_softap_handle = softap_start(&config);
+    }
 }
 
-bool wlan_smart_config_finalize() 
-{    
+bool wlan_smart_config_finalize()
+{
     if (current_softap_handle) {
         softap_stop(current_softap_handle);
         wlan_disconnect_now();  // force a full refresh
@@ -371,35 +446,35 @@ bool wlan_smart_config_finalize()
     return wifi_creds_changed;
 }
 
-void wlan_smart_config_cleanup() 
-{    
+void wlan_smart_config_cleanup()
+{
     // todo - mDNS broadcast device IP? Not sure that is needed for soft-ap.
 }
 
 void wlan_setup()
-{    
+{
     if (!wiced_wlan_connectivity_init()) {
         wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
         //wiced_network_suspend();
 }
 }
 
-void wlan_set_error_count(uint32_t errorCount) 
+void wlan_set_error_count(uint32_t errorCount)
 {
 }
 
 inline void setAddress(wiced_ip_address_t* addr, HAL_IPAddress& target) {
-    target.ipv4 = GET_IPV4_ADDRESS(*addr);    
+    target.ipv4 = GET_IPV4_ADDRESS(*addr);
 }
 
-void wlan_fetch_ipconfig(WLanConfig* config) 
+void wlan_fetch_ipconfig(WLanConfig* config)
 {
     wiced_ip_address_t addr;
     wiced_interface_t ifup = WICED_STA_INTERFACE;
-    
+
     memset(config, 0, sizeof(*config));
     if (wiced_network_is_up(ifup)) {
-    
+
         if (wiced_ip_get_ipv4_address(ifup, &addr)==WICED_SUCCESS)
             setAddress(&addr, config->nw.aucIP);
 
@@ -409,9 +484,9 @@ void wlan_fetch_ipconfig(WLanConfig* config)
         if (wiced_ip_get_gateway_address(ifup, &addr)==WICED_SUCCESS)
             setAddress(&addr, config->nw.aucDefaultGateway);
     }
-    
+
     wiced_mac_t my_mac_address;
-    if (wiced_wifi_get_mac_address( &my_mac_address)==WICED_SUCCESS) 
+    if (wiced_wifi_get_mac_address( &my_mac_address)==WICED_SUCCESS)
         memcpy(config->nw.uaMacAddr, &my_mac_address, 6);
 
     wl_bss_info_t ap_info;
@@ -422,7 +497,7 @@ void wlan_fetch_ipconfig(WLanConfig* config)
         uint8_t len = std::min(ap_info.SSID_len, uint8_t(32));
         memcpy(config->uaSSID, ap_info.SSID, len);
         config->uaSSID[len] = 0;
-    }   
+    }
     // todo DNS and DHCP servers
 }
 
@@ -431,22 +506,27 @@ void SPARK_WLAN_SmartConfigProcess()
 }
 
 /** Select the Wi-Fi antenna
- * WICED_ANTENNA_1    = 0, selects Chip Antenna
- * WICED_ANTENNA_2    = 1, selects u.FL Antenna
+ * WICED_ANTENNA_1    = 0, selects u.FL Antenna
+ * WICED_ANTENNA_2    = 1, selects Chip Antenna
  * WICED_ANTENNA_AUTO = 3, enables auto antenna selection ie. automatic diversity
  *
  * @param antenna: The antenna configuration to use
  *
  * @return   0 : if the antenna selection was successfully set
  *          -1 : if the antenna selection was not set
- *          
+ *
  */
-int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna) {
-    
+int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna) {
+
     wwd_result_t result;
     switch(antenna) {
+#if PLATFORM_ID == 6 // Photon
+        case ANT_EXTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_1); break;
+        case ANT_INTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_2); break;
+#else
         case ANT_INTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_1); break;
         case ANT_EXTERNAL: result = wwd_wifi_select_antenna(WICED_ANTENNA_2); break;
+#endif
         case ANT_AUTO: result = wwd_wifi_select_antenna(WICED_ANTENNA_AUTO); break;
         default: result = WWD_DOES_NOT_EXIST; break;
     }
@@ -456,8 +536,59 @@ int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna) {
         return -1;
 }
 
-
 void wlan_connect_cancel(bool called_from_isr)
 {
+    wiced_network_up_cancel = 1;
     wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
+}
+
+
+/**
+ * Sets the IP source - static or dynamic.
+ */
+void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reserved)
+{
+    char c = source;
+    dct_write_app_data(&c, DCT_IP_CONFIG_OFFSET+offsetof(static_ip_config_t, config_mode), 1);
+}
+
+
+void assign_if_set(dct_ip_address_v4_t& dct_address, const HAL_IPAddress* address)
+{
+    if (address && is_ipv4(address)) {
+            dct_address = address->ipv4;
+    }
+}
+
+/**
+ * Sets the IP Addresses to use when the device is in static IP mode.
+ * @param host
+ * @param netmask
+ * @param gateway
+ * @param dns1
+ * @param dns2
+ * @param reserved
+ */
+void wlan_set_ipaddress(const HAL_IPAddress* host, const HAL_IPAddress* netmask, const HAL_IPAddress* gateway, const HAL_IPAddress* dns1, const HAL_IPAddress* dns2, void* reserved)
+{
+    const static_ip_config_t* pconfig = wlan_fetch_saved_ip_config();
+    static_ip_config_t config;
+    memcpy(&config, pconfig, sizeof(config));
+    assign_if_set(config.host, host);
+    assign_if_set(config.netmask, netmask);
+    assign_if_set(config.gateway, gateway);
+    assign_if_set(config.dns1, dns1);
+    assign_if_set(config.dns2, dns2);
+    dct_write_app_data(&config, DCT_IP_CONFIG_OFFSET, sizeof(config));
+}
+
+
+int wlan_scan(wlan_scan_result_t callback, void* cookie)
+{
+    SnifferInfo info;
+    memset(&info, 0, sizeof(info));
+    info.callback = callback;
+    info.callback_data = cookie;
+    int result =  sniff_security(&info);
+    return result < 0 ? result : info.count;
 }

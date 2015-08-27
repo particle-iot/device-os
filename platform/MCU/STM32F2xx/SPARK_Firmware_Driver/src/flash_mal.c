@@ -32,7 +32,7 @@
 
 /* Private functions ---------------------------------------------------------*/
 
-static const uint32_t sectorAddressesEnd[] = { 
+static const uint32_t sectorAddressesEnd[] = {
     0x8004000, 0x8008000, 0x800C000, 0x8010000, 0x8020000
 };
 static const uint8_t flashSectors[] = {
@@ -48,7 +48,7 @@ uint16_t sectorIndexForAddress(uint32_t address)
         if (address<sectorAddressesEnd[i])
             return i;
     }
-    return ((address-0x8020000)>>17)+5;    
+    return ((address-0x8020000)>>17)+5;
 }
 
 uint16_t FLASH_SectorToWriteProtect(uint8_t flashDeviceID, uint32_t startAddress)
@@ -70,7 +70,7 @@ uint16_t FLASH_SectorToErase(uint8_t flashDeviceID, uint32_t startAddress)
     {
         flashSector = flashSectors[sectorIndexForAddress(startAddress)];
     }
-    
+
     return flashSector;
 }
 
@@ -79,7 +79,7 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
     uint32_t endAddress = startAddress + length - 1;
 
     if (flashDeviceID == FLASH_INTERNAL)
-    {        
+    {
         return startAddress>=0x8000000 && endAddress<=0x8100000;
     }
     else if (flashDeviceID == FLASH_SERIAL)
@@ -113,7 +113,7 @@ bool FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddres
         /* Get the first OB_WRP_Sector */
         uint16_t OB_WRP_Sector = FLASH_SectorToWriteProtect(FLASH_INTERNAL, startAddress);
         uint16_t end = FLASH_SectorToWriteProtect(FLASH_INTERNAL, startAddress+length-1)<<1;
-        
+
         if (OB_WRP_Sector < OB_WRP_Sector_0)
         {
             return false;
@@ -240,20 +240,20 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         {
             return false;
         }
-        
+
         const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress);
         if ((info->module_function != MODULE_FUNCTION_RESOURCE) && (info->platform_id != PLATFORM_ID))
         {
             return false;
         }
-        
+
         // verify destination address
-        if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && (((uint32_t)info->module_start_address) != destinationAddress)) 
+        if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && (((uint32_t)info->module_start_address) != destinationAddress))
         {
             return false;
         }
-        
-        if ((flags & MODULE_VERIFY_FUNCTION) && (info->module_function != module_function)) 
+
+        if ((flags & MODULE_VERIFY_FUNCTION) && (info->module_function != module_function))
         {
             return false;
         }
@@ -519,7 +519,7 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
     //Read the flash modules info from the dct area
     const platform_flash_modules_t* flash_modules = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
     bool restoreFactoryReset = false;
-    
+
     if(flash_modules[FAC_RESET_SLOT].magicNumber == 0x0FAC)
     {
         //Restore Factory Reset Firmware (slot 0 is factory reset module)
@@ -532,9 +532,9 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
                                                flash_modules[FAC_RESET_SLOT].flags);
     }
     else
-    {        
+    {
         // attempt to use the default that the bootloader was built with
-        restoreFactoryReset = FLASH_CopyMemory(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE, 
+        restoreFactoryReset = FLASH_CopyMemory(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
             FACTORY_RESET_MODULE_FUNCTION,
             MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION);
     }
@@ -636,9 +636,9 @@ bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, u
 {
     const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
 
-    return (module_info != NULL 
+    return (module_info != NULL
             && ((uint32_t)(module_info->module_start_address) == expectedAddress)
-            && ((uint32_t)(module_info->module_end_address)<=0x8100000)            
+            && ((uint32_t)(module_info->module_end_address)<=0x8100000)
             && (module_info->platform_id==PLATFORM_ID));
 }
 
@@ -743,7 +743,7 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
 
 void FLASH_Erase(void)
 {
-    // This is too dangerous. 
+    // This is too dangerous.
     //FLASH_EraseMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
 }
 
@@ -805,14 +805,14 @@ int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
 
     readBuffer[0] = writeBuffer[0]+1;       // ensure different
     int i;
-    
-    for (i=50; i-->0 && memcmp(writeBuffer, readBuffer, bufferSize); ) 
+
+    for (i=50; i-->0 && memcmp(writeBuffer, readBuffer, bufferSize); )
     {
         /* Write Data Buffer to SPI Flash memory */
         sFLASH_WriteBuffer(writeBuffer, address, bufferSize);
 
         /* Read Data Buffer from SPI Flash memory */
-        sFLASH_ReadBuffer(readBuffer, address, bufferSize);        
+        sFLASH_ReadBuffer(readBuffer, address, bufferSize);
     }
 
     return !i;
@@ -830,23 +830,23 @@ int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
         FLASH_ProgramWord(address, *(uint32_t *)(pBuffer + index));
         address += 4;
     }
-    
+
     if (bufferSize & 0x3) /* Not an aligned data */
     {
         char buf[4];
         memset(buf, 0xFF, 4);
-                
+
         for (index = bufferSize&3; index -->0; )
         {
             buf[index] = pBuffer[ (bufferSize & 0xFFFC)+index ];
         }
         FLASH_ProgramWord(address, *(uint32_t *)(pBuffer + index));
-        
+
     }
 
     /* Lock the internal flash */
     FLASH_Lock();
-    
+
     return 0;
 #endif
 }

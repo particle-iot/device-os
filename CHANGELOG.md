@@ -1,21 +1,71 @@
 
+## v0.4.5
+
+### FEATURES
+- `WiFi.scan` function to retrieve details of local access points. [#567](https://github.com/spark/firmware/pull/567)
+- `UDP.sendPacket`/`UDP.receivePacket` to send/receive a packet directly to an application-supplied buffer. [#452](https://github.com/spark/firmware/pull/452)
+- Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)
+- [photon] UDP multicast support via `UDP.joinMulticast`/`UDP.leaveMulticast`. Many thanks @stevie67!
+- `waitFor(WiFi.ready)` syntax to make it easier to wait for system events. [#415](https://github.com/spark/firmware/issues/415)
+- ISO8601 as an alternative `Time.timeStr()` format, and flexible time output with `Time.format()` [#572](https://github.com/spark/firmware/issues/572)
+
+### ENHANCEMENTS
+
+- [Recipes and Tips](docs/build.md#recipes-and-tips) section in the build documentation.
+- `Particle.function`, `Particle.subscribe` and `attachInterrupt` can take a C++ method and instance pointer. [#534](https://github.com/spark/firmware/pull/534) Thanks to @monkbroc!
+- `UDP.setBuffer` to set the buffer a UDP instance uses for `read`/`write`. [#224](https://github.com/spark/firmware/pull/224) and [#452](https://github.com/spark/firmware/pull/452)
+- `WiFi.setCredentials()` can take a Cipher type to allow full specification of an AP's credentials. [#574](https://github.com/spark/firmware/pull/574)
+- TCPClient (from TCPServer) reports remote IP address. [#551](https://github.com/spark/firmware/pull/551)
+- Configurable format in `Time.timeStr()`, including ISO 8601. [#455](https://github.com/spark/firmware/issues/455)
+- `Servo.trim(adjust)` to allow small adjustments to the stationary point. [#120](https://github.com/spark/firmware/issues/120)
+- Time set from the cloud accounts for network latency. [#581](https://github.com/spark/firmware/issues/581)
+
+### BUGFIXES
+
+- Listening mode re-enters listening mode after credentials are given. [#558](https://github.com/spark/firmware/pull/558)
+- String function dtoa() has problems with larger numbers. [#563](https://github.com/spark/firmware/pull/563)
+- System doesn't set color of RGB LED when `RGB.control(true)` is called. [#362](https://github.com/spark/firmware/pull/362), [#472](https://github.com/spark/firmware/pull/472) and [#544](https://github.com/spark/firmware/pull/544)
+- WiFi.SSID() may not returns previous network when switching. [#560](https://github.com/spark/firmware/pull/560)
+- Photon: System.sleep(5) not turning Wi-Fi back on after 5 seconds. [#480](https://github.com/spark/firmware/pull/480)
+- regression: floating point support in sprintf not compiled in. [#576](https://github.com/spark/firmware/issues/576)
+
 ## v0.4.4
 
 ### FEATURES
  - logging output [documentation](docs/debugging.md)
  - pressing 'v' in SoftAP mode displays the system version. FIRM-128
+ - P1: API (compatible with Core) to access the 1MByte external flash. [#498](https://github.com/spark/firmware/pull/498)
+ - Arduino compatibility macros for PROGMEM and more.
+ - `RGB.onChange` handler receives notification of the current LED color when it changes. Can be used to match an external LED to the onboard led. [#518](https://github.com/spark/firmware/pull/518) Thanks to @monkbroc!
+ - Serial2 available on P1 and Photon (note: this also requires above RGB.onChange handler and two resistors would need to be removed on the Photon)
+ - `Spark.connected()` et al. is now `Particle.connected()`. The former `Spark` library is still available but is deprecated.
+ - `System.freeMemory()` API to determine the amount of available RAM.
+ - `STARTUP()` macro to define blocks of code that execute at startup.
 
 ### ENHANCEMENTS
  - Retrieve the LED brightness via `RGB.brightness()`
  - More prominent color change on the RGB LED when there is a cloud connection error.
+ - System.sleep() - 2nd parameter changed to `InterruptMode` from uint16_t to
+ ensure the correct types are used. [#499](https://github.com/spark/firmware/pull/499)
+ - Less aggressive exponential backoff when the re-establishing the cloud connection. [FIRM-177]
+ - I2C Wire.endTransmission() returns unique values and [I2C docs updated](https://docs.particle.io/reference/firmware/photon/#endtransmission-)
+ - Generate I2C STOP after slave addr NACK, I2C software reset all timeouts -  [commit](https://github.com/spark/firmware/commit/53914d809cc17a3802b879fbb4fddcaa7d264680)
+ - Improved I2C Master receive method and implemented error handler - [commit](https://github.com/spark/firmware/commit/1bc00ea480ef1fcdbd8ef9ba3df12b121183aeae) -  [commit](https://github.com/spark/firmware/commit/5359f19985756182ff6511217cbcb588b3341a87)
+ - `WiFi.selectAntenna()` default antenna is now INTERNAL. Can be called at startup (before WiFi is initialized to select the desired antenna.
+
 
 ### BUGFIXES
 
  - [Regression] System connects WiFi when Spark.connect() is called after WiFi.on() [#484](https://github.com/spark/firmware/issues/484)
- - Debug build now working.
+ - [Debug build](https://github.com/spark/firmware/blob/develop/docs/debugging.md) now working.
  - PWM issue fixed - 500Hz output on all channels [#492](https://github.com/spark/firmware/issues/492)
  - Tone issue fixed on D2,D3,RX,TX [#483](https://github.com/spark/firmware/issues/483)
-
+ - SOS when registering more than 2 subscription handlers, and allow 4 subscription handlers to be successfully registered. [#531](https://github.com/spark/firmware/issues/531)
+ - SOS on TCPClient.connect() when DNS resolution failed or when connection fails [#490](https://github.com/spark/firmware/issues/490)
+ - `TCPClient::stop()` does not work on first connection [#536](https://github.com/spark/firmware/issues/536)
+ - `TCPClient::connect()` does not close an existing socket. [#538](https://github.com/spark/firmware/issues/538)
+ - TX/RX PWM randomly inverted [#545](https://github.com/spark/firmware/issues/545)
+ - UDP.begin/write return values [#552](https://github.com/spark/firmware/issues/552)
 
 ## v0.4.3
 

@@ -35,7 +35,16 @@ void SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds)
     system_sleep(sleepMode, seconds, 0, NULL);
 }
 
-void SystemClass::sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
+void SystemClass::sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds)
 {
     system_sleep_pin(wakeUpPin, edgeTriggerMode, seconds, 0, NULL);
+}
+
+uint32_t SystemClass::freeMemory()
+{
+    runtime_info_t info;
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
+    HAL_Core_Runtime_Info(&info, NULL);
+    return info.freeheap;
 }

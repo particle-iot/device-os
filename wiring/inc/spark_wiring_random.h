@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   spark_wiring_random.h
  * Author: mat
  *

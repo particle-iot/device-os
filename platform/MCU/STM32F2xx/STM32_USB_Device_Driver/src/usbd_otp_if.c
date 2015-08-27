@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_otp_if.h"
@@ -53,7 +53,7 @@ DFU_MAL_Prop_TypeDef DFU_Otp_cb =
     1,  /* Erase Time in ms */
     10  /* Programming Time in ms */
   };
-  
+
 /* Private functions ---------------------------------------------------------*/
 
 /**
@@ -66,7 +66,7 @@ DFU_MAL_Prop_TypeDef DFU_Otp_cb =
 uint16_t OTP_If_Write(uint32_t Add, uint32_t Len)
 {
   uint32_t idx = 0;
-  
+
   if  (Len & 0x3) /* Not an aligned data */
   {
     for (idx = Len; idx < ((Len & 0xFFFC) + 4); idx++)
@@ -74,7 +74,7 @@ uint16_t OTP_If_Write(uint32_t Add, uint32_t Len)
       MAL_Buffer[idx] = 0xFF;
     }
   }
-  
+
   /* Data received are Word multiple */
   for (idx = 0; idx <  Len; idx = idx + 4)
   {

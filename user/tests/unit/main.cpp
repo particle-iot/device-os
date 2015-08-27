@@ -1,5 +1,5 @@
 
-#define CATCH_CONFIG_MAIN 
+#define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
 // Because of the #define above we cannot use the precompiled header here

@@ -5,7 +5,7 @@
 test(api_i2c)
 {
     int buffer;
-    API_COMPILE(buffer==I2C_BUFFER_LENGTH);
+    API_COMPILE((void)(buffer==I2C_BUFFER_LENGTH));
 }
 
 test(api_wiring_pinMode) {
@@ -32,6 +32,13 @@ test(api_wiring_interrupt) {
     API_COMPILE(attachInterrupt(D0, D0_callback, RISING));
     API_COMPILE(detachInterrupt(D0));
 
+    class MyClass {
+      public:
+        void handler() { }
+    } myObj;
+
+    API_COMPILE(attachInterrupt(D0, &MyClass::handler, &myObj, RISING));
+
 }
 
 test(api_wiring_usartserial) {
@@ -54,6 +61,15 @@ test(api_wiring_system_interrupt) {
 }
 #endif
 
+void externalLEDHandler(uint8_t r, uint8_t g, uint8_t b) {
+}
+
+class ExternalLed {
+  public:
+    void handler(uint8_t r, uint8_t g, uint8_t b) {
+    }
+} externalLed;
+
 test(api_rgb) {
     bool flag; uint8_t value;
     API_COMPILE(RGB.brightness(50));
@@ -63,5 +79,7 @@ test(api_rgb) {
     API_COMPILE(RGB.color(255,255,255));
     API_COMPILE(RGB.color(RGB_COLOR_WHITE));
     API_COMPILE(flag=RGB.brightness());
-
+    API_COMPILE(RGB.onChange(externalLEDHandler));
+    API_COMPILE(RGB.onChange(&ExternalLed::handler, &externalLed));
+    (void)flag; (void)value; // unused
 }

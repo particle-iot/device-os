@@ -63,7 +63,7 @@ test(GPIO_NoDigitalWriteWhenPinModeIsNotSetToOutput) {
 }
 
 test(GPIO_NoDigitalWriteWhenPinSelectedIsOutOfRange) {
-    pin_t pin = 21;//pin under test (not a valid user pin)
+    pin_t pin = 51;//pin under test (not a valid user pin)
     // when
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);

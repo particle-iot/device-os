@@ -26,22 +26,32 @@
  ******************************************************************************
  */
 
+#include "platforms.h"
+
 /* Includes ------------------------------------------------------------------*/
 
 /* USB Device String Definitions ---------------------------------------------*/
 
 #define USBD_LANGID_STRING              0x0409  //U.S. English
-#define USBD_MANUFACTURER_STRING        "Spark Devices"
+#define USBD_MANUFACTURER_STRING        "Particle IO"
 
+#if PLATFORM_ID==PLATFORM_P1
+#define USBD_PRODUCT_HS_STRING          "P1 with WiFi"
+#define USBD_SERIALNUMBER_HS_STRING     "00000000050B"
+
+#define USBD_PRODUCT_FS_STRING          "P1 with WiFi"
+#define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
+#else
 #define USBD_PRODUCT_HS_STRING          "Photon with WiFi"
 #define USBD_SERIALNUMBER_HS_STRING     "00000000050B"
 
 #define USBD_PRODUCT_FS_STRING          "Photon with WiFi"
 #define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
+#endif
 
 #define USBD_CONFIGURATION_HS_STRING    "VCP Config"
 #define USBD_INTERFACE_HS_STRING        "VCP Interface"
 
 #define USBD_CONFIGURATION_FS_STRING    "VCP Config"
 #define USBD_INTERFACE_FS_STRING        "VCP Interface"
- 
+

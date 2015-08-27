@@ -23,7 +23,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif    
+#endif
 
 typedef struct Stream Stream;
 #include <stdint.h>

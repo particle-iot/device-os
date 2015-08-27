@@ -1,7 +1,7 @@
 
 #include "wiced.h"
 
-wiced_result_t wiced_tcp_start_tls( wiced_tcp_socket_t* socket, wiced_tls_endpoint_type_t type, wiced_tls_certificate_verification_t verification ) 
+wiced_result_t wiced_tcp_start_tls( wiced_tcp_socket_t* socket, wiced_tls_endpoint_type_t type, wiced_tls_certificate_verification_t verification )
 {
     return WICED_SUCCESS;
 }
@@ -31,7 +31,7 @@ wiced_result_t wiced_tls_receive_packet( wiced_tcp_socket_t* socket, wiced_packe
     return WICED_SUCCESS;
 }
 
-wiced_result_t wiced_tls_reset_context( wiced_tls_simple_context_t* tls_context ) 
+wiced_result_t wiced_tls_reset_context( wiced_tls_simple_context_t* tls_context )
 {
     return WICED_SUCCESS;
 }

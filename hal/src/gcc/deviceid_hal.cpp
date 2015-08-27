@@ -42,9 +42,9 @@ uint8_t hex2dec(char c) {
 
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
-{    
+{
     char text[24];
-    read_file("id", text, 24);    
+    read_file("id", text, 24);
     unsigned idx = 0;
     for (unsigned i=0; i<sizeof(text) && idx<destLen; i+=2) {
         char c1 = text[i];

@@ -35,7 +35,7 @@
 #endif
 
 DYNALIB_BEGIN(hal_gpio)
-DYNALIB_FN(hal_gpio,HAL_Pin_Map)        
+DYNALIB_FN(hal_gpio,HAL_Pin_Map)
 DYNALIB_FN(hal_gpio,HAL_Validate_Pin_Function)
 DYNALIB_FN(hal_gpio,HAL_Pin_Mode)
 DYNALIB_FN(hal_gpio,HAL_Get_Pin_Mode)
@@ -45,14 +45,14 @@ DYNALIB_FN(hal_gpio,HAL_Interrupts_Attach)
 DYNALIB_FN(hal_gpio,HAL_Interrupts_Detach)
 DYNALIB_FN(hal_gpio,HAL_Interrupts_Enable_All)
 DYNALIB_FN(hal_gpio,HAL_Interrupts_Disable_All)
-        
+
 DYNALIB_FN(hal_gpio,HAL_DAC_Write)
 DYNALIB_FN(hal_gpio,HAL_ADC_Set_Sample_Time)
 DYNALIB_FN(hal_gpio,HAL_ADC_Read)
-        
+
 DYNALIB_FN(hal_gpio,HAL_PWM_Write)
 DYNALIB_FN(hal_gpio,HAL_PWM_Get_Frequency)
-DYNALIB_FN(hal_gpio,HAL_PWM_Get_AnalogValue)        
+DYNALIB_FN(hal_gpio,HAL_PWM_Get_AnalogValue)
 
 DYNALIB_FN(hal_gpio, HAL_Set_System_Interrupt_Handler)
 DYNALIB_FN(hal_gpio, HAL_Get_System_Interrupt_Handler)

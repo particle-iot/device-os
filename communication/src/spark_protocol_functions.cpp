@@ -6,7 +6,7 @@
 
 /**
  * Handle the cryptographically secure random seed from the cloud by using
- * it to seed the stdlib PRNG. 
+ * it to seed the stdlib PRNG.
  * @param seed  A random value from a cryptographically secure random number generator.
  */
 void default_random_seed_from_cloud(unsigned int seed)
@@ -15,10 +15,10 @@ void default_random_seed_from_cloud(unsigned int seed)
 }
 
 
-int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* plaintext, int plaintext_len) 
+int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* plaintext, int plaintext_len)
 {
     rsa_context rsa;
-    init_rsa_context_with_private_key(&rsa, private_key);    
+    init_rsa_context_with_private_key(&rsa, private_key);
     int err = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, &plaintext_len, ciphertext, plaintext, plaintext_len);
     rsa_free(&rsa);
     return err ? -abs(err) : plaintext_len;
@@ -38,17 +38,17 @@ void spark_protocol_init(SparkProtocol* protocol, const char *id,
     protocol->init(id, keys, callbacks, descriptor);
 }
 
-int spark_protocol_handshake(SparkProtocol* protocol, void* reserved) { 
+int spark_protocol_handshake(SparkProtocol* protocol, void* reserved) {
     protocol->reset_updating();
-    return protocol->handshake(); 
+    return protocol->handshake();
 }
 
-bool spark_protocol_event_loop(SparkProtocol* protocol, void* reserved) { 
-    return protocol->event_loop(); 
+bool spark_protocol_event_loop(SparkProtocol* protocol, void* reserved) {
+    return protocol->event_loop();
 }
 
-bool spark_protocol_is_initialized(SparkProtocol* protocol) { 
-    return protocol->is_initialized(); 
+bool spark_protocol_is_initialized(SparkProtocol* protocol) {
+    return protocol->is_initialized();
 }
 
 int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char *buf, const char *id, void*) {
@@ -68,9 +68,9 @@ bool spark_protocol_send_subscription_scope(SparkProtocol* protocol, const char 
     return protocol->send_subscription(event_name, scope);
 }
 
-bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name, 
-    EventHandler handler, SubscriptionScope::Enum scope, const char* device_id, void* reserved) {
-    return protocol->add_event_handler(event_name, handler, scope, device_id);
+bool spark_protocol_add_event_handler(SparkProtocol* protocol, const char *event_name,
+    EventHandler handler, SubscriptionScope::Enum scope, const char* device_id, void* handler_data) {
+    return protocol->add_event_handler(event_name, handler, handler_data, scope, device_id);
 }
 
 bool spark_protocol_send_time_request(SparkProtocol* protocol, void* reserved) {

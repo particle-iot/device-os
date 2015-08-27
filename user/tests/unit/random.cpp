@@ -17,7 +17,7 @@ SCENARIO("Random values consistent with the same seed", "[random]") {
     WHEN("Filling both buffers with the same seeded random sequence") {
         randomSeed(42);
         fillBuf(buf1, 20, 30);
-        
+
         randomSeed(42);
         fillBuf(buf2, 20, 30);
 
@@ -34,7 +34,7 @@ SCENARIO("Random values different with different seeds", "[random]") {
     WHEN("Filling both buffers with the same seeded random sequence") {
         randomSeed(42);
         fillBuf(buf1, 20, 30);
-        
+
         randomSeed(43);
         fillBuf(buf2, 20, 30);
     }
@@ -64,7 +64,7 @@ bool assertRandomRange(int min, int max, int iterations) {
         int r = random(min, max);
         CHECK(r >= min);
         CHECK(r < max);
-    }    
+    }
     return ok;
 }
 

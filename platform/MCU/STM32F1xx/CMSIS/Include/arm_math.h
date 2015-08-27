@@ -1,33 +1,33 @@
-/* ----------------------------------------------------------------------   
- * Copyright (C) 2010-2011 ARM Limited. All rights reserved.   
- *   
- * $Date:        15. February 2012  
- * $Revision: 	V1.1.0  
- *   
- * Project: 	    CMSIS DSP Library   
+/* ----------------------------------------------------------------------
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
+ *
+ * $Date:        15. February 2012
+ * $Revision: 	V1.1.0
+ *
+ * Project: 	    CMSIS DSP Library
  * Title:	     	arm_math.h
- *   
+ *
  * Description:	 Public header file for CMSIS DSP Library
- *   
+ *
  * Target Processor: Cortex-M4/Cortex-M3/Cortex-M0
- *  
- * Version 1.1.0 2012/02/15 
- *    Updated with more optimizations, bug fixes and minor API changes.  
- *  
- * Version 1.0.10 2011/7/15 
- *    Big Endian support added and Merged M0 and M3/M4 Source code.  
- *   
- * Version 1.0.3 2010/11/29  
- *    Re-organized the CMSIS folders and updated documentation.   
- *    
- * Version 1.0.2 2010/11/11   
- *    Documentation updated.    
- *   
- * Version 1.0.1 2010/10/05    
- *    Production release and review comments incorporated.   
- *   
- * Version 1.0.0 2010/09/20    
- *    Production release and review comments incorporated.   
+ *
+ * Version 1.1.0 2012/02/15
+ *    Updated with more optimizations, bug fixes and minor API changes.
+ *
+ * Version 1.0.10 2011/7/15
+ *    Big Endian support added and Merged M0 and M3/M4 Source code.
+ *
+ * Version 1.0.3 2010/11/29
+ *    Re-organized the CMSIS folders and updated documentation.
+ *
+ * Version 1.0.2 2010/11/11
+ *    Documentation updated.
+ *
+ * Version 1.0.1 2010/10/05
+ *    Production release and review comments incorporated.
+ *
+ * Version 1.0.0 2010/09/20
+ *    Production release and review comments incorporated.
  * -------------------------------------------------------------------- */
 
 /**
@@ -35,10 +35,10 @@
    *
    * <b>Introduction</b>
    *
-   * This user manual describes the CMSIS DSP software library, 
+   * This user manual describes the CMSIS DSP software library,
    * a suite of common signal processing functions for use on Cortex-M processor based devices.
    *
-   * The library is divided into a number of functions each covering a specific category:  
+   * The library is divided into a number of functions each covering a specific category:
    * - Basic math functions
    * - Fast math functions
    * - Complex math functions
@@ -51,40 +51,40 @@
    * - Interpolation functions
    *
    * The library has separate functions for operating on 8-bit integers, 16-bit integers,
-   * 32-bit integer and 32-bit floating-point values. 
+   * 32-bit integer and 32-bit floating-point values.
    *
-   * <b>Pre-processor Macros</b> 
-   * 
-   * Each library project have differant pre-processor macros. 
-   * 
-   * - UNALIGNED_SUPPORT_DISABLE: 
-   * 
-   * Define macro UNALIGNED_SUPPORT_DISABLE, If the silicon does not support unaligned memory access    
-   * 
-   * - ARM_MATH_BIG_ENDIAN: 
-   * 
-   * Define macro ARM_MATH_BIG_ENDIAN to build the library for big endian targets. By default library builds for little endian targets. 
-   * 
-   * - ARM_MATH_MATRIX_CHECK: 
-   * 
-   * Define macro ARM_MATH_MATRIX_CHECK for checking on the input and output sizes of matrices 
-   * 
-   * - ARM_MATH_ROUNDING: 
-   * 
+   * <b>Pre-processor Macros</b>
+   *
+   * Each library project have differant pre-processor macros.
+   *
+   * - UNALIGNED_SUPPORT_DISABLE:
+   *
+   * Define macro UNALIGNED_SUPPORT_DISABLE, If the silicon does not support unaligned memory access
+   *
+   * - ARM_MATH_BIG_ENDIAN:
+   *
+   * Define macro ARM_MATH_BIG_ENDIAN to build the library for big endian targets. By default library builds for little endian targets.
+   *
+   * - ARM_MATH_MATRIX_CHECK:
+   *
+   * Define macro ARM_MATH_MATRIX_CHECK for checking on the input and output sizes of matrices
+   *
+   * - ARM_MATH_ROUNDING:
+   *
    * Define macro ARM_MATH_ROUNDING for rounding on support functions
    *
    * - ARM_MATH_CMx:
    *
    * Define macro ARM_MATH_CM4 for building the library on Cortex-M4 target, ARM_MATH_CM3 for building library on Cortex-M3 target
    * and ARM_MATH_CM0 for building library on cortex-M0 target.
-   * 
+   *
    * - __FPU_PRESENT:
    *
-   * Initialize macro __FPU_PRESENT = 1 when building on FPU supported Targets. Enable this macro for M4bf and M4lf libraries 
+   * Initialize macro __FPU_PRESENT = 1 when building on FPU supported Targets. Enable this macro for M4bf and M4lf libraries
    *
    * <b>Toolchain Support</b>
    *
-   * The library has been developed and tested with MDK-ARM version 4.23. 
+   * The library has been developed and tested with MDK-ARM version 4.23.
    * The library is being tested in GCC and IAR toolchains and updates on this activity will be made available shortly.
    *
    * <b>Using the Library</b>
@@ -100,9 +100,9 @@
    * - arm_cortexM0b_math.lib (Big endian on Cortex-M3)
    *
    * The library functions are declared in the public file <code>arm_math.h</code> which is placed in the <code>Include</code> folder.
-   * Simply include this file and link the appropriate library in the application and begin calling the library functions. The Library supports single 
-   * public header file <code> arm_math.h</code> for Cortex-M4/M3/M0 with little endian and big endian. Same header file will be used for floating point unit(FPU) variants. 
-   * Define the appropriate pre processor MACRO ARM_MATH_CM4 or  ARM_MATH_CM3 or 
+   * Simply include this file and link the appropriate library in the application and begin calling the library functions. The Library supports single
+   * public header file <code> arm_math.h</code> for Cortex-M4/M3/M0 with little endian and big endian. Same header file will be used for floating point unit(FPU) variants.
+   * Define the appropriate pre processor MACRO ARM_MATH_CM4 or  ARM_MATH_CM3 or
    * ARM_MATH_CM0 depending on the target processor in the application.
    *
    * <b>Examples</b>
@@ -115,7 +115,7 @@
    * - arm_cortexM0b_math.uvproj
    * - arm_cortexM0l_math.uvproj
    * - arm_cortexM3b_math.uvproj
-   * - arm_cortexM3l_math.uvproj  
+   * - arm_cortexM3l_math.uvproj
    * - arm_cortexM4b_math.uvproj
    * - arm_cortexM4l_math.uvproj
    * - arm_cortexM4bf_math.uvproj
@@ -371,7 +371,7 @@ extern "C"
 #else
   #define __SIMD32(addr)         (*(__packed                    int32_t **) & (addr))
   #define  _SIMD32_OFFSET(addr)  (*(__packed                    int32_t * )   (addr))
-#endif 
+#endif
 
   #define __SIMD64(addr)  (*(int64_t **) & (addr))
 
@@ -1531,7 +1531,7 @@ extern "C"
    * @param[in]       *pSrcA  points to the first input matrix structure
    * @param[in]       *pSrcB  points to the second input matrix structure
    * @param[out]      *pDst   points to output matrix structure
-   * @param[in]		  *pState points to the array for storing intermediate results  
+   * @param[in]		  *pState points to the array for storing intermediate results
    * @return     The function returns either
    * <code>ARM_MATH_SIZE_MISMATCH</code> or <code>ARM_MATH_SUCCESS</code> based on the outcome of size checking.
    */
@@ -2267,13 +2267,13 @@ extern "C"
   float32_t * pCoef,
   uint16_t twidCoefModifier);
 
-        /**  
-	 * @brief  Core function for the Radix-2 Q31 CFFT butterfly process. 
-	 * @param[in, out] *pSrc            points to the in-place buffer of Q31 data type. 
-	 * @param[in]      fftLen           length of the FFT. 
+        /**
+	 * @brief  Core function for the Radix-2 Q31 CFFT butterfly process.
+	 * @param[in, out] *pSrc            points to the in-place buffer of Q31 data type.
+	 * @param[in]      fftLen           length of the FFT.
 	 * @param[in]      *pCoef         	points to Twiddle coefficient buffer.
-	 * @param[in]      twidCoefModifier twiddle coefficient modifier that supports different size FFTs with the same twiddle factor table. 
-	 * @return none. 
+	 * @param[in]      twidCoefModifier twiddle coefficient modifier that supports different size FFTs with the same twiddle factor table.
+	 * @return none.
 	 */
 
   void arm_radix2_butterfly_q31(
@@ -2282,13 +2282,13 @@ extern "C"
   q31_t * pCoef,
   uint16_t twidCoefModifier);
 
-        /**  
-	 * @brief  Core function for the Radix-2 Q15 CFFT butterfly process. 
-	 * @param[in, out] *pSrc            points to the in-place buffer of Q15 data type. 
-	 * @param[in]      fftLen           length of the FFT. 
+        /**
+	 * @brief  Core function for the Radix-2 Q15 CFFT butterfly process.
+	 * @param[in, out] *pSrc            points to the in-place buffer of Q15 data type.
+	 * @param[in]      fftLen           length of the FFT.
 	 * @param[in]      *pCoef           points to Twiddle coefficient buffer.
-	 * @param[in]      twidCoefModifier twiddle coefficient modifier that supports different size FFTs with the same twiddle factor table. 
-	 * @return none. 
+	 * @param[in]      twidCoefModifier twiddle coefficient modifier that supports different size FFTs with the same twiddle factor table.
+	 * @return none.
 	 */
 
   void arm_radix2_butterfly_q15(
@@ -2297,13 +2297,13 @@ extern "C"
   q15_t * pCoef,
   uint16_t twidCoefModifier);
 
-        /**  
-	 * @brief  Core function for the Radix-2 Q15 CFFT Inverse butterfly process. 
-	 * @param[in, out] *pSrc            points to the in-place buffer of Q15 data type. 
-	 * @param[in]      fftLen           length of the FFT. 
+        /**
+	 * @brief  Core function for the Radix-2 Q15 CFFT Inverse butterfly process.
+	 * @param[in, out] *pSrc            points to the in-place buffer of Q15 data type.
+	 * @param[in]      fftLen           length of the FFT.
 	 * @param[in]      *pCoef       	points to Twiddle coefficient buffer.
-	 * @param[in]      twidCoefModifier twiddle coefficient modifier that supports different size FFTs with the same twiddle factor table. 
-	 * @return none. 
+	 * @param[in]      twidCoefModifier twiddle coefficient modifier that supports different size FFTs with the same twiddle factor table.
+	 * @return none.
 	 */
 
   void arm_radix2_butterfly_inverse_q15(
@@ -2312,13 +2312,13 @@ extern "C"
   q15_t * pCoef,
   uint16_t twidCoefModifier);
 
-        /**  
-	 * @brief  Core function for the Radix-2 Q31 CFFT Inverse butterfly process. 
-	 * @param[in, out] *pSrc            points to the in-place buffer of Q31 data type. 
-	 * @param[in]      fftLen           length of the FFT. 
+        /**
+	 * @brief  Core function for the Radix-2 Q31 CFFT Inverse butterfly process.
+	 * @param[in, out] *pSrc            points to the in-place buffer of Q31 data type.
+	 * @param[in]      fftLen           length of the FFT.
 	 * @param[in]      *pCoef         	points to Twiddle coefficient buffer.
-	 * @param[in]      twidCoefModifier twiddle coefficient modifier that supports different size FFTs with the same twiddle factor table. 
-	 * @return none. 
+	 * @param[in]      twidCoefModifier twiddle coefficient modifier that supports different size FFTs with the same twiddle factor table.
+	 * @return none.
 	 */
 
   void arm_radix2_butterfly_inverse_q31(
@@ -3155,7 +3155,7 @@ extern "C"
   q31_t * pDst,
   uint32_t blockSize);
   /**
-   * @brief  Copies the elements of a floating-point vector. 
+   * @brief  Copies the elements of a floating-point vector.
    * @param[in]  *pSrc input pointer
    * @param[out]  *pDst output pointer
    * @param[in]  blockSize number of samples to process
@@ -3167,7 +3167,7 @@ extern "C"
   uint32_t blockSize);
 
   /**
-   * @brief  Copies the elements of a Q7 vector. 
+   * @brief  Copies the elements of a Q7 vector.
    * @param[in]  *pSrc input pointer
    * @param[out]  *pDst output pointer
    * @param[in]  blockSize number of samples to process
@@ -3179,7 +3179,7 @@ extern "C"
   uint32_t blockSize);
 
   /**
-   * @brief  Copies the elements of a Q15 vector. 
+   * @brief  Copies the elements of a Q15 vector.
    * @param[in]  *pSrc input pointer
    * @param[out]  *pDst output pointer
    * @param[in]  blockSize number of samples to process
@@ -3191,7 +3191,7 @@ extern "C"
   uint32_t blockSize);
 
   /**
-   * @brief  Copies the elements of a Q31 vector. 
+   * @brief  Copies the elements of a Q31 vector.
    * @param[in]  *pSrc input pointer
    * @param[out]  *pDst output pointer
    * @param[in]  blockSize number of samples to process
@@ -3202,7 +3202,7 @@ extern "C"
   q31_t * pDst,
   uint32_t blockSize);
   /**
-   * @brief  Fills a constant value into a floating-point vector. 
+   * @brief  Fills a constant value into a floating-point vector.
    * @param[in]  value input value to be filled
    * @param[out]  *pDst output pointer
    * @param[in]  blockSize number of samples to process
@@ -3214,7 +3214,7 @@ extern "C"
   uint32_t blockSize);
 
   /**
-   * @brief  Fills a constant value into a Q7 vector. 
+   * @brief  Fills a constant value into a Q7 vector.
    * @param[in]  value input value to be filled
    * @param[out]  *pDst output pointer
    * @param[in]  blockSize number of samples to process
@@ -3226,7 +3226,7 @@ extern "C"
   uint32_t blockSize);
 
   /**
-   * @brief  Fills a constant value into a Q15 vector. 
+   * @brief  Fills a constant value into a Q15 vector.
    * @param[in]  value input value to be filled
    * @param[out]  *pDst output pointer
    * @param[in]  blockSize number of samples to process
@@ -3238,7 +3238,7 @@ extern "C"
   uint32_t blockSize);
 
   /**
-   * @brief  Fills a constant value into a Q31 vector. 
+   * @brief  Fills a constant value into a Q31 vector.
    * @param[in]  value input value to be filled
    * @param[out]  *pDst output pointer
    * @param[in]  blockSize number of samples to process
@@ -3249,14 +3249,14 @@ extern "C"
   q31_t * pDst,
   uint32_t blockSize);
 
-/**  
- * @brief Convolution of floating-point sequences.  
- * @param[in] *pSrcA points to the first input sequence.  
- * @param[in] srcALen length of the first input sequence.  
- * @param[in] *pSrcB points to the second input sequence.  
- * @param[in] srcBLen length of the second input sequence.  
- * @param[out] *pDst points to the location where the output result is written.  Length srcALen+srcBLen-1.  
- * @return none.  
+/**
+ * @brief Convolution of floating-point sequences.
+ * @param[in] *pSrcA points to the first input sequence.
+ * @param[in] srcALen length of the first input sequence.
+ * @param[in] *pSrcB points to the second input sequence.
+ * @param[in] srcBLen length of the second input sequence.
+ * @param[out] *pDst points to the location where the output result is written.  Length srcALen+srcBLen-1.
+ * @return none.
  */
 
   void arm_conv_f32(
@@ -3266,17 +3266,17 @@ extern "C"
   uint32_t srcBLen,
   float32_t * pDst);
 
-  
-  /**   
-   * @brief Convolution of Q15 sequences.   
-   * @param[in] *pSrcA points to the first input sequence.   
-   * @param[in] srcALen length of the first input sequence.   
-   * @param[in] *pSrcB points to the second input sequence.   
-   * @param[in] srcBLen length of the second input sequence.   
-   * @param[out] *pDst points to the block of output data  Length srcALen+srcBLen-1.   
-   * @param[in]  *pScratch1 points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.   
-   * @param[in]  *pScratch2 points to scratch buffer of size min(srcALen, srcBLen).   
-   * @return none.   
+
+  /**
+   * @brief Convolution of Q15 sequences.
+   * @param[in] *pSrcA points to the first input sequence.
+   * @param[in] srcALen length of the first input sequence.
+   * @param[in] *pSrcB points to the second input sequence.
+   * @param[in] srcBLen length of the second input sequence.
+   * @param[out] *pDst points to the block of output data  Length srcALen+srcBLen-1.
+   * @param[in]  *pScratch1 points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.
+   * @param[in]  *pScratch2 points to scratch buffer of size min(srcALen, srcBLen).
+   * @return none.
    */
 
 
@@ -3290,14 +3290,14 @@ extern "C"
   q15_t * pScratch2);
 
 
-/**  
- * @brief Convolution of Q15 sequences.  
- * @param[in] *pSrcA points to the first input sequence.  
- * @param[in] srcALen length of the first input sequence.  
- * @param[in] *pSrcB points to the second input sequence.  
- * @param[in] srcBLen length of the second input sequence.  
- * @param[out] *pDst points to the location where the output result is written.  Length srcALen+srcBLen-1.  
- * @return none.  
+/**
+ * @brief Convolution of Q15 sequences.
+ * @param[in] *pSrcA points to the first input sequence.
+ * @param[in] srcALen length of the first input sequence.
+ * @param[in] *pSrcB points to the second input sequence.
+ * @param[in] srcBLen length of the second input sequence.
+ * @param[out] *pDst points to the location where the output result is written.  Length srcALen+srcBLen-1.
+ * @return none.
  */
 
   void arm_conv_q15(
@@ -3331,9 +3331,9 @@ extern "C"
    * @param[in] *pSrcB points to the second input sequence.
    * @param[in] srcBLen length of the second input sequence.
    * @param[out] *pDst points to the block of output data  Length srcALen+srcBLen-1.
-   * @param[in]  *pScratch1 points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.   
-   * @param[in]  *pScratch2 points to scratch buffer of size min(srcALen, srcBLen).   
-   * @return none.   
+   * @param[in]  *pScratch1 points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.
+   * @param[in]  *pScratch2 points to scratch buffer of size min(srcALen, srcBLen).
+   * @return none.
    */
 
   void arm_conv_fast_opt_q15(
@@ -3382,16 +3382,16 @@ extern "C"
   q31_t * pDst);
 
 
-    /**   
-   * @brief Convolution of Q7 sequences.   
-   * @param[in] *pSrcA points to the first input sequence.   
-   * @param[in] srcALen length of the first input sequence.   
-   * @param[in] *pSrcB points to the second input sequence.   
-   * @param[in] srcBLen length of the second input sequence.   
-   * @param[out] *pDst points to the block of output data  Length srcALen+srcBLen-1.   
-   * @param[in]  *pScratch1 points to scratch buffer(of type q15_t) of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.   
-   * @param[in]  *pScratch2 points to scratch buffer (of type q15_t) of size min(srcALen, srcBLen).   
-   * @return none.   
+    /**
+   * @brief Convolution of Q7 sequences.
+   * @param[in] *pSrcA points to the first input sequence.
+   * @param[in] srcALen length of the first input sequence.
+   * @param[in] *pSrcB points to the second input sequence.
+   * @param[in] srcBLen length of the second input sequence.
+   * @param[out] *pDst points to the block of output data  Length srcALen+srcBLen-1.
+   * @param[in]  *pScratch1 points to scratch buffer(of type q15_t) of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.
+   * @param[in]  *pScratch2 points to scratch buffer (of type q15_t) of size min(srcALen, srcBLen).
+   * @return none.
    */
 
   void arm_conv_opt_q7(
@@ -3444,18 +3444,18 @@ extern "C"
   uint32_t firstIndex,
   uint32_t numPoints);
 
-    /**   
-   * @brief Partial convolution of Q15 sequences.   
-   * @param[in]       *pSrcA points to the first input sequence.   
-   * @param[in]       srcALen length of the first input sequence.   
-   * @param[in]       *pSrcB points to the second input sequence.   
-   * @param[in]       srcBLen length of the second input sequence.   
-   * @param[out]      *pDst points to the block of output data   
-   * @param[in]       firstIndex is the first output sample to start with.   
-   * @param[in]       numPoints is the number of output points to be computed.   
-   * @param[in]       * pScratch1 points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.   
-   * @param[in]       * pScratch2 points to scratch buffer of size min(srcALen, srcBLen).   
-   * @return  Returns either ARM_MATH_SUCCESS if the function completed correctly or ARM_MATH_ARGUMENT_ERROR if the requested subset is not in the range [0 srcALen+srcBLen-2].   
+    /**
+   * @brief Partial convolution of Q15 sequences.
+   * @param[in]       *pSrcA points to the first input sequence.
+   * @param[in]       srcALen length of the first input sequence.
+   * @param[in]       *pSrcB points to the second input sequence.
+   * @param[in]       srcBLen length of the second input sequence.
+   * @param[out]      *pDst points to the block of output data
+   * @param[in]       firstIndex is the first output sample to start with.
+   * @param[in]       numPoints is the number of output points to be computed.
+   * @param[in]       * pScratch1 points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.
+   * @param[in]       * pScratch2 points to scratch buffer of size min(srcALen, srcBLen).
+   * @return  Returns either ARM_MATH_SUCCESS if the function completed correctly or ARM_MATH_ARGUMENT_ERROR if the requested subset is not in the range [0 srcALen+srcBLen-2].
    */
 
   arm_status arm_conv_partial_opt_q15(
@@ -3522,9 +3522,9 @@ extern "C"
    * @param[out]      *pDst points to the block of output data
    * @param[in]       firstIndex is the first output sample to start with.
    * @param[in]       numPoints is the number of output points to be computed.
-   * @param[in]       * pScratch1 points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.   
-   * @param[in]       * pScratch2 points to scratch buffer of size min(srcALen, srcBLen).   
-   * @return  Returns either ARM_MATH_SUCCESS if the function completed correctly or ARM_MATH_ARGUMENT_ERROR if the requested subset is not in the range [0 srcALen+srcBLen-2].   
+   * @param[in]       * pScratch1 points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.
+   * @param[in]       * pScratch2 points to scratch buffer of size min(srcALen, srcBLen).
+   * @return  Returns either ARM_MATH_SUCCESS if the function completed correctly or ARM_MATH_ARGUMENT_ERROR if the requested subset is not in the range [0 srcALen+srcBLen-2].
    */
 
   arm_status arm_conv_partial_fast_opt_q15(
@@ -3583,18 +3583,18 @@ extern "C"
   uint32_t numPoints);
 
 
-  /**   
-   * @brief Partial convolution of Q7 sequences   
-   * @param[in]       *pSrcA points to the first input sequence.   
-   * @param[in]       srcALen length of the first input sequence.   
-   * @param[in]       *pSrcB points to the second input sequence.   
-   * @param[in]       srcBLen length of the second input sequence.   
-   * @param[out]      *pDst points to the block of output data   
-   * @param[in]       firstIndex is the first output sample to start with.   
-   * @param[in]       numPoints is the number of output points to be computed.   
-   * @param[in]  *pScratch1 points to scratch buffer(of type q15_t) of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.   
-   * @param[in]  *pScratch2 points to scratch buffer (of type q15_t) of size min(srcALen, srcBLen).   
-   * @return  Returns either ARM_MATH_SUCCESS if the function completed correctly or ARM_MATH_ARGUMENT_ERROR if the requested subset is not in the range [0 srcALen+srcBLen-2].   
+  /**
+   * @brief Partial convolution of Q7 sequences
+   * @param[in]       *pSrcA points to the first input sequence.
+   * @param[in]       srcALen length of the first input sequence.
+   * @param[in]       *pSrcB points to the second input sequence.
+   * @param[in]       srcBLen length of the second input sequence.
+   * @param[out]      *pDst points to the block of output data
+   * @param[in]       firstIndex is the first output sample to start with.
+   * @param[in]       numPoints is the number of output points to be computed.
+   * @param[in]  *pScratch1 points to scratch buffer(of type q15_t) of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.
+   * @param[in]  *pScratch2 points to scratch buffer (of type q15_t) of size min(srcALen, srcBLen).
+   * @return  Returns either ARM_MATH_SUCCESS if the function completed correctly or ARM_MATH_ARGUMENT_ERROR if the requested subset is not in the range [0 srcALen+srcBLen-2].
    */
 
   arm_status arm_conv_partial_opt_q7(
@@ -4086,8 +4086,8 @@ extern "C"
    * @brief Initialization function for the Q15 FIR lattice filter.
    * @param[in] *S points to an instance of the Q15 FIR lattice structure.
    * @param[in] numStages  number of filter stages.
-   * @param[in] *pCoeffs points to the coefficient buffer.  The array is of length numStages. 
-   * @param[in] *pState points to the state buffer.  The array is of length numStages. 
+   * @param[in] *pCoeffs points to the coefficient buffer.  The array is of length numStages.
+   * @param[in] *pState points to the state buffer.  The array is of length numStages.
    * @return none.
    */
 
@@ -4654,15 +4654,15 @@ extern "C"
   float32_t * pDst);
 
 
-   /**   
-   * @brief Correlation of Q15 sequences   
-   * @param[in] *pSrcA points to the first input sequence.   
-   * @param[in] srcALen length of the first input sequence.   
-   * @param[in] *pSrcB points to the second input sequence.   
-   * @param[in] srcBLen length of the second input sequence.   
-   * @param[out] *pDst points to the block of output data  Length 2 * max(srcALen, srcBLen) - 1.   
-   * @param[in]  *pScratch points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.   
-   * @return none.   
+   /**
+   * @brief Correlation of Q15 sequences
+   * @param[in] *pSrcA points to the first input sequence.
+   * @param[in] srcALen length of the first input sequence.
+   * @param[in] *pSrcB points to the second input sequence.
+   * @param[in] srcBLen length of the second input sequence.
+   * @param[out] *pDst points to the block of output data  Length 2 * max(srcALen, srcBLen) - 1.
+   * @param[in]  *pScratch points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.
+   * @return none.
    */
   void arm_correlate_opt_q15(
   q15_t * pSrcA,
@@ -4716,7 +4716,7 @@ extern "C"
    * @param[in] *pSrcB points to the second input sequence.
    * @param[in] srcBLen length of the second input sequence.
    * @param[out] *pDst points to the block of output data  Length 2 * max(srcALen, srcBLen) - 1.
-   * @param[in]  *pScratch points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.   
+   * @param[in]  *pScratch points to scratch buffer of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.
    * @return none.
    */
 
@@ -4764,16 +4764,16 @@ extern "C"
 
 
 
- /**   
-   * @brief Correlation of Q7 sequences.   
-   * @param[in] *pSrcA points to the first input sequence.   
-   * @param[in] srcALen length of the first input sequence.   
-   * @param[in] *pSrcB points to the second input sequence.   
-   * @param[in] srcBLen length of the second input sequence.   
-   * @param[out] *pDst points to the block of output data  Length 2 * max(srcALen, srcBLen) - 1.   
-   * @param[in]  *pScratch1 points to scratch buffer(of type q15_t) of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.   
-   * @param[in]  *pScratch2 points to scratch buffer (of type q15_t) of size min(srcALen, srcBLen).   
-   * @return none.   
+ /**
+   * @brief Correlation of Q7 sequences.
+   * @param[in] *pSrcA points to the first input sequence.
+   * @param[in] srcALen length of the first input sequence.
+   * @param[in] *pSrcB points to the second input sequence.
+   * @param[in] srcBLen length of the second input sequence.
+   * @param[out] *pDst points to the block of output data  Length 2 * max(srcALen, srcBLen) - 1.
+   * @param[in]  *pScratch1 points to scratch buffer(of type q15_t) of size max(srcALen, srcBLen) + 2*min(srcALen, srcBLen) - 2.
+   * @param[in]  *pScratch2 points to scratch buffer (of type q15_t) of size min(srcALen, srcBLen).
+   * @return none.
    */
 
   void arm_correlate_opt_q7(
@@ -5019,9 +5019,9 @@ extern "C"
 
   /*
    * @brief  Floating-point sin_cos function.
-   * @param[in]  theta    input value in degrees 
-   * @param[out] *pSinVal points to the processed sine output. 
-   * @param[out] *pCosVal points to the processed cos output. 
+   * @param[in]  theta    input value in degrees
+   * @param[out] *pSinVal points to the processed sine output.
+   * @param[out] *pCosVal points to the processed cos output.
    * @return none.
    */
 
@@ -5032,9 +5032,9 @@ extern "C"
 
   /*
    * @brief  Q31 sin_cos function.
-   * @param[in]  theta    scaled input value in degrees 
-   * @param[out] *pSinVal points to the processed sine output. 
-   * @param[out] *pCosVal points to the processed cosine output. 
+   * @param[in]  theta    scaled input value in degrees
+   * @param[out] *pSinVal points to the processed sine output.
+   * @param[out] *pCosVal points to the processed cosine output.
    * @return none.
    */
 
@@ -5132,7 +5132,7 @@ extern "C"
   /**
    * @defgroup PID PID Motor Control
    *
-   * A Proportional Integral Derivative (PID) controller is a generic feedback control 
+   * A Proportional Integral Derivative (PID) controller is a generic feedback control
    * loop mechanism widely used in industrial control systems.
    * A PID controller is the most commonly used type of feedback controller.
    *
@@ -5151,39 +5151,39 @@ extern "C"
    *
    * \par
    * where \c Kp is proportional constant, \c Ki is Integral constant and \c Kd is Derivative constant
-   * 
-   * \par 
-   * \image html PID.gif "Proportional Integral Derivative Controller" 
+   *
+   * \par
+   * \image html PID.gif "Proportional Integral Derivative Controller"
    *
    * \par
    * The PID controller calculates an "error" value as the difference between
    * the measured output and the reference input.
-   * The controller attempts to minimize the error by adjusting the process control inputs.  
-   * The proportional value determines the reaction to the current error, 
-   * the integral value determines the reaction based on the sum of recent errors, 
+   * The controller attempts to minimize the error by adjusting the process control inputs.
+   * The proportional value determines the reaction to the current error,
+   * the integral value determines the reaction based on the sum of recent errors,
    * and the derivative value determines the reaction based on the rate at which the error has been changing.
    *
-   * \par Instance Structure 
-   * The Gains A0, A1, A2 and state variables for a PID controller are stored together in an instance data structure. 
-   * A separate instance structure must be defined for each PID Controller. 
-   * There are separate instance structure declarations for each of the 3 supported data types. 
-   * 
-   * \par Reset Functions 
-   * There is also an associated reset function for each data type which clears the state array. 
+   * \par Instance Structure
+   * The Gains A0, A1, A2 and state variables for a PID controller are stored together in an instance data structure.
+   * A separate instance structure must be defined for each PID Controller.
+   * There are separate instance structure declarations for each of the 3 supported data types.
    *
-   * \par Initialization Functions 
-   * There is also an associated initialization function for each data type. 
-   * The initialization function performs the following operations: 
+   * \par Reset Functions
+   * There is also an associated reset function for each data type which clears the state array.
+   *
+   * \par Initialization Functions
+   * There is also an associated initialization function for each data type.
+   * The initialization function performs the following operations:
    * - Initializes the Gains A0, A1, A2 from Kp,Ki, Kd gains.
-   * - Zeros out the values in the state buffer.   
-   * 
-   * \par 
-   * Instance structure cannot be placed into a const data section and it is recommended to use the initialization function. 
+   * - Zeros out the values in the state buffer.
    *
-   * \par Fixed-Point Behavior 
-   * Care must be taken when using the fixed-point versions of the PID Controller functions. 
-   * In particular, the overflow and saturation behavior of the accumulator used in each function must be considered. 
-   * Refer to the function specific documentation below for usage guidelines. 
+   * \par
+   * Instance structure cannot be placed into a const data section and it is recommended to use the initialization function.
+   *
+   * \par Fixed-Point Behavior
+   * Care must be taken when using the fixed-point versions of the PID Controller functions.
+   * In particular, the overflow and saturation behavior of the accumulator used in each function must be considered.
+   * Refer to the function specific documentation below for usage guidelines.
    */
 
   /**
@@ -5225,13 +5225,13 @@ extern "C"
    * @param[in] in input sample to process
    * @return out processed output sample.
    *
-   * <b>Scaling and Overflow Behavior:</b> 
-   * \par 
-   * The function is implemented using an internal 64-bit accumulator. 
-   * The accumulator has a 2.62 format and maintains full precision of the intermediate multiplication results but provides only a single guard bit. 
-   * Thus, if the accumulator result overflows it wraps around rather than clip. 
-   * In order to avoid overflows completely the input signal must be scaled down by 2 bits as there are four additions. 
-   * After all multiply-accumulates are performed, the 2.62 accumulator is truncated to 1.32 format and then saturated to 1.31 format. 
+   * <b>Scaling and Overflow Behavior:</b>
+   * \par
+   * The function is implemented using an internal 64-bit accumulator.
+   * The accumulator has a 2.62 format and maintains full precision of the intermediate multiplication results but provides only a single guard bit.
+   * Thus, if the accumulator result overflows it wraps around rather than clip.
+   * In order to avoid overflows completely the input signal must be scaled down by 2 bits as there are four additions.
+   * After all multiply-accumulates are performed, the 2.62 accumulator is truncated to 1.32 format and then saturated to 1.31 format.
    */
 
   __STATIC_INLINE q31_t arm_pid_q31(
@@ -5272,13 +5272,13 @@ extern "C"
    * @param[in] in input sample to process
    * @return out processed output sample.
    *
-   * <b>Scaling and Overflow Behavior:</b> 
-   * \par 
-   * The function is implemented using a 64-bit internal accumulator. 
-   * Both Gains and state variables are represented in 1.15 format and multiplications yield a 2.30 result. 
-   * The 2.30 intermediate results are accumulated in a 64-bit accumulator in 34.30 format. 
-   * There is no risk of internal overflow with this approach and the full precision of intermediate multiplications is preserved. 
-   * After all additions have been performed, the accumulator is truncated to 34.15 format by discarding low 15 bits. 
+   * <b>Scaling and Overflow Behavior:</b>
+   * \par
+   * The function is implemented using a 64-bit internal accumulator.
+   * Both Gains and state variables are represented in 1.15 format and multiplications yield a 2.30 result.
+   * The 2.30 intermediate results are accumulated in a 64-bit accumulator in 34.30 format.
+   * There is no risk of internal overflow with this approach and the full precision of intermediate multiplications is preserved.
+   * After all additions have been performed, the accumulator is truncated to 34.15 format by discarding low 15 bits.
    * Lastly, the accumulator is saturated to yield a result in 1.15 format.
    */
 
@@ -5366,7 +5366,7 @@ extern "C"
    * and <code>Ia + Ib + Ic = 0</code>, in this condition <code>Ialpha</code> and <code>Ibeta</code>
    * can be calculated using only <code>Ia</code> and <code>Ib</code>.
    *
-   * The function operates on a single sample of data and each call to the function returns the processed output. 
+   * The function operates on a single sample of data and each call to the function returns the processed output.
    * The library provides separate functions for Q31 and floating-point data types.
    * \par Algorithm
    * \image html clarkeFormula.gif
@@ -5470,8 +5470,8 @@ extern "C"
   /**
    * @defgroup inv_clarke Vector Inverse Clarke Transform
    * Inverse Clarke transform converts the two-coordinate time invariant vector into instantaneous stator phases.
-   * 
-   * The function operates on a single sample of data and each call to the function returns the processed output. 
+   *
+   * The function operates on a single sample of data and each call to the function returns the processed output.
    * The library provides separate functions for Q31 and floating-point data types.
    * \par Algorithm
    * \image html clarkeInvFormula.gif
@@ -5513,7 +5513,7 @@ extern "C"
   }
 
   /**
-   * @brief  Inverse Clarke transform for Q31 version 
+   * @brief  Inverse Clarke transform for Q31 version
    * @param[in]       Ialpha  input two-phase orthogonal vector axis alpha
    * @param[in]       Ibeta   input two-phase orthogonal vector axis beta
    * @param[out]      *pIa    points to output three-phase coordinate <code>a</code>
@@ -5575,19 +5575,19 @@ extern "C"
    * @defgroup park Vector Park Transform
    *
    * Forward Park transform converts the input two-coordinate vector to flux and torque components.
-   * The Park transform can be used to realize the transformation of the <code>Ialpha</code> and the <code>Ibeta</code> currents 
-   * from the stationary to the moving reference frame and control the spatial relationship between 
+   * The Park transform can be used to realize the transformation of the <code>Ialpha</code> and the <code>Ibeta</code> currents
+   * from the stationary to the moving reference frame and control the spatial relationship between
    * the stator vector current and rotor flux vector.
-   * If we consider the d axis aligned with the rotor flux, the diagram below shows the 
+   * If we consider the d axis aligned with the rotor flux, the diagram below shows the
    * current vector and the relationship from the two reference frames:
    * \image html park.gif "Stator current space vector and its component in (a,b) and in the d,q rotating reference frame"
    *
-   * The function operates on a single sample of data and each call to the function returns the processed output. 
+   * The function operates on a single sample of data and each call to the function returns the processed output.
    * The library provides separate functions for Q31 and floating-point data types.
    * \par Algorithm
    * \image html parkFormula.gif
-   * where <code>Ialpha</code> and <code>Ibeta</code> are the stator vector components,  
-   * <code>pId</code> and <code>pIq</code> are rotor vector components and <code>cosVal</code> and <code>sinVal</code> are the 
+   * where <code>Ialpha</code> and <code>Ibeta</code> are the stator vector components,
+   * <code>pId</code> and <code>pIq</code> are rotor vector components and <code>cosVal</code> and <code>sinVal</code> are the
    * cosine and sine values of theta (rotor flux position).
    * \par Fixed-Point Behavior
    * Care must be taken when using the Q31 version of the Park transform.
@@ -5631,7 +5631,7 @@ extern "C"
   }
 
   /**
-   * @brief  Park transform for Q31 version 
+   * @brief  Park transform for Q31 version
    * @param[in]       Ialpha input two-phase vector coordinate alpha
    * @param[in]       Ibeta  input two-phase vector coordinate beta
    * @param[out]      *pId   points to output rotor reference frame d
@@ -5704,12 +5704,12 @@ extern "C"
    * @defgroup inv_park Vector Inverse Park transform
    * Inverse Park transform converts the input flux and torque components to two-coordinate vector.
    *
-   * The function operates on a single sample of data and each call to the function returns the processed output. 
+   * The function operates on a single sample of data and each call to the function returns the processed output.
    * The library provides separate functions for Q31 and floating-point data types.
    * \par Algorithm
    * \image html parkInvFormula.gif
-   * where <code>pIalpha</code> and <code>pIbeta</code> are the stator vector components,  
-   * <code>Id</code> and <code>Iq</code> are rotor vector components and <code>cosVal</code> and <code>sinVal</code> are the 
+   * where <code>pIalpha</code> and <code>pIbeta</code> are the stator vector components,
+   * <code>Id</code> and <code>Iq</code> are rotor vector components and <code>cosVal</code> and <code>sinVal</code> are the
    * cosine and sine values of theta (rotor flux position).
    * \par Fixed-Point Behavior
    * Care must be taken when using the Q31 version of the Park transform.
@@ -5751,7 +5751,7 @@ extern "C"
 
 
   /**
-   * @brief  Inverse Park transform for	Q31 version 
+   * @brief  Inverse Park transform for	Q31 version
    * @param[in]       Id        input coordinate of rotor reference frame d
    * @param[in]       Iq        input coordinate of rotor reference frame q
    * @param[out]      *pIalpha  points to output two-phase orthogonal vector axis alpha
@@ -5827,7 +5827,7 @@ extern "C"
    * Linear interpolation is a method of curve fitting using linear polynomials.
    * Linear interpolation works by effectively drawing a straight line between two neighboring samples and returning the appropriate point along that line
    *
-   * \par 
+   * \par
    * \image html LinearInterp.gif "Linear interpolation"
    *
    * \par
@@ -5847,10 +5847,10 @@ extern "C"
    * sample of data and each call to the function returns a single processed value.
    * <code>S</code> points to an instance of the Linear Interpolate function data structure.
    * <code>x</code> is the input sample value. The functions returns the output value.
-   * 
+   *
    * \par
-   * if x is outside of the table boundary, Linear interpolation returns first value of the table 
-   * if x is below input range and returns last value of table if x is above range.  
+   * if x is outside of the table boundary, Linear interpolation returns first value of the table
+   * if x is below input range and returns last value of table if x is above range.
    */
 
   /**
@@ -5982,7 +5982,7 @@ extern "C"
    *
    * \par
    * Input sample <code>x</code> is in 12.20 format which contains 12 bits for table index and 20 bits for fractional part.
-   * This function can support maximum of table size 2^12. 
+   * This function can support maximum of table size 2^12.
    *
    */
 
@@ -6162,7 +6162,7 @@ extern "C"
    * @defgroup SQRT Square Root
    *
    * Computes the square root of a number.
-   * There are separate functions for Q15, Q31, and floating-point data types.  
+   * There are separate functions for Q15, Q31, and floating-point data types.
    * The square root function is computed using the Newton-Raphson algorithm.
    * This is an iterative algorithm of the form:
    * <pre>
@@ -7072,11 +7072,11 @@ extern "C"
   uint32_t numSamples);
 
   /**
-   * @brief Converts the elements of the floating-point vector to Q31 vector. 
-   * @param[in]       *pSrc points to the floating-point input vector 
+   * @brief Converts the elements of the floating-point vector to Q31 vector.
+   * @param[in]       *pSrc points to the floating-point input vector
    * @param[out]      *pDst points to the Q31 output vector
-   * @param[in]       blockSize length of the input vector 
-   * @return none. 
+   * @param[in]       blockSize length of the input vector
+   * @return none.
    */
   void arm_float_to_q31(
   float32_t * pSrc,
@@ -7084,10 +7084,10 @@ extern "C"
   uint32_t blockSize);
 
   /**
-   * @brief Converts the elements of the floating-point vector to Q15 vector. 
-   * @param[in]       *pSrc points to the floating-point input vector 
+   * @brief Converts the elements of the floating-point vector to Q15 vector.
+   * @param[in]       *pSrc points to the floating-point input vector
    * @param[out]      *pDst points to the Q15 output vector
-   * @param[in]       blockSize length of the input vector 
+   * @param[in]       blockSize length of the input vector
    * @return          none
    */
   void arm_float_to_q15(
@@ -7096,10 +7096,10 @@ extern "C"
   uint32_t blockSize);
 
   /**
-   * @brief Converts the elements of the floating-point vector to Q7 vector. 
-   * @param[in]       *pSrc points to the floating-point input vector 
+   * @brief Converts the elements of the floating-point vector to Q7 vector.
+   * @param[in]       *pSrc points to the floating-point input vector
    * @param[out]      *pDst points to the Q7 output vector
-   * @param[in]       blockSize length of the input vector 
+   * @param[in]       blockSize length of the input vector
    * @return          none
    */
   void arm_float_to_q7(
@@ -7219,12 +7219,12 @@ extern "C"
    *           + f(XF, YF+1) * (1-(x-XF))*(y-YF)
    *           + f(XF+1, YF+1) * (x-XF)*(y-YF)
    * </pre>
-   * Note that the coordinates (x, y) contain integer and fractional components.  
+   * Note that the coordinates (x, y) contain integer and fractional components.
    * The integer components specify which portion of the table to use while the
    * fractional components control the interpolation processor.
    *
    * \par
-   * if (x,y) are outside of the table boundary, Bilinear interpolation returns zero output. 
+   * if (x,y) are outside of the table boundary, Bilinear interpolation returns zero output.
    */
 
   /**

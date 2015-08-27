@@ -34,21 +34,47 @@ License along with this library; if not, see <http://www.gnu.org/licenses/>.
 
 namespace spark {
 
-    
-/* ***********************************************
-   * Network.RSSI() - @TimothyBrown - 2014.03.18 *
-   ***********************************************
-   -----------------------------------------------
-    Command: Network.RSSI()
-    Returns: Signal Strength from -127 to -1dB
-    Errors:  [1]CC300 Issue; [2]Function Timeout
-    Timeout: One Second
-   ----------------------------------------------- */
+    class ScanArray
+    {
+        WiFiAccessPoint* results;
+        int count;
+        int index;
+
+        static void scan_callback(WiFiAccessPoint* result, void* cookie)
+        {
+            ((ScanArray*)cookie)->addResult(result);
+        }
+
+        void addResult(WiFiAccessPoint* result) {
+            if (index<count) {
+                results[index++] = *result;
+            }
+        }
+
+    public:
+        ScanArray(WiFiAccessPoint* results, int size) {
+            this->results = results;
+            this->count = size;
+            this->index = 0;
+        }
+
+        int start()
+        {
+            return wlan_scan(scan_callback, this);
+        }
+    };
+
+
+    int WiFiClass::scan(WiFiAccessPoint* results, size_t result_count) {
+        ScanArray scanArray(results, result_count);
+        return scanArray.start();
+    }
+
 
     int8_t WiFiClass::RSSI() {
         if (!network_ready(*this, 0, NULL))
             return 0;
-        
+
         system_tick_t _functionStart = millis();
         while ((millis() - _functionStart) < 1000) {
             int rv = wlan_connected_rssi();

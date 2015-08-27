@@ -2,7 +2,7 @@
 # define a symbol MAKE_OS for the current operating system
 # WINSOWS | LINUX | OSX
 
-ifeq ($(OS),Windows_NT)    
+ifeq ($(OS),Windows_NT)
     MAKE_OS = WINDOWS
     ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
         CPU=AMD64

@@ -47,7 +47,7 @@ DYNALIB_FN(hal_core,HAL_Core_Enter_Standby_Mode)
 DYNALIB_FN(hal_core,HAL_Core_Execute_Standby_Mode)
 DYNALIB_FN(hal_core,HAL_Core_Compute_CRC32)
 DYNALIB_FN(hal_core,HAL_device_ID)
-        
+
 DYNALIB_FN(hal_core,HAL_Get_Sys_Health)
 DYNALIB_FN(hal_core,HAL_Set_Sys_Health)
 DYNALIB_FN(hal_core,HAL_watchdog_reset_flagged)
@@ -55,10 +55,11 @@ DYNALIB_FN(hal_core,HAL_Notify_WDT)
 DYNALIB_FN(hal_core,HAL_Bootloader_Get_Flag)
 DYNALIB_FN(hal_core,HAL_Bootloader_Lock)
 DYNALIB_FN(hal_core,HAL_Core_System_Reset_FlagSet)
+DYNALIB_FN(hal_core,HAL_Core_Runtime_Info)
 
 DYNALIB_END(hal_core)
-        
-        
+
+
 
 
 #endif	/* HAL_DYNALIB_CORE_H */

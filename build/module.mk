@@ -16,9 +16,17 @@ include $(MODULE_PATH)/import.mk
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),$(PROJECT_ROOT)/$(module)/import.mk)
 include $(DEPS_INCLUDE_SCRIPTS)
 
+include $(COMMON_BUILD)/module-defaults.mk
+
 include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 
-include $(COMMON_BUILD)/module-defaults.mk
+TARGET_FILE_NAME ?= $(MODULE)
+
+ifneq (,$(GLOBAL_DEFINES))
+CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
+export GLOBAL_DEFINES
+endif
+
 
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
@@ -119,9 +127,14 @@ MOD_INFO_SUFFIX_LEN ?= 2800
 MOD_INFO_SUFFIX = $(DEFAULT_SHA_256)$(MOD_INFO_SUFFIX_LEN)
 CRC_BLOCK_CONTENTS = $(MOD_INFO_SUFFIX)78563412
 
-ifneq (WINDOWS,$(MAKE_OS))
+# OS X + debian systems have shasum, RHEL + windows have sha256sum
+SHASUM_COMMAND_VERSION := $(shell shasum --version 2>/dev/null)
+SHA256SUM_COMMAND_VERSION := $(shell sha256sum --version 2>/dev/null)
+ifdef SHASUM_COMMAND_VERSION
 SHA_256 = shasum -a 256
-else
+else ifdef SHA256SUM_COMMAND_VERSION
+SHA_256 = sha256sum
+else ifeq (WINDOWS,$(MAKE_OS))
 SHA_256 = $(COMMON_BUILD)/bin/win32/sha256sum
 endif
 

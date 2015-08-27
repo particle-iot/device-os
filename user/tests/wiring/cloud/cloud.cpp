@@ -26,37 +26,37 @@
 
 void idle()
 {
-    Spark.process();
+    Particle.process();
 }
 
 bool disconnect(uint32_t timeout=15000)
 {
     uint32_t start = millis();
-    while (Spark.connected() && (millis()-start)<timeout) {
-        Spark.disconnect();
+    while (Particle.connected() && (millis()-start)<timeout) {
+        Particle.disconnect();
         idle();
     }
-    return !Spark.connected();
+    return !Particle.connected();
 }
 
 bool connect(uint32_t timeout=150000)
 {
     uint32_t start = millis();
-    while (!Spark.connected() && (millis()-start)<timeout) {
-        Spark.connect();
+    while (!Particle.connected() && (millis()-start)<timeout) {
+        Particle.connect();
         idle();
     }
-    return Spark.connected();
+    return Particle.connected();
 }
 
 test(Spark_Publish_Silently_Fails_When_Not_Connected) {
     disconnect();
-    Spark.publish("hello", "world", 60, PRIVATE);
+    Particle.publish("hello", "world", 60, PRIVATE);
 }
 
 int not_connected_handler_count;
 void Spark_Subscribe_When_Not_Connected_Handler(const char* topic, const char* data) {
-    String deviceId = Spark.deviceID();
+    String deviceId = Particle.deviceID();
     Serial.println("event ***");
     if (data) Serial.println(data);
     if (data && !strcmp(data, deviceId.c_str())) {
@@ -66,106 +66,141 @@ void Spark_Subscribe_When_Not_Connected_Handler(const char* topic, const char* d
 
 test(Spark_Subscribe_When_Not_Connected) {
     disconnect();
-    Spark.unsubscribe();
-    not_connected_handler_count = 0;   
+    Particle.unsubscribe();
+    not_connected_handler_count = 0;
     const char* eventName = "test/Spark_Subscribe_When_Not_Connected";
-    assertTrue(Spark.subscribe(eventName, Spark_Subscribe_When_Not_Connected_Handler));
-    
+    assertTrue(Particle.subscribe(eventName, Spark_Subscribe_When_Not_Connected_Handler));
+
     assertEqual(not_connected_handler_count, 0);
     connect();
-    String deviceID = Spark.deviceID();
-    Spark.publish(eventName, deviceID.c_str());
-    
+    String deviceID = Particle.deviceID();
+    Particle.publish(eventName, deviceID.c_str());
+
     long start = millis();
     while ((millis()-start)<30000 && !not_connected_handler_count)
         idle();
-    
-    assertEqual(not_connected_handler_count, 1);    
+
+    assertEqual(not_connected_handler_count, 1);
 }
 
 void Subscribe_To_Same_Event_Is_No_Op_Handler(const char* topic, const char* data) {
-    
+
 }
 
 test(Subscribe_To_Same_Event_Is_No_Op) {
     int success = 0;
     disconnect();
-    Spark.unsubscribe();            // unsubscribe all
+    Particle.unsubscribe();            // unsubscribe all
     for (int i=0; i<10; i++) {
-        if (Spark.subscribe("test/Subscribe_To_Same_Event_Is_No_Op", Subscribe_To_Same_Event_Is_No_Op_Handler))
+        if (Particle.subscribe("test/Subscribe_To_Same_Event_Is_No_Op", Subscribe_To_Same_Event_Is_No_Op_Handler))
             success++;
     }
     assertEqual(success,10);
 
     connect();
-    // now see if we can subscribe to an additional event 
-    not_connected_handler_count = 0;   
+    // now see if we can subscribe to an additional event
+    not_connected_handler_count = 0;
     const char* eventName = "test/Spark_Subscribe_When_Not_Connected2";
-    assertTrue(Spark.subscribe(eventName, Spark_Subscribe_When_Not_Connected_Handler));
+    assertTrue(Particle.subscribe(eventName, Spark_Subscribe_When_Not_Connected_Handler));
     assertEqual(not_connected_handler_count, 0);
-    
-    String deviceID = Spark.deviceID();
-    Spark.publish(eventName, deviceID.c_str());
-    
+
+    String deviceID = Particle.deviceID();
+    Particle.publish(eventName, deviceID.c_str());
+
     long start = millis();
     while ((millis()-start)<30000 && !not_connected_handler_count)
         idle();
-    
-    assertEqual(not_connected_handler_count, 1);    
+
+    assertEqual(not_connected_handler_count, 1);
 }
 
 
 test(Spark_Unsubscribe) {
     disconnect();
-    Spark.unsubscribe();
-    not_connected_handler_count = 0;   
+    Particle.unsubscribe();
+    not_connected_handler_count = 0;
     const char* eventName = "test/Spark_Unsubscribe";
-    assertTrue(Spark.subscribe(eventName, Spark_Subscribe_When_Not_Connected_Handler));
-    
+    assertTrue(Particle.subscribe(eventName, Spark_Subscribe_When_Not_Connected_Handler));
+
     assertEqual(not_connected_handler_count, 0);
     connect();
-    String deviceID = Spark.deviceID();
-    Spark.publish(eventName, deviceID.c_str());
-    
+    String deviceID = Particle.deviceID();
+    Particle.publish(eventName, deviceID.c_str());
+
     long start = millis();
     while ((millis()-start)<30000 && !not_connected_handler_count)
         idle();
-    
-    assertEqual(not_connected_handler_count, 1);    
-    
+
+    assertEqual(not_connected_handler_count, 1);
+
     not_connected_handler_count = 0;
-    Spark.unsubscribe();
-    Spark.publish(eventName, deviceID.c_str());
+    Particle.unsubscribe();
+    Particle.publish(eventName, deviceID.c_str());
     start = millis();
     while ((millis()-start)<10000 && !not_connected_handler_count)
         idle();
 
     // no further events received
-    assertEqual(not_connected_handler_count, 0);        
+    assertEqual(not_connected_handler_count, 0);
 }
 
 /**
  * The event decoding logic modified the contents of the receive buffer, so that
  * the when looping a second time, the event name comprised only the first part up to the first slash.
  * E.g. the event "test/event" would be match like that against the first handler, but
- * subsequent handlers would be matched only against "test". 
+ * subsequent handlers would be matched only against "test".
  */
 test(Spark_Second_Event_Handler_Not_Matched) {
     disconnect();
-    Spark.unsubscribe();   
+    Particle.unsubscribe();
     connect();
-    
-    Spark.subscribe("test/event1", Subscribe_To_Same_Event_Is_No_Op_Handler);
-    Spark.subscribe("test/event2", Spark_Subscribe_When_Not_Connected_Handler);
+
+    Particle.subscribe("test/event1", Subscribe_To_Same_Event_Is_No_Op_Handler);
+    Particle.subscribe("test/event2", Spark_Subscribe_When_Not_Connected_Handler);
     not_connected_handler_count = 0;
-    
-    String deviceID = Spark.deviceID();    
-    Spark.publish("test/event2", deviceID.c_str());
-    
+
+    String deviceID = Particle.deviceID();
+    Particle.publish("test/event2", deviceID.c_str());
+
     // now wait for published event to be received
     long start = millis();
     while ((millis()-start)<30000 && !not_connected_handler_count)
         idle();
-    
-    assertEqual(not_connected_handler_count, 1);    
+
+    assertEqual(not_connected_handler_count, 1);
+}
+
+class Subscriber {
+  public:
+    void subscribe() {
+      assertTrue(Particle.subscribe("test/event3", &Subscriber::handler, this));
+      // To make sure calling subscribe with a different handler is not a no op
+      assertTrue(Particle.subscribe("test/event3", &Subscriber::handler2, this));
+      receivedCount = 0;
+    }
+    void handler(const char *eventName, const char *data) {
+      receivedCount++;
+    }
+    void handler2(const char *eventName, const char *data) {
+      receivedCount++;
+    }
+    int receivedCount;
+} subscriber;
+
+test(Subscribe_With_Object) {
+    disconnect();
+    Particle.unsubscribe();
+    connect();
+
+    subscriber.subscribe();
+
+    String deviceID = Spark.deviceID();
+    Particle.publish("test/event3");
+
+    // now wait for published event to be received
+    long start = millis();
+    while ((millis()-start)<30000 && !subscriber.receivedCount)
+        idle();
+
+    assertEqual(subscriber.receivedCount, 2);
 }

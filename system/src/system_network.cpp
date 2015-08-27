@@ -1,5 +1,5 @@
 #include "spark_wiring_ticks.h"
-#include "wifi_credentials_reader.h"
+#include "system_setup.h"
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_cloud.h"
@@ -12,7 +12,8 @@
 
 WLanConfig ip_config;
 
-uint32_t wlan_watchdog;
+uint32_t wlan_watchdog_base;
+uint32_t wlan_watchdog_duration;
 
 volatile uint8_t WLAN_DISCONNECT;
 volatile uint8_t WLAN_DELETE_PROFILES;
@@ -75,7 +76,9 @@ void Start_Smart_Config(void)
 
     cloud_disconnect();
     SPARK_LED_FADE = 0;
+    bool signaling = LED_RGB_IsOverRidden();
     LED_SetRGBColor(RGB_COLOR_BLUE);
+    LED_Signaling_Stop();
     LED_On(LED_RGB);
 
     /* If WiFi module is connected, disconnect it */
@@ -86,7 +89,9 @@ void Start_Smart_Config(void)
 
     wlan_smart_config_init();
 
-    WiFiCredentialsReader wifi_creds_reader(wifi_add_profile_callback);
+    WiFiSetupConsoleConfig config;
+    config.connect_callback = wifi_add_profile_callback;
+    WiFiSetupConsole console(config);
 
     const uint32_t start = millis();
     uint32_t loop = start;
@@ -127,11 +132,13 @@ void Start_Smart_Config(void)
                 loop = now;
                 system_notify_event(wifi_listen_update, now-start);
             }
-            wifi_creds_reader.read();
+            console.loop();
         }
     }
 
     LED_On(LED_RGB);
+    if (signaling)
+        LED_Signaling_Start();
 
     WLAN_LISTEN_ON_FAILED_CONNECT = wlan_smart_config_finalize();
 
@@ -177,14 +184,16 @@ void HAL_WLAN_notify_disconnected()
         ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
       }
       SPARK_LED_FADE = 1;
-      LED_SetRGBColor(RGB_COLOR_BLUE);
+          LED_SetRGBColor(RGB_COLOR_BLUE);
       LED_On(LED_RGB);
     }
     else if (!WLAN_SMART_CONFIG_START)
     {
       //Do not enter if smart config related disconnection happens
       //Blink green if connection fails because of wrong password
-      ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+        if (!WLAN_DISCONNECT) {
+            ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+        }
       SPARK_LED_FADE = 0;
       LED_SetRGBColor(RGB_COLOR_GREEN);
       LED_On(LED_RGB);
@@ -230,13 +239,19 @@ const WLanConfig* network_config(network_handle_t network, uint32_t param, void*
     return &ip_config;
 }
 
+void network_config_clear()
+{
+    memset(&ip_config, 0, sizeof(ip_config));
+}
+
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    if (!WLAN_CONNECTING && !network_listening(network, flags, NULL))
+    if (!network_ready(network, flags, reserved) && !WLAN_CONNECTING && !network_listening(network, flags, NULL))
     {
         bool was_sleeping = SPARK_WLAN_SLEEP;
 
-        network_on(network, flags, param, NULL);
+        // activate WiFi, don't set LED since that happens later.
+        network_on(network, flags | 1, param, NULL);
 
         WLAN_DISCONNECT = 0;
         wlan_connect_init();
@@ -280,6 +295,7 @@ void network_disconnect(network_handle_t network, uint32_t param, void* reserved
         WLAN_CONNECTING = 0;
         cloud_disconnect();
         wlan_disconnect_now();
+        network_config_clear();
     }
 }
 
@@ -293,16 +309,26 @@ bool network_connecting(network_handle_t network, uint32_t param, void* reserved
     return (SPARK_WLAN_STARTED && WLAN_CONNECTING);
 }
 
+/**
+ *
+ * @param network
+ * @param flags    1 - don't change the LED color
+ * @param param
+ * @param reserved
+ */
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
     if (!SPARK_WLAN_STARTED)
     {
+        network_config_clear();
         wlan_activate();
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
         SPARK_LED_FADE = 1;
-        LED_SetRGBColor(RGB_COLOR_BLUE);
-        LED_On(LED_RGB);
+        if (!(flags & 1)) {
+            LED_SetRGBColor(RGB_COLOR_BLUE);
+            LED_On(LED_RGB);
+        }
     }
 }
 
@@ -315,7 +341,9 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 {
     if (SPARK_WLAN_STARTED)
     {
+        network_config_clear();
         cloud_disconnect();
+        network_disconnect(network, param, reserved);
         wlan_deactivate();
 
         SPARK_WLAN_SLEEP = 1;
@@ -338,6 +366,8 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 void network_listen(network_handle_t, uint32_t flags, void*)
 {
     WLAN_SMART_CONFIG_START = !(flags & 1);
+    if (!WLAN_SMART_CONFIG_START)
+        WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
 }
 
 bool network_listening(network_handle_t, uint32_t, void*)

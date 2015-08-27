@@ -2,10 +2,38 @@
 
 #include "system_sleep.h"
 #include "system_network.h"
+#include "system_task.h"
+#include "system_cloud.h"
 #include "rtc_hal.h"
 #include "core_hal.h"
 #include "rgbled.h"
 #include <stddef.h>
+
+struct WakeupState
+{
+    bool wifi;
+    bool wifiConnected;
+    bool cloud;
+};
+
+WakeupState wakeupState;
+
+/*******************************************************************************
+ * Function Name  : HAL_RTCAlarm_Handler
+ * Description    : This function handles additional application requirements.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+extern "C" void HAL_RTCAlarm_Handler(void)
+{
+    /* Wake up from System.sleep mode(SLEEP_MODE_WLAN) */
+    if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
+        SPARK_WLAN_SLEEP = 0;
+    if (wakeupState.cloud)
+        spark_connect();
+}
+
 
 void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
@@ -15,6 +43,11 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
     switch (sleepMode)
     {
         case SLEEP_MODE_WLAN:
+            // save the current state so it can be restored on wakeup
+            wakeupState.wifi = !SPARK_WLAN_SLEEP;
+            wakeupState.cloud = spark_connected();
+            wakeupState.wifiConnected = wakeupState.cloud | network_ready(0, 0, NULL) | network_connecting(0, 0, NULL);
+            spark_disconnect();
             network_off(0, 0, 0, NULL);
             break;
 

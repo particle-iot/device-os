@@ -120,9 +120,10 @@ class SparkProtocol
     bool send_event(const char *event_name, const char *data,
                     int ttl, EventType::Enum event_type);
     bool add_event_handler(const char *event_name, EventHandler handler,
-                        SubscriptionScope::Enum scope, const char* device_id);
+                        void *handler_data, SubscriptionScope::Enum scope,
+                        const char* device_id);
     bool event_handler_exists(const char *event_name, EventHandler handler,
-        SubscriptionScope::Enum scope, const char* id);
+        void *handler_data, SubscriptionScope::Enum scope, const char* id);
     void remove_event_handlers(const char* event_name);
     void send_subscriptions();
     bool send_subscription(const char *event_name, const char *device_id);
@@ -133,8 +134,14 @@ class SparkProtocol
                         ChunkReceivedCode::Enum code);
     void chunk_missed(unsigned char *buf, unsigned short chunk_index);
     void update_ready(unsigned char *buf, unsigned char token, uint8_t flags);
+
+    enum DescriptionType {
+        DESCRIBE_SYSTEM = 1<<1,            // modules
+        DESCRIBE_APPLICATION = 1<<2,       // functions and variables
+    };
+
     int description(unsigned char *buf, unsigned char token,
-                    unsigned char message_id_msb, unsigned char message_id_lsb);
+                    unsigned char message_id_msb, unsigned char message_id_lsb, int description_flags);
     void ping(unsigned char *buf);
 
     bool function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token);
@@ -166,7 +173,7 @@ class SparkProtocol
     unsigned char core_private_key[MAX_DEVICE_PRIVATE_KEY_LENGTH];
     aes_context aes;
 
-    FilteringEventHandler event_handlers[4];
+    FilteringEventHandler event_handlers[5];    // 1 system event listener + 4 application event listeners
     SparkCallbacks callbacks;
     SparkDescriptor descriptor;
 
@@ -177,7 +184,7 @@ class SparkProtocol
     unsigned short _message_id;
     unsigned char _token;
     system_tick_t last_message_millis;
-    system_tick_t last_chunk_millis;
+    system_tick_t last_chunk_millis;    // NB: also used to synchronize time
     unsigned short chunk_index;
     unsigned short chunk_size;
     bool expecting_ping_ack;
@@ -188,6 +195,7 @@ class SparkProtocol
     size_t wrap(unsigned char *buf, size_t msglen);
     bool handle_received_message(void);
     bool handle_function_call(msg& message);
+    void handle_event(msg& message);
     unsigned short next_message_id();
     unsigned char next_token();
     void encrypt(unsigned char *buf, int length);
@@ -216,6 +224,7 @@ class SparkProtocol
     bool handle_update_begin(msg& m);
     bool handle_chunk(msg& m);
     bool handle_update_done(msg& m);
+    void handle_time_response(uint32_t time);
 
     /********** Queue **********/
     unsigned char queue[PROTOCOL_BUFFER_SIZE];
@@ -249,6 +258,14 @@ class SparkProtocol
     const chunk_index_t MAX_CHUNKS = 65535;
     int send_missing_chunks(int count);
     void notify_update_done(uint8_t* buf);
+
+    /**
+     * Send a particular type of describe message.
+     * @param description_flags A combination of DescriptionType enum values.
+     * @param message
+     * @return true on success
+     */
+    bool send_description(int description_flags, msg& message);
 
     /**
      * Marks the indices of missed chunks not yet requested.

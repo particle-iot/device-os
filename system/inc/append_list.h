@@ -28,21 +28,21 @@ template <typename T> class append_list
     uint8_t capacity;
     uint8_t block_size;
     T* store;
-    
+
     bool expand(unsigned capacity) {
         if (capacity>255)
             return false;
-        
+
         T* new_store = (T*)realloc(store, sizeof(T)*capacity);
         if (new_store)
             store = new_store;
         return new_store!=NULL;
     }
-    
+
 public:
-    
+
     append_list(unsigned block=5) : count(0), capacity(0), block_size(block), store(NULL) {}
-    
+
     T* add() {
         T* result = NULL;
         if (add(T())) {
@@ -50,15 +50,15 @@ public:
         }
         return result;
     }
-    
+
     bool add(const T& item) {
         bool space = (count<capacity || expand(count+block_size));
         if (space) {
             store[count++] = item;
         }
         return space;
-    }        
-        
+    }
+
     T& operator[](unsigned index) { return store[index]; }
     unsigned size() { return count; }
 };

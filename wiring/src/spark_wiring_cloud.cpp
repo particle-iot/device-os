@@ -15,6 +15,12 @@ int CloudClass::call_std_user_function(void* data, const char* param, void* rese
     return (*fn)(String(param));
 }
 
+void CloudClass::call_wiring_event_handler(const void* handler_data, const char *event_name, const char *data)
+{
+    wiring_event_handler_t* fn = (wiring_event_handler_t*)(handler_data);
+    (*fn)(event_name, data);
+}
+
 bool CloudClass::register_function(cloud_function_t fn, void* data, const char* funcKey)
 {
     cloud_function_descriptor desc;
@@ -23,5 +29,5 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
     desc.fn = fn;
     desc.data = (void*)data;
     desc.funcKey = funcKey;
-    return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);    
+    return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);
 }

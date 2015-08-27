@@ -13,7 +13,7 @@
 **
 **  Target      : STMicroelectronics STM32
 **
-**  Environment : Eclipse-CDT and GNU Tools ARM Embedded. 
+**  Environment : Eclipse-CDT and GNU Tools ARM Embedded.
 **
 *****************************************************************************
 */

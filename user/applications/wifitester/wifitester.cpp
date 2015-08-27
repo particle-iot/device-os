@@ -37,9 +37,9 @@ WiFiTester tester;
 void setup()
 {
     Serial.begin(9600);
-#if USE_SERIAL1    
-    Serial1.begin(9600);    
-#endif    
+#if USE_SERIAL1
+    Serial1.begin(9600);
+#endif
     tester.setup(USE_SERIAL1);
 }
 

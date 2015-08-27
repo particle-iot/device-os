@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 bool HAL_watchdog_reset_flagged();
-    
+
 void HAL_Notify_WDT();
 
 

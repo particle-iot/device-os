@@ -106,6 +106,39 @@ void HardFault_Handler(void)
 }
 
 /*******************************************************************************
+ * Function Name  : MemManage_Handler
+ * Description    : This function handles Memory Manage exception.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void MemManage_Handler(void)
+{
+	/* Go to infinite loop when Memory Manage exception occurs */
+        PANIC(MemManage,"MemManage");
+	while (1)
+	{
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : BusFault_Handler
+ * Description    : This function handles Bus Fault exception.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void BusFault_Handler(void)
+{
+	/* Go to infinite loop when Bus Fault exception occurs */
+        PANIC(BusFault,"BusFault");
+        while (1)
+	{
+	}
+}
+
+
+/*******************************************************************************
  * Function Name  : UsageFault_Handler
  * Description    : This function handles Usage Fault exception.
  * Input          : None
@@ -198,7 +231,7 @@ void HAL_Core_Config(void)
     FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
 #endif
 
-#ifdef USE_SERIAL_FLASH
+#ifdef HAS_SERIAL_FLASH
     //Initialize Serial Flash
     sFLASH_Init();
 #else

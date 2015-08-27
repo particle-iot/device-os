@@ -23,7 +23,7 @@
  ******************************************************************************
  */
 
-/* Includes ------------------------------------------------------------------*/  
+/* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
 /* Function prototypes -------------------------------------------------------*/
@@ -40,11 +40,11 @@ void setup()
 	//Setup the Tinker application here
 
 	//Register all the Tinker functions
-	Spark.function("digitalread", tinkerDigitalRead);
-	Spark.function("digitalwrite", tinkerDigitalWrite);
+	Particle.function("digitalread", tinkerDigitalRead);
+        Particle.function("digitalwrite", tinkerDigitalWrite);
 
-	Spark.function("analogread", tinkerAnalogRead);
-	Spark.function("analogwrite", tinkerAnalogWrite);
+	Particle.function("analogread", tinkerAnalogRead);
+	Particle.function("analogwrite", tinkerAnalogWrite);
 
 }
 
@@ -57,7 +57,7 @@ void loop()
 /*******************************************************************************
  * Function Name  : tinkerDigitalRead
  * Description    : Reads the digital value of a given pin
- * Input          : Pin 
+ * Input          : Pin
  * Output         : None.
  * Return         : Value of the pin (0 or 1) in INT type
                     Returns a negative number on failure
@@ -119,7 +119,7 @@ int tinkerDigitalWrite(String command)
 /*******************************************************************************
  * Function Name  : tinkerAnalogRead
  * Description    : Reads the analog value of a pin
- * Input          : Pin 
+ * Input          : Pin
  * Output         : None.
  * Return         : Returns the analog value in INT type (0 to 4095)
                     Returns a negative number on failure

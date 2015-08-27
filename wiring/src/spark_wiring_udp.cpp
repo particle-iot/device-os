@@ -39,25 +39,56 @@ static bool inline isOpen(sock_handle_t sd)
    return sd != socket_handle_invalid();
 }
 
-UDP::UDP() : _sock(socket_handle_invalid())
+UDP::UDP() : _sock(socket_handle_invalid()), _offset(0), _total(0), _buffer(0), _buffer_size(512)
 {
+}
 
+bool UDP::setBuffer(size_t buf_size, uint8_t* buffer)
+{
+    releaseBuffer();
+
+    _buffer = buffer;
+    _buffer_size = 0;
+    if (!_buffer && buf_size) {         // requested allocation
+        _buffer = new uint8_t[buf_size];
+        _buffer_allocated = true;
+    }
+    if (_buffer) {
+        _buffer_size = buf_size;
+    }
+    return _buffer_size;
+}
+
+void UDP::releaseBuffer()
+{
+    if (_buffer_allocated && _buffer) {
+        delete _buffer;
+    }
+    _buffer = NULL;
+    _buffer_allocated = false;
+    _buffer_size = 0;
+    flush();
 }
 
 uint8_t UDP::begin(uint16_t port, network_interface_t nif)
 {
     bool bound = 0;
-	if(Network.from(nif).ready())
-	{
-	   _sock = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, port, nif);
-            DEBUG("socket=%d",_sock);
-            if (socket_handle_valid(_sock))
-            {
-                flush();
-                _port = port;
-                _nif = nif;
-            }
-	}
+    if(Network.from(nif).ready())
+    {
+       _sock = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, port, nif);
+        DEBUG("socket=%d",_sock);
+        if (socket_handle_valid(_sock))
+        {
+            flush();
+            _port = port;
+            _nif = nif;
+            bound = true;
+        }
+        else {
+            stop();
+            bound = false;
+        }
+    }
     return bound;
 }
 
@@ -74,6 +105,8 @@ void UDP::stop()
         socket_close(_sock);
     }
     _sock = socket_handle_invalid();
+
+    flush();
 }
 
 int UDP::beginPacket(const char *host, uint16_t port)
@@ -88,66 +121,98 @@ int UDP::beginPacket(const char *host, uint16_t port)
             return beginPacket(remote_addr, port);
         }
     }
-	return 0;
+    return 0;
 }
 
 int UDP::beginPacket(IPAddress ip, uint16_t port)
 {
-	_remoteIP = ip;
-	_remotePort = port;
+    // default behavior previously was to use a 512 byte buffer, so instantiate that if not already done
+    if (!_buffer && _buffer_size) {
+        setBuffer(_buffer_size);
+    }
 
-	_remoteSockAddr.sa_family = AF_INET;
-
-	_remoteSockAddr.sa_data[0] = (_remotePort & 0xFF00) >> 8;
-	_remoteSockAddr.sa_data[1] = (_remotePort & 0x00FF);
-
-	_remoteSockAddr.sa_data[2] = _remoteIP[0];
-	_remoteSockAddr.sa_data[3] = _remoteIP[1];
-	_remoteSockAddr.sa_data[4] = _remoteIP[2];
-	_remoteSockAddr.sa_data[5] = _remoteIP[3];
-
-	_remoteSockAddrLen = sizeof(_remoteSockAddr);
-
-	return 1;
+    _remoteIP = ip;
+    _remotePort = port;
+    flush();
+    return _buffer_size;
 }
 
 int UDP::endPacket()
 {
-	return 1;
+    int result = sendPacket(_buffer, _offset, _remoteIP, _remotePort);
+    flush();
+    return result;
+}
+
+int UDP::sendPacket(const uint8_t* buffer, size_t buffer_size, IPAddress remoteIP, uint16_t port)
+{
+    sockaddr_t remoteSockAddr;
+    remoteSockAddr.sa_family = AF_INET;
+
+    remoteSockAddr.sa_data[0] = (port & 0xFF00) >> 8;
+    remoteSockAddr.sa_data[1] = (port & 0x00FF);
+
+    remoteSockAddr.sa_data[2] = remoteIP[0];
+    remoteSockAddr.sa_data[3] = remoteIP[1];
+    remoteSockAddr.sa_data[4] = remoteIP[2];
+    remoteSockAddr.sa_data[5] = remoteIP[3];
+
+    int rv = socket_sendto(_sock, buffer, buffer_size, 0, &remoteSockAddr, sizeof(remoteSockAddr));
+    DEBUG("sendto(buffer=%lx, size=%d)=%d",buffer, buffer_size , rv);
+    return rv;
 }
 
 size_t UDP::write(uint8_t byte)
 {
-	return write(&byte, 1);
+    return write(&byte, 1);
 }
 
 size_t UDP::write(const uint8_t *buffer, size_t size)
 {
-	int rv =  socket_sendto(_sock, buffer, size, 0, &_remoteSockAddr, _remoteSockAddrLen);
-        DEBUG("sendto(buffer=%lx, size=%d)=%d",buffer, size , rv);
-	return rv;
+    size_t available = _buffer ? _buffer_size - _offset : 0;
+    if (size>available)
+        size = available;
+    memcpy(_buffer+_offset, buffer, size);
+    _offset += size;
+    return size;
 }
 
 int UDP::parsePacket()
 {
-  // No data buffered
-    if(available() == 0 && Network.from(_nif).ready() && isOpen(_sock))
+    if (!_buffer && _buffer_size) {
+        setBuffer(_buffer_size);
+    }
+
+    flush();         // start a new read - discard the old data
+    if (_buffer && _buffer_size) {
+        int result = receivePacket(_buffer, _buffer_size);
+        if (result>0) {
+            _total = result;
+        }
+    };
+    return available();
+}
+
+int UDP::receivePacket(uint8_t* buffer, size_t size)
+{
+    int ret = -1;
+    if(Network.from(_nif).ready() && isOpen(_sock) && _buffer)
     {
-        int ret = socket_receivefrom(_sock, _buffer, arraySize(_buffer), 0, &_remoteSockAddr, &_remoteSockAddrLen);
-        if (ret > 0)
+        sockaddr_t remoteSockAddr;
+        socklen_t remoteSockAddrLen = sizeof(remoteSockAddr);
+
+        ret = socket_receivefrom(_sock, buffer, size, 0, &remoteSockAddr, &remoteSockAddrLen);
+        if (ret >= 0)
         {
-            _remotePort = _remoteSockAddr.sa_data[0] << 8 | _remoteSockAddr.sa_data[1];
+            _remotePort = remoteSockAddr.sa_data[0] << 8 | remoteSockAddr.sa_data[1];
 
-            _remoteIP[0] = _remoteSockAddr.sa_data[2];
-            _remoteIP[1] = _remoteSockAddr.sa_data[3];
-            _remoteIP[2] = _remoteSockAddr.sa_data[4];
-            _remoteIP[3] = _remoteSockAddr.sa_data[5];
-
-            _offset = 0;
-            _total = ret;
+            _remoteIP[0] = remoteSockAddr.sa_data[2];
+            _remoteIP[1] = remoteSockAddr.sa_data[3];
+            _remoteIP[2] = remoteSockAddr.sa_data[4];
+            _remoteIP[3] = remoteSockAddr.sa_data[5];
         }
     }
-    return available();
+    return ret;
 }
 
 int UDP::read()
@@ -157,26 +222,25 @@ int UDP::read()
 
 int UDP::read(unsigned char* buffer, size_t len)
 {
-        int read = -1;
-        if (available())
-	{
-          read = (len > (size_t) available()) ? available() : len;
-          memcpy(buffer, &_buffer[_offset], read);
-          _offset += read;
-	}
-	return read;
+    int read = -1;
+    if (available())
+    {
+    read = min(int(len), available());
+      memcpy(buffer, &_buffer[_offset], read);
+      _offset += read;
+    }
+    return read;
 }
 
 int UDP::peek()
 {
-     return available() ? _buffer[_offset] : -1;
+    return available() ? _buffer[_offset] : -1;
 }
 
 void UDP::flush()
 {
   _offset = 0;
   _total = 0;
-
 }
 
 size_t UDP::printTo(Print& p) const
@@ -184,4 +248,20 @@ size_t UDP::printTo(Print& p) const
     // can't use available() since this is a `const` method, and available is part of the Stream interface, and is non-const.
     int size = _total - _offset;
     return p.write(_buffer+_offset, size);
+}
+
+int UDP::joinMulticast(const IPAddress& ip)
+{
+    if (_sock == socket_handle_invalid())
+        return -1;
+    HAL_IPAddress address = ip.raw();
+    return socket_join_multicast(&address, _nif, 0);
+}
+
+int UDP::leaveMulticast(const IPAddress& ip)
+{
+    if (_sock == socket_handle_invalid())
+        return -1;
+    HAL_IPAddress address = ip.raw();
+    return socket_leave_multicast(&address, _nif, 0);
 }

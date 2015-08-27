@@ -48,7 +48,8 @@
 void HAL_PWM_Write(uint16_t pin, uint8_t value)
 {
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-    TIM_OCInitTypeDef  TIM_OCInitStructure;
+    /* Initialize all 8 struct params to 0, fixes randomly inverted RX, TX PWM */
+    TIM_OCInitTypeDef  TIM_OCInitStructure = {0};
 
     uint32_t TIM_CLK = SystemCoreClock;
 
@@ -151,7 +152,7 @@ uint16_t HAL_PWM_Get_Frequency(uint16_t pin)
 {
     uint16_t TIM_ARR = 0;
     uint16_t PWM_Frequency = 0;
-    
+
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_peripheral == TIM1)
     {

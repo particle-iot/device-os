@@ -33,7 +33,7 @@ test(Random_values_different_with_different_seeds) {
 
     randomSeed(43);
     fillBuf(buf2, 20, 30);
-    assertFalse(buf1==buf2);    
+    assertFalse(buf1==buf2);
 }
 
 test(random_zero_returns_zero) {
@@ -51,12 +51,12 @@ test(closed_range_returns_same_value) {
     assertEqual(random(-3,-3),-3);
 }
 
-void assertRandomRange(int min, int max, int iterations) {    
+void assertRandomRange(int min, int max, int iterations) {
     while (iterations-->0) {
         int r = random(min, max);
         assertMoreOrEqual(r,  min);
         assertLess(r, max);
-    }        
+    }
 }
 
 test(Positive_range_values_are_within_range) {

@@ -46,7 +46,7 @@ void CheckClose(TestResults& results, Expected const& expected, Actual const& ac
                 TestDetails const& details)
 {
     if (!AreClose(expected, actual, tolerance))
-    { 
+    {
         UnitTest::MemoryOutStream stream;
         stream << "Expected " << expected << " +/- " << tolerance << " but was " << actual;
 
@@ -127,7 +127,7 @@ void CheckArray2DClose(TestResults& results, Expected const& expected, Actual co
     {
         UnitTest::MemoryOutStream stream;
 
-        stream << "Expected [ ";    
+        stream << "Expected [ ";
 
 		for (int expectedRow = 0; expectedRow < rows; ++expectedRow)
         {

@@ -36,6 +36,7 @@
 #include "rgbled.h"
 #include "system_tick_hal.h"
 #include "usb_hal.h"
+#include "hw_ticks.h"
 
 
 #ifdef __cplusplus
@@ -79,7 +80,7 @@ typedef enum
 #define FIRMWARE_IMAGE_SIZE INTERNAL_FLASH_SIZE
 #endif
 
-#if FIRMWARE_IMAGE_SIZE > INTERNAL_FLASH_SIZE 
+#if FIRMWARE_IMAGE_SIZE > INTERNAL_FLASH_SIZE
 #   error "FIRMWARE_IMAGE_SIZE too large to fit into internal flash"
 #endif
 
@@ -136,9 +137,6 @@ typedef enum
 void Set_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
-void SysTick_Disable(void);
-void System1MsTick(void);
-system_tick_t GetSystem1MsTick(void);
 
 void IWDG_Reset_Enable(uint32_t msTimeout);
 
@@ -198,7 +196,7 @@ void FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize);
 int FLASH_Update(const uint8_t *pBuffer, uint32_t sFLASH_Address, uint32_t bufferSize);
 void FLASH_End(void);
 
-/** 
+/**
  * @param server_addr   The buffer to hold the data. Must be at least
  * EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH bytes.
  */

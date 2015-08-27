@@ -32,7 +32,7 @@
 #ifdef	__cplusplus
 extern "C" {
 #endif
-    
+
 typedef struct STM32_Pin_Info {
   GPIO_TypeDef* gpio_peripheral;
   pin_t gpio_pin;

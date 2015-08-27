@@ -29,6 +29,23 @@
 
 using namespace spark;
 
+class TCPServerClient : public TCPClient
+{
+
+public:
+
+    TCPServerClient(sock_handle_t sock) : TCPClient(sock) {}
+
+    virtual IPAddress remoteIP() override
+    {
+        sock_peer_t peer;
+        memset(&peer, 0, sizeof(peer));
+        peer.size = sizeof(peer);
+        socket_peer(sock_handle(), &peer, NULL);
+        return peer.address;
+    }
+};
+
 TCPServer::TCPServer(uint16_t port, network_interface_t nif) : _port(port), _nif(nif), _sock(socket_handle_invalid()), _client(socket_handle_invalid())
 {
 
@@ -36,6 +53,7 @@ TCPServer::TCPServer(uint16_t port, network_interface_t nif) : _port(port), _nif
 
 bool TCPServer::begin()
 {
+    stop();
     if(!Network.from(_nif).ready())
     {
         return false;
@@ -83,7 +101,10 @@ TCPClient TCPServer::available()
     }
     else
     {
-        _client = TCPClient(sock);
+        TCPServerClient client = TCPServerClient(sock);
+        client._remoteIP = client.remoteIP();      // fetch the peer IP ready for the copy operator
+        _client = client;
+
     }
 
     return _client;

@@ -43,7 +43,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-   
+
 
 void HAL_EEPROM_Init(void);
 uint8_t HAL_EEPROM_Read(uint32_t address);

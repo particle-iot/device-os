@@ -23,7 +23,7 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
  */
- 
+
 #include <math.h>
 #include "spark_wiring_print.h"
 #include "spark_wiring_string.h"
@@ -36,7 +36,14 @@ size_t Print::write(const uint8_t *buffer, size_t size)
 {
   size_t n = 0;
   while (size--) {
-    n += write(*buffer++);
+     size_t chunk = write(*buffer++);
+     if (chunk>=0)
+         n += chunk;
+     else {
+         if (n==0)
+             n = chunk;
+         break;
+     }
   }
   return n;
 }
@@ -189,15 +196,15 @@ size_t Print::printNumber(unsigned long n, uint8_t base) {
   return write(str);
 }
 
-size_t Print::printFloat(double number, uint8_t digits) 
-{ 
+size_t Print::printFloat(double number, uint8_t digits)
+{
   size_t n = 0;
-  
+
   if (isnan(number)) return print("nan");
   if (isinf(number)) return print("inf");
   if (number > 4294967040.0) return print ("ovf");  // constant determined empirically
   if (number <-4294967040.0) return print ("ovf");  // constant determined empirically
-  
+
   // Handle negative numbers
   if (number < 0.0)
   {
@@ -209,7 +216,7 @@ size_t Print::printFloat(double number, uint8_t digits)
   double rounding = 0.5;
   for (uint8_t i=0; i<digits; ++i)
     rounding /= 10.0;
-  
+
   number += rounding;
 
   // Extract the integer part of the number and print it
@@ -219,7 +226,7 @@ size_t Print::printFloat(double number, uint8_t digits)
 
   // Print the decimal point, but only if there are digits beyond
   if (digits > 0) {
-    n += print("."); 
+    n += print(".");
   }
 
   // Extract digits from the remainder one at a time
@@ -228,8 +235,8 @@ size_t Print::printFloat(double number, uint8_t digits)
     remainder *= 10.0;
     int toPrint = int(remainder);
     n += print(toPrint);
-    remainder -= toPrint; 
-  } 
-  
+    remainder -= toPrint;
+  }
+
   return n;
 }

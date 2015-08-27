@@ -3,11 +3,9 @@ START_DFU_FLASHER_SERIAL_SPEED=14400
 # Uncommenting this increase the size of the firmware image because of ymodem addition
 START_YMODEM_FLASHER_SERIAL_SPEED=28800
 
+include $(COMMON_BUILD)/version.mk
+
 QUOTE='
-ifneq (,$(GLOBAL_DEFINES))
-CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
-export GLOBAL_DEFINES
-endif
 
 ifdef TEACUP
 CFLAGS += -DTEACUP
@@ -55,7 +53,7 @@ CFLAGS += -MD -MP -MF $@.d
 # Removed "-fdata-sections" as firmware doesn't work as expected
 CFLAGS += -ffunction-sections -fdata-sections -Wall -Wno-switch -Wno-error=deprecated-declarations -fmessage-length=0
 CFLAGS += -fno-strict-aliasing
-CFLAGS += -DSPARK=1
+CFLAGS += -DSPARK=1 -DPARTICLE=1
 
 ifdef START_DFU_FLASHER_SERIAL_SPEED
 CFLAGS += -DSTART_DFU_FLASHER_SERIAL_SPEED=$(START_DFU_FLASHER_SERIAL_SPEED)
@@ -93,7 +91,6 @@ endif
 
 # TARGET_FILE_NAME is the file name (minus extension) of the target produced
 # TARGET_NAME is the final filename, including any prefix
-TARGET_FILE_NAME ?= $(MODULE)
 TARGET_NAME ?= $(TARGET_FILE_PREFIX)$(TARGET_FILE_NAME)
 TARGET_PATH ?= $(BUILD_PATH)/$(call sanitize,$(TARGET_DIR_NAME))
 
@@ -102,7 +99,8 @@ ifneq ("$(TARGET_PATH)","$(dir $(TARGET_PATH))")
 TARGET_SEP = /
 endif
 
-TARGET_BASE ?= $(TARGET_PATH)$(TARGET_SEP)$(TARGET_NAME)
+TARGET_BASE_DIR ?= $(TARGET_PATH)$(TARGET_SEP)
+TARGET_BASE ?= $(TARGET_BASE_DIR)$(TARGET_NAME)
 TARGET ?= $(TARGET_BASE).$(TARGET_TYPE)
 
 # add BUILD_PATH_EXT with a preceeding slash if not empty.

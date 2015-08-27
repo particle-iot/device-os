@@ -22,16 +22,6 @@
 */
 
 
-#define strcpy_P strcpy
-#define strlcpy_P strncpy
-#define sprintf_P sprintf
-#define strcmp_P strcmp
-#define memcpy_P memcpy
-#define vsnprintf_P vsnprintf
-#define PROGMEM
-#define PSTR
-
-
 #include "FakeStream.h"
 #include "FakeStreamBuffer.h"
 
@@ -43,30 +33,30 @@ enum RunnerState {
 };
 
 class SparkTestRunner {
-    
+
 private:
     int _state;
-    
+
 public:
     SparkTestRunner() : _state(INIT) {
-        
+
     }
-    
-    void begin();        
-    
+
+    void begin();
+
     bool isStarted() {
         return _state>=RUNNING;
     }
-    
+
     bool isComplete() {
         return _state==COMPLETE;
     }
-    
+
     void start() {
         if (!isStarted())
             setState(RUNNING);
     }
-    
+
     const char* nameForState(RunnerState state) {
         switch (state) {
             case INIT: return "init";
@@ -77,29 +67,29 @@ public:
                 return "";
         }
     }
-        
+
     int testStatusColor();
-    
+
     void updateLEDStatus() {
         int rgb = testStatusColor();
         RGB.control(true);
         RGB.color(rgb);
     }
-    
+
     RunnerState state() const { return (RunnerState)_state; }
 
     void setState(RunnerState newState) {
-        if (newState!=_state) {            
+        if (newState!=_state) {
             _state = newState;
             const char* stateName = nameForState((RunnerState)_state);
             if (isStarted())
                 updateLEDStatus();
-            Spark.publish("state", stateName);
+            Particle.publish("state", stateName);
         }
     }
-    
-    void testDone() {        
-        updateLEDStatus();        
+
+    void testDone() {
+        updateLEDStatus();
     }
 };
 
@@ -450,7 +440,7 @@ Variables you might want to adjust:
 class Test
 {
     friend class SparkTestRunner;
-    
+
  private:
   // allows for both ram/progmem based names
   class TestString : public Printable {
@@ -852,10 +842,10 @@ void unit_test_setup();
 /*
  * A convenience method to run tests as part of the main loop after a character
  * is received over serial.
- * 
- * @param runImmediately    When true, the test runner is started on first call to this function. 
+ *
+ * @param runImmediately    When true, the test runner is started on first call to this function.
  *  Otherwise the test runner is only started when an external start signal is received.
- * @param 
+ * @param
  **/
 void unit_test_loop(bool runImmediately=false, bool runTest=true);
 

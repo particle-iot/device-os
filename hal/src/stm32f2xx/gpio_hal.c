@@ -48,7 +48,7 @@ inline bool is_valid_pin(pin_t pin)
     return pin<TOTAL_PINS;
 }
 
-PinMode HAL_Get_Pin_Mode(pin_t pin) 
+PinMode HAL_Get_Pin_Mode(pin_t pin)
 {
     return (!is_valid_pin(pin)) ? PIN_MODE_NONE : HAL_Pin_Map()[pin].pin_mode;
 }
@@ -69,7 +69,7 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
 }
 
 /*
- * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP, 
+ * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP,
  * or INPUT_PULLDOWN
  */
 void HAL_Pin_Mode(pin_t pin, PinMode setMode)
@@ -99,7 +99,7 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
     }
 
     GPIO_InitStructure.GPIO_Pin = gpio_pin;
-    
+
     switch (setMode)
     {
         case OUTPUT:

@@ -27,12 +27,6 @@
 #include "spark_protocol_functions.h"
 
 
-#define __STARTUP(code, __startup_name) \
-    struct __startup_name {  __startup_name() { code; }; __startup_name __instance##__startup_name;
-
-#define STARTUP(x)  __STARTUP(x, __startup##)
-
-
 struct __ApplicationProductID {
     __ApplicationProductID(product_id_t id) {
         spark_protocol_set_product_id(spark_protocol_instance(), id);

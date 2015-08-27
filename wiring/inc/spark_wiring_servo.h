@@ -180,13 +180,15 @@ public:
      */
     uint16_t readMicroseconds() const;
 
+    void setTrim(int trim);
+
 private:
     int16_t pin;
     uint16_t minPW;
     uint16_t maxPW;
     int16_t minAngle;
     int16_t maxAngle;
-
+    int trim;
     void resetFields(void);
 };
 

@@ -18,10 +18,10 @@ MEMORY
     APP_FLASH                  (rx)  : ORIGIN = 0x08060000,     LENGTH = 256K
 
     /* The SRAM area is offset to include the stack and static ram allocated at the end of the SRAM area.
-       This is done so that the build outputs meaningful values for BSS and Data section sizes. 
+       This is done so that the build outputs meaningful values for BSS and Data section sizes.
 
        The value given here is the sum of system_static_ram_size and stack_size
-    */      
+    */
     SRAM      (rwx) : ORIGIN = 0x20020000 - 40K, LENGTH = 40K
 }
 
@@ -101,7 +101,7 @@ SECTIONS
     link_heap_location = ALIGN(system_part1_module_ram_end, 4);
 
     link_heap_location_end = ORIGIN(SRAM);
-    
+
     padding_length = ALIGN(system_static_ram_start - ORIGIN(SRAM), 512);
 
     .padding : /* 512 byte offset in SRAM */
@@ -110,17 +110,17 @@ SECTIONS
         . = . + padding_length;
         link_static_ram_start = .;
     }> SRAM
-    
+
     .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
     {
         link_ram_interrupt_vectors_location = .;
         . = . + interrupt_vectors_length;
         link_ram_interrupt_vectors_location_end = .;
     }> SRAM
-   
+
     .data : /* Contains the non-zero initialised global variables */
     {
-        link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */        
+        link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
         link_global_data_start = .;
         *(.data*)
         link_global_data_end = .;
@@ -135,7 +135,7 @@ SECTIONS
         *(COMMON)
         link_bss_end = .;
     }> SRAM AT> SRAM
-    
+
     /*
      * The .ARM.exidx and .ARM.extab sections are used for C++ exception handling.
      * It is located here for completeness. Bare-metal ARM projects
@@ -215,7 +215,7 @@ ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_l
 
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 
-ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" ); 
+ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
 
 ASSERT ( link_dynalib_start == system_part2_module_table, "Dynalib location not same as exported location" );
 
@@ -233,7 +233,7 @@ link_stack_location = stack_start;
 link_stack_end = stack_end;
 ASSERT ( link_stack_end - link_stack_location >= stack_size, "stack is too small" );
 
-ASSERT ( link_stack_end == expected_stack_end, "stack should be at the top of SRAM" ); 
+ASSERT ( link_stack_end == expected_stack_end, "stack should be at the top of SRAM" );
 
 min_end_of_heap = link_heap_location + min_heap_size ;
 ASSERT ( min_end_of_heap < link_static_ram_start, "Insufficient room for heap" );
@@ -244,7 +244,7 @@ ASSERT ( system_static_ram_start == link_static_ram_start, "exported SRAM start 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
-ASSERT ( system_part2_module_info_start == link_module_info_start, "part2 module info start not where expected" ); 
+ASSERT ( system_part2_module_info_start == link_module_info_start, "part2 module info start not where expected" );
 ASSERT ( system_part2_module_info_end == link_module_info_end, "part2 module info end not where expected" );
 
 ASSERT ( ORIGIN(SRAM) == system_static_ram_start, "ORIGIN of SRAM should be equal to system_static_ram_start. Adjust by hand to obtain the correct address and length. ");

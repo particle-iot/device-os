@@ -26,9 +26,9 @@
 #include "spark_wiring_ipaddress.h"
 
 class Client : public Stream {
-protected:    
+protected:
     network_interface_t nif;
-    
+
 public:
   virtual int connect(IPAddress ip, uint16_t port, network_interface_t=0) =0;
   virtual int connect(const char *host, uint16_t port, network_interface_t=0) =0;

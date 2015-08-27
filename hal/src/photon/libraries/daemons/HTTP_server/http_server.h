@@ -157,6 +157,7 @@ extern "C" {
 #define HTTP_HEADER_LOCATION              "Location: "
 #define HTTP_HEADER_ACCEPT                "Accept: "
 #define HTTP_HEADER_KEEP_ALIVE            "Connection: Keep-Alive"
+#define HTTP_HEADER_XHR					  "Access-Control-Allow-Origin: *"
 #define HTTP_HEADER_CLOSE                 "Connection: close"
 #define NO_CACHE_HEADER                   "Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0\r\n"\
                                           "Pragma: no-cache"
@@ -254,6 +255,7 @@ typedef struct
 {
     wiced_tcp_stream_t tcp_stream;
     wiced_bool_t       chunked_transfer_enabled;
+    wiced_bool_t	cross_host_requests_enabled;
 } wiced_http_response_stream_t;
 
 /**

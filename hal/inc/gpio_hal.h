@@ -41,7 +41,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 void HAL_Pin_Mode(pin_t pin, PinMode mode);
 PinMode HAL_Get_Pin_Mode(pin_t pin);
 void HAL_GPIO_Write(pin_t pin, uint8_t value);

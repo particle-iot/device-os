@@ -15,7 +15,7 @@ Follow [this link](https://github.com/spark/core-firmware/blob/master/README.md)
   * [encrypt](src/spark_protocol.cpp#L1575-L1580)
   * [decrypt](src/spark_protocol.cpp#L291-L297)
 
-### CREDITS AND ATTRIBUTIONS 
+### CREDITS AND ATTRIBUTIONS
 
 The Spark application team: Zachary Crockett, Satish Nair, Zach Supalla, David Middlecamp and Mohit Bhoite.
 

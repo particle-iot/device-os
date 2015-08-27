@@ -16,8 +16,8 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
@@ -38,14 +38,14 @@
 */
 
 /** @defgroup USB_DCD
-* @brief This file is the 
+* @brief This file is the
 * @{
-*/ 
+*/
 
 
 /** @defgroup USB_DCD_Exported_Defines
 * @{
-*/ 
+*/
 #define USB_OTG_EP_CONTROL                       0
 #define USB_OTG_EP_ISOC                          1
 #define USB_OTG_EP_BULK                          2
@@ -60,12 +60,12 @@
 
 /**
 * @}
-*/ 
+*/
 
 
 /** @defgroup USB_DCD_Exported_Types
 * @{
-*/ 
+*/
 /********************************************************************************
 Data structure type
 ********************************************************************************/
@@ -82,26 +82,26 @@ EP_DESCRIPTOR , *PEP_DESCRIPTOR;
 
 /**
 * @}
-*/ 
+*/
 
 
 /** @defgroup USB_DCD_Exported_Macros
 * @{
-*/ 
+*/
 /**
 * @}
-*/ 
+*/
 
 /** @defgroup USB_DCD_Exported_Variables
 * @{
-*/ 
+*/
 /**
 * @}
-*/ 
+*/
 
 /** @defgroup USB_DCD_Exported_FunctionsPrototype
 * @{
-*/ 
+*/
 /********************************************************************************
 EXPORTED FUNCTION FROM THE USB-OTG LAYER
 ********************************************************************************/
@@ -112,7 +112,7 @@ void        DCD_DevConnect (USB_OTG_CORE_HANDLE *pdev);
 void        DCD_DevDisconnect (USB_OTG_CORE_HANDLE *pdev);
 void        DCD_EP_SetAddress (USB_OTG_CORE_HANDLE *pdev,
                                uint8_t address);
-uint32_t    DCD_EP_Open(USB_OTG_CORE_HANDLE *pdev , 
+uint32_t    DCD_EP_Open(USB_OTG_CORE_HANDLE *pdev ,
                      uint8_t ep_addr,
                      uint16_t ep_mps,
                      uint8_t ep_type);
@@ -122,10 +122,10 @@ uint32_t    DCD_EP_Close  (USB_OTG_CORE_HANDLE *pdev,
 
 
 uint32_t   DCD_EP_PrepareRx ( USB_OTG_CORE_HANDLE *pdev,
-                        uint8_t   ep_addr,                                  
-                        uint8_t *pbuf,                                  
+                        uint8_t   ep_addr,
+                        uint8_t *pbuf,
                         uint16_t  buf_len);
-  
+
 uint32_t    DCD_EP_Tx (USB_OTG_CORE_HANDLE *pdev,
                                uint8_t  ep_addr,
                                const uint8_t  *pbuf,
@@ -141,13 +141,13 @@ uint32_t    DCD_Handle_ISR(USB_OTG_CORE_HANDLE *pdev);
 uint32_t DCD_GetEPStatus(USB_OTG_CORE_HANDLE *pdev ,
                          uint8_t epnum);
 
-void DCD_SetEPStatus (USB_OTG_CORE_HANDLE *pdev , 
-                      uint8_t epnum , 
+void DCD_SetEPStatus (USB_OTG_CORE_HANDLE *pdev ,
+                      uint8_t epnum ,
                       uint32_t Status);
 
 /**
 * @}
-*/ 
+*/
 
 
 #endif //__DCD_H__
@@ -155,10 +155,10 @@ void DCD_SetEPStatus (USB_OTG_CORE_HANDLE *pdev ,
 
 /**
 * @}
-*/ 
+*/
 
 /**
 * @}
-*/ 
+*/
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 

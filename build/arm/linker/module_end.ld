@@ -1,7 +1,9 @@
     .module_info_suffix :
     {
-        . = ALIGN(., 4) ;
+        . = ALIGN(., 2);
         link_module_info_static_start = .;
+        SHORT(0xffff)
+        SHORT(0xffff)
         KEEP(*.o(.modinfo.product_id))
         KEEP(*.o(.modinfo.product_version))
 

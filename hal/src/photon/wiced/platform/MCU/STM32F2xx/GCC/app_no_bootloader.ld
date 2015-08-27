@@ -12,12 +12,12 @@
  * list of conditions and the following disclaimer in the documentation and/or
  * other materials provided with the distribution.
  *
- * 3. Neither the name of Broadcom nor the names of other contributors to this 
- * software may be used to endorse or promote products derived from this software 
+ * 3. Neither the name of Broadcom nor the names of other contributors to this
+ * software may be used to endorse or promote products derived from this software
  * without specific prior written permission.
  *
- * 4. This software may not be used as a standalone product, and may only be used as 
- * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * 4. This software may not be used as a standalone product, and may only be used as
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity
  * products and solely for the purpose of enabling the functionalities of such Broadcom products.
  *
  *
@@ -193,7 +193,7 @@ SECTIONS
         link_module_info_suffix_end = .;
     }>APP_FLASH AT> APP_FLASH
 
-    .module_end : 
+    .module_end :
     {
         link_module_end = .;
     }> APP_FLASH AT>APP_FLASH
@@ -237,7 +237,7 @@ ASSERT ( link_module_info_start < link_module_info_end, "module info not linked"
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
-ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" ); 
+ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" );
 ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );
 
-ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );
+ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );

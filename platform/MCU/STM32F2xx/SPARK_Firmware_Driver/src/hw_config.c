@@ -98,7 +98,7 @@ void Set_System(void)
 	 To reconfigure the default setting of SystemInit() function, refer to
 	 system_stm32f2xx.c file
      */
-    
+
     uint32_t* SCB_CCR = (uint32_t*)(0xE000ED14);
     *SCB_CCR |= SCB_CCR_DIV_0_TRP_Msk;
 
@@ -156,11 +156,6 @@ void NVIC_Configuration(void)
     /* 2 bits for pre-emption priority(0-3 PreemptionPriority) and 2 bits for subpriority(0-3 SubPriority) */
     //OLD: NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 }
-
-void SysTick_Disable() {
-    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
-}
-
 
 /*******************************************************************************
  * Function Name  : SysTick_Configuration
@@ -458,7 +453,7 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button)
     BUTTON_DEBOUNCED_TIME[Button] = 0;
 }
 
-#ifdef USE_SERIAL_FLASH
+#ifdef HAS_SERIAL_FLASH
 /**
  * @brief  DeInitializes the peripherals used by the SPI FLASH driver.
  * @param  None
@@ -601,24 +596,24 @@ void USB_Cable_Config (FunctionalState NewState)
 inline void Load_SystemFlags_Impl(platform_system_flags_t* flags)
 {
     const void* flags_store = dct_read_app_data(0);
-    memcpy(flags, flags_store, sizeof(platform_system_flags_t));    
+    memcpy(flags, flags_store, sizeof(platform_system_flags_t));
     flags->header[0] = 0xACC0;
     flags->header[1] = 0x1ADE;
 }
 
 inline void Save_SystemFlags_Impl(const platform_system_flags_t* flags)
 {
-    dct_write_app_data(flags, 0, sizeof(*flags));        
+    dct_write_app_data(flags, 0, sizeof(*flags));
 }
 
 platform_system_flags_t system_flags;
 
-void Load_SystemFlags() 
+void Load_SystemFlags()
 {
     Load_SystemFlags_Impl(&system_flags);
 }
 
-void Save_SystemFlags() 
+void Save_SystemFlags()
 {
     Save_SystemFlags_Impl(&system_flags);
 }
@@ -661,7 +656,7 @@ void BACKUP_Flash_Reset(void)
 
     Finish_Update();
 #else
-    
+
     //Not supported since there is no Backup copy of the firmware in Internal Flash
 #endif
 }
@@ -670,7 +665,7 @@ void OTA_Flash_Reset(void)
 {
     // todo - before attempting a copy, verify the integrity of the image (e.g. crc))
     // if that fails, abort the copy and leave the existing user firmware as is.
-    
+
 #ifdef USE_SERIAL_FLASH
 /*
     First take backup of the current application firmware to External Flash
@@ -797,27 +792,4 @@ uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
     Data ^= 0xFFFFFFFF;
 
     return Data;
-}
-
-static volatile system_tick_t system_1ms_tick = 0;
-
-void System1MsTick(void)
-{
-    system_1ms_tick++;
-}
-
-system_tick_t GetSystem1MsTick()
-{
-    return system_1ms_tick;
-}
-
-void Save_Reset_Syndrome() 
-{
-    //Save RCC clock control & status register   
-    uint32_t flags = RCC->CSR;
-    if (SYSTEM_FLAG(RCC_CSR_SysFlag) != flags)
-    {
-        SYSTEM_FLAG(RCC_CSR_SysFlag) = flags;
-        Save_SystemFlags();
-    }
 }

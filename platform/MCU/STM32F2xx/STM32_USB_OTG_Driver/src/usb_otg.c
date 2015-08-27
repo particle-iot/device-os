@@ -16,8 +16,8 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
@@ -34,8 +34,8 @@
 /** @addtogroup USB_OTG_DRIVER
   * @{
   */
-  
-/** @defgroup USB_OTG 
+
+/** @defgroup USB_OTG
   * @brief This file is the interface between EFSL ans Host mass-storage class
   * @{
   */
@@ -43,40 +43,40 @@
 
 /** @defgroup USB_OTG_Private_Defines
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
- 
+  */
+
 
 /** @defgroup USB_OTG_Private_TypesDefinitions
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 
 
 /** @defgroup USB_OTG_Private_Macros
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USB_OTG_Private_Variables
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USB_OTG_Private_FunctionPrototypes
   * @{
-  */ 
+  */
 
 uint32_t USB_OTG_HandleOTG_ISR(USB_OTG_CORE_HANDLE *pdev);
 
@@ -86,12 +86,12 @@ static uint32_t USB_OTG_Read_itr(USB_OTG_CORE_HANDLE *pdev);
 
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USB_OTG_Private_Functions
   * @{
-  */ 
+  */
 
 
 /*                           OTG Interrupt Handler                         */
@@ -99,7 +99,7 @@ static uint32_t USB_OTG_Read_itr(USB_OTG_CORE_HANDLE *pdev);
 
 /**
   * @brief  STM32_USBO_OTG_ISR_Handler
-  *         
+  *
   * @param  None
   * @retval : None
   */
@@ -141,17 +141,17 @@ static uint32_t USB_OTG_Read_itr(USB_OTG_CORE_HANDLE *pdev)
   USB_OTG_GINTSTS_TypeDef  gintsts;
   USB_OTG_GINTMSK_TypeDef  gintmsk;
   USB_OTG_GINTMSK_TypeDef  gintmsk_common;
-  
-  
+
+
   gintsts.d32 = 0;
   gintmsk.d32 = 0;
   gintmsk_common.d32 = 0;
-  
+
   /* OTG interrupts */
   gintmsk_common.b.sessreqintr = 1;
   gintmsk_common.b.conidstschng = 1;
   gintmsk_common.b.otgintr = 1;
-  
+
   gintsts.d32 = USB_OTG_READ_REG32(&pdev->regs.GREGS->GINTSTS);
   gintmsk.d32 = USB_OTG_READ_REG32(&pdev->regs.GREGS->GINTMSK);
   return ((gintsts.d32 & gintmsk.d32 ) & gintmsk_common.d32);
@@ -168,19 +168,19 @@ static uint32_t USB_OTG_HandleOTG_ISR(USB_OTG_CORE_HANDLE *pdev)
 {
   USB_OTG_GOTGINT_TypeDef  gotgint;
   USB_OTG_GOTGCTL_TypeDef  gotgctl;
-  
-  
+
+
   gotgint.d32 = 0;
   gotgctl.d32 = 0;
-  
+
   gotgint.d32 = USB_OTG_READ_REG32(&pdev->regs.GREGS->GOTGINT);
   gotgctl.d32 = USB_OTG_READ_REG32(&pdev->regs.GREGS->GOTGCTL);
-  
+
   if (gotgint.b.sesenddet)
   {
     gotgctl.d32 = USB_OTG_READ_REG32(&pdev->regs.GREGS->GOTGCTL);
-    
-    
+
+
     if (USB_OTG_IsDeviceMode(pdev))
     {
 
@@ -267,15 +267,15 @@ static uint32_t USB_OTG_HandleConnectorIDStatusChange_ISR(USB_OTG_CORE_HANDLE *p
   USB_OTG_GINTMSK_TypeDef  gintmsk;
   USB_OTG_GOTGCTL_TypeDef   gotgctl;
   USB_OTG_GINTSTS_TypeDef  gintsts;
-  
+
   gintsts.d32 = 0 ;
   gintmsk.d32 = 0 ;
   gotgctl.d32 = 0 ;
   gintmsk.b.sofintr = 1;
-  
+
   USB_OTG_MODIFY_REG32(&pdev->regs.GREGS->GINTMSK, gintmsk.d32, 0);
   gotgctl.d32 = USB_OTG_READ_REG32(&pdev->regs.GREGS->GOTGCTL);
-  
+
   /* B-Device connector (Device Mode) */
   if (gotgctl.b.conidsts)
   {
@@ -299,7 +299,7 @@ static uint32_t USB_OTG_HandleConnectorIDStatusChange_ISR(USB_OTG_CORE_HANDLE *p
 
 
 /**
-  * @brief  USB_OTG_HandleSessionRequest_ISR 
+  * @brief  USB_OTG_HandleSessionRequest_ISR
   *           Initiating the Session Request Protocol
   * @param  None
   * @retval : status
@@ -361,7 +361,7 @@ void USB_OTG_InitiateHNP(USB_OTG_CORE_HANDLE *pdev , uint8_t state, uint8_t mode
 {
   USB_OTG_GOTGCTL_TypeDef   otgctl;
   USB_OTG_HPRT0_TypeDef    hprt0;
-  
+
   otgctl.d32 = 0;
   hprt0.d32  = 0;
 
@@ -405,11 +405,11 @@ uint32_t USB_OTG_GetCurrentState (USB_OTG_CORE_HANDLE *pdev)
 
 /**
 * @}
-*/ 
+*/
 
 /**
 * @}
-*/ 
+*/
 
 /**
 * @}

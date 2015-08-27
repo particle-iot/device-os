@@ -27,7 +27,7 @@
 
 test(String_float_conversion) {
     String one(1);
-    assertTrue(!strcmp("1.0000000000", one));
+    assertEqual(String(1.000000, 0), one);
 }
 
 test(String_float_negative) {
@@ -55,5 +55,14 @@ test(String_float_negative_no_decimals_round_down) {
     assertTrue(!strcmp("-123", s));
 }
 
+test(String_bug_563_integer_overflow) {
+    String s(-5000.0);
+    assertTrue(!strcmp("-5000.000000", s));
+}
 
-
+test(String_sprintf) {
+    char buf[20];
+    sprintf(buf, "%f", 1.0f);
+    assertMore(strlen(buf), 0);
+    assertEqual((const char*)buf, (const char*)"1.000000");
+}

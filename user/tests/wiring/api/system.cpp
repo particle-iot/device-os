@@ -60,6 +60,20 @@ test(system_mode) {
 
 test(system_version) {
 
-    API_COMPILE(Serial.println(SYSTEM_VERSION_STRING));
+    API_COMPILE(Serial.println(stringify(SYSTEM_VERSION_STRING)));
     API_COMPILE(Serial.println(SYSTEM_VERSION));
+}
+
+
+test(system_freememory) {
+    uint32_t f;
+    API_COMPILE(f=System.freeMemory());
+    (void)f;
+}
+
+test(system_waitfor) {
+    API_COMPILE(System.waitCondition([]{return WiFi.ready();}));
+
+    API_COMPILE(wait_for(WiFi.ready, 10000));
+    API_COMPILE(wait_until(WiFi.ready));
 }

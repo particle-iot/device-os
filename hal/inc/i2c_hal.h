@@ -97,6 +97,8 @@ void HAL_I2C_Set_Callback_On_Request_v1(void (*function)(void));
 
 #define I2C_BUFFER_LENGTH 32
 
+#define I2C_BUFFER_LENGTH 32
+
 #ifdef __cplusplus
 }
 #endif
