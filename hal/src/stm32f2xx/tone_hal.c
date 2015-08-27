@@ -45,13 +45,17 @@ extern void (*HAL_TIM1_Handler)(void);
 extern void (*HAL_TIM3_Handler)(void);
 extern void (*HAL_TIM4_Handler)(void);
 extern void (*HAL_TIM5_Handler)(void);
+#if PLATFORM_ID == 10 // Electron
 extern void (*HAL_TIM8_Handler)(void);
+#endif
 
 static void Tone_TIM1_Handler(void);
 static void Tone_TIM3_Handler(void);
 static void Tone_TIM4_Handler(void);
 static void Tone_TIM5_Handler(void);
+#if PLATFORM_ID == 10 // Electron
 static void Tone_TIM8_Handler(void);
+#endif
 
 void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
 {
