@@ -17,6 +17,10 @@ void HAL_Core_Setup_override_interrupts();
  */
 void HAL_Core_Setup_finalize();
 
+/**
+ * The entrypoint called from startup_stm32f2xx.s
+ */
+int main(void);
 
 /**
  * The entrypoint to start system firmware and the application.

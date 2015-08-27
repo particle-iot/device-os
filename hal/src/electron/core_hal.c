@@ -288,6 +288,19 @@ void HAL_Core_Setup_override_interrupts(void)
 }
 
 /**
+ * Called from startup_stm32f2xx.s at boot, main entry point.
+ */
+int main(void)
+{
+    application_start();
+
+    /* we should never get here */
+    while (1);
+
+    return 0;
+}
+
+/**
  * Called at the beginning of app_setup_and_loop() from main.cpp to
  * pre-initialize any low level hardware before the main loop runs.
  */

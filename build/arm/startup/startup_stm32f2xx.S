@@ -100,7 +100,7 @@ LoopFillZerobss:
   bl  SystemInit
   .include "spark_init.S"
 /* Call the application's entry point.*/
-  bl  application_start
+  bl  main
   bx  lr    
 .size  Reset_Handler, .-Reset_Handler
 
