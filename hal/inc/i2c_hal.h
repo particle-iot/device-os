@@ -57,23 +57,43 @@ typedef enum HAL_I2C_Interface {
 extern "C" {
 #endif
 
-void HAL_I2C_Init(HAL_I2C_Interface i2c);
-void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed);
-void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable);
-void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch);
-void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address);
-void HAL_I2C_End(HAL_I2C_Interface i2c);
-uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop);
-void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address);
-uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop);
-uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data);
-int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c);
-int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c);
-int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c);
-void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c);
-bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c);
-void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int));
-void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void));
+void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved);
+void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved);
+void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable, void* reserved);
+void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved);
+void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved);
+void HAL_I2C_End(HAL_I2C_Interface i2c, void* reserved);
+uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved);
+void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, void* reserved);
+uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* reserved);
+uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved);
+int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c, void* reserved);
+int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c, void* reserved);
+int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c, void* reserved);
+void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c, void* reserved);
+bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c, void* reserved);
+void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int), void* reserved);
+void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void), void* reserved);
+
+
+void HAL_I2C_Set_Speed_v1(uint32_t speed);
+void HAL_I2C_Enable_DMA_Mode_v1(bool enable);
+void HAL_I2C_Stretch_Clock_v1(bool stretch);
+void HAL_I2C_Begin_v1(I2C_Mode mode, uint8_t address);
+void HAL_I2C_End_v1();
+uint32_t HAL_I2C_Request_Data_v1(uint8_t address, uint8_t quantity, uint8_t stop);
+void HAL_I2C_Begin_Transmission_v1(uint8_t address);
+uint8_t HAL_I2C_End_Transmission_v1(uint8_t stop);
+uint32_t HAL_I2C_Write_Data_v1(uint8_t data);
+int32_t HAL_I2C_Available_Data_v1(void);
+int32_t HAL_I2C_Read_Data_v1(void);
+int32_t HAL_I2C_Peek_Data_v1(void);
+void HAL_I2C_Flush_Data_v1(void);
+bool HAL_I2C_Is_Enabled_v1(void);
+void HAL_I2C_Set_Callback_On_Receive_v1(void (*function)(int));
+void HAL_I2C_Set_Callback_On_Request_v1(void (*function)(void));
+
+
 
 #define I2C_BUFFER_LENGTH 32
 
