@@ -64,6 +64,13 @@ typedef void (*HAL_SPI_DMA_UserCallback)(void);
 extern "C" {
 #endif
 
+typedef struct hal_spi_info_t {
+    uint16_t size;
+
+    uint32_t system_clock;      // the clock speed that is divided when setting a divider
+
+} hal_spi_info_t;
+
 void HAL_SPI_Init(HAL_SPI_Interface spi);
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin);
 void HAL_SPI_End(HAL_SPI_Interface spi);
@@ -74,6 +81,7 @@ uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data);
 void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback);
 bool HAL_SPI_Is_Enabled_Old();
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi);
+void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved);
 
 #ifdef __cplusplus
 }

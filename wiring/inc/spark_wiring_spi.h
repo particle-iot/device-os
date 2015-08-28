@@ -33,9 +33,26 @@
 
 typedef void (*wiring_spi_dma_transfercomplete_callback_t)(void);
 
+enum FrequencyScale
+{
+    HZ = 1,
+    KHZ = HZ*1000,
+    MHZ = KHZ*1000,
+    SYSTEM = 0,         // represents the system clock speed
+    ARDUINO = 16*MHZ,
+    CORE = 72*MHZ,
+    PHOTON = 120*MHZ
+};
+
 class SPIClass {
 private:
   HAL_SPI_Interface _spi;
+
+  /**
+   * Set the divider reference clock.
+   * The default is the system clock.
+   */
+  unsigned dividerReference;
 
 public:
   SPIClass(HAL_SPI_Interface spi);
@@ -47,7 +64,36 @@ public:
 
   void setBitOrder(uint8_t);
   void setDataMode(uint8_t);
-  void setClockDivider(uint8_t);
+
+  /**
+   * Sets the clock speed that the divider is relative to. This does not change
+   * the assigned clock speed until the next call to {@link #setClockDivider}
+   * @param value   The clock speed reference value
+   * @param scale   The clock speed reference scalar
+   *
+   * E.g.
+   *
+   * setClockDividerReference(ARDUINO);
+   * setClockDividerReference(16, MHZ);
+   *
+   * @see #setClockDivider
+   */
+  void setClockDividerReference(unsigned value, unsigned scale=HZ);
+
+  /**
+   * Sets the clock speed as a divider relative to the clock divider reference.
+   * @param divider SPI_CLOCK_DIVx where x is a power of 2 from 2 to 256.
+   */
+  void setClockDivider(uint8_t divider);
+
+  /**
+   * Sets the absolute clock speed. This will select the clock divider that is no greater than
+   * {@code value*scale}.
+   * @param value
+   * @param scale
+   * @return the actual clock speed set.
+   */
+  unsigned setClockSpeed(unsigned value, unsigned scale=HZ);
 
   byte transfer(byte _data);
   void transfer(void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback);

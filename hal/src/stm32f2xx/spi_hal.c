@@ -398,3 +398,8 @@ void DMA2_Stream5_irq(void)
 {
     HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE1);
 }
+
+void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
+{
+    info->system_clock = spi==HAL_SPI_INTERFACE1 ? 60000000 : 30000000;
+}

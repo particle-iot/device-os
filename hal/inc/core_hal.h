@@ -135,6 +135,19 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved);
 
 extern void app_setup_and_loop();
 
+typedef enum HAL_SystemClock
+{
+    SYSTEMCLOCK_PRIMARY,
+    SYSTEMCLOCK_SPI
+} HAL_SystemClock;
+
+/**
+ * Retrieves the
+ * @param reserved
+ * @return
+ */
+unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved);
+
 #ifdef __cplusplus
 }
 #endif

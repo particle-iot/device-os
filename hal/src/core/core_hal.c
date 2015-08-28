@@ -382,3 +382,8 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     info->freeheap = freeheap();
     return 0;
 }
+
+unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
+{
+    return SystemCoreClock;
+}
