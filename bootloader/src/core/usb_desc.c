@@ -192,9 +192,9 @@ uint8_t DFU_StringVendor[DFU_SIZ_STRING_VENDOR] =
   {
     DFU_SIZ_STRING_VENDOR,
     0x03,
-    /* Manufacturer: "Spark Devices     " */
-    'S', 0, 'p', 0, 'a', 0, 'r', 0, 'k', 0, ' ', 0, 'D', 0, 'e', 0,
-    'v', 0, 'i', 0, 'c', 0, 'e', 0, 's', 0, ' ', 0, ' ', 0, ' ', 0,
+    /* Manufacturer: "Particle          " */
+    'P', 0, 'a', 0, 'r', 0, 't', 0, 'i', 0, 'c', 0, 'l', 0, 'e', 0,
+    ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0,
     ' ', 0, ' ', 0
   };
 
