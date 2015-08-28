@@ -638,22 +638,6 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
     default:
         break;
     }
-
-    /* Check on I2C Bus error flag and clear it */
-    if (I2C_GetITStatus(I2C1, I2C_IT_BERR))
-    {
-      I2C_ClearITPendingBit(I2C1, I2C_IT_BERR);
-    }
-#else //Clear all error pending bits without worrying about specific error interrupt bit
-    /* Read SR1 register to get I2C error */
-    if ((I2C_ReadRegister(I2C1, I2C_Register_SR1) & 0xFF00) != 0x00)
-    {
-        /* Clear I2C error flags */
-        I2C1->SR1 &= 0x00FF;
-
-        //I2C_SoftwareResetCmd() and/or I2C_GenerateStop() ???
-    }
-#endif
 }
 
 /**
