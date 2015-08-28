@@ -26,12 +26,13 @@
 #include "spark_wiring_time.h"
 #include "rtc_hal.h"
 #include "stdio.h"
+#include "stdlib.h"
 
 // these follow the same order as the time_format_t constants
 static const char* time_formats[] = {
     NULL,                                       // DEFAULT - means use asctime()
     "%FT%T",                                   // ISO8601_FULL
-    "%Y-%m-%dT%H:%M:%S%z"
+    "%Y-%m-%dT%H:%M:%S"
                                         //
 };
 
@@ -301,7 +302,7 @@ String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time
         if (!time_zone)
             strcpy(e, "Z");
         else {
-            snprintf(e, sizeof(buf)-(e-buf), "%+03d:%02u", time_zone/3600, time_zone%3600);
+            snprintf(e, sizeof(buf)-(e-buf), "%+03d:%02u", time_zone/3600, abs(time_zone/60)%60);
         }
         return String(buf);
     }

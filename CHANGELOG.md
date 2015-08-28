@@ -30,6 +30,7 @@
 - [photon] System.sleep(5) not turning Wi-Fi back on after 5 seconds. [#480](https://github.com/spark/firmware/pull/480)
 - regression: floating point support in sprintf not compiled in. [#576](https://github.com/spark/firmware/issues/576)
 - [photon] SPI1 default clock speed was 7.5MHz, changed to 15MHz, same as for `SPI`.
+- TCPClient::connected() doesn't detect when the socket is closed [#542](https://github.com/spark/firmware/issues/542)
 
 ## v0.4.4
 
