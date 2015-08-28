@@ -246,7 +246,15 @@ void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
     spiMap[spi]->SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
     if(spiMap[spi]->SPI_Clock_Divider_Set != true)
     {
-        spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;
+        /* Defaults to 15Mbit/s on SPI1, SPI2 and SPI3 */
+        if(spi == HAL_SPI_INTERFACE1)
+        {
+            spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;//60/4=15
+        }
+        else
+        {
+            spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_2;//30/2=15
+        }
     }
     if(spiMap[spi]->SPI_Bit_Order_Set != true)
     {
