@@ -129,7 +129,11 @@ unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
 {
     // actual speed is the system clock divided by some scalar
     unsigned targetSpeed = value*value_scale;
-    unsigned clock = HAL_Core_System_Clock(SYSTEMCLOCK_SPI, NULL);
+    hal_spi_info_t info;
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
+    HAL_SPI_Info(_spi, &info, NULL);
+    unsigned clock = info.system_clock;
     uint8_t scale = 0;
     while (clock > targetSpeed) {
         clock >>= 1;

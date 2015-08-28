@@ -187,3 +187,8 @@ bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 {
   return SPI_Enabled;
 }
+
+void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
+{
+    info->system_clock = 36000000;
+}
