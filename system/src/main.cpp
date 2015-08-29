@@ -160,6 +160,8 @@ void manage_safe_mode()
     if (flag != 0xFF) { // old bootloader
         if (flag & 1) {
             set_system_mode(SAFE_MODE);
+            // explicitly disable multithreading
+            system_thread_set_state(spark::feature::DISABLED, NULL);
         }
     }
 }
