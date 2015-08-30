@@ -594,4 +594,4 @@ protected:
 };
 
 /* Instance of MDMElectronSerial for use in HAL_USART3_Handler */
-MDMElectronSerial electronMDM;
+extern MDMElectronSerial electronMDM;
