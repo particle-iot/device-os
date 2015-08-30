@@ -95,6 +95,12 @@ public:
    */
   unsigned setClockSpeed(unsigned value, unsigned scale=HZ);
 
+
+   /*
+    * Test method to compute the divider needed to attain a given clock frequency.
+    */
+  static void computeClockDivider(unsigned reference, unsigned targetSpeed, uint8_t& divider, unsigned& clock);
+
   byte transfer(byte _data);
   void transfer(void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback);
 
