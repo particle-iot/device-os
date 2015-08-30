@@ -33,7 +33,7 @@
 /* USB Device String Definitions ---------------------------------------------*/
 
 #define USBD_LANGID_STRING              0x0409  //U.S. English
-#define USBD_MANUFACTURER_STRING        "Particle IO"
+#define USBD_MANUFACTURER_STRING        "Particle"
 
 #if PLATFORM_ID==PLATFORM_P1
 #define USBD_PRODUCT_HS_STRING          "P1 with WiFi"

@@ -28,18 +28,19 @@
 #define __SPARK_WIRING_IPADDRESS_H
 
 #include <stdint.h>
-
+#include <string.h>
 #include "spark_wiring_printable.h"
+#include "spark_wiring_string.h"
 #include "inet_hal.h"
 #include "spark_macros.h"
 
 /**
- * The IP address stored in host order. 
- * 
+ * The IP address stored in host order.
+ *
  */
 class IPAddress : public Printable {
 private:
-    
+
     HAL_IPAddress address;
 
     operator HAL_IPAddress* () {
@@ -47,7 +48,7 @@ private:
     }
 
     void set_ipv4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
-    
+
     inline void setVersion(uint8_t version) {
 #if HAL_IPv6
         address.v = version;
@@ -66,7 +67,7 @@ public:
 
     /**
      * @return true when this address is not zero.
-     */        
+     */
     operator bool();
 
     // Overloaded cast operator to allow IPAddress objects to be used where a pointer
@@ -81,16 +82,16 @@ public:
 
     // Overloaded copy operators to allow initialisation of IPAddress objects from other types
     /**
-     * 
+     *
      * @param address 4 bytes defining the IP address in network order
      * @return *this
-     */        
+     */
     IPAddress& operator=(const uint8_t* address);
 
     /**
-     * 
+     *
      * @param address   A 32-byte defining the 4 IPv4 octets, in host order.
-     * @return 
+     * @return
      */
     IPAddress& operator=(uint32_t address);
 
@@ -113,6 +114,9 @@ public:
 
     virtual size_t printTo(Print& p) const;
 
+    void clear() { memset(&address, 0, sizeof (address)); }
+
+    String toString() const { return String(*this); }
 
     friend class TCPClient;
     friend class TCPServer;

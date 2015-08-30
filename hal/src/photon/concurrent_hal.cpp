@@ -27,8 +27,7 @@
 #include "delay_hal.h"
 #include "task.h"
 #include <mutex>
-
-
+#include "task.h"
 
 // use the newer name
 typedef xTaskHandle TaskHandle_t;
@@ -57,7 +56,7 @@ os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_pr
     *thread = NULL;
     signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (const signed char*)name, (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) (configMAX_PRIORITIES-1)-priority, thread);
     return ( result != (signed portBASE_TYPE) pdPASS );
-}
+    }
 
 
 
@@ -123,7 +122,7 @@ public:
 
     ThreadQueue(UBaseType_t max_size) {
         queue = xQueueCreate(max_size, sizeof(TaskHandle_t));
-    }
+}
 
     ~ThreadQueue() {
         vQueueDelete(queue);
@@ -150,6 +149,7 @@ public:
     }
 
     void wakeAll()
+void os_thread_scheduling(bool enabled, void* reserved)
     {
         while (wake()) {}
     }
@@ -190,27 +190,10 @@ public:
 
     void wait(lock_t* lock)
     {
-        taskENTER_CRITICAL();
-        lock->unlock();
-        queue.enqueue();
-        taskEXIT_CRITICAL();
-        vTaskSuspend(NULL);
-        lock->lock();
-    }
+    if (enabled)
 
-    void signal()
-    {
-        taskENTER_CRITICAL();
-        queue.wake();
-        taskEXIT_CRITICAL();
-    }
 
-    void broadcast()
-    {
-        taskENTER_CRITICAL();
-        queue.wakeAll();
-        taskEXIT_CRITICAL();
-    }
+
 };
 
 static_assert(sizeof(__gthread_cond_t)==sizeof(ConditionVariable), "__gthread_cond_t must be the same size as ConditionVariable");
@@ -336,4 +319,13 @@ int os_mutex_recursive_unlock(os_mutex_recursive_t mutex)
 {
     return xSemaphoreGiveRecursive(mutex)!=pdTRUE;
 }
+
+void os_thread_scheduling(bool enabled, void* reserved)
+{
+    if (enabled)
+        taskENTER_CRITICAL();
+    else
+        taskEXIT_CRITICAL();
+}
+
 

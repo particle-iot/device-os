@@ -30,6 +30,12 @@
 #include <stdint.h>
 #include <stddef.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /**
  * Allow specific HAL implementations to export key symbols:
  * - thread priority limits and type.
@@ -145,6 +151,17 @@ int os_mutex_recursive_unlock(os_mutex_recursive_t mutex);
 
 #define _GLIBCXX_HAS_GTHREADS
 #include <bits/gthr.h>
+
+/**
+ * Enables/disables pre-emptive context switching
+ */
+void os_thread_scheduling(bool enabled, void* reserved);
+
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
 

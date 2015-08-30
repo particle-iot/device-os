@@ -71,7 +71,7 @@ extern volatile uint8_t Cloud_Handshake_Error_Count;
 
 extern volatile system_tick_t spark_loop_total_millis;
 
-void system_delay_ms(unsigned long ms);
+void system_delay_ms(unsigned long ms, bool no_background_loop);
 
 /**
  * Determines the backoff period after a number of failed connections.

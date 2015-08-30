@@ -84,11 +84,13 @@ public:
 
         static String format(time_t t, const char* format_spec);
 
+#if PLATFORM_ID>2
         void setFormat(time_format_t format) {
             this->format_spec = format;
         }
 
         time_format_t getFormat() const { return format_spec; }
+#endif
 
 private:
     static time_format_t format_spec;

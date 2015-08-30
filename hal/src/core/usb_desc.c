@@ -295,9 +295,9 @@ const uint8_t USB_StringVendor[USB_SIZ_STRING_VENDOR] =
   {
     USB_SIZ_STRING_VENDOR,     /* Size of Vendor string */
     USB_STRING_DESCRIPTOR_TYPE,             /* bDescriptorType*/
-    /* Manufacturer: "Spark Devices     " */
-    'S', 0, 'p', 0, 'a', 0, 'r', 0, 'k', 0, ' ', 0, 'D', 0, 'e', 0,
-    'v', 0, 'i', 0, 'c', 0, 'e', 0, 's', 0, ' ', 0, ' ', 0, ' ', 0,
+    /* Manufacturer: "Particle          " */
+    'P', 0, 'a', 0, 'r', 0, 't', 0, 'i', 0, 'c', 0, 'l', 0, 'e', 0,
+    ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0,
     ' ', 0, ' ', 0
   };
 

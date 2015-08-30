@@ -95,6 +95,7 @@ typedef enum hal_irq_t {
     SysInterrupt_TIM8_Compare1,
     SysInterrupt_TIM8_Compare2,
     SysInterrupt_TIM8_Compare3,
+    SysInterrupt_TIM8_Compare4,
     SysInterrupt_TIM1_TRG_COM_TIM11_IRQ,
     SysInterrupt_TIM1_Trigger,
     SysInterrupt_TIM1_COM,
@@ -105,7 +106,7 @@ typedef enum hal_irq_t {
     SysInterrupt_CAN2_RX0_IRQ,
     SysInterrupt_CAN2_RX1_IRQ,
     SysInterrupt_CAN2_SCE_IRQ,
-    __Last_irq = 45
+    __Last_irq = 46
 #else
     __Last_irq = 0
 #endif

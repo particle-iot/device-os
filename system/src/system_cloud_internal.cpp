@@ -501,6 +501,18 @@ int Spark_Connect(void)
             ip_resolve_failed = rv;
     }
 
+#if PLATFORM_ID<3
+    // workaround for CC3000
+    if (ip_resolve_failed)
+    {
+        const WLanConfig* config = network_config(0, 0, NULL);
+        if (config && (config->nw.aucDNSServer.ipv4==((76<<24) | (83<<16) | (0<<8) | 0 ))) {
+            // fallback to the default when the CC3000 DNS goes awol. see issue #139
+            ip_addr.clear();
+            ip_resolve_failed = false;
+        }
+    }
+#endif
     if (!ip_resolve_failed)
     {
         if (!ip_addr)

@@ -30,7 +30,7 @@
 
 IPAddress::IPAddress()
 {
-    memset(&address, 0, sizeof (address));
+    clear();
 }
 
 IPAddress::IPAddress(const HAL_IPAddress& address)

@@ -99,6 +99,9 @@ void wifi_add_profile_callback(const char *ssid,
     LED_Signaling_Stop();
     LED_On(LED_RGB);
 
+    // TODO: refactor this for non-WiFi networks
+    // Rename function to Start_Setup())
+#if Wiring_WiFi
     /* If WiFi module is connected, disconnect it */
     network_disconnect(0, 0, NULL);
 
@@ -110,6 +113,11 @@ void wifi_add_profile_callback(const char *ssid,
     WiFiSetupConsoleConfig config;
     config.connect_callback = wifi_add_profile_callback;
     WiFiSetupConsole console(config);
+#elif Wiring_Cellular
+
+    CellularSetupConsoleConfig config;
+    CellularSetupConsole console(config);
+#endif
 
     const uint32_t start = millis();
     uint32_t loop = start;

@@ -85,7 +85,7 @@ LoadOrderGroup = PNP Filter
 ;------------------------------------------------------------------------------
 
 [Strings] 
-PROVIDER="Particle IO"
+PROVIDER="Particle"
 DEVICE_DESCRIPTION ="P1"
 USBSER.DESC = "USB Serial Driver"
 SERENUM.DESC = "Serenum Filter Driver"

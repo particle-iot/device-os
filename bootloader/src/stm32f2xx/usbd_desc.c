@@ -33,7 +33,7 @@
 #include "usb_regs.h"
 
 #define USBD_LANGID_STRING              0x0409  //U.S. English
-#define USBD_MANUFACTURER_STRING        "Spark Devices"
+#define USBD_MANUFACTURER_STRING        "Particle"
 
 #define USBD_PRODUCT_HS_STRING          "Photon DFU Mode"
 #define USBD_SERIALNUMBER_HS_STRING     "00000000010B"
