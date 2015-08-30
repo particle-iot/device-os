@@ -92,6 +92,5 @@ test(String_printable_constructor)
 {
 
     IPAddress address(1,2,3,4);
-    Serial.println(String(address));
-    assertEqual((const char*)"1.2.3.4", String(address).c_str());
+    assertEqual((const char*)"1.2.3.4", String(address));
 }
