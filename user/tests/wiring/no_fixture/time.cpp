@@ -23,6 +23,8 @@
  ******************************************************************************
  */
 
+#if PLATFORM_ID>=3
+
 #include "application.h"
 #include "unit-test/unit-test.h"
 
@@ -84,3 +86,5 @@ test(TIME_concatenate) {
     s += "abcd";
     assertEqual(s.c_str(), (const char*)"Sat Jan 10 13:37:04 2004abcd");
 }
+
+#endif

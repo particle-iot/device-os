@@ -104,8 +104,8 @@ extern SystemClass System;
 #define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
 
 
-#define waitUntil(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
-#define waitFor(condition) System.waitCondition([]{ return (condition)(); })
+#define waitFor(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
+#define waitUntil(condition) System.waitCondition([]{ return (condition)(); })
 
 #endif	/* SPARK_WIRING_SYSTEM_H */
 

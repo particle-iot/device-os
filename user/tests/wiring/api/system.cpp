@@ -74,6 +74,6 @@ test(system_freememory) {
 test(system_waitfor) {
     API_COMPILE(System.waitCondition([]{return WiFi.ready();}));
 
-    API_COMPILE(wait_for(WiFi.ready, 10000));
-    API_COMPILE(wait_until(WiFi.ready));
+    API_COMPILE(waitFor(WiFi.ready, 10000));
+    API_COMPILE(waitUntil(WiFi.ready));
 }
