@@ -210,6 +210,8 @@ void WiFiSetupConsole::handle(char c)
         print("SSID: ");
         read_line(ssid, 32);
 
+        // TODO: would be great if the network auto-detected the Security type
+        // The photon is scanning the network so could determine this.
         do
         {
             print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2: ");
@@ -227,13 +229,12 @@ void WiFiSetupConsole::handle(char c)
 #endif
 
         unsigned long security_type = security_type_string[0] - '0';
-        if (0 < security_type)
-        {
-            print("Password: ");
-            read_line(password, 64);
-        }
 
         WLanSecurityCipher cipher = WLAN_CIPHER_NOT_SET;
+
+        if (security_type)
+            password[0] = '1'; // non-empty password so security isn't set to None
+
         // dry run
         if (this->config.connect_callback(ssid, password, security_type, cipher, true)==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED)
         {
@@ -248,6 +249,12 @@ void WiFiSetupConsole::handle(char c)
                 case 2: cipher = WLAN_CIPHER_TKIP; break;
                 case 3: cipher = WLAN_CIPHER_AES_TKIP; break;
             }
+        }
+
+        if (0 < security_type)
+        {
+            print("Password: ");
+            read_line(password, 64);
         }
 
         print("Thanks! Wait "
