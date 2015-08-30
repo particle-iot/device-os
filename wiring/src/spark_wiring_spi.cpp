@@ -82,6 +82,7 @@ void SPIClass::setDataMode(uint8_t mode)
 void SPIClass::setClockDividerReference(unsigned value, unsigned scale)
 {
     dividerReference = value*scale;
+    setClockDivider(SPI_CLOCK_DIV4);
 }
 
 /**
@@ -102,12 +103,12 @@ static uint8_t clock_divisors[] = {
 uint8_t divisorShiftScale(uint8_t divider)
 {
     unsigned result = 0;
-    for (; result<arraySize(clock_divisors)-1; result++)
+    for (; result<arraySize(clock_divisors); result++)
     {
         if (clock_divisors[result]==divider)
             break;
     }
-    return result;
+    return result+1;
 }
 
 void SPIClass::setClockDivider(uint8_t rate)
@@ -135,11 +136,12 @@ unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
     HAL_SPI_Info(_spi, &info, NULL);
     unsigned clock = info.system_clock;
     uint8_t scale = 0;
-    while (clock > targetSpeed) {
+    clock >>= 1;        // div2 is the first
+    while (clock > targetSpeed && scale<8) {
         clock >>= 1;
         scale++;
     }
-    uint8_t rate = clock_divisors[scale-1];
+    uint8_t rate = clock_divisors[scale];
     HAL_SPI_Set_Clock_Divider(_spi, rate);
     return clock;
 }
