@@ -22,9 +22,12 @@ DYNALIB_TABLE_EXTERN(hal_core);
 DYNALIB_TABLE_EXTERN(hal_socket);
 DYNALIB_TABLE_EXTERN(hal_wlan);
 DYNALIB_TABLE_EXTERN(hal_usart);
+DYNALIB_TABLE_EXTERN(hal_concurrent);
+
 
 /**
  * The module export table. This lists the addresses of individual library dynalib jump tables.
+ * Libraries must not be reordered or removed, only new ones added to the end.
  */
 extern "C" __attribute__((externally_visible)) const void* const system_part2_module[] = {
     DYNALIB_TABLE_NAME(hal),
@@ -40,6 +43,7 @@ extern "C" __attribute__((externally_visible)) const void* const system_part2_mo
     DYNALIB_TABLE_NAME(hal_usart),
     DYNALIB_TABLE_NAME(system_net),
     DYNALIB_TABLE_NAME(system_cloud),
+    DYNALIB_TABLE_NAME(hal_concurrent),
 };
 
 extern void** dynalib_location_user;

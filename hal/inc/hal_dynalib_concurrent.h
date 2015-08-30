@@ -1,8 +1,4 @@
 /**
- ******************************************************************************
- * @file    hal_dynalib_export.c
- * @author  Matthew McGowan
- ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
@@ -20,17 +16,19 @@
  ******************************************************************************
  */
 
-#define DYNALIB_EXPORT
-#include "hal_dynalib.h"
-#include "hal_dynalib_core.h"
-#include "hal_dynalib_gpio.h"
-#include "hal_dynalib_i2c.h"
-#include "hal_dynalib_ota.h"
-#include "hal_dynalib_peripherals.h"
-#include "hal_dynalib_socket.h"
-#include "hal_dynalib_spi.h"
-#include "hal_dynalib_usart.h"
-#include "hal_dynalib_wlan.h"
-#include "hal_dynalib_concurrent.h"
+#ifndef HAL_DYNALIB_CONCURRENT_H
+#define	HAL_DYNALIB_CONCURRENT_H
+
+#include "dynalib.h"
+
+#ifdef DYNALIB_EXPORT
+#include "concurrent_hal.h"
+#endif
+
+DYNALIB_BEGIN(hal_concurrent)
+DYNALIB_FN(hal_concurrent,os_thread_scheduling)
+DYNALIB_END(hal_concurrent)
 
 
+
+#endif	/* HAL_DYNALIB_CONCURRENT_H */
