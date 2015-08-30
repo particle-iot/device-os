@@ -20,12 +20,15 @@
 #pragma once
 
 #include <string.h>
+#include <stddef.h>
 
 // #include "service_debug.h"
 
-#ifndef NULL
-    #define NULL ((void *)0)
+#ifdef putc
+#undef putc
+#undef getc
 #endif
+
 
 /** Pipe: this class implements a buffered pipe that can be safely
     written and read between two context. I.e., Written from a task
