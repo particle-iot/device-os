@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "spark_wiring_printable.h"
+#include "spark_wiring_string.h"
 #include "inet_hal.h"
 #include "spark_macros.h"
 
@@ -114,6 +115,8 @@ public:
     virtual size_t printTo(Print& p) const;
 
     void clear() { memset(&address, 0, sizeof (address)); }
+
+    String toString() const { return String(*this); }
 
     friend class TCPClient;
     friend class TCPServer;
