@@ -275,7 +275,7 @@ int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char
       break;
     }
     default:
-          return -1;
+          return WLAN_SET_CREDENTIALS_UNKNOWN_SECURITY_TYPE;
   }
 
   if(wlan_profile_index != -1)

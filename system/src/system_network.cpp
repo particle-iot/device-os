@@ -38,23 +38,28 @@ volatile uint8_t SPARK_WLAN_STARTED;
  * @param password
  * @param security_type
  */
-void wifi_add_profile_callback(const char *ssid,
-    const char *password,
-    unsigned long security_type)
+int wifi_add_profile_callback(const char *ssid, const char *password,
+    unsigned long security_type, unsigned long cipher, bool dry_run)
 {
-    WLAN_SERIAL_CONFIG_DONE = 1;
+    int result = 0;
     if (ssid)
     {
         NetworkCredentials creds;
         memset(&creds, 0, sizeof (creds));
-        creds.len = sizeof (creds);
+        creds.size = sizeof (creds);
         creds.ssid = ssid;
         creds.password = password;
         creds.ssid_len = strlen(ssid);
         creds.password_len = strlen(password);
         creds.security = WLanSecurityType(security_type);
-        network_set_credentials(0, 0, &creds, NULL);
+        creds.cipher = WLanSecurityCipher(cipher);
+        if (dry_run)
+            creds.flags |= WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN;
+        result = network_set_credentials(0, 0, &creds, NULL);
     }
+    if (result==0)
+        WLAN_SERIAL_CONFIG_DONE = 1;
+    return result;
 }
 
 /*******************************************************************************
@@ -373,7 +378,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 
 void network_listen(network_handle_t, uint32_t flags, void*)
 {
-    WLAN_SMART_CONFIG_START = !(flags & 1);
+    WLAN_SMART_CONFIG_START = !(flags & NETWORK_LISTEN_EXIT);
     if (!WLAN_SMART_CONFIG_START)
         WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
 }
@@ -383,25 +388,24 @@ bool network_listening(network_handle_t, uint32_t, void*)
     return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
 }
 
-void network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* credentials, void*)
+int network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* credentials, void*)
 {
-
     if (!SPARK_WLAN_STARTED || !credentials)
     {
-        return;
+        return -1;
     }
 
     WLanSecurityType security = credentials->security;
-
     if (0 == credentials->password[0])
     {
         security = WLAN_SEC_UNSEC;
     }
-
     credentials->security = security;
 
-    wlan_set_credentials(credentials);
-    system_notify_event(wifi_credentials_add, 0, credentials);
+    int result = wlan_set_credentials(credentials);
+    if (!result)
+        system_notify_event(wifi_credentials_add, 0, credentials);
+    return result;
 }
 
 bool network_clear_credentials(network_handle_t, uint32_t, NetworkCredentials* creds, void*)

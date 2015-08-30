@@ -58,6 +58,13 @@ bool network_ready(network_handle_t network, uint32_t param1, void* reserved);
 void network_on(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 void network_off(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 
+#define NETWORK_LISTEN_EXIT (1<<0)
+/**
+ *
+ * @param network
+ * @param flags     NETWORK_LISTEN_EXIT bring the device out of listening mode
+ * @param reserved
+ */
 void network_listen(network_handle_t network, uint32_t flags, void* reserved);
 bool network_listening(network_handle_t network, uint32_t param1, void* reserved);
 
@@ -66,7 +73,15 @@ bool network_has_credentials(network_handle_t network, uint32_t param1, void* re
 
 typedef WLanCredentials NetworkCredentials;
 
-void network_set_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
+/**
+ *
+ * @param network   The network to configure the credentials.
+ * @param flags     Flags. set to 0.
+ * @param creds     The credentials to set. Should not be NULL.
+ * @param reserved  For future expansion. Set to NULL.
+ * @return 0 on success. 
+ */
+int network_set_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
 bool network_clear_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
 
 
