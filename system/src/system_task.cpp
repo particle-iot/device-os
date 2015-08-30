@@ -324,32 +324,44 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 /*
  * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
  */
-void system_delay_ms(unsigned long ms)
+void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 {
-    volatile system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
+    if (ms==0) return;
+
+    system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
     spark_loop_total_millis += ms;
 
-    volatile system_tick_t last_millis = HAL_Timer_Get_Milli_Seconds();
+    system_tick_t start_millis = HAL_Timer_Get_Milli_Seconds();
+    system_tick_t end_micros = HAL_Timer_Get_Micro_Seconds() + (1000*ms);
 
     while (1)
     {
         HAL_Notify_WDT();
 
-        volatile system_tick_t current_millis = HAL_Timer_Get_Milli_Seconds();
-        volatile system_tick_t elapsed_millis = current_millis - last_millis;
+        system_tick_t elapsed_millis = HAL_Timer_Get_Milli_Seconds() - start_millis;
 
-        //Check for wrapping
-        if (elapsed_millis >= 0x80000000)
-        {
-            elapsed_millis = last_millis + current_millis;
-        }
-
-        if (elapsed_millis >= ms)
+        if (elapsed_millis > ms)
         {
             break;
         }
+        else if (elapsed_millis >= (ms-1)) {
+            // on the last millisecond, resolve using millis - we don't know how far in that millisecond had come
+            // have to be careful with wrap around since start_micros can be greater than end_micros.
 
-        if (SPARK_WLAN_SLEEP)
+            for (;;)
+            {
+                int delay = int(end_micros-HAL_Timer_Get_Micro_Seconds());
+                if (delay<=0)
+                    return;
+                HAL_Delay_Microseconds(min(delay/2, 1));
+            }
+        }
+        else
+        {
+            HAL_Delay_Milliseconds(1);
+        }
+
+        if (SPARK_WLAN_SLEEP || force_no_background_loop)
         {
             //Do not yield for Spark_Idle()
         }

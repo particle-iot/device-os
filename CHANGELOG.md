@@ -22,7 +22,8 @@
 - `Servo.trim(adjust)` to allow small adjustments to the stationary point. [#120](https://github.com/spark/firmware/issues/120)
 - Time set from the cloud accounts for network latency. [#581](https://github.com/spark/firmware/issues/581)
 - `String(Printable)` constructor so any `Printable` can be converted to a string. [example](https://community.particle.io/t/convert-ipaddress-to-string-for-use-with-spark-publish/14885/4?u=mdma)
-- Fluent API on `String` - many methods return `*this` so method calls can be chained. 
+- Fluent API on `String` - many methods return `*this` so method calls can be chained.
+- Small values passed to `delay(1)` result in more accurate delays. [#260](https://github.com/spark/firmware/issues/260)
 
 ### BUGFIXES
 
