@@ -69,7 +69,7 @@
     #ifdef __arm__
 
         #define DYNALIB_BEGIN(tablename)    \
-            extern const void* dynalib_location_##tablename;
+            EXTERN_C const void* dynalib_location_##tablename;
 
         #define __S(x) #x
         #define __SX(x) __S(x)

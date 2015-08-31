@@ -100,7 +100,7 @@ FFL(F const &func)
     if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
         auto lambda = [=]() { return (fn); }; \
         auto future = SystemThread.invoke_future(FFL(lambda)); \
-        return 0;  \
+        return future.get();  \
     }
 
 #define SYSTEM_THREAD_CONTEXT_ASYNC(fn) \

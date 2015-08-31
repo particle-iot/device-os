@@ -29,7 +29,7 @@
 #include "system_tick_hal.h"
 #include <stdint.h>
 #include <stddef.h>
-
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {

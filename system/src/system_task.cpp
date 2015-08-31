@@ -352,14 +352,14 @@ void system_delay_ms_non_threaded(unsigned long ms, bool force_no_background_loo
     }
 }
 
-void system_delay_ms(unsigned long ms)
+void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 {
     if (system_thread_get_state(NULL)!=0) {
         HAL_Delay_Milliseconds(ms);
     }
     else
     {
-        system_delay_ms_non_threaded(ms);
+        system_delay_ms_non_threaded(ms, force_no_background_loop);
     }
 }
 

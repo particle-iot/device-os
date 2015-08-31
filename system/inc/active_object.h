@@ -51,10 +51,61 @@ public:
 
 };
 
+struct Message
+{
+    virtual void operator()()=0;
+};
+
+template<typename T> class Promise : public Message
+{
+    /**
+     * The function to invoke to retrieve the future result.
+     */
+    std::function<T()> fn;
+    /**
+     * The result retrieved from the function.
+     * Only valid once {@code complete} is {@code true}
+     */
+    T result;
+    bool complete;
+
+    std::mutex m;
+    std::condition_variable cv;
+
+public:
+
+    Promise(std::function<T()>&& fn_) : fn(std::move(fn_)), complete(false)
+    {
+    }
+
+    virtual void operator()() override
+    {
+        {
+            std::lock_guard<std::mutex> lk(m);
+            result = fn();
+            complete = true;
+        }
+        cv.notify_one();
+    }
+
+    /**
+     * wait for the result
+     */
+    T get()
+    {
+        // wait for result to be available
+        std::lock_guard<std::mutex> lk(m);
+        cv.wait(lk, [this]{return complete;});
+        return result;
+    }
+};
+
+
 
 class ActiveObjectBase
 {
 public:
+    using Item = std::shared_ptr<Message>;
 
 protected:
 
@@ -76,49 +127,13 @@ protected:
      */
     void run();
 
-
-    void invoke_impl(void* fn, void* data, size_t len=0);
+    //void invoke_impl(void* fn, void* data, size_t len=0);
 
 protected:
 
-    /**
-     * Describes a monadic function to be called by the active object.
-     */
-    struct Item
-    {
-        typedef void (*active_fn_t)(void*);
-        typedef std::packaged_task<void()> task_t;
-
-        active_fn_t function;
-        void* arg;              // the argument is dynamically allocated
-
-        task_t task;
-
-        Item() : function(NULL), arg(NULL){}
-        Item(active_fn_t f, void* a) : function(f), arg(a){}
-        Item(task_t&& _task) : function(NULL), arg(NULL), task(std::move(_task)) {}
-
-        void invoke()
-        {
-            if (function) {
-                function(arg);
-            }
-            else {
-                task();
-            }
-        }
-
-        void dispose()
-        {
-            free(arg);
-            function = NULL;
-            arg = NULL;
-        }
-    };
-
     // todo - concurrent queue should be a strategy so it's pluggable without requiring inheritance
     virtual bool take(Item& item)=0;
-    virtual void put(const Item& item)=0;
+    virtual void put(Item& item)=0;
 
     void set_thread(std::thread&& thread)
     {
@@ -147,21 +162,23 @@ public:
     }
 
     template<typename arg, typename r> inline void invoke(r (*fn)(arg* a), arg* value, size_t size) {
-        invoke_impl((void*)fn, value, size);
+        //invoke_impl((void*)fn, value, size);
     }
 
     template<typename arg, typename r> inline void invoke(r (*fn)(arg* a), arg* value) {
-        invoke_impl((void*)fn, value);
+        //invoke_impl((void*)fn, value);
     }
 
     void invoke(void (*fn)()) {
-        invoke_impl((void*)fn, NULL, 0);
+        //invoke_impl((void*)fn, NULL, 0);
     }
 
-    template<typename R> std::future<R> invoke_future(std::function<R(void)> fn) {
-        auto task = std::make_shared<std::packaged_task<R()>>(fn);
-        //put(Item(std::packaged_task<void()>([=]{ (*task)(); })));
-        return (*task).get_future();
+    template<typename R> std::shared_ptr<Promise<R>> invoke_future(std::function<R(void)> fn)
+    {
+        auto task = std::make_shared<Promise<R()>>(fn);
+        Item& item = task;
+        put(task);
+        return task;
     }
 
 };
@@ -174,12 +191,12 @@ class ActiveObjectChannel : public ActiveObjectBase
 
 protected:
 
-    virtual bool take(Item& item)
+    virtual bool take(Item& item) override
     {
         return cpp::select().recv_only(_channel, item).try_once();
     }
 
-    virtual void put(const Item& item)
+    virtual void put(const Item& item) override
     {
         _channel.send(item);
     }
@@ -194,7 +211,7 @@ public:
      */
     void start()
     {
-        _channel = cpp::channel<Item, queue_size>();
+        _channel = cpp::channel<Item*, queue_size>();
         start_thread();
     }
 
@@ -206,19 +223,25 @@ class ActiveObjectQueue : public ActiveObjectBase
 
 protected:
 
-    virtual bool take(Item& item)
+    virtual bool take(Item& result)
     {
-        return os_queue_take(queue, &item, configuration.take_wait)==0;
+        return os_queue_take(queue, &result, configuration.take_wait);
     }
 
-    virtual void put(const Item& item)
+    virtual void put(Item& item)
     {
-        while (!os_queue_put(queue, &item, CONCURRENT_WAIT_FOREVER)) {}
+        // since the queue does a binary copy rather than using the assignment operator
+        // we don't get the required shared pointer reference increment
+        // force it by doing a placement new allocation and invoke the copy ctor
+        uint8_t buf[sizeof(Item)];
+        Item* pItem = new (buf) Item(item);     // placement new, and copy construct from item
+        while (!os_queue_put(queue, pItem, CONCURRENT_WAIT_FOREVER)) {}
+        // item is reset when removed from the queue.
     }
 
     void createQueue(int size=50)
     {
-        os_queue_create(&queue, sizeof(Item), size);
+        os_queue_create(&queue, sizeof(Item*), size);
     }
 
 public:

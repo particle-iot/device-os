@@ -42,8 +42,8 @@ void ActiveObjectBase::run()
     {
         if (take(item))
         {
-            item.invoke();
-            item.dispose();
+            (*item)();
+            item.reset();
         }
         else
         {
@@ -53,6 +53,7 @@ void ActiveObjectBase::run()
 
 }
 
+/*
 void ActiveObjectBase::invoke_impl(void* fn, void* data, size_t len)
 {
     if (isCurrentThread()) {        // run synchronously since we are already on the thread
@@ -68,6 +69,7 @@ void ActiveObjectBase::invoke_impl(void* fn, void* data, size_t len)
         put(Item(Item::active_fn_t(fn), copy));
     }
 }
+*/
 
 void ActiveObjectBase::run_active_object(ActiveObjectBase* object)
 {
