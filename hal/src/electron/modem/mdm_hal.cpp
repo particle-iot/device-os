@@ -915,6 +915,11 @@ bool MDMParser::socketConnect(int socket, const char * host, int port)
     if (ip == NOIP)
         return false;
     // connect to socket
+    return socketConnect(socket, ip, port);
+}
+
+bool MDMParser::socketConnect(int socket, const IP& ip, int port)
+{
     bool ok = false;
     LOCK();
     if (ISSOCKET(socket) && (!_sockets[socket].connected)) {

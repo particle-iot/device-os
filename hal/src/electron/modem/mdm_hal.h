@@ -90,10 +90,10 @@ public:
                             ((ip)>>16)&0xff, \
                             ((ip)>> 8)&0xff, \
                             ((ip)>> 0)&0xff
-    #define IPADR(a,b,c,d) ((((IP)(a))<<24) | \
-                            (((IP)(b))<<16) | \
-                            (((IP)(c))<< 8) | \
-                            (((IP)(d))<< 0))
+    #define IPADR(a,b,c,d) ((((MDMParser::IP)(a))<<24) | \
+                            (((MDMParser::IP)(b))<<16) | \
+                            (((MDMParser::IP)(c))<< 8) | \
+                            (((MDMParser::IP)(d))<< 0))
 
 
     // ----------------------------------------------------------------
@@ -203,6 +203,8 @@ public:
         \return true if successfully, false otherwise
     */
     bool socketConnect(int socket, const char* host, int port);
+
+    bool socketConnect(int socket, const IP& ip, int port);
 
     /** make a socket connection
         \param socket the socket handle

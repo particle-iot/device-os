@@ -16,7 +16,16 @@
  ******************************************************************************
  */
 
+#ifndef PARSER_H
+#define	PARSER_H
 
 #include "modem/mdm_hal.h"
 
-MDMElectronSerial electronMDM;
+using ElectronMDM = MDMElectronSerial;
+
+extern ElectronMDM electronMDM;
+
+
+
+#endif	/* PARSER_H */
+
