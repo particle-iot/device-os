@@ -126,6 +126,8 @@ public:
     */
     void getDevStatus(MDMParser::DevStatus* dev) { memcpy(dev, &_dev, sizeof(DevStatus)); }
 
+    const MDMParser::DevStatus* getDevStatus() { return &_dev; }
+
     /** register to the network
         \param status an optional structure to with network information
         \param timeout_ms -1 blocking, else non blocking timeout in ms

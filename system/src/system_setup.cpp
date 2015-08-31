@@ -26,6 +26,7 @@
 #include "system_setup.h"
 #include "delay_hal.h"
 #include "wlan_hal.h"
+#include "cellular_hal.h"
 #include "system_cloud.h"
 #include "system_update.h"
 #include "spark_wiring.h"   // for serialReadLine
@@ -278,6 +279,26 @@ CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
 void CellularSetupConsole::exit()
 {
     network_listen(0, 1, NULL);
+}
+
+void CellularSetupConsole::handle(char c)
+{
+    if (c=='e')
+    {
+        CellularDevice dev;
+        memset(&dev, 0, sizeof(dev));
+        dev.size = sizeof(dev);
+        cellular_device_info(&dev, NULL);
+
+        print("IMEI:  ");
+        print(dev.imei);
+        print("\r\n");
+        print("ICCID: ");
+        print(dev.iccid);
+        print("\r\n");
+    }
+    else
+        super::handle(c);
 }
 
 

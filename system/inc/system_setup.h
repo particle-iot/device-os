@@ -111,6 +111,7 @@ public:
     ~CellularSetupConsole() = default;
 
     virtual void exit() override;
+    virtual void handle(char c) override;
 };
 
 #endif
