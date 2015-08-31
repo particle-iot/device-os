@@ -180,10 +180,10 @@ public:
     // ----------------------------------------------------------------
 
     //! Type of IP protocol
-    typedef enum { IPPROTO_TCP, IPPROTO_UDP } IpProtocol;
+    typedef enum { MDM_IPPROTO_TCP, MDM_IPPROTO_UDP } IpProtocol;
 
     //! Socket error return codes
-    #define SOCKET_ERROR -1
+    #define MDM_SOCKET_ERROR    (-1)
 
     /** Create a socket for a ip protocol (and optionaly bind)
         \param ipproto the protocol (UDP or TCP)
@@ -543,7 +543,7 @@ protected:
     // LISA-C has 6 TCP and 6 UDP sockets
     // LISA-U and SARA-G have 7 sockets
     SockCtrl _sockets[7];
-    int _findSocket(int handle = SOCKET_ERROR/* = CREATE*/);
+    int _findSocket(int handle = MDM_SOCKET_ERROR/* = CREATE*/);
     static MDMParser* inst;
     bool _init;
 #ifdef MDM_DEBUG

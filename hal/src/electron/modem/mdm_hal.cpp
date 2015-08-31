@@ -42,7 +42,7 @@
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
 //! test if it is a socket is ok to use
-#define ISSOCKET(s)     (((s) >= 0) && ((s) < NUMSOCKETS) && (_sockets[s].handle != SOCKET_ERROR))
+#define ISSOCKET(s)     (((s) >= 0) && ((s) < NUMSOCKETS) && (_sockets[s].handle != MDM_SOCKET_ERROR))
 //! check for timeout
 #define TIMEOUT(t, ms)  ((ms != TIMEOUT_BLOCKING) && ((HAL_Timer_Get_Milli_Seconds() - t) < ms))
 //! registration ok check helper
@@ -140,7 +140,7 @@ MDMParser::MDMParser(void)
     _init      = false;
     memset(_sockets, 0, sizeof(_sockets));
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
-        _sockets[socket].handle = SOCKET_ERROR;
+        _sockets[socket].handle = MDM_SOCKET_ERROR;
 #ifdef MDM_DEBUG
     _debugLevel = 1;
     _debugTime = HAL_Timer_Get_Milli_Seconds();
@@ -209,19 +209,19 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 } else if ((sscanf(cmd, "UUSORD: %d,%d", &a, &b) == 2)) {
                     int socket = _findSocket(a);
                     MDM_TRACE("Socket %d: handle %d has %d bytes pending\r\n", socket, a, b);
-                    if (socket != SOCKET_ERROR)
+                    if (socket != MDM_SOCKET_ERROR)
                         _sockets[socket].pending = b;
                 // +UUSORF: <socket>,<length>
                 } else if ((sscanf(cmd, "UUSORF: %d,%d", &a, &b) == 2)) {
                     int socket = _findSocket(a);
                     MDM_TRACE("Socket %d: handle %d has %d bytes pending\r\n", socket, a, b);
-                    if (socket != SOCKET_ERROR)
+                    if (socket != MDM_SOCKET_ERROR)
                         _sockets[socket].pending = b;
                 // +UUSOCL: <socket>
                 } else if ((sscanf(cmd, "UUSOCL: %d", &a) == 1)) {
                     int socket = _findSocket(a);
                     MDM_TRACE("Socket %d: handle %d closed by remote host\r\n", socket, a);
-                    if ((socket != SOCKET_ERROR) && _sockets[socket].connected)
+                    if ((socket != MDM_SOCKET_ERROR) && _sockets[socket].connected)
                         _sockets[socket].connected = false;
                 }
 
@@ -833,18 +833,18 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
     // find an free socket
     socket = _findSocket();
     MDM_TRACE("socketSocket(%d)\r\n", ipproto);
-    if (socket != SOCKET_ERROR) {
-        if (ipproto == IPPROTO_UDP) {
+    if (socket != MDM_SOCKET_ERROR) {
+        if (ipproto == MDM_IPPROTO_UDP) {
             // sending port can only be set on 2G/3G modules
             if (port != -1) {
                 sendFormated("AT+USOCR=17,%d\r\n", port);
             }
-        } else /*(ipproto == IPPROTO_TCP)*/ {
+        } else /*(ipproto == MDM_IPPROTO_TCP)*/ {
             sendFormated("AT+USOCR=6\r\n");
         }
-        int handle = SOCKET_ERROR;
+        int handle = MDM_SOCKET_ERROR;
         if ((RESP_OK == waitFinalResp(_cbUSOCR, &handle)) &&
-            (handle != SOCKET_ERROR)) {
+            (handle != MDM_SOCKET_ERROR)) {
             MDM_TRACE("Socket %d: handle %d was created\r\n", socket, handle);
             _sockets[socket].handle     = handle;
             _sockets[socket].timeout_ms = TIMEOUT_BLOCKING;
@@ -852,7 +852,7 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
             _sockets[socket].pending    = 0;
         }
         else
-            socket = SOCKET_ERROR;
+            socket = MDM_SOCKET_ERROR;
     }
     UNLOCK();
     return socket;
@@ -923,7 +923,7 @@ bool  MDMParser::socketFree(int socket)
     LOCK();
     if (ISSOCKET(socket)) {
         MDM_TRACE("socketFree(%d)\r\n",  socket);
-        _sockets[socket].handle     = SOCKET_ERROR;
+        _sockets[socket].handle     = MDM_SOCKET_ERROR;
         _sockets[socket].timeout_ms = TIMEOUT_BLOCKING;
         _sockets[socket].connected  = false;
         _sockets[socket].pending    = 0;
@@ -956,7 +956,7 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
         }
         UNLOCK();
         if (!ok)
-            return SOCKET_ERROR;
+            return MDM_SOCKET_ERROR;
         buf += blk;
         cnt -= blk;
     }
@@ -984,7 +984,7 @@ int MDMParser::socketSendTo(int socket, IP ip, int port, const char * buf, int l
         }
         UNLOCK();
         if (!ok)
-            return SOCKET_ERROR;
+            return MDM_SOCKET_ERROR;
         buf += blk;
         cnt -= blk;
     }
@@ -993,7 +993,7 @@ int MDMParser::socketSendTo(int socket, IP ip, int port, const char * buf, int l
 
 int MDMParser::socketReadable(int socket)
 {
-    int pending = SOCKET_ERROR;
+    int pending = MDM_SOCKET_ERROR;
     LOCK();
     if (ISSOCKET(socket) && _sockets[socket].connected) {
         MDM_TRACE("socketReadable(%d)\r\n", socket);
@@ -1058,7 +1058,7 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
         UNLOCK();
         if (!ok) {
             MDM_TRACE("socketRecv: ERROR\r\n");
-            return SOCKET_ERROR;
+            return MDM_SOCKET_ERROR;
         }
     }
     MDM_TRACE("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
@@ -1120,7 +1120,7 @@ int MDMParser::socketRecvFrom(int socket, IP* ip, int* port, char* buf, int len)
         UNLOCK();
         if (!ok) {
             MDM_TRACE("socketRecv: ERROR\r\n");
-            return SOCKET_ERROR;
+            return MDM_SOCKET_ERROR;
         }
     }
     MDM_TRACE("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
@@ -1132,7 +1132,7 @@ int MDMParser::_findSocket(int handle) {
         if (_sockets[socket].handle == handle)
             return socket;
     }
-    return SOCKET_ERROR;
+    return MDM_SOCKET_ERROR;
 }
 
 // ----------------------------------------------------------------
