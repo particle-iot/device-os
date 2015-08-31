@@ -136,8 +136,8 @@ void ElectronSerialPipe::begin(unsigned int baud)
     _usart_transmitting = false;
 
     // Enable USART Receive and Transmit interrupts
-    USART_ITConfig(USART3, USART_IT_TXE, ENABLE);
-    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
+    USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
+    USART_ITConfig(USART3, USART_IT_TXE, DISABLE);
 }
 
 // tx channel

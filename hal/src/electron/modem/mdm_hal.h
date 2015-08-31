@@ -581,8 +581,8 @@ public:
     /* clear the pending input data */
     virtual void purge(void)
     {
-        //while (readable())
-        //    getc();
+        while (readable())
+            getc();
     }
 protected:
     /** Write bytes to the physical interface.
