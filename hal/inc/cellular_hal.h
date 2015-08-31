@@ -23,6 +23,37 @@
 #include <stdint.h>
 #include <string.h>
 
+
+typedef int cellular_result_t;
+
+/**
+ * Initialize the cellular module. Called once at startup.
+ */
+cellular_result_t  cellular_init(void* reserved);
+
+
+cellular_result_t  cellular_on(void* reserved);
+
+cellular_result_t  cellular_off(void* reserved);
+
+
+struct CellularConnect
+{
+    uint16_t size;
+    const char* apn;
+    const char* username;
+    const char* password;
+
+};
+
+cellular_result_t  cellular_connect(void* reserved);
+
+cellular_result_t  cellular_join(CellularConnect* connect, void* reserved);
+
+cellular_result_t  cellular_disconnect(void* reserved);
+
+
+
 struct CellularDevice
 {
     uint16_t size;
