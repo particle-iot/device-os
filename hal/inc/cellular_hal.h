@@ -21,12 +21,19 @@
 #define	CELLULAR_HAL_H
 
 #include <stdint.h>
+#include <string.h>
 
 struct CellularDevice
 {
     uint16_t size;
     char iccid[21];
     char imei[16];
+
+    CellularDevice()
+    {
+        memset(this, 0, sizeof(*this));
+        size = sizeof(*this);
+    }
 };
 
 int cellular_device_info(CellularDevice* device, void* reserved);

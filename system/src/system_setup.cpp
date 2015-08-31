@@ -286,8 +286,6 @@ void CellularSetupConsole::handle(char c)
     if (c=='e')
     {
         CellularDevice dev;
-        memset(&dev, 0, sizeof(dev));
-        dev.size = sizeof(dev);
         cellular_device_info(&dev, NULL);
 
         print("IMEI:  ");

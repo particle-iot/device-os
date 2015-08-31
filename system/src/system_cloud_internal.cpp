@@ -330,6 +330,11 @@ int Spark_Handshake(void)
             Particle.publish("spark/device/claim/code", buf, 60, PRIVATE);
         }
 
+        // open up for possibility of retrieving multiple ID datums
+        if (!HAL_Get_Device_Identifier(NULL, buf, sizeof(buf), 0, NULL) && *buf) {
+            Particle.publish("spark/device/ident/0", buf, 60, PRIVATE);
+        }
+
         ultoa(HAL_OTA_FlashLength(), buf, 10);
         Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
 
