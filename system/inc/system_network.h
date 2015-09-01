@@ -32,11 +32,11 @@
 extern "C" {
 #endif
 
-#ifndef SPARK_NO_WIFI
-#define SPARK_NO_WIFI 0
+#ifndef PARTICLE_NO_NETWORK
+#define PARTICLE_NO_NETWORK 0
 #endif
 
-#if SPARK_NO_WIFI
+#if PARTICLE_NO_NETWORK
 #undef SPARK_NO_CLOUD
 #define SPARK_NO_CLOUD 1
 #endif

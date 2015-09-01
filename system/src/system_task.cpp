@@ -57,7 +57,7 @@ volatile uint8_t Spark_Error_Count;
 
 void Network_Setup()
 {
-#if !SPARK_NO_WIFI
+#if !PARTICLE_NO_NETWORK
     network_setup(0, 0, NULL);
 
     /* Trigger a WLAN device */
