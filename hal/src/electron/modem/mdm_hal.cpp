@@ -346,10 +346,9 @@ bool MDMParser::init(const char* simpin, DevStatus* status)
     HAL_GPIO_Write(LVLOE_UC, 0);
 
     /* Instantiate the USART3 hardware */
-    electronMDM.begin(9600);
+    electronMDM.begin(115200);
 
     MDM_INFO("Modem::wakeup\r\n");
-    HAL_Pin_Mode(PWR_UC, OUTPUT);
     while (i--) {
         // SARA-U2/LISA-U2 50..80us
         HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
@@ -388,7 +387,7 @@ bool MDMParser::init(const char* simpin, DevStatus* status)
     if (RESP_OK != waitFinalResp())
         goto failure;
     // wait some time until baudrate is applied
-    HAL_Delay_Milliseconds(200); // SARA-G > 40ms
+    HAL_Delay_Milliseconds(100); // SARA-G > 40ms
     // identify the module
     sendFormated("ATI\r\n");
     if (RESP_OK != waitFinalResp(_cbATI, &_dev.dev))
