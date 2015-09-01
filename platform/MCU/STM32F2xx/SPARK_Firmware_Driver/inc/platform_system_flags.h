@@ -32,7 +32,8 @@ typedef struct platform_system_flags {
      * This is a placeholder for when the bootloader can influence how the system module executes.
      */
     uint8_t StartupMode_SysFlag;
-    uint8_t unused;
+    uint8_t FeaturesEnabled_SysFlag;        // default is 0xFF all features enabled. If any bits are cleared in the bottom 4-bits, then the upper 4 bits should be the logical inverse of these.
+                                            // This is to prevent against corrupted data causing the bootloader to be unavailable.
     uint32_t RCC_CSR_SysFlag;
     uint16_t reserved[4];
 } platform_system_flags_t;

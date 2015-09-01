@@ -119,6 +119,18 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
 bool FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length, bool protect);
 bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
 
+typedef bool (*copymem_fn_t)(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
+                      uint32_t length, uint8_t module_function, uint8_t flags);
+
+
+/**
+ * Determines if the memory copy can be performed.
+ */
+bool FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
+                      uint32_t length, uint8_t module_function, uint8_t flags);
+
 /**
  * @param validateDestinationAddress checks if the destination address corresponds with the start address in the module
  */
@@ -138,6 +150,7 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
                                        flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                        uint32_t length, uint8_t module_function, uint8_t flags);
 
+bool FLASH_IsFactoryResetAvailable(void);
 bool FLASH_ClearFactoryResetModuleSlot(void);
 bool FLASH_RestoreFromFactoryResetModuleSlot(void);
 void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));

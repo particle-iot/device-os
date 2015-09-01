@@ -24,6 +24,8 @@
 - `String(Printable)` constructor so any `Printable` can be converted to a string. [example](https://community.particle.io/t/convert-ipaddress-to-string-for-use-with-spark-publish/14885/4?u=mdma)
 - Fluent API on `String` - many methods return `*this` so method calls can be chained.
 - Small values passed to `delay(1)` result in more accurate delays. [#260](https://github.com/spark/firmware/issues/260)
+- Bootloader does not show factory reset modes if a factory reset image is not available. [#557](https://github.com/spark/firmware/issues/557)
+- Bootloader has system flags to enable/disable bootloader modes.
 
 ### BUGFIXES
 
