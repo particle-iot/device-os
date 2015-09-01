@@ -418,6 +418,7 @@ void HAL_USART2_Handler(void)
 }
 
 #if PLATFORM_ID == 10 // Only Electron
+#if 0
 // Serial3 interrupt handler
 /*******************************************************************************
  * Function Name  : HAL_USART3_Handler
@@ -430,6 +431,7 @@ void HAL_USART3_Handler(void)
 {
 	HAL_USART_Handler(HAL_USART_SERIAL3);
 }
+#endif
 
 // Serial4 interrupt handler
 /*******************************************************************************
