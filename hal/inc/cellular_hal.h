@@ -23,19 +23,18 @@
 #include <stdint.h>
 #include <string.h>
 
-
 typedef int cellular_result_t;
 
 /**
- * Initialize the cellular module. Called once at startup.
+ * Power on and initialize the cellular module,
+ * if USART3 not initialized, will be done on first call.
  */
-cellular_result_t  cellular_init(void* reserved);
-
-
 cellular_result_t  cellular_on(void* reserved);
 
+/**
+ * Power off the cellular module, must be powered up and initialized first.
+ */
 cellular_result_t  cellular_off(void* reserved);
-
 
 struct CellularConnect
 {
@@ -46,13 +45,16 @@ struct CellularConnect
 
 };
 
-cellular_result_t  cellular_connect(void* reserved);
+/**
+ * Connect the cellular module to the cellular network, setup the PDP context
+ * and join the internet. Must be powered up and initialized first.
+ */
+cellular_result_t  cellular_connect(CellularConnect* connect, void* reserved);
 
-cellular_result_t  cellular_join(CellularConnect* connect, void* reserved);
-
+/**
+ * Disconnect the cellular module from the internet, must be connected first.
+ */
 cellular_result_t  cellular_disconnect(void* reserved);
-
-
 
 struct CellularDevice
 {
@@ -67,6 +69,9 @@ struct CellularDevice
     }
 };
 
+/**
+ * Retrieve cellular module info, must be initialized first.
+ */
 int cellular_device_info(CellularDevice* device, void* reserved);
 
 #endif	/* CELLULAR_HAL_H */

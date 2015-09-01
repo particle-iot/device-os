@@ -554,6 +554,8 @@ protected:
     int _findSocket(int handle = MDM_SOCKET_ERROR/* = CREATE*/);
     static MDMParser* inst;
     bool _init;
+    bool _pwr;
+    bool _connected;
 #ifdef MDM_DEBUG
     int _debugLevel;
     system_tick_t _debugTime;

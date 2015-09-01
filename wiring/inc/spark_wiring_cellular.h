@@ -32,6 +32,8 @@ public:
 
     void on() override { cellular_on(NULL); }
     void off() override { cellular_off(NULL); }
+    void connect() override { cellular_connect(CellularConnect* connect, NULL); }
+    void disconnect() override { cellular_disconnect(NULL); }
 };
 
 

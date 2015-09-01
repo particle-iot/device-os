@@ -138,6 +138,8 @@ MDMParser::MDMParser(void)
     _net.ci = 0xFFFFFFFF;
     _ip        = NOIP;
     _init      = false;
+    _pwr       = false;
+    _connected = false;
     memset(_sockets, 0, sizeof(_sockets));
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
         _sockets[socket].handle = MDM_SOCKET_ERROR;
@@ -345,10 +347,17 @@ bool MDMParser::init(const char* simpin, DevStatus* status)
     HAL_Pin_Mode(LVLOE_UC, OUTPUT);
     HAL_GPIO_Write(LVLOE_UC, 0);
 
-    /* Instantiate the USART3 hardware */
-    electronMDM.begin(115200);
+    if (!_init) {
+        MDM_INFO("ElectronSerialPipe::init\r\n");
 
-    MDM_INFO("Modem::wakeup\r\n");
+        /* Instantiate the USART3 hardware */
+        electronMDM.begin(115200);
+
+        /* Initialize only once */
+        _init = true;
+    }
+
+    MDM_INFO("Modem::powerOn\r\n");
     while (i--) {
         // SARA-U2/LISA-U2 50..80us
         HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
@@ -364,14 +373,14 @@ bool MDMParser::init(const char* simpin, DevStatus* status)
         // check interface
         sendFormated("AT\r\n");
         int r = waitFinalResp(NULL,NULL,1000);
-        if(RESP_OK == r) break;
+        if(RESP_OK == r) {
+            _pwr = true;
+            break;
+        }
     }
     if (i < 0) {
         MDM_ERROR("No Reply from Modem\r\n");
-        goto failure;
     }
-
-    _init = true;
 
     MDM_INFO("Modem::init\r\n");
     // echo off
@@ -482,16 +491,20 @@ failure:
 bool MDMParser::powerOff(void)
 {
     bool ok = false;
-    if (_init) {
+    if (_init && _pwr) {
         LOCK();
         MDM_INFO("Modem::powerOff\r\n");
         sendFormated("AT+CPWROFF\r\n");
         if (RESP_OK == waitFinalResp(NULL,NULL,120*1000)) {
-            _init = false;
+            _pwr = false;
             ok = true;
         }
         UNLOCK();
     }
+    HAL_Pin_Mode(PWR_UC, INPUT);
+    HAL_Pin_Mode(RESET_UC, INPUT);
+    HAL_Pin_Mode(RTS_UC, INPUT);
+    HAL_Pin_Mode(LVLOE_UC, INPUT);
     return ok;
 }
 
@@ -534,13 +547,16 @@ int MDMParser::_cbCCID(int type, const char* buf, int len, char* ccid)
 
 bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_ms /*= 180000*/)
 {
-    system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-    MDM_INFO("Modem::register\r\n");
-    while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms))
-        HAL_Delay_Milliseconds(1000);
-    if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
-    if (_net.psd == REG_DENIED) MDM_ERROR("PSD Registration Denied\r\n");
-    return REG_OK(_net.csd) || REG_OK(_net.psd);
+    if (_init && _pwr) {
+        system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+        MDM_INFO("Modem::register\r\n");
+        while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms))
+            HAL_Delay_Milliseconds(1000);
+        if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
+        if (_net.psd == REG_DENIED) MDM_ERROR("PSD Registration Denied\r\n");
+        return REG_OK(_net.csd) || REG_OK(_net.psd);
+    }
+    return false;
 }
 
 bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
@@ -639,47 +655,49 @@ int MDMParser::_cbUACTIND(int type, const char* buf, int len, int* i)
 bool MDMParser::pdp(void)
 {
     bool ok = true;
-    LOCK();
-    MDM_INFO("Modem::pdp\r\n");
+    if (_init && _pwr) {
+        LOCK();
+        MDM_INFO("Modem::pdp\r\n");
 
-    MDM_INFO("Define the PDP context 1 with PDP type \"IP\" and APN \"broadband\"...");
-    sendFormated("AT+CGDCONT=1,\"IP\",\"broadband\"\r\n");
-    if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
-        goto failure;
+        MDM_INFO("Define the PDP context 1 with PDP type \"IP\" and APN \"broadband\"...");
+        sendFormated("AT+CGDCONT=1,\"IP\",\"broadband\"\r\n");
+        if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+            goto failure;
 
-    MDM_INFO("Define a QoS profile for PDP context 1");
-    /* with Traffic Class 3 (background),
-     * maximum bit rate 64 kb/s both for UL and for DL, no Delivery Order requirements,
-     * a maximum SDU size of 320 octets, an SDU error ratio of 10-4, a residual bit error
-     * ratio of 10-5, delivery of erroneous SDUs allowed and Traffic Handling Priority 3.
-     */
-    sendFormated("AT+CGEQREQ=1,3,64,64,,,0,320,\"1E4\",\"1E5\",1,,3\r\n");
-    if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
-        goto failure;
+        MDM_INFO("Define a QoS profile for PDP context 1");
+        /* with Traffic Class 3 (background),
+         * maximum bit rate 64 kb/s both for UL and for DL, no Delivery Order requirements,
+         * a maximum SDU size of 320 octets, an SDU error ratio of 10-4, a residual bit error
+         * ratio of 10-5, delivery of erroneous SDUs allowed and Traffic Handling Priority 3.
+         */
+        sendFormated("AT+CGEQREQ=1,3,64,64,,,0,320,\"1E4\",\"1E5\",1,,3\r\n");
+        if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+            goto failure;
 
-    MDM_INFO("Activate PDP context 1...");
-    sendFormated("AT+CGACT=1,1\r\n");
-    if (RESP_OK != waitFinalResp(NULL, NULL, 20000))
-        goto failure;
+        MDM_INFO("Activate PDP context 1...");
+        sendFormated("AT+CGACT=1,1\r\n");
+        if (RESP_OK != waitFinalResp(NULL, NULL, 20000))
+            goto failure;
 
-    MDM_INFO("Test PDP context 1 for non-zero IP address...");
-    sendFormated("AT+CGPADDR=1\r\n");
-    if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
-        goto failure;
+        MDM_INFO("Test PDP context 1 for non-zero IP address...");
+        sendFormated("AT+CGPADDR=1\r\n");
+        if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+            goto failure;
 
-    MDM_INFO("Read the PDP contexts’ parameters...");
-    sendFormated("AT+CGDCONT?\r\n");
-    // +CGPADDR: 1, "99.88.111.88"
-    if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
-        goto failure;
+        MDM_INFO("Read the PDP contexts’ parameters...");
+        sendFormated("AT+CGDCONT?\r\n");
+        // +CGPADDR: 1, "99.88.111.88"
+        if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+            goto failure;
 
-    MDM_INFO("Read the negotiated QoS profile for PDP context 1...");
-    sendFormated("AT+CGEQNEG=1\r\n");
-    if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
-        goto failure;
+        MDM_INFO("Read the negotiated QoS profile for PDP context 1...");
+        sendFormated("AT+CGEQNEG=1\r\n");
+        if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+            goto failure;
 
-    UNLOCK();
-    return ok;
+        UNLOCK();
+        return ok;
+    }
 failure:
     UNLOCK();
     return false;
@@ -691,93 +709,95 @@ failure:
 MDMParser::IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL*/,
                               const char* password /*= NULL*/, Auth auth /*= AUTH_DETECT*/)
 {
-    LOCK();
-    MDM_INFO("Modem::join\r\n");
-    _ip = NOIP;
+    if (_init && _pwr) {
+        LOCK();
+        MDM_INFO("Modem::join\r\n");
+        _ip = NOIP;
+        int a = 0;
+        bool force = true;
 
-    int a = 0;
-    bool force = true;
-
-    // check gprs attach status
-    sendFormated("AT+CGATT=1\r\n");
-    if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000))
-        goto failure;
-
-    // Check the profile
-    sendFormated("AT+UPSND=" PROFILE ",8\r\n");
-    if (RESP_OK != waitFinalResp(_cbUPSND, &a))
-        goto failure;
-    if (a == 1 && force) {
-        // disconnect the profile already if it is connected
-        sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
-        if (RESP_OK != waitFinalResp(NULL,NULL,40*1000))
-            goto failure;
-        a = 0;
-    }
-    if (a == 0) {
-        bool ok = false;
-        // try to lookup the apn settings from our local database by mccmnc
-        const char* config = NULL;
-        if (!apn && !username && !password)
-            config = apnconfig(_dev.imsi);
-
-        // Set up the dynamic IP address assignment.
-        sendFormated("AT+UPSD=" PROFILE ",7,\"0.0.0.0\"\r\n");
-        if (RESP_OK != waitFinalResp())
+        // check gprs attach status
+        sendFormated("AT+CGATT=1\r\n");
+        if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000))
             goto failure;
 
-        do {
-            if (config) {
-                apn      = _APN_GET(config);
-                username = _APN_GET(config);
-                password = _APN_GET(config);
-                MDM_TRACE("Testing APN Settings(\"%s\",\"%s\",\"%s\")\r\n", apn, username, password);
-            }
-            // Set up the APN
-            if (apn && *apn) {
-                sendFormated("AT+UPSD=" PROFILE ",1,\"%s\"\r\n", apn);
-                if (RESP_OK != waitFinalResp())
-                    goto failure;
-            }
-            if (username && *username) {
-                sendFormated("AT+UPSD=" PROFILE ",2,\"%s\"\r\n", username);
-                if (RESP_OK != waitFinalResp())
-                    goto failure;
-            }
-            if (password && *password) {
-                sendFormated("AT+UPSD=" PROFILE ",3,\"%s\"\r\n", password);
-                if (RESP_OK != waitFinalResp())
-                    goto failure;
-            }
-            // try different Authentication Protocols
-            // 0 = none
-            // 1 = PAP (Password Authentication Protocol)
-            // 2 = CHAP (Challenge Handshake Authentication Protocol)
-            for (int i = AUTH_NONE; i <= AUTH_CHAP && !ok; i ++) {
-                if ((auth == AUTH_DETECT) || (auth == i)) {
-                    // Set up the Authentication Protocol
-                    sendFormated("AT+UPSD=" PROFILE ",6,%d\r\n", i);
+        // Check the profile
+        sendFormated("AT+UPSND=" PROFILE ",8\r\n");
+        if (RESP_OK != waitFinalResp(_cbUPSND, &a))
+            goto failure;
+        if (a == 1 && force) {
+            // disconnect the profile already if it is connected
+            sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
+            if (RESP_OK != waitFinalResp(NULL,NULL,40*1000))
+                goto failure;
+            a = 0;
+        }
+        if (a == 0) {
+            bool ok = false;
+            // try to lookup the apn settings from our local database by mccmnc
+            const char* config = NULL;
+            if (!apn && !username && !password)
+                config = apnconfig(_dev.imsi);
+
+            // Set up the dynamic IP address assignment.
+            sendFormated("AT+UPSD=" PROFILE ",7,\"0.0.0.0\"\r\n");
+            if (RESP_OK != waitFinalResp())
+                goto failure;
+
+            do {
+                if (config) {
+                    apn      = _APN_GET(config);
+                    username = _APN_GET(config);
+                    password = _APN_GET(config);
+                    MDM_TRACE("Testing APN Settings(\"%s\",\"%s\",\"%s\")\r\n", apn, username, password);
+                }
+                // Set up the APN
+                if (apn && *apn) {
+                    sendFormated("AT+UPSD=" PROFILE ",1,\"%s\"\r\n", apn);
                     if (RESP_OK != waitFinalResp())
                         goto failure;
-                    // Activate the profile and make connection
-                    sendFormated("AT+UPSDA=" PROFILE ",3\r\n");
-                    if (RESP_OK == waitFinalResp(NULL,NULL,150*1000))
-                        ok = true;
                 }
+                if (username && *username) {
+                    sendFormated("AT+UPSD=" PROFILE ",2,\"%s\"\r\n", username);
+                    if (RESP_OK != waitFinalResp())
+                        goto failure;
+                }
+                if (password && *password) {
+                    sendFormated("AT+UPSD=" PROFILE ",3,\"%s\"\r\n", password);
+                    if (RESP_OK != waitFinalResp())
+                        goto failure;
+                }
+                // try different Authentication Protocols
+                // 0 = none
+                // 1 = PAP (Password Authentication Protocol)
+                // 2 = CHAP (Challenge Handshake Authentication Protocol)
+                for (int i = AUTH_NONE; i <= AUTH_CHAP && !ok; i ++) {
+                    if ((auth == AUTH_DETECT) || (auth == i)) {
+                        // Set up the Authentication Protocol
+                        sendFormated("AT+UPSD=" PROFILE ",6,%d\r\n", i);
+                        if (RESP_OK != waitFinalResp())
+                            goto failure;
+                        // Activate the profile and make connection
+                        sendFormated("AT+UPSDA=" PROFILE ",3\r\n");
+                        if (RESP_OK == waitFinalResp(NULL,NULL,150*1000))
+                            ok = true;
+                    }
+                }
+            } while (!ok && config && *config); // maybe use next setting ?
+            if (!ok) {
+                MDM_ERROR("Your modem APN/password/username may be wrong\r\n");
+                goto failure;
             }
-        } while (!ok && config && *config); // maybe use next setting ?
-        if (!ok) {
-            MDM_ERROR("Your modem APN/password/username may be wrong\r\n");
-            goto failure;
         }
-    }
-    //Get local IP address
-    sendFormated("AT+UPSND=" PROFILE ",0\r\n");
-    if (RESP_OK != waitFinalResp(_cbUPSND, &_ip))
-        goto failure;
+        //Get local IP address
+        sendFormated("AT+UPSND=" PROFILE ",0\r\n");
+        if (RESP_OK != waitFinalResp(_cbUPSND, &_ip))
+            goto failure;
 
-    UNLOCK();
-    return _ip;
+        UNLOCK();
+        _connected = true;
+        return _ip;
+    }
 failure:
     unlock();
     return NOIP;
@@ -835,16 +855,19 @@ int MDMParser::_cbUDNSRN(int type, const char* buf, int len, IP* ip)
 bool MDMParser::disconnect(void)
 {
     bool ok = false;
-    LOCK();
-    MDM_INFO("Modem::disconnect\r\n");
-    if (_ip != NOIP) {
-        sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
-        if (RESP_OK != waitFinalResp()) {
-            _ip = NOIP;
-            ok = true;
+    if (_connected) {
+        LOCK();
+        MDM_INFO("Modem::disconnect\r\n");
+        if (_ip != NOIP) {
+            sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
+            if (RESP_OK != waitFinalResp()) {
+                _ip = NOIP;
+                ok = true;
+                _connected = false;
+            }
         }
+        UNLOCK();
     }
-    UNLOCK();
     return ok;
 }
 
@@ -1579,10 +1602,6 @@ MDMElectronSerial::MDMElectronSerial(int rxSize /*= 256*/, int txSize /*= 256*/)
 MDMElectronSerial::~MDMElectronSerial(void)
 {
     powerOff();
-    HAL_Pin_Mode(PWR_UC, INPUT);
-    HAL_Pin_Mode(RESET_UC, INPUT);
-    HAL_Pin_Mode(RTS_UC, INPUT);
-    HAL_Pin_Mode(LVLOE_UC, INPUT);
 }
 
 int MDMElectronSerial::_send(const void* buf, int len)
