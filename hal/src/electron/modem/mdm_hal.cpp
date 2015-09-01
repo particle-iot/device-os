@@ -634,6 +634,58 @@ int MDMParser::_cbUACTIND(int type, const char* buf, int len, int* i)
 }
 
 // ----------------------------------------------------------------
+// setup the PDP context
+
+bool MDMParser::pdp(void)
+{
+    bool ok = true;
+    LOCK();
+    MDM_INFO("Modem::pdp\r\n");
+
+    MDM_INFO("Define the PDP context 1 with PDP type \"IP\" and APN \"broadband\"...");
+    sendFormated("AT+CGDCONT=1,\"IP\",\"broadband\"\r\n");
+    if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+        goto failure;
+
+    MDM_INFO("Define a QoS profile for PDP context 1");
+    /* with Traffic Class 3 (background),
+     * maximum bit rate 64 kb/s both for UL and for DL, no Delivery Order requirements,
+     * a maximum SDU size of 320 octets, an SDU error ratio of 10-4, a residual bit error
+     * ratio of 10-5, delivery of erroneous SDUs allowed and Traffic Handling Priority 3.
+     */
+    sendFormated("AT+CGEQREQ=1,3,64,64,,,0,320,\"1E4\",\"1E5\",1,,3\r\n");
+    if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+        goto failure;
+
+    MDM_INFO("Activate PDP context 1...");
+    sendFormated("AT+CGACT=1,1\r\n");
+    if (RESP_OK != waitFinalResp(NULL, NULL, 20000))
+        goto failure;
+
+    MDM_INFO("Test PDP context 1 for non-zero IP address...");
+    sendFormated("AT+CGPADDR=1\r\n");
+    if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+        goto failure;
+
+    MDM_INFO("Read the PDP contexts’ parameters...");
+    sendFormated("AT+CGDCONT?\r\n");
+    // +CGPADDR: 1, "99.88.111.88"
+    if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+        goto failure;
+
+    MDM_INFO("Read the negotiated QoS profile for PDP context 1...");
+    sendFormated("AT+CGEQNEG=1\r\n");
+    if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+        goto failure;
+
+    UNLOCK();
+    return ok;
+failure:
+    UNLOCK();
+    return false;
+}
+
+// ----------------------------------------------------------------
 // internet connection
 
 MDMParser::IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL*/,
