@@ -27,6 +27,7 @@ enum eWanTimings
     DISCONNECT_TO_RECONNECT = S2M(2),
 };
 
+/*
 extern volatile uint8_t WLAN_CONNECTED;
 extern volatile uint8_t WLAN_DISCONNECT;
 extern volatile uint8_t WLAN_DHCP;
@@ -37,6 +38,7 @@ extern volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
 extern volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
 extern volatile uint8_t WLAN_SMART_CONFIG_STOP;
 extern volatile uint8_t WLAN_CAN_SHUTDOWN;
+*/
 
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
@@ -84,9 +86,24 @@ struct NetworkInterface
     virtual void off(bool disconnect_cloud=false)=0;
     virtual void connect(bool listen_enabled=true)=0;
     virtual bool connecting()=0;
+    virtual bool connected()=0;
+    virtual void connect_cancel()=0;
+    /**
+     * Force a manual disconnct.
+     */
     virtual void disconnect()=0;
+
+    /**
+     * @return {@code true} if this connection was manually taken down.
+     */
+    virtual bool manual_disconnect()=0;
     virtual void listen(bool stop=false)=0;
+    virtual void listen_loop()=0;
     virtual bool listening()=0;
+    /**
+     * Perform the 10sec press command, e.g. clear credentials.
+     */
+    virtual void listen_command()=0;
     virtual bool ready()=0;
 
     virtual bool clear_credentials()=0;
@@ -102,6 +119,7 @@ struct NetworkInterface
     virtual void update_config()=0;
 };
 
+extern NetworkInterface& network;
 
 #endif	/* SYSTEM_NETWORK_INTERNAL_H */
 

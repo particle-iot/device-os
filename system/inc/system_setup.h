@@ -34,7 +34,7 @@
 #define SETUP_OVER_SERIAL1 0
 #endif
 
-typedef void (*ConnectCallback)(const char *ssid,
+typedef void (*ConnectCallback)(void* data, const char *ssid,
                                 const char *password,
                                 unsigned long security_type);
 
@@ -50,6 +50,7 @@ struct SystemSetupConsoleConfig
 struct WiFiSetupConsoleConfig : SystemSetupConsoleConfig
 {
     ConnectCallback connect_callback;
+    void* connect_callback_data;
 };
 #endif
 

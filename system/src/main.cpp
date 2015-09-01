@@ -81,7 +81,7 @@ extern "C" void HAL_SysTick_Handler(void)
     {
         TimingLED--;
     }
-    else if(WLAN_SMART_CONFIG_START || SPARK_FLASH_UPDATE || Spark_Error_Count)
+    else if(SPARK_FLASH_UPDATE || Spark_Error_Count || network.listening())
     {
         //Do nothing
     }
@@ -99,7 +99,7 @@ extern "C" void HAL_SysTick_Handler(void)
     else
     {
         LED_Toggle(LED_RGB);
-        if(SPARK_CLOUD_SOCKETED || (WLAN_CONNECTED && !WLAN_DHCP))
+        if(SPARK_CLOUD_SOCKETED || ( network.connected() && !network.ready()))
             TimingLED = 50;         //50ms
         else
             TimingLED = 100;        //100ms
@@ -119,22 +119,21 @@ extern "C" void HAL_SysTick_Handler(void)
         }
 #endif
     }
-    else if(!WLAN_SMART_CONFIG_START && HAL_Core_Mode_Button_Pressed(3000))
+    else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000))
     {
         //reset button debounce state if mode button is pressed for 3 seconds
         HAL_Core_Mode_Button_Reset();
 
-        if (SPARK_WLAN_STARTED) {
-            wlan_connect_cancel(true);
+        if (network.connecting()) {
+            network.connect_cancel();
         }
-        WLAN_SMART_CONFIG_START = 1;
+        network.listen();
     }
     else if(HAL_Core_Mode_Button_Pressed(7000))
     {
         //reset button debounce state if mode button is pressed for 3+7=10 seconds
         HAL_Core_Mode_Button_Reset();
-
-        WLAN_DELETE_PROFILES = 1;
+        network.listen_command();
     }
 
 #ifdef IWDG_RESET_ENABLE

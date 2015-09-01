@@ -58,12 +58,12 @@ volatile uint8_t Spark_Error_Count;
 void Network_Setup()
 {
 #if !PARTICLE_NO_NETWORK
-    network_setup(0, 0, NULL);
+    network.setup();
 
     /* Trigger a WLAN device */
     if (system_mode() == AUTOMATIC || system_mode()==SAFE_MODE)
     {
-        network_connect(Network, 0, 0, NULL);
+        network.connect();
     }
 #endif
 
@@ -98,7 +98,7 @@ void manage_network_connection()
             DEBUG("Resetting WLAN!");
             auto was_sleeping = SPARK_WLAN_SLEEP;
             cloud_disconnect();
-            network_off(Network, 0, 0, NULL);
+            network.off();
             CLR_WLAN_WD();
             SPARK_WLAN_RESET = 0;
             SPARK_WLAN_STARTED = 0;
@@ -108,13 +108,13 @@ void manage_network_connection()
     }
     else
     {
-        if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !WLAN_CONNECTED))
+        if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !network.connected()))
         {
-            if (!WLAN_DISCONNECT)
+            if (!network.manual_disconnect())
             {
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
             }
-            network_connect(Network, 0, 0, NULL);
+            network.connect();
         }
     }
 }
@@ -200,7 +200,7 @@ void handle_cfod()
 
 void establish_cloud_connection()
 {
-    if (WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
+    if (network.ready() && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
     {
         if (Spark_Error_Count)
             handle_cloud_errors();
@@ -387,7 +387,7 @@ void cloud_disconnect()
         SPARK_CLOUD_SOCKETED = 0;
         Spark_Error_Count = 0;
 
-        if (!WLAN_DISCONNECT && !WLAN_SMART_CONFIG_START)
+        if (!network.manual_disconnect() && !network.listening())
         {
             LED_SetRGBColor(RGB_COLOR_GREEN);
             LED_On(LED_RGB);

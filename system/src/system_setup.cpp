@@ -240,7 +240,7 @@ void WiFiSetupConsole::handle(char c)
 #endif
             "while I save those credentials...\r\n\r\n");
 
-        this->config.connect_callback(ssid, password, security_type);
+        this->config.connect_callback(this->config.connect_callback_data, ssid, password, security_type);
 
         print("Awesome. Now we'll connect!\r\n\r\n");
         print("If you see a pulsing cyan light, your "
@@ -263,7 +263,7 @@ void WiFiSetupConsole::handle(char c)
 
 void WiFiSetupConsole::exit()
 {
-    config.connect_callback(NULL, NULL, 0);
+    config.connect_callback(config.connect_callback_data, NULL, NULL, 0);
 }
 
 #endif
