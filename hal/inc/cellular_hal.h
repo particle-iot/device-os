@@ -56,6 +56,8 @@ cellular_result_t  cellular_connect(CellularConnect* connect, void* reserved);
  */
 cellular_result_t  cellular_disconnect(void* reserved);
 
+cellular_result_t  cellular_fetch_ipconfig(void* config);
+
 struct CellularDevice
 {
     uint16_t size;

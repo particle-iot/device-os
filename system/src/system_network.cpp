@@ -40,38 +40,43 @@ volatile uint8_t SPARK_WLAN_STARTED;
 #if Wiring_WiFi
 #include "system_network_wifi.h"
 WiFiNetworkInterface wifi;
-NetworkInterface& network = wifi;
-
+ManagedNetworkInterface& network = wifi;
 inline NetworkInterface& nif(network_interface_t _nif) { return wifi; }
+#endif
 
+#if Wiring_Cellular
+#include "system_network_cellular.h"
+CellularNetworkInterface cellular;
+ManagedNetworkInterface& network = cellular;
+inline NetworkInterface& nif(network_interface_t _nif) { return cellular; }
 #endif
 
 void HAL_WLAN_notify_simple_config_done()
 {
-    wifi.notify_listening_complete();
+    network.notify_listening_complete();
 }
 
 void HAL_WLAN_notify_connected()
 {
-    wifi.notify_connected();
+    network.notify_connected();
 }
 
 void HAL_WLAN_notify_disconnected()
 {
-    wifi.notify_disconnected();
+    network.notify_disconnected();
 }
 
 void HAL_WLAN_notify_can_shutdown()
 {
-    wifi.notify_can_shutdown();
+    network.notify_can_shutdown();
 }
 
 void HAL_WLAN_notify_dhcp(bool dhcp)
 {
-    wifi.notify_dhcp(dhcp);
+    network.notify_dhcp(dhcp);
 }
 
-const WLanConfig* network_config(network_handle_t network, uint32_t param, void* reserved)
+const void* network_config(network_handle_t network, uint32_t param, void* reserved)
 {
     return nif(network).config();
 }

@@ -49,7 +49,7 @@ const network_interface_t NIF_DEFAULT = 0;
  * @return
  */
 
-const WLanConfig* network_config(network_handle_t network, uint32_t param1, void* reserved);
+const void* network_config(network_handle_t network, uint32_t param1, void* reserved);
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 bool network_connecting(network_handle_t network, uint32_t param1, void* reserved);

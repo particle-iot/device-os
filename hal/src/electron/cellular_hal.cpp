@@ -42,3 +42,8 @@ cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
     strncpy(device->iccid, status->ccid, sizeof(device->imei));
     return 0;
 }
+
+cellular_result_t cellular_fetch_ipconfig(void* config)
+{
+    return -1;
+}
