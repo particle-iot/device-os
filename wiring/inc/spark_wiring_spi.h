@@ -38,10 +38,9 @@ enum FrequencyScale
     HZ = 1,
     KHZ = HZ*1000,
     MHZ = KHZ*1000,
-    SYSTEM = 0,         // represents the system clock speed
-    ARDUINO = 16*MHZ,
-    CORE = 72*MHZ,
-    PHOTON = 120*MHZ
+    SYSTEM = 0,                 // represents the system clock speed
+    SPI_CLOCK_ARDUINO = 16*MHZ,
+    SPI_CLOCK_CORE = 36*MHZ
 };
 
 class SPIClass {

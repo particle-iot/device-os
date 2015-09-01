@@ -70,6 +70,37 @@ inline void CLR_WLAN_WD() {
     WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog_duration);
 }
 
+/**
+ * Internal network interface class to provide polymorphic behavior for each
+ * network type.  This is not part of the dynalib so functions can freely evolve.
+ */
+struct NetworkInterface
+{
+
+    virtual network_interface_t network_interface()=0;
+    virtual void setup()=0;
+
+    virtual void on(bool update_led)=0;
+    virtual void off(bool disconnect_cloud=false)=0;
+    virtual void connect(bool listen_enabled=true)=0;
+    virtual bool connecting()=0;
+    virtual void disconnect()=0;
+    virtual void listen(bool stop=false)=0;
+    virtual bool listening()=0;
+    virtual bool ready()=0;
+
+    virtual bool clear_credentials()=0;
+    virtual bool has_credentials()=0;
+    virtual void set_credentials(NetworkCredentials* creds)=0;
+
+    /**
+     * Todo - need different types of config!
+     * @return
+     */
+    virtual const WLanConfig* config()=0;
+    virtual void config_clear()=0;
+    virtual void update_config()=0;
+};
 
 
 #endif	/* SYSTEM_NETWORK_INTERNAL_H */
