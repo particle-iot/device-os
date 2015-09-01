@@ -69,6 +69,7 @@ typedef WLanCredentials NetworkCredentials;
 void network_set_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
 bool network_clear_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
 
+void network_setup(network_handle_t network, uint32_t flags, void* reserved);
 
 /**
  * Disable automatic listening mode when no credentials are configured.

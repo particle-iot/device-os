@@ -183,7 +183,7 @@ void app_setup_and_loop(void)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
 #endif
 
-    SPARK_WLAN_Setup(Multicast_Presence_Announcement);
+    Network_Setup();
 
     /* Main loop */
     while (1)

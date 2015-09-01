@@ -409,6 +409,11 @@ bool network_clear_credentials(network_handle_t, uint32_t, NetworkCredentials* c
     return wlan_clear_credentials() == 0;
 }
 
+void network_setup(network_handle_t handle, uint32_t flags, void* reserved)
+{
+    wlan_setup();
+}
+
 void manage_smart_config()
 {
     if (WLAN_SMART_CONFIG_START)
