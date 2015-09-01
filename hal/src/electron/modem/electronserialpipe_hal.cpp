@@ -64,9 +64,6 @@ ElectronSerialPipe::~ElectronSerialPipe(void)
 
     // clear any received data
     // ... should be handled with ~Pipe deconstructor
-
-    _usart_enabled = false;
-    _usart_transmitting = false;
 }
 
 void ElectronSerialPipe::begin(unsigned int baud)
@@ -74,15 +71,14 @@ void ElectronSerialPipe::begin(unsigned int baud)
     //HAL_USART_Begin(HAL_USART_SERIAL3, baud);
     USART_DeInit(USART3);
 
-    // Configure USART Rx and Tx as alternate function push-pull, and enable GPIOA clock
 #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
     // Configure USART RTS and CTS as alternate function push-pull
     HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
     HAL_Pin_Mode(CTS_UC, AF_OUTPUT_PUSHPULL);
-#else
+#endif
+    // Configure USART Rx and Tx as alternate function push-pull, and enable GPIOA clock
     HAL_Pin_Mode(RXD_UC, AF_OUTPUT_PUSHPULL);
     HAL_Pin_Mode(TXD_UC, AF_OUTPUT_PUSHPULL);
-#endif
 
     // Enable USART Clock
     RCC->APB1ENR |= RCC_APB1Periph_USART3;
@@ -91,12 +87,11 @@ void ElectronSerialPipe::begin(unsigned int baud)
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
-    GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, GPIO_PinSource11, GPIO_AF_USART3);
-    GPIO_PinAFConfig(PIN_MAP[CTS_UC].gpio_peripheral, GPIO_PinSource10, GPIO_AF_USART3);
-#else
-    GPIO_PinAFConfig(PIN_MAP[RXD_UC].gpio_peripheral, GPIO_PinSource11, GPIO_AF_USART3);
-    GPIO_PinAFConfig(PIN_MAP[TXD_UC].gpio_peripheral, GPIO_PinSource10, GPIO_AF_USART3);
+    GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
+    GPIO_PinAFConfig(PIN_MAP[CTS_UC].gpio_peripheral, PIN_MAP[CTS_UC].gpio_pin_source, GPIO_AF_USART3);
 #endif
+    GPIO_PinAFConfig(PIN_MAP[RXD_UC].gpio_peripheral, PIN_MAP[RXD_UC].gpio_pin_source, GPIO_AF_USART3);
+    GPIO_PinAFConfig(PIN_MAP[TXD_UC].gpio_peripheral, PIN_MAP[TXD_UC].gpio_pin_source, GPIO_AF_USART3);
 
     // NVIC Configuration
     NVIC_InitTypeDef NVIC_InitStructure;
@@ -132,12 +127,9 @@ void ElectronSerialPipe::begin(unsigned int baud)
     // Enable the USART
     USART_Cmd(USART3, ENABLE);
 
-    _usart_enabled = true;
-    _usart_transmitting = false;
-
     // Enable USART Receive and Transmit interrupts
-    USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
-    USART_ITConfig(USART3, USART_IT_TXE, DISABLE);
+    USART_ITConfig(USART3, USART_IT_TXE, ENABLE);
+    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
 }
 
 // tx channel
@@ -178,8 +170,10 @@ int ElectronSerialPipe::put(const void* buffer, int length, bool blocking)
 
 void ElectronSerialPipe::txCopy(void)
 {
-    char c = _pipeTx.getc();
-    USART_SendData(USART3, c);
+    if (_pipeTx.readable()) {
+        char c = _pipeTx.getc();
+        USART_SendData(USART3, c);
+    }
 }
 
 void ElectronSerialPipe::txIrqBuf(void)

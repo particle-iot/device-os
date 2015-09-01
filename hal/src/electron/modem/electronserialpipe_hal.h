@@ -103,6 +103,4 @@ protected:
     void txCopy(void);
     Pipe<char> _pipeRx; //!< receive pipe
     Pipe<char> _pipeTx; //!< transmit pipe
-    bool _usart_enabled;
-    bool _usart_transmitting;
 };
