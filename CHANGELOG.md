@@ -3,7 +3,6 @@
 
 ### FEATURES
  - `SPI.setClockDividerReference`, `SPI.setClockSpeed` to set clock speed in a more portable manner. [#454]https://github.com/spark/firmware/issues/454
-
 - `WiFi.scan` function to retrieve details of local access points. [#567](https://github.com/spark/firmware/pull/567)
 - `UDP.sendPacket`/`UDP.receivePacket` to send/receive a packet directly to an application-supplied buffer. [#452](https://github.com/spark/firmware/pull/452)
 - Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)

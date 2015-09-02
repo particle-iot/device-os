@@ -192,9 +192,9 @@ void app_setup_and_loop(void)
         Spark_Idle();
 
         static uint8_t SPARK_WIRING_APPLICATION = 0;
-        if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
+        if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION || (system_mode()!=AUTOMATIC))
         {
-            if(!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
+            if(!SPARK_FLASH_UPDATE)
             {
                 if ((SPARK_WIRING_APPLICATION != 1))
                 {
