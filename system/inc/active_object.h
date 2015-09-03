@@ -56,25 +56,29 @@ struct Message
     virtual void operator()()=0;
 };
 
-template<typename T> class Promise : public Message
+template<typename T, typename C> class PromiseBase : public Message
 {
+protected:
     /**
      * The function to invoke to retrieve the future result.
      */
-    std::function<T()> fn;
-    /**
-     * The result retrieved from the function.
-     * Only valid once {@code complete} is {@code true}
-     */
-    T result;
+    std::function<T(void)> work;
+
     bool complete;
 
     std::mutex m;
     std::condition_variable cv;
 
+    void wait_complete()
+    {
+        // wait for result to be available
+        std::unique_lock<std::mutex> lk(m);
+        cv.wait(lk, [this]{return complete;});
+    }
+
 public:
 
-    Promise(std::function<T()>&& fn_) : fn(std::move(fn_)), complete(false)
+    PromiseBase(const std::function<T()>& fn_) : work(std::move(fn_)), complete(false)
     {
     }
 
@@ -82,24 +86,67 @@ public:
     {
         {
             std::lock_guard<std::mutex> lk(m);
-            result = fn();
+            ((C*)this)->invoke();
             complete = true;
         }
         cv.notify_one();
     }
+
+};
+
+template<typename T> class Promise : public PromiseBase<T, Promise<T>>
+{
+    /**
+     * The result retrieved from the function.
+     * Only valid once {@code complete} is {@code true}
+     */
+    T result;
+
+    using super = PromiseBase<T, Promise<T>>;
+    friend super;
+
+public:
+
+    Promise(const std::function<T()>& fn_) : super(fn_) {}
 
     /**
      * wait for the result
      */
     T get()
     {
-        // wait for result to be available
-        std::lock_guard<std::mutex> lk(m);
-        cv.wait(lk, [this]{return complete;});
+        this->wait_complete();
         return result;
     }
+
+    void invoke()
+    {
+        this->result = this->work();
+    }
+
+
 };
 
+template<> class Promise<void> : public PromiseBase<void, Promise<void>>
+{
+    using super = PromiseBase<void, Promise<void>>;
+    friend super;
+
+protected:
+
+    void invoke()
+    {
+        this->work();
+    }
+
+public:
+
+    Promise(const std::function<void()>& fn_) : super(fn_) {}
+
+    void get()
+    {
+        this->wait_complete();
+    }
+};
 
 
 class ActiveObjectBase
@@ -173,12 +220,12 @@ public:
         //invoke_impl((void*)fn, NULL, 0);
     }
 
-    template<typename R> std::shared_ptr<Promise<R>> invoke_future(std::function<R(void)> fn)
+    template<typename R> std::shared_ptr<Promise<R>> invoke_future(std::function<R(void)> work)
     {
-        auto task = std::make_shared<Promise<R()>>(fn);
-        Item& item = task;
-        put(task);
-        return task;
+        auto promise = std::make_shared<Promise<R>>(work);            // shared pointer for reference returned here
+        auto message = std::static_pointer_cast<Message>(promise);      // another reference to put on the queue
+        put(message);
+        return promise;
     }
 
 };

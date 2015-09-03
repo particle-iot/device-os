@@ -34,14 +34,13 @@ int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
 SYSTEM_MODE(AUTOMATIC);
-SYSTEM_THREAD(ENABLED);
+//SYSTEM_THREAD(ENABLED);
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
     //pinMode(D7, OUTPUT);
     Serial.begin(9600);
-    Spark.connect();
 }
 void toggle()
 {
@@ -59,7 +58,7 @@ void loop()
     HAL_Delay_Milliseconds(50);
     toggle();
     if (Particle.connected()) {
-        WiFi.connect();
+        //WiFi.connect();
     }
 }
 

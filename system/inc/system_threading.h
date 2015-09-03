@@ -98,9 +98,9 @@ FFL(F const &func)
 
 #define SYSTEM_THREAD_CONTEXT_SYNC(fn) \
     if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
-        auto lambda = [=]() { return (fn); }; \
-        auto future = SystemThread.invoke_future(FFL(lambda)); \
-        return future.get();  \
+        auto callable = FFL([=]() { return (fn); }); \
+        auto future = SystemThread.invoke_future(callable); \
+        return future->get();  \
     }
 
 #define SYSTEM_THREAD_CONTEXT_ASYNC(fn) \
