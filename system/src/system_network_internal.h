@@ -25,6 +25,7 @@
 #include "spark_wiring_ticks.h"
 #include "system_event.h"
 #include "system_cloud_internal.h"
+#include "system_network.h"
 
 
 enum eWanTimings

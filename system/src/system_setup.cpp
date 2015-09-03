@@ -30,7 +30,7 @@
 #include "system_cloud.h"
 #include "system_update.h"
 #include "spark_wiring.h"   // for serialReadLine
-#include "spark_wiring_wifi.h"
+#include "system_network_internal.h"
 #include "system_network.h"
 
 #if Wiring_WiFi && PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
@@ -278,13 +278,14 @@ CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
 
 void CellularSetupConsole::exit()
 {
-    network_listen(0, 1, NULL);
+    network.listen(false);
 }
 
 void CellularSetupConsole::handle(char c)
 {
-    if (c=='e')
+    if (c=='i')
     {
+        super::handle(c);  // print device ID
         CellularDevice dev;
         cellular_device_info(&dev, NULL);
 

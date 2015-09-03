@@ -24,12 +24,32 @@
  */
 
 #include "ota_flash_hal.h"
+#include "cellular_hal.h"
+#include <string.h>
+
+void set_key_value(key_value* kv, const char* key, const char* value)
+{
+    kv->key = key;
+    strncpy(kv->value, value, sizeof(kv->value-1));
+}
 
 void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
     info->platform_id = PLATFORM_ID;
     info->module_count = 0;
     info->modules = NULL;
+    // TODO: add module info
+
+    info->key_value_count = 2;
+    info->key_values = new key_value[info->key_value_count];
+
+    CellularDevice device;
+    memset(&device, 0, sizeof(device));
+    device.size = sizeof(device);
+    cellular_device_info(&device, NULL);
+
+    set_key_value(info->key_values, "imei", device.imei);
+    set_key_value(info->key_values+1, "iccid", device.iccid);
 }
 
 
@@ -93,8 +113,8 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
     //         dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
     //         // refetch and rewrite public key to ensure it is valid
     //         fetch_device_public_key();
-    //         generated = true;            
-    //     }        
+    //         generated = true;
+    //     }
     // }
     genspec->generated_key = generated;
     return 0;

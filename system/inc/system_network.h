@@ -64,6 +64,7 @@ bool network_listening(network_handle_t network, uint32_t param1, void* reserved
 
 bool network_has_credentials(network_handle_t network, uint32_t param1, void* reserved);
 
+#include "wlan_hal.h"
 typedef WLanCredentials NetworkCredentials;
 
 void network_set_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);

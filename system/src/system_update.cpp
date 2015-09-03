@@ -257,6 +257,20 @@ public:
     }
 
     bool next() { return write(',') && newline(); }
+
+    bool write_key_values(size_t count, const key_value* key_values)
+    {
+        bool result = true;
+        while (count-->0) {
+            result = result && write_key_value(key_values++);
+        }
+        return result;
+    }
+
+    bool write_key_value(const key_value* kv)
+    {
+        return write_string(kv->key, kv->value);
+    }
 };
 
 const char* module_function_string(module_function_t func) {
@@ -291,6 +305,7 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
     AppendJson json(append, append_data);
     bool result = true;
     result &= json.write_value("p", system.platform_id)
+        && json.write_key_values(system.key_value_count, system.key_values)
         && json.write_attribute("m")
         && json.write('[');
     char buf[65];
@@ -332,6 +347,7 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
 bool system_module_info(appender_fn append, void* append_data, void* reserved)
 {
     hal_system_info_t info;
+    info.size = sizeof(info);
     HAL_System_Info(&info, true, NULL);
     bool result = system_info_to_json(append, append_data, info);
     HAL_System_Info(&info, false, NULL);
