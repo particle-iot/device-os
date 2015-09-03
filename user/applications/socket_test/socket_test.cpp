@@ -24,6 +24,9 @@ int ret;
     char buf[512] = "";
 #endif
 
+// ALL_LEVEL, TRACE_LEVEL, DEBUG_LEVEL, WARN_LEVEL, ERROR_LEVEL, PANIC_LEVEL, NO_LOG_LEVEL
+SerialDebugOutput debugOutput(9600, DEBUG_LEVEL);
+
 //------------------------------------------------------------------------------------
 // You need to configure these cellular modem / SIM parameters.
 // These parameters are ignored for LISA-C200 variants and can be left NULL.
@@ -49,10 +52,7 @@ void setup()
 
 	Serial.begin(9600);
 
-	//ALL_LEVEL, TRACE_LEVEL, DEBUG_LEVEL, WARN_LEVEL, ERROR_LEVEL, PANIC_LEVEL, NO_LOG_LEVEL
-	//Serial1DebugOutput debugOutput(115200, ALL_LEVEL);
-
-	Serial.println("\e[0;36mHi, I'm your friendly neighborhood Electron!");
+    DEBUG_D("\e[0;36mHello, I'm your friendly neighborhood Electron! Boot time is: %d",millis());
 
 	// TEST RGB LED
 	RGB_RED();
@@ -64,23 +64,27 @@ void setup()
 	RGB_OFF();
 	delay(500);
 
-    //electronMDM.setDebug(4); // enable this for debugging issues
+    electronMDM.setDebug(3); // enable this for debugging issues
     MDMParser::DevStatus devStatus = {};
 	MDMParser::NetStatus netStatus = {};
     bool mdmOk = electronMDM.init(SIMPIN, &devStatus);
 
-    //electronMDM.dumpDevStatus(&devStatus);
+    electronMDM.dumpDevStatus(&devStatus);
     if (mdmOk) {
         RGB_GREEN();
         Serial.println("Wait until we are connected to the tower.");
         mdmOk = electronMDM.registerNet(&netStatus);
-        //electronMDM.dumpNetStatus(&netStatus);
+        electronMDM.dumpNetStatus(&netStatus);
     }
     if (mdmOk)
     {
     	RGB_BLUE();
     	Serial.println("Establish a PDP context.");
-    	//mdmOk = electronMDM.pdp();
+#ifdef APN
+        mdmOk = electronMDM.pdp(APN);
+#else
+        mdmOk = electronMDM.pdp();
+#endif
     }
     if (mdmOk)
     {

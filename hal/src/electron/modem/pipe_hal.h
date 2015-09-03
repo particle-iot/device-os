@@ -22,7 +22,7 @@
 #include <string.h>
 #include <stddef.h>
 
-// #include "service_debug.h"
+#include "service_debug.h"
 
 #ifdef putc
 #undef putc
@@ -65,19 +65,19 @@ public:
     */
     void dump(void)
     {
-        // int o = _r;
-        // int MAX = size();
-        // char temp1[MAX*3];
-        // char temp2[4];
-        // sprintf(temp1,"pipe: %d/%d ", size(), _s);
-        // while (o != _w) {
-        //     T t = _b[o];
-        //     sprintf(temp2, "%0*X", sizeof(T)*2, t);
-        //     strcat(temp1, temp2);
-        //     o = _inc(o);
-        // }
-        // strcat(temp1,"\n");
-        // LOG(temp1);
+        int o = _r;
+        int MAX = size();
+        char temp1[MAX*3];
+        char temp2[4];
+        sprintf(temp1,"pipe: %d/%d ", size(), _s);
+        while (o != _w) {
+            T t = _b[o];
+            sprintf(temp2, "%0*X", sizeof(T)*2, t);
+            strcat(temp1, temp2);
+            o = _inc(o);
+        }
+        strcat(temp1,"\n");
+        DEBUG_D(temp1);
     }
 
     // writing thread/context API

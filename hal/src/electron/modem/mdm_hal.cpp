@@ -72,26 +72,26 @@
 
 void dumpAtCmd(const char* buf, int len)
 {
-    DEBUG(" %3d \"", len);
+    DEBUG_D(" %3d \"", len);
     while (len --) {
         char ch = *buf++;
         if ((ch > 0x1F) && (ch != 0x7F)) { // is printable
-            if      (ch == '%')  DEBUG("%%");
-            else if (ch == '"')  DEBUG("\\\"");
-            else if (ch == '\\') DEBUG("\\\\");
-            else DEBUG(ch);
+            if      (ch == '%')  DEBUG_D("%%");
+            else if (ch == '"')  DEBUG_D("\\\"");
+            else if (ch == '\\') DEBUG_D("\\\\");
+            else DEBUG_D("%c", ch);
         } else {
-            if      (ch == '\a') DEBUG("\\a"); // BEL (0x07)
-            else if (ch == '\b') DEBUG("\\b"); // Backspace (0x08)
-            else if (ch == '\t') DEBUG("\\t"); // Horizontal Tab (0x09)
-            else if (ch == '\n') DEBUG("\\n"); // Linefeed (0x0A)
-            else if (ch == '\v') DEBUG("\\v"); // Vertical Tab (0x0B)
-            else if (ch == '\f') DEBUG("\\f"); // Formfeed (0x0C)
-            else if (ch == '\r') DEBUG("\\r"); // Carriage Return (0x0D)
-            else                 DEBUG("\\x%02x", (unsigned char)ch);
+            if      (ch == '\a') DEBUG_D("\\a"); // BEL (0x07)
+            else if (ch == '\b') DEBUG_D("\\b"); // Backspace (0x08)
+            else if (ch == '\t') DEBUG_D("\\t"); // Horizontal Tab (0x09)
+            else if (ch == '\n') DEBUG_D("\\n"); // Linefeed (0x0A)
+            else if (ch == '\v') DEBUG_D("\\v"); // Vertical Tab (0x0B)
+            else if (ch == '\f') DEBUG_D("\\f"); // Formfeed (0x0C)
+            else if (ch == '\r') DEBUG_D("\\r"); // Carriage Return (0x0D)
+            else                 DEBUG_D("\\x%02x", (unsigned char)ch);
         }
     }
-    DEBUG("\"\r\n");
+    DEBUG_D("\"\r\n");
 }
 
 void MDMParser::_debugPrint(int level, const char* color, const char* format, ...)
@@ -100,24 +100,25 @@ void MDMParser::_debugPrint(int level, const char* color, const char* format, ..
     {
         va_list args;
         va_start (args, format);
-        if (color) DEBUG(color);
-        DEBUG(format, args);
-        if (color) DEBUG(DEF);
-        va_end (args);
+        if (color) DEBUG_D(color);
+        DEBUG_D(format, args);
+        if (color) DEBUG_D(DEF);
+        DEBUG_D("\r\n");
+        //va_end (args);
     }
 }
 
-#define MDM_ERROR(...)     _debugPrint(0, RED, __VA_ARGS__)
-#define MDM_INFO(...)      _debugPrint(1, GRE, __VA_ARGS__)
-#define MDM_TRACE(...)     _debugPrint(2, DEF, __VA_ARGS__)
-#define MDM_TEST(...)      _debugPrint(3, CYA, __VA_ARGS__)
+#define MDM_ERROR(...)  do {_debugPrint(0, RED, __VA_ARGS__);}while(0)
+#define MDM_INFO(...)   do {_debugPrint(1, GRE, __VA_ARGS__);}while(0)
+#define MDM_TRACE(...)  do {_debugPrint(2, DEF, __VA_ARGS__);}while(0)
+#define MDM_TEST(...)   do {_debugPrint(3, CYA, __VA_ARGS__);}while(0)
 
 #else
 
-#define MDM_ERROR(...) (void)0 // no tracing
-#define MDM_TEST(...)  (void)0 // no tracing
-#define MDM_INFO(...)  (void)0 // no tracing
-#define MDM_TRACE(...) (void)0 // no tracing
+#define MDM_ERROR(...) // no tracing
+#define MDM_TEST(...)  // no tracing
+#define MDM_INFO(...)  // no tracing
+#define MDM_TRACE(...) // no tracing
 
 #endif
 
@@ -153,7 +154,7 @@ int MDMParser::send(const char* buf, int len)
 {
 #ifdef MDM_DEBUG
     if (_debugLevel >= 3) {
-        DEBUG("%10.3f AT send    ", _debugTime.read_ms()*0.001);
+        DEBUG_D("%10.3f AT send    ", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001);
         dumpAtCmd(buf,len);
     }
 #endif
@@ -189,7 +190,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                             (type == TYPE_PLUS)   ? CYA " + " DEF :
                             (type == TYPE_PROMPT) ? BLU " > " DEF :
                                                         "..." ;
-            DEBUG("%10.3f AT read %s", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001, s);
+            DEBUG_D("%10.3f AT read %s", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001, s);
             dumpAtCmd(buf, len);
         }
 #endif
@@ -538,9 +539,11 @@ int MDMParser::_cbCPIN(int type, const char* buf, int len, Sim* sim)
 
 int MDMParser::_cbCCID(int type, const char* buf, int len, char* ccid)
 {
-    if ((type == TYPE_PLUS) && ccid){
-        if (sscanf(buf, "\r\n+CCID: %[^\r]\r\n", ccid) == 1)
-            MDM_TRACE("Got CCID: %s\r\n", ccid);
+    if ((type == TYPE_PLUS) && ccid) {
+        if (sscanf(buf, "\r\n+CCID: %[^\r]\r\n", ccid) == 1) {
+            // This won't compile for some strange reason!
+            // MDM_TRACE("Got CCID: %s\r\n", ccid);
+        }
     }
     return WAIT;
 }
@@ -937,6 +940,7 @@ bool MDMParser::socketConnect(int socket, const char * host, int port)
     IP ip = gethostbyname(host);
     if (ip == NOIP)
         return false;
+    MDM_TRACE("socketConnect(host: %d)\r\n", host);
     // connect to socket
     return socketConnect(socket, ip, port);
 }
@@ -946,7 +950,7 @@ bool MDMParser::socketConnect(int socket, const IP& ip, int port)
     bool ok = false;
     LOCK();
     if (ISSOCKET(socket) && (!_sockets[socket].connected)) {
-        MDM_TRACE("socketConnect(%d,%s,%d)\r\n", socket,host,port);
+        MDM_TRACE("socketConnect(%d,port:%d)\r\n", socket,port);
         sendFormated("AT+USOCO=%d,\"" IPSTR "\",%d\r\n", _sockets[socket].handle, IPNUM(ip), port);
         if (RESP_OK == waitFinalResp())
             ok = _sockets[socket].connected = true;
@@ -1397,61 +1401,61 @@ bool MDMParser::setDebug(int level)
 
 void MDMParser::dumpDevStatus(MDMParser::DevStatus* status)
 {
-    DEBUG("Modem::devStatus\r\n");
+    DEBUG_D("Modem::devStatus\r\n");
     const char* txtDev[] = { "Unknown", "SARA-G350", "LISA-U200", "LISA-C200", "SARA-U260", "SARA-U270", "LEON-G200" };
     if (status->dev < sizeof(txtDev)/sizeof(*txtDev) && (status->dev != DEV_UNKNOWN))
-        DEBUG("  Device:       %s\r\n", txtDev[status->dev]);
+        DEBUG_D("  Device:       %s\r\n", txtDev[status->dev]);
     const char* txtLpm[] = { "Disabled", "Enabled", "Active" };
     if (status->lpm < sizeof(txtLpm)/sizeof(*txtLpm))
-        DEBUG("  Power Save:   %s\r\n", txtLpm[status->lpm]);
+        DEBUG_D("  Power Save:   %s\r\n", txtLpm[status->lpm]);
     const char* txtSim[] = { "Unknown", "Missing", "Pin", "Ready" };
     if (status->sim < sizeof(txtSim)/sizeof(*txtSim) && (status->sim != SIM_UNKNOWN))
-        DEBUG("  SIM:          %s\r\n", txtSim[status->sim]);
+        DEBUG_D("  SIM:          %s\r\n", txtSim[status->sim]);
     if (*status->ccid)
-        DEBUG("  CCID:         %s\r\n", status->ccid);
+        DEBUG_D("  CCID:         %s\r\n", status->ccid);
     if (*status->imei)
-        DEBUG("  IMEI:         %s\r\n", status->imei);
+        DEBUG_D("  IMEI:         %s\r\n", status->imei);
     if (*status->imsi)
-        DEBUG("  IMSI:         %s\r\n", status->imsi);
+        DEBUG_D("  IMSI:         %s\r\n", status->imsi);
     if (*status->meid)
-        DEBUG("  MEID:         %s\r\n", status->meid); // LISA-C
+        DEBUG_D("  MEID:         %s\r\n", status->meid); // LISA-C
     if (*status->manu)
-        DEBUG("  Manufacturer: %s\r\n", status->manu);
+        DEBUG_D("  Manufacturer: %s\r\n", status->manu);
     if (*status->model)
-        DEBUG("  Model:        %s\r\n", status->model);
+        DEBUG_D("  Model:        %s\r\n", status->model);
     if (*status->ver)
-        DEBUG("  Version:      %s\r\n", status->ver);
+        DEBUG_D("  Version:      %s\r\n", status->ver);
 }
 
 void MDMParser::dumpNetStatus(MDMParser::NetStatus *status)
 {
-    DEBUG("Modem::netStatus\r\n");
+    DEBUG_D("Modem::netStatus\r\n");
     const char* txtReg[] = { "Unknown", "Denied", "None", "Home", "Roaming" };
     if (status->csd < sizeof(txtReg)/sizeof(*txtReg) && (status->csd != REG_UNKNOWN))
-        DEBUG("  CSD Registration:   %s\r\n", txtReg[status->csd]);
+        DEBUG_D("  CSD Registration:   %s\r\n", txtReg[status->csd]);
     if (status->psd < sizeof(txtReg)/sizeof(*txtReg) && (status->psd != REG_UNKNOWN))
-        DEBUG("  PSD Registration:   %s\r\n", txtReg[status->psd]);
+        DEBUG_D("  PSD Registration:   %s\r\n", txtReg[status->psd]);
     const char* txtAct[] = { "Unknown", "GSM", "Edge", "3G", "CDMA" };
     if (status->act < sizeof(txtAct)/sizeof(*txtAct) && (status->act != ACT_UNKNOWN))
-        DEBUG("  Access Technology:  %s\r\n", txtAct[status->act]);
+        DEBUG_D("  Access Technology:  %s\r\n", txtAct[status->act]);
     if (status->rssi)
-        DEBUG("  Signal Strength:    %d dBm\r\n", status->rssi);
+        DEBUG_D("  Signal Strength:    %d dBm\r\n", status->rssi);
     if (status->ber)
-        DEBUG("  Bit Error Rate:     %d\r\n", status->ber);
+        DEBUG_D("  Bit Error Rate:     %d\r\n", status->ber);
     if (*status->opr)
-        DEBUG("  Operator:           %s\r\n", status->opr);
+        DEBUG_D("  Operator:           %s\r\n", status->opr);
     if (status->lac != 0xFFFF)
-        DEBUG("  Location Area Code: %04X\r\n", status->lac);
+        DEBUG_D("  Location Area Code: %04X\r\n", status->lac);
     if (status->ci != 0xFFFFFFFF)
-        DEBUG("  Cell ID:            %08X\r\n", status->ci);
+        DEBUG_D("  Cell ID:            %08X\r\n", status->ci);
     if (*status->num)
-        DEBUG("  Phone Number:       %s\r\n", status->num);
+        DEBUG_D("  Phone Number:       %s\r\n", status->num);
 }
 
 void MDMParser::dumpIp(MDMParser::IP ip)
 {
     if (ip != NOIP)
-        DEBUG("Modem:IP " IPSTR "\r\n", IPNUM(ip));
+        DEBUG_D("Modem:IP " IPSTR "\r\n", IPNUM(ip));
 }
 
 // ----------------------------------------------------------------

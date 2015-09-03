@@ -30,7 +30,7 @@
 #include "system_tick_hal.h"
 
 /* Include for debug capabilty */
-// #define MDM_DEBUG
+#define MDM_DEBUG
 
 /** basic modem parser class
 */
