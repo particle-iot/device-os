@@ -392,6 +392,10 @@ bool MDMParser::init(const char* simpin, DevStatus* status)
     sendFormated("AT+CMEE=2\r\n");
     if(RESP_OK != waitFinalResp())
         goto failure;
+    // Configures sending of URCs from MT to DTE for indications
+    sendFormated("AT+CMER=1,0,0,2,1\r\n");
+    if(RESP_OK != waitFinalResp())
+        goto failure;
     // set baud rate
     sendFormated("AT+IPR=115200\r\n");
     if (RESP_OK != waitFinalResp())
@@ -459,13 +463,18 @@ bool MDMParser::init(const char* simpin, DevStatus* status)
             goto failure;
         _dev.lpm = LPM_ACTIVE;
     }
-    // enable the psd registration unsolicited result code
+    // setup the GPRS network registration URC (Unsolicited Response Code)
+    // 0: (default value and factory-programmed value): network registration URC disabled
+    // 1: network registration URC enabled
+    // 2: network registration and location information URC enabled
     sendFormated("AT+CGREG=2\r\n");
     if (RESP_OK != waitFinalResp())
         goto failure;
-
-    // enable the network registration unsolicited result code
-    sendFormated("AT+CREG=%d\r\n", (_dev.dev == DEV_LISA_C200) ? 1 : 2);
+    // setup the network registration URC (Unsolicited Response Code)
+    // 0: (default value and factory-programmed value): network registration URC disabled
+    // 1: network registration URC enabled
+    // 2: network registration and location information URC enabled
+    sendFormated("AT+CREG=2\r\n");
     if (RESP_OK != waitFinalResp())
         goto failure;
     // Setup SMS in text mode
@@ -554,9 +563,13 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
         system_tick_t start = HAL_Timer_Get_Milli_Seconds();
         MDM_INFO("Modem::register\r\n");
         while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms))
-            HAL_Delay_Milliseconds(1000);
+            HAL_Delay_Milliseconds(15000);
         if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
         if (_net.psd == REG_DENIED) MDM_ERROR("PSD Registration Denied\r\n");
+        // if (_net.csd == REG_DENIED || _net.psd == REG_DENIED) {
+        //     sendFormated("AT+CEER\r\n");
+        //     waitFinalResp();
+        // }
         return REG_OK(_net.csd) || REG_OK(_net.psd);
     }
     return false;
@@ -569,14 +582,15 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     memset(&_net, 0, sizeof(_net));
     _net.lac = 0xFFFF;
     _net.ci = 0xFFFFFFFF;
+
     // check registration
     sendFormated("AT+CREG?\r\n");
     waitFinalResp();     // don't fail as service could be not subscribed
-    if (_dev.dev != DEV_LISA_C200) {
-        // check PSD registration
-        sendFormated("AT+CGREG?\r\n");
-        waitFinalResp(); // don't fail as service could be not subscribed
-    }
+
+    // check PSD registration
+    sendFormated("AT+CGREG?\r\n");
+    waitFinalResp(); // don't fail as service could be not subscribed
+
     if (REG_OK(_net.csd) || REG_OK(_net.psd))
     {
         sendFormated("AT+COPS?\r\n");
@@ -861,6 +875,16 @@ bool MDMParser::disconnect(void)
     if (_connected) {
         LOCK();
         MDM_INFO("Modem::disconnect\r\n");
+/*
+ * To deactivate the PDP context 1, ensuring that no additional
+ * data is sent or received by the device.
+ *   AT+CGACT=0,1
+ *   OK
+ *
+ * To detach from the GPRS network and conserve network resources.
+ *   AT+CGATT=0
+ *   OK
+ */
         if (_ip != NOIP) {
             sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
             if (RESP_OK != waitFinalResp()) {

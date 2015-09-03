@@ -7,6 +7,7 @@ SYSTEM_MODE(MANUAL);
 
 #define now() millis()
 uint32_t lastFlash = now();
+uint32_t lastRegCheck = now();
 String com = "";
 #define RGB_GREEN() RGB.color(0,255,0)
 #define RGB_RED() RGB.color(255,0,0)
@@ -43,6 +44,9 @@ SerialDebugOutput debugOutput(9600, DEBUG_LEVEL);
 //! Set the password for your APN, or NULL if not needed
 #define PASSWORD    NULL
 
+MDMParser::DevStatus devStatus = {};
+MDMParser::NetStatus netStatus = {};
+
 void setup()
 {
 	RGB.control(true);
@@ -53,7 +57,7 @@ void setup()
 
 	Serial.begin(9600);
 
-    DEBUG_D("\e[0;36mHello, I'm your friendly neighborhood Electron! Boot time is: %d",millis());
+    DEBUG_D("\e[0;36mHello, I'm your friendly neighborhood Electron! Boot time is: %d\r\n",millis());
 
 	// TEST RGB LED
 	RGB_RED();
@@ -66,15 +70,13 @@ void setup()
 	delay(500);
 
     electronMDM.setDebug(3); // enable this for debugging issues
-    MDMParser::DevStatus devStatus = {};
-	MDMParser::NetStatus netStatus = {};
     bool mdmOk = electronMDM.init(SIMPIN, &devStatus);
 
     electronMDM.dumpDevStatus(&devStatus);
     if (mdmOk) {
         RGB_GREEN();
         Serial.println("Wait until we are connected to the tower.");
-        mdmOk = electronMDM.registerNet(&netStatus);
+        mdmOk = electronMDM.registerNet(&netStatus, 60000*5); // 5 minute timeout
         electronMDM.dumpNetStatus(&netStatus);
     }
     if (mdmOk)
@@ -89,20 +91,6 @@ void setup()
     }
     if (mdmOk)
     {
-        // http://www.geckobeach.com/cellular/secrets/gsmcodes.php
-        // http://de.wikipedia.org/wiki/USSD-Codes
-/*
-        const char* ussd = "*130#"; // You may get answer "UNKNOWN APPLICATION"
-        Serial.print("Ussd Send Command: ");
-        Serial.println(ussd);
-        ret = electronMDM.ussdCommand(ussd, buf);
-        if (ret > 0) {
-            Serial.print("Ussd Got Answer: ");
-        	Serial.print(ret);
-        	Serial.print(" ");
-        	Serial.println(buf);
-        }
-*/
         RGB_RED();
         // join the internet connection
         Serial.println("Make a GPRS connection.");
@@ -114,7 +102,7 @@ void setup()
         if (ip != NOIP)
         {
             RGB_GREEN();
-            //electronMDM.dumpIp(ip);
+            electronMDM.dumpIp(ip);
             Serial.println("Make a Http Post Request.");
             int socket = electronMDM.socketSocket(MDMParser::MDM_IPPROTO_TCP);
             if (socket >= 0)
@@ -243,4 +231,9 @@ void loop()
 		digitalWrite(D7, !digitalRead(D7));
 	}
 #endif
+    if ( now() - lastRegCheck > 15000UL ) {
+        lastRegCheck = now();
+        electronMDM.registerNet(&netStatus, 60000*5); // 5 minute timeout
+        electronMDM.dumpNetStatus(&netStatus);
+    }
 }
