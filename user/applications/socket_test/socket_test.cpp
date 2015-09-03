@@ -36,7 +36,8 @@ SerialDebugOutput debugOutput(9600, DEBUG_LEVEL);
 /*! The APN of your network operator SIM, sometimes it is "internet" check your
     contract with the network operator. You can also try to look-up your settings in
     google: https://www.google.com/search?q=APN+list */
-#define APN         "broadband"
+// #define APN         "spark.telefonica.com" // telefonica
+// #define APN         "broadband" // AT&T tablets
 //! Set the user name for your APN, or NULL if not needed
 #define USERNAME    NULL
 //! Set the password for your APN, or NULL if not needed
@@ -105,7 +106,11 @@ void setup()
         RGB_RED();
         // join the internet connection
         Serial.println("Make a GPRS connection.");
+#ifdef APN
         MDMParser::IP ip = electronMDM.join(APN,USERNAME,PASSWORD);
+#else
+        MDMParser::IP ip = electronMDM.join();
+#endif
         if (ip != NOIP)
         {
             RGB_GREEN();

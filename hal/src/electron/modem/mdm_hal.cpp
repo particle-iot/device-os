@@ -655,15 +655,15 @@ int MDMParser::_cbUACTIND(int type, const char* buf, int len, int* i)
 // ----------------------------------------------------------------
 // setup the PDP context
 
-bool MDMParser::pdp(void)
+bool MDMParser::pdp(const char* apn)
 {
     bool ok = true;
     if (_init && _pwr) {
         LOCK();
         MDM_INFO("Modem::pdp\r\n");
 
-        MDM_INFO("Define the PDP context 1 with PDP type \"IP\" and APN \"broadband\"...");
-        sendFormated("AT+CGDCONT=1,\"IP\",\"broadband\"\r\n");
+        MDM_INFO("Define the PDP context 1 with PDP type \"IP\" and APN \"%s\"...", apn);
+        sendFormated("AT+CGDCONT=1,\"IP\",\"%s\"\r\n", apn);
         if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
             goto failure;
 

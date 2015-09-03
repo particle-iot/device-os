@@ -111,7 +111,7 @@ public:
         \return true if successful, false otherwise
     */
     bool connect(const char* simpin = NULL,
-            const char* apn = NULL, const char* username = NULL,
+            const char* apn = "spark.telefonica.com", const char* username = NULL,
             const char* password = NULL, Auth auth = AUTH_DETECT);
 
     /** register (Attach) the MT to the GPRS service.
@@ -149,7 +149,7 @@ public:
 
     /** Setup the PDP context
     */
-    bool pdp(void);
+    bool pdp(const char* apn = "spark.telefonica.com");
 
     // ----------------------------------------------------------------
     // Data Connection (GPRS)
@@ -162,7 +162,7 @@ public:
         \param auth is the authentication mode (CHAP,PAP,NONE or DETECT)
         \return the ip that is assigned
     */
-    MDMParser::IP join(const char* apn = NULL, const char* username = NULL,
+    MDMParser::IP join(const char* apn = "spark.telefonica.com", const char* username = NULL,
                        const char* password = NULL, Auth auth = AUTH_DETECT);
 
     /** deregister (detach) the MT from the GPRS service.

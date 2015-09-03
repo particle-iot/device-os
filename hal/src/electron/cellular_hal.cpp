@@ -24,7 +24,7 @@ cellular_result_t  cellular_off(void* reserved)
 cellular_result_t  cellular_connect(CellularConnect* connect, void* reserved)
 {
     CHECK_SUCCESS(electronMDM.registerNet());
-    CHECK_SUCCESS_2(electronMDM.pdp());
+    CHECK_SUCCESS_2(electronMDM.pdp(connect->apn));
     CHECK_SUCCESS_3(electronMDM.join(connect->apn, connect->username, connect->password));
     return 0;
 }
