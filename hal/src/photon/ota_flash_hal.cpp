@@ -79,7 +79,7 @@ const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t modul
 void set_key_value(key_value* kv, const char* key, const char* value)
 {
     kv->key = key;
-    strncpy(kv->value, value, sizeof(kv->value-1));
+    strncpy(kv->value, value, sizeof(kv->value)-1);
 }
 
 void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
