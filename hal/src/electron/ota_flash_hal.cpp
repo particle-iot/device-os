@@ -71,7 +71,7 @@ const uint8_t* fetch_device_public_key()
 void set_key_value(key_value* kv, const char* key, const char* value)
 {
     kv->key = key;
-    strncpy(kv->value, value, sizeof(kv->value-1));
+    strncpy(kv->value, value, sizeof(kv->value)-1);
 }
 
 void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
@@ -163,23 +163,6 @@ int rsa_random(void* p)
  */
 int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* genspec)
 {
-    /*
-    bool generated = false;
-    // copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
-    // genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
-    // if (genspec->gen==PRIVATE_KEY_GENERATE_ALWAYS || (!genspec->had_key && genspec->gen!=PRIVATE_KEY_GENERATE_NEVER)) {
-    //     // todo - this couples the HAL with the system. Use events instead.
-    //     SPARK_LED_FADE = false;
-    //     if (!gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, rsa_random, NULL)) {
-    //         dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
-    //         // refetch and rewrite public key to ensure it is valid
-    //         fetch_device_public_key();
-    //         generated = true;
-    //     }
-    // }
-    genspec->generated_key = generated;
-    return 0;
-    */
     bool generated = false;
     copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
     genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
