@@ -285,11 +285,13 @@ void CellularSetupConsole::handle(char c)
 {
     if (c=='i')
     {
-        super::handle(c);  // print device ID
         CellularDevice dev;
         cellular_device_info(&dev, NULL);
-
-        print("IMEI:  ");
+        String id = spark_deviceID();
+        print("Device ID: ");
+        print(id.c_str());
+        print("\r\n");
+        print("IMEI: ");
         print(dev.imei);
         print("\r\n");
         print("ICCID: ");

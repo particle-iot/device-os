@@ -28,7 +28,7 @@ class CellularNetworkInterface : public ManagedNetworkInterface
 
 protected:
 
-    virtual void on_start_listening() override { /* n/a */ }
+    virtual void on_start_listening() override { cellular_on(NULL); }
     virtual bool on_stop_listening() override { /* n/a */ return false; }
     virtual void on_setup_cleanup() override { /* n/a */ }
 
