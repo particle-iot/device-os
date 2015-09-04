@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "wlan_hal.h"
 
 typedef int cellular_result_t;
 
@@ -32,31 +33,48 @@ typedef int cellular_result_t;
 cellular_result_t  cellular_on(void* reserved);
 
 /**
- * Power off the cellular module, must be powered up and initialized first.
+ * Power off the cellular module.
  */
 cellular_result_t  cellular_off(void* reserved);
 
 struct CellularConnect
 {
     uint16_t size;
-    const char* apn;
-    const char* username;
-    const char* password;
+    const char* apn = "";
+    const char* username = "";
+    const char* password = "";
 
 };
 
 /**
- * Connect the cellular module to the cellular network, setup the PDP context
- * and join the internet. Must be powered up and initialized first.
+ * Wait for the cellular module to register on the GSM network.
  */
-cellular_result_t  cellular_connect(CellularConnect* connect, void* reserved);
+cellular_result_t  cellular_register(void* reserved);
 
 /**
- * Disconnect the cellular module from the internet, must be connected first.
+ * Activate the PDP context
  */
-cellular_result_t  cellular_disconnect(void* reserved);
+cellular_result_t  cellular_pdp_activate(CellularConnect* connect, void* reserved);
 
-cellular_result_t  cellular_fetch_ipconfig(void* config);
+/**
+ * Deactivate the PDP context
+ */
+cellular_result_t  cellular_pdp_deactivate(void* reserved);
+
+/**
+ * Perform a GPRS attach.
+ */
+cellular_result_t  cellular_gprs_attach(CellularConnect* connect, void* reserved);
+
+/**
+ * Perform a GPRS detach.
+ */
+cellular_result_t  cellular_gprs_detach(void* reserved);
+
+/**
+ * Fetch the ip configuration.
+ */
+cellular_result_t  cellular_fetch_ipconfig(WLanConfig* config);
 
 struct CellularDevice
 {

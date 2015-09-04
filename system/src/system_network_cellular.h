@@ -28,28 +28,50 @@ class CellularNetworkInterface : public ManagedNetworkInterface
 
 protected:
 
-    virtual void on_start_listening() { }
-    virtual bool on_stop_listening() override { return false; }
-    virtual void on_setup_cleanup() override { }
+    virtual void on_start_listening() override { /* n/a */ }
+    virtual bool on_stop_listening() override { /* n/a */ return false; }
+    virtual void on_setup_cleanup() override { /* n/a */ }
 
     virtual void connect_init() override {
-
+        cellular_result_t ok = -1;
+        ok = cellular_register(NULL);
+        if (ok == 0) {
+            CellularConnect dude;
+            dude.apn = "broadband";
+            cellular_pdp_activate(&dude, NULL);
+        }
     }
 
     virtual void connect_finalize() override {
 
+        CellularConnect dude;
+        dude.apn = "broadband";
+        cellular_result_t ok = -1;
+        ok = cellular_gprs_attach(&dude, NULL);
+        if (ok == 0) {
+            HAL_WLAN_notify_connected();
+            HAL_WLAN_notify_dhcp(true);
+        }
     }
 
-    void fetch_ipconfig(WLanConfig* target) {
+    void fetch_ipconfig(WLanConfig* target) override {
         cellular_fetch_ipconfig(target);
     }
 
     void on_now() override { cellular_on(NULL); }
-    void off_now() override { cellular_off(NULL); }
-    void disconnect_now() override { cellular_disconnect(NULL); }
+
+    void off_now() override {
+        cellular_pdp_deactivate(NULL);
+        cellular_gprs_detach(NULL);
+        cellular_off(NULL);
+    }
+
+    void disconnect_now() override {
+        cellular_pdp_deactivate(NULL);
+        cellular_gprs_detach(NULL);
+    }
 
 public:
-
 
     void start_listening() override
     {
@@ -63,14 +85,11 @@ public:
         //cellular_init(NULL);
     }
 
-    // todo - wire credentials through to presense of SIM card??
-    bool clear_credentials() override { return true; }
-    bool has_credentials() override { return true; }
-
-    void set_credentials(NetworkCredentials* creds) override {}
-
-    void connect_cancel() override {}
-
+    // todo - associate credentials with presense of SIM card??
+    bool clear_credentials() override { /* n/a */ return true; }
+    bool has_credentials() override { /* n/a */ return true; }
+    void set_credentials(NetworkCredentials* creds) override { /* n/a */ }
+    void connect_cancel() override { /* n/a */ }
 
 };
 

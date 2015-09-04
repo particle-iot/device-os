@@ -133,7 +133,7 @@ public:
         \param timeout_ms -1 blocking, else non blocking timeout in ms
         \return true if successful and connected to network, false otherwise
     */
-    bool registerNet(NetStatus* status = NULL, system_tick_t timeout_ms = 180000);
+    bool registerNet(NetStatus* status = NULL, system_tick_t timeout_ms = 300000);
 
     /** check if the network is available
         \param status an optional structure to with network information
@@ -170,6 +170,11 @@ public:
     */
     bool disconnect(void);
 
+    /** Detach the MT from the GPRS service.
+        \return true if successful, false otherwise
+    */
+    bool detach(void);
+
     /** Translates a domain name to an IP address
         \param host the domain name to translate e.g. "u-blox.com"
         \return the IP if successful, 0 otherwise
@@ -186,7 +191,7 @@ public:
     // ----------------------------------------------------------------
 
     //! Type of IP protocol
-    typedef enum { MDM_IPPROTO_TCP, MDM_IPPROTO_UDP } IpProtocol;
+    typedef enum { MDM_IPPROTO_TCP = 0, MDM_IPPROTO_UDP = 1 } IpProtocol;
 
     //! Socket error return codes
     #define MDM_SOCKET_ERROR    (-1)
@@ -555,7 +560,8 @@ protected:
     static MDMParser* inst;
     bool _init;
     bool _pwr;
-    bool _connected;
+    bool _activated;
+    bool _attached;
 #ifdef MDM_DEBUG
     int _debugLevel;
     system_tick_t _debugTime;

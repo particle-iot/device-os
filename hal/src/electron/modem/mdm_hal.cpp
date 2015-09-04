@@ -140,7 +140,8 @@ MDMParser::MDMParser(void)
     _ip        = NOIP;
     _init      = false;
     _pwr       = false;
-    _connected = false;
+    _activated = false;
+    _attached  = false;
     memset(_sockets, 0, sizeof(_sockets));
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
         _sockets[socket].handle = MDM_SOCKET_ERROR;
@@ -349,7 +350,7 @@ bool MDMParser::init(const char* simpin, DevStatus* status)
     HAL_GPIO_Write(LVLOE_UC, 0);
 
     if (!_init) {
-        MDM_INFO("ElectronSerialPipe::init\r\n");
+        MDM_INFO("ElectronSerialPipe::begin\r\n");
 
         /* Instantiate the USART3 hardware */
         electronMDM.begin(115200);
@@ -507,6 +508,9 @@ bool MDMParser::powerOff(void)
         sendFormated("AT+CPWROFF\r\n");
         if (RESP_OK == waitFinalResp(NULL,NULL,120*1000)) {
             _pwr = false;
+            // todo - add if these are automatically done on power down
+            //_activated = false;
+            //_attached = false;
             ok = true;
         }
         UNLOCK();
@@ -560,10 +564,13 @@ int MDMParser::_cbCCID(int type, const char* buf, int len, char* ccid)
 bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_ms /*= 180000*/)
 {
     if (_init && _pwr) {
+        bool ok = false;
         system_tick_t start = HAL_Timer_Get_Milli_Seconds();
         MDM_INFO("Modem::register\r\n");
-        while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms))
-            HAL_Delay_Milliseconds(15000);
+        do {
+            ok = checkNetStatus(status);
+            if (!ok) HAL_Delay_Milliseconds(15000);
+        } while (!ok && !TIMEOUT(start, timeout_ms));
         if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
         if (_net.psd == REG_DENIED) MDM_ERROR("PSD Registration Denied\r\n");
         // if (_net.csd == REG_DENIED || _net.psd == REG_DENIED) {
@@ -676,7 +683,7 @@ bool MDMParser::pdp(const char* apn)
         LOCK();
         MDM_INFO("Modem::pdp\r\n");
 
-        MDM_INFO("Define the PDP context 1 with PDP type \"IP\" and APN \"%s\"...", apn);
+        MDM_INFO("Define the PDP context 1 with PDP type \"IP\" and APN \"%s\"\r\n", apn);
         sendFormated("AT+CGDCONT=1,\"IP\",\"%s\"\r\n", apn);
         if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
             goto failure;
@@ -693,8 +700,23 @@ bool MDMParser::pdp(const char* apn)
 
         MDM_INFO("Activate PDP context 1...");
         sendFormated("AT+CGACT=1,1\r\n");
-        if (RESP_OK != waitFinalResp(NULL, NULL, 20000))
+        if (RESP_OK != waitFinalResp(NULL, NULL, 20000)) {
+            sendFormated("AT+CEER\r\n");
+            waitFinalResp();
+
+            MDM_INFO("Test PDP context 1 for non-zero IP address...");
+            sendFormated("AT+CGPADDR=1\r\n");
+            if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+
+            MDM_INFO("Read the PDP contexts’ parameters...");
+            sendFormated("AT+CGDCONT?\r\n");
+            // +CGPADDR: 1, "99.88.111.88"
+            if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
+
+            MDM_INFO("Read the negotiated QoS profile for PDP context 1...");
+            sendFormated("AT+CGEQNEG=1\r\n");
             goto failure;
+        }
 
         MDM_INFO("Test PDP context 1 for non-zero IP address...");
         sendFormated("AT+CGPADDR=1\r\n");
@@ -713,6 +735,7 @@ bool MDMParser::pdp(const char* apn)
             goto failure;
 
         UNLOCK();
+        _activated = true; // PDP
         return ok;
     }
 failure:
@@ -726,12 +749,12 @@ failure:
 MDMParser::IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL*/,
                               const char* password /*= NULL*/, Auth auth /*= AUTH_DETECT*/)
 {
-    if (_init && _pwr) {
+    if (_init && _pwr && _activated) {
         LOCK();
         MDM_INFO("Modem::join\r\n");
         _ip = NOIP;
         int a = 0;
-        bool force = true;
+        bool force = false; // If we are already connected, don't force a reconnect.
 
         // check gprs attach status
         sendFormated("AT+CGATT=1\r\n");
@@ -812,7 +835,7 @@ MDMParser::IP MDMParser::join(const char* apn /*= NULL*/, const char* username /
             goto failure;
 
         UNLOCK();
-        _connected = true;
+        _attached = true;  // GPRS
         return _ip;
     }
 failure:
@@ -872,25 +895,37 @@ int MDMParser::_cbUDNSRN(int type, const char* buf, int len, IP* ip)
 bool MDMParser::disconnect(void)
 {
     bool ok = false;
-    if (_connected) {
+    if (_attached) {
         LOCK();
         MDM_INFO("Modem::disconnect\r\n");
-/*
- * To deactivate the PDP context 1, ensuring that no additional
- * data is sent or received by the device.
- *   AT+CGACT=0,1
- *   OK
- *
- * To detach from the GPRS network and conserve network resources.
- *   AT+CGATT=0
- *   OK
- */
         if (_ip != NOIP) {
+            /* Deactivates the PDP context assoc. with this profile
+             * ensuring that no additional data is sent or received
+             * by the device. */
             sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
             if (RESP_OK != waitFinalResp()) {
                 _ip = NOIP;
                 ok = true;
-                _connected = false;
+                _attached = false;
+            }
+        }
+        UNLOCK();
+    }
+    return ok;
+}
+
+bool MDMParser::detach(void)
+{
+    bool ok = false;
+    if (_activated) {
+        LOCK();
+        MDM_INFO("Modem::detach\r\n");
+        if (_ip != NOIP) {
+            /* detach from the GPRS network and conserve network resources */
+            sendFormated("AT+CGATT=0\r\n");
+            if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000)) {
+                ok = true;
+                _activated = false;
             }
         }
         UNLOCK();
@@ -964,7 +999,7 @@ bool MDMParser::socketConnect(int socket, const char * host, int port)
     IP ip = gethostbyname(host);
     if (ip == NOIP)
         return false;
-    MDM_TRACE("socketConnect(host: %d)\r\n", host);
+    MDM_TRACE("socketConnect(host: %s)\r\n", host);
     // connect to socket
     return socketConnect(socket, ip, port);
 }

@@ -1,13 +1,10 @@
 
 #include "cellular_hal.h"
 #include "modem/mdm_hal.h"
-
-#include "parser.h"
+#include "wlan_hal.h"
 
 
 #define CHECK_SUCCESS(x) { if (!(x)) return -1; }
-#define CHECK_SUCCESS_2(x) { if (!(x)) return -2; }
-#define CHECK_SUCCESS_3(x) { if (!(x)) return -3; }
 
 cellular_result_t  cellular_on(void* reserved)
 {
@@ -21,17 +18,33 @@ cellular_result_t  cellular_off(void* reserved)
     return 0;
 }
 
-cellular_result_t  cellular_connect(CellularConnect* connect, void* reserved)
+cellular_result_t  cellular_register(void* reserved)
 {
     CHECK_SUCCESS(electronMDM.registerNet());
-    CHECK_SUCCESS_2(electronMDM.pdp(connect->apn));
-    CHECK_SUCCESS_3(electronMDM.join(connect->apn, connect->username, connect->password));
     return 0;
 }
 
-cellular_result_t  cellular_disconnect(void* reserved)
+cellular_result_t  cellular_pdp_activate(CellularConnect* connect, void* reserved)
+{
+    CHECK_SUCCESS(electronMDM.pdp(connect->apn));
+    return 0;
+}
+
+cellular_result_t  cellular_pdp_deactivate(void* reserved)
 {
     CHECK_SUCCESS(electronMDM.disconnect());
+    return 0;
+}
+
+cellular_result_t  cellular_gprs_attach(CellularConnect* connect, void* reserved)
+{
+    CHECK_SUCCESS(electronMDM.join(connect->apn, connect->username, connect->password));
+    return 0;
+}
+
+cellular_result_t  cellular_gprs_detach(void* reserved)
+{
+    CHECK_SUCCESS(electronMDM.detach());
     return 0;
 }
 
@@ -43,7 +56,8 @@ cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
     return 0;
 }
 
-cellular_result_t cellular_fetch_ipconfig(void* config)
+cellular_result_t cellular_fetch_ipconfig(WLanConfig* config)
 {
-    return -1;
+    memset(&config, 0, sizeof(config));
+    return 0;
 }
