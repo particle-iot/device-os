@@ -23,9 +23,50 @@
  ******************************************************************************
  */
 
+#include "core_hal.h"
 #include "ota_flash_hal.h"
+#include "rng_hal.h"
+#include "hw_config.h"
+//#include "flash_mal.h"
+#include "dct_hal.h"
+#include "dsakeygen.h"
+//#include "softap.h"
 #include "cellular_hal.h"
 #include <string.h>
+#include "ledcontrol.h"
+#include "parse_server_address.h"
+#include "spark_protocol_functions.h"
+#include "spark_macros.h"
+//#include "bootloader.h"
+//#include "ota_module.h"
+
+//------------------------------------------------
+// From softap.cpp
+//------------------------------------------------
+const uint8_t* fetch_server_public_key()
+{
+    return (const uint8_t*)dct_read_app_data(DCT_SERVER_PUBLIC_KEY_OFFSET);
+}
+
+const uint8_t* fetch_device_private_key()
+{
+    return (const uint8_t*)dct_read_app_data(DCT_DEVICE_PRIVATE_KEY_OFFSET);
+}
+
+const uint8_t* fetch_device_public_key()
+{
+    uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
+    memset(pubkey, 0, sizeof(pubkey));
+    parse_device_pubkey_from_privkey(pubkey, fetch_device_private_key());
+
+    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
+    if (memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
+        dct_write_app_data(pubkey, DCT_DEVICE_PUBLIC_KEY_OFFSET, DCT_DEVICE_PUBLIC_KEY_SIZE);
+        flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
+    }
+    return flash_pub_key;
+}
+//------------------------------------------------
 
 void set_key_value(key_value* kv, const char* key, const char* value)
 {
@@ -83,8 +124,15 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
     return HAL_UPDATE_ERROR;
 }
 
+void copy_dct(void* target, uint16_t offset, uint16_t length) {
+    const void* data = dct_read_app_data(offset);
+    memcpy(target, data, length);
+}
+
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
+    const void* data = dct_read_app_data(DCT_SERVER_ADDRESS_OFFSET);
+    parseServerAddressData(server_addr, (const uint8_t*)data, DCT_SERVER_ADDRESS_SIZE);
 }
 
 
@@ -99,10 +147,23 @@ void HAL_OTA_Flashed_ResetStatus(void)
 
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {
+    fetch_device_public_key();
+    copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
 }
 
+int rsa_random(void* p)
+{
+    return (int)HAL_RNG_GetRandomNumber();
+}
+
+/**
+ * Reads and generates the device's private key.
+ * @param keyBuffer
+ * @return
+ */
 int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* genspec)
 {
+    /*
     bool generated = false;
     // copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
     // genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
@@ -118,6 +179,22 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
     // }
     genspec->generated_key = generated;
     return 0;
+    */
+    bool generated = false;
+    copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
+    genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
+    if (genspec->gen==PRIVATE_KEY_GENERATE_ALWAYS || (!genspec->had_key && genspec->gen!=PRIVATE_KEY_GENERATE_NEVER)) {
+        // todo - this couples the HAL with the system. Use events instead.
+        SPARK_LED_FADE = false;
+        if (!gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, rsa_random, NULL)) {
+            dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
+            // refetch and rewrite public key to ensure it is valid
+            fetch_device_public_key();
+            generated = true;
+        }
+    }
+    genspec->generated_key = generated;
+    return 0;
 }
 
 uint16_t HAL_Set_Claim_Code(const char* code)
@@ -131,5 +208,3 @@ uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
         buffer[0] = 0;
     return 0;
 }
-
-
