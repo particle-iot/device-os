@@ -224,10 +224,10 @@ typedef enum
     DCT_APP_SECTION,
     DCT_SECURITY_SECTION,
     DCT_MFG_INFO_SECTION,
-    DCT_WIFI_CONFIG_SECTION,
-    DCT_INTERNAL_SECTION, /* Do not use in apps */
-    DCT_ETHERNET_CONFIG_SECTION,
-    DCT_NETWORK_CONFIG_SECTION,
+//    DCT_WIFI_CONFIG_SECTION,
+    DCT_INTERNAL_SECTION /* Do not use in apps */
+//    DCT_ETHERNET_CONFIG_SECTION,
+//    DCT_NETWORK_CONFIG_SECTION,
 // #ifdef WICED_DCT_INCLUDE_BT_CONFIG
 //     DCT_BT_CONFIG_SECTION
 // #endif
@@ -350,9 +350,9 @@ void* dct_read_app_data			( uint32_t offset );
 int dct_write_app_data			( const void* data, uint32_t offset, uint32_t size );
 int platform_erase_flash		( uint16_t start_sector, uint16_t end_sector );
 int platform_write_flash_chunk 	( uint32_t address, const void* data, uint32_t size );
-static int wiced_write_dct      ( uint32_t data_start_offset, const void* data, uint32_t data_length, int8_t app_valid, void (*func)(void) );
-static char requires_erase      ( platform_dct_header_t* p_dct );
-static void wiced_erase_dct     ( platform_dct_header_t* p_dct );
+int wiced_write_dct             ( uint32_t data_start_offset, const void* data, uint32_t data_length, int8_t app_valid, void (*func)(void) );
+char requires_erase             ( platform_dct_header_t* p_dct );
+void wiced_erase_dct            ( platform_dct_header_t* p_dct );
     
 typedef struct complete_dct {
     platform_dct_data_t system;
