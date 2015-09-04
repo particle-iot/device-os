@@ -31,7 +31,7 @@ int ret;
 SerialDebugOutput debugOutput(115200, ALL_LEVEL);
 
 //COMMENT OUT TO JUST TRY CLOUD CONNECTION IN SEMI_AUTOMATIC MODE
-//#define APPTEST 1
+#define APPTEST 1
 
 //------------------------------------------------------------------------------------
 // You need to configure these cellular modem / SIM parameters.
@@ -83,8 +83,10 @@ void setup()
 #ifndef APPTEST
     RGB.control(false);
     Particle.connect();
+#else
+    electronMDM.init(SIMPIN, &devStatus);
+    electronMDM.dumpDevStatus(&devStatus);
 #endif
-
 }
 
 void loop()
