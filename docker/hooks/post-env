@@ -1,0 +1,2 @@
+export APPDIR=$WORKSPACE_DIR
+export FIRMWARE_PATH="/firmware"

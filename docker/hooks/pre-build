@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Preprocess .ino files
+preprocess-ino $WORKSPACE_DIR
+
+# Create fake binary to fix bug at https://github.com/spark/firmware-private/blob/feature/hal/build/module.mk#L256
+mkdir -p $WORKSPACE_DIR/target
+touch $WORKSPACE_DIR/target/workspace.bin
