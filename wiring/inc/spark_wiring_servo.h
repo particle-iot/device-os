@@ -180,7 +180,7 @@ public:
      */
     uint16_t readMicroseconds() const;
 
-    void setTrim(int trim);
+    void setTrim(int trim) { this->trim = trim; }
 
 private:
     int16_t pin;

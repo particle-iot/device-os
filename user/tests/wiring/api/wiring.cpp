@@ -84,3 +84,10 @@ test(api_rgb) {
     API_COMPILE(RGB.onChange(&ExternalLed::handler, &externalLed));
     (void)flag; (void)value; // unused
 }
+
+
+test(api_servo_trim)
+{
+    Servo servo;
+    servo.setTrim(234);
+}
