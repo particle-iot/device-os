@@ -49,6 +49,9 @@ enum SecurityType {
 
 class WiFiClass : public NetworkClass
 {
+    void setIPAddressSource(IPAddressSource source) {
+        wlan_set_ipaddress_source(source, true, NULL);
+    }
 
 public:
     WiFiClass() {}
@@ -175,15 +178,10 @@ public:
                 IPAddress(uint32_t(0)) : IPAddress(ip);
     }
 
-    void setIPAddressSource(IPAddressSource source) {
-        wlan_set_ipaddress_source(source, true, NULL);
-    }
-
-    void useStaticIP(const IPAddress& host, const IPAddress& netmask,
+    void setStaticIP(const IPAddress& host, const IPAddress& netmask,
         const IPAddress& gateway, const IPAddress& dns)
     {
         wlan_set_ipaddress(host, netmask, gateway, dns, NULL, NULL);
-        setIPAddressSource(STATIC_IP);
     }
 
     void useStaticIP()

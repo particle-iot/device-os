@@ -62,3 +62,16 @@ test(api_wifi_set_credentials) {
     API_COMPILE(WiFi.setCredentials("ssid)",4,"password", 8, WPA2, WLAN_CIPHER_AES));
 
 }
+
+test(api_wifi_setStaticIP)
+{
+    IPAddress myAddress(192,168,1,100);
+    IPAddress netmask(255,255,255,0);
+    IPAddress gateway(192,168,1,1);
+    IPAddress dns(192,168,1,1);
+    WiFi.setStaticIP(myAddress, netmask, gateway, dns);
+
+    // now let's use the configured IP
+    WiFi.useStaticIP();
+    WiFi.useDynamicIP();
+}
