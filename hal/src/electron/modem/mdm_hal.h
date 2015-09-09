@@ -581,7 +581,7 @@ public:
         \param rxSize the size of the serial rx buffer
         \param txSize the size of the serial tx buffer
     */
-    MDMElectronSerial( int rxSize = 256, int txSize = 256 );
+    MDMElectronSerial( int rxSize = 1024, int txSize = 1024 );
     //! Destructor
     virtual ~MDMElectronSerial(void);
 
