@@ -174,7 +174,7 @@ void app_setup_and_loop(void)
     HAL_Core_Init();
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
-    DEBUG("Hello from Spark!");
+    DEBUG("Hello from Particle!");
 
     manage_safe_mode();
 

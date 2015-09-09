@@ -46,7 +46,7 @@ void setup()
 	electronMDM.setDebug(3); // enable this for debugging issues
 
 	delay(3000);
-    DEBUG_D("\e[0;36mHello from Electron! Boot time is: %d\r\n",millis());
+    DEBUG_D("\e[0;36mHello from the Electron! Boot time is: %d\r\n",millis());
 
 	Particle.connect();
 	while(!Particle.connected()) {
