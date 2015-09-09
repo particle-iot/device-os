@@ -140,8 +140,8 @@ public:
         setCredentials(ssid, password, WPA2);
     }
 
-    void setCredentials(const char *ssid, const char *password, unsigned long security) {
-        setCredentials(ssid, strlen(ssid), password, strlen(password), security);
+    void setCredentials(const char *ssid, const char *password, unsigned long security, unsigned long cipher=WLAN_CIPHER_NOT_SET) {
+        setCredentials(ssid, strlen(ssid), password, strlen(password), security, cipher);
     }
 
     void setCredentials(const char *ssid, unsigned int ssidLen, const char *password,
