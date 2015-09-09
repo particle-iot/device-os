@@ -10,6 +10,8 @@ static CellularCredentials cellularCredentials;
 
 cellular_result_t  cellular_on(void* reserved)
 {
+    //MDMParser::DevStatus devStatus = {};
+    //CHECK_SUCCESS(electronMDM.init(NULL, &devStatus));
     CHECK_SUCCESS(electronMDM.init());
     return 0;
 }
@@ -22,6 +24,8 @@ cellular_result_t  cellular_off(void* reserved)
 
 cellular_result_t  cellular_register(void* reserved)
 {
+    //MDMParser::DevStatus netStatus = {};
+    //CHECK_SUCCESS(electronMDM.registerNet(&netStatus, (system_tick_t) 300000);
     CHECK_SUCCESS(electronMDM.registerNet());
     return 0;
 }
