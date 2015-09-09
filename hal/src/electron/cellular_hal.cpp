@@ -68,7 +68,7 @@ cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
 {
     const MDMParser::DevStatus* status = electronMDM.getDevStatus();
     strncpy(device->imei, status->imei, sizeof(device->imei));
-    strncpy(device->iccid, status->ccid, sizeof(device->imei));
+    strncpy(device->iccid, status->ccid, sizeof(device->iccid));
     return 0;
 }
 
