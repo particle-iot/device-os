@@ -36,18 +36,20 @@ protected:
         cellular_result_t ok = -1;
         ok = cellular_register(NULL);
         if (ok == 0) {
-            CellularConnect dude;
-            dude.apn = "broadband";
-            cellular_pdp_activate(&dude, NULL);
+            CellularCredentials* savedCreds;
+            savedCreds = cellular_credentials_get(NULL);
+            //DEBUG_D("savedCreds = %s %s %s\r\n", savedCreds->apn, savedCreds->username, savedCreds->password);
+            cellular_pdp_activate(savedCreds, NULL);
         }
     }
 
     virtual void connect_finalize() override {
 
-        CellularConnect dude;
-        dude.apn = "broadband";
+        CellularCredentials* savedCreds;
+        savedCreds = cellular_credentials_get(NULL);
+        //DEBUG_D("savedCreds = %s %s %s\r\n", savedCreds->apn, savedCreds->username, savedCreds->password);
         cellular_result_t ok = -1;
-        ok = cellular_gprs_attach(&dude, NULL);
+        ok = cellular_gprs_attach(savedCreds, NULL);
         if (ok == 0) {
             HAL_WLAN_notify_connected();
             HAL_WLAN_notify_dhcp(true);
