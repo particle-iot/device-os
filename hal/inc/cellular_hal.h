@@ -37,13 +37,17 @@ cellular_result_t  cellular_on(void* reserved);
  */
 cellular_result_t  cellular_off(void* reserved);
 
-struct CellularConnect
+struct CellularCredentials
 {
     uint16_t size;
     const char* apn = "";
     const char* username = "";
     const char* password = "";
 
+    CellularCredentials()
+    {
+        size = sizeof(*this);
+    }
 };
 
 /**
@@ -54,7 +58,7 @@ cellular_result_t  cellular_register(void* reserved);
 /**
  * Activate the PDP context
  */
-cellular_result_t  cellular_pdp_activate(CellularConnect* connect, void* reserved);
+cellular_result_t  cellular_pdp_activate(CellularCredentials* connect, void* reserved);
 
 /**
  * Deactivate the PDP context
@@ -64,7 +68,7 @@ cellular_result_t  cellular_pdp_deactivate(void* reserved);
 /**
  * Perform a GPRS attach.
  */
-cellular_result_t  cellular_gprs_attach(CellularConnect* connect, void* reserved);
+cellular_result_t  cellular_gprs_attach(CellularCredentials* connect, void* reserved);
 
 /**
  * Perform a GPRS detach.
@@ -93,6 +97,16 @@ struct CellularDevice
  * Retrieve cellular module info, must be initialized first.
  */
 int cellular_device_info(CellularDevice* device, void* reserved);
+
+/**
+ * Set cellular connection parameters
+ */
+cellular_result_t cellular_credentials_set(const char* apn, const char* username, const char* password, void* reserved);
+
+/**
+ * Get cellular connection parameters
+ */
+CellularCredentials* cellular_credentials_get(void* reserved);
 
 #endif	/* CELLULAR_HAL_H */
 

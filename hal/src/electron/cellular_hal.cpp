@@ -6,6 +6,8 @@
 
 #define CHECK_SUCCESS(x) { if (!(x)) return -1; }
 
+static CellularCredentials cellularCredentials;
+
 cellular_result_t  cellular_on(void* reserved)
 {
     CHECK_SUCCESS(electronMDM.init());
@@ -24,9 +26,14 @@ cellular_result_t  cellular_register(void* reserved)
     return 0;
 }
 
-cellular_result_t  cellular_pdp_activate(CellularConnect* connect, void* reserved)
+cellular_result_t  cellular_pdp_activate(CellularCredentials* connect, void* reserved)
 {
-    CHECK_SUCCESS(electronMDM.pdp(connect->apn));
+    if (strcmp(connect->apn,"") != 0) {
+        CHECK_SUCCESS(electronMDM.pdp(connect->apn));
+    }
+    else {
+        CHECK_SUCCESS(electronMDM.pdp());
+    }
     return 0;
 }
 
@@ -36,9 +43,14 @@ cellular_result_t  cellular_pdp_deactivate(void* reserved)
     return 0;
 }
 
-cellular_result_t  cellular_gprs_attach(CellularConnect* connect, void* reserved)
+cellular_result_t  cellular_gprs_attach(CellularCredentials* connect, void* reserved)
 {
-    CHECK_SUCCESS(electronMDM.join(connect->apn, connect->username, connect->password));
+    if (strcmp(connect->apn,"") != 0 || strcmp(connect->username,"") != 0 || strcmp(connect->password,"") != 0 ) {
+        CHECK_SUCCESS(electronMDM.join(connect->apn, connect->username, connect->password));
+    }
+    else {
+        CHECK_SUCCESS(electronMDM.join());
+    }
     return 0;
 }
 
@@ -60,4 +72,17 @@ cellular_result_t cellular_fetch_ipconfig(WLanConfig* config)
 {
     memset(&config, 0, sizeof(config));
     return 0;
+}
+
+cellular_result_t cellular_credentials_set(const char* apn, const char* username, const char* password, void* reserved)
+{
+    cellularCredentials.apn = apn;
+    cellularCredentials.username = username;
+    cellularCredentials.password = password;
+    return 0;
+}
+
+CellularCredentials* cellular_credentials_get(void* reserved)
+{
+    return &cellularCredentials;
 }
