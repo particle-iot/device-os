@@ -21,8 +21,12 @@
 #define	SPARK_WIRING_CELLULAR_H
 
 #include "spark_wiring_platform.h"
+#include "cellular_hal.h"
+//#include "system_network_cellular.h"
 
 #if Wiring_Cellular
+
+namespace spark {
 
 class CellularClass : public NetworkClass
 {
@@ -30,16 +34,36 @@ class CellularClass : public NetworkClass
 
 public:
 
-    void on() override { cellular_on(NULL); }
-    void off() override { cellular_off(NULL); }
-    void connect() override { cellular_connect(CellularConnect* connect, NULL); }
-    void disconnect() override { cellular_disconnect(NULL); }
+    void on() {
+        network_on(*this, 0, 0, NULL);
+    }
+    void off() {
+        network_off(*this, 0, 0, NULL);
+    }
+    void connect(unsigned flags=0) {
+        network_connect(*this, flags, 0, NULL);
+    }
+    void disconnect() {
+        network_disconnect(*this, 0, NULL);
+    }
+
+    void setCredentials(const char* apn) {
+        setCredentials(apn, "", "", NULL);
+    }
+    void setCredentials(const char* username, const char* password) {
+        setCredentials("", username, password, NULL);
+    }
+    void setCredentials(const char* apn, const char* username, const char* password) {
+        //network_set_credentials(*this, 0, &creds, NULL);
+        network_set_credentials(apn, username, password, NULL);
+    }
 };
 
 
 extern CellularClass Cellular;
 
+}   // namespace Spark
 
-#endif
+#endif  // Wiring_Cellular
 #endif	/* SPARK_WIRING_CELLULAR_H */
 
