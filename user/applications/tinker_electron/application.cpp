@@ -48,11 +48,7 @@ void setup()
 	delay(3000);
     DEBUG_D("\e[0;36mHello from the Electron! Boot time is: %d\r\n",millis());
 
-	Particle.connect();
-	while(!Particle.connected()) {
-		Particle.process();
-	}
-	//Setup the Tinker application here
+	Particle.connect(); // blocking call to connect
 
 	//Register all the Tinker functions
 	Particle.function("digitalread", tinkerDigitalRead);
@@ -60,14 +56,12 @@ void setup()
 
 	Particle.function("analogread", tinkerAnalogRead);
 	Particle.function("analogwrite", tinkerAnalogWrite);
-
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
 	//This will run in a loop
-	Particle.process();
 }
 
 /*******************************************************************************
