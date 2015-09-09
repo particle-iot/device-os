@@ -3,7 +3,7 @@
 #include "socket_hal.h"
 #include "parser.h"
 
-const sock_handle_t SOCKET_MAX = (sock_handle_t)0x7FFFFFFF;
+const sock_handle_t SOCKET_MAX = (sock_handle_t)7;
 const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
 
 
@@ -18,9 +18,8 @@ int32_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen)
     uint16_t port = addr_data[0]<<8 | addr_data[1];
     ElectronMDM::IP ip = IPADR(addr_data[2], addr_data[3], addr_data[4], addr_data[5]);
     electronMDM.socketSetBlocking(sd, 5000);
-    int32_t result = electronMDM.socketConnect(sd, ip, port);
-    electronMDM.socketSetBlocking(sd, 0);
-    return result;
+    bool result = electronMDM.socketConnect(sd, ip, port);
+    return (result ? 0 : 1);
 }
 
 sock_result_t socket_reset_blocking_call()
@@ -30,7 +29,8 @@ sock_result_t socket_reset_blocking_call()
 
 sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, system_tick_t _timeout)
 {
-    electronMDM.socketSetBlocking(sd, _timeout);
+    //electronMDM.socketSetBlocking(sd, _timeout);
+    electronMDM.socketSetBlocking(sd, 5000); // force a minimum 5 second timeout
     return electronMDM.socketRecv(sd, (char*)buffer, len);
 }
 
@@ -51,14 +51,15 @@ sock_result_t socket_accept(sock_handle_t sock)
 
 uint8_t socket_active_status(sock_handle_t socket)
 {
-    return electronMDM.socketIsConnected(socket);
+    bool result = electronMDM.socketIsConnected(socket);
+    return (result ? 0 : 1);
 }
 
 sock_result_t socket_close(sock_handle_t sock)
 {
-    electronMDM.socketClose(sock);
+    bool result = electronMDM.socketClose(sock);
     electronMDM.socketFree(sock);
-    return 0;
+    return (result ? 0 : 1);
 }
 
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
