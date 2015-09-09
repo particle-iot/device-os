@@ -75,3 +75,75 @@ test(api_wifi_setStaticIP)
     WiFi.useStaticIP();
     WiFi.useDynamicIP();
 }
+
+test(api_wifi_scan_buffer)
+{
+    WiFiAccessPoint ap[20];
+    int found = WiFi.scan(ap, 20);
+    for (int i=0; i<found; i++) {
+        Serial.print("ssid: ");
+        Serial.println(ap[i].ssid);
+        Serial.println(ap[i].security);
+        Serial.println(ap[i].channel);
+        Serial.println(ap[i].rssi);
+    }
+}
+
+
+void wifi_scan_callback(WiFiAccessPoint* wap, void* data)
+{
+    WiFiAccessPoint& ap = *wap;
+    Serial.print("ssid: ");
+    Serial.println(ap.ssid);
+    Serial.print("security: ");
+    Serial.println(ap.security);
+    Serial.print("Channel: ");
+    Serial.println(ap.channel);
+    Serial.print("RSSI: ");
+    Serial.println(ap.rssi);
+}
+
+test(api_wifi_scan_callback)
+{
+    int result_count = WiFi.scan(wifi_scan_callback);
+    (void)result_count;
+}
+
+class FindStrongestSSID
+{
+    char strongest_ssid[33];
+    int strongest_rssi;
+
+    static void handle_ap(WiFiAccessPoint* wap, FindStrongestSSID* self)
+    {
+        self->next(*wap);
+    }
+
+    void next(WiFiAccessPoint& ap)
+    {
+        if ((ap.rssi < 0) && (ap.rssi > strongest_rssi)) {
+            strongest_rssi = ap.rssi;
+            strcpy(strongest_ssid, ap.ssid);
+        }
+    }
+
+public:
+
+    /**
+     * Scan WiFi Access Points and retrieve the strongest one.
+     */
+    const char* find()
+    {
+        strongest_rssi = 1;
+        strongest_ssid[0] = 0;
+        WiFi.scan(handle_ap, this);
+        return strongest_ssid;
+    }
+};
+
+test(api_find_strongest)
+{
+    FindStrongestSSID finder;
+    const char* ssid = finder.find();
+    (void)ssid;
+}

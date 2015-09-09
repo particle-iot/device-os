@@ -194,10 +194,16 @@ public:
         setIPAddressSource(DYNAMIC_IP);
     }
 
-    int scan(wlan_scan_result_t callback, void* cookie) {
+    int scan(wlan_scan_result_t callback, void* cookie=NULL) {
         return wlan_scan(callback, cookie);
     }
+
     int scan(WiFiAccessPoint* results, size_t result_count);
+
+    template <typename T>
+    int scan(void (*handler)(WiFiAccessPoint* ap, T* instance), T* instance) {
+        return scan((wlan_scan_result_t)handler, (void*)instance);
+    }
 };
 
 extern WiFiClass WiFi;
