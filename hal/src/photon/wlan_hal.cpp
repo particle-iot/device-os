@@ -208,6 +208,8 @@ int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
 wlan_result_t wlan_activate()
 {
     wlan_result_t result = wiced_wlan_connectivity_init();
+    if (!result)
+        wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
     wlan_refresh_antenna();
     return result;
 }
@@ -453,10 +455,6 @@ void wlan_smart_config_cleanup()
 
 void wlan_setup()
 {
-    if (!wiced_wlan_connectivity_init()) {
-        wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
-        //wiced_network_suspend();
-}
 }
 
 void wlan_set_error_count(uint32_t errorCount)
