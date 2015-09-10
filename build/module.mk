@@ -20,6 +20,11 @@ include $(COMMON_BUILD)/module-defaults.mk
 
 include $(call rwildcard,$(MODULE_PATH)/,build.mk)
 
+# add trailing slash
+ifneq ("$(TARGET_PATH)","$(dir $(TARGET_PATH))")
+TARGET_SEP = /
+endif
+
 TARGET_FILE_NAME ?= $(MODULE)
 
 ifneq (,$(GLOBAL_DEFINES))
