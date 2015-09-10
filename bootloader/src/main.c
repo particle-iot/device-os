@@ -411,6 +411,8 @@ int main(void)
     }
 }
 
+extern void DFU_Check_Reset();
+
 /*******************************************************************************
  * Function Name  : Timing_Decrement
  * Description    : Decrements the various Timing variables related to SysTick.
@@ -440,6 +442,8 @@ void Timing_Decrement(void)
         LED_Toggle(LED_RGB);
         TimingLED = 100;
     }
+
+    DFU_Check_Reset();
 }
 
 #ifdef USE_FULL_ASSERT

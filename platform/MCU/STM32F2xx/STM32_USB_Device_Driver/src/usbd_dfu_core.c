@@ -846,9 +846,14 @@ static void DFU_Req_GETSTATUS(void *pdev)
   case   STATE_dfuMANIFEST_SYNC :
     if (Manifest_State == Manifest_In_Progress)
     {
-      DeviceState = STATE_dfuMANIFEST;
-      DeviceStatus[4] = DeviceState;
-      DeviceStatus[1] = 1;             /*bwPollTimeout = 1ms*/
+        // continue to disconnect USB and eventually reset asynchornously to ensure
+        // the response to this message is returned correctly.
+        DeviceState = STATE_dfuMANIFEST;
+    // get a nice output from dfu-util - original code entered STATE_dfuMANIFEST
+    // but this leaves a message Transitioning to dfuMANIFEST state as the last line, which just lingers with no clear indication of what to do next.
+
+      DeviceStatus[4] = STATE_dfuDNLOAD_IDLE;
+      DeviceStatus[1] = 0;             /*bwPollTimeout = 1ms*/
       DeviceStatus[2] = 0;
       DeviceStatus[3] = 0;
       //break;
@@ -864,6 +869,14 @@ static void DFU_Req_GETSTATUS(void *pdev)
       //break;
     }
     break;
+      case STATE_dfuMANIFEST:
+      {
+        DeviceState = STATE_dfuIDLE;
+        DeviceStatus[4] = DeviceState;
+        DeviceStatus[1] = 0;
+        DeviceStatus[2] = 0;
+        DeviceStatus[3] = 0;
+      }
 
   default :
     break;
@@ -919,6 +932,20 @@ static void DFU_Req_GETSTATE(void *pdev)
                     1);
 }
 
+int DFU_Reset_Count = 0;
+
+void DFU_Check_Reset()
+{
+    if (DFU_Reset_Count && !--DFU_Reset_Count) {
+
+        /* DeInitilialize the MAL(Media Access Layer) */
+        MAL_DeInit();
+
+        /* Set system flags and generate system reset to allow jumping to the user code */
+        Finish_Update();
+    }
+}
+
 /**
   * @brief  DFU_Req_ABORT
   *         Handles the DFU ABORT request.
@@ -971,19 +998,12 @@ void DFU_LeaveDFUMode(void *pdev)
     DeviceStatus[2] = 0;
     DeviceStatus[3] = 0;
 
-    /* Disconnect the USB device */
-    DCD_DevDisconnect (pdev);
+    DFU_Reset_Count = 500;
 
-    /* DeInitilialize the MAL(Media Access Layer) */
-    MAL_DeInit();
-
-    /* Set system flags and generate system reset to allow jumping to the user code */
-    Finish_Update();
-
-    /* This instruction will not be reached (system reset) */
     return;
   }
 }
+
 
 /**
   * @brief  USBD_DFU_GetCfgDesc
