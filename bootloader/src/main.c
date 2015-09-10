@@ -139,7 +139,8 @@ int main(void)
     }
 
     uint8_t features = SYSTEM_FLAG(FeaturesEnabled_SysFlag);
-    if ((features!=0xFF && (((~(features>>4)&0xF)) != (features & 0xF))) || (features&8)) {     // bit 3 must be reset for this to be enabled
+    // disabling this until we can be sure DCT corruption won't bite. 
+    if (true || (features!=0xFF && (((~(features>>4)&0xF)) != (features & 0xF))) || (features&8)) {     // bit 3 must be reset for this to be enabled
         features = 0xFF;        // ignore - corrupt. Top 4 bits should be the inverse of the bottom 4
     }
 
