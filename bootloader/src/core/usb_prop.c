@@ -668,9 +668,16 @@ uint8_t *GETSTATUS(uint16_t Length)
     case   STATE_dfuMANIFEST_SYNC :
       if (Manifest_State == Manifest_In_Progress)
       {
+        // continue to disconnect USB and eventually reset asynchornously to ensure
+        // the response to this message is returned correctly.
         DeviceState = STATE_dfuMANIFEST;
-        DeviceStatus[4] = DeviceState;
-        DeviceStatus[1] = 1;             /*bwPollTimeout = 1ms*/
+        // get a nice output from dfu-util - original code entered STATE_dfuMANIFEST
+        // but this leaves a message Transitioning to dfuMANIFEST state as the last line, which just lingers with no clear indication of what to do next.
+        DeviceState = STATE_dfuMANIFEST;
+        DeviceStatus[4] = STATE_dfuDNLOAD_IDLE;
+        //DeviceStatus[4] = DeviceState;
+        //DeviceStatus[1] = 1;             /*bwPollTimeout = 1ms*/
+        DeviceStatus[1] = 0;
         DeviceStatus[2] = 0;
         DeviceStatus[3] = 0;
         //break;
@@ -697,6 +704,19 @@ uint8_t *GETSTATUS(uint16_t Length)
   else
     return(&(DeviceStatus[0]));
 }
+
+
+int DFU_Reset_Count = 0;
+
+void DFU_Check_Reset()
+{
+    if (DFU_Reset_Count && !--DFU_Reset_Count) {
+
+        /* Set system flags and generate system reset to allow jumping to the user code */
+        Finish_Update();
+    }
+}
+
 
 /*******************************************************************************
 * Function Name  : DFU_write_crc.
@@ -726,7 +746,7 @@ void DFU_write_crc(void)
     DeviceStatus[2] = 0;
     DeviceStatus[3] = 0;
 
-    Finish_Update();
+    DFU_Reset_Count = 500;
 
     return;
   }

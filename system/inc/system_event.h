@@ -41,23 +41,41 @@ enum SystemEvents {
     wifi_listen_update = 1<<2,
     wifi_listen_end = 1<<3,
     wifi_listen = wifi_listen_begin + wifi_listen_update + wifi_listen_end,
-    wifi_credentials_cleared = 1<<4,
-    wifi_connecting = 1<<5,
-    wifi_connect = 1<<6,
-    wifi_disconnect = 1<<7,
+    setup_begin = wifi_listen_begin,
+    setup_update = wifi_listen_update,
+    setup_end = wifi_listen_end,
+    setup_all = wifi_listen,
+    network_credentials = 1<<4,
+    network_status = 1<<5,
+    cloud_status = 1<<6,             // parameter is 0 for disconnected, 1 for connecting, 2 for connecting (handshake), 3 for connecting (setup), 8 connected.. other values reserved.
+    // 6, 7, 8 can be used
     firmware_update = 1<<8,          // parameter is 0 for begin, 1 for OTA complete, -1 for error.
-
 
     all_events = 0x7FFFFFFF
 };
 
 enum SystemEventsParam {
-    wifi_credentials_add = 1,
-    wifi_credentials_clear = 2,
+    //
+    network_credentials_added = 1,
+    network_credentials_cleared = 2,
     firmware_update_failed = -1,
     firmware_update_begin = 0,
     firmware_update_complete = 1,
-    firmware_update_progress = 2
+    firmware_update_progress = 2,
+
+    // Network status. bit 0 is clear if it's a transition state (e.g. powering up, connecting), is set when it's a rest state (connected/ready etc)
+    network_status_powering_off     = 1<<1 | 0,
+    network_status_off              = 1<<1 | 1,
+    network_status_powering_on      = 2<<1 | 0,
+    network_status_on               = 2<<1 | 1,
+    network_status_conneecting      = 3<<1 | 0,
+    network_status_connected        = 3<<1 | 1,
+    network_status_preparing        = 4<<1 | 0,
+    network_status_ready            = 4<<1 | 1,
+    network_status_disconnecting    = 5<<1 | 1,
+
+    cloud_status_disconnected = 0,
+    cloud_status_conn
 };
 
 

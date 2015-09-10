@@ -134,7 +134,7 @@ void Start_Smart_Config(void)
                 LED_SetRGBColor(RGB_COLOR_BLUE);
                 LED_On(LED_RGB);
             }
-            system_notify_event(wifi_credentials_cleared);
+            system_notify_event(network_credentials, network_credentials_cleared);
             WLAN_DELETE_PROFILES = 0;
         }
         else
@@ -404,7 +404,7 @@ int network_set_credentials(network_handle_t, uint32_t, NetworkCredentials* cred
 
     int result = wlan_set_credentials(credentials);
     if (!result)
-        system_notify_event(wifi_credentials_add, 0, credentials);
+        system_notify_event(network_credentials, network_credentials_added, credentials);
     return result;
 }
 

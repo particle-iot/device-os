@@ -46,7 +46,7 @@ SPIClass::SPIClass(HAL_SPI_Interface spi)
 {
   _spi = spi;
   HAL_SPI_Init(_spi);
-  dividerReference = SYSTEM;     // 0 indicates the system clock
+  dividerReference = SPI_CLK_SYSTEM;     // 0 indicates the system clock
 }
 
 void SPIClass::begin()

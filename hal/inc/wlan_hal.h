@@ -36,6 +36,8 @@
 
 #ifdef	__cplusplus
 extern "C" {
+
+#include <string.h> // for memset
 #endif
 
 //#define DEBUG_WIFI    // Define to show all the flags in debug output
@@ -258,11 +260,20 @@ typedef struct WiFiAccessPoint {
    char ssid[33];
    uint8_t ssidLength;
    uint8_t bssid[6];
-   int security;
+   WLanSecurityType security;
+   WLanSecurityCipher cipher;
    uint8_t channel;
    int maxDataRate;   // the mdr in bits/s
    int rssi;        // when scanning
 
+#ifdef __cplusplus
+
+   WiFiAccessPoint()
+   {
+       memset(this, 0, sizeof(*this));
+       size = sizeof(*this);
+   }
+#endif
 } WiFiAccessPoint;
 
 typedef void (*wlan_scan_result_t)(WiFiAccessPoint* ap, void* cookie);
