@@ -1,5 +1,5 @@
 
-VERSION_STRING = 0.4.5-rc.2
+VERSION_STRING = 0.4.5
 
 # PRODUCT_FIRMWARE_VERSION reported by default
 VERSION = 6
