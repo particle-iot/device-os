@@ -146,7 +146,7 @@ public:
 
         WLanCredentials creds;
         memset(&creds, 0, sizeof(creds));
-        creds.len = sizeof(creds);
+        creds.size = sizeof(creds);
         creds.ssid = ssid;
         creds.ssid_len = ssidLen;
         creds.password = password;
