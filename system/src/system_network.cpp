@@ -192,7 +192,7 @@ void HAL_WLAN_notify_disconnected()
         ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
       }
       SPARK_LED_FADE = 1;
-          LED_SetRGBColor(RGB_COLOR_BLUE);
+      LED_SetRGBColor(RGB_COLOR_BLUE);
       LED_On(LED_RGB);
     }
     else if (!WLAN_SMART_CONFIG_START)
@@ -288,8 +288,8 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
             WLAN_CONNECTING = 1;
             LED_SetRGBColor(RGB_COLOR_GREEN);
             LED_On(LED_RGB);
-            wlan_connect_finalize();
             ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
+            wlan_connect_finalize();
         }
 
         Set_NetApp_Timeout();
