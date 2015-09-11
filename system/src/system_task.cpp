@@ -350,8 +350,8 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 
             for (;;)
             {
-                int delay = int(end_micros-HAL_Timer_Get_Micro_Seconds());
-                if (delay<=0)
+                system_tick_t delay = end_micros-HAL_Timer_Get_Micro_Seconds();
+                if (delay>100000)
                     return;
                 HAL_Delay_Microseconds(min(delay/2, 1));
             }
