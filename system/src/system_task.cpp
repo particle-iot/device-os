@@ -222,12 +222,12 @@ void establish_cloud_connection()
         }
         else
         {
+            if (SPARK_WLAN_RESET)
+                return;
+
             cloud_connection_failed();
             SPARK_CLOUD_SOCKETED = 0;
-#if PLATFORM_ID<3
-            if (!SPARK_WLAN_RESET)
-                handle_cfod();
-#endif
+            handle_cfod();
             wlan_set_error_count(Spark_Error_Count);
         }
     }
