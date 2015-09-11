@@ -8,7 +8,7 @@
 - Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)
 - [photon] UDP multicast support via `UDP.joinMulticast`/`UDP.leaveMulticast`. Many thanks @stevie67!
 - `waitFor(WiFi.ready)` syntax to make it easier to wait for system events. [#415](https://github.com/spark/firmware/issues/415)
-- ISO8601 as an alternative `Time.timeStr()` format, and flexible time output with `Time.format()` [#572](https://github.com/spark/firmware/issues/572)
+- Flexible time output with `Time.format()` [#572](https://github.com/spark/firmware/issues/572)
 
 ### ENHANCEMENTS
 
@@ -24,7 +24,6 @@
 - Fluent API on `String` - many methods return `*this` so method calls can be chained.
 - Small values passed to `delay(1)` result in more accurate delays. [#260](https://github.com/spark/firmware/issues/260)
 - Bootloader does not show factory reset modes if a factory reset image is not available. [#557](https://github.com/spark/firmware/issues/557)
-- Bootloader has system flags to enable/disable bootloader modes.
 
 ### BUGFIXES
 
@@ -36,6 +35,9 @@
 - regression: floating point support in sprintf not compiled in. [#576](https://github.com/spark/firmware/issues/576)
 - [photon] SPI1 default clock speed was 7.5MHz, changed to 15MHz, same as for `SPI`.
 - TCPClient::connected() doesn't detect when the socket is closed [#542](https://github.com/spark/firmware/issues/542)
+- dfu-util: error during downlod get_status msg removed when using :leave option [#599](https://github.com/spark/firmware/issues/599)
+- [Core] A0 could not be used as an output [#595](https://github.com/spark/firmware/issues/595)
+- Reinstate CFOD handling on the Photon.
 
 ## v0.4.4
 
