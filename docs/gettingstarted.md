@@ -33,7 +33,11 @@ Open up a terminal window, navigate to your destination directory and type the f
 Make sure you have downloaded and installed all the required dependencies as mentioned [previously](dependencies.md#1-download-and-install-dependencies).
 Note, if you've downloaded or cloned these previously, you'll want to `git pull` or redownload all of them before proceeding.
 
-Open up a terminal window, navigate to the `modules` folder under firmware
+Open up a terminal window, and switch branch to 'latest'
+
+    git checkout latest
+
+Navigate to the `modules` folder under firmware
 (i.e. `cd firmware/modules`) and type:
 
     make clean all PLATFORM=photon -s program-dfu
