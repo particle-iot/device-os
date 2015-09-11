@@ -95,8 +95,6 @@ int wlan_has_credentials()
 
 int wlan_connect_init()
 {
-    wlan_start(0);//No other option to connect other than wlan_start()
-    /* Mask out all non-required events from CC3000 */
     wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE | HCI_EVNT_WLAN_UNSOL_INIT);
     return 0;
 }

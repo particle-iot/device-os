@@ -182,7 +182,7 @@ void HAL_WLAN_notify_connected()
 
 void HAL_WLAN_notify_disconnected()
 {
-    cloud_disconnect();
+    cloud_disconnect(false);    // don't close the socket on the callback since this causes a lockup on the Core
     if (WLAN_CONNECTED)     /// unsolicited disconnect
     {
       //Breathe blue if established connection gets disconnected

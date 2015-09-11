@@ -379,12 +379,13 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
     }
 }
 
-void cloud_disconnect()
+void cloud_disconnect(bool closeSocket)
 {
 #ifndef SPARK_NO_CLOUD
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
-        Spark_Disconnect();
+        if (closeSocket)
+            Spark_Disconnect();
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
