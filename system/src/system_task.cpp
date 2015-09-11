@@ -114,10 +114,6 @@ void manage_network_connection()
     {
         if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !WLAN_CONNECTED))
         {
-            if (!WLAN_DISCONNECT)
-            {
-                ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
-            }
             network_connect(Network, 0, 0, NULL);
         }
     }
