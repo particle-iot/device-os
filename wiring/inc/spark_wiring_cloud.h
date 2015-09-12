@@ -25,12 +25,14 @@
 #include "spark_wiring_string.h"
 #include "events.h"
 #include "system_cloud.h"
+#include "system_sleep.h"
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
 #include "interrupts_hal.h"
 #include <functional>
 
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
+typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
 
 #ifdef SPARK_NO_CLOUD
 #define CLOUD_FN(x,y) (y)
@@ -69,6 +71,12 @@ public:
 #endif
     }
 
+    template <typename T>
+    static void function(const char *funcKey, int (T::*func)(String), T *instance) {
+      using namespace std::placeholders;
+      function(funcKey, std::bind(func, instance, _1));
+    }
+
     bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)
     {
         return CLOUD_FN(spark_send_event(eventName, NULL, 60, eventType, NULL), false);
@@ -92,6 +100,30 @@ public:
     bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
         return CLOUD_FN(spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL), false);
+    }
+
+    bool subscribe(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
+    {
+        return subscribe_wiring(eventName, handler, scope);
+    }
+
+    bool subscribe(const char *eventName, wiring_event_handler_t handler, const char *deviceID)
+    {
+        return subscribe_wiring(eventName, handler, MY_DEVICES, deviceID);
+    }
+
+    template <typename T>
+    bool subscribe(const char *eventName, void (T::*handler)(const char *, const char *), T *instance, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
+    {
+        using namespace std::placeholders;
+        return subscribe(eventName, std::bind(handler, instance, _1, _2), scope);
+    }
+
+    template <typename T>
+    bool subscribe(const char *eventName, void (T::*handler)(const char *, const char *), T *instance, const char *deviceID)
+    {
+        using namespace std::placeholders;
+        return subscribe(eventName, std::bind(handler, instance, _1, _2), deviceID);
     }
 
     void unsubscribe()
@@ -123,9 +155,28 @@ private:
     static int call_raw_user_function(void* data, const char* param, void* reserved);
     static int call_std_user_function(void* data, const char* param, void* reserved);
 
+    static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
+
     SparkProtocol* sp() { return spark_protocol_instance(); }
+
+    bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
+    {
+#ifdef SPARK_NO_CLOUD
+        return false;
+#else
+        bool success = false;
+        if (handler) // if the call-wrapper has wrapped a callable object
+        {
+            auto wrapper = new wiring_event_handler_t(handler);
+            if (wrapper) {
+                success = spark_subscribe(eventName, (EventHandler)call_wiring_event_handler, wrapper, scope, deviceID, NULL);
+            }
+        }
+        return success;
+#endif
+    }
 };
 
 
-extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));
+extern CloudClass Spark; // __attribute__((deprecated("Spark is now Particle.")));
 extern CloudClass Particle;

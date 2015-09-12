@@ -1,5 +1,6 @@
 
 HAL_SRC_STM32F2XX_PATH = $(TARGET_HAL_PATH)/src/stm32f2xx
+HAL_SRC_STM32_PATH = $(TARGET_HAL_PATH)/src/stm32
 HAL_SRC_PHOTON_PATH = $(TARGET_HAL_PATH)/src/photon
 
 # private includes - WICED is not exposed to the HAL clients
@@ -8,6 +9,7 @@ HAL_WICED_INCLUDE_DIRS +=   include
 HAL_WICED_INCLUDE_DIRS +=   platforms/$(PLATFORM_NET)
 HAL_WICED_INCLUDE_DIRS +=   libraries/daemons/DNS_redirect \
 			    libraries/daemons/HTTP_server \
+			    libraries/protocols/DNS \
 			    libraries/utilities/ring_buffer
 HAL_WICED_INCLUDE_DIRS +=   wiced wiced/internal
 HAL_WICED_INCLUDE_DIRS +=   wiced/network/$(HAL_WICED_NETWORK) \
@@ -52,12 +54,16 @@ INCLUDE_DIRS += $(addprefix $(HAL_SRC_PHOTON_PATH)/,$(sort $(HAL_WICED_INCLUDE_D
 INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_PHOTON_PATH)/wiced/security,*.h))
 INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_PHOTON_PATH)/wiced/WWD,*.h))
 INCLUDE_DIRS += $(HAL_SRC_STM32F2XX_PATH)
+INCLUDE_DIRS += $(HAL_SRC_STM32_PATH)
 
 CSRC += $(call target_files,$(HAL_SRC_PHOTON_PATH)/,*.c)
 CPPSRC += $(call target_files,$(HAL_SRC_PHOTON_PATH)/,*.cpp)
 
 CSRC += $(call target_files,$(HAL_SRC_STM32F2XX_PATH)/,*.c)
 CPPSRC += $(call target_files,$(HAL_SRC_STM32F2XX_PATH)/,*.cpp)
+
+CSRC += $(call target_files,$(HAL_SRC_STM32_PATH)/,*.c)
+CPPSRC += $(call target_files,$(HAL_SRC_STM32_PATH)/,*.cpp)
 
 
 CFLAGS += -DSFLASH_APPS_HEADER_LOC=0x0000 -DUSE_STDPERIPH_DRIVER -D_STM32F215RGT6_ -D_STM3x_ -D_STM32x_ -DMAX_WATCHDOG_TIMEOUT_SECONDS=22 -DFIRMWARE_WITH_PMK_CALC_SUPPORT -DADD_LWIP_EAPOL_SUPPORT -DNXD_EXTENDED_BSD_SOCKET_SUPPORT -DOPENSSL -DSTDC_HEADERS -DUSE_SRP_SHA_512 -DADD_NETX_EAPOL_SUPPORT -DUSE_MICRORNG -DWWD_STARTUP_DELAY=10 -DBOOTLOADER_MAGIC_NUMBER=0x4d435242 -DNETWORK_NetX=1 -DNetX_VERSION=\"v5.5_sp1\" -DNX_INCLUDE_USER_DEFINE_FILE -D__fd_set_defined -DSYS_TIME_H_AVAILABLE -DRTOS_ThreadX=1 -DThreadX_VERSION=\"v5.6\" -DTX_INCLUDE_USER_DEFINE_FILE -DWWD_DIRECT_RESOURCES

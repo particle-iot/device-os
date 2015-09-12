@@ -36,6 +36,7 @@ extern "C" {
 typedef struct STM32_Pin_Info {
   GPIO_TypeDef* gpio_peripheral;
   pin_t gpio_pin;
+  uint8_t gpio_pin_source;
   uint8_t adc_channel;
   TIM_TypeDef* timer_peripheral;
   uint16_t timer_ch;
@@ -47,6 +48,7 @@ typedef struct STM32_Pin_Info {
 /* Exported constants --------------------------------------------------------*/
 
 extern STM32_Pin_Info PIN_MAP[];
+STM32_Pin_Info* HAL_Pin_Map(void);
 
 extern void HAL_GPIO_Save_Pin_Mode(PinMode mode);
 extern PinMode HAL_GPIO_Recall_Pin_Mode();

@@ -153,22 +153,6 @@ extern "C" void HAL_SysTick_Handler(void)
 #endif
 }
 
-/*******************************************************************************
- * Function Name  : HAL_RTCAlarm_Handler
- * Description    : This function handles additional application requirements.
- * Input          : None.
- * Output         : None.
- * Return         : None.
- *******************************************************************************/
-extern "C" void HAL_RTCAlarm_Handler(void)
-{
-    if(system_mode() == AUTOMATIC)
-    {
-  /* Wake up from System.sleep mode(SLEEP_MODE_WLAN) */
-  SPARK_WLAN_SLEEP = 0;
-}
-}
-
 void manage_safe_mode()
 {
     uint16_t flag = (HAL_Bootloader_Get_Flag(BOOTLOADER_FLAG_STARTUP_MODE));
@@ -208,9 +192,9 @@ void app_setup_and_loop(void)
         Spark_Idle();
 
         static uint8_t SPARK_WIRING_APPLICATION = 0;
-        if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
+        if(SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION || (system_mode()!=AUTOMATIC))
         {
-            if(!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged())
+            if(!SPARK_FLASH_UPDATE)
             {
                 if ((SPARK_WIRING_APPLICATION != 1))
                 {

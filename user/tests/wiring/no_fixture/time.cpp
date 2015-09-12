@@ -23,6 +23,8 @@
  ******************************************************************************
  */
 
+#if PLATFORM_ID>=3
+
 #include "application.h"
 #include "unit-test/unit-test.h"
 
@@ -58,5 +60,31 @@ test(TIME_ChangingTimeZoneWorksImmediately) {
     Time.zone(4);
     int newHour = Time.hour();
     assertMoreOrEqual(4, (newHour-currentHour)%12);
-
+    Time.zone(0);
 }
+
+test(TIME_Format) {
+
+    Time.zone(-5.25);
+    time_t t = 1024*1024*1024;
+    assertEqual(Time.timeStr(t).c_str(),(const char*)"Sat Jan 10 08:22:04 2004");
+    assertEqual(Time.format(t, TIME_FORMAT_DEFAULT).c_str(), (const char*)("Sat Jan 10 08:22:04 2004"));
+    assertEqual(Time.format(t, TIME_FORMAT_ISO8601_FULL).c_str(), (const char*)"2004-01-10T08:22:04-05:15");
+    Time.setFormat(TIME_FORMAT_ISO8601_FULL);
+    assertEqual(Time.format(t).c_str(), (const char*)("2004-01-10T08:22:04-05:15"));
+    Time.zone(0);
+    assertEqual(Time.format(t).c_str(), (const char*)("2004-01-10T13:37:04Z"));
+    Time.setFormat(TIME_FORMAT_DEFAULT);
+}
+
+test(TIME_concatenate) {
+    // addresses reports of timeStr() not being concatenatable
+    time_t t = 1024*1024*1024;
+    Time.zone(0);
+    assertEqual(Time.timeStr(t).c_str(),(const char*)"Sat Jan 10 13:37:04 2004");
+    String s = Time.timeStr(t);
+    s += "abcd";
+    assertEqual(s.c_str(), (const char*)"Sat Jan 10 13:37:04 2004abcd");
+}
+
+#endif

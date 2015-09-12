@@ -7,6 +7,10 @@
  *  This header file maps platform ID to compile-time switches for the Wiring API.
  */
 
+// This is my code (mdma), but on second thoughts I feel this should be driven bottom up for
+// components of the platform. (I.e. platform  defines comes from the HAL)
+
+
 #if PLATFORM_ID==0      // core
 #define Wiring_WiFi 1
 #define Wiring_IPv6 0
@@ -62,10 +66,34 @@
 #define Wiring_IPv6 1
 #endif
 
+#if PLATFORM_ID==10      // electron
+#define Wiring_Cellular 1
+#define Wiring_SPI1 1
+#define Wiring_SPI2 1
+
+#define Wiring_Wire1 1
+#define Wiring_Wire3 1 /* System PMIC and Fuel Guage I2C3 */
+#endif
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif
 
+#ifndef Wiring_SPI2
+#define Wiring_SPI2 0
+#endif
+
+#ifndef Wiring_Wire1
+#define Wiring_Wire1 0
+#endif
+
+#ifndef Wiring_Wire3
+#define Wiring_Wire3 0
+#endif
+
+#ifndef Wiring_Cellular
+#define Wiring_Cellular 0
+#endif
 
 #endif	/* SPARK_WIRING_PLATFORM_H */
 

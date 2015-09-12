@@ -25,6 +25,13 @@
 
 #include "spark_wiring_time.h"
 #include "rtc_hal.h"
+#include "stdio.h"
+#include "stdlib.h"
+
+
+const char* TIME_FORMAT_DEFAULT = "asctime";
+const char* TIME_FORMAT_ISO8601_FULL = "%Y-%m-%dT%H:%M:%S%z";
+
 
 /* The calendar "tm" structure from the standard libray "time.h" has the following definition: */
 //struct tm
@@ -99,6 +106,8 @@ static void Refresh_UnixTime_Cache(time_t unix_time)
             unix_time_cache = unix_time;
     }
 }
+
+const char* TimeClass::format_spec = TIME_FORMAT_DEFAULT;
 
 /* current hour */
 int TimeClass::hour()
@@ -255,21 +264,60 @@ void TimeClass::setTime(time_t t)
     HAL_RTC_Set_UnixTime(t);
 }
 
-/* return string representation of the current time */
-String TimeClass::timeStr()
-{
-	return timeStr(now());
-}
-
 /* return string representation for the given time */
 String TimeClass::timeStr(time_t t)
 {
-	struct tm *calendar_time;
 	t += time_zone_cache;
-	calendar_time = localtime(&t);
-	String calendar_time_string = String(asctime(calendar_time));
-    calendar_time_string[calendar_time_string.length()-1] = 0;
-	return calendar_time_string;
+	tm* calendar_time = localtime(&t);
+        char* ascstr = asctime(calendar_time);
+        int len = strlen(ascstr);
+        ascstr[len-1] = 0; // remove final newline
+	return String(ascstr);
+}
+
+String TimeClass::format(time_t t, const char* format_spec)
+{
+    if (format_spec==NULL)
+        format_spec = this->format_spec;
+
+    if (!format_spec || !strcmp(format_spec,TIME_FORMAT_DEFAULT)) {
+        return timeStr(t);
+    }
+    t += time_zone_cache;
+    tm* calendar_time = localtime(&t);
+    return timeFormatImpl(calendar_time, format_spec, time_zone_cache);
+}
+
+String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time_zone)
+{
+    char format_str[64];
+    strcpy(format_str, format);
+    size_t len = strlen(format_str);
+
+    char time_zone_str[10];
+    // while we are not using stdlib for managing the timezone, we have to do this manually
+    if (!time_zone) {
+        strcpy(time_zone_str, "Z");
+    }
+    else {
+        snprintf(time_zone_str, 10, "%+03d:%02u", time_zone/3600, abs(time_zone/60)%60);
+    }
+
+    // replace %z with the timezone
+    for (size_t i=0; i<len-1; i++)
+    {
+        if (format_str[i]=='%' && format_str[i+1]=='z')
+        {
+            size_t tzlen = strlen(time_zone_str);
+            memcpy(format_str+i+tzlen, format_str+i+2, len-i-1);    // +1 include the 0 char
+            memcpy(format_str+i, time_zone_str, tzlen);
+            len = strlen(format_str);
+        }
+    }
+
+    char buf[50];
+    strftime(buf, 50, format_str, calendar_time);
+    return String(buf);
 }
 
 TimeClass Time;

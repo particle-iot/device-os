@@ -27,6 +27,62 @@ extern "C" {
 
 #include "pinmap_hal.h"
 
+/* Disabling USE_BIT_BAND since bitbanding is much slower! as per comment
+ * by @pkourany on PR: https://github.com/spark/firmware/pull/556 */
+#define USE_BIT_BAND 0
+
+#if USE_BIT_BAND
+/* Use CortexM3 Bit-Band access to perform GPIO atomic read-modify-write */
+
+//Below is defined in stm32fxxx.h
+//PERIPH_BASE     = 0x40000000 /* Peripheral base address in the alias region */
+//PERIPH_BB_BASE  = 0x42000000 /* Peripheral base address in the bit-band region */
+
+/* A mapping formula shows how to reference each word in the alias region to a
+   corresponding bit in the bit-band region. The mapping formula is:
+   bit_word_addr = bit_band_base + (byte_offset x 32) + (bit_number + 4)
+
+where:
+   - bit_word_addr: is the address of the word in the alias memory region that
+                    maps to the targeted bit.
+   - bit_band_base is the starting address of the alias region
+   - byte_offset is the number of the byte in the bit-band region that contains
+     the targeted bit
+   - bit_number is the bit position of the targeted bit
+*/
+
+#define  GPIO_ResetBit_BB(Addr, Bit)    \
+          (*(__IO uint32_t *) (PERIPH_BB_BASE | ((Addr - PERIPH_BASE) << 5) | ((Bit) << 2)) = 0)
+
+#define GPIO_SetBit_BB(Addr, Bit)       \
+          (*(__IO uint32_t *) (PERIPH_BB_BASE | ((Addr - PERIPH_BASE) << 5) | ((Bit) << 2)) = 1)
+
+#define GPIO_GetBit_BB(Addr, Bit)       \
+          (*(__IO uint32_t *) (PERIPH_BB_BASE | ((Addr - PERIPH_BASE) << 5) | ((Bit) << 2)))
+
+static STM32_Pin_Info* pin_map = HAL_Pin_Map();
+
+inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
+inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
+inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
+
+inline void pinSetFast(pin_t _pin)
+{
+    GPIO_SetBit_BB((__IO uint32_t)&pin_map[_pin].gpio_peripheral->ODR, pin_map[_pin].gpio_pin_source);
+}
+
+inline void pinResetFast(pin_t _pin)
+{
+    GPIO_ResetBit_BB((__IO uint32_t)&pin_map[_pin].gpio_peripheral->ODR, pin_map[_pin].gpio_pin_source);
+}
+
+inline int32_t pinReadFast(pin_t _pin)
+{
+    return GPIO_GetBit_BB((__IO uint32_t)&pin_map[_pin].gpio_peripheral->IDR, pin_map[_pin].gpio_pin_source);
+}
+
+#else
+
 #ifndef STM32F10X
     #if defined(STM32F10X_MD) || defined(STM32F10X_HD)
         #define STM32F10X
@@ -84,6 +140,7 @@ void pinReadFast(pin_t _pin);
     #error "*** MCU architecture not supported by this library. ***"
 #endif
 
+#endif //USE_BIT_BAND
 
 inline void digitalWriteFast(pin_t pin, uint8_t value)
 {
@@ -92,8 +149,6 @@ inline void digitalWriteFast(pin_t pin, uint8_t value)
     else
         pinResetFast(pin);
 }
-
-
 
 #ifdef	__cplusplus
 }

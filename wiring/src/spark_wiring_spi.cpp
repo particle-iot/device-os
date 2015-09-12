@@ -25,20 +25,28 @@
  */
 
 #include "spark_wiring_spi.h"
+#include "core_hal.h"
+#include "spark_macros.h"
 
 #ifndef SPARK_WIRING_NO_SPI
+
 SPIClass SPI(HAL_SPI_INTERFACE1);
 
 #if Wiring_SPI1
 SPIClass SPI1(HAL_SPI_INTERFACE2);
 #endif
 
+#if Wiring_SPI2
+SPIClass SPI2(HAL_SPI_INTERFACE3);
 #endif
+
+#endif //SPARK_WIRING_NO_SPI
 
 SPIClass::SPIClass(HAL_SPI_Interface spi)
 {
   _spi = spi;
   HAL_SPI_Init(_spi);
+  dividerReference = SPI_CLK_SYSTEM;     // 0 indicates the system clock
 }
 
 void SPIClass::begin()
@@ -71,9 +79,79 @@ void SPIClass::setDataMode(uint8_t mode)
   HAL_SPI_Set_Data_Mode(_spi, mode);
 }
 
+void SPIClass::setClockDividerReference(unsigned value, unsigned scale)
+{
+    dividerReference = value*scale;
+    // set the clock to 1/4 of the reference by default.
+    // We assume this is called before externally calling setClockDivider.
+    setClockDivider(SPI_CLOCK_DIV4);
+}
+
+/**
+ * The divisors. The index+1 is the power of 2 of the divisor.
+ */
+static uint8_t clock_divisors[] = {
+    SPI_CLOCK_DIV2,
+    SPI_CLOCK_DIV4,
+    SPI_CLOCK_DIV8,
+    SPI_CLOCK_DIV16,
+    SPI_CLOCK_DIV32,
+    SPI_CLOCK_DIV64,
+    SPI_CLOCK_DIV128,
+    SPI_CLOCK_DIV256
+};
+
+uint8_t divisorShiftScale(uint8_t divider)
+{
+    unsigned result = 0;
+    for (; result<arraySize(clock_divisors); result++)
+    {
+        if (clock_divisors[result]==divider)
+            break;
+    }
+    return result+1;
+}
+
 void SPIClass::setClockDivider(uint8_t rate)
 {
-  HAL_SPI_Set_Clock_Divider(_spi, rate);
+    if (dividerReference)
+    {
+        // determine the clock speed
+        uint8_t scale = divisorShiftScale(rate);
+        unsigned targetSpeed = dividerReference>>scale;
+        setClockSpeed(targetSpeed);
+    }
+    else
+    {
+        HAL_SPI_Set_Clock_Divider(_spi, rate);
+    }
+}
+
+void SPIClass::computeClockDivider(unsigned reference, unsigned targetSpeed, uint8_t& divider, unsigned& clock)
+{
+    clock = reference;
+    uint8_t scale = 0;
+    clock >>= 1;        // div2 is the first
+    while (clock > targetSpeed && scale<7) {
+        clock >>= 1;
+        scale++;
+    }
+    divider = clock_divisors[scale];
+}
+
+unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
+{
+    // actual speed is the system clock divided by some scalar
+    unsigned targetSpeed = value*value_scale;
+    hal_spi_info_t info;
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
+    HAL_SPI_Info(_spi, &info, NULL);
+    uint8_t rate;
+    unsigned clock;
+    computeClockDivider(info.system_clock, targetSpeed, rate, clock);
+    HAL_SPI_Set_Clock_Divider(_spi, rate);
+    return clock;
 }
 
 byte SPIClass::transfer(byte _data)

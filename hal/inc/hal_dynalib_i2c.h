@@ -31,8 +31,23 @@
 #endif
 
 DYNALIB_BEGIN(hal_i2c)
-// I2C has to be included because the original tinker app was linked with some I2C calls
-// such as HAL_I2C_Is_Enabled
+DYNALIB_FN(hal_i2c,HAL_I2C_Set_Speed_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Enable_DMA_Mode_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Stretch_Clock_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Begin_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_End_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Request_Data_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Begin_Transmission_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_End_Transmission_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Write_Data_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Available_Data_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Read_Data_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Peek_Data_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Flush_Data_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Is_Enabled_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Set_Callback_On_Receive_v1)
+DYNALIB_FN(hal_i2c,HAL_I2C_Set_Callback_On_Request_v1)
+
 DYNALIB_FN(hal_i2c,HAL_I2C_Set_Speed)
 DYNALIB_FN(hal_i2c,HAL_I2C_Enable_DMA_Mode)
 DYNALIB_FN(hal_i2c,HAL_I2C_Stretch_Clock)
@@ -49,6 +64,7 @@ DYNALIB_FN(hal_i2c,HAL_I2C_Flush_Data)
 DYNALIB_FN(hal_i2c,HAL_I2C_Is_Enabled)
 DYNALIB_FN(hal_i2c,HAL_I2C_Set_Callback_On_Receive)
 DYNALIB_FN(hal_i2c,HAL_I2C_Set_Callback_On_Request)
+DYNALIB_FN(hal_i2c,HAL_I2C_Init)
 DYNALIB_END(hal_i2c)
 
 #endif	/* HAL_DYNALIB_I2C_H */

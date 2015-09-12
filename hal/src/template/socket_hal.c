@@ -86,11 +86,34 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
     return 0;
 }
 
-
 const sock_handle_t SOCKET_MAX = (sock_handle_t)0xFFFE;
 const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
+
+inline bool is_valid(sock_handle_t handle) {
+    return handle<SOCKET_MAX;
+}
+
+uint8_t socket_handle_valid(sock_handle_t handle) {
+    return is_valid(handle);
+}
 
 sock_handle_t socket_handle_invalid()
 {
     return SOCKET_INVALID;
+}
+
+
+sock_result_t socket_join_multicast(const HAL_IPAddress* addr, network_interface_t nif, void* reserved)
+{
+    return -1;
+}
+
+sock_result_t socket_leave_multicast(const HAL_IPAddress* addr, network_interface_t nif, void* reserved)
+{
+	return -1;
+}
+
+sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved)
+{
+    return -1;
 }

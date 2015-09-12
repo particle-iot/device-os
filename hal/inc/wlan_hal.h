@@ -31,24 +31,17 @@
 #include "debug.h"
 #include "inet_hal.h"
 #include "socket_hal.h"
+#include "timer_hal.h"
 
 
 #ifdef	__cplusplus
 extern "C" {
+
+#include <string.h> // for memset
 #endif
 
 //#define DEBUG_WIFI    // Define to show all the flags in debug output
 //#define DEBUG_WAN_WD  // Define to show all SW WD activity in debug output
-
-#if defined(DEBUG_WAN_WD)
-#define WAN_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
-#else
-#define WAN_WD_DEBUG(x,...)
-#endif
-extern uint32_t wlan_watchdog;
-#define ARM_WLAN_WD(x) do { wlan_watchdog = HAL_Timer_Get_Milli_Seconds()+(x); WAN_WD_DEBUG("WD Set "#x" %d",(x));}while(0)
-#define WLAN_WD_TO() (wlan_watchdog && (HAL_Timer_Get_Milli_Seconds() >= wlan_watchdog))
-#define CLR_WLAN_WD() do { wlan_watchdog = 0; WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog);;}while(0)
 
 #if defined(DEBUG_WIFI)
 extern uint32_t lastEvent;
@@ -136,11 +129,11 @@ int wlan_has_credentials();
 #undef WLAN_SEC_WPA2
 #endif
 typedef enum {
-    WLAN_SEC_UNSEC,
+    WLAN_SEC_UNSEC = 0,
     WLAN_SEC_WEP,
     WLAN_SEC_WPA,
     WLAN_SEC_WPA2,
-    WLAN_SEC_NOT_SET
+    WLAN_SEC_NOT_SET = 0xFF
 } WLanSecurityType;
 
 
@@ -161,6 +154,7 @@ typedef struct {
     WLanSecurityCipher cipher;
     unsigned channel;
 } WLanCredentials;
+
 
 int wlan_set_credentials(WLanCredentials* credentials);
 
@@ -226,6 +220,61 @@ int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna);
  * @param called_from_isr - set to true if this is being called from an ISR.
  */
 void wlan_connect_cancel(bool called_from_isr);
+
+typedef enum {
+    DYNAMIC_IP,
+    STATIC_IP
+} IPAddressSource;
+
+/**
+ * Sets the IP source - static or dynamic.
+ */
+void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reserved);
+
+/**
+ * Sets the IP Addresses to use when the device is in static IP mode.
+ * @param device
+ * @param netmask
+ * @param gateway
+ * @param dns1
+ * @param dns2
+ * @param reserved
+ */
+void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmask,
+        const HAL_IPAddress* gateway, const HAL_IPAddress* dns1, const HAL_IPAddress* dns2, void* reserved);
+
+
+
+typedef struct WiFiAccessPoint {
+   size_t size;
+   char ssid[33];
+   uint8_t ssidLength;
+   uint8_t bssid[6];
+   WLanSecurityType security;
+   WLanSecurityCipher cipher;
+   uint8_t channel;
+   int maxDataRate;   // the mdr in bits/s
+   int rssi;        // when scanning
+
+#ifdef __cplusplus
+
+   WiFiAccessPoint()
+   {
+       memset(this, 0, sizeof(*this));
+       size = sizeof(*this);
+   }
+#endif
+} WiFiAccessPoint;
+
+typedef void (*wlan_scan_result_t)(WiFiAccessPoint* ap, void* cookie);
+
+
+/**
+ * @param callback  The callback that receives each scanned AP
+ * @param cookie    An opaque handle that is passed to the callback.
+ * @return negative on error.
+ */
+int wlan_scan(wlan_scan_result_t callback, void* cookie);
 
 #ifdef	__cplusplus
 }

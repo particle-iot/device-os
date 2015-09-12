@@ -106,6 +106,39 @@ void HardFault_Handler(void)
 }
 
 /*******************************************************************************
+ * Function Name  : MemManage_Handler
+ * Description    : This function handles Memory Manage exception.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void MemManage_Handler(void)
+{
+	/* Go to infinite loop when Memory Manage exception occurs */
+        PANIC(MemManage,"MemManage");
+	while (1)
+	{
+	}
+}
+
+/*******************************************************************************
+ * Function Name  : BusFault_Handler
+ * Description    : This function handles Bus Fault exception.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void BusFault_Handler(void)
+{
+	/* Go to infinite loop when Bus Fault exception occurs */
+        PANIC(BusFault,"BusFault");
+        while (1)
+	{
+	}
+}
+
+
+/*******************************************************************************
  * Function Name  : UsageFault_Handler
  * Description    : This function handles Usage Fault exception.
  * Input          : None
@@ -136,6 +169,7 @@ void (*HAL_TIM1_Handler)(void);
 void (*HAL_TIM3_Handler)(void);
 void (*HAL_TIM4_Handler)(void);
 void (*HAL_TIM5_Handler)(void);
+void (*HAL_TIM8_Handler)(void);
 
 /* Extern variables ----------------------------------------------------------*/
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
@@ -175,8 +209,10 @@ void HAL_Core_Config(void)
 #endif
 
     HAL_Core_Config_systick_configuration();
-
+#if PLATFORM_ID!=PLATFORM_ELECTRON_PRODUCTION
+    // ELECTRON TODO: re-instate this when working
     HAL_RTC_Configuration();
+#endif
 
     HAL_RNG_Configuration();
 
@@ -674,12 +710,20 @@ void TIM8_TRG_COM_TIM14_irq(void)
 
 void TIM8_CC_irq(void)
 {
+#if PLATFORM_ID == 10 // Electron
+    if(NULL != HAL_TIM8_Handler)
+    {
+        HAL_TIM8_Handler();
+    }
+#endif
+
     HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_IRQ, NULL);
 
     uint8_t result =
     handle_timer(TIM8, TIM_IT_CC1, SysInterrupt_TIM8_Compare1) ||
     handle_timer(TIM8, TIM_IT_CC2, SysInterrupt_TIM8_Compare2) ||
-    handle_timer(TIM8, TIM_IT_CC3, SysInterrupt_TIM8_Compare3);
+    handle_timer(TIM8, TIM_IT_CC3, SysInterrupt_TIM8_Compare3) ||
+    handle_timer(TIM8, TIM_IT_CC4, SysInterrupt_TIM8_Compare4);
     UNUSED(result);
 }
 
@@ -779,3 +823,7 @@ bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
     return false;
 }
 
+unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
+{
+    return SystemCoreClock;
+}

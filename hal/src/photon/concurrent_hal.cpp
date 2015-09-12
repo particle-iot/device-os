@@ -24,6 +24,7 @@
 #include "concurrent_hal.h"
 #include "wiced.h"
 #include "static_assert.h"
+#include "task.h"
 
 static_assert(sizeof(uint32_t)==sizeof(void*), "Requires uint32_t to be same size as void* for function cast to wiced_thread_function_t");
 
@@ -119,6 +120,10 @@ os_result_t os_thread_cleanup(os_thread_t* thread)
 }
 
 
-
-
-
+void os_thread_scheduling(bool enabled, void* reserved)
+{
+    if (enabled)
+        taskENTER_CRITICAL();
+    else
+        taskEXIT_CRITICAL();
+}

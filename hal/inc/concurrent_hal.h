@@ -28,6 +28,13 @@
 
 #include <stdint.h>
 #include <stddef.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /**
  * Allow specific HAL implementations to export key symbols:
  * - thread priority limits and type.
@@ -109,6 +116,18 @@ os_result_t os_thread_join(os_thread_t thread);
  * @return 0 on success.
  */
 os_result_t os_thread_cleanup(os_thread_t thread);
+
+
+/**
+ * Enables/disables pre-emptive context switching
+ */
+void os_thread_scheduling(bool enabled, void* reserved);
+
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
 

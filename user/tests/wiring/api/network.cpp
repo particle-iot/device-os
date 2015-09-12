@@ -40,5 +40,26 @@ test(api_tcpserver) {
     API_COMPILE(server.begin());
     API_COMPILE(available = server.available());
     API_COMPILE(server.stop());
+    (void)available;
+}
 
+test(api_udp_multicast) {
+    UDP udp;
+    udp.begin(10000);
+    int result = 0;
+    API_COMPILE(result = udp.joinMulticast(IPAddress(224, 1, 2, 3)));
+    API_COMPILE(result = udp.leaveMulticast(IPAddress(224, 1, 2, 3)));
+    (void)result; // avoid unused warning
+}
+
+test(api_udp_direct) {
+    UDP udp;
+    uint8_t buf[50];
+    API_COMPILE(udp.setBuffer(1024, buf));
+    API_COMPILE(udp.setBuffer(1024));
+    API_COMPILE(udp.releaseBuffer());
+    API_COMPILE(udp.sendPacket("hello", 5, IPAddress(1,2,3,4), 50));
+    API_COMPILE(udp.sendPacket(new uint8_t[5], 5, IPAddress(1,2,3,4), 50));
+
+    API_COMPILE(udp.receivePacket(new uint8_t[5], 5));
 }

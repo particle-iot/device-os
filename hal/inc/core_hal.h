@@ -109,6 +109,16 @@ typedef enum _BootloaderFlag_t {
     BOOTLOADER_FLAG_STARTUP_MODE
 } BootloaderFlag;
 
+enum BootloaderFeaturesEnabled
+{
+    BL_FEATURE_SAFE_MODE = 1<<0,
+    BL_FEATURE_DFU_MODE = 1<<1,
+    BL_FEATURE_FACTORY_RESET = 1<<2,
+    BL_BUTTON_FEATURES = (BL_FEATURE_SAFE_MODE|BL_FEATURE_DFU_MODE|BL_FEATURE_FACTORY_RESET)
+};
+
+
+
 uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag);
 
 //Following is currently defined in bootloader/src/core-vx/dfu_hal.c
@@ -134,6 +144,19 @@ typedef struct runtime_info_t {
 uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved);
 
 extern void app_setup_and_loop();
+
+typedef enum HAL_SystemClock
+{
+    SYSTEMCLOCK_PRIMARY,
+    SYSTEMCLOCK_SPI
+} HAL_SystemClock;
+
+/**
+ * Retrieves the
+ * @param reserved
+ * @return
+ */
+unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved);
 
 #ifdef __cplusplus
 }

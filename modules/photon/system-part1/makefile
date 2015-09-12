@@ -22,4 +22,6 @@ TARGET=elf bin lst hex size
 
 include $(PROJECT_ROOT)/build/arm-tlm.mk
 
+$(call check_modular)
+
 

@@ -17,10 +17,7 @@ include $(PROJECT_ROOT)/build/macros.mk
 include $(PROJECT_ROOT)/build/module-defaults.mk
 include $(PROJECT_ROOT)/build/arm-tools.mk
 
-
-ifeq (,$(PLATFORM_DYNALIB_MODULES))
-$(error "Platform $(PLATFORM_ID) does not support dynamic modules")
-endif
+$(call check_modular)
 
 projects = $(sort $(wildcard $(current_dir)/$(PLATFORM_DYNALIB_MODULES)/*))
 

@@ -1,8 +1,8 @@
-## Flashing the core-v1/testapp1 files to the core
+## Flashing the wiring/no_fixture files to the core
 
 ```
 cd firmware/main
-make v=1 TEST=core-v1/testapp1 all program-dfu
+make v=1 TEST=wiring/no_fixture all program-dfu
 ```
 
 

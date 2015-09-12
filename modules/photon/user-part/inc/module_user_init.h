@@ -24,6 +24,11 @@
 #ifndef USER_MODULE_H
 #define	USER_MODULE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /**
  * Initializes the static memory for this module.
  *
@@ -39,6 +44,11 @@ void module_user_init();
 void module_user_loop();
 
 void module_user_setup();
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif	/* USER_MODULE_H */
 

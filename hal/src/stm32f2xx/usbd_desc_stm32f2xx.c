@@ -33,24 +33,6 @@
 #include "usbd_req.h"
 #include "usb_regs.h"
 
-/* USB Device String Definitions - in device HAL usbd_desc_device.h ----------*/
-/*
-#define USBD_LANGID_STRING              0x0409  //U.S. English
-#define USBD_MANUFACTURER_STRING        "Spark Devices"
-
-#define USBD_PRODUCT_HS_STRING          "Photon with WiFi"
-#define USBD_SERIALNUMBER_HS_STRING     "00000000050B"
-
-#define USBD_PRODUCT_FS_STRING          "Photon with WiFi"
-#define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
-
-#define USBD_CONFIGURATION_HS_STRING    "VCP Config"
-#define USBD_INTERFACE_HS_STRING        "VCP Interface"
-
-#define USBD_CONFIGURATION_FS_STRING    "VCP Config"
-#define USBD_INTERFACE_FS_STRING        "VCP Interface"
-*/
-
 USBD_DEVICE USR_desc =
 {
         USBD_USR_DeviceDescriptor,

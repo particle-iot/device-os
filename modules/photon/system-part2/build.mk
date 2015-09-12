@@ -36,7 +36,7 @@ LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
-ifeq ("$(HAL_MINIMAL)","y")
+ifneq ("$(HAL_MINIMAL)","y")
 USE_PRINTF_FLOAT ?= y
 endif
 

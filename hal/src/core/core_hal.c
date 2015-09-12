@@ -281,6 +281,9 @@ void HAL_Core_Execute_Standby_Mode(void)
 		/* Clear Standby mode system flag */
 		BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
 
+                /* Enable WKUP pin */
+                PWR_WakeUpPinCmd(ENABLE);
+
 		/* Request to enter STANDBY mode */
 		PWR_EnterSTANDBYMode();
 
@@ -381,4 +384,9 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
 {
     info->freeheap = freeheap();
     return 0;
+}
+
+unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
+{
+    return SystemCoreClock;
 }

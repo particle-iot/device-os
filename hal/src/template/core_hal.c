@@ -112,3 +112,15 @@ uint16_t HAL_Core_Mode_Button_Pressed_Time()
 void HAL_Bootloader_Lock(bool lock)
 {
 }
+
+
+unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
+{
+    return 1;
+}
+
+
+int main() 
+{
+    while(1);
+}

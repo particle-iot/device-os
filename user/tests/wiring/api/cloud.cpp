@@ -43,6 +43,12 @@ test(api_spark_variable) {
 test(api_spark_function) {
     int (*handler)(String) = NULL;
     API_COMPILE(Particle.function("name", handler));
+
+    class MyClass {
+      public:
+        int handler(String arg) { return 0; }
+    } myObj;
+    API_COMPILE(Particle.function("name", &MyClass::handler, &myObj));
 }
 
 test(api_spark_publish) {
@@ -103,22 +109,33 @@ test(api_spark_subscribe) {
 
     API_COMPILE(Particle.subscribe(String("name"), handler, "1234"));
 
+    class MyClass {
+      public:
+        void handler(const char *event_name, const char *data) { }
+    } myObj;
+
+    API_COMPILE(Particle.subscribe("name", &MyClass::handler, &myObj));
+
+    API_COMPILE(Particle.subscribe("name", &MyClass::handler, &myObj, MY_DEVICES));
+
+    API_COMPILE(Particle.subscribe("name", &MyClass::handler, &myObj, "1234"));
+
 }
 
 test(api_spark_sleep) {
 
-    API_COMPILE(Particle.sleep(60));
+    API_COMPILE(System.sleep(60));
 
-    API_COMPILE(Particle.sleep(SLEEP_MODE_WLAN, 60));
+    API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60));
 
-    API_COMPILE(Particle.sleep(SLEEP_MODE_DEEP, 60));
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60));
 
-    API_COMPILE(Particle.sleep(A0, CHANGE));
-    API_COMPILE(Particle.sleep(A0, RISING));
-    API_COMPILE(Particle.sleep(A0, FALLING));
-    API_COMPILE(Particle.sleep(A0, FALLING, 20));
+    API_COMPILE(System.sleep(A0, CHANGE));
+    API_COMPILE(System.sleep(A0, RISING));
+    API_COMPILE(System.sleep(A0, FALLING));
+    API_COMPILE(System.sleep(A0, FALLING, 20));
 
-    API_COMPILE(Particle.sleep(SLEEP_MODE_DEEP));
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP));
 
 }
 

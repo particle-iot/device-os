@@ -101,12 +101,14 @@ void manage_network_connection()
         {
             DEBUG("Resetting WLAN!");
             auto was_sleeping = SPARK_WLAN_SLEEP;
+            auto was_disconnected = WLAN_DISCONNECT;
             cloud_disconnect();
             network_off(Network, 0, 0, NULL);
             CLR_WLAN_WD();
             SPARK_WLAN_RESET = 0;
             SPARK_WLAN_STARTED = 0;
             SPARK_WLAN_SLEEP = was_sleeping;
+            WLAN_DISCONNECT = was_disconnected;
             cfod_count = 0;
         }
     }
@@ -114,10 +116,6 @@ void manage_network_connection()
     {
         if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !WLAN_CONNECTED))
         {
-            if (!WLAN_DISCONNECT)
-            {
-                ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
-            }
             network_connect(Network, 0, 0, NULL);
         }
     }
@@ -222,12 +220,12 @@ void establish_cloud_connection()
         }
         else
         {
+            if (SPARK_WLAN_RESET)
+                return;
+
             cloud_connection_failed();
             SPARK_CLOUD_SOCKETED = 0;
-#if PLATFORM_ID<3
-            if (!SPARK_WLAN_RESET)
-                handle_cfod();
-#endif
+            handle_cfod();
             wlan_set_error_count(Spark_Error_Count);
         }
     }
@@ -324,32 +322,44 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 /*
  * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
  */
-void system_delay_ms(unsigned long ms)
+void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 {
-    volatile system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
+    if (ms==0) return;
+
+    system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
     spark_loop_total_millis += ms;
 
-    volatile system_tick_t last_millis = HAL_Timer_Get_Milli_Seconds();
+    system_tick_t start_millis = HAL_Timer_Get_Milli_Seconds();
+    system_tick_t end_micros = HAL_Timer_Get_Micro_Seconds() + (1000*ms);
 
     while (1)
     {
         HAL_Notify_WDT();
 
-        volatile system_tick_t current_millis = HAL_Timer_Get_Milli_Seconds();
-        volatile system_tick_t elapsed_millis = current_millis - last_millis;
+        system_tick_t elapsed_millis = HAL_Timer_Get_Milli_Seconds() - start_millis;
 
-        //Check for wrapping
-        if (elapsed_millis >= 0x80000000)
-        {
-            elapsed_millis = last_millis + current_millis;
-        }
-
-        if (elapsed_millis >= ms)
+        if (elapsed_millis > ms)
         {
             break;
         }
+        else if (elapsed_millis >= (ms-1)) {
+            // on the last millisecond, resolve using millis - we don't know how far in that millisecond had come
+            // have to be careful with wrap around since start_micros can be greater than end_micros.
 
-        if (SPARK_WLAN_SLEEP)
+            for (;;)
+            {
+                system_tick_t delay = end_micros-HAL_Timer_Get_Micro_Seconds();
+                if (delay>100000)
+                    return;
+                HAL_Delay_Microseconds(min(delay/2, 1u));
+            }
+        }
+        else
+        {
+            HAL_Delay_Milliseconds(1);
+        }
+
+        if (SPARK_WLAN_SLEEP || force_no_background_loop)
         {
             //Do not yield for Spark_Idle()
         }
@@ -367,17 +377,18 @@ void system_delay_ms(unsigned long ms)
     }
 }
 
-void cloud_disconnect()
+void cloud_disconnect(bool closeSocket)
 {
 #ifndef SPARK_NO_CLOUD
+
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
-        Spark_Disconnect();
+        if (closeSocket)
+            Spark_Disconnect();
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
-        Spark_Error_Count = 0;
 
         if (!WLAN_DISCONNECT && !WLAN_SMART_CONFIG_START)
         {
@@ -385,5 +396,7 @@ void cloud_disconnect()
             LED_On(LED_RGB);
         }
     }
+    Spark_Error_Count = 0;  // this is also used for CFOD/WiFi reset, and blocks the LED when set. 
+
 #endif
 }

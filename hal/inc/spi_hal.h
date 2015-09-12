@@ -32,8 +32,11 @@
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum HAL_SPI_Interface {
-    HAL_SPI_INTERFACE1 = 0,    //maps to SPI1
-    HAL_SPI_INTERFACE2 = 1     //maps to SPI3
+    HAL_SPI_INTERFACE1 = 0,    //maps to SPI1 (pins: A3, A4, A5)
+    HAL_SPI_INTERFACE2 = 1     //maps to SPI3 (pins: D4, D3, D2)
+#if PLATFORM_ID == 10 // Electron
+   ,HAL_SPI_INTERFACE3 = 2     //maps to SPI3 (pins: C3, C2, C1)
+#endif
 } HAL_SPI_Interface;
 
 typedef void (*HAL_SPI_DMA_UserCallback)(void);
@@ -61,6 +64,13 @@ typedef void (*HAL_SPI_DMA_UserCallback)(void);
 extern "C" {
 #endif
 
+typedef struct hal_spi_info_t {
+    uint16_t size;
+
+    uint32_t system_clock;      // the clock speed that is divided when setting a divider
+
+} hal_spi_info_t;
+
 void HAL_SPI_Init(HAL_SPI_Interface spi);
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin);
 void HAL_SPI_End(HAL_SPI_Interface spi);
@@ -71,6 +81,7 @@ uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data);
 void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback);
 bool HAL_SPI_Is_Enabled_Old();
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi);
+void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved);
 
 #ifdef __cplusplus
 }

@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+extern "C" {
+
 DYNALIB_TABLE_EXTERN(hal);
 DYNALIB_TABLE_EXTERN(rt);
 DYNALIB_TABLE_EXTERN(system);
@@ -20,11 +22,14 @@ DYNALIB_TABLE_EXTERN(hal_core);
 DYNALIB_TABLE_EXTERN(hal_socket);
 DYNALIB_TABLE_EXTERN(hal_wlan);
 DYNALIB_TABLE_EXTERN(hal_usart);
+DYNALIB_TABLE_EXTERN(hal_concurrent);
+
 
 /**
  * The module export table. This lists the addresses of individual library dynalib jump tables.
+ * Libraries must not be reordered or removed, only new ones added to the end.
  */
-__attribute__((externally_visible)) const void* const system_part2_module[] = {
+extern "C" __attribute__((externally_visible)) const void* const system_part2_module[] = {
     DYNALIB_TABLE_NAME(hal),
     DYNALIB_TABLE_NAME(rt),
     DYNALIB_TABLE_NAME(system),
@@ -38,6 +43,7 @@ __attribute__((externally_visible)) const void* const system_part2_module[] = {
     DYNALIB_TABLE_NAME(hal_usart),
     DYNALIB_TABLE_NAME(system_net),
     DYNALIB_TABLE_NAME(system_cloud),
+    DYNALIB_TABLE_NAME(hal_concurrent),
 };
 
 extern void** dynalib_location_user;
@@ -105,5 +111,7 @@ void loop() {
     }
 }
 
-__attribute__((externally_visible, section(".module_pre_init"))) const void* system_part2_pre_init_fn = system_part2_pre_init;
-__attribute__((externally_visible, section(".module_init"))) const void* system_part2_init_fn = system_part2_init;
+__attribute__((externally_visible, section(".module_pre_init"))) const void* system_part2_pre_init_fn = (const void*)system_part2_pre_init;
+__attribute__((externally_visible, section(".module_init"))) const void* system_part2_init_fn = (const void*)system_part2_init;
+
+}

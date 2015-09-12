@@ -120,9 +120,10 @@ class SparkProtocol
     bool send_event(const char *event_name, const char *data,
                     int ttl, EventType::Enum event_type);
     bool add_event_handler(const char *event_name, EventHandler handler,
-                        SubscriptionScope::Enum scope, const char* device_id);
+                        void *handler_data, SubscriptionScope::Enum scope,
+                        const char* device_id);
     bool event_handler_exists(const char *event_name, EventHandler handler,
-        SubscriptionScope::Enum scope, const char* id);
+        void *handler_data, SubscriptionScope::Enum scope, const char* id);
     void remove_event_handlers(const char* event_name);
     void send_subscriptions();
     bool send_subscription(const char *event_name, const char *device_id);
@@ -183,7 +184,7 @@ class SparkProtocol
     unsigned short _message_id;
     unsigned char _token;
     system_tick_t last_message_millis;
-    system_tick_t last_chunk_millis;
+    system_tick_t last_chunk_millis;    // NB: also used to synchronize time
     unsigned short chunk_index;
     unsigned short chunk_size;
     bool expecting_ping_ack;
@@ -223,6 +224,7 @@ class SparkProtocol
     bool handle_update_begin(msg& m);
     bool handle_chunk(msg& m);
     bool handle_update_done(msg& m);
+    void handle_time_response(uint32_t time);
 
     /********** Queue **********/
     unsigned char queue[PROTOCOL_BUFFER_SIZE];

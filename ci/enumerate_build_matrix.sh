@@ -6,6 +6,7 @@
 # Stops executing and returns exit 1 if any of them fail
 ############
 
+set -x # be noisy + log everything that is happening in the script
 
 # set current working dir
 cd main
@@ -30,10 +31,10 @@ do
       do
         for app in "${APP[@]}"
         do
+          echo
+          echo '-----------------------------------------------------------------------'
           if [[ "$app" = "" ]]; then
-            set -x
-            make clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc" > /dev/null 2>&1
-            set +x
+            make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc"
             if [[ "$?" -eq 0 ]]; then
               echo "✓ SUCCESS"
             else
@@ -41,9 +42,7 @@ do
               exit 1
             fi
           else
-            set -x
-            make clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc" APP="$app"  > /dev/null 2>&1
-            set +x
+            make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc" APP="$app"
             if [[ "$?" -eq 0 ]]; then
               echo "✓ SUCCESS"
             else

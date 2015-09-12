@@ -31,6 +31,9 @@
 #include <algorithm>
 #include <vector>
 #include "lwip/api.h"
+#include "network_interface.h"
+
+wiced_result_t wiced_last_error( wiced_tcp_socket_t* socket);
 
 /**
  * Socket handles
@@ -117,7 +120,11 @@ struct tcp_socket_t : public wiced_tcp_socket_t {
     void connected() { open = true; }
 
     bool isClosed() {
-        return !open || closed_externally;
+        wiced_result_t last_err = wiced_last_error(this);
+        return !open ||
+            closed_externally ||
+            last_err == WICED_CONNECTION_RESET ||
+            last_err == WICED_CONNECTION_CLOSED;
     }
 
     void notify_disconnected()
@@ -796,7 +803,7 @@ sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif)
     tcp_server_t* server = new tcp_server_t();
     wiced_result_t result = WICED_OUT_OF_HEAP_SPACE;
     if (handle && server) {
-        result = wiced_tcp_server_start(server, WICED_STA_INTERFACE,
+        result = wiced_tcp_server_start(server, wiced_wlan_interface(nif),
             port, WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS, server_connected, server_received, server_disconnected, NULL);
     }
     if (result!=WICED_SUCCESS) {
@@ -878,10 +885,10 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
         wiced_result_t wiced_result;
         socket->set_type((protocol==IPPROTO_UDP ? socket_t::UDP : socket_t::TCP));
         if (protocol==IPPROTO_TCP) {
-            wiced_result = wiced_tcp_create_socket(tcp(socket), WICED_STA_INTERFACE);
+            wiced_result = wiced_tcp_create_socket(tcp(socket), wiced_wlan_interface(nif));
         }
         else {
-            wiced_result = wiced_udp_create_socket(udp(socket), port, WICED_STA_INTERFACE);
+            wiced_result = wiced_udp_create_socket(udp(socket), port, wiced_wlan_interface(nif));
         }
         if (wiced_result!=WICED_SUCCESS) {
             socket->set_type(socket_t::NONE);
@@ -977,4 +984,48 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLe
 sock_handle_t socket_handle_invalid()
 {
     return SOCKET_INVALID;
+}
+
+sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t nif, void * /*reserved*/)
+{
+    wiced_ip_address_t multicast_address;
+    SET_IPV4_ADDRESS(multicast_address, address->ipv4);
+    return as_sock_result(wiced_multicast_join(wiced_wlan_interface(nif), &multicast_address));
+}
+
+sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t nif, void * /*reserved*/)
+{
+    wiced_ip_address_t multicast_address;
+    SET_IPV4_ADDRESS(multicast_address, address->ipv4);
+    return as_sock_result(wiced_multicast_leave(wiced_wlan_interface(nif), &multicast_address));
+}
+
+/* WICED extension */
+wiced_result_t wiced_last_error( wiced_tcp_socket_t* socket)
+{
+    wiced_assert("Bad args", (socket != NULL));
+    if ( socket->conn_handler == NULL )
+    {
+        return WICED_NOT_CONNECTED;
+    }
+    else
+    {
+        return LWIP_TO_WICED_ERR( netconn_err(socket->conn_handler) );
+    }
+}
+
+sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved)
+{
+    tcp_server_client_t* c = client(from_handle(sd));
+    sock_result_t result = WICED_INVALID_SOCKET;
+    if (c && peer)
+    {
+        wiced_tcp_socket_t* wiced_sock = c->get_socket();
+        wiced_ip_address_t ip;
+        result = wiced_tcp_server_peer( wiced_sock, &ip, &peer->port);
+        if (result==WICED_SUCCESS) {
+            peer->address.ipv4 = GET_IPV4_ADDRESS(ip);
+        }
+    }
+    return result;
 }

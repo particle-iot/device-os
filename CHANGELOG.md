@@ -1,4 +1,44 @@
 
+## v0.4.5
+
+### FEATURES
+ - `SPI.setClockDividerReference`, `SPI.setClockSpeed` to set clock speed in a more portable manner. [#454]https://github.com/spark/firmware/issues/454
+- `WiFi.scan` function to retrieve details of local access points. [#567](https://github.com/spark/firmware/pull/567)
+- `UDP.sendPacket`/`UDP.receivePacket` to send/receive a packet directly to an application-supplied buffer. [#452](https://github.com/spark/firmware/pull/452)
+- Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)
+- [photon] UDP multicast support via `UDP.joinMulticast`/`UDP.leaveMulticast`. Many thanks @stevie67!
+- `waitFor(WiFi.ready)` syntax to make it easier to wait for system events. [#415](https://github.com/spark/firmware/issues/415)
+- Flexible time output with `Time.format()` [#572](https://github.com/spark/firmware/issues/572)
+
+### ENHANCEMENTS
+
+- [Recipes and Tips](docs/build.md#recipes-and-tips) section in the build documentation.
+- `Particle.function`, `Particle.subscribe` and `attachInterrupt` can take a C++ method and instance pointer. [#534](https://github.com/spark/firmware/pull/534) Thanks to @monkbroc!
+- `UDP.setBuffer` to set the buffer a UDP instance uses for `read`/`write`. [#224](https://github.com/spark/firmware/pull/224) and [#452](https://github.com/spark/firmware/pull/452)
+- `WiFi.setCredentials()` can take a Cipher type to allow full specification of an AP's credentials. [#574](https://github.com/spark/firmware/pull/574)
+- TCPClient (from TCPServer) reports remote IP address. [#551](https://github.com/spark/firmware/pull/551)
+- Configurable format in `Time.timeStr()`, including ISO 8601. [#455](https://github.com/spark/firmware/issues/455)
+- `Servo.trim(adjust)` to allow small adjustments to the stationary point. [#120](https://github.com/spark/firmware/issues/120)
+- Time set from the cloud accounts for network latency. [#581](https://github.com/spark/firmware/issues/581)
+- `String(Printable)` constructor so any `Printable` can be converted to a string. [example](https://community.particle.io/t/convert-ipaddress-to-string-for-use-with-spark-publish/14885/4?u=mdma)
+- Fluent API on `String` - many methods return `*this` so method calls can be chained.
+- Small values passed to `delay(1)` result in more accurate delays. [#260](https://github.com/spark/firmware/issues/260)
+- Bootloader does not show factory reset modes if a factory reset image is not available. [#557](https://github.com/spark/firmware/issues/557)
+
+### BUGFIXES
+
+- Listening mode re-enters listening mode after credentials are given. [#558](https://github.com/spark/firmware/pull/558)
+- String function dtoa() has problems with larger numbers. [#563](https://github.com/spark/firmware/pull/563)
+- System doesn't set color of RGB LED when `RGB.control(true)` is called. [#362](https://github.com/spark/firmware/pull/362), [#472](https://github.com/spark/firmware/pull/472) and [#544](https://github.com/spark/firmware/pull/544)
+- WiFi.SSID() may not return previous network when switching. [#560](https://github.com/spark/firmware/pull/560)
+- [photon] System.sleep(5) not turning Wi-Fi back on after 5 seconds. [#480](https://github.com/spark/firmware/pull/480)
+- regression: floating point support in sprintf not compiled in. [#576](https://github.com/spark/firmware/issues/576)
+- [photon] SPI1 default clock speed was 7.5MHz, changed to 15MHz, same as for `SPI`.
+- TCPClient::connected() doesn't detect when the socket is closed [#542](https://github.com/spark/firmware/issues/542)
+- dfu-util: error during downlod get_status msg removed when using :leave option [#599](https://github.com/spark/firmware/issues/599)
+- [Core] A0 could not be used as an output [#595](https://github.com/spark/firmware/issues/595)
+- Reinstate CFOD handling on the Photon.
+
 ## v0.4.4
 
 ### FEATURES

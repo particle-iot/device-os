@@ -29,12 +29,19 @@
 #include "pinmap_impl.h"
 
 /* Private define ------------------------------------------------------------*/
+#if PLATFORM_ID == 10 // Electron
+#define TOTAL_SPI   3
+#else
 #define TOTAL_SPI   2
+#endif
 
 /* Private typedef -----------------------------------------------------------*/
 typedef enum SPI_Num_Def {
-    SPI_1 = 0,
-    SPI_3 = 1
+    SPI1_A3_A4_A5 = 0,
+    SPI3_D4_D3_D2 = 1
+#if PLATFORM_ID == 10 // Electron
+   ,SPI3_C3_C2_C1 = 2
+#endif
 } SPI_Num_Def;
 
 /* Private variables ---------------------------------------------------------*/
@@ -80,6 +87,10 @@ STM32_SPI_Info SPI_MAP[TOTAL_SPI] =
           DMA2_Stream5, DMA2_Stream2, DMA2_Stream5_IRQn, DMA_IT_TCIF5, SCK, MISO, MOSI, GPIO_AF_SPI1 },
         { SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0,
           DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA_IT_TCIF7, D4, D3, D2, GPIO_AF_SPI3 }
+#if PLATFORM_ID == 10 // Electron
+        ,{ SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0,
+          DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA_IT_TCIF7, C3, C2, C1, GPIO_AF_SPI3 }
+#endif
 };
 
 static STM32_SPI_Info *spiMap[TOTAL_SPI]; // pointer to SPI_MAP[] containing SPI peripheral info
@@ -184,12 +195,18 @@ void HAL_SPI_Init(HAL_SPI_Interface spi)
 {
     if(spi == HAL_SPI_INTERFACE1)
     {
-        spiMap[spi] = &SPI_MAP[SPI_1];
+        spiMap[spi] = &SPI_MAP[SPI1_A3_A4_A5];
     }
     else if(spi == HAL_SPI_INTERFACE2)
     {
-        spiMap[spi] = &SPI_MAP[SPI_3];
+        spiMap[spi] = &SPI_MAP[SPI3_D4_D3_D2];
     }
+#if PLATFORM_ID == 10 // Electron
+    else if(spi == HAL_SPI_INTERFACE3)
+    {
+        spiMap[spi] = &SPI_MAP[SPI3_C3_C2_C1];
+    }
+#endif
 
     spiMap[spi]->SPI_Bit_Order_Set = false;
     spiMap[spi]->SPI_Data_Mode_Set = false;
@@ -229,7 +246,15 @@ void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
     spiMap[spi]->SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
     if(spiMap[spi]->SPI_Clock_Divider_Set != true)
     {
-        spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;
+        /* Defaults to 15Mbit/s on SPI1, SPI2 and SPI3 */
+        if(spi == HAL_SPI_INTERFACE1)
+        {
+            spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;//60/4=15
+        }
+        else
+        {
+            spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_2;//30/2=15
+        }
     }
     if(spiMap[spi]->SPI_Bit_Order_Set != true)
     {
@@ -360,6 +385,7 @@ bool HAL_SPI_Is_Enabled_Old()
  */
 void DMA1_Stream7_irq(void)
 {
+    //HAL_SPI_INTERFACE2 and HAL_SPI_INTERFACE3 shares same DMA peripheral and stream
     HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
 }
 
@@ -371,4 +397,9 @@ void DMA1_Stream7_irq(void)
 void DMA2_Stream5_irq(void)
 {
     HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE1);
+}
+
+void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
+{
+    info->system_clock = spi==HAL_SPI_INTERFACE1 ? 60000000 : 30000000;
 }

@@ -23,15 +23,16 @@
  ******************************************************************************
  */
 
-#include "wifi_credentials_reader.h"
+#include "system_setup.h"
 #include "delay_hal.h"
 #include "wlan_hal.h"
 #include "system_cloud.h"
 #include "system_update.h"
 #include "spark_wiring.h"   // for serialReadLine
 #include "spark_wiring_wifi.h"
+#include "system_network.h"
 
-#if PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
+#if Wiring_WiFi && PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
 #define SETUP_LISTEN_MAGIC 1
 void loop_wifitester(int c);
 #include "spark_wiring_usartserial.h"
@@ -56,7 +57,98 @@ public:
     }
 };
 
-WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
+template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config& config_)
+    : config(config_)
+{
+    if (serial.baud()==0)
+        serial.begin(9600);
+}
+
+template<typename Config> void SystemSetupConsole<Config>::loop(void)
+{
+    if (serial.available()) {
+        int c = serial.read();
+        if (c>=0)
+            handle((char)c);
+    }
+}
+
+template<typename Config> void SystemSetupConsole<Config>::handle(char c)
+{
+    if ('i' == c)
+    {
+#if PLATFORM_ID<3
+        print("Your core id is ");
+#else
+        print("Your device id is ");
+#endif
+        String id = spark_deviceID();
+        print(id.c_str());
+        print("\r\n");
+    }
+    else if ('m' == c)
+    {
+        print("Your device MAC address is\r\n");
+        WLanConfig ip_config;
+        ip_config.size = sizeof(ip_config);
+        wlan_fetch_ipconfig(&ip_config);
+        uint8_t* addr = ip_config.nw.uaMacAddr;
+        print(bytes2hex(addr++, 1).c_str());
+        for (int i = 1; i < 6; i++)
+        {
+            print(":");
+            print(bytes2hex(addr++, 1).c_str());
+        }
+        print("\r\n");
+    }
+    else if ('f' == c)
+    {
+        serial.println("Waiting for the binary file to be sent ... (press 'a' to abort)");
+        system_firmwareUpdate(&serial);
+    }
+    else if ('x' == c)
+    {
+        exit();
+    }
+    else if ('s' == c)
+    {
+        StreamAppender appender(serial);
+        print("{");
+        system_module_info(append_instance, &appender);
+        print("}\r\n");
+    }
+    else if ('v' == c)
+    {
+        StreamAppender appender(serial);
+        system_version_info(&appender);
+        print("\r\n");
+    }
+}
+
+/* private methods */
+
+template<typename Config> void SystemSetupConsole<Config>::print(const char *s)
+{
+    for (size_t i = 0; i < strlen(s); ++i)
+    {
+        serial.write(s[i]);
+        HAL_Delay_Milliseconds(1); // ridonkulous, but required
+    }
+}
+
+template<typename Config> void SystemSetupConsole<Config>::read_line(char *dst, int max_len)
+{
+    serialReadLine(&serial, dst, max_len, 0); //no timeout
+    print("\r\n");
+    while (0 < serial.available())
+        serial.read();
+}
+
+
+#if Wiring_WiFi
+
+WiFiSetupConsole::WiFiSetupConsole(WiFiSetupConsoleConfig& config)
+ : SystemSetupConsole(config)
 {
 #if SETUP_OVER_SERIAL1
     serial1Enabled = false;
@@ -64,20 +156,16 @@ WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
     Serial1.begin(9600);
     this->tester = NULL;
 #endif
-    this->connect_callback = connect_callback;
-    if (serial.baud()==0)
-        serial.begin(9600);
-
 }
 
-WiFiCredentialsReader::~WiFiCredentialsReader()
+WiFiSetupConsole::~WiFiSetupConsole()
 {
 #if SETUP_OVER_SERIAL1
     delete this->tester;
 #endif
 }
 
-void WiFiCredentialsReader::read(void)
+void WiFiSetupConsole::loop()
 {
 #if SETUP_OVER_SERIAL1
     int c = -1;
@@ -108,14 +196,10 @@ void WiFiCredentialsReader::read(void)
         }
     }
 #endif
-    if (serial.available()) {
-        int c = serial.read();
-        if (c>=0)
-            handle((char)c);
-    }
+    super::loop();
 }
 
-void WiFiCredentialsReader::handle(char c)
+void WiFiSetupConsole::handle(char c)
 {
     if ('w' == c)
     {
@@ -155,7 +239,7 @@ void WiFiCredentialsReader::handle(char c)
 #endif
             "while I save those credentials...\r\n\r\n");
 
-        connect_callback(ssid, password, security_type);
+        this->config.connect_callback(ssid, password, security_type);
 
         print("Awesome. Now we'll connect!\r\n\r\n");
         print("If you see a pulsing cyan light, your "
@@ -170,72 +254,31 @@ void WiFiCredentialsReader::handle(char c)
         print("visit https://www.spark.io/support to debug.\r\n\r\n");
         print("    Spark <3 you!\r\n\r\n");
     }
-    else if ('i' == c)
-    {
-#if PLATFORM_ID<3
-        print("Your core id is ");
-#else
-        print("Your device id is ");
+    else {
+        super::handle(c);
+    }
+}
+
+
+void WiFiSetupConsole::exit()
+{
+    config.connect_callback(NULL, NULL, 0);
+}
+
 #endif
-        String id = spark_deviceID();
-        print(id.c_str());
-        print("\r\n");
-    }
-    else if ('m' == c)
-    {
-        print("Your device MAC address is\r\n");
-        WLanConfig ip_config;
-        ip_config.size = sizeof(ip_config);
-        wlan_fetch_ipconfig(&ip_config);
-        uint8_t* addr = ip_config.nw.uaMacAddr;
-        print(bytes2hex(addr++, 1).c_str());
-        for (int i = 1; i < 6; i++)
-        {
-            print(":");
-            print(bytes2hex(addr++, 1).c_str());
-        }
-        print("\r\n");
-    }
-    else if ('f' == c)
-    {
-        serial.println("Waiting for the binary file to be sent ... (press 'a' to abort)");
-        system_firmwareUpdate(&serial);
-    }
-    else if ('x' == c)
-    {
-        // exit without changes
-        connect_callback(NULL, NULL, 0);
-    }
-    else if ('s' == c)
-    {
-        StreamAppender appender(serial);
-        print("{");
-        system_module_info(append_instance, &appender);
-        print("}\r\n");
-    }
-    else if ('v' == c)
-    {
-        StreamAppender appender(serial);
-        system_version_info(&appender);
-        print("\r\n");
-    }
-}
 
-/* private methods */
 
-void WiFiCredentialsReader::print(const char *s)
+#if Wiring_Cellular
+
+CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
+ : SystemSetupConsole(config)
 {
-    for (size_t i = 0; i < strlen(s); ++i)
-    {
-        serial.write(s[i]);
-        HAL_Delay_Milliseconds(1); // ridonkulous, but required
-    }
 }
 
-void WiFiCredentialsReader::read_line(char *dst, int max_len)
+void CellularSetupConsole::exit()
 {
-    serialReadLine(&serial, dst, max_len, 0); //no timeout
-    print("\r\n");
-    while (0 < serial.available())
-        serial.read();
+    network_listen(0, 1, NULL);
 }
+
+
+#endif

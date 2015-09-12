@@ -42,6 +42,43 @@
 
 extern void HAL_RTCAlarm_Handler(void);
 
+
+void setRTCTime(RTC_TimeTypeDef* RTC_TimeStructure, RTC_DateTypeDef* RTC_DateStructure)
+{
+	/* Configure the RTC time register */
+	if(RTC_SetTime(RTC_Format_BIN, RTC_TimeStructure) == ERROR)
+	{
+		/* RTC Set Time failed */
+	}
+
+	/* Configure the RTC date register */
+	if(RTC_SetDate(RTC_Format_BIN, RTC_DateStructure) == ERROR)
+	{
+		/* RTC Set Date failed */
+	}
+}
+
+/* Set Date/Time to Epoch 0 (Thu, 01 Jan 1970 00:00:00 GMT) */
+void HAL_RTC_Initialize_UnixTime()
+{
+    RTC_TimeTypeDef RTC_TimeStructure;
+    RTC_DateTypeDef RTC_DateStructure;
+
+    /* Get calendar_time time struct values */
+    RTC_TimeStructure.RTC_Hours = 0;
+    RTC_TimeStructure.RTC_Minutes = 0;
+    RTC_TimeStructure.RTC_Seconds = 0;
+
+    /* Get calendar_time date struct values */
+    RTC_DateStructure.RTC_WeekDay = 4;
+    RTC_DateStructure.RTC_Date = 1;
+    RTC_DateStructure.RTC_Month = 0;
+    RTC_DateStructure.RTC_Year = 70;
+
+    setRTCTime(&RTC_TimeStructure, &RTC_DateStructure);
+}
+
+
 void HAL_RTC_Configuration(void)
 {
 	RTC_InitTypeDef RTC_InitStructure;
@@ -107,15 +144,24 @@ void HAL_RTC_Configuration(void)
 		/* Wait for RTC registers synchronization */
 		RTC_WaitForSynchro();
 
-		/* Configure the RTC data register and RTC prescaler */
-		RTC_InitStructure.RTC_AsynchPrediv = AsynchPrediv;
-		RTC_InitStructure.RTC_SynchPrediv = SynchPrediv;
-		RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
-
-		/* Check on RTC init */
-		if (RTC_Init(&RTC_InitStructure) == ERROR)
+		/* RTC register configuration done only once */
+		if (RTC_ReadBackupRegister(RTC_BKP_DR0) != 0xC1C1)
 		{
-			/* RTC Prescaler Config failed */
+		    /* Configure the RTC data register and RTC prescaler */
+		    RTC_InitStructure.RTC_AsynchPrediv = AsynchPrediv;
+		    RTC_InitStructure.RTC_SynchPrediv = SynchPrediv;
+		    RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
+
+		    /* Check on RTC init */
+		    if (RTC_Init(&RTC_InitStructure) != ERROR)
+		    {
+	            /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
+	            /* Set Date/Time to Epoch 0 (Thu, 01 Jan 1970 00:00:00 GMT) */
+	            HAL_RTC_Initialize_UnixTime();
+
+	            /* Indicator for the RTC configuration */
+	            RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
+		    }
 		}
 	}
 }
@@ -164,18 +210,10 @@ void HAL_RTC_Set_UnixTime(time_t value)
 	RTC_DateStructure.RTC_Month = calendar_time->tm_mon;
 	RTC_DateStructure.RTC_Year = calendar_time->tm_year;
 
-	/* Configure the RTC time register */
-	if(RTC_SetTime(RTC_Format_BIN, &RTC_TimeStructure) == ERROR)
-	{
-		/* RTC Set Time failed */
-	}
-
-	/* Configure the RTC date register */
-	if(RTC_SetDate(RTC_Format_BIN, &RTC_DateStructure) == ERROR)
-	{
-		/* RTC Set Date failed */
-	}
+        setRTCTime(&RTC_TimeStructure, &RTC_DateStructure);
 }
+
+
 
 void HAL_RTC_Set_UnixAlarm(time_t value)
 {
