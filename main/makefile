@@ -4,9 +4,9 @@ MAIN_MODULE_PATH=.
 
 include ../build/platform-id.mk
 
-ifeq ($(PLATFORM_ID),0)
-export COMPILE_LTO?=y
-endif
+#ifeq ($(PLATFORM_ID),0)
+#export COMPILE_LTO?=y
+#endif
 
 
 ifeq ($(PLATFORM_ID),6)
