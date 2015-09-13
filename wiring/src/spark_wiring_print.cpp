@@ -25,6 +25,8 @@
  */
 
 #include <math.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include "spark_wiring_print.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_stream.h"
@@ -240,3 +242,29 @@ size_t Print::printFloat(double number, uint8_t digits)
 
   return n;
 }
+
+size_t Print::printf_impl(bool newline, const char* format, ...)
+{
+    char test[5];
+    va_list marker;
+    va_start(marker, format);
+    size_t n = vsnprintf(test, 1, format, marker);
+    va_end(marker);
+
+    if (n<5)
+    {
+        n = print(test);
+    }
+    else
+    {
+        char bigger[n+1];
+        va_start(marker, format);
+        n = vsnprintf(bigger, n+1, format, marker);
+        va_end(marker);
+        n = print(bigger);
+    }
+    if (newline)
+        n += println();
+    return n;
+}
+
