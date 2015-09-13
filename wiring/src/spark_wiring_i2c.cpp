@@ -69,6 +69,11 @@ void TwoWire::begin(int address)
   begin((uint8_t)address);
 }
 
+void TwoWire::end()
+{
+    HAL_I2C_End(_i2c, NULL);
+}
+
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
 {
   return HAL_I2C_Request_Data(_i2c, address, quantity, sendStop, NULL);
