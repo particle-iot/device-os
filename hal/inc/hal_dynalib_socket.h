@@ -30,6 +30,13 @@
 #include "socket_hal.h"
 #endif
 
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
+
 DYNALIB_BEGIN(hal_socket)
 DYNALIB_FN(hal_socket,socket_active_status)
 DYNALIB_FN(hal_socket,socket_handle_valid)
