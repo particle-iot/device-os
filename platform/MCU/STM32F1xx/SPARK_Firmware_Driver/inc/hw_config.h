@@ -229,6 +229,7 @@ extern uint16_t Factory_Reset_SysFlag;
 extern uint8_t dfu_on_no_firmware;
 extern uint8_t Factory_Reset_Done_SysFlag;
 extern uint8_t StartupMode_SysFlag;
+extern uint8_t FeaturesEnabled_SysFlag;
 extern uint32_t RCC_CSR_SysFlag;
 
 extern unsigned char wlan_rx_buffer[];
@@ -238,6 +239,10 @@ extern unsigned char wlan_tx_buffer[];
 
 void Save_Reset_Syndrome();
 
+/**
+ * Assume factory reset image present on the core.
+ */
+inline bool FLASH_IsFactoryResetAvailable() { return true; }
 
 #ifdef __cplusplus
 }

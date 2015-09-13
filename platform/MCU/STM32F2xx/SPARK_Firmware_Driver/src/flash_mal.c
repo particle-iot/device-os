@@ -211,16 +211,10 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
     return false;
 }
 
-bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+bool FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                       flash_device_t destinationDeviceID, uint32_t destinationAddress,
                       uint32_t length, uint8_t module_function, uint8_t flags)
 {
-#ifdef USE_SERIAL_FLASH
-    uint8_t serialFlashData[4];
-#endif
-    uint32_t internalFlashData = 0;
-    uint32_t endAddress = sourceAddress + length - 1;
-
     if (FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length) != true)
     {
         return false;
@@ -231,7 +225,7 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return false;
     }
 
-#ifndef USE_SERIAL_FLASH
+#ifndef USE_SERIAL_FLASH    // this predates the module system (early P1's using external flash for storage)
     if ((sourceDeviceID == FLASH_INTERNAL) && (flags & MODULE_VERIFY_MASK))
     {
         uint32_t moduleLength = FLASH_ModuleLength(sourceDeviceID, sourceAddress);
@@ -264,6 +258,23 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         }
     }
 #endif
+    return true;
+}
+
+bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
+                      uint32_t length, uint8_t module_function, uint8_t flags)
+{
+#ifdef USE_SERIAL_FLASH
+    uint8_t serialFlashData[4];
+#endif
+    uint32_t internalFlashData = 0;
+    uint32_t endAddress = sourceAddress + length - 1;
+
+    if (!FLASH_CheckCopyMemory(sourceDeviceID, sourceAddress, destinationDeviceID, destinationAddress, length, module_function, flags))
+    {
+        return false;
+    }
 
     if (FLASH_EraseMemory(destinationDeviceID, destinationAddress, length) != true)
     {
@@ -514,7 +525,7 @@ bool FLASH_ClearFactoryResetModuleSlot(void)
     return true;
 }
 
-bool FLASH_RestoreFromFactoryResetModuleSlot(void)
+bool FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
 {
     //Read the flash modules info from the dct area
     const platform_flash_modules_t* flash_modules = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
@@ -523,7 +534,7 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
     if(flash_modules[FAC_RESET_SLOT].magicNumber == 0x0FAC)
     {
         //Restore Factory Reset Firmware (slot 0 is factory reset module)
-        restoreFactoryReset = FLASH_CopyMemory(flash_modules[FAC_RESET_SLOT].sourceDeviceID,
+        restoreFactoryReset = copy(flash_modules[FAC_RESET_SLOT].sourceDeviceID,
                                                flash_modules[FAC_RESET_SLOT].sourceAddress,
                                                flash_modules[FAC_RESET_SLOT].destinationDeviceID,
                                                flash_modules[FAC_RESET_SLOT].destinationAddress,
@@ -534,11 +545,22 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
     else
     {
         // attempt to use the default that the bootloader was built with
-        restoreFactoryReset = FLASH_CopyMemory(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
+        restoreFactoryReset = copy(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
             FACTORY_RESET_MODULE_FUNCTION,
             MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION);
     }
     return restoreFactoryReset;
+
+}
+
+bool FLASH_IsFactoryResetAvailable(void)
+{
+    return FLASH_ApplyFactoryResetImage(FLASH_CheckCopyMemory);
+}
+
+bool FLASH_RestoreFromFactoryResetModuleSlot(void)
+{
+    return FLASH_ApplyFactoryResetImage(FLASH_CopyMemory);
 }
 
 //This function called in bootloader to perform the memory update process

@@ -72,6 +72,7 @@ uint16_t Factory_Reset_SysFlag = 0xFFFF;
 uint8_t dfu_on_no_firmware = 0xFF;
 uint8_t Factory_Reset_Done_SysFlag = 0xFF;
 uint8_t StartupMode_SysFlag = 0xFF;
+uint8_t FeaturesEnabled_SysFlag = 0xFF;
 uint32_t RCC_CSR_SysFlag = !0x0;
 
 uint32_t WRPR_Value = 0xFFFFFFFF;
@@ -121,9 +122,6 @@ void Set_System(void)
 
     /* Enable write access to Backup domain */
     PWR_BackupAccessCmd(ENABLE);
-
-    /* Enable WKUP pin */
-    PWR_WakeUpPinCmd(ENABLE);
 
     /* Should we execute System Standby mode */
     // Use "HAL_Core_Execute_Standby_Mode()" defined in core_hal.c
@@ -927,8 +925,8 @@ void Load_SystemFlags(void)
 
     dfu_on_no_firmware = (*(__IO uint8_t*) Address++);
     Factory_Reset_Done_SysFlag = (*(__IO uint8_t*) Address++);
-    StartupMode_SysFlag = (*(__IO uint8_t*) Address);
-    Address += 2;
+    StartupMode_SysFlag = (*(__IO uint8_t*) Address++);
+    FeaturesEnabled_SysFlag = (*(__IO uint8_t*) Address++);
 
     RCC_CSR_SysFlag = (*(__IO uint32_t*) Address);
     Address += 4;
@@ -982,7 +980,7 @@ void Save_SystemFlags(void)
     Address += 2;
 
     // the flag that comes after this will be added here, shifted 8 places.
-    FLASHStatus = FLASH_ProgramHalfWord(Address, StartupMode_SysFlag);
+    FLASHStatus = FLASH_ProgramHalfWord(Address, FeaturesEnabled_SysFlag<<8 | StartupMode_SysFlag);
     while(FLASHStatus != FLASH_COMPLETE);
     Address += 2;
 

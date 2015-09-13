@@ -27,6 +27,9 @@
 #include "application.h"
 #include "stdarg.h"
 
+PRODUCT_ID(PLATFORM_ID);
+PRODUCT_VERSION(2);
+
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
 int tinkerDigitalWrite(String command);

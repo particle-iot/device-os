@@ -210,6 +210,8 @@ void WiFiSetupConsole::handle(char c)
         print("SSID: ");
         read_line(ssid, 32);
 
+        // TODO: would be great if the network auto-detected the Security type
+        // The photon is scanning the network so could determine this.
         do
         {
             print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2: ");
@@ -227,6 +229,28 @@ void WiFiSetupConsole::handle(char c)
 #endif
 
         unsigned long security_type = security_type_string[0] - '0';
+
+        WLanSecurityCipher cipher = WLAN_CIPHER_NOT_SET;
+
+        if (security_type)
+            password[0] = '1'; // non-empty password so security isn't set to None
+
+        // dry run
+        if (this->config.connect_callback(ssid, password, security_type, cipher, true)==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED)
+        {
+            do
+            {
+                print("Security Cipher 1=AES, 2=TKIP, 3=AES+TKIP: ");
+                read_line(security_type_string, 1);
+            }
+            while ('1' > security_type_string[0] || '3' < security_type_string[0]);
+            switch (security_type_string[0]-'0') {
+                case 1: cipher = WLAN_CIPHER_AES; break;
+                case 2: cipher = WLAN_CIPHER_TKIP; break;
+                case 3: cipher = WLAN_CIPHER_AES_TKIP; break;
+            }
+        }
+
         if (0 < security_type)
         {
             print("Password: ");
@@ -239,20 +263,25 @@ void WiFiSetupConsole::handle(char c)
 #endif
             "while I save those credentials...\r\n\r\n");
 
-        this->config.connect_callback(ssid, password, security_type);
-
-        print("Awesome. Now we'll connect!\r\n\r\n");
-        print("If you see a pulsing cyan light, your "
-#if PLATFORM_ID==0
-            "Spark Core"
-#else
-            "device"
-#endif
-            "\r\n");
-        print("has connected to the Cloud and is ready to go!\r\n\r\n");
-        print("If your LED flashes red or you encounter any other problems,\r\n");
-        print("visit https://www.spark.io/support to debug.\r\n\r\n");
-        print("    Spark <3 you!\r\n\r\n");
+        if (this->config.connect_callback(ssid, password, security_type, cipher, false)==0)
+        {
+            print("Awesome. Now we'll connect!\r\n\r\n");
+            print("If you see a pulsing cyan light, your "
+    #if PLATFORM_ID==0
+                "Spark Core"
+    #else
+                "device"
+    #endif
+                "\r\n");
+            print("has connected to the Cloud and is ready to go!\r\n\r\n");
+            print("If your LED flashes red or you encounter any other problems,\r\n");
+            print("visit https://www.particle.io/support to debug.\r\n\r\n");
+            print("    Particle <3 you!\r\n\r\n");
+        }
+        else
+        {
+            print("Derp. Sorry, we couldn't save the credentials.\r\n\r\n");
+        }
     }
     else {
         super::handle(c);
@@ -262,7 +291,7 @@ void WiFiSetupConsole::handle(char c)
 
 void WiFiSetupConsole::exit()
 {
-    config.connect_callback(NULL, NULL, 0);
+    network_listen(0, NETWORK_LISTEN_EXIT, NULL);
 }
 
 #endif

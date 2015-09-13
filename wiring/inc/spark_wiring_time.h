@@ -29,11 +29,9 @@
 #include "spark_wiring_string.h"
 #include <time.h>
 
-enum time_format_t
-{
-    TIME_FORMAT_DEFAULT = 0,
-    TIME_FORMAT_ISO8601_FULL = 1
-};
+extern const char* TIME_FORMAT_DEFAULT;
+extern const char* TIME_FORMAT_ISO8601_FULL;
+
 
 class TimeClass {
 public:
@@ -66,34 +64,38 @@ public:
         /* return string representation of the current time */
         inline String timeStr()
         {
-                return timeStr(now(), format_spec);
-        }
-
-        inline String timeStr(time_format_t format_spec)
-        {
-                return timeStr(now(), format_spec);
+                return timeStr(now());
         }
 
         /* return string representation for the given time */
-        inline String timeStr(time_t t)
+        static String timeStr(time_t t);
+
+        /**
+         * Return a string representation of the given time using strftime().
+         * This function takes several kilobytes of flash memory so it's kept separate
+         * from `timeStr()` to reduce memory footprint for applications that don't use
+         * alternative time formats.
+         *
+         * @param t
+         * @param format_spec
+         * @return
+         */
+        String format(time_t t, const char* format_spec=NULL);
+
+        inline String format(const char* format_spec=NULL)
         {
-            return timeStr(t, format_spec);
+            return format(now(), format_spec);
         }
 
-        static String timeStr(time_t t, time_format_t format_spec);
-
-        static String format(time_t t, const char* format_spec);
-
-#if PLATFORM_ID>2
-        void setFormat(time_format_t format) {
+        void setFormat(const char* format)
+        {
             this->format_spec = format;
         }
 
-        time_format_t getFormat() const { return format_spec; }
-#endif
+        const char* getFormat() const { return format_spec; }
 
 private:
-    static time_format_t format_spec;
+    static const char* format_spec;
     static String timeFormatImpl(tm* calendar_time, const char* format, int time_zone);
 
 };

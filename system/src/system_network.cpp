@@ -59,30 +59,35 @@ volatile uint8_t SPARK_WLAN_STARTED;
  *
  * Like all of setup mode, this runs on the system thread.
  */
-void wifi_add_profile_callback(const char *ssid,
-    const char *password,
-    unsigned long security_type)
+int wifi_add_profile_callback(const char *ssid, const char *password,
+    unsigned long security_type, unsigned long cipher, bool dry_run)
 {
-    WLAN_SERIAL_CONFIG_DONE = 1;
+    int result = 0;
     if (ssid)
     {
         NetworkCredentials creds;
         memset(&creds, 0, sizeof (creds));
-        creds.len = sizeof (creds);
+        creds.size = sizeof (creds);
         creds.ssid = ssid;
         creds.password = password;
         creds.ssid_len = strlen(ssid);
         creds.password_len = strlen(password);
         creds.security = WLanSecurityType(security_type);
-        network_set_credentials(0, 0, &creds, NULL);
+        creds.cipher = WLanSecurityCipher(cipher);
+        if (dry_run)
+            creds.flags |= WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN;
+        result = network_set_credentials(0, 0, &creds, NULL);
     }
+    if (result==0)
+        WLAN_SERIAL_CONFIG_DONE = 1;
+    return result;
 }
 
 /**
  *
  * Runs during setup mode, on the system thread.
  */
- void Start_Smart_Config(void)
+void Start_Smart_Config(void)
 {
     WLAN_SMART_CONFIG_FINISHED = 0;
     WLAN_SMART_CONFIG_STOP = 0;
@@ -147,7 +152,7 @@ void wifi_add_profile_callback(const char *ssid,
                 LED_SetRGBColor(RGB_COLOR_BLUE);
                 LED_On(LED_RGB);
             }
-            system_notify_event(wifi_credentials_cleared);
+            system_notify_event(network_credentials, network_credentials_cleared);
             WLAN_DELETE_PROFILES = 0;
         }
         else
@@ -204,7 +209,7 @@ void HAL_WLAN_notify_connected()
 
 void HAL_WLAN_notify_disconnected()
 {
-    cloud_disconnect();
+    cloud_disconnect(false);    // don't close the socket on the callback since this causes a lockup on the Core
     if (WLAN_CONNECTED)     /// unsolicited disconnect
     {
       //Breathe blue if established connection gets disconnected
@@ -214,7 +219,7 @@ void HAL_WLAN_notify_disconnected()
         ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
       }
       SPARK_LED_FADE = 1;
-      LED_SetRGBColor(RGB_COLOR_BLUE);
+          LED_SetRGBColor(RGB_COLOR_BLUE);
       LED_On(LED_RGB);
     }
     else if (!WLAN_SMART_CONFIG_START)
@@ -222,7 +227,7 @@ void HAL_WLAN_notify_disconnected()
       //Do not enter if smart config related disconnection happens
       //Blink green if connection fails because of wrong password
         if (!WLAN_DISCONNECT) {
-      ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+            ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
         }
       SPARK_LED_FADE = 0;
       LED_SetRGBColor(RGB_COLOR_GREEN);
@@ -387,7 +392,7 @@ int network_connect2(network_handle_t network, uint32_t flags, uint32_t param, v
             else {
                 if (was_sleeping) {
                     network_disconnect(network, 0, NULL);
-               }
+                }
             }
         }
         else
@@ -396,6 +401,7 @@ int network_connect2(network_handle_t network, uint32_t flags, uint32_t param, v
             WLAN_CONNECTING = 1;
             LED_SetRGBColor(RGB_COLOR_GREEN);
             LED_On(LED_RGB);
+            ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
             wlan_connect_finalize();
         }
 
@@ -461,10 +467,10 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
         SPARK_WLAN_SLEEP = 0;
         SPARK_LED_FADE = 1;
         if (!(flags & 1)) {
-        LED_SetRGBColor(RGB_COLOR_BLUE);
-        LED_On(LED_RGB);
+            LED_SetRGBColor(RGB_COLOR_BLUE);
+            LED_On(LED_RGB);
+        }
     }
-}
 }
 
 bool network_has_credentials(network_handle_t network, uint32_t param, void* reserved)
@@ -504,7 +510,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 
 void network_listen(network_handle_t, uint32_t flags, void*)
 {
-    WLAN_SMART_CONFIG_START = !(flags & 1);
+    WLAN_SMART_CONFIG_START = !(flags & NETWORK_LISTEN_EXIT);
     if (!WLAN_SMART_CONFIG_START)
         WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
 }
@@ -525,15 +531,14 @@ int network_set_credentials(network_handle_t nif, uint32_t flags, NetworkCredent
     SYSTEM_THREAD_CONTEXT_SYNC(network_set_credentials(nif, flags, credentials, reserved));
 
     WLanSecurityType security = credentials->security;
-
     if (0 == credentials->password[0])
     {
         security = WLAN_SEC_UNSEC;
     }
-
     credentials->security = security;
     int result = wlan_set_credentials(credentials);
-    system_notify_event(wifi_credentials_add, 0, credentials);
+    if (!result)
+        system_notify_event(network_credentials, network_credentials_added, credentials);
     return result;
 }
 

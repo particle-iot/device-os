@@ -28,9 +28,9 @@ typedef struct SparkProtocol SparkProtocol;
 #ifdef __cplusplus
 extern "C" {
 #endif
-        
-    
-void cloud_disconnect(void);
+
+
+void cloud_disconnect(bool closeSocket=true);
 
 typedef enum
 {
@@ -62,8 +62,8 @@ struct  cloud_function_descriptor {
     uint16_t padding;
     const char *funcKey;
     cloud_function_t fn;
-    void* data; 
-    
+    void* data;
+
      cloud_function_descriptor() {
          memset(this, 0, sizeof(*this));
          size = sizeof(*this);
@@ -76,13 +76,13 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
 
 /**
  * @param funcKey   The name of the function to register. When NULL, pFunc is taken to be a
- *      cloud_function_descriptor pointer. 
+ *      cloud_function_descriptor pointer.
  * @param pFunc     The function to call, when funcKey is not null. Otherwise a cloud_function_descriptor pointer.
  * @param reserved  For future expansion, set to NULL.
  */
 bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved);
 bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved);
-bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data, 
+bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
 
 

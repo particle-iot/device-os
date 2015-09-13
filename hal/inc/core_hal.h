@@ -109,6 +109,16 @@ typedef enum _BootloaderFlag_t {
     BOOTLOADER_FLAG_STARTUP_MODE
 } BootloaderFlag;
 
+enum BootloaderFeaturesEnabled
+{
+    BL_FEATURE_SAFE_MODE = 1<<0,
+    BL_FEATURE_DFU_MODE = 1<<1,
+    BL_FEATURE_FACTORY_RESET = 1<<2,
+    BL_BUTTON_FEATURES = (BL_FEATURE_SAFE_MODE|BL_FEATURE_DFU_MODE|BL_FEATURE_FACTORY_RESET)
+};
+
+
+
 uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag);
 
 //Following is currently defined in bootloader/src/core-vx/dfu_hal.c

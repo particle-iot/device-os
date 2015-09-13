@@ -174,9 +174,9 @@ void app_loop(bool threaded)
         Spark_Idle();
 
     static uint8_t SPARK_WIRING_APPLICATION = 0;
-    if(threaded || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION)
+    if(threaded || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION || (system_mode()!=AUTOMATIC))
     {
-        if(threaded || (!SPARK_FLASH_UPDATE && !HAL_watchdog_reset_flagged()))
+        if(threaded || !SPARK_FLASH_UPDATE)
         {
             if ((SPARK_WIRING_APPLICATION != 1))
             {
@@ -251,21 +251,21 @@ void app_setup_and_loop(void)
 
 #if PLATFORM_THREADING
     if (threaded)
-    {
+        {
         SYSTEM_THREAD_START();
         AppThread.start();
         // create a queue handler for this thread.
 
-    }
+                }
     else
 #endif
     {
         /* Main loop */
         while (1) {
             app_loop(false);
+            }
         }
     }
-}
 
 #ifdef USE_FULL_ASSERT
 
