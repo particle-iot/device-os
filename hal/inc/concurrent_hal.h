@@ -132,7 +132,22 @@ void os_condition_variable_notify_all(condition_variable_t* var);
 const system_tick_t CONCURRENT_WAIT_FOREVER = (system_tick_t)-1;
 
 int os_queue_create(os_queue_t* queue, size_t item_count, size_t item_size);
+/**
+ * Return 0 on success.
+ * @param queue
+ * @param item
+ * @param delay
+ * @return
+ */
 int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay);
+
+/**
+ * Return 0 on success.
+ * @param queue
+ * @param item
+ * @param delay
+ * @return
+ */
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay);
 void os_queue_destroy(os_queue_t queue);
 

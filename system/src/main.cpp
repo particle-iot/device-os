@@ -251,12 +251,10 @@ void app_setup_and_loop(void)
 
 #if PLATFORM_THREADING
     if (threaded)
-        {
+    {
         SYSTEM_THREAD_START();
         AppThread.start();
-        // create a queue handler for this thread.
-
-                }
+    }
     else
 #endif
     {
@@ -264,8 +262,8 @@ void app_setup_and_loop(void)
         while (1) {
             app_loop(false);
             }
-        }
     }
+}
 
 #ifdef USE_FULL_ASSERT
 

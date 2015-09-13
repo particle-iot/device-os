@@ -105,6 +105,12 @@ template<typename T> class Promise : public PromiseBase<T, Promise<T>>
     using super = PromiseBase<T, Promise<T>>;
     friend super;
 
+protected:
+    void invoke()
+    {
+        this->result = this->work();
+    }
+
 public:
 
     Promise(const std::function<T()>& fn_) : super(fn_) {}
@@ -117,13 +123,6 @@ public:
         this->wait_complete();
         return result;
     }
-
-    void invoke()
-    {
-        this->result = this->work();
-    }
-
-
 };
 
 template<> class Promise<void> : public PromiseBase<void, Promise<void>>
@@ -223,7 +222,7 @@ public:
     template<typename R> std::shared_ptr<Promise<R>> invoke_future(std::function<R(void)> work)
     {
         auto promise = std::make_shared<Promise<R>>(work);            // shared pointer for reference returned here
-        auto message = std::static_pointer_cast<Message>(promise);      // another reference to put on the queue
+        Item message = std::static_pointer_cast<Message>(promise);    // another reference to put on the queue
         put(message);
         return promise;
     }
@@ -272,7 +271,7 @@ protected:
 
     virtual bool take(Item& result)
     {
-        return os_queue_take(queue, &result, configuration.take_wait);
+        return os_queue_take(queue, &result, configuration.take_wait)==0;
     }
 
     virtual void put(Item& item)
@@ -281,8 +280,8 @@ protected:
         // we don't get the required shared pointer reference increment
         // force it by doing a placement new allocation and invoke the copy ctor
         uint8_t buf[sizeof(Item)];
-        Item* pItem = new (buf) Item(item);     // placement new, and copy construct from item
-        while (!os_queue_put(queue, pItem, CONCURRENT_WAIT_FOREVER)) {}
+        Item* pItem = new (buf) Item(std::move(item));     // placement new, and copy construct from item
+        while (os_queue_put(queue, pItem, CONCURRENT_WAIT_FOREVER)) {}
         // item is reset when removed from the queue.
     }
 

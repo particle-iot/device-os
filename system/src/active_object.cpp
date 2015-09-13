@@ -42,7 +42,8 @@ void ActiveObjectBase::run()
     {
         if (take(item))
         {
-            (*item)();
+            Message& msg = *item;
+            msg();
             item.reset();
         }
         else
