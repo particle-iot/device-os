@@ -27,6 +27,8 @@ void setup();
 void loop();
 
 
+void system_initialize_user_backup_ram();
+
 #ifdef __cplusplus
 }
 #endif
