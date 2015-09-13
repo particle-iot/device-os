@@ -65,7 +65,10 @@ DYNALIB_FN(hal_core,HAL_Core_System_Reset_FlagSet)
 DYNALIB_FN(hal_core,HAL_Core_Runtime_Info)
 DYNALIB_FN(hal_core,HAL_Set_System_Config)
 DYNALIB_FN(hal_core,HAL_Core_Enter_Safe_Mode)
+DYNALIB_FN(hal_core,HAL_Feature_Get)
+DYNALIB_FN(hal_core,HAL_Feature_Set)
 DYNALIB_END(hal_core)
+
 
 
 

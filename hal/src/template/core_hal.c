@@ -128,3 +128,14 @@ int main()
 {
     while(1);
 }
+
+
+int HAL_Feature_Set(HAL_Feature feature, bool enabled)
+{
+    return -1;
+}
+
+bool HAL_Feature_Get(HAL_Feature feature)
+{
+    return false;
+}
