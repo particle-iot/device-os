@@ -24,6 +24,7 @@
 #include "system_mode.h"
 #include "system_network.h"
 #include "system_task.h"
+#include "system_threading.h"
 #include "spark_protocol_functions.h"
 #include "spark_protocol.h"
 #include "append_list.h"
@@ -126,6 +127,12 @@ int call_raw_user_function(void* data, const char* param, void* reserved)
     return (*fn)(p);
 }
 
+/**
+ * Register a function.
+ * @param desc
+ * @param reserved
+ * @return
+ */
 bool spark_function_internal(const cloud_function_descriptor* desc, void* reserved)
 {
     User_Func_Lookup_Table_t* item = NULL;
@@ -570,12 +577,30 @@ const void *getUserVar(const char *varKey)
     return item ? item->userVar : NULL;
 }
 
+void userFuncScheduleImpl(User_Func_Lookup_Table_t* item, const char* paramString, bool freeParamString, SparkDescriptor::FunctionResultCallback callback)
+{
+    int result = item->pUserFunc(item->pUserFuncData, paramString, NULL);
+    if (freeParamString)
+        delete paramString;
+    // run the cloud return on the system thread again
+    SYSTEM_THREAD_CONTEXT_ASYNC(callback((const void*)result, SparkReturnType::INT));
+    callback((const void*)result, SparkReturnType::INT);    
+}
+
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved)
 {
     // for now, we invoke the function directly and return the result via the callback
     User_Func_Lookup_Table_t* item = find_func_by_key(funcKey);
-    long result = item ? item->pUserFunc(item->pUserFuncData, paramString, NULL) : -1;
-    callback((const void*)result, SparkReturnType::INT);
+    if (!item)
+        return -1;
+
+#if PLATFORM_THREADING
+    paramString = strdup(paramString);      // ensure we have a copy since the oriignal isn't guaranteed to be available once this function returns.
+    APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(userFuncScheduleImpl(item, paramString, true, callback), 0);
+    userFuncScheduleImpl(item, paramString, true, callback);
+#else
+    userFuncScheduleImpl(item, paramString, false, callback);
+#endif
     return 0;
 }
 

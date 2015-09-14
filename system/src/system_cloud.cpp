@@ -108,14 +108,14 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
     SYSTEM_THREAD_CONTEXT_SYNC(spark_function(funcKey, pFunc, reserved));
 
     bool result;
-    if (funcKey) {
+    if (funcKey) {                          // old call, with funcKey != NULL
         cloud_function_descriptor desc;
         desc.funcKey = funcKey;
         desc.fn = call_raw_user_function;
         desc.data = (void*)pFunc;
         result = spark_function_internal(&desc, NULL);
     }
-    else {
+    else {      // new call - pFunc is actually a pointer to a descriptor
         result = spark_function_internal((cloud_function_descriptor*)pFunc, reserved);
     }
     return result;

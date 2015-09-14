@@ -207,7 +207,7 @@ void app_thread_idle()
     app_loop(true);
 }
 
-ActiveObjectCurrentThreadQueue AppThread(ActiveObjectConfiguration(app_thread_idle, 0));
+ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_thread_idle, 0));
 
 #endif
 
@@ -253,7 +253,7 @@ void app_setup_and_loop(void)
     if (threaded)
     {
         SYSTEM_THREAD_START();
-        AppThread.start();
+        ApplicationThread.start();
     }
     else
 #endif

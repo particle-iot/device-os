@@ -89,7 +89,7 @@ public:
             ((C*)this)->invoke();
             complete = true;
         }
-        cv.notify_one();
+        cv.notify_all();
     }
 
 };
@@ -301,7 +301,7 @@ public:
 };
 
 
-class ActiveObjectCurrentThreadQueue : ActiveObjectQueue
+class ActiveObjectCurrentThreadQueue : public ActiveObjectQueue
 {
 public:
     ActiveObjectCurrentThreadQueue(const ActiveObjectConfiguration& config) : ActiveObjectQueue(config) {}

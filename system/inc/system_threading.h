@@ -40,7 +40,7 @@ extern ActiveObjectThreadQueue SystemThread;
 /**
  * Application queue runs on the calling thread (main)
  */
-extern ActiveObjectCurrentThreadQueue AppThread;
+extern ActiveObjectCurrentThreadQueue ApplicationThread;
 
 #endif
 
@@ -95,6 +95,19 @@ FFL(F const &func)
     return func;
 }
 
+#define _THREAD_CONTEXT_ASYNC_RESULT(thread, fn, result) \
+    if (thread.isStarted() && !thread.isCurrentThread()) { \
+        auto lambda = [=]() { (fn); }; \
+        thread.invoke_future(FFL(lambda)); \
+        return result; \
+    }
+
+#define _THREAD_CONTEXT_ASYNC(thread, fn) \
+    if (thread.isStarted() && !thread.isCurrentThread()) { \
+        auto lambda = [=]() { (fn); }; \
+        thread.invoke_future(FFL(lambda)); \
+        return; \
+    }
 
 #define SYSTEM_THREAD_CONTEXT_SYNC(fn) \
     if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
@@ -103,18 +116,16 @@ FFL(F const &func)
         return future->get();  \
     }
 
-#define SYSTEM_THREAD_CONTEXT_ASYNC(fn) \
-    if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
-        auto lambda = [=]() { (fn); }; \
-        SystemThread.invoke_future(FFL(lambda)); \
-    }
-
 #else
 
-#define SYSTEM_THREAD_CONTEXT_SYNC(fn)
-#define SYSTEM_THREAD_CONTEXT_ASYNC(fn)
+#define _THREAD_CONTEXT_ASYNC(thread, fn)
+#define _THREAD_CONTEXT_ASYNC_RESULT(thread, fn, result)
 #endif
 
+#define SYSTEM_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(SystemThread, fn)
+#define SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(SystemThread, fn, result)
+#define APPLICATION_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(ApplicationThread, fn)
+#define APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(ApplicationThread, fn, result)
 
 
 #if PLATFORM_THREADING
