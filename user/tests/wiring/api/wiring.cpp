@@ -91,3 +91,10 @@ test(api_servo_trim)
     Servo servo;
     servo.setTrim(234);
 }
+
+test(api_wire)
+{
+    API_COMPILE(Wire.begin());
+    API_COMPILE(Wire.reset());
+    API_COMPILE(Wire.end());
+}

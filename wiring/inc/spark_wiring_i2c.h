@@ -72,6 +72,11 @@ public:
   using Print::write;
 
   bool isEnabled(void);
+
+  /**
+   * Attempts to reset this I2C bus.
+   */
+  void reset();
 };
 
 /**

@@ -4,7 +4,8 @@
 ### FEATURES
 
 ### ENHANCEMENTS
-    - `Wire.end()` to release the D0/D1 pins. [#597](https://github.com/spark/firmware/issues/597)
+    - `Wire.end()` to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
+    - `Wire.reset()` to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
 
 ### BUGFIXES
 
