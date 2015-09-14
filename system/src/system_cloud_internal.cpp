@@ -237,11 +237,22 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 }
 
 const char* CLAIM_EVENTS = "spark/device/claim/";
+const char* RESET_EVENT = "spark/device/reset";
 
 void SystemEvents(const char* name, const char* data)
 {
     if (!strncmp(name, CLAIM_EVENTS, strlen(CLAIM_EVENTS))) {
         HAL_Set_Claim_Code(NULL);
+    }
+    if (!strcmp(name, RESET_EVENT)) {
+        if (data && *data) {
+            if (!strcmp("safe mode", data))
+                System.enterSafeMode();
+            else if (!strcmp("dfu", data))
+                System.dfu(false);
+            else if (!strcmp("reboot", data))
+                System.reset();
+        }
     }
 }
 
