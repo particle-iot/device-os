@@ -231,26 +231,26 @@ int os_condition_variable_create(condition_variable_t* cond)
     return (*cond = new ConditionVariable(10))==NULL;
 }
 
-void os_condition_variable_destroy(condition_variable_t* cond)
+void os_condition_variable_destroy(condition_variable_t cond)
 {
     ConditionVariable* cv = (ConditionVariable*)cond;
     cv->~ConditionVariable();
 }
 
-void os_condition_variable_wait(condition_variable_t* cond, void* v)
+void os_condition_variable_wait(condition_variable_t cond, void* v)
 {
     std::unique_lock<std::mutex>* lock = (std::unique_lock<std::mutex>*)v;
     ConditionVariable* cv = (ConditionVariable*)cond;
     cv->wait(lock);
 }
 
-void os_condition_variable_notify_one(condition_variable_t* cond)
+void os_condition_variable_notify_one(condition_variable_t cond)
 {
     ConditionVariable* cv = (ConditionVariable*)cond;
     cv->signal();
 }
 
-void os_condition_variable_notify_all(condition_variable_t* cond)
+void os_condition_variable_notify_all(condition_variable_t cond)
 {
     ConditionVariable* cv = (ConditionVariable*)cond;
     cv->broadcast();

@@ -14,11 +14,10 @@ void system_thread_idle()
 
 ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idle, 1024*3, 100));
 
-
 namespace std {
     condition_variable::~condition_variable()
     {
-        os_condition_variable_destroy(&_M_cond);
+        os_condition_variable_destroy(_M_cond);
     }
 
     condition_variable::condition_variable()
@@ -28,17 +27,17 @@ namespace std {
 
     void condition_variable::wait(unique_lock<mutex>& lock)
     {
-        os_condition_variable_wait(&_M_cond, &lock);
+        os_condition_variable_wait(_M_cond, &lock);
     }
 
     void condition_variable::notify_one()
     {
-        os_condition_variable_notify_one(&_M_cond);
+        os_condition_variable_notify_one(_M_cond);
     }
 
     void condition_variable::notify_all()
     {
-        os_condition_variable_notify_all(&_M_cond);
+        os_condition_variable_notify_all(_M_cond);
     }
 
     mutex& __get_once_mutex() {

@@ -119,15 +119,15 @@ os_result_t os_thread_cleanup(os_thread_t thread);
 
 
 int os_condition_variable_create(condition_variable_t* var);
-void os_condition_variable_destroy(condition_variable_t* var);
+void os_condition_variable_destroy(condition_variable_t var);
 
 // something spooky going on here...adding #include <mutex> to the top of this file
 // causes 'mutex' is not a member of 'std'. and errors in other classes using mutext also occur
 // the workaround is to use a void* then cast to a mutex in the implementation. <<shrug>>
 
-void os_condition_variable_wait(condition_variable_t* var, void* lock);
-void os_condition_variable_notify_one(condition_variable_t* var);
-void os_condition_variable_notify_all(condition_variable_t* var);
+void os_condition_variable_wait(condition_variable_t var, void* lock);
+void os_condition_variable_notify_one(condition_variable_t var);
+void os_condition_variable_notify_all(condition_variable_t var);
 
 const system_tick_t CONCURRENT_WAIT_FOREVER = (system_tick_t)-1;
 
