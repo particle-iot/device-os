@@ -62,6 +62,13 @@ static volatile uint32_t TimingIWDGReload;
 static volatile bool wasListeningOnButtonPress;
 static volatile uint16_t buttonPushed;
 
+uint16_t system_button_pushed_duration(uint8_t button, void*)
+{
+    if (button || WLAN_SMART_CONFIG_START)
+        return 0;
+    return buttonPushed ? HAL_Timer_Get_Milli_Seconds()-buttonPushed : 0;
+}
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
