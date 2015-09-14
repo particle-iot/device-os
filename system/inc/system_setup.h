@@ -22,6 +22,8 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
 */
+#pragma once
+
 #include <string.h>
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_platform.h"
@@ -113,6 +115,7 @@ public:
     ~CellularSetupConsole() = default;
 
     virtual void exit() override;
+    virtual void handle(char c) override;
 };
 
 #endif

@@ -90,7 +90,7 @@ public:
     // todo - associate credentials with presense of SIM card??
     bool clear_credentials() override { /* n/a */ return true; }
     bool has_credentials() override { /* n/a */ return true; }
-    void set_credentials(NetworkCredentials* creds) override { /* n/a */ }
+    int set_credentials(NetworkCredentials* creds) override { return -1; }
     void connect_cancel() override { /* n/a */ }
 
 };

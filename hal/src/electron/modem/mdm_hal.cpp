@@ -194,6 +194,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                                                         "..." ;
             DEBUG_D("%10.3f AT read %s", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001, s);
             dumpAtCmd(buf, len);
+            (void)s;
         }
 #endif
         if ((ret != WAIT) && (ret != NOT_FOUND))

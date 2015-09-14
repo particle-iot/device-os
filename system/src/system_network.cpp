@@ -140,7 +140,7 @@ bool network_listening(network_handle_t network, uint32_t, void*)
     return nif(network).listening();
 }
 
-void network_set_credentials(network_handle_t network, uint32_t, NetworkCredentials* credentials, void*)
+int network_set_credentials(network_handle_t network, uint32_t, NetworkCredentials* credentials, void*)
 {
     return nif(network).set_credentials(credentials);
 }

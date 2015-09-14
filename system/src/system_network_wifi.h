@@ -127,11 +127,11 @@ public:
         return wlan_has_credentials()==0;
     }
 
-    void set_credentials(NetworkCredentials* credentials) override
+    int set_credentials(NetworkCredentials* credentials) override
     {
         if (!SPARK_WLAN_STARTED || !credentials)
         {
-            return;
+            return -1;
         }
 
         WLanSecurityType security = credentials->security;
@@ -143,8 +143,10 @@ public:
 
         credentials->security = security;
 
-        wlan_set_credentials(credentials);
-        system_notify_event(wifi_credentials_add, 0, credentials);
+        int result = wlan_set_credentials(credentials);
+        if (!result)
+            system_notify_event(wifi_credentials_add, 0, credentials);
+        return result;
     }
 
     bool clear_credentials() override

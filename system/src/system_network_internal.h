@@ -102,7 +102,7 @@ struct NetworkInterface
 
     virtual bool clear_credentials()=0;
     virtual bool has_credentials()=0;
-    virtual void set_credentials(NetworkCredentials* creds)=0;
+    virtual int set_credentials(NetworkCredentials* creds)=0;
 
     virtual void config_clear()=0;
     virtual void update_config()=0;
@@ -180,7 +180,7 @@ protected:
                     LED_SetRGBColor(RGB_COLOR_BLUE);
                     LED_On(LED_RGB);
                 }
-                system_notify_event(wifi_credentials_cleared);
+                system_notify_event(network_credentials, network_credentials_cleared);
                 WLAN_DELETE_PROFILES = 0;
             }
             else
