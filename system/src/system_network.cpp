@@ -71,6 +71,7 @@ int wifi_add_profile_callback(const char *ssid, const char *password,
  *******************************************************************************/
 void Start_Smart_Config(void)
 {
+    bool started = SPARK_WLAN_STARTED;
     WLAN_SMART_CONFIG_FINISHED = 0;
     WLAN_SMART_CONFIG_STOP = 0;
     WLAN_SERIAL_CONFIG_DONE = 0;
@@ -153,7 +154,7 @@ void Start_Smart_Config(void)
     if (signaling)
         LED_Signaling_Start();
 
-    WLAN_LISTEN_ON_FAILED_CONNECT = wlan_smart_config_finalize();
+    WLAN_LISTEN_ON_FAILED_CONNECT = started && wlan_smart_config_finalize();
 
     if (WLAN_SMART_CONFIG_FINISHED)
     {
@@ -164,7 +165,10 @@ void Start_Smart_Config(void)
     system_notify_event(wifi_listen_end, millis()-start);
 
     WLAN_SMART_CONFIG_START = 0;
-    network_connect(0, 0, 0, NULL);
+    if (started)
+        network_connect(0, 0, 0, NULL);
+    else
+        network_off(0, 0, 0, NULL);
 }
 
 

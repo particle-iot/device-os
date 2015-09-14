@@ -106,7 +106,6 @@ void manage_network_connection()
             network_off(Network, 0, 0, NULL);
             CLR_WLAN_WD();
             SPARK_WLAN_RESET = 0;
-            SPARK_WLAN_STARTED = 0;
             SPARK_WLAN_SLEEP = was_sleeping;
             WLAN_DISCONNECT = was_disconnected;
             cfod_count = 0;
@@ -396,7 +395,7 @@ void cloud_disconnect(bool closeSocket)
             LED_On(LED_RGB);
         }
     }
-    Spark_Error_Count = 0;  // this is also used for CFOD/WiFi reset, and blocks the LED when set. 
+    Spark_Error_Count = 0;  // this is also used for CFOD/WiFi reset, and blocks the LED when set.
 
 #endif
 }
