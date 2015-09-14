@@ -16,3 +16,12 @@ test(api_platform_stm32f2) {
 }
 
 #endif
+
+
+test(system_ticks)
+{
+    uint32_t value;
+    API_COMPILE(value=System.ticks());
+    API_COMPILE(value=System.ticks());
+    (void)value;
+}
