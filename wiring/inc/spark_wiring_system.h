@@ -29,6 +29,7 @@
 #include "system_sleep.h"
 #include "system_cloud.h"
 #include "system_event.h"
+#include "core_hal.h"
 #include "interrupts_hal.h"
 #include "core_hal.h"
 
@@ -52,6 +53,10 @@ public:
     static void factoryReset(void);
     static void dfu(bool persist=false);
     static void reset(void);
+
+    static void enterSafeMode(void) {
+        HAL_Core_Enter_Safe_Mode(NULL);
+    }
 
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0);
     static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }

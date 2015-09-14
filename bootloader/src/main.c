@@ -196,6 +196,11 @@ int main(void)
             //Subsequent system reset or power on-off should execute normal firmware
             HAL_Core_Write_Backup_Register(BKP_DR_01, 0xFFFF);
         }
+        else if (BKP_DR1_Value == ENTER_SAFE_MODE_APP_REQUEST)
+        {
+            SAFE_MODE = 1;
+            HAL_Core_Write_Backup_Register(BKP_DR_01, 0xFFFF);
+        }
         // Else check if the system has resumed from IWDG reset
         else if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
         {

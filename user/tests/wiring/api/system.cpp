@@ -30,6 +30,8 @@ test(system_api) {
 
     API_COMPILE(System.factoryReset());
 
+    API_COMPILE(System.enterSafeMode());
+
     API_COMPILE(System.reset());
 
     API_COMPILE(System.sleep(60));

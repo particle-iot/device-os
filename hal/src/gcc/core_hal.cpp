@@ -125,6 +125,12 @@ void HAL_Core_Factory_Reset(void)
     MSG("Factory reset not implemented.");
 }
 
+void HAL_Core_Enter_Safe_Mode(void* reserved)
+{
+    MSG("Enter sate mode not implemented.");
+}
+
+
 void HAL_Core_Enter_Bootloader(void)
 {
     MSG("Enter bootloader not implemented.");
