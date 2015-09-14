@@ -29,6 +29,12 @@
 #include "wlan_internal.h"
 #include <stdint.h>
 
+
+#include "FreeRTOS.h"
+
+const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
+
+
 /**
  * Start of interrupt vector table.
  */

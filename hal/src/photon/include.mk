@@ -54,6 +54,7 @@ ifeq ("$(USE_PRINTF_FLOAT)","y")
 LDFLAGS += -u _printf_float
 endif
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
+LDFLAGS += -u uxTopUsedPriority
 
 endif
 
