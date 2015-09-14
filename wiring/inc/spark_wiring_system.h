@@ -68,12 +68,20 @@ public:
     }
 
 #ifdef SPARK_PLATFORM
-    static inline uint32_t ticksPerMicrosecond() {
+    static inline uint32_t ticksPerMicrosecond()
+    {
         return SYSTEM_US_TICKS;
     }
 
-    static inline uint32_t ticks() {
+    static inline uint32_t ticks()
+    {
         return DWT->CYCCNT;
+    }
+
+    static inline void ticksDelay(uint32_t duration)
+    {
+        uint32_t start = ticks();
+        while ((ticks()-start)<duration) {}
     }
 #endif
 
