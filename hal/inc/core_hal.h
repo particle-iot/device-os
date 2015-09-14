@@ -97,6 +97,14 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration);
 void HAL_Core_Mode_Button_Reset(void);
 void HAL_Core_System_Reset(void);
 void HAL_Core_Factory_Reset(void);
+
+/**
+ * Notification from hal to the external system.
+ * @param button    The button that was pressed, 0-based
+ * @param state     The current state of the button.
+ */
+void HAL_Notify_Button_State(uint8_t button, uint8_t state);
+
 void HAL_Core_Enter_Bootloader(bool persist);
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
 void HAL_Core_Execute_Stop_Mode(void);

@@ -303,9 +303,21 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
     return pressedState;
 }
 
+/**
+ * Force the button in the unpressed state.
+ */
 void HAL_Core_Mode_Button_Reset(void)
 {
-    BUTTON_ResetDebouncedState(BUTTON1);
+    /* Disable TIM2 CC1 Interrupt */
+    TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
+
+    BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
+
+    HAL_Notify_Button_State(BUTTON1, false);
+
+    /* Enable BUTTON1 Interrupt */
+    BUTTON_EXTI_Config(BUTTON1, ENABLE);
+
 }
 
 void HAL_Core_System_Reset(void)
@@ -566,15 +578,16 @@ void TIM2_irq(void)
     {
         if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
         {
+            if (!BUTTON_DEBOUNCED_TIME[BUTTON1])
+            {
+                BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
+                HAL_Notify_Button_State(BUTTON1, true);
+            }
             BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
         }
         else
         {
-            /* Disable TIM2 CC1 Interrupt */
-            TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
-
-            /* Enable BUTTON1 Interrupt */
-            BUTTON_EXTI_Config(BUTTON1, ENABLE);
+            HAL_Core_Mode_Button_Reset();
         }
     }
 
