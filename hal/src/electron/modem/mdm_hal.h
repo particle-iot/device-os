@@ -170,6 +170,8 @@ public:
     */
     bool disconnect(void);
 
+    bool reconnect(void);
+
     /** Detach the MT from the GPRS service.
         \return true if successful, false otherwise
     */

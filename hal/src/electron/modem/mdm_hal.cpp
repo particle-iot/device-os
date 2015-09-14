@@ -233,7 +233,10 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 // GSM/UMTS Specific -------------------------------------------
                 // +UUPSDD: <profile_id>
                 if (sscanf(cmd, "UUPSDD: %d",&a) == 1) {
-                    if (*PROFILE == a) _ip = NOIP;
+                    if (*PROFILE == a) {
+                        _ip = NOIP;
+                        _attached = false;
+                    }
                 } else {
                     // +CREG|CGREG: <n>,<stat>[,<lac>,<ci>[,AcT[,<rac>]]] // reply to AT+CREG|AT+CGREG
                     // +CREG|CGREG: <stat>[,<lac>,<ci>[,AcT[,<rac>]]]     // URC
@@ -899,6 +902,30 @@ int MDMParser::_cbUDNSRN(int type, const char* buf, int len, IP* ip)
     return WAIT;
 }
 
+bool MDMParser::reconnect(void)
+{
+    bool ok = false;
+    if (_activated) {
+        LOCK();
+        MDM_INFO("Modem::reconnect\r\n");
+        if (!_attached) {
+            /* Activates the PDP context assoc. with this profile */
+            sendFormated("AT+UPSDA=" PROFILE ",3\r\n");
+            if (RESP_OK == waitFinalResp(NULL, NULL, 150*1000)) {
+
+                //Get local IP address
+                sendFormated("AT+UPSND=" PROFILE ",0\r\n");
+                if (RESP_OK == waitFinalResp(_cbUPSND, &_ip)) {
+                    ok = true;
+                    _attached = true;
+                }
+            }
+        }
+        UNLOCK();
+    }
+    return ok;
+}
+
 bool MDMParser::disconnect(void)
 {
     bool ok = false;
@@ -910,7 +937,7 @@ bool MDMParser::disconnect(void)
              * ensuring that no additional data is sent or received
              * by the device. */
             sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
-            if (RESP_OK != waitFinalResp()) {
+            if (RESP_OK == waitFinalResp()) {
                 _ip = NOIP;
                 ok = true;
                 _attached = false;
@@ -973,29 +1000,38 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
 {
     int socket;
     LOCK();
-    // find an free socket
-    socket = _findSocket();
-    DEBUG_D("socketSocket(%d)\r\n", ipproto);
-    if (socket != MDM_SOCKET_ERROR) {
-        if (ipproto == MDM_IPPROTO_UDP) {
-            // sending port can only be set on 2G/3G modules
-            if (port != -1) {
-                sendFormated("AT+USOCR=17,%d\r\n", port);
-            }
-        } else /*(ipproto == MDM_IPPROTO_TCP)*/ {
-            sendFormated("AT+USOCR=6\r\n");
-        }
-        int handle = MDM_SOCKET_ERROR;
-        if ((RESP_OK == waitFinalResp(_cbUSOCR, &handle)) &&
-            (handle != MDM_SOCKET_ERROR)) {
-            DEBUG_D("Socket %d: handle %d was created\r\n", socket, handle);
-            _sockets[socket].handle     = handle;
-            _sockets[socket].timeout_ms = TIMEOUT_BLOCKING;
-            _sockets[socket].connected  = false;
-            _sockets[socket].pending    = 0;
-        }
-        else
+
+    if (!_attached) {
+        if (!reconnect()) {
             socket = MDM_SOCKET_ERROR;
+        }
+    }
+
+    if (_attached) {
+        // find an free socket
+        socket = _findSocket();
+        DEBUG_D("socketSocket(%d)\r\n", ipproto);
+        if (socket != MDM_SOCKET_ERROR) {
+            if (ipproto == MDM_IPPROTO_UDP) {
+                // sending port can only be set on 2G/3G modules
+                if (port != -1) {
+                    sendFormated("AT+USOCR=17,%d\r\n", port);
+                }
+            } else /*(ipproto == MDM_IPPROTO_TCP)*/ {
+                sendFormated("AT+USOCR=6\r\n");
+            }
+            int handle = MDM_SOCKET_ERROR;
+            if ((RESP_OK == waitFinalResp(_cbUSOCR, &handle)) &&
+                (handle != MDM_SOCKET_ERROR)) {
+                DEBUG_D("Socket %d: handle %d was created\r\n", socket, handle);
+                _sockets[socket].handle     = handle;
+                _sockets[socket].timeout_ms = TIMEOUT_BLOCKING;
+                _sockets[socket].connected  = false;
+                _sockets[socket].pending    = 0;
+            }
+            else
+                socket = MDM_SOCKET_ERROR;
+        }
     }
     UNLOCK();
     return socket;
