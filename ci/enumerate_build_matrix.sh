@@ -34,7 +34,7 @@ do
           echo
           echo '-----------------------------------------------------------------------'
           if [[ "$app" = "" ]]; then
-            make clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc"
+            make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc"
             if [[ "$?" -eq 0 ]]; then
               echo "✓ SUCCESS"
             else
@@ -42,7 +42,7 @@ do
               exit 1
             fi
           else
-            make clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc" APP="$app"
+            make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc" APP="$app"
             if [[ "$?" -eq 0 ]]; then
               echo "✓ SUCCESS"
             else

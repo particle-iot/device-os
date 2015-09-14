@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 
-void cloud_disconnect(void);
+void cloud_disconnect(bool closeSocket=true);
 
 /**
  * Functions for managing the cloud connection, performing cloud operations

@@ -208,6 +208,8 @@ int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
 wlan_result_t wlan_activate()
 {
     wlan_result_t result = wiced_wlan_connectivity_init();
+    if (!result)
+        wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
     wlan_refresh_antenna();
     return result;
 }
@@ -330,9 +332,12 @@ wiced_result_t sniff_security(SnifferInfo* info) {
     return result;
 }
 
+/**
+ * Converts the given the current security credentials.
+ */
 wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityType sec, WLanSecurityCipher cipher)
 {
-    unsigned result = 0;
+    int result = 0;
     switch (sec) {
         case WLAN_SEC_UNSEC:
             result = WICED_SECURITY_OPEN;
@@ -356,11 +361,14 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
     if (sec==WLAN_SEC_NOT_SET ||    // security not set, or WPA/WPA2 and cipher not set
             ((result & (WPA_SECURITY | WPA2_SECURITY) && (cipher==WLAN_CIPHER_NOT_SET)))) {
         SnifferInfo info;
+        memset(&info, 0, sizeof(info));
         info.ssid = ssid;
-        info.callback = NULL;
         info.ssid_len = ssid_len;
         if (!sniff_security(&info)) {
             result = info.security;
+        }
+        else {
+            result = WLAN_SET_CREDENTIALS_CIPHER_REQUIRED;
         }
     }
     return wiced_security_t(result);
@@ -405,19 +413,34 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
 }
 
 int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char *password,
-    uint16_t passwordLen, WLanSecurityType security, WLanSecurityCipher cipher, unsigned channel)
+    uint16_t passwordLen, WLanSecurityType security, WLanSecurityCipher cipher, unsigned channel, unsigned flags)
 {
-    wiced_result_t result = WICED_ERROR;
+    int result = WICED_ERROR;
     if (ssidLen>0 && ssid) {
-        wiced_security_t wiced_security = toSecurity(ssid, ssidLen, security, cipher);
-        result = add_wiced_wifi_credentials(ssid, ssidLen, password, passwordLen, wiced_security, channel);
+        int security_result = toSecurity(ssid, ssidLen, security, cipher);
+        if (security_result==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED) {
+            result = WLAN_SET_CREDENTIALS_CIPHER_REQUIRED;
+        }
+        else if (flags & WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN) {
+            result = WICED_SUCCESS;
+        }
+        else {
+            result = add_wiced_wifi_credentials(ssid, ssidLen, password, passwordLen, wiced_security_t(security_result), channel);
+        }
     }
     return result;
 }
 
 int wlan_set_credentials(WLanCredentials* c)
 {
-    return wlan_set_credentials_internal(c->ssid, c->ssid_len, c->password, c->password_len, c->security, c->cipher, c->channel);
+    // size v1: 28
+    // added flags: size 32
+    int flags = 0;
+    if (c->size>=32) {
+        flags = c->flags;
+    }
+    STATIC_ASSERT(wlan_credentials_size, sizeof(WLanCredentials)==32);
+    return wlan_set_credentials_internal(c->ssid, c->ssid_len, c->password, c->password_len, c->security, c->cipher, c->channel, flags);
 }
 
 softap_handle current_softap_handle;
@@ -453,10 +476,6 @@ void wlan_smart_config_cleanup()
 
 void wlan_setup()
 {
-    if (!wiced_wlan_connectivity_init()) {
-        wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
-        //wiced_network_suspend();
-}
 }
 
 void wlan_set_error_count(uint32_t errorCount)

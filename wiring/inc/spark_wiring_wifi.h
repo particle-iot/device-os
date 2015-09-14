@@ -49,6 +49,9 @@ enum SecurityType {
 
 class WiFiClass : public NetworkClass
 {
+    void setIPAddressSource(IPAddressSource source) {
+        wlan_set_ipaddress_source(source, true, NULL);
+    }
 
 public:
     WiFiClass() {}
@@ -137,8 +140,8 @@ public:
         setCredentials(ssid, password, WPA2);
     }
 
-    void setCredentials(const char *ssid, const char *password, unsigned long security) {
-        setCredentials(ssid, strlen(ssid), password, strlen(password), security);
+    void setCredentials(const char *ssid, const char *password, unsigned long security, unsigned long cipher=WLAN_CIPHER_NOT_SET) {
+        setCredentials(ssid, strlen(ssid), password, strlen(password), security, cipher);
     }
 
     void setCredentials(const char *ssid, unsigned int ssidLen, const char *password,
@@ -146,7 +149,7 @@ public:
 
         WLanCredentials creds;
         memset(&creds, 0, sizeof(creds));
-        creds.len = sizeof(creds);
+        creds.size = sizeof(creds);
         creds.ssid = ssid;
         creds.ssid_len = ssidLen;
         creds.password = password;
@@ -175,15 +178,10 @@ public:
                 IPAddress(uint32_t(0)) : IPAddress(ip);
     }
 
-    void setIPAddressSource(IPAddressSource source) {
-        wlan_set_ipaddress_source(source, true, NULL);
-    }
-
-    void useStaticIP(const IPAddress& host, const IPAddress& netmask,
+    void setStaticIP(const IPAddress& host, const IPAddress& netmask,
         const IPAddress& gateway, const IPAddress& dns)
     {
         wlan_set_ipaddress(host, netmask, gateway, dns, NULL, NULL);
-        setIPAddressSource(STATIC_IP);
     }
 
     void useStaticIP()
@@ -196,10 +194,16 @@ public:
         setIPAddressSource(DYNAMIC_IP);
     }
 
-    int scan(wlan_scan_result_t callback, void* cookie) {
+    int scan(wlan_scan_result_t callback, void* cookie=NULL) {
         return wlan_scan(callback, cookie);
     }
+
     int scan(WiFiAccessPoint* results, size_t result_count);
+
+    template <typename T>
+    int scan(void (*handler)(WiFiAccessPoint* ap, T* instance), T* instance) {
+        return scan((wlan_scan_result_t)handler, (void*)instance);
+    }
 };
 
 extern WiFiClass WiFi;

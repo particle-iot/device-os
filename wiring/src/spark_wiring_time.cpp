@@ -28,13 +28,10 @@
 #include "stdio.h"
 #include "stdlib.h"
 
-// these follow the same order as the time_format_t constants
-static const char* time_formats[] = {
-    NULL,                                       // DEFAULT - means use asctime()
-    "%FT%T",                                   // ISO8601_FULL
-    "%Y-%m-%dT%H:%M:%S"
-                                        //
-};
+
+const char* TIME_FORMAT_DEFAULT = "asctime";
+const char* TIME_FORMAT_ISO8601_FULL = "%Y-%m-%dT%H:%M:%S%z";
+
 
 /* The calendar "tm" structure from the standard libray "time.h" has the following definition: */
 //struct tm
@@ -110,7 +107,7 @@ static void Refresh_UnixTime_Cache(time_t unix_time)
     }
 }
 
-time_format_t TimeClass::format_spec = TIME_FORMAT_DEFAULT;
+const char* TimeClass::format_spec = TIME_FORMAT_DEFAULT;
 
 /* current hour */
 int TimeClass::hour()
@@ -268,17 +265,24 @@ void TimeClass::setTime(time_t t)
 }
 
 /* return string representation for the given time */
-String TimeClass::timeStr(time_t t, time_format_t format)
+String TimeClass::timeStr(time_t t)
 {
 	t += time_zone_cache;
 	tm* calendar_time = localtime(&t);
-
-        const char* format_string = time_formats[format];
-        return timeFormatImpl(calendar_time, format_string, time_zone_cache);
+        char* ascstr = asctime(calendar_time);
+        int len = strlen(ascstr);
+        ascstr[len-1] = 0; // remove final newline
+	return String(ascstr);
 }
 
 String TimeClass::format(time_t t, const char* format_spec)
 {
+    if (format_spec==NULL)
+        format_spec = this->format_spec;
+
+    if (!format_spec || !strcmp(format_spec,TIME_FORMAT_DEFAULT)) {
+        return timeStr(t);
+    }
     t += time_zone_cache;
     tm* calendar_time = localtime(&t);
     return timeFormatImpl(calendar_time, format_spec, time_zone_cache);
@@ -286,30 +290,34 @@ String TimeClass::format(time_t t, const char* format_spec)
 
 String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time_zone)
 {
-#if PLATFORM_ID>2
-    if (!format)
-    {
-#endif
-        char* ascstr = asctime(calendar_time);
-        int len = strlen(ascstr);
-        ascstr[len-1] = 0; // remove final newline
-	return String(ascstr);
-#if PLATFORM_ID>2
+    char format_str[64];
+    strcpy(format_str, format);
+    size_t len = strlen(format_str);
+
+    char time_zone_str[10];
+    // while we are not using stdlib for managing the timezone, we have to do this manually
+    if (!time_zone) {
+        strcpy(time_zone_str, "Z");
     }
-    else
+    else {
+        snprintf(time_zone_str, 10, "%+03d:%02u", time_zone/3600, abs(time_zone/60)%60);
+    }
+
+    // replace %z with the timezone
+    for (size_t i=0; i<len-1; i++)
     {
-        char buf[50];
-        strftime(buf, 50, format, calendar_time);
-        char* e = buf+strlen(buf);
-        // while we are not using stdlib for managing the timezone, we have to do this manually
-        if (!time_zone)
-            strcpy(e, "Z");
-        else {
-            snprintf(e, sizeof(buf)-(e-buf), "%+03d:%02u", time_zone/3600, abs(time_zone/60)%60);
+        if (format_str[i]=='%' && format_str[i+1]=='z')
+        {
+            size_t tzlen = strlen(time_zone_str);
+            memcpy(format_str+i+tzlen, format_str+i+2, len-i-1);    // +1 include the 0 char
+            memcpy(format_str+i, time_zone_str, tzlen);
+            len = strlen(format_str);
         }
-        return String(buf);
     }
-#endif
+
+    char buf[50];
+    strftime(buf, 50, format_str, calendar_time);
+    return String(buf);
 }
 
 TimeClass Time;

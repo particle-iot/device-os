@@ -21,7 +21,8 @@
 #include "system_mode.h"
 #include "system_task.h"
 
-static System_Mode_TypeDef _mode = DEFAULT;
+static System_Mode_TypeDef current_mode = DEFAULT;
+
 
 void set_system_mode(System_Mode_TypeDef mode)
 {
@@ -33,13 +34,13 @@ void set_system_mode(System_Mode_TypeDef mode)
     // followed by the `System` instance, which sets the mode back to `AUTOMATIC`.
     // The DEFAULT mode prevents this.
     if (mode==DEFAULT) {            // the default system instance
-        if (_mode==DEFAULT)         // no mode set yet
-            _mode = AUTOMATIC;      // set to automatic mode
+        if (current_mode==DEFAULT)         // no mode set yet
+            mode = AUTOMATIC;       // set to automatic mode
         else
-            return;                 // don't change the current mode
+            return;                 // don't change the current mode when constructing the system instance and it's already set
     }
 
-    _mode = mode;
+    current_mode = mode;
     switch (mode)
     {
         case SAFE_MODE:
@@ -62,6 +63,6 @@ void set_system_mode(System_Mode_TypeDef mode)
 
 System_Mode_TypeDef system_mode()
 {
-    return _mode;
+    return current_mode;
 }
 

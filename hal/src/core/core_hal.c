@@ -281,6 +281,9 @@ void HAL_Core_Execute_Standby_Mode(void)
 		/* Clear Standby mode system flag */
 		BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
 
+                /* Enable WKUP pin */
+                PWR_WakeUpPinCmd(ENABLE);
+
 		/* Request to enter STANDBY mode */
 		PWR_EnterSTANDBYMode();
 
