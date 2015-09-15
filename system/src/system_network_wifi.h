@@ -145,7 +145,7 @@ public:
 
         int result = wlan_set_credentials(credentials);
         if (!result)
-            system_notify_event(wifi_credentials_add, 0, credentials);
+            system_notify_event(network_credentials, network_credentials_added, credentials);
         return result;
     }
 

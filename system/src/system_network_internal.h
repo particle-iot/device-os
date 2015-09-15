@@ -240,6 +240,11 @@ public:
         return WLAN_DISCONNECT;
     }
 
+    void set_manual_disconnect(bool disconnect)
+    {
+        WLAN_DISCONNECT = disconnect;
+    }
+
     bool connected() override
     {
         return WLAN_CONNECTED;
@@ -294,6 +299,7 @@ public:
                 WLAN_CONNECTING = 1;
                 LED_SetRGBColor(RGB_COLOR_GREEN);
                 LED_On(LED_RGB);
+                ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
                 connect_finalize();
             }
 
@@ -382,7 +388,7 @@ public:
 
     void notify_disconnected()
     {
-        cloud_disconnect();
+        cloud_disconnect(false); // don't close the socket on the callback since this causes a lockup on the Core
         if (WLAN_CONNECTED)     /// unsolicited disconnect
         {
           //Breathe blue if established connection gets disconnected
