@@ -28,6 +28,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "debug.h"
+#include "system_event.h"
 #include "system_mode.h"
 #include "system_task.h"
 #include "system_network.h"
@@ -53,11 +54,41 @@
 static volatile uint32_t TimingLED;
 static volatile uint32_t TimingIWDGReload;
 
+/**
+ * KNowing the current listen mode isn't sufficient to determine the correct action (since that may or may not have changed)
+ * we need also to know the listen mode at the time the button was pressed.
+ */
+static volatile bool wasListeningOnButtonPress;
+static volatile uint16_t buttonPushed;
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private functions ---------------------------------------------------------*/
+
+// this is called on multiple threads - ideally need a mutex
+void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
+{
+    if (button==0)
+    {
+        if (pressed) {
+            wasListeningOnButtonPress = network.listening();
+            buttonPushed = HAL_Timer_Get_Milli_Seconds();
+            if (!wasListeningOnButtonPress)
+                system_notify_event(button_status, 0);
+        }
+        else
+        {
+            uint16_t duration = HAL_Timer_Get_Milli_Seconds()-buttonPushed;
+            if (!network.listening())
+                system_notify_event(button_status, duration);
+            buttonPushed = 0;
+            if (duration>3000 && duration<8000 && wasListeningOnButtonPress && network.listening())
+                network.listen(false);
+        }
+    }
+}
 
 /*******************************************************************************
  * Function Name  : HAL_SysTick_Handler
@@ -119,21 +150,18 @@ extern "C" void HAL_SysTick_Handler(void)
         }
 #endif
     }
-    else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000))
+    else if(network.listening() && HAL_Core_Mode_Button_Pressed(10000))
     {
-        //reset button debounce state if mode button is pressed for 3 seconds
+        network.listen_command();
         HAL_Core_Mode_Button_Reset();
-
+    }
+    // determine if the button press needs to change the state (and hasn't done so already))
+    else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
+    {
         if (network.connecting()) {
             network.connect_cancel();
         }
         network.listen();
-    }
-    else if(HAL_Core_Mode_Button_Pressed(7000))
-    {
-        //reset button debounce state if mode button is pressed for 3+7=10 seconds
-        HAL_Core_Mode_Button_Reset();
-        network.listen_command();
     }
 
 #ifdef IWDG_RESET_ENABLE

@@ -59,7 +59,7 @@ void HAL_WLAN_notify_simple_config_done()
 void HAL_WLAN_notify_connected()
 {
     network.notify_connected();
-}
+    }
 
 void HAL_WLAN_notify_disconnected()
 {
@@ -84,12 +84,12 @@ const void* network_config(network_handle_t network, uint32_t param, void* reser
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
     nif(network).connect(!(flags & WIFI_CONNECT_SKIP_LISTEN));
-}
+        }
 
 void network_disconnect(network_handle_t network, uint32_t param, void* reserved)
 {
     nif(network).disconnect();
-}
+    }
 
 bool network_ready(network_handle_t network, uint32_t param, void* reserved)
 {
@@ -111,7 +111,7 @@ bool network_connecting(network_handle_t network, uint32_t param, void* reserved
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
     return nif(network).on(!(flags & 1));
-}
+        }
 
 bool network_has_credentials(network_handle_t network, uint32_t param, void* reserved)
 {
@@ -122,7 +122,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 {
     // flags & 1 means also disconnect the cloud (so it doesn't autmatically connect when network resumed.)
     return nif(network).off(flags & 1);
-}
+        }
 
 /**
  *
@@ -143,12 +143,12 @@ bool network_listening(network_handle_t network, uint32_t, void*)
 int network_set_credentials(network_handle_t network, uint32_t, NetworkCredentials* credentials, void*)
 {
     return nif(network).set_credentials(credentials);
-}
+    }
 
 bool network_clear_credentials(network_handle_t network, uint32_t, NetworkCredentials* creds, void*)
-{
+    {
     return nif(network).clear_credentials();
-}
+    }
 
 void network_setup(network_handle_t network, uint32_t flags, void* reserved)
 {
@@ -158,7 +158,7 @@ void network_setup(network_handle_t network, uint32_t flags, void* reserved)
 void manage_smart_config()
 {
     network.listen_loop();
-}
+    }
 
 void manage_ip_config()
 {

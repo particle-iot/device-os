@@ -135,6 +135,7 @@ protected:
 
     template<typename T> void start_listening(SystemSetupConsole<T>& console)
     {
+        bool started = SPARK_WLAN_STARTED;
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
@@ -210,7 +211,10 @@ protected:
         system_notify_event(wifi_listen_end, millis()-start);
 
         WLAN_SMART_CONFIG_START = 0;
-        this->connect();
+        if (started)
+            network_connect(0, 0, 0, NULL);
+        else
+            network_off(0, 0, 0, NULL);
     }
 
     virtual void on_start_listening()=0;

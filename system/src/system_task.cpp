@@ -102,7 +102,6 @@ void manage_network_connection()
             network.off();
             CLR_WLAN_WD();
             SPARK_WLAN_RESET = 0;
-            SPARK_WLAN_STARTED = 0;
             SPARK_WLAN_SLEEP = was_sleeping;
             network.set_manual_disconnect(was_disconnected);
             cfod_count = 0;

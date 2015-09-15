@@ -48,7 +48,7 @@ enum SystemEvents {
     network_credentials = 1<<4,
     network_status = 1<<5,
     cloud_status = 1<<6,             // parameter is 0 for disconnected, 1 for connecting, 2 for connecting (handshake), 3 for connecting (setup), 8 connected.. other values reserved.
-    // 6, 7, 8 can be used
+    button_status = 1<<7,            // parameter is >0 for time pressed in ms (when released) or 0 for just pressed.
     firmware_update = 1<<8,          // parameter is 0 for begin, 1 for OTA complete, -1 for error.
 
     all_events = 0x7FFFFFFF
