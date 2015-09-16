@@ -26,11 +26,10 @@
 class WiFiNetworkInterface : public ManagedNetworkInterface
 {
 
-    static void wifi_add_profile_callback(void* data, const char *ssid,
-        const char *password,
-        unsigned long security_type)
+    static int wifi_add_profile_callback(void* data, const char *ssid, const char *password,
+        unsigned long security_type, unsigned long cipher, bool dry_run)
     {
-        ((WiFiNetworkInterface*)data)->add_profile(ssid, password, security_type);
+        return ((WiFiNetworkInterface*)data)->add_profile(ssid, password, security_type, cipher, dry_run);
     }
 
     /**
@@ -39,23 +38,28 @@ class WiFiNetworkInterface : public ManagedNetworkInterface
      * @param password
      * @param security_type
      */
-    void add_profile(const char *ssid,
-        const char *password,
-        unsigned long security_type)
+    int add_profile(const char *ssid, const char *password,
+        unsigned long security_type, unsigned long cipher, bool dry_run)
     {
-        WLAN_SERIAL_CONFIG_DONE = 1;
+        int result = 0;
         if (ssid)
         {
             NetworkCredentials creds;
             memset(&creds, 0, sizeof (creds));
-            creds.len = sizeof (creds);
+            creds.size = sizeof (creds);
             creds.ssid = ssid;
             creds.password = password;
             creds.ssid_len = strlen(ssid);
             creds.password_len = strlen(password);
             creds.security = WLanSecurityType(security_type);
-            set_credentials(&creds);
+            creds.cipher = WLanSecurityCipher(cipher);
+            if (dry_run)
+                creds.flags |= WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN;
+            result = network_set_credentials(0, 0, &creds, NULL);
         }
+        if (result==0)
+            WLAN_SERIAL_CONFIG_DONE = 1;
+        return result;
     }
 
 protected:

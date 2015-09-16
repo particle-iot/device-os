@@ -237,7 +237,7 @@ void WiFiSetupConsole::handle(char c)
             password[0] = '1'; // non-empty password so security isn't set to None
 
         // dry run
-        if (this->config.connect_callback(ssid, password, security_type, cipher, true)==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED)
+        if (this->config.connect_callback(this->config.connect_callback_data, ssid, password, security_type, cipher, true)==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED)
         {
             do
             {
@@ -264,7 +264,7 @@ void WiFiSetupConsole::handle(char c)
 #endif
             "while I save those credentials...\r\n\r\n");
 
-        if (this->config.connect_callback(ssid, password, security_type, cipher, false)==0)
+        if (this->config.connect_callback(this->config.connect_callback_data, ssid, password, security_type, cipher, false)==0)
         {
             print("Awesome. Now we'll connect!\r\n\r\n");
             print("If you see a pulsing cyan light, your "
@@ -292,7 +292,7 @@ void WiFiSetupConsole::handle(char c)
 
 void WiFiSetupConsole::exit()
 {
-    config.connect_callback(config.connect_callback_data, NULL, NULL, 0);
+    this->config.connect_callback(this->config.connect_callback_data, NULL, NULL, 0, 0, false);
 }
 
 #endif
