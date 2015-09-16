@@ -40,6 +40,9 @@
 
 #define OTA_CHUNK_SIZE          512
 
+
+const module_bounds_t module_mono = { 0x60000, 0x8020000, 0x8080000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_MAIN};
+
 #if MODULAR_FIRMWARE
 const module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN };
 const module_bounds_t module_system_part1 = { 0x40000, 0x8020000, 0x8060000, MODULE_FUNCTION_SYSTEM_PART, 1, MODULE_STORE_MAIN };
@@ -51,9 +54,8 @@ const module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_pa
 const module_bounds_t module_ota = { 0x40000, 0x80C0000, 0x8100000, MODULE_FUNCTION_NONE, 0, MODULE_STORE_SCRATCHPAD};
 #else
 const module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN};
-const module_bounds_t module_user = { 0x60000, 0x8020000, 0x8080000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_MAIN};
 const module_bounds_t module_factory = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_FACTORY};
-const module_bounds_t* module_bounds[] = { &module_bootloader, &module_user, &module_factory };
+const module_bounds_t* module_bounds[] = { &module_bootloader, &module_mono, &module_factory };
 
 const module_bounds_t module_ota = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_NONE, 0, MODULE_STORE_SCRATCHPAD};
 #endif
@@ -75,6 +77,32 @@ const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t modul
     return NULL;
 }
 
+void fixup_modules(hal_system_info_t* info, bool construct)
+{
+#if SYSTEM_MINIMAL
+    if (info->module_count<3)       // fixed up part1 based on part2 for minimal update zero image (where part1 has been changed to be a 384K monolithic module))
+        return;
+
+    if (construct)
+    {
+        if (info->modules[1].info->module_function==MODULE_FUNCTION_MONO_FIRMWARE)
+        {
+            module_info_t* newinfo = new module_info_t;
+            memcpy(newinfo, info->modules[1].info, sizeof(*newinfo));
+            info->modules[1].info = newinfo;
+            newinfo->module_function = MODULE_FUNCTION_SYSTEM_PART;
+            info->modules[1].validity_result = info->modules[1].validity_checked;
+            info->modules[1].bounds = module_system_part1;
+        }
+    }
+    else
+    {
+        if (int(info->modules[1].info)>=0x20000000)
+            delete info->modules[1].info;
+    }
+#endif
+}
+
 void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
@@ -87,10 +115,14 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
             for (unsigned i=0; i<count; i++) {
                 fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
             }
+            fixup_modules(info, true);
         }
+        // ensure system part1 is flaged as monolithic
+
     }
     else
     {
+        fixup_modules(info, false);
         delete info->modules;
         info->modules = NULL;
     }

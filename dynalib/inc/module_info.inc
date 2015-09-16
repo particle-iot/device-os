@@ -101,6 +101,10 @@ extern char link_module_end;
     #endif
 #endif
 
+#ifndef MODULE_INFO_FLAG_MINIMAL
+#define MODULE_INFO_FLAG_MINIMAL 0
+#endif
+
 #ifndef MODULE_DEPENDENCY
 #error MODULE_DEPENDENCY not defined
 #endif
@@ -110,7 +114,7 @@ extern char link_module_end;
 __attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info")))) const module_info_t module_info = {
     &link_module_start,         /* start address */
     &link_module_end,           /* end address */
-    0, 0,                       /* reserved, reserved2 */
+    MODULE_INFO_FLAG_MINIMAL, 0,                       /* flags, reserved2 */
     MODULE_VERSION,             /* module version */
     (uint16_t)(PLATFORM_ID),    /* platform ID */
     (uint8_t)(MODULE_FUNCTION), /* module function */

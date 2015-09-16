@@ -47,6 +47,26 @@ const module_info_t* locate_module(const module_bounds_t* bounds) {
     return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
 }
 
+bool validate_module(hal_module_t* target, bool userDepsOptional, uint16_t check_flags)
+{
+    target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
+    target->validity_result = 0;
+    const uint8_t* module_end = (const uint8_t*)target->info->module_end_address;
+    const module_bounds_t* expected_bounds = find_module_bounds(module_function(target->info), module_index(target->info));
+    if (expected_bounds && in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
+        target->validity_result |= MODULE_VALIDATION_RANGE;
+        target->validity_result |= (PRODUCT_ID==module_platform_id(target->info)) ? MODULE_VALIDATION_PLATFORM : 0;
+        // the suffix ends at module_end, and the crc starts after module end
+        target->crc = (module_info_crc_t*)module_end;
+        target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
+        if (validate_module_dependencies(&target->bounds, userDepsOptional))
+            target->validity_result |= MODULE_VALIDATION_DEPENDENCIES;
+        if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, target->bounds.start_address, module_length(target->info)))
+            target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+        return true;
+    }
+    return false;
+}
 
 /**
  * Fetches and validates the module info found at a given location.
@@ -58,28 +78,13 @@ const module_info_t* locate_module(const module_bounds_t* bounds) {
 bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags)
 {
     memset(target, 0, sizeof(*target));
-
     target->bounds = *bounds;
+    bool result = false;
     if (NULL!=(target->info = locate_module(bounds)))
     {
-        target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
-        target->validity_result = 0;
-        const uint8_t* module_end = (const uint8_t*)target->info->module_end_address;
-        const module_bounds_t* expected_bounds = find_module_bounds(module_function(target->info), module_index(target->info));
-        if (expected_bounds && in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
-            target->validity_result |= MODULE_VALIDATION_RANGE;
-            target->validity_result |= (PRODUCT_ID==module_platform_id(target->info)) ? MODULE_VALIDATION_PLATFORM : 0;
-            // the suffix ends at module_end, and the crc starts after module end
-            target->crc = (module_info_crc_t*)module_end;
-            target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
-            if (validate_module_dependencies(bounds, userDepsOptional))
-                target->validity_result |= MODULE_VALIDATION_DEPENDENCIES;
-            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
-                target->validity_result |= MODULE_VALIDATION_INTEGRITY;
-        }
-        else
-            target->info = NULL;
+        if (validate_module(target, userDepsOptional, check_flags))
+            result = true;
     }
-    return target->info!=NULL;
+    return result;
 }
 
