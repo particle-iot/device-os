@@ -54,6 +54,11 @@ volatile uint32_t TimingDelay;
 
 void HAL_Core_Config_systick_configuration(void) {
     //SysTick_Configuration(); This causes the Photon to sometimes hang on startup. See FIRM-123.
+
+    // the original wiced DCT will lock further writes if there are cleared bits. WHen the system attempts a factory reset
+    // the DCT becomes locked and the bootloader cannot erase the factory reset flag.
+    // Factory reset, safe mode, dfu mode should probably be a transient flag, e.g. backup register
+    wiced_erase_non_current_dct();
 }
 
 void HAL_Core_Setup_override_interrupts(void) {
