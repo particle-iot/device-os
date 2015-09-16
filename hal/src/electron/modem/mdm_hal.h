@@ -30,7 +30,7 @@
 #include "system_tick_hal.h"
 
 /* Include for debug capabilty */
-// #define MDM_DEBUG
+#define MDM_DEBUG
 
 /** basic modem parser class
 */
@@ -90,10 +90,10 @@ public:
                             ((ip)>>16)&0xff, \
                             ((ip)>> 8)&0xff, \
                             ((ip)>> 0)&0xff
-    #define IPADR(a,b,c,d) ((((IP)(a))<<24) | \
-                            (((IP)(b))<<16) | \
-                            (((IP)(c))<< 8) | \
-                            (((IP)(d))<< 0))
+    #define IPADR(a,b,c,d) ((((MDMParser::IP)(a))<<24) | \
+                            (((MDMParser::IP)(b))<<16) | \
+                            (((MDMParser::IP)(c))<< 8) | \
+                            (((MDMParser::IP)(d))<< 0))
 
 
     // ----------------------------------------------------------------
@@ -111,7 +111,7 @@ public:
         \return true if successful, false otherwise
     */
     bool connect(const char* simpin = NULL,
-            const char* apn = NULL, const char* username = NULL,
+            const char* apn = "spark.telefonica.com", const char* username = NULL,
             const char* password = NULL, Auth auth = AUTH_DETECT);
 
     /** register (Attach) the MT to the GPRS service.
@@ -126,12 +126,14 @@ public:
     */
     void getDevStatus(MDMParser::DevStatus* dev) { memcpy(dev, &_dev, sizeof(DevStatus)); }
 
+    const MDMParser::DevStatus* getDevStatus() { return &_dev; }
+
     /** register to the network
         \param status an optional structure to with network information
         \param timeout_ms -1 blocking, else non blocking timeout in ms
         \return true if successful and connected to network, false otherwise
     */
-    bool registerNet(NetStatus* status = NULL, system_tick_t timeout_ms = 180000);
+    bool registerNet(NetStatus* status = NULL, system_tick_t timeout_ms = 300000);
 
     /** check if the network is available
         \param status an optional structure to with network information
@@ -147,7 +149,7 @@ public:
 
     /** Setup the PDP context
     */
-    bool pdp(void);
+    bool pdp(const char* apn = "spark.telefonica.com");
 
     // ----------------------------------------------------------------
     // Data Connection (GPRS)
@@ -160,13 +162,20 @@ public:
         \param auth is the authentication mode (CHAP,PAP,NONE or DETECT)
         \return the ip that is assigned
     */
-    MDMParser::IP join(const char* apn = NULL, const char* username = NULL,
+    MDMParser::IP join(const char* apn = "spark.telefonica.com", const char* username = NULL,
                        const char* password = NULL, Auth auth = AUTH_DETECT);
 
     /** deregister (detach) the MT from the GPRS service.
         \return true if successful, false otherwise
     */
     bool disconnect(void);
+
+    bool reconnect(void);
+
+    /** Detach the MT from the GPRS service.
+        \return true if successful, false otherwise
+    */
+    bool detach(void);
 
     /** Translates a domain name to an IP address
         \param host the domain name to translate e.g. "u-blox.com"
@@ -184,7 +193,7 @@ public:
     // ----------------------------------------------------------------
 
     //! Type of IP protocol
-    typedef enum { MDM_IPPROTO_TCP, MDM_IPPROTO_UDP } IpProtocol;
+    typedef enum { MDM_IPPROTO_TCP = 0, MDM_IPPROTO_UDP = 1 } IpProtocol;
 
     //! Socket error return codes
     #define MDM_SOCKET_ERROR    (-1)
@@ -203,6 +212,8 @@ public:
         \return true if successfully, false otherwise
     */
     bool socketConnect(int socket, const char* host, int port);
+
+    bool socketConnect(int socket, const IP& ip, int port);
 
     /** make a socket connection
         \param socket the socket handle
@@ -550,6 +561,9 @@ protected:
     int _findSocket(int handle = MDM_SOCKET_ERROR/* = CREATE*/);
     static MDMParser* inst;
     bool _init;
+    bool _pwr;
+    bool _activated;
+    bool _attached;
 #ifdef MDM_DEBUG
     int _debugLevel;
     system_tick_t _debugTime;
@@ -569,7 +583,7 @@ public:
         \param rxSize the size of the serial rx buffer
         \param txSize the size of the serial tx buffer
     */
-    MDMElectronSerial( int rxSize = 256, int txSize = 256 );
+    MDMElectronSerial( int rxSize = 1024, int txSize = 1024 );
     //! Destructor
     virtual ~MDMElectronSerial(void);
 

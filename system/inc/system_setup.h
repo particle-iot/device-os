@@ -22,6 +22,8 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
 */
+#pragma once
+
 #include <string.h>
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_platform.h"
@@ -34,7 +36,8 @@
 #define SETUP_OVER_SERIAL1 0
 #endif
 
-typedef int (*ConnectCallback)(const char *ssid,
+typedef int (*ConnectCallback)( void* data,
+                                const char *ssid,
                                 const char *password,
                                 unsigned long security_type,
                                 unsigned long cipher,
@@ -52,6 +55,7 @@ struct SystemSetupConsoleConfig
 struct WiFiSetupConsoleConfig : SystemSetupConsoleConfig
 {
     ConnectCallback connect_callback;
+    void* connect_callback_data;
 };
 #endif
 
@@ -113,6 +117,7 @@ public:
     ~CellularSetupConsole() = default;
 
     virtual void exit() override;
+    virtual void handle(char c) override;
 };
 
 #endif

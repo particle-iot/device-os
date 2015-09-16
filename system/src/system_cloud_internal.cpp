@@ -38,6 +38,7 @@
 #include "string_convert.h"
 #include <stdint.h>
 
+#define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
 #ifndef SPARK_NO_CLOUD
 
@@ -330,6 +331,11 @@ int Spark_Handshake(void)
             Particle.publish("spark/device/claim/code", buf, 60, PRIVATE);
         }
 
+        // open up for possibility of retrieving multiple ID datums
+        if (!HAL_Get_Device_Identifier(NULL, buf, sizeof(buf), 0, NULL) && *buf) {
+            Particle.publish("spark/device/ident/0", buf, 60, PRIVATE);
+        }
+
         ultoa(HAL_OTA_FlashLength(), buf, 10);
         Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
 
@@ -459,6 +465,7 @@ int Spark_Connect(void)
 
     if (!socket_handle_valid(sparkSocket))
     {
+        DEBUG("socket_handle_valid()=%d", socket_handle_valid(sparkSocket));
         return -1;
     }
     sockaddr_t tSocketAddr;
@@ -471,6 +478,7 @@ int Spark_Connect(void)
 
     ServerAddress server_addr;
     HAL_FLASH_Read_ServerAddress(&server_addr);
+    DEBUG("HAL_FLASH_Read_ServerAddress() = type:%d,domain:%s,ip: %d.%d.%d.%d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip));
 
     bool ip_resolve_failed = false;
     IPAddress ip_addr;
@@ -479,12 +487,14 @@ int Spark_Connect(void)
     switch (server_addr.addr_type)
     {
         case IP_ADDRESS:
+            // DEBUG("IP_ADDRESS");
             ip_addr = server_addr.ip;
             break;
 
         default:
         case INVALID_INTERNET_ADDRESS:
         {
+            // DEBUG("INVALID_INTERNET_ADDRESS");
             const char default_domain[] = "device.spark.io";
             // Make sure we copy the NULL terminator, so subsequent strlen() calls on server_addr.domain return the correct length
             memcpy(server_addr.domain, default_domain, strlen(default_domain) + 1);
@@ -492,6 +502,7 @@ int Spark_Connect(void)
         }
 
         case DOMAIN_NAME:
+            // DEBUG("DOMAIN_NAME");
             int attempts = 3;
             while (!ip_addr && 0 < --attempts)
             {
@@ -528,9 +539,9 @@ int Spark_Connect(void)
         tSocketAddr.sa_data[5] = ip_addr[3];
 
         uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
-        DEBUG("connect");
+        DEBUG("Connect Attempt");
         rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
-        DEBUG("connected connect=%d", rv);
+        DEBUG("socket_connect()=%d", rv);
         HAL_WLAN_SetNetWatchDog(ot);
     }
     if (rv)     // error - prevent socket leaks
@@ -545,14 +556,14 @@ int Spark_Disconnect(void)
     if (socket_handle_valid(sparkSocket))
     {
 #if defined(SEND_ON_CLOSE)
-        DEBUG("send");
+        DEBUG("Send Attempt");
         char c = 0;
         int rc = send(sparkSocket, &c, 1, 0);
-        DEBUG("send %d", rc);
+        DEBUG("send()=%d", rc);
 #endif
-        DEBUG("Close");
+        DEBUG("Close Attempt");
         retVal = socket_close(sparkSocket);
-        DEBUG("Closed retVal=%d", retVal);
+        DEBUG("socket_close()=%d", retVal);
         sparkSocket = socket_handle_invalid();
     }
     return retVal;
@@ -594,7 +605,7 @@ inline uint8_t cloudSocketClosed()
 
     if (closed)
     {
-        DEBUG("get_socket_active_status(sparkSocket=%d)==SOCKET_STATUS_INACTIVE", sparkSocket);
+        DEBUG("socket_active_status(sparkSocket=%d)==SOCKET_STATUS_INACTIVE", sparkSocket);
     }
     if (closed && sparkSocket != socket_handle_invalid())
     {
@@ -602,7 +613,7 @@ inline uint8_t cloudSocketClosed()
     }
     if (!socket_handle_valid(sparkSocket))
     {
-        DEBUG("sparkSocket is not valid");
+        DEBUG("Not valid: socket_handle_valid(sparkSocket) = %d", socket_handle_valid(sparkSocket));
         closed = true;
     }
     return closed;

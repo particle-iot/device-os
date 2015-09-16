@@ -16,3 +16,10 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
+
+#include "deviceid_hal.h"
+
+int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsigned index, void* reserved)
+{
+    return -1;
+}

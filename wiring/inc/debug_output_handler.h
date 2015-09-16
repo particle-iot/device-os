@@ -35,7 +35,7 @@ struct SerialDebugOutput
 
     static void log_output(const char* msg)
     {
-        Serial.println(msg);
+        Serial.print(msg);
     //    Serial.flush();
      //  HAL_Delay_Milliseconds(10);
     }
@@ -52,7 +52,7 @@ struct Serial1DebugOutput
 
     static void log_output(const char* msg)
     {
-        Serial1.println(msg);
+        Serial1.print(msg);
     }
 
 };
