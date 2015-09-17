@@ -33,6 +33,7 @@
 #include "system_task.h"
 #include "system_network.h"
 #include "system_network_internal.h"
+#include "system_cloud_internal.h"
 #include "core_hal.h"
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"
@@ -116,7 +117,7 @@ extern "C" void HAL_SysTick_Handler(void)
     {
         //Do nothing
     }
-    else if(SPARK_LED_FADE)
+    else if(SPARK_LED_FADE && (!SPARK_CLOUD_CONNECTED || system_cloud_active()))
     {
         LED_Fade(LED_RGB);
         TimingLED = 20;//Breathing frequency kept constant
