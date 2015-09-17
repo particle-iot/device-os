@@ -36,9 +36,12 @@
 #define SETUP_OVER_SERIAL1 0
 #endif
 
-typedef void (*ConnectCallback)(void* data, const char *ssid,
+typedef int (*ConnectCallback)( void* data,
+                                const char *ssid,
                                 const char *password,
-                                unsigned long security_type);
+                                unsigned long security_type,
+                                unsigned long cipher,
+                                bool dry_run);
 
 class WiFiTester;
 

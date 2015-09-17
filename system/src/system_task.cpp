@@ -97,12 +97,13 @@ void manage_network_connection()
         {
             DEBUG("Resetting WLAN!");
             auto was_sleeping = SPARK_WLAN_SLEEP;
+            auto was_disconnected = network.manual_disconnect();
             cloud_disconnect();
             network.off();
             CLR_WLAN_WD();
             SPARK_WLAN_RESET = 0;
-            SPARK_WLAN_STARTED = 0;
             SPARK_WLAN_SLEEP = was_sleeping;
+            network.set_manual_disconnect(was_disconnected);
             cfod_count = 0;
         }
     }
@@ -110,10 +111,6 @@ void manage_network_connection()
     {
         if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !network.connected()))
         {
-            if (!network.manual_disconnect())
-            {
-                ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
-            }
             network.connect();
         }
     }
@@ -218,12 +215,12 @@ void establish_cloud_connection()
         }
         else
         {
+            if (SPARK_WLAN_RESET)
+                return;
+
             cloud_connection_failed();
             SPARK_CLOUD_SOCKETED = 0;
-#if PLATFORM_ID<3
-            if (!SPARK_WLAN_RESET)
-                handle_cfod();
-#endif
+            handle_cfod();
             wlan_set_error_count(Spark_Error_Count);
         }
     }
@@ -346,10 +343,10 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 
             for (;;)
             {
-                int delay = int(end_micros-HAL_Timer_Get_Micro_Seconds());
-                if (delay<=0)
+                system_tick_t delay = end_micros-HAL_Timer_Get_Micro_Seconds();
+                if (delay>100000)
                     return;
-                HAL_Delay_Microseconds(min(delay/2, 1));
+                HAL_Delay_Microseconds(min(delay/2, 1u));
             }
         }
         else
@@ -375,17 +372,18 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
     }
 }
 
-void cloud_disconnect()
+void cloud_disconnect(bool closeSocket)
 {
 #ifndef SPARK_NO_CLOUD
+
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
-        Spark_Disconnect();
+        if (closeSocket)
+            Spark_Disconnect();
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
-        Spark_Error_Count = 0;
 
         if (!network.manual_disconnect() && !network.listening())
         {
@@ -393,5 +391,7 @@ void cloud_disconnect()
             LED_On(LED_RGB);
         }
     }
+    Spark_Error_Count = 0;  // this is also used for CFOD/WiFi reset, and blocks the LED when set.
+
 #endif
 }

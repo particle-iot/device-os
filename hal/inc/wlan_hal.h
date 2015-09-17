@@ -36,6 +36,8 @@
 
 #ifdef	__cplusplus
 extern "C" {
+
+#include <string.h> // for memset
 #endif
 
 //#define DEBUG_WIFI    // Define to show all the flags in debug output
@@ -143,7 +145,7 @@ typedef enum {
 } WLanSecurityCipher;
 
 typedef struct {
-    unsigned len;           // the size of this structure. allows older clients to work with newer HAL.
+    unsigned size;           // the size of this structure. allows older clients to work with newer HAL.
     const char* ssid;
     unsigned ssid_len;
     const char* password;
@@ -151,9 +153,19 @@ typedef struct {
     WLanSecurityType security;
     WLanSecurityCipher cipher;
     unsigned channel;
+    unsigned flags;
 } WLanCredentials;
 
+#define WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN  (1<<0)
 
+#define WLAN_SET_CREDENTIALS_UNKNOWN_SECURITY_TYPE (-1)
+#define WLAN_SET_CREDENTIALS_CIPHER_REQUIRED (-2)
+
+/**
+ *
+ * @param credentials
+ * @return 0 on success.
+ */
 int wlan_set_credentials(WLanCredentials* credentials);
 
 /**
@@ -248,11 +260,20 @@ typedef struct WiFiAccessPoint {
    char ssid[33];
    uint8_t ssidLength;
    uint8_t bssid[6];
-   int security;
+   WLanSecurityType security;
+   WLanSecurityCipher cipher;
    uint8_t channel;
    int maxDataRate;   // the mdr in bits/s
    int rssi;        // when scanning
 
+#ifdef __cplusplus
+
+   WiFiAccessPoint()
+   {
+       memset(this, 0, sizeof(*this));
+       size = sizeof(*this);
+   }
+#endif
 } WiFiAccessPoint;
 
 typedef void (*wlan_scan_result_t)(WiFiAccessPoint* ap, void* cookie);

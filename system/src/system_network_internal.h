@@ -102,7 +102,7 @@ struct NetworkInterface
 
     virtual bool clear_credentials()=0;
     virtual bool has_credentials()=0;
-    virtual void set_credentials(NetworkCredentials* creds)=0;
+    virtual int set_credentials(NetworkCredentials* creds)=0;
 
     virtual void config_clear()=0;
     virtual void update_config()=0;
@@ -135,6 +135,7 @@ protected:
 
     template<typename T> void start_listening(SystemSetupConsole<T>& console)
     {
+        bool started = SPARK_WLAN_STARTED;
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
@@ -180,7 +181,7 @@ protected:
                     LED_SetRGBColor(RGB_COLOR_BLUE);
                     LED_On(LED_RGB);
                 }
-                system_notify_event(wifi_credentials_cleared);
+                system_notify_event(network_credentials, network_credentials_cleared);
                 WLAN_DELETE_PROFILES = 0;
             }
             else
@@ -199,7 +200,7 @@ protected:
         if (signaling)
             LED_Signaling_Start();
 
-        WLAN_LISTEN_ON_FAILED_CONNECT = on_stop_listening();
+        WLAN_LISTEN_ON_FAILED_CONNECT = started && on_stop_listening();
 
         if (WLAN_SMART_CONFIG_FINISHED)
         {
@@ -210,7 +211,10 @@ protected:
         system_notify_event(wifi_listen_end, millis()-start);
 
         WLAN_SMART_CONFIG_START = 0;
-        this->connect();
+        if (started)
+            connect();
+        else
+            off();
     }
 
     virtual void on_start_listening()=0;
@@ -238,6 +242,11 @@ public:
     bool manual_disconnect()
     {
         return WLAN_DISCONNECT;
+    }
+
+    void set_manual_disconnect(bool disconnect)
+    {
+        WLAN_DISCONNECT = disconnect;
     }
 
     bool connected() override
@@ -294,6 +303,7 @@ public:
                 WLAN_CONNECTING = 1;
                 LED_SetRGBColor(RGB_COLOR_GREEN);
                 LED_On(LED_RGB);
+                ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
                 connect_finalize();
             }
 
@@ -382,7 +392,7 @@ public:
 
     void notify_disconnected()
     {
-        cloud_disconnect();
+        cloud_disconnect(false); // don't close the socket on the callback since this causes a lockup on the Core
         if (WLAN_CONNECTED)     /// unsolicited disconnect
         {
           //Breathe blue if established connection gets disconnected

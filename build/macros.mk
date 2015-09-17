@@ -31,3 +31,6 @@ _assert_equal = $(if $(call test,$2,-ne,$3),$(error "expected $1 to be $2 but wa
 assert_filesize = $(call _assert_equal,"file $1",$2,$(shell echo $(call filesize,$1)))
 
 assert_filebyte = $(call _assert_equal,"file $1 offset $2",$3,$(shell echo $(call filebyte,$1,$2)))
+
+
+check_modular = $(if $(PLATFORM_DYNALIB_MODULES),,$(error "Platform '$(PLATFORM)' does not support dynamic modules"))
