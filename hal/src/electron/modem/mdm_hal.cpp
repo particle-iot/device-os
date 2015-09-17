@@ -242,9 +242,9 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                     // +CREG|CGREG: <n>,<stat>[,<lac>,<ci>[,AcT[,<rac>]]] // reply to AT+CREG|AT+CGREG
                     // +CREG|CGREG: <stat>[,<lac>,<ci>[,AcT[,<rac>]]]     // URC
                     b = (int)0xFFFF; c = (int)0xFFFFFFFF; d = -1;
-                    r = sscanf(cmd, "%s %*d,%d,\"%X\",\"%X\",%d",s,&a,&b,&c,&d);
+                    r = sscanf(cmd, "%s %*d,%d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
                     if (r <= 1)
-                        r = sscanf(cmd, "%s %d,\"%X\",\"%X\",%d",s,&a,&b,&c,&d);
+                        r = sscanf(cmd, "%s %d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
                     if (r >= 2) {
                         Reg *reg = !strcmp(s, "CREG:")  ? &_net.csd :
                                    !strcmp(s, "CGREG:") ? &_net.psd : NULL;
