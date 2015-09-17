@@ -46,8 +46,6 @@ using spark::Network;
 
 volatile system_tick_t spark_loop_total_millis = 0;
 
-void (*announce_presence)(void);
-
 // Auth options are WLAN_SEC_UNSEC, WLAN_SEC_WPA, WLAN_SEC_WEP, and WLAN_SEC_WPA2
 unsigned char _auth = WLAN_SEC_WPA2;
 
@@ -57,17 +55,15 @@ volatile uint8_t SPARK_LED_FADE = 1;
 
 volatile uint8_t Spark_Error_Count;
 
-void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void))
+void Network_Setup()
 {
-    announce_presence = presence_announcement_callback;
-
-#if !SPARK_NO_WIFI
-    wlan_setup();
+#if !PARTICLE_NO_NETWORK
+    network.setup();
 
     /* Trigger a WLAN device */
     if (system_mode() == AUTOMATIC || system_mode()==SAFE_MODE)
     {
-        network_connect(Network, 0, 0, NULL);
+        network.connect();
     }
 #endif
 
@@ -101,21 +97,21 @@ void manage_network_connection()
         {
             DEBUG("Resetting WLAN!");
             auto was_sleeping = SPARK_WLAN_SLEEP;
-            auto was_disconnected = WLAN_DISCONNECT;
+            auto was_disconnected = network.manual_disconnect();
             cloud_disconnect();
-            network_off(Network, 0, 0, NULL);
+            network.off();
             CLR_WLAN_WD();
             SPARK_WLAN_RESET = 0;
             SPARK_WLAN_SLEEP = was_sleeping;
-            WLAN_DISCONNECT = was_disconnected;
+            network.set_manual_disconnect(was_disconnected);
             cfod_count = 0;
         }
     }
     else
     {
-        if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !WLAN_CONNECTED))
+        if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !network.connected()))
         {
-            network_connect(Network, 0, 0, NULL);
+            network.connect();
         }
     }
 }
@@ -201,7 +197,7 @@ void handle_cfod()
 
 void establish_cloud_connection()
 {
-    if (WLAN_DHCP && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
+    if (network.ready() && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
     {
         if (Spark_Error_Count)
             handle_cloud_errors();
@@ -389,7 +385,7 @@ void cloud_disconnect(bool closeSocket)
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
 
-        if (!WLAN_DISCONNECT && !WLAN_SMART_CONFIG_START)
+        if (!network.manual_disconnect() && !network.listening())
         {
             LED_SetRGBColor(RGB_COLOR_GREEN);
             LED_On(LED_RGB);

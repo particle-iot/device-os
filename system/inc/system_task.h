@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
-void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
+void Network_Setup();
 
 /**
  * Run background processing. This function should be called as often as possible by user code.

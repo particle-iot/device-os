@@ -191,7 +191,7 @@ void* wiced_dct_get_current_address( dct_section_t section )
     return &((char*)dct1)[ DCT_section_offsets[section] ];
 }
 
-static char requires_erase(platform_dct_header_t* p_dct)
+char requires_erase(platform_dct_header_t* p_dct)
 {
     unsigned* p = (unsigned*)p_dct;
     for (unsigned i=0; i<4096; i++) {
@@ -201,7 +201,7 @@ static char requires_erase(platform_dct_header_t* p_dct)
     return 0;
 }
 
-static void wiced_erase_dct( platform_dct_header_t* p_dct )
+void wiced_erase_dct( platform_dct_header_t* p_dct )
 {
     /* Erase the non-current DCT */
     if ( p_dct == ( (platform_dct_header_t*) PLATFORM_DCT_COPY1_START_ADDRESS ) )
@@ -216,7 +216,7 @@ static void wiced_erase_dct( platform_dct_header_t* p_dct )
     }
 }
 
-static int wiced_write_dct( uint32_t data_start_offset, const void* data, uint32_t data_length, int8_t app_valid, void (*func)(void) )
+int wiced_write_dct( uint32_t data_start_offset, const void* data, uint32_t data_length, int8_t app_valid, void (*func)(void) )
 {
     platform_dct_header_t* new_dct;
     uint32_t               bytes_after_data;

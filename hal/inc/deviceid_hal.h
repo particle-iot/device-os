@@ -27,6 +27,7 @@
 #define	DEVICEID_HAL_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef	__cplusplus
 extern "C" {
@@ -50,6 +51,12 @@ unsigned HAL_device_ID(uint8_t* dest, unsigned destLen);
  * to not be compile-time dependent on the PRODUCT_ID symbol.
  */
 unsigned HAL_Platform_ID();
+
+/**
+ *
+ */
+int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsigned index, void* reserved);
+
 
 #ifdef	__cplusplus
 }

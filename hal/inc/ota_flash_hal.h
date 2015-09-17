@@ -66,11 +66,18 @@ typedef struct {
     uint16_t validity_result;     // the result of the checks
 } hal_module_t;
 
+typedef struct key_value {
+    const char* key;
+    char value[32];
+} key_value;
+
 typedef struct {
     uint16_t size;
     uint16_t platform_id;
     hal_module_t* modules;      // allocated by HAL_System_Info
     uint16_t module_count;      // number of modules in the array
+    key_value* key_values;      // key_values, allocated by HAL_System_Info
+    uint16_t key_value_count;   // number of key values
 } hal_system_info_t;
 
 
