@@ -37,7 +37,8 @@ SPIClass::SPIClass(HAL_SPI_Interface spi)
 
 void SPIClass::begin()
 {
-  begin(SS);
+    // todo - fetch default pin from HAL
+  HAL_SPI_Begin(_spi, SPI_DEFAULT_SS);
 }
 
 void SPIClass::begin(uint16_t ss_pin)
