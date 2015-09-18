@@ -4,14 +4,11 @@
 ### FEATURES
 
 ### ENHANCEMENTS
-    - `Wire.end()` to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
-    - `Wire.reset()` to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
+ - `Wire.end()` to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
+ - `Wire.reset()` to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
 
 ### BUGFIXES
-
-### PRIZES
-
-- This firmware is good. Where's our prize! :-P
+ - Default SS pin for SPI1 now set to D5. [#623](https://github.com/spark/firmware/issues/623)
 
 
 ## v0.4.5
