@@ -282,6 +282,16 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
             return 0;
         }
     }
+	
+    /* perform blocking read into buffer */
+    uint8_t *pBuffer = i2cMap[i2c]->rxBuffer;
+    uint8_t numByteToRead = quantity;
+	
+	if (quantity == 1)
+		/* Disable Acknowledgement */
+		I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, DISABLE);
+	else
+		I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
     /* Send Slave address for read */
     I2C_Send7bitAddress(i2cMap[i2c]->I2C_Peripheral, address << 1, I2C_Direction_Receiver);
@@ -301,21 +311,26 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         }
     }
 
-    /* perform blocking read into buffer */
-    uint8_t *pBuffer = i2cMap[i2c]->rxBuffer;
-    uint8_t numByteToRead = quantity;
 
     /* While there is data to be read */
     while(numByteToRead)
     {
-        if(numByteToRead < 2 && stop == true)
-        {
-            /* Disable Acknowledgement */
-            I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, DISABLE);
+		switch	(numBytesToRead) {
+			case 2:
+				/* Disable Acknowledgement on last byte which is being assembled in shift register*/
+				I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, DISABLE);
+				break;
+				
+			case 1:
+				/* Send STOP Condition */
+				if (stop == true)
+					I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
+				break;
+				
+			default:
+				break;
+		}
 
-            /* Send STOP Condition */
-            I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
-        }
 
         /* Wait for the byte to be received */
         _millis = HAL_Timer_Get_Milli_Seconds();
@@ -355,9 +370,6 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
             }
         }
     }
-
-    /* Enable Acknowledgement to be ready for another reception */
-    I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
     // set rx buffer iterator vars
     i2cMap[i2c]->rxBufferIndex = 0;
