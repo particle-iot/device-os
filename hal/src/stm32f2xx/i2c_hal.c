@@ -282,11 +282,11 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
             return 0;
         }
     }
-	
+
     /* perform blocking read into buffer */
     uint8_t *pBuffer = i2cMap[i2c]->rxBuffer;
     uint8_t numByteToRead = quantity;
-	
+
 	if (quantity == 1)
 		/* Disable Acknowledgement */
 		I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, DISABLE);
@@ -315,18 +315,18 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
     /* While there is data to be read */
     while(numByteToRead)
     {
-		switch	(numBytesToRead) {
+		switch	(numByteToRead) {
 			case 2:
 				/* Disable Acknowledgement on last byte which is being assembled in shift register*/
 				I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, DISABLE);
 				break;
-				
+
 			case 1:
 				/* Send STOP Condition */
 				if (stop == true)
 					I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 				break;
-				
+
 			default:
 				break;
 		}
