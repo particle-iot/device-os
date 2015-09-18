@@ -708,6 +708,7 @@ const int SYSTEM_CLOUD_TIMEOUT = 15*1000;
 
 bool system_cloud_active()
 {
+#ifndef SPARK_NO_CLOUD
     if (!SPARK_CLOUD_SOCKETED)
         return false;
 
@@ -716,5 +717,6 @@ bool system_cloud_active()
         cloud_disconnect(false);
         return false;
     }
+#endif
     return true;
 }
