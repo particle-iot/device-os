@@ -50,9 +50,9 @@
 #define REG_OK(r)       ((r == REG_HOME) || (r == REG_ROAMING))
 //! registration done check helper (no need to poll further)
 #define REG_DONE(r)     ((r == REG_HOME) || (r == REG_ROAMING) || (r == REG_DENIED))
-//! helper to make sure that lock unlock pair is always balaced
+//! helper to make sure that lock unlock pair is always balanced
 #define LOCK()         //{ lock()
-//! helper to make sure that lock unlock pair is always balaced
+//! helper to make sure that lock unlock pair is always balanced
 #define UNLOCK()       //} unlock()
 
 #ifdef MDM_DEBUG
