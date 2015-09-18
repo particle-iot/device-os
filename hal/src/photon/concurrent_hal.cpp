@@ -66,7 +66,7 @@ os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_pr
  * @param   The thread to test.
  * @return {@code true} if the thread given is the one currently executing. {@code false} otherwise.
  */
-bool os_thread_current(os_thread_t thread)
+bool os_thread_is_current(os_thread_t thread)
 {
     return thread==xTaskGetCurrentTaskHandle();
 }

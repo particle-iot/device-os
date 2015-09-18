@@ -301,11 +301,17 @@ public:
 };
 
 
+/**
+ * An active object that runs the message pump on the calling thread.
+ */
 class ActiveObjectCurrentThreadQueue : public ActiveObjectQueue
 {
 public:
     ActiveObjectCurrentThreadQueue(const ActiveObjectConfiguration& config) : ActiveObjectQueue(config) {}
 
+    /**
+     * Start the message pump on this thread. This method does not return.
+     */
     void start()
     {
         createQueue();
@@ -314,6 +320,11 @@ public:
     }
 };
 
+
+/**
+ * An active object that runs the message pump on a new thread using a queue
+ * for the message store.
+ */
 class ActiveObjectThreadQueue : public ActiveObjectQueue
 {
 
@@ -326,7 +337,6 @@ public:
         createQueue();
         start_thread();
     }
-
 
 };
 

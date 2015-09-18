@@ -12,7 +12,7 @@ void system_thread_idle()
     Spark_Idle_Events(true);
 }
 
-ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idle, 1024*3, 100));
+ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idle, 100, 1024*3));
 
 namespace std {
     condition_variable::~condition_variable()
@@ -65,7 +65,7 @@ namespace std {
     void thread::_M_start_thread(thread::__shared_base_type base)
     {
         if (os_thread_create(&_M_id._M_thread, "", 0, invoke_thread, base.get(), 1024*20)) {
-            PANIC(AssertionFailure, "%s %", __FILE__, __LINE__);
+            PANIC(AssertionFailure, "%s s%", __FILE__, __LINE__);
         }
     }
 
