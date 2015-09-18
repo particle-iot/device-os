@@ -8,8 +8,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct Stream Stream;
+    
+typedef class Stream Stream;
 #include <stdint.h>
 
 typedef bool (*ymodem_serial_flash_update_handler)(Stream *serialObj, FileTransfer::Descriptor& file, void*);
