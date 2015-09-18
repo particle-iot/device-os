@@ -315,26 +315,10 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
     /* While there is data to be read */
     while(numByteToRead)
     {
-		switch	(numByteToRead) {
-			case 2:
-				/* Disable Acknowledgement on last byte which is being assembled in shift register*/
-				I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, DISABLE);
-				break;
-
-			case 1:
-				/* Send STOP Condition */
-				if (stop == true)
-					I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
-				break;
-
-			default:
-				break;
-		}
-
-
-        /* Wait for the byte to be received */
+        /* Wait for data register to be full */
+		/* This means the byte in the RX has already been acked */
+		/* Ack is sent on the xfer of teh byte to RX from the shift register */
         _millis = HAL_Timer_Get_Milli_Seconds();
-        //while(!I2C_CheckEvent(i2cMap[i2c]->I2C_Peripheral, I2C_EVENT_MASTER_BYTE_RECEIVED))
         while(I2C_GetFlagStatus(i2cMap[i2c]->I2C_Peripheral, I2C_FLAG_RXNE) == RESET)
         {
             if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
@@ -346,7 +330,25 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
             }
         }
 
+        switch	(numByteToRead) {
+            case 2:
+                /* Disable Acknowledgement on last byte which is being assembled in shift register*/
+                I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, DISABLE);
+                break;
+
+            case 1:
+                /* Send STOP Condition */
+                if (stop == true)
+                        I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
+                break;
+
+            default:
+                break;
+        }
+
         /* Read the byte from the Slave */
+		/* This will enhable the transfer of the next byte (if any) from the shift register to the RX */
+		/* and also sending ACK/NACK for that byte */
         *pBuffer = I2C_ReceiveData(i2cMap[i2c]->I2C_Peripheral);
 
         bytesRead++;
