@@ -71,9 +71,10 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
     pc = pulFaultStackAddress[ 6 ];
     psr = pulFaultStackAddress[ 7 ];
 
-    if (false)
-        r0++; r1++; r2++; r3++; r12++; lr++; pc++; psr++;
-
+    /* Silence "variable set but not used" error */
+    if (false) {
+      (void)r0; (void)r1; (void)r2; (void)r3; (void)r12; (void)lr; (void)pc; (void)psr;
+    }
 
     if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
         // stay consistent with the core and cause 5 flashes
