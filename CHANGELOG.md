@@ -4,12 +4,15 @@
 ### FEATURES
 
 ### ENHANCEMENTS
- - `Wire.end()` to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
- - `Wire.reset()` to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
+
+    - `Wire.end()` to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
+    - `Wire.reset()` to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
 
 ### BUGFIXES
  - Default SS pin for SPI1 now set to D5. [#623](https://github.com/spark/firmware/issues/623)
-
+ - Long delay entering listening mode. [#566](https://github.com/spark/firmware/issues/566)
+ - Solid green LED when WiFi network cannot be connected to due to invalid key. (The LED now blinks.)
+ - Storing more than 2 Wi-Fi credentials would sometimes give unpredictable results.
 
 ## v0.4.5
 
