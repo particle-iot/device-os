@@ -11,7 +11,7 @@ To get started building firmware locally, see [Getting Started](docs/gettingstar
 
 # Resources
 
-- [Latest Release - 0.4.3](http://github.com/spark/firmware/releases/tag/0.4.3-rc2)
+- [Latest Release](http://github.com/spark/firmware/releases/)
 - [Changelog](CHANGELOG.md)
 
 
