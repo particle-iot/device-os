@@ -31,6 +31,23 @@
 #include "string_convert.h"
 #include "system_cloud_internal.h"
 
+#if MODULAR_FIRMWARE
+// The usual wiring implementations are dependent upon I2C, SPI and other global instances. Rewriting the GPIO functions to talk directly to the HAL
+
+void pinMode(pin_t pin, PinMode setMode) {
+    HAL_Pin_Mode(pin, setMode);
+}
+
+void digitalWrite(pin_t pin, uint8_t value) {
+    HAL_GPIO_Write(pin, value);
+}
+
+int32_t digitalRead(pin_t pin) {
+    return HAL_GPIO_Read(pin);
+}
+
+#endif
+
 #if PLATFORM_ID==4 || PLATFORM_ID==5 || PLATFORM_ID==6 || PLATFORM_ID==7 || PLATFORM_ID==8
 #define WIFI_SCAN 1
 #else

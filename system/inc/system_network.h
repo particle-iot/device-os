@@ -32,11 +32,11 @@
 extern "C" {
 #endif
 
-#ifndef SPARK_NO_WIFI
-#define SPARK_NO_WIFI 0
+#ifndef PARTICLE_NO_NETWORK
+#define PARTICLE_NO_NETWORK 0
 #endif
 
-#if SPARK_NO_WIFI
+#if PARTICLE_NO_NETWORK
 #undef SPARK_NO_CLOUD
 #define SPARK_NO_CLOUD 1
 #endif
@@ -49,7 +49,7 @@ const network_interface_t NIF_DEFAULT = 0;
  * @return
  */
 
-const WLanConfig* network_config(network_handle_t network, uint32_t param1, void* reserved);
+const void* network_config(network_handle_t network, uint32_t param1, void* reserved);
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 bool network_connecting(network_handle_t network, uint32_t param1, void* reserved);
@@ -71,6 +71,7 @@ bool network_listening(network_handle_t network, uint32_t param1, void* reserved
 
 bool network_has_credentials(network_handle_t network, uint32_t param1, void* reserved);
 
+#include "wlan_hal.h"
 typedef WLanCredentials NetworkCredentials;
 
 /**
@@ -84,6 +85,7 @@ typedef WLanCredentials NetworkCredentials;
 int network_set_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
 bool network_clear_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
 
+void network_setup(network_handle_t network, uint32_t flags, void* reserved);
 
 /**
  * Disable automatic listening mode when no credentials are configured.

@@ -28,6 +28,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "debug.h"
+#include "system_event.h"
 #include "system_mode.h"
 #include "system_task.h"
 #include "system_network.h"
@@ -54,11 +55,41 @@
 static volatile uint32_t TimingLED;
 static volatile uint32_t TimingIWDGReload;
 
+/**
+ * KNowing the current listen mode isn't sufficient to determine the correct action (since that may or may not have changed)
+ * we need also to know the listen mode at the time the button was pressed.
+ */
+static volatile bool wasListeningOnButtonPress;
+static volatile uint16_t buttonPushed;
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private functions ---------------------------------------------------------*/
+
+// this is called on multiple threads - ideally need a mutex
+void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
+{
+    if (button==0)
+    {
+        if (pressed) {
+            wasListeningOnButtonPress = network.listening();
+            buttonPushed = HAL_Timer_Get_Milli_Seconds();
+            if (!wasListeningOnButtonPress)
+                system_notify_event(button_status, 0);
+        }
+        else
+        {
+            uint16_t duration = HAL_Timer_Get_Milli_Seconds()-buttonPushed;
+            if (!network.listening())
+                system_notify_event(button_status, duration);
+            buttonPushed = 0;
+            if (duration>3000 && duration<8000 && wasListeningOnButtonPress && network.listening())
+                network.listen(true);
+        }
+    }
+}
 
 /*******************************************************************************
  * Function Name  : HAL_SysTick_Handler
@@ -82,7 +113,7 @@ extern "C" void HAL_SysTick_Handler(void)
     {
         TimingLED--;
     }
-    else if(WLAN_SMART_CONFIG_START || SPARK_FLASH_UPDATE || Spark_Error_Count)
+    else if(SPARK_FLASH_UPDATE || Spark_Error_Count || network.listening())
     {
         //Do nothing
     }
@@ -100,7 +131,7 @@ extern "C" void HAL_SysTick_Handler(void)
     else
     {
         LED_Toggle(LED_RGB);
-        if(SPARK_CLOUD_SOCKETED || (WLAN_CONNECTED && !WLAN_DHCP))
+        if(SPARK_CLOUD_SOCKETED || ( network.connected() && !network.ready()))
             TimingLED = 50;         //50ms
         else
             TimingLED = 100;        //100ms
@@ -120,22 +151,23 @@ extern "C" void HAL_SysTick_Handler(void)
         }
 #endif
     }
-    else if(!WLAN_SMART_CONFIG_START && HAL_Core_Mode_Button_Pressed(3000))
+    else if(network.listening() && HAL_Core_Mode_Button_Pressed(10000))
     {
-        //reset button debounce state if mode button is pressed for 3 seconds
+        network.listen_command();
         HAL_Core_Mode_Button_Reset();
-
-        if (SPARK_WLAN_STARTED) {
-            wlan_connect_cancel(true);
         }
-        WLAN_SMART_CONFIG_START = 1;
-    }
-    else if(HAL_Core_Mode_Button_Pressed(7000))
+    // determine if the button press needs to change the state (and hasn't done so already))
+    else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
-        //reset button debounce state if mode button is pressed for 3+7=10 seconds
-        HAL_Core_Mode_Button_Reset();
-
-        WLAN_DELETE_PROFILES = 1;
+        if (network.connecting()) {
+            network.connect_cancel();
+    }
+        // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
+        // there's a race condition here - the HAL_notify_button_state function should
+        // be thread safe, but currently isn't.
+        HAL_Notify_Button_State(0, false);
+        network.listen();
+        HAL_Notify_Button_State(0, true);
     }
 
 #ifdef IWDG_RESET_ENABLE
@@ -185,15 +217,15 @@ void app_loop(bool threaded)
                 if (system_mode()!=SAFE_MODE)
                  setup();
                 SPARK_WIRING_APPLICATION = 1;
-            }
+        }
 
             //Execute user application loop
             DECLARE_SYS_HEALTH(ENTERED_Loop);
             if (system_mode()!=SAFE_MODE) {
                 loop();
                 DECLARE_SYS_HEALTH(RAN_Loop);
-            }
-        }
+    }
+}
     }
 }
 
@@ -223,7 +255,7 @@ void app_setup_and_loop(void)
     HAL_Core_Init();
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
-    DEBUG("Hello from Spark!");
+    DEBUG("Hello from Particle!");
 
     manage_safe_mode();
 
@@ -231,23 +263,9 @@ void app_setup_and_loop(void)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
 #endif
 
-#ifndef SPARK_NO_CLOUD
-    //Initialize spark protocol callbacks for all System modes
-    Spark_Protocol_Init();
-
-#if !SPARK_NO_WIFI
-    wlan_setup();
-
     bool threaded = system_thread_get_state(NULL)!=0 && (system_mode()!=SAFE_MODE);
 
-    /* Trigger a WLAN device */
-    if ((!threaded && system_mode() == AUTOMATIC) || system_mode()==SAFE_MODE)
-    {
-        network_connect(0, 0, 0, NULL);
-    }
-#endif  // SPARK_NO_WIFI
-
-#endif  // SPARK_NO_CLOUD
+    Network_Setup(threaded);
 
 #if PLATFORM_THREADING
     if (threaded)
@@ -261,7 +279,7 @@ void app_setup_and_loop(void)
         /* Main loop */
         while (1) {
             app_loop(false);
-            }
+        }
     }
 }
 

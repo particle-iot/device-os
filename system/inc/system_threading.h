@@ -127,6 +127,19 @@ FFL(F const &func)
 #define APPLICATION_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(ApplicationThread, fn)
 #define APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(ApplicationThread, fn, result)
 
+#define SYSTEM_THREAD_CONTEXT_ASYNC_CALL(fn) \
+    SYSTEM_THREAD_CONTEXT_ASYNC(fn); \
+    fn;
+
+#define SYSTEM_THREAD_CONTEXT_SYNC_CALL(fn) \
+    SYSTEM_THREAD_CONTEXT_SYNC(fn); \
+    fn;
+
+#define SYSTEM_THREAD_CONTEXT_SYNC_CALL_RESULT(fn) \
+    SYSTEM_THREAD_CONTEXT_SYNC(fn); \
+    return fn;
+
+
 
 #if PLATFORM_THREADING
 #define SYSTEM_THREAD_START()  SystemThread.start()

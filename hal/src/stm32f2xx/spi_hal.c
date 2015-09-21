@@ -35,15 +35,6 @@
 #define TOTAL_SPI   2
 #endif
 
-/* Private typedef -----------------------------------------------------------*/
-typedef enum SPI_Num_Def {
-    SPI1_A3_A4_A5 = 0,
-    SPI3_D4_D3_D2 = 1
-#if PLATFORM_ID == 10 // Electron
-   ,SPI3_C3_C2_C1 = 2
-#endif
-} SPI_Num_Def;
-
 /* Private variables ---------------------------------------------------------*/
 typedef struct STM32_SPI_Info {
     SPI_TypeDef* SPI_Peripheral;
@@ -62,12 +53,18 @@ typedef struct STM32_SPI_Info {
     uint8_t SPI_TX_DMA_Stream_IRQn;
     uint32_t SPI_TX_DMA_Stream_TC_Event;
 
-    uint16_t SPI_SCK_Pin;
-    uint16_t SPI_MISO_Pin;
-    uint16_t SPI_MOSI_Pin;
+    uint8_t SPI_SCK_Pin;
+    uint8_t SPI_MISO_Pin;
+    uint8_t SPI_MOSI_Pin;
+    uint8_t SPI_SS_Pin;
 
     uint8_t SPI_AF_Mapping;
 
+
+} STM32_SPI_Info;
+
+typedef struct SPI_State
+{
     SPI_InitTypeDef SPI_InitStructure;
 
     bool SPI_Bit_Order_Set;
@@ -76,24 +73,34 @@ typedef struct STM32_SPI_Info {
     bool SPI_Enabled;
 
     HAL_SPI_DMA_UserCallback SPI_DMA_UserCallback;
-} STM32_SPI_Info;
+} SPI_State;
 
 /*
  * SPI mapping
  */
-STM32_SPI_Info SPI_MAP[TOTAL_SPI] =
+const STM32_SPI_Info spiMap[TOTAL_SPI] =
 {
         { SPI1, &RCC->APB2ENR, RCC_APB2Periph_SPI1, &RCC->AHB1ENR, RCC_AHB1Periph_DMA2, DMA_Channel_3,
-          DMA2_Stream5, DMA2_Stream2, DMA2_Stream5_IRQn, DMA_IT_TCIF5, SCK, MISO, MOSI, GPIO_AF_SPI1 },
+          DMA2_Stream5, DMA2_Stream2, DMA2_Stream5_IRQn, DMA_IT_TCIF5, SCK, MISO, MOSI, SS, GPIO_AF_SPI1 },
         { SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0,
-          DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA_IT_TCIF7, D4, D3, D2, GPIO_AF_SPI3 }
+          DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA_IT_TCIF7, D4, D3, D2, D5, GPIO_AF_SPI3  }
 #if PLATFORM_ID == 10 // Electron
         ,{ SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0,
-          DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA_IT_TCIF7, C3, C2, C1, GPIO_AF_SPI3 }
+          DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA_IT_TCIF7, C3, C2, C1, C0, GPIO_AF_SPI3  }
 #endif
 };
 
-static STM32_SPI_Info *spiMap[TOTAL_SPI]; // pointer to SPI_MAP[] containing SPI peripheral info
+/* Private typedef -----------------------------------------------------------*/
+typedef enum SPI_Num_Def {
+    SPI1_A3_A4_A5 = 0,
+    SPI3_D4_D3_D2 = 1
+#if PLATFORM_ID == 10 // Electron
+   ,SPI3_C3_C2_C1 = 2
+#endif
+} SPI_Num_Def;
+
+
+SPI_State spiState[TOTAL_SPI];
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -105,11 +112,11 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     NVIC_InitTypeDef NVIC_InitStructure;
 
     /* Enable DMA Clock */
-    *spiMap[spi]->SPI_RCC_AHBRegister |= spiMap[spi]->SPI_RCC_AHBClockEnable;
+    *spiMap[spi].SPI_RCC_AHBRegister |= spiMap[spi].SPI_RCC_AHBClockEnable;
 
     /* Deinitialize DMA Streams */
-    DMA_DeInit(spiMap[spi]->SPI_TX_DMA_Stream);
-    DMA_DeInit(spiMap[spi]->SPI_RX_DMA_Stream);
+    DMA_DeInit(spiMap[spi].SPI_TX_DMA_Stream);
+    DMA_DeInit(spiMap[spi].SPI_RX_DMA_Stream);
 
     DMA_InitStructure.DMA_BufferSize = length;
     DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
@@ -118,14 +125,14 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
     DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
 
-    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&spiMap[spi]->SPI_Peripheral->DR;
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&spiMap[spi].SPI_Peripheral->DR;
     DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
     DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
     DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
     DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
     DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 
-    DMA_InitStructure.DMA_Channel = spiMap[spi]->SPI_DMA_Channel;
+    DMA_InitStructure.DMA_Channel = spiMap[spi].SPI_DMA_Channel;
 
     uint8_t tempMemory = 0xFF;
 
@@ -141,7 +148,7 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
         DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)(&tempMemory);
         DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
     }
-    DMA_Init(spiMap[spi]->SPI_TX_DMA_Stream, &DMA_InitStructure);
+    DMA_Init(spiMap[spi].SPI_TX_DMA_Stream, &DMA_InitStructure);
 
     /* Configure Rx DMA Stream */
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
@@ -155,128 +162,116 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
         DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&tempMemory;
         DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
     }
-    DMA_Init(spiMap[spi]->SPI_RX_DMA_Stream, &DMA_InitStructure);
+    DMA_Init(spiMap[spi].SPI_RX_DMA_Stream, &DMA_InitStructure);
 
     /* Enable SPI TX DMA Stream Interrupt */
-    DMA_ITConfig(spiMap[spi]->SPI_TX_DMA_Stream, DMA_IT_TC, ENABLE);
+    DMA_ITConfig(spiMap[spi].SPI_TX_DMA_Stream, DMA_IT_TC, ENABLE);
 
-    NVIC_InitStructure.NVIC_IRQChannel = spiMap[spi]->SPI_TX_DMA_Stream_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannel = spiMap[spi].SPI_TX_DMA_Stream_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
     /* Enable the DMA Tx/Rx Stream */
-    DMA_Cmd(spiMap[spi]->SPI_TX_DMA_Stream, ENABLE);
-    DMA_Cmd(spiMap[spi]->SPI_RX_DMA_Stream, ENABLE);
+    DMA_Cmd(spiMap[spi].SPI_TX_DMA_Stream, ENABLE);
+    DMA_Cmd(spiMap[spi].SPI_RX_DMA_Stream, ENABLE);
 
     /* Enable the SPI Rx/Tx DMA request */
-    SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Rx, ENABLE);
-    SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Tx, ENABLE);
+    SPI_I2S_DMACmd(spiMap[spi].SPI_Peripheral, SPI_I2S_DMAReq_Rx, ENABLE);
+    SPI_I2S_DMACmd(spiMap[spi].SPI_Peripheral, SPI_I2S_DMAReq_Tx, ENABLE);
 }
 
 static void HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
 {
-    if (DMA_GetITStatus(spiMap[spi]->SPI_TX_DMA_Stream, spiMap[spi]->SPI_TX_DMA_Stream_TC_Event) == SET)
+    if (DMA_GetITStatus(spiMap[spi].SPI_TX_DMA_Stream, spiMap[spi].SPI_TX_DMA_Stream_TC_Event) == SET)
     {
-        DMA_ClearITPendingBit(spiMap[spi]->SPI_TX_DMA_Stream, spiMap[spi]->SPI_TX_DMA_Stream_TC_Event);
-        SPI_I2S_DMACmd(spiMap[spi]->SPI_Peripheral, SPI_I2S_DMAReq_Tx, DISABLE);
-        DMA_Cmd(spiMap[spi]->SPI_TX_DMA_Stream, DISABLE);
+        DMA_ClearITPendingBit(spiMap[spi].SPI_TX_DMA_Stream, spiMap[spi].SPI_TX_DMA_Stream_TC_Event);
+        SPI_I2S_DMACmd(spiMap[spi].SPI_Peripheral, SPI_I2S_DMAReq_Tx, DISABLE);
+        DMA_Cmd(spiMap[spi].SPI_TX_DMA_Stream, DISABLE);
 
-        if (spiMap[spi]->SPI_DMA_UserCallback)
-        {
+        HAL_SPI_DMA_UserCallback callback = spiState[spi].SPI_DMA_UserCallback;
+        if (callback) {
             // notify user program about transfer completion
-            spiMap[spi]->SPI_DMA_UserCallback();
+            callback();
         }
     }
 }
 
 void HAL_SPI_Init(HAL_SPI_Interface spi)
 {
-    if(spi == HAL_SPI_INTERFACE1)
-    {
-        spiMap[spi] = &SPI_MAP[SPI1_A3_A4_A5];
-    }
-    else if(spi == HAL_SPI_INTERFACE2)
-    {
-        spiMap[spi] = &SPI_MAP[SPI3_D4_D3_D2];
-    }
-#if PLATFORM_ID == 10 // Electron
-    else if(spi == HAL_SPI_INTERFACE3)
-    {
-        spiMap[spi] = &SPI_MAP[SPI3_C3_C2_C1];
-    }
-#endif
-
-    spiMap[spi]->SPI_Bit_Order_Set = false;
-    spiMap[spi]->SPI_Data_Mode_Set = false;
-    spiMap[spi]->SPI_Clock_Divider_Set = false;
-    spiMap[spi]->SPI_Enabled = false;
+    spiState[spi].SPI_Bit_Order_Set = false;
+    spiState[spi].SPI_Data_Mode_Set = false;
+    spiState[spi].SPI_Clock_Divider_Set = false;
+    spiState[spi].SPI_Enabled = false;
 }
 
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
 {
+    if (pin==SPI_DEFAULT_SS)
+        pin = spiMap[spi].SPI_SS_Pin;
+
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     /* Enable SPI Clock */
-    *spiMap[spi]->SPI_RCC_APBRegister |= spiMap[spi]->SPI_RCC_APBClockEnable;
+    *spiMap[spi].SPI_RCC_APBRegister |= spiMap[spi].SPI_RCC_APBClockEnable;
 
     /* Connect SPI pins to AF */
-    GPIO_PinAFConfig(PIN_MAP[spiMap[spi]->SPI_SCK_Pin].gpio_peripheral, PIN_MAP[spiMap[spi]->SPI_SCK_Pin].gpio_pin_source, spiMap[spi]->SPI_AF_Mapping);
-    GPIO_PinAFConfig(PIN_MAP[spiMap[spi]->SPI_MISO_Pin].gpio_peripheral, PIN_MAP[spiMap[spi]->SPI_MISO_Pin].gpio_pin_source, spiMap[spi]->SPI_AF_Mapping);
-    GPIO_PinAFConfig(PIN_MAP[spiMap[spi]->SPI_MOSI_Pin].gpio_peripheral, PIN_MAP[spiMap[spi]->SPI_MOSI_Pin].gpio_pin_source, spiMap[spi]->SPI_AF_Mapping);
+    GPIO_PinAFConfig(PIN_MAP[spiMap[spi].SPI_SCK_Pin].gpio_peripheral, PIN_MAP[spiMap[spi].SPI_SCK_Pin].gpio_pin_source, spiMap[spi].SPI_AF_Mapping);
+    GPIO_PinAFConfig(PIN_MAP[spiMap[spi].SPI_MISO_Pin].gpio_peripheral, PIN_MAP[spiMap[spi].SPI_MISO_Pin].gpio_pin_source, spiMap[spi].SPI_AF_Mapping);
+    GPIO_PinAFConfig(PIN_MAP[spiMap[spi].SPI_MOSI_Pin].gpio_peripheral, PIN_MAP[spiMap[spi].SPI_MOSI_Pin].gpio_pin_source, spiMap[spi].SPI_AF_Mapping);
 
-    HAL_Pin_Mode(spiMap[spi]->SPI_SCK_Pin, AF_OUTPUT_PUSHPULL);
-    HAL_Pin_Mode(spiMap[spi]->SPI_MISO_Pin, AF_OUTPUT_PUSHPULL);
-    HAL_Pin_Mode(spiMap[spi]->SPI_MOSI_Pin, AF_OUTPUT_PUSHPULL);
+    HAL_Pin_Mode(spiMap[spi].SPI_SCK_Pin, AF_OUTPUT_PUSHPULL);
+    HAL_Pin_Mode(spiMap[spi].SPI_MISO_Pin, AF_OUTPUT_PUSHPULL);
+    HAL_Pin_Mode(spiMap[spi].SPI_MOSI_Pin, AF_OUTPUT_PUSHPULL);
 
     HAL_Pin_Mode(pin, OUTPUT);
     HAL_GPIO_Write(pin, Bit_SET);//HIGH
 
     /* SPI configuration */
-    spiMap[spi]->SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
-    spiMap[spi]->SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
-    spiMap[spi]->SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
-    if(spiMap[spi]->SPI_Data_Mode_Set != true)
+    spiState[spi].SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+    spiState[spi].SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+    spiState[spi].SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+    if(spiState[spi].SPI_Data_Mode_Set != true)
     {
         //Default: SPI_MODE3
-        spiMap[spi]->SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-        spiMap[spi]->SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+        spiState[spi].SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+        spiState[spi].SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
     }
-    spiMap[spi]->SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-    if(spiMap[spi]->SPI_Clock_Divider_Set != true)
+    spiState[spi].SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+    if(spiState[spi].SPI_Clock_Divider_Set != true)
     {
         /* Defaults to 15Mbit/s on SPI1, SPI2 and SPI3 */
         if(spi == HAL_SPI_INTERFACE1)
         {
-            spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;//60/4=15
+            spiState[spi].SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;//60/4=15
         }
         else
         {
-            spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_2;//30/2=15
+            spiState[spi].SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_2;//30/2=15
         }
     }
-    if(spiMap[spi]->SPI_Bit_Order_Set != true)
+    if(spiState[spi].SPI_Bit_Order_Set != true)
     {
         //Default: MSBFIRST
-        spiMap[spi]->SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+        spiState[spi].SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
     }
-    spiMap[spi]->SPI_InitStructure.SPI_CRCPolynomial = 7;
+    spiState[spi].SPI_InitStructure.SPI_CRCPolynomial = 7;
 
-    SPI_Init(spiMap[spi]->SPI_Peripheral, &spiMap[spi]->SPI_InitStructure);
+    SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
 
-    SPI_Cmd(spiMap[spi]->SPI_Peripheral, ENABLE);
+    SPI_Cmd(spiMap[spi].SPI_Peripheral, ENABLE);
 
-    spiMap[spi]->SPI_Enabled = true;
+    spiState[spi].SPI_Enabled = true;
 }
 
 void HAL_SPI_End(HAL_SPI_Interface spi)
 {
-    if(spiMap[spi]->SPI_Enabled != false)
+    if(spiState[spi].SPI_Enabled != false)
     {
-        SPI_Cmd(spiMap[spi]->SPI_Peripheral, DISABLE);
+        SPI_Cmd(spiMap[spi].SPI_Peripheral, DISABLE);
 
-        spiMap[spi]->SPI_Enabled = false;
+        spiState[spi].SPI_Enabled = false;
     }
 }
 
@@ -284,90 +279,90 @@ void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order)
 {
     if(order == LSBFIRST)
     {
-        spiMap[spi]->SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_LSB;
+        spiState[spi].SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_LSB;
     }
     else
     {
-        spiMap[spi]->SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+        spiState[spi].SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
     }
 
-    SPI_Init(spiMap[spi]->SPI_Peripheral, &spiMap[spi]->SPI_InitStructure);
+    SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
 
-    spiMap[spi]->SPI_Bit_Order_Set = true;
+    spiState[spi].SPI_Bit_Order_Set = true;
 }
 
 void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
 {
-    if(spiMap[spi]->SPI_Enabled != false)
+    if(spiState[spi].SPI_Enabled != false)
     {
-        SPI_Cmd(spiMap[spi]->SPI_Peripheral, DISABLE);
+        SPI_Cmd(spiMap[spi].SPI_Peripheral, DISABLE);
     }
 
     switch(mode)
     {
         case SPI_MODE0:
-            spiMap[spi]->SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
-            spiMap[spi]->SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+            spiState[spi].SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+            spiState[spi].SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
             break;
 
         case SPI_MODE1:
-            spiMap[spi]->SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
-            spiMap[spi]->SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+            spiState[spi].SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+            spiState[spi].SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
             break;
 
         case SPI_MODE2:
-            spiMap[spi]->SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-            spiMap[spi]->SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+            spiState[spi].SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+            spiState[spi].SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
             break;
 
         case SPI_MODE3:
-            spiMap[spi]->SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-            spiMap[spi]->SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+            spiState[spi].SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+            spiState[spi].SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
             break;
     }
 
-    SPI_Init(spiMap[spi]->SPI_Peripheral, &spiMap[spi]->SPI_InitStructure);
+    SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
 
-    if(spiMap[spi]->SPI_Enabled != false)
+    if(spiState[spi].SPI_Enabled != false)
     {
-        SPI_Cmd(spiMap[spi]->SPI_Peripheral, ENABLE);
+        SPI_Cmd(spiMap[spi].SPI_Peripheral, ENABLE);
     }
 
-    spiMap[spi]->SPI_Data_Mode_Set = true;
+    spiState[spi].SPI_Data_Mode_Set = true;
 }
 
 void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate)
 {
-    spiMap[spi]->SPI_InitStructure.SPI_BaudRatePrescaler = rate;
+    spiState[spi].SPI_InitStructure.SPI_BaudRatePrescaler = rate;
 
-    SPI_Init(spiMap[spi]->SPI_Peripheral, &spiMap[spi]->SPI_InitStructure);
+    SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
 
-    spiMap[spi]->SPI_Clock_Divider_Set = true;
+    spiState[spi].SPI_Clock_Divider_Set = true;
 }
 
 uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
 {
     /* Wait for SPI Tx buffer empty */
-    while (SPI_I2S_GetFlagStatus(spiMap[spi]->SPI_Peripheral, SPI_I2S_FLAG_TXE) == RESET);
+    while (SPI_I2S_GetFlagStatus(spiMap[spi].SPI_Peripheral, SPI_I2S_FLAG_TXE) == RESET);
     /* Send SPI1 data */
-    SPI_I2S_SendData(spiMap[spi]->SPI_Peripheral, data);
+    SPI_I2S_SendData(spiMap[spi].SPI_Peripheral, data);
 
     /* Wait for SPI data reception */
-    while (SPI_I2S_GetFlagStatus(spiMap[spi]->SPI_Peripheral, SPI_I2S_FLAG_RXNE) == RESET);
+    while (SPI_I2S_GetFlagStatus(spiMap[spi].SPI_Peripheral, SPI_I2S_FLAG_RXNE) == RESET);
     /* Read and return SPI received data */
-    return SPI_I2S_ReceiveData(spiMap[spi]->SPI_Peripheral);
+    return SPI_I2S_ReceiveData(spiMap[spi].SPI_Peripheral);
 }
 
 void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback)
 {
-    spiMap[spi]->SPI_DMA_UserCallback = userCallback;
+    spiState[spi].SPI_DMA_UserCallback = userCallback;
     /* Config and initiate DMA transfer */
     HAL_SPI_DMA_Config(spi, tx_buffer, rx_buffer, length);
 }
 
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 {
-    return spiMap[spi]->SPI_Enabled;
+    return spiState[spi].SPI_Enabled;
 }
 
 /**

@@ -1,8 +1,20 @@
 
+## v0.4.6
+
+### FEATURES
+
+### ENHANCEMENTS
+ - `Wire.end()` to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
+ - `Wire.reset()` to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
+
+### BUGFIXES
+ - Default SS pin for SPI1 now set to D5. [#623](https://github.com/spark/firmware/issues/623)
+
+
 ## v0.4.5
 
 ### FEATURES
- - `SPI.setClockDividerReference`, `SPI.setClockSpeed` to set clock speed in a more portable manner. [#454]https://github.com/spark/firmware/issues/454
+- `SPI.setClockDividerReference`, `SPI.setClockSpeed` to set clock speed in a more portable manner. [#454](https://github.com/spark/firmware/issues/454)
 - `WiFi.scan` function to retrieve details of local access points. [#567](https://github.com/spark/firmware/pull/567)
 - `UDP.sendPacket`/`UDP.receivePacket` to send/receive a packet directly to an application-supplied buffer. [#452](https://github.com/spark/firmware/pull/452)
 - Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)

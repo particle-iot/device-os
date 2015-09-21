@@ -26,10 +26,11 @@
 #include "system_setup.h"
 #include "delay_hal.h"
 #include "wlan_hal.h"
+#include "cellular_hal.h"
 #include "system_cloud_internal.h"
 #include "system_update.h"
 #include "spark_wiring.h"   // for serialReadLine
-#include "spark_wiring_wifi.h"
+#include "system_network_internal.h"
 #include "system_network.h"
 
 #if Wiring_WiFi && PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
@@ -236,7 +237,7 @@ void WiFiSetupConsole::handle(char c)
             password[0] = '1'; // non-empty password so security isn't set to None
 
         // dry run
-        if (this->config.connect_callback(ssid, password, security_type, cipher, true)==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED)
+        if (this->config.connect_callback(this->config.connect_callback_data, ssid, password, security_type, cipher, true)==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED)
         {
             do
             {
@@ -263,7 +264,7 @@ void WiFiSetupConsole::handle(char c)
 #endif
             "while I save those credentials...\r\n\r\n");
 
-        if (this->config.connect_callback(ssid, password, security_type, cipher, false)==0)
+        if (this->config.connect_callback(this->config.connect_callback_data, ssid, password, security_type, cipher, false)==0)
         {
             print("Awesome. Now we'll connect!\r\n\r\n");
             print("If you see a pulsing cyan light, your "
@@ -291,7 +292,7 @@ void WiFiSetupConsole::handle(char c)
 
 void WiFiSetupConsole::exit()
 {
-    network_listen(0, NETWORK_LISTEN_EXIT, NULL);
+    network.listen(true);
 }
 
 #endif
@@ -306,7 +307,28 @@ CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
 
 void CellularSetupConsole::exit()
 {
-    network_listen(0, 1, NULL);
+    network.listen(true);
+}
+
+void CellularSetupConsole::handle(char c)
+{
+    if (c=='i')
+    {
+        CellularDevice dev;
+        cellular_device_info(&dev, NULL);
+        String id = spark_deviceID();
+        print("Device ID: ");
+        print(id.c_str());
+        print("\r\n");
+        print("IMEI: ");
+        print(dev.imei);
+        print("\r\n");
+        print("ICCID: ");
+        print(dev.iccid);
+        print("\r\n");
+    }
+    else
+        super::handle(c);
 }
 
 

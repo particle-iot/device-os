@@ -16,20 +16,3 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
-
-#include "inet_hal.h"
-
-
-int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr, 
-        network_interface_t nif, void* reserved)
-{
-    // Replace with AT_COMMAND_HAL implementation
-    return 1;
-}
-
-int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries,
-        void* reserved)
-{
-    // Replace with AT_COMMAND_HAL implementation
-    return 0;
-}

@@ -27,21 +27,6 @@
 #include "spark_wiring_i2c.h"
 #include "i2c_hal.h"
 
-#ifndef SPARK_WIRING_NO_I2C
-
-TwoWire Wire(HAL_I2C_INTERFACE1);
-
-#if Wiring_Wire1
-TwoWire Wire1(HAL_I2C_INTERFACE2);
-#endif
-
-/* System PMIC and Fuel Guage I2C3 */
-#if Wiring_Wire3
-TwoWire Wire3(HAL_I2C_INTERFACE3);
-#endif
-
-#endif //SPARK_WIRING_NO_I2C
-
 // Constructors ////////////////////////////////////////////////////////////////
 
 TwoWire::TwoWire(HAL_I2C_Interface i2c)
@@ -82,6 +67,11 @@ void TwoWire::begin(uint8_t address)
 void TwoWire::begin(int address)
 {
   begin((uint8_t)address);
+}
+
+void TwoWire::end()
+{
+    HAL_I2C_End(_i2c, NULL);
 }
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
@@ -208,3 +198,43 @@ bool TwoWire::isEnabled()
   return HAL_I2C_Is_Enabled(_i2c, NULL);
 }
 
+#include "gpio_hal.h"
+#include "spark_wiring_constants.h"
+#include "spark_wiring_ticks.h"
+void TwoWire::reset()
+{
+    pin_t _SCA;
+    pin_t _SCL;
+
+    if (_i2c==HAL_I2C_INTERFACE1)
+    {
+        _SCA = D0;
+        _SCL = D1;
+    }
+    else
+    {
+        return; // todo fill in other pins. The pins should ideally come from the HAL.
+    }
+
+    this->end();
+
+    HAL_Pin_Mode(_SCA, INPUT_PULLUP); //Turn SCA into high impedance input
+    HAL_Pin_Mode(_SCL, OUTPUT); //Turn SCL into a normal GPO
+    HAL_GPIO_Write(_SCL, HIGH); // Start idle HIGH
+
+    //Generate 9 pulses on SCL to tell slave to release the bus
+    for(int i=0; i <9; i++)
+    {
+        HAL_GPIO_Write(_SCL, LOW);
+        delayMicroseconds(100);
+        HAL_GPIO_Write(_SCL, HIGH);
+        delayMicroseconds(100);
+    }
+
+    //Change SCL to be an input
+    HAL_Pin_Mode(_SCL, INPUT_PULLUP);
+
+    //Start i2c over again
+    begin();
+    delay(50);
+}

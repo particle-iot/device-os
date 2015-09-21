@@ -75,6 +75,13 @@ const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t modul
     return NULL;
 }
 
+
+void set_key_value(key_value* kv, const char* key, const char* value)
+{
+    kv->key = key;
+    strncpy(kv->value, value, sizeof(kv->value)-1);
+}
+
 void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
@@ -88,6 +95,13 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                 fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
             }
         }
+
+        info->key_value_count = 2;
+        info->key_values = new key_value[info->key_value_count];
+
+        set_key_value(info->key_values, "imei", "111111111111119");
+        set_key_value(info->key_values+1, "iccid", "11111111111111111111");
+
     }
     else
     {
