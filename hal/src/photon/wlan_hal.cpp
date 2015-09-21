@@ -389,7 +389,7 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
         initialize_dct(wifi_config);
 
         // shuffle all slots along
-        memcpy(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
+        memmove(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
 
         const int empty = 0;
         wiced_config_ap_entry_t& entry = wifi_config->stored_ap_list[empty];
