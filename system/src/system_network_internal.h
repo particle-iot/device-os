@@ -302,7 +302,6 @@ public:
                 SPARK_LED_FADE = 0;
                 WLAN_CONNECTING = 1;
                 LED_SetRGBColor(RGB_COLOR_GREEN);
-                LED_On(LED_RGB);
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
                 connect_finalize();
             }
@@ -427,10 +426,10 @@ public:
         if (!WLAN_SMART_CONFIG_START)
         {
             LED_SetRGBColor(RGB_COLOR_GREEN);
-            LED_On(LED_RGB);
         }
         if (dhcp)
         {
+            LED_On(LED_RGB);
             CLR_WLAN_WD();
             WLAN_DHCP = 1;
             SPARK_LED_FADE = 1;
