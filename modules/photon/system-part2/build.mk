@@ -39,6 +39,8 @@ ifeq ("$(USE_PRINTF_FLOAT)","y")
 LDFLAGS += -u _printf_float
 endif
 
+LDFLAGS += -u uxTopUsedPriority
+
 SYSTEM_PART2_SRC_PATH = $(SYSTEM_PART2_MODULE_PATH)/src
 
 CPPSRC += $(call target_files,$(SYSTEM_PART2_SRC_PATH),*.cpp)
