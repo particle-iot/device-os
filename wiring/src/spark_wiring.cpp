@@ -1,3 +1,4 @@
+#include "spark_wiring.h"
 #include "spark_wiring_ticks.h"
 #include "adc_hal.h"
 #include "system_task.h"

@@ -98,3 +98,8 @@ test(api_wire)
     API_COMPILE(Wire.reset());
     API_COMPILE(Wire.end());
 }
+
+test(api_map)
+{
+    map(0x01,0x00,0xFF,0,255);
+}
