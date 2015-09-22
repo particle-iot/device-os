@@ -85,7 +85,7 @@ void unit_test_setup()
     // store circular buffer at end of external flash.
     cblog = Flashee::Devices::createCircularBuffer((store.pageCount()-pages)*pageSize, store.length());
     // direct output to Serial and to the circular buffer
-    tee = new PrintTee(*Test::out, *new CircularBufferPrint(*cblog, Spark_Idle));
+    tee = new PrintTee(*Test::out, *new CircularBufferPrint(*cblog, spark_process));
     Test::out = tee;
 #else
     Test::out = &Serial;
