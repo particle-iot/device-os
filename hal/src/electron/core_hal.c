@@ -25,6 +25,8 @@
 #include "stm32f2xx.h"
 #include <string.h>
 #include "hw_config.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -217,7 +219,7 @@ extern volatile uint32_t TimingDelay;
 /* Private function prototypes ----------------------------------------------*/
 
 void HAL_Core_Config_systick_configuration(void) {
-    SysTick_Configuration();
+    // FreeRTOS configures systick
 }
 
 /**
@@ -289,17 +291,30 @@ void HAL_Core_Setup_override_interrupts(void)
     SCB->VTOR = (unsigned long)isrs;
 }
 
+static TaskHandle_t  app_thread_handle;
+#define APPLICATION_STACK_SIZE 6144
+
 /**
  * Called from startup_stm32f2xx.s at boot, main entry point.
  */
 int main(void)
 {
+
+    xTaskCreate( application_start, "app_thread", APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ), NULL, 2, &app_thread_handle);
+
+
     application_start();
 
     /* we should never get here */
     while (1);
 
     return 0;
+}
+
+// hook the systick from
+void vApplicationTickHook()
+{
+    SysTickOverride();
 }
 
 /**
