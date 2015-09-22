@@ -210,10 +210,8 @@ void HAL_Core_Config(void)
 #endif
 
     HAL_Core_Config_systick_configuration();
-#if PLATFORM_ID!=PLATFORM_ELECTRON_PRODUCTION
-    // ELECTRON TODO: re-instate this when working
+
     HAL_RTC_Configuration();
-#endif
 
     HAL_RNG_Configuration();
 

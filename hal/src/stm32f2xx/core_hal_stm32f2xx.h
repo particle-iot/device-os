@@ -84,6 +84,7 @@ void EXTI3_IRQHandler(void);
 void EXTI4_IRQHandler(void);
 void EXTI9_5_IRQHandler(void);
 void EXTI15_10_IRQHandler(void);
+void RTC_Alarm_irq(void);
 
 
 // etc... all ISRs ending _irq()). These are named after the values they had in WICED
