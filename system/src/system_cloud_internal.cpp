@@ -143,6 +143,8 @@ bool spark_function_internal(const cloud_function_descriptor* desc, void* reserv
     return item!=NULL;
 }
 
+uint32_t lastCloudEvent = 0;
+
 /**
  * This is the internal function called by the background loop to pump cloud events.
  */
@@ -152,6 +154,10 @@ void Spark_Process_Events()
     {
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
+    }
+    else
+    {
+        lastCloudEvent = millis();
     }
 }
 
@@ -707,4 +713,21 @@ void Multicast_Presence_Announcement(void)
 
     socket_close(multicast_socket);
 #endif
+}
+
+const int SYSTEM_CLOUD_TIMEOUT = 15*1000;
+
+bool system_cloud_active()
+{
+#ifndef SPARK_NO_CLOUD
+    if (!SPARK_CLOUD_SOCKETED)
+        return false;
+
+    if (SPARK_CLOUD_CONNECTED && ((millis()-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
+    {
+        cloud_disconnect(false);
+        return false;
+    }
+#endif
+    return true;
 }
