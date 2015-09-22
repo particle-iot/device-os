@@ -2,10 +2,13 @@
 #include "product_store_hal.h"
 #include "dct_hal.h"
 
+
+inline uint16_t dct_offset(ProductStoreIndex idx) __attribute__((always_inline));
 inline uint16_t dct_offset(ProductStoreIndex idx) {
     return DCT_PRODUCT_STORE_OFFSET+(sizeof(uint16_t)*idx);
 }
 
+inline uint16_t* dct_product_store_offset(ProductStoreIndex idx) __attribute__((always_inline));
 inline uint16_t* dct_product_store_offset(ProductStoreIndex idx)
 {
     return (uint16_t*)dct_read_app_data(dct_offset(idx));
