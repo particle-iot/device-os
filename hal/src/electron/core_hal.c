@@ -25,6 +25,7 @@
 #include "stm32f2xx.h"
 #include <string.h>
 #include "hw_config.h"
+#include "stm32_it.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -219,7 +220,7 @@ extern volatile uint32_t TimingDelay;
 /* Private function prototypes ----------------------------------------------*/
 
 void HAL_Core_Config_systick_configuration(void) {
-    // FreeRTOS configures systick
+    SysTick_Configuration();
 }
 
 /**
@@ -299,11 +300,13 @@ static TaskHandle_t  app_thread_handle;
  */
 int main(void)
 {
-
     xTaskCreate( application_start, "app_thread", APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ), NULL, 2, &app_thread_handle);
 
+    vTaskStartScheduler();
 
-    application_start();
+
+    uint32_t* isrs                          = (uint32_t*)&link_ram_interrupt_vectors_location;
+    isrs[SysTick_Handler_Idx]               = (uint32_t)SysTick_Handler;
 
     /* we should never get here */
     while (1);
@@ -311,7 +314,7 @@ int main(void)
     return 0;
 }
 
-// hook the systick from
+
 void vApplicationTickHook()
 {
     SysTickOverride();
@@ -349,15 +352,7 @@ void NMI_Handler(void)
 {
 }
 
-void SVC_Handler(void)
-{
-}
-
 void DebugMon_Handler(void)
-{
-}
-
-void PendSV_Handler(void)
 {
 }
 

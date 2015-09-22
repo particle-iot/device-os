@@ -146,5 +146,11 @@ configKERNEL_INTERRUPT_PRIORITY setting.  Here 15 corresponds to the lowest
 NVIC value of 255. */
 #define configLIBRARY_KERNEL_INTERRUPT_PRIORITY	15
 
+
+#define xPortPendSVHandler PendSV_Handler
+#define vPortSVCHandler SVC_Handler
+#define xPortSysTickHandler SysTick_Handler
+
+
 #endif /* FREERTOS_CONFIG_H */
 
