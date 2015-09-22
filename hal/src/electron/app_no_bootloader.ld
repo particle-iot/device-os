@@ -12,12 +12,12 @@
  * list of conditions and the following disclaimer in the documentation and/or
  * other materials provided with the distribution.
  *
- * 3. Neither the name of Broadcom nor the names of other contributors to this 
- * software may be used to endorse or promote products derived from this software 
+ * 3. Neither the name of Broadcom nor the names of other contributors to this
+ * software may be used to endorse or promote products derived from this software
  * without specific prior written permission.
  *
- * 4. This software may not be used as a standalone product, and may only be used as 
- * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * 4. This software may not be used as a standalone product, and may only be used as
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity
  * products and solely for the purpose of enabling the functionalities of such Broadcom products.
  *
  *
@@ -42,7 +42,7 @@ ENTRY( _start );
 /* Include memory map */
 INCLUDE memory_no_bootloader.ld
 
-/* default stack sizes. 
+/* default stack sizes.
  + These are used by the startup in order to allocate stacks for the different modes.
  */
 
@@ -76,7 +76,7 @@ SECTIONS
     {
         link_module_start = .;
         link_interrupt_vectors_location = .;
-        KEEP(*(.isr_vector))            /* interrupt vector table */
+        KEEP(*(.interrupt_vector_table))            /* interrupt vector table */
         link_interrupt_vectors_location_end = .;
     }>APP_FLASH  AT> APP_FLASH
 
@@ -98,6 +98,22 @@ SECTIONS
         *(.rodata .rodata.* .gnu.linkonce.r.*)
         *(.glue_7)
         *(.glue_7t)
+
+        link_constructors_location = .;
+        chk_system_pre_init_start = .;
+        KEEP (*(.module_pre_init))
+        chk_system_pre_init_end = .;
+        KEEP(*(.preinit_array))
+        KEEP(*(.init_array))
+        KEEP (*crtbegin.o(.ctors))
+        KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
+        KEEP (*(SORT(.ctors.*)))
+        KEEP (*crtend.o(.ctors))
+        chk_system_init_start = .;
+        KEEP (*(.module_init))
+        chk_system_init_end = .;
+        link_constructors_end = .;
+
         . = ALIGN(4);
         _etext = .;
     }>APP_FLASH  AT> APP_FLASH
@@ -137,26 +153,6 @@ SECTIONS
         link_run_from_ram_code_ram_end = .;
     }> SRAM AT> APP_FLASH
 
-    .preinit_array : {
-        PROVIDE_HIDDEN (__preinit_array_start = .);
-        KEEP (*(.preinit_array*))
-        PROVIDE_HIDDEN (__preinit_array_end = .);
-    } >APP_FLASH
-
-    .init_array : {
-        PROVIDE_HIDDEN (__init_array_start = .);
-        KEEP (*(SORT(.init_array.*)))
-        KEEP (*(.init_array*))
-        PROVIDE_HIDDEN (__init_array_end = .);
-    } >APP_FLASH
-
-    .fini_array : {
-        PROVIDE_HIDDEN (__fini_array_start = .);
-        KEEP (*(.fini_array*))
-        KEEP (*(SORT(.fini_array.*)))
-        PROVIDE_HIDDEN (__fini_array_end = .);
-    } >APP_FLASH
-
     .data : /* Contains the non-zero initialised global variables */
     {
         _sidata = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
@@ -180,6 +176,8 @@ SECTIONS
         _ebss = . ;
     }> SRAM AT> SRAM
 
+    link_heap_location = end;
+    link_heap_location_end = __Stack_Init;
     PROVIDE ( end = _ebss );
     PROVIDE ( _end = _ebss );
 
@@ -190,6 +188,7 @@ SECTIONS
         . = ALIGN(MAX(link_stack_location + __STACKSIZE__ , .), 4);
         link_stack_end = .;
     }> SRAM AT> SRAM
+
 
     /DISCARD/ :
     {
@@ -220,7 +219,7 @@ SECTIONS
         link_module_info_suffix_end = .;
     }>APP_FLASH AT> APP_FLASH
 
-    .module_end : 
+    .module_end :
     {
         link_module_end = .;
     }> APP_FLASH AT>APP_FLASH
@@ -264,7 +263,7 @@ ASSERT ( link_module_info_start < link_module_info_end, "module info not linked"
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
-ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" ); 
+ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" );
 ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );
 
 /*ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );*/

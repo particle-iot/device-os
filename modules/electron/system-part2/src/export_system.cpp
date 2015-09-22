@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    system-wifi.h
- * @authors Matthew McGowan
- * @date    09 February 2015
+ * @file    export_system.cpp
+ * @authors mat
+ * @date    31 March 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
@@ -21,32 +21,8 @@
  ******************************************************************************
  */
 
-#ifndef SYSTEM_PART1_H
-#define	SYSTEM_PART1_H
+#define DYNALIB_EXPORT
 
-#include "dynalib.h"
-
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
-/**
- * Indices into the module-level export table.
- */
-#define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_COMMUNICATION 0
-#define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_PART1RESOURCE 1
-#define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_MODULE 2
-#define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_SERVICES 3
-
-/**
- * The static module-level export table of library jump table addresses.
- */
-extern const void* const system_part1_module[];
-
-
-#ifdef	__cplusplus
-}
-#endif
-
-#endif	/* SYSTEM_WIFI_H */
-
+#include "system_dynalib.h"
+#include "system_dynalib_net.h"
+#include "system_dynalib_cloud.h"

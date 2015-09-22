@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
- * @file    ota_flash_hal.c
- * @author  Matthew McGowan
+ * @file    ota_flash_hal.cpp
+ * @author  Matthew McGowan, Satish Nair
  * @version V1.0.0
  * @date    25-Sept-2014
  * @brief
@@ -23,171 +23,53 @@
  ******************************************************************************
  */
 
-#include "core_hal.h"
-#include "ota_flash_hal.h"
-#include "rng_hal.h"
-#include "hw_config.h"
-//#include "flash_mal.h"
-#include "dct_hal.h"
-#include "dsakeygen.h"
-//#include "softap.h"
-#include "cellular_hal.h"
-#include <string.h>
-#include "ledcontrol.h"
-#include "parse_server_address.h"
-#include "spark_protocol_functions.h"
+#include <cstring>
+#include "ota_module.h"
 #include "spark_macros.h"
-//#include "bootloader.h"
-//#include "ota_module.h"
+#include "ota_flash_hal_stm32f2xx.h"
+#include "cellular_hal.h"
 
-//------------------------------------------------
-// From softap.cpp
-//------------------------------------------------
-const uint8_t* fetch_server_public_key()
+// Electron!
+
+#if MODULAR_FIRMWARE
+const module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN };
+const module_bounds_t module_system_part1 = { 0x20000, 0x8020000, 0x8040000, MODULE_FUNCTION_SYSTEM_PART, 1, MODULE_STORE_MAIN };
+const module_bounds_t module_system_part2 = { 0x20000, 0x8040000, 0x8060000, MODULE_FUNCTION_SYSTEM_PART, 2, MODULE_STORE_MAIN };
+const module_bounds_t module_user = { 0x20000, 0x8080000, 0x80A0000, MODULE_FUNCTION_USER_PART, 1, MODULE_STORE_MAIN};
+const module_bounds_t module_factory = { 0x20000, 0x80E0000, 0x8100000, MODULE_FUNCTION_USER_PART, 1, MODULE_STORE_FACTORY};
+const module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_user, &module_factory };
+
+const module_bounds_t module_ota = { 0x20000, 0x80C0000, 0x80E0000, MODULE_FUNCTION_NONE, 0, MODULE_STORE_SCRATCHPAD};
+#else
+const module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN};
+const module_bounds_t module_user = { 0x60000, 0x8020000, 0x8080000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_MAIN};
+const module_bounds_t module_factory = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_FACTORY};
+const module_bounds_t* module_bounds[] = { &module_bootloader, &module_user, &module_factory };
+
+const module_bounds_t module_ota = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_NONE, 0, MODULE_STORE_SCRATCHPAD};
+#endif
+
+const unsigned module_bounds_length = arraySize(module_bounds);
+
+
+void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
-    return (const uint8_t*)dct_read_app_data(DCT_SERVER_PUBLIC_KEY_OFFSET);
-}
+    if (create) {
+        info->key_value_count = 2;
+        info->key_values = new key_value[info->key_value_count];
 
-const uint8_t* fetch_device_private_key()
-{
-    return (const uint8_t*)dct_read_app_data(DCT_DEVICE_PRIVATE_KEY_OFFSET);
-}
+        CellularDevice device;
+        memset(&device, 0, sizeof(device));
+        device.size = sizeof(device);
+        cellular_device_info(&device, NULL);
 
-const uint8_t* fetch_device_public_key()
-{
-    uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
-    memset(pubkey, 0, sizeof(pubkey));
-    parse_device_pubkey_from_privkey(pubkey, fetch_device_private_key());
-
-    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
-    if (memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
-        dct_write_app_data(pubkey, DCT_DEVICE_PUBLIC_KEY_OFFSET, DCT_DEVICE_PUBLIC_KEY_SIZE);
-        flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
+        set_key_value(info->key_values, "imei", device.imei);
+        set_key_value(info->key_values+1, "iccid", device.iccid);
     }
-    return flash_pub_key;
-}
-//------------------------------------------------
-
-void set_key_value(key_value* kv, const char* key, const char* value)
-{
-    kv->key = key;
-    strncpy(kv->value, value, sizeof(kv->value)-1);
-}
-
-void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
-{
-    info->platform_id = PLATFORM_ID;
-    info->module_count = 0;
-    info->modules = NULL;
-    // TODO: add module info
-
-    info->key_value_count = 2;
-    info->key_values = new key_value[info->key_value_count];
-
-    CellularDevice device;
-    memset(&device, 0, sizeof(device));
-    device.size = sizeof(device);
-    cellular_device_info(&device, NULL);
-
-    set_key_value(info->key_values, "imei", device.imei);
-    set_key_value(info->key_values+1, "iccid", device.iccid);
-}
-
-
-uint32_t HAL_OTA_FlashAddress()
-{
-    return 0;
-}
-
-uint32_t HAL_OTA_FlashLength()
-{
-    return 0;
-}
-
-uint16_t HAL_OTA_ChunkSize()
-{
-    return 0;
-}
-
-bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved)
-{
-    return false;
-}
-
-int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved)
-{
-    return 0;
-}
-
-hal_update_complete_t HAL_FLASH_End(void* reserved)
-{
-    return HAL_UPDATE_ERROR;
-}
-
-void copy_dct(void* target, uint16_t offset, uint16_t length) {
-    const void* data = dct_read_app_data(offset);
-    memcpy(target, data, length);
-}
-
-void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
-{
-    const void* data = dct_read_app_data(DCT_SERVER_ADDRESS_OFFSET);
-    parseServerAddressData(server_addr, (const uint8_t*)data, DCT_SERVER_ADDRESS_SIZE);
-}
-
-
-bool HAL_OTA_Flashed_GetStatus(void)
-{
-    return false;
-}
-
-void HAL_OTA_Flashed_ResetStatus(void)
-{
-}
-
-void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
-{
-    fetch_device_public_key();
-    copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
-}
-
-int rsa_random(void* p)
-{
-    return (int)HAL_RNG_GetRandomNumber();
-}
-
-/**
- * Reads and generates the device's private key.
- * @param keyBuffer
- * @return
- */
-int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* genspec)
-{
-    bool generated = false;
-    copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
-    genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
-    if (genspec->gen==PRIVATE_KEY_GENERATE_ALWAYS || (!genspec->had_key && genspec->gen!=PRIVATE_KEY_GENERATE_NEVER)) {
-        // todo - this couples the HAL with the system. Use events instead.
-        SPARK_LED_FADE = false;
-        if (!gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, rsa_random, NULL)) {
-            dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
-            // refetch and rewrite public key to ensure it is valid
-            fetch_device_public_key();
-            generated = true;
-        }
+    else
+    {
+        delete info->key_values;
+        info->key_values = NULL;
     }
-    genspec->generated_key = generated;
-    return 0;
 }
 
-uint16_t HAL_Set_Claim_Code(const char* code)
-{
-    return -1;
-}
-
-uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
-{
-    if (len)
-        buffer[0] = 0;
-    return 0;
-}

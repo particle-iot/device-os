@@ -1,0 +1,2 @@
+
+INCLUDE_DIRS += $(SHARED_MODULAR)/inc

@@ -27,17 +27,13 @@
 /* Define abort() */
 #include <stdlib.h>
 #include "debug.h"
-extern "C" { 
-  void _exit(int status); 
+extern "C" {
+  void _exit(int status);
 } /* extern "C" */
 #define abort() _exit(-1)
 
-extern unsigned long __preinit_array_start;
-extern unsigned long __preinit_array_end;
-extern unsigned long __init_array_start;
-extern unsigned long __init_array_end;
-extern unsigned long __fini_array_start;
-extern unsigned long __fini_array_end;
+extern unsigned long link_constructors_location;
+extern unsigned long link_constructors_end;
 
 static void call_constructors(unsigned long *start, unsigned long *end) __attribute__((noinline));
 
@@ -55,9 +51,7 @@ static void call_constructors(unsigned long *start, unsigned long *end)
 extern "C" {
 void CallConstructors(void)
 {
-	call_constructors(&__preinit_array_start, &__preinit_array_end);
-	call_constructors(&__init_array_start, &__init_array_end);
-	call_constructors(&__fini_array_start, &__fini_array_end);
+	call_constructors(&link_constructors_location, &link_constructors_end);
 }
 
 void *__dso_handle = NULL;
@@ -106,15 +100,19 @@ void operator delete[](void *p)
  *            __Stack_Init marks the bottom of the stack, as reserved
  *            in the linker script (../linker/linker_stm32f10x_md*.ld)
  */
+
+extern char link_heap_location, link_heap_location_end;
+char* sbrk_heap_top = &link_heap_location;
+
 caddr_t _sbrk(int incr)
 {
-	extern char _end, __Stack_Init;
-	static char *heap_end = &_end;
-	char *prev_heap_end = heap_end;
 
-	heap_end += incr;
+	char *prev_heap_end = sbrk_heap_top;
 
-	if (heap_end > &__Stack_Init) {
+	sbrk_heap_top += incr;
+
+        // TODO - this shouldn't SOS when out of heap
+	if (sbrk_heap_top > &link_heap_location_end) {
 		PANIC(OutOfHeap,"Out Of Heap");
 		abort();
 	}
@@ -134,7 +132,7 @@ int _getpid(void)
 	return 1;
 }
 
-void _exit(int status) {  
+void _exit(int status) {
 	PANIC(Exit,"Exit Called");
 	while (1);
 }

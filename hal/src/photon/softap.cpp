@@ -13,6 +13,7 @@
 #include "spark_macros.h"
 #include "core_hal.h"
 #include "rng_hal.h"
+#include "ota_flash_hal_stm32f2xx.h"
 
 #if defined(SYSTEM_MINIMAL)
 #define SOFTAP_HTTP 0
@@ -433,30 +434,6 @@ size_t hex_decode(uint8_t* buf, size_t len, const char* hex) {
         *buf++ = b;
     }
     return i;
-}
-
-const uint8_t* fetch_server_public_key()
-{
-    return (const uint8_t*)dct_read_app_data(DCT_SERVER_PUBLIC_KEY_OFFSET);
-}
-
-const uint8_t* fetch_device_private_key()
-{
-    return (const uint8_t*)dct_read_app_data(DCT_DEVICE_PRIVATE_KEY_OFFSET);
-}
-
-const uint8_t* fetch_device_public_key()
-{
-    uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
-    memset(pubkey, 0, sizeof(pubkey));
-    parse_device_pubkey_from_privkey(pubkey, fetch_device_private_key());
-
-    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
-    if (memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
-        dct_write_app_data(pubkey, DCT_DEVICE_PUBLIC_KEY_OFFSET, DCT_DEVICE_PUBLIC_KEY_SIZE);
-        flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
-    }
-    return flash_pub_key;
 }
 
 /**
