@@ -2,7 +2,7 @@
 /**
  * The load address of the part2 module image
  */
-system_part2_start = 0x8060000;
+system_part2_start = 0x8040000;
 
 /**
  * A fake VTOR table so that the bootloader can jump to this module and set up the stack,
@@ -59,7 +59,7 @@ PROVIDE ( dynalib_location_hal_gpio = system_part2_module_table + 20 );
 PROVIDE ( dynalib_location_hal_spi = system_part2_module_table + 24 );
 PROVIDE ( dynalib_location_hal_core = system_part2_module_table + 28 );
 PROVIDE ( dynalib_location_hal_socket = system_part2_module_table + 32 );
-PROVIDE ( dynalib_location_hal_wlan = system_part2_module_table + 36 );
+PROVIDE ( dynalib_location_hal_cellular = system_part2_module_table + 36 );
 PROVIDE ( dynalib_location_hal_usart = system_part2_module_table + 40 );
 PROVIDE ( dynalib_location_system_net = system_part2_module_table + 44 );
 PROVIDE ( dynalib_location_system_cloud = system_part2_module_table + 48 );

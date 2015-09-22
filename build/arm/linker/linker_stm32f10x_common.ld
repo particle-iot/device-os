@@ -199,3 +199,4 @@ SECTIONS
 }
 
 INCLUDE module_asserts.ld
+ASSERT ( link_module_info_start - ORIGIN(APP_FLASH) == 268,  "module info not where expected" )

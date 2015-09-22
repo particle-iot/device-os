@@ -1,4 +1,9 @@
 /**
+ ******************************************************************************
+ * @file    module_system_part2.h
+ * @authors Matthew McGowan
+ * @date    10 February 2015
+ ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
@@ -16,21 +21,11 @@
  ******************************************************************************
  */
 
-#ifndef HAL_DYNALIB_CONCURRENT_H
-#define	HAL_DYNALIB_CONCURRENT_H
+#ifndef MODULE_SYSTEM_PART2_H
+#define	MODULE_SYSTEM_PART2_H
 
-#include "dynalib.h"
+DYNALIB_EXTERN_C const void* const system_part1_module[];
 
-#ifdef DYNALIB_EXPORT
-#include "concurrent_hal.h"
+
 #endif
 
-DYNALIB_BEGIN(hal_concurrent)
-#if PLATFORM_THREADING
-DYNALIB_FN(hal_concurrent,os_thread_scheduling)
-#endif
-DYNALIB_END(hal_concurrent)
-
-
-
-#endif	/* HAL_DYNALIB_CONCURRENT_H */

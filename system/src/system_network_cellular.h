@@ -61,7 +61,7 @@ protected:
     }
 
     void fetch_ipconfig(WLanConfig* target) override {
-        cellular_fetch_ipconfig(target);
+        cellular_fetch_ipconfig(target, NULL);
     }
 
     void on_now() override { cellular_on(NULL); }

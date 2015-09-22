@@ -1,4 +1,9 @@
 /**
+ ******************************************************************************
+ * @file    system-wifi.h
+ * @authors Matthew McGowan
+ * @date    09 February 2015
+ ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
@@ -16,21 +21,24 @@
  ******************************************************************************
  */
 
-#ifndef HAL_DYNALIB_CONCURRENT_H
-#define	HAL_DYNALIB_CONCURRENT_H
+#ifndef SYSTEM_PART1_H
+#define	SYSTEM_PART1_H
 
 #include "dynalib.h"
 
-#ifdef DYNALIB_EXPORT
-#include "concurrent_hal.h"
+#ifdef	__cplusplus
+extern "C" {
 #endif
 
-DYNALIB_BEGIN(hal_concurrent)
-#if PLATFORM_THREADING
-DYNALIB_FN(hal_concurrent,os_thread_scheduling)
+/**
+ * The static module-level export table of library jump table addresses.
+ */
+extern const void* const system_part1_module[];
+
+
+#ifdef	__cplusplus
+}
 #endif
-DYNALIB_END(hal_concurrent)
 
+#endif	/* SYSTEM_WIFI_H */
 
-
-#endif	/* HAL_DYNALIB_CONCURRENT_H */

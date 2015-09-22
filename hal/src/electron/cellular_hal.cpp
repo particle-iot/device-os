@@ -72,7 +72,7 @@ cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
     return 0;
 }
 
-cellular_result_t cellular_fetch_ipconfig(WLanConfig* config)
+cellular_result_t cellular_fetch_ipconfig(WLanConfig* config, void* reserved)
 {
     memset(&config, 0, sizeof(config));
     return 0;
@@ -86,6 +86,7 @@ cellular_result_t cellular_credentials_set(const char* apn, const char* username
     return 0;
 }
 
+// todo - better to have the caller pass CellularCredentials and copy the details out according to the size of the struct given.
 CellularCredentials* cellular_credentials_get(void* reserved)
 {
     return &cellularCredentials;

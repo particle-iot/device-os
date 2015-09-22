@@ -24,6 +24,10 @@
 #include <string.h>
 #include "wlan_hal.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef int cellular_result_t;
 
 /**
@@ -37,6 +41,9 @@ cellular_result_t  cellular_on(void* reserved);
  */
 cellular_result_t  cellular_off(void* reserved);
 
+#ifdef __cplusplus
+// Todo - is storing raw string pointers correct here? These will only be valid
+// If they are stored as constants in the application.
 struct CellularCredentials
 {
     uint16_t size;
@@ -49,6 +56,9 @@ struct CellularCredentials
         size = sizeof(*this);
     }
 };
+#else
+typedef struct CellularCredentials CellularCredentials;
+#endif
 
 /**
  * Wait for the cellular module to register on the GSM network.
@@ -78,8 +88,9 @@ cellular_result_t  cellular_gprs_detach(void* reserved);
 /**
  * Fetch the ip configuration.
  */
-cellular_result_t  cellular_fetch_ipconfig(WLanConfig* config);
+cellular_result_t  cellular_fetch_ipconfig(WLanConfig* config, void* reserved);
 
+#ifdef __cplusplus
 struct CellularDevice
 {
     uint16_t size;
@@ -92,11 +103,14 @@ struct CellularDevice
         size = sizeof(*this);
     }
 };
+#else
+typedef struct CellularDevice CellularDevice;
+#endif
 
 /**
  * Retrieve cellular module info, must be initialized first.
  */
-int cellular_device_info(CellularDevice* device, void* reserved);
+cellular_result_t cellular_device_info(CellularDevice* device, void* reserved);
 
 /**
  * Set cellular connection parameters
@@ -107,6 +121,12 @@ cellular_result_t cellular_credentials_set(const char* apn, const char* username
  * Get cellular connection parameters
  */
 CellularCredentials* cellular_credentials_get(void* reserved);
+
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif	/* CELLULAR_HAL_H */
 

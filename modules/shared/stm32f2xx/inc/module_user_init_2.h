@@ -1,4 +1,9 @@
 /**
+ ******************************************************************************
+ * @file    user_module.h
+ * @authors Matthew McGowan
+ * @date    13 February 2015
+ ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
@@ -16,21 +21,34 @@
  ******************************************************************************
  */
 
-#ifndef HAL_DYNALIB_CONCURRENT_H
-#define	HAL_DYNALIB_CONCURRENT_H
+#ifndef USER_MODULE_H
+#define	USER_MODULE_H
 
-#include "dynalib.h"
-
-#ifdef DYNALIB_EXPORT
-#include "concurrent_hal.h"
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-DYNALIB_BEGIN(hal_concurrent)
-#if PLATFORM_THREADING
-DYNALIB_FN(hal_concurrent,os_thread_scheduling)
+
+/**
+ * Initializes the static memory for this module.
+ *
+ * @return The end of static memory for this module.
+ */
+void* module_user_pre_init();
+
+/**
+ * Initializes the global object instances in this module.
+ */
+void module_user_init();
+
+void module_user_loop();
+
+void module_user_setup();
+
+#ifdef __cplusplus
+}
 #endif
-DYNALIB_END(hal_concurrent)
 
 
+#endif	/* USER_MODULE_H */
 
-#endif	/* HAL_DYNALIB_CONCURRENT_H */

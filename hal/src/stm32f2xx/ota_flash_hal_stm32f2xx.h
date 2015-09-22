@@ -1,5 +1,6 @@
 /**
-  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+ ******************************************************************************
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -16,21 +17,22 @@
  ******************************************************************************
  */
 
-#ifndef HAL_DYNALIB_CONCURRENT_H
-#define	HAL_DYNALIB_CONCURRENT_H
+#ifndef OTA_FLASH_HAL_STM32F2XX_H
+#define	OTA_FLASH_HAL_STM32F2XX_H
 
-#include "dynalib.h"
-
-#ifdef DYNALIB_EXPORT
-#include "concurrent_hal.h"
-#endif
-
-DYNALIB_BEGIN(hal_concurrent)
-#if PLATFORM_THREADING
-DYNALIB_FN(hal_concurrent,os_thread_scheduling)
-#endif
-DYNALIB_END(hal_concurrent)
+extern const module_bounds_t* module_bounds[];
+extern const unsigned module_bounds_length;
+extern const module_bounds_t module_ota;
+extern const module_bounds_t module_user;
 
 
+void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved);
 
-#endif	/* HAL_DYNALIB_CONCURRENT_H */
+const uint8_t* fetch_server_public_key();
+const uint8_t* fetch_device_private_key();
+const uint8_t* fetch_device_public_key();
+
+void set_key_value(key_value* kv, const char* key, const char* value);
+
+#endif	/* OTA_FLASH_HAL_STM32F2XX_H */
+
