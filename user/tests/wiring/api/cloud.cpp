@@ -36,6 +36,8 @@ test(api_spark_variable) {
     API_COMPILE(Particle.variable("mydouble", &valueDouble, DOUBLE));
 
     API_COMPILE(Particle.variable("mystring", valueString, STRING));
+    // This doesn't compile and shouldn't
+    //API_COMPILE(Particle.variable("mystring", &valueString, STRING));
 
     API_NO_COMPILE(Particle.variable("mystring", constValueString, STRING));
 }

@@ -56,8 +56,45 @@ void system_set_time(time_t time, unsigned param, void* reserved);
 
 typedef enum
 {
-	BOOLEAN = 1, INT = 2, STRING = 4, DOUBLE = 9
+	CLOUD_VAR_BOOLEAN = 1, CLOUD_VAR_INT = 2, CLOUD_VAR_STRING = 4, CLOUD_VAR_DOUBLE = 9
 } Spark_Data_TypeDef;
+
+#ifdef PLATFORM_ID
+STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
+#endif
+
+struct CloudVariableTypeBase {};
+struct CloudVariableTypeBool : public CloudVariableTypeBase {
+    using vartype = bool;
+    using varref = bool*;
+    CloudVariableTypeBool(){};
+    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_BOOLEAN; }
+};
+struct CloudVariableTypeInt : public CloudVariableTypeBase {
+    using vartype = int;
+    using varref = int*;
+    CloudVariableTypeInt(){};
+    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_INT; }
+};
+struct CloudVariableTypeString : public CloudVariableTypeBase {
+    using vartype = const char*;
+    using varref = const char*;
+    CloudVariableTypeString(){};
+    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_STRING; }
+};
+struct CloudVariableTypeDouble : public CloudVariableTypeBase {
+    using vartype = double;
+    using varref = double*;
+
+    CloudVariableTypeDouble(){};
+    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_DOUBLE; }
+};
+
+const CloudVariableTypeBool BOOLEAN;
+const CloudVariableTypeInt INT;
+const CloudVariableTypeString STRING;
+const CloudVariableTypeDouble DOUBLE;
+
 
 typedef enum
 {
