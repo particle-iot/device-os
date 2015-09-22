@@ -1010,7 +1010,7 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
 
     if (_attached) {
         // find an free socket
-        socket = _findSocket();
+        socket = _findSocket(MDM_SOCKET_ERROR);
         DEBUG_D("socketSocket(%d)\r\n", ipproto);
         if (socket != MDM_SOCKET_ERROR) {
             if (ipproto == MDM_IPPROTO_UDP) {
