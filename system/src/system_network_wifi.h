@@ -64,6 +64,12 @@ class WiFiNetworkInterface : public ManagedNetworkInterface
 
 protected:
 
+    virtual void on_finalize_listening(bool complete) override
+    {
+        if (complete)
+            SPARK_WLAN_SmartConfigProcess();
+    }
+
     virtual void on_start_listening() override
     {
         /* If WiFi module is connected, disconnect it */
@@ -88,6 +94,8 @@ protected:
         {
             wlan_reset_credentials_store();
         }
+
+        Set_NetApp_Timeout();
     }
 
     void connect_finalize() override
@@ -168,6 +176,10 @@ public:
         wlan_fetch_ipconfig(target);
     }
 
+    void set_error_count(unsigned count) override
+    {
+        wlan_set_error_count(count);
+    }
 
 };
 

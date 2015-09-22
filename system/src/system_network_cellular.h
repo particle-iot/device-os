@@ -28,6 +28,10 @@ class CellularNetworkInterface : public ManagedNetworkInterface
 
 protected:
 
+    virtual void on_finalize_listening(bool complete) override
+    {
+    }
+    
     virtual void on_start_listening() override { cellular_on(NULL); }
     virtual bool on_stop_listening() override { /* n/a */ return false; }
     virtual void on_setup_cleanup() override { /* n/a */ }
@@ -93,5 +97,8 @@ public:
     int set_credentials(NetworkCredentials* creds) override { return -1; }
     void connect_cancel() override { /* n/a */ }
 
+    void set_error_count(unsigned count) override
+    {
+    }
 };
 

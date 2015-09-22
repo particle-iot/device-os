@@ -157,7 +157,7 @@ void handle_cloud_errors()
     // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
 
     // Reset Error Count
-    wlan_set_error_count(0);
+    network.set_error_count(0);
 }
 
 void handle_cfod()
@@ -221,7 +221,7 @@ void establish_cloud_connection()
             cloud_connection_failed();
             SPARK_CLOUD_SOCKETED = 0;
             handle_cfod();
-            wlan_set_error_count(Spark_Error_Count);
+            network.set_error_count(Spark_Error_Count);
         }
     }
 }

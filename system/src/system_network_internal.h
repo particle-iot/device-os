@@ -202,11 +202,7 @@ protected:
 
         WLAN_LISTEN_ON_FAILED_CONNECT = started && on_stop_listening();
 
-        if (WLAN_SMART_CONFIG_FINISHED)
-        {
-            /* Decrypt configuration information and add profile */
-            SPARK_WLAN_SmartConfigProcess();
-        }
+        on_finalize_listening(WLAN_SMART_CONFIG_FINISHED);
 
         system_notify_event(wifi_listen_end, millis()-start);
 
@@ -234,10 +230,17 @@ protected:
     virtual void on_now()=0;
     virtual void off_now()=0;
 
-    virtual void fetch_ipconfig(WLanConfig* target)=0;
+    /**
+     *
+     * @param external_process_complete If some external process triggered exit of listen mode.
+     */
+    virtual void on_finalize_listening(bool external_process_complete)=0;
 
 public:
 
+    virtual void fetch_ipconfig(WLanConfig* target)=0;
+
+    virtual void set_error_count(unsigned count)=0;
 
     bool manual_disconnect()
     {
@@ -305,8 +308,6 @@ public:
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
                 connect_finalize();
             }
-
-            Set_NetApp_Timeout();
         }
     }
 

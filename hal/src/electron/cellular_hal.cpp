@@ -90,3 +90,9 @@ CellularCredentials* cellular_credentials_get(void* reserved)
 {
     return &cellularCredentials;
 }
+
+// Todo rename me, and allow the different connect, disconnect etc. timeouts be set by the HAL
+uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS)
+{
+    return 0;
+}
