@@ -29,7 +29,7 @@ do
   do
     echo
     echo '-----------------------------------------------------------------------'
-    make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="n" TEST="$t"
+    make -s clean all PLATFORM="$p" COMPILE_LTO="n" TEST="$t"
     if [[ "$?" -eq 0 ]]; then
       echo "✓ SUCCESS"
     else
@@ -48,9 +48,6 @@ do
     do
       for app in "${APP[@]}"
       do
-        if [[ "$app" = "wiring/no_fixture" ]] && [[ "$c" = "n" ]]; then
-          continue
-        fi
         c=n
         if [[ "$p" = "core" ]]; then
            c=y
@@ -80,24 +77,6 @@ do
 done
 
 cd ../modules
-
-# enumerate the matrix, exit 1 if anything fails
-for db in "${DEBUG_BUILD[@]}"
-do
-  for p in "${MODULAR_PLATFORM[@]}"
-  do
-    echo
-    echo '-----------------------------------------------------------------------'
-    make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="n"
-    if [[ "$?" -eq 0 ]]; then
-      echo "✓ SUCCESS"
-    else
-      echo "✗ FAILED"
-      exit 1
-    fi
-  done
-done
-
 
 # enumerate the matrix, exit 1 if anything fails
 for db in "${DEBUG_BUILD[@]}"
