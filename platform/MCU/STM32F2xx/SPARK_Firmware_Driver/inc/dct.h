@@ -1,12 +1,22 @@
-/*
- * File:   dct.h
- * Author: mat
- *
- * Created on 12 November 2014, 04:41
- */
+/**
+ ******************************************************************************
+  Copyright (c) 2014-2015 Particle Industries, Inc.  All rights reserved.
 
-#ifndef DCT_H
-#define	DCT_H
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************
+ */
+#pragma once
 
 #ifdef	__cplusplus
 extern "C" {
@@ -37,7 +47,7 @@ typedef struct _static_ip_config_t {
 STATIC_ASSERT(static_ip_config_size, sizeof(static_ip_config_t)==24);
 
 /**
- * Custom extensions to the DCT data stored
+ * Custom extensions to the DCT data.
  */
 typedef struct __attribute__((packed)) application_dct {
     platform_system_flags_t system_flags;
@@ -142,5 +152,4 @@ extern int dct_write_app_data( const void* data, uint32_t offset, uint32_t size 
 }
 #endif
 
-#endif	/* DCT_H */
 

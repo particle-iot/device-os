@@ -33,12 +33,12 @@
  * list of conditions and the following disclaimer in the documentation and/or
  * other materials provided with the distribution.
  *
- * 3. Neither the name of Broadcom nor the names of other contributors to this 
- * software may be used to endorse or promote products derived from this software 
+ * 3. Neither the name of Broadcom nor the names of other contributors to this
+ * software may be used to endorse or promote products derived from this software
  * without specific prior written permission.
  *
- * 4. This software may not be used as a standalone product, and may only be used as 
- * incorporated in your product or device that incorporates Broadcom wireless connectivity 
+ * 4. This software may not be used as a standalone product, and may only be used as
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity
  * products and solely for the purpose of enabling the functionalities of such Broadcom products.
  *
  *
@@ -195,8 +195,8 @@ char requires_erase(platform_dct_header_t* p_dct)
 {
     unsigned* p = (unsigned*)p_dct;
     for (unsigned i=0; i<4096; i++) {
-        if ((p[i])!=0xFFFFFFFFU) 
-            return 1; 
+        if ((p[i])!=0xFFFFFFFFU)
+            return 1;
     }
     return 0;
 }
@@ -298,13 +298,13 @@ int wiced_write_dct( uint32_t data_start_offset, const void* data, uint32_t data
     return 0;
 }
 
-void* dct_read_app_data(uint32_t offset) {
+const void* dct_read_app_data(uint32_t offset) {
     return ((char*)wiced_dct_get_current_address(0))+offset;
 }
 
 int dct_write_app_data( const void* data, uint32_t offset, uint32_t size ) {
     // first, let's try just writing the data
-    void* dct_start = dct_read_app_data(offset);
+    const void* dct_start = dct_read_app_data(offset);
     if (platform_write_flash_chunk((uint32_t)dct_start, data, size) != 0)
         return wiced_write_dct(DCT_section_offsets[0]+offset, data, size, 1, NULL);
     else
