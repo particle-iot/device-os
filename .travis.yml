@@ -2,8 +2,8 @@ language: cpp
 before_install:
   - sudo apt-get update
 install:
-  - npm install -g spark-cli
-  - ./ci/install_arm_gcc.sh && ./ci/install_gcc.sh
+  - npm install -g particle-cli
+  - './ci/install_arm_gcc.sh && ./ci/install_gcc.sh'
   # TODO: switch to particle-cli instead of spark-cli - ./ci/create_spark_cli_json.sh
 
 script:
