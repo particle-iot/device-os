@@ -18,10 +18,11 @@ script:
 env:
   matrix:
   - UNIT_TEST=y
-  - TEST=wiring/api PLATFORM=photon COMPILE_LTO=n
-  - TEST=wiring/api PLATFORM=P1 COMPILE_LTO=n
-  - TEST=wiring/no_fixture PLATFORM=photon COMPILE_LTO=n
-  - TEST=wiring/no_fixture PLATFORM=P1 COMPILE_LTO=n
+  - DIR=main    TEST=wiring/api        PLATFORM=photon COMPILE_LTO=n
+  - DIR=main    TEST=wiring/api        PLATFORM=core   COMPILE_LTO=n SPARK_CLOUD=n
+  - DIR=main    TEST=wiring/api        PLATFORM=P1     COMPILE_LTO=n
+  - DIR=main    TEST=wiring/no_fixture PLATFORM=photon COMPILE_LTO=n
+  - DIR=main    TEST=wiring/no_fixture PLATFORM=P1     COMPILE_LTO=n
 
   # expansion of matrix
   # dir=MAIN (monolithic)
@@ -32,35 +33,21 @@ env:
   - DIR=main    DEBUG_BUILD=y PLATFORM=core     SPARK_CLOUD=y APP=blank  COMPILE_LTO=y
   # SPARK_CLOUD=n
   - DIR=main    DEBUG_BUILD=y PLATFORM=core     SPARK_CLOUD=n APP=       COMPILE_LTO=y
-  - DIR=main    DEBUG_BUILD=y PLATFORM=core     SPARK_CLOUD=n APP=tinker COMPILE_LTO=y
-  - DIR=main    DEBUG_BUILD=y PLATFORM=core     SPARK_CLOUD=n APP=blank  COMPILE_LTO=y
 
   # PLATFORM=photon SPARK_CLOUD=y
   - DIR=main    DEBUG_BUILD=y PLATFORM=photon   SPARK_CLOUD=y APP=       COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=y PLATFORM=photon   SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=y PLATFORM=photon   SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-  # SPARK_CLOUD=n
-  - DIR=main    DEBUG_BUILD=y PLATFORM=photon   SPARK_CLOUD=n APP=       COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=y PLATFORM=photon   SPARK_CLOUD=n APP=tinker COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=y PLATFORM=photon   SPARK_CLOUD=n APP=blank  COMPILE_LTO=n
 
   # PLATFORM=P1 SPARK_CLOUD=y
   - DIR=main    DEBUG_BUILD=y PLATFORM=P1       SPARK_CLOUD=y APP=       COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=y PLATFORM=P1       SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=y PLATFORM=P1       SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-  # SPARK_CLOUD=n
-  - DIR=main    DEBUG_BUILD=y PLATFORM=P1       SPARK_CLOUD=n APP=       COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=y PLATFORM=P1       SPARK_CLOUD=n APP=tinker COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=y PLATFORM=P1       SPARK_CLOUD=n APP=blank  COMPILE_LTO=n
 
   # PLATFORM=electron SPARK_CLOUD=y
   - DIR=main    DEBUG_BUILD=y PLATFORM=electron SPARK_CLOUD=y APP=       COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=y PLATFORM=electron SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=y PLATFORM=electron SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-  # SPARK_CLOUD=n
-  - DIR=main    DEBUG_BUILD=y PLATFORM=electron SPARK_CLOUD=n APP=       COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=y PLATFORM=electron SPARK_CLOUD=n APP=tinker COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=y PLATFORM=electron SPARK_CLOUD=n APP=blank  COMPILE_LTO=n
 
   # DEBUG_BUILD=n
   # PLATFORM=core SPARK_CLOUD=y
@@ -69,35 +56,21 @@ env:
   - DIR=main    DEBUG_BUILD=n PLATFORM=core     SPARK_CLOUD=y APP=blank  COMPILE_LTO=y
   # SPARK_CLOUD=n
   - DIR=main    DEBUG_BUILD=n PLATFORM=core     SPARK_CLOUD=n APP=       COMPILE_LTO=y
-  - DIR=main    DEBUG_BUILD=n PLATFORM=core     SPARK_CLOUD=n APP=tinker COMPILE_LTO=y
-  - DIR=main    DEBUG_BUILD=n PLATFORM=core     SPARK_CLOUD=n APP=blank  COMPILE_LTO=y
 
   # PLATFORM=photon SPARK_CLOUD=y
   - DIR=main    DEBUG_BUILD=n PLATFORM=photon   SPARK_CLOUD=y APP=       COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=n PLATFORM=photon   SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=n PLATFORM=photon   SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-  # SPARK_CLOUD=n
-  - DIR=main    DEBUG_BUILD=n PLATFORM=photon   SPARK_CLOUD=n APP=       COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=n PLATFORM=photon   SPARK_CLOUD=n APP=tinker COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=n PLATFORM=photon   SPARK_CLOUD=n APP=blank  COMPILE_LTO=n
 
   # PLATFORM=P1 SPARK_CLOUD=y
   - DIR=main    DEBUG_BUILD=n PLATFORM=P1       SPARK_CLOUD=y APP=       COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=n PLATFORM=P1       SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=n PLATFORM=P1       SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-  # SPARK_CLOUD=n
-  - DIR=main    DEBUG_BUILD=n PLATFORM=P1       SPARK_CLOUD=n APP=       COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=n PLATFORM=P1       SPARK_CLOUD=n APP=tinker COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=n PLATFORM=P1       SPARK_CLOUD=n APP=blank  COMPILE_LTO=n
 
   # PLATFORM=electron SPARK_CLOUD=y
   - DIR=main    DEBUG_BUILD=n PLATFORM=electron SPARK_CLOUD=y APP=       COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=n PLATFORM=electron SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
   - DIR=main    DEBUG_BUILD=n PLATFORM=electron SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-  # SPARK_CLOUD=n
-  - DIR=main    DEBUG_BUILD=n PLATFORM=electron SPARK_CLOUD=n APP=       COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=n PLATFORM=electron SPARK_CLOUD=n APP=tinker COMPILE_LTO=n
-  - DIR=main    DEBUG_BUILD=n PLATFORM=electron SPARK_CLOUD=n APP=blank  COMPILE_LTO=n
 
 
   # DIR=modules (modular)
