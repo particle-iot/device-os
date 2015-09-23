@@ -7,6 +7,10 @@
 
  - `Wire.end()` to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
  - `Wire.reset()` to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
+ - Detect when the cloud hasn't been serviced for 15s and disconnect, so device state accurately
+reflects the connection state. [#626](https://github.com/spark/firmwarwe/issues/626)
+ - Compile-time checks for `Particle.variable()` [#619](https://github.com/spark/firmwarwe/issues/619)
+ - 
 
 ### BUGFIXES
 
