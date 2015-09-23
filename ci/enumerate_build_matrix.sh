@@ -8,6 +8,10 @@
 
 set -x # be noisy + log everything that is happening in the script
 
+GREEN="\033[32m"
+RED="\033[31m"
+NO_COLOR="\033[0m"
+
 # define build matrix dimensions
 # "" means execute execute the make command without that var specified
 DEBUG_BUILD=( y n )
@@ -31,9 +35,9 @@ do
     echo '-----------------------------------------------------------------------'
     make -s clean all PLATFORM="$p" COMPILE_LTO="n" TEST="$t"
     if [[ "$?" -eq 0 ]]; then
-      echo "✓ SUCCESS"
+      echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
     else
-      echo "✗ FAILED"
+      echo -e "$RED ✗ FAILED $NO_COLOR"
       exit 1
     fi
   done
@@ -44,9 +48,9 @@ echo
 echo '-----------------------------------------------------------------------'
 make -s clean all PLATFORM="core" COMPILE_LTO="n" TEST="wiring/api" SPARK_CLOUD="n"
 if [[ "$?" -eq 0 ]]; then
-  echo "✓ SUCCESS"
+  echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
 else
-  echo "✗ FAILED"
+  echo -e "$RED ✗ FAILED $NO_COLOR"
   exit 1
 fi
 
@@ -72,17 +76,17 @@ do
         if [[ "$app" = "" ]]; then
           make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc"
           if [[ "$?" -eq 0 ]]; then
-            echo "✓ SUCCESS"
+            echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
           else
-            echo "✗ FAILED"
+            echo -e "$RED ✗ FAILED $NO_COLOR"
             exit 1
           fi
         else
           make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc" APP="$app"
           if [[ "$?" -eq 0 ]]; then
-            echo "✓ SUCCESS"
+            echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
           else
-            echo "✗ FAILED"
+            echo -e "$RED ✗ FAILED $NO_COLOR"
             exit 1
           fi
         fi
@@ -102,9 +106,9 @@ do
     echo '-----------------------------------------------------------------------'
     make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="n"
     if [[ "$?" -eq 0 ]]; then
-      echo "✓ SUCCESS"
+      echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
     else
-      echo "✗ FAILED"
+      echo -e "$RED ✗ FAILED $NO_COLOR"
       exit 1
     fi
   done
@@ -115,8 +119,8 @@ echo
 echo '-----------------------------------------------------------------------'
 make -s clean all PLATFORM="photon" COMPILE_LTO="n" MINIMAL=y
 if [[ "$?" -eq 0 ]]; then
-  echo "✓ SUCCESS"
+  echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
 else
-  echo "✗ FAILED"
+  echo -e "$RED ✗ FAILED $NO_COLOR"
   exit 1
 fi
