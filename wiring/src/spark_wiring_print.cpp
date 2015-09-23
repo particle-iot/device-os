@@ -245,13 +245,14 @@ size_t Print::printFloat(double number, uint8_t digits)
 
 size_t Print::printf_impl(bool newline, const char* format, ...)
 {
-    char test[5];
+    const int bufsize = 20;
+    char test[bufsize];
     va_list marker;
     va_start(marker, format);
-    size_t n = vsnprintf(test, 1, format, marker);
+    size_t n = vsnprintf(test, bufsize, format, marker);
     va_end(marker);
 
-    if (n<5)
+    if (n<bufsize)
     {
         n = print(test);
     }
