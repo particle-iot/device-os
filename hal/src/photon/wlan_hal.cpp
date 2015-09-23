@@ -199,12 +199,26 @@ wlan_result_t wlan_connect_finalize()
 }
 
 int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna);
-static WLanSelectAntenna_TypeDef antennaSelection = ANT_INTERNAL;
-inline int wlan_refresh_antenna() { return wlan_select_antenna_impl(antennaSelection); }
+
+
+WLanSelectAntenna_TypeDef fetch_antenna_selection()
+{
+    uint8_t result = *(const uint8_t*)dct_read_app_data(DCT_ANTENNA_SELECTION_OFFSET);
+    if (result==0xFF)
+        result = ANT_INTERNAL;  // default
+    return WLanSelectAntenna_TypeDef(result);
+}
+
+void save_antenna_selection(WLanSelectAntenna_TypeDef selection)
+{
+    dct_write_app_data(&selection, DCT_ANTENNA_SELECTION_OFFSET, DCT_ANTENNA_SELECTION_SIZE);
+}
+
+inline int wlan_refresh_antenna() { return wlan_select_antenna_impl(fetch_antenna_selection()); }
 
 int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
 {
-    antennaSelection = antenna;
+    save_antenna_selection(antenna);
     return wiced_wlan_connectivity_initialized() ? wlan_refresh_antenna() : 0;
 }
 
