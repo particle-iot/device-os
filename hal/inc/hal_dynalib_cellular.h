@@ -33,6 +33,7 @@
 DYNALIB_BEGIN(hal_cellular)
 DYNALIB_FN(hal_cellular, cellular_off)
 DYNALIB_FN(hal_cellular, cellular_on)
+DYNALIB_FN(hal_cellular, cellular_init)
 DYNALIB_FN(hal_cellular, cellular_register)
 DYNALIB_FN(hal_cellular, cellular_pdp_activate)
 DYNALIB_FN(hal_cellular, cellular_pdp_deactivate)
@@ -42,6 +43,7 @@ DYNALIB_FN(hal_cellular, cellular_fetch_ipconfig)
 DYNALIB_FN(hal_cellular, cellular_device_info)
 DYNALIB_FN(hal_cellular, cellular_credentials_set)
 DYNALIB_FN(hal_cellular, cellular_credentials_get)
+DYNALIB_FN(hal_cellular, cellular_sim_ready)
 DYNALIB_END(hal_cellular)
 
 

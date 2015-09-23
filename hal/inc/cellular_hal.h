@@ -36,6 +36,8 @@ typedef int cellular_result_t;
  */
 cellular_result_t  cellular_on(void* reserved);
 
+cellular_result_t  cellular_init(void* reserved);
+
 /**
  * Power off the cellular module.
  */
@@ -122,6 +124,7 @@ cellular_result_t cellular_credentials_set(const char* apn, const char* username
  */
 CellularCredentials* cellular_credentials_get(void* reserved);
 
+bool cellular_sim_ready(void* reserved);
 
 #ifdef __cplusplus
 }

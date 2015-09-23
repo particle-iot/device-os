@@ -114,12 +114,18 @@ public:
             const char* apn = "spark.telefonica.com", const char* username = NULL,
             const char* password = NULL, Auth auth = AUTH_DETECT);
 
-    /** register (Attach) the MT to the GPRS service.
-        \param simpin a optional pin of the SIM card
+    /**
+     * powerOn Initialize the modem and SIM card
+     * \param simpin a optional pin of the SIM card
+     * \return true if successful, false otherwise
+     */
+    bool powerOn(const char* simpin = NULL);
+
+    /** init (Attach) the MT to the GPRS service.
         \param status an optional struture to with device information
         \return true if successful, false otherwise
     */
-    bool init(const char* simpin = NULL, DevStatus* status = NULL);
+    bool init(DevStatus* status = NULL);
 
     /** get the current device status
         \param strocture holding the device information.

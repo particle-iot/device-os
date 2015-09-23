@@ -10,8 +10,14 @@ static CellularCredentials cellularCredentials;
 
 cellular_result_t  cellular_on(void* reserved)
 {
+    CHECK_SUCCESS(electronMDM.powerOn());
+    return 0;
+}
+
+cellular_result_t  cellular_init(void* reserved)
+{
     //MDMParser::DevStatus devStatus = {};
-    //CHECK_SUCCESS(electronMDM.init(NULL, &devStatus));
+    //CHECK_SUCCESS(electronMDM.init(&devStatus));
     CHECK_SUCCESS(electronMDM.init());
     return 0;
 }
@@ -92,8 +98,15 @@ CellularCredentials* cellular_credentials_get(void* reserved)
     return &cellularCredentials;
 }
 
+bool cellular_sim_ready(void* reserved)
+{
+    const MDMParser::DevStatus* status = electronMDM.getDevStatus();
+    return status->sim == MDMParser::SIM_READY;
+}
+
 // Todo rename me, and allow the different connect, disconnect etc. timeouts be set by the HAL
 uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS)
 {
     return 0;
 }
+

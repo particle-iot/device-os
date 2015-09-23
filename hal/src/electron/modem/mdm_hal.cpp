@@ -242,9 +242,9 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                     // +CREG|CGREG: <n>,<stat>[,<lac>,<ci>[,AcT[,<rac>]]] // reply to AT+CREG|AT+CGREG
                     // +CREG|CGREG: <stat>[,<lac>,<ci>[,AcT[,<rac>]]]     // URC
                     b = (int)0xFFFF; c = (int)0xFFFFFFFF; d = -1;
-                    r = sscanf(cmd, "%s %*d,%d,\"%X\",\"%X\",%d",s,&a,&b,&c,&d);
+                    r = sscanf(cmd, "%s %*d,%d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
                     if (r <= 1)
-                        r = sscanf(cmd, "%s %d,\"%X\",\"%X\",%d",s,&a,&b,&c,&d);
+                        r = sscanf(cmd, "%s %d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
                     if (r >= 2) {
                         Reg *reg = !strcmp(s, "CREG:")  ? &_net.csd :
                                    !strcmp(s, "CGREG:") ? &_net.psd : NULL;
@@ -317,7 +317,10 @@ bool MDMParser::connect(
             const char* apn, const char* username,
             const char* password, Auth auth)
 {
-    bool ok = init(simpin, NULL);
+    bool ok = powerOn(simpin);
+    if (!ok)
+        return false;
+    ok = init();
 #ifdef MDM_DEBUG
     if (_debugLevel >= 1) dumpDevStatus(&_dev);
 #endif
@@ -338,7 +341,7 @@ bool MDMParser::connect(
     return true;
 }
 
-bool MDMParser::init(const char* simpin, DevStatus* status)
+bool MDMParser::powerOn(const char* simpin)
 {
     int i = 10;
     LOCK();
@@ -389,7 +392,6 @@ bool MDMParser::init(const char* simpin, DevStatus* status)
         MDM_ERROR("No Reply from Modem\r\n");
     }
 
-    MDM_INFO("Modem::init\r\n");
     // echo off
     sendFormated("AT E0\r\n");
     if(RESP_OK != waitFinalResp())
@@ -440,6 +442,24 @@ bool MDMParser::init(const char* simpin, DevStatus* status)
             MDM_ERROR("SIM not inserted\r\n");
         goto failure;
     }
+
+    UNLOCK();
+    return true;
+failure:
+    UNLOCK();
+    return false;
+}
+
+bool MDMParser::init(DevStatus* status)
+{
+    LOCK();
+
+    MDM_INFO("Modem::init\r\n");
+    if (_dev.sim != SIM_READY) {
+        if (_dev.sim == SIM_MISSING)
+            MDM_ERROR("SIM not inserted\r\n");
+        goto failure;
+    }
     // get the manufacturer
     sendFormated("AT+CGMI\r\n");
     if (RESP_OK != waitFinalResp(_cbString, _dev.manu))
@@ -448,7 +468,7 @@ bool MDMParser::init(const char* simpin, DevStatus* status)
     sendFormated("AT+CGMM\r\n");
     if (RESP_OK != waitFinalResp(_cbString, _dev.model))
         goto failure;
-    // get the
+    // get the version
     sendFormated("AT+CGMR\r\n");
     if (RESP_OK != waitFinalResp(_cbString, _dev.ver))
         goto failure;
@@ -1010,7 +1030,7 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
 
     if (_attached) {
         // find an free socket
-        socket = _findSocket();
+        socket = _findSocket(MDM_SOCKET_ERROR);
         DEBUG_D("socketSocket(%d)\r\n", ipproto);
         if (socket != MDM_SOCKET_ERROR) {
             if (ipproto == MDM_IPPROTO_UDP) {
