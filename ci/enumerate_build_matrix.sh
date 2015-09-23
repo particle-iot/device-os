@@ -39,6 +39,17 @@ do
   done
 done
 
+# Extra core test
+echo
+echo '-----------------------------------------------------------------------'
+make -s clean all PLATFORM="core" COMPILE_LTO="n" TEST="wiring/api" SPARK_CLOUD="n"
+if [[ "$?" -eq 0 ]]; then
+  echo "✓ SUCCESS"
+else
+  echo "✗ FAILED"
+  exit 1
+fi
+
 # enumerate the matrix, exit 1 if anything fails
 for db in "${DEBUG_BUILD[@]}"
 do
@@ -48,6 +59,10 @@ do
     do
       for app in "${APP[@]}"
       do
+        # only do SPARK_CLOUD=n for core
+        if [[ "$sc" = "n" ]] && [[ "$p" != "core" ]]; then
+          continue
+        fi
         c=n
         if [[ "$p" = "core" ]]; then
            c=y
