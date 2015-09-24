@@ -771,7 +771,7 @@ public:
         return s.length()-len;
     }
 
-    virtual size_t write(uint8_t c)
+    virtual size_t write(uint8_t c) override
     {
         return s.concat((char)c);
     }

@@ -25,34 +25,10 @@
 typedef struct SparkProtocol SparkProtocol;
 
 #ifdef __cplusplus
-extern "C" {
-#endif
+class String;
 
-
-void cloud_disconnect(bool closeSocket=true);
-
-/**
- * Functions for managing the cloud connection, performing cloud operations
- * and system upgrades.
- */
-
-int Internet_Test(void);
-
-int Spark_Connect(void);
-int Spark_Disconnect(void);
-
-void Spark_Protocol_Init(void);
-int Spark_Handshake(void);
-bool Spark_Communication_Loop(void);
-void Multicast_Presence_Announcement(void);
-void Spark_Signal(bool on, unsigned, void*);
-void Spark_SetTime(unsigned long dateTime);
-void Spark_Process_Events();
-
-extern volatile uint8_t LED_Spark_Signal;
-void LED_Signaling_Override(void);
-
-void system_set_time(time_t time, unsigned param, void* reserved);
+String bytes2hex(const uint8_t* buf, unsigned len);
+String spark_deviceID(void);
 
 typedef enum
 {
@@ -96,12 +72,40 @@ const CloudVariableTypeString STRING;
 const CloudVariableTypeDouble DOUBLE;
 
 
+extern "C" {
+#endif
+
+
+void cloud_disconnect(bool closeSocket=true);
+
+/**
+ * Functions for managing the cloud connection, performing cloud operations
+ * and system upgrades.
+ */
+
+int Internet_Test(void);
+
+int Spark_Connect(void);
+int Spark_Disconnect(void);
+
+void Spark_Protocol_Init(void);
+int Spark_Handshake(void);
+bool Spark_Communication_Loop(void);
+void Multicast_Presence_Announcement(void);
+void Spark_Signal(bool on, unsigned, void*);
+void Spark_SetTime(unsigned long dateTime);
+void Spark_Process_Events();
+
+extern volatile uint8_t LED_Spark_Signal;
+void LED_Signaling_Override(void);
+
+void system_set_time(time_t time, unsigned param, void* reserved);
+
+
 typedef enum
 {
 	PUBLIC = 0, PRIVATE = 1
 } Spark_Event_TypeDef;
-
-typedef struct String String;
 
 typedef void (*EventHandler)(const char* name, const char* data);
 
@@ -152,8 +156,6 @@ bool spark_connected(void);
 SparkProtocol* system_cloud_protocol_instance(void);
 
 char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* output);
-String bytes2hex(const uint8_t* buf, unsigned len);
-String spark_deviceID(void);
 
 #define SPARK_BUF_LEN			        600
 
