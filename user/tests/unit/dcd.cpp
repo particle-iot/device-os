@@ -19,7 +19,7 @@ unsigned sum(TestStore& store, unsigned start, unsigned length)
 {
     const uint8_t* data = store.dataAt(start);
     unsigned sum = 0;
-    for (int i=0; i<length; i++)
+    for (unsigned i=0; i<length; i++)
     {
         sum += *data++;
     }
@@ -64,7 +64,7 @@ SCENARIO("RAMFlashStore can be erased","[ramflash]")
     REQUIRE_FALSE(store.eraseSector(TestBase+100+TestSectorSize));
 
     const uint8_t* data = store.dataAt(TestBase+TestSectorSize);
-    for (int i=0; i<TestSectorSize; i++) {
+    for (unsigned i=0; i<TestSectorSize; i++) {
         CAPTURE(i);
         CHECK(data[i] == 0xFF);
     }
@@ -112,7 +112,7 @@ SCENARIO("DCD initialized returns 0xFF", "[dcd]")
     TestDCD dcd;
 
     const uint8_t* data = dcd.read(0);
-    for (int i=0; i<dcd.Length; i++)
+    for (unsigned i=0; i<dcd.Length; i++)
     {
         CAPTURE( i );
         REQUIRE(data[i] == 0xFFu);
@@ -157,7 +157,7 @@ SCENARIO("DCD can overwrite data", "[dcd]")
     TestDCD dcd;
 
     uint8_t expected[dcd.Length];
-    for (int i=0; i<dcd.Length; i++)
+    for (unsigned i=0; i<dcd.Length; i++)
         expected[i] = 0xFF;
     memmove(expected+23, "bbatman", 7);
 

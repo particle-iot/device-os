@@ -24,20 +24,11 @@
 
 typedef struct SparkProtocol SparkProtocol;
 
-#ifdef __cplusplus
-class String;
-
-String bytes2hex(const uint8_t* buf, unsigned len);
-String spark_deviceID(void);
 
 typedef enum
 {
 	CLOUD_VAR_BOOLEAN = 1, CLOUD_VAR_INT = 2, CLOUD_VAR_STRING = 4, CLOUD_VAR_DOUBLE = 9
 } Spark_Data_TypeDef;
-
-#ifdef PLATFORM_ID
-STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
-#endif
 
 struct CloudVariableTypeBase {};
 struct CloudVariableTypeBool : public CloudVariableTypeBase {
@@ -72,9 +63,9 @@ const CloudVariableTypeString STRING;
 const CloudVariableTypeDouble DOUBLE;
 
 
+#ifdef __cplusplus
 extern "C" {
 #endif
-
 
 void cloud_disconnect(bool closeSocket=true);
 
@@ -100,6 +91,18 @@ extern volatile uint8_t LED_Spark_Signal;
 void LED_Signaling_Override(void);
 
 void system_set_time(time_t time, unsigned param, void* reserved);
+
+
+struct String;
+
+
+#ifdef PLATFORM_ID
+STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
+
+String bytes2hex(const uint8_t* buf, unsigned len);
+String spark_deviceID(void);
+
+#endif
 
 
 typedef enum
