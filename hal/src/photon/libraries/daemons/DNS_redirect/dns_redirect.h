@@ -12,12 +12,12 @@
  * list of conditions and the following disclaimer in the documentation and/or
  * other materials provided with the distribution.
  *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
  * without specific prior written permission.
  *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
  * products and solely for the purpose of enabling the functionalities of such Broadcom products.
  *
  *
@@ -100,6 +100,22 @@ wiced_result_t wiced_dns_redirector_start( dns_redirector_t* dns_server, wiced_i
  * @return @ref wiced_result_t
  */
 wiced_result_t wiced_dns_redirector_stop ( dns_redirector_t* server );
+
+/**
+ * Return the length of the query resolved, or 0 if none matched.
+ */
+int dns_resolve_query(const char* query);
+
+
+typedef struct
+{
+    const char* query;
+    uint8_t     length;
+} dns_query_table_entry_t;
+
+int dns_resolve_query_default(const char* query);
+
+int dns_resolve_query_table(const char* query, const dns_query_table_entry_t* table, unsigned table_size);
 
 #ifdef __cplusplus
 } /* extern "C" */

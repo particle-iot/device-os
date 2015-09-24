@@ -22,6 +22,38 @@
 #include "http_server.h"
 #endif
 
+int resolve_dns_query(const char* query, const char* table)
+{
+    int result = 0;
+    while (*table!=0xFF && *table)
+    {
+        unsigned len = strlen(table)+1;
+        if (!memcmp(query, table, len))
+        {
+            result = len;
+            break;
+        }
+        table += len;
+    }
+    return result;
+}
+
+/**
+ * Override resolution.
+ * @param query
+ * @return
+ */
+int dns_resolve_query(const char* query)
+{
+    int result = dns_resolve_query_default(query);
+    if (result<=0)
+    {
+        const char* valid_queries = (const char*) dct_read_app_data(DCT_DNS_RESOLVE_OFFSET);
+        result = resolve_dns_query(query, valid_queries);
+    }
+    return result;
+}
+
 bool is_device_claimed()
 {
     const uint8_t* claimed = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CLAIMED_OFFSET);
