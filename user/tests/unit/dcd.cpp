@@ -144,7 +144,7 @@ SCENARIO("DCD can write whole sector", "[dcd]")
     TestDCD dcd;
 
     uint8_t expected[dcd.Length];
-    for (int i=0; i<dcd.Length; i++)
+    for (unsigned i=0; i<dcd.Length; i++)
         expected[i] = rand();
 
     dcd.write(0, expected, dcd.Length);
