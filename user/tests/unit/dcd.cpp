@@ -3,6 +3,7 @@
 #include <string>
 #include "flash_storage.h"
 #include "dcd.h"
+#include <string.h>
 
 const int TestSectorSize = 16000;
 const int TestSectorCount = 2;
