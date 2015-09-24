@@ -4,7 +4,6 @@
 #include "flash_storage.h"
 #include "dcd.h"
 
-
 const int TestSectorSize = 16000;
 const int TestSectorCount = 2;
 const int TestBase = 4000;

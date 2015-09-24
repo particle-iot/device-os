@@ -18,6 +18,8 @@
  */
 
 #include <stdint.h>
+#include <limits.h>
+#include <stdlib.h>
 
 class FlashStorage
 {
