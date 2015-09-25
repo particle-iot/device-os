@@ -16,25 +16,18 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
-#pragma once
 
-#include "dct_impl.h"
-#include "dct.h"
-
-
-// current dct is at offset 10
-// application data at offset 7548
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+const void* dct_read_app_data (uint32_t offset);
+int dct_write_app_data(const void* data, uint32_t offset, uint32_t size);
 void dcd_migrate_data();
-
-STATIC_ASSERT(offset_application_dct, (offsetof(complete_dct_t, application)==7548+1024) );
-STATIC_ASSERT(size_complete_dct, (sizeof(complete_dct_t)<16384));
-
 
 #ifdef __cplusplus
 }
 #endif
+

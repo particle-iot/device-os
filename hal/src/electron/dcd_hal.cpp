@@ -16,25 +16,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
-#pragma once
 
-#include "dct_impl.h"
-#include "dct.h"
-
-
-// current dct is at offset 10
-// application data at offset 7548
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void dcd_migrate_data();
-
-STATIC_ASSERT(offset_application_dct, (offsetof(complete_dct_t, application)==7548+1024) );
-STATIC_ASSERT(size_complete_dct, (sizeof(complete_dct_t)<16384));
-
-
-#ifdef __cplusplus
-}
-#endif
+#include "dct_hal.h"
+#include "dcd_flash_impl.h"

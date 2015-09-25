@@ -1,0 +1,3 @@
+void platform_startup()
+{
+}
