@@ -170,12 +170,12 @@ unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved);
 typedef enum hal_system_config_t
 {
     SYSTEM_CONFIG_NONE,
-    SYSTEM_CONFIG_DEVICE_PRIVATE_KEY,
-    SYSTEM_CONFIG_SERVER_PUBLIC_KEY,
-    /**
-     * Device family name. Used also as the SSID prefix
-     */
-    SYSTEM_CONFIG_DEVICE_FAMILY_NAME
+    SYSTEM_CONFIG_DEVICE_KEY,
+    SYSTEM_CONFIG_SERVER_KEY,
+
+    SYSTEM_CONFIG_SOFTAP_PREFIX,
+    SYSTEM_CONFIG_SOFTAP_SUFFIX,
+    SYSTEM_CONFIG_SOFTAP_HOSTNAMES
 
 } hal_system_config_t;
 
