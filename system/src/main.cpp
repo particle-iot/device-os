@@ -80,7 +80,9 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
 {
     if (button==0)
     {
-        if (pressed) {
+        if (pressed)
+        {
+            WLAN_DELETE_PROFILES = 0;
             wasListeningOnButtonPress = network.listening();
             buttonPushed = HAL_Timer_Get_Milli_Seconds();
             if (!wasListeningOnButtonPress)
@@ -160,14 +162,13 @@ extern "C" void HAL_SysTick_Handler(void)
     }
     else if(network.listening() && HAL_Core_Mode_Button_Pressed(10000))
     {
-        network.listen_command();
-        HAL_Core_Mode_Button_Reset();
+        network.listen_command();       
     }
     // determine if the button press needs to change the state (and hasn't done so already))
     else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
         if (network.connecting()) {
-            network.connect_cancel();
+            network.connect_cancel(true);
         }
         // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
         // there's a race condition here - the HAL_notify_button_state function should
