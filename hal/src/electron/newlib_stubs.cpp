@@ -23,7 +23,8 @@
 
 /* Define caddr_t as char* */
 #include <sys/types.h>
-
+#include <errno.h>
+#include <malloc.h>
 /* Define abort() */
 #include <stdlib.h>
 #include "debug.h"
@@ -106,18 +107,18 @@ char* sbrk_heap_top = &link_heap_location;
 
 caddr_t _sbrk(int incr)
 {
+   char* prev_heap;
 
-	char *prev_heap_end = sbrk_heap_top;
-
-	sbrk_heap_top += incr;
-
-        // TODO - this shouldn't SOS when out of heap
-	if (sbrk_heap_top > &link_heap_location_end) {
-		PANIC(OutOfHeap,"Out Of Heap");
-		abort();
-	}
-
-	return (caddr_t) prev_heap_end;
+    if (sbrk_heap_top + incr > &link_heap_location_end)
+    {
+        volatile struct mallinfo mi = mallinfo();
+        errno = ENOMEM;
+        (void)mi;
+        return (caddr_t) -1;
+    }
+    prev_heap = sbrk_heap_top;
+    sbrk_heap_top += incr;
+    return (caddr_t) prev_heap;
 }
 
 /* Bare metal, no processes, so error */
