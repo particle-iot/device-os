@@ -609,7 +609,7 @@ inline tcp_server_client_t* client(socket_t* socket) { return is_client(socket) 
 inline tcp_server_t* server(socket_t* socket) { return is_server(socket) ? socket->s.tcp_server : NULL; }
 
 wiced_result_t socket_t::notify_disconnected(wiced_tcp_socket_t*, void* socket) {
-    if (socket) {
+    if (socket && 0) {
         // replace with unique_lock once the multithreading changes have been incorporated
         SocketListLock lock(clients);
         if (exists_socket((socket_t*)socket)) {
