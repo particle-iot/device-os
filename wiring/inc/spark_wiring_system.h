@@ -57,6 +57,10 @@ public:
     static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0);
     static String deviceID(void) { return spark_deviceID(); }
 
+    static uint16_t buttonPushed(uint8_t button=0) {
+        return system_button_pushed_duration(button, NULL);
+    }
+
     static bool on(system_event_t events, void(*handler)(system_event_t, uint32_t,void*)) {
         return !system_subscribe_event(events, handler, nullptr);
     }
