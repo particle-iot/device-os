@@ -49,7 +49,10 @@ namespace std {
 
     __future_base::_Result_base::_Result_base() = default;
     __future_base::_Result_base::~_Result_base() = default;
+
+     #if __GNUC__ == 4 && __GNUC_MINOR__ == 8
     __future_base::_State_base::~_State_base() = default;
+    #endif
 
     /**
      * static Startup function for threads.
