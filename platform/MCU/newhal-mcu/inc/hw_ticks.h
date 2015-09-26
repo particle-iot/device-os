@@ -1,8 +1,6 @@
 /**
-  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-
-  Copyright 2012 STMicroelectronics
-  http://www.st.com/software_license_agreement_liberty_v2
+ ******************************************************************************
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -19,18 +17,23 @@
  ******************************************************************************
  */
 
+
 #pragma once
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
+/**
+ * The number of ticks per microsecond of the system counter.
+ * SYSTEM_TICK_COUNTER
+ */
+#define SYSTEM_US_TICKS		100     // cycles per microsecond
 
-#include "platform_config.h"
-#include "system_tick_hal.h"
-
-#define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
-#define SYSTEM_TICK_COUNTER     (DWT->CYCCNT)
+/**
+ * Should return a value from a system counter.
+ */
+#define SYSTEM_TICK_COUNTER     0
 
 /**
  * Increment the millisecond tick counter.
@@ -57,18 +60,6 @@ system_tick_t GetSystem1MsTick();
 system_tick_t GetSystem1UsTick();
 
 
-/**
- * Testing method that simulates advancing the time forward.
- */
-void __advance_system1MsTick(system_tick_t millis, system_tick_t micros_from_rollover);
-
-void SysTick_Disable();
-
-
-
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-
-
-

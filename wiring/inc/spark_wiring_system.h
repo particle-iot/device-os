@@ -35,11 +35,6 @@
 #include "system_user.h"
 #ifdef SPARK_PLATFORM
 #include "hw_ticks.h"
-#if PLATFORM_ID<3
-#include "stm32f10x.h"
-#else
-#include "stm32f2xx.h"
-#endif
 #endif
 
 class Stream;
@@ -75,7 +70,7 @@ public:
 
     static inline uint32_t ticks()
     {
-        return DWT->CYCCNT;
+        return SYSTEM_TICK_COUNTER;
     }
 
     static inline void ticksDelay(uint32_t duration)
