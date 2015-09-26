@@ -1,5 +1,5 @@
 /**
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -13,25 +13,12 @@
 
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
-  ******************************************************************************
+ ******************************************************************************
  */
 
-#ifndef SYSTEM_USER_H
-#define	SYSTEM_USER_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void setup();
-void loop();
+#pragma once
 
 
-void system_initialize_user_backup_ram();
+#define retained  __attribute__((externally_visible, section(".retained_user")))
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif	/* SYSTEM_USER_H */
-
+#define retained_system  __attribute__((section(".retained_system")))

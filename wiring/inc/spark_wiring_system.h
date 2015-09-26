@@ -32,6 +32,7 @@
 #include "core_hal.h"
 #include "interrupts_hal.h"
 #include "core_hal.h"
+#include "system_user.h"
 
 class Stream;
 
@@ -115,6 +116,26 @@ public:
     bool set(hal_system_config_t config_type, const char* data)
     {
         return set(config_type, data, strlen(data));
+    }
+
+
+    inline bool featureEnabled(HAL_Feature feature)
+    {
+        return HAL_Feature_Get(feature);
+    }
+
+    inline int enableFeature(HAL_Feature feature)
+    {
+        int result = HAL_Feature_Set(feature, true);
+        if (feature==FEATURE_RETAINED_MEMORY && !HAL_Feature_Get(FEATURE_WARM_START)) {
+            system_initialize_user_backup_ram();
+        }
+        return result;
+    }
+
+    inline int disableFeature(HAL_Feature feature)
+    {
+        return HAL_Feature_Set(feature, false);
     }
 
 };

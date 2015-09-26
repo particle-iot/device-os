@@ -37,6 +37,13 @@
 #include "hw_config.h"
 #endif
 
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
+
 DYNALIB_BEGIN(hal_peripherals)
 DYNALIB_FN(hal_peripherals,HAL_Tone_Start)
 DYNALIB_FN(hal_peripherals,HAL_Tone_Stop)
