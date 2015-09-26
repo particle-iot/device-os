@@ -359,6 +359,9 @@ int Spark_Handshake(void)
         ultoa(HAL_OTA_ChunkSize(), buf, 10);
         Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
 
+        if (system_mode()==SAFE_MODE)
+            Particle.publish("spark/device/safemode","", 60, PRIVATE);
+
         if (!HAL_core_subsystem_version(buf, sizeof (buf)))
         {
             Particle.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
