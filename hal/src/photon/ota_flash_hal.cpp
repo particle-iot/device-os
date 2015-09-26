@@ -26,6 +26,8 @@
 #include "ota_module.h"
 #include "spark_macros.h"
 #include "ota_flash_hal_stm32f2xx.h"
+#include "core_hal.h"
+#include "dct.h"
 
 #if MODULAR_FIRMWARE
 const module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN };
@@ -52,10 +54,11 @@ void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserve
 {
     info->key_values = NULL;
     info->key_value_count = 0;
-    }
+}
+
 int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
 {
-    unsigned offset;
+    unsigned offset = 0;
     unsigned length = -1;
 
     switch (config_item)
