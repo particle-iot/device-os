@@ -33,6 +33,9 @@
 #include "interrupts_hal.h"
 #include "core_hal.h"
 #include "system_user.h"
+#ifdef SPARK_PLATFORM
+#include "hw_ticks.h"
+#endif
 
 class Stream;
 
@@ -58,6 +61,24 @@ public:
     static void enterSafeMode(void) {
         HAL_Core_Enter_Safe_Mode(NULL);
     }
+
+#ifdef SPARK_PLATFORM
+    static inline uint32_t ticksPerMicrosecond()
+    {
+        return SYSTEM_US_TICKS;
+    }
+
+    static inline uint32_t ticks()
+    {
+        return SYSTEM_TICK_COUNTER;
+    }
+
+    static inline void ticksDelay(uint32_t duration)
+    {
+        uint32_t start = ticks();
+        while ((ticks()-start)<duration) {}
+    }
+#endif
 
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0);
     static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }
