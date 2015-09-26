@@ -16,8 +16,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
-#pragma once
 
-#include "dcd_flash.h"
-#include "dct.h"
-
+#include "dct_hal.h"
+#include "dcd_flash_impl.h"

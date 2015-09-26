@@ -29,6 +29,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "dcd_flash.h"
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -222,6 +223,8 @@ extern volatile uint32_t TimingDelay;
 
 void HAL_Core_Config_systick_configuration(void) {
     SysTick_Configuration();
+
+    dcd_migrate_data();
 }
 
 /**

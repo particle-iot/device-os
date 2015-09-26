@@ -16,8 +16,18 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
-#pragma once
 
-#include "dcd_flash.h"
-#include "dct.h"
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+const void* dct_read_app_data (uint32_t offset);
+int dct_write_app_data(const void* data, uint32_t offset, uint32_t size);
+void dcd_migrate_data();
+
+#ifdef __cplusplus
+}
+#endif
 

@@ -30,6 +30,9 @@
 #include "hw_config.h"
 #include "rgbled.h"
 
+void platform_startup();
+
+
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);
 
@@ -113,6 +116,8 @@ int main(void)
     // Setup SysTick Timer for 1 msec interrupts to call Timing_Decrement()
     SysTick_Configuration();
 
+    platform_startup();
+
     USE_SYSTEM_FLAGS = 1;
 
     //--------------------------------------------------------------------------
@@ -139,7 +144,7 @@ int main(void)
     }
 
     uint8_t features = SYSTEM_FLAG(FeaturesEnabled_SysFlag);
-    // disabling this until we can be sure DCT corruption won't bite. 
+    // disabling this until we can be sure DCT corruption won't bite.
     if (true || (features!=0xFF && (((~(features>>4)&0xF)) != (features & 0xF))) || (features&8)) {     // bit 3 must be reset for this to be enabled
         features = 0xFF;        // ignore - corrupt. Top 4 bits should be the inverse of the bottom 4
     }
