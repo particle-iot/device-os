@@ -137,7 +137,9 @@ void pinResetFast(pin_t _pin);
 void pinSetFast(pin_t _pin);
 void pinReadFast(pin_t _pin);
 #else
-    #error "*** MCU architecture not supported by this library. ***"
+    #warning "*** MCU architecture not supported by the fastPin library. ***"
+    #define pinSetFast(pin) digitalWrite(pin, HIGH)
+    #define pinResetFast(pin) digitalWrite(pin, LOW)
 #endif
 
 #endif //USE_BIT_BAND

@@ -22,6 +22,19 @@ MODULAR_PLATFORM=( photon P1 )
 # set current working dir
 cd main
 
+# Newhal Build
+echo
+echo '-----------------------------------------------------------------------'
+make -s clean all PLATFORM="newhal" COMPILE_LTO="n"
+if [[ "$?" -eq 0 ]]; then
+  echo "✓ SUCCESS"
+else
+  echo "✗ FAILED"
+  exit 1
+fi
+
+
+
 # COMPILE_LTO required on the Core for wiring/no_fixture to fit
 for t in "${TEST[@]}"
 do
