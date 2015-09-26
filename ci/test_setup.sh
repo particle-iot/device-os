@@ -23,7 +23,7 @@ mkdir -p ${log_dir}
 
 # background task to pull down events from the core and write to file
 function start_listening() {
-  spark subscribe state $core_name > $events &
+  particle subscribe state $core_name > $events &
 }
 
 # terminate the most recently started background process
@@ -114,7 +114,7 @@ function excludeTests() {
 # sends a command to the test harness
 # $1 the command string to send
 function sendCommand() {
-  r=$(spark function call $core_name cmd $1)
+  r=$(particle function call $core_name cmd $1)
   echo $r
 }
 
@@ -157,7 +157,7 @@ function echoVar {
 }
 
 function readVar() {
-  spark variable get $core_name $1
+  particle variable get $core_name $1
 }
 
 function sparkFlash() {
@@ -166,7 +166,7 @@ function sparkFlash() {
     for ((n=1; n<=count; n++))
     do
         echo "OTA flashing firmware at $(date) - attempt $n"
-        spark flash $2 $3 > otaflash
+        particle flash $2 $3 > otaflash
         [[ $? -eq 0 ]] && grep -q -v ECONN otaflash && break
     done
 
