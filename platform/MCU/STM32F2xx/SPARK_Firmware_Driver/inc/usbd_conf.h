@@ -58,7 +58,7 @@
    This address represents the DFU code protected against write and erase operations.*/
 #define APP_DEFAULT_ADD                 CORE_FW_ADDRESS
 
-#ifdef USE_SERIAL_FLASH
+#ifdef HAS_SERIAL_FLASH
 #define DFU_MAL_SUPPORT_sFLASH
 #endif
 
