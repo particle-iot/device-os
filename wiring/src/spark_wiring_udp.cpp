@@ -196,7 +196,7 @@ int UDP::parsePacket()
 int UDP::receivePacket(uint8_t* buffer, size_t size)
 {
     int ret = -1;
-    if(Network.from(_nif).ready() && isOpen(_sock) && _buffer)
+    if(Network.from(_nif).ready() && isOpen(_sock) && buffer)
     {
         sockaddr_t remoteSockAddr;
         socklen_t remoteSockAddrLen = sizeof(remoteSockAddr);
