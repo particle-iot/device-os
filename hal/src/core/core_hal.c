@@ -156,6 +156,12 @@ void HAL_Core_Factory_Reset(void)
 	HAL_Core_System_Reset();
 }
 
+void HAL_Core_Enter_Safe_Mode(void* reserved)
+{
+    BKP_WriteBackupRegister(BKP_DR1, ENTER_SAFE_MODE_APP_REQUEST);
+    HAL_Core_System_Reset();
+}
+
 void HAL_Core_Enter_Bootloader(bool persist)
 {
     if (persist)

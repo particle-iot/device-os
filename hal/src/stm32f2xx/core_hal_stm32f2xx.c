@@ -347,6 +347,12 @@ void HAL_Core_Enter_Bootloader(bool persist)
     HAL_Core_System_Reset();
 }
 
+void HAL_Core_Enter_Safe_Mode(void* reserved)
+{
+    RTC_WriteBackupRegister(RTC_BKP_DR1, ENTER_SAFE_MODE_APP_REQUEST);
+    HAL_Core_System_Reset();
+}
+
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
 {
     if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))

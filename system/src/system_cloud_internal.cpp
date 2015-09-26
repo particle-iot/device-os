@@ -237,11 +237,22 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 }
 
 const char* CLAIM_EVENTS = "spark/device/claim/";
+const char* RESET_EVENT = "spark/device/reset";
 
 void SystemEvents(const char* name, const char* data)
 {
     if (!strncmp(name, CLAIM_EVENTS, strlen(CLAIM_EVENTS))) {
         HAL_Set_Claim_Code(NULL);
+    }
+    if (!strcmp(name, RESET_EVENT)) {
+        if (data && *data) {
+            if (!strcmp("safe mode", data))
+                System.enterSafeMode();
+            else if (!strcmp("dfu", data))
+                System.dfu(false);
+            else if (!strcmp("reboot", data))
+                System.reset();
+        }
     }
 }
 
@@ -347,6 +358,9 @@ int Spark_Handshake(void)
 
         ultoa(HAL_OTA_ChunkSize(), buf, 10);
         Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
+
+        if (system_mode()==SAFE_MODE)
+            Particle.publish("spark/device/safemode","", 60, PRIVATE);
 
         if (!HAL_core_subsystem_version(buf, sizeof (buf)))
         {

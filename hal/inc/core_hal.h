@@ -105,6 +105,7 @@ void HAL_Core_Factory_Reset(void);
  */
 void HAL_Notify_Button_State(uint8_t button, uint8_t state);
 
+void HAL_Core_Enter_Safe_Mode(void* reserved);
 void HAL_Core_Enter_Bootloader(bool persist);
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
 void HAL_Core_Execute_Stop_Mode(void);

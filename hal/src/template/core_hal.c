@@ -62,6 +62,10 @@ void HAL_Core_Factory_Reset(void)
 {
 }
 
+void HAL_Core_Enter_Safe_Mode(void* reserved)
+{
+}
+
 void HAL_Core_Enter_Bootloader(bool persist)
 {
 }
@@ -120,7 +124,7 @@ unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
 }
 
 
-int main() 
+int main()
 {
     while(1);
 }
