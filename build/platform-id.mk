@@ -1,7 +1,7 @@
 ifeq ($(included_productid_mk),)
 included_productid_mk := 1
 
-# defines 
+# defines
 # PLATFORM_NAME - a unique name for the platform, can be used to organise sources
 #                 by platform
 # PLATFORM_MCU  - an identifier for the MCU family
@@ -10,7 +10,7 @@ included_productid_mk := 1
 # ARCH		- architecture (ARM/GCC)
 # PRODUCT_DESC  - text description of the product ID
 # PLATFORM_DYNALIB_MODULES - if the device supports a modular build, the name
-#		- of the subdirectory containing 
+#		- of the subdirectory containing
 
 # Default USB Device Vendor ID for Spark Products
 USBD_VID_SPARK=0x1D50
@@ -242,16 +242,10 @@ ifeq ("$(PLATFORM_NAME)","core")
     PLATFORM_DFU ?= 0x08005000
 endif
 
-    ifeq ("$(STM32_DEVICE)","STM32F2XX")
-	PLATFORM_DFU ?= 0x08020000
-	PLATFORM_THREADING=1
-    endif
-
-ifeq ("$(PLATFORM_NAME)","electron")
+ifeq ("$(STM32_DEVICE)","STM32F2XX")
     PLATFORM_DFU ?= 0x08020000
-    PLATFORM_THREADING=0
+    PLATFORM_THREADING=1
 endif
-
 
 ifeq ("$(PLATFORM_MCU)","")
 $(error PLATFORM_MCU not defined. Check platform id $(PLATFORM_ID))
