@@ -33,7 +33,7 @@
 #include "system_network_internal.h"
 #include "system_network.h"
 
-#if Wiring_WiFi && PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
+#if SETUP_OVER_SERIAL1
 #define SETUP_LISTEN_MAGIC 1
 void loop_wifitester(int c);
 #include "spark_wiring_usartserial.h"

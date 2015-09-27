@@ -19,6 +19,7 @@ reflects the connection state. [#626](https://github.com/spark/firmwarwe/issues/
  - Solid green LED when WiFi network cannot be connected to due to invalid key. (The LED now blinks.)
  - Storing more than 2 Wi-Fi credentials would sometimes give unpredictable results.
  - `UDP.receivePacket()` would fail if `UDP.setBuffer()` hadn't been called first. Thanks @r2jitu.
+ - TX/RX pins did not work after entering listening mode. [#632](https://github.com/spark/firmware/issues/632)
 
 ## v0.4.5
 

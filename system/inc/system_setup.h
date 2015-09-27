@@ -28,10 +28,6 @@
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_platform.h"
 
-#if Wiring_WiFi && PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
-#define SETUP_OVER_SERIAL1 1
-#endif
-
 #ifndef SETUP_OVER_SERIAL1
 #define SETUP_OVER_SERIAL1 0
 #endif
