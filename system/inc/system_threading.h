@@ -127,6 +127,8 @@ FFL(F const &func)
 #define APPLICATION_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(ApplicationThread, fn)
 #define APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(ApplicationThread, fn, result)
 
+// Perform an asynchronous function call if not on the system thread,
+// or execute directly if on the system thread
 #define SYSTEM_THREAD_CONTEXT_ASYNC_CALL(fn) \
     SYSTEM_THREAD_CONTEXT_ASYNC(fn); \
     fn;
