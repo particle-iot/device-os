@@ -358,6 +358,7 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 }
 
 
+
 // todo find a technique that allows accessor functions to be inlined while still keeping
 // hardware independence.
 bool HAL_watchdog_reset_flagged()
@@ -370,9 +371,17 @@ void HAL_Notify_WDT()
 	KICK_WDT();
 }
 
+void HAL_Hook_Main() __attribute__((weak));
+
+void HAL_Hook_Main()
+{
+    // nada
+}
+
 int main() {
-	app_setup_and_loop();
-	return 0;
+    HAL_Hook_Main();
+    app_setup_and_loop();
+    return 0;
 }
 
 

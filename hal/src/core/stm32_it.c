@@ -199,17 +199,6 @@ void UsageFault_Handler(void)
 }
 
 /*******************************************************************************
- * Function Name  : SVC_Handler
- * Description    : This function handles SVCall exception.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void SVC_Handler(void)
-{
-}
-
-/*******************************************************************************
  * Function Name  : DebugMon_Handler
  * Description    : This function handles Debug Monitor exception.
  * Input          : None
@@ -220,16 +209,13 @@ void DebugMon_Handler(void)
 {
 }
 
-/*******************************************************************************
- * Function Name  : PendSV_Handler
- * Description    : This function handles PendSVC exception.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void PendSV_Handler(void)
+void HAL_SysTick_Hook(void) __attribute__((weak));
+
+void HAL_SysTick_Hook(void)
 {
+
 }
+
 
 /*******************************************************************************
  * Function Name  : SysTick_Handler
@@ -247,10 +233,10 @@ void SysTick_Handler(void)
         TimingDelay--;
     }
 
-    if(NULL != HAL_SysTick_Handler)
-    {
-        HAL_SysTick_Handler();
-    }
+    HAL_SysTick_Handler();
+
+    // another hook for an rtos
+    HAL_SysTick_Hook();
 }
 
 /******************************************************************************/
