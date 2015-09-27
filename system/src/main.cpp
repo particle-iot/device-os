@@ -217,15 +217,15 @@ void app_loop(bool threaded)
                 if (system_mode()!=SAFE_MODE)
                  setup();
                 SPARK_WIRING_APPLICATION = 1;
-        }
+            }
 
             //Execute user application loop
             DECLARE_SYS_HEALTH(ENTERED_Loop);
             if (system_mode()!=SAFE_MODE) {
                 loop();
                 DECLARE_SYS_HEALTH(RAN_Loop);
-    }
-}
+            }
+        }
     }
 }
 
