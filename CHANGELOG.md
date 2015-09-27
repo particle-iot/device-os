@@ -10,7 +10,7 @@
  - Detect when the cloud hasn't been serviced for 15s and disconnect, so device state accurately
 reflects the connection state. [#626](https://github.com/spark/firmwarwe/issues/626)
  - Compile-time checks for `Particle.variable()` [#619](https://github.com/spark/firmwarwe/issues/619)
- - 
+ -
 
 ### BUGFIXES
 
@@ -18,6 +18,7 @@ reflects the connection state. [#626](https://github.com/spark/firmwarwe/issues/
  - Long delay entering listening mode. [#566](https://github.com/spark/firmware/issues/566)
  - Solid green LED when WiFi network cannot be connected to due to invalid key. (The LED now blinks.)
  - Storing more than 2 Wi-Fi credentials would sometimes give unpredictable results.
+ - `UDP.receivePacket()` would fail if `UDP.setBuffer()` hadn't been called first. Thanks @r2jitu.
 
 ## v0.4.5
 
