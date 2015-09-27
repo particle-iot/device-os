@@ -59,6 +59,7 @@ LDFLAGS += -u _printf_float
 endif
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
+LDFLAGS += -u uxTopUsedPriority
 endif
 
 # not using assembler startup script, but will use startup linked in with wiced

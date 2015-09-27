@@ -35,12 +35,15 @@ LDFLAGS += --specs=nano.specs -lc -lnosys
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=1400
 # support for external linker file
+
+# todo - factor out common code with photon include.mk
 LDFLAGS += -L$(HAL_SRC_ELECTRON_INCL_PATH)
 USE_PRINTF_FLOAT ?= n
 ifeq ("$(USE_PRINTF_FLOAT)","y")
 LDFLAGS += -u _printf_float
 endif
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
+LDFLAGS += -u uxTopUsedPriority
 #
 # assembler startup script
 ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S
