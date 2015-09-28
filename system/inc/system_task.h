@@ -51,8 +51,6 @@ inline void Spark_Idle() { Spark_Idle_Events(false); }
 void SPARK_WLAN_Loop(void) __attribute__ ((deprecated("Please use Particle.process() instead.")));
 inline void SPARK_WLAN_Loop(void) { spark_process(); }
 
-void SPARK_WLAN_SmartConfigProcess();
-
 void disconnect_cloud();
 
 extern volatile uint32_t TimingFlashUpdateTimeout;

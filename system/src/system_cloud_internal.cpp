@@ -150,6 +150,8 @@ bool spark_function_internal(const cloud_function_descriptor* desc, void* reserv
     return item!=NULL;
 }
 
+uint32_t lastCloudEvent = 0;
+
 /**
  * This is the internal function called by the background loop to pump cloud events.
  */
@@ -159,6 +161,10 @@ void Spark_Process_Events()
     {
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
+    }
+    else
+    {
+        lastCloudEvent = millis();
     }
 }
 
@@ -238,11 +244,22 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 }
 
 const char* CLAIM_EVENTS = "spark/device/claim/";
+const char* RESET_EVENT = "spark/device/reset";
 
 void SystemEvents(const char* name, const char* data)
 {
     if (!strncmp(name, CLAIM_EVENTS, strlen(CLAIM_EVENTS))) {
         HAL_Set_Claim_Code(NULL);
+    }
+    if (!strcmp(name, RESET_EVENT)) {
+        if (data && *data) {
+            if (!strcmp("safe mode", data))
+                System.enterSafeMode();
+            else if (!strcmp("dfu", data))
+                System.dfu(false);
+            else if (!strcmp("reboot", data))
+                System.reset();
+        }
     }
 }
 
@@ -348,6 +365,9 @@ int Spark_Handshake(void)
 
         ultoa(HAL_OTA_ChunkSize(), buf, 10);
         Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
+
+        if (system_mode()==SAFE_MODE)
+            Particle.publish("spark/device/safemode","", 60, PRIVATE);
 
         if (!HAL_core_subsystem_version(buf, sizeof (buf)))
         {
@@ -732,4 +752,21 @@ void Multicast_Presence_Announcement(void)
 
     socket_close(multicast_socket);
 #endif
+}
+
+const int SYSTEM_CLOUD_TIMEOUT = 15*1000;
+
+bool system_cloud_active()
+{
+#ifndef SPARK_NO_CLOUD
+    if (!SPARK_CLOUD_SOCKETED)
+        return false;
+
+    if (SPARK_CLOUD_CONNECTED && ((millis()-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
+    {
+        cloud_disconnect(false);
+        return false;
+    }
+#endif
+    return true;
 }

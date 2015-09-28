@@ -43,6 +43,7 @@
 #include "core_cm3.h"
 #include "bootloader.h"
 #include "core_hal_stm32f2xx.h"
+#include "stm32f2xx.h"
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -210,10 +211,8 @@ void HAL_Core_Config(void)
 #endif
 
     HAL_Core_Config_systick_configuration();
-#if PLATFORM_ID!=PLATFORM_ELECTRON_PRODUCTION
-    // ELECTRON TODO: re-instate this when working
+
     HAL_RTC_Configuration();
-#endif
 
     HAL_RNG_Configuration();
 
@@ -346,6 +345,12 @@ void HAL_Core_Enter_Bootloader(bool persist)
         RTC_WriteBackupRegister(RTC_BKP_DR1, ENTER_DFU_APP_REQUEST);
     }
 
+    HAL_Core_System_Reset();
+}
+
+void HAL_Core_Enter_Safe_Mode(void* reserved)
+{
+    RTC_WriteBackupRegister(RTC_BKP_DR1, ENTER_SAFE_MODE_APP_REQUEST);
     HAL_Core_System_Reset();
 }
 
@@ -581,9 +586,9 @@ void TIM2_irq(void)
         {
             if (!BUTTON_DEBOUNCED_TIME[BUTTON1])
             {
-                BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
+            BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
                 HAL_Notify_Button_State(BUTTON1, true);
-            }
+        }
             BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
         }
         else
@@ -840,4 +845,43 @@ bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
 {
     return SystemCoreClock;
+}
+
+uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
+{
+    extern unsigned char _eheap[];
+    extern unsigned char *sbrk_heap_top;
+
+    info->freeheap = _eheap-sbrk_heap_top;
+    return 0;
+}
+
+int HAL_Feature_Set(HAL_Feature feature, bool enabled)
+{
+    switch (feature)
+    {
+        case FEATURE_RETAINED_MEMORY:
+        {
+            FunctionalState state = enabled ? ENABLE : DISABLE;
+            // Switch on backup SRAM clock
+            RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_BKPSRAM, state);
+            // Switch on backup power regulator, so that it survives the sleep mode
+            PWR_BackupRegulatorCmd(state);
+            return 0;
+        }
+
+    }
+    return -1;
+}
+
+bool HAL_Feature_Get(HAL_Feature feature)
+{
+    switch (feature)
+    {
+        case FEATURE_WARM_START:
+        {
+            return (PWR_GetFlagStatus(PWR_FLAG_SB) != RESET);
+        }
+    }
+    return false;
 }

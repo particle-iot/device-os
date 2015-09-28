@@ -26,7 +26,9 @@
 #endif
 
 DYNALIB_BEGIN(hal_concurrent)
-DYNALIB_FN(hal_concurrent,__gthread_equal)
+#if PLATFORM_THREADING
+DYNALIB_FN(hal_concurrent,os_thread_scheduling)
+#endif
 DYNALIB_END(hal_concurrent)
 
 

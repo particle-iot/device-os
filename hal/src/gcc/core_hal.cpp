@@ -125,6 +125,12 @@ void HAL_Core_Factory_Reset(void)
     MSG("Factory reset not implemented.");
 }
 
+void HAL_Core_Enter_Safe_Mode(void* reserved)
+{
+    MSG("Enter sate mode not implemented.");
+}
+
+
 void HAL_Core_Enter_Bootloader(void)
 {
     MSG("Enter bootloader not implemented.");
@@ -265,4 +271,19 @@ void HAL_Core_Enter_Bootloader(bool persist)
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
 {
     return 1;
+}
+
+int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned length)
+{
+    return -1;
+}
+
+int HAL_Feature_Set(HAL_Feature feature, bool enabled)
+{
+    return -1;
+}
+
+bool HAL_Feature_Get(HAL_Feature feature)
+{
+    return false;
 }

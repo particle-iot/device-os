@@ -36,4 +36,3 @@ EEPROMInitClass::EEPROMInitClass()
     EEPROM.length();
 }
 
-EEPROMInitClass EEPROMInit;

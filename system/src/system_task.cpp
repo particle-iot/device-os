@@ -153,7 +153,7 @@ void handle_cloud_errors()
     // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
 
     // Reset Error Count
-    wlan_set_error_count(0);
+    network.set_error_count(0);
 }
 
 void handle_cfod()
@@ -211,13 +211,13 @@ void establish_cloud_connection()
         }
         else
         {
+            SPARK_CLOUD_SOCKETED = 0;
             if (SPARK_WLAN_RESET)
                 return;
 
             cloud_connection_failed();
-            SPARK_CLOUD_SOCKETED = 0;
             handle_cfod();
-            wlan_set_error_count(Spark_Error_Count);
+            network.set_error_count(Spark_Error_Count);
         }
     }
 }
@@ -257,10 +257,9 @@ void handle_cloud_connection(bool force_events)
                 // the socket may quickly disconnect and the connection retried, turning
                 // the LED back to cyan
                 system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-                Spark_Disconnect(); // clean up the socket
+                // allow time for the LED to be flashed
                 while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
-                SPARK_CLOUD_SOCKETED = 0;
-
+                cloud_disconnect();
             }
             else
             {

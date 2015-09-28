@@ -107,9 +107,6 @@ void HAL_RTC_Configuration(void)
 	{
 		/* System resumed from STANDBY mode */
 
-		/* Clear StandBy flag */
-		PWR_ClearFlag(PWR_FLAG_SB);
-
 		/* Wait for RTC APB registers synchronisation */
 		RTC_WaitForSynchro();
 
@@ -155,12 +152,12 @@ void HAL_RTC_Configuration(void)
 		    /* Check on RTC init */
 		    if (RTC_Init(&RTC_InitStructure) != ERROR)
 		    {
-	            /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
-	            /* Set Date/Time to Epoch 0 (Thu, 01 Jan 1970 00:00:00 GMT) */
-	            HAL_RTC_Initialize_UnixTime();
+                        /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
+                        /* Set Date/Time to Epoch 0 (Thu, 01 Jan 1970 00:00:00 GMT) */
+                        HAL_RTC_Initialize_UnixTime();
 
-	            /* Indicator for the RTC configuration */
-	            RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
+                        /* Indicator for the RTC configuration */
+                        RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
 		    }
 		}
 	}

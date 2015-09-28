@@ -44,9 +44,20 @@ class CloudClass {
 
 
 public:
-    static bool variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType)
+
+    static inline bool variable(const char *varKey, const uint8_t* userVar, const CloudVariableTypeString& userVarType)
     {
-        return CLOUD_FN(spark_variable(varKey, userVar, userVarType, NULL), false);
+        return variable(varKey, (const char*)userVar, userVarType);
+    }
+
+    template<typename T> static inline bool variable(const char *varKey, const typename T::varref userVar, const T& userVarType)
+    {
+        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, T::value(), NULL), false);
+    }
+
+    static inline bool variable(const char *varKey, const uint32_t* userVar, const CloudVariableTypeInt& userVarType)
+    {
+        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL), false);
     }
 
     static bool function(const char *funcKey, user_function_int_str_t* func)
@@ -178,5 +189,5 @@ private:
 };
 
 
-extern CloudClass Spark; // __attribute__((deprecated("Spark is now Particle.")));
+extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));
 extern CloudClass Particle;

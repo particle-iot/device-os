@@ -90,6 +90,7 @@ static STM32_USART_Info *usartMap[TOTAL_USARTS]; // pointer to USART_MAP[] conta
 
 /* Private function prototypes -----------------------------------------------*/
 
+inline void store_char(unsigned char c, Ring_Buffer *buffer) __attribute__((always_inline));
 inline void store_char(unsigned char c, Ring_Buffer *buffer)
 {
   unsigned i = (unsigned int)(buffer->head + 1) % SERIAL_BUFFER_SIZE;

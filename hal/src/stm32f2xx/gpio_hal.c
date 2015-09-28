@@ -43,6 +43,8 @@ PinMode digitalPinModeSaved = PIN_MODE_NONE;
 
 /* Private function prototypes ----------------------------------------------*/
 
+
+inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
 inline bool is_valid_pin(pin_t pin)
 {
     return pin<TOTAL_PINS;

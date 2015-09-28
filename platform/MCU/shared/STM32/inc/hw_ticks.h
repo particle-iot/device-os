@@ -30,6 +30,7 @@ extern "C" {
 #include "system_tick_hal.h"
 
 #define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
+#define SYSTEM_TICK_COUNTER     (DWT->CYCCNT)
 
 /**
  * Increment the millisecond tick counter.

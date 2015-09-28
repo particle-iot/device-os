@@ -27,72 +27,72 @@
 #include "i2c_hal.h"
 #include "gpio_hal.h"
 
-void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed)
+void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved)
 {
 }
 
-void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch)
+void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved)
 {
 }
 
-void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address)
+void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved)
 {
 }
 
-void HAL_I2C_End(HAL_I2C_Interface i2c)
+void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved)
 {
 }
 
-uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop)
-{
-    return 0;
-}
-
-void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address)
-{
-}
-
-uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop)
-{
-  return 0;
-}
-
-uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data)
-{
-  return 0;
-}
-
-int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c)
-{
-  return 0;
-}
-
-int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c)
-{
-  return 0;
-}
-
-int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c)
+uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop,void* reserved)
 {
     return 0;
 }
 
-void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c)
+void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address,void* reserved)
+{
+}
+
+uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop,void* reserved)
+{
+  return 0;
+}
+
+uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data,void* reserved)
+{
+  return 0;
+}
+
+int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c,void* reserved)
+{
+  return 0;
+}
+
+int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c,void* reserved)
+{
+  return 0;
+}
+
+int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c,void* reserved)
+{
+    return 0;
+}
+
+void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c,void* reserved)
 {
   // XXX: to be implemented.
 }
 
-bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c)
+bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c,void* reserved)
 {
     return false;
 }
 
-void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int))
+void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int),void* reserved)
 {
 
 }
 
-void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void))
+void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void),void* reserved)
 {
 
 }
@@ -119,6 +119,6 @@ void HAL_I2C1_ER_Handler(void)
 {
 }
 
-void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable)
+void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable,void* reserved)
 {
 }

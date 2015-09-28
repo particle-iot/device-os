@@ -30,7 +30,7 @@ sparkFlash 5 $core_name $target_file || { echo "Unable to OTA flash test suite";
 
 
 echo "Waiting for core to reboot"
-# todo - verify test suite build time or fix spark-cli return codes
+# todo - verify test suite build time or fix particle-cli return codes
 # give enough time for the core to go into OTA mode
 sleep 10 || die
 

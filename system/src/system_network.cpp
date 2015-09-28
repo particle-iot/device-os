@@ -43,6 +43,7 @@ volatile uint8_t SPARK_WLAN_STARTED;
 WiFiNetworkInterface wifi;
 ManagedNetworkInterface& network = wifi;
 inline NetworkInterface& nif(network_interface_t _nif) { return wifi; }
+#define Wiring_Network 1
 #endif
 
 #if Wiring_Cellular
@@ -50,7 +51,14 @@ inline NetworkInterface& nif(network_interface_t _nif) { return wifi; }
 CellularNetworkInterface cellular;
 ManagedNetworkInterface& network = cellular;
 inline NetworkInterface& nif(network_interface_t _nif) { return cellular; }
+#define Wiring_Network 1
 #endif
+
+#ifndef Wiring_Network
+#define Wiring_Network 0
+#endif
+
+#if Wiring_Network
 
 void HAL_WLAN_notify_simple_config_done()
 {
@@ -76,6 +84,7 @@ void HAL_WLAN_notify_dhcp(bool dhcp)
 {
     network.notify_dhcp(dhcp);
 }
+
 
 const void* network_config(network_handle_t network, uint32_t param, void* reserved)
 {
@@ -167,3 +176,5 @@ void manage_ip_config()
 {
     nif(0).update_config();
 }
+
+#endif

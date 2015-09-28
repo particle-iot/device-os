@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file    system-wifi.h
+ * @file    hal_dynalib_wlan.h
  * @authors Matthew McGowan
- * @date    09 February 2015
+ * @date    04 March 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
@@ -21,32 +21,30 @@
  ******************************************************************************
  */
 
-#ifndef SYSTEM_PART1_H
-#define	SYSTEM_PART1_H
+#ifndef HAL_DYNALIB_CELLULAR_H
+#define	HAL_DYNALIB_CELLULAR_H
 
 #include "dynalib.h"
 
-#ifdef	__cplusplus
-extern "C" {
+#ifdef DYNALIB_EXPORT
+#include "cellular_hal.h"
 #endif
 
-/**
- * Indices into the module-level export table.
- */
-#define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_COMMUNICATION 0
-#define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_PART1RESOURCE 1
-#define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_MODULE 2
-#define SYSTEM_PART1MODULE_JUMP_TABLE_INDEX_SERVICES 3
+DYNALIB_BEGIN(hal_cellular)
+DYNALIB_FN(hal_cellular, cellular_off)
+DYNALIB_FN(hal_cellular, cellular_on)
+DYNALIB_FN(hal_cellular, cellular_init)
+DYNALIB_FN(hal_cellular, cellular_register)
+DYNALIB_FN(hal_cellular, cellular_pdp_activate)
+DYNALIB_FN(hal_cellular, cellular_pdp_deactivate)
+DYNALIB_FN(hal_cellular, cellular_gprs_attach)
+DYNALIB_FN(hal_cellular, cellular_gprs_detach)
+DYNALIB_FN(hal_cellular, cellular_fetch_ipconfig)
+DYNALIB_FN(hal_cellular, cellular_device_info)
+DYNALIB_FN(hal_cellular, cellular_credentials_set)
+DYNALIB_FN(hal_cellular, cellular_credentials_get)
+DYNALIB_FN(hal_cellular, cellular_sim_ready)
+DYNALIB_END(hal_cellular)
 
-/**
- * The static module-level export table of library jump table addresses.
- */
-extern const void* const system_part1_module[];
 
-
-#ifdef	__cplusplus
-}
 #endif
-
-#endif	/* SYSTEM_WIFI_H */
-

@@ -1,4 +1,5 @@
 CFLAGS += -DUSE_STDPERIPH_DRIVER
+CPPFLAGS += -std=gnu++11
 
 ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup

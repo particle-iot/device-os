@@ -34,8 +34,6 @@ extern "C" {
     wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, const char *password,
         uint16_t passwordLen, wiced_security_t security, unsigned channel);
 
-    const uint8_t* fetch_device_public_key();
-
     size_t hex_decode(uint8_t* buf, size_t len, const char* hex);
 
 #ifdef	__cplusplus

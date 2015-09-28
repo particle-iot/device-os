@@ -105,6 +105,7 @@ void HAL_Core_Factory_Reset(void);
  */
 void HAL_Notify_Button_State(uint8_t button, uint8_t state);
 
+void HAL_Core_Enter_Safe_Mode(void* reserved);
 void HAL_Core_Enter_Bootloader(bool persist);
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode);
 void HAL_Core_Execute_Stop_Mode(void);
@@ -165,6 +166,37 @@ typedef enum HAL_SystemClock
  * @return
  */
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved);
+
+
+typedef enum hal_system_config_t
+{
+    SYSTEM_CONFIG_NONE,
+    SYSTEM_CONFIG_DEVICE_KEY,
+    SYSTEM_CONFIG_SERVER_KEY,
+
+    SYSTEM_CONFIG_SOFTAP_PREFIX,
+    SYSTEM_CONFIG_SOFTAP_SUFFIX,
+    SYSTEM_CONFIG_SOFTAP_HOSTNAMES
+
+} hal_system_config_t;
+
+/**
+ * Sets a system configuration item.
+ * @param config_item       The item to set
+ * @param data              The data to set to
+ * @param length            The length of the data.
+ * @return      0 on success.
+ */
+int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned length);
+
+
+typedef enum HAL_Feature {
+    FEATURE_RETAINED_MEMORY=1,       // [write only] retained memory on backup power
+    FEATURE_WARM_START               // [read only] set to true if previous retained memory contents are available]
+} HAL_Feature;
+
+int HAL_Feature_Set(HAL_Feature feature, bool enabled);
+bool HAL_Feature_Get(HAL_Feature feature);
 
 #ifdef __cplusplus
 }

@@ -5,14 +5,20 @@
 
 ### ENHANCEMENTS
 
-    - `Wire.end()` to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
-    - `Wire.reset()` to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
+ - `Wire.end()` to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
+ - `Wire.reset()` to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
+ - Detect when the cloud hasn't been serviced for 15s and disconnect, so device state accurately
+reflects the connection state. [#626](https://github.com/spark/firmwarwe/issues/626)
+ - Compile-time checks for `Particle.variable()` [#619](https://github.com/spark/firmwarwe/issues/619)
+ -
 
 ### BUGFIXES
  - Default SS pin for SPI1 now set to D5. [#623](https://github.com/spark/firmware/issues/623)
  - Long delay entering listening mode. [#566](https://github.com/spark/firmware/issues/566)
  - Solid green LED when WiFi network cannot be connected to due to invalid key. (The LED now blinks.)
  - Storing more than 2 Wi-Fi credentials would sometimes give unpredictable results.
+ - `UDP.receivePacket()` would fail if `UDP.setBuffer()` hadn't been called first. Thanks @r2jitu.
+ - TX/RX pins did not work after entering listening mode. [#632](https://github.com/spark/firmware/issues/632)
 
 ## v0.4.5
 
