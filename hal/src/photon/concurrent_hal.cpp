@@ -117,6 +117,23 @@ os_result_t os_thread_cleanup(os_thread_t thread)
 }
 
 /**
+ * Delays the current task until a specified time to set up periodic tasks
+ * @param previousWakeTime The time the thread last woke up.  May not be NULL.
+ *                         Set to the current time on first call. Will be updated
+ *                         when the task wakes up
+ * @param timeIncrement    The cycle time period
+ * @return 0 on success. 1 if previousWakeTime is NULL
+ */
+os_result_t os_thread_delay_until(system_tick_t *previousWakeTime, system_tick_t timeIncrement)
+{
+    if(previousWakeTime == NULL) {
+        return 1;
+    }
+    vTaskDelayUntil(previousWakeTime, timeIncrement);
+    return 0;
+}
+
+/**
  * Map gthread handles to FreeRTOS task handles.
  */
 typedef TaskHandle_t __gthread_t;

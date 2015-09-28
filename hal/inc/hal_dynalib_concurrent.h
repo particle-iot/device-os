@@ -27,9 +27,14 @@
 
 DYNALIB_BEGIN(hal_concurrent)
 #if PLATFORM_THREADING
-DYNALIB_FN(hal_concurrent,os_thread_scheduling)
+DYNALIB_FN(hal_concurrent,__gthread_equal)
+DYNALIB_FN(hal_concurrent,os_thread_create)
+DYNALIB_FN(hal_concurrent,os_thread_is_current)
 DYNALIB_FN(hal_concurrent,os_thread_yield)
-
+DYNALIB_FN(hal_concurrent,os_thread_join)
+DYNALIB_FN(hal_concurrent,os_thread_cleanup)
+DYNALIB_FN(hal_concurrent,os_thread_delay_until)
+DYNALIB_FN(hal_concurrent,os_thread_scheduling)
 #endif
 DYNALIB_END(hal_concurrent)
 
