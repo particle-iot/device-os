@@ -116,6 +116,12 @@ os_result_t os_thread_join(os_thread_t thread);
  */
 os_result_t os_thread_cleanup(os_thread_t thread);
 
+/**
+ * Signifies that the calling thread wishes to give up control to some other thread.
+ * @param thread
+ * @return
+ */
+os_result_t os_thread_yield(void);
 
 
 int os_condition_variable_create(condition_variable_t* var);

@@ -71,6 +71,13 @@ bool os_thread_is_current(os_thread_t thread)
     return thread==xTaskGetCurrentTaskHandle();
 }
 
+
+os_result_t os_thread_yield(void)
+{
+    taskYIELD();
+    return 0;
+}
+
 /**
  * Determines if the thread stack is still within the allocated region.
  * @param thread    The thread to check
