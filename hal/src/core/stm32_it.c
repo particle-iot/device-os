@@ -209,35 +209,6 @@ void DebugMon_Handler(void)
 {
 }
 
-void HAL_SysTick_Hook(void) __attribute__((weak));
-
-void HAL_SysTick_Hook(void)
-{
-
-}
-
-
-/*******************************************************************************
- * Function Name  : SysTick_Handler
- * Description    : This function handles SysTick Handler.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void SysTick_Handler(void)
-{
-    System1MsTick();
-
-    if (TimingDelay != 0x00)
-    {
-        TimingDelay--;
-    }
-
-    HAL_SysTick_Handler();
-
-    // another hook for an rtos
-    HAL_SysTick_Hook();
-}
 
 /******************************************************************************/
 /*                 STM32 Peripherals Interrupt Handlers                       */

@@ -2,6 +2,7 @@
 ## v0.4.6
 
 ### FEATURES
+ - [core] Hooks to support FreeRTOS (optional library)
 
 ### ENHANCEMENTS
 
