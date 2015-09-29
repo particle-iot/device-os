@@ -55,6 +55,9 @@ static_assert(sizeof(uint32_t)==sizeof(void*), "Requires uint32_t to be same siz
 os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_prio_t priority, os_thread_fn_t fun, void* thread_param, size_t stack_size)
 {
     *thread = NULL;
+    if(priority >= configMAX_PRIORITIES) {
+      priority = configMAX_PRIORITIES - 1;
+    }
     signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (const signed char*)name, (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) priority, thread);
     return ( result != (signed portBASE_TYPE) pdPASS );
 }
