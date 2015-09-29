@@ -28,27 +28,44 @@
 
 #include "concurrent_hal.h"
 #include <stddef.h>
+#include <functional>
 
-class thread
+typedef std::function<os_thread_return_t(void)> wiring_thread_fn_t;
+
+class Thread
 {
 private:
     mutable os_thread_t handle;
-
-    friend class ThreadFactory;
-
-    thread(os_thread_t handle_)
-        : handle(handle_)
-    {
-    }
+    mutable wiring_thread_fn_t *wrapper;
 
 public:
+    Thread() : handle(OS_THREAD_INVALID_HANDLE) {}
 
-    thread() : handle(OS_THREAD_INVALID_HANDLE) {}
+    Thread(const char* name, os_thread_fn_t function, void* function_param=NULL,
+            os_thread_prio_t priority=OS_THREAD_PRIORITY_DEFAULT, size_t stack_size=OS_THREAD_STACK_SIZE_DEFAULT)
+        : wrapper(NULL)
+    {
+        os_thread_create(&handle, name, priority, function, function_param, stack_size);
+    }
+
+    Thread(const char *name, wiring_thread_fn_t function,
+            os_thread_prio_t priority=OS_THREAD_PRIORITY_DEFAULT, size_t stack_size=OS_THREAD_STACK_SIZE_DEFAULT)
+        : handle(OS_THREAD_INVALID_HANDLE), wrapper(NULL)
+    {
+        if(function) {
+            wrapper = new wiring_thread_fn_t(function);
+            os_thread_create(&handle, name, priority, call_wiring_handler, wrapper, stack_size);
+        }
+    }
 
     void dispose()
     {
+        if(wrapper) {
+            delete wrapper;
+            wrapper = NULL;
+        }
+        // This call will not return if handle is the current thread
         os_thread_cleanup(handle);
-        handle = OS_THREAD_INVALID_HANDLE;
     }
 
     bool join()
@@ -58,6 +75,7 @@ public:
 
     bool is_valid()
     {
+        // TODO should this also check xTaskIsTaskFinished as well?
         return handle!=OS_THREAD_INVALID_HANDLE;
     }
 
@@ -66,35 +84,36 @@ public:
         return os_thread_is_current(handle);
     }
 
-    thread& operator = (const thread& rhs)
+    Thread& operator = (const Thread& rhs)
     {
-	if (this != &rhs)
+        if (this != &rhs)
         {
             this->handle = rhs.handle;
-            rhs.handle = NULL;
+            this->wrapper = rhs.wrapper;
+            rhs.handle = OS_THREAD_INVALID_HANDLE;
+            rhs.wrapper = NULL;
         }
-	return *this;
+        return *this;
+    }
+
+private:
+
+    static os_thread_return_t call_wiring_handler(void *param) {
+        auto wrapper = (wiring_thread_fn_t*)(param);
+        return (*wrapper)();
     }
 };
 
-class ThreadFactory
-{
+class CriticalSection {
 public:
-    thread create(const char* name, os_thread_fn_t function, void* function_param=NULL,
-        os_thread_prio_t priority=OS_THREAD_PRIORITY_DEFAULT, size_t stack_size=OS_THREAD_STACK_SIZE_DEFAULT, void* stack=NULL)
-    {
-        os_thread_t handle;
-        if (stack)
-            os_thread_create_with_stack(&handle, name, priority, function, function_param, stack_size, stack);
-        else
-            os_thread_create(&handle, name, priority, function, function_param, stack_size);
-        return thread(handle);
+    CriticalSection() {
+        os_thread_scheduling(false, NULL);
     }
 
+    ~CriticalSection() {
+        os_thread_scheduling(true, NULL);
+    }
 };
-
-extern ThreadFactory Thread;
-
 #endif
 
 #endif	/* SPARK_WIRING_THREAD_H */

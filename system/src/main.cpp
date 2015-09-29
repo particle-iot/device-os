@@ -273,25 +273,30 @@ void app_setup_and_loop(void)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
 #endif
 
-    bool threaded = system_thread_get_state(NULL)!=0 && (system_mode()!=SAFE_MODE);
+    bool threaded = system_thread_get_state(NULL) != spark::feature::DISABLED &&
+      (system_mode()!=SAFE_MODE);
 
     Network_Setup(threaded);
 
 #if PLATFORM_THREADING
     if (threaded)
     {
-        SYSTEM_THREAD_START();
+        SystemThread.start();
         ApplicationThread.start();
     }
     else
+    {
+        SystemThread.setCurrentThread();
+        ApplicationThread.setCurrentThread();
+    }
 #endif
-            {
+    if(!threaded) {
         /* Main loop */
         while (1) {
             app_loop(false);
-            }
         }
     }
+}
 
 #ifdef USE_FULL_ASSERT
 

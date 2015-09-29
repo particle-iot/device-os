@@ -121,11 +121,11 @@ FFL(F const &func)
 
 
 #if PLATFORM_THREADING
-#define SYSTEM_THREAD_START()  SystemThread.start()
 #define SYSTEM_THREAD_CURRENT() (SystemThread.isCurrentThread())
+#define APPLICATION_THREAD_CURRENT() (ApplicationThread.isCurrentThread())
 #else
-#define SYSTEM_THREAD_START()
 #define SYSTEM_THREAD_CURRENT() (1)
+#define APPLICATION_THREAD_CURRENT() (1)
 #endif
 
 

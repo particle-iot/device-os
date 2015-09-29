@@ -55,7 +55,10 @@ static_assert(sizeof(uint32_t)==sizeof(void*), "Requires uint32_t to be same siz
 os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_prio_t priority, os_thread_fn_t fun, void* thread_param, size_t stack_size)
 {
     *thread = NULL;
-    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (const signed char*)name, (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) (configMAX_PRIORITIES-1)-priority, thread);
+    if(priority >= configMAX_PRIORITIES) {
+      priority = configMAX_PRIORITIES - 1;
+    }
+    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (const signed char*)name, (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) priority, thread);
     return ( result != (signed portBASE_TYPE) pdPASS );
 }
 
@@ -113,6 +116,23 @@ os_result_t os_thread_join(os_thread_t thread)
 os_result_t os_thread_cleanup(os_thread_t thread)
 {
     vTaskDelete(thread);
+    return 0;
+}
+
+/**
+ * Delays the current task until a specified time to set up periodic tasks
+ * @param previousWakeTime The time the thread last woke up.  May not be NULL.
+ *                         Set to the current time on first call. Will be updated
+ *                         when the task wakes up
+ * @param timeIncrement    The cycle time period
+ * @return 0 on success. 1 if previousWakeTime is NULL
+ */
+os_result_t os_thread_delay_until(system_tick_t *previousWakeTime, system_tick_t timeIncrement)
+{
+    if(previousWakeTime == NULL) {
+        return 1;
+    }
+    vTaskDelayUntil(previousWakeTime, timeIncrement);
     return 0;
 }
 
