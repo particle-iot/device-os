@@ -49,45 +49,10 @@ const module_bounds_t module_ota = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCT
 
 const unsigned module_bounds_length = arraySize(module_bounds);
 
-
 void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
+    // presently no additional key/value pairs to send back
     info->key_values = NULL;
     info->key_value_count = 0;
 }
 
-int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
-{
-    unsigned offset = 0;
-    unsigned length = -1;
-
-    switch (config_item)
-    {
-    case SYSTEM_CONFIG_DEVICE_KEY:
-        offset = DCT_DEVICE_PRIVATE_KEY_OFFSET;
-        length = DCT_DEVICE_PRIVATE_KEY_SIZE;
-        break;
-    case SYSTEM_CONFIG_SERVER_KEY:
-        offset = DCT_SERVER_PUBLIC_KEY_OFFSET;
-        length = DCT_SERVER_PUBLIC_KEY_SIZE;
-        break;
-    case SYSTEM_CONFIG_SOFTAP_PREFIX:
-        offset = DCT_SSID_PREFIX_OFFSET;
-        length = DCT_SSID_PREFIX_SIZE-1;
-        if (data_length>length)
-            data_length = length;
-        dct_write_app_data(&data_length, offset++, 1);
-        break;
-    case SYSTEM_CONFIG_SOFTAP_SUFFIX:
-        offset = DCT_DEVICE_ID_OFFSET;
-        length = DCT_DEVICE_ID_SIZE;
-        break;
-    case SYSTEM_CONFIG_SOFTAP_HOSTNAMES:
-        break;
-    }
-
-    if (length>=0)
-        dct_write_app_data(data, offset, length>data_length ? data_length : length);
-
-    return length;
-}
