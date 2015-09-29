@@ -280,6 +280,10 @@ public:
         return _thread_id == std::this_thread::get_id();
     }
 
+    void setCurrentThread() {
+        _thread_id = std::this_thread::get_id();
+    }
+
     bool isStarted() {
         return started;
     }
@@ -381,7 +385,7 @@ public:
     void start()
     {
         createQueue();
-        _thread_id = std::this_thread::get_id();
+        setCurrentThread();
         run();
     }
 };
