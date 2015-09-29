@@ -22,12 +22,12 @@
  */
 
 #include "concurrent_hal.h"
-#include "wiced.h"
 #include "static_assert.h"
 #include "delay_hal.h"
+#include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 #include <mutex>
-#include "task.h"
 
 
 // use the newer name
@@ -352,4 +352,25 @@ void os_thread_scheduling(bool enabled, void* reserved)
         taskENTER_CRITICAL();
 }
 
+int os_semaphore_create(os_semaphore_t* semaphore, unsigned max, unsigned initial)
+{
+    *semaphore = xQueueCreateCountingSemaphore( ( max ), ( initial ) );
+    return *semaphore==NULL;
+}
+
+int os_semaphore_destroy(os_semaphore_t semaphore)
+{
+    vSemaphoreDelete(semaphore);
+    return 0;
+}
+
+int os_semaphore_take(os_semaphore_t semaphore, system_tick_t timeout, bool reserved)
+{
+    return (xSemaphoreTake(semaphore, timeout)!=pdTRUE);
+}
+
+int os_semaphore_give(os_semaphore_t semaphore, bool reserved)
+{
+    return xSemaphoreGive(semaphore)!=pdTRUE;
+}
 

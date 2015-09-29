@@ -31,6 +31,7 @@ typedef os_mutex_recursive_t __gthread_recursive_mutex_t;
  * Alias for a queue handle in FreeRTOS - all handles are pointers.
  */
 typedef void* os_queue_t;
+typedef void* os_semaphore_t;
 
 typedef struct timespec __gthread_time_t;
 
