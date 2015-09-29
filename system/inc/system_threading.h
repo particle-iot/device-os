@@ -44,31 +44,6 @@ extern ActiveObjectCurrentThreadQueue ApplicationThread;
 
 #endif
 
-// execute the enclosing void function async on the system thread
-#if PLATFORM_THREADING
-#define SYSTEM_THREAD_CONTEXT_RESULT(result) \
-    if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) {\
-        SYSTEM_THREAD_CONTEXT_FN0(__func__); \
-        return result; \
-    }
-#else
-#define SYSTEM_THREAD_CONTEXT_RESULT(result)
-#endif
-
-
-#if PLATFORM_THREADING
-#define SYSTEM_THREAD_CONTEXT_FN0(fn) \
-    SystemThread.invoke(fn);
-#else
-    #define SYSTEM_THREAD_CONTEXT_FN0(fn)
-#endif
-
-#if PLATFORM_THREADING
-#define SYSTEM_THREAD_CONTEXT_FN1(fn, arg, sz) \
-    SystemThread.invoke(fn, arg, sz)
-#else
-#define SYSTEM_THREAD_CONTEXT_FN1(fn, arg, sz)
-#endif
 
 // execute synchronously on the system thread. Since the parameter lifetime is
 // assumed to be bound by the caller, the parameters don't need marshalling
