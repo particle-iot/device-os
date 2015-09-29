@@ -287,7 +287,7 @@ protected:
 
     void createQueue(int size=50)
     {
-        os_queue_create(&queue, sizeof(Item*), size);
+        os_queue_create(&queue, sizeof(Item), size);
     }
 
 public:
