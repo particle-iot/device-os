@@ -25,6 +25,7 @@
 #include "system_network.h"
 #include "system_task.h"
 #include "system_threading.h"
+#include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
 #include "spark_protocol.h"
 #include "append_list.h"
@@ -150,7 +151,45 @@ bool spark_function_internal(const cloud_function_descriptor* desc, void* reserv
     return item!=NULL;
 }
 
-uint32_t lastCloudEvent = 0;
+
+void invokeEventHandlerInternal(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
+                const char* event_name, const char* data, void* reserved)
+{
+    if(handlerInfo->handler_data)
+    {
+        EventHandlerWithData handler = (EventHandlerWithData) handlerInfo->handler;
+        handler(handlerInfo->handler_data, event_name, data);
+    }
+    else
+    {
+        handlerInfo->handler(event_name, data);
+    }
+}
+
+void invokeEventHandlerString(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
+                const String& name, const String& data, void* reserved)
+{
+    invokeEventHandlerInternal(handlerInfoSize, handlerInfo, name.c_str(), data.c_str(), reserved);
+}
+
+
+void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
+                const char* event_name, const char* event_data, void* reserved)
+{
+    if (system_thread_get_state(NULL)==spark::feature::DISABLED)
+    {
+        invokeEventHandlerInternal(handlerInfoSize, handlerInfo, event_name, event_data, reserved);
+    }
+    else
+    {
+        // copy the buffers to dynamically allocated storage.
+        String name(event_name);
+        String data(event_data);
+        APPLICATION_THREAD_CONTEXT_ASYNC(invokeEventHandlerString(handlerInfoSize, handlerInfo, name, event_data, reserved));
+    }
+}
+
+volatile uint32_t lastCloudEvent = 0;
 
 /**
  * This is the internal function called by the background loop to pump cloud events.
@@ -312,6 +351,7 @@ void Spark_Protocol_Init(void)
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
         descriptor.append_system_info = system_module_info;
+        descriptor.call_event_handler = invokeEventHandler;
 
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
@@ -615,7 +655,7 @@ void userFuncScheduleImpl(User_Func_Lookup_Table_t* item, const char* paramStrin
         delete paramString;
     // run the cloud return on the system thread again
     SYSTEM_THREAD_CONTEXT_ASYNC(callback((const void*)result, SparkReturnType::INT));
-    callback((const void*)result, SparkReturnType::INT);    
+    callback((const void*)result, SparkReturnType::INT);
 }
 
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved)

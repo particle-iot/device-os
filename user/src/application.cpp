@@ -37,32 +37,42 @@ int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
 SYSTEM_MODE(AUTOMATIC);
-//SYSTEM_THREAD(ENABLED);
+SYSTEM_THREAD(ENABLED);
+
+void mdma(const char* name, const char* data)
+{
+    Serial.println(name);
+    if (data)
+    {
+        delay(atoi(data)*1000);
+    }
+    else
+    {
+        delay(2000);
+    }
+}
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
-    //pinMode(D7, OUTPUT);
-    Serial.begin(9600);
-}
-void toggle()
-{
-    //digitalWrite(D7, !digitalRead(D7));
+    //Setup the Tinker application here
+    //Register all the Tinker functions
+    Particle.function("digitalread", tinkerDigitalRead);
+    Particle.function("digitalwrite", tinkerDigitalWrite);
+
+    Particle.function("analogread", tinkerAnalogRead);
+    Particle.function("analogwrite", tinkerAnalogWrite);
+
+    Particle.subscribe("mdma", mdma);
+    pinMode(D7, OUTPUT);
+
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-    static int loop = 0;
-    bool disconnected = false;
-    Serial.println(loop++);
-    HAL_Delay_Milliseconds(50);
-    toggle();
-    HAL_Delay_Milliseconds(50);
-    toggle();
-    if (Particle.connected()) {
-        //WiFi.connect();
-    }
+    digitalWrite(D7, !digitalRead(D7));
+    delay(250);
 }
 
 /*******************************************************************************
