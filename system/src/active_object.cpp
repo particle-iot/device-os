@@ -21,14 +21,17 @@
 
 #include <string.h>
 #include "active_object.h"
+#include "concurrent_hal.h"
 
 
 void ActiveObjectBase::start_thread()
 {
     // prevent the started thread from running until the thread id has been assigned
     // so that calls to isCurrentThread() work correctly
-    std::lock_guard<std::mutex> lck (_start);
     set_thread(std::thread(run_active_object, this));
+    while (!started) {
+        os_thread_yield();
+    }
 }
 
 
