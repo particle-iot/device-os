@@ -276,7 +276,7 @@ void app_setup_and_loop(void)
 
 #if PLATFORM_THREADING
     if (threaded)
-        {
+    {
         SYSTEM_THREAD_START();
         ApplicationThread.start();
     }
