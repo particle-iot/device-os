@@ -67,8 +67,11 @@ namespace std {
 
     void thread::_M_start_thread(thread::__shared_base_type base)
     {
-        if (os_thread_create(&_M_id._M_thread, "", 0, invoke_thread, base.get(), 1024*20)) {
-            PANIC(AssertionFailure, "%s s%", __FILE__, __LINE__);
+        // FIXME: if the priority of the new thread is low enough not to cause `os_thread_create` to
+        // preempt the current thread to run the thread start function, by the time `invoke_thread`
+        // executes `call->_M_run()` will cause a pure virtual error
+        if (os_thread_create(&_M_id._M_thread, "std::thread", 3 /* OS_THREAD_PRIORITY_DEFAULT */, invoke_thread, base.get(), 1024*20)) {
+            PANIC(AssertionFailure, "%s %s", __FILE__, __LINE__);
         }
     }
 

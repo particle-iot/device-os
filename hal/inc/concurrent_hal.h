@@ -124,6 +124,16 @@ os_result_t os_thread_cleanup(os_thread_t thread);
 os_result_t os_thread_yield(void);
 
 
+/**
+ * Delays the current task until a specified time to set up periodic tasks
+ * @param previousWakeTime The time the thread last woke up.  May not be NULL.
+ *                         Set to the current time on first call. Will be updated
+ *                         when the task wakes up
+ * @param timeIncrement    The cycle time period
+ * @return 0 on success. 1 if previousWakeTime is NULL
+ */
+os_result_t os_thread_delay_until(system_tick_t *previousWakeTime, system_tick_t timeIncrement);
+
 int os_condition_variable_create(condition_variable_t* var);
 void os_condition_variable_destroy(condition_variable_t var);
 
