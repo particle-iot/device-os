@@ -67,7 +67,7 @@ namespace std {
 
     void thread::_M_start_thread(thread::__shared_base_type base)
     {
-        if (os_thread_create(&_M_id._M_thread, "", 0, invoke_thread, base.get(), 1024*20)) {
+        if (os_thread_create(&_M_id._M_thread, "", OS_THREAD_PRIORITY_DEFAULT, invoke_thread, base.get(), 1024*20)) {
             PANIC(AssertionFailure, "%s s%", __FILE__, __LINE__);
         }
     }

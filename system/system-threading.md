@@ -118,6 +118,26 @@ This is the case for when system threading is enabled. When disabled, the logic
 above is short-circuited and the method call is executed directly by the application thread
 (just as it always has been before system threading existed.)
 
+## System Threading Priorities
+
+RTOS task priorities go from 0 (idle task) to 9 (system monitor).
+Low priority numbers denote low priority tasks.
+
+On the Photon, the thread priorities are:
+
+ Priority      |      Thread
+:-------------:|:---------------:
+(highest)<br>9 | Monitor<br>WICED
+8              |
+7              | Network
+6              |
+5              | Worker 2
+4              |
+3              | Worker 1
+2              | Application<br>System<br>Timer
+1              |
+0<br>(lowest)  | Idle
+
 
 ## System Threading Implementation
 
