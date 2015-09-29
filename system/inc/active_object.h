@@ -26,7 +26,11 @@
 #include <thread>
 #include <future>
 #include "channel.h"
+#include "concurrent_hal.h"
 
+/**
+ * Configuratino data for an active object.
+ */
 struct ActiveObjectConfiguration
 {
     /**
@@ -41,22 +45,41 @@ struct ActiveObjectConfiguration
     size_t stack_size;
 
     /**
-     * Time to wait for a message in the queue.
+     * Time to wait for a message in the queue. This governs how often the
+     * background task is executed.
      */
     unsigned take_wait;
 
+    /**
+     * How long to wait to put items in the queue before giving up.
+     */
+    unsigned put_wait;
+
 
 public:
-    ActiveObjectConfiguration(background_task_t task, unsigned take_wait_, size_t stack_size_ =0) : background_task(task), stack_size(stack_size_), take_wait(take_wait_) {}
+    ActiveObjectConfiguration(background_task_t task, unsigned take_wait_, unsigned put_wait_,
+            size_t stack_size_ =0) : background_task(task), stack_size(stack_size_),
+            take_wait(take_wait_), put_wait(put_wait_) {}
 
 };
 
-struct Message
+/**
+ * A message passed to an active object.
+ */
+class Message
 {
+
+public:
+    Message() {}
     virtual void operator()()=0;
+    virtual ~Message() {}
 };
 
-template<typename T, typename C> class PromiseBase : public Message
+/**
+ * Abstract task. Subclasses must define invoke() and task_complete()
+ */
+template <typename T, typename C>
+class AbstractTask : public Message
 {
 protected:
     /**
@@ -64,37 +87,89 @@ protected:
      */
     std::function<T(void)> work;
 
-    bool complete;
-
-    std::mutex m;
-    std::condition_variable cv;
-
-    void wait_complete()
-    {
-        // wait for result to be available
-        std::unique_lock<std::mutex> lk(m);
-        cv.wait(lk, [this]{return complete;});
-    }
-
 public:
+    inline AbstractTask(const std::function<T()>& fn_) : work(std::move(fn_)) {}
 
-    PromiseBase(const std::function<T()>& fn_) : work(std::move(fn_)), complete(false)
-    {
-    }
-
-    virtual void operator()() override
-    {
-        {
-            std::lock_guard<std::mutex> lk(m);
-            ((C*)this)->invoke();
-            complete = true;
-        }
-        cv.notify_all();
+    void operator()() override {
+        C* that = ((C*)this);
+        that->invoke();
+        that->task_complete();
     }
 
 };
 
-template<typename T> class Promise : public PromiseBase<T, Promise<T>>
+/**
+ * An asynchronous task. Disposes itself when complete.
+ */
+template <typename T>
+class AsyncTask : public AbstractTask<T, AsyncTask<T>>
+{
+    using super = AbstractTask<T,AsyncTask<T>>;
+
+public:
+    inline AsyncTask(const std::function<T()>& fn_) :  super(fn_) {}
+
+    inline void task_complete()
+    {
+        delete this;
+    }
+
+    inline void invoke()
+    {
+        this->work();
+    }
+
+};
+
+/**
+ * Promises. these are used for synchronous tasks.
+ */
+template<typename T, typename C> class AbstractPromise : public AbstractTask<T,C>
+{
+
+    os_semaphore_t complete;
+
+protected:
+    using task = AbstractTask<T, C>;
+
+    void wait_complete()
+    {
+        os_semaphore_take(complete, CONCURRENT_WAIT_FOREVER, false);
+    }
+
+public:
+
+    AbstractPromise(const std::function<T()>& fn_) : task(fn_), complete(nullptr)
+    {
+        os_semaphore_create(&complete, 1, 0);
+    }
+
+    virtual ~AbstractPromise()
+    {
+        dispose();
+    }
+
+    inline void dispose()
+    {
+        if (complete)
+        {
+            os_semaphore_destroy(complete);
+            complete = nullptr;
+        }
+    }
+
+    inline void task_complete()
+    {
+        os_semaphore_give(complete, false);
+    }
+
+};
+
+/**
+ * A promise that executes a function and returns the function result as the future
+ * value.
+ */
+template<typename T> class Promise : public AbstractPromise<T, Promise<T>>
 {
     /**
      * The result retrieved from the function.
@@ -102,10 +177,9 @@ template<typename T> class Promise : public PromiseBase<T, Promise<T>>
      */
     T result;
 
-    using super = PromiseBase<T, Promise<T>>;
-    friend super;
+    using super = AbstractPromise<T, Promise<T>>;
+    friend typename super::task;
 
-protected:
     void invoke()
     {
         this->result = this->work();
@@ -114,6 +188,7 @@ protected:
 public:
 
     Promise(const std::function<T()>& fn_) : super(fn_) {}
+    virtual ~Promise() {}
 
     /**
      * wait for the result
@@ -125,14 +200,15 @@ public:
     }
 };
 
-template<> class Promise<void> : public PromiseBase<void, Promise<void>>
+/**
+ * Specialization of Promise that waits for execution of a function returning void.
+ */
+template<> class Promise<void> : public AbstractPromise<void, Promise<void>>
 {
-    using super = PromiseBase<void, Promise<void>>;
-    friend super;
+    using super = AbstractPromise<void, Promise<void>>;
+    friend typename super::task;
 
-protected:
-
-    void invoke()
+    inline void invoke()
     {
         this->work();
     }
@@ -140,6 +216,7 @@ protected:
 public:
 
     Promise(const std::function<void()>& fn_) : super(fn_) {}
+    virtual ~Promise() {}
 
     void get()
     {
@@ -151,7 +228,7 @@ public:
 class ActiveObjectBase
 {
 public:
-    using Item = std::shared_ptr<Message>;
+    using Item = Message*;
 
 protected:
 
@@ -207,22 +284,17 @@ public:
         return started;
     }
 
-    template<typename arg, typename r> inline void invoke(r (*fn)(arg* a), arg* value, size_t size) {
-        //invoke_impl((void*)fn, value, size);
-    }
-
-    template<typename arg, typename r> inline void invoke(r (*fn)(arg* a), arg* value) {
-        //invoke_impl((void*)fn, value);
-    }
-
-    void invoke(void (*fn)()) {
-        //invoke_impl((void*)fn, NULL, 0);
-    }
-
-    template<typename R> std::shared_ptr<Promise<R>> invoke_future(std::function<R(void)> work)
+    template<typename R> void invoke_async(const std::function<R(void)>& work)
     {
-        auto promise = std::make_shared<Promise<R>>(work);            // shared pointer for reference returned here
-        Item message = std::static_pointer_cast<Message>(promise);    // another reference to put on the queue
+        auto task = new AsyncTask<R>(work);
+        Item message = task;
+        put(message);
+    }
+
+    template<typename R> Promise<R>* invoke_future(const std::function<R(void)>& work)
+    {
+        auto promise = new Promise<R>(work);
+        Item message = promise;
         put(message);
         return promise;
     }
@@ -276,18 +348,12 @@ protected:
 
     virtual void put(Item& item)
     {
-        // since the queue does a binary copy rather than using the assignment operator
-        // we don't get the required shared pointer reference increment
-        // force it by doing a placement new allocation and invoke the copy ctor
-        uint8_t buf[sizeof(Item)];
-        Item* pItem = new (buf) Item(std::move(item));     // placement new, and copy construct from item
-        while (os_queue_put(queue, pItem, CONCURRENT_WAIT_FOREVER)) {}
-        // item is reset when removed from the queue.
+        os_queue_put(queue, &item, configuration.put_wait);
     }
 
-    void createQueue(int size=50)
+    void createQueue(int queue_size=50)
     {
-        os_queue_create(&queue, sizeof(Item), size);
+        os_queue_create(&queue, sizeof(Item), queue_size);
     }
 
 public:

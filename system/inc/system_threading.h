@@ -73,14 +73,14 @@ FFL(F const &func)
 #define _THREAD_CONTEXT_ASYNC_RESULT(thread, fn, result) \
     if (thread.isStarted() && !thread.isCurrentThread()) { \
         auto lambda = [=]() { (fn); }; \
-        thread.invoke_future(FFL(lambda)); \
+        thread.invoke_async(FFL(lambda)); \
         return result; \
     }
 
 #define _THREAD_CONTEXT_ASYNC(thread, fn) \
     if (thread.isStarted() && !thread.isCurrentThread()) { \
         auto lambda = [=]() { (fn); }; \
-        thread.invoke_future(FFL(lambda)); \
+        thread.invoke_async(FFL(lambda)); \
         return; \
     }
 
@@ -88,7 +88,9 @@ FFL(F const &func)
     if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
         auto callable = FFL([=]() { return (fn); }); \
         auto future = SystemThread.invoke_future(callable); \
-        return future->get();  \
+        auto result = future->get();  \
+        delete future; \
+        return result; \
     }
 
 #else

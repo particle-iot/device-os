@@ -40,14 +40,13 @@ void ActiveObjectBase::run()
     std::lock_guard<std::mutex> lck (_start);
     started = true;
 
-    Item item;
     for (;;)
     {
-        if (take(item))
+        Item item = nullptr;
+        if (take(item) && item)
         {
             Message& msg = *item;
             msg();
-            item.reset();
         }
         else
         {

@@ -246,7 +246,10 @@ void app_thread_idle()
     app_loop(true);
 }
 
-ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_thread_idle, 0));
+// don't wait to get items from the queue, so the application loop is processed as often as possible
+// timeout after 3000 ms to put calls into the application queue, so the system thread does not deadlock  (since the application may also
+// be trying to put events in the system queue.)
+ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_thread_idle, 0, 5000));
 
 #endif
 
