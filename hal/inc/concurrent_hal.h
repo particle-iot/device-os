@@ -137,7 +137,7 @@ void os_condition_variable_notify_all(condition_variable_t var);
 
 const system_tick_t CONCURRENT_WAIT_FOREVER = (system_tick_t)-1;
 
-int os_queue_create(os_queue_t* queue, size_t item_count, size_t item_size);
+int os_queue_create(os_queue_t* queue, size_t item_size, size_t item_count);
 /**
  * Return 0 on success.
  * @param queue

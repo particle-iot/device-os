@@ -264,7 +264,7 @@ void os_condition_variable_notify_all(condition_variable_t cond)
 }
 
 
-int os_queue_create(os_queue_t* queue, size_t item_count, size_t item_size)
+int os_queue_create(os_queue_t* queue, size_t item_size, size_t item_count)
 {
     *queue = xQueueCreate(item_count, item_size);
     return *queue==NULL;
