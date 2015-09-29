@@ -23,7 +23,6 @@
 #include "flash_mal.h"
 #include "ota_module.h"
 
-
 /**
  * Determines if a given address is in range.
  * @param test      The address to test
@@ -68,7 +67,7 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
         const module_bounds_t* expected_bounds = find_module_bounds(module_function(target->info), module_index(target->info));
         if (expected_bounds && in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
             target->validity_result |= MODULE_VALIDATION_RANGE;
-            target->validity_result |= (PRODUCT_ID==module_platform_id(target->info)) ? MODULE_VALIDATION_PLATFORM : 0;
+            target->validity_result |= (PLATFORM_ID==module_platform_id(target->info)) ? MODULE_VALIDATION_PLATFORM : 0;
             // the suffix ends at module_end, and the crc starts after module end
             target->crc = (module_info_crc_t*)module_end;
             target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));

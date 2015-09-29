@@ -32,6 +32,18 @@
 #include "usb_lib.h"
 #include "usb_istr.h"
 #include "cc3000_spi.h"
+#include "interrupts_hal.h"
+
+uint8_t handle_timer(TIM_TypeDef* TIMx, uint16_t TIM_IT, hal_irq_t irq)
+{
+    uint8_t result = (TIM_GetITStatus(TIMx, TIM_IT)!=RESET);
+    if (result) {
+        HAL_System_Interrupt_Trigger(irq, NULL);
+        TIM_ClearITPendingBit(TIMx, TIM_IT);
+    }
+    return result;
+}
+
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -567,6 +579,15 @@ void TIM1_CC_IRQHandler(void)
 			BUTTON_EXTI_Config(BUTTON1, ENABLE);
 		}
 	}
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_CC_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM1, TIM_IT_CC1, SysInterrupt_TIM1_Compare1) ||
+    handle_timer(TIM1, TIM_IT_CC2, SysInterrupt_TIM1_Compare2) ||
+    handle_timer(TIM1, TIM_IT_CC3, SysInterrupt_TIM1_Compare3) ||
+    handle_timer(TIM1, TIM_IT_CC4, SysInterrupt_TIM1_Compare4);
+    (void)(result);
+
 }
 
 /*******************************************************************************
@@ -582,6 +603,16 @@ void TIM2_IRQHandler(void)
 	{
 		HAL_TIM2_Handler();
 	}
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM2_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM2, TIM_IT_CC1, SysInterrupt_TIM2_Compare1) ||
+    handle_timer(TIM2, TIM_IT_CC2, SysInterrupt_TIM2_Compare2) ||
+    handle_timer(TIM2, TIM_IT_CC3, SysInterrupt_TIM2_Compare3) ||
+    handle_timer(TIM2, TIM_IT_CC4, SysInterrupt_TIM2_Compare4) ||
+    handle_timer(TIM2, TIM_IT_Update, SysInterrupt_TIM2_Update) ||
+    handle_timer(TIM2, TIM_IT_Trigger, SysInterrupt_TIM2_Trigger);
+    (void)(result);
 }
 
 /*******************************************************************************
@@ -597,6 +628,17 @@ void TIM3_IRQHandler(void)
 	{
 		HAL_TIM3_Handler();
 	}
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM3_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM3, TIM_IT_CC1, SysInterrupt_TIM3_Compare1) ||
+    handle_timer(TIM3, TIM_IT_CC2, SysInterrupt_TIM3_Compare2) ||
+    handle_timer(TIM3, TIM_IT_CC3, SysInterrupt_TIM3_Compare3) ||
+    handle_timer(TIM3, TIM_IT_CC4, SysInterrupt_TIM3_Compare4) ||
+    handle_timer(TIM3, TIM_IT_Update, SysInterrupt_TIM3_Update) ||
+    handle_timer(TIM3, TIM_IT_Trigger, SysInterrupt_TIM3_Trigger);
+    (void)(result);
+
 }
 
 /*******************************************************************************
@@ -612,6 +654,17 @@ void TIM4_IRQHandler(void)
 	{
 		HAL_TIM4_Handler();
 	}
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM4_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM4, TIM_IT_CC1, SysInterrupt_TIM4_Compare1) ||
+    handle_timer(TIM4, TIM_IT_CC2, SysInterrupt_TIM4_Compare2) ||
+    handle_timer(TIM4, TIM_IT_CC3, SysInterrupt_TIM4_Compare3) ||
+    handle_timer(TIM4, TIM_IT_CC4, SysInterrupt_TIM4_Compare4) ||
+    handle_timer(TIM4, TIM_IT_Update, SysInterrupt_TIM4_Update) ||
+    handle_timer(TIM4, TIM_IT_Trigger, SysInterrupt_TIM4_Trigger);
+    (void)(result);
+
 }
 
 /*******************************************************************************
