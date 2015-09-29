@@ -21,7 +21,7 @@ while allowing testers to enable the feature on a per-application basis.
 System threading is enabled in application code by adding
 
 ```
-SYSTEM_THREADING(ENABLED);
+SYSTEM_THREAD(ENABLED);
 ```
 
 System threading is disabled when the system is in safe-mode.
