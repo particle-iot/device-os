@@ -17,7 +17,7 @@ typedef void* os_thread_t;
 typedef int32_t os_result_t;
 typedef uint8_t os_thread_prio_t;
 const os_thread_prio_t OS_THREAD_PRIORITY_DEFAULT = 0;
-const size_t OS_THREAD_STACK_SIZE_DEFAULT = 512;
+const size_t OS_THREAD_STACK_SIZE_DEFAULT = 3*1024;
 
 typedef void* os_mutex_t;
 typedef void* os_mutex_recursive_t;
