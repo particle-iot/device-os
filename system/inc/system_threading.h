@@ -97,6 +97,7 @@ FFL(F const &func)
 
 #define _THREAD_CONTEXT_ASYNC(thread, fn)
 #define _THREAD_CONTEXT_ASYNC_RESULT(thread, fn, result)
+#define SYSTEM_THREAD_CONTEXT_SYNC(fn) 
 #endif
 
 #define SYSTEM_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(SystemThread, fn)
