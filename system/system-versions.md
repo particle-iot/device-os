@@ -9,6 +9,7 @@
 | 4 | 0.4.4-rc.1 - 0.4.4-rc.6 |
 | 5 | 0.4.4 |
 | 6 | 0.4.5 |
+| 7 | 0.4.6 |
 -------------
 
 To find out the release version of system firmware currently installed, in listening mode,
