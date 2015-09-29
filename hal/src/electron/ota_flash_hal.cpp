@@ -28,6 +28,7 @@
 #include "spark_macros.h"
 #include "ota_flash_hal_stm32f2xx.h"
 #include "cellular_hal.h"
+#include "core_hal.h"
 
 // Electron!
 
@@ -73,3 +74,8 @@ void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserve
     }
 }
 
+int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
+{
+    unsigned length = -1;
+    return length;
+}
