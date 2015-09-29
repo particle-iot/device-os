@@ -73,9 +73,3 @@ void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserve
         info->key_values = NULL;
     }
 }
-
-int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
-{
-    unsigned length = -1;
-    return length;
-}
