@@ -331,20 +331,10 @@ int main(void)
 
     vTaskStartScheduler();
 
-
-    uint32_t* isrs                          = (uint32_t*)&link_ram_interrupt_vectors_location;
-    isrs[SysTick_Handler_Idx]               = (uint32_t)SysTick_Handler;
-
     /* we should never get here */
     while (1);
 
     return 0;
-}
-
-
-void vApplicationTickHook()
-{
-    SysTickOverride();
 }
 
 /**
