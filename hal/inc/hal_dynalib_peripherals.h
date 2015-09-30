@@ -56,13 +56,6 @@ DYNALIB_FN(hal_peripherals,HAL_Servo_Write_Pulse_Width)
 DYNALIB_FN(hal_peripherals,HAL_Servo_Read_Pulse_Width)
 DYNALIB_FN(hal_peripherals,HAL_Servo_Read_Frequency)
 
-#if defined(HAS_SERIAL_FLASH)
-DYNALIB_FN(hal_peripherals,sFLASH_EraseSector)
-DYNALIB_FN(hal_peripherals,sFLASH_EraseBulk)
-DYNALIB_FN(hal_peripherals,sFLASH_WriteBuffer)
-DYNALIB_FN(hal_peripherals,sFLASH_ReadBuffer)
-DYNALIB_FN(hal_peripherals,sFLASH_ReadID)
-#endif
 DYNALIB_END(hal_peripherals)
 
 #endif	/* HAL_PERIPHERALS_DYNALIB_H */
