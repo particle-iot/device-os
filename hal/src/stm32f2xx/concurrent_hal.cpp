@@ -25,6 +25,7 @@
 #include "static_assert.h"
 #include "delay_hal.h"
 #include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
 #include "task.h"
 #include "semphr.h"
 #include <mutex>
@@ -58,10 +59,14 @@ os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_pr
     if(priority >= configMAX_PRIORITIES) {
       priority = configMAX_PRIORITIES - 1;
     }
-    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (const signed char*)name, (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) priority, thread);
+#if defined(configENABLE_BACKWARD_COMPATIBILITY) && configENABLE_BACKWARD_COMPATIBILITY
+#define _CREATE_THREAD_NAME_TYPE const char
+#else
+#define _CREATE_THREAD_NAME_TYPE const signed char
+#endif
+    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (_CREATE_THREAD_NAME_TYPE* const) name, (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) priority, thread);
     return ( result != (signed portBASE_TYPE) pdPASS );
 }
-
 
 
 /**
@@ -101,11 +106,15 @@ bool os_thread_current_within_stack()
  */
 os_result_t os_thread_join(os_thread_t thread)
 {
+#if PLATFORM_ID!=10
     while (xTaskIsTaskFinished(thread) != pdTRUE)
     {
         HAL_Delay_Milliseconds(10);
     }
     return 0;
+#else
+    return -1;
+#endif
 }
 
 /**
@@ -374,7 +383,7 @@ void os_thread_scheduling(bool enabled, void* reserved)
 
 int os_semaphore_create(os_semaphore_t* semaphore, unsigned max, unsigned initial)
 {
-    *semaphore = xQueueCreateCountingSemaphore( ( max ), ( initial ) );
+    *semaphore = xSemaphoreCreateCounting( ( max ), ( initial ) );
     return *semaphore==NULL;
 }
 
