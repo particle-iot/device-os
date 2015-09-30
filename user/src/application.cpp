@@ -37,20 +37,6 @@ int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
 SYSTEM_MODE(AUTOMATIC);
-SYSTEM_THREAD(ENABLED);
-
-void mdma(const char* name, const char* data)
-{
-    Serial.println(name);
-    if (data)
-    {
-        delay(atoi(data)*1000);
-    }
-    else
-    {
-        delay(2000);
-    }
-}
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
@@ -62,17 +48,11 @@ void setup()
 
     Particle.function("analogread", tinkerAnalogRead);
     Particle.function("analogwrite", tinkerAnalogWrite);
-
-    Particle.subscribe("mdma", mdma);
-    pinMode(D7, OUTPUT);
-
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-    digitalWrite(D7, !digitalRead(D7));
-    delay(250);
 }
 
 /*******************************************************************************

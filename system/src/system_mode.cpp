@@ -65,6 +65,8 @@ System_Mode_TypeDef system_mode()
     return current_mode;
 }
 
+#if PLATFORM_THREADING
+
 static spark::feature::State system_thread_enable = spark::feature::DISABLED;
 
 void system_thread_set_state(spark::feature::State state, void*)
@@ -76,3 +78,16 @@ spark::feature::State system_thread_get_state(void*)
 {
     return system_thread_enable;
 }
+
+#else
+
+void system_thread_set_state(spark::feature::State state, void*)
+{
+}
+
+spark::feature::State system_thread_get_state(void*)
+{
+    return spark::feature::DISABLED;
+}
+
+#endif
