@@ -60,7 +60,9 @@ DYNALIB_FN(hal_usart,HAL_USART_Peek_Data)
 DYNALIB_FN(hal_usart,HAL_USART_Flush_Data)
 DYNALIB_FN(hal_usart,HAL_USART_Is_Enabled)
 DYNALIB_FN(hal_usart,HAL_USART_Half_Duplex)
-
+#ifdef USB_CDC_ENABLE
+DYNALIB_FN(hal_usart,USB_USART_Flush_Data)
+#endif
 DYNALIB_END(hal_usart)
 
 #endif	/* HAL_DYNALIB_USART_H */

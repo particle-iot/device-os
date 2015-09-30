@@ -67,6 +67,7 @@ size_t USBSerial::write(uint8_t byte)
 
 void USBSerial::flush()
 {
+    USB_USART_Flush_Data(10000, NULL);
 }
 
 int USBSerial::peek()

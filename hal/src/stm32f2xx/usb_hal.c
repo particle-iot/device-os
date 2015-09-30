@@ -33,6 +33,7 @@
 #include "usb_conf.h"
 #include "usbd_desc.h"
 #include "delay_hal.h"
+#include "timer_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -56,6 +57,7 @@ extern volatile uint8_t USB_DEVICE_CONFIGURED;
 extern volatile uint8_t USB_Rx_Buffer[];
 extern volatile uint8_t APP_Rx_Buffer[];
 extern volatile uint32_t APP_Rx_ptr_in;
+extern volatile uint32_t APP_Rx_ptr_out;
 extern volatile uint16_t USB_Rx_length;
 extern volatile uint16_t USB_Rx_ptr;
 extern volatile uint8_t  USB_Tx_State;
@@ -204,6 +206,14 @@ void USB_USART_Send_Data(uint8_t Data)
     //Delay 100us to avoid losing the data
     HAL_Delay_Microseconds(100);
 }
+
+bool USB_USART_Flush_Data(uint32_t timeout, void* reserved)
+{
+    system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+    while ((APP_Rx_ptr_out != APP_Rx_ptr_in) &&  ((HAL_Timer_Get_Milli_Seconds()-start) < timeout));
+    return (APP_Rx_ptr_out == APP_Rx_ptr_in);
+}
+
 #endif
 
 #ifdef USB_HID_ENABLE

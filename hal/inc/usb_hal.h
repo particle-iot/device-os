@@ -95,6 +95,14 @@ int32_t USB_USART_Receive_Data(uint8_t peek);
  * @param Data      The data to write.
  */
 void USB_USART_Send_Data(uint8_t Data);
+
+/**
+ * Wait for data to be flushed. Returns true if the data was flushed within the given timeout, false otherwise.
+ * @param timeout
+ * @param reserved
+ */
+bool USB_USART_Flush_Data(uint32_t timeout, void* reserved);
+
 #endif
 
 #ifdef USB_HID_ENABLE
