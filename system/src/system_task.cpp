@@ -139,7 +139,8 @@ inline uint8_t in_cloud_backoff_period()
 
 void handle_cloud_errors()
 {
-    LED_SetRGBColor(RGB_COLOR_RED);
+    // cfod resets in orange since they are soft errors
+    LED_SetRGBColor(Spark_Error_Count > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED);
 
     while (Spark_Error_Count != 0)
     {
