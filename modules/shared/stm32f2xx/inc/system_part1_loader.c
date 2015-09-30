@@ -22,7 +22,11 @@ extern char stack_end;
  */
 __attribute__((naked)) void system_part1_reset_handler();
 
+
+void* module_system_part1_pre_init();
+
 void system_part1_reset_handler() {
+    module_system_part1_pre_init();
     constructor_ptr_t reset_handler = (constructor_ptr_t)*&dynamic_reset_handler_location;
     reset_handler();
 }
