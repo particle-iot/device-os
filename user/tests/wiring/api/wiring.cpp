@@ -40,6 +40,9 @@ test(api_wiring_interrupt) {
 
     API_COMPILE(attachInterrupt(D0, &MyClass::handler, &myObj, RISING));
 
+
+    API_COMPILE(attachSystemInterrupt(SysInterrupt_TIM1_CC_IRQ, D0_callback));
+
 }
 
 test(api_wiring_usartserial) {

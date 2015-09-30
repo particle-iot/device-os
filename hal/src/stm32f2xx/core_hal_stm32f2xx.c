@@ -601,8 +601,8 @@ void TIM2_irq(void)
     uint8_t result =
     handle_timer(TIM2, TIM_IT_CC1, SysInterrupt_TIM2_Compare1) ||
     handle_timer(TIM2, TIM_IT_CC2, SysInterrupt_TIM2_Compare2) ||
-    handle_timer(TIM2, TIM_IT_CC3, SysInterrupt_TIM2_Compare4) ||
-    handle_timer(TIM2, TIM_IT_CC4, SysInterrupt_TIM2_Compare3) ||
+    handle_timer(TIM2, TIM_IT_CC3, SysInterrupt_TIM2_Compare3) ||
+    handle_timer(TIM2, TIM_IT_CC4, SysInterrupt_TIM2_Compare4) ||
     handle_timer(TIM2, TIM_IT_Update, SysInterrupt_TIM2_Update) ||
     handle_timer(TIM2, TIM_IT_Trigger, SysInterrupt_TIM2_Trigger);
     UNUSED(result);
@@ -624,8 +624,8 @@ void TIM3_irq(void)
     uint8_t result =
     handle_timer(TIM3, TIM_IT_CC1, SysInterrupt_TIM3_Compare1) ||
     handle_timer(TIM3, TIM_IT_CC2, SysInterrupt_TIM3_Compare2) ||
-    handle_timer(TIM3, TIM_IT_CC3, SysInterrupt_TIM3_Compare4) ||
-    handle_timer(TIM3, TIM_IT_CC4, SysInterrupt_TIM3_Compare3) ||
+    handle_timer(TIM3, TIM_IT_CC3, SysInterrupt_TIM3_Compare3) ||
+    handle_timer(TIM3, TIM_IT_CC4, SysInterrupt_TIM3_Compare4) ||
     handle_timer(TIM3, TIM_IT_Update, SysInterrupt_TIM3_Update) ||
     handle_timer(TIM3, TIM_IT_Trigger, SysInterrupt_TIM3_Trigger);
     UNUSED(result);
@@ -647,8 +647,8 @@ void TIM4_irq(void)
     uint8_t result =
     handle_timer(TIM4, TIM_IT_CC1, SysInterrupt_TIM4_Compare1) ||
     handle_timer(TIM4, TIM_IT_CC2, SysInterrupt_TIM4_Compare2) ||
-    handle_timer(TIM4, TIM_IT_CC3, SysInterrupt_TIM4_Compare4) ||
-    handle_timer(TIM4, TIM_IT_CC4, SysInterrupt_TIM4_Compare3) ||
+    handle_timer(TIM4, TIM_IT_CC3, SysInterrupt_TIM4_Compare3) ||
+    handle_timer(TIM4, TIM_IT_CC4, SysInterrupt_TIM4_Compare4) ||
     handle_timer(TIM4, TIM_IT_Update, SysInterrupt_TIM4_Update) ||
     handle_timer(TIM4, TIM_IT_Trigger, SysInterrupt_TIM4_Trigger);
     UNUSED(result);
@@ -671,8 +671,8 @@ void TIM5_irq(void)
     uint8_t result =
     handle_timer(TIM5, TIM_IT_CC1, SysInterrupt_TIM5_Compare1) ||
     handle_timer(TIM5, TIM_IT_CC2, SysInterrupt_TIM5_Compare2) ||
-    handle_timer(TIM5, TIM_IT_CC3, SysInterrupt_TIM5_Compare4) ||
-    handle_timer(TIM5, TIM_IT_CC4, SysInterrupt_TIM5_Compare3) ||
+    handle_timer(TIM5, TIM_IT_CC3, SysInterrupt_TIM5_Compare3) ||
+    handle_timer(TIM5, TIM_IT_CC4, SysInterrupt_TIM5_Compare4) ||
     handle_timer(TIM5, TIM_IT_Update, SysInterrupt_TIM5_Update) ||
     handle_timer(TIM5, TIM_IT_Trigger, SysInterrupt_TIM5_Trigger);
     UNUSED(result);
