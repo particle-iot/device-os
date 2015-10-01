@@ -95,7 +95,7 @@ class Print
     }
 
     template <typename... Args>
-    inline size_t printfln(const char* format, Args... args)
+    inline size_t printlnf(const char* format, Args... args)
     {
         return this->printf_impl(true, format, args...);
     }
