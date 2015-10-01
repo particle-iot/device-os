@@ -3,15 +3,25 @@
 
 ### FEATURES
  - [core] Hooks to support FreeRTOS (optional library)
+ - [photon] separate [System Thread](http://docs.particle.io/reference/firmware/photon/#system-thread)
+ - [printf/printlnf](http://localhost:8080/reference/firmware/core/#printf-) on `Print` classes - `Serial`, `Serial1`, `TCP`, `UDP`
+ - `String.format` for printf-style formatting of to as `String`.
+ - [Wire.end()](http://docs.particle.io/reference/firmware/photon/#end-) to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
+ - [Wire.reset()](http://localhost:8080/reference/firmware/photon/#reset-) to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
+ - [System.ticks()](http://localhost:8080/reference/firmware/core/#system-cycle-counter) to retrieve the current MCU cycle counter for precise timing.
+ - Variables stored in [Backup RAM](http://localhost:8080/reference/firmware/photon/#backup-ram)
+ - `System.enterSafeMode()` to restart the device in safe mode. 
 
 ### ENHANCEMENTS
 
- - `Wire.end()` to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
- - `Wire.reset()` to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
  - Detect when the cloud hasn't been serviced for 15s and disconnect, so device state accurately
-reflects the connection state. [#626](https://github.com/spark/firmwarwe/issues/626)
+reflects the connection state when the application loop has stalled. [#626](https://github.com/spark/firmwarwe/issues/626)
  - Compile-time checks for `Particle.variable()` [#619](https://github.com/spark/firmwarwe/issues/619)
- -
+- `WiFi.selectAntenna()` setting is persistent, so the last selected antenna is used when the
+device is in safe mode. [#618]
+- Increased retry count when connecting to WiFi. [#620](https://github.com/spark/firmware/issues/620)
+- Setup button events [#611](https://github.com/spark/firmware/pull/611)
+
 
 ### BUGFIXES
  - Default SS pin for SPI1 now set to D5. [#623](https://github.com/spark/firmware/issues/623)
@@ -20,6 +30,7 @@ reflects the connection state. [#626](https://github.com/spark/firmwarwe/issues/
  - Storing more than 2 Wi-Fi credentials would sometimes give unpredictable results.
  - `UDP.receivePacket()` would fail if `UDP.setBuffer()` hadn't been called first. Thanks @r2jitu.
  - TX/RX pins did not work after entering listening mode. [#632](https://github.com/spark/firmware/issues/632)
+ - [photon] Improvements to I2C for MCP23017 / Adafruit RGBLCDShield. [#626](https://github.com/spark/firmware/pull/626)
 
 ## v0.4.5
 
