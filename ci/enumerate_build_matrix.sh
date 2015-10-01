@@ -56,17 +56,6 @@ do
   done
 done
 
-# Extra core test
-echo
-echo '-----------------------------------------------------------------------'
-make -s clean all PLATFORM="core" COMPILE_LTO="n" TEST="wiring/api" SPARK_CLOUD="n"
-if [[ "$?" -eq 0 ]]; then
-  echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
-else
-  echo -e "$RED ✗ FAILED $NO_COLOR"
-  exit 1
-fi
-
 # enumerate the matrix, exit 1 if anything fails
 for db in "${DEBUG_BUILD[@]}"
 do
