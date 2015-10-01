@@ -89,3 +89,7 @@ env:
   - secure: Iq58mKqq5Nz4B6OEZu1nmnquhvlQncxT4T3f1x+M/0I6VW5xirMWFlpeke8QyyPOZlwNLDnB5QVjsR2UQspNIhMT4rCfDeCCr9AeinoMDmqPbzpmLLmtaUpz0uTZyJVx7+IRe9QtljPfbzlAxybmrx1HdCCw++F/+qhgFoGLi9o=
   - secure: O8Zu2sWO63svmSTdOk+7Z7N2oUcg3N07WckMoy1m7AYmRZydX5hdVXlbagA06FCtpu1Kvvwc7QYB+1wpoxZYZnxt2mVetVsAcSpOz3c03LodM+yKaHm9luqLfQobuC7oyNdumpqMLsWiELM9rxEpIazYDYM2QI+lh7fTUTHnQ3s=
   - secure: A83drTFobkGvgrPNwGwNS3ZSHX35iNELjH6W9h07pw/n1YSssBHxtLF8aVAEwfIF1VyUoHvQ4HYLNd+9RMyo162xxiWne+/4/gSFyUJNi11w3YX5bwodKPl7OwEO/YnJgHYk8YAAfdnZT4470Fpt6ytcOhEhMsB/IFeepMUiZZA=
+
+notifications:
+  slack:
+    secure: VJ+tAeUzLkz4aMAshQ9ohXZb/1+DQ31kDpcZYDS5PZuXOujx57rzOBg4SKxB2awcmNS2JWlSMQRQtNUzfS15YNuLqgWVj57EQAy99QKsEvccOMELIwbpLtEyEInK5WrUk6vk9ymhk6MBT5+3JiQ4bAs5yvIxm+k8YCakV9QlnH4=
