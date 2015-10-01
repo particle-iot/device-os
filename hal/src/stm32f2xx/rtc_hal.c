@@ -163,6 +163,16 @@ void HAL_RTC_Configuration(void)
 	}
 }
 
+uint8_t BCD2Binary(uint8_t bcd)
+{
+    return ((bcd & 0xF0)*10) + (bcd&0xF);
+}
+
+uint8_t Binary2BCD(uint8_t bcd)
+{
+    return bcd%10 + (bcd/10)*16;
+}
+
 time_t HAL_RTC_Get_UnixTime(void)
 {
 	RTC_TimeTypeDef RTC_TimeStructure;
@@ -182,7 +192,7 @@ time_t HAL_RTC_Get_UnixTime(void)
 	/* Set calendar_time date struct values */
 	calendar_time.tm_wday = RTC_DateStructure.RTC_WeekDay;
 	calendar_time.tm_mday = RTC_DateStructure.RTC_Date;
-	calendar_time.tm_mon = RTC_DateStructure.RTC_Month;
+	calendar_time.tm_mon = BCD2Binary(RTC_DateStructure.RTC_Month);
 	calendar_time.tm_year = RTC_DateStructure.RTC_Year;
 
 	return (time_t)mktime(&calendar_time);
@@ -204,7 +214,7 @@ void HAL_RTC_Set_UnixTime(time_t value)
 	/* Get calendar_time date struct values */
 	RTC_DateStructure.RTC_WeekDay = calendar_time->tm_wday;
 	RTC_DateStructure.RTC_Date = calendar_time->tm_mday;
-	RTC_DateStructure.RTC_Month = calendar_time->tm_mon;
+	RTC_DateStructure.RTC_Month = Binary2BCD(calendar_time->tm_mon);
 	RTC_DateStructure.RTC_Year = calendar_time->tm_year;
 
         setRTCTime(&RTC_TimeStructure, &RTC_DateStructure);
