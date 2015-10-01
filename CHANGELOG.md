@@ -4,13 +4,13 @@
 ### FEATURES
  - [photon] separate [System Thread](http://docs.particle.io/reference/firmware/photon/#system-thread)
  - [core] Hooks to support FreeRTOS (optional library)
- - Variables stored in [Backup RAM](http://localhost:8080/reference/firmware/photon/#backup-ram)
- - [printf/printlnf](http://localhost:8080/reference/firmware/core/#printf-) on `Print` classes - `Serial`, `Serial1`, `TCP`, `UDP`
+ - Variables stored in [Backup RAM](http://docs.particle.io/reference/firmware/photon/#backup-ram)
+ - [printf/printlnf](http://docs.particle.io/reference/firmware/core/#printf-) on `Print` classes - `Serial`, `Serial1`, `TCP`, `UDP`
  - `String.format` for printf-style formatting of to as `String`.
  - [Wire.end()](http://docs.particle.io/reference/firmware/photon/#end-) to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
- - [Wire.reset()](http://localhost:8080/reference/firmware/photon/#reset-) to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
- - [System.ticks()](http://localhost:8080/reference/firmware/core/#system-cycle-counter) to retrieve the current MCU cycle counter for precise timing.
- - [System.enterSafeMode()](http://localhost:8080/reference/firmware/core/#system-entersafemode-) to restart the device in safe mode.
+ - [Wire.reset()](http://docs.particle.io/reference/firmware/photon/#reset-) to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
+ - [System.ticks()](http://docs.particle.io/reference/firmware/core/#system-cycle-counter) to retrieve the current MCU cycle counter for precise timing.
+ - [System.enterSafeMode()](http://docs.particle.io/reference/firmware/core/#system-entersafemode-) to restart the device in safe mode.
 
 ### ENHANCEMENTS
 
