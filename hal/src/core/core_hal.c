@@ -141,7 +141,17 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 
 void HAL_Core_Mode_Button_Reset(void)
 {
-	BUTTON_ResetDebouncedState(BUTTON1);
+
+    /* Disable TIM1 CC4 Interrupt */
+    TIM_ITConfig(TIM1, TIM_IT_CC4, DISABLE);
+
+    BUTTON_ResetDebouncedState(BUTTON1);
+
+    HAL_Notify_Button_State(BUTTON1, false);
+
+    /* Enable BUTTON1 Interrupt */
+    BUTTON_EXTI_Config(BUTTON1, ENABLE);
+
 }
 
 void HAL_Core_System_Reset(void)

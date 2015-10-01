@@ -33,6 +33,7 @@
 #include "usb_istr.h"
 #include "cc3000_spi.h"
 #include "interrupts_hal.h"
+#include "core_hal.h"
 
 uint8_t handle_timer(TIM_TypeDef* TIMx, uint16_t TIM_IT, hal_irq_t irq)
 {
@@ -362,7 +363,7 @@ void EXTI2_IRQHandler(void)
 
 		BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
 
-		/* Disable BUTTON1 Interrupt */
+                /* Disable BUTTON1 Interrupt */
 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
 
 		/* Enable TIM1 CC4 Interrupt */
@@ -521,21 +522,20 @@ void TIM1_CC_IRQHandler(void)
 {
 	if (TIM_GetITStatus(TIM1, TIM_IT_CC4) != RESET)
 	{
-		TIM_ClearITPendingBit(TIM1, TIM_IT_CC4);
-
-		if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
-		{
-			BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
-		}
-		else
-		{
-			/* Disable TIM1 CC4 Interrupt */
-			TIM_ITConfig(TIM1, TIM_IT_CC4, DISABLE);
-
-			/* Enable BUTTON1 Interrupt */
-			BUTTON_EXTI_Config(BUTTON1, ENABLE);
-		}
-	}
+            if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+            {
+                if (!BUTTON_DEBOUNCED_TIME[BUTTON1])
+                {
+                    BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
+                    HAL_Notify_Button_State(BUTTON1, true);
+                }
+                BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
+            }
+            else
+            {
+                HAL_Core_Mode_Button_Reset();
+            }
+        }
 
     HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_CC_IRQ, NULL);
     uint8_t result =
