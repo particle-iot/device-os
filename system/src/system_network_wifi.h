@@ -68,6 +68,9 @@ protected:
     {
         if (complete)
             SPARK_WLAN_SmartConfigProcess();
+#if PLATFORM_ID<3 // this is needed to get the CC3000 to retry the wifi connection.
+        off();
+#endif
     }
 
     virtual void on_start_listening() override
