@@ -21,31 +21,17 @@
  */
 
 #define DYNALIB_EXPORT
-
-#include "adc_hal.h"
-#include "core_hal.h"
-#include "dac_hal.h"
-#include "delay_hal.h"
-#include "deviceid_hal.h"
-#include "eeprom_hal.h"
-#include "gpio_hal.h"
-#include "i2c_hal.h"
-#include "inet_hal.h"
-#include "interrupts_hal.h"
-#include "ota_flash_hal.h"
-#include "pwm_hal.h"
-#include "rtc_hal.h"
-#include "servo_hal.h"
-#include "socket_hal.h"
-#include "spi_hal.h"
-#include "syshealth_hal.h"
-#include "timer_hal.h"
-#include "tone_hal.h"
-#include "usart_hal.h"
-#include "can_hal.h"
-#include "usb_hal.h"
-#include "wlan_hal.h"
-
 #include "hal_dynalib.h"
+#include "hal_dynalib_core.h"
+#include "hal_dynalib_gpio.h"
+#include "hal_dynalib_i2c.h"
+#include "hal_dynalib_ota.h"
+#include "hal_dynalib_peripherals.h"
+#include "hal_dynalib_socket.h"
+#include "hal_dynalib_spi.h"
+#include "hal_dynalib_usart.h"
+#include "hal_dynalib_can.h"
+#include "hal_dynalib_wlan.h"
+#include "hal_dynalib_concurrent.h"
 
 

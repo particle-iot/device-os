@@ -1,0 +1,421 @@
+/**
+ ******************************************************************************
+ * @file    can_hal.c
+ * @author  Brian Spranger
+ * @version V1.0.0
+ * @date    30-Sep-2015
+ * @brief
+ ******************************************************************************
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************
+ */
+
+/* Includes ------------------------------------------------------------------*/
+#include "can_hal.h"
+#include "pinmap_impl.h"
+#include "gpio_hal.h"
+#include "stm32f2xx.h"
+#include <string.h>
+
+/* Private typedef -----------------------------------------------------------*/
+typedef enum CAN_Num_Def {
+  CAN_D1_D2 = 0
+} CAN_Num_Def;
+/* Private macro -------------------------------------------------------------*/
+
+/* Private variables ---------------------------------------------------------*/
+typedef struct STM32_CAN_Info {
+	CAN_TypeDef* can_peripheral;
+
+	__IO uint32_t* can_apbReg;
+	uint32_t can_clock_en;
+
+	int32_t can_tx_irqn;
+        int32_t can_rx0_irqn;
+        int32_t can_rx1_irqn;
+        int32_t can_sce_irqn;
+
+	uint16_t can_tx_pin;
+	uint16_t can_rx_pin;
+
+	uint8_t can_tx_pinsource;
+	uint8_t can_rx_pinsource;
+
+	uint8_t can_af_map;
+
+	// Buffer pointers. These need to be global for IRQ handler access
+	CAN_Ring_Buffer* can_tx_buffer;
+	CAN_Ring_Buffer* can_rx_buffer;
+
+	bool can_enabled;
+	bool can_transmitting;
+} STM32_CAN_Info;
+
+STM32_CAN_Info CAN_MAP[TOTAL_CAN] =
+{
+		/*
+		 * CAN_peripheral 
+		 * clock control register (APBxENR)
+		 * clock enable bit value (RCC_APBxPeriph_CANx/RCC_APBxPeriph_CANx)
+		 * Tx interrupt number (CANx_TX_IRQn)
+                 * Rx0 interrupt number (CANx_RX0_IRQn)
+                 * Rx1 interrupt number (CANx_RX1_IRQn)
+                 * Sce interrupt number (CANx_SCE_IRQn)
+		 * TX pin
+		 * RX pin
+		 * TX pin source
+		 * RX pin source
+		 * GPIO AF map (GPIO_AF_CANx/GPIO_AF_CANx)
+		 * <tx_buffer pointer> used internally and does not appear below
+		 * <rx_buffer pointer> used internally and does not appear below
+		 * <can enabled> used internally and does not appear below
+		 * <can transmitting> used internally and does not appear below
+		 */
+#if PLATFORM_ID == 6
+    { CAN2, &RCC->APB1ENR, RCC_APB1Periph_CAN2, CAN2_TX_IRQn, CAN2_RX0_IRQn, CAN2_RX1_IRQn, CAN2_SCE_IRQn, D1, D2, GPIO_PinSource6, GPIO_PinSource5, GPIO_AF_CAN2 } // CAN 2
+#endif		
+};
+
+static CAN_InitTypeDef CAN_InitStructure;
+static CAN_FilterInitTypeDef CAN_FilterInitStructure;
+static STM32_CAN_Info *canMap[TOTAL_CAN]; // pointer to USART_MAP[] containing USART peripheral register locations (etc)
+
+/* Extern variables ----------------------------------------------------------*/
+
+/* Private function prototypes -----------------------------------------------*/
+
+inline void store_message(CanRxMsg *pmessage, CAN_Ring_Buffer *buffer)
+{
+	unsigned i = (unsigned int)(buffer->head + 1) % CAN_BUFFER_SIZE;
+
+	if (i != buffer->tail)
+	{
+            buffer->buffer[buffer->head].Ext = (pmessage->IDE&CAN_Id_Extended)?true:false;
+            if (buffer->buffer[buffer->head].Ext)
+            {
+                buffer->buffer[buffer->head].ID = pmessage->ExtId;
+            }
+            else
+            {
+                buffer->buffer[buffer->head].ID = pmessage->StdId; 
+            }
+            buffer->buffer[buffer->head].Len = pmessage->DLC; 
+            buffer->buffer[buffer->head].rtr = (pmessage->RTR & CAN_RTR_Remote)?true:false;
+            buffer->buffer[buffer->head].Data[0] = pmessage->Data[0];
+            buffer->buffer[buffer->head].Data[1] = pmessage->Data[1];
+            buffer->buffer[buffer->head].Data[2] = pmessage->Data[2];
+            buffer->buffer[buffer->head].Data[3] = pmessage->Data[3];
+            buffer->buffer[buffer->head].Data[4] = pmessage->Data[4];
+            buffer->buffer[buffer->head].Data[5] = pmessage->Data[5];
+            buffer->buffer[buffer->head].Data[6] = pmessage->Data[6];
+            buffer->buffer[buffer->head].Data[7] = pmessage->Data[7];
+            
+            buffer->head = i;
+	}
+}
+
+void HAL_CAN_Init(HAL_CAN_Channel channel, CAN_Ring_Buffer *rx_buffer, CAN_Ring_Buffer *tx_buffer)
+{
+	if(channel == HAL_CAN_Channel1)
+	{
+		canMap[channel] = &CAN_MAP[CAN_D1_D2];
+	}
+
+	canMap[channel]->can_rx_buffer = rx_buffer;
+	canMap[channel]->can_tx_buffer = tx_buffer;
+
+	memset(canMap[channel]->can_rx_buffer, 0, sizeof(CAN_Ring_Buffer));
+	memset(canMap[channel]->can_tx_buffer, 0, sizeof(CAN_Ring_Buffer));
+
+	canMap[channel]->can_enabled = false;
+	canMap[channel]->can_transmitting = false;
+}
+
+void HAL_CAN_Begin(HAL_CAN_Channel channel, uint32_t baud)
+{
+	CAN_DeInit(canMap[channel]->can_peripheral);
+
+	// Configure CAN Rx and Tx as alternate function push-pull, and enable GPIOA clock
+	HAL_Pin_Mode(canMap[channel]->can_rx_pin, AF_OUTPUT_PUSHPULL);
+	HAL_Pin_Mode(canMap[channel]->can_tx_pin, AF_OUTPUT_PUSHPULL);
+
+	// Enable USART Clock
+	*canMap[channel]->can_apbReg |=  canMap[channel]->can_clock_en;
+
+	// Connect USART pins to AFx
+	STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+	GPIO_PinAFConfig(PIN_MAP[canMap[channel]->can_rx_pin].gpio_peripheral, canMap[channel]->can_rx_pinsource, canMap[channel]->can_af_map);
+	GPIO_PinAFConfig(PIN_MAP[canMap[channel]->can_tx_pin].gpio_peripheral, canMap[channel]->can_tx_pinsource, canMap[channel]->can_af_map);
+
+//TODO	// NVIC Configuration
+	//NVIC_InitTypeDef NVIC_InitStructure;
+	// Enable the USART Interrupt
+	//NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->usart_int_n;
+	//NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
+	//NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	//NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	//NVIC_Init(&NVIC_InitStructure);
+
+	// USART default configuration
+	// USART configured as follow:
+	// - BaudRate = (set baudRate as 9600 baud)
+	// - Word Length = 8 Bits
+	// - One Stop Bit
+	// - No parity
+	// - Hardware flow control disabled for Serial1/2/4/5
+    // - Hardware flow control enabled (RTS and CTS signals) for Serial3
+	// - Receive and transmit enabled
+	CAN_InitStructure.CAN_TTCM = DISABLE;
+        CAN_InitStructure.CAN_ABOM = ENABLE;
+        CAN_InitStructure.CAN_AWUM = DISABLE;
+        CAN_InitStructure.CAN_NART = DISABLE;
+        CAN_InitStructure.CAN_RFLM = DISABLE;
+        CAN_InitStructure.CAN_TXFP = ENABLE;
+        CAN_InitStructure.CAN_Mode = CAN_Mode_Normal;
+        CAN_InitStructure.CAN_SJW  = CAN_SJW_4tq;
+        CAN_InitStructure.CAN_BS1  = CAN_BS1_12tq;
+        CAN_InitStructure.CAN_BS2  = CAN_BS2_5tq;
+        CAN_InitStructure.CAN_Prescaler = 8;
+
+	// Configure USART
+	CAN_Init(canMap[channel]->can_peripheral, &CAN_InitStructure);
+  CAN_FilterInitStructure.CAN_FilterNumber = 0;
+  CAN_FilterInitStructure.CAN_FilterMode = CAN_FilterMode_IdMask;
+  CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit;
+  CAN_FilterInitStructure.CAN_FilterIdHigh = (0x0000U << 3);
+  CAN_FilterInitStructure.CAN_FilterIdLow =  (0x0000U << 3) | 0x4;
+  CAN_FilterInitStructure.CAN_FilterMaskIdHigh = (0x0000U << 3);
+  CAN_FilterInitStructure.CAN_FilterMaskIdLow =  (0x0000U << 4) | 0x04;
+  CAN_FilterInitStructure.CAN_FilterFIFOAssignment = CAN_FilterFIFO0;
+  CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;
+  CAN_FilterInit(&CAN_FilterInitStructure);
+	// Enable the USART
+	//USART_Cmd(canMap[channel]->can_peripheral, ENABLE);
+
+	canMap[channel]->can_enabled = true;
+	canMap[channel]->can_transmitting = false;
+
+	// Enable USART Receive and Transmit interrupts
+//TODO	//USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_TXE, ENABLE);
+	//USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_RXNE, ENABLE);
+}
+
+void HAL_USART_End(HAL_CAN_Channel channel)
+{
+    // wait for transmission of outgoing data
+    while (canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail);
+
+    // Disable the USART
+    //USART_Cmd(canMap[channel]->can_peripheral, DISABLE);
+
+    // Deinitialise USART
+    CAN_DeInit(canMap[channel]->can_peripheral);
+
+    // Disable USART Receive and Transmit interrupts
+    //USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_RXNE, DISABLE);
+    //USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_TXE, DISABLE);
+
+    //NVIC_InitTypeDef NVIC_InitStructure;
+
+    // Disable the USART Interrupt
+    //NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->usart_int_n;
+    //NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+
+    //NVIC_Init(&NVIC_InitStructure);
+
+    // Disable USART Clock
+    *canMap[channel]->can_apbReg &= ~canMap[channel]->can_clock_en;
+
+    // clear any received data
+    canMap[channel]->can_rx_buffer->head = canMap[channel]->can_rx_buffer->tail;
+
+    // Undo any pin re-mapping done for this USART
+    // ...
+
+    memset(canMap[channel]->can_rx_buffer, 0, sizeof(CAN_Ring_Buffer));
+    memset(canMap[channel]->can_tx_buffer, 0, sizeof(CAN_Ring_Buffer));
+
+    canMap[channel]->can_enabled = false;
+    canMap[channel]->can_transmitting = false;
+}
+
+uint32_t HAL_USART_Write_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmessage)
+{
+    
+    // interrupts are off and data in queue;
+	//if ((CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) == RESET)
+	//		&& canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail) {
+		// Get him busy
+	//	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
+	//}
+
+	unsigned i = (canMap[channel]->can_tx_buffer->head + 1) % CAN_BUFFER_SIZE;
+
+	// If the output buffer is full, there's nothing for it other than to
+	// wait for the interrupt handler to empty it a bit
+	//         no space so       or  Called Off Panic with interrupt off get the message out!
+	//         make space                     Enter Polled IO mode
+	//while (i == canMap[channel]->can_tx_buffer->tail || ((__get_PRIMASK() & 1) && canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail) ) {
+		// Interrupts are on but they are not being serviced because this was called from a higher
+		// Priority interrupt
+
+		//if (CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) && CAN_GetFlagStatus(canMap[channel]->can_peripheral, USART_FLAG_TXE))
+		{
+			// protect for good measure
+			//USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_TXE, DISABLE);
+			// Write out a byte
+			//USART_SendData(canMap[channel]->can_peripheral,  canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail++]);
+			//canMap[channel]->can_tx_buffer->tail %= CAN_BUFFER_SIZE;
+			// unprotect
+			//USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_TXE, ENABLE);
+		}
+	}
+
+	memcpy((void *)&(canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->head]),(void *)pmessage, sizeof(CAN_Message_Struct));
+	canMap[channel]->can_tx_buffer->head = i;
+	canMap[channel]->can_transmitting = true;
+	//USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_TXE, ENABLE);
+
+	return 1;
+}
+
+int32_t HAL_CAN_Available_Data(HAL_CAN_Channel channel)
+{
+	return (unsigned int)(CAN_BUFFER_SIZE + canMap[channel]->can_rx_buffer->head - canMap[channel]->can_rx_buffer->tail) % CAN_BUFFER_SIZE;
+}
+
+int32_t HAL_CAN_Read_Data(HAL_CAN_Channel channel, CanRxMsg *pmessage)
+{
+	// if the head isn't ahead of the tail, we don't have any characters
+	if ((canMap[channel]->can_rx_buffer->head == canMap[channel]->can_rx_buffer->tail) ||
+                (NULL == pmessage))
+	{
+		return -1;
+	}
+	else
+	{
+		memcpy((void *)pmessage, (void)&(canMap[channel]->can_rx_buffer->buffer[canMap[channel]->can_rx_buffer->tail]), sizeof(CanRxMsg));
+		canMap[channel]->can_rx_buffer->tail = (unsigned int)(canMap[channel]->can_rx_buffer->tail + 1) % CAN_BUFFER_SIZE;
+		return 1;
+	}
+}
+
+int32_t HAL_CAN_Peek_Data(HAL_CAN_Channel channel, CanRxMsg *pmessage)
+{
+	if (canMap[channel]->can_rx_buffer->head == canMap[channel]->can_rx_buffer->tail)
+	{
+            return -1;
+	}
+	else
+	{
+            memcpy((void *)pmessage, (void)&(canMap[channel]->can_rx_buffer->buffer[canMap[channel]->can_rx_buffer->tail]), sizeof(CanRxMsg));
+            return 1;
+	}
+}
+
+void HAL_CAN_Flush_Data(HAL_CAN_Channel channel)
+{
+//TODO // Loop until USART DR register is empty
+	//while ( canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail );
+	// Loop until last frame transmission complete
+	//while (canMap[channel]->can_transmitting && (USART_GetFlagStatus(canMap[channel]->can_peripheral, USART_FLAG_TC) == RESET));
+	//canMap[channel]->can_transmitting = false;
+}
+
+bool HAL_CAN_Is_Enabled(HAL_CAN_Channel channel)
+{
+	return canMap[channel]->can_enabled;
+}
+
+static void HAL_CAN_Handler(HAL_CAN_Channel channel)
+{
+    CanRxMsg message;	
+        //if(CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_FMP0) != RESET)
+	{
+            // Read message from the receive data register
+            CAN_Receive(canMap[channel]->can_peripheral, CAN_FIFO0, &message);
+            store_message(message, canMap[channel]->can_rx_buffer);
+	}
+
+	//if(CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) != RESET)
+	{
+		// Write byte to the transmit data register
+		if (canMap[channel]->can_tx_buffer->head == canMap[channel]->can_tx_buffer->tail)
+		{
+			// Buffer empty, so disable the USART Transmit interrupt
+			//CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, DISABLE);
+		}
+		else
+		{
+			CanTxMsg txmessage;
+                        if (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Ext)
+                        {
+                          txmessage.ExtId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x1FFFFFFFUL);
+                          txmessage.StdId = 0U;
+                          txmessage.IDE = CAN_Id_Extended;
+                        }
+                        else
+                        {
+                          txmessage.ExtId = 0UL;
+                          txmessage.StdId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x7FFUL);  
+                          txmessage.IDE = CAN_Id_Standard;
+                        }
+                        if (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].rtr)
+                        {
+                          txmessage.RTR = CAN_RTR_REMOTE;
+                        }
+                        else
+                        {
+                            txmessage.RTR = CAN_RTR_DATA;
+                        }
+                        txmessage.DLC = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Len;     
+                        txmessage.Data[0] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[0];
+                        txmessage.Data[1] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[1];
+                        txmessage.Data[2] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[2];
+                        txmessage.Data[3] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[3];
+                        txmessage.Data[4] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[4];
+                        txmessage.Data[5] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[5];
+                        txmessage.Data[6] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[6];
+                        txmessage.Data[7] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[7];
+                        // There is more data in the output buffer. Send the next byte
+                        if (CAN_TxStatus_NoMailBox != CAN_Transmit(canMap[channel]->can_peripheral, &txmessage))
+                        {
+                                canMap[channel]->can_tx_buffer->tail++;
+                                canMap[channel]->can_tx_buffer->tail %= CAN_BUFFER_SIZE;
+                        }
+		}
+	}
+
+	// // If Overrun occurs, clear the OVR condition
+	// if (USART_GetFlagStatus(canMap[channel]->can_peripheral, USART_FLAG_ORE) != RESET)
+	// {
+	// 	(void)USART_ReceiveData(canMap[channel]->can_peripheral);
+	// 	USART_ClearITPendingBit (canMap[channel]->can_peripheral, USART_IT_ORE);
+	// }
+}
+
+// Serial1 interrupt handler
+/*******************************************************************************
+ * Function Name  : HAL_CAN1_Handler
+ * Description    : This function handles CAN1 global interrupt request.
+ * Input          : None.
+ * Output         : None.
+ * Return         : None.
+ *******************************************************************************/
+void HAL_CAN1_Handler(void)
+{
+	HAL_CAN_Handler(HAL_CAN_Channel1);
+}

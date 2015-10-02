@@ -39,6 +39,7 @@
 #include "spark_wiring_string.h"
 #include "spark_wiring_print.h"
 #include "spark_wiring_usartserial.h"
+#include "spark_wiring_can.h"
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_usbmouse.h"
 #include "spark_wiring_usbkeyboard.h"
