@@ -31,7 +31,7 @@ SCENARIO("Print.printf() with a small string", "[print]")
 SCENARIO("Print.printfln() with a small string", "[print]")
 {
     BufferPrint print;
-    print.printfln("abcd %d", 10);
+    print.printlnf("abcd %d", 10);
     REQUIRE(String("abcd 10\r\n") == print.result());
 }
 
