@@ -25,7 +25,7 @@
 /* Includes ------------------------------------------------------------------*/
 /* Uncomment the line below to enable peripheral header file inclusion */
 /* #include "stm32f2xx_adc.h" */
-/* #include "stm32f2xx_can.h" */
+#include "stm32f2xx_can.h"
 /* #include "stm32f2xx_cec.h" */
 /* #include "stm32f2xx_crc.h" */
 /* #include "stm32f2xx_dac.h" */

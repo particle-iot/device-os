@@ -1,7 +1,8 @@
 /**
  ******************************************************************************
- * @file    hal_dynalib_export.c
- * @author  Matthew McGowan
+ * @file    hal_dynalib_can.h
+ * @authors Brian Spranger
+ * @date    01 October 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
@@ -20,32 +21,28 @@
  ******************************************************************************
  */
 
-#define DYNALIB_EXPORT
+#ifndef HAL_DYNALIB_CAN_H
+#define	HAL_DYNALIB_CAN_H
 
-#include "adc_hal.h"
-#include "core_hal.h"
-#include "dac_hal.h"
-#include "delay_hal.h"
-#include "deviceid_hal.h"
-#include "eeprom_hal.h"
-#include "gpio_hal.h"
-#include "i2c_hal.h"
-#include "inet_hal.h"
-#include "interrupts_hal.h"
-#include "ota_flash_hal.h"
-#include "pwm_hal.h"
-#include "rtc_hal.h"
-#include "servo_hal.h"
-#include "socket_hal.h"
-#include "spi_hal.h"
-#include "syshealth_hal.h"
-#include "timer_hal.h"
-#include "tone_hal.h"
-#include "usart_hal.h"
+#include "dynalib.h"
+
+#ifdef DYNALIB_EXPORT
 #include "can_hal.h"
-#include "usb_hal.h"
-#include "wlan_hal.h"
+#endif
 
-#include "hal_dynalib.h"
+DYNALIB_BEGIN(hal_can)
 
+DYNALIB_FN(hal_can,HAL_CAN_Init)
+DYNALIB_FN(hal_can,HAL_CAN_Begin)
+DYNALIB_FN(hal_can,HAL_CAN_End)
+DYNALIB_FN(hal_can,HAL_CAN_Write_Data)
+DYNALIB_FN(hal_can,HAL_CAN_Available_Data)
+DYNALIB_FN(hal_can,HAL_CAN_Read_Data)
+DYNALIB_FN(hal_can,HAL_CAN_Peek_Data)
+DYNALIB_FN(hal_can,HAL_CAN_Flush_Data)
+DYNALIB_FN(hal_can,HAL_CAN_Is_Enabled)
+
+DYNALIB_END(hal_can)
+
+#endif	/* HAL_DYNALIB_CAN_H */
 

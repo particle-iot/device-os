@@ -184,7 +184,7 @@ int os_semaphore_take(os_semaphore_t semaphore, system_tick_t timeout, bool rese
 int os_semaphore_give(os_semaphore_t semaphore, bool reserved);
 
 #define _GLIBCXX_HAS_GTHREADS
-#include <bits/gthr.h>
+//#include <bits/gthr.h>
 
 /**
  * Enables/disables pre-emptive context switching
