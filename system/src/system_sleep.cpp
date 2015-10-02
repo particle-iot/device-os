@@ -48,8 +48,10 @@ extern "C" void HAL_RTCAlarm_Handler(void)
     /* Wake up from System.sleep mode(SLEEP_MODE_WLAN) */
     if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
         SPARK_WLAN_SLEEP = 0;
+#ifndef SPARK_NO_CLOUD
     if (wakeupState.cloud)
         spark_connect();
+#endif
 }
 
 
@@ -63,9 +65,11 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
         case SLEEP_MODE_WLAN:
             // save the current state so it can be restored on wakeup
             wakeupState.wifi = !SPARK_WLAN_SLEEP;
-            wakeupState.cloud = spark_connected();
             wakeupState.wifiConnected = wakeupState.cloud | network_ready(0, 0, NULL) | network_connecting(0, 0, NULL);
+#ifndef SPARK_NO_CLOUD
+            wakeupState.cloud = spark_connected();
             spark_disconnect();
+#endif
             network_off(0, 0, 0, NULL);
             break;
 

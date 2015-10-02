@@ -150,6 +150,8 @@ void spark_process(void)
     Spark_Idle_Events(true);
 }
 
+#endif
+
 String spark_deviceID(void)
 {
     unsigned len = HAL_device_ID(NULL, 0);
@@ -157,5 +159,3 @@ String spark_deviceID(void)
     HAL_device_ID(id, len);
     return bytes2hex(id, len);
 }
-
-#endif
