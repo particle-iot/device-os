@@ -64,19 +64,19 @@ public:
     template<typename T, std::size_t N>
     static inline bool variable(const char *varKey, const T (*userVar)[N], const CloudVariableTypeString& userVarType)
     {
-        static_assert(sizeof(T)==0, "\n\nUse Particle.varible(\"name\", myVar, STRING); without & in front of myVar\n\n");
+        static_assert(sizeof(T)==0, "\n\nUse Particle.variable(\"name\", myVar, STRING); without & in front of myVar\n\n");
         return false;
     }
     template<typename T>
     static inline bool variable(const T *varKey, const String *userVar, const CloudVariableTypeString& userVarType)
     {
-        static_assert(sizeof(T)==0, "\n\nIn Particle.varible(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
+        static_assert(sizeof(T)==0, "\n\nIn Particle.variable(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
         return false;
     }
     template<typename T>
     static inline bool variable(const T *varKey, const String &userVar, const CloudVariableTypeString& userVarType)
     {
-        static_assert(sizeof(T)==0, "\n\nIn Particle.varible(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
+        static_assert(sizeof(T)==0, "\n\nIn Particle.variable(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
         return false;
     }
 
