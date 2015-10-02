@@ -27,7 +27,7 @@ CFLAGS += -DSPARK_NO_CLOUD
 endif
 
 ifeq ("$(SPARK_WIFI)","n")
-CFLAGS += -DSPARK_NO_WIFI
+CFLAGS += -DPARTICLE_NO_NETWORK
 endif
 
 

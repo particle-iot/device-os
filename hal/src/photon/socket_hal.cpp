@@ -438,83 +438,164 @@ public:
 };
 
 /**
- * Singly linked lists for servers and clients. Ensures we can completely shutdown
- * the socket layer when entering listening mode.
+ * Lock/unlock a semaphore via RAII
  */
-static socket_t* servers = NULL;
-static socket_t* clients = NULL;
+class SemaphoreLock
+{
+    wiced_semaphore_t& sem;
+
+public:
+
+    SemaphoreLock(wiced_semaphore_t& sem_) : sem(sem_) {
+        wiced_rtos_get_semaphore(&sem, NEVER_TIMEOUT);
+    }
+
+    ~SemaphoreLock() {
+        wiced_rtos_set_semaphore(&sem);
+    }
+};
 
 /**
- * Adds an item to the linked list.
- * @param item
- * @param list
+ * Maintains a singly linked list of sockets. Access to the list is not
+ * made thread-safe - callers should use SocketListLock to correctly serialize
+ * access to the list.
  */
-void add_list(socket_t* item, socket_t*& list) {
-    item->next = list;
-    list = item;
-}
-
-bool exists_list(socket_t* item, socket_t* list)
+struct SocketList
 {
-    bool exists = false;
-    while (list) {
-        if (item==list) {
-            exists = true;
-            break;
-        }
-        list = list->next;
-    }
-    return exists;
-}
+    socket_t* items;
+    wiced_semaphore_t semaphore;
 
-/**
- * Removes an item from the linked list.
- * @param item
- * @param list
- */
-bool remove_list(socket_t* item, socket_t*& list)
-{
-    bool removed = false;
-    if (list==item) {
-        list = item->next;
-        removed = true;
-    }
-    else
+public:
+
+    SocketList() : items(NULL)
     {
-        socket_t* current = list;
-        while (current) {
-            if (current->next==item) {
-                current->next = item->next;
-                removed = true;
+        wiced_rtos_init_semaphore(&semaphore);
+        wiced_rtos_set_semaphore(&semaphore);
+    }
+
+    ~SocketList()
+    {
+        wiced_rtos_deinit_semaphore(&semaphore);
+    }
+
+    /**
+     * Adds an item to the linked list.
+     * @param item
+     * @param list
+     */
+    void add(socket_t* item)
+    {
+        item->next = items;
+        items = item;
+    }
+
+    bool exists(socket_t* item)
+    {
+        bool exists = false;
+            socket_t* list = this->items;
+        while (list) {
+            if (item==list) {
+                exists = true;
                 break;
             }
+            list = list->next;
         }
+        return exists;
     }
-    return removed;
+
+    /**
+     * Removes an item from the linked list.
+     * @param item
+     * @param list
+     */
+    bool remove(socket_t* item)
+    {
+        bool removed = false;
+            if (items==item) {
+                items = item->next;
+            removed = true;
+        }
+        else
+        {
+                socket_t* current = items;
+            while (current) {
+                if (current->next==item) {
+                    current->next = item->next;
+                    removed = true;
+                    break;
+                }
+            }
+        }
+        return removed;
+    }
+
+    void close_all()
+    {
+        socket_t* current = items;
+        while (current) {
+            socket_t* next = current->next;
+            delete current;
+            current = next;
+        }
+        items = NULL;
+    }
+
+    friend class SocketListLock;
+};
+
+struct SocketListLock : SemaphoreLock
+{
+    SocketListLock(SocketList& list) :
+        SemaphoreLock(list.semaphore)
+    {}
+};
+
+class ServerSocketList : public SocketList
+{
+public:
+    /**
+     *
+     * Low-level function to find the server that a given wiced tcp client
+     * is associated with. The WICED callbacks provide the client socket, but
+     * not the server it is associated with.
+     * @param client
+     * @return
+     */
+    tcp_server_t* server_for_socket(wiced_tcp_socket_t* client)
+    {
+        socket_t* server = items;
+        while (server) {
+            if (server->s.tcp_server->is_client(client))
+                return server->s.tcp_server;
+            server = server->next;
+    }
+        return NULL;
 }
 
-socket_t*& list_for_socket(socket_t* socket) {
+};
+
+/**
+ * Singly linked lists for servers and clients. Ensures we can completely shutdown
+ * the socket layer when bringing down a network interface.
+ */
+static ServerSocketList servers;
+static SocketList clients;
+
+SocketList& list_for(socket_t* socket) {
     return (socket->get_type()==socket_t::TCP_SERVER) ? servers : clients;
 }
 
-void add(socket_t* socket) {
+void add_socket(socket_t* socket) {
     if (socket) {
-        add_list(socket, list_for_socket(socket));
+        list_for(socket).add(socket);
     }
-}
+    }
 
 /**
  * Determines if the given socket still exists in the list of current sockets.
  */
-bool exists(socket_t* socket) {
-    return socket && exists_list(socket, list_for_socket(socket));
-}
-
-void remove(socket_t* socket) {
-    if (socket) {
-        if (remove_list(socket, list_for_socket(socket)))
-            delete socket;
-    }
+bool exists_socket(socket_t* socket) {
+    return socket && list_for(socket).exists(socket);
 }
 
 inline bool is_udp(socket_t* socket) { return socket && socket->is_type(socket_t::UDP); }
@@ -528,8 +609,10 @@ inline tcp_server_client_t* client(socket_t* socket) { return is_client(socket) 
 inline tcp_server_t* server(socket_t* socket) { return is_server(socket) ? socket->s.tcp_server : NULL; }
 
 wiced_result_t socket_t::notify_disconnected(wiced_tcp_socket_t*, void* socket) {
-    if (socket) {
-        if (exists((socket_t*)socket)) {
+    if (socket && 0) {
+        // replace with unique_lock once the multithreading changes have been incorporated
+        SocketListLock lock(clients);
+        if (exists_socket((socket_t*)socket)) {
             tcp_socket_t* tcp_socket = tcp((socket_t*)socket);
             if (tcp_socket)
                 tcp_socket->notify_disconnected();
@@ -584,26 +667,25 @@ socket_t* from_handle(sock_handle_t handle) {
  */
 sock_handle_t socket_dispose(sock_handle_t handle) {
     if (socket_handle_valid(handle)) {
-        remove(from_handle(handle));
+        socket_t* socket = from_handle(handle);
+        SocketList& list = list_for(socket);
+        SocketListLock lock(list);
+        if (list.remove(socket))
+            delete socket;
     }
     return SOCKET_INVALID;
 }
 
-void close_all_list(socket_t*& list)
+void close_all(SocketList& list)
 {
-    socket_t* current = list;
-    while (current) {
-        socket_t* next = current->next;
-        delete current;
-        current = next;
-    }
-    list = NULL;
+    SocketListLock lock(list);
+    list.close_all();
 }
 
 void socket_close_all()
 {
-    close_all_list(clients);
-    close_all_list(servers);
+    close_all(clients);
+    close_all(servers);
 }
 
 #define SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr) \
@@ -636,7 +718,7 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addr
     if (tcp_socket) {
         result = wiced_tcp_bind(tcp_socket, WICED_ANY_PORT);
         if (result==WICED_SUCCESS) {
-            //wiced_tcp_register_callbacks(tcp(socket), socket_t::notify_connected, socket_t::notify_received, socket_t::notify_disconnected, (void*)socket);
+            wiced_tcp_register_callbacks(tcp(socket), socket_t::notify_connected, socket_t::notify_received, socket_t::notify_disconnected, (void*)socket);
             SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr);
             unsigned timeout = 5*1000;
             result = wiced_tcp_connect(tcp_socket, &ip_addr, port, timeout);
@@ -740,31 +822,14 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
 }
 
 /**
- * Low-level function to find the server that a given wiced tcp client
- * is associated with. The WICED callbacks provide the client socket, but
- * not the server it is associated with.
- * @param client
- * @return
- */
-tcp_server_t* server_for_socket(wiced_tcp_socket_t* client)
-{
-    socket_t* server = servers;
-    while (server) {
-        if (server->s.tcp_server->is_client(client))
-            return server->s.tcp_server;
-        server = server->next;
-    }
-    return NULL;
-}
-
-/**
  * Notification from the networking thread that the given client socket connected
  * to the server.
  * @param socket
  */
 wiced_result_t server_connected(wiced_tcp_socket_t* s, void* pv)
 {
-    tcp_server_t* server = server_for_socket(s);
+    SocketListLock lock(servers);
+    tcp_server_t* server = servers.server_for_socket(s);
     wiced_result_t result = WICED_ERROR;
     if (server) {
         result = server->accept(s);
@@ -787,7 +852,8 @@ wiced_result_t server_received(wiced_tcp_socket_t* socket, void* pv)
  */
 wiced_result_t server_disconnected(wiced_tcp_socket_t* s, void* pv)
 {
-    tcp_server_t* server = server_for_socket(s);
+    SocketListLock lock(servers);
+    tcp_server_t* server = servers.server_for_socket(s);
     wiced_result_t result = WICED_ERROR;
     if (server) {
         // disconnect the socket from the server, but maintain the client
@@ -799,23 +865,24 @@ wiced_result_t server_disconnected(wiced_tcp_socket_t* s, void* pv)
 
 sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif)
 {
-    socket_t* handle = new socket_t();
+    socket_t* socket = new socket_t();
     tcp_server_t* server = new tcp_server_t();
     wiced_result_t result = WICED_OUT_OF_HEAP_SPACE;
-    if (handle && server) {
+    if (socket && server) {
         result = wiced_tcp_server_start(server, wiced_wlan_interface(nif),
             port, WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS, server_connected, server_received, server_disconnected, NULL);
     }
     if (result!=WICED_SUCCESS) {
-        delete handle; handle = NULL;
+        delete socket; socket = NULL;
         delete server; server = NULL;
     }
     else {
-        handle->set_server(server);
-        add(handle);
+        socket->set_server(server);
+        SocketListLock lock(list_for(socket));
+        add_socket(socket);
     }
 
-    return handle ? as_sock_result(handle) : as_sock_result(result);
+    return socket ? as_sock_result(socket) : as_sock_result(result);
 }
 
 /**
@@ -833,7 +900,10 @@ sock_result_t socket_accept(sock_handle_t sock)
         if (client) {
             socket_t* socket = new socket_t();
             socket->set_client(client);
-            add(socket);
+            {
+                SocketListLock lock(list_for(socket));
+                add_socket(socket);
+            }
             result = (sock_result_t)socket;
         }
     }
@@ -896,7 +966,8 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
             result = as_sock_result(wiced_result);
         }
         else {
-            add(socket);
+            SocketListLock lock(list_for(socket));
+            add_socket(socket);
             result = as_sock_result(socket);
         }
     }

@@ -49,6 +49,8 @@ class Print
     size_t printFloat(double, uint8_t);
   protected:
     void setWriteError(int err = 1) { write_error = err; }
+    size_t printf_impl(bool newline, const char* format, ...);
+
   public:
     Print() : write_error(0) {}
     virtual ~Print() {}
@@ -83,6 +85,21 @@ class Print
     size_t println(double, int = 2);
     size_t println(const Printable&);
     size_t println(void);
+
+    size_t printfln(const char* format, ...);
+
+    template <typename... Args>
+    inline size_t printf(const char* format, Args... args)
+    {
+        return this->printf_impl(false, format, args...);
+    }
+
+    template <typename... Args>
+    inline size_t printlnf(const char* format, Args... args)
+    {
+        return this->printf_impl(true, format, args...);
+    }
+
 };
 
 #endif

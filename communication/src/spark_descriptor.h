@@ -27,6 +27,7 @@
 
 #include "appender.h"
 #include "static_assert.h"
+#include "events.h"
 #include <functional>
 
 // Deferring to ASN.1 type codes
@@ -58,7 +59,9 @@ struct SparkDescriptor
 
     bool (*append_system_info)(appender_fn appender, void* append, void* reserved);
 
-    void* reserved[4];      // add a few additional pointers
+    void (*call_event_handler)(uint16_t size, FilteringEventHandler* handler, const char* event, const char* data, void* reserved);
+
+    void* reserved[3];      // add a few additional pointers
 };
 
 STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60 || sizeof(void*)!=4);

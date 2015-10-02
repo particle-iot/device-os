@@ -593,6 +593,7 @@ void USB_Cable_Config (FunctionalState NewState)
     }
 }
 
+inline void Load_SystemFlags_Impl(platform_system_flags_t* flags) __attribute__((always_inline));
 inline void Load_SystemFlags_Impl(platform_system_flags_t* flags)
 {
     const void* flags_store = dct_read_app_data(0);
@@ -601,6 +602,7 @@ inline void Load_SystemFlags_Impl(platform_system_flags_t* flags)
     flags->header[1] = 0x1ADE;
 }
 
+inline void Save_SystemFlags_Impl(const platform_system_flags_t* flags)  __attribute__((always_inline));
 inline void Save_SystemFlags_Impl(const platform_system_flags_t* flags)
 {
     dct_write_app_data(flags, 0, sizeof(*flags));

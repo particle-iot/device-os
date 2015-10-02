@@ -32,6 +32,13 @@
 #include "syshealth_hal.h"
 #endif
 
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
+
 DYNALIB_BEGIN(hal_core)
 DYNALIB_FN(hal_core,HAL_core_subsystem_version)
 DYNALIB_FN(hal_core,HAL_Core_Init)
@@ -56,7 +63,12 @@ DYNALIB_FN(hal_core,HAL_Bootloader_Get_Flag)
 DYNALIB_FN(hal_core,HAL_Bootloader_Lock)
 DYNALIB_FN(hal_core,HAL_Core_System_Reset_FlagSet)
 DYNALIB_FN(hal_core,HAL_Core_Runtime_Info)
+DYNALIB_FN(hal_core,HAL_Set_System_Config)
+DYNALIB_FN(hal_core,HAL_Core_Enter_Safe_Mode)
+DYNALIB_FN(hal_core,HAL_Feature_Get)
+DYNALIB_FN(hal_core,HAL_Feature_Set)
 DYNALIB_END(hal_core)
+
 
 
 

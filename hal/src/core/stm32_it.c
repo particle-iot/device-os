@@ -32,6 +32,19 @@
 #include "usb_lib.h"
 #include "usb_istr.h"
 #include "cc3000_spi.h"
+#include "interrupts_hal.h"
+#include "core_hal.h"
+
+uint8_t handle_timer(TIM_TypeDef* TIMx, uint16_t TIM_IT, hal_irq_t irq)
+{
+    uint8_t result = (TIM_GetITStatus(TIMx, TIM_IT)!=RESET);
+    if (result) {
+        HAL_System_Interrupt_Trigger(irq, NULL);
+        TIM_ClearITPendingBit(TIMx, TIM_IT);
+    }
+    return result;
+}
+
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -88,13 +101,66 @@ void NMI_Handler(void)
  * Output         : None
  * Return         : None
  *******************************************************************************/
+void HardFault_Handler( void ) __attribute__( ( naked ) );
+
+__attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
+{
+    /* These are volatile to try and prevent the compiler/linker optimising them
+    away as the variables never actually get used.  If the debugger won't show the
+    values of the variables, make them global my moving their declaration outside
+    of this function. */
+    volatile uint32_t r0;
+    volatile uint32_t r1;
+    volatile uint32_t r2;
+    volatile uint32_t r3;
+    volatile uint32_t r12;
+    volatile uint32_t lr; /* Link register. */
+    volatile uint32_t pc; /* Program counter. */
+    volatile uint32_t psr;/* Program status register. */
+
+    r0 = pulFaultStackAddress[ 0 ];
+    r1 = pulFaultStackAddress[ 1 ];
+    r2 = pulFaultStackAddress[ 2 ];
+    r3 = pulFaultStackAddress[ 3 ];
+
+    r12 = pulFaultStackAddress[ 4 ];
+    lr = pulFaultStackAddress[ 5 ];
+    pc = pulFaultStackAddress[ 6 ];
+    psr = pulFaultStackAddress[ 7 ];
+
+    /* Silence "variable set but not used" error */
+    if (false) {
+      (void)r0; (void)r1; (void)r2; (void)r3; (void)r12; (void)lr; (void)pc; (void)psr;
+    }
+
+    if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
+        // stay consistent with the core and cause 5 flashes
+        UsageFault_Handler();
+    }
+    else {
+        PANIC(HardFault,"HardFault");
+
+        /* Go to infinite loop when Hard Fault exception occurs */
+        while (1)
+        {
+        }
+    }
+}
+
+
 void HardFault_Handler(void)
 {
-	/* Go to infinite loop when Hard Fault exception occurs */
-        PANIC(HardFault,"HardFault");
-	while (1)
-	{
-	}
+    __asm volatile
+    (
+        " tst lr, #4                                                \n"
+        " ite eq                                                    \n"
+        " mrseq r0, msp                                             \n"
+        " mrsne r0, psp                                             \n"
+        " ldr r1, [r0, #24]                                         \n"
+        " ldr r2, handler2_address_const                            \n"
+        " bx r2                                                     \n"
+        " handler2_address_const: .word prvGetRegistersFromStack    \n"
+    );
 }
 
 /*******************************************************************************
@@ -146,17 +212,6 @@ void UsageFault_Handler(void)
 }
 
 /*******************************************************************************
- * Function Name  : SVC_Handler
- * Description    : This function handles SVCall exception.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void SVC_Handler(void)
-{
-}
-
-/*******************************************************************************
  * Function Name  : DebugMon_Handler
  * Description    : This function handles Debug Monitor exception.
  * Input          : None
@@ -167,38 +222,6 @@ void DebugMon_Handler(void)
 {
 }
 
-/*******************************************************************************
- * Function Name  : PendSV_Handler
- * Description    : This function handles PendSVC exception.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void PendSV_Handler(void)
-{
-}
-
-/*******************************************************************************
- * Function Name  : SysTick_Handler
- * Description    : This function handles SysTick Handler.
- * Input          : None
- * Output         : None
- * Return         : None
- *******************************************************************************/
-void SysTick_Handler(void)
-{
-    System1MsTick();
-
-    if (TimingDelay != 0x00)
-    {
-        TimingDelay--;
-    }
-
-    if(NULL != HAL_SysTick_Handler)
-    {
-        HAL_SysTick_Handler();
-    }
-}
 
 /******************************************************************************/
 /*                 STM32 Peripherals Interrupt Handlers                       */
@@ -340,7 +363,7 @@ void EXTI2_IRQHandler(void)
 
 		BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
 
-		/* Disable BUTTON1 Interrupt */
+                /* Disable BUTTON1 Interrupt */
 		BUTTON_EXTI_Config(BUTTON1, DISABLE);
 
 		/* Enable TIM1 CC4 Interrupt */
@@ -499,21 +522,29 @@ void TIM1_CC_IRQHandler(void)
 {
 	if (TIM_GetITStatus(TIM1, TIM_IT_CC4) != RESET)
 	{
-		TIM_ClearITPendingBit(TIM1, TIM_IT_CC4);
+            if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+            {
+                if (!BUTTON_DEBOUNCED_TIME[BUTTON1])
+                {
+                    BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
+                    HAL_Notify_Button_State(BUTTON1, true);
+                }
+                BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
+            }
+            else
+            {
+                HAL_Core_Mode_Button_Reset();
+            }
+        }
 
-		if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
-		{
-			BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
-		}
-		else
-		{
-			/* Disable TIM1 CC4 Interrupt */
-			TIM_ITConfig(TIM1, TIM_IT_CC4, DISABLE);
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_CC_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM1, TIM_IT_CC1, SysInterrupt_TIM1_Compare1) ||
+    handle_timer(TIM1, TIM_IT_CC2, SysInterrupt_TIM1_Compare2) ||
+    handle_timer(TIM1, TIM_IT_CC3, SysInterrupt_TIM1_Compare3) ||
+    handle_timer(TIM1, TIM_IT_CC4, SysInterrupt_TIM1_Compare4);
+    (void)(result);
 
-			/* Enable BUTTON1 Interrupt */
-			BUTTON_EXTI_Config(BUTTON1, ENABLE);
-		}
-	}
 }
 
 /*******************************************************************************
@@ -529,6 +560,16 @@ void TIM2_IRQHandler(void)
 	{
 		HAL_TIM2_Handler();
 	}
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM2_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM2, TIM_IT_CC1, SysInterrupt_TIM2_Compare1) ||
+    handle_timer(TIM2, TIM_IT_CC2, SysInterrupt_TIM2_Compare2) ||
+    handle_timer(TIM2, TIM_IT_CC3, SysInterrupt_TIM2_Compare3) ||
+    handle_timer(TIM2, TIM_IT_CC4, SysInterrupt_TIM2_Compare4) ||
+    handle_timer(TIM2, TIM_IT_Update, SysInterrupt_TIM2_Update) ||
+    handle_timer(TIM2, TIM_IT_Trigger, SysInterrupt_TIM2_Trigger);
+    (void)(result);
 }
 
 /*******************************************************************************
@@ -544,6 +585,17 @@ void TIM3_IRQHandler(void)
 	{
 		HAL_TIM3_Handler();
 	}
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM3_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM3, TIM_IT_CC1, SysInterrupt_TIM3_Compare1) ||
+    handle_timer(TIM3, TIM_IT_CC2, SysInterrupt_TIM3_Compare2) ||
+    handle_timer(TIM3, TIM_IT_CC3, SysInterrupt_TIM3_Compare3) ||
+    handle_timer(TIM3, TIM_IT_CC4, SysInterrupt_TIM3_Compare4) ||
+    handle_timer(TIM3, TIM_IT_Update, SysInterrupt_TIM3_Update) ||
+    handle_timer(TIM3, TIM_IT_Trigger, SysInterrupt_TIM3_Trigger);
+    (void)(result);
+
 }
 
 /*******************************************************************************
@@ -559,6 +611,17 @@ void TIM4_IRQHandler(void)
 	{
 		HAL_TIM4_Handler();
 	}
+
+    HAL_System_Interrupt_Trigger(SysInterrupt_TIM4_IRQ, NULL);
+    uint8_t result =
+    handle_timer(TIM4, TIM_IT_CC1, SysInterrupt_TIM4_Compare1) ||
+    handle_timer(TIM4, TIM_IT_CC2, SysInterrupt_TIM4_Compare2) ||
+    handle_timer(TIM4, TIM_IT_CC3, SysInterrupt_TIM4_Compare3) ||
+    handle_timer(TIM4, TIM_IT_CC4, SysInterrupt_TIM4_Compare4) ||
+    handle_timer(TIM4, TIM_IT_Update, SysInterrupt_TIM4_Update) ||
+    handle_timer(TIM4, TIM_IT_Trigger, SysInterrupt_TIM4_Trigger);
+    (void)(result);
+
 }
 
 /*******************************************************************************

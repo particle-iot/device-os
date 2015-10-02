@@ -1,4 +1,4 @@
-VERSION=0.4.4
+VERSION=0.4.6
 
 function release_file()
 {
@@ -23,7 +23,7 @@ cd ../modules
 OUT=../build/releases/release-$VERSION-p$PLATFORM_ID
 mkdir -p $OUT
 rm -rf ../build/target
-make -s PLATFORM_ID=$PLATFORM_ID all COMPILE_LTO=n
+make -s PLATFORM_ID=$PLATFORM_ID clean all COMPILE_LTO=n
 release_binary system-part1 
 release_binary system-part2
 

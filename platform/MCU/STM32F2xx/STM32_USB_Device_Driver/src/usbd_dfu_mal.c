@@ -26,8 +26,8 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "usbd_conf.h"
 #include "usbd_dfu_mal.h"
-
 #include "usbd_flash_if.h"
 #include "usbd_dct_if.h"
 

@@ -1405,14 +1405,22 @@ void SparkProtocol::handle_event(msg& message)
     const int cmp = memcmp(event_handlers[i].filter, event_name, filter_length);
     if (0 == cmp)
     {
-        if(event_handlers[i].handler_data)
+        // don't call the handler directly, use a callback for it.
+        if (!this->descriptor.call_event_handler)
         {
-            EventHandlerWithData handler = (EventHandlerWithData) event_handlers[i].handler;
-            handler(event_handlers[i].handler_data, (char *)event_name, (char *)data);
+            if(event_handlers[i].handler_data)
+            {
+                EventHandlerWithData handler = (EventHandlerWithData) event_handlers[i].handler;
+                handler(event_handlers[i].handler_data, (char *)event_name, (char *)data);
+            }
+            else
+            {
+                event_handlers[i].handler((char *)event_name, (char *)data);
+            }
         }
         else
         {
-            event_handlers[i].handler((char *)event_name, (char *)data);
+            descriptor.call_event_handler(sizeof(FilteringEventHandler), &event_handlers[i], (const char*)event_name, (const char*)data, NULL);
         }
     }
     // else continue the for loop to try the next handler

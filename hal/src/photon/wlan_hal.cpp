@@ -188,6 +188,10 @@ wlan_result_t wlan_connect_finalize()
                 break;
         }
     }
+    else
+    {
+        wiced_network_down(WICED_STA_INTERFACE);
+    }
     // DHCP happens synchronously
     HAL_WLAN_notify_dhcp(!result);
     wiced_network_up_cancel = 0;
@@ -195,12 +199,26 @@ wlan_result_t wlan_connect_finalize()
 }
 
 int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna);
-static WLanSelectAntenna_TypeDef antennaSelection = ANT_INTERNAL;
-inline int wlan_refresh_antenna() { return wlan_select_antenna_impl(antennaSelection); }
+
+
+WLanSelectAntenna_TypeDef fetch_antenna_selection()
+{
+    uint8_t result = *(const uint8_t*)dct_read_app_data(DCT_ANTENNA_SELECTION_OFFSET);
+    if (result==0xFF)
+        result = ANT_INTERNAL;  // default
+    return WLanSelectAntenna_TypeDef(result);
+}
+
+void save_antenna_selection(WLanSelectAntenna_TypeDef selection)
+{
+    dct_write_app_data(&selection, DCT_ANTENNA_SELECTION_OFFSET, DCT_ANTENNA_SELECTION_SIZE);
+}
+
+inline int wlan_refresh_antenna() { return wlan_select_antenna_impl(fetch_antenna_selection()); }
 
 int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
 {
-    antennaSelection = antenna;
+    save_antenna_selection(antenna);
     return wiced_wlan_connectivity_initialized() ? wlan_refresh_antenna() : 0;
 }
 
@@ -332,9 +350,12 @@ wiced_result_t sniff_security(SnifferInfo* info) {
     return result;
 }
 
+/**
+ * Converts the given the current security credentials.
+ */
 wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityType sec, WLanSecurityCipher cipher)
 {
-    unsigned result = 0;
+    int result = 0;
     switch (sec) {
         case WLAN_SEC_UNSEC:
             result = WICED_SECURITY_OPEN;
@@ -358,11 +379,14 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
     if (sec==WLAN_SEC_NOT_SET ||    // security not set, or WPA/WPA2 and cipher not set
             ((result & (WPA_SECURITY | WPA2_SECURITY) && (cipher==WLAN_CIPHER_NOT_SET)))) {
         SnifferInfo info;
+        memset(&info, 0, sizeof(info));
         info.ssid = ssid;
-        info.callback = NULL;
         info.ssid_len = ssid_len;
         if (!sniff_security(&info)) {
             result = info.security;
+        }
+        else {
+            result = WLAN_SET_CREDENTIALS_CIPHER_REQUIRED;
         }
     }
     return wiced_security_t(result);
@@ -379,7 +403,7 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
         initialize_dct(wifi_config);
 
         // shuffle all slots along
-        memcpy(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
+        memmove(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
 
         const int empty = 0;
         wiced_config_ap_entry_t& entry = wifi_config->stored_ap_list[empty];
@@ -407,19 +431,34 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
 }
 
 int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char *password,
-    uint16_t passwordLen, WLanSecurityType security, WLanSecurityCipher cipher, unsigned channel)
+    uint16_t passwordLen, WLanSecurityType security, WLanSecurityCipher cipher, unsigned channel, unsigned flags)
 {
-    wiced_result_t result = WICED_ERROR;
+    int result = WICED_ERROR;
     if (ssidLen>0 && ssid) {
-        wiced_security_t wiced_security = toSecurity(ssid, ssidLen, security, cipher);
-        result = add_wiced_wifi_credentials(ssid, ssidLen, password, passwordLen, wiced_security, channel);
+        int security_result = toSecurity(ssid, ssidLen, security, cipher);
+        if (security_result==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED) {
+            result = WLAN_SET_CREDENTIALS_CIPHER_REQUIRED;
+        }
+        else if (flags & WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN) {
+            result = WICED_SUCCESS;
+        }
+        else {
+            result = add_wiced_wifi_credentials(ssid, ssidLen, password, passwordLen, wiced_security_t(security_result), channel);
+        }
     }
     return result;
 }
 
 int wlan_set_credentials(WLanCredentials* c)
 {
-    return wlan_set_credentials_internal(c->ssid, c->ssid_len, c->password, c->password_len, c->security, c->cipher, c->channel);
+    // size v1: 28
+    // added flags: size 32
+    int flags = 0;
+    if (c->size>=32) {
+        flags = c->flags;
+    }
+    STATIC_ASSERT(wlan_credentials_size, sizeof(WLanCredentials)==32);
+    return wlan_set_credentials_internal(c->ssid, c->ssid_len, c->password, c->password_len, c->security, c->cipher, c->channel, flags);
 }
 
 softap_handle current_softap_handle;

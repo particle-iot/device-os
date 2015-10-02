@@ -72,4 +72,14 @@ User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey);
 
 extern SparkProtocol* sp;
 
+
+/**
+ * regular async update to check that the cloud has been serviced recently.
+ * After 15 seconds of inactivity, the LED status is changed to
+ * @return
+ */
+bool system_cloud_active();
+
+
 #endif	/* SYSTEM_CLOUD_INTERNAL_H */
+

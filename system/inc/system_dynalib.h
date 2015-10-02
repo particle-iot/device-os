@@ -47,6 +47,8 @@ DYNALIB_FN(system, system_sleep)
 DYNALIB_FN(system, system_sleep_pin)
 DYNALIB_FN(system, system_subscribe_event)
 DYNALIB_FN(system, system_unsubscribe_event)
+DYNALIB_FN(system, system_button_pushed_duration)
+DYNALIB_FN(system, system_thread_set_state)
 DYNALIB_END(system)
 
 

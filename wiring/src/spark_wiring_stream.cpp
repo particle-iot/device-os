@@ -276,3 +276,49 @@ String Stream::readStringUntil(char terminator)
   return ret;
 }
 
+void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t timeout)
+{
+    char c = 0, i = 0;
+    system_tick_t last_millis = millis();
+
+    while (1)
+    {
+        if((timeout > 0) && ((millis()-last_millis) > timeout))
+        {
+            //Abort after a specified timeout
+            break;
+        }
+
+        if (0 < serialObj->available())
+        {
+            c = serialObj->read();
+
+            if (i == max_len || c == '\r' || c == '\n')
+            {
+                *dst = '\0';
+                break;
+            }
+
+            if (c == 8 || c == 127)
+            {
+                //for backspace or delete
+                if (i > 0)
+                {
+                    --dst;
+                    --i;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                *dst++ = c;
+                ++i;
+            }
+
+            serialObj->write(c);
+        }
+    }
+}

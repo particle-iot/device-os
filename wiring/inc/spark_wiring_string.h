@@ -30,6 +30,7 @@
 #define String_class_h
 #ifdef __cplusplus
 
+#include <stdarg.h>
 #include "spark_wiring_print.h" // for HEX, DEC ... constants
 #include "spark_wiring_printable.h"
 
@@ -188,6 +189,8 @@ public:
 	long toInt(void) const;
 	float toFloat(void) const;
 
+        static String format(const char* format, ...);
+
 protected:
 	char *buffer;	        // the actual char array
 	unsigned int capacity;  // the array length minus one (for the '\0')
@@ -221,6 +224,9 @@ public:
 	StringSumHelper(long num) : String(num) {}
 	StringSumHelper(unsigned long num) : String(num) {}
 };
+
+#include <ostream>
+std::ostream& operator << ( std::ostream& os, const String& value );
 
 
 #endif  // __cplusplus

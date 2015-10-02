@@ -26,13 +26,14 @@
 #include "system_setup.h"
 #include "delay_hal.h"
 #include "wlan_hal.h"
-#include "system_cloud.h"
+#include "cellular_hal.h"
+#include "system_cloud_internal.h"
 #include "system_update.h"
 #include "spark_wiring.h"   // for serialReadLine
-#include "spark_wiring_wifi.h"
+#include "system_network_internal.h"
 #include "system_network.h"
 
-#if Wiring_WiFi && PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
+#if SETUP_OVER_SERIAL1
 #define SETUP_LISTEN_MAGIC 1
 void loop_wifitester(int c);
 #include "spark_wiring_usartserial.h"
@@ -91,7 +92,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
         print("Your device MAC address is\r\n");
         WLanConfig ip_config;
         ip_config.size = sizeof(ip_config);
-        wlan_fetch_ipconfig(&ip_config);
+        network.fetch_ipconfig(&ip_config);
         uint8_t* addr = ip_config.nw.uaMacAddr;
         print(bytes2hex(addr++, 1).c_str());
         for (int i = 1; i < 6; i++)
@@ -210,6 +211,8 @@ void WiFiSetupConsole::handle(char c)
         print("SSID: ");
         read_line(ssid, 32);
 
+        // TODO: would be great if the network auto-detected the Security type
+        // The photon is scanning the network so could determine this.
         do
         {
             print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2: ");
@@ -227,6 +230,28 @@ void WiFiSetupConsole::handle(char c)
 #endif
 
         unsigned long security_type = security_type_string[0] - '0';
+
+        WLanSecurityCipher cipher = WLAN_CIPHER_NOT_SET;
+
+        if (security_type)
+            password[0] = '1'; // non-empty password so security isn't set to None
+
+        // dry run
+        if (this->config.connect_callback(this->config.connect_callback_data, ssid, password, security_type, cipher, true)==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED)
+        {
+            do
+            {
+                print("Security Cipher 1=AES, 2=TKIP, 3=AES+TKIP: ");
+                read_line(security_type_string, 1);
+            }
+            while ('1' > security_type_string[0] || '3' < security_type_string[0]);
+            switch (security_type_string[0]-'0') {
+                case 1: cipher = WLAN_CIPHER_AES; break;
+                case 2: cipher = WLAN_CIPHER_TKIP; break;
+                case 3: cipher = WLAN_CIPHER_AES_TKIP; break;
+            }
+        }
+
         if (0 < security_type)
         {
             print("Password: ");
@@ -239,20 +264,25 @@ void WiFiSetupConsole::handle(char c)
 #endif
             "while I save those credentials...\r\n\r\n");
 
-        this->config.connect_callback(ssid, password, security_type);
-
-        print("Awesome. Now we'll connect!\r\n\r\n");
-        print("If you see a pulsing cyan light, your "
-#if PLATFORM_ID==0
-            "Spark Core"
-#else
-            "device"
-#endif
-            "\r\n");
-        print("has connected to the Cloud and is ready to go!\r\n\r\n");
-        print("If your LED flashes red or you encounter any other problems,\r\n");
-        print("visit https://www.spark.io/support to debug.\r\n\r\n");
-        print("    Spark <3 you!\r\n\r\n");
+        if (this->config.connect_callback(this->config.connect_callback_data, ssid, password, security_type, cipher, false)==0)
+        {
+            print("Awesome. Now we'll connect!\r\n\r\n");
+            print("If you see a pulsing cyan light, your "
+    #if PLATFORM_ID==0
+                "Spark Core"
+    #else
+                "device"
+    #endif
+                "\r\n");
+            print("has connected to the Cloud and is ready to go!\r\n\r\n");
+            print("If your LED flashes red or you encounter any other problems,\r\n");
+            print("visit https://www.particle.io/support to debug.\r\n\r\n");
+            print("    Particle <3 you!\r\n\r\n");
+        }
+        else
+        {
+            print("Derp. Sorry, we couldn't save the credentials.\r\n\r\n");
+        }
     }
     else {
         super::handle(c);
@@ -262,7 +292,7 @@ void WiFiSetupConsole::handle(char c)
 
 void WiFiSetupConsole::exit()
 {
-    config.connect_callback(NULL, NULL, 0);
+    network.listen(true);
 }
 
 #endif
@@ -277,7 +307,28 @@ CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
 
 void CellularSetupConsole::exit()
 {
-    network_listen(0, 1, NULL);
+    network.listen(true);
+}
+
+void CellularSetupConsole::handle(char c)
+{
+    if (c=='i')
+    {
+        CellularDevice dev;
+        cellular_device_info(&dev, NULL);
+        String id = spark_deviceID();
+        print("Device ID: ");
+        print(id.c_str());
+        print("\r\n");
+        print("IMEI: ");
+        print(dev.imei);
+        print("\r\n");
+        print("ICCID: ");
+        print(dev.iccid);
+        print("\r\n");
+    }
+    else
+        super::handle(c);
 }
 
 

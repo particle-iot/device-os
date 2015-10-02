@@ -30,6 +30,8 @@ test(system_api) {
 
     API_COMPILE(System.factoryReset());
 
+    API_COMPILE(System.enterSafeMode());
+
     API_COMPILE(System.reset());
 
     API_COMPILE(System.sleep(60));
@@ -52,10 +54,17 @@ test(system_api) {
 }
 
 test(system_mode) {
+    // braces are required since the macro evaluates to a declaration
     API_COMPILE({ SYSTEM_MODE(AUTOMATIC) });
     API_COMPILE({ SYSTEM_MODE(SEMI_AUTOMATIC) });
     API_COMPILE({ SYSTEM_MODE(MANUAL) });
+}
 
+test(system_thread_setting) {
+#if PLATFORM_THREADING
+    API_COMPILE({SYSTEM_THREAD(ENABLED)});
+#endif
+    API_COMPILE({SYSTEM_THREAD(DISABLED)});
 }
 
 test(system_version) {
@@ -77,3 +86,20 @@ test(system_waitfor) {
     API_COMPILE(waitFor(WiFi.ready, 10000));
     API_COMPILE(waitUntil(WiFi.ready));
 }
+
+
+test(system_config_set) {
+
+    API_COMPILE(System.set(SYSTEM_CONFIG_DEVICE_KEY, NULL, 123));
+    API_COMPILE(System.set(SYSTEM_CONFIG_SOFTAP_PREFIX, "hello"));
+    API_COMPILE(System.set(SYSTEM_CONFIG_SOFTAP_SUFFIX, "hello"));
+}
+
+/*
+test(system_config_get) {
+
+    uint8_t buf[123];
+    API_COMPILE(System.get(CONFIG_DEVICE_KEY, buf, 123));
+    API_COMPILE(System.get(CONFIG_SSID_PREFIX, buf, 123));
+}
+*/

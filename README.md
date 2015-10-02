@@ -11,7 +11,7 @@ To get started building firmware locally, see [Getting Started](docs/gettingstar
 
 # Resources
 
-- [Latest Release - 0.4.3](http://github.com/spark/firmware/releases/tag/0.4.3-rc2)
+- [Latest Release](http://github.com/spark/firmware/releases/)
 - [Changelog](CHANGELOG.md)
 
 
@@ -37,6 +37,7 @@ To get started building firmware locally, see [Getting Started](docs/gettingstar
 - [Firmware Release Checklist](http://github.com/spark/firmware/wiki/Firmware-Release-Checklist)
 - [System describe message](https://github.com/spark/firmware/wiki/Module-descriptor-format)
 - [build test suite](build/test/readme.md)
+- [System Threading](system/system-threading.md)
 - [system versions and releases](system/system-versions.md)
 
 ### Modules

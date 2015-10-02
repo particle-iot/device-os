@@ -40,6 +40,9 @@ test(api_wiring_interrupt) {
 
     API_COMPILE(attachInterrupt(D0, &MyClass::handler, &myObj, RISING));
 
+
+    API_COMPILE(attachSystemInterrupt(SysInterrupt_TIM1_CC_IRQ, D0_callback));
+
 }
 
 test(api_wiring_usartserial) {
@@ -90,4 +93,16 @@ test(api_servo_trim)
 {
     Servo servo;
     servo.setTrim(234);
+}
+
+test(api_wire)
+{
+    API_COMPILE(Wire.begin());
+    API_COMPILE(Wire.reset());
+    API_COMPILE(Wire.end());
+}
+
+test(api_map)
+{
+    map(0x01,0x00,0xFF,0,255);
 }

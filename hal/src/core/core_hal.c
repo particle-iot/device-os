@@ -141,7 +141,17 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 
 void HAL_Core_Mode_Button_Reset(void)
 {
-	BUTTON_ResetDebouncedState(BUTTON1);
+
+    /* Disable TIM1 CC4 Interrupt */
+    TIM_ITConfig(TIM1, TIM_IT_CC4, DISABLE);
+
+    BUTTON_ResetDebouncedState(BUTTON1);
+
+    HAL_Notify_Button_State(BUTTON1, false);
+
+    /* Enable BUTTON1 Interrupt */
+    BUTTON_EXTI_Config(BUTTON1, ENABLE);
+
 }
 
 void HAL_Core_System_Reset(void)
@@ -154,6 +164,12 @@ void HAL_Core_Factory_Reset(void)
 	Factory_Reset_SysFlag = 0xAAAA;
 	Save_SystemFlags();
 	HAL_Core_System_Reset();
+}
+
+void HAL_Core_Enter_Safe_Mode(void* reserved)
+{
+    BKP_WriteBackupRegister(BKP_DR1, ENTER_SAFE_MODE_APP_REQUEST);
+    HAL_Core_System_Reset();
 }
 
 void HAL_Core_Enter_Bootloader(bool persist)
@@ -352,6 +368,7 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 }
 
 
+
 // todo find a technique that allows accessor functions to be inlined while still keeping
 // hardware independence.
 bool HAL_watchdog_reset_flagged()
@@ -364,9 +381,54 @@ void HAL_Notify_WDT()
 	KICK_WDT();
 }
 
+
+void HAL_SysTick_Hook(void) __attribute__((weak));
+
+void HAL_SysTick_Hook(void)
+{
+
+}
+
+volatile bool systick_hook_enabled = false;
+
+/*******************************************************************************
+ * Function Name  : SysTick_Handler
+ * Description    : This function handles SysTick Handler.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void SysTick_Handler(void)
+{
+    System1MsTick();
+
+    if (TimingDelay != 0x00)
+    {
+        TimingDelay--;
+    }
+
+    // another hook for an rtos
+    if (systick_hook_enabled)
+        HAL_SysTick_Hook();
+
+    HAL_SysTick_Handler();
+
+}
+
+
+void HAL_Hook_Main() __attribute__((weak));
+
+void HAL_Hook_Main()
+{
+    // nada
+}
+
 int main() {
-	app_setup_and_loop();
-	return 0;
+    // the rtos systick can only be enabled after the system has been initialized
+    systick_hook_enabled = true;
+    HAL_Hook_Main();
+    app_setup_and_loop();
+    return 0;
 }
 
 
@@ -390,3 +452,19 @@ unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
 {
     return SystemCoreClock;
 }
+
+int HAL_Feature_Set(HAL_Feature feature, bool enabled)
+{
+    return -1;
+}
+
+bool HAL_Feature_Get(HAL_Feature feature)
+{
+    return false;
+}
+
+int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned length)
+{
+    return -1;
+}
+

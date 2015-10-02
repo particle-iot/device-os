@@ -44,9 +44,40 @@ class CloudClass {
 
 
 public:
-    static bool variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType)
+
+    static inline bool variable(const char *varKey, const uint8_t* userVar, const CloudVariableTypeString& userVarType)
     {
-        return CLOUD_FN(spark_variable(varKey, userVar, userVarType, NULL), false);
+        return variable(varKey, (const char*)userVar, userVarType);
+    }
+
+    template<typename T> static inline bool variable(const char *varKey, const typename T::varref userVar, const T& userVarType)
+    {
+        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, T::value(), NULL), false);
+    }
+
+    static inline bool variable(const char *varKey, const uint32_t* userVar, const CloudVariableTypeInt& userVarType)
+    {
+        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL), false);
+    }
+
+    // Return clear errors for common misuses of Particle.variable()
+    template<typename T, std::size_t N>
+    static inline bool variable(const char *varKey, const T (*userVar)[N], const CloudVariableTypeString& userVarType)
+    {
+        static_assert(sizeof(T)==0, "\n\nUse Particle.varible(\"name\", myVar, STRING); without & in front of myVar\n\n");
+        return false;
+    }
+    template<typename T>
+    static inline bool variable(const T *varKey, const String *userVar, const CloudVariableTypeString& userVarType)
+    {
+        static_assert(sizeof(T)==0, "\n\nIn Particle.varible(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
+        return false;
+    }
+    template<typename T>
+    static inline bool variable(const T *varKey, const String &userVar, const CloudVariableTypeString& userVarType)
+    {
+        static_assert(sizeof(T)==0, "\n\nIn Particle.varible(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
+        return false;
     }
 
     static bool function(const char *funcKey, user_function_int_str_t* func)
@@ -178,5 +209,5 @@ private:
 };
 
 
-extern CloudClass Spark; // __attribute__((deprecated("Spark is now Particle.")));
+extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));
 extern CloudClass Particle;

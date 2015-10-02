@@ -22,6 +22,7 @@
  */
 
 #include "catch.hpp"
+#undef WARN
 #include "system_task.h"
 
 #include <algorithm>

@@ -1,8 +1,42 @@
 
+## v0.4.6
+
+### FEATURES
+ - [photon] separate [System Thread](https://docs.particle.io/reference/firmware/photon/#system-thread)
+ - [core] Hooks to support FreeRTOS (optional library)
+ - Variables stored in [Backup RAM](https://docs.particle.io/reference/firmware/photon/#backup-ram)
+ - [printf/printlnf](https://docs.particle.io/reference/firmware/core/#printf-) on `Print` classes - `Serial`, `Serial1`, `TCP`, `UDP`
+ - `String.format` for printf-style formatting of to as `String`.
+ - [Wire.end()](https://docs.particle.io/reference/firmware/photon/#end-) to release the I2C pins. [#597](https://github.com/spark/firmware/issues/597)
+ - [Wire.reset()](https://docs.particle.io/reference/firmware/photon/#reset-) to reset the I2C bus. Thanks @pomplesiegel [#598](https://github.com/spark/firmware/issues/598)
+ - [System.ticks()](https://docs.particle.io/reference/firmware/core/#system-cycle-counter) to retrieve the current MCU cycle counter for precise timing.
+ - [System.enterSafeMode()](https://docs.particle.io/reference/firmware/core/#system-entersafemode-) to restart the device in safe mode.
+
+### ENHANCEMENTS
+
+ - [photon] `WiFi.selectAntenna()` setting is persistent, so the last selected antenna is used when the
+device is in safe mode. [#618]
+ - Detect when the cloud hasn't been serviced for 15s and disconnect, so device LED state accurately
+reflects the connection state when the application loop has stalled. [#626](https://github.com/spark/firmwarwe/issues/626)
+ - Compile-time checks for `Particle.variable()` [#619](https://github.com/spark/firmwarwe/issues/619)
+- [photon] Increased retry count when connecting to WiFi. [#620](https://github.com/spark/firmware/issues/620)
+- Setup button events [#611](https://github.com/spark/firmware/pull/611)
+
+### BUGFIXES
+
+ - `UDP.receivePacket()` would fail if `UDP.setBuffer()` hadn't been called first. Thanks @r2jitu.
+ - [photon] Default SS pin for SPI1 now set to D5. [#623](https://github.com/spark/firmware/issues/623)
+ - [photon] Long delay entering listening mode. [#566](https://github.com/spark/firmware/issues/566)
+ - [photon] Solid green LED when WiFi network cannot be connected to due to invalid key. (The LED now blinks.)
+ - [photon] Storing more than 2 Wi-Fi credentials would sometimes give unpredictable results.
+ - [photon] TX/RX pins did not work after entering listening mode. [#632](https://github.com/spark/firmware/issues/632)
+ - [photon] Improvements to I2C for MCP23017 / Adafruit RGBLCDShield. [#626](https://github.com/spark/firmware/pull/626)
+
+
 ## v0.4.5
 
 ### FEATURES
- - `SPI.setClockDividerReference`, `SPI.setClockSpeed` to set clock speed in a more portable manner. [#454]https://github.com/spark/firmware/issues/454
+- `SPI.setClockDividerReference`, `SPI.setClockSpeed` to set clock speed in a more portable manner. [#454](https://github.com/spark/firmware/issues/454)
 - `WiFi.scan` function to retrieve details of local access points. [#567](https://github.com/spark/firmware/pull/567)
 - `UDP.sendPacket`/`UDP.receivePacket` to send/receive a packet directly to an application-supplied buffer. [#452](https://github.com/spark/firmware/pull/452)
 - Static IP Support [photon] - [#451](https://github.com/spark/firmware/pull/451)

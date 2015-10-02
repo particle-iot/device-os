@@ -61,7 +61,24 @@ void log_print_(int level, int line, const char *func, const char *file, const c
     }
 }
 
+void log_print_direct_(const char *msg, ...)
+{
+    char _buffer[MAX_DEBUG_MESSAGE_LENGTH];
+    va_list args;
+    va_start(args, msg);
+    int trunc = vsnprintf(_buffer, arraySize(_buffer), msg, args);
+    if (debug_output_)
+    {
+        debug_output_(_buffer);
+        if (trunc > arraySize(_buffer))
+        {
+            debug_output_("...");
+        }
+    }
+}
+
 void log_direct_(const char* s) {
     if (debug_output_)
         debug_output_(s);
 }
+

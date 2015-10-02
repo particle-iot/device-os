@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
-void SPARK_WLAN_Setup(void (*presence_announcement_callback)(void));
+void Network_Setup(bool threaded);
 
 /**
  * Run background processing. This function should be called as often as possible by user code.
@@ -50,8 +50,6 @@ inline void Spark_Idle() { Spark_Idle_Events(false); }
  */
 void SPARK_WLAN_Loop(void) __attribute__ ((deprecated("Please use Particle.process() instead.")));
 inline void SPARK_WLAN_Loop(void) { spark_process(); }
-
-void SPARK_WLAN_SmartConfigProcess();
 
 void disconnect_cloud();
 

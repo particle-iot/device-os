@@ -771,7 +771,7 @@ public:
         return s.length()-len;
     }
 
-    virtual size_t write(uint8_t c)
+    virtual size_t write(uint8_t c) override
     {
         return s.concat((char)c);
     }
@@ -783,3 +783,29 @@ String::String(const Printable& printable)
     StringPrintableHelper help(*this);
     printable.printTo(help);
 }
+
+String String::format(const char* fmt, ...)
+{
+    va_list marker;
+    va_start(marker, fmt);
+    const int bufsize = 5;
+    char test[bufsize];
+    size_t n = vsnprintf(test, bufsize, fmt, marker);
+    va_end(marker);
+
+    String result;
+    result.reserve(n);  // internally adds +1 for null terminator
+    if (result.buffer) {
+        va_start(marker, fmt);
+        n = vsnprintf(result.buffer, n+1, fmt, marker);
+        va_end(marker);
+        result.len = n;
+    }
+    return result;
+}
+
+std::ostream& operator << ( std::ostream& os, const String& value ) {
+    os << '"' << value.c_str() << '"';
+    return os;
+}
+

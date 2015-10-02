@@ -1,4 +1,21 @@
+/**
+ ******************************************************************************
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************
+ */
 
 #include "system_mode.h"
 #include "system_task.h"
@@ -48,3 +65,29 @@ System_Mode_TypeDef system_mode()
     return current_mode;
 }
 
+#if PLATFORM_THREADING
+
+static spark::feature::State system_thread_enable = spark::feature::DISABLED;
+
+void system_thread_set_state(spark::feature::State state, void*)
+{
+    system_thread_enable = state;
+}
+
+spark::feature::State system_thread_get_state(void*)
+{
+    return system_thread_enable;
+}
+
+#else
+
+void system_thread_set_state(spark::feature::State state, void*)
+{
+}
+
+spark::feature::State system_thread_get_state(void*)
+{
+    return spark::feature::DISABLED;
+}
+
+#endif

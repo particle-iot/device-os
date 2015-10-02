@@ -53,6 +53,9 @@ void HAL_SPI_Init(HAL_SPI_Interface spi)
 
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
 {
+    if (pin==SPI_DEFAULT_SS)
+        pin = SS;
+
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
 
   HAL_Pin_Mode(SCK, AF_OUTPUT_PUSHPULL);

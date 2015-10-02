@@ -43,6 +43,7 @@
 #include "core_cm3.h"
 #include "bootloader.h"
 #include "core_hal_stm32f2xx.h"
+#include "stm32f2xx.h"
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -71,9 +72,10 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
     pc = pulFaultStackAddress[ 6 ];
     psr = pulFaultStackAddress[ 7 ];
 
-    if (false)
-        r0++; r1++; r2++; r3++; r12++; lr++; pc++; psr++;
-
+    /* Silence "variable set but not used" error */
+    if (false) {
+      (void)r0; (void)r1; (void)r2; (void)r3; (void)r12; (void)lr; (void)pc; (void)psr;
+    }
 
     if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
         // stay consistent with the core and cause 5 flashes
@@ -209,10 +211,8 @@ void HAL_Core_Config(void)
 #endif
 
     HAL_Core_Config_systick_configuration();
-#if PLATFORM_ID!=PLATFORM_ELECTRON_PRODUCTION
-    // ELECTRON TODO: re-instate this when working
+
     HAL_RTC_Configuration();
-#endif
 
     HAL_RNG_Configuration();
 
@@ -303,9 +303,21 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
     return pressedState;
 }
 
+/**
+ * Force the button in the unpressed state.
+ */
 void HAL_Core_Mode_Button_Reset(void)
 {
-    BUTTON_ResetDebouncedState(BUTTON1);
+    /* Disable TIM2 CC1 Interrupt */
+    TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
+
+    BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
+
+    HAL_Notify_Button_State(BUTTON1, false);
+
+    /* Enable BUTTON1 Interrupt */
+    BUTTON_EXTI_Config(BUTTON1, ENABLE);
+
 }
 
 void HAL_Core_System_Reset(void)
@@ -333,6 +345,12 @@ void HAL_Core_Enter_Bootloader(bool persist)
         RTC_WriteBackupRegister(RTC_BKP_DR1, ENTER_DFU_APP_REQUEST);
     }
 
+    HAL_Core_System_Reset();
+}
+
+void HAL_Core_Enter_Safe_Mode(void* reserved)
+{
+    RTC_WriteBackupRegister(RTC_BKP_DR1, ENTER_SAFE_MODE_APP_REQUEST);
     HAL_Core_System_Reset();
 }
 
@@ -566,15 +584,16 @@ void TIM2_irq(void)
     {
         if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
         {
+            if (!BUTTON_DEBOUNCED_TIME[BUTTON1])
+            {
+            BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
+                HAL_Notify_Button_State(BUTTON1, true);
+        }
             BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
         }
         else
         {
-            /* Disable TIM2 CC1 Interrupt */
-            TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
-
-            /* Enable BUTTON1 Interrupt */
-            BUTTON_EXTI_Config(BUTTON1, ENABLE);
+            HAL_Core_Mode_Button_Reset();
         }
     }
 
@@ -582,8 +601,8 @@ void TIM2_irq(void)
     uint8_t result =
     handle_timer(TIM2, TIM_IT_CC1, SysInterrupt_TIM2_Compare1) ||
     handle_timer(TIM2, TIM_IT_CC2, SysInterrupt_TIM2_Compare2) ||
-    handle_timer(TIM2, TIM_IT_CC3, SysInterrupt_TIM2_Compare4) ||
-    handle_timer(TIM2, TIM_IT_CC4, SysInterrupt_TIM2_Compare3) ||
+    handle_timer(TIM2, TIM_IT_CC3, SysInterrupt_TIM2_Compare3) ||
+    handle_timer(TIM2, TIM_IT_CC4, SysInterrupt_TIM2_Compare4) ||
     handle_timer(TIM2, TIM_IT_Update, SysInterrupt_TIM2_Update) ||
     handle_timer(TIM2, TIM_IT_Trigger, SysInterrupt_TIM2_Trigger);
     UNUSED(result);
@@ -605,8 +624,8 @@ void TIM3_irq(void)
     uint8_t result =
     handle_timer(TIM3, TIM_IT_CC1, SysInterrupt_TIM3_Compare1) ||
     handle_timer(TIM3, TIM_IT_CC2, SysInterrupt_TIM3_Compare2) ||
-    handle_timer(TIM3, TIM_IT_CC3, SysInterrupt_TIM3_Compare4) ||
-    handle_timer(TIM3, TIM_IT_CC4, SysInterrupt_TIM3_Compare3) ||
+    handle_timer(TIM3, TIM_IT_CC3, SysInterrupt_TIM3_Compare3) ||
+    handle_timer(TIM3, TIM_IT_CC4, SysInterrupt_TIM3_Compare4) ||
     handle_timer(TIM3, TIM_IT_Update, SysInterrupt_TIM3_Update) ||
     handle_timer(TIM3, TIM_IT_Trigger, SysInterrupt_TIM3_Trigger);
     UNUSED(result);
@@ -628,8 +647,8 @@ void TIM4_irq(void)
     uint8_t result =
     handle_timer(TIM4, TIM_IT_CC1, SysInterrupt_TIM4_Compare1) ||
     handle_timer(TIM4, TIM_IT_CC2, SysInterrupt_TIM4_Compare2) ||
-    handle_timer(TIM4, TIM_IT_CC3, SysInterrupt_TIM4_Compare4) ||
-    handle_timer(TIM4, TIM_IT_CC4, SysInterrupt_TIM4_Compare3) ||
+    handle_timer(TIM4, TIM_IT_CC3, SysInterrupt_TIM4_Compare3) ||
+    handle_timer(TIM4, TIM_IT_CC4, SysInterrupt_TIM4_Compare4) ||
     handle_timer(TIM4, TIM_IT_Update, SysInterrupt_TIM4_Update) ||
     handle_timer(TIM4, TIM_IT_Trigger, SysInterrupt_TIM4_Trigger);
     UNUSED(result);
@@ -652,8 +671,8 @@ void TIM5_irq(void)
     uint8_t result =
     handle_timer(TIM5, TIM_IT_CC1, SysInterrupt_TIM5_Compare1) ||
     handle_timer(TIM5, TIM_IT_CC2, SysInterrupt_TIM5_Compare2) ||
-    handle_timer(TIM5, TIM_IT_CC3, SysInterrupt_TIM5_Compare4) ||
-    handle_timer(TIM5, TIM_IT_CC4, SysInterrupt_TIM5_Compare3) ||
+    handle_timer(TIM5, TIM_IT_CC3, SysInterrupt_TIM5_Compare3) ||
+    handle_timer(TIM5, TIM_IT_CC4, SysInterrupt_TIM5_Compare4) ||
     handle_timer(TIM5, TIM_IT_Update, SysInterrupt_TIM5_Update) ||
     handle_timer(TIM5, TIM_IT_Trigger, SysInterrupt_TIM5_Trigger);
     UNUSED(result);
@@ -826,4 +845,43 @@ bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
 {
     return SystemCoreClock;
+}
+
+uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
+{
+    extern unsigned char _eheap[];
+    extern unsigned char *sbrk_heap_top;
+
+    info->freeheap = _eheap-sbrk_heap_top;
+    return 0;
+}
+
+int HAL_Feature_Set(HAL_Feature feature, bool enabled)
+{
+    switch (feature)
+    {
+        case FEATURE_RETAINED_MEMORY:
+        {
+            FunctionalState state = enabled ? ENABLE : DISABLE;
+            // Switch on backup SRAM clock
+            RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_BKPSRAM, state);
+            // Switch on backup power regulator, so that it survives the sleep mode
+            PWR_BackupRegulatorCmd(state);
+            return 0;
+        }
+
+    }
+    return -1;
+}
+
+bool HAL_Feature_Get(HAL_Feature feature)
+{
+    switch (feature)
+    {
+        case FEATURE_WARM_START:
+        {
+            return (PWR_GetFlagStatus(PWR_FLAG_SB) != RESET);
+        }
+    }
+    return false;
 }

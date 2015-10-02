@@ -25,6 +25,11 @@
 #include "stm32f2xx.h"
 #include <string.h>
 #include "hw_config.h"
+#include "stm32_it.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+#include "dcd_flash.h"
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -76,11 +81,11 @@ IDX[x] = added IRQ handler
 19 [ ] RTC_WKUP_IRQHandler               // RTC Wakeup through the EXTI line
 20 [ ] FLASH_IRQHandler                  // FLASH
 21 [ ] RCC_IRQHandler                    // RCC
-22 [ ] EXTI0_IRQHandler                  // EXTI Line0
-23 [ ] EXTI1_IRQHandler                  // EXTI Line1
-24 [ ] EXTI2_IRQHandler                  // EXTI Line2
-25 [ ] EXTI3_IRQHandler                  // EXTI Line3
-26 [ ] EXTI4_IRQHandler                  // EXTI Line4
+22 [x] EXTI0_IRQHandler                  // EXTI Line0
+23 [x] EXTI1_IRQHandler                  // EXTI Line1
+24 [x] EXTI2_IRQHandler                  // EXTI Line2
+25 [x] EXTI3_IRQHandler                  // EXTI Line3
+26 [x] EXTI4_IRQHandler                  // EXTI Line4
 27 [ ] DMA1_Stream0_IRQHandler           // DMA1 Stream 0
 28 [ ] DMA1_Stream1_IRQHandler           // DMA1 Stream 1
 29 [ ] DMA1_Stream2_IRQHandler           // DMA1 Stream 2
@@ -110,8 +115,8 @@ IDX[x] = added IRQ handler
 53 [x] USART1_IRQHandler                 // USART1
 54 [x] USART2_IRQHandler                 // USART2
 55 [x] USART3_IRQHandler                 // USART3
-56 [ ] EXTI15_10_IRQHandler              // External Line[15:10]s
-57 [ ] RTC_Alarm_IRQHandler              // RTC Alarm (A and B) through EXTI Line
+56 [x] EXTI15_10_IRQHandler              // External Line[15:10]s
+57 [x] RTC_Alarm_IRQHandler              // RTC Alarm (A and B) through EXTI Line
 58 [x] OTG_FS_WKUP_IRQHandler            // USB OTG FS Wakeup through EXTI line
 59 [x] TIM8_BRK_TIM12_IRQHandler         // TIM8 Break and TIM12
 60 [x] TIM8_UP_TIM13_IRQHandler          // TIM8 Update and TIM13
@@ -183,6 +188,7 @@ const unsigned USART1_IRQHandler_Idx                = 53;
 const unsigned USART2_IRQHandler_Idx                = 54;
 const unsigned USART3_IRQHandler_Idx                = 55;
 const unsigned EXTI15_10_IRQHandler_Idx             = 56;
+const unsigned RTC_Alarm_IRQHandler_Idx             = 57;
 const unsigned OTG_FS_WKUP_IRQHandler_Idx           = 58;
 const unsigned TIM8_BRK_TIM12_IRQHandler_Idx        = 59;
 const unsigned TIM8_UP_TIM13_IRQHandler_Idx         = 60;
@@ -217,6 +223,8 @@ extern volatile uint32_t TimingDelay;
 
 void HAL_Core_Config_systick_configuration(void) {
     SysTick_Configuration();
+
+    dcd_migrate_data();
 }
 
 /**
@@ -284,7 +292,33 @@ void HAL_Core_Setup_override_interrupts(void)
     isrs[I2C3_ER_IRQHandler_Idx]            = (uint32_t)I2C3_ER_irq;
     isrs[DMA1_Stream7_IRQHandler_Idx]       = (uint32_t)DMA1_Stream7_irq;
     isrs[DMA2_Stream5_IRQHandler_Idx]       = (uint32_t)DMA2_Stream5_irq;
+    isrs[RTC_Alarm_IRQHandler_Idx]          = (uint32_t)RTC_Alarm_irq;
     SCB->VTOR = (unsigned long)isrs;
+}
+
+static TaskHandle_t  app_thread_handle;
+#define APPLICATION_STACK_SIZE 6144
+
+/**
+ * The mutex to ensure only one thread manipulates the heap at a given time.
+ */
+xSemaphoreHandle malloc_mutex = 0;
+
+static void init_malloc_mutex(void)
+{
+    malloc_mutex = xSemaphoreCreateRecursiveMutex();
+}
+
+void __malloc_lock(void* ptr)
+{
+    if (malloc_mutex)
+        while (!xSemaphoreTakeRecursive(malloc_mutex, 0xFFFFFFFF)) {}
+}
+
+void __malloc_unlock(void* ptr)
+{
+    if (malloc_mutex)
+        xSemaphoreGiveRecursive(malloc_mutex);
 }
 
 /**
@@ -292,7 +326,10 @@ void HAL_Core_Setup_override_interrupts(void)
  */
 int main(void)
 {
-    application_start();
+    init_malloc_mutex();
+    xTaskCreate( application_start, "app_thread", APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ), NULL, 2, &app_thread_handle);
+
+    vTaskStartScheduler();
 
     /* we should never get here */
     while (1);
@@ -332,15 +369,7 @@ void NMI_Handler(void)
 {
 }
 
-void SVC_Handler(void)
-{
-}
-
 void DebugMon_Handler(void)
-{
-}
-
-void PendSV_Handler(void)
 {
 }
 

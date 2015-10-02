@@ -60,3 +60,5 @@ inline void IWDG_Reset_Enable(int count) {}
 inline void SysTick_Disable() {}
 
 inline void Save_Reset_Syndrome() {}
+
+bool FLASH_IsFactoryResetAvailable(void);

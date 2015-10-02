@@ -1,7 +1,5 @@
 #include "spark_wiring_cloud.h"
 
-CloudClass Spark;
-
 int CloudClass::call_raw_user_function(void* data, const char* param, void* reserved)
 {
     user_function_int_str_t* fn = (user_function_int_str_t*)(data);

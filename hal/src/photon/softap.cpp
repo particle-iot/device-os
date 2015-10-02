@@ -13,6 +13,7 @@
 #include "spark_macros.h"
 #include "core_hal.h"
 #include "rng_hal.h"
+#include "ota_flash_hal_stm32f2xx.h"
 
 #if defined(SYSTEM_MINIMAL)
 #define SOFTAP_HTTP 0
@@ -20,6 +21,38 @@
 #define SOFTAP_HTTP 1
 #include "http_server.h"
 #endif
+
+int resolve_dns_query(const char* query, const char* table)
+{
+    int result = 0;
+    while (*table!=0xFF && *table)
+    {
+        unsigned len = strlen(table)+1;
+        if (!memcmp(query, table, len))
+        {
+            result = len;
+            break;
+        }
+        table += len;
+    }
+    return result;
+}
+
+/**
+ * Override resolution.
+ * @param query
+ * @return
+ */
+int dns_resolve_query(const char* query)
+{
+    int result = dns_resolve_query_default(query);
+    if (result<=0)
+    {
+        const char* valid_queries = (const char*) dct_read_app_data(DCT_DNS_RESOLVE_OFFSET);
+        result = resolve_dns_query(query, valid_queries);
+    }
+    return result;
+}
 
 bool is_device_claimed()
 {
@@ -435,30 +468,6 @@ size_t hex_decode(uint8_t* buf, size_t len, const char* hex) {
     return i;
 }
 
-const uint8_t* fetch_server_public_key()
-{
-    return (const uint8_t*)dct_read_app_data(DCT_SERVER_PUBLIC_KEY_OFFSET);
-}
-
-const uint8_t* fetch_device_private_key()
-{
-    return (const uint8_t*)dct_read_app_data(DCT_DEVICE_PRIVATE_KEY_OFFSET);
-}
-
-const uint8_t* fetch_device_public_key()
-{
-    uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
-    memset(pubkey, 0, sizeof(pubkey));
-    parse_device_pubkey_from_privkey(pubkey, fetch_device_private_key());
-
-    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
-    if (memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
-        dct_write_app_data(pubkey, DCT_DEVICE_PUBLIC_KEY_OFFSET, DCT_DEVICE_PUBLIC_KEY_SIZE);
-        flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
-    }
-    return flash_pub_key;
-}
-
 /**
  *
  * @param hex_encoded   The hex_encoded encrypted data
@@ -600,8 +609,7 @@ static inline char ascii_nibble(uint8_t nibble) {
     return hex_digit;
 }
 
-
-extern "C" char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
+char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
 
 class DeviceIDCommand : public JSONCommand {
 

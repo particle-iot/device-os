@@ -24,7 +24,7 @@ system_part2_module_info_end = system_part2_module_info_start + system_part2_mod
 system_part2_module_table = system_part2_module_info_end;
 
 
-system_part2_reset_handler_location = system_part2_vtor_table_start + 4;
+dynamic_reset_handler_location = system_part2_vtor_table_start + 4;
 
 stack_size = 4096;
 
@@ -42,7 +42,7 @@ min_heap_size = 16K;
  * Can be expanded or reduced as necessary. The heap dynamically expands from
  * it's static base to the heap top, which is the bottom of this module's static ram.
  */
-system_static_ram_size = 36K;
+system_static_ram_size = 38K;
 
 /* Place system part2 static RAM immediately below stack. */
 system_static_ram_start = ALIGN( stack_start - system_static_ram_size, 512);

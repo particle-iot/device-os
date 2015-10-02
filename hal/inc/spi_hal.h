@@ -58,6 +58,8 @@ typedef void (*HAL_SPI_DMA_UserCallback)(void);
 #define SPI_CLOCK_DIV128        0x30
 #define SPI_CLOCK_DIV256        0x38
 
+#define SPI_DEFAULT_SS          ((uint16_t)(-1))
+
 /* Exported functions --------------------------------------------------------*/
 
 #ifdef __cplusplus

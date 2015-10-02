@@ -22,21 +22,22 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
 */
+#pragma once
+
 #include <string.h>
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_platform.h"
-
-#if Wiring_WiFi && PLATFORM_ID > 2 && PLATFORM_ID != 10 && !defined(SYSTEM_MINIMAL)
-#define SETUP_OVER_SERIAL1 1
-#endif
 
 #ifndef SETUP_OVER_SERIAL1
 #define SETUP_OVER_SERIAL1 0
 #endif
 
-typedef void (*ConnectCallback)(const char *ssid,
+typedef int (*ConnectCallback)( void* data,
+                                const char *ssid,
                                 const char *password,
-                                unsigned long security_type);
+                                unsigned long security_type,
+                                unsigned long cipher,
+                                bool dry_run);
 
 class WiFiTester;
 
@@ -50,6 +51,7 @@ struct SystemSetupConsoleConfig
 struct WiFiSetupConsoleConfig : SystemSetupConsoleConfig
 {
     ConnectCallback connect_callback;
+    void* connect_callback_data;
 };
 #endif
 
@@ -111,6 +113,7 @@ public:
     ~CellularSetupConsole() = default;
 
     virtual void exit() override;
+    virtual void handle(char c) override;
 };
 
 #endif

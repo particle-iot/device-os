@@ -9,3 +9,9 @@ test(spi_clock)
     API_COMPILE(SPI.setClockDividerReference(SPI_CLK_ARDUINO));
 
 }
+
+test(spi_transfer)
+{
+    API_COMPILE(SPI.transfer(0));
+    API_COMPILE(SPI.transfer(NULL, NULL, 1, NULL));
+}

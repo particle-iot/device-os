@@ -37,6 +37,13 @@
 #include "hw_config.h"
 #endif
 
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
+
 DYNALIB_BEGIN(hal_peripherals)
 DYNALIB_FN(hal_peripherals,HAL_Tone_Start)
 DYNALIB_FN(hal_peripherals,HAL_Tone_Stop)
@@ -49,13 +56,6 @@ DYNALIB_FN(hal_peripherals,HAL_Servo_Write_Pulse_Width)
 DYNALIB_FN(hal_peripherals,HAL_Servo_Read_Pulse_Width)
 DYNALIB_FN(hal_peripherals,HAL_Servo_Read_Frequency)
 
-#if defined(HAS_SERIAL_FLASH) && 0
-DYNALIB_FN(hal_peripherals,sFLASH_EraseSector)
-DYNALIB_FN(hal_peripherals,sFLASH_EraseBulk)
-DYNALIB_FN(hal_peripherals,sFLASH_WriteBuffer)
-DYNALIB_FN(hal_peripherals,sFLASH_ReadBuffer)
-DYNALIB_FN(hal_peripherals,sFLASH_ReadID)
-#endif
 DYNALIB_END(hal_peripherals)
 
 #endif	/* HAL_PERIPHERALS_DYNALIB_H */

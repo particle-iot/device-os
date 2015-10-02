@@ -24,6 +24,8 @@
 #include "system_mode.h"
 #include "system_network.h"
 #include "system_task.h"
+#include "system_threading.h"
+#include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
 #include "spark_protocol.h"
 #include "append_list.h"
@@ -38,6 +40,7 @@
 #include "string_convert.h"
 #include <stdint.h>
 
+#define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
 #ifndef SPARK_NO_CLOUD
 
@@ -126,6 +129,12 @@ int call_raw_user_function(void* data, const char* param, void* reserved)
     return (*fn)(p);
 }
 
+/**
+ * Register a function.
+ * @param desc
+ * @param reserved
+ * @return
+ */
 bool spark_function_internal(const cloud_function_descriptor* desc, void* reserved)
 {
     User_Func_Lookup_Table_t* item = NULL;
@@ -142,6 +151,46 @@ bool spark_function_internal(const cloud_function_descriptor* desc, void* reserv
     return item!=NULL;
 }
 
+
+void invokeEventHandlerInternal(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
+                const char* event_name, const char* data, void* reserved)
+{
+    if(handlerInfo->handler_data)
+    {
+        EventHandlerWithData handler = (EventHandlerWithData) handlerInfo->handler;
+        handler(handlerInfo->handler_data, event_name, data);
+    }
+    else
+    {
+        handlerInfo->handler(event_name, data);
+    }
+}
+
+void invokeEventHandlerString(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
+                const String& name, const String& data, void* reserved)
+{
+    invokeEventHandlerInternal(handlerInfoSize, handlerInfo, name.c_str(), data.c_str(), reserved);
+}
+
+
+void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
+                const char* event_name, const char* event_data, void* reserved)
+{
+    if (system_thread_get_state(NULL)==spark::feature::DISABLED)
+    {
+        invokeEventHandlerInternal(handlerInfoSize, handlerInfo, event_name, event_data, reserved);
+    }
+    else
+    {
+        // copy the buffers to dynamically allocated storage.
+        String name(event_name);
+        String data(event_data);
+        APPLICATION_THREAD_CONTEXT_ASYNC(invokeEventHandlerString(handlerInfoSize, handlerInfo, name, event_data, reserved));
+    }
+}
+
+volatile uint32_t lastCloudEvent = 0;
+
 /**
  * This is the internal function called by the background loop to pump cloud events.
  */
@@ -151,6 +200,10 @@ void Spark_Process_Events()
     {
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
+    }
+    else
+    {
+        lastCloudEvent = millis();
     }
 }
 
@@ -230,11 +283,22 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 }
 
 const char* CLAIM_EVENTS = "spark/device/claim/";
+const char* RESET_EVENT = "spark/device/reset";
 
 void SystemEvents(const char* name, const char* data)
 {
     if (!strncmp(name, CLAIM_EVENTS, strlen(CLAIM_EVENTS))) {
         HAL_Set_Claim_Code(NULL);
+    }
+    if (!strcmp(name, RESET_EVENT)) {
+        if (data && *data) {
+            if (!strcmp("safe mode", data))
+                System.enterSafeMode();
+            else if (!strcmp("dfu", data))
+                System.dfu(false);
+            else if (!strcmp("reboot", data))
+                System.reset();
+        }
     }
 }
 
@@ -287,6 +351,7 @@ void Spark_Protocol_Init(void)
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
         descriptor.append_system_info = system_module_info;
+        descriptor.call_event_handler = invokeEventHandler;
 
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
@@ -330,11 +395,19 @@ int Spark_Handshake(void)
             Particle.publish("spark/device/claim/code", buf, 60, PRIVATE);
         }
 
+        // open up for possibility of retrieving multiple ID datums
+        if (!HAL_Get_Device_Identifier(NULL, buf, sizeof(buf), 0, NULL) && *buf) {
+            Particle.publish("spark/device/ident/0", buf, 60, PRIVATE);
+        }
+
         ultoa(HAL_OTA_FlashLength(), buf, 10);
         Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
 
         ultoa(HAL_OTA_ChunkSize(), buf, 10);
         Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
+
+        if (system_mode()==SAFE_MODE)
+            Particle.publish("spark/device/safemode","", 60, PRIVATE);
 
         if (!HAL_core_subsystem_version(buf, sizeof (buf)))
         {
@@ -459,6 +532,7 @@ int Spark_Connect(void)
 
     if (!socket_handle_valid(sparkSocket))
     {
+        DEBUG("socket_handle_valid()=%d", socket_handle_valid(sparkSocket));
         return -1;
     }
     sockaddr_t tSocketAddr;
@@ -471,6 +545,7 @@ int Spark_Connect(void)
 
     ServerAddress server_addr;
     HAL_FLASH_Read_ServerAddress(&server_addr);
+    DEBUG("HAL_FLASH_Read_ServerAddress() = type:%d,domain:%s,ip: %d.%d.%d.%d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip));
 
     bool ip_resolve_failed = false;
     IPAddress ip_addr;
@@ -479,12 +554,14 @@ int Spark_Connect(void)
     switch (server_addr.addr_type)
     {
         case IP_ADDRESS:
+            // DEBUG("IP_ADDRESS");
             ip_addr = server_addr.ip;
             break;
 
         default:
         case INVALID_INTERNET_ADDRESS:
         {
+            // DEBUG("INVALID_INTERNET_ADDRESS");
             const char default_domain[] = "device.spark.io";
             // Make sure we copy the NULL terminator, so subsequent strlen() calls on server_addr.domain return the correct length
             memcpy(server_addr.domain, default_domain, strlen(default_domain) + 1);
@@ -492,6 +569,7 @@ int Spark_Connect(void)
         }
 
         case DOMAIN_NAME:
+            // DEBUG("DOMAIN_NAME");
             int attempts = 3;
             while (!ip_addr && 0 < --attempts)
             {
@@ -505,7 +583,7 @@ int Spark_Connect(void)
     // workaround for CC3000
     if (ip_resolve_failed)
     {
-        const WLanConfig* config = network_config(0, 0, NULL);
+        const WLanConfig* config = (WLanConfig*)network_config(0, 0, NULL);
         if (config && (config->nw.aucDNSServer.ipv4==((76<<24) | (83<<16) | (0<<8) | 0 ))) {
             // fallback to the default when the CC3000 DNS goes awol. see issue #139
             ip_addr.clear();
@@ -528,9 +606,9 @@ int Spark_Connect(void)
         tSocketAddr.sa_data[5] = ip_addr[3];
 
         uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
-        DEBUG("connect");
+        DEBUG("Connect Attempt");
         rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
-        DEBUG("connected connect=%d", rv);
+        DEBUG("socket_connect()=%d", rv);
         HAL_WLAN_SetNetWatchDog(ot);
     }
     if (rv)     // error - prevent socket leaks
@@ -545,14 +623,14 @@ int Spark_Disconnect(void)
     if (socket_handle_valid(sparkSocket))
     {
 #if defined(SEND_ON_CLOSE)
-        DEBUG("send");
+        DEBUG("Send Attempt");
         char c = 0;
         int rc = send(sparkSocket, &c, 1, 0);
-        DEBUG("send %d", rc);
+        DEBUG("send()=%d", rc);
 #endif
-        DEBUG("Close");
+        DEBUG("Close Attempt");
         retVal = socket_close(sparkSocket);
-        DEBUG("Closed retVal=%d", retVal);
+        DEBUG("socket_close()=%d", retVal);
         sparkSocket = socket_handle_invalid();
     }
     return retVal;
@@ -570,12 +648,30 @@ const void *getUserVar(const char *varKey)
     return item ? item->userVar : NULL;
 }
 
+void userFuncScheduleImpl(User_Func_Lookup_Table_t* item, const char* paramString, bool freeParamString, SparkDescriptor::FunctionResultCallback callback)
+{
+    int result = item->pUserFunc(item->pUserFuncData, paramString, NULL);
+    if (freeParamString)
+        delete paramString;
+    // run the cloud return on the system thread again
+    SYSTEM_THREAD_CONTEXT_ASYNC(callback((const void*)result, SparkReturnType::INT));
+    callback((const void*)result, SparkReturnType::INT);
+}
+
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved)
 {
     // for now, we invoke the function directly and return the result via the callback
     User_Func_Lookup_Table_t* item = find_func_by_key(funcKey);
-    long result = item ? item->pUserFunc(item->pUserFuncData, paramString, NULL) : -1;
-    callback((const void*)result, SparkReturnType::INT);
+    if (!item)
+        return -1;
+
+#if PLATFORM_THREADING
+    paramString = strdup(paramString);      // ensure we have a copy since the oriignal isn't guaranteed to be available once this function returns.
+    APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(userFuncScheduleImpl(item, paramString, true, callback), 0);
+    userFuncScheduleImpl(item, paramString, true, callback);
+#else
+    userFuncScheduleImpl(item, paramString, false, callback);
+#endif
     return 0;
 }
 
@@ -594,7 +690,7 @@ inline uint8_t cloudSocketClosed()
 
     if (closed)
     {
-        DEBUG("get_socket_active_status(sparkSocket=%d)==SOCKET_STATUS_INACTIVE", sparkSocket);
+        DEBUG("socket_active_status(sparkSocket=%d)==SOCKET_STATUS_INACTIVE", sparkSocket);
     }
     if (closed && sparkSocket != socket_handle_invalid())
     {
@@ -602,7 +698,7 @@ inline uint8_t cloudSocketClosed()
     }
     if (!socket_handle_valid(sparkSocket))
     {
-        DEBUG("sparkSocket is not valid");
+        DEBUG("Not valid: socket_handle_valid(sparkSocket) = %d", socket_handle_valid(sparkSocket));
         closed = true;
     }
     return closed;
@@ -696,4 +792,21 @@ void Multicast_Presence_Announcement(void)
 
     socket_close(multicast_socket);
 #endif
+}
+
+const int SYSTEM_CLOUD_TIMEOUT = 15*1000;
+
+bool system_cloud_active()
+{
+#ifndef SPARK_NO_CLOUD
+    if (!SPARK_CLOUD_SOCKETED)
+        return false;
+
+    if (SPARK_CLOUD_CONNECTED && ((millis()-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
+    {
+        cloud_disconnect(false);
+        return false;
+    }
+#endif
+    return true;
 }

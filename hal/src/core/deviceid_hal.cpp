@@ -42,3 +42,8 @@ unsigned HAL_Platform_ID()
 {
     return PLATFORM_ID;
 }
+
+int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsigned index, void* reserved)
+{
+    return -1;
+}

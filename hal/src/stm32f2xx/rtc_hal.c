@@ -107,9 +107,6 @@ void HAL_RTC_Configuration(void)
 	{
 		/* System resumed from STANDBY mode */
 
-		/* Clear StandBy flag */
-		PWR_ClearFlag(PWR_FLAG_SB);
-
 		/* Wait for RTC APB registers synchronisation */
 		RTC_WaitForSynchro();
 
@@ -155,12 +152,12 @@ void HAL_RTC_Configuration(void)
 		    /* Check on RTC init */
 		    if (RTC_Init(&RTC_InitStructure) != ERROR)
 		    {
-	            /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
-	            /* Set Date/Time to Epoch 0 (Thu, 01 Jan 1970 00:00:00 GMT) */
-	            HAL_RTC_Initialize_UnixTime();
+                        /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
+                        /* Set Date/Time to Epoch 0 (Thu, 01 Jan 1970 00:00:00 GMT) */
+                        HAL_RTC_Initialize_UnixTime();
 
-	            /* Indicator for the RTC configuration */
-	            RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
+                        /* Indicator for the RTC configuration */
+                        RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
 		    }
 		}
 	}
@@ -185,7 +182,7 @@ time_t HAL_RTC_Get_UnixTime(void)
 	/* Set calendar_time date struct values */
 	calendar_time.tm_wday = RTC_DateStructure.RTC_WeekDay;
 	calendar_time.tm_mday = RTC_DateStructure.RTC_Date;
-	calendar_time.tm_mon = RTC_DateStructure.RTC_Month;
+	calendar_time.tm_mon = RTC_DateStructure.RTC_Month-1;
 	calendar_time.tm_year = RTC_DateStructure.RTC_Year;
 
 	return (time_t)mktime(&calendar_time);
@@ -207,7 +204,7 @@ void HAL_RTC_Set_UnixTime(time_t value)
 	/* Get calendar_time date struct values */
 	RTC_DateStructure.RTC_WeekDay = calendar_time->tm_wday;
 	RTC_DateStructure.RTC_Date = calendar_time->tm_mday;
-	RTC_DateStructure.RTC_Month = calendar_time->tm_mon;
+	RTC_DateStructure.RTC_Month = calendar_time->tm_mon+1;
 	RTC_DateStructure.RTC_Year = calendar_time->tm_year;
 
         setRTCTime(&RTC_TimeStructure, &RTC_DateStructure);

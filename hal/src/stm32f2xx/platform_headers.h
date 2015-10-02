@@ -16,6 +16,7 @@ extern "C" {
 #include "gpio_hal.h"
 #include "hw_config.h"
 #include "pinmap_impl.h"
+#include "deepsleep_hal_impl.h"
 
 #ifdef	__cplusplus
 }

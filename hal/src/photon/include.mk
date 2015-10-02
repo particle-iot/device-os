@@ -14,13 +14,9 @@ HAL_WICED_RTOS=FreeRTOS
 HAL_WICED_NETWORK=LwIP
 
 
-# if we are being compiled with platform as a dependency, then also include
-# implementation headers.
-ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)
 INCLUDE_DIRS += $(HAL_INCL_STM32F2XX_PATH)
 INCLUDE_DIRS += $(HAL_INCL_STM32_PATH)
-endif
 
 # implementation defined details for the platform that can vary
 INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/api
@@ -58,7 +54,9 @@ ifeq ("$(USE_PRINTF_FLOAT)","y")
 LDFLAGS += -u _printf_float
 endif
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
+LDFLAGS += -u uxTopUsedPriority
 
+LDFLAGS += -u uxTopUsedPriority
 endif
 
 # not using assembler startup script, but will use startup linked in with wiced

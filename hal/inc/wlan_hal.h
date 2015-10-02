@@ -145,7 +145,7 @@ typedef enum {
 } WLanSecurityCipher;
 
 typedef struct {
-    unsigned len;           // the size of this structure. allows older clients to work with newer HAL.
+    unsigned size;           // the size of this structure. allows older clients to work with newer HAL.
     const char* ssid;
     unsigned ssid_len;
     const char* password;
@@ -153,9 +153,19 @@ typedef struct {
     WLanSecurityType security;
     WLanSecurityCipher cipher;
     unsigned channel;
+    unsigned flags;
 } WLanCredentials;
 
+#define WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN  (1<<0)
 
+#define WLAN_SET_CREDENTIALS_UNKNOWN_SECURITY_TYPE (-1)
+#define WLAN_SET_CREDENTIALS_CIPHER_REQUIRED (-2)
+
+/**
+ *
+ * @param credentials
+ * @return 0 on success.
+ */
 int wlan_set_credentials(WLanCredentials* credentials);
 
 /**

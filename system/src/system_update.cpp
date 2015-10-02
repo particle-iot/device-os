@@ -1,3 +1,21 @@
+/**
+ ******************************************************************************
+  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation, either
+  version 3 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************
+ */
 
 #include <stddef.h>
 #include "spark_wiring_system.h"
@@ -9,12 +27,12 @@
 #include "delay_hal.h"
 #include "system_event.h"
 #include "system_update.h"
-#include "system_cloud.h"
-#include "rgbled.h"
-#include "module_info.h"
+#include "system_cloud_internal.h"
 #include "system_network.h"
 #include "system_ymodem.h"
 #include "system_task.h"
+#include "rgbled.h"
+#include "module_info.h"
 #include "spark_protocol_functions.h"
 #include "string_convert.h"
 #include "appender.h"
@@ -239,6 +257,20 @@ public:
     }
 
     bool next() { return write(',') && newline(); }
+
+    bool write_key_values(size_t count, const key_value* key_values)
+    {
+        bool result = true;
+        while (count-->0) {
+            result = result && write_key_value(key_values++);
+        }
+        return result;
+    }
+
+    bool write_key_value(const key_value* kv)
+    {
+        return write_string(kv->key, kv->value);
+    }
 };
 
 const char* module_function_string(module_function_t func) {
@@ -273,6 +305,7 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
     AppendJson json(append, append_data);
     bool result = true;
     result &= json.write_value("p", system.platform_id)
+        && json.write_key_values(system.key_value_count, system.key_values)
         && json.write_attribute("m")
         && json.write('[');
     char buf[65];
@@ -314,6 +347,8 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
 bool system_module_info(appender_fn append, void* append_data, void* reserved)
 {
     hal_system_info_t info;
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
     HAL_System_Info(&info, true, NULL);
     bool result = system_info_to_json(append, append_data, info);
     HAL_System_Info(&info, false, NULL);

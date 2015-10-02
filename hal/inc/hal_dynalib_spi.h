@@ -30,6 +30,13 @@
 #include "spi_hal.h"
 #endif
 
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
+
 DYNALIB_BEGIN(hal_spi)
 DYNALIB_FN(hal_spi,HAL_SPI_Begin)
 DYNALIB_FN(hal_spi,HAL_SPI_End)
@@ -41,6 +48,7 @@ DYNALIB_FN(hal_spi,HAL_SPI_Is_Enabled_Old)
 DYNALIB_FN(hal_spi,HAL_SPI_Init)
 DYNALIB_FN(hal_spi,HAL_SPI_Is_Enabled)
 DYNALIB_FN(hal_spi,HAL_SPI_Info)
+DYNALIB_FN(hal_spi,HAL_SPI_DMA_Transfer)
 DYNALIB_END(hal_spi)
 
 

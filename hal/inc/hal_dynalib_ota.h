@@ -30,6 +30,13 @@
 #include "ota_flash_hal.h"
 #endif
 
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
+
 DYNALIB_BEGIN(hal_ota)
 DYNALIB_FN(hal_ota,HAL_OTA_FlashAddress)
 DYNALIB_FN(hal_ota,HAL_OTA_FlashLength)
