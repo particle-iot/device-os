@@ -156,8 +156,18 @@ public:
 
     inline int enableFeature(HAL_Feature feature)
     {
+        /* PRE-ENABLE TASKS */
+        bool init_sram = false;
+        // Initialize SRAM on first use of retained memory
+        if (feature==FEATURE_RETAINED_MEMORY && !HAL_Feature_Get(FEATURE_RETAINED_MEMORY)) {
+            init_sram = true;
+        }
+
+        /* ENABLE FEATURE */
         int result = HAL_Feature_Set(feature, true);
-        if (feature==FEATURE_RETAINED_MEMORY && !HAL_Feature_Get(FEATURE_WARM_START)) {
+
+        /* POST-ENABLE TASKS */
+        if (feature==FEATURE_RETAINED_MEMORY && init_sram) {
             system_initialize_user_backup_ram();
         }
         return result;
