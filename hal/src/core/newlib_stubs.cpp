@@ -39,12 +39,8 @@
 
 #endif
 
-extern unsigned long __preinit_array_start;
-extern unsigned long __preinit_array_end;
-extern unsigned long __init_array_start;
-extern unsigned long __init_array_end;
-extern unsigned long __fini_array_start;
-extern unsigned long __fini_array_end;
+extern unsigned long link_constructors_location;
+extern unsigned long link_constructors_end;
 
 static void call_constructors(unsigned long *start, unsigned long *end) __attribute__((noinline));
 
@@ -62,14 +58,10 @@ static void call_constructors(unsigned long *start, unsigned long *end)
 extern "C" {
 void CallConstructors(void)
 {
-	call_constructors(&__preinit_array_start, &__preinit_array_end);
-	call_constructors(&__init_array_start, &__init_array_end);
-	call_constructors(&__fini_array_start, &__fini_array_end);
+	call_constructors(&link_constructors_location, &link_constructors_end);
 }
-} /* extern "C" */
 
-extern "C"
-{
+
 void *__dso_handle = NULL;
 }
 
