@@ -4,6 +4,8 @@
 #       based on the root of the project
 HAL_SRC_ELECTRON_INCL_PATH = $(TARGET_HAL_PATH)/src/electron
 HAL_INCL_STM32F2XX_PATH = $(TARGET_HAL_PATH)/src/stm32f2xx
+HAL_INCL_STM32_PATH = $(TARGET_HAL_PATH)/src/stm32
+
 
 HAL_RTOS_ROOT=$(HAL_SRC_ELECTRON_PATH)/rtos/FreeRTOSv8.2.2
 HAL_RTOS_SRC=$(HAL_RTOS_ROOT)/FreeRTOS/Source
@@ -22,6 +24,7 @@ endif
 ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_ELECTRON_INCL_PATH)
 INCLUDE_DIRS += $(HAL_INCL_STM32F2XX_PATH)
+INCLUDE_DIRS += $(HAL_INCL_STM32_PATH)
 endif
 
 HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))

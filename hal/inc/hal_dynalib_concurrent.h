@@ -35,6 +35,11 @@ DYNALIB_FN(hal_concurrent,os_thread_join)
 DYNALIB_FN(hal_concurrent,os_thread_cleanup)
 DYNALIB_FN(hal_concurrent,os_thread_delay_until)
 DYNALIB_FN(hal_concurrent,os_thread_scheduling)
+
+DYNALIB_FN(hal_concurrent,os_timer_create)
+DYNALIB_FN(hal_concurrent,os_timer_destroy)
+DYNALIB_FN(hal_concurrent,os_timer_get_id)
+DYNALIB_FN(hal_concurrent,os_timer_change)
 #endif
 DYNALIB_END(hal_concurrent)
 

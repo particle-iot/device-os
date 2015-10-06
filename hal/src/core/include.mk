@@ -10,6 +10,7 @@ HAL_SRC_COREV1_PATH = $(TARGET_HAL_PATH)/src/core
 # implementation headers.
 ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_COREV1_PATH)
+INCLUDE_DIRS += $(TARGET_HAL_PATH)/src/stm32
 endif
 
 
