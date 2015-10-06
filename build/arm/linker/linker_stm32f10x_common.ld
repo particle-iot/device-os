@@ -64,6 +64,22 @@ SECTIONS
         *(.glue_7)
         *(.glue_7t)
 
+        link_constructors_location = .;
+        chk_system_pre_init_start = .;
+        KEEP (*(.module_pre_init))
+        chk_system_pre_init_end = .;
+        KEEP(*(.preinit_array))
+        KEEP(*(.init_array))
+        KEEP (*crtbegin.o(.ctors))
+        KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
+        KEEP (*(SORT(.ctors.*)))
+        KEEP (*crtend.o(.ctors))
+        chk_system_init_start = .;
+        KEEP (*(.module_init))
+        chk_system_init_end = .;
+        link_constructors_end = .;
+
+
 	    . = ALIGN(4);
    	  _etext = .;
     } >APP_FLASH
@@ -73,26 +89,6 @@ SECTIONS
         __exidx_start = .;
         *(.ARM.exidx*)
         __exidx_end = .;
-    } >APP_FLASH
-
-    .preinit_array : {
-        PROVIDE_HIDDEN (__preinit_array_start = .);
-        KEEP (*(.preinit_array*))
-        PROVIDE_HIDDEN (__preinit_array_end = .);
-    } >APP_FLASH
-
-    .init_array : {
-        PROVIDE_HIDDEN (__init_array_start = .);
-        KEEP (*(SORT(.init_array.*)))
-        KEEP (*(.init_array*))
-        PROVIDE_HIDDEN (__init_array_end = .);
-    } >APP_FLASH
-
-    .fini_array : {
-        PROVIDE_HIDDEN (__fini_array_start = .);
-        KEEP (*(.fini_array*))
-        KEEP (*(SORT(.fini_array.*)))
-        PROVIDE_HIDDEN (__fini_array_end = .);
     } >APP_FLASH
 
     /* This is the initialized data section

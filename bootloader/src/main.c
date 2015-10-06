@@ -478,3 +478,25 @@ void assert_failed(uint8_t* file, uint32_t line)
     }
 }
 #endif
+
+
+extern unsigned long link_constructors_location;
+extern unsigned long link_constructors_end;
+
+static void call_constructors(unsigned long *start, unsigned long *end) __attribute__((noinline));
+
+static void call_constructors(unsigned long *start, unsigned long *end)
+{
+	unsigned long *i;
+	void (*funcptr)();
+	for (i = start; i < end; i++)
+	{
+		funcptr=(void (*)())(*i);
+		funcptr();
+	}
+}
+
+void CallConstructors(void)
+{
+	call_constructors(&link_constructors_location, &link_constructors_end);
+}
