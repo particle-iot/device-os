@@ -345,6 +345,15 @@ void HAL_Core_Init(void)
 {
 }
 
+void SysTickChain()
+{
+    void (*chain)(void) = (void (*)(void))((uint32_t*)&link_interrupt_vectors_location)[SysTick_Handler_Idx];
+
+    chain();
+
+    SysTickOverride();
+}
+
 void HAL_1Ms_Tick()
 {
     if (TimingDelay != 0x00)
@@ -359,6 +368,8 @@ void HAL_1Ms_Tick()
  */
 void HAL_Core_Setup_finalize(void)
 {
+    uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
+    isrs[SysTick_Handler_Idx] = (uint32_t)SysTickChain;
 }
 
 /******************************************************************************/
