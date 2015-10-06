@@ -35,7 +35,7 @@ public:
     }
 
 
-    ~Timer() { dispose(); }
+    virtual ~Timer() { dispose(); }
 
     void startFromISR() { start(true); }
     void stopFromISR() { stop(true); }
