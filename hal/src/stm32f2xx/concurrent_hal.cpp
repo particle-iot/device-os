@@ -30,6 +30,8 @@
 #include "semphr.h"
 #include <mutex>
 
+// For OpenOCD FreeRTOS support
+extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
 
 // use the newer name
 typedef xTaskHandle TaskHandle_t;
