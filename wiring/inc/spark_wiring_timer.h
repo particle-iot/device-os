@@ -63,8 +63,10 @@ public:
 
     void dispose()
     {
-        if (handle)
-            os_timer_destroy(&handle, nullptr);
+        if (handle) {
+            os_timer_destroy(handle, nullptr);
+            handle = nullptr;
+        }
     }
 
     /*
