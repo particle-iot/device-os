@@ -161,23 +161,19 @@ void HAL_CAN_Begin(HAL_CAN_Channel channel, uint32_t baud)
 	GPIO_PinAFConfig(PIN_MAP[canMap[channel]->can_tx_pin].gpio_peripheral, canMap[channel]->can_tx_pinsource, canMap[channel]->can_af_map);
 
 //TODO	// NVIC Configuration
-	//NVIC_InitTypeDef NVIC_InitStructure;
-	// Enable the USART Interrupt
-	//NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->usart_int_n;
-	//NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
-	//NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	//NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	//NVIC_Init(&NVIC_InitStructure);
-
-	// USART default configuration
-	// USART configured as follow:
-	// - BaudRate = (set baudRate as 9600 baud)
-	// - Word Length = 8 Bits
-	// - One Stop Bit
-	// - No parity
-	// - Hardware flow control disabled for Serial1/2/4/5
-    // - Hardware flow control enabled (RTS and CTS signals) for Serial3
-	// - Receive and transmit enabled
+	NVIC_InitTypeDef NVIC_InitStructure;
+	// Enable the CAN Tx Interrupt
+	NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->can_tx_irqn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+        
+        // Enable the CAN Rx FIFO 0 Interrupt
+        NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->can_rx0_irqn;
+        NVIC_Init(&NVIC_InitStructure);
+        
+        
 	CAN_InitStructure.CAN_TTCM = DISABLE;
         CAN_InitStructure.CAN_ABOM = ENABLE;
         CAN_InitStructure.CAN_AWUM = DISABLE;
@@ -187,30 +183,52 @@ void HAL_CAN_Begin(HAL_CAN_Channel channel, uint32_t baud)
         CAN_InitStructure.CAN_Mode = CAN_Mode_Normal;
         CAN_InitStructure.CAN_SJW  = CAN_SJW_4tq;
         CAN_InitStructure.CAN_BS1  = CAN_BS1_12tq;
-        CAN_InitStructure.CAN_BS2  = CAN_BS2_5tq;
-        CAN_InitStructure.CAN_Prescaler = 8;
+        CAN_InitStructure.CAN_BS2  = CAN_BS2_2tq;
+        
+        switch (baud)
+        {
+            case 50000:
+                CAN_InitStructure.CAN_Prescaler = 40;
+                break;
+            case 100000:
+                CAN_InitStructure.CAN_Prescaler = 20;
+                break;
+            case 125000:
+                CAN_InitStructure.CAN_Prescaler = 16;
+                break;
+            case 250000:
+            default:
+                CAN_InitStructure.CAN_Prescaler = 8;
+                break;
+            case 500000:
+                CAN_InitStructure.CAN_Prescaler = 4;
+                break;
+            case 1000000:
+                CAN_InitStructure.CAN_Prescaler = 2;
+                break;
+        }
+        
 
 	// Configure USART
 	CAN_Init(canMap[channel]->can_peripheral, &CAN_InitStructure);
-  CAN_FilterInitStructure.CAN_FilterNumber = 0;
-  CAN_FilterInitStructure.CAN_FilterMode = CAN_FilterMode_IdMask;
-  CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit;
-  CAN_FilterInitStructure.CAN_FilterIdHigh = (0x0000U << 3);
-  CAN_FilterInitStructure.CAN_FilterIdLow =  (0x0000U << 3) | 0x4;
-  CAN_FilterInitStructure.CAN_FilterMaskIdHigh = (0x0000U << 3);
-  CAN_FilterInitStructure.CAN_FilterMaskIdLow =  (0x0000U << 4) | 0x04;
-  CAN_FilterInitStructure.CAN_FilterFIFOAssignment = CAN_FilterFIFO0;
-  CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;
-  CAN_FilterInit(&CAN_FilterInitStructure);
-	// Enable the USART
-	//USART_Cmd(canMap[channel]->can_peripheral, ENABLE);
+        CAN_SlaveStartBank(1);
+        CAN_FilterInitStructure.CAN_FilterNumber = 1;
+        CAN_FilterInitStructure.CAN_FilterMode = CAN_FilterMode_IdMask;
+        CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit;
+        CAN_FilterInitStructure.CAN_FilterIdHigh = (0x0000U << 3);
+        CAN_FilterInitStructure.CAN_FilterIdLow =  (0x0000U << 3) | 0x4;
+        CAN_FilterInitStructure.CAN_FilterMaskIdHigh = (0x0000U << 3);
+        CAN_FilterInitStructure.CAN_FilterMaskIdLow =  (0x0000U << 4) | 0x04;
+        CAN_FilterInitStructure.CAN_FilterFIFOAssignment = CAN_FilterFIFO0;
+        CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;
+        CAN_FilterInit(&CAN_FilterInitStructure);
 
 	canMap[channel]->can_enabled = true;
 	canMap[channel]->can_transmitting = false;
 
-	// Enable USART Receive and Transmit interrupts
-//TODO	//USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_TXE, ENABLE);
-	//USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_RXNE, ENABLE);
+	// Enable CAN Receive and Transmit interrupts
+  	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
+	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_FMP0, ENABLE);
 }
 
 void HAL_USART_End(HAL_CAN_Channel channel)
@@ -218,31 +236,32 @@ void HAL_USART_End(HAL_CAN_Channel channel)
     // wait for transmission of outgoing data
     while (canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail);
 
-    // Disable the USART
-    //USART_Cmd(canMap[channel]->can_peripheral, DISABLE);
-
-    // Deinitialise USART
+    // Deinitialise CAN
     CAN_DeInit(canMap[channel]->can_peripheral);
 
-    // Disable USART Receive and Transmit interrupts
-    //USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_RXNE, DISABLE);
-    //USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_TXE, DISABLE);
+    // Disable CAN Receive and Transmit interrupts
+    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, DISABLE);
+    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_FMP0, DISABLE);
 
-    //NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_InitTypeDef NVIC_InitStructure;
 
-    // Disable the USART Interrupt
-    //NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->usart_int_n;
-    //NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+    //Disable the CAN Tx Interrupt
+    NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->can_tx_irqn;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+    NVIC_Init(&NVIC_InitStructure);
+    
+    //Disable the CAN Rx FIFO 0 Interrupt
+    NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->can_rx0_irqn;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+    NVIC_Init(&NVIC_InitStructure);
 
-    //NVIC_Init(&NVIC_InitStructure);
-
-    // Disable USART Clock
+    // Disable CAN Clock
     *canMap[channel]->can_apbReg &= ~canMap[channel]->can_clock_en;
 
     // clear any received data
     canMap[channel]->can_rx_buffer->head = canMap[channel]->can_rx_buffer->tail;
 
-    // Undo any pin re-mapping done for this USART
+    // Undo any pin re-mapping done for this CAN
     // ...
 
     memset(canMap[channel]->can_rx_buffer, 0, sizeof(CAN_Ring_Buffer));
@@ -256,11 +275,11 @@ uint32_t HAL_USART_Write_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmess
 {
     
     // interrupts are off and data in queue;
-	//if ((CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) == RESET)
-	//		&& canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail) {
+	if ((CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) == RESET)
+			&& canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail) {
 		// Get him busy
-	//	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
-	//}
+		CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
+	}
 
 	unsigned i = (canMap[channel]->can_tx_buffer->head + 1) % CAN_BUFFER_SIZE;
 
@@ -299,7 +318,7 @@ int32_t HAL_CAN_Available_Data(HAL_CAN_Channel channel)
 
 int32_t HAL_CAN_Read_Data(HAL_CAN_Channel channel, CanRxMsg *pmessage)
 {
-	// if the head isn't ahead of the tail, we don't have any characters
+	// if the head isn't ahead of the tail, we don't have any messages
 	if ((canMap[channel]->can_rx_buffer->head == canMap[channel]->can_rx_buffer->tail) ||
                 (NULL == pmessage))
 	{
