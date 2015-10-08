@@ -70,10 +70,10 @@ DFU_MAL_Prop_TypeDef;
 
 uint16_t MAL_Init (void);
 uint16_t MAL_DeInit (void);
-uint16_t MAL_Erase (uint32_t SectorAddress);
-uint16_t MAL_Write (uint32_t SectorAddress, uint32_t DataLength);
-const uint8_t *MAL_Read  (uint32_t SectorAddress, uint32_t DataLength);
-uint16_t MAL_GetStatus(uint32_t SectorAddress ,uint8_t Cmd, uint8_t *buffer);
+uint16_t MAL_Erase (uint32_t Idx, uint32_t SectorAddress);
+uint16_t MAL_Write (uint32_t Idx, uint32_t SectorAddress, uint32_t DataLength);
+const uint8_t *MAL_Read  (uint32_t Idx, uint32_t SectorAddress, uint32_t DataLength);
+uint16_t MAL_GetStatus(uint32_t Idx, uint32_t SectorAddress ,uint8_t Cmd, uint8_t *buffer);
 
 extern uint8_t  MAL_Buffer[XFERSIZE]; /* RAM Buffer for Downloaded Data */
 #endif /* __DFU_MAL_H */
