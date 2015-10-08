@@ -47,6 +47,29 @@
 /* Exported macro ------------------------------------------------------------*/
 
 //LEDs
+#if PLATFORM_DUO_PRODUCTION == PLATFORM_ID
+#define LEDn                                4
+#define LED1_GPIO_AF_TIM                    0                       //User Led
+#define LED1_GPIO_PIN                       GPIO_Pin_13             //User Led
+#define LED1_GPIO_PIN_SOURCE                GPIO_PinSource13        //User Led
+#define LED1_GPIO_PORT                      GPIOA                   //User Led
+#define LED1_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //User Led
+#define LED3_GPIO_AF_TIM                    GPIO_AF_TIM2            //BLUE Led
+#define LED3_GPIO_PIN                       GPIO_Pin_11             //BLUE Led
+#define LED3_GPIO_PIN_SOURCE                GPIO_PinSource11        //BLUE Led
+#define LED3_GPIO_PORT                      GPIOB                   //BLUE Led
+#define LED3_GPIO_CLK                       RCC_AHB1Periph_GPIOB    //BLUE Led
+#define LED2_GPIO_AF_TIM                    GPIO_AF_TIM3            //RED Led
+#define LED2_GPIO_PIN                       GPIO_Pin_0              //RED Led
+#define LED2_GPIO_PIN_SOURCE                GPIO_PinSource0         //RED Led
+#define LED2_GPIO_PORT                      GPIOB                   //RED Led
+#define LED2_GPIO_CLK                       RCC_AHB1Periph_GPIOB    //RED Led
+#define LED4_GPIO_AF_TIM                    GPIO_AF_TIM3            //GREEN Led
+#define LED4_GPIO_PIN                       GPIO_Pin_1              //GREEN Led
+#define LED4_GPIO_PIN_SOURCE                GPIO_PinSource1         //GREEN Led
+#define LED4_GPIO_PORT                      GPIOB                   //GREEN Led
+#define LED4_GPIO_CLK                       RCC_AHB1Periph_GPIOB    //GREEN Led
+#else
 #define LEDn                                4
 #define LED1_GPIO_AF_TIM                    0                       //User Led
 #define LED1_GPIO_PIN                       GPIO_Pin_13             //User Led
@@ -71,6 +94,7 @@
 #if   PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID
 //On Pigtail board with BM-14, RGB lines are reversed
 #define RGB_LINES_REVERSED
+#endif
 #endif
 
 //Push Buttons
@@ -109,6 +133,21 @@
 #define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define BUTTON1_EXTI_IRQ_INDEX              39
 #define BUTTON1_EXTI_TRIGGER                EXTI_Trigger_Falling
+#elif PLATFORM_DUO_PRODUCTION == PLATFORM_ID
+#define BUTTON1_GPIO_PIN                    GPIO_Pin_2
+#define BUTTON1_GPIO_PORT                   GPIOB
+#define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOB
+#define BUTTON1_GPIO_MODE                   GPIO_Mode_IN
+#define BUTTON1_GPIO_PUPD                   GPIO_PuPd_UP
+#define BUTTON1_PRESSED                     0x00
+#define BUTTON1_EXTI_LINE                   EXTI_Line2
+#define BUTTON1_EXTI_PORT_SOURCE            EXTI_PortSourceGPIOB
+#define BUTTON1_EXTI_PIN_SOURCE             EXTI_PinSource2
+#define BUTTON1_EXTI_IRQn                   EXTI2_IRQn
+#define BUTTON1_EXTI_IRQ_HANDLER            EXTI2_IRQHandler
+#define BUTTON1_EXTI_IRQ_PRIORITY           7
+#define BUTTON1_EXTI_IRQ_INDEX              24
+#define BUTTON1_EXTI_TRIGGER                EXTI_Trigger_Falling
 #endif
 
 #define UI_TIMER_FREQUENCY                  100	/* 100Hz -> 10ms */
@@ -123,7 +162,8 @@
 #define USE_USB_OTG_FS
 //BM-14 has serial flash
 #elif   PLATFORM_PHOTON_DEV == PLATFORM_ID || \
-        PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID
+        PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID || \
+		PLATFORM_DUO_PRODUCTION == PLATFORM_ID
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
 #endif
@@ -134,12 +174,40 @@
 	#define HAS_SERIAL_FLASH
     #define sFLASH_PAGESIZE     0x1000 /* 4096 bytes sector size that needs to be erased */
     #define sFLASH_PAGECOUNT    256    /* 1MByte storage */
+#elif PLATFORM_DUO_PRODUCTION == PLATFORM_ID
+	#define HAS_SERIAL_FLASH
+	#define USE_SERIAL_FLASH
+    #define sFLASH_PAGESIZE     0x1000 /* 4096 bytes sector size that needs to be erased */
+    #define sFLASH_PAGECOUNT    512    /* 1MByte storage */
 #endif
 
 #define FLASH_UPDATE_MODULES
 
 #ifdef HAS_SERIAL_FLASH
 //SPI FLASH Interface pins
+#if PLATFORM_DUO_PRODUCTION == PLATFORM_ID
+#define sFLASH_SPI                          SPI2
+#define sFLASH_SPI_CLK                      RCC_APB1Periph_SPI2
+#define sFLASH_SPI_CLK_CMD                  RCC_APB1PeriphClockCmd
+#define sFLASH_SPI_CS_GPIO_PIN              GPIO_Pin_12                 /* PB.12 */
+#define sFLASH_SPI_CS_GPIO_PORT             GPIOB                       /* GPIOB */
+#define sFLASH_SPI_CS_GPIO_CLK              RCC_AHB1Periph_GPIOB
+#define sFLASH_SPI_SCK_GPIO_PIN             GPIO_Pin_13                 /* PB.13 */
+#define sFLASH_SPI_SCK_GPIO_PORT            GPIOB                       /* GPIOB */
+#define sFLASH_SPI_SCK_GPIO_CLK             RCC_AHB1Periph_GPIOB
+#define sFLASH_SPI_SCK_SOURCE               GPIO_PinSource13
+#define sFLASH_SPI_SCK_AF                   GPIO_AF_SPI2
+#define sFLASH_SPI_MISO_GPIO_PIN            GPIO_Pin_2                 /* PC.2 */
+#define sFLASH_SPI_MISO_GPIO_PORT           GPIOC                       /* GPIOC */
+#define sFLASH_SPI_MISO_GPIO_CLK            RCC_AHB1Periph_GPIOC
+#define sFLASH_SPI_MISO_SOURCE              GPIO_PinSource2
+#define sFLASH_SPI_MISO_AF                  GPIO_AF_SPI2
+#define sFLASH_SPI_MOSI_GPIO_PIN            GPIO_Pin_3                 /* PC.3 */
+#define sFLASH_SPI_MOSI_GPIO_PORT           GPIOC                       /* GPIOC */
+#define sFLASH_SPI_MOSI_GPIO_CLK            RCC_AHB1Periph_GPIOC
+#define sFLASH_SPI_MOSI_SOURCE              GPIO_PinSource3
+#define sFLASH_SPI_MOSI_AF                  GPIO_AF_SPI2
+#else
 #define sFLASH_SPI                          SPI2
 #define sFLASH_SPI_CLK                      RCC_APB1Periph_SPI2
 #define sFLASH_SPI_CLK_CMD                  RCC_APB1PeriphClockCmd
@@ -161,6 +229,7 @@
 #define sFLASH_SPI_MOSI_GPIO_CLK            RCC_AHB1Periph_GPIOB
 #define sFLASH_SPI_MOSI_SOURCE              GPIO_PinSource15
 #define sFLASH_SPI_MOSI_AF                  GPIO_AF_SPI2
+#endif
 
 #define sFLASH_SPI_BAUDRATE_PRESCALER       SPI_BaudRatePrescaler_4
 #endif
@@ -206,7 +275,8 @@
     #define INTERNAL_FLASH_SIZE             (0x100000)
 #elif   PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || \
         PLATFORM_ID == PLATFORM_P1 || \
-        PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+        PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION || \
+		PLATFORM_ID == PLATFORM_DUO_PRODUCTION
     #define INTERNAL_FLASH_SIZE             (0x100000)
 #elif PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_PRODUCTION
     #define INTERNAL_FLASH_SIZE             (0x100000)
