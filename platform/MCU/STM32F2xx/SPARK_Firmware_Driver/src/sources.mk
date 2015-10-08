@@ -23,6 +23,9 @@ endif
 ifeq ("$(PLATFORM_ID)","8")
 CSRC += $(TARGET_SPARK_SRC_PATH)/spi_flash.c
 endif
+ifeq ("$(PLATFORM_ID)","11")
+CSRC += $(TARGET_SPARK_SRC_PATH)/spi_flash.c
+endif
 
 
 # C++ source files included in this build.
