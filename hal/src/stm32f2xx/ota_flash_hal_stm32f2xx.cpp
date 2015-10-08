@@ -161,6 +161,24 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
 
 hal_update_complete_t HAL_FLASH_End(void* reserved)
 {
+#ifdef USE_SERIAL_FLASH
+	hal_update_complete_t result = HAL_UPDATE_ERROR;
+
+	if(FLASH_AddToNextAvailableModulesSlot(\
+		FLASH_SERIAL, (uint32_t)EXTERNAL_FLASH_OTA_ADDRESS,\
+		FLASH_INTERNAL, (uint32_t)(USER_FIRMWARE_IMAGE_LOCATION),\
+		/*Temporary set to a const value, should be set by reading out the module info from serial flash*/10240,\
+		MODULE_FUNCTION_USER_PART,\
+		MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION))
+	{
+		result = HAL_UPDATE_APPLIED_PENDING_RESTART;
+	}
+
+	//Since the bootloader will update the module via module slot, so comment this
+	//FLASH_End();
+
+	return result;
+#else
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
     if (fetch_module(&module, &module_ota, true, MODULE_VALIDATION_INTEGRITY) && (module.validity_checked==module.validity_result))
@@ -187,6 +205,7 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
         FLASH_End();
     }
     return result;
+#endif
 }
 
 void copy_dct(void* target, uint16_t offset, uint16_t length) {
