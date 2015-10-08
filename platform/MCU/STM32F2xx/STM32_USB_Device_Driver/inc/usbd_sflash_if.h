@@ -20,9 +20,17 @@
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
 #define sFLASH_START_ADD                  0x00000000
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+#define sFLASH_END_ADD                    0x00200000
+#else
 #define sFLASH_END_ADD                    0x00100000
+#endif
 
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+#define sFLASH_IF_STRING                  "@Serial Flash   /0x00000000/384*004Kg,128*004Kg"
+#else
 #define sFLASH_IF_STRING                  "@Serial Flash   /0x00000000/256*004Kg"
+#endif
 
 extern DFU_MAL_Prop_TypeDef DFU_sFlash_cb;
 
