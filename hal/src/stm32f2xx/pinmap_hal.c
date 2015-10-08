@@ -46,7 +46,32 @@ STM32_Pin_Info __PIN_MAP[TOTAL_PINS] =
  * timer_ccr (0 by default, store the CCR value for TIM interrupt use)
  * user_property (0 by default, user variable storage)
  */
-
+#if PLATFORM_ID == 11 // Duo
+/* D0            - 00 */ { GPIOB, GPIO_Pin_7, GPIO_PinSource7, NONE, NONE, TIM4, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+/* D1            - 01 */ { GPIOB, GPIO_Pin_6, GPIO_PinSource6, NONE, NONE, TIM4, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+/* D2            - 02 */ { GPIOB, GPIO_Pin_5, GPIO_PinSource5, NONE, NONE, TIM3, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+/* D3            - 03 */ { GPIOB, GPIO_Pin_4, GPIO_PinSource4, NONE, NONE, TIM3, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+/* D4            - 04 */ { GPIOB, GPIO_Pin_3, GPIO_PinSource3, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* D5            - 05 */ { GPIOA, GPIO_Pin_15, GPIO_PinSource15, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* D6            - 06 */ { GPIOA, GPIO_Pin_14, GPIO_PinSource14, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* D7            - 07 */ { GPIOA, GPIO_Pin_13, GPIO_PinSource13, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* NOT USED      - 08 */ { NULL, NONE, NONE, NONE, NONE, NULL, NONE, NONE, NONE, NONE },
+/* NOT USED      - 09 */ { NULL, NONE, NONE, NONE, NONE, NULL, NONE, NONE, NONE, NONE },
+/* A0            - 10 */ { GPIOA, GPIO_Pin_3, GPIO_PinSource3, ADC_Channel_3, NONE, TIM5, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
+/* A1            - 11 */ { GPIOA, GPIO_Pin_2, GPIO_PinSource2, ADC_Channel_2, NONE, TIM5, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
+/* DAC1, A2      - 12 */ { GPIOA, GPIO_Pin_4, GPIO_PinSource4, ADC_Channel_4, DAC_Channel_1, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* DAC2, A3      - 13 */ { GPIOA, GPIO_Pin_5, GPIO_PinSource5, ADC_Channel_5, DAC_Channel_2, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* A4            - 14 */ { GPIOA, GPIO_Pin_6, GPIO_PinSource6, ADC_Channel_6, NONE, TIM13, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+/* A5            - 15 */ { GPIOA, GPIO_Pin_7, GPIO_PinSource7, ADC_Channel_7, NONE, TIM14, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+/* A6            - 16 */ { GPIOA, GPIO_Pin_1, GPIO_PinSource1, ADC_Channel_1, NONE, TIM5, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+/* WKP, A7       - 17 */ { GPIOA, GPIO_Pin_0, GPIO_PinSource0, ADC_Channel_0, NONE, TIM5, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
+/* RX            - 18 */ { GPIOA, GPIO_Pin_10, GPIO_PinSource10, NONE, NONE, TIM1, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
+/* TX            - 19 */ { GPIOA, GPIO_Pin_9, GPIO_PinSource9, NONE, NONE, TIM1, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
+/* SETUP BUTTON  - 20 */ { GPIOB, GPIO_Pin_2, GPIO_PinSource2, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* RGBR          - 21 */ { GPIOB, GPIO_Pin_0, GPIO_PinSource0, NONE, NONE, TIM3, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
+/* RGBG          - 22 */ { GPIOB, GPIO_Pin_1, GPIO_PinSource1, NONE, NONE, TIM3, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
+/* RGBB          - 23 */ { GPIOB, GPIO_Pin_11, GPIO_PinSource11, NONE, NONE, TIM2, TIM_Channel_4, PIN_MODE_NONE, 0, 0 }
+#else
 /* COMMON TO PHOTON, P1 and ELECTRON */
 /* D0            - 00 */ { GPIOB, GPIO_Pin_7, GPIO_PinSource7, NONE, NONE, TIM4, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
 /* D1            - 01 */ { GPIOB, GPIO_Pin_6, GPIO_PinSource6, NONE, NONE, TIM4, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
@@ -104,6 +129,7 @@ STM32_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* PM_SDA_UC     - 44 */ { GPIOC, GPIO_Pin_9, GPIO_PinSource9, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
 /* PM_SCL_UC     - 45 */ { GPIOA, GPIO_Pin_8, GPIO_PinSource8, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
 /* LOW_BAT_UC    - 46 */ { GPIOC, GPIO_Pin_13, GPIO_PinSource13, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+#endif
 #endif
 };
 
