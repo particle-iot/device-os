@@ -44,6 +44,7 @@
 #define sFLASH_PROGRAM_PAGESIZE         0x100       /* 256 bytes */
 
 #define sFLASH_MX25L8006E_ID            0xC22014    /* JEDEC Read-ID Data */
+#define sFLASH_MX25L1606E_ID            0xC22015    /* JEDEC Read-ID Data */
 
 /* Local function forward declarations ---------------------------------------*/
 static void sFLASH_WritePage(const uint8_t* pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
@@ -347,6 +348,8 @@ static uint8_t sFLASH_SendByte(uint8_t byte)
  */
 static void sFLASH_WriteEnable(void)
 {
+	uint8_t flashstatus = 0xFF;
+	
     /* Select the FLASH: Chip Select low */
     sFLASH_CS_LOW();
 
@@ -355,6 +358,37 @@ static void sFLASH_WriteEnable(void)
 
     /* Deselect the FLASH: Chip Select high */
     sFLASH_CS_HIGH();
+	
+	/* Check if Block protect bits are set */
+	
+	/* Select the FLASH: Chip Select low */
+	sFLASH_CS_LOW();
+	/* Send "Read Status Register" instruction */
+	sFLASH_SendByte(sFLASH_CMD_RDSR);
+	/* Send a dummy byte to generate the clock needed by the FLASH and put the
+	 * value of the status register in FLASH_Status variable */
+	flashstatus = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+	/* Deselect the FLASH: Chip Select high */
+	sFLASH_CS_HIGH();
+
+	if ( flashstatus != 0x02 )
+	{
+		/* Select the FLASH: Chip Select low */
+		sFLASH_CS_LOW();
+		/* Send "Write Status Register" instruction */
+		sFLASH_SendByte(sFLASH_CMD_WRSR);
+		sFLASH_SendByte(0);
+		/* Deselect the FLASH: Chip Select high */
+		sFLASH_CS_HIGH();
+
+		/* Re-Enable writing */
+		/* Select the FLASH: Chip Select low */
+		sFLASH_CS_LOW();
+		/* Send "Write Enable" instruction */
+		sFLASH_SendByte(sFLASH_CMD_WREN);
+		/* Deselect the FLASH: Chip Select high */
+		sFLASH_CS_HIGH();
+	}
 }
 
 /**
@@ -418,7 +452,11 @@ int sFLASH_SelfTest(void)
     FlashID = sFLASH_ReadID();
 
     /* Check the SPI Flash ID */
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	if(FlashID == sFLASH_MX25L1606E_ID)
+#else
     if(FlashID == sFLASH_MX25L8006E_ID)
+#endif
     {
         /* Perform a write in the Flash followed by a read of the written data */
         /* Erase SPI FLASH Sector to write on */
