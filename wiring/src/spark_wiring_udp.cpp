@@ -205,11 +205,7 @@ int UDP::receivePacket(uint8_t* buffer, size_t size)
         if (ret >= 0)
         {
             _remotePort = remoteSockAddr.sa_data[0] << 8 | remoteSockAddr.sa_data[1];
-
-            _remoteIP[0] = remoteSockAddr.sa_data[2];
-            _remoteIP[1] = remoteSockAddr.sa_data[3];
-            _remoteIP[2] = remoteSockAddr.sa_data[4];
-            _remoteIP[3] = remoteSockAddr.sa_data[5];
+            _remoteIP = &remoteSockAddr.sa_data[2];
         }
     }
     return ret;
