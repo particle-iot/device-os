@@ -24,6 +24,9 @@ endif
 ifeq ("$(PLATFORM_ID)","8")
 HAL_SERIAL_FLASH = 1
 endif
+ifeq ("$(PLATFORM_ID)","11")
+HAL_SERIAL_FLASH = 1
+endif
 
 ifeq ("$(HAL_SERIAL_FLASH)","1")
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_sflash_if.c
