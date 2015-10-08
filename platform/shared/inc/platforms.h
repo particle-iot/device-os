@@ -34,6 +34,7 @@
 #define PLATFORM_P1                         8
 #define PLATFORM_ETHERNET_PROTO             9
 #define PLATFORM_ELECTRON_PRODUCTION        10
+#define PLATFORM_DUO_PRODUCTION				11
 
 
 #endif	/* PLATFORMS_H */
