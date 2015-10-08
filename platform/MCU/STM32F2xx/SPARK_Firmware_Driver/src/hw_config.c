@@ -218,6 +218,9 @@ void UI_Timer_Configure(void)
 
     /* Enable TIM2 clock */
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+#endif
 
     /*
     Since APB1 prescaler is different from 1.
@@ -238,6 +241,9 @@ void UI_Timer_Configure(void)
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 
     TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+#endif
 
     /* Output Compare Timing Mode configuration: Channel 1 */
     TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
@@ -255,19 +261,33 @@ void UI_Timer_Configure(void)
     TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
     TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Reset;
 
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	TIM_OC3Init(TIM3, &TIM_OCInitStructure);
+    TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Disable);
+
+    TIM_OC4Init(TIM3, &TIM_OCInitStructure);
+    TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Disable);
+#else
     TIM_OC2Init(TIM2, &TIM_OCInitStructure);
     TIM_OC2PreloadConfig(TIM2, TIM_OCPreload_Disable);
 
     TIM_OC3Init(TIM2, &TIM_OCInitStructure);
     TIM_OC3PreloadConfig(TIM2, TIM_OCPreload_Disable);
+#endif
 
     TIM_OC4Init(TIM2, &TIM_OCInitStructure);
     TIM_OC4PreloadConfig(TIM2, TIM_OCPreload_Disable);
 
     TIM_ARRPreloadConfig(TIM2, ENABLE);
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	TIM_ARRPreloadConfig(TIM3, ENABLE);
+#endif
 
     /* TIM2 enable counter */
     TIM_Cmd(TIM2, ENABLE);
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	TIM_Cmd(TIM3, ENABLE);
+#endif
 }
 
 /**
@@ -313,6 +333,11 @@ void LED_Init(Led_TypeDef Led)
 
 void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
 {
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	TIM3->CCR3 = r;
+	TIM3->CCR4 = g;
+	TIM2->CCR4 = b;
+#else
 #ifdef RGB_LINES_REVERSED
     TIM2->CCR4 = r;
     TIM2->CCR3 = g;
@@ -322,10 +347,16 @@ void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
     TIM2->CCR3 = g;
     TIM2->CCR4 = b;
 #endif
+#endif
 }
 
 void Get_RGB_LED_Values(uint16_t* values)
 {
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	values[0] = TIM3->CCR3;
+    values[1] = TIM3->CCR4;
+    values[2] = TIM2->CCR4;
+#else
 #ifdef RGB_LINES_REVERSED
     values[0] = TIM2->CCR4;
     values[1] = TIM2->CCR3;
@@ -334,6 +365,7 @@ void Get_RGB_LED_Values(uint16_t* values)
     values[0] = TIM2->CCR2;
     values[1] = TIM2->CCR3;
     values[2] = TIM2->CCR4;
+#endif
 #endif
 }
 
@@ -626,7 +658,11 @@ bool FACTORY_Flash_Reset(void)
 #ifdef USE_SERIAL_FLASH
     // Restore the Factory programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	success = 0;
+#else
     success = 1;
+#endif
 #else
     // Restore the Factory firmware using flash_modules application dct info
     success = FLASH_RestoreFromFactoryResetModuleSlot();
