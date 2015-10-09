@@ -32,6 +32,19 @@
 #include "usbd_req.h"
 #include "usb_regs.h"
 
+#if PLATFORM_ID==PLATFORM_DUO_PRODUCTION
+
+#define USBD_LANGID_STRING              0x0409  //U.S. English
+#define USBD_MANUFACTURER_STRING        "RedBear"
+
+#define USBD_PRODUCT_HS_STRING          "Duo DFU Mode"
+#define USBD_SERIALNUMBER_HS_STRING     "00000000010B"
+
+#define USBD_PRODUCT_FS_STRING          "Duo DFU Mode"
+#define USBD_SERIALNUMBER_FS_STRING     "00000000010C"
+
+#else
+	
 #define USBD_LANGID_STRING              0x0409  //U.S. English
 #define USBD_MANUFACTURER_STRING        "Particle"
 
@@ -40,6 +53,8 @@
 
 #define USBD_PRODUCT_FS_STRING          "Photon DFU Mode"
 #define USBD_SERIALNUMBER_FS_STRING     "00000000010C"
+
+#endif
 
 #define USBD_CONFIGURATION_HS_STRING    "DFU Config"
 #define USBD_INTERFACE_HS_STRING        "DFU Interface"
