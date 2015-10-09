@@ -28,6 +28,7 @@
 #include "FreeRTOSConfig.h"
 #include "task.h"
 #include "semphr.h"
+#include "timers.h"
 #include <mutex>
 
 
@@ -42,6 +43,13 @@ typedef unsigned portBASE_TYPE UBaseType_t;
 static_assert(sizeof(TaskHandle_t)==sizeof(__gthread_t), "__gthread_t should be the same size as TaskHandle_t");
 
 static_assert(sizeof(uint32_t)==sizeof(void*), "Requires uint32_t to be same size as void* for function cast to wiced_thread_function_t");
+
+#if defined(configENABLE_BACKWARD_COMPATIBILITY) && configENABLE_BACKWARD_COMPATIBILITY
+#define _CREATE_NAME_TYPE const char
+#else
+#define _CREATE_NAME_TYPE const signed char
+#endif
+
 
 /**
  * Creates a new thread.
@@ -59,12 +67,7 @@ os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_pr
     if(priority >= configMAX_PRIORITIES) {
       priority = configMAX_PRIORITIES - 1;
     }
-#if defined(configENABLE_BACKWARD_COMPATIBILITY) && configENABLE_BACKWARD_COMPATIBILITY
-#define _CREATE_THREAD_NAME_TYPE const char
-#else
-#define _CREATE_THREAD_NAME_TYPE const signed char
-#endif
-    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (_CREATE_THREAD_NAME_TYPE* const) name, (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) priority, thread);
+    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (_CREATE_NAME_TYPE* const) name, (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) priority, thread);
     return ( result != (signed portBASE_TYPE) pdPASS );
 }
 
@@ -403,3 +406,48 @@ int os_semaphore_give(os_semaphore_t semaphore, bool reserved)
     return xSemaphoreGive(semaphore)!=pdTRUE;
 }
 
+/**
+ * Create a new timer. Returns 0 on success.
+ */
+int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_timer_t timer), void* const timer_id, void* reserved)
+{
+    *timer = xTimerCreate((_CREATE_NAME_TYPE*)"", period, true, timer_id, callback);
+    return *timer==NULL;
+}
+
+int os_timer_get_id(os_timer_t timer, void** timer_id)
+{
+    *timer_id = pvTimerGetTimerID(timer);
+    return 0;
+}
+
+int os_timer_change(os_timer_t timer, os_timer_change_t change, bool fromISR, unsigned period, unsigned block, void* reserved)
+{
+    portBASE_TYPE woken;
+    switch (change)
+    {
+    case OS_TIMER_CHANGE_START:
+        if (fromISR)
+            return xTimerStartFromISR(timer, &woken)!=pdPASS;
+        else
+            return xTimerStart(timer, block)!=pdPASS;
+
+    case OS_TIMER_CHANGE_RESET:
+        if (fromISR)
+            return xTimerResetFromISR(timer, &woken)!=pdPASS;
+        else
+            return xTimerReset(timer, block)!=pdPASS;
+
+    case OS_TIMER_CHANGE_STOP:
+        if (fromISR)
+            return xTimerStopFromISR(timer, &woken)!=pdPASS;
+        else
+            return xTimerStop(timer, block)!=pdPASS;
+    }
+    return -1;
+}
+
+int os_timer_destroy(os_timer_t timer, void* reserved)
+{
+    return xTimerDelete(timer, CONCURRENT_WAIT_FOREVER)!=pdPASS;
+}
