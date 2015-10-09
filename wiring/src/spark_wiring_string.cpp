@@ -706,7 +706,7 @@ String& String::remove(unsigned int index, unsigned int count){
 
 String& String::toLowerCase(void)
 {
-	if (!buffer) {
+	if (buffer) {
             for (char *p = buffer; *p; p++) {
                     *p = tolower(*p);
             }

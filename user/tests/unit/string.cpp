@@ -74,3 +74,6 @@ TEST_CASE("Can format a string using printf like syntax") {
     REQUIRE(String::format("%d %s %s please", 3, "lemon", "curries")==String("3 lemon curries please"));
 }
 
+TEST_CASE("Can convert a string to lowercase") {
+    REQUIRE(String("In LOWERCAse").toLowerCase()==String("in lowercase"));
+}
