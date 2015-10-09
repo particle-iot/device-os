@@ -19,8 +19,8 @@
 
 /* Includes -----------------------------------------------------------------*/
 #include "delay_hal.h"
-#include <stdatomic.h>
-#include "watchdog_hal.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -47,10 +47,6 @@ volatile uint32_t TimingDelay;
 *******************************************************************************/
 void HAL_Delay_Milliseconds(uint32_t nTime)
 {
-    __sync_lock_test_and_set(&TimingDelay, nTime);
-
-    while (TimingDelay != 0x00) {
-        HAL_Notify_WDT();
-    }
+    vTaskDelay(nTime);
 }
 
