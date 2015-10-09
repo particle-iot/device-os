@@ -36,6 +36,9 @@ endif
 endif
 
 MAKE_DEPENDENCIES = modules/photon/user-part
+ifeq ($(PLATFORM_ID),11)
+MAKE_DEPENDENCIES = modules/duo/user-part
+endif
 
 SUBDIR_GOALS := $(MAKECMDGOALS)
 MAKECMDGOALS := all
