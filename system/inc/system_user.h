@@ -26,6 +26,7 @@ extern "C" {
 void setup();
 void loop();
 
+void serialEventRun();
 
 void system_initialize_user_backup_ram();
 

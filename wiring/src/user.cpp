@@ -24,6 +24,10 @@
 #include "system_user.h"
 #include <stddef.h>
 #include <string.h>
+#include "spark_wiring_platform.h"
+#include "spark_wiring_usbserial.h"
+#include "spark_wiring_usartserial.h"
+
 
 /**
  * Declare the following function bodies as weak. They will only be used if no
@@ -42,6 +46,62 @@ void setup()  {
 
 
 void loop() {
+
+}
+
+
+/**
+ * Allow the application to override this to avoid processing
+ * overhead when serial events are not required.
+ */
+void serialEventRun() __attribute__((weak));
+
+void serialEvent() __attribute__((weak));
+void serialEvent1() __attribute__((weak));
+
+#if Wiring_Serial2
+void serialEvent2() __attribute__((weak));
+#endif
+
+#if Wiring_Serial3
+void serialEvent3() __attribute__((weak));
+#endif
+
+#if Wiring_Serial4
+void serialEvent4() __attribute__((weak));
+#endif
+
+#if Wiring_Serial5
+void serialEvent5() __attribute__((weak));
+#endif
+
+
+/**
+ * Provides background processing of serial data.
+ */
+void serialEventRun()
+{
+    if (serialEvent && Serial.available()>0)
+        serialEvent();
+
+    if (serialEvent1 && Serial1.available()>0)
+        serialEvent1();
+
+#if Wiring_Serial2
+    if (serialEventRun2) serialEventRun2();
+#endif
+
+#if Wiring_Serial3
+    if (serialEventRun3) serialEventRun3();
+#endif
+
+#if Wiring_Serial4
+    if (serialEventRun4) serialEventRun4();
+#endif
+
+#if Wiring_Serial5
+    if (serialEventRun5) serialEventRun5();
+#endif
 
 }
 
