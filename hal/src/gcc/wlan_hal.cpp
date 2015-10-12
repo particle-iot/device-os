@@ -28,6 +28,7 @@
 #include "delay_hal.h"
 #include "core_msg.h"
 #include <string.h>
+#include "service_debug.h"
 
 uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
 {
@@ -46,17 +47,17 @@ int wlan_has_credentials()
 
 int wlan_connect_init()
 {
-    MSG("Virtual WLAN connecting");
+    INFO("Virtual WLAN connecting");
     return 0;
 }
 
 wlan_result_t wlan_activate() {
-    MSG("Virtual WLAN on");
+    INFO("Virtual WLAN on");
     return 0;
 }
 
 wlan_result_t wlan_deactivate() {
-    MSG("Virtual WLAN off");
+    INFO("Virtual WLAN off");
     return 0;
 }
 
@@ -79,7 +80,7 @@ wlan_result_t wlan_connect_finalize()
     // enable connection from stored profiles
     HAL_Delay_Milliseconds(1000);
     HAL_WLAN_notify_connected();
-    MSG("Virtual WLAN connected");
+    INFO("Virtual WLAN connected");
     HAL_WLAN_notify_dhcp(true);
     return 0;
 }
@@ -95,11 +96,11 @@ void Clear_NetApp_Dhcp(void)
 
 wlan_result_t wlan_disconnect_now()
 {
-    MSG("Virtual WLAN disconnected");
+    INFO("Virtual WLAN disconnected");
     return 0;
 }
 
-wlan_result_t wlan_connected_rssi(char* ssid)
+wlan_result_t wlan_connected_rssi()
 {
     return 0;
 }
@@ -126,7 +127,7 @@ void wlan_smart_config_cleanup()
 
 void wlan_setup()
 {
-    MSG("Virtual WLAN init");
+    INFO("Virtual WLAN init");
 }
 
 
