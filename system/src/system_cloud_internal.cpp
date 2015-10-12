@@ -475,7 +475,7 @@ int Internet_Test(void)
     long testSocket;
     sockaddr_t testSocketAddr;
     int testResult = 0;
-    DEBUG("socket");
+    DEBUG("internet test socket");
     testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, 53, NIF_DEFAULT);
     DEBUG("socketed testSocket=%d", testSocket);
 
@@ -577,6 +577,12 @@ int Spark_Connect(void)
                 HAL_Delay_Milliseconds(1);
             }
             ip_resolve_failed = rv;
+            if (ip_resolve_failed) {
+                ERROR("Cloud: unable to resolve IP for %s", server_addr.domain);
+            }
+            else {
+                INFO("Resolved host %s to %s", server_addr.domain, String(ip_addr).c_str());
+            }
     }
 
 #if PLATFORM_ID<3
@@ -609,6 +615,11 @@ int Spark_Connect(void)
         DEBUG("Connect Attempt");
         rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
         DEBUG("socket_connect()=%d", rv);
+        if (rv)
+            ERROR("connection failed to %d.%d.%d.%d, code=%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], rv);
+        else
+            INFO("connected to cloud %d.%d.%d.%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
+
         HAL_WLAN_SetNetWatchDog(ot);
     }
     if (rv)     // error - prevent socket leaks

@@ -266,6 +266,8 @@ void app_setup_and_loop(void)
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
     DEBUG("Hello from Particle!");
+    String s = spark_deviceID();
+    INFO("Device %s started", s.c_str());
 
     manage_safe_mode();
 
