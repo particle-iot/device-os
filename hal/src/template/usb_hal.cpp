@@ -25,6 +25,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_hal.h"
+#include <stdint.h>
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -95,4 +96,9 @@ unsigned int USB_USART_Baud_Rate(void)
 
 void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
 {
+}
+
+int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved)
+{
+    return 0;
 }
