@@ -18,10 +18,13 @@
 
 #pragma once
 
+#include "service_debug.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+void setLoggerLevel(LoggerOutputLevel level);
 
 extern void core_log(const char* msg, ...);
 

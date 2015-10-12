@@ -32,8 +32,26 @@
 #include <cstdint>
 #include <iostream>
 #include "filesystem.h"
+#include "service_debug.h"
+#include "device_config.h"
 
 using std::cout;
+
+void debug_output_(const char* msg);
+
+void setLoggerLevel(LoggerOutputLevel level)
+{
+    set_logger_output(debug_output_, level);
+}
+
+extern "C" int main(int argc, char* argv[])
+{
+    setLoggerLevel(NO_LOG_LEVEL);
+    if (read_device_config(argc, argv)) {
+        app_setup_and_loop();
+    }
+    return 0;
+}
 
 class Stream;
 extern "C" bool Ymodem_Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress)
@@ -42,8 +60,12 @@ extern "C" bool Ymodem_Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAdd
 }
 
 
-
-void debug_output_(const char* msg) {
+/**
+ * Output debug info to standard output.
+ * @param msg
+ */
+void debug_output_(const char* msg)
+{
     cout << msg << std::endl;
 }
 
@@ -96,13 +118,6 @@ char* bytes2hex(const uint8_t* buf, char* result, unsigned len)
  *******************************************************************************/
 void HAL_Core_Config(void)
 {
-    unsigned len = HAL_device_ID(NULL, 0);
-    uint8_t id[len];
-    char hex[len*2+1];
-    HAL_device_ID(id, len);
-    *bytes2hex(id, hex, len)=0;
-
-    MSG("Core device id %s", hex);
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
@@ -116,8 +131,7 @@ void HAL_Core_Mode_Button_Reset(void)
 
 void HAL_Core_System_Reset(void)
 {
-    // todo - terminate the process, or throw an exception to have the top level loop unwind.
-    MSG("System reset not implemented.");
+    exit(0);
 }
 
 void HAL_Core_Factory_Reset(void)
@@ -241,15 +255,6 @@ void HAL_Core_Init(void)
 {
 }
 
-extern "C" int main(int argc, char* argv[]) {
-    if (argc>1) {
-        printf("set keys folder to %s\n", argv[1]);
-        set_root_dir(argv[1]);
-    }
-    app_setup_and_loop();
-    return 0;
-}
-
 void HAL_Bootloader_Lock(bool lock)
 {
 }
@@ -266,6 +271,11 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 
 void HAL_Core_Enter_Bootloader(bool persist)
 {
+}
+
+uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
+{
+    return -1;
 }
 
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
