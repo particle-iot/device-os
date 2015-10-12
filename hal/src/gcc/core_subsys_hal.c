@@ -1,12 +1,5 @@
 /**
- ******************************************************************************
- * @file    core_subsys_hal.c
- * @author  Matthew McGowan
- * @version V1.0.0
- * @date    27-Sept-2014
- * @brief
- ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2014-2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -22,14 +15,13 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
-
 #include "core_subsys_hal.h"
 #include <string.h>
 
 
 int HAL_core_subsystem_version(char* patchstr, int bufLen) {
-    strcpy(patchstr, "1.30");
-    return 5;
+    strcpy(patchstr, "1.00");
+    return 5;    
 }
 
 
