@@ -28,11 +28,15 @@ void set_logger_output(debug_output_fn output, LoggerOutputLevel level)
 
 void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...)
 {
+    if (level<log_level_at_run_time)
+        return;
+
     char _buffer[MAX_DEBUG_MESSAGE_LENGTH];
     static char * levels[] = {
             "",
             "LOG  ",
             "DEBUG",
+            "INFO ",
             "WARN ",
             "ERROR",
             "PANIC",
@@ -40,7 +44,7 @@ void log_print_(int level, int line, const char *func, const char *file, const c
     va_list args;
     va_start(args, msg);
     file = file ? strrchr(file,'/') + 1 : "";
-    int trunc = snprintf(_buffer, arraySize(_buffer), "%010u:<%s> %s %s(%d):", (unsigned)HAL_Timer_Get_Milli_Seconds(), levels[level], func, file, line);
+    int trunc = snprintf(_buffer, arraySize(_buffer), "%010u:%s: %s %s(%d):", (unsigned)HAL_Timer_Get_Milli_Seconds(), levels[level/10], func, file, line);
     if (debug_output_)
     {
         debug_output_(_buffer);
