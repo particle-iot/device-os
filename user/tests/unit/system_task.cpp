@@ -21,9 +21,11 @@
  ******************************************************************************
  */
 
-#include "catch.hpp"
-#undef WARN
 #include "system_task.h"
+#undef WARN
+#undef INFO
+
+#include "catch.hpp"
 
 #include <algorithm>
 

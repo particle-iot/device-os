@@ -20,12 +20,12 @@
 #define	SYSTEM_YMODEM_H
 
 #include "file_transfer.h"
+#include "spark_wiring_stream.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct Stream Stream;
 #include <stdint.h>
 
 bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& desc, void*);

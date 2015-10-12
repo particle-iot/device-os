@@ -242,7 +242,7 @@ public:
 
     virtual void set_error_count(unsigned count)=0;
 
-    bool manual_disconnect()
+    bool manual_disconnect() override
     {
         return WLAN_DISCONNECT;
     }
@@ -453,7 +453,7 @@ public:
     }
 
 
-    void listen_loop()
+    void listen_loop() override
     {
         if (WLAN_SMART_CONFIG_START)
         {

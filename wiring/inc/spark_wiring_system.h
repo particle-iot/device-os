@@ -34,7 +34,14 @@
 #include "interrupts_hal.h"
 #include "core_hal.h"
 #include "system_user.h"
-#ifdef SPARK_PLATFORM
+
+#if defined(SPARK_PLATFORM) && PLATFORM_ID!=3
+#define SYSTEM_HW_TICKS 1
+#else
+#define SYSTEM_HW_TICKS 0
+#endif
+
+#if SYSTEM_HW_TICKS
 #include "hw_ticks.h"
 #endif
 
@@ -63,7 +70,7 @@ public:
         HAL_Core_Enter_Safe_Mode(NULL);
     }
 
-#ifdef SPARK_PLATFORM
+#if SYSTEM_HW_TICKS
     static inline uint32_t ticksPerMicrosecond()
     {
         return SYSTEM_US_TICKS;
