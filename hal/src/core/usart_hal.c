@@ -117,7 +117,7 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
   usartMap[serial]->usart_tx_buffer = tx_buffer;
 
   memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
-  memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
+  memset(usartMap[serial]->usart_tx_buffer, 0, sizeof(Ring_Buffer));
 
   usartMap[serial]->usart_enabled = false;
   usartMap[serial]->usart_transmitting = false;
@@ -212,7 +212,7 @@ void HAL_USART_End(HAL_USART_Serial serial)
   GPIO_PinRemapConfig(usartMap[serial]->usart_pin_remap, DISABLE);
 
   memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
-  memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
+  memset(usartMap[serial]->usart_tx_buffer, 0, sizeof(Ring_Buffer));
 
   usartMap[serial]->usart_enabled = false;
   usartMap[serial]->usart_transmitting = false;
