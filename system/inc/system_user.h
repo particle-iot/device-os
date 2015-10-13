@@ -28,7 +28,10 @@ void loop();
 
 void serialEventRun();
 
-void system_initialize_user_backup_ram();
+/**
+ * Code that is initialized before any user constructors are called.
+ */
+void module_user_init_hook(void);
 
 #ifdef __cplusplus
 }

@@ -259,6 +259,10 @@ void HAL_Core_Setup(void) {
 
     bootloader_update_if_needed();
     HAL_Bootloader_Lock(true);
+
+#if !MODULAR_FIRMWARE
+    module_user_init_hook();
+#endif
 }
 
 #if MODULAR_FIRMWARE
