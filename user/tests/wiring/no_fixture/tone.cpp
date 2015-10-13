@@ -27,7 +27,7 @@
 #include "tone_hal.h"
 #include "unit-test/unit-test.h"
 
-#if (PLATFORM_ID == 6)
+#if defined(STM32F2XX)
 static pin_t pin = D1;//pin under test
 #else
 static pin_t pin = A1;//pin under test
