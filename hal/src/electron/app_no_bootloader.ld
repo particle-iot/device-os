@@ -176,7 +176,7 @@ SECTIONS
         _ebss = . ;
     }> SRAM AT> SRAM
 
-    include backup_ram.ld
+    INCLUDE backup_ram.ld
 
     link_heap_location = end;
     link_heap_location_end = __Stack_Init;
