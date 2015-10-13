@@ -207,9 +207,9 @@ protected:
         system_notify_event(wifi_listen_end, millis()-start);
 
         WLAN_SMART_CONFIG_START = 0;
-        if (started)
+        if (has_credentials())
             connect();
-        else
+        else if (!started)
             off();
     }
 
