@@ -25,37 +25,31 @@
 
 
 #include "deviceid_hal.h"
+#include "device_config.h"
+#include "filesystem.h"
+
 #include <stddef.h>
 #include <algorithm>
-#include "filesystem.h"
+#include <string>
 #include <string.h>
 #include <cstdio>
+#include <limits>
 
 
-uint8_t hex2dec(char c) {
-    if (c<='9')
-        return uint8_t(c-'0');
-    if (c<='Z')
-        return uint8_t(c-'A');
-    return uint8_t(c-'a');
-}
 
+using std::string;
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {
-    char text[24];
-    read_file("id", text, 24);
-    unsigned idx = 0;
-    for (unsigned i=0; i<sizeof(text) && idx<destLen; i+=2) {
-        char c1 = text[i];
-        char c2 = text[i+1];
-        uint8_t b = hex2dec(c1) << 4 | hex2dec(c2);
-        dest[idx++] = b;
-    }
-    return 12;
+    return deviceConfig.fetchDeviceID(dest, destLen);
 }
 
 unsigned HAL_Platform_ID()
 {
     return PLATFORM_ID;
+}
+
+int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsigned index, void* reserved)
+{
+    return -1;
 }

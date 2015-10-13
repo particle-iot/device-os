@@ -19,11 +19,12 @@
 #pragma once
 
 #include "static_assert.h"
+#include "spark_wiring_string.h"
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
 
-typedef struct SparkProtocol SparkProtocol;
+typedef class SparkProtocol SparkProtocol;
 
 
 typedef enum
@@ -68,17 +69,19 @@ const CloudVariableTypeDouble DOUBLE;
 extern "C" {
 #endif
 
+String spark_deviceID(void);
+
 void cloud_disconnect(bool closeSocket=true);
 
 
-struct String;
+class String;
 
 
-#ifdef PLATFORM_ID
+#if defined(PLATFORM_ID)
+
+#if PLATFORM_ID!=3
 STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
-
-String bytes2hex(const uint8_t* buf, unsigned len);
-String spark_deviceID(void);
+#endif
 
 #endif
 

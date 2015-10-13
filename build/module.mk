@@ -51,8 +51,8 @@ elf: $(TARGET_BASE).elf
 bin: $(TARGET_BASE).bin
 hex: $(TARGET_BASE).hex
 lst: $(TARGET_BASE).lst
-exe: $(TARGET_BASE).exe
-	@echo Built x-compile executable at $(TARGET_BASE).exe
+exe: $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
+	@echo Built x-compile executable at $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
 none:
 	;
 
@@ -171,12 +171,20 @@ endif
 	$(call echo,)
 
 
-$(TARGET_BASE).exe $(TARGET_BASE).elf : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
+$(TARGET_BASE).elf : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
 	$(call echo,'Building target: $@')
 	$(call echo,'Invoking: ARM GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
 	$(call echo,)
+
+$(TARGET_BASE)$(EXECUTABLE_EXTENSION) : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
+	$(call echo,'Building target: $@')
+	$(call echo,'Invoking: GCC C++ Linker')
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
+	$(call echo,)
+
 
 
 # Tool invocations

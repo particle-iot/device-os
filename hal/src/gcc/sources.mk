@@ -39,4 +39,5 @@ CPPSRC += $(call target_files,$(overridedir)/,*.cpp)
 ASRC +=
 
 CPPFLAGS += -DBOOST_ASIO_SEPARATE_COMPILATION
+CFLAGS += -DBOOST_NO_AUTO_PTR
 CPPFLAGS += -std=gnu++11

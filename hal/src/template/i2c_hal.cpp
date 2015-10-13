@@ -27,6 +27,10 @@
 #include "i2c_hal.h"
 #include "gpio_hal.h"
 
+void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
+{
+}
+
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved)
 {
 }

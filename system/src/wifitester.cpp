@@ -79,10 +79,13 @@ const char cmd_UNLOCK[] = "UNLOCK:";
 const char cmd_REBOOT[] = "REBOOT:";
 const char cmd_INFO[] = "INFO:";
 const char cmd_CLEAR[] = "CLEAR:";
+#if WIFI_SCAN
 const char cmd_WIFI_SCAN[] = "WIFI_SCAN:";
+const char cmd_ANT[] = "ANT";
+#endif
 const char cmd_SET_PIN[] = "SET_PIN:";
 const char cmd_SET_PRODUCT[] = "SET_PRODUCT:";
-const char cmd_ANT[] = "ANT";
+
 
 
 void WiFiTester::setup(bool useSerial1) {

@@ -107,7 +107,10 @@ extern char link_module_end;
 
 #define MODULE_DEPENDENCY2 0,0,0
 
-__attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info")))) const module_info_t module_info = {
+#if PLATFORM_ID!=3
+__attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info"))))
+
+const module_info_t module_info = {
     &link_module_start,         /* start address */
     &link_module_end,           /* end address */
     0, 0,                       /* reserved, reserved2 */
@@ -135,3 +138,5 @@ __attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info_suf
 __attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info_crc")))) const module_info_crc_t module_info_crc = {
     0x12345678
 };
+
+#endif

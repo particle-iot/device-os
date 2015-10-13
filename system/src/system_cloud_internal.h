@@ -53,6 +53,8 @@ uint8_t cloudSocketClosed();
 bool spark_function_internal(const cloud_function_descriptor* desc, void* reserved);
 int call_raw_user_function(void* data, const char* param, void* reserved);
 
+String spark_deviceID();
+
 struct User_Var_Lookup_Table_t
 {
     const void *userVar;

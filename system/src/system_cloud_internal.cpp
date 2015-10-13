@@ -353,6 +353,7 @@ void Spark_Protocol_Init(void)
         descriptor.append_system_info = system_module_info;
         descriptor.call_event_handler = invokeEventHandler;
 
+        // todo - this pushes a lot of data on the stack! refactor to remove heacy stack usage
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
 
@@ -666,7 +667,7 @@ void userFuncScheduleImpl(User_Func_Lookup_Table_t* item, const char* paramStrin
         delete paramString;
     // run the cloud return on the system thread again
     SYSTEM_THREAD_CONTEXT_ASYNC(callback((const void*)result, SparkReturnType::INT));
-    callback((const void*)result, SparkReturnType::INT);
+    callback((const void*)long(result), SparkReturnType::INT);
 }
 
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved)

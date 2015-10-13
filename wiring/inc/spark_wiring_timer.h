@@ -19,6 +19,7 @@
 
 #pragma once
 
+#if PLATFORM_ID!=3
 #include "stddef.h"
 #include "concurrent_hal.h"
 
@@ -95,3 +96,5 @@ private:
 
 
 };
+
+#endif

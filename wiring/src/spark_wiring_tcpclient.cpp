@@ -193,8 +193,8 @@ void TCPClient::stop()
 
   if (isOpen(_sock))
       socket_close(_sock);
- _sock = socket_handle_invalid();
- memset(&_remoteIP, 0, sizeof(_remoteIP));
+  _sock = socket_handle_invalid();
+  _remoteIP.clear();
 }
 
 uint8_t TCPClient::connected()

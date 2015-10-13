@@ -25,10 +25,14 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_hal.h"
+#include <stdint.h>
+#include <iostream>
+#include <stdio.h>
+#include <sys/poll.h>
+#include <termios.h>
+#include <unistd.h>
 
-/* Private typedef -----------------------------------------------------------*/
-
-#ifdef USB_CDC_ENABLE
+uint32_t last_baudRate;
 /*******************************************************************************
  * Function Name  : USB_USART_Init
  * Description    : Start USB-USART protocol.
@@ -37,6 +41,7 @@
  *******************************************************************************/
 void USB_USART_Init(uint32_t baudRate)
 {
+    last_baudRate = baudRate;
 }
 
 /*******************************************************************************
@@ -47,8 +52,13 @@ void USB_USART_Init(uint32_t baudRate)
  *******************************************************************************/
 uint8_t USB_USART_Available_Data(void)
 {
-  return 0;
+    struct pollfd stdin_poll = { .fd = STDIN_FILENO
+            , .events = POLLIN | POLLRDBAND | POLLRDNORM | POLLPRI };
+    int ret = poll(&stdin_poll, 1, 0);
+    return ret;
 }
+
+int32_t last = -1;
 
 /*******************************************************************************
  * Function Name  : USB_USART_Receive_Data.
@@ -58,7 +68,15 @@ uint8_t USB_USART_Available_Data(void)
  *******************************************************************************/
 int32_t USB_USART_Receive_Data(uint8_t peek)
 {
-  return -1;
+    if (last<0 && USB_USART_Available_Data()) {
+        uint8_t data = 0;
+        if (read(0, &data, 1))
+            last = data;
+    }
+    int32_t result = last;
+    if (!peek)
+        last = -1;      // consume the data
+    return result;
 }
 
 /*******************************************************************************
@@ -69,9 +87,8 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
  *******************************************************************************/
 void USB_USART_Send_Data(uint8_t Data)
 {
-
+    std::cout.write((const char*)&Data, 1);
 }
-#endif
 
 #ifdef USB_HID_ENABLE
 /*******************************************************************************
@@ -90,9 +107,14 @@ void USB_HID_Send_Report(void *pHIDReport, size_t reportSize)
 
 unsigned int USB_USART_Baud_Rate(void)
 {
-    return 0;
+    return last_baudRate;
 }
 
 void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
 {
+}
+
+int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved)
+{
+    return 0;
 }

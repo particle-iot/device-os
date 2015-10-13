@@ -3,7 +3,7 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-auto start = boost::posix_time::second_clock::local_time();
+auto start = boost::posix_time::microsec_clock::universal_time();
 
 system_tick_t HAL_Timer_Get_Micro_Seconds(void)
 {
