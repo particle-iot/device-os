@@ -4,6 +4,8 @@
 
  - `String.toLower()` has no affect on string. [#665](https://github.com/spark/firmware/issues/665)
  - SOS due to WICED socket handlers being called when socket is disposed. [#663](https://github.com/spark/firmware/issues/663) [#672](https://github.com/spark/firmware/issues/672)
+ - Application constructors executed after RTOS startup so that HAL_Delay_Milliseconds() can be called. This may mean that `STARTUP()` code executes just a little later than before, but
+    can safely use all public APIs.
  - Esure bootloader region is write protected.
 
 ## v0.4.6

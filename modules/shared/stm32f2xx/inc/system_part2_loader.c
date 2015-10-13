@@ -47,6 +47,9 @@ void system_part2_pre_init() {
  * Invoked after all module-scope instances have been constructed.
  */
 void system_part2_init() {
+}
+
+void system_part2_post_init() {
     if (is_user_module_valid()) {
         module_user_init();
     }

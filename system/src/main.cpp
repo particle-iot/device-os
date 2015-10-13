@@ -253,6 +253,13 @@ ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_t
 
 #endif
 
+extern "C" void system_part2_post_init() __attribute__((weak));
+
+// this is overridden for modular firmware
+void system_part2_post_init()
+{
+}
+
 /*******************************************************************************
  * Function Name  : main.
  * Description    : main routine.
@@ -262,6 +269,7 @@ ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_t
  *******************************************************************************/
 void app_setup_and_loop(void)
 {
+    system_part2_post_init();
     HAL_Core_Init();
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
