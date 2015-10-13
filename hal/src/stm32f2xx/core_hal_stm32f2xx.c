@@ -257,7 +257,7 @@ void HAL_Core_Setup(void) {
     HAL_Core_Setup_finalize();
 
     bootloader_update_if_needed();
-
+    HAL_Bootloader_Lock(true);
 }
 
 #if MODULAR_FIRMWARE
@@ -460,6 +460,22 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
     return 0;
 }
 
+void generate_key()
+{
+    // normallly allocating such a large buffer on the stack would be a bad idea, however, we are quite near the start of execution, with few levels of recursion.
+    char buf[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
+    // ensure the private key is provisioned
+
+    // Reset the system after generating the key - reports of Serial not being available in listening mode
+    // after generating the key.
+    private_key_generation_t genspec;
+    genspec.size = sizeof(genspec);
+    genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
+    HAL_FLASH_Read_CorePrivateKey(buf, &genspec);
+    if (genspec.generated_key)
+        HAL_Core_System_Reset();
+}
+
 /**
  * The entrypoint to our application.
  * This should be called from the RTOS main thread once initialization has been
@@ -473,19 +489,7 @@ void application_start()
 
     HAL_Core_Setup();
 
-    // normallly allocating such a large buffer on the stack would be a bad idea, however, we are quite near the start of execution, with few levels of recursion.
-    char buf[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
-    // ensure the private key is provisioned
-
-    // Reset the system after generating the key - reports of Serial not being available in listening mode
-    // after generating the key.
-    private_key_generation_t genspec;
-    genspec.size = sizeof(genspec);
-    genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
-    HAL_FLASH_Read_CorePrivateKey(buf, &genspec);
-    if (genspec.generated_key)
-        HAL_Core_System_Reset();
-
+    generate_key();
 
     app_setup_and_loop();
 }

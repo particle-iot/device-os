@@ -1,5 +1,6 @@
 
 #include <stdint.h>
+#include "core_hal.h"
 #include "flash_mal.h"
 #include "bootloader.h"
 #include "module_info.h"
@@ -38,9 +39,12 @@ bool bootloader_requires_update()
 
 bool bootloader_update(const void* bootloader_image, unsigned length)
 {
-    return (FLASH_CopyMemory(FLASH_INTERNAL, (uint32_t)bootloader_image,
+    HAL_Bootloader_Lock(false);
+    bool result =  (FLASH_CopyMemory(FLASH_INTERNAL, (uint32_t)bootloader_image,
         FLASH_INTERNAL, 0x8000000, length, MODULE_FUNCTION_BOOTLOADER,
         MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION));
+    HAL_Bootloader_Lock(true);
+    return result;
 }
 
 bool bootloader_update_if_needed()
