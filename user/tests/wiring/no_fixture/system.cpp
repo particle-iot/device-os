@@ -19,3 +19,14 @@ test(System_FreeMemory)
     }
 }
 
+
+test(system_version)
+{
+    uint32_t versionNumber = System.versionNumber();
+
+    char expected[20];
+    sprintf(expected, "%d.%d.%d", BYTE_N(versionNumber,3), BYTE_N(versionNumber,2), BYTE_N(versionNumber,1));
+
+    assertTrue(strcmp(expected,System.version().c_str())==0);
+
+}

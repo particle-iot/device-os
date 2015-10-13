@@ -34,6 +34,7 @@
 #include "interrupts_hal.h"
 #include "core_hal.h"
 #include "system_user.h"
+#include "system_version.h"
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3
 #define SYSTEM_HW_TICKS 1
@@ -165,6 +166,20 @@ public:
     inline int disableFeature(HAL_Feature feature)
     {
         return HAL_Feature_Set(feature, false);
+    }
+
+    String version()
+    {
+        SystemVersionInfo info;
+        system_version_info(&info, nullptr);
+        return String(info.versionString);
+    }
+
+    uint32_t versionNumber()
+    {
+        SystemVersionInfo info;
+        system_version_info(&info, nullptr);
+        return info.versionNumber;
     }
 
 };
