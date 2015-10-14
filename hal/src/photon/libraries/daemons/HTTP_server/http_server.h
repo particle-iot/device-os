@@ -244,6 +244,8 @@ typedef struct
     wiced_bool_t              chunked_transfer;             /* chunked data format              */
     wiced_packet_mime_type_t  mime_type;                    /* mime type                        */
     wiced_http_request_type_t request_type;                 /* GET, POST or PUT request         */
+    wiced_tcp_socket_t*		  socket;						/* The socket to retrieve additional packets from */
+    void*					  user;							/* additional storage. */
 } wiced_http_message_body_t;
 
 /**

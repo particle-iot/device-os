@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include "wiced.h"
+#include "http_server.h"
 #include "static_assert.h"
 #include "dns_redirect.h"
 #include "wiced_security.h"
@@ -901,15 +902,120 @@ static void tcp_stream_reader(Reader& r, wiced_tcp_stream_t* stream) {
 
 int read_from_buffer(Reader* r, uint8_t* target, size_t length) {
     memcpy(target, r->state, length);
+    r->state = ((uint8_t*)r->state)+length;
     return length;
 }
 
-void reader_from_buffer(Reader* r, const uint8_t* buffer, size_t length) {
+void reader_from_buffer(Reader* r, const uint8_t* buffer, size_t length)
+{
     r->bytes_left = length;
     r->callback = read_from_buffer;
     r->state = (void*)buffer;
 }
 
+
+void cleanup_http_body(wiced_http_message_body_t* body)
+{
+    if (body->user)
+    {
+        wiced_packet_delete((wiced_packet_t*)body->user);
+        body->user = NULL;
+    }
+}
+
+int read_from_http_body_part(wiced_http_message_body_t* body, uint8_t* target, size_t length)
+{
+    // first read from the data already read in the body
+    if (body->message_data_length)
+    {
+        if (length>body->message_data_length)
+            length = body->message_data_length;
+
+        memcpy(target, body->data, length);
+        body->message_data_length -= length;
+        body->data += length;
+        return length;
+    }
+    else if (body->total_message_data_remaining)
+    {
+        cleanup_http_body(body);
+
+        // fetch the next packet - we assume length is large enough to hold the packet content
+        // which is the case since we are retrieving the entire content in Reader::fetch_as_string())
+        wiced_packet_t* packet = NULL;
+        wiced_result_t result = wiced_tcp_receive(body->socket, &packet, 3000);
+        if (result)
+            return -1;
+
+        body->user = packet;         // ensure we clean up the packet
+        uint16_t packet_length;
+        uint16_t available_data_length;
+        uint32_t offset =0;
+        uint8_t* data;
+
+        if (length>available_data_length)
+            length = available_data_length;
+        else
+            available_data_length = length;
+
+        do
+        {
+            result = wiced_packet_get_data(packet, offset, &data, &packet_length, &available_data_length);
+            if (result)
+                return -1;
+
+            uint32_t tocopy = std::min(length, size_t(packet_length));
+            memcpy(target, data, tocopy);
+            length -= tocopy;
+            target += tocopy;
+            offset += packet_length;
+        }
+        while (length && offset < available_data_length);
+
+        body->total_message_data_remaining -= available_data_length;
+        return available_data_length;
+    }
+    else
+        return -1;
+}
+
+/**
+ * This implementation takes some shortcuts since it's just a placeholder until
+ * WICED implements http based on streams rather than packets.
+ * This function relies upon the Reader::fetch_as_string() call that reads
+ * the entire content in one call.
+ * @param r
+ * @param target
+ * @param length
+ * @return
+ */
+int read_from_http_body(Reader* r, uint8_t* target, size_t length) {
+    size_t read = 0;
+    wiced_http_message_body_t* body = (wiced_http_message_body_t*)r->state;
+    while (read<length)
+    {
+        int block = read_from_http_body_part(body, target, length-read);
+        if (block<0)
+            break;
+        target += block;
+        read += block;
+    }
+    return read;
+}
+
+void reader_from_http_body(Reader* r, wiced_http_message_body_t* body)
+{
+    if (body->total_message_data_remaining==0)
+    {
+        reader_from_buffer(r, (uint8_t*)body->data, body->message_data_length);
+    }
+    else
+    {
+        r->bytes_left = body->message_data_length + body->total_message_data_remaining;
+        r->callback = read_from_http_body;
+        r->state = body;
+    }
+}
 
 #if SOFTAP_HTTP
 extern "C" wiced_http_page_t soft_ap_http_pages[];
@@ -959,14 +1065,14 @@ public:
     static int32_t handle_command(const char* url, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
         Command* cmd = (Command*)arg;
         Reader r;
-        reader_from_buffer(&r, (uint8_t*)http_data->data, http_data->message_data_length);
-
+        reader_from_http_body(&r, http_data);
         wiced_http_response_stream_enable_chunked_transfer( stream );
         stream->cross_host_requests_enabled = WICED_TRUE;
         wiced_http_response_stream_write_header( stream, HTTP_200_TYPE, CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, MIME_TYPE_JSON );
         Writer w;
         http_stream_writer(w, stream);
         int result = cmd->execute(r, w);
+        cleanup_http_body(http_data);
         return result;
     }
 
