@@ -76,6 +76,7 @@
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
+#if !defined(SYSTEM_MINIMAL)
 static FLASH_Status EEPROM_Format(void);
 static uint16_t EEPROM_FindValidPage(uint8_t Operation);
 static uint16_t EEPROM_VerifyPageFullWriteVariable(uint16_t EepromAddress, uint16_t EepromData);
@@ -83,36 +84,49 @@ static uint16_t EEPROM_PageTransfer(uint16_t EepromAddress, uint16_t EepromData)
 static uint16_t EEPROM_Init(void);
 static uint16_t EEPROM_ReadVariable(uint16_t EepromAddress, uint16_t *EepromData);
 static uint16_t EEPROM_WriteVariable(uint16_t EepromAddress, uint16_t EepromData);
+#endif
 
 void HAL_EEPROM_Init(void)
 {
+#if !defined(SYSTEM_MINIMAL)
     EEPROM_Init();
+#endif
 }
 
 size_t HAL_EEPROM_Length()
 {
+#if !defined(SYSTEM_MINIMAL)
     return EEPROM_SIZE;
+#else
+    return 0;
+#endif
 }
 
 uint8_t HAL_EEPROM_Read(uint32_t address)
 {
+#if !defined(SYSTEM_MINIMAL)
     uint16_t data;
 
     if ((address < EEPROM_SIZE) && (EEPROM_ReadVariable(address, &data) == 0))
     {
         return data;
     }
-
+#endif
     return 0xFF;
 }
 
 void HAL_EEPROM_Write(uint32_t address, uint8_t data)
 {
+#if !defined(SYSTEM_MINIMAL)
     if (address < EEPROM_SIZE)
     {
         EEPROM_WriteVariable(address, data);
     }
+#endif
 }
+
+#if !defined(SYSTEM_MINIMAL)
+
 
 /**
  * @brief  Erases PAGE0 and PAGE1 and writes VALID_PAGE header to PAGE0
@@ -692,3 +706,5 @@ static uint16_t EEPROM_WriteVariable(uint16_t EepromAddress, uint16_t EepromData
     /* Return last operation status */
     return Status;
 }
+
+#endif

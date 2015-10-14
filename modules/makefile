@@ -28,6 +28,8 @@ $(info Enabling minimal build for update Zero)
 export MINIMAL=y
 export PRODUCT_FIRMWARE_VERSION=$(VERSION)
 export COMPILE_LTO=n
+export PLATFORM_THREADING=0
+export USE_PRINTF_FLOAT=n
 SUBDIR_GOALS = all APP=tinker
 else
 SUBDIR_GOALS := $(MAKECMDGOALS)

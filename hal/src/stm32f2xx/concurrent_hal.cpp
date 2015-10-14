@@ -21,6 +21,8 @@
  ******************************************************************************
  */
 
+#if !defined(SYSTEM_MINIMAL)
+
 #include "concurrent_hal.h"
 #include "static_assert.h"
 #include "delay_hal.h"
@@ -453,3 +455,5 @@ int os_timer_destroy(os_timer_t timer, void* reserved)
 {
     return xTimerDelete(timer, CONCURRENT_WAIT_FOREVER)!=pdPASS;
 }
+
+#endif
