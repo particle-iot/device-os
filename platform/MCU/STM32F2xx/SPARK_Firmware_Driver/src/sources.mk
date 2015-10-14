@@ -23,7 +23,7 @@ endif
 ifeq ("$(PLATFORM_ID)","8")
 CSRC += $(TARGET_SPARK_SRC_PATH)/spi_flash.c
 endif
-ifeq ("$(PLATFORM_ID)","11")
+ifeq ("$(PLATFORM_ID)","88")
 CSRC += $(TARGET_SPARK_SRC_PATH)/spi_flash.c
 endif
 

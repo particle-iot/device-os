@@ -24,7 +24,7 @@ endif
 ifeq ("$(PLATFORM_ID)","8")
 HAL_SERIAL_FLASH = 1
 endif
-ifeq ("$(PLATFORM_ID)","11")
+ifeq ("$(PLATFORM_ID)","88")
 HAL_SERIAL_FLASH = 1
 endif
 

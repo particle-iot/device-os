@@ -46,7 +46,7 @@ STM32_Pin_Info __PIN_MAP[TOTAL_PINS] =
  * timer_ccr (0 by default, store the CCR value for TIM interrupt use)
  * user_property (0 by default, user variable storage)
  */
-#if PLATFORM_ID == 11 // Duo
+#if PLATFORM_ID == 88 // Duo
 /* D0            - 00 */ { GPIOB, GPIO_Pin_7, GPIO_PinSource7, NONE, NONE, TIM4, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
 /* D1            - 01 */ { GPIOB, GPIO_Pin_6, GPIO_PinSource6, NONE, NONE, TIM4, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
 /* D2            - 02 */ { GPIOB, GPIO_Pin_5, GPIO_PinSource5, NONE, NONE, TIM3, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },

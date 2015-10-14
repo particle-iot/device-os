@@ -79,7 +79,7 @@
 #define Wiring_Wire3 1 /* System PMIC and Fuel Guage I2C3 */
 #endif
 
-#if PLATFORM_ID==11      // duo
+#if PLATFORM_ID==88      // duo
 #define Wiring_WiFi 1
 #define Wiring_IPv6 1
 #define Wiring_SPI1 1

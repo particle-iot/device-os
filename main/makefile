@@ -15,7 +15,7 @@ endif
 ifeq ($(PLATFORM_ID),8)
 MODULAR?=y
 endif
-ifeq ($(PLATFORM_ID),11)
+ifeq ($(PLATFORM_ID),88)
 MODULAR?=y
 endif
 
@@ -36,7 +36,7 @@ endif
 endif
 
 MAKE_DEPENDENCIES = modules/photon/user-part
-ifeq ($(PLATFORM_ID),11)
+ifeq ($(PLATFORM_ID),88)
 MAKE_DEPENDENCIES = modules/duo/user-part
 endif
 
