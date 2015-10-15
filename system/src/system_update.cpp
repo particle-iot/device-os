@@ -54,6 +54,44 @@ volatile uint8_t SPARK_CLOUD_CONNECTED;
 volatile uint8_t SPARK_FLASH_UPDATE;
 volatile uint32_t TimingFlashUpdateTimeout;
 
+static_assert(SYSTEM_FLAG_OTA_UPDATE_PENDING==0, "system flag value");
+static_assert(SYSTEM_FLAG_OTA_UPDATE_ENABLED==1, "system flag value");
+static_assert(SYSTEM_FLAG_RESET_PENDING==2, "system flag value");
+static_assert(SYSTEM_FLAG_RESET_ENABLED==3, "system flag value");
+static_assert(SYSTEM_FLAG_MAX==4, "system flag max value");
+
+volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
+    0, 1,   // OTA updates pending/enabled
+    0, 1,   // Reset pending/enabled
+};
+
+void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
+{
+}
+
+int system_set_flag(system_flag_t flag, uint8_t value, void*)
+{
+    if (flag>=SYSTEM_FLAG_MAX)
+        return -1;
+    if (systemFlags[flag]!=value) {
+        uint8_t oldValue = systemFlags[flag];
+        systemFlags[flag] = value;
+        system_flag_changed(flag, oldValue, value);
+    }
+    return 0;
+}
+
+
+int system_get_flag(system_flag_t flag, uint8_t* value, void*)
+{
+    if (flag>=SYSTEM_FLAG_MAX)
+        return -1;
+    if (value)
+        *value = systemFlags[flag];
+    return 0;
+}
+
+
 void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler)
 {
     Ymodem_Serial_Flash_Update_Handler = handler;
