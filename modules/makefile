@@ -21,6 +21,10 @@ $(call check_modular)
 
 projects = $(sort $(wildcard $(current_dir)/$(PLATFORM_DYNALIB_MODULES)/*))
 
+TARGET_BASE=$(BUILD_PATH)/update-zero-$(VERSION_STRING)-p$(PLATFORM_ID)
+UPDATE_ZERO=$(TARGET_BASE).bin
+MODULE=combined
+
 
 # when building update-zero, enable minimum build since there is insufficient space
 ifneq ("$(findstring update-zero,$(MAKECMDGOALS))","")
@@ -30,15 +34,19 @@ export PRODUCT_FIRMWARE_VERSION=$(VERSION)
 export COMPILE_LTO=n
 export PLATFORM_THREADING=0
 export USE_PRINTF_FLOAT=n
-SUBDIR_GOALS = all APP=tinker
+
+PLATFORM_DFU=0x8020000
+PLATFORM_DFU_LEAVE=1
+
+SUBDIR_GOALS = $(subst update-zero,all,$(MAKECMDGOALS))
+
+include $(COMMON_BUILD)/program-targets.mk
+
 else
 SUBDIR_GOALS := $(MAKECMDGOALS)
 endif
 
 MAKECMDGOALS := all
-
-$(info $(SUBDIR_GOALS))
-MODULE=combined
 
 # only consider projects containing a makefile
 makefiles = $(foreach module,$(projects),$(wildcard $(module)/makefile))
@@ -47,7 +55,6 @@ all: make_deps
 
 clean program-dfu stflash: $(makefiles)
 
-UPDATE_ZERO = $(BUILD_PATH)/update-zero-$(VERSION_STRING)-p$(PLATFORM_ID).bin
 MODULAR_DIR=.
 SYSTEM_PART1_BIN=$(COMMON_BUILD)/target/system-part1/platform-$(PLATFORM_ID)-m$(LTO)/system-part1.bin
 SYSTEM_PART2_BIN=$(COMMON_BUILD)/target/system-part2/platform-$(PLATFORM_ID)-m$(LTO)/system-part2.bin
@@ -55,9 +62,9 @@ SYSTEM_PART2_BIN=$(COMMON_BUILD)/target/system-part2/platform-$(PLATFORM_ID)-m$(
 dd_silent = 2>/dev/null
 
 # builds the minimal update zero image.
-update-zero: make_deps update-zero-build update-zero-validate
+update-zero: make_deps $(UPDATE_ZERO) update-zero-validate
 
-update-zero-build:
+$(UPDATE_ZERO):
 	$(call echo, Buliding Update Zero binary to $(UPDATE_ZERO))
 	$(VERBOSE)mkdir -p $(dir $(UPDATE_ZERO))
 	-$(VERBOSE)rm $(UPDATE_ZERO)
