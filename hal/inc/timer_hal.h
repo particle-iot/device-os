@@ -29,8 +29,17 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "system_tick_hal.h"
+#include "interrupts_hal.h"
 
 /* Exported types ------------------------------------------------------------*/
+typedef enum
+{
+    HAL_Timer2,
+    HAL_Timer3,
+    HAL_Timer4,
+    HAL_Timer5,
+    HAL_Timer7
+} HAL_Timer;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -45,6 +54,9 @@ extern "C" {
 
 system_tick_t HAL_Timer_Get_Micro_Seconds(void);
 system_tick_t HAL_Timer_Get_Milli_Seconds(void);
+
+void HAL_Timer_Start(HAL_Timer timer, uint32_t period, const HAL_InterruptCallback* callback);
+void HAL_Timer_Stop(HAL_Timer timer);
 
 #ifdef __cplusplus
 }
