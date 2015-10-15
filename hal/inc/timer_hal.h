@@ -46,6 +46,9 @@ extern "C" {
 system_tick_t HAL_Timer_Get_Micro_Seconds(void);
 system_tick_t HAL_Timer_Get_Milli_Seconds(void);
 
+#define HAL_Timer_Microseconds HAL_Timer_Get_Micro_Seconds
+#define HAL_Timer_Milliseconds HAL_Timer_Get_Milli_Seconds
+
 #ifdef __cplusplus
 }
 #endif
