@@ -276,7 +276,8 @@ uint32_t HAL_USART_Write_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmess
     
     // interrupts are off and data in queue;
 	if ((CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) == RESET)
-			&& canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail) {
+			&& (canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail)) 
+        {
 		// Get him busy
 		CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
 	}
@@ -287,26 +288,61 @@ uint32_t HAL_USART_Write_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmess
 	// wait for the interrupt handler to empty it a bit
 	//         no space so       or  Called Off Panic with interrupt off get the message out!
 	//         make space                     Enter Polled IO mode
-	//while (i == canMap[channel]->can_tx_buffer->tail || ((__get_PRIMASK() & 1) && canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail) ) {
+	while (i == canMap[channel]->can_tx_buffer->tail || ((__get_PRIMASK() & 1) && canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail) ) 
+        {
 		// Interrupts are on but they are not being serviced because this was called from a higher
 		// Priority interrupt
 
-		//if (CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) && CAN_GetFlagStatus(canMap[channel]->can_peripheral, USART_FLAG_TXE))
+		if (CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) && CAN_GetFlagStatus(canMap[channel]->can_peripheral, CAN_IT_TME))
 		{
-			// protect for good measure
-			//USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_TXE, DISABLE);
-			// Write out a byte
-			//USART_SendData(canMap[channel]->can_peripheral,  canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail++]);
-			//canMap[channel]->can_tx_buffer->tail %= CAN_BUFFER_SIZE;
-			// unprotect
-			//USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_TXE, ENABLE);
+                    // protect for good measure
+                    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, DISABLE);
+                    // Write out a byte
+                    CanTxMsg txmessage;
+                    if (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Ext)
+                    {
+                      txmessage.ExtId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x1FFFFFFFUL);
+                      txmessage.StdId = 0U;
+                      txmessage.IDE = CAN_Id_Extended;
+                    }
+                    else
+                    {
+                      txmessage.ExtId = 0UL;
+                      txmessage.StdId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x7FFUL);  
+                      txmessage.IDE = CAN_Id_Standard;
+                    }
+                    if (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].rtr)
+                    {
+                      txmessage.RTR = CAN_RTR_REMOTE;
+                    }
+                    else
+                    {
+                        txmessage.RTR = CAN_RTR_DATA;
+                    }
+                    txmessage.DLC = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Len;     
+                    txmessage.Data[0] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[0];
+                    txmessage.Data[1] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[1];
+                    txmessage.Data[2] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[2];
+                    txmessage.Data[3] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[3];
+                    txmessage.Data[4] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[4];
+                    txmessage.Data[5] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[5];
+                    txmessage.Data[6] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[6];
+                    txmessage.Data[7] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[7];
+
+                    if (CAN_TxStatus_NoMailBox != CAN_Transmit(canMap[channel]->can_peripheral, &txmessage))
+                    {
+                            canMap[channel]->can_tx_buffer->tail++;
+                            canMap[channel]->can_tx_buffer->tail %= CAN_BUFFER_SIZE;
+                    }
+                    // unprotect
+                    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
 		}
-	//}
+	}
 
 	memcpy((void *)&(canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->head]),(void *)pmessage, sizeof(CAN_Message_Struct));
 	canMap[channel]->can_tx_buffer->head = i;
 	canMap[channel]->can_transmitting = true;
-	//USART_ITConfig(canMap[channel]->can_peripheral, USART_IT_TXE, ENABLE);
+	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
 
 	return 1;
 }
@@ -362,14 +398,96 @@ bool HAL_CAN_Is_Enabled(HAL_CAN_Channel channel)
 
 static void HAL_CAN_Tx_Handler(HAL_CAN_Channel channel)
 {
+    uint8_t tx_mailbox = CAN_TxStatus_NoMailBox;
+    if(CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) != RESET)
+    {
+        // Loop to fill up the CAN Tx buffers
+        do
+        {
+            // Write byte to the transmit data register
+            if (canMap[channel]->can_tx_buffer->head == canMap[channel]->can_tx_buffer->tail)
+            {
+                    // Buffer empty, so disable the USART Transmit interrupt
+                    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, DISABLE);
+                    // drop out of the while loop
+                    tx_mailbox = CAN_TxStatus_NoMailBox;
+            }
+            else
+            {
+                CanTxMsg txmessage;
+                if (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Ext)
+                {
+                  txmessage.ExtId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x1FFFFFFFUL);
+                  txmessage.StdId = 0U;
+                  txmessage.IDE = CAN_Id_Extended;
+                }
+                else
+                {
+                  txmessage.ExtId = 0UL;
+                  txmessage.StdId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x7FFUL);  
+                  txmessage.IDE = CAN_Id_Standard;
+                }
+                if (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].rtr)
+                {
+                  txmessage.RTR = CAN_RTR_REMOTE;
+                }
+                else
+                {
+                    txmessage.RTR = CAN_RTR_DATA;
+                }
+                txmessage.DLC = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Len;     
+                txmessage.Data[0] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[0];
+                txmessage.Data[1] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[1];
+                txmessage.Data[2] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[2];
+                txmessage.Data[3] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[3];
+                txmessage.Data[4] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[4];
+                txmessage.Data[5] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[5];
+                txmessage.Data[6] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[6];
+                txmessage.Data[7] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[7];
+
+                tx_mailbox = CAN_Transmit(canMap[channel]->can_peripheral, &txmessage);
+                if (CAN_TxStatus_NoMailBox != tx_mailbox)
+                {
+                        canMap[channel]->can_tx_buffer->tail++;
+                        canMap[channel]->can_tx_buffer->tail %= CAN_BUFFER_SIZE;
+                }
+            }
+        }
+        while (CAN_TxStatus_NoMailBox != tx_mailbox);
+    }
+    CAN_ClearITPendingBit (canMap[channel]->can_peripheral, CAN_IT_TME);
 }
 
 static void HAL_CAN_Rx0_Handler(HAL_CAN_Channel channel)
 {
+    //if(CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_FMP0) != RESET)
+    //{
+    uint8_t i, NumPendingMessages;
+    CanRxMsg message;
+    
+    NumPendingMessages = CAN_MessagePending(canMap[channel]->can_peripheral, CAN_FIFO0);
+    
+    for (i = 0; i < NumPendingMessages; i++)
+    {
+        // Read message from the receive data register
+        CAN_Receive(canMap[channel]->can_peripheral, CAN_FIFO0, &message);
+        store_message(&message, canMap[channel]->can_rx_buffer);
+    }
 }
 
 static void HAL_CAN_Rx1_Handler(HAL_CAN_Channel channel)
 {
+    uint8_t i, NumPendingMessages;
+    CanRxMsg message;
+    
+    NumPendingMessages = CAN_MessagePending(canMap[channel]->can_peripheral, CAN_FIFO1);
+    
+    for (i = 0; i < NumPendingMessages; i++)
+    {
+        // Read message from the receive data register
+        CAN_Receive(canMap[channel]->can_peripheral, CAN_FIFO1, &message);
+        store_message(&message, canMap[channel]->can_rx_buffer);
+    }
 }
 //static void HAL_CAN_Handler(HAL_CAN_Channel channel)
 //{
@@ -434,7 +552,7 @@ static void HAL_CAN_Rx1_Handler(HAL_CAN_Channel channel)
 //	// if (USART_GetFlagStatus(canMap[channel]->can_peripheral, USART_FLAG_ORE) != RESET)
 //	// {
 //	// 	(void)USART_ReceiveData(canMap[channel]->can_peripheral);
-//	// 	USART_ClearITPendingBit (canMap[channel]->can_peripheral, USART_IT_ORE);
+//	// 	CAN_ClearITPendingBit (canMap[channel]->can_peripheral, USART_IT_ORE);
 //	// }
 //}
 
