@@ -59,6 +59,15 @@ void set_key_value(key_value* kv, const char* key, const char* value)
     strncpy(kv->value, value, sizeof(kv->value)-1);
 }
 
+
+
+void fixup_modules(hal_system_info_t* info, bool construct)  __attribute__((weak));
+
+void fixup_modules(hal_system_info_t* info, bool construct)
+{
+}
+
+
 void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
@@ -71,10 +80,12 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
             for (unsigned i=0; i<count; i++) {
                 fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
             }
+            fixup_modules(info, true);
         }
     }
     else
     {
+        fixup_modules(info, false);
         delete info->modules;
         info->modules = NULL;
     }

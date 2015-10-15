@@ -12,12 +12,12 @@
  * list of conditions and the following disclaimer in the documentation and/or
  * other materials provided with the distribution.
  *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
  * without specific prior written permission.
  *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
  * products and solely for the purpose of enabling the functionalities of such Broadcom products.
  *
  *
@@ -91,6 +91,8 @@ wiced_result_t wiced_dct_get_app_header_location( uint8_t app_id, image_location
 wiced_result_t wiced_dct_set_app_header_location( uint8_t app_id, image_location_t* app_header_location );
 wiced_result_t wiced_dct_restore_factory_reset  ( void );
 void*          wiced_dct_get_current_address    ( dct_section_t section );
+wiced_result_t wiced_erase_non_current_dct		(void);
+
 
 #ifdef __cplusplus
 } /*extern "C" */
