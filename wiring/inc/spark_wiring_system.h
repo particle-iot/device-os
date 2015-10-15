@@ -197,6 +197,12 @@ public:
         return get_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING)!=0;
     }
 
+    inline uint8_t updatesEnabled()
+    {
+        return get_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED)!=0;
+    }
+
+
     inline void enableReset()
     {
         set_flag(SYSTEM_FLAG_RESET_ENABLED, true);
@@ -205,6 +211,11 @@ public:
     inline void disableReset()
     {
         set_flag(SYSTEM_FLAG_RESET_ENABLED, false);
+    }
+
+    inline uint8_t resetEnabled()
+    {
+        return get_flag(SYSTEM_FLAG_RESET_ENABLED)!=0;
     }
 
     inline uint8_t resetPending()

@@ -314,6 +314,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     manage_ip_config();
 
     CLOUD_FN(manage_cloud_connection(force_events), (void)0);
+
+    system_shutdown_if_needed();
 }
 
 /*

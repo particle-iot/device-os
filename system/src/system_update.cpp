@@ -172,6 +172,12 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
 #endif
 }
 
+uint32_t timeRemaining(uint32_t start, uint32_t duration)
+{
+    uint32_t elapsed = HAL_Timer_Milliseconds()-start;
+    return (elapsed>=duration) ? 0 : duration-elapsed;
+}
+
 int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {
     if (file.store==FileTransfer::Store::FIRMWARE)
@@ -190,17 +196,47 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
         // only check address
     }
     else {
-        RGB.control(true);
-        RGB.color(RGB_COLOR_MAGENTA);
-        SPARK_FLASH_UPDATE = 1;
-        TimingFlashUpdateTimeout = 0;
-        system_notify_event(firmware_update, firmware_update_begin, &file);
-        HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
+        uint32_t start = HAL_Timer_Milliseconds();
+        system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 1, nullptr);
+        system_notify_event(firmware_update_pending);
+        if (waitFor(System.updatesEnabled, timeRemaining(start, 30000)))
+        {
+            system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
+            RGB.control(true);
+            RGB.color(RGB_COLOR_MAGENTA);
+            SPARK_FLASH_UPDATE = 1;
+            TimingFlashUpdateTimeout = 0;
+            system_notify_event(firmware_update, firmware_update_begin, &file);
+            HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
+        }
+        else
+            result = 1;     // updates disabled
     }
     return result;
 }
 
 void serial_dump(const char* msg, ...);
+
+
+void system_pending_shutdown()
+{
+    system_set_flag(SYSTEM_FLAG_RESET_PENDING, 1, nullptr);
+    system_notify_event(reset_pending);
+}
+
+void system_shutdown_if_enabled()
+{
+    if (System.resetPending() && System.resetEnabled())
+        System.reset();
+}
+
+void system_shutdown_if_needed()
+{
+    if (System.resetPending() && System.resetEnabled())
+    {
+        system_notify_event(reset, 0, nullptr, system_shutdown_if_enabled);
+    }
+}
 
 int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {
@@ -213,12 +249,13 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
         if (file.store==FileTransfer::Store::FIRMWARE)
         {
             hal_update_complete_t result = HAL_FLASH_End(NULL);
-
             system_notify_event(firmware_update, result!=HAL_UPDATE_ERROR ? firmware_update_complete : firmware_update_failed, &file);
 
-            // todo - talk with application and see if now is a good time to reset
-            // if update not applied, do we need to reset?
-            HAL_Core_System_Reset();
+
+            if (result==HAL_UPDATE_APPLIED_PENDING_RESTART)
+            {
+                system_pending_shutdown();
+            }
         }
     }
     else

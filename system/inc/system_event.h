@@ -47,9 +47,12 @@ enum SystemEvents {
     setup_all = wifi_listen,
     network_credentials = 1<<4,
     network_status = 1<<5,
-    cloud_status = 1<<6,             // parameter is 0 for disconnected, 1 for connecting, 2 for connecting (handshake), 3 for connecting (setup), 8 connected.. other values reserved.
+    //cloud_status = 1<<6,           // parameter is 0 for disconnected, 1 for connecting, 2 for connecting (handshake), 3 for connecting (setup), 8 connected.. other values reserved.
     button_status = 1<<7,            // parameter is >0 for time pressed in ms (when released) or 0 for just pressed.
     firmware_update = 1<<8,          // parameter is 0 for begin, 1 for OTA complete, -1 for error.
+    firmware_update_pending = 1<<9,
+    reset_pending = 1<<10,          // notifies that the system would like to shutdown (System.resetPending() return true)
+    reset = 1<<11,                  // notifies that the system will now reset on return from this event.
 
     all_events = 0x7FFFFFFF
 };
@@ -58,7 +61,7 @@ enum SystemEventsParam {
     //
     network_credentials_added = 1,
     network_credentials_cleared = 2,
-    firmware_update_failed = -1,
+    firmware_update_failed = (uint32_t)-1,
     firmware_update_begin = 0,
     firmware_update_complete = 1,
     firmware_update_progress = 2,
@@ -75,7 +78,7 @@ enum SystemEventsParam {
     network_status_disconnecting    = 5<<1 | 1,
 
     cloud_status_disconnected = 0,
-    cloud_status_conn
+    cloud_status_connected = 1,
 };
 
 
@@ -84,7 +87,7 @@ enum SystemEventsParam {
  * @param events    One or more system events. Multiple system events are specified using the + operator.
  * @param handler   The system handler function to call.
  * @param reserved  Set to NULL.
- * @return {@code 0} if the system event handlers were registered succesfully. Non-zero otherwise.
+ * @return {@code 0} if the system event handlers were registered successfully. Non-zero otherwise.
  */
 int system_subscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved);
 
@@ -101,9 +104,9 @@ void system_unsubscribe_event(system_event_t events, system_event_handler_t* han
 
 
 /**
- * Notifes all subscribers about an event.
+ * Notifies all subscribers about an event.
  * @param event
  * @param data
  * @param pointer
  */
-void system_notify_event(system_event_t event, uint32_t data=0, void* pointer=nullptr);
+void system_notify_event(system_event_t event, uint32_t data=0, void* pointer=nullptr, void (*fn)()=nullptr);
