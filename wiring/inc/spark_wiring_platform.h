@@ -11,18 +11,14 @@
 // components of the platform. (I.e. platform  defines comes from the HAL)
 
 
-#if PLATFORM_ID==0      // core
+#if PLATFORM_ID==0 || PLATFORM_ID==2     // core / core hd
 #define Wiring_WiFi 1
 #define Wiring_IPv6 0
+#define Wiring_Serial2 1
 #endif
 
 #if PLATFORM_ID==1      // unused
 #error Unkonwn platform ID
-#endif
-
-#if PLATFORM_ID==2      // core-hd
-#define Wiring_WiFi 1
-#define Wiring_IPv6 0
 #endif
 
 #if PLATFORM_ID==3      // gcc
@@ -41,24 +37,28 @@
 #define Wiring_WiFi 1
 #define Wiring_IPv6 1
 #define Wiring_SPI1 1
+#define Wiring_Serial2 1
 #endif
 
 #if PLATFORM_ID==6      // photon
 #define Wiring_WiFi 1
 #define Wiring_IPv6 1
 #define Wiring_SPI1 1
+#define Wiring_Serial2 1
 #endif
 
 #if PLATFORM_ID==7
 #define Wiring_WiFi 1
 #define Wiring_IPv6 1
 #define Wiring_SPI1 1
+#define Wiring_Serial2 1
 #endif
 
 #if PLATFORM_ID==8      // P1 / bm14
 #define Wiring_WiFi 1
 #define Wiring_IPv6 1
 #define Wiring_SPI1 1
+#define Wiring_Serial2 1
 #endif
 
 #if PLATFORM_ID==9      // ethernet
@@ -68,6 +68,10 @@
 
 #if PLATFORM_ID==10      // electron
 #define Wiring_Cellular 1
+#define Wiring_Serial2 1
+#define Wiring_Serial3 1
+#define Wiring_Serial4 1
+#define Wiring_Serial5 1
 #define Wiring_SPI1 1
 #define Wiring_SPI2 1
 
@@ -94,6 +98,23 @@
 #ifndef Wiring_Cellular
 #define Wiring_Cellular 0
 #endif
+
+#ifndef Wiring_Serial2
+#define Wiring_Serial2 0
+#endif
+
+#ifndef Wiring_Serial3
+#define Wiring_Serial3 0
+#endif
+
+#ifndef Wiring_Serial4
+#define Wiring_Serial4 0
+#endif
+
+#ifndef Wiring_Serial5
+#define Wiring_Serial5 0
+#endif
+
 
 #endif	/* SPARK_WIRING_PLATFORM_H */
 
