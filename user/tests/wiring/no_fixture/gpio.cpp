@@ -63,12 +63,12 @@ test(GPIO_NoDigitalWriteWhenPinModeIsNotSetToOutput) {
 }
 
 test(GPIO_NoDigitalWriteWhenPinSelectedIsOutOfRange) {
-    pin_t pin = 51;//pin under test (not a valid user pin)
+    pin_t pin = TOTAL_PINS+1;//pin under test (not a valid user pin)
     // when
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
     // then
-    assertNotEqual((PinState)HAL_GPIO_Read(pin), HIGH);
+    assertNotEqual((PinState)digitalRead(pin), HIGH);
     //To Do : Add test for remaining pins if required
 }
 
@@ -87,4 +87,58 @@ test(GPIO_DigitalWriteOnPinResultsInCorrectDigitalRead) {
     // then
     assertEqual(pinState, LOW);
     //To Do : Add test for remaining pins if required
+}
+
+test(GPIO_pulseIn_Measures1000usHIGHWithin5Percent) {
+    pin_t pin = D1; // pin under test
+    // when
+    pinMode(pin, OUTPUT);
+    analogWrite(pin, 128); // 50% Duty Cycle at 500Hz = 1000us HIGH, 1000us LOW.
+    uint32_t avgPulseHigh = 0;
+    for(int i=0;i<100;i++) {
+        avgPulseHigh += pulseIn(pin, HIGH);
+    }
+    avgPulseHigh /= 100;
+    analogWrite(pin, 0);
+    // then
+    // avgPulseHigh should equal 1000 +/- 5%
+    assertMoreOrEqual(avgPulseHigh, 950);
+    assertLessOrEqual(avgPulseHigh, 1050);
+}
+
+test(GPIO_pulseIn_Measures1000usLOWWithin5Percent) {
+    pin_t pin = D1; // pin under test
+    // when
+    pinMode(pin, OUTPUT);
+    analogWrite(pin, 128); // 50% Duty Cycle at 500Hz = 1000us HIGH, 1000us LOW.
+    uint32_t avgPulseLow = 0;
+    for(int i=0;i<100;i++) {
+        avgPulseLow += pulseIn(pin, LOW);
+    }
+    avgPulseLow /= 100;
+    analogWrite(pin, 0);
+    // then
+    // avgPulseHigh should equal 1000 +/- 5%
+    assertMoreOrEqual(avgPulseLow, 950);
+    assertLessOrEqual(avgPulseLow, 1050);
+}
+
+test(GPIO_pulseIn_TimesOutAfter3Seconds) {
+    pin_t pin = D1; // pin under test
+    // when
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, HIGH);
+    uint32_t startTime = millis();
+    // then
+    assertEqual(pulseIn(pin, LOW), 0);
+    // timeout should equal 3000 +/- 5%
+    assertMoreOrEqual(millis()-startTime, 2850);
+    assertLessOrEqual(millis()-startTime, 3150);
+    // when
+    startTime = millis();
+    // then
+    assertEqual(pulseIn(pin, HIGH), 0);
+    // timeout should equal 3000 +/- 5%
+    assertMoreOrEqual(millis()-startTime, 2850);
+    assertLessOrEqual(millis()-startTime, 3150);
 }

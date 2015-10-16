@@ -79,7 +79,7 @@ uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder);
 
 void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t timeout);
 
-
+uint32_t pulseIn(pin_t pin, uint16_t value);
 
 #ifdef __cplusplus
 }
