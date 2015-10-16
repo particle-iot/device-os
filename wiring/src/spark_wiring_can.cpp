@@ -87,11 +87,11 @@ bool CANChannel::isEnabled() {
 
 #ifndef SPARK_WIRING_NO_CAN
 // Preinstantiate Objects //////////////////////////////////////////////////////
-//static CAN_Ring_Buffer can_rx_buffer;
-//static CAN_Ring_Buffer can_tx_buffer;
+static CAN_Ring_Buffer can_rx_buffer;
+static CAN_Ring_Buffer can_tx_buffer;
 
 
-//CANChannel CANChannel1(HAL_CAN_Channel1, &can_rx_buffer, &can_tx_buffer);
+CANChannel Can1(HAL_CAN_Channel1, &can_rx_buffer, &can_tx_buffer);
 // optional Serial2 is instantiated from libraries/Serial2/Serial2.h
 #endif
 
