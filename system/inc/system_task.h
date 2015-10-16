@@ -76,6 +76,12 @@ void system_delay_ms(unsigned long ms, bool no_background_loop);
  */
 unsigned backoff_period(unsigned connection_attempts);
 
+/**
+ * This is for internal testing. Do not call this function since it is not
+ * guaranteed to be preserved or backwards compatible between releases.
+ */
+void* system_internal(int item, void* reserved);
+
 
 #ifdef __cplusplus
 }

@@ -42,18 +42,24 @@ void ActiveObjectBase::run()
 
     for (;;)
     {
-        Item item = nullptr;
-        if (take(item) && item)
-        {
-            Message& msg = *item;
-            msg();
-        }
-        else
+        if (!process())
         {
             configuration.background_task();
         }
     }
+}
 
+bool ActiveObjectBase::process()
+{
+    bool result = false;
+    Item item = nullptr;
+    if (take(item) && item)
+    {
+        Message& msg = *item;
+        msg();
+        result = true;
+    }
+    return result;
 }
 
 /*

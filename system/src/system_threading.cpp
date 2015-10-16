@@ -88,3 +88,15 @@ namespace std {
 }
 
 #endif
+
+
+void* system_internal(int item, void* reserved)
+{
+    switch (item) {
+#if PLATFORM_THREADING
+    case 0: return &ApplicationThread;
+    case 1: return &SystemThread;
+#endif
+    }
+    return nullptr;
+}
