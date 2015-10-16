@@ -782,20 +782,20 @@ void TIM1_TRG_COM_TIM11_irq(void)
     UNUSED(result);
 }
 
-void CAN2_TX_irq()
-{
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_TX_IRQ, NULL);
-}
-
-void CAN2_RX0_irq()
-{
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX0_IRQ, NULL);
-}
-
-void CAN2_RX1_irq()
-{
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX1_IRQ, NULL);
-}
+//void CAN2_TX_irq()
+//{
+//    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_TX_IRQ, NULL);
+//}
+//
+//void CAN2_RX0_irq()
+//{
+//    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX0_IRQ, NULL);
+//}
+//
+//void CAN2_RX1_irq()
+//{
+//    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX1_IRQ, NULL);
+//}
 
 void CAN2_SCE_irq()
 {
