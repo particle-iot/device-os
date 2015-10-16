@@ -91,7 +91,7 @@ STM32_CAN_Info CAN_MAP[TOTAL_CAN] =
 
 static CAN_InitTypeDef CAN_InitStructure;
 static CAN_FilterInitTypeDef CAN_FilterInitStructure;
-static STM32_CAN_Info *canMap[TOTAL_CAN]; // pointer to USART_MAP[] containing USART peripheral register locations (etc)
+static STM32_CAN_Info *canMap[TOTAL_CAN]; // pointer to CAN_MAP[] containing CAN peripheral register locations (etc)
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -152,10 +152,10 @@ void HAL_CAN_Begin(HAL_CAN_Channel channel, uint32_t baud)
 	HAL_Pin_Mode(canMap[channel]->can_rx_pin, AF_OUTPUT_PUSHPULL);
 	HAL_Pin_Mode(canMap[channel]->can_tx_pin, AF_OUTPUT_PUSHPULL);
 
-	// Enable USART Clock
+	// Enable CAN Clock
 	*canMap[channel]->can_apbReg |=  canMap[channel]->can_clock_en;
 
-	// Connect USART pins to AFx
+	// Connect CAN pins to AFx
 	STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 	GPIO_PinAFConfig(PIN_MAP[canMap[channel]->can_rx_pin].gpio_peripheral, canMap[channel]->can_rx_pinsource, canMap[channel]->can_af_map);
 	GPIO_PinAFConfig(PIN_MAP[canMap[channel]->can_tx_pin].gpio_peripheral, canMap[channel]->can_tx_pinsource, canMap[channel]->can_af_map);
@@ -209,7 +209,7 @@ void HAL_CAN_Begin(HAL_CAN_Channel channel, uint32_t baud)
         }
         
 
-	// Configure USART
+	// Configure CAN
 	CAN_Init(canMap[channel]->can_peripheral, &CAN_InitStructure);
         CAN_SlaveStartBank(1);
         CAN_FilterInitStructure.CAN_FilterNumber = 1;
@@ -231,7 +231,7 @@ void HAL_CAN_Begin(HAL_CAN_Channel channel, uint32_t baud)
 	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_FMP0, ENABLE);
 }
 
-void HAL_USART_End(HAL_CAN_Channel channel)
+void HAL_CAN_End(HAL_CAN_Channel channel)
 {
     // wait for transmission of outgoing data
     while (canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail);
@@ -271,7 +271,7 @@ void HAL_USART_End(HAL_CAN_Channel channel)
     canMap[channel]->can_transmitting = false;
 }
 
-uint32_t HAL_USART_Write_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmessage)
+uint32_t HAL_CAN_Write_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmessage)
 {
     
     // interrupts are off and data in queue;
@@ -383,10 +383,10 @@ int32_t HAL_CAN_Peek_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmessage)
 
 void HAL_CAN_Flush_Data(HAL_CAN_Channel channel)
 {
-//TODO // Loop until USART DR register is empty
+//TODO // Loop until CAN DR register is empty
 	//while ( canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail );
 	// Loop until last frame transmission complete
-	//while (canMap[channel]->can_transmitting && (USART_GetFlagStatus(canMap[channel]->can_peripheral, USART_FLAG_TC) == RESET));
+	//while (canMap[channel]->can_transmitting && (CAN_GetFlagStatus(canMap[channel]->can_peripheral, CAN_FLAG_TC) == RESET));
 	//canMap[channel]->can_transmitting = false;
 }
 
@@ -407,7 +407,7 @@ static void HAL_CAN_Tx_Handler(HAL_CAN_Channel channel)
             // Write byte to the transmit data register
             if (canMap[channel]->can_tx_buffer->head == canMap[channel]->can_tx_buffer->tail)
             {
-                    // Buffer empty, so disable the USART Transmit interrupt
+                    // Buffer empty, so disable the CAN Transmit interrupt
                     CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, DISABLE);
                     // drop out of the while loop
                     tx_mailbox = CAN_TxStatus_NoMailBox;
@@ -504,7 +504,7 @@ static void HAL_CAN_Rx1_Handler(HAL_CAN_Channel channel)
 //		// Write byte to the transmit data register
 //		if (canMap[channel]->can_tx_buffer->head == canMap[channel]->can_tx_buffer->tail)
 //		{
-//			// Buffer empty, so disable the USART Transmit interrupt
+//			// Buffer empty, so disable the CAN Transmit interrupt
 //			//CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, DISABLE);
 //		}
 //		else
@@ -549,10 +549,10 @@ static void HAL_CAN_Rx1_Handler(HAL_CAN_Channel channel)
 //	}
 //
 //	// // If Overrun occurs, clear the OVR condition
-//	// if (USART_GetFlagStatus(canMap[channel]->can_peripheral, USART_FLAG_ORE) != RESET)
+//	// if (CAN_GetFlagStatus(canMap[channel]->can_peripheral, CAN_FLAG_ORE) != RESET)
 //	// {
-//	// 	(void)USART_ReceiveData(canMap[channel]->can_peripheral);
-//	// 	CAN_ClearITPendingBit (canMap[channel]->can_peripheral, USART_IT_ORE);
+//	// 	(void)CAN_ReceiveData(canMap[channel]->can_peripheral);
+//	// 	CAN_ClearITPendingBit (canMap[channel]->can_peripheral, CAN_IT_ORE);
 //	// }
 //}
 
