@@ -30,7 +30,7 @@
 #include "spark_wiring_stream.h"
 #include "can_hal.h"
 
-class CANChannel : public Stream
+class CANChannel
 {
 private:
   HAL_CAN_Channel _channel;
@@ -53,7 +53,7 @@ public:
 };
 
 #ifndef SPARK_WIRING_NO_CAN
-//extern CANChannel CANChannel1;
+extern CANChannel Can1;
 #endif
 
 #endif
