@@ -23,5 +23,31 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "system_threading.h"
 
 UNIT_TEST_APP();
+SYSTEM_THREAD(ENABLED);
+
+int test_val;
+void increment(void)
+{
+	test_val++;
+}
+
+test(application_thread_can_pump_events)
+{
+	test_val = 0;
+
+	ActiveObjectBase* app = (ActiveObjectBase*)system_internal(0, nullptr);
+	std::function<void(void)> fn = increment;
+	app->invoke_async(fn);
+
+	// test value not incremented
+	assertEqual(test_val, 0);
+
+    Particle.process();
+
+    // validate the function was called.
+    assertEqual(test_val, 1);
+
+}
