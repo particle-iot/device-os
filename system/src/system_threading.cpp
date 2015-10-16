@@ -14,7 +14,17 @@ void system_thread_idle()
 
 ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idle, 100, 1024*3));
 
+/**
+ * Implementation to support gthread's concurrency primitives.
+ */
 namespace std {
+
+#if 0
+	/**
+	 * Imlementation of conditional varaible in terms of the HAL. This has
+	 * a potential race condition due to the placement of the critical section,
+	 * so has been commented out. https://github.com/spark/firmware/pull/614#discussion-diff-39882530
+	 */
     condition_variable::~condition_variable()
     {
         os_condition_variable_destroy(_M_cond);
@@ -39,6 +49,7 @@ namespace std {
     {
         os_condition_variable_notify_all(_M_cond);
     }
+#endif
 
     mutex& __get_once_mutex() {
         static mutex __once;
