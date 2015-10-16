@@ -8,7 +8,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 typedef class Stream Stream;
 #include <stdint.h>
 
@@ -45,7 +45,7 @@ bool system_fileTransfer(system_file_transfer_t* transfer, void* reserved=NULL);
 void system_lineCodingBitRateHandler(uint32_t bitrate);
 
 bool system_module_info(appender_fn appender, void* append_data, void* reserved=NULL);
-bool system_version_info(Appender* appender);
+bool append_system_version_info(Appender* appender);
 
 /**
  *

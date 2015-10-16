@@ -15,6 +15,7 @@ SRC_ROOT=../../../
 
 # location of this folder relative to the root
 SRC_PATH=user/tests/unit/
+COMMUNICATION=communication/
 WIRING=wiring/
 SYSTEM=system/
 HAL=hal/
@@ -22,6 +23,8 @@ WIRING_SRC=$(WIRING)src/
 
 TARGETDIR=obj/
 TARGET=runner
+
+include $(SRC_ROOT)/build/version.mk
 
 BUILD_PATH=$(TARGETDIR)core-firmware/
 # Define the target directories. Nest 2 levels deep since we also include
@@ -42,7 +45,7 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_ipaddress.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_print.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
-
+CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
 $(info $(CPPSRC))
 
 # Paths to dependent projects, referenced from root of this project
@@ -59,9 +62,11 @@ INCLUDE_DIRS += $(WIRING)inc
 INCLUDE_DIRS += $(SYSTEM)inc
 INCLUDE_DIRS += $(HAL)shared
 INCLUDE_DIRS += $(HAL)inc
+INCLUDE_DIRS += $(COMMUNICATION)src
+INCLUDE_DIRS += dynalib/inc
 
 CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
-CFLAGS += -ffunction-sections -Wall
+CFLAGS += -ffunction-sections -fdata-sections -Wall
 
 # Flag compiler error for [-Wdeprecated-declarations]
 CFLAGS += -Werror=deprecated-declarations
@@ -80,7 +85,6 @@ ALLOBJ += $(addprefix $(BUILD_PATH), $(CPPSRC:.cpp=.o))
 
 ALLDEPS += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH), $(CPPSRC:.cpp=.o.d))
-
 
 all: runner
 

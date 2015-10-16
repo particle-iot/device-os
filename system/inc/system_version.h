@@ -18,6 +18,8 @@
 #ifndef VERSION_H
 #define	VERSION_H
 
+#include <stdint.h>
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -44,6 +46,18 @@ extern "C" {
 #define SYSTEM_VERSION_045
 #define SYSTEM_VERSION_046
 
+typedef struct __attribute__((packed)) SystemVersionInfo
+{
+    uint16_t size = sizeof(SystemVersionInfo);
+    uint16_t reserved;      // use this if you need to.
+    uint32_t versionNumber;
+    char     versionString[20];
+
+
+
+} SystemVersionInfo;
+
+int system_version_info(SystemVersionInfo* target, void* reserved);
 
 #ifdef	__cplusplus
 }
