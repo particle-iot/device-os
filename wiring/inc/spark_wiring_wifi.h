@@ -87,6 +87,15 @@ public:
         return IPAddress(wifi_config()->nw.aucDefaultGateway);
     }
 
+    IPAddress dnsServerIP() {
+    	return IPAddress(wifi_config()->nw.aucDNSServer);
+    }
+
+    IPAddress dhcpServerIP() {
+    	return IPAddress(wifi_config()->nw.aucDHCPServer);
+    }
+
+
     const char *SSID() {
         return (const char *) wifi_config()->uaSSID;
     }
