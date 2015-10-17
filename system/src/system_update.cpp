@@ -355,7 +355,7 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
     return result;
 }
 
-bool system_version_info(Appender* appender)
+bool append_system_version_info(Appender* appender)
 {
     bool result = appender->append("system firmware version: " stringify(SYSTEM_VERSION_STRING)
 #if  defined(SYSTEM_MINIMAL)

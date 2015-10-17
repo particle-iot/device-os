@@ -1,5 +1,6 @@
 /**
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+ ******************************************************************************
+  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -13,26 +14,40 @@
 
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
-  ******************************************************************************
+ ******************************************************************************
  */
 
-#ifndef SYSTEM_USER_H
-#define	SYSTEM_USER_H
+#ifndef HAL_PLATFORM_H
+#define	HAL_PLATFORM_H
 
-#ifdef __cplusplus
+#ifdef	__cplusplus
 extern "C" {
 #endif
 
-void setup();
-void loop();
 
-void serialEventRun();
 
-void system_initialize_user_backup_ram();
+#if PLATFORM_ID<9
+    #define HAL_PLATFORM_WIFI 1
+#endif
 
-#ifdef __cplusplus
+#if PLATFORM_ID==10
+#define HAL_PLATFORM_CELLULAR 1
+#endif
+
+
+#ifndef HAL_PLATFORM_WIFI
+#define HAL_PLATFORM_WIFI 0
+#endif
+
+#ifndef HAL_PLATFORM_CELLULAR
+#define HAL_PLATFORM_CELLULAR 0
+#endif
+
+
+
+#ifdef	__cplusplus
 }
 #endif
 
-#endif	/* SYSTEM_USER_H */
+#endif	/* HAL_PLATFORM_H */
 

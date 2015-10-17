@@ -141,6 +141,8 @@ void spark_disconnect(void)
     SPARK_CLOUD_CONNECT = 0;
 }
 
+#endif
+
 void spark_process(void)
 {
     if (!SYSTEM_THREAD_CURRENT())
@@ -149,8 +151,6 @@ void spark_process(void)
     // run the background processing loop, and specifically also pump cloud events
     Spark_Idle_Events(true);
 }
-
-#endif
 
 String spark_deviceID(void)
 {

@@ -22,6 +22,9 @@
 
 #include "system_task.h"
 #include <algorithm>
+#include "system_version.h"
+#include "static_assert.h"
+#include "spark_macros.h"
 
 using std::min;
 
@@ -38,3 +41,17 @@ unsigned backoff_period(unsigned connection_attempts)
     return 1000*(1<<exponent);
 }
 
+STATIC_ASSERT(system_version_info_size, sizeof(SystemVersionInfo)==28);
+
+int system_version_info(SystemVersionInfo* info, void* /*reserved*/)
+{
+    if (info)
+    {
+        if (info->size>=28)
+        {
+            info->versionNumber = SYSTEM_VERSION;
+            strncpy(info->versionString, stringify(SYSTEM_VERSION_STRING), sizeof(info->versionString));
+        }
+    }
+    return sizeof(SystemVersionInfo);
+}

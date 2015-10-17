@@ -205,7 +205,6 @@ void manage_safe_mode()
     }
 }
 
-
 void app_loop(bool threaded)
 {
     DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
@@ -231,6 +230,9 @@ void app_loop(bool threaded)
             if (system_mode()!=SAFE_MODE) {
                 loop();
                 DECLARE_SYS_HEALTH(RAN_Loop);
+#if !MODULAR_FIRMWARE
+                serialEventRun();
+#endif
             }
         }
     }

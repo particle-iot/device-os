@@ -22,6 +22,9 @@
  */
 
 #include "system_task.h"
+#include "system_version.h"
+#include "spark_macros.h"
+#include "spark_wiring_system.h"
 #undef WARN
 #undef INFO
 
@@ -50,3 +53,27 @@ SCENARIO("Backoff period should increase exponentially from 1s to 128s", "[syste
     }
 }
 
+SCENARIO("System version info is retrieved", "[system,version]") {
+
+    SystemVersionInfo info;
+
+    int size = system_version_info(&info, nullptr);
+    REQUIRE(size==sizeof(info));
+
+    REQUIRE(info.versionNumber==SYSTEM_VERSION);
+
+    char expected[20];
+    sprintf(expected, "%d.%d.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1));
+    REQUIRE(strcmp(expected,info.versionString)==0);
+
+    REQUIRE(System.versionNumber()==info.versionNumber);
+
+    REQUIRE(System.version()==info.versionString);
+}
+
+// these symbols needed for successful link
+
+volatile uint8_t SPARK_CLOUD_CONNECT;
+volatile uint8_t SPARK_WLAN_SLEEP;
+
+SystemClass System;

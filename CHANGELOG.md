@@ -1,5 +1,13 @@
 ## v0.4.7
 
+## v0.4.7
+
+### FEATURES
+ - [photon] Software Timers
+ - [pulseIn(pin, value)](https://docs.particle.io/reference/firmware/photon/#pulsein-) now available for all devices.
+ - `WiFi.dnsServerIP()` and `WiFi.dhcpServerIP()`
+
+
 ### BUGFIXES
 
  - `String.toLower()` has no affect on string. [#665](https://github.com/spark/firmware/issues/665)
@@ -8,6 +16,8 @@
     can safely use all public APIs.
  - Esure bootloader region is write protected.
  - White breathing LED on exiting listening mode. [#682](https://github.com/spark/firmware/issues/682)
+ - WICED not resolving DNS names with 4 parts (it was trying to decode as an IP address.)
+
 
 ## v0.4.6
 
