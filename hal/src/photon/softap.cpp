@@ -953,16 +953,16 @@ int read_from_http_body_part(wiced_http_message_body_t* body, uint8_t* target, s
         uint32_t offset =0;
         uint8_t* data;
 
-        if (length>available_data_length)
-            length = available_data_length;
-        else
-            available_data_length = length;
-
         do
         {
             result = wiced_packet_get_data(packet, offset, &data, &packet_length, &available_data_length);
             if (result)
                 return -1;
+
+            if (length>available_data_length)
+                length = available_data_length;
+            else
+                available_data_length = length;
 
             uint32_t tocopy = std::min(length, size_t(packet_length));
             memcpy(target, data, tocopy);
