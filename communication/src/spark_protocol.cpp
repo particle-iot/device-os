@@ -920,6 +920,8 @@ int SparkProtocol::queue_bytes_available()
     return unoccupied;
 }
 
+#if 0
+// these methods are unused
 int SparkProtocol::queue_push(const char *src, int length)
 {
   int available = queue_bytes_available();
@@ -996,6 +998,7 @@ int SparkProtocol::queue_pop(char *dst, int length)
     return tail_filled + head_count;
   }
 }
+#endif
 
 ProtocolState::Enum SparkProtocol::state()
 {
