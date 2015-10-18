@@ -5,12 +5,12 @@ install:
   # - npm install -g particle-cli
   - './ci/install_arm_gcc.sh && ./ci/install_gcc.sh'
   # - ./ci/create_spark_cli_json.sh
-  - sudo apt-get update -qq
-  - sudo apt-get install libboost1.59-dev
+  - source ./ci/install_boost.sh
 
 script:
   - ./ci/unit_tests.sh
   # - 'if [ "${UNIT_TEST}" = "y" ]; then ./ci/unit_tests.sh; else cd $DIR && make -s clean all DEBUG_BUILD=$DEBUG_BUILD PLATFORM=$PLATFORM COMPILE_LTO=$COMPILE_LTO TEST=$TEST SPARK_CLOUD=$SPARK_CLOUD APP=$APP; fi'
+  - ./ci/build_boost.sh
   - ./ci/enumerate_build_matrix.sh
   # TODO - ./ci/integration_tests.sh
   # TODO  - ./ci/test_memory_available_with_real_core.sh
