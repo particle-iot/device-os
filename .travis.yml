@@ -1,10 +1,13 @@
 language: cpp 
+compiler: gcc
 before_install:
   - sudo apt-get update
 install:
-  - npm install -g particle-cli
+  # - npm install -g particle-cli
   - './ci/install_arm_gcc.sh && ./ci/install_gcc.sh'
   # - ./ci/create_spark_cli_json.sh
+  - sudo apt-get update -qq
+  - sudo apt-get install libboost-dev libboost-system-dev libboost-asio-dev
 
 script:
   - ./ci/unit_tests.sh
