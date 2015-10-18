@@ -101,14 +101,14 @@ const uint8_t CoAPFixture::signed_encrypted_credentials[385] =
   "\xCE\x1D\xAD\xC2\x18\xEB\x07\x27\xC5\x1C\xC3\x38\xC3\xE6\xB7\xAD"
   "\xBB\x85\xAC\xE2\xAB\xDA\x30\xBF\x02\xC6\x34\xC7\x99\x1E\x7F\x83";
 
-int mock_send(const unsigned char *buf, int buflen)
+int mock_send(const unsigned char *buf, uint32_t buflen)
 {
   unsigned const char *prevent_warnings = buf;
   prevent_warnings += buflen;
   return 0;
 }
 
-int mock_receive(unsigned char *buf, int buflen)
+int mock_receive(unsigned char *buf, uint32_t buflen)
 {
   unsigned char *prevent_warnings = buf;
   prevent_warnings += buflen;
@@ -121,10 +121,10 @@ system_tick_t mock_millis(void)
   return ++tick;
 }
 
-int mock_call_function(const char *function_key, const char *arg)
+int mock_call_function(const char *, const char *, SparkDescriptor::FunctionResultCallback callback, void *)
 {
-  const char *prevent_warnings = function_key;
-  prevent_warnings = arg;
+  int result = 0;
+  callback(&result, SparkReturnType::INT);
   return 0;
 }
 
@@ -168,9 +168,7 @@ void CoAPFixture::init()
   SparkDescriptor descriptor;
   descriptor.call_function = mock_call_function;
   descriptor.num_functions = mock_num_functions;
-  descriptor.copy_function_key = mock_copy_function_key;
   descriptor.num_variables = mock_num_variables;
-  descriptor.copy_variable_key = mock_copy_variable_key;
   descriptor.variable_type = mock_variable_type;
 
   spark_protocol.init(id, keys, callbacks, descriptor);
@@ -499,7 +497,7 @@ SUITE(CoAP)
     unsigned char buf[48];
     memset(buf, 0, 48);
     init();
-    spark_protocol.description(buf, 0x66, 0xf6, 0x49);
+    spark_protocol.description(buf, 0x66, 0xf6, 0x49, SparkProtocol::DESCRIBE_APPLICATION);
     CHECK_ARRAY_EQUAL(expected, buf, 48);
   }
 

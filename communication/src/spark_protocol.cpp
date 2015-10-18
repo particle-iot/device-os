@@ -796,6 +796,11 @@ void SparkProtocol::chunk_missed(unsigned char *buf, unsigned short chunk_index)
   encrypt(buf, 16);
 }
 
+void SparkProtocol::update_ready(unsigned char *buf, unsigned char token)
+{
+    separate_response_with_payload(buf, token, 0x44, NULL, 0);
+}
+
 void SparkProtocol::update_ready(unsigned char *buf, unsigned char token, uint8_t flags)
 {
     separate_response_with_payload(buf, token, 0x44, &flags, 1);
@@ -1270,7 +1275,7 @@ bool SparkProtocol::handle_update_done(msg& message)
     return true;
 }
 
-bool SparkProtocol::function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token)
+bool SparkProtocol::function_result(const void* result, SparkReturnType::Enum, uint8_t token)
 {
     // send return value
     queue[0] = 0;

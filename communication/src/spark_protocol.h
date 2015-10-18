@@ -119,6 +119,10 @@ class SparkProtocol
                        const void *return_value, int length);
     bool send_event(const char *event_name, const char *data,
                     int ttl, EventType::Enum event_type);
+
+    bool add_event_handler(const char *event_name, EventHandler handler) {
+        return add_event_handler(event_name, handler, NULL, SubscriptionScope::FIREHOSE, NULL);
+    }
     bool add_event_handler(const char *event_name, EventHandler handler,
                         void *handler_data, SubscriptionScope::Enum scope,
                         const char* device_id);
@@ -133,6 +137,7 @@ class SparkProtocol
     void chunk_received(unsigned char *buf, unsigned char token,
                         ChunkReceivedCode::Enum code);
     void chunk_missed(unsigned char *buf, unsigned short chunk_index);
+    void update_ready(unsigned char *buf, unsigned char token);
     void update_ready(unsigned char *buf, unsigned char token, uint8_t flags);
 
     enum DescriptionType {
