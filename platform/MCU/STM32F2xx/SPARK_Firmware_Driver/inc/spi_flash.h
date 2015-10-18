@@ -40,6 +40,7 @@ void sFLASH_EraseBulk(void);
 void sFLASH_WriteBuffer(const uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
 void sFLASH_ReadBuffer(uint8_t *pBuffer, uint32_t ReadAddr, uint32_t NumByteToRead);
 uint32_t sFLASH_ReadID(void);
+uint32_t sFLASH_Compute_CRC32(uint32_t startAddress, uint32_t length);
 
 /* Flash Self Test Routine */
 int sFLASH_SelfTest(void);

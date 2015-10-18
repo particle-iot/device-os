@@ -508,3 +508,51 @@ int sFLASH_SelfTest(void)
 
     return TestStatus;
 }
+
+uint32_t sFLASH_Compute_CRC32(uint32_t startAddress, uint32_t length)
+{
+    /* Hardware CRC32 calculation */
+    uint32_t i, j;
+    uint32_t Data;
+    uint8_t serialFlashData[4];
+    uint8_t *pBuffer = serialFlashData;
+
+    CRC_ResetDR();
+
+    i = length >> 2;
+
+    while (i--)
+    {
+    	sFLASH_ReadBuffer(serialFlashData, startAddress, 4);
+        Data = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
+        startAddress += 4;
+
+        Data = __RBIT(Data);//reverse the bit order of input Data
+        CRC->DR = Data;
+    }
+
+    Data = CRC->DR;
+    Data = __RBIT(Data);//reverse the bit order of output Data
+
+    sFLASH_ReadBuffer(serialFlashData, startAddress, 4);
+
+    i = length & 3;
+
+	while (i--)
+	{
+		Data ^= (uint32_t)*pBuffer++;
+
+		for (j = 0 ; j < 8 ; j++)
+		{
+			if (Data & 1)
+				Data = (Data >> 1) ^ 0xEDB88320;
+			else
+				Data >>= 1;
+		}
+	}
+
+    Data ^= 0xFFFFFFFF;
+
+    return Data;
+}
+

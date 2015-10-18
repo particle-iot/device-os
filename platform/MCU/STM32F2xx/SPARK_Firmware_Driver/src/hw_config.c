@@ -656,12 +656,13 @@ bool FACTORY_Flash_Reset(void)
 {
     bool success;
 #ifdef USE_SERIAL_FLASH
+#ifdef FLASH_UPDATE_MODULES
+    // Restore the Factory firmware using flash_modules application dct info
+    success = FLASH_RestoreFromFactoryResetModuleSlot();
+#else
     // Restore the Factory programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-	success = 0;
-#else
-    success = 1;
+	success = 1;
 #endif
 #else
     // Restore the Factory firmware using flash_modules application dct info
@@ -686,6 +687,9 @@ bool FACTORY_Flash_Reset(void)
 void BACKUP_Flash_Reset(void)
 {
 #ifdef USE_SERIAL_FLASH
+#ifdef FLASH_UPDATE_MODULES
+	// Modular firmware perform CRC check before copying memory, so backup image isn't necessary.
+#else
     //Restore the Backup programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
 
@@ -693,6 +697,7 @@ void BACKUP_Flash_Reset(void)
     system_flags.dfu_on_no_firmware = 0;
 
     Finish_Update();
+#endif
 #else
 
     //Not supported since there is no Backup copy of the firmware in Internal Flash
@@ -705,6 +710,9 @@ void OTA_Flash_Reset(void)
     // if that fails, abort the copy and leave the existing user firmware as is.
 
 #ifdef USE_SERIAL_FLASH
+#ifdef FLASH_UPDATE_MODULES
+	//FLASH_UpdateModules() does the job of copying the split firmware modules
+#else
 /*
     First take backup of the current application firmware to External Flash
     Commented for BM-14 since there's not much external flash space.
@@ -732,6 +740,7 @@ void OTA_Flash_Reset(void)
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0001;
 
     Finish_Update();
+#endif
 #else
     //FLASH_UpdateModules() does the job of copying the split firmware modules
 #endif

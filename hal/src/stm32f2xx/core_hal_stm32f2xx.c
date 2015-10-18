@@ -240,6 +240,11 @@ void HAL_Core_Config(void)
 #ifdef HAS_SERIAL_FLASH
     //Initialize Serial Flash
     sFLASH_Init();
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    FLASH_AddToFactoryResetModuleSlot(FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS,
+                                          FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
+                                          FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS);
+#endif
 #else
     FLASH_AddToFactoryResetModuleSlot(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS,
                                       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
@@ -284,7 +289,11 @@ bool HAL_Core_Validate_User_Module(void)
                                          FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
                     && HAL_Verify_User_Dependencies();
         }
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        else if(FLASH_isUserModuleInfoValid(FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+#else
         else if(FLASH_isUserModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+#endif
         {
             //Reset and let bootloader perform the user module factory reset
             //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()

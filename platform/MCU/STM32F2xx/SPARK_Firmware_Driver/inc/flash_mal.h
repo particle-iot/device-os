@@ -76,16 +76,16 @@ extern "C" {
     #define INTERNAL_FLASH_OTA_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE)
     #define INTERNAL_FLASH_FAC_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE+FIRMWARE_IMAGE_SIZE)
 	
-	#ifdef USE_SERIAL_FLASH
-	/* External Flash memory address where Factory programmed core firmware is located */
-	#define EXTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)0x0000)
-	/* External Flash memory address where core firmware will be saved for backup/restore */
-	#define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_FAC_ADDRESS+FIRMWARE_IMAGE_SIZE))
-	/* External Flash memory address where OTA upgraded core firmware will be saved */
-	#define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_BKP_ADDRESS+FIRMWARE_IMAGE_SIZE))
-	/* External Flash memory address where wifi firmware will be saved */
-	#define EXTERNAL_FLASH_WIFI_FIRMWARE_ADDRESS  ((uint32_t)0x100000)
+#ifdef USE_SERIAL_FLASH
+	#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+		#undef INTERNAL_FLASH_FAC_ADDRESS
+		#undef INTERNAL_FLASH_OTA_ADDRESS
+
+		#define EXTERNAL_FLASH_OTA_ADDRESS  			((uint32_t)0x100000)
+		#define EXTERNAL_FLASH_FAC_ADDRESS  			((uint32_t)(EXTERNAL_FLASH_OTA_ADDRESS+FIRMWARE_IMAGE_SIZE))
+		#define EXTERNAL_FLASH_WIFI_FIRMWARE_ADDRESS  	((uint32_t)(EXTERNAL_FLASH_FAC_ADDRESS+FIRMWARE_IMAGE_SIZE))
 	#endif
+#endif
 
 #else
     #define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_MONO_FIRMWARE
