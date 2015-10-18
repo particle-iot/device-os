@@ -31,6 +31,8 @@
 #include "service_debug.h"
 #include "messages.h"
 
+using namespace spark::protocol;
+
 #ifndef PRODUCT_ID
 #define PRODUCT_ID (0xffff)
 #endif
@@ -310,25 +312,8 @@ void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
 {
   unsigned short message_id = next_message_id();
 
-  buf[0] = 0x50; // non-confirmable, no token
-  buf[1] = 0x02; // POST
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
-  buf[4] = 0xb1; // Uri-Path option of length 1
-  buf[5] = 'h';
-  buf[6] = 0xff; // payload marker
-  buf[7] = product_id >> 8;
-  buf[8] = product_id & 0xff;
-  buf[9] = product_firmware_version >> 8;
-  buf[10] = product_firmware_version & 0xff;
-  buf[11] = 0; // reserved flags
-  buf[12] = newly_upgraded ? 1 : 0;
-  buf[13] = PLATFORM_ID >> 8;
-  buf[14] = PLATFORM_ID & 0xFF;
-
-  memset(buf + 15, 1, 1); // PKCS #7 padding
-
-  encrypt(buf, 16);
+  size_t len = Messages::hello(buf, message_id, newly_upgraded, PLATFORM_ID, product_id, product_firmware_version);
+  wrap(buf, len);
 }
 
 void SparkProtocol::notify_update_done(uint8_t* buf)

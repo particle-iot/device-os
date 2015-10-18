@@ -85,6 +85,26 @@ public:
 		}
 		return CoAPMessageType::ERROR;
 	}
-};;
+
+	static size_t hello(uint8_t* buf, uint16_t message_id, uint8_t flags, uint16_t platform_id, uint16_t product_id, uint16_t product_firmware_version)
+	{
+		  buf[0] = 0x50; // non-confirmable, no token
+		  buf[1] = 0x02; // POST
+		  buf[2] = message_id >> 8;
+		  buf[3] = message_id & 0xff;
+		  buf[4] = 0xb1; // Uri-Path option of length 1
+		  buf[5] = 'h';
+		  buf[6] = 0xff; // payload marker
+		  buf[7] = product_id >> 8;
+		  buf[8] = product_id & 0xff;
+		  buf[9] = product_firmware_version >> 8;
+		  buf[10] = product_firmware_version & 0xff;
+		  buf[11] = 0; // reserved flags
+		  buf[12] = flags;
+		  buf[13] = platform_id >> 8;
+		  buf[14] = platform_id & 0xFF;
+		  return 15;
+	}
+};
 
 }}
