@@ -29,6 +29,7 @@
 #include <time.h>
 #include "device_keys.h"
 #include "service_debug.h"
+#include "messages.h"
 
 #ifndef PRODUCT_ID
 #define PRODUCT_ID (0xffff)
@@ -302,52 +303,7 @@ CoAPMessageType::Enum
 
   memcpy(iv_receive, next_iv, 16);
 
-  char path = buf[ 5 + (buf[0] & 0x0F) ];
-
-  switch (CoAP::code(buf))
-  {
-    case CoAPCode::GET:
-      switch (path)
-      {
-        case 'v': return CoAPMessageType::VARIABLE_REQUEST;
-        case 'd': return CoAPMessageType::DESCRIBE;
-        default: break;
-      } break;
-    case CoAPCode::POST:
-      switch (path)
-      {
-        case 'E':
-        case 'e':
-          return CoAPMessageType::EVENT;
-        case 'h': return CoAPMessageType::HELLO;
-        case 'f': return CoAPMessageType::FUNCTION_CALL;
-        case 's': return CoAPMessageType::SAVE_BEGIN;
-        case 'u': return CoAPMessageType::UPDATE_BEGIN;
-        case 'c': return CoAPMessageType::CHUNK;
-        default: break;
-      } break;
-    case CoAPCode::PUT:
-      switch (path)
-      {
-        case 'k': return CoAPMessageType::KEY_CHANGE;
-        case 'u': return CoAPMessageType::UPDATE_DONE;
-        case 's':
-          if (buf[8]) return CoAPMessageType::SIGNAL_START;
-          else return CoAPMessageType::SIGNAL_STOP;
-        default: break;
-      } break;
-    case CoAPCode::EMPTY:
-      switch (CoAP::type(buf))
-      {
-        case CoAPType::CON: return CoAPMessageType::PING;
-        default: return CoAPMessageType::EMPTY_ACK;
-      } break;
-    case CoAPCode::CONTENT:
-      return CoAPMessageType::TIME;
-    default:
-      break;
-  }
-  return CoAPMessageType::ERROR;
+  return spark::protocol::Messages::decodeType(buf);
 }
 
 void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)

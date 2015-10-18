@@ -28,3 +28,43 @@ SCENARIO("CoAP::code")
     REQUIRE(coap.code(msg)==CoAPCode::ERROR);
 
 }
+
+SCENARIO("CoAP::header")
+{
+	GIVEN("A CoAP instance and a 4-byte buffer")
+	{
+		CoAP coap;
+		uint8_t buf[4];
+
+		WHEN("header is called with arguments")
+		{
+			int size = coap.header(buf, CoAPType::CON, 3, CoAPCode::CONTINUE, 0x1234);
+			THEN("The buffer is filled out correctly")
+			{
+				REQUIRE(buf[0]==0x43);
+				REQUIRE(buf[1]==40);
+				REQUIRE(buf[2]==0x12);
+				REQUIRE(buf[3]==0x34);
+			}
+		}
+	}
+
+}
+
+SCENARIO("CoAP::path is retrieved from a CoAP message")
+{
+	GIVEN("a simple message")
+	{
+		CoAP coap;
+		unsigned char msg[] = { 0x40, 40, 0x12, 0x34, 0x91, 'Z', 0 };
+		WHEN("requesting the path")
+		{
+			const unsigned char* path = coap.path(msg);
+			THEN("the result is the path")
+			{
+				REQUIRE(path==msg+5);
+			}
+		}
+	}
+}
+

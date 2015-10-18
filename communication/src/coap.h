@@ -22,8 +22,11 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
   */
+#pragma once
 
 #include <string.h>
+#include <stdint.h>
+#include <stddef.h>
 
 namespace CoAPMessageType {
   enum Enum {
@@ -53,7 +56,26 @@ namespace CoAPCode {
     PUT,
     EMPTY,
     CONTENT,
-    ERROR
+    ERROR,
+
+	// responses
+	NONE = 0,
+	CONTINUE = 40,
+	OK = 80,
+	CREATED = 81,
+	NOT_MODIFIED = 124,
+	BAD_REQUEST = 160,
+	NOT_FOUND = 164,
+	METHOD_NOT_ALLOWED = 165,
+	UNSUPPORTED_MEDIA_TYPE = 175,
+	INTERNAL_SERVER_ERROR = 200,
+	BAD_GATEWAY = 202,
+	SERVICE_UNAVAILABLE = 203,
+	GATEWAY_TIMEOUT = 204,
+	TOKEN_OPTION_REQUIRED = 240,
+	URI_AUTHORITY_OPTION_REQUIRED = 241,
+	CRITICAL_OPTION_NOT_SUPPORTED = 242
+
   };
 }
 
@@ -66,9 +88,33 @@ namespace CoAPType {
   };
 }
 
+
 class CoAP
 {
   public:
+
+	static const uint8_t VERSION = 1;
+
+
+	size_t header(uint8_t* buf, CoAPType::Enum type, uint8_t optionCount, CoAPCode::Enum code, uint16_t tid)
+	{
+		buf[0] = VERSION<<6 | type << 4 | (optionCount & 0xF);
+		buf[1] = code;
+		buf[2] = tid >> 8;
+		buf[3] = tid & 0xFF;
+		return 4;
+	}
+
+
+	/**
+	 * Fetches the CoAP path from a CoAP message.
+	 */
+	static const unsigned char* path(const unsigned char* message)
+	{
+		// this assumes the Uri-Path is the first option
+		return message + 5 + (message[0] & 0x0F);
+	}
+
     static CoAPCode::Enum code(const unsigned char *message);
     static CoAPType::Enum type(const unsigned char *message);
     static size_t option_decode(unsigned char **option);
