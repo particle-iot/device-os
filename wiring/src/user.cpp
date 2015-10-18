@@ -59,6 +59,12 @@ void serialEventRun() __attribute__((weak));
 void serialEvent() __attribute__((weak));
 void serialEvent1() __attribute__((weak));
 
+#if PLATFORM_ID==3
+// gcc doesn't allow weak functions to not exist, so they must be defined.
+__attribute__((weak)) void serialEvent() {}
+__attribute__((weak)) void serialEvent1() {}
+#endif
+
 #if Wiring_Serial2
 void serialEvent2() __attribute__((weak));
 #endif
