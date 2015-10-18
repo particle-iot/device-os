@@ -40,7 +40,9 @@ static const uint8_t flashSectors[] = {
     FLASH_Sector_5, FLASH_Sector_6, FLASH_Sector_7, FLASH_Sector_8, FLASH_Sector_9,
     FLASH_Sector_10, FLASH_Sector_11
 };
+#ifdef USE_SERIAL_FLASH
 static module_info_t ex_module_info;
+#endif
 
 uint16_t sectorIndexForAddress(uint32_t address)
 {
