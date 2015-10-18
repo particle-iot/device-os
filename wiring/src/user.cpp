@@ -111,6 +111,13 @@ void serialEventRun()
 
 }
 
+#if defined(STM32F2XX)
+#define PLATFORM_BACKUP_RAM 1
+#else
+#define PLATFORM_BACKUP_RAM 0
+#endif
+
+#if PLATFORM_BACKUP_RAM
 extern char link_global_retained_initial_values;
 extern char link_global_retained_start;
 extern char link_global_retained_end;
@@ -125,3 +132,4 @@ void system_initialize_user_backup_ram()
     size_t len = &link_global_retained_end-&link_global_retained_start;
     memcpy(&link_global_retained_start, &link_global_retained_initial_values, len);
 }
+#endif
