@@ -335,6 +335,16 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
             /* Send STOP Condition */
             I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
+            /* Wait to make sure that STOP control bit has been cleared */
+            _millis = HAL_Timer_Get_Milli_Seconds();
+            while(i2cMap[i2c]->I2C_Peripheral->CR1 & I2C_CR1_STOP)
+            {
+                if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+                {
+                    break;
+                }
+            }
+
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
 
@@ -489,6 +499,16 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
         {
             /* Send STOP Condition */
             I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
+
+            /* Wait to make sure that STOP control bit has been cleared */
+            _millis = HAL_Timer_Get_Milli_Seconds();
+            while(i2cMap[i2c]->I2C_Peripheral->CR1 & I2C_CR1_STOP)
+            {
+                if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+                {
+                    break;
+                }
+            }
 
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
