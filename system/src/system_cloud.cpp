@@ -145,8 +145,14 @@ void spark_disconnect(void)
 
 void spark_process(void)
 {
-    if (!SYSTEM_THREAD_CURRENT())
+#if PLATFORM_THREADING
+    if (APPLICATION_THREAD_CURRENT())
+    {
+        ApplicationThread.process();
         return;
+    }
+#endif
+
 
     // run the background processing loop, and specifically also pump cloud events
     Spark_Idle_Events(true);

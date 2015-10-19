@@ -22,7 +22,7 @@
 #include <string.h>
 #include "active_object.h"
 #include "concurrent_hal.h"
-
+#include "timer_hal.h"
 
 void ActiveObjectBase::start_thread()
 {
@@ -40,20 +40,33 @@ void ActiveObjectBase::run()
     std::lock_guard<std::mutex> lck (_start);
     started = true;
 
+    uint32_t last_background_run = 0;
     for (;;)
     {
-        Item item = nullptr;
-        if (take(item) && item)
-        {
-            Message& msg = *item;
-            msg();
+    	uint32_t now;
+        if (!process())
+		{
+        	configuration.background_task();
         }
-        else
+        else if ((now=HAL_Timer_Get_Milli_Seconds())-last_background_run > configuration.take_wait)
         {
-            configuration.background_task();
+        	last_background_run = now;
+        	configuration.background_task();
         }
     }
+}
 
+bool ActiveObjectBase::process()
+{
+    bool result = false;
+    Item item = nullptr;
+    if (take(item) && item)
+    {
+        Message& msg = *item;
+        msg();
+        result = true;
+    }
+    return result;
 }
 
 /*

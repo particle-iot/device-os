@@ -19,7 +19,6 @@
 
 #include "system_mode.h"
 #include "system_task.h"
-
 static System_Mode_TypeDef current_mode = DEFAULT;
 
 
@@ -65,9 +64,10 @@ System_Mode_TypeDef system_mode()
     return current_mode;
 }
 
+
 #if PLATFORM_THREADING
 
-static spark::feature::State system_thread_enable = spark::feature::DISABLED;
+static volatile spark::feature::State system_thread_enable = spark::feature::DISABLED;
 
 void system_thread_set_state(spark::feature::State state, void*)
 {
