@@ -53,13 +53,6 @@ extern "C" int main(int argc, char* argv[])
     return 0;
 }
 
-class Stream;
-extern "C" bool Ymodem_Serial_Flash_Update(Stream *serialObj, uint32_t sFlashAddress)
-{
-    return false;
-}
-
-
 /**
  * Output debug info to standard output.
  * @param msg
