@@ -206,3 +206,8 @@ int32_t HAL_GPIO_Read(pin_t pin)
     return PIN_MAP[pin].getValue();
 }
 
+uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
+{
+	return 0;
+}
+
