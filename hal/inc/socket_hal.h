@@ -125,7 +125,7 @@ sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved);
 //------------ Socket Types ------------
 
 // don't redefine when building GCC target on OSX or linux
-#if !defined(_SYS_SOCKET_H) && !defined(_SYS_SOCKET_H_)
+#if !defined(_SYS_SOCKET_H) && !defined(_SYS_SOCKET_H_) && !defined(SOCK_STREAM)
 
 //--------- Address Families --------
 
