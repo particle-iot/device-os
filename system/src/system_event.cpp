@@ -18,6 +18,7 @@
  */
 
 #include "system_event.h"
+#include "system_threading.h"
 #include <stdint.h>
 #include <vector>
 
@@ -86,12 +87,17 @@ void system_unsubscribe_event(system_event_t events, system_event_handler_t* han
  * @param data
  * @param pointer
  */
-void system_notify_event(system_event_t event, uint32_t data, void* pointer)
+void system_notify_event(system_event_t event, uint32_t data, void* pointer, void (*fn)())
 {
+    APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event(event, data, pointer, fn));
+    // run event notifications on the application thread
+
     for (const SystemEventSubscription& subscription : subscriptions)
     {
         subscription.notify(event, data, pointer);
     }
+    if (fn)
+        fn();
 }
 
 

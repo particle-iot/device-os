@@ -182,6 +182,63 @@ public:
         return info.versionNumber;
     }
 
+    inline void enableUpdates()
+    {
+        set_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, true);
+    }
+
+    inline void disableUpdates()
+    {
+        set_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, false);
+    }
+
+    inline uint8_t updatePending()
+    {
+        return get_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING)!=0;
+    }
+
+    inline uint8_t updatesEnabled()
+    {
+        return get_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED)!=0;
+    }
+
+
+    inline void enableReset()
+    {
+        set_flag(SYSTEM_FLAG_RESET_ENABLED, true);
+    }
+
+    inline void disableReset()
+    {
+        set_flag(SYSTEM_FLAG_RESET_ENABLED, false);
+    }
+
+    inline uint8_t resetEnabled()
+    {
+        return get_flag(SYSTEM_FLAG_RESET_ENABLED)!=0;
+    }
+
+    inline uint8_t resetPending()
+    {
+        return get_flag(SYSTEM_FLAG_RESET_PENDING)!=0;
+    }
+
+
+private:
+
+    inline uint8_t get_flag(system_flag_t flag)
+    {
+        uint8_t value = 0;
+        system_get_flag(flag, &value, nullptr);
+        return value;
+    }
+
+    inline void set_flag(system_flag_t flag, uint8_t value)
+    {
+        system_set_flag(flag, value, nullptr);
+    }
+
+
 };
 
 extern SystemClass System;
