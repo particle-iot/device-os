@@ -17,12 +17,12 @@ void Set_User_LED(uint8_t state)
 
 }
 
-void Toggle_User_LED()
+void Toggle_User_LED(void)
 {
 
 }
 
-uint16_t Get_RGB_LED_Max_Value()
+uint16_t Get_RGB_LED_Max_Value(void)
 {
     return 65535;
 }
