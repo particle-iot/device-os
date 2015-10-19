@@ -19,7 +19,15 @@ CFLAGS += -Wno-unused-local-typedefs -Wno-return-type-c-linkage
 ASFLAGS +=  -g3
 
 
-#LDFLAGS += -Xlinker --gc-sections
+ifeq ("$(MAKE_OS)", "LINUX")
+LDFLAGS +=  -pthread
+endif
+
+ifneq ($(MAKE_OS),OSX)
+LDFLAGS += -Xlinker --gc-sections
+endif
+
+
 
 
 
