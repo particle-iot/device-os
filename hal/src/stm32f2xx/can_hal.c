@@ -89,8 +89,6 @@ STM32_CAN_Info CAN_MAP[TOTAL_CAN] =
 #endif		
 };
 
-static CAN_InitTypeDef CAN_InitStructure;
-static CAN_FilterInitTypeDef CAN_FilterInitStructure;
 static STM32_CAN_Info *canMap[TOTAL_CAN]; // pointer to CAN_MAP[] containing CAN peripheral register locations (etc)
 
 /* Extern variables ----------------------------------------------------------*/
@@ -99,32 +97,32 @@ static STM32_CAN_Info *canMap[TOTAL_CAN]; // pointer to CAN_MAP[] containing CAN
 
 inline void store_message(CanRxMsg *pmessage, CAN_Ring_Buffer *buffer)
 {
-	unsigned i = (unsigned int)(buffer->head + 1) % CAN_BUFFER_SIZE;
-
-	if (i != buffer->tail)
-	{
-            buffer->buffer[buffer->head].Ext = (pmessage->IDE&CAN_Id_Extended)?true:false;
-            if (buffer->buffer[buffer->head].Ext)
-            {
-                buffer->buffer[buffer->head].ID = pmessage->ExtId;
-            }
-            else
-            {
-                buffer->buffer[buffer->head].ID = pmessage->StdId; 
-            }
-            buffer->buffer[buffer->head].Len = pmessage->DLC; 
-            buffer->buffer[buffer->head].rtr = (pmessage->RTR & CAN_RTR_Remote)?true:false;
-            buffer->buffer[buffer->head].Data[0] = pmessage->Data[0];
-            buffer->buffer[buffer->head].Data[1] = pmessage->Data[1];
-            buffer->buffer[buffer->head].Data[2] = pmessage->Data[2];
-            buffer->buffer[buffer->head].Data[3] = pmessage->Data[3];
-            buffer->buffer[buffer->head].Data[4] = pmessage->Data[4];
-            buffer->buffer[buffer->head].Data[5] = pmessage->Data[5];
-            buffer->buffer[buffer->head].Data[6] = pmessage->Data[6];
-            buffer->buffer[buffer->head].Data[7] = pmessage->Data[7];
-            
-            buffer->head = i;
-	}
+//	unsigned i = (unsigned int)(buffer->head + 1) % CAN_BUFFER_SIZE;
+//
+//	if (i != buffer->tail)
+//	{
+//            buffer->buffer[buffer->head].Ext = (pmessage->IDE & CAN_Id_Extended)?true:false;
+//            if (buffer->buffer[buffer->head].Ext)
+//            {
+//                buffer->buffer[buffer->head].ID = pmessage->ExtId;
+//            }
+//            else
+//            {
+//                buffer->buffer[buffer->head].ID = pmessage->StdId; 
+//            }
+//            buffer->buffer[buffer->head].Len = pmessage->DLC; 
+//            buffer->buffer[buffer->head].rtr = (pmessage->RTR & CAN_RTR_Remote)?true:false;
+//            buffer->buffer[buffer->head].Data[0] = pmessage->Data[0];
+//            buffer->buffer[buffer->head].Data[1] = pmessage->Data[1];
+//            buffer->buffer[buffer->head].Data[2] = pmessage->Data[2];
+//            buffer->buffer[buffer->head].Data[3] = pmessage->Data[3];
+//            buffer->buffer[buffer->head].Data[4] = pmessage->Data[4];
+//            buffer->buffer[buffer->head].Data[5] = pmessage->Data[5];
+//            buffer->buffer[buffer->head].Data[6] = pmessage->Data[6];
+//            buffer->buffer[buffer->head].Data[7] = pmessage->Data[7];
+//            
+//            buffer->head = i;
+//	}
 }
 
 void HAL_CAN_Init(HAL_CAN_Channel channel, CAN_Ring_Buffer *rx_buffer, CAN_Ring_Buffer *tx_buffer)
@@ -137,8 +135,8 @@ void HAL_CAN_Init(HAL_CAN_Channel channel, CAN_Ring_Buffer *rx_buffer, CAN_Ring_
 	canMap[channel]->can_rx_buffer = rx_buffer;
 	canMap[channel]->can_tx_buffer = tx_buffer;
 
-	memset(canMap[channel]->can_rx_buffer, 0, sizeof(CAN_Ring_Buffer));
-	memset(canMap[channel]->can_tx_buffer, 0, sizeof(CAN_Ring_Buffer));
+//	memset(canMap[channel]->can_rx_buffer, 0, sizeof(CAN_Ring_Buffer));
+//	memset(canMap[channel]->can_tx_buffer, 0, sizeof(CAN_Ring_Buffer));
 
 	canMap[channel]->can_enabled = false;
 	canMap[channel]->can_transmitting = false;
@@ -146,44 +144,55 @@ void HAL_CAN_Init(HAL_CAN_Channel channel, CAN_Ring_Buffer *rx_buffer, CAN_Ring_
 
 void HAL_CAN_Begin(HAL_CAN_Channel channel, uint32_t baud)
 {
-	CAN_DeInit(canMap[channel]->can_peripheral);
+	//CAN_DeInit(canMap[channel]->can_peripheral);
 
 	// Configure CAN Rx and Tx as alternate function push-pull, and enable GPIOA clock
-	HAL_Pin_Mode(canMap[channel]->can_rx_pin, AF_OUTPUT_PUSHPULL);
-	HAL_Pin_Mode(canMap[channel]->can_tx_pin, AF_OUTPUT_PUSHPULL);
+	//HAL_Pin_Mode(canMap[channel]->can_rx_pin, AF_OUTPUT_PUSHPULL);
+	//HAL_Pin_Mode(canMap[channel]->can_tx_pin, AF_OUTPUT_PUSHPULL);
 
 	// Enable CAN Clock
-	*canMap[channel]->can_apbReg |=  canMap[channel]->can_clock_en;
+	//*(canMap[channel]->can_apbReg) |=  canMap[channel]->can_clock_en;
+        
+        RCC->AHB1ENR |= RCC_AHB1Periph_GPIOB;
+        RCC->APB1ENR |= RCC_APB1Periph_CAN2;
 
 	// Connect CAN pins to AFx
-	STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
-	GPIO_PinAFConfig(PIN_MAP[canMap[channel]->can_rx_pin].gpio_peripheral, canMap[channel]->can_rx_pinsource, canMap[channel]->can_af_map);
-	GPIO_PinAFConfig(PIN_MAP[canMap[channel]->can_tx_pin].gpio_peripheral, canMap[channel]->can_tx_pinsource, canMap[channel]->can_af_map);
+	//STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+	//GPIO_PinAFConfig(PIN_MAP[canMap[channel]->can_rx_pin].gpio_peripheral, canMap[channel]->can_rx_pinsource, canMap[channel]->can_af_map);
+	//GPIO_PinAFConfig(PIN_MAP[canMap[channel]->can_tx_pin].gpio_peripheral, canMap[channel]->can_tx_pinsource, canMap[channel]->can_af_map);
 
-//TODO	// NVIC Configuration
-	NVIC_InitTypeDef NVIC_InitStructure;
-	// Enable the CAN Tx Interrupt
-	NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->can_tx_irqn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
+        GPIO_InitTypeDef GPIO_InitStruct;
         
-        // Enable the CAN Rx FIFO 0 Interrupt
-        NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->can_rx0_irqn;
-        NVIC_Init(&NVIC_InitStructure);
+        // Setup the Rx Pin
+        GPIO_InitStruct.GPIO_Pin = GPIO_Pin_5;
+        GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
+        GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+        GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+        GPIO_Init(GPIOB, &GPIO_InitStruct);
+        GPIO_PinAFConfig(GPIOB, GPIO_PinSource5, GPIO_AF_CAN2);
         
+        // Setup the Tx pin
+        GPIO_InitStruct.GPIO_Pin = GPIO_Pin_6;
+        GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
+        GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+        GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+        GPIO_Init(GPIOB, &GPIO_InitStruct);
+        GPIO_PinAFConfig(GPIOB, GPIO_PinSource6, GPIO_AF_CAN2);
         
-	CAN_InitStructure.CAN_TTCM = DISABLE;
+	
+        CAN_InitTypeDef CAN_InitStructure;
+        CAN_InitStructure.CAN_TTCM = DISABLE;
         CAN_InitStructure.CAN_ABOM = ENABLE;
         CAN_InitStructure.CAN_AWUM = DISABLE;
         CAN_InitStructure.CAN_NART = DISABLE;
         CAN_InitStructure.CAN_RFLM = DISABLE;
         CAN_InitStructure.CAN_TXFP = ENABLE;
         CAN_InitStructure.CAN_Mode = CAN_Mode_Normal;
-        CAN_InitStructure.CAN_SJW  = CAN_SJW_4tq;
-        CAN_InitStructure.CAN_BS1  = CAN_BS1_12tq;
-        CAN_InitStructure.CAN_BS2  = CAN_BS2_2tq;
+        CAN_InitStructure.CAN_SJW  = CAN_SJW_1tq;
+        CAN_InitStructure.CAN_BS1  = CAN_BS1_11tq;
+        CAN_InitStructure.CAN_BS2  = CAN_BS2_3tq;
         
         switch (baud)
         {
@@ -208,17 +217,18 @@ void HAL_CAN_Begin(HAL_CAN_Channel channel, uint32_t baud)
                 break;
         }
         
-
 	// Configure CAN
-	CAN_Init(canMap[channel]->can_peripheral, &CAN_InitStructure);
-        CAN_SlaveStartBank(1);
-        CAN_FilterInitStructure.CAN_FilterNumber = 1;
+	CAN_Init(CAN2, &CAN_InitStructure);
+        
+        CAN_FilterInitTypeDef CAN_FilterInitStructure;
+        //CAN_SlaveStartBank(1);
+        CAN_FilterInitStructure.CAN_FilterNumber = 15;
         CAN_FilterInitStructure.CAN_FilterMode = CAN_FilterMode_IdMask;
         CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit;
-        CAN_FilterInitStructure.CAN_FilterIdHigh = (0x0000U << 3);
-        CAN_FilterInitStructure.CAN_FilterIdLow =  (0x0000U << 3) | 0x4;
-        CAN_FilterInitStructure.CAN_FilterMaskIdHigh = (0x0000U << 3);
-        CAN_FilterInitStructure.CAN_FilterMaskIdLow =  (0x0000U << 4) | 0x04;
+        CAN_FilterInitStructure.CAN_FilterIdHigh = 0x0000;
+        CAN_FilterInitStructure.CAN_FilterIdLow =  0x0000;
+        CAN_FilterInitStructure.CAN_FilterMaskIdHigh = 0x0000;
+        CAN_FilterInitStructure.CAN_FilterMaskIdLow =  0x0000;
         CAN_FilterInitStructure.CAN_FilterFIFOAssignment = CAN_FilterFIFO0;
         CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;
         CAN_FilterInit(&CAN_FilterInitStructure);
@@ -226,15 +236,33 @@ void HAL_CAN_Begin(HAL_CAN_Channel channel, uint32_t baud)
 	canMap[channel]->can_enabled = true;
 	canMap[channel]->can_transmitting = false;
 
-	// Enable CAN Receive and Transmit interrupts
-  	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
-	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_FMP0, ENABLE);
+//	// NVIC Configuration
+//	NVIC_InitTypeDef NVIC_InitStructure;
+//	// Enable the CAN Tx Interrupt
+//	NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->can_tx_irqn;
+//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
+//	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+//	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+//	NVIC_Init(&NVIC_InitStructure);
+//        
+//        // Enable the CAN Rx FIFO 0 Interrupt
+//        NVIC_InitStructure.NVIC_IRQChannel = canMap[channel]->can_rx0_irqn;
+//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
+//	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+//	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+//        NVIC_Init(&NVIC_InitStructure);
+//        
+//	// Enable CAN Receive and Transmit interrupts
+//        CAN_ClearITPendingBit (canMap[channel]->can_peripheral, CAN_IT_TME);
+//  	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
+//        CAN_ClearITPendingBit (canMap[channel]->can_peripheral, CAN_IT_FMP0);
+//	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_FMP0, ENABLE);
 }
 
 void HAL_CAN_End(HAL_CAN_Channel channel)
 {
     // wait for transmission of outgoing data
-    while (canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail);
+//    while (canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail);
 
     // Deinitialise CAN
     CAN_DeInit(canMap[channel]->can_peripheral);
@@ -259,13 +287,13 @@ void HAL_CAN_End(HAL_CAN_Channel channel)
     *canMap[channel]->can_apbReg &= ~canMap[channel]->can_clock_en;
 
     // clear any received data
-    canMap[channel]->can_rx_buffer->head = canMap[channel]->can_rx_buffer->tail;
+//    canMap[channel]->can_rx_buffer->head = canMap[channel]->can_rx_buffer->tail;
 
     // Undo any pin re-mapping done for this CAN
     // ...
 
-    memset(canMap[channel]->can_rx_buffer, 0, sizeof(CAN_Ring_Buffer));
-    memset(canMap[channel]->can_tx_buffer, 0, sizeof(CAN_Ring_Buffer));
+//    memset(canMap[channel]->can_rx_buffer, 0, sizeof(CAN_Ring_Buffer));
+//    memset(canMap[channel]->can_tx_buffer, 0, sizeof(CAN_Ring_Buffer));
 
     canMap[channel]->can_enabled = false;
     canMap[channel]->can_transmitting = false;
@@ -273,76 +301,133 @@ void HAL_CAN_End(HAL_CAN_Channel channel)
 
 uint32_t HAL_CAN_Write_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmessage)
 {
-    
-    // interrupts are off and data in queue;
-	if ((CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) == RESET)
-			&& (canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail)) 
-        {
-		// Get him busy
-		CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
-	}
-
-	unsigned i = (canMap[channel]->can_tx_buffer->head + 1) % CAN_BUFFER_SIZE;
-
-	// If the output buffer is full, there's nothing for it other than to
-	// wait for the interrupt handler to empty it a bit
-	//         no space so       or  Called Off Panic with interrupt off get the message out!
-	//         make space                     Enter Polled IO mode
-	while (i == canMap[channel]->can_tx_buffer->tail || ((__get_PRIMASK() & 1) && canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail) ) 
-        {
+//    if(((canMap[channel]->can_tx_buffer->head + 1) % CAN_BUFFER_SIZE) != (canMap[channel]->can_tx_buffer->tail))
+//    {
+//        memcpy((void *)&(canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->head]),(void *)pmessage, sizeof(CAN_Message_Struct));
+//        canMap[channel]->can_tx_buffer->head++;
+//        canMap[channel]->can_tx_buffer->head %= CAN_BUFFER_SIZE;
+//    }
+	
+//    // interrupts are off and data in queue;
+//	if ((CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) == RESET)
+//			&& (canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail)) 
+//        {
+//		// Get him busy
+//		CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
+//	}
+//
+//	unsigned i = (canMap[channel]->can_tx_buffer->head + 1) % CAN_BUFFER_SIZE;
+//
+//	// If the output buffer is full, there's nothing for it other than to
+//	// wait for the interrupt handler to empty it a bit
+//	//         no space so       or  Called Off Panic with interrupt off get the message out!
+//	//         make space                     Enter Polled IO mode
+//	while (i == canMap[channel]->can_tx_buffer->tail || ((__get_PRIMASK() & 1) && canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail) ) 
+//        {
 		// Interrupts are on but they are not being serviced because this was called from a higher
 		// Priority interrupt
 
-		if (CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) && CAN_GetFlagStatus(canMap[channel]->can_peripheral, CAN_IT_TME))
-		{
-                    // protect for good measure
-                    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, DISABLE);
-                    // Write out a byte
+//		if (CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) && CAN_GetFlagStatus(canMap[channel]->can_peripheral, CAN_IT_TME))
+//		{
+//                    // protect for good measure
+//                    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, DISABLE);
+//                    // Write out a byte
+//                if ((canMap[channel]->can_tx_buffer->head != canMap[channel]->can_tx_buffer->tail))
+//                {
+//                    CanTxMsg txmessage;
+//                    if (true == canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Ext)
+//                    {
+//                      txmessage.ExtId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x1FFFFFFFUL);
+//                      txmessage.StdId = 0U;
+//                      txmessage.IDE = CAN_Id_Extended;
+//                    }
+//                    else
+//                    {
+//                      txmessage.ExtId = 0UL;
+//                      txmessage.StdId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x7FFUL);  
+//                      txmessage.IDE = CAN_Id_Standard;
+//                    }
+//                    if (true == canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].rtr)
+//                    {
+//                      txmessage.RTR = CAN_RTR_REMOTE;
+//                    }
+//                    else
+//                    {
+//                      txmessage.RTR = CAN_RTR_DATA;
+//                    }
+//                    txmessage.DLC = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Len;     
+//                    txmessage.Data[0] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[0];
+//                    txmessage.Data[1] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[1];
+//                    txmessage.Data[2] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[2];
+//                    txmessage.Data[3] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[3];
+//                    txmessage.Data[4] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[4];
+//                    txmessage.Data[5] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[5];
+//                    txmessage.Data[6] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[6];
+//                    txmessage.Data[7] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[7];
+//
+//                    if (CAN_TxStatus_NoMailBox != CAN_Transmit(canMap[channel]->can_peripheral, &txmessage))
+//                    {
+//                            canMap[channel]->can_tx_buffer->tail++;
+//                            canMap[channel]->can_tx_buffer->tail %= CAN_BUFFER_SIZE;
+//                    }
+//                    canMap[channel]->can_transmitting = true;
+//	            CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
+//                    // unprotect
+////                    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
+//		}
+//	}
+
+
                     CanTxMsg txmessage;
-                    if (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Ext)
-                    {
-                      txmessage.ExtId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x1FFFFFFFUL);
-                      txmessage.StdId = 0U;
-                      txmessage.IDE = CAN_Id_Extended;
-                    }
-                    else
-                    {
-                      txmessage.ExtId = 0UL;
-                      txmessage.StdId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x7FFUL);  
-                      txmessage.IDE = CAN_Id_Standard;
-                    }
-                    if (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].rtr)
-                    {
-                      txmessage.RTR = CAN_RTR_REMOTE;
-                    }
-                    else
-                    {
-                        txmessage.RTR = CAN_RTR_DATA;
-                    }
-                    txmessage.DLC = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Len;     
-                    txmessage.Data[0] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[0];
-                    txmessage.Data[1] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[1];
-                    txmessage.Data[2] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[2];
-                    txmessage.Data[3] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[3];
-                    txmessage.Data[4] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[4];
-                    txmessage.Data[5] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[5];
-                    txmessage.Data[6] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[6];
-                    txmessage.Data[7] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[7];
+                    txmessage.ExtId = 0x1234;
+                    txmessage.IDE = CAN_Id_Extended;
+                    txmessage.RTR = CAN_RTR_DATA;
+                    txmessage.DLC = 8;     
+                    txmessage.Data[0] = 1;
+                    txmessage.Data[1] = 2;
+                    txmessage.Data[2] = 3;
+                    txmessage.Data[3] = 4;
+                    txmessage.Data[4] = 5;
+                    txmessage.Data[5] = 6;
+                    txmessage.Data[6] = 7;
+                    txmessage.Data[7] = 8;
+//                    if (true == pmessage->Ext)
+//                    {
+//                      txmessage.ExtId = (pmessage->ID & 0x1FFFFFFFUL);
+//                      txmessage.StdId = 0U;
+//                      txmessage.IDE = CAN_Id_Extended;
+//                    }
+//                    else
+//                    {
+//                      txmessage.ExtId = 0UL;
+//                      txmessage.StdId = (pmessage->ID & 0x7FFUL);  
+//                      txmessage.IDE = CAN_Id_Standard;
+//                    }
+//                    if (true == pmessage->rtr)
+//                    {
+//                      txmessage.RTR = CAN_RTR_REMOTE;
+//                    }
+//                    else
+//                    {
+//                      txmessage.RTR = CAN_RTR_DATA;
+//                    }
+//                    txmessage.DLC = pmessage->Len;     
+//                    txmessage.Data[0] = pmessage->Data[0];
+//                    txmessage.Data[1] = pmessage->Data[1];
+//                    txmessage.Data[2] = pmessage->Data[2];
+//                    txmessage.Data[3] = pmessage->Data[3];
+//                    txmessage.Data[4] = pmessage->Data[4];
+//                    txmessage.Data[5] = pmessage->Data[5];
+//                    txmessage.Data[6] = pmessage->Data[6];
+//                    txmessage.Data[7] = pmessage->Data[7];
 
-                    if (CAN_TxStatus_NoMailBox != CAN_Transmit(canMap[channel]->can_peripheral, &txmessage))
-                    {
-                            canMap[channel]->can_tx_buffer->tail++;
-                            canMap[channel]->can_tx_buffer->tail %= CAN_BUFFER_SIZE;
-                    }
+                    CAN_Transmit(canMap[channel]->can_peripheral, &txmessage);
+                   
+                    canMap[channel]->can_transmitting = true;
+	            
                     // unprotect
-                    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
-		}
-	}
-
-	memcpy((void *)&(canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->head]),(void *)pmessage, sizeof(CAN_Message_Struct));
-	canMap[channel]->can_tx_buffer->head = i;
-	canMap[channel]->can_transmitting = true;
-	CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
+//                    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, ENABLE);
+		
 
 	return 1;
 }
@@ -354,18 +439,57 @@ int32_t HAL_CAN_Available_Data(HAL_CAN_Channel channel)
 
 int32_t HAL_CAN_Read_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmessage)
 {
-	// if the head isn't ahead of the tail, we don't have any messages
-	if ((canMap[channel]->can_rx_buffer->head == canMap[channel]->can_rx_buffer->tail) ||
-                (NULL == pmessage))
-	{
-		return -1;
-	}
-	else
-	{
-		memcpy((void *)pmessage, (void *)&(canMap[channel]->can_rx_buffer->buffer[canMap[channel]->can_rx_buffer->tail]), sizeof(CAN_Message_Struct));
-		canMap[channel]->can_rx_buffer->tail = (unsigned int)(canMap[channel]->can_rx_buffer->tail + 1) % CAN_BUFFER_SIZE;
-		return 1;
-	}
+    //uint8_t i, NumPendingMessages;
+    CanRxMsg message;
+    
+    if (NULL != pmessage)
+    {
+    CAN_Receive(CAN2, CAN_FIFO0, &message);
+    pmessage->Ext = (message.IDE & CAN_Id_Extended)?true:false;
+    if (pmessage->Ext)
+    {
+        pmessage->ID = message.ExtId;
+    }
+    else
+    {
+        pmessage->ID = message.StdId; 
+    }
+    pmessage->Len = message.DLC; 
+    pmessage->rtr = (message.RTR & CAN_RTR_Remote)?true:false;
+    pmessage->Data[0] = message.Data[0];
+    pmessage->Data[1] = message.Data[1];
+    pmessage->Data[2] = message.Data[2];
+    pmessage->Data[3] = message.Data[3];
+    pmessage->Data[4] = message.Data[4];
+    pmessage->Data[5] = message.Data[5];
+    pmessage->Data[6] = message.Data[6];
+    pmessage->Data[7] = message.Data[7];
+    return 1;
+    }
+    return -1;
+//    memset(&message, 0, sizeof(CanRxMsg));
+//    //NumPendingMessages = CAN_MessagePending(canMap[channel]->can_peripheral, CAN_FIFO0);
+//    
+//    //for (i = 0; i < NumPendingMessages; i++)
+//    {
+//        // Read message from the receive data register
+//        CAN_Receive(canMap[channel]->can_peripheral, CAN_FIFO0, &message);
+//        store_message(&message, canMap[channel]->can_rx_buffer);
+//    }
+//    
+//    
+//        // if the head isn't ahead of the tail, we don't have any messages
+//	if ((canMap[channel]->can_rx_buffer->head == canMap[channel]->can_rx_buffer->tail) ||
+//                (NULL == pmessage))
+//	{
+//		return -1;
+//	}
+//	else
+//	{
+//		memcpy((void *)pmessage, (void *)&(canMap[channel]->can_rx_buffer->buffer[canMap[channel]->can_rx_buffer->tail]), sizeof(CAN_Message_Struct));
+//		canMap[channel]->can_rx_buffer->tail = (unsigned int)(canMap[channel]->can_rx_buffer->tail + 1) % CAN_BUFFER_SIZE;
+//		return 1;
+//	}
 }
 
 int32_t HAL_CAN_Peek_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmessage)
@@ -398,63 +522,63 @@ bool HAL_CAN_Is_Enabled(HAL_CAN_Channel channel)
 
 static void HAL_CAN_Tx_Handler(HAL_CAN_Channel channel)
 {
-    uint8_t tx_mailbox = CAN_TxStatus_NoMailBox;
-    if(CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) != RESET)
-    {
-        // Loop to fill up the CAN Tx buffers
-        do
-        {
-            // Write byte to the transmit data register
-            if (canMap[channel]->can_tx_buffer->head == canMap[channel]->can_tx_buffer->tail)
-            {
-                    // Buffer empty, so disable the CAN Transmit interrupt
-                    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, DISABLE);
-                    // drop out of the while loop
-                    tx_mailbox = CAN_TxStatus_NoMailBox;
-            }
-            else
-            {
-                CanTxMsg txmessage;
-                if (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Ext)
-                {
-                  txmessage.ExtId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x1FFFFFFFUL);
-                  txmessage.StdId = 0U;
-                  txmessage.IDE = CAN_Id_Extended;
-                }
-                else
-                {
-                  txmessage.ExtId = 0UL;
-                  txmessage.StdId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x7FFUL);  
-                  txmessage.IDE = CAN_Id_Standard;
-                }
-                if (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].rtr)
-                {
-                  txmessage.RTR = CAN_RTR_REMOTE;
-                }
-                else
-                {
-                    txmessage.RTR = CAN_RTR_DATA;
-                }
-                txmessage.DLC = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Len;     
-                txmessage.Data[0] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[0];
-                txmessage.Data[1] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[1];
-                txmessage.Data[2] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[2];
-                txmessage.Data[3] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[3];
-                txmessage.Data[4] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[4];
-                txmessage.Data[5] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[5];
-                txmessage.Data[6] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[6];
-                txmessage.Data[7] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[7];
-
-                tx_mailbox = CAN_Transmit(canMap[channel]->can_peripheral, &txmessage);
-                if (CAN_TxStatus_NoMailBox != tx_mailbox)
-                {
-                        canMap[channel]->can_tx_buffer->tail++;
-                        canMap[channel]->can_tx_buffer->tail %= CAN_BUFFER_SIZE;
-                }
-            }
-        }
-        while (CAN_TxStatus_NoMailBox != tx_mailbox);
-    }
+//    uint8_t tx_mailbox = CAN_TxStatus_NoMailBox;
+//    //if(CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_TME) != RESET)
+//    {
+//        // Loop to fill up the CAN Tx buffers
+//        do
+//        {
+//            // Write byte to the transmit data register
+//            if (canMap[channel]->can_tx_buffer->head == canMap[channel]->can_tx_buffer->tail)
+//            {
+//                    // Buffer empty, so disable the CAN Transmit interrupt
+//                    CAN_ITConfig(canMap[channel]->can_peripheral, CAN_IT_TME, DISABLE);
+//                    // drop out of the while loop
+//                    tx_mailbox = CAN_TxStatus_NoMailBox;
+//            }
+//            else
+//            {
+//                CanTxMsg txmessage;
+//                if (true == canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Ext)
+//                {
+//                  txmessage.ExtId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x1FFFFFFFUL);
+//                  txmessage.StdId = 0U;
+//                  txmessage.IDE = CAN_Id_Extended;
+//                }
+//                else
+//                {
+//                  txmessage.ExtId = 0UL;
+//                  txmessage.StdId = (canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].ID & 0x7FFUL);  
+//                  txmessage.IDE = CAN_Id_Standard;
+//                }
+//                if (true == canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].rtr)
+//                {
+//                  txmessage.RTR = CAN_RTR_REMOTE;
+//                }
+//                else
+//                {
+//                  txmessage.RTR = CAN_RTR_DATA;
+//                }
+//                txmessage.DLC = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Len;     
+//                txmessage.Data[0] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[0];
+//                txmessage.Data[1] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[1];
+//                txmessage.Data[2] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[2];
+//                txmessage.Data[3] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[3];
+//                txmessage.Data[4] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[4];
+//                txmessage.Data[5] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[5];
+//                txmessage.Data[6] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[6];
+//                txmessage.Data[7] = canMap[channel]->can_tx_buffer->buffer[canMap[channel]->can_tx_buffer->tail].Data[7];
+//
+//                tx_mailbox = CAN_Transmit(canMap[channel]->can_peripheral, &txmessage);
+//                if (CAN_TxStatus_NoMailBox != tx_mailbox)
+//                {
+//                        canMap[channel]->can_tx_buffer->tail++;
+//                        canMap[channel]->can_tx_buffer->tail %= CAN_BUFFER_SIZE;
+//                }
+//            }
+//        }
+//        while (CAN_TxStatus_NoMailBox != tx_mailbox);
+//    }
     CAN_ClearITPendingBit (canMap[channel]->can_peripheral, CAN_IT_TME);
 }
 
@@ -462,32 +586,32 @@ static void HAL_CAN_Rx0_Handler(HAL_CAN_Channel channel)
 {
     //if(CAN_GetITStatus(canMap[channel]->can_peripheral, CAN_IT_FMP0) != RESET)
     //{
-    uint8_t i, NumPendingMessages;
-    CanRxMsg message;
-    
-    NumPendingMessages = CAN_MessagePending(canMap[channel]->can_peripheral, CAN_FIFO0);
-    
-    for (i = 0; i < NumPendingMessages; i++)
-    {
-        // Read message from the receive data register
-        CAN_Receive(canMap[channel]->can_peripheral, CAN_FIFO0, &message);
-        store_message(&message, canMap[channel]->can_rx_buffer);
-    }
+//    uint8_t i, NumPendingMessages;
+//    CanRxMsg message;
+//    
+//    NumPendingMessages = CAN_MessagePending(canMap[channel]->can_peripheral, CAN_FIFO0);
+//    
+//    for (i = 0; i < NumPendingMessages; i++)
+//    {
+//        // Read message from the receive data register
+//        CAN_Receive(canMap[channel]->can_peripheral, CAN_FIFO0, &message);
+//        store_message(&message, canMap[channel]->can_rx_buffer);
+//    }
 }
 
 static void HAL_CAN_Rx1_Handler(HAL_CAN_Channel channel)
 {
-    uint8_t i, NumPendingMessages;
-    CanRxMsg message;
-    
-    NumPendingMessages = CAN_MessagePending(canMap[channel]->can_peripheral, CAN_FIFO1);
-    
-    for (i = 0; i < NumPendingMessages; i++)
-    {
-        // Read message from the receive data register
-        CAN_Receive(canMap[channel]->can_peripheral, CAN_FIFO1, &message);
-        store_message(&message, canMap[channel]->can_rx_buffer);
-    }
+//    uint8_t i, NumPendingMessages;
+//    CanRxMsg message;
+//    
+//    NumPendingMessages = CAN_MessagePending(canMap[channel]->can_peripheral, CAN_FIFO1);
+//    
+//    for (i = 0; i < NumPendingMessages; i++)
+//    {
+//        // Read message from the receive data register
+//        CAN_Receive(canMap[channel]->can_peripheral, CAN_FIFO1, &message);
+//        store_message(&message, canMap[channel]->can_rx_buffer);
+//    }
 }
 //static void HAL_CAN_Handler(HAL_CAN_Channel channel)
 //{
