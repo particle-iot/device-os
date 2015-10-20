@@ -24,6 +24,10 @@
 #include "system_user.h"
 #include <stddef.h>
 #include <string.h>
+#include "spark_wiring_platform.h"
+#include "spark_wiring_usbserial.h"
+#include "spark_wiring_usartserial.h"
+
 
 /**
  * Declare the following function bodies as weak. They will only be used if no
@@ -45,6 +49,75 @@ void loop() {
 
 }
 
+
+/**
+ * Allow the application to override this to avoid processing
+ * overhead when serial events are not required.
+ */
+void serialEventRun() __attribute__((weak));
+
+void serialEvent() __attribute__((weak));
+void serialEvent1() __attribute__((weak));
+
+#if PLATFORM_ID==3
+// gcc doesn't allow weak functions to not exist, so they must be defined.
+__attribute__((weak)) void serialEvent() {}
+__attribute__((weak)) void serialEvent1() {}
+#endif
+
+#if Wiring_Serial2
+void serialEvent2() __attribute__((weak));
+#endif
+
+#if Wiring_Serial3
+void serialEvent3() __attribute__((weak));
+#endif
+
+#if Wiring_Serial4
+void serialEvent4() __attribute__((weak));
+#endif
+
+#if Wiring_Serial5
+void serialEvent5() __attribute__((weak));
+#endif
+
+
+/**
+ * Provides background processing of serial data.
+ */
+void serialEventRun()
+{
+    if (serialEvent && Serial.available()>0)
+        serialEvent();
+
+    if (serialEvent1 && Serial1.available()>0)
+        serialEvent1();
+
+#if Wiring_Serial2
+    if (serialEventRun2) serialEventRun2();
+#endif
+
+#if Wiring_Serial3
+    if (serialEventRun3) serialEventRun3();
+#endif
+
+#if Wiring_Serial4
+    if (serialEventRun4) serialEventRun4();
+#endif
+
+#if Wiring_Serial5
+    if (serialEventRun5) serialEventRun5();
+#endif
+
+}
+
+#if defined(STM32F2XX)
+#define PLATFORM_BACKUP_RAM 1
+#else
+#define PLATFORM_BACKUP_RAM 0
+#endif
+
+#if PLATFORM_BACKUP_RAM
 extern char link_global_retained_initial_values;
 extern char link_global_retained_start;
 extern char link_global_retained_end;
@@ -59,3 +132,4 @@ void system_initialize_user_backup_ram()
     size_t len = &link_global_retained_end-&link_global_retained_start;
     memcpy(&link_global_retained_start, &link_global_retained_initial_values, len);
 }
+#endif

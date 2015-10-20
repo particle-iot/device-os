@@ -4,7 +4,7 @@
 PROJECT_ROOT ?= ..
 MODULE_PATH=.
 COMMON_BUILD=$(PROJECT_ROOT)/build
-BUILD_PATH_BASE=$(COMMON_BUILD)/target
+BUILD_PATH_BASE?=$(COMMON_BUILD)/target
 
 
 include $(COMMON_BUILD)/platform-id.mk

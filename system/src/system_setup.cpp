@@ -121,7 +121,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     else if ('v' == c)
     {
         StreamAppender appender(serial);
-        system_version_info(&appender);
+        append_system_version_info(&appender);
         print("\r\n");
     }
 }

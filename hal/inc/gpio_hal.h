@@ -46,6 +46,7 @@ void HAL_Pin_Mode(pin_t pin, PinMode mode);
 PinMode HAL_Get_Pin_Mode(pin_t pin);
 void HAL_GPIO_Write(pin_t pin, uint8_t value);
 int32_t HAL_GPIO_Read(pin_t pin);
+uint32_t HAL_Pulse_In(pin_t pin, uint16_t value);
 
 #ifdef __cplusplus
 }

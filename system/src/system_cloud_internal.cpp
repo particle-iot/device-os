@@ -816,7 +816,8 @@ bool system_cloud_active()
 
     if (SPARK_CLOUD_CONNECTED && ((millis()-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
     {
-        cloud_disconnect(false);
+    	WARN("Disconnecting cloud due to inactivity!");
+    	cloud_disconnect(false);
         return false;
     }
 #endif

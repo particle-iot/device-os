@@ -66,12 +66,23 @@ CONLYFLAGS += -Wno-pointer-sign -std=gnu99
 
 LDFLAGS += $(LIBS_EXT)
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
+
 ifneq ($(PLATFORM_ID),3)
-LDFLAGS += -Wl,--whole-archive $(patsubst %,-l%,$(LIBS)) -Wl,--no-whole-archive
 LDFLAGS += -L$(COMMON_BUILD)/arm/linker
+WHOLE_ARCHIVE=y
+else
+ifneq ($(MAKE_OS),OSX)
+WHOLE_ARCHIVE=y
+endif
+endif
+
+WHOLE_ARCHIVE?=n
+ifeq ($(WHOLE_ARCHIVE),y)
+LDFLAGS += -Wl,--whole-archive $(patsubst %,-l%,$(LIBS)) -Wl,--no-whole-archive
 else
 LDFLAGS += $(patsubst %,-l%,$(LIBS))
 endif
+
 
 # Assembler flags
 ASFLAGS += -x assembler-with-cpp -fmessage-length=0

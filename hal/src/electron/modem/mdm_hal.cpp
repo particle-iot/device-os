@@ -1105,7 +1105,7 @@ bool MDMParser::socketSetBlocking(int socket, system_tick_t timeout_ms)
 {
     bool ok = false;
     LOCK();
-    DEBUG_D("socketSetBlocking(%d,%d)\r\n", socket,timeout_ms);
+    // DEBUG_D("socketSetBlocking(%d,%d)\r\n", socket,timeout_ms);
     if (ISSOCKET(socket)) {
         _sockets[socket].timeout_ms = timeout_ms;
         ok = true;
@@ -1259,10 +1259,10 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
                         ok = true;
                     }
                 } else if (!TIMEOUT(start, _sockets[socket].timeout_ms)) {
-                    //DEBUG_D("socketRecv: WAIT FOR URCs\r\n");
+                    // DEBUG_D("socketRecv: WAIT FOR URCs\r\n");
                     ok = (WAIT == waitFinalResp(NULL,NULL,0)); // wait for URCs
                 } else {
-                    DEBUG_D("socketRecv: TIMEOUT\r\n");
+                    // DEBUG_D("socketRecv: TIMEOUT\r\n");
                     len = 0;
                     ok = true;
                 }

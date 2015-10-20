@@ -29,6 +29,7 @@
 
 #include "spark_wiring_stream.h"
 #include "usart_hal.h"
+#include "spark_wiring_platform.h"
 
 class USARTSerial : public Stream
 {
@@ -60,9 +61,54 @@ public:
   bool isEnabled(void);
 };
 
+#if Wiring_Serial2
+void serialEventRun2(void) __attribute__((weak));
+void serialEvent2(void) __attribute__((weak));
+#endif
+
+#if Wiring_Serial3
+void serialEventRun3(void) __attribute__((weak));
+void serialEvent3(void) __attribute__((weak));
+#endif
+
+#if Wiring_Serial4
+void serialEventRun4(void) __attribute__((weak));
+void serialEvent4(void) __attribute__((weak));
+#endif
+
+#if Wiring_Serial5
+void serialEventRun5(void) __attribute__((weak));
+void serialEvent5(void) __attribute__((weak));
+#endif
+
+inline void __handleSerialEvent(USARTSerial& serial, void (*handler)(void)) __attribute__((always_inline));
+
+inline void __handleSerialEvent(USARTSerial& serial, void (*handler)(void))
+{
+    if (handler && serial.isEnabled() && serial.available()>0)
+        handler();
+}
+
+
 #ifndef SPARK_WIRING_NO_USART_SERIAL
 extern USARTSerial Serial1;
+
+#if Wiring_Serial2
 extern USARTSerial Serial2;
+#endif
+
+#if Wiring_Serial3
+extern USARTSerial Serial3;
+#endif
+
+#if Wiring_Serial4
+extern USARTSerial Serial4;
+#endif
+
+#if Wiring_Serial5
+extern USARTSerial Serial5;
+#endif
+
 #endif
 
 #endif

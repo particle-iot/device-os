@@ -34,6 +34,7 @@
 #include "interrupts_hal.h"
 #include "core_hal.h"
 #include "system_user.h"
+#include "system_version.h"
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3
 #define SYSTEM_HW_TICKS 1
@@ -166,6 +167,77 @@ public:
     {
         return HAL_Feature_Set(feature, false);
     }
+
+    String version()
+    {
+        SystemVersionInfo info;
+        system_version_info(&info, nullptr);
+        return String(info.versionString);
+    }
+
+    uint32_t versionNumber()
+    {
+        SystemVersionInfo info;
+        system_version_info(&info, nullptr);
+        return info.versionNumber;
+    }
+
+    inline void enableUpdates()
+    {
+        set_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, true);
+    }
+
+    inline void disableUpdates()
+    {
+        set_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, false);
+    }
+
+    inline uint8_t updatePending()
+    {
+        return get_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING)!=0;
+    }
+
+    inline uint8_t updatesEnabled()
+    {
+        return get_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED)!=0;
+    }
+
+
+    inline void enableReset()
+    {
+        set_flag(SYSTEM_FLAG_RESET_ENABLED, true);
+    }
+
+    inline void disableReset()
+    {
+        set_flag(SYSTEM_FLAG_RESET_ENABLED, false);
+    }
+
+    inline uint8_t resetEnabled()
+    {
+        return get_flag(SYSTEM_FLAG_RESET_ENABLED)!=0;
+    }
+
+    inline uint8_t resetPending()
+    {
+        return get_flag(SYSTEM_FLAG_RESET_PENDING)!=0;
+    }
+
+
+private:
+
+    inline uint8_t get_flag(system_flag_t flag)
+    {
+        uint8_t value = 0;
+        system_get_flag(flag, &value, nullptr);
+        return value;
+    }
+
+    inline void set_flag(system_flag_t flag, uint8_t value)
+    {
+        system_set_flag(flag, value, nullptr);
+    }
+
 
 };
 

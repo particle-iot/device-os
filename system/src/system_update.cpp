@@ -54,6 +54,44 @@ volatile uint8_t SPARK_CLOUD_CONNECTED;
 volatile uint8_t SPARK_FLASH_UPDATE;
 volatile uint32_t TimingFlashUpdateTimeout;
 
+static_assert(SYSTEM_FLAG_OTA_UPDATE_PENDING==0, "system flag value");
+static_assert(SYSTEM_FLAG_OTA_UPDATE_ENABLED==1, "system flag value");
+static_assert(SYSTEM_FLAG_RESET_PENDING==2, "system flag value");
+static_assert(SYSTEM_FLAG_RESET_ENABLED==3, "system flag value");
+static_assert(SYSTEM_FLAG_MAX==4, "system flag max value");
+
+volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
+    0, 1,   // OTA updates pending/enabled
+    0, 1,   // Reset pending/enabled
+};
+
+void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
+{
+}
+
+int system_set_flag(system_flag_t flag, uint8_t value, void*)
+{
+    if (flag>=SYSTEM_FLAG_MAX)
+        return -1;
+    if (systemFlags[flag]!=value) {
+        uint8_t oldValue = systemFlags[flag];
+        systemFlags[flag] = value;
+        system_flag_changed(flag, oldValue, value);
+    }
+    return 0;
+}
+
+
+int system_get_flag(system_flag_t flag, uint8_t* value, void*)
+{
+    if (flag>=SYSTEM_FLAG_MAX)
+        return -1;
+    if (value)
+        *value = systemFlags[flag];
+    return 0;
+}
+
+
 void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler)
 {
     Ymodem_Serial_Flash_Update_Handler = handler;
@@ -134,6 +172,12 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
 #endif
 }
 
+uint32_t timeRemaining(uint32_t start, uint32_t duration)
+{
+    uint32_t elapsed = HAL_Timer_Milliseconds()-start;
+    return (elapsed>=duration) ? 0 : duration-elapsed;
+}
+
 int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {
     if (file.store==FileTransfer::Store::FIRMWARE)
@@ -152,17 +196,47 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
         // only check address
     }
     else {
-        RGB.control(true);
-        RGB.color(RGB_COLOR_MAGENTA);
-        SPARK_FLASH_UPDATE = 1;
-        TimingFlashUpdateTimeout = 0;
-        system_notify_event(firmware_update, firmware_update_begin, &file);
-        HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
+        uint32_t start = HAL_Timer_Milliseconds();
+        system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 1, nullptr);
+        system_notify_event(firmware_update_pending);
+        if (waitFor(System.updatesEnabled, timeRemaining(start, 30000)))
+        {
+            system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
+            RGB.control(true);
+            RGB.color(RGB_COLOR_MAGENTA);
+            SPARK_FLASH_UPDATE = 1;
+            TimingFlashUpdateTimeout = 0;
+            system_notify_event(firmware_update, firmware_update_begin, &file);
+            HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
+        }
+        else
+            result = 1;     // updates disabled
     }
     return result;
 }
 
 void serial_dump(const char* msg, ...);
+
+
+void system_pending_shutdown()
+{
+    system_set_flag(SYSTEM_FLAG_RESET_PENDING, 1, nullptr);
+    system_notify_event(reset_pending);
+}
+
+void system_shutdown_if_enabled()
+{
+    if (System.resetPending() && System.resetEnabled())
+        System.reset();
+}
+
+void system_shutdown_if_needed()
+{
+    if (System.resetPending() && System.resetEnabled())
+    {
+        system_notify_event(reset, 0, nullptr, system_shutdown_if_enabled);
+    }
+}
 
 int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {
@@ -175,12 +249,13 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
         if (file.store==FileTransfer::Store::FIRMWARE)
         {
             hal_update_complete_t result = HAL_FLASH_End(NULL);
-
             system_notify_event(firmware_update, result!=HAL_UPDATE_ERROR ? firmware_update_complete : firmware_update_failed, &file);
 
-            // todo - talk with application and see if now is a good time to reset
-            // if update not applied, do we need to reset?
-            HAL_Core_System_Reset();
+
+            if (result==HAL_UPDATE_APPLIED_PENDING_RESTART)
+            {
+                system_pending_shutdown();
+            }
         }
     }
     else
@@ -358,7 +433,7 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
     return result;
 }
 
-bool system_version_info(Appender* appender)
+bool append_system_version_info(Appender* appender)
 {
     bool result = appender->append("system firmware version: " stringify(SYSTEM_VERSION_STRING)
 #if  defined(SYSTEM_MINIMAL)

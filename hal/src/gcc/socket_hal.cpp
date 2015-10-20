@@ -22,10 +22,10 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
+#include "device_globals.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
 #include "core_msg.h"
-#include "device_globals.h"
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wmissing-braces"

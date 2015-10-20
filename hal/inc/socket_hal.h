@@ -122,18 +122,22 @@ typedef struct sock_peer_t {
 } sock_peer_t;
 sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved);
 
+//------------ Socket Types ------------
+
+// don't redefine when building GCC target on OSX or linux
+#if !defined(_SYS_SOCKET_H) && !defined(_SYS_SOCKET_H_) && !defined(SOCK_STREAM)
+
 //--------- Address Families --------
 
 #define  AF_INET                2
 #define  AF_INET6               23
 
-//------------ Socket Types ------------
+enum hal_socket_type
+{
+	SOCK_STREAM=1,
+	SOCK_DGRAM=2,
 
-#define  SOCK_STREAM            1
-#define  SOCK_DGRAM             2
-#define  SOCK_RAW               3           // Raw sockets allow new IPv4 protocols to be implemented in user space. A raw socket receives or sends the raw datagram not including link level headers
-#define  SOCK_RDM               4
-#define  SOCK_SEQPACKET         5
+};
 
 //----------- Socket Protocol ----------
 
@@ -146,6 +150,9 @@ sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved);
 #define IPPROTO_NONE            59          // No next header
 #define IPPROTO_RAW             255         // raw IP packet
 #define IPPROTO_MAX             256
+
+
+#endif
 
 
 #ifdef	__cplusplus

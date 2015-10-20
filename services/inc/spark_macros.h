@@ -52,6 +52,6 @@
 // Seconds to Ms
 #define S2M(s) ((s)*1000)
 
-#define BYTE_N(x,n)			        (((x) >> ((n)*8) & 0x000000FF)
+#define BYTE_N(x,n)			        ((x) >> ((n)*8) & 0x000000FF)
 
 #endif /* SPARK_MACROS_H_ */

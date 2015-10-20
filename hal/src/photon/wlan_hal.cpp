@@ -209,6 +209,8 @@ WLanSelectAntenna_TypeDef fetch_antenna_selection()
     return WLanSelectAntenna_TypeDef(result);
 }
 
+STATIC_ASSERT(wlanselectantenna_typedef_is_size_1, sizeof(WLanSelectAntenna_TypeDef)==1);
+
 void save_antenna_selection(WLanSelectAntenna_TypeDef selection)
 {
     dct_write_app_data(&selection, DCT_ANTENNA_SELECTION_OFFSET, DCT_ANTENNA_SELECTION_SIZE);

@@ -21,8 +21,9 @@
 #define	SPARK_WIRING_CELLULAR_H
 
 #include "spark_wiring_platform.h"
+#include "spark_wiring_network.h"
+#include "system_network.h"
 #include "cellular_hal.h"
-//#include "system_network_cellular.h"
 
 #if Wiring_Cellular
 
@@ -48,14 +49,18 @@ public:
     }
 
     void setCredentials(const char* apn) {
-        setCredentials(apn, "", "", NULL);
+        setCredentials(apn, "", "");
     }
     void setCredentials(const char* username, const char* password) {
-        setCredentials("", username, password, NULL);
+        setCredentials("", username, password);
     }
     void setCredentials(const char* apn, const char* username, const char* password) {
-        //network_set_credentials(*this, 0, &creds, NULL);
-        network_set_credentials(apn, username, password, NULL);
+        // todo
+    }
+
+    bool ready()
+    {
+        return network_ready(*this, 0,  NULL);
     }
 };
 

@@ -1,5 +1,6 @@
 /**
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+ ******************************************************************************
+  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -13,26 +14,20 @@
 
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
-  ******************************************************************************
+ ******************************************************************************
  */
 
-#ifndef SYSTEM_USER_H
-#define	SYSTEM_USER_H
+#include "application.h"
+#include "unit-test/unit-test.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void setup();
-void loop();
-
-void serialEventRun();
-
-void system_initialize_user_backup_ram();
-
-#ifdef __cplusplus
+test(wifi_resolve_3_levels)
+{
+    IPAddress address = WiFi.resolve("pool.ntp.org");
+    assertNotEqual(address[0], 0);
 }
-#endif
 
-#endif	/* SYSTEM_USER_H */
-
+test(wifi_resolve_4_levels)
+{
+    IPAddress address = WiFi.resolve("north-america.pool.ntp.org");
+    assertNotEqual(address[0], 0);
+}

@@ -29,6 +29,7 @@
 #include "timer_hal.h"
 #include "pinmap_impl.h"
 #include <stddef.h>
+#include "service_debug.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -90,6 +91,9 @@ typedef struct STM32_I2C_Info {
 
     void (*callback_onRequest)(void);
     void (*callback_onReceive)(int);
+
+    I2C_Mode mode;
+    volatile bool ackFailure;
 } STM32_I2C_Info;
 
 /*
@@ -118,6 +122,17 @@ static void HAL_I2C_SoftwareReset(HAL_I2C_Interface i2c)
     /* Reset all I2C registers */
     I2C_SoftwareResetCmd(i2cMap[i2c]->I2C_Peripheral, ENABLE);
     I2C_SoftwareResetCmd(i2cMap[i2c]->I2C_Peripheral, DISABLE);
+
+    /* Clear all I2C interrupt error flags, and re-enable them */
+    I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_SMBALERT | I2C_IT_PECERR |
+            I2C_IT_TIMEOUT | I2C_IT_ARLO | I2C_IT_OVR | I2C_IT_BERR | I2C_IT_AF);
+    I2C_ITConfig(i2cMap[i2c]->I2C_Peripheral, I2C_IT_ERR, ENABLE);
+
+    /* Re-enable Event and Buffer interrupts in Slave mode */
+    if(i2cMap[i2c]->mode == I2C_MODE_SLAVE)
+    {
+        I2C_ITConfig(i2cMap[i2c]->I2C_Peripheral, I2C_IT_EVT | I2C_IT_BUF, ENABLE);
+    }
 
     /* Enable the I2C peripheral */
     I2C_Cmd(i2cMap[i2c]->I2C_Peripheral, ENABLE);
@@ -154,6 +169,8 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
     i2cMap[i2c]->txBufferLength = 0;
 
     i2cMap[i2c]->transmitting = 0;
+
+    i2cMap[i2c]->ackFailure = false;
 }
 
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved)
@@ -188,6 +205,9 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     i2cMap[i2c]->txBufferIndex = 0;
     i2cMap[i2c]->txBufferLength = 0;
 
+    i2cMap[i2c]->mode = mode;
+    i2cMap[i2c]->ackFailure = false;
+
     /* Enable I2C clock */
     *i2cMap[i2c]->I2C_RCC_APBRegister |= i2cMap[i2c]->I2C_RCC_APBClockEnable;
 
@@ -209,7 +229,7 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
-    if(mode != I2C_MODE_MASTER)
+    if(i2cMap[i2c]->mode != I2C_MODE_MASTER)
     {
         NVIC_InitStructure.NVIC_IRQChannel = i2cMap[i2c]->I2C_EV_IRQn;
         NVIC_Init(&NVIC_InitStructure);
@@ -233,7 +253,7 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
      */
     I2C_ITConfig(i2cMap[i2c]->I2C_Peripheral, I2C_IT_ERR, ENABLE);
 
-    if(mode != I2C_MODE_MASTER)
+    if(i2cMap[i2c]->mode != I2C_MODE_MASTER)
     {
         I2C_ITConfig(i2cMap[i2c]->I2C_Peripheral, I2C_IT_EVT | I2C_IT_BUF, ENABLE);
     }
@@ -283,15 +303,25 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         }
     }
 
-    /* perform blocking read into buffer */
+    /* Initialized variables here to minimize delays
+     * between sending of slave addr and read loop
+     */
     uint8_t *pBuffer = i2cMap[i2c]->rxBuffer;
     uint8_t numByteToRead = quantity;
 
-	if (quantity == 1)
-		/* Disable Acknowledgement */
-		I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, DISABLE);
-	else
-		I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, ENABLE);
+    /* Ensure ackFailure flag is cleared */
+    i2cMap[i2c]->ackFailure = false;
+
+    /* Set ACK/NACK prior to I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED check
+     * to minimize delays between sending of slave addr and read loop.
+     * I2C_CheckEvent() will clear ADDR bit and allow SCL clocks to run, so we don't
+     * have much time to check/set this correctly while I2C is in operation.
+     */
+    if (quantity == 1)
+        /* Disable Acknowledgement */
+        I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, DISABLE);
+    else
+        I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
     /* Send Slave address for read */
     I2C_Send7bitAddress(i2cMap[i2c]->I2C_Peripheral, address << 1, I2C_Direction_Receiver);
@@ -299,25 +329,53 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(i2cMap[i2c]->I2C_Peripheral, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+        /* STOP/RESET immediately if ACK failure detected */
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis) || i2cMap[i2c]->ackFailure)
         {
             /* Send STOP Condition */
             I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
+            /* Wait to make sure that STOP control bit has been cleared */
+            _millis = HAL_Timer_Get_Milli_Seconds();
+            while(i2cMap[i2c]->I2C_Peripheral->CR1 & I2C_CR1_STOP)
+            {
+                if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+                {
+                    break;
+                }
+            }
+
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
+
+            /* Ensure ackFailure flag is cleared */
+            i2cMap[i2c]->ackFailure = false;
 
             return 0;
         }
     }
 
-
-    /* While there is data to be read */
+    /* DATA on SDA --> Shift Register (SR) [8 clocks by SCL] --> Data Register (DR) --> ACK/NACK (9th clock)
+     *
+     * SINGLE BYTE READ
+     *  - SCL will run immediately after ADDR bit is cleared by reading SR2 (any I2C_CheckEvent)
+     *  - DR will be empty
+     *  - 1st byte from slave will be transferred to DR after 8th SCL clock
+     *  - ACK/NACK will be sent immediately (SCL will run 9th clock)
+     *
+     * 2 BYTES LEFT TO READ
+     *  - DR is not yet empty (2nd last byte is in DR; it was ACKed on its xfer to DR)
+     *  - Last byte is being assembled in SR
+     *  - SCL will be stretched after 8th clock (SR full) until DR is empty
+     *  - Reading DR for 2nd last byte will then move last byte to DR and send ACK/NACK
+     *
+     * While there is data to be read, perform blocking read into buffer
+     */
     while(numByteToRead)
     {
-        /* Wait for data register to be full */
-		/* This means the byte in the RX has already been acked */
-		/* Ack is sent on the xfer of teh byte to RX from the shift register */
+        /* Wait for DR to be full. As soon as DR is full, the byte that was xfer'd from SR
+         * to DR will be ACK/NACK'd. So it is important to enable/disable ACK bit ahead of this event
+         */
         _millis = HAL_Timer_Get_Milli_Seconds();
         while(I2C_GetFlagStatus(i2cMap[i2c]->I2C_Peripheral, I2C_FLAG_RXNE) == RESET)
         {
@@ -330,9 +388,12 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
             }
         }
 
-        switch	(numByteToRead) {
+        switch  (numByteToRead) {
             case 2:
-                /* Disable Acknowledgement on last byte which is being assembled in shift register*/
+                /* Disable Acknowledgement on last byte which is being assembled in SR,
+                 * 2nd last byte is in the DR and as soon as we read the 2nd last byte
+                 * below, last byte will be moved into DR and ACK/NACK will be sent.
+                 */
                 I2C_AcknowledgeConfig(i2cMap[i2c]->I2C_Peripheral, DISABLE);
                 break;
 
@@ -346,9 +407,10 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
                 break;
         }
 
-        /* Read the byte from the Slave */
-		/* This will enhable the transfer of the next byte (if any) from the shift register to the RX */
-		/* and also sending ACK/NACK for that byte */
+        /* Read the byte out of the Data Register that was received from the Slave.
+         * This will enable the transfer of the next byte (if any) from the Shift Register to
+         * the Data Register and also will send ACK/NACK for that byte
+         */
         *pBuffer = I2C_ReceiveData(i2cMap[i2c]->I2C_Peripheral);
 
         bytesRead++;
@@ -423,19 +485,36 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
         }
     }
 
+    /* Ensure ackFailure flag is cleared */
+    i2cMap[i2c]->ackFailure = false;
+
     /* Send Slave address for write */
     I2C_Send7bitAddress(i2cMap[i2c]->I2C_Peripheral, i2cMap[i2c]->txAddress, I2C_Direction_Transmitter);
 
     _millis = HAL_Timer_Get_Milli_Seconds();
     while(!I2C_CheckEvent(i2cMap[i2c]->I2C_Peripheral, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
     {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+        /* STOP/RESET immediately if ACK failure detected */
+        if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis) || i2cMap[i2c]->ackFailure)
         {
             /* Send STOP Condition */
             I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
+            /* Wait to make sure that STOP control bit has been cleared */
+            _millis = HAL_Timer_Get_Milli_Seconds();
+            while(i2cMap[i2c]->I2C_Peripheral->CR1 & I2C_CR1_STOP)
+            {
+                if(EVENT_TIMEOUT < (HAL_Timer_Get_Milli_Seconds() - _millis))
+                {
+                    break;
+                }
+            }
+
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
+
+            /* Ensure ackFailure flag is cleared */
+            i2cMap[i2c]->ackFailure = false;
 
             return 3;
         }
@@ -566,37 +645,58 @@ void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(voi
 
 static void HAL_I2C_ER_InterruptHandler(HAL_I2C_Interface i2c)
 {
-#if 0 //Checks whether specified I2C interrupt has occurred and clear IT pending bit.
+    /* Useful for debugging, diable to save time */
+    // DEBUG_D("ER:0x%04x\r\n",I2C_ReadRegister(i2cMap[i2c]->I2C_Peripheral, I2C_Register_SR1) & 0xFF00);
+#if 0
+    //Check whether specified I2C interrupt has occurred and clear IT pending bit.
+
+    /* Check on I2C SMBus Alert flag and clear it */
+    if (I2C_GetITStatus(i2cMap[i2c]->I2C_Peripheral, I2C_IT_SMBALERT))
+    {
+        I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_SMBALERT);
+    }
+
+    /* Check on I2C PEC error flag and clear it */
+    if (I2C_GetITStatus(i2cMap[i2c]->I2C_Peripheral, I2C_IT_PECERR))
+    {
+        I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_PECERR);
+    }
+
     /* Check on I2C Time out flag and clear it */
     if (I2C_GetITStatus(i2cMap[i2c]->I2C_Peripheral, I2C_IT_TIMEOUT))
     {
-      I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_TIMEOUT);
+        I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_TIMEOUT);
     }
 
     /* Check on I2C Arbitration Lost flag and clear it */
     if (I2C_GetITStatus(i2cMap[i2c]->I2C_Peripheral, I2C_IT_ARLO))
     {
-      I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_ARLO);
+        I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_ARLO);
     }
 
     /* Check on I2C Overrun/Underrun error flag and clear it */
     if (I2C_GetITStatus(i2cMap[i2c]->I2C_Peripheral, I2C_IT_OVR))
     {
-      I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_OVR);
-    }
-
-    /* Check on I2C Acknowledge failure error flag and clear it */
-    if (I2C_GetITStatus(i2cMap[i2c]->I2C_Peripheral, I2C_IT_AF))
-    {
-      I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_AF);
+        I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_OVR);
     }
 
     /* Check on I2C Bus error flag and clear it */
     if (I2C_GetITStatus(i2cMap[i2c]->I2C_Peripheral, I2C_IT_BERR))
     {
-      I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_BERR);
+        I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_BERR);
     }
-#else //Clear all error pending bits without worrying about specific error interrupt bit
+#else
+    /* Save I2C Acknowledge failure error flag, then clear it */
+    if (I2C_GetITStatus(i2cMap[i2c]->I2C_Peripheral, I2C_IT_AF))
+    {
+        i2cMap[i2c]->ackFailure = true;
+        I2C_ClearITPendingBit(i2cMap[i2c]->I2C_Peripheral, I2C_IT_AF);
+    }
+
+    /* Now clear all remaining error pending bits without worrying about specific error
+     * interrupt bit. This is faster than checking and clearing each one.
+     */
+
     /* Read SR1 register to get I2C error */
     if ((I2C_ReadRegister(i2cMap[i2c]->I2C_Peripheral, I2C_Register_SR1) & 0xFF00) != 0x00)
     {
@@ -605,7 +705,9 @@ static void HAL_I2C_ER_InterruptHandler(HAL_I2C_Interface i2c)
     }
 #endif
 
-    //I2C_SoftwareResetCmd() and/or I2C_GenerateStop() ???
+    /* We could call I2C_SoftwareResetCmd() and/or I2C_GenerateStop() from this error handler,
+     * but for now only ACK failure is handled in code.
+     */
 }
 
 /**
