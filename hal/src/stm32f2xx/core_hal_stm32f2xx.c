@@ -197,6 +197,9 @@ void HAL_Core_Config(void)
 
     Set_System();
 
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_BKPSRAM, ENABLE);
+
+
     //Wiring pins default to inputs
 #if !defined(USE_SWD_JTAG) && !defined(USE_SWD)
     for (pin_t pin=0; pin<=19; pin++)
@@ -873,7 +876,6 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
         {
             FunctionalState state = enabled ? ENABLE : DISABLE;
             // Switch on backup SRAM clock
-            RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_BKPSRAM, state);
             // Switch on backup power regulator, so that it survives the deep sleep mode,
             // software and hardware reset. Power must be supplied to VIN or VBAT to retain SRAM values.
             PWR_BackupRegulatorCmd(state);
