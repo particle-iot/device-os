@@ -133,3 +133,12 @@ void system_initialize_user_backup_ram()
     memcpy(&link_global_retained_start, &link_global_retained_initial_values, len);
 }
 #endif
+
+#include "core_hal.h"
+void module_user_init_hook()
+{
+#if PLATFORM_BACKUP_RAM
+    if (!HAL_Feature_Get(FEATURE_RETAINED_MEMORY))
+        system_initialize_user_backup_ram();
+#endif
+}

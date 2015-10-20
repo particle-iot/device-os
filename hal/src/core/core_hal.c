@@ -119,6 +119,8 @@ void HAL_Core_Config(void)
 #endif
 
 	sFLASH_Init();
+
+        module_user_init_hook();
 }
 
 uint16_t HAL_Core_Mode_Button_Pressed_Time()

@@ -156,11 +156,7 @@ public:
 
     inline int enableFeature(HAL_Feature feature)
     {
-        int result = HAL_Feature_Set(feature, true);
-        if (feature==FEATURE_RETAINED_MEMORY && !HAL_Feature_Get(FEATURE_WARM_START)) {
-            system_initialize_user_backup_ram();
-        }
-        return result;
+        return HAL_Feature_Set(feature, true);
     }
 
     inline int disableFeature(HAL_Feature feature)

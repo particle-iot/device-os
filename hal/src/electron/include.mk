@@ -34,9 +34,11 @@ ifneq (,$(HAL_LINK))
 LINKER_FILE=$(HAL_SRC_ELECTRON_INCL_PATH)/app_no_bootloader.ld
 LINKER_DEPS=$(LINKER_FILE)
 
+LDFLAGS += -L$(COMMON_BUILD)/arm/linker/stm32f2xx
 LDFLAGS += --specs=nano.specs -lc -lnosys
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=1400
+
 # support for external linker file
 
 # todo - factor out common code with photon include.mk
