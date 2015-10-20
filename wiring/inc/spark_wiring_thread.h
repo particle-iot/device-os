@@ -114,6 +114,13 @@ public:
         os_thread_scheduling(true, NULL);
     }
 };
+
+#define CRITICAL_SECTION_BLOCK() CriticalSection __cs;
+
+#else
+
+#define CRITICAL_SECTION_BLOCK()
+
 #endif
 
 #endif	/* SPARK_WIRING_THREAD_H */
