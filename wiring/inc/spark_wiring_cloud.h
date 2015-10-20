@@ -49,10 +49,13 @@ public:
     {
         return variable(varKey, &var, INT);
     }
+#if PLATFORM_ID!=3
+    // compiling with gcc this function duplicates the previous one.
     static inline bool variable(const char* varKey, const int32_t& var)
     {
         return variable(varKey, &var, INT);
     }
+#endif
     static inline bool variable(const char* varKey, const uint32_t& var)
     {
         return variable(varKey, &var, INT);
