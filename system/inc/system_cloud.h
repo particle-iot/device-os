@@ -35,13 +35,13 @@ typedef enum
 struct CloudVariableTypeBase {};
 struct CloudVariableTypeBool : public CloudVariableTypeBase {
     using vartype = bool;
-    using varref = bool*;
+    using varref = const bool*;
     CloudVariableTypeBool(){};
     static inline Spark_Data_TypeDef value() { return CLOUD_VAR_BOOLEAN; }
 };
 struct CloudVariableTypeInt : public CloudVariableTypeBase {
     using vartype = int;
-    using varref = int*;
+    using varref = const int*;
     CloudVariableTypeInt(){};
     static inline Spark_Data_TypeDef value() { return CLOUD_VAR_INT; }
 };
@@ -53,7 +53,7 @@ struct CloudVariableTypeString : public CloudVariableTypeBase {
 };
 struct CloudVariableTypeDouble : public CloudVariableTypeBase {
     using vartype = double;
-    using varref = double*;
+    using varref = const double*;
 
     CloudVariableTypeDouble(){};
     static inline Spark_Data_TypeDef value() { return CLOUD_VAR_DOUBLE; }

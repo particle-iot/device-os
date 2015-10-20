@@ -45,6 +45,46 @@ class CloudClass {
 
 public:
 
+    static inline bool variable(const char* varKey, const int& var)
+    {
+        return variable(varKey, &var, INT);
+    }
+    static inline bool variable(const char* varKey, const int32_t& var)
+    {
+        return variable(varKey, &var, INT);
+    }
+    static inline bool variable(const char* varKey, const uint32_t& var)
+    {
+        return variable(varKey, &var, INT);
+    }
+
+    static inline bool variable(const char* varKey, const double& var)
+    {
+        return variable(varKey, &var, DOUBLE);
+    }
+
+    static inline bool variable(const char* varKey, const String& var)
+    {
+        return variable(varKey, &var, STRING);
+    }
+
+    static inline bool variable(const char* varKey, const char* var)
+    {
+        return variable(varKey, var, STRING);
+    }
+
+    template<std::size_t N>
+    static inline bool variable(const char* varKey, const char var[N])
+    {
+        return variable(varKey, var, STRING);
+    }
+
+    template<std::size_t N>
+    static inline bool variable(const char* varKey, const unsigned char var[N])
+    {
+        return variable(varKey, var, STRING);
+    }
+
     static inline bool variable(const char *varKey, const uint8_t* userVar, const CloudVariableTypeString& userVarType)
     {
         return variable(varKey, (const char*)userVar, userVarType);
@@ -53,6 +93,11 @@ public:
     template<typename T> static inline bool variable(const char *varKey, const typename T::varref userVar, const T& userVarType)
     {
         return CLOUD_FN(spark_variable(varKey, (const void*)userVar, T::value(), NULL), false);
+    }
+
+    static inline bool variable(const char *varKey, const int32_t* userVar, const CloudVariableTypeInt& userVarType)
+    {
+        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL), false);
     }
 
     static inline bool variable(const char *varKey, const uint32_t* userVar, const CloudVariableTypeInt& userVarType)
@@ -67,6 +112,7 @@ public:
         static_assert(sizeof(T)==0, "\n\nUse Particle.variable(\"name\", myVar, STRING); without & in front of myVar\n\n");
         return false;
     }
+
     template<typename T>
     static inline bool variable(const T *varKey, const String *userVar, const CloudVariableTypeString& userVarType)
     {
@@ -75,6 +121,7 @@ public:
         extra.update = update_string_variable;
         return CLOUD_FN(spark_variable(varKey, userVar, CloudVariableTypeString::value(), &extra), false);
     }
+
     template<typename T>
     static inline bool variable(const T *varKey, const String &userVar, const CloudVariableTypeString& userVarType)
     {
