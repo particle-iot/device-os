@@ -67,18 +67,6 @@ public:
         static_assert(sizeof(T)==0, "\n\nUse Particle.variable(\"name\", myVar, STRING); without & in front of myVar\n\n");
         return false;
     }
-    template<typename T>
-    static inline bool variable(const T *varKey, const String *userVar, const CloudVariableTypeString& userVarType)
-    {
-        static_assert(sizeof(T)==0, "\n\nIn Particle.variable(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
-        return false;
-    }
-    template<typename T>
-    static inline bool variable(const T *varKey, const String &userVar, const CloudVariableTypeString& userVarType)
-    {
-        static_assert(sizeof(T)==0, "\n\nIn Particle.variable(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
-        return false;
-    }
 
     static bool function(const char *funcKey, user_function_int_str_t* func)
     {
