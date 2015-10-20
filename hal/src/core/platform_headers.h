@@ -24,6 +24,8 @@ extern "C" {
 #include "nvmem.h"
 #include "netapp.h"
 
+#define retained static_assert(1==0, "retained variables are not supported on the Core");
+#define retained_system static_assert(1==0, "retained variables are not supported on the Core");
 
 #ifdef	__cplusplus
 }
