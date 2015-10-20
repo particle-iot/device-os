@@ -132,13 +132,23 @@ void system_initialize_user_backup_ram()
     size_t len = &link_global_retained_end-&link_global_retained_start;
     memcpy(&link_global_retained_start, &link_global_retained_initial_values, len);
 }
+
+#include "platform_headers.h"
+
+static retained_system volatile uint32_t __backup_sram_signature;
+static bool backup_ram_was_valid_ = false;
+const uint32_t signature = 0x9A271C1E;
 #endif
 
-#include "core_hal.h"
+bool __backup_ram_was_valid() { return backup_ram_was_valid_; }
+
 void module_user_init_hook()
 {
 #if PLATFORM_BACKUP_RAM
-    if (!HAL_Feature_Get(FEATURE_RETAINED_MEMORY))
+    backup_ram_was_valid_ =  __backup_sram_signature==signature;
+    if (!backup_ram_was_valid_) {
         system_initialize_user_backup_ram();
+        __backup_sram_signature = signature;
+    }
 #endif
 }

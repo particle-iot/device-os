@@ -151,6 +151,8 @@ public:
 
     inline bool featureEnabled(HAL_Feature feature)
     {
+        if (feature==FEATURE_WARM_START)
+            return __backup_ram_was_valid();
         return HAL_Feature_Get(feature);
     }
 
