@@ -37,6 +37,7 @@
 #include "spark_protocol.h"
 #include "events.h"
 #include "deviceid_hal.h"
+#include "system_mode.h"
 
 
 #ifndef SPARK_NO_CLOUD
@@ -146,7 +147,7 @@ void spark_disconnect(void)
 void spark_process(void)
 {
 #if PLATFORM_THREADING
-    if (APPLICATION_THREAD_CURRENT())
+    if (system_thread_get_state(NULL) && APPLICATION_THREAD_CURRENT())
     {
         ApplicationThread.process();
         return;
