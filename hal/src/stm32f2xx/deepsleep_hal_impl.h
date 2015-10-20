@@ -18,7 +18,10 @@
 
 #pragma once
 
+#ifndef PARTICLE_NO_RETAINED
 
-#define retained  __attribute__((externally_visible, section(".retained_user")))
+#define retained  __attribute__((section(".retained_user")))
 
 #define retained_system  __attribute__((section(".retained_system")))
+
+#endif
