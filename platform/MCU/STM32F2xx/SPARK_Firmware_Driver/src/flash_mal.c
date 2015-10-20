@@ -233,7 +233,7 @@ bool FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress
     }
 
 	// this predates the module system (early P1's using external flash for storage)
-#if (!defined USE_SERIAL_FLASH) || (defined FLASH_UPDATE_MODULES)
+#if (!defined USE_SERIAL_FLASH) || (PLATFORM_ID==PLATFORM_DUO_PRODUCTION)
     if ((sourceDeviceID == FLASH_INTERNAL) && (flags & MODULE_VERIFY_MASK))
     {
         uint32_t moduleLength = FLASH_ModuleLength(sourceDeviceID, sourceAddress);
@@ -813,7 +813,7 @@ void FLASH_Erase(void)
 void FLASH_Backup(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
-#ifdef FLASH_UPDATE_MODULES
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
 	// Modular firmware perform CRC check before copying memory, so backup image isn't necessary.
 #else
     FLASH_CopyMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FLASH_SERIAL, FLASH_Address, FIRMWARE_IMAGE_SIZE, 0, 0);
@@ -826,7 +826,7 @@ void FLASH_Backup(uint32_t FLASH_Address)
 void FLASH_Restore(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
-#ifdef FLASH_UPDATE_MODULES
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
 	// Use module slot to restore firmware
 #else
     //CRC verification Disabled by default
@@ -925,7 +925,7 @@ int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
 void FLASH_End(void)
 {
 #ifdef USE_SERIAL_FLASH
-#ifdef FLASH_UPDATE_MODULES
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
 	//FLASH_AddToNextAvailableModulesSlot() should be called in system_update.cpp
 #else
     system_flags.FLASH_OTA_Update_SysFlag = 0x0005;

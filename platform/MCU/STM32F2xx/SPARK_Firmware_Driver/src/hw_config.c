@@ -656,7 +656,7 @@ bool FACTORY_Flash_Reset(void)
 {
     bool success;
 #ifdef USE_SERIAL_FLASH
-#ifdef FLASH_UPDATE_MODULES
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
     // Restore the Factory firmware using flash_modules application dct info
     success = FLASH_RestoreFromFactoryResetModuleSlot();
 #else
@@ -687,7 +687,7 @@ bool FACTORY_Flash_Reset(void)
 void BACKUP_Flash_Reset(void)
 {
 #ifdef USE_SERIAL_FLASH
-#ifdef FLASH_UPDATE_MODULES
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
 	// Modular firmware perform CRC check before copying memory, so backup image isn't necessary.
 #else
     //Restore the Backup programmed application firmware from External Flash
@@ -710,7 +710,7 @@ void OTA_Flash_Reset(void)
     // if that fails, abort the copy and leave the existing user firmware as is.
 
 #ifdef USE_SERIAL_FLASH
-#ifdef FLASH_UPDATE_MODULES
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
 	//FLASH_UpdateModules() does the job of copying the split firmware modules
 #else
 /*
