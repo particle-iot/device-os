@@ -55,10 +55,11 @@ test(GPIO_PinModeSetResultsInCorrectMode) {
 test(GPIO_NoDigitalWriteWhenPinModeIsNotSetToOutput) {
     pin_t pin = D0;//pin under test
     // when
-    pinMode(pin, INPUT);//pin set to INPUT mode
-    digitalWrite(pin, HIGH);
+    // pin set to INPUT_PULLUP mode, to keep pin from floating and test failing
+    pinMode(pin, INPUT_PULLUP);
+    digitalWrite(pin, LOW);
     // then
-    assertNotEqual((PinState)HAL_GPIO_Read(pin), HIGH);
+    assertNotEqual((PinState)HAL_GPIO_Read(pin), LOW);
     //To Do : Add test for remaining pins if required
 }
 
