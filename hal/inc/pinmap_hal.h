@@ -75,7 +75,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define TOTAL_PINS 47
 #elif PLATFORM_ID == 8 // P1
 #define TOTAL_PINS 30
-#else // Must be Photon
+#else // Must be Photon and Duo
 #define TOTAL_PINS 24
 #endif
 
@@ -83,7 +83,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define TOTAL_ANALOG_PINS 12
 #elif PLATFORM_ID == 8 // P1
 #define TOTAL_ANALOG_PINS 13
-#else // Must be Photon
+#else // Must be Photon and Duo
 #define TOTAL_ANALOG_PINS 8
 #endif
 #define FIRST_ANALOG_PIN 10
@@ -109,7 +109,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define A5 15
 #define A6 16
 
-// WKP pin is also an ADC on Photon
+// WKP pin is also an ADC on Photon and Duo
 #define A7 17
 
 #define RX 18
@@ -117,10 +117,34 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 
 #define BTN 20
 
-// WKP pin on Photon
+// WKP pin on Photon and Duo
 #define WKP 17
 
 // Timer pins
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+#define TIMER1_CH2 19
+#define TIMER1_CH3 18
+
+#define TIMER2_CH2 4
+#define TIMER2_CH4 23
+
+#define TIMER3_CH1 3
+#define TIMER3_CH2 2
+#define TIMER3_CH3 21
+#define TIMER3_CH4 22
+
+#define TIMER4_CH1 1
+#define TIMER4_CH2 0
+
+#define TIMER5_CH1 17
+#define TIMER5_CH2 16
+#define TIMER5_CH3 11
+#define TIMER5_CH4 10
+
+#define TIMER13_CH1 14
+
+#define TIMER14_CH1 15
+#else
 #define TIMER2_CH1 10
 #define TIMER2_CH2 11
 #define TIMER2_CH3 18
@@ -133,6 +157,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 
 #define TIMER4_CH1 1
 #define TIMER4_CH2 0
+#endif
 
 // SPI pins
 #define SS   12
@@ -144,9 +169,15 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define SDA  0
 #define SCL  1
 
+// DAC pins on Duo
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+#define DAC1 12
+#define DAC2 13
+#else
 // DAC pins on Photon
 #define DAC1 16
 #define DAC2 13
+#endif
 
 // RGB LED pins
 #define RGBR 21
