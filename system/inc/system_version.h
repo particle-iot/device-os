@@ -35,8 +35,9 @@ extern "C" {
 #define SYSTEM_VERSION_v044  0x00040400
 #define SYSTEM_VERSION_v045  0x00040500
 #define SYSTEM_VERSION_v046  0x00040600
+#define SYSTEM_VERSION_v047  0x00040700
 
-#define SYSTEM_VERSION  SYSTEM_VERSION_v046
+#define SYSTEM_VERSION  SYSTEM_VERSION_v047
 
 #define SYSTEM_VERSION_040
 #define SYSTEM_VERSION_041
@@ -45,6 +46,7 @@ extern "C" {
 #define SYSTEM_VERSION_044
 #define SYSTEM_VERSION_045
 #define SYSTEM_VERSION_046
+#define SYSTEM_VERSION_047
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
