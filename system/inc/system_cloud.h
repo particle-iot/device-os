@@ -35,13 +35,13 @@ typedef enum
 struct CloudVariableTypeBase {};
 struct CloudVariableTypeBool : public CloudVariableTypeBase {
     using vartype = bool;
-    using varref = bool*;
+    using varref = const bool*;
     CloudVariableTypeBool(){};
     static inline Spark_Data_TypeDef value() { return CLOUD_VAR_BOOLEAN; }
 };
 struct CloudVariableTypeInt : public CloudVariableTypeBase {
     using vartype = int;
-    using varref = int*;
+    using varref = const int*;
     CloudVariableTypeInt(){};
     static inline Spark_Data_TypeDef value() { return CLOUD_VAR_INT; }
 };
@@ -53,7 +53,7 @@ struct CloudVariableTypeString : public CloudVariableTypeBase {
 };
 struct CloudVariableTypeDouble : public CloudVariableTypeBase {
     using vartype = double;
-    using varref = double*;
+    using varref = const double*;
 
     CloudVariableTypeDouble(){};
     static inline Spark_Data_TypeDef value() { return CLOUD_VAR_DOUBLE; }
@@ -119,7 +119,13 @@ struct  cloud_function_descriptor {
 
 STATIC_ASSERT(cloud_function_descriptor_size, sizeof(cloud_function_descriptor)==16 || sizeof(void*)!=4);
 
-bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved);
+typedef struct spark_variable_t
+{
+    uint16_t size;
+    const void* (*update)(const char* nane, Spark_Data_TypeDef type, const void* var, void* reserved);
+} spark_variable_t;
+
+bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra);
 
 /**
  * @param funcKey   The name of the function to register. When NULL, pFunc is taken to be a

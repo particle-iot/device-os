@@ -82,9 +82,9 @@ bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_T
     return spark_protocol_send_event(sp, name, data, ttl, convert(eventType), NULL);
 }
 
-bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
+bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_variable(varKey, userVar, userVarType, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_variable(varKey, userVar, userVarType, extra));
 
     User_Var_Lookup_Table_t* item = NULL;
     if (NULL != userVar && NULL != varKey && strlen(varKey)<=USER_VAR_KEY_LENGTH)
@@ -93,6 +93,9 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
         {
             item->userVar = userVar;
             item->userVarType = userVarType;
+            if (extra) {
+                item->update = extra->update;
+            }
             memset(item->userVarKey, 0, USER_VAR_KEY_LENGTH);
             memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);
         }
