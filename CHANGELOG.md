@@ -1,22 +1,21 @@
 ## v0.4.7
 
-## v0.4.7
-
 ### FEATURES
- - [photon] Software Timers
+
+ - [Software Timers](https://docs.particle.io/reference/firmware/photon/#software-timers)
  - [pulseIn(pin, value)](https://docs.particle.io/reference/firmware/photon/#pulsein-) now available for all devices.
- - `WiFi.dnsServerIP()` and `WiFi.dhcpServerIP()`
- - `serialEvent()`
- - GCC virtual device
- - `System.version()` to retrieve the version of system firmware [#688](https://github.com/spark/firmware/issues/688)
- - Firmware control of when OTA updates can happen [#375](https://github.com/spark/firmware/issues/375)
+ - [WiFi.dnsServerIP()](https://docs.particle.io/reference/firmware/core/#wifi-dnsserverip-) and [WiFi.dhcpServerIP()](https://docs.particle.io/reference/firmware/core/#wifi-dhcpserverip-)
+ - [serialEvent()](https://docs.particle.io/reference/firmware/core/#serialevent-)
+ - [GCC virtual device](https://github.com/spark/firmware/tree/develop/hal/src/gcc#device-configuration)
+ - [System.version()](https://docs.particle.io/reference/firmware/photon/#system-version-) to retrieve the version of system firmware [#688](https://github.com/spark/firmware/issues/688)
+ - Firmware control of [OTA updates](https://docs.particle.io/reference/firmware/core/#ota-updates) can happen [#375](https://github.com/spark/firmware/issues/375)
 
 ### ENHANCEMENTS
 
  - [multithreading] Application thread continues to run in listening mode
  - [multithreading] `Particle.process()` called from the application thread pumps application messages [#659](https://github.com/spark/firmware/issues/659)
  - `Particle.variable()` supports `String`s [#657](https://github.com/spark/firmware/issues/657)
- - Simplified `Particle.variable()` API - variable type parameter is optional, and variables are passed by reference so  `&`'s are not required.
+ - Simplified [Particle.variable()](https://docs.particle.io/reference/firmware/photon/#variables) API - variable type parameter is optional, and variables are passed by reference so  `&`'s are not required.
 
 ### BUGFIXES
 
