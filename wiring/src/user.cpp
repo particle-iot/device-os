@@ -138,9 +138,15 @@ void system_initialize_user_backup_ram()
 static retained_system volatile uint32_t __backup_sram_signature;
 static bool backup_ram_was_valid_ = false;
 const uint32_t signature = 0x9A271C1E;
-#endif
 
 bool __backup_ram_was_valid() { return backup_ram_was_valid_; }
+
+#else
+
+bool __backup_ram_was_valid() { return false; }
+
+#endif
+
 
 void module_user_init_hook()
 {
