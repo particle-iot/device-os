@@ -190,7 +190,7 @@ public:
         set_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, false);
     }
 
-    inline uint8_t updatePending()
+    inline uint8_t updatesPending()
     {
         return get_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING)!=0;
     }
