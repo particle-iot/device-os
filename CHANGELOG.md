@@ -6,17 +6,33 @@
  - [photon] Software Timers
  - [pulseIn(pin, value)](https://docs.particle.io/reference/firmware/photon/#pulsein-) now available for all devices.
  - `WiFi.dnsServerIP()` and `WiFi.dhcpServerIP()`
+ - `serialEvent()`
+ - GCC virtual device
+ - `System.version()` to retrieve the version of system firmware [#688](https://github.com/spark/firmware/issues/688)
+ - Firmware control of when OTA updates can happen [#375](https://github.com/spark/firmware/issues/375)
 
+### ENHANCEMENTS
+
+ - [multithreading] Application thread continues to run in listening mode
+ - [multithreading] `Particle.process()` called from the application thread pumps application messages [#659](https://github.com/spark/firmware/issues/659)
+ - `Particle.variable()` supports `String`s [#657](https://github.com/spark/firmware/issues/657)
+ - Simplified `Particle.variable()` API - variable type parameter is optional, and variables are passed by reference so  `&`'s are not required.
 
 ### BUGFIXES
 
+ - TCPClient unstable [#672](https://github.com/spark/firmware/issues/672)
+ - Photon frequently SOS's immediately following cloud re-connect [#663](https://github.com/spark/firmware/issues/663)
  - `String.toLower()` has no affect on string. [#665](https://github.com/spark/firmware/issues/665)
  - SOS due to WICED socket handlers being called when socket is disposed. [#663](https://github.com/spark/firmware/issues/663) [#672](https://github.com/spark/firmware/issues/672)
  - Application constructors executed after RTOS startup so that HAL_Delay_Milliseconds() can be called. This may mean that `STARTUP()` code executes just a little later than before, but
     can safely use all public APIs.
- - Esure bootloader region is write protected.
+ - Ensure bootloader region is write protected.
  - White breathing LED on exiting listening mode. [#682](https://github.com/spark/firmware/issues/682)
  - WICED not resolving DNS names with 4 parts (it was trying to decode as an IP address.)
+ - SoftAP via HTTP would fail on Safari due to request sent as multiple TCP packets. Fixed WICED HTTP server.  [#680](https://github.com/spark/firmware/issues/680)
+ - Retained variables are not persisting, even without reset or deep sleep. [#661](https://github.com/spark/firmware/issues/661)
+ - Backup RAM enabled for monolithic builds [#667](https://github.com/spark/firmware/issues/667)
+ - Pure virtual call on creation of low priority std::thread [#652](https://github.com/spark/firmware/issues/652)
 
 
 ## v0.4.6
