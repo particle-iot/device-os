@@ -70,8 +70,10 @@ public:
     template<typename T>
     static inline bool variable(const T *varKey, const String *userVar, const CloudVariableTypeString& userVarType)
     {
-        static_assert(sizeof(T)==0, "\n\nIn Particle.variable(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
-        return false;
+        spark_variable_t extra;
+        extra.size = sizeof(extra);
+        extra.update = update_string_variable;
+        return CLOUD_FN(spark_variable(varKey, userVar, CloudVariableTypeString::value(), &extra), false);
     }
     template<typename T>
     static inline bool variable(const T *varKey, const String &userVar, const CloudVariableTypeString& userVarType)
@@ -205,6 +207,12 @@ private:
         }
         return success;
 #endif
+    }
+
+    static const void* update_string_variable(const char* name, Spark_Data_TypeDef type, const void* var, void* reserved)
+    {
+        const String* s = (const String*)var;
+        return s->c_str();
     }
 };
 
