@@ -37,6 +37,18 @@ else
   exit 1
 fi
 
+# GCC Build
+echo
+echo '-----------------------------------------------------------------------'
+make -s clean all PLATFORM=gcc
+if [[ "$?" -eq 0 ]]; then
+  echo "✓ SUCCESS"
+else
+  echo "✗ FAILED"
+  exit 1
+fi
+
+
 
 
 # COMPILE_LTO required on the Core for wiring/no_fixture to fit

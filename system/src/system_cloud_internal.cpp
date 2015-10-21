@@ -657,7 +657,14 @@ int userVarType(const char *varKey)
 const void *getUserVar(const char *varKey)
 {
     User_Var_Lookup_Table_t* item = find_var_by_key(varKey);
-    return item ? item->userVar : NULL;
+    const void* result = nullptr;
+    if (item) {
+    	if (item->update)
+            result = item->update(item->userVarKey, item->userVarType, item->userVar, nullptr);
+    	else
+            result = item->userVar;
+    }
+    return result;
 }
 
 void userFuncScheduleImpl(User_Func_Lookup_Table_t* item, const char* paramString, bool freeParamString, SparkDescriptor::FunctionResultCallback callback)

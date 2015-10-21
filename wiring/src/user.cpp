@@ -59,6 +59,12 @@ void serialEventRun() __attribute__((weak));
 void serialEvent() __attribute__((weak));
 void serialEvent1() __attribute__((weak));
 
+#if PLATFORM_ID==3
+// gcc doesn't allow weak functions to not exist, so they must be defined.
+__attribute__((weak)) void serialEvent() {}
+__attribute__((weak)) void serialEvent1() {}
+#endif
+
 #if Wiring_Serial2
 void serialEvent2() __attribute__((weak));
 #endif
@@ -105,6 +111,13 @@ void serialEventRun()
 
 }
 
+#if defined(STM32F2XX)
+#define PLATFORM_BACKUP_RAM 1
+#else
+#define PLATFORM_BACKUP_RAM 0
+#endif
+
+#if PLATFORM_BACKUP_RAM
 extern char link_global_retained_initial_values;
 extern char link_global_retained_start;
 extern char link_global_retained_end;
@@ -118,4 +131,30 @@ void system_initialize_user_backup_ram()
 {
     size_t len = &link_global_retained_end-&link_global_retained_start;
     memcpy(&link_global_retained_start, &link_global_retained_initial_values, len);
+}
+
+#include "platform_headers.h"
+
+static retained_system volatile uint32_t __backup_sram_signature;
+static bool backup_ram_was_valid_ = false;
+const uint32_t signature = 0x9A271C1E;
+
+bool __backup_ram_was_valid() { return backup_ram_was_valid_; }
+
+#else
+
+bool __backup_ram_was_valid() { return false; }
+
+#endif
+
+
+void module_user_init_hook()
+{
+#if PLATFORM_BACKUP_RAM
+    backup_ram_was_valid_ =  __backup_sram_signature==signature;
+    if (!backup_ram_was_valid_) {
+        system_initialize_user_backup_ram();
+        __backup_sram_signature = signature;
+    }
+#endif
 }

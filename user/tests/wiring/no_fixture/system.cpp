@@ -2,6 +2,8 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+
+#if PLATFORM_ID >= 3
 test(System_FreeMemory)
 {
     // this test didn't work on the core attempting to allocate the current value of
@@ -18,14 +20,14 @@ test(System_FreeMemory)
         assertLess(free2, free1);
     }
 }
-
+#endif
 
 test(system_version)
 {
     uint32_t versionNumber = System.versionNumber();
 
     char expected[20];
-    sprintf(expected, "%d.%d.%d", BYTE_N(versionNumber,3), BYTE_N(versionNumber,2), BYTE_N(versionNumber,1));
+    sprintf(expected, "%d.%d.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1));
 
     assertTrue(strcmp(expected,System.version().c_str())==0);
 

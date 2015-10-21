@@ -37,6 +37,7 @@
 #include "spark_protocol.h"
 #include "events.h"
 #include "deviceid_hal.h"
+#include "system_mode.h"
 
 
 #ifndef SPARK_NO_CLOUD
@@ -81,9 +82,9 @@ bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_T
     return spark_protocol_send_event(sp, name, data, ttl, convert(eventType), NULL);
 }
 
-bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, void* reserved)
+bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_variable(varKey, userVar, userVarType, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_variable(varKey, userVar, userVarType, extra));
 
     User_Var_Lookup_Table_t* item = NULL;
     if (NULL != userVar && NULL != varKey && strlen(varKey)<=USER_VAR_KEY_LENGTH)
@@ -92,6 +93,9 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
         {
             item->userVar = userVar;
             item->userVarType = userVarType;
+            if (extra) {
+                item->update = extra->update;
+            }
             memset(item->userVarKey, 0, USER_VAR_KEY_LENGTH);
             memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);
         }
@@ -145,8 +149,14 @@ void spark_disconnect(void)
 
 void spark_process(void)
 {
-    if (!SYSTEM_THREAD_CURRENT())
+#if PLATFORM_THREADING
+    if (system_thread_get_state(NULL) && APPLICATION_THREAD_CURRENT())
+    {
+        ApplicationThread.process();
         return;
+    }
+#endif
+
 
     // run the background processing loop, and specifically also pump cloud events
     Spark_Idle_Events(true);

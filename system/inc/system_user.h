@@ -23,12 +23,23 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
+
 void setup();
 void loop();
 
 void serialEventRun();
 
-void system_initialize_user_backup_ram();
+/**
+ * Code that is initialized before any user constructors are called.
+ */
+void module_user_init_hook(void);
+
+/**
+ * Determines if the backup ram was valid, or if it was initialized.
+ * @return true if the backup ram was valid and didn't need initializing. False if the ram was invalid and was initialized.
+ */
+bool __backup_ram_was_valid();
 
 #ifdef __cplusplus
 }

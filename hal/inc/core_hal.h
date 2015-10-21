@@ -198,6 +198,11 @@ typedef enum HAL_Feature {
 int HAL_Feature_Set(HAL_Feature feature, bool enabled);
 bool HAL_Feature_Get(HAL_Feature feature);
 
+/**
+ * Externally defined function that is called before user constructors.
+ */
+extern void module_user_init_hook(void);
+
 #ifdef __cplusplus
 }
 #endif

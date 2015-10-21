@@ -151,16 +151,14 @@ public:
 
     inline bool featureEnabled(HAL_Feature feature)
     {
+        if (feature==FEATURE_WARM_START)
+            return __backup_ram_was_valid();
         return HAL_Feature_Get(feature);
     }
 
     inline int enableFeature(HAL_Feature feature)
     {
-        int result = HAL_Feature_Set(feature, true);
-        if (feature==FEATURE_RETAINED_MEMORY && !HAL_Feature_Get(FEATURE_WARM_START)) {
-            system_initialize_user_backup_ram();
-        }
-        return result;
+        return HAL_Feature_Set(feature, true);
     }
 
     inline int disableFeature(HAL_Feature feature)
@@ -181,6 +179,63 @@ public:
         system_version_info(&info, nullptr);
         return info.versionNumber;
     }
+
+    inline void enableUpdates()
+    {
+        set_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, true);
+    }
+
+    inline void disableUpdates()
+    {
+        set_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, false);
+    }
+
+    inline uint8_t updatesPending()
+    {
+        return get_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING)!=0;
+    }
+
+    inline uint8_t updatesEnabled()
+    {
+        return get_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED)!=0;
+    }
+
+
+    inline void enableReset()
+    {
+        set_flag(SYSTEM_FLAG_RESET_ENABLED, true);
+    }
+
+    inline void disableReset()
+    {
+        set_flag(SYSTEM_FLAG_RESET_ENABLED, false);
+    }
+
+    inline uint8_t resetEnabled()
+    {
+        return get_flag(SYSTEM_FLAG_RESET_ENABLED)!=0;
+    }
+
+    inline uint8_t resetPending()
+    {
+        return get_flag(SYSTEM_FLAG_RESET_PENDING)!=0;
+    }
+
+
+private:
+
+    inline uint8_t get_flag(system_flag_t flag)
+    {
+        uint8_t value = 0;
+        system_get_flag(flag, &value, nullptr);
+        return value;
+    }
+
+    inline void set_flag(system_flag_t flag, uint8_t value)
+    {
+        system_set_flag(flag, value, nullptr);
+    }
+
 
 };
 

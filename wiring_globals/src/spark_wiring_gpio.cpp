@@ -100,7 +100,11 @@ bool pinAvailable(uint16_t pin) {
     return 0; // 'pin' is used
   }
 #endif
-  return 1; // 'pin' is available
+
+  if (pin >= TOTAL_PINS)
+    return 0;
+  else
+    return 1; // 'pin' is available
 }
 
 inline bool is_input_mode(PinMode mode) {

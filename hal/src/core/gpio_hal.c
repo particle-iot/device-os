@@ -215,6 +215,15 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
     /* If already on the value we want to measure, wait for the next one.
      * Time out after 3 seconds so we don't block the background tasks
      */
+    while (pinReadFast(pin) == value) {
+        if (SYSTEM_TICK_COUNTER - timeoutStart > 216000000UL) {
+            return 0;
+        }
+    }
+
+    /* Wait until the start of the pulse.
+     * Time out after 3 seconds so we don't block the background tasks
+     */
     while (pinReadFast(pin) != value) {
         if (SYSTEM_TICK_COUNTER - timeoutStart > 216000000UL) {
             return 0;

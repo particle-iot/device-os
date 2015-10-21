@@ -26,6 +26,7 @@
 
 #include "spark_wiring_i2c.h"
 #include "i2c_hal.h"
+#include "spark_wiring_thread.h"
 
 // Constructors ////////////////////////////////////////////////////////////////
 
@@ -33,6 +34,7 @@ TwoWire::TwoWire(HAL_I2C_Interface i2c)
 {
   _i2c = i2c;
   HAL_I2C_Init(_i2c, NULL);
+
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
@@ -56,12 +58,14 @@ void TwoWire::stretchClock(bool stretch)
 
 void TwoWire::begin(void)
 {
-  HAL_I2C_Begin(_i2c, I2C_MODE_MASTER, 0x00, NULL);
+	CRITICAL_SECTION_BLOCK();
+	HAL_I2C_Begin(_i2c, I2C_MODE_MASTER, 0x00, NULL);
 }
 
 void TwoWire::begin(uint8_t address)
 {
-  HAL_I2C_Begin(_i2c, I2C_MODE_SLAVE, address, NULL);
+	CRITICAL_SECTION_BLOCK();
+	HAL_I2C_Begin(_i2c, I2C_MODE_SLAVE, address, NULL);
 }
 
 void TwoWire::begin(int address)
@@ -71,12 +75,15 @@ void TwoWire::begin(int address)
 
 void TwoWire::end()
 {
-    HAL_I2C_End(_i2c, NULL);
+	CRITICAL_SECTION_BLOCK();
+	HAL_I2C_End(_i2c, NULL);
 }
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
 {
-  return HAL_I2C_Request_Data(_i2c, address, quantity, sendStop, NULL);
+  CRITICAL_SECTION_BLOCK();
+  uint8_t result = HAL_I2C_Request_Data(_i2c, address, quantity, sendStop, NULL);
+  return result;
 }
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity)
@@ -96,7 +103,8 @@ uint8_t TwoWire::requestFrom(int address, int quantity, int sendStop)
 
 void TwoWire::beginTransmission(uint8_t address)
 {
-  HAL_I2C_Begin_Transmission(_i2c, address, NULL);
+	CRITICAL_SECTION_BLOCK();
+	HAL_I2C_Begin_Transmission(_i2c, address, NULL);
 }
 
 void TwoWire::beginTransmission(int address)
@@ -119,7 +127,8 @@ void TwoWire::beginTransmission(int address)
 //
 uint8_t TwoWire::endTransmission(uint8_t sendStop)
 {
-  return HAL_I2C_End_Transmission(_i2c, sendStop, NULL);
+	CRITICAL_SECTION_BLOCK();
+	return HAL_I2C_End_Transmission(_i2c, sendStop, NULL);
 }
 
 //	This provides backwards compatibility with the original
@@ -203,7 +212,8 @@ bool TwoWire::isEnabled()
 #include "spark_wiring_ticks.h"
 void TwoWire::reset()
 {
-    pin_t _SCA;
+	CRITICAL_SECTION_BLOCK();
+	pin_t _SCA;
     pin_t _SCL;
 
     if (_i2c==HAL_I2C_INTERFACE1)

@@ -1231,8 +1231,9 @@ SparkProtocol::chunk_index_t SparkProtocol::next_chunk_missing(chunk_index_t sta
 
 void SparkProtocol::set_chunks_received(uint8_t value)
 {
-    int bytes = chunk_bitmap_size();
-    memset(queue+QUEUE_SIZE-bytes, value, bytes);
+    size_t bytes = chunk_bitmap_size();
+    if (bytes)
+    	memset(queue+QUEUE_SIZE-bytes, value, bytes);
 }
 
 bool SparkProtocol::handle_update_done(msg& message)

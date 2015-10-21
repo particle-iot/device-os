@@ -275,7 +275,7 @@ void handle_cloud_connection(bool force_events)
             }
         }
 
-        if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL)
+        if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL || system_thread_get_state(NULL)==spark::feature::ENABLED)
         {
             Spark_Process_Events();
         }
@@ -314,6 +314,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     manage_ip_config();
 
     CLOUD_FN(manage_cloud_connection(force_events), (void)0);
+
+    system_shutdown_if_needed();
 }
 
 /*
