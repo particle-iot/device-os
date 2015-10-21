@@ -2,18 +2,19 @@ sudo: required
 services:
   - docker
 install:
-  - git clone https://github.com/spark/firmware-buildpack-builder.git ../builder
+  - git clone https://github.com/spark/firmware-buildpack-builder.git ../
   - pwd
-  - ../builder/bin/build-image
+  - ls -lha ../
+  - ../bin/build-image
 
 script:
-  - ../builder/bin/run-tests
+  - ../bin/run-tests
   # - 'if [ "${UNIT_TEST}" = "y" ]; then ./ci/unit_tests.sh; else cd $DIR && make -s clean all DEBUG_BUILD=$DEBUG_BUILD PLATFORM=$PLATFORM COMPILE_LTO=$COMPILE_LTO TEST=$TEST SPARK_CLOUD=$SPARK_CLOUD APP=$APP; fi'
   # TODO - ./ci/integration_tests.sh
   # TODO  - ./ci/test_memory_available_with_real_core.sh
 
 #after_success: ./ci/update-gh-pages.sh
-after_success: ../builder/bin/push-image
+after_success: ../bin/push-image
 
 env:
   # matrix:
