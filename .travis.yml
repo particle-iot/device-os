@@ -3,8 +3,6 @@ services:
   - docker
 install:
   - wget https://github.com/spark/firmware-buildpack-builder/archive/master.tar.gz -O - | tar -xz -C ../ --strip-components 1
-  - pwd
-  - ls -lha ../
   - ../bin/build-image
 
 script:
