@@ -2,18 +2,17 @@ sudo: required
 services:
   - docker
 install:
-  - git fetch origin feature/docker-buildpack
-  - git cherry-pick 8aa4a607e9f69960c383861a1600e56605b29f13
-  - docker build -t particle/buildpack-particle-firmware .
+  - git clone https://github.com/spark/firmware-buildpack-builder.git ../builder
+  - ../builder/bin/build-image
 
 script:
-  - docker run --rm -w /firmware particle/buildpack-particle-firmware ./ci/unit_tests.sh
+  - ../builder/bin/run-tests
   # - 'if [ "${UNIT_TEST}" = "y" ]; then ./ci/unit_tests.sh; else cd $DIR && make -s clean all DEBUG_BUILD=$DEBUG_BUILD PLATFORM=$PLATFORM COMPILE_LTO=$COMPILE_LTO TEST=$TEST SPARK_CLOUD=$SPARK_CLOUD APP=$APP; fi'
-  - docker run --rm -w /firmware particle/buildpack-particle-firmware ./ci/enumerate_build_matrix.sh
   # TODO - ./ci/integration_tests.sh
   # TODO  - ./ci/test_memory_available_with_real_core.sh
 
 #after_success: ./ci/update-gh-pages.sh
+after_success: ../builder/bin/push-image
 
 env:
   # matrix:
