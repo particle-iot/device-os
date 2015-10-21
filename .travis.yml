@@ -3,6 +3,7 @@ services:
   - docker
 install:
   - git clone https://github.com/spark/firmware-buildpack-builder.git ../builder
+  - pwd
   - ../builder/bin/build-image
 
 script:
