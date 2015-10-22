@@ -1,10 +1,10 @@
-VERSION=0.4.6
+VERSION=0.4.7
 
 function release_file()
 {
 	name=$1
 	ext=$2
-   cp ../build/target/$name/platform-$PLATFORM_ID-m/$name.$ext $OUT/$name-$VERSION-p$PLATFORM_ID.$ext
+   cp ../build/target/$name/platform-$PLATFORM_ID-m/$name.$ext $OUT/$name-$VERSION-$PLATFORM.$ext
 }
 
 function release_binary()
@@ -17,6 +17,7 @@ function release_binary()
 }
 
 PLATFORM_ID=$1
+PLATFORM=$2
 cd ../modules
 
 

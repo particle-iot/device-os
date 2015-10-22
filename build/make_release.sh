@@ -1,2 +1,2 @@
-./release.sh 6
-./release.sh 8
+./release.sh 6 photon
+./release.sh 8 p1
