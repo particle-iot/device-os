@@ -1,639 +1,407 @@
+/* Includes ------------------------------------------------------------------*/
 #include "application.h"
+#include "modem/mdm_hal.h"
 
+extern MDMElectronSerial electronMDM;
 
-#include "Serial3/Serial3.h"
-#include "core_hal.h"
-#include "pmic.h"
-#include "fuelgauge.h"
+PMIC power;
+FuelGauge fuel;
+
+// ALL_LEVEL, TRACE_LEVEL, DEBUG_LEVEL, WARN_LEVEL, ERROR_LEVEL, PANIC_LEVEL, NO_LOG_LEVEL
+//Serial1DebugOutput debugOutput(115200, ALL_LEVEL);
+
+/* Function prototypes -------------------------------------------------------*/
+int tinkerDigitalRead(String pin);
+int tinkerDigitalWrite(String command);
+int tinkerAnalogRead(String pin);
+int tinkerAnalogWrite(String command);
+
+int sleep(String command);
+void setupPower(void);
+void updatePower(void);
+
 
 SYSTEM_MODE(MANUAL);
 
-PMIC PMIC;
-FuelGauge fuel;
-
-#define now() millis()
-uint32_t lastFlash = now();
-String com = "";
-#define PASS_GREEN() RGB.color(0,255,0)
-#define FAIL_RED() RGB.color(255,0,0)
-#define FAIL_BLUE() RGB.color(0,0,255)
-#define RGB_OFF() RGB.color(0,0,0)
-#define RGB_WHITE RGB.color(255,255,255)
-#define _BKPT __ASM("bkpt 0")
-#ifndef UBLOX_PHONE_NUM
-    #define UBLOX_PHONE_NUM "+16129997293"
-#endif
-
-int8_t testUbloxIsReset();
-void   clearUbloxBuffer();
-int8_t sendATcommand(const char* ATcommand, const char* expected_answer1, system_tick_t timeout);
-int8_t testATOK(system_tick_t timeout);
-void   sendSMS(const char * msg, char* num);
-void   executeCommand(char c);
-int8_t testEchoOff(system_tick_t timeout);
-int8_t testSIMReady(system_tick_t timeout);
-int8_t testSIM3G(system_tick_t timeout);
-int8_t testNetworkRegistration(system_tick_t timeout);
-int8_t testDefinePDP1(system_tick_t timeout);
-int8_t testDefineQoSPDP1(system_tick_t timeout);
-int8_t testActivatePDP1(system_tick_t timeout);
-int8_t testPDP1nonZeroIP(system_tick_t timeout);
-int8_t testReadPDP1params(system_tick_t timeout);
-int8_t testReadPDP1QoSprofile(system_tick_t timeout);
-int8_t testCreateSocketZero(system_tick_t timeout);
-int8_t testDNSLookupServer(system_tick_t timeout);
-int8_t testSocketConnectZero(system_tick_t timeout);
-int8_t testSocketReadZero(system_tick_t timeout);
-
-void intialize_IO(void);
-void runIOTEST(void);
-void allHIGH(void);
-void allLOW(void);
-
-bool testSTATUS=1;
-bool testRunning = 0;
-
+/* This function is called once at start up ----------------------------------*/
 void setup()
 {
     RGB.control(true);
-    //RGB.color(0,255,0);
-
-    //pinMode(TX, INPUT_PULLUP);
-    //pinMode(RX, INPUT_PULLUP);
-
-    intialize_IO();
-    
-	Serial.begin(9600);
-	Serial3.begin(9600);
-	Serial.println("Starting testing procedure: ");
-
-
-    PMIC.begin(); 
+    RGB.color(0,0,255);
+    delay(1000);
+    Serial1.begin(9600);
+    delay(200);
+    power.begin();
     delay(500);
 
-    //Serial.print("System Status: ");
-    //Serial.println(PMIC.getSystemStatus(),BIN);
+    Serial1.println("Disabling PMIC watchdog timer");
+    power.disableWatchdog();
+    delay(50);
 
-    //Serial.println("Enabling buck regulator");
-    //PMIC.enableBuck();
+    //Serial1.println("Enabling OTG/PMID");
+    //power.enableOTG();
+    //delay(50);
 
-    // Serial.println("Setting input current limit to 900mA");
-    // PMIC.setInputCurrentLimit(900);
-    // Serial.println(PMIC.readInputSourceRegister(),BIN);
-    // delay(2000);
-    
-    fuel.quickStart();
+    //Serial1.println("disabling buck regulator");
+    //power.disableBuck();
+    //delay(50);
+
+
+    Serial1.print("power on returned:");
+    Serial1.println(electronMDM.powerOn("8934076500002587657"));
+    //setupPower();
+    //delay(200);
+    //fuel.sleep();
+
+    /*
+    RGB.color(0,0,255);
+    delay(200);
+    RGB.color(0,255,0);
+    delay(200);
+    RGB.color(255,0,0);
+    delay(200);
+    RGB.color(0,0,0);
+   
+    power.begin();
     delay(100);
 
-    Serial.println("System initialization complete");
-    Serial.println("Press START button to begin the TEST");
+    if (fuel.getVersion() == 3) {
+        RGB.color(0,255,0);
+    }
+    else {
+        RGB.color(255,0,0);
+    }
+    delay(2000);
+    fuel.sleep();
+    delay(100);
+*/
+    //electronMDM.powerOff();
+    
+    //System.sleep(SLEEP_MODE_DEEP,60);
+    //setupPower();
 
-    Serial.println("--");
+    //electronMDM.setDebug(3); // enable this for debugging issues
 
+    //delay(3000);
+    //DEBUG_D("\e[0;36mHello from the Electron! Boot time is: %d\r\n",millis());
+
+    //Particle.connect(); // blocking call to connect
+
+    //Register all the Tinker functions
+    //Particle.function("digitalread", tinkerDigitalRead);
+    //Particle.function("digitalwrite", tinkerDigitalWrite);
+
+    //Particle.function("analogread", tinkerAnalogRead);
+    //Particle.function("analogwrite", tinkerAnalogWrite);
+
+    //Particle.function("sleep",sleep);
+    
+
+    //Particle.connect(); // blocking call to connect
+
+
+    //Serial1.begin(9600);
+    //Serial1.println("Setup complete");
+    //delay(1000);
+
+    Serial1.print("Fuel Gauge Version Number: ");
+    Serial1.println(fuel.getVersion());
+    delay(200);
+    
+    fuel.sleep();
+    delay(200);
+
+    //Serial1.print("power off returned:");
+    //Serial1.println(electronMDM.powerOff());
 }
 
+/* This function loops forever --------------------------------------------*/
 void loop()
 {
-    // Begin the testing if the START button is pressed (active low)
-    // The START button is connected between TX pin and GND
-    if(1 == digitalRead(TX))
-    {
-        testSTATUS = 1;
-        Serial.println("Button press detected, starting test now...");
-        RGB.color(0,0,0);
-        allLOW();
-
-        runIOTEST();
-        delay(1000);
-
-        // TEST RGB LED
-        FAIL_RED();
-        delay(1000);
-        PASS_GREEN();
-        delay(1000);
-        FAIL_BLUE();
-        delay(1000);
-        RGB_OFF();
-        delay(1000);
-            
-        // TEST UBLOX
-        testUbloxIsReset();
-        // Test for AK OK
-        Serial.println("Test if AT == OK...");
-        if ( !testATOK(500) ) { 
-            testSTATUS = 0;
-            Serial.println("Ublox test: FAIL");
-        }
-        else Serial.println("Ublox test: PASS"); 
-        Serial.println("--");
-        delay(1000);
-
-        //Serial.println("Ublox test: PASS");
-        Serial.println("Test if SIM card is inserted...");
-        // This will require a power cycle if user hotswapping the card
-        if ( !testSIMReady(2000) ) { 
-            testSTATUS = 0;
-            Serial.println("SIM card Test: FAIL");
-        } 
-        else Serial.println("SIM card Test: PASS");
-        Serial.println("--");
-        delay(1000);
-
-        Serial.println("Test if SIM card is 3G...");
-        // This will require a power cycle if user hotswapping the card
-        if ( !testSIM3G(2000) ) { 
-            //testSTATUS = 0; 
-        } 
-        Serial.println("--");
-        delay(1000);
-
-        //FAIL_BLUE();
-        //Serial.println("Ublox test: FAIL");
-        //testSTATUS = 0;
-
-
-        Serial.println("--");
-
-        // TEST PMIC BQ24195
-        byte pmicVersion = PMIC.getVersion();
-        delay(50);
-        Serial.print("PMIC Version Number: ");
-        Serial.println(pmicVersion,HEX);
-        if (PMIC.getVersion() == 35) {
-            Serial.println("PMIC Test: PASS");
-        }
-        else {
-            Serial.println("PMIC Test: FAIL");
-            testSTATUS = 0;
-        }
-
-        Serial.println("--");
-
-        // Check power source quality
-        Serial.print("Power: ");
-        if(PMIC.isPowerGood()) Serial.println("GOOD");
-        else {
-            Serial.println("BAD");
-            testSTATUS = 0;
-        }
-
-        Serial.println("--");
-
-        // TEST MAX17043 FUEL GAUGE
-        Serial.print("Fuel Gauge Version Number: ");
-        Serial.println(fuel.getVersion());
-        if (fuel.getVersion() == 3) {
-            Serial.println("Fuel Gauge Test: PASS");
-        }
-        else {
-            Serial.println("Fuel Gauge Test: FAIL");
-            testSTATUS = 0;
-        }
-
-        Serial.println("--"); 
-
-        // Final step is to notify test status using the RGB LED
-        if(testSTATUS) {
-            PASS_GREEN();
-            Serial.println("Electron Test: PASS");
-        }
-        else {
-            FAIL_RED();
-            Serial.println("Electron Test: FAIL");
-        }
-        
-        Serial.println("- - - - - - - - - - - - - - - - - - - - ");
-        Serial.println("");
-
-        testRunning = 1;
-    } 
-
-    else {
-        if(!testRunning) {
-            RGB.color(0,0,0);
-            delay(100);
-            RGB.color(255,255,255);
-            delay(20); 
-        }
-        
-    }
-
-}
-
-
-void intialize_IO(void) {
-
-#ifndef USE_SWD_JTAG
-    pinMode(D7, OUTPUT);
-#endif
-
-    pinMode(PWR_UC, OUTPUT);
-    pinMode(RESET_UC, OUTPUT);
-    digitalWrite(PWR_UC, HIGH);
-    digitalWrite(RESET_UC, HIGH);
-    pinMode(RTS_UC, OUTPUT);
-    digitalWrite(RTS_UC, LOW); // VERY IMPORTANT FOR CORRECT OPERATION!!
-    pinMode(LVLOE_UC, OUTPUT);
-    digitalWrite(LVLOE_UC, LOW); // VERY IMPORTANT FOR CORRECT OPERATION!!
-
-    // Initialize the user accessible GPIOs
-    pinMode(D0,OUTPUT);
-    pinMode(D1,OUTPUT);
-    pinMode(D2,OUTPUT);
-    pinMode(D3,OUTPUT);
-    pinMode(D4,OUTPUT);
-    pinMode(D5,OUTPUT);
-    pinMode(D6,OUTPUT);
-    pinMode(D7,OUTPUT);
+    //updatePower();
     
-    pinMode(A0,OUTPUT);
-    pinMode(A1,OUTPUT);
-    pinMode(A2,OUTPUT);
-    pinMode(A3,OUTPUT);
-    pinMode(A4,OUTPUT);
-    pinMode(A5,OUTPUT);
-    pinMode(A6,OUTPUT);
-    pinMode(A7,OUTPUT);
+    //Serial1.print("power off returned:");
+    //Serial1.println(electronMDM.powerOff());
+    //RGB.color(0,0,255);
+    //delay(200);
+    //RGB.color(0,255,0);
+    //delay(200);
+    //RGB.color(255,0,0);
+    //delay(200);
+    //Serial1.println(power.readPowerONRegister(),BIN);
+    if (Serial1.available() > 0)
+    {
+        char inByte = Serial1.read();
+        Serial1.print("I rxed this shit:");
+        Serial1.println(inByte);
+        if (inByte == 'o') {
+            Serial1.println("char o received");
+            power.enableOTG();
+            delay(50);
+        }
+        if (inByte == 'd') {
+            Serial1.println("char d received");
+            power.disableCharging();
+            delay(50);
+        }
+        if (inByte == 'e') {
+            Serial1.println("char d received");
+            power.enableCharging();
+            delay(50);
+        }
+    }
+    //System.sleep(SLEEP_MODE_DEEP,60);
 
-    pinMode(B0,OUTPUT);
-    pinMode(B1,OUTPUT);
-    pinMode(B2,OUTPUT);
-    pinMode(B3,OUTPUT);
-    pinMode(B4,OUTPUT);
-    pinMode(B5,OUTPUT);
+}
 
-    pinMode(C0,OUTPUT);
-    pinMode(C1,OUTPUT);
-    pinMode(C2,OUTPUT);
-    pinMode(C3,OUTPUT);
-    pinMode(C4,OUTPUT);
-    pinMode(C5,OUTPUT);
+void setupPower() {
+
     
-    pinMode(RX,OUTPUT);
-    
-    // Initialize all IO pins to LOW state
-    allLOW();
+    Serial1.println("Entered power setup");
 
-    pinMode(TX,INPUT_PULLDOWN);
+    Serial1.println("Initializing PMIC");
+    power.begin(); 
+    delay(500);
 
-}
+    Serial1.println("Setting input voltage limit");
+    power.setInputVoltageLimit(4120);
+    delay(50);
+
+    Serial1.println("Disabling PMIC watchdog timer");
+    power.disableWatchdog();
+    delay(50);
+
+    Serial1.println("Disabling DPDM detection");
+    power.disableDPDM();
+    delay(50);
+
+    //Serial1.println("Setting input current limit");
+    //power.setInputCurrentLimit(100);
+    //delay(50);
+
+    //Serial1.println("disabling buck regulator");
+    //power.disableBuck();
+    //delay(50);
+
+    //Serial1.println("turning off battery FET");
+    //power.disableBATFET();
+    //delay(20);
 
 
-void runIOTEST(void) {
+    //power.setChargeCurrent(0,0,0,0,0,0); //512
+    //delay (50);
 
-    int wait = 200;
-
-    // RX - A0
-    for (int i=18;i>9;i--)
-    {
-        digitalWrite(i,HIGH);
-        delay(wait);
-        digitalWrite(i,LOW);
-        delay(wait);
-    }
-
-    // B5 - B0
-    for (int i=29;i>23;i--)
-    {
-        digitalWrite(i,HIGH);
-        delay(wait);
-        digitalWrite(i,LOW);
-        delay(wait);
-    }
-
-    // C0 - C5
-    for (int i=30;i<36;i++)
-    {
-        digitalWrite(i,HIGH);
-        delay(wait);
-        digitalWrite(i,LOW);
-        delay(wait);
-    }
-
-    // D0 - D7
-    for (int i=0;i<8;i++)
-    {
-        digitalWrite(i,HIGH);
-        delay(wait);
-        digitalWrite(i,LOW);
-        delay(wait);
-    }
-
-    allHIGH();
-    delay(1000);
-    allLOW();
-    delay(1000);
-    allHIGH();
-    
-}
-
-void allHIGH(void) {
-
-    for (int i=18;i>9;i--)
-    {
-        digitalWrite(i,HIGH);
-    }
-
-    // B5 - B0
-    for (int i=29;i>23;i--)
-    {
-        digitalWrite(i,HIGH);
-    }
-
-    // C0 - C5
-    for (int i=30;i<36;i++)
-    {
-        digitalWrite(i,HIGH);
-    }
-
-    // D0 - D7
-    for (int i=0;i<8;i++)
-    {
-        digitalWrite(i,HIGH);
-    }
+    //Serial1.println("Forcing charge enable");
+    //power.enableCharging();
+    //delay(50);
 
 }
 
-void allLOW(void) {
 
-    for (int i=18;i>9;i--)
-    {
-        digitalWrite(i,LOW);
-    }
+void updatePower(void) {
 
-    // B5 - B0
-    for (int i=29;i>23;i--)
-    {
-        digitalWrite(i,LOW);
-    }
+    //Serial1.println("Setting input voltage limit");
+    //power.setInputVoltageLimit(4);
+    //delay(50);
 
-    // C0 - C5
-    for (int i=30;i<36;i++)
-    {
-        digitalWrite(i,LOW);
-    }
+    Serial1.println("Setting input current limit");
+    power.setInputCurrentLimit(500);
+    delay(50);
 
-    // D0 - D7
-    for (int i=0;i<8;i++)
-    {
-        digitalWrite(i,LOW);
-    }
-    
+    //Serial1.println("Force DPDM detection");
+    //power.enableDPDM();
+    //delay(500);
+
+    //Serial1.println("Forcing charge enable");
+    //power.enableCharging();
+    //delay(50);
+
+    //Serial1.println("Enabling the buck regulator");
+    //power.enableBuck();
+    //delay(50);
+
+    //This will run in a loop
+    Serial1.print("Power good: ");
+    Serial1.println(power.isPowerGood());
+
+    Serial1.print("System Status: ");
+    Serial1.println(power.getSystemStatus(), BIN);
+
+    byte status = 0;
+    status = power.getSystemStatus();
+    if (status & 0b00000001) Serial1.println("In regulation: YES");
+    else Serial1.println("In regulation: NO");
+
+    //if (status & 0b00000010) Serial1.println("HOT");
+    //else Serial1.println("Normal");
+
+    if (status & 0b00000100) Serial1.println("Power: Good");
+    else Serial1.println("Power: Bad");
+
+    if (status & 0b00000100) Serial1.println("In DPM mode: YES");
+    else Serial1.println("In DPM mode: NO");
+
+    if ((status & 0b00110000) == 0x00) //00
+        Serial1.println("Not charging");
+    if ((status & 0b00110000) == 0x30) //11
+        Serial1.println("Charge termination done");
+    if ((status & 0b00110000) == 0x10) //01
+        Serial1.println("Pre charging");
+    if ((status & 0b00110000) == 0x20) //10
+        Serial1.println("Fast charging");
+
+    if ((status & 0b11000000) == 0x00) //00
+        Serial1.println("no input/dpdm detection incomplete");
+    if ((status & 0b11000000) == 0x40) //01
+        Serial1.println("USB Host");
+    if ((status & 0b11000000) == 0x80) //10
+        Serial1.println("Adaptor Port");
+    if ((status & 0b11000000) == 0xC0) //11
+        Serial1.println("OTG");
+
+
+
+    Serial1.print("Input Register: ");
+    Serial1.println(power.readInputSourceRegister(), BIN);
+
+    Serial1.print("Term/Timer Register: ");
+    Serial1.println(power.readChargeTermRegister(), BIN);
+
+    Serial1.print("Misc Operation Register: ");
+    Serial1.println(power.readOpControlRegister(), BIN);
+
+    Serial1.print("Charge current control register: ");
+    Serial1.println(power.getChargeCurrent(), BIN);
+
+    Serial1.println(" ---------- ");
+
+    delay(2000);
 }
 
-void executeCommand(char c) {
-    if (c == 'a') {
-        sendATcommand("AT", "OK", 500);
-    }
-    else if (c == 'p') {
-        digitalWrite(PWR_UC, !digitalRead(PWR_UC));
-        Serial.print("Power is: ");
-        Serial.println(digitalRead(PWR_UC));
-    }
-    else if (c == 'r') {
-        digitalWrite(RESET_UC, !digitalRead(RESET_UC));
-        Serial.print("Reset is: ");
-        Serial.println(digitalRead(RESET_UC));
-    }
-    else if (c == 'i') {
-        Serial.println("What's the IMEI number?");
-        sendATcommand("AT+CGSN", "OK", 500);
-    }
-    else if (c == 'o') {
-        // Power to the 3V8 input measures 34uA after this is called
-        Serial.println("Power Off...");
-        sendATcommand("AT+CPWROFF", "OK", 500);
-    }
-    else if (c == 'f') {
-        Serial.println("What's the FUN level?");
-        sendATcommand("AT+CFUN?", "OK", 500);
-    }
-    else if (c == 'd') {
-        // Power to the 3V8 input measures 2.8mA constantly after this is called
-        Serial.println("Minimum Fun Level...");
-        sendATcommand("AT+CFUN=0,0", "OK", 500);
-    }
-    else if (c == 'D') {
-        // Power to the 3V8 input measures 2.8mA for >10s, then 56mA for 4s, repeating
-        // after this is called.
-        Serial.println("Standard Fun Level...");
-        sendATcommand("AT+CFUN=1,0", "OK", 500);
-    }
-    else if (c == 's') {
-        // Power to the 3V8 input measures 2.8mA for >10s, then 56mA for 4s, repeating
-        // after this is called.
-        Serial.println("STM32 Deep Sleep for 10 seconds...");
-        System.sleep(SLEEP_MODE_DEEP, 10);
-        // Does not currently wake up after 10 seconds, press reset or HIGH on WKP.
-    }
-    else if (c == 'm') {
-        // Send a test SMS
-        String temp = UBLOX_PHONE_NUM;
-        char temp2[15] = "";
-        temp.toCharArray(temp2, temp.length());
-        sendSMS("Hello from Particle!", temp2);
-    }
-    else if (c == '0') {
-        // Check if the module is registered on the network
-        Serial.println("Check Network Registration...");
-        sendATcommand("AT+CREG?", "OK", 500);
-    }
-    else if (c == '1') {
-        // Check the CPIN
-        Serial.println("Check the CPIN...");
-        sendATcommand("AT+CPIN?", "OK", 500);
-    }
-    else if (c == '2') {
-        // Check is SIM is 3G
-        Serial.println("Is SIM 3G?");
-        sendATcommand("AT+UUICC?", "OK", 500);
-    }
-    else if (c == '3') {
-        // Check signal strength
-        Serial.println("Checking Signal Strength...");
-        sendATcommand("AT+CSQ", "OK", 500);
-    }
-    else if (c == 'E') {
-        // Turn UBLOX UART Echo ON
-        Serial.println("Turn UBLOX UART Echo ON...");
-        sendATcommand("AT E1", "OK", 500);
-    }
-    else if (c == 'e') {
-        // Turn UBLOX UART Echo OFF
-        Serial.println("Turn UBLOX UART Echo OFF...");
-        sendATcommand("AT E0", "OK", 500);
-    }
+int sleep(String command) {
+
+    Serial1.println("Going to sleep");
+    delay(200);
+    if(command == "1")
+        System.sleep(SLEEP_MODE_DEEP,60);
+
+    return 1;
 }
+/*******************************************************************************
+ * Function Name  : tinkerDigitalRead
+ * Description    : Reads the digital value of a given pin
+ * Input          : Pin
+ * Output         : None.
+ * Return         : Value of the pin (0 or 1) in INT type
+                    Returns a negative number on failure
+ *******************************************************************************/
+int tinkerDigitalRead(String pin)
+{
+    //convert ascii to integer
+    int pinNumber = pin.charAt(1) - '0';
+    //Sanity check to see if the pin numbers are within limits
+    if (pinNumber< 0 || pinNumber >7) return -1;
 
-void clearUbloxBuffer() {
-  while (Serial3.available()) {
-    Serial3.read();
-  }
-}
-
-int8_t testUbloxIsReset() {
-    clearUbloxBuffer();
-
-    Serial3.println("AT");
-    delay(100);
-
-    if (Serial3.available())
+    if(pin.startsWith("D"))
     {
-        // Ublox is on, just clear the buffer
-        Serial.println("Ublox is on already.");
-        clearUbloxBuffer();
+        pinMode(pinNumber, INPUT_PULLDOWN);
+        return digitalRead(pinNumber);
+    }
+    else if (pin.startsWith("A"))
+    {
+        pinMode(pinNumber+10, INPUT_PULLDOWN);
+        return digitalRead(pinNumber+10);
+    }
+    return -2;
+}
+
+/*******************************************************************************
+ * Function Name  : tinkerDigitalWrite
+ * Description    : Sets the specified pin HIGH or LOW
+ * Input          : Pin and value
+ * Output         : None.
+ * Return         : 1 on success and a negative number on failure
+ *******************************************************************************/
+int tinkerDigitalWrite(String command)
+{
+    bool value = 0;
+    //convert ascii to integer
+    int pinNumber = command.charAt(1) - '0';
+    //Sanity check to see if the pin numbers are within limits
+    if (pinNumber< 0 || pinNumber >7) return -1;
+
+    if(command.substring(3,7) == "HIGH") value = 1;
+    else if(command.substring(3,6) == "LOW") value = 0;
+    else return -2;
+
+    if(command.startsWith("D"))
+    {
+        pinMode(pinNumber, OUTPUT);
+        digitalWrite(pinNumber, value);
         return 1;
     }
-    else
+    else if(command.startsWith("A"))
     {
-        // Ublox is off, so power it on
-        Serial.println("Ublox is off, turning it on.");
-        digitalWrite(PWR_UC,LOW);
-        delay(500);
-        digitalWrite(PWR_UC,HIGH);
-        delay(2000);
-
-        Serial3.println("AT");
-        delay(100);
-
-        if (Serial3.available())
-        {
-            // Ublox is on, just clear the buffer
-            Serial.println("Ublox was off, now it is on.");
-            clearUbloxBuffer();
-            return 1;
-        }
-        else
-        {
-            // Ublox is off, so power it on
-            Serial.println("Ublox remains off, error!");
-            return 0;
-        }
+        pinMode(pinNumber+10, OUTPUT);
+        digitalWrite(pinNumber+10, value);
+        return 1;
     }
+    else return -3;
 }
 
-int8_t sendATcommand(const char* ATcommand, const char* expected_answer1, system_tick_t timeout) {
-    uint8_t x = 0, rv = 0;
-    char response[100];
-    system_tick_t previous;
-
-    memset(response, '\0', 100);
-    delay(100);
-
-    clearUbloxBuffer();
-
-    Serial3.println(ATcommand);
-
-    previous = now();
-    do {
-        if (Serial3.available() != 0) {
-            response[x] = Serial3.read();
-            x++;
-
-            // check whether we've received the expected answer
-            if (strstr(response, expected_answer1) != NULL) {
-                rv = 1;
-            }
-        }
-    } while ((rv == 0) && ((now() - previous) < timeout));
-    Serial.println(response);
-    return rv;
-}
-
-int8_t testATOK(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT", "OK", timeout);
-    return rv;
-}
-
-int8_t testEchoOff(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT E0", "OK", timeout);
-    return rv;
-}
-
-int8_t testSIMReady(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+CPIN?", "READY", timeout);
-    return rv;
-}
-
-int8_t testSIM3G(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+UUICC?", "UUICC: 1", timeout);
-    return rv;
-}
-
-int8_t testNetworkRegistration(system_tick_t timeout) {
-    // CREG: x,0: not registered, the MT is not currently searching a new operator to register to
-    // CREG: x,1: registered, home network
-    // CREG: x,2: not registered, but the MT is currently searching a new operator to register to
-    // CREG: x,3: registration denied
-    int8_t rv = sendATcommand("AT+CREG?", "CREG: 0,1", timeout);
-    return rv;
-}
-
-int8_t testDefinePDP1(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+CGDCONT=1,\"IP\",\"broadband\"", "OK", timeout);
-    return rv;
-}
-
-int8_t testDefineQoSPDP1(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+CGEQREQ=1,3,64,64,,,0,320,\"1E4\",\"1E5\",1,,3", "OK", timeout);
-    return rv;
-}
-
-int8_t testActivatePDP1(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+CGACT=1,1", "OK", timeout);
-    return rv;
-}
-
-int8_t testPDP1nonZeroIP(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+CGPADDR=1", "+CGPADDR: 1,\"0.0.0.0\"", timeout);
-    if (rv == 0) rv = 1; // if IP is non-zero, return true
-    else (rv = 0);
-    return rv;
-}
-
-int8_t testReadPDP1params(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+CGDCONT?", "OK", timeout);
-    return rv;
-}
-
-int8_t testReadPDP1QoSprofile(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+CGEQNEG=1", "OK", timeout);
-    return rv;
-}
-
-int8_t testCreateSocketZero(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+USOCR=6", "+USOCR: 0", timeout);
-    return rv;
-}
-
-int8_t testDNSLookupServer(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+UDNSRN=0,\"device.spark.io\"", "OK", timeout);
-    return rv;
-}
-
-int8_t testSocketConnectZero(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+USOCO=0,\"52.0.31.156\",5683", "+UUSORD: 0,40", timeout);
-    return rv;
-}
-
-int8_t testSocketReadZero(system_tick_t timeout) {
-    int8_t rv = sendATcommand("AT+USORD=0,40", "+USORD: 0,40", timeout);
-    return rv;
-}
-
-void sendSMS(const char * msg, char* num)
+/*******************************************************************************
+ * Function Name  : tinkerAnalogRead
+ * Description    : Reads the analog value of a pin
+ * Input          : Pin
+ * Output         : None.
+ * Return         : Returns the analog value in INT type (0 to 4095)
+                    Returns a negative number on failure
+ *******************************************************************************/
+int tinkerAnalogRead(String pin)
 {
-    Serial.print("\e[0;32mSending SMS: ");
-    Serial.println(msg);
-    Serial.print("\e[0;35m");
+    //convert ascii to integer
+    int pinNumber = pin.charAt(1) - '0';
+    //Sanity check to see if the pin numbers are within limits
+    if (pinNumber< 0 || pinNumber >7) return -1;
 
-    Serial3.print("AT+CMGF=1\r");
-    delay(500);
-    Serial3.print("AT+CMGS=\"+1");
-    Serial3.print(num);
-    Serial3.print("\"\r");
-    delay(1500);
-    Serial3.print(msg);
-    Serial3.print((char)26); // End AT command with a ^Z, ASCII code 26
-    Serial3.print("\r");
+    if(pin.startsWith("D"))
+    {
+        return -3;
+    }
+    else if (pin.startsWith("A"))
+    {
+        return analogRead(pinNumber+10);
+    }
+    return -2;
+}
+
+/*******************************************************************************
+ * Function Name  : tinkerAnalogWrite
+ * Description    : Writes an analog value (PWM) to the specified pin
+ * Input          : Pin and Value (0 to 255)
+ * Output         : None.
+ * Return         : 1 on success and a negative number on failure
+ *******************************************************************************/
+int tinkerAnalogWrite(String command)
+{
+    //convert ascii to integer
+    int pinNumber = command.charAt(1) - '0';
+    //Sanity check to see if the pin numbers are within limits
+    if (pinNumber< 0 || pinNumber >7) return -1;
+
+    String value = command.substring(3);
+
+    if(command.startsWith("D"))
+    {
+        pinMode(pinNumber, OUTPUT);
+        analogWrite(pinNumber, value.toInt());
+        return 1;
+    }
+    else if(command.startsWith("A"))
+    {
+        pinMode(pinNumber+10, OUTPUT);
+        analogWrite(pinNumber+10, value.toInt());
+        return 1;
+    }
+    else return -2;
 }

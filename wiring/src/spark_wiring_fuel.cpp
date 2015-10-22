@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    fuelgauge.cpp
+ * @file    spark_wiring_fuel.cpp
  * @author  Mohit Bhoite
  * @version V1.0.0
  * @date    11-August-2015
@@ -25,7 +25,7 @@
  */
 
 
-#include "fuelgauge.h"
+#include "spark_wiring_fuel.h"
 
 FuelGauge::FuelGauge()
 {
@@ -127,6 +127,17 @@ void FuelGauge::reset() {
 void FuelGauge::quickStart() {
 	
 	writeRegister(MODE_REGISTER, 0x40, 0x00);
+}
+
+void FuelGauge::sleep() {
+
+	byte MSB = 0;
+	byte LSB = 0;
+	
+	readConfigRegister(MSB, LSB);	
+	
+	writeRegister(CONFIG_REGISTER, MSB, (LSB | 0b10000000));
+
 }
 
 

@@ -37,6 +37,8 @@
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_string.h"
+#include "spark_wiring_power.h"
+#include "spark_wiring_fuel.h"  
 #include "spark_wiring_print.h"
 #include "spark_wiring_usartserial.h"
 #include "spark_wiring_usbserial.h"

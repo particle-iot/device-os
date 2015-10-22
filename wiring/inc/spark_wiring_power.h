@@ -1,10 +1,10 @@
 /**
  ******************************************************************************
- * @file    pmic.h
+ * @file    spark_wiring_power.h
  * @author  Mohit Bhoite
  * @version V1.0.0
  * @date    11-August-2015
- * @brief   Header for pmic.c module
+ * @brief   Header for spark_wiring_power.cpp module
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
@@ -23,10 +23,12 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
-#include "application.h"
 
-#ifndef _PMIC_H
-#define _PMIC_H
+#include "spark_wiring.h"
+#include "spark_wiring_i2c.h"
+
+#ifndef __SPARK_WIRING_POWER_H
+#define __SPARK_WIRING_POWER_H
 
 //Default PMIC (BQ24195) I2C address
 #define PMIC_ADDRESS							0x6B
@@ -60,19 +62,23 @@ class PMIC {
 		bool enableBuck(void);
 		bool disableBuck(void);
 		bool setInputCurrentLimit(uint16_t current);
-		byte getInputCurrentLimit();
-		bool setInputVoltageLimit();
-		byte getInputVoltageLimit();
+		byte getInputCurrentLimit(void);
+		bool setInputVoltageLimit(uint16_t voltage);
+		byte getInputVoltageLimit(void);
 
 		// Power ON configuration register
-		bool enableCharging();
-		bool disableCharging();
-		bool setMinimumSystemVolatge();
-		byte getMinimumSystemVolatge();
+		bool enableCharging(void);
+		bool disableCharging(void);
+		bool enableOTG(void);
+		bool disableOTG(void);
+		bool resetWatchdog(void);
+		bool setMinimumSystemVoltage(uint16_t voltage);
+		uint16_t getMinimumSystemVoltage();
+		byte readPowerONRegister(void);
 
 		// Charge current control register
-		bool setChargeCurrent();
-		byte getChargeCurrent();
+		bool setChargeCurrent(bool bit7, bool bit6, bool bit5, bool bit4, bool bit3, bool bit2);
+		byte getChargeCurrent(void);
 
 		//PreCharge/ Termination Current Control Register
 		bool setPreChargeCurrent();
@@ -84,15 +90,23 @@ class PMIC {
 		bool setChargeVoltage();
 		byte getChargeVoltage();
 
+		//CHARGE_TIMER_CONTROL_REGISTER
+		byte readChargeTermRegister();
+		bool disableWatchdog(void);
+		bool setWatchdog(byte time);
+
+
+
 		//Thermal Regulation Control Register
 		bool setThermalRegulation();
 		byte getThermalRegulation();
 
 		//Misc Operation Control Register
-		bool enableDPDM();
-		bool disableDPDM();
-		bool enableBATFET();
-		bool disableBATFET();
+		byte readOpControlRegister();
+		bool enableDPDM(void);
+		bool disableDPDM(void);
+		bool enableBATFET(void);
+		bool disableBATFET(void);
 		bool safetyTimer(); //slow/ normal
 
 		bool enableChargeFaultINT();
@@ -124,10 +138,10 @@ class PMIC {
 		void writeRegister(byte address, byte DATA);
 };
 
-#endif
+#endif /* __SPARK_WIRING_POWER_H */
 
 /*
-// List of functions to write
+// List of Registers
 
 //-----------------------------------------------------------------------------
 // Input source control register
