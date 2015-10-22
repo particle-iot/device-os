@@ -24,11 +24,11 @@
  */
 
 /*
-There are 11 registers that allow the user to control and monitor all the parameters 
+There are 11 registers that allow the user to control and monitor all the parameters
 of the BQ24195 PMIC. The functions are grouped by the registers they belong to.
 
 ----------------------------------------------------------
-REGISTER NAME 							ADDRESS 	TYPE	
+REGISTER NAME 							ADDRESS 	TYPE
 ----------------------------------------------------------
 INPUT_SOURCE_REGISTER					0x00		R/W
 POWERON_CONFIG_REGISTER					0x01		R/W
@@ -54,7 +54,7 @@ PMIC::PMIC()
 
 }
 
-
+#if Wiring_Wire3
 /*******************************************************************************
  * Function Name  : begin
  * Description    : Initializes the I2C for the PMIC module
@@ -66,6 +66,7 @@ bool PMIC::begin()
     Wire3.begin();
 	return 1;
 }
+#endif
 
 /*
 //-----------------------------------------------------------------------------
@@ -82,7 +83,7 @@ BIT
 3 : VINDPM[0] 80mV	|
 --- input current limit
 2 : INLIM[2]  000: 100mA, 001: 150mA, 010: 500mA,	| Default: 100mA when OTG pin is LOW and
-1 : INLIM[1]  011: 900mA, 100: 1.2A,   101: 1.5A 	| 500mA when OTG pin is HIGH 
+1 : INLIM[1]  011: 900mA, 100: 1.2A,   101: 1.5A 	| 500mA when OTG pin is HIGH
 0 : INLIM[0]  110: 2.0A,  111: 3.0A   				| when charging port detected, 1.5A
 
 //-----------------------------------------------------------------------------
@@ -116,7 +117,7 @@ BIT
 bool PMIC::setInputVoltageLimit(uint16_t voltage) {
 
 	byte DATA = readRegister(INPUT_SOURCE_REGISTER);
-	byte mask = DATA & 0b10000111; 
+	byte mask = DATA & 0b10000111;
 
 	switch(voltage) {
 
@@ -192,10 +193,10 @@ bool PMIC::setInputVoltageLimit(uint16_t voltage) {
 }
 
 /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 byte PMIC::getInputVoltageLimit(void) {
 
@@ -215,7 +216,7 @@ bool PMIC::setInputCurrentLimit(uint16_t current) {
 
 
 	byte DATA = readRegister(INPUT_SOURCE_REGISTER);
-	byte mask = DATA & 0b11111000; 
+	byte mask = DATA & 0b11111000;
 
 	switch (current) {
 
@@ -251,7 +252,7 @@ bool PMIC::setInputCurrentLimit(uint16_t current) {
 		writeRegister(INPUT_SOURCE_REGISTER, (mask | 0b00000111));
 		break;
 
-		default: 
+		default:
 		return 0; // return error since the value passed didn't match
 	}
 
@@ -259,10 +260,10 @@ bool PMIC::setInputCurrentLimit(uint16_t current) {
 }
 
 /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
  byte PMIC::getInputCurrentLimit(void) {
 
@@ -273,7 +274,7 @@ bool PMIC::setInputCurrentLimit(uint16_t current) {
 
 /*******************************************************************************
  * Function Name  : readInputSourceRegister
- * Description    : 
+ * Description    :
  * Input          : NONE
  * Return         :
  *******************************************************************************/
@@ -285,7 +286,7 @@ byte PMIC::readInputSourceRegister(void) {
 
 /*******************************************************************************
  * Function Name  : enableBuck
- * Description    : 
+ * Description    :
  * Input          : NONE
  * Return         :
  *******************************************************************************/
@@ -299,7 +300,7 @@ bool PMIC::enableBuck(void) {
 
 /*******************************************************************************
  * Function Name  : disableBuck
- * Description    : 
+ * Description    :
  * Input          : NONE
  * Return         :
  *******************************************************************************/
@@ -336,9 +337,9 @@ BIT
 
 /*******************************************************************************
  * Function Name  : readPowerONRegister
- * Description    : 
- * Input          : 
- * Return         : 
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 byte PMIC::readPowerONRegister(void) {
 
@@ -348,9 +349,9 @@ byte PMIC::readPowerONRegister(void) {
 
 /*******************************************************************************
  * Function Name  : enableCharging
- * Description    : 
- * Input          : 
- * Return         : 
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 bool PMIC::enableCharging() {
 
@@ -358,14 +359,14 @@ bool PMIC::enableCharging() {
 	DATA = DATA & 0b11001111;
 	DATA = DATA | 0b00010000;
 	writeRegister(POWERON_CONFIG_REGISTER, DATA);
-	return 1;	
+	return 1;
 }
 
 /*******************************************************************************
  * Function Name  : disableCharging
- * Description    : 
- * Input          : 
- * Return         : 
+ * Description    :
+ * Input          :
+ * Return         :
 *******************************************************************************/
 bool PMIC::disableCharging() {
 
@@ -376,9 +377,9 @@ bool PMIC::disableCharging() {
 
 /*******************************************************************************
  * Function Name  : disableOTG
- * Description    : 
- * Input          : 
- * Return         : 
+ * Description    :
+ * Input          :
+ * Return         :
 *******************************************************************************/
 bool PMIC::disableOTG(void) {
 
@@ -391,9 +392,9 @@ bool PMIC::disableOTG(void) {
 
 /*******************************************************************************
  * Function Name  : enableOTG
- * Description    : 
- * Input          : 
- * Return         : 
+ * Description    :
+ * Input          :
+ * Return         :
 *******************************************************************************/
 bool PMIC::enableOTG(void) {
 
@@ -406,9 +407,9 @@ bool PMIC::enableOTG(void) {
 
 /*******************************************************************************
  * Function Name  : resetWatchdog
- * Description    : 
- * Input          : 
- * Return         : 
+ * Description    :
+ * Input          :
+ * Return         :
 *******************************************************************************/
 bool PMIC::resetWatchdog() {
 
@@ -426,7 +427,7 @@ bool PMIC::resetWatchdog() {
 bool PMIC::setMinimumSystemVoltage(uint16_t voltage) {
 
 	byte DATA = readRegister(POWERON_CONFIG_REGISTER);
-	byte mask = DATA & 0b11110000; 
+	byte mask = DATA & 0b11110000;
 
 	switch (voltage) {
 
@@ -462,7 +463,7 @@ bool PMIC::setMinimumSystemVoltage(uint16_t voltage) {
 		writeRegister(POWERON_CONFIG_REGISTER, (mask | 0b00001111));
 		break;
 
-		default: 
+		default:
 		return 0; // return error since the value passed didn't match
 	}
 
@@ -483,7 +484,7 @@ uint16_t PMIC::getMinimumSystemVoltage() {
 	byte sysvoltage = DATA & 0b00001110;
 
 	switch (sysvoltage) {
-		
+
 		case 0:
 		return 3000;
 
@@ -534,8 +535,8 @@ BIT
 /*******************************************************************************
  * Function Name  : getChargeCurrent
  * Description    : It currently just returns the contents of the register
- * Input          : 
- * Return         : 
+ * Input          :
+ * Return         :
  *******************************************************************************/
  //TO DO: Return more meaningful value
 
@@ -555,7 +556,7 @@ byte PMIC::getChargeCurrent(void) {
  					bit3 = 128mA
  					bit2 = 64mA
  * Input          : six boolean values
- 					For example, 
+ 					For example,
  					setChargeCurrent(0,0,1,1,1,0) will set the charge current to
  					512mA + [0+0+512mA+256mA+128mA+0] = 1408mA
  * Return         : 0 Error, 1 Success
@@ -584,19 +585,19 @@ byte PMIC::getChargeCurrent(void) {
 REG05
 BIT
 --- Charging Termination Enable
-7: EN_TERM 		0:Disable 
-				1:Enable 
+7: EN_TERM 		0:Disable
+				1:Enable
 				Default: Enable Termination (1)
 --- Termination Indicator Threshold
-6: TERM_STAT 	0:Match ITERM, 
+6: TERM_STAT 	0:Match ITERM,
 				1:STAT pin high before actual termination when charge current below 800 mA
 				Default Match ITERM (0)
 --- I2C Watchdog Timer Setting
 5: WATCHDOG[1] 	| 00: disable timer, 01: 40seconds
 4: WATCHDOG[0] 	| 10: 80 seconds, 11: 160 seconds. Default: 40s(01)
 --- Charging Safety Timer Enable
-3: EN_TIMER		0:Disable 
-				1:Enable 
+3: EN_TIMER		0:Disable
+				1:Enable
 				Default:Enable(1)
 --- Fast Charge Timer Setting
 2: CHG_TIMER[1]	| 00: 5hrs, 01: 8hrs, 10: 12hrs, 11: 20hrs
@@ -607,10 +608,10 @@ BIT
 
 
 /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 
  byte PMIC::readChargeTermRegister(void) {
@@ -620,10 +621,10 @@ BIT
  }
 
  /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 
  bool PMIC::disableWatchdog(void) {
@@ -642,8 +643,8 @@ BIT
 REG07
 BIT
 --- Force DPDM detection
-7: DPDM_EN 	0: Not in D+/D– detection, 
-			1: Force D+/D– detection. 
+7: DPDM_EN 	0: Not in D+/D– detection,
+			1: Force D+/D– detection.
 			Default: (0)
 --- Safety Timer Setting during Input DPM and Thermal Regulation
 6: TMR2X_EN 0: Safety timer not slowed by 2X during input DPM or thermal regulation
@@ -651,7 +652,7 @@ BIT
 			Default: (1)
 --- Force BATFET Off (this essentially disconnects the battery from the system)
 5: BATFET_Disable 	0: Allow Q4 turn on
-					1: Turn off Q4 
+					1: Turn off Q4
 					Default: (0)
 4: 0 – Reserved. Must write "0"
 3: 1 – Reserved. Must write "1"
@@ -667,65 +668,65 @@ BIT
 
 /*******************************************************************************
  * Function Name  : disableDPDM
- * Description    : 
- * Input          : 
- * Return         : 
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 
 bool PMIC::disableDPDM() {
 
 	byte DATA = readRegister(MISC_CONTROL_REGISTER);
-	writeRegister(MISC_CONTROL_REGISTER, (DATA & 0b01111111));	
+	writeRegister(MISC_CONTROL_REGISTER, (DATA & 0b01111111));
 	return 1;
 }
 
 /*******************************************************************************
  * Function Name  : enableDPDM
- * Description    : 
- * Input          : 
- * Return         : 
+ * Description    :
+ * Input          :
+ * Return         :
 *******************************************************************************/
 
 bool PMIC::enableDPDM() {
 
 	byte DATA = readRegister(MISC_CONTROL_REGISTER);
-	writeRegister(MISC_CONTROL_REGISTER, (DATA | 0b10000000));	
-	return 1;	
+	writeRegister(MISC_CONTROL_REGISTER, (DATA | 0b10000000));
+	return 1;
 }
 
 /*******************************************************************************
  * Function Name  : enableBATFET
- * Description    : 
- * Input          : 
- * Return         : 
+ * Description    :
+ * Input          :
+ * Return         :
 *******************************************************************************/
 bool PMIC::enableBATFET(void) {
 
 	byte DATA = readRegister(MISC_CONTROL_REGISTER);
-	writeRegister(MISC_CONTROL_REGISTER, (DATA & 0b11011111));	
+	writeRegister(MISC_CONTROL_REGISTER, (DATA & 0b11011111));
 	return 1;
 
 }
 
 /*******************************************************************************
  * Function Name  : disableBATFET
- * Description    : Force BATFET Off 
+ * Description    : Force BATFET Off
  					(this essentially disconnects the battery from the system)
- * Input          : 
- * Return         : 
+ * Input          :
+ * Return         :
 *******************************************************************************/
 bool PMIC::disableBATFET(void) {
 
 	byte DATA = readRegister(MISC_CONTROL_REGISTER);
-	writeRegister(MISC_CONTROL_REGISTER, (DATA | 0b00100000));	
-	return 1;	
+	writeRegister(MISC_CONTROL_REGISTER, (DATA | 0b00100000));
+	return 1;
 }
 
 /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
 *******************************************************************************/
 
 byte PMIC::readOpControlRegister(void) {
@@ -750,7 +751,7 @@ BIT
 4: CHRG_STAT[0] | 10: Fast Charging, 11: Charge termination done
 3: DPM_STAT		0: Not DPM
 				1: VINDPM or IINDPM
-2: PG_STAT		0: Power NO Good :( 
+2: PG_STAT		0: Power NO Good :(
 				1: Power Good :)
 1: THERM_STAT	0: Normal
 				1: In Thermal Regulation (HOT)
@@ -759,10 +760,10 @@ BIT
 */
 
 /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 bool PMIC::isPowerGood(void) {
 
@@ -773,10 +774,10 @@ bool PMIC::isPowerGood(void) {
 }
 
 /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 bool PMIC::isHot(void) {
 
@@ -787,10 +788,10 @@ bool PMIC::isHot(void) {
 }
 
 /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 byte PMIC::getSystemStatus() {
 
@@ -810,25 +811,25 @@ REG09
 BIT
 7: WATCHDOG_FAULT	0: Normal
 					1: watchdog timer expired
-6: Reserved			
+6: Reserved
 --- Charge fault status
 5: CHRG_FAULT[1]	| 00: Normal, 01: Input fault (VBUS OVP or VBAT < VBUS < 3.8 V)
 4: CHRG_FAULT[0]	| 10: Thermal shutdown, 11: charge safetly timer expiration
 --- Battery fault status
 3: BAT_FAULT		0: Normal
-					1: BATOVP battery over threshold	
+					1: BATOVP battery over threshold
 --- NTC thermistor fault status
-2: NTC_FAULT[2]		| 000: Normal 
+2: NTC_FAULT[2]		| 000: Normal
 1: NTC_FAULT[1]		| 101: Cold
 0: NTC_FAULT[0]		| 110: Hot
 
 */
 
 /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 byte PMIC::getFault() {
 
@@ -841,7 +842,7 @@ byte PMIC::getFault() {
 /*
 
 //-----------------------------------------------------------------------------
-//Vender / Part / Revision Status Register 
+//Vender / Part / Revision Status Register
 //-----------------------------------------------------------------------------
 //NOTE: This is a read-only register
 
@@ -850,9 +851,9 @@ BIT
 7: Reserved
 6: Reserved
 --- Device configuration
-5: PN[2]		1		
+5: PN[2]		1
 4: PN[1]		0
-3: PN[0]		0		
+3: PN[0]		0
 2: TS_PROFILE	0
 1: DEV_REG[0]  	1
 0: DEV_REG[0]	1
@@ -876,11 +877,13 @@ byte PMIC::getVersion() {
 }
 
 
+
+#if Wiring_Wire3
 /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 byte PMIC::readRegister(byte startAddress) {
 
@@ -888,7 +891,7 @@ byte PMIC::readRegister(byte startAddress) {
 	Wire3.beginTransmission(PMIC_ADDRESS);
 	Wire3.write(startAddress);
 	Wire3.endTransmission(true);
-	
+
 	Wire3.requestFrom(PMIC_ADDRESS, 1, true);
 	DATA = Wire3.read();
 	return DATA;
@@ -896,10 +899,10 @@ byte PMIC::readRegister(byte startAddress) {
 
 
 /*******************************************************************************
- * Function Name  : 
- * Description    : 
- * Input          : 
- * Return         : 
+ * Function Name  :
+ * Description    :
+ * Input          :
+ * Return         :
  *******************************************************************************/
 void PMIC::writeRegister(byte address, byte DATA) {
 
@@ -908,3 +911,4 @@ void PMIC::writeRegister(byte address, byte DATA) {
     Wire3.write(DATA);
     Wire3.endTransmission(true);
 }
+#endif
