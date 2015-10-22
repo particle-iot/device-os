@@ -141,6 +141,17 @@ void FuelGauge::sleep() {
 
 }
 
+void FuelGauge::wakeup() {
+
+	byte MSB = 0;
+	byte LSB = 0;
+
+	readConfigRegister(MSB, LSB);
+
+	writeRegister(CONFIG_REGISTER, MSB, (LSB & 0b01111111));
+
+}
+
 
 void FuelGauge::readConfigRegister(byte &MSB, byte &LSB) {
 
