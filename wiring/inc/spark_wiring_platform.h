@@ -77,6 +77,7 @@
 
 #define Wiring_Wire1 1
 #define Wiring_Wire3 1 /* System PMIC and Fuel Guage I2C3 */
+#define Wiring_SoftPowerOff 1
 #endif
 
 #ifndef Wiring_SPI1
@@ -115,6 +116,9 @@
 #define Wiring_Serial5 0
 #endif
 
+#ifndef Wiring_SoftPowerOff
+#define Wiring_SoftPowerOff 0
+#endif
 
 #endif	/* SPARK_WIRING_PLATFORM_H */
 
