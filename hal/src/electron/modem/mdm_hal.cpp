@@ -461,6 +461,12 @@ bool MDMParser::init(DevStatus* status)
     LOCK();
 
     MDM_INFO("Modem::init\r\n");
+
+    // Returns the product serial number, IMEI (International Mobile Equipment Identity)
+    sendFormated("AT+CGSN\r\n");
+    if (RESP_OK != waitFinalResp(_cbString, _dev.imei))
+        goto failure;
+
     if (_dev.sim != SIM_READY) {
         if (_dev.sim == SIM_MISSING)
             MDM_ERROR("SIM not inserted\r\n");
@@ -482,10 +488,6 @@ bool MDMParser::init(DevStatus* status)
     // ICCID is a serial number identifying the SIM.
     sendFormated("AT+CCID\r\n");
     if (RESP_OK != waitFinalResp(_cbCCID, _dev.ccid))
-        goto failure;
-    // Returns the product serial number, IMEI (International Mobile Equipment Identity)
-    sendFormated("AT+CGSN\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, _dev.imei))
         goto failure;
     // enable power saving
     if (_dev.lpm != LPM_DISABLED) {
@@ -526,7 +528,8 @@ bool MDMParser::init(DevStatus* status)
     UNLOCK();
     return true;
 failure:
-    //unlock();
+    UNLOCK();
+    
     return false;
 }
 
@@ -549,7 +552,7 @@ bool MDMParser::powerOff(void)
     HAL_Pin_Mode(PWR_UC, INPUT);
     HAL_Pin_Mode(RESET_UC, INPUT);
 #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
-#else   
+#else
     HAL_Pin_Mode(RTS_UC, INPUT);
 #endif
     HAL_Pin_Mode(LVLOE_UC, INPUT);
