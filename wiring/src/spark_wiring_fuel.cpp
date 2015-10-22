@@ -158,22 +158,25 @@ void FuelGauge::readConfigRegister(byte &MSB, byte &LSB) {
 	readRegister(CONFIG_REGISTER, MSB, LSB);
 }
 
-#if Wiring_Wire3
+
 void FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
-    Wire3.beginTransmission(MAX17043_ADDRESS);
+#if Wiring_Wire3
+	Wire3.beginTransmission(MAX17043_ADDRESS);
     Wire3.write(startAddress);
     Wire3.endTransmission(true);
 
     Wire3.requestFrom(MAX17043_ADDRESS, 2, true);
     MSB = Wire3.read();
     LSB = Wire3.read();
+#endif
 }
 
 void FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
-    Wire3.beginTransmission(MAX17043_ADDRESS);
+#if Wiring_Wire3
+	Wire3.beginTransmission(MAX17043_ADDRESS);
     Wire3.write(address);
     Wire3.write(MSB);
     Wire3.write(LSB);
     Wire3.endTransmission(true);
-}
 #endif
+}

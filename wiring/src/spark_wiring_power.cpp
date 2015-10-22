@@ -54,7 +54,6 @@ PMIC::PMIC()
 
 }
 
-#if Wiring_Wire3
 /*******************************************************************************
  * Function Name  : begin
  * Description    : Initializes the I2C for the PMIC module
@@ -63,10 +62,11 @@ PMIC::PMIC()
  *******************************************************************************/
 bool PMIC::begin()
 {
-    Wire3.begin();
+#if Wiring_Wire3
+	Wire3.begin();
+#endif
 	return 1;
 }
-#endif
 
 /*
 //-----------------------------------------------------------------------------
