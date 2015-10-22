@@ -75,6 +75,7 @@ protected:
 
     virtual void on_start_listening() override
     {
+        WLAN_CAN_SHUTDOWN = 0;
         /* If WiFi module is connected, disconnect it */
         network_disconnect(0, 0, NULL);
 

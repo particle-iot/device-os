@@ -139,10 +139,6 @@ protected:
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
-        WLAN_CONNECTED = 0;
-        WLAN_CONNECTING = 0;
-        WLAN_DHCP = 0;
-        WLAN_CAN_SHUTDOWN = 0;
 
         cloud_disconnect();
         SPARK_LED_FADE = 0;
@@ -317,6 +313,9 @@ public:
         {
             WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()
             WLAN_CONNECTING = 0;
+            WLAN_CONNECTED = 0;
+            WLAN_DHCP = 0;
+
             cloud_disconnect();
             disconnect_now();
             config_clear();
