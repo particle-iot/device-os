@@ -451,6 +451,11 @@ public:
         WLAN_CAN_SHUTDOWN = 1;
     }
 
+    void notify_cannot_shutdown()
+    {
+        WLAN_CAN_SHUTDOWN = 0;
+    }
+
 
     void listen_loop() override
     {
