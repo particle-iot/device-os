@@ -1016,7 +1016,7 @@ bool MDMParser::detach(void)
     if (_activated) {
         LOCK();
         MDM_INFO("Modem::detach\r\n");
-        if (_ip != NOIP) {
+        // if (_ip != NOIP) {  // if we disconnect() first we won't have an IP
             /* Detach from the GPRS network and conserve network resources. */
             /* Any active PDP context will also be deactivated. */
             sendFormated("AT+CGATT=0\r\n");
@@ -1024,7 +1024,7 @@ bool MDMParser::detach(void)
                 ok = true;
                 _activated = false;
             }
-        }
+        // }
         UNLOCK();
     }
     return ok;
