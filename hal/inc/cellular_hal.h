@@ -130,7 +130,7 @@ bool cellular_sim_ready(void* reserved);
  * Called from another thread or ISR context. Attempts to stop the cellular modem from performing the current operation.
  * @param reserved Pass NULL. Allows future expansion.
  */
-void cellular_cancel(void* reserved);
+void cellular_cancel(bool cancel, bool calledFromISR, void* reserved);
 
 #ifdef __cplusplus
 }

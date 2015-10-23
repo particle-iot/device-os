@@ -133,9 +133,10 @@ public:
     }
 
 
-    void connect_cancel() override
+    void connect_cancel(bool cancel) override
     {
-        wlan_connect_cancel(true);
+        if (cancel)
+            wlan_connect_cancel(true);
     }
 
     bool has_credentials() override
