@@ -27,6 +27,7 @@
 
 #include "spark_wiring.h"
 #include "spark_wiring_i2c.h"
+#include "spark_wiring_platform.h"
 
 #ifndef __SPARK_WIRING_FUEL_H
 #define __SPARK_WIRING_FUEL_H
@@ -60,7 +61,7 @@ class FuelGauge {
     void quickStart();
     void sleep();
     void wakeup();
-  
+
   private:
 
     void readConfigRegister(byte &MSB, byte &LSB);

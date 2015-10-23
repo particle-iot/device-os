@@ -69,7 +69,7 @@
 #if PLATFORM_ID==10      // electron
 #define Wiring_Cellular 1
 #define Wiring_Serial2 1
-#define Wiring_Serial3 1
+#define Wiring_Serial3 0 // Used internally by modem
 #define Wiring_Serial4 1
 #define Wiring_Serial5 1
 #define Wiring_SPI1 1
