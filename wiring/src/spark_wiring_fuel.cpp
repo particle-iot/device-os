@@ -24,9 +24,7 @@
   ******************************************************************************
  */
 
-
 #include "spark_wiring_fuel.h"
-#include "spark_wiring_platform.h"
 
 FuelGauge::FuelGauge()
 {
