@@ -50,6 +50,7 @@ MEMORY
   APP_FLASH (rx)    : ORIGIN = 0x08020000, LENGTH = 1024K-0x20000
   DCT1_FLASH (rx) : ORIGIN = 0x08004000, LENGTH = 16K
   DCT2_FLASH (rx) : ORIGIN = 0x08008000, LENGTH = 16K
+  INCLUDE backup_ram_memory.ld
 }
 
 INCLUDE linker_stm32f2xx_common.ld
