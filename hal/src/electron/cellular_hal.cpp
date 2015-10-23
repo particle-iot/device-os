@@ -113,3 +113,7 @@ uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS)
     return 0;
 }
 
+void cellular_cancel(void*)
+{
+    // todo!
+}

@@ -44,6 +44,7 @@ DYNALIB_FN(hal_cellular, cellular_device_info)
 DYNALIB_FN(hal_cellular, cellular_credentials_set)
 DYNALIB_FN(hal_cellular, cellular_credentials_get)
 DYNALIB_FN(hal_cellular, cellular_sim_ready)
+DYNALIB_FN(hal_cellular, cellular_cancel)
 DYNALIB_END(hal_cellular)
 
 
