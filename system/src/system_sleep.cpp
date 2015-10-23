@@ -26,6 +26,8 @@
 #include "core_hal.h"
 #include "rgbled.h"
 #include <stddef.h>
+#include "spark_wiring_fuel.h"
+#include "spark_wiring_platform.h"
 
 struct WakeupState
 {
@@ -54,6 +56,12 @@ extern "C" void HAL_RTCAlarm_Handler(void)
 #endif
 }
 
+void sleep_fuel_gauge()
+{
+    FuelGauge gauge;
+
+    gauge.sleep();
+}
 
 void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
@@ -76,6 +84,15 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
         case SLEEP_MODE_DEEP:
             HAL_Core_Enter_Standby_Mode();
             break;
+
+#if Wiring_SoftPowerOff
+        case SLEEP_MODE_SOFTPOWEROFF:
+            network_disconnect(0,0,NULL);
+            network_off(0, 0, 0, NULL);
+            sleep_fuel_gauge();
+            HAL_Core_Enter_Standby_Mode();
+            break;
+#endif
     }
 }
 
