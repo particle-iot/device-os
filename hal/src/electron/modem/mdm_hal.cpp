@@ -190,6 +190,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                             (type == TYPE_TEXT)   ? MAG "TXT" DEF :
                             (type == TYPE_OK   )  ? GRE "OK " DEF :
                             (type == TYPE_ERROR)  ? RED "ERR" DEF :
+                            (type == TYPE_ABORTED) ? RED "ABT" DEF :
                             (type == TYPE_PLUS)   ? CYA " + " DEF :
                             (type == TYPE_PROMPT) ? BLU " > " DEF :
                                                         "..." ;
@@ -285,6 +286,8 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 return RESP_ERROR;
             if (type == TYPE_PROMPT)
                 return RESP_PROMPT;
+            if (type == TYPE_ABORTED)
+                return RESP_ABORTED; // This means the current command was ABORTED, so retry your command if critical.
         }
         // relax a bit
         HAL_Delay_Milliseconds(10);
@@ -539,25 +542,34 @@ bool MDMParser::init(DevStatus* status)
     return true;
 failure:
     UNLOCK();
-    
+
     return false;
 }
 
 bool MDMParser::powerOff(void)
 {
+    LOCK();
     bool ok = false;
     if (_init && _pwr) {
-        LOCK();
         MDM_INFO("Modem::powerOff\r\n");
-        sendFormated("AT+CPWROFF\r\n");
-        if (RESP_OK == waitFinalResp(NULL,NULL,120*1000)) {
-            _pwr = false;
-            // todo - add if these are automatically done on power down
-            //_activated = false;
-            //_attached = false;
-            ok = true;
+        for (int i=0; i<3; i++) { // try 3 times
+            sendFormated("AT+CPWROFF\r\n");
+            int ret = waitFinalResp(NULL,NULL,40*1000);
+            if (RESP_OK == ret) {
+                _pwr = false;
+                // todo - add if these are automatically done on power down
+                //_activated = false;
+                //_attached = false;
+                ok = true;
+                break;
+            }
+            else if (RESP_ABORTED == ret) {
+                MDM_INFO("Modem::powerOff found ABORTED, retrying...\r\n");
+            }
+            else {
+                MDM_INFO("Modem::powerOff timeout, retrying...\r\n");
+            }
         }
-        UNLOCK();
     }
     HAL_Pin_Mode(PWR_UC, INPUT);
     HAL_Pin_Mode(RESET_UC, INPUT);
@@ -566,6 +578,7 @@ bool MDMParser::powerOff(void)
     HAL_Pin_Mode(RTS_UC, INPUT);
 #endif
     HAL_Pin_Mode(LVLOE_UC, INPUT);
+    UNLOCK();
     return ok;
 }
 
@@ -1728,6 +1741,7 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
             { "\r\n@",                  NULL,               TYPE_PROMPT     }, // Sockets
             { "\r\n>",                  NULL,               TYPE_PROMPT     }, // SMS
             { "\n>",                    NULL,               TYPE_PROMPT     }, // File
+            { "\r\nABORTED\r\n",        NULL,               TYPE_ABORTED    }, // Current command aborted
         };
         for (int i = 0; i < (int)(sizeof(lutF)/sizeof(*lutF)); i ++) {
             pipe->set(unkn);
