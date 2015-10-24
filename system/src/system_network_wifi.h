@@ -133,10 +133,10 @@ public:
     }
 
 
-    void connect_cancel(bool cancel) override
+    void connect_cancel(bool cancel, bool calledFromISR) override
     {
         if (cancel)
-            wlan_connect_cancel(true);
+            wlan_connect_cancel(calledFromISR);
     }
 
     bool has_credentials() override
