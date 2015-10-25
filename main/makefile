@@ -3,6 +3,8 @@ MODULE=main
 MAIN_MODULE_PATH=.
 
 include ../build/platform-id.mk
+include ../build/top-level-module.mk
+include ../build/macros.mk
 
 ifeq ($(PLATFORM_ID),0)
 export COMPILE_LTO?=y
@@ -15,12 +17,16 @@ endif
 ifeq ($(PLATFORM_ID),8)
 MODULAR?=y
 endif
+ifeq ($(PLATFORM_ID),10)
+MODULAR?=y
+endif
 
 ifeq ($(MODULAR),y)
 
 PROJECT_ROOT = ..
 COMMON_BUILD=../build
 BUILD_PATH_BASE=$(COMMON_BUILD)/target
+$(call check_modular)
 
 # This is required to redefine the value of TARGET_DIR on the command line, since we are changing directories, so the relative path
 # must also change
@@ -32,7 +38,7 @@ MAKEOVERRIDES := $(patsubst TARGET_FILE=%,,$(MAKE_OVERRIDES))
 endif
 endif
 
-MAKE_DEPENDENCIES = modules/photon/user-part
+MAKE_DEPENDENCIES = modules/$(PLATFORM_DYNALIB_MODULES)/user-part
 
 SUBDIR_GOALS := $(MAKECMDGOALS)
 MAKECMDGOALS := all
