@@ -28,6 +28,7 @@
 
 #ifdef DYNALIB_EXPORT
 #include "cellular_hal.h"
+#include "inet_hal.h"
 #endif
 
 DYNALIB_BEGIN(hal_cellular)
@@ -45,6 +46,10 @@ DYNALIB_FN(hal_cellular, cellular_credentials_set)
 DYNALIB_FN(hal_cellular, cellular_credentials_get)
 DYNALIB_FN(hal_cellular, cellular_sim_ready)
 DYNALIB_FN(hal_cellular, cellular_cancel)
+DYNALIB_FN(hal_cellular, HAL_WLAN_SetNetWatchDog)
+DYNALIB_FN(hal_cellular, inet_gethostbyname)
+DYNALIB_FN(hal_cellular, inet_ping)
+
 DYNALIB_END(hal_cellular)
 
 

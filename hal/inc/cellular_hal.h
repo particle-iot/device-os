@@ -22,7 +22,7 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "wlan_hal.h"
+#include "net_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
