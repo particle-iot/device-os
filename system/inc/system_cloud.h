@@ -64,12 +64,17 @@ const CloudVariableTypeInt INT;
 const CloudVariableTypeString STRING;
 const CloudVariableTypeDouble DOUBLE;
 
+#if PLATFORM_ID==3
+// avoid a c-linkage incompatible with C error on newer versions of gcc
+String spark_deviceID(void);
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+#if PLATFORM_ID!=3
 String spark_deviceID(void);
+#endif
 
 void cloud_disconnect(bool closeSocket=true);
 
