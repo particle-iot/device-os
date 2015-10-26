@@ -878,7 +878,6 @@ byte PMIC::getVersion() {
 
 
 
-#if Wiring_Wire3
 /*******************************************************************************
  * Function Name  :
  * Description    :
@@ -888,12 +887,14 @@ byte PMIC::getVersion() {
 byte PMIC::readRegister(byte startAddress) {
 
 	byte DATA = 0;
+#if Wiring_Wire3
 	Wire3.beginTransmission(PMIC_ADDRESS);
 	Wire3.write(startAddress);
 	Wire3.endTransmission(true);
 
 	Wire3.requestFrom(PMIC_ADDRESS, 1, true);
 	DATA = Wire3.read();
+#endif
 	return DATA;
 }
 
@@ -906,9 +907,11 @@ byte PMIC::readRegister(byte startAddress) {
  *******************************************************************************/
 void PMIC::writeRegister(byte address, byte DATA) {
 
+#if Wiring_Wire3
     Wire3.beginTransmission(PMIC_ADDRESS);
     Wire3.write(address);
     Wire3.write(DATA);
     Wire3.endTransmission(true);
-}
 #endif
+}
+

@@ -81,7 +81,7 @@ struct NetworkInterface
     virtual void connect(bool listen_enabled=true)=0;
     virtual bool connecting()=0;
     virtual bool connected()=0;
-    virtual void connect_cancel()=0;
+    virtual void connect_cancel(bool cancel, bool calledFromISR)=0;
     /**
      * Force a manual disconnct.
      */
@@ -107,6 +107,7 @@ struct NetworkInterface
     virtual void config_clear()=0;
     virtual void update_config()=0;
     virtual void* config()=0;       // not really happy about lack of type
+
 };
 
 
@@ -270,6 +271,7 @@ public:
     {
         return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
     }
+
 
     void connect(bool listen_enabled=true) override
     {

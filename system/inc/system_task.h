@@ -66,6 +66,7 @@ extern volatile uint8_t SPARK_LED_FADE;
 
 extern volatile uint8_t Spark_Error_Count;
 extern volatile uint8_t Cloud_Handshake_Error_Count;
+extern volatile uint8_t SYSTEM_POWEROFF;
 
 extern volatile system_tick_t spark_loop_total_millis;
 

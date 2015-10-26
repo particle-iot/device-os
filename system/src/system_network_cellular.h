@@ -104,7 +104,7 @@ public:
         return cellular_sim_ready(NULL);
     }
     int set_credentials(NetworkCredentials* creds) override { return -1; }
-    void connect_cancel() override { /* n/a */ }
+    void connect_cancel(bool cancel, bool calledFromISR) override { cellular_cancel(cancel, calledFromISR, NULL);  }
 
     void set_error_count(unsigned count) override
     {

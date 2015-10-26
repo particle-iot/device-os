@@ -78,29 +78,36 @@ uint16_t system_button_pushed_duration(uint8_t button, void*)
 static uint32_t prev_release_time = 0;
 static uint8_t clicks = 0;
 
+void system_handle_double_click()
+{
+    SYSTEM_POWEROFF = 1;
+    network.connect_cancel(true, true);
+}
+
 void handle_button_click(uint16_t duration, uint32_t release_time)
 {
-	uint32_t start_time = release_time-duration;
-	uint32_t since_prev = start_time-prev_release_time;
-	bool reset = true;
-	if (duration<500) {			// a short button press
-		if (!clicks || (since_prev<1000)) {		// first click or within 1 second of the previous click
-			clicks++;
-			prev_release_time = release_time;
-			if (clicks==2)
-			{
-				clicks = 0;
-				prev_release_time = release_time-1000;
-				system_sleep(SLEEP_MODE_SOFTPOWEROFF, 0, 0, NULL);
-			}
-			else
-				reset = false;
-		}
-	}
-	if (reset) {
-		prev_release_time = release_time-1000;	//
-		clicks = 0;
-	}
+    uint32_t start_time = release_time-duration;
+    uint32_t since_prev = start_time-prev_release_time;
+    bool reset = true;
+    if (duration<500) {                                 // a short button press
+        if (!clicks || (since_prev<1000)) {		// first click or within 1 second of the previous click
+            clicks++;
+            prev_release_time = release_time;
+            if (clicks==2)
+            {
+                clicks = 0;
+                prev_release_time = release_time-1000;
+                system_handle_double_click();
+            }
+            else {
+                reset = false;
+            }
+        }
+    }
+    if (reset) {
+        prev_release_time = release_time-1000;	//
+        clicks = 0;
+    }
 
 }
 
@@ -161,6 +168,11 @@ extern "C" void HAL_SysTick_Handler(void)
     {
         //Do nothing
     }
+    else if (SYSTEM_POWEROFF)
+    {
+        LED_SetRGBColor(RGB_COLOR_GREY);
+        LED_On(LED_RGB);
+    }
     else if(SPARK_LED_FADE && (!SPARK_CLOUD_CONNECTED || system_cloud_active()))
     {
         LED_Fade(LED_RGB);
@@ -203,7 +215,7 @@ extern "C" void HAL_SysTick_Handler(void)
     else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
         if (network.connecting()) {
-            network.connect_cancel();
+            network.connect_cancel(true, true);
         }
         // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
         // there's a race condition here - the HAL_notify_button_state function should
