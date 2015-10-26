@@ -16,4 +16,5 @@
  ******************************************************************************
  */
 
+#pragma GCC diagnostic ignored "-Wunused-local-typedef"
 #include <boost/asio/impl/src.hpp>

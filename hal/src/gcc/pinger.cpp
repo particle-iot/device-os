@@ -8,7 +8,6 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#pragma GCC diagnostic ignored "-Wunused-variable"
 
 #include "inet_hal.h"
 #include "core_msg.h"
@@ -16,7 +15,13 @@
 #include <ostream>
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-local-typedef"
 #include <boost/asio.hpp>
+#pragma GCC diagnostic pop
+
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <boost/asio/ip/icmp.hpp>
