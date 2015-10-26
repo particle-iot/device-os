@@ -445,6 +445,12 @@ int os_timer_change(os_timer_t timer, os_timer_change_t change, bool fromISR, un
             return xTimerStopFromISR(timer, &woken)!=pdPASS;
         else
             return xTimerStop(timer, block)!=pdPASS;
+
+    case OS_TIMER_CHANGE_PERIOD:
+        if (fromISR)
+            return xTimerChangePeriodFromISR(timer, period, &woken)!=pdPASS;
+        else
+            return xTimerChangePeriod(timer, period, block)!=pdPASS;
     }
     return -1;
 }
