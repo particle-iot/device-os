@@ -34,7 +34,10 @@
 #include "spark_protocol_functions.h"
 #include "device_keys.h"
 #include "file_transfer.h"
+#include "protocol_defs.h"
 #include <stdint.h>
+
+using namespace particle::protocol;
 
 const product_id_t UNDEFINED_PRODUCT_ID = product_id_t(-1);
 const product_firmware_version_t UNDEFINED_PRODUCT_VERSION = product_firmware_version_t(-1);
@@ -66,8 +69,6 @@ namespace ChunkReceivedCode {
 
 class SparkProtocol
 {
-    typedef uint16_t chunk_index_t;
-
   public:
     static const int MAX_FUNCTION_ARG_LENGTH = 64;
     static const int MAX_FUNCTION_KEY_LENGTH = 12;
@@ -233,16 +234,11 @@ class SparkProtocol
 
     /********** Queue **********/
     unsigned char queue[PROTOCOL_BUFFER_SIZE];
-    const unsigned char *queue_mem_boundary;
-    unsigned char *queue_front;
-    unsigned char *queue_back;
     product_id_t product_id;
     product_firmware_version_t product_firmware_version;
     FileTransfer::Descriptor file;
     inline void queue_init()
     {
-        queue_front = queue_back = queue;
-        queue_mem_boundary = queue + QUEUE_SIZE;
     }
 
     unsigned chunk_bitmap_size()
@@ -259,8 +255,6 @@ class SparkProtocol
     bool is_chunk_received(chunk_index_t idx);
     void flag_chunk_received(chunk_index_t index);
     chunk_index_t next_chunk_missing(chunk_index_t index);
-    const chunk_index_t NO_CHUNKS_MISSING = 65535;
-    const chunk_index_t MAX_CHUNKS = 65535;
     int send_missing_chunks(int count);
     void notify_update_done(uint8_t* buf);
 

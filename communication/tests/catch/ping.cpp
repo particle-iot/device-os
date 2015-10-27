@@ -71,6 +71,7 @@ SCENARIO("ping requests and responses are managed")
 	{
 		Pinger pinger;
 		bool callback_called = false;
+		REQUIRE(!pinger.is_expecting_ping_ack());
 		REQUIRE(pinger.process(15001, [&]()->int{callback_called = true; return NO_ERROR;})==NO_ERROR);
 		REQUIRE(pinger.is_expecting_ping_ack());
 		REQUIRE(callback_called);
@@ -92,7 +93,6 @@ SCENARIO("ping requests and responses are managed")
 				REQUIRE(pinger.is_expecting_ping_ack());
 			}
 		}
-
 
 	}
 

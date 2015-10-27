@@ -20,6 +20,12 @@ enum ProtocolError
 	TRANSPORT_FAILURE,
 };
 
+typedef uint16_t chunk_index_t;
+
+const chunk_index_t NO_CHUNKS_MISSING = 65535;
+const chunk_index_t MAX_CHUNKS = 65535;
+
+
 typedef std::function<system_tick_t()> millis_callback;
 typedef std::function<int()> callback;
 

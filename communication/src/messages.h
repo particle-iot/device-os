@@ -19,11 +19,25 @@
 #pragma once
 
 #include "coap.h"
+#include "protocol_defs.h"
 
-namespace spark
+namespace particle
 {
 namespace protocol
 {
+
+inline uint32_t decode_uint32(unsigned char* buf) {
+    return buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3];
+}
+
+inline uint16_t decode_uint16(unsigned char* buf) {
+    return buf[0] << 8 | buf[1];
+}
+
+inline uint8_t decode_uint8(unsigned char* buf) {
+    return buf[0];
+}
+
 
 class Messages
 {
@@ -269,6 +283,40 @@ public:
 		}
 		return len;
 	}
+
+    static inline size_t empty_ack(unsigned char *buf,
+                          unsigned char message_id_msb,
+                          unsigned char message_id_lsb) {
+        return coded_ack(buf, 0, message_id_msb, message_id_lsb);
+    };
+
+    static inline size_t coded_ack(unsigned char *buf,
+                                         unsigned char code,
+                                         unsigned char message_id_msb,
+                                         unsigned char message_id_lsb
+                                         )
+    {
+      buf[0] = 0x60; // acknowledgment, no token
+      buf[1] = code;
+      buf[2] = message_id_msb;
+      buf[3] = message_id_lsb;
+      return 4;
+    }
+
+    static inline size_t coded_ack(unsigned char *buf,
+                                         unsigned char token,
+                                         unsigned char code,
+                                         unsigned char message_id_msb,
+                                         unsigned char message_id_lsb)
+    {
+      buf[0] = 0x61; // acknowledgment, one-byte token
+      buf[1] = code;
+      buf[2] = message_id_msb;
+      buf[3] = message_id_lsb;
+      buf[4] = token;
+      return 5;
+    }
+
 
 };
 

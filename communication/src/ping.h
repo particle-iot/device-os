@@ -9,6 +9,7 @@ class Pinger
 	bool expecting_ping_ack;
 
 public:
+	Pinger() : expecting_ping_ack(false) {}
 
 	/**
 	 * Handle ping messages

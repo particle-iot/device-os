@@ -31,7 +31,7 @@
 #include "service_debug.h"
 #include "messages.h"
 
-using namespace spark::protocol;
+using namespace particle::protocol;
 
 #ifndef PRODUCT_ID
 #define PRODUCT_ID (0xffff)
@@ -305,7 +305,7 @@ CoAPMessageType::Enum
 
   memcpy(iv_receive, next_iv, 16);
 
-  return spark::protocol::Messages::decodeType(buf);
+  return Messages::decodeType(buf);
 }
 
 void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
@@ -935,19 +935,6 @@ ProtocolState::Enum SparkProtocol::state()
   return ProtocolState::READ_NONCE;
 }
 
-inline uint32_t decode_uint32(unsigned char* buf) {
-    return buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3];
-}
-
-inline uint16_t decode_uint16(unsigned char* buf) {
-    return buf[0] << 8 | buf[1];
-}
-
-inline uint8_t decode_uint8(unsigned char* buf) {
-    return buf[0];
-}
-
-
 /********** Private methods **********/
 
 size_t SparkProtocol::wrap(unsigned char *buf, size_t msglen)
@@ -1145,7 +1132,7 @@ inline bool SparkProtocol::is_chunk_received(chunk_index_t idx)
     return (chunk_bitmap()[idx>>3] & uint8_t(1<<(idx&7)));
 }
 
-SparkProtocol::chunk_index_t SparkProtocol::next_chunk_missing(chunk_index_t start)
+chunk_index_t SparkProtocol::next_chunk_missing(chunk_index_t start)
 {
     chunk_index_t chunk = NO_CHUNKS_MISSING;
     chunk_index_t chunks = file.chunk_count(chunk_size);

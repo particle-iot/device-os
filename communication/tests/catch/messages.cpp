@@ -21,7 +21,7 @@
 
 #include "catch.hpp"
 
-using namespace spark::protocol;
+using namespace particle::protocol;
 
 SCENARIO("determining message type from a CoAP GET message")
 {
@@ -214,6 +214,47 @@ SCENARIO("determining message type from a CoAP Content message")
 			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::TIME);
 		}
 	}
+}
+
+
+SCENARIO("decoding scalar types")
+{
+	GIVEN("a buffer [1,2,3,4]")
+	{
+		WHEN("decoded")
+		{
+			THEN("decodes to 0x01020304")
+			{
+				uint8_t buf[] = { 1,2,3,4 };
+				REQUIRE(decode_uint32(buf)==0x01020304);
+			}
+		}
+	}
+
+	GIVEN("a buffer [1,2]")
+	{
+		WHEN("decoded")
+		{
+			THEN("decodes to 0x0102")
+			{
+				uint8_t buf[] = { 1,2 };
+				REQUIRE(decode_uint16(buf)==0x0102);
+			}
+		}
+	}
+
+	GIVEN("a buffer [23]")
+	{
+		WHEN("decoded")
+		{
+			THEN("decodes to 23")
+			{
+				uint8_t buf[] = { 23 };
+				REQUIRE(decode_uint8(buf)==23);
+			}
+		}
+	}
+
 }
 
 SCENARIO("production of request messages")
