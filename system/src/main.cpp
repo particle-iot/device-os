@@ -34,6 +34,7 @@
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_cloud_internal.h"
+#include "system_sleep.h"
 #include "system_threading.h"
 #include "system_user.h"
 #include "system_update.h"
@@ -44,6 +45,8 @@
 #include "system_mode.h"
 #include "rgbled.h"
 #include "ledcontrol.h"
+#include "spark_wiring_power.h"
+#include "spark_wiring_fuel.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -60,6 +63,9 @@ static volatile uint32_t TimingIWDGReload;
  * we need also to know the listen mode at the time the button was pressed.
  */
 static volatile bool wasListeningOnButtonPress;
+/**
+ * The lower 16-bits of the time when the button was first pushed.
+ */
 static volatile uint16_t buttonPushed;
 
 uint16_t system_button_pushed_duration(uint8_t button, void*)
@@ -69,11 +75,41 @@ uint16_t system_button_pushed_duration(uint8_t button, void*)
     return buttonPushed ? HAL_Timer_Get_Milli_Seconds()-buttonPushed : 0;
 }
 
-/* Extern variables ----------------------------------------------------------*/
+static uint32_t prev_release_time = 0;
+static uint8_t clicks = 0;
 
-/* Private function prototypes -----------------------------------------------*/
+void system_handle_double_click()
+{
+    SYSTEM_POWEROFF = 1;
+    network.connect_cancel(true, true);
+}
 
-/* Private functions ---------------------------------------------------------*/
+void handle_button_click(uint16_t duration, uint32_t release_time)
+{
+    uint32_t start_time = release_time-duration;
+    uint32_t since_prev = start_time-prev_release_time;
+    bool reset = true;
+    if (duration<500) {                                 // a short button press
+        if (!clicks || (since_prev<1000)) {		// first click or within 1 second of the previous click
+            clicks++;
+            prev_release_time = release_time;
+            if (clicks==2)
+            {
+                clicks = 0;
+                prev_release_time = release_time-1000;
+                system_handle_double_click();
+            }
+            else {
+                reset = false;
+            }
+        }
+    }
+    if (reset) {
+        prev_release_time = release_time-1000;	//
+        clicks = 0;
+    }
+
+}
 
 // this is called on multiple threads - ideally need a mutex
 void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
@@ -84,14 +120,20 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
         {
             wasListeningOnButtonPress = network.listening();
             buttonPushed = HAL_Timer_Get_Milli_Seconds();
-            if (!wasListeningOnButtonPress)
+            if (!wasListeningOnButtonPress)             // start of button press
+            {
                 system_notify_event(button_status, 0);
+            }
         }
         else
         {
-            uint16_t duration = HAL_Timer_Get_Milli_Seconds()-buttonPushed;
-            if (!network.listening())
+            int release_time = HAL_Timer_Get_Milli_Seconds();
+            uint16_t duration = release_time-buttonPushed;
+
+            if (!network.listening()) {
                 system_notify_event(button_status, duration);
+                handle_button_click(duration, release_time);
+            }
             buttonPushed = 0;
             if (duration>3000 && duration<8000 && wasListeningOnButtonPress && network.listening())
                 network.listen(true);
@@ -105,7 +147,8 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
  * Input          : None
  * Output         : None.
  * Return         : None.
- *******************************************************************************/
+ ************************************************
+ *******************************/
 extern "C" void HAL_SysTick_Handler(void)
 {
     if (LED_RGB_IsOverRidden())
@@ -124,6 +167,11 @@ extern "C" void HAL_SysTick_Handler(void)
     else if(SPARK_FLASH_UPDATE || Spark_Error_Count || network.listening())
     {
         //Do nothing
+    }
+    else if (SYSTEM_POWEROFF)
+    {
+        LED_SetRGBColor(RGB_COLOR_GREY);
+        LED_On(LED_RGB);
     }
     else if(SPARK_LED_FADE && (!SPARK_CLOUD_CONNECTED || system_cloud_active()))
     {
@@ -167,7 +215,7 @@ extern "C" void HAL_SysTick_Handler(void)
     else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
         if (network.connecting()) {
-            network.connect_cancel();
+            network.connect_cancel(true, true);
         }
         // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
         // there's a race condition here - the HAL_notify_button_state function should
@@ -275,6 +323,9 @@ void app_setup_and_loop(void)
     HAL_Core_Init();
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
+    PMIC().begin();
+    FuelGauge().wakeup();
+
     DEBUG("Hello from Particle!");
     String s = spark_deviceID();
     INFO("Device %s started", s.c_str());

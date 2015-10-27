@@ -73,6 +73,9 @@ cellular_result_t  cellular_gprs_detach(void* reserved)
 cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
 {
     const MDMParser::DevStatus* status = electronMDM.getDevStatus();
+    if (!*status->ccid)
+        electronMDM.init(); // attempt to fetch the info again in case the SIM card has been inserted.
+    // this would benefit from an unsolicited event to call electronMDM.init() automatically on sim card insert)
     strncpy(device->imei, status->imei, sizeof(device->imei));
     strncpy(device->iccid, status->ccid, sizeof(device->iccid));
     return 0;
@@ -110,3 +113,7 @@ uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS)
     return 0;
 }
 
+void cellular_cancel(bool cancel, bool calledFromISR, void*)
+{
+    // todo!
+}

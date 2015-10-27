@@ -38,6 +38,7 @@
 #include "appender.h"
 #include "system_version.h"
 #include "spark_macros.h"
+#include "system_network_internal.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -220,14 +221,26 @@ void serial_dump(const char* msg, ...);
 
 void system_pending_shutdown()
 {
-    system_set_flag(SYSTEM_FLAG_RESET_PENDING, 1, nullptr);
-    system_notify_event(reset_pending);
+    uint8_t was_set = false;
+    system_get_flag(SYSTEM_FLAG_RESET_PENDING, &was_set, nullptr);
+    if (!was_set) {
+        system_set_flag(SYSTEM_FLAG_RESET_PENDING, 1, nullptr);
+        system_notify_event(reset_pending);
+    }
 }
 
 void system_shutdown_if_enabled()
 {
+    // shutdown if user initiated poweroff or system reset is allowed
     if (System.resetPending() && System.resetEnabled())
-        System.reset();
+    {
+        if (SYSTEM_POWEROFF) {              // shutdown network module too.
+            system_sleep(SLEEP_MODE_SOFTPOWEROFF, 0, 0, NULL);
+        }
+        else {
+            System.reset();
+        }
+    }
 }
 
 void system_shutdown_if_needed()

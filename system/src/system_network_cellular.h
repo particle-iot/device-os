@@ -31,7 +31,7 @@ protected:
     virtual void on_finalize_listening(bool complete) override
     {
     }
-    
+
     virtual void on_start_listening() override { /* n/a */ }
     virtual bool on_stop_listening() override { /* n/a */ return false; }
     virtual void on_setup_cleanup() override { /* n/a */ }
@@ -50,7 +50,7 @@ protected:
         savedCreds = cellular_credentials_get(NULL);
         result = cellular_pdp_activate(savedCreds, NULL);
         if (result) return;
-        
+
         //DEBUG_D("savedCreds = %s %s %s\r\n", savedCreds->apn, savedCreds->username, savedCreds->password);
         result = cellular_gprs_attach(savedCreds, NULL);
         if (result) return;
@@ -89,7 +89,7 @@ public:
 
     bool listening() override
     {
-        return ManagedNetworkInterface::listening() && !cellular_sim_ready(NULL);
+        return ManagedNetworkInterface::listening();
     }
 
     void setup() override
@@ -104,7 +104,7 @@ public:
         return cellular_sim_ready(NULL);
     }
     int set_credentials(NetworkCredentials* creds) override { return -1; }
-    void connect_cancel() override { /* n/a */ }
+    void connect_cancel(bool cancel, bool calledFromISR) override { cellular_cancel(cancel, calledFromISR, NULL);  }
 
     void set_error_count(unsigned count) override
     {

@@ -81,7 +81,7 @@ struct NetworkInterface
     virtual void connect(bool listen_enabled=true)=0;
     virtual bool connecting()=0;
     virtual bool connected()=0;
-    virtual void connect_cancel()=0;
+    virtual void connect_cancel(bool cancel, bool calledFromISR)=0;
     /**
      * Force a manual disconnct.
      */
@@ -107,6 +107,7 @@ struct NetworkInterface
     virtual void config_clear()=0;
     virtual void update_config()=0;
     virtual void* config()=0;       // not really happy about lack of type
+
 };
 
 
@@ -139,10 +140,6 @@ protected:
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
-        WLAN_CONNECTED = 0;
-        WLAN_CONNECTING = 0;
-        WLAN_DHCP = 0;
-        WLAN_CAN_SHUTDOWN = 0;
 
         cloud_disconnect();
         SPARK_LED_FADE = 0;
@@ -275,6 +272,7 @@ public:
         return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
     }
 
+
     void connect(bool listen_enabled=true) override
     {
         if (!ready() && !connecting() && !listening())
@@ -317,6 +315,9 @@ public:
         {
             WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()
             WLAN_CONNECTING = 0;
+            WLAN_CONNECTED = 0;
+            WLAN_DHCP = 0;
+
             cloud_disconnect();
             disconnect_now();
             config_clear();
@@ -450,6 +451,11 @@ public:
     void notify_can_shutdown()
     {
         WLAN_CAN_SHUTDOWN = 1;
+    }
+
+    void notify_cannot_shutdown()
+    {
+        WLAN_CAN_SHUTDOWN = 0;
     }
 
 

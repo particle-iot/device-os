@@ -3,7 +3,7 @@
 - libraries - supporting libraries for test code
 - reflection - back to back tests running on two cores (driver/subject arrangement)
 - unit - gcc compiled unit tests
-- core-v1 - on-device integration tests running on a regular spark core
+- wiring - on-device integration tests running on a regular Core, Photon or P1 (Electron to be tested.)
 
 ## Building platform tests
 
@@ -14,10 +14,10 @@ parameters:
 make TEST=<platform>/<testappname>
 ```
 
-For example, to build `testapp1` in `core-v1`, you would write
+For example, to build `no_fixture` in `wiring`, you would write
 
 ```
-make TEST=core-v1/testapp1
+make TEST=wiring/no_fixture
 ```
 
 As this is the main firmware makefile, all the usual main targets are available, `program-dfu`, `program-cloud`, `clean`
@@ -33,15 +33,12 @@ with the test runner.
 The unit tests are run on the host gcc platform and are compiled using regular
 gcc. (So gcc should be in the path.)
 
-They are built by running
+They are built and executed by running
 
 ```
+cd user/tests/unit
 make
 ```
-
-from the `unit` directory.
-
-The output execute is `obj/runner` which can then be run to execute the unit tests.
 
 The unit tests are based on the [Catch](https://github.com/philsquared/Catch)
 test framework.
@@ -49,4 +46,14 @@ test framework.
 
 ## Reflections tests
 
+This is work in progress.
 Please see [reflection/readme.md](reflection/readme.md).
+
+## Test Applications
+A number of manually executable test applications are located in the `user/tests/app/` folder. Each application is stored in it's own folder.  The application is built and flashed to the device by running
+
+```
+cd main
+make APP=../tests/app/<appname> all program-dfu
+```
+

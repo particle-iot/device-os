@@ -396,6 +396,7 @@ public:
         RESP_OK       = -2,
         RESP_ERROR    = -3,
         RESP_PROMPT   = -4,
+        RESP_ABORTED  = -5,
 
         // getLine Responses
         #define LENGTH(x)  (x & 0x00FFFF) //!< extract/mask the length
@@ -413,6 +414,7 @@ public:
         TYPE_PROMPT     = 0x300000,
         TYPE_PLUS       = 0x400000,
         TYPE_TEXT       = 0x500000,
+        TYPE_ABORTED    = 0x600000,
 
         // special timout constant
         TIMEOUT_BLOCKING = 0xffffffff

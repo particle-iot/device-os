@@ -75,6 +75,7 @@ protected:
 
     virtual void on_start_listening() override
     {
+        notify_cannot_shutdown();
         /* If WiFi module is connected, disconnect it */
         network_disconnect(0, 0, NULL);
 
@@ -132,9 +133,10 @@ public:
     }
 
 
-    void connect_cancel() override
+    void connect_cancel(bool cancel, bool calledFromISR) override
     {
-        wlan_connect_cancel(true);
+        if (cancel)
+            wlan_connect_cancel(calledFromISR);
     }
 
     bool has_credentials() override

@@ -27,6 +27,7 @@
 #include "timer_hal.h"
 #include "delay_hal.h"
 #include "pinmap_hal.h"
+#include "pinmap_impl.h"
 #include "gpio_hal.h"
 #include "mdmapn_hal.h"
 #include "stm32f2xx.h"
@@ -189,6 +190,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                             (type == TYPE_TEXT)   ? MAG "TXT" DEF :
                             (type == TYPE_OK   )  ? GRE "OK " DEF :
                             (type == TYPE_ERROR)  ? RED "ERR" DEF :
+                            (type == TYPE_ABORTED) ? RED "ABT" DEF :
                             (type == TYPE_PLUS)   ? CYA " + " DEF :
                             (type == TYPE_PROMPT) ? BLU " > " DEF :
                                                         "..." ;
@@ -284,6 +286,8 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 return RESP_ERROR;
             if (type == TYPE_PROMPT)
                 return RESP_PROMPT;
+            if (type == TYPE_ABORTED)
+                return RESP_ABORTED; // This means the current command was ABORTED, so retry your command if critical.
         }
         // relax a bit
         HAL_Delay_Milliseconds(10);
@@ -348,10 +352,19 @@ bool MDMParser::powerOn(const char* simpin)
     memset(&_dev, 0, sizeof(_dev));
 
     /* Initialize I/O */
+    STM32_Pin_Info* PIN_MAP_PARSER = HAL_Pin_Map();
+    // This pin tends to stay low when floating on the output of the buffer (PWR_UB)
+    // It shouldn't hurt if it goes low temporarily on STM32 boot, but strange behavior
+    // was noticed when it was left to do whatever it wanted. By adding a 100k pull up
+    // resistor all flakey behavior has ceased (i.e., the modem had previously stopped
+    // responding to AT commands).  This is how we set it HIGH before enabling the OUTPUT.
+    PIN_MAP_PARSER[PWR_UC].gpio_peripheral->BSRRL = PIN_MAP_PARSER[PWR_UC].gpio_pin;
     HAL_Pin_Mode(PWR_UC, OUTPUT);
+    // This pin tends to stay high when floating on the output of the buffer (RESET_UB),
+    // but we need to ensure it gets set high before being set to an OUTPUT.
+    // If this pin goes LOW, the modem will be reset and all configuration will be lost.
+    PIN_MAP_PARSER[RESET_UC].gpio_peripheral->BSRRL = PIN_MAP_PARSER[RESET_UC].gpio_pin;
     HAL_Pin_Mode(RESET_UC, OUTPUT);
-    HAL_GPIO_Write(PWR_UC, 1);
-    HAL_GPIO_Write(RESET_UC, 1);
 
 #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
     _dev.lpm = LPM_ENABLED;
@@ -461,6 +474,12 @@ bool MDMParser::init(DevStatus* status)
     LOCK();
 
     MDM_INFO("Modem::init\r\n");
+
+    // Returns the product serial number, IMEI (International Mobile Equipment Identity)
+    sendFormated("AT+CGSN\r\n");
+    if (RESP_OK != waitFinalResp(_cbString, _dev.imei))
+        goto failure;
+
     if (_dev.sim != SIM_READY) {
         if (_dev.sim == SIM_MISSING)
             MDM_ERROR("SIM not inserted\r\n");
@@ -482,10 +501,6 @@ bool MDMParser::init(DevStatus* status)
     // ICCID is a serial number identifying the SIM.
     sendFormated("AT+CCID\r\n");
     if (RESP_OK != waitFinalResp(_cbCCID, _dev.ccid))
-        goto failure;
-    // Returns the product serial number, IMEI (International Mobile Equipment Identity)
-    sendFormated("AT+CGSN\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, _dev.imei))
         goto failure;
     // enable power saving
     if (_dev.lpm != LPM_DISABLED) {
@@ -526,33 +541,44 @@ bool MDMParser::init(DevStatus* status)
     UNLOCK();
     return true;
 failure:
-    //unlock();
+    UNLOCK();
+
     return false;
 }
 
 bool MDMParser::powerOff(void)
 {
+    LOCK();
     bool ok = false;
     if (_init && _pwr) {
-        LOCK();
         MDM_INFO("Modem::powerOff\r\n");
-        sendFormated("AT+CPWROFF\r\n");
-        if (RESP_OK == waitFinalResp(NULL,NULL,120*1000)) {
-            _pwr = false;
-            // todo - add if these are automatically done on power down
-            //_activated = false;
-            //_attached = false;
-            ok = true;
+        for (int i=0; i<3; i++) { // try 3 times
+            sendFormated("AT+CPWROFF\r\n");
+            int ret = waitFinalResp(NULL,NULL,40*1000);
+            if (RESP_OK == ret) {
+                _pwr = false;
+                // todo - add if these are automatically done on power down
+                //_activated = false;
+                //_attached = false;
+                ok = true;
+                break;
+            }
+            else if (RESP_ABORTED == ret) {
+                MDM_INFO("Modem::powerOff found ABORTED, retrying...\r\n");
+            }
+            else {
+                MDM_INFO("Modem::powerOff timeout, retrying...\r\n");
+            }
         }
-        UNLOCK();
     }
     HAL_Pin_Mode(PWR_UC, INPUT);
     HAL_Pin_Mode(RESET_UC, INPUT);
 #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
-#else   
+#else
     HAL_Pin_Mode(RTS_UC, INPUT);
 #endif
     HAL_Pin_Mode(LVLOE_UC, INPUT);
+    UNLOCK();
     return ok;
 }
 
@@ -712,9 +738,14 @@ int MDMParser::_cbUACTIND(int type, const char* buf, int len, int* i)
 bool MDMParser::pdp(const char* apn)
 {
     bool ok = true;
-    bool is3G = _dev.dev == DEV_SARA_U260 || _dev.dev == DEV_SARA_U270;
+    // bool is3G = _dev.dev == DEV_SARA_U260 || _dev.dev == DEV_SARA_U270;
     if (_init && _pwr) {
         LOCK();
+
+// todo - refactor
+// This is setting up an external PDP context, join() creates an internal one
+// which is ultimately the one that's used by the system. So no need for this.
+#if 0
         MDM_INFO("Modem::pdp\r\n");
 
         MDM_INFO("Define the PDP context 1 with PDP type \"IP\" and APN \"%s\"\r\n", apn);
@@ -774,11 +805,12 @@ bool MDMParser::pdp(const char* apn)
                 goto failure;
         }
 
-        UNLOCK();
         _activated = true; // PDP
+#endif
+        UNLOCK();
         return ok;
     }
-failure:
+// failure:
     UNLOCK();
     return false;
 }
@@ -789,31 +821,35 @@ failure:
 MDMParser::IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL*/,
                               const char* password /*= NULL*/, Auth auth /*= AUTH_DETECT*/)
 {
-    if (_init && _pwr && _activated) {
+    if (_init && _pwr) {
         LOCK();
         MDM_INFO("Modem::join\r\n");
         _ip = NOIP;
         int a = 0;
         bool force = false; // If we are already connected, don't force a reconnect.
 
-        // check gprs attach status
+        // perform GPRS attach
         sendFormated("AT+CGATT=1\r\n");
         if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000))
             goto failure;
 
-        // Check the profile
+        // Check the if the PSD profile is activated (a=1)
         sendFormated("AT+UPSND=" PROFILE ",8\r\n");
         if (RESP_OK != waitFinalResp(_cbUPSND, &a))
             goto failure;
-        if (a == 1 && force) {
-            // disconnect the profile already if it is connected
-            sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
-            if (RESP_OK != waitFinalResp(NULL,NULL,40*1000))
-                goto failure;
-            a = 0;
+        if (a == 1) {
+            _activated = true; // PDP activated
+            if (force) {
+                // deactivate the PSD profile if it is already activated
+                sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
+                if (RESP_OK != waitFinalResp(NULL,NULL,40*1000))
+                    goto failure;
+                a = 0;
+            }
         }
         if (a == 0) {
             bool ok = false;
+            _activated = false; // PDP deactived
             // try to lookup the apn settings from our local database by mccmnc
             const char* config = NULL;
             if (!apn && !username && !password)
@@ -857,10 +893,12 @@ MDMParser::IP MDMParser::join(const char* apn /*= NULL*/, const char* username /
                         sendFormated("AT+UPSD=" PROFILE ",6,%d\r\n", i);
                         if (RESP_OK != waitFinalResp())
                             goto failure;
-                        // Activate the profile and make connection
+                        // Activate the PSD profile and make connection
                         sendFormated("AT+UPSDA=" PROFILE ",3\r\n");
-                        if (RESP_OK == waitFinalResp(NULL,NULL,150*1000))
+                        if (RESP_OK == waitFinalResp(NULL,NULL,150*1000)) {
+                            _activated = true; // PDP activated
                             ok = true;
+                        }
                     }
                 }
             } while (!ok && config && *config); // maybe use next setting ?
@@ -940,6 +978,7 @@ bool MDMParser::reconnect(void)
         MDM_INFO("Modem::reconnect\r\n");
         if (!_attached) {
             /* Activates the PDP context assoc. with this profile */
+            /* If GPRS is detached, this will force a re-attach */
             sendFormated("AT+UPSDA=" PROFILE ",3\r\n");
             if (RESP_OK == waitFinalResp(NULL, NULL, 150*1000)) {
 
@@ -956,6 +995,12 @@ bool MDMParser::reconnect(void)
     return ok;
 }
 
+// TODO - refactor disconnect() and detach()
+// disconnect() can be called before detach() but not vice versa or
+// disconnect() will ERROR because its PDP context will already be
+// deactivated.
+// _attached and _activated flags are currently associated inversely
+// to what's happening.  When refactoring, consider combining...
 bool MDMParser::disconnect(void)
 {
     bool ok = false;
@@ -984,14 +1029,15 @@ bool MDMParser::detach(void)
     if (_activated) {
         LOCK();
         MDM_INFO("Modem::detach\r\n");
-        if (_ip != NOIP) {
-            /* detach from the GPRS network and conserve network resources */
+        // if (_ip != NOIP) {  // if we disconnect() first we won't have an IP
+            /* Detach from the GPRS network and conserve network resources. */
+            /* Any active PDP context will also be deactivated. */
             sendFormated("AT+CGATT=0\r\n");
             if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000)) {
                 ok = true;
                 _activated = false;
             }
-        }
+        // }
         UNLOCK();
     }
     return ok;
@@ -1695,6 +1741,7 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
             { "\r\n@",                  NULL,               TYPE_PROMPT     }, // Sockets
             { "\r\n>",                  NULL,               TYPE_PROMPT     }, // SMS
             { "\n>",                    NULL,               TYPE_PROMPT     }, // File
+            { "\r\nABORTED\r\n",        NULL,               TYPE_ABORTED    }, // Current command aborted
         };
         for (int i = 0; i < (int)(sizeof(lutF)/sizeof(*lutF)); i ++) {
             pipe->set(unkn);

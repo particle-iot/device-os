@@ -1,11 +1,11 @@
 /**
  ******************************************************************************
- * @file    fuelgauge.h
+ * @file    spark_wiring_fuel.h
  * @author  Mohit Bhoite
- 			Based on original library published by Luca Dentella (http://www.lucadentella.it)
+            Based on original library published by Luca Dentella (http://www.lucadentella.it)
  * @version V1.0.0
  * @date    11-August-2015
- * @brief   Header for fuelgauge.c module
+ * @brief   Header for spark_wiring_fuel.cpp module
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
@@ -25,44 +25,48 @@
  ******************************************************************************
  */
 
-#include "application.h"
+#include "spark_wiring.h"
+#include "spark_wiring_i2c.h"
+#include "spark_wiring_platform.h"
 
-#ifndef _FuelGauge_H
-#define _FuelGauge_H
+#ifndef __SPARK_WIRING_FUEL_H
+#define __SPARK_WIRING_FUEL_H
 
 //Default MAX17043 I2C address
-#define MAX17043_ADDRESS	0x36
+#define MAX17043_ADDRESS  0x36
 
 // Register definitions
-#define VCELL_REGISTER		0x02
-#define SOC_REGISTER		0x04
-#define MODE_REGISTER		0x06
-#define VERSION_REGISTER	0x08
-#define CONFIG_REGISTER		0x0C
-#define COMMAND_REGISTER	0xFE
+#define VCELL_REGISTER    0x02
+#define SOC_REGISTER      0x04
+#define MODE_REGISTER     0x06
+#define VERSION_REGISTER  0x08
+#define CONFIG_REGISTER   0x0C
+#define COMMAND_REGISTER  0xFE
 
 
 class FuelGauge {
 
-	public:
-	    FuelGauge();
-		boolean begin();
-		float getVCell();
-		float getSoC();
-		int getVersion();
-		byte getCompensateValue();
-		byte getAlertThreshold();
-		void setAlertThreshold(byte threshold);
-		boolean getAlert();
-		void clearAlert();
-		void reset();
-		void quickStart();
-	
-	private:
+  public:
+      FuelGauge();
+    boolean begin();
+    float getVCell();
+    float getSoC();
+    int getVersion();
+    byte getCompensateValue();
+    byte getAlertThreshold();
+    void setAlertThreshold(byte threshold);
+    boolean getAlert();
+    void clearAlert();
+    void reset();
+    void quickStart();
+    void sleep();
+    void wakeup();
 
-		void readConfigRegister(byte &MSB, byte &LSB);
-		void readRegister(byte startAddress, byte &MSB, byte &LSB);
-		void writeRegister(byte address, byte MSB, byte LSB);
+  private:
+
+    void readConfigRegister(byte &MSB, byte &LSB);
+    void readRegister(byte startAddress, byte &MSB, byte &LSB);
+    void writeRegister(byte address, byte MSB, byte LSB);
 };
 
 #endif

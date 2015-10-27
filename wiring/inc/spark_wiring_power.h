@@ -1,10 +1,10 @@
 /**
  ******************************************************************************
- * @file    pmic.h
+ * @file    spark_wiring_power.h
  * @author  Mohit Bhoite
  * @version V1.0.0
  * @date    11-August-2015
- * @brief   Header for pmic.c module
+ * @brief   Header for spark_wiring_power.cpp module
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
   Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
@@ -23,10 +23,13 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
-#include "application.h"
 
-#ifndef _PMIC_H
-#define _PMIC_H
+#include "spark_wiring.h"
+#include "spark_wiring_i2c.h"
+#include "spark_wiring_platform.h"
+
+#ifndef __SPARK_WIRING_POWER_H
+#define __SPARK_WIRING_POWER_H
 
 //Default PMIC (BQ24195) I2C address
 #define PMIC_ADDRESS							0x6B
@@ -60,19 +63,23 @@ class PMIC {
 		bool enableBuck(void);
 		bool disableBuck(void);
 		bool setInputCurrentLimit(uint16_t current);
-		byte getInputCurrentLimit();
-		bool setInputVoltageLimit();
-		byte getInputVoltageLimit();
+		byte getInputCurrentLimit(void);
+		bool setInputVoltageLimit(uint16_t voltage);
+		byte getInputVoltageLimit(void);
 
 		// Power ON configuration register
-		bool enableCharging();
-		bool disableCharging();
-		bool setMinimumSystemVolatge();
-		byte getMinimumSystemVolatge();
+		bool enableCharging(void);
+		bool disableCharging(void);
+		bool enableOTG(void);
+		bool disableOTG(void);
+		bool resetWatchdog(void);
+		bool setMinimumSystemVoltage(uint16_t voltage);
+		uint16_t getMinimumSystemVoltage();
+		byte readPowerONRegister(void);
 
 		// Charge current control register
-		bool setChargeCurrent();
-		byte getChargeCurrent();
+		bool setChargeCurrent(bool bit7, bool bit6, bool bit5, bool bit4, bool bit3, bool bit2);
+		byte getChargeCurrent(void);
 
 		//PreCharge/ Termination Current Control Register
 		bool setPreChargeCurrent();
@@ -84,15 +91,23 @@ class PMIC {
 		bool setChargeVoltage();
 		byte getChargeVoltage();
 
+		//CHARGE_TIMER_CONTROL_REGISTER
+		byte readChargeTermRegister();
+		bool disableWatchdog(void);
+		bool setWatchdog(byte time);
+
+
+
 		//Thermal Regulation Control Register
 		bool setThermalRegulation();
 		byte getThermalRegulation();
 
 		//Misc Operation Control Register
-		bool enableDPDM();
-		bool disableDPDM();
-		bool enableBATFET();
-		bool disableBATFET();
+		byte readOpControlRegister();
+		bool enableDPDM(void);
+		bool disableDPDM(void);
+		bool enableBATFET(void);
+		bool disableBATFET(void);
 		bool safetyTimer(); //slow/ normal
 
 		bool enableChargeFaultINT();
@@ -117,17 +132,17 @@ class PMIC {
 
 
 
-	
+
 	private:
 
 		byte readRegister(byte startAddress);
 		void writeRegister(byte address, byte DATA);
 };
 
-#endif
+#endif /* __SPARK_WIRING_POWER_H */
 
 /*
-// List of functions to write
+// List of Registers
 
 //-----------------------------------------------------------------------------
 // Input source control register
@@ -143,7 +158,7 @@ BIT
 3 : VINDPM[0] 80mV	|
 --- input current limit
 2 : INLIM[2]  000: 100mA, 001: 150mA, 010: 500mA,	| Default: 100mA when OTG pin is LOW and
-1 : INLIM[1]  011: 900mA, 100: 1.2A,   101: 1.5A 	| 500mA when OTG pin is HIGH 
+1 : INLIM[1]  011: 900mA, 100: 1.2A,   101: 1.5A 	| 500mA when OTG pin is HIGH
 0 : INLIM[0]  110: 2.0A,  111: 3.0A   				| when charging port detected, 1.5A
 
 
@@ -186,12 +201,12 @@ BIT
 REG03
 BIT
 --- precharge current limit
-7: IPRECHG[3]	1024mA	| offset is 128mA 
+7: IPRECHG[3]	1024mA	| offset is 128mA
 6: IPRECHG[2] 	512mA	| Range: 128 mA to 2048 mA
 5: IPRECHG[1] 	256mA	| Default: 256 mA (0001) = 128mA+128mA
 4: IPRECHG[0] 	128mA	| enabling bits 4 to 7, adds the current to 128mA base value
 --- termination current limit
-3: ITERM[3]		1024mA	| offset is 128mA 
+3: ITERM[3]		1024mA	| offset is 128mA
 2: ITERM[2]		512mA	| Range: 128 mA to 2048 mA
 1: ITERM[1]		256mA	| Default: 256 mA (0001) = 128mA+128mA
 0: ITERM[0] 	128mA	| enabling bits 0 to 3, adds the current to 128mA base value
@@ -221,19 +236,19 @@ BIT
 REG05
 BIT
 --- Charging Termination Enable
-7: EN_TERM 		0:Disable 
-				1:Enable 
+7: EN_TERM 		0:Disable
+				1:Enable
 				Default: Enable Termination (1)
 --- Termination Indicator Threshold
-6: TERM_STAT 	0:Match ITERM, 
+6: TERM_STAT 	0:Match ITERM,
 				1:STAT pin high before actual termination when charge current below 800 mA
 				Default Match ITERM (0)
 --- I2C Watchdog Timer Setting
 5: WATCHDOG[1] 	| 00: disable timer, 01: 40seconds
 4: WATCHDOG[0] 	| 10: 80 seconds, 11: 160 seconds. Default: 40s(01)
 --- Charging Safety Timer Enable
-3: EN_TIMER		0:Disable 
-				1:Enable 
+3: EN_TIMER		0:Disable
+				1:Enable
 				Default:Enable(1)
 --- Fast Charge Timer Setting
 2: CHG_TIMER[1]	| 00: 5hrs, 01: 8hrs, 10: 12hrs, 11: 20hrs
@@ -263,8 +278,8 @@ BIT
 REG07
 BIT
 --- Force DPDM detection
-7: DPDM_EN 	0: Not in D+/D– detection, 
-			1: Force D+/D– detection. 
+7: DPDM_EN 	0: Not in D+/D– detection,
+			1: Force D+/D– detection.
 			Default: (0)
 --- Safety Timer Setting during Input DPM and Thermal Regulation
 6: TMR2X_EN 0: Safety timer not slowed by 2X during input DPM or thermal regulation
@@ -272,7 +287,7 @@ BIT
 			Default: (1)
 --- Force BATFET Off (this essentially disconnects the battery from the system)
 5: BATFET_Disable 	0: Allow Q4 turn on
-					1: Turn off Q4 
+					1: Turn off Q4
 					Default: (0)
 4: 0 – Reserved. Must write "0"
 3: 1 – Reserved. Must write "1"
@@ -300,7 +315,7 @@ BIT
 4: CHRG_STAT[0] | 10: Fast Charging, 11: Charge termination done
 3: DPM_STAT		0: Not DPM
 				1: VINDPM or IINDPM
-2: PG_STAT		0: Power NO Good :( 
+2: PG_STAT		0: Power NO Good :(
 				1: Power Good :)
 1: THERM_STAT	0: Normal
 				1: In Thermal Regulation (HOT)
@@ -316,20 +331,20 @@ REG09
 BIT
 7: WATCHDOG_FAULT	0: Normal
 					1: watchdog timer expired
-6: Reserved			
+6: Reserved
 --- Charge fault status
 5: CHRG_FAULT[1]	| 00: Normal, 01: Input fault (VBUS OVP or VBAT < VBUS < 3.8 V)
 4: CHRG_FAULT[0]	| 10: Thermal shutdown, 11: charge safetly timer expiration
 --- Battery fault status
 3: BAT_FAULT		0: Normal
-					1: BATOVP battery over threshold	
+					1: BATOVP battery over threshold
 --- NTC thermistor fault status
-2: NTC_FAULT[2]		| 000: Normal 
+2: NTC_FAULT[2]		| 000: Normal
 1: NTC_FAULT[1]		| 101: Cold
 0: NTC_FAULT[0]		| 110: Hot
 
 //-----------------------------------------------------------------------------
-//Vender / Part / Revision Status Register 
+//Vender / Part / Revision Status Register
 //-----------------------------------------------------------------------------
 //NOTE: This is a read-only register
 
@@ -338,11 +353,11 @@ BIT
 7: Reserved
 6: Reserved
 --- Device configuration
-5: PN[2]		1		
+5: PN[2]		1
 4: PN[1]		0
-3: PN[0]		0		
+3: PN[0]		0
 2: TS_PROFILE	0
 1: DEV_REG[0]  	1
 0: DEV_REG[0]	1
-			  	   
+
 */
