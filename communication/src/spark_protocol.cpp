@@ -311,25 +311,16 @@ CoAPMessageType::Enum
 void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
 {
   unsigned short message_id = next_message_id();
-
   size_t len = Messages::hello(buf, message_id, newly_upgraded, PLATFORM_ID, product_id, product_firmware_version);
-  wrap(buf, len);
+  wrap(buf-2, len);
 }
 
 void SparkProtocol::notify_update_done(uint8_t* buf)
 {
     serial_dump("Sending UpdateDone");
     unsigned short message_id = next_message_id();
-
-    buf[0] = 0x50; // non-confirmable, no token
-    buf[1] = 0x02; // POST
-    buf[2] = message_id >> 8;
-    buf[3] = message_id & 0xff;
-    buf[4] = 0xb1; // Uri-Path option of length 1
-    buf[5] = 'u';
-
-    memset(buf + 6, 10, 10); // PKCS #7 padding
-    encrypt(buf, 16);
+    size_t size = Messages::update_done(buf, message_id);
+    wrap(buf, size);
 }
 
 void SparkProtocol::key_changed(unsigned char *buf, unsigned char token)
@@ -508,20 +499,9 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
 
 size_t SparkProtocol::time_request(unsigned char *buf)
 {
-  unsigned char *p = buf;
-
-  *p++ = 0x41; // Confirmable, one-byte token
-  *p++ = 0x01; // GET request
-
-  uint16_t msg_id = next_message_id();
-  *p++ = msg_id >> 8;
-  *p++ = msg_id & 0xff;
-
-  *p++ = next_token();
-  *p++ = 0xb1; // One-byte, Uri-Path option
-  *p++ = 't';
-
-  return p - buf;
+	  uint16_t msg_id = next_message_id();
+	  uint8_t token = next_token();
+	  return Messages::time_request(buf, msg_id, token);
 }
 
 // returns true on success, false on failure
@@ -817,6 +797,8 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
     appender.append('}');
 
     int msglen = appender.next() - (uint8_t *)buf;
+
+
     int buflen = (msglen & ~15) + 16;
     char pad = buflen - msglen;
     memset(buf+msglen, pad, pad); // PKCS #7 padding
@@ -857,6 +839,9 @@ int SparkProtocol::presence_announcement(unsigned char *buf, const char *id)
 
 /********** Queue **********/
 
+
+#if 0
+
 int SparkProtocol::queue_bytes_available()
 {
   int unoccupied = queue_front - queue_back - 1;
@@ -866,7 +851,6 @@ int SparkProtocol::queue_bytes_available()
     return unoccupied;
 }
 
-#if 0
 // these methods are unused
 int SparkProtocol::queue_push(const char *src, int length)
 {
