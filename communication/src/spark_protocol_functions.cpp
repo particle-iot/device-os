@@ -3,6 +3,7 @@
 #include "spark_protocol.h"
 #include "handshake.h"
 #include <stdlib.h>
+#include "protocol.h"
 
 /**
  * Handle the cryptographically secure random seed from the cloud by using
