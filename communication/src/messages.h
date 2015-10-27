@@ -153,8 +153,9 @@ public:
 		return 6;
 	}
 
-	static size_t function_return(unsigned char *buf, message_id_t message_id,
-			token_t token, int return_value)
+	static const size_t function_return_size = 10;
+
+	static size_t function_return(unsigned char *buf, message_id_t message_id, token_t token, int return_value)
 	{
 		buf[0] = 0x51; // non-confirmable, one-byte token
 		buf[1] = 0x44; // response code 2.04 CHANGED
@@ -166,11 +167,10 @@ public:
 		buf[7] = return_value >> 16 & 0xff;
 		buf[8] = return_value >> 8 & 0xff;
 		buf[9] = return_value & 0xff;
-		return 10;
+		return function_return_size;
 	}
 
-	static size_t variable_value(unsigned char *buf, message_id_t message_id,
-			token_t token, bool return_value)
+	static size_t variable_value(unsigned char *buf, message_id_t message_id, token_t token, bool return_value)
 	{
 		size_t size = content(buf, message_id, token);
 		buf[size++] = return_value ? 1 : 0;

@@ -340,7 +340,7 @@ public:
 			{    // send missing chunks
 				WARN("timeout - resending missing chunks");
 				Message message;
-				ProtocolError error = channel.new_message(message, MISSED_CHUNKS_TO_SEND*sizeof(chunk_index_t)+7);
+				ProtocolError error = channel.create(message, MISSED_CHUNKS_TO_SEND*sizeof(chunk_index_t)+7);
 				if (!error)
 					error = send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND, next_message_id);
 				if (error)

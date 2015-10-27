@@ -64,7 +64,6 @@ namespace ProtocolState {
 class SparkProtocol
 {
   public:
-    static const int MAX_FUNCTION_ARG_LENGTH = 64;
     static const int MAX_FUNCTION_KEY_LENGTH = 12;
     static const int MAX_VARIABLE_KEY_LENGTH = 12;
     static const int MAX_EVENT_NAME_LENGTH = 64;

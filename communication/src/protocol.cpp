@@ -20,6 +20,7 @@
 #include "protocol.h"
 #include "chunked_transfer.h"
 #include "subscriptions.h"
+#include "functions.h"
 
 namespace particle { namespace protocol {
 

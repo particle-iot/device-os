@@ -16,62 +16,6 @@ namespace protocol
 #if 0
 
 
-class Functions
-{
-	bool handle_function_call(msg& message)
-	{
-	    // copy the function key
-	    char function_key[13];
-	    memset(function_key, 0, 13);
-	    int function_key_length = queue[7] & 0x0F;
-	    memcpy(function_key, queue + 8, function_key_length);
-
-	    // How long is the argument?
-	    int q_index = 8 + function_key_length;
-	    int query_length = queue[q_index] & 0x0F;
-	    if (13 == query_length)
-	    {
-	      ++q_index;
-	      query_length = 13 + queue[q_index];
-	    }
-	    else if (14 == query_length)
-	    {
-	      ++q_index;
-	      query_length = queue[q_index] << 8;
-	      ++q_index;
-	      query_length |= queue[q_index];
-	      query_length += 269;
-	    }
-
-	    bool has_function = false;
-
-	    // allocated memory bounds check
-	    if (MAX_FUNCTION_ARG_LENGTH > query_length)
-	    {
-	        // save a copy of the argument
-	        memcpy(function_arg, queue + q_index + 1, query_length);
-	        function_arg[query_length] = 0; // null terminate string
-	        has_function = true;
-	    }
-
-	    uint8_t* msg_to_send = message.response;
-	    // send ACK
-	    msg_to_send[0] = 0;
-	    msg_to_send[1] = 16;
-	    coded_ack(msg_to_send + 2, has_function ? 0x00 : RESPONSE_CODE(4,00), queue[2], queue[3]);
-	    if (0 > blocking_send(msg_to_send, 18))
-	    {
-	      // error
-	      return false;
-	    }
-
-	    // call the given user function
-	    auto callback = [=] (const void* result, SparkReturnType::Enum resultType ) { return this->function_result(result, resultType, message.token); };
-	    descriptor.call_function(function_key, function_arg, callback, NULL);
-	    return true;
-	}
-};
-
 
 class Protocol
 {

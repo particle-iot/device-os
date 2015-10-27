@@ -28,6 +28,7 @@ typedef uint16_t chunk_index_t;
 const chunk_index_t NO_CHUNKS_MISSING = 65535;
 const chunk_index_t MAX_CHUNKS = 65535;
 const size_t MISSED_CHUNKS_TO_SEND = 50;
+const size_t MAX_FUNCTION_ARG_LENGTH = 64;
 
 
 namespace ChunkReceivedCode {
