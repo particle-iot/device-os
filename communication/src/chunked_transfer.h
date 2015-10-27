@@ -20,9 +20,10 @@
 #pragma once
 
 #include "protocol_defs.h"
+#include "file_transfer.h"
 #include "message_channel.h"
 #include "system_tick_hal.h"
-
+#include "messages.h"
 
 namespace particle { namespace protocol {
 
@@ -32,10 +33,37 @@ class ChunkHandler
 	uint8_t updating;
 	FileTransfer::Descriptor file;
 
+    /**
+     * Marks the indices of missed chunks not yet requested.
+     */
+    chunk_index_t missed_chunk_index;
+    unsigned short chunk_index;
+    unsigned short chunk_size;
+
+    uint8_t* bitmap;
+
 protected:
 
-	template<typename callback> bool handle_update_begin(Message& message, MessageChannel& channel,
-			callback prepare_for_firmware_update)
+    void reset_updating(void)
+    {
+      updating = false;
+      last_chunk_millis = 0;    // this is used for the time latency also
+    }
+
+    unsigned chunk_bitmap_size()
+    {
+        return (file.chunk_count(chunk_size)+7)/8;
+    }
+
+    uint8_t* chunk_bitmap()
+    {
+        return bitmap;
+    }
+
+
+	template<typename callback_prepare, typename callback_millis> ProtocolError
+	handle_update_begin(token_t token, Message& message, MessageChannel& channel,
+			callback_prepare prepare_for_firmware_update, callback_millis millis)
 	{
 	    uint8_t flags = 0;
 	    int actual_len = message.length();
@@ -55,67 +83,66 @@ protected:
 	        file.file_address = 0;
 	        file.chunk_address = 0;
 	    }
-
 	    // check the parameters only
 	    bool success = !prepare_for_firmware_update(file, 1, NULL);
 	    if (success) {
 	        success = file.chunk_count(file.chunk_size) < MAX_CHUNKS;
 	    }
 	    Message response;
-	    channel.response(message);
-	    coded_ack(response.buf(), success ? 0x00 : RESPONSE_CODE(4,00), queue[2], queue[3]);
+	    channel.response(message, response, 16);
+	    size_t size = Messages::coded_ack(response.buf(), success ? 0x00 : RESPONSE_CODE(4,00), queue[2], queue[3]);
+	    response.set_length(size);
+	    ProtocolError error = channel.send(response);
+	    if (error) return error;
+	    bitmap = &queue[message.capacity()-chunk_bitmap_size()]; 	// this relies on the fact that we know the channels use a static buffer
 
-	    if (0 > blocking_send(msg_to_send, 18))
-	    {
-	      // error
-	      return false;
-	    }
+
 	    if (success)
 	    {
-	        if (!callbacks.prepare_for_firmware_update(file, 0, NULL))
+	        if (!prepare_for_firmware_update(file, 0, NULL))
 	        {
-	            serial_dump("starting file length %d chunks %d chunk_size %d",
+	            DEBUG("starting file length %d chunks %d chunk_size %d",
 	                    file.file_length, file.chunk_count(file.chunk_size), file.chunk_size);
-	            last_chunk_millis = callbacks.millis();
+	            last_chunk_millis = millis();
 	            chunk_index = 0;
 	            chunk_size = file.chunk_size;   // save chunk size since the descriptor size is overwritten
-	            this->updating = 1;
+	            updating = 1;
 	            // when not in fast OTA mode, the chunk missing buffer is set to 1 since the protocol
 	            // handles missing chunks one by one. Also we don't know the actual size of the file to
 	            // know the correct size of the bitmap.
 	            set_chunks_received(flags & 1 ? 0 : 0xFF);
 
 	            // send update_reaady - use fast OTA if available
-	            update_ready(msg_to_send + 2, message.token, (flags & 0x1));
-	            if (0 > blocking_send(msg_to_send, 18))
-	            {
-	              // error
-	              return false;
-	            }
+	            size_t size = Messages::update_ready(response.buf(), token, (flags & 0x1));
+	            response.set_length(size);
+	            error = channel.send(response);
 	        }
 	    }
 
-	    return true;
+	    return error;
 	}
 
-	bool handle_chunk(msg& message)
+	template<typename callback_save_firmware_chunk, typename callback_calculate_crc, typename callback_finish_firmware_update, typename callback_millis,
+		typename callback_next_message_id>
+	ProtocolError handle_chunk(token_t token, Message& message, MessageChannel& channel, callback_save_firmware_chunk save_firmware_chunk,
+				callback_calculate_crc calculate_crc, callback_finish_firmware_update finish_firmware_update, callback_millis millis,
+				callback_next_message_id next_message_id)
 	{
-	    last_chunk_millis = callbacks.millis();
+	    last_chunk_millis = millis();
 
-	    uint8_t* msg_to_send = message.response;
+	    Message response;
+	    channel.response(message, response, 16);
 	    // send ACK
-	    *msg_to_send = 0;
-	    *(msg_to_send + 1) = 16;
-	    empty_ack(msg_to_send + 2, queue[2], queue[3]);
-	    if (0 > blocking_send(msg_to_send, 18))
-	    {
-	      // error
-	      return false;
-	    }
-	    serial_dump("chunk");
+	    uint8_t* queue = message.buf();
+	    size_t response_size = Messages::empty_ack(response.buf(), queue[2], queue[3]);
+	    response.set_length(response_size);
+	    ProtocolError error = channel.send(response);
+	    if (error) return error;
+
+	    DEBUG("chunk");
 	    if (!this->updating) {
-	        serial_dump("got chunk when not updating");
-	        return true;
+	        WARN("got chunk when not updating");
+	        return INVALID_STATE;
 	    }
 
 	    bool fast_ota = false;
@@ -136,70 +163,66 @@ protected:
 	        option++;
 	        payload += (queue[payload]&0xF)+1;  // increase by the size. todo handle > 11
 	    }
-	    if (fast_ota) {
-	        doing_fast_ota();
-	    }
 	    if (0xFF==queue[payload])
 	    {
 	        payload++;
 	        const uint8_t* chunk = queue+payload;
-	        file.chunk_size = message.len - payload - queue[message.len - 1];   // remove length added due to pkcs #7 padding?
+	        file.chunk_size = message.length() - payload;
 	        file.chunk_address  = file.file_address + (chunk_index * chunk_size);
 	        if (chunk_index>=MAX_CHUNKS) {
-	            serial_dump("invalid chunk index %d", chunk_index);
-	            return false;
+	            WARN("invalid chunk index %d", chunk_index);
+	            return NO_ERROR;
 	        }
-	        uint32_t crc = callbacks.calculate_crc(chunk, file.chunk_size);
-	        bool has_response = false;
+	        uint32_t crc = calculate_crc(chunk, file.chunk_size);
+	        uint16_t response_size = 0;
 	        bool crc_valid = (crc == given_crc);
-	        serial_dump("chunk idx=%d crc=%d fast=%d updating=%d", chunk_index, crc_valid, fast_ota, updating);
+	        DEBUG("chunk idx=%d crc=%d fast=%d updating=%d", chunk_index, crc_valid, fast_ota, updating);
 	        if (crc_valid)
 	        {
-	            callbacks.save_firmware_chunk(file, chunk, NULL);
-	            if (!fast_ota || (updating!=2 && (true || (chunk_index & 32)==0))) {
-	                chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::OK);
-	                has_response = true;
+	            save_firmware_chunk(file, chunk, NULL);
+	            if (!fast_ota || (updating!=2 && ((chunk_index & 32)==0))) {
+	                response_size = Messages::chunk_received(response.buf(), next_message_id(), token, ChunkReceivedCode::OK);
 	            }
 	            flag_chunk_received(chunk_index);
 	            if (updating==2) {                      // clearing up missed chunks at the end of fast OTA
 	                chunk_index_t next_missed = next_chunk_missing(0);
 	                if (next_missed==NO_CHUNKS_MISSING) {
-	                    serial_dump("received all chunks");
+	                    INFO("received all chunks");
 	                    reset_updating();
-	                    callbacks.finish_firmware_update(file, 1, NULL);
-	                    notify_update_done(msg_to_send+2);
-	                    has_response = true;
+	                    finish_firmware_update(file, 1, NULL);
+	                    response_size = Messages::update_done(response.buf(), next_message_id());
 	                }
 	                else {
-	                    if (has_response && 0 > blocking_send(msg_to_send, 18)) {
-
-	                        serial_dump("send chunk response failed");
-	                        return false;
-	                    }
-	                    has_response = false;
-
+	                		if (response_size) {
+	                			response.set_length(response_size);
+	                			error = channel.send(response);
+	                			response_size = 0;
+	                		    if (error) {
+	                		    		WARN("send chunk response failed");
+	                		    		return error;
+	                		    }
+	                		}
 	                    if (next_missed>missed_chunk_index)
-	                        send_missing_chunks(MISSED_CHUNKS_TO_SEND);
+	                    		send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND, next_message_id);
 	                }
 	            }
 	            chunk_index++;
 	        }
 	        else if (!fast_ota)
 	        {
-	            chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::BAD);
-	            has_response = true;
-	            serial_dump("chunk bad %d", chunk_index);
+	            response_size = Messages::chunk_received(response.buf(), next_message_id(), token, ChunkReceivedCode::BAD);
+	            WARN("chunk bad %d", chunk_index);
 	        }
 	        // fast OTA will request the chunk later
 
-	        if (has_response && 0 > blocking_send(msg_to_send, 18))
+	        if (response_size)
 	        {
-	          // error
-	          return false;
+	        		response.set_length(response_size);
+	        		error = channel.send(response);
+	        		if (error) return error;
 	        }
 	    }
-
-	    return true;
+	    return NO_ERROR;
 	}
 
 
@@ -214,7 +237,7 @@ protected:
 	    return (chunk_bitmap()[idx>>3] & uint8_t(1<<(idx&7)));
 	}
 
-	SparkProtocol::chunk_index_t next_chunk_missing(chunk_index_t start)
+	chunk_index_t next_chunk_missing(chunk_index_t start)
 	{
 	    chunk_index_t chunk = NO_CHUNKS_MISSING;
 	    chunk_index_t chunks = file.chunk_count(chunk_size);
@@ -235,54 +258,93 @@ protected:
 	{
 	    size_t bytes = chunk_bitmap_size();
 	    if (bytes)
-	    		memset(queue+QUEUE_SIZE-bytes, value, bytes);
+	    		memset(bitmap, value, bytes);
 	}
 
-	bool handle_update_done(msg& message)
+	template <typename callback_finish_firmware_update, typename callback_next_message_id, typename callback_millis>
+	bool handle_update_done(token_t token, Message& message, MessageChannel& channel, callback_finish_firmware_update finish_firmware_update,
+			callback_next_message_id next_message_id, callback_millis millis)
 	{
 	    // send ACK 2.04
-	    uint8_t* msg_to_send = message.response;
+		Message response;
+		channel.response(message, response, 16);
 
-	    *msg_to_send = 0;
-	    *(msg_to_send + 1) = 16;
-	    serial_dump("update done received");
+	    DEBUG("update done received");
 	    chunk_index_t index = next_chunk_missing(0);
 	    bool missing = index!=NO_CHUNKS_MISSING;
-	    coded_ack(msg_to_send + 2, message.token, missing ? ChunkReceivedCode::BAD : ChunkReceivedCode::OK, queue[2], queue[3]);
-	    if (0 > blocking_send(msg_to_send, 18))
-	    {
-	        // error
-	        return false;
-	    }
+	    uint8_t* queue = message.buf();
+	    size_t response_size = Messages::coded_ack(response.buf(), token, missing ? ChunkReceivedCode::BAD : ChunkReceivedCode::OK, queue[2], queue[3]);
+	    response.set_length(response_size);
+	    ProtocolError error = channel.send(response);
+	    if (error) return error;
 
 	    if (!missing) {
-	        serial_dump("update done - all done!");
+	        DEBUG("update done - all done!");
 	        reset_updating();
-	        callbacks.finish_firmware_update(file, 1, NULL);
+	        finish_firmware_update(file, 1, NULL);
 	    }
 	    else {
 	        updating = 2;       // flag that we are sending missing chunks.
-	        serial_dump("update done - missing chunks starting at %d", index);
-	        send_missing_chunks(MISSED_CHUNKS_TO_SEND);
-	        last_chunk_millis = callbacks.millis();
+	        DEBUG("update done - missing chunks starting at %d", index);
+	        send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND, next_message_id);
+	        last_chunk_millis = millis();
 	    }
 	    return true;
+	}
+
+	template<typename callback_next_message_id> ProtocolError send_missing_chunks(Message& message, MessageChannel& channel,
+			int count, callback_next_message_id next_message_id)
+	{
+		size_t sent = 0;
+	    chunk_index_t idx = 0;
+	    uint8_t* buf = message.buf();
+	    unsigned short message_id = next_message_id();
+	    buf[0] = 0x40; // confirmable, no token
+	    buf[1] = 0x01; // code 0.01 GET
+	    buf[2] = message_id >> 8;
+	    buf[3] = message_id & 0xff;
+	    buf[4] = 0xb1; // one-byte Uri-Path option
+	    buf[5] = 'c';
+	    buf[6] = 0xff; // payload marker
+
+	    while ((idx=next_chunk_missing(chunk_index_t(idx)))!=NO_CHUNKS_MISSING && sent<count)
+	    {
+	        buf[(sent*2)+7] = idx >> 8;
+	        buf[(sent*2)+8] = idx & 0xFF;
+
+	        missed_chunk_index = idx;
+	        idx++;
+	        sent++;
+	    }
+
+	    if (sent>0) {
+	        DEBUG("Sent %d missing chunks", sent);
+	        size_t message_size = 7+(sent*2);
+	        message.set_length(message_size);
+	        ProtocolError error = channel.send(message);
+	        if (error) return error;
+	    }
+	    return NO_ERROR;
 	}
 
 
 public:
 
-	bool idle()
+	template <typename callback_next_message_id, typename callback_millis>
+	ProtocolError idle(MessageChannel& channel, callback_millis millis, callback_next_message_id next_message_id)
 	{
-		system_tick_t millis_since_last_chunk = callbacks.millis()
-				- last_chunk_millis;
+		system_tick_t millis_since_last_chunk = millis() - last_chunk_millis;
 		if (3000 < millis_since_last_chunk)
 		{
 			if (updating == 2)
 			{    // send missing chunks
-				serial_dump("timeout - resending missing chunks");
-				if (!send_missing_chunks(MISSED_CHUNKS_TO_SEND))
-					return false;
+				WARN("timeout - resending missing chunks");
+				Message message;
+				ProtocolError error = channel.new_message(message, MISSED_CHUNKS_TO_SEND*sizeof(chunk_index_t)+7);
+				if (!error)
+					error = send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND, next_message_id);
+				if (error)
+					return error;
 			}
 			/* Do not resend chunks since this can cause duplicates on the server.
 			 else
@@ -297,11 +359,12 @@ public:
 			 }
 			 }
 			 */
-			last_chunk_millis = callbacks.millis();
+			last_chunk_millis = millis();
 		}
+		return NO_ERROR;
 	}
 
-	bool isUpdating()
+	bool is_updating()
 	{
 		return updating;
 	}

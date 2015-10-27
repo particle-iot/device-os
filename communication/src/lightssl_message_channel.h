@@ -11,7 +11,7 @@ namespace protocol {
 /**
  * This implements the lightweight and RSA encrypted handshake, AES session encryption over a TCP Stream.
  */
-class LightStreamSecureChannel : public SecureChannel
+class LightStreamSecureChannel : public MessageChannel
 {
 
 
@@ -73,7 +73,31 @@ protected:
 	  memcpy(iv_send, buf, 16);
 	}
 
-public:
+	int handshake()
+	{
+		memcpy(queue + 40, device_id, 12);
+		int err = blocking_receive(queue, 40);
+		if (0 > err) { ERROR("Handshake: could not receive nonce: %d", err);  return err; }
+
+		parse_device_pubkey_from_privkey(queue+52, core_private_key);
+
+		rsa_context rsa;
+		init_rsa_context_with_public_key(&rsa, server_public_key);
+		const int len = 52+MAX_DEVICE_PUBLIC_KEY_LENGTH;
+		err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, len, queue, queue + len);
+		rsa_free(&rsa);
+
+		if (err) { ERROR("Handshake: rsa encrypt error %d", err); return err; }
+
+		blocking_send(queue + len, 256);
+		err = blocking_receive(queue, 384);
+		if (0 > err) { ERROR("Handshake: Unable to receive key %d", err); return err; }
+
+		err = set_key(queue);
+		if (err) { ERROR("Handshake:  could not set key, %d"); return err; }
+
+		return 0;
+	}
 
 	// Returns bytes sent or -1 on error
 	int blocking_send(const unsigned char *buf, int length)
@@ -143,33 +167,34 @@ public:
 	  return byte_count;
 	}
 
+public:
 
-
-	int handshake()
+	ProtocolError establish()
 	{
-		memcpy(queue + 40, device_id, 12);
-		int err = blocking_receive(queue, 40);
-		if (0 > err) { ERROR("Handshake: could not receive nonce: %d", err);  return err; }
 
-		parse_device_pubkey_from_privkey(queue+52, core_private_key);
-
-		rsa_context rsa;
-		init_rsa_context_with_public_key(&rsa, server_public_key);
-		const int len = 52+MAX_DEVICE_PUBLIC_KEY_LENGTH;
-		err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, len, queue, queue + len);
-		rsa_free(&rsa);
-
-		if (err) { ERROR("Handshake: rsa encrypt error %d", err); return err; }
-
-		blocking_send(queue + len, 256);
-		err = blocking_receive(queue, 384);
-		if (0 > err) { ERROR("Handshake: Unable to receive key %d", err); return err; }
-
-		err = set_key(queue);
-		if (err) { ERROR("Handshake:  could not set key, %d"); return err; }
-
-		return 0;
 	}
+
+	ProtocolError create(Message& message)
+	{
+		return NO_ERROR;
+	}
+
+	ProtocolError response(const Message& original, Message& response, size_t minimum_size)
+	{
+
+	}
+
+	ProtocolError receive(Message& message)
+	{
+		return NO_ERROR;
+	}
+
+	ProtocolError send(Message& message)
+	{
+		return NO_ERROR;
+	}
+
+
 };
 
 }

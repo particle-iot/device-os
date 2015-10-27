@@ -254,7 +254,17 @@ SCENARIO("decoding scalar types")
 			}
 		}
 	}
+}
 
+SCENARIO("CoAP response codes")
+{
+	WHEN("Encoding RESPONSE_CIDE(2,4)")
+	{
+		THEN("the result is 0x44")
+		{
+			REQUIRE((RESPONSE_CODE(2,4))==0x44);
+		}
+	}
 }
 
 SCENARIO("production of request messages")

@@ -33,21 +33,9 @@
 
 using namespace particle::protocol;
 
-#ifndef PRODUCT_ID
-#define PRODUCT_ID (0xffff)
-#endif
-
-#ifndef PRODUCT_FIRMWARE_VERSION
-#define PRODUCT_FIRMWARE_VERSION (0xffff)
-#endif
-
-#define RESPONSE_CODE(x,y)  (x<<5 || y)
-
 #if 0
 extern void serial_dump(const char* msg, ...);
-extern void doing_fast_ota();
 #else
-#define doing_fast_ota()
 #define serial_dump(x, ...)
 #endif
 
@@ -136,8 +124,6 @@ int SparkProtocol::handshake(void)
   INFO("Hanshake: completed");
   return 0;
 }
-
-const int MISSED_CHUNKS_TO_SEND = 50;
 
 // Returns true if no errors and still connected.
 // Returns false if there was an error, and we are probably disconnected.
@@ -1053,9 +1039,6 @@ bool SparkProtocol::handle_chunk(msg& message)
         }
         option++;
         payload += (queue[payload]&0xF)+1;  // increase by the size. todo handle > 11
-    }
-    if (fast_ota) {
-        doing_fast_ota();
     }
     if (0xFF==queue[payload])
     {

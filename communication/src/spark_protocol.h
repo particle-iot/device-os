@@ -60,12 +60,6 @@ namespace ProtocolState {
   };
 }
 
-namespace ChunkReceivedCode {
-  enum Enum {
-    OK = 0x44,
-    BAD = 0x80
-  };
-}
 
 class SparkProtocol
 {

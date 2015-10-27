@@ -26,6 +26,9 @@ namespace particle
 namespace protocol
 {
 
+typedef uint8_t token_t;
+typedef uint16_t message_id_t;
+
 inline uint32_t decode_uint32(unsigned char* buf) {
     return buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3];
 }
@@ -37,6 +40,9 @@ inline uint16_t decode_uint16(unsigned char* buf) {
 inline uint8_t decode_uint8(unsigned char* buf) {
     return buf[0];
 }
+
+#define RESPONSE_CODE(x,y)  (x<<5 | y)
+
 
 
 class Messages
@@ -114,7 +120,7 @@ public:
 		return CoAPMessageType::ERROR;
 	}
 
-	static size_t hello(uint8_t* buf, uint16_t message_id, uint8_t flags,
+	static size_t hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 			uint16_t platform_id, uint16_t product_id,
 			uint16_t product_firmware_version)
 	{
@@ -136,7 +142,7 @@ public:
 		return 15;
 	}
 
-	static size_t update_done(uint8_t* buf, uint16_t message_id)
+	static size_t update_done(uint8_t* buf, message_id_t message_id)
 	{
 		buf[0] = 0x50; // non-confirmable, no token
 		buf[1] = 0x02; // POST
@@ -147,8 +153,8 @@ public:
 		return 6;
 	}
 
-	static size_t function_return(unsigned char *buf, uint16_t message_id,
-			unsigned char token, int return_value)
+	static size_t function_return(unsigned char *buf, message_id_t message_id,
+			token_t token, int return_value)
 	{
 		buf[0] = 0x51; // non-confirmable, one-byte token
 		buf[1] = 0x44; // response code 2.04 CHANGED
@@ -163,16 +169,16 @@ public:
 		return 10;
 	}
 
-	static size_t variable_value(unsigned char *buf, uint16_t message_id,
-			unsigned char token, bool return_value)
+	static size_t variable_value(unsigned char *buf, message_id_t message_id,
+			token_t token, bool return_value)
 	{
 		size_t size = content(buf, message_id, token);
 		buf[size++] = return_value ? 1 : 0;
 		return size;
 	}
 
-	static size_t variable_value(unsigned char *buf, uint16_t message_id,
-			unsigned char token, int return_value)
+	static size_t variable_value(unsigned char *buf, message_id_t message_id,
+			token_t token, int return_value)
 	{
 		size_t size = content(buf, message_id, token);
 		buf[size++] = return_value >> 24;
@@ -182,8 +188,8 @@ public:
 		return size;
 	}
 
-	static size_t variable_value(unsigned char *buf, uint16_t message_id,
-			unsigned char token, double return_value)
+	static size_t variable_value(unsigned char *buf, message_id_t message_id,
+			token_t token, double return_value)
 	{
 		size_t size = content(buf, message_id, token);
 		memcpy(buf + size, &return_value, 8);
@@ -191,8 +197,8 @@ public:
 	}
 
 	// Returns the length of the buffer to send
-	static size_t variable_value(unsigned char *buf, uint16_t message_id,
-			unsigned char token, const void *return_value, int length)
+	static size_t variable_value(unsigned char *buf, message_id_t message_id,
+			token_t token, const void *return_value, int length)
 	{
 		size_t size = content(buf, message_id, token);
 		memcpy(buf + size, return_value, length);
@@ -216,7 +222,7 @@ public:
 		return p - buf;
 	}
 
-	static size_t chunk_missed(uint8_t* buf, uint16_t message_id, uint16_t chunk_index)
+	static size_t chunk_missed(uint8_t* buf, uint16_t message_id, chunk_index_t chunk_index)
 	{
 		buf[0] = 0x40; // confirmable, no token
 		buf[1] = 0x01; // code 0.01 GET
@@ -317,6 +323,27 @@ public:
       return 5;
     }
 
+
+    static inline size_t update_ready(unsigned char *buf, message_id_t message_id, token_t token)
+    {
+        return separate_response_with_payload(buf, message_id, token, 0x44, NULL, 0);
+    }
+
+    static inline size_t update_ready(unsigned char *buf, message_id_t message_id, token_t token, uint8_t flags)
+    {
+        return separate_response_with_payload(buf, message_id, token, 0x44, &flags, 1);
+    }
+
+    static inline size_t chunk_received(unsigned char *buf, message_id_t message_id, token_t token, ChunkReceivedCode::Enum code)
+    {
+       return separate_response(buf, message_id, token, code);
+    }
+
+    static inline size_t separate_response(unsigned char *buf, message_id_t message_id,
+                                          unsigned char token, unsigned char code)
+    {
+        return separate_response_with_payload(buf, message_id, token, code, NULL, 0);
+    }
 
 };
 
