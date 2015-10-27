@@ -20,6 +20,7 @@ enum ProtocolError
 	TRANSPORT_FAILURE,
 	INVALID_STATE,
 	INSUFFICIENT_STORAGE,
+	MALFORMED_MESSAGE,
 };
 
 typedef uint16_t chunk_index_t;

@@ -16,8 +16,10 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
+
 #include "protocol.h"
 #include "chunked_transfer.h"
+#include "subscriptions.h"
 
 namespace particle { namespace protocol {
 
