@@ -41,25 +41,32 @@ public:
     void startFromISR() { start(true); }
     void stopFromISR() { stop(true); }
     void resetFromISR() { reset(true); }
+    void changePeriodFromISR(unsigned period) { changePeriod(period, true); }
 
 
     void start(bool fromISR=false)
     {
         stop(fromISR);
         if (handle)
-            os_timer_change(handle, OS_TIMER_CHANGE_START, 0, 0, fromISR, nullptr);
+            os_timer_change(handle, OS_TIMER_CHANGE_START, fromISR, 0, 0, nullptr);
     }
 
     void stop(bool fromISR=false)
     {
         if (handle)
-            os_timer_change(handle, OS_TIMER_CHANGE_STOP, 0, 0, fromISR, nullptr);
+            os_timer_change(handle, OS_TIMER_CHANGE_STOP, fromISR, 0, 0, nullptr);
     }
 
     void reset(bool fromISR=false)
     {
         if (handle)
-            os_timer_change(handle, OS_TIMER_CHANGE_RESET, 0, 0, fromISR, nullptr);
+            os_timer_change(handle, OS_TIMER_CHANGE_RESET, fromISR, 0, 0, nullptr);
+    }
+
+    void changePeriod(unsigned period, bool fromISR=false)
+    {
+        if (handle)
+            os_timer_change(handle, OS_TIMER_CHANGE_PERIOD, fromISR, period, 0, nullptr);
     }
 
     void dispose()
