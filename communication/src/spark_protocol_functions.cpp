@@ -17,9 +17,15 @@
  ******************************************************************************
  */
 #include "spark_protocol_functions.h"
-#include "spark_protocol.h"
 #include "handshake.h"
 #include <stdlib.h>
+
+#ifdef PARTICLE_PROTOCOL
+
+
+
+
+#else
 
 /**
  * Handle the cryptographically secure random seed from the cloud by using
@@ -118,3 +124,5 @@ void spark_protocol_get_product_details(SparkProtocol* protocol, product_details
     (void)reserved;
     protocol->get_product_details(*details);
 }
+
+#endif

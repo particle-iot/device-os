@@ -5,6 +5,10 @@
 #include "communication_dynalib.h"
 #include "spark_protocol.h"
 
+#ifdef PARTICLE_PROTOCOL
+
+
+#else
 /**
  * Allocate an instance of the SparkProtocol. By doing it here rather than in system
  * we ensure the structure is allocated the correct amount of memory, cf. a system
@@ -19,3 +23,4 @@ ProtocolFacade* spark_protocol_instance()
         sp = new SparkProtocol();
     return (ProtocolFacade*)(sp);
 }
+#endif
