@@ -11,7 +11,7 @@ cd boost
 ./bootstrap.sh
 ./b2
 
-export DYLD_LIBRARY_PATH=$(BOOST_ROOT)/stage/lib
+export DYLD_LIBRARY_PATH=$BOOST_ROOT/stage/lib
 ```
 
 

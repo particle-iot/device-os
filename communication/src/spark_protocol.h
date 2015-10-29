@@ -26,21 +26,18 @@
 #ifndef __SPARK_PROTOCOL_H
 #define __SPARK_PROTOCOL_H
 
+#include "protocol_defs.h"
 #include "spark_descriptor.h"
 #include "coap.h"
 #include "events.h"
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
-#include "spark_protocol_functions.h"
 #include "device_keys.h"
 #include "file_transfer.h"
-#include "protocol_defs.h"
+#include "spark_protocol_functions.h"
 #include <stdint.h>
 
 using namespace particle::protocol;
-
-const product_id_t UNDEFINED_PRODUCT_ID = product_id_t(-1);
-const product_firmware_version_t UNDEFINED_PRODUCT_VERSION = product_firmware_version_t(-1);
 
 #if !defined(arraySize)
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))

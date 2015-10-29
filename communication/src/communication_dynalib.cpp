@@ -3,7 +3,6 @@
 
 #define DYNALIB_EXPORT
 #include "communication_dynalib.h"
-
 #include "spark_protocol.h"
 
 /**
@@ -13,10 +12,10 @@
  *
  * @return A pointer to the static instance.
  */
-SparkProtocol* spark_protocol_instance()
+ProtocolFacade* spark_protocol_instance()
 {
     static SparkProtocol* sp = NULL;
     if (sp==NULL)
         sp = new SparkProtocol();
-    return sp;
+    return (ProtocolFacade*)(sp);
 }

@@ -48,7 +48,7 @@ int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
 
-SparkProtocol* sp;
+ProtocolFacade* sp;
 
 // initialize the sp value so we have a local copy of it in this module
 struct SystemCloudStartup {
@@ -77,7 +77,7 @@ int VIBGYOR_Index;
  * version 1. Wiring code compiled against version 2 will not use this function, since the
  * code will be linked to spark_protocol_instance() in comms lib.
  */
-SparkProtocol* system_cloud_protocol_instance(void)
+ProtocolFacade* system_cloud_protocol_instance(void)
 {
     return sp;
 }

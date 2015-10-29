@@ -20,11 +20,10 @@
 
 #include "static_assert.h"
 #include "spark_wiring_string.h"
+#include "spark_protocol_functions.h"
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
-
-typedef class SparkProtocol SparkProtocol;
 
 
 typedef enum
@@ -148,7 +147,7 @@ void spark_process(void);
 void spark_connect(void);
 void spark_disconnect(void);    // should be set connected since it manages the connection state)
 bool spark_connected(void);
-SparkProtocol* system_cloud_protocol_instance(void);
+ProtocolFacade* system_cloud_protocol_instance(void);
 
 
 #define SPARK_BUF_LEN			        600

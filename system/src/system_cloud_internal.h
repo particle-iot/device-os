@@ -76,7 +76,7 @@ struct User_Func_Lookup_Table_t
 User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey);
 User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey);
 
-extern SparkProtocol* sp;
+extern ProtocolFacade* sp;
 
 
 /**
