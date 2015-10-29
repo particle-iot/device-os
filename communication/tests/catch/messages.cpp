@@ -30,7 +30,7 @@ SCENARIO("determining message type from a CoAP GET message")
 		uint8_t buf[] = { 1, 1, 0, 0, 0, 0x91, 'd'};
 		THEN("then message is recognized as a DESCRIBE message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::DESCRIBE);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::DESCRIBE);
 		}
 	}
 
@@ -40,7 +40,7 @@ SCENARIO("determining message type from a CoAP GET message")
 		uint8_t buf[] = { 1, 1, 0, 0, 0, 0x91, 'v'};
 		THEN("then message is recognized as a VARIABLE_REQUEST message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::VARIABLE_REQUEST);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::VARIABLE_REQUEST);
 		}
 	}
 
@@ -50,7 +50,7 @@ SCENARIO("determining message type from a CoAP GET message")
 		uint8_t buf[] = { 1, 1, 0, 0, 0, 0x91, '!'};
 		THEN("then message is recognized as a ERROR")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::ERROR);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::ERROR);
 		}
 	}
 }
@@ -63,7 +63,7 @@ SCENARIO("determining message type from a CoAP POST message")
 		uint8_t buf[] = { 1, 2, 0, 0, 0, 0x91, 'E'};
 		THEN("then message is recognized as a EVENT message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::EVENT);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::EVENT);
 		}
 	}
 
@@ -72,7 +72,7 @@ SCENARIO("determining message type from a CoAP POST message")
 		uint8_t buf[] = { 1, 2, 0, 0, 0, 0x91, 'e'};
 		THEN("then message is recognized as a EVENT message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::EVENT);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::EVENT);
 		}
 	}
 
@@ -81,7 +81,7 @@ SCENARIO("determining message type from a CoAP POST message")
 		uint8_t buf[] = { 1, 2, 0, 0, 0, 0x91, 'h'};
 		THEN("then message is recognized as a HELLO message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::HELLO);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::HELLO);
 		}
 	}
 
@@ -90,7 +90,7 @@ SCENARIO("determining message type from a CoAP POST message")
 		uint8_t buf[] = { 1, 2, 0, 0, 0, 0x91, 'f'};
 		THEN("then message is recognized as a FUNCTION_CALL message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::FUNCTION_CALL);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::FUNCTION_CALL);
 		}
 	}
 
@@ -99,7 +99,7 @@ SCENARIO("determining message type from a CoAP POST message")
 		uint8_t buf[] = { 1, 2, 0, 0, 0, 0x91, 'u'};
 		THEN("then message is recognized as a UPDATE_BEGIN message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::UPDATE_BEGIN);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::UPDATE_BEGIN);
 		}
 	}
 
@@ -108,7 +108,7 @@ SCENARIO("determining message type from a CoAP POST message")
 		uint8_t buf[] = { 1, 2, 0, 0, 0, 0x91, 's'};
 		THEN("then message is recognized as a SAVE_BEGIN message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::SAVE_BEGIN);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::SAVE_BEGIN);
 		}
 	}
 
@@ -117,7 +117,7 @@ SCENARIO("determining message type from a CoAP POST message")
 		uint8_t buf[] = { 1, 2, 0, 0, 0, 0x91, 'c'};
 		THEN("then message is recognized as a CHUNK message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::CHUNK);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::CHUNK);
 		}
 	}
 
@@ -126,7 +126,7 @@ SCENARIO("determining message type from a CoAP POST message")
 		uint8_t buf[] = { 1, 1, 0, 0, 0, 0x91, '!'};
 		THEN("then message is recognized as a ERROR")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::ERROR);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::ERROR);
 		}
 	}
 }
@@ -140,7 +140,7 @@ SCENARIO("determining message type from a CoAP PUT message")
 		uint8_t buf[] = { 1, 3, 0, 0, 0, 0x91, 'k'};
 		THEN("then message is recognized as a KEY_CHANGE message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::KEY_CHANGE);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::KEY_CHANGE);
 		}
 	}
 
@@ -149,7 +149,7 @@ SCENARIO("determining message type from a CoAP PUT message")
 		uint8_t buf[] = { 1, 3, 0, 0, 0, 0x91, 'u'};
 		THEN("then message is recognized as a UPDATE_DONE message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::UPDATE_DONE);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::UPDATE_DONE);
 		}
 	}
 
@@ -158,7 +158,7 @@ SCENARIO("determining message type from a CoAP PUT message")
 		uint8_t buf[] = { 1, 3, 0, 0, 0, 0x91, 's', 0xFF, 1 };
 		THEN("then message is recognized as a SIGNAL_START message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::SIGNAL_START);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::SIGNAL_START);
 		}
 	}
 
@@ -167,7 +167,7 @@ SCENARIO("determining message type from a CoAP PUT message")
 		uint8_t buf[] = { 1, 3, 0, 0, 0, 0x91, 's', 0xFF, 0 };
 		THEN("then message is recognized as a SIGNAL_STOP message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::SIGNAL_STOP);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::SIGNAL_STOP);
 		}
 	}
 
@@ -176,7 +176,7 @@ SCENARIO("determining message type from a CoAP PUT message")
 		uint8_t buf[] = { 1, 3, 0, 0, 0, 0x91, '!'};
 		THEN("then message is recognized as a ERROR")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::ERROR);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::ERROR);
 		}
 	}
 }
@@ -189,7 +189,7 @@ SCENARIO("determining message type from a CoAP EMPTY message")
 		uint8_t buf[] = { 1, 0 };
 		THEN("then message is recognized as a PING message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::PING);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::PING);
 		}
 	}
 
@@ -198,7 +198,7 @@ SCENARIO("determining message type from a CoAP EMPTY message")
 		uint8_t buf[] = { 0x31, 0 };
 		THEN("then message is recognized as a PING message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::EMPTY_ACK);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::EMPTY_ACK);
 		}
 	}
 }
@@ -211,7 +211,7 @@ SCENARIO("determining message type from a CoAP Content message")
 		uint8_t buf[] = { 1, 0x45 };
 		THEN("then message is recognized as a TIME message")
 		{
-			REQUIRE(Messages::decodeType(buf)==CoAPMessageType::TIME);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::TIME);
 		}
 	}
 }

@@ -64,11 +64,6 @@ namespace ProtocolState {
 class SparkProtocol
 {
   public:
-    static const int MAX_FUNCTION_KEY_LENGTH = 12;
-    static const int MAX_VARIABLE_KEY_LENGTH = 12;
-    static const int MAX_EVENT_NAME_LENGTH = 64;
-    static const int MAX_EVENT_DATA_LENGTH = 64;
-    static const int MAX_EVENT_TTL_SECONDS = 16777215;
     static int presence_announcement(unsigned char *buf, const char *id);
 
     SparkProtocol();
@@ -94,7 +89,7 @@ class SparkProtocol
     int blocking_send(const unsigned char *buf, int length);
     int blocking_receive(unsigned char *buf, int length);
 
-    CoAPMessageType::Enum received_message(unsigned char *buf, int length);
+    CoAPMessageType::Enum received_message(unsigned char *buf, size_t length);
     void hello(unsigned char *buf, bool newly_upgraded);
     void key_changed(unsigned char *buf, unsigned char token);
     void function_return(unsigned char *buf, unsigned char token,
@@ -133,11 +128,6 @@ class SparkProtocol
     void chunk_missed(unsigned char *buf, unsigned short chunk_index);
     void update_ready(unsigned char *buf, unsigned char token);
     void update_ready(unsigned char *buf, unsigned char token, uint8_t flags);
-
-    enum DescriptionType {
-        DESCRIBE_SYSTEM = 1<<1,            // modules
-        DESCRIBE_APPLICATION = 1<<2,       // functions and variables
-    };
 
     int description(unsigned char *buf, unsigned char token,
                     unsigned char message_id_msb, unsigned char message_id_lsb, int description_flags);

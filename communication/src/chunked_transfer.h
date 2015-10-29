@@ -27,7 +27,7 @@
 
 namespace particle { namespace protocol {
 
-class ChunkHandler
+class ChunkedTransfer
 {
 	system_tick_t last_chunk_millis;
 	uint8_t updating;
@@ -61,6 +61,42 @@ protected:
     }
 
 
+	inline void flag_chunk_received(chunk_index_t idx)
+	{
+	//    serial_dump("flagged chunk %d", idx);
+	    chunk_bitmap()[idx>>3] |= uint8_t(1<<(idx&7));
+	}
+
+	inline bool is_chunk_received(chunk_index_t idx)
+	{
+	    return (chunk_bitmap()[idx>>3] & uint8_t(1<<(idx&7)));
+	}
+
+	chunk_index_t next_chunk_missing(chunk_index_t start)
+	{
+	    chunk_index_t chunk = NO_CHUNKS_MISSING;
+	    chunk_index_t chunks = file.chunk_count(chunk_size);
+	    chunk_index_t idx = start;
+	    for (;idx<chunks; idx++)
+	    {
+	        if (!is_chunk_received(idx))
+	        {
+	            //serial_dump("next missing chunk %d from %d", idx, start);
+	            chunk = idx;
+	            break;
+	        }
+	    }
+	    return chunk;
+	}
+
+	void set_chunks_received(uint8_t value)
+	{
+	    size_t bytes = chunk_bitmap_size();
+	    if (bytes)
+	    		memset(bitmap, value, bytes);
+	}
+
+public:
 	template<typename callback_prepare, typename callback_millis> ProtocolError
 	handle_update_begin(token_t token, Message& message, MessageChannel& channel,
 			callback_prepare prepare_for_firmware_update, callback_millis millis)
@@ -226,43 +262,9 @@ protected:
 	}
 
 
-	inline void flag_chunk_received(chunk_index_t idx)
-	{
-	//    serial_dump("flagged chunk %d", idx);
-	    chunk_bitmap()[idx>>3] |= uint8_t(1<<(idx&7));
-	}
-
-	inline bool is_chunk_received(chunk_index_t idx)
-	{
-	    return (chunk_bitmap()[idx>>3] & uint8_t(1<<(idx&7)));
-	}
-
-	chunk_index_t next_chunk_missing(chunk_index_t start)
-	{
-	    chunk_index_t chunk = NO_CHUNKS_MISSING;
-	    chunk_index_t chunks = file.chunk_count(chunk_size);
-	    chunk_index_t idx = start;
-	    for (;idx<chunks; idx++)
-	    {
-	        if (!is_chunk_received(idx))
-	        {
-	            //serial_dump("next missing chunk %d from %d", idx, start);
-	            chunk = idx;
-	            break;
-	        }
-	    }
-	    return chunk;
-	}
-
-	void set_chunks_received(uint8_t value)
-	{
-	    size_t bytes = chunk_bitmap_size();
-	    if (bytes)
-	    		memset(bitmap, value, bytes);
-	}
 
 	template <typename callback_finish_firmware_update, typename callback_next_message_id, typename callback_millis>
-	bool handle_update_done(token_t token, Message& message, MessageChannel& channel, callback_finish_firmware_update finish_firmware_update,
+	ProtocolError handle_update_done(token_t token, Message& message, MessageChannel& channel, callback_finish_firmware_update finish_firmware_update,
 			callback_next_message_id next_message_id, callback_millis millis)
 	{
 	    // send ACK 2.04
@@ -286,10 +288,10 @@ protected:
 	    else {
 	        updating = 2;       // flag that we are sending missing chunks.
 	        DEBUG("update done - missing chunks starting at %d", index);
-	        send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND, next_message_id);
+	        error = send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND, next_message_id);
 	        last_chunk_millis = millis();
 	    }
-	    return true;
+	    return error;
 	}
 
 	template<typename callback_next_message_id> ProtocolError send_missing_chunks(Message& message, MessageChannel& channel,
@@ -327,11 +329,8 @@ protected:
 	    return NO_ERROR;
 	}
 
-
-public:
-
 	template <typename callback_next_message_id, typename callback_millis>
-	ProtocolError idle(MessageChannel& channel, callback_millis millis, callback_next_message_id next_message_id)
+	inline ProtocolError idle(MessageChannel& channel, callback_millis millis, callback_next_message_id next_message_id)
 	{
 		system_tick_t millis_since_last_chunk = millis() - last_chunk_millis;
 		if (3000 < millis_since_last_chunk)
@@ -367,6 +366,16 @@ public:
 	bool is_updating()
 	{
 		return updating;
+	}
+
+	template <typename callback_finish_firmware_update> void cancel(callback_finish_firmware_update finish)
+	{
+		if (is_updating())
+		{
+			// was updating but had an error, inform the client
+			WARN("handle received message failed - aborting transfer");
+			finish(file, 0, NULL);
+		}
 	}
 };
 

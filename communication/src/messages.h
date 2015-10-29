@@ -48,11 +48,13 @@ inline uint8_t decode_uint8(unsigned char* buf) {
 class Messages
 {
 public:
-	static CoAPMessageType::Enum decodeType(const uint8_t* buf)
+	static CoAPMessageType::Enum decodeType(const uint8_t* buf, size_t length)
 	{
-		char path = buf[5 + (buf[0] & 0x0F)];
-		// todo - why 5 ? the header is length 4
+		size_t path_idx = 5 + (buf[0] & 0x0F);
+		if (length<path_idx)
+			return CoAPMessageType::ERROR;
 
+		char path = buf[path_idx];
 		switch (CoAP::code(buf))
 		{
 		case CoAPCode::GET:
@@ -122,9 +124,9 @@ public:
 
 	static size_t hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 			uint16_t platform_id, uint16_t product_id,
-			uint16_t product_firmware_version)
+			uint16_t product_firmware_version, bool confirmable=false)
 	{
-		buf[0] = 0x50; // non-confirmable, no token
+		buf[0] = COAP_MSG_HEADER(confirmable ? CoAPType::CON : CoAPType::NON, 0);
 		buf[1] = 0x02; // POST
 		buf[2] = message_id >> 8;
 		buf[3] = message_id & 0xff;
@@ -345,7 +347,14 @@ public:
         return separate_response_with_payload(buf, message_id, token, code, NULL, 0);
     }
 
+
+    static inline size_t description(unsigned char *buf, token_t token,
+                                   message_id_t message_id)
+    {
+    		return content(buf, message_id, token);
+    }
+
 };
 
-}
-}
+
+}}

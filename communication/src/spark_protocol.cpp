@@ -23,6 +23,7 @@
   ******************************************************************************
   */
 #include "spark_protocol.h"
+#include "protocol_defs.h"
 #include "handshake.h"
 #include <string.h>
 #include <stdlib.h>
@@ -281,7 +282,7 @@ int SparkProtocol::blocking_receive(unsigned char *buf, int length)
 }
 
 CoAPMessageType::Enum
-  SparkProtocol::received_message(unsigned char *buf, int length)
+  SparkProtocol::received_message(unsigned char *buf, size_t length)
 {
   unsigned char next_iv[16];
   memcpy(next_iv, buf, 16);
@@ -291,7 +292,7 @@ CoAPMessageType::Enum
 
   memcpy(iv_receive, next_iv, 16);
 
-  return Messages::decodeType(buf);
+  return Messages::decodeType(buf, length);
 }
 
 void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)

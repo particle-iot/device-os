@@ -87,7 +87,7 @@ public:
 	/**
 	 * Retrieves a new message object containing the message buffer.
 	 */
-	virtual ProtocolError create(Message& message, size_t minimum_size);
+	virtual ProtocolError create(Message& message, size_t minimum_size=0);
 
 	/**
 	 * Fetch the next message from the channel.

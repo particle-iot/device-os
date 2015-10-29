@@ -88,7 +88,6 @@ namespace CoAPType {
   };
 }
 
-
 class CoAP
 {
   public:
@@ -96,12 +95,12 @@ class CoAP
 	static const uint8_t VERSION = 1;
 
 
-	size_t header(uint8_t* buf, CoAPType::Enum type, uint8_t optionCount, CoAPCode::Enum code, uint16_t tid)
+	size_t header(uint8_t* buf, CoAPType::Enum type, uint8_t tokenLen, CoAPCode::Enum code, uint16_t msgid)
 	{
-		buf[0] = VERSION<<6 | type << 4 | (optionCount & 0xF);
+		buf[0] = VERSION<<6 | type << 4 | (tokenLen & 0xF);
 		buf[1] = code;
-		buf[2] = tid >> 8;
-		buf[3] = tid & 0xFF;
+		buf[2] = msgid >> 8;
+		buf[3] = msgid & 0xFF;
 		return 4;
 	}
 
@@ -119,3 +118,7 @@ class CoAP
     static CoAPType::Enum type(const unsigned char *message);
     static size_t option_decode(unsigned char **option);
 };
+
+// this uses version 0 to maintain compatiblity with the original comms lib codes
+#define COAP_MSG_HEADER(type, tokenlen) \
+	((type)<<4 | ((tokenlen) & 0xF))

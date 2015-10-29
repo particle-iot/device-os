@@ -14,7 +14,7 @@ public:
 	/**
 	 * Handle ping messages
 	 */
-	template <typename Callback> int process(system_tick_t millis_since_last_message, Callback ping)
+	template <typename Callback> ProtocolError process(system_tick_t millis_since_last_message, Callback ping)
 	{
 		if (expecting_ping_ack)
 		{
@@ -40,6 +40,8 @@ public:
 	}
 
 	bool is_expecting_ping_ack() const { return expecting_ping_ack; }
+
+	void message_received() { expecting_ping_ack = false; }
 };
 
 

@@ -4,108 +4,102 @@
 #include "service_debug.h"
 #include "protocol_defs.h"
 #include "ping.h"
-
-
+#include "chunked_transfer.h"
+#include "spark_descriptor.h"
+#include "spark_protocol_functions.h"
+#include "functions.h"
+#include "events.h"
+#include "subscriptions.h"
+#include "variables.h"
 
 namespace particle
 {
 namespace protocol
 {
 
-
-#if 0
-
-
-
 class Protocol
 {
 	MessageChannel& channel;
+
 	system_tick_t last_message_millis;
+	message_id_t _message_id;
+    product_id_t product_id;
+    product_firmware_version_t product_firmware_version;
+
+    Pinger pinger;
+    ChunkedTransfer chunkedTransfer;
+    Functions functions;
+    Subscriptions subscriptions;
+    SparkDescriptor descriptor;
+    SparkCallbacks callbacks;
+    Variables variables;
+
+	message_id_t next_message_id()
+	{
+	  return ++_message_id;
+	}
 
 protected:
 
-	void hello()
-	{
-		unsigned short message_id = next_message_id();
-		bool newly_upgraded = descriptor.was_ota_upgrade_successful();
 
-		Message msg = channel.message();
-		size_t len = Messages::hello(message.buf(), newly_upgraded, PLATFORM_ID,
-				product_id, product_firmware_version);
-		msg.send();
+	ProtocolError hello(bool was_ota_upgrade_successful)
+	{
+		Message message;
+		channel.create(message);
+		size_t len = Messages::hello(message.buf(), next_message_id(), was_ota_upgrade_successful, PLATFORM_ID, product_id, product_firmware_version);
+		message.set_length(len);
+		return channel.send(message);
 	}
 
-	bool event_loop_idle()
+	ProtocolError ping()
 	{
-		if (chunkHandler.isUpdating())
+		Message message;
+		channel.create(message);
+		size_t len = Messages::ping(message.buf(), next_message_id());
+		message.set_length(len);
+		return channel.send(message);
+	}
+
+
+	ProtocolError event_loop_idle()
+	{
+		if (chunkedTransfer.is_updating())
 		{
-			return chunkHandler.idle();
+			return chunkedTransfer.idle(channel, callbacks.millis, [this]{ return next_message_id(); });
 		}
 		else
 		{
-			if (!pingHandler.idle())
-				return false;
+			ProtocolError error = pinger.process(last_message_millis-callbacks.millis(), [this]{return ping();});
+			if (error) return error;
 		}
-		return true;
+		return NO_ERROR;
 	}
 
-	void sent_subscription(const FilterEventHHandler& handler)
+	void sent_subscription(const FilteringEventHandler& handler)
 	{
 	    uint16_t msg_id = next_message_id();
 	    size_t msglen;
-	    Message msg = channel.message();
+	    Message message;
+	    channel.create(message);
         if (handler.device_id[0])
-       	  msglen = Messages::subscription(msg.buf(), msg_id, handler.filter, handler.device_id);
+       	  msglen = subscription(message.buf(), msg_id, handler.filter, handler.device_id);
         else
-           msglen = Messages::subscription(msg.buf(), msg_id, handler.filter, handler.scope);
-        msg.send(msglen);
+           msglen = subscription(message.buf(), msg_id, handler.filter, handler.scope);
+        message.set_length(msglen);
+        channel.send(message);
 	}
 
 	const int MISSED_CHUNKS_TO_SEND = 50;
 
-	void send_missing_chunks()
-	{
-	    int sent = 0;
-	    chunk_index_t idx = 0;
-
-	    Message msg = channel.message();
-
-	    uint8_t* buf = queue+2;
-	    unsigned short message_id = next_message_id();
-	    buf[0] = 0x40; // confirmable, no token
-	    buf[1] = 0x01; // code 0.01 GET
-	    buf[2] = message_id >> 8;
-	    buf[3] = message_id & 0xff;
-	    buf[4] = 0xb1; // one-byte Uri-Path option
-	    buf[5] = 'c';
-	    buf[6] = 0xff; // payload marker
-
-	    while ((idx=next_chunk_missing(chunk_index_t(idx)))!=NO_CHUNKS_MISSING && sent<count)
-	    {
-	        buf[(sent*2)+7] = idx >> 8;
-	        buf[(sent*2)+8] = idx & 0xFF;
-
-	        missed_chunk_index = idx;
-	        idx++;
-	        sent++;
-	    }
-
-	    if (sent>0) {
-	        serial_dump("Sent %d missing chunks", sent);
-	        size_t message_size = 7+(sent*2);
-	        msg.send(message_size);
-	    }
-	    return sent;
-	}
-
-	int description(unsigned char token, int desc_flags)
+	ProtocolError send_description(unsigned char token, int desc_flags)
 	{
 		uint16_t message_id = next_message_id();
-		Message msg = channel.message();
-
+		Message message;
+		channel.create(message);
+		uint8_t* buf = message.buf();
 		size_t desc = Messages::description(buf, message_id, token);
 
-		BufferAppender appender(buf+desc, msg.max_size()-8);
+		BufferAppender appender(buf+desc, message.capacity()-8);
 	    appender.append("{");
 	    bool has_content = false;
 
@@ -164,135 +158,65 @@ protected:
 	    }
 	    appender.append('}');
 	    int msglen = appender.next() - (uint8_t *)buf;
-	    return msg.send(msglen);
+	    message.set_length(msglen);
+	    return channel.send(message);
 	}
 
-	bool handle_received_message(Message& request)
+	ProtocolError handle_received_message(Message& message)
 	{
 	  last_message_millis = callbacks.millis();
-	  expecting_ping_ack = false;
-	  uint8_t* queue = request.buf();
-	  CoAPMessageType::Enum message_type = received_message(queue, request.length());
+	  pinger.message_received();
+	  uint8_t* queue = message.buf();
+	  CoAPMessageType::Enum message_type = Messages::decodeType(queue, message.length());
 
-	  unsigned char token = queue[4];
-	  unsigned char *msg_to_send = queue + len;
+	  token_t token = queue[4];
 
-	  Message message;
-	  message.len = len;
-	  message.token = queue[4];
-	  message.response = msg_to_send;
-	  message.response_len = request.max_size()-len;
-
+	  ProtocolError error = NO_ERROR;
 	  switch (message_type)
 	  {
 	    case CoAPMessageType::DESCRIBE:
-	    {
-	        if (!send_description(DESCRIBE_SYSTEM, message) || !send_description(DESCRIBE_APPLICATION, message)) {
-	            return false;
-	        }
+	        error = send_description(token, DESCRIBE_SYSTEM);
+	        if (!error)
+	        		error = send_description(token, DESCRIBE_APPLICATION);
 	        break;
-	    }
+
 	    case CoAPMessageType::FUNCTION_CALL:
-	        if (!handle_function_call(message))
-	            return false;
-	        break;
+	        return functions.handle_function_call([this]{return next_message_id();}, token, message, channel, descriptor.call_function);
+
 	    case CoAPMessageType::VARIABLE_REQUEST:
 	    {
-	      // copy the variable key
-	      int variable_key_length = queue[7] & 0x0F;
-	      if (12 < variable_key_length)
-	        variable_key_length = 12;
-
-	      char variable_key[13];
-	      memcpy(variable_key, queue + 8, variable_key_length);
-	      memset(variable_key + variable_key_length, 0, 13 - variable_key_length);
-
-	      queue[0] = 0;
-	      queue[1] = 16; // default buffer length
-
-	      // get variable value according to type using the descriptor
-	      SparkReturnType::Enum var_type = descriptor.variable_type(variable_key);
-	      if(SparkReturnType::BOOLEAN == var_type)
-	      {
-	        bool *bool_val = (bool *)descriptor.get_variable(variable_key);
-	        variable_value(queue + 2, token, queue[2], queue[3], *bool_val);
-	      }
-	      else if(SparkReturnType::INT == var_type)
-	      {
-	        int *int_val = (int *)descriptor.get_variable(variable_key);
-	        variable_value(queue + 2, token, queue[2], queue[3], *int_val);
-	      }
-	      else if(SparkReturnType::STRING == var_type)
-	      {
-	        char *str_val = (char *)descriptor.get_variable(variable_key);
-
-	        // 2-byte leading length, 16 potential padding bytes
-	        int max_length = QUEUE_SIZE - 2 - 16;
-	        int str_length = strlen(str_val);
-	        if (str_length > max_length) {
-	          str_length = max_length;
-	        }
-
-	        int buf_size = variable_value(queue + 2, token, queue[2], queue[3], str_val, str_length);
-	        queue[1] = buf_size & 0xff;
-	        queue[0] = (buf_size >> 8) & 0xff;
-	      }
-	      else if(SparkReturnType::DOUBLE == var_type)
-	      {
-	        double *double_val = (double *)descriptor.get_variable(variable_key);
-	        variable_value(queue + 2, token, queue[2], queue[3], *double_val);
-	      }
-
-	      // buffer length may have changed if variable is a long string
-	      if (0 > blocking_send(queue, (queue[0] << 8) + queue[1] + 2))
-	      {
-	        // error
-	        return false;
-	      }
-	      break;
+	    		char variable_key[13];
+	    		variables.decode_variable_request(variable_key, message);
+	    		return variables.handle_variable_request(variable_key, message, channel, token, next_message_id(), descriptor.variable_type, descriptor.get_variable);
 	    }
-
 	    case CoAPMessageType::SAVE_BEGIN:
 	      // fall through
 	    case CoAPMessageType::UPDATE_BEGIN:
-	        return handle_update_begin(message);
+	        return chunkedTransfer.handle_update_begin(token, message, channel, callbacks.prepare_for_firmware_update, callbacks.millis);
 
 	    case CoAPMessageType::CHUNK:
-	        return handle_chunk(message);
+	        return chunkedTransfer.handle_chunk(token, message, channel, callbacks.save_firmware_chunk, callbacks.calculate_crc, callbacks.finish_firmware_update, callbacks.millis, [this]{return next_message_id();});
 
 	    case CoAPMessageType::UPDATE_DONE:
-	        return handle_update_done(message);
+	        return chunkedTransfer.handle_update_done(token, message, channel, callbacks.finish_firmware_update, [this]{return next_message_id();}, callbacks.millis);
 
 	    case CoAPMessageType::EVENT:
-	        handle_event(message);
-	          break;
+	        return subscriptions.handle_event(message, descriptor.call_event_handler);
+
 	    case CoAPMessageType::KEY_CHANGE:
 	      // TODO
 	      break;
+
 	    case CoAPMessageType::SIGNAL_START:
-	      queue[0] = 0;
-	      queue[1] = 16;
-	      coded_ack(queue + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
-	      if (0 > blocking_send(queue, 18))
-	      {
-	        // error
-	        return false;
-	      }
-
+	      message.set_length(Messages::coded_ack(message.buf(), token, ChunkReceivedCode::OK, queue[2], queue[3]));
 	      callbacks.signal(true, 0, NULL);
-	      break;
-	    case CoAPMessageType::SIGNAL_STOP:
-	      queue[0] = 0;
-	      queue[1] = 16;
-	      coded_ack(queue + 2, token, ChunkReceivedCode::OK, queue[2], queue[3]);
-	      if (0 > blocking_send(queue, 18))
-	      {
-	        // error
-	        return false;
-	      }
+	      return channel.send(message);
 
-	      callbacks.signal(false, 0, NULL);
-	      break;
+	    case CoAPMessageType::SIGNAL_STOP:
+		  message.set_length(Messages::coded_ack(message.buf(), token, ChunkReceivedCode::OK, queue[2], queue[3]));
+		  callbacks.signal(false, 0, NULL);
+		  return channel.send(message);
+
 
 	    case CoAPMessageType::HELLO:
 	      descriptor.ota_upgrade_status_sent();
@@ -303,14 +227,8 @@ protected:
 	      break;
 
 	    case CoAPMessageType::PING:
-	      *msg_to_send = 0;
-	      *(msg_to_send + 1) = 16;
-	      empty_ack(msg_to_send + 2, queue[2], queue[3]);
-	      if (0 > blocking_send(msg_to_send, 18))
-	      {
-	        // error
-	        return false;
-	      }
+	      message.set_length(Messages::empty_ack(message.buf(), queue[2], queue[3]));
+	      error = channel.send(message);
 	      break;
 
 	    case CoAPMessageType::EMPTY_ACK:
@@ -320,88 +238,82 @@ protected:
 	  }
 
 	  // all's well
-	  return true;
+	  return error;
 	}
 
 	void handle_time_response(uint32_t time)
 	{
 	    // deduct latency
-	    uint32_t latency = last_chunk_millis ? (callbacks.millis()-last_chunk_millis)/2000 : 0;
-	    last_chunk_millis = 0;
-	    callbacks.set_time(time-latency,0,NULL);
+	    //uint32_t latency = last_chunk_millis ? (callbacks.millis()-last_chunk_millis)/2000 : 0;
+	    //last_chunk_millis = 0;
+	    // todo - compute connection latency
+	    callbacks.set_time(time,0,NULL);
 	}
 
-
 public:
+
+	Protocol(MessageChannel& channel_) : channel(channel_) {}
+
 	/**
 	 * Establish a secure connection and send and process the hello message.
 	 */
 	int begin()
 	{
-		int error = channel.handshake();
-		if (!error)
+		ProtocolError error = channel.establish();
+		if (error)
 			return error;
 
-		message_hello();
+		Message message;
+		channel.create(message);
+		size_t length = hello(descriptor.was_ota_upgrade_successful());
+		message.set_length(length);
+		error = channel.send(message);
 
-		err = channel.blocking_send(queue, 18);
-		if (0 > err)
+		if (error)
 		{
-			ERROR("Hanshake: could not send hello message: %d", err);
-			return err;
+			ERROR("Hanshake: could not send hello message: %d", error);
+			return error;
 		}
 
-		if (!event_loop())        // read the hello message from the server
+		error = event_loop();        // read the hello message from the server
+		if (error)
 		{
 			ERROR("Handshake: could not receive hello response");
-			return -1;
+			return error;
 		}
-		INFO("Hanshake: completed");
-		return 0;
 
+		INFO("Hanshake: completed");
+		return error;
 	}
 
 
 	// Returns true if no errors and still connected.
 	// Returns false if there was an error, and we are probably disconnected.
-	bool event_loop(void)
+	ProtocolError event_loop(void)
 	{
-		int bytes_received = callbacks.receive(queue, 2);
-		if (2 <= bytes_received)
-		{
-			bool success = handle_received_message();
-			if (!success)
-			{
-				if (updating)
-				{      // was updating but had an error, inform the client
-					serial_dump("handle received message failed - aborting transfer");
-					callbacks.finish_firmware_update(file, 0, NULL);
-					updating = false;
-				}
+		Message message;
+		ProtocolError error = channel.receive(message);
+		if (error) return error;
 
+		if (message.length())
+		{
+			error = handle_received_message(message);
+			if (error)
+			{
 				// bail if and only if there was an error
-				return false;
+				chunkedTransfer.cancel(callbacks.finish_firmware_update);
+				return error;
 			}
 		}
 		else
 		{
-			if (0 > bytes_received)
-			{
-				// error, disconnected
-				return false;
-			}
-
-			event_loop_idle();
+			error = event_loop_idle();
 		}
-
-		// no errors, still connected
-		return true;
+		return error;
 	}
 
+};
 
-}
-
-#endif
 
 }
 }

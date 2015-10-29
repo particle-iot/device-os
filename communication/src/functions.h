@@ -19,16 +19,17 @@
 
 #pragma once
 
-namespace particle
-{
-namespace protocol
-{
-
 #include <string.h>
 #include "protocol_defs.h"
 #include "message_channel.h"
 #include "messages.h"
 #include "spark_descriptor.h"
+
+
+namespace particle
+{
+namespace protocol
+{
 
 class Functions
 {
@@ -92,7 +93,8 @@ public:
 	    if (error) return error;
 
 	    // call the given user function
-	    auto callback = [=] (const void* result, SparkReturnType::Enum resultType ) { return this->function_result(result, resultType, next_message_id(), token); };
+	    auto callback = [=,&channel,&next_message_id] (const void* result, SparkReturnType::Enum resultType )
+	    		{ return this->function_result(channel, result, resultType, next_message_id(), token); };
 	    call_function(function_key, function_arg, callback, NULL);
 	    return NO_ERROR;
 	}

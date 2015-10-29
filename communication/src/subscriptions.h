@@ -28,7 +28,7 @@ namespace protocol
 #include "events.h"
 #include "message_channel.h"
 
-class Events
+class Subscriptions
 {
 	FilteringEventHandler event_handlers[5];
 
