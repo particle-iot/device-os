@@ -3,7 +3,7 @@
 #include "handshake.h"
 #include "device_keys.h"
 #include "message_channel.h"
-
+#include "buffer_message_channel.h"
 
 namespace particle {
 namespace protocol {
@@ -11,9 +11,24 @@ namespace protocol {
 /**
  * This implements the lightweight and RSA encrypted handshake, AES session encryption over a TCP Stream.
  */
-class LightStreamSecureChannel : public MessageChannel
+class LightStreamSecureChannel : public BufferMessageChannel
 {
+	const uint8_t* core_private_key;
+	const uint8_t* server_public_key;
 
+    unsigned char key[16];
+    unsigned char iv_send[16];
+    unsigned char iv_receive[16];
+    unsigned char salt[8];
+    message_id_t _message_id;
+    token_t _token;
+
+public:
+
+	LightStreamSecureChannel(const uint8_t* core_private, const uint8_t* server_public)
+		: core_private_key(core_private), server_public_key(server_public)
+	{
+	}
 
 protected:
 

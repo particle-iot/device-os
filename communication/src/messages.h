@@ -26,9 +26,6 @@ namespace particle
 namespace protocol
 {
 
-typedef uint8_t token_t;
-typedef uint16_t message_id_t;
-
 inline uint32_t decode_uint32(unsigned char* buf) {
     return buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3];
 }

@@ -22,7 +22,6 @@ class Protocol
 	MessageChannel& channel;
 
 	system_tick_t last_message_millis;
-	message_id_t _message_id;
     product_id_t product_id;
     product_firmware_version_t product_firmware_version;
 
@@ -34,11 +33,6 @@ class Protocol
     SparkCallbacks callbacks;
     Variables variables;
 
-	message_id_t next_message_id()
-	{
-	  return ++_message_id;
-	}
-
 protected:
 
 
@@ -46,7 +40,7 @@ protected:
 	{
 		Message message;
 		channel.create(message);
-		size_t len = Messages::hello(message.buf(), next_message_id(), was_ota_upgrade_successful, PLATFORM_ID, product_id, product_firmware_version);
+		size_t len = Messages::hello(message.buf(), 0, was_ota_upgrade_successful, PLATFORM_ID, product_id, product_firmware_version);
 		message.set_length(len);
 		return channel.send(message);
 	}
@@ -55,7 +49,7 @@ protected:
 	{
 		Message message;
 		channel.create(message);
-		size_t len = Messages::ping(message.buf(), next_message_id());
+		size_t len = Messages::ping(message.buf(), 0);
 		message.set_length(len);
 		return channel.send(message);
 	}
@@ -65,7 +59,7 @@ protected:
 	{
 		if (chunkedTransfer.is_updating())
 		{
-			return chunkedTransfer.idle(channel, callbacks.millis, [this]{ return next_message_id(); });
+			return chunkedTransfer.idle(channel, callbacks.millis);
 		}
 		else
 		{
@@ -77,7 +71,7 @@ protected:
 
 	void sent_subscription(const FilteringEventHandler& handler)
 	{
-	    uint16_t msg_id = next_message_id();
+	    uint16_t msg_id = 0;
 	    size_t msglen;
 	    Message message;
 	    channel.create(message);
@@ -91,13 +85,12 @@ protected:
 
 	const int MISSED_CHUNKS_TO_SEND = 50;
 
-	ProtocolError send_description(unsigned char token, int desc_flags)
+	ProtocolError send_description(token_t token, int desc_flags)
 	{
-		uint16_t message_id = next_message_id();
 		Message message;
 		channel.create(message);
 		uint8_t* buf = message.buf();
-		size_t desc = Messages::description(buf, message_id, token);
+		size_t desc = Messages::description(buf, CoAP::message_id(buf), token);
 
 		BufferAppender appender(buf+desc, message.capacity()-8);
 	    appender.append("{");
@@ -154,7 +147,7 @@ protected:
 	    if (descriptor.append_system_info && (desc_flags&DESCRIBE_SYSTEM)) {
 	      if (has_content)
 	        appender.append(',');
-	      descriptor.append_system_info(append_instance, &appender, NULL);
+	      descriptor.append_system_info(append_instance, &appender, nullptr);
 	    }
 	    appender.append('}');
 	    int msglen = appender.next() - (uint8_t *)buf;
@@ -181,13 +174,13 @@ protected:
 	        break;
 
 	    case CoAPMessageType::FUNCTION_CALL:
-	        return functions.handle_function_call([this]{return next_message_id();}, token, message, channel, descriptor.call_function);
+	        return functions.handle_function_call(token, message, channel, descriptor.call_function);
 
 	    case CoAPMessageType::VARIABLE_REQUEST:
 	    {
 	    		char variable_key[13];
 	    		variables.decode_variable_request(variable_key, message);
-	    		return variables.handle_variable_request(variable_key, message, channel, token, next_message_id(), descriptor.variable_type, descriptor.get_variable);
+	    		return variables.handle_variable_request(variable_key, message, channel, token, CoAP::message_id(queue), descriptor.variable_type, descriptor.get_variable);
 	    }
 	    case CoAPMessageType::SAVE_BEGIN:
 	      // fall through
@@ -195,10 +188,10 @@ protected:
 	        return chunkedTransfer.handle_update_begin(token, message, channel, callbacks.prepare_for_firmware_update, callbacks.millis);
 
 	    case CoAPMessageType::CHUNK:
-	        return chunkedTransfer.handle_chunk(token, message, channel, callbacks.save_firmware_chunk, callbacks.calculate_crc, callbacks.finish_firmware_update, callbacks.millis, [this]{return next_message_id();});
+	        return chunkedTransfer.handle_chunk(token, message, channel, callbacks.save_firmware_chunk, callbacks.calculate_crc, callbacks.finish_firmware_update, callbacks.millis);
 
 	    case CoAPMessageType::UPDATE_DONE:
-	        return chunkedTransfer.handle_update_done(token, message, channel, callbacks.finish_firmware_update, [this]{return next_message_id();}, callbacks.millis);
+	        return chunkedTransfer.handle_update_done(token, message, channel, callbacks.finish_firmware_update, callbacks.millis);
 
 	    case CoAPMessageType::EVENT:
 	        return subscriptions.handle_event(message, descriptor.call_event_handler);
@@ -258,7 +251,7 @@ protected:
 public:
 	// todo - move message_id into CoAP layer, or make the MessageChannel
 	// contract specifically about coap. e.g. could add next_message_id() into MessageChannel
-	Protocol(MessageChannel& channel) : channel(channel), _message_id(0) {}
+	Protocol(MessageChannel& channel) : channel(channel) {}
 
 	void init(const SparkCallbacks &callbacks,
 			 const SparkDescriptor &descriptor)

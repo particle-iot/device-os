@@ -28,6 +28,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
+namespace particle { namespace protocol {
+
+typedef uint8_t token_t;
+typedef uint16_t message_id_t;
+
 namespace CoAPMessageType {
   enum Enum {
     HELLO,
@@ -94,6 +99,10 @@ class CoAP
 
 	static const uint8_t VERSION = 1;
 
+	static inline message_id_t message_id(uint8_t* buf)
+	{
+		return buf[2]<<8 | buf[3];
+	}
 
 	size_t header(uint8_t* buf, CoAPType::Enum type, uint8_t tokenLen, CoAPCode::Enum code, uint16_t msgid)
 	{
@@ -122,3 +131,4 @@ class CoAP
 // this uses version 0 to maintain compatiblity with the original comms lib codes
 #define COAP_MSG_HEADER(type, tokenlen) \
 	((type)<<4 | ((tokenlen) & 0xF))
+}}

@@ -46,13 +46,6 @@ const product_firmware_version_t UNDEFINED_PRODUCT_VERSION = product_firmware_ve
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
 #endif
 
-#ifndef PROTOCOL_BUFFER_SIZE
-    #if PLATFORM_ID<2
-        #define PROTOCOL_BUFFER_SIZE 640
-    #else
-        #define PROTOCOL_BUFFER_SIZE 800
-    #endif
-#endif
 
 namespace ProtocolState {
   enum Enum {

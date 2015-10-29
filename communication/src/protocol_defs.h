@@ -35,6 +35,13 @@ const int MAX_EVENT_NAME_LENGTH = 64;
 const int MAX_EVENT_DATA_LENGTH = 64;
 const int MAX_EVENT_TTL_SECONDS = 16777215;
 
+#ifndef PROTOCOL_BUFFER_SIZE
+    #if PLATFORM_ID<2
+        #define PROTOCOL_BUFFER_SIZE 640
+    #else
+        #define PROTOCOL_BUFFER_SIZE 800
+    #endif
+#endif
 
 
 namespace ChunkReceivedCode {

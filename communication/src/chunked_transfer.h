@@ -160,11 +160,9 @@ public:
 	    return error;
 	}
 
-	template<typename callback_save_firmware_chunk, typename callback_calculate_crc, typename callback_finish_firmware_update, typename callback_millis,
-		typename callback_next_message_id>
+	template<typename callback_save_firmware_chunk, typename callback_calculate_crc, typename callback_finish_firmware_update, typename callback_millis>
 	ProtocolError handle_chunk(token_t token, Message& message, MessageChannel& channel, callback_save_firmware_chunk save_firmware_chunk,
-				callback_calculate_crc calculate_crc, callback_finish_firmware_update finish_firmware_update, callback_millis millis,
-				callback_next_message_id next_message_id)
+				callback_calculate_crc calculate_crc, callback_finish_firmware_update finish_firmware_update, callback_millis millis)
 	{
 	    last_chunk_millis = millis();
 
@@ -219,7 +217,7 @@ public:
 	        {
 	            save_firmware_chunk(file, chunk, NULL);
 	            if (!fast_ota || (updating!=2 && ((chunk_index & 32)==0))) {
-	                response_size = Messages::chunk_received(response.buf(), next_message_id(), token, ChunkReceivedCode::OK);
+	                response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::OK);
 	            }
 	            flag_chunk_received(chunk_index);
 	            if (updating==2) {                      // clearing up missed chunks at the end of fast OTA
@@ -228,7 +226,7 @@ public:
 	                    INFO("received all chunks");
 	                    reset_updating();
 	                    finish_firmware_update(file, 1, NULL);
-	                    response_size = Messages::update_done(response.buf(), next_message_id());
+	                    response_size = Messages::update_done(response.buf(), 0);
 	                }
 	                else {
 	                		if (response_size) {
@@ -241,14 +239,14 @@ public:
 	                		    }
 	                		}
 	                    if (next_missed>missed_chunk_index)
-	                    		send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND, next_message_id);
+	                    		send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND);
 	                }
 	            }
 	            chunk_index++;
 	        }
 	        else if (!fast_ota)
 	        {
-	            response_size = Messages::chunk_received(response.buf(), next_message_id(), token, ChunkReceivedCode::BAD);
+	            response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::BAD);
 	            WARN("chunk bad %d", chunk_index);
 	        }
 	        // fast OTA will request the chunk later
@@ -265,9 +263,9 @@ public:
 
 
 
-	template <typename callback_finish_firmware_update, typename callback_next_message_id, typename callback_millis>
+	template <typename callback_finish_firmware_update, typename callback_millis>
 	ProtocolError handle_update_done(token_t token, Message& message, MessageChannel& channel, callback_finish_firmware_update finish_firmware_update,
-			callback_next_message_id next_message_id, callback_millis millis)
+			callback_millis millis)
 	{
 	    // send ACK 2.04
 		Message response;
@@ -290,23 +288,21 @@ public:
 	    else {
 	        updating = 2;       // flag that we are sending missing chunks.
 	        DEBUG("update done - missing chunks starting at %d", index);
-	        error = send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND, next_message_id);
+	        error = send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND);
 	        last_chunk_millis = millis();
 	    }
 	    return error;
 	}
 
-	template<typename callback_next_message_id> ProtocolError send_missing_chunks(Message& message, MessageChannel& channel,
-			int count, callback_next_message_id next_message_id)
+	ProtocolError send_missing_chunks(Message& message, MessageChannel& channel, int count)
 	{
 		size_t sent = 0;
 	    chunk_index_t idx = 0;
 	    uint8_t* buf = message.buf();
-	    unsigned short message_id = next_message_id();
 	    buf[0] = 0x40; // confirmable, no token
 	    buf[1] = 0x01; // code 0.01 GET
-	    buf[2] = message_id >> 8;
-	    buf[3] = message_id & 0xff;
+	    buf[2] = 0;
+	    buf[3] = 0;
 	    buf[4] = 0xb1; // one-byte Uri-Path option
 	    buf[5] = 'c';
 	    buf[6] = 0xff; // payload marker
@@ -331,8 +327,8 @@ public:
 	    return NO_ERROR;
 	}
 
-	template <typename callback_next_message_id, typename callback_millis>
-	inline ProtocolError idle(MessageChannel& channel, callback_millis millis, callback_next_message_id next_message_id)
+	template <typename callback_millis>
+	inline ProtocolError idle(MessageChannel& channel, callback_millis millis)
 	{
 		system_tick_t millis_since_last_chunk = millis() - last_chunk_millis;
 		if (3000 < millis_since_last_chunk)
@@ -343,7 +339,7 @@ public:
 				Message message;
 				ProtocolError error = channel.create(message, MISSED_CHUNKS_TO_SEND*sizeof(chunk_index_t)+7);
 				if (!error)
-					error = send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND, next_message_id);
+					error = send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND);
 				if (error)
 					return error;
 			}

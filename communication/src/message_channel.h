@@ -112,6 +112,8 @@ public:
 class AbstractMessageChannel : public MessageChannel
 {
 
+public:
+
 	/**
 	 * Fill out a message struct to contain storage for a response.
 	 */

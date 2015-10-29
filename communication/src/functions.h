@@ -35,18 +35,17 @@ class Functions
 {
     char function_arg[MAX_FUNCTION_ARG_LENGTH];
 
-    ProtocolError function_result(MessageChannel& channel, const void* result, SparkReturnType::Enum, message_id_t message_id, token_t token)
+    ProtocolError function_result(MessageChannel& channel, const void* result, SparkReturnType::Enum, token_t token)
     {
     		Message message;
     		channel.create(message, Messages::function_return_size);
-        size_t length = Messages::function_return(message.buf(), message_id, token, long(result));
+        size_t length = Messages::function_return(message.buf(), 0, token, long(result));
         message.set_length(length);
         return channel.send(message);
     }
 
 public:
-	template<typename callback_next_message_id> ProtocolError
-	handle_function_call(callback_next_message_id next_message_id, int token, Message& message, MessageChannel& channel,
+	ProtocolError handle_function_call(int token, Message& message, MessageChannel& channel,
 		    int (*call_function)(const char *function_key, const char *arg, SparkDescriptor::FunctionResultCallback callback, void* reserved))
 	{
 	    // copy the function key
@@ -93,8 +92,8 @@ public:
 	    if (error) return error;
 
 	    // call the given user function
-	    auto callback = [=,&channel,&next_message_id] (const void* result, SparkReturnType::Enum resultType )
-	    		{ return this->function_result(channel, result, resultType, next_message_id(), token); };
+	    auto callback = [=,&channel] (const void* result, SparkReturnType::Enum resultType )
+	    		{ return this->function_result(channel, result, resultType, token); };
 	    call_function(function_key, function_arg, callback, NULL);
 	    return NO_ERROR;
 	}
