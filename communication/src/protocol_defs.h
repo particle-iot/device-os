@@ -3,6 +3,9 @@
 #include <functional>
 #include "system_tick_hal.h"
 
+typedef uint16_t product_id_t;
+typedef uint16_t product_firmware_version_t;
+
 namespace particle { namespace protocol {
 
 #ifndef PRODUCT_ID
@@ -17,10 +20,13 @@ enum ProtocolError
 {
 	NO_ERROR,
 	PING_TIMEOUT,
-	TRANSPORT_FAILURE,
+	IO_ERROR,
 	INVALID_STATE,
 	INSUFFICIENT_STORAGE,
 	MALFORMED_MESSAGE,
+	DECRYPTION_ERROR,
+	ENCRYPTION_ERROR,
+	AUTHENTICATION_ERROR,
 };
 
 typedef uint16_t chunk_index_t;
@@ -60,6 +66,9 @@ enum DescriptionType {
 
 typedef std::function<system_tick_t()> millis_callback;
 typedef std::function<int()> callback;
+
+const product_id_t UNDEFINED_PRODUCT_ID = product_id_t(-1);
+const product_firmware_version_t UNDEFINED_PRODUCT_VERSION = product_firmware_version_t(-1);
 
 
 }}

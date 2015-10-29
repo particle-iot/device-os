@@ -31,17 +31,19 @@ namespace particle
 namespace protocol
 {
 
+template<size_t max, size_t prefix, size_t suffix>
 class BufferMessageChannel : public AbstractMessageChannel
 {
-    unsigned char queue[PROTOCOL_BUFFER_SIZE];
+protected:
+    unsigned char queue[max];
 
 public:
 
 	virtual ProtocolError create(Message& message, size_t minimum_size=0) override
 	{
-		if (minimum_size>sizeof(queue))
+		if (minimum_size>sizeof(queue)-prefix-suffix)
 			return INSUFFICIENT_STORAGE;
-		message.set_buffer(queue, sizeof(queue));
+		message.set_buffer(queue+suffix, sizeof(queue)-suffix-prefix);
 		message.set_length(0);
 		return NO_ERROR;
 	}

@@ -25,16 +25,17 @@ class Protocol
     product_id_t product_id;
     product_firmware_version_t product_firmware_version;
 
+    SparkDescriptor descriptor;
+    SparkCallbacks callbacks;
+
     Pinger pinger;
     ChunkedTransfer chunkedTransfer;
     Functions functions;
     Subscriptions subscriptions;
-    SparkDescriptor descriptor;
-    SparkCallbacks callbacks;
+    CommunicationsHandlers handlers;   // application callbacks
     Variables variables;
 
 protected:
-
 
 	ProtocolError hello(bool was_ota_upgrade_successful)
 	{
@@ -256,11 +257,17 @@ public:
 	void init(const SparkCallbacks &callbacks,
 			 const SparkDescriptor &descriptor)
 	{
+		memset(&handlers, 0, sizeof(handlers));
 		copy_and_init(&this->callbacks, sizeof(this->callbacks), &callbacks, callbacks.size);
 		copy_and_init(&this->descriptor, sizeof(this->descriptor), &descriptor, descriptor.size);
 		// the actual instances referenced may be smaller if the caller is compiled
 		// against an older version of this library.
 	}
+
+    void set_handlers(CommunicationsHandlers& handlers)
+    {
+        copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);
+    }
 
 	/**
 	 * Establish a secure connection and send and process the hello message.
