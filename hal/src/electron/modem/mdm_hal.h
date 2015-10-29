@@ -104,6 +104,12 @@ public:
 
     typedef enum { AUTH_NONE, AUTH_PAP, AUTH_CHAP, AUTH_DETECT } Auth;
 
+    /* Used to cancel all operations */
+    void cancel(void);
+
+    /* User to resume all operations */
+    void resume(void);
+
     /** Combined Init, checkNetStatus, join suitable for simple applications
         \param simpin a optional pin of the SIM card
         \param apn  the of the network provider e.g. "internet" or "apn.provider.com"
@@ -546,6 +552,7 @@ protected:
     static int _cbUPSND(int type, const char* buf, int len, IP* ip);
     static int _cbUDNSRN(int type, const char* buf, int len, IP* ip);
     static int _cbUSOCR(int type, const char* buf, int len, int* handle);
+    static int _cbUSOCTL(int type, const char* buf, int len, int* handle);
     static int _cbUSORD(int type, const char* buf, int len, char* out);
     typedef struct { char* buf; IP ip; int port; } USORFparam;
     static int _cbUSORF(int type, const char* buf, int len, USORFparam* param);
@@ -574,6 +581,7 @@ protected:
     bool _pwr;
     bool _activated;
     bool _attached;
+    volatile bool _cancel_all_operations;
 #ifdef MDM_DEBUG
     int _debugLevel;
     system_tick_t _debugTime;
