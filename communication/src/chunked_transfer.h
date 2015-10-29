@@ -97,6 +97,8 @@ protected:
 	}
 
 public:
+	ChunkedTransfer() : updating(false) {}
+
 	template<typename callback_prepare, typename callback_millis> ProtocolError
 	handle_update_begin(token_t token, Message& message, MessageChannel& channel,
 			callback_prepare prepare_for_firmware_update, callback_millis millis)

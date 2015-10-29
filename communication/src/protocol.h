@@ -217,7 +217,6 @@ protected:
 		  callbacks.signal(false, 0, NULL);
 		  return channel.send(message);
 
-
 	    case CoAPMessageType::HELLO:
 	      descriptor.ota_upgrade_status_sent();
 	      break;
@@ -250,9 +249,25 @@ protected:
 	    callbacks.set_time(time,0,NULL);
 	}
 
-public:
+	void copy_and_init(void* target, size_t target_size, const void* source, size_t source_size)
+	{
+		memcpy(target, source, source_size);
+		memset(((uint8_t*)target)+source_size, 0, target_size-source_size);
+	}
 
-	Protocol(MessageChannel& channel_) : channel(channel_) {}
+public:
+	// todo - move message_id into CoAP layer, or make the MessageChannel
+	// contract specifically about coap. e.g. could add next_message_id() into MessageChannel
+	Protocol(MessageChannel& channel) : channel(channel), _message_id(0) {}
+
+	void init(const SparkCallbacks &callbacks,
+			 const SparkDescriptor &descriptor)
+	{
+		copy_and_init(&this->callbacks, sizeof(this->callbacks), &callbacks, callbacks.size);
+		copy_and_init(&this->descriptor, sizeof(this->descriptor), &descriptor, descriptor.size);
+		// the actual instances referenced may be smaller if the caller is compiled
+		// against an older version of this library.
+	}
 
 	/**
 	 * Establish a secure connection and send and process the hello message.

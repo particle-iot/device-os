@@ -35,6 +35,11 @@ class Subscriptions
 protected:
 public:
 
+	Subscriptions()
+	{
+		memset(&event_handlers, 0, sizeof(event_handlers));
+	}
+
 	ProtocolError handle_event(Message& message,
 			void (*call_event_handler)(uint16_t size,
 					FilteringEventHandler* handler, const char* event,
