@@ -52,12 +52,12 @@ public:
 	    char function_key[13];
 	    memset(function_key, 0, 13);
 	    uint8_t* queue = message.buf();
-	    int function_key_length = queue[7] & 0x0F;
+	    size_t function_key_length = queue[7] & 0x0F;
 	    memcpy(function_key, queue + 8, function_key_length);
 
 	    // How long is the argument?
-	    int q_index = 8 + function_key_length;
-	    int query_length = queue[q_index] & 0x0F;
+	    size_t q_index = 8 + function_key_length;
+	    size_t query_length = queue[q_index] & 0x0F;
 	    if (13 == query_length)
 	    {
 	      ++q_index;

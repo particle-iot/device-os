@@ -743,7 +743,7 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
         appender.append('"');
 
         const char* key = descriptor.get_function_key(i);
-        int function_name_length = strlen(key);
+        size_t function_name_length = strlen(key);
         if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
         {
           function_name_length = MAX_FUNCTION_KEY_LENGTH;
@@ -763,7 +763,7 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
         }
         appender.append('"');
         const char* key = descriptor.get_variable_key(i);
-        int variable_name_length = strlen(key);
+        size_t variable_name_length = strlen(key);
         SparkReturnType::Enum t = descriptor.variable_type(key);
         if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
         {
@@ -1194,8 +1194,8 @@ bool SparkProtocol::handle_function_call(msg& message)
     memcpy(function_key, queue + 8, function_key_length);
 
     // How long is the argument?
-    int q_index = 8 + function_key_length;
-    int query_length = queue[q_index] & 0x0F;
+    size_t q_index = 8 + function_key_length;
+    size_t query_length = queue[q_index] & 0x0F;
     if (13 == query_length)
     {
       ++q_index;

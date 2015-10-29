@@ -29,11 +29,11 @@ const chunk_index_t NO_CHUNKS_MISSING = 65535;
 const chunk_index_t MAX_CHUNKS = 65535;
 const size_t MISSED_CHUNKS_TO_SEND = 50;
 const size_t MAX_FUNCTION_ARG_LENGTH = 64;
-const int MAX_FUNCTION_KEY_LENGTH = 12;
-const int MAX_VARIABLE_KEY_LENGTH = 12;
-const int MAX_EVENT_NAME_LENGTH = 64;
-const int MAX_EVENT_DATA_LENGTH = 64;
-const int MAX_EVENT_TTL_SECONDS = 16777215;
+const size_t MAX_FUNCTION_KEY_LENGTH = 12;
+const size_t MAX_VARIABLE_KEY_LENGTH = 12;
+const size_t MAX_EVENT_NAME_LENGTH = 64;
+const size_t MAX_EVENT_DATA_LENGTH = 64;
+const size_t MAX_EVENT_TTL_SECONDS = 16777215;
 
 #ifndef PROTOCOL_BUFFER_SIZE
     #if PLATFORM_ID<2

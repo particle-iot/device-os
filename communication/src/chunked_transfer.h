@@ -294,7 +294,7 @@ public:
 	    return error;
 	}
 
-	ProtocolError send_missing_chunks(Message& message, MessageChannel& channel, int count)
+	ProtocolError send_missing_chunks(Message& message, MessageChannel& channel, size_t count)
 	{
 		size_t sent = 0;
 	    chunk_index_t idx = 0;

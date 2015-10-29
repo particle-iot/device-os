@@ -111,7 +111,7 @@ protected:
 	        appender.append('"');
 
 	        const char* key = descriptor.get_function_key(i);
-	        int function_name_length = strlen(key);
+	        size_t function_name_length = strlen(key);
 	        if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
 	        {
 	          function_name_length = MAX_FUNCTION_KEY_LENGTH;
@@ -131,7 +131,7 @@ protected:
 	        }
 	        appender.append('"');
 	        const char* key = descriptor.get_variable_key(i);
-	        int variable_name_length = strlen(key);
+	        size_t variable_name_length = strlen(key);
 	        SparkReturnType::Enum t = descriptor.variable_type(key);
 	        if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
 	        {
