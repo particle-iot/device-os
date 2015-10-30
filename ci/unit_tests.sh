@@ -23,7 +23,8 @@ make all > build.log || die "Problem building unit tests"
 $target_file -r junit -n "build_${TRAVIS_BUILD_NUMBER}" > obj/TEST-${TRAVIS_BUILD_NUMBER}.xml
 
 if [ "$?" == "0" ]; then
-    echo Yay! Unit tests PASSED!    
+    echo Yay! Unit tests PASSED!
+    exit 1
 else
     echo Bummer. Unit tests FAILED.
     exit 1
