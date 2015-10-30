@@ -234,7 +234,11 @@ bool FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress
 
 	// this predates the module system (early P1's using external flash for storage)
 #if (!defined USE_SERIAL_FLASH) || (PLATFORM_ID==PLATFORM_DUO_PRODUCTION)
+#ifndef USE_SERIAL_FLASH
     if ((sourceDeviceID == FLASH_INTERNAL) && (flags & MODULE_VERIFY_MASK))
+#else
+    if (flags & MODULE_VERIFY_MASK)    // Use serial flash and support flag verify
+#endif
     {
         uint32_t moduleLength = FLASH_ModuleLength(sourceDeviceID, sourceAddress);
 
