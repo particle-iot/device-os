@@ -120,7 +120,7 @@ void spark_protocol_init(ProtocolFacade* protocol, const char *id,
 int spark_protocol_handshake(ProtocolFacade* protocol, void* reserved=NULL);
 bool spark_protocol_event_loop(ProtocolFacade* protocol, void* reserved=NULL);
 bool spark_protocol_is_initialized(ProtocolFacade* protocol);
-int spark_protocol_presence_announcement(ProtocolFacade* protocol, unsigned char *buf, const char *id, void* reserved=NULL);
+int spark_protocol_presence_announcement(ProtocolFacade* protocol, unsigned char *buf, const unsigned char *id, void* reserved=NULL);
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
                 int ttl, EventType::Enum event_type, void* reserved);
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
@@ -145,6 +145,7 @@ extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key,
         uint8_t* plaintext, int max_plaintext_len);
 
 void parse_device_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* device_privkey);
+
 /**
  * Retrieves a pointer to a statically allocated instance.
  * @return A statically allocated instance of ProtocolFacade.

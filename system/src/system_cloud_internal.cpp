@@ -791,7 +791,7 @@ void Multicast_Presence_Announcement(void)
     uint8_t id_length = HAL_device_ID(NULL, 0);
     uint8_t id[id_length];
     HAL_device_ID(id, id_length);
-    spark_protocol_presence_announcement(sp, announcement, (const char *) id);
+    spark_protocol_presence_announcement(sp, announcement, id);
 
     // create multicast address 224.0.1.187 port 5683
     sockaddr_t addr;

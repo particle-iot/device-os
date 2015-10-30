@@ -18,9 +18,15 @@
  */
 #pragma once
 
+#if PLATFORM_ID==3
+#define PARTICLE_PROTOCOL 1
+#endif
+
 #ifdef PARTICLE_PROTOCOL
-class ParticleProtocol;
-class ParticleProtocol ProtocolFacade;
+namespace particle { namespace protocol {
+class LightSSLProtocol;
+}}
+typedef particle::protocol::LightSSLProtocol ProtocolFacade;
 #else
 class SparkProtocol;
 typedef SparkProtocol ProtocolFacade;

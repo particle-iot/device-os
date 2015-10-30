@@ -1,8 +1,12 @@
+
+
 #include "service_debug.h"
 #include "handshake.h"
 #include "device_keys.h"
 #include "message_channel.h"
 #include "buffer_message_channel.h"
+#include "tropicssl/rsa.h"
+#include "tropicssl/aes.h"
 
 namespace particle
 {
@@ -15,7 +19,7 @@ namespace protocol
  * The buffer provided to the message starts at offset 2 to allow a 2-byte length to be added.
  * The buffer length extends to the maximum capacity minus 16 so there is room for PKCS#1v5 padding.
  */
-class LightStreamSecureChannel: public BufferMessageChannel<
+class LightSSLMessageChannel: public BufferMessageChannel<
 		PROTOCOL_BUFFER_SIZE, 2, 16>
 {
 public:
@@ -43,15 +47,17 @@ private:
 
 public:
 
-	LightStreamSecureChannel(const uint8_t* core_private,
-			const uint8_t* server_public, const uint8_t* device_id) :
-			core_private_key(core_private), server_public_key(server_public)
+	LightSSLMessageChannel() :
+			core_private_key(nullptr), server_public_key(nullptr)
 	{
-		memcpy(this->device_id, device_id, sizeof(this->device_id));
 	}
 
-	void init(Callbacks& callbacks)
+	void init(const uint8_t* core_private, const uint8_t* server_public,
+			const uint8_t* device_id, Callbacks& callbacks)
 	{
+		core_private_key = core_private;
+		server_public_key = server_public;
+		memcpy(this->device_id, device_id, sizeof(this->device_id));
 		this->callbacks = callbacks;
 	}
 
@@ -65,9 +71,16 @@ public:
 		return NO_ERROR;
 	}
 
+	/**
+	 * Sends the given message. The message length is prepended to the message
+	 * and the message padded with PKCS#1 padding before being sent using
+	 * the send callback.
+	 */
 	ProtocolError send(Message& message) override
 	{
-		return NO_ERROR;
+		uint8_t* buf = message.buf()-2;
+		size_t to_write = wrap(buf, message.length());
+		return blocking_send(buf, to_write)<0 ? IO_ERROR : NO_ERROR;
 	}
 
 protected:

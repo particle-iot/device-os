@@ -3,12 +3,14 @@
 
 #define DYNALIB_EXPORT
 #include "communication_dynalib.h"
-#include "spark_protocol.h"
+#include "protocol_selector.h"
 
 #ifdef PARTICLE_PROTOCOL
-
-
+#include "lightssl_protocol.h"
 #else
+#include "spark_protocol.h"
+#endif
+
 /**
  * Allocate an instance of the SparkProtocol. By doing it here rather than in system
  * we ensure the structure is allocated the correct amount of memory, cf. a system
@@ -16,11 +18,12 @@
  *
  * @return A pointer to the static instance.
  */
+#include "spark_protocol.h"
+
 ProtocolFacade* spark_protocol_instance()
 {
-    static SparkProtocol* sp = NULL;
+    static ProtocolFacade* sp = NULL;
     if (sp==NULL)
-        sp = new SparkProtocol();
-    return (ProtocolFacade*)(sp);
+        sp = new ProtocolFacade();
+    return sp;
 }
-#endif

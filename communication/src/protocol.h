@@ -9,6 +9,7 @@
 #include "spark_protocol_functions.h"
 #include "functions.h"
 #include "events.h"
+#include "publisher.h"
 #include "subscriptions.h"
 #include "variables.h"
 
@@ -27,15 +28,23 @@ class Protocol
 
     SparkDescriptor descriptor;
     SparkCallbacks callbacks;
+    CommunicationsHandlers handlers;   // application callbacks
 
     Pinger pinger;
     ChunkedTransfer chunkedTransfer;
     Functions functions;
     Subscriptions subscriptions;
-    CommunicationsHandlers handlers;   // application callbacks
+    Publisher publisher;
     Variables variables;
 
+    token_t token;
+
 protected:
+
+    uint8_t next_token()
+    {
+    		return ++token;
+    }
 
 	ProtocolError hello(bool was_ota_upgrade_successful)
 	{
@@ -68,20 +77,6 @@ protected:
 			if (error) return error;
 		}
 		return NO_ERROR;
-	}
-
-	void sent_subscription(const FilteringEventHandler& handler)
-	{
-	    uint16_t msg_id = 0;
-	    size_t msglen;
-	    Message message;
-	    channel.create(message);
-        if (handler.device_id[0])
-       	  msglen = subscription(message.buf(), msg_id, handler.filter, handler.device_id);
-        else
-           msglen = subscription(message.buf(), msg_id, handler.filter, handler.scope);
-        message.set_length(msglen);
-        channel.send(message);
 	}
 
 	const int MISSED_CHUNKS_TO_SEND = 50;
@@ -274,6 +269,8 @@ public:
 	 */
 	int begin()
 	{
+		chunkedTransfer.reset_updating();
+
 		ProtocolError error = channel.establish();
 		if (error)
 			return error;
@@ -327,6 +324,79 @@ public:
 		return error;
 	}
 
+	// Returns true on success, false on sending timeout or rate-limiting failure
+	bool send_event(const char *event_name, const char *data,
+	                               int ttl, EventType::Enum event_type)
+	{
+	  if (chunkedTransfer.is_updating())
+	  {
+	    return false;
+	  }
+	  return !publisher.send_event(channel, event_name, data, ttl, event_type, callbacks.millis());
+	}
+
+	inline bool send_subscription(const char *event_name, const char *device_id) {
+		return !subscriptions.send_subscription(channel, event_name, device_id);
+	}
+
+	inline bool send_subscription(const char *event_name, SubscriptionScope::Enum scope) {
+		return !subscriptions.send_subscription(channel, event_name, scope);
+	}
+
+	inline bool add_event_handler(const char *event_name, EventHandler handler) {
+        return add_event_handler(event_name, handler, NULL, SubscriptionScope::FIREHOSE, NULL);
+    }
+
+    inline bool add_event_handler(const char *event_name, EventHandler handler,
+                        void *handler_data, SubscriptionScope::Enum scope,
+                        const char* device_id)
+    {
+    		return !subscriptions.add_event_handler(event_name, handler, handler_data, scope, device_id);
+    }
+
+    inline bool send_subscriptions()
+    {
+    		return !subscriptions.send_subscriptions(channel);
+    }
+
+    inline bool remove_event_handlers(const char* name)
+    {
+    		subscriptions.remove_event_handlers(name);
+    		return true;
+    }
+
+    inline void set_product_id(product_id_t product_id)
+    {
+    		this->product_id = product_id;
+    }
+
+    inline void set_product_firmware_version(product_firmware_version_t product_firmware_version)
+    {
+    		this->product_firmware_version = product_firmware_version;
+    }
+
+    inline void get_product_details(product_details_t& details)
+    {
+         if (details.size>=4) {
+             details.product_id = this->product_id;
+             details.product_version = this->product_firmware_version;
+         }
+     }
+
+    inline bool send_time_request()
+    {
+    	  if (chunkedTransfer.is_updating())
+    	  {
+    	    return false;
+    	  }
+
+    	  uint8_t token = next_token();
+    	  Message message;
+    	  channel.create(message);
+    	  size_t len = Messages::time_request(message.buf(), 0, token);
+    	  message.set_length(len);
+    	  return !channel.send(message);
+    }
 };
 
 

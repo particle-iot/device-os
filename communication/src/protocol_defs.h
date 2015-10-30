@@ -27,6 +27,7 @@ enum ProtocolError
 	DECRYPTION_ERROR,
 	ENCRYPTION_ERROR,
 	AUTHENTICATION_ERROR,
+	BANDWIDTH_EXCEEDED,
 };
 
 typedef uint16_t chunk_index_t;

@@ -82,12 +82,12 @@ class MessageChannel
 public:
 	virtual ~MessageChannel() {}
 
-	virtual ProtocolError establish();
+	virtual ProtocolError establish()=0;
 
 	/**
 	 * Retrieves a new message object containing the message buffer.
 	 */
-	virtual ProtocolError create(Message& message, size_t minimum_size=0);
+	virtual ProtocolError create(Message& message, size_t minimum_size=0)=0;
 
 	/**
 	 * Fetch the next message from the channel.
@@ -95,18 +95,18 @@ public:
 	 *
 	 * @return an error value !=0 on error.
 	 */
-	virtual ProtocolError receive(Message& message);
+	virtual ProtocolError receive(Message& message)=0;
 
 	/**
 	 * Send the given message to the endpoint
 	 * @return an error value !=0 on error.
 	 */
-	virtual ProtocolError send(Message& msg);
+	virtual ProtocolError send(Message& msg)=0;
 
 	/**
 	 * Fill out a message struct to contain storage for a response.
 	 */
-	virtual ProtocolError response(Message& original, Message& response, size_t required);
+	virtual ProtocolError response(Message& original, Message& response, size_t required)=0;
 };
 
 class AbstractMessageChannel : public MessageChannel

@@ -33,6 +33,21 @@ class Subscriptions
 	FilteringEventHandler event_handlers[5];
 
 protected:
+
+	ProtocolError send_subscription(MessageChannel& channel, const char* filter, const char* device_id, SubscriptionScope::Enum scope)
+	{
+		uint16_t msg_id = 0;
+	    size_t msglen;
+	    Message message;
+	    channel.create(message);
+        if (device_id)
+       	  msglen = subscription(message.buf(), msg_id, filter, device_id);
+        else
+          msglen = subscription(message.buf(), msg_id, filter, scope);
+        message.set_length(msglen);
+        return channel.send(message);
+	}
+
 public:
 
 	Subscriptions()
@@ -144,17 +159,21 @@ public:
 		return NO_ERROR;
 	}
 
-	template<typename F> void for_each(F callback)
+	template<typename F> ProtocolError for_each(F callback)
 	{
 		const int NUM_HANDLERS = sizeof(event_handlers)
 				/ sizeof(FilteringEventHandler);
+		ProtocolError error = NO_ERROR;
 		for (unsigned i = 0; i < NUM_HANDLERS; i++)
 		{
 			if (nullptr != event_handlers[i].handler)
 			{
-				callback(event_handlers[i]);
+				error = callback(event_handlers[i]);
+				if (error)
+					break;
 			}
 		}
+		return error;
 	}
 
 	void remove_event_handlers(const char* event_name)
@@ -252,6 +271,27 @@ public:
 		}
 		return false;
 	}
+
+	inline ProtocolError send_subscriptions(MessageChannel& channel)
+	{
+		return for_each([&](const FilteringEventHandler& handler){return send_subscription(channel, handler);});
+	}
+
+	inline ProtocolError send_subscription(MessageChannel& channel, const FilteringEventHandler& handler)
+	{
+		return send_subscription(channel, handler.filter, handler.device_id[0] ? handler.device_id : nullptr, handler.scope);
+	}
+
+	inline ProtocolError send_subscription(MessageChannel& channel, const char* filter, const char* device_id)
+	{
+		return send_subscription(channel, filter, device_id, SubscriptionScope::MY_DEVICES);
+	}
+
+	inline ProtocolError send_subscription(MessageChannel& channel, const char* filter, SubscriptionScope::Enum scope)
+	{
+		return send_subscription(channel, filter, nullptr, scope);
+	}
+
 };
 
 }
