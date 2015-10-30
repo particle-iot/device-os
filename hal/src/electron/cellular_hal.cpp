@@ -1,7 +1,6 @@
 
 #include "cellular_hal.h"
 #include "modem/mdm_hal.h"
-#include "wlan_hal.h"
 
 
 #define CHECK_SUCCESS(x) { if (!(x)) return -1; }
@@ -115,5 +114,9 @@ uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS)
 
 void cellular_cancel(bool cancel, bool calledFromISR, void*)
 {
-    // todo!
+    if (cancel) {
+        electronMDM.cancel();
+    } else {
+        electronMDM.resume();
+    }
 }
