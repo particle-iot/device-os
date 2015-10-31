@@ -27,7 +27,7 @@
 #include "application.h"
 
 // ALL_LEVEL, TRACE_LEVEL, DEBUG_LEVEL, WARN_LEVEL, ERROR_LEVEL, PANIC_LEVEL, NO_LOG_LEVEL
-SerialDebugOutput debugOutput(115200, ALL_LEVEL);
+SerialDebugOutput debugOutput(9600, ALL_LEVEL);
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
@@ -40,8 +40,7 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
-	delay(3000);
-	DEBUG_D("Hello from the Electron! Boot time is: %d\r\n",millis());
+	DEBUG_D("Hello from the Electron! Boot time is: %d\r\n ms", millis());
 
 	Particle.connect(); // blocking call to connect
 

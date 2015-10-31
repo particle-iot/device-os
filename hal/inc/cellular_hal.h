@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "net_hal.h"
+#include "wlan_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -127,8 +128,12 @@ CellularCredentials* cellular_credentials_get(void* reserved);
 bool cellular_sim_ready(void* reserved);
 
 /**
- * Called from another thread or ISR context. Attempts to stop the cellular modem from performing the current operation.
- * @param reserved Pass NULL. Allows future expansion.
+ * Attempts to stop/resume the cellular modem from performing AT operations.
+ * Called from another thread or ISR context.
+ *
+ * @param cancel: true to cancel AT operations, false will resume AT operations.
+ *        calledFromISR: true if called from ISR, false if called from main system thread.
+ *        reserved: pass NULL. Allows future expansion.
  */
 void cellular_cancel(bool cancel, bool calledFromISR, void* reserved);
 
