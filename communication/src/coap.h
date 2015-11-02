@@ -50,7 +50,8 @@ namespace CoAPMessageType {
     TIME,
     EMPTY_ACK,
     PING,
-    ERROR
+    ERROR,
+    NONE,
   };
 }
 
@@ -130,5 +131,5 @@ class CoAP
 
 // this uses version 0 to maintain compatiblity with the original comms lib codes
 #define COAP_MSG_HEADER(type, tokenlen) \
-	((type)<<4 | ((tokenlen) & 0xF))
+	((CoAP::VERSION)<<6 | (type)<<4 | ((tokenlen) & 0xF))
 }}

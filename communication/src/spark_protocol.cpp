@@ -110,14 +110,12 @@ int SparkProtocol::handshake(void)
   err = set_key(queue);
   if (err) { ERROR("Handshake:  could not set key, %d"); return err; }
 
-  queue[0] = 0x00;
-  queue[1] = 0x10;
-  hello(queue + 2, descriptor.was_ota_upgrade_successful());
+  hello(queue, descriptor.was_ota_upgrade_successful());
 
   err = blocking_send(queue, 18);
   if (0 > err) { ERROR("Hanshake: could not send hello message: %d", err); return err; }
 
-  if (!event_loop())        // read the hello message from the server
+  if (!event_loop(CoAPMessageType::HELLO, 2000))        // read the hello message from the server
   {
       ERROR("Handshake: could not receive hello response");
       return -1;
@@ -126,15 +124,33 @@ int SparkProtocol::handshake(void)
   return 0;
 }
 
+bool SparkProtocol::event_loop(CoAPMessageType::Enum message_type, system_tick_t timeout)
+{
+    system_tick_t start = callbacks.millis();
+    do
+    {
+        CoAPMessageType::Enum msgtype;
+        if (!event_loop(msgtype))
+            return false;
+        if (msgtype==message_type)
+            return true;
+        // todo - ideally need a delay here
+    }
+    while ((callbacks.millis()-start) < timeout);
+    return false;
+}
+
+
 // Returns true if no errors and still connected.
 // Returns false if there was an error, and we are probably disconnected.
-bool SparkProtocol::event_loop(void)
+bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
 {
+    message_type = CoAPMessageType::NONE;
   int bytes_received = callbacks.receive(queue, 2);
   if (2 <= bytes_received)
   {
-    bool success = handle_received_message();
-    if (!success)
+    message_type = handle_received_message();
+    if (message_type==CoAPMessageType::ERROR)
     {
         if (updating) {      // was updating but had an error, inform the client
             serial_dump("handle received message failed - aborting transfer");
@@ -298,15 +314,15 @@ CoAPMessageType::Enum
 void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
 {
   unsigned short message_id = next_message_id();
-  size_t len = Messages::hello(buf, message_id, newly_upgraded, PLATFORM_ID, product_id, product_firmware_version);
-  wrap(buf-2, len);
+  size_t len = Messages::hello(buf+2, message_id, newly_upgraded, PLATFORM_ID, product_id, product_firmware_version);
+  wrap(buf, len);
 }
 
 void SparkProtocol::notify_update_done(uint8_t* buf)
 {
     serial_dump("Sending UpdateDone");
     unsigned short message_id = next_message_id();
-    size_t size = Messages::update_done(buf, message_id);
+    size_t size = Messages::update_done(buf+2, message_id);
     wrap(buf, size);
 }
 
@@ -808,7 +824,7 @@ void SparkProtocol::ping(unsigned char *buf)
   encrypt(buf, 16);
 }
 
-int SparkProtocol::presence_announcement(unsigned char *buf, const char *id)
+int SparkProtocol::presence_announcement(unsigned char *buf, const unsigned char *id)
 {
   buf[0] = 0x50; // Confirmable, no token
   buf[1] = 0x02; // Code POST
@@ -924,6 +940,12 @@ ProtocolState::Enum SparkProtocol::state()
 
 /********** Private methods **********/
 
+/**
+ * Pads and encrypts the buffer, and prepends the buffer length.
+ * @param buf
+ * @param msglen
+ * @return
+ */
 size_t SparkProtocol::wrap(unsigned char *buf, size_t msglen)
 {
   size_t buflen = (msglen & ~15) + 16;
@@ -1069,7 +1091,7 @@ bool SparkProtocol::handle_chunk(msg& message)
                     serial_dump("received all chunks");
                     reset_updating();
                     callbacks.finish_firmware_update(file, 1, NULL);
-                    notify_update_done(msg_to_send+2);
+                    notify_update_done(msg_to_send);
                     has_response = true;
                 }
                 else {
@@ -1344,30 +1366,8 @@ bool SparkProtocol::send_description(int description_flags, msg& message)
     return blocking_send(queue, desc_len + 2)>=0;
 }
 
-bool SparkProtocol::handle_received_message(void)
+bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType::Enum message_type)
 {
-  last_message_millis = callbacks.millis();
-  expecting_ping_ack = false;
-  size_t len = queue[0] << 8 | queue[1];
-  if (len > QUEUE_SIZE) { // TODO add sanity check on data, e.g. CRC
-      return false;
-  }
-  if (0 > blocking_receive(queue, len))
-  {
-    // error
-    return false;
-  }
-  CoAPMessageType::Enum message_type = received_message(queue, len);
-
-  unsigned char token = queue[4];
-  unsigned char *msg_to_send = queue + len;
-
-  msg message;
-  message.len = len;
-  message.token = queue[4];
-  message.response = msg_to_send;
-  message.response_len = QUEUE_SIZE-len;
-
   switch (message_type)
   {
     case CoAPMessageType::DESCRIBE:
@@ -1488,10 +1488,10 @@ bool SparkProtocol::handle_received_message(void)
       break;
 
     case CoAPMessageType::PING:
-      *msg_to_send = 0;
-      *(msg_to_send + 1) = 16;
-      empty_ack(msg_to_send + 2, queue[2], queue[3]);
-      if (0 > blocking_send(msg_to_send, 18))
+      queue[0] = 0;
+      queue[1] = 16;
+      empty_ack(queue + 2, queue[2], queue[3]);
+      if (0 > blocking_send(queue, 18))
       {
         // error
         return false;
@@ -1506,6 +1506,34 @@ bool SparkProtocol::handle_received_message(void)
 
   // all's well
   return true;
+}
+
+CoAPMessageType::Enum SparkProtocol::handle_received_message(void)
+{
+  last_message_millis = callbacks.millis();
+  expecting_ping_ack = false;
+  size_t len = queue[0] << 8 | queue[1];
+  if (len > QUEUE_SIZE) { // TODO add sanity check on data, e.g. CRC
+      return CoAPMessageType::ERROR;
+  }
+  if (0 > blocking_receive(queue, len))
+  {
+    // error
+    return CoAPMessageType::ERROR;;
+  }
+  CoAPMessageType::Enum message_type = received_message(queue, len);
+
+  unsigned char token = queue[4];
+  unsigned char *msg_to_send = queue + len;
+
+  msg message;
+  message.len = len;
+  message.token = queue[4];
+  message.response = msg_to_send;
+  message.response_len = QUEUE_SIZE-len;
+
+  return handle_message(message, token, message_type)
+          ? message_type : CoAPMessageType::ERROR;
 }
 
 void SparkProtocol::handle_time_response(uint32_t time)

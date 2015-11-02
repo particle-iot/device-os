@@ -9,3 +9,4 @@ test -d $BOOST_ROOT || (
    mv boost_$BOOST_VERSION  $BOOST_HOME
 ) 
 test -d $BOOST_ROOT || ( echo "boost root $BOOST_ROOT not created." && exit 1)
+export DYLD_LIBRARY_PATH=$BOOST_ROOT/stage/lib

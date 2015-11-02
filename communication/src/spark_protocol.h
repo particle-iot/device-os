@@ -54,7 +54,7 @@ namespace ProtocolState {
 class SparkProtocol
 {
   public:
-    static int presence_announcement(unsigned char *buf, const char *id);
+    static int presence_announcement(unsigned char *buf, const unsigned char *id);
 
     SparkProtocol();
 
@@ -63,7 +63,13 @@ class SparkProtocol
               const SparkCallbacks &callbacks,
               const SparkDescriptor &descriptor);
     int handshake(void);
-    bool event_loop(void);
+
+    /**
+     * Wait for a given message type until the timeout.
+     * @return true if the message was processed within the timeout.
+     */
+    bool event_loop(CoAPMessageType::Enum msg, system_tick_t timeout);
+    bool event_loop(CoAPMessageType::Enum& msg);
     bool is_initialized(void);
     void reset_updating(void);
 
@@ -172,7 +178,9 @@ class SparkProtocol
     char function_arg[MAX_FUNCTION_ARG_LENGTH];
 
     size_t wrap(unsigned char *buf, size_t msglen);
-    bool handle_received_message(void);
+    CoAPMessageType::Enum handle_received_message(void);
+    bool handle_message(msg& message, token_t token, CoAPMessageType::Enum message_type);
+
     bool handle_function_call(msg& message);
     void handle_event(msg& message);
     unsigned short next_message_id();

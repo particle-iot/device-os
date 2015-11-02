@@ -41,7 +41,6 @@ int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* 
     return err ? -abs(err) : plaintext_len;
 }
 
-
 #ifdef PARTICLE_PROTOCOL
 #include "lightssl_protocol.h"
 
@@ -150,14 +149,15 @@ int spark_protocol_handshake(SparkProtocol* protocol, void*) {
 }
 
 bool spark_protocol_event_loop(SparkProtocol* protocol, void*) {
-    return protocol->event_loop();
+    CoAPMessageType::Enum msgtype;
+    return protocol->event_loop(msgtype);
 }
 
 bool spark_protocol_is_initialized(SparkProtocol* protocol) {
     return protocol->is_initialized();
 }
 
-int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char *buf, const char *id, void*) {
+int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char *buf, const unsigned char *id, void*) {
     return protocol->presence_announcement(buf, id);
 }
 
