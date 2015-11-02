@@ -18,9 +18,7 @@
  */
 #pragma once
 
-#if PLATFORM_ID==3
-#define PARTICLE_PROTOCOL 1
-#endif
+#define PARTICLE_PROTOCOL
 
 #ifdef PARTICLE_PROTOCOL
 namespace particle { namespace protocol {

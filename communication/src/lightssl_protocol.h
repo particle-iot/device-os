@@ -55,6 +55,7 @@ public:
 		channelCallbacks.receive = callbacks.receive;
 		channelCallbacks.send = callbacks.send;
 		channel.init(keys.core_private, keys.server_public, (const uint8_t*)id, channelCallbacks);
+        Protocol::init(callbacks, descriptor);
 		initialized = true;
 	}
 

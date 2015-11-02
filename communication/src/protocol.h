@@ -305,21 +305,23 @@ public:
 	{
 		Message message;
 		ProtocolError error = channel.receive(message);
-		if (error) return error;
-
-		if (message.length())
+		if (!error)
 		{
-			error = handle_received_message(message);
-			if (error)
+			if (message.length())
 			{
-				// bail if and only if there was an error
-				chunkedTransfer.cancel(callbacks.finish_firmware_update);
-				return error;
+				error = handle_received_message(message);
+			}
+			else
+			{
+				error = event_loop_idle();
 			}
 		}
-		else
+
+		if (error)
 		{
-			error = event_loop_idle();
+			// bail if and only if there was an error
+			chunkedTransfer.cancel(callbacks.finish_firmware_update);
+			return error;
 		}
 		return error;
 	}
