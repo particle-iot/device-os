@@ -84,6 +84,12 @@ void manage_serial_flasher()
     {
         system_firmwareUpdate(&Serial);
     }
+#if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
+    else if(SPARK_FLASH_UPDATE == 4)
+    {
+        system_avrdudeFirmwareUpdate(&Serial);
+    }
+#endif
 }
 
 /**
