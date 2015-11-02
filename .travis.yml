@@ -1,21 +1,19 @@
-language: cpp 
-before_install:
-  - sudo apt-get update
+sudo: required
+services:
+  - docker
 install:
-  # - npm install -g particle-cli
-  - './ci/install_arm_gcc.sh && ./ci/install_gcc.sh'
-  # - ./ci/create_spark_cli_json.sh
-  - source ./ci/install_boost.sh
+  - docker login --email=$DOCKER_HUB_EMAIL --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD
+  - wget https://github.com/spark/firmware-buildpack-builder/archive/master.tar.gz -O - | tar -xz -C ../ --strip-components 1
+  - ../bin/build-image
 
 script:
-  - ./ci/unit_tests.sh
+  - ../bin/run-tests
   # - 'if [ "${UNIT_TEST}" = "y" ]; then ./ci/unit_tests.sh; else cd $DIR && make -s clean all DEBUG_BUILD=$DEBUG_BUILD PLATFORM=$PLATFORM COMPILE_LTO=$COMPILE_LTO TEST=$TEST SPARK_CLOUD=$SPARK_CLOUD APP=$APP; fi'
-  - ./ci/build_boost.sh
-  - ./ci/enumerate_build_matrix.sh
   # TODO - ./ci/integration_tests.sh
   # TODO  - ./ci/test_memory_available_with_real_core.sh
 
 #after_success: ./ci/update-gh-pages.sh
+after_success: ../bin/push-image
 
 env:
   # matrix:
