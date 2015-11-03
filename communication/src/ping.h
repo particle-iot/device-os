@@ -11,6 +11,10 @@ class Pinger
 public:
 	Pinger() : expecting_ping_ack(false) {}
 
+	void reset() {
+		expecting_ping_ack = false;
+	}
+
 	/**
 	 * Handle ping messages
 	 */

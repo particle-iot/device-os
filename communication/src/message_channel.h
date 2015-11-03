@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <cstddef>
 #include "protocol_defs.h"
+#include "coap.h"
 
 namespace particle
 {
@@ -35,6 +36,7 @@ class Message
 	uint8_t* buffer;
 	size_t buffer_length;
 	size_t message_length;
+    int id;                     // if < 0 then not-defined.
 
 	size_t trim_capacity()
 	{
@@ -59,13 +61,17 @@ class Message
 public:
 	Message() : Message(nullptr, 0, 0) {}
 
-	Message(uint8_t* buf, size_t buflen, size_t msglen) : buffer(buf), buffer_length(buflen), message_length(msglen) {}
+	Message(uint8_t* buf, size_t buflen, size_t msglen) : buffer(buf), buffer_length(buflen), message_length(msglen), id(-1) {}
 	size_t capacity() const { return buffer_length; }
 	uint8_t* buf() const { return buffer; }
 	size_t length() const { return message_length; }
 
 	void set_length(size_t length) { if (length<=buffer_length) message_length = length; }
 	void set_buffer(uint8_t* buffer, size_t length) { this->buffer = buffer; buffer_length = length; message_length = 0; }
+
+    void set_id(message_id_t id) { this->id = id; }
+    bool has_id() { return id>=0; }
+    message_id_t get_id() { return message_id_t(id); }
 };
 
 /**

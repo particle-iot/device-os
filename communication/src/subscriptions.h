@@ -36,14 +36,13 @@ protected:
 
 	ProtocolError send_subscription(MessageChannel& channel, const char* filter, const char* device_id, SubscriptionScope::Enum scope)
 	{
-		uint16_t msg_id = 0;
 	    size_t msglen;
 	    Message message;
 	    channel.create(message);
         if (device_id)
-       	  msglen = subscription(message.buf(), msg_id, filter, device_id);
+       	  msglen = subscription(message.buf(), 0, filter, device_id);
         else
-          msglen = subscription(message.buf(), msg_id, filter, scope);
+          msglen = subscription(message.buf(), 0, filter, scope);
         message.set_length(msglen);
         return channel.send(message);
 	}

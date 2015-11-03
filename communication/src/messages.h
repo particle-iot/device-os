@@ -47,11 +47,14 @@ class Messages
 public:
 	static CoAPMessageType::Enum decodeType(const uint8_t* buf, size_t length)
 	{
-		size_t path_idx = 5 + (buf[0] & 0x0F);
-		if (length<path_idx)
-			return CoAPMessageType::ERROR;
+        if (length<4)
+            return CoAPMessageType::ERROR;
 
-		char path = buf[path_idx];
+        char path = 0;
+		size_t path_idx = 5 + (buf[0] & 0x0F);
+        if (path_idx<length)
+			 path = buf[path_idx];
+
 		switch (CoAP::code(buf))
 		{
 		case CoAPCode::GET:

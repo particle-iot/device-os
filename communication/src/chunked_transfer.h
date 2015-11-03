@@ -98,6 +98,13 @@ public:
 	{
 	}
 
+	void reset()
+	{
+		reset_updating();
+		bitmap = nullptr;
+		last_chunk_millis = 0;
+	}
+
 	template<typename callback_prepare, typename callback_millis> ProtocolError handle_update_begin(
 			token_t token, Message& message, MessageChannel& channel,
 			callback_prepare prepare_for_firmware_update,
@@ -380,8 +387,7 @@ public:
 				ProtocolError error = channel.create(message,
 						MISSED_CHUNKS_TO_SEND * sizeof(chunk_index_t) + 7);
 				if (!error)
-					error = send_missing_chunks(message, channel,
-							MISSED_CHUNKS_TO_SEND);
+					error = send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND);
 				if (error)
 					return error;
 			}

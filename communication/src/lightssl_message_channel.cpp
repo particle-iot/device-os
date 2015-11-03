@@ -15,8 +15,8 @@ namespace protocol
 	void LightSSLMessageChannel::init(const uint8_t* core_private, const uint8_t* server_public,
 			const uint8_t* device_id, Callbacks& callbacks)
 	{
-		memcpy(core_private_key, core_private, sizeof(core_private_key));
-		memcpy(server_public_key, server_public, sizeof(server_public_key));
+		memcpy(this->core_private_key, core_private, sizeof(core_private_key));
+		memcpy(this->server_public_key, server_public, sizeof(server_public_key));
 		memcpy(this->device_id, device_id, sizeof(this->device_id));
 		this->callbacks = callbacks;
 	}
@@ -43,8 +43,18 @@ namespace protocol
 			error = create(message, packet_size);
 			if (!error)
 			{
-				if (blocking_receive(message.buf(), packet_size) < 0)
+				uint8_t* buf = message.buf();
+				if (blocking_receive(buf, packet_size) < 0)
 					error = IO_ERROR;
+				else
+				{
+					  unsigned char next_iv[16];
+					  memcpy(next_iv, buf, 16);
+					  aes_setkey_dec(&aes, key, 128);
+					  aes_crypt_cbc(&aes, AES_DECRYPT, packet_size, iv_receive, buf, buf);
+					  memcpy(iv_receive, next_iv, 16);
+                      message.set_length(packet_size-buf[packet_size-1]);
+				}
 			}
 		}
 		else
@@ -150,6 +160,7 @@ namespace protocol
 			return error;
 		}
 
+		DEBUG("Handshake complete");
 		return NO_ERROR;
 	}
 

@@ -18,43 +18,110 @@ namespace particle
 namespace protocol
 {
 
+/**
+ * Tie ALL the bits together.
+ */
 class Protocol
 {
+	/**
+	 * The message channel that sends and receives message packets.
+	 */
 	MessageChannel& channel;
 
+	/**
+	 * The tick time of the last communication with the cloud.
+	 * todo - move this into the message channel?
+	 */
 	system_tick_t last_message_millis;
+
+	/**
+	 * The product_id represented by this device. set_product_id()
+	 */
     product_id_t product_id;
+
+    /**
+     * The product version for this device.
+     */
     product_firmware_version_t product_firmware_version;
 
+    /**
+     * Descriptor callbacks that provide externally hosted functions and variables.
+     */
     SparkDescriptor descriptor;
-    SparkCallbacks callbacks;
-    CommunicationsHandlers handlers;   // application callbacks
 
+    /**
+     * Functional callbacks that provide key system services to this communications layer.
+     */
+    SparkCallbacks callbacks;
+
+    /**
+     * Application-level callbacks.
+     */
+    CommunicationsHandlers handlers;
+
+    /**
+     * Manages Ping functionality.
+     */
     Pinger pinger;
+
+    /**
+     * Manages chunked file transfer functionality.
+     */
     ChunkedTransfer chunkedTransfer;
-    Functions functions;
-    Subscriptions subscriptions;
-    Publisher publisher;
+
+    /**
+     * Manages device-hosted variables.
+     */
     Variables variables;
 
+    /**
+     * Manages device-hosted functions.
+     */
+    Functions functions;
+
+    /**
+     * Manages subscriptions from this device.
+     */
+    Subscriptions subscriptions;
+
+    /**
+     * Manages published events from this device.
+     */
+    Publisher publisher;
+
+    /**
+     * The token ID for the next request made.
+     * If we have a bone-fide CoAP layer this will eventually disappear into that layer, just like message-id has.
+     */
     token_t token;
 
 protected:
 
+    /**
+     * Retrieves the next token.
+     */
     uint8_t next_token()
     {
     		return ++token;
     }
 
+    /**
+     * Send the hello message over the channel.
+     * @param was_ota_upgrade_successful {@code true} if the previous OTA update was successful.
+     */
 	ProtocolError hello(bool was_ota_upgrade_successful)
 	{
 		Message message;
 		channel.create(message);
 		size_t len = Messages::hello(message.buf(), 0, was_ota_upgrade_successful, PLATFORM_ID, product_id, product_firmware_version);
 		message.set_length(len);
+		last_message_millis = callbacks.millis();
 		return channel.send(message);
 	}
 
+	/**
+	 * Send a Ping message over the channel.
+	 */
 	ProtocolError ping()
 	{
 		Message message;
@@ -64,7 +131,9 @@ protected:
 		return channel.send(message);
 	}
 
-
+	/**
+	 * Background processing when there are no messages to handle.
+	 */
 	ProtocolError event_loop_idle()
 	{
 		if (chunkedTransfer.is_updating())
@@ -79,14 +148,22 @@ protected:
 		return NO_ERROR;
 	}
 
+	/**
+	 * The number of missed chunks to send in a single flight.
+	 */
 	const int MISSED_CHUNKS_TO_SEND = 50;
 
-	ProtocolError send_description(token_t token, int desc_flags)
+	/**
+	 * Produces and transmits a describe message.
+	 * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
+	 */
+	ProtocolError send_description(token_t token, message_id_t msg_id, int desc_flags)
 	{
 		Message message;
 		channel.create(message);
 		uint8_t* buf = message.buf();
-		size_t desc = Messages::description(buf, CoAP::message_id(buf), token);
+		message.set_id(msg_id);
+		size_t desc = Messages::description(buf, 0, token);
 
 		BufferAppender appender(buf+desc, message.capacity()-8);
 	    appender.append("{");
@@ -151,22 +228,26 @@ protected:
 	    return channel.send(message);
 	}
 
-	ProtocolError handle_received_message(Message& message)
+	/**
+	 * Decodes and dispatches a received message to its handler.
+	 */
+	ProtocolError handle_received_message(Message& message, CoAPMessageType::Enum& message_type)
 	{
 	  last_message_millis = callbacks.millis();
 	  pinger.message_received();
 	  uint8_t* queue = message.buf();
-	  CoAPMessageType::Enum message_type = Messages::decodeType(queue, message.length());
-
+	  message_type = Messages::decodeType(queue, message.length());
 	  token_t token = queue[4];
-
+	  message_id_t msg_id = CoAP::message_id(queue);
 	  ProtocolError error = NO_ERROR;
+      DEBUG("message type %d", message_type);
 	  switch (message_type)
 	  {
 	    case CoAPMessageType::DESCRIBE:
-	        error = send_description(token, DESCRIBE_SYSTEM);
+	    		// TODO - this violates CoAP since we are sending two different achnowledgements
+	        error = send_description(token, msg_id, DESCRIBE_SYSTEM);
 	        if (!error)
-	        		error = send_description(token, DESCRIBE_APPLICATION);
+	        		error = send_description(token, msg_id, DESCRIBE_APPLICATION);
 	        break;
 
 	    case CoAPMessageType::FUNCTION_CALL:
@@ -229,6 +310,9 @@ protected:
 	  return error;
 	}
 
+	/**
+	 * Handles the time delivered from the cloud.
+	 */
 	void handle_time_response(uint32_t time)
 	{
 	    // deduct latency
@@ -238,25 +322,32 @@ protected:
 	    callbacks.set_time(time,0,NULL);
 	}
 
-	void copy_and_init(void* target, size_t target_size, const void* source, size_t source_size)
+	/**
+	 * Copy an initialize a block of memory from a source to a target, where the source may be smaller than the target.
+	 * This handles the case where the caller was compiled using a smaller version of the struct memory than what is the current.
+	 *
+	 * @param target			The destination structure
+	 * @param target_size 	The size of the destination structure in bytes
+	 * @param source			The source structure
+	 * @param source_size	The size of the source structure in bytes
+	 */
+	static void copy_and_init(void* target, size_t target_size, const void* source, size_t source_size)
 	{
 		memcpy(target, source, source_size);
 		memset(((uint8_t*)target)+source_size, 0, target_size-source_size);
 	}
 
 public:
-	// todo - move message_id into CoAP layer, or make the MessageChannel
-	// contract specifically about coap. e.g. could add next_message_id() into MessageChannel
 	Protocol(MessageChannel& channel) : channel(channel) {}
 
 	void init(const SparkCallbacks &callbacks,
 			 const SparkDescriptor &descriptor)
 	{
 		memset(&handlers, 0, sizeof(handlers));
-		copy_and_init(&this->callbacks, sizeof(this->callbacks), &callbacks, callbacks.size);
-		copy_and_init(&this->descriptor, sizeof(this->descriptor), &descriptor, descriptor.size);
 		// the actual instances referenced may be smaller if the caller is compiled
 		// against an older version of this library.
+		copy_and_init(&this->callbacks, sizeof(this->callbacks), &callbacks, callbacks.size);
+		copy_and_init(&this->descriptor, sizeof(this->descriptor), &descriptor, descriptor.size);
 	}
 
     void set_handlers(CommunicationsHandlers& handlers)
@@ -269,28 +360,24 @@ public:
 	 */
 	int begin()
 	{
-		chunkedTransfer.reset_updating();
+		chunkedTransfer.reset();
+		pinger.reset();
 
 		ProtocolError error = channel.establish();
 		if (error)
 			return error;
 
-		Message message;
-		channel.create(message);
-		size_t length = hello(descriptor.was_ota_upgrade_successful());
-		message.set_length(length);
-		error = channel.send(message);
-
+		error = hello(descriptor.was_ota_upgrade_successful());
 		if (error)
 		{
 			ERROR("Hanshake: could not send hello message: %d", error);
 			return error;
 		}
 
-		error = event_loop();        // read the hello message from the server
+		error = event_loop(CoAPMessageType::HELLO, 2000);        // read the hello message from the server
 		if (error)
 		{
-			ERROR("Handshake: could not receive hello response");
+			ERROR("Handshake: could not receive hello response %d", error);
 			return error;
 		}
 
@@ -298,18 +385,45 @@ public:
 		return error;
 	}
 
+	/**
+	 * Wait for a specific message type to be received.
+	 * @param message_type		The type of message wait for
+	 * @param timeout			The duration to wait for the message before giving up.
+	 *
+	 * @returns NO_ERROR if the message was successfully matched within the timeout.
+	 * Returns MESSAGE_TIMEOUT if the message wasn't received within the timeout.
+	 * Other protocol errors may return additional error values.
+	 */
+	ProtocolError event_loop(CoAPMessageType::Enum message_type, system_tick_t timeout)
+	{
+	    system_tick_t start = callbacks.millis();
+	    do
+	    {
+	        CoAPMessageType::Enum msgtype;
+	        ProtocolError error = event_loop(msgtype);
+	        if (error) return error;
+	        if (msgtype==message_type)
+	            return NO_ERROR;
+	        // todo - ideally need a delay here
+	    }
+	    while ((callbacks.millis()-start) < timeout);
+	    return MESSAGE_TIMEOUT;
+	}
 
-	// Returns true if no errors and still connected.
-	// Returns false if there was an error, and we are probably disconnected.
-	ProtocolError event_loop(void)
+	/**
+	 * Processes one event. Retrieves the type of the event processed, or NONE if no event processed.
+	 * If an error occurs, the event type is undefined.
+	 */
+	ProtocolError event_loop(CoAPMessageType::Enum& message_type)
 	{
 		Message message;
+	    message_type = CoAPMessageType::NONE;
 		ProtocolError error = channel.receive(message);
 		if (!error)
 		{
 			if (message.length())
 			{
-				error = handle_received_message(message);
+				error = handle_received_message(message, message_type);
 			}
 			else
 			{
@@ -321,9 +435,19 @@ public:
 		{
 			// bail if and only if there was an error
 			chunkedTransfer.cancel(callbacks.finish_firmware_update);
+            WARN("Event loop error %d", error);
 			return error;
 		}
 		return error;
+	}
+
+	/**
+	 * no-arg version of event loop for those callers that don't care about the message.
+	 */
+	bool event_loop()
+	{
+		CoAPMessageType::Enum message;
+		return !event_loop(message);
 	}
 
 	// Returns true on success, false on sending timeout or rate-limiting failure

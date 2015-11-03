@@ -26,13 +26,14 @@
 #include "spark_descriptor.h"
 #include "protocol.h"
 #include "lightssl_message_channel.h"
+#include "coap_channel.h"
 
 namespace particle {
 namespace protocol {
 
 class LightSSLProtocol : public Protocol
 {
-	LightSSLMessageChannel channel;
+	CoAPChannel<LightSSLMessageChannel> channel;
 	bool initialized;
 
 	static void handle_seed(const uint8_t* data, size_t len)
