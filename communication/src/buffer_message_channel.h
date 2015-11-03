@@ -31,7 +31,7 @@ namespace particle
 namespace protocol
 {
 
-template<size_t max, size_t prefix, size_t suffix>
+template<size_t max, size_t prefix=0, size_t suffix=0>
 class BufferMessageChannel : public AbstractMessageChannel
 {
 protected:
