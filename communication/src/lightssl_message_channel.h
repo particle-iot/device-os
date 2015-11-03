@@ -45,8 +45,8 @@ public:
 	{
 		system_tick_t (*millis)();
 		void (*handle_seed)(const uint8_t* seed, size_t length);
-		int (*send)(const unsigned char *buf, uint32_t buflen);
-		int (*receive)(unsigned char *buf, uint32_t buflen);
+		int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
+		int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
 	};
 
 private:

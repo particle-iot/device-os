@@ -146,7 +146,7 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum message_type, system_tick_t
 bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
 {
     message_type = CoAPMessageType::NONE;
-  int bytes_received = callbacks.receive(queue, 2);
+  int bytes_received = callbacks.receive(queue, 2, nullptr);
   if (2 <= bytes_received)
   {
     message_type = handle_received_message();
@@ -239,7 +239,7 @@ int SparkProtocol::blocking_send(const unsigned char *buf, int length)
 
   while (length > byte_count)
   {
-    bytes_or_error = callbacks.send(buf + byte_count, length - byte_count);
+    bytes_or_error = callbacks.send(buf + byte_count, length - byte_count, nullptr);
     if (0 > bytes_or_error)
     {
       // error, disconnected
@@ -273,7 +273,7 @@ int SparkProtocol::blocking_receive(unsigned char *buf, int length)
 
   while (length > byte_count)
   {
-    bytes_or_error = callbacks.receive(buf + byte_count, length - byte_count);
+    bytes_or_error = callbacks.receive(buf + byte_count, length - byte_count, nullptr);
     if (0 > bytes_or_error)
     {
       // error, disconnected

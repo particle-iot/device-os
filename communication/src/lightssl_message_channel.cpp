@@ -42,7 +42,7 @@ namespace protocol
 	{
 		ProtocolError error = NO_ERROR;
                 // NB: use callbacks.receive() to return immediately, rather than blocking_receive()
-		int bytes_received = callbacks.receive(queue, 2);
+		int bytes_received = callbacks.receive(queue, 2, nullptr);
 		if (2 == bytes_received)
 		{
 			size_t packet_size = queue[0] << 8 | queue[1];
@@ -54,12 +54,12 @@ namespace protocol
 					error = IO_ERROR;
 				else
 				{
-					  unsigned char next_iv[16];
-					  memcpy(next_iv, buf, 16);
-					  aes_setkey_dec(&aes, key, 128);
-					  aes_crypt_cbc(&aes, AES_DECRYPT, packet_size, iv_receive, buf, buf);
-					  memcpy(iv_receive, next_iv, 16);
-                                            message.set_length(packet_size-buf[packet_size-1]);
+                                        unsigned char next_iv[16];
+                                        memcpy(next_iv, buf, 16);
+                                        aes_setkey_dec(&aes, key, 128);
+                                        aes_crypt_cbc(&aes, AES_DECRYPT, packet_size, iv_receive, buf, buf);
+                                        memcpy(iv_receive, next_iv, 16);
+                                        message.set_length(packet_size-buf[packet_size-1]);
 				}
 			}
 		}
@@ -182,7 +182,7 @@ namespace protocol
 		while (length > byte_count)
 		{
 			bytes_or_error = callbacks.send(buf + byte_count,
-					length - byte_count);
+					length - byte_count, nullptr);
 			if (0 > bytes_or_error)
 			{
 				// error, disconnected
@@ -217,7 +217,7 @@ namespace protocol
 		while (length > byte_count)
 		{
 			bytes_or_error = callbacks.receive(buf + byte_count,
-					length - byte_count);
+					length - byte_count, nullptr);
 			if (0 > bytes_or_error)
 			{
 				// error, disconnected

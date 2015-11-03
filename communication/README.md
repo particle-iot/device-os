@@ -37,3 +37,13 @@ Having problems or have awesome suggestions? Connect with us [here.](https://com
 Latest Version: v1.0.0
 
 
+
+
+## DTLS Tips
+
+### Generating a new key
+
+openssl ecparam -name prime256v1 -genkey -out server.pem
+openssl ec -in server.pem -out private.der -outform DER
+openssl ec -in server.pem -out public.der -outform DER -pubout
+

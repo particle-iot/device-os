@@ -209,7 +209,7 @@ void Spark_Process_Events()
 
 // Returns number of bytes sent or -1 if an error occurred
 
-int Spark_Send(const unsigned char *buf, uint32_t buflen)
+int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
 {
     if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || cloudSocketClosed())
     {
@@ -225,7 +225,7 @@ int Spark_Send(const unsigned char *buf, uint32_t buflen)
 
 // Returns number of bytes received or -1 if an error occurred
 
-int Spark_Receive(unsigned char *buf, uint32_t buflen)
+int Spark_Receive(unsigned char *buf, uint32_t buflen, void* reserved)
 {
     if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || cloudSocketClosed())
     {

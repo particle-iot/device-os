@@ -48,8 +48,8 @@ STATIC_ASSERT(SparkKeys_size, sizeof(SparkKeys)==16 || sizeof(void*)!=4);
 struct SparkCallbacks
 {
     uint16_t size;
-  int (*send)(const unsigned char *buf, uint32_t buflen);
-  int (*receive)(unsigned char *buf, uint32_t buflen);
+  int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
+  int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
 
   /**
    * @param flags 1 dry run only.
