@@ -28,15 +28,21 @@ namespace protocol
 	 */
 	ProtocolError LightSSLMessageChannel::send(Message& message)
 	{
-		uint8_t* buf = message.buf()-2;
-		size_t to_write = wrap(buf, message.length());
-		return blocking_send(buf, to_write)<0 ? IO_ERROR : NO_ERROR;
+            if (message.length()>20)
+                DEBUG("message length %d, last 20 bytes %s ", message.length(), message.buf()+message.length()-20);
+            else
+                DEBUG("message length %d ", message.length());
+
+            uint8_t* buf = message.buf()-2;
+            size_t to_write = wrap(buf, message.length());
+            return blocking_send(buf, to_write)<0 ? IO_ERROR : NO_ERROR;
 	}
 
 	ProtocolError LightSSLMessageChannel::receive(Message& message)
 	{
 		ProtocolError error = NO_ERROR;
-		int bytes_received = blocking_receive(queue, 2);
+                // NB: use callbacks.receive() to return immediately, rather than blocking_receive()
+		int bytes_received = callbacks.receive(queue, 2);
 		if (2 == bytes_received)
 		{
 			size_t packet_size = queue[0] << 8 | queue[1];
@@ -53,13 +59,14 @@ namespace protocol
 					  aes_setkey_dec(&aes, key, 128);
 					  aes_crypt_cbc(&aes, AES_DECRYPT, packet_size, iv_receive, buf, buf);
 					  memcpy(iv_receive, next_iv, 16);
-                      message.set_length(packet_size-buf[packet_size-1]);
+                                            message.set_length(packet_size-buf[packet_size-1]);
 				}
 			}
 		}
 		else
 		{
 			error = create(message, 0);
+                        message.set_length(0);
 		}
 		return error;
 	}
