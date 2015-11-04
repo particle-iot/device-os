@@ -75,6 +75,7 @@ int main( void )
 #define DFL_KEY_FILE            ""
 #define DFL_PSK                 ""
 #define DFL_PSK_IDENTITY        "Client_identity"
+#define DFL_ECJPAKE_PW          NULL
 #define DFL_FORCE_CIPHER        0
 #define DFL_RENEGOTIATION       MBEDTLS_SSL_RENEGOTIATION_DISABLED
 #define DFL_ALLOW_LEGACY        -2
@@ -90,6 +91,7 @@ int main( void )
 #define DFL_DHMLEN              -1
 #define DFL_RECONNECT           0
 #define DFL_RECO_DELAY          0
+#define DFL_RECONNECT_HARD      0
 #define DFL_TICKETS             MBEDTLS_SSL_SESSION_TICKETS_ENABLED
 #define DFL_ALPN_STRING         NULL
 #define DFL_TRANSPORT           MBEDTLS_SSL_TRANSPORT_STREAM
@@ -210,6 +212,13 @@ int main( void )
 #define USAGE_RENEGO ""
 #endif
 
+#if defined(MBEDTLS_KEY_EXCHANGE_ECJPAKE_ENABLED)
+#define USAGE_ECJPAKE \
+    "    ecjpake_pw=%%s       default: none (disabled)\n"
+#else
+#define USAGE_ECJPAKE ""
+#endif
+
 #define USAGE \
     "\n usage: ssl_client2 param=<>...\n"                   \
     "\n acceptable parameters:\n"                           \
@@ -222,7 +231,7 @@ int main( void )
     "    debug_level=%%d      default: 0 (disabled)\n"      \
     "    nbio=%%d             default: 0 (blocking I/O)\n"  \
     "                        options: 1 (non-blocking), 2 (added delays)\n" \
-    "    read_timeout=%%d     default: 0 (no timeout)\n"    \
+    "    read_timeout=%%d     default: 0 ms (no timeout)\n"    \
     "    max_resend=%%d       default: 0 (no resend on timeout)\n" \
     "\n"                                                    \
     USAGE_DTLS                                              \
@@ -232,12 +241,14 @@ int main( void )
     USAGE_IO                                                \
     "\n"                                                    \
     USAGE_PSK                                               \
+    USAGE_ECJPAKE                                           \
     "\n"                                                    \
     "    allow_legacy=%%d     default: (library default: no)\n"      \
     USAGE_RENEGO                                            \
     "    exchanges=%%d        default: 1\n"                 \
     "    reconnect=%%d        default: 0 (disabled)\n"      \
     "    reco_delay=%%d       default: 0 seconds\n"         \
+    "    reconnect_hard=%%d   default: 0 (disabled)\n"      \
     USAGE_TICKETS                                           \
     USAGE_MAX_FRAG_LEN                                      \
     USAGE_TRUNC_HMAC                                        \
@@ -277,6 +288,7 @@ struct options
     const char *key_file;       /* the file with the client key             */
     const char *psk;            /* the pre-shared key                       */
     const char *psk_identity;   /* the pre-shared key identity              */
+    const char *ecjpake_pw;     /* the EC J-PAKE password                   */
     int force_ciphersuite[2];   /* protocol/ciphersuite to use, or all      */
     int renegotiation;          /* enable / disable renegotiation           */
     int allow_legacy;           /* allow legacy renegotiation               */
@@ -293,6 +305,7 @@ struct options
     int dhmlen;                 /* minimum DHM params len in bits           */
     int reconnect;              /* attempt to resume session                */
     int reco_delay;             /* delay in seconds before resuming session */
+    int reconnect_hard;         /* unexpectedly reconnect from the same port */
     int tickets;                /* enable / disable session tickets         */
     const char *alpn_string;    /* ALPN supported protocols                 */
     int transport;              /* TLS or DTLS?                             */
@@ -466,6 +479,7 @@ int main( int argc, char *argv[] )
     opt.key_file            = DFL_KEY_FILE;
     opt.psk                 = DFL_PSK;
     opt.psk_identity        = DFL_PSK_IDENTITY;
+    opt.ecjpake_pw          = DFL_ECJPAKE_PW;
     opt.force_ciphersuite[0]= DFL_FORCE_CIPHER;
     opt.renegotiation       = DFL_RENEGOTIATION;
     opt.allow_legacy        = DFL_ALLOW_LEGACY;
@@ -481,6 +495,7 @@ int main( int argc, char *argv[] )
     opt.dhmlen              = DFL_DHMLEN;
     opt.reconnect           = DFL_RECONNECT;
     opt.reco_delay          = DFL_RECO_DELAY;
+    opt.reconnect_hard      = DFL_RECONNECT_HARD;
     opt.tickets             = DFL_TICKETS;
     opt.alpn_string         = DFL_ALPN_STRING;
     opt.transport           = DFL_TRANSPORT;
@@ -553,6 +568,8 @@ int main( int argc, char *argv[] )
             opt.psk = q;
         else if( strcmp( p, "psk_identity" ) == 0 )
             opt.psk_identity = q;
+        else if( strcmp( p, "ecjpake_pw" ) == 0 )
+            opt.ecjpake_pw = q;
         else if( strcmp( p, "force_ciphersuite" ) == 0 )
         {
             opt.force_ciphersuite[0] = mbedtls_ssl_get_ciphersuite_id( q );
@@ -601,6 +618,12 @@ int main( int argc, char *argv[] )
         {
             opt.reco_delay = atoi( q );
             if( opt.reco_delay < 0 )
+                goto usage;
+        }
+        else if( strcmp( p, "reconnect_hard" ) == 0 )
+        {
+            opt.reconnect_hard = atoi( q );
+            if( opt.reconnect_hard < 0 || opt.reconnect_hard > 1 )
                 goto usage;
         }
         else if( strcmp( p, "tickets" ) == 0 )
@@ -1194,6 +1217,19 @@ int main( int argc, char *argv[] )
     }
 #endif
 
+#if defined(MBEDTLS_KEY_EXCHANGE_ECJPAKE_ENABLED)
+    if( opt.ecjpake_pw != DFL_ECJPAKE_PW )
+    {
+        if( ( ret = mbedtls_ssl_set_hs_ecjpake_password( &ssl,
+                        (const unsigned char *) opt.ecjpake_pw,
+                                        strlen( opt.ecjpake_pw ) ) ) != 0 )
+        {
+            mbedtls_printf( " failed\n  ! mbedtls_ssl_set_hs_ecjpake_password returned %d\n\n", ret );
+            goto exit;
+        }
+    }
+#endif
+
     if( opt.nbio == 2 )
         mbedtls_ssl_set_bio( &ssl, &server_fd, my_send, my_recv, NULL );
     else
@@ -1479,7 +1515,38 @@ send_request:
     }
 
     /*
-     * 7b. Continue doing data exchanges?
+     * 7b. Simulate hard reset and reconnect from same port?
+     */
+    if( opt.reconnect_hard != 0 )
+    {
+        opt.reconnect_hard = 0;
+
+        mbedtls_printf( "  . Restarting connection from same port..." );
+        fflush( stdout );
+
+        if( ( ret = mbedtls_ssl_session_reset( &ssl ) ) != 0 )
+        {
+            mbedtls_printf( " failed\n  ! mbedtls_ssl_session_reset returned -0x%x\n\n", -ret );
+            goto exit;
+        }
+
+        while( ( ret = mbedtls_ssl_handshake( &ssl ) ) != 0 )
+        {
+            if( ret != MBEDTLS_ERR_SSL_WANT_READ &&
+                ret != MBEDTLS_ERR_SSL_WANT_WRITE )
+            {
+                mbedtls_printf( " failed\n  ! mbedtls_ssl_handshake returned -0x%x\n\n", -ret );
+                goto exit;
+            }
+        }
+
+        mbedtls_printf( " ok\n" );
+
+        goto send_request;
+    }
+
+    /*
+     * 7c. Continue doing data exchanges?
      */
     if( --opt.exchanges > 0 )
         goto send_request;
@@ -1489,6 +1556,7 @@ send_request:
      */
 close_notify:
     mbedtls_printf( "  . Closing the connection..." );
+    fflush( stdout );
 
     /* No error checking, the connection might be closed already */
     do ret = mbedtls_ssl_close_notify( &ssl );
@@ -1513,7 +1581,6 @@ reconnect:
 #endif
 
         mbedtls_printf( "  . Reconnecting with saved session..." );
-        fflush( stdout );
 
         if( ( ret = mbedtls_ssl_session_reset( &ssl ) ) != 0 )
         {

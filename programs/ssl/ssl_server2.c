@@ -102,6 +102,7 @@ int main( void )
 #define DFL_KEY_FILE2           ""
 #define DFL_PSK                 ""
 #define DFL_PSK_IDENTITY        "Client_identity"
+#define DFL_ECJPAKE_PW          NULL
 #define DFL_PSK_LIST            NULL
 #define DFL_FORCE_CIPHER        0
 #define DFL_VERSION_SUITES      NULL
@@ -293,6 +294,13 @@ int main( void )
 #define USAGE_RENEGO ""
 #endif
 
+#if defined(MBEDTLS_KEY_EXCHANGE_ECJPAKE_ENABLED)
+#define USAGE_ECJPAKE \
+    "    ecjpake_pw=%%s       default: none (disabled)\n"
+#else
+#define USAGE_ECJPAKE ""
+#endif
+
 #define USAGE \
     "\n usage: ssl_server2 param=<>...\n"                   \
     "\n acceptable parameters:\n"                           \
@@ -301,7 +309,7 @@ int main( void )
     "    debug_level=%%d      default: 0 (disabled)\n"      \
     "    nbio=%%d             default: 0 (blocking I/O)\n"  \
     "                        options: 1 (non-blocking), 2 (added delays)\n" \
-    "    read_timeout=%%d     default: 0 (no timeout)\n"    \
+    "    read_timeout=%%d     default: 0 ms (no timeout)\n"    \
     "\n"                                                    \
     USAGE_DTLS                                              \
     USAGE_COOKIES                                           \
@@ -314,6 +322,7 @@ int main( void )
     USAGE_SNI                                               \
     "\n"                                                    \
     USAGE_PSK                                               \
+    USAGE_ECJPAKE                                           \
     "\n"                                                    \
     "    allow_legacy=%%d     default: (library default: no)\n"      \
     USAGE_RENEGO                                            \
@@ -358,6 +367,7 @@ struct options
     const char *psk;            /* the pre-shared key                       */
     const char *psk_identity;   /* the pre-shared key identity              */
     char *psk_list;             /* list of PSK id/key pairs for callback    */
+    const char *ecjpake_pw;     /* the EC J-PAKE password                   */
     int force_ciphersuite[2];   /* protocol/ciphersuite to use, or all      */
     const char *version_suites; /* per-version ciphersuites                 */
     int renegotiation;          /* enable / disable renegotiation           */
@@ -900,6 +910,7 @@ int main( int argc, char *argv[] )
     opt.psk                 = DFL_PSK;
     opt.psk_identity        = DFL_PSK_IDENTITY;
     opt.psk_list            = DFL_PSK_LIST;
+    opt.ecjpake_pw          = DFL_ECJPAKE_PW;
     opt.force_ciphersuite[0]= DFL_FORCE_CIPHER;
     opt.version_suites      = DFL_VERSION_SUITES;
     opt.renegotiation       = DFL_RENEGOTIATION;
@@ -985,6 +996,8 @@ int main( int argc, char *argv[] )
             opt.psk_identity = q;
         else if( strcmp( p, "psk_list" ) == 0 )
             opt.psk_list = q;
+        else if( strcmp( p, "ecjpake_pw" ) == 0 )
+            opt.ecjpake_pw = q;
         else if( strcmp( p, "force_ciphersuite" ) == 0 )
         {
             opt.force_ciphersuite[0] = mbedtls_ssl_get_ciphersuite_id( q );
@@ -1838,6 +1851,12 @@ reset:
     }
 #endif
 
+    if( ret == MBEDTLS_ERR_SSL_CLIENT_RECONNECT )
+    {
+        mbedtls_printf( "  ! Client initiated reconnection from same port\n" );
+        goto handshake;
+    }
+
 #ifdef MBEDTLS_ERROR_C
     if( ret != 0 )
     {
@@ -1898,11 +1917,25 @@ reset:
     }
 #endif /* MBEDTLS_SSL_DTLS_HELLO_VERIFY */
 
+#if defined(MBEDTLS_KEY_EXCHANGE_ECJPAKE_ENABLED)
+    if( opt.ecjpake_pw != DFL_ECJPAKE_PW )
+    {
+        if( ( ret = mbedtls_ssl_set_hs_ecjpake_password( &ssl,
+                        (const unsigned char *) opt.ecjpake_pw,
+                                        strlen( opt.ecjpake_pw ) ) ) != 0 )
+        {
+            mbedtls_printf( " failed\n  ! mbedtls_ssl_set_hs_ecjpake_password returned %d\n\n", ret );
+            goto exit;
+        }
+    }
+#endif
+
     mbedtls_printf( " ok\n" );
 
     /*
      * 4. Handshake
      */
+handshake:
     mbedtls_printf( "  . Performing the SSL/TLS handshake..." );
     fflush( stdout );
 
