@@ -152,6 +152,8 @@
  */
 #define MBEDTLS_TLS_EXT_SUPPORTED_POINT_FORMATS_PRESENT (1 << 0)
 #define MBEDTLS_TLS_EXT_ECJPAKE_KKPP_OK                 (1 << 1)
+#define MBEDTLS_TLS_EXT_CLIENT_CERTIFICATE_TYPE_PRESENT (1 << 2)
+#define MBEDTLS_TLS_EXT_SERVER_CERTIFICATE_TYPE_PRESENT (1 << 3)
 
 #ifdef __cplusplus
 extern "C" {
@@ -219,7 +221,10 @@ struct mbedtls_ssl_handshake_params
                                               resending messages             */
     unsigned char alt_out_ctr[8];       /*!<  Alternative record epoch/counter
                                               for resending messages         */
+#if defined(MBEDTLS_SSL_DTLS_HANDSHAKE_QUEUE)
+    mbedtls_ssl_hs_queue_item *hs_queue;          /*!<  Queued out of order messages */
 #endif
+#endif /* MBEDTLS_SSL_PROTO_DTLS */
 
     /*
      * Checksum contexts
@@ -261,6 +266,11 @@ struct mbedtls_ssl_handshake_params
 #endif /* MBEDTLS_SSL_SESSION_TICKETS */
 #if defined(MBEDTLS_SSL_EXTENDED_MASTER_SECRET)
     int extended_ms;                    /*!< use Extended Master Secret? */
+#endif
+
+#if defined(MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT)
+    int client_cert_type;    /* cert types supported */
+    int server_cert_type;    /* cert types supported */
 #endif
 };
 
@@ -328,6 +338,17 @@ struct mbedtls_ssl_flight_item
     unsigned char type;     /*!< type of the message: handshake or CCS  */
     mbedtls_ssl_flight_item *next;  /*!< next handshake message(s)              */
 };
+
+#if defined(MBEDTLS_SSL_DTLS_HANDSHAKE_QUEUE)
+struct mbedtls_ssl_hs_queue_item
+{
+    unsigned char *p;       /*!< message, including handshake headers   */
+    size_t len;             /*!< length of p                            */
+    unsigned char type;     /*!< type of the message: handshake or CCS  */
+    unsigned int seq;       /*!< sequence number of queued message      */
+    mbedtls_ssl_hs_queue_item *next;  /*!< next queued message(s)              */
+};
+#endif
 #endif /* MBEDTLS_SSL_PROTO_DTLS */
 
 
@@ -433,6 +454,9 @@ int mbedtls_ssl_check_cert_usage( const mbedtls_x509_crt *cert,
                           const mbedtls_ssl_ciphersuite_t *ciphersuite,
                           int cert_endpoint,
                           uint32_t *flags );
+
+int mbedtls_ssl_write_x509_certificate( mbedtls_ssl_context *ssl,
+                                        size_t *clen );
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
 
 void mbedtls_ssl_write_version( int major, int minor, int transport,
@@ -487,6 +511,11 @@ static inline int mbedtls_ssl_safer_memcmp( const void *a, const void *b, size_t
 
     return( diff );
 }
+
+#if defined(MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT)
+int mbedtls_ssl_check_client_certificate_type( const mbedtls_ssl_context *ssl, int cert_type );
+int mbedtls_ssl_check_server_certificate_type( const mbedtls_ssl_context *ssl, int cert_type );
+#endif
 
 #ifdef __cplusplus
 }
