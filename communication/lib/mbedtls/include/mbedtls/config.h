@@ -1181,6 +1181,15 @@
 #define MBEDTLS_SSL_DTLS_BADMAC_LIMIT
 
 /**
+ * \def MBEDTLS_SSL_DTLS_HANDSHAKE_QUEUE
+ *
+ * Enable out of order message queuing during the DTLS handshake
+ *
+ * Requires: MBEDTLS_SSL_PROTO_DTLS
+ */
+#define MBEDTLS_SSL_DTLS_HANDSHAKE_QUEUE
+
+/**
  * \def MBEDTLS_SSL_SESSION_TICKETS
  *
  * Enable support for RFC 5077 session tickets in SSL.
@@ -1317,6 +1326,14 @@
  * Comment this macro to disallow using RSASSA-PSS in certificates.
  */
 #define MBEDTLS_X509_RSASSA_PSS_SUPPORT
+
+/**
+ * \def MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT
+ *
+ * Enable parsing and verification of raw public keys,
+ * according to RFC7250
+ */
+#define MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT
 
 /**
  * \def MBEDTLS_ZLIB_SUPPORT
