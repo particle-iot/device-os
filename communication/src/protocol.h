@@ -127,6 +127,7 @@ protected:
 		Message message;
 		channel.create(message);
 		size_t len = Messages::ping(message.buf(), 0);
+        last_message_millis = callbacks.millis();
 		message.set_length(len);
 		return channel.send(message);
 	}
@@ -142,7 +143,7 @@ protected:
 		}
 		else
 		{
-			ProtocolError error = pinger.process(last_message_millis-callbacks.millis(), [this]{return ping();});
+			ProtocolError error = pinger.process(callbacks.millis()-last_message_millis, [this]{return ping();});
 			if (error) return error;
 		}
 		return NO_ERROR;
@@ -163,9 +164,9 @@ protected:
 		channel.create(message);
 		uint8_t* buf = message.buf();
 		message.set_id(msg_id);
-		size_t desc = Messages::description(buf, 0, token);
+		size_t desc = Messages::description(buf, msg_id, token);
 
-		BufferAppender appender(buf+desc, message.capacity()-8);
+		BufferAppender appender(buf+desc, message.capacity());
 	    appender.append("{");
 	    bool has_content = false;
 
@@ -245,9 +246,9 @@ protected:
 	  {
 	    case CoAPMessageType::DESCRIBE:
 	    		// TODO - this violates CoAP since we are sending two different achnowledgements
-	        error = send_description(token, msg_id, DESCRIBE_SYSTEM);
-	        if (!error)
-	        		error = send_description(token, msg_id, DESCRIBE_APPLICATION);
+	        error = send_description(token, msg_id, DESCRIBE_SYSTEM|DESCRIBE_APPLICATION);
+	        //if (!error)
+	        //		error = send_description(token, msg_id, DESCRIBE_APPLICATION);
 	        break;
 
 	    case CoAPMessageType::FUNCTION_CALL:

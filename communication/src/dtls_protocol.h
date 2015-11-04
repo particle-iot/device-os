@@ -56,7 +56,10 @@ public:
 		channelCallbacks.handle_seed = handle_seed;
 		channelCallbacks.receive = callbacks.receive;
 		channelCallbacks.send = callbacks.send;
-		channel.init(keys.core_private, keys.server_public, (const uint8_t*)id, channelCallbacks);
+		channel.init(keys.core_private, MAX_DEVICE_PRIVATE_KEY_LENGTH,
+				keys.core_public, MAX_DEVICE_PUBLIC_KEY_LENGTH,
+				keys.server_public, MAX_SERVER_PUBLIC_KEY_LENGTH,
+				(const uint8_t*)id, channelCallbacks);
         Protocol::init(callbacks, descriptor);
 		initialized = true;
 	}
