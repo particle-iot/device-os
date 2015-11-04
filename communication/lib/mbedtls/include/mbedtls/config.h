@@ -695,6 +695,25 @@
 #define MBEDTLS_KEY_EXCHANGE_ECDH_RSA_ENABLED
 
 /**
+ * \def MBEDTLS_KEY_EXCHANGE_ECJPAKE_ENABLED
+ *
+ * Enable the ECJPAKE based ciphersuite modes in SSL / TLS.
+ *
+ * \warning This is currently experimental. EC J-PAKE support is based on the
+ * Thread v1.0.0 specification; incompatible changes to the specification
+ * might still happen. For this reason, this is disabled by default.
+ *
+ * Requires: MBEDTLS_ECJPAKE_C
+ *           MBEDTLS_SHA256_C
+ *           MBEDTLS_ECP_DP_SECP256R1_ENABLED
+ *
+ * This enables the following ciphersuites (if other requisites are
+ * enabled as well):
+ *      MBEDTLS_TLS_ECJPAKE_WITH_AES_128_CCM_8
+ */
+//#define MBEDTLS_KEY_EXCHANGE_ECJPAKE_ENABLED
+
+/**
  * \def MBEDTLS_PK_PARSE_EC_EXTENDED
  *
  * Enhance support for reading EC keys using variants of SEC1 not allowed by
@@ -1135,6 +1154,22 @@
 #define MBEDTLS_SSL_DTLS_HELLO_VERIFY
 
 /**
+ * \def MBEDTLS_SSL_DTLS_CLIENT_PORT_REUSE
+ *
+ * Enable server-side support for clients that reconnect from the same port.
+ *
+ * Some clients unexpectedly close the connection and try to reconnect using the
+ * same source port. This needs special support from the server to handle the
+ * new connection securely, as described in section 4.2.8 of RFC 6347. This
+ * flag enables that support.
+ *
+ * Requires: MBEDTLS_SSL_DTLS_HELLO_VERIFY
+ *
+ * Comment this to disable support for clients reusing the source port.
+ */
+#define MBEDTLS_SSL_DTLS_CLIENT_PORT_REUSE
+
+/**
  * \def MBEDTLS_SSL_DTLS_BADMAC_LIMIT
  *
  * Enable support for a limit of records with bad MAC.
@@ -1158,6 +1193,16 @@
  * Comment this macro to disable support for SSL session tickets
  */
 #define MBEDTLS_SSL_SESSION_TICKETS
+
+/**
+ * \def MBEDTLS_SSL_EXPORT_KEYS
+ *
+ * Enable support for exporting key block and master secret.
+ * This is required for certain users of TLS, e.g. EAP-TLS.
+ *
+ * Comment this macro to disable support for key export
+ */
+#define MBEDTLS_SSL_EXPORT_KEYS
 
 /**
  * \def MBEDTLS_SSL_SERVER_NAME_INDICATION
@@ -1229,6 +1274,8 @@
  *
  * If set, the X509 parser will not break-off when parsing an X509 certificate
  * and encountering an unknown critical extension.
+ *
+ * \warning Depending on your PKI use, enabling this can be a security risk!
  *
  * Uncomment to prevent an error.
  */
@@ -1671,6 +1718,25 @@
 #define MBEDTLS_ECDSA_C
 
 /**
+ * \def MBEDTLS_ECJPAKE_C
+ *
+ * Enable the elliptic curve J-PAKE library.
+ *
+ * \warning This is currently experimental. EC J-PAKE support is based on the
+ * Thread v1.0.0 specification; incompatible changes to the specification
+ * might still happen. For this reason, this is disabled by default.
+ *
+ * Module:  library/ecjpake.c
+ * Caller:
+ *
+ * This module is used by the following key exchanges:
+ *      ECJPAKE
+ *
+ * Requires: MBEDTLS_ECP_C, MBEDTLS_MD_C
+ */
+//#define MBEDTLS_ECJPAKE_C
+
+/**
  * \def MBEDTLS_ECP_C
  *
  * Enable the elliptic curve over GF(p) library.
@@ -1678,6 +1744,7 @@
  * Module:  library/ecp.c
  * Caller:  library/ecdh.c
  *          library/ecdsa.c
+ *          library/ecjpake.c
  *
  * Requires: MBEDTLS_BIGNUM_C and at least one MBEDTLS_ECP_DP_XXX_ENABLED
  */

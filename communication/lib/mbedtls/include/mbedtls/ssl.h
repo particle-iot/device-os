@@ -55,26 +55,6 @@
 #include <time.h>
 #endif
 
-/* For convenience below and in programs */
-#if defined(MBEDTLS_KEY_EXCHANGE_PSK_ENABLED) ||                           \
-    defined(MBEDTLS_KEY_EXCHANGE_RSA_PSK_ENABLED) ||                       \
-    defined(MBEDTLS_KEY_EXCHANGE_DHE_PSK_ENABLED) ||                       \
-    defined(MBEDTLS_KEY_EXCHANGE_ECDHE_PSK_ENABLED)
-#define MBEDTLS_KEY_EXCHANGE__SOME__PSK_ENABLED
-#endif
-
-#if defined(MBEDTLS_KEY_EXCHANGE_ECDHE_RSA_ENABLED) ||                     \
-    defined(MBEDTLS_KEY_EXCHANGE_ECDHE_ECDSA_ENABLED) ||                   \
-    defined(MBEDTLS_KEY_EXCHANGE_ECDHE_PSK_ENABLED)
-#define MBEDTLS_KEY_EXCHANGE__SOME__ECDHE_ENABLED
-#endif
-
-#if defined(MBEDTLS_KEY_EXCHANGE_DHE_RSA_ENABLED) ||                       \
-    defined(MBEDTLS_KEY_EXCHANGE_ECDHE_RSA_ENABLED) ||                     \
-    defined(MBEDTLS_KEY_EXCHANGE_ECDHE_ECDSA_ENABLED)
-#define MBEDTLS_KEY_EXCHANGE__SOME__SIGNATURE_ENABLED
-#endif
-
 /*
  * SSL Error codes
  */
@@ -125,6 +105,7 @@
 #define MBEDTLS_ERR_SSL_WANT_READ                         -0x6900  /**< Connection requires a read call. */
 #define MBEDTLS_ERR_SSL_WANT_WRITE                        -0x6880  /**< Connection requires a write call. */
 #define MBEDTLS_ERR_SSL_TIMEOUT                           -0x6800  /**< The operation timed out. */
+#define MBEDTLS_ERR_SSL_CLIENT_RECONNECT                  -0x6780  /**< The client initiated a reconnect from the same port. */
 
 /*
  * Various constants
@@ -137,6 +118,8 @@
 
 #define MBEDTLS_SSL_TRANSPORT_STREAM            0   /*!< TLS      */
 #define MBEDTLS_SSL_TRANSPORT_DATAGRAM          1   /*!< DTLS     */
+
+#define MBEDTLS_SSL_MAX_HOST_NAME_LEN           255 /*!< Maximum host name defined in RFC 1035 */
 
 /* RFC 6066 section 4, see also mfl_code_to_length in ssl_tls.c
  * NONE must be zero so that memset()ing structure to zero works */
@@ -349,6 +332,8 @@
 
 #define MBEDTLS_TLS_EXT_SESSION_TICKET              35
 
+#define MBEDTLS_TLS_EXT_ECJPAKE_KKPP               256 /* experimental */
+
 #define MBEDTLS_TLS_EXT_RENEGOTIATION_INFO      0xFF01
 
 /*
@@ -386,6 +371,9 @@ union mbedtls_ssl_premaster_secret
 #if defined(MBEDTLS_KEY_EXCHANGE_ECDHE_PSK_ENABLED)
     unsigned char _pms_ecdhe_psk[4 + MBEDTLS_ECP_MAX_BYTES
                                    + MBEDTLS_PSK_MAX_LEN];     /* RFC 5489 2 */
+#endif
+#if defined(MBEDTLS_KEY_EXCHANGE_ECJPAKE_ENABLED)
+    unsigned char _pms_ecjpake[32];     /* Thread spec: SHA-256 output */
 #endif
 };
 
@@ -539,6 +527,13 @@ struct mbedtls_ssl_config
     void *p_ticket;                 /*!< context for the ticket callbacks   */
 #endif /* MBEDTLS_SSL_SESSION_TICKETS && MBEDTLS_SSL_SRV_C */
 
+#if defined(MBEDTLS_SSL_EXPORT_KEYS)
+    /** Callback to export key block and master secret                      */
+    int (*f_export_keys)( void *, const unsigned char *,
+            const unsigned char *, size_t, size_t, size_t );
+    void *p_export_keys;            /*!< context for key export callback    */
+#endif
+
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
     const mbedtls_x509_crt_profile *cert_profile; /*!< verification profile */
     mbedtls_ssl_key_cert *key_cert; /*!< own certificate/key pair(s)        */
@@ -546,7 +541,7 @@ struct mbedtls_ssl_config
     mbedtls_x509_crl *ca_crl;       /*!< trusted CAs CRLs                   */
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
 
-#if defined(MBEDTLS_KEY_EXCHANGE__SOME__SIGNATURE_ENABLED)
+#if defined(MBEDTLS_KEY_EXCHANGE__WITH_CERT__ENABLED)
     const int *sig_hashes;          /*!< allowed signature hashes           */
 #endif
 
@@ -839,7 +834,7 @@ int mbedtls_ssl_get_ciphersuite_id( const char *ciphersuite_name );
 
 /**
  * \brief          Initialize an SSL context
- *                 Just makes the context ready for mbetls_ssl_setup() or
+ *                 Just makes the context ready for mbedtls_ssl_setup() or
  *                 mbedtls_ssl_free()
  *
  * \param ssl      SSL context
@@ -1066,6 +1061,35 @@ typedef int mbedtls_ssl_ticket_write_t( void *p_ticket,
                                         size_t *tlen,
                                         uint32_t *lifetime );
 
+#if defined(MBEDTLS_SSL_EXPORT_KEYS)
+/**
+ * \brief           Callback type: Export key block and master secret
+ *
+ * \note            This is required for certain uses of TLS, e.g. EAP-TLS
+ *                  (RFC 5216) and Thread. The key pointers are ephemeral and
+ *                  therefore must not be stored. The master secret and keys
+ *                  should not be used directly except as an input to a key
+ *                  derivation function.
+ *
+ * \param p_expkey  Context for the callback
+ * \param ms        Pointer to master secret (fixed length: 48 bytes)
+ * \param kb        Pointer to key block, see RFC 5246 section 6.3
+ *                  (variable length: 2 * maclen + 2 * keylen + 2 * ivlen).
+ * \param maclen    MAC length
+ * \param keylen    Key length
+ * \param ivlen     IV length
+ *
+ * \return          0 if successful, or
+ *                  a specific MBEDTLS_ERR_XXX code.
+ */
+typedef int mbedtls_ssl_export_keys_t( void *p_expkey,
+                                const unsigned char *ms,
+                                const unsigned char *kb,
+                                size_t maclen,
+                                size_t keylen,
+                                size_t ivlen );
+#endif /* MBEDTLS_SSL_EXPORT_KEYS */
+
 /**
  * \brief           Callback type: parse and load session ticket
  *
@@ -1114,6 +1138,22 @@ void mbedtls_ssl_conf_session_tickets_cb( mbedtls_ssl_config *conf,
         mbedtls_ssl_ticket_parse_t *f_ticket_parse,
         void *p_ticket );
 #endif /* MBEDTLS_SSL_SESSION_TICKETS && MBEDTLS_SSL_SRV_C */
+
+#if defined(MBEDTLS_SSL_EXPORT_KEYS)
+/**
+ * \brief           Configure key export callback.
+ *                  (Default: none.)
+ *
+ * \note            See \c mbedtls_ssl_export_keys_t.
+ *
+ * \param conf      SSL configuration context
+ * \param f_export_keys     Callback for exporting keys
+ * \param p_export_keys     Context for the callback
+ */
+void mbedtls_ssl_conf_export_keys_cb( mbedtls_ssl_config *conf,
+        mbedtls_ssl_export_keys_t *f_export_keys,
+        void *p_export_keys );
+#endif /* MBEDTLS_SSL_EXPORT_KEYS */
 
 /**
  * \brief          Callback type: generate a cookie
@@ -1168,6 +1208,11 @@ typedef int mbedtls_ssl_cookie_check_t( void *ctx,
  * \note            See comments on \c mbedtls_ssl_handshake() about handling
  *                  the MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED that is expected
  *                  on the first handshake attempt when this is enabled.
+ *
+ * \note            This is also necessary to handle client reconnection from
+ *                  the same port as described in RFC 6347 section 4.2.8 (only
+ *                  the variant with cookies is supported currently). See
+ *                  comments on \c mbedtls_ssl_read() for details.
  *
  * \param conf              SSL configuration
  * \param f_cookie_write    Cookie write callback
@@ -1377,11 +1422,15 @@ void mbedtls_ssl_conf_ciphersuites_for_version( mbedtls_ssl_config *conf,
 /**
  * \brief          Set the X.509 security profile used for verification
  *
+ * \note           The restrictions are enforced for all certificates in the
+ *                 chain. However, signatures in the handshake are not covered
+ *                 by this setting but by \b mbedtls_ssl_conf_sig_hashes().
+ *
  * \param conf     SSL configuration
  * \param profile  Profile to use
  */
 void mbedtls_ssl_conf_cert_profile( mbedtls_ssl_config *conf,
-                                    mbedtls_x509_crt_profile *profile );
+                                    const mbedtls_x509_crt_profile *profile );
 
 /**
  * \brief          Set the data required to verify peer certificate
@@ -1538,16 +1587,14 @@ void mbedtls_ssl_conf_dhm_min_bitlen( mbedtls_ssl_config *conf,
  *                 On client: this affects the list of curves offered for any
  *                 use. The server can override our preference order.
  *
- *                 Both sides: limits the set of curves used by peer to the
- *                 listed curves for any use ECDHE and the end-entity
- *                 certificate.
+ *                 Both sides: limits the set of curves accepted for use in
+ *                 ECDHE and in the peer's end-entity certificate.
  *
- * \note           This has no influence on which curve are allowed inside the
+ * \note           This has no influence on which curves are allowed inside the
  *                 certificate chains, see \c mbedtls_ssl_conf_cert_profile()
- *                 for that. For example, if the peer's certificate chain is
- *                 EE -> CA_int -> CA_root, then the allowed curves for EE are
- *                 controlled by \c mbedtls_ssl_conf_curves() but for CA_int
- *                 and CA_root it's \c mbedtls_ssl_conf_cert_profile().
+ *                 for that. For the end-entity certificate however, the key
+ *                 will be accepted only if it is allowed both by this list
+ *                 and by the cert profile.
  *
  * \note           This list should be ordered by decreasing preference
  *                 (preferred curve first).
@@ -1560,7 +1607,7 @@ void mbedtls_ssl_conf_curves( mbedtls_ssl_config *conf,
                               const mbedtls_ecp_group_id *curves );
 #endif /* MBEDTLS_ECP_C */
 
-#if defined(MBEDTLS_KEY_EXCHANGE__SOME__SIGNATURE_ENABLED)
+#if defined(MBEDTLS_KEY_EXCHANGE__WITH_CERT__ENABLED)
 /**
  * \brief          Set the allowed hashes for signatures during the handshake.
  *                 (Default: all available hashes.)
@@ -1581,7 +1628,7 @@ void mbedtls_ssl_conf_curves( mbedtls_ssl_config *conf,
  */
 void mbedtls_ssl_conf_sig_hashes( mbedtls_ssl_config *conf,
                                   const int *hashes );
-#endif /* MBEDTLS_KEY_EXCHANGE__SOME__SIGNATURE_ENABLED */
+#endif /* MBEDTLS_KEY_EXCHANGE__WITH_CERT__ENABLED */
 
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
 /**
@@ -1670,6 +1717,29 @@ void mbedtls_ssl_conf_sni( mbedtls_ssl_config *conf,
                                size_t),
                   void *p_sni );
 #endif /* MBEDTLS_SSL_SERVER_NAME_INDICATION */
+
+#if defined(MBEDTLS_KEY_EXCHANGE_ECJPAKE_ENABLED)
+/**
+ * \brief          Set the EC J-PAKE password for current handshake.
+ *
+ * \note           An internal copy is made, and destroyed as soon as the
+ *                 handshake is completed, or when the SSL context is reset or
+ *                 freed.
+ *
+ * \note           The SSL context needs to be already set up. The right place
+ *                 to call this function is between \c mbedtls_ssl_setup() or
+ *                 \c mbedtls_ssl_reset() and \c mbedtls_ssl_handshake().
+ *
+ * \param ssl      SSL context
+ * \param pw       EC J-PAKE password (pre-shared secret)
+ * \param pw_len   length of pw in bytes
+ *
+ * \return         0 on success, or a negative error code.
+ */
+int mbedtls_ssl_set_hs_ecjpake_password( mbedtls_ssl_context *ssl,
+                                         const unsigned char *pw,
+                                         size_t pw_len );
+#endif /*MBEDTLS_KEY_EXCHANGE_ECJPAKE_ENABLED */
 
 #if defined(MBEDTLS_SSL_ALPN)
 /**
@@ -2089,29 +2159,35 @@ int mbedtls_ssl_get_session( const mbedtls_ssl_context *ssl, mbedtls_ssl_session
  *
  * \param ssl      SSL context
  *
- * \return         0 if successful, MBEDTLS_ERR_SSL_WANT_READ,
- *                 MBEDTLS_ERR_SSL_WANT_WRITE, or a specific SSL error code.
+ * \return         0 if successful, or
+ *                 MBEDTLS_ERR_SSL_WANT_READ or MBEDTLS_ERR_SSL_WANT_WRITE, or
+ *                 MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED (see below), or
+ *                 a specific SSL error code.
  *
- * \note           If this function returns non-zero, then the ssl context
+ * \note           If this function returns something other than 0 or
+ *                 MBEDTLS_ERR_SSL_WANT_READ/WRITE, then the ssl context
  *                 becomes unusable, and you should either free it or call
  *                 \c mbedtls_ssl_session_reset() on it before re-using it.
- *                 If DTLS is in use, then you may choose to handle
+ *
+ * \note           If DTLS is in use, then you may choose to handle
  *                 MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED specially for logging
- *                 purposes, but you still need to reset/free the context.
+ *                 purposes, as it is an expected return value rather than an
+ *                 actual error, but you still need to reset/free the context.
  */
 int mbedtls_ssl_handshake( mbedtls_ssl_context *ssl );
 
 /**
  * \brief          Perform a single step of the SSL handshake
  *
- *                 Note: the state of the context (ssl->state) will be at
+ * \note           The state of the context (ssl->state) will be at
  *                 the following state after execution of this function.
  *                 Do not call this function if state is MBEDTLS_SSL_HANDSHAKE_OVER.
  *
  * \param ssl      SSL context
  *
- * \return         0 if successful, MBEDTLS_ERR_SSL_WANT_READ,
- *                 MBEDTLS_ERR_SSL_WANT_WRITE, or a specific SSL error code.
+ * \return         0 if successful, or
+ *                 MBEDTLS_ERR_SSL_WANT_READ or MBEDTLS_ERR_SSL_WANT_WRITE, or
+ *                 a specific SSL error code.
  */
 int mbedtls_ssl_handshake_step( mbedtls_ssl_context *ssl );
 
@@ -2138,7 +2214,23 @@ int mbedtls_ssl_renegotiate( mbedtls_ssl_context *ssl );
  *
  * \return         the number of bytes read, or
  *                 0 for EOF, or
- *                 a negative error code.
+ *                 MBEDTLS_ERR_SSL_WANT_READ or MBEDTLS_ERR_SSL_WANT_WRITE, or
+ *                 MBEDTLS_ERR_SSL_CLIENT_RECONNECT (see below), or
+ *                 another negative error code.
+ *
+ * \note           When this function return MBEDTLS_ERR_SSL_CLIENT_RECONNECT
+ *                 (which can only happen server-side), it means that a client
+ *                 is initiating a new connection using the same source port.
+ *                 You can either treat that as a connection close and wait
+ *                 for the client to resend a ClientHello, or directly
+ *                 continue with \c mbedtls_ssl_handshake() with the same
+ *                 context (as it has beeen reset internally). Either way, you
+ *                 should make sure this is seen by the application as a new
+ *                 connection: application state, if any, should be reset, and
+ *                 most importantly the identity of the client must be checked
+ *                 again. WARNING: not validating the identity of the client
+ *                 again, or not transmitting the new identity to the
+ *                 application layer, would allow authentication bypass!
  */
 int mbedtls_ssl_read( mbedtls_ssl_context *ssl, unsigned char *buf, size_t len );
 

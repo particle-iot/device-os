@@ -1,8 +1,7 @@
 {
     "name": "mbedtls",
-    "version": "2.1.0",
+    "version": "2.2.0-rc.1",
     "description": "The mbed TLS crypto/SSL/TLS library",
-    "private": true,
     "licenses": [
         {
             "url": "https://spdx.org/licenses/Apache-2.0",
@@ -11,9 +10,9 @@
     ],
     "dependencies": {},
     "targetDependencies": {
-        "mbed": { "cmsis-core": "~0.2.3" }
+        "mbed": { "cmsis-core": "^1.0.0" }
     },
     "testTargetDependencies": {
-        "mbed": { "sockets": "~0.3.0" }
+        "mbed": { "mbed-drivers": "~0.11.0" }
     }
 }
