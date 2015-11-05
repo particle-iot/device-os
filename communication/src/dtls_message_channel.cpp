@@ -21,6 +21,7 @@
 #include "service_debug.h"
 #include "rng_hal.h"
 #include "mbedtls/error.h"
+#include "timer_hal.h"
 
 namespace particle { namespace protocol {
 
@@ -97,7 +98,7 @@ ProtocolError DTLSMessageChannel::init(
 	ret = mbedtls_pk_parse_public_key(&ssl_context.session_negotiate->peer_cert->pk, server_public, server_public_len);
 	EXIT_ERROR(ret);
 
-	mbedtls_ssl_set_timer_cb(&ssl_context, &timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+//	mbedtls_ssl_set_timer_cb(&ssl_context, &timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
 	mbedtls_ssl_set_bio(&ssl_context, this, DTLSMessageChannel::send, DTLSMessageChannel::recv, NULL);
 
 	return NO_ERROR;
@@ -120,9 +121,6 @@ void DTLSMessageChannel::init()
 	mbedtls_ssl_config_init (&conf);
 	mbedtls_x509_crt_init (&clicert);
 	mbedtls_pk_init (&pkey);
-	mbedtls_entropy_init (&entropy);
-	mbedtls_ctr_drbg_init (&ctr_drbg);
-
 //	mbedtls_debug_set_threshold(debug_level);
 }
 
@@ -131,8 +129,6 @@ void DTLSMessageChannel::dispose()
 	mbedtls_x509_crt_free (&clicert);
 	mbedtls_pk_free (&pkey);
 	mbedtls_ssl_config_free (&conf);
-	mbedtls_ctr_drbg_free (&ctr_drbg);
-	mbedtls_entropy_free (&entropy);
 	mbedtls_ssl_free (&ssl_context);
 }
 
@@ -173,3 +169,20 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 
 
 }}
+
+#include "sys/time.h"
+
+extern "C" unsigned long mbedtls_timing_hardclock()
+{
+	return HAL_Timer_Microseconds();
+}
+
+extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
+{
+    uint32_t t = HAL_Timer_Microseconds();  // get uptime in nanoseconds
+    tv->tv_sec = t / 1000000;  // convert to seconds
+    tv->tv_usec = ( t % 1000000 );  // get remaining microseconds
+    return 0;  // return non-zero for error
+} // end _gettimeofday()
+
+

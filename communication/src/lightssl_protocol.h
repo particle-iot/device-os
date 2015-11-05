@@ -34,7 +34,6 @@ namespace protocol {
 class LightSSLProtocol : public Protocol
 {
 	CoAPChannel<LightSSLMessageChannel> channel;
-	bool initialized;
 
 	static void handle_seed(const uint8_t* data, size_t len)
 	{

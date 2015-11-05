@@ -26,6 +26,7 @@
 #include "spark_descriptor.h"
 #include "events.h"
 #include "dsakeygen.h"
+#include "eckeygen.h"
 #include "file_transfer.h"
 #include "protocol_selector.h"
 #include "protocol_defs.h"

@@ -17,42 +17,26 @@
  ******************************************************************************
  */
 
-#ifndef HAL_PLATFORM_H
-#define	HAL_PLATFORM_H
+#pragma once
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
+#include <stdint.h>
+#include <stddef.h>
+
+/**
+ * Generates a DER formatted EC private key.
+ * @param buffer            The buffer to recieve the DER file.
+ * @param max_length        The length of the buffer
+ * @param f_rng             A random number generator
+ * @param p_rng             The argument to the random number generator
+ * @return  0 on success. Non zero on failure.
+ */
+int gen_ec_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *), void *p_rng);
 
 
-#if PLATFORM_ID<9
-    #define HAL_PLATFORM_WIFI 1
-#endif
-
-#if PLATFORM_ID==10
-#define HAL_PLATFORM_CELLULAR 1
-#endif
-
-#if PLATFORM_ID==10 || PLATFORM_ID==3 || PLATFORM_ID==6
-#define HAL_PLATFORM_CLOUD_UDP 1
-#endif
-
-#ifndef HAL_PLATFORM_WIFI
-#define HAL_PLATFORM_WIFI 0
-#endif
-
-#ifndef HAL_PLATFORM_CELLULAR
-#define HAL_PLATFORM_CELLULAR 0
-#endif
-
-#ifndef HAL_PLATFORM_CLOUD_UDP
-#define HAL_PLATFORM_CLOUD_UDP 0
-#endif
-
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-
-#endif	/* HAL_PLATFORM_H */
-

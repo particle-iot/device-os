@@ -21,8 +21,12 @@
 #define PARTICLE_PROTOCOL
 
 #ifdef PARTICLE_PROTOCOL
+#ifdef __cplusplus
 namespace particle { namespace protocol { class Protocol; }}
 typedef particle::protocol::Protocol ProtocolFacade;
+#else
+typedef void* ProtocolFacade;
+#endif
 #else
 class SparkProtocol;
 typedef SparkProtocol ProtocolFacade;

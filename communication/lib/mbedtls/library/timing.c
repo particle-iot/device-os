@@ -18,6 +18,7 @@
  *
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
+#define HAVE_HARDCLOCK
 
 #if !defined(MBEDTLS_CONFIG_FILE)
 #include "mbedtls/config.h"

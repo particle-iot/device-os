@@ -61,12 +61,10 @@ public:
 private:
 
 	mbedtls_ssl_context ssl_context;
-	mbedtls_entropy_context entropy;
-	mbedtls_ctr_drbg_context ctr_drbg;
 	mbedtls_ssl_config conf;
 	mbedtls_x509_crt clicert;
 	mbedtls_pk_context pkey;
-	mbedtls_timing_delay_context timer;
+	//mbedtls_timing_delay_context timer;
 	Callbacks callbacks;
 
     void init();

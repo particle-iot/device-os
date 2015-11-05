@@ -18,6 +18,7 @@
  *
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
+#ifndef PLATFORM_ID
 
 #if !defined(MBEDTLS_CONFIG_FILE)
 #include "mbedtls/config.h"
@@ -573,3 +574,4 @@ void mbedtls_net_free( mbedtls_net_context *ctx )
 }
 
 #endif /* MBEDTLS_NET_C */
+#endif
