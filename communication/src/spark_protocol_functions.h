@@ -45,9 +45,22 @@ struct SparkKeys
 
 STATIC_ASSERT(SparkKeys_size, sizeof(SparkKeys)==16 || sizeof(void*)!=4);
 
+enum ProtocolFactory
+{
+	LIGHTSSL,
+	DTLS,
+};
+
 struct SparkCallbacks
 {
     uint16_t size;
+    /**
+     * The type of protocol to instantiate.
+     */
+    uint8_t protocolFactory;
+
+    uint8_t reserved;
+
   int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
   int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
 
@@ -79,9 +92,18 @@ struct SparkCallbacks
    * Sets the time. Time is given in milliseconds since the epoch, UCT.
    */
   void (*set_time)(time_t t, unsigned int param, void* reserved);
+
+  // size == 40
+
+  /**
+   * A pointer that is passed back to the send/receive functions.
+   */
+  void* transport_context;
+
+  // size == 44
 };
 
-STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*10));
+STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*11));
 
 /**
  * Application-supplied callbacks. (Deliberately distinct from the system-supplied
