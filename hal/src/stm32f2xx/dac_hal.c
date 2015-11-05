@@ -28,6 +28,7 @@
 #include "gpio_hal.h"
 #include "pinmap_hal.h"
 #include "pinmap_impl.h"
+#include <string.h>
 
 /* Private typedef -----------------------------------------------------------*/
 
