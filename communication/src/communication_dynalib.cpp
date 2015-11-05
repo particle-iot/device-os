@@ -19,12 +19,16 @@
  *
  * @return A pointer to the static instance.
  */
-#include "spark_protocol.h"
 
 ProtocolFacade* spark_protocol_instance()
 {
     static ProtocolFacade* sp = NULL;
-    if (sp==NULL)
-        sp = new ProtocolFacade();
+    if (sp==NULL) {
+#ifdef PARTICLE_PROTOCOL
+    		sp = new particle::protocol::LightSSLProtocol();
+#else
+    		sp = new SparkProtocol();
+#endif
+    }
     return sp;
 }

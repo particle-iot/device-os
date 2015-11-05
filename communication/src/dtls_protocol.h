@@ -34,7 +34,6 @@ namespace protocol {
 class DTLSProtocol : public Protocol
 {
 	CoAPChannel<DTLSMessageChannel> channel;
-	bool initialized;
 
 	static void handle_seed(const uint8_t* data, size_t len)
 	{
@@ -44,7 +43,7 @@ class DTLSProtocol : public Protocol
 public:
     // todo - this a duplicate of LightSSLProtocol - factor out
 
-	DTLSProtocol() : Protocol(channel), initialized(false) {}
+	DTLSProtocol() : Protocol(channel) {}
 
 	void init(const char *id,
 	          const SparkKeys &keys,
@@ -61,16 +60,7 @@ public:
 				keys.server_public, MAX_SERVER_PUBLIC_KEY_LENGTH,
 				(const uint8_t*)id, channelCallbacks);
         Protocol::init(callbacks, descriptor);
-		initialized = true;
 	}
-
-	bool is_initialized() { return initialized; }
-
-	int presence_announcement(uint8_t* buf, const uint8_t* id)
-	{
-		return -1;
-	}
-
 
 };
 

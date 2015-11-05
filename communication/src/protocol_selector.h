@@ -21,10 +21,8 @@
 #define PARTICLE_PROTOCOL
 
 #ifdef PARTICLE_PROTOCOL
-namespace particle { namespace protocol {
-class LightSSLProtocol;
-}}
-typedef particle::protocol::LightSSLProtocol ProtocolFacade;
+namespace particle { namespace protocol { class Protocol; }}
+typedef particle::protocol::Protocol ProtocolFacade;
 #else
 class SparkProtocol;
 typedef SparkProtocol ProtocolFacade;

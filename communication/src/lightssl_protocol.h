@@ -43,7 +43,7 @@ class LightSSLProtocol : public Protocol
 
 public:
 
-	LightSSLProtocol() : Protocol(channel), initialized(false) {}
+	LightSSLProtocol() : Protocol(channel) {}
 
 	void init(const char *id,
 	          const SparkKeys &keys,
@@ -57,16 +57,7 @@ public:
 		channelCallbacks.send = callbacks.send;
 		channel.init(keys.core_private, keys.server_public, (const uint8_t*)id, channelCallbacks);
         Protocol::init(callbacks, descriptor);
-		initialized = true;
 	}
-
-	bool is_initialized() { return initialized; }
-
-	int presence_announcement(uint8_t* buf, const uint8_t* id)
-	{
-		return -1;
-	}
-
 
 };
 
