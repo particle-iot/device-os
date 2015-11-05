@@ -23,6 +23,13 @@
 #include "message_channel.h"
 #include "buffer_message_channel.h"
 
+#include "mbedtls/ssl.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/timing.h"
+#include "mbedtls/debug.h"
+
 namespace particle
 {
 namespace protocol
@@ -36,44 +43,71 @@ namespace protocol
  */
 class DTLSMessageChannel: public BufferMessageChannel<PROTOCOL_BUFFER_SIZE>
 {
-
-
 public:
 
 	struct Callbacks
 	{
+		/**
+		 * An opaque handle for the send/receive context.
+		 */
+		void* tx_context;
+
 		system_tick_t (*millis)();
 		void (*handle_seed)(const uint8_t* seed, size_t length);
 		int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
 		int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
 	};
 
+private:
 
-	void init(const uint8_t* core_private, const uint8_t* server_public,
-			const uint8_t* device_id, Callbacks& callbacks);
+	mbedtls_ssl_context ssl_context;
+	mbedtls_entropy_context entropy;
+	mbedtls_ctr_drbg_context ctr_drbg;
+	mbedtls_ssl_config conf;
+	mbedtls_x509_crt clicert;
+	mbedtls_pk_context pkey;
+	mbedtls_timing_delay_context timer;
+	Callbacks callbacks;
 
-	virtual ProtocolError establish() override
-	{
-        return NO_ERROR;
-	}
+    void init();
+    void dispose();
+
+    /**
+     * C function to call the send/recv methods on a DTLSMessageChannel instance.
+     */
+    static int send(void* ctx, const uint8_t* data, size_t len);
+    static int recv(void* ctx, uint8_t* data, size_t len);
+
+
+    int send(const uint8_t* data, size_t len)
+    {
+    		return callbacks.send(data, len, callbacks.tx_context);
+    }
+
+    int recv(uint8_t* data, size_t len)
+    {
+		return callbacks.receive(data, len, callbacks.tx_context);
+    }
+
+ public:
+	ProtocolError init(const uint8_t* core_private, size_t core_private_len,
+		const uint8_t* core_public, size_t core_public_len,
+		const uint8_t* server_public, size_t server_public_len,
+		const uint8_t* device_id, Callbacks& callbacks);
+
+	virtual ProtocolError establish() override;
 
 	/**
 	 * Retrieve first the 2 byte length from the stream, which determines
 	 */
-	ProtocolError receive(Message& message) override
-    {
-        return NO_ERROR;
-    }
+	virtual ProtocolError receive(Message& message) override;
 
 	/**
 	 * Sends the given message. The message length is prepended to the message
 	 * and the message padded with PKCS#1 padding before being sent using
 	 * the send callback.
 	 */
-	ProtocolError send(Message& message) override
-    {
-        return NO_ERROR;
-    }
+	virtual ProtocolError send(Message& message) override;
 
 
 };
