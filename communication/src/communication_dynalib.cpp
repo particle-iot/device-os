@@ -6,6 +6,7 @@
 #include "protocol_selector.h"
 
 #ifdef PARTICLE_PROTOCOL
+#include "core_hal.h"
 #include "lightssl_protocol.h"
 #include "dtls_protocol.h"
 #else
@@ -19,16 +20,30 @@
  *
  * @return A pointer to the static instance.
  */
-
-ProtocolFacade* spark_protocol_instance()
+ProtocolFacade* create_protocol(ProtocolFactory factory)
 {
-    static ProtocolFacade* sp = NULL;
-    if (sp==NULL) {
+    	// if compile time only TCP, then that's the only option, otherwise
+    	// choose between UDP and TCP
 #ifdef PARTICLE_PROTOCOL
-    		sp = new particle::protocol::LightSSLProtocol();
-#else
-    		sp = new SparkProtocol();
+#if HAL_PLATFORM_CLOUD_UDP
+    	if (factory==PROTOCOL_DTLS)
+    		return new particle::protocol::DTLSProtocol();
+    	else
 #endif
-    }
-    return sp;
+		return new particle::protocol::LightSSLProtocol();
+#else
+    		return new SparkProtocol();
+#endif
+}
+
+
+ProtocolFacade* spark_protocol_instance(void)
+{
+	static ProtocolFacade* protocol = nullptr;
+
+	if (!protocol) {
+		bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+		protocol = create_protocol(udp ? PROTOCOL_DTLS : PROTOCOL_LIGHTSSL);
+	}
+	return protocol;
 }

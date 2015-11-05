@@ -47,8 +47,9 @@ STATIC_ASSERT(SparkKeys_size, sizeof(SparkKeys)==16 || sizeof(void*)!=4);
 
 enum ProtocolFactory
 {
-	LIGHTSSL,
-	DTLS,
+	PROTOCOL_NONE,
+	PROTOCOL_LIGHTSSL,
+	PROTOCOL_DTLS,
 };
 
 struct SparkCallbacks

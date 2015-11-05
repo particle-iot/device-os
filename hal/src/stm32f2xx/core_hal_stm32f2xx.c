@@ -45,6 +45,7 @@
 #include "core_hal_stm32f2xx.h"
 #include "stm32f2xx.h"
 #include "timer_hal.h"
+#include "dct.h"
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -231,7 +232,7 @@ void HAL_Core_Config(void)
     // where WICED isn't ready for a SysTick until after main() has been called to
     // fully intialize the RTOS.
     HAL_Core_Setup_override_interrupts();
-
+    
 #if MODULAR_FIRMWARE
     // write protect system module parts if not already protected
     FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
@@ -908,6 +909,16 @@ bool HAL_Feature_Get(HAL_Feature feature)
         case FEATURE_RETAINED_MEMORY:
         {
             return (PWR_GetFlagStatus(PWR_FLAG_BRR) != RESET);
+        }
+
+        case FEATURE_CLOUD_UDP:
+        {
+        		uint8_t value = false;
+#if PLATFORM_ID==10
+        		const uint8_t* data = dct_read_app_data(DCT_CLOUD_TRANSPORT_OFFSET);
+        		value = *data==0xFF;		// default is to use UDP
+#endif
+        		return value;
         }
     }
     return false;
