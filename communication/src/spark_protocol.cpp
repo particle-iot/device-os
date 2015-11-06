@@ -93,7 +93,7 @@ int SparkProtocol::handshake(void)
   int err = blocking_receive(queue, 40);
   if (0 > err) { ERROR("Handshake: could not receive nonce: %d", err);  return err; }
 
-  parse_device_pubkey_from_privkey(queue+52, core_private_key);
+  extract_public_rsa_key(queue+52, core_private_key);
 
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, server_public_key);

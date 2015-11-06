@@ -22,5 +22,19 @@ int gen_ec_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *, uint8_t
 	return error;
 }
 
+int extract_public_ec_key(uint8_t* buffer, size_t max_length, const uint8_t* private_key)
+{
+	mbedtls_pk_context key;
+	int error = mbedtls_pk_setup(&key, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
+	if (!error)
+		error = mbedtls_pk_parse_key(&key, private_key, max_length, nullptr, 0);
+	if (!error)
+		error = mbedtls_pk_write_pubkey_der(&key, buffer, max_length);
+
+	mbedtls_pk_free(&key);
+	return error;
+}
+
+
 #endif
 #endif

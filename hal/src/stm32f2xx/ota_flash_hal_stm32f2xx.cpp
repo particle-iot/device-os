@@ -25,6 +25,7 @@
 #include "flash_mal.h"
 #include "dct_hal.h"
 #include "dsakeygen.h"
+#include "eckeygen.h"
 #include <cstring>
 #include "ledcontrol.h"
 #include "parse_server_address.h"
@@ -342,12 +343,23 @@ const uint8_t* fetch_device_public_key()
 {
     uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
     memset(pubkey, 0, sizeof(pubkey));
-    parse_device_pubkey_from_privkey(pubkey, fetch_device_private_key());
+    bool udp = false;
+#if HAL_PLATFORM_CLOUD_UDP
+    udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+#endif
+    const uint8_t* priv = fetch_device_private_key();
+    int error = 0;
+    if (udp)
+    		error = extract_public_ec_key(pubkey, sizeof(pubkey), priv);
+    else
+    		extract_public_rsa_key(pubkey, priv);
 
-    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
-    if (memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
-        dct_write_app_data(pubkey, DCT_DEVICE_PUBLIC_KEY_OFFSET, DCT_DEVICE_PUBLIC_KEY_SIZE);
-        flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
+
+    int offset = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET : DCT_DEVICE_PUBLIC_KEY_OFFSET;
+    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(offset);
+    if (!error && memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
+        dct_write_app_data(pubkey, offset, DCT_DEVICE_PUBLIC_KEY_SIZE);
+        flash_pub_key = (const uint8_t*)dct_read_app_data(offset);
     }
     return flash_pub_key;
 }

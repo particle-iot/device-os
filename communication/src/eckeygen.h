@@ -36,7 +36,7 @@ extern "C" {
  */
 int gen_ec_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *, uint8_t* buf, size_t len), void *p_rng);
 
-
+int extract_public_ec_key(uint8_t* buffer, size_t max_length, const uint8_t* private_key);
 
 #ifdef __cplusplus
 }

@@ -138,7 +138,7 @@ namespace protocol
 			return IO_ERROR;
 		}
 
-		parse_device_pubkey_from_privkey(queue + 52, core_private_key);
+		extract_public_rsa_key(queue + 52, core_private_key);
 
 		rsa_context rsa;
 		init_rsa_context_with_public_key(&rsa, server_public_key);
