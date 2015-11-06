@@ -26,6 +26,8 @@
 #include "system_event.h"
 #include "system_cloud_internal.h"
 #include "system_network.h"
+#include "ble_provision.h"
+#include "platforms.h"
 
 
 enum eWanTimings
@@ -154,6 +156,10 @@ protected:
         uint32_t loop = start;
         system_notify_event(wifi_listen_begin, start);
 
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        ble_provision_init();
+#endif
+
         /* Wait for SmartConfig/SerialConfig to finish */
         while (network_listening(0, 0, NULL))
         {
@@ -191,6 +197,9 @@ protected:
                 }
                 console.loop();
             }
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+            ble_provision_loop();
+#endif
         }
 
         LED_On(LED_RGB);
@@ -475,6 +484,9 @@ public:
         if ((WLAN_SMART_CONFIG_STOP == 1) && (WLAN_DHCP == 1) && (WLAN_CONNECTED == 1))
         {
             on_setup_cleanup();
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+            ble_provision_finalize();
+#endif
             WLAN_SMART_CONFIG_STOP = 0;
         }
     }
