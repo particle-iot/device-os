@@ -26,8 +26,11 @@
 #include "system_event.h"
 #include "system_cloud_internal.h"
 #include "system_network.h"
-#include "ble_provision.h"
 #include "platforms.h"
+
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+#include "ble_provision.h"
+#endif
 
 
 enum eWanTimings
