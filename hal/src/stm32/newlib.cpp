@@ -3,6 +3,58 @@
 
 extern "C" {
 
+/*
+ * Implement C++ new/delete operators using the heap
+ */
+
+void *operator new(size_t size)
+{
+	return malloc(size);
+}
+
+void *operator new[](size_t size)
+{
+	return malloc(size);
+}
+
+void operator delete(void *p)
+{
+	free(p);
+}
+
+void operator delete[](void *p)
+{
+	free(p);
+}
+
+
+int _kill(int pid, int sig) __attribute((weak));
+
+/* Bare metal, no processes, so error */
+int _kill(int pid, int sig)
+{
+	return -1;
+}
+
+/* Bare metal, no processes, so always process id 1 */
+int _getpid(void) __attribute((weak));
+int _getpid(void)
+{
+	return 1;
+}
+
+void _exit(int status) __attribute((weak));
+void _exit(int status) {
+
+    PANIC(Exit,"Exit Called");
+
+    while (1) {
+        ;
+    }
+}
+
+
+
 /* Default implementation for call made to pure virtual function. */
 void __cxa_pure_virtual() {
   PANIC(PureVirtualCall,"Call on pure virtual");
@@ -28,11 +80,12 @@ int _isatty(int file) { return 0; }
 
 } /* extern "C" */
 
+
 namespace __gnu_cxx {
 
 void __verbose_terminate_handler()
 {
-    abort();
+	abort();
 }
 
-}
+} /* namespace __gnu_cxx */

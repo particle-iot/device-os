@@ -69,26 +69,6 @@ void *__dso_handle = NULL;
  * Implement C++ new/delete operators using the heap
  */
 
-void *operator new(size_t size)
-{
-	return malloc(size);
-}
-
-void *operator new[](size_t size)
-{
-	return malloc(size);
-}
-
-void operator delete(void *p)
-{
-	free(p);
-}
-
-void operator delete[](void *p)
-{
-	free(p);
-}
-
 extern "C" {
 
 /******************************************************
@@ -132,28 +112,7 @@ uint32_t freeheap()
     return &__Stack_Init-heap_end;
 }
 
-/* Bare metal, no processes, so error */
-int _kill(int pid, int sig)
-{
-	return -1;
 }
-
-/* Bare metal, no processes, so always process id 1 */
-int _getpid(void)
-{
-	return 1;
-}
-
-void _exit(int status) {
-
-    PANIC(Exit,"Exit Called");
-
-    while (1) {
-        ;
-    }
-}
-
-
 
 #ifdef __CS_SOURCERYGXX_REV__
 #if USE_UART_FOR_STDIO
@@ -270,3 +229,4 @@ int _read(int file, char *ptr, int len) {
     return num;
 }
 #endif
+
