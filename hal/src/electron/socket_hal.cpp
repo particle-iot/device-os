@@ -41,7 +41,19 @@ sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port
 
 sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
 {
-    return 0;
+    int port;
+    ElectronMDM::IP ip;
+    sock_result_t result = electronMDM.socketRecvFrom(sock, &ip, &port, (char*)buffer, bufLen);
+    if (result>=0) {
+        uint32_t ipv4 = ip;
+        addr->sa_data[0] = (port>>8) & 0xFF;
+        addr->sa_data[1] = port & 0xFF;
+        addr->sa_data[2] = (ipv4 >> 24) & 0xFF;
+        addr->sa_data[3] = (ipv4 >> 16) & 0xFF;
+        addr->sa_data[4] = (ipv4 >> 8) & 0xFF;
+        addr->sa_data[5] = ipv4 & 0xFF;
+    }
+    return result;
 }
 
 sock_result_t socket_accept(sock_handle_t sock)
@@ -69,7 +81,11 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
 
 sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size)
 {
-    return 0;
+    const uint8_t* addr_data = addr->sa_data;
+    uint16_t port = addr_data[0]<<8 | addr_data[1];
+    ElectronMDM::IP ip = IPADR(addr_data[2], addr_data[3], addr_data[4], addr_data[5]);
+
+	return electronMDM.socketSendTo(sd, ip, port, (const char*)buffer, len);
 }
 
 inline bool is_valid(sock_handle_t handle)
