@@ -27,6 +27,8 @@ extern "C" {
 #endif
 
 #include "dynalib.h"
+#include "protocol_selector.h"
+#include "hal_platform.h"
 
 DYNALIB_BEGIN(communication)
 DYNALIB_FN(communication, spark_protocol_instance)
@@ -49,6 +51,9 @@ DYNALIB_FN(communication, decrypt_rsa)
 DYNALIB_FN(communication, gen_rsa_key)
 DYNALIB_FN(communication, parse_device_pubkey_from_privkey)
 DYNALIB_FN(communication, spark_protocol_remove_event_handlers)
+#if HAL_PLATFORM_CLOUD_UDP
+DYNALIB_FN(communication, gen_ec_key)
+#endif
 DYNALIB_END(communication)
 
 
