@@ -46,6 +46,8 @@ typedef struct _static_ip_config_t {
 
 STATIC_ASSERT(static_ip_config_size, sizeof(static_ip_config_t)==24);
 
+#define DCT_SERVER_ADDRESS_SIZE  (128)
+
 /**
  * Custom extensions to the DCT data.
  */
@@ -72,7 +74,7 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t alt_device_public_key[128];	// alternative device public key
     uint8_t alt_device_private_key[192];	// alternative device private key
     uint8_t alt_server_public_key[192];
-    uint8_t alt_server_address[128];		// server address info
+    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE];		// server address info
 
     uint8_t reserved2[640];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
@@ -105,7 +107,6 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_DEVICE_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::device_public_key))
 #define DCT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::server_public_key))
 #define DCT_IP_CONFIG_SIZE (sizeof(application_dct_t::ip_config))
-#define DCT_SERVER_ADDRESS_SIZE  (128)
 #define DCT_CLAIM_CODE_SIZE  (sizeof(application_dct_t::claim_code))
 #define DCT_SSID_PREFIX_SIZE  (sizeof(application_dct_t::ssid_prefix))
 #define DCT_DNS_RESOLVE_SIZE  (sizeof(application_dct_t::dns_resolve))
