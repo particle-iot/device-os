@@ -18,7 +18,9 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
+#ifdef __clang__
 #pragma GCC diagnostic ignored "-Wunused-local-typedef"
+#endif
 #include <boost/asio.hpp>
 #pragma GCC diagnostic pop
 
