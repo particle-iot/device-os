@@ -914,7 +914,7 @@ bool HAL_Feature_Get(HAL_Feature feature)
         case FEATURE_CLOUD_UDP:
         {
         		uint8_t value = false;
-#if PLATFORM_ID==10
+#if HAL_PLATFORM_CLOUD_UDP
         		const uint8_t* data = dct_read_app_data(DCT_CLOUD_TRANSPORT_OFFSET);
         		value = *data==0xFF;		// default is to use UDP
 #endif
