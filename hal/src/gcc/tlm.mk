@@ -1,1 +1,1 @@
-
+DEPENDENCIES += communication

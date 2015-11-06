@@ -288,5 +288,16 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
 
 bool HAL_Feature_Get(HAL_Feature feature)
 {
+    switch (feature)
+    {
+        case FEATURE_CLOUD_UDP:
+        {
+        		uint8_t value = false;
+#if HAL_PLATFORM_CLOUD_UDP
+        		value = (deviceConfig.get_protocol()==PROTOCOL_DTLS);
+#endif
+        		return value;
+        }
+    }
     return false;
 }
