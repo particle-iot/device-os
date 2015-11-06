@@ -61,7 +61,7 @@ test(ADC_AnalogReadOnPinWithVoltageDividerResultsInCorrectValue) {
 #endif
 
 
-#if (PLATFORM_ID == 6)
+#if (PLATFORM_ID >= 3)
 test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
     pin_t pin = A5;//pin under test (Voltage divider with equal resistor values)
     // when
@@ -73,7 +73,7 @@ test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
 }
 #endif
 
-#if (PLATFORM_ID == 6)
+#if (PLATFORM_ID >= 3)
 test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue_2) {
     pin_t pin = A5;
     // when
