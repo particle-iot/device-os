@@ -1,6 +1,10 @@
 #include "service_debug.h"
 #include <stdlib.h>
 
+/**
+ * Shared newlib implementation for stm32 devices. (This is probably suitable for all embedded devices on gcc.)
+ */
+
 extern "C" {
 
 /*
