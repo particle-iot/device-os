@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "net_hal.h"
+#include "inet_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
