@@ -33,7 +33,7 @@ int Spark_Connect(void);
 int Spark_Disconnect(void);
 
 void Spark_Protocol_Init(void);
-int Spark_Handshake(void);
+int Spark_Handshake(bool presence_announce);
 bool Spark_Communication_Loop(void);
 void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on, unsigned, void*);

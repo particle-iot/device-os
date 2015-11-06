@@ -39,6 +39,7 @@
 #include "spark_macros.h"   // for S2M
 #include "string_convert.h"
 #include <stdint.h>
+#include "core_hal.h"
 
 #define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
@@ -198,6 +199,7 @@ void Spark_Process_Events()
 {
     if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
     {
+        WARN("Communication loop error, closing cloud socket");
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
     }
@@ -208,7 +210,6 @@ void Spark_Process_Events()
 }
 
 // Returns number of bytes sent or -1 if an error occurred
-
 int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
 {
     if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || cloudSocketClosed())
@@ -224,7 +225,6 @@ int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
 }
 
 // Returns number of bytes received or -1 if an error occurred
-
 int Spark_Receive(unsigned char *buf, uint32_t buflen, void* reserved)
 {
     if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || cloudSocketClosed())
@@ -385,7 +385,7 @@ void system_set_time(time_t time, unsigned, void*)
 
 const int CLAIM_CODE_SIZE = 63;
 
-int Spark_Handshake(void)
+int Spark_Handshake(bool presence_announce)
 {
     int err = spark_protocol_handshake(sp);
     if (!err)
@@ -415,7 +415,8 @@ int Spark_Handshake(void)
             Particle.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
         }
 
-        Multicast_Presence_Announcement();
+        if (presence_announce)
+        		Multicast_Presence_Announcement();
         spark_protocol_send_subscriptions(sp);
         // important this comes at the end since it requires a response from the cloud.
         spark_protocol_send_time_request(sp);
@@ -528,21 +529,11 @@ int Spark_Connect(void)
 
     Spark_Disconnect();
 
-    sparkSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, SPARK_SERVER_PORT, NIF_DEFAULT);
-    DEBUG("socketed sparkSocket=%d", sparkSocket);
-
-    if (!socket_handle_valid(sparkSocket))
-    {
-        DEBUG("socket_handle_valid()=%d", socket_handle_valid(sparkSocket));
-        return -1;
-    }
-    sockaddr_t tSocketAddr;
-    // the family is always AF_INET
-    tSocketAddr.sa_family = AF_INET;
-
-    // the destination port
-    tSocketAddr.sa_data[0] = (SPARK_SERVER_PORT & 0xFF00) >> 8;
-    tSocketAddr.sa_data[1] = (SPARK_SERVER_PORT & 0x00FF);
+    uint16_t port = SPARK_SERVER_PORT;
+#if HAL_PLATFORM_CLOUD_UDP
+    if (HAL_Feature_Get(FEATURE_CLOUD_UDP))
+    		port = PORT_COAPS;
+#endif
 
     ServerAddress server_addr;
     HAL_FLASH_Read_ServerAddress(&server_addr);
@@ -600,7 +591,22 @@ int Spark_Connect(void)
 #endif
     if (!ip_resolve_failed)
     {
-        if (!ip_addr)
+        sparkSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, port, NIF_DEFAULT);
+        DEBUG("socketed sparkSocket=%d", sparkSocket);
+    }
+
+	if (socket_handle_valid(sparkSocket))
+	{
+        sockaddr_t tSocketAddr;
+        // the family is always AF_INET
+        tSocketAddr.sa_family = AF_INET;
+
+        // the destination port
+        tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
+        tSocketAddr.sa_data[1] = (port & 0x00FF);
+
+
+    		if (!ip_addr)
         {
             // final fallback in case where flash invalid
             ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
@@ -631,7 +637,6 @@ int Spark_Connect(void)
 int Spark_Disconnect(void)
 {
     int retVal = 0;
-    DEBUG("");
     if (socket_handle_valid(sparkSocket))
     {
 #if defined(SEND_ON_CLOSE)
@@ -821,9 +826,10 @@ bool system_cloud_active()
     if (!SPARK_CLOUD_SOCKETED)
         return false;
 
-    if (SPARK_CLOUD_CONNECTED && ((millis()-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
+    system_tick_t now = millis();
+    if (SPARK_CLOUD_CONNECTED && ((now-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
     {
-    	WARN("Disconnecting cloud due to inactivity!");
+    	WARN("Disconnecting cloud due to inactivity! %d, %d", now, lastCloudEvent);
     	cloud_disconnect(false);
         return false;
     }

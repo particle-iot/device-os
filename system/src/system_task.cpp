@@ -231,6 +231,14 @@ void establish_cloud_connection()
     }
 }
 
+int cloud_handshake()
+{
+	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+	bool presence_announce = !udp;
+	int err = Spark_Handshake(presence_announce);
+	return err;
+}
+
 /**
  * Manages the handshake and cloud events when the cloud has a socket connected.
  * @param force_events
@@ -241,7 +249,7 @@ void handle_cloud_connection(bool force_events)
     {
         if (!SPARK_CLOUD_CONNECTED)
         {
-            int err = Spark_Handshake();
+        		int err = cloud_handshake();
             if (err)
             {
                 cloud_connection_failed();

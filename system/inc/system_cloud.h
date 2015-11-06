@@ -154,7 +154,7 @@ ProtocolFacade* system_cloud_protocol_instance(void);
 
 //#define SPARK_SERVER_IP			        "54.235.79.249"
 #define SPARK_SERVER_PORT		        5683
-
+#define PORT_COAPS						(5684)
 #define SPARK_LOOP_DELAY_MILLIS		        1000    //1sec
 #define SPARK_RECEIVE_DELAY_MILLIS              10      //10ms
 
