@@ -682,6 +682,18 @@ uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
     return 0;
 }
 
+uint16_t FLASH_ModuleVersion(uint8_t flashDeviceID, uint32_t startAddress)
+{
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+
+    if (module_info != NULL)
+    {
+        return module_info->module_version;
+    }
+
+    return 0;
+}
+
 bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress)
 {
     const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);

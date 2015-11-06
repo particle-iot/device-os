@@ -55,6 +55,7 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress);
 uint32_t FLASH_ModuleAddress(flash_device_t flashDeviceID, uint32_t startAddress);
 uint32_t FLASH_ModuleLength(flash_device_t flashDeviceID, uint32_t startAddress);
+uint16_t FLASH_ModuleVersion(uint8_t flashDeviceID, uint32_t startAddress);
 bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress);
 bool FLASH_VerifyCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
 
