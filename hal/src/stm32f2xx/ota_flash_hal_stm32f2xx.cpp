@@ -228,7 +228,7 @@ int key_gen_random(void* p)
     return (int)HAL_RNG_GetRandomNumber();
 }
 
-static int key_gen_random_block(void* handle, uint8_t* data, size_t len)
+int key_gen_random_block(void* handle, uint8_t* data, size_t len)
 {
 	while (len>=4)
 	{
