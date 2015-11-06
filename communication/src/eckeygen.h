@@ -28,13 +28,14 @@ extern "C" {
 
 /**
  * Generates a DER formatted EC private key.
- * @param buffer            The buffer to recieve the DER file.
+ * @param buffer            The buffer to receive the DER file.
  * @param max_length        The length of the buffer
  * @param f_rng             A random number generator
  * @param p_rng             The argument to the random number generator
  * @return  0 on success. Non zero on failure.
  */
-int gen_ec_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *), void *p_rng);
+int gen_ec_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *, uint8_t* buf, size_t len), void *p_rng);
+
 
 
 #ifdef __cplusplus

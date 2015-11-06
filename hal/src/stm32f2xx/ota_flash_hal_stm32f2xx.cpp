@@ -33,6 +33,7 @@
 #include "ota_module.h"
 #include "ota_flash_hal_stm32f2xx.h"
 #include "spark_protocol_functions.h"
+#include "hal_platform.h"
 
 #define OTA_CHUNK_SIZE          512
 
@@ -227,6 +228,23 @@ int key_gen_random(void* p)
     return (int)HAL_RNG_GetRandomNumber();
 }
 
+static int key_gen_random_block(void* handle, uint8_t* data, size_t len)
+{
+	while (len>=4)
+	{
+		*((uint32_t*)data) = HAL_RNG_GetRandomNumber();
+		data += 4;
+		len -= 4;
+	}
+	while (len-->0)
+	{
+		*data++ = HAL_RNG_GetRandomNumber();
+	}
+	return 0;
+}
+
+
+
 /**
  * Reads and generates the device's private key.
  * @param keyBuffer
@@ -246,7 +264,7 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
         SPARK_LED_FADE = false;
         int error =
 #if HAL_PLATFORM_CLOUD_UDP
-        udp ? gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random, NULL)
+        udp ? gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, NULL)
         		:
 #endif
         			gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, NULL);

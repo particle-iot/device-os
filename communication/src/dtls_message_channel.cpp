@@ -38,6 +38,7 @@ static void my_debug( void *ctx, int level,
 
 }
 
+// todo - would like to make this a callback
 static int dtls_rng(void* handle, uint8_t* data, size_t len)
 {
 	while (len>=4)
