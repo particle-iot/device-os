@@ -2,7 +2,7 @@ sudo: required
 services:
   - docker
 install:
-  - docker login --email=$DOCKER_HUB_EMAIL --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD
+  - 'if [ ! -z "$DOCKER_HUB_EMAIL" ]; then docker login --email=$DOCKER_HUB_EMAIL --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD; fi'
   - wget https://github.com/spark/firmware-buildpack-builder/archive/master.tar.gz -O - | tar -xz -C ../ --strip-components 1
   - ../bin/build-image
 
@@ -84,6 +84,7 @@ env:
   # # Photon minimal build
   # - DIR=modules PLATFORM=photon COMPILE_LTO=n MINIMAL=y
   global:
+  - DOCKER_IMAGE_NAME=particle/buildpack-particle-firmware
   - secure: UM1+Ps1t21JfJaTFhuqkaY/U21j1Gfja6oSJTALcU0Y7zmo7TNyYMJwP+tbRfss7RBilWwUA8osr3sr6NXPREChojKpRQaRt52iD6wDfcxhsxGrpOU79cYO7FK1aQhCmhDGcnXahtxzbOGwS74jjTFW9U6TSveWa+EV1OgagLMc=
   - secure: aJ+EUGgXIp8t0s/f3EEyiUjYXnzAlYW9+jukG240A2Wb/XnGp9Av/JE+wBnBeMv7eF+hxkODo99gDXPumV6uYQevIBtqiHWtAu7kyvCxUWXhSmag+Q89pCJO8QpUrcxra9UZ6i+zhFEfskBctBjlT9nMKoUsGSg4jMg6Kx71QsA=
   - secure: Iq58mKqq5Nz4B6OEZu1nmnquhvlQncxT4T3f1x+M/0I6VW5xirMWFlpeke8QyyPOZlwNLDnB5QVjsR2UQspNIhMT4rCfDeCCr9AeinoMDmqPbzpmLLmtaUpz0uTZyJVx7+IRe9QtljPfbzlAxybmrx1HdCCw++F/+qhgFoGLi9o=
