@@ -40,6 +40,7 @@
 #include "string_convert.h"
 #include <stdint.h>
 #include "core_hal.h"
+#include "hal_platform.h"
 
 #define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
@@ -209,6 +210,49 @@ void Spark_Process_Events()
     }
 }
 
+#if HAL_PLATFORM_CLOUD_UDP
+sockaddr_t cloud_endpoint;
+
+int Spark_Send_UDP(const unsigned char* buf, uint32_t buflen, void* reserved)
+{
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || cloudSocketClosed())
+    {
+        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
+        //break from any blocking loop
+        return -1;
+    }
+	return socket_sendto(sparkSocket, buf, buflen, 0, &cloud_endpoint, sizeof(cloud_endpoint));
+}
+
+int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
+{
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || cloudSocketClosed())
+    {
+        //break from any blocking loop
+        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
+        return -1;
+    }
+
+    sockaddr_t addr;
+    socklen_t size = sizeof(addr);
+	int received = socket_receivefrom(sparkSocket, buf, buflen, 0, &addr, &size);
+    if (received>=0)
+    {
+    		// filter out by destination IP and port
+    		// todo - IPv6 will need to change this
+    		if (memcmp(&addr, &cloud_endpoint, 6)) {
+    			// ignore the packet if from a different source
+    			received = 0;
+    		}
+    }
+    return received;
+}
+
+
+#endif
+
+
+
 // Returns number of bytes sent or -1 if an error occurred
 int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
 {
@@ -325,12 +369,27 @@ void Spark_Protocol_Init(void)
                 spark_protocol_set_product_firmware_version(sp, info.product_version);
         }
 
+        const bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+
         SparkCallbacks callbacks;
         memset(&callbacks, 0, sizeof(callbacks));
         callbacks.size = sizeof(callbacks);
-        callbacks.send = Spark_Send;
-        callbacks.receive = Spark_Receive;
-        callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
+        callbacks.protocolFactory = udp ? PROTOCOL_DTLS : PROTOCOL_LIGHTSSL;
+#if HAL_PLATFORM_CLOUD_UDP
+        if (udp)
+        {
+            callbacks.send = Spark_Send_UDP;
+            callbacks.receive = Spark_Receive_UDP;
+            callbacks.transport_context = &cloud_endpoint;
+        }
+        else
+#endif
+        {
+        		callbacks.send = Spark_Send;
+        		callbacks.receive = Spark_Receive;
+        		callbacks.transport_context = nullptr;
+        }
+		callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
         callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
         callbacks.calculate_crc = HAL_Core_Compute_CRC32;
         callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
@@ -353,7 +412,7 @@ void Spark_Protocol_Init(void)
         descriptor.append_system_info = system_module_info;
         descriptor.call_event_handler = invokeEventHandler;
 
-        // todo - this pushes a lot of data on the stack! refactor to remove heacy stack usage
+        // todo - this pushes a lot of data on the stack! refactor to remove heavy stack usage
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
 
@@ -520,24 +579,27 @@ int Internet_Test(void)
 }
 
 // Same return value as connect(), -1 on error
-
-int Spark_Connect(void)
+int Spark_Connect()
 {
     DEBUG("sparkSocket Now =%d", sparkSocket);
 
     // Close Original
-
     Spark_Disconnect();
 
-    uint16_t port = SPARK_SERVER_PORT;
+    const bool udp =
 #if HAL_PLATFORM_CLOUD_UDP
-    if (HAL_Feature_Get(FEATURE_CLOUD_UDP))
-    		port = PORT_COAPS;
+    (HAL_Feature_Get(FEATURE_CLOUD_UDP));
+#else
+    false;
 #endif
+
+    uint16_t port = SPARK_SERVER_PORT;
+    if (udp)
+    		port = PORT_COAPS;
 
     ServerAddress server_addr;
     HAL_FLASH_Read_ServerAddress(&server_addr);
-    DEBUG("HAL_FLASH_Read_ServerAddress() = type:%d,domain:%s,ip: %d.%d.%d.%d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip));
+    DEBUG("HAL_FLASH_Read_ServerAddress() = type:%d,domain:%s,ip: %d.%d.%d.%d, port: %d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip), server_addr.port);
 
     bool ip_resolve_failed = false;
     IPAddress ip_addr;
@@ -548,6 +610,8 @@ int Spark_Connect(void)
         case IP_ADDRESS:
             // DEBUG("IP_ADDRESS");
             ip_addr = server_addr.ip;
+            if (server_addr.port!=0 && server_addr.port!=65535)
+            		port = server_addr.port;
             break;
 
         default:
@@ -562,6 +626,9 @@ int Spark_Connect(void)
 
         case DOMAIN_NAME:
             // DEBUG("DOMAIN_NAME");
+            if (server_addr.port!=0 && server_addr.port!=65535)
+            		port = server_addr.port;
+
             int attempts = 3;
             while (!ip_addr && 0 < --attempts)
             {
@@ -591,7 +658,7 @@ int Spark_Connect(void)
 #endif
     if (!ip_resolve_failed)
     {
-        sparkSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, port, NIF_DEFAULT);
+        sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, port, NIF_DEFAULT);
         DEBUG("socketed sparkSocket=%d", sparkSocket);
     }
 
@@ -605,7 +672,6 @@ int Spark_Connect(void)
         tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
         tSocketAddr.sa_data[1] = (port & 0x00FF);
 
-
     		if (!ip_addr)
         {
             // final fallback in case where flash invalid
@@ -618,16 +684,25 @@ int Spark_Connect(void)
         tSocketAddr.sa_data[4] = ip_addr[2];
         tSocketAddr.sa_data[5] = ip_addr[3];
 
-        uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
-        DEBUG("Connect Attempt");
-        rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
-        DEBUG("socket_connect()=%d", rv);
-        if (rv)
-            ERROR("connection failed to %d.%d.%d.%d, code=%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], rv);
+#if HAL_PLATFORM_CLOUD_UDP
+        if (udp)
+        {
+        		memcpy(&cloud_endpoint, &tSocketAddr, sizeof(cloud_endpoint));
+        }
         else
-            INFO("connected to cloud %d.%d.%d.%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
+#endif
+        {
+			uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
+			DEBUG("connection attempt to %d.%d.%d.%d:%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port);
+			rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
+			DEBUG("socket_connect()=%d", rv);
+			if (rv)
+				ERROR("connection failed to %d.%d.%d.%d:%d, code=%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port, rv);
+			else
+				INFO("connected to cloud %d.%d.%d.%d:%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port);
 
-        HAL_WLAN_SetNetWatchDog(ot);
+			HAL_WLAN_SetNetWatchDog(ot);
+        }
     }
     if (rv)     // error - prevent socket leaks
         Spark_Disconnect();

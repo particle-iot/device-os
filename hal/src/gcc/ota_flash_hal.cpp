@@ -110,6 +110,7 @@ void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
+	memset(server_addr, 0, sizeof(ServerAddress));
     parseServerAddressData(server_addr, deviceConfig.server_key+SERVER_ADDRESS_OFFSET);
 }
 

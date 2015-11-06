@@ -34,6 +34,7 @@
 #include "filesystem.h"
 #include "service_debug.h"
 #include "device_config.h"
+#include "hal_platform.h"
 
 using std::cout;
 
