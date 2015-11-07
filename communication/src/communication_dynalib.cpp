@@ -26,13 +26,19 @@ ProtocolFacade* create_protocol(ProtocolFactory factory)
     	// choose between UDP and TCP
 #ifdef PARTICLE_PROTOCOL
 #if HAL_PLATFORM_CLOUD_UDP
-    	if (factory==PROTOCOL_DTLS)
+    	if (factory==PROTOCOL_DTLS) {
+    		DEBUG("creating DTLS protocol");
     		return new particle::protocol::DTLSProtocol();
+    	}
     	else
 #endif
+    	{
+    		DEBUG("creating LightSSL protocol");
 		return new particle::protocol::LightSSLProtocol();
+    	}
 #else
-    		return new SparkProtocol();
+		DEBUG("creating SparkProtocol");
+		return new SparkProtocol();
 #endif
 }
 
@@ -43,6 +49,7 @@ ProtocolFacade* spark_protocol_instance(void)
 
 	if (!protocol) {
 		bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+		DEBUG("UDP enabled %d", udp);
 		protocol = create_protocol(udp ? PROTOCOL_DTLS : PROTOCOL_LIGHTSSL);
 	}
 	return protocol;

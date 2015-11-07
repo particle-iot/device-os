@@ -50,15 +50,6 @@ int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
 
-ProtocolFacade* sp;
-
-// initialize the sp value so we have a local copy of it in this module
-struct SystemCloudStartup {
-    SystemCloudStartup() {
-        sp = spark_protocol_instance();
-    }
-};
-SystemCloudStartup system_cloud_startup;
 
 static sock_handle_t sparkSocket = socket_handle_invalid();
 
@@ -72,6 +63,8 @@ const uint32_t VIBGYOR_Colors[] = {
 const int VIBGYOR_Size = sizeof (VIBGYOR_Colors) / sizeof (uint32_t);
 int VIBGYOR_Index;
 
+ProtocolFacade* sp;
+
 /**
  * This is necessary since spark_protocol_instance() was defined in both system_cloud
  * and communication dynalibs. (Not sure why - just an oversight.)
@@ -81,6 +74,8 @@ int VIBGYOR_Index;
  */
 ProtocolFacade* system_cloud_protocol_instance(void)
 {
+	if (!sp)
+		sp = spark_protocol_instance();
     return sp;
 }
 
@@ -221,6 +216,7 @@ int Spark_Send_UDP(const unsigned char* buf, uint32_t buflen, void* reserved)
         //break from any blocking loop
         return -1;
     }
+    DEBUG("send %d", buflen);
 	return socket_sendto(sparkSocket, buf, buflen, 0, &cloud_endpoint, sizeof(cloud_endpoint));
 }
 
@@ -348,6 +344,8 @@ void SystemEvents(const char* name, const char* data)
 
 void Spark_Protocol_Init(void)
 {
+	system_cloud_protocol_instance();
+
     if (!spark_protocol_is_initialized(sp))
     {
         product_details_t info;
@@ -446,6 +444,7 @@ const int CLAIM_CODE_SIZE = 63;
 
 int Spark_Handshake(bool presence_announce)
 {
+	DEBUG("starting handshake announce=%d", presence_announce);
     int err = spark_protocol_handshake(sp);
     if (!err)
     {
@@ -659,7 +658,7 @@ int Spark_Connect()
     if (!ip_resolve_failed)
     {
         sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, port, NIF_DEFAULT);
-        DEBUG("socketed sparkSocket=%d", sparkSocket);
+        DEBUG("socketed sparkSocket=%d, %d", sparkSocket, socket_handle_valid(sparkSocket));
     }
 
 	if (socket_handle_valid(sparkSocket))
@@ -688,6 +687,7 @@ int Spark_Connect()
         if (udp)
         {
         		memcpy(&cloud_endpoint, &tSocketAddr, sizeof(cloud_endpoint));
+        		rv = 0;
         }
         else
 #endif

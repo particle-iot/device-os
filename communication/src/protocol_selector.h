@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "hal_platform.h"
 #define PARTICLE_PROTOCOL
 
 #ifdef PARTICLE_PROTOCOL
