@@ -60,7 +60,8 @@ test(ADC_AnalogReadOnPinWithVoltageDividerResultsInCorrectValue) {
 }
 #endif
 
-#if (PLATFORM_ID == 6)
+
+#if (PLATFORM_ID >= 3)
 test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
     pin_t pin = A5;//pin under test (Voltage divider with equal resistor values)
     // when
@@ -69,5 +70,22 @@ test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
     // then
     assertTrue((ADCValue>2000)&&(ADCValue<2100));//ADCValue should be around 2048
     //To Do : Add test for remaining pins if required
+}
+#endif
+
+#if (PLATFORM_ID >= 3)
+test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue_2) {
+    pin_t pin = A5;
+    // when
+    // Github issues #671
+    for(int i = 0; i < 4096; i++) {
+        pinMode(DAC, OUTPUT);
+        analogWrite(DAC, i);
+    }
+    delay(100);
+    analogWrite(DAC, 2048);
+    int32_t ADCValue = analogRead(pin);
+    // then
+    assertTrue((ADCValue>2000)&&(ADCValue<2100));
 }
 #endif
