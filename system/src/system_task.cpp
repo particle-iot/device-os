@@ -39,6 +39,9 @@
 #include "spark_wiring_constants.h"
 #include "spark_wiring_cloud.h"
 #include "system_threading.h"
+#if PLATFORM_ID==88
+#include "ble_hal.h"
+#endif
 
 using spark::Network;
 
@@ -122,6 +125,13 @@ void manage_network_connection()
         }
     }
 }
+
+#if PLATFORM_ID == 88
+void manage_ble_event()
+{
+	ble_idle_event();
+}
+#endif
 
 #ifndef SPARK_NO_CLOUD
 
@@ -325,6 +335,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         manage_ip_config();
 
         CLOUD_FN(manage_cloud_connection(force_events), (void)0);
+
+#if PLATFORM_ID==88
+        manage_ble_event();
+#endif
     }
     else
     {
