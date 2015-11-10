@@ -202,6 +202,11 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
 {
 	ip::udp::endpoint endpoint;
 	auto& socket = udp_from(sock);
+    boost::asio::socket_base::bytes_readable command(true);
+    socket.io_control(command);
+    std::size_t available = command.get();
+    if (!available)
+    		return 0;
 	int count = socket.receive_from(boost::asio::buffer(buffer, bufLen), endpoint, 0, ec);
 	sock_handle_t result = ec.value();
 	return result ? result : count;
@@ -255,6 +260,7 @@ sock_result_t socket_close(sock_handle_t socket)
 
     return 0;
 }
+
 
 sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port, network_interface_t nif)
 {
