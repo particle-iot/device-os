@@ -73,19 +73,11 @@ private:
     /**
      * C function to call the send/recv methods on a DTLSMessageChannel instance.
      */
-    static int send(void* ctx, const uint8_t* data, size_t len);
-    static int recv(void* ctx, uint8_t* data, size_t len);
+    static int send_(void* ctx, const uint8_t* data, size_t len);
+    static int recv_(void* ctx, uint8_t* data, size_t len);
 
-
-    int send(const uint8_t* data, size_t len)
-    {
-    		return callbacks.send(data, len, callbacks.tx_context);
-    }
-
-    int recv(uint8_t* data, size_t len)
-    {
-		return callbacks.receive(data, len, callbacks.tx_context);
-    }
+    int send(const uint8_t* data, size_t len);
+    int recv(uint8_t* data, size_t len);
 
  public:
 	ProtocolError init(const uint8_t* core_private, size_t core_private_len,

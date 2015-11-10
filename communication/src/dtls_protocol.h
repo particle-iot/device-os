@@ -31,6 +31,9 @@
 namespace particle {
 namespace protocol {
 
+size_t keylen(uint8_t* key, size_t max_len);
+
+
 class DTLSProtocol : public Protocol
 {
 	CoAPChannel<DTLSMessageChannel> channel;
@@ -48,20 +51,7 @@ public:
 	void init(const char *id,
 	          const SparkKeys &keys,
 	          const SparkCallbacks &callbacks,
-	          const SparkDescriptor &descriptor)
-	{
-		DTLSMessageChannel::Callbacks channelCallbacks;
-		channelCallbacks.millis = callbacks.millis;
-		channelCallbacks.handle_seed = handle_seed;
-		channelCallbacks.receive = callbacks.receive;
-		channelCallbacks.send = callbacks.send;
-		channel.init(keys.core_private, MAX_DEVICE_PRIVATE_KEY_LENGTH,
-				keys.core_public, MAX_DEVICE_PUBLIC_KEY_LENGTH,
-				keys.server_public, MAX_SERVER_PUBLIC_KEY_LENGTH,
-				(const uint8_t*)id, channelCallbacks);
-        Protocol::init(callbacks, descriptor);
-	}
-
+	          const SparkDescriptor &descriptor);
 };
 
 

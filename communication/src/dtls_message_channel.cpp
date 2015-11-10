@@ -22,20 +22,24 @@
 #include "rng_hal.h"
 #include "mbedtls/error.h"
 #include "timer_hal.h"
+#include <stdio.h>
 
 namespace particle { namespace protocol {
 
 // mbedtls_ecp_gen_keypair
 // see also gen_key.c and mbedtls_ecp_gen_key
 
-#define EXIT_ERROR(ret) \
-	if (ret) return UNKNOWN
+#define EXIT_ERROR(x, msg) \
+	if (x) { \
+		WARN("DTLS initialization failure: " #msg ": %c%04X",(x<0)?'-':' ',(x<0)?-x:x);\
+		return UNKNOWN; \
+	}
 
 static void my_debug( void *ctx, int level,
 		const char *file, int line,
 		const char *str )
 {
-
+	DEBUG("%s", str);
 }
 
 // todo - would like to make this a callback
@@ -62,24 +66,31 @@ ProtocolError DTLSMessageChannel::init(
 		const uint8_t* device_id, Callbacks& callbacks)
 {
 	init();
+	int ret;
 
-	int ret = mbedtls_pk_parse_public_key(&pkey, core_public, core_public_len);
-	EXIT_ERROR(ret);
+	this->callbacks = callbacks;
 
-	ret = mbedtls_pk_parse_key(&pkey, core_private, core_private_len, NULL, 0);
-	EXIT_ERROR(ret);
+	mbedtls_debug_set_threshold(255);
 
 	ret = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT,
 			MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
-	EXIT_ERROR(ret);
-
-	mbedtls_ssl_conf_min_version(&conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
+	EXIT_ERROR(ret, "unable to configure defaults");
 
 	mbedtls_ssl_conf_rng(&conf, dtls_rng, nullptr);
 	mbedtls_ssl_conf_dbg(&conf, my_debug, nullptr);
+	mbedtls_ssl_conf_min_version(&conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
+
+	ret = mbedtls_ssl_setup(&ssl_context, &conf);
+	EXIT_ERROR(ret, "unable to setup SSL context");
+
+	ret = mbedtls_pk_parse_public_key(&pkey, core_public, core_public_len);
+	EXIT_ERROR(ret, "unable to parse device public key");
+
+	ret = mbedtls_pk_parse_key(&pkey, core_private, core_private_len, NULL, 0);
+	EXIT_ERROR(ret, "unable to parse device private key");
 
 	ret = mbedtls_ssl_conf_own_cert(&conf, &clicert, &pkey);
-	EXIT_ERROR(ret);
+	EXIT_ERROR(ret, "unable to configure own certificate");
 
 	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 	static int ssl_cert_types[] = { MBEDTLS_TLS_CERT_TYPE_RAW_PUBLIC_KEY, MBEDTLS_TLS_CERT_TYPE_NONE };
@@ -87,30 +98,40 @@ ProtocolError DTLSMessageChannel::init(
 	mbedtls_ssl_conf_server_certificate_types(&conf, ssl_cert_types);
 	mbedtls_ssl_conf_certificate_receive(&conf, MBEDTLS_SSL_RECEIVE_CERTIFICATE_DISABLED);
 
-	ret = mbedtls_ssl_setup(&ssl_context, &conf);
-	EXIT_ERROR(ret);
 
 	if ((ssl_context.session_negotiate->peer_cert = (mbedtls_x509_crt*)calloc(1, sizeof(mbedtls_x509_crt))) == NULL)
 	{
+		ERROR("unable to allocate certificate storage");
 		return INSUFFICIENT_STORAGE;
 	}
 
 	mbedtls_x509_crt_init(ssl_context.session_negotiate->peer_cert);
 	ret = mbedtls_pk_parse_public_key(&ssl_context.session_negotiate->peer_cert->pk, server_public, server_public_len);
-	EXIT_ERROR(ret);
+	EXIT_ERROR(ret, "unable to parse netogiated public key");
 
 //	mbedtls_ssl_set_timer_cb(&ssl_context, &timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
-	mbedtls_ssl_set_bio(&ssl_context, this, DTLSMessageChannel::send, DTLSMessageChannel::recv, NULL);
+	mbedtls_ssl_set_bio(&ssl_context, this, &DTLSMessageChannel::send_, &DTLSMessageChannel::recv_, NULL);
 
 	return NO_ERROR;
 }
 
-int DTLSMessageChannel::send( void *ctx, const unsigned char *buf, size_t len ) {
+inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
+{
+	return callbacks.send(data, len, callbacks.tx_context);
+}
+
+inline int DTLSMessageChannel::recv(uint8_t* data, size_t len)
+{
+	return callbacks.receive(data, len, callbacks.tx_context);
+}
+
+
+int DTLSMessageChannel::send_( void *ctx, const unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
 	return channel->send(buf, len);
 }
 
-int DTLSMessageChannel::recv( void *ctx, unsigned char *buf, size_t len ) {
+int DTLSMessageChannel::recv_( void *ctx, unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
 	return channel->recv(buf, len);
 }
@@ -133,10 +154,14 @@ void DTLSMessageChannel::dispose()
 	mbedtls_ssl_free (&ssl_context);
 }
 
-
 ProtocolError DTLSMessageChannel::establish()
 {
-    return NO_ERROR;
+	int ret = mbedtls_ssl_handshake(&ssl_context);
+	if (ret)
+	{
+		DEBUG("handshake failed %x", ret);
+	}
+	return ret==0 ? NO_ERROR : IO_ERROR;
 }
 
 ProtocolError DTLSMessageChannel::receive(Message& message)
@@ -160,6 +185,9 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 
 ProtocolError DTLSMessageChannel::send(Message& message)
 {
+	if (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER)
+		return INVALID_STATE;
+
     if (message.length()>20)
         DEBUG("message length %d, last 20 bytes %s ", message.length(), message.buf()+message.length()-20);
     else
