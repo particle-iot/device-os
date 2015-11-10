@@ -12,7 +12,13 @@ DEPENDENCIES += platform dynalib
 CFLAGS += -DSPARK_PLATFORM
 endif
 
-ifneq ("$(PLATFORM_NET)","BCM9WCDUSI09")
+# We also have HAS_SERIAL_FLASH for P1 platforms that essentially means the same thing as FLASHEE_EEPROM
+# The difference is that HAS_SERIAL_FLASH is not defined when PLATFORM is the CORE.
+# Consider refactoring in the future.
+ifeq ("$(PLATFORM_NET)","BCM9WCDUSI14")
+CFLAGS += -DFLASHEE_EEPROM
+endif
+ifeq ("$(PLATFORM_NET)","CC3000")
 CFLAGS += -DFLASHEE_EEPROM
 endif
 
