@@ -3,7 +3,7 @@
 #include <string.h>
 #include <cstdio>
 #include "service_debug.h"
-
+#include "core_hal.h"
 #include "filesystem.h"
 
 void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
@@ -107,11 +107,14 @@ void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
 
 #define MAXIMUM_CLOUD_KEY_LEN (512)
 #define SERVER_ADDRESS_OFFSET (384)
+#define SERVER_ADDRESS_OFFSET_EC (192)
+
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
 	memset(server_addr, 0, sizeof(ServerAddress));
-    parseServerAddressData(server_addr, deviceConfig.server_key+SERVER_ADDRESS_OFFSET);
+	int offset = HAL_Feature_Get(FEATURE_CLOUD_UDP) ? SERVER_ADDRESS_OFFSET_EC : SERVER_ADDRESS_OFFSET;
+    parseServerAddressData(server_addr, deviceConfig.server_key+offset);
 }
 
 bool HAL_OTA_Flashed_GetStatus(void)
