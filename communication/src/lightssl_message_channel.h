@@ -18,6 +18,9 @@
  */
 #pragma once
 
+#include "protocol_selector.h"
+
+#if HAL_PLATFORM_CLOUD_TCP
 #include "service_debug.h"
 #include "handshake.h"
 #include "device_keys.h"
@@ -108,3 +111,5 @@ protected:
 
 }
 }
+
+#endif

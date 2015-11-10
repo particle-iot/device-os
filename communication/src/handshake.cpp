@@ -23,6 +23,9 @@
   ******************************************************************************
   */
 #include "handshake.h"
+#include "protocol_selector.h"
+
+#if HAL_PLATFORM_CLOUD_TCP
 
 int ciphertext_from_nonce_and_id(const unsigned char *nonce,
                                  const unsigned char *id,
@@ -194,3 +197,5 @@ void extract_public_rsa_key(uint8_t* device_pubkey, const uint8_t* device_privke
     memcpy(device_pubkey + 157, device_pubkey_exponent, 5);
 }
 
+
+#endif

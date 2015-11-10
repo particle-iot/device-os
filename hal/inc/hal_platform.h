@@ -36,6 +36,8 @@ extern "C" {
 
 #if PLATFORM_ID==10 || PLATFORM_ID==3 || (PLATFORM_ID==6 && !MODULAR_FIRMWARE)
 #define HAL_PLATFORM_CLOUD_UDP 1
+#else
+#define HAL_PLATFORM_CLOUD_TCP 1
 #endif
 
 #ifndef HAL_PLATFORM_WIFI
@@ -49,6 +51,11 @@ extern "C" {
 #ifndef HAL_PLATFORM_CLOUD_UDP
 #define HAL_PLATFORM_CLOUD_UDP 0
 #endif
+
+#ifndef HAL_PLATFORM_CLOUD_TCP
+#define HAL_PLATFORM_CLOUD_TCP 0
+#endif
+
 
 #ifdef	__cplusplus
 }

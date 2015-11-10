@@ -30,12 +30,15 @@ ProtocolFacade* create_protocol(ProtocolFactory factory)
     		DEBUG("creating DTLS protocol");
     		return new particle::protocol::DTLSProtocol();
     	}
-    	else
 #endif
+#if HAL_PLATFORM_CLOUD_TCP
+    	if (factory==PROTOCOL_LIGHTSSL)
     	{
     		DEBUG("creating LightSSL protocol");
 		return new particle::protocol::LightSSLProtocol();
     	}
+#endif
+    	return nullptr;
 #else
 		DEBUG("creating SparkProtocol");
 		return new SparkProtocol();

@@ -47,9 +47,11 @@ DYNALIB_FN(communication, spark_protocol_send_subscription_scope)
 DYNALIB_FN(communication, spark_protocol_add_event_handler)
 DYNALIB_FN(communication, spark_protocol_send_time_request)
 DYNALIB_FN(communication, spark_protocol_send_subscriptions)
+#if HAL_PLATFORM_CLOUD_TCP
 DYNALIB_FN(communication, decrypt_rsa)
 DYNALIB_FN(communication, gen_rsa_key)
 DYNALIB_FN(communication, extract_public_rsa_key)
+#endif
 DYNALIB_FN(communication, spark_protocol_remove_event_handlers)
 #if HAL_PLATFORM_CLOUD_UDP
 DYNALIB_FN(communication, gen_ec_key)
