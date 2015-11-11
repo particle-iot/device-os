@@ -56,6 +56,7 @@ public:
 		const void *(*get_variable)(const char *variable_key))
 	{
 		uint8_t* queue = message.buf();
+		message.set_id(message_id);
 		// get variable value according to type using the descriptor
 		SparkReturnType::Enum var_type = variable_type(variable_key);
 		size_t response = 0;
@@ -63,12 +64,12 @@ public:
 		if(SparkReturnType::BOOLEAN == var_type)
 		{
 			const bool *bool_val = (const bool *)get_variable(variable_key);
-			response = Messages::variable_value(queue, token, message_id, *bool_val);
+			response = Messages::variable_value(queue, message_id, token, *bool_val);
 		}
 		else if(SparkReturnType::INT == var_type)
 		{
 			const int *int_val = (const int *)get_variable(variable_key);
-			response = Messages::variable_value(queue, token, message_id, *int_val);
+			response = Messages::variable_value(queue, message_id, token, *int_val);
 		}
 		else if(SparkReturnType::STRING == var_type)
 		{
@@ -80,12 +81,12 @@ public:
 			if (str_length > max_length) {
 				str_length = max_length;
 			}
-			response = Messages::variable_value(queue, token, message_id, str_val, str_length);
+			response = Messages::variable_value(queue, message_id, token, str_val, str_length);
 		}
 		else if(SparkReturnType::DOUBLE == var_type)
 		{
 			double *double_val = (double *)get_variable(variable_key);
-			response = Messages::variable_value(queue, token, message_id, *double_val);
+			response = Messages::variable_value(queue, message_id, token, *double_val);
 		}
 
 		message.set_length(response);

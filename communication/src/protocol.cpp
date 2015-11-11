@@ -58,7 +58,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		char variable_key[13];
 		variables.decode_variable_request(variable_key, message);
 		return variables.handle_variable_request(variable_key, message,
-				channel, token, CoAP::message_id(queue),
+				channel, token, msg_id,
 				descriptor.variable_type, descriptor.get_variable);
 	}
 	case CoAPMessageType::SAVE_BEGIN:
