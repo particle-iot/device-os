@@ -39,7 +39,9 @@ static void my_debug( void *ctx, int level,
 		const char *file, int line,
 		const char *str )
 {
-	DEBUG("%s", str);
+	//DEBUG("%s:%04d: %s", file, line, str);
+	fprintf(stdout, "%s:%04d: %s", file, line, str);
+	fflush(stdout);
 }
 
 // todo - would like to make this a callback
