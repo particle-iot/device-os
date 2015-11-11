@@ -46,7 +46,10 @@ int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* 
 
 #ifdef PARTICLE_PROTOCOL
 #include "hal_platform.h"
+
+#if HAL_PLATFORM_CLOUD_TCP
 #include "lightssl_protocol.h"
+#endif
 
 #if HAL_PLATFORM_CLOUD_UDP
 #include "dtls_protocol.h"

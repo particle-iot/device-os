@@ -36,6 +36,10 @@ extern "C" {
 
 #if PLATFORM_ID==10 || PLATFORM_ID==3 || (PLATFORM_ID==6 && !MODULAR_FIRMWARE)
 #define HAL_PLATFORM_CLOUD_UDP 1
+// photon needs TCP
+#if PLATFORM_ID==6
+#define HAL_PLATFORM_CLOUD_TCP 1
+#endif
 #else
 #define HAL_PLATFORM_CLOUD_TCP 1
 #endif

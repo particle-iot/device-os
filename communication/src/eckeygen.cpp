@@ -6,6 +6,7 @@
 #ifdef PARTICLE_PROTOCOL
 #if HAL_PLATFORM_CLOUD_UDP
 #include "mbedtls/pk.h"
+#include "mbedtls/asn1.h"
 
 int gen_ec_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *, uint8_t* buf, size_t len), void *p_rng)
 {
@@ -22,7 +23,18 @@ int gen_ec_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *, uint8_t
 	return error;
 }
 
-int extract_public_ec_key(uint8_t* buffer, size_t max_length, const uint8_t* private_key, size_t private_key_len)
+size_t determine_der_length(const uint8_t* key, size_t max_len)
+{
+	size_t len;
+	const uint8_t* end = key+max_len;
+	const uint8_t* p = key;
+	if (mbedtls_asn1_get_tag( (uint8_t**)&p, end, &len, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) {
+		return 0;
+	}
+	return p-key+len;
+}
+
+int extract_public_ec_key_length(uint8_t* buffer, size_t max_length, const uint8_t* private_key, size_t private_key_len)
 {
 	mbedtls_pk_context key;
 	mbedtls_pk_init(&key);
@@ -34,6 +46,11 @@ int extract_public_ec_key(uint8_t* buffer, size_t max_length, const uint8_t* pri
 
 	mbedtls_pk_free(&key);
 	return error;
+}
+
+int extract_public_ec_key(uint8_t* buffer, size_t max_length, const uint8_t* private_key)
+{
+	return extract_public_ec_key_length(buffer, max_length, private_key, determine_der_length(private_key, max_length));
 }
 
 

@@ -263,13 +263,15 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
     if (genspec->gen==PRIVATE_KEY_GENERATE_ALWAYS || (!genspec->had_key && genspec->gen!=PRIVATE_KEY_GENERATE_NEVER)) {
         // todo - this couples the HAL with the system. Use events instead.
         SPARK_LED_FADE = false;
-        int error =
+        int error  = 1;
 #if HAL_PLATFORM_CLOUD_UDP
-        udp ? gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, NULL)
-        		:
+        if (udp)
+        		error = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, NULL);
 #endif
-        			gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, NULL);
-
+#if HAL_PLATFORM_CLOUD_TCP
+		if (!udp)
+			error = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, NULL);
+#endif
         if (!error) {
         		if (udp)
         			dct_write_app_data(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
@@ -349,11 +351,14 @@ const uint8_t* fetch_device_public_key()
 #endif
     const uint8_t* priv = fetch_device_private_key();
     int error = 0;
+#if HAL_PLATFORM_CLOUD_UDP
     if (udp)
     		error = extract_public_ec_key(pubkey, sizeof(pubkey), priv);
-    else
+#endif
+#if HAL_PLATFORM_CLOUD_TCP
+    if (!udp)
     		extract_public_rsa_key(pubkey, priv);
-
+#endif
 
     int offset = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET : DCT_DEVICE_PUBLIC_KEY_OFFSET;
     const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(offset);

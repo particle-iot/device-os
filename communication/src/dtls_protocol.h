@@ -27,12 +27,10 @@
 #include "protocol.h"
 #include "dtls_message_channel.h"
 #include "coap_channel.h"
+#include "eckeygen.h"
 
 namespace particle {
 namespace protocol {
-
-size_t keylen(uint8_t* key, size_t max_len);
-
 
 class DTLSProtocol : public Protocol
 {
