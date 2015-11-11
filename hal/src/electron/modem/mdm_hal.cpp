@@ -734,6 +734,23 @@ failure:
     return false;
 }
 
+bool MDMParser::getSignalStrength(NetStatus &status)
+{
+    bool ok = false;
+    LOCK();
+    if (_init && _pwr) {
+        MDM_INFO("\r\n[ Modem::getSignalStrength ] = = = = = = = = = =");
+        sendFormated("AT+CSQ\r\n");
+        if (RESP_OK == waitFinalResp(_cbCSQ, &_net)) {
+            ok = true;
+            status.rssi = _net.rssi;
+            status.ber = _net.ber;
+        }
+    }
+    UNLOCK();
+    return ok;
+}
+
 int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
 {
     if ((type == TYPE_PLUS) && status){

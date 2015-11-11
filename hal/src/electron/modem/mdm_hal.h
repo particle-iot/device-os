@@ -155,6 +155,13 @@ public:
     */
     bool checkNetStatus(NetStatus* status = NULL);
 
+    /** checks the signal strength
+        \param status an optional structure that will have current network information
+               and updated RSSI and BER values.
+        \return true if successful, false otherwise
+    */
+    bool getSignalStrength(NetStatus &status);
+
     /** Power off the MT, This function has to be called prior to
         switching off the supply.
         \return true if successfully, false otherwise
