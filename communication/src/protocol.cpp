@@ -50,7 +50,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		break;
 
 	case CoAPMessageType::FUNCTION_CALL:
-		return functions.handle_function_call(token, message, channel,
+		return functions.handle_function_call(token, msg_id, message, channel,
 				descriptor.call_function);
 
 	case CoAPMessageType::VARIABLE_REQUEST:
