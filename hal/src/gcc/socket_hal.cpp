@@ -202,11 +202,7 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
 {
 	ip::udp::endpoint endpoint;
 	auto& socket = udp_from(sock);
-    boost::asio::socket_base::bytes_readable command(true);
-    socket.io_control(command);
-    std::size_t available = command.get();
-    if (!available)
-    		return 0;
+
 	int count = socket.receive_from(boost::asio::buffer(buffer, bufLen), endpoint, 0, ec);
 	if (addr && addrsize && *addrsize>=6u) {
 		uint16_t port = endpoint.port();
