@@ -260,6 +260,8 @@ uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
 
 uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 {
+	if (flag==BOOTLOADER_FLAG_STARTUP_MODE)
+		return 0xFF;
     return 0xFFFF;
 }
 
