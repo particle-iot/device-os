@@ -39,9 +39,12 @@ static void my_debug( void *ctx, int level,
 		const char *file, int line,
 		const char *str )
 {
-	//DEBUG("%s:%04d: %s", file, line, str);
+#if PLATFORM_ID!=3
+	DEBUG("%s:%04d: %s", file, line, str);
+#else
 	fprintf(stdout, "%s:%04d: %s", file, line, str);
 	fflush(stdout);
+#endif
 }
 
 // todo - would like to make this a callback
