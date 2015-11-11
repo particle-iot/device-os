@@ -234,12 +234,14 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
 	int received = socket_receivefrom(sparkSocket, buf, buflen, 0, &addr, &size);
     if (received>=0)
     {
+#if PLATFORM_ID!=3
     		// filter out by destination IP and port
     		// todo - IPv6 will need to change this
     		if (memcmp(&addr, &cloud_endpoint, 6)) {
     			// ignore the packet if from a different source
     			received = 0;
     		}
+#endif
     }
     return received;
 }
