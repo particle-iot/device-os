@@ -216,6 +216,9 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
 	}
 
 	sock_handle_t result = ec.value();
+    if (result == boost::asio::error::would_block)
+        return 0;
+
 	return result ? result : count;
 }
 
@@ -232,6 +235,9 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
 	int count = socket.send_to(boost::asio::buffer(buffer, len), endpoint, 0, ec);
 
 	sock_handle_t result = ec.value();
+    if (result == boost::asio::error::would_block)
+        return 0;
+
 	return result ? result : count;
 }
 
@@ -277,10 +283,23 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
         return -1;
 
     if (udp) {
-    		udp_from(handle).open(ip::udp::v4(), ec);
+        auto& socket = udp_from(handle);
+        socket.open(ip::udp::v4(), ec);        
+        sock_handle_t result = ec.value();
+        if (result)
+            return result;
+
+        socket.non_blocking(true, ec);
     }
-    else
- 		tcp_from(handle).open(ip::tcp::v4(), ec);
+    else {
+        auto& socket = tcp_from(handle);
+        socket.open(ip::tcp::v4(), ec);        
+        sock_handle_t result = ec.value();
+        if (result)
+            return result;
+
+        socket.non_blocking(true, ec);
+    }
 
     sock_handle_t result = ec.value();
     return result ? result : handle;

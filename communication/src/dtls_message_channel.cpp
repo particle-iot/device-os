@@ -75,7 +75,7 @@ ProtocolError DTLSMessageChannel::init(
 
 	this->callbacks = callbacks;
 
-	mbedtls_debug_set_threshold(255);
+	//mbedtls_debug_set_threshold(255);
 
 	ret = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT,
 			MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
@@ -132,17 +132,20 @@ inline int DTLSMessageChannel::recv(uint8_t* data, size_t len)
 
 int DTLSMessageChannel::send_( void *ctx, const unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
-	return channel->send(buf, len);
+	int count = channel->send(buf, len);
+	if (count == 0)
+		return MBEDTLS_ERR_SSL_WANT_WRITE;
+
+	return count;
 }
 
 int DTLSMessageChannel::recv_( void *ctx, unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
 	int count = channel->recv(buf, len);
 	if (count == 0)
-	{
 		// 0 means EOF in this context
 		return MBEDTLS_ERR_SSL_WANT_READ;
-	}
+
 	return count;
 }
 
@@ -190,24 +193,28 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	memset(buf, 0, len);
 	conf.read_timeout = 0;
 	int ret = mbedtls_ssl_read(&ssl_context, buf, len);
-	if (ret <= 0) {
+	if (ret <= 0 && ret != MBEDTLS_ERR_SSL_WANT_READ)
 		return IO_ERROR;
-	}
+
 	message.set_length(ret);
 	return NO_ERROR;
 }
 
 ProtocolError DTLSMessageChannel::send(Message& message)
 {
-	if (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER)
-		return INVALID_STATE;
+  if (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER)
+    return INVALID_STATE;
 
-    if (message.length()>20)
-        DEBUG("message length %d, last 20 bytes %s ", message.length(), message.buf()+message.length()-20);
-    else
-        DEBUG("message length %d ", message.length());
+  if (message.length()>20)
+      DEBUG("message length %d, last 20 bytes %s ", message.length(), message.buf()+message.length()-20);
+  else
+      DEBUG("message length %d ", message.length());
 
-    return mbedtls_ssl_write(&ssl_context, message.buf(), message.length())<0 ? IO_ERROR : NO_ERROR;
+  int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
+  if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
+    return IO_ERROR;
+
+  return NO_ERROR;
 }
 
 
