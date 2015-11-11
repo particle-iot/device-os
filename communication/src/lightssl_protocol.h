@@ -61,6 +61,18 @@ public:
         Protocol::init(callbacks, descriptor);
 	}
 
+	size_t build_hello(Message& message, bool ota_updated)
+	{
+		product_details_t deets;
+		deets.size = sizeof(deets);
+		get_product_details(deets);
+
+		size_t len = Messages::hello(message.buf(), 0,
+				ota_updated, PLATFORM_ID, deets.product_id,
+				deets.product_version, false, nullptr, 0);
+		return len;
+	}
+
 };
 
 

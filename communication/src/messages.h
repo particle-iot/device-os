@@ -124,7 +124,7 @@ public:
 
 	static size_t hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 			uint16_t platform_id, uint16_t product_id,
-			uint16_t product_firmware_version, bool confirmable=false)
+			uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, uint16_t device_id_len)
 	{
 		buf[0] = COAP_MSG_HEADER(confirmable ? CoAPType::CON : CoAPType::NON, 0);
 		buf[1] = 0x02; // POST
@@ -141,7 +141,16 @@ public:
 		buf[12] = flags;
 		buf[13] = platform_id >> 8;
 		buf[14] = platform_id & 0xFF;
-		return 15;
+		size_t len = 15;
+		if (device_id) {
+			buf[15] = device_id_len >> 8;
+			buf[16] = device_id_len & 0xFF;
+			len += 2;
+			for (size_t i=0; i<device_id_len; i++) {
+				buf[len++] = device_id[i];
+			}
+		}
+		return len;
 	}
 
 	static size_t update_done(uint8_t* buf, message_id_t message_id)

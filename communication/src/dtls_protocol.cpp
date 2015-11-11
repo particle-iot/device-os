@@ -8,6 +8,7 @@ void DTLSProtocol::init(const char *id,
 		  const SparkCallbacks &callbacks,
 		  const SparkDescriptor &descriptor)
 {
+	memcpy(device_id, id, sizeof(device_id));
 	DTLSMessageChannel::Callbacks channelCallbacks;
 	channelCallbacks.millis = callbacks.millis;
 	channelCallbacks.handle_seed = handle_seed;

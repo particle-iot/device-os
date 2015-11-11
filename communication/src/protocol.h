@@ -116,13 +116,14 @@ protected:
 	{
 		Message message;
 		channel.create(message);
-		size_t len = Messages::hello(message.buf(), 0,
-				was_ota_upgrade_successful, PLATFORM_ID, product_id,
-				product_firmware_version);
+
+		size_t len = build_hello(message, was_ota_upgrade_successful);
 		message.set_length(len);
 		last_message_millis = callbacks.millis();
 		return channel.send(message);
 	}
+
+	virtual size_t build_hello(Message& message, bool was_ota_upgrade_successful)=0;
 
 	/**
 	 * Send a Ping message over the channel.
