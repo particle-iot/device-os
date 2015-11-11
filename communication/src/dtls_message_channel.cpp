@@ -80,9 +80,6 @@ ProtocolError DTLSMessageChannel::init(
 	mbedtls_ssl_conf_dbg(&conf, my_debug, nullptr);
 	mbedtls_ssl_conf_min_version(&conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
 
-	ret = mbedtls_ssl_setup(&ssl_context, &conf);
-	EXIT_ERROR(ret, "unable to setup SSL context");
-
 	ret = mbedtls_pk_parse_public_key(&pkey, core_public, core_public_len);
 	EXIT_ERROR(ret, "unable to parse device public key");
 
@@ -98,6 +95,8 @@ ProtocolError DTLSMessageChannel::init(
 	mbedtls_ssl_conf_server_certificate_types(&conf, ssl_cert_types);
 	mbedtls_ssl_conf_certificate_receive(&conf, MBEDTLS_SSL_RECEIVE_CERTIFICATE_DISABLED);
 
+	ret = mbedtls_ssl_setup(&ssl_context, &conf);
+	EXIT_ERROR(ret, "unable to setup SSL context");
 
 	if ((ssl_context.session_negotiate->peer_cert = (mbedtls_x509_crt*)calloc(1, sizeof(mbedtls_x509_crt))) == NULL)
 	{
