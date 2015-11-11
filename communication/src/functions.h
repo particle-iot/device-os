@@ -45,7 +45,7 @@ class Functions
     }
 
 public:
-	ProtocolError handle_function_call(int token, Message& message, MessageChannel& channel,
+	ProtocolError handle_function_call(token_t token, message_id_t message_id, Message& message, MessageChannel& channel,
 		    int (*call_function)(const char *function_key, const char *arg, SparkDescriptor::FunctionResultCallback callback, void* reserved))
 	{
 	    // copy the function key
@@ -86,7 +86,8 @@ public:
 	    Message response;
 	    channel.response(message, response, 16);
 	    // send ACK
-	    size_t response_length = Messages::coded_ack(response.buf(), has_function ? 0x00 : RESPONSE_CODE(4,00), queue[2], queue[3]);
+	    size_t response_length = Messages::coded_ack(response.buf(), has_function ? 0x00 : RESPONSE_CODE(4,00), 0, 0);
+	    response.set_id(message_id);
 	    response.set_length(response_length);
 	    ProtocolError error = channel.send(response);
 	    if (error) return error;
