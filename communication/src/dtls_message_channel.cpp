@@ -161,7 +161,11 @@ void DTLSMessageChannel::dispose()
 
 ProtocolError DTLSMessageChannel::establish()
 {
-	int ret = mbedtls_ssl_handshake(&ssl_context);
+	int ret;
+	do ret = mbedtls_ssl_handshake(&ssl_context);
+	while(ret == MBEDTLS_ERR_SSL_WANT_READ ||
+	      ret == MBEDTLS_ERR_SSL_WANT_WRITE);
+
 	if (ret)
 	{
 		DEBUG("handshake failed %x", ret);
