@@ -132,7 +132,13 @@ int DTLSMessageChannel::send_( void *ctx, const unsigned char *buf, size_t len )
 
 int DTLSMessageChannel::recv_( void *ctx, unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
-	return channel->recv(buf, len);
+	int count = channel->recv(buf, len);
+	if (count == 0)
+	{
+		// 0 means EOF in this context
+		return MBEDTLS_ERR_SSL_WANT_READ;
+	}
+	return count;
 }
 
 
