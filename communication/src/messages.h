@@ -357,8 +357,7 @@ public:
     }
 
 
-    static inline size_t description(unsigned char *buf, token_t token,
-                                   message_id_t message_id)
+    static inline size_t description(unsigned char *buf, message_id_t message_id, token_t token)
     {
     		return content(buf, message_id, token);
     }
