@@ -208,6 +208,17 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
     if (!available)
     		return 0;
 	int count = socket.receive_from(boost::asio::buffer(buffer, bufLen), endpoint, 0, ec);
+	if (addr && addrsize && *addrsize>=6u) {
+		uint16_t port = endpoint.port();
+		addr->sa_data[0] = port >> 8;
+		addr->sa_data[1] = port & 0xFF;
+		uint32_t ip = endpoint.address().to_v4().to_ulong();
+		addr->sa_data[2] = (ip >> 24) & 0xFF;
+		addr->sa_data[3] = (ip >> 16) & 0xFF;
+		addr->sa_data[4] = (ip >> 8) & 0xFF;
+		addr->sa_data[5] = (ip >> 0) & 0xFF;
+	}
+
 	sock_handle_t result = ec.value();
 	return result ? result : count;
 }
