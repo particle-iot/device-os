@@ -30,28 +30,28 @@ SCENARIO("ping requests and responses are managed")
 		THEN("No ping is required at 0")
 		{
 			Pinger pinger;
-			REQUIRE(pinger.process(0, []{return TRANSPORT_FAILURE;})==NO_ERROR);
+			REQUIRE(pinger.process(0, []{return IO_ERROR;})==NO_ERROR);
 			REQUIRE(!pinger.is_expecting_ping_ack());
 		}
 
 		THEN("No ping is required at 5000")
 		{
 			Pinger pinger;
-			REQUIRE(pinger.process(5000, []{return TRANSPORT_FAILURE;})==NO_ERROR);
+			REQUIRE(pinger.process(5000, []{return IO_ERROR;})==NO_ERROR);
 			REQUIRE(!pinger.is_expecting_ping_ack());
 		}
 
 		THEN("No ping is required at 9999")
 		{
 			Pinger pinger;
-			REQUIRE(pinger.process(9999, []{return TRANSPORT_FAILURE;})==NO_ERROR);
+			REQUIRE(pinger.process(9999, []{return IO_ERROR;})==NO_ERROR);
 			REQUIRE(!pinger.is_expecting_ping_ack());
 		}
 
 		THEN("No ping is required at 15000")
 		{
 			Pinger pinger;
-			REQUIRE(pinger.process(15000, []{return TRANSPORT_FAILURE;})==NO_ERROR);
+			REQUIRE(pinger.process(15000, []{return IO_ERROR;})==NO_ERROR);
 			REQUIRE(!pinger.is_expecting_ping_ack());
 		}
 
@@ -80,7 +80,7 @@ SCENARIO("ping requests and responses are managed")
 		{
 			THEN("The ping is considered anknowledged.")
 			{
-				REQUIRE(pinger.process(10000, []{return TRANSPORT_FAILURE;})==NO_ERROR);
+				REQUIRE(pinger.process(10000, []{return IO_ERROR;})==NO_ERROR);
 				REQUIRE(!pinger.is_expecting_ping_ack());
 			}
 		}
@@ -89,7 +89,7 @@ SCENARIO("ping requests and responses are managed")
 		{
 			THEN("The ping is considered failed.")
 			{
-				REQUIRE(pinger.process(10001, []{return TRANSPORT_FAILURE;})==PING_TIMEOUT);
+				REQUIRE(pinger.process(10001, []{return IO_ERROR;})==PING_TIMEOUT);
 				REQUIRE(pinger.is_expecting_ping_ack());
 			}
 		}

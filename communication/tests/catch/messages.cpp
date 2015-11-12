@@ -186,7 +186,7 @@ SCENARIO("determining message type from a CoAP EMPTY message")
 {
 	WHEN("a Confirmable message with no method is received")
 	{
-		uint8_t buf[] = { 1, 0 };
+		uint8_t buf[] = { 1, 0, 0, 0 };
 		THEN("then message is recognized as a PING message")
 		{
 			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::PING);
@@ -195,7 +195,7 @@ SCENARIO("determining message type from a CoAP EMPTY message")
 
 	WHEN("a Non-confirmable message is sent with no method")
 	{
-		uint8_t buf[] = { 0x31, 0 };
+		uint8_t buf[] = { 0x31, 0, 0, 0 };
 		THEN("then message is recognized as a PING message")
 		{
 			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::EMPTY_ACK);
@@ -208,7 +208,7 @@ SCENARIO("determining message type from a CoAP Content message")
 {
 	WHEN("a Content message is received")
 	{
-		uint8_t buf[] = { 1, 0x45 };
+		uint8_t buf[] = { 1, 0x45, 0, 0 };
 		THEN("then message is recognized as a TIME message")
 		{
 			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::TIME);

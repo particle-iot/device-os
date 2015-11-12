@@ -18,7 +18,6 @@
  */
 #pragma once
 
-#include "service_debug.h"
 #include "message_channel.h"
 #include "coap.h"
 

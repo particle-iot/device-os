@@ -38,7 +38,8 @@ target_files = $(patsubst $(SRC_ROOT)/%,%,$(call rwildcard,$(SRC_ROOT)/$1,$2))
 
 # sources are relative to the communications folder
 CPPSRC += $(call target_files,tests/catch,*.cpp)
-CPPSRC += $(call target_files,src,*.cpp)
+#CPPSRC += $(call target_files,src,*.cpp)
+CPPSRC += src/coap.cpp src/messages.cpp 
 
 include $(call rwildcard,$(PROJECT_ROOT)/$(COMMUNICATION)/,include.mk)
 include $(call rwildcard,$(PROJECT_ROOT)/$(COMMUNICATION)/lib/,build.mk)
@@ -48,7 +49,7 @@ INCLUDE_DIRS := $(addprefix $(SRC_ROOT)/,$(INCLUDE_DIRS))
 # these include dirs relative to project root
 INCLUDE_DIRS += $(PROJECT_ROOT)/$(SERVICES)/inc
 INCLUDE_DIRS += $(PROJECT_ROOT)/$(COMMUNICATION)/src
-INCLUDE_DIRS += $(PROJECT_ROOT)/$(HAL)/shared
+INCLUDE_DIRS += $(PROJECT_ROOT)/$(HAL)/shared $(PROJECT_ROOT)/$(HAL)/inc
 INCLUDE_DIRS += $(PROJECT_ROOT)/$(DYNALIB)/inc
 
 CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
