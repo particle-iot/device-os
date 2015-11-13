@@ -194,7 +194,8 @@ protected:
 
 public:
 	Protocol(MessageChannel& channel) :
-			channel(channel), initialized(false)
+			channel(channel),
+			product_id(PRODUCT_ID), product_firmware_version(PRODUCT_FIRMWARE_VERSION), initialized(false)
 	{
 	}
 
