@@ -2485,9 +2485,9 @@ static int ssl_hs_queue_get( mbedtls_ssl_context *ssl,
     {
         if( cur->seq == seq && cur->type == type )
         {
-            ssl->in_msglen = cur->len;
+            ssl->in_msglen = cur->msglen;
             ssl->in_msgtype = cur->type;
-            memmove( ssl->in_msg, cur->p, cur->len );
+            memmove( ssl->in_hdr, cur->p, cur->len );
 
             if( prev != NULL )
                 prev->next = cur->next;
@@ -2505,9 +2505,9 @@ static int ssl_hs_queue_get( mbedtls_ssl_context *ssl,
     return( -1 );
 }
 
-static int ssl_hs_queue_get_hs( mbedtls_ssl_context *ssl )
+static int ssl_hs_queue_get_hs( mbedtls_ssl_context *ssl, unsigned int seq )
 {
-    return( ssl_hs_queue_get( ssl, MBEDTLS_SSL_MSG_HANDSHAKE, ssl->handshake->in_msg_seq ) );
+    return( ssl_hs_queue_get( ssl, MBEDTLS_SSL_MSG_HANDSHAKE, seq ) );
 }
 
 static int ssl_hs_queue_get_ccs( mbedtls_ssl_context *ssl )
@@ -2521,7 +2521,8 @@ static int ssl_hs_queue_get_ccs( mbedtls_ssl_context *ssl )
 static int ssl_hs_queue_append( mbedtls_ssl_context *ssl, unsigned int seq )
 {
     mbedtls_ssl_hs_queue_item *msg, *cur;
-    size_t total_len = ssl->in_msglen;
+    size_t cur_len = ssl->in_msglen + (ssl->in_msg - ssl->in_hdr);
+    size_t total_len = cur_len;
 
     cur = ssl->handshake->hs_queue;
     if( cur != NULL )
@@ -2547,16 +2548,17 @@ static int ssl_hs_queue_append( mbedtls_ssl_context *ssl, unsigned int seq )
         return( -1 );
     }
 
-    if( ( msg->p = mbedtls_calloc( 1, ssl->in_msglen ) ) == NULL )
+    if( ( msg->p = mbedtls_calloc( 1, cur_len ) ) == NULL )
     {
-        MBEDTLS_SSL_DEBUG_MSG( 1, ( "alloc %d bytes failed", ssl->in_msglen ) );
+        MBEDTLS_SSL_DEBUG_MSG( 1, ( "alloc %d bytes failed", cur_len ) );
         mbedtls_free( msg );
         return( -1 );
     }
 
     /* Copy current message with headers */
-    memcpy( msg->p, ssl->in_msg, ssl->in_msglen );
-    msg->len = ssl->in_msglen;
+    memcpy( msg->p, ssl->in_hdr, cur_len );
+    msg->len = cur_len;
+    msg->msglen = ssl->in_msglen;
     msg->type = ssl->in_msgtype;
     msg->seq = seq;
     msg->next = NULL;
@@ -3715,6 +3717,19 @@ static int ssl_parse_record_header( mbedtls_ssl_context *ssl )
             }
             else
 #endif /* MBEDTLS_SSL_DTLS_CLIENT_PORT_REUSE && MBEDTLS_SSL_SRV_C */
+#if defined(MBEDTLS_SSL_DTLS_HANDSHAKE_QUEUE)
+            /*
+             * Check for an epoch 1 Finished while waiting for CCS
+             */
+            if( rec_epoch == 1 &&
+                ssl->in_msgtype == MBEDTLS_SSL_MSG_HANDSHAKE &&
+                ( ssl->state == MBEDTLS_SSL_CLIENT_CHANGE_CIPHER_SPEC ||
+                  ssl->state == MBEDTLS_SSL_SERVER_CHANGE_CIPHER_SPEC ) )
+            {
+                MBEDTLS_SSL_DEBUG_MSG( 2, ( "allowing potential future Finished message through epoch check" ) );
+            }
+            else
+#endif
                 return( MBEDTLS_ERR_SSL_INVALID_RECORD );
         }
 
@@ -3898,9 +3913,17 @@ int mbedtls_ssl_read_record( mbedtls_ssl_context *ssl )
                 return( ssl_prepare_record_content( ssl ) );
             }
         }
+        else if( ssl->state == MBEDTLS_SSL_CLIENT_FINISHED ||
+                 ssl->state == MBEDTLS_SSL_SERVER_FINISHED )
+        {
+            if( ssl_hs_queue_get_hs( ssl, 0 ) == 0 )
+            {
+                goto prepare_record_content;
+            }
+        }
         else 
         {
-            if( ssl_hs_queue_get_hs( ssl ) == 0 )
+            if( ssl_hs_queue_get_hs( ssl, ssl->handshake->in_msg_seq ) == 0 )
             {
                 return( ssl_prepare_handshake_record( ssl ) );
             }
@@ -3954,6 +3977,36 @@ read_record_header:
 #endif
         ssl->in_left = 0;
 
+#if defined(MBEDTLS_SSL_PROTO_DTLS) && defined(MBEDTLS_SSL_DTLS_HANDSHAKE_QUEUE)
+    if( ssl->conf->transport == MBEDTLS_SSL_TRANSPORT_DATAGRAM )
+    {
+        unsigned int rec_epoch = ( ssl->in_ctr[0] << 8 ) | ssl->in_ctr[1];
+
+        /*
+         * Check for early Finished now that we have read the message
+         */
+        if( rec_epoch != ssl->in_epoch &&
+            rec_epoch == 1 &&
+            ssl->in_msgtype == MBEDTLS_SSL_MSG_HANDSHAKE &&
+            ( ssl->state == MBEDTLS_SSL_CLIENT_CHANGE_CIPHER_SPEC ||
+              ssl->state == MBEDTLS_SSL_SERVER_CHANGE_CIPHER_SPEC ) )
+        {
+            MBEDTLS_SSL_DEBUG_MSG( 2, ( "queuing potential future Finished message" ) );
+            /* queueing with seq num 0 since we do not know real seq num yet */
+            if( ( ret = ssl_hs_queue_append( ssl, 0 ) ) != 0 )
+            {
+                MBEDTLS_SSL_DEBUG_RET( 1, "ssl_hs_queue_append", ret );
+                ssl->next_record_offset = 0;
+                MBEDTLS_SSL_DEBUG_MSG( 1, ( "discarding invalid record" ) );
+            }
+            
+            goto read_record_header;
+        }
+    }
+#endif
+#if defined(MBEDTLS_SSL_PROTO_DTLS) && defined(MBEDTLS_SSL_DTLS_HANDSHAKE_QUEUE)
+prepare_record_content:
+#endif
     if( ( ret = ssl_prepare_record_content( ssl ) ) != 0 )
     {
 #if defined(MBEDTLS_SSL_PROTO_DTLS)
@@ -4208,7 +4261,7 @@ int mbedtls_ssl_parse_certificate( mbedtls_ssl_context *ssl )
 int mbedtls_ssl_write_certificate( mbedtls_ssl_context *ssl )
 {
     int ret = MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE;
-    size_t i;
+    size_t i = 0;
     const mbedtls_ssl_ciphersuite_t *ciphersuite_info = ssl->transform_negotiate->ciphersuite_info;
 
     MBEDTLS_SSL_DEBUG_MSG( 2, ( "=> write certificate" ) );
@@ -4272,10 +4325,10 @@ int mbedtls_ssl_write_certificate( mbedtls_ssl_context *ssl )
     {
         mbedtls_pk_context *key;
         size_t n;
+        unsigned char keybuf[512];
 
         key = mbedtls_ssl_own_key( ssl );
         i = 7;        
-        unsigned char keybuf[512];
         n = mbedtls_pk_write_pubkey_der( key, keybuf, 512 );
         memcpy(ssl->out_msg + i, keybuf + 512 - n, n);
         MBEDTLS_SSL_DEBUG_BUF( 3, ( "own raw public key" ), ssl->out_msg + i, n );
@@ -4288,9 +4341,9 @@ int mbedtls_ssl_write_certificate( mbedtls_ssl_context *ssl )
           ssl->handshake->client_cert_type == MBEDTLS_TLS_CERT_TYPE_X509 ) )
 #endif
     {
+        size_t clen = 0;
         MBEDTLS_SSL_DEBUG_CRT( 3, "own certificate", mbedtls_ssl_own_cert( ssl ) );
 
-        size_t clen = 0;
         if( ( ret = mbedtls_ssl_write_x509_certificate( ssl, &clen ) ) != 0)
         {
             MBEDTLS_SSL_DEBUG_RET( 1, "mbedtls_ssl_write_x509_certificate", ret );
