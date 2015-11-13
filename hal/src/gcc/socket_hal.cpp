@@ -169,7 +169,11 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
     available = handle.read_some(boost::asio::buffer(buffer, len), ec);
     result = ec.value() ? -abs(ec.value()) : available;
     if (ec.value()) {
-        DEBUG("socket receive error: %d %s", ec.value(), ec.message().c_str());
+    		// 35 is no data available
+    		if (ec.value()==35)
+        		result = 0;
+    		else
+    			DEBUG("socket receive error: %d %s, read=%d", ec.value(), ec.message().c_str(), available);
     }
     return result;
 }
