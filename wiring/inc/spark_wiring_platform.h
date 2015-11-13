@@ -84,6 +84,7 @@
 #define Wiring_WiFi 1
 #define Wiring_IPv6 1
 #define Wiring_SPI1 1
+#define Wiring_Serial2 1
 #endif
 
 #ifndef Wiring_SPI1
