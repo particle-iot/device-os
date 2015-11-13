@@ -20,27 +20,36 @@ uint32_t HAL_OTA_FlashAddress()
 
 uint32_t HAL_OTA_FlashLength()
 {
-    return 0;
+    return 1024*10;
 }
 
 uint16_t HAL_OTA_ChunkSize()
 {
-    return 0;
+    return 512;
 }
+
+FILE* output_file;
 
 bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved)
 {
-    return false;
+    output_file = fopen("output.bin", "wb");
+    DEBUG("flash started");
+    return output_file;
 }
 
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved)
 {
+	DEBUG("flash write %d %d", address, length);
+	fseek(output_file, address, SEEK_SET);
+    fwrite(pBuffer, length, 1, output_file);
     return 0;
 }
 
  hal_update_complete_t HAL_FLASH_End(void* reserved)
 {
-     return HAL_UPDATE_ERROR;
+	 fclose(output_file);
+	 output_file = NULL;
+     return HAL_UPDATE_APPLIED;
 }
 
 

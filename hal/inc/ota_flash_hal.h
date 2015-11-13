@@ -117,6 +117,11 @@ flash_device_t HAL_OTA_FlashDevice();
  * @param length
  */
 bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved);
+
+/**
+ * Updates part of the OTA image.
+ * @result 0 on success. non-zero on error.
+ */
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved);
 
 typedef enum {
