@@ -660,7 +660,7 @@ int Spark_Connect()
     if (!ip_resolve_failed)
     {
         sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, port, NIF_DEFAULT);
-        DEBUG("socketed sparkSocket=%d, %d", sparkSocket, socket_handle_valid(sparkSocket));
+        DEBUG("socketed udp=%d, sparkSocket=%d, %d", udp, sparkSocket, socket_handle_valid(sparkSocket));
     }
 
 	if (socket_handle_valid(sparkSocket))
@@ -685,6 +685,8 @@ int Spark_Connect()
         tSocketAddr.sa_data[4] = ip_addr[2];
         tSocketAddr.sa_data[5] = ip_addr[3];
 
+		DEBUG("connection attempt to %d.%d.%d.%d:%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port);
+
 #if HAL_PLATFORM_CLOUD_UDP
         if (udp)
         {
@@ -695,7 +697,6 @@ int Spark_Connect()
 #endif
         {
 			uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
-			DEBUG("connection attempt to %d.%d.%d.%d:%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port);
 			rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
 			DEBUG("socket_connect()=%d", rv);
 			if (rv)
