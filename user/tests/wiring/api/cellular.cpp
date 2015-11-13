@@ -19,7 +19,7 @@
 
 #include "testapi.h"
 
-#if PLATFORM_ID==10
+#if Wiring_Cellular == 1
 
 test(api_cellular_rssi) {
     CellularSignal sig;

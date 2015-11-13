@@ -23,7 +23,7 @@
 
 #include "testapi.h"
 
-#if PLATFORM_ID!=10
+#if Wiring_WiFi == 1
 
 test(api_wifi_resolve) {
 
