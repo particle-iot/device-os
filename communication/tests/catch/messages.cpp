@@ -267,11 +267,26 @@ SCENARIO("CoAP response codes")
 	}
 }
 
-SCENARIO("production of request messages")
+SCENARIO("confirmable messages")
 {
-	GIVEN("")
+	GIVEN("a message")
 	{
-
+		WHEN("the message data is confirmable")
+		{
+			uint8_t buf[] = { 0,0,0,0 };
+			THEN("the message is confirmable")
+			{
+				REQUIRE(CoAP::type(buf)==CoAPType::CON);
+			}
+		}
+		WHEN("the message data is not confirmable")
+		{
+			uint8_t buf[] = { 0x10,0,0,0 };
+			THEN("the message is not confirmable")
+			{
+				REQUIRE(CoAP::type(buf)!=CoAPType::CON);
+			}
+		}
 	}
 
 }

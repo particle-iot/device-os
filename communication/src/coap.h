@@ -90,7 +90,8 @@ namespace CoAPType {
     CON,
     NON,
     ACK,
-    RESET
+    RESET,
+	ERROR
   };
 }
 
