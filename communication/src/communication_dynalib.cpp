@@ -1,12 +1,13 @@
 
 #include "spark_protocol_functions.h"
+#include "service_debug.h"
 
 #define DYNALIB_EXPORT
 #include "communication_dynalib.h"
 #include "protocol_selector.h"
+#include "core_hal.h"
 
 #ifdef PARTICLE_PROTOCOL
-#include "core_hal.h"
 #include "lightssl_protocol.h"
 #include "dtls_protocol.h"
 #else
