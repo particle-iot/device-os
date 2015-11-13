@@ -261,23 +261,30 @@ SCENARIO("an unacknowledged message is resent up to 4 times after which it is re
 
 SCENARIO("a Confirmable message is pending until acknowledged or timeout")
 {
-	const message_id_t id = 4567;
-	GIVEN("a confirmable message")
+	GIVEN("a reliable channel and a confirmable message")
 	{
 		Mock<MessageChannel> mock;
 		ForwardCoAPReliability store(mock.get());
-		REQUIRE(store.from_id(id)==nullptr);
-		CoAPMessage m(id);
+		uint8_t buf[10];
+		When(Method(mock,create)).AlwaysDo([&buf](Message& msg, size_t len)
+			{
+				msg.set_buffer(buf, 10); return NO_ERROR;
+			});
+		When(Method(mock,send)).AlwaysReturn(NO_ERROR);
+
+		Message m;
+		store.create(m, 5);
 		uint8_t data[] = { 0x45, 0, 0, 0 };
-		CHECK(m.set_data(data, sizeof(data))==NO_ERROR);
-		CHECK(m.type()==CoAPType::CON);
+		memcpy(m.buf(), data, 4);
 
 		WHEN("the message is sent")
 		{
-			FAIL("build me");
+			store.send(m);
 			THEN("the message is pending")
 			{
-
+				message_id_t id = decode_id(m);
+				REQUIRE(id!=0);
+				REQUIRE(store.from_id(id)!=nullptr);
 			}
 			AND_WHEN("the message is acknowledged")
 			{

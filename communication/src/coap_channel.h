@@ -93,6 +93,9 @@ public:
 	inline message_id_t get_id() const { return id; }
 	inline void removed() { next = nullptr; }
 
+	inline bool has_timeout() { return timeout; }
+	inline bool can_transmit() { return retransmits; }
+
 	inline CoAPType::Enum type() const
 	{
 		return data_len>0 ? CoAP::type(data) : CoAPType::ERROR;
