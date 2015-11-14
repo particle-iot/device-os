@@ -17,9 +17,9 @@
  ******************************************************************************
  */
 
+#include "protocol.h"
 #include "catch.hpp"
 
-#include "protocol.h"
 
 using namespace particle::protocol;
 
@@ -54,5 +54,31 @@ SCENARIO("default product co-ordinates are set")
 	REQUIRE(details.product_version==PRODUCT_FIRMWARE_VERSION);
 }
 
+void event_handler(const char* event, const char* data)
+{
+}
+
+SCENARIO("5 subscribe messages are registreed")
+{
+	MessageChannel* channel = nullptr;
+	AbstractProtocol p(*channel);	// channel is not used
+	for (int i=0; i<5; i++) {
+		INFO("adding event " << i);
+		char buf[2];
+		buf[1] = 0;
+		buf[0] = 'A'+i;
+		bool added = p.add_event_handler(buf, event_handler);
+		REQUIRE(added);
+	}
+
+	bool added = p.add_event_handler("abcd", event_handler);
+	REQUIRE(!added);
+
+	p.remove_event_handlers(nullptr);
+
+	added = p.add_event_handler("abcd", event_handler);
+	REQUIRE(added);
+
+}
 
 
