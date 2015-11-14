@@ -38,7 +38,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	token_t token = queue[4];
 	message_id_t msg_id = CoAP::message_id(queue);
 	ProtocolError error = NO_ERROR;
-	DEBUG("message type %d", message_type);
+	//DEBUG("message type %d", message_type);
 	switch (message_type)
 	{
 	case CoAPMessageType::DESCRIBE:
@@ -64,21 +64,15 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	case CoAPMessageType::SAVE_BEGIN:
 		// fall through
 	case CoAPMessageType::UPDATE_BEGIN:
-		return chunkedTransfer.handle_update_begin(token, message, channel,
-				callbacks.prepare_for_firmware_update, callbacks.millis);
+		return chunkedTransfer.handle_update_begin(token, message, channel);
 
 	case CoAPMessageType::CHUNK:
-		return chunkedTransfer.handle_chunk(token, message, channel,
-				callbacks.save_firmware_chunk, callbacks.calculate_crc,
-				callbacks.finish_firmware_update, callbacks.millis);
-
+		return chunkedTransfer.handle_chunk(token, message, channel);
 	case CoAPMessageType::UPDATE_DONE:
-		return chunkedTransfer.handle_update_done(token, message, channel,
-				callbacks.finish_firmware_update, callbacks.millis);
+		return chunkedTransfer.handle_update_done(token, message, channel);
 
 	case CoAPMessageType::EVENT:
-		return subscriptions.handle_event(message,
-				descriptor.call_event_handler);
+		return subscriptions.handle_event(message, descriptor.call_event_handler);
 
 	case CoAPMessageType::KEY_CHANGE:
 		// TODO
@@ -161,6 +155,9 @@ void Protocol::init(const SparkCallbacks &callbacks,
 			callbacks.size);
 	copy_and_init(&this->descriptor, sizeof(this->descriptor), &descriptor,
 			descriptor.size);
+
+	chunkedTransferCallbacks.init(&this->callbacks);
+	chunkedTransfer.init(&chunkedTransferCallbacks);
 
 	initialized = true;
 }
@@ -248,7 +245,7 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	if (error)
 	{
 		// bail if and only if there was an error
-		chunkedTransfer.cancel(callbacks.finish_firmware_update);
+		chunkedTransfer.cancel();
 		WARN("Event loop error %d", error);
 		return error;
 	}
@@ -331,6 +328,32 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	int msglen = appender.next() - (uint8_t *) buf;
 	message.set_length(msglen);
 	return channel.send(message);
+}
+
+
+int Protocol::ChunkedTransferCallbacks::prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void* reserved)
+{
+	return callbacks->prepare_for_firmware_update(data, flags, reserved);
+}
+
+int Protocol::ChunkedTransferCallbacks::save_firmware_chunk(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void* reserved)
+{
+	return callbacks->save_firmware_chunk(descriptor, chunk, reserved);
+}
+
+int Protocol::ChunkedTransferCallbacks::finish_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void* reserved)
+{
+	return callbacks->finish_firmware_update(data, flags, reserved);
+}
+
+uint32_t Protocol::ChunkedTransferCallbacks::calculate_crc(const unsigned char *buf, uint32_t buflen)
+{
+	return callbacks->calculate_crc(buf, buflen);
+}
+
+system_tick_t Protocol::ChunkedTransferCallbacks::millis()
+{
+	return callbacks->millis();
 }
 
 

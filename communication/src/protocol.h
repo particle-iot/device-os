@@ -69,6 +69,24 @@ class Protocol
 	 * Manages chunked file transfer functionality.
 	 */
 	ChunkedTransfer chunkedTransfer;
+	class ChunkedTransferCallbacks : public ChunkedTransfer::Callbacks {
+		SparkCallbacks* callbacks;
+	public:
+		void init(SparkCallbacks* callbacks) {
+			this->callbacks = callbacks;
+		}
+
+		  virtual int prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void*);
+
+		  virtual int save_firmware_chunk(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void*);
+
+		  virtual int finish_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void*);
+
+		  virtual uint32_t calculate_crc(const unsigned char *buf, uint32_t buflen);
+
+		  virtual system_tick_t millis();
+
+	} chunkedTransferCallbacks;
 
 	/**
 	 * Manages device-hosted variables.
@@ -145,7 +163,7 @@ protected:
 	{
 		if (chunkedTransfer.is_updating())
 		{
-			return chunkedTransfer.idle(channel, callbacks.millis);
+			return chunkedTransfer.idle(channel);
 		}
 		else
 		{

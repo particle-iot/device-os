@@ -20,7 +20,7 @@ uint32_t HAL_OTA_FlashAddress()
 
 uint32_t HAL_OTA_FlashLength()
 {
-    return 1024*10;
+    return 1024*100;
 }
 
 uint16_t HAL_OTA_ChunkSize()
