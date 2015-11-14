@@ -31,10 +31,10 @@ namespace protocol
 	 */
 	ProtocolError LightSSLMessageChannel::send(Message& message)
 	{
-            if (message.length()>20)
-                DEBUG("message length %d, last 20 bytes %s ", message.length(), message.buf()+message.length()-20);
-            else
-                DEBUG("message length %d ", message.length());
+//            if (message.length()>20)
+//                DEBUG("message length %d, last 20 bytes %s ", message.length(), message.buf()+message.length()-20);
+//            else
+//                DEBUG("message length %d ", message.length());
 
             uint8_t* buf = message.buf()-2;
             size_t to_write = wrap(buf, message.length());
@@ -70,8 +70,10 @@ namespace protocol
 		{
 			error = create(message, 0);
 			message.set_length(0);
-			if (bytes_received<0)
+			if (bytes_received<0) {
+				WARN("receive error %d", bytes_received);
 				error = IO_ERROR;
+			}
 		}
 		return error;
 	}
