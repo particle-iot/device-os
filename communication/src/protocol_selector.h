@@ -29,6 +29,12 @@ typedef particle::protocol::Protocol ProtocolFacade;
 typedef void* ProtocolFacade;
 #endif
 #else
+#ifdef __cplusplus
 class SparkProtocol;
 typedef SparkProtocol ProtocolFacade;
+#else
+struct SparkProtocol;
+typedef struct SparkProtocol ProtocolFacade;
+
+#endif
 #endif
