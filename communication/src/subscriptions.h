@@ -240,13 +240,12 @@ public:
 
 	/**
 	 * Adds the given handler.
-	 * @returns true if the handler was added, false otherwise.
 	 */
-	bool add_event_handler(const char *event_name, EventHandler handler,
+	ProtocolError add_event_handler(const char *event_name, EventHandler handler,
 			void *handler_data, SubscriptionScope::Enum scope, const char* id)
 	{
 		if (event_handler_exists(event_name, handler, handler_data, scope, id))
-			return true;
+			return NO_ERROR;
 
 		const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
 		for (int i = 0; i < NUM_HANDLERS; i++)
@@ -265,10 +264,10 @@ public:
 				memcpy(event_handlers[i].device_id, id, id_len);
 				event_handlers[i].device_id[id_len] = 0;
 				event_handlers[i].scope = scope;
-				return true;
+				return NO_ERROR;
 			}
 		}
-		return false;
+		return INSUFFICIENT_STORAGE;
 	}
 
 	inline ProtocolError send_subscriptions(MessageChannel& channel)
