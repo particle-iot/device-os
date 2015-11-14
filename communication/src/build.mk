@@ -23,6 +23,7 @@ CPPSRC += $(TARGET_SRC_PATH)/lightssl_message_channel.cpp
 CPPSRC += $(TARGET_SRC_PATH)/dtls_message_channel.cpp
 CPPSRC += $(TARGET_SRC_PATH)/dtls_protocol.cpp
 CPPSRC += $(TARGET_SRC_PATH)/protocol.cpp
+CPPSRC += $(TARGET_SRC_PATH)/messages.cpp
 
 # ASM source files included in this build.
 ASRC +=

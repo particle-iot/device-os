@@ -45,261 +45,43 @@ inline uint8_t decode_uint8(unsigned char* buf) {
 class Messages
 {
 public:
-	static CoAPMessageType::Enum decodeType(const uint8_t* buf, size_t length)
-	{
-        if (length<4)
-            return CoAPMessageType::ERROR;
-
-        char path = 0;
-		size_t path_idx = 5 + (buf[0] & 0x0F);
-        if (path_idx<length)
-			 path = buf[path_idx];
-
-		switch (CoAP::code(buf))
-		{
-		case CoAPCode::GET:
-			switch (path)
-			{
-			case 'v':
-				return CoAPMessageType::VARIABLE_REQUEST;
-			case 'd':
-				return CoAPMessageType::DESCRIBE;
-			default:
-				break;
-			}
-			break;
-		case CoAPCode::POST:
-			switch (path)
-			{
-			case 'E':
-			case 'e':
-				return CoAPMessageType::EVENT;
-			case 'h':
-				return CoAPMessageType::HELLO;
-			case 'f':
-				return CoAPMessageType::FUNCTION_CALL;
-			case 's':
-				return CoAPMessageType::SAVE_BEGIN;
-			case 'u':
-				return CoAPMessageType::UPDATE_BEGIN;
-			case 'c':
-				return CoAPMessageType::CHUNK;
-			default:
-				break;
-			}
-			break;
-		case CoAPCode::PUT:
-			switch (path)
-			{
-			case 'k':
-				return CoAPMessageType::KEY_CHANGE;
-			case 'u':
-				return CoAPMessageType::UPDATE_DONE;
-			case 's':
-				// todo - use a single message SIGNAL and decode the rest of the message to determine desired state
-				if (buf[8])
-					return CoAPMessageType::SIGNAL_START;
-				else
-					return CoAPMessageType::SIGNAL_STOP;
-			default:
-				break;
-			}
-			break;
-		case CoAPCode::EMPTY:
-			switch (CoAP::type(buf))
-			{
-			case CoAPType::CON:
-				return CoAPMessageType::PING;
-			default:
-				return CoAPMessageType::EMPTY_ACK;
-			}
-			break;
-		case CoAPCode::CONTENT:
-			return CoAPMessageType::TIME;
-		default:
-			break;
-		}
-		return CoAPMessageType::ERROR;
-	}
+	static CoAPMessageType::Enum decodeType(const uint8_t* buf, size_t length);
 
 	static size_t hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 			uint16_t platform_id, uint16_t product_id,
-			uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, uint16_t device_id_len)
-	{
-		buf[0] = COAP_MSG_HEADER(confirmable ? CoAPType::CON : CoAPType::NON, 0);
-		buf[1] = 0x02; // POST
-		buf[2] = message_id >> 8;
-		buf[3] = message_id & 0xff;
-		buf[4] = 0xb1; // Uri-Path option of length 1
-		buf[5] = 'h';
-		buf[6] = 0xff; // payload marker
-		buf[7] = product_id >> 8;
-		buf[8] = product_id & 0xff;
-		buf[9] = product_firmware_version >> 8;
-		buf[10] = product_firmware_version & 0xff;
-		buf[11] = 0; // reserved flags
-		buf[12] = flags;
-		buf[13] = platform_id >> 8;
-		buf[14] = platform_id & 0xFF;
-		size_t len = 15;
-		if (device_id) {
-			buf[15] = device_id_len >> 8;
-			buf[16] = device_id_len & 0xFF;
-			len += 2;
-			for (size_t i=0; i<device_id_len; i++) {
-				buf[len++] = device_id[i];
-			}
-		}
-		return len;
-	}
+			uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, uint16_t device_id_len);
 
-	static size_t update_done(uint8_t* buf, message_id_t message_id)
-	{
-		buf[0] = 0x50; // non-confirmable, no token
-		buf[1] = 0x02; // POST
-		buf[2] = message_id >> 8;
-		buf[3] = message_id & 0xff;
-		buf[4] = 0xb1; // Uri-Path option of length 1
-		buf[5] = 'u';
-		return 6;
-	}
+	static size_t update_done(uint8_t* buf, message_id_t message_id);
 
 	static const size_t function_return_size = 10;
 
-	static size_t function_return(unsigned char *buf, message_id_t message_id, token_t token, int return_value)
-	{
-		buf[0] = 0x51; // non-confirmable, one-byte token
-		buf[1] = 0x44; // response code 2.04 CHANGED
-		buf[2] = message_id >> 8;
-		buf[3] = message_id & 0xff;
-		buf[4] = token;
-		buf[5] = 0xff; // payload marker
-		buf[6] = return_value >> 24;
-		buf[7] = return_value >> 16 & 0xff;
-		buf[8] = return_value >> 8 & 0xff;
-		buf[9] = return_value & 0xff;
-		return function_return_size;
-	}
+	static size_t function_return(unsigned char *buf, message_id_t message_id, token_t token, int return_value);
 
-	static size_t variable_value(unsigned char *buf, message_id_t message_id, token_t token, bool return_value)
-	{
-		size_t size = content(buf, message_id, token);
-		buf[size++] = return_value ? 1 : 0;
-		return size;
-	}
+	static size_t variable_value(unsigned char *buf, message_id_t message_id, token_t token, bool return_value);
 
 	static size_t variable_value(unsigned char *buf, message_id_t message_id,
-			token_t token, int return_value)
-	{
-		size_t size = content(buf, message_id, token);
-		buf[size++] = return_value >> 24;
-		buf[size++] = return_value >> 16 & 0xff;
-		buf[size++] = return_value >> 8 & 0xff;
-		buf[size++] = return_value & 0xff;
-		return size;
-	}
+			token_t token, int return_value);
 
 	static size_t variable_value(unsigned char *buf, message_id_t message_id,
-			token_t token, double return_value)
-	{
-		size_t size = content(buf, message_id, token);
-		memcpy(buf + size, &return_value, 8);
-		return size+sizeof(double);
-	}
+			token_t token, double return_value);
 
 	// Returns the length of the buffer to send
 	static size_t variable_value(unsigned char *buf, message_id_t message_id,
-			token_t token, const void *return_value, int length)
-	{
-		size_t size = content(buf, message_id, token);
-		memcpy(buf + size, return_value, length);
-		return size + length;
-	}
+			token_t token, const void *return_value, int length);
 
-	static size_t time_request(uint8_t* buf, uint16_t message_id, uint8_t token)
-	{
-		unsigned char *p = buf;
+	static size_t time_request(uint8_t* buf, uint16_t message_id, uint8_t token);
 
-		*p++ = 0x41; // Confirmable, one-byte token
-		*p++ = 0x01; // GET request
+	static size_t chunk_missed(uint8_t* buf, uint16_t message_id, chunk_index_t chunk_index);
 
-		*p++ = message_id >> 8;
-		*p++ = message_id & 0xff;
+	static size_t content(uint8_t* buf, uint16_t message_id, uint8_t token);
 
-		*p++ = token;
-		*p++ = 0xb1; // One-byte, Uri-Path option
-		*p++ = 't';
+	static size_t ping(uint8_t* buf, uint16_t message_id);
 
-		return p - buf;
-	}
-
-	static size_t chunk_missed(uint8_t* buf, uint16_t message_id, chunk_index_t chunk_index)
-	{
-		buf[0] = 0x40; // confirmable, no token
-		buf[1] = 0x01; // code 0.01 GET
-		buf[2] = message_id >> 8;
-		buf[3] = message_id & 0xff;
-		buf[4] = 0xb1; // one-byte Uri-Path option
-		buf[5] = 'c';
-		buf[6] = 0xff; // payload marker
-		buf[7] = chunk_index >> 8;
-		buf[8] = chunk_index & 0xff;
-		return 9;
-	}
-
-	static size_t content(uint8_t* buf, uint16_t message_id, uint8_t token)
-	{
-		buf[0] = 0x61; // acknowledgment, one-byte token
-		buf[1] = 0x45; // response code 2.05 CONTENT
-		buf[2] = message_id >> 8;
-		buf[3] = message_id & 0xff;
-		buf[4] = token;
-		buf[5] = 0xff; // payload marker
-		return 6;
-	}
-
-	static size_t ping(uint8_t* buf, uint16_t message_id)
-	{
-		buf[0] = 0x40; // Confirmable, no token
-		buf[1] = 0x00; // code signifying empty message
-		buf[2] = message_id >> 8;
-		buf[3] = message_id & 0xff;
-		return 4;
-	}
-
-	static size_t presence_announcement(unsigned char *buf, const char *id)
-	{
-		buf[0] = 0x50; // Confirmable, no token
-		buf[1] = 0x02; // Code POST
-		buf[2] = 0x00; // message id ignorable in this context
-		buf[3] = 0x00;
-		buf[4] = 0xb1; // Uri-Path option of length 1
-		buf[5] = 'h';
-		buf[6] = 0xff; // payload marker
-		memcpy(buf + 7, id, 12);
-		return 19;
-	}
+	static size_t presence_announcement(unsigned char *buf, const char *id);
 
 	static size_t separate_response_with_payload(unsigned char *buf, uint16_t message_id,
 			unsigned char token, unsigned char code, unsigned char* payload,
-			unsigned payload_len)
-	{
-		buf[0] = 0x51; // non-confirmable, one-byte token
-		buf[1] = code;
-		buf[2] = message_id >> 8;
-		buf[3] = message_id & 0xff;
-		buf[4] = token;
-
-		size_t len = 5;
-		// for now, assume the payload is less than 9
-		if (payload && payload_len)
-		{
-			buf[5] = 0xFF;
-			memcpy(buf + 6, payload, payload_len);
-			len += 1 + payload_len;
-		}
-		return len;
-	}
+			unsigned payload_len);
 
     static inline size_t empty_ack(unsigned char *buf,
                           unsigned char message_id_msb,
