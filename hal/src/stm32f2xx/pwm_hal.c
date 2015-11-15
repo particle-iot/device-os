@@ -45,7 +45,7 @@ uint32_t HAL_PWM_EnableTIMClock(uint16_t pin);
 uint16_t HAL_PWM_CalculateCCR(uint32_t TIM_CLK, uint8_t value);
 void HAL_PWM_ConfigureTIM(uint32_t TIM_CLK, uint8_t value, uint16_t pin);
 void HAL_PWM_EnableTIM(uint16_t pin);
-void HAL_PWM_UpdateDutyCycle(pin, value);
+void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value);
 
 
 /*
@@ -148,7 +148,7 @@ uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
     return PWM_AnalogValue;
 }
 
-void HAL_PWM_UpdateDutyCycle(pin, value){
+void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value){
 
 
 	// Get Clock here
