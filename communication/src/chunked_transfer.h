@@ -105,30 +105,8 @@ protected:
 		return (chunk_bitmap()[idx >> 3] & uint8_t(1 << (idx & 7)));
 	}
 
-	chunk_index_t next_chunk_missing(chunk_index_t start)
-	{
-		chunk_index_t chunk = NO_CHUNKS_MISSING;
-		chunk_index_t chunks = file.chunk_count(chunk_size);
-		chunk_index_t idx = start;
-		for (; idx < chunks; idx++)
-		{
-			if (!is_chunk_received(idx))
-			{
-				//serial_dump("next missing chunk %d from %d", idx, start);
-				chunk = idx;
-				break;
-			}
-		}
-		return chunk;
-	}
-
-	void set_chunks_received(uint8_t value)
-	{
-		size_t bytes = chunk_bitmap_size();
-		if (bytes)
-			memset(bitmap, value, bytes);
-	}
-
+	chunk_index_t next_chunk_missing(chunk_index_t start);
+	void set_chunks_received(uint8_t value);
 public:
 
 	ChunkedTransfer() :

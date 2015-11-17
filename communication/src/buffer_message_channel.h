@@ -45,6 +45,7 @@ public:
             WARN("Insufficient storage for message size %d", minimum_size);
 			return INSUFFICIENT_STORAGE;
         }
+		message.clear();
 		message.set_buffer(queue+suffix, sizeof(queue)-suffix-prefix);
 		message.set_length(0);
 		return NO_ERROR;

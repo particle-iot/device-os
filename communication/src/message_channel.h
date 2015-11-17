@@ -62,6 +62,9 @@ public:
 	Message() : Message(nullptr, 0, 0) {}
 
 	Message(uint8_t* buf, size_t buflen, size_t msglen) : buffer(buf), buffer_length(buflen), message_length(msglen), id(-1) {}
+
+	void clear() { id = -1; }
+
 	size_t capacity() const { return buffer_length; }
 	uint8_t* buf() const { return buffer; }
 	size_t length() const { return message_length; }
