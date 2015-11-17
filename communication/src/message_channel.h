@@ -31,7 +31,8 @@ namespace protocol
 
 class Message
 {
-	friend class AbstractMessageChannel;
+	template<size_t max, size_t prefix, size_t suffix>
+	friend class BufferMessageChannel;
 
 	uint8_t* buffer;
 	size_t buffer_length;
@@ -47,14 +48,14 @@ class Message
 
 	size_t buffer_available() const { return buffer_length-message_length; }
 
-	bool splinter(Message& target, size_t size_required)
+	bool splinter(Message& target, size_t size_required, size_t offset)
 	{
 		size_t available = buffer_available();
-		if (available<size_required)
+		if (available<(size_required+offset))
 			return false;
 
 		int excess = trim_capacity();
-		target.set_buffer(buf()+length(), excess);
+		target.set_buffer(buf()+length()+offset, excess);
 		return true;
 	}
 
@@ -120,16 +121,6 @@ public:
 
 class AbstractMessageChannel : public MessageChannel
 {
-
-public:
-
-	/**
-	 * Fill out a message struct to contain storage for a response.
-	 */
-	ProtocolError response(Message& original, Message& response, size_t required) override
-	{
-		return original.splinter(response, required) ? NO_ERROR : INSUFFICIENT_STORAGE;
-	}
 
 };
 

@@ -51,6 +51,14 @@ public:
 		return NO_ERROR;
 	}
 
+	/**
+	 * Fill out a message struct to contain storage for a response.
+	 */
+	ProtocolError response(Message& original, Message& response, size_t required) override
+	{
+		return original.splinter(response, required, prefix+suffix) ? NO_ERROR : INSUFFICIENT_STORAGE;
+	}
+
 };
 
 }}

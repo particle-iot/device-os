@@ -155,7 +155,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 		}
 		uint32_t crc = callbacks->calculate_crc(chunk, file.chunk_size);
 		uint16_t response_size = 0;
-		bool crc_valid = true || (crc == given_crc);
+		bool crc_valid = (crc == given_crc);
 		DEBUG("chunk idx=%d crc=%d fast=%d updating=%d", chunk_index,
 				crc_valid, fast_ota, updating);
 		if (crc_valid)
@@ -198,14 +198,16 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 			}
 			chunk_index++;
 		}
-		else if (!fast_ota)
+		else
 		{
-			response_size = Messages::chunk_received(response.buf(), 0,
-					token, ChunkReceivedCode::BAD);
-			WARN("chunk bad %d", chunk_index);
+			WARN("chunk crc bad %d: wanted %x got %x", chunk_index, given_crc, crc);
+			if (!fast_ota)
+			{
+				response_size = Messages::chunk_received(response.buf(), 0,
+						token, ChunkReceivedCode::BAD);
+			}
+			// fast OTA will request the chunk later
 		}
-		// fast OTA will request the chunk later
-
 		if (response_size)
 		{
 			response.set_length(response_size);

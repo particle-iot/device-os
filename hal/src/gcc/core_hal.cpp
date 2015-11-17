@@ -35,6 +35,8 @@
 #include "service_debug.h"
 #include "device_config.h"
 #include "hal_platform.h"
+#include <boost/crc.hpp>  // for boost::crc_32_type
+
 
 using std::cout;
 
@@ -229,9 +231,12 @@ crc32(uint32_t crc, const uint8_t* buf, size_t size)
  * @param  BufferSize: Size of the buffer to be computed
  * @retval 32-bit CRC
  */
-uint32_t HAL_Core_Compute_CRC32(uint8_t *pBuffer, uint32_t bufferSize)
+uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
 {
-    return crc32(0, pBuffer, bufferSize);
+	boost::crc_32_type  result;
+	result.process_bytes(pBuffer, bufferSize);
+	return result.checksum();
+    //return crc32(0, pBuffer, bufferSize);
 }
 
 // todo find a technique that allows accessor functions to be inlined while still keeping
@@ -251,11 +256,6 @@ void HAL_Core_Init(void)
 
 void HAL_Bootloader_Lock(bool lock)
 {
-}
-
-uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
-{
-    return 0;
 }
 
 uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
