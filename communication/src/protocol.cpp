@@ -29,7 +29,7 @@ namespace particle { namespace protocol {
  */
 ProtocolError Protocol::send_empty_ack(Message& message, message_id_t msg_id)
 {
-	Messages::empty_ack(message.buf(), 0, 0);
+	message.set_length(Messages::empty_ack(message.buf(), 0, 0));
 	message.set_id(msg_id);
 	return channel.send(message);
 }
