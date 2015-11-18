@@ -129,9 +129,9 @@ size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 	return len;
 }
 
-size_t Messages::update_done(uint8_t* buf, message_id_t message_id)
+size_t Messages::update_done(uint8_t* buf, message_id_t message_id, bool confirmable)
 {
-	buf[0] = 0x50; // non-confirmable, no token
+	buf[0] = confirmable ? 0x40 : 0x50; // confirmable/non-confirmable, no token
 	buf[1] = 0x02; // POST
 	buf[2] = message_id >> 8;
 	buf[3] = message_id & 0xff;
@@ -256,9 +256,9 @@ size_t Messages::presence_announcement(unsigned char *buf, const char *id)
 
 size_t Messages::separate_response_with_payload(unsigned char *buf, uint16_t message_id,
 		unsigned char token, unsigned char code, unsigned char* payload,
-		unsigned payload_len)
+		unsigned payload_len, bool confirmable)
 {
-	buf[0] = 0x51; // non-confirmable, one-byte token
+	buf[0] = confirmable ? 0x41 : 0x51; // confirmable/non-confirmable, one-byte token
 	buf[1] = code;
 	buf[2] = message_id >> 8;
 	buf[3] = message_id & 0xff;

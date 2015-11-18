@@ -52,7 +52,7 @@ public:
 			uint16_t platform_id, uint16_t product_id,
 			uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, uint16_t device_id_len);
 
-	static size_t update_done(uint8_t* buf, message_id_t message_id);
+	static size_t update_done(uint8_t* buf, message_id_t message_id, bool confirmable);
 
 	static const size_t function_return_size = 10;
 
@@ -82,7 +82,7 @@ public:
 
 	static size_t separate_response_with_payload(unsigned char *buf, uint16_t message_id,
 			unsigned char token, unsigned char code, unsigned char* payload,
-			unsigned payload_len);
+			unsigned payload_len, bool confirmable);
 
 	static size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
 	             const char *data, int ttl, EventType::Enum event_type, bool confirmable);
@@ -122,27 +122,21 @@ public:
     }
 
 
-    static inline size_t update_ready(unsigned char *buf, message_id_t message_id, token_t token)
+    static inline size_t update_ready(unsigned char *buf, message_id_t message_id, token_t token, uint8_t flags, bool confirmable)
     {
-        return separate_response_with_payload(buf, message_id, token, 0x44, NULL, 0);
+        return separate_response_with_payload(buf, message_id, token, 0x44, &flags, 1, confirmable);
     }
 
-    static inline size_t update_ready(unsigned char *buf, message_id_t message_id, token_t token, uint8_t flags)
+    static inline size_t chunk_received(unsigned char *buf, message_id_t message_id, token_t token, ChunkReceivedCode::Enum code, bool confirmable)
     {
-        return separate_response_with_payload(buf, message_id, token, 0x44, &flags, 1);
-    }
-
-    static inline size_t chunk_received(unsigned char *buf, message_id_t message_id, token_t token, ChunkReceivedCode::Enum code)
-    {
-       return separate_response(buf, message_id, token, code);
+       return separate_response(buf, message_id, token, code, confirmable);
     }
 
     static inline size_t separate_response(unsigned char *buf, message_id_t message_id,
-                                          unsigned char token, unsigned char code)
+                                          unsigned char token, unsigned char code, bool confirmable)
     {
-        return separate_response_with_payload(buf, message_id, token, code, NULL, 0);
+        return separate_response_with_payload(buf, message_id, token, code, NULL, 0, confirmable);
     }
-
 
     static inline size_t description(unsigned char *buf, message_id_t message_id, token_t token)
     {

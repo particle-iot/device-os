@@ -322,7 +322,7 @@ void SparkProtocol::notify_update_done(uint8_t* buf)
 {
     serial_dump("Sending UpdateDone");
     unsigned short message_id = next_message_id();
-    size_t size = Messages::update_done(buf+2, message_id);
+    size_t size = Messages::update_done(buf+2, message_id, false);
     wrap(buf, size);
 }
 

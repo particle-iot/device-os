@@ -85,10 +85,8 @@ ProtocolError ChunkedTransfer::handle_update_begin(
 			// know the correct size of the bitmap.
 			set_chunks_received(flags & 1 ? 0 : 0xFF);
 
-
-
 			// send update_reaady - use fast OTA if available
-			size_t size = Messages::update_ready(updateReady.buf(), 0, token, (flags & 0x1));
+			size_t size = Messages::update_ready(updateReady.buf(), 0, token, (flags & 0x1), channel.is_unreliable());
 			updateReady.set_length(size);
 			error = channel.send(updateReady);
 		}
@@ -163,8 +161,8 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 			callbacks->save_firmware_chunk(file, chunk, NULL);
 			if (!fast_ota || (updating != 2 && ((chunk_index & 32) == 0)))
 			{
-				response_size = Messages::chunk_received(response.buf(), 0,
-						token, ChunkReceivedCode::OK);
+				// message is confirmable for regular OTA or when
+				response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::OK, false);
 			}
 			flag_chunk_received(chunk_index);
 			if (updating == 2)
@@ -175,8 +173,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 					INFO("received all chunks");
 					reset_updating();
 					callbacks->finish_firmware_update(file, 1, NULL);
-					response_size = Messages::update_done(response.buf(),
-							0);
+					response_size = Messages::update_done(response.buf(), 0, channel.is_unreliable());
 				}
 				else
 				{
@@ -192,8 +189,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 						}
 					}
 					if (next_missed > missed_chunk_index)
-						send_missing_chunks(message, channel,
-								MISSED_CHUNKS_TO_SEND);
+						send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND);
 				}
 			}
 			chunk_index++;
@@ -203,8 +199,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 			WARN("chunk crc bad %d: wanted %x got %x", chunk_index, given_crc, crc);
 			if (!fast_ota)
 			{
-				response_size = Messages::chunk_received(response.buf(), 0,
-						token, ChunkReceivedCode::BAD);
+				response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::BAD, channel.is_unreliable());
 			}
 			// fast OTA will request the chunk later
 		}
