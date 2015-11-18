@@ -194,7 +194,6 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	uint8_t* buf = message.buf();
 	size_t len = message.capacity();
 
-	memset(buf, 0, len);
 	conf.read_timeout = 0;
 	int ret = mbedtls_ssl_read(&ssl_context, buf, len);
 	if (ret <= 0 && ret != MBEDTLS_ERR_SSL_WANT_READ)
