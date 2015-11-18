@@ -34,29 +34,9 @@ Having problems or have awesome suggestions? Connect with us [here.](https://com
 
 ### VERSION HISTORY
 
-Latest Version: v1.0.0
+Latest Version: v1.1.0
+
+- v1.1.0 - DTLS/UDP transport supported. [docs](dtls.md)
 
 
-
-
-## DTLS Tips
-
-### Generating a new key
-
-openssl ecparam -name prime256v1 -genkey -out server.pem
-openssl ec -in server.pem -out private.der -outform DER
-openssl ec -in server.pem -out public.der -outform DER -pubout
-
-
-### Padding the server key to 192 bytes
-
-dd if=/dev/null  of=server_key.der bs=1 count=0 seek=192
-
-### Create a hard-coded IP Address
-
-E.g. 127.0.0.1
-
-First byte is 0 followed by the 4 address octets.
-
-echo -e "\x00\x00\x7F\x00\x00\x01" >> server_key.der
 
