@@ -193,6 +193,11 @@ protected:
 	ProtocolError handle_received_message(Message& message, CoAPMessageType::Enum& message_type);
 
 	/**
+	 * Sends an empty acknoweldgement for the given message.
+	 */
+	ProtocolError send_empty_ack(Message& request, message_id_t msg_id);
+
+	/**
 	 * Handles the time delivered from the cloud.
 	 */
 	void handle_time_response(uint32_t time);

@@ -24,6 +24,15 @@
 
 namespace particle { namespace protocol {
 
+/**
+ * Sends an empty acknowledgement for the given message
+ */
+ProtocolError Protocol::send_empty_ack(Message& message, message_id_t msg_id)
+{
+	Messages::empty_ack(message.buf(), 0, 0);
+	message.set_id(msg_id);
+	return channel.send(message);
+}
 
 /**
  * Decodes and dispatches a received message to its handler.
@@ -93,6 +102,8 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return channel.send(message);
 
 	case CoAPMessageType::HELLO:
+		if (message.get_type()==CoAPType::CON)
+			send_empty_ack(message, msg_id);
 		descriptor.ota_upgrade_status_sent();
 		break;
 
