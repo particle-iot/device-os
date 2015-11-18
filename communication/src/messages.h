@@ -20,6 +20,7 @@
 
 #include "coap.h"
 #include "protocol_defs.h"
+#include "events.h"
 
 namespace particle
 {
@@ -82,6 +83,10 @@ public:
 	static size_t separate_response_with_payload(unsigned char *buf, uint16_t message_id,
 			unsigned char token, unsigned char code, unsigned char* payload,
 			unsigned payload_len);
+
+	static size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
+	             const char *data, int ttl, EventType::Enum event_type);
+
 
     static inline size_t empty_ack(unsigned char *buf,
                           unsigned char message_id_msb,

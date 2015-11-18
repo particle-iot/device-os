@@ -96,7 +96,7 @@ public:
 
 		Message message;
 		channel.create(message);
-		size_t msglen = event(message.buf(), 0, event_name, data, ttl,
+		size_t msglen = Messages::event(message.buf(), 0, event_name, data, ttl,
 				event_type);
 		message.set_length(msglen);
 		return channel.send(message);
