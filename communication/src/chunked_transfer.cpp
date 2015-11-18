@@ -159,7 +159,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 		if (crc_valid)
 		{
 			callbacks->save_firmware_chunk(file, chunk, NULL);
-			if (!fast_ota || (updating != 2 && ((chunk_index & 32) == 0)))
+			if (!fast_ota || updating != 2)
 			{
 				// message is confirmable for regular OTA or when
 				response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::OK, false);
