@@ -35,6 +35,8 @@ public:
 	ForwardMessageChannel() : channel(nullptr) {}
 	ForwardMessageChannel(MessageChannel& channel_) : channel(&channel_) {}
 
+	bool is_unreliable() override { return true; }
+
 	void setForward(MessageChannel* channel)
 	{
 		this->channel = channel;

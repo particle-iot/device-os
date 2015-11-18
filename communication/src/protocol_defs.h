@@ -29,7 +29,8 @@ enum ProtocolError
 	AUTHENTICATION_ERROR,	// 8
 	BANDWIDTH_EXCEEDED,		// 9
 	MESSAGE_TIMEOUT,			// 10
-	UNKNOWN					// 11
+	MISSING_MESSAGE_ID,		// 11
+	UNKNOWN = 0x7FFFF
 };
 
 typedef uint16_t chunk_index_t;

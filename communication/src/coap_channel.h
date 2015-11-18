@@ -68,7 +68,7 @@ public:
 /**
  * A CoAP message that is available for transmission.
  */
-class CoAPMessage
+class __attribute__((packed)) CoAPMessage
 {
 	CoAPMessage* next;
 	message_id_t id;
@@ -82,10 +82,19 @@ class CoAPMessage
 
 	// this must come last so that when dynamicaly allocated, the data buffer can be extended
 	uint16_t data_len;
-	uint8_t data[5];
+	uint8_t data[0];
 public:
 
 	CoAPMessage(message_id_t id_) : next(nullptr), id(id_), timeout(0), retransmits(0), data_len(0) {}
+
+	static CoAPMessage* create(Message& msg)
+	{
+		size_t len = msg.length();
+		uint8_t* memory = new uint8_t[sizeof(CoAPMessage)+len];
+		CoAPMessage* coapmsg = new (memory)CoAPMessage(msg.get_id());
+		coapmsg->set_data(msg.buf(), len);
+		return coapmsg;
+	}
 
 	inline CoAPMessage* get_next() const { return next; }
 	inline void set_next(CoAPMessage* next) { this->next = next; }
@@ -110,13 +119,16 @@ public:
 		return NO_ERROR;
 	}
 
-
+	const uint8_t* get_data() const { return data; }
+	uint16_t get_data_length() const { return data_len; }
 
 };
 
 template <typename T>
 class CoAPReliability : public T
 {
+	using super = T;
+
 	CoAPMessage* head;
 
 	CoAPMessage* for_id(message_id_t id, CoAPMessage*& prev)
@@ -146,6 +158,11 @@ public:
 
 	CoAPReliability() : head(nullptr) {}
 
+	/**
+	 * Retrieves the current confirmable message that is still
+	 * waiting acknowledgement.
+	 * Returns nullptr if there is no such unconfirmed message.
+	 */
 	CoAPMessage* from_id(message_id_t id)
 	{
 		CoAPMessage* prev;
@@ -153,6 +170,9 @@ public:
 		return next;
 	}
 
+	/**
+	 * Adds a message to this message store.
+	 */
 	ProtocolError add(CoAPMessage& message)
 	{
 		remove(message);
@@ -163,11 +183,20 @@ public:
 		return NO_ERROR;
 	}
 
+	/**
+	 * Removes a message from this message store.
+	 * Returns true if the message existed, false otherwise.
+	 */
 	bool remove(CoAPMessage& msg)
 	{
 		return remove(msg.get_id())==&msg;
 	}
 
+	/**
+	 * Removes a message from the store with the given id.
+	 * Returns nullptr if the message does not exist. Returns
+	 * the removed message otherwise.
+	 */
 	CoAPMessage* remove(message_id_t msg_id)
 	{
 		CoAPMessage* prev;
@@ -178,11 +207,62 @@ public:
 		return msg;
 	}
 
-	ProtocolError send(Message& msg) override
+	bool is_confirmable(const uint8_t* buf)
 	{
-		return IO_ERROR;
+		return CoAP::type(buf)==CoAPType::CON;
 	}
 
+	ProtocolError sending_message(Message& msg)
+	{
+		if (!msg.has_id())
+			return MISSING_MESSAGE_ID;
+
+		if (is_confirmable(msg.buf()))
+		{
+			// confirmable message, create a CoAPMessage for this
+			CoAPMessage* coapmsg = CoAPMessage::create(msg);
+			if (coapmsg==nullptr)
+				return INSUFFICIENT_STORAGE;
+			add(*coapmsg);
+		}
+		return NO_ERROR;
+	}
+
+	/**
+	 * Notifies that a message has been received.
+	 *
+	 */
+	ProtocolError receiving_message(Message& msg)
+	{
+		if (msg.get_type()==CoAPType::ACK)
+		{
+			msg.decode_id();
+			message_id_t id = msg.get_id();
+			remove(id);
+		}
+		return NO_ERROR;
+	}
+
+	/**
+	 * Sends the message reliably. A non-confirmable message
+	 * it is sent once. A confirmable message is sent and resent
+	 * until an ack is received or the message times out.
+	 */
+	ProtocolError send(Message& msg) override
+	{
+		ProtocolError error = sending_message(msg);
+		if (!error)
+			error = super::send(msg);
+		return error;
+	}
+
+	ProtocolError receive(Message& msg) override
+	{
+		ProtocolError error = super::receive(msg);
+		if (!error && msg.length())
+			receiving_message(msg);
+		return error;
+	}
 };
 
 }}

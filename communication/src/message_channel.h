@@ -76,6 +76,19 @@ public:
     void set_id(message_id_t id) { this->id = id; }
     bool has_id() { return id>=0; }
     message_id_t get_id() { return message_id_t(id); }
+
+    CoAPType::Enum get_type()
+    {
+    		return length() ? CoAP::type(buf()): CoAPType::ERROR;
+    }
+
+    bool decode_id()
+    {
+    		bool decode = (length()>=4);
+    		if (decode)
+    			set_id(CoAP::message_id(buf()));
+    		return decode;
+    }
 };
 
 /**

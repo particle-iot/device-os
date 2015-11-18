@@ -21,6 +21,7 @@
 #include "fakeit.hpp"
 #include "coap_channel.h"
 #include "forward_message_channel.h"
+#include "Messages.h"
 
 using namespace particle::protocol;
 using namespace fakeit;
@@ -259,9 +260,47 @@ SCENARIO("an unacknowledged message is resent up to 4 times after which it is re
 	FAIL("todo");
 }
 
-SCENARIO("a Confirmable message is pending until acknowledged or timeout")
+SCENARIO("a CoAPMessage can be created with the message buffer part of the allocation")
 {
-	GIVEN("a reliable channel and a confirmable message")
+	// todo - factor out the message tests to their own test suite
+	Message msg;
+	msg.set_id(1234);
+	uint8_t buf[234];
+	msg.set_buffer(buf, sizeof(buf));
+
+	REQUIRE(msg.has_id());
+	REQUIRE(msg.get_id()==1234);
+
+	REQUIRE(msg.length()==0);
+	REQUIRE(msg.capacity()==sizeof(buf));
+
+	for (int i=0; i<sizeof(buf); i++)
+		buf[i] = rand();
+
+	msg.set_length(sizeof(buf));
+	REQUIRE(msg.length()==sizeof(buf));
+
+	CoAPMessage* coapmsg = CoAPMessage::create(msg);
+	REQUIRE(coapmsg!=nullptr);
+
+	REQUIRE(coapmsg->get_id()==1234);
+	REQUIRE(coapmsg->get_next()==nullptr);
+	REQUIRE(coapmsg->matches(1234));
+	REQUIRE(coapmsg->get_data_length()==sizeof(buf));
+
+	const uint8_t* data = coapmsg->get_data();
+	REQUIRE(data!=nullptr);
+
+	for (int i=0; i<sizeof(buf); i++) {
+		INFO( "checking coapmsg buffer index " << i);
+		if (data[i]!=buf[i])
+			FAIL("buffer content is different");
+	}
+}
+
+SCENARIO("sending a non-confirmable message does not add a new coap message to the store")
+{
+	GIVEN("a reliable channel")
 	{
 		Mock<MessageChannel> mock;
 		ForwardCoAPReliability store(mock.get());
@@ -274,23 +313,66 @@ SCENARIO("a Confirmable message is pending until acknowledged or timeout")
 
 		Message m;
 		store.create(m, 5);
-		uint8_t data[] = { 0x45, 0, 0, 0 };
+		uint8_t data[] = { 0x50, 0, 0x12, 0x34 };
 		memcpy(m.buf(), data, 4);
-
+		m.set_length(4);
+		m.decode_id();
+		REQUIRE(m.get_type()==CoAPType::NON);
+		REQUIRE(m.get_id()==0x1234);
 		WHEN("the message is sent")
 		{
 			store.send(m);
+			THEN("the message is sent without being stored")
+			{
+				REQUIRE(store.from_id(0x1234)==nullptr);
+
+				Verify(Method(mock,send).Matching([&m](Message& msg){
+					return &m==&msg;
+				})).Once();
+			}
+		}
+
+	}
+}
+
+SCENARIO("a Confirmable message is pending until acknowledged or timeout")
+{
+	GIVEN("a channel and a confirmable message")
+	{
+		Mock<MessageChannel> mock;
+		ForwardCoAPReliability store(mock.get());
+		uint8_t buf[10];
+		When(Method(mock,create)).AlwaysDo([&buf](Message& msg, size_t len)
+			{
+				msg.set_buffer(buf, 10); return NO_ERROR;
+			});
+		When(Method(mock,send)).AlwaysReturn(NO_ERROR);
+
+		Message m;
+		store.create(m, 5);
+		uint8_t data[] = { 0x40, 0, 0x12, 0x34 };
+		memcpy(m.buf(), data, 4);
+		m.set_length(4);
+		m.decode_id();
+		message_id_t id = m.get_id();
+		REQUIRE(id==0x1234);
+		REQUIRE(store.is_confirmable(m.buf()));
+
+		WHEN("the message is sent")
+		{
+			REQUIRE(store.send(m)==NO_ERROR);
 			THEN("the message is pending")
 			{
-				message_id_t id = decode_id(m);
-				REQUIRE(id!=0);
 				REQUIRE(store.from_id(id)!=nullptr);
 			}
 			AND_WHEN("the message is acknowledged")
 			{
+				m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
+				store.receiving_message(m);
+
 				THEN("the message is no longer pending")
 				{
-
+					REQUIRE(store.from_id(id)==nullptr);
 				}
 			}
 		}

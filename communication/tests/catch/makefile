@@ -39,7 +39,8 @@ target_files = $(patsubst $(SRC_ROOT)/%,%,$(call rwildcard,$(SRC_ROOT)/$1,$2))
 # sources are relative to the communications folder
 CPPSRC += $(call target_files,tests/catch,*.cpp)
 #CPPSRC += $(call target_files,src,*.cpp)
-CPPSRC += src/coap.cpp src/messages.cpp 
+CPPSRC += src/coap.cpp src/messages.cpp src/events.cpp src/protocol.cpp
+CPPSRC += src/chunked_transfer.cpp
 
 include $(call rwildcard,$(PROJECT_ROOT)/$(COMMUNICATION)/,include.mk)
 include $(call rwildcard,$(PROJECT_ROOT)/$(COMMUNICATION)/lib/,build.mk)
