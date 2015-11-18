@@ -494,7 +494,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
     }
   }
   uint16_t msg_id = next_message_id();
-  size_t msglen = Messages::event(queue + 2, msg_id, event_name, data, ttl, event_type);
+  size_t msglen = Messages::event(queue + 2, msg_id, event_name, data, ttl, event_type, false);
   size_t wrapped_len = wrap(queue, msglen);
 
   return (0 <= blocking_send(queue, wrapped_len));

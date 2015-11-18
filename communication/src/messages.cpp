@@ -243,7 +243,7 @@ size_t Messages::ping(uint8_t* buf, uint16_t message_id)
 
 size_t Messages::presence_announcement(unsigned char *buf, const char *id)
 {
-	buf[0] = 0x50; // Confirmable, no token
+	buf[0] = 0x50; // Non-Confirmable, no token
 	buf[1] = 0x02; // Code POST
 	buf[2] = 0x00; // message id ignorable in this context
 	buf[3] = 0x00;
@@ -276,10 +276,10 @@ size_t Messages::separate_response_with_payload(unsigned char *buf, uint16_t mes
 }
 
 size_t Messages::event(uint8_t buf[], uint16_t message_id, const char *event_name,
-             const char *data, int ttl, EventType::Enum event_type)
+             const char *data, int ttl, EventType::Enum event_type, bool confirmable)
 {
   uint8_t *p = buf;
-  *p++ = 0x50; // non-confirmable, no token
+  *p++ = confirmable ? 0x40 : 0x50; // non-confirmable /confirmable, no token
   *p++ = 0x02; // code 0.02 POST request
   *p++ = message_id >> 8;
   *p++ = message_id & 0xff;

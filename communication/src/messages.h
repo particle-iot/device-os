@@ -85,7 +85,7 @@ public:
 			unsigned payload_len);
 
 	static size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
-	             const char *data, int ttl, EventType::Enum event_type);
+	             const char *data, int ttl, EventType::Enum event_type, bool confirmable);
 
 
     static inline size_t empty_ack(unsigned char *buf,
