@@ -56,7 +56,7 @@ public:
 
 	static const size_t function_return_size = 10;
 
-	static size_t function_return(unsigned char *buf, message_id_t message_id, token_t token, int return_value);
+	static size_t function_return(unsigned char *buf, message_id_t message_id, token_t token, int return_value, bool confirmable);
 
 	static size_t variable_value(unsigned char *buf, message_id_t message_id, token_t token, bool return_value);
 

@@ -39,7 +39,7 @@ class Functions
     {
     		Message message;
     		channel.create(message, Messages::function_return_size);
-        size_t length = Messages::function_return(message.buf(), 0, token, long(result));
+        size_t length = Messages::function_return(message.buf(), 0, token, long(result), channel.is_unreliable());
         message.set_length(length);
         return channel.send(message);
     }

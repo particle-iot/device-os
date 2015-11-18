@@ -140,9 +140,9 @@ size_t Messages::update_done(uint8_t* buf, message_id_t message_id, bool confirm
 	return 6;
 }
 
-size_t Messages::function_return(unsigned char *buf, message_id_t message_id, token_t token, int return_value)
+size_t Messages::function_return(unsigned char *buf, message_id_t message_id, token_t token, int return_value, bool confirmable)
 {
-	buf[0] = 0x51; // non-confirmable, one-byte token
+	buf[0] = confirmable ? 0x41 : 0x51; // non-confirmable, one-byte token
 	buf[1] = 0x44; // response code 2.04 CHANGED
 	buf[2] = message_id >> 8;
 	buf[3] = message_id & 0xff;
