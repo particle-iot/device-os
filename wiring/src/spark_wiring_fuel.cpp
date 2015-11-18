@@ -116,6 +116,9 @@ void FuelGauge::clearAlert() {
 	byte LSB = 0;
 
 	readConfigRegister(MSB, LSB);
+
+	// Clear ALRT bit
+    writeRegister(CONFIG_REGISTER, MSB, LSB & ~(0x20));
 }
 
 void FuelGauge::reset() {

@@ -47,6 +47,7 @@
 #include "ledcontrol.h"
 #include "spark_wiring_power.h"
 #include "spark_wiring_fuel.h"
+#include "spark_wiring_interrupts.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -140,6 +141,57 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
         }
     }
 }
+
+#if Wiring_Cellular == 1
+/* flag used to initiate system_power_management_update() from main thread */
+static volatile bool SYSTEM_POWER_MGMT_UPDATE = false;
+
+/*******************************************************************************
+ * Function Name  : Power_Management_Handler
+ * Description    : Sets default power management IC charging rate when USB
+                    input power source changes or low battery indicated by
+                    fuel gauge IC.
+ * Output         : SYSTEM_POWER_MGMT_UPDATE is set to true.
+ *******************************************************************************/
+extern "C" void Power_Management_Handler(void)
+{
+    SYSTEM_POWER_MGMT_UPDATE = true;
+}
+
+void system_power_management_init()
+{
+    INFO("Power Management Initializing.");
+    PMIC power;
+    power.begin();
+    power.disableWatchdog();
+    power.disableDPDM();
+    power.setInputVoltageLimit(4120);
+    power.setInputCurrentLimit(500);
+    FuelGauge fuel;
+    fuel.wakeup();
+    fuel.setAlertThreshold(10); // Low Battery alert at 10% (about 3.6V)
+    fuel.clearAlert(); // Ensure this is cleared, or interrupts will never occur
+    INFO("State of Charge: %-6.2f%%", fuel.getSoC());
+    INFO("Battery Voltage: %-4.2fV", fuel.getVCell());
+    attachInterrupt(LOW_BAT_UC, Power_Management_Handler, FALLING);
+}
+
+void system_power_management_update()
+{
+    if (SYSTEM_POWER_MGMT_UPDATE) {
+        SYSTEM_POWER_MGMT_UPDATE = false;
+        PMIC power;
+        power.begin();
+        power.setInputCurrentLimit(500);
+        FuelGauge fuel;
+        bool LOWBATT = fuel.getAlert();
+        if (LOWBATT) {
+            fuel.clearAlert(); // Clear the Low Battery Alert flag if set
+        }
+        INFO(" %s", (LOWBATT)?"Low Battery Alert":"USB Power Source Changed");
+    }
+}
+#endif
 
 /*******************************************************************************
  * Function Name  : HAL_SysTick_Handler
@@ -281,6 +333,9 @@ void app_loop(bool threaded)
 #if !MODULAR_FIRMWARE
                 serialEventRun();
 #endif
+#if Wiring_Cellular == 1
+                system_power_management_update();
+#endif
             }
         }
     }
@@ -323,8 +378,10 @@ void app_setup_and_loop(void)
     HAL_Core_Init();
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
-    PMIC().begin();
-    FuelGauge().wakeup();
+
+#if Wiring_Cellular == 1
+    system_power_management_init();
+#endif
 
     DEBUG("Hello from Particle!");
     String s = spark_deviceID();

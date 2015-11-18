@@ -85,6 +85,7 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
   uint8_t GPIO_PinSource = PIN_MAP[pin].gpio_pin_source;
 
+
   //Clear pending EXTI interrupt flag for the selected pin
   EXTI_ClearITPendingBit(gpio_pin);
 
