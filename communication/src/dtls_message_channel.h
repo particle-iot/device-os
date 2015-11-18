@@ -85,6 +85,8 @@ private:
 		const uint8_t* server_public, size_t server_public_len,
 		const uint8_t* device_id, Callbacks& callbacks);
 
+	virtual bool is_unreliable() override;
+
 	virtual ProtocolError establish() override;
 
 	/**

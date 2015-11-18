@@ -72,6 +72,9 @@ public:
 	{
 	}
 
+	virtual bool is_unreliable() override;
+
+
 	void init(const uint8_t* core_private, const uint8_t* server_public,
 			const uint8_t* device_id, Callbacks& callbacks);
 

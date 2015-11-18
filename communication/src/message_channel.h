@@ -92,6 +92,8 @@ class MessageChannel
 public:
 	virtual ~MessageChannel() {}
 
+	virtual bool is_unreliable()=0;
+
 	virtual ProtocolError establish()=0;
 
 	/**

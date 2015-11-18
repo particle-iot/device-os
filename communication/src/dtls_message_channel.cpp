@@ -217,6 +217,11 @@ ProtocolError DTLSMessageChannel::send(Message& message)
   return NO_ERROR;
 }
 
+bool DTLSMessageChannel::is_unreliable()
+{
+	return true;
+}
+
 
 }}
 

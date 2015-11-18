@@ -15,6 +15,11 @@ namespace particle
 namespace protocol
 {
 
+	bool LightSSLMessageChannel::is_unreliable()
+	{
+		return false;
+	}
+
 	void LightSSLMessageChannel::init(const uint8_t* core_private, const uint8_t* server_public,
 			const uint8_t* device_id, Callbacks& callbacks)
 	{
