@@ -508,23 +508,23 @@ public:
      * @param item
      * @param list
      */
-    bool remove(socket_t* item)
-    {
+     bool remove(socket_t* item)
+     {
         bool removed = false;
         if (items==item) {
             items = item->next;
             removed = true;
         }
-        else if (exists(item))
+        else
         {
             socket_t* current = items;
-
             while (current) {
                 if (current->next==item) {
                     current->next = item->next;
                     removed = true;
                     break;
                 }
+                current = current->next;
             }
         }
 
