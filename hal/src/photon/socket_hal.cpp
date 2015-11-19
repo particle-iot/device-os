@@ -511,21 +511,23 @@ public:
     bool remove(socket_t* item)
     {
         bool removed = false;
-            if (items==item) {
-                items = item->next;
+        if (items==item) {
+            items = item->next;
             removed = true;
         }
         else
         {
-                socket_t* current = items;
+            socket_t* current = items;
             while (current) {
                 if (current->next==item) {
                     current->next = item->next;
                     removed = true;
                     break;
                 }
+                current = current->next;
             }
         }
+
         return removed;
     }
 
