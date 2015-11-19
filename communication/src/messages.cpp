@@ -132,7 +132,7 @@ size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 size_t Messages::update_done(uint8_t* buf, message_id_t message_id, bool confirmable)
 {
 	buf[0] = confirmable ? 0x40 : 0x50; // confirmable/non-confirmable, no token
-	buf[1] = 0x02; // POST
+	buf[1] = 0x03; // PUT
 	buf[2] = message_id >> 8;
 	buf[3] = message_id & 0xff;
 	buf[4] = 0xb1; // Uri-Path option of length 1
