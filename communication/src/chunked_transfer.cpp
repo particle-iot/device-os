@@ -101,18 +101,10 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 	last_chunk_millis = callbacks->millis();
 
 	Message response;
-	channel.response(message, response, 16);
-	// send ACK
+	ProtocolError error;
+	channel.response(message, response, 16);	
 	uint8_t* queue = message.buf();
-	message_id_t msg_id = CoAP::message_id(queue);
-	size_t response_size = Messages::empty_ack(response.buf(), 0, 0);
-	response.set_id(msg_id);
-	response.set_length(response_size);
-	ProtocolError error = channel.send(response);
-	if (error)
-		return error;
-
-	channel.create(response);
+	
 	DEBUG("chunk");
 	if (!this->updating)
 	{
@@ -140,6 +132,21 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 		option++;
 		payload += (queue[payload] & 0xF) + 1; // increase by the size. todo handle > 11
 	}
+
+	if (!fast_ota)
+	{
+		// send ACK
+		message_id_t msg_id = CoAP::message_id(queue);
+		size_t response_size = Messages::empty_ack(response.buf(), 0, 0);
+		response.set_id(msg_id);
+		response.set_length(response_size);
+		error = channel.send(response);
+		if (error)
+			return error;
+	}
+
+	channel.create(response);
+
 	if (0xFF == queue[payload])
 	{
 		payload++;
@@ -159,7 +166,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 		if (crc_valid)
 		{
 			callbacks->save_firmware_chunk(file, chunk, NULL);
-			if (!fast_ota || updating != 2)
+			if (!fast_ota)
 			{
 				// message is confirmable for regular OTA or when
 				response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::OK, false);
