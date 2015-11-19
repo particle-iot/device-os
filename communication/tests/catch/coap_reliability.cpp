@@ -26,6 +26,10 @@
 using namespace particle::protocol;
 using namespace fakeit;
 
+/**
+ * A CoAPChannel that uses a forwarding message channel so we can redirect
+ * where messages are delivered.
+ */
 class ForwardCoAPChannel: public CoAPChannel<ForwardMessageChannel>
 {
 	using super = CoAPChannel<ForwardMessageChannel>;
@@ -37,12 +41,15 @@ public:
 	}
 };
 
-class ForwardCoAPReliability: public CoAPReliability<ForwardMessageChannel>
+
+/**
+ * A reliable CoAP Channel that  uses a forwarding message channel.
+ */
+class ForwardCoAPReliableChannel: public CoAPReliableChannel<ForwardMessageChannel>
 {
-	using super = CoAPReliability<ForwardMessageChannel>;
 public:
 
-	ForwardCoAPReliability(MessageChannel& ch)
+	ForwardCoAPReliableChannel(MessageChannel& ch)
 	{
 		setForward(&ch);
 	}
@@ -111,8 +118,7 @@ SCENARIO("there are no registered messages initially")
 {
 	GIVEN("an empty message store")
 	{
-		Mock<MessageChannel> mock;
-		ForwardCoAPReliability store(mock.get());
+		CoAPMessageStore store;
 
 		THEN("no messages are present")
 		{
@@ -129,7 +135,7 @@ SCENARIO("a message can be added and removed by id", "[reliability]")
 	GIVEN("an empty message store")
 	{
 		Mock<MessageChannel> mock;
-		ForwardCoAPReliability store(mock.get());
+		CoAPMessageStore store;
 		REQUIRE(store.from_id(id)==nullptr);
 
 		WHEN("a message is added with id 456")
@@ -161,13 +167,13 @@ SCENARIO("a message can be added and removed by id", "[reliability]")
 	}
 }
 
-SCENARIO("a message can be added with the same id more than once", "[reliability]")
+SCENARIO("a message can be added to a message store with the same id more than once", "[reliability]")
 {
 	const message_id_t id = 456;
 	GIVEN("an empty message store")
 	{
 		Mock<MessageChannel> mock;
-		ForwardCoAPReliability store(mock.get());
+		CoAPMessageStore store;
 		REQUIRE(store.from_id(id)==nullptr);
 
 		WHEN("a message is added twice")
@@ -199,8 +205,7 @@ SCENARIO("multiple messages are stored in a list in the order they are added, mo
 	const message_id_t id2 = 345;
 	GIVEN("an empty message store")
 	{
-		Mock<MessageChannel> mock;
-		ForwardCoAPReliability store(mock.get());
+		CoAPMessageStore store;
 		REQUIRE(store.from_id(id1)==nullptr);
 		REQUIRE(store.from_id(id2)==nullptr);
 
@@ -241,7 +246,7 @@ SCENARIO("adding the same message twice")
 	GIVEN("an empty message store")
 	{
 		Mock<MessageChannel> mock;
-		ForwardCoAPReliability store(mock.get());
+		CoAPMessageStore store;
 		REQUIRE(store.from_id(id)==nullptr);
 		CoAPMessage m(id);
 		WHEN("the message is added twice")
@@ -303,7 +308,8 @@ SCENARIO("sending a non-confirmable message does not add a new coap message to t
 	GIVEN("a reliable channel")
 	{
 		Mock<MessageChannel> mock;
-		ForwardCoAPReliability store(mock.get());
+		MessageChannel& channel = mock.get();
+		CoAPMessageStore store;
 		uint8_t buf[10];
 		When(Method(mock,create)).AlwaysDo([&buf](Message& msg, size_t len)
 			{
@@ -312,7 +318,7 @@ SCENARIO("sending a non-confirmable message does not add a new coap message to t
 		When(Method(mock,send)).AlwaysReturn(NO_ERROR);
 
 		Message m;
-		store.create(m, 5);
+		channel.create(m, 5);
 		uint8_t data[] = { 0x50, 0, 0x12, 0x34 };
 		memcpy(m.buf(), data, 4);
 		m.set_length(4);
@@ -321,18 +327,23 @@ SCENARIO("sending a non-confirmable message does not add a new coap message to t
 		REQUIRE(m.get_id()==0x1234);
 		WHEN("the message is sent")
 		{
-			store.send(m);
+			store.send(m, 0);
 			THEN("the message is sent without being stored")
 			{
 				REQUIRE(store.from_id(0x1234)==nullptr);
-
-				Verify(Method(mock,send).Matching([&m](Message& msg){
-					return &m==&msg;
-				})).Once();
 			}
 		}
-
 	}
+}
+
+SCENARIO("channel send and receive calls are propagated")
+{
+	/*
+	Verify(Method(mock,send).Matching([&m](Message& msg){
+		return &m==&msg;
+	})).Once();
+*/
+	FAIL("todo");
 }
 
 SCENARIO("a Confirmable message is pending until acknowledged or timeout")
@@ -340,7 +351,8 @@ SCENARIO("a Confirmable message is pending until acknowledged or timeout")
 	GIVEN("a channel and a confirmable message")
 	{
 		Mock<MessageChannel> mock;
-		ForwardCoAPReliability store(mock.get());
+		MessageChannel& channel = mock.get();
+		CoAPMessageStore store;
 		uint8_t buf[10];
 		When(Method(mock,create)).AlwaysDo([&buf](Message& msg, size_t len)
 			{
@@ -349,7 +361,7 @@ SCENARIO("a Confirmable message is pending until acknowledged or timeout")
 		When(Method(mock,send)).AlwaysReturn(NO_ERROR);
 
 		Message m;
-		store.create(m, 5);
+		channel.create(m, 5);
 		uint8_t data[] = { 0x40, 0, 0x12, 0x34 };
 		memcpy(m.buf(), data, 4);
 		m.set_length(4);
@@ -360,7 +372,7 @@ SCENARIO("a Confirmable message is pending until acknowledged or timeout")
 
 		WHEN("the message is sent")
 		{
-			REQUIRE(store.send(m)==NO_ERROR);
+			REQUIRE(store.send(m, 0)==NO_ERROR);
 			THEN("the message is pending")
 			{
 				REQUIRE(store.from_id(id)!=nullptr);
@@ -368,7 +380,7 @@ SCENARIO("a Confirmable message is pending until acknowledged or timeout")
 			AND_WHEN("the message is acknowledged")
 			{
 				m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
-				store.receiving_message(m);
+				store.receive(m);
 
 				THEN("the message is no longer pending")
 				{

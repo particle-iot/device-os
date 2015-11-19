@@ -20,6 +20,7 @@
 
 #include "message_channel.h"
 #include "coap.h"
+#include "timer_hal.h"
 
 namespace particle
 {
@@ -66,12 +67,24 @@ public:
 };
 
 /**
- * A CoAP message that is available for transmission.
+ * A CoAP message that is available for (re-)transmission.
  */
 class __attribute__((packed)) CoAPMessage
 {
+	/**
+	 * Messages are stored as a singly-linked list.
+	 * This pointer is the next message in the list, or nullptr if this is the last message in the list.
+	 */
 	CoAPMessage* next;
+
+	/**
+	 * The unique 16-bit ID for this message.
+	 */
 	message_id_t id;
+
+	/**
+	 *
+	 */
 	system_tick_t timeout;
 
 	/**
@@ -80,18 +93,29 @@ class __attribute__((packed)) CoAPMessage
 	 */
 	uint8_t retransmits;
 
-	// this must come last so that when dynamicaly allocated, the data buffer can be extended
+	/**
+	 * How many data bytes follow.
+	 */
 	uint16_t data_len;
+
+	/**
+	 * The CoAPMessage is dynamically allocated as a single chunk combining both the fields above and the message data.
+	 */
 	uint8_t data[0];
 public:
 
 	CoAPMessage(message_id_t id_) : next(nullptr), id(id_), timeout(0), retransmits(0), data_len(0) {}
 
+	/**
+	 * Create a new CoAPMessage from the given Message instance. The returned CoAPMessage is dynamically allocated
+	 * and has an independent lifetime from the Message
+	 * instance. When no longer required, `delete` the CoAPMessage..
+	 */
 	static CoAPMessage* create(Message& msg)
 	{
 		size_t len = msg.length();
 		uint8_t* memory = new uint8_t[sizeof(CoAPMessage)+len];
-		CoAPMessage* coapmsg = new (memory)CoAPMessage(msg.get_id());
+		CoAPMessage* coapmsg = new (memory)CoAPMessage(msg.get_id());		// in-place new
 		coapmsg->set_data(msg.buf(), len);
 		return coapmsg;
 	}
@@ -124,13 +148,20 @@ public:
 
 };
 
-template <typename T>
-class CoAPReliability : public T
+/**
+ * A mix-in class that provides message resending for reliable delivery of messages.
+ */
+class CoAPMessageStore
 {
-	using super = T;
-
+	/**
+	 * The head of the list of messages.
+	 */
 	CoAPMessage* head;
 
+	/**
+	 * Retrieves the message with the given ID and the previous message.
+	 * If no message exists with the given id, nullptr is returned.
+	 */
 	CoAPMessage* for_id(message_id_t id, CoAPMessage*& prev)
 	{
 		prev = nullptr;
@@ -145,6 +176,9 @@ class CoAPReliability : public T
 		return nullptr;
 	}
 
+	/**
+	 * Removes a message given the message to remove and the previous entry in the list.
+	 */
 	void remove(CoAPMessage* message, CoAPMessage* previous)
 	{
 		if (previous)
@@ -156,7 +190,7 @@ class CoAPReliability : public T
 
 public:
 
-	CoAPReliability() : head(nullptr) {}
+	CoAPMessageStore() : head(nullptr) {}
 
 	/**
 	 * Retrieves the current confirmable message that is still
@@ -212,7 +246,19 @@ public:
 		return CoAP::type(buf)==CoAPType::CON;
 	}
 
-	ProtocolError sending_message(Message& msg)
+	/**
+	 * Process existing messages, resending any unacknoweldged requests.
+	 *
+	 */
+	void process(system_tick_t time)
+	{
+
+	}
+
+	/**
+	 *
+	 */
+	ProtocolError send(Message& msg, system_tick_t time)
 	{
 		if (!msg.has_id())
 			return MISSING_MESSAGE_ID;
@@ -232,7 +278,7 @@ public:
 	 * Notifies that a message has been received.
 	 *
 	 */
-	ProtocolError receiving_message(Message& msg)
+	ProtocolError receive(Message& msg)
 	{
 		if (msg.get_type()==CoAPType::ACK)
 		{
@@ -243,6 +289,20 @@ public:
 		return NO_ERROR;
 	}
 
+};
+
+template <class T>
+class CoAPReliableChannel : public T, CoAPMessageStore
+{
+	using channel = T;
+
+	system_tick_t millis()
+	{
+		return HAL_Timer_Get_Milli_Seconds();
+	}
+
+public:
+
 	/**
 	 * Sends the message reliably. A non-confirmable message
 	 * it is sent once. A confirmable message is sent and resent
@@ -250,19 +310,30 @@ public:
 	 */
 	ProtocolError send(Message& msg) override
 	{
-		ProtocolError error = sending_message(msg);
+		ProtocolError error = CoAPMessageStore::send(msg, millis());
 		if (!error)
-			error = super::send(msg);
+			error = channel::send(msg);
+
+		// todo - for synchronous send, we can simply ignore all
+		// received packets that are not the one we are waiting for
+		// (or optionally cache them.)
 		return error;
 	}
 
 	ProtocolError receive(Message& msg) override
 	{
-		ProtocolError error = super::receive(msg);
+		ProtocolError error = channel::receive(msg);
 		if (!error && msg.length())
-			receiving_message(msg);
+			CoAPMessageStore::receive(msg);
+		else
+		{
+			system_tick_t now = millis();
+			CoAPMessageStore::process(now);
+		}
 		return error;
 	}
+
 };
+
 
 }}
