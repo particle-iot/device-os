@@ -170,8 +170,8 @@ void DTLSMessageChannel::dispose()
 ProtocolError DTLSMessageChannel::establish()
 {
 	// re-initialize the SSL state
-	dispose();
-	init();
+	// dispose();
+	// init();
 
 	int ret;
 	do ret = mbedtls_ssl_handshake(&ssl_context);
