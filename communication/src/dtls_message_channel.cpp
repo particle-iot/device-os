@@ -207,6 +207,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	conf.read_timeout = 0;
 	int ret = mbedtls_ssl_read(&ssl_context, buf, len);
 	if (ret <= 0 && ret != MBEDTLS_ERR_SSL_WANT_READ) {
+		mbedtls_ssl_session_reset(&ssl_context);
 		return IO_ERROR;
 	}
 	message.set_length(ret);
@@ -226,7 +227,8 @@ ProtocolError DTLSMessageChannel::send(Message& message)
   int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
   if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
   {
-	return IO_ERROR;
+		mbedtls_ssl_session_reset(&ssl_context);
+		return IO_ERROR;
   }
   return NO_ERROR;
 }
