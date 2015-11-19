@@ -23,6 +23,7 @@
 #include "mbedtls/error.h"
 #include "timer_hal.h"
 #include <stdio.h>
+#include <string.h>
 
 namespace particle { namespace protocol {
 
@@ -72,7 +73,6 @@ ProtocolError DTLSMessageChannel::init(
 {
 	init();
 	int ret;
-
 	this->callbacks = callbacks;
 
 	//mbedtls_debug_set_threshold(255);
@@ -100,22 +100,9 @@ ProtocolError DTLSMessageChannel::init(
 	mbedtls_ssl_conf_server_certificate_types(&conf, ssl_cert_types);
 	mbedtls_ssl_conf_certificate_receive(&conf, MBEDTLS_SSL_RECEIVE_CERTIFICATE_DISABLED);
 
-	ret = mbedtls_ssl_setup(&ssl_context, &conf);
-	EXIT_ERROR(ret, "unable to setup SSL context");
-
-	if ((ssl_context.session_negotiate->peer_cert = (mbedtls_x509_crt*)calloc(1, sizeof(mbedtls_x509_crt))) == NULL)
-	{
-		ERROR("unable to allocate certificate storage");
-		return INSUFFICIENT_STORAGE;
-	}
-
-	mbedtls_x509_crt_init(ssl_context.session_negotiate->peer_cert);
-	ret = mbedtls_pk_parse_public_key(&ssl_context.session_negotiate->peer_cert->pk, server_public, server_public_len);
-	EXIT_ERROR(ret, "unable to parse netogiated public key");
-
-	mbedtls_ssl_set_timer_cb(&ssl_context, &timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
-	mbedtls_ssl_set_bio(&ssl_context, this, &DTLSMessageChannel::send_, &DTLSMessageChannel::recv_, NULL);
-
+	this->server_public = new uint8_t[server_public_len];
+	memcpy(this->server_public, server_public, server_public_len);
+	this->server_public_len = server_public_len;
 	return NO_ERROR;
 }
 
@@ -152,6 +139,7 @@ int DTLSMessageChannel::recv_( void *ctx, unsigned char *buf, size_t len ) {
 
 void DTLSMessageChannel::init()
 {
+	server_public = nullptr;
 	mbedtls_ssl_init (&ssl_context);
 	mbedtls_ssl_config_init (&conf);
 	mbedtls_x509_crt_init (&clicert);
@@ -165,22 +153,44 @@ void DTLSMessageChannel::dispose()
 	mbedtls_pk_free (&pkey);
 	mbedtls_ssl_config_free (&conf);
 	mbedtls_ssl_free (&ssl_context);
+	delete this->server_public;
+	server_public_len = 0;
 }
 
 ProtocolError DTLSMessageChannel::establish()
 {
-	// re-initialize the SSL state
-	// dispose();
-	// init();
-
 	int ret;
-	do ret = mbedtls_ssl_handshake(&ssl_context);
+
+	ret = mbedtls_ssl_setup(&ssl_context, &conf);
+	EXIT_ERROR(ret, "unable to setup SSL context");
+
+	mbedtls_ssl_set_timer_cb(&ssl_context, &timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+	mbedtls_ssl_set_bio(&ssl_context, this, &DTLSMessageChannel::send_, &DTLSMessageChannel::recv_, NULL);
+
+	if ((ssl_context.session_negotiate->peer_cert = (mbedtls_x509_crt*)calloc(1, sizeof(mbedtls_x509_crt))) == NULL)
+	{
+		ERROR("unable to allocate certificate storage");
+		return INSUFFICIENT_STORAGE;
+	}
+
+	mbedtls_x509_crt_init(ssl_context.session_negotiate->peer_cert);
+	ret = mbedtls_pk_parse_public_key(&ssl_context.session_negotiate->peer_cert->pk, server_public, server_public_len);
+	if (ret) {
+		WARN("unable to parse netogiated public key: -%x", -ret);
+		return IO_ERROR;
+	}
+
+	do
+	{
+		ret = mbedtls_ssl_handshake(&ssl_context);
+	}
 	while(ret == MBEDTLS_ERR_SSL_WANT_READ ||
 	      ret == MBEDTLS_ERR_SSL_WANT_WRITE);
 
 	if (ret)
 	{
-		DEBUG("handshake failed %x", ret);
+		mbedtls_ssl_session_reset(&ssl_context);
+		DEBUG("handshake failed -%x", -ret);
 	}
 	return ret==0 ? NO_ERROR : IO_ERROR;
 }
@@ -196,9 +206,9 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 
 	conf.read_timeout = 0;
 	int ret = mbedtls_ssl_read(&ssl_context, buf, len);
-	if (ret <= 0 && ret != MBEDTLS_ERR_SSL_WANT_READ)
+	if (ret <= 0 && ret != MBEDTLS_ERR_SSL_WANT_READ) {
 		return IO_ERROR;
-
+	}
 	message.set_length(ret);
 	return NO_ERROR;
 }
@@ -215,8 +225,9 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 
   int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
   if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
-    return IO_ERROR;
-
+  {
+	return IO_ERROR;
+  }
   return NO_ERROR;
 }
 
