@@ -9,6 +9,7 @@ void DTLSProtocol::init(const char *id,
 		  const SparkDescriptor &descriptor)
 {
 	memcpy(device_id, id, sizeof(device_id));
+	initialize_ping(0,0);		// do not send pings from the client over the UDP connection
 	DTLSMessageChannel::Callbacks channelCallbacks;
 	channelCallbacks.millis = callbacks.millis;
 	channelCallbacks.handle_seed = handle_seed;

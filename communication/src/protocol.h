@@ -227,10 +227,14 @@ public:
 	          const SparkCallbacks &callbacks,
 	          const SparkDescriptor &descriptor)=0;
 
+	void initialize_ping(system_tick_t interval, system_tick_t timeout)
+	{
+		pinger.init(interval, timeout);
+	}
+
 	void set_handlers(CommunicationsHandlers& handlers)
 	{
-		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers,
-				handlers.size);
+		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);
 	}
 
 	/**

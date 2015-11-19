@@ -59,6 +59,7 @@ public:
 		channelCallbacks.send = callbacks.send;
 		channel.init(keys.core_private, keys.server_public, (const uint8_t*)id, channelCallbacks);
         Protocol::init(callbacks, descriptor);
+        initialize_ping(15000,10000);
 	}
 
 	size_t build_hello(Message& message, bool ota_updated)

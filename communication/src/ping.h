@@ -7,9 +7,20 @@ namespace particle { namespace protocol {
 class Pinger
 {
 	bool expecting_ping_ack;
+	system_tick_t ping_interval;
+	system_tick_t ping_timeout;
 
 public:
-	Pinger() : expecting_ping_ack(false) {}
+	Pinger() : expecting_ping_ack(false), ping_interval(0), ping_timeout(10000) {}
+
+	/**
+	 * Sets the ping interval that the client will send pings to the server, and the expected maximum response time.
+	 */
+	void init(system_tick_t interval, system_tick_t timeout)
+	{
+		this->ping_interval = interval;
+		this->ping_timeout = timeout;
+	}
 
 	void reset() {
 		expecting_ping_ack = false;
@@ -22,7 +33,7 @@ public:
 	{
 		if (expecting_ping_ack)
 		{
-			if (10000 < millis_since_last_message)
+			if (ping_timeout < millis_since_last_message)
 			{
 				// timed out, disconnect
 				return PING_TIMEOUT;
@@ -34,7 +45,7 @@ public:
 		}
 		else
 		{
-			if (15000 < millis_since_last_message)
+			if (ping_interval && ping_interval < millis_since_last_message)
 			{
 				expecting_ping_ack = true;
 				return ping();
