@@ -148,6 +148,21 @@ public:
 
 };
 
+inline bool time_has_passed(system_tick_t now, system_tick_t tick)
+{
+	static_assert(sizeof(system_tick_t)==4, "system_tick_t should be 4 bytes");
+	if (now>=tick)
+	{
+		return now-tick <= 0x7FFFFFFF;
+	}
+	else
+	{
+		return tick-now >= 0x80000000;
+	}
+}
+
+
+
 /**
  * A mix-in class that provides message resending for reliable delivery of messages.
  */

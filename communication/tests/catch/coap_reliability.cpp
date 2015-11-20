@@ -390,3 +390,22 @@ SCENARIO("a Confirmable message is pending until acknowledged or timeout")
 		}
 	}
 }
+
+using particle::protocol::time_has_passed;
+
+SCENARIO("Rollover timestamps can be used to determine a timeout")
+{
+	REQUIRE(time_has_passed(2000,1000));
+	REQUIRE(time_has_passed(2000,2000));
+	REQUIRE(!time_has_passed(2000,3000));
+
+	REQUIRE(time_has_passed(0x80000000, 1));
+	REQUIRE(!time_has_passed(0x80000000, 0));
+
+	REQUIRE(time_has_passed(1000, 0xFFFFFFFF));
+	REQUIRE(!time_has_passed(0xFFFFFFFF, 1000));
+
+	REQUIRE(time_has_passed(0, 0x80000000));
+	REQUIRE(!time_has_passed(1, 0x80000000));
+
+}
