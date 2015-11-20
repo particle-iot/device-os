@@ -155,8 +155,9 @@ SCENARIO("a message can be added and removed by id", "[reliability]")
 						REQUIRE(removed==&message);
 						REQUIRE(message.get_next()==nullptr);
 						AND_WHEN("the same id is removed again") {
-							removed = store.remove(id);
+							CoAPMessage* removed2 = store.remove(id);
 							THEN("no message is retrieved") {
+								REQUIRE(removed2==nullptr);
 								REQUIRE(store.remove(id)==nullptr);
 							}
 						}
@@ -165,6 +166,8 @@ SCENARIO("a message can be added and removed by id", "[reliability]")
 			}
 		}
 	}
+	REQUIRE(CoAPMessage::messages()==0);
+
 }
 
 SCENARIO("a message can be added to a message store with the same id more than once", "[reliability]")
@@ -173,71 +176,79 @@ SCENARIO("a message can be added to a message store with the same id more than o
 	GIVEN("an empty message store")
 	{
 		Mock<MessageChannel> mock;
-		CoAPMessageStore store;
-		REQUIRE(store.from_id(id)==nullptr);
-
 		WHEN("a message is added twice")
 		{
-			CoAPMessage m1(id);
-			CoAPMessage m2(id);
+			CoAPMessageStore store;
+			REQUIRE(store.from_id(id)==nullptr);
+
+			CoAPMessage* m1 = new CoAPMessage(id);
+			CoAPMessage* m2 = new CoAPMessage(id);
 
 			CHECK(store.add(m1)==NO_ERROR);
 			REQUIRE(store.add(m2)==NO_ERROR);
 			THEN("retrieving a the message by id returns the last added message")
 			{
-				REQUIRE(store.from_id(id)==&m2);
+				REQUIRE(store.from_id(id)==m2);
 				AND_WHEN("the message is removed")
 				{
-					CHECK(store.remove(id)==&m2);
+					CHECK(store.remove(id)==m2);
 					THEN("no message is retrieved")
 					{
 						REQUIRE(store.from_id(id)==nullptr);
 					}
 				}
 			}
+			delete m1;
+			delete m2;
 		}
 	}
+	REQUIRE(CoAPMessage::messages()==0);
+
 }
 
 SCENARIO("multiple messages are stored in a list in the order they are added, most recent first")
 {
 	const message_id_t id1 = 456;
 	const message_id_t id2 = 345;
+	REQUIRE(CoAPMessage::messages()==0);
 	GIVEN("an empty message store")
 	{
 		CoAPMessageStore store;
+		CoAPMessage* m1 = new CoAPMessage(id1);
+		CoAPMessage* m2 = new CoAPMessage(id2);
 		REQUIRE(store.from_id(id1)==nullptr);
 		REQUIRE(store.from_id(id2)==nullptr);
 
 		WHEN("adding two messages with distinct IDs")
 		{
-			CoAPMessage m1(id1), m2(id2);
-			REQUIRE(m1.get_id()==id1);
-			REQUIRE(m2.get_id()==id2);
+			REQUIRE(m1->get_id()==id1);
+			REQUIRE(m2->get_id()==id2);
 			REQUIRE(store.add(m1)==NO_ERROR);
 			REQUIRE(store.add(m2)==NO_ERROR);
 
 			THEN("the second message points to the first")
 			{
-				REQUIRE(m2.get_next()==&m1);
+				REQUIRE(m2->get_next()==m1);
 				AND_THEN("both messages can be retrieved")
 				{
-					REQUIRE(store.from_id(id1)==&m1);
-					REQUIRE(store.from_id(id2)==&m2);
+					REQUIRE(store.from_id(id1)==m1);
+					REQUIRE(store.from_id(id2)==m2);
 				}
-			}
-			AND_WHEN("removing the most recently added message")
-			{
-				REQUIRE(store.remove(id2)==&m2);
-				THEN("only that message is removed")
+				AND_WHEN("removing the most recently added message")
 				{
-					CHECK(m2.get_next()==nullptr);
-					CHECK(store.from_id(id2)==nullptr);
-					CHECK(store.from_id(id1)==&m1);
+					REQUIRE(store.remove(id2)==m2);
+					THEN("only that message is removed")
+					{
+						CHECK(m2->get_next()==nullptr);
+						CHECK(store.from_id(id2)==nullptr);
+						CHECK(store.from_id(id1)==m1);
+					}
+					delete m2;		// m1 will be removed by the store
 				}
 			}
 		}
 	}
+	REQUIRE(CoAPMessage::messages()==0);
 }
 
 SCENARIO("adding the same message twice")
@@ -248,7 +259,7 @@ SCENARIO("adding the same message twice")
 		Mock<MessageChannel> mock;
 		CoAPMessageStore store;
 		REQUIRE(store.from_id(id)==nullptr);
-		CoAPMessage m(id);
+		CoAPMessage* m = new CoAPMessage(id);
 		WHEN("the message is added twice")
 		{
 			CHECK(store.add(m)==NO_ERROR);
@@ -258,6 +269,7 @@ SCENARIO("adding the same message twice")
 			}
 		}
 	}
+	REQUIRE(CoAPMessage::messages()==0);
 }
 
 SCENARIO("an unacknowledged message is resent up to 4 times after which it is removed")
@@ -301,6 +313,8 @@ SCENARIO("a CoAPMessage can be created with the message buffer part of the alloc
 		if (data[i]!=buf[i])
 			FAIL("buffer content is different");
 	}
+	delete coapmsg;
+	REQUIRE(CoAPMessage::messages()==0);
 }
 
 SCENARIO("sending a non-confirmable message does not add a new coap message to the store")
@@ -334,6 +348,7 @@ SCENARIO("sending a non-confirmable message does not add a new coap message to t
 			}
 		}
 	}
+	REQUIRE(CoAPMessage::messages()==0);
 }
 
 SCENARIO("channel send and receive calls are propagated")
@@ -352,7 +367,6 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 	{
 		Mock<MessageChannel> mock;
 		MessageChannel& channel = mock.get();
-		CoAPMessageStore store;
 		uint8_t buf[10];
 		When(Method(mock,create)).AlwaysDo([&buf](Message& msg, size_t len)
 			{
@@ -367,16 +381,18 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 		m.set_length(4);
 		m.decode_id();
 		message_id_t id = m.get_id();
-		REQUIRE(id==0x1234);
-		REQUIRE(store.is_confirmable(m.buf()));
+		REQUIRE(CoAPMessage::messages()==0);
 
 		WHEN("the message is sent")
 		{
+			CoAPMessageStore store;
+			REQUIRE(id==0x1234);
+			REQUIRE(store.is_confirmable(m.buf()));
+
 			REQUIRE(store.send(m, 0)==NO_ERROR);
 			THEN("the message is pending")
 			{
 				REQUIRE(store.from_id(id)!=nullptr);
-
 				AND_WHEN("the message is acknowledged")
 				{
 					m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
@@ -385,6 +401,7 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 					THEN("the message is no longer pending")
 					{
 						REQUIRE(store.from_id(id)==nullptr);
+						REQUIRE(CoAPMessage::messages()==0);
 					}
 				}
 
@@ -396,13 +413,13 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 					THEN("the message is no longer pending")
 					{
 						REQUIRE(store.from_id(id)==nullptr);
+						REQUIRE(CoAPMessage::messages()==0);
 					}
 				}
-
-
 			}
 		}
 	}
+	REQUIRE(CoAPMessage::messages()==0);
 }
 
 using particle::protocol::time_has_passed;
@@ -423,3 +440,21 @@ SCENARIO("Rollover timestamps can be used to determine a timeout")
 	REQUIRE(!time_has_passed(1, 0x80000000));
 
 }
+
+SCENARIO("retransmit delay is exponential with randomness")
+{
+	for (int i=0; i<CoAPMessage::MAX_RETRANSMIT; i++)
+	{
+		for (unsigned u = 0; u<500; u++)
+		{
+			system_tick_t timeout = CoAPMessage::transmit_timeout(i);
+			system_tick_t min = 2000 << i;
+			system_tick_t max = min * 1.5;
+			if (timeout<min)
+				REQUIRE(timeout>=min);
+			if (timeout>max)
+				REQUIRE(timeout<=max);
+		}
+	}
+}
+

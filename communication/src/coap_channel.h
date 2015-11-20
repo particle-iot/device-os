@@ -21,6 +21,7 @@
 #include "message_channel.h"
 #include "coap.h"
 #include "timer_hal.h"
+#include "stdlib.h"
 
 namespace particle
 {
@@ -78,20 +79,25 @@ class __attribute__((packed)) CoAPMessage
 	CoAPMessage* next;
 
 	/**
+	 * The time when the system will resend this message or give up sending
+	 * when the maximum number of transmits has been reached.
+	 */
+	system_tick_t timeout;
+
+	/**
 	 * The unique 16-bit ID for this message.
 	 */
 	message_id_t id;
 
 	/**
-	 *
+	 * The number of times this message has been transmitted.
+	 * 0 means the message has not been sent yet.
 	 */
-	system_tick_t timeout;
+	uint8_t transmit_count;
 
-	/**
-	 * The number of retransmissions of this message allowed.
-	 * When 0, the message is removed from the list.
-	 */
-	uint8_t retransmits;
+	// padding
+	// uint8_t reserved;
+
 
 	/**
 	 * How many data bytes follow.
@@ -102,9 +108,25 @@ class __attribute__((packed)) CoAPMessage
 	 * The CoAPMessage is dynamically allocated as a single chunk combining both the fields above and the message data.
 	 */
 	uint8_t data[0];
+
+
+	static uint16_t message_count;
 public:
 
-	CoAPMessage(message_id_t id_) : next(nullptr), id(id_), timeout(0), retransmits(0), data_len(0) {}
+	static const uint16_t ACK_TIMEOUT = 2000;
+	static const uint16_t ACK_RANDOM_FACTOR = 1500;
+	static const uint8_t MAX_RETRANSMIT = 4;
+
+
+	/**
+	 * The number of outstanding messages allowed.
+	 */
+	static const uint8_t NSTART = 1;
+
+
+	CoAPMessage(message_id_t id_) : next(nullptr), timeout(0), id(id_), transmit_count(0), data_len(0) {
+		message_count++;
+	}
 
 	/**
 	 * Create a new CoAPMessage from the given Message instance. The returned CoAPMessage is dynamically allocated
@@ -115,10 +137,20 @@ public:
 	{
 		size_t len = msg.length();
 		uint8_t* memory = new uint8_t[sizeof(CoAPMessage)+len];
-		CoAPMessage* coapmsg = new (memory)CoAPMessage(msg.get_id());		// in-place new
-		coapmsg->set_data(msg.buf(), len);
-		return coapmsg;
+		if (memory) {
+			CoAPMessage* coapmsg = new (memory)CoAPMessage(msg.get_id());		// in-place new
+			coapmsg->set_data(msg.buf(), len);
+			return coapmsg;
+		}
+		return nullptr;
 	}
+
+	~CoAPMessage()
+	{
+		message_count--;
+	}
+
+	static uint16_t messages() { return message_count; }
 
 	inline CoAPMessage* get_next() const { return next; }
 	inline void set_next(CoAPMessage* next) { this->next = next; }
@@ -126,8 +158,23 @@ public:
 	inline message_id_t get_id() const { return id; }
 	inline void removed() { next = nullptr; }
 
-	inline bool has_timeout() { return timeout; }
-	inline bool can_transmit() { return retransmits; }
+	/**
+	 * Prepares to retransmit this message after a timeout.
+	 * @return false if the message cannot be retransmitted.
+	 */
+	bool prepare_retransmit(system_tick_t now)
+	{
+		timeout = now + transmit_timeout(transmit_count);
+		transmit_count++;
+		return transmit_count <= MAX_RETRANSMIT;
+	}
+
+	static inline system_tick_t transmit_timeout(uint8_t transmit_count)
+	{
+		system_tick_t timeout = (ACK_TIMEOUT << transmit_count);
+		timeout += ((timeout * rand()%256)>>9);
+		return timeout;
+	}
 
 	inline CoAPType::Enum type() const
 	{
@@ -207,6 +254,10 @@ public:
 
 	CoAPMessageStore() : head(nullptr) {}
 
+	~CoAPMessageStore() {
+		clear();
+	}
+
 	/**
 	 * Retrieves the current confirmable message that is still
 	 * waiting acknowledgement.
@@ -217,6 +268,11 @@ public:
 		CoAPMessage* prev;
 		CoAPMessage* next = for_id(id, prev);
 		return next;
+	}
+
+	ProtocolError add(CoAPMessage* message)
+	{
+		return add(*message);
 	}
 
 	/**
@@ -271,7 +327,7 @@ public:
 	}
 
 	/**
-	 *
+	 * Registers that this message has been sent from the application.
 	 */
 	ProtocolError send(Message& msg, system_tick_t time)
 	{
@@ -300,9 +356,26 @@ public:
 		{
 			msg.decode_id();
 			message_id_t id = msg.get_id();
-			remove(id);
+			clear_message(id);
 		}
 		return NO_ERROR;
+	}
+
+	void clear_message(message_id_t id)
+	{
+		delete remove(id);
+	}
+
+
+	/**
+	 * Removes all knowledge of any messages.
+	 */
+	void clear()
+	{
+		while (head!=nullptr)
+		{
+			delete remove(head->get_id());
+		}
 	}
 
 };
@@ -318,6 +391,12 @@ class CoAPReliableChannel : public T, CoAPMessageStore
 	}
 
 public:
+
+	ProtocolError establish() override
+	{
+		CoAPMessageStore::clear();
+		return channel::establish();
+	}
 
 	/**
 	 * Sends the message reliably. A non-confirmable message
