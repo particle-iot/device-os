@@ -121,6 +121,17 @@ public:
       return 5;
     }
 
+    static inline size_t reset(unsigned char *buf,
+                                         unsigned char message_id_msb,
+                                         unsigned char message_id_lsb)
+    {
+		buf[0] = 0x70; // reset, no token
+		buf[1] = 0;
+		buf[2] = message_id_msb;
+		buf[3] = message_id_lsb;
+		return 4;
+    }
+
 
     static inline size_t update_ready(unsigned char *buf, message_id_t message_id, token_t token, uint8_t flags, bool confirmable)
     {

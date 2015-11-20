@@ -346,7 +346,7 @@ SCENARIO("channel send and receive calls are propagated")
 	FAIL("todo");
 }
 
-SCENARIO("a Confirmable message is pending until acknowledged or timeout")
+SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout")
 {
 	GIVEN("a channel and a confirmable message")
 	{
@@ -376,16 +376,30 @@ SCENARIO("a Confirmable message is pending until acknowledged or timeout")
 			THEN("the message is pending")
 			{
 				REQUIRE(store.from_id(id)!=nullptr);
-			}
-			AND_WHEN("the message is acknowledged")
-			{
-				m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
-				store.receive(m);
 
-				THEN("the message is no longer pending")
+				AND_WHEN("the message is acknowledged")
 				{
-					REQUIRE(store.from_id(id)==nullptr);
+					m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
+					store.receive(m);
+
+					THEN("the message is no longer pending")
+					{
+						REQUIRE(store.from_id(id)==nullptr);
+					}
 				}
+
+				AND_WHEN("the message is reset")
+				{
+					m.set_length(Messages::reset(m.buf(), 0x12, 0x34));
+					store.receive(m);
+
+					THEN("the message is no longer pending")
+					{
+						REQUIRE(store.from_id(id)==nullptr);
+					}
+				}
+
+
 			}
 		}
 	}

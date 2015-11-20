@@ -290,12 +290,13 @@ public:
 	}
 
 	/**
-	 * Notifies that a message has been received.
+	 * Notifies the message store that a message has been received.
 	 *
 	 */
 	ProtocolError receive(Message& msg)
 	{
-		if (msg.get_type()==CoAPType::ACK)
+		CoAPType::Enum msgtype= msg.get_type();
+		if (msgtype==CoAPType::ACK || msgtype==CoAPType::RESET)
 		{
 			msg.decode_id();
 			message_id_t id = msg.get_id();
