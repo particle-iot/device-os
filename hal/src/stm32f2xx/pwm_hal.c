@@ -52,6 +52,7 @@ void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value);
  * @brief Should take an integer 0-255 and create a PWM signal with a duty cycle from 0-100%.
  * TIM_PWM_FREQ is set at 500 Hz
  */
+
 void HAL_PWM_Write(uint16_t pin, uint8_t value)
 {
 
@@ -61,7 +62,6 @@ void HAL_PWM_Write(uint16_t pin, uint8_t value)
     int32_t pwm_initialized = 1;
     if (PIN_MAP[pin].user_property != pwm_initialized)
     {
-    	PIN_MAP[pin].user_property = pwm_initialized;
     	// Configure TIM GPIO pins
         HAL_Pin_Mode(pin, AF_OUTPUT_PUSHPULL);
         // Enable TIM clock
@@ -70,6 +70,8 @@ void HAL_PWM_Write(uint16_t pin, uint8_t value)
     	HAL_PWM_ConfigureTIM(TIM_CLK, value, pin);
         // TIM enable counter
     	HAL_PWM_EnableTIM(pin);
+    	// Mark PWM Initiated
+    	PIN_MAP[pin].user_property = pwm_initialized;
     } else {
     	HAL_PWM_UpdateDutyCycle(pin, value);
     }
@@ -150,6 +152,7 @@ uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
 
 void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value){
 
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 	// Get Clock here
 	uint32_t TIM_CLK = SystemCoreClock;
@@ -216,6 +219,13 @@ uint32_t HAL_PWM_EnableTIMClock(uint16_t pin) {
 	}
 #endif
 
+
+	//PWM Frequency : 500 Hz
+	uint16_t TIM_Prescaler = (uint16_t) (TIM_CLK / TIM_PWM_COUNTER_CLOCK_FREQ)
+			- 1;
+	uint16_t TIM_ARR = (uint16_t) (TIM_PWM_COUNTER_CLOCK_FREQ / TIM_PWM_FREQ)
+			- 1;
+
 	// Time base configuration
 	TIM_TimeBaseStructure.TIM_Period = TIM_ARR;
 	TIM_TimeBaseStructure.TIM_Prescaler = TIM_Prescaler;
@@ -229,14 +239,12 @@ uint32_t HAL_PWM_EnableTIMClock(uint16_t pin) {
 uint16_t HAL_PWM_CalculateCCR(uint32_t TIM_CLK, uint8_t value)
 {
 	//PWM Frequency : 500 Hz
-	uint16_t TIM_Prescaler = (uint16_t) (TIM_CLK / TIM_PWM_COUNTER_CLOCK_FREQ)
-			- 1;
-	uint16_t TIM_ARR = (uint16_t) (TIM_PWM_COUNTER_CLOCK_FREQ / TIM_PWM_FREQ)
-			- 1;
+	uint16_t TIM_ARR = (uint16_t) (TIM_PWM_COUNTER_CLOCK_FREQ / TIM_PWM_FREQ) - 1;
 	// TIM Channel Duty Cycle(%) = (TIM_CCR / TIM_ARR + 1) * 100
 	uint16_t TIM_CCR = (uint16_t) (value * (TIM_ARR + 1) / 255);
 	return TIM_CCR;
 }
+
 
 void HAL_PWM_ConfigureTIM(uint32_t TIM_CLK, uint8_t value, uint16_t pin)
 {
@@ -247,7 +255,8 @@ void HAL_PWM_ConfigureTIM(uint32_t TIM_CLK, uint8_t value, uint16_t pin)
 	TIM_OCInitTypeDef TIM_OCInitStructure = { 0 };
 
 	//PWM Frequency : 500 Hz
-	uint16_t TIM_CCR = HAL_PWM_CalculateCCR(TIM_CLK, value);
+	uint16_t TIM_ARR = (uint16_t) (TIM_PWM_COUNTER_CLOCK_FREQ / TIM_PWM_FREQ) - 1;
+	uint16_t TIM_CCR = (uint16_t) (value * (TIM_ARR + 1) / 255);
 
 	// PWM1 Mode configuration
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
