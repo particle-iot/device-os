@@ -105,6 +105,9 @@ class MessageChannel
 public:
 	virtual ~MessageChannel() {}
 
+	/**
+	 * Determines if this channel requires CoAP acknowledgements for helping with reliable delivery or not.
+	 */
 	virtual bool is_unreliable()=0;
 
 	virtual ProtocolError establish()=0;

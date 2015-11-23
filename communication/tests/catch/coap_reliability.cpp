@@ -41,7 +41,7 @@ public:
 	}
 };
 
-
+#if 0
 /**
  * A reliable CoAP Channel that  uses a forwarding message channel.
  */
@@ -55,6 +55,7 @@ public:
 	}
 
 };
+#endif
 
 message_id_t decode_id(Message& msg)
 {
@@ -272,9 +273,119 @@ SCENARIO("adding the same message twice")
 	REQUIRE(CoAPMessage::messages()==0);
 }
 
-SCENARIO("an unacknowledged message is resent up to 4 times after which it is removed")
+SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exponentially increasing delays, after which it is removed")
 {
-	FAIL("todo");
+	REQUIRE(CoAPMessage::messages()==0);
+	GIVEN("a channel and a confirmable message")
+	{
+		Mock<MessageChannel> mock;
+		MessageChannel& channel = mock.get();
+		uint8_t buf[10];
+		When(Method(mock,create)).AlwaysDo([&buf](Message& msg, size_t len)
+			{
+				msg.set_buffer(buf, 10); return NO_ERROR;
+			});
+
+		Message m;
+		channel.create(m, 5);
+		uint8_t data[] = { 0x40, 0, 0x12, 0x34 };
+		memcpy(m.buf(), data, 4);
+		m.set_length(4);
+		m.decode_id();
+		message_id_t id = m.get_id();
+		CoAPMessageStore store;
+		REQUIRE(id==0x1234);
+		REQUIRE(store.is_confirmable(m.buf()));
+
+		WHEN("the message is sent")
+		{
+			REQUIRE(store.send(m, 0)==NO_ERROR);
+			THEN("the message is pending")
+			{
+				CoAPMessage* cm = store.from_id(id);
+				REQUIRE(cm!=nullptr);
+
+				// the send() function should be invoked with a message corresponding to the coap message
+				auto verify_message = [cm](Message& msg)->ProtocolError {
+					REQUIRE(msg.get_id()==cm->get_id());
+					REQUIRE(msg.length()==cm->get_data_length());
+					REQUIRE(!memcmp(msg.buf(), cm->get_data(), msg.length()));
+					return NO_ERROR;
+				};
+				When(Method(mock,send)).AlwaysDo(verify_message);
+
+				AND_WHEN("the message times out MAX_RETRANSMIT times")
+				{
+					system_tick_t last_timeout = 0;
+					for (int i=0; i<CoAPMessage::MAX_RETRANSMIT; i++)
+					{
+						CoAPMessage* m = store.from_id(id);
+						REQUIRE(m->get_timeout()>=last_timeout);
+						last_timeout = m->get_timeout();
+						store.process(m->get_timeout(), channel);
+						Verify(Method(mock,send)).Exactly(i+1);
+						REQUIRE(store.from_id(id)==m);
+					}
+
+					THEN("the message has been sent MAX_RETRANSMIT times")
+					{
+						Verify(Method(mock,send)).Exactly(CoAPMessage::MAX_RETRANSMIT);
+
+						AND_WHEN("process is invoked once more")
+						{
+							// the final time removes it from the store
+							store.process(cm->get_timeout(), channel);
+
+							AND_THEN("send is not called again and the message the message is no longer pending")
+							{
+								Verify(Method(mock,send)).Exactly(CoAPMessage::MAX_RETRANSMIT);
+								REQUIRE(store.from_id(id)==nullptr);
+							}
+						}
+					}
+				}
+
+				AND_WHEN("the message times out 3 times")
+				{
+					system_tick_t last_timeout = 0;
+					for (int i=0; i<3; i++)
+					{
+						CoAPMessage* m = store.from_id(id);
+						REQUIRE(m->get_timeout()>=last_timeout);
+						last_timeout = m->get_timeout();
+						store.process(m->get_timeout(), channel);
+						Verify(Method(mock,send)).Exactly(i+1);
+						REQUIRE(store.from_id(id)==m);
+					}
+
+					THEN("the message has been sent 3 times")
+					{
+						Verify(Method(mock,send)).Exactly(3);
+						AND_WHEN("the message is acknowledged")
+						{
+							system_tick_t timeout = cm->get_timeout();
+							m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
+							store.receive(m);
+
+							THEN("the message is no longer pending")
+							{
+								REQUIRE(store.from_id(id)==nullptr);
+								REQUIRE(CoAPMessage::messages()==0);
+
+								// the final time removes it from the store
+								store.process(timeout, channel);
+								Verify(Method(mock,send)).Exactly(3);
+								REQUIRE(store.from_id(id)==nullptr);
+							}
+						}
+					}
+				}
+
+			}
+		}
+	}
+	REQUIRE(CoAPMessage::messages()==0);
+
 }
 
 SCENARIO("a CoAPMessage can be created with the message buffer part of the allocation")
@@ -349,16 +460,6 @@ SCENARIO("sending a non-confirmable message does not add a new coap message to t
 		}
 	}
 	REQUIRE(CoAPMessage::messages()==0);
-}
-
-SCENARIO("channel send and receive calls are propagated")
-{
-	/*
-	Verify(Method(mock,send).Matching([&m](Message& msg){
-		return &m==&msg;
-	})).Once();
-*/
-	FAIL("todo");
 }
 
 SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout")

@@ -157,6 +157,7 @@ public:
 	inline bool matches(message_id_t id) const { return this->id==id; }
 	inline message_id_t get_id() const { return id; }
 	inline void removed() { next = nullptr; }
+	inline system_tick_t get_timeout() const { return timeout; }
 
 	/**
 	 * Prepares to retransmit this message after a timeout.
@@ -169,6 +170,9 @@ public:
 		return transmit_count <= MAX_RETRANSMIT;
 	}
 
+	/**
+	 * Determines the transmit timeout for the given transmission count.
+	 */
 	static inline system_tick_t transmit_timeout(uint8_t transmit_count)
 	{
 		system_tick_t timeout = (ACK_TIMEOUT << transmit_count);
@@ -318,13 +322,14 @@ public:
 	}
 
 	/**
-	 * Process existing messages, resending any unacknoweldged requests.
-	 *
+	 * Returns false if the message should be removed from the queue.
 	 */
-	void process(system_tick_t time)
-	{
+	bool retransmit(CoAPMessage* msg, MessageChannel& channel, system_tick_t now);
 
-	}
+	/**
+	 * Process existing messages, resending any unacknowledged requests to the given channel.
+	 */
+	void process(system_tick_t time, MessageChannel& channel);
 
 	/**
 	 * Registers that this message has been sent from the application.
@@ -380,6 +385,7 @@ public:
 
 };
 
+#if 0
 template <class T>
 class CoAPReliableChannel : public T, CoAPMessageStore
 {
@@ -419,16 +425,18 @@ public:
 	{
 		ProtocolError error = channel::receive(msg);
 		if (!error && msg.length())
+		{
 			CoAPMessageStore::receive(msg);
+		}
 		else
 		{
 			system_tick_t now = millis();
-			CoAPMessageStore::process(now);
+			CoAPMessageStore::process(now, *this);
 		}
 		return error;
 	}
 
 };
-
+#endif
 
 }}

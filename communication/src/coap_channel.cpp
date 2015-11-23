@@ -19,5 +19,49 @@
 
 #include "coap_channel.h"
 
-uint16_t particle::protocol::CoAPMessage::message_count = 0;
+namespace particle { namespace protocol {
 
+uint16_t CoAPMessage::message_count = 0;
+
+
+
+/**
+ * Returns false if the message should be removed from the queue.
+ */
+bool CoAPMessageStore::retransmit(CoAPMessage* msg, MessageChannel& channel, system_tick_t now)
+{
+	bool retransmit = (msg->prepare_retransmit(now));
+	if (retransmit)
+	{
+		Message m((uint8_t*)msg->get_data(), msg->get_data_length(), msg->get_data_length());
+		m.decode_id();
+		channel.send(m);
+	}
+	return retransmit;
+}
+
+/**
+ * Process existing messages, resending any unacknowledged requests to the given channel.
+ */
+void CoAPMessageStore::process(system_tick_t time, MessageChannel& channel)
+{
+	CoAPMessage* msg = head;
+	CoAPMessage* prev = nullptr;
+	while (msg!=nullptr)
+	{
+		if (time_has_passed(time, msg->get_timeout()) && !retransmit(msg, channel, time))
+		{
+			remove(msg, prev);
+			delete msg;
+			msg = (prev==nullptr) ? head : prev->get_next();
+		}
+		else
+		{
+			prev = msg;
+			msg = msg->get_next();
+		}
+	}
+}
+
+
+}}
