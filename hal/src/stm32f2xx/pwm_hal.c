@@ -41,11 +41,12 @@
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
-uint32_t HAL_PWM_EnableTIMClock(uint16_t pin);
-uint16_t HAL_PWM_CalculateCCR(uint32_t TIM_CLK, uint8_t value);
-void HAL_PWM_ConfigureTIM(uint32_t TIM_CLK, uint8_t value, uint16_t pin);
-void HAL_PWM_EnableTIM(uint16_t pin);
-void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value);
+uint32_t HAL_PWM_Enable_TIM_Clock(uint16_t pin);
+uint16_t  HAL_PWM_Calculate_ARR(uint16_t pwm_fequency);
+uint16_t HAL_PWM_Calculate_CCR(uint32_t TIM_CLK, uint8_t value);
+void HAL_PWM_Configure_TIM(uint32_t TIM_CLK, uint8_t value, uint16_t pin);
+void HAL_PWM_Enable_TIM(uint16_t pin);
+void HAL_PWM_Update_Duty_Cycle(uint16_t pin, uint16_t value);
 
 
 /*
@@ -56,7 +57,6 @@ void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value);
 void HAL_PWM_Write(uint16_t pin, uint8_t value)
 {
 
-
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     int32_t pwm_initialized = 1;
@@ -65,15 +65,15 @@ void HAL_PWM_Write(uint16_t pin, uint8_t value)
     	// Configure TIM GPIO pins
         HAL_Pin_Mode(pin, AF_OUTPUT_PUSHPULL);
         // Enable TIM clock
-        uint32_t TIM_CLK = HAL_PWM_EnableTIMClock(pin);
+        uint32_t TIM_CLK = HAL_PWM_Enable_TIM_Clock(pin);
         // Configure Timer
-    	HAL_PWM_ConfigureTIM(TIM_CLK, value, pin);
+    	HAL_PWM_Configure_TIM(TIM_CLK, value, pin);
         // TIM enable counter
-    	HAL_PWM_EnableTIM(pin);
+    	HAL_PWM_Enable_TIM(pin);
     	// Mark PWM Initiated
     	PIN_MAP[pin].user_property = pwm_initialized;
     } else {
-    	HAL_PWM_UpdateDutyCycle(pin, value);
+    	HAL_PWM_Update_Duty_Cycle(pin, value);
     }
 
 }
@@ -150,7 +150,7 @@ uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
     return PWM_AnalogValue;
 }
 
-void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value){
+void HAL_PWM_Update_Duty_Cycle(uint16_t pin, uint16_t value){
 
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
@@ -165,8 +165,11 @@ void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value){
 	} else if (PIN_MAP[pin].timer_peripheral == TIM5) {
 		TIM_CLK = SystemCoreClock / 2;
 	}
-	uint16_t TIM_CCR = HAL_PWM_CalculateCCR(TIM_CLK, value);
 
+	// Calculate new output compare register value
+	uint16_t TIM_CCR = HAL_PWM_Calculate_CCR(TIM_CLK, value);
+
+	// Set output compare register value
 	if (PIN_MAP[pin].timer_ch == TIM_Channel_1) {
 		TIM_SetCompare1(PIN_MAP[pin].timer_peripheral, TIM_CCR);
 	} else if (PIN_MAP[pin].timer_ch == TIM_Channel_2) {
@@ -181,7 +184,7 @@ void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value){
 
 
 
-uint32_t HAL_PWM_EnableTIMClock(uint16_t pin) {
+uint32_t HAL_PWM_Enable_TIM_Clock(uint16_t pin) {
 
 	STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
@@ -221,10 +224,8 @@ uint32_t HAL_PWM_EnableTIMClock(uint16_t pin) {
 
 
 	//PWM Frequency : 500 Hz
-	uint16_t TIM_Prescaler = (uint16_t) (TIM_CLK / TIM_PWM_COUNTER_CLOCK_FREQ)
-			- 1;
-	uint16_t TIM_ARR = (uint16_t) (TIM_PWM_COUNTER_CLOCK_FREQ / TIM_PWM_FREQ)
-			- 1;
+	uint16_t TIM_Prescaler = (uint16_t) (TIM_CLK / TIM_PWM_COUNTER_CLOCK_FREQ) - 1;
+	uint16_t TIM_ARR = HAL_PWM_Calculate_ARR(TIM_PWM_FREQ);
 
 	// Time base configuration
 	TIM_TimeBaseStructure.TIM_Period = TIM_ARR;
@@ -236,17 +237,21 @@ uint32_t HAL_PWM_EnableTIMClock(uint16_t pin) {
 }
 
 
-uint16_t HAL_PWM_CalculateCCR(uint32_t TIM_CLK, uint8_t value)
+uint16_t HAL_PWM_Calculate_CCR(uint32_t TIM_CLK, uint8_t value)
 {
 	//PWM Frequency : 500 Hz
-	uint16_t TIM_ARR = (uint16_t) (TIM_PWM_COUNTER_CLOCK_FREQ / TIM_PWM_FREQ) - 1;
+	uint16_t TIM_ARR = HAL_PWM_Calculate_ARR(TIM_PWM_FREQ);
 	// TIM Channel Duty Cycle(%) = (TIM_CCR / TIM_ARR + 1) * 100
 	uint16_t TIM_CCR = (uint16_t) (value * (TIM_ARR + 1) / 255);
 	return TIM_CCR;
 }
 
+uint16_t  HAL_PWM_Calculate_ARR(uint16_t pwm_fequency) {
+	//PWM Frequency : 500 Hz
+	 return (uint16_t) (TIM_PWM_COUNTER_CLOCK_FREQ / TIM_PWM_FREQ) - 1;
+}
 
-void HAL_PWM_ConfigureTIM(uint32_t TIM_CLK, uint8_t value, uint16_t pin)
+void HAL_PWM_Configure_TIM(uint32_t TIM_CLK, uint8_t value, uint16_t pin)
 {
 
 	STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
@@ -254,15 +259,17 @@ void HAL_PWM_ConfigureTIM(uint32_t TIM_CLK, uint8_t value, uint16_t pin)
 	/* Initialize all 8 struct params to 0, fixes randomly inverted RX, TX PWM */
 	TIM_OCInitTypeDef TIM_OCInitStructure = { 0 };
 
-	//PWM Frequency : 500 Hz
-	uint16_t TIM_ARR = (uint16_t) (TIM_PWM_COUNTER_CLOCK_FREQ / TIM_PWM_FREQ) - 1;
-	uint16_t TIM_CCR = (uint16_t) (value * (TIM_ARR + 1) / 255);
+	//PWM Duty Cycle
+	uint16_t TIM_CCR = HAL_PWM_Calculate_CCR(TIM_CLK, pin);
 
 	// PWM1 Mode configuration
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
 	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
 	TIM_OCInitStructure.TIM_Pulse = TIM_CCR;
+
+	// Enable output-compare preload function.  Duty cycle will be updated
+	// at end of each counter cycle to prevent glitches.
 	if (PIN_MAP[pin].timer_ch == TIM_Channel_1) {
 		// PWM1 Mode configuration: Channel1
 		TIM_OC1Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
@@ -285,10 +292,12 @@ void HAL_PWM_ConfigureTIM(uint32_t TIM_CLK, uint8_t value, uint16_t pin)
 				TIM_OCPreload_Enable);
 	}
 
+	// Enable Auto-load register preload function.  ARR register or PWM period
+	// will be update at end of each counter cycle to prevent glitches.
 	TIM_ARRPreloadConfig(PIN_MAP[pin].timer_peripheral, ENABLE);
 }
 
-void HAL_PWM_EnableTIM(uint16_t pin)
+void HAL_PWM_Enable_TIM(uint16_t pin)
 {
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
