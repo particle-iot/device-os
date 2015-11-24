@@ -38,6 +38,7 @@ class Message
 	size_t buffer_length;
 	size_t message_length;
     int id;                     // if < 0 then not-defined.
+    bool confirm_received;
 
 	size_t trim_capacity()
 	{
@@ -62,7 +63,7 @@ class Message
 public:
 	Message() : Message(nullptr, 0, 0) {}
 
-	Message(uint8_t* buf, size_t buflen, size_t msglen) : buffer(buf), buffer_length(buflen), message_length(msglen), id(-1) {}
+	Message(uint8_t* buf, size_t buflen, size_t msglen=0) : buffer(buf), buffer_length(buflen), message_length(msglen), id(-1), confirm_received(false) {}
 
 	void clear() { id = -1; }
 
@@ -89,6 +90,13 @@ public:
     			set_id(CoAP::message_id(buf()));
     		return decode;
     }
+
+    void set_confirm_received(bool confirm)
+    {
+    		this->confirm_received = confirm;
+    }
+
+    bool get_confirm_received() const { return confirm_received; }
 };
 
 /**

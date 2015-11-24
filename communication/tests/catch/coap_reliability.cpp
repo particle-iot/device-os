@@ -304,6 +304,8 @@ SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exp
 			{
 				CoAPMessage* cm = store.from_id(id);
 				REQUIRE(cm!=nullptr);
+				REQUIRE(cm->get_timeout()<CoAPMessage::ACK_TIMEOUT*CoAPMessage::ACK_RANDOM_FACTOR/CoAPMessage::ACK_RANDOM_DIVISOR);
+				REQUIRE(cm->get_timeout()>=CoAPMessage::ACK_TIMEOUT*1);
 
 				// the send() function should be invoked with a message corresponding to the coap message
 				auto verify_message = [cm](Message& msg)->ProtocolError {
@@ -320,7 +322,7 @@ SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exp
 					for (int i=0; i<CoAPMessage::MAX_RETRANSMIT; i++)
 					{
 						CoAPMessage* m = store.from_id(id);
-						REQUIRE(m->get_timeout()>=last_timeout);
+						REQUIRE(m->get_timeout()>last_timeout);
 						last_timeout = m->get_timeout();
 						store.process(m->get_timeout(), channel);
 						Verify(Method(mock,send)).Exactly(i+1);
@@ -614,6 +616,132 @@ SCENARIO("a repeated confirmable CoAP message is passed only once to the applica
 			}
 		}
 	}
+}
+
+template<typename R>
+struct Callme
+{
+	virtual R operator()()=0;
+};
+
+SCENARIO("the send_synchronous method blocks until the message is sent or the send fails or the send times out")
+{
+	GIVEN("A confirmable message marked as confirm received")
+	{
+		uint8_t buf[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
+		Message m(buf, sizeof(buf), sizeof(buf));
+		m.set_confirm_received(true);
+		m.decode_id();
+		Mock<MessageChannel> mock;
+		MessageChannel& channel = mock.get();
+		CoAPMessageStore store;
+
+		typedef Callme<system_tick_t> time_source;
+		Mock<time_source> mockTime;
+		time_source& time = mockTime.get();
+		system_tick_t time_count = 0;
+		auto time_increment = [&time_count]() { return time_count+=1000; };
+		When(Method(mockTime, operator())).AlwaysDo(time_increment);
+
+		WHEN("the message is sent")
+		{
+			REQUIRE(m.get_id()==0x1234);
+			AND_WHEN("the channel retrieves a response")
+			{
+				uint8_t buf2[5];
+				Message ack(buf2, sizeof(buf2));
+				ack.set_length(Messages::empty_ack(buf2, 0x12, 0x34));
+
+				auto receive_ack = [&ack](Message& msg) {
+					msg.set_buffer(ack.buf(), ack.capacity());
+					msg.set_length(ack.length());
+					return NO_ERROR;
+				};
+				When(Method(mock,receive)).Do(receive_ack);
+
+				auto verify_msg = [&m](Message& msg) {
+					REQUIRE(m.get_id()==msg.get_id());
+					REQUIRE(m.length()==msg.length());
+					REQUIRE(!memcmp(m.buf(), msg.buf(), msg.length()));
+					return NO_ERROR;
+				};
+				When(Method(mock,send)).AlwaysDo(verify_msg);
+
+				THEN("the send_synchronous method returns success")
+				{
+					ProtocolError error = store.send_synchronous(m, channel, time);
+					REQUIRE(error==NO_ERROR);
+					AND_THEN("the CoAP message is purged")
+					{
+						REQUIRE(store.from_id(0x1234)==nullptr);
+					}
+				}
+			}
+
+			AND_WHEN("no response is received")
+			{
+				// receive endlessly receives no packets
+				auto receive_none = [](Message& msg) {
+					msg.set_length(0);
+					return NO_ERROR;
+				};
+				When(Method(mock,receive)).AlwaysDo(receive_none);
+
+				auto verify_msg = [buf](Message& msg) {
+					// NB: the passed in message instance is re-used to retrieve messages from the channel
+					// hence m will be equal to th eempty message. (Previous code tried comparing m==msg which consequently failed.)
+
+					REQUIRE(9==msg.length());
+					REQUIRE(!memcmp(buf, msg.buf(), msg.length()));
+					REQUIRE(0x1234==msg.get_id());
+					return NO_ERROR;
+				};
+				When(Method(mock,send)).AlwaysDo(verify_msg);
+
+				THEN("the send_synchronous method times out")
+				{
+					ProtocolError error = store.send_synchronous(m, channel, time);
+					REQUIRE(error==MESSAGE_TIMEOUT);
+					AND_THEN("the CoAP message is purged")
+					{
+						REQUIRE(store.from_id(0x1234)==nullptr);
+					}
+				}
+			}
+
+			AND_WHEN("the error response IO_ERROR is received on the first send")
+			{
+				When(Method(mock,send)).Return(IO_ERROR);
+				THEN("the send_synchronous method fails with IO_ERROR")
+				{
+					ProtocolError error = store.send_synchronous(m, channel, time);
+					REQUIRE(error==IO_ERROR);
+					AND_THEN("the CoAP message is purged")
+					{
+						REQUIRE(store.from_id(0x1234)==nullptr);
+					}
+				}
+			}
+
+			AND_WHEN("the error response IO_ERROR is received the second send")
+			{
+				When(Method(mock,send)).Return(NO_ERROR);
+				When(Method(mock,send)).Return(IO_ERROR);
+				THEN("the send_synchronous method fails with IO_ERROR")
+				{
+					ProtocolError error = store.send_synchronous(m, channel, time);
+					REQUIRE(error==IO_ERROR);
+					AND_THEN("the CoAP message is purged")
+					{
+						REQUIRE(store.from_id(0x1234)==nullptr);
+					}
+				}
+			}
+
+		}
+
+	}
+
 }
 
 

@@ -97,6 +97,7 @@ class __attribute__((packed)) CoAPMessage
 
 	// padding
 	// uint8_t reserved;
+	std::function<void(bool)>* delivered;
 
 
 	/**
@@ -109,12 +110,19 @@ class __attribute__((packed)) CoAPMessage
 	 */
 	uint8_t data[0];
 
-
 	static uint16_t message_count;
+
+	inline void notify_delivered(bool success) const {
+		if (delivered) {
+			(*delivered)(success);
+		}
+	}
+
 public:
 
 	static const uint16_t ACK_TIMEOUT = 2000;
 	static const uint16_t ACK_RANDOM_FACTOR = 1500;
+	static const uint16_t ACK_RANDOM_DIVISOR = 1000;
 	static const uint8_t MAX_RETRANSMIT = 4;
 	static const uint16_t MAX_TRANSMIT_SPAN = 45*1000;
 
@@ -125,7 +133,7 @@ public:
 	static const uint8_t NSTART = 1;
 
 
-	CoAPMessage(message_id_t id_) : next(nullptr), timeout(0), id(id_), transmit_count(0), data_len(0) {
+	CoAPMessage(message_id_t id_) : next(nullptr), timeout(0), id(id_), transmit_count(0), delivered(nullptr), data_len(0) {
 		message_count++;
 	}
 
@@ -160,6 +168,16 @@ public:
 	inline void removed() { next = nullptr; }
 	inline system_tick_t get_timeout() const { return timeout; }
 
+	inline void set_delivered_handler(std::function<void(bool)>* handler) { this->delivered = handler; }
+
+	inline void notify_timeout() const {
+		notify_delivered(false);
+	}
+
+	inline void notify_success() const {
+		notify_delivered(true);
+	}
+
 	/**
 	 * Prepares to retransmit this message after a timeout.
 	 * @return false if the message cannot be retransmitted.
@@ -170,7 +188,7 @@ public:
 		if (coapType==CoAPType::CON) {
 			timeout = now + transmit_timeout(transmit_count);
 			transmit_count++;
-			return transmit_count <= MAX_RETRANSMIT;
+			return transmit_count <= MAX_RETRANSMIT+1;
 		}
 		// other message types are not resent on timeout
 		return false;
@@ -349,6 +367,50 @@ public:
 	 */
 	ProtocolError send_message(CoAPMessage* msg, MessageChannel& channel);
 
+	bool is_ack_or_reset(Message& msg)
+	{
+		if (msg.length()<1)
+			return false;
+		CoAPType::Enum type = CoAP::type(msg.buf());
+		return type==CoAPType::ACK || type==CoAPType::RESET;
+	}
+
+	template<typename Time>
+	ProtocolError send_synchronous(Message& msg, MessageChannel& channel, Time& time)
+	{
+		message_id_t id = msg.get_id();
+		CoAPType::Enum coapType = CoAP::type(msg.buf());
+		ProtocolError error = send(msg, time());
+		if (!error)
+			error = channel.send(msg);
+		if (!error && coapType==CoAPType::CON)
+		{
+			std::function<void(bool)> flag_delivered = [&error](bool delivered) {
+				if (!delivered)
+					error = MESSAGE_TIMEOUT;
+			};
+			CoAPMessage* coapmsg = from_id(id);
+			if (coapmsg)
+				coapmsg->set_delivered_handler(&flag_delivered);
+			while (from_id(id)!=nullptr && !error)
+			{
+				msg.clear();
+				msg.set_length(0);
+				error = channel.receive(msg);
+				if (!error && msg.decode_id() && is_ack_or_reset(msg))
+				{
+					// handle acknowledgements, waiting for the one that
+					// acknowledges the original confirmation.
+					error = receive(msg, channel);
+				}
+				// drop CON messages on the floor since we cannot handle them now
+				process(time(), channel);
+			}
+		}
+		clear_message(id);
+		// todo - if msg contains a delivery callback then call that with the outcome of this
+		return error;
+	}
 
 	/**
 	 * Registers that this message has been sent from the application.
@@ -366,7 +428,10 @@ public:
 			CoAPMessage* coapmsg = CoAPMessage::create(msg);
 			if (coapmsg==nullptr)
 				return INSUFFICIENT_STORAGE;
-			coapmsg->set_max_transmit(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+			if (coapType==CoAPType::CON)
+				coapmsg->prepare_retransmit(time);
+			else
+				coapmsg->set_max_transmit(time+CoAPMessage::MAX_TRANSMIT_SPAN);
 			add(*coapmsg);
 		}
 		return NO_ERROR;
@@ -425,10 +490,45 @@ class CoAPReliableChannel : public T, CoAPMessageStore
 {
 	using channel = T;
 
-	system_tick_t millis()
+	static system_tick_t millis()
 	{
 		return HAL_Timer_Get_Milli_Seconds();
 	}
+
+	ProtocolError base_send(Message& msg)
+	{
+		return channel::send(msg);
+	}
+
+	ProtocolError base_receive(Message& msg)
+	{
+		return channel::receive(msg);
+	}
+
+	class DelegateChannel : public AbstractMessageChannel
+	{
+		CoAPReliableChannel<T> channel;
+
+	public:
+
+		ProtocolError receive(Message& msg) override
+		{
+			return channel.base_receive(msg);
+		}
+
+		ProtocolError send(Message& msg) override
+		{
+			return channel.base_send(msg);
+		}
+
+		ProtocolError establish() override
+		{
+			return INVALID_STATE;
+		}
+
+	};
+
+	friend class DelegateChannel;
 
 public:
 
@@ -470,6 +570,8 @@ public:
 		}
 		return error;
 	}
+
+
 
 };
 #endif

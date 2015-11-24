@@ -55,6 +55,7 @@ void CoAPMessageStore::process(system_tick_t time, MessageChannel& channel)
 		if (time_has_passed(time, msg->get_timeout()) && !retransmit(msg, channel, time))
 		{
 			remove(msg, prev);
+			msg->notify_timeout();
 			delete msg;
 			msg = (prev==nullptr) ? head : prev->get_next();
 		}
