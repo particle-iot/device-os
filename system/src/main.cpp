@@ -188,7 +188,25 @@ void system_power_management_update()
         if (LOWBATT) {
             fuel.clearAlert(); // Clear the Low Battery Alert flag if set
         }
-        INFO(" %s", (LOWBATT)?"Low Battery Alert":"USB Power Source Changed");
+        INFO(" %s", (LOWBATT)?"Low Battery Alert":"PMIC Interrupt");
+#ifdef DEBUG_BUILD
+        uint8_t stat = power.getSystemStatus();
+        uint8_t fault = power.getFault();
+        uint8_t vbus_stat = stat >> 6; // 0 – Unknown (no input, or DPDM detection incomplete), 1 – USB host, 2 – Adapter port, 3 – OTG
+        uint8_t chrg_stat = (stat >> 4) & 0x03; // 0 – Not Charging, 1 – Pre-charge (<VBATLOWV), 2 – Fast Charging, 3 – Charge Termination Done
+        bool dpm_stat = stat & 0x08;   // 0 – Not DPM, 1 – VINDPM or IINDPM
+        bool pg_stat = stat & 0x04;    // 0 – Not Power Good, 1 – Power Good
+        bool therm_stat = stat & 0x02; // 0 – Normal, 1 – In Thermal Regulation
+        bool vsys_stat = stat & 0x01;  // 0 – Not in VSYSMIN regulation (BAT > VSYSMIN), 1 – In VSYSMIN regulation (BAT < VSYSMIN)
+        bool wd_fault = fault & 0x80;  // 0 – Normal, 1- Watchdog timer expiration
+        uint8_t chrg_fault = (fault >> 4) & 0x03; // 0 – Normal, 1 – Input fault (VBUS OVP or VBAT < VBUS < 3.8 V),
+                                                  // 2 - Thermal shutdown, 3 – Charge Safety Timer Expiration
+        bool bat_fault = fault & 0x08;    // 0 – Normal, 1 – BATOVP
+        uint8_t ntc_fault = fault & 0x07; // 0 – Normal, 5 – Cold, 6 – Hot
+        DEBUG_D("[ PMIC STAT ] VBUS:%d CHRG:%d DPM:%d PG:%d THERM:%d VSYS:%d\r\n", vbus_stat, chrg_stat, dpm_stat, pg_stat, therm_stat, vsys_stat);
+        DEBUG_D("[ PMIC FAULT ] WATCHDOG:%d CHRG:%d BAT:%d NTC:%d\r\n", wd_fault, chrg_fault, bat_fault, ntc_fault);
+        delay(50);
+#endif
     }
 }
 #endif
