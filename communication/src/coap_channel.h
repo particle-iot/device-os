@@ -484,16 +484,13 @@ public:
 
 };
 
-#if 0
-template <class T>
-class CoAPReliableChannel : public T, CoAPMessageStore
+
+template <class T, typename M>
+class CoAPReliableChannel : public T, public CoAPMessageStore
 {
 	using channel = T;
+	M millis;
 
-	static system_tick_t millis()
-	{
-		return HAL_Timer_Get_Milli_Seconds();
-	}
 
 	ProtocolError base_send(Message& msg)
 	{
@@ -505,32 +502,36 @@ class CoAPReliableChannel : public T, CoAPMessageStore
 		return channel::receive(msg);
 	}
 
-	class DelegateChannel : public AbstractMessageChannel
+	class DelegateChannel : public Channel
 	{
-		CoAPReliableChannel<T> channel;
+		CoAPReliableChannel<T,M>* channel;
 
 	public:
+		void init(CoAPReliableChannel<T, M>* channel)
+		{
+			this->channel = channel;
+		}
 
 		ProtocolError receive(Message& msg) override
 		{
-			return channel.base_receive(msg);
+			return channel->base_receive(msg);
 		}
 
 		ProtocolError send(Message& msg) override
 		{
-			return channel.base_send(msg);
+			return channel->base_send(msg);
 		}
-
-		ProtocolError establish() override
-		{
-			return INVALID_STATE;
-		}
-
 	};
 
 	friend class DelegateChannel;
 
+	DelegateChannel delegateChannel;
+
 public:
+
+	CoAPReliableChannel(M m) : millis(m) {
+		delegateChannel.init(this);
+	}
 
 	ProtocolError establish() override
 	{
@@ -548,10 +549,6 @@ public:
 		ProtocolError error = CoAPMessageStore::send(msg, millis());
 		if (!error)
 			error = channel::send(msg);
-
-		// todo - for synchronous send, we can simply ignore all
-		// received packets that are not the one we are waiting for
-		// (or optionally cache them.)
 		return error;
 	}
 
@@ -562,18 +559,16 @@ public:
 
 		if (!error && msg.length())
 		{
-			CoAPMessageStore::receive(msg, now);
+			CoAPMessageStore::receive(msg, delegateChannel);
 		}
 		else
 		{
-			CoAPMessageStore::process(now, *this);
+			CoAPMessageStore::process(now, delegateChannel);
 		}
 		return error;
 	}
 
 
-
 };
-#endif
 
 }}

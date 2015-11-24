@@ -41,22 +41,6 @@ public:
 	}
 };
 
-#if 0
-/**
- * A reliable CoAP Channel that  uses a forwarding message channel.
- */
-class ForwardCoAPReliableChannel: public CoAPReliableChannel<ForwardMessageChannel>
-{
-public:
-
-	ForwardCoAPReliableChannel(MessageChannel& ch)
-	{
-		setForward(&ch);
-	}
-
-};
-#endif
-
 message_id_t decode_id(Message& msg)
 {
 	uint8_t* buf = msg.buf();
@@ -737,11 +721,71 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 					}
 				}
 			}
-
 		}
-
 	}
-
 }
+
+
+/**
+ * A reliable CoAP Channel that uses a forwarding message channel.
+ * This allows the actual message channel to be set later (e.g. a mock.)
+ * The typename M is a callable that provides the current time.
+ */
+template <typename M>
+class ForwardCoAPReliableChannel: public CoAPReliableChannel<ForwardMessageChannel, M>
+{
+	using super = CoAPReliableChannel<ForwardMessageChannel, M>;
+
+public:
+
+	ForwardCoAPReliableChannel(MessageChannel& ch, M m) : super(m)
+	{
+		this->setForward(&ch);
+	}
+};
+
+
+// todo - have the client and server send the same message ID for a confirmable message and verify that a subsequent ACK is correctly handled.
+
+SCENARIO("sending a message and re-establishing the connection clears existing messages")
+{
+	GIVEN("a CoAPReliableChannel")
+	{
+		Mock<MessageChannel> mock;
+		MessageChannel& delegate = mock.get();
+		auto time = []() { return system_tick_t(0); };	// time not needed here
+		ForwardCoAPReliableChannel<decltype(time)> channel(delegate, time);
+
+		WHEN("a CON message is sent")
+		{
+			uint8_t buf[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
+			Message m(buf, sizeof(buf), sizeof(buf));
+			m.set_confirm_received(true);
+			m.decode_id();
+
+			When(Method(mock, send)).Return(NO_ERROR);	// send on the channel is called once
+			channel.send(m);								// send and register with the store
+
+			THEN("the message is retained in the store")
+			{
+				REQUIRE(channel.from_id(0x1234)!=nullptr);		// message has been sent and registered
+				REQUIRE(CoAPMessage::messages()==1);
+				Verify(Method(mock,send)).Exactly(Once);
+			}
+			AND_WHEN("the connection is re-established")
+			{
+				When(Method(mock,establish)).Return(NO_ERROR);
+				channel.establish();
+				THEN("the message store is cleared")
+				{
+					REQUIRE(channel.from_id(0x1234)==nullptr);		// message has been sent and registered
+					REQUIRE(CoAPMessage::messages()==0);
+					Verify(Method(mock,establish)).Exactly(Once);
+				}
+			}
+		}
+	}
+}
+
 
 
