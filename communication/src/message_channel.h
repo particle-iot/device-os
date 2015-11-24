@@ -99,31 +99,8 @@ public:
     bool get_confirm_received() const { return confirm_received; }
 };
 
-/**
- * A message channel represents a way to send and receive messages with an endpoint.
- *
- * Note that the implementation may use a shared message buffer for all
- * message operations. The only operation that does not invalidate an existing
- * message is MessageChannel::response() since this allocates the new message at the end of the existing one.
- *
- */
-class MessageChannel
+struct Channel
 {
-
-public:
-	virtual ~MessageChannel() {}
-
-	/**
-	 * Determines if this channel requires CoAP acknowledgements for helping with reliable delivery or not.
-	 */
-	virtual bool is_unreliable()=0;
-
-	virtual ProtocolError establish()=0;
-
-	/**
-	 * Retrieves a new message object containing the message buffer.
-	 */
-	virtual ProtocolError create(Message& message, size_t minimum_size=0)=0;
 
 	/**
 	 * Fetch the next message from the channel.
@@ -138,6 +115,33 @@ public:
 	 * @return an error value !=0 on error.
 	 */
 	virtual ProtocolError send(Message& msg)=0;
+
+};
+
+/**
+ * A message channel represents a way to send and receive messages with an endpoint.
+ *
+ * Note that the implementation may use a shared message buffer for all
+ * message operations. The only operation that does not invalidate an existing
+ * message is MessageChannel::response() since this allocates the new message at the end of the existing one.
+ *
+ */
+struct MessageChannel : public Channel
+{
+
+	virtual ~MessageChannel() {}
+
+	/**
+	 * Determines if this channel requires CoAP acknowledgements for helping with reliable delivery or not.
+	 */
+	virtual bool is_unreliable()=0;
+
+	virtual ProtocolError establish()=0;
+
+	/**
+	 * Retrieves a new message object containing the message buffer.
+	 */
+	virtual ProtocolError create(Message& message, size_t minimum_size=0)=0;
 
 	/**
 	 * Fill out a message struct to contain storage for a response.

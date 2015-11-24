@@ -23,7 +23,7 @@ namespace particle { namespace protocol {
 
 uint16_t CoAPMessage::message_count = 0;
 
-ProtocolError CoAPMessageStore::send_message(CoAPMessage* msg, MessageChannel& channel)
+ProtocolError CoAPMessageStore::send_message(CoAPMessage* msg, Channel& channel)
 {
 	Message m((uint8_t*)msg->get_data(), msg->get_data_length(), msg->get_data_length());
 	m.decode_id();
@@ -33,7 +33,7 @@ ProtocolError CoAPMessageStore::send_message(CoAPMessage* msg, MessageChannel& c
 /**
  * Returns false if the message should be removed from the queue.
  */
-bool CoAPMessageStore::retransmit(CoAPMessage* msg, MessageChannel& channel, system_tick_t now)
+bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tick_t now)
 {
 	bool retransmit = (msg->prepare_retransmit(now));
 	if (retransmit)
@@ -46,7 +46,7 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, MessageChannel& channel, sys
 /**
  * Process existing messages, resending any unacknowledged requests to the given channel.
  */
-void CoAPMessageStore::process(system_tick_t time, MessageChannel& channel)
+void CoAPMessageStore::process(system_tick_t time, Channel& channel)
 {
 	CoAPMessage* msg = head;
 	CoAPMessage* prev = nullptr;

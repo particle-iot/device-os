@@ -355,17 +355,17 @@ public:
 	/**
 	 * Returns false if the message should be removed from the queue.
 	 */
-	bool retransmit(CoAPMessage* msg, MessageChannel& channel, system_tick_t now);
+	bool retransmit(CoAPMessage* msg, Channel& channel, system_tick_t now);
 
 	/**
 	 * Process existing messages, resending any unacknowledged requests to the given channel.
 	 */
-	void process(system_tick_t time, MessageChannel& channel);
+	void process(system_tick_t time, Channel& channel);
 
 	/**
 	 * Sends the given CoAPMessage to the channel.
 	 */
-	ProtocolError send_message(CoAPMessage* msg, MessageChannel& channel);
+	ProtocolError send_message(CoAPMessage* msg, Channel& channel);
 
 	bool is_ack_or_reset(Message& msg)
 	{
@@ -376,7 +376,7 @@ public:
 	}
 
 	template<typename Time>
-	ProtocolError send_synchronous(Message& msg, MessageChannel& channel, Time& time)
+	ProtocolError send_synchronous(Message& msg, Channel& channel, Time& time)
 	{
 		message_id_t id = msg.get_id();
 		CoAPType::Enum coapType = CoAP::type(msg.buf());
@@ -441,7 +441,7 @@ public:
 	 * Notifies the message store that a message has been received.
 	 *
 	 */
-	ProtocolError receive(Message& msg, MessageChannel& channel)
+	ProtocolError receive(Message& msg, Channel& channel)
 	{
 		CoAPType::Enum msgtype = msg.get_type();
 		msg.decode_id();
