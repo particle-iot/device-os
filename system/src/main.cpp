@@ -165,7 +165,7 @@ void system_power_management_init()
     power.begin();
     power.disableWatchdog();
     power.disableDPDM();
-    power.setInputVoltageLimit(4120);
+    // power.setInputVoltageLimit(4360); // default
     power.setInputCurrentLimit(500);
     FuelGauge fuel;
     fuel.wakeup();
