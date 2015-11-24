@@ -462,12 +462,20 @@ bool MDMParser::powerOn(const char* simpin)
         goto failure;
     // wait some time until baudrate is applied
     HAL_Delay_Milliseconds(100); // SARA-G > 40ms
-    // identify the module
-    sendFormated("ATI\r\n");
-    if (RESP_OK != waitFinalResp(_cbATI, &_dev.dev))
-        goto failure;
-    if (_dev.dev == DEV_UNKNOWN)
-        goto failure;
+
+    /* The ATI command is undocumented, and in practice the response
+     * time varies greatly. On inital power-on of the module, ATI
+     * will respond with "OK" before a device type number, which
+     * requires wasting time in a for() loop to solve.
+     * Instead, use AT+CGMM and _dev.model for future use of module indentification.
+     *
+     * identify the module
+     * sendFormated("ATI\r\n");
+     * if (RESP_OK != waitFinalResp(_cbATI, &_dev.dev))
+     *     goto failure;
+     * if (_dev.dev == DEV_UNKNOWN)
+     *     goto failure;
+     */
 
     // check the sim card
     for (int i = 0; (i < 5) && (_dev.sim != SIM_READY) && !_cancel_all_operations; i++) {
