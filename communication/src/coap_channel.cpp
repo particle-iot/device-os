@@ -23,7 +23,12 @@ namespace particle { namespace protocol {
 
 uint16_t CoAPMessage::message_count = 0;
 
-
+ProtocolError CoAPMessageStore::send_message(CoAPMessage* msg, MessageChannel& channel)
+{
+	Message m((uint8_t*)msg->get_data(), msg->get_data_length(), msg->get_data_length());
+	m.decode_id();
+	return channel.send(m);
+}
 
 /**
  * Returns false if the message should be removed from the queue.
@@ -33,9 +38,7 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, MessageChannel& channel, sys
 	bool retransmit = (msg->prepare_retransmit(now));
 	if (retransmit)
 	{
-		Message m((uint8_t*)msg->get_data(), msg->get_data_length(), msg->get_data_length());
-		m.decode_id();
-		channel.send(m);
+		send_message(msg, channel);
 	}
 	return retransmit;
 }

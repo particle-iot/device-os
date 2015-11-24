@@ -116,6 +116,7 @@ public:
 	static const uint16_t ACK_TIMEOUT = 2000;
 	static const uint16_t ACK_RANDOM_FACTOR = 1500;
 	static const uint8_t MAX_RETRANSMIT = 4;
+	static const uint16_t MAX_TRANSMIT_SPAN = 45*1000;
 
 
 	/**
@@ -165,9 +166,14 @@ public:
 	 */
 	bool prepare_retransmit(system_tick_t now)
 	{
-		timeout = now + transmit_timeout(transmit_count);
-		transmit_count++;
-		return transmit_count <= MAX_RETRANSMIT;
+		CoAPType::Enum coapType = CoAP::type(get_data());
+		if (coapType==CoAPType::CON) {
+			timeout = now + transmit_timeout(transmit_count);
+			transmit_count++;
+			return transmit_count <= MAX_RETRANSMIT;
+		}
+		// other message types are not resent on timeout
+		return false;
 	}
 
 	/**
@@ -197,6 +203,13 @@ public:
 	const uint8_t* get_data() const { return data; }
 	uint16_t get_data_length() const { return data_len; }
 
+	/**
+	 * Sets the time when this message expires.
+	 */
+	void set_max_transmit(system_tick_t time)
+	{
+		timeout = time;
+	}
 };
 
 inline bool time_has_passed(system_tick_t now, system_tick_t tick)
@@ -332,19 +345,28 @@ public:
 	void process(system_tick_t time, MessageChannel& channel);
 
 	/**
+	 * Sends the given CoAPMessage to the channel.
+	 */
+	ProtocolError send_message(CoAPMessage* msg, MessageChannel& channel);
+
+
+	/**
 	 * Registers that this message has been sent from the application.
+	 * Confirmable messages, and ack/reset responses are cached.
 	 */
 	ProtocolError send(Message& msg, system_tick_t time)
 	{
 		if (!msg.has_id())
 			return MISSING_MESSAGE_ID;
 
-		if (is_confirmable(msg.buf()))
+		CoAPType::Enum coapType = CoAP::type(msg.buf());
+		if (coapType==CoAPType::CON || coapType==CoAPType::ACK || coapType==CoAPType::RESET)
 		{
 			// confirmable message, create a CoAPMessage for this
 			CoAPMessage* coapmsg = CoAPMessage::create(msg);
 			if (coapmsg==nullptr)
 				return INSUFFICIENT_STORAGE;
+			coapmsg->set_max_transmit(time+CoAPMessage::MAX_TRANSMIT_SPAN);
 			add(*coapmsg);
 		}
 		return NO_ERROR;
@@ -354,15 +376,28 @@ public:
 	 * Notifies the message store that a message has been received.
 	 *
 	 */
-	ProtocolError receive(Message& msg)
+	ProtocolError receive(Message& msg, MessageChannel& channel)
 	{
-		CoAPType::Enum msgtype= msg.get_type();
+		CoAPType::Enum msgtype = msg.get_type();
+		msg.decode_id();
 		if (msgtype==CoAPType::ACK || msgtype==CoAPType::RESET)
 		{
-			msg.decode_id();
 			message_id_t id = msg.get_id();
 			clear_message(id);
 		}
+		else if (msgtype==CoAPType::CON)
+		{
+			CoAPMessage* response = from_id(msg.get_id());
+			if (response!=nullptr)
+			{
+				// the message ID already exists as a response message, so
+				// send that
+				// consume this message by setting the length to 0
+				msg.set_length(0);
+				return send_message(response, channel);
+			}
+		}
+		// else it's a NON message - pass through
 		return NO_ERROR;
 	}
 
@@ -370,7 +405,6 @@ public:
 	{
 		delete remove(id);
 	}
-
 
 	/**
 	 * Removes all knowledge of any messages.
@@ -424,13 +458,14 @@ public:
 	ProtocolError receive(Message& msg) override
 	{
 		ProtocolError error = channel::receive(msg);
+		system_tick_t now = millis();
+
 		if (!error && msg.length())
 		{
-			CoAPMessageStore::receive(msg);
+			CoAPMessageStore::receive(msg, now);
 		}
 		else
 		{
-			system_tick_t now = millis();
 			CoAPMessageStore::process(now, *this);
 		}
 		return error;

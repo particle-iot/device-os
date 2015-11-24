@@ -365,7 +365,7 @@ SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exp
 						{
 							system_tick_t timeout = cm->get_timeout();
 							m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
-							store.receive(m);
+							store.receive(m, channel);
 
 							THEN("the message is no longer pending")
 							{
@@ -497,7 +497,7 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 				AND_WHEN("the message is acknowledged")
 				{
 					m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
-					store.receive(m);
+					store.receive(m, channel);
 
 					THEN("the message is no longer pending")
 					{
@@ -509,7 +509,7 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 				AND_WHEN("the message is reset")
 				{
 					m.set_length(Messages::reset(m.buf(), 0x12, 0x34));
-					store.receive(m);
+					store.receive(m, channel);
 
 					THEN("the message is no longer pending")
 					{
@@ -558,4 +558,62 @@ SCENARIO("retransmit delay is exponential with randomness")
 		}
 	}
 }
+
+
+
+SCENARIO("a repeated confirmable CoAP message is passed only once to the application and the acknowledgement is retained and returned until MAX_TRANSMIT_SPAN time has elapsed")
+{
+	GIVEN("a confirmable message is received multiple times")
+	{
+		uint8_t buf[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
+		Message m(buf, sizeof(buf), sizeof(buf));
+		Mock<MessageChannel> mock;
+		MessageChannel& channel = mock.get();
+		CoAPMessageStore store;
+
+		WHEN("the message is received first time")
+		{
+			REQUIRE(store.receive(m, channel)==NO_ERROR);
+			THEN("it is passed to the application")
+			{
+				REQUIRE(m.length()==9);
+
+				uint8_t buf2[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
+				Message ack(buf2, sizeof(buf2), sizeof(buf2));
+				ack.set_length(Messages::empty_ack(buf2, 0x12, 0x34));
+				ack.decode_id();
+				store.send(ack, 0);
+
+				AND_WHEN("the message is received again")
+				{
+					auto validate_message = [ack](Message& msg){
+						REQUIRE(msg.get_id()==0x1234);
+						REQUIRE(msg.length()==ack.length());
+						REQUIRE(!memcmp(msg.buf(), ack.buf(), msg.length()));
+						return NO_ERROR;
+					};
+					When(Method(mock,send)).Do(validate_message);
+					REQUIRE(store.receive(m, channel)==NO_ERROR);
+					THEN("the previous response is sent to the channel")
+					{
+						Verify(Method(mock,send)).Exactly(Once);
+					}
+					AND_THEN("the message is not returned to the application")
+					{
+						REQUIRE(m.length()==0);
+						AND_WHEN("MAX_TRANSMIT_SPAN time has elapsed the message is removed")
+						{
+							CoAPMessage* msg = store.from_id(0x1234);
+							REQUIRE(msg!=nullptr);
+							REQUIRE(msg->get_timeout()==45*1000);
+							store.process(msg->get_timeout(), channel);
+							REQUIRE(store.from_id(0x1234)==nullptr);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 
