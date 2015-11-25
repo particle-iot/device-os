@@ -28,12 +28,18 @@ class CellularNetworkInterface : public ManagedNetworkInterface
 
 protected:
 
-    virtual void on_finalize_listening(bool complete) override
-    {
-    }
+    virtual void on_finalize_listening(bool complete) override { /* n/a */ }
 
     virtual void on_start_listening() override { /* n/a */ }
-    virtual bool on_stop_listening() override { /* n/a */ return false; }
+
+    virtual bool on_stop_listening() override {
+        cellular_cancel(false, true, NULL);  // resume
+        /* in case we interrupted during connecting(), force system to stop WLAN_CONNECTING */
+        if (ManagedNetworkInterface::connecting()) ManagedNetworkInterface::disconnect();
+        CLR_WLAN_WD(); // keep system from power cycling modem in manage_network_connection()
+        return false;
+    }
+
     virtual void on_setup_cleanup() override { /* n/a */ }
 
     virtual void connect_init() override { /* n/a */ }
@@ -92,10 +98,7 @@ public:
         return ManagedNetworkInterface::listening();
     }
 
-    void setup() override
-    {
-        //cellular_init(NULL);
-    }
+    void setup() override { /* n/a */ }
 
     // todo - associate credentials with presense of SIM card??
     bool clear_credentials() override { /* n/a */ return true; }
@@ -103,11 +106,9 @@ public:
     {
         return cellular_sim_ready(NULL);
     }
-    int set_credentials(NetworkCredentials* creds) override { return -1; }
+    int set_credentials(NetworkCredentials* creds) override { /* n/a */ return -1; }
     void connect_cancel(bool cancel, bool calledFromISR) override { cellular_cancel(cancel, calledFromISR, NULL);  }
 
-    void set_error_count(unsigned count) override
-    {
-    }
+    void set_error_count(unsigned count) override { /* n/a */ }
 };
 

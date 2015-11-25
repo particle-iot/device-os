@@ -105,11 +105,12 @@ void MDMParser::_debugPrint(int level, const char* color, const char* format, ..
         if (color) DEBUG_D(color);
         DEBUG_D(format, args);
         if (color) DEBUG_D(DEF);
+        va_end (args);
         DEBUG_D("\r\n");
-        //va_end (args);
     }
 }
-
+// Warning: Do not use these for anything other than constant char messages,
+// they will yield incorrect values for integers.  Use DEBUG_D() instead.
 #define MDM_ERROR(...)  do {_debugPrint(0, RED, __VA_ARGS__);}while(0)
 #define MDM_INFO(...)   do {_debugPrint(1, GRE, __VA_ARGS__);}while(0)
 #define MDM_TRACE(...)  do {_debugPrint(2, DEF, __VA_ARGS__);}while(0)
@@ -144,6 +145,7 @@ MDMParser::MDMParser(void)
     _pwr       = false;
     _activated = false;
     _attached  = false;
+    _cancel_all_operations = false;
     memset(_sockets, 0, sizeof(_sockets));
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
         _sockets[socket].handle = MDM_SOCKET_ERROR;
@@ -151,6 +153,16 @@ MDMParser::MDMParser(void)
     _debugLevel = 3;
     _debugTime = HAL_Timer_Get_Milli_Seconds();
 #endif
+}
+
+void MDMParser::cancel(void) {
+    MDM_INFO("\r\n[ Modem::cancel ] = = = = = = = = = = = = = = =");
+    _cancel_all_operations = true;
+}
+
+void MDMParser::resume(void) {
+    MDM_INFO("\r\n[ Modem::resume ] = = = = = = = = = = = = = = =");
+    _cancel_all_operations = false;
 }
 
 int MDMParser::send(const char* buf, int len)
@@ -165,6 +177,8 @@ int MDMParser::send(const char* buf, int len)
 }
 
 int MDMParser::sendFormated(const char* format, ...) {
+    if (_cancel_all_operations) return 0;
+
     char buf[MAX_SIZE];
     va_list args;
     va_start(args, format);
@@ -177,6 +191,8 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                              void* param /* = NULL*/,
                              system_tick_t timeout_ms /*= 5000*/)
 {
+    if (_cancel_all_operations) return WAIT;
+
     char buf[MAX_SIZE + 64 /* add some more space for framing */];
     system_tick_t start = HAL_Timer_Get_Milli_Seconds();
     do {
@@ -292,7 +308,8 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
         // relax a bit
         HAL_Delay_Milliseconds(10);
     }
-    while (!TIMEOUT(start, timeout_ms));
+    while (!TIMEOUT(start, timeout_ms) && !_cancel_all_operations);
+    //_cancel_all_operations = false; // ensure we don't block future commands.
     return WAIT;
 }
 
@@ -377,7 +394,7 @@ bool MDMParser::powerOn(const char* simpin)
     HAL_GPIO_Write(LVLOE_UC, 0);
 
     if (!_init) {
-        MDM_INFO("ElectronSerialPipe::begin\r\n");
+        MDM_INFO("[ ElectronSerialPipe::begin ] = = = = = = = =");
 
         /* Instantiate the USART3 hardware */
         electronMDM.begin(115200);
@@ -386,7 +403,9 @@ bool MDMParser::powerOn(const char* simpin)
         _init = true;
     }
 
-    MDM_INFO("Modem::powerOn\r\n");
+    bool continue_cancel = false;
+
+    MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
     while (i--) {
         // SARA-U2/LISA-U2 50..80us
         HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
@@ -399,6 +418,15 @@ bool MDMParser::powerOn(const char* simpin)
         // purge any messages
         purge();
 
+        // Save desire to cancel, but since we are already here
+        // trying to power up the modem when we received a cancel
+        // resume AT parser to ensure it's ready to receive
+        // power down commands.
+        if (_cancel_all_operations) {
+            continue_cancel = true;
+            resume(); // make sure we can talk to the modem
+        }
+
         // check interface
         sendFormated("AT\r\n");
         int r = waitFinalResp(NULL,NULL,1000);
@@ -409,6 +437,11 @@ bool MDMParser::powerOn(const char* simpin)
     }
     if (i < 0) {
         MDM_ERROR("No Reply from Modem\r\n");
+    }
+
+    if (continue_cancel) {
+        cancel();
+        goto failure;
     }
 
     // echo off
@@ -437,7 +470,7 @@ bool MDMParser::powerOn(const char* simpin)
         goto failure;
 
     // check the sim card
-    for (int i = 0; (i < 5) && (_dev.sim != SIM_READY); i++) {
+    for (int i = 0; (i < 5) && (_dev.sim != SIM_READY) && !_cancel_all_operations; i++) {
         sendFormated("AT+CPIN?\r\n");
         int ret = waitFinalResp(_cbCPIN, &_dev.sim);
         // having an error here is ok (sim may still be initializing)
@@ -453,7 +486,8 @@ bool MDMParser::powerOn(const char* simpin)
             if (RESP_OK != waitFinalResp(_cbCPIN, &_dev.sim))
                 goto failure;
         } else if (_dev.sim != SIM_READY) {
-            HAL_Delay_Milliseconds(1000);
+            system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+            while ((HAL_Timer_Get_Milli_Seconds() - start < 1000UL) && !_cancel_all_operations); // just wait
         }
     }
     if (_dev.sim != SIM_READY) {
@@ -465,6 +499,13 @@ bool MDMParser::powerOn(const char* simpin)
     UNLOCK();
     return true;
 failure:
+    if (_cancel_all_operations) {
+        // fake out the has_credentials() function so we don't end up in listening mode
+        _dev.sim = SIM_READY;
+        // return true to prevent from entering Listening Mode
+        // UNLOCK();
+        // return true;
+    }
     UNLOCK();
     return false;
 }
@@ -472,8 +513,7 @@ failure:
 bool MDMParser::init(DevStatus* status)
 {
     LOCK();
-
-    MDM_INFO("Modem::init\r\n");
+    MDM_INFO("\r\n[ Modem::init ] = = = = = = = = = = = = = = =");
 
     // Returns the product serial number, IMEI (International Mobile Equipment Identity)
     sendFormated("AT+CGSN\r\n");
@@ -550,8 +590,13 @@ bool MDMParser::powerOff(void)
 {
     LOCK();
     bool ok = false;
+    bool continue_cancel = false;
     if (_init && _pwr) {
-        MDM_INFO("Modem::powerOff\r\n");
+        MDM_INFO("\r\n[ Modem::powerOff ] = = = = = = = = = = = = = =");
+        if (_cancel_all_operations) {
+            continue_cancel = true;
+            resume(); // make sure we can use the AT parser
+        }
         for (int i=0; i<3; i++) { // try 3 times
             sendFormated("AT+CPWROFF\r\n");
             int ret = waitFinalResp(NULL,NULL,40*1000);
@@ -564,10 +609,10 @@ bool MDMParser::powerOff(void)
                 break;
             }
             else if (RESP_ABORTED == ret) {
-                MDM_INFO("Modem::powerOff found ABORTED, retrying...\r\n");
+                MDM_INFO("\r\n[ Modem::powerOff ] found ABORTED, retrying...");
             }
             else {
-                MDM_INFO("Modem::powerOff timeout, retrying...\r\n");
+                MDM_INFO("\r\n[ Modem::powerOff ] timeout, retrying...");
             }
         }
     }
@@ -578,6 +623,8 @@ bool MDMParser::powerOff(void)
     HAL_Pin_Mode(RTS_UC, INPUT);
 #endif
     HAL_Pin_Mode(LVLOE_UC, INPUT);
+
+    if (continue_cancel) cancel();
     UNLOCK();
     return ok;
 }
@@ -614,8 +661,7 @@ int MDMParser::_cbCCID(int type, const char* buf, int len, char* ccid)
 {
     if ((type == TYPE_PLUS) && ccid) {
         if (sscanf(buf, "\r\n+CCID: %[^\r]\r\n", ccid) == 1) {
-            // This won't compile for some strange reason!
-            // MDM_TRACE("Got CCID: %s\r\n", ccid);
+            //DEBUG_D("Got CCID: %s\r\n", ccid);
         }
     }
     return WAIT;
@@ -623,11 +669,14 @@ int MDMParser::_cbCCID(int type, const char* buf, int len, char* ccid)
 
 bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_ms /*= 180000*/)
 {
+    LOCK();
     if (_init && _pwr) {
         system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-        MDM_INFO("Modem::register\r\n");
-        while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms)) {
-            HAL_Delay_Milliseconds(15000);
+        MDM_INFO("\r\n[ Modem::register ] = = = = = = = = = = = = = =");
+        while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
+            system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+            while ((HAL_Timer_Get_Milli_Seconds() - start < 15000UL) && !_cancel_all_operations); // just wait
+            //HAL_Delay_Milliseconds(15000);
         }
         if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
         if (_net.psd == REG_DENIED) MDM_ERROR("PSD Registration Denied\r\n");
@@ -635,8 +684,10 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
         //     sendFormated("AT+CEER\r\n");
         //     waitFinalResp();
         // }
+        UNLOCK();
         return REG_OK(_net.csd) && REG_OK(_net.psd);
     }
+    UNLOCK();
     return false;
 }
 
@@ -739,8 +790,8 @@ bool MDMParser::pdp(const char* apn)
 {
     bool ok = true;
     // bool is3G = _dev.dev == DEV_SARA_U260 || _dev.dev == DEV_SARA_U270;
+    LOCK();
     if (_init && _pwr) {
-        LOCK();
 
 // todo - refactor
 // This is setting up an external PDP context, join() creates an internal one
@@ -748,7 +799,7 @@ bool MDMParser::pdp(const char* apn)
 #if 0
         MDM_INFO("Modem::pdp\r\n");
 
-        MDM_INFO("Define the PDP context 1 with PDP type \"IP\" and APN \"%s\"\r\n", apn);
+        DEBUG_D("Define the PDP context 1 with PDP type \"IP\" and APN \"%s\"\r\n", apn);
         sendFormated("AT+CGDCONT=1,\"IP\",\"%s\"\r\n", apn);
         if (RESP_OK != waitFinalResp(NULL, NULL, 2000))
             goto failure;
@@ -821,9 +872,9 @@ bool MDMParser::pdp(const char* apn)
 MDMParser::IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL*/,
                               const char* password /*= NULL*/, Auth auth /*= AUTH_DETECT*/)
 {
+    LOCK();
     if (_init && _pwr) {
-        LOCK();
-        MDM_INFO("Modem::join\r\n");
+        MDM_INFO("\r\n[ Modem::join ] = = = = = = = = = = = = = = = =");
         _ip = NOIP;
         int a = 0;
         bool force = false; // If we are already connected, don't force a reconnect.
@@ -865,7 +916,7 @@ MDMParser::IP MDMParser::join(const char* apn /*= NULL*/, const char* username /
                     apn      = _APN_GET(config);
                     username = _APN_GET(config);
                     password = _APN_GET(config);
-                    MDM_TRACE("Testing APN Settings(\"%s\",\"%s\",\"%s\")\r\n", apn, username, password);
+                    DEBUG_D("Testing APN Settings(\"%s\",\"%s\",\"%s\")\r\n", apn, username, password);
                 }
                 // Set up the APN
                 if (apn && *apn) {
@@ -973,9 +1024,9 @@ int MDMParser::_cbUDNSRN(int type, const char* buf, int len, IP* ip)
 bool MDMParser::reconnect(void)
 {
     bool ok = false;
+    LOCK();
     if (_activated) {
-        LOCK();
-        MDM_INFO("Modem::reconnect\r\n");
+        MDM_INFO("\r\n[ Modem::reconnect ] = = = = = = = = = = = = = =");
         if (!_attached) {
             /* Activates the PDP context assoc. with this profile */
             /* If GPRS is detached, this will force a re-attach */
@@ -990,8 +1041,8 @@ bool MDMParser::reconnect(void)
                 }
             }
         }
-        UNLOCK();
     }
+    UNLOCK();
     return ok;
 }
 
@@ -1004,9 +1055,14 @@ bool MDMParser::reconnect(void)
 bool MDMParser::disconnect(void)
 {
     bool ok = false;
+    bool continue_cancel = false;
+    LOCK();
     if (_attached) {
-        LOCK();
-        MDM_INFO("Modem::disconnect\r\n");
+        if (_cancel_all_operations) {
+            continue_cancel = true;
+            resume(); // make sure we can use the AT parser
+        }
+        MDM_INFO("\r\n[ Modem::disconnect ] = = = = = = = = = = = = =");
         if (_ip != NOIP) {
             /* Deactivates the PDP context assoc. with this profile
              * ensuring that no additional data is sent or received
@@ -1018,17 +1074,23 @@ bool MDMParser::disconnect(void)
                 _attached = false;
             }
         }
-        UNLOCK();
     }
+    if (continue_cancel) cancel();
+    UNLOCK();
     return ok;
 }
 
 bool MDMParser::detach(void)
 {
     bool ok = false;
+    bool continue_cancel = false;
+    LOCK();
     if (_activated) {
-        LOCK();
-        MDM_INFO("Modem::detach\r\n");
+        if (_cancel_all_operations) {
+            continue_cancel = true;
+            resume(); // make sure we can use the AT parser
+        }
+        MDM_INFO("\r\n[ Modem::detach ] = = = = = = = = = = = = = = =");
         // if (_ip != NOIP) {  // if we disconnect() first we won't have an IP
             /* Detach from the GPRS network and conserve network resources. */
             /* Any active PDP context will also be deactivated. */
@@ -1038,8 +1100,9 @@ bool MDMParser::detach(void)
                 _activated = false;
             }
         // }
-        UNLOCK();
     }
+    if (continue_cancel) cancel();
+    UNLOCK();
     return ok;
 }
 
@@ -1072,9 +1135,20 @@ int MDMParser::_cbUSOCR(int type, const char* buf, int len, int* handle)
     return WAIT;
 }
 
+int MDMParser::_cbUSOCTL(int type, const char* buf, int len, int* handle)
+{
+    if ((type == TYPE_PLUS) && handle) {
+        // +USOCTL: socket,param_id,param_val
+        if (sscanf(buf, "\r\n+USOCTL: %d,%*d,%*d", handle) == 1)
+            /*nothing*/;
+    }
+    return WAIT;
+}
+
 int MDMParser::socketSocket(IpProtocol ipproto, int port)
 {
     int socket;
+    static bool checkedOnce = false;
     LOCK();
 
     if (!_attached) {
@@ -1084,6 +1158,40 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
     }
 
     if (_attached) {
+        if (!checkedOnce) {
+            checkedOnce = true; // prevent re-entry
+            DEBUG_D("On first socketSocket use, free all open sockets\r\n");
+            // Clean up any open sockets, we may have power cycled the STM32
+            // while the modem remained connected.
+            for (int socket = 0; socket < NUMSOCKETS; socket++) {
+                // Check if socket is open
+                // AT+USOCTL=0,1
+                // +USOCTL: 0,1,0
+                int handle = MDM_SOCKET_ERROR;
+                sendFormated("AT+USOCTL=%d,1\r\n", socket);
+                if ((RESP_OK == waitFinalResp(_cbUSOCTL, &handle)) &&
+                    (handle != MDM_SOCKET_ERROR)) {
+                    DEBUG_D("Socket handle %d was open, now closing...\r\n", handle);
+                    // Close it if it's open
+                    // AT+USOCL=0
+                    // OK
+                    sendFormated("AT+USOCL=%d\r\n", handle);
+                    if (RESP_OK == waitFinalResp()) {
+                        DEBUG_D("Socket handle %d was closed.\r\n", handle);
+                    }
+                    else {
+                        // couldn't close the socket, retry?
+                    }
+                }
+
+                // free the socket
+                _sockets[socket].handle     = MDM_SOCKET_ERROR;
+                _sockets[socket].timeout_ms = TIMEOUT_BLOCKING;
+                _sockets[socket].connected  = false;
+                _sockets[socket].pending    = 0;
+            }
+        }
+
         // find an free socket
         socket = _findSocket(MDM_SOCKET_ERROR);
         DEBUG_D("socketSocket(%d)\r\n", ipproto);
@@ -1581,7 +1689,7 @@ bool MDMParser::setDebug(int level)
 
 void MDMParser::dumpDevStatus(MDMParser::DevStatus* status)
 {
-    DEBUG_D("Modem::devStatus\r\n");
+    MDM_INFO("\r\n[ Modem::devStatus ] = = = = = = = = = = = = = =");
     const char* txtDev[] = { "Unknown", "SARA-G350", "LISA-U200", "LISA-C200", "SARA-U260", "SARA-U270", "LEON-G200" };
     if (status->dev < sizeof(txtDev)/sizeof(*txtDev) && (status->dev != DEV_UNKNOWN))
         DEBUG_D("  Device:       %s\r\n", txtDev[status->dev]);
@@ -1609,7 +1717,7 @@ void MDMParser::dumpDevStatus(MDMParser::DevStatus* status)
 
 void MDMParser::dumpNetStatus(MDMParser::NetStatus *status)
 {
-    DEBUG_D("Modem::netStatus\r\n");
+    MDM_INFO("\r\n[ Modem::netStatus ] = = = = = = = = = = = = = =");
     const char* txtReg[] = { "Unknown", "Denied", "None", "Home", "Roaming" };
     if (status->csd < sizeof(txtReg)/sizeof(*txtReg) && (status->csd != REG_UNKNOWN))
         DEBUG_D("  CSD Registration:   %s\r\n", txtReg[status->csd]);
@@ -1634,8 +1742,9 @@ void MDMParser::dumpNetStatus(MDMParser::NetStatus *status)
 
 void MDMParser::dumpIp(MDMParser::IP ip)
 {
-    if (ip != NOIP)
-        DEBUG_D("Modem:IP " IPSTR "\r\n", IPNUM(ip));
+    if (ip != NOIP) {
+        DEBUG_D("\r\n[ Modem:IP " IPSTR " ] = = = = = = = = = = = = = =\r\n", IPNUM(ip));
+    }
 }
 
 // ----------------------------------------------------------------

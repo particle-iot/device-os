@@ -28,6 +28,7 @@
 #include "gpio_hal.h"
 #include "pinmap_hal.h"
 #include "pinmap_impl.h"
+#include <string.h>
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -56,12 +57,17 @@ static void HAL_DAC_Init()
     DAC_DeInit();
 
     /* DAC channel1 & channel2 Configuration */
+    memset(&DAC_InitStructure, 0, sizeof DAC_InitStructure);
     DAC_InitStructure.DAC_Trigger = DAC_Trigger_None;
     DAC_InitStructure.DAC_WaveGeneration = DAC_WaveGeneration_None;
     DAC_InitStructure.DAC_OutputBuffer = DAC_OutputBuffer_Enable;
 
     DAC_Init(DAC_Channel_1, &DAC_InitStructure);
     DAC_Init(DAC_Channel_2, &DAC_InitStructure);
+
+    /* Enable DAC Channel1 */
+    DAC_Cmd(DAC_Channel_1, ENABLE);
+    DAC_Cmd(DAC_Channel_2, ENABLE);
 }
 
 /*
@@ -86,14 +92,11 @@ void HAL_DAC_Write(pin_t pin, uint16_t value)
     {
         /* Set the DAC Channel1 data */
         DAC_SetChannel1Data(DAC_Align_12b_R, value);
-        /* Enable DAC Channel1 */
-        DAC_Cmd(DAC_Channel_1, ENABLE);
+
     }
     else if (PIN_MAP[pin].dac_channel == DAC_Channel_2)
     {
         /* Set the DAC Channel2 data */
         DAC_SetChannel2Data(DAC_Align_12b_R, value);
-        /* Enable DAC Channel2 */
-        DAC_Cmd(DAC_Channel_2, ENABLE);
     }
 }
