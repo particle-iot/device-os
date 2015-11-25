@@ -169,7 +169,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 			if (!fast_ota)
 			{
 				// message is confirmable for regular OTA or when
-				response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::OK, false);
+				response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::OK, channel.is_unreliable());
 			}
 			flag_chunk_received(chunk_index);
 			if (updating == 2)
