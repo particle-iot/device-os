@@ -108,6 +108,25 @@ public:
     }
 
     bool get_confirm_received() const { return confirm_received; }
+
+    /**
+     * Set the contents of this message.
+     */
+	size_t copy(const uint8_t* buf, size_t len)
+	{
+		if (len>capacity())
+			len = capacity();
+		memcpy(this->buffer, buf, len);
+		set_length(len);
+		return len;
+	}
+
+	bool content_equals(Message& msg)
+	{
+		return msg.length()==this->length() &&
+				memcmp(msg.buf(), this->buf(),this->length())==0;
+	}
+
 };
 
 struct Channel

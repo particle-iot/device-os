@@ -511,12 +511,28 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 				{
 					m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
 					store.receive(m, channel, 0);
-
+					REQUIRE(m.length()>0);		// ack is available to application
 					THEN("the message is no longer pending")
 					{
 						REQUIRE(store.from_id(id)==nullptr);
 						REQUIRE(CoAPMessage::messages()==0);
 					}
+					AND_WHEN("the message is acknowledged a second time")
+					{
+						m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
+						store.receive(m, channel, 0);
+
+						THEN("the message is no longer pending")
+						{
+							REQUIRE(store.from_id(id)==nullptr);
+							REQUIRE(CoAPMessage::messages()==0);
+						}
+						AND_THEN("the message is not made available to the application")
+						{
+							REQUIRE(m.length()==0);
+						}
+					}
+
 				}
 
 				AND_WHEN("the message is reset")
@@ -773,7 +789,6 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 	}
 }
 
-
 /**
  * A reliable CoAP Channel that uses a forwarding message channel.
  * This allows the actual message channel to be set later (e.g. a mock.)
@@ -792,8 +807,6 @@ public:
 	}
 };
 
-
-// todo - have the client and server send the same message ID for a confirmable message and verify that a subsequent ACK is correctly handled.
 
 SCENARIO("sending a message and re-establishing the connection clears existing messages")
 {
@@ -923,5 +936,106 @@ SCENARIO("receiving a message first retrieves from the channel and then passes t
 			}
 		}
 	}
-
 }
+
+bool message_equals(CoAPMessage* cm, Message& msg, const char* name)
+{
+	INFO("checking message " << name);
+	REQUIRE(cm!=nullptr);
+	REQUIRE(cm->get_id()==msg.get_id());
+
+	REQUIRE(	cm->get_data_length()==msg.length());
+	REQUIRE(!memcmp(cm->get_data(), msg.buf(), msg.length()));
+	return true;
+}
+
+SCENARIO("client and server can send requests with the same message ID and they are not confused")
+{
+	GIVEN("a reliable CoAP channel")
+	{
+		Mock<MessageChannel> mock;
+		MessageChannel& delegate = mock.get();
+		auto time = []() { return system_tick_t(234); };
+		ForwardCoAPReliableChannel<decltype(time)> channel(delegate, time);
+
+		uint8_t con_server[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
+		uint8_t con_server_trunc[] = { 0x40, 0, 0x12, 0x34, 0xFF };		// truncated to 5
+		uint8_t con_client[] = { 0x40, 0, 0x12, 0x34, 0xFF, 5 };
+		Message client(con_client, sizeof(con_client), sizeof(con_client));
+		Message server(con_server, sizeof(con_server), sizeof(con_server));
+		client.decode_id();
+		server.decode_id();
+		REQUIRE(client.get_id()==server.get_id());
+
+		WHEN("the client and server each sends a Confirmable message")
+		{
+			// send the client message
+			When(Method(mock,send)).Return(NO_ERROR);
+			REQUIRE(channel.send(client)==NO_ERROR);
+			Verify(Method(mock,send)).Exactly(Once);
+
+			// receive the server message
+			auto receive_server_con = [con_server](Message& msg) {
+				memcpy(msg.buf(), con_server, sizeof(con_server));
+				msg.set_length(sizeof(con_server));
+				return NO_ERROR;
+			};
+			When(Method(mock,receive)).Do(receive_server_con);
+			uint8_t buf[20];				// holding area for the received message
+			Message m(buf, 20);
+			REQUIRE(channel.receive(m)==NO_ERROR);
+			REQUIRE(m.length()==sizeof(con_server));			// message is received in full
+			Verify(Method(mock,receive)).Exactly(Once);
+			mock.Reset();
+
+			REQUIRE(message_equals(channel.client_messages().from_id(0x1234), client, "client"));
+
+			// the server isn't stored verbatim, but truncated to 5 bytes
+			m.copy(con_server_trunc, sizeof(con_server_trunc));
+			REQUIRE(message_equals(channel.server_messages().from_id(0x1234), m, "server"));
+
+			THEN("the messages are separately acknowledged")
+			{
+				// ACK message from server
+				uint8_t buf_ack[5];
+				Message ack(buf_ack, 5);
+				ack.set_length(Messages::empty_ack(buf_ack, 0x12, 0x34));
+
+				// receive ACK from server for client message
+				auto receive_server_ack = [](Message& msg) {
+					msg.set_length(Messages::empty_ack(msg.buf(), 0x12, 0x34));
+					return NO_ERROR;
+				};
+				When(Method(mock,receive)).Do(receive_server_ack);
+				REQUIRE(channel.receive(m)==NO_ERROR);
+				Verify(Method(mock,receive)).Exactly(Once);
+				// ACK message returned to application
+				REQUIRE(ack.content_equals(m));
+				// message has been acked and is removed
+				REQUIRE(channel.client_messages().from_id(0x1234)==nullptr);
+
+				// server CON message is unchanged
+				CoAPMessage* cm = channel.server_messages().from_id(0x1234);
+				REQUIRE(cm!=nullptr);
+				REQUIRE(cm->is_request());
+
+				// send ACK from client
+				mock.Reset();
+				ack.decode_id();		// ensure the ID is set
+				When(Method(mock,send)).Return(NO_ERROR);
+				REQUIRE(channel.send(ack)==NO_ERROR);
+				Verify(Method(mock,send)).Exactly(Once);
+
+				// acknowledgement is maintained to return to the server for repeated requests.
+				cm = channel.server_messages().from_id(0x1234);
+				REQUIRE(cm!=nullptr);
+				REQUIRE(cm->is_request()==false);		// not a request, but a response
+				// client messages unaffected
+				REQUIRE(channel.client_messages().from_id(0x1234)==nullptr);
+
+
+			}
+		}
+	}
+}
+

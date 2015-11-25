@@ -204,7 +204,7 @@ public:
 		return timeout;
 	}
 
-	inline CoAPType::Enum type() const
+	inline CoAPType::Enum get_type() const
 	{
 		return data_len>0 ? CoAP::type(data) : CoAPType::ERROR;
 	}
@@ -229,6 +229,17 @@ public:
 		timeout = time;
 		transmit_count = MAX_RETRANSMIT+2;	// do not send this message.
 	}
+
+    bool is_request() const
+    {
+    		switch (get_type()) {
+    		case CoAPType::NON:
+    		case CoAPType::CON:
+    			return true;
+    		default:
+    			return false;
+    		}
+    }
 };
 
 inline bool time_has_passed(system_tick_t now, system_tick_t tick)
@@ -428,9 +439,11 @@ public:
 	 */
 	ProtocolError receive(Message& msg, Channel& channel, system_tick_t time);
 
-	void clear_message(message_id_t id)
+	bool clear_message(message_id_t id)
 	{
-		delete remove(id);
+		CoAPMessage* msg = remove(id);
+		delete msg;
+		return msg!=nullptr;
 	}
 
 	/**
