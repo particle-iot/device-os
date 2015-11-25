@@ -183,7 +183,7 @@ SCENARIO("a message can be added to a message store with the same id more than o
 					}
 				}
 			}
-			delete m1;
+			// m1 already removed by the store
 			delete m2;
 		}
 	}
@@ -351,7 +351,7 @@ SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exp
 						{
 							system_tick_t timeout = cm->get_timeout();
 							m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
-							store.receive(m, channel);
+							store.receive(m, channel, 0);
 
 							THEN("the message is no longer pending")
 							{
@@ -412,6 +412,33 @@ SCENARIO("a CoAPMessage can be created with the message buffer part of the alloc
 	}
 	delete coapmsg;
 	REQUIRE(CoAPMessage::messages()==0);
+}
+
+SCENARIO("a CoAPMessage can be created with a smaller buffer")
+{
+	GIVEN("a message")
+	{
+		uint8_t buf[] = { 0x40, 0x00, 0x12, 0x34, 0xFF, 1, 2, 3, 4, 0, 0, 0 };	// 12 bytes, 9 of them message content
+		Message m(buf, 12, 9);
+		m.decode_id();
+
+		WHEN("A CoAP message of length 5 is created")
+		{
+			CoAPMessage* cm = CoAPMessage::create(m, 5);
+			THEN("It has a distinct buffer of size 5")
+			{
+				REQUIRE(cm!=nullptr);
+				REQUIRE(cm->get_data()!=buf);
+				REQUIRE(cm->get_data_length()==5);
+			}
+			THEN("that equals the first 5 bytes of the orginal buffer")
+			{
+				REQUIRE(!memcmp(cm->get_data(), buf, 5));
+			}
+			delete cm;
+		}
+	}
+
 }
 
 SCENARIO("sending a non-confirmable message does not add a new coap message to the store")
@@ -483,7 +510,7 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 				AND_WHEN("the message is acknowledged")
 				{
 					m.set_length(Messages::empty_ack(m.buf(), 0x12, 0x34));
-					store.receive(m, channel);
+					store.receive(m, channel, 0);
 
 					THEN("the message is no longer pending")
 					{
@@ -495,7 +522,7 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 				AND_WHEN("the message is reset")
 				{
 					m.set_length(Messages::reset(m.buf(), 0x12, 0x34));
-					store.receive(m, channel);
+					store.receive(m, channel, 0);
 
 					THEN("the message is no longer pending")
 					{
@@ -549,29 +576,50 @@ SCENARIO("retransmit delay is exponential with randomness")
 
 SCENARIO("a repeated confirmable CoAP message is passed only once to the application and the acknowledgement is retained and returned until MAX_TRANSMIT_SPAN time has elapsed")
 {
-	GIVEN("a confirmable message is received multiple times")
+	GIVEN("a Confirmable message is received multiple times")
 	{
 		uint8_t buf[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
-		Message m(buf, sizeof(buf), sizeof(buf));
+		Message m(buf, sizeof(buf), sizeof(buf));		// confirmable message
 		Mock<MessageChannel> mock;
 		MessageChannel& channel = mock.get();
 		CoAPMessageStore store;
 
-		WHEN("the message is received first time")
+		WHEN("the Confirmable message is received first time")
 		{
-			REQUIRE(store.receive(m, channel)==NO_ERROR);
-			THEN("it is passed to the application")
+			REQUIRE(store.receive(m, channel, 0)==NO_ERROR);
+			THEN("it is made available to the application")
 			{
-				REQUIRE(m.length()==9);
+				REQUIRE(m.length()==9);						// message is available to application
+				REQUIRE(store.from_id(0x1234)!=nullptr);		// todo - could compare message content to original message
 
-				uint8_t buf2[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
-				Message ack(buf2, sizeof(buf2), sizeof(buf2));
-				ack.set_length(Messages::empty_ack(buf2, 0x12, 0x34));
-				ack.decode_id();
-				store.send(ack, 0);
-
-				AND_WHEN("the message is received again")
+				AND_WHEN("the Confirmable message is received again")
 				{
+					REQUIRE(store.receive(m, channel, 123)==NO_ERROR);
+					THEN("then no response is sent to the channel")
+					{
+						AND_THEN("the message is not returned to the application")
+						{
+							REQUIRE(m.length()==0);
+							AND_WHEN("MAX_TRANSMIT_SPAN time has elapsed the message is removed")
+							{
+								CoAPMessage* msg = store.from_id(0x1234);
+								REQUIRE(msg!=nullptr);
+								REQUIRE(msg->get_timeout()==45*1000);
+								store.process(msg->get_timeout(), channel);
+								REQUIRE(store.from_id(0x1234)==nullptr);
+							}
+						}
+					}
+				}
+
+				AND_WHEN("the message is acknowledged and the message is received again")
+				{
+					uint8_t buf2[9];
+					Message ack(buf2, sizeof(buf2), sizeof(buf2));
+					ack.set_length(Messages::empty_ack(buf2, 0x12, 0x34));
+					ack.decode_id();
+					store.send(ack, 0);		// application response
+
 					auto validate_message = [ack](Message& msg){
 						REQUIRE(msg.get_id()==0x1234);
 						REQUIRE(msg.length()==ack.length());
@@ -579,7 +627,7 @@ SCENARIO("a repeated confirmable CoAP message is passed only once to the applica
 						return NO_ERROR;
 					};
 					When(Method(mock,send)).Do(validate_message);
-					REQUIRE(store.receive(m, channel)==NO_ERROR);
+					REQUIRE(store.receive(m, channel,123)==NO_ERROR);
 					THEN("the previous response is sent to the channel")
 					{
 						Verify(Method(mock,send)).Exactly(Once);
@@ -766,9 +814,9 @@ SCENARIO("sending a message and re-establishing the connection clears existing m
 			When(Method(mock, send)).Return(NO_ERROR);	// send on the channel is called once
 			channel.send(m);								// send and register with the store
 
-			THEN("the message is retained in the store")
+			THEN("the message is retained in the client store")
 			{
-				REQUIRE(channel.from_id(0x1234)!=nullptr);		// message has been sent and registered
+				REQUIRE(channel.client_messages().from_id(0x1234)!=nullptr);		// message has been sent and registered
 				REQUIRE(CoAPMessage::messages()==1);
 				Verify(Method(mock,send)).Exactly(Once);
 			}
@@ -778,7 +826,7 @@ SCENARIO("sending a message and re-establishing the connection clears existing m
 				channel.establish();
 				THEN("the message store is cleared")
 				{
-					REQUIRE(channel.from_id(0x1234)==nullptr);		// message has been sent and registered
+					REQUIRE(channel.client_messages().from_id(0x1234)==nullptr);		// message has been sent and registered
 					REQUIRE(CoAPMessage::messages()==0);
 					Verify(Method(mock,establish)).Exactly(Once);
 				}
@@ -788,4 +836,92 @@ SCENARIO("sending a message and re-establishing the connection clears existing m
 }
 
 
+SCENARIO("sending a reliable message first passes it to the store, and then on to the channel")
+{
+	GIVEN("a CoAPReliableChannel")
+	{
+		Mock<MessageChannel> mock;
+		MessageChannel& delegate = mock.get();
+		auto time = []() { return system_tick_t(0); };	// time not needed here
+		ForwardCoAPReliableChannel<decltype(time)> channel(delegate, time);
 
+		uint8_t buf[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
+		Message m(buf, sizeof(buf), sizeof(buf));
+		WHEN("an invalid message is sent")
+		{
+			ProtocolError result = channel.send(m);
+			THEN("the message is not sent to the channel")
+			{
+				Verify(Method(mock,send)).Exactly(0);
+				REQUIRE(result==MISSING_MESSAGE_ID);
+				REQUIRE(channel.client_messages().from_id(0x1234)==nullptr);
+				REQUIRE(channel.server_messages().from_id(0x1234)==nullptr);
+			}
+		}
+
+		AND_WHEN("a valid message is sent")
+		{
+			m.decode_id();	// set up the ID
+			When(Method(mock,send)).Return(NO_ERROR);
+			ProtocolError result = channel.send(m);
+			THEN("the message is sent to the channel")
+			{
+				Verify(Method(mock,send)).Exactly(1);
+				REQUIRE(result==NO_ERROR);
+				REQUIRE(channel.client_messages().from_id(0x1234)!=nullptr);
+				REQUIRE(channel.server_messages().from_id(0x1234)==nullptr);
+			}
+		}
+
+		AND_WHEN("a valid message is sent but fails sending")
+		{
+			m.decode_id();	// set up the ID
+			When(Method(mock,send)).Return(IO_ERROR);
+			ProtocolError result = channel.send(m);
+			THEN("the message is remains in the store and the send error is returned")
+			{
+				Verify(Method(mock,send)).Exactly(1);
+				REQUIRE(result==IO_ERROR);
+				// still maintained in the client store.
+				REQUIRE(channel.client_messages().from_id(0x1234)!=nullptr);
+				REQUIRE(channel.server_messages().from_id(0x1234)==nullptr);
+			}
+		}
+	}
+}
+
+
+SCENARIO("receiving a message first retrieves from the channel and then passes the message to the store")
+{
+	GIVEN("a CoAPReliableChannel")
+	{
+		Mock<MessageChannel> mock;
+		MessageChannel& delegate = mock.get();
+		auto time = []() { return system_tick_t(234); };
+		ForwardCoAPReliableChannel<decltype(time)> channel(delegate, time);
+
+		uint8_t con[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
+		uint8_t buf[9];
+		Message m(buf, sizeof(buf));		// empty message
+		m.decode_id();
+
+		WHEN("the message is received")
+		{
+			auto receive_con = [con](Message& msg) {
+				memcpy(msg.buf(), con, 9);
+				msg.set_length(9);
+				return NO_ERROR;
+			};
+			When(Method(mock,receive)).Do(receive_con);
+			ProtocolError result = channel.receive(m);
+			THEN("it is passed to the server store")
+			{
+				Verify(Method(mock,receive)).Exactly(1);
+				CoAPMessage* cm = channel.server_messages().from_id(0x1234);
+				REQUIRE(cm!=nullptr);
+				REQUIRE(cm->get_timeout()==CoAPMessage::MAX_TRANSMIT_SPAN + 234);
+			}
+		}
+	}
+
+}

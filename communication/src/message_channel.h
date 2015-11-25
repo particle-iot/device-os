@@ -78,9 +78,20 @@ public:
     bool has_id() { return id>=0; }
     message_id_t get_id() { return message_id_t(id); }
 
-    CoAPType::Enum get_type()
+    CoAPType::Enum get_type() const
     {
     		return length() ? CoAP::type(buf()): CoAPType::ERROR;
+    }
+
+    bool is_request() const
+    {
+    		switch (get_type()) {
+    		case CoAPType::NON:
+    		case CoAPType::CON:
+    			return true;
+    		default:
+    			return false;
+    		}
     }
 
     bool decode_id()
@@ -136,6 +147,9 @@ struct MessageChannel : public Channel
 	 */
 	virtual bool is_unreliable()=0;
 
+	/**
+	 * Establish this channel for communication.
+	 */
 	virtual ProtocolError establish()=0;
 
 	/**

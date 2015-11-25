@@ -68,4 +68,71 @@ void CoAPMessageStore::process(system_tick_t time, Channel& channel)
 }
 
 
+/**
+ * Registers that this message has been sent from the application.
+ * Confirmable messages, and ack/reset responses are cached.
+ */
+ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
+{
+	if (!msg.has_id())
+		return MISSING_MESSAGE_ID;
+
+	CoAPType::Enum coapType = CoAP::type(msg.buf());
+	if (coapType==CoAPType::CON || coapType==CoAPType::ACK || coapType==CoAPType::RESET)
+	{
+		// confirmable message, create a CoAPMessage for this
+		CoAPMessage* coapmsg = CoAPMessage::create(msg);
+		if (coapmsg==nullptr)
+			return INSUFFICIENT_STORAGE;
+		if (coapType==CoAPType::CON)
+			coapmsg->prepare_retransmit(time);
+		else
+			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+		add(*coapmsg);
+	}
+	return NO_ERROR;
+}
+
+/**
+ * Notifies the message store that a message has been received.
+ */
+ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_tick_t time)
+{
+	CoAPType::Enum msgtype = msg.get_type();
+	msg.decode_id();
+	if (msgtype==CoAPType::ACK || msgtype==CoAPType::RESET)
+	{
+		message_id_t id = msg.get_id();
+		clear_message(id);
+	}
+	else if (msgtype==CoAPType::CON)
+	{
+		CoAPMessage* response = from_id(msg.get_id());
+		if (response!=nullptr)
+		{
+			// consume this message by setting the length to 0
+			msg.set_length(0);
+			// the message ID already exists as a response message, so
+			// send that
+			if (is_ack_or_reset(response->get_data(), response->get_data_length()))
+				return send_message(response, channel);
+		}
+		else
+		{
+			// first time we're seeing this confirmable message, store it in the message store to prevent it from being resent.
+			CoAPMessage* coapmsg = CoAPMessage::create(msg, 5);
+			if (coapmsg==nullptr)
+				return INSUFFICIENT_STORAGE;
+			// the timeout here is ideally purely academic since the application will respond immediately with an ACK/RESET
+			// which will be stored in place of this message, with it's own timeout.
+			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+			add(*coapmsg);
+		}
+	}
+	// else it's a NON message - pass through
+	return NO_ERROR;
+}
+
+
+
 }}

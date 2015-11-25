@@ -142,9 +142,9 @@ public:
 	 * and has an independent lifetime from the Message
 	 * instance. When no longer required, `delete` the CoAPMessage..
 	 */
-	static CoAPMessage* create(Message& msg)
+	static CoAPMessage* create(Message& msg, size_t data_len = 0)
 	{
-		size_t len = msg.length();
+		size_t len = data_len && data_len<msg.length() ? data_len : msg.length();
 		uint8_t* memory = new uint8_t[sizeof(CoAPMessage)+len];
 		if (memory) {
 			CoAPMessage* coapmsg = new (memory)CoAPMessage(msg.get_id());		// in-place new
@@ -224,9 +224,10 @@ public:
 	/**
 	 * Sets the time when this message expires.
 	 */
-	void set_max_transmit(system_tick_t time)
+	void set_expiration(system_tick_t time)
 	{
 		timeout = time;
+		transmit_count = MAX_RETRANSMIT+2;	// do not send this message.
 	}
 };
 
@@ -259,7 +260,7 @@ class CoAPMessageStore
 	 * Retrieves the message with the given ID and the previous message.
 	 * If no message exists with the given id, nullptr is returned.
 	 */
-	CoAPMessage* for_id(message_id_t id, CoAPMessage*& prev)
+	CoAPMessage* for_id(message_id_t id, CoAPMessage*& prev) const
 	{
 		prev = nullptr;
 		CoAPMessage* next = head;
@@ -298,7 +299,7 @@ public:
 	 * waiting acknowledgement.
 	 * Returns nullptr if there is no such unconfirmed message.
 	 */
-	CoAPMessage* from_id(message_id_t id)
+	CoAPMessage* from_id(message_id_t id) const
 	{
 		CoAPMessage* prev;
 		CoAPMessage* next = for_id(id, prev);
@@ -315,7 +316,11 @@ public:
 	 */
 	ProtocolError add(CoAPMessage& message)
 	{
-		remove(message);
+		// trying to add exactly the same message
+		if (from_id(message.get_id())==&message)
+			return NO_ERROR;
+
+		clear_message(message.get_id());
 		if (message.get_next())
 			return INVALID_STATE;
 		message.set_next(head);
@@ -327,7 +332,7 @@ public:
 	 * Removes a message from this message store.
 	 * Returns true if the message existed, false otherwise.
 	 */
-	bool remove(CoAPMessage& msg)
+	bool remove2(CoAPMessage& msg)
 	{
 		return remove(msg.get_id())==&msg;
 	}
@@ -367,11 +372,11 @@ public:
 	 */
 	ProtocolError send_message(CoAPMessage* msg, Channel& channel);
 
-	bool is_ack_or_reset(Message& msg)
+	bool is_ack_or_reset(const uint8_t* buf, size_t len)
 	{
-		if (msg.length()<1)
+		if (len<1)
 			return false;
-		CoAPType::Enum type = CoAP::type(msg.buf());
+		CoAPType::Enum type = CoAP::type(buf);
 		return type==CoAPType::ACK || type==CoAPType::RESET;
 	}
 
@@ -397,11 +402,11 @@ public:
 				msg.clear();
 				msg.set_length(0);
 				error = channel.receive(msg);
-				if (!error && msg.decode_id() && is_ack_or_reset(msg))
+				if (!error && msg.decode_id() && is_ack_or_reset(msg.buf(), msg.length()))
 				{
 					// handle acknowledgements, waiting for the one that
 					// acknowledges the original confirmation.
-					error = receive(msg, channel);
+					error = receive(msg, channel, time());
 				}
 				// drop CON messages on the floor since we cannot handle them now
 				process(time(), channel);
@@ -416,55 +421,12 @@ public:
 	 * Registers that this message has been sent from the application.
 	 * Confirmable messages, and ack/reset responses are cached.
 	 */
-	ProtocolError send(Message& msg, system_tick_t time)
-	{
-		if (!msg.has_id())
-			return MISSING_MESSAGE_ID;
-
-		CoAPType::Enum coapType = CoAP::type(msg.buf());
-		if (coapType==CoAPType::CON || coapType==CoAPType::ACK || coapType==CoAPType::RESET)
-		{
-			// confirmable message, create a CoAPMessage for this
-			CoAPMessage* coapmsg = CoAPMessage::create(msg);
-			if (coapmsg==nullptr)
-				return INSUFFICIENT_STORAGE;
-			if (coapType==CoAPType::CON)
-				coapmsg->prepare_retransmit(time);
-			else
-				coapmsg->set_max_transmit(time+CoAPMessage::MAX_TRANSMIT_SPAN);
-			add(*coapmsg);
-		}
-		return NO_ERROR;
-	}
+	ProtocolError send(Message& msg, system_tick_t time);
 
 	/**
 	 * Notifies the message store that a message has been received.
-	 *
 	 */
-	ProtocolError receive(Message& msg, Channel& channel)
-	{
-		CoAPType::Enum msgtype = msg.get_type();
-		msg.decode_id();
-		if (msgtype==CoAPType::ACK || msgtype==CoAPType::RESET)
-		{
-			message_id_t id = msg.get_id();
-			clear_message(id);
-		}
-		else if (msgtype==CoAPType::CON)
-		{
-			CoAPMessage* response = from_id(msg.get_id());
-			if (response!=nullptr)
-			{
-				// the message ID already exists as a response message, so
-				// send that
-				// consume this message by setting the length to 0
-				msg.set_length(0);
-				return send_message(response, channel);
-			}
-		}
-		// else it's a NON message - pass through
-		return NO_ERROR;
-	}
+	ProtocolError receive(Message& msg, Channel& channel, system_tick_t time);
 
 	void clear_message(message_id_t id)
 	{
@@ -486,10 +448,20 @@ public:
 
 
 template <class T, typename M>
-class CoAPReliableChannel : public T, public CoAPMessageStore
+class CoAPReliableChannel : public T
 {
 	using channel = T;
 	M millis;
+
+	/**
+	 * Stores the unhandled confirmable messages received from the server, or the outstanding acknowledgment.
+	 */
+	CoAPMessageStore server;
+
+	/**
+	 * Stores the confirmable messages sent from the client requiring acknowledgement.
+	 */
+	CoAPMessageStore client;
 
 
 	ProtocolError base_send(Message& msg)
@@ -533,9 +505,18 @@ public:
 		delegateChannel.init(this);
 	}
 
+	const CoAPMessageStore& client_messages() const {
+		return client;
+	}
+
+	const CoAPMessageStore& server_messages() const {
+		return server;
+	}
+
 	ProtocolError establish() override
 	{
-		CoAPMessageStore::clear();
+		server.clear();
+		client.clear();
 		return channel::establish();
 	}
 
@@ -546,29 +527,36 @@ public:
 	 */
 	ProtocolError send(Message& msg) override
 	{
-		ProtocolError error = CoAPMessageStore::send(msg, millis());
+		// determine the type of message.
+		CoAPMessageStore& store = msg.is_request() ? client : server;
+		ProtocolError error = store.send(msg, millis());
 		if (!error)
 			error = channel::send(msg);
 		return error;
 	}
 
+	/**
+	 * Receives a message from the channel and passes it to the message store for processing before
+	 * passing on to the application.
+	 *
+	 * Calls background processing for the message store.
+	 */
 	ProtocolError receive(Message& msg) override
 	{
 		ProtocolError error = channel::receive(msg);
-		system_tick_t now = millis();
-
 		if (!error && msg.length())
 		{
-			CoAPMessageStore::receive(msg, delegateChannel);
+			CoAPMessageStore& store = msg.is_request() ? server : client;
+			error = store.receive(msg, delegateChannel, millis());
 		}
-		else
-		{
-			CoAPMessageStore::process(now, delegateChannel);
-		}
+		client.process(millis(), delegateChannel);
+		server.process(millis(), delegateChannel);
 		return error;
 	}
-
-
 };
+
+
+
+
 
 }}
