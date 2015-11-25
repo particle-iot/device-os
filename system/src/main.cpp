@@ -166,7 +166,9 @@ void system_power_management_init()
     power.disableWatchdog();
     power.disableDPDM();
     // power.setInputVoltageLimit(4360); // default
-    power.setInputCurrentLimit(500);
+    power.setInputCurrentLimit(900);     // 900mA
+    power.setChargeCurrent(0,0,0,0,0,0); // 512mA
+    power.setChargeVoltage(4112);        // 4.112V termination voltage
     FuelGauge fuel;
     fuel.wakeup();
     fuel.setAlertThreshold(10); // Low Battery alert at 10% (about 3.6V)
@@ -182,7 +184,8 @@ void system_power_management_update()
         SYSTEM_POWER_MGMT_UPDATE = false;
         PMIC power;
         power.begin();
-        power.setInputCurrentLimit(500);
+        power.setInputCurrentLimit(900);     // 900mA
+        power.setChargeCurrent(0,0,0,0,0,0); // 512mA
         FuelGauge fuel;
         bool LOWBATT = fuel.getAlert();
         if (LOWBATT) {

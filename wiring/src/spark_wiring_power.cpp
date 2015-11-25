@@ -570,12 +570,84 @@ byte PMIC::getChargeCurrent(void) {
  	if (bit5) current = current | 0b00100000;
  	if (bit4) current = current | 0b00010000;
  	if (bit3) current = current | 0b00001000;
+ 	if (bit2) current = current | 0b00000100;
 
  	byte DATA = readRegister(CHARGE_CURRENT_CONTROL_REGISTER);
  	byte mask = DATA & 0b00000001;
  	writeRegister(CHARGE_CURRENT_CONTROL_REGISTER, current | mask);
  	return 1;
  }
+
+/*
+//-----------------------------------------------------------------------------
+// Charge voltage control register
+//-----------------------------------------------------------------------------
+
+REG04
+BIT
+7: VREG[5] 512mV	| Charge Voltage Limit
+6: VREG[4] 256mV	| offset is 3.504V
+5: VREG[3] 128mV	| Range: 3.504 V to 4.400 V (111000)
+4: VREG[2] 64mV		| Default: 4.208 V (101100) = 3.504V+512mV+128mV+64mV
+3: VREG[1] 32mV		| enabling bits 2 to 7 adds the voltage to 3.504V base value
+2: VREG[0] 16mV		|
+1: BATLOWV			| Battery Precharge to Fast Charge Threshold
+					| 0 – 2.8 V, 1 – 3.0 V (default)
+0: VRECHG			| Battery Recharge Threshold (below battery regulation voltage)
+					| 0 – 100 mV (default), 1 – 300 mV
+*/
+
+/*******************************************************************************
+ * Function Name  : getChargeVoltage
+ * Description    : It currently just returns the contents of the register
+ * Input          :
+ * Return         :
+ *******************************************************************************/
+ //TO DO: Return more meaningful value
+
+byte PMIC::getChargeVoltage(void) {
+
+	return readRegister(CHARGE_VOLTAGE_CONTROL_REGISTER);
+}
+
+/*******************************************************************************
+ * Function Name  : setChargeVoltage
+ * Description    : The total charge voltage is the 3.504V + the combination of the
+					voltage that the following bits represent
+					bit7 = 512mV
+					bit6 = 256mV
+					bit5 = 128mV
+					bit4 = 64mV
+					bit3 = 32mV
+					bit2 = 16mV
+ * Input          : desired voltage (4208 or 4112 are the only options currently)
+					4208 is the default
+					4112 is a safer termination voltage if exposing the
+					battery to temperatures above 45°C
+ * Return         : 0 Error, 1 Success
+ *******************************************************************************/
+
+bool PMIC::setChargeVoltage(uint16_t voltage) {
+
+byte DATA = readRegister(CHARGE_VOLTAGE_CONTROL_REGISTER);
+byte mask = DATA & 0b000000011;
+
+switch (voltage) {
+
+	case 4112:
+	writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, (mask | 0b10011000));
+	break;
+
+	case 4208:
+	writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, (mask | 0b11100000));
+	break;
+
+	default:
+	return 0; // return error since the value passed didn't match
+}
+
+	return 1; // value was written successfully
+}
 
 /*
 //-----------------------------------------------------------------------------
