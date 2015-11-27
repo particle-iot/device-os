@@ -821,7 +821,6 @@ SCENARIO("sending a message and re-establishing the connection clears existing m
 		{
 			uint8_t buf[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
 			Message m(buf, sizeof(buf), sizeof(buf));
-			m.set_confirm_received(true);
 			m.decode_id();
 
 			When(Method(mock, send)).Return(NO_ERROR);	// send on the channel is called once
@@ -1032,10 +1031,81 @@ SCENARIO("client and server can send requests with the same message ID and they 
 				REQUIRE(cm->is_request()==false);		// not a request, but a response
 				// client messages unaffected
 				REQUIRE(channel.client_messages().from_id(0x1234)==nullptr);
-
-
 			}
 		}
 	}
 }
 
+
+SCENARIO("a message flagged as confirm received waits synchronously for acknowledgement")
+{
+	GIVEN("a message flagged as confirm received and a reliable channel")
+	{
+		Mock<MessageChannel> mock;
+		MessageChannel& delegate = mock.get();
+		system_tick_t ticks = 0;
+		auto time = [&ticks]() { return ticks+=10; };
+		ForwardCoAPReliableChannel<decltype(time)> channel(delegate, time);
+
+		uint8_t buf[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
+		Message m(buf, sizeof(buf), sizeof(buf));
+		m.set_confirm_received(true);
+		m.decode_id();
+
+		// receive ACK from server for client message
+		auto receive_server_ack = [](Message& msg) {
+			msg.set_length(Messages::empty_ack(msg.buf(), 0x12, 0x34));
+			return NO_ERROR;
+		};
+
+		auto no_message = [](Message& msg) {
+			msg.set_length(0);
+			return NO_ERROR;
+		};
+
+		WHEN("the message is sent and not acknowledged")
+		{
+			When(Method(mock,send)).AlwaysReturn(NO_ERROR);
+			When(Method(mock,receive)).AlwaysDo(no_message);
+			ProtocolError error = channel.send(m);
+			AND_WHEN("the request has timed out")
+			{
+				CHECK(ticks>=CoAPMessage::MAX_TRANSMIT_SPAN+0);
+			}
+			THEN("an error response is returned")
+			{
+				REQUIRE(error==MESSAGE_TIMEOUT);
+				Verify(Method(mock,send)).Exactly(CoAPMessage::MAX_RETRANSMIT+1);
+			}
+		}
+
+		WHEN("the message is sent and negatively acknowledged")
+		{
+			When(Method(mock,send)).Return(NO_ERROR);
+			auto receive_nak = [](Message& msg) {
+				msg.set_length(Messages::reset(msg.buf(), 0x12, 0x34));
+				return NO_ERROR;
+			};
+			When(Method(mock,receive)).Do(receive_nak);
+			ProtocolError error = channel.send(m);
+			THEN("a MESSAGE_RESET response is returned")
+			{
+				REQUIRE(error==MESSAGE_RESET);
+				REQUIRE(ticks<=50);	// was 30 when tested - not critical
+			}
+		}
+
+		WHEN("the message is sent and acknowledged")
+		{
+			When(Method(mock,send)).AlwaysReturn(NO_ERROR);
+			When(Method(mock,receive)).Do(receive_server_ack);
+			ProtocolError error = channel.send(m);
+			THEN("a success response is returned")
+			{
+				REQUIRE(error==NO_ERROR);
+				REQUIRE(ticks<=50);	// was 30 when tested - not critical
+			}
+		}
+
+	}
+}

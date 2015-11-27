@@ -103,6 +103,12 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 	if (msgtype==CoAPType::ACK || msgtype==CoAPType::RESET)
 	{
 		message_id_t id = msg.get_id();
+		if (msgtype==CoAPType::RESET) {
+			CoAPMessage* msg = from_id(id);
+			if (msg) {
+				msg->notify_delivered_nak();
+			}
+		}
 		if (!clear_message(id)) {		// message didn't exist, means it's already been acknoweldged or is unknown.
 			msg.set_length(0);
 		}

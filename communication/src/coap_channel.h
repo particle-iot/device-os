@@ -72,6 +72,17 @@ public:
  */
 class __attribute__((packed)) CoAPMessage
 {
+public:
+	enum Delivery
+	{
+		DELIVERED,
+		DELIVERED_NACK,
+		NOT_DELIVERED
+	};
+
+	using delivery_fn = std::function<void(Delivery)>;
+
+private:
 	/**
 	 * Messages are stored as a singly-linked list.
 	 * This pointer is the next message in the list, or nullptr if this is the last message in the list.
@@ -97,7 +108,7 @@ class __attribute__((packed)) CoAPMessage
 
 	// padding
 	// uint8_t reserved;
-	std::function<void(bool)>* delivered;
+	std::function<void(Delivery)>* delivered;
 
 
 	/**
@@ -112,7 +123,10 @@ class __attribute__((packed)) CoAPMessage
 
 	static uint16_t message_count;
 
-	inline void notify_delivered(bool success) const {
+	/**
+	 * Notification that the message has been delivered to the server.
+	 */
+	inline void notify_delivered(Delivery success) const {
 		if (delivered) {
 			(*delivered)(success);
 		}
@@ -168,14 +182,18 @@ public:
 	inline void removed() { next = nullptr; }
 	inline system_tick_t get_timeout() const { return timeout; }
 
-	inline void set_delivered_handler(std::function<void(bool)>* handler) { this->delivered = handler; }
+	inline void set_delivered_handler(std::function<void(Delivery)>* handler) { this->delivered = handler; }
 
 	inline void notify_timeout() const {
-		notify_delivered(false);
+		notify_delivered(NOT_DELIVERED);
 	}
 
-	inline void notify_success() const {
-		notify_delivered(true);
+	inline void notify_delivered_ok() const {
+		notify_delivered(DELIVERED);
+	}
+
+	inline void notify_delivered_nak() const {
+		notify_delivered(DELIVERED_NACK);
 	}
 
 	/**
@@ -240,6 +258,7 @@ public:
     			return false;
     		}
     }
+
 };
 
 inline bool time_has_passed(system_tick_t now, system_tick_t tick)
@@ -401,9 +420,11 @@ public:
 			error = channel.send(msg);
 		if (!error && coapType==CoAPType::CON)
 		{
-			std::function<void(bool)> flag_delivered = [&error](bool delivered) {
-				if (!delivered)
+			CoAPMessage::delivery_fn flag_delivered = [&error](CoAPMessage::Delivery delivered) {
+				if (delivered==CoAPMessage::NOT_DELIVERED)
 					error = MESSAGE_TIMEOUT;
+				else if (delivered==CoAPMessage::DELIVERED_NACK)
+					error = MESSAGE_RESET;
 			};
 			CoAPMessage* coapmsg = from_id(id);
 			if (coapmsg)
@@ -417,7 +438,9 @@ public:
 				{
 					// handle acknowledgements, waiting for the one that
 					// acknowledges the original confirmation.
-					error = receive(msg, channel, time());
+					ProtocolError receive_error = receive(msg, channel, time());
+					if (!error)
+						error = receive_error;
 				}
 				// drop CON messages on the floor since we cannot handle them now
 				process(time(), channel);
@@ -540,6 +563,9 @@ public:
 	 */
 	ProtocolError send(Message& msg) override
 	{
+		if (msg.is_request() && msg.get_confirm_received())
+			return client.send_synchronous(msg, delegateChannel, millis);
+
 		// determine the type of message.
 		CoAPMessageStore& store = msg.is_request() ? client : server;
 		ProtocolError error = store.send(msg, millis());
