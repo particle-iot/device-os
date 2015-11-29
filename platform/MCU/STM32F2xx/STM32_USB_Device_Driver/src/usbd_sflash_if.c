@@ -38,11 +38,12 @@ DFU_MAL_Prop_TypeDef DFU_sFlash_cb =
         sFLASH_If_Read,
         sFLASH_If_CheckAdd,
 #if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-		200,
+		75, /* Erase Time in ms */
+		25  /* Programming Time in ms */
 #else
         50, /* Erase Time in ms */
+		50  /* Programming Time in ms */
 #endif
-        50  /* Programming Time in ms */
 };
 
 /* Private functions ---------------------------------------------------------*/
