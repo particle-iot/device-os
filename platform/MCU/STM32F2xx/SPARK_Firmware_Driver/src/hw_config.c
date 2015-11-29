@@ -334,9 +334,9 @@ void LED_Init(Led_TypeDef Led)
 void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
 {
 #if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-	TIM3->CCR3 = r;
+	TIM2->CCR4 = r;
 	TIM3->CCR4 = g;
-	TIM2->CCR4 = b;
+	TIM3->CCR3 = b;
 #else
 #ifdef RGB_LINES_REVERSED
     TIM2->CCR4 = r;
@@ -353,9 +353,9 @@ void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
 void Get_RGB_LED_Values(uint16_t* values)
 {
 #if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-	values[0] = TIM3->CCR3;
+	values[0] = TIM2->CCR4;
     values[1] = TIM3->CCR4;
-    values[2] = TIM2->CCR4;
+    values[2] = TIM3->CCR3;
 #else
 #ifdef RGB_LINES_REVERSED
     values[0] = TIM2->CCR4;

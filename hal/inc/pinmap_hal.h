@@ -126,11 +126,11 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define TIMER1_CH3 18
 
 #define TIMER2_CH2 4
-#define TIMER2_CH4 23
+#define TIMER2_CH4 21
 
 #define TIMER3_CH1 3
 #define TIMER3_CH2 2
-#define TIMER3_CH3 21
+#define TIMER3_CH3 23
 #define TIMER3_CH4 22
 
 #define TIMER4_CH1 1

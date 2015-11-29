@@ -68,9 +68,9 @@ STM32_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* RX            - 18 */ { GPIOA, GPIO_Pin_10, GPIO_PinSource10, NONE, NONE, TIM1, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
 /* TX            - 19 */ { GPIOA, GPIO_Pin_9, GPIO_PinSource9, NONE, NONE, TIM1, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
 /* SETUP BUTTON  - 20 */ { GPIOB, GPIO_Pin_2, GPIO_PinSource2, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* RGBR          - 21 */ { GPIOB, GPIO_Pin_0, GPIO_PinSource0, NONE, NONE, TIM3, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
+/* RGBR          - 21 */ { GPIOB, GPIO_Pin_11, GPIO_PinSource11, NONE, NONE, TIM2, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
 /* RGBG          - 22 */ { GPIOB, GPIO_Pin_1, GPIO_PinSource1, NONE, NONE, TIM3, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
-/* RGBB          - 23 */ { GPIOB, GPIO_Pin_11, GPIO_PinSource11, NONE, NONE, TIM2, TIM_Channel_4, PIN_MODE_NONE, 0, 0 }
+/* RGBB          - 23 */ { GPIOB, GPIO_Pin_0, GPIO_PinSource0, NONE, NONE, TIM3, TIM_Channel_3, PIN_MODE_NONE, 0, 0 }
 #else
 /* COMMON TO PHOTON, P1 and ELECTRON */
 /* D0            - 00 */ { GPIOB, GPIO_Pin_7, GPIO_PinSource7, NONE, NONE, TIM4, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },
