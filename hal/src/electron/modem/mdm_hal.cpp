@@ -1140,7 +1140,7 @@ MDMParser::IP MDMParser::gethostbyname(const char* host)
     else {
         LOCK();
         sendFormated("AT+UDNSRN=0,\"%s\"\r\n", host);
-        if (RESP_OK != waitFinalResp(_cbUDNSRN, &ip))
+        if (RESP_OK != waitFinalResp(_cbUDNSRN, &ip, 30*1000))
             ip = NOIP;
         UNLOCK();
     }
