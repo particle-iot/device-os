@@ -17,34 +17,23 @@
  ******************************************************************************
  */
 
-#include "spark_wiring_cellular.h"
+#ifndef __SPARK_WIRING_CELLULARSIGNAL_H
+#define __SPARK_WIRING_CELLULARSIGNAL_H
 
-#if Wiring_Cellular
+#include <string.h>
+#include "spark_wiring_printable.h"
+#include "spark_wiring_string.h"
+#include "cellular_hal.h"
 
-namespace spark {
+class CellularSignal : public Printable {
 
-    CellularSignal CellularClass::RSSI() {
-        CellularSignal sig;
-        if (!network_ready(*this, 0, NULL)) {
-            sig.rssi = 0;
-            return sig;
-        }
+public:
+    int rssi = 0;
+    int ber = 0;
 
-        CellularSignalHal sig_hal;
-        if (cellular_signal(sig_hal, NULL) != 0) {
-            sig.rssi = 1;
-            return sig;
-        }
-        sig.rssi = sig_hal.rssi;
-        sig.ber = sig_hal.ber;
-        if (sig.rssi == 0) {
-            sig.rssi = 2;
-        }
-        return sig;
-    }
+    CellularSignal() { /* n/a */ }
 
-    CellularClass Cellular;
-    NetworkClass& Network = Cellular;
-}
+    virtual size_t printTo(Print& p) const;
+};
 
 #endif

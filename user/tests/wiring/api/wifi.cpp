@@ -23,6 +23,8 @@
 
 #include "testapi.h"
 
+#if Wiring_WiFi == 1
+
 test(api_wifi_resolve) {
 
     API_COMPILE(WiFi.resolve(String("abc.def.com")));
@@ -158,3 +160,5 @@ test(api_wifi_ipconfig)
     API_COMPILE(address=WiFi.dhcpServerIP());
     (void)address;
 }
+
+#endif
