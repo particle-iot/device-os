@@ -81,18 +81,21 @@ test(system_freememory) {
 }
 
 test(system_waitfor) {
+#if Wiring_WiFi == 1
     API_COMPILE(System.waitCondition([]{return WiFi.ready();}));
-
     API_COMPILE(waitFor(WiFi.ready, 10000));
     API_COMPILE(waitUntil(WiFi.ready));
+#endif
 }
 
 
 test(system_config_set) {
 
     API_COMPILE(System.set(SYSTEM_CONFIG_DEVICE_KEY, NULL, 123));
+#if PLATFORM == photon
     API_COMPILE(System.set(SYSTEM_CONFIG_SOFTAP_PREFIX, "hello"));
     API_COMPILE(System.set(SYSTEM_CONFIG_SOFTAP_SUFFIX, "hello"));
+#endif
 }
 
 /*
