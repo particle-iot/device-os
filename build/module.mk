@@ -60,6 +60,14 @@ st-flash: $(TARGET_BASE).bin
 	@echo Flashing $< using st-flash to address $(PLATFORM_DFU)
 	st-flash write $< $(PLATFORM_DFU)
 
+ifneq ("$(OPENOCD_HOME)","")
+
+program-openocd: $(TARGET_BASE).bin
+	@echo Flashing $< using openocd to address $(PLATFORM_DFU)
+	$(OPENOCD_HOME)/openocd -f $(OPENOCD_HOME)/tcl/interface/ftdi/particle-ftdi.cfg -f $(OPENOCD_HOME)/tcl/target/stm32f2x.cfg  -c "init; reset halt" -c "flash protect 0 0 11 off" -c "program $< $(PLATFORM_DFU) reset exit"
+
+endif
+
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
 program-dfu: $(TARGET_BASE).dfu
