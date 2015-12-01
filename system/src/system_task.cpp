@@ -246,29 +246,31 @@ void handle_cloud_connection(bool force_events)
             if (err)
             {
                 cloud_connection_failed();
+                LED_Signaling_Start();
                 if (0 > err)
                 {
                     // Wrong key error, red
-                    LED_SetRGBColor(RGB_COLOR_RED);
+                    LED_SetSignalingColor(RGB_COLOR_RED);
                 }
                 else if (1 == err)
                 {
                     // RSA decryption error, orange
-                    LED_SetRGBColor(RGB_COLOR_ORANGE);
+                    LED_SetSignalingColor(RGB_COLOR_ORANGE);
                 }
                 else if (2 == err)
                 {
                     // RSA signature verification error, magenta
-                    LED_SetRGBColor(RGB_COLOR_MAGENTA);
+                    LED_SetSignalingColor(RGB_COLOR_MAGENTA);
                 }
                 WARN("Cloud handshake failed, code=%d", err);
                 LED_On(LED_RGB);
                 // delay a little to be sure the user sees the LED color, since
                 // the socket may quickly disconnect and the connection retried, turning
                 // the LED back to cyan
-                system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+                system_tick_t start = HAL_Timer_Get_Micro_Seconds();
                 // allow time for the LED to be flashed
-                while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
+                while ((HAL_Timer_Get_Micro_Seconds()-start)<500000);
+                LED_Signaling_Stop();
                 cloud_disconnect();
             }
             else
