@@ -257,12 +257,12 @@ bool FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress
                       flash_device_t destinationDeviceID, uint32_t destinationAddress,
                       uint32_t length, uint8_t module_function, uint8_t flags)
 {
-    if (FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length) != true)
+    if (!FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length))
     {
         return false;
     }
 
-    if (FLASH_CheckValidAddressRange(destinationDeviceID, destinationAddress, length) != true)
+    if (!FLASH_CheckValidAddressRange(destinationDeviceID, destinationAddress, length))
     {
         return false;
     }
@@ -399,13 +399,6 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return false;
     }
 
-    /*
-    if (FLASH_EraseMemory(destinationDeviceID, destinationAddress, length) != true)
-    {
-        return false;
-    }
-	*/
-
     if (sourceDeviceID == FLASH_SERIAL)
     {
 #ifdef USE_SERIAL_FLASH
@@ -413,14 +406,6 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         sFLASH_Init();
 #endif
     }
-
-    /*
-    if (destinationDeviceID == FLASH_INTERNAL)
-    {
-        // Unlock the internal flash program erase controller
-        FLASH_Unlock();
-    }
-	*/
 
     while (length)
     {
