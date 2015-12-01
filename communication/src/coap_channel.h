@@ -541,6 +541,10 @@ public:
 		delegateChannel.init(this);
 	}
 
+	void set_millis(M m) {
+		this->millis = m;
+	}
+
 	const CoAPMessageStore& client_messages() const {
 		return client;
 	}

@@ -15,6 +15,7 @@ void DTLSProtocol::init(const char *id,
 	channelCallbacks.handle_seed = handle_seed;
 	channelCallbacks.receive = callbacks.receive;
 	channelCallbacks.send = callbacks.send;
+	channel.set_millis(callbacks.millis);
 
 	uint8_t core_public[128];
 	int len = extract_public_ec_key_length(core_public, sizeof(core_public), keys.core_private, determine_der_length(keys.core_private, MAX_DEVICE_PRIVATE_KEY_LENGTH));
