@@ -34,6 +34,14 @@
 
 /* Exported constants --------------------------------------------------------*/
 
+/* This perhaps should be moved in a different place. */
+typedef enum
+{
+	PWM_INIT = 1,
+	/* add other flags here*/
+
+}user_property_t;
+
 /* Exported macros -----------------------------------------------------------*/
 
 /* Exported functions --------------------------------------------------------*/
@@ -45,6 +53,7 @@ extern "C" {
 void HAL_PWM_Write(uint16_t pin, uint8_t value);
 uint16_t HAL_PWM_Get_Frequency(uint16_t pin);
 uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin);
+void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value);
 
 #ifdef __cplusplus
 }
