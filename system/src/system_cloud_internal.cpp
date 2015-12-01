@@ -784,8 +784,10 @@ void Multicast_Presence_Announcement(void)
 {
 #ifndef SPARK_NO_CLOUD
     long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NIF_DEFAULT);
-    if (!socket_handle_valid(multicast_socket))
+    if (!socket_handle_valid(multicast_socket)) {
+        DEBUG("socket_handle_valid() = %d", socket_handle_valid(multicast_socket));
         return;
+    }
 
     unsigned char announcement[19];
     uint8_t id_length = HAL_device_ID(NULL, 0);
@@ -806,9 +808,10 @@ void Multicast_Presence_Announcement(void)
     //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
     //for (int i = 3; i > 0; i--)
     {
+        DEBUG("socket_sendto()");
         socket_sendto(multicast_socket, announcement, 19, 0, &addr, sizeof (sockaddr_t));
     }
-
+    DEBUG("socket_close(multicast_socket)");
     socket_close(multicast_socket);
 #endif
 }
