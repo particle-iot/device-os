@@ -88,7 +88,7 @@ class PMIC {
 		byte getTermChargeCurrent();
 
 		//Charge Voltage Control Register
-		bool setChargeVoltage();
+		bool setChargeVoltage(uint16_t voltage);
 		byte getChargeVoltage();
 
 		//CHARGE_TIMER_CONTROL_REGISTER
