@@ -223,9 +223,18 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 
 	conf.read_timeout = 0;
 	int ret = mbedtls_ssl_read(&ssl_context, buf, len);
-	if (ret <= 0 && ret != MBEDTLS_ERR_SSL_WANT_READ) {
-		mbedtls_ssl_session_reset(&ssl_context);
-		return IO_ERROR;
+	if (ret<=0) {
+		switch (ret) {
+		case MBEDTLS_ERR_SSL_WANT_READ:
+			break;
+		case MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE:
+			ret = 0;
+			break;
+		default:
+			mbedtls_ssl_session_reset(&ssl_context);
+			return IO_ERROR;
+
+		}
 	}
 	message.set_length(ret);
 	return NO_ERROR;
