@@ -120,3 +120,12 @@ void cellular_cancel(bool cancel, bool calledFromISR, void*)
         electronMDM.resume();
     }
 }
+
+cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved)
+{
+    MDMParser::NetStatus status;
+    CHECK_SUCCESS(electronMDM.getSignalStrength(status));
+    signal.rssi = status.rssi;
+    signal.ber = status.ber;
+    return 0;
+}

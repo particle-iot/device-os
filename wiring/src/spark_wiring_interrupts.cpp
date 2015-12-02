@@ -50,14 +50,19 @@ void call_raw_interrupt_handler(void* data)
 /*******************************************************************************
  * Function Name  : attachInterrupt
  * Description    : Arduino compatible function to attach hardware interrupts to
-						 the Core pins
+						        the Core pins
  * Input          : pin number, user function name and interrupt mode
  * Output         : None.
- * Return         : None.
+ * Return         : true if function handler was allocated, false otherwise.
  *******************************************************************************/
 
 bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode mode)
 {
+#if Wiring_Cellular == 1
+  /* safety check that prevents users from attaching an interrupt to D7
+   * which is shared with BATT_INT_PC13 for power management */
+  if (pin == D7) return false;
+#endif
     HAL_Interrupts_Detach(pin);
     wiring_interrupt_handler_t* handler = allocate_handler(pin, fn);
     if (handler) {
@@ -68,6 +73,11 @@ bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode 
 
 bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode)
 {
+#if Wiring_Cellular == 1
+  /* safety check that prevents users from attaching an interrupt to D7
+   * which is shared with BATT_INT_PC13 for power management */
+  if (pin == D7) return false;
+#endif
     HAL_Interrupts_Detach(pin);
     HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, NULL);
     return true;
@@ -77,13 +87,18 @@ bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMod
 /*******************************************************************************
  * Function Name  : detachInterrupt
  * Description    : Arduino compatible function to detach hardware interrupts that
-						 were asssigned previously using attachInterrupt
+						        were asssigned previously using attachInterrupt
  * Input          : pin number to which the interrupt was attached
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
 void detachInterrupt(uint16_t pin)
 {
+#if Wiring_Cellular == 1
+    /* safety check that prevents users from detaching an interrupt from
+     * BATT_INT_PC13 for power management which is shared with D7 */
+    if (pin == D7) return;
+#endif
     HAL_Interrupts_Detach(pin);
     delete handlers[pin];
     handlers[pin] = NULL;

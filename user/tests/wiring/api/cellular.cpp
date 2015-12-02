@@ -17,34 +17,18 @@
  ******************************************************************************
  */
 
-#include "spark_wiring_cellular.h"
+#include "testapi.h"
 
-#if Wiring_Cellular
+#if Wiring_Cellular == 1
 
-namespace spark {
+test(api_cellular_rssi) {
+    CellularSignal sig;
 
-    CellularSignal CellularClass::RSSI() {
-        CellularSignal sig;
-        if (!network_ready(*this, 0, NULL)) {
-            sig.rssi = 0;
-            return sig;
-        }
+    API_COMPILE(Cellular.RSSI());
 
-        CellularSignalHal sig_hal;
-        if (cellular_signal(sig_hal, NULL) != 0) {
-            sig.rssi = 1;
-            return sig;
-        }
-        sig.rssi = sig_hal.rssi;
-        sig.ber = sig_hal.ber;
-        if (sig.rssi == 0) {
-            sig.rssi = 2;
-        }
-        return sig;
-    }
+    API_COMPILE(sig = Cellular.RSSI());
 
-    CellularClass Cellular;
-    NetworkClass& Network = Cellular;
+    API_COMPILE(Serial.println(sig));
 }
 
 #endif

@@ -462,12 +462,20 @@ bool MDMParser::powerOn(const char* simpin)
         goto failure;
     // wait some time until baudrate is applied
     HAL_Delay_Milliseconds(100); // SARA-G > 40ms
-    // identify the module
-    sendFormated("ATI\r\n");
-    if (RESP_OK != waitFinalResp(_cbATI, &_dev.dev))
-        goto failure;
-    if (_dev.dev == DEV_UNKNOWN)
-        goto failure;
+
+    /* The ATI command is undocumented, and in practice the response
+     * time varies greatly. On inital power-on of the module, ATI
+     * will respond with "OK" before a device type number, which
+     * requires wasting time in a for() loop to solve.
+     * Instead, use AT+CGMM and _dev.model for future use of module indentification.
+     *
+     * identify the module
+     * sendFormated("ATI\r\n");
+     * if (RESP_OK != waitFinalResp(_cbATI, &_dev.dev))
+     *     goto failure;
+     * if (_dev.dev == DEV_UNKNOWN)
+     *     goto failure;
+     */
 
     // check the sim card
     for (int i = 0; (i < 5) && (_dev.sim != SIM_READY) && !_cancel_all_operations; i++) {
@@ -732,6 +740,23 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
 failure:
     //unlock();
     return false;
+}
+
+bool MDMParser::getSignalStrength(NetStatus &status)
+{
+    bool ok = false;
+    LOCK();
+    if (_init && _pwr) {
+        MDM_INFO("\r\n[ Modem::getSignalStrength ] = = = = = = = = = =");
+        sendFormated("AT+CSQ\r\n");
+        if (RESP_OK == waitFinalResp(_cbCSQ, &_net)) {
+            ok = true;
+            status.rssi = _net.rssi;
+            status.ber = _net.ber;
+        }
+    }
+    UNLOCK();
+    return ok;
 }
 
 int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
@@ -1115,7 +1140,7 @@ MDMParser::IP MDMParser::gethostbyname(const char* host)
     else {
         LOCK();
         sendFormated("AT+UDNSRN=0,\"%s\"\r\n", host);
-        if (RESP_OK != waitFinalResp(_cbUDNSRN, &ip))
+        if (RESP_OK != waitFinalResp(_cbUDNSRN, &ip, 30*1000))
             ip = NOIP;
         UNLOCK();
     }
