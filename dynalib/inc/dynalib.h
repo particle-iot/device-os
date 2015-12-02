@@ -57,6 +57,12 @@
     #define DYNALIB_FN(tablename,name) \
         (const void*)&name,
 
+#if !defined(SYSTEM_MINIMAL)
+#define DYNALIB_FN_NO_MINIMAL  DYNALIB_FN
+#else
+#define DYNALIB_FN_NO_MINIMAL(tablename, name) NULL,
+#endif
+
     #define DYNALIB_FN_PLACEHOLDER(tablename) \
         0,
 
@@ -98,6 +104,14 @@
     #else
         #error Unknown architecture
     #endif // __arm__
+
+#if !defined(SYSTEM_MINIMAL)
+#define DYNALIB_FN_NO_MINIMAL  DYNALIB_FN
+#else
+#define DYNALIB_FN_NO_MINIMAL(tablename, name)
+#endif
+
+
 #endif
 
 

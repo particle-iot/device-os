@@ -408,7 +408,10 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
           && (!output_uuid || json.write_string("u", bytes2hexbuf(module.suffix->sha, 32, buf)))
           && (!info || (json.write_string("f", module_function_string(module_function(info)))
                         && json.write_string("n", module_name(module_index(info), buf))
-                        && json.write_value("v", info->module_version)))
+                        && json.write_value("v", info->module_version)
+                        && (!info->flags || json.write_value("b", info->flags))
+                )
+                )
         // on the photon we have just one dependency, this will need generalizing for other platforms
           && json.write_attribute("d") && json.write('[');
 

@@ -44,7 +44,7 @@ typedef struct module_dependency_t {
 typedef struct module_info_t {
     const void* module_start_address;   /* the first byte of this module in flash */
     const void* module_end_address;     /* the last byte (exclusive) of this smodule in flash. 4 byte crc starts here. */
-    uint8_t reserved;
+    uint8_t flags;                      /* flag 0x01 - minimal build of module. */
     uint8_t reserved2;
     uint16_t module_version;            /* 16 bit version */
     uint16_t platform_id;               /* The platform this module was compiled for. */
@@ -58,7 +58,7 @@ typedef struct module_info_t {
 
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_start_address, 0);
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_end_address, 4);
-STATIC_ASSERT_MODULE_INFO_OFFSET(reserved, 8);
+STATIC_ASSERT_MODULE_INFO_OFFSET(flags, 8);
 STATIC_ASSERT_MODULE_INFO_OFFSET(reserved2, 9);
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_version, 10);
 STATIC_ASSERT_MODULE_INFO_OFFSET(platform_id, 12);
