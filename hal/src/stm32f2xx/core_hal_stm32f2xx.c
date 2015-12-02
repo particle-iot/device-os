@@ -46,6 +46,7 @@
 #include "stm32f2xx.h"
 #include "timer_hal.h"
 #include "dct.h"
+#include "hal_platform.h"
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -264,7 +265,7 @@ void HAL_Core_Setup(void) {
     bootloader_update_if_needed();
     HAL_Bootloader_Lock(true);
 
-#if !MODULAR_FIRMWARE
+#if !defined(MODULAR_FIRMWARE)
     module_user_init_hook();
 #endif
 }
