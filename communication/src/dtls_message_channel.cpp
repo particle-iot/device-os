@@ -82,6 +82,8 @@ ProtocolError DTLSMessageChannel::init(
 			MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
 	EXIT_ERROR(ret, "unable to configure defaults");
 
+	mbedtls_ssl_conf_handshake_timeout(&conf, 3000, 6000);
+
 	mbedtls_ssl_conf_rng(&conf, dtls_rng, nullptr);
 	mbedtls_ssl_conf_dbg(&conf, my_debug, nullptr);
 	mbedtls_ssl_conf_min_version(&conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
