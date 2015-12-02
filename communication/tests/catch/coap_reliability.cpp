@@ -49,7 +49,7 @@ message_id_t decode_id(Message& msg)
 
 SCENARIO("message IDs monotinically increment from 1")
 {
-	GIVEN("a CoAP message channel and a mock message")
+	GIVEN("a CoAP message channel and a message with no assigned ID")
 	{
 		Mock<MessageChannel> mock;
 		ForwardCoAPChannel channel(mock.get());
@@ -65,18 +65,24 @@ SCENARIO("message IDs monotinically increment from 1")
 		{
 			Message msg;
 			CHECK(channel.create(msg, 5)==NO_ERROR);
+			msg.set_length(4);
 			REQUIRE(channel.send(msg)==NO_ERROR);
 			THEN("the encoded message ID is 1")
 			{
 				REQUIRE(decode_id(msg)==1);
+				REQUIRE(msg.has_id());
+				REQUIRE(msg.get_id()==1);
 			}
 			AND_WHEN("a second message is sent")
 			{
 				Message msg;
 				CHECK(channel.create(msg, 5)==NO_ERROR);
+				msg.set_length(4);
 				REQUIRE(channel.send(msg)==NO_ERROR);
 				THEN("the encoded message ID is 2")
 				{
+					REQUIRE(msg.has_id());
+					REQUIRE(msg.get_id()==2);
 					REQUIRE(decode_id(msg)==2);
 				}
 

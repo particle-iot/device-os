@@ -62,8 +62,8 @@ public:
 		uint8_t* buf = msg.buf();
 		buf[2] = id >> 8;
 		buf[3] = id & 0xFF;
-
-		return T::send(msg);
+		msg.decode_id();
+		return base::send(msg);
 	}
 };
 
@@ -483,6 +483,10 @@ public:
 };
 
 
+/**
+ * T: the baseclass
+ * M: a callable type that provides the current system ticks
+ */
 template <class T, typename M>
 class CoAPReliableChannel : public T
 {
@@ -537,7 +541,7 @@ class CoAPReliableChannel : public T
 
 public:
 
-	CoAPReliableChannel(M m) : millis(m) {
+	CoAPReliableChannel(M m=0) : millis(m) {
 		delegateChannel.init(this);
 	}
 
