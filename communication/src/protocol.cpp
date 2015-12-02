@@ -206,6 +206,22 @@ int Protocol::begin()
 }
 
 /**
+ * Send the hello message over the channel.
+ * @param was_ota_upgrade_successful {@code true} if the previous OTA update was successful.
+ */
+ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
+{
+	Message message;
+	channel.create(message);
+
+	size_t len = build_hello(message, was_ota_upgrade_successful);
+	message.set_length(len);
+	last_message_millis = callbacks.millis();
+	return channel.send(message);
+}
+
+
+/**
  * Wait for a specific message type to be received.
  * @param message_type		The type of message wait for
  * @param timeout			The duration to wait for the message before giving up.

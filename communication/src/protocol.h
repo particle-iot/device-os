@@ -130,16 +130,7 @@ protected:
 	 * Send the hello message over the channel.
 	 * @param was_ota_upgrade_successful {@code true} if the previous OTA update was successful.
 	 */
-	ProtocolError hello(bool was_ota_upgrade_successful)
-	{
-		Message message;
-		channel.create(message);
-
-		size_t len = build_hello(message, was_ota_upgrade_successful);
-		message.set_length(len);
-		last_message_millis = callbacks.millis();
-		return channel.send(message);
-	}
+	ProtocolError hello(bool was_ota_upgrade_successful);
 
 	virtual size_t build_hello(Message& message, bool was_ota_upgrade_successful)=0;
 
