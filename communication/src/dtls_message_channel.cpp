@@ -267,9 +267,9 @@ extern "C" unsigned long mbedtls_timing_hardclock()
 
 extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
 {
-    uint32_t t = HAL_Timer_Microseconds();  // get uptime in nanoseconds
-    tv->tv_sec = t / 1000000;  // convert to seconds
-    tv->tv_usec = ( t % 1000000 );  // get remaining microseconds
+    uint32_t t = HAL_Timer_Milliseconds();  // get uptime in nanoseconds
+    tv->tv_sec = t / 1000;  // convert to seconds
+    tv->tv_usec = ( t % 1000 )*1000;  // get remaining microseconds
     return 0;  // return non-zero for error
 } // end _gettimeofday()
 
