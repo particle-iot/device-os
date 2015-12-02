@@ -81,3 +81,23 @@ test(PWM_AnalogWriteOnPinResultsInCorrectAnalogValue) {
     assertEqual(HAL_PWM_Get_AnalogValue(pin), 200);
     //To Do : Add test for remaining pins if required
 }
+
+test(PWM_FastAnalogWriteOnPinResultsInCorrectAnalogValue) {
+    pin_t pin = D0; // pin under test
+    // when
+    pinMode(pin, OUTPUT);
+
+    uint32_t avgPulseHigh = 0;
+    for(int i=0;i<100;i++) {
+    	analogWrite(pin, 25); // 10% Duty Cycle at 500Hz = 200us HIGH, 1800us LOW.
+        avgPulseHigh += pulseIn(pin, HIGH);
+    }
+    avgPulseHigh /= 100;
+    analogWrite(pin, 0);
+
+    // then
+    // avgPulseHigh should equal 200 +/- 50
+    assertMoreOrEqual(avgPulseHigh, 150);
+    assertLessOrEqual(avgPulseHigh, 250);
+}
+
