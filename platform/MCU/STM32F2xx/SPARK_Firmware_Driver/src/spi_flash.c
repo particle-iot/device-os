@@ -348,8 +348,6 @@ static uint8_t sFLASH_SendByte(uint8_t byte)
  */
 static void sFLASH_WriteEnable(void)
 {
-	uint8_t flashstatus = 0xFF;
-	
     /* Select the FLASH: Chip Select low */
     sFLASH_CS_LOW();
 
@@ -358,22 +356,24 @@ static void sFLASH_WriteEnable(void)
 
     /* Deselect the FLASH: Chip Select high */
     sFLASH_CS_HIGH();
-	
-	/* Check if Block protect bits are set */
-	
-	/* Select the FLASH: Chip Select low */
-	sFLASH_CS_LOW();
-	/* Send "Read Status Register" instruction */
-	sFLASH_SendByte(sFLASH_CMD_RDSR);
-	/* Send a dummy byte to generate the clock needed by the FLASH and put the
-	 * value of the status register in FLASH_Status variable */
-	flashstatus = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
-	/* Deselect the FLASH: Chip Select high */
-	sFLASH_CS_HIGH();
 
-	if ( flashstatus != 0x02 )
-	{
-		/* Select the FLASH: Chip Select low */
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION	
+	/* Check if Block protect bits are set */
+    uint8_t flashstatus = 0xFF;
+	
+    /* Select the FLASH: Chip Select low */
+    sFLASH_CS_LOW();
+    /* Send "Read Status Register" instruction */
+    sFLASH_SendByte(sFLASH_CMD_RDSR);
+    /* Send a dummy byte to generate the clock needed by the FLASH and put the
+     * value of the status register in FLASH_Status variable */
+    flashstatus = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+    /* Deselect the FLASH: Chip Select high */
+    sFLASH_CS_HIGH();
+
+    if ( flashstatus != 0x02 )
+    {
+        /* Select the FLASH: Chip Select low */
 		sFLASH_CS_LOW();
 		/* Send "Write Status Register" instruction */
 		sFLASH_SendByte(sFLASH_CMD_WRSR);
@@ -389,6 +389,7 @@ static void sFLASH_WriteEnable(void)
 		/* Deselect the FLASH: Chip Select high */
 		sFLASH_CS_HIGH();
 	}
+#endif
 }
 
 /**
