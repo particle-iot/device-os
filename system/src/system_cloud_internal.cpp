@@ -232,9 +232,11 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
     sockaddr_t addr;
     socklen_t size = sizeof(addr);
 	int received = socket_receivefrom(sparkSocket, buf, buflen, 0, &addr, &size);
-    DEBUG("received %d", received);
 
-	if (received>=0)
+	if (received!=0) {
+		DEBUG("received %d", received);
+	}
+	if (received>0)
     {
 #if PLATFORM_ID!=3
     		// filter out by destination IP and port
@@ -253,7 +255,6 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
     		}
 #endif
     }
-    DEBUG("received %d", received);
     return received;
 }
 
