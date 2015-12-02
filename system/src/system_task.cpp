@@ -254,22 +254,13 @@ void handle_cloud_connection(bool force_events)
             if (err)
             {
                 cloud_connection_failed();
-                if (0 > err)
-                {
-                    // Wrong key error, red
-                    LED_SetRGBColor(RGB_COLOR_RED);
-                }
-                else if (1 == err)
-                {
-                    // RSA decryption error, orange
-                    LED_SetRGBColor(RGB_COLOR_ORANGE);
-                }
-                else if (2 == err)
-                {
-                    // RSA signature verification error, magenta
-                    LED_SetRGBColor(RGB_COLOR_MAGENTA);
-                }
+                uint32_t color = RGB_COLOR_RED;
+                if (particle::protocol::DECRYPTION_ERROR==err)
+                		color = RGB_COLOR_ORANGE;
+                else if (particle::protocol::AUTHENTICATION_ERROR==err)
+                		color = RGB_COLOR_MAGENTA;
                 WARN("Cloud handshake failed, code=%d", err);
+                LED_SetRGBColor(color);
                 LED_On(LED_RGB);
                 // delay a little to be sure the user sees the LED color, since
                 // the socket may quickly disconnect and the connection retried, turning

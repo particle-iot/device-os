@@ -1603,7 +1603,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
   if (0 != decipher_aes_credentials(core_private_key,
                                     signed_encrypted_credentials,
                                     credentials))
-    return 1;
+    return DECRYPTION_ERROR;
 
   calculate_ciphertext_hmac(signed_encrypted_credentials, credentials, hmac);
 
@@ -1627,7 +1627,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
 
     return 0;
   }
-  else return 2;
+  else return AUTHENTICATION_ERROR;
 }
 
 inline void SparkProtocol::coded_ack(unsigned char *buf,
