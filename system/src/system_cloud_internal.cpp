@@ -599,6 +599,7 @@ int Spark_Connect()
     		port = PORT_COAPS;
 
     ServerAddress server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
     HAL_FLASH_Read_ServerAddress(&server_addr);
     DEBUG("HAL_FLASH_Read_ServerAddress() = type:%d,domain:%s,ip: %d.%d.%d.%d, port: %d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip), server_addr.port);
 
