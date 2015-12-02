@@ -21,6 +21,7 @@
 #include "service_debug.h"
 #include "rng_hal.h"
 #include "mbedtls/error.h"
+#include "mbedtls/ssl_internal.h"
 #include "timer_hal.h"
 #include <stdio.h>
 #include <string.h>
@@ -157,7 +158,8 @@ void DTLSMessageChannel::dispose()
 	server_public_len = 0;
 }
 
-ProtocolError DTLSMessageChannel::establish()
+
+ProtocolError DTLSMessageChannel::setup_context()
 {
 	int ret;
 
@@ -179,6 +181,21 @@ ProtocolError DTLSMessageChannel::establish()
 		WARN("unable to parse netogiated public key: -%x", -ret);
 		return IO_ERROR;
 	}
+
+	return NO_ERROR;
+}
+
+ProtocolError DTLSMessageChannel::establish()
+{
+	int ret;
+
+	ProtocolError error = setup_context();
+	if (error)
+		return error;
+
+
+//	mbedtls_ssl_derive_keys(&ssl_context);
+
 
 	do
 	{

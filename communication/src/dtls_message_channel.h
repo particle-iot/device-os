@@ -81,6 +81,8 @@ private:
     int send(const uint8_t* data, size_t len);
     int recv(uint8_t* data, size_t len);
 
+	ProtocolError setup_context();
+
  public:
 	ProtocolError init(const uint8_t* core_private, size_t core_private_len,
 		const uint8_t* core_public, size_t core_public_len,
