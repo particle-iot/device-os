@@ -32,11 +32,10 @@
 namespace particle {
 namespace protocol {
 
-class DTLSProtocol;
 
 class DTLSProtocol : public Protocol
 {
-	CoAPReliableChannel<CoAPChannel<DTLSMessageChannel>, decltype(SparkCallbacks::millis)> channel;
+	CoAPChannel<CoAPReliableChannel<DTLSMessageChannel, decltype(SparkCallbacks::millis)>> channel;
 
 	static void handle_seed(const uint8_t* data, size_t len)
 	{
@@ -48,7 +47,7 @@ class DTLSProtocol : public Protocol
 public:
     // todo - this a duplicate of LightSSLProtocol - factor out
 
-	DTLSProtocol() : Protocol(channel), channel(nullptr) {}
+	DTLSProtocol() : Protocol(channel) {}
 
 	void init(const char *id,
 	          const SparkKeys &keys,
