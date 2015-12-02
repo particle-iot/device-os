@@ -245,11 +245,11 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
     			// ignore the packet if from a different source
     			received = 0;
     		    DEBUG("received from a different address %d.%d.%d.%d:%d",
-    		    		cloud_endpoint.sa_data[0],
-				cloud_endpoint.sa_data[1],
-				cloud_endpoint.sa_data[2],
+    		    		cloud_endpoint.sa_data[2],
 				cloud_endpoint.sa_data[3],
-				((cloud_endpoint.sa_data[4]<<8)+cloud_endpoint.sa_data[5])
+				cloud_endpoint.sa_data[4],
+				cloud_endpoint.sa_data[5],
+				((cloud_endpoint.sa_data[0]<<8)+cloud_endpoint.sa_data[1])
     		    );
 
     		}
