@@ -31,6 +31,8 @@ extern "C" {
 
 typedef int cellular_result_t;
 
+typedef int (*_CALLBACKPTR)(int type, const char* buf, int len, void* param);
+
 /**
  * Power on and initialize the cellular module,
  * if USART3 not initialized, will be done on first call.
@@ -151,6 +153,12 @@ typedef struct CellularSignalHal CellularSignalHal;
  * Retrieve cellular signal strength info
  */
 cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved);
+
+/**
+ * Send AT command and wait for response
+ */
+cellular_result_t cellular_command(const char* format, _CALLBACKPTR cb /* = NULL*/,
+                              void* param /* = NULL*/, system_tick_t timeout_ms /*= 5000*/);
 
 #ifdef __cplusplus
 }

@@ -2,7 +2,6 @@
 #include "cellular_hal.h"
 #include "modem/mdm_hal.h"
 
-
 #define CHECK_SUCCESS(x) { if (!(x)) return -1; }
 
 static CellularCredentials cellularCredentials;
@@ -128,4 +127,11 @@ cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved)
     signal.rssi = status.rssi;
     signal.ber = status.ber;
     return 0;
+}
+
+cellular_result_t cellular_command(const char* format, _CALLBACKPTR cb /* = NULL*/,
+                              void* param /* = NULL*/, system_tick_t timeout_ms /*= 10000*/)
+{
+    electronMDM.sendFormated(format);
+    return electronMDM.waitFinalResp(cb, param, timeout_ms);
 }
