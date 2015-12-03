@@ -578,11 +578,21 @@ protected:
     NetStatus   _net; //!< collected network information
     IP          _ip;  //!< assigned ip address
     // management struture for sockets
-    typedef struct { int handle; system_tick_t timeout_ms; volatile bool connected; volatile int pending; } SockCtrl;
+    typedef struct {
+        int handle;
+        system_tick_t timeout_ms;
+        volatile bool connected;
+        volatile int pending;
+        volatile bool open;
+    } SockCtrl;
     // LISA-C has 6 TCP and 6 UDP sockets
     // LISA-U and SARA-G have 7 sockets
     SockCtrl _sockets[7];
     int _findSocket(int handle = MDM_SOCKET_ERROR/* = CREATE*/);
+    int _socketCloseHandleIfOpen(int socket);
+    int _socketCloseUnusedHandles(void);
+    int _socketSocket(int socket, IpProtocol ipproto, int port);
+    bool _socketFree(int socket);
     static MDMParser* inst;
     bool _init;
     bool _pwr;
