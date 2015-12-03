@@ -24,6 +24,7 @@
 #include "spark_wiring_network.h"
 #include "system_network.h"
 #include "cellular_hal.h"
+#include "spark_wiring_cellularsignal.h"
 
 #if Wiring_Cellular
 
@@ -62,6 +63,8 @@ public:
     {
         return network_ready(*this, 0,  NULL);
     }
+
+    CellularSignal RSSI();
 };
 
 

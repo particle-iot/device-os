@@ -38,6 +38,10 @@
 extern "C" {
 #endif
 
+#if (PLATFORM_ID==6 || PLATFORM_ID==8) && !defined(MODULAR_FIRMWARE)
+#define COMBINED_FIRMWARE_IMAGE 1
+#endif
+
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/
@@ -77,22 +81,37 @@ extern "C" {
     #define INTERNAL_FLASH_FAC_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE+FIRMWARE_IMAGE_SIZE)
 
 #else
+#ifdef COMBINED_FIRMWARE_IMAGE
+	#define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_SYSTEM_PART
+#else
     #define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_MONO_FIRMWARE
+#endif
     #define USER_FIRMWARE_IMAGE_LOCATION CORE_FW_ADDRESS
-    #ifndef FIRMWARE_IMAGE_SIZE
     #ifdef USE_SERIAL_FLASH
     #define FIRMWARE_IMAGE_SIZE     0x7E000 //504K
     #else
-    #define FIRMWARE_IMAGE_SIZE     0x60000 //384K (monolithic firmware size)
-    #endif
+	#ifdef COMBINED_FIRMWARE_IMAGE
+		#define FIRMWARE_IMAGE_SIZE 0x80000	// 512k system-part1+system-part2
+		#define TEST_FIRMWARE_IMAGE_SIZE 0x60000	// 384k for test firmware
+	#else
+	// this was "true" mono firmware. We are now using a hybrid where the firmware payload is 512k
+		#define FIRMWARE_IMAGE_SIZE     0x60000 //384K (monolithic firmware size)
+	#endif // COMBINED_FIRMWARE_IMAGE
     #endif
 
+#ifdef COMBINED_FIRMWARE_IMAGE
+	/* Internal Flash memory address where Factory programmed monolithic core firmware is located */
+	#define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + TEST_FIRMWARE_IMAGE_SIZE))
+	/* Internal Flash memory address where OTA upgraded monolithic core firmware will be saved */
+	#define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + TEST_FIRMWARE_IMAGE_SIZE))
+#else
     /* Internal Flash memory address where Factory programmed monolithic core firmware is located */
     #define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
     /* Internal Flash memory address where monolithic core firmware will be saved for backup/restore */
     //#define INTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
     /* Internal Flash memory address where OTA upgraded monolithic core firmware will be saved */
     #define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
+#endif
 
     #ifdef USE_SERIAL_FLASH
     /* External Flash memory address where Factory programmed core firmware is located */

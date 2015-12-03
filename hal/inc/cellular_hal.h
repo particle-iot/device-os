@@ -138,6 +138,21 @@ bool cellular_sim_ready(void* reserved);
 void cellular_cancel(bool cancel, bool calledFromISR, void* reserved);
 
 #ifdef __cplusplus
+struct CellularSignalHal
+{
+    int rssi = 0;
+    int ber = 0;
+};
+#else
+typedef struct CellularSignalHal CellularSignalHal;
+#endif
+
+/**
+ * Retrieve cellular signal strength info
+ */
+cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved);
+
+#ifdef __cplusplus
 }
 #endif
 

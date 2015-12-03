@@ -97,5 +97,21 @@ caddr_t _sbrk(int incr)
     return (caddr_t) prev_heap;
 }
 
-} /* extern "C" */
+/* Bare metal, no processes, so error */
+int _kill(int pid, int sig)
+{
+	return -1;
+}
 
+/* Bare metal, no processes, so always process id 1 */
+int _getpid(void)
+{
+	return 1;
+}
+
+void _exit(int status) {
+	PANIC(Exit,"Exit Called");
+	while (1);
+}
+
+}

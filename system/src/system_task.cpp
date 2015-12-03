@@ -289,7 +289,6 @@ void manage_cloud_connection(bool force_events)
 {
     if (SPARK_CLOUD_CONNECT == 0)
     {
-        INFO("Cloud: disconnecting");
         cloud_disconnect();
     }
     else // cloud connection is wanted
@@ -403,6 +402,7 @@ void cloud_disconnect(bool closeSocket)
 
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
+        INFO("Cloud: disconnecting");
         if (closeSocket)
         Spark_Disconnect();
 

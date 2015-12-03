@@ -65,10 +65,6 @@ void CallConstructors(void)
 void *__dso_handle = NULL;
 }
 
-/*
- * Implement C++ new/delete operators using the heap
- */
-
 extern "C" {
 
 /******************************************************
@@ -112,7 +108,28 @@ uint32_t freeheap()
     return &__Stack_Init-heap_end;
 }
 
+/* Bare metal, no processes, so error */
+int _kill(int pid, int sig)
+{
+	return -1;
 }
+
+/* Bare metal, no processes, so always process id 1 */
+int _getpid(void)
+{
+	return 1;
+}
+
+void _exit(int status) {
+
+    PANIC(Exit,"Exit Called");
+
+    while (1) {
+        ;
+    }
+}
+
+
 
 #ifdef __CS_SOURCERYGXX_REV__
 #if USE_UART_FOR_STDIO
@@ -229,4 +246,16 @@ int _read(int file, char *ptr, int len) {
     return num;
 }
 #endif
+
+
+/*
+int _write(int file, char *ptr, int len) { return 0; }
+int _read(int file, char *ptr, int len) { return 0; }
+int _close(int file) { return 0; }
+int _lseek(int file, int ptr, int dir) { return 0; }
+int _fstat(int file, void *sbuf) { return 0; }
+int _isatty(int file) { return 0; }
+*/
+
+} /* extern "C" */
 

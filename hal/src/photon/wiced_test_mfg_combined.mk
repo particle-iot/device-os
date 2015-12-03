@@ -38,8 +38,7 @@ endif
 SERVER_PUB_KEY=cloud_public.der
 FIRMWARE_BUILD=$(FIRMWARE)/build
 TARGET_PARENT=$(FIRMWARE_BUILD)/target
-TARGET=$(TARGET_PARENT)/release-$(VERSION_STRING)
-OUT=$(TARGET)
+OUT=$(FIRMWARE_BUILD)/releases/release-$(VERSION_STRING)-p$(PLATFORM_ID)
 DCT_MEM=$(OUT)/dct_pad.bin
 DCT_PREP=dct_prep.bin
 ERASE_SECTOR=$(OUT)/erase_sector.bin
@@ -79,12 +78,11 @@ CRC=crc32
 XXD=xxd
 OPTS=
 
-all: combined
+all: combined-full
 
 setup:
 	-mkdir $(TARGET_PARENT)
 	-mkdir $(TARGET)
-
 
 clean:
 	-rm -rf $(TARGET_PARENT)
@@ -107,8 +105,10 @@ dct:
 	dd if=/dev/zero ibs=1k count=112 | tr "\000" "\377" > $(DCT_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(DCT_MEM) ibs=1k count=112
 	dd if=$(DCT_PREP) of=$(DCT_MEM) conv=notrunc
+	# inject the version string in to the DCT image
 	dd if=/dev/zero bs=1 count=32 of=$(DCT_MEM) seek=9406 conv=notrunc
 	echo -n $(VERSION_STRING) | dd bs=1 of=$(DCT_MEM) seek=9406 conv=notrunc
+
 
 $(MFG_TEST_BIN):
 	cd "$(WICED_SDK)"; "./make" $(CMD) $(OPTS)
@@ -134,16 +134,16 @@ firmware:
 	dd if=$(FIRMWARE_BIN) of=$(FIRMWARE_MEM) conv=notrunc
 	cp $(FIRMWARE_ELF) $(OUT)
 
-user:	system
+user: 
 	@echo building factory default modular user app to $(USER_MEM)
 	-rm $(USER_MEM)
 	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID)  PRODUCT_ID=$(PRODUCT_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
 	cp $(USER_BIN) $(USER_MEM)
 
-system:
+system-minimal:
 	# The system module is composed of part1 and part2 concatenated together
 	# adjust the module_info end address and the final CRC
-	@echo building modular system firmware to $(SYSTEM_MEM)
+	@echo building minimal modular system firmware to $(SYSTEM_MEM)
 	-rm $(SYSTEM_MEM)
 	$(MAKE) -C $(MODULAR_DIR) COMPILE_LTO=n MINIMAL=y PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) PRODUCT_ID=$(PRODUCT_ID) all
 	dd if=/dev/zero ibs=1 count=393212 | tr "\000" "\377" > $(SYSTEM_MEM)
@@ -156,13 +156,29 @@ system:
 	echo 03 | $(XXD) -r -p | dd bs=1 of=$(SYSTEM_MEM) seek=402 conv=notrunc
 	$(CRC) $(SYSTEM_MEM) | cut -c 1-10 | $(XXD) -r -p >> $(SYSTEM_MEM)
 
+system-full:
+	# The system module is composed of part1 and part2 concatenated together
+	@echo building full modular system firmware to $(SYSTEM_MEM)
+	-rm $(SYSTEM_MEM)
+	$(MAKE) -C $(MODULAR_DIR) COMPILE_LTO=n PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) PRODUCT_ID=$(PRODUCT_ID) all
+	# 512k - 4 bytes for the CRC
+	dd if=/dev/zero ibs=1 count=524284 | tr "\000" "\377" > $(SYSTEM_MEM)
+	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc
+	dd if=$(SYSTEM_PART2_BIN) bs=1k of=$(SYSTEM_MEM) seek=256 conv=notrunc
+	# 7FFFC is the maximum length (512k-4 bytes). Place in end address in module_info struct, in little endian order
+	echo fcff0908 | $(XXD) -r -p | dd bs=1 of=$(SYSTEM_MEM) seek=392 conv=notrunc
+	# append the CRC for the combined module
+	$(CRC) $(SYSTEM_MEM) | cut -c 1-10 | $(XXD) -r -p >> $(SYSTEM_MEM)
+
+
+	
 wl:
 	cd "$(WICED_SDK)/$(MFG_TEST_DIR)"; make
-	cp $(WICED_SDK)/$(MFG_TEST_DIR)/wl43362A2.exe $(TARGET)/wl.exe
+	cp $(WICED_SDK)/$(MFG_TEST_DIR)/wl43362A2.exe $(OUT)/wl.exe
 
-combined: setup bootloader dct mfg_test user system $(WL_DEP) checks
+combined-minimal: setup bootloader dct mfg_test user system-minimal $(WL_DEP) checks-minimal
 	@echo Building combined image to $(COMBINED_MEM)
-	-rm $(COMBINED_MEM)
+	-rm $(COMBINED_MEM)	
 	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(SYSTEM_MEM) $(USER_MEM) > $(COMBINED_MEM)
 
 	# Generate combined.elf from combined.bin
@@ -172,21 +188,50 @@ combined: setup bootloader dct mfg_test user system $(WL_DEP) checks
 	${TOOLCHAIN_PREFIX}strip -s $(COMBINED_ELF)
 	-rm -rf $(OUT)/temp.elf
 
-flash: combined
+user-full: user
+	# the application image (tinker) is injected into the 2nd EEPROM page
+	dd if=$(USER_MEM) bs=1k of=$(DCT_MEM) seek=32 conv=notrunc
+
+
+combined-full: setup bootloader dct mfg_test user-full system-full $(WL_DEP) user-full checks-full
+	@echo Building combined full image to $(COMBINED_MEM)
+	-rm $(COMBINED_MEM)
+	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(MFG_TEST_MEM) $(SYSTEM_MEM) > $(COMBINED_MEM)
+
+	# Generate combined.elf from combined.bin
+	${TOOLCHAIN_PREFIX}ld -b binary -r -o $(OUT)/temp.elf $(COMBINED_MEM)
+	${TOOLCHAIN_PREFIX}objcopy --rename-section .data=.text --set-section-flags .data=alloc,code,load $(OUT)/temp.elf
+	${TOOLCHAIN_PREFIX}ld $(OUT)/temp.elf -T combined_bin_to_elf.ld -o $(COMBINED_ELF)
+	${TOOLCHAIN_PREFIX}strip -s $(COMBINED_ELF)
+	-rm -rf $(OUT)/temp.elf
+
+
+st-flash: combined-full
 	st-flash write $(COMBINED_MEM) 0x8000000
 
-checks:
-	$(call assert_filebyte,$(FIRMWARE_MEM),400,0$(PLATFORM_ID))
+openocd-flash: 
+	openocd -f $(OPENOCD_HOME)/interface/ftdi/particle-ftdi.cfg -f $(OPENOCD_HOME)/target/stm32f2x.cfg  -c "init; reset halt" -c "flash protect 0 0 11 off" -c "program $(COMBINED_MEM) 0x08000000 reset exit"
+
+checks-common:
 	$(call assert_filesize,$(BOOTLOADER_MEM),16384)
+	$(call assert_filebyte,$(FIRMWARE_MEM),400,0$(PLATFORM_ID))
 	$(call assert_filebyte,$(BOOTLOADER_MEM),400,0$(PLATFORM_ID))
 	$(call assert_filesize,$(DCT_MEM),114688)
 	$(call assert_filesize,$(MFG_TEST_MEM),393216)
 	$(call assert_filebyte,$(MFG_TEST_MEM),400,0$(PLATFORM_ID))
-	$(call assert_filesize,$(SYSTEM_MEM),393216)
+	$(call assert_filebyte,$(SYSTEM_MEM),400,0$(PLATFORM_ID))
 	$(call assert_filebyte,$(SYSTEM_MEM),400,0$(PLATFORM_ID))
 
+checks-minimal: checks-common
+	$(call assert_filesize,$(SYSTEM_MEM),393216)
 
-.PHONY: wl mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM) prep_dct write_version checks
+checks-full: checks-common
+	$(call assert_filesize,$(SYSTEM_MEM),524288)
+	# check that system part2 has platform ID set (256k + 400)
+	$(call assert_filebyte,$(SYSTEM_MEM),262544,0$(PLATFORM_ID))
+
+
+.PHONY: wl mfg_test clean all bootloader dct mfg_test firmware $(MFG_TEST_BIN) $(MFG_TEST_MEM) prep_dct write_version checks system-minimal system-full
 
 DFU_USB_ID=2b04:d006
 DFU_DCT = dfu-util -d $(DFU_USB_ID) -a 1 --dfuse-address
