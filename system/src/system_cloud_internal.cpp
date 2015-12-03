@@ -917,12 +917,17 @@ bool system_cloud_active()
     if (!SPARK_CLOUD_SOCKETED)
         return false;
 
-    system_tick_t now = millis();
-    if (SPARK_CLOUD_CONNECTED && ((now-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
+#if HAL_PLATFORM_CLOUD_UDP
+    if (!HAL_Feature_Get(FEATURE_CLOUD_UDP))
+#endif
     {
-    	WARN("Disconnecting cloud due to inactivity! %d, %d", now, lastCloudEvent);
-    	cloud_disconnect(false);
-        return false;
+        system_tick_t now = millis();
+        if (SPARK_CLOUD_CONNECTED && ((now-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
+        {
+        	WARN("Disconnecting cloud due to inactivity! %d, %d", now, lastCloudEvent);
+        	cloud_disconnect(false);
+            return false;
+        }
     }
 #endif
     return true;
