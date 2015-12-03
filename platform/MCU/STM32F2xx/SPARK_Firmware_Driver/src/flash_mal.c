@@ -79,7 +79,7 @@ uint16_t FLASH_SectorToWriteProtect(flash_device_t device, uint32_t startAddress
 {
 	uint16_t sector = 0;
 	if (device==FLASH_INTERNAL)
-		sector = InternalSectorToWriteProtect(device);
+		sector = InternalSectorToWriteProtect(startAddress);
 	return sector;
 }
 
