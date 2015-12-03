@@ -227,6 +227,7 @@ public:
     { SystemClass::sleep(wakeUpPin, edgeTriggerMode, seconds); }
 
     static bool connected(void) { return spark_connected(); }
+    static bool disconnected(void) { return !connected(); }
     static void connect(void) { spark_connect(); }
     static void disconnect(void) { spark_disconnect(); }
     static void process(void) { spark_process(); }
