@@ -68,7 +68,12 @@ typedef struct __attribute__((packed)) application_dct {
     platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];//100 bytes
     uint16_t product_store[12];
     uint8_t antenna_selection;           // 0xFF is uninitialized
+#if PLATFORM_ID == 88
+    uint16_t wiced_application;          // 0x5AA5 is to indicate that the bootloader is going to jump to WICED application, or jump to Particle system application
+    uint8_t reserved2[1279];
+#else
     uint8_t reserved2[1281];
+#endif
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -88,6 +93,9 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_FLASH_MODULES_OFFSET (offsetof(application_dct_t, flash_modules))
 #define DCT_PRODUCT_STORE_OFFSET (offsetof(application_dct_t, product_store))
 #define DCT_ANTENNA_SELECTION_OFFSET (offsetof(application_dct_t, antenna_selection))
+#if PLATFORM_ID == 88
+#define DCT_WICED_APPLICATION_OFFSET (offsetof(application_dct_t, wiced_application))
+#endif
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
@@ -103,6 +111,9 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_FLASH_MODULES_SIZE  (sizeof(application_dct_t::flash_modules))
 #define DCT_PRODUCT_STORE_SIZE  (sizeof(application_dct_t::product_store))
 #define DCT_ANTENNA_SELECTION_SIZE  (sizeof(application_dct_t::antenna_selection))
+#if PLATFORM_ID == 88
+#define DCT_WICED_APPLICATION_SIZE  (sizeof(application_dct_t::wiced_application))
+#endif
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -127,8 +138,14 @@ STATIC_ASSERT_DCT_OFFSET(padding, 2850 /* 2082 + 768 */);
 STATIC_ASSERT_DCT_OFFSET(flash_modules, 2852 /* 2850 + 2 */);
 STATIC_ASSERT_DCT_OFFSET(product_store, 2952 /* 2852 + 100 */);
 STATIC_ASSERT_DCT_OFFSET(antenna_selection, 2976 /* 2952 + 24 */);
+#if PLATFORM_ID == 88
+STATIC_ASSERT_DCT_OFFSET(wiced_application, 2977 /* 2976 + 1 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 2979 /* 2977 + 2 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2979 + 1279 */);
+#else
 STATIC_ASSERT_DCT_OFFSET(reserved2, 2977 /* 2976 + 1 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2952 + 1282 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2977 + 1281 */);
+#endif
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);

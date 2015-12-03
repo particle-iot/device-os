@@ -585,6 +585,21 @@ static uint8_t  EP0_TxSent (void  *pdev)
     {
       /* Decode the required address */
       Addr = ((wBlockNum - 2) * XFERSIZE) + Pointer;
+	  
+#if PLATFORM_ID == 88
+      if( (usbd_dfu_AltSet==0) && (Addr==0x0800C000 || Addr==0x08020000) )
+      {
+        uint32_t first_word = *(uint32_t *)MAL_Buffer;
+        if( (first_word & 0x2FFC0000) == 0x20000000 )
+        {
+          uint16_t wiced_app_flag;
+          if(Addr == 0x0800C000) wiced_app_flag = 0x5AA5;
+          else wiced_app_flag = 0x1234;
+
+          Save_Wiced_App_Flag((const uint16_t *)&wiced_app_flag);
+        }
+      }
+#endif
 
       /* Preform the write operation */
       MAL_Write(usbd_dfu_AltSet, Addr, wlength);

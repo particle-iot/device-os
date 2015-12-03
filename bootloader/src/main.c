@@ -117,6 +117,38 @@ int main(void)
     SysTick_Configuration();
 
     platform_startup();
+	
+#if PLATFORM_ID == 88
+    uint16_t wiced_app_flag;
+    Load_Wiced_App_Flag(&wiced_app_flag);
+    if(wiced_app_flag == 0x5AA5)	// WICED application available
+    {
+        if(BUTTON_GetState(BUTTON1) != BUTTON1_PRESSED)
+        {
+    	    SysTick_Disable();
+
+            __asm( "MOV LR,        #0xFFFFFFFF" );
+            __asm( "MOV R1,        #0x01000000" );
+            __asm( "MSR APSR_nzcvq,     R1" );
+            __asm( "MOV R1,        #0x00000000" );
+            __asm( "MSR PRIMASK,   R1" );
+            __asm( "MSR FAULTMASK, R1" );
+            __asm( "MSR BASEPRI,   R1" );
+            __asm( "MSR CONTROL,   R1" );
+
+            ApplicationAddress = 0x0800C000;
+            JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
+            JumpAddress |= 0x00000001; /* Last bit of jump address indicates whether destination is Thumb or ARM code */
+            __asm volatile ("BX %0" : : "r" (JumpAddress) );
+        }
+        else
+        {
+            // Jump to run DFU directly.
+        }
+    }
+    else	// Run Particle application by default
+    {
+#endif
 
     USE_SYSTEM_FLAGS = 1;
 
@@ -408,6 +440,10 @@ int main(void)
     FACTORY_RESET_MODE = 0;         // ensure the LED is slow
     OTA_FLASH_AVAILABLE = 0;
     REFLASH_FROM_BACKUP = 0;
+	
+#if PLATFORM_ID == 88
+    }
+#endif
 
     LED_SetRGBColor(RGB_COLOR_YELLOW);
 
