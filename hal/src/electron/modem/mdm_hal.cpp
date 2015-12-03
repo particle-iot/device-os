@@ -1224,7 +1224,7 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
             if (ipproto == MDM_IPPROTO_UDP) {
                 // sending port can only be set on 2G/3G modules
                 if (port != -1) {
-                    sendFormated("AT+USOCR=17,%d\r\n", port);
+                    sendFormated("AT+USOCR=17\r\n");
                 }
             } else /*(ipproto == MDM_IPPROTO_TCP)*/ {
                 sendFormated("AT+USOCR=6\r\n");
@@ -1235,7 +1235,7 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
                 DEBUG_D("Socket %d: handle %d was created\r\n", socket, handle);
                 _sockets[socket].handle     = handle;
                 _sockets[socket].timeout_ms = TIMEOUT_BLOCKING;
-                _sockets[socket].connected  = false;
+                _sockets[socket].connected  = (ipproto == MDM_IPPROTO_UDP);
                 _sockets[socket].pending    = 0;
             }
             else
@@ -1471,6 +1471,7 @@ int MDMParser::_cbUSORF(int type, const char* buf, int len, USORFparam* param)
             memcpy(param->buf, &buf[len-1-sz], sz);
             param->ip = IPADR(a,b,c,d);
             param->port = p;
+            param->len = sz;
         }
     }
     return WAIT;
@@ -1500,6 +1501,7 @@ int MDMParser::socketRecvFrom(int socket, IP* ip, int* port, char* buf, int len)
                     _sockets[socket].pending -= blk;
                     *ip = param.ip;
                     *port = param.port;
+                    blk = param.len;
                     len -= blk;
                     cnt += blk;
                     buf += blk;

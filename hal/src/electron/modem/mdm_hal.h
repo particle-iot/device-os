@@ -561,7 +561,7 @@ protected:
     static int _cbUSOCR(int type, const char* buf, int len, int* handle);
     static int _cbUSOCTL(int type, const char* buf, int len, int* handle);
     static int _cbUSORD(int type, const char* buf, int len, char* out);
-    typedef struct { char* buf; IP ip; int port; } USORFparam;
+    typedef struct { char* buf; IP ip; int port; int len; } USORFparam;
     static int _cbUSORF(int type, const char* buf, int len, USORFparam* param);
     typedef struct { char* buf; char* num; } CMGRparam;
     static int _cbCUSD(int type, const char* buf, int len, char* resp);
