@@ -83,7 +83,7 @@ all: combined-full
 setup:
 	-mkdir $(TARGET_PARENT)
 	-mkdir $(TARGET)
-
+	-mkdir $(OUT)
 clean:
 	-rm -rf $(TARGET_PARENT)
 	-rm $(MFG_TEST_BIN)
