@@ -72,8 +72,6 @@ public:
 private:
 
 	friend int dtls_rng(void* handle, uint8_t* data, size_t len);
-	void notify_random(uint8_t* data, size_t len);
-	uint8_t* save_handshake_randbytes;
 
 	mbedtls_ssl_context ssl_context;
 	mbedtls_ssl_config conf;
@@ -100,7 +98,7 @@ private:
 
 
  public:
-	DTLSMessageChannel() : save_handshake_randbytes(nullptr) {}
+	DTLSMessageChannel() {}
 
 	ProtocolError init(const uint8_t* core_private, size_t core_private_len,
 		const uint8_t* core_public, size_t core_public_len,

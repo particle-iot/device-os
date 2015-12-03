@@ -1224,7 +1224,7 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
             if (ipproto == MDM_IPPROTO_UDP) {
                 // sending port can only be set on 2G/3G modules
                 if (port != -1) {
-                    sendFormated("AT+USOCR=17\r\n");
+                    sendFormated("AT+USOCR=17,%d\r\n", port);
                 }
             } else /*(ipproto == MDM_IPPROTO_TCP)*/ {
                 sendFormated("AT+USOCR=6\r\n");
