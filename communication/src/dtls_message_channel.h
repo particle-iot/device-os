@@ -56,9 +56,24 @@ public:
 		void (*handle_seed)(const uint8_t* seed, size_t length);
 		int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
 		int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
+
+		// persistence
+		/**
+		 * Saves the given buffer.
+		 * Returns 0 on success.
+		 */
+		int (*save)(const void* data, size_t length);
+		/**
+		 * Restore to the given buffer. Returns the number of bytes restored.
+		 */
+		int (*restore)(void* data, size_t length);
 	};
 
 private:
+
+	friend int dtls_rng(void* handle, uint8_t* data, size_t len);
+	void notify_random(uint8_t* data, size_t len);
+	uint8_t* save_handshake_randbytes;
 
 	mbedtls_ssl_context ssl_context;
 	mbedtls_ssl_config conf;
@@ -83,7 +98,10 @@ private:
 
 	ProtocolError setup_context();
 
+
  public:
+	DTLSMessageChannel() : save_handshake_randbytes(nullptr) {}
+
 	ProtocolError init(const uint8_t* core_private, size_t core_private_len,
 		const uint8_t* core_public, size_t core_public_len,
 		const uint8_t* server_public, size_t server_public_len,

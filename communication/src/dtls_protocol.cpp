@@ -11,6 +11,7 @@ void DTLSProtocol::init(const char *id,
 	memcpy(device_id, id, sizeof(device_id));
 	initialize_ping(0,0);		// do not send pings from the client over the UDP connection
 	DTLSMessageChannel::Callbacks channelCallbacks;
+	memset(&channelCallbacks,0, sizeof(channelCallbacks));
 	channelCallbacks.millis = callbacks.millis;
 	channelCallbacks.handle_seed = handle_seed;
 	channelCallbacks.receive = callbacks.receive;

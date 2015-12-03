@@ -28,6 +28,130 @@
 
 namespace particle { namespace protocol {
 
+
+class SessionPersist
+{
+public:
+
+	using save_fn_t = decltype(DTLSMessageChannel::Callbacks::save);
+	using restore_fn_t = decltype(DTLSMessageChannel::Callbacks::restore);
+
+private:
+
+	uint16_t size;
+
+	uint8_t randbytes[sizeof(mbedtls_ssl_handshake_params::randbytes)];
+	decltype(mbedtls_ssl_session::ciphersuite) ciphersuite;
+	decltype(mbedtls_ssl_session::compression) compression;
+	decltype(mbedtls_ssl_session::id_len) id_len;
+	uint8_t id[sizeof(mbedtls_ssl_session::id)];
+	uint8_t master[sizeof(mbedtls_ssl_session::master)];
+	decltype(mbedtls_ssl_context::in_epoch) in_epoch;
+
+	void restore_session(mbedtls_ssl_session* session)
+	{
+		session->ciphersuite = ciphersuite;
+		session->compression = compression;
+		session->id_len = id_len;
+		memcpy(session->id, id, sizeof(id));
+		memcpy(session->master, master, sizeof(master));
+	}
+
+	void save_session(mbedtls_ssl_session* session)
+	{
+		ciphersuite = session->ciphersuite;
+		compression = session->compression;
+		id_len = session->id_len;
+		memcpy(id, session->id, sizeof(id));
+		memcpy(master, session->master, sizeof(master));
+	}
+
+	bool restore_this_from(restore_fn_t restorer)
+	{
+		if (restorer)
+		{
+			if (restorer(this, sizeof(*this))!=sizeof(*this))
+				return false;
+		}
+		return true;
+	}
+
+	void save_this_with(save_fn_t saver)
+	{
+		if (saver)
+			saver(this, sizeof(*this));
+	}
+
+public:
+
+	void clear(save_fn_t saver)
+	{
+		size = 0;
+		save_this_with(saver);
+	}
+
+	void save(const uint8_t* random, mbedtls_ssl_context* context, save_fn_t saver);
+
+	bool restore(mbedtls_ssl_context* context, restore_fn_t restorer);
+
+};
+
+void SessionPersist::save(const uint8_t* random, mbedtls_ssl_context* context, save_fn_t saver)
+{
+	if (context->state==MBEDTLS_SSL_HANDSHAKE_OVER)
+	{
+		in_epoch = context->in_epoch;
+		memcpy(randbytes, random, sizeof(randbytes));
+		save_session(context->session);
+		save_this_with(saver);
+		size = sizeof(*this);
+	}
+	else
+	{
+		// invalid state
+		clear(saver);
+	}
+}
+
+bool SessionPersist::restore(mbedtls_ssl_context* context, restore_fn_t restorer)
+{
+	if (!restore_this_from(restorer))
+		return false;
+
+	if (size!=sizeof(*this))
+		return false;
+
+	mbedtls_ssl_session_reset(context);
+
+	context->state = MBEDTLS_SSL_HANDSHAKE_OVER;
+	context->in_epoch = in_epoch;
+	memcpy(context->handshake->randbytes, randbytes, sizeof(randbytes));
+	restore_session(context->session_negotiate);
+	context->transform_negotiate->ciphersuite_info = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
+
+	if (!context->transform_negotiate->ciphersuite_info)
+	{
+		DEBUG("unknown ciphersuite with id %d", ciphersuite);
+		return false;
+	}
+
+	int err = mbedtls_ssl_derive_keys(context);
+	if (err)
+	{
+		DEBUG("derive keys failed with %d", err);
+		return false;
+	}
+
+	context->session = context->session_negotiate;
+	context->transform = context->transform_negotiate;
+	context->session_negotiate = nullptr;
+	context->transform_negotiate = nullptr;
+	return true;
+}
+
+
+SessionPersist sessionPersist;
+
 // mbedtls_ecp_gen_keypair
 // see also gen_key.c and mbedtls_ecp_gen_key
 
@@ -50,8 +174,9 @@ static void my_debug( void *ctx, int level,
 }
 
 // todo - would like to make this a callback
-static int dtls_rng(void* handle, uint8_t* data, size_t len)
+int dtls_rng(void* handle, uint8_t* data, const size_t len_)
 {
+	size_t len = len_;
 	while (len>=4)
 	{
 		*((uint32_t*)data) = HAL_RNG_GetRandomNumber();
@@ -62,9 +187,20 @@ static int dtls_rng(void* handle, uint8_t* data, size_t len)
 	{
 		*data++ = HAL_RNG_GetRandomNumber();
 	}
+
+	DTLSMessageChannel* ch = (DTLSMessageChannel*)handle;
+	if (ch)
+		ch->notify_random(data, len_);
 	return 0;
 }
 
+void DTLSMessageChannel::notify_random(uint8_t* data, size_t len)
+{
+	if (save_handshake_randbytes && ssl_context.handshake && ssl_context.handshake->randbytes<=data && ssl_context.handshake->randbytes+64>data)
+	{
+		memcpy(save_handshake_randbytes+(data-ssl_context.handshake->randbytes), data, len);
+	}
+}
 
 ProtocolError DTLSMessageChannel::init(
 		const uint8_t* core_private, size_t core_private_len,
@@ -76,15 +212,13 @@ ProtocolError DTLSMessageChannel::init(
 	int ret;
 	this->callbacks = callbacks;
 
-	//mbedtls_debug_set_threshold(255);
-
 	ret = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT,
 			MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
 	EXIT_ERROR(ret, "unable to configure defaults");
 
 	mbedtls_ssl_conf_handshake_timeout(&conf, 3000, 6000);
 
-	mbedtls_ssl_conf_rng(&conf, dtls_rng, nullptr);
+	mbedtls_ssl_conf_rng(&conf, dtls_rng, this);
 	mbedtls_ssl_conf_dbg(&conf, my_debug, nullptr);
 	mbedtls_ssl_conf_min_version(&conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
 
@@ -119,7 +253,6 @@ inline int DTLSMessageChannel::recv(uint8_t* data, size_t len)
 	return callbacks.receive(data, len, callbacks.tx_context);
 }
 
-
 int DTLSMessageChannel::send_( void *ctx, const unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
 	int count = channel->send(buf, len);
@@ -132,10 +265,10 @@ int DTLSMessageChannel::send_( void *ctx, const unsigned char *buf, size_t len )
 int DTLSMessageChannel::recv_( void *ctx, unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
 	int count = channel->recv(buf, len);
-	if (count == 0)
+	if (count == 0) {
 		// 0 means EOF in this context
 		return MBEDTLS_ERR_SSL_WANT_READ;
-
+	}
 	return count;
 }
 
@@ -147,7 +280,7 @@ void DTLSMessageChannel::init()
 	mbedtls_ssl_config_init (&conf);
 	mbedtls_x509_crt_init (&clicert);
 	mbedtls_pk_init (&pkey);
-//	mbedtls_debug_set_threshold(debug_level);
+	mbedtls_debug_set_threshold(1);
 }
 
 void DTLSMessageChannel::dispose()
@@ -164,7 +297,6 @@ void DTLSMessageChannel::dispose()
 ProtocolError DTLSMessageChannel::setup_context()
 {
 	int ret;
-
 	ret = mbedtls_ssl_setup(&ssl_context, &conf);
 	EXIT_ERROR(ret, "unable to setup SSL context");
 
@@ -195,9 +327,14 @@ ProtocolError DTLSMessageChannel::establish()
 	if (error)
 		return error;
 
+	if (sessionPersist.restore(&ssl_context, callbacks.restore))
+	{
+		DEBUG("restored session from persisted session data");
+		return NO_ERROR;
+	}
 
-//	mbedtls_ssl_derive_keys(&ssl_context);
-
+	uint8_t random[64];
+	this->save_handshake_randbytes = random;
 
 	do
 	{
@@ -206,10 +343,17 @@ ProtocolError DTLSMessageChannel::establish()
 	while(ret == MBEDTLS_ERR_SSL_WANT_READ ||
 	      ret == MBEDTLS_ERR_SSL_WANT_WRITE);
 
+	this->save_handshake_randbytes = nullptr;
+
 	if (ret)
 	{
 		mbedtls_ssl_session_reset(&ssl_context);
 		DEBUG("handshake failed -%x", -ret);
+		sessionPersist.clear(callbacks.save);
+	}
+	else
+	{
+		sessionPersist.save(random, &ssl_context, callbacks.save);
 	}
 	return ret==0 ? NO_ERROR : IO_ERROR;
 }
