@@ -379,47 +379,35 @@ uint32_t HAL_CAN_Write_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmessag
 
 
                     CanTxMsg txmessage;
-                    txmessage.ExtId = 0x1234;
-                    txmessage.IDE = CAN_Id_Extended;
-                    txmessage.RTR = CAN_RTR_DATA;
-                    txmessage.DLC = 8;     
-                    txmessage.Data[0] = 1;
-                    txmessage.Data[1] = 2;
-                    txmessage.Data[2] = 3;
-                    txmessage.Data[3] = 4;
-                    txmessage.Data[4] = 5;
-                    txmessage.Data[5] = 6;
-                    txmessage.Data[6] = 7;
-                    txmessage.Data[7] = 8;
-//                    if (true == pmessage->Ext)
-//                    {
-//                      txmessage.ExtId = (pmessage->ID & 0x1FFFFFFFUL);
-//                      txmessage.StdId = 0U;
-//                      txmessage.IDE = CAN_Id_Extended;
-//                    }
-//                    else
-//                    {
-//                      txmessage.ExtId = 0UL;
-//                      txmessage.StdId = (pmessage->ID & 0x7FFUL);  
-//                      txmessage.IDE = CAN_Id_Standard;
-//                    }
-//                    if (true == pmessage->rtr)
-//                    {
-//                      txmessage.RTR = CAN_RTR_REMOTE;
-//                    }
-//                    else
-//                    {
-//                      txmessage.RTR = CAN_RTR_DATA;
-//                    }
-//                    txmessage.DLC = pmessage->Len;     
-//                    txmessage.Data[0] = pmessage->Data[0];
-//                    txmessage.Data[1] = pmessage->Data[1];
-//                    txmessage.Data[2] = pmessage->Data[2];
-//                    txmessage.Data[3] = pmessage->Data[3];
-//                    txmessage.Data[4] = pmessage->Data[4];
-//                    txmessage.Data[5] = pmessage->Data[5];
-//                    txmessage.Data[6] = pmessage->Data[6];
-//                    txmessage.Data[7] = pmessage->Data[7];
+                   if (true == pmessage->Ext)
+                   {
+                     txmessage.ExtId = (pmessage->ID & 0x1FFFFFFFUL);
+                     txmessage.StdId = 0U;
+                     txmessage.IDE = CAN_Id_Extended;
+                   }
+                   else
+                   {
+                     txmessage.ExtId = 0UL;
+                     txmessage.StdId = (pmessage->ID & 0x7FFUL);  
+                     txmessage.IDE = CAN_Id_Standard;
+                   }
+                   if (true == pmessage->rtr)
+                   {
+                     txmessage.RTR = CAN_RTR_REMOTE;
+                   }
+                   else
+                   {
+                     txmessage.RTR = CAN_RTR_DATA;
+                   }
+                   txmessage.DLC = pmessage->Len;     
+                   txmessage.Data[0] = pmessage->Data[0];
+                   txmessage.Data[1] = pmessage->Data[1];
+                   txmessage.Data[2] = pmessage->Data[2];
+                   txmessage.Data[3] = pmessage->Data[3];
+                   txmessage.Data[4] = pmessage->Data[4];
+                   txmessage.Data[5] = pmessage->Data[5];
+                   txmessage.Data[6] = pmessage->Data[6];
+                   txmessage.Data[7] = pmessage->Data[7];
 
                     CAN_Transmit(canMap[channel]->can_peripheral, &txmessage);
                    
@@ -444,27 +432,30 @@ int32_t HAL_CAN_Read_Data(HAL_CAN_Channel channel, CAN_Message_Struct *pmessage)
     
     if (NULL != pmessage)
     {
-    CAN_Receive(CAN2, CAN_FIFO0, &message);
-    pmessage->Ext = (message.IDE & CAN_Id_Extended)?true:false;
-    if (pmessage->Ext)
-    {
-        pmessage->ID = message.ExtId;
-    }
-    else
-    {
-        pmessage->ID = message.StdId; 
-    }
-    pmessage->Len = message.DLC; 
-    pmessage->rtr = (message.RTR & CAN_RTR_Remote)?true:false;
-    pmessage->Data[0] = message.Data[0];
-    pmessage->Data[1] = message.Data[1];
-    pmessage->Data[2] = message.Data[2];
-    pmessage->Data[3] = message.Data[3];
-    pmessage->Data[4] = message.Data[4];
-    pmessage->Data[5] = message.Data[5];
-    pmessage->Data[6] = message.Data[6];
-    pmessage->Data[7] = message.Data[7];
-    return 1;
+		if (CAN_MessagePending(canMap[channel]->can_peripheral, CAN_FIFO0) > 0U)
+		{
+			CAN_Receive(CAN2, CAN_FIFO0, &message);
+			pmessage->Ext = (message.IDE & CAN_Id_Extended)?true:false;
+			if (pmessage->Ext)
+			{
+				pmessage->ID = message.ExtId;
+			}
+			else
+			{
+				pmessage->ID = message.StdId; 
+			}
+			pmessage->Len = message.DLC; 
+			pmessage->rtr = (message.RTR & CAN_RTR_Remote)?true:false;
+			pmessage->Data[0] = message.Data[0];
+			pmessage->Data[1] = message.Data[1];
+			pmessage->Data[2] = message.Data[2];
+			pmessage->Data[3] = message.Data[3];
+			pmessage->Data[4] = message.Data[4];
+			pmessage->Data[5] = message.Data[5];
+			pmessage->Data[6] = message.Data[6];
+			pmessage->Data[7] = message.Data[7];
+			return 1;
+		}
     }
     return -1;
 //    memset(&message, 0, sizeof(CanRxMsg));

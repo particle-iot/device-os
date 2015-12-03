@@ -64,9 +64,9 @@ void loop()
 	digitalWrite(led2, HIGH);
 	Can1.write(&Message);
 	
-	Serial.println("Reading CAN");
-	digitalWrite(led2, LOW);
+
 	delay(500);
+	digitalWrite(led2, LOW);
 	if (1 == Can1.read(&Message))
 	{
 		Serial.println("Read CAN");
