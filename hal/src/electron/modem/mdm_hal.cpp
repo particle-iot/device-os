@@ -353,7 +353,7 @@ bool MDMParser::connect(
 #endif
     if (!ok)
         return false;
-    IP ip = join(apn,username,password,auth);
+    MDM_IP ip = join(apn,username,password,auth);
 #ifdef MDM_DEBUG
     if (_debugLevel >= 1) dumpIp(ip);
 #endif
@@ -894,7 +894,7 @@ bool MDMParser::pdp(const char* apn)
 // ----------------------------------------------------------------
 // internet connection
 
-MDMParser::IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL*/,
+MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL*/,
                               const char* password /*= NULL*/, Auth auth /*= AUTH_DETECT*/)
 {
     LOCK();
@@ -1006,7 +1006,7 @@ int MDMParser::_cbUDOPN(int type, const char* buf, int len, char* mccmnc)
     return WAIT;
 }
 
-int MDMParser::_cbCMIP(int type, const char* buf, int len, IP* ip)
+int MDMParser::_cbCMIP(int type, const char* buf, int len, MDM_IP* ip)
 {
     if ((type == TYPE_UNKNOWN) && ip) {
         int a,b,c,d;
@@ -1025,7 +1025,7 @@ int MDMParser::_cbUPSND(int type, const char* buf, int len, int* act)
     return WAIT;
 }
 
-int MDMParser::_cbUPSND(int type, const char* buf, int len, IP* ip)
+int MDMParser::_cbUPSND(int type, const char* buf, int len, MDM_IP* ip)
 {
     if ((type == TYPE_PLUS) && ip) {
         int a,b,c,d;
@@ -1036,7 +1036,7 @@ int MDMParser::_cbUPSND(int type, const char* buf, int len, IP* ip)
     return WAIT;
 }
 
-int MDMParser::_cbUDNSRN(int type, const char* buf, int len, IP* ip)
+int MDMParser::_cbUDNSRN(int type, const char* buf, int len, MDM_IP* ip)
 {
     if ((type == TYPE_PLUS) && ip) {
         int a,b,c,d;
@@ -1131,9 +1131,9 @@ bool MDMParser::detach(void)
     return ok;
 }
 
-MDMParser::IP MDMParser::gethostbyname(const char* host)
+MDM_IP MDMParser::gethostbyname(const char* host)
 {
-    IP ip = NOIP;
+    MDM_IP ip = NOIP;
     int a,b,c,d;
     if (sscanf(host, IPSTR, &a,&b,&c,&d) == 4)
         ip = IPADR(a,b,c,d);
@@ -1248,7 +1248,7 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
 
 bool MDMParser::socketConnect(int socket, const char * host, int port)
 {
-    IP ip = gethostbyname(host);
+    MDM_IP ip = gethostbyname(host);
     if (ip == NOIP)
         return false;
     DEBUG_D("socketConnect(host: %s)\r\n", host);
@@ -1256,7 +1256,7 @@ bool MDMParser::socketConnect(int socket, const char * host, int port)
     return socketConnect(socket, ip, port);
 }
 
-bool MDMParser::socketConnect(int socket, const IP& ip, int port)
+bool MDMParser::socketConnect(int socket, const MDM_IP& ip, int port)
 {
     bool ok = false;
     LOCK();
@@ -1355,7 +1355,7 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
     return (len - cnt);
 }
 
-int MDMParser::socketSendTo(int socket, IP ip, int port, const char * buf, int len)
+int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, int len)
 {
     DEBUG_D("socketSendTo(%d," IPSTR ",%d,,%d)\r\n", socket,IPNUM(ip),port,len);
     int cnt = len;
@@ -1476,7 +1476,7 @@ int MDMParser::_cbUSORF(int type, const char* buf, int len, USORFparam* param)
     return WAIT;
 }
 
-int MDMParser::socketRecvFrom(int socket, IP* ip, int* port, char* buf, int len)
+int MDMParser::socketRecvFrom(int socket, MDM_IP* ip, int* port, char* buf, int len)
 {
     int cnt = 0;
     //DEBUG_D("socketRecvFrom(%d,,%d)\r\n", socket, len);
@@ -1712,7 +1712,7 @@ bool MDMParser::setDebug(int level)
     return false;
 }
 
-void MDMParser::dumpDevStatus(MDMParser::DevStatus* status)
+void MDMParser::dumpDevStatus(DevStatus* status)
 {
     MDM_INFO("\r\n[ Modem::devStatus ] = = = = = = = = = = = = = =");
     const char* txtDev[] = { "Unknown", "SARA-G350", "LISA-U200", "LISA-C200", "SARA-U260", "SARA-U270", "LEON-G200" };
@@ -1740,7 +1740,7 @@ void MDMParser::dumpDevStatus(MDMParser::DevStatus* status)
         DEBUG_D("  Version:      %s\r\n", status->ver);
 }
 
-void MDMParser::dumpNetStatus(MDMParser::NetStatus *status)
+void MDMParser::dumpNetStatus(NetStatus *status)
 {
     MDM_INFO("\r\n[ Modem::netStatus ] = = = = = = = = = = = = = =");
     const char* txtReg[] = { "Unknown", "Denied", "None", "Home", "Roaming" };
@@ -1765,7 +1765,7 @@ void MDMParser::dumpNetStatus(MDMParser::NetStatus *status)
         DEBUG_D("  Phone Number:       %s\r\n", status->num);
 }
 
-void MDMParser::dumpIp(MDMParser::IP ip)
+void MDMParser::dumpIp(MDM_IP ip)
 {
     if (ip != NOIP) {
         DEBUG_D("\r\n[ Modem:IP " IPSTR " ] = = = = = = = = = = = = = =\r\n", IPNUM(ip));

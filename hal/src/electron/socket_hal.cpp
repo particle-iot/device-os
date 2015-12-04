@@ -9,14 +9,14 @@ const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
 
 sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port, network_interface_t nif)
 {
-    return electronMDM.socketSocket(protocol==IPPROTO_TCP ? ElectronMDM::MDM_IPPROTO_TCP : ElectronMDM::MDM_IPPROTO_UDP, port);
+    return electronMDM.socketSocket(protocol==IPPROTO_TCP ? MDM_IPPROTO_TCP : MDM_IPPROTO_UDP, port);
 }
 
 int32_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen)
 {
     const uint8_t* addr_data = addr->sa_data;
     uint16_t port = addr_data[0]<<8 | addr_data[1];
-    ElectronMDM::IP ip = IPADR(addr_data[2], addr_data[3], addr_data[4], addr_data[5]);
+    MDM_IP ip = IPADR(addr_data[2], addr_data[3], addr_data[4], addr_data[5]);
     electronMDM.socketSetBlocking(sd, 5000);
     bool result = electronMDM.socketConnect(sd, ip, port);
     electronMDM.socketSetBlocking(sd, 0);

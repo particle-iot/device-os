@@ -21,6 +21,7 @@
 #define	CELLULAR_HAL_H
 
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include "net_hal.h"
 #include "wlan_hal.h"
@@ -31,7 +32,7 @@ extern "C" {
 
 typedef int cellular_result_t;
 
-typedef int (*_CALLBACKPTR)(int type, const char* buf, int len, void* param);
+typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param);
 
 /**
  * Power on and initialize the cellular module,
@@ -155,15 +156,14 @@ typedef struct CellularSignalHal CellularSignalHal;
 cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved);
 
 /**
- * Send AT command and wait for response
+ * Send an AT command and wait for response, optionally specify a callback function to parse the results
  */
-cellular_result_t cellular_command(const char* format, _CALLBACKPTR cb /* = NULL*/,
-                              void* param /* = NULL*/, system_tick_t timeout_ms /*= 5000*/);
+cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
+                         system_tick_t timeout_ms, const char* format, ...);
 
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif	/* CELLULAR_HAL_H */
 
