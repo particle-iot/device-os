@@ -70,7 +70,7 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
 {
     const uint8_t* addr_data = addr->sa_data;
     uint16_t port = addr_data[0]<<8 | addr_data[1];
-    ElectronMDM::IP ip = IPADR(addr_data[2], addr_data[3], addr_data[4], addr_data[5]);
+    MDM_IP ip = IPADR(addr_data[2], addr_data[3], addr_data[4], addr_data[5]);
     return electronMDM.socketSendTo(sd, ip, port, (const char*)buffer, len);
 }
 
