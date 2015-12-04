@@ -100,7 +100,7 @@ public:
 
 void SessionPersist::save(const uint8_t* random, mbedtls_ssl_context* context, save_fn_t saver)
 {
-	if (context->state==MBEDTLS_SSL_HANDSHAKE_OVER)
+	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
 	{
 		in_epoch = context->in_epoch;
 		memcpy(out_ctr, context->out_ctr, 8);
@@ -118,7 +118,7 @@ void SessionPersist::save(const uint8_t* random, mbedtls_ssl_context* context, s
 
 void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver)
 {
-	if (context->state==MBEDTLS_SSL_HANDSHAKE_OVER)
+	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
 	{
 		memcpy(out_ctr, context->out_ctr, 8);
 		save_this_with(saver);
@@ -136,7 +136,7 @@ bool SessionPersist::restore(mbedtls_ssl_context* context, restore_fn_t restorer
 
 	mbedtls_ssl_session_reset(context);
 
-	context->state = MBEDTLS_SSL_HANDSHAKE_OVER;
+	context->state = MBEDTLS_SSL_HANDSHAKE_WRAPUP;
 	context->handshake->resume = 1;
 	context->in_epoch = in_epoch;
 	memcpy(context->out_ctr, &out_ctr, 8);
@@ -162,16 +162,13 @@ bool SessionPersist::restore(mbedtls_ssl_context* context, restore_fn_t restorer
 	context->out_msg = context->out_iv + context->transform_negotiate->ivlen -
 										 context->transform_negotiate->fixed_ivlen;
 
-	context->session = context->session_negotiate;
 	context->session_in = context->session_negotiate;
 	context->session_out = context->session_negotiate;
 	
-	context->transform = context->transform_negotiate;
 	context->transform_in = context->transform_negotiate;
 	context->transform_out = context->transform_negotiate;
 	
-	context->session_negotiate = nullptr;
-	context->transform_negotiate = nullptr;
+	mbedtls_ssl_handshake_wrapup(context);
 
 	return true;
 }
