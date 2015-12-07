@@ -43,6 +43,8 @@ typedef enum USART_Num_Def {
 
 /* Private macro -------------------------------------------------------------*/
 #define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 0  //Enabling this => 1 is not working at present
+// IS_USART_CONFIG_VALID(config) - returns true for 8 data bit, any flow control, any parity, any stop byte configurations
+#define IS_USART_CONFIG_VALID(CONFIG) ( (((CONFIG & 0b00001100)>>2) != 0b11) && (((CONFIG & 0b00110000)>>4)==0b11) )
 
 /* Private variables ---------------------------------------------------------*/
 typedef struct STM32_USART_Info {
@@ -152,8 +154,14 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
 	usartMap[serial]->usart_transmitting = false;
 }
 
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
+void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud, uint8_t config)
 {
+  //Verify UART configuration, exit it it's invalid.
+  if (!IS_USART_CONFIG_VALID(config)) {
+    usartMap[serial]->usart_enabled = false;
+    return;
+  }
+  
 	USART_DeInit(usartMap[serial]->usart_peripheral);
 
 	// Configure USART Rx and Tx as alternate function push-pull, and enable GPIOA clock
@@ -201,12 +209,49 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 	// - Hardware flow control disabled for Serial1/2/4/5
     // - Hardware flow control enabled (RTS and CTS signals) for Serial3
 	// - Receive and transmit enabled
-	USART_InitStructure.USART_BaudRate = baud;
-	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	USART_InitStructure.USART_Parity = USART_Parity_No;
-	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    // USART configuration
+    USART_InitStructure.USART_BaudRate = baud;
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
     USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+  #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
+    if (serial == HAL_USART_SERIAL3)
+    {
+      USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
+    }
+  #endif
+
+    //Stop bit configuration.
+    switch (config & 0b00000011) {
+      case 0: // 1 stop bit
+        USART_InitStructure.USART_StopBits = USART_StopBits_1;
+        break;
+      case 1: // 2 stop bits
+        USART_InitStructure.USART_StopBits = USART_StopBits_2;
+        break;
+      case 2: // 0.5 stop bits
+        USART_InitStructure.USART_StopBits = USART_StopBits_0_5;
+        break;
+      case 3: // 1.5 stop bits
+        USART_InitStructure.USART_StopBits = USART_StopBits_1_5;
+        break;
+    }
+    
+    // parity configuration (impacts word length)
+    switch ((config & 0b00001100) >> 2) {
+      case 0: // none
+        USART_InitStructure.USART_Parity = USART_Parity_No;
+        USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+        break;
+      case 1: // even
+        USART_InitStructure.USART_Parity = USART_Parity_Even;
+        USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+        break;
+      case 2: // odd
+        USART_InitStructure.USART_Parity = USART_Parity_Odd;
+        USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+        break;
+    }
+
 #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
     if (serial == HAL_USART_SERIAL3)
     {

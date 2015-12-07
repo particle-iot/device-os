@@ -31,6 +31,14 @@
 #include "usart_hal.h"
 #include "spark_wiring_platform.h"
 
+//Available Serial Configuration for C
+#define SERIAL_8N1 (uint8_t)0b00000000
+#define SERIAL_8N2 (uint8_t)0b00000001
+#define SERIAL_8E1 (uint8_t)0b00000100
+#define SERIAL_8E2 (uint8_t)0b00000101
+#define SERIAL_8O1 (uint8_t)0b00001000
+#define SERIAL_8O2 (uint8_t)0b00001001
+
 class USARTSerial : public Stream
 {
 private:
