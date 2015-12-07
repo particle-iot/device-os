@@ -343,7 +343,7 @@ ProtocolError DTLSMessageChannel::establish()
 	if (sessionPersist.restore(&ssl_context, callbacks.restore))
 	{
 		DEBUG("restored session from persisted session data");
-		return NO_ERROR;
+		return SESSION_RESUMED;
 	}
 
 	uint8_t random[64];

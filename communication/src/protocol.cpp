@@ -183,6 +183,9 @@ int Protocol::begin()
 	pinger.reset();
 
 	ProtocolError error = channel.establish();
+	if (error==SESSION_RESUMED)
+		return error;
+
 	if (error) {
 		WARN("handshake failed with code %d", error);
 		return error;

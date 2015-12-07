@@ -473,12 +473,17 @@ int Spark_Handshake(bool presence_announce)
             Particle.publish("spark/device/ident/0", buf, 60, PRIVATE);
         }
 
+        bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+#if PLATFORM_ID!=PLATFORM_ELECTRON || !defined(MODULAR_FIRMWARE)
         ultoa(HAL_OTA_FlashLength(), buf, 10);
         Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
+#endif
 
-        ultoa(HAL_OTA_ChunkSize(), buf, 10);
-        Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
-
+        uint32_t chunkSize = HAL_OTA_ChunkSize();
+        if (chunkSize!=512 || !udp) {
+        		ultoa(chunkSize, buf, 10);
+        		Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
+        }
         if (system_mode()==SAFE_MODE)
             Particle.publish("spark/device/safemode","", 60, PRIVATE);
 #if defined(SPARK_SUBSYSTEM_EVENT_NAME)
@@ -495,6 +500,8 @@ int Spark_Handshake(bool presence_announce)
         spark_protocol_send_time_request(sp);
         Spark_Process_Events();
     }
+    if (err==SESSION_RESUMED)
+    		err = 0;
     return err;
 }
 

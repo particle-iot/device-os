@@ -31,6 +31,7 @@ enum ProtocolError
 	MESSAGE_TIMEOUT,			// 10
 	MISSING_MESSAGE_ID,		// 11
 	MESSAGE_RESET,			// 12
+	SESSION_RESUMED,			// 13
 	UNKNOWN = 0x7FFFF
 };
 
