@@ -261,6 +261,15 @@ typedef void (*wlan_scan_result_t)(WiFiAccessPoint* ap, void* cookie);
  */
 int wlan_scan(wlan_scan_result_t callback, void* cookie);
 
+/**
+ * Lists all WLAN credentials currently stored on the device
+ * @param callback  The callback that receives each stored AP
+ * @param callback_data An opaque handle that is passed to the callback.
+ * @return count of stored credentials, negative on error.
+ */
+
+int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data);
+
 #ifdef	__cplusplus
 }
 #endif
