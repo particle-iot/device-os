@@ -46,7 +46,7 @@ uint16_t FLASH_If_CheckAdd(uint32_t Add);
 
 /* Private variables ---------------------------------------------------------*/
 DFU_MAL_Prop_TypeDef DFU_Flash_cb =
-  {
+{
     FLASH_IF_STRING,
     FLASH_If_Init,
     FLASH_If_DeInit,
@@ -54,9 +54,14 @@ DFU_MAL_Prop_TypeDef DFU_Flash_cb =
     FLASH_If_Write,
     FLASH_If_Read,
     FLASH_If_CheckAdd,
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    5, /* Host polling time interval in ms when wauting erasing operation */
+    5  /* Host polling time interval in ms when wauting programming operation */
+#else
     50, /* Erase Time in ms */
     50  /* Programming Time in ms */
-  };
+#endif
+};
 
 /* Private functions ---------------------------------------------------------*/
 
