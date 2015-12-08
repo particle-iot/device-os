@@ -38,8 +38,8 @@ DFU_MAL_Prop_TypeDef DFU_sFlash_cb =
     sFLASH_If_Read,
     sFLASH_If_CheckAdd,
 #if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-    5, /* Host polling time interval in ms when wauting erasing operation */
-    5  /* Host polling time interval in ms when wauting programming operation */
+    5, /* Host polling time interval in ms when waiting erasing operation complete */
+    5  /* Host polling time interval in ms when waiting programming operation complete */
 #else
     50, /* Erase Time in ms */
     50  /* Programming Time in ms */
