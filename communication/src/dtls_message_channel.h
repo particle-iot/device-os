@@ -66,7 +66,7 @@ public:
 		/**
 		 * Restore to the given buffer. Returns the number of bytes restored.
 		 */
-		int (*restore)(void* data, size_t length);
+		int (*restore)(void* data, size_t max_length);
 	};
 
 private:

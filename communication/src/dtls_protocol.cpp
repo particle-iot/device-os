@@ -16,6 +16,11 @@ void DTLSProtocol::init(const char *id,
 	channelCallbacks.handle_seed = handle_seed;
 	channelCallbacks.receive = callbacks.receive;
 	channelCallbacks.send = callbacks.send;
+	if (callbacks.size>=52) {
+		channelCallbacks.save = callbacks.save;
+		channelCallbacks.restore = callbacks.restore;
+	}
+
 	channel.set_millis(callbacks.millis);
 
 	uint8_t core_public[128];

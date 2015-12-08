@@ -103,9 +103,17 @@ struct SparkCallbacks
   void* transport_context;
 
   // size == 44
+
+	int (*save)(const void* data, size_t length);
+	/**
+	 * Restore to the given buffer. Returns the number of bytes restored.
+	 */
+	int (*restore)(void* data, size_t max_length);
+
+	// size == 52
 };
 
-STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*11));
+STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*13));
 
 /**
  * Application-supplied callbacks. (Deliberately distinct from the system-supplied
