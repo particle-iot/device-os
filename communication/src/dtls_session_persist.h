@@ -18,10 +18,10 @@
  */
 #pragma once
 
-struct SessionPersistOpaque
+struct __attribute__((packed)) SessionPersistOpaque
 {
 	uint16_t size;
-	uint8_t data[170];
+	uint8_t data[156-2+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression)];
 };
 
 
@@ -32,7 +32,7 @@ struct SessionPersistOpaque
 namespace particle { namespace protocol {
 
 
-class SessionPersist
+class __attribute__((packed)) SessionPersist
 {
 public:
 
@@ -101,8 +101,8 @@ public:
 
 };
 
-static_assert(sizeof(SessionPersist)==172, "SessionPersist size == 172");
-static_assert(sizeof(SessionPersist)==sizeof(SessionPersistOpaque), "SessionPersistOpaque size == 172");
+static_assert(sizeof(SessionPersist)==156+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");
+static_assert(sizeof(SessionPersist)==sizeof(SessionPersistOpaque), "SessionPersistOpaque size == sizeof(SessionPersistQueue)");
 
 #endif
 

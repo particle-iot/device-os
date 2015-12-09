@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -203,6 +204,10 @@ bool HAL_Feature_Get(HAL_Feature feature);
  * Externally defined function that is called before user constructors.
  */
 extern void module_user_init_hook(void);
+
+int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved);
+int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved);
+
 
 #ifdef __cplusplus
 }

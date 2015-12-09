@@ -356,6 +356,22 @@ void SystemEvents(const char* name, const char* data)
     }
 }
 
+int Spark_Save(const void* buffer, size_t length)
+{
+	return HAL_System_Backup_Save(0, buffer, length, nullptr);
+}
+
+int Spark_Restore(void* buffer, size_t max_length)
+{
+	size_t length = 0;
+	int error = HAL_System_Backup_Restore(0, buffer, max_length, &length, nullptr);
+	if (error)
+		length = 0;
+	return length;
+}
+
+
+
 void Spark_Protocol_Init(void)
 {
 	system_cloud_protocol_instance();
@@ -393,6 +409,8 @@ void Spark_Protocol_Init(void)
             callbacks.send = Spark_Send_UDP;
             callbacks.receive = Spark_Receive_UDP;
             callbacks.transport_context = &cloud_endpoint;
+            callbacks.save = Spark_Save;
+            callbacks.restore = Spark_Restore;
         }
         else
 #endif
