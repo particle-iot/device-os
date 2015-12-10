@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include "core_hal.h"
 #include "hal_platform.h"
+#include "system_string_interpolate.h"
 
 #define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
@@ -570,6 +571,19 @@ void Spark_Signal(bool on, unsigned, void*)
     }
 }
 
+size_t system_interpolate(const char* var, size_t var_len, char* buf, size_t buf_len)
+{
+	if (var_len==2 && memcmp("id", var, 2)==0)
+	{
+		String deviceID = spark_deviceID();
+		if (buf_len>deviceID.length()) {
+			memcpy(buf, deviceID.c_str(), deviceID.length());
+			return deviceID.length();
+		}
+	}
+	return 0;
+}
+
 int Internet_Test(void)
 {
     long testSocket;
@@ -669,10 +683,12 @@ int Spark_Connect()
             if (server_addr.port!=0 && server_addr.port!=65535)
             		port = server_addr.port;
 
+            char buf[96];
+            system_string_interpolate(server_addr.domain, buf, sizeof(buf), system_interpolate);
             int attempts = 3;
             while (!ip_addr && 0 < --attempts)
             {
-                rv = inet_gethostbyname(server_addr.domain, strnlen(server_addr.domain, 126), &ip_addr.raw(), NIF_DEFAULT, NULL);
+                rv = inet_gethostbyname(buf, strnlen(buf, 96), &ip_addr.raw(), NIF_DEFAULT, NULL);
                 HAL_Delay_Milliseconds(1);
             }
             ip_resolve_failed = rv;

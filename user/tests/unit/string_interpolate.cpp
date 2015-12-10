@@ -19,6 +19,9 @@ SCENARIO("attempting to interpolate into a smaller buffer does not interpolate")
 {
 	GIVEN("an interpolation function")
 	{
+		// this isn't stricly correct - if the buffer size "cuts" a variable substution
+		// in half, then the entire variable substitution is discarded and characters appended
+		// after the varaible. 
 		char buf[5];
 		size_t written;
 		string_interpolate_source_t fn = id_interpolate;
