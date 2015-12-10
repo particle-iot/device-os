@@ -655,7 +655,7 @@ int Spark_Connect()
     HAL_FLASH_Read_ServerAddress(&server_addr);
     DEBUG("HAL_FLASH_Read_ServerAddress() = type:%d,domain:%s,ip: %d.%d.%d.%d, port: %d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip), server_addr.port);
 
-    bool ip_resolve_failed = false;
+    bool ip_address_error = false;
     IPAddress ip_addr;
     int rv = -1;
 
@@ -671,11 +671,16 @@ int Spark_Connect()
         default:
         case INVALID_INTERNET_ADDRESS:
         {
-            // DEBUG("INVALID_INTERNET_ADDRESS");
-            const char default_domain[] = "device.spark.io";
-            // Make sure we copy the NULL terminator, so subsequent strlen() calls on server_addr.domain return the correct length
-            memcpy(server_addr.domain, default_domain, strlen(default_domain) + 1);
-            // and fall through to domain name case
+        		if (!udp)
+        		{
+				// DEBUG("INVALID_INTERNET_ADDRESS");
+				const char default_domain[] = "device.spark.io";
+				// Make sure we copy the NULL terminator, so subsequent strlen() calls on server_addr.domain return the correct length
+				memcpy(server_addr.domain, default_domain, strlen(default_domain) + 1);
+				// and fall through to domain name case
+        		}
+        		else
+        			ip_address_error = true;
         }
 
         case DOMAIN_NAME:
@@ -691,8 +696,8 @@ int Spark_Connect()
                 rv = inet_gethostbyname(buf, strnlen(buf, 96), &ip_addr.raw(), NIF_DEFAULT, NULL);
                 HAL_Delay_Milliseconds(1);
             }
-            ip_resolve_failed = rv;
-            if (ip_resolve_failed) {
+            ip_address_error = rv;
+            if (ip_address_error) {
                 ERROR("Cloud: unable to resolve IP for %s", server_addr.domain);
             }
             else {
@@ -702,17 +707,27 @@ int Spark_Connect()
 
 #if PLATFORM_ID<3
     // workaround for CC3000
-    if (ip_resolve_failed)
+    if (ip_address_error)
     {
         const WLanConfig* config = (WLanConfig*)network_config(0, 0, NULL);
         if (config && (config->nw.aucDNSServer.ipv4==((76<<24) | (83<<16) | (0<<8) | 0 ))) {
             // fallback to the default when the CC3000 DNS goes awol. see issue #139
             ip_addr.clear();
-            ip_resolve_failed = false;
+            ip_address_error = false;
         }
     }
 #endif
-    if (!ip_resolve_failed)
+
+	if (ip_address_error && (!HAL_PLATFORM_CLOUD_UDP || !udp))
+	{
+		// final fallback in case where flash invalid
+		ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
+		//ip_addr = (52<<24) | (0<<16) | (3<<8) | 40;
+	}
+	else
+		ip_address_error = true;
+
+    if (!ip_address_error)
     {
         sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, port, NIF_DEFAULT);
         DEBUG("socketed udp=%d, sparkSocket=%d, %d", udp, sparkSocket, socket_handle_valid(sparkSocket));
@@ -727,13 +742,6 @@ int Spark_Connect()
         // the destination port
         tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
         tSocketAddr.sa_data[1] = (port & 0x00FF);
-
-    		if (!ip_addr)
-        {
-            // final fallback in case where flash invalid
-            ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
-            //ip_addr = (52<<24) | (0<<16) | (3<<8) | 40;
-        }
 
         tSocketAddr.sa_data[2] = ip_addr[0];
         tSocketAddr.sa_data[3] = ip_addr[1];
