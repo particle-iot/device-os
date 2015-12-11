@@ -925,7 +925,7 @@ bool HAL_Feature_Get(HAL_Feature feature)
     return false;
 }
 
-#if HAL_PLATFORM_UDP
+#if HAL_PLATFORM_CLOUD_UDP
 
 #include "dtls_session_persist.h"
 #include "deepsleep_hal_impl.h"

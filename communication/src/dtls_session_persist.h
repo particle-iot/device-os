@@ -18,16 +18,15 @@
  */
 #pragma once
 
+#ifdef __cplusplus
+
+#include "dtls_message_channel.h"
+
 struct __attribute__((packed)) SessionPersistOpaque
 {
 	uint16_t size;
 	uint8_t data[156-2+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression)];
 };
-
-
-#ifdef __cplusplus
-
-#include "dtls_message_channel.h"
 
 namespace particle { namespace protocol {
 

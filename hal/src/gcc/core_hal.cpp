@@ -305,13 +305,43 @@ bool HAL_Feature_Get(HAL_Feature feature)
     return false;
 }
 
+#if HAL_PLATFORM_CLOUD_UDP
+
+#include "dtls_session_persist.h"
+SessionPersistOpaque session;
+
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
 {
-	return -1;
+    if (offset==0 && length==sizeof(SessionPersistOpaque))
+    {
+        memcpy(&session, buffer, length);
+        return 0;
+    }
+    return -1;
 }
 
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
 {
-	return -1;
+    if (offset==0 && max_length>=sizeof(SessionPersistOpaque) && session.size==sizeof(SessionPersistOpaque))
+    {
+        *length = sizeof(SessionPersistOpaque);
+        memcpy(buffer, &session, sizeof(session));
+        return 0;
+    }
+    return -1;
 }
 
+
+#else
+
+int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
+{
+    return -1;
+}
+
+int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
+{
+    return -1;
+}
+
+#endif
