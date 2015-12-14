@@ -334,9 +334,9 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 		switch (ret) {
 		case MBEDTLS_ERR_SSL_WANT_READ:
 			break;
-		case MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE:
-			ret = 0;
-			break;
+//		case MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE:
+//			ret = 0;
+//			break;
 		case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
 			sessionPersist.clear(callbacks.save);
 			// fall through
