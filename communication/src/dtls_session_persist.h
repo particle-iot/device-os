@@ -18,15 +18,20 @@
  */
 #pragma once
 
+#define SessionPersistBaseSize 157
+
+#include "mbedtls/ssl.h"
+
+typedef struct __attribute__((packed)) SessionPersistOpaque
+{
+	uint16_t size;
+//	uint8_t data[SessionPersistBaseSize-2+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression)];
+	uint8_t data[SessionPersistBaseSize-2+sizeof(int)+sizeof(int)+sizeof(size_t)];
+} SessionPersistOpaque;
+
 #ifdef __cplusplus
 
 #include "dtls_message_channel.h"
-
-struct __attribute__((packed)) SessionPersistOpaque
-{
-	uint16_t size;
-	uint8_t data[156-2+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression)];
-};
 
 namespace particle { namespace protocol {
 
@@ -41,6 +46,12 @@ public:
 private:
 
 	uint16_t size;
+
+	/**
+	 * non-zero if this context should be persisted when saved or updated.
+	 *
+	 */
+	uint8_t persistent;
 
 	uint8_t randbytes[sizeof(mbedtls_ssl_handshake_params::randbytes)];
 	decltype(mbedtls_ssl_session::ciphersuite) ciphersuite;
@@ -69,42 +80,105 @@ private:
 		memcpy(master, session->master, sizeof(master));
 	}
 
+	/**
+	 * Restores the context, even if the context itself is
+	 * currently not flagged as persistent.
+	 */
 	bool restore_this_from(restore_fn_t restorer)
 	{
 		if (restorer)
 		{
 			if (restorer(this, sizeof(*this))!=sizeof(*this))
 				return false;
+			if (size!=sizeof(*this))
+				return false;
 		}
 		return true;
 	}
 
-	void save_this_with(save_fn_t saver)
+	bool save_this_with(save_fn_t saver)
 	{
-		if (saver)
-			saver(this, sizeof(*this));
+		bool success = false;
+		if (saver && persistent) {
+			success = !saver(this, sizeof(*this));
+		}
+		return success;
 	}
 
 public:
+
+	SessionPersist() : size(0), persistent(0) {}
 
 	void clear(save_fn_t saver)
 	{
 		size = 0;
 		save_this_with(saver);
+
+		persistent = 0;	// do not make any subsequent saves until the context is marked as persistent.
 	}
 
-	void save(const uint8_t* random, mbedtls_ssl_context* context, save_fn_t saver);
+	/**
+	 * Prepare to transiently save information about this context.
+	 */
+	void prepare_save(const uint8_t* random, mbedtls_ssl_context* context);
+
+	/**
+	 * Flags this context as being persistent. Subsequent calls
+	 * to save and update will persist the state of this context.
+	 * To remove persistence, call clear(), which clears the context, persists it,
+	 * and clears the persistence flag.
+	 */
+	void make_persistent() { persistent = 1; }
+	bool is_persistent() { return persistent; }
+
+	/**
+	 * Persist information in this context .
+	 */
+	void save(save_fn_t saver);
+
+	/**
+	 * Update information in this context and saves if the context
+	 * is persistent.
+	 */
 	void update(mbedtls_ssl_context* context, save_fn_t saver);
 
-	bool restore(mbedtls_ssl_context* context, bool renegotiate, restore_fn_t restorer);
+	enum RestoreStatus
+	{
+		/**
+		 * Restoration is complete. No handshake is needed.
+		 */
+		COMPLETE,
+
+		/**
+		 * Restoration complete, a handshake is needed to complete.
+		 */
+		RENEGOTIATE,
+
+		/**
+		 * No session info was found. no changes were made to the
+		 * ssl context.
+		 */
+		NO_SESSION,
+
+		/**
+		 * Could not restore. The session should be considered invalid.
+		 */
+		ERROR
+	};
+
+	/**
+	 * Restores the state from this context. The persistence flag is not changed.
+	 */
+	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, restore_fn_t restorer);
 
 };
 
-static_assert(sizeof(SessionPersist)==156+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");
+static_assert(sizeof(SessionPersist)==SessionPersistBaseSize+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");
 static_assert(sizeof(SessionPersist)==sizeof(SessionPersistOpaque), "SessionPersistOpaque size == sizeof(SessionPersistQueue)");
 
-#endif
 
 }}
+#endif
+
 
 
