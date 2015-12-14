@@ -123,6 +123,8 @@ private:
 	virtual ProtocolError send(Message& message) override;
 
 
+	virtual ProtocolError notify_established() override;
+
 };
 
 

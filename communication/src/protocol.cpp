@@ -197,7 +197,8 @@ int Protocol::begin()
 		return error;
 	}
 
-	error = event_loop(CoAPMessageType::HELLO, 2000); // read the hello message from the server
+	// todo - this timeout should be protocol specific?
+	error = event_loop(CoAPMessageType::HELLO, 10000); // read the hello message from the server
 	if (error)
 	{
 		ERROR("Handshake: could not receive hello response %d", error);
@@ -205,6 +206,7 @@ int Protocol::begin()
 	}
 
 	INFO("Hanshake: completed");
+	channel.notify_established();
 	return error;
 }
 

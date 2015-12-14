@@ -95,6 +95,9 @@ public:
 	 */
 	ProtocolError send(Message& message) override;
 
+	ProtocolError notify_established() override { return NO_ERROR; }
+
+
 protected:
 
 	ProtocolError set_key(const unsigned char *signed_encrypted_credentials);

@@ -29,9 +29,12 @@
 
 namespace particle { namespace protocol {
 
+void SessionPersist::save(save_fn_t saver)
+{
+	save_this_with(saver);
+}
 
-
-void SessionPersist::save(const uint8_t* random, mbedtls_ssl_context* context, save_fn_t saver)
+void SessionPersist::prepare_save(const uint8_t* random, mbedtls_ssl_context* context)
 {
 	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
 	{
@@ -39,13 +42,11 @@ void SessionPersist::save(const uint8_t* random, mbedtls_ssl_context* context, s
 		memcpy(out_ctr, context->out_ctr, 8);
 		memcpy(randbytes, random, sizeof(randbytes));
 		save_session(context->session);
-		save_this_with(saver);
 		size = sizeof(*this);
 	}
 	else
 	{
-		// invalid state
-		clear(saver);
+		size = 0;
 	}
 }
 
@@ -55,18 +56,21 @@ void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver)
 	{
 		memcpy(out_ctr, context->out_ctr, 8);
 		save_this_with(saver);
-		size = sizeof(*this);
 	}
 }
 
-bool SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, restore_fn_t restorer)
+auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, restore_fn_t restorer) -> RestoreStatus
 {
 	if (!restore_this_from(restorer))
-		return false;
+		return NO_SESSION;
 
 	if (size!=sizeof(*this))
-		return false;
+		return NO_SESSION;
 
+
+	// assume invalid initially. With the ssl context being reset,
+	// we cannot return NO_SESSION from this point onwards.
+	size = 0;
 	mbedtls_ssl_session_reset(context);
 
 	context->handshake->resume = 1;
@@ -82,14 +86,14 @@ bool SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, res
 		if (!context->transform_negotiate->ciphersuite_info)
 		{
 			DEBUG("unknown ciphersuite with id %d", ciphersuite);
-			return false;
+			return ERROR;
 		}
 	
 		int err = mbedtls_ssl_derive_keys(context);
 		if (err)
 		{
 			DEBUG("derive keys failed with %d", err);
-			return false;
+			return ERROR;
 		}	
 
 		context->in_msg = context->in_iv + context->transform_negotiate->ivlen -
@@ -104,10 +108,14 @@ bool SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, res
 		context->transform_out = context->transform_negotiate;
 		
 		mbedtls_ssl_handshake_wrapup(context);
-		return true;
+		size = sizeof(*this);
+		return COMPLETE;
 	}
-
-	return false;
+	else
+	{
+		size = sizeof(*this);
+		return RENEGOTIATE;
+	}
 }
 
 
@@ -278,12 +286,28 @@ ProtocolError DTLSMessageChannel::establish()
 		return error;
 
 	bool renegotiate = false;
-	if (sessionPersist.restore(&ssl_context, renegotiate, callbacks.restore))
+	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, callbacks.restore);
+	if (restoreStatus==SessionPersist::COMPLETE)
 	{
 		DEBUG("restored session from persisted session data");
 		return SESSION_RESUMED;
 	}
-
+	else if (restoreStatus==SessionPersist::RENEGOTIATE)
+	{
+		// session partially restored, fully restored via handshake
+	}
+	else if (restoreStatus==SessionPersist::NO_SESSION)
+	{
+		sessionPersist.clear(callbacks.save);
+	}
+	else  // ERROR
+	{
+		sessionPersist.clear(callbacks.save);
+		mbedtls_ssl_session_reset(&ssl_context);
+		ProtocolError error = setup_context();
+		if (error)
+			return error;
+	}
 	uint8_t random[64];
 
 	do
@@ -314,9 +338,16 @@ ProtocolError DTLSMessageChannel::establish()
 	}
 	else
 	{
-		sessionPersist.save(random, &ssl_context, callbacks.save);
+		sessionPersist.prepare_save(random, &ssl_context);
 	}
 	return ret==0 ? NO_ERROR : IO_ERROR;
+}
+
+ProtocolError DTLSMessageChannel::notify_established()
+{
+	sessionPersist.make_persistent();
+	sessionPersist.save(callbacks.save);
+	return NO_ERROR;
 }
 
 ProtocolError DTLSMessageChannel::receive(Message& message)

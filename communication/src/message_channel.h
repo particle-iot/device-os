@@ -180,6 +180,13 @@ struct MessageChannel : public Channel
 	 * Fill out a message struct to contain storage for a response.
 	 */
 	virtual ProtocolError response(Message& original, Message& response, size_t required)=0;
+
+	/**
+	 * Notification from the upper layers that the application has established
+	 * the communications channel. Any post establish actions that are needed
+	 * can be performed.
+	 */
+	virtual ProtocolError notify_established()=0;
 };
 
 class AbstractMessageChannel : public MessageChannel
