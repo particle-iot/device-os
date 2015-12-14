@@ -56,6 +56,7 @@ using namespace spark;
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#if Wiring_SetupButtonUX
 #if defined(DEBUG_BUTTON_WD)
 #define BUTTON_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
 #else
@@ -78,6 +79,7 @@ inline void CLR_BUTTON_TIMEOUT() {
     button_timeout_duration = 0;
     BUTTON_WD_DEBUG("Button WD Cleared, was %d",button_timeout_duration);
 }
+#endif // #if Wiring_SetupButtonUX
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -95,15 +97,16 @@ static volatile bool wasListeningOnButtonPress;
  */
 static volatile uint16_t pressed_time;
 
-/* flag used to initiate system_handle_single_click() from main thread */
-static volatile bool SYSTEM_HANDLE_SINGLE_CLICK = false;
-
 uint16_t system_button_pushed_duration(uint8_t button, void*)
 {
     if (button || network.listening())
         return 0;
     return pressed_time ? HAL_Timer_Get_Milli_Seconds()-pressed_time : 0;
 }
+
+#if Wiring_SetupButtonUX
+/* flag used to initiate system_handle_single_click() from main thread */
+static volatile bool SYSTEM_HANDLE_SINGLE_CLICK = false;
 
 static uint32_t prev_release_time = 0;
 static uint8_t clicks = 0;
@@ -196,6 +199,7 @@ void handle_button_click(uint16_t depressed_duration, uint32_t release_time)
     }
 
 }
+#endif // #if Wiring_SetupButtonUX
 
 // this is called on multiple threads - ideally need a mutex
 void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
@@ -218,7 +222,9 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
 
             if (!network.listening()) {
                 system_notify_event(button_status, depressed_duration);
+#if Wiring_SetupButtonUX
                 handle_button_click(depressed_duration, release_time);
+#endif
             }
             pressed_time = 0;
             if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening())
@@ -398,11 +404,13 @@ extern "C" void HAL_SysTick_Handler(void)
     }
 #endif
 
+#if Wiring_SetupButtonUX
     if (IS_BUTTON_TIMEOUT())
     {
         reset_button_click(button_timeout_start);
         SYSTEM_HANDLE_SINGLE_CLICK = true;
     }
+#endif
 }
 
 void manage_safe_mode()
@@ -448,7 +456,9 @@ void app_loop(bool threaded)
 #if Wiring_Cellular == 1
                 system_power_management_update();
 #endif
+#if Wiring_SetupButtonUX
                 system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
+#endif
             }
         }
     }
