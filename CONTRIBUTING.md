@@ -14,7 +14,7 @@ Whenever possible, please follow these guidelines for contributions:
 
 Any changes that affect firmware application developers, such as a new class or API, or change in existing behavior should have an accompanying PR to the `spark/docs` repo describing the changes. This ensures the documentation is kept up to date with changes to the firmware.
 
-New firmware APIs should have an API test. These are found in the `user/tests/wiring/api` folder. see (Building Platform Tests}[https://github.com/spark/firmware/blob/develop/user/tests/readme.md#building-platform-tests].
+New firmware APIs should have an API test. These are found in the `user/tests/wiring/api` folder. see [Building Platform Tests](https://github.com/spark/firmware/blob/develop/user/tests/readme.md#building-platform-tests).
 
 New functionality should also have a corresponding unit test. These are found in `user/tests/wiring/no_fixture` when they do not require any additional test fixture beyond the device itself. 
 
