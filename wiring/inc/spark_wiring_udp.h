@@ -237,7 +237,7 @@ public:
 	* let client code to check for socket validity
 	* @return True for a valid socket.
 	*/
-	bool isOpen(); 
+	bool isValid(); 
 
 
 	using Print::write;
