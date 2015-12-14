@@ -385,6 +385,7 @@ extern "C" unsigned long mbedtls_timing_hardclock()
 	return HAL_Timer_Microseconds();
 }
 
+// todo - would prefer this was provided as a callback.
 extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
 {
     uint32_t t = HAL_Timer_Milliseconds();  // get uptime in nanoseconds

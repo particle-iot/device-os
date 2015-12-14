@@ -40,12 +40,15 @@ target_files = $(patsubst $(SRC_ROOT)/%,%,$(call rwildcard,$(SRC_ROOT)/$1,$2))
 CPPSRC += $(call target_files,tests/catch,*.cpp)
 #CPPSRC += $(call target_files,src,*.cpp)
 CPPSRC += src/coap.cpp src/messages.cpp src/events.cpp src/protocol.cpp
-CPPSRC += src/chunked_transfer.cpp src/coap_channel.cpp
+CPPSRC += src/chunked_transfer.cpp src/coap_channel.cpp src/eckeygen.cpp
+CPPSRC += src/dtls_message_channel.cpp src/dtls_protocol.cpp
+
+CSRC += $(call target_files,lib/mbedtls/library,*.c)
 
 include $(call rwildcard,$(PROJECT_ROOT)/$(COMMUNICATION)/,include.mk)
 include $(call rwildcard,$(PROJECT_ROOT)/$(COMMUNICATION)/lib/,build.mk)
 
-INCLUDE_DIRS := $(addprefix $(SRC_ROOT)/,$(INCLUDE_DIRS))
+#INCLUDE_DIRS := $(addprefix $(SRC_ROOT)/,$(INCLUDE_DIRS))
 
 # these include dirs relative to project root
 INCLUDE_DIRS += $(PROJECT_ROOT)/$(SERVICES)/inc
@@ -84,7 +87,7 @@ $(TARGETDIR)/$(TARGET) : $(BUILD_PATH) $(ALLOBJ)
 	@echo Building target: $@
 	@echo Invoking: GCC C++ Linker
 	$(MKDIR) $(dir $@)
-	$(LD) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
+	$(LD) $(CFLAGS) $(ALLOBJ) $(LIBS) --output $@ $(LDFLAGS)
 	@echo
 
 $(BUILD_PATH):
@@ -107,6 +110,13 @@ $(BUILD_PATH)/%.o : $(SRC_ROOT)/%.cpp
 	@echo Invoking: GCC CPP Compiler
 	$(MKDIR) $(dir $@)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
+	@echo
+
+$(BUILD_PATH)/lib/mbedtls/library/%.o : $(COMMUNICATION_MODULE_PATH)/lib/mbedtls/library/%.c
+	@echo Building file: $<
+	@echo Invoking: GCC CPP Compiler
+	$(MKDIR) $(dir $@)
+	$(CC) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 	@echo
 
 # Other Targets
