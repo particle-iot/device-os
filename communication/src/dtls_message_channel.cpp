@@ -59,7 +59,7 @@ void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver)
 	}
 }
 
-bool SessionPersist::restore(mbedtls_ssl_context* context, restore_fn_t restorer)
+bool SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, restore_fn_t restorer)
 {
 	if (!restore_this_from(restorer))
 		return false;
@@ -69,41 +69,45 @@ bool SessionPersist::restore(mbedtls_ssl_context* context, restore_fn_t restorer
 
 	mbedtls_ssl_session_reset(context);
 
-	context->state = MBEDTLS_SSL_HANDSHAKE_WRAPUP;
 	context->handshake->resume = 1;
-	context->in_epoch = in_epoch;
-	memcpy(context->out_ctr, &out_ctr, 8);
-	memcpy(context->handshake->randbytes, randbytes, sizeof(randbytes));
 	restore_session(context->session_negotiate);
-	context->transform_negotiate->ciphersuite_info = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
 
-	if (!context->transform_negotiate->ciphersuite_info)
-	{
-		DEBUG("unknown ciphersuite with id %d", ciphersuite);
-		return false;
+	if (!renegotiate) {
+		context->state = MBEDTLS_SSL_HANDSHAKE_WRAPUP;
+		context->in_epoch = in_epoch;
+		memcpy(context->out_ctr, &out_ctr, 8);
+		memcpy(context->handshake->randbytes, randbytes, sizeof(randbytes));
+
+		context->transform_negotiate->ciphersuite_info = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
+		if (!context->transform_negotiate->ciphersuite_info)
+		{
+			DEBUG("unknown ciphersuite with id %d", ciphersuite);
+			return false;
+		}
+	
+		int err = mbedtls_ssl_derive_keys(context);
+		if (err)
+		{
+			DEBUG("derive keys failed with %d", err);
+			return false;
+		}	
+
+		context->in_msg = context->in_iv + context->transform_negotiate->ivlen -
+											context->transform_negotiate->fixed_ivlen;
+		context->out_msg = context->out_iv + context->transform_negotiate->ivlen -
+											 context->transform_negotiate->fixed_ivlen;
+
+		context->session_in = context->session_negotiate;
+		context->session_out = context->session_negotiate;
+		
+		context->transform_in = context->transform_negotiate;
+		context->transform_out = context->transform_negotiate;
+		
+		mbedtls_ssl_handshake_wrapup(context);
+		return true;
 	}
 
-	int err = mbedtls_ssl_derive_keys(context);
-	if (err)
-	{
-		DEBUG("derive keys failed with %d", err);
-		return false;
-	}
-
-	context->in_msg = context->in_iv + context->transform_negotiate->ivlen -
-										context->transform_negotiate->fixed_ivlen;
-	context->out_msg = context->out_iv + context->transform_negotiate->ivlen -
-										 context->transform_negotiate->fixed_ivlen;
-
-	context->session_in = context->session_negotiate;
-	context->session_out = context->session_negotiate;
-	
-	context->transform_in = context->transform_negotiate;
-	context->transform_out = context->transform_negotiate;
-	
-	mbedtls_ssl_handshake_wrapup(context);
-
-	return true;
+	return false;
 }
 
 
@@ -273,7 +277,8 @@ ProtocolError DTLSMessageChannel::establish()
 	if (error)
 		return error;
 
-	if (sessionPersist.restore(&ssl_context, callbacks.restore))
+	bool renegotiate = false;
+	if (sessionPersist.restore(&ssl_context, renegotiate, callbacks.restore))
 	{
 		DEBUG("restored session from persisted session data");
 		return SESSION_RESUMED;

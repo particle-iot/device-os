@@ -96,7 +96,7 @@ public:
 	void save(const uint8_t* random, mbedtls_ssl_context* context, save_fn_t saver);
 	void update(mbedtls_ssl_context* context, save_fn_t saver);
 
-	bool restore(mbedtls_ssl_context* context, restore_fn_t restorer);
+	bool restore(mbedtls_ssl_context* context, bool renegotiate, restore_fn_t restorer);
 
 };
 
