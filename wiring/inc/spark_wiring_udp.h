@@ -232,6 +232,13 @@ public:
 	 * @return Return the result of the leave operation
 	 */
 	int leaveMulticast(const IPAddress& ip);
+	
+	/*
+	* let client code to check for socket validity
+	* @return True for a valid socket.
+	*/
+	bool isOpen(); 
+
 
 	using Print::write;
 };
