@@ -337,6 +337,9 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 		case MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE:
 			ret = 0;
 			break;
+		case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
+			sessionPersist.clear(callbacks.save);
+			// fall through
 		default:
 			mbedtls_ssl_session_reset(&ssl_context);
 			return IO_ERROR;
