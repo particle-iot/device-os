@@ -262,7 +262,7 @@ int UDP::leaveMulticast(const IPAddress& ip)
     return socket_leave_multicast(&address, _nif, 0);
 }
 
-bool UDP::isOpen() 
+bool UDP::isValid() 
 {
   return _sock != socket_handle_invalid();
 }
