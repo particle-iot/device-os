@@ -406,6 +406,7 @@ bool MDMParser::powerOn(const char* simpin)
     }
 
     bool continue_cancel = false;
+    bool retried_after_reset = false;
 
     MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
     while (i--) {
@@ -436,9 +437,18 @@ bool MDMParser::powerOn(const char* simpin)
             _pwr = true;
             break;
         }
+        else if (i==0 && !retried_after_reset) {
+            MDM_INFO("[ Modem reset ]");
+            retried_after_reset = true; // only perform reset & retry sequence once
+            i = 10;
+            HAL_GPIO_Write(RESET_UC, 0);
+            HAL_Delay_Milliseconds(100);
+            HAL_GPIO_Write(RESET_UC, 1);
+        }
+
     }
     if (i < 0) {
-        MDM_ERROR("No Reply from Modem\r\n");
+        MDM_ERROR("[ No Reply from Modem ]\r\n");
     }
 
     if (continue_cancel) {
