@@ -392,9 +392,9 @@ int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 {
 	if (type==SparkCallbacks::PERSIST_SESSION)
 	{
-		static_assert(sizeof(SessionPersist::connection)>=sizeof(cloud_endpoint),"connection space in session is not large enough");
+		static_assert(sizeof(SessionPersistData::connection)>=sizeof(cloud_endpoint),"connection space in session is not large enough");
 		// save the current connection to the persisted session
-		SessionPersist* persist = (SessionPersist*)buffer;
+		SessionPersistData* persist = (SessionPersistData*)buffer;
 		memcpy(persist->connection, &cloud_endpoint, sizeof(cloud_endpoint));
 		return HAL_System_Backup_Save(0, buffer, length, nullptr);
 	}
@@ -677,7 +677,7 @@ bool determine_session_connection_address(IPAddress& ip_addr, uint16_t& port, Se
 	SessionPersist persist;
 	if (Spark_Restore(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr)==sizeof(persist) && persist.is_valid())
 	{
-		sockaddr_t* encoded = (sockaddr_t*)persist.connection;
+		sockaddr_t* encoded = (sockaddr_t*)persist.connection_data();
 		IPAddress addr; uint16_t p;
 		decode_endpoint(*encoded, addr, p);
 		if (addr && p)

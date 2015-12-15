@@ -18,9 +18,10 @@
  */
 #pragma once
 
-#define SessionPersistBaseSize 189
+#define SessionPersistBaseSize 190
 
 #include "mbedtls/ssl.h"
+#include "stddef.h"
 
 typedef struct __attribute__((packed)) SessionPersistOpaque
 {
@@ -36,16 +37,8 @@ typedef struct __attribute__((packed)) SessionPersistOpaque
 
 namespace particle { namespace protocol {
 
-
-class __attribute__((packed)) SessionPersist
+struct __attribute__((packed)) SessionPersistData
 {
-public:
-
-	using save_fn_t = decltype(DTLSMessageChannel::Callbacks::save);
-	using restore_fn_t = decltype(DTLSMessageChannel::Callbacks::restore);
-
-private:
-
 	uint16_t size;
 
 	/**
@@ -53,6 +46,12 @@ private:
 	 *
 	 */
 	uint8_t persistent;
+
+	uint8_t reserved;	// padding - use for something if needed.
+
+	// do not add more members here - the offset of the public connection data should be
+	// constant.
+	uint8_t connection[32];
 
 	uint8_t randbytes[sizeof(mbedtls_ssl_handshake_params::randbytes)];
 	decltype(mbedtls_ssl_session::ciphersuite) ciphersuite;
@@ -62,9 +61,18 @@ private:
 	uint8_t master[sizeof(mbedtls_ssl_session::master)];
 	decltype(mbedtls_ssl_context::in_epoch) in_epoch;
 	unsigned char out_ctr[8];
+
+};
+
+class __attribute__((packed)) SessionPersist : SessionPersistData
+{
 public:
-	uint8_t connection[32];
+
+	using save_fn_t = decltype(DTLSMessageChannel::Callbacks::save);
+	using restore_fn_t = decltype(DTLSMessageChannel::Callbacks::restore);
+
 private:
+
 
 	void restore_session(mbedtls_ssl_session* session)
 	{
@@ -111,7 +119,10 @@ private:
 
 public:
 
-	SessionPersist() : size(0), persistent(0) {}
+	SessionPersist()
+	{
+		size = 0; persistent = 0;
+	}
 
 	bool is_valid() { return size==sizeof(*this); }
 
@@ -177,11 +188,17 @@ public:
 	 */
 	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, restore_fn_t restorer);
 
+	uint8_t* connection_data() { return connection; }
+
 };
 
 static_assert(sizeof(SessionPersist)==SessionPersistBaseSize+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");
 static_assert(sizeof(SessionPersist)==sizeof(SessionPersistOpaque), "SessionPersistOpaque size == sizeof(SessionPersistQueue)");
 
+// the conenction buffer is used by external code to store connection data in the session
+// it must be binary compatible with previous releases
+static_assert(offsetof(SessionPersistData, connection)==4, "internal layout of public member has changed.");
+static_assert(sizeof(SessionPersistData)==sizeof(SessionPersist), "session persist data and the subclass should be the same size.");
 
 }}
 #endif
