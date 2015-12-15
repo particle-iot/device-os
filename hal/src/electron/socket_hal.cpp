@@ -42,7 +42,7 @@ sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port
 sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
 {
     int port;
-    ElectronMDM::IP ip;
+    MDM_IP ip;
     sock_result_t result = electronMDM.socketRecvFrom(sock, &ip, &port, (char*)buffer, bufLen);
     if (result>=0) {
         uint32_t ipv4 = ip;
