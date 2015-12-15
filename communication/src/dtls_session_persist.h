@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#define SessionPersistBaseSize 157
+#define SessionPersistBaseSize 189
 
 #include "mbedtls/ssl.h"
 
@@ -32,6 +32,7 @@ typedef struct __attribute__((packed)) SessionPersistOpaque
 #ifdef __cplusplus
 
 #include "dtls_message_channel.h"
+#include "spark_protocol_functions.h"	// for SparkCallbacks
 
 namespace particle { namespace protocol {
 
@@ -61,6 +62,9 @@ private:
 	uint8_t master[sizeof(mbedtls_ssl_session::master)];
 	decltype(mbedtls_ssl_context::in_epoch) in_epoch;
 	unsigned char out_ctr[8];
+public:
+	uint8_t connection[32];
+private:
 
 	void restore_session(mbedtls_ssl_session* session)
 	{
@@ -88,7 +92,7 @@ private:
 	{
 		if (restorer)
 		{
-			if (restorer(this, sizeof(*this))!=sizeof(*this))
+			if (restorer(this, sizeof(*this), SparkCallbacks::PERSIST_SESSION, nullptr)!=sizeof(*this))
 				return false;
 			if (size!=sizeof(*this))
 				return false;
@@ -100,7 +104,7 @@ private:
 	{
 		bool success = false;
 		if (saver && persistent) {
-			success = !saver(this, sizeof(*this));
+			success = !saver(this, sizeof(*this), SparkCallbacks::PERSIST_SESSION, nullptr);
 		}
 		return success;
 	}
@@ -108,6 +112,8 @@ private:
 public:
 
 	SessionPersist() : size(0), persistent(0) {}
+
+	bool is_valid() { return size==sizeof(*this); }
 
 	void clear(save_fn_t saver)
 	{

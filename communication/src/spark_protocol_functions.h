@@ -104,11 +104,15 @@ struct SparkCallbacks
 
   // size == 44
 
-	int (*save)(const void* data, size_t length);
+  	enum PersistType
+	{
+  		PERSIST_SESSION = 0
+	};
+	int (*save)(const void* data, size_t length, uint8_t type, void* reserved);
 	/**
 	 * Restore to the given buffer. Returns the number of bytes restored.
 	 */
-	int (*restore)(void* data, size_t max_length);
+	int (*restore)(void* data, size_t max_length, uint8_t type, void* reserved);
 
 	// size == 52
 };
