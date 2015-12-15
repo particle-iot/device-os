@@ -589,7 +589,7 @@ int Internet_Test(void)
     long testSocket;
     sockaddr_t testSocketAddr;
     int testResult = 0;
-    DEBUG("internet test socket");
+    DEBUG("Internet test socket");
     testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, 53, NIF_DEFAULT);
     DEBUG("socketed testSocket=%d", testSocket);
 
@@ -613,16 +613,16 @@ int Internet_Test(void)
     testSocketAddr.sa_data[5] = 8;
 
     uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
-    DEBUG("connect");
+    DEBUG("Connect Attempt");
     testResult = socket_connect(testSocket, &testSocketAddr, sizeof (testSocketAddr));
-    DEBUG("connected testResult=%d", testResult);
+    DEBUG("socket_connect()=%s", (testResult ? "fail":"success"));
     HAL_WLAN_SetNetWatchDog(ot);
 
 #if defined(SEND_ON_CLOSE)
-    DEBUG("send");
+    DEBUG("Send Attempt");
     char c = 0;
     int rc = send(testSocket, &c, 1, 0);
-    DEBUG("send %d", rc);
+    DEBUG("send()=%d", rc);
 #endif
     DEBUG("Close");
     socket_close(testSocket);
@@ -761,7 +761,6 @@ int Spark_Connect()
         {
 			uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
 			rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
-			DEBUG("socket_connect()=%d", rv);
 			if (rv)
 				ERROR("connection failed to %d.%d.%d.%d:%d, code=%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port, rv);
 			else
@@ -788,7 +787,7 @@ int Spark_Disconnect(void)
 #endif
         DEBUG("Close Attempt");
         retVal = socket_close(sparkSocket);
-        DEBUG("socket_close()=%d", retVal);
+        DEBUG("socket_close()=%s", (retVal ? "fail":"success"));
         sparkSocket = socket_handle_invalid();
     }
     return retVal;
@@ -930,8 +929,10 @@ void Multicast_Presence_Announcement(void)
 {
 #ifndef SPARK_NO_CLOUD
     long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NIF_DEFAULT);
-    if (!socket_handle_valid(multicast_socket))
+    if (!socket_handle_valid(multicast_socket)) {
+        DEBUG("socket_handle_valid() = %d", socket_handle_valid(multicast_socket));
         return;
+    }
 
     unsigned char announcement[19];
     uint8_t id_length = HAL_device_ID(NULL, 0);
@@ -952,9 +953,10 @@ void Multicast_Presence_Announcement(void)
     //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
     //for (int i = 3; i > 0; i--)
     {
+        DEBUG("socket_sendto()");
         socket_sendto(multicast_socket, announcement, 19, 0, &addr, sizeof (sockaddr_t));
     }
-
+    DEBUG("socket_close(multicast_socket)");
     socket_close(multicast_socket);
 #endif
 }
