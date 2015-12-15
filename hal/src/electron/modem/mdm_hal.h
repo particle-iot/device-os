@@ -28,6 +28,7 @@
 #include "electronserialpipe_hal.h"
 #include "pinmap_hal.h"
 #include "system_tick_hal.h"
+#include "enums_hal.h"
 
 /* Include for debug capabilty */
 #define MDM_DEBUG
@@ -43,66 +44,6 @@ public:
     MDMParser(void);
     //! get static instance
     static MDMParser* getInstance() { return inst; };
-
-    // ----------------------------------------------------------------
-    // Types
-    // ----------------------------------------------------------------
-    //! MT Device Types
-    typedef enum { DEV_UNKNOWN, DEV_SARA_G350, DEV_LISA_U200, DEV_LISA_C200,
-                   DEV_SARA_U260, DEV_SARA_U270, DEV_LEON_G200 } Dev;
-    //! SIM Status
-    typedef enum { SIM_UNKNOWN, SIM_MISSING, SIM_PIN, SIM_READY } Sim;
-    //! SIM Status
-    typedef enum { LPM_DISABLED, LPM_ENABLED, LPM_ACTIVE } Lpm;
-    //! Device status
-    typedef struct {
-        Dev dev;            //!< Device Type
-        Lpm lpm;            //!< Power Saving
-        Sim sim;            //!< SIM Card Status
-        char ccid[20+1];    //!< Integrated Circuit Card ID
-        char imsi[15+1];    //!< International Mobile Station Identity
-        char imei[15+1];    //!< International Mobile Equipment Identity
-        char meid[18+1];    //!< Mobile Equipment IDentifier
-        char manu[16];      //!< Manufacturer (u-blox)
-        char model[16];     //!< Model Name (LISA-U200, LISA-C200 or SARA-G350)
-        char ver[16];       //!< Software Version
-    } DevStatus;
-    //! Registration Status
-    typedef enum { REG_UNKNOWN, REG_DENIED, REG_NONE, REG_HOME, REG_ROAMING } Reg;
-    //! Access Technology
-    typedef enum { ACT_UNKNOWN, ACT_GSM, ACT_EDGE, ACT_UTRAN, ACT_CDMA } AcT;
-    //! Network Status
-    typedef struct {
-        Reg csd;        //!< CSD Registration Status (Circuit Switched Data)
-        Reg psd;        //!< PSD Registration status (Packet Switched Data)
-        AcT act;        //!< Access Technology
-        int rssi;       //!< Received Signal Strength Indication (in dBm, range -113..-53)
-        int ber;        //!< Bit Error Rate (BER), see 3GPP TS 45.008 [20] subclause 8.2.4
-        char opr[16+1]; //!< Operator Name
-        char num[32];   //!< Mobile Directory Number
-        unsigned short lac;  //!< location area code in hexadecimal format (2 bytes in hex)
-        unsigned int ci;     //!< Cell ID in hexadecimal format (2 to 4 bytes in hex)
-    } NetStatus;
-    //! An IP v4 address
-    typedef uint32_t IP;
-    #define NOIP ((MDMParser::IP)0) //!< No IP address
-    // ip number formating and conversion
-    #define IPSTR           "%d.%d.%d.%d"
-    #define IPNUM(ip)       ((ip)>>24)&0xff, \
-                            ((ip)>>16)&0xff, \
-                            ((ip)>> 8)&0xff, \
-                            ((ip)>> 0)&0xff
-    #define IPADR(a,b,c,d) ((((MDMParser::IP)(a))<<24) | \
-                            (((MDMParser::IP)(b))<<16) | \
-                            (((MDMParser::IP)(c))<< 8) | \
-                            (((MDMParser::IP)(d))<< 0))
-
-
-    // ----------------------------------------------------------------
-    // Device
-    // ----------------------------------------------------------------
-
-    typedef enum { AUTH_NONE, AUTH_PAP, AUTH_CHAP, AUTH_DETECT } Auth;
 
     /* Used to cancel all operations */
     void cancel(void);
@@ -138,9 +79,9 @@ public:
     /** get the current device status
         \param strocture holding the device information.
     */
-    void getDevStatus(MDMParser::DevStatus* dev) { memcpy(dev, &_dev, sizeof(DevStatus)); }
+    void getDevStatus(DevStatus* dev) { memcpy(dev, &_dev, sizeof(DevStatus)); }
 
-    const MDMParser::DevStatus* getDevStatus() { return &_dev; }
+    const DevStatus* getDevStatus() { return &_dev; }
 
     /** register to the network
         \param status an optional structure to with network information
@@ -183,7 +124,7 @@ public:
         \param auth is the authentication mode (CHAP,PAP,NONE or DETECT)
         \return the ip that is assigned
     */
-    MDMParser::IP join(const char* apn = "spark.telefonica.com", const char* username = NULL,
+    MDM_IP join(const char* apn = "spark.telefonica.com", const char* username = NULL,
                        const char* password = NULL, Auth auth = AUTH_DETECT);
 
     /** deregister (detach) the MT from the GPRS service.
@@ -202,22 +143,16 @@ public:
         \param host the domain name to translate e.g. "u-blox.com"
         \return the IP if successful, 0 otherwise
     */
-    MDMParser::IP gethostbyname(const char* host);
+    MDM_IP gethostbyname(const char* host);
 
     /** get the current assigned IP address
         \return the ip that is assigned
     */
-    MDMParser::IP getIpAddress(void) { return _ip; }
+    MDM_IP getIpAddress(void) { return _ip; }
 
     // ----------------------------------------------------------------
     // Sockets
     // ----------------------------------------------------------------
-
-    //! Type of IP protocol
-    typedef enum { MDM_IPPROTO_TCP = 0, MDM_IPPROTO_UDP = 1 } IpProtocol;
-
-    //! Socket error return codes
-    #define MDM_SOCKET_ERROR    (-1)
 
     /** Create a socket for a ip protocol (and optionaly bind)
         \param ipproto the protocol (UDP or TCP)
@@ -234,7 +169,7 @@ public:
     */
     bool socketConnect(int socket, const char* host, int port);
 
-    bool socketConnect(int socket, const IP& ip, int port);
+    bool socketConnect(int socket, const MDM_IP& ip, int port);
 
     /** make a socket connection
         \param socket the socket handle
@@ -265,7 +200,7 @@ public:
         \param len the size of the buffer to write
         \return the size written or SOCKET_ERROR on failure
     */
-    int socketSendTo(int socket, IP ip, int port, const char * buf, int len);
+    int socketSendTo(int socket, MDM_IP ip, int port, const char * buf, int len);
 
     /** Get the number of bytes pending for reading for this socket
         \param socket the socket handle
@@ -289,7 +224,7 @@ public:
         \param len the size of the buffer to read into
         \return the number of bytes read or SOCKET_ERROR on failure
     */
-    int socketRecvFrom(int socket, IP* ip, int* port, char* buf, int len);
+    int socketRecvFrom(int socket, MDM_IP* ip, int* port, char* buf, int len);
 
     /** Close a connectied socket (that was connected with #socketConnect)
         \param socket the socket handle
@@ -388,50 +323,19 @@ public:
 
     /** dump the device status to DEBUG output
     */
-    void dumpDevStatus(MDMParser::DevStatus *status);
+    void dumpDevStatus(DevStatus *status);
 
     /** dump the network status to DEBUG output
     */
-    void dumpNetStatus(MDMParser::NetStatus *status);
+    void dumpNetStatus(NetStatus *status);
 
     /** dump the ip address to DEBUG output
     */
-    void dumpIp(MDMParser::IP ip);
+    void dumpIp(MDM_IP ip);
 
-    // ----------------------------------------------------------------
+    //----------------------------------------------------------------
     // Parsing
-    // ----------------------------------------------------------------
-
-    enum {
-        // waitFinalResp Responses
-        NOT_FOUND     =  0,
-        WAIT          = -1, // TIMEOUT
-        RESP_OK       = -2,
-        RESP_ERROR    = -3,
-        RESP_PROMPT   = -4,
-        RESP_ABORTED  = -5,
-
-        // getLine Responses
-        #define LENGTH(x)  (x & 0x00FFFF) //!< extract/mask the length
-        #define TYPE(x)    (x & 0xFF0000) //!< extract/mask the type
-
-        TYPE_UNKNOWN    = 0x000000,
-        TYPE_OK         = 0x110000,
-        TYPE_ERROR      = 0x120000,
-        TYPE_RING       = 0x210000,
-        TYPE_CONNECT    = 0x220000,
-        TYPE_NOCARRIER  = 0x230000,
-        TYPE_NODIALTONE = 0x240000,
-        TYPE_BUSY       = 0x250000,
-        TYPE_NOANSWER   = 0x260000,
-        TYPE_PROMPT     = 0x300000,
-        TYPE_PLUS       = 0x400000,
-        TYPE_TEXT       = 0x500000,
-        TYPE_ABORTED    = 0x600000,
-
-        // special timout constant
-        TIMEOUT_BLOCKING = 0xffffffff
-    };
+    //----------------------------------------------------------------
 
     /** Get a line from the physical interface. This function need
         to be implemented in a inherited class. Usually just calls
@@ -554,14 +458,14 @@ protected:
     static int _cbUACTIND(int type, const char* buf, int len, int* i);
     static int _cbUDOPN(int type, const char* buf, int len, char* mccmnc);
     // sockets
-    static int _cbCMIP(int type, const char* buf, int len, IP* ip);
+    static int _cbCMIP(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUPSND(int type, const char* buf, int len, int* act);
-    static int _cbUPSND(int type, const char* buf, int len, IP* ip);
-    static int _cbUDNSRN(int type, const char* buf, int len, IP* ip);
+    static int _cbUPSND(int type, const char* buf, int len, MDM_IP* ip);
+    static int _cbUDNSRN(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUSOCR(int type, const char* buf, int len, int* handle);
     static int _cbUSOCTL(int type, const char* buf, int len, int* handle);
     static int _cbUSORD(int type, const char* buf, int len, char* out);
-    typedef struct { char* buf; IP ip; int port; } USORFparam;
+    typedef struct { char* buf; MDM_IP ip; int port; } USORFparam;
     static int _cbUSORF(int type, const char* buf, int len, USORFparam* param);
     typedef struct { char* buf; char* num; } CMGRparam;
     static int _cbCUSD(int type, const char* buf, int len, char* resp);
@@ -576,13 +480,23 @@ protected:
     // variables
     DevStatus   _dev; //!< collected device information
     NetStatus   _net; //!< collected network information
-    IP          _ip;  //!< assigned ip address
+    MDM_IP       _ip;  //!< assigned ip address
     // management struture for sockets
-    typedef struct { int handle; system_tick_t timeout_ms; volatile bool connected; volatile int pending; } SockCtrl;
+    typedef struct {
+        int handle;
+        system_tick_t timeout_ms;
+        volatile bool connected;
+        volatile int pending;
+        volatile bool open;
+    } SockCtrl;
     // LISA-C has 6 TCP and 6 UDP sockets
     // LISA-U and SARA-G have 7 sockets
     SockCtrl _sockets[7];
     int _findSocket(int handle = MDM_SOCKET_ERROR/* = CREATE*/);
+    int _socketCloseHandleIfOpen(int socket);
+    int _socketCloseUnusedHandles(void);
+    int _socketSocket(int socket, IpProtocol ipproto, int port);
+    bool _socketFree(int socket);
     static MDMParser* inst;
     bool _init;
     bool _pwr;
