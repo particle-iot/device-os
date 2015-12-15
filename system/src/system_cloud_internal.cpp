@@ -805,7 +805,8 @@ int Spark_Connect()
     ip_address_error = determine_connection_address(ip_addr, port, server_addr, udp);
     if (!ip_address_error)
     {
-        sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, port, NIF_DEFAULT);
+    		uint8_t local_port_offset = (PLATFORM_ID==3) ? 100 : 0;
+        sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, port+local_port_offset, NIF_DEFAULT);
         DEBUG("socketed udp=%d, sparkSocket=%d, %d", udp, sparkSocket, socket_handle_valid(sparkSocket));
     }
 
