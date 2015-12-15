@@ -672,7 +672,7 @@ int Internet_Test(void)
 /**
  * Determines if the existing session is valid and contains a valid ip_address and port
  */
-bool determine_session_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddress& server_addr)
+int determine_session_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddress& server_addr)
 {
 	SessionPersist persist;
 	if (Spark_Restore(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr)==sizeof(persist) && persist.is_valid())
@@ -684,18 +684,20 @@ bool determine_session_connection_address(IPAddress& ip_addr, uint16_t& port, Se
 		{
 			ip_addr = addr;
 			port = p;
-			return true;
+			return 0;
 		}
 	}
-	return false;
+	return -1;
 }
 
-bool determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddress& server_addr, bool udp)
+/**
+ */
+int determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddress& server_addr, bool udp)
 {
 	// todo - how to determine if the underlying connection has changed so that we invalidate the existing session?
 	// for now, the user will have to manually reset the connection (e.g. by powering off the device.)
-	if (udp && determine_session_connection_address(ip_addr, port, server_addr)) {
-		return true;
+	if (udp && !determine_session_connection_address(ip_addr, port, server_addr)) {
+		return 0;
 	}
 
 	bool ip_address_error = false;
