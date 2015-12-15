@@ -289,6 +289,8 @@ ProtocolError DTLSMessageChannel::establish()
 	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, callbacks.restore);
 	if (restoreStatus==SessionPersist::COMPLETE)
 	{
+		// ensure that subsequent changes are saved.
+		sessionPersist.make_persistent();
 		DEBUG("restored session from persisted session data");
 		return SESSION_RESUMED;
 	}
