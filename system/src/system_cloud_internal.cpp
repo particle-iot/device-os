@@ -631,34 +631,9 @@ int Internet_Test(void)
     return testResult;
 }
 
-// Same return value as connect(), -1 on error
-int Spark_Connect()
+bool determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddress& server_addr, bool udp)
 {
-    DEBUG("sparkSocket Now =%d", sparkSocket);
-
-    // Close Original
-    Spark_Disconnect();
-
-    const bool udp =
-#if HAL_PLATFORM_CLOUD_UDP
-    (HAL_Feature_Get(FEATURE_CLOUD_UDP));
-#else
-    false;
-#endif
-
-    uint16_t port = SPARK_SERVER_PORT;
-    if (udp)
-    		port = PORT_COAPS;
-
-    ServerAddress server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));
-    HAL_FLASH_Read_ServerAddress(&server_addr);
-    DEBUG("HAL_FLASH_Read_ServerAddress() = type:%d,domain:%s,ip: %d.%d.%d.%d, port: %d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip), server_addr.port);
-
-    bool ip_address_error = false;
-    IPAddress ip_addr;
-    int rv = -1;
-
+	bool ip_address_error = false;
     switch (server_addr.addr_type)
     {
         case IP_ADDRESS:
@@ -680,7 +655,10 @@ int Spark_Connect()
 				// and fall through to domain name case
         		}
         		else
+        		{
         			ip_address_error = true;
+        			break;
+        		}
         }
 
         case DOMAIN_NAME:
@@ -691,7 +669,8 @@ int Spark_Connect()
             char buf[96];
             system_string_interpolate(server_addr.domain, buf, sizeof(buf), system_interpolate);
             int attempts = 3;
-            while (!ip_addr && 0 < --attempts)
+            int rv = 0;
+            while (!ip_addr && attempts-->0)
             {
                 rv = inet_gethostbyname(buf, strnlen(buf, 96), &ip_addr.raw(), NIF_DEFAULT, NULL);
                 HAL_Delay_Milliseconds(1);
@@ -726,6 +705,39 @@ int Spark_Connect()
 	}
 	else
 		ip_address_error = true;
+
+	return ip_address_error;
+}
+
+// Same return value as connect(), -1 on error
+int Spark_Connect()
+{
+    DEBUG("sparkSocket Now =%d", sparkSocket);
+
+    // Close Original
+    Spark_Disconnect();
+
+    const bool udp =
+#if HAL_PLATFORM_CLOUD_UDP
+    (HAL_Feature_Get(FEATURE_CLOUD_UDP));
+#else
+    false;
+#endif
+
+    uint16_t port = SPARK_SERVER_PORT;
+    if (udp)
+    		port = PORT_COAPS;
+
+    ServerAddress server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    HAL_FLASH_Read_ServerAddress(&server_addr);
+    DEBUG("HAL_FLASH_Read_ServerAddress() = type:%d,domain:%s,ip: %d.%d.%d.%d, port: %d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip), server_addr.port);
+
+    bool ip_address_error = false;
+    IPAddress ip_addr;
+    int rv = -1;
+
+    ip_address_error = determine_connection_address(ip_addr, port, server_addr, udp);
 
     if (!ip_address_error)
     {
