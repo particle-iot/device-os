@@ -23,8 +23,7 @@
 
 #ifndef SPARK_WIRING_THREAD_H
 #define	SPARK_WIRING_THREAD_H
-
-#if PLATFORM_THREADING
+//#if PLATFORM_THREADING
 
 #include "concurrent_hal.h"
 #include <stddef.h>
@@ -117,11 +116,54 @@ public:
 
 #define CRITICAL_SECTION_BLOCK() CriticalSection __cs;
 
-#else
+template<typename T>
+class RtosQueue
+{
+public:
+	RtosQueue(size_t item_count) : m_queue(NULL) {
+		os_queue_create(&m_queue, sizeof(T), item_count);
+	}
+	virtual ~RtosQueue()
+	{
+	    if (m_queue) {
+	    	os_queue_destroy(m_queue);
+	    	m_queue = NULL;
+	    }
+	}
+	/**
+	 * Return 0 on success.
+	 * @param queue
+	 * @param item
+	 * @param delay
+	 * @return
+	 */
+	int put(const T& item, uint32_t delay)
+	{
+		return os_queue_put(m_queue, (const void*)&item, delay);
+	}
+	/**
+	 * Return 0 on success.
+	 * @param queue
+	 * @param item
+	 * @param delay
+	 * @return
+	 */
+	int take(T* item, uint32_t delay)
+	{
+		return os_queue_take(m_queue, (void*)item, delay);
+	}
 
-#define CRITICAL_SECTION_BLOCK()
 
-#endif
+private:
+	os_queue_t  m_queue;
+};
+
+
+//#else
+
+//#define CRITICAL_SECTION_BLOCK()
+
+//#endif
 
 #endif	/* SPARK_WIRING_THREAD_H */
 
