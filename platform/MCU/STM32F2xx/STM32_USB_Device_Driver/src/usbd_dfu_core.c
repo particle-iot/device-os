@@ -192,6 +192,9 @@ uint32_t Manifest_State = Manifest_complete;
 static uint32_t wBlockNum = 0, wlength = 0;
 static uint32_t Pointer = APP_DEFAULT_ADD;  /* Base Address to Erase, Program or Read */
 static __IO uint32_t  usbd_dfu_AltSet = 0;
+#if PLATFORM_ID == 88
+volatile uint8_t init_transfer = 0;
+#endif
 
 extern uint8_t MAL_Buffer[];
 
@@ -587,10 +590,10 @@ static uint8_t  EP0_TxSent (void  *pdev)
       Addr = ((wBlockNum - 2) * XFERSIZE) + Pointer;
 	  
 #if PLATFORM_ID == 88
-      if( (usbd_dfu_AltSet==0) && (Addr==0x0800C000 || Addr==0x08020000 || Addr==0x08040000) )
+      if( (init_transfer==1) && (usbd_dfu_AltSet==0) && (Addr==0x0800C000 || Addr==0x08020000 || Addr==0x08040000) )
       {
         uint32_t first_word = *(uint32_t *)MAL_Buffer;
-        if( (first_word & 0x2FFC0000) == 0x20000000 )
+        if( (first_word > 0x20000000) && (first_word <= 0x20020000) )
         {
           uint16_t wiced_app_flag;
           if(Addr == 0x0800C000) wiced_app_flag = 0x5AA5;
@@ -599,6 +602,8 @@ static uint8_t  EP0_TxSent (void  *pdev)
           Save_Wiced_App_Flag((const uint16_t *)&wiced_app_flag);
         }
       }
+	  
+      init_transfer = 0;
 #endif
 
       /* Preform the write operation */
@@ -1029,6 +1034,9 @@ void DFU_LeaveDFUMode(void *pdev)
   */
 static uint8_t  *USBD_DFU_GetCfgDesc (uint8_t speed, uint16_t *length)
 {
+#if PLATFORM_ID == 88
+  init_transfer = 1;
+#endif
   *length = sizeof (usbd_dfu_CfgDesc);
   return usbd_dfu_CfgDesc;
 }
