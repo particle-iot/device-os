@@ -293,6 +293,14 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
         if (result)
             return result;
 
+        ip::udp::endpoint endpoint(ip::address_v4::any(), port);
+        socket.bind(endpoint, ec);
+        result = ec.value();
+        if (result) {
+            DEBUG("%d %s", port, ec.message().c_str());
+            return result;
+        }
+
         socket.non_blocking(true, ec);
     }
     else {
