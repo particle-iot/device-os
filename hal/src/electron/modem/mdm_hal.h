@@ -469,7 +469,8 @@ protected:
     static int _cbUDNSRN(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUSOCR(int type, const char* buf, int len, int* handle);
     static int _cbUSOCTL(int type, const char* buf, int len, int* handle);
-    static int _cbUSORD(int type, const char* buf, int len, char* out);
+    typedef struct { char* buf; int len; } USORDparam;
+    static int _cbUSORD(int type, const char* buf, int len, USORDparam* param);
     typedef struct { char* buf; MDM_IP ip; int port; int len; } USORFparam;
     static int _cbUSORF(int type, const char* buf, int len, USORFparam* param);
     typedef struct { char* buf; char* num; } CMGRparam;

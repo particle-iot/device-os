@@ -1509,13 +1509,14 @@ int MDMParser::socketReadable(int socket)
     return pending;
 }
 
-int MDMParser::_cbUSORD(int type, const char* buf, int len, char* out)
+int MDMParser::_cbUSORD(int type, const char* buf, int len, USORDparam* param)
 {
     if ((type == TYPE_PLUS) && out) {
         int sz, sk;
         if ((sscanf(buf, "\r\n+USORD: %d,%d,", &sk, &sz) == 2) &&
             (buf[len-sz-2] == '\"') && (buf[len-1] == '\"')) {
-            memcpy(out, &buf[len-1-sz], sz);
+            memcpy(param->buf, &buf[len-1-sz], sz);
+            param->len = sz;
         }
     }
     return WAIT;
@@ -1536,12 +1537,13 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
         LOCK();
         if (ISSOCKET(socket)) {
             if (_sockets[socket].connected) {
-                if (_sockets[socket].pending < blk)
-                    blk = _sockets[socket].pending;
                 if (blk > 0) {
                     DEBUG_D("socketRecv: _cbUSORD\r\n");
                     sendFormated("AT+USORD=%d,%d\r\n",_sockets[socket].handle, blk);
-                    if (RESP_OK == waitFinalResp(_cbUSORD, buf)) {
+                    USORDparam param;
+                    param.buf = buf;
+                    if (RESP_OK == waitFinalResp(_cbUSORD, &param)) {
+                        blk = param.len;
                         _sockets[socket].pending -= blk;
                         len -= blk;
                         cnt += blk;
@@ -1602,17 +1604,15 @@ int MDMParser::socketRecvFrom(int socket, MDM_IP* ip, int* port, char* buf, int 
         bool ok = false;
         LOCK();
         if (ISSOCKET(socket)) {
-            if (_sockets[socket].pending < blk)
-                blk = _sockets[socket].pending;
             if (blk > 0) {
                 sendFormated("AT+USORF=%d,%d\r\n",_sockets[socket].handle, blk);
                 USORFparam param;
                 param.buf = buf;
                 if (RESP_OK == waitFinalResp(_cbUSORF, &param)) {
-                    _sockets[socket].pending -= blk;
                     *ip = param.ip;
                     *port = param.port;
                     blk = param.len;
+                    _sockets[socket].pending -= blk;
                     len -= blk;
                     cnt += blk;
                     buf += blk;
