@@ -35,6 +35,7 @@
 #include "ota_flash_hal_stm32f2xx.h"
 #include "spark_protocol_functions.h"
 #include "hal_platform.h"
+#include "service_debug.h"
 
 #define OTA_CHUNK_SIZE          512
 
@@ -165,7 +166,10 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
 {
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
-    if (fetch_module(&module, &module_ota, true, MODULE_VALIDATION_INTEGRITY) && (module.validity_checked==module.validity_result))
+
+    bool module_fetched = fetch_module(&module, &module_ota, true, MODULE_VALIDATION_INTEGRITY);
+	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
+    if (module_fetched && (module.validity_checked==module.validity_result))
     {
         uint32_t moduleLength = module_length(module.info);
         module_function_t function = module_function(module.info);
@@ -181,12 +185,17 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
                 FLASH_INTERNAL, uint32_t(module.info->module_start_address),
                 (moduleLength + 4),//+4 to copy the CRC too
                 function,
-                MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION))//true to verify the CRC during copy also
+                MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION)) { //true to verify the CRC during copy also
                     result = HAL_UPDATE_APPLIED_PENDING_RESTART;
-
+                    DEBUG("OTA module applied - device will restart");
+            }
         }
 
         FLASH_End();
+    }
+    else
+    {
+    		WARN("OTA module not applied");
     }
     return result;
 }
