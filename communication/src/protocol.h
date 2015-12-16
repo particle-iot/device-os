@@ -127,6 +127,12 @@ protected:
 		 * Set when the protocol expects a hello response from the server.
 		 */
 		REQUIRE_HELLO_RESPONSE = 1<<0,
+
+		/**
+		 * Internal flag. Used by the protocol to disable sending a hello on session resume.
+		 * Set if sending a hello response on resuming a session isn't required.
+		 */
+		SKIP_SESSION_RESUME_HELLO = 1<<1,
 	};
 
 	void set_protocol_flags(int flags)

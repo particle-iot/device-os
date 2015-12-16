@@ -186,13 +186,18 @@ int Protocol::begin()
 	pinger.reset();
 
 	ProtocolError error = channel.establish();
-	if (error==SESSION_RESUMED)
-		return error;
-
-	if (error) {
+	if (error && error!=SESSION_RESUMED) {
 		WARN("handshake failed with code %d", error);
 		return error;
 	}
+
+	// resumed an existing session and don't need the hello
+	if ((error==SESSION_RESUMED) && (flags & SKIP_SESSION_RESUME_HELLO))
+		return error;
+
+	// todo - this will return code 0 even when the session was resumed,
+	// causing all the application events to be sent.
+
 	error = hello(descriptor.was_ota_upgrade_successful());
 	if (error)
 	{
@@ -207,6 +212,7 @@ int Protocol::begin()
 	}
 	INFO("Hanshake: completed");
 	channel.notify_established();
+	flags &= ~SKIP_SESSION_RESUME_HELLO;
 	return error;
 }
 
