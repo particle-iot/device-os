@@ -66,6 +66,7 @@ namespace ChunkReceivedCode {
 enum DescriptionType {
     DESCRIBE_SYSTEM = 1<<1,            // modules
     DESCRIBE_APPLICATION = 1<<2,       // functions and variables
+	DESCRIBE_ALL = DESCRIBE_SYSTEM | DESCRIBE_APPLICATION
 };
 
 

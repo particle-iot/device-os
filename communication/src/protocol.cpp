@@ -51,12 +51,15 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	switch (message_type)
 	{
 	case CoAPMessageType::DESCRIBE:
-		// TODO - this violates CoAP since we are sending two different achnowledgements
-		error = send_description(token, msg_id,
-				DESCRIBE_SYSTEM | DESCRIBE_APPLICATION);
-		//if (!error)
-		//		error = send_description(token, msg_id, DESCRIBE_APPLICATION);
+	{
+		// 4 bytes header, 1 byte token, 2 bytes location path for event
+		// 2 bytes optional single character location path for describe flags
+		int descriptor_type = DESCRIBE_ALL;
+		if (message.length()>8)
+			descriptor_type = queue[8];
+		error = send_description(token, msg_id, descriptor_type);
 		break;
+	}
 
 	case CoAPMessageType::FUNCTION_CALL:
 		return functions.handle_function_call(token, msg_id, message, channel,
