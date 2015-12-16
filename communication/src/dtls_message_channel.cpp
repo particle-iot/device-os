@@ -64,7 +64,7 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, res
 	if (!restore_this_from(restorer))
 		return NO_SESSION;
 
-	if (size!=sizeof(*this))
+	if (!is_valid())
 		return NO_SESSION;
 
 
@@ -82,7 +82,7 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, res
 	if (!renegotiate) {
 		context->state = MBEDTLS_SSL_HANDSHAKE_WRAPUP;
 		context->in_epoch = in_epoch;
-		memcpy(context->out_ctr, &out_ctr, 8);
+		memcpy(context->out_ctr, &out_ctr, sizeof(out_ctr));
 		memcpy(context->handshake->randbytes, randbytes, sizeof(randbytes));
 
 		context->transform_negotiate->ciphersuite_info = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
