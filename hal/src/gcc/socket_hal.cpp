@@ -271,10 +271,17 @@ uint8_t socket_active_status(sock_handle_t socket)
 sock_result_t socket_close(sock_handle_t socket)
 {
     if (socket>=SOCKET_COUNT)
+    {
+    		auto& s = udp_from(socket);
+    		s.shutdown(boost::asio::ip::udp::socket::shutdown_both, ec);
     		udp_from(socket).close();
+    }
     else
-    		tcp_from(socket).close();
-
+    {
+    		auto& s = tcp_from(socket);
+		s.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+    		s.close();
+    }
     return 0;
 }
 
@@ -290,7 +297,7 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
         auto& socket = udp_from(handle);
         socket.open(ip::udp::v4(), ec);        
         sock_handle_t result = ec.value();
-        if (result)
+        if (result)				// error
             return result;
 
         ip::udp::endpoint endpoint(ip::address_v4::any(), port);
