@@ -207,30 +207,6 @@ void Spark_Process_Events()
     }
 }
 
-#if HAL_PLATFORM_CLOUD_UDP
-struct Endpoint
-{
-	IPAddress address;
-	uint16_t port;
-};
-
-struct SessionConnection
-{
-	/**
-	 * The previously used address.
-	 */
-	sockaddr_t address;
-
-	/**
-	 * The checksum of the server address data that was used
-	 * to derive the connection address.
-	 */
-	uint32_t server_address_checksum;
-};
-
-
-SessionConnection cloud_endpoint;
-
 void decode_endpoint(const sockaddr_t& socket_addr, IPAddress& ip, uint16_t& port)
 {
 	// assume IPv4 for now.
@@ -254,6 +230,31 @@ void encode_endpoint(sockaddr_t& tSocketAddr, const IPAddress& ip_addr, const ui
     tSocketAddr.sa_data[4] = ip_addr[2];
     tSocketAddr.sa_data[5] = ip_addr[3];
 }
+
+
+#if HAL_PLATFORM_CLOUD_UDP
+struct Endpoint
+{
+	IPAddress address;
+	uint16_t port;
+};
+
+struct SessionConnection
+{
+	/**
+	 * The previously used address.
+	 */
+	sockaddr_t address;
+
+	/**
+	 * The checksum of the server address data that was used
+	 * to derive the connection address.
+	 */
+	uint32_t server_address_checksum;
+};
+
+
+SessionConnection cloud_endpoint;
 
 int Spark_Send_UDP(const unsigned char* buf, uint32_t buflen, void* reserved)
 {
@@ -403,6 +404,7 @@ void SystemEvents(const char* name, const char* data)
     }
 }
 
+#if HAL_PLATFORM_CLOUD_UDP
 int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 {
 	if (type==SparkCallbacks::PERSIST_SESSION)
@@ -428,7 +430,7 @@ int Spark_Restore(void* buffer, size_t max_length, uint8_t type, void* reserved)
 		length = 0;
 	return length;
 }
-
+#endif
 
 void Spark_Protocol_Init(void)
 {
@@ -691,6 +693,7 @@ int Internet_Test(void)
     return testResult;
 }
 
+#if HAL_PLATFORM_CLOUD_UDP
 uint32_t compute_session_checksum(ServerAddress& addr)
 {
 	uint32_t checksum = HAL_Core_Compute_CRC32((uint8_t*)&addr, sizeof(addr));
@@ -729,16 +732,19 @@ int determine_session_connection_address(IPAddress& ip_addr, uint16_t& port, Ser
 	}
 	return -1;
 }
+#endif
 
 /**
  */
 int determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddress& server_addr, bool udp)
 {
+#if HAL_PLATFORM_CLOUD_UDP
 	// todo - how to determine if the underlying connection has changed so that we invalidate the existing session?
 	// for now, the user will have to manually reset the connection (e.g. by powering off the device.)
 	if (udp && !determine_session_connection_address(ip_addr, port, server_addr)) {
 		return 0;
 	}
+#endif
 
 	bool ip_address_error = false;
     switch (server_addr.addr_type)
