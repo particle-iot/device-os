@@ -146,6 +146,10 @@ struct Channel
 	 */
 	virtual ProtocolError send(Message& msg)=0;
 
+	/**
+	 * Close this channel, preventing further messages from being sent.
+	 */
+	virtual void close()=0;
 };
 
 /**

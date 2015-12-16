@@ -389,8 +389,8 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 			ret = 0;
 			break;
 		case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
-			sessionPersist.clear(callbacks.save);
-			// fall through
+			close();
+			break;
 		default:
 			mbedtls_ssl_session_reset(&ssl_context);
 			return IO_ERROR;
@@ -424,6 +424,12 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 bool DTLSMessageChannel::is_unreliable()
 {
 	return true;
+}
+
+void DTLSMessageChannel::close()
+{
+	sessionPersist.clear(callbacks.save);
+	mbedtls_ssl_session_reset(&ssl_context);
 }
 
 

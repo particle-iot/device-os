@@ -126,6 +126,8 @@ private:
 
 	virtual ProtocolError notify_established() override;
 
+
+	virtual void close() override;
 };
 
 

@@ -316,6 +316,8 @@ class CoAPMessageStore
 		message->removed();
 	}
 
+	void message_timeout(CoAPMessage& msg, Channel& channel);
+
 public:
 
 	CoAPMessageStore() : head(nullptr) {}
@@ -523,6 +525,11 @@ class CoAPReliableChannel : public T
 		ProtocolError send(Message& msg) override
 		{
 			return channel->base_send(msg);
+		}
+
+		void close() override
+		{
+			channel->close();
 		}
 	};
 

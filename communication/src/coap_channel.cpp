@@ -43,6 +43,12 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tic
 	return retransmit;
 }
 
+void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
+{
+	msg.notify_timeout();
+	channel.close();
+}
+
 /**
  * Process existing messages, resending any unacknowledged requests to the given channel.
  */
@@ -55,7 +61,7 @@ void CoAPMessageStore::process(system_tick_t time, Channel& channel)
 		if (time_has_passed(time, msg->get_timeout()) && !retransmit(msg, channel, time))
 		{
 			remove(msg, prev);
-			msg->notify_timeout();
+			message_timeout(*msg, channel);
 			delete msg;
 			msg = (prev==nullptr) ? head : prev->get_next();
 		}
