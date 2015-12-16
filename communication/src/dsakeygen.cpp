@@ -25,6 +25,9 @@
 #include <cstdint>
 #include "tropicssl/rsa.h"
 #include "dsakeygen.h"
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_CLOUD_TCP
 
 using namespace std;
 
@@ -133,3 +136,4 @@ int gen_rsa_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *), void 
     return failure;
 }
 
+#endif

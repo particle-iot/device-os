@@ -1050,7 +1050,7 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLe
             wiced_packet_delete(packet);
         }
     }
-    return result!=WICED_SUCCESS ? as_sock_result(result) : sock_result_t(read_len);
+    return result!=WICED_SUCCESS && result!=WICED_TIMEOUT ? as_sock_result(result) : sock_result_t(read_len);
 }
 
 

@@ -58,9 +58,6 @@ struct FilteringEventHandler
 };
 
 
-size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
-             const char *data, int ttl, EventType::Enum event_type);
-
 size_t subscription(uint8_t buf[], uint16_t message_id,
                     const char *event_name, const char *device_id);
 

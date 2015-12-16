@@ -232,6 +232,14 @@ void establish_cloud_connection()
     }
 }
 
+int cloud_handshake()
+{
+	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+	bool presence_announce = !udp;
+	int err = Spark_Handshake(presence_announce);
+	return err;
+}
+
 /**
  * Manages the handshake and cloud events when the cloud has a socket connected.
  * @param force_events
@@ -242,26 +250,17 @@ void handle_cloud_connection(bool force_events)
     {
         if (!SPARK_CLOUD_CONNECTED)
         {
-            int err = Spark_Handshake();
+        		int err = cloud_handshake();
             if (err)
             {
                 cloud_connection_failed();
-                if (0 > err)
-                {
-                    // Wrong key error, red
-                    LED_SetRGBColor(RGB_COLOR_RED);
-                }
-                else if (1 == err)
-                {
-                    // RSA decryption error, orange
-                    LED_SetRGBColor(RGB_COLOR_ORANGE);
-                }
-                else if (2 == err)
-                {
-                    // RSA signature verification error, magenta
-                    LED_SetRGBColor(RGB_COLOR_MAGENTA);
-                }
+                uint32_t color = RGB_COLOR_RED;
+                if (particle::protocol::DECRYPTION_ERROR==err)
+                		color = RGB_COLOR_ORANGE;
+                else if (particle::protocol::AUTHENTICATION_ERROR==err)
+                		color = RGB_COLOR_MAGENTA;
                 WARN("Cloud handshake failed, code=%d", err);
+                LED_SetRGBColor(color);
                 LED_On(LED_RGB);
                 // delay a little to be sure the user sees the LED color, since
                 // the socket may quickly disconnect and the connection retried, turning

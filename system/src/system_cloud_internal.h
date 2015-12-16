@@ -33,7 +33,7 @@ int Spark_Connect(void);
 int Spark_Disconnect(void);
 
 void Spark_Protocol_Init(void);
-int Spark_Handshake(void);
+int Spark_Handshake(bool presence_announce);
 bool Spark_Communication_Loop(void);
 void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on, unsigned, void*);
@@ -76,7 +76,7 @@ struct User_Func_Lookup_Table_t
 User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey);
 User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey);
 
-extern SparkProtocol* sp;
+extern ProtocolFacade* sp;
 
 
 /**

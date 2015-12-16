@@ -47,8 +47,6 @@ private:
         return &address;
     }
 
-    void set_ipv4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
-
     inline void setVersion(uint8_t version) {
 #if HAL_IPv6
         address.v = version;
@@ -79,6 +77,9 @@ public:
     // Overloaded index operator to allow getting and setting individual octets of the address
     uint8_t operator[](int index) const { return (((uint8_t*)(&address.ipv4))[3-index]); }
     uint8_t& operator[](int index) { return (((uint8_t*)(&address.ipv4))[3-index]); }
+
+    void set_ipv4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
+
 
     // Overloaded copy operators to allow initialisation of IPAddress objects from other types
     /**

@@ -77,6 +77,14 @@ typedef struct __attribute__((__packed__)) _NetworkConfig_t {
 } NetworkConfig;
 STATIC_ASSERT(NetworkConfig_size, sizeof(HAL_IPAddress)*5+6);
 
+
+typedef struct __attribute__((__packed__))  _WLanConfig_t {
+    uint16_t size;
+    NetworkConfig nw;
+    uint8_t uaSSID[33];
+} WLanConfig;
+
+
 typedef uint32_t network_interface_t;
 
 /**
