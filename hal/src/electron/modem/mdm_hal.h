@@ -64,6 +64,11 @@ public:
             const char* password = NULL, Auth auth = AUTH_DETECT);
 
     /**
+     * Used to issue a hardware reset of the modem
+     */
+    void reset(void);
+
+    /**
      * powerOn Initialize the modem and SIM card
      * \param simpin a optional pin of the SIM card
      * \return true if successful, false otherwise
@@ -497,6 +502,7 @@ protected:
     int _socketCloseUnusedHandles(void);
     int _socketSocket(int socket, IpProtocol ipproto, int port);
     bool _socketFree(int socket);
+    bool _powerOn(void);
     static MDMParser* inst;
     bool _init;
     bool _pwr;
