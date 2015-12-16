@@ -11,6 +11,7 @@ int update(String data)
     variableBool = !variableBool;
     variableDouble += 0.25;
     variableInt += 1;
+    return 0;
 }
 
 int updateString(String data)
@@ -31,6 +32,7 @@ int setString(String data)
         variableString[i] = 'A'+(i%26);
     }
     variableString[len] = 0;
+    return 0;
 }
 
 int checkString(String data)
@@ -45,9 +47,19 @@ int checkString(String data)
     return len;
 }
 
+void subscription(const char* name, const char* data)
+{
+	Serial.print("subscription received: ");
+	Serial.print(name);
+	Serial.print(" ");
+	Serial.print(data);
+	Serial.println();
+
+	updateString(data);
+}
+
 void setup()
 {
-
     Particle.variable("bool", variableBool);
     Particle.variable("int", variableInt);
     Particle.variable("double", variableDouble);
@@ -57,5 +69,7 @@ void setup()
     Particle.function("update", update);
     Particle.function("setString", setString);
     Particle.function("checkString", checkString);
+
+    Particle.subscribe("cloudtest", subscription);
 
 }
