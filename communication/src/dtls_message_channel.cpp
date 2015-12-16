@@ -26,18 +26,32 @@
 #include <stdio.h>
 #include <string.h>
 #include "dtls_session_persist.h"
+#include "core_hal.h"
 
 namespace particle { namespace protocol {
+
+
+uint32_t compute_checksum(const uint8_t* server, size_t server_len, const uint8_t* device, size_t device_len)
+{
+	uint32_t sum[2];
+	sum[0] = HAL_Core_Compute_CRC32(server, server_len);
+	sum[1] = HAL_Core_Compute_CRC32(device, device_len);
+	uint32_t result = HAL_Core_Compute_CRC32((uint8_t*)&sum, sizeof(sum));
+	return result;
+}
+
+
 
 void SessionPersist::save(save_fn_t saver)
 {
 	save_this_with(saver);
 }
 
-void SessionPersist::prepare_save(const uint8_t* random, mbedtls_ssl_context* context)
+void SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum, mbedtls_ssl_context* context)
 {
 	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
 	{
+		this->keys_checksum = keys_checksum;
 		in_epoch = context->in_epoch;
 		memcpy(out_ctr, context->out_ctr, 8);
 		memcpy(randbytes, random, sizeof(randbytes));
@@ -59,14 +73,13 @@ void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver)
 	}
 }
 
-auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, restore_fn_t restorer) -> RestoreStatus
+auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, restore_fn_t restorer) -> RestoreStatus
 {
 	if (!restore_this_from(restorer))
 		return NO_SESSION;
 
-	if (!is_valid())
+	if (!is_valid() || keys_checksum!=this->keys_checksum)
 		return NO_SESSION;
-
 
 	// assume invalid initially. With the ssl context being reset,
 	// we cannot return NO_SESSION from this point onwards.
@@ -172,6 +185,8 @@ ProtocolError DTLSMessageChannel::init(
 	init();
 	int ret;
 	this->callbacks = callbacks;
+
+	keys_checksum = compute_checksum(server_public, server_public_len, core_private, core_private_len);
 
 	ret = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT,
 			MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
@@ -289,7 +304,7 @@ ProtocolError DTLSMessageChannel::establish()
 		return error;
 
 	bool renegotiate = false;
-	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, callbacks.restore);
+	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, keys_checksum, callbacks.restore);
 	if (restoreStatus==SessionPersist::COMPLETE)
 	{
 		// ensure that subsequent changes are saved.
@@ -343,7 +358,7 @@ ProtocolError DTLSMessageChannel::establish()
 	}
 	else
 	{
-		sessionPersist.prepare_save(random, &ssl_context);
+		sessionPersist.prepare_save(random, keys_checksum, &ssl_context);
 	}
 	return ret==0 ? NO_ERROR : IO_ERROR;
 }

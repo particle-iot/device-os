@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#define SessionPersistBaseSize 190
+#define SessionPersistBaseSize 194
 
 #include "mbedtls/ssl.h"
 #include "stddef.h"
@@ -52,7 +52,7 @@ struct __attribute__((packed)) SessionPersistData
 	// do not add more members here - the offset of the public connection data should be
 	// constant.
 	uint8_t connection[32];
-
+	uint32_t keys_checksum;
 	uint8_t randbytes[sizeof(mbedtls_ssl_handshake_params::randbytes)];
 	decltype(mbedtls_ssl_session::ciphersuite) ciphersuite;
 	decltype(mbedtls_ssl_session::compression) compression;
@@ -138,7 +138,7 @@ public:
 	/**
 	 * Prepare to transiently save information about this context.
 	 */
-	void prepare_save(const uint8_t* random, mbedtls_ssl_context* context);
+	void prepare_save(const uint8_t* random, uint32_t keys_checksum, mbedtls_ssl_context* context);
 
 	/**
 	 * Flags this context as being persistent. Subsequent calls
@@ -187,7 +187,7 @@ public:
 	/**
 	 * Restores the state from this context. The persistence flag is not changed.
 	 */
-	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, restore_fn_t restorer);
+	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, restore_fn_t restorer);
 
 	uint8_t* connection_data() { return connection; }
 

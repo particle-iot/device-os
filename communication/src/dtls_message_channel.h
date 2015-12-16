@@ -81,7 +81,8 @@ private:
 	mbedtls_timing_delay_context timer;
 	Callbacks callbacks;
 	uint8_t* server_public;
-	size_t server_public_len;
+	uint16_t server_public_len;
+	uint32_t keys_checksum;
 
     void init();
     void dispose();
