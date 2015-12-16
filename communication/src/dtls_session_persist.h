@@ -126,11 +126,12 @@ public:
 
 	bool is_valid() { return size==sizeof(*this); }
 
+	void invalidate() { size = 0; }
+
 	void clear(save_fn_t saver)
 	{
-		size = 0;
+		invalidate();
 		save_this_with(saver);
-
 		persistent = 0;	// do not make any subsequent saves until the context is marked as persistent.
 	}
 

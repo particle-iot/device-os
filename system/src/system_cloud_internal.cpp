@@ -214,7 +214,22 @@ struct Endpoint
 	uint16_t port;
 };
 
-sockaddr_t cloud_endpoint;
+struct SessionConnection
+{
+	/**
+	 * The previously used address.
+	 */
+	sockaddr_t address;
+
+	/**
+	 * The checksum of the server address data that was used
+	 * to derive the connection address.
+	 */
+	uint32_t server_address_checksum;
+};
+
+
+SessionConnection cloud_endpoint;
 
 void decode_endpoint(const sockaddr_t& socket_addr, IPAddress& ip, uint16_t& port)
 {
@@ -249,7 +264,7 @@ int Spark_Send_UDP(const unsigned char* buf, uint32_t buflen, void* reserved)
         return -1;
     }
     DEBUG("send %d", buflen);
-	return socket_sendto(sparkSocket, buf, buflen, 0, &cloud_endpoint, sizeof(cloud_endpoint));
+	return socket_sendto(sparkSocket, buf, buflen, 0, &cloud_endpoint.address, sizeof(cloud_endpoint.address));
 }
 
 int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
@@ -273,15 +288,15 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
 #if PLATFORM_ID!=3
     		// filter out by destination IP and port
     		// todo - IPv6 will need to change this
-    		if (memcmp(&addr.sa_data, &cloud_endpoint.sa_data, 6)) {
+    		if (memcmp(&addr.sa_data, &cloud_endpoint.address.sa_data, 6)) {
     			// ignore the packet if from a different source
     			received = 0;
     		    DEBUG("received from a different address %d.%d.%d.%d:%d",
-    		    		cloud_endpoint.sa_data[2],
-				cloud_endpoint.sa_data[3],
-				cloud_endpoint.sa_data[4],
-				cloud_endpoint.sa_data[5],
-				((cloud_endpoint.sa_data[0]<<8)+cloud_endpoint.sa_data[1])
+    		    		cloud_endpoint.address.sa_data[2],
+				cloud_endpoint.address.sa_data[3],
+				cloud_endpoint.address.sa_data[4],
+				cloud_endpoint.address.sa_data[5],
+				((cloud_endpoint.address.sa_data[0]<<8)+cloud_endpoint.address.sa_data[1])
     		    );
 
     		}
@@ -393,9 +408,13 @@ int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 	if (type==SparkCallbacks::PERSIST_SESSION)
 	{
 		static_assert(sizeof(SessionPersistData::connection)>=sizeof(cloud_endpoint),"connection space in session is not large enough");
+
 		// save the current connection to the persisted session
-		SessionPersistData* persist = (SessionPersistData*)buffer;
-		memcpy(persist->connection, &cloud_endpoint, sizeof(cloud_endpoint));
+		SessionPersist* persist = (SessionPersist*)buffer;
+		if (persist->is_valid())
+		{
+			memcpy(persist->connection_data(), &cloud_endpoint, sizeof(cloud_endpoint));
+		}
 		return HAL_System_Backup_Save(0, buffer, length, nullptr);
 	}
 	return -1;	// eek. define a constant for this error - Unknown Type.
@@ -558,7 +577,10 @@ int Spark_Handshake(bool presence_announce)
         Spark_Process_Events();
     }
     if (err==SESSION_RESUMED)
+    {
+    		DEBUG("cloud connected from existing session.");
     		err = 0;
+    }
     return err;
 }
 
@@ -669,6 +691,13 @@ int Internet_Test(void)
     return testResult;
 }
 
+uint32_t compute_session_checksum(ServerAddress& addr)
+{
+	uint32_t checksum = HAL_Core_Compute_CRC32((uint8_t*)&addr, sizeof(addr));
+	return checksum;
+}
+
+
 /**
  * Determines if the existing session is valid and contains a valid ip_address and port
  */
@@ -677,14 +706,25 @@ int determine_session_connection_address(IPAddress& ip_addr, uint16_t& port, Ser
 	SessionPersist persist;
 	if (Spark_Restore(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr)==sizeof(persist) && persist.is_valid())
 	{
-		sockaddr_t* encoded = (sockaddr_t*)persist.connection_data();
-		IPAddress addr; uint16_t p;
-		decode_endpoint(*encoded, addr, p);
-		if (addr && p)
+		SessionConnection* connection = (SessionConnection*)persist.connection_data();
+		if (connection->server_address_checksum==compute_session_checksum(server_addr))
 		{
-			ip_addr = addr;
-			port = p;
-			return 0;
+			IPAddress addr; uint16_t p;
+			decode_endpoint(connection->address, addr, p);
+			if (addr && p)
+			{
+				ip_addr = addr;
+				port = p;
+				DEBUG("using IP/port from session");
+				return 0;
+			}
+		}
+		else
+		{
+			// discard the session
+			persist.invalidate();
+			Spark_Save(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr);
+			INFO("connection checksum mismatch - discarded session");
 		}
 	}
 	return -1;
@@ -744,10 +784,10 @@ int determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddre
             }
             ip_address_error = rv;
             if (ip_address_error) {
-                ERROR("Cloud: unable to resolve IP for %s", server_addr.domain);
+                ERROR("Cloud: unable to resolve IP for %s", buf);
             }
             else {
-                INFO("Resolved host %s to %s", server_addr.domain, String(ip_addr).c_str());
+                INFO("Resolved host %s to %s", buf, String(ip_addr).c_str());
             }
     }
 
@@ -823,7 +863,8 @@ int Spark_Connect()
 #if HAL_PLATFORM_CLOUD_UDP
         if (udp)
         {
-        		memcpy(&cloud_endpoint, &tSocketAddr, sizeof(cloud_endpoint));
+        		memcpy(&cloud_endpoint.address, &tSocketAddr, sizeof(cloud_endpoint));
+        		cloud_endpoint.server_address_checksum = compute_session_checksum(server_addr);
         		rv = 0;
         }
         else
