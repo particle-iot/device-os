@@ -76,6 +76,9 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, res
 	context->handshake->resume = 1;
 	restore_session(context->session_negotiate);
 
+	context->major_ver = MBEDTLS_SSL_MAJOR_VERSION_3;
+	context->minor_ver = MBEDTLS_SSL_MINOR_VERSION_3;
+
 	if (!renegotiate) {
 		context->state = MBEDTLS_SSL_HANDSHAKE_WRAPUP;
 		context->in_epoch = in_epoch;
