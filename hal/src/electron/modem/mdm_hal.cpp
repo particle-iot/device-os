@@ -364,11 +364,17 @@ bool MDMParser::connect(
     return true;
 }
 
-bool MDMParser::powerOn(const char* simpin)
+void MDMParser::reset(void)
 {
-    int i = 10;
+    MDM_INFO("[ Modem reset ]");
+    HAL_GPIO_Write(RESET_UC, 0);
+    HAL_Delay_Milliseconds(100);
+    HAL_GPIO_Write(RESET_UC, 1);
+}
+
+bool MDMParser::_powerOn(void)
+{
     LOCK();
-    memset(&_dev, 0, sizeof(_dev));
 
     /* Initialize I/O */
     STM32_Pin_Info* PIN_MAP_PARSER = HAL_Pin_Map();
@@ -405,10 +411,11 @@ bool MDMParser::powerOn(const char* simpin)
         _init = true;
     }
 
+    MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
     bool continue_cancel = false;
     bool retried_after_reset = false;
 
-    MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
+    int i = 10;
     while (i--) {
         // SARA-U2/LISA-U2 50..80us
         HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
@@ -438,12 +445,9 @@ bool MDMParser::powerOn(const char* simpin)
             break;
         }
         else if (i==0 && !retried_after_reset) {
-            MDM_INFO("[ Modem reset ]");
             retried_after_reset = true; // only perform reset & retry sequence once
             i = 10;
-            HAL_GPIO_Write(RESET_UC, 0);
-            HAL_Delay_Milliseconds(100);
-            HAL_GPIO_Write(RESET_UC, 1);
+            reset();
         }
 
     }
@@ -475,11 +479,27 @@ bool MDMParser::powerOn(const char* simpin)
     // wait some time until baudrate is applied
     HAL_Delay_Milliseconds(100); // SARA-G > 40ms
 
+    UNLOCK();
+    return true;
+failure:
+    UNLOCK();
+    return false;
+}
+
+bool MDMParser::powerOn(const char* simpin)
+{
+    LOCK();
+    memset(&_dev, 0, sizeof(_dev));
+
+    /* Power on the modem and perform basic initialization */
+    if (!_powerOn())
+        goto failure;
+
     /* The ATI command is undocumented, and in practice the response
      * time varies greatly. On inital power-on of the module, ATI
      * will respond with "OK" before a device type number, which
      * requires wasting time in a for() loop to solve.
-     * Instead, use AT+CGMM and _dev.model for future use of module indentification.
+     * Instead, use AT+CGMM and _dev.model for future use of module identification.
      *
      * identify the module
      * sendFormated("ATI\r\n");
@@ -491,11 +511,22 @@ bool MDMParser::powerOn(const char* simpin)
 
     // check the sim card
     for (int i = 0; (i < 5) && (_dev.sim != SIM_READY) && !_cancel_all_operations; i++) {
+        static bool retried_after_reset = false;
         sendFormated("AT+CPIN?\r\n");
         int ret = waitFinalResp(_cbCPIN, &_dev.sim);
         // having an error here is ok (sim may still be initializing)
-        if ((RESP_OK != ret) && (RESP_ERROR != ret))
+        if ((RESP_OK != ret) && (RESP_ERROR != ret)) {
             goto failure;
+        }
+        else if (i==4 && (RESP_OK != ret) && !retried_after_reset) {
+            retried_after_reset = true; // only perform reset & retry sequence once
+            i = 0;
+            if(!powerOff())
+                reset();
+            /* Power on the modem and perform basic initialization again */
+            if (!_powerOn())
+                goto failure;
+        }
         // Enter PIN if needed
         if (_dev.sim == SIM_PIN) {
             if (!simpin) {
@@ -511,8 +542,9 @@ bool MDMParser::powerOn(const char* simpin)
         }
     }
     if (_dev.sim != SIM_READY) {
-        if (_dev.sim == SIM_MISSING)
+        if (_dev.sim == SIM_MISSING) {
             MDM_ERROR("SIM not inserted\r\n");
+        }
         goto failure;
     }
 
