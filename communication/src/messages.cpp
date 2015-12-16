@@ -27,6 +27,9 @@ CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
         return CoAPMessageType::ERROR;
 
     char path = 0;
+    // 4 bytes for CoAP header
+    // 1 byte for the option length
+    // plus length of token
 	size_t path_idx = 5 + (buf[0] & 0x0F);
     if (path_idx<length)
 		 path = buf[path_idx];

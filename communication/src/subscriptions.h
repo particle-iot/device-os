@@ -64,8 +64,10 @@ public:
 
 		// end of CoAP message
 		unsigned char *end = queue + len;
-
-		unsigned char *event_name = queue + 6;
+		// start of event name option (location path) - 6 bytes
+		// 4 bytes coap header, 2 bytes for the location path of the message
+		// plus the size of the token.
+		unsigned char *event_name = queue + 6 + (queue[0] & 0xF);
 		size_t event_name_length = CoAP::option_decode(&event_name);
 		if (0 == event_name_length)
 		{
