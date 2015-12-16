@@ -359,15 +359,6 @@ public:
 	}
 
 	/**
-	 * Removes a message from this message store.
-	 * Returns true if the message existed, false otherwise.
-	 */
-	bool remove2(CoAPMessage& msg)
-	{
-		return remove(msg.get_id())==&msg;
-	}
-
-	/**
 	 * Removes a message from the store with the given id.
 	 * Returns nullptr if the message does not exist. Returns
 	 * the removed message otherwise.
