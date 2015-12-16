@@ -116,7 +116,23 @@ class Protocol
 
 	uint8_t initialized;
 
+	uint8_t flags;
+
+
 protected:
+
+	enum Flags
+	{
+		/**
+		 * Set when the protocol expects a hello response from the server.
+		 */
+		REQUIRE_HELLO_RESPONSE = 1<<0,
+	};
+
+	void set_protocol_flags(int flags)
+	{
+		this->flags = flags;
+	}
 
 	/**
 	 * Retrieves the next token.
@@ -131,6 +147,11 @@ protected:
 	 * @param was_ota_upgrade_successful {@code true} if the previous OTA update was successful.
 	 */
 	ProtocolError hello(bool was_ota_upgrade_successful);
+
+	/**
+	 * Send a hello response
+	 */
+	ProtocolError hello_response();
 
 	virtual size_t build_hello(Message& message, bool was_ota_upgrade_successful)=0;
 

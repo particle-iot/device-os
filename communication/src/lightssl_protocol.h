@@ -52,6 +52,8 @@ public:
 	          const SparkCallbacks &callbacks,
 	          const SparkDescriptor &descriptor)
 	{
+		set_protocol_flags(REQUIRE_HELLO_RESPONSE);
+
 		LightSSLMessageChannel::Callbacks channelCallbacks;
 		channelCallbacks.millis = callbacks.millis;
 		channelCallbacks.handle_seed = handle_seed;

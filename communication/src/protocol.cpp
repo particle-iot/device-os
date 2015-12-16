@@ -200,14 +200,11 @@ int Protocol::begin()
 		return error;
 	}
 
-	// todo - this timeout should be protocol specific?
-	error = event_loop(CoAPMessageType::HELLO, 10000); // read the hello message from the server
-	if (error)
-	{
-		ERROR("Handshake: could not receive hello response %d", error);
-		return error;
+	if (flags & REQUIRE_HELLO_RESPONSE) {
+		error = hello_response();
+		if (error)
+			return error;
 	}
-
 	INFO("Hanshake: completed");
 	channel.notify_established();
 	return error;
@@ -224,10 +221,20 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 
 	size_t len = build_hello(message, was_ota_upgrade_successful);
 	message.set_length(len);
+	message.set_confirm_received(true);
 	last_message_millis = callbacks.millis();
 	return channel.send(message);
 }
 
+ProtocolError Protocol::hello_response()
+{
+	ProtocolError error = event_loop(CoAPMessageType::HELLO,  4000); // read the hello message from the server
+	if (error)
+	{
+		ERROR("Handshake: could not receive hello response %d", error);
+	}
+	return error;
+}
 
 /**
  * Wait for a specific message type to be received.
@@ -246,8 +253,10 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum message_type,
 	{
 		CoAPMessageType::Enum msgtype;
 		ProtocolError error = event_loop(msgtype);
-		if (error)
+		if (error) {
+			ERROR("message type=%d, error=%d", msgtype, error);
 			return error;
+		}
 		if (msgtype == message_type)
 			return NO_ERROR;
 		// todo - ideally need a delay here
