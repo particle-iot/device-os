@@ -97,6 +97,19 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define D6 6
 #define D7 7
 
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+#define D8 10
+#define D9 11
+#define D10 12
+#define D11 13
+#define D12 14
+#define D13 15
+#define D14 16
+#define D15 17
+#define D16 18
+#define D17 19
+#endif
+
 // todo - this is corev1 specific, needs to go in a conditional define
 
 #define LED1 LED_USER
