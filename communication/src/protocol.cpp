@@ -186,13 +186,14 @@ int Protocol::begin()
 	pinger.reset();
 
 	ProtocolError error = channel.establish();
-	if (error && error!=SESSION_RESUMED) {
+	bool session_resumed = (error==SESSION_RESUMED);
+	if (error && !session_resumed) {
 		WARN("handshake failed with code %d", error);
 		return error;
 	}
 
 	// resumed an existing session and don't need the hello
-	if ((error==SESSION_RESUMED) && (flags & SKIP_SESSION_RESUME_HELLO))
+	if (session_resumed && (flags & SKIP_SESSION_RESUME_HELLO))
 		return error;
 
 	// todo - this will return code 0 even when the session was resumed,
@@ -213,6 +214,7 @@ int Protocol::begin()
 	INFO("Hanshake: completed");
 	channel.notify_established();
 	flags &= ~SKIP_SESSION_RESUME_HELLO;
+
 	return error;
 }
 
