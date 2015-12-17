@@ -1517,6 +1517,8 @@ int MDMParser::_cbUSORD(int type, const char* buf, int len, USORDparam* param)
             (buf[len-sz-2] == '\"') && (buf[len-1] == '\"')) {
             memcpy(param->buf, &buf[len-1-sz], sz);
             param->len = sz;
+        } else {
+            param->len = 0;
         }
     }
     return WAIT;
@@ -1585,6 +1587,8 @@ int MDMParser::_cbUSORF(int type, const char* buf, int len, USORFparam* param)
             param->ip = IPADR(a,b,c,d);
             param->port = p;
             param->len = sz;
+        } else {
+            param->len = 0;
         }
     }
     return WAIT;

@@ -46,7 +46,7 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
     int port;
     MDM_IP ip;
     sock_result_t result = electronMDM.socketRecvFrom(sock, &ip, &port, (char*)buffer, bufLen);
-    if (result>=0) {
+    if (result > 0) {
         uint32_t ipv4 = ip;
         addr->sa_data[0] = (port>>8) & 0xFF;
         addr->sa_data[1] = port & 0xFF;
