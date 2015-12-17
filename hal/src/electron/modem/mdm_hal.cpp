@@ -77,7 +77,7 @@ void dumpAtCmd(const char* buf, int len)
     DEBUG_D(" %3d \"", len);
     while (len --) {
         char ch = *buf++;
-        if ((ch > 0x1F) && (ch != 0x7F)) { // is printable
+        if ((ch > 0x1F) && (ch < 0x7F)) { // is printable
             if      (ch == '%')  DEBUG_D("%%");
             else if (ch == '"')  DEBUG_D("\\\"");
             else if (ch == '\\') DEBUG_D("\\\\");
