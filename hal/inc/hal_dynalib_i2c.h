@@ -41,7 +41,7 @@ DYNALIB_BEGIN(hal_i2c)
 
 // first edition of these functions that were released on the Photon/P1
 // They are not needed on other platforms.
-#if PLATFORM_ID==6 || PLATFORM_ID==8
+#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==88
 DYNALIB_FN(hal_i2c,HAL_I2C_Set_Speed_v1)
 DYNALIB_FN(hal_i2c,HAL_I2C_Enable_DMA_Mode_v1)
 DYNALIB_FN(hal_i2c,HAL_I2C_Stretch_Clock_v1)
