@@ -46,7 +46,8 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tic
 void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
 {
 	msg.notify_timeout();
-	channel.close();
+	if (msg.is_request())
+		channel.close();
 }
 
 /**
