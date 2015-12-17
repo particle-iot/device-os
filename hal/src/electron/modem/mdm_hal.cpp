@@ -32,6 +32,10 @@
 #include "mdmapn_hal.h"
 #include "stm32f2xx.h"
 #include "service_debug.h"
+#include "concurrent_hal.h"
+#include <mutex>
+
+std::recursive_mutex mdm_mutex;
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -52,7 +56,7 @@
 //! registration done check helper (no need to poll further)
 #define REG_DONE(r)     ((r == REG_HOME) || (r == REG_ROAMING) || (r == REG_DENIED))
 //! helper to make sure that lock unlock pair is always balanced
-#define LOCK()
+#define LOCK()		std::lock_guard<std::recursive_mutex> __mdm_guard(mdm_mutex);
 //! helper to make sure that lock unlock pair is always balanced
 #define UNLOCK()
 
