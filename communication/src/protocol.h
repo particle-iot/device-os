@@ -148,6 +148,8 @@ protected:
 		return ++token;
 	}
 
+	ProtocolError handle_key_change(Message& message);
+
 	/**
 	 * Send the hello message over the channel.
 	 * @param was_ota_upgrade_successful {@code true} if the previous OTA update was successful.

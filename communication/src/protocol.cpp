@@ -87,8 +87,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return subscriptions.handle_event(message, descriptor.call_event_handler);
 
 	case CoAPMessageType::KEY_CHANGE:
-		// TODO
-		break;
+		return handle_key_change(message);
 
 	case CoAPMessageType::SIGNAL_START:
 		message.set_length(
@@ -130,6 +129,23 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	// all's well
 	return error;
 }
+
+ProtocolError Protocol::handle_key_change(Message& message)
+{
+	// 4 bytes coAP header, 2 bytes message type option
+	// token length, and skip 1 byte for the parameter option header.
+	if (message.length()>7)
+	{
+		uint8_t* buf = message.buf();
+		uint8_t option_idx = 8 + (buf[0] & 0xF);
+		if (buf[option_idx]==1)
+		{
+			return channel.command(MessageChannel::CLOSE);
+		}
+	}
+	return NO_ERROR;
+}
+
 
 /**
  * Handles the time delivered from the cloud.

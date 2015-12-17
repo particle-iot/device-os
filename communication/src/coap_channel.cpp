@@ -47,7 +47,7 @@ void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
 {
 	msg.notify_timeout();
 	if (msg.is_request())
-		channel.close();
+		channel.command(MessageChannel::CLOSE);
 }
 
 /**

@@ -131,6 +131,11 @@ public:
 
 struct Channel
 {
+	enum Command
+	{
+		CLOSE,
+	};
+
 
 	/**
 	 * Fetch the next message from the channel.
@@ -149,7 +154,7 @@ struct Channel
 	/**
 	 * Close this channel, preventing further messages from being sent.
 	 */
-	virtual void close()=0;
+	virtual ProtocolError command(Command cmd, void* arg=nullptr)=0;
 };
 
 /**

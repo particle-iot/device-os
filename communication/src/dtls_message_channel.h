@@ -127,7 +127,8 @@ private:
 	virtual ProtocolError notify_established() override;
 
 
-	virtual void close() override;
+	virtual ProtocolError command(Command cmd, void* arg=nullptr) override;
+
 };
 
 

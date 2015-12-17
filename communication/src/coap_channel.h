@@ -527,9 +527,9 @@ class CoAPReliableChannel : public T
 			return channel->base_send(msg);
 		}
 
-		void close() override
+		ProtocolError command(Command cmd, void* arg) override
 		{
-			channel->close();
+			return channel->command(cmd, arg);
 		}
 	};
 

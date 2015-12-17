@@ -97,8 +97,8 @@ public:
 
 	ProtocolError notify_established() override { return NO_ERROR; }
 
-	virtual void close() override {
-		// not used. We could erase the aes context/iv_send/iv_receive
+	virtual ProtocolError command(Command cmd, void* arg=nullptr) override;
+		// not used presently
 	}
 
 
