@@ -23,28 +23,20 @@
   ******************************************************************************
   */
 #include "spark_protocol.h"
+#include "protocol_defs.h"
 #include "handshake.h"
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
 #include "device_keys.h"
 #include "service_debug.h"
+#include "messages.h"
 
-#ifndef PRODUCT_ID
-#define PRODUCT_ID (0xffff)
-#endif
-
-#ifndef PRODUCT_FIRMWARE_VERSION
-#define PRODUCT_FIRMWARE_VERSION (0xffff)
-#endif
-
-#define RESPONSE_CODE(x,y)  (x<<5 || y)
+using namespace particle::protocol;
 
 #if 0
 extern void serial_dump(const char* msg, ...);
-extern void doing_fast_ota();
 #else
-#define doing_fast_ota()
 #define serial_dump(x, ...)
 #endif
 
@@ -101,7 +93,7 @@ int SparkProtocol::handshake(void)
   int err = blocking_receive(queue, 40);
   if (0 > err) { ERROR("Handshake: could not receive nonce: %d", err);  return err; }
 
-  parse_device_pubkey_from_privkey(queue+52, core_private_key);
+  extract_public_rsa_key(queue+52, core_private_key);
 
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, server_public_key);
@@ -118,14 +110,12 @@ int SparkProtocol::handshake(void)
   err = set_key(queue);
   if (err) { ERROR("Handshake:  could not set key, %d"); return err; }
 
-  queue[0] = 0x00;
-  queue[1] = 0x10;
-  hello(queue + 2, descriptor.was_ota_upgrade_successful());
+  hello(queue, descriptor.was_ota_upgrade_successful());
 
   err = blocking_send(queue, 18);
   if (0 > err) { ERROR("Hanshake: could not send hello message: %d", err); return err; }
 
-  if (!event_loop())        // read the hello message from the server
+  if (!event_loop(CoAPMessageType::HELLO, 2000))        // read the hello message from the server
   {
       ERROR("Handshake: could not receive hello response");
       return -1;
@@ -134,17 +124,33 @@ int SparkProtocol::handshake(void)
   return 0;
 }
 
-const int MISSED_CHUNKS_TO_SEND = 50;
+bool SparkProtocol::event_loop(CoAPMessageType::Enum message_type, system_tick_t timeout)
+{
+    system_tick_t start = callbacks.millis();
+    do
+    {
+        CoAPMessageType::Enum msgtype;
+        if (!event_loop(msgtype))
+            return false;
+        if (msgtype==message_type)
+            return true;
+        // todo - ideally need a delay here
+    }
+    while ((callbacks.millis()-start) < timeout);
+    return false;
+}
+
 
 // Returns true if no errors and still connected.
 // Returns false if there was an error, and we are probably disconnected.
-bool SparkProtocol::event_loop(void)
+bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
 {
-  int bytes_received = callbacks.receive(queue, 2);
+    message_type = CoAPMessageType::NONE;
+  int bytes_received = callbacks.receive(queue, 2, nullptr);
   if (2 <= bytes_received)
   {
-    bool success = handle_received_message();
-    if (!success)
+    message_type = handle_received_message();
+    if (message_type==CoAPMessageType::ERROR)
     {
         if (updating) {      // was updating but had an error, inform the client
             serial_dump("handle received message failed - aborting transfer");
@@ -233,7 +239,7 @@ int SparkProtocol::blocking_send(const unsigned char *buf, int length)
 
   while (length > byte_count)
   {
-    bytes_or_error = callbacks.send(buf + byte_count, length - byte_count);
+    bytes_or_error = callbacks.send(buf + byte_count, length - byte_count, nullptr);
     if (0 > bytes_or_error)
     {
       // error, disconnected
@@ -267,7 +273,7 @@ int SparkProtocol::blocking_receive(unsigned char *buf, int length)
 
   while (length > byte_count)
   {
-    bytes_or_error = callbacks.receive(buf + byte_count, length - byte_count);
+    bytes_or_error = callbacks.receive(buf + byte_count, length - byte_count, nullptr);
     if (0 > bytes_or_error)
     {
       // error, disconnected
@@ -292,7 +298,7 @@ int SparkProtocol::blocking_receive(unsigned char *buf, int length)
 }
 
 CoAPMessageType::Enum
-  SparkProtocol::received_message(unsigned char *buf, int length)
+  SparkProtocol::received_message(unsigned char *buf, size_t length)
 {
   unsigned char next_iv[16];
   memcpy(next_iv, buf, 16);
@@ -302,93 +308,22 @@ CoAPMessageType::Enum
 
   memcpy(iv_receive, next_iv, 16);
 
-  char path = buf[ 5 + (buf[0] & 0x0F) ];
-
-  switch (CoAP::code(buf))
-  {
-    case CoAPCode::GET:
-      switch (path)
-      {
-        case 'v': return CoAPMessageType::VARIABLE_REQUEST;
-        case 'd': return CoAPMessageType::DESCRIBE;
-        default: break;
-      } break;
-    case CoAPCode::POST:
-      switch (path)
-      {
-        case 'E':
-        case 'e':
-          return CoAPMessageType::EVENT;
-        case 'h': return CoAPMessageType::HELLO;
-        case 'f': return CoAPMessageType::FUNCTION_CALL;
-        case 's': return CoAPMessageType::SAVE_BEGIN;
-        case 'u': return CoAPMessageType::UPDATE_BEGIN;
-        case 'c': return CoAPMessageType::CHUNK;
-        default: break;
-      } break;
-    case CoAPCode::PUT:
-      switch (path)
-      {
-        case 'k': return CoAPMessageType::KEY_CHANGE;
-        case 'u': return CoAPMessageType::UPDATE_DONE;
-        case 's':
-          if (buf[8]) return CoAPMessageType::SIGNAL_START;
-          else return CoAPMessageType::SIGNAL_STOP;
-        default: break;
-      } break;
-    case CoAPCode::EMPTY:
-      switch (CoAP::type(buf))
-      {
-        case CoAPType::CON: return CoAPMessageType::PING;
-        default: return CoAPMessageType::EMPTY_ACK;
-      } break;
-    case CoAPCode::CONTENT:
-      return CoAPMessageType::TIME;
-    default:
-      break;
-  }
-  return CoAPMessageType::ERROR;
+  return Messages::decodeType(buf, length);
 }
 
 void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
 {
   unsigned short message_id = next_message_id();
-
-  buf[0] = 0x50; // non-confirmable, no token
-  buf[1] = 0x02; // POST
-  buf[2] = message_id >> 8;
-  buf[3] = message_id & 0xff;
-  buf[4] = 0xb1; // Uri-Path option of length 1
-  buf[5] = 'h';
-  buf[6] = 0xff; // payload marker
-  buf[7] = product_id >> 8;
-  buf[8] = product_id & 0xff;
-  buf[9] = product_firmware_version >> 8;
-  buf[10] = product_firmware_version & 0xff;
-  buf[11] = 0; // reserved flags
-  buf[12] = newly_upgraded ? 1 : 0;
-  buf[13] = PLATFORM_ID >> 8;
-  buf[14] = PLATFORM_ID & 0xFF;
-
-  memset(buf + 15, 1, 1); // PKCS #7 padding
-
-  encrypt(buf, 16);
+  size_t len = Messages::hello(buf+2, message_id, newly_upgraded, PLATFORM_ID, product_id, product_firmware_version, false, nullptr, 0);
+  wrap(buf, len);
 }
 
 void SparkProtocol::notify_update_done(uint8_t* buf)
 {
     serial_dump("Sending UpdateDone");
     unsigned short message_id = next_message_id();
-
-    buf[0] = 0x50; // non-confirmable, no token
-    buf[1] = 0x02; // POST
-    buf[2] = message_id >> 8;
-    buf[3] = message_id & 0xff;
-    buf[4] = 0xb1; // Uri-Path option of length 1
-    buf[5] = 'u';
-
-    memset(buf + 6, 10, 10); // PKCS #7 padding
-    encrypt(buf, 16);
+    size_t size = Messages::update_done(buf+2, message_id, false);
+    wrap(buf, size);
 }
 
 void SparkProtocol::key_changed(unsigned char *buf, unsigned char token)
@@ -559,7 +494,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
     }
   }
   uint16_t msg_id = next_message_id();
-  size_t msglen = event(queue + 2, msg_id, event_name, data, ttl, event_type);
+  size_t msglen = Messages::event(queue + 2, msg_id, event_name, data, ttl, event_type, false);
   size_t wrapped_len = wrap(queue, msglen);
 
   return (0 <= blocking_send(queue, wrapped_len));
@@ -567,20 +502,9 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
 
 size_t SparkProtocol::time_request(unsigned char *buf)
 {
-  unsigned char *p = buf;
-
-  *p++ = 0x41; // Confirmable, one-byte token
-  *p++ = 0x01; // GET request
-
-  uint16_t msg_id = next_message_id();
-  *p++ = msg_id >> 8;
-  *p++ = msg_id & 0xff;
-
-  *p++ = next_token();
-  *p++ = 0xb1; // One-byte, Uri-Path option
-  *p++ = 't';
-
-  return p - buf;
+	  uint16_t msg_id = next_message_id();
+	  uint8_t token = next_token();
+	  return Messages::time_request(buf, msg_id, token);
 }
 
 // returns true on success, false on failure
@@ -796,6 +720,11 @@ void SparkProtocol::chunk_missed(unsigned char *buf, unsigned short chunk_index)
   encrypt(buf, 16);
 }
 
+void SparkProtocol::update_ready(unsigned char *buf, unsigned char token)
+{
+    separate_response_with_payload(buf, token, 0x44, NULL, 0);
+}
+
 void SparkProtocol::update_ready(unsigned char *buf, unsigned char token, uint8_t flags)
 {
     separate_response_with_payload(buf, token, 0x44, &flags, 1);
@@ -830,7 +759,7 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
         appender.append('"');
 
         const char* key = descriptor.get_function_key(i);
-        int function_name_length = strlen(key);
+        size_t function_name_length = strlen(key);
         if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
         {
           function_name_length = MAX_FUNCTION_KEY_LENGTH;
@@ -850,7 +779,7 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
         }
         appender.append('"');
         const char* key = descriptor.get_variable_key(i);
-        int variable_name_length = strlen(key);
+        size_t variable_name_length = strlen(key);
         SparkReturnType::Enum t = descriptor.variable_type(key);
         if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
         {
@@ -871,6 +800,8 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
     appender.append('}');
 
     int msglen = appender.next() - (uint8_t *)buf;
+
+
     int buflen = (msglen & ~15) + 16;
     char pad = buflen - msglen;
     memset(buf+msglen, pad, pad); // PKCS #7 padding
@@ -893,7 +824,7 @@ void SparkProtocol::ping(unsigned char *buf)
   encrypt(buf, 16);
 }
 
-int SparkProtocol::presence_announcement(unsigned char *buf, const char *id)
+int SparkProtocol::presence_announcement(unsigned char *buf, const unsigned char *id)
 {
   buf[0] = 0x50; // Confirmable, no token
   buf[1] = 0x02; // Code POST
@@ -911,6 +842,9 @@ int SparkProtocol::presence_announcement(unsigned char *buf, const char *id)
 
 /********** Queue **********/
 
+
+#if 0
+
 int SparkProtocol::queue_bytes_available()
 {
   int unoccupied = queue_front - queue_back - 1;
@@ -920,6 +854,7 @@ int SparkProtocol::queue_bytes_available()
     return unoccupied;
 }
 
+// these methods are unused
 int SparkProtocol::queue_push(const char *src, int length)
 {
   int available = queue_bytes_available();
@@ -996,27 +931,21 @@ int SparkProtocol::queue_pop(char *dst, int length)
     return tail_filled + head_count;
   }
 }
+#endif
 
 ProtocolState::Enum SparkProtocol::state()
 {
   return ProtocolState::READ_NONCE;
 }
 
-inline uint32_t decode_uint32(unsigned char* buf) {
-    return buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3];
-}
-
-inline uint16_t decode_uint16(unsigned char* buf) {
-    return buf[0] << 8 | buf[1];
-}
-
-inline uint8_t decode_uint8(unsigned char* buf) {
-    return buf[0];
-}
-
-
 /********** Private methods **********/
 
+/**
+ * Pads and encrypts the buffer, and prepends the buffer length.
+ * @param buf
+ * @param msglen
+ * @return
+ */
 size_t SparkProtocol::wrap(unsigned char *buf, size_t msglen)
 {
   size_t buflen = (msglen & ~15) + 16;
@@ -1134,9 +1063,6 @@ bool SparkProtocol::handle_chunk(msg& message)
         option++;
         payload += (queue[payload]&0xF)+1;  // increase by the size. todo handle > 11
     }
-    if (fast_ota) {
-        doing_fast_ota();
-    }
     if (0xFF==queue[payload])
     {
         payload++;
@@ -1165,7 +1091,7 @@ bool SparkProtocol::handle_chunk(msg& message)
                     serial_dump("received all chunks");
                     reset_updating();
                     callbacks.finish_firmware_update(file, 1, NULL);
-                    notify_update_done(msg_to_send+2);
+                    notify_update_done(msg_to_send);
                     has_response = true;
                 }
                 else {
@@ -1212,7 +1138,7 @@ inline bool SparkProtocol::is_chunk_received(chunk_index_t idx)
     return (chunk_bitmap()[idx>>3] & uint8_t(1<<(idx&7)));
 }
 
-SparkProtocol::chunk_index_t SparkProtocol::next_chunk_missing(chunk_index_t start)
+chunk_index_t SparkProtocol::next_chunk_missing(chunk_index_t start)
 {
     chunk_index_t chunk = NO_CHUNKS_MISSING;
     chunk_index_t chunks = file.chunk_count(chunk_size);
@@ -1267,7 +1193,7 @@ bool SparkProtocol::handle_update_done(msg& message)
     return true;
 }
 
-bool SparkProtocol::function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token)
+bool SparkProtocol::function_result(const void* result, SparkReturnType::Enum, uint8_t token)
 {
     // send return value
     queue[0] = 0;
@@ -1290,8 +1216,8 @@ bool SparkProtocol::handle_function_call(msg& message)
     memcpy(function_key, queue + 8, function_key_length);
 
     // How long is the argument?
-    int q_index = 8 + function_key_length;
-    int query_length = queue[q_index] & 0x0F;
+    size_t q_index = 8 + function_key_length;
+    size_t query_length = queue[q_index] & 0x0F;
     if (13 == query_length)
     {
       ++q_index;
@@ -1440,30 +1366,8 @@ bool SparkProtocol::send_description(int description_flags, msg& message)
     return blocking_send(queue, desc_len + 2)>=0;
 }
 
-bool SparkProtocol::handle_received_message(void)
+bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType::Enum message_type)
 {
-  last_message_millis = callbacks.millis();
-  expecting_ping_ack = false;
-  size_t len = queue[0] << 8 | queue[1];
-  if (len > QUEUE_SIZE) { // TODO add sanity check on data, e.g. CRC
-      return false;
-  }
-  if (0 > blocking_receive(queue, len))
-  {
-    // error
-    return false;
-  }
-  CoAPMessageType::Enum message_type = received_message(queue, len);
-
-  unsigned char token = queue[4];
-  unsigned char *msg_to_send = queue + len;
-
-  msg message;
-  message.len = len;
-  message.token = queue[4];
-  message.response = msg_to_send;
-  message.response_len = QUEUE_SIZE-len;
-
   switch (message_type)
   {
     case CoAPMessageType::DESCRIBE:
@@ -1584,10 +1488,10 @@ bool SparkProtocol::handle_received_message(void)
       break;
 
     case CoAPMessageType::PING:
-      *msg_to_send = 0;
-      *(msg_to_send + 1) = 16;
-      empty_ack(msg_to_send + 2, queue[2], queue[3]);
-      if (0 > blocking_send(msg_to_send, 18))
+      queue[0] = 0;
+      queue[1] = 16;
+      empty_ack(queue + 2, queue[2], queue[3]);
+      if (0 > blocking_send(queue, 18))
       {
         // error
         return false;
@@ -1602,6 +1506,34 @@ bool SparkProtocol::handle_received_message(void)
 
   // all's well
   return true;
+}
+
+CoAPMessageType::Enum SparkProtocol::handle_received_message(void)
+{
+  last_message_millis = callbacks.millis();
+  expecting_ping_ack = false;
+  size_t len = queue[0] << 8 | queue[1];
+  if (len > QUEUE_SIZE) { // TODO add sanity check on data, e.g. CRC
+      return CoAPMessageType::ERROR;
+  }
+  if (0 > blocking_receive(queue, len))
+  {
+    // error
+    return CoAPMessageType::ERROR;;
+  }
+  CoAPMessageType::Enum message_type = received_message(queue, len);
+
+  unsigned char token = queue[4];
+  unsigned char *msg_to_send = queue + len;
+
+  msg message;
+  message.len = len;
+  message.token = queue[4];
+  message.response = msg_to_send;
+  message.response_len = QUEUE_SIZE-len;
+
+  return handle_message(message, token, message_type)
+          ? message_type : CoAPMessageType::ERROR;
 }
 
 void SparkProtocol::handle_time_response(uint32_t time)
@@ -1671,7 +1603,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
   if (0 != decipher_aes_credentials(core_private_key,
                                     signed_encrypted_credentials,
                                     credentials))
-    return 1;
+    return DECRYPTION_ERROR;
 
   calculate_ciphertext_hmac(signed_encrypted_credentials, credentials, hmac);
 
@@ -1695,7 +1627,7 @@ int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
 
     return 0;
   }
-  else return 2;
+  else return AUTHENTICATION_ERROR;
 }
 
 inline void SparkProtocol::coded_ack(unsigned char *buf,

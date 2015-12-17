@@ -46,7 +46,7 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_print.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
-$(info $(CPPSRC))
+CPPSRC += $(call target_files,$(SYSTEM)src/,system_string_interpolate.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_SERVICES = services/

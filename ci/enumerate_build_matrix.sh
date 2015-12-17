@@ -8,12 +8,18 @@
 
 set -x # be noisy + log everything that is happening in the script
 
+function runmake()
+{
+	make -s clean all $*
+}
+
+MAKE=runmake
 GREEN="\033[32m"
 RED="\033[31m"
 NO_COLOR="\033[0m"
 
 # define build matrix dimensions
-# "" means execute execute the make command without that var specified
+# "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
 PLATFORM=( core photon P1 electron )
 SPARK_CLOUD=( y n )
@@ -29,7 +35,7 @@ cd main
 # Newhal Build
 echo
 echo '-----------------------------------------------------------------------'
-make -s clean all PLATFORM="newhal" COMPILE_LTO="n"
+$MAKE  PLATFORM="newhal" COMPILE_LTO="n"
 if [[ "$?" -eq 0 ]]; then
   echo "✓ SUCCESS"
 else
@@ -40,7 +46,7 @@ fi
 # GCC Build
 echo
 echo '-----------------------------------------------------------------------'
-make -s clean all PLATFORM=gcc
+$MAKE  PLATFORM=gcc
 if [[ "$?" -eq 0 ]]; then
   echo "✓ SUCCESS"
 else
@@ -58,7 +64,7 @@ do
   do
     echo
     echo '-----------------------------------------------------------------------'
-    make -s clean all PLATFORM="$p" COMPILE_LTO="n" TEST="$t"
+    $MAKE  PLATFORM="$p" COMPILE_LTO="n" TEST="$t"
     if [[ "$?" -eq 0 ]]; then
       echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
     else
@@ -88,7 +94,7 @@ do
         echo
         echo '-----------------------------------------------------------------------'
         if [[ "$app" = "" ]]; then
-          make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc"
+          $MAKE  DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc"
           if [[ "$?" -eq 0 ]]; then
             echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
           else
@@ -96,7 +102,7 @@ do
             exit 1
           fi
         else
-          make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc" APP="$app"
+          $MAKE  DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc" APP="$app"
           if [[ "$?" -eq 0 ]]; then
             echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
           else
@@ -118,7 +124,7 @@ do
   do
     echo
     echo '-----------------------------------------------------------------------'
-    make -s clean all DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="n"
+    $MAKE  DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="n"
     if [[ "$?" -eq 0 ]]; then
       echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
     else
@@ -131,7 +137,7 @@ done
 # Photon minimal build
 echo
 echo '-----------------------------------------------------------------------'
-make -s clean all PLATFORM="photon" COMPILE_LTO="n" MINIMAL=y
+$MAKE  PLATFORM="photon" COMPILE_LTO="n" MINIMAL=y
 if [[ "$?" -eq 0 ]]; then
   echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
 else

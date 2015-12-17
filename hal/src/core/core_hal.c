@@ -470,3 +470,14 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
     return -1;
 }
 
+int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
+{
+	return -1;
+}
+
+int HAL_Ssystem_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
+{
+	return -1;
+}
+
+

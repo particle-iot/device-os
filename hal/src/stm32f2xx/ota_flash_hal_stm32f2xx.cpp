@@ -25,6 +25,7 @@
 #include "flash_mal.h"
 #include "dct_hal.h"
 #include "dsakeygen.h"
+#include "eckeygen.h"
 #include <cstring>
 #include "ledcontrol.h"
 #include "parse_server_address.h"
@@ -33,6 +34,8 @@
 #include "ota_module.h"
 #include "ota_flash_hal_stm32f2xx.h"
 #include "spark_protocol_functions.h"
+#include "hal_platform.h"
+#include "service_debug.h"
 
 #define OTA_CHUNK_SIZE          512
 
@@ -163,7 +166,10 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
 {
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
-    if (fetch_module(&module, &module_ota, true, MODULE_VALIDATION_INTEGRITY) && (module.validity_checked==module.validity_result))
+
+    bool module_fetched = fetch_module(&module, &module_ota, true, MODULE_VALIDATION_INTEGRITY);
+	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
+    if (module_fetched && (module.validity_checked==module.validity_result))
     {
         uint32_t moduleLength = module_length(module.info);
         module_function_t function = module_function(module.info);
@@ -179,12 +185,17 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
                 FLASH_INTERNAL, uint32_t(module.info->module_start_address),
                 (moduleLength + 4),//+4 to copy the CRC too
                 function,
-                MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION))//true to verify the CRC during copy also
+                MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION)) { //true to verify the CRC during copy also
                     result = HAL_UPDATE_APPLIED_PENDING_RESTART;
-
+                    DEBUG("OTA module applied - device will restart");
+            }
         }
 
         FLASH_End();
+    }
+    else
+    {
+    		WARN("OTA module not applied");
     }
     return result;
 }
@@ -197,7 +208,8 @@ void copy_dct(void* target, uint16_t offset, uint16_t length) {
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
-    const void* data = dct_read_app_data(DCT_SERVER_ADDRESS_OFFSET);
+	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+    const void* data = dct_read_app_data(udp ? DCT_ALT_SERVER_ADDRESS_OFFSET : DCT_SERVER_ADDRESS_OFFSET);
     parseServerAddressData(server_addr, (const uint8_t*)data, DCT_SERVER_ADDRESS_SIZE);
 }
 
@@ -214,13 +226,34 @@ void HAL_OTA_Flashed_ResetStatus(void)
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {
     fetch_device_public_key();
-    copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
+	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+	if (udp)
+	    copy_dct(keyBuffer, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
+	else
+		copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
 }
 
-int rsa_random(void* p)
+int key_gen_random(void* p)
 {
     return (int)HAL_RNG_GetRandomNumber();
 }
+
+int key_gen_random_block(void* handle, uint8_t* data, size_t len)
+{
+	while (len>=4)
+	{
+		*((uint32_t*)data) = HAL_RNG_GetRandomNumber();
+		data += 4;
+		len -= 4;
+	}
+	while (len-->0)
+	{
+		*data++ = HAL_RNG_GetRandomNumber();
+	}
+	return 0;
+}
+
+
 
 /**
  * Reads and generates the device's private key.
@@ -230,15 +263,31 @@ int rsa_random(void* p)
 int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* genspec)
 {
     bool generated = false;
-    copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
+    bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+    if (udp)
+    		copy_dct(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
+    else
+    		copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
     genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
     if (genspec->gen==PRIVATE_KEY_GENERATE_ALWAYS || (!genspec->had_key && genspec->gen!=PRIVATE_KEY_GENERATE_NEVER)) {
         // todo - this couples the HAL with the system. Use events instead.
         SPARK_LED_FADE = false;
-        if (!gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, rsa_random, NULL)) {
-            dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
-            // refetch and rewrite public key to ensure it is valid
-            fetch_device_public_key();
+        int error  = 1;
+#if HAL_PLATFORM_CLOUD_UDP
+        if (udp)
+        		error = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, NULL);
+#endif
+#if HAL_PLATFORM_CLOUD_TCP
+		if (!udp)
+			error = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, NULL);
+#endif
+        if (!error) {
+        		if (udp)
+        			dct_write_app_data(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
+        		else
+        			dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
+			// refetch and rewrite public key to ensure it is valid
+			fetch_device_public_key();
             generated = true;
         }
     }
@@ -293,24 +342,38 @@ uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
 
 const uint8_t* fetch_server_public_key()
 {
-    return (const uint8_t*)dct_read_app_data(DCT_SERVER_PUBLIC_KEY_OFFSET);
+    return (const uint8_t*)dct_read_app_data(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_SERVER_PUBLIC_KEY_OFFSET : DCT_SERVER_PUBLIC_KEY_OFFSET);
 }
 
 const uint8_t* fetch_device_private_key()
 {
-    return (const uint8_t*)dct_read_app_data(DCT_DEVICE_PRIVATE_KEY_OFFSET);
+    return (const uint8_t*)dct_read_app_data(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET : DCT_DEVICE_PRIVATE_KEY_OFFSET);
 }
 
 const uint8_t* fetch_device_public_key()
 {
     uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
     memset(pubkey, 0, sizeof(pubkey));
-    parse_device_pubkey_from_privkey(pubkey, fetch_device_private_key());
+    bool udp = false;
+#if HAL_PLATFORM_CLOUD_UDP
+    udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+#endif
+    const uint8_t* priv = fetch_device_private_key();
+    int error = 0;
+#if HAL_PLATFORM_CLOUD_UDP
+    if (udp)
+    		error = extract_public_ec_key(pubkey, sizeof(pubkey), priv);
+#endif
+#if HAL_PLATFORM_CLOUD_TCP
+    if (!udp)
+    		extract_public_rsa_key(pubkey, priv);
+#endif
 
-    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
-    if (memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
-        dct_write_app_data(pubkey, DCT_DEVICE_PUBLIC_KEY_OFFSET, DCT_DEVICE_PUBLIC_KEY_SIZE);
-        flash_pub_key = (const uint8_t*)dct_read_app_data(DCT_DEVICE_PUBLIC_KEY_OFFSET);
+    int offset = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET : DCT_DEVICE_PUBLIC_KEY_OFFSET;
+    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(offset);
+    if (!error && memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
+        dct_write_app_data(pubkey, offset, DCT_DEVICE_PUBLIC_KEY_SIZE);
+        flash_pub_key = (const uint8_t*)dct_read_app_data(offset);
     }
     return flash_pub_key;
 }

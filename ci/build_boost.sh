@@ -1,4 +1,4 @@
 pushd $BOOST_ROOT
 ./bootstrap.sh
-./b2  --link=static --runtime-link=static --layout=tagged --with-system --with-program_options  threading=single
+./b2  --with-thread  --with-system --with-program_options --with-random  --threading=single
 popd

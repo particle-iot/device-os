@@ -45,6 +45,8 @@
 #include "core_hal_stm32f2xx.h"
 #include "stm32f2xx.h"
 #include "timer_hal.h"
+#include "dct.h"
+#include "hal_platform.h"
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -231,7 +233,7 @@ void HAL_Core_Config(void)
     // where WICED isn't ready for a SysTick until after main() has been called to
     // fully intialize the RTOS.
     HAL_Core_Setup_override_interrupts();
-
+    
 #if MODULAR_FIRMWARE
     // write protect system module parts if not already protected
     FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
@@ -263,7 +265,7 @@ void HAL_Core_Setup(void) {
     bootloader_update_if_needed();
     HAL_Bootloader_Lock(true);
 
-#if !MODULAR_FIRMWARE
+#if !defined(MODULAR_FIRMWARE)
     module_user_init_hook();
 #endif
 }
@@ -909,6 +911,60 @@ bool HAL_Feature_Get(HAL_Feature feature)
         {
             return (PWR_GetFlagStatus(PWR_FLAG_BRR) != RESET);
         }
+
+        case FEATURE_CLOUD_UDP:
+        {
+        		uint8_t value = false;
+#if HAL_PLATFORM_CLOUD_UDP
+        		const uint8_t* data = dct_read_app_data(DCT_CLOUD_TRANSPORT_OFFSET);
+        		value = *data==0xFF;		// default is to use UDP
+#endif
+        		return value;
+        }
     }
     return false;
 }
+
+#if HAL_PLATFORM_CLOUD_UDP
+
+#include "dtls_session_persist.h"
+#include "deepsleep_hal_impl.h"
+#include <string.h>
+
+retained_system SessionPersistOpaque session;
+
+int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
+{
+	if (offset==0 && length==sizeof(SessionPersistOpaque))
+	{
+		memcpy(&session, buffer, length);
+		return 0;
+	}
+	return -1;
+}
+
+int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
+{
+	if (offset==0 && max_length>=sizeof(SessionPersistOpaque) && session.size==sizeof(SessionPersistOpaque))
+	{
+		*length = sizeof(SessionPersistOpaque);
+		memcpy(buffer, &session, sizeof(session));
+		return 0;
+	}
+	return -1;
+}
+
+
+#else
+
+int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
+{
+	return -1;
+}
+
+int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
+{
+	return -1;
+}
+
+#endif

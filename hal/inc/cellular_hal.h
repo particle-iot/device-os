@@ -24,7 +24,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "net_hal.h"
-#include "wlan_hal.h"
+#include "inet_hal.h"
+#include "system_tick_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
