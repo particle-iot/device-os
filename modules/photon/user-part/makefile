@@ -16,10 +16,12 @@ include $(PROJECT_ROOT)/build/platform-id.mk
 
 LIBS += $(MAKE_DEPENDENCIES)
 LIB_DEPS += $(USER_LIB_DEP) $(SERVICES_DYNALIB_LIB_DEP) $(HAL_DYNALIB_LIB_DEP) $(SYSTEM_DYNALIB_LIB_DEP) $(RT_DYNALIB_LIB_DEP) $(WIRING_LIB_DEP) $(COMMUNICATION_DYNALIB_LIB_DEP) $(PLATFORM_LIB_DEP) $(WIRING_GLOBALS_LIB_DEP)
-LIB_DEPS += $(PROJECT_ROOT)/hal/src/photon/lib/STM32F2xx_Peripheral_Libraries.a
+LIB_DEPS += $(PROJECT_ROOT)/hal/src/photon/lib/STM32F2xx_Peripheral_Libraries.a 
+LIB_DEPS += $(PROJECT_ROOT)/user/applications/photon-mpu/inv/mpl/mplmpu.a
+
 LIB_DIRS += $(dir $(LIB_DEPS))
 
-LDFLAGS += -Wl,--whole-archive $(PROJECT_ROOT)/hal/src/photon/lib/STM32F2xx_Peripheral_Libraries.a -Wl,--no-whole-archive
+LDFLAGS += -Wl,--whole-archive $(PROJECT_ROOT)/hal/src/photon/lib/STM32F2xx_Peripheral_Libraries.a $(PROJECT_ROOT)/user/applications/photon-mpu/inv/mpl/mplmpu.a -Wl,--no-whole-archive
 
 
 TARGET=elf bin lst hex size
