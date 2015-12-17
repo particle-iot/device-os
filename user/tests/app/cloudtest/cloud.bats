@@ -8,22 +8,61 @@ function die()
 	exit -1
 }
 
+function check_defined()
+{
+	eval val=\$$1
+	[[ $val ]] || die "$1 not defined."
+}
 
-[[ "$DEVICE_ID" ]] || die "DEVICE_ID not defined"
-[[ "$DEVICE_NAME" ]] || die "DEVICE_NAME not defined"
+check_defined DEVICE_ID
+check_defined PLATFORM_ID
+check_defined DEVICE_NAME
+check_defined ACCESS_TOKEN
+check_defined API_URL
 
 id=$DEVICE_ID
 name=$DEVICE_NAME
 
+function api_call()
+{
+	curl -H "Authorization: Bearer $ACCESS_TOKEN" "$API_URL$1" 
+}
+
+function flash_app()
+{
+	pushd ../../../../main	
+	make PLATFORM_ID=$PLATFORM_ID APP=$1 all
+	popd
+	output=../../../../build/target/user-part/platform-$PLATFORM_ID-m/$(basename $1).bin
+	[[ -f $output ]] 
+	particle flash $DEVICE_NAME $output
+	sleep 15s
+	# todo - how to check that the flash was successful?
+}
+
 
 @test "device is online" {
-    
+    skip
     list=$(particle list | grep $name)
     [[ $list == *online ]]
 }
 
-@test "device has functions and variables" {
+function has_test_app()
+{
+    list=$(api_call "/v1/devices/$id" )
+    fns=$(echo $list | jq -c .functions )
+	vars=$(echo $list | jq -c .variables )
+	[[ $vars == '{"bool":"int32","int":"int32","double":"double","string":"string"}' ]] &&
+	[[ $fns == '["updateString","update","setString","checkString"]' ]]  	
+}
 
+@test "can flash test application" {
+	has_test_app && skip
+	flash_app ../tests/app/cloudtest
+}
+
+@test "device has test app functions and variables" {
+	has_test_app	
 }
 
 @test "Integer variable value can be fetched and incremented" {
@@ -37,7 +76,7 @@ name=$DEVICE_NAME
 @test "Double variable value can be fetched and incremented" {
 	skip # a problem with adding 0.5 to the value?
     doublevar=$(particle variable get $name double)
-    particle function call $name update
+ 	   particle function call $name update
     doublevar2=$(particle variable get $name double)
 
     [[ $double2 -eq $(($doublevar + 0.5)) ]]
@@ -110,9 +149,21 @@ alpha="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	particle publish cloudtest happytest
 	# the event changes the string as a side effect
     stringvar2=$(particle variable get $name string)
-    [[ $stringvar2 == "happytest" ]]
-	
+    [[ $stringvar2 == "happytest" ]]	
 }
+
+@test "can flash tinker to the device" {
+	flash_app tinker
+}
+
+@test "tinker functions are visible" {
+    list=$(api_call "/v1/devices/$id" )
+    echo $list > list.txt
+    fns=$(echo $list | jq -c .functions )
+	[[ $fns == '["digitalread","digitalwrite","analogread","analogwrite"]' ]]  
+}
+
+
 
 
 # todo - how to flash to a device and verify the flash succeeded?

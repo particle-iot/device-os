@@ -6,6 +6,8 @@ This cloud test app implements some automated end to end tests using a device an
 
 - [BATS](https://github.com/sstephenson/bats#installing-bats-from-source)
 - Particle CLI 
+- jq - [command line json parser](https://stedolan.github.io/jq/)
+ - on OSX `brew install js`
 - this firmware repo checked out in git
 
 ## Device Setup
@@ -16,7 +18,9 @@ This cloud test app implements some automated end to end tests using a device an
 - `make PLATFORM=xxx APP=../tests/app/cloudtest all program-dfu` to flash the cloud test app to your device
 - `export DEVICE_ID=<your device ID>`
 - `export DEVICE_NAME=<your device name>`
-
+- `export PLATFORM_ID=10`
+- `export API_URL=https://api.staging.particle.io`
+- `export ACCESS_TOKEN=....`
 
 ## Running the tests
 - `cd` to this folder

@@ -1,5 +1,9 @@
 #include "application.h"
 
+// ALL_LEVEL, TRACE_LEVEL, DEBUG_LEVEL, WARN_LEVEL, ERROR_LEVEL, PANIC_LEVEL, NO_LOG_LEVEL
+SerialDebugOutput debugOutput(9600, ALL_LEVEL);
+
+
 bool variableBool = false;
 char variableString[1024];
 double variableDouble;
