@@ -106,7 +106,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 	uint8_t* queue = message.buf();
 	
 	DEBUG("chunk");
-	if (!this->updating)
+	if (!is_updating())
 	{
 		WARN("got chunk when not updating");
 		return INVALID_STATE;
@@ -241,6 +241,9 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
 	ProtocolError error = channel.send(response);
 	if (error)
 		return error;
+
+	if (!is_updating())
+		return INVALID_STATE;
 
 	if (!missing)
 	{
