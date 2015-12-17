@@ -33,7 +33,17 @@ sock_result_t socket_reset_blocking_call()
 sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, system_tick_t _timeout)
 {
     electronMDM.socketSetBlocking(sd, _timeout);
-    return electronMDM.socketRecv(sd, (char*)buffer, len);
+    sock_result_t result = 0;
+    if (_timeout==0) {
+    		result = electronMDM.socketReadable(sd);
+    		if (result==0)		// no data, so return without polling for data
+    			return 0;
+    		if (result>0)		// clear error
+    			result = 0;
+    }
+    if (!result)
+    		result = electronMDM.socketRecv(sd, (char*)buffer, len);
+    return result;
 }
 
 sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port)
@@ -45,7 +55,13 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
 {
     int port;
     MDM_IP ip;
-    sock_result_t result = electronMDM.socketRecvFrom(sock, &ip, &port, (char*)buffer, bufLen);
+
+    sock_result_t result = electronMDM.socketReadable(sock);
+	if (result<=0)			// error or no data
+		return result;
+
+	// have some data to let's get it.
+	result = electronMDM.socketRecvFrom(sock, &ip, &port, (char*)buffer, bufLen);
     if (result > 0) {
         uint32_t ipv4 = ip;
         addr->sa_data[0] = (port>>8) & 0xFF;

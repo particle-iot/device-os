@@ -1507,7 +1507,7 @@ int MDMParser::socketReadable(int socket)
     int pending = MDM_SOCKET_ERROR;
     LOCK();
     if (ISSOCKET(socket) && _sockets[socket].connected) {
-        DEBUG_D("socketReadable(%d)\r\n", socket);
+    		//DEBUG_D("socketReadable(%d)\r\n", socket);
         // allow to receive unsolicited commands
         waitFinalResp(NULL, NULL, 0);
         if (_sockets[socket].connected)
