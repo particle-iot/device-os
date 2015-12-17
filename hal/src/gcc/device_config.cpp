@@ -139,11 +139,13 @@ void read_config_file(const char* config_name, void* data, size_t length)
 }
 
 uint8_t hex2dec(char c) {
-    if (c<='9')
-        return uint8_t(c-'0');
-    if (c<='Z')
-        return uint8_t(c-'A');
-    return uint8_t(c-'a');
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return 0xFF;
 }
 
 
