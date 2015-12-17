@@ -115,7 +115,7 @@ uint16_t HAL_PWM_Get_Frequency(uint16_t pin)
         TIM_ARR = pin_info->timer_peripheral->ARR;
     }
 #endif
-#if PLATFORM_ID == 10 // Duo
+#if PLATFORM_ID == 88 // Duo
     else if(pin_info->timer_peripheral == TIM2)
     {
         TIM_ARR = pin_info->timer_peripheral->ARR;
@@ -191,7 +191,7 @@ void HAL_PWM_Update_Duty_Cycle(uint16_t pin, uint16_t value)
 	} else if (pin_info->timer_peripheral == TIM5) {
 		TIM_CLK = SystemCoreClock / 2;
 	}
-#if PLATFORM_ID == 10 // Duo
+#if PLATFORM_ID == 88 // Duo
     else if (pin_info->timer_peripheral == TIM2) {
 		TIM_CLK = SystemCoreClock / 2;
 	} else if (pin_info->timer_peripheral == TIM13) {
@@ -255,7 +255,7 @@ uint32_t HAL_PWM_Enable_TIM_Clock(uint16_t pin)
 		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
 	}
 #endif
-#if PLATFORM_ID == 10 // Duo
+#if PLATFORM_ID == 88 // Duo
     else if (pin_info->timer_peripheral == TIM2)
 	{
 		TIM_CLK = SystemCoreClock / 2;
