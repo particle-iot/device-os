@@ -115,6 +115,20 @@ uint16_t HAL_PWM_Get_Frequency(uint16_t pin)
         TIM_ARR = pin_info->timer_peripheral->ARR;
     }
 #endif
+#if PLATFORM_ID == 10 // Duo
+    else if(pin_info->timer_peripheral == TIM2)
+    {
+        TIM_ARR = pin_info->timer_peripheral->ARR;
+    }
+	else if(pin_info->timer_peripheral == TIM13)
+    {
+        TIM_ARR = pin_info->timer_peripheral->ARR;
+    }
+	else if(pin_info->timer_peripheral == TIM14)
+    {
+        TIM_ARR = pin_info->timer_peripheral->ARR;
+    }
+#endif
     else
     {
         return PWM_Frequency;
@@ -177,6 +191,15 @@ void HAL_PWM_Update_Duty_Cycle(uint16_t pin, uint16_t value)
 	} else if (pin_info->timer_peripheral == TIM5) {
 		TIM_CLK = SystemCoreClock / 2;
 	}
+#if PLATFORM_ID == 10 // Duo
+    else if (pin_info->timer_peripheral == TIM2) {
+		TIM_CLK = SystemCoreClock / 2;
+	} else if (pin_info->timer_peripheral == TIM13) {
+		TIM_CLK = SystemCoreClock / 2;
+	} else if (pin_info->timer_peripheral == TIM14) {
+		TIM_CLK = SystemCoreClock / 2;
+	}
+#endif
 
 	// Calculate new output compare register value
 	uint16_t TIM_CCR = HAL_PWM_Calculate_CCR(TIM_CLK, value);
@@ -230,6 +253,26 @@ uint32_t HAL_PWM_Enable_TIM_Clock(uint16_t pin)
 		TIM_CLK = SystemCoreClock;
 		GPIO_PinAFConfig(pin_info->gpio_peripheral, pin_info->gpio_pin_source, GPIO_AF_TIM8);
 		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+	}
+#endif
+#if PLATFORM_ID == 10 // Duo
+    else if (pin_info->timer_peripheral == TIM2)
+	{
+		TIM_CLK = SystemCoreClock / 2;
+		GPIO_PinAFConfig(pin_info->gpio_peripheral, pin_info->gpio_pin_source, GPIO_AF_TIM2);
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+	}
+	else if (pin_info->timer_peripheral == TIM13)
+	{
+		TIM_CLK = SystemCoreClock / 2;
+		GPIO_PinAFConfig(pin_info->gpio_peripheral, pin_info->gpio_pin_source, GPIO_AF_TIM13);
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM13, ENABLE);
+	}
+	else if (pin_info->timer_peripheral == TIM14)
+	{
+		TIM_CLK = SystemCoreClock / 2;
+		GPIO_PinAFConfig(pin_info->gpio_peripheral, pin_info->gpio_pin_source, GPIO_AF_TIM14);
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);
 	}
 #endif
 
