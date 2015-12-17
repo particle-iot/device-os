@@ -140,9 +140,9 @@ int TCPClient::available()
         if ( _total < arraySize(_buffer))
         {
             int ret = socket_receive(_sock, _buffer + _total , arraySize(_buffer)-_total, 0);
-            DEBUG("recv(=%d)",ret);
             if (ret > 0)
             {
+                DEBUG("recv(=%d)",ret);
                 if (_total == 0) _offset = 0;
                 _total += ret;
             }

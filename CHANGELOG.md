@@ -1,3 +1,18 @@
+## v0.4.8
+
+### FEATURE
+
+- factory firmware uses full modular firmware [#749](https://github.com/spark/firmware/pull/749). No need for UpdateZero.
+
+- `Timer.changePeriod()` [#720](https://github.com/spark/firmware/pull/720)
+
+- 
+
+### BUGFIXES
+
+- [photon] hang when UDP::stop() is called [#742](https://github.com/spark/firmware/issues/742)
+- [photon] I2C hangs with no pullup resistors [#713](https://github.com/spark/firmware/issues/713)
+
 ## v0.4.7
 
 ### FEATURES

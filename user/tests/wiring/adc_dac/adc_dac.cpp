@@ -25,6 +25,7 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include <stdlib.h>
 
 /*
  * ADC Test requires two 100k ohm resistors hooked up to the unit under test as follows:
@@ -37,6 +38,9 @@
  *
  *           WIRE
  * (DAC) --==========-- (A5)
+ *
+ *           WIRE
+ * (DAC2/A3) --==========-- (A1)
  *
  */
 
@@ -63,7 +67,7 @@ test(ADC_AnalogReadOnPinWithVoltageDividerResultsInCorrectValue) {
 
 #if (PLATFORM_ID >= 3)
 test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
-    pin_t pin = A5;//pin under test (Voltage divider with equal resistor values)
+    pin_t pin = A5;//pin under test
     // when
     analogWrite(DAC1, 2048);
     int32_t ADCValue = analogRead(pin);
@@ -74,18 +78,37 @@ test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
 #endif
 
 #if (PLATFORM_ID >= 3)
-test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue_2) {
-    pin_t pin = A5;
-    // when
-    // Github issues #671
+test(ADC_AnalogReadOnPinWithDACShmoo) {
+    pin_t pin1 = A5;
+    pin_t pin2 = A1;
+    pinMode(pin1, INPUT);
+    pinMode(pin2, INPUT);
+
+    // In Github issues #671, following code will cause DAC output to stuck a constant value
     for(int i = 0; i < 4096; i++) {
         pinMode(DAC, OUTPUT);
         analogWrite(DAC, i);
     }
+    for(int i = 0; i < 4096; i++) {
+        pinMode(DAC2, OUTPUT);
+        analogWrite(DAC2, i);
+    }
     delay(100);
-    analogWrite(DAC, 2048);
-    int32_t ADCValue = analogRead(pin);
-    // then
-    assertTrue((ADCValue>2000)&&(ADCValue<2100));
+
+    // Shmoo test
+    // Set DAC/DAC2 output from 200 to 3896 (ignore non-linearity near 0V or VDD)
+    // Read back analog and compare for significant difference
+    int errorCount = 0;
+    for(int i = 200; i < 3896; i++){
+    	analogWrite(DAC, i);
+    	analogWrite(DAC2, 4096-i);
+    	if (abs(analogRead(pin1)-i) > 200) {
+    		errorCount ++;
+    	}
+    	else if (abs(analogRead(pin2) - 4096 + i) > 200) {
+    		errorCount ++;
+    	}
+    }
+    assertTrue(errorCount == 0);
 }
 #endif

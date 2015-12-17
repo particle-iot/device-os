@@ -65,6 +65,32 @@ public:
     }
 
     CellularSignal RSSI();
+
+    template<typename... Targs>
+    inline int command(const char* format, Targs... Fargs)
+    {
+        return cellular_command(NULL, NULL, 10000, format, Fargs...);
+    }
+
+    template<typename... Targs>
+    inline int command(system_tick_t timeout_ms, const char* format, Targs... Fargs)
+    {
+        return cellular_command(NULL, NULL, timeout_ms, format, Fargs...);
+    }
+
+    template<typename T, typename... Targs>
+    inline int command(int (*cb)(int type, const char* buf, int len, T* param),
+            T* param, const char* format, Targs... Fargs)
+    {
+        return cellular_command((_CALLBACKPTR_MDM)cb, (void*)param, 10000, format, Fargs...);
+    }
+
+    template<typename T, typename... Targs>
+    inline int command(int (*cb)(int type, const char* buf, int len, T* param),
+            T* param, system_tick_t timeout_ms, const char* format, Targs... Fargs)
+    {
+        return cellular_command((_CALLBACKPTR_MDM)cb, (void*)param, timeout_ms, format, Fargs...);
+    }
 };
 
 
