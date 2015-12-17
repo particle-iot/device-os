@@ -565,7 +565,7 @@ int Spark_Handshake(bool presence_announce)
         if (system_mode()==SAFE_MODE)
             Particle.publish("spark/device/safemode","", 60, PRIVATE);
 #if defined(SPARK_SUBSYSTEM_EVENT_NAME)
-        if (!HAL_core_subsystem_version(buf, sizeof (buf)))
+        if (!HAL_core_subsystem_version(buf, sizeof (buf)) && *buf)
         {
             Particle.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
         }
