@@ -28,6 +28,8 @@
 #include "dtls_session_persist.h"
 #include "core_hal.h"
 
+#if HAL_PLATFORM_CLOUD_UDP
+
 namespace particle { namespace protocol {
 
 
@@ -451,4 +453,4 @@ extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
     return 0;  // return non-zero for error
 } // end _gettimeofday()
 
-
+#endif

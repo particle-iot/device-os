@@ -34,7 +34,7 @@ extern "C" {
 #define HAL_PLATFORM_CELLULAR 1
 #endif
 
-#if PLATFORM_ID==10 || PLATFORM_ID==3 || (PLATFORM_ID==6 && !defined(MODULAR_FIRMWARE))
+#if PLATFORM_ID==10 || PLATFORM_ID==3
 #define HAL_PLATFORM_CLOUD_UDP 1
 // photon needs TCP
 #if PLATFORM_ID==6

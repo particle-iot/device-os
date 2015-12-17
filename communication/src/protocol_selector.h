@@ -19,7 +19,10 @@
 #pragma once
 
 #include "hal_platform.h"
+
+#if HAL_PLATFORM_CLOUD_UDP
 #define PARTICLE_PROTOCOL
+#endif
 
 #ifdef PARTICLE_PROTOCOL
 #ifdef __cplusplus
