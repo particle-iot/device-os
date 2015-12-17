@@ -52,9 +52,9 @@
 //! registration done check helper (no need to poll further)
 #define REG_DONE(r)     ((r == REG_HOME) || (r == REG_ROAMING) || (r == REG_DENIED))
 //! helper to make sure that lock unlock pair is always balanced
-#define LOCK()         //{ lock()
+#define LOCK()
 //! helper to make sure that lock unlock pair is always balanced
-#define UNLOCK()       //} unlock()
+#define UNLOCK()
 
 #ifdef MDM_DEBUG
  #if 0 // colored terminal output using ANSI escape sequences
@@ -1447,18 +1447,20 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
         if (cnt < blk)
             blk = cnt;
         bool ok = false;
-        LOCK();
-        if (ISSOCKET(socket)) {
-            sendFormated("AT+USOWR=%d,%d\r\n",_sockets[socket].handle,blk);
-            if (RESP_PROMPT == waitFinalResp()) {
-                HAL_Delay_Milliseconds(50);
-                send(buf, blk);
-                if (RESP_OK == waitFinalResp())
-                    ok = true;
-            }
+        {
+			LOCK();
+			if (ISSOCKET(socket)) {
+				sendFormated("AT+USOWR=%d,%d\r\n",_sockets[socket].handle,blk);
+				if (RESP_PROMPT == waitFinalResp()) {
+					HAL_Delay_Milliseconds(50);
+					send(buf, blk);
+					if (RESP_OK == waitFinalResp())
+						ok = true;
+				}
+			}
+			UNLOCK();
         }
-        UNLOCK();
-        if (!ok)
+		if (!ok)
             return MDM_SOCKET_ERROR;
         buf += blk;
         cnt -= blk;
@@ -1475,17 +1477,19 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
         if (cnt < blk)
             blk = cnt;
         bool ok = false;
-        LOCK();
-        if (ISSOCKET(socket)) {
-            sendFormated("AT+USOST=%d,\"" IPSTR "\",%d,%d\r\n",_sockets[socket].handle,IPNUM(ip),port,blk);
-            if (RESP_PROMPT == waitFinalResp()) {
-                HAL_Delay_Milliseconds(50);
-                send(buf, blk);
-                if (RESP_OK == waitFinalResp())
-                    ok = true;
-            }
+        {
+			LOCK();
+			if (ISSOCKET(socket)) {
+				sendFormated("AT+USOST=%d,\"" IPSTR "\",%d,%d\r\n",_sockets[socket].handle,IPNUM(ip),port,blk);
+				if (RESP_PROMPT == waitFinalResp()) {
+					HAL_Delay_Milliseconds(50);
+					send(buf, blk);
+					if (RESP_OK == waitFinalResp())
+						ok = true;
+				}
+			}
+			UNLOCK();
         }
-        UNLOCK();
         if (!ok)
             return MDM_SOCKET_ERROR;
         buf += blk;
@@ -1536,38 +1540,40 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
         int blk = MAX_SIZE; // still need space for headers and unsolicited  commands
         if (len < blk) blk = len;
         bool ok = false;
-        LOCK();
-        if (ISSOCKET(socket)) {
-            if (_sockets[socket].connected) {
-                if (blk > 0) {
-                    DEBUG_D("socketRecv: _cbUSORD\r\n");
-                    sendFormated("AT+USORD=%d,%d\r\n",_sockets[socket].handle, blk);
-                    USORDparam param;
-                    param.buf = buf;
-                    if (RESP_OK == waitFinalResp(_cbUSORD, &param)) {
-                        blk = param.len;
-                        _sockets[socket].pending -= blk;
-                        len -= blk;
-                        cnt += blk;
-                        buf += blk;
-                        ok = true;
-                    }
-                } else if (!TIMEOUT(start, _sockets[socket].timeout_ms)) {
-                    // DEBUG_D("socketRecv: WAIT FOR URCs\r\n");
-                    ok = (WAIT == waitFinalResp(NULL,NULL,0)); // wait for URCs
-                } else {
-                    // DEBUG_D("socketRecv: TIMEOUT\r\n");
-                    len = 0;
-                    ok = true;
-                }
-            } else {
-                // DEBUG_D("socketRecv: SOCKET NOT CONNECTED\r\n");
-                len = 0;
-                ok = true;
-            }
+        {
+        	LOCK();
+			if (ISSOCKET(socket)) {
+				if (_sockets[socket].connected) {
+					if (blk > 0) {
+						DEBUG_D("socketRecv: _cbUSORD\r\n");
+						sendFormated("AT+USORD=%d,%d\r\n",_sockets[socket].handle, blk);
+						USORDparam param;
+						param.buf = buf;
+						if (RESP_OK == waitFinalResp(_cbUSORD, &param)) {
+							blk = param.len;
+							_sockets[socket].pending -= blk;
+							len -= blk;
+							cnt += blk;
+							buf += blk;
+							ok = true;
+						}
+					} else if (!TIMEOUT(start, _sockets[socket].timeout_ms)) {
+						// DEBUG_D("socketRecv: WAIT FOR URCs\r\n");
+						ok = (WAIT == waitFinalResp(NULL,NULL,0)); // wait for URCs
+					} else {
+						// DEBUG_D("socketRecv: TIMEOUT\r\n");
+						len = 0;
+						ok = true;
+					}
+				} else {
+					// DEBUG_D("socketRecv: SOCKET NOT CONNECTED\r\n");
+					len = 0;
+					ok = true;
+				}
+			}
+			UNLOCK();
         }
-        UNLOCK();
-        if (!ok) {
+		if (!ok) {
             // DEBUG_D("socketRecv: ERROR\r\n");
             return MDM_SOCKET_ERROR;
         }
@@ -1606,31 +1612,33 @@ int MDMParser::socketRecvFrom(int socket, MDM_IP* ip, int* port, char* buf, int 
         int blk = MAX_SIZE; // still need space for headers and unsolicited commands
         if (len < blk) blk = len;
         bool ok = false;
-        LOCK();
-        if (ISSOCKET(socket)) {
-            if (blk > 0) {
-                sendFormated("AT+USORF=%d,%d\r\n",_sockets[socket].handle, blk);
-                USORFparam param;
-                param.buf = buf;
-                if (RESP_OK == waitFinalResp(_cbUSORF, &param)) {
-                    *ip = param.ip;
-                    *port = param.port;
-                    blk = param.len;
-                    _sockets[socket].pending -= blk;
-                    len -= blk;
-                    cnt += blk;
-                    buf += blk;
-                    len = 0; // done
-                    ok = true;
-                }
-            } else if (!TIMEOUT(start, _sockets[socket].timeout_ms)) {
-                ok = (WAIT == waitFinalResp(NULL,NULL,0)); // wait for URCs
-            } else {
-                len = 0; // no more data and socket closed or timed-out
-                ok = true;
-            }
+        {
+				LOCK();
+			if (ISSOCKET(socket)) {
+				if (blk > 0) {
+					sendFormated("AT+USORF=%d,%d\r\n",_sockets[socket].handle, blk);
+					USORFparam param;
+					param.buf = buf;
+					if (RESP_OK == waitFinalResp(_cbUSORF, &param)) {
+						*ip = param.ip;
+						*port = param.port;
+						blk = param.len;
+						_sockets[socket].pending -= blk;
+						len -= blk;
+						cnt += blk;
+						buf += blk;
+						len = 0; // done
+						ok = true;
+					}
+				} else if (!TIMEOUT(start, _sockets[socket].timeout_ms)) {
+					ok = (WAIT == waitFinalResp(NULL,NULL,0)); // wait for URCs
+				} else {
+					len = 0; // no more data and socket closed or timed-out
+					ok = true;
+				}
+			}
+			UNLOCK();
         }
-        UNLOCK();
         if (!ok) {
             DEBUG_D("socketRecv: ERROR\r\n");
             return MDM_SOCKET_ERROR;
