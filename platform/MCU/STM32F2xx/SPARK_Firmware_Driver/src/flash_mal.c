@@ -105,7 +105,7 @@ uint32_t EndOfFlashSector(flash_device_t device, uint32_t address)
 		uint16_t sector = addressToSectorIndex(address);
 		end = sectorIndexToStartAddress(sector+1);
 	}
-#if USE_SERIAL_FLASH
+#ifdef USE_SERIAL_FLASH
 	else if (device==FLASH_SERIAL)
 	{
 		uint16_t sector = address / sFLASH_PAGESIZE;
