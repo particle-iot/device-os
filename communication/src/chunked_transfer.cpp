@@ -291,6 +291,7 @@ ProtocolError ChunkedTransfer::send_missing_chunks(Message& message, MessageChan
 		DEBUG("Sent %d missing chunks", sent);
 		size_t message_size = 7 + (sent * 2);
 		message.set_length(message_size);
+		message.set_confirm_received(true);	// send synchronously
 		ProtocolError error = channel.send(message);
 		if (error)
 			return error;
