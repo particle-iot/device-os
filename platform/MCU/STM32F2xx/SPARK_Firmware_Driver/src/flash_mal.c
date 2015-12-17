@@ -82,7 +82,7 @@ uint16_t FLASH_SectorToWriteProtect(flash_device_t device, uint32_t startAddress
 {
 	uint16_t sector = 0;
 	if (device==FLASH_INTERNAL)
-		sector = InternalSectorToWriteProtect(device);
+		sector = InternalSectorToWriteProtect(startAddress);
 	return sector;
 }
 
@@ -438,6 +438,9 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
                          uint32_t length)
 {
+#ifdef USE_SERIAL_FLASH
+    uint8_t serialFlashData[4];
+#endif
 	uint32_t endAddress = sourceAddress + length;
 
     if (FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length) != true)
@@ -461,7 +464,7 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     /* Program source to destination */
     while (sourceAddress < endAddress)
     {
-    		uint32_t sourceDeviceData = 0;
+        uint32_t sourceDeviceData = 0;
         if (sourceDeviceID == FLASH_INTERNAL)
         {
             /* Read data from internal flash source address */
