@@ -40,6 +40,11 @@ DYNALIB_FN(hal_concurrent,os_timer_create)
 DYNALIB_FN(hal_concurrent,os_timer_destroy)
 DYNALIB_FN(hal_concurrent,os_timer_get_id)
 DYNALIB_FN(hal_concurrent,os_timer_change)
+
+DYNALIB_FN(hal_concurrent,os_queue_create)
+DYNALIB_FN(hal_concurrent,os_queue_destroy)
+DYNALIB_FN(hal_concurrent,os_queue_put)
+DYNALIB_FN(hal_concurrent,os_queue_take)
 #endif
 DYNALIB_END(hal_concurrent)
 
