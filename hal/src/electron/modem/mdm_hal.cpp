@@ -1511,7 +1511,7 @@ int MDMParser::socketReadable(int socket)
 
 int MDMParser::_cbUSORD(int type, const char* buf, int len, USORDparam* param)
 {
-    if ((type == TYPE_PLUS) && out) {
+    if ((type == TYPE_PLUS) && param) {
         int sz, sk;
         if ((sscanf(buf, "\r\n+USORD: %d,%d,", &sk, &sz) == 2) &&
             (buf[len-sz-2] == '\"') && (buf[len-1] == '\"')) {
