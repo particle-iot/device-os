@@ -20,11 +20,10 @@
 
 #include "static_assert.h"
 #include "spark_wiring_string.h"
+#include "spark_protocol_functions.h"
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
-
-typedef class SparkProtocol SparkProtocol;
 
 
 typedef enum
@@ -64,12 +63,17 @@ const CloudVariableTypeInt INT;
 const CloudVariableTypeString STRING;
 const CloudVariableTypeDouble DOUBLE;
 
+#if PLATFORM_ID==3
+// avoid a c-linkage incompatible with C error on newer versions of gcc
+String spark_deviceID(void);
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+#if PLATFORM_ID!=3
 String spark_deviceID(void);
+#endif
 
 void cloud_disconnect(bool closeSocket=true);
 
@@ -143,14 +147,14 @@ void spark_process(void);
 void spark_connect(void);
 void spark_disconnect(void);    // should be set connected since it manages the connection state)
 bool spark_connected(void);
-SparkProtocol* system_cloud_protocol_instance(void);
+ProtocolFacade* system_cloud_protocol_instance(void);
 
 
 #define SPARK_BUF_LEN			        600
 
 //#define SPARK_SERVER_IP			        "54.235.79.249"
 #define SPARK_SERVER_PORT		        5683
-
+#define PORT_COAPS						(5684)
 #define SPARK_LOOP_DELAY_MILLIS		        1000    //1sec
 #define SPARK_RECEIVE_DELAY_MILLIS              10      //10ms
 

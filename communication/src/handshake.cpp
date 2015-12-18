@@ -23,6 +23,9 @@
   ******************************************************************************
   */
 #include "handshake.h"
+#include "protocol_selector.h"
+
+#if HAL_PLATFORM_CLOUD_TCP
 
 int ciphertext_from_nonce_and_id(const unsigned char *nonce,
                                  const unsigned char *id,
@@ -178,7 +181,7 @@ void init_rsa_context_with_private_key(rsa_context *rsa,
  * HAL_FLASH_Read_CorePrivateKey(device_private_key);
  * parse_device_pubkey_from_privkey(device_public_key, device_private_key);
  */
-void parse_device_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* device_privkey)
+void extract_public_rsa_key(uint8_t* device_pubkey, const uint8_t* device_privkey)
 {
     uint8_t device_pubkey_header[29] = {
             0x30, 0x81, 0x9f, 0x30, 0x0d, 0x06, 0x09, 0x2a,
@@ -194,3 +197,5 @@ void parse_device_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* dev
     memcpy(device_pubkey + 157, device_pubkey_exponent, 5);
 }
 
+
+#endif

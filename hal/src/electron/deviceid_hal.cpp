@@ -24,18 +24,5 @@
 
 int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsigned index, void* reserved)
 {
-    if (index!=0)
-        return -1;
-
-    if (name)
-        *name = "imei+iccid";
-
-    CellularDevice device;
-    cellular_device_info(&device, NULL);
-
-    strcpy(buf, device.imei);
-    strcat(buf, "-");
-    strcat(buf, device.iccid);
-
-    return 0;
+    return -1;
 }

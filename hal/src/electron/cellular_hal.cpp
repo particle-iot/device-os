@@ -121,7 +121,7 @@ cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved)
     NetStatus status;
     CHECK_SUCCESS(electronMDM.getSignalStrength(status));
     signal.rssi = status.rssi;
-    signal.ber = status.ber;
+    signal.qual = status.qual;
     return 0;
 }
 

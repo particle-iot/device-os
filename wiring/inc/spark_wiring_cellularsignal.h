@@ -29,7 +29,7 @@ class CellularSignal : public Printable {
 
 public:
     int rssi = 0;
-    int ber = 0;
+    int qual = 0;
 
     CellularSignal() { /* n/a */ }
 

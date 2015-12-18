@@ -46,6 +46,8 @@ typedef struct _static_ip_config_t {
 
 STATIC_ASSERT(static_ip_config_size, sizeof(static_ip_config_t)==24);
 
+#define DCT_SERVER_ADDRESS_SIZE  (128)
+
 /**
  * Custom extensions to the DCT data.
  */
@@ -68,11 +70,16 @@ typedef struct __attribute__((packed)) application_dct {
     platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];//100 bytes
     uint16_t product_store[12];
     uint8_t antenna_selection;           // 0xFF is uninitialized
+    uint8_t cloud_transport;				// 0xFF is uninitialized meaning platform default (TCP for Photon, UDP for Electron). 0 is TCP on Electron.
+    uint8_t alt_device_public_key[128];	// alternative device public key
+    uint8_t alt_device_private_key[192];	// alternative device private key
+    uint8_t alt_server_public_key[192];
+    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE];		// server address info
 #if PLATFORM_ID == 88
     uint16_t wiced_application;          // 0x5AA5 is to indicate that the bootloader is going to jump to WICED application, or jump to Particle system application
-    uint8_t reserved2[1279];
+    uint8_t reserved2[638];
 #else
-    uint8_t reserved2[1281];
+    uint8_t reserved2[640];
 #endif
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
@@ -93,6 +100,11 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_FLASH_MODULES_OFFSET (offsetof(application_dct_t, flash_modules))
 #define DCT_PRODUCT_STORE_OFFSET (offsetof(application_dct_t, product_store))
 #define DCT_ANTENNA_SELECTION_OFFSET (offsetof(application_dct_t, antenna_selection))
+#define DCT_CLOUD_TRANSPORT_OFFSET (offsetof(application_dct_t, cloud_transport))
+#define DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET (offsetof(application_dct_t, alt_device_public_key))
+#define DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET (offsetof(application_dct_t, alt_device_private_key))
+#define DCT_ALT_SERVER_PUBLIC_KEY_OFFSET (offsetof(application_dct_t, alt_server_public_key))
+#define DCT_ALT_SERVER_ADDRESS_OFFSET (offsetof(application_dct_t, alt_server_address))
 #if PLATFORM_ID == 88
 #define DCT_WICED_APPLICATION_OFFSET (offsetof(application_dct_t, wiced_application))
 #endif
@@ -102,7 +114,6 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_DEVICE_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::device_public_key))
 #define DCT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::server_public_key))
 #define DCT_IP_CONFIG_SIZE (sizeof(application_dct_t::ip_config))
-#define DCT_SERVER_ADDRESS_SIZE  (128)
 #define DCT_CLAIM_CODE_SIZE  (sizeof(application_dct_t::claim_code))
 #define DCT_SSID_PREFIX_SIZE  (sizeof(application_dct_t::ssid_prefix))
 #define DCT_DNS_RESOLVE_SIZE  (sizeof(application_dct_t::dns_resolve))
@@ -111,6 +122,11 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_FLASH_MODULES_SIZE  (sizeof(application_dct_t::flash_modules))
 #define DCT_PRODUCT_STORE_SIZE  (sizeof(application_dct_t::product_store))
 #define DCT_ANTENNA_SELECTION_SIZE  (sizeof(application_dct_t::antenna_selection))
+#define DCT_CLOUD_TRANSPORT_SIZE  (sizeof(application_dct_t::cloud_transport))
+#define DCT_ALT_DEVICE_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::alt_device_public_key))
+#define DCT_ALT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::alt_device_private_key))
+#define DCT_ALT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::alt_server_public_key))
+#define DCT_ALT_SERVER_ADDRESS_SIZE  (sizeof(application_dct_t::alt_server_address))
 #if PLATFORM_ID == 88
 #define DCT_WICED_APPLICATION_SIZE  (sizeof(application_dct_t::wiced_application))
 #endif
@@ -138,13 +154,18 @@ STATIC_ASSERT_DCT_OFFSET(padding, 2850 /* 2082 + 768 */);
 STATIC_ASSERT_DCT_OFFSET(flash_modules, 2852 /* 2850 + 2 */);
 STATIC_ASSERT_DCT_OFFSET(product_store, 2952 /* 2852 + 100 */);
 STATIC_ASSERT_DCT_OFFSET(antenna_selection, 2976 /* 2952 + 24 */);
+STATIC_ASSERT_DCT_OFFSET(cloud_transport, 2977 /* 2976 + 1 */);
+STATIC_ASSERT_DCT_OFFSET(alt_device_public_key, 2978 /* 2977 + 1 */);
+STATIC_ASSERT_DCT_OFFSET(alt_device_private_key, 3106 /* 2978 + 128 */);
+STATIC_ASSERT_DCT_OFFSET(alt_server_public_key, 3298 /* 3106 + 192 */);
+STATIC_ASSERT_DCT_OFFSET(alt_server_address, 3490 /* 3298 + 192 */);
 #if PLATFORM_ID == 88
-STATIC_ASSERT_DCT_OFFSET(wiced_application, 2977 /* 2976 + 1 */);
-STATIC_ASSERT_DCT_OFFSET(reserved2, 2979 /* 2977 + 2 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2979 + 1279 */);
+STATIC_ASSERT_DCT_OFFSET(wiced_application, 3618 /* 3490 + 128 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 3620 /* 3618 + 2 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3620 + 638 */);
 #else
-STATIC_ASSERT_DCT_OFFSET(reserved2, 2977 /* 2976 + 1 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2977 + 1281 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 3618 /* 3490 + 128 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3618 + 640 */);
 #endif
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
@@ -159,12 +180,12 @@ STATIC_ASSERT_FLAGS_OFFSET(StartupMode_SysFlag, 18);
 STATIC_ASSERT_FLAGS_OFFSET(FeaturesEnabled_SysFlag, 19);
 STATIC_ASSERT_FLAGS_OFFSET(RCC_CSR_SysFlag, 20);
 STATIC_ASSERT_FLAGS_OFFSET(reserved, 24);
+
 /**
  * Reads application data from the DCT area.
  * @param offset
  * @return
  */
-
 extern const void* dct_read_app_data(uint32_t offset);
 
 extern int dct_write_app_data( const void* data, uint32_t offset, uint32_t size );

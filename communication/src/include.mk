@@ -1,2 +1,4 @@
 
 INCLUDE_DIRS += $(COMMUNICATION_MODULE_PATH)/src
+
+CFLAGS += -DMBEDTLS_CONFIG_FILE="<mbedtls_config.h>"

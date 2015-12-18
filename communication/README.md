@@ -34,6 +34,9 @@ Having problems or have awesome suggestions? Connect with us [here.](https://com
 
 ### VERSION HISTORY
 
-Latest Version: v1.0.0
+Latest Version: v1.1.0
+
+- v1.1.0 - DTLS/UDP transport supported. [docs](dtls.md)
+
 
 
