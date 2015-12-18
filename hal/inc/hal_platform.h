@@ -36,9 +36,7 @@ extern "C" {
 
 #if PLATFORM_ID==10 || PLATFORM_ID==3
 	#define HAL_PLATFORM_CLOUD_UDP 1
-	#if PLATFORM_ID==3
 		#define HAL_PLATFORM_CLOUD_TCP 1
-	#endif
 #else
 	#define HAL_PLATFORM_CLOUD_TCP 1
 #endif
