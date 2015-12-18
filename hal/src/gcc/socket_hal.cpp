@@ -36,6 +36,8 @@
 #include <boost/asio.hpp>
 #undef socklen_t
 
+#include <boost/system/system_error.hpp>
+
 namespace ip = boost::asio::ip;
 
 const sock_handle_t SOCKET_COUNT = sock_handle_t(8);
@@ -169,15 +171,15 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
     available = handle.read_some(boost::asio::buffer(buffer, len), ec);
     result = ec.value() ? -abs(ec.value()) : available;
     if (ec.value()) {
-    		// 35 is no data available
-    		if (ec.value()==35)
-        		result = 0;
-    		else
-    			DEBUG("socket receive error: %d %s, read=%d", ec.value(), ec.message().c_str(), available);
+        if (ec.value() == boost::system::errc::resource_deadlock_would_occur || // EDEADLK (35)
+            ec.value() == boost::system::errc::resource_unavailable_try_again) { // EAGAIN (11)
+            result = 0; // No data available
+        } else {
+            DEBUG("socket receive error: %d %s, read=%d", ec.value(), ec.message().c_str(), available);
+        }
     }
     return result;
 }
-
 
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
 {
@@ -295,7 +297,7 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
 
     if (udp) {
         auto& socket = udp_from(handle);
-        socket.open(ip::udp::v4(), ec);        
+        socket.open(ip::udp::v4(), ec);
         sock_handle_t result = ec.value();
         if (result)				// error
             return result;
@@ -312,7 +314,7 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
     }
     else {
         auto& socket = tcp_from(handle);
-        socket.open(ip::tcp::v4(), ec);        
+        socket.open(ip::tcp::v4(), ec);
         sock_handle_t result = ec.value();
         if (result)
             return result;
