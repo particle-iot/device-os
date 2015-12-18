@@ -655,13 +655,13 @@ void Save_SystemFlags()
 #if PLATFORM_ID == 88
 void Load_Wiced_App_Flag(uint16_t* wiced_app_flag)
 {
-    const void* wiced_app_flag_store = dct_read_app_data(2977);
+    const void* wiced_app_flag_store = dct_read_app_data(3618);
     memcpy(wiced_app_flag, wiced_app_flag_store, sizeof(uint16_t));
 }
 
 void Save_Wiced_App_Flag(const uint16_t* wiced_app_flag)
 {
-    dct_write_app_data(wiced_app_flag, 2977, sizeof(*wiced_app_flag));
+    dct_write_app_data(wiced_app_flag, 3618, sizeof(*wiced_app_flag));
 }
 #endif
 
