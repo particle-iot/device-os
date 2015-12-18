@@ -134,6 +134,8 @@ struct Channel
 	enum Command
 	{
 		CLOSE,
+
+		REFRESH_SESSION,
 	};
 
 
