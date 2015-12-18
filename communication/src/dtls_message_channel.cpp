@@ -27,6 +27,7 @@
 #include <string.h>
 #include "dtls_session_persist.h"
 #include "core_hal.h"
+#include "service_debug.h"
 
 #if HAL_PLATFORM_CLOUD_UDP
 
@@ -383,7 +384,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 
 	conf.read_timeout = 0;
 	int ret = mbedtls_ssl_read(&ssl_context, buf, len);
-	if (ret<=0) {
+	if (ret<0) {
 		switch (ret) {
 		case MBEDTLS_ERR_SSL_WANT_READ:
 			break;
@@ -396,10 +397,22 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 		default:
 			mbedtls_ssl_session_reset(&ssl_context);
 			return IO_ERROR;
-
 		}
 	}
 	message.set_length(ret);
+	if (ret>0) {
+#ifdef DEBUG_BUILD
+      DEBUG("message length %d", message.length());
+      for (size_t i=0; i<message.length(); i++)
+      {
+    	  	  char buf[3];
+    	  	  char c = message.buf()[i];
+    	  	  sprintf(buf, "%02x", c);
+    	  	  log_direct_(buf);
+      }
+      log_direct_("\n");
+#endif
+	}
 	return NO_ERROR;
 }
 
@@ -408,10 +421,17 @@ ProtocolError DTLSMessageChannel::send(Message& message)
   if (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER)
     return INVALID_STATE;
 
-  if (message.length()>20)
-      DEBUG("message length %d, last 20 bytes %s ", message.length(), message.buf()+message.length()-20);
-  else
-      DEBUG("message length %d ", message.length());
+#ifdef DEBUG_BUILD
+      DEBUG("message length %d", message.length());
+      for (size_t i=0; i<message.length(); i++)
+      {
+	  	  char buf[3];
+	  	  char c = message.buf()[i];
+	  	  sprintf(buf, "%02x", c);
+	  	  log_direct_(buf);
+      }
+      log_direct_("\n");
+#endif
 
   int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
   if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
@@ -430,6 +450,7 @@ bool DTLSMessageChannel::is_unreliable()
 
 ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 {
+	DEBUG("session command: %d", command);
 	switch (command)
 	{
 	case CLOSE:

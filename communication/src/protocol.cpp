@@ -210,7 +210,10 @@ int Protocol::begin()
 
 	// resumed an existing session and don't need the hello
 	if (session_resumed && (flags & SKIP_SESSION_RESUME_HELLO))
+	{
+		DEBUG("resumed session - not sending hello message");
 		return error;
+	}
 
 	// todo - this will return code 0 even when the session was resumed,
 	// causing all the application events to be sent.
