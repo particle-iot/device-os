@@ -124,6 +124,7 @@ void system_handle_single_click()
      */
     if (SYSTEM_HANDLE_SINGLE_CLICK) {
         SYSTEM_HANDLE_SINGLE_CLICK = false;
+        volatile system_tick_t startTime = SYSTEM_TICK_COUNTER;
         RGB.control(true);
         RGB.color(0,10,0);
         int rssi = 0;
@@ -141,10 +142,14 @@ void system_handle_single_click()
             else if (rssi > -92) bars = 2;
             else if (rssi > -104) bars = 1;
         }
-        DEBUG_D("RSSI: %ddB BARS: %d\r\n", rssi, bars);
+        DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
+
         /* flash sequence */
         /* TODO - REFACTOR Flash Sequence to be non-blocking via HAL_SysTick_Handler() */
-        delay(1000);
+
+        // Attempts to normalize beginning dim green time to 1 second
+        while ( (SYSTEM_TICK_COUNTER - startTime) < (SYSTEM_US_TICKS*1000UL*1000UL) );
+
         if (bars > 0) {
             for (int x=0; x<bars; x++) {
                 RGB.color(0,255,0);
