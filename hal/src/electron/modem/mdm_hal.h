@@ -103,7 +103,7 @@ public:
 
     /** checks the signal strength
         \param status an optional structure that will have current network information
-               and updated RSSI and BER values.
+               and updated RSSI and QUAL values.
         \return true if successful, false otherwise
     */
     bool getSignalStrength(NetStatus &status);

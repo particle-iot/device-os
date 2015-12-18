@@ -145,7 +145,7 @@ void cellular_cancel(bool cancel, bool calledFromISR, void* reserved);
 struct CellularSignalHal
 {
     int rssi = 0;
-    int ber = 0;
+    int qual = 0;
 };
 #else
 typedef struct CellularSignalHal CellularSignalHal;

@@ -26,6 +26,6 @@ size_t CellularSignal::printTo(Print& p) const
     size_t n = 0;
     n += p.print((*this).rssi, DEC);
     n += p.print(',');
-    n += p.print((*this).ber, DEC);
+    n += p.print((*this).qual, DEC);
     return n;
 }

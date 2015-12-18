@@ -800,7 +800,7 @@ bool MDMParser::getSignalStrength(NetStatus &status)
         if (RESP_OK == waitFinalResp(_cbCSQ, &_net)) {
             ok = true;
             status.rssi = _net.rssi;
-            status.ber = _net.ber;
+            status.qual = _net.qual;
         }
     }
     UNLOCK();
@@ -835,11 +835,11 @@ int MDMParser::_cbCSQ(int type, const char* buf, int len, NetStatus* status)
 {
     if ((type == TYPE_PLUS) && status){
         int a,b;
-        char _ber[] = { 49, 43, 37, 25, 19, 13, 7, 0 }; // see 3GPP TS 45.008 [20] subclause 8.2.4
+        char _qual[] = { 49, 43, 37, 25, 19, 13, 7, 0 }; // see 3GPP TS 45.008 [20] subclause 8.2.4
         // +CSQ: <rssi>,<qual>
         if (sscanf(buf, "\r\n+CSQ: %d,%d",&a,&b) == 2) {
             if (a != 99) status->rssi = -113 + 2*a;  // 0: -113 1: -111 ... 30: -53 dBm with 2 dBm steps
-            if ((b != 99) && (b < (int)sizeof(_ber))) status->ber = _ber[b];  //
+            if ((b != 99) && (b < (int)sizeof(_qual))) status->qual = _qual[b];  //
         }
     }
     return WAIT;
@@ -1882,8 +1882,8 @@ void MDMParser::dumpNetStatus(NetStatus *status)
         DEBUG_D("  Access Technology:  %s\r\n", txtAct[status->act]);
     if (status->rssi)
         DEBUG_D("  Signal Strength:    %d dBm\r\n", status->rssi);
-    if (status->ber)
-        DEBUG_D("  Bit Error Rate:     %d\r\n", status->ber);
+    if (status->qual)
+        DEBUG_D("  Signal Quality:     %d\r\n", status->qual);
     if (*status->opr)
         DEBUG_D("  Operator:           %s\r\n", status->opr);
     if (status->lac != 0xFFFF)
