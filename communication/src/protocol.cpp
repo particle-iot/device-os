@@ -232,8 +232,7 @@ int Protocol::begin()
 	}
 	INFO("Hanshake: completed");
 	channel.notify_established();
-	flags &= ~SKIP_SESSION_RESUME_HELLO;
-
+	flags |= SKIP_SESSION_RESUME_HELLO;
 	return error;
 }
 
