@@ -27,6 +27,9 @@ Distributed as-is; no warranty is given.
 
 #define COMMUNICATION_TIMEOUT 1000 // Set timeout to 1s
 
+// #define WIRE Wire  // use D0/D1
+#define WIRE Wire1 // use C4/C5
+
 float magSensitivity[4] = {0.00014, 0.00029, 0.00043, 0.00058};
 
 LSM9DS1::LSM9DS1()
@@ -1102,26 +1105,26 @@ uint8_t LSM9DS1::SPIreadBytes(uint8_t csPin, uint8_t subAddress,
 
 void LSM9DS1::initI2C()
 {
-	Wire.begin();	// Initialize I2C library
+	WIRE.begin();	// Initialize I2C library on D0/D1
 }
 
 // Wire.h read and write protocols
 void LSM9DS1::I2CwriteByte(uint8_t address, uint8_t subAddress, uint8_t data)
 {
-	Wire.beginTransmission(address);  // Initialize the Tx buffer
-	Wire.write(subAddress);           // Put slave register address in Tx buffer
-	Wire.write(data);                 // Put data in Tx buffer
-	Wire.endTransmission();           // Send the Tx buffer
+	WIRE.beginTransmission(address);  // Initialize the Tx buffer
+	WIRE.write(subAddress);           // Put slave register address in Tx buffer
+	WIRE.write(data);                 // Put data in Tx buffer
+	WIRE.endTransmission();           // Send the Tx buffer
 }
 
 uint8_t LSM9DS1::I2CreadByte(uint8_t address, uint8_t subAddress)
 {
 	uint8_t data; // `data` will store the register data
-	Wire.beginTransmission(address);         // Initialize the Tx buffer
-	Wire.write(subAddress);	                 // Put slave register address in Tx buffer
-	Wire.endTransmission(false);             // Send the Tx buffer, but send a restart to keep connection alive
-	Wire.requestFrom(address, (uint8_t) 1);  // Read one byte from slave register address
-	data = Wire.read();                      // Fill Rx buffer with result
+	WIRE.beginTransmission(address);         // Initialize the Tx buffer
+	WIRE.write(subAddress);	                 // Put slave register address in Tx buffer
+	WIRE.endTransmission(false);             // Send the Tx buffer, but send a restart to keep connection alive
+	WIRE.requestFrom(address, (uint8_t) 1);  // Read one byte from slave register address
+	data = WIRE.read();                      // Fill Rx buffer with result
 	return data;                             // Return data read from slave register
 }
 
@@ -1129,17 +1132,17 @@ uint8_t LSM9DS1::I2CreadBytes(uint8_t address, uint8_t subAddress, uint8_t * des
 {
 	unsigned long timeIn = millis();
 
-	Wire.beginTransmission(address);   // Initialize the Tx buffer
+	WIRE.beginTransmission(address);   // Initialize the Tx buffer
 	// Next send the register to be read. OR with 0x80 to indicate multi-read.
-	Wire.write(subAddress | 0x80);     // Put slave register address in Tx buffer
-	Wire.endTransmission(false);       // Send the Tx buffer, but send a restart to keep connection alive
+	WIRE.write(subAddress | 0x80);     // Put slave register address in Tx buffer
+	WIRE.endTransmission(false);       // Send the Tx buffer, but send a restart to keep connection alive
 
-	Wire.requestFrom(address, count);  // Read bytes from slave register address
+	WIRE.requestFrom(address, count);  // Read bytes from slave register address
 	for (int i=0; i<count;)
 	{
-		if (Wire.available())
+		if (WIRE.available())
 		{
-			dest[i++] = Wire.read();
+			dest[i++] = WIRE.read();
 		}
 		if (timeIn + COMMUNICATION_TIMEOUT < millis())
 		{
