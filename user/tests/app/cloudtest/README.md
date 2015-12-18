@@ -9,6 +9,7 @@ This cloud test app implements some automated end to end tests using a device an
 - jq - [command line json parser](https://stedolan.github.io/jq/)
  - on OSX `brew install js`
 - this firmware repo checked out in git
+- `gem install retryit`
 
 ## Device Setup
 
