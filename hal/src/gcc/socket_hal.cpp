@@ -30,7 +30,6 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wmissing-braces"
 #include <boost/array.hpp>
-#include <boost/system/system_error.hpp>
 
 // conflict of types
 #define socklen_t boost_socklen_t
