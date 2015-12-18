@@ -88,7 +88,10 @@ ProtocolError ChunkedTransfer::handle_update_begin(
 			// send update_reaady - use fast OTA if available
 			size_t size = Messages::update_ready(updateReady.buf(), 0, token, (flags & 0x1), channel.is_unreliable());
 			updateReady.set_length(size);
+			updateReady.set_confirm_received(true);
 			error = channel.send(updateReady);
+			if (error)
+				DEBUG("error sending updateReady");
 		}
 	}
 	return error;
