@@ -85,7 +85,7 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
             HAL_Core_Enter_Standby_Mode();
             break;
 
-#if Wiring_SoftPowerOff
+#if Wiring_SetupButtonUX
         case SLEEP_MODE_SOFTPOWEROFF:
             network_disconnect(0,0,NULL);
             network_off(0, 0, 0, NULL);

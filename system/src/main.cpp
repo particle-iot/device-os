@@ -48,10 +48,38 @@
 #include "spark_wiring_power.h"
 #include "spark_wiring_fuel.h"
 #include "spark_wiring_interrupts.h"
+#include "spark_wiring_cellular.h"
+#include "spark_wiring_cellularsignal.h"
+
+using namespace spark;
 
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#if Wiring_SetupButtonUX
+#if defined(DEBUG_BUTTON_WD)
+#define BUTTON_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
+#else
+#define BUTTON_WD_DEBUG(x,...)
+#endif
+
+static volatile uint32_t button_timeout_start;
+static volatile uint32_t button_timeout_duration;
+
+inline void ARM_BUTTON_TIMEOUT(uint32_t dur) {
+    button_timeout_start = HAL_Timer_Get_Milli_Seconds();
+    button_timeout_duration = dur;
+    BUTTON_WD_DEBUG("Button WD Set %d",(dur));
+}
+inline bool IS_BUTTON_TIMEOUT() {
+    return button_timeout_duration && ((HAL_Timer_Get_Milli_Seconds()-button_timeout_start)>button_timeout_duration);
+}
+
+inline void CLR_BUTTON_TIMEOUT() {
+    button_timeout_duration = 0;
+    BUTTON_WD_DEBUG("Button WD Cleared, was %d",button_timeout_duration);
+}
+#endif // #if Wiring_SetupButtonUX
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -65,19 +93,75 @@ static volatile uint32_t TimingIWDGReload;
  */
 static volatile bool wasListeningOnButtonPress;
 /**
- * The lower 16-bits of the time when the button was first pushed.
+ * The lower 16-bits of the time when the button was first pressed.
  */
-static volatile uint16_t buttonPushed;
+static volatile uint16_t pressed_time;
 
 uint16_t system_button_pushed_duration(uint8_t button, void*)
 {
     if (button || network.listening())
         return 0;
-    return buttonPushed ? HAL_Timer_Get_Milli_Seconds()-buttonPushed : 0;
+    return pressed_time ? HAL_Timer_Get_Milli_Seconds()-pressed_time : 0;
 }
+
+#if Wiring_SetupButtonUX
+/* flag used to initiate system_handle_single_click() from main thread */
+static volatile bool SYSTEM_HANDLE_SINGLE_CLICK = false;
 
 static uint32_t prev_release_time = 0;
 static uint8_t clicks = 0;
+
+/* single click handler displays RSSI value on system LED */
+void system_handle_single_click()
+{
+    /*   signal strength (u-Blox Sara U2 and G3 modules)
+     *   0: < -105 dBm
+     *   1: < -93 dBm
+     *   2: < -81 dBm
+     *   3: < -69 dBm
+     *   4: < - 57 dBm
+     *   5: >= -57 dBm
+     */
+    if (SYSTEM_HANDLE_SINGLE_CLICK) {
+        SYSTEM_HANDLE_SINGLE_CLICK = false;
+        volatile system_tick_t startTime = SYSTEM_TICK_COUNTER;
+        RGB.control(true);
+        RGB.color(0,10,0);
+        int rssi = 0;
+        int bars = 0;
+#if Wiring_WiFi == 1
+        rssi = WiFi.RSSI();
+#elif Wiring_Cellular == 1
+        CellularSignal sig = Cellular.RSSI();
+        rssi = sig.rssi;
+#endif
+        if (rssi < 0) {
+            if (rssi >= -57) bars = 5;
+            else if (rssi > -68) bars = 4;
+            else if (rssi > -80) bars = 3;
+            else if (rssi > -92) bars = 2;
+            else if (rssi > -104) bars = 1;
+        }
+        DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
+
+        /* flash sequence */
+        /* TODO - REFACTOR Flash Sequence to be non-blocking via HAL_SysTick_Handler() */
+
+        // Attempts to normalize beginning dim green time to 1 second
+        while ( (SYSTEM_TICK_COUNTER - startTime) < (SYSTEM_US_TICKS*1000UL*1000UL) );
+
+        if (bars > 0) {
+            for (int x=0; x<bars; x++) {
+                RGB.color(0,255,0);
+                delay(40);
+                RGB.color(0,10,0);
+                delay(250);
+            }
+        }
+        delay(750);
+        RGB.control(false);
+    }
+}
 
 void system_handle_double_click()
 {
@@ -85,32 +169,42 @@ void system_handle_double_click()
     network.connect_cancel(true, true);
 }
 
-void handle_button_click(uint16_t duration, uint32_t release_time)
+void reset_button_click(uint32_t release_time)
 {
-    uint32_t start_time = release_time-duration;
-    uint32_t since_prev = start_time-prev_release_time;
+    clicks = 0;
+    prev_release_time = release_time - 1000;
+    CLR_BUTTON_TIMEOUT();
+}
+
+void handle_button_click(uint16_t depressed_duration, uint32_t release_time)
+{
+    uint32_t start_time = release_time - depressed_duration;
+    uint32_t since_prev = start_time - prev_release_time;
     bool reset = true;
-    if (duration<500) {                                 // a short button press
+    if (depressed_duration<500) {               // a short button press
         if (!clicks || (since_prev<1000)) {		// first click or within 1 second of the previous click
             clicks++;
             prev_release_time = release_time;
-            if (clicks==2)
+            if (clicks == 1)
             {
-                clicks = 0;
-                prev_release_time = release_time-1000;
-                system_handle_double_click();
-            }
-            else {
+                // If a second button press doesn't come within 1.5 seconds,
+                // declare a single button press valid.
+                ARM_BUTTON_TIMEOUT(1500);
                 reset = false;
+            }
+            else if (clicks == 2)
+            {
+                reset_button_click(release_time);
+                system_handle_double_click();
             }
         }
     }
     if (reset) {
-        prev_release_time = release_time-1000;	//
-        clicks = 0;
+        reset_button_click(release_time);
     }
 
 }
+#endif // #if Wiring_SetupButtonUX
 
 // this is called on multiple threads - ideally need a mutex
 void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
@@ -120,7 +214,7 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
         if (pressed)
         {
             wasListeningOnButtonPress = network.listening();
-            buttonPushed = HAL_Timer_Get_Milli_Seconds();
+            pressed_time = HAL_Timer_Get_Milli_Seconds();
             if (!wasListeningOnButtonPress)             // start of button press
             {
                 system_notify_event(button_status, 0);
@@ -129,14 +223,16 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
         else
         {
             int release_time = HAL_Timer_Get_Milli_Seconds();
-            uint16_t duration = release_time-buttonPushed;
+            uint16_t depressed_duration = release_time - pressed_time;
 
             if (!network.listening()) {
-                system_notify_event(button_status, duration);
-                handle_button_click(duration, release_time);
+                system_notify_event(button_status, depressed_duration);
+#if Wiring_SetupButtonUX
+                handle_button_click(depressed_duration, release_time);
+#endif
             }
-            buttonPushed = 0;
-            if (duration>3000 && duration<8000 && wasListeningOnButtonPress && network.listening())
+            pressed_time = 0;
+            if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening())
                 network.listen(true);
         }
     }
@@ -312,6 +408,14 @@ extern "C" void HAL_SysTick_Handler(void)
         TimingIWDGReload++;
     }
 #endif
+
+#if Wiring_SetupButtonUX
+    if (IS_BUTTON_TIMEOUT())
+    {
+        reset_button_click(button_timeout_start);
+        SYSTEM_HANDLE_SINGLE_CLICK = true;
+    }
+#endif
 }
 
 void manage_safe_mode()
@@ -356,6 +460,9 @@ void app_loop(bool threaded)
 #endif
 #if Wiring_Cellular == 1
                 system_power_management_update();
+#endif
+#if Wiring_SetupButtonUX
+                system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
 #endif
             }
         }
