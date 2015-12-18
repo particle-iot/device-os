@@ -16,9 +16,20 @@ It spits out readings over `Serial` every 250ms-ish.
 
 ## Build instructions
 
-- ensure your device is in dfu mode and claimed to your currently active particle-cli account
+- ensure your device is in dfu mode and claimed to your currently active
+  particle-cli account
 - put the device in DFU mode
-- from the root of firmware `cd main`
-- `make all PLATFORM=xxx APP=../tests/integration/sparkfun_i2c_imu/firmware program-dfu`* to flash the cloud test app to your device
+- get into firmware/main
+- `make all PLATFORM=xxx APP=../tests/integration/sparkfun_i2c_imu/firmware program-dfu`*
+  to flash the cloud test app to your device.
 
-\* You may also want/need to add `DEBUG_BUILD=y DEBUG=1 PARTICLE_DEVELOP=1` to the above make command.
+\* You may also want/need to add `DEBUG_BUILD=y DEBUG=1 PARTICLE_DEVELOP=1` to
+the above make command depending on your needs.
+
+
+## Notes
+
+By default, this is testing I2C on D0 (SDA)/D1 (SCL) using `Wire`. Electron also has
+C4 (SDA)/C5 (SCL) using `Wire1`. In order to test C4/C5, you have to take the Electron out of
+the shield and hook up power (3v3 pin and GND) as well as jumper the Electron's C4 to D0 on the
+shield, and Electron's C5 -> Shield's D1.
