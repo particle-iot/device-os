@@ -12,7 +12,21 @@ It spits out readings over `Serial` every 250ms-ish.
 
 ## Device Setup
 
-- Plug device into shield the right way.
+### Testing `Wire` (D0/D1)
+Plug device into shield the correct way will test D0/D1
+
+### Testing `Wire1` (C4/C5) on Electron
+
+Plug device into breadboard and jumper these connections:
+
+| IMU Shield     | Device      |
+| :------------- | :---------- |
+| D0             | C4          |
+| D1             | C5          |
+| 3v3            | 3v3         |
+| GND            | GND         |
+
+Change SparkFunLSM9DS1.cpp:30's `#define WIRE` to `#define WIRE1`
 
 ## Build instructions
 
@@ -26,10 +40,13 @@ It spits out readings over `Serial` every 250ms-ish.
 \* You may also want/need to add `DEBUG_BUILD=y DEBUG=1 PARTICLE_DEVELOP=1` to
 the above make command depending on your needs.
 
+## Run test
 
-## Notes
+After flash, attach to the device's serial output
 
-By default, this is testing I2C on D0 (SDA)/D1 (SCL) using `Wire`. Electron also has
-C4 (SDA)/C5 (SCL) using `Wire1`. In order to test C4/C5, you have to take the Electron out of
-the shield and hook up power (3v3 pin and GND) as well as jumper the Electron's C4 to D0 on the
-shield, and Electron's C5 -> Shield's D1.
+- screen /dev/tty.usb<tab>
+- minicom
+- whatever you normally use to talk to the device via serial
+
+You should see telemetry output every 250ms or so and when you move the board
+around, you should see the values change.
