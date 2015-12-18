@@ -97,10 +97,10 @@ public:
 
 	ProtocolError notify_established() override { return NO_ERROR; }
 
-	virtual ProtocolError command(Command cmd, void* arg=nullptr) override;
+	virtual ProtocolError command(Command cmd, void* arg=nullptr) override {
 		// not used presently
+		return NO_ERROR;
 	}
-
 
 protected:
 
