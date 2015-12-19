@@ -24,7 +24,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "net_hal.h"
-#include "wlan_hal.h"
+#include "inet_hal.h"
+#include "system_tick_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -144,7 +145,7 @@ void cellular_cancel(bool cancel, bool calledFromISR, void* reserved);
 struct CellularSignalHal
 {
     int rssi = 0;
-    int ber = 0;
+    int qual = 0;
 };
 #else
 typedef struct CellularSignalHal CellularSignalHal;

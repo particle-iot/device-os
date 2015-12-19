@@ -9,7 +9,9 @@ const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
 
 sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port, network_interface_t nif)
 {
-    return electronMDM.socketSocket(protocol==IPPROTO_TCP ? MDM_IPPROTO_TCP : MDM_IPPROTO_UDP, port);
+    sock_handle_t handle = electronMDM.socketSocket(protocol==IPPROTO_TCP ? MDM_IPPROTO_TCP : MDM_IPPROTO_UDP, port);
+    electronMDM.socketSetBlocking(handle, 0);
+    return handle;
 }
 
 int32_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addrlen)
@@ -31,7 +33,17 @@ sock_result_t socket_reset_blocking_call()
 sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, system_tick_t _timeout)
 {
     electronMDM.socketSetBlocking(sd, _timeout);
-    return electronMDM.socketRecv(sd, (char*)buffer, len);
+    sock_result_t result = 0;
+    if (_timeout==0) {
+    		result = electronMDM.socketReadable(sd);
+    		if (result==0)		// no data, so return without polling for data
+    			return 0;
+    		if (result>0)		// clear error
+    			result = 0;
+    }
+    if (!result)
+    		result = electronMDM.socketRecv(sd, (char*)buffer, len);
+    return result;
 }
 
 sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port)
@@ -41,7 +53,25 @@ sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port
 
 sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
 {
-    return 0;
+    int port;
+    MDM_IP ip;
+
+    sock_result_t result = electronMDM.socketReadable(sock);
+	if (result<=0)			// error or no data
+		return result;
+
+	// have some data to let's get it.
+	result = electronMDM.socketRecvFrom(sock, &ip, &port, (char*)buffer, bufLen);
+    if (result > 0) {
+        uint32_t ipv4 = ip;
+        addr->sa_data[0] = (port>>8) & 0xFF;
+        addr->sa_data[1] = port & 0xFF;
+        addr->sa_data[2] = (ipv4 >> 24) & 0xFF;
+        addr->sa_data[3] = (ipv4 >> 16) & 0xFF;
+        addr->sa_data[4] = (ipv4 >> 8) & 0xFF;
+        addr->sa_data[5] = ipv4 & 0xFF;
+    }
+    return result;
 }
 
 sock_result_t socket_accept(sock_handle_t sock)

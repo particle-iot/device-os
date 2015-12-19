@@ -39,6 +39,19 @@ DeviceConfig deviceConfig;
 const char* CMD_HELP = "help";
 const char* CMD_VERSION = "version";
 
+std::istream& operator>>(std::istream& in, ProtocolFactory& pf)
+{
+	string value;
+	in >> value;
+	if (value=="tcp")
+		pf = PROTOCOL_LIGHTSSL;
+	else if (value=="udp")
+		pf = PROTOCOL_DTLS;
+	else
+		throw boost::program_options::invalid_option_value(value);
+	return in;
+}
+
 class ConfigParser
 {
 
@@ -81,7 +94,8 @@ public:
             ("device_key,dk", po::value<string>(&config.device_key)->default_value("device_key.der"), "the filename containing the device private key")
             ("server_key,sk", po::value<string>(&config.server_key)->default_value("server_key.der"), "the filename containing the server public key")
             ("state,s", po::value<string>(&config.periph_directory)->default_value("state"), "the directory where device state and peripherals is stored")
-        ;
+			("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_LIGHTSSL), "the cloud communication protocol to use")
+			;
 
         command_line_options.add(program_options).add(device_options);
 
@@ -125,11 +139,13 @@ void read_config_file(const char* config_name, void* data, size_t length)
 }
 
 uint8_t hex2dec(char c) {
-    if (c<='9')
-        return uint8_t(c-'0');
-    if (c<='Z')
-        return uint8_t(c-'A');
-    return uint8_t(c-'a');
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return 0xFF;
 }
 
 
@@ -182,5 +198,7 @@ void DeviceConfig::read(Configuration& configuration)
     read_file(configuration.server_key.c_str(), server_key, sizeof(server_key));
 
     setLoggerLevel(LoggerOutputLevel(NO_LOG_LEVEL-configuration.log_level));
+
+    this->protocol = configuration.protocol;
 }
 

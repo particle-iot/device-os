@@ -1,15 +1,16 @@
 
 #include "rtc_hal.h"
 
-#include <boost/date_time/posix_time/posix_time.hpp>
 
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/version.hpp>
 
 
 void HAL_RTC_Configuration(void)
 {
 }
 
-#if 0
+#if BOOST_VERSION < 105800
 time_t to_time_t(boost::posix_time::ptime t)
 {
     using namespace boost::posix_time;

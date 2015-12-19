@@ -2,16 +2,11 @@
 
 ## Prereqs
 
-GCC 4.9  - `brew isntall gcc49`
-- clone boost and build
 ```
-git clone --recursive http://github.com/boostorg/boost.git boost
-export BOOST_ROOT=/path/to/boost-dir/boost
-cd boost
-./bootstrap.sh
-./b2
-
-export DYLD_LIBRARY_PATH=$(BOOST_ROOT)/stage/lib
+ brew install gcc49
+ source ./ci/install_boost.sh
+ ./ci/build_boost.sh
+ export DYLD_LIBRARY_PATH=$BOOST_ROOT/stage/lib
 ```
 
 
@@ -22,7 +17,6 @@ sudo ./bjam --install --link=static --runtime-link=static --layout=tagged --with
 
 ## Building
 ```
-git checkout develop
 cd main
 make -s PRODUCT_ID=3
 ```
@@ -53,6 +47,9 @@ The virtual device is configured using keys and values.
 | device_id                  | the unique ID for this device, maximum 12 digits      |
 | device_key                 | the file containing the device's private key          |
 | server_key                 | the file containing the cloud public key              |
-|
+| protocol                   | `tcp` or `udp`                                            |
+
+
+
 
 

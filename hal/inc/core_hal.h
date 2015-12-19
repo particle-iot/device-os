@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -192,7 +193,8 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
 
 typedef enum HAL_Feature {
     FEATURE_RETAINED_MEMORY=1,       // [write only] retained memory on backup power
-    FEATURE_WARM_START               // [read only] set to true if previous retained memory contents are available]
+    FEATURE_WARM_START,              // [read only] set to true if previous retained memory contents are available]
+	FEATURE_CLOUD_UDP,				// [read only] true if the UDP implementation should be used.
 } HAL_Feature;
 
 int HAL_Feature_Set(HAL_Feature feature, bool enabled);
@@ -202,6 +204,10 @@ bool HAL_Feature_Get(HAL_Feature feature);
  * Externally defined function that is called before user constructors.
  */
 extern void module_user_init_hook(void);
+
+int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved);
+int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved);
+
 
 #ifdef __cplusplus
 }

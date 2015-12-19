@@ -52,7 +52,9 @@ typedef struct {
     Reg psd;        //!< PSD Registration status (Packet Switched Data)
     AcT act;        //!< Access Technology
     int rssi;       //!< Received Signal Strength Indication (in dBm, range -113..-53)
-    int ber;        //!< Bit Error Rate (BER), see 3GPP TS 45.008 [20] subclause 8.2.4
+    int qual;       //!< In UMTS RAT indicates the Energy per Chip/Noise ratio in dB levels
+                    //!< of the current cell (see <ecn0_ lev> in +CGED command description),
+                    //!< see 3GPP TS 45.008 [20] subclause 8.2.4
     char opr[16+1]; //!< Operator Name
     char num[32];   //!< Mobile Directory Number
     unsigned short lac;  //!< location area code in hexadecimal format (2 bytes in hex)

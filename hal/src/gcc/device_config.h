@@ -22,6 +22,7 @@
 #include <stdexcept>
 #include <cstring>
 #include "filesystem.h"
+#include "spark_protocol_functions.h"
 
 extern const char* DEVICE_ID;
 extern const char* DEVICE_PRIVATE_KEY;
@@ -51,6 +52,7 @@ struct Configuration
     std::string server_key;
     std::string periph_directory;
     uint16_t log_level = 0;
+    ProtocolFactory protocol = PROTOCOL_LIGHTSSL;
 };
 
 
@@ -62,7 +64,7 @@ struct DeviceConfig
     uint8_t device_id[12];
     uint8_t device_key[1024];
     uint8_t server_key[1024];
-
+    ProtocolFactory protocol;
 
     size_t hex2bin(const std::string& hex, uint8_t* dest, size_t destLen);
 
@@ -76,6 +78,8 @@ struct DeviceConfig
             memcpy(dest, device_id, destLen);
         return 12;
     }
+
+    ProtocolFactory get_protocol() { return protocol; }
 };
 
 

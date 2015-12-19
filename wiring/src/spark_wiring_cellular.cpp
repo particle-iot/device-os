@@ -36,7 +36,7 @@ namespace spark {
             return sig;
         }
         sig.rssi = sig_hal.rssi;
-        sig.ber = sig_hal.ber;
+        sig.qual = sig_hal.qual;
         if (sig.rssi == 0) {
             sig.rssi = 2;
         }

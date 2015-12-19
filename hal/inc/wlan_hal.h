@@ -73,12 +73,6 @@ typedef enum
   ANT_INTERNAL = 0, ANT_EXTERNAL = 1, ANT_AUTO = 3
 } WLanSelectAntenna_TypeDef;
 
-typedef struct __attribute__((__packed__))  _WLanConfig_t {
-    uint16_t size;
-    NetworkConfig nw;
-    uint8_t uaSSID[33];
-} WLanConfig;
-
 typedef int wlan_result_t;
 
 /**

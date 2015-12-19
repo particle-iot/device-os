@@ -117,6 +117,11 @@ flash_device_t HAL_OTA_FlashDevice();
  * @param length
  */
 bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved);
+
+/**
+ * Updates part of the OTA image.
+ * @result 0 on success. non-zero on error.
+ */
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved);
 
 typedef enum {
@@ -161,13 +166,19 @@ typedef struct __attribute__ ((__packed__)) ServerAddress_ {
   uint8_t addr_type;
   uint8_t length;
   union __attribute__ ((__packed__)) {
-    char domain[127];
+    char domain[64];
     uint32_t ip;
   };
+  uint16_t port;
+  /**
+   * Make up to 128 bytes.
+   */
+  uint8_t padding[60];
 } ServerAddress;
 
 STATIC_ASSERT(ServerAddress_ip_offset, offsetof(ServerAddress, ip)==2);
 STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, domain)==2);
+STATIC_ASSERT(ServerAddress_size, sizeof(ServerAddress)==128);
 
 
 /* Length in bytes of DER-encoded 2048-bit RSA public key */

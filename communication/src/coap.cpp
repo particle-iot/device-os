@@ -24,6 +24,8 @@
   */
 #include "coap.h"
 
+namespace particle { namespace protocol {
+
 CoAPCode::Enum CoAP::code(const unsigned char *message)
 {
   switch (message[1])
@@ -76,3 +78,5 @@ size_t CoAP::option_decode(unsigned char **option)
   }
   return option_length;
 }
+
+}}

@@ -43,10 +43,6 @@ int HAL_core_subsystem_version(char* buf, int bufLen);
      */
     #define SPARK_SUBSYSTEM_EVENT_NAME "cc3000-patch-version"
 
-#else
-
-    #define SPARK_SUBSYSTEM_EVENT_NAME ""
-
 #endif
 
 #ifdef	__cplusplus

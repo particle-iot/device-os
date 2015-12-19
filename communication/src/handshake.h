@@ -55,7 +55,7 @@ void init_rsa_context_with_private_key(rsa_context *rsa,
                                        const unsigned char *private_key);
 
 
-void parse_device_pubkey_from_privkey(uint8_t* device_pubkey, const uint8_t* device_privkey);
+void extract_public_rsa_key(uint8_t* device_pubkey, const uint8_t* device_privkey);
 
 #ifdef __cplusplus
 }
