@@ -87,17 +87,16 @@ void setup() {
   // Play another file in the background, REQUIRES interrupts!
   /*Serial.println("Playing track");
   musicPlayer.startPlayingFile("track002.mp3");*/
-  play();
 }
 
 void loop() {
   // File is playing in the background
-  if (! (musicPlayer.stopped() || musicPlayer.paused() ) ) {
+  // if (! (musicPlayer.stopped() || musicPlayer.paused() ) ) {
     /*Serial.println("Done playing music");*/
     /*while (1);*/
     play();
     delay(5000);
-  }
+  // }
 
   /*delay(100);*/
 }
