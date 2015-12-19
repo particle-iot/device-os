@@ -15,6 +15,9 @@
   BSD license, all text above must be included in any redistribution
 ****************************************************/
 #include "application.h"
+
+SerialDebugOutput debugOutput(9600, ALL_LEVEL);
+
 #include "vs1053/Adafruit_VS1053.h"
 #include "vs1053/SD.h"
 
@@ -61,9 +64,9 @@ void setup() {
   digitalWrite(SILLY_STRING_2, LOW);
   digitalWrite(LFT_EYE, LOW);
   digitalWrite(RGT_EYE, LOW);
+  Serial.begin(9600);
 
   delay(5000); // Allow board to settle
-  Serial.begin(9600);
 
   if (! musicPlayer.begin()) { // initialise the music player
      Serial.println("Couldn't find VS1053. Not doing anything else...");
@@ -72,6 +75,7 @@ void setup() {
   Serial.println("VS1053 found.");
 
   SD.begin(CARD_SDCS);    // initialise the SD card
+  Serial.println("SD initialized.");
 
   // Set volume for left, right channels. lower numbers == louder volume!
   musicPlayer.setVolume(1,1);
