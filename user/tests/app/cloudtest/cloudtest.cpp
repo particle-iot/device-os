@@ -9,6 +9,16 @@ char variableString[1024];
 double variableDouble;
 int variableInt;
 
+String next_cmd;
+
+
+int cmd(String arg)
+{
+	if (next_cmd.length())
+		return 1;
+	next_cmd = arg;
+	return 0;
+}
 
 int update(String data)
 {
@@ -64,6 +74,7 @@ void subscription(const char* name, const char* data)
 
 void setup()
 {
+//	cmd("bounce_pdp");
     Particle.variable("bool", variableBool);
     Particle.variable("int", variableInt);
     Particle.variable("double", variableDouble);
@@ -74,6 +85,46 @@ void setup()
     Particle.function("setString", setString);
     Particle.function("checkString", checkString);
 
+    Particle.function("cmd", cmd);
+
     Particle.subscribe("cloudtest", subscription);
 
 }
+
+void do_cmd(String arg)
+{
+	if (arg.equals("bounce_pdp"))
+	{
+#if Wiring_Cellular || 1
+		 Cellular.command(40*1000, "AT+UPSDA=0,4\r\n");
+		 Cellular.command(40*1000, "AT+UPSDA=0,3\r\n");
+		 Serial.println("bounced pdp context");
+#endif
+	}
+	else if (arg.equals("bounce_connection"))
+	{
+		Particle.disconnect();
+	}
+	else if (arg.equals("drop_dtls_session"))
+	{
+		Particle.publish("spark/device/session/end","", PRIVATE);
+	}
+	else if (arg.equals("reset"))
+	{
+		System.reset();
+	}
+}
+
+void loop()
+{
+	if (Particle.disconnected())
+		Particle.connect();
+
+	if (next_cmd.length())
+	{
+		String cmd = next_cmd;
+		next_cmd = "";
+		do_cmd(cmd);
+	}
+}
+

@@ -1,7 +1,4 @@
 
-# : ${ID:="3f004c000e51343035353132"}
-# : ${NAME:="electron1"}
-
 function die()
 {
 	echo "exiting: " $1
@@ -23,20 +20,31 @@ check_defined API_URL
 id=$DEVICE_ID
 name=$DEVICE_NAME
 
+function make_api_call()
+{
+	args="curl -H \"Authorization: Bearer $ACCESS_TOKEN\" \"$API_URL$1\""
+	echo "$args"
+}
+
 function api_call()
 {
-	curl -H "Authorization: Bearer $ACCESS_TOKEN" "$API_URL$1" 
+	eval "$(make_api_call $*)" 
+}
+
+function cmd()
+{
+	particle function call $DEVICE_NAME cmd $1
 }
 
 function flash_app()
 {
 	pushd ../../../../main	
-	make PLATFORM_ID=$PLATFORM_ID APP=$1 all
+	make PLATFORM_ID=$PLATFORM_ID APP=$1 all DEBUG_BUILD=y DEBUG=1
 	popd
 	output=../../../../build/target/user-part/platform-$PLATFORM_ID-m/$(basename $1).bin
 	[[ -f $output ]] 
 	particle flash $DEVICE_NAME $output
-	sleep 15s
+	sleep 20s
 	# todo - how to check that the flash was successful?
 }
 
@@ -50,19 +58,41 @@ function flash_app()
 function has_test_app()
 {
     list=$(api_call "/v1/devices/$id" )
+	echo $list > list.txt
     fns=$(echo $list | jq -c .functions )
 	vars=$(echo $list | jq -c .variables )
 	[[ $vars == '{"bool":"int32","int":"int32","double":"double","string":"string"}' ]] &&
-	[[ $fns == '["updateString","update","setString","checkString"]' ]]  	
+	[[ $fns == '["updateString","update","setString","checkString","cmd"]' ]]  	
 }
 
-@test "can flash test application" {
+
+@test "can flash tinker to the device" {
+	flash_app tinker
+}
+
+@test "tinker functions are visible" {
+    list=$(api_call "/v1/devices/$id" )
+    echo $list > list.txt
+    fns=$(echo $list | jq -c .functions )
+	[[ $fns == '["digitalread","digitalwrite","analogread","analogwrite"]' ]]  
+}
+
+
+
+@test "can flash test application if needed" {
 	has_test_app && skip
 	flash_app ../tests/app/cloudtest
 }
 
 @test "device has test app functions and variables" {
 	has_test_app	
+}
+
+@test "device reconnects to the cloud after dropping the PDP context" {
+	skip
+	cmd bounce_pdp
+	sleep 20s
+	# wait for the device to come back online	
 }
 
 @test "Integer variable value can be fetched and incremented" {
@@ -153,7 +183,7 @@ alpha="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 }
 
 @test "can flash tinker to the device" {
-	flash_app tinker
+	flash_app tinker_electron
 }
 
 @test "tinker functions are visible" {

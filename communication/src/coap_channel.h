@@ -22,6 +22,7 @@
 #include "coap.h"
 #include "timer_hal.h"
 #include "stdlib.h"
+#include "service_debug.h"
 
 namespace particle
 {
@@ -407,6 +408,7 @@ public:
 	ProtocolError send_synchronous(Message& msg, Channel& channel, Time& time)
 	{
 		message_id_t id = msg.get_id();
+		DEBUG("sending message id %s synchronously", id);
 		CoAPType::Enum coapType = CoAP::type(msg.buf());
 		ProtocolError error = send(msg, time());
 		if (!error)
@@ -422,6 +424,8 @@ public:
 			CoAPMessage* coapmsg = from_id(id);
 			if (coapmsg)
 				coapmsg->set_delivered_handler(&flag_delivered);
+			else
+				ERROR("no coapmessage for msg %x", id);
 			while (from_id(id)!=nullptr && !error)
 			{
 				msg.clear();

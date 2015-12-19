@@ -18,6 +18,7 @@
  */
 
 #include "coap_channel.h"
+#include "service_debug.h"
 
 namespace particle { namespace protocol {
 
@@ -116,6 +117,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 				msg->notify_delivered_nak();
 			}
 		}
+		DEBUG("recieved ACK for message %x", id);
 		if (!clear_message(id)) {		// message didn't exist, means it's already been acknoweldged or is unknown.
 			msg.set_length(0);
 		}
