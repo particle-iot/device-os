@@ -225,6 +225,9 @@ void HAL_Core_Config(void)
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
 #endif
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    Load_ExtraSystemFlags();
+#endif
 
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);

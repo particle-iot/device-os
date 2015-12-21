@@ -42,6 +42,7 @@
 #include "system_version.h"
 #include "spark_macros.h"
 #include "system_network_internal.h"
+#include "hw_config.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -237,12 +238,22 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
         TimingFlashUpdateTimeout = 0;
     }
 #endif
+#if (PLATFORM_ID==88) && defined (RESET_AVRDUDE_FLASHER_SERIAL_SPEED)
+    if((bitrate == RESET_AVRDUDE_FLASHER_SERIAL_SPEED) && (HAL_Timer_Get_Milli_Seconds() > 5000) ) // Delay to skip the plug-in trigged interrupt
+    {
+        EXTRA_SYSTEM_FLAG(arduino_upload) = 0xAABB;
+        Save_ExtraSystemFlags();
+
+        USB_Cable_Config(DISABLE);
+        NVIC_SystemReset();
+    }
+#endif
 #if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
-    if(!network_listening(0, 0, NULL) && bitrate == start_avrdude_flasher_serial_speed)
+    if(bitrate == start_avrdude_flasher_serial_speed)
     {
         set_avrdude_serial_flash_update_handle(Avrdude_Serial_Flash_Update);
         RGB.control(true);
-        RGB.color(RGB_COLOR_YELLOW);
+        RGB.color(RGB_COLOR_MAGENTA);
         SPARK_FLASH_UPDATE = 4;
         TimingFlashUpdateTimeout = 0;
     }

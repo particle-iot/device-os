@@ -42,6 +42,7 @@
 #if PLATFORM_ID==88
 #include "ble_hal.h"
 #endif
+#include "hw_config.h"
 
 using spark::Network;
 
@@ -88,8 +89,26 @@ void manage_serial_flasher()
         system_firmwareUpdate(&Serial);
     }
 #if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
-    else if(SPARK_FLASH_UPDATE == 4)
+    else if(SPARK_FLASH_UPDATE == 4 || EXTRA_SYSTEM_FLAG(arduino_upload) == 0xAABB)
     {
+        if(EXTRA_SYSTEM_FLAG(arduino_upload) == 0xAABB) // Reset by arduino ardude 1200bps touch, must followed by uploading progress.
+        {
+            EXTRA_SYSTEM_FLAG(arduino_upload) = 0;
+            Save_ExtraSystemFlags();
+
+            system_tick_t start_millis = HAL_Timer_Get_Milli_Seconds();
+            system_tick_t current_millis;
+            while(SPARK_FLASH_UPDATE != 4)
+            {
+                current_millis = HAL_Timer_Get_Milli_Seconds();
+                if( (current_millis - start_millis) > 5000 ) // Wait for 5 seconds to reset if arduino do not begin the uploading progress.
+                {
+                    USB_Cable_Config(DISABLE);
+                    NVIC_SystemReset();
+                }
+            }
+        }
+
         system_avrdudeFirmwareUpdate(&Serial);
     }
 #endif

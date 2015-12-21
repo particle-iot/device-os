@@ -91,8 +91,12 @@ void Save_SystemFlags(void);
 extern platform_system_flags_t system_flags;
 
 #if PLATFORM_ID == 88
-void Load_Wiced_App_Flag(uint16_t* wiced_app_flag);
-void Save_Wiced_App_Flag(const uint16_t* wiced_app_flag);
+#define EXTRA_SYSTEM_FLAG(x) (extra_system_flags.x)
+
+extern extra_platform_system_flags_t extra_system_flags;
+
+void Load_ExtraSystemFlags(void);
+void Save_ExtraSystemFlags(void);
 #endif
 
 bool FACTORY_Flash_Reset(void);

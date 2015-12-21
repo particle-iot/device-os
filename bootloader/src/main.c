@@ -119,9 +119,9 @@ int main(void)
     platform_startup();
 	
 #if PLATFORM_ID == 88
-    uint16_t wiced_app_flag;
-    Load_Wiced_App_Flag(&wiced_app_flag);
-    if(wiced_app_flag == 0x5AA5)	// WICED application available
+    Load_ExtraSystemFlags();
+	
+    if(EXTRA_SYSTEM_FLAG(wiced_application) == 0x5AA5)	// WICED application available
     {
         if(BUTTON_GetState(BUTTON1) != BUTTON1_PRESSED)
         {

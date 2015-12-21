@@ -595,11 +595,12 @@ static uint8_t  EP0_TxSent (void  *pdev)
         uint32_t first_word = *(uint32_t *)MAL_Buffer;
         if( (first_word > 0x20000000) && (first_word <= 0x20020000) )
         {
-          uint16_t wiced_app_flag;
-          if(Addr == 0x0800C000) wiced_app_flag = 0x5AA5;
-          else wiced_app_flag = 0x1234;
+          if(Addr == 0x0800C000)
+            EXTRA_SYSTEM_FLAG(wiced_application) = 0x5AA5;
+          else 
+            EXTRA_SYSTEM_FLAG(wiced_application) = 0x1234;
 
-          Save_Wiced_App_Flag((const uint16_t *)&wiced_app_flag);
+          Save_ExtraSystemFlags();
         }
       }
 	  

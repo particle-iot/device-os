@@ -653,15 +653,17 @@ void Save_SystemFlags()
 }
 
 #if PLATFORM_ID == 88
-void Load_Wiced_App_Flag(uint16_t* wiced_app_flag)
+extra_platform_system_flags_t extra_system_flags;
+
+void Load_ExtraSystemFlags()
 {
-    const void* wiced_app_flag_store = dct_read_app_data(3618);
-    memcpy(wiced_app_flag, wiced_app_flag_store, sizeof(uint16_t));
+    const void* extra_flags_store = dct_read_app_data(DCT_EXTRA_SYSTEM_FLAGS_OFFSET);
+    memcpy(&extra_system_flags, extra_flags_store, sizeof(extra_platform_system_flags_t));
 }
 
-void Save_Wiced_App_Flag(const uint16_t* wiced_app_flag)
+void Save_ExtraSystemFlags()
 {
-    dct_write_app_data(wiced_app_flag, 3618, sizeof(*wiced_app_flag));
+    dct_write_app_data(&extra_system_flags, DCT_EXTRA_SYSTEM_FLAGS_OFFSET, sizeof(extra_platform_system_flags_t));
 }
 #endif
 

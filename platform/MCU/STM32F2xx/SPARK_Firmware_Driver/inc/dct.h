@@ -75,11 +75,9 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t alt_device_private_key[192];	// alternative device private key
     uint8_t alt_server_public_key[192];
     uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE];		// server address info
-#if PLATFORM_ID == 88
-    uint16_t wiced_application;          // 0x5AA5 is to indicate that the bootloader is going to jump to WICED application, or jump to Particle system application
-    uint8_t reserved2[638];
-#else
     uint8_t reserved2[640];
+#if PLATFORM_ID == 88
+    extra_platform_system_flags_t extra_system_flags; // Try Appending it after the application dct so that its offset can be permanent.
 #endif
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
@@ -106,7 +104,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_ALT_SERVER_PUBLIC_KEY_OFFSET (offsetof(application_dct_t, alt_server_public_key))
 #define DCT_ALT_SERVER_ADDRESS_OFFSET (offsetof(application_dct_t, alt_server_address))
 #if PLATFORM_ID == 88
-#define DCT_WICED_APPLICATION_OFFSET (offsetof(application_dct_t, wiced_application))
+#define DCT_EXTRA_SYSTEM_FLAGS_OFFSET (offsetof(application_dct_t, extra_system_flags))
 #endif
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
@@ -128,7 +126,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_ALT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::alt_server_public_key))
 #define DCT_ALT_SERVER_ADDRESS_SIZE  (sizeof(application_dct_t::alt_server_address))
 #if PLATFORM_ID == 88
-#define DCT_WICED_APPLICATION_SIZE  (sizeof(application_dct_t::wiced_application))
+#define DCT_EXTRA_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::extra_system_flags))
 #endif
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
@@ -159,12 +157,11 @@ STATIC_ASSERT_DCT_OFFSET(alt_device_public_key, 2978 /* 2977 + 1 */);
 STATIC_ASSERT_DCT_OFFSET(alt_device_private_key, 3106 /* 2978 + 128 */);
 STATIC_ASSERT_DCT_OFFSET(alt_server_public_key, 3298 /* 3106 + 192 */);
 STATIC_ASSERT_DCT_OFFSET(alt_server_address, 3490 /* 3298 + 192 */);
-#if PLATFORM_ID == 88
-STATIC_ASSERT_DCT_OFFSET(wiced_application, 3618 /* 3490 + 128 */);
-STATIC_ASSERT_DCT_OFFSET(reserved2, 3620 /* 3618 + 2 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3620 + 638 */);
-#else
 STATIC_ASSERT_DCT_OFFSET(reserved2, 3618 /* 3490 + 128 */);
+#if PLATFORM_ID == 88
+STATIC_ASSERT_DCT_OFFSET(extra_system_flags, 4258 /* 3618 + 640 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4290 /* 4258 + 32 */);
+#else
 STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3618 + 640 */);
 #endif
 
