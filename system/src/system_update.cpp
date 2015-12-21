@@ -32,7 +32,7 @@
 #include "system_ymodem.h"
 #if (PLATFORM_ID==88) 
 #include "hw_config.h"
-#ifdef (START_AVRDUDE_FLASHER_SERIAL_SPEED)
+#ifdef START_AVRDUDE_FLASHER_SERIAL_SPEED
 #include "system_avrdude.h"
 #endif
 #endif
