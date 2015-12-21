@@ -30,8 +30,11 @@
 #include "system_cloud_internal.h"
 #include "system_network.h"
 #include "system_ymodem.h"
-#if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
+#if (PLATFORM_ID==88) 
+#include "hw_config.h"
+#ifdef (START_AVRDUDE_FLASHER_SERIAL_SPEED)
 #include "system_avrdude.h"
+#endif
 #endif
 #include "system_task.h"
 #include "rgbled.h"
@@ -42,7 +45,6 @@
 #include "system_version.h"
 #include "spark_macros.h"
 #include "system_network_internal.h"
-#include "hw_config.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
