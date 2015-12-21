@@ -64,6 +64,10 @@
 #include "string_convert.h"
 #include "debug_output_handler.h"
 
+#if PLATFORM_ID==88
+#include "spark_wiring_hciserial.h"
+#endif
+
 // this was being implicitly pulled in by some of the other headers
 // adding here for backwards compatibility.
 #include "system_task.h"

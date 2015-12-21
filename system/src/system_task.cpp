@@ -41,6 +41,7 @@
 #include "system_threading.h"
 #if PLATFORM_ID==88
 #include "ble_hal.h"
+#include "spark_wiring_hciserial.h"
 #endif
 #include "hw_config.h"
 
@@ -148,7 +149,7 @@ void manage_network_connection()
 #if PLATFORM_ID == 88
 void manage_ble_event()
 {
-	ble_idle_event();
+    HAL_HCI_USART_receiveEvent();
 }
 #endif
 

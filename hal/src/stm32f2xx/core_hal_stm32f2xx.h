@@ -51,6 +51,9 @@ void HAL_USART2_Handler(void);
 void HAL_USART3_Handler(void);
 void HAL_USART4_Handler(void);
 void HAL_USART5_Handler(void);
+#if PLATFORM_ID == 88 // Duo
+void HAL_USART6_Handler(void);
+#endif
 void ADC_irq();
 void TIM1_CC_irq(void);
 void TIM2_irq(void);

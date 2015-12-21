@@ -70,7 +70,14 @@ STM32_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* SETUP BUTTON  - 20 */ { GPIOB, GPIO_Pin_2, GPIO_PinSource2, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
 /* RGBR          - 21 */ { GPIOB, GPIO_Pin_11, GPIO_PinSource11, NONE, NONE, TIM2, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
 /* RGBG          - 22 */ { GPIOB, GPIO_Pin_1, GPIO_PinSource1, NONE, NONE, TIM3, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
-/* RGBB          - 23 */ { GPIOB, GPIO_Pin_0, GPIO_PinSource0, NONE, NONE, TIM3, TIM_Channel_3, PIN_MODE_NONE, 0, 0 }
+/* RGBB          - 23 */ { GPIOB, GPIO_Pin_0, GPIO_PinSource0, NONE, NONE, TIM3, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
+/* BT_TX         - 24 */ { GPIOC, GPIO_Pin_6, GPIO_PinSource6, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* BT_RX         - 25 */ { GPIOC, GPIO_Pin_7, GPIO_PinSource7, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* BT_CTS        - 26 */ { GPIOB, GPIO_Pin_9, GPIO_PinSource9, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* BT_RTS        - 27 */ { GPIOB, GPIO_Pin_8, GPIO_PinSource8, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* BT_POWER      - 28 */ { GPIOC, GPIO_Pin_4, GPIO_PinSource4, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* BT_HOST_WK    - 29 */ { GPIOC, GPIO_Pin_0, GPIO_PinSource0, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* BT_DEVICE_WK  - 30 */ { GPIOC, GPIO_Pin_5, GPIO_PinSource5, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 }
 #else
 /* COMMON TO PHOTON, P1 and ELECTRON */
 /* D0            - 00 */ { GPIOB, GPIO_Pin_7, GPIO_PinSource7, NONE, NONE, TIM4, TIM_Channel_2, PIN_MODE_NONE, 0, 0 },

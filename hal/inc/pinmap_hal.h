@@ -75,7 +75,9 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define TOTAL_PINS 47
 #elif PLATFORM_ID == 8 // P1
 #define TOTAL_PINS 30
-#else // Must be Photon and Duo
+#elif PLATFORM_ID == 88 // Duo
+#define TOTAL_PINS 31
+#else // Must be Photon
 #define TOTAL_PINS 24
 #endif
 
@@ -235,6 +237,16 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define PM_SDA_UC   44
 #define PM_SCL_UC   45
 #define LOW_BAT_UC  46
+#endif
+
+#if PLATFORM_ID == 88
+#define BT_TX        24
+#define BT_RX        25
+#define BT_CTS       26
+#define BT_RTS       27
+#define BT_POWER     28
+#define BT_HOST_WK   29
+#define BT_DEVICE_WK 30
 #endif
 
 #define TIM_PWM_FREQ 500 //500Hz
