@@ -76,7 +76,7 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
   GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
   pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
 
-  GPIO_InitTypeDef GPIO_InitStructure;
+  GPIO_InitTypeDef GPIO_InitStructure = {0};
 
   if (gpio_port == GPIOA )
   {

@@ -76,9 +76,9 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   uint8_t GPIO_PortSource = 0;    //variable to hold the port number
 
   //EXTI structure to init EXT
-  EXTI_InitTypeDef EXTI_InitStructure;
+  EXTI_InitTypeDef EXTI_InitStructure = {0};
   //NVIC structure to set up NVIC controller
-  NVIC_InitTypeDef NVIC_InitStructure;
+  NVIC_InitTypeDef NVIC_InitStructure = {0};
 
   //Map the Spark pin to the appropriate port and pin on the STM32
   GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
@@ -162,7 +162,7 @@ void HAL_Interrupts_Detach(uint16_t pin)
   EXTI_ClearITPendingBit(gpio_pin);
 
   //EXTI structure to init EXT
-  EXTI_InitTypeDef EXTI_InitStructure;
+  EXTI_InitTypeDef EXTI_InitStructure = {0};
 
   if(gpio_pin != EXTI_Line2 || gpio_pin != EXTI_Line11)
   {
