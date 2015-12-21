@@ -233,7 +233,7 @@ uint8_t Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
   SPI_INTERFACE.setBitOrder(MSBFIRST);
 
   SPImode_ = 1;		// Set hardware SPI mode
-  
+
   if( sckRateID == SPI_FULL_SPEED ){
 	  SPI_INTERFACE.setClockDivider(SPI_CLOCK_DIV4);
   }
@@ -248,7 +248,7 @@ uint8_t Sd2Card::init(uint8_t mosiPin, uint8_t misoPin, uint8_t clockPin, uint8_
   misoPin_ = misoPin;
   clockPin_ = clockPin;
   chipSelectPin_ = chipSelectPin;
-  
+
   pinMode(clockPin_, OUTPUT);
   pinMode(mosiPin_, OUTPUT);
   pinMode(misoPin_, INPUT);
@@ -273,10 +273,10 @@ uint8_t Sd2Card::init() {
     //DMA activity control
     dmaActive = false;
     //Acknowledgment array
-    for(int i=0; i<SPI_BUFF_SIZE; i++) 
+    for(int i=0; i<SPI_BUFF_SIZE; i++)
         ack[i] = 0xFF;
 #endif
-	
+
   //chipSelectPin_ = chipSelectPin;
   // 16-bit init start time allows over a minute
 
@@ -302,7 +302,7 @@ uint8_t Sd2Card::init() {
 //  SPSR &= ~(1 << SPI2X);
 
   // must supply min of 74 clock cycles with CS high.
-  
+
   chipSelectHigh();
     for (uint8_t i = 0; i < 10; i++) spiSend(0XFF);
   chipSelectLow();
@@ -428,44 +428,44 @@ uint8_t Sd2Card::readData(uint32_t block,
 #ifdef SPI_DMA
     // skip data before offset
     if(offset_ < offset){
-        dma_setup_transfer(DMA1, 
-				DMA_CH3, 
-				&SPI1->regs->DR, 
-				DMA_SIZE_8BITS, 
-				ack, 
+        dma_setup_transfer(DMA1,
+				DMA_CH3,
+				&SPI1->regs->DR,
+				DMA_SIZE_8BITS,
+				ack,
 				DMA_SIZE_8BITS,
                            (/*DMA_MINC_MODE | DMA_CIRC_MODE  |*/ DMA_FROM_MEM | DMA_TRNS_CMPLT | DMA_TRNS_ERR));
         dma_attach_interrupt(DMA1, DMA_CH3, DMAEvent);
         dma_set_priority(DMA1, DMA_CH3, DMA_PRIORITY_VERY_HIGH);
         dma_set_num_transfers(DMA1, DMA_CH3, offset - offset_);
-        
+
         dmaActive = true;
         dma_enable(DMA1, DMA_CH3);
-        
+
         while(dmaActive) delayMicroseconds(1);
         dma_disable(DMA1, DMA_CH3);
     }
     offset_ = offset;
-    
+
     // transfer data
     dma_setup_transfer(DMA1, DMA_CH2, &SPI1->regs->DR, DMA_SIZE_8BITS, dst, DMA_SIZE_8BITS,
                        (DMA_MINC_MODE | DMA_TRNS_CMPLT | DMA_TRNS_ERR));
     dma_attach_interrupt(DMA1, DMA_CH2, DMAEvent);
     dma_setup_transfer(DMA1, DMA_CH3, &SPI1->regs->DR, DMA_SIZE_8BITS, ack, DMA_SIZE_8BITS,
-                       (/*DMA_MINC_MODE | DMA_CIRC_MODE |*/ DMA_FROM_MEM));             
+                       (/*DMA_MINC_MODE | DMA_CIRC_MODE |*/ DMA_FROM_MEM));
     dma_set_priority(DMA1, DMA_CH2, DMA_PRIORITY_VERY_HIGH);
     dma_set_priority(DMA1, DMA_CH3, DMA_PRIORITY_VERY_HIGH);
     dma_set_num_transfers(DMA1, DMA_CH2, count);
     dma_set_num_transfers(DMA1, DMA_CH3, count);
-    
+
     dmaActive = true;
     dma_enable(DMA1, DMA_CH3);
     dma_enable(DMA1, DMA_CH2);
-    
+
     while(dmaActive) delayMicroseconds(1);
     dma_disable(DMA1, DMA_CH3);
     dma_disable(DMA1, DMA_CH2);
-    
+
     offset_ += count;
     if (!partialBlockRead_ || offset_ >= SPI_BUFF_SIZE) {
         readEnd();
@@ -501,14 +501,14 @@ void Sd2Card::readEnd(void) {
       // skip data and crc
 #ifdef SPI_DMA
         dma_setup_transfer(DMA1, DMA_CH3, &SPI1->regs->DR, DMA_SIZE_8BITS, ack, DMA_SIZE_8BITS,
-                           (/*DMA_MINC_MODE | DMA_CIRC_MODE |*/ DMA_FROM_MEM | DMA_TRNS_CMPLT | DMA_TRNS_ERR));  
+                           (/*DMA_MINC_MODE | DMA_CIRC_MODE |*/ DMA_FROM_MEM | DMA_TRNS_CMPLT | DMA_TRNS_ERR));
         dma_attach_interrupt(DMA1, DMA_CH3, DMAEvent);
         dma_set_priority(DMA1, DMA_CH3, DMA_PRIORITY_VERY_HIGH);
         dma_set_num_transfers(DMA1, DMA_CH3, SPI_BUFF_SIZE + 1 - offset_);
-        
+
         dmaActive = true;
         dma_enable(DMA1, DMA_CH3);
-        
+
         while(dmaActive)delayMicroseconds(1);
         dma_disable(DMA1, DMA_CH3);
 #else  // SPI_DMA
@@ -773,7 +773,7 @@ uint8_t Sd2Card::sparkSPISend(uint8_t data) {
 			else
 				//PIN_MAP[mosiPin_].gpio_peripheral->BRR = PIN_MAP[mosiPin_].gpio_pin; // Data Low
 				pinResetFast(mosiPin_);
-			
+
 			//PIN_MAP[clockPin_].gpio_peripheral->BSRR = PIN_MAP[clockPin_].gpio_pin; // Clock High
 			pinSetFast(clockPin_);
 
