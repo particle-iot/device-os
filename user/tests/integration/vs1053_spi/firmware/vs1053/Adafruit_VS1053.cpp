@@ -24,6 +24,9 @@ static Adafruit_VS1053_FilePlayer *myself;
 #define _BV(bit) (1 << (bit))
 
 
+#define SPI_INTERFACE SPI
+// #define SPI_INTERFACE SPI1
+
 static void feeder(void) {
   myself->feedBuffer();
 }
@@ -384,10 +387,10 @@ uint8_t Adafruit_VS1053::begin(void) {
     pinMode(_clk, OUTPUT);
     pinMode(_miso, INPUT);
   } else {
-    SPI.begin();
-    SPI.setDataMode(SPI_MODE0);
-    SPI.setBitOrder(MSBFIRST);
-    SPI.setClockDivider(SPI_CLOCK_DIV128);
+    SPI_INTERFACE.begin();
+    SPI_INTERFACE.setDataMode(SPI_MODE0);
+    SPI_INTERFACE.setBitOrder(MSBFIRST);
+    SPI_INTERFACE.setClockDivider(SPI_CLOCK_DIV128);
   }
 
   reset();
@@ -545,7 +548,7 @@ uint8_t Adafruit_VS1053::spiread(void)
   // Make sure clock starts low
 
   if (useHardwareSPI) {
-    x = SPI.transfer(0x00);
+    x = SPI_INTERFACE.transfer(0x00);
   } else {
 	//Software SPI
     for (i=7; i>=0; i--) {
@@ -567,7 +570,7 @@ void Adafruit_VS1053::spiwrite(uint8_t c)
   // Make sure clock starts low
 
   if (useHardwareSPI) {
-    SPI.transfer(c);
+    SPI_INTERFACE.transfer(c);
 
   } else {
 	//Software SPI

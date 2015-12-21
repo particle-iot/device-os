@@ -56,6 +56,8 @@ inline void DMAEvent(){
 
 //------------------------------------------------------------------------------
 // functions for hardware SPI
+#define SPI_INTERFACE SPI
+// #define SPI_INTERFACE SPI1
 
 #ifdef SPI_SPEED_UP
 #	if SD_SPI_NUMBER   == 1
@@ -80,16 +82,16 @@ inline void DMAEvent(){
 
 #else /* not SPI_SPEED_UP */
 	//#ifdef SPI_DMA
-		//#define spiSend(b) SPI.transfer(b)
+		//#define spiSend(b) SPI_INTERFACE.transfer(b)
 		#define spiSend(b) sparkSPISend(b)
 		/** Receive a byte from the card */
-		//#define spiRec() SPI.transfer(0XFF)
+		//#define spiRec() SPI_INTERFACE.transfer(0XFF)
 		#define spiRec() sparkSPISend(0XFF)
 	//#else
 		/** Send a byte to the card */
-		//#define spiSend(b) SPI.send(b)
+		//#define spiSend(b) SPI_INTERFACE.send(b)
 		/** Receive a byte from the card */
-		//#define spiRec() SPI.send(0XFF)
+		//#define spiRec() SPI_INTERFACE.send(0XFF)
 	//#endif
 #endif	/* SPI_SPEED_UP */
 
@@ -226,17 +228,17 @@ uint8_t Sd2Card::eraseSingleBlockEnable(void) {
 uint8_t Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
   chipSelectPin_ = chipSelectPin;
   pinMode(chipSelectPin_, OUTPUT);
-  SPI.begin();
-  SPI.setDataMode(SPI_MODE0);
-  SPI.setBitOrder(MSBFIRST);
-  
+  SPI_INTERFACE.begin();
+  SPI_INTERFACE.setDataMode(SPI_MODE0);
+  SPI_INTERFACE.setBitOrder(MSBFIRST);
+
   SPImode_ = 1;		// Set hardware SPI mode
   
   if( sckRateID == SPI_FULL_SPEED ){
-	  SPI.setClockDivider(SPI_CLOCK_DIV4);
+	  SPI_INTERFACE.setClockDivider(SPI_CLOCK_DIV4);
   }
   else
-	  SPI.setClockDivider(SPI_CLOCK_DIV8);
+	  SPI_INTERFACE.setClockDivider(SPI_CLOCK_DIV8);
 
   return init();
 }
@@ -259,7 +261,7 @@ uint8_t Sd2Card::init(uint8_t mosiPin, uint8_t misoPin, uint8_t clockPin, uint8_
 
 uint8_t Sd2Card::init() {
 //  chipSelectPin_ = SS;
-//  SPI.begin();
+//  SPI_INTERFACE.begin();
 
   errorCode_ = inBlock_ = partialBlockRead_ = type_ = 0;
 #ifdef SPI_DMA
@@ -761,7 +763,7 @@ uint8_t Sd2Card::sparkSPISend(uint8_t data) {
 	uint8_t b=0;
 
 	if (SPImode_) {				// SPI Mode is Hardware so use Spark SPI function
-		b = SPI.transfer(data);
+		b = SPI_INTERFACE.transfer(data);
 	}
 	else {						// SPI Mode is Software so use bit bang method
 		for (uint8_t bit = 0; bit < 8; bit++)  {
