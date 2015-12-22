@@ -75,7 +75,7 @@ protected:
         }
     }
 
-    void write_integeri(int value, int fixedLength = -1) {
+    void write_integer_immediate(int value, int fixedLength = -1) {
         mpi integer;
         mpi_init(&integer);
         mpi_lset(&integer, value);
@@ -138,24 +138,18 @@ public:
      * @param QP
      */
     void write_private_key(uint8_t* buf, size_t length, rsa_context& ctx) {
-        // Simulate to get total size
+        // Dummy run to calculate sequence length
         set_buffer(nullptr, length);
-        // Version
-        write_integeri(0, 1);
-        write_integer(&ctx.N, 129);
-        write_integer(&ctx.E, 3);
-        write_integer(&ctx.D, 129);
-        write_integer(&ctx.P, 65);
-        write_integer(&ctx.Q, 65);
-        write_integer(&ctx.DP, 65);
-        write_integer(&ctx.DQ, 65);
-        write_integer(&ctx.QP, 65);
-
+        write_private_key_parts(ctx);
         int seq_len = written();
 
         set_buffer(buf, length);
         write_sequence_header(seq_len);
-        write_integeri(0, 1);
+        write_private_key_parts(ctx);
+    }
+
+    void write_private_key_parts(rsa_context& ctx) {
+        write_integer_immediate(0, 1);
         write_integer(&ctx.N, 129);
         write_integer(&ctx.E, 3);
         write_integer(&ctx.D, 129);
