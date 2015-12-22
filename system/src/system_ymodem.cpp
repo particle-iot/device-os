@@ -382,7 +382,7 @@ bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& fil
         serialObj->print(size);
         serialObj->println(" bytes");
         serialObj->flush();
-        delay(1000);
+        HAL_Delay_Milliseconds(1000);
         Spark_Finish_Firmware_Update(file, size>0 ? 1 : 0, NULL);
         return true;
     }
