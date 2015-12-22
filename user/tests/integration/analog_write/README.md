@@ -1,4 +1,4 @@
-# `analogWrite` and `tone()`
+# `analogWrite`
 
 ## BOM
 
@@ -16,7 +16,7 @@ the A/B side of the board first and then the C/D side of the board.
 * Put your Electron in DFU mode
 * `cd firmware/main`
 * `make clean` (optional)
-* `time make all PLATFORM=electron APP=../tests/integration/analog_write_tone/firmware DEBUG_BUILD=y DEBUG=1 PARTICLE_DEVELOP=1 program-dfu`
+* `time make all PLATFORM=electron APP=../tests/integration/analog_write/firmware DEBUG_BUILD=y DEBUG=1 PARTICLE_DEVELOP=1 program-dfu`
 
 ## Test
 
