@@ -1,7 +1,7 @@
 #include "application.h"
 
 // ALL_LEVEL, TRACE_LEVEL, DEBUG_LEVEL, WARN_LEVEL, ERROR_LEVEL, PANIC_LEVEL, NO_LOG_LEVEL
-SerialDebugOutput debugOutput(9600, ALL_LEVEL);
+//SerialDebugOutput debugOutput(9600, ALL_LEVEL);
 
 
 bool variableBool = false;
@@ -72,9 +72,10 @@ void subscription(const char* name, const char* data)
 	updateString(data);
 }
 
+bool disconnect = false;
+
 void setup()
 {
-//	cmd("bounce_pdp");
     Particle.variable("bool", variableBool);
     Particle.variable("int", variableInt);
     Particle.variable("double", variableDouble);
@@ -95,15 +96,16 @@ void do_cmd(String arg)
 {
 	if (arg.equals("bounce_pdp"))
 	{
-#if Wiring_Cellular || 1
+#if Wiring_Cellular
 		 Cellular.command(40*1000, "AT+UPSDA=0,4\r\n");
 		 Cellular.command(40*1000, "AT+UPSDA=0,3\r\n");
 		 Serial.println("bounced pdp context");
-#endif
+		 disconnect = true;
+ #endif
 	}
 	else if (arg.equals("bounce_connection"))
 	{
-		Particle.disconnect();
+		disconnect = true;
 	}
 	else if (arg.equals("drop_dtls_session"))
 	{
@@ -117,8 +119,18 @@ void do_cmd(String arg)
 
 void loop()
 {
+	if (disconnect)
+	{
+		Particle.disconnect();
+		Particle.process();
+		disconnect = false;
+	}
+
 	if (Particle.disconnected())
+	{
 		Particle.connect();
+		Particle.process();
+	}
 
 	if (next_cmd.length())
 	{
