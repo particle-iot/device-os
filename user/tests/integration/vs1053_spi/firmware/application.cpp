@@ -54,16 +54,10 @@ int sprayCan = SILLY_STRING_1; // D2 or D3
 int autoMode = 0;
 int spitDistance = 5;
 
-void setup() {
-  pinMode(SILLY_STRING_1, OUTPUT);
-  pinMode(SILLY_STRING_2, OUTPUT);
-  pinMode(LFT_EYE, OUTPUT);
-  pinMode(RGT_EYE, OUTPUT);
+SYSTEM_MODE(SEMI_AUTOMATIC);
 
-  digitalWrite(SILLY_STRING_1, LOW);
-  digitalWrite(SILLY_STRING_2, LOW);
-  digitalWrite(LFT_EYE, LOW);
-  digitalWrite(RGT_EYE, LOW);
+void setup() {
+  // Particle.connect();
   Serial.begin(9600);
 
   delay(5000); // Allow board to settle
