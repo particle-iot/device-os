@@ -484,14 +484,24 @@ public:
         // 2. CC3000 established AP connection
         // 3. DHCP IP is configured
         // then send mDNS packet to stop external SmartConfig application
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        if (((WLAN_SMART_CONFIG_STOP == 1) || (WLAN_SERIAL_CONFIG_DONE == 1)) && (WLAN_DHCP == 1) && (WLAN_CONNECTED == 1))
+        {
+            on_setup_cleanup();
+
+            ble_provision_finalize();
+
+            WLAN_SERIAL_CONFIG_DONE = 0;
+            WLAN_SMART_CONFIG_STOP  = 0;
+        }
+#else
         if ((WLAN_SMART_CONFIG_STOP == 1) && (WLAN_DHCP == 1) && (WLAN_CONNECTED == 1))
         {
             on_setup_cleanup();
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-            ble_provision_finalize();
-#endif
+
             WLAN_SMART_CONFIG_STOP = 0;
         }
+#endif
     }
 
     void update_config() override
