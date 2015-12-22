@@ -202,6 +202,8 @@ int32_t YModem::receive_packet(uint8_t *data, int32_t& length, uint32_t timeout)
     case ABORT1:
     case ABORT2:
         return 1;
+    case ' ':
+    		return 2;
     default:
         return -1;
     }
@@ -316,9 +318,9 @@ int32_t YModem::receive_file(FileTransfer::Descriptor& tx, YModem::file_desc_t& 
     errors = 0;
     session_begin = 0;
 
-    for (;;)
+    for (;!session_done;)
     {
-        for (packets_received = 0, file_done = 0;;)
+        for (packets_received = 0, file_done = 0;!file_done;)
         {
             int32_t result;
             int32_t packet_length;
@@ -336,8 +338,12 @@ int32_t YModem::receive_file(FileTransfer::Descriptor& tx, YModem::file_desc_t& 
                 send_byte(CA);
                 return -3;
 
+            case 2:	// ignore
+                send_byte(ACK);
+            		break;
+
             default:
-                if (session_begin > 0)
+                if (session_begin >= 0)
                 {
                     errors++;
                     send_byte(CRC16);
@@ -350,14 +356,6 @@ int32_t YModem::receive_file(FileTransfer::Descriptor& tx, YModem::file_desc_t& 
                 }
                 break;
             }
-            if (file_done != 0)
-            {
-                break;
-            }
-        }
-        if (session_done != 0)
-        {
-            break;
         }
     }
     return tx.file_length;
