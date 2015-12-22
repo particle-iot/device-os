@@ -10,7 +10,8 @@ void DTLSProtocol::init(const char *id,
 {
 	set_protocol_flags(0);
 	memcpy(device_id, id, sizeof(device_id));
-	initialize_ping(0,0);		// do not send pings from the client over the UDP connection
+	// send pings once per hour
+	initialize_ping(60*60*1000,30000);
 	DTLSMessageChannel::Callbacks channelCallbacks;
 	memset(&channelCallbacks,0, sizeof(channelCallbacks));
 	channelCallbacks.millis = callbacks.millis;
