@@ -23,7 +23,7 @@ SerialDebugOutput debugOutput(9600, ALL_LEVEL);
 
 #if (PLATFORM_ID == 0) || (PLATFORM_ID >= 3)
 
-#define BREAKOUT_RESET D4 // VS1053 reset pin (output)
+#define BREAKOUT_RESET D7 // VS1053 reset pin (output)
 #define BREAKOUT_CS    D5 // VS1053 chip select pin (output)
 #define BREAKOUT_XDCS  D6 // VS1053 Data/command select pin (output)
 #define CARD_SDCS      A0 // Card chip select pin

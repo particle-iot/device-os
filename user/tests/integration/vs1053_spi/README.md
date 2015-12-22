@@ -61,20 +61,20 @@ and `Sd2Card.cpp:59`.
 
 | VS1053 Breakout | Electron |
 | :--- | :- |
-| MISO | C2 |
-| MOSI | C1 |
-| SCLK | C3 |
+| MISO | D3 |
+| MOSI | D2 |
+| SCLK | D4 |
 
 Make sure `#define SPI_INTERFACE` is set to `SPI1` in `Adafruit_VS1053.cpp:28`
 and `Sd2Card.cpp:60`.
 
-### SPI1 (alt)
+### SPI2
 
 | VS1053 Breakout | Electron |
 | :--- | :- |
-| MISO | ?? |
-| MOSI | ?? |
-| SCLK | ?? |
+| MISO | C2 |
+| MOSI | C1 |
+| SCLK | C3 |
 
 Make sure `#define SPI_INTERFACE` is set to `SPI1` in `Adafruit_VS1053.cpp:28`
 and `Sd2Card.cpp:60`.
