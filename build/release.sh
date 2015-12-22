@@ -1,7 +1,7 @@
 if [ $1 -eq 6 ] || [ $1 -eq 8 ]; then
-	VERSION="0.4.8"
+	VERSION="0.4.8-rc.2"
 else if [ $1 -eq 10 ]; then
-	VERSION="0.0.3-rc.2"
+	VERSION="0.4.8-rc.2"
 	fi
 fi
 
@@ -32,7 +32,7 @@ rm -rf ../build/target
 if [ $1 -eq 6 ] || [ $1 -eq 8 ]; then
 	make -s PLATFORM_ID=$PLATFORM_ID clean all COMPILE_LTO=n
 else if [ $1 -eq 10 ]; then
-	make -s PLATFORM_ID=$PLATFORM_ID clean all COMPILE_LTO=n DEBUG_BUILD=y APP=tinker_electron
+	make -s PLATFORM_ID=$PLATFORM_ID clean all COMPILE_LTO=n DEBUG_BUILD=y # APP=tinker_electron
 	fi
 fi
 release_binary system-part1
