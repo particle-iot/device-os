@@ -185,7 +185,7 @@ combined-minimal: setup bootloader dct mfg_test user system-minimal $(WL_DEP) ch
 	# Generate combined.elf from combined.bin
 	${TOOLCHAIN_PREFIX}ld -b binary -r -o $(OUT)/temp.elf $(COMBINED_MEM)
 	${TOOLCHAIN_PREFIX}objcopy --rename-section .data=.text --set-section-flags .data=alloc,code,load $(OUT)/temp.elf
-	${TOOLCHAIN_PREFIX}ld $(OUT)/temp.elf -T combined_bin_to_elf.ld -o $(COMBINED_ELF)
+	${TOOLCHAIN_PREFIX}ld $(OUT)/temp.elf -T ../stm32/combined_bin_to_elf.ld -o $(COMBINED_ELF)
 	${TOOLCHAIN_PREFIX}strip -s $(COMBINED_ELF)
 	-rm -rf $(OUT)/temp.elf
 
@@ -202,7 +202,7 @@ combined-full: setup bootloader dct mfg_test user-full system-full $(WL_DEP) use
 	# Generate combined.elf from combined.bin
 	${TOOLCHAIN_PREFIX}ld -b binary -r -o $(OUT)/temp.elf $(COMBINED_MEM)
 	${TOOLCHAIN_PREFIX}objcopy --rename-section .data=.text --set-section-flags .data=alloc,code,load $(OUT)/temp.elf
-	${TOOLCHAIN_PREFIX}ld $(OUT)/temp.elf -T combined_bin_to_elf.ld -o $(COMBINED_ELF)
+	${TOOLCHAIN_PREFIX}ld $(OUT)/temp.elf -T ../stm32/combined_bin_to_elf.ld -o $(COMBINED_ELF)
 	${TOOLCHAIN_PREFIX}strip -s $(COMBINED_ELF)
 	-rm -rf $(OUT)/temp.elf
 
