@@ -17,11 +17,12 @@
  ******************************************************************************
  */
 
-#include "catch.hpp"
-#include "fakeit.hpp"
 #include "coap_channel.h"
 #include "forward_message_channel.h"
 #include "Messages.h"
+
+#include "catch.hpp"
+#include "fakeit.hpp"
 
 using namespace particle::protocol;
 using namespace fakeit;
@@ -263,6 +264,14 @@ SCENARIO("adding the same message twice")
 	REQUIRE(CoAPMessage::messages()==0);
 }
 
+void build_message_channel_mock(Mock<MessageChannel>& mock)
+{
+	When(Method(mock,notify_established)).AlwaysReturn(NO_ERROR);
+	When(Method(mock,is_unreliable)).AlwaysReturn(false);
+	When(Method(mock,receive)).AlwaysReturn(IO_ERROR);
+
+}
+
 SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exponentially increasing delays, after which it is removed")
 {
 	REQUIRE(CoAPMessage::messages()==0);
@@ -275,6 +284,7 @@ SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exp
 			{
 				msg.set_buffer(buf, 10); return NO_ERROR;
 			});
+		build_message_channel_mock(mock);
 
 		Message m;
 		channel.create(m, 5);

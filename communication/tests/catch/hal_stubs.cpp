@@ -25,3 +25,12 @@ extern "C" uint32_t HAL_Timer_Get_Micro_Seconds()
 {
 	return HAL_Timer_Get_Milli_Seconds()*1000;
 }
+
+extern "C" uint32_t HAL_Core_Compute_CRC32(const uint8_t* buf, size_t length)
+{
+	return 0;
+}
+
+extern "C" void log_direct_(const char* c)
+{
+}
