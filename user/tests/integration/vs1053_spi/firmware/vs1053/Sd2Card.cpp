@@ -56,8 +56,8 @@ inline void DMAEvent(){
 
 //------------------------------------------------------------------------------
 // functions for hardware SPI
+// SPI1 and SPI2 are also acceptable depending on which hardware SPI you're using
 #define SPI_INTERFACE SPI
-// #define SPI_INTERFACE SPI1
 
 #ifdef SPI_SPEED_UP
 #	if SD_SPI_NUMBER   == 1

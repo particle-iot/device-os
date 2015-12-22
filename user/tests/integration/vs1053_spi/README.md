@@ -65,8 +65,8 @@ and `Sd2Card.cpp:59`.
 | MOSI | D2 |
 | SCLK | D4 |
 
-Make sure `#define SPI_INTERFACE` is set to `SPI1` in `Adafruit_VS1053.cpp:28`
-and `Sd2Card.cpp:60`.
+Make sure `#define SPI_INTERFACE` is set to `SPI1` in `Adafruit_VS1053.cpp:27`
+and `Sd2Card.cpp:59`.
 
 ### SPI2
 
@@ -76,8 +76,8 @@ and `Sd2Card.cpp:60`.
 | MOSI | C1 |
 | SCLK | C3 |
 
-Make sure `#define SPI_INTERFACE` is set to `SPI1` in `Adafruit_VS1053.cpp:28`
-and `Sd2Card.cpp:60`.
+Make sure `#define SPI_INTERFACE` is set to `SPI1` in `Adafruit_VS1053.cpp:27`
+and `Sd2Card.cpp:59`.
 
 TODO: Set compile flag to alternate... Not sure how
 

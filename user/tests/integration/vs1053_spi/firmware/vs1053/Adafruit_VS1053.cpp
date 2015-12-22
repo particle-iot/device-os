@@ -23,9 +23,8 @@ static Adafruit_VS1053_FilePlayer *myself;
 #define sei interrupts
 #define _BV(bit) (1 << (bit))
 
-
-#define SPI_INTERFACE SPI
-// #define SPI_INTERFACE SPI1
+// SPI1 and SPI2 are also acceptable depending on which hardware SPI you're using
+#define SPI_INTERFACE SPI1
 
 static void feeder(void) {
   myself->feedBuffer();

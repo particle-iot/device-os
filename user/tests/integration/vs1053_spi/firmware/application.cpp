@@ -22,20 +22,12 @@ SerialDebugOutput debugOutput(9600, ALL_LEVEL);
 #include "vs1053/SD.h"
 
 #if (PLATFORM_ID == 0) || (PLATFORM_ID >= 3)
-
-#define BREAKOUT_RESET D7 // VS1053 reset pin (output)
-#define BREAKOUT_CS    D5 // VS1053 chip select pin (output)
-#define BREAKOUT_XDCS  D6 // VS1053 Data/command select pin (output)
-#define CARD_SDCS      A0 // Card chip select pin
-#define DREQ           A1 // VS1053 Data request, ideally an Interrupt pin
-
+  #define BREAKOUT_RESET D7 // VS1053 reset pin (output)
+  #define BREAKOUT_CS    D5 // VS1053 chip select pin (output)
+  #define BREAKOUT_XDCS  D6 // VS1053 Data/command select pin (output)
+  #define CARD_SDCS      A0 // Card chip select pin
+  #define DREQ           A1 // VS1053 Data request, ideally an Interrupt pin
 #endif
-
-// relay pins
-#define LFT_EYE D0
-#define RGT_EYE D1
-#define SILLY_STRING_1 D2
-#define SILLY_STRING_2 D3
 
 // fn sigs
 void play();
@@ -47,12 +39,6 @@ int remoteStop(String noop);
 
 Adafruit_VS1053_FilePlayer musicPlayer =
   Adafruit_VS1053_FilePlayer(BREAKOUT_RESET, BREAKOUT_CS, BREAKOUT_XDCS, DREQ, CARD_SDCS);
-
-// how long the actuator will stay down to spray the silly string
-int spitDuration = 500;
-int sprayCan = SILLY_STRING_1; // D2 or D3
-int autoMode = 0;
-int spitDistance = 5;
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
@@ -76,27 +62,11 @@ void setup() {
   musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT);  // DREQ int
 
   Particle.function("play", remotePlay);
-
-
-  // Play one file, don't return until complete
-  // Serial.println(F("Playing track 001"));
-  //musicPlayer.playFullFile("track001.mp3");
-
-  // Play another file in the background, REQUIRES interrupts!
-  /*Serial.println("Playing track");
-  musicPlayer.startPlayingFile("track002.mp3");*/
 }
 
 void loop() {
-  // File is playing in the background
-  // if (! (musicPlayer.stopped() || musicPlayer.paused() ) ) {
-    /*Serial.println("Done playing music");*/
-    /*while (1);*/
     play();
     delay(5000);
-  // }
-
-  /*delay(100);*/
 }
 
 void play() {
