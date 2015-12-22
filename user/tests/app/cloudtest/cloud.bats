@@ -50,7 +50,6 @@ function flash_app()
 
 
 @test "device is online" {
-    skip
     list=$(particle list | grep $name)
     [[ $list == *online ]]
 }
@@ -88,8 +87,7 @@ function has_test_app()
 	has_test_app	
 }
 
-@test "device reconnects to the cloud after dropping the PDP context" {
-	skip
+@test "device reconnects to the cloud after dropping the PDP context" {	
 	cmd bounce_pdp
 	sleep 20s
 	# wait for the device to come back online	
