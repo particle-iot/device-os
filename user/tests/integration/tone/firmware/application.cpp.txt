@@ -1,0 +1,67 @@
+#include "application.h"
+
+SerialDebugOutput debugOutput(9600, ALL_LEVEL);
+
+SYSTEM_MODE(SEMI_AUTOMATIC);
+
+// pulled from docs here: https://docs.particle.io/reference/firmware/photon/#tone-
+// notes in the melody:
+int melody[] = {1908,2551,2551,2273,2551,0,2024,1908}; //C4,G3,G3,A3,G3,0,B3,C4
+// note durations: 4 = quarter note, 8 = eighth note, etc.:
+int noteDurations[] = {4,8,8,4,4,4,4,4 };
+const int numNotes = 8;
+
+// int timerPins[] = { B0,B1,B2,B3,C4,C5,D0,D1,D2,D3,A4,A5,A7,RX,TX };
+// const int numPins = 15;
+
+int timerPins[] = { B0,B1 };
+const int numPins = 2;
+
+void setup() {
+  // Particle.connect();
+  pinMode(B0, OUTPUT);
+  pinMode(B1, OUTPUT);
+  pinMode(B2, OUTPUT);
+  pinMode(B3, OUTPUT);
+  pinMode(C4, OUTPUT);
+  pinMode(C5, OUTPUT);
+  pinMode(D0, OUTPUT);
+  pinMode(D1, OUTPUT);
+  pinMode(D2, OUTPUT);
+  pinMode(D3, OUTPUT);
+
+  pinMode(A4, OUTPUT);
+  pinMode(A5, OUTPUT);
+  pinMode(A7, OUTPUT); //WKP
+  pinMode(RX, OUTPUT);
+  pinMode(TX, OUTPUT);
+
+  delay(5000);
+  Serial.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+  Serial.println(">>>>>>>>>>>>>>>>>>>>>>>  starting the tone() test  <<<<<<<<<<<<<<<<<<<<<<<<<");
+  Serial.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+}
+
+void loop() {
+  // for each note, play on each pin
+  for (size_t thisNote = 0; thisNote < numNotes; thisNote++) {
+    for (size_t thisPin = 0; thisPin < numPins; thisPin++) {
+      int pin = timerPins[thisPin];
+      int noteDuration = 1000/noteDurations[thisNote];
+      tone(pin, melody[thisNote], noteDuration);
+
+      // to distinguish the notes, set a minimum time between them.
+      // the note's duration + 30% seems to work well:
+      int pauseBetweenNotes = noteDuration * 1.30;
+      delay(pauseBetweenNotes);
+      // stop the tone playing:
+      noTone(speakerPin);
+
+    }
+  }
+
+  Serial.println(">>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+  Serial.println(">>>>>>>>>>>>>>>>>>>>>>>  loop  <<<<<<<<<<<<<<<<<<<<<<<<<");
+  Serial.println(">>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+  delay(2000);
+}
