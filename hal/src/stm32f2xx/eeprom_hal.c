@@ -86,7 +86,11 @@ static uint16_t EEPROM_WriteVariable(uint16_t EepromAddress, uint16_t EepromData
 
 void HAL_EEPROM_Init(void)
 {
+    /* Unlock the Flash Program Erase controller so EEPROM_Init can
+     * format EEPROM in case it is invalid */
+    FLASH_Unlock();
     EEPROM_Init();
+    FLASH_Lock();
 }
 
 size_t HAL_EEPROM_Length()
@@ -110,7 +114,9 @@ void HAL_EEPROM_Write(uint32_t address, uint8_t data)
 {
     if (address < EEPROM_SIZE)
     {
+        FLASH_Unlock();
         EEPROM_WriteVariable(address, data);
+        FLASH_Lock();
     }
 }
 
@@ -397,9 +403,6 @@ static uint16_t EEPROM_Init(void)
     uint16_t  FlashStatus;
     uint16_t EepromDataVar = 0;
 
-    /* Unlock the Flash Program Erase controller */
-    FLASH_Unlock();
-
     /* Calling this is here is critical on STM32F2 Devices Else Flash Operation Fails */
     FLASH_ClearFlags();
 
@@ -414,13 +417,7 @@ static uint16_t EEPROM_Init(void)
         case ERASED:
             if (PageStatus1 == VALID_PAGE) /* Page0 erased, Page1 valid */
             {
-                /* Erase Page0 */
-                FlashStatus = FLASH_EraseSector(PAGE0_ID,VOLTAGE_RANGE);
-                /* If erase operation was failed, a Flash error code is returned */
-                if (FlashStatus != FLASH_COMPLETE)
-                {
-                    return FlashStatus;
-                }
+                /* Normal valid state -> nothing to do */
             }
             else if (PageStatus1 == RECEIVE_DATA) /* Page0 erased, Page1 receive */
             {
@@ -523,10 +520,10 @@ static uint16_t EEPROM_Init(void)
             break;
 
         case VALID_PAGE:
-            if (PageStatus1 == VALID_PAGE) /* Invalid state -> format eeprom */
+            if (PageStatus1 == VALID_PAGE) /* Harmless invalid state -> pick one page and format the other */
             {
-                /* Erase both Page0 and Page1 and set Page0 as valid page */
-                FlashStatus = EEPROM_Format();
+                /* Erase Page0 */
+                FlashStatus = FLASH_EraseSector(PAGE0_ID, VOLTAGE_RANGE);
                 /* If erase/program operation was failed, a Flash error code is returned */
                 if (FlashStatus != FLASH_COMPLETE)
                 {
@@ -535,13 +532,7 @@ static uint16_t EEPROM_Init(void)
             }
             else if (PageStatus1 == ERASED) /* Page0 valid, Page1 erased */
             {
-                /* Erase Page1 */
-                FlashStatus = FLASH_EraseSector(PAGE1_ID, VOLTAGE_RANGE);
-                /* If erase operation was failed, a Flash error code is returned */
-                if (FlashStatus != FLASH_COMPLETE)
-                {
-                    return FlashStatus;
-                }
+                /* Normal valid state -> nothing to do */
             }
             else /* Page0 valid, Page1 receive */
             {
