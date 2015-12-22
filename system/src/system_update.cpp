@@ -164,7 +164,6 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
 #ifdef START_YMODEM_FLASHER_SERIAL_SPEED
     if (!network_listening(0, 0, NULL) && bitrate == start_ymodem_flasher_serial_speed)
     {
-        network.connect_cancel(true, true);
         //Set the Ymodem flasher flag to execute system_serialFirmwareUpdate()
         set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
         RGB.control(true);
