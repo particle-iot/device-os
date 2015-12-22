@@ -86,7 +86,7 @@ public:
         MAX_ERRORS = (5)
     };
 
-    const uint32_t NAK_TIMEOUT = (0x10000000);
+    const uint32_t NAK_TIMEOUT = (5000);
 
     enum protocol_msg_t
     {
@@ -127,7 +127,8 @@ private:
      */
     int32_t receive_byte(uint8_t& c, uint32_t timeout)
     {
-        while (timeout-- > 0)
+    		uint32_t start = HAL_Timer_Get_Milli_Seconds();
+        while (HAL_Timer_Get_Milli_Seconds()-start <= timeout)
         {
             if (Serial_KeyPressed(&stream, &c) == 1)
             {
