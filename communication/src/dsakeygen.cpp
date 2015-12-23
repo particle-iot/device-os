@@ -32,59 +32,97 @@
 using namespace std;
 
 class RSADERCommon {
-
-    uint8_t* buffer;
-    int length;
+private:
+    uint8_t* buffer_;
+    int length_;
+    int written_;
 
 protected:
 
-    void write_mpi(const mpi* data) {
-        int size = mpi_size(data);
-        if (length>=size) {
-            mpi_write_binary(data, buffer, size);
-            length -= size;
-            buffer += size;
+    int written() const {
+        return written_;
+    }
+
+    void write_length(int len) {
+        uint8_t len_field = 0x00;
+
+        if (len < 128) {
+            // Length can be encoded as a single byte
+            len_field = (uint8_t)len;
+            write(&len_field, sizeof(len_field));
+        } else {
+            // Length has to be encoded as:
+            // (0x80 | number of length bytes) (length byte 0) ... (length byte N)
+            len_field = 0x80;
+            mpi intlen;
+            mpi_init(&intlen);
+            mpi_lset(&intlen, len);
+            int bytelen = mpi_size(&intlen);
+            len_field |= (uint8_t)bytelen;
+
+            write(&len_field, sizeof(len_field));
+            write_mpi(&intlen);
+
+            mpi_free(&intlen);
         }
     }
 
-    void write_integer_1024(const mpi* data) {
-        uint8_t header[] = { 0x02, 0x81, 0x81, 0 };  // padded with an extra 0 byte to ensure number is positive
-        write(header, sizeof(header));
-        write_mpi(data);
+    void write_mpi(const mpi* data, int fixedLength = -1) {
+        int len = fixedLength == -1 ? mpi_size(data) : fixedLength;
+        if (length_ >= len) {
+            mpi_write_binary(data, buffer_, len);
+            write(nullptr, len);
+        }
     }
 
-    void write_integer_512(const mpi* data) {
-        uint8_t header[] = { 0x02, 0x41, 0 };  // padded with an extra 0 byte to ensure number is positive
-        write(header, sizeof(header));
-        write_mpi(data);
+    void write_integer_immediate(int value, int fixedLength = -1) {
+        mpi integer;
+        mpi_init(&integer);
+        mpi_lset(&integer, value);
+        write_integer(&integer, fixedLength);
+        mpi_free(&integer);
     }
 
-    void write_public_exponent() {
-        uint8_t data[] = { 2, 3, 1, 0, 1 };
-        write(data, 5);
+    void write_integer(const mpi* data, int fixedLength = -1) {
+        int len = fixedLength == -1 ? mpi_size(data) : fixedLength;
+        uint8_t tmp = 0x02; // INTEGER
+
+        // Write type
+        write(&tmp, sizeof(tmp));
+
+        write_length(len);
+
+        write_mpi(data, fixedLength);
     }
 
     void write(const uint8_t* data, size_t length) {
-        while (length && this->length) {
-            *this->buffer++ = *data++;
-            length--;
-            this->length--;
+        while (length && length_ > 0) {
+          if (buffer_) {
+            if (data)
+              *buffer_++ = *data++;
+            else
+              buffer_++;
+          }
+          length--;
+          length_--;
+          written_++;
         }
     }
 
     void set_buffer(void* buffer, size_t size) {
-        this->buffer = (uint8_t*)buffer;
-        this->length = size;
+        buffer_ = (uint8_t*)buffer;
+        length_ = size;
+        written_ = 0;
     }
 
 };
 
 class RSAPrivateKeyWriter : RSADERCommon {
 
-    void write_sequence_header() {
-        // sequence tag and version
-        uint8_t header[] = { 0x30, 0x82, 0x2, 0x5F, 2, 1, 0 };
-        write(header, sizeof(header));
+    void write_sequence_header(int len) {
+        uint8_t tag = 0x30; // SEQUENCE
+        write(&tag, sizeof(tag));
+        write_length(len);
     }
 
 public:
@@ -100,16 +138,26 @@ public:
      * @param QP
      */
     void write_private_key(uint8_t* buf, size_t length, rsa_context& ctx) {
+        // Dummy run to calculate sequence length
+        set_buffer(nullptr, length);
+        write_private_key_parts(ctx);
+        int seq_len = written();
+
         set_buffer(buf, length);
-        write_sequence_header();
-        write_integer_1024(&ctx.N);
-        write_public_exponent();        // 5
-        write_integer_1024(&ctx.D);      // 132 * 2
-        write_integer_512(&ctx.P);       // 67 * 5
-        write_integer_512(&ctx.Q);
-        write_integer_512(&ctx.DP);
-        write_integer_512(&ctx.DQ);
-        write_integer_512(&ctx.QP);      // total is 604 bytes, 0x25C
+        write_sequence_header(seq_len);
+        write_private_key_parts(ctx);
+    }
+
+    void write_private_key_parts(rsa_context& ctx) {
+        write_integer_immediate(0, 1);
+        write_integer(&ctx.N, 129);
+        write_integer(&ctx.E, 3);
+        write_integer(&ctx.D, 129);
+        write_integer(&ctx.P, 65);
+        write_integer(&ctx.Q, 65);
+        write_integer(&ctx.DP, 65);
+        write_integer(&ctx.DQ, 65);
+        write_integer(&ctx.QP, 65);
     }
 };
 

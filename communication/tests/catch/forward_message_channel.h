@@ -67,6 +67,11 @@ public:
 		return channel->response(original, response, required);
 	}
 
+	virtual ProtocolError command(Command cmd, void* arg=nullptr) override {
+		return IO_ERROR;
+	}
+
+	virtual ProtocolError notify_established() override { return NO_ERROR; }
 };
 
 

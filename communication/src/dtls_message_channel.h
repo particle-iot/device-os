@@ -84,6 +84,11 @@ private:
 	uint16_t server_public_len;
 	uint32_t keys_checksum;
 
+	/**
+	 * The next message ID for new messages over this channel.
+	 */
+	message_id_t* coap_state;
+
     void init();
     void dispose();
 
@@ -100,12 +105,13 @@ private:
 
 
  public:
-	DTLSMessageChannel() {}
+	DTLSMessageChannel() : coap_state(nullptr) {}
 
 	ProtocolError init(const uint8_t* core_private, size_t core_private_len,
 		const uint8_t* core_public, size_t core_public_len,
 		const uint8_t* server_public, size_t server_public_len,
-		const uint8_t* device_id, Callbacks& callbacks);
+		const uint8_t* device_id, Callbacks& callbacks,
+		message_id_t* coap_state);
 
 	virtual bool is_unreliable() override;
 

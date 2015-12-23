@@ -48,6 +48,14 @@ public:
 	{
 	}
 
+	/**
+	 * Retrieves the next message ID this channel will send.
+	 */
+	message_id_t& next_id_ref()
+	{
+		return message_id;
+	}
+
 	ProtocolError send(Message& msg) override
 	{
 		message_id_t id;

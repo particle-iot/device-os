@@ -86,7 +86,7 @@ public:
         MAX_ERRORS = (5)
     };
 
-    const uint32_t NAK_TIMEOUT = (0x10000000);
+    const uint32_t NAK_TIMEOUT = (5000);
 
     enum protocol_msg_t
     {
@@ -127,7 +127,8 @@ private:
      */
     int32_t receive_byte(uint8_t& c, uint32_t timeout)
     {
-        while (timeout-- > 0)
+    		uint32_t start = HAL_Timer_Get_Milli_Seconds();
+        while (HAL_Timer_Get_Milli_Seconds()-start <= timeout)
         {
             if (Serial_KeyPressed(&stream, &c) == 1)
             {
@@ -201,6 +202,8 @@ int32_t YModem::receive_packet(uint8_t *data, int32_t& length, uint32_t timeout)
     case ABORT1:
     case ABORT2:
         return 1;
+    case ' ':
+    		return 2;
     default:
         return -1;
     }
@@ -315,9 +318,9 @@ int32_t YModem::receive_file(FileTransfer::Descriptor& tx, YModem::file_desc_t& 
     errors = 0;
     session_begin = 0;
 
-    for (;;)
+    for (;!session_done;)
     {
-        for (packets_received = 0, file_done = 0;;)
+        for (packets_received = 0, file_done = 0;!file_done;)
         {
             int32_t result;
             int32_t packet_length;
@@ -335,8 +338,12 @@ int32_t YModem::receive_file(FileTransfer::Descriptor& tx, YModem::file_desc_t& 
                 send_byte(CA);
                 return -3;
 
+            case 2:	// ignore
+                send_byte(ACK);
+            		break;
+
             default:
-                if (session_begin > 0)
+                if (session_begin >= 0)
                 {
                     errors++;
                     send_byte(CRC16);
@@ -349,14 +356,6 @@ int32_t YModem::receive_file(FileTransfer::Descriptor& tx, YModem::file_desc_t& 
                 }
                 break;
             }
-            if (file_done != 0)
-            {
-                break;
-            }
-        }
-        if (session_done != 0)
-        {
-            break;
         }
     }
     return tx.file_length;
@@ -383,7 +382,7 @@ bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& fil
         serialObj->print(size);
         serialObj->println(" bytes");
         serialObj->flush();
-        delay(1000);
+        HAL_Delay_Milliseconds(1000);
         Spark_Finish_Firmware_Update(file, size>0 ? 1 : 0, NULL);
         return true;
     }

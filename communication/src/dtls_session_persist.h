@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#define SessionPersistBaseSize 194
+#define SessionPersistBaseSize 196
 
 #include "mbedtls/ssl.h"
 #include "stddef.h"
@@ -50,7 +50,7 @@ struct __attribute__((packed)) SessionPersistData
 	uint8_t reserved;	// padding - use for something if needed.
 
 	// do not add more members here - the offset of the public connection data should be
-	// constant.
+	// constant. Add more members at the end of the struct.
 	uint8_t connection[32];
 	uint32_t keys_checksum;
 	uint8_t randbytes[sizeof(mbedtls_ssl_handshake_params::randbytes)];
@@ -61,6 +61,8 @@ struct __attribute__((packed)) SessionPersistData
 	uint8_t master[sizeof(mbedtls_ssl_session::master)];
 	decltype(mbedtls_ssl_context::in_epoch) in_epoch;
 	unsigned char out_ctr[8];
+	// application data
+	message_id_t next_coap_id;
 
 };
 
@@ -138,7 +140,7 @@ public:
 	/**
 	 * Prepare to transiently save information about this context.
 	 */
-	void prepare_save(const uint8_t* random, uint32_t keys_checksum, mbedtls_ssl_context* context);
+	void prepare_save(const uint8_t* random, uint32_t keys_checksum, mbedtls_ssl_context* context, message_id_t next_id);
 
 	/**
 	 * Flags this context as being persistent. Subsequent calls
@@ -158,7 +160,7 @@ public:
 	 * Update information in this context and saves if the context
 	 * is persistent.
 	 */
-	void update(mbedtls_ssl_context* context, save_fn_t saver);
+	void update(mbedtls_ssl_context* context, save_fn_t saver, message_id_t next_id);
 
 	enum RestoreStatus
 	{
@@ -187,7 +189,7 @@ public:
 	/**
 	 * Restores the state from this context. The persistence flag is not changed.
 	 */
-	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, restore_fn_t restorer);
+	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* message, restore_fn_t restorer);
 
 	uint8_t* connection_data() { return connection; }
 
@@ -196,7 +198,7 @@ public:
 static_assert(sizeof(SessionPersist)==SessionPersistBaseSize+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");
 static_assert(sizeof(SessionPersist)==sizeof(SessionPersistOpaque), "SessionPersistOpaque size == sizeof(SessionPersistQueue)");
 
-// the conenction buffer is used by external code to store connection data in the session
+// the connection buffer is used by external code to store connection data in the session
 // it must be binary compatible with previous releases
 static_assert(offsetof(SessionPersistData, connection)==4, "internal layout of public member has changed.");
 static_assert(sizeof(SessionPersistData)==sizeof(SessionPersist), "session persist data and the subclass should be the same size.");

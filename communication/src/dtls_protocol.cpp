@@ -10,7 +10,8 @@ void DTLSProtocol::init(const char *id,
 {
 	set_protocol_flags(0);
 	memcpy(device_id, id, sizeof(device_id));
-	initialize_ping(0,0);		// do not send pings from the client over the UDP connection
+	// send pings once per hour
+	initialize_ping(60*60*1000,30000);
 	DTLSMessageChannel::Callbacks channelCallbacks;
 	memset(&channelCallbacks,0, sizeof(channelCallbacks));
 	channelCallbacks.millis = callbacks.millis;
@@ -36,7 +37,7 @@ void DTLSProtocol::init(const char *id,
 	ProtocolError error = channel.init(keys.core_private, determine_der_length(keys.core_private, MAX_DEVICE_PRIVATE_KEY_LENGTH),
 			extracted_core_public, len,
 		keys.server_public, determine_der_length(keys.server_public, MAX_SERVER_PUBLIC_KEY_LENGTH),
-		(const uint8_t*)id, channelCallbacks);
+		(const uint8_t*)id, channelCallbacks, &channel.next_id_ref());
 	if (error)
 	{
 		WARN("error initializing DTLS channel: %d", error);

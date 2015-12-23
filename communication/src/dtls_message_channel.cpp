@@ -50,7 +50,7 @@ void SessionPersist::save(save_fn_t saver)
 	save_this_with(saver);
 }
 
-void SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum, mbedtls_ssl_context* context)
+void SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum, mbedtls_ssl_context* context, message_id_t next_id)
 {
 	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
 	{
@@ -58,6 +58,7 @@ void SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum,
 		in_epoch = context->in_epoch;
 		memcpy(out_ctr, context->out_ctr, 8);
 		memcpy(randbytes, random, sizeof(randbytes));
+		this->next_coap_id = next_id;
 		save_session(context->session);
 		size = sizeof(*this);
 	}
@@ -67,16 +68,17 @@ void SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum,
 	}
 }
 
-void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver)
+void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver, message_id_t next_id)
 {
 	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
 	{
 		memcpy(out_ctr, context->out_ctr, 8);
+		this->next_coap_id = next_id;
 		save_this_with(saver);
 	}
 }
 
-auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, restore_fn_t restorer) -> RestoreStatus
+auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* next_id,  restore_fn_t restorer) -> RestoreStatus
 {
 	if (!restore_this_from(restorer))
 		return NO_SESSION;
@@ -91,6 +93,9 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 
 	context->handshake->resume = 1;
 	restore_session(context->session_negotiate);
+
+	if (next_id)
+		*next_id = this->next_coap_id;
 
 	context->major_ver = MBEDTLS_SSL_MAJOR_VERSION_3;
 	context->minor_ver = MBEDTLS_SSL_MINOR_VERSION_3;
@@ -183,9 +188,11 @@ ProtocolError DTLSMessageChannel::init(
 		const uint8_t* core_private, size_t core_private_len,
 		const uint8_t* core_public, size_t core_public_len,
 		const uint8_t* server_public, size_t server_public_len,
-		const uint8_t* device_id, Callbacks& callbacks)
+		const uint8_t* device_id, Callbacks& callbacks,
+		message_id_t* coap_state)
 {
 	init();
+	this->coap_state = coap_state;
 	int ret;
 	this->callbacks = callbacks;
 
@@ -307,23 +314,18 @@ ProtocolError DTLSMessageChannel::establish()
 		return error;
 
 	bool renegotiate = false;
-	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, keys_checksum, callbacks.restore);
+	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, keys_checksum, coap_state, callbacks.restore);
 	if (restoreStatus==SessionPersist::COMPLETE)
 	{
-		// ensure that subsequent changes are saved.
 		sessionPersist.make_persistent();
-		DEBUG("restored session from persisted session data");
+		DEBUG("restored session from persisted session data. next_msg_id=%d", *coap_state);
 		return SESSION_RESUMED;
 	}
 	else if (restoreStatus==SessionPersist::RENEGOTIATE)
 	{
 		// session partially restored, fully restored via handshake
 	}
-	else if (restoreStatus==SessionPersist::NO_SESSION)
-	{
-		sessionPersist.clear(callbacks.save);
-	}
-	else  // ERROR
+	else // no session or clear
 	{
 		sessionPersist.clear(callbacks.save);
 		mbedtls_ssl_session_reset(&ssl_context);
@@ -361,7 +363,7 @@ ProtocolError DTLSMessageChannel::establish()
 	}
 	else
 	{
-		sessionPersist.prepare_save(random, keys_checksum, &ssl_context);
+		sessionPersist.prepare_save(random, keys_checksum, &ssl_context, 0);
 	}
 	return ret==0 ? NO_ERROR : IO_ERROR;
 }
@@ -439,7 +441,7 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 		mbedtls_ssl_session_reset(&ssl_context);
 		return IO_ERROR;
   }
-  sessionPersist.update(&ssl_context, callbacks.save);
+  sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
   return NO_ERROR;
 }
 

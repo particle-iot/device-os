@@ -225,6 +225,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
     if (bitrate == start_dfu_flasher_serial_speed)
     {
+        network.connect_cancel(true, true);
         //Reset device and briefly enter DFU bootloader mode
         System.dfu(false);
     }
