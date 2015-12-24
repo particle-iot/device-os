@@ -93,6 +93,7 @@ struct NetworkInterface
     virtual bool manual_disconnect()=0;
     virtual void listen(bool stop=false)=0;
     virtual void listen_loop()=0;
+    virtual void break_listen_loop()=0;
     virtual bool listening()=0;
     /**
      * Perform the 10sec press command, e.g. clear credentials.
@@ -477,6 +478,11 @@ public:
             on_setup_cleanup();
             WLAN_SMART_CONFIG_STOP = 0;
         }
+    }
+
+    void break_listen_loop() override
+    {
+        WLAN_SERIAL_CONFIG_DONE = 1;
     }
 
     void update_config() override
