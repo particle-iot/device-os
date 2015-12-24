@@ -43,7 +43,18 @@ inline bool in_range(uint32_t test, uint32_t start, uint32_t end)
  * @return
  */
 const module_info_t* locate_module(const module_bounds_t* bounds) {
-    return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
+#if PLATFORM_ID == 88
+    if(bounds->store != MODULE_STORE_MAIN)
+#else
+    if( 0 )
+#endif
+    {
+	    return FLASH_ModuleInfo(FLASH_SERIAL, bounds->start_address);
+    }
+    else
+    {
+        return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
+    }
 }
 
 
@@ -73,8 +84,20 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
             target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
             if (validate_module_dependencies(bounds, userDepsOptional))
                 target->validity_result |= MODULE_VALIDATION_DEPENDENCIES;
-            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
-                target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+#if PLATFORM_ID == 88
+            if(bounds->store != MODULE_STORE_MAIN)
+#else
+            if( 0 )
+#endif
+            {
+                if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_SERIAL, bounds->start_address, module_length(target->info)))
+                    target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+            }
+            else
+            {
+                if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
+                    target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+            }
         }
         else
             target->info = NULL;
