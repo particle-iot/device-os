@@ -709,13 +709,23 @@ const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddre
 	else if(flashDeviceID == FLASH_SERIAL)
 	{
 #ifdef USE_SERIAL_FLASH
+        uint8_t serialFlashData[4];
+        uint32_t first_word = 0;
+
         /* Initialize SPI Flash */
         sFLASH_Init();
 
-    	memset((uint8_t *)&ex_module_info, 0x00, sizeof(module_info_t));
-		sFLASH_ReadBuffer((uint8_t *)&ex_module_info, startAddress, sizeof(module_info_t));
+        sFLASH_ReadBuffer(serialFlashData, startAddress, 4);
+        first_word = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
+        if ((first_word & APP_START_MASK) == 0x20000000)
+        {
+            startAddress += 0x184;
+        }
 
-		return &ex_module_info;
+        memset((uint8_t *)&ex_module_info, 0x00, sizeof(module_info_t));
+        sFLASH_ReadBuffer((uint8_t *)&ex_module_info, startAddress, sizeof(module_info_t));
+
+        return &ex_module_info;
 #endif
 	}
 
