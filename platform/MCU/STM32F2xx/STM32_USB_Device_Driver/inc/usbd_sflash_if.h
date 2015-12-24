@@ -27,7 +27,7 @@
 #endif
 
 #if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-#define sFLASH_IF_STRING                  "@Serial Flash   /0x00000000/256*004Kg,64*004Kg,64*004Kg,128*004Kg"
+#define sFLASH_IF_STRING                  "@Serial Flash   /0x00000000/192*004Kg,128*004Kg,64*004Kg,128*004Kg"
 #else
 #define sFLASH_IF_STRING                  "@Serial Flash   /0x00000000/256*004Kg"
 #endif
