@@ -136,7 +136,11 @@ bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
 
 uint32_t HAL_OTA_FlashAddress()
 {
+#ifdef USE_SERIAL_FLASH
+    return EXTERNAL_FLASH_OTA_ADDRESS;
+#else
     return module_ota.start_address;
+#endif
 }
 
 STATIC_ASSERT(ota_length_for_pid_6_is_less_than_512k, PLATFORM_ID!=5 || FIRMWARE_IMAGE_SIZE<512*1024);
