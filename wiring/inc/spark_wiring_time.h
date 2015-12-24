@@ -12,7 +12,7 @@
   modify it under the terms of the GNU Lesser General Public
   License as published by the Free Software Foundation, either
   version 3 of the License, or (at your option) any later version.
-
+9
   This library is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -56,7 +56,7 @@ public:
 	static int     month(time_t t);   			// the month for the given time
 	static int     year();            			// current four digit year
 	static int     year(time_t t);    			// the year for the given time
-	static time_t  now();              			// return the current time as seconds since Jan 1 1970
+	static time_t  now(bool withZone = false);		// return the current time as seconds since Jan 1 1970
 	static void    zone(float GMT_Offset);		// set the time zone (+/-) offset from GMT
 	static void    setTime(time_t t);			// set the given time as unix/rtc time
 
