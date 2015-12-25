@@ -92,17 +92,19 @@ void manage_serial_flasher()
 #if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
     else if(SPARK_FLASH_UPDATE == 4 || EXTRA_SYSTEM_FLAG(arduino_upload) == 0xAABB)
     {
-        if(EXTRA_SYSTEM_FLAG(arduino_upload) == 0xAABB) // Reset by arduino ardude 1200bps touch, must followed by uploading progress.
+        if(EXTRA_SYSTEM_FLAG(arduino_upload) == 0xAABB)
         {
             EXTRA_SYSTEM_FLAG(arduino_upload) = 0;
             Save_ExtraSystemFlags();
-
+        }
+        if(SPARK_FLASH_UPDATE != 4) // Reset by arduino avrdude 1200bps touch, must followed by uploading progress.
+        {
+            LED_SetRGBColor(RGB_COLOR_MAGENTA);
+            LED_On(LED_RGB);
             system_tick_t start_millis = HAL_Timer_Get_Milli_Seconds();
-            system_tick_t current_millis;
             while(SPARK_FLASH_UPDATE != 4)
             {
-                current_millis = HAL_Timer_Get_Milli_Seconds();
-                if( (current_millis - start_millis) > 5000 ) // Wait for 5 seconds to reset if arduino do not begin the uploading progress.
+                if( (HAL_Timer_Get_Milli_Seconds() - start_millis) > 10000 ) // Wait for 10 seconds to reset if arduino do not begin the uploading progress.
                 {
                     USB_Cable_Config(DISABLE);
                     NVIC_SystemReset();
