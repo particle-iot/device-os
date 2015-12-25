@@ -131,7 +131,8 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
     {
 #ifdef USE_SERIAL_FLASH
 #if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-    	if (startAddress < 0x100000 || endAddress >= 0x200000)
+        // Since dfu-util can not upload data to serial flash from address 0x0, skip the first sector, i.e. 4KB.
+        if (startAddress < 0x1000 || endAddress >= 0x200000)
 #else
         if (startAddress < 0x4000 || endAddress >= 0x100000)
 #endif
