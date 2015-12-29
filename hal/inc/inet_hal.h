@@ -34,7 +34,7 @@ extern "C" {
 #include <stdbool.h>
 #include "static_assert.h"
 
-#if PLATFORM_ID>=4 && PLATFORM_ID<=8
+#if (PLATFORM_ID>=4 && PLATFORM_ID<=8) || (PLATFORM_ID==88)
 #define HAL_IPv6 1
 #else
 #define HAL_IPv6 0
