@@ -175,6 +175,10 @@ void (*HAL_TIM3_Handler)(void);
 void (*HAL_TIM4_Handler)(void);
 void (*HAL_TIM5_Handler)(void);
 void (*HAL_TIM8_Handler)(void);
+#if PLATFORM_ID == 88 // Duo
+void (*HAL_TIM13_Handler)(void);
+void (*HAL_TIM14_Handler)(void);
+#endif
 
 /* Extern variables ----------------------------------------------------------*/
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
@@ -736,6 +740,13 @@ void TIM8_BRK_TIM12_irq(void)
 
 void TIM8_UP_TIM13_irq(void)
 {
+#if PLATFORM_ID == 88 // Duo
+    if(NULL != HAL_TIM13_Handler)
+    {
+        HAL_TIM13_Handler();
+    }
+#endif
+
     HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_UP_TIM13_IRQ, NULL);
 
     uint8_t result =
@@ -747,6 +758,13 @@ void TIM8_UP_TIM13_irq(void)
 
 void TIM8_TRG_COM_TIM14_irq(void)
 {
+#if PLATFORM_ID == 88 // Duo
+    if(NULL != HAL_TIM14_Handler)
+    {
+        HAL_TIM14_Handler();
+    }
+#endif
+
     HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_TRG_COM_TIM14_IRQ, NULL);
 
     uint8_t result =

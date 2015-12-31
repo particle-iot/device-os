@@ -42,19 +42,31 @@
 
 /* Private function prototypes -----------------------------------------------*/
 extern void (*HAL_TIM1_Handler)(void);
+#if PLATFORM_ID != 88
 extern void (*HAL_TIM3_Handler)(void);
+#endif
 extern void (*HAL_TIM4_Handler)(void);
 extern void (*HAL_TIM5_Handler)(void);
 #if PLATFORM_ID == 10 // Electron
 extern void (*HAL_TIM8_Handler)(void);
 #endif
+#if PLATFORM_ID == 88 // Duo
+extern void (*HAL_TIM13_Handler)(void);
+extern void (*HAL_TIM14_Handler)(void);
+#endif
 
 static void Tone_TIM1_Handler(void);
+#if PLATFORM_ID != 88
 static void Tone_TIM3_Handler(void);
+#endif
 static void Tone_TIM4_Handler(void);
 static void Tone_TIM5_Handler(void);
 #if PLATFORM_ID == 10 // Electron
 static void Tone_TIM8_Handler(void);
+#endif
+#if PLATFORM_ID == 88 // Duo
+static void Tone_TIM13_Handler(void);
+static void Tone_TIM14_Handler(void);
 #endif
 
 void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
@@ -86,6 +98,7 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
         NVIC_InitStructure.NVIC_IRQChannel = TIM1_CC_IRQn;
         HAL_TIM1_Handler = Tone_TIM1_Handler;
     }
+#if PLATFORM_ID != 88 // Duo: Tone on those pins using TIM3 & TIM2 will cause the status RGB working weirdly.
     else if(PIN_MAP[pin].timer_peripheral == TIM3)
     {
         TIM_CLK = SystemCoreClock / 2;
@@ -94,6 +107,7 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
         NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
         HAL_TIM3_Handler = Tone_TIM3_Handler;
     }
+#endif
     else if(PIN_MAP[pin].timer_peripheral == TIM4)
     {
         TIM_CLK = SystemCoreClock / 2;
@@ -118,6 +132,28 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
         RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
         NVIC_InitStructure.NVIC_IRQChannel = TIM8_CC_IRQn;
         HAL_TIM8_Handler = Tone_TIM8_Handler;
+    }
+#endif
+#if PLATFORM_ID == 88 // Duo
+    else if(PIN_MAP[pin].timer_peripheral == TIM13)
+    {
+        TIM_CLK = SystemCoreClock / 2;
+        GPIO_PinAFConfig(PIN_MAP[pin].gpio_peripheral, PIN_MAP[pin].gpio_pin_source, GPIO_AF_TIM13);
+        RCC_APB2PeriphClockCmd(RCC_APB1Periph_TIM13, ENABLE);
+        NVIC_InitStructure.NVIC_IRQChannel = TIM8_UP_TIM13_IRQn;
+        HAL_TIM13_Handler = Tone_TIM13_Handler;
+    }
+    else if(PIN_MAP[pin].timer_peripheral == TIM14)
+    {
+        TIM_CLK = SystemCoreClock / 2;
+        GPIO_PinAFConfig(PIN_MAP[pin].gpio_peripheral, PIN_MAP[pin].gpio_pin_source, GPIO_AF_TIM14);
+        RCC_APB2PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);
+        NVIC_InitStructure.NVIC_IRQChannel = TIM8_TRG_COM_TIM14_IRQn;
+        HAL_TIM14_Handler = Tone_TIM14_Handler;
+    }
+    else
+    {
+        return;
     }
 #endif
 
@@ -155,11 +191,13 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
 
     if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
     {
+#if PLATFORM_ID != 88
         //Since A4 and D3 share the same TIM3->Channel1, only one can work at a time
         if(pin == 14)
             PIN_MAP[3].timer_ccr = 0;
         else if(pin == 3)
             PIN_MAP[14].timer_ccr = 0;
+#endif
 
         // Channel1 configuration
         TIM_OC1Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
@@ -168,11 +206,13 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
     }
     else if(PIN_MAP[pin].timer_ch == TIM_Channel_2)
     {
+#if PLATFORM_ID != 88
         //Since A5 and D2 share the same TIM3->Channel2, only one can work at a time
         if(pin == 15)
             PIN_MAP[2].timer_ccr = 0;
         else if(pin == 2)
             PIN_MAP[15].timer_ccr = 0;
+#endif
 
         // Channel2 configuration
         TIM_OC2Init(PIN_MAP[pin].timer_peripheral, &TIM_OCInitStructure);
@@ -317,6 +357,7 @@ static void Tone_TIM1_Handler(void)
     }
 }
 
+#if PLATFORM_ID != 88 // Duo: Tone on those pins using TIM3 & TIM2 will cause the status RGB working weirdly.
 static void Tone_TIM3_Handler(void)
 {
     uint16_t capture;
@@ -435,6 +476,7 @@ static void Tone_TIM3_Handler(void)
     }
 #endif
 }
+#endif // !Duo
 
 static void Tone_TIM4_Handler(void)
 {
@@ -540,6 +582,62 @@ static void Tone_TIM5_Handler(void)
             }
         }
     }
+
+#if PLATFORM_ID == 88 // Duo
+    if (TIM_GetITStatus(TIM5, TIM_IT_CC2) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM5, TIM_IT_CC2 );
+        capture = TIM_GetCapture2(TIM5);
+        TIM_SetCompare2(TIM5, capture + PIN_MAP[16].timer_ccr);
+        if(PIN_MAP[16].user_property != -1)
+        {
+            if (PIN_MAP[16].user_property > 0)
+            {
+                PIN_MAP[16].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(16);
+            }
+        }
+    }
+
+    if (TIM_GetITStatus(TIM5, TIM_IT_CC3) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM5, TIM_IT_CC3 );
+        capture = TIM_GetCapture3(TIM5);
+        TIM_SetCompare3(TIM5, capture + PIN_MAP[11].timer_ccr);
+        if(PIN_MAP[11].user_property != -1)
+        {
+            if (PIN_MAP[11].user_property > 0)
+            {
+                PIN_MAP[11].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(11);
+            }
+        }
+    }
+
+    if (TIM_GetITStatus(TIM5, TIM_IT_CC4) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM5, TIM_IT_CC4 );
+        capture = TIM_GetCapture4(TIM5);
+        TIM_SetCompare4(TIM5, capture + PIN_MAP[10].timer_ccr);
+        if(PIN_MAP[10].user_property != -1)
+        {
+            if (PIN_MAP[10].user_property > 0)
+            {
+                PIN_MAP[10].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(10);
+            }
+        }
+    }
+#endif
 }
 
 #if PLATFORM_ID == 10 // Electron
@@ -581,6 +679,58 @@ static void Tone_TIM8_Handler(void)
             else
             {
                 HAL_Tone_Stop(24);
+            }
+        }
+    }
+}
+#endif
+
+#if PLATFORM_ID == 88 // Duo
+static void Tone_TIM13_Handler(void)
+{
+    uint32_t capture;
+
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    if (TIM_GetITStatus(TIM13, TIM_IT_CC1) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM13, TIM_IT_CC1 );
+        capture = TIM_GetCapture1(TIM13);
+        TIM_SetCompare1(TIM13, capture + PIN_MAP[14].timer_ccr);
+        if(PIN_MAP[14].user_property != -1)
+        {
+            if (PIN_MAP[14].user_property > 0)
+            {
+                PIN_MAP[14].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(14);
+            }
+        }
+    }
+}
+
+static void Tone_TIM14_Handler(void)
+{
+    uint32_t capture;
+
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    if (TIM_GetITStatus(TIM14, TIM_IT_CC1) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM14, TIM_IT_CC1 );
+        capture = TIM_GetCapture1(TIM14);
+        TIM_SetCompare1(TIM14, capture + PIN_MAP[15].timer_ccr);
+        if(PIN_MAP[15].user_property != -1)
+        {
+            if (PIN_MAP[15].user_property > 0)
+            {
+                PIN_MAP[15].user_property -= 1;
+            }
+            else
+            {
+                HAL_Tone_Stop(15);
             }
         }
     }
