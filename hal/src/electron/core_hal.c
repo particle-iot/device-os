@@ -94,10 +94,10 @@ IDX[x] = added IRQ handler
 32 [ ] DMA1_Stream5_IRQHandler           // DMA1 Stream 5
 33 [ ] DMA1_Stream6_IRQHandler           // DMA1 Stream 6
 34 [x] ADC_IRQHandler                    // ADC1, ADC2 and ADC3s
-35 [ ] CAN1_TX_IRQHandler                // CAN1 TX
-36 [ ] CAN1_RX0_IRQHandler               // CAN1 RX0
-37 [ ] CAN1_RX1_IRQHandler               // CAN1 RX1
-38 [ ] CAN1_SCE_IRQHandler               // CAN1 SCE
+35 [x] CAN1_TX_IRQHandler                // CAN1 TX
+36 [x] CAN1_RX0_IRQHandler               // CAN1 RX0
+37 [x] CAN1_RX1_IRQHandler               // CAN1 RX1
+38 [x] CAN1_SCE_IRQHandler               // CAN1 SCE
 39 [x] EXTI9_5_IRQHandler                // External Line[9:5]s
 40 [x] TIM1_BRK_TIM9_IRQHandler          // TIM1 Break and TIM9
 41 [x] TIM1_UP_TIM10_IRQHandler          // TIM1 Update and TIM10
@@ -174,6 +174,10 @@ const unsigned EXTI2_IRQHandler_Idx                 = 24;
 const unsigned EXTI3_IRQHandler_Idx                 = 25;
 const unsigned EXTI4_IRQHandler_Idx                 = 26;
 const unsigned ADC_IRQHandler_Idx                   = 34;
+const unsigned CAN1_TX_IRQHandler_Idx               = 35;
+const unsigned CAN1_RX0_IRQHandler_Idx              = 36;
+const unsigned CAN1_RX1_IRQHandler_Idx              = 37;
+const unsigned CAN1_SCE_IRQHandler_Idx              = 38;
 const unsigned EXTI9_5_IRQHandler_Idx               = 39;
 const unsigned TIM1_BRK_TIM9_IRQHandler_Idx         = 40;
 const unsigned TIM1_UP_TIM10_IRQHandler_Idx         = 41;
@@ -251,6 +255,10 @@ void HAL_Core_Setup_override_interrupts(void)
     isrs[EXTI3_IRQHandler_Idx]              = (uint32_t)EXTI3_IRQHandler;
     isrs[EXTI4_IRQHandler_Idx]              = (uint32_t)EXTI4_IRQHandler;
     isrs[ADC_IRQHandler_Idx]                = (uint32_t)ADC_irq;
+    isrs[CAN1_TX_IRQHandler_Idx]            = (uint32_t)CAN1_TX_irq;
+    isrs[CAN1_RX0_IRQHandler_Idx]           = (uint32_t)CAN1_RX0_irq;
+    isrs[CAN1_RX1_IRQHandler_Idx]           = (uint32_t)CAN1_RX1_irq;
+    isrs[CAN1_SCE_IRQHandler_Idx]           = (uint32_t)CAN1_SCE_irq;
     isrs[EXTI9_5_IRQHandler_Idx]            = (uint32_t)EXTI9_5_IRQHandler;
     isrs[TIM1_BRK_TIM9_IRQHandler_Idx]      = (uint32_t)TIM1_BRK_TIM9_irq;
     isrs[TIM1_UP_TIM10_IRQHandler_Idx]      = (uint32_t)TIM1_UP_TIM10_irq;
@@ -601,10 +609,6 @@ void DMA1_Stream3_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA1_Stream4_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA1_Stream5_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA1_Stream6_IRQHandler(void)  {__ASM("bkpt 0");}
-void CAN1_TX_IRQHandler(void)       {__ASM("bkpt 0");}
-void CAN1_RX0_IRQHandler(void)      {__ASM("bkpt 0");}
-void CAN1_RX1_IRQHandler(void)      {__ASM("bkpt 0");}
-void CAN1_SCE_IRQHandler(void)      {__ASM("bkpt 0");}
 void I2C2_EV_IRQHandler(void)       {__ASM("bkpt 0");}
 void I2C2_ER_IRQHandler(void)       {__ASM("bkpt 0");}
 void SPI1_IRQHandler(void)          {__ASM("bkpt 0");}

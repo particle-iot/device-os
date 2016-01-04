@@ -26,112 +26,62 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-int led2 = D7;
+CANChannel can(CAN_D1_D2);
+#ifdef HAL_HAS_CAN_C4_C5
+CANChannel canb(CAN_C4_C5);
+#endif
 
-/* Function prototypes -------------------------------------------------------*/
-void PrintCanMsg(CAN_Message_Struct *pMessage);
+SYSTEM_THREAD(ENABLED);
 
-SYSTEM_MODE(MANUAL);
+auto& console = Serial;
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
-	pinMode(led2, OUTPUT);
-    Serial.begin(9600);
-    Can1.begin(125000);
+    console.begin(9600);
 
+    can.begin(125000, CAN_TEST_MODE);
+    // Only accept message with even ids
+    can.addFilter(0, 1);
+
+#ifdef HAL_HAS_CAN_C4_C5
+    canb.begin(500000, CAN_TEST_MODE);
+    // Only accept message with odd ids
+    canb.addFilter(1, 1);
+#endif
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-    CAN_Message_Struct Message;
-	
-	Message.Ext = true;
-    Message.rtr = false;
-	Message.ID = 0x1234UL;
-	Message.Len = 8U;
-    Message.Data[0]='h';
-    Message.Data[1]='e';
-	Message.Data[2]='l';
-	Message.Data[3]='l';
-	Message.Data[4]='0';
-	Message.Data[5]=' ';
-	Message.Data[6]='W';
-	Message.Data[7]='o';
-	Can1.write(&Message);
-	Can1.write(&Message);
-	Can1.write(&Message);
-	Can1.write(&Message);
-	Can1.write(&Message);
-	
-    Message.ID = 0x5679UL;
-    Message.Data[0]='r';
-    Message.Data[1]='l';
-	Message.Data[2]='d';
-	Message.Data[3]='!';
-	Message.Data[4]='!';
-	Message.Data[5]='!';
-	Message.Data[6]='!';
-	Message.Data[7]='!';
-	Can1.write(&Message);
-	
-	Message.ID = 0x4321UL;
-	Message.Data[0]='h';
-    Message.Data[1]='o';
-	Message.Data[2]='w';
-	Message.Data[3]=' ';
-	Message.Data[4]='a';
-	Message.Data[5]='r';
-	Message.Data[6]='e';
-	Message.Data[7]=' ';
-	Can1.write(&Message);
-	
-    Message.ID = 0x9876UL;
-    Message.Data[0]='y';
-    Message.Data[1]='o';
-	Message.Data[2]='u';
-	Message.Data[3]=' ';
-	Message.Data[4]='n';
-	Message.Data[5]='o';
-	Message.Data[6]='w';
-	Message.Data[7]='!';
-	Can1.write(&Message);
-	Serial.println("Writing CAN");
-	delay(500);
-	digitalWrite(led2, HIGH);
+    CANMessage Message;
 
-	delay(500);
-	digitalWrite(led2, LOW);
-	if (1 == Can1.read(&Message))
-	{
-		Serial.println("Read CAN");
-		PrintCanMsg(&Message);
-	}
-}
+    for(int i = 0; i < 15; i++) {
+        Message.id = 100 + i;
+        can.transmit(Message);
+#ifdef HAL_HAS_CAN_C4_C5
+        canb.transmit(Message);
+#endif
+    }
 
-void PrintCanMsg(CAN_Message_Struct *pMessage)
-{
-	Serial.print("ID = ");
-	Serial.print(pMessage->ID);
-	Serial.print(" ");
-	Serial.println(pMessage->Ext);
-	Serial.print("Len = ");
-	Serial.println(pMessage->Len);
-	Serial.print("Data = ");
-	Serial.print(pMessage->Data[0]);
-	Serial.print(", ");
-	Serial.print(pMessage->Data[1]);
-	Serial.print(", ");
-	Serial.print(pMessage->Data[2]);
-	Serial.print(", ");
-	Serial.print(pMessage->Data[3]);
-	Serial.print(", ");
-	Serial.print(pMessage->Data[4]);
-	Serial.print(", ");
-	Serial.print(pMessage->Data[5]);
-	Serial.print(", ");
-	Serial.print(pMessage->Data[6]);
-	Serial.print(", ");
-	Serial.println(pMessage->Data[7]);
+    delay(100);
+    console.print("CAN received ");
+    while(can.receive(Message))
+    {
+        console.print(String(Message.id, DEC));
+        console.print(", ");
+    }
+    console.print("\n");
+
+#ifdef HAL_HAS_CAN_C4_C5
+    console.print("CANB received ");
+    while(canb.receive(Message))
+    {
+        console.print(String(Message.id, DEC));
+        console.print(", ");
+    }
+    console.print("\n");
+#endif
+
+    delay(1000);
 }

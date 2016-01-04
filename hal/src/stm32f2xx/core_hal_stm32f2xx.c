@@ -179,6 +179,16 @@ void (*HAL_TIM4_Handler)(void);
 void (*HAL_TIM5_Handler)(void);
 void (*HAL_TIM8_Handler)(void);
 
+//HAL Interrupt Handlers defined in xxx_hal.c files
+void HAL_CAN1_TX_Handler(void) __attribute__ ((weak));
+void HAL_CAN1_RX0_Handler(void) __attribute__ ((weak));
+void HAL_CAN1_RX1_Handler(void) __attribute__ ((weak));
+void HAL_CAN1_SCE_Handler(void) __attribute__ ((weak));
+void HAL_CAN2_TX_Handler(void) __attribute__ ((weak));
+void HAL_CAN2_RX0_Handler(void) __attribute__ ((weak));
+void HAL_CAN2_RX1_Handler(void) __attribute__ ((weak));
+void HAL_CAN2_SCE_Handler(void) __attribute__ ((weak));
+
 /* Extern variables ----------------------------------------------------------*/
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 
@@ -846,23 +856,75 @@ void TIM1_TRG_COM_TIM11_irq(void)
     UNUSED(result);
 }
 
-//void CAN2_TX_irq()
-//{
-//    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_TX_IRQ, NULL);
-//}
-//
-//void CAN2_RX0_irq()
-//{
-//    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX0_IRQ, NULL);
-//}
-//
-//void CAN2_RX1_irq()
-//{
-//    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX1_IRQ, NULL);
-//}
+void CAN1_TX_irq()
+{
+    if(NULL != HAL_CAN1_TX_Handler)
+    {
+        HAL_CAN1_TX_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_TX_IRQ, NULL);
+}
+
+void CAN1_RX0_irq()
+{
+    if(NULL != HAL_CAN1_RX0_Handler)
+    {
+        HAL_CAN1_RX0_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_RX0_IRQ, NULL);
+}
+
+void CAN1_RX1_irq()
+{
+    if(NULL != HAL_CAN1_RX1_Handler)
+    {
+        HAL_CAN1_RX1_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_RX1_IRQ, NULL);
+}
+
+void CAN1_SCE_irq()
+{
+    if(NULL != HAL_CAN1_SCE_Handler)
+    {
+        HAL_CAN1_SCE_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_SCE_IRQ, NULL);
+}
+
+void CAN2_TX_irq()
+{
+    if(NULL != HAL_CAN2_TX_Handler)
+    {
+        HAL_CAN2_TX_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_TX_IRQ, NULL);
+}
+
+void CAN2_RX0_irq()
+{
+    if(NULL != HAL_CAN2_RX0_Handler)
+    {
+        HAL_CAN2_RX0_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX0_IRQ, NULL);
+}
+
+void CAN2_RX1_irq()
+{
+    if(NULL != HAL_CAN2_RX1_Handler)
+    {
+        HAL_CAN2_RX1_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX1_IRQ, NULL);
+}
 
 void CAN2_SCE_irq()
 {
+    if(NULL != HAL_CAN2_SCE_Handler)
+    {
+        HAL_CAN2_SCE_Handler();
+    }
     HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_SCE_IRQ, NULL);
 }
 

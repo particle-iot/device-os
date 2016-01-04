@@ -1,9 +1,9 @@
 /**
  ******************************************************************************
  * @file    can_hal.h
- * @author  Brian Spranger
+ * @author  Brian Spranger, Julien Vanier
  * @version V1.0.0
- * @date    30-Sep-2015
+ * @date    04-Jan-2016
  * @brief
  ******************************************************************************
    Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
@@ -33,35 +33,69 @@
 #include "pinmap_hal.h"
 
 /* Exported defines ----------------------------------------------------------*/
-#if PLATFORM_ID == 6 // Photon
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 // Photon and P1
  #define TOTAL_CAN   1
+ #define HAL_HAS_CAN_D1_D2
+#elif PLATFORM_ID == 10 // Electron
+ #define TOTAL_CAN   2
+ #define HAL_HAS_CAN_D1_D2
+ #define HAL_HAS_CAN_C4_C5
 #else
+  // Core 
  #define TOTAL_CAN   0
 #endif
 
-#define CAN_BUFFER_SIZE   32
-
-/* Exported types ------------------------------------------------------------*/
-typedef struct CAN_Message_Struct
-{
-   bool            Ext;
-   bool            rtr;
-   unsigned char   Len;
-   unsigned char   Data[8];
-   unsigned long   ID;
-}CAN_Message_Struct;
-
-typedef struct CAN_Ring_Buffer
-{
-   CAN_Message_Struct   buffer[CAN_BUFFER_SIZE];
-   volatile uint8_t     head;
-   volatile uint8_t     tail;
-}CAN_Ring_Buffer;
+/* Exported constants --------------------------------------------------------*/
 
 typedef enum HAL_CAN_Channel
 {
-   HAL_CAN_Channel1 = 0   //maps to CAN2
-}HAL_CAN_Channel;
+#ifdef HAL_HAS_CAN_D1_D2
+   CAN_D1_D2,
+#endif
+#ifdef HAL_HAS_CAN_C4_C5
+   CAN_C4_C5,
+#endif
+} HAL_CAN_Channel;
+
+// Flags for HAL_CAN_Begin
+typedef enum HAL_CAN_Flags {
+  CAN_TEST_MODE = 0x0001,
+} HAL_CAN_Flags;
+
+typedef enum HAL_CAN_Errors {
+  CAN_NO_ERROR,
+  CAN_ERROR_PASSIVE,
+  CAN_BUS_OFF
+} HAL_CAN_Errors;
+
+typedef enum HAL_CAN_Filters {
+  CAN_FILTER_STANDARD,
+  CAN_FILTER_EXTENDED
+} HAL_CAN_Filters;
+
+/* Exported types ------------------------------------------------------------*/
+
+struct CANMessage
+{
+   uint32_t id;
+   uint8_t  size;
+   bool     extended;
+   bool     rtr;
+   uint8_t  len;
+   uint8_t  data[8];
+
+#ifdef __cplusplus
+   CANMessage()
+     : id { 0 },
+       size { sizeof(CANMessage) },
+       extended { false },
+       rtr { false },
+       len { 0 },
+       data { 0 }
+   {
+   }
+#endif
+};
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -73,21 +107,33 @@ typedef enum HAL_CAN_Channel
 extern "C" {
 #endif
 
-void HAL_CAN_Init(HAL_CAN_Channel  channel,
-                  CAN_Ring_Buffer *rx_buffer,
-                  CAN_Ring_Buffer *tx_buffer);
+void HAL_CAN_Init(HAL_CAN_Channel channel,
+                  uint16_t rxQueueSize,
+                  uint16_t txQueueSize,
+                  void *reserved);
 void HAL_CAN_Begin(HAL_CAN_Channel channel,
-                   uint32_t        baud);
-void     HAL_CAN_End(HAL_CAN_Channel channel);
-uint32_t HAL_CAN_Write_Data(HAL_CAN_Channel     channel,
-                            CAN_Message_Struct *pmessage);
-int32_t HAL_CAN_Available_Data(HAL_CAN_Channel channel);
-int32_t HAL_CAN_Read_Data(HAL_CAN_Channel     channel,
-                          CAN_Message_Struct *pmessage);
-int32_t HAL_CAN_Peek_Data(HAL_CAN_Channel     channel,
-                          CAN_Message_Struct *pmessage);
-void HAL_CAN_Flush_Data(HAL_CAN_Channel channel);
+                   uint32_t baud,
+                   uint32_t flags,
+                   void *reserved);
+void HAL_CAN_End(HAL_CAN_Channel channel,
+                 void *reserved);
+bool HAL_CAN_Transmit(HAL_CAN_Channel channel,
+                      const CANMessage *message,
+                      void *reserved);
+bool HAL_CAN_Receive(HAL_CAN_Channel channel,
+                     CANMessage *message,
+                     void *reserved);
+uint8_t HAL_CAN_Available_Messages(HAL_CAN_Channel channel,
+                                   void *reserved);
+bool HAL_CAN_Add_Filter(HAL_CAN_Channel channel,
+                        uint32_t id,
+                        uint32_t mask,
+                        HAL_CAN_Filters type,
+                        void *reserved);
+void HAL_CAN_Clear_Filters(HAL_CAN_Channel channel,
+                           void *reserved);
 bool HAL_CAN_Is_Enabled(HAL_CAN_Channel channel);
+HAL_CAN_Errors HAL_CAN_Error_Status(HAL_CAN_Channel channel);
 
 
 #ifdef __cplusplus

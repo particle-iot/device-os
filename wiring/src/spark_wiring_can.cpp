@@ -1,13 +1,12 @@
 /**
  ******************************************************************************
  * @file    spark_wiring_can.cpp
- * @author  Brian Spranger
+ * @author  Brian Spranger, Julien Vanier
  * @version V1.0.0
- * @date    01 October 2015
- * @brief   Wrapper for wiring hardware can module
+ * @date    04-Jan-2016
+ * @brief   Wiring wrapper for hardware CAN module
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
-  Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -29,69 +28,53 @@
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-CANChannel::CANChannel(HAL_CAN_Channel channel, CAN_Ring_Buffer *rx_buffer, CAN_Ring_Buffer *tx_buffer)
+CANChannel::CANChannel(HAL_CAN_Channel channel,
+        uint16_t rxQueueSize, uint16_t txQueueSize)
 {
-  _channel = channel;
-  HAL_CAN_Init(_channel, rx_buffer, tx_buffer);
+    _channel = channel;
+    HAL_CAN_Init(_channel, rxQueueSize, txQueueSize, NULL);
 }
 // Public Methods //////////////////////////////////////////////////////////////
 
-void CANChannel::begin(unsigned long baud)
+void CANChannel::begin(unsigned long baud, uint32_t flags)
 {
-  HAL_CAN_Begin(_channel, baud);
-}
-
-// TODO
-void CANChannel::begin(unsigned long baud, byte config)
-{
-
+    HAL_CAN_Begin(_channel, baud, flags, NULL);
 }
 
 void CANChannel::end()
 {
-  HAL_CAN_End(_channel);
+    HAL_CAN_End(_channel, NULL);
 }
 
-int CANChannel::available(void)
+uint8_t CANChannel::available(void)
 {
-  return HAL_CAN_Available_Data(_channel);
+    return HAL_CAN_Available_Messages(_channel, NULL);
 }
 
-int CANChannel::peek(CAN_Message_Struct *pmessage)
+bool CANChannel::receive(CANMessage &message)
 {
-  return HAL_CAN_Peek_Data(_channel, pmessage);
+    return HAL_CAN_Receive(_channel, &message, NULL);
 }
 
-int CANChannel::read(CAN_Message_Struct *pmessage)
+bool CANChannel::transmit(const CANMessage &message)
 {
-  return HAL_CAN_Read_Data(_channel, pmessage);
+    return HAL_CAN_Transmit(_channel, &message, NULL);
 }
 
-void CANChannel::flush()
+bool CANChannel::addFilter(uint32_t id, uint32_t mask, HAL_CAN_Filters type)
 {
-  HAL_CAN_Flush_Data(_channel);
+    return HAL_CAN_Add_Filter(_channel, id, mask, type, NULL);
 }
 
-size_t CANChannel::write(CAN_Message_Struct *pmessage)
+void CANChannel::clearFilters()
 {
-  return HAL_CAN_Write_Data(_channel, pmessage);
-}
-
-CANChannel::operator bool() {
-  return true;
+    HAL_CAN_Clear_Filters(_channel, NULL);
 }
 
 bool CANChannel::isEnabled() {
-  return HAL_CAN_Is_Enabled(_channel);
+    return HAL_CAN_Is_Enabled(_channel);
 }
 
-#ifndef SPARK_WIRING_NO_CAN
-// Preinstantiate Objects //////////////////////////////////////////////////////
-static CAN_Ring_Buffer can_rx_buffer;
-static CAN_Ring_Buffer can_tx_buffer;
-
-
-CANChannel Can1(HAL_CAN_Channel1, &can_rx_buffer, &can_tx_buffer);
-// optional Serial2 is instantiated from libraries/Serial2/Serial2.h
-#endif
-
+HAL_CAN_Errors CANChannel::errorStatus() {
+    return HAL_CAN_Error_Status(_channel);
+}

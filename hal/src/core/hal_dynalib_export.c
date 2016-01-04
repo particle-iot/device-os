@@ -42,7 +42,6 @@
 #include "timer_hal.h"
 #include "tone_hal.h"
 #include "usart_hal.h"
-#include "can_hal.h"
 #include "usb_hal.h"
 #include "wlan_hal.h"
 

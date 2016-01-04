@@ -126,7 +126,11 @@ typedef enum hal_irq_t {
     SysInterrupt_CAN2_RX0_IRQ,
     SysInterrupt_CAN2_RX1_IRQ,
     SysInterrupt_CAN2_SCE_IRQ,
-    __Last_irq = 46
+    SysInterrupt_CAN1_TX_IRQ,
+    SysInterrupt_CAN1_RX0_IRQ,
+    SysInterrupt_CAN1_RX1_IRQ,
+    SysInterrupt_CAN1_SCE_IRQ,
+    __Last_irq = SysInterrupt_CAN1_SCE_IRQ + 1,
 #else
     __Last_irq = 0
 #endif

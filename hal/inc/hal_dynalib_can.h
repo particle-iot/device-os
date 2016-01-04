@@ -22,7 +22,7 @@
  */
 
 #ifndef HAL_DYNALIB_CAN_H
-#define	HAL_DYNALIB_CAN_H
+#define HAL_DYNALIB_CAN_H
 
 #include "dynalib.h"
 
@@ -35,12 +35,13 @@ DYNALIB_BEGIN(hal_can)
 DYNALIB_FN(hal_can,HAL_CAN_Init)
 DYNALIB_FN(hal_can,HAL_CAN_Begin)
 DYNALIB_FN(hal_can,HAL_CAN_End)
-DYNALIB_FN(hal_can,HAL_CAN_Write_Data)
-DYNALIB_FN(hal_can,HAL_CAN_Available_Data)
-DYNALIB_FN(hal_can,HAL_CAN_Read_Data)
-DYNALIB_FN(hal_can,HAL_CAN_Peek_Data)
-DYNALIB_FN(hal_can,HAL_CAN_Flush_Data)
+DYNALIB_FN(hal_can,HAL_CAN_Transmit)
+DYNALIB_FN(hal_can,HAL_CAN_Receive)
+DYNALIB_FN(hal_can,HAL_CAN_Available_Messages)
+DYNALIB_FN(hal_can,HAL_CAN_Add_Filter)
+DYNALIB_FN(hal_can,HAL_CAN_Clear_Filters)
 DYNALIB_FN(hal_can,HAL_CAN_Is_Enabled)
+DYNALIB_FN(hal_can,HAL_CAN_Error_Status)
 
 DYNALIB_END(hal_can)
 

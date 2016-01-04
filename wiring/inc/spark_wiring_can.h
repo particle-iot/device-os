@@ -1,13 +1,12 @@
 /**
  ******************************************************************************
  * @file    spark_wiring_can.h
- * @author  Brian Spranger
+ * @author  Brian Spranger, Julien Vanier
  * @version V1.0.0
- * @date    01 October 2015
+ * @date    04-Jan-2016
  * @brief   Header for spark_wiring_can.c module
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
-  Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -27,33 +26,33 @@
 #ifndef __SPARK_WIRING_CAN_H
 #define __SPARK_WIRING_CAN_H
 
-#include "spark_wiring_stream.h"
+#include "spark_wiring.h"
 #include "can_hal.h"
 
 class CANChannel
 {
 private:
   HAL_CAN_Channel _channel;
+
 public:
-  CANChannel(HAL_CAN_Channel channel, CAN_Ring_Buffer *rx_buffer, CAN_Ring_Buffer *tx_buffer);
-  virtual ~CANChannel() {};
-  void begin(unsigned long);
-  void begin(unsigned long, uint8_t);
+  CANChannel(HAL_CAN_Channel channel,
+             uint16_t rxQueueSize = 32,
+             uint16_t txQueueSize = 32);
+  ~CANChannel() {};
+  void begin(unsigned long baudRate,
+             uint32_t flags = 0);
   void end();
 
-  virtual int available(void);
-  virtual int peek(CAN_Message_Struct *pmessage);
-  virtual int read(CAN_Message_Struct *pmessage);
-  virtual void flush(void);
-  virtual size_t write(CAN_Message_Struct *pmessage);
+  uint8_t available();
+  bool receive(CANMessage &message);
+  bool transmit(const CANMessage &message);
 
-  operator bool();
+  bool addFilter(uint32_t id, uint32_t mask, HAL_CAN_Filters type = CAN_FILTER_STANDARD);
+  void clearFilters();
 
-  bool isEnabled(void);
+  bool isEnabled();
+
+  HAL_CAN_Errors errorStatus();
 };
-
-#ifndef SPARK_WIRING_NO_CAN
-extern CANChannel Can1;
-#endif
 
 #endif
