@@ -97,7 +97,8 @@ SECTIONS
    	 _edata = . ;
     } >RAM AT>APP_FLASH
 
-	INCLUDE backup_ram.ld
+	INCLUDE backup_ram_system.ld
+	INCLUDE backup_ram_user.ld
 
     /* This is the uninitialized data section */
     .bss :
