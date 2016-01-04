@@ -39,6 +39,7 @@
 #include "system_user.h"
 #include "system_update.h"
 #include "core_hal.h"
+#include "delay_hal.h"
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"
 #include "usb_hal.h"
@@ -126,6 +127,26 @@ static volatile bool SYSTEM_HANDLE_SINGLE_CLICK = false;
 static uint32_t prev_release_time = 0;
 static uint8_t clicks = 0;
 
+void system_prepare_display_bars()
+{
+	SYSTEM_LED_WAS_OVERRIDDEN = LED_RGB_IsOverRidden();
+	LED_Signaling_Stop();
+	SYSTEM_LED_COUNT = 255;
+	TimingLED = 0;	// todo - should use a mutex around these shared vars
+}
+
+void system_display_bars(int bars)
+{
+    if (bars>=0)
+    {
+		SYSTEM_LED_COUNT = (bars<<1)+2;
+    }
+    else
+    {
+    		SYSTEM_LED_COUNT = 1;
+    }
+}
+
 /* single click handler displays RSSI value on system LED */
 void system_handle_single_click()
 {
@@ -139,6 +160,7 @@ void system_handle_single_click()
      */
     if (SYSTEM_HANDLE_SINGLE_CLICK) {
         SYSTEM_HANDLE_SINGLE_CLICK = false;
+        system_prepare_display_bars();
         int rssi = 0;
         int bars = 0;
 #if Wiring_WiFi == 1
@@ -155,14 +177,7 @@ void system_handle_single_click()
             else if (rssi > -104) bars = 1;
         }
         DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
-
-        if (bars>0)         		// MDM: I feel we should show some visualization of 0 bars.
-        {
-        		SYSTEM_LED_WAS_OVERRIDDEN = LED_RGB_IsOverRidden();
-        		LED_Signaling_Stop();
-        		LED_SetRGBColor(0);
-        		SYSTEM_LED_COUNT = (bars<<1)+2;
-        }
+        system_display_bars(bars);
     }
 }
 
@@ -353,27 +368,38 @@ extern "C" void HAL_SysTick_Handler(void)
     else if (SYSTEM_LED_COUNT)
     {
 		SPARK_LED_FADE = 0;
-    		--SYSTEM_LED_COUNT;
-    		if (SYSTEM_LED_COUNT==0)
-    		{
-    			if (SYSTEM_LED_WAS_OVERRIDDEN)
-    			{
-    				SYSTEM_LED_WAS_OVERRIDDEN = 0;
-    				LED_Signaling_Start();
-    			}
-    		}
-    		else if (!(SYSTEM_LED_COUNT&1))
-    		{
-    			LED_SetRGBColor(0<<16 | 255<<8 | 0);
+		if (SYSTEM_LED_COUNT==255)
+		{
+			// hold the LED on this color until the actual number of bars is set
+  			LED_SetRGBColor(0<<16 | 10<<8 | 0);
     	        LED_On(LED_RGB);
-    			TimingLED = 40;
-    		}
-    		else
-    		{
-    			LED_SetRGBColor(0<<16 | 10<<8 | 0);
-    	        LED_On(LED_RGB);
-    			TimingLED = SYSTEM_LED_COUNT==1 ? 750 : 350;
-    		}
+    			TimingLED = 100;
+		}
+		else
+		{
+			--SYSTEM_LED_COUNT;
+			if (SYSTEM_LED_COUNT==0)
+			{
+				if (SYSTEM_LED_WAS_OVERRIDDEN)
+				{
+					SYSTEM_LED_WAS_OVERRIDDEN = 0;
+					LED_Signaling_Start();
+					LED_On(LED_RGB);
+				}
+			}
+			else if (!(SYSTEM_LED_COUNT&1))
+			{
+				LED_SetRGBColor(0<<16 | 255<<8 | 0);
+				LED_On(LED_RGB);
+				TimingLED = 40;
+			}
+			else
+			{
+				LED_SetRGBColor(0<<16 | 10<<8 | 0);
+				LED_On(LED_RGB);
+				TimingLED = SYSTEM_LED_COUNT==1 ? 750 : 350;
+			}
+		}
     }
     else if(SPARK_LED_FADE && (!SPARK_CLOUD_CONNECTED || system_cloud_active()))
     {
