@@ -28,8 +28,6 @@ typedef void (raw_rgb_change_handler_t)(uint8_t, uint8_t, uint8_t);
 typedef std::function<raw_rgb_change_handler_t> wiring_rgb_change_handler_t;
 
 class RGBClass {
-private:
-	static bool _control;
 public:
 	static bool controlled(void);
 	static void control(bool);
