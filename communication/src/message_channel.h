@@ -127,6 +127,16 @@ public:
 				memcmp(msg.buf(), this->buf(),this->length())==0;
 	}
 
+	Message& operator=(const Message& msg)
+	{
+		this->buffer = msg.buffer;
+		this->buffer_length = msg.buffer_length;
+		this->message_length = msg.message_length;
+		this->id = msg.id;
+		this->confirm_received = msg.confirm_received;
+		return *this;
+	}
+
 };
 
 struct Channel

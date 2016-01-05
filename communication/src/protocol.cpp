@@ -84,7 +84,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return chunkedTransfer.handle_update_done(token, message, channel);
 
 	case CoAPMessageType::EVENT:
-		return subscriptions.handle_event(message, descriptor.call_event_handler);
+		return subscriptions.handle_event(message, descriptor.call_event_handler, channel);
 
 	case CoAPMessageType::KEY_CHANGE:
 		return handle_key_change(message);
