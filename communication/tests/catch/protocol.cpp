@@ -58,7 +58,7 @@ void event_handler(const char* event, const char* data)
 {
 }
 
-SCENARIO("5 subscribe messages are registreed")
+SCENARIO("5 subscribe messages are registered")
 {
 	MessageChannel* channel = nullptr;
 	AbstractProtocol p(*channel);	// channel is not used

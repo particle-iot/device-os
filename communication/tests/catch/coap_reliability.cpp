@@ -268,7 +268,7 @@ void build_message_channel_mock(Mock<MessageChannel>& mock)
 {
 	When(Method(mock,notify_established)).AlwaysReturn(NO_ERROR);
 	When(Method(mock,is_unreliable)).AlwaysReturn(false);
-	When(Method(mock,receive)).AlwaysReturn(IO_ERROR);
+	When(Method(mock,command)).AlwaysReturn(NO_ERROR);
 
 }
 
@@ -613,6 +613,7 @@ SCENARIO("a repeated confirmable CoAP message is passed only once to the applica
 		uint8_t buf[] = { 0x40, 0, 0x12, 0x34, 0xFF, 1, 2, 3, 4 };
 		Message m(buf, sizeof(buf), sizeof(buf));		// confirmable message
 		Mock<MessageChannel> mock;
+		build_message_channel_mock(mock);
 		MessageChannel& channel = mock.get();
 		CoAPMessageStore store;
 
@@ -697,6 +698,7 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 		m.set_confirm_received(true);
 		m.decode_id();
 		Mock<MessageChannel> mock;
+		build_message_channel_mock(mock);
 		MessageChannel& channel = mock.get();
 		CoAPMessageStore store;
 
