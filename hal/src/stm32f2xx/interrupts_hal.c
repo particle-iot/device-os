@@ -66,6 +66,15 @@ typedef struct exti_channel {
 //Array to hold user ISR function pointers
 static exti_channel exti_channels[16];
 
+typedef struct exti_state {
+    uint32_t imr;
+    uint32_t emr;
+    uint32_t rtsr;
+    uint32_t ftsr;
+} exti_state;
+
+static exti_state exti_saved_state;
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -205,6 +214,22 @@ void HAL_Interrupts_Disable_All(void)
   NVIC_DisableIRQ(EXTI4_IRQn);
   NVIC_DisableIRQ(EXTI9_5_IRQn);
   NVIC_DisableIRQ(EXTI15_10_IRQn);
+}
+
+void HAL_Interrupts_Suspend(void) {
+  exti_saved_state.imr = EXTI->IMR;
+  exti_saved_state.emr = EXTI->EMR;
+  exti_saved_state.rtsr = EXTI->RTSR;
+  exti_saved_state.ftsr = EXTI->FTSR;
+
+  EXTI_DeInit();
+}
+
+void HAL_Interrupts_Restore(void) {
+  EXTI->IMR = exti_saved_state.imr;
+  EXTI->EMR = exti_saved_state.emr;
+  EXTI->RTSR = exti_saved_state.rtsr;
+  EXTI->FTSR = exti_saved_state.ftsr;
 }
 
 /*******************************************************************************

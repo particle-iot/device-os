@@ -364,8 +364,19 @@ void HAL_Core_Enter_Safe_Mode(void* reserved)
     HAL_Core_System_Reset();
 }
 
-void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
+void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
+    if (!((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING)) && seconds <= 0)
+        return;
+
+    HAL_disable_irq();
+
+    uint32_t exit_conditions = 0x00;
+
+    // Suspend all EXTI interrupts
+    HAL_Interrupts_Suspend();
+
+    /* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
     if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
     {
         PinMode wakeUpPinMode = INPUT;
@@ -387,14 +398,36 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
         }
         HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
 
-        /* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
         HAL_Interrupts_Attach(wakeUpPin, NULL, NULL, edgeTriggerMode, NULL);
 
-        HAL_Core_Execute_Stop_Mode();
+        exit_conditions |= 0x01;
+    }
 
+    // Configure RTC wake-up
+    if (seconds > 0) {
+        HAL_RTC_Set_UnixAlarm((time_t) seconds);
+
+        // Connect RTC to EXTI line
+
+        exit_conditions |= 0x02;
+    }
+
+    HAL_Core_Execute_Stop_Mode();
+
+    if (exit_conditions & 0x01) {
         /* Detach the Interrupt pin */
         HAL_Interrupts_Detach(wakeUpPin);
     }
+
+    if (exit_conditions & 0x02) {
+        // Disable RTC
+    }
+
+    // Restore
+    HAL_Interrupts_Restore();
+
+    // Successfully exited STOP mode
+    HAL_enable_irq(0);
 }
 
 void HAL_Core_Execute_Stop_Mode(void)

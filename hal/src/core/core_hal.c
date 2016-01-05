@@ -190,7 +190,7 @@ void HAL_Core_Enter_Bootloader(bool persist)
     HAL_Core_System_Reset();
 }
 
-void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
+void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
 	if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
 	{

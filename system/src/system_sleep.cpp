@@ -98,9 +98,7 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
 
 void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
-    if (seconds>0)
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-
     LED_Off(LED_RGB);
-    HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode);
+
+    HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
 }
