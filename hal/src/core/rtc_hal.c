@@ -157,6 +157,10 @@ void HAL_RTC_Set_UnixAlarm(time_t value)
   RTC_WaitForLastTask();
 }
 
+void HAL_RTC_Cancel_UnixAlarm(void)
+{
+}
+
 /*******************************************************************************
  * Function Name  : HAL_RTC_Handler (Declared as weak in stm32_it.h)
  * Description    : This function handles RTC global interrupt request.

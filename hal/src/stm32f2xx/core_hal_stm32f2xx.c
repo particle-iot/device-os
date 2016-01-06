@@ -48,6 +48,9 @@
 #include "dct.h"
 #include "hal_platform.h"
 
+#define STOP_MODE_EXIT_CONDITION_PIN 0x01
+#define STOP_MODE_EXIT_CONDITION_RTC 0x02
+
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
@@ -366,7 +369,7 @@ void HAL_Core_Enter_Safe_Mode(void* reserved)
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
-    if (!((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING)) && seconds <= 0)
+    if (!((wakeUpPin < TOTAL_PINS) && (wakeUpPin >= 0) && (edgeTriggerMode <= FALLING)) && seconds <= 0)
         return;
 
     HAL_disable_irq();
@@ -380,47 +383,61 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
     if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
     {
         PinMode wakeUpPinMode = INPUT;
-
         /* Set required pinMode based on edgeTriggerMode */
         switch(edgeTriggerMode)
         {
-        case CHANGE:
-            wakeUpPinMode = INPUT;
-            break;
-
         case RISING:
             wakeUpPinMode = INPUT_PULLDOWN;
             break;
-
         case FALLING:
             wakeUpPinMode = INPUT_PULLUP;
             break;
+        case CHANGE:
+        default:
+            wakeUpPinMode = INPUT;
+            break;
         }
-        HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
 
+        HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
         HAL_Interrupts_Attach(wakeUpPin, NULL, NULL, edgeTriggerMode, NULL);
 
-        exit_conditions |= 0x01;
+        exit_conditions |= STOP_MODE_EXIT_CONDITION_PIN;
     }
 
     // Configure RTC wake-up
     if (seconds > 0) {
+        /*
+         * - To wake up from the Stop mode with an RTC alarm event, it is necessary to:
+         * - Configure the EXTI Line 17 to be sensitive to rising edges (Interrupt
+         * or Event modes) using the EXTI_Init() function.
+         * 
+         */
+        HAL_RTC_Cancel_UnixAlarm();
         HAL_RTC_Set_UnixAlarm((time_t) seconds);
 
         // Connect RTC to EXTI line
+        EXTI_InitTypeDef EXTI_InitStructure = {0};
+        EXTI_InitStructure.EXTI_Line = EXTI_Line17;
+        EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+        EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+        EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+        EXTI_Init(&EXTI_InitStructure);
 
-        exit_conditions |= 0x02;
+        exit_conditions |= STOP_MODE_EXIT_CONDITION_RTC;
     }
 
     HAL_Core_Execute_Stop_Mode();
 
-    if (exit_conditions & 0x01) {
+    if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
         /* Detach the Interrupt pin */
         HAL_Interrupts_Detach(wakeUpPin);
     }
 
-    if (exit_conditions & 0x02) {
-        // Disable RTC
+    if (exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) {
+        // No need to detach RTC Alarm from EXTI, since it will be detached in HAL_Interrupts_Restore()
+
+        // RTC Alarm should be canceled to avoid entering HAL_RTCAlarm_Handler or if we were woken up by pin
+        HAL_RTC_Cancel_UnixAlarm();
     }
 
     // Restore

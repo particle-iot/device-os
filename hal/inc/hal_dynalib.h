@@ -69,4 +69,5 @@ DYNALIB_FN(hal,HAL_EEPROM_Length)
 
 DYNALIB_FN(hal,HAL_disable_irq)
 DYNALIB_FN(hal,HAL_enable_irq)
+DYNALIB_FN(hal,HAL_RTC_Cancel_UnixAlarm)
 DYNALIB_END(hal)
