@@ -38,6 +38,26 @@ struct WakeupState
 
 WakeupState wakeupState;
 
+static void network_suspend() {
+    // save the current state so it can be restored on wakeup
+    wakeupState.wifi = !SPARK_WLAN_SLEEP;
+    wakeupState.wifiConnected = wakeupState.cloud | network_ready(0, 0, NULL) | network_connecting(0, 0, NULL);
+#ifndef SPARK_NO_CLOUD
+    wakeupState.cloud = spark_connected();
+    spark_disconnect();
+#endif
+    network_off(0, 0, 0, NULL);
+}
+
+static void network_resume() {
+    if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
+        SPARK_WLAN_SLEEP = 0;
+#ifndef SPARK_NO_CLOUD
+    if (wakeupState.cloud)
+        spark_connect();
+#endif
+}
+
 /*******************************************************************************
  * Function Name  : HAL_RTCAlarm_Handler
  * Description    : This function handles additional application requirements.
@@ -48,12 +68,7 @@ WakeupState wakeupState;
 extern "C" void HAL_RTCAlarm_Handler(void)
 {
     /* Wake up from System.sleep mode(SLEEP_MODE_WLAN) */
-    if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
-        SPARK_WLAN_SLEEP = 0;
-#ifndef SPARK_NO_CLOUD
-    if (wakeupState.cloud)
-        spark_connect();
-#endif
+    network_resume();
 }
 
 void sleep_fuel_gauge()
@@ -71,14 +86,7 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
     switch (sleepMode)
     {
         case SLEEP_MODE_WLAN:
-            // save the current state so it can be restored on wakeup
-            wakeupState.wifi = !SPARK_WLAN_SLEEP;
-            wakeupState.wifiConnected = wakeupState.cloud | network_ready(0, 0, NULL) | network_connecting(0, 0, NULL);
-#ifndef SPARK_NO_CLOUD
-            wakeupState.cloud = spark_connected();
-            spark_disconnect();
-#endif
-            network_off(0, 0, 0, NULL);
+            network_suspend();
             break;
 
         case SLEEP_MODE_DEEP:
@@ -98,9 +106,8 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
 
 void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
-    if (seconds>0)
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-
+    network_suspend();
     LED_Off(LED_RGB);
-    HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode);
+    HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
+    network_resume();
 }

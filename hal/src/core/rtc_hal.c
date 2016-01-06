@@ -151,10 +151,20 @@ void HAL_RTC_Set_UnixTime(time_t value)
 
 void HAL_RTC_Set_UnixAlarm(time_t value)
 {
+  RTC_ITConfig(RTC_IT_ALR, ENABLE);
+  RTC_WaitForLastTask();
   /* Set the RTC Alarm */
   RTC_SetAlarm(RTC_GetCounter() + (uint32_t)value);
   /* Wait until last write operation on RTC registers has finished */
   RTC_WaitForLastTask();
+}
+
+void HAL_RTC_Cancel_UnixAlarm(void)
+{
+    RTC_ITConfig(RTC_IT_ALR, DISABLE);
+    RTC_WaitForLastTask();
+    EXTI_ClearITPendingBit(EXTI_Line17);
+    RTC_ClearITPendingBit(RTC_IT_ALR);
 }
 
 /*******************************************************************************
