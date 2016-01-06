@@ -396,7 +396,7 @@ extern "C" void HAL_SysTick_Handler(void)
 			{
 				LED_SetRGBColor(0<<16 | 255<<8 | 0);
 				LED_On(LED_RGB);
-				TimingLED = 60;
+				TimingLED = 40;
 			}
 			else
 			{
