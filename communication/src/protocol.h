@@ -133,6 +133,12 @@ protected:
 		 * Set if sending a hello response on resuming a session isn't required.
 		 */
 		SKIP_SESSION_RESUME_HELLO = 1<<1,
+
+		/**
+		 * send ping as an empty message - this functions as
+		 * a keep-alive for UDP
+		 */
+		PING_AS_EMPTY_MESSAGE = 1<<2,
 	};
 
 	void set_protocol_flags(int flags)
@@ -170,7 +176,10 @@ protected:
 	{
 		Message message;
 		channel.create(message);
-		size_t len = Messages::ping(message.buf(), 0);
+		size_t len = 0;
+		if (flags & PING_AS_EMPTY_MESSAGE) {
+			len = Messages::ping(message.buf(), 0);
+		}
 		last_message_millis = callbacks.millis();
 		message.set_length(len);
 		return channel.send(message);

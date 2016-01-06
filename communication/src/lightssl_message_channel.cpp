@@ -40,10 +40,12 @@ namespace protocol
 //                DEBUG("message length %d, last 20 bytes %s ", message.length(), message.buf()+message.length()-20);
 //            else
 //                DEBUG("message length %d ", message.length());
+		if (!message.length())
+			return NO_ERROR;
 
-            uint8_t* buf = message.buf()-2;
-            size_t to_write = wrap(buf, message.length());
-            return blocking_send(buf, to_write)<0 ? IO_ERROR : NO_ERROR;
+		uint8_t* buf = message.buf()-2;
+		size_t to_write = wrap(buf, message.length());
+		return blocking_send(buf, to_write)<0 ? IO_ERROR : NO_ERROR;
 	}
 
 	ProtocolError LightSSLMessageChannel::receive(Message& message)
