@@ -22,6 +22,7 @@
 #include "system_network.h"
 #include "system_task.h"
 #include "system_cloud.h"
+#include "system_flags.h"
 #include "rtc_hal.h"
 #include "core_hal.h"
 #include "rgbled.h"

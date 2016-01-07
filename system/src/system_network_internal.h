@@ -26,7 +26,7 @@
 #include "system_event.h"
 #include "system_cloud_internal.h"
 #include "system_network.h"
-
+#include "system_flags.h"
 
 enum eWanTimings
 {
@@ -34,11 +34,6 @@ enum eWanTimings
     DISCONNECT_TO_RECONNECT = S2M(2),
 };
 
-extern volatile uint8_t SPARK_WLAN_RESET;
-extern volatile uint8_t SPARK_WLAN_SLEEP;
-extern volatile uint8_t SPARK_WLAN_STARTED;
-
-extern volatile uint8_t SPARK_LED_FADE;
 void manage_smart_config();
 void manage_ip_config();
 

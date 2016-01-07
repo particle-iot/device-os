@@ -21,6 +21,7 @@
 #define	SYSTEM_CLOUD_INTERNAL_H
 
 #include "system_cloud.h"
+#include "system_flags.h"
 
 /**
  * Functions for managing the cloud connection, performing cloud operations

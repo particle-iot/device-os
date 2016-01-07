@@ -19,8 +19,9 @@
 
 #include "system_mode.h"
 #include "system_task.h"
-static System_Mode_TypeDef current_mode = DEFAULT;
+#include "system_flags.h"
 
+static System_Mode_TypeDef current_mode = DEFAULT;
 
 void set_system_mode(System_Mode_TypeDef mode)
 {
