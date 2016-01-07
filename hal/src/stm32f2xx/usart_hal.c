@@ -384,12 +384,12 @@ static void HAL_USART_Handler(HAL_USART_Serial serial)
 		}
 	}
 
-	// // If Overrun occurs, clear the OVR condition
-	// if (USART_GetFlagStatus(usartMap[serial]->usart_peripheral, USART_FLAG_ORE) != RESET)
-	// {
-	// 	(void)USART_ReceiveData(usartMap[serial]->usart_peripheral);
-	// 	USART_ClearITPendingBit (usartMap[serial]->usart_peripheral, USART_IT_ORE);
-	// }
+    	if (USART_GetFlagStatus(usartMap[serial]->usart_peripheral, USART_FLAG_ORE) != RESET)
+    	{
+    		// If Overrun flag is still set, clear it
+        	(void)USART_ReceiveData(usartMap[serial]->usart_peripheral);
+    	}
+
 }
 
 // Serial1 interrupt handler
