@@ -139,7 +139,7 @@ void system_display_bars(int bars)
 {
     if (bars>=0)
     {
-		SYSTEM_LED_COUNT = (bars<<1)+2;
+		SYSTEM_LED_COUNT = ((bars<<1)+2) | 128;
     }
     else
     {
@@ -160,7 +160,6 @@ void system_handle_single_click()
      */
     if (SYSTEM_HANDLE_SINGLE_CLICK) {
         SYSTEM_HANDLE_SINGLE_CLICK = false;
-        system_tick_t startTime = SYSTEM_TICK_COUNTER;
         system_prepare_display_bars();
         int rssi = 0;
         int bars = 0;
@@ -178,9 +177,6 @@ void system_handle_single_click()
             else if (rssi > -104) bars = 1;
         }
         DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
-
-        // Attempts to normalize beginning dim green time to 1 second
-	   while ( (SYSTEM_TICK_COUNTER - startTime) < (SYSTEM_US_TICKS*1000UL*1000UL) );
 
         system_display_bars(bars);
     }
@@ -379,6 +375,13 @@ extern "C" void HAL_SysTick_Handler(void)
   			LED_SetRGBColor(0<<16 | 10<<8 | 0);
     	        LED_On(LED_RGB);
     			TimingLED = 100;
+		}
+		else if (SYSTEM_LED_COUNT & 128)
+		{
+			LED_SetRGBColor(0<<16 | 10<<8 | 0);
+			LED_On(LED_RGB);
+			TimingLED = 1000;
+			SYSTEM_LED_COUNT &= ~128;
 		}
 		else
 		{
