@@ -26,6 +26,7 @@
 #include "system_event.h"
 #include "system_cloud_internal.h"
 #include "system_network.h"
+#include "system_threading.h"
 
 
 enum eWanTimings
@@ -191,6 +192,11 @@ protected:
                 }
                 console.loop();
             }
+#if PLATFORM_THREADING
+            if (!APPLICATION_THREAD_CURRENT()) {
+                SystemThread.process();
+            }
+#endif
         }
 
         LED_On(LED_RGB);
@@ -370,6 +376,7 @@ public:
             WLAN_DHCP = 0;
             WLAN_CONNECTED = 0;
             WLAN_CONNECTING = 0;
+            WLAN_SERIAL_CONFIG_DONE = 1;
             SPARK_LED_FADE = 1;
             LED_SetRGBColor(RGB_COLOR_WHITE);
             LED_On(LED_RGB);
