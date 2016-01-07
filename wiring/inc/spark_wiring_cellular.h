@@ -59,6 +59,14 @@ public:
         // todo
     }
 
+    void listen(bool begin=true) {
+        network_listen(*this, begin ? 0 : 1, NULL);
+    }
+
+    bool listening(void) {
+        return network_listening(*this, 0, NULL);
+    }
+
     bool ready()
     {
         return network_ready(*this, 0,  NULL);
